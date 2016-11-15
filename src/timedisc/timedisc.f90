@@ -160,7 +160,6 @@ USE MOD_RecordPoints_Vars   ,ONLY: RP_onProc
 USE MOD_Sponge_Vars         ,ONLY: CalcPruettDamping
 #if FV_ENABLED
 USE MOD_FV
-USE MOD_Analyze_Vars        ,ONLY: totalFV_nElems
 #endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -230,6 +229,7 @@ CALL Visualize(t,U)
 IF((t.GE.tEnd).OR.maxIter.EQ.0) RETURN
 
 
+tStart = t
 iter=0
 iter_loc=0
 writeCounter=0
@@ -249,16 +249,20 @@ CALL Analyze(t,iter)
 ! fill recordpoints buffer (initialization/restart)
 IF(RP_onProc) CALL RecordPoints(iter,t,.TRUE.)
 
-IF(MPIroot)THEN
-  WRITE(UNIT_StdOut,'(132("-"))')
-  WRITE(UNIT_StdOut,'(A,ES16.7)')'Initial Timestep  : ', dt
-  IF(ViscousTimeStep) WRITE(UNIT_StdOut,'(A)')' Viscous timestep dominates! '
-  WRITE(UNIT_StdOut,*)'CALCULATION RUNNING...'
-END IF ! MPIroot
+CALL PrintStatusLine(t,dt,tStart,tEnd)
+
+SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_StdOut,'(A,ES16.7)')'Initial Timestep  : ', dt
+IF(ViscousTimeStep)THEN
+  SWRITE(UNIT_StdOut,'(A)')' Viscous timestep dominates! '
+END IF
+#if FV_ENABLED
+CALL FV_Info(1_8)
+#endif
+SWRITE(UNIT_StdOut,*)'CALCULATION RUNNING...'
 
 
 ! Run computation
-tStart = t
 CalcTimeStart=FLEXITIME()
 DO
   IF(nCalcTimestep.LT.1)THEN
@@ -320,13 +324,6 @@ DO
   IF(doAnalyze) THEN
     CalcTimeEnd=FLEXITIME()
 
-#if FV_ENABLED && MPI
-    IF(MPIRoot)THEN
-      CALL MPI_REDUCE(MPI_IN_PLACE,totalFV_nElems,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_WORLD,iError)
-    ELSE
-      CALL MPI_REDUCE(totalFV_nElems,0           ,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_WORLD,iError)
-    END IF
-#endif
 
     IF(MPIroot)THEN
       ! Get calculation time per DOF
@@ -339,13 +336,9 @@ DO
       WRITE(UNIT_StdOut,'(A,ES16.7)')' Timestep   : ',dt_Min
       IF(ViscousTimeStep) WRITE(UNIT_StdOut,'(A)')' Viscous timestep dominates! '
       WRITE(UNIT_stdOut,'(A,ES16.7)')'#Timesteps  : ',REAL(iter)
-#if FV_ENABLED
-      ! totalFV_nElems is counted in PrintStatusLine
-      WRITE(UNIT_stdOut,'(A,F8.3,A)')' FV amount %: ', totalFV_nElems / REAL(nGlobalElems) / iter_loc*100 
-#endif
     END IF !MPIroot
 #if FV_ENABLED
-    totalFV_nElems = 0
+    CALL FV_Info(iter_loc)
 #endif
 
     ! Visualize data and write solution

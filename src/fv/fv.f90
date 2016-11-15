@@ -26,6 +26,10 @@ INTERFACE FV_Switch
   MODULE PROCEDURE FV_Switch
 END INTERFACE
 
+INTERFACE FV_Info
+  MODULE PROCEDURE FV_Info
+END INTERFACE
+
 INTERFACE FV_FillIni
   MODULE PROCEDURE FV_FillIni
 END INTERFACE
@@ -41,6 +45,7 @@ END INTERFACE
 PUBLIC::DefineParametersFV
 PUBLIC::InitFV
 PUBLIC::FV_Switch
+PUBLIC::FV_Info
 PUBLIC::FV_FillIni
 PUBLIC::FV_DGtoFV
 PUBLIC::FinalizeFV
@@ -225,6 +230,35 @@ FV_Elems_counter  = FV_Elems_counter  + FV_Elems
 FV_Switch_counter = FV_Switch_counter + 1
 FV_Elems_Amount   = REAL(FV_Elems_Counter)/FV_Switch_counter
 END SUBROUTINE FV_Switch
+
+!==================================================================================================================================
+!> Performe switching between DG element and FV sub-cells element (and vise versa) depending on the indicator value
+!==================================================================================================================================
+SUBROUTINE FV_Info(iter)
+! MODULES
+USE MOD_Globals
+USE MOD_Mesh_Vars,ONLY:nGlobalElems
+USE MOD_Analyze_Vars,ONLY: totalFV_nElems
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+INTEGER(KIND=8),INTENT(IN) :: iter !< number of iterations
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!==================================================================================================================================
+#if FV_ENABLED && MPI
+IF(MPIRoot)THEN
+  CALL MPI_REDUCE(MPI_IN_PLACE,totalFV_nElems,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_WORLD,iError)
+  ! totalFV_nElems is counted in PrintStatusLine
+ELSE
+  CALL MPI_REDUCE(totalFV_nElems,0           ,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_WORLD,iError)
+END IF
+#endif
+SWRITE(UNIT_stdOut,'(A,F8.3,A)')' FV amount %: ', totalFV_nElems / REAL(nGlobalElems) / iter*100 
+totalFV_nElems = 0
+END SUBROUTINE FV_Info
+
 
 !==================================================================================================================================
 !> Initialize all FV elements and overwrite data of DG FillIni. Each subcell is supersampled with PP_N points in each space 
