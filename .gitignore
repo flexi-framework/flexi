@@ -1,0 +1,13 @@
+*.s
+*.o
+*.i90
+*.mod
+*.swp
+src/deplist.mk
+src/preprocflags.f90
+src/srcfiles_pp.mk
+src/lib*.a
+bin/*
+ini/*
+lib/*
+#share/*

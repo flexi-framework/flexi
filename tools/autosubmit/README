@@ -1,0 +1,35 @@
+----------------------------------------------------------------------------------------------------------
+Vorwort:
+----------------------------------------------------------------------------------------------------------
+Dieses Skript stellt automatisiert eine vorgebene Anzahl von hintereinander folgenden Jobs in Queu ein.
+Hierbei sollte die gesamte physikalische Zeit (To - Tend), die simuliert werden möchte, auf die Anzahl der
+Subjobs(+1) verteilt werden.
+Tritt innerhalb einer laufenden Flexi-Rechnung ein "Fehler/Error" auf (Abbruch des subjobs)
+oder die vorgebene physikalische Zeit (im Parameterfile vorgegeben) erreicht, so wird das Skript automatisiert
+beendet.
+Im Log-File " xjobs.logfile " werden alle Vorgänge dokumentiert
+
+----------------------------------------------------------------------------------------------------------
+Vorbereitung:
+----------------------------------------------------------------------------------------------------------
+  Hauptskript - xjob.sh:
+   Im Hauptskipt sind die folgenden Variablen anzugeben
+    - SIM_NAME                 (Queu name, PBS -N)
+    - SIMULATION_TIME          (Simulationszeit pro subjob -  walltime)
+    - TOTALNUMBER_OF_SUBJOBS   (Anzahl der Subjobs (Anzahl der Jobs= subjobs + 1)
+    - GAP_TIME                 (Die Wartezeit bis der darauffolgende subjob in die Queue eingestellt wird)
+ 
+ 
+  Submitskript - xjob.qsub:
+   wie gewohnt queu name, walltime, number of procs ... einstellen.
+   
+   Zusätzlich sind weitere Variablen zu belegen:
+    - INI                  ( Paramaterfile )
+    - NUMBER_PROCS         ( wie oben number of procs )
+
+
+----------------------------------------------------------------------------------------------------------
+Ausführen:
+----------------------------------------------------------------------------------------------------------
+ Hauptskrpt: xjob.sh im screen mode ausführen
+  >>./xjob.sh

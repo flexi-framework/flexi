@@ -1,0 +1,111 @@
+!=================================================================================================================================
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
+! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+!
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+!
+! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+! of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License v3.0 for more details.
+!
+! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
+!=================================================================================================================================
+
+!==================================================================================================================================
+!> \brief Contains global variables provided by the DG modules.
+!>
+!> This module contains the building blocks for the DGSEM operator, i.e. the interpolation and differentiation 
+!> operators and the variables for solution storage as well as auxilliary variables. 
+!==================================================================================================================================
+MODULE MOD_DG_Vars
+! MODULES
+IMPLICIT NONE
+PUBLIC
+SAVE
+!----------------------------------------------------------------------------------------------------------------------------------
+! GLOBAL VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+! DG basis, contains the differentiation and interpolation operators
+REAL,ALLOCATABLE                      :: D(:,:)                 !< Differentiation matrix of size [0..N,0..N], contains the 
+                                                                !< first derivative of each Lagrange polynomial at each node. 
+
+REAL,ALLOCATABLE                      :: D_T(:,:)               !< Transpose of differentiation matrix, size [0..N,0..N]. 
+
+REAL,ALLOCATABLE                      :: D_Hat(:,:)             !< Differentiation matrix premultiplied by
+                                                                !< mass matrix, \f$ \hat{D} = M^{-1} D^T M \f$, size [0..N,0..N].  
+
+REAL,ALLOCATABLE                      :: D_Hat_T(:,:)           !< Transpose of differentiation matrix premultiplied by 
+                                                                !< mass matrix, size [0..N,0..N].
+ 
+REAL,ALLOCATABLE                      :: L_HatMinus(:)          !< Lagrange polynomials evaluated at \f$\xi=-1\f$
+                                                                !< premultiplied by mass matrix
+
+REAL,ALLOCATABLE                      :: L_HatPlus(:)           !< Lagrange polynomials evaluated at \f$\xi=+1\f$
+                                                                !< premultiplied by mass matrix
+
+REAL,ALLOCATABLE                      :: D_Hat_TO(:,:)          !< Transpose of differentiation matrix
+                                                                !< premultiplied by mass matrix on NOver, size [0..NO,0..NO]. 
+
+!----------------------------------------------------------------------------------------------------------------------------------
+! DG solution (JU or U) vectors)
+REAL,ALLOCATABLE,TARGET               :: U(:,:,:,:,:)           !< Solution variable for each equation, node and element, 
+                                                                !< size [1..NVar,0..N,0..N,0..N,nElems]. 
+
+REAL,ALLOCATABLE                      :: UO(:,:,:,:,:)          !< Solution variable for each equation, node and element, 
+                                                                !< size [1..NVar,0..NO,0..NO,0..NO,nElems].  
+
+!----------------------------------------------------------------------------------------------------------------------------------
+! DG time derivative or Residual U_t
+REAL,ALLOCATABLE                      :: Ut(:,:,:,:,:)          !< Residual/time derivative, size [1..NVar,0..N,0..N,0..N,nElems]. 
+
+REAL,ALLOCATABLE                      :: UtO(:,:,:,:,:)         !< Residual/time derivative, 
+                                                                !< size [1..NVar,0..NO,0..NO,0..NO,nElems]. 
+
+!----------------------------------------------------------------------------------------------------------------------------------
+! auxilliary counters: number of entries in U, Ut, gradUx, gradUy, gradUz, used of optimization 
+INTEGER                               :: nTotalU                !< Total number of entries in U / size of U. 
+
+INTEGER                               :: nDOFElem               !< Degrees of freedom in single element(per equation) 
+                                                                !< $ nDOFElem=(N+1)^3 $.  
+
+INTEGER                               :: nDOFElemO              !< Degrees of freedom in single element(per equation) 
+                                                                !< $ nDOFElemO=(NO+1)^3 $. 
+
+!----------------------------------------------------------------------------------------------------------------------------------
+! interior face values for all elements
+REAL,ALLOCATABLE                      :: U_master(:,:,:,:)      !< 2D Solution on face nodes for the master sides, 
+                                                                !< size [1..NVar,0..N,0..N,all_master_sides] 
+
+REAL,ALLOCATABLE                      :: U_slave(:,:,:,:)       !< 2D Solution on face nodes for the slave sides, 
+                                                                !< size [1..NVar,0..N,0..N,all_slave_sides] 
+
+REAL,ALLOCATABLE                      :: U_masterO(:,:,:,:)     !< 2D Solution on face nodes for the master sides, 
+                                                                !< size [1..Nvar,0..NO,0..NO,all_master_sides]
+
+REAL,ALLOCATABLE                      :: U_slaveO(:,:,:,:)      !< 2D Solution on face nodes for the slave sides, 
+                                                                !<  size [1..NVar,0..NO,0..NO,all_slave_sides] 
+
+REAL,ALLOCATABLE                      :: Flux_master(:,:,:,:)    !< Fluxes on face, size [1..NVar,0..N,0..N,allsides]. 
+REAL,ALLOCATABLE                      :: Flux_slave (:,:,:,:)    !< Fluxes on face, size [1..NVar,0..N,0..N,allsides]. 
+REAL,ALLOCATABLE                      :: FluxO(:,:,:,:)         !< Fluxes on face on NOver, size [1..NVar,0..NO,0..NO,allsides]. 
+
+!----------------------------------------------------------------------------------------------------------------------------------
+! Variables in case of primitive lifting
+REAL,ALLOCATABLE                      :: UPrim(:,:,:,:,:)       !< Solution in primitive variables per equation, node and element,
+                                                                !< size [1..NVar,0..N,0..N,0..N,nElems]. 
+REAL,ALLOCATABLE                      :: UPrim_master(:,:,:,:)  !< 2D Solution in Primitive variables on face, master side, 
+                                                                !< size [1..NVar,0..N,0..N,all_master_sides] 
+REAL,ALLOCATABLE                      :: UPrim_slave(:,:,:,:)   !< 2D Solution in Primitive variables on face, slave side, 
+                                                                !<size [1..NVar,0..N,0..N,all_slave_sides] 
+REAL,ALLOCATABLE                      :: UPrimO(:,:,:,:,:)      !< Solution in primitive variables per equation, node and element,
+                                                                !< size [1..NVar,0..NO,0..NO,0..NO,nElems]. 
+REAL,ALLOCATABLE                      :: UPrim_masterO(:,:,:,:) !< 2D Solution in Primitive variables on face, master side, 
+                                                                !< size [1..NVar,0..NO,0..NO,all_master_sides] 
+REAL,ALLOCATABLE                      :: UPrim_slaveO(:,:,:,:)  !< 2D Solution in Primitive variables on face, slave side, 
+                                                                !<size [1..NVar,0..NO,0..NO,all_slave_sides] 
+!----------------------------------------------------------------------------------------------------------------------------------
+! Auxilliary variables
+LOGICAL                               :: DGInitIsDone=.FALSE.   !< Switch to check DGInit status
+!==================================================================================================================================
+END MODULE MOD_DG_Vars

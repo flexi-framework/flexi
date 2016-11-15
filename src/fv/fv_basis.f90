@@ -1,0 +1,314 @@
+#include "flexi.h"
+#if FV_ENABLED
+
+!==================================================================================================================================
+!> Initialize a lot of basic variables for the Finite Volume sub-cells. Especially variables in reference space
+!==================================================================================================================================
+MODULE MOD_FV_Basis
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+PRIVATE
+INTERFACE InitFV_Basis
+  MODULE PROCEDURE InitFV_Basis
+END INTERFACE
+
+INTERFACE FV_Build_X_w_BdryX
+  MODULE PROCEDURE FV_Build_X_w_BdryX
+END INTERFACE
+
+INTERFACE FV_Build_VisuVdm
+  MODULE PROCEDURE FV_Build_VisuVdm
+END INTERFACE
+
+INTERFACE FV_Build_Vdm_Gauss_FVboundary
+  MODULE PROCEDURE FV_Build_Vdm_Gauss_FVboundary
+END INTERFACE
+
+INTERFACE FV_GetVandermonde
+  MODULE PROCEDURE FV_GetVandermonde
+END INTERFACE
+
+INTERFACE FinalizeFV_Basis
+  MODULE PROCEDURE FinalizeFV_Basis
+END INTERFACE
+
+
+PUBLIC::InitFV_Basis
+PUBLIC::FV_Build_X_w_BdryX
+PUBLIC::FV_Build_VisuVdm
+PUBLIC::FV_Build_Vdm_Gauss_FVboundary
+PUBLIC::FV_GetVandermonde
+PUBLIC::FinalizeFV_Basis
+!==================================================================================================================================
+
+CONTAINS
+
+!==================================================================================================================================
+!> Initialize sub-cells width/points/distances/... Vandermondes to switch between DG and FV ...
+!==================================================================================================================================
+SUBROUTINE InitFV_Basis() 
+USE MOD_Globals
+USE MOD_PreProc
+USE MOD_FV_Vars
+USE MOD_Interpolation_Vars ,ONLY: InterpolationInitIsDone
+IMPLICIT NONE
+! INPUT / OUTPUT VARIABLES 
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+CHARACTER(LEN=255) :: NodeType_tmp
+!==================================================================================================================================
+SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(A)') ' INIT FV Basis...'
+IF(InterpolationInitIsDone.AND.FVInitBasisIsDone)THEN
+  CALL CollectiveStop(__STAMP__, &
+    'InitFV_Basis not ready to be called or already called.')
+END IF
+
+!#if (PP_NodeType!=1) 
+!STOP 'Only Gauss points supported (use: PP_NodeType = 1)'
+!#endif
+
+#if PARABOLIC
+#if !(FV_RECONSTRUCT)
+CALL CollectiveStop(__STAMP__, &
+  'FV_RECONSTRUCT=0 and PARABOLIC=T is not allowed. Switch off PARABOLIC or switch on FV_RECONSTRUCT!')
+#endif
+#endif
+
+! DG reference element [-1,1] is subdivided into (N+1) sub-cells
+!
+! -1                                       1
+! |---------|---------|---------|----------|
+! ^         ^         ^         ^          ^   FV_BdryX: boundary positions of subcells
+!      ^         ^         ^         ^         FV_X    : positions of support points of subcells
+!  <------->                                   FV_w    : width of subcell
+
+! allocate arrays for precomputed stuff on reference-element
+ALLOCATE(FV_BdryX(0:PP_N+1))  ! 1D boundary positions of FV-Subcells
+ALLOCATE(FV_X(0:PP_N))        ! 1D positions of support points of FV-Subcells
+
+! precompute stuff on reference-element
+CALL FV_Build_X_w_BdryX(PP_N, FV_X, FV_w, FV_BdryX)
+
+! equidistant FV needs Vdm-Matrix to interpolate/reconstruct between FV- and DG-Solution
+ALLOCATE(FV_Vdm(0:PP_N,0:PP_N))    ! used for DG -> FV
+ALLOCATE(FV_sVdm(0:PP_N,0:PP_N))   ! used for FV -> DG
+NodeType_tmp = "GAUSS"
+! Build Vandermondes for switch between DG and FV
+CALL FV_GetVandermonde(PP_N,NodeType_tmp,FV_Vdm,FV_sVdm)
+
+! calculate inverse FV-widths (little speedup)
+FV_w_inv = 1.0 / FV_w
+
+
+FVInitBasisIsDone=.TRUE.
+SWRITE(UNIT_stdOut,'(A)')' INIT FV DONE!'
+SWRITE(UNIT_StdOut,'(132("-"))')
+END SUBROUTINE InitFV_Basis  
+
+
+!==================================================================================================================================
+!> Build Vandermondes to switch solution between DG and FV sub-cells.
+!==================================================================================================================================
+SUBROUTINE FV_GetVandermonde(N_in,NodeType_in,FV_Vdm,FV_sVdm)
+! MODULES
+USE MOD_Globals
+USE MOD_Preproc
+USE MOD_Interpolation ,ONLY: GetVandermonde,GetNodesAndWeights
+USE MOD_Basis         ,ONLY: InitializeVandermonde
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN)            :: N_in                    ! Number of 1D input points / output points
+CHARACTER(LEN=255),INTENT(IN) :: NodeType_in             ! Type of 1D input points
+REAL,INTENT(OUT)              :: FV_Vdm(0:N_in,0:N_in)   ! Vandermonde matrix for converstion from DG to FV
+REAL,INTENT(OUT),OPTIONAL     :: FV_sVdm(0:N_in,0:N_in)  ! Vandermonde matrix for converstion from FV to DG
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL                   :: Vdm_In_tmp(0:N_in,0:N_in)
+REAL                   :: Vdm_tmp_IN(0:N_in,0:N_in)
+CHARACTER(LEN=255)     :: NodeType_tmp
+REAL                   :: FV_X(0:N_in),FV_w,FV_BdryX(0:N_In+1)
+REAL,DIMENSION(0:N_In) :: xGP,wGP,wBary,rhs
+REAL                   :: SubxGP(1,0:N_In)
+REAL                   :: VDM(0:N_In,0:N_In)
+INTEGER                :: i,j,k,IPIV(PP_N+1),errorflag
+!==================================================================================================================================
+NodeType_tmp = "GAUSS"
+CALL GetVandermonde(N_in,NodeType_in,N_in,NodeType_tmp,Vdm_In_tmp, Vdm_tmp_IN)
+CALL GetNodesAndWeights(N_in,NodeType_tmp,xGP,wGP,wBary)
+
+! one DG cell [-1,1] is divided in FV-Subcells
+!
+! -1                  i-th Subcell                              1
+!  |------- ... ----|---x---x---x---|---- ... -----|------------|
+!                     x = xGP in Subcell
+!
+!  xFV_i(k) = k-th Gauss point in i-th Subcell
+! 
+! We have to integrate the solution U in each Subcell (loop over i) and compute with this the integral mean value, which
+! then ist the Finite-Volume solution U_FV of this Subcell.
+! Therefore we must compute the solution in each Gauss point xFV_i of the Subcell, which is done by evaluating all Lagrange
+! polynomials l_j in all Gauss points xFV_i => stored in the matrix VDM_i = [ l_j(xFV_i(k)) ]_kj 
+! Multiplying this Vandermonde with the DG-solution U gives us the solution in the Gauss points xFV_i of the i-th Subcell:
+!    u_i = VDM_i . U         meaning u_i(k) = U(xFV_i(k))
+! The integration over the Subcell is done by Gauss-Quadrature: 
+!    \int_{Subcell(i)} U dx = [ \sum_{k=0..N} u_i(k) . wGP(k) ] * a       with a = (width of Subcell(i)) / 2
+! ( The /2 comes from the width of the reference element. )
+! We get the integral mean value and therewith the Finite-Volume solution of the i-th Subcell  by dividing this integral by
+! the width of the i-th Subcell :
+!    u_FV(i) = [ \sum_{k=0..N} wGP(k) * u_i(k) ] / 2
+!
+! All this can be write in Matrix-Vector-Multiplication:
+!    u_FV(i) = 1/2 * wGP^T . VDM_i . U
+! If we combine the vectors (wGP^T . VDM_i) for the i-th Subcell for all Subcells in one matrix we get :
+!    u_FV = 1/2 * FV_Vdm . U          with FV_Vdm = ( wGP^T.VDM_0 // wGP^T.VDM_1 // ... // wGP^T. VDM_N )
+! With the inverse of the matrix FV_Vdm we then can reconstruct the DG-Solution from a FV-Solution
+!
+! Algorithm :
+FV_Vdm = 0.0
+CALL FV_Build_X_w_BdryX(N_in, FV_X, FV_w, FV_BdryX)
+!FV_BdryX = (FV_BdryX + 1.)/2. -1.
+DO i=0,N_in
+  ! 1. Compute the Gauss points xFV_i in the i-th Subcell
+  SubxGP(1,:) = FV_BdryX(i) + (xGP + 1.)/2. * (FV_BdryX(i+1) - FV_BdryX(i))
+  ! 2. Evaluate the all Lagrange-Polys in all Gauss points xFV_i of the i-th Subcell  =>  store in VDM
+  CALL InitializeVandermonde(N_in,N_in,wBary,xGP,SubxGP(1,:),VDM(:,:))
+  ! 3. Multiply wGP^T with VDM and store it in the i-th row of the matrix FV_Vdm
+  DO j=0,N_in
+    DO k=0,N_in
+      FV_Vdm(i,j) = FV_Vdm(i,j) + wGP(k) * VDM(k,j) 
+    END DO
+  END DO
+END DO
+! 4. don't forget the 1/2
+FV_Vdm = FV_Vdm * 0.5
+
+FV_Vdm = MATMUL(FV_Vdm, Vdm_In_tmp)
+
+! Compute the inverse of FV_Vdm 
+FV_sVdm = FV_Vdm 
+CALL dgetrf(N_in+1,N_in+1,FV_sVdm(0:N_in,0:N_in),N_in+1,IPIV,errorflag)
+IF (errorflag .NE. 0) THEN 
+  CALL abort(__STAMP__,&
+    'LU factorisation of matrix crashed.')
+END IF
+CALL dgetri(N_in+1,FV_sVdm(0:N_in,0:N_in),N_in+1,IPIV,rhs,N_in+1,errorflag)
+IF (errorflag .NE. 0) THEN 
+  CALL abort(__STAMP__,&
+    'Solver crashed.')
+END IF
+END SUBROUTINE FV_GetVandermonde
+
+!==================================================================================================================================
+!> Build positions FV_X, widths, and boundary positions 
+!==================================================================================================================================
+! MODULES
+SUBROUTINE FV_Build_X_w_BdryX(N, FV_X, FV_w, FV_BdryX) 
+USE MOD_Basis
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+INTEGER,INTENT(IN) :: N
+REAL,INTENT(OUT)   :: FV_X(0:N),FV_w,FV_BdryX(0:N+1)
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER :: i
+!==================================================================================================================================
+FV_w  = 2.0 / (PP_N+1) ! equidistant widths of FV-Subcells
+
+! calculate boundaries and nodes (midpoints) of FV-Subcells
+FV_BdryX(0) = -1.0
+DO i=1,PP_N+1
+  FV_BdryX(i) = FV_BdryX(i-1) + FV_w
+  FV_X(i-1)   = (FV_BdryX(i-1) + FV_BdryX(i))/2.0
+END DO
+END SUBROUTINE FV_Build_X_w_BdryX
+
+!==================================================================================================================================
+!> Build Vandermonde to convert solution from Gauss points (poly degree N) to left and right face of each subcells 
+!> (inner element faces are doubled).
+!==================================================================================================================================
+SUBROUTINE FV_Build_VisuVdm(N, Vdm)
+! MODULES
+USE MOD_Basis
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+INTEGER,INTENT(IN) :: N
+REAL,INTENT(OUT)   :: Vdm(0:(N+1)*2-1,0:N)
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES 
+REAL,DIMENSION(0:PP_N) :: FV_X,xGP,wBary
+REAL                   :: X  (0:(N+1)*2-1)
+REAL                   :: FV_BdryX(0:N+1),FV_w
+INTEGER                :: i,l,k
+!==================================================================================================================================
+#if (PP_NodeType == 1)
+  CALL LegendreGaussNodesAndWeights(N, xGP, wBary)
+#elif (PP_NodeType == 2)
+  CALL LegGaussLobNodesAndWeights(N, xGP, wBary)
+#endif  
+CALL BarycentricWeights(N, xGP, wBary)
+
+CALL FV_Build_X_w_BdryX(N, FV_X, FV_w, FV_BdryX)
+k = 0
+DO i=0,N
+  DO l=0,1
+    X(k) = FV_BdryX(i) + l*(FV_BdryX(i+1) - FV_BdryX(i))
+    k = k+1
+  END DO
+END DO
+
+CALL InitializeVandermonde(N,(N+1)*2-1,wBary,xGP,X,Vdm)
+END SUBROUTINE FV_Build_VisuVdm
+
+!==================================================================================================================================
+!> Build Vandermonde to convert solution from Gauss points (poly degree N) to FV_BdryX points.
+!==================================================================================================================================
+SUBROUTINE FV_Build_Vdm_Gauss_FVboundary(N, Vdm)
+! MODULES
+USE MOD_Basis
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+INTEGER,INTENT(IN) :: N
+REAL,INTENT(OUT)   :: Vdm(0:N+1,0:N)
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES 
+REAL,DIMENSION(0:PP_N) :: FV_X,xGP,wBary
+REAL                   :: FV_BdryX(0:N+1),FV_w
+!==================================================================================================================================
+#if (PP_NodeType == 1)
+  CALL LegendreGaussNodesAndWeights(N, xGP, wBary)
+#elif (PP_NodeType == 2)
+  CALL LegGaussLobNodesAndWeights(N, xGP, wBary)
+#endif  
+CALL BarycentricWeights(N, xGP, wBary)
+CALL FV_Build_X_w_BdryX(N, FV_X, FV_w, FV_BdryX)
+CALL InitializeVandermonde(N,N+1,wBary,xGP,FV_BdryX,Vdm)
+END SUBROUTINE FV_Build_Vdm_Gauss_FVboundary
+
+!==================================================================================================================================
+!> Finalizes global variables of the module.
+!> Deallocate allocatable arrays, nullify pointers, set *InitIsDone = .FALSE.
+!==================================================================================================================================
+SUBROUTINE FinalizeFV_Basis() 
+USE MOD_FV_Vars
+!----------------------------------------------------------------------------------------------------------------------------------!
+IMPLICIT NONE
+! INPUT / OUTPUT VARIABLES 
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!==================================================================================================================================
+DEALLOCATE(FV_BdryX,FV_X,FV_Vdm,FV_sVdm)
+FVInitBasisIsDone=.FALSE.
+END SUBROUTINE FinalizeFV_Basis
+
+
+END MODULE MOD_FV_Basis
+#endif /* FV_ENABLED */

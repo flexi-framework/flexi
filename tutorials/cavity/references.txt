@@ -1,0 +1,6 @@
+References used in this project: 
+[Gao]: Efficient Absorbing Layers for Weakly Compressible Flows. Z. Gao; J.S. Hesthaven; T. Warburton, submitted to Journal of Scientific Computing, 2016
+[Ghia]: High-Re Solutions for Incompressible Flow Using the Navier-Stokes Equations and a Multigrid Method. U. Ghia;, K. N. Ghia,;  C. T. Shin, Journal of Computational Physics, 48, 387-411 (1982)
+ 
+
+

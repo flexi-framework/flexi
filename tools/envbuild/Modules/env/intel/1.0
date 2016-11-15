@@ -1,0 +1,42 @@
+#%Module1.0#####################################################################
+##
+## Author: iagbole
+##
+## HDF5 modulefile
+##
+module-whatis	"Enable Intel Program environment"
+
+conflict env/gnu
+
+if [ is-loaded hdf5/gnu ] {
+  module unload hdf5/gnu
+}
+if [ is-loaded openmpi/gnu ] {
+  module unload openmpi/gnu
+}
+
+
+if [ is-loaded compiler/intel ] {
+  module swap compiler compiler/intel
+} else {
+  module load compiler/intel
+}
+
+if [ is-loaded hdf5/intel ] {
+  module swap hdf5 hdf5/intel
+} else {
+  module load hdf5/intel
+}
+
+if [ is-loaded openmpi/intel ] {
+  module swap openmpi openmpi/intel
+} else {
+  module load openmpi/intel
+}
+
+proc ModulesHelp {} {
+  puts stderr "
+modulefile \"[module-info name]\"
+Enable usage of Intel environment"
+  return 0
+}

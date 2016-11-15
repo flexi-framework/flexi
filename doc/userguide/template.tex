@@ -1,0 +1,295 @@
+\documentclass[$if(fontsize)$$fontsize$,$endif$$if(lang)$$lang$,$endif$$if(papersize)$$papersize$,$endif$$for(classoption)$$classoption$$sep$,$endfor$]{$documentclass$}
+$if(fontfamily)$
+\usepackage{$fontfamily$}
+$else$
+\usepackage{lmodern}
+\renewcommand*\familydefault{\sfdefault}
+$endif$
+$if(linestretch)$
+\usepackage{setspace}
+\setstretch{$linestretch$}
+$endif$
+\usepackage{amssymb,amsmath}
+\usepackage{ifxetex,ifluatex}
+\usepackage{fixltx2e} % provides \textsubscript
+\ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+$if(euro)$
+  \usepackage{eurosym}
+$endif$
+\else % if luatex or xelatex
+  \ifxetex
+    \usepackage{mathspec}
+    \usepackage{xltxtra,xunicode}
+  \else
+    \usepackage{fontspec}
+  \fi
+  \defaultfontfeatures{Mapping=tex-text,Scale=MatchLowercase}
+  \newcommand{\euro}{€}
+$if(mainfont)$
+    \setmainfont{$mainfont$}
+$endif$
+$if(sansfont)$
+    \setsansfont{$sansfont$}
+$endif$
+$if(monofont)$
+    \setmonofont[Mapping=tex-ansi]{$monofont$}
+$endif$
+$if(mathfont)$
+    \setmathfont(Digits,Latin,Greek){$mathfont$}
+$endif$
+\fi
+% use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+% use microtype if available
+\IfFileExists{microtype.sty}{%
+\usepackage{microtype}
+\UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+$if(geometry)$
+\usepackage[$for(geometry)$$geometry$$sep$,$endfor$]{geometry}
+$endif$
+\ifxetex
+  \usepackage[setpagesize=false, % page size defined by xetex
+              unicode=false, % unicode breaks when used with xetex
+              xetex]{hyperref}
+\else
+  \usepackage[unicode=true]{hyperref}
+\fi
+\hypersetup{breaklinks=true,
+            bookmarks=true,
+            pdfauthor={$author-meta$},
+            pdftitle={$title-meta$},
+            colorlinks=true,
+            citecolor=$if(citecolor)$$citecolor$$else$blue$endif$,
+            urlcolor=$if(urlcolor)$$urlcolor$$else$blue$endif$,
+            linkcolor=$if(linkcolor)$$linkcolor$$else$magenta$endif$,
+            pdfborder={0 0 0}}
+\urlstyle{same}  % don't use monospace font for urls
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\pagenumbering{arabic}
+\lhead{\itshape $title$}
+\chead{}
+\rhead{\itshape{\nouppercase{\leftmark}}}
+\lfoot{v $version$}
+\cfoot{}
+\rfoot{\thepage}
+$if(lang)$
+\ifxetex
+  \usepackage{polyglossia}
+  \setmainlanguage{$mainlang$}
+  \setotherlanguages{$for(otherlang)$$otherlang$$sep$,$endfor$}
+\else
+  \usepackage[shorthands=off,$lang$]{babel}
+\fi
+$endif$
+$if(natbib)$
+\usepackage{natbib}
+\bibliographystyle{$if(biblio-style)$$biblio-style$$else$abbrv$endif$}
+$endif$
+$if(biblatex)$
+\usepackage{biblatex}
+$for(bibliography)$
+\addbibresource{$bibliography$}
+$endfor$
+$endif$
+$if(listings)$
+\usepackage{listings} % Display code / shell commands
+\usepackage{lstautogobble}
+\usepackage[dvipsnames]{xcolor} % for color list see https://en.wikibooks.org/wiki/LaTeX/Colors
+
+\definecolor{light-gray}{gray}{0.85}
+\definecolor{medium-gray}{gray}{0.65}
+%\definecolor{mycolor}{rgb}{0.38,0.1,0.82}
+
+% Bash code written with spaces
+\lstdefinestyle{defaultstyle}{ %
+  backgroundcolor=\color{light-gray}, % choose the background color; you must add \usepackage{color} or \usepackage{xcolor}
+  basicstyle=\ttfamily\small,        % the size of the fonts that are used for the code
+  breakatwhitespace=false,           % sets if automatic breaks should only happen at whitespace
+  breaklines=true,                   % sets automatic line breaking
+  captionpos=b,                      % sets the caption-position to bottom
+  commentstyle=\color{ForestGreen},  % comment style
+  deletekeywords={...},              % if you want to delete keywords from the given language
+  escapeinside={\%*}{*)},            % if you want to add LaTeX within your code
+  extendedchars=false,               % lets you use non-ASCII characters; for 8-bits encodings only, does not work with UTF-8
+  frame=trbl,	                       % adds a frame around the code
+  frameround=ffff,	                 % rounds frame corners t/f
+  framexleftmargin=0pt,              % frame margins
+  framexrightmargin=0pt,
+  framextopmargin=0pt,
+  framexbottommargin=0pt,
+  keepspaces=true,                   % keeps spaces in text, useful for keeping indentation of code (possibly needs columns=flexible)
+  keywordstyle=\color{blue},         % keyword style
+  language=bash,                     % the language of the code
+  otherkeywords={*,...},             % if you want to add more keywords to the set
+  rulecolor=\color{medium-gray},     % if not set, the frame-color may be changed on line-breaks within not-black text (e.g. comments (green here))
+  showspaces=false,                  % show spaces everywhere adding particular underscores; it overrides 'showstringspaces'
+  showstringspaces=false,            % underline spaces within strings only
+  showtabs=false,                    % show tabs within strings adding particular underscores
+  stringstyle=,                      % string literal style
+  tabsize=2,	                       % sets default tabsize to 2 spaces
+  title=\lstname                     % show the filename of files included with \lstinputlisting; also try caption instead of title
+}
+\lstset{escapechar=@,style=defaultstyle}
+\lstset{morecomment=[l]{!}}          % Fortran style comments
+
+%% Code written in code environment  ~~~ <code> ~~~
+%\lstdefinestyle{fort}{ %
+%  backgroundcolor=\color{light-gray}, % choose the background color; you must add \usepackage{color} or \usepackage{xcolor}
+%  basicstyle=\ttfamily\small,        % the size of the fonts that are used for the code
+%  breakatwhitespace=false,           % sets if automatic breaks should only happen at whitespace
+%  breaklines=true,                   % sets automatic line breaking
+%  captionpos=b,                      % sets the caption-position to bottom
+%  commentstyle=\color{blue},        % comment style
+%  deletekeywords={...},              % if you want to delete keywords from the given language
+%  escapeinside={\%*}{*)},            % if you want to add LaTeX within your code
+%  extendedchars=false,               % lets you use non-ASCII characters; for 8-bits encodings only, does not work with UTF-8
+%  frame=trbl,	                       % adds a frame around the code
+%  frameround=ffff,	                 % rounds frame corners t/f
+%  framexleftmargin=0pt,              % frame margins
+%  framexrightmargin=0pt,
+%  framextopmargin=0pt,
+%  framexbottommargin=0pt,
+%  keepspaces=true,                   % keeps spaces in text, useful for keeping indentation of code (possibly needs columns=flexible)
+%  keywordstyle=\color{blue},         % keyword style
+%  language=fortran,                  % the language of the code
+%  otherkeywords={*,...},             % if you want to add more keywords to the set
+%  numbers=left,                      % where to put the line-numbers; possible values are (none, left, right)
+%  numbersep=5pt,                     % how far the line-numbers are from the code
+%  numberstyle=\tiny,                 % the style that is used for the line-numbers
+%  stepnumber=2,                      % the step between two line-numbers. If it's 1, each line will be numbered
+%  rulecolor=\color{medium-gray},     % if not set, the frame-color may be changed on line-breaks within not-black text (e.g. comments (green here))
+%  showspaces=false,                  % show spaces everywhere adding particular underscores; it overrides 'showstringspaces'
+%  showstringspaces=false,            % underline spaces within strings only
+%  showtabs=false,                    % show tabs within strings adding particular underscores
+%  stringstyle=,                      % string literal style
+%  tabsize=2,	                       % sets default tabsize to 2 spaces
+%  title=\lstname                     % show the filename of files included with \lstinputlisting; also try caption instead of title
+%}
+
+$endif$
+$if(lhs)$
+\lstnewenvironment{code}{\lstset{language=Haskell,basicstyle=\small\ttfamily}}{}
+$endif$
+$if(highlighting-macros)$
+$highlighting-macros$
+$endif$
+$if(verbatim-in-note)$
+\usepackage{fancyvrb}
+\VerbatimFootnotes
+$endif$
+$if(tables)$
+\usepackage{longtable,booktabs}
+$endif$
+$if(graphics)$
+\usepackage{graphicx,grffile}
+\makeatletter
+% \def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+% \def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\def\maxwidth{\ifdim\Gin@nat@width>0.9\linewidth0.9\linewidth\else\Gin@nat@width\fi}
+%\def\maxheight{\ifdim\Gin@nat@height>0.5\textheight0.5\textheight\else\Gin@nat@height\fi}
+\def\maxheight{0.5\textwidth}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+$endif$
+$if(links-as-notes)$
+% Make links footnotes instead of hotlinks:
+\renewcommand{\href}[2]{#2\footnote{\url{#1}}}
+$endif$
+$if(strikeout)$
+\usepackage[normalem]{ulem}
+% avoid problems with \sout in headers with hyperref:
+\pdfstringdefDisableCommands{\renewcommand{\sout}{}}
+$endif$
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt plus 2pt minus 1pt}
+\setlength{\emergencystretch}{3em}  % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+$if(numbersections)$
+\setcounter{secnumdepth}{5}
+$else$
+\setcounter{secnumdepth}{0}
+$endif$
+$if(verbatim-in-note)$
+\VerbatimFootnotes % allows verbatim text in footnotes
+$endif$
+
+$if(title)$
+\title{$title$$if(subtitle)$\\\vspace{0.5em}{\large $subtitle$}$endif$}
+$endif$
+$if(author)$
+\author{$for(author)$$author$$sep$ \and $endfor$}
+$endif$
+\date{$date$}
+$for(header-includes)$
+$header-includes$
+$endfor$
+
+% Redefines (sub)paragraphs to behave more like sections
+\ifx\paragraph\undefined\else
+\let\oldparagraph\paragraph
+\renewcommand{\paragraph}[1]{\oldparagraph{#1}\mbox{}}
+\fi
+\ifx\subparagraph\undefined\else
+\let\oldsubparagraph\subparagraph
+\renewcommand{\subparagraph}[1]{\oldsubparagraph{#1}\mbox{}}
+\fi
+
+\begin{document}
+$if(title)$
+\maketitle
+$endif$
+$if(abstract)$
+\begin{abstract}
+$abstract$
+\end{abstract}
+$endif$
+
+$for(include-before)$
+$include-before$
+
+$endfor$
+$if(toc)$
+{
+\hypersetup{linkcolor=$if(toccolor)$$toccolor$$else$black$endif$}
+\setcounter{tocdepth}{$toc-depth$}
+\tableofcontents
+}
+$endif$
+$if(lot)$
+\listoftables
+$endif$
+$if(lof)$
+\listoffigures
+$endif$
+$body$
+
+$if(natbib)$
+$if(bibliography)$
+$if(biblio-title)$
+$if(book-class)$
+\renewcommand\bibname{$biblio-title$}
+$else$
+\renewcommand\refname{$biblio-title$}
+$endif$
+$endif$
+\bibliography{$for(bibliography)$$bibliography$$sep$,$endfor$}
+
+$endif$
+$endif$
+$if(biblatex)$
+\printbibliography$if(biblio-title)$[title=$biblio-title$]$endif$
+
+$endif$
+$for(include-after)$
+$include-after$
+
+$endfor$
+\end{document}

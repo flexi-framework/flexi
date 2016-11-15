@@ -1,0 +1,151 @@
+!==================================================================================================================================
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
+! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+!
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+!
+! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+! of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License v3.0 for more details.
+!
+! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
+!==================================================================================================================================
+
+!==================================================================================================================================
+!> Convert solution between physical <-> reference space, separate input and output variables
+!==================================================================================================================================
+SUBROUTINE ApplyJacobian(&
+#ifdef WITHnVar
+        TP_nVar, &
+#endif        
+        U_in,U_out,toPhysical)
+! MODULES
+USE MOD_PreProc
+USE MOD_Mesh_Vars,ONLY:sJ,nElems
+#if FV_ENABLED
+USE MOD_FV_Vars  ,ONLY: FV_Elems
+#endif
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+#ifdef WITHnVar
+INTEGER,INTENT(IN)  :: TP_nVar
+#endif        
+REAL,INTENT(IN)     :: U_in( TP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems) !< Input: Solution to be transformed
+REAL,INTENT(OUT)    :: U_out(TP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems) !< Output: transformed solution
+LOGICAL,INTENT(IN)  :: toPhysical                                 !< Switch for physical<-->reference transformation
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER             :: i,j,k,iElem
+!==================================================================================================================================
+IF(toPhysical)THEN
+  DO iElem=1,nElems
+    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+      U_out(:,i,j,k,iElem)=U_in(:,i,j,k,iElem)*sJ(i,j,k,iElem,FV_Elems(iElem))
+    END DO; END DO; END DO
+  END DO
+ELSE
+  DO iElem=1,nElems
+    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+      U_out(:,i,j,k,iElem)=U_in(:,i,j,k,iElem)/sJ(i,j,k,iElem,FV_Elems(iElem))
+    END DO; END DO; END DO
+  END DO
+END IF
+END SUBROUTINE ApplyJacobian
+
+!==================================================================================================================================
+!> Convert solution between physical <-> reference space (DG elements only), input will be overwritten with transformed solution 
+!==================================================================================================================================
+SUBROUTINE ApplyJacobian_Select(&
+#ifdef WITHnVar
+        TP_nVar, &
+#endif        
+        U,toPhysical,FVE)
+! MODULES
+USE MOD_PreProc
+USE MOD_Mesh_Vars ,ONLY: sJ,nElems
+#if FV_ENABLED
+USE MOD_FV_Vars   ,ONLY: FV_Elems
+#endif
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+#ifdef WITHnVar
+INTEGER,INTENT(IN) :: TP_nVar
+#endif        
+REAL,INTENT(INOUT) :: U(TP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems)
+LOGICAL,INTENT(IN) :: toPhysical
+INTEGER,INTENT(IN) :: FVE
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER :: i,j,k,iElem
+!==================================================================================================================================
+IF(toPhysical)THEN
+  DO iElem=1,nElems
+#if FV_ENABLED
+    IF (FV_Elems(iElem).EQ.FVE) THEN ! DG element
+#endif
+      DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+        U(:,i,j,k,iElem)=U(:,i,j,k,iElem)*sJ(i,j,k,iElem,FVE)
+      END DO; END DO; END DO
+#if FV_ENABLED
+    END IF
+#endif
+  END DO
+ELSE
+  DO iElem=1,nElems
+#if FV_ENABLED
+    IF (FV_Elems(iElem).EQ.FVE) THEN ! DG element
+#endif
+      DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+        U(:,i,j,k,iElem)=U(:,i,j,k,iElem)/sJ(i,j,k,iElem,FVE)
+      END DO; END DO; END DO
+#if FV_ENABLED
+    END IF
+#endif
+  END DO
+END IF
+END SUBROUTINE ApplyJacobian_Select
+
+!==================================================================================================================================
+!> Convert solution between physical <-> reference space, input will be overwritten with transformed solution 
+!==================================================================================================================================
+SUBROUTINE ApplyJacobian_local(&
+#ifdef WITHnVar
+        TP_nVar, &
+#endif        
+        U,toPhysical)
+! MODULES
+USE MOD_PreProc
+USE MOD_Mesh_Vars,ONLY:sJ,nElems
+#if FV_ENABLED
+USE MOD_FV_Vars   ,ONLY: FV_Elems
+#endif
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+#ifdef WITHnVar
+INTEGER,INTENT(IN) :: TP_nVar
+#endif        
+REAL,INTENT(INOUT) :: U(TP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems)     !< Input/Output: Solution to be transformed 
+LOGICAL,INTENT(IN) :: toPhysical                                 !< Switch for physical<-->reference transformation
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER            :: i,j,k,iElem
+!==================================================================================================================================
+IF(toPhysical)THEN
+  DO iElem=1,nElems
+    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+      U(:,i,j,k,iElem)=U(:,i,j,k,iElem)*sJ(i,j,k,iElem,FV_Elems(iElem))
+    END DO; END DO; END DO
+  END DO
+ELSE
+  DO iElem=1,nElems
+    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+      U(:,i,j,k,iElem)=U(:,i,j,k,iElem)/sJ(i,j,k,iElem,FV_Elems(iElem))
+    END DO; END DO; END DO
+  END DO
+END IF
+END SUBROUTINE ApplyJacobian_local

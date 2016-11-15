@@ -1,0 +1,126 @@
+stages:
+  - build
+  - error_clean
+  - test
+  - documentation
+  - deploy
+
+cache:
+  key: "$CI_BUILD_REF"
+  paths: 
+    - build_gnu/    
+    - build_gnu_hdf5/    
+    - build_intel/    
+    - build_intel_hdf5/    
+    - doc/doxygen/doxygen
+    - doc/userguide/userguide.pdf
+    - regressioncheck/examples
+
+
+build_gnu:
+  stage: build
+  tags:
+    - withmodules
+  script:
+    - module load env/gnu ; rm -rf build_gnu || true 
+    - mkdir -p build_gnu ; cd build_gnu ; cmake .. -DFLEXI_BUILD_HDF5=OFF ; make all
+
+build_intel:
+  stage: build
+  tags:
+    - withmodules
+  script:
+    - module load env/intel ; rm -rf build_intel || true 
+    - mkdir -p build_intel ; cd build_intel ; cmake .. -DFLEXI_BUILD_HDF5=OFF ; make all
+
+clean:
+  stage: error_clean
+  tags:
+    - withmodules
+  script:
+    - rm -rf build_gnu
+    - rm -rf build_intel
+    - rm -rf share
+    - rm -rf build_gnu_hdf5
+    - rm -rf build_intel_hdf5
+  when: on_failure
+
+run_gnu:
+  stage: test
+  tags:
+    - withmodules
+  script:
+    - module load env/gnu ; cd build_gnu/bin/ ; ./regressioncheck
+
+run_gnu_build_mpi:
+  stage: test
+  tags:
+    - withmodules
+  script:
+    - if [ -n "${DO_NIGHTLY}" ]; then  module load env/gnu ; cd build_gnu/bin/ ; ./regressioncheck build 2; fi
+
+run_gnu_build_hdf5:
+  stage: test
+  tags:
+    - withmodules
+  script:
+    - if [ -n "${DO_NIGHTLY}" ]; then  module load env/gnu ; cd build_gnu/bin/ ; ./regressioncheck build build_freestream_hdf5_mpi_1x 2 ; fi
+
+run_gnu_build_hdf5_single:
+  stage: test
+  tags:
+    - withmodules
+  script:
+    - if [ -n "${DO_NIGHTLY}" ]; then  module load env/gnu ; cd build_gnu/bin/ ; ./regressioncheck build build_freestream_hdf5_single_18x 2; fi
+
+
+run_intel:
+  stage: test
+  tags:
+    - withmodules
+  script:
+    - module load env/intel ; cd build_intel/bin/ ; ./regressioncheck
+
+run_intel_build_mpi:
+  stage: test
+  tags:
+    - withmodules
+  script:
+    - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel/bin/ ; ./regressioncheck build 2; fi
+
+
+doxygen:
+  stage: documentation
+  tags:
+    - pomodoro
+  script:
+    - cd doc/doxygen ; ./builddoxy.sh
+
+userguide:
+  stage: documentation
+  tags:
+    - pomodoro
+  script:
+    - cd doc/userguide ; make
+
+
+
+deploy_homepage:
+  stage: deploy
+  tags:
+    - pomodoro
+  script:
+    - if [ -n "${DO_DEPLOY}" ]; then if [ -d "doc/doxygen/doxygen" ]; then ssh flexi@euler rm -rf homepage/doxygen ; scp -r doc/doxygen/doxygen flexi@euler:~/homepage/. ; fi ; fi
+    - if [ -n "${DO_DEPLOY}" ]; then if [ -d "doc/userguide" ]; then scp -r doc/userguide flexi@euler:~/homepage/. ; fi ; fi
+
+# deploy_github:
+#   stage: deploy
+#   tags:
+#     - pomodoro
+#   script:
+#     - if [ -z "${DO_DEPLOY}" ]; then exit ; fi
+#     - git clone --single-branch git@gitlab.iag.uni-stuttgart.de:flexi/flexi.git                    flexi_github  ; cd flexi_github  ; git push --mirror git@github.com:flexi-framework/flexi.git     ; cd ../
+#     - git clone --single-branch git@gitlab.iag.uni-stuttgart.de:flexi/regressioncheck_examples.git reggie_github ; cd reggie_github ; git push --mirror git@github.com:flexi-framework/regressioncheck_examples.git ; cd ../
+#     - git clone --single-branch git@gitlab.iag.uni-stuttgart.de:flexi/tutorials.git                tuts_github   ; cd tuts_github   ; git push --mirror git@github.com:flexi-framework/tutorials.git ; cd ../
+#     - git clone --bare          git@gitlab.iag.uni-stuttgart.de:flexi/HDF5.git                     HDF5_github   ; cd HDF5_github   ; git push --mirror git@github.com:flexi-framework/HDF5.git      ; cd ../
+

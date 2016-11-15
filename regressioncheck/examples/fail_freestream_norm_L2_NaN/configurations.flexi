@@ -1,0 +1,19 @@
+! fixed compiler flags
+CMAKE_BUILD_TYPE=Release
+FLEXI_BUILD_HDF5=OFF
+FLEXI_PAPI=OFF
+FLEXI_POLYNOMIAL_DEGREE=N
+FLEXI_MKL=OFF
+
+! include combinations
+FLEXI_EQNSYSNAME=navierstokes,linearscalaradvection
+FLEXI_LIFTING=br1,br2
+FLEXI_MPI=ON!,OFF ! MPI=OFF is not supported on pre-compiled runner HDF5
+FLEXI_NODETYPE=GAUSS,GAUSS-LOBATTO
+FLEXI_PARABOLIC=ON,OFF
+FLEXI_VISCOSITY=constant,sutherland,powerlaw
+
+! exclude combinations
+EXCLUDE:FLEXI_VISCOSITY=sutherland,FLEXI_PARABOLIC=OFF
+EXCLUDE:FLEXI_VISCOSITY=powerlaw,FLEXI_PARABOLIC=OFF
+EXCLUDE:FLEXI_LIFTING=br2,FLEXI_EQNSYSNAME=linearscalaradvection

@@ -1,0 +1,138 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
+import os
+import sys
+import math
+import shutil
+import tempfile
+import time
+import argparse
+
+from modify_prm import modify_prm, read_prm
+from analyze_functions import get_last_L2_error, get_last_Linf_error
+from execute_flexi import execute_flexi
+from table_output import print_header, print_values
+
+def copy2temporary(tmp_dir, f) :
+    name = os.path.join(tmp_dir, os.path.basename(f))
+    shutil.copy(f, name)
+    return name
+
+
+parser = argparse.ArgumentParser(description='Tool to calculate the convergence rate')
+parser.add_argument('--N', type=int, default=3, help='polynomial degree N')
+parser.add_argument('-p','--procs', type=int, default=1, help='number of processors used to run Flexi')
+parser.add_argument('-g','--gnuplot', action='store_true', help='generate gnuplot pics (needs python-gnuplot package)')
+parser.add_argument('--printprmfile', action='store_true', help='output parameter file at the beginning')
+parser.add_argument('flexi', help='path to flexi executable')
+parser.add_argument('prm',   help='path to parameter file')
+
+args = parser.parse_args()
+
+if not os.path.exists(args.prm) :
+    print "parameter-file '%s' not found" % args.prm 
+    sys.exit(1)
+
+
+# copy flexi executable and parameter file to a temporary directory
+tmp_dir = tempfile.mkdtemp()
+args.flexi = copy2temporary(tmp_dir, args.flexi)
+args.prm = copy2temporary(tmp_dir, args.prm)
+
+#print parameter file
+if args.printprmfile :
+    for line in open(args.prm, 'r').readlines() :
+        print line,
+
+# get ProjectName and theoretical order of convergence
+projectname = read_prm(args.prm,'ProjectName')
+EOC = int(read_prm(args.prm,'N'))+1
+
+# modify polynomial degree
+modify_prm(args.prm, {'N' : args.N})
+
+# open file to print order of convergence
+convfile = projectname+'_convfile_N.csv'
+
+x_array = [1.,2.,4.,8.]
+grids = ['CART_HEX_PERIODIC_001_mesh.h5', \
+         'CART_HEX_PERIODIC_002_mesh.h5', \
+         'CART_HEX_PERIODIC_004_mesh.h5', \
+         'CART_HEX_PERIODIC_008_mesh.h5']
+L2_array = []
+i=0
+# loop over polynomial degrees
+for grid in grids :
+    i = i + 1
+
+    # modify grid
+    modify_prm(args.prm, {'MeshFile' : grid})
+
+    # save last L2, Linf error for EOC computation
+    if i > 1 :
+        last_L2 = L2
+        last_Linf = Linf
+
+    # execute flexi and get L2, L_inf error
+    start_time = time.time()
+    try :
+        L2, Linf = execute_flexi(args.flexi, args.prm, projectname, \
+                [get_last_L2_error, get_last_Linf_error], mpi_procs = args.procs)
+    except :
+        shutil.rmtree(tmp_dir)
+        exit(1)
+    end_time = time.time()
+
+    if i == 1: 
+        # output header of output-table
+        print_header(['grid '] + len(L2)*['L2 err   EOC     '] + len(Linf)*['Linf err  EOC    '])
+
+        # print initial values
+        print_values([x_array[i-1]]+L2+Linf, ["%03d  "] + (len(L2)+len(Linf)) * ["%8.4f         "])
+    else :
+        # print L2, Linf errors and EOC
+        vals = [x_array[i-1]]
+        for j in range(len(L2)) :
+            conv = math.log(  last_L2[j] /   L2[j]) / math.log(x_array[i-1]/float(x_array[i-2]))
+            vals.append(L2[j])
+            vals.append(conv)
+        for j in range(len(Linf)) :
+            conv = math.log(last_Linf[j] / Linf[j]) / math.log(x_array[i-1]/float(x_array[i-2]))
+            vals.append(Linf[j])
+            vals.append(conv)
+        print_values(vals, ["%03d  "] + (len(L2)+len(Linf)) * ["%8.4f","%8.4f"])
+    
+    if len(L2) < 5:
+      index = 0
+    else:
+      index = 1
+    L2_array.append(L2[index]) # x- Momentum
+
+    #print end_time - start_time
+    sys.stdout.flush()
+
+
+if args.gnuplot :
+    # Try to import gnuplot for line plot output. If not on the system, set a flag to supress this output
+    # You will need the python-gnuplot package for this
+    try:
+        import Gnuplot
+        args.gnuplot = False
+        # create filename for Gnuplot
+        filename = projectname+"_convtest_grid.pdf"
+        shutil.copy(args.prm,filename)
+        g = Gnuplot.Gnuplot()
+        g.title('ConvTest X-Momentum')
+        g.xlabel('Number of Elements')
+        g.ylabel('L2 Error')
+        g('set logscale xy')
+        g('set terminal pdf')
+        g('set output "'+filename+'"')
+        gnuplot_data = Gnuplot.Data(x_array,L2_array,with_="line")
+        g('exact(x)=(1./x)**%d' % EOC)
+        g.plot(gnuplot_data,'exact(x)')
+    except ImportError:
+        print "No 'python-gnuplot' package found!"
+ 
+shutil.rmtree(tmp_dir)

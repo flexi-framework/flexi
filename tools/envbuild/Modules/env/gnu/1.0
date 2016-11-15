@@ -1,0 +1,40 @@
+#%Module1.0#####################################################################
+##
+## Author: iagbole
+##
+## Compiler environment modulefile
+##
+module-whatis	"Enable GNU Program environment"
+
+conflict env/intel
+
+if [ is-loaded compiler/intel ] {
+  module unload compiler/intel
+}
+if [ is-loaded hdf5/intel ] {
+  module unload hdf5/intel
+}
+if [ is-loaded openmpi/intel ] {
+  module unload openmpi/intel
+}
+
+
+if [ is-loaded hdf5/gnu ] {
+  module swap hdf5 hdf5/gnu
+} else {
+  module load hdf5/gnu
+}
+
+if [ is-loaded openmpi/gnu ] {
+  module swap openmpi openmpi/gnu
+} else {
+  module load openmpi/gnu
+}
+
+
+proc ModulesHelp {} {
+  puts stderr "
+modulefile \"[module-info name]\"
+Enable usage of GNU environment"
+  return 0
+}

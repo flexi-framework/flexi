@@ -1,0 +1,16 @@
+#!MC 1200
+# Created by Tecplot 360 build 12.2.0.9077
+$!ALTERDATA 
+  EQUATION = '{VGT_11}={dUdX}**2+{dUdY}*{dVdX}+{dUdZ}*{dWdX}'
+$!ALTERDATA 
+  EQUATION = '{VGT_22}={dVdY}**2+{dUdY}*{dVdX}+{dVdZ}*{dWdY}'
+$!ALTERDATA 
+  EQUATION = '{VGT_33}={dWdZ}**2+{dUdZ}*{dWdX}+{dVdZ}*{dWdY}'
+$!ALTERDATA 
+  EQUATION = '{VGT_12}=0.5*{dWdX}*{dVdZ}+0.5*{dUdZ}*{dWdY}+0.5*({dUdY}+{dVdX})*({dUdX}+{dVdY})'
+$!ALTERDATA 
+  EQUATION = '{VGT_13}=0.5*{dUdY}*{dVdZ}+0.5*{dVdX}*{dWdY}+0.5*({dUdZ}+{dWdX})*({dUdX}+{dWdZ})'
+$!ALTERDATA 
+  EQUATION = '{VGT_23}=0.5*{dVdX}*{dUdZ}+0.5*{dUdY}*{dWdX}+0.5*({dVdZ}+{dWdY})*({dVdY}+{dWdZ})'
+$!ALTERDATA 
+  EQUATION = '{Q} = -0.5*({VGT_11}+{VGT_22}+{VGT_33})'

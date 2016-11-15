@@ -1,0 +1,398 @@
+#!/usr/bin/python
+# -*- coding: utf8 -*-
+import sys
+import string
+import os
+import time
+import re
+import getopt
+
+# Necessary operations
+######################
+
+def get_modname(filename):
+	# Reads the names of MODULES and PROGRAMS ands other specified units (upper case)
+	units = []
+	units.append("MODULE ")
+	units.append("PROGRAM ")
+	# Check if file exists
+	if not os.path.exists(filename):
+		failure = "ERROR: Given file '" + filename + "' does not exist!"
+		print failure
+		sys.exit(1)
+		
+	# Open file, find and extract the specified string(s)
+	file = open(filename, 'r')
+	line = file.readline()
+	found = False
+	lines = []
+	while line:
+		# Assume only one instance of the keyword per file, take the first
+		for unit in units:
+			if line.upper().lstrip().startswith(unit):
+				pattern = re.compile(unit, re.IGNORECASE)
+				line = pattern.sub("", line)
+				line = line.partition('!')[0].strip()
+				found = True
+				break
+		
+		if found:
+                        lines.append(line)
+
+		line = file.readline()
+	
+	file.close()
+	
+	# If keyword not found, return warning
+	if not lines:
+		failure = "WARNING: Given file '" + filename + "' is not a MODULE or PROGRAM file!"
+		print failure
+	
+	return lines
+
+def get_use_statements(filename):
+	# Open file, find and extract all USE statements into an array
+	use_statements = []
+	file = open(filename, 'r')
+	try:
+		for line in file:
+			line = line.strip()
+			if line.upper().startswith("USE "):
+				# Deal with multiple USE statements in one line
+				for item in line.split(";"):
+					# Delete comments first
+					item = item.partition("!")[0].strip()
+					# Delete ',ONLY' stuff
+					item = item.partition(",")[0].strip()
+					pattern = re.compile("USE ", re.IGNORECASE)
+					item = pattern.sub("", item)
+					use_statements.append(item)
+	finally:
+		file.close()
+	
+	return use_statements
+
+def remove_duplicates(use_statements):
+	# Removes duplicate USE statements from list
+	use_statements.sort()
+	if use_statements:
+		last = use_statements[-1]
+		# Taken directly from Python FAQ
+		for i in range(len(use_statements)-2, -1, -1):
+			if last.upper() == use_statements[i].upper():
+				del use_statements[i]
+			else:
+				last = use_statements[i]
+	
+	return use_statements
+
+def translate_use_statements(use_statements, modnames, filenames):
+	# Translates USE statements into filenames
+	for i in range(len(use_statements)):		
+		for j in range(len(modnames)):
+			if use_statements[i].upper() == modnames[j].upper():
+				use_statements[i] = filenames[j]
+	
+	return use_statements
+	
+def check_use_statements(use_statements, filename, exceptions):
+	# Checks if use_statements list is completely translated, otherwise, there is no consistency with given files
+	# Permanent exceptions can be defined here
+	# Additionally, remove unnecessary items, that are not translated
+	clean_use_statements = []
+	for statement in use_statements:
+		error = statement.lower().find(".i90")
+		if error == -1 and not any(x in statement for x in exceptions):
+			failure = "ERROR: No given file contains '" + statement + "' source, needed by '" + filename + "'!"
+			print failure
+			sys.exit(1)
+		
+		# Remove exceptions
+		leftover = statement.find(".")
+		if leftover != -1:
+			clean_use_statements.append(statement)
+	
+	# Sort dependencies alphabetically
+	clean_use_statements.sort(key=lambda s: (s.lower(), s))
+		
+	return clean_use_statements
+
+#def is_oldschool_fortran(filename):
+#	# Checks, if fortran file uses an interface structure to define subroutines from other files
+#	# We then have a SUBROUTINE statement inside an ENVIRONMENT
+#	units = []
+#	units.append("SUBROUTINE ")
+#	units.append("FUNCTION ")
+#	int_statements = []
+#	file = open(filename, 'r')
+#	line = file.readline()
+#	inside = False
+#	while line:
+#		# Remove everything that is a comment
+#		line = line.partition("!")[0].strip()
+#		# Find units between INTERFACE statements
+#		if line.upper().find("INTERFACE ") != -1:
+#			# We have found an INTERFACE block
+#			inside = True
+#		if line.upper().find("END INTERFACE") != -1 or line.upper().find("ENDINTERFACE") != -1:
+#			# We have left an INTERFACE block
+#			inside = False
+#		if inside and line.upper().find("INTERFACE") == -1:
+#			# We are inside an INTERFACE block
+#			for unit in units:
+#				if line.upper().find(unit) != -1 and line.upper().find("END") == -1:
+#					# Take everything prior to the first bracket
+#					line = line.partition("(")[0].strip()
+#					#line = line.rpartition(unit)[2].strip()
+#					int_statements.append(line)
+#		line = file.readline()
+#	
+#	file.close()
+#	int_statements = remove_duplicates(int_statements)
+#	return int_statements
+#
+#def add_subs_to_use_statements(use_statements, oldschool_files, all_int_statements, sourcefilename, filenames):
+#	# For oldschool fortran files (see above), files containing the interface subroutines and functions have to be found
+#	# We directly append them to the use_statements list, but take care of falsely identified cross-dependencies
+#	if len(oldschool_files) == 0:
+#		return use_statements
+#	
+#	# Find INTERFACE routines
+#	int_statements = []
+#	for i in range(len(oldschool_files)):
+#		if oldschool_files[i] == sourcefilename:
+#			int_statements = all_int_statements[i]
+#	
+#	if len(int_statements) != 0:
+#		# Append INTERFACE routines to use statements
+#		for filename in filenames:
+#			if filename == sourcefilename:
+#				found = False
+#				continue
+#			
+#			found = False
+#			# Go over all files and check, if entries of int_statements are found
+#			# If found, replace them directly
+#			file = open(filename, 'r')
+#			line = file.readline()
+#			while line:
+#				for i in range(len(int_statements)):
+#					if line.upper().find(int_statements[i].upper()) != -1:
+#						use_statements.append(filename)
+#						found = True
+#				
+#				if found:
+#					break
+#				line = file.readline()
+#	
+#			file.close()
+#	
+#	# Take care of cross-dependencies: remove them
+#	for i in range(len(use_statements)):
+#		for j in range(len(oldschool_files)):
+#			# Cross dependency found if file is not oldschool INTERFACE file, but has a dependency of it
+#			if use_statements[i] == oldschool_files[j]:
+#				file = open(sourcefilename, 'r')
+#				try:
+#					for line in file:
+#						for name in all_int_statements[j]:
+#							if line.upper().find(name.upper()) != -1:
+#								del use_statements[i]
+#								file.close()
+#								return use_statements
+#				finally:
+#					file.close()
+#	
+#	return use_statements
+
+def assemble_deplist_output(filename, use_statements):
+	# Builds GNU makefile conform deplist output
+	deplist_output = []
+	pattern = re.compile(".i90", re.IGNORECASE)
+	# Start with first line (filename itself)
+	if len(use_statements) >= 1:
+		deplist_output = pattern.sub(".o", filename) + ": " + pattern.sub(".f90", filename) + " \\\n"
+	else:
+		deplist_output = pattern.sub(".o", filename) + ": " + pattern.sub(".f90", filename) + " \n"
+	# Now write the rest
+	for i in range(len(use_statements)):
+		if i == len(use_statements)-1:
+			deplist_output += "\t" + pattern.sub(".o", use_statements[i]) + " \n"
+		else:
+			deplist_output += "\t" + pattern.sub(".o", use_statements[i]) + " \\\n"
+	
+	# Last, add a blank line
+	deplist_output += "\n"
+	return deplist_output
+
+def write_deplist_header(deplist_name):
+	# Write a program header to the deplist
+	file = open(deplist_name, 'w')
+	file.write("### Deplist auto-generated by builddeps V0.99 ###\n\n")
+	file.close()
+
+def write_output2deplist(deplist_name, deplist_output):
+	# Appends given output into deplist file
+	file = open(deplist_name, 'a')
+	file.writelines(deplist_output)
+	file.close()
+
+def build_mod_mapping(filenames):
+	# Builds an array that contains the corresponding module names out of the files
+	# Remove blanks from output	
+	for i in range(len(filenames)):
+		filenames[i] = filenames[i].rstrip()
+	
+	modnames = []
+	modfilenames = []
+	for filename in filenames:
+		modname = get_modname(filename)
+	        for i in range(len(modname)):
+		    modnames.append(modname[i])
+		    modfilenames.append(filename)
+	
+	return (modnames,modfilenames)
+
+def check_dependencies(all_statements, filenames, deplist_name):
+	# Check use_statements for cross-dependencies (race conditions)
+	# If found, print an ERROR and delete deplist
+	for i in range(len(filenames)):
+		for j in range(len(all_statements[i])):
+			for k in range(len(filenames)):
+				if all_statements[i][j] == filenames[k]:
+					for l in range(len(all_statements[k])):
+						if all_statements[k][l] == filenames[i]:
+       							failure = "ERROR: Given files " + filenames[i] + " and " + filenames[k] + " depend on each other, your code will not compile!"
+       							print failure
+       							#os.remove(deplist_name)
+       							sys.exit(1)
+
+def usage():
+	# Prints usage-message
+	print "\033[1mNAME\033[0;0m"
+	print "\t builddeps - builds deplists out of Fortran90 files"
+	print "\033[1mSYNOPSIS\033[0;0m"
+	print "\t builddeps [OPTIONS] [Deplist]"
+	print "\033[1mOPTIONS\033[0;0m"
+	print "\t -s, --source"
+	print "\t\t sourcefiles, given as filename of a list containing all files"
+	print ""
+	print ""
+	print "\t -e, --exceptions"
+	print "\t\t names of exceptions that will not appear in the deplist, given as filename of a list"
+
+# Program
+#########
+
+# Generates a deplist-File out of given .i90 files
+
+filenames = []
+exceptions = []
+oldschool_files = []
+use_statements = []
+int_statements = []
+all_int_statements = []
+all_statements = []
+deplist_output = []
+
+# Check for Python >= 2.5
+if not sys.version_info[:2] >= (2,5):
+  print "Program needs Python 2.5 or newer!"
+  sys.exit(3)
+
+# Check and read input arguments
+# Use getopt
+try:
+	opts, args = getopt.gnu_getopt(sys.argv[1:], "s:e:h", ["source=", "exceptions=", "help"])
+except getopt.GetoptError, err:
+	print str(err)
+	usage()
+	sys.exit(2)
+
+if not opts:
+	usage()
+	sys.exit(2)
+
+for opt, arg in opts:
+	# Source file names
+	if opt in ("-s", "--source"):
+		sourcefile = arg
+		if not os.path.exists(sourcefile):
+			failure = "ERROR: Given sources file " + sourcefile + " does not exist!"
+			print failure
+			usage()
+			sys.exit(1)
+		file = open(sourcefile, 'r')
+		try:
+			for line in file:
+                                if line != '\n':
+        				filenames.append(line[:-1])
+		finally:
+			file.close()
+	# Exceptions
+	elif opt in ("-e", "--exceptions"):
+		ex_name = arg
+		if not os.path.exists(ex_name):
+			failure = "ERROR: Given exceptions file " + ex_name + " does not exist!"
+			print failure
+			usage()
+			sys.exit(1)
+		file = open(ex_name, 'r')
+		try:
+			for line in file:
+				exceptions.append(line[:-1])
+		finally:
+			file.close()
+
+	# Help
+	elif opt in ("-h", "--help"):
+		usage()
+		sys.exit(0)
+	else:
+		usage()
+		sys.exit(2)
+	
+	if len(args) == 1:
+		deplist_name = args[0]
+	else:
+		failure = "ERROR: Please specify exactly one filename for the deplist!"
+		print failure
+		usage()
+		sys.exit(1)
+
+if not deplist_name or deplist_name.lower().find(".i90") != -1:
+	failure = "ERROR: Please specify an (valid) file name for the deplist!\n"
+	print failure
+	usage()
+	sys.exit(1)
+
+# Build mapping first
+modnames,modfilenames = build_mod_mapping(filenames)
+
+## Check for oldschool fortran, where an interface structure is used to define subroutines from other files
+#for filename in filenames:
+#	int_statements = is_oldschool_fortran(filename)
+#	if len(int_statements) != 0:
+#		print "INFO: Given file " + filename + " uses INTERFACE blocks to define subroutines."
+#		all_int_statements.append(int_statements)
+#		oldschool_files.append(filename)
+
+# Write header
+write_deplist_header(deplist_name)
+
+# Now build deplist
+for filename in filenames:
+	use_statements = get_use_statements(filename)
+	use_statements = remove_duplicates(use_statements)
+	use_statements = translate_use_statements(use_statements, modnames, modfilenames)
+	#use_statements = add_subs_to_use_statements(use_statements, oldschool_files, all_int_statements, filename, filenames)
+	use_statements = check_use_statements(use_statements, filename, exceptions)
+	all_statements.append(use_statements)
+	deplist_output = assemble_deplist_output(filename, use_statements)
+	write_output2deplist(deplist_name, deplist_output)
+
+# Check use_statements for cross-dependencies
+check_dependencies(all_statements, filenames, deplist_name)
+
+print "Deplist '" + deplist_name + "' generated!"
+sys.exit(0)
