@@ -183,7 +183,7 @@ END SUBROUTINE InitFV
 !==================================================================================================================================
 !> Performe switching between DG element and FV sub-cells element (and vise versa) depending on the indicator value
 !==================================================================================================================================
-SUBROUTINE FV_Switch()
+SUBROUTINE FV_Switch(OnlyToFV)
 ! MODULES
 USE MOD_PreProc
 USE MOD_ChangeBasis    ,ONLY: ChangeBasis3D
@@ -197,6 +197,7 @@ USE MOD_Mesh_Vars      ,ONLY: nElems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
+LOGICAL,INTENT(IN) :: OnlyToFV
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL    :: U_DG(PP_nVar,0:PP_N,0:PP_N,0:PP_N)
@@ -215,7 +216,7 @@ DO iElem=1,nElems
     END IF
   ELSE ! FV Element
     ! Switch FV to DG Element, if Indicator is lower then IndMax
-    IF (IndValue(iElem).LT.FV_IndLowerThreshold) THEN
+    IF ((IndValue(iElem).LT.FV_IndLowerThreshold).AND..NOT.OnlyToFV) THEN
       CALL ChangeBasis3D(PP_nVar,PP_N,PP_N,FV_sVdm,U(:,:,:,:,iElem),U_DG)
       IF (FV_toDG_indicator) THEN
         ind = IndPersson(U_DG(1,:,:,:))
@@ -287,7 +288,7 @@ REAL              :: tmp(1:PP_nVar,0:PP_N,0:PP_N,0:PP_N)
 ! initial call of indicator
 CALL CalcIndicator(U,0.)
 FV_Elems = 0
-CALL FV_Switch()
+CALL FV_Switch(OnlyToFV=.TRUE.)
 
 ! build vandermonde to supersample each subcell with PP_N points per direction
 CALL GetVandermonde(PP_N,NodetypeG,(PP_N+1)**2-1,NodeTypeVISUInner,Vdm)

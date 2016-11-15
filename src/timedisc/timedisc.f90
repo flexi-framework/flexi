@@ -266,6 +266,9 @@ SWRITE(UNIT_StdOut,*)'CALCULATION RUNNING...'
 CalcTimeStart=FLEXITIME()
 DO
   IF(nCalcTimestep.LT.1)THEN
+#if FV_ENABLED
+    CALL FV_Switch(OnlyToFV=.FALSE.)
+#endif
     dt_Min=CALCTIMESTEP(errType)
     nCalcTimestep=MIN(FLOOR(ABS(LOG10(ABS(dt_MinOld/dt_Min-1.)**2.*100.+1.e-16))),nCalcTimeStepMax)
     dt_MinOld=dt_Min
@@ -412,7 +415,7 @@ CALL VCopy(nTotalU,Ut_temp,Ut)               !Ut_temp = Ut
 CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(1))    !U       = U + Ut*b_dt(1)
 IF(doCalcIndicator) CALL CalcIndicator(U,t)
 #if FV_ENABLED
-CALL FV_Switch()
+CALL FV_Switch(OnlyToFV=.TRUE.)
 #endif
 
 
@@ -425,10 +428,8 @@ DO iStage=2,nRKStages
   CALL VAXPBY(nTotalU,U,Ut_temp,ConstIn =b_dt(iStage))  !U       = U + Ut_temp*b_dt(iStage)
   IF(doCalcIndicator) CALL CalcIndicator(U,t)
 #if FV_ENABLED
-  CALL FV_Switch()
+  CALL FV_Switch(OnlyToFV=.TRUE.)
 #endif
-
-
 END DO
 CurrentStage=1
 
@@ -482,7 +483,7 @@ CALL DGTimeDerivative_weakForm(t)
 CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(1))      !U      = U + Ut*b_dt(1)
 IF(doCalcIndicator) CALL CalcIndicator(U,t)
 #if FV_ENABLED
-CALL FV_Switch()
+CALL FV_Switch(OnlyToFV=.TRUE.)
 #endif
 
 DO iStage=2,nRKStages
@@ -495,7 +496,7 @@ DO iStage=2,nRKStages
   CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(iStage))                   !U = U + Ut*b_dt(iStage)
   IF(doCalcIndicator) CALL CalcIndicator(U,t)
 #if FV_ENABLED
-  CALL FV_Switch()
+  CALL FV_Switch(OnlyToFV=.TRUE.)
 #endif
 END DO
 CurrentStage=1
