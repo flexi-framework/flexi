@@ -146,8 +146,8 @@ CALL InitRestart()
 CALL InitOutput()
 CALL InitMesh()
 CALL InitFilter()
-CALL InitIndicator()
 CALL InitOverintegration()
+CALL InitIndicator()
 #if MPI
 CALL InitMPIvars()
 #endif

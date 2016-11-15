@@ -112,6 +112,10 @@ END IF
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT OVERINTEGRATION...'
 
+!Set default values
+NUnder=PP_N
+NOver =PP_N
+
 OverintegrationType = GETINTFROMSTR('OverintegrationType')
 SELECT CASE(OverintegrationType)
 CASE (OVERINTEGRATIONTYPE_NONE) ! no overintegration, collocation DGSEM )

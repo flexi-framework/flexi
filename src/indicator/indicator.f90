@@ -93,6 +93,7 @@ CALL prms%CreateIntOption('IndVar',        "Specify variable upon which indicato
 CALL prms%CreateRealOption('IndStartTime', "Specify physical time when indicator evalution starts. Before this time"//&
                                            "a high indicator value is returned from indicator calculation."//&
                                            "(Idea: FV everywhere at begin of computation to smooth solution)", '0.0')
+CALL prms%CreateIntOption('nModes',        "Number of highest modes to be checked for Persson modal indicator.",'2')
 END SUBROUTINE DefineParametersIndicator
 
 
@@ -107,6 +108,7 @@ USE MOD_Indicator_Vars
 USE MOD_ReadInTools    ,ONLY: GETINT,GETREAL,GETINTFROMSTR
 USE MOD_Mesh_Vars      ,ONLY: nElems
 USE MOD_IO_HDF5        ,ONLY: AddToElemData
+USE MOD_Overintegration_Vars,ONLY:NUnder
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -133,6 +135,10 @@ CASE(INDTYPE_DUCROS)
   CALL Abort(__STAMP__, &
       "Ducros indicator not available without PARABOLIC!")
 #endif
+CASE(INDTYPE_PERSSON)
+  ! number of modes to be checked by Persson indicator
+  nModes = GETINT('nModes','2')
+  nModes = MAX(1,nModes+PP_N-NUnder)-1 ! increase by number of empty modes in case of overintegration
 CASE(-1) ! legacy
   IndicatorType=INDTYPE_DG
 END SELECT
@@ -248,6 +254,7 @@ FUNCTION IndPersson(U) RESULT(IndValue)
 !> Suggested by Persson et al.
 !==================================================================================================================================
 USE MOD_PreProc
+USE MOD_Indicator_Vars,ONLY:nModes
 USE MOD_Interpolation_Vars, ONLY:sVdm_Leg
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -256,7 +263,7 @@ REAL,INTENT(IN)    :: U(0:PP_N,0:PP_N,0:PP_N)
 REAL               :: IndValue
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: nDeg,iDeg,i,j,k,l
+INTEGER            :: iDeg,i,j,k,l
 REAL,DIMENSION(0:PP_N,0:PP_N,0:PP_N) :: U_Xi
 REAL,DIMENSION(0:PP_N,0:PP_N,0:PP_N) :: U_Eta
 REAL,DIMENSION(0:PP_N,0:PP_N,0:PP_N) :: U_Modal
@@ -278,9 +285,7 @@ END DO ; END DO ; END DO ; END DO
 
 ! Adapted Persson indicator
 IndValue=TINY(0.)
-nDeg=MIN(PP_N-1,1)
-!nDeg=0
-DO iDeg=0,nDeg
+DO iDeg=0,nModes
   ! Build maximum of 1D indicators
   ! Xi
   IndValue=MAX(IndValue,SUM(U_Modal(PP_N-iDeg:PP_N-iDeg,:,:))**2 /  &
