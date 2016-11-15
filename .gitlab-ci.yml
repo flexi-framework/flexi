@@ -113,14 +113,12 @@ deploy_homepage:
     - if [ -n "${DO_DEPLOY}" ]; then if [ -d "doc/doxygen/doxygen" ]; then ssh flexi@euler rm -rf homepage/doxygen ; scp -r doc/doxygen/doxygen flexi@euler:~/homepage/. ; fi ; fi
     - if [ -n "${DO_DEPLOY}" ]; then if [ -d "doc/userguide" ]; then scp -r doc/userguide flexi@euler:~/homepage/. ; fi ; fi
 
-# deploy_github:
-#   stage: deploy
-#   tags:
-#     - pomodoro
-#   script:
-#     - if [ -z "${DO_DEPLOY}" ]; then exit ; fi
-#     - git clone --single-branch git@gitlab.iag.uni-stuttgart.de:flexi/flexi.git                    flexi_github  ; cd flexi_github  ; git push --mirror git@github.com:flexi-framework/flexi.git     ; cd ../
-#     - git clone --single-branch git@gitlab.iag.uni-stuttgart.de:flexi/regressioncheck_examples.git reggie_github ; cd reggie_github ; git push --mirror git@github.com:flexi-framework/regressioncheck_examples.git ; cd ../
-#     - git clone --single-branch git@gitlab.iag.uni-stuttgart.de:flexi/tutorials.git                tuts_github   ; cd tuts_github   ; git push --mirror git@github.com:flexi-framework/tutorials.git ; cd ../
-#     - git clone --bare          git@gitlab.iag.uni-stuttgart.de:flexi/HDF5.git                     HDF5_github   ; cd HDF5_github   ; git push --mirror git@github.com:flexi-framework/HDF5.git      ; cd ../
+deploy_github:
+  stage: deploy
+  tags:
+    - pomodoro
+  script:
+    - if [ -z "${DO_DEPLOY}" ]; then exit ; fi
+    - git clone --single-branch git@gitlab.iag.uni-stuttgart.de:flexi/flexi.git flexi_github ; cd flexi_github ; git push --mirror git@github.com:flexi-framework/flexi.git ; cd ../
+    - git clone --bare          git@gitlab.iag.uni-stuttgart.de:flexi/HDF5.git  HDF5_github  ; cd HDF5_github  ; git push --mirror git@github.com:flexi-framework/HDF5.git  ; cd ../
 
