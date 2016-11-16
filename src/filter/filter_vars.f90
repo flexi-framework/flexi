@@ -23,6 +23,7 @@ SAVE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
+INTEGER                :: NFilter
 INTEGER                :: FilterType            !< filter to be applied 0: no filter, 1: cut-off filter, 2 :Hesthaven filter
 REAL                   :: HestFilterParam(3)    !< filter parameters for modal Hesthaven style filter
 REAL,ALLOCATABLE       :: FilterMat(:,:)        !< 1D nodal filter matrix

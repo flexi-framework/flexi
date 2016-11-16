@@ -100,7 +100,7 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER             :: iDeg,NFilter,iElem,i,j,k
+INTEGER             :: iDeg,iElem,i,j,k
 !==================================================================================================================================
 IF(FilterInitIsDone.OR.(.NOT.InterpolationInitIsDone))THEN
    CALL CollectiveStop(__STAMP__,'InitFilter not ready to be called or already called.')
@@ -113,6 +113,7 @@ FilterType = GETINTFROMSTR('FilterType')
 
 ! set the filterfunction pointer to the cut-off filter, even if the filter itself is not active
 ! necessary for the overintegration, which also uses the filter_pointer
+NFilter = PP_N
 Filter_Pointer=>Filter
 IF(FilterType.GT.0) THEN
   ALLOCATE(FilterMat(0:PP_N,0:PP_N))

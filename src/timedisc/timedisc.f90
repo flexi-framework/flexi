@@ -72,6 +72,7 @@ USE MOD_TimeDisc_Vars
 USE MOD_ReadInTools         ,ONLY:GETREAL,GETINT,GETSTR
 USE MOD_StringTools         ,ONLY:LowCase,StripSpaces
 USE MOD_Overintegration_Vars,ONLY:OverintegrationType,NUnder
+USE MOD_Filter_Vars         ,ONLY:FilterType,NFilter
 USE MOD_Mesh_Vars           ,ONLY:nElems
 USE MOD_IO_HDF5             ,ONLY:AddToElemData
 IMPLICIT NONE
@@ -80,6 +81,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=255):: TimeDiscMethod
+INTEGER           :: NEff
 !==================================================================================================================================
 TimeDiscMethod = GETSTR('TimeDiscMethod','Carpenter RK4-5')
 CALL StripSpaces(TimeDiscMethod)
@@ -108,11 +110,8 @@ CFLScale = GETREAL('CFLScale')
 ! Read the normalized DFL number
 DFLScale = GETREAL('DFLScale')
 #endif /*PARABOLIC*/
-IF((OverintegrationType.EQ.CUTOFF).OR.(OverintegrationType.EQ.CUTOFFCONS))THEN
-  CALL fillCFL_DFL(Nunder,PP_N)
-ELSE
-  CALL fillCFL_DFL(PP_N  ,PP_N)
-END IF
+NEff=MIN(PP_N,NFilter,NUnder)
+CALL fillCFL_DFL(NEff,PP_N)
 ! Set timestep to a large number
 dt=HUGE(1.)
 ! Read max number of iterations to perform

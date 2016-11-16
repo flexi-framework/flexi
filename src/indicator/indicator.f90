@@ -109,6 +109,7 @@ USE MOD_ReadInTools    ,ONLY: GETINT,GETREAL,GETINTFROMSTR
 USE MOD_Mesh_Vars      ,ONLY: nElems
 USE MOD_IO_HDF5        ,ONLY: AddToElemData
 USE MOD_Overintegration_Vars,ONLY:NUnder
+USE MOD_Filter_Vars,ONLY:NFilter
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -138,7 +139,7 @@ CASE(INDTYPE_DUCROS)
 CASE(INDTYPE_PERSSON)
   ! number of modes to be checked by Persson indicator
   nModes = GETINT('nModes','2')
-  nModes = MAX(1,nModes+PP_N-NUnder)-1 ! increase by number of empty modes in case of overintegration
+  nModes = MAX(1,nModes+PP_N-MIN(NUnder,NFilter))-1 ! increase by number of empty modes in case of overintegration
 CASE(-1) ! legacy
   IndicatorType=INDTYPE_DG
 END SELECT
