@@ -233,7 +233,7 @@ FV_Elems_Amount   = REAL(FV_Elems_Counter)/FV_Switch_counter
 END SUBROUTINE FV_Switch
 
 !==================================================================================================================================
-!> Performe switching between DG element and FV sub-cells element (and vise versa) depending on the indicator value
+!> Print information on the amount of FV subcells
 !==================================================================================================================================
 SUBROUTINE FV_Info(iter)
 ! MODULES
@@ -248,7 +248,7 @@ INTEGER(KIND=8),INTENT(IN) :: iter !< number of iterations
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
-#if FV_ENABLED && MPI
+#if MPI
 IF(MPIRoot)THEN
   CALL MPI_REDUCE(MPI_IN_PLACE,totalFV_nElems,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_WORLD,iError)
   ! totalFV_nElems is counted in PrintStatusLine
