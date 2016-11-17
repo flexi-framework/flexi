@@ -135,6 +135,10 @@ INTERFACE addStrListEntry
   MODULE PROCEDURE addStrListEntry
 END INTERFACE
 
+INTERFACE ExtractParameterFile
+  MODULE PROCEDURE ExtractParameterFile
+END INTERFACE
+
 INTERFACE FinalizeParameters
   MODULE PROCEDURE FinalizeParameters
 END INTERFACE
@@ -154,6 +158,7 @@ PUBLIC :: GETDESCRIPTION
 PUBLIC :: GETINTFROMSTR
 PUBLIC :: addStrListEntry
 PUBLIC :: FinalizeParameters
+PUBLIC :: ExtractParameterFile
 
 TYPE(Parameters) :: prms
 PUBLIC :: prms
@@ -450,6 +455,7 @@ END SUBROUTINE insertOption
 !==================================================================================================================================
 SUBROUTINE read_options(this, filename) 
 ! MODULES
+USE MOD_StringTools ,ONLY: STRICMP,GetFileExtension
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -458,17 +464,19 @@ CHARACTER(LEN=255),INTENT(IN)   :: filename !< name of file to be read
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
 CLASS(link), POINTER  :: current
-INTEGER               :: stat,iniUnit,iExt
+INTEGER               :: stat,iniUnit
 TYPE(Varying_String)  :: aStr,bStr
 CHARACTER(LEN=255)    :: HelpStr
 LOGICAL               :: firstWarn=.TRUE.,file_exists
 !==================================================================================================================================
+CALL this%CreateLogicalOption('ColoredOutput','Colorize stdout, included for compatibility with FLEXI', '.TRUE.')
+
 ! Check if first argument is the ini-file 
-iExt=INDEX(filename,'.',BACK = .TRUE.) ! Position of file extension
-IF(filename(iExt+1:iExt+3) .NE. 'ini') THEN
+IF(.NOT.(STRICMP(GetFileExtension(filename),'ini'))) THEN
   SWRITE(*,*) "Usage: flexi parameter.ini [restart.h5] [keyword arguments]"
+  SWRITE(*,*) "   or: flexi restart.h5 [keyword arguments]"
   CALL CollectiveStop(__STAMP__,&
-    'ERROR - Not an parameter file (file-extension must be .ini): '//TRIM(filename))
+    'ERROR - Not an parameter file (file-extension must be .ini) or restart file (*.h5): '//TRIM(filename))
 END IF
 INQUIRE(FILE=TRIM(filename), EXIST=file_exists)  
 IF (.NOT.file_exists) THEN
@@ -476,8 +484,7 @@ IF (.NOT.file_exists) THEN
       "Ini file does not exist.")
 END IF
 
-
-SWRITE(UNIT_StdOut,*)'| Reading from file "',TRIM(filename),'":'
+SWRITE(UNIT_StdOut,*)'| Reading from parameter file from "',TRIM(filename),'":'
 
 ! Open parameter file for reading
 iniUnit= 100 !GETFREEUNIT()
@@ -497,6 +504,7 @@ DO
     CALL Abort(__STAMP__,&
        'Error during ini file read')
   END IF
+
   ! Remove comments with "!"
   CALL Split(aStr,bStr,"!")
   ! Remove comments with "#"
@@ -1237,6 +1245,97 @@ CALL Abort(__STAMP__,&
     "Option not yet set: "//TRIM(name))
 
 END SUBROUTINE addStrListEntry
+
+SUBROUTINE ExtractParameterFile(filename,prmfile,userblockFound) 
+! MODULES
+USE MOD_StringTools ,ONLY: STRICMP
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+CHARACTER(LEN=255),INTENT(IN) :: filename !< name of file to be read
+CHARACTER(LEN=*),INTENT(IN)   :: prmfile  !< name of file to be written
+LOGICAL,INTENT(OUT)           :: userblockFound
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES 
+INTEGER               :: stat,iniUnit,fileUnit
+TYPE(Varying_String)  :: aStr
+CHARACTER(LEN=3)      :: tmp
+LOGICAL               :: file_exists,iniFound
+!==================================================================================================================================
+
+IF (MPIRoot) THEN
+  INQUIRE(FILE=TRIM(filename), EXIST=file_exists)  
+  IF (.NOT.file_exists) THEN
+    CALL CollectiveStop(__STAMP__,&
+        "File '"//TRIM(filename)//"' does not exist.")
+  END IF
+
+  SWRITE(UNIT_StdOut,*)'| Extract parameter file from "',TRIM(filename),'" to "',TRIM(prmfile),'"'
+
+  ! Open parameter file for reading
+  fileUnit= 100 !GETFREEUNIT()
+  OPEN(UNIT=fileUnit,FILE=TRIM(filename),STATUS='OLD',ACTION='READ',ACCESS='SEQUENTIAL',IOSTAT=stat)
+  IF(stat.NE.0) THEN
+    CALL Abort(__STAMP__,&
+        "Could not open '"//TRIM(filename)//"'")
+  END IF
+
+  iniUnit= 101 !GETFREEUNIT()
+  OPEN(UNIT=iniUnit,FILE=TRIM(prmfile),STATUS='UNKNOWN',ACTION='WRITE',ACCESS='SEQUENTIAL',IOSTAT=stat)
+  IF(stat.NE.0) THEN
+    CALL Abort(__STAMP__,&
+        "Could not open '"//TRIM(prmfile)//"'")
+  END IF
+
+  iniFound = .FALSE.
+  userblockFound = .FALSE.
+  ! infinte loop. Exit at EOF
+  DO
+    ! read a line into 'aStr'
+    CALL Get(fileUnit,aStr,iostat=stat)
+    ! exit loop if EOF
+    IF(IS_IOSTAT_END(stat)) EXIT 
+    IF(.NOT.IS_IOSTAT_EOR(stat)) THEN
+      CALL Abort(__STAMP__,&
+          'Error during ini file read')
+    END IF
+    ! check if file starts "{[(" and therewith has a userblock
+    IF (.NOT.userblockFound) THEN
+      tmp = CHAR(extract(aStr,1,3))
+      userblockFound = STRICMP(tmp,"{[(")
+    END IF
+    IF (.NOT.userblockFound) THEN
+      SWRITE(*,*) "No Userblock found!"
+      EXIT
+    END IF
+
+    ! search for begin of inifile
+    IF (STRICMP(CHAR(aStr),"{[( INIFILE )]}")) THEN
+      iniFound = .TRUE.
+      CYCLE
+    END IF
+    IF (.NOT.iniFound) THEN
+      ! if not found cycle (other userblock stuff)
+      CYCLE
+    ELSE
+      ! if found and string starts with {[(, than this is the beginning of another userblock entry
+      ! => finish reading of inifile
+      tmp = CHAR(extract(aStr,1,3))
+      IF (STRICMP(tmp, "{[(")) THEN
+        EXIT
+      END IF
+    END IF
+    WRITE(iniUnit,'(A)') CHAR(aStr)
+  END DO
+
+  CLOSE(fileUnit)
+  CLOSE(iniUnit)
+END IF
+CALL MPI_BCAST(userblockFound,1,MPI_LOGICAL,0,MPI_COMM_WORLD,iError)
+
+END SUBROUTINE ExtractParameterFile
+
+
 !===================================================================================================================================
 !> Clear parameters list 'prms'.
 !===================================================================================================================================
@@ -1254,6 +1353,8 @@ DO WHILE (associated(current%next))
   NULLIFY(current)
   current => tmp
 END DO
+prms%firstLink => null()
+prms%lastLink  => null()
 END SUBROUTINE FinalizeParameters
 
 END MODULE MOD_ReadInTools

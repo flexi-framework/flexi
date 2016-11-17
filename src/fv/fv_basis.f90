@@ -305,7 +305,10 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
-DEALLOCATE(FV_BdryX,FV_X,FV_Vdm,FV_sVdm)
+SDEALLOCATE(FV_BdryX)
+SDEALLOCATE(FV_X)
+SDEALLOCATE(FV_Vdm)
+SDEALLOCATE(FV_sVdm)
 FVInitBasisIsDone=.FALSE.
 END SUBROUTINE FinalizeFV_Basis
 

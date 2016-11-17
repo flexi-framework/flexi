@@ -48,7 +48,7 @@ USE MOD_Mesh_Vars   ,ONLY: firstBCSide,lastBCSide,firstInnerSide,lastMPISide_MIN
 USE MOD_Mesh_Vars   ,ONLY: S2V,S2V2,ElemToSide,dXCL_N
 USE MOD_Interpolation,ONLY:GetNodesAndWeights
 USE MOD_Interpolation_Vars,ONLY: NodeTypeG,NodeTypeCL,xGP
-#if MPI
+#if USE_MPI
 USE MOD_MPI         ,ONLY: StartReceiveMPIData,StartSendMPIData,FinishExchangeMPIData
 USE MOD_MPI_Vars    ,ONLY: nNbProcs
 #endif
@@ -83,7 +83,7 @@ REAL,DIMENSION(0:PP_N,0:PP_N)    :: Vdm_CLN_FV, Vdm_CLN_GaussN,length
 REAL,DIMENSION(3,0:PP_N,0:PP_N,0:PP_N):: FV_Path_XI, FV_Path_ETA, FV_Path_ZETA
 REAL                             :: x0, xN
 REAL,POINTER                     :: FV_dx_P(:,:,:)
-#if MPI
+#if USE_MPI
 INTEGER                          :: MPIRequest(nNbProcs,2)
 #endif
 #endif
@@ -386,7 +386,7 @@ END DO
 
 ! distances at big mortar interfaces must be distributed to the smaller sides
 FV_Elems_master = 1 ! Force use of FV mortar matrices in U_Mortar routine
-#if MPI
+#if USE_MPI
 MPIRequest=0
 ! distances at MPI slave sides must be transmitted to master sides 
 CALL U_Mortar1(FV_dx_master,FV_dx_slave,doMPISides=.TRUE.)
@@ -397,7 +397,7 @@ CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest) !Send MINE -receive YOUR
 CALL U_Mortar1(FV_dx_master,FV_dx_slave,doMPISides=.FALSE.)
 
 FV_Elems_master = 0 ! Force use of DG mortar matrices in U_Mortar routine
-#if MPI
+#if USE_MPI
 CALL U_Mortar1(DG_dx_master,DG_dx_slave,doMPISides=.TRUE.)
 CALL StartReceiveMPIData(DG_dx_slave, (PP_N+1)**2, 1,nSides,MPIRequest(:,SEND),SendID=2)
 CALL StartSendMPIData(   DG_dx_slave, (PP_N+1)**2, 1,nSides,MPIRequest(:,RECV),SendID=2)
@@ -500,9 +500,28 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
 !==================================================================================================================================
+#if FV_RECONSTRUCT
+SDEALLOCATE(FV_sdx_XI)
+SDEALLOCATE(FV_sdx_ETA)
+SDEALLOCATE(FV_sdx_ZETA)
+
+SDEALLOCATE(FV_sdx_Face)
+
+SDEALLOCATE(FV_dx_XI_L)
+SDEALLOCATE(FV_dx_XI_R)
+SDEALLOCATE(FV_dx_ETA_L)
+SDEALLOCATE(FV_dx_ETA_R)
+SDEALLOCATE(FV_dx_ZETA_L)
+SDEALLOCATE(FV_dx_ZETA_R)
+
+SDEALLOCATE(FV_dx_slave)
+SDEALLOCATE(FV_dx_master)
+#endif
+
 SDEALLOCATE(FV_SurfElemXi_sw)
 SDEALLOCATE(FV_SurfElemEta_sw)
 SDEALLOCATE(FV_SurfElemZeta_sw)
+
 SDEALLOCATE(FV_NormVecXi)
 SDEALLOCATE(FV_TangVec1Xi)
 SDEALLOCATE(FV_TangVec2Xi)
@@ -512,15 +531,14 @@ SDEALLOCATE(FV_TangVec2Eta)
 SDEALLOCATE(FV_NormVecZeta)
 SDEALLOCATE(FV_TangVec1Zeta)
 SDEALLOCATE(FV_TangVec2Zeta)
+
 #if PARABOLIC
 SDEALLOCATE(FV_Metrics_fTilde_sJ)
 SDEALLOCATE(FV_Metrics_gTilde_sJ)
 SDEALLOCATE(FV_Metrics_hTilde_sJ)
 #endif
-#if FV_RECONSTRUCT
-SDEALLOCATE(FV_dx_master)
-SDEALLOCATE(FV_dx_slave)
-#endif
+
+SDEALLOCATE(FV_Elems_master) 
 END SUBROUTINE FinalizeFV_Metrics
 
 

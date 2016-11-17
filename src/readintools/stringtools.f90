@@ -94,6 +94,10 @@ INTERFACE clear_formatting
   MODULE PROCEDURE clear_formatting
 END INTERFACE
 
+INTERFACE GetFileExtension
+  MODULE PROCEDURE GetFileExtension
+END INTERFACE
+
 PUBLIC :: LowCase
 PUBLIC :: STRICMP
 PUBLIC :: StripSpaces
@@ -101,6 +105,7 @@ PUBLIC :: INTTOSTR
 PUBLIC :: ISINT
 PUBLIC :: set_formatting
 PUBLIC :: clear_formatting
+PUBLIC :: GetFileExtension
 
 LOGICAL :: use_escape_codes = .TRUE.  !< If set to .FALSE., output will consist only of standard text, allowing the 
                                       !< escape characters to be switched off in environments which don't support them.
@@ -392,5 +397,22 @@ IF (use_escape_codes) THEN
   SWRITE(UNIT_stdOut, '(3A1)', ADVANCE="NO") (/ CHAR(27), '[', 'm' /)
 END IF
 END SUBROUTINE clear_formatting
+
+!==================================================================================================================================
+!> Returns the file extension (everything behind last .)
+!==================================================================================================================================
+FUNCTION GetFileExtension(filename) 
+! INPUT / OUTPUT VARIABLES 
+!-----------------------------------------------------------------------------------------------------------------------------------
+CHARACTER(LEN=*),INTENT(IN) :: filename
+CHARACTER(:),ALLOCATABLE    :: GetFileExtension
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER           :: iExt
+!===================================================================================================================================
+iExt=INDEX(filename,'.',BACK = .TRUE.) ! Position of file extension
+ALLOCATE(CHARACTER(LEN_TRIM(filename) - iExt) :: GetFileExtension)
+GetFileExtension = filename(iExt+1:LEN_TRIM(filename))
+END FUNCTION GetFileExtension
 
 END MODULE MOD_StringTools

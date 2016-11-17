@@ -122,7 +122,6 @@ CASE(10) ! shock
 CASE(11) ! Sod shock tube
 CASE(13) ! Double Mach Reflection
 CASE DEFAULT
-  IniRefState  = GETINT('IniRefState')
 END SELECT ! IniExactFunc
 
 SWRITE(UNIT_stdOut,'(A)')' INIT EXACT FUNCTION DONE!'

@@ -17,8 +17,9 @@
 !> Provides parameters, used globally (please use EXTREMLY carefully!)
 !==================================================================================================================================
 MODULE MOD_Globals
+USE ISO_C_BINDING
 ! MODULES
-#if MPI
+#if USE_MPI
 USE mpi
 #endif
 IMPLICIT NONE
@@ -41,13 +42,17 @@ INTEGER           ::MPI_COMM_LEADERS                                          !<
 INTEGER           ::MPI_COMM_WORKERS                                          !< all non-master nodes
 LOGICAL           ::MPIRoot                                                   !< flag whether process is MPI root process
 LOGICAL           ::MPILocalRoot                                              !< flag whether process is root of MPI subgroup
-#if MPI
+#if USE_MPI
 INTEGER           ::MPIStatus(MPI_STATUS_SIZE)
 #endif
 
 LOGICAL           :: doGenerateUnittestReferenceData                         
 INTEGER           :: doPrintHelp ! 0: no help, 1: help, 2: markdown-help
 
+TYPE, BIND(C) :: CARRAY
+  INTEGER (C_INT) :: len
+  TYPE (C_PTR)    :: data
+END TYPE CARRAY
 
 INTERFACE Abort
   MODULE PROCEDURE Abort
@@ -137,7 +142,7 @@ SWRITE(UNIT_stdOut,*) '_________________________________________________________
                      TRIM(IntString), TRIM(RealString)
 
 CALL FLUSH(UNIT_stdOut)
-#if MPI
+#if USE_MPI
 CALL MPI_FINALIZE(iError)
 #endif
 ERROR STOP 1
@@ -181,7 +186,7 @@ WRITE(UNIT_stdOut,*) '__________________________________________________________
                      TRIM(IntString), TRIM(RealString)
 
 CALL FLUSH(UNIT_stdOut)
-#if MPI
+#if USE_MPI
 signalout=2 ! MPI_ABORT requires an output error-code /=0
 IF(PRESENT(ErrorCode)) signalout=ErrorCode
 CALL MPI_ABORT(MPI_COMM_WORLD,signalout,errOut)
@@ -288,7 +293,7 @@ REAL                            :: FlexiTime                                  !<
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
-#if MPI
+#if USE_MPI
 IF(PRESENT(Comm))THEN
   CALL MPI_BARRIER(Comm,iError)
 ELSE

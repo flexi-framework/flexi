@@ -29,7 +29,7 @@ END INTERFACE
 
 PUBLIC::InitMPI
 
-#if MPI
+#if USE_MPI
 INTERFACE InitMPIvars
   MODULE PROCEDURE InitMPIvars
 END INTERFACE
@@ -93,39 +93,46 @@ END SUBROUTINE DefineParametersMPI
 !> Basic mpi initialization. Calls initialization routine of the mpi library and sets myRank, nProcessors and MPIRoot. If the code 
 !> is not compiled with mpi, InitMPI sets standard values for these variables.
 !==================================================================================================================================
-SUBROUTINE InitMPI()
+SUBROUTINE InitMPI(mpi_comm_IN)
 ! MODULES
 USE MOD_Globals
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN),OPTIONAL      :: mpi_comm_IN
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER :: mpi_comm
 !==================================================================================================================================
-#if MPI
-CALL MPI_INIT(iError)
-IF(iError .NE. 0) &
-  CALL Abort(__STAMP__,'Error in MPI_INIT',iError)
+#if USE_MPI
+IF (PRESENT(mpi_comm_IN)) THEN
+  mpi_comm = mpi_comm_IN
+ELSE
+  CALL MPI_INIT(iError)
+  mpi_comm = MPI_COMM_WORLD
+  IF(iError .NE. 0) &
+    CALL Abort(__STAMP__,'Error in MPI_INIT',iError)
+END IF 
 
-CALL MPI_COMM_RANK(MPI_COMM_WORLD, myRank     , iError)
-CALL MPI_COMM_SIZE(MPI_COMM_WORLD, nProcessors, iError)
+CALL MPI_COMM_RANK(mpi_comm, myRank     , iError)
+CALL MPI_COMM_SIZE(mpi_comm, nProcessors, iError)
 IF(iError .NE. 0) &
   CALL Abort(__STAMP__,'Could not get rank and number of processors',iError)
 MPIRoot=(myRank .EQ. 0)
-#else  /*MPI*/
+#else  /*USE_MPI*/
 myRank      = 0
 myLocalRank = 0
 nProcessors = 1
 MPIRoot     =.TRUE.
 MPILocalRoot=.TRUE.
-#endif  /*MPI*/
+#endif  /*USE_MPI*/
 
 ! At this point the initialization is not completed. We first have to create a new MPI communicator. 
 END SUBROUTINE InitMPI
 
 
 
-#if MPI
+#if USE_MPI
 !==================================================================================================================================
 !> Initialize derived mpi variables used for communication
 !==================================================================================================================================
@@ -353,15 +360,29 @@ IMPLICIT NONE
 SDEALLOCATE(MPIRequest_U)
 SDEALLOCATE(MPIRequest_Flux)
 SDEALLOCATE(MPIRequest_FluxO)
-SDEALLOCATE(nMPISides_send)
-SDEALLOCATE(OffsetMPISides_send)
-SDEALLOCATE(nMPISides_rec)
-SDEALLOCATE(OffsetMPISides_rec)
+#if FV_ENABLED
+SDEALLOCATE(MPIRequest_FV_Elems)
+SDEALLOCATE(MPIRequest_FV_gradU)
+#endif
+#ifdef EDDYVISCOSITY
+SDEALLOCATE(MPIRequest_DeltaS)
+#endif
 #if PARABOLIC
 SDEALLOCATE(MPIRequest_gradU)
-#endif
+#endif /*PARABOLIC*/
+SDEALLOCATE(NbProc)
+SDEALLOCATE(nMPISides_Proc)
+SDEALLOCATE(nMPISides_MINE_Proc)
+SDEALLOCATE(nMPISides_YOUR_Proc)
+SDEALLOCATE(offsetMPISides_MINE)
+SDEALLOCATE(offsetMPISides_YOUR)
+SDEALLOCATE(offsetElemMPI)
+SDEALLOCATE(nMPISides_send)
+SDEALLOCATE(nMPISides_rec)
+SDEALLOCATE(OffsetMPISides_send)
+SDEALLOCATE(OffsetMPISides_rec)
 END SUBROUTINE FinalizeMPI
 
-#endif /*MPI*/
+#endif /*USE_MPI*/
 
 END MODULE MOD_MPI

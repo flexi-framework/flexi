@@ -90,10 +90,10 @@ CALL H5ESET_AUTO_F(0, iError)
 CALL H5OPEN_F(iError)
 ! Create property list
 CALL H5PCREATE_F(H5P_FILE_ACCESS_F, Plist_ID, iError)
-#if MPI
+#if USE_MPI
 ! Setup file access property list with parallel I/O access (MPI)
 CALL H5PSET_FAPL_MPIO_F(Plist_ID,MPI_COMM_WORLD, MPIInfo, iError)
-#endif /* MPI */
+#endif /*USE_MPI*/
 
 ! Check if file exists
 INQUIRE(FILE=TRIM(FileName),EXIST=fileExists)
@@ -159,10 +159,10 @@ CALL H5ESET_AUTO_F(0, iError)
 CALL H5OPEN_F(iError)
 ! Create property list
 CALL H5PCREATE_F(H5P_FILE_ACCESS_F, Plist_ID, iError)
-#if MPI
+#if USE_MPI
 ! Setup file access property list with parallel I/O access (MPI)
 CALL H5PSET_FAPL_MPIO_F(Plist_ID,MPI_COMM_WORLD, MPIInfo, iError)
-#endif /* MPI */
+#endif /*USE_MPI*/
 
 ! Check if file exists
 INQUIRE(FILE=TRIM(MeshFileName),EXIST=fileExists)
@@ -367,7 +367,7 @@ Offset(offset_dim)=Offset_in
 CALL H5SSELECT_HYPERSLAB_F(FileSpace, H5S_SELECT_SET_F, Offset, Dimsf, iError)
 ! Create property list
 CALL H5PCREATE_F(H5P_DATASET_XFER_F, PList_ID, iError)
-#if MPI
+#if USE_MPI
 ! Set property list to collective dataset read
 CALL H5PSET_DXPL_MPIO_F(PList_ID, H5FD_MPIO_COLLECTIVE_F, iError)
 #endif
@@ -524,12 +524,12 @@ CALL H5ESET_AUTO_F(0, iError)
 CALL H5OPEN_F(iError)
 ! Setup file access property list
 CALL H5PCREATE_F(H5P_FILE_ACCESS_F, Plist_ID, iError)
-#if MPI
+#if USE_MPI
 IF(.NOT.single)THEN
   ! Set property list to MPI IO
   CALL H5PSET_FAPL_MPIO_F(Plist_ID, MPI_COMM_WORLD, MPI_INFO_NULL, iError)
 END IF
-#endif /* MPI */
+#endif /*USE_MPI*/
 ! Open file
 CALL H5FOPEN_F(TRIM(FileName), H5F_ACC_RDONLY_F, File_ID_loc, iError,access_prp = Plist_ID)
 ReadError=iError

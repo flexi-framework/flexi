@@ -72,6 +72,11 @@ INTERFACE ElemToNbElem
   MODULE PROCEDURE ElemToNbElem
 END INTERFACE
 
+INTERFACE FinalizeMappings
+  MODULE PROCEDURE FinalizeMappings
+END INTERFACE
+
+
 PUBLIC::BuildMappings
 PUBLIC::Flip_S2M
 PUBLIC::Flip_M2S
@@ -84,6 +89,7 @@ PUBLIC::VolToSide
 PUBLIC::VolToSide2
 PUBLIC::VolToVol
 PUBLIC::ElemToNbElem
+PUBLIC::FinalizeMappings
 !==================================================================================================================================
 
 CONTAINS
@@ -578,5 +584,19 @@ ELSE
 END IF
 VolToVol = SideToVol(Nloc, l, pq(1), pq(2), neighbor_flip, neighbor_locSideID)
 END FUNCTION VolToVol
+
+SUBROUTINE FinalizeMappings() 
+USE MOD_Mesh_Vars
+IMPLICIT NONE
+!===================================================================================================================================
+SDEALLOCATE(FS2M)
+SDEALLOCATE(V2S)
+SDEALLOCATE(V2S2)
+SDEALLOCATE(S2V)
+SDEALLOCATE(S2V2)
+SDEALLOCATE(S2V3)
+SDEALLOCATE(CS2V2)
+SDEALLOCATE(FS2M)
+END SUBROUTINE FinalizeMappings
 
 END MODULE MOD_Mappings

@@ -88,7 +88,7 @@ END SUBROUTINE DefineParametersMesh
 !> - compute the mesh metrics
 !> - provide mesh metrics for overintegration
 !==================================================================================================================================
-SUBROUTINE InitMesh()
+SUBROUTINE InitMesh(withoutMetrics,MeshFile_IN)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
@@ -101,7 +101,7 @@ USE MOD_ReadInTools,        ONLY:GETLOGICAL,GETSTR,GETREAL,GETINT
 USE MOD_Metrics,            ONLY:CalcMetrics
 USE MOD_DebugMesh,          ONLY:writeDebugMesh
 USE MOD_Mappings,           ONLY:buildMappings
-#if MPI
+#if USE_MPI
 USE MOD_Prepare_Mesh,       ONLY:exchangeFlip
 #endif
 #if FV_ENABLED
@@ -111,6 +111,8 @@ USE MOD_IO_HDF5,            ONLY:AddToElemData
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
+LOGICAL,INTENT(IN),OPTIONAL            :: withoutMetrics
+CHARACTER(LEN=255),INTENT(IN),OPTIONAL :: MeshFile_IN
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL              :: x(3),meshScale
@@ -121,8 +123,11 @@ INTEGER           :: firstMasterSide     ! lower side ID of array U_master/gradU
 INTEGER           :: lastMasterSide      ! upper side ID of array U_master/gradUx_master...
 INTEGER           :: firstSlaveSide      ! lower side ID of array U_slave/gradUx_slave...
 INTEGER           :: lastSlaveSide       ! upper side ID of array U_slave/gradUx_slave...
+LOGICAL           :: withoutMetrics_loc
+LOGICAL           :: InterpolationInitIsDone_loc
 !==================================================================================================================================
-IF((.NOT.InterpolationInitIsDone).OR.MeshInitIsDone) THEN
+InterpolationInitIsDone_loc=MERGE(.TRUE.,InterpolationInitIsDone,PRESENT(withoutMetrics))
+IF((.NOT.InterpolationInitIsDone_loc).OR.MeshInitIsDone) THEN
   CALL CollectiveStop(__STAMP__,&
     'InitMesh not ready to be called or already called.')
 END IF
@@ -131,7 +136,11 @@ SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT MESH...'
 
 ! prepare pointer structure (get nElems, etc.)
-MeshFile = GETSTR('MeshFile')
+IF (PRESENT(MeshFile_IN)) THEN
+  MeshFile = MeshFile_IN
+ELSE
+  MeshFile = GETSTR('MeshFile')
+END IF
 validMesh = ISVALIDMESHFILE(MeshFile)
 IF(.NOT.validMesh) &
     CALL CollectiveStop(__STAMP__,'ERROR - Mesh file not a valid HDF5 mesh.')
@@ -148,10 +157,13 @@ ENDIF
 
 CALL readMesh(MeshFile) !set nElems
 
+withoutMetrics_loc = MERGE(withoutMetrics, .FALSE., PRESENT(withoutMetrics))
+IF (.NOT.withoutMetrics_loc) THEN
+
 SWRITE(UNIT_stdOut,'(A)') "NOW CALLING setLocalSideIDs..."
 CALL setLocalSideIDs()
 
-#if MPI
+#if USE_MPI
 ! for MPI, we need to exchange flips, so that MINE MPISides have flip>0, YOUR MpiSides flip=0
 SWRITE(UNIT_stdOut,'(A)') "NOW CALLING exchangeFlip..."
 CALL exchangeFlip()
@@ -299,6 +311,7 @@ SDEALLOCATE(ElemToTree)
 CALL WriteDebugMesh(GETINT('debugmesh','0'))
 
 CALL AddToElemData('myRank',IntScalar=myRank)
+END IF ! withoutMetrics_loc
 
 MeshInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT MESH DONE!'
@@ -372,14 +385,28 @@ END SUBROUTINE BuildOverintMesh
 SUBROUTINE FinalizeMesh()
 ! MODULES
 USE MOD_Mesh_Vars
+USE MOD_Mappings  ,ONLY:FinalizeMappings
+#if FV_ENABLED
+USE MOD_FV_Vars   ,ONLY:FV_Elems_master
+USE MOD_FV_Metrics,ONLY:FinalizeFV_Metrics
+#endif
 IMPLICIT NONE
 !============================================================================================================================
 !> Deallocate global variables, needs to go somewhere else later
-SDEALLOCATE(BoundaryName)
-SDEALLOCATE(BoundaryType)
 SDEALLOCATE(ElemToSide)
 SDEALLOCATE(SideToElem)
 SDEALLOCATE(BC)
+SDEALLOCATE(AnalyzeSide)
+
+SDEALLOCATE(MortarType)
+SDEALLOCATE(MortarInfo)
+
+
+! allocated during ReadMesh
+SDEALLOCATE(NodeCoords)
+SDEALLOCATE(BoundaryName)
+SDEALLOCATE(BoundaryType)
+
 
 !> Volume
 SDEALLOCATE(Elem_xGP)
@@ -387,6 +414,7 @@ SDEALLOCATE(Metrics_fTilde)
 SDEALLOCATE(Metrics_gTilde)
 SDEALLOCATE(Metrics_hTilde)
 SDEALLOCATE(sJ)
+SDEALLOCATE(DetJac_Ref)
 
 SDEALLOCATE(Elem_xGPO)
 SDEALLOCATE(Metrics_fTildeO)
@@ -407,11 +435,12 @@ SDEALLOCATE(TangVec2O)
 SDEALLOCATE(SurfElemO)
 
 !> mappings
-SDEALLOCATE(FS2M)
-SDEALLOCATE(V2S)
-SDEALLOCATE(V2S2)
-SDEALLOCATE(S2V3)
-SDEALLOCATE(CS2V2)
+CALL FinalizeMappings()
+
+#if FV_ENABLED
+SDEALLOCATE(FV_Elems_master) ! moved here from fv.f90
+CALL FinalizeFV_Metrics()
+#endif
 
 MeshInitIsDone = .FALSE.
 END SUBROUTINE FinalizeMesh

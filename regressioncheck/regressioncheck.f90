@@ -28,9 +28,9 @@ USE MOD_RegressionCheck_Run,   ONLY: PerformRegressionCheck
 USE MOD_RegressionCheck_Vars,  ONLY: ExampleNames,Examples,firstError,aError,BuildSolver
 USE MOD_MPI,                   ONLY: InitMPI,DefineParametersMPI
 USE MOD_Mesh,                  ONLY: FinalizeMesh
-!#ifdef MPI
+!#ifdef USE_MPI
 !USE MOD_MPI_Vars,            ONLY: NbProc,nMPISides_Proc
-!#endif /*MPI*/
+!#endif /*USE_MPI*/
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -87,7 +87,7 @@ DEALLOCATE(Examples)
 
 ! Measure processing duration
 Time=FLEXITIME()
-#ifdef MPI
+#ifdef USE_MPI
 CALL MPI_FINALIZE(iError)
 IF(iError .NE. 0) &
   CALL abort(__STAMP__,'MPI finalize error',iError,999.)

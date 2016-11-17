@@ -21,6 +21,7 @@ IMPLICIT NONE
 
 ! Global variables for command line argument parsing
 INTEGER                              :: nArgs              ! number of command line argumens
+CHARACTER(LEN=255),ALLOCATABLE       :: Args(:)
 
 INTERFACE ParseCommandlineArguments
   MODULE PROCEDURE ParseCommandlineArguments
@@ -36,60 +37,63 @@ SUBROUTINE ParseCommandlineArguments()
 ! MODULES
 USE MOD_Globals
 USE MOD_StringTools     ,ONLY: STRICMP
-USE MOD_Restart_Vars    ,ONLY: RestartFile
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                 :: iArg                             
+INTEGER                 :: iArg,nArgs_tmp
 CHARACTER(LEN=255)      :: tmp
 LOGICAL,ALLOCATABLE     :: alreadyRead(:)
 !==================================================================================================================================
 ! Get number of command line arguments
-nArgs=COMMAND_ARGUMENT_COUNT()
-ALLOCATE(alreadyRead(nArgs))
+nArgs_tmp=COMMAND_ARGUMENT_COUNT()
+ALLOCATE(alreadyRead(nArgs_tmp))
 alreadyRead = .FALSE.
 
 ! Get keyword arguments (arbitrary order)
 doGenerateUnittestReferenceData = .FALSE.
 doPrintHelp = 0
-DO iArg = 1, nArgs
+nArgs = nArgs_tmp
+DO iArg = 1, nArgs_tmp
   CALL GET_COMMAND_ARGUMENT(iArg,tmp)
   IF (STRICMP(tmp, "--generateUnittestReferenceData")) THEN
     doGenerateUnittestReferenceData = .TRUE.
     alreadyRead(iArg) = .TRUE.
+    nArgs = nArgs - 1
   END IF
   IF (STRICMP(tmp, "--help").OR.STRICMP(tmp,"-h")) THEN
     doPrintHelp = 1
     alreadyRead(iArg) = .TRUE.
+    nArgs = nArgs - 1
   END IF
   IF (STRICMP(tmp, "--markdown")) THEN
     doPrintHelp = 2
     alreadyRead(iArg) = .TRUE.
+    nArgs = nArgs - 1
   END IF
 END DO ! iArg = 1, nArgs
 
-! Get parameter file
-ParameterFile = ""
-DO iArg = 1,nArgs
+! Get all remaining parameters
+nArgs = MAX(1,nArgs) ! at least one argument is generated (empty)
+ALLOCATE(Args(nArgs))
+Args(1) = ""
+nArgs = 0
+DO iArg = 1,nArgs_tmp
   IF (.NOT.alreadyRead(iArg)) THEN
-    CALL GET_COMMAND_ARGUMENT(iArg,ParameterFile)
+    nArgs = nArgs + 1
+    CALL GET_COMMAND_ARGUMENT(iArg,Args(nArgs))
     alreadyRead(iArg) = .TRUE.
-    EXIT
   END IF
 END DO
 
-! Get restart file 
-RestartFile = ""
-DO iArg = 1,nArgs
-  IF (.NOT.alreadyRead(iArg)) THEN
-    CALL GET_COMMAND_ARGUMENT(iArg,RestartFile)
-    alreadyRead(iArg) = .TRUE.
-    EXIT
-  END IF
-END DO
-
+DEALLOCATE(alreadyRead)
 END SUBROUTINE ParseCommandlineArguments
+
+SUBROUTINE FinalizeCommandlineArguments() 
+IMPLICIT NONE
+!===================================================================================================================================
+SDEALLOCATE(Args)
+END SUBROUTINE FinalizeCommandlineArguments
 
 END MODULE MOD_Commandline_Arguments

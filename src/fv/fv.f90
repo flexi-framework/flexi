@@ -84,7 +84,6 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_FV_Vars
 USE MOD_FV_Basis
-USE MOD_FV_Metrics   ,ONLY: InitFV_Metrics
 USE MOD_Basis        ,ONLY: InitializeVandermonde
 USE MOD_Indicator    ,ONLY: doCalcIndicator
 USE MOD_Mesh_Vars    ,ONLY: nElems,nSides
@@ -119,6 +118,7 @@ CALL InitFV_Limiter()
 ! anymore. 
 FV_toDG_indicator = GETLOGICAL('FV_toDG_indicator')
 IF (FV_toDG_indicator) FV_toDG_limit = GETREAL('FV_toDG_limit')
+
 
 ! allocate array for indicators
 ALLOCATE(FV_Elems(nElems))
@@ -314,12 +314,11 @@ END SUBROUTINE FV_DGtoFV
 SUBROUTINE FinalizeFV()
 ! MODULES
 USE MOD_FV_Vars
-USE MOD_FV_Metrics,ONLY:FinalizeFV_Metrics
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 SDEALLOCATE(FV_Elems)
-SDEALLOCATE(FV_Elems_master)
+!SDEALLOCATE(FV_Elems_master) ! moved to mesh.f90
 SDEALLOCATE(FV_Elems_slave)
 SDEALLOCATE(FV_Elems_Counter)
 SDEALLOCATE(FV_Elems_Amount)
@@ -329,9 +328,6 @@ SDEALLOCATE(FV_surf_gradU_master)
 SDEALLOCATE(FV_surf_gradU_slave)
 SDEALLOCATE(FV_multi_master)
 SDEALLOCATE(FV_multi_slave)
-#endif
-
-#if FV_RECONSTRUCT
 SDEALLOCATE(gradUxi)
 SDEALLOCATE(gradUeta)
 SDEALLOCATE(gradUzeta)
@@ -339,8 +335,6 @@ SDEALLOCATE(gradUxi_central)
 SDEALLOCATE(gradUeta_central)
 SDEALLOCATE(gradUzeta_central)
 #endif
-
-CALL FinalizeFV_Metrics()
 
 FVInitIsDone=.FALSE.
 END SUBROUTINE FinalizeFV

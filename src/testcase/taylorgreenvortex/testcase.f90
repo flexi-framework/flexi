@@ -215,7 +215,7 @@ USE MOD_EOS_Vars,       ONLY: KappaM1,mu0,R
 USE MOD_Mesh_Vars,      ONLY: sJ
 USE MOD_ChangeBasis,    ONLY: ChangeBasis3D
 USE MOD_Mesh_Vars,      ONLY: nElems
-#if MPI
+#if USE_MPI
 USE MOD_MPI_Vars
 #endif
 IMPLICIT NONE
@@ -245,7 +245,7 @@ REAL                            :: Intfactor                     ! Integrationwe
 REAL                            :: Ekin_comp,Enstrophy_comp
 REAL                            :: DR_u,DR_S,DR_Sd,DR_p           ! Contributions to dissipation rate
 REAL                            :: Pressure,rho0
-#  if MPI
+#if USE_MPI
 REAL                            :: DR_u_Glob,Volume_Glob,Ekin_glob,max_Vorticity_glob,mean_temperature_glob,DR_S_glob
 REAL                            :: DR_Sd_Glob,DR_p_Glob,Enstrophy_comp_glob,Ekin_comp_glob
 #  endif
@@ -340,7 +340,7 @@ DO ii=1,nElems
   END DO
 END DO
 
-#  if MPI
+#if USE_MPI
 ! MPI case: globalize Volume, Dissipation Rate and Kinetic Energy
 ! maximum of vorticity
 CALL MPI_REDUCE(max_Vorticity,max_vorticity_Glob,1,MPI_DOUBLE_PRECISION,MPI_MAX,0,MPI_COMM_WORLD,iError)

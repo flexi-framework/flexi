@@ -37,6 +37,7 @@ CHARACTER(LEN=255),PARAMETER :: NodeTypeGL   = 'GAUSS-LOBATTO'            !< Gau
 CHARACTER(LEN=255),PARAMETER :: NodeTypeCL   = 'CHEBYSHEV-GAUSS-LOBATTO'
 CHARACTER(LEN=255),PARAMETER :: NodeTypeVISU = 'VISU'                     !< equidistant nodes [-1,1]
 CHARACTER(LEN=255),PARAMETER :: NodeTypeVISUInner = 'VISU_INNER'
+CHARACTER(LEN=255),PARAMETER :: NodeTypeFVEqui    = 'FV_EQUI'
 !@}
 #if (PP_NodeType==1)
   CHARACTER(LEN=255),PARAMETER :: NodeType = 'GAUSS'

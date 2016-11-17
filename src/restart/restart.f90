@@ -33,12 +33,17 @@ INTERFACE Restart
   MODULE PROCEDURE Restart
 END INTERFACE
 
+INTERFACE ReadElemData
+  MODULE PROCEDURE ReadElemData
+END INTERFACE
+
 INTERFACE FinalizeRestart
   MODULE PROCEDURE FinalizeRestart
 END INTERFACE
 
 PUBLIC :: InitRestart,FinalizeRestart
 PUBLIC :: Restart
+PUBLIC :: ReadElemData
 !==================================================================================================================================
 
 PUBLIC::DefineParametersRestart
@@ -70,7 +75,7 @@ END SUBROUTINE DefineParametersRestart
 !> The routine also checks if the node type and polynomial degree of the restart file is the same than in the current simulation.
 !> If not, a flag InterpolateSolution is set. This will be used by the actual Restart routine.
 !==================================================================================================================================
-SUBROUTINE InitRestart()
+SUBROUTINE InitRestart(RestartFile_in)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
@@ -82,6 +87,7 @@ USE MOD_ReadInTools,        ONLY: GETLOGICAL,GETREALARRAY
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
+CHARACTER(LEN=255),INTENT(IN),OPTIONAL :: RestartFile_in
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL            :: ResetTime,validHDF5
@@ -89,6 +95,8 @@ LOGICAL            :: ResetTime,validHDF5
 IF((.NOT.InterpolationInitIsDone).OR.RestartInitIsDone)THEN
   CALL CollectiveStop(__STAMP__,'InitRestart not ready to be called or already called.')
 END IF
+
+IF (PRESENT(RestartFile_in)) RestartFile = RestartFile_in
 
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT RESTART...'
@@ -148,18 +156,11 @@ END SUBROUTINE InitRestart
 !> All state files that would be re-written by the simulation (with the same project name and a time stamp after the restart time
 !> or all files with the same project name if no restart is performed) are deleted at the end of the routine.
 !==================================================================================================================================
-SUBROUTINE Restart()
+SUBROUTINE Restart(doFlushFiles)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Restart_Vars
-#if FV_ENABLED
-USE MOD_HDF5_input         ,ONLY: ReadAttribute
-USE MOD_FV_Vars            ,ONLY: FV_Elems
-USE MOD_IO_HDF5            ,ONLY: File_ID,nDims,HSize
-USE MOD_HDF5_Input         ,ONLY: GetDataSize,DatasetExists
-USE MOD_Indicator_Vars     ,ONLY: IndValue
-#endif
 USE MOD_DG_Vars,            ONLY: U
 USE MOD_Mesh_Vars,          ONLY: offsetElem,detJac_Ref,Ngeo
 USE MOD_Mesh_Vars,          ONLY: nElems
@@ -169,50 +170,38 @@ USE MOD_HDF5_Output,        ONLY: FlushFiles
 USE MOD_Interpolation,      ONLY: GetVandermonde
 USE MOD_ApplyJacobianCons,  ONLY: ApplyJacobianCons
 USE MOD_Interpolation_Vars, ONLY: NodeType
+#if FV_ENABLED
+USE MOD_FV_Vars,            ONLY: FV_Elems
+USE MOD_Indicator_Vars,     ONLY: IndValue
+USE MOD_StringTools,        ONLY: STRICMP
+#endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
+LOGICAL,INTENT(IN),OPTIONAL :: doFlushFiles
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL,ALLOCATABLE   :: U_local(:,:,:,:,:)
-INTEGER            :: iElem,i,j,k
+INTEGER            :: iElem,i,j,k,iVar
 REAL               :: JNR(1,0:N_Restart,0:N_Restart,0:N_Restart)
 REAL               :: Vdm_NRestart_N(0:PP_N,0:N_Restart)
 REAL               :: Vdm_3Ngeo_NRestart(0:N_Restart,0:3*NGeo)
-#if FV_ENABLED
-LOGICAL                        :: ElemDataFound,  FV_ElemsFound
-INTEGER                        :: nVarAdd_HDF5,iVarAdd
-CHARACTER(LEN=255),ALLOCATABLE :: VarNamesAdd_HDF5(:)
-REAL,ALLOCATABLE               :: ElemData(:,:)
-#endif
-
+LOGICAL            :: doFlushFiles_loc
 !==================================================================================================================================
+doFlushFiles_loc = MERGE(doFlushFiles, .TRUE., PRESENT(doFlushFiles))
 IF(DoRestart)THEN
   CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
-#if FV_ENABLED    
-  FV_ElemsFound = .FALSE.
-  CALL DatasetExists(File_ID, 'ElemData', ElemDataFound)
-  IF (ElemDataFound) THEN
-    ! get size of ElemData array
-    CALL GetDataSize(File_ID,'ElemData',nDims,HSize)
-    nVarAdd_HDF5=INT(HSize(1),4)
-    ! read ElemData
-    ALLOCATE(ElemData(nVarAdd_HDF5,nElems))
-    CALL ReadArray('ElemData',2,(/nVarAdd_HDF5,nElems/),OffsetElem,2,RealArray=ElemData)
-    ! read variable names of additional data in ElemData
-    ALLOCATE(VarNamesAdd_HDF5(nVarAdd_HDF5))
-    CALL ReadAttribute(File_ID,'VarNamesAdd',nVarAdd_HDF5,StrArray=VarNamesAdd_HDF5)
-    ! search for FV_Elems and IndValue
-    DO iVarAdd=1,nVarAdd_HDF5
-      IF (TRIM(VarNamesAdd_HDF5(iVarAdd)).EQ."FV_Elems") THEN
-        FV_Elems = INT(ElemData(iVarAdd,:))
-        FV_ElemsFound = .TRUE.
-      END IF
-      IF (TRIM(VarNamesAdd_HDF5(iVarAdd)).EQ."IndValue") THEN
-        IndValue = ElemData(iVarAdd,:)
-      END IF
-    END DO
-  END IF
+  CALL ReadElemData()
+#if FV_ENABLED  
+  ! search for FV_Elems and IndValue
+  DO iVar=1,nVarElemData
+    IF (STRICMP(VarNamesElemData(iVar),"FV_Elems")) THEN
+      FV_Elems = INT(ElemData(iVar,:))
+    END IF
+    IF (STRICMP(VarNamesElemData(iVar),"IndValue")) THEN
+      IndValue = ElemData(iVar,:)
+    END IF
+  END DO
 #endif
   ! Read in state
   IF(.NOT. InterpolateSolution)THEN
@@ -268,14 +257,40 @@ IF(DoRestart)THEN
   END IF
   CALL CloseDataFile()
   ! Delete all files that will be rewritten
-  CALL FlushFiles(RestartTime)
+  IF (doFlushFiles_loc) CALL FlushFiles(RestartTime)
 ELSE
   ! Delete all files since we are doing a fresh start
-  CALL FlushFiles()
+  IF (doFlushFiles_loc) CALL FlushFiles()
 END IF
 END SUBROUTINE Restart
 
-
+!===================================================================================================================================
+!> Reads the additional 'ElemData' array from the restart file.
+!===================================================================================================================================
+SUBROUTINE ReadElemData()
+! MODULES
+USE MOD_Restart_Vars ,ONLY: nVarElemData, ElemData, VarNamesElemData
+USE MOD_Mesh_Vars    ,ONLY: nElems,OffsetElem
+USE MOD_HDF5_Input   ,ONLY: GetDataSize,DatasetExists,ReadAttribute,File_ID,nDims,HSize,OpenDataFile,CloseDataFile,ReadArray
+IMPLICIT NONE
+LOGICAL  :: ElemDataFound
+!===================================================================================================================================
+CALL DatasetExists(File_ID, 'ElemData', ElemDataFound)
+nVarElemData = 0
+IF (ElemDataFound) THEN
+  ! get size of ElemData array
+  CALL GetDataSize(File_ID,'ElemData',nDims,HSize)
+  nVarElemData=INT(HSize(1),4)
+  ! read ElemData
+  SDEALLOCATE(ElemData)
+  ALLOCATE(ElemData(nVarElemData,nElems))
+  CALL ReadArray('ElemData',2,(/nVarElemData,nElems/),OffsetElem,2,RealArray=ElemData)
+  ! read variable names of additional data in ElemData
+  SDEALLOCATE(VarNamesElemData)
+  ALLOCATE(VarNamesElemData(nVarElemData))
+  CALL ReadAttribute(File_ID,'VarNamesAdd',nVarElemData,StrArray=VarNamesElemData)
+END IF
+END SUBROUTINE ReadElemData
 
 !==================================================================================================================================
 !> Finalizes variables necessary for restart subroutines
@@ -286,6 +301,8 @@ USE MOD_Restart_Vars
 IMPLICIT NONE
 !==================================================================================================================================
 RestartInitIsDone = .FALSE.
+SDEALLOCATE(ElemData)
+SDEALLOCATE(VarNamesElemData)
 END SUBROUTINE FinalizeRestart
 
 END MODULE MOD_Restart

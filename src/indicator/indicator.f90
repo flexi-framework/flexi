@@ -354,7 +354,7 @@ USE MOD_Mesh_Vars          ,ONLY: sJ
 USE MOD_Mappings           ,ONLY: SideToVol
 USE MOD_Analyze_Vars       ,ONLY: wGPVol
 USE MOD_ProlongToFace1     ,ONLY: ProlongToFace1
-#if MPI
+#if USE_MPI
 USE MOD_MPI_Vars           ,ONLY: MPIRequest_U,MPIRequest_Flux,nNbProcs
 USE MOD_MPI                ,ONLY: StartReceiveMPIData,StartSendMPIData,FinishExchangeMPIData
 #endif
@@ -406,11 +406,11 @@ FV_Elems_slave  = 1
 
 ! prolongate UJameson to the faces (FV everywhere) 
 ! and bring it from the big to the small mortar faces
-#if MPI
+#if USE_MPI
 CALL ProlongToFace1(PP_N,UJameson,UJameson_master,UJameson_slave,L_Minus,L_Plus,doMPiSides=.TRUE.)
 #endif
 CALL ProlongToFace1(PP_N,UJameson,UJameson_master,UJameson_slave,L_Minus,L_Plus,doMPiSides=.FALSE.)
-#if MPI
+#if USE_MPI
 ! revert the temporal forcing to use FV everywhere in the ProlongToFace
 FV_Elems        = TMP       
 FV_Elems_master = TMP_master
@@ -421,7 +421,7 @@ CALL U_Mortar1(UJameson_master,UJameson_slave,doMPiSides=.FALSE.)
 
 ! communicate UJameson_master from master to slave
 ! communicate UJameson_slave  from slave  to master
-#if MPI
+#if USE_MPI
 DataSizeSide_loc = (PP_N+1)**2
 CALL StartReceiveMPIData(UJameson_slave ,DataSizeSide_loc,1,nSides,MPIRequest_U(   :,SEND),SendID=2) !  U_slave: slave -> master
 CALL StartSendMPIData(   UJameson_slave ,DataSizeSide_loc,1,nSides,MPIRequest_U(   :,RECV),SendID=2) !  U_slave: slave -> master
@@ -433,21 +433,22 @@ CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Flux)
 
 ! bring UJameson from small to big mortar faces
 DO tf=0,1
-  CALL Flux_Mortar1(UJameson_master,UJameson_slave,doMPISides=(tf.EQ.0),weak=.FALSE.)
+  ! ATTENTION: call Flux_Mortar1 with swapped slave/master arguments, since we use it to bring the small
+  !            side UJameson to the big Mortar UJameson!
+  CALL Flux_Mortar1(UJameson_slave,UJameson_master,doMPISides=(tf.EQ.0),weak=.FALSE.)
   firstMortarSideID = MERGE(firstMortarMPISide,firstMortarInnerSide,tf.EQ.0) 
    lastMortarSideID = MERGE( lastMortarMPISide, lastMortarInnerSide,tf.EQ.0) 
   DO MortarSideID=firstMortarSideID,lastMortarSideID
     SELECT CASE(MortarType(1,MortarSideID))
     CASE(1) !1->4
-      UJameson_master(:,:,:,MortarSideID) = 0.25 * UJameson_master(:,:,:,MortarSideID)
+      UJameson_slave(:,:,:,MortarSideID) = 0.25 * UJameson_slave(:,:,:,MortarSideID)
     CASE(2) !1->2 in eta
-      UJameson_master(:,:,:,MortarSideID) = 0.5  * UJameson_master(:,:,:,MortarSideID)
+      UJameson_slave(:,:,:,MortarSideID) = 0.5  * UJameson_slave(:,:,:,MortarSideID)
     CASE(3) !1->2 in xi
-      UJameson_master(:,:,:,MortarSideID) = 0.5  * UJameson_master(:,:,:,MortarSideID)
+      UJameson_slave(:,:,:,MortarSideID) = 0.5  * UJameson_slave(:,:,:,MortarSideID)
     END SELECT
   END DO
 END DO
-
 
 ! evaluate the Jameson indicator for each element
 DO iElem=1,nElems

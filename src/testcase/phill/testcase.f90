@@ -257,7 +257,7 @@ REAL,INTENT(IN)                 :: dt                     !< current time step
 ! LOCAL VARIABLES
 INTEGER                         :: i,j,k,iElem,SideID
 REAL                            :: massFlow,massFlowGlobal,massFlowPeriodic,tmp
-#if MPI
+#if USE_MPI
 REAL                            :: box(3)
 #endif
 !==================================================================================================================================
@@ -281,7 +281,7 @@ DO iElem=1,nElems
   END DO; END DO; END DO
 END DO
 
-#if MPI
+#if USE_MPI
 box(1) = massFlowGlobal; box(2) = massFlowPeriodic; box(3) = BulkVel
 CALL MPI_ALLREDUCE(MPI_IN_PLACE,box,3,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,iError)
 massFlowGlobal = box(1); massFlowPeriodic = box(2); BulkVel = box(3)

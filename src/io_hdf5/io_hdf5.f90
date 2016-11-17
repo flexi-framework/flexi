@@ -130,7 +130,7 @@ IMPLICIT NONE
 !==================================================================================================================================
 gatheredWrite=.FALSE.
 IF(nLeaderProcs.LT.nProcessors) gatheredWrite=GETLOGICAL('gatheredWrite','.FALSE.')
-#if MPI
+#if USE_MPI
 CALL MPI_Info_Create(MPIInfo, iError)
 
 !normal case:
@@ -148,7 +148,7 @@ CALL MPI_Info_set(MPIInfo, "romio_ds_write","disable",iError)
 CALL MPI_Info_set(MPIInfo, "romio_cb_read", "enable", iError)
 CALL MPI_Info_set(MPIInfo, "romio_cb_write","enable", iError)
 #endif
-#endif /* MPI */
+#endif /*USE_MPI*/
 END SUBROUTINE InitIOHDF5
 
 
@@ -190,10 +190,10 @@ IF(create)THEN
 ELSE
   CALL H5PCREATE_F(H5P_FILE_ACCESS_F, Plist_ID, iError)
 END IF
-#if MPI
+#if USE_MPI
 comm = MERGE(communicatorOpt,MPI_COMM_WORLD,PRESENT(communicatorOpt))
 IF(.NOT.single)  CALL H5PSET_FAPL_MPIO_F(Plist_ID, comm, MPIInfo, iError)
-#endif /* MPI */
+#endif /*USE_MPI*/
 
 ! Open the file collectively.
 IF(create)THEN
