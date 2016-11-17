@@ -266,7 +266,7 @@ CalcTimeStart=FLEXITIME()
 DO
   IF(nCalcTimestep.LT.1)THEN
 #if FV_ENABLED
-    CALL FV_Switch(OnlyToFV=.FALSE.)
+    CALL FV_Switch(AllowToDG=.TRUE.)
 #endif
     dt_Min=CALCTIMESTEP(errType)
     nCalcTimestep=MIN(FLOOR(ABS(LOG10(ABS(dt_MinOld/dt_Min-1.)**2.*100.+1.e-16))),nCalcTimeStepMax)
@@ -391,6 +391,7 @@ USE MOD_Sponge_Vars  ,ONLY: CalcPruettDamping
 USE MOD_Indicator    ,ONLY: doCalcIndicator,CalcIndicator
 #if FV_ENABLED
 USE MOD_FV           ,ONLY: FV_Switch
+USE MOD_FV_Vars      ,ONLY: FV_toDGinRK
 #endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -414,7 +415,7 @@ CALL VCopy(nTotalU,Ut_temp,Ut)               !Ut_temp = Ut
 CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(1))    !U       = U + Ut*b_dt(1)
 IF(doCalcIndicator) CALL CalcIndicator(U,t)
 #if FV_ENABLED
-CALL FV_Switch(OnlyToFV=.TRUE.)
+CALL FV_Switch(AllowToDG=FV_toDGinRK)
 #endif
 
 
@@ -427,7 +428,7 @@ DO iStage=2,nRKStages
   CALL VAXPBY(nTotalU,U,Ut_temp,ConstIn =b_dt(iStage))  !U       = U + Ut_temp*b_dt(iStage)
   IF(doCalcIndicator) CALL CalcIndicator(U,t)
 #if FV_ENABLED
-  CALL FV_Switch(OnlyToFV=.TRUE.)
+  CALL FV_Switch(AllowToDG=FV_toDGinRK)
 #endif
 END DO
 CurrentStage=1
@@ -453,7 +454,8 @@ USE MOD_PruettDamping,ONLY: TempFilterTimeDeriv
 USE MOD_Sponge_Vars  ,ONLY: CalcPruettDamping
 USE MOD_Indicator    ,ONLY: doCalcIndicator,CalcIndicator
 #if FV_ENABLED
-USE MOD_FV            ,ONLY: FV_Switch
+USE MOD_FV           ,ONLY: FV_Switch
+USE MOD_FV_Vars      ,ONLY: FV_toDGinRK
 #endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -482,7 +484,7 @@ CALL DGTimeDerivative_weakForm(t)
 CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(1))      !U      = U + Ut*b_dt(1)
 IF(doCalcIndicator) CALL CalcIndicator(U,t)
 #if FV_ENABLED
-CALL FV_Switch(OnlyToFV=.TRUE.)
+CALL FV_Switch(AllowToDG=FV_toDGinRK)
 #endif
 
 DO iStage=2,nRKStages
@@ -495,7 +497,7 @@ DO iStage=2,nRKStages
   CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(iStage))                   !U = U + Ut*b_dt(iStage)
   IF(doCalcIndicator) CALL CalcIndicator(U,t)
 #if FV_ENABLED
-  CALL FV_Switch(OnlyToFV=.TRUE.)
+  CALL FV_Switch(AllowToDG=FV_toDGinRK)
 #endif
 END DO
 CurrentStage=1

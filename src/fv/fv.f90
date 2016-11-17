@@ -73,7 +73,9 @@ CALL prms%CreateRealOption('FV_IndLowerThreshold',"Lower threshold: Element is s
                                                         "falls below this value")
 CALL prms%CreateLogicalOption('FV_toDG_indicator',"Apply additional Persson indicator to check if DG solution after switch \n"//&
                                                   "from FV to DG is valid.", '.FALSE.')
-CALL prms%CreateRealOption('FV_toDG_limit',"Threshold for FV_toDG_indicator")
+CALL prms%CreateRealOption   ('FV_toDG_limit',"Threshold for FV_toDG_indicator")
+CALL prms%CreateLogicalOption('FV_toDGinRK',  "Allow switching of FV elements to DG during Runge Kutta stages. \n"//&
+                                              "This may violated the DG timestep restriction of the element.", '.FALSE.')
 #if FV_RECONSTRUCT
 CALL DefineParametersFV_Limiter()
 #endif
@@ -124,6 +126,7 @@ CALL InitFV_Limiter()
 ! anymore. 
 FV_toDG_indicator = GETLOGICAL('FV_toDG_indicator')
 IF (FV_toDG_indicator) FV_toDG_limit = GETREAL('FV_toDG_limit')
+FV_toDGinRK = GETLOGICAL("FV_toDGinRK")
 
 ! allocate array for indicators
 ALLOCATE(FV_Elems(nElems))
@@ -183,7 +186,7 @@ END SUBROUTINE InitFV
 !==================================================================================================================================
 !> Performe switching between DG element and FV sub-cells element (and vise versa) depending on the indicator value
 !==================================================================================================================================
-SUBROUTINE FV_Switch(OnlyToFV)
+SUBROUTINE FV_Switch(AllowToDG)
 ! MODULES
 USE MOD_PreProc
 USE MOD_ChangeBasis    ,ONLY: ChangeBasis3D
@@ -197,7 +200,7 @@ USE MOD_Mesh_Vars      ,ONLY: nElems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-LOGICAL,INTENT(IN) :: OnlyToFV
+LOGICAL,INTENT(IN) :: AllowToDG
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL    :: U_DG(PP_nVar,0:PP_N,0:PP_N,0:PP_N)
@@ -216,7 +219,7 @@ DO iElem=1,nElems
     END IF
   ELSE ! FV Element
     ! Switch FV to DG Element, if Indicator is lower then IndMax
-    IF ((IndValue(iElem).LT.FV_IndLowerThreshold).AND..NOT.OnlyToFV) THEN
+    IF ((IndValue(iElem).LT.FV_IndLowerThreshold).AND.AllowToDG) THEN
       CALL ChangeBasis3D(PP_nVar,PP_N,PP_N,FV_sVdm,U(:,:,:,:,iElem),U_DG)
       IF (FV_toDG_indicator) THEN
         ind = IndPersson(U_DG(1,:,:,:))
@@ -288,7 +291,7 @@ REAL              :: tmp(1:PP_nVar,0:PP_N,0:PP_N,0:PP_N)
 ! initial call of indicator
 CALL CalcIndicator(U,0.)
 FV_Elems = 0
-CALL FV_Switch(OnlyToFV=.TRUE.)
+CALL FV_Switch(AllowToDG=.FALSE.)
 
 ! build vandermonde to supersample each subcell with PP_N points per direction
 CALL GetVandermonde(PP_N,NodetypeG,(PP_N+1)**2-1,NodeTypeVISUInner,Vdm)
