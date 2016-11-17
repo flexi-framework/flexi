@@ -103,12 +103,12 @@ SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT EXACT FUNCTION...'
 
 IniExactFunc = GETINTFROMSTR('IniExactFunc')
+IniRefState  = GETINT('IniRefState', "-1")
 ! Read in boundary parameters
 SELECT CASE (IniExactFunc)
 CASE(2,3,4,41,42,43) ! synthetic test cases
   AdvVel       = GETREALARRAY('AdvVel',3)
 CASE(7) ! Shu Vortex
-  IniRefState  = GETINT('IniRefState')
   IniCenter    = GETREALARRAY('IniCenter',3,'(/0.,0.,0./)')
   IniAxis      = GETREALARRAY('IniAxis',3,'(/0.,0.,1./)')
   IniAmplitude = GETREAL('IniAmplitude','0.2')
