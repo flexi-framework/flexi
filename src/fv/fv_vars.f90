@@ -22,6 +22,8 @@ REAL                   :: FV_IndLowerThreshold   !< Lower threshold: Element is 
 LOGICAL                :: FV_toDG_indicator      !< additional Persson indicator applied to DG solution after switch from FV to DG
                                                  !< to check if DG solution is valid
 REAL                   :: FV_toDG_limit          !< limit for ^ this indicator: If FV_toDG_indicator is above limit, keep FV
+LOGICAL                :: FV_toDGinRK            !< Flag that allows switching of FV elements to DG during Runge Kutta stages. 
+                                                 !< This may violated the DG timestep restriction of the element.
 
 ! Limiting
 REAL                   :: FV_sweby_beta          !< parameter for Sweby limiter
@@ -37,7 +39,7 @@ INTEGER,ALLOCATABLE    :: FV_Elems_counter(:)    !< counts for every element the
 INTEGER                :: FV_Switch_counter      !< counts how often FV_Switch is called, nullified after hdf5-output
                                                  !< should be identical to nTimesteps * nRkStages
 
-REAL,ALLOCATABLE       :: FV_Elems_Amount(:)    !< counts for every element the RK stages it was DG or FV, nullified after
+REAL,ALLOCATABLE       :: FV_Elems_Amount(:)     !< counts for every element the RK stages it was DG or FV, nullified after
 ! FV variables on reference element
 REAL,ALLOCATABLE       :: FV_X(:)                !< positions of 'midpoints' of FV subcells in [-1,1]
 REAL,ALLOCATABLE       :: FV_BdryX(:)            !< positions of boundaries of FV subcells in [-1,1]

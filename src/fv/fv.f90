@@ -26,6 +26,10 @@ INTERFACE FV_Switch
   MODULE PROCEDURE FV_Switch
 END INTERFACE
 
+INTERFACE FV_Info
+  MODULE PROCEDURE FV_Info
+END INTERFACE
+
 INTERFACE FV_FillIni
   MODULE PROCEDURE FV_FillIni
 END INTERFACE
@@ -41,6 +45,7 @@ END INTERFACE
 PUBLIC::DefineParametersFV
 PUBLIC::InitFV
 PUBLIC::FV_Switch
+PUBLIC::FV_Info
 PUBLIC::FV_FillIni
 PUBLIC::FV_DGtoFV
 PUBLIC::FinalizeFV
@@ -68,7 +73,9 @@ CALL prms%CreateRealOption('FV_IndLowerThreshold',"Lower threshold: Element is s
                                                         "falls below this value")
 CALL prms%CreateLogicalOption('FV_toDG_indicator',"Apply additional Persson indicator to check if DG solution after switch \n"//&
                                                   "from FV to DG is valid.", '.FALSE.')
-CALL prms%CreateRealOption('FV_toDG_limit',"Threshold for FV_toDG_indicator")
+CALL prms%CreateRealOption   ('FV_toDG_limit',"Threshold for FV_toDG_indicator")
+CALL prms%CreateLogicalOption('FV_toDGinRK',  "Allow switching of FV elements to DG during Runge Kutta stages. \n"//&
+                                              "This may violated the DG timestep restriction of the element.", '.FALSE.')
 #if FV_RECONSTRUCT
 CALL DefineParametersFV_Limiter()
 #endif
@@ -118,6 +125,7 @@ CALL InitFV_Limiter()
 ! anymore. 
 FV_toDG_indicator = GETLOGICAL('FV_toDG_indicator')
 IF (FV_toDG_indicator) FV_toDG_limit = GETREAL('FV_toDG_limit')
+FV_toDGinRK = GETLOGICAL("FV_toDGinRK")
 
 
 ! allocate array for indicators
@@ -178,7 +186,7 @@ END SUBROUTINE InitFV
 !==================================================================================================================================
 !> Performe switching between DG element and FV sub-cells element (and vise versa) depending on the indicator value
 !==================================================================================================================================
-SUBROUTINE FV_Switch()
+SUBROUTINE FV_Switch(AllowToDG)
 ! MODULES
 USE MOD_PreProc
 USE MOD_ChangeBasis    ,ONLY: ChangeBasis3D
@@ -192,6 +200,7 @@ USE MOD_Mesh_Vars      ,ONLY: nElems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
+LOGICAL,INTENT(IN) :: AllowToDG
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL    :: U_DG(PP_nVar,0:PP_N,0:PP_N,0:PP_N)
@@ -210,7 +219,7 @@ DO iElem=1,nElems
     END IF
   ELSE ! FV Element
     ! Switch FV to DG Element, if Indicator is lower then IndMax
-    IF (IndValue(iElem).LT.FV_IndLowerThreshold) THEN
+    IF ((IndValue(iElem).LT.FV_IndLowerThreshold).AND.AllowToDG) THEN
       CALL ChangeBasis3D(PP_nVar,PP_N,PP_N,FV_sVdm,U(:,:,:,:,iElem),U_DG)
       IF (FV_toDG_indicator) THEN
         ind = IndPersson(U_DG(1,:,:,:))
@@ -225,6 +234,35 @@ FV_Elems_counter  = FV_Elems_counter  + FV_Elems
 FV_Switch_counter = FV_Switch_counter + 1
 FV_Elems_Amount   = REAL(FV_Elems_Counter)/FV_Switch_counter
 END SUBROUTINE FV_Switch
+
+!==================================================================================================================================
+!> Print information on the amount of FV subcells
+!==================================================================================================================================
+SUBROUTINE FV_Info(iter)
+! MODULES
+USE MOD_Globals
+USE MOD_Mesh_Vars,ONLY:nGlobalElems
+USE MOD_Analyze_Vars,ONLY: totalFV_nElems
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+INTEGER(KIND=8),INTENT(IN) :: iter !< number of iterations
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!==================================================================================================================================
+#if MPI
+IF(MPIRoot)THEN
+  CALL MPI_REDUCE(MPI_IN_PLACE,totalFV_nElems,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_WORLD,iError)
+  ! totalFV_nElems is counted in PrintStatusLine
+ELSE
+  CALL MPI_REDUCE(totalFV_nElems,0           ,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_WORLD,iError)
+END IF
+#endif
+SWRITE(UNIT_stdOut,'(A,F8.3,A)')' FV amount %: ', totalFV_nElems / REAL(nGlobalElems) / iter*100 
+totalFV_nElems = 0
+END SUBROUTINE FV_Info
+
 
 !==================================================================================================================================
 !> Initialize all FV elements and overwrite data of DG FillIni. Each subcell is supersampled with PP_N points in each space 
@@ -253,7 +291,7 @@ REAL              :: tmp(1:PP_nVar,0:PP_N,0:PP_N,0:PP_N)
 ! initial call of indicator
 CALL CalcIndicator(U,0.)
 FV_Elems = 0
-CALL FV_Switch()
+CALL FV_Switch(AllowToDG=.FALSE.)
 
 ! build vandermonde to supersample each subcell with PP_N points per direction
 CALL GetVandermonde(PP_N,NodetypeG,(PP_N+1)**2-1,NodeTypeVISUInner,Vdm)

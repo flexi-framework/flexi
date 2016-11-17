@@ -72,6 +72,7 @@ USE MOD_TimeDisc_Vars
 USE MOD_ReadInTools         ,ONLY:GETREAL,GETINT,GETSTR
 USE MOD_StringTools         ,ONLY:LowCase,StripSpaces
 USE MOD_Overintegration_Vars,ONLY:OverintegrationType,NUnder
+USE MOD_Filter_Vars         ,ONLY:FilterType,NFilter
 USE MOD_Mesh_Vars           ,ONLY:nElems
 USE MOD_IO_HDF5             ,ONLY:AddToElemData
 IMPLICIT NONE
@@ -80,6 +81,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=255):: TimeDiscMethod
+INTEGER           :: NEff
 !==================================================================================================================================
 TimeDiscMethod = GETSTR('TimeDiscMethod','Carpenter RK4-5')
 CALL StripSpaces(TimeDiscMethod)
@@ -108,11 +110,8 @@ CFLScale = GETREAL('CFLScale')
 ! Read the normalized DFL number
 DFLScale = GETREAL('DFLScale')
 #endif /*PARABOLIC*/
-IF((OverintegrationType.EQ.CUTOFF).OR.(OverintegrationType.EQ.CUTOFFCONS))THEN
-  CALL fillCFL_DFL(Nunder,PP_N)
-ELSE
-  CALL fillCFL_DFL(PP_N  ,PP_N)
-END IF
+NEff=MIN(PP_N,NFilter,NUnder)
+CALL fillCFL_DFL(NEff,PP_N)
 ! Set timestep to a large number
 dt=HUGE(1.)
 ! Read max number of iterations to perform
@@ -160,7 +159,6 @@ USE MOD_RecordPoints_Vars   ,ONLY: RP_onProc
 USE MOD_Sponge_Vars         ,ONLY: CalcPruettDamping
 #if FV_ENABLED
 USE MOD_FV
-USE MOD_Analyze_Vars        ,ONLY: totalFV_nElems
 #endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -230,6 +228,7 @@ CALL Visualize(t,U)
 IF((t.GE.tEnd).OR.maxIter.EQ.0) RETURN
 
 
+tStart = t
 iter=0
 iter_loc=0
 writeCounter=0
@@ -249,19 +248,26 @@ CALL Analyze(t,iter)
 ! fill recordpoints buffer (initialization/restart)
 IF(RP_onProc) CALL RecordPoints(iter,t,.TRUE.)
 
-IF(MPIroot)THEN
-  WRITE(UNIT_StdOut,'(132("-"))')
-  WRITE(UNIT_StdOut,'(A,ES16.7)')'Initial Timestep  : ', dt
-  IF(ViscousTimeStep) WRITE(UNIT_StdOut,'(A)')' Viscous timestep dominates! '
-  WRITE(UNIT_StdOut,*)'CALCULATION RUNNING...'
-END IF ! MPIroot
+CALL PrintStatusLine(t,dt,tStart,tEnd)
+
+SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_StdOut,'(A,ES16.7)')'Initial Timestep  : ', dt
+IF(ViscousTimeStep)THEN
+  SWRITE(UNIT_StdOut,'(A)')' Viscous timestep dominates! '
+END IF
+#if FV_ENABLED
+CALL FV_Info(1_8)
+#endif
+SWRITE(UNIT_StdOut,*)'CALCULATION RUNNING...'
 
 
 ! Run computation
-tStart = t
 CalcTimeStart=FLEXITIME()
 DO
   IF(nCalcTimestep.LT.1)THEN
+#if FV_ENABLED
+    CALL FV_Switch(AllowToDG=.TRUE.)
+#endif
     dt_Min=CALCTIMESTEP(errType)
     nCalcTimestep=MIN(FLOOR(ABS(LOG10(ABS(dt_MinOld/dt_Min-1.)**2.*100.+1.e-16))),nCalcTimeStepMax)
     dt_MinOld=dt_Min
@@ -320,13 +326,6 @@ DO
   IF(doAnalyze) THEN
     CalcTimeEnd=FLEXITIME()
 
-#if FV_ENABLED && MPI
-    IF(MPIRoot)THEN
-      CALL MPI_REDUCE(MPI_IN_PLACE,totalFV_nElems,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_WORLD,iError)
-    ELSE
-      CALL MPI_REDUCE(totalFV_nElems,0           ,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_WORLD,iError)
-    END IF
-#endif
 
     IF(MPIroot)THEN
       ! Get calculation time per DOF
@@ -339,13 +338,9 @@ DO
       WRITE(UNIT_StdOut,'(A,ES16.7)')' Timestep   : ',dt_Min
       IF(ViscousTimeStep) WRITE(UNIT_StdOut,'(A)')' Viscous timestep dominates! '
       WRITE(UNIT_stdOut,'(A,ES16.7)')'#Timesteps  : ',REAL(iter)
-#if FV_ENABLED
-      ! totalFV_nElems is counted in PrintStatusLine
-      WRITE(UNIT_stdOut,'(A,F8.3,A)')' FV amount %: ', totalFV_nElems / REAL(nGlobalElems) / iter_loc*100 
-#endif
     END IF !MPIroot
 #if FV_ENABLED
-    totalFV_nElems = 0
+    CALL FV_Info(iter_loc)
 #endif
 
     ! Visualize data and write solution
@@ -396,6 +391,7 @@ USE MOD_Sponge_Vars  ,ONLY: CalcPruettDamping
 USE MOD_Indicator    ,ONLY: doCalcIndicator,CalcIndicator
 #if FV_ENABLED
 USE MOD_FV           ,ONLY: FV_Switch
+USE MOD_FV_Vars      ,ONLY: FV_toDGinRK
 #endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -419,7 +415,7 @@ CALL VCopy(nTotalU,Ut_temp,Ut)               !Ut_temp = Ut
 CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(1))    !U       = U + Ut*b_dt(1)
 IF(doCalcIndicator) CALL CalcIndicator(U,t)
 #if FV_ENABLED
-CALL FV_Switch()
+CALL FV_Switch(AllowToDG=FV_toDGinRK)
 #endif
 
 
@@ -432,10 +428,8 @@ DO iStage=2,nRKStages
   CALL VAXPBY(nTotalU,U,Ut_temp,ConstIn =b_dt(iStage))  !U       = U + Ut_temp*b_dt(iStage)
   IF(doCalcIndicator) CALL CalcIndicator(U,t)
 #if FV_ENABLED
-  CALL FV_Switch()
+  CALL FV_Switch(AllowToDG=FV_toDGinRK)
 #endif
-
-
 END DO
 CurrentStage=1
 
@@ -460,7 +454,8 @@ USE MOD_PruettDamping,ONLY: TempFilterTimeDeriv
 USE MOD_Sponge_Vars  ,ONLY: CalcPruettDamping
 USE MOD_Indicator    ,ONLY: doCalcIndicator,CalcIndicator
 #if FV_ENABLED
-USE MOD_FV            ,ONLY: FV_Switch
+USE MOD_FV           ,ONLY: FV_Switch
+USE MOD_FV_Vars      ,ONLY: FV_toDGinRK
 #endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -489,7 +484,7 @@ CALL DGTimeDerivative_weakForm(t)
 CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(1))      !U      = U + Ut*b_dt(1)
 IF(doCalcIndicator) CALL CalcIndicator(U,t)
 #if FV_ENABLED
-CALL FV_Switch()
+CALL FV_Switch(AllowToDG=FV_toDGinRK)
 #endif
 
 DO iStage=2,nRKStages
@@ -502,7 +497,7 @@ DO iStage=2,nRKStages
   CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(iStage))                   !U = U + Ut*b_dt(iStage)
   IF(doCalcIndicator) CALL CalcIndicator(U,t)
 #if FV_ENABLED
-  CALL FV_Switch()
+  CALL FV_Switch(AllowToDG=FV_toDGinRK)
 #endif
 END DO
 CurrentStage=1
