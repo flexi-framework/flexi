@@ -594,6 +594,7 @@ SUBROUTINE GetBoundaryFluxTestcase(SideID,t,Nloc,Flux,UPrim_master,             
                            NormVec,TangVec1,TangVec2,Face_xGP)
 ! MODULES
 USE MOD_PreProc
+USE MOD_Globals
 USE MOD_Testcase_Vars
 USE MOD_Mesh_Vars     ,ONLY: nSides
 USE MOD_Mesh_Vars     ,ONLY: BoundaryType, BC
@@ -621,52 +622,55 @@ REAL,INTENT(IN)      :: Face_xGP(3,0:Nloc,0:Nloc,0:FV_ENABLED,1:nSides) !< posit
 REAL,INTENT(OUT)     :: Flux(PP_nVar,0:Nloc,0:Nloc,1:nSides)  !< resulting boundary fluxes
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER           :: BCState, dir, p, q, iL, iR
+INTEGER           :: BCType,BCState, dir, p, q, iL, iR
 REAL              :: pos(2), x, rel
 REAL              :: UCons_boundary(PP_nVar    ,0:PP_N,0:PP_N)
 REAL              :: UPrim_boundary(PP_nVarPrim,0:PP_N,0:PP_N)
 REAL              :: UCons_master  (PP_nVar    ,0:Nloc,0:Nloc)
 !==================================================================================================================================
+! convert primitive inner state to conservative
+DO q=0,PP_N; DO p=0,PP_N
+  CALL PrimToCons(UPrim_master(:,p,q,SideID), UCons_master(:,p,q)) 
+END DO; END DO ! p,q=0,PP_N
+
+BCType  = Boundarytype(BC(SideID),BC_TYPE)
 BCState = Boundarytype(BC(SideID),BC_STATE)
 pos = RiemannBC_Speeds(BCState,:) * t 
 dir = MOD(BCState+1,2)+1
 iL = SideToQuads(1,BCState)
 iR = SideToQuads(2,BCState)
-DO q=0,PP_N; DO p=0,PP_N
-  x = Face_xGP(dir,p,q,FV_Elems_master(SideID),SideID)
-  SELECT CASE (RiemannBC_WaveType(BCState))
-  CASE(SHOCK,DISCONTINUITY)
-    IF (x.LT.pos(1)) THEN
-      UCons_boundary(:,p,q)=RefStateCons(iL,:)
-      UPrim_boundary(:,p,q)=RefStatePrim(iL,:)
-    ELSE 
-      UCons_boundary(:,p,q)=RefStateCons(iR,:)
-      UPrim_boundary(:,p,q)=RefStatePrim(iR,:)
-    END IF
-  CASE(RAREFACTION)
+IF (BCType.EQ.-101) THEN
+  DO q=0,PP_N; DO p=0,PP_N
+    x = Face_xGP(dir,p,q,FV_Elems_master(SideID),SideID)
+    SELECT CASE (RiemannBC_WaveType(BCState))
+    CASE(SHOCK, DISCONTINUITY)
+      IF (x.LT.pos(1)) THEN
+        UCons_boundary(:,p,q)=RefStateCons(iL,:)
+        UPrim_boundary(:,p,q)=RefStatePrim(iL,:)
+      ELSE 
+        UCons_boundary(:,p,q)=RefStateCons(iR,:)
+        UPrim_boundary(:,p,q)=RefStatePrim(iR,:)
+      END IF
+    CASE(RAREFACTION)
+      IF (x.LE.pos(1)) THEN
+        UPrim_boundary(:,p,q)=RefStatePrim(iL,:)
+      ELSE IF( x.GE.pos(2)) THEN
+        UPrim_boundary(:,p,q)=RefStatePrim(iR,:)
+      ELSE
+        rel = (x-pos(1))/(pos(2)-pos(1))
+        UPrim_boundary(:,p,q)= (1-rel)*RefStatePrim(iL,:) + rel*RefStatePrim(iR,:)
+      END IF
+      CALL PrimToCons(UPrim_boundary(:,p,q), UCons_boundary(:,p,q)) 
+    END SELECT
+  END DO; END DO
+ELSE IF(BCType.EQ.-102) THEN
+  UPrim_boundary = UPrim_master(:,:,:,SideID)
+  UCons_boundary = UCons_master
+ELSE
+  CALL Abort(__STAMP__, &
+      "Unknown Boundary type!")
+END IF
 
-    IF (x.LE.pos(1)) THEN
-      UCons_boundary(:,p,q)=RefStateCons(iL,:)
-      UPrim_boundary(:,p,q)=RefStatePrim(iL,:)
-    ELSE IF( x.GE.pos(2)) THEN
-      UCons_boundary(:,p,q)=RefStateCons(iR,:)
-      UPrim_boundary(:,p,q)=RefStatePrim(iR,:)
-    ELSE
-      rel = (x-pos(1))/(pos(2)-pos(1))
-      UCons_boundary(:,p,q)= (1-rel)*RefStateCons(iL,:) + rel*RefStateCons(iR,:)
-      UPrim_boundary(:,p,q)= (1-rel)*RefStatePrim(iL,:) + rel*RefStatePrim(iR,:)
-    END IF
-  END SELECT
-END DO; END DO
-DO q=0,PP_N; DO p=0,PP_N
-  CALL PrimToCons(UPrim_master(:,p,q,SideID), UCons_master(:,p,q)) 
-END DO; END DO ! p,q=0,PP_N
-
-!WRITE (*,*) Face_xGP(:,0,0,FV_Elems_master(SideID),SideID)
-!WRITE (*,*) x, pos
-!WRITE (*,*) UPrim_master (:,0,0,SideID)
-!WRITE (*,*) UPrim_boundary(:,0,0)
-!read*
 CALL Riemann(Nloc,Flux(:,:,:,SideID),UCons_master,UCons_boundary,UPrim_master(:,:,:,SideID),UPrim_boundary,&
     NormVec (:,:,:,FV_Elems_master(SideID),SideID),&
     TangVec1(:,:,:,FV_Elems_master(SideID),SideID),&
