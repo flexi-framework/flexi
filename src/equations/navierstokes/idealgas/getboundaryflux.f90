@@ -250,7 +250,7 @@ CASE(22) ! exact BC = Dirichlet BC !!
   END DO; END DO
 
 
-CASE(3,4,9,23,24,-24,25,27)
+CASE(3,4,9,23,24,25,27)
   DO q=0,Nloc; DO p=0,Nloc
     ! transform state into normal system
     UPrim_boundary(1,p,q)= UPrim_master(1,p,q)
@@ -299,7 +299,7 @@ CASE(3,4,9,23,24,-24,25,27)
       UPrim_boundary(5,p,q)=pb
       UPrim_boundary(6,p,q)=UPrim_boundary(5,p,q)/(R*UPrim_boundary(1,p,q))
     END DO; END DO !p,q
-  CASE(24,-24) ! Pressure outflow BC
+  CASE(24) ! Pressure outflow BC
     DO q=0,Nloc; DO p=0,Nloc
       ! check if sub / supersonic (squared quantities)
       c=kappa*UPrim_boundary(5,p,q)/UPrim_boundary(1,p,q)
