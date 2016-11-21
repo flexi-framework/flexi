@@ -147,7 +147,7 @@ END SELECT
 IndStartTime = GETREAL('IndStartTime')
 ALLOCATE(IndValue(nElems))
 IndValue=0.
-CALL AddToElemData('Indicator',RealArray=IndValue)
+CALL AddToElemData('IndValue',RealArray=IndValue)
 
 IndVar = GETINT('IndVar','1')
 
