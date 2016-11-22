@@ -398,7 +398,30 @@ CASE(13) ! Schulz-Rinne: Cfg J
   u(4) = u(1)
   v(4) = GetPSI(rho(4), rho(1), p(4), p(1))+v(1)
 
-!CASE(14) ! Schulz-Rinne: like Cfg J, but different initial conditions?
+CASE(14) ! Schulz-Rinne: like Cfg J, but different initial conditions!
+  RiemannBC_WaveType(1) = DISCONTINUITY
+  RiemannBC_WaveType(2) = SHOCK
+  RiemannBC_WaveType(3) = DISCONTINUITY
+  RiemannBC_WaveType(4) = SHOCK
+  p(1) = 8.
+  p(3) = 8./3.
+  rho(1) = 2.
+  rho(2) = 1.
+  u(1) =  0.
+  v(1) = -0.5606
+  v(2) = -1.2172
+
+  p(2) = p(1)
+  u(2) = u(1)
+
+  rho(3) = GetRho_RankineHugoniot(rho(2), p(2), p(3))
+  u(3) = u(1)
+  v(3) = GetPSI(rho(3), rho(2), p(3), p(2))+v(2)
+
+  p(4) = p(3)
+  rho(4) = GetRho_RankineHugoniot(rho(1), p(1), p(4))
+  u(4) = u(1)
+  v(4) = GetPSI(rho(4), rho(1), p(4), p(1))+v(1)
 
 
 
