@@ -381,7 +381,7 @@ DO SideID=1,nBCSides
     ! Mach
     PrimVar(7)=PrimVar(4)/PrimVar(6)
     ! Temperature
-    PrimVar(8)=TEMPERATURE_H(UE)
+    PrimVar(8)=TEMPERATURE_HE(UE)
     ! EnergyStagnation
     PrimVar(9)=UE(ENER)*UE(SRHO)
     ! EnthalpyStagnation
