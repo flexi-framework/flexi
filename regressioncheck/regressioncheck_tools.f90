@@ -37,6 +37,14 @@ INTERFACE CheckForExecutable
   MODULE PROCEDURE CheckForExecutable
 END INTERFACE
 
+INTERFACE SummaryOfErrors
+  MODULE PROCEDURE SummaryOfErrors
+END INTERFACE
+
+INTERFACE AddError
+  MODULE PROCEDURE AddError
+END INTERFACE
+
 INTERFACE str2real
   MODULE PROCEDURE str2real
 END INTERFACE
@@ -50,6 +58,8 @@ INTERFACE str2logical
 END INTERFACE
 
 PUBLIC::GetExampleList,InitExample,CleanExample, CheckForExecutable,GetCommandLineOption
+PUBLIC::SummaryOfErrors
+PUBLIC::AddError
 PUBLIC::str2real,str2int,str2logical
 !==================================================================================================================================
 
@@ -76,7 +86,7 @@ SUBROUTINE GetCommandLineOption()
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_RegressionCheck_Vars, ONLY: RuntimeOption,RuntimeOptionType,BuildDebug,RuntimeOptionTypeII
+USE MOD_RegressionCheck_Vars, ONLY: RuntimeOption,RuntimeOptionType,BuildNoDebug,BuildDebug,RuntimeOptionTypeII
 USE MOD_RegressionCheck_Vars, ONLY: RuntimeOptionTypeIII,BuildContinue,BuildSolver
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -92,6 +102,8 @@ RuntimeOption='run'     ! default
 RuntimeOptionType='run' ! default
 RuntimeOptionTypeII=''  ! default
 RuntimeOptionTypeIII='' ! default
+BuildDebug=.FALSE.      ! default
+BuildNoDebug=.FALSE.    ! default
 ! Get number of command line arguments and read in runtime option of regressioncheck
 nArgs=COMMAND_ARGUMENT_COUNT()
 IF(nArgs.EQ.0)THEN
@@ -114,6 +126,9 @@ ELSE
       BuildDebug=.TRUE.
       RuntimeOptionType='run_freestream' ! debug uses "configuration.flexi" from "run_freestream" and displays the complete 
                                          ! compilation process for debugging
+    ELSEIF(TRIM(RuntimeOptionType).EQ.'no-debug')THEN
+      BuildNoDebug=.TRUE.
+      RuntimeOptionType='run_freestream' ! debug uses "configuration.flexi" from "run_freestream" and displays the complete 
     END IF
     IF(TRIM(RuntimeOptionTypeII).EQ.'debug')BuildDebug=.TRUE. ! e.g. ./regressioncheck build feature_convtest debug
     IF(TRIM(RuntimeOptionType).EQ.'run')RuntimeOptionType='run_freestream'
@@ -154,7 +169,7 @@ IMPLICIT NONE
 CHARACTER(LEN=500)            :: SYSCOMMAND           ! string to fit the system command
 CHARACTER(LEN=500)            :: SYSCOMMANDTWO        ! string to fit the system command
 CHARACTER(LEN=255)            :: FilePathName,FileName! file and path strings
-INTEGER                       :: ioUnit=33            ! io-unit
+INTEGER                       :: ioUnit               ! io-unit
 INTEGER                       :: iSTATUS              ! status
 INTEGER                       :: iExample             ! loop index for example
 CHARACTER(len=255)            :: cwd                  ! current cworking directory CALL getcwd(cwd)
@@ -174,7 +189,8 @@ ELSE ! run regressioncheck for a single folder located anywhere from which the r
   SYSCOMMAND='cd '//TRIM(ExamplesDir)//' && ls -d '//TRIM(FileName)//'/ > tmp.txt'
   RuntimeOptionType=TRIM(FileName) ! override RuntimeOptionType in order to select only this directory
 END IF
-BuildDir=TRIM(BASEDIR(2:LEN(BASEDIR)-1))! use basedir because one cannot use: TRIM(cwd)//'/' because the checked out flexi source 
+BuildDir=TRIM(BASEDIR(2:LEN(BASEDIR)-1))! use basedir because one cannot use: TRIM(cwd)//'/'
+                                        ! because the checked out flexi source 
                                         ! code is needed for building new flexi binaries
 
 ! sanity check: change directory into the example folder, if it does not exist this check fails
@@ -195,6 +211,7 @@ END IF
 
 ! read tmp.txt | list of directories if regressioncheck/examples
 FileName=TRIM(ExamplesDir)//'tmp.txt'
+ioUnit=GETFREEUNIT()
 OPEN(UNIT = ioUnit, FILE = FileName, STATUS ="OLD", IOSTAT = iSTATUS ) 
 
 nExamples=0
@@ -329,33 +346,67 @@ DO ! extract reggie information
       ELSE
         Example%SubExample       = ''
         Example%SubExampleNumber = 0
-      END IF      
+      END IF
     END IF
-    ! Line integration
+    ! Line integration (e.g. integrate a property over time, the data is read from a .csv or .dat file)
+    ! e.g. in parameter_reggie.ini: IntegrateLine= Database.csv   ,1            ,','       ,1:2        , 1.0e2
+    !                                              data file name , header lines, delimiter, colums x:y, integral value
     IF(TRIM(temp1(1:IndNum-1)).EQ.'IntegrateLine')THEN
-       Example%IntegrateLine=.TRUE.
-       Example%IntegrateLineRange=0 ! init
+       Example%IntegrateLine            = .TRUE.
+       Example%IntegrateLineRange(1:2)  = 0     ! init
+       Example%IntegrateLineHeaderLines = 0     ! init
+       Example%IntegrateLineDelimiter   = '999' ! init
        IndNum2=INDEX(temp1(IndNum+1:MaxNum),',')
-       IF(IndNum2.GT.0)THEN
-         temp2=temp1(IndNum+1:MaxNum)
-         Example%IntegrateLineFile=TRIM(ADJUSTL(temp2(1:IndNum2-1)))
-         temp2=temp2(IndNum2+1:LEN(TRIM(temp2)))
-         IndNum2=INDEX(temp2,',')
-         IF(IndNum2.GT.0)THEN ! get column ranges
-           IndNum3=INDEX(temp2(1:IndNum2),':')
-           IF(IndNum3.GT.0)THEN ! check range
-             CALL str2int(temp2(1        :IndNum3-1),Example%IntegrateLineRange(1),iSTATUS)
-             CALL str2int(temp2(IndNum3+1:IndNum2-1),Example%IntegrateLineRange(2),iSTATUS)
-             temp2=temp2(IndNum2+1:LEN(TRIM(temp2)))
-             IndNum2=LEN(temp2)
-             IF(IndNum2.GT.0)THEN ! get integral value
-               CALL str2real(temp2,Example%IntegrateLineValue,iSTATUS)
-             END IF ! get integral value 
-           END IF ! check range
-         END IF ! get column ranges
+       IF(IndNum2.GT.0)THEN ! get the name of the data file
+         temp2                     = temp1(IndNum+1:MaxNum)
+         Example%IntegrateLineFile = TRIM(ADJUSTL(temp2(1:IndNum2-1))) ! data file name
+         temp2                     = temp2(IndNum2+1:LEN(TRIM(temp2))) ! next
+         IndNum2                   = INDEX(temp2,',')
+
+         IF(IndNum2.GT.0)THEN ! get number of header lines in data file (they are ignored on reading the file)
+           CALL str2int(temp2(1:IndNum2-1),Example%IntegrateLineHeaderLines,iSTATUS)
+           temp2                   = temp2(IndNum2+1:LEN(TRIM(temp2))) ! next
+           IndNum2                 = INDEX(temp2,"'")
+!print*,"IndNum2",IndNum2
+           IF(IndNum2.GT.0)THEN ! get delimiter for separating the columns in the data file
+             IndNum3=INDEX(temp2(IndNum2+1:LEN(TRIM(temp2))),"'")+IndNum2
+!print*,"IndNum3",IndNum3
+!print*,"temp2 ",temp2
+!read*
+             Example%IntegrateLineDelimiter=temp2(IndNum2+1:IndNum3-1)
+!print*,"[",temp2(IndNum2+1:IndNum3-1),"]"
+!read*
+             temp2                 = temp2(IndNum3+1:LEN(TRIM(temp2))) ! next
+             IndNum2               = INDEX(temp2,',')
+             IF(IndNum2.GT.0)THEN ! get column ranges
+               temp2               = temp2(IndNum2+1:LEN(TRIM(temp2))) ! next
+               IndNum2             = INDEX(temp2,',')
+!print*,"temp2 ",temp2
+!read*
+               IndNum3=INDEX(temp2(1:IndNum2),':')
+               IF(IndNum3.GT.0)THEN ! check range
+                 CALL str2int(temp2(1        :IndNum3-1),Example%IntegrateLineRange(1),iSTATUS) ! column number 1
+                 CALL str2int(temp2(IndNum3+1:IndNum2-1),Example%IntegrateLineRange(2),iSTATUS) ! column number 2
+                 temp2             = temp2(IndNum2+1:LEN(TRIM(temp2))) ! next
+                 IndNum2           = LEN(temp2)
+                 IF(IndNum2.GT.0)THEN ! get integral value
+                   CALL str2real(temp2,Example%IntegrateLineValue,iSTATUS)
+                 END IF ! get integral value 
+               END IF ! check range
+             END IF ! get column ranges
+           END IF ! get delimiter
+         END IF !  get number of header lines
        END IF ! get file name
-      IF(ANY(Example%IntegrateLineRange(1:2).EQ.0))Example%IntegrateLine=.FALSE. 
-      IF(Example%IntegrateLineFile.EQ.'')Example%IntegrateLine=.FALSE.
+      IF(ANY(Example%IntegrateLineRange(1:2).EQ.0))   Example%IntegrateLine=.FALSE. 
+      IF(Example%IntegrateLineFile.EQ.'')             Example%IntegrateLine=.FALSE.
+      IF(Example%IntegrateLineHeaderLines.EQ.0)       Example%IntegrateLine=.FALSE.
+      IF(Example%IntegrateLineDelimiter(1:3).EQ.'999')Example%IntegrateLine=.FALSE.
+!print*,"Example%IntegrateLineRange(1:2)  ",Example%IntegrateLineRange(1:2)
+!print*,"Example%IntegrateLineFile        ",Example%IntegrateLineFile
+!print*,"Example%IntegrateLineHeaderLines ",Example%IntegrateLineHeaderLines
+!print*,"Example%IntegrateLineDelimiter "  ,Example%IntegrateLineDelimiter
+!print*,"Example%IntegrateLineValue "      ,Example%IntegrateLineValue
+!read*
     END IF ! 'IntegrateLine'
     ! Next feature
     !IF(TRIM(temp1(1:IndNum-1)).EQ.'NextFeature')
@@ -382,7 +433,7 @@ INTEGER,INTENT(IN)             :: iExample
 CHARACTER(LEN=500)             :: SYSCOMMAND
 CHARACTER(LEN=255)             :: FileName
 CHARACTER(LEN=255)             :: tmp
-INTEGER                        :: iSTATUS,ioUnit=22
+INTEGER                        :: iSTATUS,ioUnit
 !==================================================================================================================================
 ! delete all *.out files
 SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm *.out > /dev/null 2>&1'
@@ -408,6 +459,7 @@ ELSE
   END IF
   ! read tmp.txt | list of directories if regressioncheck/examples
   FileName=TRIM(Examples(iExample)%PATH)//'tmp.txt'
+  ioUnit=GETFREEUNIT()
   OPEN(UNIT = ioUnit, FILE = FileName, STATUS ="OLD", IOSTAT = iSTATUS ) 
   DO 
     READ(ioUnit,FMT='(A)',IOSTAT=iSTATUS) tmp
@@ -540,6 +592,122 @@ END SUBROUTINE GetNumberOfProcs
 
 
 !==================================================================================================================================
+!> Print a table containing the information of the error code pointer list
+!==================================================================================================================================
+SUBROUTINE SummaryOfErrors(EndTime)
+!===================================================================================================================================
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+USE MOD_RegressionCheck_Vars, ONLY: firstError,aError,nErrors
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL,INTENT(INOUT),OPTIONAL    :: EndTime            ! Used to track computation time  
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL                           :: Time
+CHARACTER(LEN=255)             :: TableRowSpacing ! set row spacing between examples in table
+!===================================================================================================================================
+IF(.NOT.PRESENT(EndTime))THEN
+  Time=FLEXITIME() ! Measure processing duration
+ELSE
+  Time=EndTime
+END IF
+SWRITE(UNIT_stdOut,'(132("="))')
+nErrors=0
+IF(.NOT.ASSOCIATED(aError))THEN
+  SWRITE(UNIT_stdOut,'(A)') ' No Examples were executed'
+ELSE
+  NULLIFY(aError%nextError) ! nullyfy unused next error pointer
+  SWRITE(UNIT_stdOut,'(A)') ' Summary of Errors (0=no Error): '
+  SWRITE(UNIT_stdOut,'(A)') ' '
+  aError=>firstError ! set aError to first error in list
+  TableRowSpacing=''
+  SWRITE(UNIT_stdOut,'(A45,2x,A30,2x,A10,2x,A15,2x,A35,2x)') 'Example','SubExample','ErrorCode','build','Information'
+  DO WHILE (ASSOCIATED(aError))
+    IF(TRIM(TableRowSpacing).NE.TRIM(aError%Example))THEN
+      SWRITE(UNIT_stdOut,*) ''
+    END IF
+    TableRowSpacing=TRIM(aError%Example)
+    SWRITE(UNIT_stdOut,'(A45,2x)',ADVANCE='no') TRIM(aError%Example)
+    IF(TRIM(aError%SubExampleOption).EQ.'-')THEN
+      SWRITE(UNIT_stdOut,'(A30,2x)',ADVANCE='no') '-'
+    ELSE
+      SWRITE(UNIT_stdOut,'(A30,2x)',ADVANCE='no') TRIM(aError%SubExample)//'='//TRIM(aError%SubExampleOption)
+    END IF
+    SWRITE(UNIT_stdOut,'(I10,2x)',ADVANCE='no') aError%ErrorCode
+    SWRITE(UNIT_stdOut,'(A15,2x)',ADVANCE='no') TRIM(aError%Build)
+    SWRITE(UNIT_stdOut,'(A35,2x)',ADVANCE='no') TRIM(aError%Info)
+    SWRITE(UNIT_stdOut,*) ''
+    IF(aError%ErrorCode.NE.0) nErrors=nErrors+1
+    aError=>aError%nextError
+  END DO
+  SWRITE(UNIT_stdOut,'(A,I4)') ' Number of errors:  ', nErrors
+END IF
+
+SWRITE(UNIT_stdOut,'(132("-"))')
+IF(nErrors.GT.0)THEN
+  SWRITE(UNIT_stdOut,'(A,F8.2,A)') ' RegressionCheck FAILED! [',Time-StartTime,' sec ]'
+ELSE
+  SWRITE(UNIT_stdOut,'(A,F8.2,A)') ' RegressionCheck SUCCESSFUL! [',Time-StartTime,' sec ]'
+END IF
+SWRITE(UNIT_stdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("="))')
+END SUBROUTINE SummaryOfErrors
+
+
+!==================================================================================================================================
+!> Add an Error entry to the list of pointers containing information regarding the compilation process, execution process, 
+!> Error codes and example info
+!==================================================================================================================================
+SUBROUTINE AddError(Info,iExample,iSubExample,ErrorStatus,ErrorCode)
+!===================================================================================================================================
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+USE MOD_RegressionCheck_Vars,    ONLY: ExampleNames,Examples,EXECPATH,firstError,aError
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+CHARACTER(len=*),INTENT(IN) :: Info
+INTEGER,INTENT(IN)          :: iExample,iSubExample,ErrorStatus,ErrorCode
+!INTEGER         :: a
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!LOGICAL         :: ALMOSTEQUAL
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!===================================================================================================================================
+Examples(iExample)%ErrorStatus=ErrorStatus
+IF(firstError%ErrorCode.EQ.-1)THEN ! first error pointer
+  firstError%ErrorCode              =ErrorCode ! no error
+  firstError%Example                =TRIM(ExampleNames(iExample))
+  firstError%SubExample             =TRIM(Examples(iExample)%SubExample)
+  firstError%SubExampleOption       =TRIM(Examples(iExample)%SubExampleOption(iSubExample))
+  firstError%Info                   =TRIM(Info)
+  firstError%Build                  =TRIM(EXECPATH(INDEX(EXECPATH,'/',BACK=.TRUE.)+1:LEN(EXECPATH)))
+  ALLOCATE(aError)
+  aError=>firstError
+ELSE ! next error pointer
+  ALLOCATE(aError%nextError)
+  aError%nextError%ErrorCode        =ErrorCode ! no error
+  aError%nextError%Example          =TRIM(ExampleNames(iExample))
+  aError%nextError%SubExample       =TRIM(Examples(iExample)%SubExample)
+  aError%nextError%SubExampleOption =TRIM(Examples(iExample)%SubExampleOption(iSubExample))
+  aError%nextError%Info             =TRIM(Info)
+  aError%nextError%Build            =TRIM(EXECPATH(INDEX(EXECPATH,'/',BACK=.TRUE.)+1:LEN(EXECPATH)))
+  aError=>aError%nextError
+END IF
+
+END SUBROUTINE AddError
+
+
+!==================================================================================================================================
 !> Convert a String to an Integer
 !==================================================================================================================================
 SUBROUTINE str2int(str,int_number,stat)
@@ -659,8 +827,8 @@ SWRITE(UNIT_stdOut,'(A)') '                            | compiles all possible c
 SWRITE(UNIT_stdOut,'(A)') '                            | specified in "comfiguration.flexi" and considers                         '
 SWRITE(UNIT_stdOut,'(A)') '                            | the specified exclude list for invalid combinations                      '
 SWRITE(UNIT_stdOut,'(A)') '                            | e.g. used for nightly tests                                              '
-SWRITE(UNIT_stdOut,'(A)') '                            | The cmake output may be shown on-screen by adding "debug" after possible '
-SWRITE(UNIT_stdOut,'(A)') '                            | [RuntimeOptionType] commands                                             '
+SWRITE(UNIT_stdOut,'(A)') '                            | The cmake output may be shown (disabled) on-screen by adding "debug"     '
+SWRITE(UNIT_stdOut,'(A)') '                            | ("no-debug") after possible [RuntimeOptionType] commands                 '
 SWRITE(UNIT_stdOut,'(A)') '                            | Multi-processor compilation is supported by adding "XX"  after possible  '
 SWRITE(UNIT_stdOut,'(A)') '                            | [RuntimeOptionType] commands, where "XX" is the number of processors     '
 SWRITE(UNIT_stdOut,'(A)') ' ------------------------------------------------------------------------------------------------------'

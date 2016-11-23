@@ -34,33 +34,35 @@ SUBROUTINE PerformRegressionCheck()
 USE MOD_Globals
 USE MOD_RegressionCheck_Build,   ONLY: ReadConfiguration_flexi,BuildConfiguration_flexi,GetFlagFromFile
 USE MOD_RegressionCheck_Compare, ONLY: CompareNorm,CompareDataSet,CompareRuntime,ReadNorm,IntegrateLine
-USE MOD_RegressionCheck_Tools,   ONLY: CheckForExecutable,InitExample,CleanExample
+USE MOD_RegressionCheck_Tools,   ONLY: CheckForExecutable,InitExample,CleanExample,AddError
 USE MOD_RegressionCheck_Vars,    ONLY: nExamples,ExampleNames,Examples,EXECPATH,RuntimeOptionType
-USE MOD_RegressionCheck_Vars,    ONLY: BuildTESTCASE,BuildDir,BuildSolver
+USE MOD_RegressionCheck_Vars,    ONLY: BuildTESTCASE,BuildTIMEDISCMETHOD,BuildDir,BuildSolver
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !CHARACTER(len=255)             :: cwd                               ! current cworking directory CALL getcwd(cwd)
-CHARACTER(LEN=500)             :: SYSCOMMAND,dummystr               ! string to fit the system command
-CHARACTER(LEN=255)             :: TESTCASE                          ! TESTCASE compile flag of current fexli binary
-CHARACTER(LEN=255)             :: ReggieBuildExe                    ! cache flexi executables when doing "BuildSolver":
-                                                                    ! this means don't build the same cmake configuration twice
-CHARACTER(LEN=255)             :: FileName                          ! path to a file or its name
-CHARACTER(LEN=255)             :: FolderName                        ! path to a folder or its name
-CHARACTER(LEN=255)             :: parameter_flexi                   ! input parameter file for flexi depending on EQNSYS
-LOGICAL                        :: ExistFile                         ! file exists=.true., file does not exist=.false.
-INTEGER                        :: iSTATUS                           ! status
-INTEGER                        :: iExample                          ! loop index for example
-REAL,ALLOCATABLE               :: ReferenceNorm(:,:)                ! L2 and Linf norm of the executed example from a reference
-                                                                    ! solution
-CHARACTER(LEN=255),ALLOCATABLE :: BuildConfigurations(:,:)          ! ??
-LOGICAL,ALLOCATABLE            :: BuildValid(:)                     ! ??
-INTEGER,ALLOCATABLE            :: BuildCounter(:)                   ! ??
-INTEGER,ALLOCATABLE            :: BuildIndex(:)                     ! ??
-INTEGER                        :: ErrorStatus                       ! Error-code of regressioncheck
-INTEGER                        :: N_compile_flags                   ! number of compile-flags
+CHARACTER(LEN=500)             :: SYSCOMMAND,dummystr               !> string to fit the system command
+CHARACTER(LEN=255)             :: TESTCASE                          !> compilation flag in FLEXI
+CHARACTER(LEN=255)             :: TIMEDISCMETHOD                    !> compilation flag in PICLas
+CHARACTER(LEN=255)             :: ReggieBuildExe                    !> cache FLEXI executables when doing "BuildSolver":
+                                                                    !> this means don't build the same cmake configuration twice
+CHARACTER(LEN=255)             :: FileName                          !> path to a file or its name
+CHARACTER(LEN=255)             :: FolderName                        !> path to a folder or its name
+CHARACTER(LEN=255)             :: parameter_flexi                   !> input parameter file for flexi depending on EQNSYS
+CHARACTER(LEN=255)             :: parameter_flexi2                  !> input parameter file for flexi depending on TIMEDISC
+LOGICAL                        :: ExistFile                         !> file exists=.true., file does not exist=.false.
+INTEGER                        :: iSTATUS                           !> status
+INTEGER                        :: iExample                          !> loop index for example
+REAL,ALLOCATABLE               :: ReferenceNorm(:,:)                !> L2 and Linf norm of the executed example from a reference
+                                                                    !> solution
+CHARACTER(LEN=255),ALLOCATABLE :: BuildConfigurations(:,:)          !> ??
+LOGICAL,ALLOCATABLE            :: BuildValid(:)                     !> ??
+INTEGER,ALLOCATABLE            :: BuildCounter(:)                   !> ??
+INTEGER,ALLOCATABLE            :: BuildIndex(:)                     !> ??
+INTEGER                        :: ErrorStatus                       !> Error-code of regressioncheck
+INTEGER                        :: N_compile_flags                   !> number of compile-flags
 INTEGER                        :: iReggieBuild,nReggieBuilds ! field handler unit and ??
 INTEGER                        :: IndNum
 INTEGER                        :: iSubExample
@@ -116,7 +118,7 @@ DO iExample = 1, nExamples ! loop level 1 of 3
       IF(ExistFile) THEN ! 1. build already exists (e.g. flexi0001 located in ../build_reggie_bin/)
         EXECPATH=TRIM(FileName)
       ELSE ! 2. build does not exists -> create it
-        CALL BuildConfiguration_flexi(iReggieBuild,nReggieBuilds,&
+        CALL BuildConfiguration_flexi(iExample,iReggieBuild,nReggieBuilds,&
                                       BuildCounter,BuildIndex,N_compile_flags,BuildConfigurations,BuildValid)
         IF(BuildValid(iReggieBuild))THEN ! only move flexi exe if it has been created (only for valid builds)
           SYSCOMMAND='cd '//TRIM(BuildDir)//' && mv build_reggie/bin/flexi build_reggie_bin/'//ReggieBuildExe
@@ -143,20 +145,38 @@ DO iExample = 1, nExamples ! loop level 1 of 3
     ! check if executable is compiled with correct TESTCASE (e.g. for tylorgreenvortex)
     IF(BuildSolver)THEN
       TESTCASE=BuildTESTCASE(iReggieBuild)
+      TIMEDISCMETHOD=BuildTIMEDISCMETHOD(iReggieBuild)
     ELSE
       FileName=EXECPATH(1:INDEX(EXECPATH,'/',BACK = .TRUE.))//'configuration.cmake'
       INQUIRE(File=FileName,EXIST=ExistFile)
-      IF(.NOT.ExistFile) THEN
-        SWRITE(UNIT_stdOut,'(A12,A)')     ' ERROR: ','no "configuration.cmake" found at the location of the flexi binary.'
+      IF(ExistFile) THEN
+        CALL  GetFlagFromFile(FileName,'FLEXI_TESTCASE',TESTCASE)
+        ! set default for, e.g., PICLas code (currently no testcases are implemented)
+        IF((TRIM(TESTCASE).EQ.'flag does not exist'))TESTCASE='default'
+        IF(TRIM(TESTCASE).EQ.'flag does not exist')CALL abort(&
+          __STAMP__&
+          ,'FLEXI_TESTCASE flag not found in configuration.cmake!',999,999.)
+
+        CALL GetFlagFromFile(FileName,'FLEXI_TIMEDISCMETHOD',TIMEDISCMETHOD)
+        IF(TRIM(TIMEDISCMETHOD).EQ.'flag does not exist')TIMEDISCMETHOD='dummy' ! debug: set global "CODE" variable
+        IF(TRIM(TIMEDISCMETHOD).EQ.'flag does not exist')CALL abort(&
+          __STAMP__&
+          ,'FLEXI_TIMEDISCMETHOD flag not found in configuration.cmake!',999,999.)
+      ELSE
+        SWRITE(UNIT_stdOut,'(A12,A)')     ' ERROR: ','no "configuration.cmake" found at the location of the FLEXI binary.'
         SWRITE(UNIT_stdOut,'(A12,A)')  ' FileName: ', TRIM(FileName)
         SWRITE(UNIT_stdOut,'(A12,L)') ' ExistFile: ', ExistFile
         ERROR STOP '-1'
-      ELSE
-        CALL  GetFlagFromFile(FileName,'FLEXI_TESTCASE',TESTCASE)
-        IF((TRIM(TESTCASE).EQ.'flag does not exist'))CALL abort(&
-          __STAMP__&
-          ,'FLEXI_TESTCASE not found in configuration.cmake!',999,999.)
       END IF
+    END IF
+
+      ! remove subexample for certain configurations: e.g. Preconditioner when running explicitly
+!print*,"TRIM(TIMEDISCMETHOD)=",TRIM(TIMEDISCMETHOD)
+!read*
+    IF((TRIM(TIMEDISCMETHOD).NE.'ImplicitO3').AND.(TRIM(Examples(iExample)%SubExample).EQ.'PrecondType'))THEN
+      Examples(iExample)%SubExample       = ''
+      Examples(iExample)%SubExampleNumber = 0
+      Examples(iExample)%SubExampleOption(1:20) = '-' ! default option is nothing
     END IF
 
     ! check folder name and decide whether it can be executed with the current flexi binary (e.g. testcases ...)
@@ -178,7 +198,8 @@ DO iExample = 1, nExamples ! loop level 1 of 3
       IndNum=INDEX(FolderName, '/')                   ! e.g. taylorgreenvortex/
       IF(IndNum.GT.0)FolderName=FolderName(1:IndNum-1)! e.g. taylorgreenvortex
       IF(FolderName.NE.TESTCASE)THEN ! e.g. taylorgreenvortex .NE. phill
-        SWRITE(UNIT_stdOut,'(A,2x,A)') ' TESTCASE not found in flexi binary ...skipping' ! TESTCASE folder and non-TESTCASE flexi
+        ! TESTCASE folder and non-TESTCASE flexi
+        SWRITE(UNIT_stdOut,'(A,2x,A)') ' TESTCASE not found in flexi binary ...skipping'
         CYCLE
       ELSE
         SWRITE(UNIT_stdOut,'(A,2x,A)') ' TESTCASE is correct ...running' ! TESTCASE folder and TESTCASE flexi
@@ -186,54 +207,74 @@ DO iExample = 1, nExamples ! loop level 1 of 3
     ELSE ! folder name does not contain 'TESTCASE'
       FolderName='default' ! for non-TESTCASE setups, set the default settings
       IF(FolderName.NE.TESTCASE)THEN ! e.g. default .NE. phill
-        SWRITE(UNIT_stdOut,'(A,2x,A)') ' TESTCASE not found in flexi binary ...skipping' ! non-TESTCASE folder, but TESTCASE flexi
+        ! non-TESTCASE folder, but TESTCASE flexi
+        SWRITE(UNIT_stdOut,'(A)') ' TESTCASE "default" not found in flexi binary: TESTCASE=['//TRIM(TESTCASE)//'] ...skipping'
         CYCLE
       ELSE
-        SWRITE(UNIT_stdOut,'(A,2x,A)') ' TESTCASE is correct ...running' ! non-TESTCASE folder and non-TESTCASE flexi
+        ! non-TESTCASE folder and non-TESTCASE flexi
+        SWRITE(UNIT_stdOut,'(A)') ' TESTCASE "default" is correct: TESTCASE=['//TRIM(TESTCASE)//'] ...running' 
       END IF
     END IF
 
-    !Examples(iExample)%Nvar=1
-    ! debug 
-    print*,'EXECPATH:                ',TRIM(EXECPATH)
-    print*,'EQNSYSNAME:              ',TRIM(Examples(iExample)%EQNSYSNAME)
-    print*,'nVar:                    ',     Examples(iExample)%Nvar    
-    print*,'PATH:                    ',TRIM(Examples(iExample)%PATH)
-    print*,'EXEC:                    ',     Examples(iExample)%EXEC  
-    print*,'Reference:               ',TRIM(Examples(iExample)%ReferenceFile)
-    print*,'State:                   ',TRIM(Examples(iExample)%ReferenceStateFile)
-    print*,'HDF5 dataset:            ',TRIM(Examples(iExample)%ReferenceDataSetName)
-    print*,'Restart:                 ',TRIM(Examples(iExample)%RestartFileName)
-    print*,'Example%SubExample:      ',TRIM(Examples(iExample)%SubExample)
-    print*,'Example%SubExampleNumber:',     Examples(iExample)%SubExampleNumber
-  !SWRITE(UNIT_stdOut,'(A,I2,A4,A)')"Example%SubExampleOption(",iSubExample,") = ",TRIM(Example%SubExampleOption(iSubExample))
-    ! perform simulation
-    parameter_flexi='parameter_flexi_'//TRIM(ADJUSTL(Examples(iExample)%EQNSYSNAME))//'.ini'
+    ! get list of parameter files for running the simulation
+    parameter_flexi2=''
+    IF(TRIM(TIMEDISCMETHOD).EQ.'DSMC')THEN
+      parameter_flexi='parameter_flexi_'//TRIM(ADJUSTL(Examples(iExample)%EQNSYSNAME))//'_DSMC.ini'
+      parameter_flexi2='parameter_DSMC.ini'
+    ELSE
+      parameter_flexi='parameter_flexi_'//TRIM(ADJUSTL(Examples(iExample)%EQNSYSNAME))//'.ini'
+    END IF
     INQUIRE(File=TRIM(Examples(iExample)%PATH)//TRIM(parameter_flexi),EXIST=ExistFile)
     IF(.NOT.ExistFile) THEN
       SWRITE(UNIT_stdOut,'(A,A)') ' ERROR: no File found under ',TRIM(Examples(iExample)%PATH)
-      SWRITE(UNIT_stdOut,'(A,A)') ' parameter_flexi:           ',TRIM(parameter_flexi)
+      SWRITE(UNIT_stdOut,'(A,A)') ' parameter_flexi:      ',TRIM(parameter_flexi)
       ERROR STOP '-1'
     END IF
+    IF(parameter_flexi2.NE.'')THEN
+      INQUIRE(File=TRIM(Examples(iExample)%PATH)//TRIM(parameter_flexi2),EXIST=ExistFile)
+      IF(.NOT.ExistFile) THEN
+        SWRITE(UNIT_stdOut,'(A,A)') ' ERROR: no File found under ',TRIM(Examples(iExample)%PATH)
+        SWRITE(UNIT_stdOut,'(A,A)') ' parameter_flexi2:     ',TRIM(parameter_flexi2)
+        ERROR STOP '-1'
+      END IF
+    END IF
+!==================================================================================================================================
+    ! Output settings
+    print*,' EXECPATH:                  ',TRIM(EXECPATH)
+    print*,' EQNSYSNAME:                ',TRIM(Examples(iExample)%EQNSYSNAME)
+    print*,' nVar:                      ',     Examples(iExample)%Nvar    
+    print*,' PATH (to example):         ',TRIM(Examples(iExample)%PATH)
+    print*,' EXEC (run with MPI):       ',     Examples(iExample)%EXEC  
+    print*,' Reference:                 ',TRIM(Examples(iExample)%ReferenceFile)
+    print*,' State:                     ',TRIM(Examples(iExample)%ReferenceStateFile)
+    print*,' HDF5 dataset:              ',TRIM(Examples(iExample)%ReferenceDataSetName)
+    print*,' Restart:                   ',TRIM(Examples(iExample)%RestartFileName)
+    print*,' Example%SubExample:        ',TRIM(Examples(iExample)%SubExample)
+    print*,' Example%SubExampleNumber:  ',     Examples(iExample)%SubExampleNumber
+    print*,' parameter files:           ',TRIM(parameter_flexi)//' '//TRIM(parameter_flexi2)
 !==================================================================================================================================
     DO iSubExample = 1, MAX(1,Examples(iExample)%SubExampleNumber) ! loop level 3 of 3: SubExamples (e.g. different TimeDiscMethods)
 !==================================================================================================================================
       IF(Examples(iExample)%SubExampleNumber.GT.0)THEN ! SubExample has been specified
         SWRITE(UNIT_stdOut,'(A)')" "
         SWRITE(UNIT_stdOut,'(A,I2,A,A)')" SubExampleOption(",iSubExample,")=",TRIM(Examples(iExample)%SubExampleOption(iSubExample))
-        SYSCOMMAND=     'cd '//TRIM(Examples(iExample)%PATH)//& ! print the current SubExampleOption(iSubExample) to parameter_flexi
-        ' && sed -i -e "s/.*'//TRIM(Examples(iExample)%SubExample)//&
-                       '=.*/'//TRIM(Examples(iExample)%SubExample)//&
-                          '='//TRIM(Examples(iExample)%SubExampleOption(iSubExample))//&
-                        '/" '//TRIM(parameter_flexi)
+        SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//& ! print the current SubExampleOption(iSubExample) to parameter_flexi
+   ' && sed -i -e "s/.*'//TRIM(Examples(iExample)%SubExample)//&
+                  '=.*/'//TRIM(Examples(iExample)%SubExample)//&
+                     '='//TRIM(Examples(iExample)%SubExampleOption(iSubExample))//&
+                   '/" '//TRIM(parameter_flexi)
         CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
       END IF
+    IF(Examples(iExample)%IntegrateLine)THEN ! delete pre-existing data files before running the code
+      SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm '//TRIM(Examples(iExample)%IntegrateLineFile)//' > /dev/null 2>&1'
+      CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS) ! delete, e.g., "TGVAnalysis.dat" or "Database.csv"
+    END IF
       IF(Examples(iExample)%EXEC)THEN
         SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && mpirun -np 2 '//TRIM(EXECPATH)//' '//TRIM(parameter_flexi)//' ' &
-                    //TRIM(Examples(iExample)%RestartFileName)//' 1>std.out 2>err.out'
+                    //TRIM(parameter_flexi2)//' '//TRIM(Examples(iExample)%RestartFileName)//' 1>std.out 2>err.out'
       ELSE
         SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && '//TRIM(EXECPATH)//' '//TRIM(parameter_flexi)//' ' &
-                    //TRIM(Examples(iExample)%RestartFileName)//' 1>std.out 2>err.out'
+                    //TRIM(parameter_flexi2)//' '//TRIM(Examples(iExample)%RestartFileName)//' 1>std.out 2>err.out'
       END IF
       CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
       print*,' --------------------------------------', iSTATUS
@@ -273,7 +314,7 @@ DO iExample = 1, nExamples ! loop level 1 of 3
         CALL CompareDataSet(iExample)
         IF(Examples(iExample)%ErrorStatus.EQ.3)THEN
           CALL AddError('Mismatch in HDF5-files. Datasets are unequal',iExample,iSubExample,ErrorStatus=3,ErrorCode=4)
-          SWRITE(UNIT_stdOut,'(A)')  ' Mismatch in HDF5-files. Datasets are unequal'
+          SWRITE(UNIT_stdOut,'(A)')  ' Mismatch in HDF5-files'
         END IF
       END IF
 
@@ -281,7 +322,7 @@ DO iExample = 1, nExamples ! loop level 1 of 3
       IF(Examples(iExample)%IntegrateLine)THEN
         CALL IntegrateLine(ErrorStatus,iExample)
         IF(Examples(iExample)%ErrorStatus.EQ.5)THEN
-        CALL AddError('Mismatched in LineIntegral. The integrated values unequal',iExample,iSubExample,ErrorStatus=5,ErrorCode=5)
+        CALL AddError('Mismatch in LineIntegral',iExample,iSubExample,ErrorStatus=5,ErrorCode=5)
         END IF
       END IF
 
@@ -298,54 +339,10 @@ END SUBROUTINE PerformRegressionCheck
 
 
 !==================================================================================================================================
-!> Add an Error entry to the list of pointers containing information regarding the compilation process, execution process, 
-!> Error codes and example info
-!==================================================================================================================================
-SUBROUTINE AddError(Info,iExample,iSubExample,ErrorStatus,ErrorCode)
-!===================================================================================================================================
-!===================================================================================================================================
-! MODULES
-USE MOD_Globals
-USE MOD_RegressionCheck_Vars,    ONLY: ExampleNames,Examples,EXECPATH,firstError,aError
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-CHARACTER(len=*),INTENT(IN) :: Info
-INTEGER,INTENT(IN)          :: iExample,iSubExample,ErrorStatus,ErrorCode
-!INTEGER         :: a
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-!LOGICAL         :: ALMOSTEQUAL
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-!===================================================================================================================================
-Examples(iExample)%ErrorStatus=ErrorStatus
-IF(firstError%ErrorCode.EQ.-1)THEN ! first error pointer
-  firstError%ErrorCode              =ErrorCode ! no error
-  firstError%Example                =TRIM(ExampleNames(iExample))
-  firstError%SubExampleOption       =TRIM(Examples(iExample)%SubExampleOption(iSubExample))
-  firstError%Info                   =TRIM(Info)
-  firstError%Build                  =TRIM(EXECPATH(INDEX(EXECPATH,'/',BACK=.TRUE.)+1:LEN(EXECPATH)))
-  ALLOCATE(aError)
-  aError=>firstError
-ELSE ! next error pointer
-  ALLOCATE(aError%nextError)
-  aError%nextError%ErrorCode        =ErrorCode ! no error
-  aError%nextError%Example          =TRIM(ExampleNames(iExample))
-  aError%nextError%SubExampleOption =TRIM(Examples(iExample)%SubExampleOption(iSubExample))
-  aError%nextError%Info             =TRIM(Info)
-  aError%nextError%Build            =TRIM(EXECPATH(INDEX(EXECPATH,'/',BACK=.TRUE.)+1:LEN(EXECPATH)))
-  aError=>aError%nextError
-END IF
-
-END SUBROUTINE AddError
-
-
-!==================================================================================================================================
-!> depending on the equation system -> get different Nvar for the current example
+!> depending on the equation system -> get different Nvar (number of variables in the equation system) for the current example
 !> currently supports: - navierstokes             ->    Examples(iExample)%Nvar=5
 !>                     - linearscalaradvection    ->    Examples(iExample)%Nvar=1
+!>                     - maxwell                  ->    Examples(iExample)%Nvar=8
 !==================================================================================================================================
 SUBROUTINE GetNvar(iExample,iReggieBuild)
 !===================================================================================================================================
@@ -414,6 +411,8 @@ SELECT CASE (TRIM(Examples(iExample)%EQNSYSNAME))
     Examples(iExample)%Nvar=5
   CASE ('linearscalaradvection')  
     Examples(iExample)%Nvar=1
+  CASE ('maxwell')  
+    Examples(iExample)%Nvar=8
   CASE DEFAULT
     Examples(iExample)%Nvar=-1
     SWRITE(UNIT_stdOut,'(A)')   ' ERROR: missing case select for this FLEXI_EQNSYSNAME with appropriate Nvar. Fix it by'

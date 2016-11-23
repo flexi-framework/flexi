@@ -1,7 +1,7 @@
 #include "flexi.h"
 
 !==================================================================================================================================
-!> Contains the routines to build flexi
+!> Contains the routines to build the binaries
 !==================================================================================================================================
 MODULE MOD_RegressionCheck_Build
 ! MODULES
@@ -42,6 +42,7 @@ SUBROUTINE ReadConfiguration_flexi(iExample,nReggieBuilds,BuildCounter,BuildInde
 ! MODULES
 USE MOD_Globals
 USE MOD_RegressionCheck_Vars,    ONLY: Examples,RuntimeOptionType,BuildEQNSYS,BuildTESTCASE,BuildContinue,BuildContinueNumber
+USE MOD_RegressionCheck_Vars,    ONLY: BuildTIMEDISCMETHOD
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -194,6 +195,8 @@ DO I=1,2
   IF(I.EQ.1)BuildEQNSYS=''
   IF(I.EQ.1)ALLOCATE(BuildTESTCASE(nReggieBuilds))
   IF(I.EQ.1)BuildTESTCASE='default'
+  IF(I.EQ.1)ALLOCATE(BuildTIMEDISCMETHOD(nReggieBuilds))
+  IF(I.EQ.1)BuildTIMEDISCMETHOD='default'
 END DO
 
 
@@ -315,20 +318,21 @@ SWRITE(UNIT_stdOut,'(132("="))')
 END SUBROUTINE ReadConfiguration_flexi
 
 !==================================================================================================================================
-!> reads the file "configurationsX.cmake" and creates a flexi binary
+!> reads the file "configurationsX.cmake" and creates a binary
 !==================================================================================================================================
-SUBROUTINE BuildConfiguration_flexi(iReggieBuild,nReggieBuilds,&
+SUBROUTINE BuildConfiguration_flexi(iExample,iReggieBuild,nReggieBuilds,&
                                     BuildCounter,BuildIndex,N_compile_flags,BuildConfigurations,BuildValid)
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_RegressionCheck_Vars,  ONLY: BuildDebug,BuildEQNSYS,BuildTESTCASE,NumberOfProcs,NumberOfProcsStr
-USE MOD_RegressionCheck_Vars,  ONLY: BuildContinue,BuildContinueNumber,BuildDir
+USE MOD_RegressionCheck_Vars,  ONLY: BuildDebug,BuildNoDebug,BuildEQNSYS,BuildTESTCASE,NumberOfProcs,NumberOfProcsStr
+USE MOD_RegressionCheck_Vars,  ONLY: BuildContinue,BuildContinueNumber,BuildDir,BuildTIMEDISCMETHOD
+USE MOD_RegressionCheck_tools, ONLY: SummaryOfErrors,AddError
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER,INTENT(IN)                        :: iReggieBuild,N_compile_flags,nReggieBuilds
+INTEGER,INTENT(IN)                        :: iExample,iReggieBuild,N_compile_flags,nReggieBuilds
 INTEGER,ALLOCATABLE,INTENT(INOUT)         :: BuildCounter(:),BuildIndex(:)
 LOGICAL,ALLOCATABLE,INTENT(IN)            :: BuildValid(:)
 CHARACTER(LEN=255),ALLOCATABLE,INTENT(IN) :: BuildConfigurations(:,:)
@@ -338,9 +342,9 @@ CHARACTER(LEN=255),ALLOCATABLE,INTENT(IN) :: BuildConfigurations(:,:)
 ! LOCAL VARIABLES
 INTEGER                                   :: ioUnit,iSTATUS,J,K
 !INTEGER                                   :: N_compile_flags,N_subinclude,N_exclude
-!CHARACTER(LEN=255)                        :: FileName,temp,temp2,COMPILE_FLAG,dummystr
+CHARACTER(LEN=255)                        :: FileName!,temp,temp2,COMPILE_FLAG,dummystr
 !CHARACTER(LEN=255)                        :: EXCLUDE_FLAG_A,EXCLUDE_FLAG_B
-!LOGICAL                                   :: ExistFile,InvalidA,InvalidB
+LOGICAL                                   :: ExistFile!,InvalidA,InvalidB
 !CHARACTER(LEN=255),ALLOCATABLE            :: ExcludeConfigurations(:,:),BuildValidInfo(:)
 !INTEGER                                   :: MaxBuildConfigurations=400,N_subinclude_max,N_compile_flags_max
 !INTEGER,ALLOCATABLE                       :: BuildIndex(:),BuildCounter(:)
@@ -358,35 +362,68 @@ IF(BuildValid(iReggieBuild))THEN
   CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
   SYSCOMMAND='cd '//TRIM(BuildDir)//' && mkdir build_reggie'
   CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
-  WRITE(tempStr,*)iReggieBuild-1 ! print previously completed build to file for continuation possibility
+  SWRITE(tempStr,*)iReggieBuild-1 ! print previously completed build to file for continuation possibility
   SYSCOMMAND='echo '//TRIM(tempStr)//' > '//TRIM(BuildDir)//'build_reggie/BuildContinue.flexi'
   CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
   OPEN(UNIT=ioUnit,FILE=TRIM(BuildDir)//'build_reggie/configurationX.cmake',STATUS="NEW",ACTION='WRITE',IOSTAT=iSTATUS)
-    DO K=1,N_compile_flags
-      write(ioUnit, '(A)', ADVANCE = "NO") ' -D'
-      write(ioUnit, '(A)', ADVANCE = "NO") TRIM(ADJUSTL(BuildConfigurations(K,1)))
-      write(ioUnit, '(A)', ADVANCE = "NO") '='
-      write(ioUnit, '(A)', ADVANCE = "NO") TRIM(ADJUSTL(BuildConfigurations(K,BuildCounter(K)+1)))
-    END DO
+  DO K=1,N_compile_flags ! print the compiler flag command line to "configurationX.cmake"
+    SWRITE(ioUnit, '(A)', ADVANCE = "NO") ' -D'
+    SWRITE(ioUnit, '(A)', ADVANCE = "NO") TRIM(ADJUSTL(BuildConfigurations(K,1)))
+    SWRITE(ioUnit, '(A)', ADVANCE = "NO") '='
+    SWRITE(ioUnit, '(A)', ADVANCE = "NO") TRIM(ADJUSTL(BuildConfigurations(K,BuildCounter(K)+1)))
+  END DO
   CLOSE(ioUnit)
   SYSCOMMAND='cd '//TRIM(BuildDir)//'build_reggie && echo  `cat configurationX.cmake` '
   CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
   SYSCOMMAND='cd '//TRIM(BuildDir)//&
-             'build_reggie && cmake `cat configurationX.cmake` ../../ > build_flexi.out  && make flexi >> build_flexi.out'
-  IF(BuildDebug)SYSCOMMAND='cd '//TRIM(BuildDir)//'build_reggie && cmake `cat configurationX.cmake` ../../  && make flexi '
+   'build_reggie && cmake `cat configurationX.cmake` ../../ > build_flexi.out  && make flexi >> build_flexi.out'
+  IF(BuildDebug)THEN
+    SYSCOMMAND='cd '//TRIM(BuildDir)//'build_reggie && cmake `cat configurationX.cmake` ../../  && make flexi '
+  ELSEIF(BuildNoDebug)THEN
+    SYSCOMMAND='cd '//TRIM(BuildDir)//&
+   'build_reggie && cmake `cat configurationX.cmake` ../../ > build_flexi.out  && make flexi >> build_flexi.out 2>&1'
+  END IF
   IF(NumberOfProcs.GT.1)SYSCOMMAND=TRIM(SYSCOMMAND)//' -j '//TRIM(ADJUSTL(NumberOfProcsStr))
   CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
-  ! save compilation flags (even some that are not explicitly selected by the user) for deciding whether a supplied example folder 
-  ! can be executed with the compiled flexi executable
+  ! save compilation flags (even those that are not explicitly selected by the user) for deciding whether a supplied example folder 
+  ! can be executed with the compiled executable or not
   IF(iSTATUS.EQ.0)THEN
     CALL GetFlagFromFile(TRIM(BuildDir)//'build_reggie/bin/configuration.cmake','FLEXI_TESTCASE',BuildTESTCASE(iReggieBuild))
+    ! set default for, e.g., PICLas code (currently no testcases are implemented)
+    IF(BuildTESTCASE(iReggieBuild).EQ.'flag does not exist')BuildTESTCASE(iReggieBuild)='default'
+    CALL GetFlagFromFile(TRIM(BuildDir)//'build_reggie/bin/configuration.cmake','FLEXI_TIMEDISCMETHOD',&
+                                                                                                BuildTIMEDISCMETHOD(iReggieBuild))
+    ! set default for, e.g., FLEXI (not a compilation flag)
+    IF(BuildTESTCASE(iReggieBuild).EQ.'flag does not exist')BuildTESTCASE(iReggieBuild)='default'
     CALL GetFlagFromFile(TRIM(BuildDir)//'build_reggie/bin/configuration.cmake','FLEXI_EQNSYSNAME',BuildEQNSYS(iReggieBuild))
-  ELSE
+  ELSE ! iSTATUS.NE.0 -> failed to compile cmake configuration build
+    CALL AddError('Error while compiling',iExample,1,ErrorStatus=1,ErrorCode=1) !note: iSubExample is set to 1 as argument
+    CALL SummaryOfErrors() ! Print the summary or examples and error codes (if they exist) before calling abort
+    ! Print the error that caused the compilation abort (if it was written to "build_flexi.out" due to silent compilation)
+    FileName=TRIM(BuildDir)//'build_reggie/build_flexi.out'
+    INQUIRE(File=TRIM(FileName),EXIST=ExistFile)
+    !print*,"ExistFile=",ExistFile
+    IF(ExistFile) THEN ! build_flexi.out exists
+      SWRITE(UNIT_stdOut, '(A)')' '
+      SWRITE(UNIT_stdOut,'(132("="))')
+      ! build [no-debug] = T
+      ! build [debug]    = F
+      ! build [-]        = T (but the error should already be printed to the screen!)
+      SWRITE(UNIT_stdOut, '(A)')"Error output from: "//TRIM(FileName)
+      SWRITE(UNIT_stdOut, '(A)')' '
+      SYSCOMMAND='grep -rin error '//TRIM(FileName)
+      CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
+      SWRITE(UNIT_stdOut,'(132("="))')
+      SWRITE(UNIT_stdOut, '(A)')' '
+    !ELSE
+      !SWRITE(UNIT_stdOut, '(A)')TRIM(FileName)//" does not exist"
+    END IF
     CALL abort(__STAMP__&
     ,'Could not compile flexi! iSTATUS=',iSTATUS,999.)
   END IF
-  print*,"BuildEQNSYS(iReggieBuild)  =",TRIM(BuildEQNSYS(iReggieBuild))
-  print*,"BuildTESTCASE(iReggieBuild)=",TRIM(BuildTESTCASE(iReggieBuild))
+  SWRITE(UNIT_stdOut,'(A)')"BuildEQNSYS(iReggieBuild)          = ",TRIM(BuildEQNSYS(iReggieBuild))
+  SWRITE(UNIT_stdOut,'(A)')"BuildTESTCASE(iReggieBuild)        = ",TRIM(BuildTESTCASE(iReggieBuild))
+  SWRITE(UNIT_stdOut,'(A)')"BuildTIMEDISCMETHOD(iReggieBuild)) = ",TRIM(BuildTIMEDISCMETHOD(iReggieBuild))
   SYSCOMMAND='cd '//TRIM(BuildDir)//'build_reggie'
   IF(.NOT.BuildDebug)SYSCOMMAND=TRIM(SYSCOMMAND)//' && tail -n 1 build_flexi.out'
   CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
@@ -421,6 +458,7 @@ SUBROUTINE GetFlagFromFile(FileName,Flag,output)
 !===================================================================================================================================
 !===================================================================================================================================
 ! MODULES
+USE MOD_Globals,            ONLY: Getfreeunit
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -436,12 +474,13 @@ CHARACTER(LEN=*),INTENT(INOUT) :: output ! e.g. 'navierstokes'
 LOGICAL                        :: ExistFile    ! file exists=.true., file does not exist=.false.
 INTEGER                        :: iSTATUS      ! status
 CHARACTER(LEN=255)             :: temp,temp2   ! temp variables for read in of file lines
-INTEGER                        :: ioUnit=34    ! field handler unit and ??
+INTEGER                        :: ioUnit       ! field handler unit and ??
 INTEGER                        :: IndNum       ! Index Number
 !===================================================================================================================================
 output=''
 INQUIRE(File=TRIM(FileName),EXIST=ExistFile)
 IF(ExistFile) THEN
+  ioUnit=GETFREEUNIT()
   OPEN(UNIT=ioUnit,FILE=TRIM(FileName),STATUS="OLD",IOSTAT=iSTATUS,ACTION='READ') 
   DO
     READ(ioUnit,'(A)',iostat=iSTATUS)temp
@@ -463,9 +502,10 @@ IF(ExistFile) THEN
       END IF
     END IF
   END DO
-CLOSE(ioUnit)
+  CLOSE(ioUnit)
+  IF(output.EQ.'')output='flag does not exist'
 ELSE 
-  output=TRIM(FileName)//': file does not exist'
+  output='file does not exist'
 END IF
 END SUBROUTINE GetFlagFromFile
 
