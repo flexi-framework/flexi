@@ -102,20 +102,20 @@ IMPLICIT NONE
 INTEGER,INTENT(IN),OPTIONAL      :: mpi_comm_IN
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER :: mpi_comm
+INTEGER :: mpi_com_loc
 !==================================================================================================================================
 #if USE_MPI
 IF (PRESENT(mpi_comm_IN)) THEN
-  mpi_comm = mpi_comm_IN
+  mpi_com_loc = mpi_comm_IN
 ELSE
   CALL MPI_INIT(iError)
-  mpi_comm = MPI_COMM_WORLD
+  mpi_com_loc = MPI_COMM_WORLD
   IF(iError .NE. 0) &
     CALL Abort(__STAMP__,'Error in MPI_INIT',iError)
 END IF 
 
-CALL MPI_COMM_RANK(mpi_comm, myRank     , iError)
-CALL MPI_COMM_SIZE(mpi_comm, nProcessors, iError)
+CALL MPI_COMM_RANK(mpi_com_loc, myRank     , iError)
+CALL MPI_COMM_SIZE(mpi_com_loc, nProcessors, iError)
 IF(iError .NE. 0) &
   CALL Abort(__STAMP__,'Could not get rank and number of processors',iError)
 MPIRoot=(myRank .EQ. 0)
