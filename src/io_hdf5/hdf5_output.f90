@@ -219,12 +219,17 @@ USE MOD_Globals
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=*),INTENT(IN)    :: FileName,DataSetName
-LOGICAL,INTENT(IN)             :: create,collective
-INTEGER,INTENT(IN)             :: rank,nVal(rank),nValGlobal(rank),offset(rank)
-REAL              ,INTENT(IN),OPTIONAL,TARGET :: RealArray(PRODUCT(nVal))
-INTEGER           ,INTENT(IN),OPTIONAL,TARGET :: IntArray( PRODUCT(nVal))
-CHARACTER(LEN=255),INTENT(IN),OPTIONAL,TARGET :: StrArray( PRODUCT(nVal))
+CHARACTER(LEN=*),INTENT(IN)    :: FileName          !< Name of the file to write to
+CHARACTER(LEN=*),INTENT(IN)    :: DataSetName       !< Name of the dataset to write
+LOGICAL,INTENT(IN)             :: create            !< Should the file be created or not
+LOGICAL,INTENT(IN)             :: collective        !< Collective write or not
+INTEGER,INTENT(IN)             :: rank              !< Rank of array
+INTEGER,INTENT(IN)             :: nVal(rank)        !< Local number of variables in each rank
+INTEGER,INTENT(IN)             :: nValGlobal(rank)  !< Global number of variables in each rank
+INTEGER,INTENT(IN)             :: offset(rank)      !< Offset in each rank
+REAL              ,INTENT(IN),OPTIONAL,TARGET :: RealArray(PRODUCT(nVal)) !< Real array to write
+INTEGER           ,INTENT(IN),OPTIONAL,TARGET :: IntArray( PRODUCT(nVal)) !< Integer array to write
+CHARACTER(LEN=255),INTENT(IN),OPTIONAL,TARGET :: StrArray( PRODUCT(nVal)) !< String array to write
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 #if MPI
@@ -324,8 +329,8 @@ USE MOD_Mesh_Vars,ONLY: offsetElem,nGlobalElems,nElems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=255),INTENT(IN)  :: FileName
-TYPE(tElementOut),POINTER,INTENT(IN) :: ElemList
+CHARACTER(LEN=255),INTENT(IN)  :: FileName           !< Name of the file to be written to
+TYPE(tElementOut),POINTER,INTENT(IN) :: ElemList     !< Linked list of arrays to write to file
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=255),ALLOCATABLE :: VarNames(:)
@@ -388,8 +393,8 @@ USE MOD_Mesh_Vars,ONLY: offsetElem,nGlobalElems,nElems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=255),INTENT(IN)  :: FileName
-TYPE(tFieldOut),POINTER,INTENT(IN) :: FieldList
+CHARACTER(LEN=255),INTENT(IN)  :: FileName          !< Name of the file to be written to
+TYPE(tFieldOut),POINTER,INTENT(IN) :: FieldList     !< Linked list of arrays to write to file
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=255),ALLOCATABLE :: VarNames(:)
@@ -509,8 +514,8 @@ USE MOD_Equation_Vars,ONLY: StrVarNames
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=*),INTENT(IN)    :: MeshFileName
-REAL,INTENT(IN)                :: OutputTime
+CHARACTER(LEN=*),INTENT(IN)    :: MeshFileName       !< Name of mesh file
+REAL,INTENT(IN)                :: OutputTime         !< Time of output
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=255)             :: FileName
@@ -555,16 +560,16 @@ USE MOD_Mesh_Vars  ,ONLY: offsetElem,nGlobalElems,nElems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=*),INTENT(IN)    :: MeshFileName
-CHARACTER(LEN=*),INTENT(IN)    :: VarNamesAvg(nVar_Avg)
-CHARACTER(LEN=*),INTENT(IN)    :: VarNamesFluc(nVar_Fluc)
-REAL,INTENT(IN)                :: OutputTime
-REAL,INTENT(IN),OPTIONAL       :: FutureTime
-REAL,INTENT(IN),TARGET         :: UAvg(nVar_Avg,0:PP_N,0:PP_N,0:PP_N,nElems)
-REAL,INTENT(IN),TARGET         :: UFluc(nVar_Fluc,0:PP_N,0:PP_N,0:PP_N,nElems)
-REAL,INTENT(IN)                :: dtAvg
-INTEGER,INTENT(IN)             :: nVar_Avg
-INTEGER,INTENT(IN)             :: nVar_Fluc
+CHARACTER(LEN=*),INTENT(IN)    :: MeshFileName                                 !< Name of mesh file
+CHARACTER(LEN=*),INTENT(IN)    :: VarNamesAvg(nVar_Avg)                        !< Average variable names
+CHARACTER(LEN=*),INTENT(IN)    :: VarNamesFluc(nVar_Fluc)                      !< Fluctuations variable names
+REAL,INTENT(IN)                :: OutputTime                                   !< Time of output
+REAL,INTENT(IN),OPTIONAL       :: FutureTime                                   !< Time of next output
+REAL,INTENT(IN),TARGET         :: UAvg(nVar_Avg,0:PP_N,0:PP_N,0:PP_N,nElems)   !< Averaged Solution
+REAL,INTENT(IN),TARGET         :: UFluc(nVar_Fluc,0:PP_N,0:PP_N,0:PP_N,nElems) !< Fluctuations
+REAL,INTENT(IN)                :: dtAvg                                        !< Timestep of averaging
+INTEGER,INTENT(IN)             :: nVar_Avg                                     !< Number of averaged variables
+INTEGER,INTENT(IN)             :: nVar_Fluc                                    !< Number of fluctuations
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=255)             :: FileName
@@ -644,14 +649,14 @@ USE MOD_FV_Vars      ,ONLY: FV_X,FV_w
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=*),INTENT(IN)    :: FileName
-CHARACTER(LEN=*),INTENT(IN)    :: TypeString
-INTEGER,INTENT(IN)             :: nVar
-INTEGER,INTENT(IN)             :: NData
-CHARACTER(LEN=*)               :: StrVarNames(nVar)
-CHARACTER(LEN=*),INTENT(IN)    :: MeshFileName
-REAL,INTENT(IN)                :: OutputTime
-REAL,INTENT(IN),OPTIONAL       :: FutureTime
+CHARACTER(LEN=*),INTENT(IN)    :: FileName           !< Name of file to create
+CHARACTER(LEN=*),INTENT(IN)    :: TypeString         !< Type of file to be created (state,timeaverage etc.)
+INTEGER,INTENT(IN)             :: nVar               !< Number of variables
+INTEGER,INTENT(IN)             :: NData              !< Polynomial degree of data
+CHARACTER(LEN=*)               :: StrVarNames(nVar)  !< Variabel names
+CHARACTER(LEN=*),INTENT(IN)    :: MeshFileName       !< Name of mesh file
+REAL,INTENT(IN)                :: OutputTime         !< Time of output
+REAL,INTENT(IN),OPTIONAL       :: FutureTime         !< Time of next output
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER(HID_T)                 :: DSet_ID,FileSpace,HDF5DataType
@@ -744,7 +749,7 @@ USE MOD_HDF5_Input,ONLY:GetNextFileName
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN),OPTIONAL :: FlushTime_In
+REAL,INTENT(IN),OPTIONAL :: FlushTime_In     !< Time to start flush
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                  :: stat,ioUnit
@@ -806,8 +811,8 @@ USE MOD_Output_Vars,ONLY:ProgramName,FileVersion,ProjectName
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=*),INTENT(IN)              :: FileType_in
-INTEGER(HID_T),INTENT(IN)                :: File_ID
+CHARACTER(LEN=*),INTENT(IN)              :: FileType_in   !< Type of file (e.g. state, timeaverage)
+INTEGER(HID_T),INTENT(IN)                :: File_ID       !< HDF5 file id
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
