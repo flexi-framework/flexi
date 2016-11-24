@@ -337,7 +337,7 @@ USE MOD_DG_Vars,           ONLY: U_master
 USE MOD_Mesh_Vars,         ONLY: SurfElem
 USE MOD_Mesh_Vars,         ONLY: nBCSides,BC,BoundaryType,nBCs
 USE MOD_Analyze_Vars,      ONLY: wGPSurf,Surf
-USE MOD_EOS_Vars,          ONLY: cv,Kappa,R,sKappaM1,KappaM1
+USE MOD_EOS_Vars,          ONLY: Kappa,R,sKappaM1,KappaM1
 #if FV_ENABLED
 USE MOD_FV_Vars,           ONLY: FV_Elems_master,FV_w
 #endif
