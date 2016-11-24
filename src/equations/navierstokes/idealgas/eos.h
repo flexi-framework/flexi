@@ -53,18 +53,18 @@
 #define SPEEDOFSOUND_H(p,sRho)         (SQRT(Kappa*p*sRho))
 #define TOTALENERGY_H(U,sRho,Vel)      (U(ENER)/U(DENS))
 #define ENTHALPY_H(U,p,sRho)           ((U(ENER)+p)*sRho)
-#define ENTROPY_H(U,T)                 (R*(sKappaM1*LOG(T)-LOG(UE(DENS))) )
-#define TEMPERATURE_H(U)               ((UE(ENER)-0.5*DOT_PRODUCT(UE(MOMV),UE(MOMV))/UE(DENS))/(UE(DENS)*cv))
+#define ENTROPY_H(U,T)                 (R*(sKappaM1*LOG(T)-LOG(U(DENS))) )
+#define TEMPERATURE_H(U)               ((U(ENER)-0.5*DOT_PRODUCT(U(MOMV),U(MOMV))/U(DENS))/(U(DENS)*cv))
 
 ! extended (NOTE: compute from cons. When computing derived (neither prim or cons) variables
 ! assume that both prim and cons vars are filled
-#define VELOCITY_HE(U)                 (U(MOMV)*U(SRHO))
-#define PRESSURE_HE(U)                 (KappaM1*(U(ENER)-0.5*DOT_PRODUCT(U(VELV),U(MOMV))))
-#define SPEEDOFSOUND_HE(U)             (SQRT(Kappa*U(PRES)*U(SRHO)))
-#define TOTALENERGY_HE(U)              (U(ENER)*U(SRHO))
-#define ENTHALPY_HE(U)                 ((U(ENER)+U(PRES))*U(SRHO))
-#define TEMPERATURE_HE(U)              (U(PRES)*U(SRHO)/R)
-#define ENERGY_HE(U)                   (sKappaM1*UE(PRES)+0.5*DOT_PRODUCT(UE(MOMV),UE(VELV)))
+#define VELOCITY_HE(UE)                (UE(MOMV)*UE(SRHO))
+#define PRESSURE_HE(UE)                (KappaM1*(UE(ENER)-0.5*DOT_PRODUCT(UE(VELV),UE(MOMV))))
+#define SPEEDOFSOUND_HE(UE)            (SQRT(Kappa*UE(PRES)*UE(SRHO)))
+#define TOTALENERGY_HE(UE)             (UE(ENER)*UE(SRHO))
+#define ENTHALPY_HE(UE)                ((UE(ENER)+UE(PRES))*UE(SRHO))
+#define TEMPERATURE_HE(UE)             (UE(PRES)*UE(SRHO)/R)
+#define ENERGY_HE(UE)                  (sKappaM1*UE(PRES)+0.5*DOT_PRODUCT(UE(MOMV),UE(VELV)))
 
 #if PP_VISC == 0
 #define VISCOSITY_PRIM(U)              mu0
