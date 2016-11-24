@@ -24,7 +24,7 @@ PRIVATE
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ABSTRACT INTERFACE
-  PURE SUBROUTINE RiemannInt(F_L,F_R,U_LL,U_RR,F)
+  SUBROUTINE RiemannInt(F_L,F_R,U_LL,U_RR,F)
     REAL,DIMENSION(PP_2Var),INTENT(IN) :: U_LL,U_RR
     REAL,DIMENSION(PP_nVar),INTENT(IN) :: F_L,F_R
     REAL,DIMENSION(PP_nVar),INTENT(OUT):: F
@@ -42,6 +42,7 @@ INTEGER,PARAMETER      :: PRM_RIEMANN_ROEENTROPYFIX = 33
 INTEGER,PARAMETER      :: PRM_RIEMANN_HLL           = 4
 INTEGER,PARAMETER      :: PRM_RIEMANN_HLLE          = 5
 INTEGER,PARAMETER      :: PRM_RIEMANN_HLLEM         = 6
+INTEGER,PARAMETER      :: PRM_RIEMANN_Average       = 0
 
 INTERFACE InitRiemann
   MODULE PROCEDURE InitRiemann
@@ -96,6 +97,7 @@ CALL addStrListEntry('Riemann','roeentropyfix',PRM_RIEMANN_ROEENTROPYFIX)
 CALL addStrListEntry('Riemann','hll',          PRM_RIEMANN_HLL)
 CALL addStrListEntry('Riemann','hlle',         PRM_RIEMANN_HLLE)
 CALL addStrListEntry('Riemann','hllem',        PRM_RIEMANN_HLLEM)
+CALL addStrListEntry('Riemann','avg',          PRM_RIEMANN_Average)
 CALL prms%CreateIntFromStringOption('RiemannBC', "Riemann solver used for boundary conditions: Same, LF, Roe, RoeEntropyFix, "//&
                                                  "HLL, HLLE, HLLEM",&
                                                  "Same")
@@ -106,6 +108,7 @@ CALL addStrListEntry('RiemannBC','roeentropyfix',PRM_RIEMANN_ROEENTROPYFIX)
 CALL addStrListEntry('RiemannBC','hll',          PRM_RIEMANN_HLL)
 CALL addStrListEntry('RiemannBC','hlle',         PRM_RIEMANN_HLLE)
 CALL addStrListEntry('RiemannBC','hllem',        PRM_RIEMANN_HLLEM)
+CALL addStrListEntry('RiemannBC','avg',          PRM_RIEMANN_Average)
 CALL addStrListEntry('RiemannBC','same',         PRM_RIEMANN_SAME)
 END SUBROUTINE DefineParametersRiemann
 
@@ -127,6 +130,7 @@ REAL,DIMENSION(PP_nVar) :: F_L,F_R,F ! dummy variables, only to suppress compile
 REAL,DIMENSION(PP_2Var) :: U_LL,U_RR ! dummy variables, only to suppress compiler warnings
 #endif
 !==================================================================================================================================
+#ifndef SPLIT_DG
 Riemann = GETINTFROMSTR('Riemann')
 SELECT CASE(Riemann)
 CASE(PRM_RIEMANN_LF)
@@ -143,6 +147,9 @@ CASE(PRM_RIEMANN_HLLE)
   Riemann_pointer => Riemann_HLLE
 CASE(PRM_RIEMANN_HLLEM)
   Riemann_pointer => Riemann_HLLEM
+CASE(PRM_RIEMANN_Average)
+  CALL CollectiveStop(__STAMP__,&
+    'Flux averaging only viable for SplitDG!')
 CASE DEFAULT
   CALL CollectiveStop(__STAMP__,&
     'Riemann solver not defined!')
@@ -166,10 +173,47 @@ CASE(PRM_RIEMANN_HLLE)
   RiemannBC_pointer => Riemann_HLLE
 CASE(PRM_RIEMANN_HLLEM)
   RiemannBC_pointer => Riemann_HLLEM
+CASE(PRM_RIEMANN_Average)
+  CALL CollectiveStop(__STAMP__,&
+    'Flux averaging only viable for SplitDG!')
 CASE DEFAULT
   CALL CollectiveStop(__STAMP__,&
     'RiemannBC solver not defined!')
 END SELECT
+
+#else
+Riemann = GETINTFROMSTR('Riemann')
+SELECT CASE(Riemann)
+CASE(PRM_RIEMANN_LF)
+  Riemann_pointer => Riemann_LF
+CASE(PRM_RIEMANN_ROE)
+  Riemann_pointer => Riemann_Roe
+CASE(PRM_RIEMANN_ROEENTROPYFIX)
+  Riemann_pointer => Riemann_RoeEntropyFix
+CASE(PRM_RIEMANN_Average)
+  Riemann_pointer => Riemann_FluxAverage
+CASE DEFAULT
+  CALL CollectiveStop(__STAMP__,&
+    'Riemann solver not defined!')
+END SELECT
+
+Riemann = GETINTFROMSTR('RiemannBC')
+SELECT CASE(Riemann)
+CASE(PRM_RIEMANN_SAME)
+  RiemannBC_pointer => Riemann_pointer
+CASE(PRM_RIEMANN_LF)
+  RiemannBC_pointer => Riemann_LF
+CASE(PRM_RIEMANN_ROE)
+  RiemannBC_pointer => Riemann_Roe
+CASE(PRM_RIEMANN_ROEENTROPYFIX)
+  RiemannBC_pointer => Riemann_RoeEntropyFix
+CASE(PRM_RIEMANN_Average)
+  RiemannBC_pointer => Riemann_FluxAverage
+CASE DEFAULT
+  CALL CollectiveStop(__STAMP__,&
+    'RiemannBC solver not defined!')
+END SELECT
+#endif /*SPLIT_DG*/
 
 #ifdef DEBUG
 ! ===============================================================================
@@ -331,9 +375,12 @@ END SUBROUTINE ViscousFlux
 !==================================================================================================================================
 !> Local Lax-Friedrichs (Rusanov) Riemann solver
 !==================================================================================================================================
-PURE SUBROUTINE Riemann_LF(F_L,F_R,U_LL,U_RR,F)
+SUBROUTINE Riemann_LF(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
 USE MOD_EOS_Vars      ,ONLY: Kappa
+#ifdef SPLIT_DG
+USE MOD_SplitFlux     ,ONLY: SplitDGSurface_pointer
+#endif /*SPLIT_DG*/
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -350,7 +397,14 @@ REAL    :: LambdaMax
 !==================================================================================================================================
 ! Lax-Friedrichs
 LambdaMax = MAX( ABS(U_RR(VEL1)),ABS(U_LL(VEL1)) ) + MAX( SPEEDOFSOUND_HE(U_LL),SPEEDOFSOUND_HE(U_RR) )
+#ifndef SPLIT_DG
 F = 0.5*((F_L+F_R) - LambdaMax*(U_RR(CONS) - U_LL(CONS)))
+#else
+! get split flux
+CALL SplitDGSurface_pointer(U_LL,U_RR,F)
+! compute surface flux
+F = F - 0.5*LambdaMax*(U_RR(CONS) - U_LL(CONS))
+#endif /*SPLIT_DG*/
 
 END SUBROUTINE Riemann_LF
 
@@ -424,9 +478,12 @@ END SUBROUTINE Riemann_HLLC
 !=================================================================================================================================
 !> Roe's approximate Riemann solver
 !=================================================================================================================================
-PURE SUBROUTINE Riemann_Roe(F_L,F_R,U_LL,U_RR,F)
+SUBROUTINE Riemann_Roe(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
-USE MOD_EOS_Vars ,ONLY: kappaM1
+USE MOD_EOS_Vars  ,ONLY: kappaM1
+#ifdef SPLIT_DG
+USE MOD_SplitFlux ,ONLY: SplitDGSurface_pointer,SplitIndicator
+#endif /*SPLIT_DG*/
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -473,6 +530,7 @@ Alpha4 = Delta_U(4) - RoeVel(3)*Delta_U(1)
 Alpha2 = ALPHA2_RIEMANN_H(RoeH,RoeVel,Roec,Delta_U)
 Alpha1 = 0.5/Roec * (Delta_U(1)*(RoeVel(1)+Roec) - Delta_U(2) - Roec*Alpha2)
 Alpha5 = Delta_U(1) - Alpha1 - Alpha2
+#ifndef SPLIT_DG
 ! assemble Roe flux
 F=0.5*((F_L+F_R) - &
        Alpha1*ABS(a(1))*r1 - &
@@ -480,6 +538,21 @@ F=0.5*((F_L+F_R) - &
        Alpha3*ABS(a(3))*r3 - &
        Alpha4*ABS(a(4))*r4 - &
        Alpha5*ABS(a(5))*r5)
+#else
+! get split flux
+CALL SplitDGSurface_pointer(U_LL,U_RR,F)
+! for Kennedy Gruber flux eigenvalues have to be altered to ensure consistent KE dissipation
+IF (SplitIndicator==3) THEN
+  a(1) = MAX(ABS(RoeVel(1)-Roec),ABS(RoeVel(1)+Roec))
+  a(5) = MAX(ABS(RoeVel(1)-Roec),ABS(RoeVel(1)+Roec))
+ENDIF
+! assemble Roe flux
+F = F - 0.5*(Alpha1*ABS(a(1))*r1 + &
+             Alpha2*ABS(a(2))*r2 + &
+             Alpha3*ABS(a(3))*r3 + &
+             Alpha4*ABS(a(4))*r4 + &
+             Alpha5*ABS(a(5))*r5)
+#endif /*SPLIT_DG*/
 
 END SUBROUTINE Riemann_Roe
 
@@ -487,9 +560,12 @@ END SUBROUTINE Riemann_Roe
 !=================================================================================================================================
 !> Roe's approximate Riemann solver using the Hartman and Hymen II entropy fix
 !=================================================================================================================================
-PURE SUBROUTINE Riemann_RoeEntropyFix(F_L,F_R,U_LL,U_RR,F)
+SUBROUTINE Riemann_RoeEntropyFix(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
 USE MOD_EOS_Vars      ,ONLY: Kappa,KappaM1
+#ifdef SPLIT_DG
+USE MOD_SplitFlux ,ONLY: SplitDGSurface_pointer,SplitIndicator
+#endif /*SPLIT_DG*/
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -571,6 +647,7 @@ DO iVar=1,5
   END IF
 END DO
 
+#ifndef SPLIT_DG
 ! assemble Roe flux
 F=0.5*((F_L+F_R)        - &
        Alpha(1)*a(1)*r1 - &
@@ -578,6 +655,21 @@ F=0.5*((F_L+F_R)        - &
        Alpha(3)*a(3)*r3 - &
        Alpha(4)*a(4)*r4 - &
        Alpha(5)*a(5)*r5)
+#else
+! get split flux
+CALL SplitDGSurface_pointer(U_LL,U_RR,F)
+! for Kennedy Gruber flux eigenvalues have to be altered to ensure consistent KE dissipation
+IF (SplitIndicator==3) THEN
+  a(1) = MAX(ABS(RoeVel(1)-Roec),ABS(RoeVel(1)+Roec))
+  a(5) = MAX(ABS(RoeVel(1)-Roec),ABS(RoeVel(1)+Roec))
+ENDIF
+! assemble Roe flux
+F= F - 0.5*(Alpha(1)*a(1)*r1 + &
+            Alpha(2)*a(2)*r2 + &
+            Alpha(3)*a(3)*r3 + &
+            Alpha(4)*a(4)*r4 + &
+            Alpha(5)*a(5)*r5)
+#endif
 
 END SUBROUTINE Riemann_RoeEntropyFix
 
@@ -746,6 +838,35 @@ ELSE
 END IF ! subsonic case
 END SUBROUTINE Riemann_HLLEM
 
+#ifdef SPLIT_DG
+!==================================================================================================================================
+!> Riemann solver using purely the average fluxes
+!==================================================================================================================================
+SUBROUTINE Riemann_FluxAverage(F_L,F_R,U_LL,U_RR,F)
+! MODULES
+USE MOD_EOS_Vars      ,ONLY: Kappa
+#ifdef SPLIT_DG
+USE MOD_SplitFlux     ,ONLY: SplitDGSurface_pointer
+#endif /*SPLIT_DG*/
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+                                                !> extended solution vector on the left/right side of the interface
+REAL,DIMENSION(PP_2Var),INTENT(IN) :: U_LL,U_RR
+                                                !> advection fluxes on the left/right side of the interface
+REAL,DIMENSION(PP_nVar),INTENT(IN) :: F_L,F_R
+REAL,DIMENSION(PP_nVar),INTENT(OUT):: F         !< resulting Riemann flux
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL    :: LambdaMax
+!==================================================================================================================================
+! get split flux
+CALL SplitDGSurface_pointer(U_LL,U_RR,F)
+
+END SUBROUTINE Riemann_FluxAverage
+#endif /*SPLIT_DG*/
 
 !==================================================================================================================================
 !> Finalize Riemann solver routines

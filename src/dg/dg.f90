@@ -189,6 +189,9 @@ SUBROUTINE InitDGbasis(N_in,xGP,wGP,L_Minus,L_Plus,D,D_T,D_Hat,D_Hat_T,L_HatMinu
 ! MODULES
 USE MOD_Interpolation,    ONLY: GetNodesAndWeights
 USE MOD_Basis,            ONLY: PolynomialDerivativeMatrix,LagrangeInterpolationPolys
+#ifdef SPLIT_DG
+USE MOD_DG_Vars,          ONLY: DVolSurf ! Transpose of differentiation matrix used for calculating the strong form
+#endif /*SPLIT_DG*/
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -229,6 +232,13 @@ END DO
 D_Hat  = -MATMUL(Minv,MATMUL(TRANSPOSE(D),M))
 D_Hat_T= TRANSPOSE(D_hat)
 
+#ifdef SPLIT_DG
+ALLOCATE(DVolSurf(0:N_in,0:N_in))
+DVolSurf = D_T
+DVolSurf(0,0) = DVolSurf(0,0) + 1.0/(2.0 * wGP(0))
+DVolSurf(N_in,N_in) = DVolSurf(N_in,N_in) - 1.0/(2.0 * wGP(N_in))
+#endif /*SPLIT_DG*/
+
 ! interpolate to left and right face (1 and -1 in reference space) and pre-divide by mass matrix
 L_HatPlus  = MATMUL(Minv,L_Plus)
 L_HatMinus = MATMUL(Minv,L_Minus)
@@ -256,6 +266,7 @@ USE MOD_DG_Vars             ,ONLY: D_Hat_TO,nDOFElemO
 USE MOD_DG_Vars             ,ONLY: UPrim,UPrim_master,UPrim_slave
 USE MOD_DG_Vars,             ONLY: nTotalU
 USE MOD_VolInt
+USE MOD_DG_Vars             ,ONLY: D_Hat_T
 USE MOD_SurfIntCons         ,ONLY: SurfIntCons
 USE MOD_ProlongToFaceCons   ,ONLY: ProlongToFaceCons
 USE MOD_FillFlux            ,ONLY: FillFlux

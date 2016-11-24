@@ -120,6 +120,12 @@ ENDIF()
 OPTION(FLEXI_UNITTESTS "Enable unit tests after build" ON)
 MARK_AS_ADVANCED(FLEXI_UNITTESTS)
 
+# SplitDG
+OPTION(FLEXI_SPLIT_DG "Use split DG formulation" OFF)
+IF(FLEXI_SPLIT_DG)
+  ADD_DEFINITIONS(-DSPLIT_DG)
+ENDIF()
+
 # =========================================================================
 # Equation system
 # =========================================================================
