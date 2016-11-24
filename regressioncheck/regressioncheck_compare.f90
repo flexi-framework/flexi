@@ -17,6 +17,10 @@ SAVE
 ! Private Part ---------------------------------------------------------------------------------------------------------------------
 ! Public Part ----------------------------------------------------------------------------------------------------------------------
 
+INTERFACE CompareResults
+  MODULE PROCEDURE CompareResults
+END INTERFACE
+
 INTERFACE CompareNorm
   MODULE PROCEDURE CompareNorm
 END INTERFACE
@@ -37,10 +41,84 @@ INTERFACE IntegrateLine
   MODULE PROCEDURE IntegrateLine
 END INTERFACE
 
-PUBLIC::CompareNorm,CompareDataSet,CompareRuntime,ReadNorm,IntegrateLine
+PUBLIC::CompareResults,CompareNorm,CompareDataSet,CompareRuntime,ReadNorm,IntegrateLine
 !==================================================================================================================================
 
 CONTAINS
+
+!==================================================================================================================================
+!> Compare the results that were created by the binary execution
+!==================================================================================================================================
+SUBROUTINE CompareResults(iExample,iSubExample)
+!===================================================================================================================================
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+USE MOD_RegressionCheck_Tools,   ONLY: CleanExample,AddError
+USE MOD_RegressionCheck_Vars,    ONLY: Examples
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+INTEGER,INTENT(IN)             :: iExample,iSubExample
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!INTEGER                        :: IndNum
+!CHARACTER(LEN=255)             :: FileName                          ! path to a file or its name
+!CHARACTER(LEN=255)             :: temp,temp2                        ! temp variables for read in of file lines
+REAL,ALLOCATABLE               :: ReferenceNorm(:,:)                !> L2 and Linf norm of the executed example from a reference
+                                                                    !> solution
+INTEGER                        :: ErrorStatus                       !> Error-code of regressioncheck
+!==================================================================================================================================
+! -----------------------------------------------------------------------------------------------------------------------
+! compare the results and write error messages for the current case
+! -----------------------------------------------------------------------------------------------------------------------
+SWRITE(UNIT_stdOut,'(A)',ADVANCE='no')  ' Comparing results...'
+! check error norms
+ALLOCATE(ReferenceNorm(Examples(iExample)%nVar,2))
+IF(Examples(iExample)%ReferenceFile.EQ.'')THEN
+  ! constant value, should be zero no reference file given
+  CALL CompareNorm(ErrorStatus,iExample)
+ELSE
+  ! read in reference and compare to reference solution
+  CALL ReadNorm(iExample,ReferenceNorm)
+  CALL CompareNorm(ErrorStatus,iExample,ReferenceNorm)
+END IF
+DEALLOCATE(ReferenceNorm)
+IF(ErrorStatus.EQ.1)THEN
+  SWRITE(UNIT_stdOut,'(A)')   ' Error-norm mismatched! Example failed! '
+  SWRITE(UNIT_stdOut,'(A)')   ' For more information: '
+  SWRITE(UNIT_stdOut,'(A,A)') ' Out-file: ', TRIM(Examples(iExample)%PATH)//'std.out'
+  SWRITE(UNIT_stdOut,'(A,A)') ' Errorfile: ', TRIM(Examples(iExample)%PATH)//'err.out'
+  CALL AddError('Mismatch of error norms',iExample,iSubExample,ErrorStatus=1,ErrorCode=3)
+END IF
+
+! diff h5 file
+IF(Examples(iExample)%ReferenceStateFile.NE.'')THEN
+  CALL CompareDataSet(iExample)
+  IF(Examples(iExample)%ErrorStatus.EQ.3)THEN
+    CALL AddError('Mismatch in HDF5-files. Datasets are unequal',iExample,iSubExample,ErrorStatus=3,ErrorCode=4)
+    SWRITE(UNIT_stdOut,'(A)')  ' Mismatch in HDF5-files'
+  END IF
+END IF
+
+! Integrate over line
+IF(Examples(iExample)%IntegrateLine)THEN
+  CALL IntegrateLine(ErrorStatus,iExample)
+  IF(Examples(iExample)%ErrorStatus.EQ.5)THEN
+  CALL AddError('Mismatch in LineIntegral',iExample,iSubExample,ErrorStatus=5,ErrorCode=5)
+  END IF
+END IF
+
+! IF all comparisons are successful the error status is 0 -> delete file in CleanExample(iExample)
+IF(Examples(iExample)%ErrorStatus.EQ.0)THEN
+  SWRITE(UNIT_stdOut,'(A)')  ' Example successful! '
+  CALL CleanExample(iExample)
+END IF
+
+
+END SUBROUTINE CompareResults
 
 !==================================================================================================================================
 !> Compare the runtime of an example  || fixed to a specific system

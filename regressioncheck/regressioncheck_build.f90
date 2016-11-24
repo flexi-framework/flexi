@@ -37,13 +37,13 @@ CONTAINS
 !> read the file "configuirations.reggie" and creates multiple compiler flag configurations for cmake that are written to
 !> "configurationsX.cmake"
 !==================================================================================================================================
-SUBROUTINE ReadConfiguration(&
-iExample,nReggieBuilds,BuildCounter,BuildIndex,N_compile_flags,BuildConfigurations,BuildValid)
+SUBROUTINE ReadConfiguration(iExample,nReggieBuilds,N_compile_flags)
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
 USE MOD_RegressionCheck_Vars,    ONLY: Examples,RuntimeOptionType,BuildEQNSYS,BuildTESTCASE,BuildContinue,BuildContinueNumber
 USE MOD_RegressionCheck_Vars,    ONLY: BuildTIMEDISCMETHOD
+USE MOD_RegressionCheck_Vars,    ONLY: BuildConfigurations,BuildValid,BuildCounter,BuildIndex
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -51,9 +51,6 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)                           :: iExample
 INTEGER,INTENT(INOUT)                        :: N_compile_flags
 INTEGER,INTENT(INOUT)                        :: nReggieBuilds
-CHARACTER(LEN=255),ALLOCATABLE,INTENT(INOUT) :: BuildConfigurations(:,:)
-LOGICAL,ALLOCATABLE,INTENT(INOUT)            :: BuildValid(:)
-INTEGER,ALLOCATABLE,INTENT(INOUT)            :: BuildCounter(:),BuildIndex(:)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -321,8 +318,7 @@ END SUBROUTINE ReadConfiguration
 !==================================================================================================================================
 !> reads the file "configurationsX.cmake" and creates a binary
 !==================================================================================================================================
-SUBROUTINE BuildConfiguration(iExample,iReggieBuild,nReggieBuilds,&
-                                    BuildCounter,BuildIndex,N_compile_flags,BuildConfigurations,BuildValid)
+SUBROUTINE BuildConfiguration(iExample,iReggieBuild,nReggieBuilds,N_compile_flags)
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
@@ -330,14 +326,12 @@ USE MOD_RegressionCheck_Vars,  ONLY: BuildDebug,BuildNoDebug,BuildEQNSYS,BuildTE
 USE MOD_RegressionCheck_Vars,  ONLY: BuildContinue,BuildContinueNumber,BuildDir,BuildTIMEDISCMETHOD
 USE MOD_RegressionCheck_Vars,  ONLY: CodeNameLowCase,CodeNameUppCase
 USE MOD_RegressionCheck_tools, ONLY: SummaryOfErrors,AddError
+USE MOD_RegressionCheck_Vars,  ONLY: BuildConfigurations,BuildValid,BuildCounter,BuildIndex,BuildSolver
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 INTEGER,INTENT(IN)                        :: iExample,iReggieBuild,N_compile_flags,nReggieBuilds
-INTEGER,ALLOCATABLE,INTENT(INOUT)         :: BuildCounter(:),BuildIndex(:)
-LOGICAL,ALLOCATABLE,INTENT(IN)            :: BuildValid(:)
-CHARACTER(LEN=255),ALLOCATABLE,INTENT(IN) :: BuildConfigurations(:,:)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------

@@ -34,6 +34,12 @@ LOGICAL                        :: BuildNoDebug                       !> Don't pr
 LOGICAL                        :: BuildContinue                      !> allow the building sequence to begin at the last failure
 INTEGER                        :: BuildContinueNumber                !> start building sequence from this point
 
+CHARACTER(LEN=255),ALLOCATABLE :: BuildConfigurations(:,:)           !> CMAKE complie flag and value
+LOGICAL,ALLOCATABLE            :: BuildValid(:)                      !> use the configuration or don't
+INTEGER,ALLOCATABLE            :: BuildCounter(:)                    !> register for creaating all possible cmake configurations
+INTEGER,ALLOCATABLE            :: BuildIndex(:)                      !> number of different flag settings for each specified cmake 
+                                                                     !> compiler flag
+
 TYPE tExample                                                        !> examples for regressioncheck
   INTEGER                                :: ReferenceType            !> Type of reference
                                                                      !> 0 - no reference
