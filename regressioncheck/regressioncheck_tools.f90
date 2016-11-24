@@ -45,6 +45,10 @@ INTERFACE AddError
   MODULE PROCEDURE AddError
 END INTERFACE
 
+INTERFACE REGGIETIME
+  MODULE PROCEDURE REGGIETIME
+END INTERFACE
+
 INTERFACE str2real
   MODULE PROCEDURE str2real
 END INTERFACE
@@ -60,6 +64,7 @@ END INTERFACE
 PUBLIC::GetExampleList,InitExample,CleanExample, CheckForExecutable,GetCommandLineOption
 PUBLIC::SummaryOfErrors
 PUBLIC::AddError
+PUBLIC::REGGIETIME
 PUBLIC::str2real,str2int,str2logical
 !==================================================================================================================================
 
@@ -69,17 +74,17 @@ CONTAINS
 !==================================================================================================================================
 !> reads the command line options for the regressioncheck
 !> options are:
-!> run [default]:   - runs only the regressioncheck
-!> build            - builds all valid combinations of flexi (default uses the configuration.flexi from run_freestream) and 
-!>                    performs the tests
+!> run [default]:  - runs only the regressioncheck
+!> build           - builds all valid compiler flag combinations (default uses the configuration.reggie from run_basic) and 
+!>                   performs the tests
 !>
 !> ./regressioncheck [RuntimeOption] [RuntimeOptionType]
 !> 
 !> ./regressioncheck                -> uses default "run" and runs the current compiler build and all "run_" examples
 !> ./regressioncheck
-!> ./regressioncheck build          -> runs "run_freestream" for numerous builds
-!> ./regressioncheck build convtest -> runs "feature_convtest" for numerous builds defined in "feature_convtest/configuration.flexi"
-!> ./regressioncheck build all      -> runs all examples for numerous builds defined in "run_freestream/configuration.flexi"
+!> ./regressioncheck build          -> runs "run_basic" for numerous builds
+!> ./regressioncheck build convtest -> runs "feature_convtest" for numerous builds def. "feature_convtest/configuration.reggie"
+!> ./regressioncheck build all      -> runs all examples for numerous builds defined in "run_basic/configuration.reggie"
 !==================================================================================================================================
 SUBROUTINE GetCommandLineOption()
 !===================================================================================================================================
@@ -124,14 +129,14 @@ ELSE
     BuildSolver=.TRUE.
     IF(TRIM(RuntimeOptionType).EQ.'debug')THEN
       BuildDebug=.TRUE.
-      RuntimeOptionType='run_freestream' ! debug uses "configuration.flexi" from "run_freestream" and displays the complete 
+      RuntimeOptionType='run_basic' ! debug uses "configuration.reggie" from "run_basic" and displays the complete 
                                          ! compilation process for debugging
     ELSEIF(TRIM(RuntimeOptionType).EQ.'no-debug')THEN
       BuildNoDebug=.TRUE.
-      RuntimeOptionType='run_freestream' ! debug uses "configuration.flexi" from "run_freestream" and displays the complete 
+      RuntimeOptionType='run_basic' ! debug uses "configuration.reggie" from "run_basic" and displays the complete 
     END IF
     IF(TRIM(RuntimeOptionTypeII).EQ.'debug')BuildDebug=.TRUE. ! e.g. ./regressioncheck build feature_convtest debug
-    IF(TRIM(RuntimeOptionType).EQ.'run')RuntimeOptionType='run_freestream'
+    IF(TRIM(RuntimeOptionType).EQ.'run')RuntimeOptionType='run_basic'
   ELSE IF((TRIM(RuntimeOption).EQ.'--help').OR.(TRIM(RuntimeOption).EQ.'help').OR.(TRIM(RuntimeOption).EQ.'HELP')) THEN
     CALL Print_Help_Information()
     STOP
@@ -190,8 +195,8 @@ ELSE ! run regressioncheck for a single folder located anywhere from which the r
   RuntimeOptionType=TRIM(FileName) ! override RuntimeOptionType in order to select only this directory
 END IF
 BuildDir=TRIM(BASEDIR(2:LEN(BASEDIR)-1))! use basedir because one cannot use: TRIM(cwd)//'/'
-                                        ! because the checked out flexi source 
-                                        ! code is needed for building new flexi binaries
+                                        ! because the checked out code source 
+                                        ! code is needed for building new binaries
 
 ! sanity check: change directory into the example folder, if it does not exist this check fails
 SYSCOMMANDTWO='cd '//TRIM(ExamplesDir)
@@ -255,7 +260,7 @@ END SUBROUTINE GetExampleList
 !==================================================================================================================================
 !> Read the parameter_reggie.ini file of an example given by its relative path. It
 !> contains information for the computation of the example:
-!>  exec - a mpi or serial example
+!>  MPI - a mpi or serial example
 !>  optional reference files for error-norms, reference state file and tested dataset and name of the checked state file
 !>  optional a restart filename
 !==================================================================================================================================
@@ -291,11 +296,12 @@ ELSE
 END IF
 
 ! init
-Example%EXEC=.FALSE.
-Example%nVar=0
+Example%MPIrun                 = .FALSE. ! don't use "mpirun" n default
+Example%MPIthreads             = 1       ! run with 1 MPI thread on default
+Example%nVar                   = 0
 Example%ReferenceTolerance     = -1.
-Example%SubExampleNumber       = 0   ! init total number of subexamples
-Example%SubExampleOption(1:20) = '-' ! default option is nothing
+Example%SubExampleNumber       = 0       ! init total number of subexamples
+Example%SubExampleOption(1:20) = '-'     ! default option is nothing
 DO ! extract reggie information
   READ(ioUnit,'(A)',IOSTAT=iSTATUS) temp1 ! get first line assuming it is something like "nVar= 5"
   IF(iSTATUS.EQ.-1) EXIT ! end of file (EOF) reached
@@ -307,8 +313,9 @@ DO ! extract reggie information
   IF(IndNum.GT.0)THEN ! definition found
     ! get size of EQNSYS (deprecated)
     IF(TRIM(temp1(1:IndNum-1)).EQ.'nVar')CALL str2int(temp1(IndNum+1:MaxNum),Example%nVar,iSTATUS)
-    ! single or parallel (deprecated)
-    IF(TRIM(temp1(1:IndNum-1)).EQ.'MPI')CALL str2logical(temp1(IndNum+1:MaxNum),Example%EXEC,iSTATUS)
+    ! single or parallel
+    IF(TRIM(temp1(1:IndNum-1)).EQ.'MPIrun')    CALL str2logical(temp1(IndNum+1:MaxNum),Example%MPIrun,iSTATUS) ! True/False
+    IF(TRIM(temp1(1:IndNum-1)).EQ.'MPIthreads')CALL str2int(    temp1(IndNum+1:MaxNum),Example%MPIthreads,iSTATUS)!number of threads
     ! Reference Norm/State
     IF(TRIM(temp1(1:IndNum-1)).EQ.'ReferenceTolerance')CALL str2real(temp1(IndNum+1:MaxNum),Example%ReferenceTolerance,iSTATUS)
     IF(TRIM(temp1(1:IndNum-1)).EQ.'ReferenceFile')          Example%ReferenceFile         =TRIM(ADJUSTL(temp1(IndNum+1:MaxNum)))
@@ -493,15 +500,15 @@ SUBROUTINE CheckForExecutable(Mode)
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_RegressionCheck_Vars,  ONLY: EXECPATH
+USE MOD_RegressionCheck_Vars,  ONLY: EXECPATH,CodeNameLowCase
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 INTEGER,INTENT(IN)            :: Mode             ! which mode (1 or 2)
-                                                  ! 1: pre-compiled flexi executable
-                                                  ! 2: flexi compiled via reggie with defined "EXECPATH", e.g., 
-                                                  ! "~/Flexi/flexi/build_reggie.dev/build_reggie/bin/flexi"
+                                                  ! 1: pre-compiled binary
+                                                  ! 2: code compiled via reggie with defined "EXECPATH", e.g., 
+                                                  ! "~/code/code/build_reggie.dev/build_reggie/bin/code"
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -510,16 +517,16 @@ LOGICAL                       :: ExistSolver      ! logical to flag solver
 CHARACTER(len=255)            :: cwd             ! current cworking directory CALL getcwd(cwd)
 !===================================================================================================================================
 IF(Mode.EQ.1) THEN
-  ! 1.) check if flexi binary is located at the position of the regressioncheck binary (e.g. in a specific case folder)
+  ! 1.) check if binary is located at the position of the regressioncheck binary (e.g. in a specific case folder)
   CALL getcwd(cwd) ! get path of current directory
-  EXECPATH=TRIM(cwd)//'/flexi'
+  EXECPATH=TRIM(cwd)//'/'//CodeNameLowCase
   INQUIRE(File=EXECPATH,EXIST=ExistSolver)
   IF(.NOT.ExistSolver) THEN
-    ! 2.) flexi binary not found in location from where the reggie was executed -> check standard directory instead
-    EXECPATH=BASEDIR(2:LEN(BASEDIR)-1)//'bin/flexi'
+    ! 2.) binary not found in location from where the reggie was executed -> check standard directory instead
+    EXECPATH=BASEDIR(2:LEN(BASEDIR)-1)//'bin/'//CodeNameLowCase
   END IF
 END IF
-! EXECPATH has been set, inquire the existence of the flexi binary
+! EXECPATH has been set, inquire the existence of the binary
 INQUIRE(File=EXECPATH,EXIST=ExistSolver)
 IF(.NOT.ExistSolver) THEN
   SWRITE(UNIT_stdOut,'(A38,I1,A)') ' CALL CheckForExecutable() with Mode=',&
@@ -555,7 +562,7 @@ INTEGER                        :: iSTATUS                           ! Error stat
 IF((nArgs.GE.2))THEN
   CALL str2int(RuntimeOptionType,NumberOfProcs,iSTATUS)
   IF(iSTATUS.EQ.0)THEN
-    RuntimeOptionType='run' ! return to default -> needed for setting it to 'run_freestream'
+    RuntimeOptionType='run' ! return to default -> needed for setting it to 'run_basic'
   ELSE
     IF(nArgs.GE.3)THEN
       CALL str2int(RuntimeOptionTypeII,NumberOfProcs,iSTATUS)
@@ -613,7 +620,7 @@ REAL                           :: Time
 CHARACTER(LEN=255)             :: TableRowSpacing ! set row spacing between examples in table
 !===================================================================================================================================
 IF(.NOT.PRESENT(EndTime))THEN
-  Time=FLEXITIME() ! Measure processing duration
+  Time=REGGIETIME() ! Measure processing duration
 ELSE
   Time=EndTime
 END IF
@@ -708,6 +715,43 @@ END SUBROUTINE AddError
 
 
 !==================================================================================================================================
+!> Calculates current time (own function because of a laterMPI implementation)
+!==================================================================================================================================
+#ifdef MPI
+FUNCTION REGGIETIME(Comm)
+USE MOD_Globals, ONLY:iError,MPI_COMM_WORLD
+USE mpi
+#else
+FUNCTION REGGIETIME()
+#endif
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+#ifdef MPI
+INTEGER, INTENT(IN),OPTIONAL    :: Comm
+#endif
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL                            :: REGGIETIME
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES 
+!===================================================================================================================================
+#ifdef MPI
+IF(PRESENT(Comm))THEN
+  CALL MPI_BARRIER(Comm,iError)
+ELSE
+  CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
+END IF
+REGGIETIME=MPI_WTIME()
+#else
+CALL CPU_TIME(REGGIETIME)
+#endif
+END FUNCTION REGGIETIME
+
+
+!==================================================================================================================================
 !> Convert a String to an Integer
 !==================================================================================================================================
 SUBROUTINE str2int(str,int_number,stat)
@@ -783,10 +827,11 @@ END SUBROUTINE str2logical
 !>     
 !>     ./regressioncheck                -> uses default "run" and runs the current compiler build and all "run_" examples
 !>     ./regressioncheck
-!>     ./regressioncheck build          -> runs "run_freestream" for numerous builds
-!>     ./regressioncheck build convtest -> runs "feature_convtest" for numerous builds defined in "feature_convtest/configuration.flexi"
-!>     ./regressioncheck build all      -> runs all examples for numerous builds defined in "run_freestream/configuration.flexi"
-!> 2.) information on input files, e.g., comfiguration.flexi and parameter_reggie.ini
+!>     ./regressioncheck build          -> runs "run_basic" for numerous builds
+!>     ./regressioncheck build convtest -> runs "feature_convtest" for numerous builds defined in 
+!>                                              "feature_convtest/configuration.reggie"
+!>     ./regressioncheck build all     -> runs all examples for numerous builds defined in "run_basic/configuration.reggie"
+!> 2.) information on input files, e.g., comfiguration.reggie and parameter_reggie.ini
 !> 3.) give information on error codes for builing/compiling the source code and running the code
 !==================================================================================================================================
 SUBROUTINE Print_Help_Information()
@@ -817,14 +862,14 @@ SWRITE(UNIT_stdOut,'(A)') ' ----------------------------------------------------
 SWRITE(UNIT_stdOut,'(A)') ' help                       | prints this information output                                           '
 SWRITE(UNIT_stdOut,'(A)') ' ------------------------------------------------------------------------------------------------------'
 SWRITE(UNIT_stdOut,'(A)') ' run (default)              | runs all examples with prefix "run", e.g., "run_1" or                    '
-SWRITE(UNIT_stdOut,'(A)') '                            | "run_freestream". These tests all inlcude very                           '
+SWRITE(UNIT_stdOut,'(A)') '                            | "run_basic". These tests all inlcude very                                '
 SWRITE(UNIT_stdOut,'(A)') '                            | short simulations with <1sec execution time                              '
 SWRITE(UNIT_stdOut,'(A)') '                            | e.g. used for on-check-in tests                                          '
 SWRITE(UNIT_stdOut,'(A)') ' ------------------------------------------------------------------------------------------------------'
-SWRITE(UNIT_stdOut,'(A)') ' build                      | runs the example "run_freestream" on default and                         '
+SWRITE(UNIT_stdOut,'(A)') ' build                      | runs the example "run_basic" on default and                              '
 SWRITE(UNIT_stdOut,'(A)') '                            | (requires locally built HDF5 or loaded HDF5 paths)                       '
 SWRITE(UNIT_stdOut,'(A)') '                            | compiles all possible compiler flag combinations                         '
-SWRITE(UNIT_stdOut,'(A)') '                            | specified in "comfiguration.flexi" and considers                         '
+SWRITE(UNIT_stdOut,'(A)') '                            | specified in "configuration.reggie" and considers                        '
 SWRITE(UNIT_stdOut,'(A)') '                            | the specified exclude list for invalid combinations                      '
 SWRITE(UNIT_stdOut,'(A)') '                            | e.g. used for nightly tests                                              '
 SWRITE(UNIT_stdOut,'(A)') '                            | The cmake output may be shown (disabled) on-screen by adding "debug"     '
@@ -841,7 +886,7 @@ SWRITE(UNIT_stdOut,'(A)') '                            | runs two modes: p-conve
 SWRITE(UNIT_stdOut,'(A)') '                            | e.g. used for weakly tests                                               '
 SWRITE(UNIT_stdOut,'(A)') ' ------------------------------------------------------------------------------------------------------'
 SWRITE(UNIT_stdOut,'(A)') ' performance (ToDo!)        | specific feature test: runs the "performance" example                    '
-SWRITE(UNIT_stdOut,'(A)') '                            | automatically checks out specified flexi version tag                     '
+SWRITE(UNIT_stdOut,'(A)') '                            | automatically checks out specified code version tag                      '
 SWRITE(UNIT_stdOut,'(A)') '                            | and run the example to acquire the reference                             '
 SWRITE(UNIT_stdOut,'(A)') '                            | performance wall time                                                    '
 SWRITE(UNIT_stdOut,'(A)') '                            | e.g. used for weakly tests                                               '
@@ -853,12 +898,12 @@ SWRITE(UNIT_stdOut,'(A)') ' [RuntimeOptionType]        | [RuntimeOption] | mode 
 SWRITE(UNIT_stdOut,'(A)') ' ------------------------------------------------------------------------------------------------------'
 SWRITE(UNIT_stdOut,'(A)') ' run (default)              |                 |                                                        '
 SWRITE(UNIT_stdOut,'(A)') ' ------------------------------------------------------------------------------------------------------'
-SWRITE(UNIT_stdOut,'(A)') ' cavity                     | run             | specific feature test: runs all the the examples that  '
+SWRITE(UNIT_stdOut,'(A)') ' cavity (example)           | run             | specific feature test: runs all the the examples that  '
 SWRITE(UNIT_stdOut,'(A)') '                            |                 | begin with "cavity", e.g., "cavity_1" or "cavity_xyz"  '
 SWRITE(UNIT_stdOut,'(A)') '                            |                 | the example "cavity", e.g., tests long time stability, '
 SWRITE(UNIT_stdOut,'(A)') '                            |                 | some BC and ExactFunc ( e.g. used for weakly tests)    '
 SWRITE(UNIT_stdOut,'(A)') '                            |                 |                                                        '
-SWRITE(UNIT_stdOut,'(A)') '                            | build           | uses the "configurations.flexi" within the "cavity"    '
+SWRITE(UNIT_stdOut,'(A)') '                            | build           | use the "configurations.reggie" within the "cavity"    '
 SWRITE(UNIT_stdOut,'(A)') '                            |                 | directory and builds all compiler flag combinations    '
 SWRITE(UNIT_stdOut,'(A)') '                            |                 | that are specified there and runs them all on "cavity" '
 SWRITE(UNIT_stdOut,'(A)') ' ------------------------------------------------------------------------------------------------------'
@@ -867,13 +912,13 @@ SWRITE(UNIT_stdOut,'(A)') ' ----------------------------------------------------
 ! needed/optional files used by the regression check
 SWRITE(UNIT_stdOut,'(A)') ' '
 SWRITE(UNIT_stdOut,'(A)') ' '
-SWRITE(UNIT_stdOut,'(A)') ' 2.) Which input files are needed, e.g., comfiguration.flexi and parameter_reggie.ini'
+SWRITE(UNIT_stdOut,'(A)') ' 2.) Which input files are needed, e.g., comfiguration.reggie and parameter_reggie.ini'
 SWRITE(UNIT_stdOut,'(A)') ' '
 SWRITE(UNIT_stdOut,'(A)') ' The following parameter files are supported (within each example folder):           '
 SWRITE(UNIT_stdOut,'(A)') ' ------------------------------------------------------------------------------------'
 SWRITE(UNIT_stdOut,'(A)') ' parameter file             | Description                                            '
 SWRITE(UNIT_stdOut,'(A)') ' ------------------------------------------------------------------------------------'
-SWRITE(UNIT_stdOut,'(A)') ' configuration.flexi        | needed for "./regressioncheck build"                   '
+SWRITE(UNIT_stdOut,'(A)') ' configuration.reggie       | needed for "./regressioncheck build"                   '
 SWRITE(UNIT_stdOut,'(A)') '                            | contains all required compilation flags needed to      '
 SWRITE(UNIT_stdOut,'(A)') '                            | create a minimum of one combinations. If multiple      '
 SWRITE(UNIT_stdOut,'(A)') '                            | compiler flag cmake combinations are specified, all    '
@@ -908,7 +953,7 @@ SWRITE(UNIT_stdOut,'(A)') '                          3 | mismatch in norms      
 SWRITE(UNIT_stdOut,'(A)') '                          4 | mismatch in dataset                                    '
 SWRITE(UNIT_stdOut,'(A)') '                          5 | fail during comparison                                 '
 SWRITE(UNIT_stdOut,'(A)') '                          6 | mismatch in IntegrateLine                              '
-SWRITE(UNIT_stdOut,'(A)') '                         77 | no flexi executable found for option run               '
+SWRITE(UNIT_stdOut,'(A)') '                         77 | no executable found for option run                     '
 SWRITE(UNIT_stdOut,'(A)') '                         99 | fail of execute_system_command                         '
 SWRITE(UNIT_stdOut,'(A)') ' ------------------------------------------------------------------------------------'
 END SUBROUTINE Print_Help_Information

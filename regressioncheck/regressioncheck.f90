@@ -27,8 +27,10 @@ USE MOD_RegressionCheck_tools, ONLY: InitExample,CleanExample,GetExampleList,Che
 USE MOD_RegressionCheck_tools, ONLY: SummaryOfErrors
 USE MOD_RegressionCheck_Run,   ONLY: PerformRegressionCheck
 USE MOD_RegressionCheck_Vars,  ONLY: ExampleNames,Examples,firstError,aError,BuildSolver,nErrors
+USE MOD_RegressionCheck_Vars,  ONLY: CodeNameUppCase,CodeNameLowCase
 USE MOD_MPI,                   ONLY: InitMPI
 USE MOD_Mesh,                  ONLY: FinalizeMesh
+USE MOD_RegressionCheck_tools, ONLY: REGGIETIME
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -45,7 +47,20 @@ nReggieBuilds=0
 SYSCOMMAND=''
 FileName=''
 CALL InitMPI()
-! Define parameters for Converter
+! Check Code Names
+IF(LEN(CodeNameUppCase).NE.LEN(ADJUSTL(TRIM(CodeNameUppCase))))       CALL abort(&
+  __STAMP__&
+  ,'CodeNameUppCase=['//CodeNameUppCase//']: the variable has an incorrect length!')
+IF((CodeNameUppCase.NE.'FLEXI').AND.(CodeNameUppCase.NE.'BOLTZPLATZ'))CALL abort(&
+  __STAMP__&
+  ,'CodeNameUppCase=['//CodeNameUppCase//']: the code name is unknown! Add here if it is correct.')
+IF(LEN(CodeNameLowCase).NE.LEN(ADJUSTL(TRIM(CodeNameLowCase))))       CALL abort(&
+  __STAMP__&
+  ,'CodeNameLowCase=['//CodeNameLowCase//']: the variable has an incorrect length!')
+IF((CodeNameLowCase.NE.'flexi').AND.(CodeNameLowCase.NE.'boltzplatz'))CALL abort(&
+  __STAMP__&
+  ,'CodeNameLowCase=['//CodeNameLowCase//']: the code name is unknown! Add here if it is correct.')
+
 
 SWRITE(UNIT_stdOut,'(132("="))')
 SWRITE(UNIT_stdOut,'(A)')"  Little ReggressionCheck, add nice ASCII art here"
@@ -58,7 +73,7 @@ CALL GetCommandLineOption()
 IF(.NOT.BuildSolver) CALL CheckForExecutable(Mode=1)
 
 ! Measure regressioncheck runtime 
-StartTime=FLEXITIME()
+StartTime=REGGIETIME()
 
 ! check if examples are checked out and get list
 CALL GetExampleList()
@@ -71,7 +86,7 @@ DEALLOCATE(ExampleNames)
 DEALLOCATE(Examples)
 
 ! Measure processing duration
-EndTime=FLEXITIME()
+EndTime=REGGIETIME()
 
 #ifdef MPI
 CALL MPI_FINALIZE(iError)
