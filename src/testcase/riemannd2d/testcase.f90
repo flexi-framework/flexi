@@ -186,6 +186,16 @@ REAL            :: GetRho_Rarefaction
   GetRho_Rarefaction = (pr/pL)**(1./Kappa) * rhoL
 END FUNCTION GetRho_Rarefaction
 
+FUNCTION GetP_Rarefaction(rhoL, rhoR, pL) 
+USE MOD_EOS_Vars      ,ONLY: Kappa
+IMPLICIT NONE
+! INPUT / OUTPUT VARIABLES 
+REAL,INTENT(IN) :: rhoL, rhoR, pL
+REAL            :: GetP_Rarefaction
+!===================================================================================================================================
+  GetP_Rarefaction = (rhoR/rhoL)**Kappa * pL
+END FUNCTION GetP_Rarefaction
+
 FUNCTION GetP_RankineHugoniot(rhoL, rhoR, pL) 
 USE MOD_EOS_Vars      ,ONLY: KappaM1, KappaP1
 IMPLICIT NONE
@@ -321,6 +331,33 @@ CASE(4) ! Schulz-Rinne: Cfg 4
   u(3) = MAXVAL(v_vec)
   CALL Calc_v_RankineHugoniot(rho(2), rho(3), v(2), p(2), p(3), v_vec)
   v(3) = MAXVAL(v_vec)
+
+CASE(6) ! not case 6 of Kurganov!!! Schulz-Rinne: Cfg 6
+  RiemannBC_WaveType(1) = RAREFACTION
+  RiemannBC_WaveType(2) = SHOCK
+  RiemannBC_WaveType(3) = RAREFACTION
+  RiemannBC_WaveType(4) = SHOCK
+  rho(1) = 1.
+  rho(2) = 0.5
+  u(1) = 0.
+  v(1) = 0.
+
+  rho(3) = rho(1)
+  rho(4) = rho(2)
+
+
+  p(1) = 1.
+  p(3) = p(1)
+  p(2) = GetP_RankineHugoniot(rho(3), rho(2), p(3))
+  p(4) = p(2)
+
+  u(4) = u(1)
+  v(2) = v(1)
+
+  u(2) = GetPHI(rho(2), rho(1), p(2), p(1)) + u(1)
+  u(3) = u(2) 
+  v(4) = GetPSI(rho(4), rho(1), p(4), p(1)) + v(1)
+  v(3) = v(4) 
 
 CASE(11) ! Schulz-Rinne: Cfg E
   RiemannBC_WaveType(1) = SHOCK
