@@ -294,8 +294,10 @@ DO j=0,NLoc; DO i=0,NLoc
   U_RR(MOM2)=U_RR(DENS)*U_RR(VEL2)
   U_RR(MOM3)=U_RR(DENS)*U_RR(VEL3)
 
+# ifndef SPLIT_DG
   CALL EvalEulerFlux1D_fast(U_LL,F_L)
   CALL EvalEulerFlux1D_fast(U_RR,F_R)
+#endif
 
   CALL Riemann_loc(F_L,F_R,U_LL,U_RR,F)
 
@@ -541,8 +543,8 @@ F=0.5*((F_L+F_R) - &
 #else
 ! get split flux
 CALL SplitDGSurface_pointer(U_LL,U_RR,F)
-! for Kennedy Gruber flux eigenvalues have to be altered to ensure consistent KE dissipation
-IF (SplitIndicator==3) THEN
+! for KG and PI flux eigenvalues have to be altered to ensure consistent KE dissipation
+IF (SplitIndicator==3 .OR. SplitIndicator==4) THEN
   a(1) = MAX(ABS(RoeVel(1)-Roec),ABS(RoeVel(1)+Roec))
   a(5) = MAX(ABS(RoeVel(1)-Roec),ABS(RoeVel(1)+Roec))
 ENDIF
@@ -658,8 +660,8 @@ F=0.5*((F_L+F_R)        - &
 #else
 ! get split flux
 CALL SplitDGSurface_pointer(U_LL,U_RR,F)
-! for Kennedy Gruber flux eigenvalues have to be altered to ensure consistent KE dissipation
-IF (SplitIndicator==3) THEN
+! for KG or PI flux eigenvalues have to be altered to ensure consistent KE dissipation
+IF (SplitIndicator==3 .OR. SplitIndicator==4) THEN
   a(1) = MAX(ABS(RoeVel(1)-Roec),ABS(RoeVel(1)+Roec))
   a(5) = MAX(ABS(RoeVel(1)-Roec),ABS(RoeVel(1)+Roec))
 ENDIF
