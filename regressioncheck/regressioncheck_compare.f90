@@ -54,7 +54,7 @@ SUBROUTINE CompareResults(iExample,iSubExample)
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_RegressionCheck_Tools,   ONLY: CleanExample,AddError
+USE MOD_RegressionCheck_Tools,   ONLY: AddError
 USE MOD_RegressionCheck_Vars,    ONLY: Examples
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -111,12 +111,10 @@ IF(Examples(iExample)%IntegrateLine)THEN
   END IF
 END IF
 
-! IF all comparisons are successful the error status is 0 -> delete file in CleanExample(iExample)
+! successful execution and comparison
 IF(Examples(iExample)%ErrorStatus.EQ.0)THEN
   SWRITE(UNIT_stdOut,'(A)')  ' Example successful! '
-  CALL CleanExample(iExample)
 END IF
-
 
 END SUBROUTINE CompareResults
 

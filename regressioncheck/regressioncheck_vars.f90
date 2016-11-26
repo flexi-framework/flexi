@@ -22,6 +22,8 @@ CHARACTER(LEN=255)             :: RuntimeOptionTypeII                !> specific
 CHARACTER(LEN=255)             :: RuntimeOptionTypeIII               !> specific option for the regressioncheck: default (empty)
 CHARACTER(LEN=255)             :: EXECPATH                           !> path to solver incl. executable
 CHARACTER(LEN=255)             :: ExamplesDir                        !> path to the regression check example folders
+CHARACTER(LEN=255)             :: readRHS(2)                         !> parameter from parameter_reggie.ini: right hand side 
+                                                                     !> parameter name (1) and setting (2)
 CHARACTER(LEN=255)             :: BuildDir                           !> path to the regression check building environment
 CHARACTER(LEN=255),ALLOCATABLE :: BuildEQNSYS(:)                     !> EQNSYS for each build
 CHARACTER(LEN=255),ALLOCATABLE :: BuildTESTCASE(:)                   !> TESTCASE for each build: only FLEXI
@@ -50,7 +52,9 @@ TYPE tExample                                                        !> examples
   INTEGER                                :: Nvar                     !> Size of EQNSYS 
   CHARACTER(LEN=255)                     :: PATH                     !> Path to example
   LOGICAL                                :: MPIrun                   !> execution information (MPI)
-  INTEGER                                :: MPIthreads               !> number of MPI threads for execution
+  CHARACTER(LEN=15)                      :: MPIthreads(100)          !> number of MPI threads for execution
+  INTEGER                                :: MPIthreadsN              !> number of MPIthreads
+  INTEGER                                :: nRuns                    !> number of runs with a specific setup (number of MPI threads)
   CHARACTER(LEN=255)                     :: ReferenceFile            !> Name of references L2/LInf
   REAL                                   :: ReferenceTolerance       !> optional tolerance for L2/LInf
   CHARACTER(LEN=255)                     :: ReferenceStateFile       !> Name of reference state file

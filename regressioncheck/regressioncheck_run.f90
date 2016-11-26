@@ -37,6 +37,7 @@ USE MOD_RegressionCheck_Tools,   ONLY: InitExample
 USE MOD_RegressionCheck_Vars,    ONLY: nExamples,ExampleNames,Examples,EXECPATH,RuntimeOptionType
 USE MOD_RegressionCheck_Vars,    ONLY: BuildTESTCASE,BuildTIMEDISCMETHOD,BuildDir,BuildSolver,CodeNameLowCase,CodeNameUppCase
 USE MOD_RegressionCheck_Vars,    ONLY: BuildConfigurations,BuildValid,BuildCounter,BuildIndex,BuildSolver
+USE MOD_RegressionCheck_Tools,   ONLY: CleanExample
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -51,14 +52,14 @@ CHARACTER(LEN=255)             :: parameter_ini2                    !> input par
 INTEGER                        :: iExample                          !> loop index for example
 INTEGER                        :: N_compile_flags                   !> number of compile-flags
 INTEGER                        :: iReggieBuild,nReggieBuilds ! field handler unit and ??
-INTEGER                        :: iSubExample
+INTEGER                        :: iSubExample,iScaling,iRun
 LOGICAL                        :: SkipExample,SkipBuild,ExitBuild,SkipFolder,SkipComparison
 !==================================================================================================================================
 SWRITE(UNIT_stdOut,'(132("="))')
 SWRITE(UNIT_stdOut,'(A)') ' Performing tests ...'
 ReggieBuildExe=''
 !==================================================================================================================================
-DO iExample = 1, nExamples ! loop level 1 of 3
+DO iExample = 1, nExamples ! loop level 1 of 5
 !==================================================================================================================================
   CALL CheckExampleName(ExampleNames(iExample),RuntimeOptionType,SkipExample)
   IF(SkipExample)CYCLE ! ignore the example folder and continue with the next
@@ -66,7 +67,7 @@ DO iExample = 1, nExamples ! loop level 1 of 3
   ! set the build configuration environment when BuildSolver=.TRUE.
   CALL GetnReggieBuilds(iExample,ReggieBuildExe,N_compile_flags,nReggieBuilds)
 !==================================================================================================================================
-  DO iReggieBuild = 1, nReggieBuilds ! loop level 2 of 3: cycle the number of build configurations (no configuration = only 1 run)
+  DO iReggieBuild = 1, nReggieBuilds ! loop level 2 of 5: cycle the number of build configurations (no configuration = only 1 run)
 !==================================================================================================================================
     ! Get code binary (build or find it)
     CALL GetCodeBinary(iExample,iReggieBuild,nReggieBuilds,N_compile_flags,ReggieBuildExe,SkipBuild,ExitBuild)
@@ -96,22 +97,30 @@ DO iExample = 1, nExamples ! loop level 1 of 3
     CALL PrintExampleInfo(iExample,EXECPATH,parameter_ini,parameter_ini2)
 
 !==================================================================================================================================
-    DO iSubExample = 1, MAX(1,Examples(iExample)%SubExampleNumber) ! loop level 3 of 3: SubExamples (e.g. different TimeDiscMethods)
+    DO iSubExample = 1, MAX(1,Examples(iExample)%SubExampleNumber) ! loop level 3 of 5: SubExamples (e.g. different TimeDiscMethods)
 !==================================================================================================================================
       ! Set the SubExample in the parameter.ini file
       CALL SetSubExample(iExample,iSubExample,parameter_ini)
 
-      ! delete pre-existing data files before running the code
+      ! delete pre-existing data files before running the code (e.g. "TGVAnalysis.dat" or "Database.csv")
       CALL CleanFolder(iExample)
 
-      ! Execute binary
-      CALL RunTheCode(iExample,iSubExample,EXECPATH,parameter_ini,parameter_ini2,SkipComparison)
-      IF(SkipComparison)CYCLE ! the execution has failed, no comparisons are needed
+!==================================================================================================================================
+      DO iScaling = 1, Examples(iExample)%MPIthreadsN ! loop level 4 of 5: multiple MPI runs with different MPI threads
+!==================================================================================================================================
+!==================================================================================================================================
+        DO iRun = 1, Examples(iExample)%nRuns ! loop level 5 of 5: repeat the same run multiple times
+!==================================================================================================================================
+          CALL RunTheCode(iExample,iSubExample,iScaling,iRun,EXECPATH,parameter_ini,parameter_ini2,SkipComparison)
+          IF(SkipComparison)CYCLE ! the execution has failed, no comparisons are needed
 
-      ! compare the results and write error messages for the current case
-      CALL CompareResults(iExample,iSubExample)
-      
+          ! compare the results and write error messages for the current case
+          CALL CompareResults(iExample,iSubExample)
 
+          ! IF all comparisons are successful the error status is 0 -> delete created files in CleanExample(iExample)
+          IF(Examples(iExample)%ErrorStatus.EQ.0) CALL CleanExample(iExample)
+        END DO ! iScalingRuns = 1, Examples(iExample)%nRuns
+      END DO ! iScaling = 1, Examples(iExample)%MPIthreadsN
     END DO ! iSubExample = 1, MAX(1,SubExampleNumber) (for cases without specified SubExamples: SubExampleNumber=0)
   END DO ! iReggieBuild = 1, nReggieBuilds
 END DO ! iExample=1,nExamples
@@ -570,7 +579,12 @@ SWRITE(UNIT_stdOut,'(A)')      ' EQNSYSNAME:                     ['//TRIM(Exampl
 SWRITE(UNIT_stdOut,'(A,I6,A1)')' nVar:                           [',      Examples(iExample)%Nvar,']'
 SWRITE(UNIT_stdOut,'(A)')      ' PATH (to example):              ['//TRIM(Examples(iExample)%PATH)//']'
 SWRITE(UNIT_stdOut,'(A,L1,A1)')' MPIrun (run with MPI):          [',      Examples(iExample)%MPIrun,']'
-SWRITE(UNIT_stdOut,'(A,I6,A1)')' MPIthreads (number of threads): [',      Examples(iExample)%MPIthreads,']'
+IF(Examples(iExample)%MPIthreadsN.GT.1)THEN
+  SWRITE(UNIT_stdOut,'(A)')    ' MPIthreads (number of threads): ['//TRIM(Examples(iExample)%MPIthreads(1          ))//&
+                                                    ' to '//TRIM(Examples(iExample)%MPIthreads(Examples(iExample)%MPIthreadsN))//']'
+ELSE
+  SWRITE(UNIT_stdOut,'(A)')    ' MPIthreads (number of threads): ['//TRIM(Examples(iExample)%MPIthreads(1))//']'
+END IF
 SWRITE(UNIT_stdOut,'(A)')      ' Reference:                      ['//TRIM(Examples(iExample)%ReferenceFile)//']'
 SWRITE(UNIT_stdOut,'(A)')      ' State:                          ['//TRIM(Examples(iExample)%ReferenceStateFile)//']'
 SWRITE(UNIT_stdOut,'(A)')      ' HDF5 dataset:                   ['//TRIM(Examples(iExample)%ReferenceDataSetName)//']'
@@ -638,6 +652,7 @@ CHARACTER(LEN=500)             :: SYSCOMMAND                        !> string to
 INTEGER                        :: iSTATUS                           !> status
 !===================================================================================================================================
 ! delete pre-existing data files before running the code 
+! 1.) Files needed by "IntegrateLine" comparison
 IF(Examples(iExample)%IntegrateLine)THEN
   SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm '//TRIM(Examples(iExample)%IntegrateLineFile)//' > /dev/null 2>&1'
   CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS) ! delete, e.g., "TGVAnalysis.dat" or "Database.csv"
@@ -647,18 +662,18 @@ END SUBROUTINE CleanFolder
 !===================================================================================================================================
 !> Execute the binary and check if the attempt was successful
 !===================================================================================================================================
-SUBROUTINE RunTheCode(iExample,iSubExample,EXECPATH,parameter_ini,parameter_ini2,SkipComparison)
+SUBROUTINE RunTheCode(iExample,iSubExample,iScaling,iRun,EXECPATH,parameter_ini,parameter_ini2,SkipComparison)
 !===================================================================================================================================
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
 USE MOD_RegressionCheck_Vars,    ONLY: Examples
-USE MOD_RegressionCheck_tools,   ONLY: AddError
+USE MOD_RegressionCheck_tools,   ONLY: AddError,str2int
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER,INTENT(IN)             :: iExample,iSubExample
+INTEGER,INTENT(IN)             :: iExample,iSubExample,iScaling,iRun
 CHARACTER(LEN=*),INTENT(IN)    :: parameter_ini,parameter_ini2,EXECPATH
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
@@ -668,16 +683,22 @@ LOGICAL,INTENT(OUT)            :: SkipComparison
 INTEGER                        :: iSTATUS                           !> status
 CHARACTER(LEN=500)             :: SYSCOMMAND                        !> string to fit the system command
 CHARACTER(LEN=15)              :: MPIthreadsStr                     !> string for the number of MPI threads for execution
+CHARACTER(LEN=255)             :: tempStr 
+INTEGER                        :: tempINT
 !===================================================================================================================================
 SkipComparison=.FALSE.
 ! -----------------------------------------------------------------------------------------------------------------------
 ! Run the Code
 ! -----------------------------------------------------------------------------------------------------------------------
-IF(Examples(iExample)%MPIrun)THEN
-  IF(Examples(iExample)%MPIthreads.GT.1)THEN
-    WRITE(UNIT=MPIthreadsStr,FMT='(I5)') Examples(iExample)%MPIthreads
-  ELSE
-    MPIthreadsStr='0'
+IF(Examples(iExample)%MPIrun)THEN ! use "mpirun"
+  !IF(Examples(iExample)%MPIthreads.GT.1)THEN
+  MPIthreadsStr=ADJUSTL(TRIM(Examples(iExample)%MPIthreads(iScaling)))
+  CALL str2int(ADJUSTL(TRIM(MPIthreadsStr)),tempINT,iSTATUS) ! sanity check if the number of threads is correct
+  IF((tempINT.LE.0).OR.(iSTATUS.NE.0))CALL abort(&
+      __STAMP__&
+      ,'RunTheCode(): Number of MPI threads is corrupt = '//ADJUSTL(TRIM(MPIthreadsStr)))
+  IF(iScaling.GT.1)THEN
+    SWRITE(*,*)"Examples(iExample)%MPIthreads=",Examples(iExample)%MPIthreads(iScaling)
   END IF
 
   SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && mpirun -np '//ADJUSTL(TRIM(MPIthreadsStr))&
@@ -694,6 +715,17 @@ CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS) ! run the c
 IF(iSTATUS.EQ.0)THEN ! Computation successful
   SWRITE(UNIT_stdOut,'(A)',ADVANCE='no')  ' successful computation ...'
   CALL AddError('successful computation',iExample,iSubExample,ErrorStatus=0,ErrorCode=0)
+
+! copy the std.out file
+WRITE (tempStr, '(I4.4,I4.4)') iScaling,iRun
+SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && cp std.out std-'//TRIM(tempStr)//'.out'
+CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS) ! copy the std.out file
+SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && mkdir std_files > /dev/null 2>&1'
+CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
+SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && mv std-'//TRIM(tempStr)//'.out std_files/'
+CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
+
+
 ELSE ! Computation failed
   SWRITE(UNIT_stdOut,'(A)')   ' Computation of example failed'
   SWRITE(UNIT_stdOut,'(A,A)') ' Out-file: ', TRIM(Examples(iExample)%PATH)//'std.out'
