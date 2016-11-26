@@ -49,9 +49,7 @@ USE MOD_Posti_Vars
 USE MOD_ReadInTools ,ONLY: GETSTR,CountOption
 USE MOD_StringTools ,ONLY: STRICMP
 USE MOD_Mesh_Vars   ,ONLY: nElems
-USE MOD_HDF5_Input  ,ONLY: OpenDataFile,CloseDataFile
 #if FV_ENABLED
-USE MOD_Restart     ,ONLY: ReadElemData
 USE MOD_Restart_Vars,ONLY: nVarElemData,ElemData,VarNamesElemData
 #endif
 IMPLICIT NONE
@@ -67,16 +65,12 @@ ALLOCATE(FV_Elems_loc(1:nElems))
 #if FV_ENABLED
 NVisu_FV = (PP_N+1)*2-1
 
-! Read ElemData from state file to fill FV_Elems
-CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
-CALL ReadElemData()
 FV_Elems_loc = 0
 DO iVar=1,nVarElemData
   IF (STRICMP(VarNamesElemData(iVar),"FV_Elems")) THEN
     FV_Elems_loc = INT(ElemData(iVar,:))
   END IF
 END DO
-CALL CloseDataFile()
 
 nElems_FV = SUM(FV_Elems_loc)
 nElems_DG = nElems - nElems_FV
