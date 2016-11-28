@@ -88,7 +88,7 @@ DEALLOCATE(Examples)
 ! Measure processing duration
 EndTime=REGGIETIME()
 
-#ifdef MPI
+#if MPI
 CALL MPI_FINALIZE(iError)
 IF(iError .NE. 0) CALL abort(&
   __STAMP__&
