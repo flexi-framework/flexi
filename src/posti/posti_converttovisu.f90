@@ -13,10 +13,11 @@
 !=================================================================================================================================
 #include "flexi.h"
 
+!===================================================================================================================================
+!> Contains routines that convert the calculated FV or DG quantities to the visualization grid. There are separate routines
+!> to convert the ElemData and FieldData to the visualization grid.
+!===================================================================================================================================
 MODULE MOD_Posti_ConvertToVisu
-!===================================================================================================================================
-! Add comments please!
-!===================================================================================================================================
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -59,6 +60,9 @@ PUBLIC:: ConvertToVisu_FieldData
 
 CONTAINS
 
+!===================================================================================================================================
+!> Perform a ChangeBasis of the calculated DG quantities to the visualization grid.
+!===================================================================================================================================
 SUBROUTINE ConvertToVisu_DG() 
 USE MOD_Globals
 USE MOD_PreProc
@@ -94,6 +98,9 @@ SDEALLOCATE(Vdm_N_NVisu)
 END SUBROUTINE ConvertToVisu_DG
 
 #if FV_ENABLED        
+!===================================================================================================================================
+!> Convert the calculated FV quantities to the visualization grid.
+!===================================================================================================================================
 SUBROUTINE ConvertToVisu_FV(mapCalc,maskVisu,reallocate)
 USE MOD_Globals
 USE MOD_PreProc
@@ -144,7 +151,9 @@ END SUBROUTINE ConvertToVisu_FV
 
 
 #if FV_RECONSTRUCT
-
+!===================================================================================================================================
+!> 
+!===================================================================================================================================
 SUBROUTINE ConvertToVisu_FV_Reconstruct()
 USE MOD_Globals
 USE MOD_PreProc
@@ -251,6 +260,9 @@ END SUBROUTINE ConvertToVisu_FV_Reconstruct
 
 #endif /* FV_ENABLED */
 
+!===================================================================================================================================
+!> Convert ElemData variables that should be visualized to the visu grid.
+!===================================================================================================================================
 SUBROUTINE ConvertToVisu_ElemData() 
 USE MOD_Globals
 USE MOD_PreProc
@@ -281,6 +293,9 @@ DO iVarElemData=1,nVarElemData
 END DO 
 END SUBROUTINE ConvertToVisu_ElemData
 
+!===================================================================================================================================
+!> Convert FieldData variables that should be visualized to the visu grid.
+!===================================================================================================================================
 SUBROUTINE ConvertToVisu_FieldData() 
 USE MOD_Globals
 USE MOD_PreProc

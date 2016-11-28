@@ -15,6 +15,8 @@
 #include "eos.h"
 
 !==================================================================================================================================
+!> Contains all the routines to calculate the (equation system and EOS dependant) conservative/primitive/derived quantities. 
+!> Dependandy table will be filled in here.
 !==================================================================================================================================
 MODULE MOD_EOS_Posti
 ! MODULES
@@ -92,6 +94,9 @@ PUBLIC :: CalcQuantities
 
 CONTAINS
 
+!==================================================================================================================================
+!> Build a table containing the information on which other variabels all variables depent.
+!==================================================================================================================================
 SUBROUTINE InitDepTable() 
 USE MOD_EOS_Posti_Vars
 IMPLICIT NONE
@@ -190,6 +195,9 @@ DepTablePrimToCons(5 ,:)=(/0,1,0,0,0,0,1,1,1,1,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0
 #endif
 END SUBROUTINE InitDepTable  
 
+!==================================================================================================================================
+!> Build an array containing all available variable names.
+!==================================================================================================================================
 SUBROUTINE FillDepNames() 
 USE MOD_EOS_Posti_Vars
 IMPLICIT NONE
@@ -225,6 +233,11 @@ DepNames(27) = "Schlieren"
 #endif
 END SUBROUTINE FillDepNames
 
+!==================================================================================================================================
+!> Build the actual dependancies. If we call the DGTimeDerivative_weakForm, the primitive variables will be calculated
+!> in there and don't need to be computed from the conservative variables.
+!> Also, recursively add the dependancies of variabels that a variable depends on to the dependancy of the first variable.
+!==================================================================================================================================
 SUBROUTINE FillDepTable(withGradients) 
 USE MOD_EOS_Posti_Vars
 USE MOD_Equation_Vars ,ONLY: StrVarNames,StrVarNamesPrim

@@ -13,10 +13,11 @@
 !=================================================================================================================================
 #include "flexi.h"
 
+!===================================================================================================================================
+!> Module containing the main procedures for the POSTI tool: visu3d_requestInformation is called by ParaView to create a
+!> list of available variables and visu3D is the main routine of POSTI.
+!===================================================================================================================================
 MODULE MOD_Visu3D
-!===================================================================================================================================
-! Add comments please!
-!===================================================================================================================================
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -71,10 +72,12 @@ cstrToChar255(strlen+1:255) = ' '
 END FUNCTION cstrToChar255
 
 
+!===================================================================================================================================
+!> Create a list of available variables for ParaView. This list contains the conservative, primitve and derived quantities
+!> that are available in the current equation system as well as the additional variables read form the State file.
+!> The additional variables are stored in the datasets 'ElemData' (elementwise data) and 'FieldData' (pointwise data).
+!===================================================================================================================================
 SUBROUTINE visu3d_requestInformation(mpi_comm_IN, strlen_state, statefile_IN, varnames)
-!===================================================================================================================================
-! Add comments please!
-!===================================================================================================================================
 ! MODULES
 USE ISO_C_BINDING      ,ONLY: C_PTR, C_LOC, C_F_POINTER
 USE MOD_Globals
@@ -153,6 +156,9 @@ END IF
 END SUBROUTINE visu3d_requestInformation
 
 
+!===================================================================================================================================
+!> C wrapper routine for the visu3D call from ParaView.
+!===================================================================================================================================
 SUBROUTINE visu3D_CWrapper(mpi_comm_IN, strlen_prm, prmfile_IN, strlen_posti, postifile_IN, strlen_state, statefile_IN,&
         coordsDG_out,valuesDG_out,nodeidsDG_out, &
         coordsFV_out,valuesFV_out,nodeidsFV_out,varnames_out,components_out)
@@ -188,6 +194,9 @@ CALL visu3D(mpi_comm_IN, prmfile, postifile, statefile, &
 END SUBROUTINE visu3D_CWrapper
 
 
+!===================================================================================================================================
+!> Main routine of the visualization tool POSTI. Called either by the ParaView plugin or by the standalone program version.
+!===================================================================================================================================
 SUBROUTINE visu3D(mpi_comm_IN, prmfile, postifile, statefile, &
         coordsDG_out,valuesDG_out,nodeidsDG_out, &
         coordsFV_out,valuesFV_out,nodeidsFV_out,varnames_out,components_out)
@@ -502,6 +511,9 @@ SWRITE(UNIT_StdOut,'(132("="))')
 END SUBROUTINE visu3D
 
 
+!===================================================================================================================================
+!> Deallocate the different NodeID arrays.
+!===================================================================================================================================
 SUBROUTINE visu3d_dealloc_nodeids() 
 USE MOD_Posti_Vars
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -517,6 +529,9 @@ SDEALLOCATE(nodeids_FV_2D)
 END SUBROUTINE visu3d_dealloc_nodeids
 
 
+!===================================================================================================================================
+!> Deallocate arrays used by visu3D.
+!===================================================================================================================================
 SUBROUTINE visu3D_finalize() 
 USE MOD_Posti_Vars
 IMPLICIT NONE
@@ -536,13 +551,24 @@ SDEALLOCATE(FV_Elems_loc)
 
 SDEALLOCATE(VarNamesVisu_ElemData)
 SDEALLOCATE(VarNamesVisu_ElemData_old)
+
+SDEALLOCATE(FieldData)
+SDEALLOCATE(VarNamesAddField)
+SDEALLOCATE(VarNamesVisu_FieldData)
+SDEALLOCATE(VarNamesVisu_FieldData_old)
 END SUBROUTINE visu3D_finalize
 
 END MODULE MOD_Visu3D
 
 
-
-
+!===================================================================================================================================
+!> Standalone version of the Visu3D tool. Read in parameter file, loop over all given State files and call the visu3D routine for
+!> all of them.
+!>
+!> Usage: posti parameter_posti.ini [parameter_flexi.ini] State1.h5 State2.h5 ...
+!> The optional parameter_flexi.ini is used for FLEXI parameters instead of the ones that are found in the userblock of the 
+!> State file.
+!===================================================================================================================================
 PROGRAM Posti_Visu3D
 USE ISO_C_BINDING
 USE MOD_Globals
@@ -643,5 +669,6 @@ DO iArg=1+skipArgs,nArgs
   ENDIF
 #endif
 END DO
+
 END PROGRAM 
 
