@@ -49,7 +49,13 @@ PUBLIC:: ConvertToVisu_FV_Reconstruct
 INTERFACE ConvertToVisu_ElemData
   MODULE PROCEDURE ConvertToVisu_ElemData
 END INTERFACE
+
+INTERFACE ConvertToVisu_FieldData
+  MODULE PROCEDURE ConvertToVisu_FieldData
+END INTERFACE
+
 PUBLIC:: ConvertToVisu_ElemData
+PUBLIC:: ConvertToVisu_FieldData
 
 CONTAINS
 
@@ -74,7 +80,7 @@ ALLOCATE(Vdm_N_NVisu(0:NVisu,0:PP_N))
 CALL GetVandermonde(PP_N,NodeType,NVisu,NodeTypeVisu,Vdm_N_NVisu,modal=.FALSE.)
 ! convert DG solution to UVisu_DG
 SDEALLOCATE(UVisu_DG)
-ALLOCATE(UVisu_DG(0:NVisu,0:NVisu,0:NVisu,nElems_DG,nVarVisu+nVarVisu_ElemData))
+ALLOCATE(UVisu_DG(0:NVisu,0:NVisu,0:NVisu,nElems_DG,nVarVisu+nVarVisu_ElemData+nVarVisu_FieldData))
 DO iVar=1,nVarTotal
   IF (mapVisu(iVar).GT.0) THEN
     iVarCalc = mapCalc(iVar) 
@@ -117,7 +123,7 @@ CALL GetVandermonde(PP_N,NodeType,NVisu_FV,NodeTypeVisu,Vdm_N_NVisu_FV,modal=.FA
 reallocate_loc = MERGE(reallocate, .TRUE., PRESENT(reallocate))
 IF (reallocate_loc) THEN
   SDEALLOCATE(UVisu_FV)
-  ALLOCATE(UVisu_FV(0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV,nVarVisu+nVarVisu_ElemData))
+  ALLOCATE(UVisu_FV(0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV,nVarVisu+nVarVisu_ElemData+nVarVisu_FieldData))
 END IF
 DO iVar=1,nVarTotal
   iVarVisu = mapVisu(iVar) 
@@ -249,8 +255,8 @@ SUBROUTINE ConvertToVisu_ElemData()
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Posti_Vars
-USE MOD_Restart_Vars ,ONLY: nVarElemData,ElemData,VarNamesElemData
-USE MOD_StringTools  ,ONLY: STRICMP
+USE MOD_Restart_Vars       ,ONLY: nVarElemData,ElemData,VarNamesElemData
+USE MOD_StringTools        ,ONLY: STRICMP
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -274,5 +280,47 @@ DO iVarElemData=1,nVarElemData
   END DO
 END DO 
 END SUBROUTINE ConvertToVisu_ElemData
+
+SUBROUTINE ConvertToVisu_FieldData() 
+USE MOD_Globals
+USE MOD_PreProc
+USE MOD_Posti_Vars
+USE MOD_StringTools        ,ONLY: STRICMP
+USE MOD_Interpolation      ,ONLY: GetVandermonde
+USE MOD_ChangeBasis        ,ONLY: ChangeBasis3D
+USE MOD_Interpolation_Vars ,ONLY: NodeType,NodeTypeVisu
+IMPLICIT NONE
+! INPUT / OUTPUT VARIABLES 
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER            :: iVarFieldData,iVarVisu,iElem_DG,iElem_FV,iElem
+REAL,ALLOCATABLE   :: Vdm_N_NVisu(:,:)                  ! Vandermonde from state to visualisation nodes
+REAL,ALLOCATABLE   :: Vdm_N_NVisu_FV(:,:)                ! Vandermonde from state to fv visualisation nodes
+!===================================================================================================================================
+SWRITE(*,*) "Convert FieldData to Visu grid"
+
+ALLOCATE(Vdm_N_NVisu_FV(0:NVisu_FV,0:PP_N))
+CALL GetVandermonde(PP_N,NodeType,NVisu_FV,NodeTypeVisu,Vdm_N_NVisu_FV,modal=.FALSE.)
+ALLOCATE(Vdm_N_NVisu(0:NVisu,0:PP_N))
+CALL GetVandermonde(PP_N,NodeType,NVisu,NodeTypeVisu,Vdm_N_NVisu,modal=.FALSE.)
+
+DO iVarFieldData=1,nVarFieldData
+  DO iVarVisu=1,nVarVisu_FieldData
+    IF (STRICMP(VarNamesAddField(iVarFieldData),VarNamesVisu_FieldData(iVarVisu))) THEN
+      SWRITE(*,*) "  ",TRIM(VarNamesAddField(iVarFieldData))
+      DO iElem_DG=1,nElems_DG
+        iElem = mapElems_DG(iElem_DG)
+        CALL ChangeBasis3D(PP_N,NVisu,Vdm_N_NVisu,FieldData(iVarFieldData,:,:,:,iElem),&
+                                                  UVisu_DG(:,:,:,iElem_DG,nVarVisu+nVarVisu_ElemData+iVarVisu))
+      END DO
+      DO iElem_FV=1,nElems_FV
+        iElem = mapElems_FV(iElem_FV)
+        CALL ChangeBasis3D(PP_N,NVisu,Vdm_N_NVisu_FV,FieldData(iVarFieldData,:,:,:,iElem),&
+                                                     UVisu_FV(:,:,:,iElem_FV,nVarVisu+nVarVisu_ElemData+iVarVisu))
+      END DO
+    END IF
+  END DO
+END DO 
+END SUBROUTINE ConvertToVisu_FieldData
 
 END MODULE MOD_Posti_ConvertToVisu

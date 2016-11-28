@@ -157,7 +157,7 @@ IMPLICIT NONE
 INTEGER             :: iVar,iVar2
 CHARACTER(LEN=255)  :: VarName
 CHARACTER(LEN=20)   :: format
-LOGICAL             :: changedVarNames_ElemData
+LOGICAL             :: changedVarNames_ElemData,changedVarNames_FieldData
 !===================================================================================================================================
 ! initialize the dependency table
 CALL InitDepTable()
@@ -169,25 +169,52 @@ SDEALLOCATE(mapVisu)
 ALLOCATE(mapVisu(1:nVarTotal))
 SDEALLOCATE(VarNamesVisu_ElemData)
 ALLOCATE(VarNamesVisu_ElemData(1:CountOption("VarName")))
+SDEALLOCATE(VarNamesVisu_FieldData)
+ALLOCATE(VarNamesVisu_FieldData(1:CountOption("VarName")))
 mapVisu = 0
 nVarVisu = 0
 nVarVisu_ElemData = 0
+nVarVisu_FieldData = 0
+! Compare varnames that should be visalized with availabe varnames
 DO iVar=1,CountOption("VarName")
   VarName = GETSTR("VarName")
+  ! Compare against conservative, primitve and derived varnames
   DO iVar2=1,nVarTotal
     IF (STRICMP(VarName, DepNames(iVar2))) THEN
       mapVisu(iVar2) = nVarVisu+1
       nVarVisu = nVarVisu + 1
     END IF
   END DO
+  ! Compare against additional elementwise varnames
   DO iVar2=1,nVarElemData
     IF (STRICMP(VarName, VarNamesElemData(iVar2))) THEN
       nVarVisu_ElemData = nVarVisu_ElemData + 1
       VarNamesVisu_ElemData(nVarVisu_ElemData) = VarName
     END IF
   END DO
+  ! Compare against additional pointwise varnames
+  DO iVar2=1,nVarFieldData
+    IF (STRICMP(VarName, VarNamesAddField(iVar2))) THEN
+      nVarVisu_FieldData = nVarVisu_FieldData + 1
+      VarNamesVisu_FieldData(nVarVisu_FieldData) = VarName
+    END IF
+  END DO
 END DO
 
+! Check if the pointwise additional varnames have changed
+changedVarNames_FieldData = (nVarVisu_FieldData.NE.nVarVisu_FieldData_old) ! First check: number of variables
+IF (.NOT.changedVarNames_FieldData) THEN ! Second check: Names of all variabels (if number is the same)
+  DO iVar=1,nVarVisu_FieldData
+
+    changedVarNames_FieldData = changedVarNames_FieldData &
+        .OR.  (.NOT.STRICMP(VarNamesVisu_FieldData(iVar),VarNamesVisu_FieldData_old(iVar)))
+  END DO
+END IF
+SDEALLOCATE(VarNamesVisu_FieldData_old)
+ALLOCATE(VarNamesVisu_FieldData_old(SIZE(VarNamesVisu_FieldData)))
+VarNamesVisu_FieldData_old = VarNamesVisu_FieldData
+
+! Check if the elementwise additional varnames have changed
 changedVarNames_ElemData = (nVarVisu_ElemData.NE.nVarVisu_ElemData_old)
 IF (.NOT.changedVarNames_ElemData) THEN
   DO iVar=1,nVarVisu_ElemData
@@ -246,7 +273,7 @@ changedVarNames = .TRUE.
 IF (ALLOCATED(mapVisu_old).AND.(SIZE(mapVisu).EQ.SIZE(mapVisu_old))) THEN
   changedVarNames = .NOT.ALL(mapVisu.EQ.mapVisu_old) 
 END IF
-changedVarNames = changedVarNames .OR. changedVarNames_ElemData
+changedVarNames = changedVarNames .OR. changedVarNames_ElemData .OR. changedVarNames_FieldData
 SDEALLOCATE(mapVisu_old)
 ALLOCATE(mapVisu_old(1:nVarTotal))
 mapVisu_old = mapVisu

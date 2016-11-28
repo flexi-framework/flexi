@@ -96,6 +96,9 @@ CHARACTER(LEN=255)             :: statefile
 LOGICAL                        :: elemDataFound
 INTEGER                        :: nVarAdd,iVar
 CHARACTER(LEN=255),ALLOCATABLE :: VarNamesAdd(:)
+LOGICAL                        :: FieldDataFound
+INTEGER                        :: nVarFieldData
+CHARACTER(LEN=255),ALLOCATABLE :: VarNamesAddField(:)
 !===================================================================================================================================
 statefile = cstrToChar255(statefile_IN, strlen_state)
 
@@ -117,17 +120,34 @@ ELSE ! state file
   ELSE
     nVarAdd=0
   END IF
+  ! check if additional elem data exists
+  CALL DatasetExists(File_ID,'FieldData',FieldDataFound)
+  IF(FieldDataFound)THEN
+    CALL GetDataSize(File_ID,'FieldData',nDims,HSize)
+    nVarFieldData=INT(HSize(1),4)
+    ALLOCATE(VarNamesAddField(nVarFieldData))
+    CALL ReadAttribute(File_ID,'VarNamesAddField',nVarFieldData,StrArray=VarNamesAddField)
+  ELSE
+    nVarFieldData=0
+  END IF
   CALL CloseDataFile()
 
-  CALL GetVarnames(varnames_loc,nVarAdd)
+  ! Fill varnames
+  CALL GetVarnames(varnames_loc,nVarAdd+nVarFieldData)
+  ! Add additional element data
   DO iVar=1,nVarAdd
     varnames_loc(nVarTotal+iVar) = VarNamesAdd(iVar)
   END DO
+  ! Add additional pointwise data
+  DO iVar=1,nVarFieldData
+    varnames_loc(nVarTotal+nVarAdd+iVar) = VarNamesAddField(iVar)
+  END DO
 
-  varnames%len  = (nVarTotal+nVarAdd)*255 
+  varnames%len  = (nVarTotal+nVarAdd+nVarFieldData)*255 
   varnames%data = C_LOC(varnames_loc(1))
 
   SDEALLOCATE(VarNamesAdd)
+  SDEALLOCATE(VarNamesAddField)
 END IF 
 
 END SUBROUTINE visu3d_requestInformation
@@ -176,13 +196,13 @@ USE MOD_PreProc
 USE MOD_Posti_Vars
 USE MOD_EOS_Posti_Vars      ,ONLY: nVarTotal
 USE MOD_Posti_Mappings      ,ONLY: Build_FV_DG_distribution,Build_mapCalc_mapVisu
-USE MOD_Posti_ReadState     ,ONLY: ReadStateAndGradients,ReadState
+USE MOD_Posti_ReadState     ,ONLY: ReadStateAndGradients,ReadState,ReadFieldData
 USE MOD_Posti_VisuMesh      ,ONLY: BuildVisuCoords,VisualizeMesh
 USE MOD_Posti_Calc          ,ONLY: CalcQuantities_DG
 #if FV_ENABLED
 USE MOD_Posti_Calc          ,ONLY: CalcQuantities_ConvertToVisu_FV
 #endif
-USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_DG,ConvertToVisu_ElemData
+USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_DG,ConvertToVisu_ElemData,ConvertToVisu_FieldData
 USE MOD_MPI                 ,ONLY: InitMPI
 USE MOD_HDF5_Input          ,ONLY: ISVALIDMESHFILE,ISVALIDHDF5FILE
 USE MOD_HDF5_Input          ,ONLY: OpenDataFile,CloseDataFile,GetDataProps,ReadAttribute,File_ID
@@ -334,9 +354,10 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
     CALL BuildPartition() 
     CALL CloseDataFile()
 
-    ! Read in ElemData - needs nElems and can be called only after BuildPartition
+    ! Read in ElemData and additional Field Data - needs nElems and can be called only after BuildPartition
     CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
     CALL ReadElemData()
+    CALL ReadFieldData()
     CALL CloseDataFile()
 
     CALL Build_FV_DG_distribution(statefile) 
@@ -412,26 +433,27 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   END IF
 #endif /* FV_ENABLED */
 
-  ! convert ElemData to visu grid
+  ! convert ElemData and FieldData to visu grid
   IF (changedStateFile.OR.changedVarNames.OR.changedNVisu) THEN
     CALL ConvertToVisu_ElemData()
+    CALL ConvertToVisu_FieldData()
   END IF
 
   ! write UVisu to VTK 2D / 3D arrays (must be done always!)
   IF (VisuDimension.EQ.3) THEN
-    CALL WriteDataToVTK_array(nVarVisu+nVarVisu_ElemData,NVisu   ,nElems_DG,valuesDG_out,UVisu_DG,3)
-    CALL WriteDataToVTK_array(nVarVisu+nVarVisu_ElemData,NVisu_FV,nElems_FV,valuesFV_out,UVisu_FV,3)
+    CALL WriteDataToVTK_array(nVarVisu+nVarVisu_ElemData+nVarVisu_FieldData,NVisu   ,nElems_DG,valuesDG_out,UVisu_DG,3)
+    CALL WriteDataToVTK_array(nVarVisu+nVarVisu_ElemData+nVarVisu_FieldData,NVisu_FV,nElems_FV,valuesFV_out,UVisu_FV,3)
   ELSE IF (VisuDimension.EQ.2) THEN
     ! allocate Visu 2D array and copy from first zeta-slice of 3D array
     SDEALLOCATE(UVisu_DG_2D)
-    ALLOCATE(UVisu_DG_2D(0:NVisu,0:NVisu,0:0,1:nElems_DG,1:(nVarVisu+nVarVisu_ElemData)))
+    ALLOCATE(UVisu_DG_2D(0:NVisu,0:NVisu,0:0,1:nElems_DG,1:(nVarVisu+nVarVisu_ElemData+nVarVisu_FieldData)))
     UVisu_DG_2D = UVisu_DG(:,:,0:0,:,:)
     SDEALLOCATE(UVisu_FV_2D)
-    ALLOCATE(UVisu_FV_2D(0:NVisu_FV,0:NVisu_FV,0:0,1:nElems_FV,1:(nVarVisu+nVarVisu_ElemData)))
+    ALLOCATE(UVisu_FV_2D(0:NVisu_FV,0:NVisu_FV,0:0,1:nElems_FV,1:(nVarVisu+nVarVisu_ElemData+nVarVisu_FieldData)))
     UVisu_FV_2D = UVisu_FV(:,:,0:0,:,:)
 
-    CALL WriteDataToVTK_array(nVarVisu+nVarVisu_ElemData,NVisu   ,nElems_DG,valuesDG_out,UVisu_DG_2D,2)
-    CALL WriteDataToVTK_array(nVarVisu+nVarVisu_ElemData,NVisu_FV,nElems_FV,valuesFV_out,UVisu_FV_2D,2)
+    CALL WriteDataToVTK_array(nVarVisu+nVarVisu_ElemData+nVarVisu_FieldData,NVisu   ,nElems_DG,valuesDG_out,UVisu_DG_2D,2)
+    CALL WriteDataToVTK_array(nVarVisu+nVarVisu_ElemData+nVarVisu_FieldData,NVisu_FV,nElems_FV,valuesFV_out,UVisu_FV_2D,2)
   END IF
 
   ! Convert coordinates to visu grid

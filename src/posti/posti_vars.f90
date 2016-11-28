@@ -49,6 +49,14 @@ LOGICAL                           :: changedFV_Elems
 LOGICAL                           :: changedWithGradients
 LOGICAL                           :: changedPrmFile
 
+! Additional pointwise data
+REAL,ALLOCATABLE                  :: FieldData(:,:,:,:,:)    ! Additional pointwise data from state file
+CHARACTER(LEN=255),ALLOCATABLE    :: VarNamesAddField(:)     ! Variable names of pointwise data
+INTEGER                           :: nVarFieldData           ! Number of pointwise variables
+INTEGER                           :: nVarVisu_FieldData, nVarVisu_FieldData_old=0
+CHARACTER(LEN=255),ALLOCATABLE    :: VarNamesVisu_FieldData(:)
+CHARACTER(LEN=255),ALLOCATABLE    :: VarNamesVisu_FieldData_old(:)
+
 INTEGER,ALLOCATABLE,TARGET        :: nodeids_DG(:)           ! visu nodeids
 REAL(C_DOUBLE),ALLOCATABLE,TARGET :: CoordsVisu_DG(:,:,:,:,:)! visu coordinates
 REAL(C_DOUBLE),ALLOCATABLE,TARGET :: UVisu_DG(:,:,:,:,:)     ! state at visu points

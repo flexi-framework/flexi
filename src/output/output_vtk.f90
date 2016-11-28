@@ -472,7 +472,8 @@ SUBROUTINE WriteVarnamesToVTK_array(nDep,mapVisu,varnames_out,components_out)
 USE ISO_C_BINDING
 ! MODULES
 USE MOD_Globals
-USE MOD_Posti_Vars     ,ONLY: nVarVisu,nVarVisu_ElemData,VarNamesVisu_ElemData
+USE MOD_Posti_Vars     ,ONLY: nVarVisu,nVarVisu_ElemData,VarNamesVisu_ElemData,nVarVisu_FieldData,VarNamesVisu_FieldData
+USE MOD_Posti_Vars     ,ONLY: VarNamesAddField,nVarFieldData
 USE MOD_EOS_Posti_Vars ,ONLY: DepNames
 USE MOD_Restart_Vars   ,ONLY: nVarElemData,VarNamesElemData
 USE MOD_StringTools    ,ONLY: STRICMP
@@ -488,9 +489,9 @@ TYPE (CARRAY), INTENT(INOUT) :: components_out
 ! LOCAL VARIABLES
 CHARACTER(C_CHAR),POINTER    :: VarNames_loc(:,:)
 INTEGER(C_INT),POINTER       :: components_loc(:)
-INTEGER                      :: nVar_loc,i,iVar,iVarVisu,iVarElemData
+INTEGER                      :: nVar_loc,i,iVar,iVarVisu,iVarElemData,iVarFieldData
 !===================================================================================================================================
-nVar_loc = nVarVisu+nVarVisu_ElemData
+nVar_loc = nVarVisu+nVarVisu_ElemData+nVarVisu_FieldData
 ! copy varnames
 ALLOCATE(VarNames_loc(255,nVar_loc))
 varnames_out%len  = nVar_loc*255
@@ -518,6 +519,17 @@ DO iVarElemData=1,nVarElemData
         VarNames_loc(i,iVarVisu+iVar) = VarNamesElemData(iVarElemData)(i:i)
       END DO
       components_loc(iVarVisu+iVar) = 1
+    END IF
+  END DO
+END DO
+
+DO iVarFieldData=1,nVarFieldData
+  DO iVar=1,nVarVisu_FieldData
+    IF (STRICMP(VarNamesAddField(iVarFieldData),VarNamesVisu_FieldData(iVar))) THEN
+      DO i=1,255
+        VarNames_loc(i,iVarVisu+nVarVisu_ElemData+iVar) = VarNamesAddField(iVarFieldData)(i:i)
+      END DO
+      components_loc(iVarVisu+nVarVisu_ElemData+iVar) = 1
     END IF
   END DO
 END DO
