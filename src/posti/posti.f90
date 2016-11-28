@@ -194,6 +194,7 @@ USE MOD_Interpolation_Vars  ,ONLY: NodeType
 USE MOD_ReadInTools         ,ONLY: prms,GETINT,GETLOGICAL
 USE MOD_ReadInTools         ,ONLY: FinalizeParameters,ExtractParameterFile
 USE MOD_Output_Vars         ,ONLY: ProjectName
+USE MOD_Restart             ,ONLY: ReadElemData
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
@@ -331,6 +332,11 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
     ! Build partition to get nElems
     CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
     CALL BuildPartition() 
+    CALL CloseDataFile()
+
+    ! Read in ElemData - needs nElems and can be called only after BuildPartition
+    CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+    CALL ReadElemData()
     CALL CloseDataFile()
 
     CALL Build_FV_DG_distribution(statefile) 

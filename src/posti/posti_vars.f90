@@ -72,7 +72,7 @@ INTEGER,ALLOCATABLE               :: mapElems_FV(:)
 INTEGER,ALLOCATABLE               :: FV_Elems_loc(:)
 INTEGER,ALLOCATABLE               :: FV_Elems_old(:)
 
-INTEGER                           :: nVarVisu_ElemData, nVarVisu_ElemData_old
+INTEGER                           :: nVarVisu_ElemData, nVarVisu_ElemData_old=0
 CHARACTER(LEN=255),ALLOCATABLE    :: VarNamesVisu_ElemData(:)
 CHARACTER(LEN=255),ALLOCATABLE    :: VarNamesVisu_ElemData_old(:)
 
