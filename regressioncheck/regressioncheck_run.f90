@@ -697,7 +697,7 @@ IF(Examples(iExample)%MPIrun)THEN ! use "mpirun"
   IF((tempINT.LE.0).OR.(iSTATUS.NE.0))CALL abort(&
       __STAMP__&
       ,'RunTheCode(): Number of MPI threads is corrupt = '//ADJUSTL(TRIM(MPIthreadsStr)))
-  IF(iScaling.GT.1)THEN
+  IF((iScaling.GT.1).AND.(iRun.EQ.1))THEN
     SWRITE(*,*)"Examples(iExample)%MPIthreads=",Examples(iExample)%MPIthreads(iScaling)
   END IF
 
