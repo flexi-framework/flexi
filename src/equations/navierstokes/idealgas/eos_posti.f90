@@ -15,8 +15,8 @@
 #include "eos.h"
 
 !==================================================================================================================================
-!> Contains all the routines to calculate the (equation system and EOS dependant) conservative/primitive/derived quantities. 
-!> Dependandy table will be filled in here.
+!> Contains all the routines to calculate the (equation system and EOS dependent) conservative/primitive/derived quantities. 
+!> Dependency table will be filled in here.
 !==================================================================================================================================
 MODULE MOD_EOS_Posti
 ! MODULES
@@ -234,9 +234,9 @@ DepNames(27) = "Schlieren"
 END SUBROUTINE FillDepNames
 
 !==================================================================================================================================
-!> Build the actual dependancies. If we call the DGTimeDerivative_weakForm, the primitive variables will be calculated
+!> Build the actual dependencies. If we call the DGTimeDerivative_weakForm, the primitive variables will be calculated
 !> in there and don't need to be computed from the conservative variables.
-!> Also, recursively add the dependancies of variabels that a variable depends on to the dependancy of the first variable.
+!> Also, recursively add the dependencies of variabels that a variable depends on to the dependency of the first variable.
 !==================================================================================================================================
 SUBROUTINE FillDepTable(withGradients) 
 USE MOD_EOS_Posti_Vars

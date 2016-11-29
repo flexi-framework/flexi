@@ -74,7 +74,7 @@ END FUNCTION cstrToChar255
 
 !===================================================================================================================================
 !> Create a list of available variables for ParaView. This list contains the conservative, primitve and derived quantities
-!> that are available in the current equation system as well as the additional variables read form the State file.
+!> that are available in the current equation system as well as the additional variables read from the state file.
 !> The additional variables are stored in the datasets 'ElemData' (elementwise data) and 'FieldData' (pointwise data).
 !===================================================================================================================================
 SUBROUTINE visu3d_requestInformation(mpi_comm_IN, strlen_state, statefile_IN, varnames)

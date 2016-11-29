@@ -177,7 +177,7 @@ mapVisu = 0
 nVarVisu = 0
 nVarVisu_ElemData = 0
 nVarVisu_FieldData = 0
-! Compare varnames that should be visalized with availabe varnames
+! Compare varnames that should be visualized with availabe varnames
 DO iVar=1,CountOption("VarName")
   VarName = GETSTR("VarName")
   ! Compare against conservative, primitve and derived varnames

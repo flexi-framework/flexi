@@ -60,7 +60,21 @@ END SUBROUTINE CalcQuantities_DG
 #if FV_ENABLED 
 !===================================================================================================================================
 !> Calc quantities for all FV elements.
-!> TODO
+!> 
+!> If FV_RECONSTRUCT is switched OFF we only have constant cell average values, which can be just used to calc all desired
+!> quantities by calling 'CalcQuantities' and afterwards 'ConvertToVisu_FV' to 'interpolate' them to the visu grid.
+!>
+!> If FV_RECONSTRUCT is switched ON the DGTimeDerivative_weakForm operator is called once to build the limited slopes of the 
+!> primitive quantities. This slopes can be used to convert the primitive quantities to the visu grid (call of
+!ConvertToVisu_FV_Reconstruct).
+!> Since we only have slopes for the primitive quantities this is not possible for the conservative quantities. Therefore the
+!> reconstructed primitives on the visu grid are used to calc the conservative quantities directly on the visu grid (call of
+!> CalcConsFromPrim). 
+!> For all other quantities, that do not depend on gradients the normal 'CalcQuantities' is called on the visu grid.
+!> These and the primitive and conservative quantities are then copied from the UCalc_FV array to the UVisu_FV array.
+!> Now only quantities depending on gradients remain. They can not be reconstructed and are visualized as cell average values.
+!> Therefore the conservative quantities are recomputed from the primitive ones but now on the cell centers and not on the visu
+!> grid. Then 'CalcQuantities' is used to calculate gradient quantities only, which are afterwards converted to the FV visu grid.
 !===================================================================================================================================
 SUBROUTINE CalcQuantities_ConvertToVisu_FV() 
 USE MOD_Globals
@@ -93,23 +107,26 @@ INTEGER                      :: iVar
   SWRITE (*,*) "[FVRE] nVarCalc_FV", nVarCalc_FV
   SWRITE (*,"(A,27I3)") "  mapCalc_FV",  mapCalc_FV
   
+  ! convert primitive quantities to the visu grid
   SDEALLOCATE(UCalc_FV)
   ALLOCATE(UCalc_FV(0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV,1:nVarCalc_FV))
   SWRITE(*,*) "[FVRE] ConvertToVisu_FV_Reconstruct"
   CALL ConvertToVisu_FV_Reconstruct() 
 
-  ! calculate all needed conservative variables
+  ! calculate all needed conservative variables on the visu grid
   SWRITE(*,*) "[FVRE] CalcConsFromPrim"
   CALL CalcConsFromPrim(mapCalc_FV,nVarCalc_FV,NVisu_FV,nElems_FV,UCalc_FV)
 
+  ! calculate all nonCons, nonPrim, nonGrad quantities on the visu grid
   maskCons=GetMaskCons()
   maskPrim=GetMaskPrim()
-  maskNonConsPrim = 1-MAX(maskCons,maskPrim)
-  SWRITE(*,*) "[FVRE] CalcQuantities (nonCons,nonPrim)"
+  maskGrad=GetMaskGrad()
+  maskNonConsPrim = 1-MAX(MAX(maskCons,maskPrim),maskGrad)
+  SWRITE(*,*) "[FVRE] CalcQuantities (nonCons,nonPrim,nonGrad)"
   CALL CalcQuantities(nVarCalc_FV,NVisu_FV,nElems_FV,mapElems_FV,mapCalc_FV,UCalc_FV,withGradients,maskNonConsPrim)
 
+  ! copy cons, prim and all other non-grad quantities to the UVisu_FV array
   SWRITE(*,*) "[FVRE] copy all non-grad quantities to UVisu_FV"
-  maskGrad = GetMaskGrad()
   SDEALLOCATE(UVisu_FV)
   ALLOCATE(UVisu_FV(0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV,nVarVisu+nVarVisu_ElemData))
   DO iVar=1,nVarTotal
@@ -119,6 +136,7 @@ INTEGER                      :: iVar
     END IF
   END DO
   
+  ! calc all grad quantities on the normal cell centers and convert them to visu grid
   IF (SUM(maskGrad*mapCalc_FV).GT.0) THEN
     SDEALLOCATE(UCalc_FV)
     ALLOCATE(UCalc_FV(0:PP_N,0:PP_N,0:PP_N,nElems_FV,1:nVarCalc_FV))

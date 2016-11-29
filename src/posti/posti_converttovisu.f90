@@ -105,7 +105,7 @@ SUBROUTINE ConvertToVisu_FV(mapCalc,maskVisu,reallocate)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Posti_Vars         ,ONLY: mapVisu,UVisu_FV,nVarVisu,NVisu_FV,nElems_FV,UCalc_FV
-USE MOD_Posti_Vars         ,ONLY: nVarVisu_ElemData
+USE MOD_Posti_Vars         ,ONLY: nVarVisu_ElemData, nVarVisu_FieldData
 USE MOD_ReadInTools        ,ONLY: GETINT
 USE MOD_Interpolation      ,ONLY: GetVandermonde
 USE MOD_ChangeBasis        ,ONLY: ChangeBasis3D

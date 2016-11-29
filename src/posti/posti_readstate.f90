@@ -14,7 +14,7 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-!> Contains routines to read in the state (with oir without gradients) - if we want the gradients, DGTimeDerivative_weakForm is
+!> Contains routines to read in the state (with or without gradients) - if we want the gradients, DGTimeDerivative_weakForm is
 !> called once. Also contains a routine to read content of dataset 'FieldData'.
 !===================================================================================================================================
 MODULE MOD_Posti_ReadState
