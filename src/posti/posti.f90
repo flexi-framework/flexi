@@ -13,10 +13,11 @@
 !=================================================================================================================================
 #include "flexi.h"
 
+!===================================================================================================================================
+!> Module containing the main procedures for the POSTI tool: visu3d_requestInformation is called by ParaView to create a
+!> list of available variables and visu3D is the main routine of POSTI.
+!===================================================================================================================================
 MODULE MOD_Visu3D
-!===================================================================================================================================
-! Add comments please!
-!===================================================================================================================================
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -71,10 +72,12 @@ cstrToChar255(strlen+1:255) = ' '
 END FUNCTION cstrToChar255
 
 
+!===================================================================================================================================
+!> Create a list of available variables for ParaView. This list contains the conservative, primitve and derived quantities
+!> that are available in the current equation system as well as the additional variables read from the state file.
+!> The additional variables are stored in the datasets 'ElemData' (elementwise data) and 'FieldData' (pointwise data).
+!===================================================================================================================================
 SUBROUTINE visu3d_requestInformation(mpi_comm_IN, strlen_state, statefile_IN, varnames)
-!===================================================================================================================================
-! Add comments please!
-!===================================================================================================================================
 ! MODULES
 USE ISO_C_BINDING      ,ONLY: C_PTR, C_LOC, C_F_POINTER
 USE MOD_Globals
@@ -96,6 +99,9 @@ CHARACTER(LEN=255)             :: statefile
 LOGICAL                        :: elemDataFound
 INTEGER                        :: nVarAdd,iVar
 CHARACTER(LEN=255),ALLOCATABLE :: VarNamesAdd(:)
+LOGICAL                        :: FieldDataFound
+INTEGER                        :: nVarFieldData
+CHARACTER(LEN=255),ALLOCATABLE :: VarNamesAddField(:)
 !===================================================================================================================================
 statefile = cstrToChar255(statefile_IN, strlen_state)
 
@@ -117,22 +123,42 @@ ELSE ! state file
   ELSE
     nVarAdd=0
   END IF
+  ! check if additional elem data exists
+  CALL DatasetExists(File_ID,'FieldData',FieldDataFound)
+  IF(FieldDataFound)THEN
+    CALL GetDataSize(File_ID,'FieldData',nDims,HSize)
+    nVarFieldData=INT(HSize(1),4)
+    ALLOCATE(VarNamesAddField(nVarFieldData))
+    CALL ReadAttribute(File_ID,'VarNamesAddField',nVarFieldData,StrArray=VarNamesAddField)
+  ELSE
+    nVarFieldData=0
+  END IF
   CALL CloseDataFile()
 
-  CALL GetVarnames(varnames_loc,nVarAdd)
+  ! Fill varnames
+  CALL GetVarnames(varnames_loc,nVarAdd+nVarFieldData)
+  ! Add additional element data
   DO iVar=1,nVarAdd
     varnames_loc(nVarTotal+iVar) = VarNamesAdd(iVar)
   END DO
+  ! Add additional pointwise data
+  DO iVar=1,nVarFieldData
+    varnames_loc(nVarTotal+nVarAdd+iVar) = VarNamesAddField(iVar)
+  END DO
 
-  varnames%len  = (nVarTotal+nVarAdd)*255 
+  varnames%len  = (nVarTotal+nVarAdd+nVarFieldData)*255 
   varnames%data = C_LOC(varnames_loc(1))
 
   SDEALLOCATE(VarNamesAdd)
+  SDEALLOCATE(VarNamesAddField)
 END IF 
 
 END SUBROUTINE visu3d_requestInformation
 
 
+!===================================================================================================================================
+!> C wrapper routine for the visu3D call from ParaView.
+!===================================================================================================================================
 SUBROUTINE visu3D_CWrapper(mpi_comm_IN, strlen_prm, prmfile_IN, strlen_posti, postifile_IN, strlen_state, statefile_IN,&
         coordsDG_out,valuesDG_out,nodeidsDG_out, &
         coordsFV_out,valuesFV_out,nodeidsFV_out,varnames_out,components_out)
@@ -168,6 +194,9 @@ CALL visu3D(mpi_comm_IN, prmfile, postifile, statefile, &
 END SUBROUTINE visu3D_CWrapper
 
 
+!===================================================================================================================================
+!> Main routine of the visualization tool POSTI. Called either by the ParaView plugin or by the standalone program version.
+!===================================================================================================================================
 SUBROUTINE visu3D(mpi_comm_IN, prmfile, postifile, statefile, &
         coordsDG_out,valuesDG_out,nodeidsDG_out, &
         coordsFV_out,valuesFV_out,nodeidsFV_out,varnames_out,components_out)
@@ -176,13 +205,13 @@ USE MOD_PreProc
 USE MOD_Posti_Vars
 USE MOD_EOS_Posti_Vars      ,ONLY: nVarTotal
 USE MOD_Posti_Mappings      ,ONLY: Build_FV_DG_distribution,Build_mapCalc_mapVisu
-USE MOD_Posti_ReadState     ,ONLY: ReadStateAndGradients,ReadState
+USE MOD_Posti_ReadState     ,ONLY: ReadStateAndGradients,ReadState,ReadFieldData
 USE MOD_Posti_VisuMesh      ,ONLY: BuildVisuCoords,VisualizeMesh
 USE MOD_Posti_Calc          ,ONLY: CalcQuantities_DG
 #if FV_ENABLED
 USE MOD_Posti_Calc          ,ONLY: CalcQuantities_ConvertToVisu_FV
 #endif
-USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_DG,ConvertToVisu_ElemData
+USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_DG,ConvertToVisu_ElemData,ConvertToVisu_FieldData
 USE MOD_MPI                 ,ONLY: InitMPI
 USE MOD_HDF5_Input          ,ONLY: ISVALIDMESHFILE,ISVALIDHDF5FILE
 USE MOD_HDF5_Input          ,ONLY: OpenDataFile,CloseDataFile,GetDataProps,ReadAttribute,File_ID
@@ -334,9 +363,10 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
     CALL BuildPartition() 
     CALL CloseDataFile()
 
-    ! Read in ElemData - needs nElems and can be called only after BuildPartition
+    ! Read in ElemData and additional Field Data - needs nElems and can be called only after BuildPartition
     CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
     CALL ReadElemData()
+    CALL ReadFieldData()
     CALL CloseDataFile()
 
     CALL Build_FV_DG_distribution(statefile) 
@@ -412,26 +442,27 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   END IF
 #endif /* FV_ENABLED */
 
-  ! convert ElemData to visu grid
+  ! convert ElemData and FieldData to visu grid
   IF (changedStateFile.OR.changedVarNames.OR.changedNVisu) THEN
     CALL ConvertToVisu_ElemData()
+    CALL ConvertToVisu_FieldData()
   END IF
 
   ! write UVisu to VTK 2D / 3D arrays (must be done always!)
   IF (VisuDimension.EQ.3) THEN
-    CALL WriteDataToVTK_array(nVarVisu+nVarVisu_ElemData,NVisu   ,nElems_DG,valuesDG_out,UVisu_DG,3)
-    CALL WriteDataToVTK_array(nVarVisu+nVarVisu_ElemData,NVisu_FV,nElems_FV,valuesFV_out,UVisu_FV,3)
+    CALL WriteDataToVTK_array(nVarVisu+nVarVisu_ElemData+nVarVisu_FieldData,NVisu   ,nElems_DG,valuesDG_out,UVisu_DG,3)
+    CALL WriteDataToVTK_array(nVarVisu+nVarVisu_ElemData+nVarVisu_FieldData,NVisu_FV,nElems_FV,valuesFV_out,UVisu_FV,3)
   ELSE IF (VisuDimension.EQ.2) THEN
     ! allocate Visu 2D array and copy from first zeta-slice of 3D array
     SDEALLOCATE(UVisu_DG_2D)
-    ALLOCATE(UVisu_DG_2D(0:NVisu,0:NVisu,0:0,1:nElems_DG,1:(nVarVisu+nVarVisu_ElemData)))
+    ALLOCATE(UVisu_DG_2D(0:NVisu,0:NVisu,0:0,1:nElems_DG,1:(nVarVisu+nVarVisu_ElemData+nVarVisu_FieldData)))
     UVisu_DG_2D = UVisu_DG(:,:,0:0,:,:)
     SDEALLOCATE(UVisu_FV_2D)
-    ALLOCATE(UVisu_FV_2D(0:NVisu_FV,0:NVisu_FV,0:0,1:nElems_FV,1:(nVarVisu+nVarVisu_ElemData)))
+    ALLOCATE(UVisu_FV_2D(0:NVisu_FV,0:NVisu_FV,0:0,1:nElems_FV,1:(nVarVisu+nVarVisu_ElemData+nVarVisu_FieldData)))
     UVisu_FV_2D = UVisu_FV(:,:,0:0,:,:)
 
-    CALL WriteDataToVTK_array(nVarVisu+nVarVisu_ElemData,NVisu   ,nElems_DG,valuesDG_out,UVisu_DG_2D,2)
-    CALL WriteDataToVTK_array(nVarVisu+nVarVisu_ElemData,NVisu_FV,nElems_FV,valuesFV_out,UVisu_FV_2D,2)
+    CALL WriteDataToVTK_array(nVarVisu+nVarVisu_ElemData+nVarVisu_FieldData,NVisu   ,nElems_DG,valuesDG_out,UVisu_DG_2D,2)
+    CALL WriteDataToVTK_array(nVarVisu+nVarVisu_ElemData+nVarVisu_FieldData,NVisu_FV,nElems_FV,valuesFV_out,UVisu_FV_2D,2)
   END IF
 
   ! Convert coordinates to visu grid
@@ -480,6 +511,9 @@ SWRITE(UNIT_StdOut,'(132("="))')
 END SUBROUTINE visu3D
 
 
+!===================================================================================================================================
+!> Deallocate the different NodeID arrays.
+!===================================================================================================================================
 SUBROUTINE visu3d_dealloc_nodeids() 
 USE MOD_Posti_Vars
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -495,6 +529,9 @@ SDEALLOCATE(nodeids_FV_2D)
 END SUBROUTINE visu3d_dealloc_nodeids
 
 
+!===================================================================================================================================
+!> Deallocate arrays used by visu3D.
+!===================================================================================================================================
 SUBROUTINE visu3D_finalize() 
 USE MOD_Posti_Vars
 IMPLICIT NONE
@@ -514,13 +551,24 @@ SDEALLOCATE(FV_Elems_loc)
 
 SDEALLOCATE(VarNamesVisu_ElemData)
 SDEALLOCATE(VarNamesVisu_ElemData_old)
+
+SDEALLOCATE(FieldData)
+SDEALLOCATE(VarNamesAddField)
+SDEALLOCATE(VarNamesVisu_FieldData)
+SDEALLOCATE(VarNamesVisu_FieldData_old)
 END SUBROUTINE visu3D_finalize
 
 END MODULE MOD_Visu3D
 
 
-
-
+!===================================================================================================================================
+!> Standalone version of the Visu3D tool. Read in parameter file, loop over all given State files and call the visu3D routine for
+!> all of them.
+!>
+!> Usage: posti parameter_posti.ini [parameter_flexi.ini] State1.h5 State2.h5 ...
+!> The optional parameter_flexi.ini is used for FLEXI parameters instead of the ones that are found in the userblock of the 
+!> State file.
+!===================================================================================================================================
 PROGRAM Posti_Visu3D
 USE ISO_C_BINDING
 USE MOD_Globals
@@ -621,5 +669,6 @@ DO iArg=1+skipArgs,nArgs
   ENDIF
 #endif
 END DO
+
 END PROGRAM 
 

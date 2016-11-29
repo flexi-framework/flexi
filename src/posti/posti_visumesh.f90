@@ -13,6 +13,9 @@
 !=================================================================================================================================
 #include "flexi.h"
 
+!=================================================================================================================================
+!> Routines to build the mesh for visualization.
+!=================================================================================================================================
 MODULE MOD_Posti_VisuMesh
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -192,7 +195,5 @@ components_out%len=0
 
 CALL FinalizeParameters()
 END SUBROUTINE VisualizeMesh
-
-
 
 END MODULE MOD_Posti_VisuMesh
