@@ -266,7 +266,6 @@ USE MOD_DG_Vars             ,ONLY: D_Hat_TO,nDOFElemO
 USE MOD_DG_Vars             ,ONLY: UPrim,UPrim_master,UPrim_slave
 USE MOD_DG_Vars,             ONLY: nTotalU
 USE MOD_VolInt
-USE MOD_DG_Vars             ,ONLY: D_Hat_T
 USE MOD_SurfIntCons         ,ONLY: SurfIntCons
 USE MOD_ProlongToFaceCons   ,ONLY: ProlongToFaceCons
 USE MOD_FillFlux            ,ONLY: FillFlux

@@ -846,7 +846,6 @@ END SUBROUTINE Riemann_HLLEM
 !==================================================================================================================================
 SUBROUTINE Riemann_FluxAverage(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
-USE MOD_EOS_Vars      ,ONLY: Kappa
 #ifdef SPLIT_DG
 USE MOD_SplitFlux     ,ONLY: SplitDGSurface_pointer
 #endif /*SPLIT_DG*/
@@ -862,7 +861,6 @@ REAL,DIMENSION(PP_nVar),INTENT(OUT):: F         !< resulting Riemann flux
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL    :: LambdaMax
 !==================================================================================================================================
 ! get split flux
 CALL SplitDGSurface_pointer(U_LL,U_RR,F)
