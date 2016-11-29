@@ -120,13 +120,9 @@ LOGICAL,INTENT(IN),OPTIONAL :: reallocate
 ! LOCAL VARIABLES
 INTEGER            :: iVar,i,j,k,iElem
 INTEGER            :: iVarVisu,iVarCalc
-REAL,ALLOCATABLE   :: Vdm_N_NVisu_FV(:,:)
 LOGICAL            :: reallocate_loc
 !===================================================================================================================================
 ! compute UVisu_FV
-! convert FV solution to UVisu_FV
-ALLOCATE(Vdm_N_NVisu_FV(0:NVisu_FV,0:PP_N))
-CALL GetVandermonde(PP_N,NodeType,NVisu_FV,NodeTypeVisu,Vdm_N_NVisu_FV,modal=.FALSE.)
 reallocate_loc = MERGE(reallocate, .TRUE., PRESENT(reallocate))
 IF (reallocate_loc) THEN
   SDEALLOCATE(UVisu_FV)
@@ -145,7 +141,6 @@ DO iVar=1,nVarTotal
     END DO
   END IF
 END DO 
-SDEALLOCATE(Vdm_N_NVisu_FV)
 
 END SUBROUTINE ConvertToVisu_FV
 
@@ -179,12 +174,7 @@ INTEGER             :: nVarPrim,iVarPrim
 INTEGER             :: mapUPrim(PP_nVarPrim)
 INTEGER             :: mapUCalc(PP_nVarPrim)
 INTEGER,ALLOCATABLE :: maskPrim(:)
-REAL,ALLOCATABLE    :: Vdm_N_NVisu_FV(:,:)
 !===================================================================================================================================
-! convert FV solution to Visu FV grid
-ALLOCATE(Vdm_N_NVisu_FV(0:NVisu_FV,0:PP_N))
-CALL GetVandermonde(PP_N,NodeType,NVisu_FV,NodeTypeVisu,Vdm_N_NVisu_FV,modal=.FALSE.)
-
 ! Build local maps of maximal size PP_nVarPrim:
 ! - mapUCalc(1:nVarPrim) = indices of the nVarPrim primitive quantities that should be visualized in the UCalc_FV array
 ! - mapUPrim(1:nVarPrim) = indices of the nVarPrim primitive quantities in the UPrim array
@@ -253,7 +243,6 @@ DO iElem_FV=1,nElems_FV
     END DO
   END DO; END DO; END DO
 END DO ! iElem_FV
-SDEALLOCATE(Vdm_N_NVisu_FV)
 END SUBROUTINE ConvertToVisu_FV_Reconstruct
 
 #endif /* FV_RECONSTRUCT */
