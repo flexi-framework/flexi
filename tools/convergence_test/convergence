@@ -81,7 +81,7 @@ for N in range(1,args.Nmax+1) :
         print_header([' N '] + len(L2)*['L2 err   EOC     '] + len(Linf)*['Linf err  EOC    '])
 
         # print initial values
-        print_values([N]+L2+Linf, ["%3d"] + (len(L2)+len(Linf)) * ["%8.4f         "])
+        print_values([N]+L2+Linf, ["%3d"] + (len(L2)+len(Linf)) * ["%8.2e         "])
     else :
         # print L2, Linf errors and EOC
         vals = [N]
@@ -93,7 +93,7 @@ for N in range(1,args.Nmax+1) :
             conv = math.log(last_Linf[j] / Linf[j]) / math.log(float(N+1)/float(last_N+1))
             vals.append(Linf[j])
             vals.append(conv)
-        print_values(vals, ["%3d"] + (len(L2)+len(Linf)) * ["%8.4f","%8.4f"])
+        print_values(vals, ["%3d"] + (len(L2)+len(Linf)) * ["%8.2e","%8.4f"])
     
     x_array.append(i)
     L2_array.append(L2[1]) # x- Momentum

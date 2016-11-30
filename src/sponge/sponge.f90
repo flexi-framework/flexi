@@ -278,7 +278,7 @@ INTEGER,INTENT(IN) :: SpongeShape                         !< sponge shape: 1: li
 LOGICAL                                :: applySponge(nElems)
 INTEGER                                :: iElem,iSpongeElem,i,j,k
 CHARACTER(LEN=255)                     :: FileString,VarNameSponge(1)
-REAL,DIMENSION(  0:PP_N,0:PP_N,0:PP_N) :: x_star
+REAL,DIMENSION(  0:PP_N,0:PP_N,0:PP_N) :: sigma, x_star
 REAL                                   :: r_vec(3)
 REAL,ALLOCATABLE,TARGET                :: SpDummy(:,:,:,:)
 REAL,ALLOCATABLE,TARGET                :: SpongeMat_NVisu(:,:,:,:,:)
@@ -331,8 +331,10 @@ DO iSpongeElem=1,nSpongeElems
   ! Limit to [0,1]
   x_star = MAX(0.,x_star)
   x_star = MIN(1.,x_star)
+  ! Sponge Ramping Function ala Babucke
+  sigma  = 6.*x_star**5. - 15.*x_star**4. + 10.*x_star**3.
   ! Apply damping factor
-  SpongeMat(:,:,:,iSpongeElem) = damping*x_star(:,:,:)
+  SpongeMat(:,:,:,iSpongeElem) = damping*sigma(:,:,:)
 END DO !iSpongeElem=1,nSpongeElems
 
 

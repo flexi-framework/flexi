@@ -178,6 +178,9 @@ END DO
 END SUBROUTINE InitBC
 
 
+!==================================================================================================================================
+!> Computes the boundary state for the different boundary conditions.
+!==================================================================================================================================
 SUBROUTINE GetBoundaryState(SideID,t,Nloc,UPrim_boundary,UPrim_master,NormVec,TangVec1,TangVec2,Face_xGP,Additionals)
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! MODULES                                                                                                                          !
@@ -396,9 +399,9 @@ END SELECT ! BCType
 END SUBROUTINE GetBoundaryState
 
 !==================================================================================================================================
-!> Computes the boundary values for a given Cartesian mesh face (defined by FaceID)
-!> BCType: 1...periodic, 2...exact BC
-!> Calculates the BC State in conservative variables
+!> Computes the boundary fluxes for a given Cartesian mesh face (defined by SideID).
+!> Calls GetBoundaryState an directly uses the returned vales for all Riemann-type BCs.
+!> For other types of BCs, we directly compute the flux on the interface.
 !==================================================================================================================================
 SUBROUTINE GetBoundaryFlux(SideID,t,Nloc,Flux,UPrim_master,                   &
 #if PARABOLIC
@@ -597,9 +600,10 @@ END SUBROUTINE GetBoundaryFlux
 
 #if FV_ENABLED
 #if FV_RECONSTRUCT
+!==================================================================================================================================
+!> Computes the gradient at a boundary for FV subcells.
+!==================================================================================================================================
 SUBROUTINE GetBoundaryFVgradient(t,gradU,UPrim_master)
-!==================================================================================================================================
-!==================================================================================================================================
 ! MODULES
 USE MOD_Globals       ,ONLY: Abort
 USE MOD_PreProc
@@ -714,10 +718,7 @@ END SUBROUTINE GetBoundaryFVgradient
 
 #if PARABOLIC
 !==================================================================================================================================
-!> Computes the boundary values for a given Cartesian mesh face (defined by FaceID)
-!> Attention 1: this is only a tensor of local values U_Face and has to be stored into the right U_Left or U_Right in
-!>              SUBROUTINE CalcSurfInt
-!> Attention 2: U_FacePeriodic is only needed in the case of periodic boundary conditions
+!> Computes the boundary fluxes for the lifting procedure for a given Cartesian mesh face (defined by SideID).
 !==================================================================================================================================
 SUBROUTINE Lifting_GetBoundaryFlux(t,UPrim_master,Flux)
 ! MODULES
@@ -827,7 +828,7 @@ END SUBROUTINE Lifting_GetBoundaryFlux
 
 
 !==================================================================================================================================
-!> Get parameters used for the sponge region
+!> Read in a HDF5 file containing the state for a boundary. Used in BC Type 12.
 !==================================================================================================================================
 SUBROUTINE ReadBCFlow(FileName)
 ! MODULES
@@ -908,7 +909,7 @@ END SUBROUTINE ReadBCFlow
 
 
 !==================================================================================================================================
-!> Initialize boundary conditions
+!> Finalize arrays used for boundary conditions.
 !==================================================================================================================================
 SUBROUTINE FinalizeBC()
 ! MODULES
