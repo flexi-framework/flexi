@@ -592,8 +592,14 @@ DO WHILE (associated(current))
       END IF
     END IF
     ! parse option
-    CALL current%opt%parse(rest)
-    current%opt%isSet = .TRUE.
+    IF(LEN_TRIM(rest).NE.0)THEN
+      CALL current%opt%parse(rest)
+      current%opt%isSet = .TRUE.
+    ELSE
+      CALL set_formatting("bright red")
+      SWRITE(UNIT_StdOut,*) 'WARNING: Option "', TRIM(name), '" is specified in file but is empty!'
+      CALL clear_formatting()
+    END IF
     RETURN
   END IF
   current => current%next
@@ -615,7 +621,7 @@ CLASS(link), POINTER :: current
 current => prms%firstLink
 CALL set_formatting("bright red")
 SWRITE(UNIT_StdOut,'(100("!"))')
-SWRITE(UNIT_StdOut,*) "WARNING: The following options are defined, but NOT set in parameter-file or readin:"
+SWRITE(UNIT_StdOut,'(A)') "WARNING: The following options are defined, but NOT set in parameter-file or readin:"
 DO WHILE (associated(current))
   IF (.NOT.current%opt%isRemoved) THEN
     SWRITE(UNIT_StdOut,*) "   ", TRIM(current%opt%name)
