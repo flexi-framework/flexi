@@ -224,7 +224,7 @@ CASE(INDTYPE_PERSSON) ! Modal Persson indicator
       U_P(1:PP_nVar,0:PP_N,0:PP_N,0:PP_N) => U_DG
     END IF
 #endif
-    IndValue(iElem) = IndPersson(U_P(IndVar,:,:,:))
+    IndValue(iElem) = IndPersson(U_P)
   END DO ! iElem
 #if EQNSYSNR == 2 /* NAVIER-STOKES */ 
 #if FV_ENABLED
@@ -268,27 +268,41 @@ FUNCTION IndPersson(U) RESULT(IndValue)
 !> Suggested by Persson et al.
 !==================================================================================================================================
 USE MOD_PreProc
-USE MOD_Indicator_Vars,ONLY:nModes
+USE MOD_Indicator_Vars,ONLY:nModes,IndVar
 USE MOD_Interpolation_Vars, ONLY:sVdm_Leg
+USE MOD_EOS_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)    :: U(0:PP_N,0:PP_N,0:PP_N)
+REAL,INTENT(IN)    :: U(PP_nVar,0:PP_N,0:PP_N,0:PP_N)
 REAL               :: IndValue
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: iDeg,i,j,k,l
+INTEGER                              :: iDeg,i,j,k,l
+REAL                                 :: UE(1:PP_2Var)
+REAL,DIMENSION(0:PP_N,0:PP_N,0:PP_N) :: U_loc
 REAL,DIMENSION(0:PP_N,0:PP_N,0:PP_N) :: U_Xi
 REAL,DIMENSION(0:PP_N,0:PP_N,0:PP_N) :: U_Eta
 REAL,DIMENSION(0:PP_N,0:PP_N,0:PP_N) :: U_Modal
 !==================================================================================================================================
+SELECT CASE (IndVar)
+CASE(1:PP_nVar)
+  U_loc = U(IndVar,:,:,:)
+CASE(6)
+  DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    UE(CONS)=U(:,i,j,k)
+    UE(SRHO)=1./UE(DENS)
+    UE(VELV)=VELOCITY_HE(UE)
+    U_loc(i,j,k)=PRESSURE_HE(UE)
+  END DO; END DO; END DO! i,j,k=0,PP_N
+END SELECT
 
 ! Transform nodal solution to a modal representation
 U_Xi   = 0.
 U_Eta  = 0.
 U_Modal= 0.
 DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N; DO l=0,PP_N
-  U_Xi(i,j,k)    = U_Xi(i,j,k)    + sVdm_Leg(i,l)*U(l,j,k)
+  U_Xi(i,j,k)    = U_Xi(i,j,k)    + sVdm_Leg(i,l)*U_loc(l,j,k)
 END DO ; END DO ; END DO ; END DO 
 DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N; DO l=0,PP_N
   U_Eta(i,j,k)   = U_Eta(i,j,k)   + sVdm_Leg(j,l)*U_Xi(i,l,k) 

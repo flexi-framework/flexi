@@ -235,7 +235,7 @@ DO iElem=1,nElems
     IF ((IndValue(iElem).LT.FV_IndLowerThreshold).AND.AllowToDG) THEN
       CALL ChangeBasis3D(PP_nVar,PP_N,PP_N,FV_sVdm,U(:,:,:,:,iElem),U_DG)
       IF (FV_toDG_indicator) THEN
-        ind = IndPersson(U_DG(1,:,:,:))
+        ind = IndPersson(U_DG(:,:,:,:))
         IF (ind.GT.FV_toDG_limit) CYCLE
       END IF
       U(:,:,:,:,iElem) = U_DG
