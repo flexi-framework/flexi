@@ -297,6 +297,7 @@ END IF
 
 ! init
 Example%MPIrun                 = .FALSE. ! don't use "mpirun" n default
+Example%MPIcommand             = 'mpirun'! use mpirun for running parallel simulations as default
 Example%MPIthreads             = '1'     ! run with 1 MPI thread on default
 Example%MPIthreadsN            = 1       ! minimum
 Example%nRuns                  = 1       ! minimum
@@ -319,6 +320,7 @@ DO ! extract reggie information
     IF(TRIM(readRHS(1)).EQ.'nVar')CALL str2int(readRHS(2),Example%nVar,iSTATUS)
     ! single or parallel
     IF(TRIM(readRHS(1)).EQ.'MPIrun')    CALL str2logical(readRHS(2),Example%MPIrun,iSTATUS) ! True/False
+    IF(TRIM(readRHS(1)).EQ.'MPIcommand')            Example%MPIcommand        =TRIM(ADJUSTL(readRHS(2)))
     !IF(TRIM(readRHS(1)).EQ.'MPIthreads')CALL str2int(    readRHS(2),Example%MPIthreads,iSTATUS)!number of threads
     IF(TRIM(readRHS(1)).EQ.'MPIthreads')CALL GetParameterList(ParameterList   = Example%MPIthreads,&
                                                               nParameters     = 100,               &

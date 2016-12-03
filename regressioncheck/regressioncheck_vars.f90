@@ -52,6 +52,7 @@ TYPE tExample                                                        !> examples
   INTEGER                                :: Nvar                     !> Size of EQNSYS 
   CHARACTER(LEN=255)                     :: PATH                     !> Path to example
   LOGICAL                                :: MPIrun                   !> execution information (MPI)
+  CHARACTER(LEN=255)                     :: MPIcommand               !> e.g. 'aprun' or 'mpirun' (default)
   CHARACTER(LEN=15)                      :: MPIthreads(100)          !> number of MPI threads for execution
   INTEGER                                :: MPIthreadsN              !> number of MPIthreads
   INTEGER                                :: nRuns                    !> number of runs with a specific setup (number of MPI threads)
