@@ -326,7 +326,7 @@ USE MOD_RegressionCheck_Vars,  ONLY: BuildDebug,BuildNoDebug,BuildEQNSYS,BuildTE
 USE MOD_RegressionCheck_Vars,  ONLY: BuildContinue,BuildContinueNumber,BuildDir,BuildTIMEDISCMETHOD
 USE MOD_RegressionCheck_Vars,  ONLY: CodeNameLowCase,CodeNameUppCase
 USE MOD_RegressionCheck_tools, ONLY: SummaryOfErrors,AddError
-USE MOD_RegressionCheck_Vars,  ONLY: BuildConfigurations,BuildValid,BuildCounter,BuildIndex,BuildSolver
+USE MOD_RegressionCheck_Vars,  ONLY: BuildConfigurations,BuildValid,BuildCounter,BuildIndex
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -337,13 +337,8 @@ INTEGER,INTENT(IN)                        :: iExample,iReggieBuild,N_compile_fla
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                                   :: ioUnit,iSTATUS,J,K
-!INTEGER                                   :: N_compile_flags,N_subinclude,N_exclude
-CHARACTER(LEN=255)                        :: FileName!,temp,temp2,COMPILE_FLAG,dummystr
-!CHARACTER(LEN=255)                        :: EXCLUDE_FLAG_A,EXCLUDE_FLAG_B
-LOGICAL                                   :: ExistFile!,InvalidA,InvalidB
-!CHARACTER(LEN=255),ALLOCATABLE            :: ExcludeConfigurations(:,:),BuildValidInfo(:)
-!INTEGER                                   :: MaxBuildConfigurations=400,N_subinclude_max,N_compile_flags_max
-!INTEGER,ALLOCATABLE                       :: BuildIndex(:),BuildCounter(:)
+CHARACTER(LEN=255)                        :: FileName
+LOGICAL                                   :: ExistFile
 CHARACTER(LEN=500)                        :: SYSCOMMAND
 CHARACTER(LEN=15)                         :: tempStr
 !===================================================================================================================================

@@ -278,7 +278,6 @@ TYPE(tExample),INTENT(INOUT)              :: Example
 ! LOCAL VARIABLES
 INTEGER                                   :: ioUnit
 INTEGER                                   :: iSTATUS,IndNum,IndNum2,IndNum3,MaxNum
-INTEGER                                   :: iSubExample
 CHARACTER(LEN=255)                        :: FileName,temp1,temp2
 LOGICAL                                   :: ExistFile
 !==================================================================================================================================

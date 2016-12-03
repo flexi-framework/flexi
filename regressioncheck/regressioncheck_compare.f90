@@ -216,9 +216,9 @@ IF(PRESENT(ReferenceNorm))THEN ! use user-defined norm if present, else use 0.00
     IF(.NOT.EQUALTOTOLERANCE(L2(iVar),ReferenceNorm(iVar,1),eps))THEN
       L2Compare=.FALSE.
       SWRITE(UNIT_stdOut,'(A)') ''
-      SWRITE(UNIT_stdOut,'(A,E20.14)')  ' L2Norm                =',L2(iVar)
-      SWRITE(UNIT_stdOut,'(A,E20.14)')  ' ReferenceNorm(iVar,1) =',ReferenceNorm(iVar,1)
-      SWRITE(UNIT_stdOut,'(A,E20.14)')  ' eps                   =',eps
+      SWRITE(UNIT_stdOut,'(A,E21.14)')  ' L2Norm                =',L2(iVar)
+      SWRITE(UNIT_stdOut,'(A,E21.14)')  ' ReferenceNorm(iVar,1) =',ReferenceNorm(iVar,1)
+      SWRITE(UNIT_stdOut,'(A,E21.14)')  ' eps                   =',eps
       RETURN ! fail
     END IF
   END DO ! iVar=1,Examples(iExample)%nVar
@@ -226,9 +226,9 @@ IF(PRESENT(ReferenceNorm))THEN ! use user-defined norm if present, else use 0.00
     IF(.NOT.EQUALTOTOLERANCE(LInf(iVar),ReferenceNorm(iVar,2),eps))THEN
       LInfCompare=.FALSE.
       SWRITE(UNIT_stdOut,'(A)') ''
-      SWRITE(UNIT_stdOut,'(A,E20.14)')  ' LInfNorm              =',LInf(iVar)
-      SWRITE(UNIT_stdOut,'(A,E20.14)')  ' ReferenceNorm(iVar,1) =',ReferenceNorm(iVar,2)
-      SWRITE(UNIT_stdOut,'(A,E20.14)')  ' eps                   =',eps
+      SWRITE(UNIT_stdOut,'(A,E21.14)')  ' LInfNorm              =',LInf(iVar)
+      SWRITE(UNIT_stdOut,'(A,E21.14)')  ' ReferenceNorm(iVar,1) =',ReferenceNorm(iVar,2)
+      SWRITE(UNIT_stdOut,'(A,E21.14)')  ' eps                   =',eps
       RETURN ! fail
     END IF
   END DO ! iVar=1,Examples(iExample)%nVar
@@ -242,15 +242,15 @@ ELSE ! use user-defined norm if present, else use 100.*PP_RealTolerance
   IF(ANY(L2.GT.eps))THEN
     L2Compare=.FALSE.
     SWRITE(UNIT_stdOut,'(A)') ''
-    SWRITE(UNIT_stdOut,'(A,E20.14)')  ' L2Norm                =',MAXVAL(L2)
-    SWRITE(UNIT_stdOut,'(A,E20.14)')  ' eps                   =',eps
+    SWRITE(UNIT_stdOut,'(A,E21.14)')  ' L2Norm                =',MAXVAL(L2)
+    SWRITE(UNIT_stdOut,'(A,E21.14)')  ' eps                   =',eps
     RETURN ! fail
   END IF
   IF(ANY(LInf.GT.eps))THEN
     LInfCompare=.FALSE.
     SWRITE(UNIT_stdOut,'(A)') ''
-    SWRITE(UNIT_stdOut,'(A,E20.14)')  ' LInfNorm              =',MAXVAL(LInf)
-    SWRITE(UNIT_stdOut,'(A,E20.14)')  ' eps                   =',eps
+    SWRITE(UNIT_stdOut,'(A,E21.14)')  ' LInfNorm              =',MAXVAL(LInf)
+    SWRITE(UNIT_stdOut,'(A,E21.14)')  ' eps                   =',eps
     RETURN ! fail
   END IF
 END IF
@@ -360,7 +360,7 @@ END IF
 
 DataSet=TRIM(Examples(iExample)%ReferenceDataSetName)
 
-WRITE(tmpTol,'(E20.14)') SQRT(PP_RealTolerance)
+WRITE(tmpTol,'(E21.14)') SQRT(PP_RealTolerance)
 SYSCOMMAND=H5DIFF//' --delta='//TRIM(tmpTol)//' '//TRIM(ReferenceFileName)//' ' &
           //TRIM(CheckedFileName)//' /'//TRIM(DataSet)//' /'//TRIM(DataSet)
 CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
@@ -491,7 +491,7 @@ DO I=1,2
          !IF(I.EQ.2)THEN
            !DO J=1,MaxRow
              !DO K=1,2
-                 !write(*,'(E20.14,A)', ADVANCE = 'NO') Values(J,K),'  '
+                 !write(*,'(E21.14,A)', ADVANCE = 'NO') Values(J,K),'  '
                !IF(K.EQ.2)print*,''
              !END DO
            !END DO
@@ -515,10 +515,10 @@ IntegralValuesAreEqual=EQUALTOTOLERANCE( Q                                     ,
 IF(.NOT.IntegralValuesAreEqual)THEN
   IntegralCompare=1
   SWRITE(UNIT_stdOut,'(A)')         ' IntegrateLines do not match! Error in computation!'
-  SWRITE(UNIT_stdOut,'(A,E20.14)')  ' IntegrateLineValue                    = ',Q
-  SWRITE(UNIT_stdOut,'(A,E20.14)')  ' Examples(iExample)%IntegrateLineValue = ',Examples(iExample)%IntegrateLineValue
-  SWRITE(UNIT_stdOut,'(A,E20.14)')  ' Tolerance                             = ',1.e-2!0.1*SQRT(PP_RealTolerance)
-  !SWRITE(UNIT_stdOut,'(A,E20.14)')  ' 0.1*SQRT(PP_RealTolerance)            = ',0.1*SQRT(PP_RealTolerance)
+  SWRITE(UNIT_stdOut,'(A,E21.14)')  ' IntegrateLineValue                    = ',Q
+  SWRITE(UNIT_stdOut,'(A,E21.14)')  ' Examples(iExample)%IntegrateLineValue = ',Examples(iExample)%IntegrateLineValue
+  SWRITE(UNIT_stdOut,'(A,E21.14)')  ' Tolerance                             = ',1.e-2!0.1*SQRT(PP_RealTolerance)
+  !SWRITE(UNIT_stdOut,'(A,E21.14)')  ' 0.1*SQRT(PP_RealTolerance)            = ',0.1*SQRT(PP_RealTolerance)
   Examples(iExample)%ErrorStatus=5
 ELSE
   IntegralCompare=0
