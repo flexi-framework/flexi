@@ -683,8 +683,8 @@ LOGICAL,INTENT(OUT)            :: SkipComparison
 INTEGER                        :: iSTATUS                           !> status
 CHARACTER(LEN=500)             :: SYSCOMMAND                        !> string to fit the system command
 CHARACTER(LEN=15)              :: MPIthreadsStr                     !> string for the number of MPI threads for execution
-CHARACTER(LEN=255)             :: tempStr 
-INTEGER                        :: tempINT
+CHARACTER(LEN=255)             :: FileSuffix,FolderSuffix 
+INTEGER                        :: tempINT,PolynomialDegree,MPIthreads
 !===================================================================================================================================
 SkipComparison=.FALSE.
 ! -----------------------------------------------------------------------------------------------------------------------
@@ -717,12 +717,23 @@ IF(iSTATUS.EQ.0)THEN ! Computation successful
   CALL AddError('successful computation',iExample,iSubExample,ErrorStatus=0,ErrorCode=0)
 
 ! copy the std.out file
-WRITE (tempStr, '(I4.4,I4.4)') iScaling,iRun
-SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && cp std.out std-'//TRIM(tempStr)//'.out'
+IF(Examples(iExample)%SubExample.EQ.'N')THEN!when polynomial degree "N" is the SubExample
+  CALL str2int(Examples(iExample)%SubExampleOption(iSubExample),PolynomialDegree,iSTATUS)
+  CALL str2int(Examples(iExample)%MPIthreads(iScaling),MPIthreads,iSTATUS)
+  WRITE(FileSuffix, '(A10,I8.8,A2,I4.4,A5,I4.4)') 'MPIthreads',MPIthreads,'_N',PolynomialDegree,'_iRun',iRun
+  WRITE(FolderSuffix,'(A1,I4.4)')'N',PolynomialDegree
+ELSE
+  WRITE(FileSuffix, '(I4.4,I4.4,I4.4)') iScaling,iSubExample,iRun
+  WRITE(FolderSuffix,'(I4.4)')iSubExample
+END IF
+!print*,"FileSuffix  =",FileSuffix
+!print*,"FolderSuffix=",FolderSuffix
+!read*
+SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && cp std.out std-'//TRIM(FileSuffix)//'.out'
 CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS) ! copy the std.out file
-SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && mkdir std_files > /dev/null 2>&1'
+SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && mkdir std_files'//TRIM(FolderSuffix)//' > /dev/null 2>&1'
 CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
-SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && mv std-'//TRIM(tempStr)//'.out std_files/'
+SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && mv std-'//TRIM(FileSuffix)//'.out std_files'//TRIM(FolderSuffix)//'/'
 CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
 
 
