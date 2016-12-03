@@ -35,8 +35,6 @@ USE MOD_Globals
 USE MOD_RegressionCheck_Compare, ONLY: CompareResults
 USE MOD_RegressionCheck_Tools,   ONLY: InitExample
 USE MOD_RegressionCheck_Vars,    ONLY: nExamples,ExampleNames,Examples,EXECPATH,RuntimeOptionType
-USE MOD_RegressionCheck_Vars,    ONLY: BuildTESTCASE,BuildTIMEDISCMETHOD,BuildDir,BuildSolver,CodeNameLowCase,CodeNameUppCase
-USE MOD_RegressionCheck_Vars,    ONLY: BuildConfigurations,BuildValid,BuildCounter,BuildIndex,BuildSolver
 USE MOD_RegressionCheck_Tools,   ONLY: CleanExample
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -263,7 +261,7 @@ SUBROUTINE GetnReggieBuilds(iExample,ReggieBuildExe,N_compile_flags,nReggieBuild
 USE MOD_Globals
 USE MOD_RegressionCheck_Build,   ONLY: ReadConfiguration
 USE MOD_RegressionCheck_Vars,    ONLY: BuildDir
-USE MOD_RegressionCheck_Vars,    ONLY: BuildConfigurations,BuildValid,BuildCounter,BuildIndex,BuildSolver
+USE MOD_RegressionCheck_Vars,    ONLY: BuildCounter,BuildSolver
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -309,7 +307,7 @@ SUBROUTINE GetCodeBinary(iExample,iReggieBuild,nReggieBuilds,N_compile_flags,Reg
 ! MODULES
 USE MOD_Globals
 USE MOD_RegressionCheck_Vars,    ONLY: BuildDir,CodeNameLowCase,EXECPATH
-USE MOD_RegressionCheck_Vars,    ONLY: BuildConfigurations,BuildValid,BuildCounter,BuildIndex,BuildSolver
+USE MOD_RegressionCheck_Vars,    ONLY: BuildValid,BuildSolver
 USE MOD_RegressionCheck_Tools,   ONLY: CheckForExecutable
 USE MOD_RegressionCheck_Build,   ONLY: BuildConfiguration
 ! IMPLICIT VARIABLE HANDLING
@@ -389,8 +387,6 @@ CHARACTER(LEN=*),INTENT(INOUT) :: TESTCASE,TIMEDISCMETHOD
 ! LOCAL VARIABLES
 LOGICAL                        :: ExistFile                         !> file exists=.true., file does not exist=.false.
 CHARACTER(LEN=255)             :: FileName                          !> path to a file or its name
-INTEGER                        :: iSTATUS                           !> status
-CHARACTER(LEN=500)             :: SYSCOMMAND                        !> string to fit the system command
 !===================================================================================================================================
 IF(BuildSolver)THEN
   TESTCASE=BuildTESTCASE(iReggieBuild)
@@ -459,7 +455,7 @@ SUBROUTINE CheckFolderName(iExample,TESTCASE,SkipFolder)
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_RegressionCheck_Vars,    ONLY: Examples,CodeNameLowCase,ExampleNames
+USE MOD_RegressionCheck_Vars,    ONLY: CodeNameLowCase,ExampleNames
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
