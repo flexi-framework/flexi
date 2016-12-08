@@ -677,10 +677,10 @@ LOGICAL,INTENT(OUT)            :: SkipComparison
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: iSTATUS                           !> status
-CHARACTER(LEN=500)             :: SYSCOMMAND                        !> string to fit the system command
+CHARACTER(LEN=1000)             :: SYSCOMMAND                        !> string to fit the system command
 CHARACTER(LEN=15)              :: MPIthreadsStr                     !> string for the number of MPI threads for execution
-CHARACTER(LEN=255)             :: FileSuffix,FolderSuffix 
-INTEGER                        :: tempINT,PolynomialDegree,MPIthreads
+CHARACTER(LEN=255)             :: FileSuffix,FolderSuffix,tempStr
+INTEGER                        :: MPIthreadsInteger,PolynomialDegree,MPIthreads
 !===================================================================================================================================
 SkipComparison=.FALSE.
 ! -----------------------------------------------------------------------------------------------------------------------
@@ -689,21 +689,35 @@ SkipComparison=.FALSE.
 IF(Examples(iExample)%MPIrun)THEN ! use "mpirun"
   !IF(Examples(iExample)%MPIthreads.GT.1)THEN
   MPIthreadsStr=ADJUSTL(TRIM(Examples(iExample)%MPIthreads(iScaling)))
-  CALL str2int(ADJUSTL(TRIM(MPIthreadsStr)),tempINT,iSTATUS) ! sanity check if the number of threads is correct
-  IF((tempINT.LE.0).OR.(iSTATUS.NE.0))CALL abort(&
+  CALL str2int(ADJUSTL(TRIM(MPIthreadsStr)),MPIthreadsInteger,iSTATUS) ! sanity check if the number of threads is correct
+  IF((MPIthreadsInteger.LE.0).OR.(iSTATUS.NE.0))CALL abort(&
       __STAMP__&
       ,'RunTheCode(): Number of MPI threads is corrupt = '//ADJUSTL(TRIM(MPIthreadsStr)))
   IF((iScaling.GT.1).AND.(iRun.EQ.1))THEN
     SWRITE(*,*)"Examples(iExample)%MPIthreads=",Examples(iExample)%MPIthreads(iScaling)
   END IF
+  tempStr='' ! default
+  IF(Examples(iExample)%MPIcommand.EQ.'mpirun')THEN
+    Examples(iExample)%MPIcommand='mpirun -np'
+  ELSEIF(Examples(iExample)%MPIcommand.EQ.'aprun')THEN
+    Examples(iExample)%MPIcommand='aprun -n' !-N $CoresPerNode'
+    IF(MPIthreadsInteger.GT.24)THEN
+      tempStr='-N 24'
+    ELSE
+      tempStr='-N '//ADJUSTL(TRIM(MPIthreadsStr))
+    END IF
+  END IF
 
-  SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && '//TRIM(Examples(iExample)%MPIcommand)//' -np '//&
-                       ADJUSTL(TRIM(MPIthreadsStr))//' '//TRIM(EXECPATH)//' '//TRIM(parameter_ini)//' ' &
-              //TRIM(parameter_ini2)//' '//TRIM(Examples(iExample)%RestartFileName)//' 1>std.out 2>err.out'
+
+  SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && '//TRIM(Examples(iExample)%MPIcommand)//' '//&
+                       ADJUSTL(TRIM(MPIthreadsStr))//' '//ADJUSTL(TRIM(tempStr))//' '//TRIM(EXECPATH)//' '//&
+TRIM(parameter_ini)//' ' &
+              //TRIM(parameter_ini2)//' '//TRIM(Examples(iExample)%RestartFileName)!//' 1>std.out 2>err.out'
 ELSE
   SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && '//TRIM(EXECPATH)//' '//TRIM(parameter_ini)//' ' &
               //TRIM(parameter_ini2)//' '//TRIM(Examples(iExample)%RestartFileName)//' 1>std.out 2>err.out'
 END IF
+SWRITE(*,*)"SYSCOMMAND=[",TRIM(SYSCOMMAND),']'
 CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS) ! run the code
 ! -----------------------------------------------------------------------------------------------------------------------
 ! was the run successful? (iSTATUS=0)
