@@ -29,6 +29,7 @@ SAVE
 
 INTEGER,PARAMETER :: SPONGESHAPE_RAMP        = 1
 INTEGER,PARAMETER :: SPONGESHAPE_CYLINDRICAL = 2
+INTEGER,PARAMETER :: SPONGESHAPE_ELLIPTICAL  = 3
 
 INTEGER,PARAMETER :: SPONGEBASEFLOW_CONSTANT  = 1
 INTEGER,PARAMETER :: SPONGEBASEFLOW_EXACTFUNC = 2
@@ -67,15 +68,17 @@ CALL prms%CreateLogicalOption('SpongeLayer',    "Turn on to use sponge regions f
 CALL prms%CreateRealOption(   'SpongeDistance', "Length of sponge ramp. The sponge will have maximum strength at the end "//&
                                                 "of the ramp and after that point.")
 CALL prms%CreateRealOption(   'damping',        "Damping factor of sponge (0..1).", '0.01')
-CALL prms%CreateIntFromStringOption( 'SpongeShape',    "Set shape of sponge: (1) ramp : cartesian / vector-aligned, (2) cylindrical", '1')
+CALL prms%CreateIntFromStringOption( 'SpongeShape',    "Set shape of sponge: (1) ramp : cartesian / vector-aligned, (2) cylindrical,"//&
+                                                       " (3) elliptical", '1')
 CALL addStrListEntry('SpongeShape','ramp',       SPONGESHAPE_RAMP)
 CALL addStrListEntry('SpongeShape','cylindrical',SPONGESHAPE_CYLINDRICAL)
 CALL prms%CreateRealArrayOption('xStart',       "Coordinates of start postion of sponge ramp (SpongeShape=ramp) "//&
-                                                "or center (SpongeShape=cylindrical).")
+                                                "or center (SpongeShape=cylindrical,elliptical).")
 CALL prms%CreateLogicalOption('SpongeViz',      "Turn on to write a visualization file of sponge region and strength.",'.FALSE.')
 CALL prms%CreateRealArrayOption('SpongeDir',    "Direction vector of the sponge ramp (SpongeShape=ramp)")
-CALL prms%CreateRealOption(   'SpongeRadius',   "Radius of the sponge zone (SpongeShape=cylindrical)")
-CALL prms%CreateRealArrayOption('SpongeAxis',   "Axis vector of cylindrical sponge (SpongeShape=cylindrical)")
+CALL prms%CreateRealArrayOption('SpongeFocus',   "Distance of the ellipse focus from center (SpongeShape=elliptical)")
+CALL prms%CreateRealOption(   'SpongeRadius',   "Radius of the sponge zone (SpongeShape=cylindrical,elliptical)")
+CALL prms%CreateRealArrayOption('SpongeAxis',   "Axis vector of cylindrical sponge (SpongeShape=cylindrical, elliptical)")
 CALL prms%CreateIntFromStringOption( 'SpongeBaseFlow', "Type of baseflow to be used for sponge. (1) constant: fixed state,"//&
                                                 "(2) exactfunction: exact function, (3) file: read baseflow file, (4) pruett: "//&
                                                 "temporally varying, solution adaptive Pruett baseflow",'1')
@@ -155,6 +158,12 @@ CASE(SPONGESHAPE_CYLINDRICAL) ! cylindrical sponge
   SpAxis=GETREALARRAY('SpongeAxis',3,'(/0.,0.,1./)')  ! axis for the cylindrical sponge
   SpAxis=SpAxis/NORM2(SpAxis) ! Normalize SpAxis
   CALL CalcSpongeRamp(2)
+CASE(SPONGESHAPE_ELLIPTICAL) ! elliptical sponge
+  SpRadius=GETREAL('SpongeRadius')
+  SpAxis=GETREALARRAY('SpongeAxis',3,'(/0.,0.,1./)')  ! axis for the elliptical sponge
+  SpAxis=SpAxis/NORM2(SpAxis) ! Normalize SpAxis
+  SpFocus=GETREALARRAY('SpongeFocus',3,'(/0.,0.,0.1/)') !distance of focus from center
+  CALL CalcSpongeRamp(3)
 CASE DEFAULT
   CALL CollectiveStop(__STAMP__, &
       "Undefined SpongeShape!")   
@@ -278,8 +287,8 @@ INTEGER,INTENT(IN) :: SpongeShape                         !< sponge shape: 1: li
 LOGICAL                                :: applySponge(nElems)
 INTEGER                                :: iElem,iSpongeElem,i,j,k
 CHARACTER(LEN=255)                     :: FileString,VarNameSponge(1)
-REAL,DIMENSION(  0:PP_N,0:PP_N,0:PP_N) :: x_star
-REAL                                   :: r_vec(3)
+REAL,DIMENSION(  0:PP_N,0:PP_N,0:PP_N) :: sigma, x_star
+REAL                                   :: r_vec(3), r_vec2(3)
 REAL,ALLOCATABLE                       :: SpongeMat_NVisu(:,:,:,:,:),Coords_NVisu(:,:,:,:,:),SpDummy(:,:,:,:)
 !==================================================================================================================================
 SWRITE(UNIT_StdOut,'(A)') '  Initialize Sponge Ramping Function...'
@@ -294,6 +303,11 @@ DO iElem=1,nElems
       CASE(SPONGESHAPE_CYLINDRICAL) ! cylindrical sponge
       r_vec(:) = Elem_xGP(:,i,j,k,iElem)-xStart -SUM((Elem_xGP(:,i,j,k,iElem)-xStart)*SpAxis)*SpAxis
       x_star(i,j,k) = (SQRT(SUM(r_vec*r_vec))-SpRadius)/SpDistance
+      CASE(SPONGESHAPE_ELLIPTICAL) ! elliptical sponge
+      r_vec(:)  = Elem_xGP(:,i,j,k,iElem)-(xStart+SpFocus)-SUM((Elem_xGP(:,i,j,k,iElem)-xStart)*SpAxis)*SpAxis
+      r_vec2(:) = Elem_xGP(:,i,j,k,iElem)-(xStart-SpFocus)-SUM((Elem_xGP(:,i,j,k,iElem)-xStart)*SpAxis)*SpAxis
+      x_star(i,j,k) = (0.5*(SQRT(SUM(r_vec*r_vec))+SQRT(SUM(r_vec2*r_vec2)))-SpRadius+SpDistance)/SpDistance
+      x_star(i,j,k) = 1.0 - x_star(i,j,k) !invert the sponge: damp inside the ellipse!
     END SELECT
   END DO; END DO; END DO
   IF(ANY(x_star.GT.0.)) applySponge(iElem)=.TRUE.
@@ -322,13 +336,20 @@ DO iSpongeElem=1,nSpongeElems
       CASE(SPONGESHAPE_CYLINDRICAL) ! cylindrical sponge
       r_vec(:) = Elem_xGP(:,i,j,k,iElem)-xStart -SUM((Elem_xGP(:,i,j,k,iElem)-xStart)*SpAxis)*SpAxis
       x_star(i,j,k) = (SQRT(SUM(r_vec*r_vec))-SpRadius)/SpDistance
+      CASE(SPONGESHAPE_ELLIPTICAL) ! elliptical sponge
+      r_vec(:)  = Elem_xGP(:,i,j,k,iElem)-(xStart+SpFocus)-SUM((Elem_xGP(:,i,j,k,iElem)-xStart)*SpAxis)*SpAxis
+      r_vec2(:) = Elem_xGP(:,i,j,k,iElem)-(xStart-SpFocus)-SUM((Elem_xGP(:,i,j,k,iElem)-xStart)*SpAxis)*SpAxis
+      x_star(i,j,k) = (0.5*(SQRT(SUM(r_vec*r_vec))+SQRT(SUM(r_vec2*r_vec2)))-SpRadius+SpDistance)/SpDistance
+      x_star(i,j,k) = 1.0 - x_star(i,j,k) !invert the sponge: damp inside the ellipse!
     END SELECT
   END DO; END DO; END DO
   ! Limit to [0,1]
   x_star = MAX(0.,x_star)
   x_star = MIN(1.,x_star)
+  ! Sponge Ramping Function ala Babucke
+  sigma  = 6.*x_star**5. - 15.*x_star**4. + 10.*x_star**3.
   ! Apply damping factor
-  SpongeMat(:,:,:,iSpongeElem) = damping*x_star(:,:,:)
+  SpongeMat(:,:,:,iSpongeElem) = damping*sigma(:,:,:)
 END DO !iSpongeElem=1,nSpongeElems
 
 

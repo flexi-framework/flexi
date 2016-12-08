@@ -28,9 +28,10 @@ LOGICAL          :: CalcPruettDamping=.FALSE. !< true if temporally varying, sol
 INTEGER          :: nSpongeELems          !< number of elements for which sponge is applied
 INTEGER,ALLOCATABLE :: spongeMap(:)       !< mapping from Elem -> spongElem
 REAL             :: damping               !< Strenght of damping per face
-REAL             :: xStart(3)             !< Coordinates of start postion of sponge ramp (shape=1) or center (shape=2)
-REAL             :: SpAxis(3)             !< Axis vector of cylindrical sponge (SpongeShape=2)
+REAL             :: xStart(3)             !< Coordinates of start postion of sponge ramp (shape=1) or center (shape=2, shape=3)
+REAL             :: SpAxis(3)             !< Axis vector of cylindrical sponge (SpongeShape=2, SpongeShape=3)
 REAL             :: SpVec(3)              !< Direction vector of the spong ramp (SpongeShape=1)
+REAL             :: SpFocus(3)            !< Distance of the focus from ellipse center (SpongeShape=3)
 REAL             :: SpDistance            !< Length of sponge ramp.
                                           !< The sponge will have maximum strength at the end of the ramp and after that point
 REAL             :: SpRadius              !< Radius of the sponge zone (SpongeShape=2)
