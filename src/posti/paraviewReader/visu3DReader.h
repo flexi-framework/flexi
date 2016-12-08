@@ -50,6 +50,7 @@ class VTKIOPARALLEL_EXPORT visu3DReader :  public vtkMultiBlockDataSetAlgorithm
       // macros to set Filename, InputNsuper (see visu2DReader.xml)
       // gui interaction
       vtkSetStringMacro(FileName);
+      vtkSetStringMacro(MeshFileOverwrite);
       vtkSetMacro(InputNsuper,int);
       vtkSetMacro(NodeTypeVisu,int);
       vtkSetMacro(Mode2d,int);
@@ -107,6 +108,7 @@ class VTKIOPARALLEL_EXPORT visu3DReader :  public vtkMultiBlockDataSetAlgorithm
       int NodeTypeVisu;
       int Mode2d;
       char* ParameterFileOverwrite;
+      char* MeshFileOverwrite;
 
       int NumProcesses;
       int ProcessId;

@@ -26,7 +26,7 @@ SAVE
 !==================================================================================================================================
 CHARACTER(LEN=255)                :: prmfile_old = ""
 CHARACTER(LEN=255)                :: statefile_old = ""
-CHARACTER(LEN=255)                :: MeshFile
+CHARACTER(LEN=255)                :: MeshFile = ""
 CHARACTER(LEN=255)                :: MeshFile_old = ""
 CHARACTER(LEN=255)                :: NodeTypeVisuPosti = "VISU"
 INTEGER                           :: NVisu

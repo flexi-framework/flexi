@@ -50,6 +50,7 @@ visu3DReader::visu3DReader()
    this->NodeTypeVisu = 0;
    this->Mode2d = 0;
    this->ParameterFileOverwrite = NULL;
+   this->MeshFileOverwrite = NULL;
    this->SetNumberOfInputPorts(0);
 
 
@@ -254,6 +255,9 @@ int visu3DReader::FindClosestTimeStep(double requestedTimeValue)
    dprintf(posti_unit, "NVisu = %d\n", InputNsuper); // insert NVisu
    dprintf(posti_unit, "NodeTypeVisu = %d\n", NodeTypeVisu); // insert NodeType
    dprintf(posti_unit, "VisuDimension = %s\n", (this->Mode2d ? "2" : "3"));
+   if (strlen(MeshFileOverwrite) > 0) {
+   dprintf(posti_unit, "MeshFile = %s\n", MeshFileOverwrite);
+   }
 
    int totalVars = 0;
    // write selected state varnames to the parameter file

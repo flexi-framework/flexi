@@ -142,7 +142,7 @@ CALL InitRestart(statefile)
 
 IF (changedMeshFile.OR.changedWithGradients) THEN
   CALL FinalizeMesh()
-  CALL InitMesh(withoutMetrics=.FALSE.)
+  CALL InitMesh(withoutMetrics=.FALSE.,MeshFile_IN=MeshFile)
 END IF
 
 CALL InitFilter()
@@ -213,7 +213,7 @@ CALL InitEOS()
 
 IF (changedMeshFile) THEN
   CALL FinalizeMesh()
-  CALL InitMesh(withoutMetrics=.TRUE.)
+  CALL InitMesh(withoutMetrics=.TRUE.,MeshFile_IN=MeshFile)
 END IF
 
 SDEALLOCATE(U)

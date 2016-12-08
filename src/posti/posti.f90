@@ -220,7 +220,7 @@ USE MOD_Interpolation_Vars  ,ONLY: NodeTypeVisu,NodeTypeFVEqui
 USE MOD_VTK                 ,ONLY: WriteCoordsToVTK_array,WriteDataToVTK_array,WriteVarnamesToVTK_array
 USE MOD_StringTools         ,ONLY: STRICMP,LowCase,UpperCase
 USE MOD_Interpolation_Vars  ,ONLY: NodeType,NodeTypeVisu
-USE MOD_ReadInTools         ,ONLY: prms,GETINT,GETLOGICAL,GETINTFROMSTR,addStrListEntry
+USE MOD_ReadInTools         ,ONLY: prms,GETINT,GETLOGICAL,GETINTFROMSTR,addStrListEntry,GETSTR
 USE MOD_ReadInTools         ,ONLY: FinalizeParameters,ExtractParameterFile
 USE MOD_Output_Vars         ,ONLY: ProjectName
 USE MOD_Restart             ,ONLY: ReadElemData
@@ -246,6 +246,7 @@ INTEGER                          :: nElems_State,iVar
 CHARACTER(LEN=255)               :: NodeType_State 
 CHARACTER(LEN=255),ALLOCATABLE   :: StrVarNames(:)
 CHARACTER(LEN=255)               :: NodeTypeVisuPosti_old
+CHARACTER(LEN=255)               :: MeshFile_State
 INTEGER                          :: NodeTypeVisuPostiInt
 LOGICAL                          :: userblockFound
 !===================================================================================================================================
@@ -326,6 +327,19 @@ SWRITE (*,*) "READING FROM: ", TRIM(statefile)
 !   7. write VTK arrays       (always!) 
 !
 !**********************************************************************************************
+! Read Varnames to visualize and build calc and visu dependencies
+CALL prms%SetSection("posti")
+CALL prms%CreateStringOption('MeshFile',"Custom mesh file ")
+CALL prms%CreateStringOption('VarName',"Names of variables, which should be visualized.", multiple=.TRUE.)
+CALL prms%CreateIntOption(   'NVisu',  "Polynomial degree at which solution is sampled for visualization.")
+CALL prms%CreateIntOption(   'VisuDimension',"2 = Slice at first Gauss point in zeta-direction to get 2D solution.","3")
+CALL prms%CreateIntFromStringOption('NodeTypeVisu', "NodeType for visualization. Visu, Gauss,Gauss-Lobatto,Visu_inner",&
+'VISU')
+CALL addStrListEntry('NodeTypeVisu','VISU', 1)
+CALL addStrListEntry('NodeTypeVisu','GAUSS',2)
+CALL addStrListEntry('NodeTypeVisu','GAUSS-LOBATTO',  3)
+CALL addStrListEntry('NodeTypeVisu','VISU_INNER',  4)
+
 changedStateFile     = .FALSE.
 changedMeshFile      = .FALSE.
 changedNVisu         = .FALSE.
@@ -341,9 +355,13 @@ IF (ISVALIDMESHFILE(statefile)) THEN ! visualize mesh
   CALL VisualizeMesh(postifile,MeshFile,coordsDG_out,valuesDG_out,nodeidsDG_out, &
       coordsFV_out,valuesFV_out,nodeidsFV_out,varnames_out,components_out)
 ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
+  ! always read in the meshfile from state, in case the meshfile specified in the parameter file is empty
+  CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+  CALL ReadAttribute(File_ID,'MeshFile',    1,StrScalar =MeshFile_state)
+  CALL CloseDataFile()
   changedStateFile = .NOT.STRICMP(statefile,statefile_old)
   SWRITE(*,*) "ChangedStateFile: ", TRIM(statefile_old), " -> ",TRIM(statefile)
-  IF (changedStateFile) THEN
+  IF (changedStateFile.OR.changedMeshFile) THEN
     ! Read in parameters from the State file
     CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
     CALL GetDataProps(nVar_State,PP_N,nElems_State,NodeType_State)
@@ -351,56 +369,33 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
       CALL CollectiveStop(__STAMP__, &
           "NodeType of state does not match with NodeType the visu3D-posti is compiled with!")
     END IF
-    CALL ReadAttribute(File_ID,'MeshFile',    1,StrScalar =MeshFile)
+    CALL ReadAttribute(File_ID,'MeshFile',    1,StrScalar =MeshFile_state)
     CALL ReadAttribute(File_ID,'Project_Name',1,StrScalar =ProjectName)
     CALL ReadAttribute(File_ID,'Time',        1,RealScalar=OutputTime)
-    changedMeshFile = .NOT.(STRICMP(MeshFile,MeshFile_old))
     SDEALLOCATE(StrVarNames)
     ALLOCATE(StrVarNames(nVar_State))
     CALL ReadAttribute(File_ID,'VarNames',nVar_State,StrArray=StrVarNames)
     CALL CloseDataFile()
 
-    ! Build partition to get nElems
-    CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
-    CALL BuildPartition() 
-    CALL CloseDataFile()
-
-    ! Read in ElemData and additional Field Data - needs nElems and can be called only after BuildPartition
-    CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
-    CALL ReadElemData()
-    CALL ReadFieldData()
-    CALL CloseDataFile()
-
-    CALL Build_FV_DG_distribution(statefile) 
-  END IF ! changedStateFile
-
-  IF (LEN_TRIM(postifile).EQ.0) THEN
-    postifile = ".posti.ini"
-    ! no posti parameter file given => write a default .posti.ini file
-    IF (MPIRoot) THEN
-      OPEN(UNIT=postiUnit,FILE=TRIM(postifile),STATUS='UNKNOWN',ACTION='WRITE',ACCESS='SEQUENTIAL',IOSTAT=stat)
-      WRITE(postiUnit,'(A,I3)') "NVisu   = ", PP_N+1
-      DO iVar=1,nVar_State
-        WRITE(postiUnit,'(A,A)') "VarName = ", TRIM(StrVarNames(iVar))
-      END DO
-      CLOSE(postiUnit)
+    IF (LEN_TRIM(postifile).EQ.0) THEN
+      postifile = ".posti.ini"
+      ! no posti parameter file given => write a default .posti.ini file
+      IF (MPIRoot) THEN
+        OPEN(UNIT=postiUnit,FILE=TRIM(postifile),STATUS='UNKNOWN',ACTION='WRITE',ACCESS='SEQUENTIAL',IOSTAT=stat)
+        WRITE(postiUnit,'(A,I3)') "NVisu   = ", PP_N+1
+        DO iVar=1,nVar_State
+          WRITE(postiUnit,'(A,A)') "VarName = ", TRIM(StrVarNames(iVar))
+        END DO
+        CLOSE(postiUnit)
+      END IF
+      CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
     END IF
-    CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
   END IF
 
-  ! Read Varnames to visualize and build calc and visu dependencies
-  CALL prms%SetSection("posti")
-  CALL prms%CreateStringOption('VarName',"Names of variables, which should be visualized.", multiple=.TRUE.)
-  CALL prms%CreateIntOption(   'NVisu',  "Polynomial degree at which solution is sampled for visualization.")
-  CALL prms%CreateIntOption(   'VisuDimension',"2 = Slice at first Gauss point in zeta-direction to get 2D solution.","3")
-  CALL prms%CreateIntFromStringOption('NodeTypeVisu', "NodeType for visualization. Visu, Gauss,Gauss-Lobatto,Visu_inner",&
-  'VISU')
-  CALL addStrListEntry('NodeTypeVisu','VISU', 1)
-  CALL addStrListEntry('NodeTypeVisu','GAUSS',2)
-  CALL addStrListEntry('NodeTypeVisu','GAUSS-LOBATTO',  3)
-  CALL addStrListEntry('NodeTypeVisu','VISU_INNER',  4)
   CALL prms%read_options(postifile)
   NVisu  = GETINT("NVisu")
+  Meshfile = GETSTR("MeshFile",MeshFile_state)
+  changedMeshFile = .NOT.(STRICMP(MeshFile,MeshFile_old))
   VisuDimension = GETINT("VisuDimension")
   NodeTypeVisuPostiInt = GETINTFROMSTR('NodeTypeVisu')
   SELECT CASE(NodeTypeVisuPostiInt)
@@ -417,6 +412,23 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   END SELECT
   changedNVisu = ((NVisu.NE.NVisu_old) .OR. (NodeTypeVisuPosti.NE.NodeTypeVisuPosti_old))
   NodeTypeVisuPosti_old=NodeTypeVisuPosti
+
+  IF (changedStateFile.OR.changedMeshFile) THEN
+    ! Build partition to get nElems
+    CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+    CALL BuildPartition() 
+    CALL CloseDataFile()
+
+    ! Read in ElemData and additional Field Data - needs nElems and can be called only after BuildPartition
+    CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+    CALL ReadElemData()
+    CALL ReadFieldData()
+    CALL CloseDataFile()
+
+    CALL Build_FV_DG_distribution(statefile) 
+  END IF ! changedStateFile
+
+
 
   withGradients = .FALSE.
 #if FV_ENABLED && FV_RECONSTRUCT
@@ -527,7 +539,7 @@ nVar_State_old    = nVar_State
 withGradients_old = withGradients
 
 SWRITE(UNIT_StdOut,'(132("-"))')
-SWRITE(*,*) "Vius3D finished for state file: ", TRIM(statefile)
+SWRITE(*,*) "Visu3D finished for state file: ", TRIM(statefile)
 SWRITE(UNIT_StdOut,'(132("="))')
 END SUBROUTINE visu3D
 

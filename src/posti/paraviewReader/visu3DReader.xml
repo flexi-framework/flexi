@@ -74,6 +74,18 @@
            Additional parameter file, that overwrites the parameter file from the USERBLOCK of the state file.
            </Documentation>
          </StringVectorProperty>
+         <StringVectorProperty command="SetMeshFileOverwrite"
+           default_value=""
+           animateable="0"
+           name="MeshFileOverwrite"
+           number_of_elements="1"
+           label="Mesh File OVERWRITE"
+           panel_visibility="advanced">
+           <FileListDomain name="files" />
+           <Documentation>
+           Mesh file, that overwrites the one stored in the parameter file from the USERBLOCK of the state file.
+           </Documentation>
+         </StringVectorProperty>
       <!-- ================================================================== -->
          <StringVectorProperty name="VarArrayInfo"
             information_only="1">
