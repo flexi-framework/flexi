@@ -717,7 +717,7 @@ ELSE
   SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && '//TRIM(EXECPATH)//' '//TRIM(parameter_ini)//' ' &
               //TRIM(parameter_ini2)//' '//TRIM(Examples(iExample)%RestartFileName)//' 1>std.out 2>err.out'
 END IF
-SWRITE(*,*)"SYSCOMMAND=[",TRIM(SYSCOMMAND),']'
+!SWRITE(*,*)"SYSCOMMAND=[",TRIM(SYSCOMMAND),']'
 CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS) ! run the code
 ! -----------------------------------------------------------------------------------------------------------------------
 ! was the run successful? (iSTATUS=0)
