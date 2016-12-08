@@ -47,6 +47,7 @@ visu3DReader::visu3DReader()
 {
    this->FileName = NULL;
    this->InputNsuper = 0;
+   this->NodeTypeVisu = 0;
    this->Mode2d = 0;
    this->ParameterFileOverwrite = NULL;
    this->SetNumberOfInputPorts(0);
@@ -251,6 +252,7 @@ int visu3DReader::FindClosestTimeStep(double requestedTimeValue)
    }
 
    dprintf(posti_unit, "NVisu = %d\n", InputNsuper); // insert NVisu
+   dprintf(posti_unit, "NodeTypeVisu = %d\n", NodeTypeVisu); // insert NodeType
    dprintf(posti_unit, "VisuDimension = %s\n", (this->Mode2d ? "2" : "3"));
 
    int totalVars = 0;

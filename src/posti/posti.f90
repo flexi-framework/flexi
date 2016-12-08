@@ -218,9 +218,9 @@ USE MOD_HDF5_Input          ,ONLY: OpenDataFile,CloseDataFile,GetDataProps,ReadA
 USE MOD_Mesh_ReadIn         ,ONLY: BuildPartition
 USE MOD_Interpolation_Vars  ,ONLY: NodeTypeVisu,NodeTypeFVEqui
 USE MOD_VTK                 ,ONLY: WriteCoordsToVTK_array,WriteDataToVTK_array,WriteVarnamesToVTK_array
-USE MOD_StringTools         ,ONLY: STRICMP,LowCase
-USE MOD_Interpolation_Vars  ,ONLY: NodeType
-USE MOD_ReadInTools         ,ONLY: prms,GETINT,GETLOGICAL
+USE MOD_StringTools         ,ONLY: STRICMP,LowCase,UpperCase
+USE MOD_Interpolation_Vars  ,ONLY: NodeType,NodeTypeVisu
+USE MOD_ReadInTools         ,ONLY: prms,GETINT,GETLOGICAL,GETINTFROMSTR,addStrListEntry
 USE MOD_ReadInTools         ,ONLY: FinalizeParameters,ExtractParameterFile
 USE MOD_Output_Vars         ,ONLY: ProjectName
 USE MOD_Restart             ,ONLY: ReadElemData
@@ -245,6 +245,8 @@ INTEGER                          :: stat
 INTEGER                          :: nElems_State,iVar
 CHARACTER(LEN=255)               :: NodeType_State 
 CHARACTER(LEN=255),ALLOCATABLE   :: StrVarNames(:)
+CHARACTER(LEN=255)               :: NodeTypeVisuPosti_old
+INTEGER                          :: NodeTypeVisuPostiInt
 LOGICAL                          :: userblockFound
 !===================================================================================================================================
 CALL InitMPI(mpi_comm_IN) 
@@ -308,7 +310,7 @@ SWRITE (*,*) "READING FROM: ", TRIM(statefile)
 !   - changedStateFile:     new state file 
 !   - changedMeshFile:      new mesh file (only possible if changedStateFile==TRUE)
 !   - changedVarNames:      new set of variables to visualize
-!   - changedNVisu:         new NVisu
+!   - changedNVisu:         new NVisu, new Nodetype
 !   - changedFV_Elems:      new distribution of FV/DG elements (only if changedStateFile==TRUE)
 !   - changedWithGradients: different mode, with/without gradients
 !   
@@ -391,11 +393,30 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   CALL prms%CreateStringOption('VarName',"Names of variables, which should be visualized.", multiple=.TRUE.)
   CALL prms%CreateIntOption(   'NVisu',  "Polynomial degree at which solution is sampled for visualization.")
   CALL prms%CreateIntOption(   'VisuDimension',"2 = Slice at first Gauss point in zeta-direction to get 2D solution.","3")
+  CALL prms%CreateIntFromStringOption('NodeTypeVisu', "NodeType for visualization. Visu, Gauss,Gauss-Lobatto,Visu_inner",&
+  'VISU')
+  CALL addStrListEntry('NodeTypeVisu','VISU', 1)
+  CALL addStrListEntry('NodeTypeVisu','GAUSS',2)
+  CALL addStrListEntry('NodeTypeVisu','GAUSS-LOBATTO',  3)
+  CALL addStrListEntry('NodeTypeVisu','VISU_INNER',  4)
   CALL prms%read_options(postifile)
   NVisu  = GETINT("NVisu")
   VisuDimension = GETINT("VisuDimension")
-
-  changedNVisu = (NVisu.NE.NVisu_old)
+  NodeTypeVisuPostiInt = GETINTFROMSTR('NodeTypeVisu')
+  SELECT CASE(NodeTypeVisuPostiInt)
+    CASE(1)
+      NodeTypeVisuPosti='VISU'
+    CASE(2)
+      NodeTypeVisuPosti='GAUSS'
+    CASE(3)
+      NodeTypeVisuPosti='GAUSS-LOBATTO'
+    CASE(4)
+      NodeTypeVisuPosti='VISU_INNER'
+    CASE DEFAULT 
+      SWRITE(*,*)'Nodetype not implemented!'
+  END SELECT
+  changedNVisu = ((NVisu.NE.NVisu_old) .OR. (NodeTypeVisuPosti.NE.NodeTypeVisuPosti_old))
+  NodeTypeVisuPosti_old=NodeTypeVisuPosti
 
   withGradients = .FALSE.
 #if FV_ENABLED && FV_RECONSTRUCT

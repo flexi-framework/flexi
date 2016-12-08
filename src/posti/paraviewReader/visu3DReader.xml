@@ -33,6 +33,23 @@
                Supersampling points per DG element.
             </Documentation>
          </IntVectorProperty>
+      <IntVectorProperty
+            name="NodeTypeVisu"
+            command="SetNodeTypeVisu"
+            number_of_elements="1"
+            default_values="1"
+            label="NodeType of visualization"
+            panel_visibility="advanced">
+        <EnumerationDomain name="enum">
+          <Entry value="1" text="Visu"/>
+          <Entry value="2" text="Gauss"/>
+          <Entry value="3" text="Gauss-Lobatto"/>
+          <Entry value="4" text="Visu_inner"/>
+        </EnumerationDomain>
+        <Documentation>
+           User-defined NodeType at which to visualize. 
+        </Documentation>
+         </IntVectorProperty>
          <IntVectorProperty command="SetMode2d"
            default_values="0"
            animateable="0"

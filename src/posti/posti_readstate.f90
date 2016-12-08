@@ -76,6 +76,8 @@ USE MOD_Exactfunc     ,ONLY: DefineParametersExactFunc
 #if PARABOLIC
 USE MOD_Lifting       ,ONLY: DefineParametersLifting,InitLifting,FinalizeLifting
 #endif
+USE MOD_Filter,         ONLY:DefineParametersFilter,InitFilter,FinalizeFilter
+USE MOD_Overintegration,ONLY:DefineParametersOverintegration,InitOverintegration,FinalizeOverintegration
 USE MOD_ReadInTools   ,ONLY: prms
 USE MOD_ReadInTools   ,ONLY: FinalizeParameters
 USE MOD_Restart_Vars  ,ONLY: RestartTime
@@ -100,6 +102,8 @@ END IF
 CALL FinalizeIndicator()
 CALL FinalizeEquation()
 CALL FinalizeDG()
+CALL FinalizeOverintegration()
+CALL FinalizeFilter()
 #if PARABOLIC
 CALL FinalizeLifting()
 #endif
@@ -110,6 +114,8 @@ CALL DefineParametersIO_HDF5()
 CALL DefineParametersInterpolation()
 CALL DefineParametersRestart()
 CALL DefineParametersMesh()
+CALL DefineParametersFilter()
+CALL DefineParametersOverintegration()
 CALL DefineParametersIndicator()
 #if FV_ENABLED
 CALL DefineParametersFV()
@@ -139,6 +145,8 @@ IF (changedMeshFile.OR.changedWithGradients) THEN
   CALL InitMesh(withoutMetrics=.FALSE.)
 END IF
 
+CALL InitFilter()
+CALL InitOverintegration()
 CALL InitIndicator()
 #if USE_MPI
 IF (changedMeshFile.OR.changedWithGradients) THEN

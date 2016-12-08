@@ -113,53 +113,54 @@ IMPLICIT NONE
 !                          r                 
 !                          g                 
 !                          y                    E              V
-!                          S            V       n              o
-!                          t            e     E t   T          r
-!                          a            l     n h   o          t
-!                          g            o     e a   t          i
-!                          n            c V   r l   a T        c
-!                          a            i e   g p   l o        i
-!                          t         T  t l   y y   T t        t
-!                          i         e  y o   S S   e a  V V V y     D Q
-!                G   M M M o V V V   m  M c   t t   m l  o o o M     i C S
-!                r   o o o n e e e P p  a i   a a   p P  r r r a H   l r c 
-!                a D m m m D l l l r e  g t   g g E e r  t t t g e L a i h  
-!                d e e e e e o o o e r  n y   n n n r e  i i i n l a t t l  
-!                i n n n n n c c c s a  i S   a a t a s  c c c i i m a e i  
-!                e s t t t s i i i s t  t o M t t r t s  i i i t c b t r e  
-!                n i u u u i t t t u u  u u a i i o u u  t t t u i d i i r  
-!                t t m m m t y y y r r  d n c o o p r r  y y y d t a o o e  
-!                s y X Y Z y X Y Z e e  e d h n n y e e  X Y Z e y 2 n n n  
-DepTable(1 ,:)=(/0,1,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! Density
-DepTable(2 ,:)=(/0,0,1,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! MomentumX
-DepTable(3 ,:)=(/0,0,0,1,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! MomentumY
-DepTable(4 ,:)=(/0,0,0,0,1,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! MomentumZ
-DepTable(5 ,:)=(/0,0,0,0,0,1,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! EnergyStagnationDensity
-DepTable(6 ,:)=(/0,1,1,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! VelocityX
-DepTable(7 ,:)=(/0,1,0,1,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! VelocityY
-DepTable(8 ,:)=(/0,1,0,0,1,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! VelocityZ
-DepTable(9 ,:)=(/0,1,1,1,1,1,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! Pressure
-DepTable(10,:)=(/0,1,0,0,0,0,0,0,0,1,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! Temperature
-                                                         
-DepTable(11,:)=(/0,0,0,0,0,0,1,1,1,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! VelocityMagnitude 
-DepTable(12,:)=(/0,1,0,0,0,0,0,0,0,1,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! VelocitySound     
-DepTable(13,:)=(/0,0,0,0,0,0,0,0,0,0,0, 1,1,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! Mach              
-DepTable(14,:)=(/0,1,0,0,0,1,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! EnergyStagnation  
-DepTable(15,:)=(/0,1,0,0,0,0,0,0,0,1,0, 0,0,0,1,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! EnthalpyStagnation
-DepTable(16,:)=(/0,1,0,0,0,0,0,0,0,0,1, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! Entropy           
-DepTable(17,:)=(/0,0,0,0,0,0,0,0,0,0,1, 1,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! TotalTemperature  
-DepTable(18,:)=(/0,1,0,0,0,0,0,0,0,1,0, 1,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! TotalPressure     
-#if PARABOLIC                                                         
-DepTable(19,:)=(/1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! VorticityX
-DepTable(20,:)=(/1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! VorticityY
-DepTable(21,:)=(/1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! VorticityZ
-DepTable(22,:)=(/1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 1,1,1,0,0,0,0,0,0 /) ! VorticityMagnitude
-DepTable(23,:)=(/1,0,0,0,0,0,1,1,1,0,0, 1,0,0,0,0,0,0,0, 1,1,1,1,0,0,0,0,0 /) ! Helicity
-DepTable(24,:)=(/1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! Lambda2
-DepTable(25,:)=(/1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! Dilatation
-DepTable(26,:)=(/1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! QCriterion
-DepTable(27,:)=(/1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! Schlieren
-#endif
+!                          S            V       n       P        o           
+!                          t            e     E t   T   r        r          
+!                          a            l     n h   o   e        t          
+!                          g            o     e a   t   s        i          
+!                          n            c V   r l   a T s        c          
+!                          a            i e   g p   l o u        i          
+!                          t         T  t l   y y   T t r        t          
+!                          i         e  y o   S S   e a e  V V V y     D Q  
+!                G   M M M o V V V   m  M c   t t   m l T  o o o M     i C S
+!                r   o o o n e e e P p  a i   a a   p P i  r r r a H   l r c
+!                a D m m m D l l l r e  g t   g g E e r m  t t t g e L a i h
+!                d e e e e e o o o e r  n y   n n n r e e  i i i n l a t t l
+!                i n n n n n c c c s a  i S   a a t a s D  c c c i i m a e i
+!                e s t t t s i i i s t  t o M t t r t s e  i i i t c b t r e
+!                n i u u u i t t t u u  u u a i i o u u r  t t t u i d i i r
+!                t t m m m t y y y r r  d n c o o p r r i  y y y d t a o o e
+!                s y X Y Z y X Y Z e e  e d h n n y e e v  X Y Z e y 2 n n n
+DepTable(1 ,:)=(/0,1,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0/) ! Density
+DepTable(2 ,:)=(/0,0,1,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0/) ! MomentumX
+DepTable(3 ,:)=(/0,0,0,1,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0/) ! MomentumY
+DepTable(4 ,:)=(/0,0,0,0,1,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0/) ! MomentumZ
+DepTable(5 ,:)=(/0,0,0,0,0,1,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0/) ! EnergyStagnationDensity
+DepTable(6 ,:)=(/0,1,1,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0/) ! VelocityX
+DepTable(7 ,:)=(/0,1,0,1,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0/) ! VelocityY
+DepTable(8 ,:)=(/0,1,0,0,1,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0/) ! VelocityZ
+DepTable(9 ,:)=(/0,1,1,1,1,1,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0/) ! Pressure
+DepTable(10,:)=(/0,1,0,0,0,0,0,0,0,1,0, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0/) ! Temperature
+                                                                            
+DepTable(11,:)=(/0,0,0,0,0,0,1,1,1,0,0, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0/) ! VelocityMagnitude 
+DepTable(12,:)=(/0,1,0,0,0,0,0,0,0,1,0, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0/) ! VelocitySound     
+DepTable(13,:)=(/0,0,0,0,0,0,0,0,0,0,0, 1,1,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0/) ! Mach              
+DepTable(14,:)=(/0,1,0,0,0,1,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0/) ! EnergyStagnation  
+DepTable(15,:)=(/0,1,0,0,0,0,0,0,0,1,0, 0,0,0,1,0,0,0,0,0, 0,0,0,0,0,0,0,0,0/) ! EnthalpyStagnation
+DepTable(16,:)=(/0,1,0,0,0,0,0,0,0,0,1, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0/) ! Entropy           
+DepTable(17,:)=(/0,0,0,0,0,0,0,0,0,0,1, 1,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0/) ! TotalTemperature  
+DepTable(18,:)=(/0,1,0,0,0,0,0,0,0,1,0, 1,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0/) ! TotalPressure     
+DepTable(19,:)=(/1,1,1,1,1,1,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0/) ! PressureTimeDeriv
+#if PARABOLIC                                                                
+DepTable(nVarAdv+ 1,:)=(/1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 ,0/) ! VorticityX
+DepTable(nVarAdv+ 2,:)=(/1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 ,0/) ! VorticityY
+DepTable(nVarAdv+ 3,:)=(/1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 ,0/) ! VorticityZ
+DepTable(nVarAdv+ 4,:)=(/1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 1,1,1,0,0,0,0,0,0 ,0/) ! VorticityMagnitude
+DepTable(nVarAdv+ 5,:)=(/1,0,0,0,0,0,1,1,1,0,0, 1,0,0,0,0,0,0,0, 1,1,1,1,0,0,0,0,0 ,0/) ! Helicity
+DepTable(nVarAdv+ 6,:)=(/1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 ,0/) ! Lambda2
+DepTable(nVarAdv+ 7,:)=(/1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 ,0/) ! Dilatation
+DepTable(nVarAdv+ 8,:)=(/1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 ,0/) ! QCriterion
+DepTable(nVarAdv+ 9,:)=(/1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 ,0/) ! Schlieren
+#endif                                                                       
 
 CALL FillDepNames()
 
@@ -187,11 +188,11 @@ CALL FillDepNames()
 !                          n i u u u i t t t u u  
 !                          t t m m m t y y y r r  
 !                          s y X Y Z y X Y Z e e  
-DepTablePrimToCons(1 ,:)=(/0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0/) ! Density
-DepTablePrimToCons(2 ,:)=(/0,1,0,0,0,0,1,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0/) ! MomentumX
-DepTablePrimToCons(3 ,:)=(/0,1,0,0,0,0,0,1,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0/) ! MomentumY
-DepTablePrimToCons(4 ,:)=(/0,1,0,0,0,0,0,0,1,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0/) ! MomentumZ
-DepTablePrimToCons(5 ,:)=(/0,1,0,0,0,0,1,1,1,1,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0/) ! EnergyStagnationDensity
+DepTablePrimToCons(1 ,:)=(/0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 ,0,0,0,0,0,0,0,0,0/) ! Density
+DepTablePrimToCons(2 ,:)=(/0,1,0,0,0,0,1,0,0,0,0, 0,0,0,0,0,0,0,0,0 ,0,0,0,0,0,0,0,0,0/) ! MomentumX
+DepTablePrimToCons(3 ,:)=(/0,1,0,0,0,0,0,1,0,0,0, 0,0,0,0,0,0,0,0,0 ,0,0,0,0,0,0,0,0,0/) ! MomentumY
+DepTablePrimToCons(4 ,:)=(/0,1,0,0,0,0,0,0,1,0,0, 0,0,0,0,0,0,0,0,0 ,0,0,0,0,0,0,0,0,0/) ! MomentumZ
+DepTablePrimToCons(5 ,:)=(/0,1,0,0,0,0,1,1,1,1,0, 0,0,0,0,0,0,0,0,0 ,0,0,0,0,0,0,0,0,0/) ! EnergyStagnationDensity
 #endif
 END SUBROUTINE InitDepTable  
 
@@ -220,16 +221,17 @@ DepNames(15) = "EnthalpyStagnation"
 DepNames(16) = "Entropy"           
 DepNames(17) = "TotalTemperature"  
 DepNames(18) = "TotalPressure"     
+DepNames(19) = "PressureTimeDeriv"     
 #if PARABOLIC
-DepNames(19) = "VorticityX"
-DepNames(20) = "VorticityY"
-DepNames(21) = "VorticityZ"
-DepNames(22) = "VorticityMagnitude"
-DepNames(23) = "Helicity"
-DepNames(24) = "Lambda2"
-DepNames(25) = "Dilatation"
-DepNames(26) = "QCriterion"
-DepNames(27) = "Schlieren"
+DepNames(nVarAdv+ 1) = "VorticityX"
+DepNames(nVarAdv+ 2) = "VorticityY"
+DepNames(nVarAdv+ 3) = "VorticityZ"
+DepNames(nVarAdv+ 4) = "VorticityMagnitude"
+DepNames(nVarAdv+ 5) = "Helicity"
+DepNames(nVarAdv+ 6) = "Lambda2"
+DepNames(nVarAdv+ 7) = "Dilatation"
+DepNames(nVarAdv+ 8) = "QCriterion"
+DepNames(nVarAdv+ 9) = "Schlieren"
 #endif
 END SUBROUTINE FillDepNames
 
@@ -549,9 +551,7 @@ END SUBROUTINE CalcPrimitiveQuantity
 
 SUBROUTINE CalcDerivedQuantity(iVarCalc,DepName,nVarCalc,Nloc,nElems_loc,iElems,mapCalc,UCalc)
 ! MODULES
-#if PARABOLIC
 USE MOD_PreProc         ,ONLY: PP_N
-#endif
 USE MOD_EOS_Vars        ,ONLY: cp,kappa,R,sKappaM1
 USE MOD_EOS_Posti_Vars  ,ONLY: nVarTotal
 USE MOD_StringTools     ,ONLY: LowCase
@@ -613,6 +613,8 @@ SELECT CASE(DepName_low)
     iPres = GETiCalc("pressure",mapCalc)
     iVelM = GETiCalc("velocitymagnitude",mapCalc)
     UCalc(:,:,:,:,iVarCalc) = UCalc(:,:,:,:,iPres)+0.5*UCalc(:,:,:,:,iDens)*UCalc(:,:,:,:,iVelM)**2
+  CASE("pressuretimederiv")
+    CALL FillPressureTimeDeriv(nElems_loc,iElems,PP_N,UCalc(:,:,:,:,iVarCalc))
 #if PARABOLIC      
   CASE("vorticityx")
     CALL FillVorticity(nElems_loc,iElems,PP_N,UCalc(:,:,:,:,iVarCalc),1)
@@ -754,6 +756,40 @@ END IF
 END SUBROUTINE CalcConsFromPrim
 #endif
 
+
+
+PURE SUBROUTINE FillPressureTimeDeriv(nElems_calc,indices,Nloc,PressureTDeriv)
+!==================================================================================================================================
+! MODULES
+USE MOD_Eos_Vars  ,ONLY: KappaM1
+USE MOD_DG_Vars,ONLY:Ut,U
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE 
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+INTEGER,INTENT(IN) :: nElems_calc
+INTEGER,INTENT(IN) :: indices(nElems_calc)
+INTEGER,INTENT(IN) :: Nloc
+REAL,INTENT(OUT)   :: PressureTDeriv(0:Nloc,0:Nloc,0:Nloc,nElems_calc)
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES 
+INTEGER            :: iElem,iElem_calc
+!==================================================================================================================================
+DO iElem_calc=1,nElems_calc
+  iElem = indices(iElem_calc)
+  PressureTDeriv(:,:,:,iElem)=KappaM1*(Ut(5,:,:,:,iElem)-1/U(1,:,:,:,iElem)*(  &
+                                           U(2,:,:,:,iElem)*Ut(2,:,:,:,iElem)  &
+                                         + U(3,:,:,:,iElem)*Ut(3,:,:,:,iElem)  &
+                                         + U(4,:,:,:,iElem)*Ut(4,:,:,:,iElem)) &
+                                + 0.5/U(1,:,:,:,iElem)**2*Ut(1,:,:,:,iElem)*(  &
+                                           U(2,:,:,:,iElem)*U(2,:,:,:,iElem)   &
+                                         + U(3,:,:,:,iElem)*U(3,:,:,:,iElem)   &
+                                         + U(4,:,:,:,iElem)*U(4,:,:,:,iElem)))
+END DO ! iElem
+END SUBROUTINE FillPressureTimeDeriv
+
+
+
 #if PARABOLIC
 PURE SUBROUTINE FillVorticity(nElems_calc,indices,Nloc,Vorticity,dir)
 !==================================================================================================================================
@@ -790,6 +826,8 @@ CASE(3) ! VorticityZ = dv/dx-du/dy
   END DO ! iElem
 END SELECT
 END SUBROUTINE FillVorticity
+
+
 
 SUBROUTINE FillLambda2(nElems_calc,indices,Nloc,Lambda2)
 !==================================================================================================================================

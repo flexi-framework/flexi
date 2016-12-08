@@ -70,6 +70,11 @@ INTERFACE LowCase
   MODULE PROCEDURE LowCase_overwrite
 END INTERFACE
 
+INTERFACE UpperCase
+  MODULE PROCEDURE UpperCase
+  MODULE PROCEDURE UpperCase_overwrite
+END INTERFACE
+
 INTERFACE STRICMP
   MODULE PROCEDURE STRICMP
 END INTERFACE
@@ -99,6 +104,7 @@ INTERFACE GetFileExtension
 END INTERFACE
 
 PUBLIC :: LowCase
+PUBLIC :: UpperCase
 PUBLIC :: STRICMP
 PUBLIC :: StripSpaces
 PUBLIC :: INTTOSTR
@@ -115,7 +121,7 @@ PUBLIC :: use_escape_codes
 CONTAINS
 
 !==================================================================================================================================
-!> Transform upper case letters in "Str1" into lower case letters, result is "Str2" (in place version)
+!> Transform upper case letters in "Str1" into lower case letters, result is "Str1" (in place version)
 !==================================================================================================================================
 SUBROUTINE LowCase_overwrite(Str1)
 ! MODULES
@@ -169,6 +175,60 @@ DO iLen=1,nLen
   IF ((Upper > 0).AND. .NOT. HasEq) Str2(iLen:iLen) = lc(Upper:Upper)
 END DO
 END SUBROUTINE LowCase
+
+!==================================================================================================================================
+!> Transform lower case letters in "Str1" into lower case letters, result is "Str1" (inplace version)
+!==================================================================================================================================
+SUBROUTINE UpperCase_overwrite(Str1)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+CHARACTER(LEN=*),INTENT(INOUT)  :: Str1  !< Input string
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES 
+INTEGER                    :: iLen,nLen,Lower
+CHARACTER(LEN=*),PARAMETER :: lc='abcdefghijklmnopqrstuvwxyz'
+CHARACTER(LEN=*),PARAMETER :: UC='ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+LOGICAL                    :: HasEq
+!==================================================================================================================================
+HasEq=.FALSE.
+nLen=LEN_TRIM(Str1)
+DO iLen=1,nLen
+  ! Transformation stops at "="
+  IF(Str1(iLen:iLen).EQ.'=') HasEq=.TRUE.
+  Lower=INDEX(lc,Str1(iLen:iLen))
+  IF ((Lower > 0).AND. .NOT. HasEq) Str1(iLen:iLen) = UC(Lower:Lower)
+END DO
+END SUBROUTINE UpperCase_overwrite
+
+!==================================================================================================================================
+!> Transform lower case letters in "Str1" into lower case letters, result is "Str2"
+!==================================================================================================================================
+SUBROUTINE UpperCase(Str1,Str2)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+CHARACTER(LEN=*),INTENT(IN)  :: Str1  !< Input string
+CHARACTER(LEN=*),INTENT(OUT) :: Str2  !< Output string, upper case letters only
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES 
+INTEGER                    :: iLen,nLen,Lower
+CHARACTER(LEN=*),PARAMETER :: lc='abcdefghijklmnopqrstuvwxyz'
+CHARACTER(LEN=*),PARAMETER :: UC='ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+LOGICAL                    :: HasEq
+!==================================================================================================================================
+HasEq=.FALSE.
+Str2=Str1
+nLen=LEN_TRIM(Str1)
+DO iLen=1,nLen
+  ! Transformation stops at "="
+  IF(Str1(iLen:iLen).EQ.'=') HasEq=.TRUE.
+  Lower=INDEX(lc,Str1(iLen:iLen))
+  IF ((Lower > 0).AND. .NOT. HasEq) Str2(iLen:iLen) = UC(Lower:Lower)
+END DO
+END SUBROUTINE UpperCase
 
 !==================================================================================================================================
 !> Case insensitive string comparison 

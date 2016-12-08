@@ -48,6 +48,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Posti_Vars         ,ONLY: NVisu,nElems_DG,mapElems_DG,NVisu_FV,nElems_FV,mapElems_FV,hasFV_Elems
 USE MOD_Posti_Vars         ,ONLY: CoordsVisu_DG
+USE MOD_Posti_Vars         ,ONLY: NodeTypeVisuPosti
 #if FV_ENABLED
 USE MOD_Posti_Vars         ,ONLY: CoordsVisu_FV,changedMeshFile,changedFV_Elems
 #endif
@@ -84,7 +85,7 @@ END IF
 ! Convert coordinates to visu grid
 SWRITE (*,*) "[MESH] Convert coordinates to visu grid (DG)"
 ALLOCATE(Vdm_N_NVisu(0:NVisu,0:Nloc))
-CALL GetVandermonde(Nloc,NodeType_loc,NVisu   ,NodeTypeVisu  ,Vdm_N_NVisu   ,modal=.FALSE.)
+CALL GetVandermonde(Nloc,NodeType_loc,NVisu   ,NodeTypeVisuPosti  ,Vdm_N_NVisu   ,modal=.FALSE.)
 ! convert coords of DG elements
 SDEALLOCATE(CoordsVisu_DG)
 ALLOCATE(CoordsVisu_DG(3,0:NVisu,0:NVisu,0:NVisu,nElems_DG))
