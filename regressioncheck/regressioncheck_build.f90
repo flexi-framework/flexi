@@ -101,7 +101,7 @@ DO I=1,2
     IF(LEN(trim(temp)).GT.1)THEN
       N_subinclude=0 ! reset
       READ(temp,*)temp2
-      IF(TRIM(temp2(1:1)).EQ.'!')CYCLE   !print*,"found !!!"
+      IF(TRIM(temp2(1:1)).EQ.'!')CYCLE   !"found !!!"
       IF(INDEX(temp,'!').GT.0)temp=temp(1:INDEX(temp,'!')-1) ! remove '!'
       IF(TRIM(temp(1:7)).EQ.'EXCLUDE')THEN
         IF(INDEX(temp,':').GT.0)THEN
@@ -123,8 +123,8 @@ DO I=1,2
               EXCLUDE_FLAG_C=''
             ENDIF
             N_exclude=N_exclude+1
-            IF(I.EQ.1)write(*, '(A,A45,A25,A45,A5,A45)')"exclude: ",TRIM(EXCLUDE_FLAG_A),' in combination with ',TRIM(EXCLUDE_FLAG_B), &
-              ' and ',TRIM(EXCLUDE_FLAG_C)
+            IF(I.EQ.1)WRITE(*, '(A,A45,A25,A45,A5,A45)')"exclude: ",TRIM(EXCLUDE_FLAG_A),' in combination with ',&
+              TRIM(EXCLUDE_FLAG_B),' and ',TRIM(EXCLUDE_FLAG_C)
             IF(I.EQ.2)ExcludeConfigurations(N_exclude,1)=TRIM(EXCLUDE_FLAG_A)
             IF(I.EQ.2)ExcludeConfigurations(N_exclude,2)=TRIM(EXCLUDE_FLAG_B)
             IF(I.EQ.2)ExcludeConfigurations(N_exclude,3)=TRIM(EXCLUDE_FLAG_C)
@@ -134,20 +134,26 @@ DO I=1,2
         IF(INDEX(temp,'=').GT.0)THEN
           COMPILE_FLAG=TRIM(ADJUSTL(temp(1:INDEX(temp,'=')-1)))
           N_compile_flags=N_compile_flags+1
-          IF(I.EQ.1)print*,"include: ",TRIM(COMPILE_FLAG)!,TRIM(temp(INDEX(temp,'='):LEN(temp)))
+          IF(I.EQ.1)THEN
+            SWRITE(UNIT_stdOut,'(A)')"include: ",TRIM(COMPILE_FLAG)!,TRIM(temp(INDEX(temp,'='):LEN(temp)))
+          END IF
           IF(I.EQ.2)BuildConfigurations(N_compile_flags,1)=TRIM(ADJUSTL(COMPILE_FLAG))
           temp2=TRIM(ADJUSTL(temp(INDEX(temp,'=')+1:LEN(temp))))
           CurrentIndex=INDEX(temp2,',')
           IF(CurrentIndex.GT.0)THEN
             DO
               N_subinclude=N_subinclude+1
-              IF(I.EQ.1)print*,N_subinclude,': ',                     TRIM(ADJUSTL(temp2(1:CurrentIndex-1)))
+              IF(I.EQ.1)THEN
+                SWRITE(UNIT_stdOut,'(I5,A,A)')N_subinclude,': ',    TRIM(ADJUSTL(temp2(1:CurrentIndex-1)))
+              END IF
               IF(I.EQ.2)BuildConfigurations(N_compile_flags,N_subinclude+1)=TRIM(ADJUSTL(temp2(1:CurrentIndex-1)))
               temp2=temp2(CurrentIndex+1:LEN(temp2))
               NextIndex=INDEX(temp2(1:LEN(temp2)),',')
               IF(NextIndex.EQ.0)THEN
                 N_subinclude=N_subinclude+1
-                IF(I.EQ.1)print*,N_subinclude,': ',                     TRIM(ADJUSTL(temp2(1:LEN(temp2))))
+                IF(I.EQ.1)THEN
+                  SWRITE(UNIT_stdOut,'(I5,A,A)')N_subinclude,': ',    TRIM(ADJUSTL(temp2(1:LEN(temp2))))
+                END IF
                 IF(I.EQ.2)BuildConfigurations(N_compile_flags,N_subinclude+1)=TRIM(ADJUSTL(temp2(1:LEN(temp2))))
                 EXIT
               ELSE
@@ -157,7 +163,9 @@ DO I=1,2
             END DO
           ELSE
             N_subinclude=N_subinclude+1
-            IF(I.EQ.1)print*,N_subinclude,': ',                     TRIM(ADJUSTL(temp2(1:LEN(temp2))))
+            IF(I.EQ.1)THEN
+              SWRITE(UNIT_stdOut,'(I5,A,A)')N_subinclude,': ',    TRIM(ADJUSTL(temp2(1:LEN(temp2))))
+            END IF
             IF(I.EQ.2)BuildConfigurations(N_compile_flags,N_subinclude+1)=TRIM(ADJUSTL(temp2(1:LEN(temp2))))
           END IF
           IF(I.EQ.2)BuildIndex(N_compile_flags)=N_subinclude
@@ -167,9 +175,11 @@ DO I=1,2
       END IF
     END IF
   END DO
-  IF(I.EQ.1)print*,'The number of builds created by Reggie is: ',nReggieBuilds
-  IF(I.EQ.1)print*,N_compile_flags
-  IF(I.EQ.1)print*,N_subinclude_max
+  IF(I.EQ.1)THEN
+    SWRITE(UNIT_stdOut,'(A,I5)')'The number of builds created by Reggie is: ',nReggieBuilds
+    SWRITE(UNIT_stdOut,'(I5)')N_compile_flags
+    SWRITE(UNIT_stdOut,'(I5)')N_subinclude_max
+  END IF
   IF(I.EQ.1)REWIND(ioUnit)
   IF((I.EQ.1).AND.(ALLOCATED(BuildConfigurations)))&
     CALL abort(__STAMP__&
@@ -198,33 +208,32 @@ DO I=1,2
 END DO
 
 
-print*,"--- include ---"
-print*,"BuildConfigurations(I,J) = ... "
+SWRITE(UNIT_stdOut,'(A)')"--- include ---"
+SWRITE(UNIT_stdOut,'(A)')"BuildConfigurations(I,J) = ... "
 DO I=1,N_compile_flags
   DO J=1,N_subinclude_max+1
       write(*, '(A25)', ADVANCE = "NO") TRIM(BuildConfigurations(I,J))
-    IF(J.EQ.N_subinclude_max+1)print*,''
+    IF(J.EQ.N_subinclude_max+1)THEN
+      SWRITE(UNIT_stdOut,'(A)')''
+    END IF
   END DO
 END DO
-print*,"--- exclude ---"
-print*,"ExcludeConfigurations(I,J) = ... "
+SWRITE(UNIT_stdOut,'(A)')"--- exclude ---"
+SWRITE(UNIT_stdOut,'(A)')"ExcludeConfigurations(I,J) = ... "
 DO I=1,N_exclude
   DO J=1,3
       write(*, '(A40)', ADVANCE = "NO") TRIM(ExcludeConfigurations(I,J))
-    IF(J.EQ.3)print*,''
+    IF(J.EQ.3)THEN
+      SWRITE(UNIT_stdOut,'(A)')''
+    END IF
   END DO
 END DO
 CLOSE(ioUnit)
-
-!DO I=1,N_compile_flags
-  !print*,BuildIndex(I)
-!END DO
 
 
 
 BuildCounter=1
 DO I=1,nReggieBuilds
-  !print*,BuildCounter
   DO J=1,N_exclude
     !IF
     InvalidA=.FALSE.
@@ -232,16 +241,14 @@ DO I=1,nReggieBuilds
     InvalidC=.TRUE.
     DO K=1,N_compile_flags
       dummystr=TRIM(ADJUSTL(BuildConfigurations(K,1)))//'='//TRIM(ADJUSTL(BuildConfigurations(K,BuildCounter(K)+1)))
-      !print*,dummystr
       IF(dummystr.EQ.TRIM(ExcludeConfigurations(J,1)))InvalidA=.TRUE.
       IF(dummystr.EQ.TRIM(ExcludeConfigurations(J,2)))InvalidB=.TRUE.
       IF(dummystr.EQ.TRIM(ExcludeConfigurations(J,3)))InvalidC=.TRUE.
 
       END DO
-  !print*,'tested against: ',TRIM(ExcludeConfigurations(J,1)),' and ',TRIM(ExcludeConfigurations(J,2))
-  !print*,InvalidA,InvalidB
     IF(InvalidA.AND.InvalidB.AND.InvalidC)THEN
-      BuildValidInfo(I)=TRIM(ExcludeConfigurations(J,1))//'+'//TRIM(ExcludeConfigurations(J,2))//'+'//TRIM(ExcludeConfigurations(J,3))
+      BuildValidInfo(I)=&
+        TRIM(ExcludeConfigurations(J,1))//'+'//TRIM(ExcludeConfigurations(J,2))//'+'//TRIM(ExcludeConfigurations(J,3))
       BuildValid(I)=.FALSE.
     END IF
   END DO
@@ -261,7 +268,6 @@ DO I=1,nReggieBuilds
 ! deprecated    END IF
 ! deprecated  END DO
   
-  ! print cmake compiler flags
   SWRITE(UNIT_stdOut, '(L)', ADVANCE = "NO") BuildValid(I)
   DO K=1,N_compile_flags
     !write(*, '(A)', ADVANCE = "NO") ' '//TRIM(BuildEQNSYS(I))
@@ -353,11 +359,11 @@ IF(BuildValid(iReggieBuild))THEN
   CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
   SYSCOMMAND='cd '//TRIM(BuildDir)//' && mkdir build_reggie'
   CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
-  SWRITE(tempStr,*)iReggieBuild-1 ! print previously completed build to file for continuation possibility
+  SWRITE(tempStr,*)iReggieBuild-1 ! previously completed build to file for continuation possibility
   SYSCOMMAND='echo '//TRIM(tempStr)//' > '//TRIM(BuildDir)//'build_reggie/BuildContinue.reggie'
   CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
   OPEN(UNIT=ioUnit,FILE=TRIM(BuildDir)//'build_reggie/configurationX.cmake',STATUS="NEW",ACTION='WRITE',IOSTAT=iSTATUS)
-  DO K=1,N_compile_flags ! print the compiler flag command line to "configurationX.cmake"
+  DO K=1,N_compile_flags ! the compiler flag command line to "configurationX.cmake"
     SWRITE(ioUnit, '(A)', ADVANCE = "NO") ' -D'
     SWRITE(ioUnit, '(A)', ADVANCE = "NO") TRIM(ADJUSTL(BuildConfigurations(K,1)))
     SWRITE(ioUnit, '(A)', ADVANCE = "NO") '='
@@ -392,17 +398,16 @@ IF(BuildValid(iReggieBuild))THEN
                                                                CodeNameUppCase//'_EQNSYSNAME'     ,BuildEQNSYS(iReggieBuild))
   ELSE ! iSTATUS.NE.0 -> failed to compile cmake configuration build
     CALL AddError('Error while compiling',iExample,1,ErrorStatus=1,ErrorCode=1) !note: iSubExample is set to 1 as argument
-    CALL SummaryOfErrors() ! Print the summary or examples and error codes (if they exist) before calling abort
-    ! Print the error that caused the compilation abort (if it was written to "build_reggie.out" due to silent compilation)
+    CALL SummaryOfErrors() ! the summary or examples and error codes (if they exist) before calling abort
+    ! the error that caused the compilation abort (if it was written to "build_reggie.out" due to silent compilation)
     FileName=TRIM(BuildDir)//'build_reggie/build_reggie.out'
     INQUIRE(File=TRIM(FileName),EXIST=ExistFile)
-    !print*,"ExistFile=",ExistFile
     IF(ExistFile) THEN ! build_reggie.out exists
       SWRITE(UNIT_stdOut, '(A)')' '
       SWRITE(UNIT_stdOut,'(132("="))')
       ! build [no-debug] = T
       ! build [debug]    = F
-      ! build [-]        = T (but the error should already be printed to the screen!)
+      ! build [-]        = T (but the error should already be output to the screen!)
       SWRITE(UNIT_stdOut, '(A)')"Error output from: "//TRIM(FileName)
       SWRITE(UNIT_stdOut, '(A)')' '
       SYSCOMMAND='grep -rin error '//TRIM(FileName)

@@ -284,7 +284,6 @@ REAL                                 :: LNorm(Examples(iExample)%nVar)
 ! open file and read in
 ioUnit=GETFREEUNIT()
 FileName=TRIM(Examples(iExample)%PATH)//TRIM(Examples(iExample)%ReferenceFile)
-print*,FileName
 INQUIRE(File=FileName,EXIST=ExistFile)
 IF(.NOT.ExistFile) THEN
   SWRITE(UNIT_stdOut,'(A,A)') ' ReadNorm: no File found under ',TRIM(Examples(iExample)%PATH)
@@ -449,9 +448,6 @@ DO I=1,2
             END IF !IndNum.EQ.1
             IF(IndNum.GT.0)THEN
               CurrentColumn=CurrentColumn+IndNum
-!print*,'[',TRIM(temp2),']'
-!print*,'IndNum=',IndNum,'J=',J,' of ',MaxColumn
-!read*
               ! first index
               IF(J.EQ.Examples(iExample)%IntegrateLineRange(1)-1)IndFirstA=CurrentColumn+1
               IF(J.EQ.Examples(iExample)%IntegrateLineRange(2)-1)IndFirstB=CurrentColumn+1
@@ -471,13 +467,9 @@ DO I=1,2
             temp2=TRIM(temp1(CurrentColumn+1:IndMax))
           END DO!J=1,MaxColumn
         IndexNotFound=.FALSE.
-!print*,'Examples(iExample)%IntegrateLineRange(1)',IndFirstA,IndLastA
-!print*,'Examples(iExample)%IntegrateLineRange(2)',IndFirstB,IndLastB
         END IF ! IndexNotFound
-!print*,temp1(IndFirstA:IndLastA),'  ',temp1(IndFirstB:IndLastB)
         CALL str2real(temp1(IndFirstA:IndLastA),Values(LineNumbers-HeaderLines,1),iSTATUS) 
         CALL str2real(temp1(IndFirstB:IndLastB),Values(LineNumbers-HeaderLines,2),iSTATUS) 
-!print*,'[',temp1(IndFirstA:IndLastA),']','[',temp1(IndFirstB:IndLastB),']'
       END IF!IF(LineNumbers.GT.HeaderLines)
     END IF!IF(I.EQ.2)
   END DO ! DO [WHILE]
@@ -505,9 +497,6 @@ Q=0.
 DO I=1,MaxRow-1
   Q=Q+(Values(I+1,1)-Values(I,1))*(Values(I+1,2)+Values(I,2))/2.
 END DO
-!print*,Q
-!print*,Examples(iExample)%IntegrateLineValue
-!print*,1.e-3!0.1*SQRT(PP_RealTolerance)
 
 IntegralValuesAreEqual=EQUALTOTOLERANCE( Q                                     ,&
                                          Examples(iExample)%IntegrateLineValue ,&

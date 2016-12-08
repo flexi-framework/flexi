@@ -237,7 +237,7 @@ CHARACTER(LEN=255)             :: dummystr     ! temp string variable
 ! check example: currently each parameter build configuration is only built and tested for the "run_basic" example
 dummystr=TRIM(ADJUSTL(ExampleName)) ! e.g. "run_basic"
 IF(dummystr(1:LEN(TRIM(ADJUSTL(RuntimeOptionType)))).EQ.RuntimeOptionType)THEN ! e.g. "run[_basic]" = "run"
-  SWRITE(UNIT_stdOut,*) ''
+  SWRITE(UNIT_stdOut,'(A)') ''
 END IF
 SWRITE(UNIT_stdOut,'(A,2x,A50)',ADVANCE='no') ' Example-Name: ',  TRIM(ExampleName)
 IF(dummystr(1:LEN(TRIM(ADJUSTL(RuntimeOptionType)))).NE.RuntimeOptionType)THEN
@@ -694,7 +694,7 @@ IF(Examples(iExample)%MPIrun)THEN ! use "mpirun"
       __STAMP__&
       ,'RunTheCode(): Number of MPI threads is corrupt = '//ADJUSTL(TRIM(MPIthreadsStr)))
   IF((iScaling.GT.1).AND.(iRun.EQ.1))THEN
-    SWRITE(*,*)"Examples(iExample)%MPIthreads=",Examples(iExample)%MPIthreads(iScaling)
+    SWRITE(UNIT_stdOut,'(A,I10)')"Examples(iExample)%MPIthreads=",Examples(iExample)%MPIthreads(iScaling)
   END IF
   tempStr='' ! default
   IF(Examples(iExample)%MPIcommand.EQ.'mpirun')THEN
@@ -717,7 +717,6 @@ ELSE
   SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && '//TRIM(EXECPATH)//' '//TRIM(parameter_ini)//' ' &
               //TRIM(parameter_ini2)//' '//TRIM(Examples(iExample)%RestartFileName)//' 1>std.out 2>err.out'
 END IF
-!SWRITE(*,*)"SYSCOMMAND=[",TRIM(SYSCOMMAND),']'
 CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS) ! run the code
 ! -----------------------------------------------------------------------------------------------------------------------
 ! was the run successful? (iSTATUS=0)
@@ -736,9 +735,6 @@ ELSE
   WRITE(FileSuffix, '(I4.4,I4.4,I4.4)') iScaling,iSubExample,iRun
   WRITE(FolderSuffix,'(I4.4)')iSubExample
 END IF
-!print*,"FileSuffix  =",FileSuffix
-!print*,"FolderSuffix=",FolderSuffix
-!read*
 SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && cp std.out std-'//TRIM(FileSuffix)//'.out'
 CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS) ! copy the std.out file
 SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && mkdir std_files'//TRIM(FolderSuffix)//' > /dev/null 2>&1'

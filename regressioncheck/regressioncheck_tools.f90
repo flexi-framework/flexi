@@ -338,13 +338,6 @@ DO ! extract reggie information
                                                                ParameterList   = Example%SubExampleOption, &
                                                                nParameters     = 20,                       &
                                                                ParameterNumber = Example%SubExampleNumber)
-!IF(TRIM(readRHS(1)).EQ.'SubExample')THEN
-!print*,"Example%SubExample      =",Example%SubExample
-!print*,"Example%SubExampleOption=",Example%SubExampleOption
-!print*,"Example%SubExampleNumber=",Example%SubExampleNumber
-
-!read*
-!END IF
     ! Line integration (e.g. integrate a property over time, the data is read from a .csv or .dat file)
     ! e.g. in parameter_reggie.ini: IntegrateLine= Database.csv   ,1            ,','       ,1:2        , 1.0e2
     !                                              data file name , header lines, delimiter, colums x:y, integral value
@@ -364,22 +357,14 @@ DO ! extract reggie information
            CALL str2int(temp2(1:IndNum2-1),Example%IntegrateLineHeaderLines,iSTATUS)
            temp2                   = temp2(IndNum2+1:LEN(TRIM(temp2))) ! next
            IndNum2                 = INDEX(temp2,"'")
-!print*,"IndNum2",IndNum2
            IF(IndNum2.GT.0)THEN ! get delimiter for separating the columns in the data file
              IndNum3=INDEX(temp2(IndNum2+1:LEN(TRIM(temp2))),"'")+IndNum2
-!print*,"IndNum3",IndNum3
-!print*,"temp2 ",temp2
-!read*
              Example%IntegrateLineDelimiter=temp2(IndNum2+1:IndNum3-1)
-!print*,"[",temp2(IndNum2+1:IndNum3-1),"]"
-!read*
              temp2                 = temp2(IndNum3+1:LEN(TRIM(temp2))) ! next
              IndNum2               = INDEX(temp2,',')
              IF(IndNum2.GT.0)THEN ! get column ranges
                temp2               = temp2(IndNum2+1:LEN(TRIM(temp2))) ! next
                IndNum2             = INDEX(temp2,',')
-!print*,"temp2 ",temp2
-!read*
                IndNum3=INDEX(temp2(1:IndNum2),':')
                IF(IndNum3.GT.0)THEN ! check range
                  CALL str2int(temp2(1        :IndNum3-1),Example%IntegrateLineRange(1),iSTATUS) ! column number 1
@@ -398,12 +383,6 @@ DO ! extract reggie information
       IF(Example%IntegrateLineFile.EQ.'')             Example%IntegrateLine=.FALSE.
       IF(Example%IntegrateLineHeaderLines.EQ.0)       Example%IntegrateLine=.FALSE.
       IF(Example%IntegrateLineDelimiter(1:3).EQ.'999')Example%IntegrateLine=.FALSE.
-!print*,"Example%IntegrateLineRange(1:2)  ",Example%IntegrateLineRange(1:2)
-!print*,"Example%IntegrateLineFile        ",Example%IntegrateLineFile
-!print*,"Example%IntegrateLineHeaderLines ",Example%IntegrateLineHeaderLines
-!print*,"Example%IntegrateLineDelimiter "  ,Example%IntegrateLineDelimiter
-!print*,"Example%IntegrateLineValue "      ,Example%IntegrateLineValue
-!read*
     END IF ! 'IntegrateLine'
     ! Next feature
     !IF(TRIM(readRHS(1)).EQ.'NextFeature')
@@ -695,7 +674,7 @@ ELSE
   SWRITE(UNIT_stdOut,'(A45,2x,A30,2x,A10,2x,A15,2x,A35,2x)') 'Example','SubExample','ErrorCode','build','Information'
   DO WHILE (ASSOCIATED(aError))
     IF(TRIM(TableRowSpacing).NE.TRIM(aError%Example))THEN
-      SWRITE(UNIT_stdOut,*) ''
+      SWRITE(UNIT_stdOut,'(A)') ''
     END IF
     TableRowSpacing=TRIM(aError%Example)
     SWRITE(UNIT_stdOut,'(A45,2x)',ADVANCE='no') TRIM(aError%Example)
@@ -707,7 +686,7 @@ ELSE
     SWRITE(UNIT_stdOut,'(I10,2x)',ADVANCE='no') aError%ErrorCode
     SWRITE(UNIT_stdOut,'(A15,2x)',ADVANCE='no') TRIM(aError%Build)
     SWRITE(UNIT_stdOut,'(A35,2x)',ADVANCE='no') TRIM(aError%Info)
-    SWRITE(UNIT_stdOut,*) ''
+    SWRITE(UNIT_stdOut,'(A)') ' '
     IF(aError%ErrorCode.NE.0) nErrors=nErrors+1
     aError=>aError%nextError
   END DO
