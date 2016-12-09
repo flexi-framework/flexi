@@ -777,11 +777,11 @@ INTEGER            :: iElem,iElem_calc
 !==================================================================================================================================
 DO iElem_calc=1,nElems_calc
   iElem = indices(iElem_calc)
-  PressureTDeriv(:,:,:,iElem)=KappaM1*(Ut(5,:,:,:,iElem)-1/U(1,:,:,:,iElem)*(  &
-                                           U(2,:,:,:,iElem)*Ut(2,:,:,:,iElem)  &
-                                         + U(3,:,:,:,iElem)*Ut(3,:,:,:,iElem)  &
-                                         + U(4,:,:,:,iElem)*Ut(4,:,:,:,iElem)) &
-                                + 0.5/U(1,:,:,:,iElem)**2*Ut(1,:,:,:,iElem)*(  &
+  PressureTDeriv(:,:,:,iElem_calc)=KappaM1*(Ut(5,:,:,:,iElem)-1/U(1,:,:,:,iElem)*(  &
+                                             U(2,:,:,:,iElem)*Ut(2,:,:,:,iElem)  &
+                                           + U(3,:,:,:,iElem)*Ut(3,:,:,:,iElem)  &
+                                           + U(4,:,:,:,iElem)*Ut(4,:,:,:,iElem)) &
+                                     + 0.5/U(1,:,:,:,iElem)**2*Ut(1,:,:,:,iElem)*(  &
                                            U(2,:,:,:,iElem)*U(2,:,:,:,iElem)   &
                                          + U(3,:,:,:,iElem)*U(3,:,:,:,iElem)   &
                                          + U(4,:,:,:,iElem)*U(4,:,:,:,iElem)))
