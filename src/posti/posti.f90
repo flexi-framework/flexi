@@ -246,6 +246,9 @@ INTEGER                          :: nElems_State,iVar
 CHARACTER(LEN=255)               :: NodeType_State 
 CHARACTER(LEN=255),ALLOCATABLE   :: StrVarNames(:)
 LOGICAL                          :: userblockFound
+
+CHARACTER(LEN=255)               :: strOutputFile
+INTEGER                          :: i, iElem
 !===================================================================================================================================
 CALL InitMPI(mpi_comm_IN) 
 SWRITE (*,*) "READING FROM: ", TRIM(statefile)
@@ -490,6 +493,30 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
         CoordsVisu_DG_2D,nodeids_DG_2D,dim=2,DGFV=0)
     CALL WriteCoordsToVTK_array(NVisu_FV,nElems_FV,coordsFV_out,nodeidsFV_out,&
         CoordsVisu_FV_2D,nodeids_FV_2D,dim=2,DGFV=1)
+  ELSE IF (VisuDimension.EQ.1) THEN ! CSV along 1d line
+    IF (nProcessors.GT.1) THEN
+      CALL Abort(__STAMP__, &
+          "1D csv output along lines only supported for single execution")
+    END IF
+    strOutputFile=TRIM(TIMESTAMP(TRIM(ProjectName)//'_extract1D',OutputTime))
+    strOutputFile=TRIM(strOutputFile)//'_FV.csv'
+    open(unit = 10, status='replace',file=strOutputFile)
+    DO iElem=1,nElems_FV
+      DO i=0,NVisu_FV
+        WRITE(10,*) CoordsVisu_FV(1,i,0,0,iElem), UVisu_FV(i,0,0,iElem,:)
+      END DO 
+    END DO
+    close(10) ! close the file
+
+    strOutputFile=TRIM(TIMESTAMP(TRIM(ProjectName)//'_extract1D',OutputTime))
+    strOutputFile=TRIM(strOutputFile)//'_DG.csv'
+    open(unit = 10, status='replace',file=strOutputFile)
+    DO iElem=1,nElems_DG
+      DO i=0,NVisu
+        WRITE(10,*) CoordsVisu_DG(1,i,0,0,iElem), UVisu_DG(i,0,0,iElem,:)
+      END DO 
+    END DO
+    close(10) ! close the file
   END IF
 
   ! write varnames to VTK (must be done always!)
@@ -641,6 +668,8 @@ DO iArg=1+skipArgs,nArgs
   CALL visu3D(MPI_COMM_WORLD, prmfile, postifile, statefile, &
       coordsDG_out,valuesDG_out,nodeidsDG_out, &
       coordsFV_out,valuesFV_out,nodeidsFV_out,varnames_out,components_out)
+
+  IF (VisuDimension.EQ.1) CYCLE
 
 #if FV_ENABLED                            
   FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_DG',OutputTime))//'.vtu'
