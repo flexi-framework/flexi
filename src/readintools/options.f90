@@ -521,6 +521,9 @@ stat=0
 rest=Replace(rest_in,"(/"," ",Every=.true.)
 rest=Replace(rest,   "/)"," ",Every=.true.)
 rest = TRIM(rest)
+IF(LEN_TRIM(rest).EQ.0)THEN
+  CALL Abort(__STAMP__,'Variable '//TRIM(this%name)//' is empty!')
+END IF
 
 SELECT TYPE (this)
 CLASS IS (IntOption)
