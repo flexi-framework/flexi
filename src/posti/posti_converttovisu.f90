@@ -81,7 +81,7 @@ REAL,ALLOCATABLE   :: Vdm_N_NVisu(:,:)                  ! Vandermonde from state
 
 ! compute UVisu_DG 
 ALLOCATE(Vdm_N_NVisu(0:NVisu,0:PP_N))
-CALL GetVandermonde(PP_N,NodeType,NVisu,NodeTypeVisu,Vdm_N_NVisu,modal=.FALSE.)
+CALL GetVandermonde(PP_N,NodeType,NVisu,NodeTypeVisuPosti,Vdm_N_NVisu,modal=.FALSE.)
 ! convert DG solution to UVisu_DG
 SDEALLOCATE(UVisu_DG)
 ALLOCATE(UVisu_DG(0:NVisu,0:NVisu,0:NVisu,nElems_DG,nVarVisu+nVarVisu_ElemData+nVarVisu_FieldData))
@@ -304,9 +304,9 @@ REAL,ALLOCATABLE   :: Vdm_N_NVisu_FV(:,:)                ! Vandermonde from stat
 SWRITE(*,*) "Convert FieldData to Visu grid"
 
 ALLOCATE(Vdm_N_NVisu_FV(0:NVisu_FV,0:PP_N))
-CALL GetVandermonde(PP_N,NodeType,NVisu_FV,NodeTypeVisu,Vdm_N_NVisu_FV,modal=.FALSE.)
+CALL GetVandermonde(PP_N,NodeType,NVisu_FV,NodeTypeVisuPosti,Vdm_N_NVisu_FV,modal=.FALSE.)
 ALLOCATE(Vdm_N_NVisu(0:NVisu,0:PP_N))
-CALL GetVandermonde(PP_N,NodeType,NVisu,NodeTypeVisu,Vdm_N_NVisu,modal=.FALSE.)
+CALL GetVandermonde(PP_N,NodeType,NVisu,NodeTypeVisuPosti,Vdm_N_NVisu,modal=.FALSE.)
 
 DO iVarFieldData=1,nVarFieldData
   DO iVarVisu=1,nVarVisu_FieldData

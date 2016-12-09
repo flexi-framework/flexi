@@ -31,6 +31,7 @@
 #include "vtkMultiBlockDataSet.h"
 #include <vtkUnstructuredGrid.h>
 
+
 #include <libgen.h>
 #include <unistd.h>
 #include <algorithm>
@@ -47,8 +48,10 @@ visu3DReader::visu3DReader()
 {
    this->FileName = NULL;
    this->InputNsuper = 0;
+   this->NodeTypeVisu = NULL;
    this->Mode2d = 0;
    this->ParameterFileOverwrite = NULL;
+   this->MeshFileOverwrite = NULL;
    this->SetNumberOfInputPorts(0);
 
 
@@ -191,6 +194,19 @@ int visu3DReader::FindClosestTimeStep(double requestedTimeValue)
    return ts;
 }
 
+//void visu3DReader::SetNodeTypeVisu(const char* nodetypevisu) {
+   //NodeTypeVisu = nodetypevisu;
+//}
+
+vtkStringArray* visu3DReader::GetNodeTypeVisuList() {
+   vtkStringArray* arr = vtkStringArray::New();
+   arr->InsertNextValue("VISU");
+   arr->InsertNextValue("GAUSS");
+   arr->InsertNextValue("GAUSS-LOBATTO");
+   arr->InsertNextValue("VISU_INNER");
+   return arr;
+};
+
 /*
  * This function is called, when the user presses the 'Apply' button.
  * Here we call the Posti and load all the data.
@@ -251,7 +267,11 @@ int visu3DReader::FindClosestTimeStep(double requestedTimeValue)
    }
 
    dprintf(posti_unit, "NVisu = %d\n", InputNsuper); // insert NVisu
+   dprintf(posti_unit, "NodeTypeVisu = %s\n", NodeTypeVisu); // insert NodeType
    dprintf(posti_unit, "VisuDimension = %s\n", (this->Mode2d ? "2" : "3"));
+   if (strlen(MeshFileOverwrite) > 0) {
+      dprintf(posti_unit, "MeshFile = %s\n", MeshFileOverwrite);
+   }
 
    int totalVars = 0;
    // write selected state varnames to the parameter file

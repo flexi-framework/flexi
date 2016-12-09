@@ -22,15 +22,17 @@ IMPLICIT NONE
 PUBLIC
 SAVE
 
+INTEGER,PARAMETER :: nVarAdv=19
+INTEGER,PARAMETER :: nVarVisc=9
 #if PARABOLIC
-INTEGER,PARAMETER :: nVarTotal=27
-#else
-INTEGER,PARAMETER :: nVarTotal=18
+INTEGER,PARAMETER :: nVarTotal=28 ! = nVarAdv+nVarVisc
+#else 
+INTEGER,PARAMETER :: nVarTotal=19 ! = nVarAdv
 #endif
 CHARACTER(LEN=255):: DepNames(1:nVarTotal)
-INTEGER           :: DepTable(1:nVarTotal,0:27)
+INTEGER           :: DepTable(1:nVarTotal,0:nVarAdv+nVarVisc)
 #if FV_ENABLED && FV_RECONSTRUCT
-INTEGER           :: DepTablePrimToCons(1:PP_nVar,0:27)
+INTEGER           :: DepTablePrimToCons(1:PP_nVar,0:nVarAdv+nVarVisc)
 #endif
 
 END MODULE MOD_EOS_Posti_Vars

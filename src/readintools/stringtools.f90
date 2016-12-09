@@ -115,7 +115,7 @@ PUBLIC :: use_escape_codes
 CONTAINS
 
 !==================================================================================================================================
-!> Transform upper case letters in "Str1" into lower case letters, result is "Str2" (in place version)
+!> Transform upper case letters in "Str1" into lower case letters, result is "Str1" (in place version)
 !==================================================================================================================================
 SUBROUTINE LowCase_overwrite(Str1)
 ! MODULES
