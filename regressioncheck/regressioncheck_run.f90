@@ -712,7 +712,7 @@ IF(Examples(iExample)%MPIrun)THEN ! use "mpirun"
   SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && '//TRIM(Examples(iExample)%MPIcommand)//' '//&
                        ADJUSTL(TRIM(MPIthreadsStr))//' '//ADJUSTL(TRIM(tempStr))//' '//TRIM(EXECPATH)//' '//&
 TRIM(parameter_ini)//' ' &
-              //TRIM(parameter_ini2)//' '//TRIM(Examples(iExample)%RestartFileName)!//' 1>std.out 2>err.out'
+              //TRIM(parameter_ini2)//' '//TRIM(Examples(iExample)%RestartFileName)//' 1>std.out 2>err.out'
 ELSE
   SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && '//TRIM(EXECPATH)//' '//TRIM(parameter_ini)//' ' &
               //TRIM(parameter_ini2)//' '//TRIM(Examples(iExample)%RestartFileName)//' 1>std.out 2>err.out'

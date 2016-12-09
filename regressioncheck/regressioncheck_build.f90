@@ -268,6 +268,7 @@ DO I=1,nReggieBuilds
 ! deprecated    END IF
 ! deprecated  END DO
   
+  ! display cmake compiler flags
   SWRITE(UNIT_stdOut, '(L)', ADVANCE = "NO") BuildValid(I)
   DO K=1,N_compile_flags
     !write(*, '(A)', ADVANCE = "NO") ' '//TRIM(BuildEQNSYS(I))
