@@ -29,6 +29,7 @@ CHARACTER(LEN=255)                :: statefile_old = ""
 CHARACTER(LEN=255)                :: MeshFile = ""
 CHARACTER(LEN=255)                :: MeshFile_old = ""
 CHARACTER(LEN=255)                :: NodeTypeVisuPosti = "VISU"
+CHARACTER(LEN=255)                :: NodeTypeVisuPosti_old = ""
 INTEGER                           :: NVisu
 INTEGER                           :: NVisu_old = -1
 INTEGER                           :: nVar_State

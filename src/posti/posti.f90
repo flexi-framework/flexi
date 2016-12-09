@@ -216,11 +216,10 @@ USE MOD_MPI                 ,ONLY: InitMPI
 USE MOD_HDF5_Input          ,ONLY: ISVALIDMESHFILE,ISVALIDHDF5FILE
 USE MOD_HDF5_Input          ,ONLY: OpenDataFile,CloseDataFile,GetDataProps,ReadAttribute,File_ID
 USE MOD_Mesh_ReadIn         ,ONLY: BuildPartition
-USE MOD_Interpolation_Vars  ,ONLY: NodeTypeVisu,NodeTypeFVEqui
 USE MOD_VTK                 ,ONLY: WriteCoordsToVTK_array,WriteDataToVTK_array,WriteVarnamesToVTK_array
-USE MOD_StringTools         ,ONLY: STRICMP,LowCase,UpperCase
-USE MOD_Interpolation_Vars  ,ONLY: NodeType,NodeTypeVisu
-USE MOD_ReadInTools         ,ONLY: prms,GETINT,GETLOGICAL,GETINTFROMSTR,addStrListEntry,GETSTR
+USE MOD_StringTools         ,ONLY: STRICMP,LowCase
+USE MOD_Interpolation_Vars  ,ONLY: NodeType,NodeTypeVisu,NodeTypeFVEqui
+USE MOD_ReadInTools         ,ONLY: prms,GETINT,GETLOGICAL,addStrListEntry,GETSTR
 USE MOD_ReadInTools         ,ONLY: FinalizeParameters,ExtractParameterFile
 USE MOD_Output_Vars         ,ONLY: ProjectName
 USE MOD_Restart             ,ONLY: ReadElemData
@@ -245,9 +244,7 @@ INTEGER                          :: stat
 INTEGER                          :: nElems_State,iVar
 CHARACTER(LEN=255)               :: NodeType_State 
 CHARACTER(LEN=255),ALLOCATABLE   :: StrVarNames(:)
-CHARACTER(LEN=255)               :: NodeTypeVisuPosti_old
 CHARACTER(LEN=255)               :: MeshFile_State
-INTEGER                          :: NodeTypeVisuPostiInt
 LOGICAL                          :: userblockFound
 !===================================================================================================================================
 CALL InitMPI(mpi_comm_IN) 
@@ -333,12 +330,8 @@ CALL prms%CreateStringOption('MeshFile',"Custom mesh file ")
 CALL prms%CreateStringOption('VarName',"Names of variables, which should be visualized.", multiple=.TRUE.)
 CALL prms%CreateIntOption(   'NVisu',  "Polynomial degree at which solution is sampled for visualization.")
 CALL prms%CreateIntOption(   'VisuDimension',"2 = Slice at first Gauss point in zeta-direction to get 2D solution.","3")
-CALL prms%CreateIntFromStringOption('NodeTypeVisu', "NodeType for visualization. Visu, Gauss,Gauss-Lobatto,Visu_inner",&
+CALL prms%CreateStringOption('NodeTypeVisu', "NodeType for visualization. Visu, Gauss,Gauss-Lobatto,Visu_inner",&
 'VISU')
-CALL addStrListEntry('NodeTypeVisu','VISU', 1)
-CALL addStrListEntry('NodeTypeVisu','GAUSS',2)
-CALL addStrListEntry('NodeTypeVisu','GAUSS-LOBATTO',  3)
-CALL addStrListEntry('NodeTypeVisu','VISU_INNER',  4)
 
 changedStateFile     = .FALSE.
 changedMeshFile      = .FALSE.
@@ -397,19 +390,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   Meshfile = GETSTR("MeshFile",MeshFile_state)
   changedMeshFile = .NOT.(STRICMP(MeshFile,MeshFile_old))
   VisuDimension = GETINT("VisuDimension")
-  NodeTypeVisuPostiInt = GETINTFROMSTR('NodeTypeVisu')
-  SELECT CASE(NodeTypeVisuPostiInt)
-    CASE(1)
-      NodeTypeVisuPosti='VISU'
-    CASE(2)
-      NodeTypeVisuPosti='GAUSS'
-    CASE(3)
-      NodeTypeVisuPosti='GAUSS-LOBATTO'
-    CASE(4)
-      NodeTypeVisuPosti='VISU_INNER'
-    CASE DEFAULT 
-      SWRITE(*,*)'Nodetype not implemented!'
-  END SELECT
+  NodeTypeVisuPosti = GETSTR('NodeTypeVisu')
   changedNVisu = ((NVisu.NE.NVisu_old) .OR. (NodeTypeVisuPosti.NE.NodeTypeVisuPosti_old))
   NodeTypeVisuPosti_old=NodeTypeVisuPosti
 

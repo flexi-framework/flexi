@@ -31,6 +31,8 @@
 #include "vtkCallbackCommand.h"
 #include <vtkSmartPointer.h>
 
+#include "vtkStringArray.h"
+
 #include "../posti_pluginTypes.h"
 
 #include "vtkIOParallelModule.h" // For export macro
@@ -52,7 +54,7 @@ class VTKIOPARALLEL_EXPORT visu3DReader :  public vtkMultiBlockDataSetAlgorithm
       vtkSetStringMacro(FileName);
       vtkSetStringMacro(MeshFileOverwrite);
       vtkSetMacro(InputNsuper,int);
-      vtkSetMacro(NodeTypeVisu,int);
+      vtkSetStringMacro(NodeTypeVisu);
       vtkSetMacro(Mode2d,int);
 
       // Adds names of files to be read. The files are read in the order they are added.
@@ -105,7 +107,7 @@ class VTKIOPARALLEL_EXPORT visu3DReader :  public vtkMultiBlockDataSetAlgorithm
 
       char* FileName;
       int InputNsuper;   // NVisu (see visu2DReader.xml)
-      int NodeTypeVisu;
+      char* NodeTypeVisu;
       int Mode2d;
       char* ParameterFileOverwrite;
       char* MeshFileOverwrite;
@@ -118,6 +120,9 @@ class VTKIOPARALLEL_EXPORT visu3DReader :  public vtkMultiBlockDataSetAlgorithm
       std::vector<double> Timesteps;
 
       int FindClosestTimeStep(double requestedTimeValue);
+
+      //void SetNodeTypeVisu(const char* nodetypevisu);
+      vtkStringArray* GetNodeTypeVisuList();
 
    protected:
       visu3DReader();
