@@ -45,6 +45,10 @@ INTERFACE AddError
   MODULE PROCEDURE AddError
 END INTERFACE
 
+INTERFACE GetParameterFromFile
+  MODULE PROCEDURE GetParameterFromFile
+END INTERFACE
+
 INTERFACE REGGIETIME
   MODULE PROCEDURE REGGIETIME
 END INTERFACE
@@ -64,6 +68,7 @@ END INTERFACE
 PUBLIC::GetExampleList,InitExample,CleanExample, CheckForExecutable,GetCommandLineOption
 PUBLIC::SummaryOfErrors
 PUBLIC::AddError
+PUBLIC::GetParameterFromFile
 PUBLIC::REGGIETIME
 PUBLIC::str2real,str2int,str2logical
 !==================================================================================================================================
@@ -297,7 +302,7 @@ END IF
 ! init
 Example%MPIrun                 = .FALSE. ! don't use "mpirun" n default
 Example%MPIcommand             = 'mpirun'! use mpirun for running parallel simulations as default
-Example%MPIthreads             = '1'     ! run with 1 MPI thread on default
+Example%MPIthreadsStr          = '1'     ! run with 1 MPI thread on default
 Example%MPIthreadsN            = 1       ! minimum
 Example%nRuns                  = 1       ! minimum
 Example%nVar                   = 0
@@ -320,8 +325,8 @@ DO ! extract reggie information
     ! single or parallel
     IF(TRIM(readRHS(1)).EQ.'MPIrun')    CALL str2logical(readRHS(2),Example%MPIrun,iSTATUS) ! True/False
     IF(TRIM(readRHS(1)).EQ.'MPIcommand')            Example%MPIcommand        =TRIM(ADJUSTL(readRHS(2)))
-    !IF(TRIM(readRHS(1)).EQ.'MPIthreads')CALL str2int(    readRHS(2),Example%MPIthreads,iSTATUS)!number of threads
-    IF(TRIM(readRHS(1)).EQ.'MPIthreads')CALL GetParameterList(ParameterList   = Example%MPIthreads,&
+    !IF(TRIM(readRHS(1)).EQ.'MPIthreads')CALL str2int(    readRHS(2),Example%MPIthreadsStr,iSTATUS)!number of threads
+    IF(TRIM(readRHS(1)).EQ.'MPIthreads')CALL GetParameterList(ParameterList   = Example%MPIthreadsStr,&
                                                               nParameters     = 100,               &
                                                               ParameterNumber = Example%MPIthreadsN)
     ! number of scaling runs
@@ -479,7 +484,9 @@ CHARACTER(LEN=255)             :: FileName
 CHARACTER(LEN=255)             :: tmp
 INTEGER                        :: iSTATUS,ioUnit
 !==================================================================================================================================
-! delete all *.out files
+! delete "std_files_*" folder and all *.out files
+SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm std_files_* -r > /dev/null 2>&1'
+CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
 SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm *.out > /dev/null 2>&1'
 CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
 IF(iSTATUS.NE.0)THEN
@@ -749,6 +756,67 @@ ELSE ! next error pointer
 END IF
 
 END SUBROUTINE AddError
+
+
+!==================================================================================================================================
+!> read parameter values from a specified file
+!==================================================================================================================================
+SUBROUTINE GetParameterFromFile(FileName,ParameterName,output)
+!===================================================================================================================================
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals,            ONLY: Getfreeunit
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+CHARACTER(LEN=*),INTENT(IN)  :: FileName ! e.g. './../build_reggie/bin/configuration.cmake'
+CHARACTER(LEN=*),INTENT(IN)  :: ParameterName     ! e.g. 'XX_EQNSYSNAME'
+!INTEGER         :: a
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+CHARACTER(LEN=*),INTENT(INOUT) :: output ! e.g. 'navierstokes'
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+LOGICAL                        :: ExistFile    ! file exists=.true., file does not exist=.false.
+INTEGER                        :: iSTATUS      ! status
+CHARACTER(LEN=255)             :: temp,temp2   ! temp variables for read in of file lines
+INTEGER                        :: ioUnit       ! field handler unit and ??
+INTEGER                        :: IndNum       ! Index Number
+!===================================================================================================================================
+output=''
+INQUIRE(File=TRIM(FileName),EXIST=ExistFile)
+IF(ExistFile) THEN
+  ioUnit=GETFREEUNIT()
+  OPEN(UNIT=ioUnit,FILE=TRIM(FileName),STATUS="OLD",IOSTAT=iSTATUS,ACTION='READ') 
+  DO
+    READ(ioUnit,'(A)',iostat=iSTATUS)temp
+    temp2=ADJUSTL(temp)
+    IF(ADJUSTL(temp2(1:1)).EQ.'!') CYCLE  ! complete line is commented out
+    IF(iSTATUS.EQ.-1)EXIT           ! end of file is reached
+    IF(LEN(trim(temp)).GT.1)THEN    ! exclude empty lines
+      IndNum=INDEX(temp,TRIM(ParameterName)) ! e.g. 'XX_EQNSYSNAME'
+      IF(IndNum.GT.0)THEN
+        temp2=TRIM(ADJUSTL(temp(IndNum+LEN(TRIM(ParameterName)):LEN(temp))))
+        IndNum=INDEX(temp2, '=')
+        IF(IndNum.GT.0)THEN
+          temp2=temp2(IndNum+1:LEN(TRIM(temp2)))
+          IndNum=INDEX(temp2, '!')
+          IF(IndNum.GT.0)THEN
+            temp2=temp2(1:IndNum-1)
+          END IF
+        END IF
+        output=TRIM(ADJUSTL(temp2))
+        EXIT
+      END IF
+    END IF
+  END DO
+  CLOSE(ioUnit)
+  IF(output.EQ.'')output='ParameterName does not exist'
+ELSE 
+  output='file does not exist'
+END IF
+END SUBROUTINE GetParameterFromFile
 
 
 !==================================================================================================================================

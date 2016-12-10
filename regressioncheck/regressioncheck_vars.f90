@@ -53,8 +53,8 @@ TYPE tExample                                                        !> examples
   CHARACTER(LEN=255)                     :: PATH                     !> Path to example
   LOGICAL                                :: MPIrun                   !> execution information (MPI)
   CHARACTER(LEN=255)                     :: MPIcommand               !> e.g. 'aprun' or 'mpirun' (default)
-  CHARACTER(LEN=15)                      :: MPIthreads(100)          !> number of MPI threads for execution
-  INTEGER                                :: MPIthreadsN              !> number of MPIthreads
+  CHARACTER(LEN=15)                      :: MPIthreadsStr(100)       !> number of MPI threads for execution
+  INTEGER                                :: MPIthreadsN              !> number of MPIthreadsStr
   INTEGER                                :: nRuns                    !> number of runs with a specific setup (number of MPI threads)
   CHARACTER(LEN=255)                     :: ReferenceFile            !> Name of references L2/LInf
   REAL                                   :: ReferenceTolerance       !> optional tolerance for L2/LInf

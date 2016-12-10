@@ -203,6 +203,8 @@ SELECT CASE (TRIM(Examples(iExample)%EQNSYSNAME))
     Examples(iExample)%Nvar=1
   CASE ('maxwell')  
     Examples(iExample)%Nvar=8
+  CASE ('poisson')  
+    Examples(iExample)%Nvar=1
   CASE DEFAULT
     Examples(iExample)%Nvar=-1
     SWRITE(UNIT_stdOut,'(A)')   ' ERROR: missing case select for this '&
@@ -510,6 +512,7 @@ SUBROUTINE GetParameterFiles(iExample,TIMEDISCMETHOD,parameter_ini,parameter_ini
 ! MODULES
 USE MOD_Globals
 USE MOD_RegressionCheck_Vars,    ONLY: CodeNameLowCase,Examples
+USE MOD_RegressionCheck_tools,   ONLY: GetParameterFromFile,str2logical
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -522,6 +525,9 @@ CHARACTER(LEN=*),INTENT(INOUT) :: parameter_ini,parameter_ini2
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL                        :: ExistFile                         !> file exists=.true., file does not exist=.false.
+LOGICAL                        :: UseDSMC
+CHARACTER(LEN=255)             :: TempStr
+INTEGER                        :: iSTATUS,IndNum
 !===================================================================================================================================
 ! get list of parameter files for running the simulation
 parameter_ini2=''
@@ -529,9 +535,26 @@ IF(TRIM(TIMEDISCMETHOD).EQ.'DSMC')THEN
   ! set main parameter.ini file: e.g. parameter_XXX_EQNSYSNAME.ini
   parameter_ini='parameter_'//CodeNameLowCase//'_'//TRIM(ADJUSTL(Examples(iExample)%EQNSYSNAME))//'_DSMC.ini'
   parameter_ini2='parameter_DSMC.ini'
-ELSE
+ELSE ! standard flexi or PIC related simulation
   ! set main parameter.ini file: e.g. parameter_XXX_EQNSYSNAME.ini
   parameter_ini='parameter_'//CodeNameLowCase//'_'//TRIM(ADJUSTL(Examples(iExample)%EQNSYSNAME))//'.ini'
+
+  ! PIC-DSMC run: Check for DSMC in "parameter_ini" -> "UseDSMC=T"
+  CALL GetParameterFromFile(TRIM(Examples(iExample)%PATH)//TRIM(parameter_ini),'UseDSMC',TempStr)
+  IF(TempStr.EQ.'ParameterName does not exist'.OR.Tempstr.EQ.'file does not exist')THEN
+    UseDSMC=.FALSE.
+  ELSE
+    CALL str2logical(TempStr,UseDSMC,iSTATUS)
+  END IF
+  IF(UseDSMC)THEN ! if UseDSMC is true, a parameter file for DSMC info needs to bespecified (must be located where the mesh is)
+    CALL GetParameterFromFile(TRIM(Examples(iExample)%PATH)//TRIM(parameter_ini),'MeshFile',TempStr) ! find mesh file lcoation
+    IndNum=INDEX(TempStr,'/',BACK = .TRUE.) ! get path without mesh file name (*.h5)
+    IF(IndNum.GT.0)THEN
+      TempStr=TempStr(1:IndNum) ! e.g. "./poisson/turner2013_mesh.h5" -> "./poisson/"
+    END IF
+    !parameter_folder ! get folder where the mesh is
+    parameter_ini2=TRIM(ADJUSTL(TempStr))//'parameter_DSMC.ini'
+  END IF
 END IF
 INQUIRE(File=TRIM(Examples(iExample)%PATH)//TRIM(parameter_ini),EXIST=ExistFile)
 IF(.NOT.ExistFile) THEN
@@ -576,10 +599,10 @@ SWRITE(UNIT_stdOut,'(A,I6,A1)')' nVar:                           [',      Exampl
 SWRITE(UNIT_stdOut,'(A)')      ' PATH (to example):              ['//TRIM(Examples(iExample)%PATH)//']'
 SWRITE(UNIT_stdOut,'(A,L1,A1)')' MPIrun (run with MPI):          [',      Examples(iExample)%MPIrun,']'
 IF(Examples(iExample)%MPIthreadsN.GT.1)THEN
-  SWRITE(UNIT_stdOut,'(A)')    ' MPIthreads (number of threads): ['//TRIM(Examples(iExample)%MPIthreads(1          ))//&
-                                                    ' to '//TRIM(Examples(iExample)%MPIthreads(Examples(iExample)%MPIthreadsN))//']'
+  SWRITE(UNIT_stdOut,'(A)')    ' MPIthreads (number of threads): ['//TRIM(Examples(iExample)%MPIthreadsStr(1          ))//&
+                                                 ' to '//TRIM(Examples(iExample)%MPIthreadsStr(Examples(iExample)%MPIthreadsN))//']'
 ELSE
-  SWRITE(UNIT_stdOut,'(A)')    ' MPIthreads (number of threads): ['//TRIM(Examples(iExample)%MPIthreads(1))//']'
+  SWRITE(UNIT_stdOut,'(A)')    ' MPIthreads (number of threads): ['//TRIM(Examples(iExample)%MPIthreadsStr(1))//']'
 END IF
 SWRITE(UNIT_stdOut,'(A)')      ' Reference:                      ['//TRIM(Examples(iExample)%ReferenceFile)//']'
 SWRITE(UNIT_stdOut,'(A)')      ' State:                          ['//TRIM(Examples(iExample)%ReferenceStateFile)//']'
@@ -679,7 +702,7 @@ LOGICAL,INTENT(OUT)            :: SkipComparison
 INTEGER                        :: iSTATUS                           !> status
 CHARACTER(LEN=1000)             :: SYSCOMMAND                        !> string to fit the system command
 CHARACTER(LEN=15)              :: MPIthreadsStr                     !> string for the number of MPI threads for execution
-CHARACTER(LEN=255)             :: FileSuffix,FolderSuffix,tempStr
+CHARACTER(LEN=255)             :: FileSuffix,FolderSuffix,tempStr,StdOutFolderName
 INTEGER                        :: MPIthreadsInteger,PolynomialDegree,MPIthreads
 !===================================================================================================================================
 SkipComparison=.FALSE.
@@ -688,13 +711,13 @@ SkipComparison=.FALSE.
 ! -----------------------------------------------------------------------------------------------------------------------
 IF(Examples(iExample)%MPIrun)THEN ! use "mpirun"
   !IF(Examples(iExample)%MPIthreads.GT.1)THEN
-  MPIthreadsStr=ADJUSTL(TRIM(Examples(iExample)%MPIthreads(iScaling)))
+  MPIthreadsStr=ADJUSTL(TRIM(Examples(iExample)%MPIthreadsStr(iScaling)))
   CALL str2int(ADJUSTL(TRIM(MPIthreadsStr)),MPIthreadsInteger,iSTATUS) ! sanity check if the number of threads is correct
   IF((MPIthreadsInteger.LE.0).OR.(iSTATUS.NE.0))CALL abort(&
       __STAMP__&
       ,'RunTheCode(): Number of MPI threads is corrupt = '//ADJUSTL(TRIM(MPIthreadsStr)))
   IF((iScaling.GT.1).AND.(iRun.EQ.1))THEN
-    SWRITE(UNIT_stdOut,'(A,I10)')"Examples(iExample)%MPIthreads=",Examples(iExample)%MPIthreads(iScaling)
+    SWRITE(UNIT_stdOut,'(A,A)')"Examples(iExample)%MPIthreads=",Examples(iExample)%MPIthreadsStr(iScaling)
   END IF
   tempStr='' ! default
   IF(Examples(iExample)%MPIcommand.EQ.'mpirun')THEN
@@ -711,11 +734,10 @@ IF(Examples(iExample)%MPIrun)THEN ! use "mpirun"
 
   SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && '//TRIM(Examples(iExample)%MPIcommand)//' '//&
                        ADJUSTL(TRIM(MPIthreadsStr))//' '//ADJUSTL(TRIM(tempStr))//' '//TRIM(EXECPATH)//' '//&
-TRIM(parameter_ini)//' ' &
-              //TRIM(parameter_ini2)//' '//TRIM(Examples(iExample)%RestartFileName)//' 1>std.out 2>err.out'
-ELSE
-  SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && '//TRIM(EXECPATH)//' '//TRIM(parameter_ini)//' ' &
-              //TRIM(parameter_ini2)//' '//TRIM(Examples(iExample)%RestartFileName)//' 1>std.out 2>err.out'
+           TRIM(parameter_ini)//' '//TRIM(parameter_ini2)//' '//TRIM(Examples(iExample)%RestartFileName)//' 1>std.out 2>err.out'
+ELSE ! single run
+  SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && '//TRIM(EXECPATH)//' '//&
+           TRIM(parameter_ini)//' '//TRIM(parameter_ini2)//' '//TRIM(Examples(iExample)%RestartFileName)//' 1>std.out 2>err.out'
 END IF
 CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS) ! run the code
 ! -----------------------------------------------------------------------------------------------------------------------
@@ -725,21 +747,26 @@ IF(iSTATUS.EQ.0)THEN ! Computation successful
   SWRITE(UNIT_stdOut,'(A)',ADVANCE='no')  ' successful computation ...'
   CALL AddError('successful computation',iExample,iSubExample,ErrorStatus=0,ErrorCode=0)
 
+  CALL str2int(Examples(iExample)%MPIthreadsStr(iScaling),MPIthreads,iSTATUS)
 ! copy the std.out file
 IF(Examples(iExample)%SubExample.EQ.'N')THEN!when polynomial degree "N" is the SubExample
   CALL str2int(Examples(iExample)%SubExampleOption(iSubExample),PolynomialDegree,iSTATUS)
-  CALL str2int(Examples(iExample)%MPIthreads(iScaling),MPIthreads,iSTATUS)
-  WRITE(FileSuffix, '(A10,I8.8,A2,I4.4,A5,I4.4)') 'MPIthreads',MPIthreads,'_N',PolynomialDegree,'_iRun',iRun
-  WRITE(FolderSuffix,'(A1,I4.4)')'N',PolynomialDegree
+  WRITE(FileSuffix, '(A10,I8.8,A2,I4.4,A5,I4.4)') 'MPIthreads',MPIthreadsInteger,'_N',PolynomialDegree,'_iRun',iRun
+  WRITE(FolderSuffix,'(A2,I4.4)')'_N',PolynomialDegree
 ELSE
-  WRITE(FileSuffix, '(I4.4,I4.4,I4.4)') iScaling,iSubExample,iRun
-  WRITE(FolderSuffix,'(I4.4)')iSubExample
+  IF(Examples(iExample)%MPIrun)THEN
+    WRITE(FileSuffix, '(A10,I8.8,A6,I4.4,A5,I4.4)') 'MPIthreads',MPIthreadsInteger,'_SubEx',iSubExample,'_iRun',iRun
+  ELSE
+    WRITE(FileSuffix, '(I4.4,A6,I4.4,A5,I4.4)') iScaling,'_SubEx',iSubExample,'_iRun',iRun
+  END IF
+  WRITE(FolderSuffix,'(A6,I4.4)')'_SubEx',iSubExample
 END IF
+StdOutFolderName='std_files'//TRIM(FolderSuffix) ! folder for storing all std.out files
 SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && cp std.out std-'//TRIM(FileSuffix)//'.out'
 CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS) ! copy the std.out file
-SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && mkdir std_files'//TRIM(FolderSuffix)//' > /dev/null 2>&1'
+SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && mkdir '//TRIM(StdOutFolderName)//' > /dev/null 2>&1'
 CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
-SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && mv std-'//TRIM(FileSuffix)//'.out std_files'//TRIM(FolderSuffix)//'/'
+SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && mv std-'//TRIM(FileSuffix)//'.out '//TRIM(StdOutFolderName)//'/'
 CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
 
 
