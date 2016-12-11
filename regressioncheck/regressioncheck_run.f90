@@ -35,7 +35,6 @@ USE MOD_Globals
 USE MOD_RegressionCheck_Compare, ONLY: CompareResults
 USE MOD_RegressionCheck_Tools,   ONLY: InitExample
 USE MOD_RegressionCheck_Vars,    ONLY: nExamples,ExampleNames,Examples,EXECPATH,RuntimeOptionType
-USE MOD_RegressionCheck_Tools,   ONLY: CleanExample
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -101,7 +100,7 @@ DO iExample = 1, nExamples ! loop level 1 of 5
       CALL SetSubExample(iExample,iSubExample,parameter_ini)
 
       ! delete pre-existing data files before running the code (e.g. "TGVAnalysis.dat" or "Database.csv")
-      CALL CleanFolder(iExample)
+      CALL CleanFolder(iExample,MODE=1)
 
 !==================================================================================================================================
       DO iScaling = 1, Examples(iExample)%MPIthreadsN ! loop level 4 of 5: multiple MPI runs with different MPI threads
@@ -115,8 +114,8 @@ DO iExample = 1, nExamples ! loop level 1 of 5
           ! compare the results and write error messages for the current case
           CALL CompareResults(iExample,iSubExample)
 
-          ! IF all comparisons are successful the error status is 0 -> delete created files in CleanExample(iExample)
-          IF(Examples(iExample)%ErrorStatus.EQ.0) CALL CleanExample(iExample)
+          ! IF all comparisons are successful the error status is 0 -> delete created files in CleanFolder(iExample)
+          IF(Examples(iExample)%ErrorStatus.EQ.0) CALL CleanFolder(iExample,MODE=2)
         END DO ! iScalingRuns = 1, Examples(iExample)%nRuns
       END DO ! iScaling = 1, Examples(iExample)%MPIthreadsN
     END DO ! iSubExample = 1, MAX(1,SubExampleNumber) (for cases without specified SubExamples: SubExampleNumber=0)
@@ -671,37 +670,88 @@ END IF
 END SUBROUTINE SetSubExample
 
 
-!===================================================================================================================================
-!> delete pre-existing data files before running the code
-!===================================================================================================================================
-SUBROUTINE CleanFolder(iExample)
-!===================================================================================================================================
-!===================================================================================================================================
+!==================================================================================================================================
+!> Remove State-files, std.out and err.out files.
+!> MODE 1: Delete pre-existing data files before running the code
+!> MODE 2: If the example is computed successfully clean up afterwards
+!==================================================================================================================================
+SUBROUTINE CleanFolder(iExample,MODE)
 ! MODULES
 USE MOD_Globals
-USE MOD_RegressionCheck_Vars,    ONLY: Examples
-! IMPLICIT VARIABLE HANDLING
+USE MOD_RegressionCheck_Vars,  ONLY: Examples
 IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-INTEGER,INTENT(IN)             :: iExample
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN)             :: iExample,MODE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-CHARACTER(LEN=500)             :: SYSCOMMAND                        !> string to fit the system command
-INTEGER                        :: iSTATUS                           !> status
-!===================================================================================================================================
-! delete "std_files_*" folder
-SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm std_files_* -r > /dev/null 2>&1'
-CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
-! delete pre-existing data files before running the code 
-! 1.) Files needed by "IntegrateLine" comparison
-IF(Examples(iExample)%IntegrateLine)THEN
-  SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm '//TRIM(Examples(iExample)%IntegrateLineFile)//' > /dev/null 2>&1'
-  CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS) ! delete, e.g., "TGVAnalysis.dat" or "Database.csv"
-END IF
+CHARACTER(LEN=500)             :: SYSCOMMAND
+CHARACTER(LEN=255)             :: FileName
+CHARACTER(LEN=255)             :: tmp
+INTEGER                        :: iSTATUS,ioUnit
+!==================================================================================================================================
+SELECT CASE(MODE)
+CASE(1) ! delete pre-existing files before computation
+  ! delete "std_files_*" folder
+  SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm std_files_* -r > /dev/null 2>&1'
+  CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
+  ! delete pre-existing data files before running the code 
+  ! 1.) Files needed by "IntegrateLine" comparison
+  IF(Examples(iExample)%IntegrateLine)THEN
+    SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm '//TRIM(Examples(iExample)%IntegrateLineFile)//' > /dev/null 2>&1'
+    CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS) ! delete, e.g., "TGVAnalysis.dat" or "Database.csv"
+  END IF
+CASE(2) ! delete existing files after computation
+  ! delete all *.out files
+  SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm *.out > /dev/null 2>&1'
+  CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
+  IF(iSTATUS.NE.0)THEN
+    SWRITE(UNIT_stdOut,'(A)')' CleanFolder(',Examples(iExample)%PATH,'): Could not remove *.out files!'
+  END IF
+  
+  ! delete all *State* files except *reference* state files
+  IF((Examples(iExample)%ReferenceStateFile.EQ.'').AND. &
+     (Examples(iExample)%RestartFileName.EQ.'') ) THEN
+    SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm *State* > /dev/null 2>&1'
+    CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
+    IF(iSTATUS.NE.0)THEN
+      SWRITE(UNIT_stdOut,'(A)')' CleanFolder(',Examples(iExample)%PATH,'): Could not remove *State* files!'
+    END IF
+  ELSE
+    ! create list of all *State* files and loop them: don't delete *reference* files
+    SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && ls *State* > tmp.txt'
+    CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
+    IF(iSTATUS.NE.0)THEN
+      SWRITE(UNIT_stdOut,'(A)')' CleanFolder(',Examples(iExample)%PATH,'): Could not remove tmp.txt!'
+    END IF
+    ! read tmp.txt | list of directories if regressioncheck/examples
+    FileName=TRIM(Examples(iExample)%PATH)//'tmp.txt'
+    ioUnit=GETFREEUNIT()
+    OPEN(UNIT = ioUnit, FILE = FileName, STATUS ="OLD", IOSTAT = iSTATUS ) 
+    DO 
+      READ(ioUnit,FMT='(A)',IOSTAT=iSTATUS) tmp
+      IF (iSTATUS.NE.0) EXIT
+      IF((Examples(iExample)%ReferenceStateFile.NE.TRIM(tmp)).AND. &
+         (Examples(iExample)%RestartFileName.NE.TRIM(tmp)) ) THEN
+         SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm '//TRIM(tmp)
+         CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
+         IF(iSTATUS.NE.0) THEN
+           SWRITE(UNIT_stdOut,'(A)')  ' CleanFolder(',Examples(iExample)%PATH,'): Could not remove state file ',TRIM(tmp)
+         END IF
+      END IF
+    END DO
+    CLOSE(ioUnit)
+    ! clean tmp.txt
+    SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm tmp.txt'
+    CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
+    IF(iSTATUS.NE.0) THEN
+      SWRITE(UNIT_stdOut,'(A)')  ' CleanFolder(',Examples(iExample)%PATH,'): Could not remove tmp.txt'
+    END IF
+  END IF
+END SELECT
+
 END SUBROUTINE CleanFolder
+
 
 !===================================================================================================================================
 !> Execute the binary and check if the attempt was successful

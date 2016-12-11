@@ -3,7 +3,6 @@
 !==================================================================================================================================
 !> Contains the utilize routines of the regressioncheck
 !> -GetExampleList extracts the examples which are subfolders in examples 
-!> -CleanExample removes the output in a example after a successful run
 !> -InitExample reads in the parameter_reggie.ini file
 !==================================================================================================================================
 MODULE MOD_RegressionCheck_Tools
@@ -23,10 +22,6 @@ END INTERFACE
 
 INTERFACE GetExampleList
   MODULE PROCEDURE GetExampleList
-END INTERFACE
-
-INTERFACE CleanExample
-  MODULE PROCEDURE CleanExample
 END INTERFACE
 
 INTERFACE InitExample
@@ -65,7 +60,7 @@ INTERFACE str2logical
   MODULE PROCEDURE str2logical
 END INTERFACE
 
-PUBLIC::GetExampleList,InitExample,CleanExample, CheckForExecutable,GetCommandLineOption
+PUBLIC::GetExampleList,InitExample,CheckForExecutable,GetCommandLineOption
 PUBLIC::SummaryOfErrors
 PUBLIC::AddError
 PUBLIC::GetParameterFromFile
@@ -466,74 +461,6 @@ ELSE ! no opening bracket "{" found, single argument is expected
 END IF
 END SUBROUTINE GetParameterList
 
-
-!==================================================================================================================================
-!> Remove State-files, std.out and err.out files.
-!> The subroutine is called, if the example is computed successfully.
-!==================================================================================================================================
-SUBROUTINE CleanExample(iExample)
-! MODULES
-USE MOD_Globals
-USE MOD_RegressionCheck_Vars,  ONLY: Examples
-IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)             :: iExample
-!----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-CHARACTER(LEN=500)             :: SYSCOMMAND
-CHARACTER(LEN=255)             :: FileName
-CHARACTER(LEN=255)             :: tmp
-INTEGER                        :: iSTATUS,ioUnit
-!==================================================================================================================================
-! delete all *.out files
-SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm *.out > /dev/null 2>&1'
-CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
-IF(iSTATUS.NE.0)THEN
-  SWRITE(UNIT_stdOut,'(A)')' CleanExample(',Examples(iExample)%PATH,'): Could not remove *.out files!'
-END IF
-
-! delete all *State* files except *reference* state files
-IF((Examples(iExample)%ReferenceStateFile.EQ.'').AND. &
-   (Examples(iExample)%RestartFileName.EQ.'') ) THEN
-  SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm *State* > /dev/null 2>&1'
-  CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
-  IF(iSTATUS.NE.0)THEN
-    SWRITE(UNIT_stdOut,'(A)')' CleanExample(',Examples(iExample)%PATH,'): Could not remove *State* files!'
-  END IF
-ELSE
-  ! create list of all *State* files and loop them: don't delete *reference* files
-  SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && ls *State* > tmp.txt'
-  CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
-  IF(iSTATUS.NE.0)THEN
-    SWRITE(UNIT_stdOut,'(A)')' CleanExample(',Examples(iExample)%PATH,'): Could not remove tmp.txt!'
-  END IF
-  ! read tmp.txt | list of directories if regressioncheck/examples
-  FileName=TRIM(Examples(iExample)%PATH)//'tmp.txt'
-  ioUnit=GETFREEUNIT()
-  OPEN(UNIT = ioUnit, FILE = FileName, STATUS ="OLD", IOSTAT = iSTATUS ) 
-  DO 
-    READ(ioUnit,FMT='(A)',IOSTAT=iSTATUS) tmp
-    IF (iSTATUS.NE.0) EXIT
-    IF((Examples(iExample)%ReferenceStateFile.NE.TRIM(tmp)).AND. &
-       (Examples(iExample)%RestartFileName.NE.TRIM(tmp)) ) THEN
-       SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm '//TRIM(tmp)
-       CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
-       IF(iSTATUS.NE.0) THEN
-         SWRITE(UNIT_stdOut,'(A)')  ' CleanExample(',Examples(iExample)%PATH,'): Could not remove state file ',TRIM(tmp)
-       END IF
-    END IF
-  END DO
-  CLOSE(ioUnit)
-  ! clean tmp.txt
-  SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm tmp.txt'
-  CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
-  IF(iSTATUS.NE.0) THEN
-    SWRITE(UNIT_stdOut,'(A)')  ' CleanExample(',Examples(iExample)%PATH,'): Could not remove tmp.txt'
-  END IF
-END IF
-
-END SUBROUTINE CleanExample
 
 
 !==================================================================================================================================
