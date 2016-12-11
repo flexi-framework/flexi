@@ -79,7 +79,7 @@ DO iExample = 1, nExamples ! loop level 1 of 5
     CALL GetNvar(iExample,iReggieBuild)
 
     ! check if executable is compiled with correct TESTCASE (e.g. for tylorgreenvortex)
-    CALL CheckCompilerFlags(iReggieBuild,TESTCASE,TIMEDISCMETHOD)
+    CALL CheckCompilerFlags(iExample,iReggieBuild,TESTCASE,TIMEDISCMETHOD)
 
     ! remove subexample (before printing the case overview) for certain configurations: e.g. Preconditioner when running explicitly
     CALL CheckSubExample(iExample,TIMEDISCMETHOD)
@@ -367,21 +367,21 @@ END SUBROUTINE GetCodeBinary
 !===================================================================================================================================
 !> check if executable is compiled with correct TESTCASE (e.g. for tylorgreenvortex)
 !===================================================================================================================================
-SUBROUTINE CheckCompilerFlags(iReggieBuild,TESTCASE,TIMEDISCMETHOD)
+SUBROUTINE CheckCompilerFlags(iExample,iReggieBuild,TESTCASE,TIMEDISCMETHOD)
 !===================================================================================================================================
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_RegressionCheck_Vars,    ONLY: CodeNameLowCase,EXECPATH
+USE MOD_RegressionCheck_Vars,    ONLY: CodeNameLowCase,EXECPATH,Examples
 USE MOD_RegressionCheck_Vars,    ONLY: BuildSolver
 USE MOD_RegressionCheck_Build,   ONLY: BuildConfiguration
-USE MOD_RegressionCheck_Vars,    ONLY: BuildTESTCASE,BuildTIMEDISCMETHOD,CodeNameUppCase
+USE MOD_RegressionCheck_Vars,    ONLY: BuildTESTCASE,BuildTIMEDISCMETHOD,BuildMPI,CodeNameUppCase
 USE MOD_RegressionCheck_Build,   ONLY: GetFlagFromFile
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER,INTENT(IN)             :: iReggieBuild
+INTEGER,INTENT(IN)             :: iExample,iReggieBuild
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(INOUT) :: TESTCASE,TIMEDISCMETHOD
@@ -389,22 +389,35 @@ CHARACTER(LEN=*),INTENT(INOUT) :: TESTCASE,TIMEDISCMETHOD
 ! LOCAL VARIABLES
 LOGICAL                        :: ExistFile                         !> file exists=.true., file does not exist=.false.
 CHARACTER(LEN=255)             :: FileName                          !> path to a file or its name
+CHARACTER(LEN=255)             :: tempStr
+LOGICAL                        :: UseMPI
 !===================================================================================================================================
+UseMPI=.FALSE. ! default
 IF(BuildSolver)THEN
   TESTCASE=BuildTESTCASE(iReggieBuild)
   TIMEDISCMETHOD=BuildTIMEDISCMETHOD(iReggieBuild)
+  IF(ADJUSTL(TRIM(BuildMPI(iReggieBuild))).EQ.'ON')UseMPI=.TRUE.
 ELSE
   FileName=EXECPATH(1:INDEX(EXECPATH,'/',BACK = .TRUE.))//'configuration.cmake'
   INQUIRE(File=FileName,EXIST=ExistFile)
   IF(ExistFile) THEN
+    ! check if binary was compiled with MPI
+    CALL  GetFlagFromFile(FileName,CodeNameUppCase//'_MPI',tempStr,BACK=.TRUE.)
+    IF(ADJUSTL(TRIM(tempStr)).EQ.'ON')UseMPI=.TRUE.
+    IF(TRIM(tempStr).EQ.'flag does not exist')CALL abort(&
+      __STAMP__&
+      ,CodeNameUppCase//'_MPI flag not found in configuration.cmake!',999,999.)
+
+    ! check if binary was compiled for a certain testcase
     CALL  GetFlagFromFile(FileName,CodeNameUppCase//'_TESTCASE',TESTCASE)
-    IF(CodeNameLowCase.EQ.'boltzplatz')TESTCASE='default'! set default (currently no testcases are implemented)
+    IF(CodeNameLowCase.EQ.'boltzplatz')TESTCASE='default'! set default for boltzplatz (currently no testcases are implemented)
     IF(TRIM(TESTCASE).EQ.'flag does not exist')CALL abort(&
       __STAMP__&
       ,CodeNameUppCase//'_TESTCASE flag not found in configuration.cmake!',999,999.)
 
+    ! check if binary was compiled with a certain time integration method
     CALL GetFlagFromFile(FileName,CodeNameUppCase//'_TIMEDISCMETHOD',TIMEDISCMETHOD)
-    IF(CodeNameLowCase.EQ.'flexi')TIMEDISCMETHOD='default'! set default (TIMEDISCMETHOD is not a compile flag)
+    IF(CodeNameLowCase.EQ.'flexi')TIMEDISCMETHOD='default'! set default for flexi (TIMEDISCMETHOD is not a compile flag)
     IF(TRIM(TIMEDISCMETHOD).EQ.'flag does not exist')CALL abort(&
       __STAMP__&
       ,CodeNameUppCase//'_TIMEDISCMETHOD flag not found in configuration.cmake!',999,999.)
@@ -415,6 +428,14 @@ ELSE
     SWRITE(UNIT_stdOut,'(A12,L)') ' ExistFile: ', ExistFile
     ERROR STOP '-1'
   END IF
+END IF
+
+IF(UseMPI.EQV..FALSE.)THEN ! parameter_reggie.ini supplied with MPI and possibly multiple runs with different numbers of mpi ranks
+  IF(Examples(iExample)%MPIrun)THEN
+    SWRITE(UNIT_stdOut,'(A)') ' MPIrun is set .TRUE. but the supplied binary was compiled without MPI. Setting MPIrun=.FALSE.'
+  END IF
+  Examples(iExample)%MPIrun=.FALSE. ! deactivate MPI for running reggie
+  Examples(iExample)%MPIthreadsN=1  ! set number of mpi ranks to 1 
 END IF
 END SUBROUTINE CheckCompilerFlags
 
@@ -671,6 +692,9 @@ INTEGER,INTENT(IN)             :: iExample
 CHARACTER(LEN=500)             :: SYSCOMMAND                        !> string to fit the system command
 INTEGER                        :: iSTATUS                           !> status
 !===================================================================================================================================
+! delete "std_files_*" folder
+SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm std_files_* -r > /dev/null 2>&1'
+CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
 ! delete pre-existing data files before running the code 
 ! 1.) Files needed by "IntegrateLine" comparison
 IF(Examples(iExample)%IntegrateLine)THEN
@@ -701,7 +725,7 @@ LOGICAL,INTENT(OUT)            :: SkipComparison
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: iSTATUS                           !> status
-CHARACTER(LEN=1000)             :: SYSCOMMAND                        !> string to fit the system command
+CHARACTER(LEN=1000)            :: SYSCOMMAND                        !> string to fit the system command
 CHARACTER(LEN=15)              :: MPIthreadsStr                     !> string for the number of MPI threads for execution
 CHARACTER(LEN=255)             :: FileSuffix,FolderSuffix,tempStr,StdOutFolderName
 INTEGER                        :: MPIthreadsInteger,PolynomialDegree,MPIthreads
@@ -718,7 +742,7 @@ IF(Examples(iExample)%MPIrun)THEN ! use "mpirun"
       __STAMP__&
       ,'RunTheCode(): Number of MPI threads is corrupt = '//ADJUSTL(TRIM(MPIthreadsStr)))
   IF((iScaling.GT.1).AND.(iRun.EQ.1))THEN
-    SWRITE(UNIT_stdOut,'(A,A)')"Examples(iExample)%MPIthreads=",Examples(iExample)%MPIthreadsStr(iScaling)
+    SWRITE(UNIT_stdOut,'(A,A)')" Examples(iExample)%MPIthreads=",Examples(iExample)%MPIthreadsStr(iScaling)
   END IF
   tempStr='' ! default
   IF(Examples(iExample)%MPIcommand.EQ.'mpirun')THEN
@@ -747,30 +771,27 @@ CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS) ! run the c
 IF(iSTATUS.EQ.0)THEN ! Computation successful
   SWRITE(UNIT_stdOut,'(A)',ADVANCE='no')  ' successful computation ...'
   CALL AddError('successful computation',iExample,iSubExample,ErrorStatus=0,ErrorCode=0)
-
   CALL str2int(Examples(iExample)%MPIthreadsStr(iScaling),MPIthreads,iSTATUS)
-! copy the std.out file
-IF(Examples(iExample)%SubExample.EQ.'N')THEN!when polynomial degree "N" is the SubExample
-  CALL str2int(Examples(iExample)%SubExampleOption(iSubExample),PolynomialDegree,iSTATUS)
-  WRITE(FileSuffix, '(A10,I8.8,A2,I4.4,A5,I4.4)') 'MPIthreads',MPIthreadsInteger,'_N',PolynomialDegree,'_iRun',iRun
-  WRITE(FolderSuffix,'(A2,I4.4)')'_N',PolynomialDegree
-ELSE
-  IF(Examples(iExample)%MPIrun)THEN
-    WRITE(FileSuffix, '(A10,I8.8,A6,I4.4,A5,I4.4)') 'MPIthreads',MPIthreadsInteger,'_SubEx',iSubExample,'_iRun',iRun
+  ! copy the std.out file
+  IF(Examples(iExample)%SubExample.EQ.'N')THEN ! when polynomial degree "N" is the SubExample, set special file name
+    CALL str2int(Examples(iExample)%SubExampleOption(iSubExample),PolynomialDegree,iSTATUS)
+    WRITE(FileSuffix, '(A10,I8.8,A2,I4.4,A5,I4.4)') 'MPIthreads',MPIthreadsInteger,'_N',PolynomialDegree,'_iRun',iRun
+    WRITE(FolderSuffix,'(A2,I4.4)')'_N',PolynomialDegree
   ELSE
-    WRITE(FileSuffix, '(I4.4,A6,I4.4,A5,I4.4)') iScaling,'_SubEx',iSubExample,'_iRun',iRun
+    IF(Examples(iExample)%MPIrun)THEN
+      WRITE(FileSuffix, '(A10,I8.8,A6,I4.4,A5,I4.4)') 'MPIthreads',MPIthreadsInteger,'_SubEx',iSubExample,'_iRun',iRun
+    ELSE
+      WRITE(FileSuffix, '(I4.4,A6,I4.4,A5,I4.4)') iScaling,'_SubEx',iSubExample,'_iRun',iRun
+    END IF
+    WRITE(FolderSuffix,'(A6,I4.4)')'_SubEx',iSubExample
   END IF
-  WRITE(FolderSuffix,'(A6,I4.4)')'_SubEx',iSubExample
-END IF
-StdOutFolderName='std_files'//TRIM(FolderSuffix) ! folder for storing all std.out files
-SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && cp std.out std-'//TRIM(FileSuffix)//'.out'
-CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS) ! copy the std.out file
-SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && mkdir '//TRIM(StdOutFolderName)//' > /dev/null 2>&1'
-CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
-SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && mv std-'//TRIM(FileSuffix)//'.out '//TRIM(StdOutFolderName)//'/'
-CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
-
-
+  StdOutFolderName='std_files'//TRIM(FolderSuffix) ! folder for storing all std.out files
+  SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && cp std.out std-'//TRIM(FileSuffix)//'.out'
+  CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS) ! copy the std.out file
+  SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && mkdir '//TRIM(StdOutFolderName)//' > /dev/null 2>&1'
+  CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
+  SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && mv std-'//TRIM(FileSuffix)//'.out '//TRIM(StdOutFolderName)//'/'
+  CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
 ELSE ! Computation failed
   SWRITE(UNIT_stdOut,'(A)')   ' Computation of example failed'
   SWRITE(UNIT_stdOut,'(A,A)') ' Out-file: ', TRIM(Examples(iExample)%PATH)//'std.out'

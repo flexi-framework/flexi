@@ -42,7 +42,7 @@ SUBROUTINE ReadConfiguration(iExample,nReggieBuilds,N_compile_flags)
 ! MODULES
 USE MOD_Globals
 USE MOD_RegressionCheck_Vars,    ONLY: Examples,RuntimeOptionType,BuildEQNSYS,BuildTESTCASE,BuildContinue,BuildContinueNumber
-USE MOD_RegressionCheck_Vars,    ONLY: BuildTIMEDISCMETHOD
+USE MOD_RegressionCheck_Vars,    ONLY: BuildTIMEDISCMETHOD,BuildMPI
 USE MOD_RegressionCheck_Vars,    ONLY: BuildConfigurations,BuildValid,BuildCounter,BuildIndex
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -205,6 +205,8 @@ DO I=1,2
   IF(I.EQ.1)BuildTESTCASE='default'
   IF(I.EQ.1)ALLOCATE(BuildTIMEDISCMETHOD(nReggieBuilds))
   IF(I.EQ.1)BuildTIMEDISCMETHOD='default'
+  IF(I.EQ.1)ALLOCATE(BuildMPI(nReggieBuilds))
+  IF(I.EQ.1)BuildMPI='OFF'
 END DO
 
 
@@ -330,7 +332,7 @@ SUBROUTINE BuildConfiguration(iExample,iReggieBuild,nReggieBuilds,N_compile_flag
 ! MODULES
 USE MOD_Globals
 USE MOD_RegressionCheck_Vars,  ONLY: BuildDebug,BuildNoDebug,BuildEQNSYS,BuildTESTCASE,NumberOfProcs,NumberOfProcsStr
-USE MOD_RegressionCheck_Vars,  ONLY: BuildContinue,BuildContinueNumber,BuildDir,BuildTIMEDISCMETHOD
+USE MOD_RegressionCheck_Vars,  ONLY: BuildContinue,BuildContinueNumber,BuildDir,BuildTIMEDISCMETHOD,BuildMPI
 USE MOD_RegressionCheck_Vars,  ONLY: CodeNameLowCase,CodeNameUppCase
 USE MOD_RegressionCheck_tools, ONLY: SummaryOfErrors,AddError
 USE MOD_RegressionCheck_Vars,  ONLY: BuildConfigurations,BuildValid,BuildCounter,BuildIndex
@@ -387,14 +389,20 @@ IF(BuildValid(iReggieBuild))THEN
   ! save compilation flags (even those that are not explicitly selected by the user) for deciding whether a supplied example folder 
   ! can be executed with the compiled executable or not
   IF(iSTATUS.EQ.0)THEN
+    ! check MPI: single or parallel version
+    CALL GetFlagFromFile(TRIM(BuildDir)//'build_reggie/bin/configuration.cmake',&
+                                                               CodeNameUppCase//'_MPI'      ,BuildMPI(iReggieBuild),BACK=.TRUE.)
+    ! check TESTCASE: e.g. taylor green vortex
     CALL GetFlagFromFile(TRIM(BuildDir)//'build_reggie/bin/configuration.cmake',&
                                                                CodeNameUppCase//'_TESTCASE'      ,BuildTESTCASE(iReggieBuild))
     ! set default for, e.g., PICLas code (currently no testcases are implemented)
     IF(BuildTESTCASE(iReggieBuild).EQ.'flag does not exist')BuildTESTCASE(iReggieBuild)='default'
+    ! check TIMEDISCMETHOD: time integration method
     CALL GetFlagFromFile(TRIM(BuildDir)//'build_reggie/bin/configuration.cmake',&
                                                                CodeNameUppCase//'_TIMEDISCMETHOD',BuildTIMEDISCMETHOD(iReggieBuild))
     ! set default for, e.g., FLEXI (not a compilation flag)
     IF(BuildTESTCASE(iReggieBuild).EQ.'flag does not exist')BuildTESTCASE(iReggieBuild)='default'
+    ! check EQNSYSNAME: equation system
     CALL GetFlagFromFile(TRIM(BuildDir)//'build_reggie/bin/configuration.cmake',&
                                                                CodeNameUppCase//'_EQNSYSNAME'     ,BuildEQNSYS(iReggieBuild))
   ELSE ! iSTATUS.NE.0 -> failed to compile cmake configuration build
@@ -424,6 +432,7 @@ IF(BuildValid(iReggieBuild))THEN
   SWRITE(UNIT_stdOut,'(A)')"BuildEQNSYS(iReggieBuild)          = ["//TRIM(BuildEQNSYS(iReggieBuild))//"]"
   SWRITE(UNIT_stdOut,'(A)')"BuildTESTCASE(iReggieBuild)        = ["//TRIM(BuildTESTCASE(iReggieBuild))//"]"
   SWRITE(UNIT_stdOut,'(A)')"BuildTIMEDISCMETHOD(iReggieBuild)) = ["//TRIM(BuildTIMEDISCMETHOD(iReggieBuild))//"]"
+  SWRITE(UNIT_stdOut,'(A)')"BuildMPI(iReggieBuild))            = ["//TRIM(BuildMPI(iReggieBuild))//"]"
   SYSCOMMAND='cd '//TRIM(BuildDir)//'build_reggie'
   IF(.NOT.BuildDebug)SYSCOMMAND=TRIM(SYSCOMMAND)//' && tail -n 1 build_reggie.out'
   CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
@@ -454,7 +463,7 @@ END SUBROUTINE BuildConfiguration
 !==================================================================================================================================
 !> read compile flags from a specified file
 !==================================================================================================================================
-SUBROUTINE GetFlagFromFile(FileName,Flag,output)
+SUBROUTINE GetFlagFromFile(FileName,Flag,output,BACK)
 !===================================================================================================================================
 !===================================================================================================================================
 ! MODULES
@@ -465,17 +474,18 @@ IMPLICIT NONE
 ! INPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)  :: FileName ! e.g. './../build_reggie/bin/configuration.cmake'
 CHARACTER(LEN=*),INTENT(IN)  :: Flag     ! e.g. 'XX_EQNSYSNAME'
+LOGICAL,OPTIONAL,INTENT(IN)  :: BACK     ! get the second argument in the option
 !INTEGER         :: a
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(INOUT) :: output ! e.g. 'navierstokes'
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-LOGICAL                        :: ExistFile    ! file exists=.true., file does not exist=.false.
-INTEGER                        :: iSTATUS      ! status
-CHARACTER(LEN=255)             :: temp,temp2   ! temp variables for read in of file lines
-INTEGER                        :: ioUnit       ! field handler unit and ??
-INTEGER                        :: IndNum       ! Index Number
+LOGICAL                        :: ExistFile      ! file exists=.true., file does not exist=.false.
+INTEGER                        :: iSTATUS        ! status
+CHARACTER(LEN=255)             :: temp,temp2     ! temp variables for read in of file lines
+INTEGER                        :: ioUnit         ! field handler unit and ??
+INTEGER                        :: IndNum,IndNum2 ! Index Number
 !===================================================================================================================================
 output=''
 INQUIRE(File=TRIM(FileName),EXIST=ExistFile)
@@ -498,6 +508,12 @@ IF(ExistFile) THEN
           END IF
         END IF
         output=TRIM(ADJUSTL(temp2(1:IndNum-1)))
+        IF(PRESENT(BACK))THEN
+          IndNum2=INDEX(temp2, ')')
+          IF(IndNum2.GT.0)THEN
+            output=TRIM(ADJUSTL(temp2(IndNum+1:IndNum2-1)))
+          END IF
+        END IF
         EXIT
       END IF
     END IF

@@ -28,6 +28,7 @@ CHARACTER(LEN=255)             :: BuildDir                           !> path to 
 CHARACTER(LEN=255),ALLOCATABLE :: BuildEQNSYS(:)                     !> EQNSYS for each build
 CHARACTER(LEN=255),ALLOCATABLE :: BuildTESTCASE(:)                   !> TESTCASE for each build: only FLEXI
 CHARACTER(LEN=255),ALLOCATABLE :: BuildTIMEDISCMETHOD(:)             !> TIMEDISCMETHOD for each build: only PICLas
+CHARACTER(LEN=255),ALLOCATABLE :: BuildMPI(:)                        !> ON/OFF: build is created with/without MPI
 
 LOGICAL                        :: BuildSolver                        !> Flag for automatic building of different flexi cmake configs
 LOGICAL                        :: BuildDebug                         !> Prints the complete compilation process for debugging when

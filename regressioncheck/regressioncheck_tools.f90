@@ -468,8 +468,8 @@ END SUBROUTINE GetParameterList
 
 
 !==================================================================================================================================
-!> This routine goes into each example folder of the regressioncheck. Inside, the not required State-files and std.out and err.out
-!> files are removed. The subroutine is called, if the example is computed successfully.
+!> Remove State-files, std.out and err.out files.
+!> The subroutine is called, if the example is computed successfully.
 !==================================================================================================================================
 SUBROUTINE CleanExample(iExample)
 ! MODULES
@@ -486,9 +486,7 @@ CHARACTER(LEN=255)             :: FileName
 CHARACTER(LEN=255)             :: tmp
 INTEGER                        :: iSTATUS,ioUnit
 !==================================================================================================================================
-! delete "std_files_*" folder and all *.out files
-SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm std_files_* -r > /dev/null 2>&1'
-CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
+! delete all *.out files
 SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm *.out > /dev/null 2>&1'
 CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
 IF(iSTATUS.NE.0)THEN
