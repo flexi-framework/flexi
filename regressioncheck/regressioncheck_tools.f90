@@ -242,6 +242,7 @@ DO iExample=1,nExamples
   ! fill PATH of examples
   Examples(iExample)%PATH = TRIM(ExamplesDir)//TRIM(ExampleNames(iExample))
   Examples(iExample)%ReferenceFile=''
+  Examples(iExample)%ReferenceNormFile=''
   Examples(iExample)%CheckedStateFile=''
   Examples(iExample)%ReferenceStateFile=''
   Examples(iExample)%ReferenceDataSetName=''
@@ -334,6 +335,7 @@ DO ! extract reggie information
     ! Reference Norm/State
     IF(TRIM(readRHS(1)).EQ.'ReferenceTolerance')CALL str2real(readRHS(2),Example%ReferenceTolerance,iSTATUS)
     IF(TRIM(readRHS(1)).EQ.'ReferenceFile')          Example%ReferenceFile         =TRIM(ADJUSTL(readRHS(2)))
+    IF(TRIM(readRHS(1)).EQ.'ReferenceNormFile')      Example%ReferenceNormFile     =TRIM(ADJUSTL(readRHS(2)))
     IF(TRIM(readRHS(1)).EQ.'ReferenceStateFile')     Example%ReferenceStateFile    =TRIM(ADJUSTL(readRHS(2)))
     IF(TRIM(readRHS(1)).EQ.'CheckedStateFile')       Example%CheckedStateFile      =TRIM(ADJUSTL(readRHS(2)))
     IF(TRIM(readRHS(1)).EQ.'ReferenceDataSetName')   Example%ReferenceDataSetName  =TRIM(ADJUSTL(readRHS(2)))
@@ -1034,7 +1036,7 @@ SWRITE(UNIT_stdOut,'(A)') ' parameter_reggie.ini       | contains parameters for
 SWRITE(UNIT_stdOut,'(A)') '                            |                                                        '
 SWRITE(UNIT_stdOut,'(A)') '        number of variables | nVar= 5 (depricated)                                   '
 SWRITE(UNIT_stdOut,'(A)') '                 MPI on/off | MPI= T                                                 '
-SWRITE(UNIT_stdOut,'(A)') '     L2/Linf reference file | ReferenceFile= referencenorm.txt                       '
+SWRITE(UNIT_stdOut,'(A)') '     L2/Linf reference file | ReferenceNormFile= referencenorm.txt                   '
 SWRITE(UNIT_stdOut,'(A)') '  ref state file for h5diff | ReferenceStateFile= cavity_reference_State_0.200.h5    '
 SWRITE(UNIT_stdOut,'(A)') '      state file for h5diff | CheckedStateFile= cavity_State_0000000.200000000.h5    '
 SWRITE(UNIT_stdOut,'(A)') '      array name for h5diff | ReferenceDataSetName= DG_Solution                      '

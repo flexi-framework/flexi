@@ -64,9 +64,6 @@ INTEGER,INTENT(IN)             :: iExample,iSubExample
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-!INTEGER                        :: IndNum
-!CHARACTER(LEN=255)             :: FileName                          ! path to a file or its name
-!CHARACTER(LEN=255)             :: temp,temp2                        ! temp variables for read in of file lines
 REAL,ALLOCATABLE               :: ReferenceNorm(:,:)                !> L2 and Linf norm of the executed example from a reference
                                                                     !> solution
 INTEGER                        :: ErrorStatus                       !> Error-code of regressioncheck
@@ -77,7 +74,7 @@ INTEGER                        :: ErrorStatus                       !> Error-cod
 SWRITE(UNIT_stdOut,'(A)',ADVANCE='no')  ' Comparing results...'
 ! check error norms
 ALLOCATE(ReferenceNorm(Examples(iExample)%nVar,2))
-IF(Examples(iExample)%ReferenceFile.EQ.'')THEN
+IF(Examples(iExample)%ReferenceNormFile.EQ.'')THEN
   ! constant value, should be zero no reference file given
   CALL CompareNorm(ErrorStatus,iExample)
 ELSE
@@ -164,7 +161,6 @@ CHARACTER(LEN=255)           :: FileName,temp1,temp2,temp3
 LOGICAL                      :: ExistFile,L2Compare,LInfCompare
 REAL                         :: LNorm(Examples(iExample)%nVar),L2(Examples(iExample)%nVar),LInf(Examples(iExample)%nVar)
 REAL                         :: eps
-!REAL                         :: epsLNorm=1.e-9
 !==================================================================================================================================
 
 ! get fileid and open file
@@ -283,11 +279,11 @@ REAL                                 :: LNorm(Examples(iExample)%nVar)
 !==================================================================================================================================
 ! open file and read in
 ioUnit=GETFREEUNIT()
-FileName=TRIM(Examples(iExample)%PATH)//TRIM(Examples(iExample)%ReferenceFile)
+FileName=TRIM(Examples(iExample)%PATH)//TRIM(Examples(iExample)%ReferenceNormFile)
 INQUIRE(File=FileName,EXIST=ExistFile)
 IF(.NOT.ExistFile) THEN
   SWRITE(UNIT_stdOut,'(A,A)') ' ReadNorm: no File found under ',TRIM(Examples(iExample)%PATH)
-  SWRITE(UNIT_stdOut,'(A,A)') ' FileName:                     ',TRIM(Examples(iExample)%ReferenceFile)
+  SWRITE(UNIT_stdOut,'(A,A)') ' FileName:                     ',TRIM(Examples(iExample)%ReferenceNormFile)
   SWRITE(UNIT_stdOut,'(A,L)') ' ExistFile:                    ',ExistFile
   ERROR STOP '-1'
 ELSE
@@ -334,25 +330,25 @@ INTEGER,INTENT(IN)             :: iExample
 ! LOCAL VARIABLES
 CHARACTER(LEN=255)             :: DataSet
 CHARACTER(LEN=255)             :: CheckedFileName
-CHARACTER(LEN=255)             :: ReferenceFileName
+CHARACTER(LEN=255)             :: ReferenceNormFileName
 CHARACTER(LEN=500)             :: SYSCOMMAND
 CHARACTER(LEN=20)              :: tmpTol
 INTEGER                        :: iSTATUS
-LOGICAL                        :: ExistCheckedFile,ExistReferenceFile
+LOGICAL                        :: ExistCheckedFile,ExistReferenceNormFile
 !==================================================================================================================================
 
 
 CheckedFilename  =TRIM(Examples(iExample)%PATH)//TRIM(Examples(iExample)%CheckedStateFile)
-ReferenceFilename=TRIM(Examples(iExample)%PATH)//TRIM(Examples(iExample)%ReferenceStateFile)
+ReferenceNormFilename=TRIM(Examples(iExample)%PATH)//TRIM(Examples(iExample)%ReferenceStateFile)
 INQUIRE(File=CheckedFilename,EXIST=ExistCheckedFile)
 IF(.NOT.ExistCheckedFile) THEN
   SWRITE(UNIT_stdOut,'(A,A)')  ' h5diff: generated state file does not exist! need ',CheckedFilename
   Examples(iExample)%ErrorStatus=3
   RETURN
 END IF
-INQUIRE(File=ReferenceFilename,EXIST=ExistReferenceFile)
-IF(.NOT.ExistReferenceFile) THEN
-  SWRITE(UNIT_stdOut,'(A,A)')  ' h5diff: reference state file does not exist! need ',ReferenceFilename
+INQUIRE(File=ReferenceNormFilename,EXIST=ExistReferenceNormFile)
+IF(.NOT.ExistReferenceNormFile) THEN
+  SWRITE(UNIT_stdOut,'(A,A)')  ' h5diff: reference state file does not exist! need ',ReferenceNormFilename
   Examples(iExample)%ErrorStatus=3
   RETURN
 END IF
@@ -360,11 +356,11 @@ END IF
 DataSet=TRIM(Examples(iExample)%ReferenceDataSetName)
 
 WRITE(tmpTol,'(E21.14)') SQRT(PP_RealTolerance)
-SYSCOMMAND=H5DIFF//' --delta='//TRIM(tmpTol)//' '//TRIM(ReferenceFileName)//' ' &
+SYSCOMMAND=H5DIFF//' --delta='//TRIM(tmpTol)//' '//TRIM(ReferenceNormFileName)//' ' &
           //TRIM(CheckedFileName)//' /'//TRIM(DataSet)//' /'//TRIM(DataSet)
 CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
 IF(iSTATUS.NE.0) THEN
-  SWRITE(UNIT_stdOut,'(A)')  ' Datasets do not match! Error in computation!'
+  SWRITE(UNIT_stdOut,'(A)')  ' HDF5 Datasets do not match! Error in computation!'
   Examples(iExample)%ErrorStatus=3
 END IF
 
@@ -388,12 +384,9 @@ INTEGER,INTENT(IN)             :: iExample
 INTEGER,INTENT(OUT)            :: IntegralCompare
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-!CHARACTER(LEN=255)             :: DataSet
 CHARACTER(LEN=1)               :: Delimiter
 CHARACTER(LEN=255)             :: FileName
-!CHARACTER(LEN=255)             :: ReferenceFileName
 CHARACTER(LEN=355)             :: temp1,temp2
-!CHARACTER(LEN=20)              :: tmpTol
 INTEGER                        :: iSTATUS,ioUnit,LineNumbers,I,HeaderLines,j,IndMax,CurrentColumn,IndNum,MaxColumn!,K
 INTEGER                        :: IndFirstA,IndLastA,IndFirstB,IndLastB,EOL,MaxRow
 LOGICAL                        :: ExistFile,IndexNotFound,IntegralValuesAreEqual
@@ -423,8 +416,7 @@ IndLastB =IndMax
 IndexNotFound=.TRUE.
 CurrentColumn=0
 EOL=0
-! read the file twice in order to determine the array size
-DO I=1,2
+DO I=1,2 ! read the file twice in order to determine the array size
   LineNumbers=0
   DO 
     READ(ioUnit,'(A)',IOSTAT=iSTATUS) temp1 ! get first line assuming it is something like 'nVar= 5'

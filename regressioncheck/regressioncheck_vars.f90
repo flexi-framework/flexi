@@ -57,6 +57,7 @@ TYPE tExample                                                        !> examples
   INTEGER                                :: MPIthreadsN              !> number of MPIthreadsStr
   INTEGER                                :: nRuns                    !> number of runs with a specific setup (number of MPI threads)
   CHARACTER(LEN=255)                     :: ReferenceFile            !> Name of references L2/LInf
+  CHARACTER(LEN=255)                     :: ReferenceNormFile        !> Name of reference file (arbitrary file, e.g., *.csv)
   REAL                                   :: ReferenceTolerance       !> optional tolerance for L2/LInf
   CHARACTER(LEN=255)                     :: ReferenceStateFile       !> Name of reference state file
   CHARACTER(LEN=255)                     :: CheckedStateFile         !> Name of checked state file
