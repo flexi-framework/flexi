@@ -563,6 +563,8 @@ IF (ParaView_FOUND)
    ADD_DEPENDENCIES(visu3DReader flexilib userblocklib_dummy HDF5)
    TARGET_LINK_LIBRARIES(visu3DReader PUBLIC flexilib ${linkedlibs})
 ENDIF()
+add_exec(postistat ./src/posti/posti_statistics.f90)
+ADD_DEPENDENCIES(postistat flexilib HDF5)
 
 # =========================================================================
 # RegressionCheck tool && Examples

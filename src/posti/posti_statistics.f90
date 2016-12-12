@@ -12,20 +12,76 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+
 !===================================================================================================================================
-!> Standalone version of the Visu3D tool. Read in parameter file, loop over all given State files and call the visu3D routine for
-!> all of them.
+!> Module containing the main procedures for the POSTI tool: visu3d_requestInformation is called by ParaView to create a
+!> list of available variables and visu3D is the main routine of POSTI.
+!===================================================================================================================================
+MODULE MOD_Statistics
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+PRIVATE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! GLOBAL VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! Private Part ---------------------------------------------------------------------------------------------------------------------
+! Public Part ----------------------------------------------------------------------------------------------------------------------
+
+INTERFACE postistat
+  MODULE PROCEDURE postistat
+END INTERFACE
+
+PUBLIC:: postistat
+
+CONTAINS
+
+!===================================================================================================================================
+!> Routine using the visu3D data to perform a statistic evaluation 
+!===================================================================================================================================
+SUBROUTINE postistat(doINIT,Values_p,Values_out,NVisu,Nvisu_k,nElems,nVal)
+!----------------------------------------------------------------------------------------------------------------------------------!
+IMPLICIT NONE
+! INPUT / OUTPUT VARIABLES 
+!-----------------------------------------------------------------------------------------------------------------------------------
+LOGICAL,INTENT(IN)          :: doINIT                  !< flag for initialization
+REAL,POINTER,INTENT(IN)     :: Values_p(:,:,:,:,:)     !< Statevector
+!REAL,POINTER,INTENT(INOUT)  :: Values_p_out(:,:,:,:,:) !< Statevector
+REAL,ALLOCATABLE,INTENT(INOUT)  :: Values_out(:,:,:,:,:) !< Statevector
+INTEGER,INTENT(IN)          :: NVisu,Nvisu_k,nElems,nVal
+INTEGER,ALLOCATABLE,SAVE    :: range(:,:)
+INTEGER:: test(3)
+! LOCAL VARIABLES
+!===================================================================================================================================
+
+! Initialize in the first run
+IF(doINIT) THEN
+  ALLOCATE(Values_out(0:Nvisu,0:Nvisu,0:NVisu_k,nElems,2*nVal))
+  Values_out=0.
+END IF
+Values_out(:,:,:,:,1:nVal)=Values_out(:,:,:,:,1:nVal)+Values_p                   ! mean
+Values_out(:,:,:,:,1+nVal:2*nVal)=Values_out(:,:,:,:,1+nVal:2*nVal)+Values_p**2  ! mean square
+END SUBROUTINE postistat
+
+
+END MODULE MOD_Statistics
+
+
+!===================================================================================================================================
+!> Posti statistics tool to generate statistic evaluation of derived quantities. Read in parameter file, loop over all given State
+!> files and call the visu3D routine to calculate instantaneous values, from which mean, variance etc are evaluated
 !>
 !> Usage: posti parameter_posti.ini [parameter_flexi.ini] State1.h5 State2.h5 ...
 !> The optional parameter_flexi.ini is used for FLEXI parameters instead of the ones that are found in the userblock of the 
 !> State file.
 !===================================================================================================================================
-PROGRAM Posti_Visu3D
+PROGRAM Posti_statistics
 USE ISO_C_BINDING
 USE MOD_Globals
 USE MOD_Posti_Vars
 USE MOD_Commandline_Arguments
-USE MOD_Visu3D
+USE MOD_Visu3D                ,ONLY: visu3D
+USE MOD_Statistics      
 USE MOD_ISO_VARYING_STRING
 USE MOD_MPI                   ,ONLY: InitMPI
 USE MOD_VTK                   ,ONLY: WriteDataToVTK,WriteVTKMultiBlockDataSet
@@ -52,6 +108,8 @@ INTEGER                        :: nVal
 CHARACTER(LEN=255),POINTER     :: VarNames_p(:)
 REAL,POINTER                   :: Coords_p(:,:,:,:,:)
 REAL,POINTER                   :: Values_p(:,:,:,:,:)
+REAL,ALLOCATABLE,TARGET        :: Values_stat(:,:,:,:,:)
+REAL,POINTER                   :: Values_stat_p(:,:,:,:,:)
 CHARACTER(LEN=255)             :: FileString_DG
 CHARACTER(LEN=255)             :: FileString_FV
 CHARACTER(LEN=255)             :: FileString_multiblock
@@ -59,6 +117,8 @@ CHARACTER(LEN=255)             :: FileString_multiblock
 INTEGER                        :: MPI_COMM_WORLD = 0
 #endif
 INTEGER                        :: NVisu_k,NVisu_k_FV
+INTEGER                        :: nstates
+LOGICAL                        :: firstState
 !==================================================================================================================================
 CALL InitMPI()
 CALL ParseCommandlineArguments()
@@ -78,13 +138,11 @@ IF(STRICMP(GetFileExtension(Args(1)),'ini')) THEN
       skipArgs = 2
     END IF
   END IF
-ELSE IF(STRICMP(GetFileExtension(Args(1)),'h5')) THEN
-  skipArgs = 0 ! do not skip a argument. first argument is a h5 file
-  postifile = ""
 ELSE
   CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: posti [posti-prm-file [flexi-prm-file]] statefile [statefiles]')
 END IF
 
+firstState=.TRUE.
 DO iArg=1+skipArgs,nArgs
   statefile = TRIM(Args(iArg))
   SWRITE(*,*) "Processing state-file: ",TRIM(statefile)
@@ -92,34 +150,30 @@ DO iArg=1+skipArgs,nArgs
   CALL visu3D(MPI_COMM_WORLD, prmfile, postifile, statefile, &
       coordsDG_out,valuesDG_out,nodeidsDG_out, &
       coordsFV_out,valuesFV_out,nodeidsFV_out,varnames_out,components_out)
-
-#if FV_ENABLED                            
-  FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_DG',OutputTime))//'.vtu'
-#else
-  FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))//'.vtu'
-#endif
   nVal = varnames_out%len/255
   CALL C_F_POINTER(varnames_out%data, VarNames_p, [nVal])
   NVisu_k = NVisu * (VisuDimension-2)
   CALL C_F_POINTER(coordsDG_out%data, Coords_p, [3,NVisu+1,NVisu+1,NVisu_k+1,nElems_DG])
   CALL C_F_POINTER(valuesDG_out%data, Values_p, [  NVisu+1,NVisu+1,NVisu_k+1,nElems_DG,nVal])
-  CALL WriteDataToVTK(nVal,NVisu   ,nElems_DG,VarNames_p,Coords_p,Values_p,FileString_DG,&
-      dim=VisuDimension,DGFV=0,nValAtLastDimension=.TRUE.)
-#if FV_ENABLED                            
-  FileString_FV=TRIM(TIMESTAMP(TRIM(ProjectName)//'_FV',OutputTime))//'.vtu'
-  NVisu_k_FV = NVisu_FV * (VisuDimension-2)
-  CALL C_F_POINTER(coordsFV_out%data, Coords_p, [3,NVisu_FV+1,NVisu_FV+1,NVisu_k_FV+1,nElems_FV])
-  CALL C_F_POINTER(valuesFV_out%data, Values_p, [  NVisu_FV+1,NVisu_FV+1,NVisu_k_FV+1,nElems_FV,nVal])
-  CALL WriteDataToVTK(nVal,NVisu_FV,nElems_FV,VarNames_p,Coords_p,Values_p,FileString_FV,&
-      dim=VisuDimension,DGFV=1,nValAtLastDimension=.TRUE.)
-
-  IF (MPIRoot) THEN                   
-    ! write multiblock file
-    FileString_multiblock=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))//'.vtm'
-    CALL WriteVTKMultiBlockDataSet(FileString_multiblock,FileString_DG,FileString_FV)
-  ENDIF
-#endif
+  ! Call statistical evaluation / sum here
+  CALL postistat(firstState,Values_p,Values_stat,NVisu,Nvisu_k,nElems_DG,nVal)
+  firstState=.FALSE.
 END DO
+
+nstates=nArgs-skipArgs
+Values_stat=Values_stat/nstates
+Values_stat(:,:,:,:,1+nVal:2*nVal)=SQRT(Values_stat(:,:,:,:,1+nVal:2*nVal)-Values_stat(:,:,:,:,1:nVal)**2)
+
+FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Mean',OutputTime))//'.vtu'
+Values_stat_p=>Values_stat(:,:,:,:,1:nVal)
+CALL WriteDataToVTK(nVal,NVisu   ,nElems_DG,VarNames_p,Coords_p,Values_stat_p,FileString_DG,&
+    dim=VisuDimension,DGFV=0,nValAtLastDimension=.TRUE.)
+
+FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_MeanSq',OutputTime))//'.vtu'
+Values_stat_p=>Values_stat(:,:,:,:,1+nVal:2*nVal)
+CALL WriteDataToVTK(nVal,NVisu   ,nElems_DG,VarNames_p,Coords_p,Values_stat_p,FileString_DG,&
+    dim=VisuDimension,DGFV=0,nValAtLastDimension=.TRUE.)
+DEALLOCATE(Values_stat)
 
 END PROGRAM 
 
