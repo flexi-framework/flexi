@@ -15,7 +15,7 @@
 */
 
 #include "visu3DReader.h"
-#include "../posti_plugin.h"
+#include "../plugin_visu3D.h"
 
 #include "hdf5.h"
 #include <vtkCellArray.h>
