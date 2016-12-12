@@ -542,7 +542,7 @@ ADD_DEPENDENCIES(flexi2vtk flexilib HDF5)
 # Posti
 # =========================================================================
 add_exec(posti_visu3D ./src/posti/posti_visu3D.f90)
-ADD_DEPENDENCIES(posti flexilib HDF5)
+ADD_DEPENDENCIES(posti_visu3D flexilib HDF5)
 FIND_PACKAGE(ParaView)
 IF (ParaView_FOUND)
    INCLUDE(${PARAVIEW_USE_FILE})
@@ -563,8 +563,6 @@ IF (ParaView_FOUND)
    ADD_DEPENDENCIES(visu3DReader flexilib userblocklib_dummy HDF5)
    TARGET_LINK_LIBRARIES(visu3DReader PUBLIC flexilib ${linkedlibs})
 ENDIF()
-add_exec(posti_stat ./src/posti/posti_statistics.f90)
-ADD_DEPENDENCIES(postistat flexilib HDF5)
 
 # =========================================================================
 # RegressionCheck tool && Examples
