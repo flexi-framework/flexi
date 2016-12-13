@@ -44,45 +44,54 @@ INTEGER,ALLOCATABLE            :: BuildIndex(:)                      !> number o
                                                                      !> compiler flag
 
 TYPE tExample                                                        !> examples for regressioncheck
-  INTEGER                                :: ReferenceType            !> Type of reference
+  INTEGER                          :: ReferenceType                  !> Type of reference
                                                                      !> 0 - no reference
                                                                      !> 1 - L2 and Linf
                                                                      !> 2 - state file   
                                                                      !> 3 - state file  and L2 
-  CHARACTER(LEN=255)                     :: EQNSYSNAME               !> Name of current EQNSYS (depends on current exe)
-  INTEGER                                :: Nvar                     !> Size of EQNSYS 
-  CHARACTER(LEN=255)                     :: PATH                     !> Path to example
-  LOGICAL                                :: MPIrun                   !> execution information (MPI)
-  CHARACTER(LEN=255)                     :: MPIcommand               !> e.g. 'aprun' or 'mpirun' (default)
-  CHARACTER(LEN=15)                      :: MPIthreadsStr(100)       !> number of MPI threads for execution
-  INTEGER                                :: MPIthreadsN              !> number of MPIthreadsStr
-  INTEGER                                :: nRuns                    !> number of runs with a specific setup (number of MPI threads)
-  CHARACTER(LEN=255)                     :: ReferenceFile            !> Name of references L2/LInf
-  CHARACTER(LEN=255)                     :: ReferenceNormFile        !> Name of reference file (arbitrary file, e.g., *.csv)
-  REAL                                   :: ReferenceTolerance       !> optional tolerance for L2/LInf
-  CHARACTER(LEN=255)                     :: ReferenceStateFile       !> Name of reference state file
-  CHARACTER(LEN=255)                     :: CheckedStateFile         !> Name of checked state file
-  CHARACTER(LEN=255)                     :: ReferenceDataSetName     !> Name of Dataset in hdf5 file for comparision
-  CHARACTER(LEN=255)                     :: RestartFileName          !> Name of RestartFile
-  INTEGER                                :: ErrorStatus              !> ErrorStatus
+  CHARACTER(LEN=255)               :: EQNSYSNAME                     !> Name of current EQNSYS (depends on current exe)
+  INTEGER                          :: Nvar                           !> Size of EQNSYS 
+  CHARACTER(LEN=255)               :: PATH                           !> Path to example
+  LOGICAL                          :: MPIrun                         !> execution information (MPI)
+  CHARACTER(LEN=255)               :: MPIcommand                     !> e.g. 'aprun' or 'mpirun' (default)
+  CHARACTER(LEN=15)                :: MPIthreadsStr(100)             !> number of MPI threads for execution
+  INTEGER                          :: MPIthreadsN                    !> number of MPIthreadsStr
+  INTEGER                          :: nRuns                          !> number of runs with a specific setup (number of MPI threads)
+  CHARACTER(LEN=255)               :: ReferenceFile                  !> Name of references L2/LInf
+  CHARACTER(LEN=255)               :: ReferenceNormFile              !> Name of reference file (arbitrary file, e.g., *.csv)
+  REAL                             :: ReferenceTolerance             !> optional tolerance for L2/LInf
+  CHARACTER(LEN=255)               :: ReferenceStateFile             !> Name of reference state file
+  CHARACTER(LEN=255)               :: CheckedStateFile               !> Name of checked state file
+  CHARACTER(LEN=255)               :: ReferenceDataSetName           !> Name of Dataset in hdf5 file for comparision
+  CHARACTER(LEN=255)               :: RestartFileName                !> Name of RestartFile
+  INTEGER                          :: ErrorStatus                    !> ErrorStatus
                                                                      !> 0 - success
                                                                      !> 1 - failed during execution
                                                                      !> 2 - test failed
-  CHARACTER(LEN=255)                     :: IntegrateLineFile        !> File name with ACSI number columns
-  INTEGER                                :: IntegrateLineRange(2)    !> the numerbs of two coulumns with data
-  REAL                                   :: IntegrateLineValue       !> the reference integral value
-  CHARACTER(LEN=255)                     :: IntegrateLineDelimiter   !> delimiter string for reading the data file
-  INTEGER                                :: IntegrateLineHeaderLines !> number of header lines to be ignored from data file
-  LOGICAL                                :: IntegrateLine            !> read two columns from a file and integrate over line
+  CHARACTER(LEN=255)               :: IntegrateLineFile              !> File name with ACSI number columns
+  INTEGER                          :: IntegrateLineRange(2)          !> the numerbs of two coulumns with data
+  REAL                             :: IntegrateLineValue             !> the reference integral value
+  CHARACTER(LEN=255)               :: IntegrateLineDelimiter         !> delimiter string for reading the data file
+  INTEGER                          :: IntegrateLineHeaderLines       !> number of header lines to be ignored from data file
+  LOGICAL                          :: IntegrateLine                  !> read two columns from a file and integrate over line
                                                                      !> e.g. u(t) is integrated over t for comparison of the 
                                                                      !> integral value
-  INTEGER                                :: SubExampleNumber         !> Numbers of sub examples, currently fixed to 1
-  CHARACTER(LEN=255)                     :: SubExampleOption(20)     !> for each sub example class, currently 10 options are allowed
-  CHARACTER(LEN=255)                     :: SubExample               !> sub example class, e.g., TimeDiscMethod can be chosen for 
+  CHARACTER(LEN=255)               :: CompareDatafileRowFile         !> File name with ACSI number columns
+  CHARACTER(LEN=255)               :: CompareDatafileRowRefFile      !> File name with ACSI number columns for reference
+  CHARACTER(LEN=255)               :: CompareDatafileRowDelimiter    !> delimiter string for reading the data file
+  INTEGER                          :: CompareDatafileRowNumber       !> number of the row chosen for comparison
+  REAL                             :: CompareDatafileRowTolerance    !> Tolerance value for comparison
+  LOGICAL                          :: CompareDatafileRowReadHeader   !> read the first row of the header (column labels)
+  INTEGER                          :: CompareDatafileRowHeaderLines  !> number of header lines to be ignored from data file
+  LOGICAL                          :: CompareDatafileRow             !> read a single row from a file and compare each entry to
+                                                                     !> a reference file (each failed comparison will be dispayed)
+  INTEGER                          :: SubExampleNumber               !> Numbers of sub examples, currently fixed to 1
+  CHARACTER(LEN=255)               :: SubExampleOption(20)           !> for each sub example class, currently 10 options are allowed
+  CHARACTER(LEN=255)               :: SubExample                     !> sub example class, e.g., TimeDiscMethod can be chosen for 
                                                                      !> testing multiple time integration schemes
 END TYPE
 
-TYPE(tExample), ALLOCATABLE              :: Examples(:)              !> container with variables for each reggie example
+TYPE(tExample), ALLOCATABLE        :: Examples(:)                    !> container with variables for each reggie example
 
 TYPE tEC                                                             !> Type to simplify error handling
   INTEGER            :: ErrorCode                                    !> interger code of error

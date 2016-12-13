@@ -434,8 +434,8 @@ IF(UseMPI.EQV..FALSE.)THEN ! parameter_reggie.ini supplied with MPI and possibly
     SWRITE(UNIT_stdOut,'(A)') ' MPIrun is set .TRUE. but the supplied binary was compiled without MPI. Setting MPIrun=.FALSE.'
   END IF
   Examples(iExample)%MPIrun=.FALSE. ! deactivate MPI for running reggie
-  Examples(iExample)%MPIthreadsN=1  ! set number of mpi ranks to 1 
 END IF
+IF(Examples(iExample)%MPIrun.EQV..FALSE.)Examples(iExample)%MPIthreadsN=1  ! set number of mpi ranks to 1
 END SUBROUTINE CheckCompilerFlags
 
 
@@ -708,7 +708,6 @@ CASE(2) ! delete existing files after computation
   IF(iSTATUS.NE.0)THEN
     SWRITE(UNIT_stdOut,'(A)')' CleanFolder(',Examples(iExample)%PATH,'): Could not remove *.out files!'
   END IF
-  
   ! delete all *State* files except *reference* state files
   IF((Examples(iExample)%ReferenceStateFile.EQ.'').AND. &
      (Examples(iExample)%RestartFileName.EQ.'') ) THEN

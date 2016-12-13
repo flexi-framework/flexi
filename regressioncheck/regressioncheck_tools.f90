@@ -386,6 +386,66 @@ DO ! extract reggie information
       IF(Example%IntegrateLineHeaderLines.EQ.0)       Example%IntegrateLine=.FALSE.
       IF(Example%IntegrateLineDelimiter(1:3).EQ.'999')Example%IntegrateLine=.FALSE.
     END IF ! 'IntegrateLine'
+    ! Line comparison (compare one complete line in, e.g., a *.csv or *.dat file)
+    ! in parameter_reggie.ini define: 
+    !            CompareDatafileRow  =  Database.csv   ,Database.csv_ref, 1e-3      , 1            , ','       , last
+    !                                   data file name ,ref data file   , Tolerance , header lines , delimiter , line number
+    IF(TRIM(readRHS(1)).EQ.'CompareDatafileRow')THEN
+       Example%CompareDatafileRow            = .TRUE.
+       Example%CompareDatafileRowHeaderLines = 0       ! init
+       Example%CompareDatafileRowTolerance   = -1      ! init
+       Example%CompareDatafileRowReadHeader  = .FALSE. ! init
+       Example%CompareDatafileRowDelimiter   = '999'   ! init
+       IndNum2=INDEX(readRHS(2),',')
+       IF(IndNum2.GT.0)THEN ! get the name of the data file
+         temp2                     = readRHS(2)
+         Example%CompareDatafileRowFile      = TRIM(ADJUSTL(temp2(1:IndNum2-1))) ! data file name
+         temp2                     = temp2(IndNum2+1:LEN(TRIM(temp2))) ! next
+         IndNum2                   = INDEX(temp2,',')
+         IF(IndNum2.GT.0)THEN ! get the name of the reference data file
+           Example%CompareDatafileRowRefFile = TRIM(ADJUSTL(temp2(1:IndNum2-1))) ! ref data file name
+           temp2                   = temp2(IndNum2+1:LEN(TRIM(temp2))) ! next
+           IndNum2                 = INDEX(temp2,',')
+           IF(IndNum2.GT.0)THEN ! get tolerance value for comparison
+             CALL str2real(temp2(1:IndNum2-1),Example%CompareDatafileRowTolerance,iSTATUS)
+             temp2                 = temp2(IndNum2+1:LEN(TRIM(temp2))) ! next
+             IndNum2               = INDEX(temp2,',')
+             IF(IndNum2.GT.0)THEN ! use 1st header line for column data labels
+               CALL str2logical(temp2(1:IndNum2-1),Example%CompareDatafileRowReadHeader,iSTATUS)
+               temp2                 = temp2(IndNum2+1:LEN(TRIM(temp2))) ! next
+               IndNum2               = INDEX(temp2,',')
+               IF(IndNum2.GT.0)THEN ! get number of header lines in data file (they are ignored on reading the file)
+                 CALL str2int(temp2(1:IndNum2-1),Example%CompareDatafileRowHeaderLines,iSTATUS)
+                 temp2               = temp2(IndNum2+1:LEN(TRIM(temp2))) ! next
+                 IndNum2             = INDEX(temp2,"'")
+                 IF(IndNum2.GT.0)THEN ! get delimiter for separating the columns in the data file
+                   IndNum3=INDEX(temp2(IndNum2+1:LEN(TRIM(temp2))),"'")+IndNum2
+                   Example%CompareDatafileRowDelimiter=temp2(IndNum2+1:IndNum3-1)
+                   temp2             = temp2(IndNum3+1:LEN(TRIM(temp2))) ! next
+                   IndNum2           = INDEX(temp2,',')
+                   IF(IndNum2.GT.0)THEN ! get row number
+                     temp2           = temp2(IndNum2+1:LEN(TRIM(temp2))) ! next
+                     IF(ADJUSTL(TRIM(temp2)).EQ.'last')THEN ! use the last line number in file for comparison
+                       Example%CompareDatafileRowNumber=HUGE(1)
+                       iSTATUS=0
+                     ELSE
+                       CALL str2int(temp2,Example%CompareDatafileRowNumber,iSTATUS)
+                     END IF 
+                   END IF ! get row number
+                 END IF ! get delimiter
+               END IF !  get number of header lines
+             END IF ! use 1st header line for column data labels
+           END IF ! get tolerance value for comparison
+         END IF ! get the name of the reference data file
+       END IF ! get file name
+      ! set CompareDatafileRow to false if any of the following cases is true
+      IF(ANY( (/iSTATUS.NE.0                                       ,&
+                Example%CompareDatafileRowFile.EQ.''               ,&
+                Example%CompareDatafileRowRefFile.EQ.''            ,&
+                Example%CompareDatafileRowTolerance.LT.0.          ,&
+                Example%CompareDatafileRowHeaderLines.EQ.0         ,&
+                Example%CompareDatafileRowDelimiter(1:3).EQ.'999'/) )) Example%CompareDatafileRow=.FALSE.
+    END IF ! 'CompareDatafileRow'
     ! Next feature
     !IF(TRIM(readRHS(1)).EQ.'NextFeature')
   END IF ! IndNum.GT.0 -> definition found

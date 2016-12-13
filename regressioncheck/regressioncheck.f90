@@ -46,6 +46,7 @@ NULLIFY(aError)
 nReggieBuilds=0
 SYSCOMMAND=''
 FileName=''
+CALL InitGlobals()
 CALL InitMPI()
 ! Check Code Names
 IF(LEN(CodeNameUppCase).NE.LEN(ADJUSTL(TRIM(CodeNameUppCase))))       CALL abort(&

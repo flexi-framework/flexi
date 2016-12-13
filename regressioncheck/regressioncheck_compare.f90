@@ -37,11 +37,7 @@ INTERFACE ReadNorm
   MODULE PROCEDURE ReadNorm
 END INTERFACE
 
-INTERFACE IntegrateLine
-  MODULE PROCEDURE IntegrateLine
-END INTERFACE
-
-PUBLIC::CompareResults,CompareNorm,CompareDataSet,CompareRuntime,ReadNorm,IntegrateLine
+PUBLIC::CompareResults,CompareNorm,CompareDataSet,CompareRuntime,ReadNorm
 !==================================================================================================================================
 
 CONTAINS
@@ -96,7 +92,7 @@ IF(Examples(iExample)%ReferenceStateFile.NE.'')THEN
   CALL CompareDataSet(iExample)
   IF(Examples(iExample)%ErrorStatus.EQ.3)THEN
     CALL AddError('Mismatch in HDF5-files. Datasets are unequal',iExample,iSubExample,ErrorStatus=3,ErrorCode=4)
-    SWRITE(UNIT_stdOut,'(A)')  ' Mismatch in HDF5-files'
+    !SWRITE(UNIT_stdOut,'(A)')  ' Mismatch in HDF5-files'
   END IF
 END IF
 
@@ -104,7 +100,15 @@ END IF
 IF(Examples(iExample)%IntegrateLine)THEN
   CALL IntegrateLine(ErrorStatus,iExample)
   IF(Examples(iExample)%ErrorStatus.EQ.5)THEN
-  CALL AddError('Mismatch in LineIntegral',iExample,iSubExample,ErrorStatus=5,ErrorCode=5)
+    CALL AddError('Mismatch in LineIntegral',iExample,iSubExample,ErrorStatus=5,ErrorCode=5)
+  END IF
+END IF
+
+! read a single row from a file and compare each entry
+IF(Examples(iExample)%CompareDatafileRow)THEN
+  CALL CompareDatafileRow(ErrorStatus,iExample)
+  IF(Examples(iExample)%ErrorStatus.EQ.5)THEN
+    CALL AddError('Mismatch in CompareDatafileRow',iExample,iSubExample,ErrorStatus=5,ErrorCode=5)
   END IF
 END IF
 
@@ -145,7 +149,6 @@ SUBROUTINE CompareNorm(LNormCompare,iExample,ReferenceNorm)
 USE MOD_Globals
 USE MOD_Preproc
 USE MOD_StringTools,           ONLY: STRICMP
-USE MOD_Basis,                 ONLY: EQUALTOTOLERANCE
 USE MOD_RegressionCheck_Vars,  ONLY: Examples
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -209,7 +212,7 @@ IF(PRESENT(ReferenceNorm))THEN ! use user-defined norm if present, else use 0.00
     eps=0.001*SQRT(PP_RealTolerance)
   END IF
   DO iVar=1,Examples(iExample)%nVar
-    IF(.NOT.EQUALTOTOLERANCE(L2(iVar),ReferenceNorm(iVar,1),eps))THEN
+    IF(.NOT.AlmostEqualToTolerance(L2(iVar),ReferenceNorm(iVar,1),eps))THEN
       L2Compare=.FALSE.
       SWRITE(UNIT_stdOut,'(A)') ''
       SWRITE(UNIT_stdOut,'(A,E21.14)')  ' L2Norm                =',L2(iVar)
@@ -219,7 +222,7 @@ IF(PRESENT(ReferenceNorm))THEN ! use user-defined norm if present, else use 0.00
     END IF
   END DO ! iVar=1,Examples(iExample)%nVar
   DO iVar=1,Examples(iExample)%nVar
-    IF(.NOT.EQUALTOTOLERANCE(LInf(iVar),ReferenceNorm(iVar,2),eps))THEN
+    IF(.NOT.AlmostEqualToTolerance(LInf(iVar),ReferenceNorm(iVar,2),eps))THEN
       LInfCompare=.FALSE.
       SWRITE(UNIT_stdOut,'(A)') ''
       SWRITE(UNIT_stdOut,'(A,E21.14)')  ' LInfNorm              =',LInf(iVar)
@@ -376,7 +379,6 @@ USE MOD_Globals
 USE MOD_Preproc
 USE MOD_RegressionCheck_Vars,  ONLY: Examples
 USE MOD_RegressionCheck_tools, ONLY: str2real
-USE MOD_Basis,                 ONLY: EQUALTOTOLERANCE
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -396,7 +398,7 @@ REAL,ALLOCATABLE               :: Values(:,:),Q
 Filename=TRIM(Examples(iExample)%PATH)//TRIM(Examples(iExample)%IntegrateLineFile)
 INQUIRE(File=Filename,EXIST=ExistFile)
 IF(.NOT.ExistFile) THEN
-  SWRITE(UNIT_stdOut,'(A,A)')  ' IntegrateLine: reference state file does not exist! need ',Filename
+  SWRITE(UNIT_stdOut,'(A,A)')  ' IntegrateLine: reference state file does not exist! need ',TRIM(Filename)
   Examples(iExample)%ErrorStatus=5
   RETURN
 ELSE
@@ -490,9 +492,9 @@ DO I=1,MaxRow-1
   Q=Q+(Values(I+1,1)-Values(I,1))*(Values(I+1,2)+Values(I,2))/2.
 END DO
 
-IntegralValuesAreEqual=EQUALTOTOLERANCE( Q                                     ,&
-                                         Examples(iExample)%IntegrateLineValue ,&
-                                         5.e-2                                 )
+IntegralValuesAreEqual=AlmostEqualToTolerance( Q                                     ,&
+                                               Examples(iExample)%IntegrateLineValue ,&
+                                               5.e-2                                 )
 IF(.NOT.IntegralValuesAreEqual)THEN
   IntegralCompare=1
   SWRITE(UNIT_stdOut,'(A)')         ' IntegrateLines do not match! Error in computation!'
@@ -506,5 +508,252 @@ ELSE
 END IF
 
 END SUBROUTINE IntegrateLine
+
+
+!==================================================================================================================================
+!> Read column number data from a file and integrates the values numerically
+!==================================================================================================================================
+SUBROUTINE CompareDatafileRow(DataCompare,iExample)
+! MODULES
+USE MOD_Globals
+USE MOD_Preproc
+USE MOD_RegressionCheck_Vars,  ONLY: Examples
+USE MOD_RegressionCheck_tools, ONLY: str2real
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN)             :: iExample
+INTEGER,INTENT(OUT)            :: DataCompare
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+CHARACTER(LEN=1)               :: Delimiter
+CHARACTER(LEN=255)             :: FileName
+CHARACTER(LEN=255),ALLOCATABLE :: ColumnHeaders(:)
+CHARACTER(LEN=10000)           :: temp1,temp2
+INTEGER                        :: iSTATUS,ioUnit,LineNumbers,I,HeaderLines,j,CurrentColumn,IndNum,MaxColumn!,K
+INTEGER                        :: IndFirstA,IndLastA,IndFirstB,IndLastB,EOL,MaxRow,K,ColumnNumber
+LOGICAL                        :: ExistFile,IndexNotFound,ReadHeaderLine,RowFound
+LOGICAL,ALLOCATABLE            :: ValuesAreEqual(:)
+REAL,ALLOCATABLE               :: Values(:),ValuesRef(:)
+INTEGER                        :: DimValues,DimValuesRef,DimColumnHeaders
+!==================================================================================================================================
+RowFound=.FALSE.
+DO K=1,2 ! open the data and reference file
+  ! check if output file with data for integration over line exists
+  SELECT CASE(K)
+  CASE(1) ! reference data file
+    Filename=TRIM(Examples(iExample)%PATH)//TRIM(Examples(iExample)%CompareDatafileRowRefFile)
+    ReadHeaderLine=Examples(iExample)%CompareDatafileRowReadHeader
+  CASE(2) ! newly created data file
+    Filename=TRIM(Examples(iExample)%PATH)//TRIM(Examples(iExample)%CompareDatafileRowFile)
+    ReadHeaderLine=.FALSE.
+  END SELECT
+!print*,""
+!print*,""
+!print*,"Filename=",Filename
+!read*
+  INQUIRE(File=Filename,EXIST=ExistFile)
+  IF(.NOT.ExistFile) THEN
+    SWRITE(UNIT_stdOut,'(A,A)')  ' CompareDatafileRow: reference state file does not exist! need ',TRIM(Filename)
+    Examples(iExample)%ErrorStatus=5
+    RETURN
+  ELSE
+    ioUnit=GETFREEUNIT()
+    OPEN(UNIT=ioUnit,FILE=TRIM(FileName),STATUS='OLD',IOSTAT=iSTATUS,ACTION='READ') 
+  END IF
+  ! init parameters for reading the data file
+  HeaderLines=Examples(iExample)%CompareDatafileRowHeaderLines
+  IF(HeaderLines.GE.Examples(iExample)%CompareDatafileRowNumber)CALL abort(&
+    __STAMP__&
+    ,'CompareDatafileRow: The number of header lines exceeds the number of the row for comparison!')
+  Delimiter=ADJUSTL(TRIM(Examples(iExample)%CompareDatafileRowDelimiter))
+  LineNumbers=0
+  DO 
+    READ(ioUnit,'(A)',IOSTAT=iSTATUS) temp1
+    IF(iSTATUS.EQ.-1) EXIT ! end of file (EOF) reached
+    temp2=ADJUSTL(temp1)
+    IF(INDEX(temp2,'!').GT.0)temp2=TRIM(temp2(1:INDEX(temp2,'!')-1)) ! if temp2 contains a '!', 
+                                                                     ! remove it and the following characters
+    LineNumbers=LineNumbers+1
+    IF((LineNumbers.EQ.1).AND.(ReadHeaderLine))THEN
+      ColumnNumber=0
+!print*,"K=",K,"ColumnNumber=",ColumnNumber
+!read*
+      CALL GetColumns(temp2,Delimiter,ColumnString=ColumnHeaders,Column=ColumnNumber)
+    ELSEIF(LineNumbers.EQ.Examples(iExample)%CompareDatafileRowNumber)THEN ! remove header lines
+      RowFound=.TRUE.
+      EXIT
+    END IF!IF(LineNumbers.GT.HeaderLines)
+  END DO ! DO [WHILE]
+
+  IF(ADJUSTL(TRIM(temp2)).NE.'')THEN ! if string is not empty
+    SELECT CASE(K)
+    CASE(1) ! reference data file
+!print*,"K=",K,"ColumnNumber=",ColumnNumber
+!read*
+      CALL GetColumns(temp2,Delimiter,ColumnReal=ValuesRef,Column=ColumnNumber)
+    CASE(2) ! newly created data file
+!print*,"K=",K,"ColumnNumber=",ColumnNumber
+!read*
+      CALL GetColumns(temp2,Delimiter,ColumnReal=Values   ,Column=ColumnNumber)
+    END SELECT
+  END IF
+  CLOSE(ioUnit)
+END DO ! K=1,2
+
+
+DimValues=SIZE(Values)
+DimValuesRef=SIZE(ValuesRef)
+IF(DimValues.NE.DimValuesRef)THEN ! dimensions of ref values and data file values is different
+  SWRITE(UNIT_stdOut,'(A,A)')&
+    ' CompareDatafileRow: reference and datafile vector "ValuesRef" and "Values" have different dimensions!' 
+  Examples(iExample)%ErrorStatus=5
+  RETURN
+END IF
+IF(ALLOCATED(ColumnHeaders).EQV..TRUE.)THEN
+  DimColumnHeaders=SIZE(ColumnHeaders)
+  IF(DimValues.NE.DimColumnHeaders)THEN
+    SWRITE(UNIT_stdOut,'(A,A)')&
+      ' CompareDatafileRow: Header line vector "ColumnHeaders" (1st line in ref file) and "Values" have different dimensions!' 
+    Examples(iExample)%ErrorStatus=5
+    RETURN
+  END IF
+ELSE
+  ALLOCATE(ColumnHeaders(1:DimValues))
+  ColumnHeaders='no header found'
+END IF
+!print*,"done"
+!print*,"ColumnNumber=",ColumnNumber
+!read*
+print*,""
+IF(ColumnNumber.GT.0)THEN
+  ALLOCATE(ValuesAreEqual(1:ColumnNumber))
+  ValuesAreEqual=.FALSE.
+  DO J=1,ColumnNumber
+    ValuesAreEqual(J)=AlmostEqualToTolerance(  Values(J)                                      ,&
+                                               ValuesRef(J)                                   ,&
+                                               Examples(iExample)%CompareDatafileRowTolerance)
+    IF(ValuesAreEqual(J).EQV..FALSE.)THEN
+      SWRITE(UNIT_stdOut,'(A)')         ' CompareDatafileRows mismatch: '//TRIM(ColumnHeaders(J))
+      SWRITE(UNIT_stdOut,'(A,E24.17)')  ' Value in Refernece            = ',ValuesRef(J)
+      SWRITE(UNIT_stdOut,'(A,E24.17)')  ' Value in data file            = ',Values(J)
+      SWRITE(UNIT_stdOut,'(A,E24.17)')  ' Tolerance                     = ',Examples(iExample)%CompareDatafileRowTolerance
+    END IF
+  END DO
+END IF
+IF(ANY(.NOT.ValuesAreEqual))THEN
+  DataCompare=1
+  SWRITE(UNIT_stdOut,'(A)')         ' CompareDatafileRows do not match! Error in computation!'
+  Examples(iExample)%ErrorStatus=5
+ELSE
+  DataCompare=0
+END IF
+
+!print*,"DataCompare=",DataCompare
+!stop "STOPPPP"
+
+END SUBROUTINE CompareDatafileRow
+
+!==================================================================================================================================
+!> Read column data from a supplied string InputString
+!==================================================================================================================================
+SUBROUTINE GetColumns(InputString,Delimiter,ColumnString,ColumnReal,Column)
+! MODULES
+USE MOD_Globals
+USE MOD_Preproc
+USE MOD_RegressionCheck_Vars,  ONLY: Examples
+USE MOD_RegressionCheck_tools, ONLY: str2real
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(INOUT),OPTIONAL                         :: Column
+CHARACTER(LEN=*),INTENT(INOUT)                      :: InputString
+CHARACTER(LEN=*),ALLOCATABLE,INTENT(INOUT),OPTIONAL :: ColumnString(:)
+REAL,ALLOCATABLE,INTENT(INOUT),OPTIONAL             :: ColumnReal(:)
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+CHARACTER(LEN=255),ALLOCATABLE :: ColumnStringLocal(:)
+CHARACTER(LEN=1)               :: Delimiter
+CHARACTER(LEN=255)             :: FileName
+CHARACTER(LEN=10000)           :: temp1
+INTEGER                        :: IndNumOld,ColumnNumber
+INTEGER                        :: iSTATUS,ioUnit,LineNumbers,I,HeaderLines,j,CurrentColumn,IndNum,MaxColumn!,K
+LOGICAL                        :: ExistFile,IndexNotFound,IntegralValuesAreEqual,RowFound,InquireColumns
+REAL,ALLOCATABLE               :: Values(:,:),Q
+!==================================================================================================================================
+!print*,"InputString=",TRIM(InputString)
+!print*,"Continue?"
+!read*
+IndNumOld=0
+IF(PRESENT(Column))THEN
+  IF(Column.GT.0)THEN
+    ! the number of columns in the string is pre-defined
+    ColumnNumber=Column
+    InquireColumns=.FALSE.
+  ELSE
+    InquireColumns=.TRUE.
+  END IF
+ELSE
+  InquireColumns=.TRUE.
+END IF
+IF(InquireColumns)THEN
+  ColumnNumber=1
+  ! inquire the number of columns in the string
+  IndNum=0
+  DO ! while IndNum.EQ.1
+    IndNum=IndNum+INDEX(TRIM(InputString(IndNum+1:LEN(InputString))),Delimiter)
+    IF(IndNum.LE.0)EXIT ! not found - exit
+    IF(IndNumOld.EQ.IndNum)EXIT ! EOL reached - exit
+    IndNumOld=IndNum
+    ColumnNumber=ColumnNumber+1
+  END DO ! while
+END IF
+!print*,"ColumnNumber=",ColumnNumber
+IF(PRESENT(Column))Column=ColumnNumber
+!print*,"Continue?"
+!read*
+IF(ADJUSTL(TRIM(InputString)).EQ.'')ColumnNumber=0 ! if InputString is empty, no ColumnNumber information can be extracted
+IF(ColumnNumber.GT.0)THEN
+  ALLOCATE(ColumnStringLocal(ColumnNumber))
+  ColumnStringLocal='' ! default
+  IndNum=0
+  DO J=1,ColumnNumber
+    IndNum=INDEX(TRIM(InputString(1:LEN(InputString))),Delimiter) ! for columns 1 to ColumnNumber-1
+    IF(J.EQ.ColumnNumber)IndNum=LEN(InputString)-1          ! for the last ColumnNumber
+    IF(IndNum.GT.0)THEN
+      ColumnStringLocal(J)=ADJUSTL(TRIM(InputString(1:IndNum-1)))
+      !print*,"ColumnStringLocal(",J,")=[",TRIM(ColumnStringLocal(J)),"]"
+      InputString=InputString(IndNum+1:LEN(InputString))
+    END IF
+  END DO
+END IF
+!print*,"Continue?"
+!read*
+
+IF(PRESENT(ColumnString))THEN
+  ALLOCATE(ColumnString(ColumnNumber))
+  ColumnString='' ! default
+  DO J=1,ColumnNumber
+    ColumnString(J)=ADJUSTL(TRIM(ColumnStringLocal(J)))
+    !print*,"ColumnString(",J,")=",ColumnString(J)
+  END DO
+!print*,"GetColumns DONE"
+!read*
+  RETURN
+END IF
+IF(PRESENT(ColumnReal))THEN
+  ALLOCATE(ColumnReal(ColumnNumber))
+  ColumnReal=0 ! default
+  DO J=1,ColumnNumber
+    CALL str2real(ColumnStringLocal(J),ColumnReal(J),iSTATUS) 
+    !print*,"ColumnReal(",J,")=",ColumnReal(J)
+  END DO
+!print*,"GetColumns DONE"
+!read*
+  RETURN
+END IF
+!print*,"GetColumns DONE"
+!read*
+END SUBROUTINE GetColumns
 
 END MODULE MOD_RegressionCheck_Compare
