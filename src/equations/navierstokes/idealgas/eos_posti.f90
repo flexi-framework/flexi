@@ -51,10 +51,6 @@ INTERFACE GetMaskGrad
   MODULE PROCEDURE GetMaskGrad
 END INTERFACE
 
-INTERFACE FillCopy
-  MODULE PROCEDURE FillCopy
-END INTERFACE
-
 INTERFACE FillPressure
   MODULE PROCEDURE FillPressure
 END INTERFACE
@@ -129,8 +125,8 @@ SUBROUTINE AppendNeededPrims(mapCalc,mapCalc_FV,nVarCalc)
 USE MOD_EOS_Posti_Vars
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
-INTEGER,INTENT(IN)      :: mapCalc(nVarTotal)
-INTEGER,INTENT(OUT)     :: mapCalc_FV(nVarTotal)
+INTEGER,INTENT(IN)      :: mapCalc(nVarTotalEOS)
+INTEGER,INTENT(OUT)     :: mapCalc_FV(nVarTotalEOS)
 INTEGER,INTENT(OUT)     :: nVarCalc
 !---------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -139,13 +135,13 @@ INTEGER           :: iVar
 mapCalc_FV = mapCalc
 DO iVar=1,PP_nVar
   IF (mapCalc(iVar).GT.0) THEN
-    mapCalc_FV = MAX(mapCalc_FV, DepTablePrimToCons(iVar,1:nVarTotal))
+    mapCalc_FV = MAX(mapCalc_FV, DepTablePrimToCons(iVar,1:nVarTotalEOS))
   END IF
 END DO
 
 ! renumerate mapCalc_FV
 nVarCalc   = 0
-DO iVar=1,nVarTotal
+DO iVar=1,nVarTotalEOS
   IF (mapCalc_FV(iVar).GT.0) THEN
     nVarCalc = nVarCalc + 1
     mapCalc_FV(iVar) = nVarCalc
@@ -154,36 +150,19 @@ END DO
 END SUBROUTINE AppendNeededPrims
 #endif
 
-SUBROUTINE GetVarnames(varnames,nVarAdd) 
-USE MOD_EOS_Posti_Vars
-! MODULES                                                                                                                          !
-IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
-CHARACTER(LEN=255),POINTER,INTENT(INOUT) :: varnames(:)
-INTEGER,INTENT(IN)                       :: nVarAdd
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-INTEGER           :: iVar
-!===================================================================================================================================
-CALL FillDepNames()
-ALLOCATE(varnames(1:nVarTotal+nVarAdd))
-DO iVar=1,nVarTotal
-  varnames(iVar) = DepNames(iVar) 
-END DO
-END SUBROUTINE GetVarnames
 
 FUNCTION GetMaskCons() 
 USE MOD_EOS_Posti_Vars
 USE MOD_Equation_Vars ,ONLY: StrVarNames
 USE MOD_StringTools   ,ONLY: STRICMP
 ! INPUT / OUTPUT VARIABLES 
-INTEGER :: GetMaskCons(nVarTotal)
+INTEGER :: GetMaskCons(nVarTotalEOS)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER :: iVar,iVar2
 !===================================================================================================================================
 GetMaskCons = 0
-DO iVar=1,nVarTotal
+DO iVar=1,nVarTotalEOS
   DO iVar2=1,PP_nVar
     IF (STRICMP(StrVarNames(iVar2),DepNames(iVar))) THEN
       GetMaskCons(iVar) = 1
@@ -192,18 +171,19 @@ DO iVar=1,nVarTotal
 END DO
 END FUNCTION GetMaskCons
 
+
 FUNCTION GetMaskPrim() 
 USE MOD_EOS_Posti_Vars
 USE MOD_Equation_Vars ,ONLY: StrVarNamesPrim
 USE MOD_StringTools   ,ONLY: STRICMP
 ! INPUT / OUTPUT VARIABLES 
-INTEGER :: GetMaskPrim(nVarTotal)
+INTEGER :: GetMaskPrim(nVarTotalEOS)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER :: iVar,iVar2
 !===================================================================================================================================
 GetMaskPrim = 0
-DO iVar=1,nVarTotal
+DO iVar=1,nVarTotalEOS
   DO iVar2=1,PP_nVarPrim
     IF (STRICMP(StrVarNamesPrim(iVar2),DepNames(iVar))) THEN
       GetMaskPrim(iVar) = 1
@@ -212,44 +192,20 @@ DO iVar=1,nVarTotal
 END DO
 END FUNCTION GetMaskPrim
 
-FUNCTION GetMaskGrad() 
+
+FUNCTION GetMaskGrad()
 USE MOD_EOS_Posti_Vars
-INTEGER :: GetMaskGrad(nVarTotal)
+INTEGER :: GetMaskGrad(nVarTotalEOS)
 !===================================================================================================================================
-GetMaskGrad = DepTable(:,0)
+GetMaskGrad = DepTableEOS(:,0)
 END FUNCTION GetMaskGrad
 
 
-PURE SUBROUTINE FillCopy(nVar,Nloc,nElems,U,nElems_calc,indices,Cons,iCons)
-!==================================================================================================================================
-! MODULES
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE 
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: nElems_calc
-INTEGER,INTENT(IN) :: indices(nElems_calc)
-INTEGER,INTENT(IN) :: Nloc
-INTEGER,INTENT(IN) :: nVar
-INTEGER,INTENT(IN) :: nElems
-INTEGER,INTENT(IN) :: iCons
-REAL,INTENT(IN)    :: U(nVar,0:Nloc,0:Nloc,0:Nloc,nElems)
-REAL,INTENT(OUT)   :: Cons( 0:Nloc,0:Nloc,0:Nloc,nElems_calc)
-!----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
-INTEGER         :: iElem,iElem_calc
-!==================================================================================================================================
-DO iElem_calc=1,nElems_calc
-  iElem = indices(iElem_calc)
-  Cons(:,:,:,iElem_calc) = U(iCons,:,:,:,iElem)
-END DO ! iElem
-END SUBROUTINE FillCopy
 
 SUBROUTINE FillPressure(nElems_calc,indices,Nloc,nElems,U,Pressure)
 !==================================================================================================================================
 ! MODULES
 USE MOD_Eos_Vars  ,ONLY: KappaM1
-! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -303,12 +259,12 @@ DO iElem=1,nElems
 END DO 
 END SUBROUTINE FillTemperature
 
-SUBROUTINE CalcQuantities(nVarCalc,Nloc,nElems_loc,iElems,mapCalc,UCalc,withGradients,maskCalc) 
+SUBROUTINE CalcQuantities(nVarCalc,Nloc,nElems_loc,iElems,mapCalc,UCalc,maskCalc) 
 ! MODULES
 USE MOD_Globals
-USE MOD_PreProc         ,ONLY: PP_N
-USE MOD_EOS_Posti_Vars  ,ONLY: nVarTotal,DepNames
-USE MOD_DG_Vars         ,ONLY: U,UPrim
+USE MOD_PreProc
+USE MOD_EOS_Posti_Vars
+USE MOD_DG_Vars         ,ONLY: UPrim
 USE MOD_Mesh_Vars       ,ONLY: nElems
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
@@ -317,94 +273,35 @@ INTEGER,INTENT(IN) :: nVarCalc
 INTEGER,INTENT(IN) :: Nloc
 INTEGER,INTENT(IN) :: nElems_loc
 INTEGER,INTENT(IN) :: iElems(nElems_loc)
-INTEGER,INTENT(IN) :: mapCalc(nVarTotal)
+INTEGER,INTENT(IN) :: mapCalc(nVarTotalEOS)
 REAL,INTENT(OUT)   :: UCalc(0:Nloc,0:Nloc,0:Nloc,1:nElems_loc,1:nVarCalc)
-LOGICAL,INTENT(IN) :: withGradients
-INTEGER,INTENT(IN),OPTIONAL :: maskCalc(nVarTotal)
+INTEGER,INTENT(IN) :: maskCalc(nVarTotalEOS)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: iVar,iVarCalc
-INTEGER            :: maskCons(nVarTotal)
-INTEGER            :: maskPrim(nVarTotal)
+INTEGER            :: maskPrim(nVarTotalEOS)
 !===================================================================================================================================
-maskCons = GetMaskCons()
 maskPrim = GetMaskPrim()
-DO iVar=1,nVarTotal
+DO iVar=1,nVarTotalEOS
   iVarCalc = mapCalc(iVar)
-  iVarCalc = MERGE(maskCalc(iVar)*iVarCalc, iVarCalc, PRESENT(maskCalc))
-  IF (iVarCalc.GT.0) THEN
+  IF (iVarCalc.GT.0 .AND. maskCalc(iVar).GT.0) THEN
     SWRITE(*,*) "  ",TRIM(DepNames(iVar))
-    IF (maskCons(iVar).GT.0) THEN
-      ! ATTENTION: The first 5 variables in DepTable must be the conservative ones
-      CALL FillCopy(PP_nVar,PP_N,nElems,U,nElems_loc,iElems,UCalc(:,:,:,:,iVarCalc),iVar)
-    ELSE IF(maskPrim(iVar).GT.0) THEN
-      IF (withGradients) THEN
-        ! ATTENTION: The following 5 variables in DepTable must be the primitive ones
-        CALL FillCopy(PP_nVarPrim,PP_N,nElems,UPrim,nElems_loc,iElems,UCalc(:,:,:,:,iVarCalc),iVar-5+1)
-      ELSE
-        CALL CalcPrimitiveQuantity(iVarCalc,DepNames(iVar),nVarCalc,Nloc,nElems_loc,iElems,mapCalc,UCalc)
-      END IF
-    ELSE
-      CALL CalcDerivedQuantity(iVarCalc,DepNames(iVar),nVarCalc,Nloc,nElems_loc,iElems,mapCalc,UCalc)
-    END IF
+    CALL CalcDerivedQuantity(iVarCalc,DepNames(iVar),nVarCalc,Nloc,nElems_loc,iElems,mapCalc,UCalc)
   END IF
 END DO
 END SUBROUTINE CalcQuantities
 
-SUBROUTINE CalcPrimitiveQuantity(iVarCalc,DepName,nVarCalc,Nloc,nElems_loc,iElems,mapCalc,UCalc)
-! MODULES
-USE MOD_PreProc         ,ONLY: PP_N
-USE MOD_EOS_Posti_Vars  ,ONLY: nVarTotal
-USE MOD_StringTools     ,ONLY: LowCase
-USE MOD_DG_Vars         ,ONLY: U
-USE MOD_Mesh_Vars       ,ONLY: nElems
-!----------------------------------------------------------------------------------------------------------------------------------!
-IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
-INTEGER,INTENT(IN)            :: iVarCalc
-CHARACTER(LEN=255),INTENT(IN) :: DepName
-INTEGER,INTENT(IN)            :: nVarCalc
-INTEGER,INTENT(IN)            :: Nloc
-INTEGER,INTENT(IN)            :: nElems_loc
-INTEGER,INTENT(IN)            :: iElems(nElems_loc)
-INTEGER,INTENT(IN)            :: mapCalc(nVarTotal)
-REAL,INTENT(OUT)              :: UCalc(0:Nloc,0:Nloc,0:Nloc,1:nElems_loc,1:nVarCalc)
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-INTEGER            :: iDens,iMom,iPres
-CHARACTER(LEN=255) :: DepName_low
-!===================================================================================================================================
-CALL LowCase(DepName,DepName_low)
-SELECT CASE(DepName_low)
-CASE("velocityx")
-  iDens = GETiCalc('density',mapCalc)
-  iMom  = GETiCalc('momentumx',mapCalc)
-  UCalc(:,:,:,:,iVarCalc) = UCalc(:,:,:,:,iMom) / UCalc(:,:,:,:,iDens)
-CASE("velocityy")
-  iDens = GETiCalc('density',mapCalc)
-  iMom  = GETiCalc('momentumy',mapCalc)
-  UCalc(:,:,:,:,iVarCalc) = UCalc(:,:,:,:,iMom) / UCalc(:,:,:,:,iDens)
-CASE("velocityz")
-  iDens = GETiCalc('density',mapCalc)
-  iMom  = GETiCalc('momentumz',mapCalc)
-  UCalc(:,:,:,:,iVarCalc) = UCalc(:,:,:,:,iMom) / UCalc(:,:,:,:,iDens)
-CASE("pressure")
-  CALL FillPressure(nElems_loc,iElems,PP_N,nElems,U,UCalc(:,:,:,:,iVarCalc))
-CASE("temperature")
-  iDens = GETiCalc("density",mapCalc)
-  iPres = GETiCalc("pressure",mapCalc)
-  CALL FillTemperature(nElems_loc,PP_N,UCalc(:,:,:,:,iDens),UCalc(:,:,:,:,iPres),UCalc(:,:,:,:,iVarCalc))
-END SELECT
-END SUBROUTINE CalcPrimitiveQuantity
 
 SUBROUTINE CalcDerivedQuantity(iVarCalc,DepName,nVarCalc,Nloc,nElems_loc,iElems,mapCalc,UCalc)
 ! MODULES
 #if PARABOLIC
-USE MOD_PreProc         ,ONLY: PP_N
+USE MOD_PreProc
 #endif
+USE MOD_EOS_Posti_Vars
 USE MOD_EOS_Vars        ,ONLY: cp,kappa,R,sKappaM1
-USE MOD_EOS_Posti_Vars  ,ONLY: nVarTotal
-USE MOD_StringTools     ,ONLY: LowCase
+USE MOD_StringTools     ,ONLY: LowCase,KEYVALUE
+USE MOD_Mesh_Vars       ,ONLY: nElems
+USE MOD_DG_Vars         ,ONLY: U
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
@@ -414,11 +311,11 @@ INTEGER,INTENT(IN)            :: nVarCalc
 INTEGER,INTENT(IN)            :: Nloc
 INTEGER,INTENT(IN)            :: nElems_loc
 INTEGER,INTENT(IN)            :: iElems(nElems_loc)
-INTEGER,INTENT(IN)            :: mapCalc(nVarTotal)
+INTEGER,INTENT(IN)            :: mapCalc(nVarTotalEOS)
 REAL,INTENT(OUT)              :: UCalc(0:Nloc,0:Nloc,0:Nloc,1:nElems_loc,1:nVarCalc)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: iDens,iPres,iVel1,iVel2,iVel3,iVelM,iVelS,iEner,iTemp
+INTEGER            :: iMom,iDens,iPres,iVel1,iVel2,iVel3,iVelM,iVelS,iEner,iTemp
 CHARACTER(LEN=255) :: DepName_low
 #if PARABOLIC
 INTEGER            :: iVor1,iVor2,iVor3,iVorM
@@ -428,40 +325,58 @@ REAL               :: Denominator
 !===================================================================================================================================
 CALL LowCase(DepName,DepName_low)
 SELECT CASE(DepName_low)
+  CASE("velocityx")
+    iDens = KEYVALUE(DepNames,mapCalc,'density'  )
+    iMom  = KEYVALUE(DepNames,mapCalc,'momentumx')
+    UCalc(:,:,:,:,iVarCalc) = UCalc(:,:,:,:,iMom) / UCalc(:,:,:,:,iDens)
+  CASE("velocityy")
+    iDens = KEYVALUE(DepNames,mapCalc,'density'  )
+    iMom  = KEYVALUE(DepNames,mapCalc,'momentumy')
+    UCalc(:,:,:,:,iVarCalc) = UCalc(:,:,:,:,iMom) / UCalc(:,:,:,:,iDens)
+  CASE("velocityz")
+    iDens = KEYVALUE(DepNames,mapCalc,'density'  )
+    iMom  = KEYVALUE(DepNames,mapCalc,'momentumz')
+    UCalc(:,:,:,:,iVarCalc) = UCalc(:,:,:,:,iMom) / UCalc(:,:,:,:,iDens)
+  CASE("pressure")
+    CALL FillPressure(nElems_loc,iElems,PP_N,nElems,U,UCalc(:,:,:,:,iVarCalc))
+  CASE("temperature")
+    iDens = KEYVALUE(DepNames,mapCalc,"density" )
+    iPres = KEYVALUE(DepNames,mapCalc,"pressure")
+    CALL FillTemperature(nElems_loc,PP_N,UCalc(:,:,:,:,iDens),UCalc(:,:,:,:,iPres),UCalc(:,:,:,:,iVarCalc))
   CASE("velocitymagnitude")
-    iVel1 = GETiCalc("velocityx",mapCalc)
-    iVel2 = GETiCalc("velocityy",mapCalc)
-    iVel3 = GETiCalc("velocityz",mapCalc)
+    iVel1 = KEYVALUE(DepNames,mapCalc,"velocityx")
+    iVel2 = KEYVALUE(DepNames,mapCalc,"velocityy")
+    iVel3 = KEYVALUE(DepNames,mapCalc,"velocityz")
     UCalc(:,:,:,:,iVarCalc) = SQRT(UCalc(:,:,:,:,iVel1)**2 + UCalc(:,:,:,:,iVel2)**2 + UCalc(:,:,:,:,iVel3)**2)
   CASE("velocitysound")
-    iDens = GETiCalc("density",mapCalc)
-    iPres = GETiCalc("pressure",mapCalc)
+    iDens = KEYVALUE(DepNames,mapCalc,"density" )
+    iPres = KEYVALUE(DepNames,mapCalc,"pressure")
     UCalc(:,:,:,:,iVarCalc) = SQRT(Kappa*UCalc(:,:,:,:,iPres)/UCalc(:,:,:,:,iDens))
   CASE("mach")
-    iVelM = GETiCalc("velocitymagnitude",mapCalc)
-    iVelS = GETiCalc("velocitysound",mapCalc)
+    iVelM = KEYVALUE(DepNames,mapCalc,"velocitymagnitude")
+    iVelS = KEYVALUE(DepNames,mapCalc,"velocitysound"    )
     UCalc(:,:,:,:,iVarCalc) = UCalc(:,:,:,:,iVelM)/UCalc(:,:,:,:,iVelS)
   CASE("energystagnation")
-    iDens = GETiCalc("density",mapCalc)
-    iEner = GETiCalc("energystagnationdensity",mapCalc)
+    iDens = KEYVALUE(DepNames,mapCalc,"density"                )
+    iEner = KEYVALUE(DepNames,mapCalc,"energystagnationdensity")
     UCalc(:,:,:,:,iVarCalc) = UCalc(:,:,:,:,iEner)/UCalc(:,:,:,:,iDens)
   CASE("enthalpystagnation")
-    iDens = GETiCalc("density",mapCalc)
-    iPres = GETiCalc("pressure",mapCalc)
-    iEner = GETiCalc("energystagnation",mapCalc)
+    iDens = KEYVALUE(DepNames,mapCalc,"density"         )
+    iPres = KEYVALUE(DepNames,mapCalc,"pressure"        )
+    iEner = KEYVALUE(DepNames,mapCalc,"energystagnation")
     UCalc(:,:,:,:,iVarCalc) = UCalc(:,:,:,:,iEner) + UCalc(:,:,:,:,iPres)/UCalc(:,:,:,:,iDens)
   CASE("entropy")
-    iDens = GETiCalc("density",mapCalc)
-    iTemp = GETiCalc("temperature",mapCalc)
+    iDens = KEYVALUE(DepNames,mapCalc,"density"    )
+    iTemp = KEYVALUE(DepNames,mapCalc,"temperature")
     UCalc(:,:,:,:,iVarCalc) = R*(sKappaM1*LOG(UCalc(:,:,:,:,iTemp))) - LOG(UCalc(:,:,:,:,iDens))
   CASE("totaltemperature")
-    iTemp = GETiCalc("temperature",mapCalc)
-    iVelM = GETiCalc("velocitymagnitude",mapCalc)
+    iTemp = KEYVALUE(DepNames,mapCalc,"temperature"      )
+    iVelM = KEYVALUE(DepNames,mapCalc,"velocitymagnitude")
     UCalc(:,:,:,:,iVarCalc) = UCalc(:,:,:,:,iTemp)+UCalc(:,:,:,:,iVelM)**2/(2*cp)
   CASE("totalpressure")
-    iDens = GETiCalc("density",mapCalc)
-    iPres = GETiCalc("pressure",mapCalc)
-    iVelM = GETiCalc("velocitymagnitude",mapCalc)
+    iDens = KEYVALUE(DepNames,mapCalc,"density"          )
+    iPres = KEYVALUE(DepNames,mapCalc,"pressure"         )
+    iVelM = KEYVALUE(DepNames,mapCalc,"velocitymagnitude")
     UCalc(:,:,:,:,iVarCalc) = UCalc(:,:,:,:,iPres)+0.5*UCalc(:,:,:,:,iDens)*UCalc(:,:,:,:,iVelM)**2
 #if PARABOLIC      
   CASE("vorticityx")
@@ -471,19 +386,19 @@ SELECT CASE(DepName_low)
   CASE("vorticityz")
     CALL FillVorticity(nElems_loc,iElems,PP_N,UCalc(:,:,:,:,iVarCalc),3)
   CASE("vorticitymagnitude")
-    iVor1 = GETiCalc("vorticityx",mapCalc)
-    iVor2 = GETiCalc("vorticityy",mapCalc)
-    iVor3 = GETiCalc("vorticityy",mapCalc)
+    iVor1 = KEYVALUE(DepNames,mapCalc,"vorticityx")
+    iVor2 = KEYVALUE(DepNames,mapCalc,"vorticityy")
+    iVor3 = KEYVALUE(DepNames,mapCalc,"vorticityy")
     UCalc(:,:,:,:,iVarCalc) = SQRT(UCalc(:,:,:,:,iVor1)**2 + UCalc(:,:,:,:,iVor2)**2 + UCalc(:,:,:,:,iVor3)**2)
   CASE("helicity")
-    iVel1 = GETiCalc("velocityx",mapCalc)
-    iVel2 = GETiCalc("velocityy",mapCalc)
-    iVel3 = GETiCalc("velocityz",mapCalc)
-    iVor1 = GETiCalc("vorticityx",mapCalc)
-    iVor2 = GETiCalc("vorticityy",mapCalc)
-    iVor3 = GETiCalc("vorticityy",mapCalc)
-    iVelM = GETiCalc("velocitymagnitude",mapCalc)
-    iVorM = GETiCalc("vorticitymagnitude",mapCalc)
+    iVel1 = KEYVALUE(DepNames,mapCalc,"velocityx" )
+    iVel2 = KEYVALUE(DepNames,mapCalc,"velocityy" )
+    iVel3 = KEYVALUE(DepNames,mapCalc,"velocityz" )
+    iVor1 = KEYVALUE(DepNames,mapCalc,"vorticityx")
+    iVor2 = KEYVALUE(DepNames,mapCalc,"vorticityy")
+    iVor3 = KEYVALUE(DepNames,mapCalc,"vorticityy")
+    iVelM = KEYVALUE(DepNames,mapCalc,"velocitymagnitude" )
+    iVorM = KEYVALUE(DepNames,mapCalc,"vorticitymagnitude")
     UCalc(:,:,:,:,iVarCalc) = SQRT( UCalc(:,:,:,:,iVor1)*UCalc(:,:,:,:,iVel1) &
         +UCalc(:,:,:,:,iVor2)*UCalc(:,:,:,:,iVel2) &
         +UCalc(:,:,:,:,iVor3)*UCalc(:,:,:,:,iVel3))
@@ -511,95 +426,56 @@ END SUBROUTINE CalcDerivedQuantity
 SUBROUTINE CalcConsFromPrim(mapCalc,nVarCalc,Nloc,nElems_loc,UCalc) 
 USE MOD_Globals    
 USE MOD_PreProc     
-USE MOD_EOS_Posti_Vars ,ONLY: nVarTotal,DepNames
+USE MOD_EOS_Posti_Vars
 USE MOD_EOS_Vars       ,ONLY: sKappaM1
-USE MOD_StringTools    ,ONLY: LowCase
-USE MOD_DG_Vars        ,ONLY: U,UPrim
+USE MOD_StringTools    ,ONLY: LowCase,KEYVALUE
 USE MOD_Posti_Vars     ,ONLY: nElems_FV,mapElems_FV
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
-INTEGER,INTENT(IN)          :: mapCalc(nVarTotal)
+INTEGER,INTENT(IN)          :: mapCalc(nVarTotalEOS)
 INTEGER,INTENT(IN)          :: nVarCalc
 INTEGER,INTENT(IN)          :: Nloc
 INTEGER,INTENT(IN)          :: nElems_loc
-REAL,INTENT(INOUT),OPTIONAL :: UCalc(0:Nloc,0:Nloc,0:Nloc,1:nElems_loc,1:nVarCalc)
+REAL,INTENT(INOUT)          :: UCalc(0:Nloc,0:Nloc,0:Nloc,1:nElems_loc,1:nVarCalc)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: iDens, iVel1, iVel2, iVel3, iPres, iTemp
 INTEGER            :: iVar,iVarCalc,iElem,iElem_FV
 CHARACTER(LEN=255) :: DepName_low
-INTEGER            :: mapCons(nVarTotal)
-INTEGER            :: maskCons(nVarTotal)
+INTEGER            :: mapCons(nVarTotalEOS)
+INTEGER            :: maskCons(nVarTotalEOS)
 !===================================================================================================================================
 ! check wether any cons-quantity is needed
 maskCons = GetMaskCons()
 mapCons = maskCons * mapCalc
 IF (SUM(mapCons).GT.0) THEN
-  IF (PRESENT(UCalc)) THEN! fill conservative in UCalc from UCalc
-    ! calculate all needed conservative variables
-    iDens = GETiCalc("density",mapCalc)
-    iVel1 = GETiCalc("velocityx",mapCalc)
-    iVel2 = GETiCalc("velocityy",mapCalc)
-    iVel3 = GETiCalc("velocityz",mapCalc)
-    iPres = GETiCalc("pressure",mapCalc)
-    iTemp = GETiCalc("temperature",mapCalc)
+  ! calculate all needed conservative variables
+  iDens = KEYVALUE(DepNames,mapCalc,"density"    )
+  iVel1 = KEYVALUE(DepNames,mapCalc,"velocityx"  )
+  iVel2 = KEYVALUE(DepNames,mapCalc,"velocityy"  )
+  iVel3 = KEYVALUE(DepNames,mapCalc,"velocityz"  )
+  iPres = KEYVALUE(DepNames,mapCalc,"pressure"   )
+  iTemp = KEYVALUE(DepNames,mapCalc,"temperature")
 
-    DO iVar=1,nVarTotal
-      IF (mapCons(iVar).GT.0) THEN
-        iVarCalc = mapCalc(iVar)
-        SWRITE(*,*) "  ", TRIM(DepNames(iVar)), " (NVisu_FV)"
-        CALL LowCase(DepNames(iVar),DepName_low)
-        SELECT CASE(DepName_low)
-        CASE("momentumx")
-          UCalc(:,:,:,:,iVarCalc) = UCalc(:,:,:,:,iDens)*UCalc(:,:,:,:,iVel1)
-        CASE("momentumy")
-          UCalc(:,:,:,:,iVarCalc) = UCalc(:,:,:,:,iDens)*UCalc(:,:,:,:,iVel2)
-        CASE("momentumz")
-          UCalc(:,:,:,:,iVarCalc) = UCalc(:,:,:,:,iDens)*UCalc(:,:,:,:,iVel3)
-        CASE("energystagnationdensity")
-          ! TODO: use a function from eos.f90
-          UCalc(:,:,:,:,iVarCalc) = sKappaM1*UCalc(:,:,:,:,iPres) + 0.5*UCalc(:,:,:,:,iDens)* &
-              (UCalc(:,:,:,:,iVel1)**2 + UCalc(:,:,:,:,iVel2)**2 + UCalc(:,:,:,:,iVel3)**2)
-        END SELECT
-      END IF
-    END DO
-  ELSE ! fill U from UPrim 
-    DO iVar=1,nVarTotal
-      IF (mapCons(iVar).GT.0) THEN
-        SWRITE(*,*) "  ", TRIM(DepNames(iVar)), " (PP_N)"
-        CALL LowCase(DepNames(iVar),DepName_low)
-        SELECT CASE(DepName_low)
-        CASE("density")
-          DO iElem_FV=1,nElems_FV
-            iElem = mapElems_FV(iElem_FV)
-            U(1,:,:,:,iElem) = UPrim(1,:,:,:,iElem)
-          END DO
-        CASE("momentumx")
-          DO iElem_FV=1,nElems_FV
-            iElem = mapElems_FV(iElem_FV)
-            U(2,:,:,:,iElem) = UPrim(1,:,:,:,iElem)*UPrim(2,:,:,:,iElem)
-          END DO
-        CASE("momentumy")
-          DO iElem_FV=1,nElems_FV
-            iElem = mapElems_FV(iElem_FV)
-            U(3,:,:,:,iElem) = UPrim(1,:,:,:,iElem)*UPrim(3,:,:,:,iElem)
-          END DO
-        CASE("momentumz")
-          DO iElem_FV=1,nElems_FV
-            iElem = mapElems_FV(iElem_FV)
-            U(4,:,:,:,iElem) = UPrim(1,:,:,:,iElem)*UPrim(4,:,:,:,iElem)
-          END DO
-        CASE("energystagnationdensity")
-          ! TODO: use a function from eos.f90
-          DO iElem_FV=1,nElems_FV
-            iElem = mapElems_FV(iElem_FV)
-            U(5,:,:,:,iElem) = sKappaM1*UPrim(5,:,:,:,iElem) + 0.5*UPrim(1,:,:,:,iElem)* &
-                (UPrim(2,:,:,:,iElem)**2 + UPrim(3,:,:,:,iElem)**2 + UPrim(4,:,:,:,iElem)**2)
-          END DO
-        END SELECT
-      END IF
-    END DO
-  END IF
+  DO iVar=1,nVarTotalEOS
+    IF (mapCons(iVar).GT.0) THEN
+      iVarCalc = mapCalc(iVar)
+      SWRITE(*,*) "  ", TRIM(DepNames(iVar)), " (NVisu_FV)"
+      CALL LowCase(DepNames(iVar),DepName_low)
+      SELECT CASE(DepName_low)
+      CASE("momentumx")
+        UCalc(:,:,:,:,iVarCalc) = UCalc(:,:,:,:,iDens)*UCalc(:,:,:,:,iVel1)
+      CASE("momentumy")
+        UCalc(:,:,:,:,iVarCalc) = UCalc(:,:,:,:,iDens)*UCalc(:,:,:,:,iVel2)
+      CASE("momentumz")
+        UCalc(:,:,:,:,iVarCalc) = UCalc(:,:,:,:,iDens)*UCalc(:,:,:,:,iVel3)
+      CASE("energystagnationdensity")
+        ! TODO: use a function from eos.f90
+        UCalc(:,:,:,:,iVarCalc) = sKappaM1*UCalc(:,:,:,:,iPres) + 0.5*UCalc(:,:,:,:,iDens)* &
+            (UCalc(:,:,:,:,iVel1)**2 + UCalc(:,:,:,:,iVel2)**2 + UCalc(:,:,:,:,iVel3)**2)
+      END SELECT
+    END IF
+  END DO
 END IF
 END SUBROUTINE CalcConsFromPrim
 #endif
@@ -762,23 +638,5 @@ END SUBROUTINE FillSchlieren
 #endif
 
 
-FUNCTION GETiCalc(varname,mapCalc) 
-USE MOD_EOS_Posti_Vars ,ONLY: nVarTotal,DepNames
-USE MOD_StringTools    ,ONLY: STRICMP
-! INPUT / OUTPUT VARIABLES
-CHARACTER(LEN=*),INTENT(IN) :: varname
-INTEGER,INTENT(IN)          :: mapCalc(nVarTotal)
-INTEGER                     :: GETiCalc
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-INTEGER :: iVar
-!===================================================================================================================================
-DO iVar=1,nVarTotal
-  IF (STRICMP(DepNames(iVar),varname)) THEN
-    GETiCalc = mapCalc(iVar)
-    RETURN
-  END IF
-END DO
-END FUNCTION GETiCalc
 
 END MODULE MOD_EOS_Posti

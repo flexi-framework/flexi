@@ -35,6 +35,12 @@ END INTERFACE
 PUBLIC:: CalcQuantities_ConvertToVisu_FV
 #endif
 
+INTERFACE FillCopy
+  MODULE PROCEDURE FillCopy
+END INTERFACE
+PUBLIC:: FillCopy
+
+
 CONTAINS
 
 !===================================================================================================================================
@@ -46,14 +52,37 @@ SUBROUTINE CalcQuantities_DG()
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Posti_Vars
-USE MOD_EOS_Posti           ,ONLY: CalcQuantities
+USE MOD_EOS_Posti      ,ONLY: CalcQuantities
+USE MOD_Mesh_Vars      ,ONLY: nElems
+USE MOD_DG_Vars        ,ONLY: U
+USE MOD_StringTools    ,ONLY: STRICMP
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER            :: iVar,iVar2,iVarCalc
+INTEGER            :: maskCalc(nVarTotal)
 !===================================================================================================================================
 ! calc DG solution 
 SWRITE(*,*) "[DG] calc quantities"
 SDEALLOCATE(UCalc_DG)
 ALLOCATE(UCalc_DG(0:PP_N,0:PP_N,0:PP_N,nElems_DG,1:nVarCalc))
-CALL CalcQuantities(nVarCalc,PP_N,nElems_DG,mapElems_DG,mapCalc,UCalc_DG,withGradients) 
+maskCalc=1
+
+! Copy exisiting variables from solution array
+DO iVar=1,nVarTotal
+  iVarCalc = mapCalc(iVar)
+  IF (iVarCalc.LT.1) CYCLE
+  DO iVar2=1,nVar_State
+    IF(STRICMP(VarNamesTotal(iVar),VarNamesHDF5(iVar2)))THEN
+      CALL FillCopy(nVar_State,PP_N,nElems,U,nElems_DG,mapElems_DG,UCalc_DG(:,:,:,:,iVarCalc),iVar2)
+      maskCalc(iVar)=0
+    END IF
+  END DO
+END DO
+
+IF(TRIM(FileType).EQ.'State')THEN
+  CALL CalcQuantities(nVarCalc,PP_N,nElems_DG,mapElems_DG,mapCalc,UCalc_DG,maskCalc) 
+END IF
 END SUBROUTINE CalcQuantities_DG
 
 
@@ -80,11 +109,10 @@ SUBROUTINE CalcQuantities_ConvertToVisu_FV()
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Posti_Vars
-USE MOD_EOS_Posti_Vars      ,ONLY: nVarTotal,DepNames
-USE MOD_EOS_Posti           ,ONLY: GetMaskCons,GetMaskPrim,GetMaskGrad
-USE MOD_EOS_Posti           ,ONLY: CalcQuantities
 USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_FV
+USE MOD_EOS_Posti           ,ONLY: CalcQuantities
 #if FV_RECONSTRUCT
+USE MOD_EOS_Posti           ,ONLY: GetMaskCons,GetMaskPrim,GetMaskGrad
 USE MOD_EOS_Posti           ,ONLY: AppendNeededPrims
 USE MOD_EOS_Posti           ,ONLY: CalcConsFromPrim
 USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_FV_Reconstruct
@@ -93,9 +121,9 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-#if FV_ENABLED && FV_RECONSTRUCT 
+INTEGER                      :: maskCalc(nVarTotal)
+#if FV_RECONSTRUCT 
 INTEGER                      :: maskCons(nVarTotal),maskPrim(nVarTotal),maskGrad(nVarTotal)
-INTEGER                      :: maskNonConsPrim(nVarTotal)
 INTEGER                      :: iVar
 #endif
 !===================================================================================================================================
@@ -111,7 +139,7 @@ INTEGER                      :: iVar
   SDEALLOCATE(UCalc_FV)
   ALLOCATE(UCalc_FV(0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV,1:nVarCalc_FV))
   SWRITE(*,*) "[FVRE] ConvertToVisu_FV_Reconstruct"
-  CALL ConvertToVisu_FV_Reconstruct() 
+  CALL ConvertToVisu_FV_Reconstruct()
 
   ! calculate all needed conservative variables on the visu grid
   SWRITE(*,*) "[FVRE] CalcConsFromPrim"
@@ -121,9 +149,9 @@ INTEGER                      :: iVar
   maskCons=GetMaskCons()
   maskPrim=GetMaskPrim()
   maskGrad=GetMaskGrad()
-  maskNonConsPrim = 1-MAX(MAX(maskCons,maskPrim),maskGrad)
+  maskCalc = 1-MAX(MAX(maskCons,maskPrim),maskGrad)
   SWRITE(*,*) "[FVRE] CalcQuantities (nonCons,nonPrim,nonGrad)"
-  CALL CalcQuantities(nVarCalc_FV,NVisu_FV,nElems_FV,mapElems_FV,mapCalc_FV,UCalc_FV,withGradients,maskNonConsPrim)
+  CALL CalcQuantities(nVarCalc_FV,NVisu_FV,nElems_FV,mapElems_FV,mapCalc_FV,UCalc_FV,maskCalc)
 
   ! copy cons, prim and all other non-grad quantities to the UVisu_FV array
   SWRITE(*,*) "[FVRE] copy all non-grad quantities to UVisu_FV"
@@ -131,7 +159,7 @@ INTEGER                      :: iVar
   ALLOCATE(UVisu_FV(0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV,nVarVisu+nVarVisu_ElemData))
   DO iVar=1,nVarTotal
     IF (mapVisu(iVar)*(1-maskGrad(iVar)).GT.0) THEN
-      SWRITE(*,*) "  ", TRIM(DepNames(iVar))
+      SWRITE(*,*) "  ", TRIM(VarNamesTotal(iVar))
       UVisu_FV(:,:,:,:,mapVisu(iVar)) = UCalc_FV(:,:,:,:,mapCalc_FV(iVar))
     END IF
   END DO
@@ -140,23 +168,49 @@ INTEGER                      :: iVar
   IF (SUM(maskGrad*mapCalc_FV).GT.0) THEN
     SDEALLOCATE(UCalc_FV)
     ALLOCATE(UCalc_FV(0:PP_N,0:PP_N,0:PP_N,nElems_FV,1:nVarCalc_FV))
-    SWRITE(*,*) "[FVRE] CalcConsFromPrim"
-    CALL CalcConsFromPrim(mapCalc_FV,0,0,0)
     SWRITE(*,*) "[FVRE] CalcQuantitiesWithGradients"
-    CALL CalcQuantities(nVarCalc,PP_N,nElems_FV,mapElems_FV,mapCalc_FV,UCalc_FV,withGradients,maskGrad) 
+    CALL CalcQuantities(nVarCalc,PP_N,nElems_FV,mapElems_FV,mapCalc_FV,UCalc_FV,maskGrad)
     SWRITE(*,*) "[FVRE] ConvertToVisu_FV"
     CALL ConvertToVisu_FV(mapCalc_FV,maskGrad,reallocate=.FALSE.)
   END IF
 #else
+  maskCalc=1
   ! calc FV solution 
   SDEALLOCATE(UCalc_FV)
   ALLOCATE(UCalc_FV(0:PP_N,0:PP_N,0:PP_N,nElems_FV,1:nVarCalc))
-  CALL CalcQuantities(nVarCalc,PP_N,nElems_FV,mapElems_FV,mapCalc,UCalc_FV,withGradients) 
+  CALL CalcQuantities(nVarCalc,PP_N,nElems_FV,mapElems_FV,mapCalc,UCalc_FV,withGradients,maskCalc) 
   ! convert FV solution to visu grid
   CALL ConvertToVisu_FV(mapCalc)
 #endif /* FV_RECONSTRUCT */
 END SUBROUTINE CalcQuantities_ConvertToVisu_FV
 
 #endif /* FV_ENABLED */
+
+
+!==================================================================================================================================
+!> Copies variable for given element range from source array to target array using VTK structure
+!==================================================================================================================================
+PURE SUBROUTINE FillCopy(nVar,Nloc,nElems,UIn,nElems_calc,indices,UOut,iVar)
+! MODULES
+IMPLICIT NONE 
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+INTEGER,INTENT(IN) :: nElems_calc
+INTEGER,INTENT(IN) :: indices(nElems_calc)
+INTEGER,INTENT(IN) :: Nloc
+INTEGER,INTENT(IN) :: nVar
+INTEGER,INTENT(IN) :: nElems
+INTEGER,INTENT(IN) :: iVar
+REAL,INTENT(IN)    :: UIn(nVar,0:Nloc,0:Nloc,0:Nloc,nElems)
+REAL,INTENT(OUT)   :: UOut(    0:Nloc,0:Nloc,0:Nloc,nElems_calc)
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES 
+INTEGER         :: iElem,iElem_calc
+!==================================================================================================================================
+DO iElem_calc=1,nElems_calc
+  iElem = indices(iElem_calc)
+  UOut(:,:,:,iElem_calc) = UIn(iVar,:,:,:,iElem)
+END DO ! iElem
+END SUBROUTINE FillCopy
 
 END MODULE MOD_Posti_Calc
