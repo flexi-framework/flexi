@@ -281,6 +281,7 @@ IF (ElemDataFound) THEN
   ! get size of ElemData array
   CALL GetDataSize(File_ID,'ElemData',nDims,HSize)
   nVarElemData=INT(HSize(1),4)
+  DEALLOCATE(HSize)
   ! read ElemData
   SDEALLOCATE(ElemData)
   ALLOCATE(ElemData(nVarElemData,nElems))

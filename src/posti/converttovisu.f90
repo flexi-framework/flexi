@@ -173,7 +173,7 @@ INTEGER             :: iVarCalc
 INTEGER             :: nVarPrim,iVarPrim
 INTEGER             :: mapUPrim(PP_nVarPrim)
 INTEGER             :: mapUCalc(PP_nVarPrim)
-INTEGER,ALLOCATABLE :: maskPrim(:)
+INTEGER             :: maskPrim(nVarTotal)
 !===================================================================================================================================
 ! Build local maps of maximal size PP_nVarPrim:
 ! - mapUCalc(1:nVarPrim) = indices of the nVarPrim primitive quantities that should be visualized in the UCalc_FV array
@@ -199,7 +199,6 @@ END DO
 SWRITE(*,*) "  nVarPrim", nVarPrim
 SWRITE(*,*) "  mapUPrim", mapUPrim(1:nVarPrim)
 SWRITE(*,*) "  mapUCalc", mapUCalc(1:nVarPrim)
-DEALLOCATE(maskPrim)
 
 
 DO iElem_FV=1,nElems_FV
