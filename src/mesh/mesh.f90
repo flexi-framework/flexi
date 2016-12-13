@@ -88,7 +88,7 @@ END SUBROUTINE DefineParametersMesh
 !> - compute the mesh metrics
 !> - provide mesh metrics for overintegration
 !==================================================================================================================================
-SUBROUTINE InitMesh(withoutMetrics,MeshFile_IN)
+SUBROUTINE InitMesh(meshMode,MeshFile_IN)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
@@ -98,7 +98,7 @@ USE MOD_Interpolation_Vars, ONLY:InterpolationInitIsDone
 USE MOD_Mesh_ReadIn,        ONLY:readMesh
 USE MOD_Prepare_Mesh,       ONLY:setLocalSideIDs,fillMeshInfo
 USE MOD_ReadInTools,        ONLY:GETLOGICAL,GETSTR,GETREAL,GETINT
-USE MOD_Metrics,            ONLY:CalcMetrics
+USE MOD_Metrics,            ONLY:BuildCoords,CalcMetrics
 USE MOD_DebugMesh,          ONLY:writeDebugMesh
 USE MOD_Mappings,           ONLY:buildMappings
 #if USE_MPI
@@ -111,8 +111,9 @@ USE MOD_IO_HDF5,            ONLY:AddToElemData
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-LOGICAL,INTENT(IN),OPTIONAL            :: withoutMetrics
-CHARACTER(LEN=255),INTENT(IN),OPTIONAL :: MeshFile_IN
+INTEGER,INTENT(IN) :: meshMode !< 0: only read and build Elem_xGP,
+                               !< 1: as 0 + build connectivity, 2: as 1 + calc metrics
+CHARACTER(LEN=255),INTENT(IN),OPTIONAL :: MeshFile_IN !< file name of mesh to be read
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL              :: x(3),meshScale
@@ -123,11 +124,8 @@ INTEGER           :: firstMasterSide     ! lower side ID of array U_master/gradU
 INTEGER           :: lastMasterSide      ! upper side ID of array U_master/gradUx_master...
 INTEGER           :: firstSlaveSide      ! lower side ID of array U_slave/gradUx_slave...
 INTEGER           :: lastSlaveSide       ! upper side ID of array U_slave/gradUx_slave...
-LOGICAL           :: withoutMetrics_loc
-LOGICAL           :: InterpolationInitIsDone_loc
 !==================================================================================================================================
-InterpolationInitIsDone_loc=MERGE(.TRUE.,InterpolationInitIsDone,PRESENT(withoutMetrics))
-IF((.NOT.InterpolationInitIsDone_loc).OR.MeshInitIsDone) THEN
+IF((.NOT.InterpolationInitIsDone).OR.MeshInitIsDone) THEN
   CALL CollectiveStop(__STAMP__,&
     'InitMesh not ready to be called or already called.')
 END IF
@@ -157,90 +155,6 @@ ENDIF
 
 CALL readMesh(MeshFile) !set nElems
 
-withoutMetrics_loc = MERGE(withoutMetrics, .FALSE., PRESENT(withoutMetrics))
-IF (.NOT.withoutMetrics_loc) THEN
-
-SWRITE(UNIT_stdOut,'(A)') "NOW CALLING setLocalSideIDs..."
-CALL setLocalSideIDs()
-
-#if USE_MPI
-! for MPI, we need to exchange flips, so that MINE MPISides have flip>0, YOUR MpiSides flip=0
-SWRITE(UNIT_stdOut,'(A)') "NOW CALLING exchangeFlip..."
-CALL exchangeFlip()
-#endif
-
-!RANGES
-!-----------------|-----------------|-------------------|
-!    U_master     | U_slave         |    FLUX           |
-!-----------------|-----------------|-------------------|
-!  BCsides        |                 |    BCSides        |
-!  InnerMortars   |                 |    InnerMortars   |
-!  InnerSides     | InnerSides      |    InnerSides     |
-!  MPI_MINE sides | MPI_MINE sides  |    MPI_MINE sides |
-!                 | MPI_YOUR sides  |    MPI_YOUR sides |
-!  MPIMortars     |                 |    MPIMortars     |
-!-----------------|-----------------|-------------------|
-
-firstBCSide          = 1
-firstMortarInnerSide = firstBCSide         +nBCSides
-firstInnerSide       = firstMortarInnerSide+nMortarInnerSides
-firstMPISide_MINE    = firstInnerSide      +nInnerSides
-firstMPISide_YOUR    = firstMPISide_MINE   +nMPISides_MINE
-firstMortarMPISide   = firstMPISide_YOUR   +nMPISides_YOUR
-
-lastBCSide           = firstMortarInnerSide-1
-lastMortarInnerSide  = firstInnerSide    -1
-lastInnerSide        = firstMPISide_MINE -1
-lastMPISide_MINE     = firstMPISide_YOUR -1
-lastMPISide_YOUR     = firstMortarMPISide-1
-lastMortarMPISide    = nSides
-
-
-firstMasterSide = 1
-lastMasterSide  = nSides
-firstSlaveSide  = firstInnerSide
-lastSlaveSide   = lastMPISide_YOUR
-nSidesMaster    = lastMasterSide-firstMasterSide+1
-nSidesSlave     = lastSlaveSide -firstSlaveSide+1
-
-LOGWRITE(*,*)'-------------------------------------------------------'
-LOGWRITE(*,'(A25,I8)')   'first/lastMasterSide     ', firstMasterSide,lastMasterSide
-LOGWRITE(*,'(A25,I8)')   'first/lastSlaveSide      ', firstSlaveSide, lastSlaveSide
-LOGWRITE(*,*)'-------------------------------------------------------'
-LOGWRITE(*,'(A25,I8,I8)')'first/lastBCSide         ', firstBCSide         ,lastBCSide
-LOGWRITE(*,'(A25,I8,I8)')'first/lastMortarInnerSide', firstMortarInnerSide,lastMortarInnerSide
-LOGWRITE(*,'(A25,I8,I8)')'first/lastInnerSide      ', firstInnerSide      ,lastInnerSide
-LOGWRITE(*,'(A25,I8,I8)')'first/lastMPISide_MINE   ', firstMPISide_MINE   ,lastMPISide_MINE
-LOGWRITE(*,'(A25,I8,I8)')'first/lastMPISide_YOUR   ', firstMPISide_YOUR   ,lastMPISide_YOUR
-LOGWRITE(*,'(A30,I8,I8)')'first/lastMortarMPISide  ', firstMortarMPISide  ,lastMortarMPISide
-LOGWRITE(*,*)'-------------------------------------------------------'
-
-! fill ElemToSide, SideToElem,BC
-ALLOCATE(ElemToSide(2,6,nElems))
-ALLOCATE(SideToElem(5,nSides))
-ALLOCATE(BC(1:nBCSides))
-ALLOCATE(AnalyzeSide(1:nSides))
-ElemToSide  = 0
-SideToElem  = -1   !mapping side to elem, sorted by side ID (for surfint)
-BC          = 0
-AnalyzeSide = 0
-
-!NOTE: nMortarSides=nMortarInnerSides+nMortarMPISides
-ALLOCATE(MortarType(2,1:nSides))              ! 1: Type, 2: Index in MortarInfo
-ALLOCATE(MortarInfo(MI_FLIP,4,nMortarSides)) ! [1]: 1: Neighbour sides, 2: Flip, [2]: small sides
-MortarType=-1
-MortarInfo=-1
-
-SWRITE(UNIT_stdOut,'(A)') "NOW CALLING fillMeshInfo..."
-CALL fillMeshInfo()
-
-! dealloacte pointers
-SWRITE(UNIT_stdOut,'(A)') "NOW CALLING deleteMeshPointer..."
-CALL deleteMeshPointer()
-
-! Build necessary mappings 
-CALL buildMappings(PP_N,V2S=V2S,V2S2=V2S2,S2V=S2V,S2V2=S2V2,S2V3=S2V3,CS2V2=CS2V2,FS2M=FS2M)
-
 ! if trees are available: compute metrics on tree level and interpolate to elements
 interpolateFromTree=.FALSE.
 IF(isMortarMesh) interpolateFromTree=GETLOGICAL('interpolateFromTree','.TRUE.')
@@ -254,7 +168,6 @@ ELSE
 ENDIF
 SWRITE(UNIT_StdOut,'(a3,a30,a3,i0)')' | ','Ngeo',' | ', Ngeo
 
-! ----- CONNECTIVITY IS NOW COMPLETE AT THIS POINT -----
 ! scale and deform mesh if desired (warning: no mesh output!)
 meshScale=GETREAL('meshScale','1.0')
 IF(ABS(meshScale-1.).GT.1e-14)&
@@ -269,49 +182,140 @@ IF(GETLOGICAL('meshdeform','.FALSE.'))THEN
   END DO
 END IF
 
-! volume data
-ALLOCATE(      Elem_xGP(3,0:PP_N,0:PP_N,0:PP_N,nElems))
-ALLOCATE(      dXCL_N(3,3,0:PP_N,0:PP_N,0:PP_N,nElems)) ! temp
-ALLOCATE(Metrics_fTilde(3,0:PP_N,0:PP_N,0:PP_N,nElems,0:FV_ENABLED))
-ALLOCATE(Metrics_gTilde(3,0:PP_N,0:PP_N,0:PP_N,nElems,0:FV_ENABLED))
-ALLOCATE(Metrics_hTilde(3,0:PP_N,0:PP_N,0:PP_N,nElems,0:FV_ENABLED))
-ALLOCATE(            sJ(  0:PP_N,0:PP_N,0:PP_N,nElems,0:FV_ENABLED))
-NGeoRef=3*NGeo ! build jacobian at higher degree
-ALLOCATE(    DetJac_Ref(1,0:NgeoRef,0:NgeoRef,0:NgeoRef,nElems))
+ALLOCATE(Elem_xGP(3,0:PP_N,0:PP_N,0:PP_N,nElems))
+CALL BuildCoords(Elem_xGP)
 
-! surface data
-ALLOCATE(      Face_xGP(3,0:PP_N,0:PP_N,0:FV_ENABLED,1:nSides))
-ALLOCATE(       NormVec(3,0:PP_N,0:PP_N,0:FV_ENABLED,1:nSides))
-ALLOCATE(      TangVec1(3,0:PP_N,0:PP_N,0:FV_ENABLED,1:nSides))
-ALLOCATE(      TangVec2(3,0:PP_N,0:PP_N,0:FV_ENABLED,1:nSides))
-ALLOCATE(      SurfElem(  0:PP_N,0:PP_N,0:FV_ENABLED,1:nSides))
-ALLOCATE(     Ja_Face(3,3,0:PP_N,0:PP_N,             1:nSides)) ! temp
+! Return if no connectivity and metrics are required (e.g. for visualization mode)
+IF (meshMode.GT.0) THEN
 
-
-! assign all metrics Metrics_fTilde,Metrics_gTilde,Metrics_hTilde
-! assign 1/detJ (sJ)
-! assign normal and tangential vectors and surfElems on faces
-
-! compute metrics using cross product instead of curl form (warning: no free stream preservation!)
-crossProductMetrics=GETLOGICAL('crossProductMetrics','.FALSE.')
-SWRITE(UNIT_stdOut,'(A)') "NOW CALLING calcMetrics..."
-CALL CalcMetrics()     ! DG metrics
-#if FV_ENABLED
-CALL InitFV_Metrics()  ! FV metrics
+  SWRITE(UNIT_stdOut,'(A)') "NOW CALLING setLocalSideIDs..."
+  CALL setLocalSideIDs()
+  
+#if USE_MPI
+  ! for MPI, we need to exchange flips, so that MINE MPISides have flip>0, YOUR MpiSides flip=0
+  SWRITE(UNIT_stdOut,'(A)') "NOW CALLING exchangeFlip..."
+  CALL exchangeFlip()
 #endif
+  
+  !RANGES
+  !-----------------|-----------------|-------------------|
+  !    U_master     | U_slave         |    FLUX           |
+  !-----------------|-----------------|-------------------|
+  !  BCsides        |                 |    BCSides        |
+  !  InnerMortars   |                 |    InnerMortars   |
+  !  InnerSides     | InnerSides      |    InnerSides     |
+  !  MPI_MINE sides | MPI_MINE sides  |    MPI_MINE sides |
+  !                 | MPI_YOUR sides  |    MPI_YOUR sides |
+  !  MPIMortars     |                 |    MPIMortars     |
+  !-----------------|-----------------|-------------------|
+  
+  firstBCSide          = 1
+  firstMortarInnerSide = firstBCSide         +nBCSides
+  firstInnerSide       = firstMortarInnerSide+nMortarInnerSides
+  firstMPISide_MINE    = firstInnerSide      +nInnerSides
+  firstMPISide_YOUR    = firstMPISide_MINE   +nMPISides_MINE
+  firstMortarMPISide   = firstMPISide_YOUR   +nMPISides_YOUR
+  
+  lastBCSide           = firstMortarInnerSide-1
+  lastMortarInnerSide  = firstInnerSide    -1
+  lastInnerSide        = firstMPISide_MINE -1
+  lastMPISide_MINE     = firstMPISide_YOUR -1
+  lastMPISide_YOUR     = firstMortarMPISide-1
+  lastMortarMPISide    = nSides
+  
+  
+  firstMasterSide = 1
+  lastMasterSide  = nSides
+  firstSlaveSide  = firstInnerSide
+  lastSlaveSide   = lastMPISide_YOUR
+  nSidesMaster    = lastMasterSide-firstMasterSide+1
+  nSidesSlave     = lastSlaveSide -firstSlaveSide+1
+  
+  LOGWRITE(*,*)'-------------------------------------------------------'
+  LOGWRITE(*,'(A25,I8)')   'first/lastMasterSide     ', firstMasterSide,lastMasterSide
+  LOGWRITE(*,'(A25,I8)')   'first/lastSlaveSide      ', firstSlaveSide, lastSlaveSide
+  LOGWRITE(*,*)'-------------------------------------------------------'
+  LOGWRITE(*,'(A25,I8,I8)')'first/lastBCSide         ', firstBCSide         ,lastBCSide
+  LOGWRITE(*,'(A25,I8,I8)')'first/lastMortarInnerSide', firstMortarInnerSide,lastMortarInnerSide
+  LOGWRITE(*,'(A25,I8,I8)')'first/lastInnerSide      ', firstInnerSide      ,lastInnerSide
+  LOGWRITE(*,'(A25,I8,I8)')'first/lastMPISide_MINE   ', firstMPISide_MINE   ,lastMPISide_MINE
+  LOGWRITE(*,'(A25,I8,I8)')'first/lastMPISide_YOUR   ', firstMPISide_YOUR   ,lastMPISide_YOUR
+  LOGWRITE(*,'(A30,I8,I8)')'first/lastMortarMPISide  ', firstMortarMPISide  ,lastMortarMPISide
+  LOGWRITE(*,*)'-------------------------------------------------------'
+  
+  ! fill ElemToSide, SideToElem,BC
+  ALLOCATE(ElemToSide(2,6,nElems))
+  ALLOCATE(SideToElem(5,nSides))
+  ALLOCATE(BC(1:nBCSides))
+  ALLOCATE(AnalyzeSide(1:nSides))
+  ElemToSide  = 0
+  SideToElem  = -1   !mapping side to elem, sorted by side ID (for surfint)
+  BC          = 0
+  AnalyzeSide = 0
+  
+  !NOTE: nMortarSides=nMortarInnerSides+nMortarMPISides
+  ALLOCATE(MortarType(2,1:nSides))              ! 1: Type, 2: Index in MortarInfo
+  ALLOCATE(MortarInfo(MI_FLIP,4,nMortarSides)) ! [1]: 1: Neighbour sides, 2: Flip, [2]: small sides
+  MortarType=-1
+  MortarInfo=-1
+  
+  SWRITE(UNIT_stdOut,'(A)') "NOW CALLING fillMeshInfo..."
+  CALL fillMeshInfo()
+  
+  ! dealloacte pointers
+  SWRITE(UNIT_stdOut,'(A)') "NOW CALLING deleteMeshPointer..."
+  CALL deleteMeshPointer()
+  
+  ! Build necessary mappings 
+  CALL buildMappings(PP_N,V2S=V2S,V2S2=V2S2,S2V=S2V,S2V2=S2V2,S2V3=S2V3,CS2V2=CS2V2,FS2M=FS2M)
+END IF
 
-DEALLOCATE(NodeCoords)
-DEALLOCATE(dXCL_N)
-DEALLOCATE(Ja_Face)
+IF (meshMode.GT.1) THEN
+
+  ! ----- CONNECTIVITY IS NOW COMPLETE AT THIS POINT -----
+  
+  ! volume data
+  ALLOCATE(      dXCL_N(3,3,0:PP_N,0:PP_N,0:PP_N,nElems)) ! temp
+  ALLOCATE(Metrics_fTilde(3,0:PP_N,0:PP_N,0:PP_N,nElems,0:FV_ENABLED))
+  ALLOCATE(Metrics_gTilde(3,0:PP_N,0:PP_N,0:PP_N,nElems,0:FV_ENABLED))
+  ALLOCATE(Metrics_hTilde(3,0:PP_N,0:PP_N,0:PP_N,nElems,0:FV_ENABLED))
+  ALLOCATE(            sJ(  0:PP_N,0:PP_N,0:PP_N,nElems,0:FV_ENABLED))
+  NGeoRef=3*NGeo ! build jacobian at higher degree
+  ALLOCATE(    DetJac_Ref(1,0:NgeoRef,0:NgeoRef,0:NgeoRef,nElems))
+  
+  ! surface data
+  ALLOCATE(      Face_xGP(3,0:PP_N,0:PP_N,0:FV_ENABLED,1:nSides))
+  ALLOCATE(       NormVec(3,0:PP_N,0:PP_N,0:FV_ENABLED,1:nSides))
+  ALLOCATE(      TangVec1(3,0:PP_N,0:PP_N,0:FV_ENABLED,1:nSides))
+  ALLOCATE(      TangVec2(3,0:PP_N,0:PP_N,0:FV_ENABLED,1:nSides))
+  ALLOCATE(      SurfElem(  0:PP_N,0:PP_N,0:FV_ENABLED,1:nSides))
+  ALLOCATE(     Ja_Face(3,3,0:PP_N,0:PP_N,             1:nSides)) ! temp
+  
+  
+  ! assign all metrics Metrics_fTilde,Metrics_gTilde,Metrics_hTilde
+  ! assign 1/detJ (sJ)
+  ! assign normal and tangential vectors and surfElems on faces
+  
+  ! compute metrics using cross product instead of curl form (warning: no free stream preservation!)
+  crossProductMetrics=GETLOGICAL('crossProductMetrics','.FALSE.')
+  SWRITE(UNIT_stdOut,'(A)') "NOW CALLING calcMetrics..."
+  CALL CalcMetrics()     ! DG metrics
+#if FV_ENABLED
+  CALL InitFV_Metrics()  ! FV metrics
+#endif
+  ! debugmesh: param specifies format to output, 0: no output, 1: tecplot ascii, 2: tecplot binary, 3: paraview binary
+  CALL WriteDebugMesh(GETINT('debugmesh','0'))
+
+END IF
+
+SDEALLOCATE(NodeCoords)
+SDEALLOCATE(dXCL_N)
+SDEALLOCATE(Ja_Face)
 SDEALLOCATE(TreeCoords)
 SDEALLOCATE(xiMinMax)
 SDEALLOCATE(ElemToTree)
 
-! debugmesh: param specifies format to output, 0: no output, 1: tecplot ascii, 2: tecplot binary, 3: paraview binary
-CALL WriteDebugMesh(GETINT('debugmesh','0'))
-
 CALL AddToElemData('myRank',IntScalar=myRank)
-END IF ! withoutMetrics_loc
 
 MeshInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT MESH DONE!'
