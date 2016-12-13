@@ -106,8 +106,17 @@ int visu3DReader::RequestInformation(vtkInformation *,
    outInfo->Set(vtkStreamingDemandDrivenPipeline::TIME_STEPS(), &Timesteps[0], Timesteps.size());
    outInfo->Set(vtkStreamingDemandDrivenPipeline::TIME_RANGE(), timeRange, 2);
 
+   // Change to directory of state file (path of mesh file is stored relative to path of state file)
+   char dir[511];
+   strcpy(dir, FileNames[0].c_str());
+   int ret = chdir(dirname(dir));
+   if (ret != 0 ) {
+      if(ProcessId == 0) std::cout << "dirfolder of statefile not found: " << dirname(dir) << " \n"; 
+   }
+
    // We take the first state file and use it to read the varnames
    if(ProcessId == 0) std::cout << "RequestInformation: State file: " << FileNames[0] << std::endl;
+
 
    int fcomm;
    fcomm = MPI_Comm_c2f(mpiComm);
@@ -224,7 +233,7 @@ int visu3DReader::FindClosestTimeStep(double requestedTimeValue)
 
 
    // Change to directory of state file (path of mesh file is stored relative to path of state file)
-   char dir[255];
+   char dir[511];
    strcpy(dir, FileNames[timestepToLoad].c_str());
    int ret = chdir(dirname(dir));
    if (ret != 0 ) {
