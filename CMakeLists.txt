@@ -541,8 +541,8 @@ ADD_DEPENDENCIES(flexi2vtk flexilib HDF5)
 # =========================================================================
 # Posti
 # =========================================================================
-add_exec(posti ./src/posti/posti.f90)
-ADD_DEPENDENCIES(posti flexilib HDF5)
+add_exec(posti_visu3D ./src/posti/posti_visu3D.f90)
+ADD_DEPENDENCIES(posti_visu3D flexilib HDF5)
 FIND_PACKAGE(ParaView)
 IF (ParaView_FOUND)
    INCLUDE(${PARAVIEW_USE_FILE})

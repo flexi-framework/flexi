@@ -17,7 +17,7 @@
 #ifndef VISU3D_PLUGIN_H
 #define VISU3D_PLUGIN_H
 
-#include "posti_pluginTypes.h"
+#include "pluginTypes_visu3D.h"
 
 extern "C" {
   extern void __mod_visu3d_MOD_visu3d_requestinformation(int* mpi_comm_IN, int* str_len, const char* state_file, struct CharARRAY* varnames);
