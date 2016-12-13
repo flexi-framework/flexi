@@ -476,7 +476,9 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
     UVisu_DG_2D = UVisu_DG(:,:,0:0,:,:)
     SDEALLOCATE(UVisu_FV_2D)
     ALLOCATE(UVisu_FV_2D(0:NVisu_FV,0:NVisu_FV,0:0,1:nElems_FV,1:(nVarVisu+nVarVisu_ElemData+nVarVisu_FieldData)))
+#if FV_ENABLED    
     UVisu_FV_2D = UVisu_FV(:,:,0:0,:,:)
+#endif
 
     CALL WriteDataToVTK_array(nVarVisu+nVarVisu_ElemData+nVarVisu_FieldData,NVisu   ,nElems_DG,valuesDG_out,UVisu_DG_2D,2)
     CALL WriteDataToVTK_array(nVarVisu+nVarVisu_ElemData+nVarVisu_FieldData,NVisu_FV,nElems_FV,valuesFV_out,UVisu_FV_2D,2)
@@ -501,7 +503,9 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
     CoordsVisu_DG_2D = CoordsVisu_DG(:,:,:,0:0,:)
     SDEALLOCATE(CoordsVisu_FV_2D)
     ALLOCATE(CoordsVisu_FV_2D(1:3,0:NVisu_FV,0:NVisu_FV,0:0,1:nElems_FV))
+#if FV_ENABLED    
     CoordsVisu_FV_2D = CoordsVisu_FV(:,:,:,0:0,:)
+#endif
 
     CALL WriteCoordsToVTK_array(NVisu   ,nElems_DG,coordsDG_out,nodeidsDG_out,&
         CoordsVisu_DG_2D,nodeids_DG_2D,dim=2,DGFV=0)
