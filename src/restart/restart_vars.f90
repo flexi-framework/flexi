@@ -32,8 +32,5 @@ LOGICAL            :: InterpolateSolution = .FALSE.   !< flag whether restart so
 CHARACTER(LEN=300) :: RestartFile =""                 !< name of restart file
 CHARACTER(LEN=255) :: NodeType_Restart                !< node type of restart file
 REAL               :: RestartTime                     !< time at which computation is resumed
-INTEGER            :: nVarElemData                    !< number of variables in the additional 'ElemData' array of the restart file
-REAL,ALLOCATABLE   :: ElemData(:,:)                   !< ElemData array of the restart file
-CHARACTER(LEN=255),ALLOCATABLE :: VarNamesElemData(:) !< VarNames of the ElemData array
 !==================================================================================================================================
 END MODULE MOD_Restart_Vars
