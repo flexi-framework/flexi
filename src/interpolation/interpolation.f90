@@ -93,19 +93,18 @@ END SUBROUTINE DefineParametersInterpolation
 !=================================================================================================================================
 !> Initialize interpolation. Call basis initialization and calculate Vandermonde matrices between NUnder/N/Over.
 !=================================================================================================================================
-SUBROUTINE InitInterpolation()
+SUBROUTINE InitInterpolation(NIn)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Interpolation_Vars
-USE MOD_ReadInTools,        ONLY:GETINT,GETLOGICAL,CountOption
+USE MOD_ReadInTools,        ONLY:GETINT,CountOption
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
-!input parameters
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN),OPTIONAL :: NIn
 !----------------------------------------------------------------------------------------------------------------------------------
-!output parameters
-!----------------------------------------------------------------------------------------------------------------------------------
-!local variables
+!LOCAL VARIABLES
 #if PP_N != N
 INTEGER :: Ntmp
 #endif
@@ -119,10 +118,18 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT INTERPOLATION...'
 
 ! Access ini-file
 #if PP_N == N
-PP_N = GETINT('N')
+IF(PRESENT(Nin))THEN
+  PP_N = NIn
+ELSE
+  PP_N = GETINT('N')
+END IF
 #else
-Ntmp=PP_N
-IF(CountOption('N').EQ.1) Ntmp=GETINT('N')
+IF(PRESENT(Nin))THEN
+  Ntmp = NIn
+ELSE
+  Ntmp=PP_N
+  IF(CountOption('N').EQ.1) Ntmp=GETINT('N')
+END IF
 IF(PP_N.NE.Ntmp) THEN
   CALL CollectiveStop(__STAMP__,&
   'N in ini-file is different from hard-compiled N in Flexi. Ini/Compiled:',Ntmp,REAL(PP_N))
