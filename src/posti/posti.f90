@@ -32,6 +32,10 @@ INTERFACE visu3d_requestInformation
   MODULE PROCEDURE visu3d_requestInformation
 END INTERFACE
 
+INTERFACE Visu3D_InitFile
+  MODULE PROCEDURE Visu3D_InitFile
+END INTERFACE
+
 INTERFACE visu3D
   MODULE PROCEDURE visu3D
 END INTERFACE
@@ -44,17 +48,19 @@ INTERFACE visu3d_dealloc_nodeids
   MODULE PROCEDURE visu3d_dealloc_nodeids
 END INTERFACE
 
-INTERFACE visu3D_finalize
-  MODULE PROCEDURE visu3D_finalize
+INTERFACE FinalizeVisu3D
+  MODULE PROCEDURE FinalizeVisu3D
 END INTERFACE
 
 PUBLIC:: visu3d_requestInformation
+PUBLIC:: visu3D_InitFile
 PUBLIC:: visu3D
 PUBLIC:: visu3D_CWrapper
 PUBLIC:: visu3d_dealloc_nodeids
-PUBLIC:: visu3D_finalize
+PUBLIC:: FinalizeVisu3D
 
 CONTAINS
+
 
 FUNCTION cstrToChar255(cstr, strlen) 
 USE ISO_C_BINDING
@@ -532,7 +538,7 @@ END SUBROUTINE visu3d_dealloc_nodeids
 !===================================================================================================================================
 !> Deallocate arrays used by visu3D.
 !===================================================================================================================================
-SUBROUTINE visu3D_finalize() 
+SUBROUTINE FinalizeVisu3D()
 USE MOD_Posti_Vars
 IMPLICIT NONE
 !===================================================================================================================================
@@ -549,14 +555,16 @@ SDEALLOCATE(mapElems_DG)
 SDEALLOCATE(mapElems_FV)
 SDEALLOCATE(FV_Elems_loc)
 
+SDEALLOCATE(ElemData)
+SDEALLOCATE(VarNames_ElemData)
 SDEALLOCATE(VarNamesVisu_ElemData)
 SDEALLOCATE(VarNamesVisu_ElemData_old)
 
 SDEALLOCATE(FieldData)
-SDEALLOCATE(VarNamesAddField)
+SDEALLOCATE(VarNames_FieldData)
 SDEALLOCATE(VarNamesVisu_FieldData)
 SDEALLOCATE(VarNamesVisu_FieldData_old)
-END SUBROUTINE visu3D_finalize
+END SUBROUTINE FinalizeVisu3D
 
 END MODULE MOD_Visu3D
 

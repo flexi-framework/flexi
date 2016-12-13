@@ -438,7 +438,7 @@ visu3DReader::~visu3DReader(){
    delete [] FileName;
 
    // Finalize the Posti tool (deallocate all arrays)
-   __mod_visu3d_MOD_visu3d_finalize();
+   __mod_visu3d_MOD_finalizevisu3d();
 
    this->VarDataArraySelection->Delete();
 }
