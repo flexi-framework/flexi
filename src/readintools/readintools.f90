@@ -1350,15 +1350,17 @@ SUBROUTINE FinalizeParameters()
 CLASS(link), POINTER         :: current, tmp
 !===================================================================================================================================
 
-current => prms%firstLink
-DO WHILE (associated(current%next))
-  DEALLOCATE(current%opt)
-  NULLIFY(current%opt)
-  tmp => current%next
-  DEALLOCATE(current)
-  NULLIFY(current)
-  current => tmp
-END DO
+if(associated(prms%firstlink))then
+  current => prms%firstLink
+  DO WHILE (associated(current%next))
+    DEALLOCATE(current%opt)
+    NULLIFY(current%opt)
+    tmp => current%next
+    DEALLOCATE(current)
+    NULLIFY(current)
+    current => tmp
+  END DO
+end if
 prms%firstLink => null()
 prms%lastLink  => null()
 END SUBROUTINE FinalizeParameters

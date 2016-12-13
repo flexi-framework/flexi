@@ -33,17 +33,12 @@ INTERFACE Restart
   MODULE PROCEDURE Restart
 END INTERFACE
 
-INTERFACE ReadElemData
-  MODULE PROCEDURE ReadElemData
-END INTERFACE
-
 INTERFACE FinalizeRestart
   MODULE PROCEDURE FinalizeRestart
 END INTERFACE
 
 PUBLIC :: InitRestart,FinalizeRestart
 PUBLIC :: Restart
-PUBLIC :: ReadElemData
 !==================================================================================================================================
 
 PUBLIC::DefineParametersRestart
@@ -165,7 +160,7 @@ USE MOD_DG_Vars,            ONLY: U
 USE MOD_Mesh_Vars,          ONLY: offsetElem,detJac_Ref,Ngeo
 USE MOD_Mesh_Vars,          ONLY: nElems
 USE MOD_ChangeBasis,        ONLY: ChangeBasis3D
-USE MOD_HDF5_input,         ONLY: OpenDataFile,CloseDataFile,ReadArray
+USE MOD_HDF5_Input,         ONLY: OpenDataFile,CloseDataFile,ReadArray,GetArrayAndName
 USE MOD_HDF5_Output,        ONLY: FlushFiles
 USE MOD_Interpolation,      ONLY: GetVandermonde
 USE MOD_ApplyJacobianCons,  ONLY: ApplyJacobianCons
@@ -187,14 +182,24 @@ REAL               :: JNR(1,0:N_Restart,0:N_Restart,0:N_Restart)
 REAL               :: Vdm_NRestart_N(0:PP_N,0:N_Restart)
 REAL               :: Vdm_3Ngeo_NRestart(0:N_Restart,0:3*NGeo)
 LOGICAL            :: doFlushFiles_loc
+#if FV_ENABLED
+INTEGER             :: nVal(15)
+REAL,ALLOCATABLE    :: ElemData(:,:),tmp(:)
+CHARACTER(LEN=255),ALLOCATABLE :: VarNamesElemData(:)
+#endif
 !==================================================================================================================================
 doFlushFiles_loc = MERGE(doFlushFiles, .TRUE., PRESENT(doFlushFiles))
 IF(DoRestart)THEN
   CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
-  CALL ReadElemData()
 #if FV_ENABLED  
+  ! Read FV element distribution and indicator values from elem data array if possible
+  CALL GetArrayAndName('ElemData','VarNamesAdd',nVal,tmp,VarNamesElemData)
+  ALLOCATE(ElemData(nVal(1),nVal(2)))
+  ElemData = RESHAPE(tmp,(/nVal(1),nVal(2)/))
   ! search for FV_Elems and IndValue
-  DO iVar=1,nVarElemData
+  FV_Elems=0
+  IndValue=0.
+  DO iVar=1,nVal(1)
     IF (STRICMP(VarNamesElemData(iVar),"FV_Elems")) THEN
       FV_Elems = INT(ElemData(iVar,:))
     END IF
@@ -202,6 +207,7 @@ IF(DoRestart)THEN
       IndValue = ElemData(iVar,:)
     END IF
   END DO
+  DEALLOCATE(ElemData,VarNamesElemData,tmp)
 #endif
   ! Read in state
   IF(.NOT. InterpolateSolution)THEN
@@ -264,34 +270,6 @@ ELSE
 END IF
 END SUBROUTINE Restart
 
-!===================================================================================================================================
-!> Reads the additional 'ElemData' array from the restart file.
-!===================================================================================================================================
-SUBROUTINE ReadElemData()
-! MODULES
-USE MOD_Restart_Vars ,ONLY: nVarElemData, ElemData, VarNamesElemData
-USE MOD_Mesh_Vars    ,ONLY: nElems,OffsetElem
-USE MOD_HDF5_Input   ,ONLY: GetDataSize,DatasetExists,ReadAttribute,File_ID,nDims,HSize,OpenDataFile,CloseDataFile,ReadArray
-IMPLICIT NONE
-LOGICAL  :: ElemDataFound
-!===================================================================================================================================
-CALL DatasetExists(File_ID, 'ElemData', ElemDataFound)
-nVarElemData = 0
-IF (ElemDataFound) THEN
-  ! get size of ElemData array
-  CALL GetDataSize(File_ID,'ElemData',nDims,HSize)
-  nVarElemData=INT(HSize(1),4)
-  DEALLOCATE(HSize)
-  ! read ElemData
-  SDEALLOCATE(ElemData)
-  ALLOCATE(ElemData(nVarElemData,nElems))
-  CALL ReadArray('ElemData',2,(/nVarElemData,nElems/),OffsetElem,2,RealArray=ElemData)
-  ! read variable names of additional data in ElemData
-  SDEALLOCATE(VarNamesElemData)
-  ALLOCATE(VarNamesElemData(nVarElemData))
-  CALL ReadAttribute(File_ID,'VarNamesAdd',nVarElemData,StrArray=VarNamesElemData)
-END IF
-END SUBROUTINE ReadElemData
 
 !==================================================================================================================================
 !> Finalizes variables necessary for restart subroutines
@@ -302,8 +280,6 @@ USE MOD_Restart_Vars
 IMPLICIT NONE
 !==================================================================================================================================
 RestartInitIsDone = .FALSE.
-SDEALLOCATE(ElemData)
-SDEALLOCATE(VarNamesElemData)
 END SUBROUTINE FinalizeRestart
 
 END MODULE MOD_Restart

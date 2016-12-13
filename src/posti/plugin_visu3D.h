@@ -39,7 +39,7 @@ extern "C" {
 }
 
 extern "C" {
-  extern void __mod_visu3d_MOD_visu3d_finalize();
+  extern void __mod_visu3d_MOD_finalizevisu3d();
 }
 
 #endif /* VISU3D_PLUGIN_H */

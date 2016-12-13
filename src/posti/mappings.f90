@@ -44,19 +44,15 @@ CONTAINS
 !>  3. build the mappings (mapElems_FV/DG) that hold the global indices of the FV/DG element indices.
 !>  4. check wether the distribution of FV elements has changed
 !===================================================================================================================================
-SUBROUTINE Build_FV_DG_distribution(statefile)
+SUBROUTINE Build_FV_DG_distribution()
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Posti_Vars
 USE MOD_ReadInTools ,ONLY: GETSTR,CountOption
 USE MOD_StringTools ,ONLY: STRICMP
 USE MOD_Mesh_Vars   ,ONLY: nElems
-#if FV_ENABLED
-USE MOD_Restart_Vars,ONLY: nVarElemData,ElemData,VarNamesElemData
-#endif
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
-CHARACTER(LEN=255),INTENT(IN) :: statefile
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER           :: iElem
@@ -71,8 +67,8 @@ ALLOCATE(FV_Elems_loc(1:nElems))
 NVisu_FV = (PP_N+1)*2-1
 
 FV_Elems_loc = 0
-DO iVar=1,nVarElemData
-  IF (STRICMP(VarNamesElemData(iVar),"FV_Elems")) THEN
+DO iVar=1,nVar_ElemData
+  IF (STRICMP(VarNames_ElemData(iVar),"FV_Elems")) THEN
     FV_Elems_loc = INT(ElemData(iVar,:))
   END IF
 END DO
@@ -104,7 +100,7 @@ END DO ! iElem
 
 #else 
 FV_Elems_loc = 0
-nElems_DG = nElems  
+nElems_DG = nElems
 nElems_FV = 0
 NVisu_FV = 0
 
@@ -152,9 +148,7 @@ USE MOD_Globals
 USE MOD_Posti_Vars
 USE MOD_ReadInTools     ,ONLY: GETSTR,CountOption
 USE MOD_StringTools     ,ONLY: STRICMP
-USE MOD_EOS_Posti_Vars  ,ONLY: nVarTotal,DepNames,DepTable
-USE MOD_EOS_Posti       ,ONLY: InitDepTable,FillDepTable
-USE MOD_Restart_Vars    ,ONLY: nVarElemData,VarNamesElemData
+USE MOD_EOS_Posti       ,ONLY: FillDepTable
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -164,42 +158,39 @@ CHARACTER(LEN=255)  :: VarName
 CHARACTER(LEN=20)   :: format
 LOGICAL             :: changedVarNames_ElemData,changedVarNames_FieldData
 !===================================================================================================================================
-! initialize the dependency table
-CALL InitDepTable()
-
 ! Read Varnames from parameter file and fill
 !   mapVisu = map, which stores at position x the position/index of the x.th quantity in the UVisu array
 !             if a quantity is not visualized it is zero
 SDEALLOCATE(mapVisu)
-ALLOCATE(mapVisu(1:nVarTotal))
 SDEALLOCATE(VarNamesVisu_ElemData)
-ALLOCATE(VarNamesVisu_ElemData(1:CountOption("VarName")))
 SDEALLOCATE(VarNamesVisu_FieldData)
-ALLOCATE(VarNamesVisu_FieldData(1:CountOption("VarName")))
+ALLOCATE(mapVisu(1:nVarTotal))
+ALLOCATE(VarNamesVisu_ElemData( nVarIni))
+ALLOCATE(VarNamesVisu_FieldData(nVarIni))
 mapVisu = 0
 nVarVisu = 0
 nVarVisu_ElemData = 0
 nVarVisu_FieldData = 0
 ! Compare varnames that should be visualized with availabe varnames
-DO iVar=1,CountOption("VarName")
-  VarName = GETSTR("VarName")
+DO iVar=1,nVarIni
+  VarName = VarNamesIni(iVar)
   ! Compare against conservative, primitve and derived varnames
   DO iVar2=1,nVarTotal
-    IF (STRICMP(VarName, DepNames(iVar2))) THEN
+    IF (STRICMP(VarName, VarNamesTotal(iVar2))) THEN
       mapVisu(iVar2) = nVarVisu+1
       nVarVisu = nVarVisu + 1
     END IF
   END DO
   ! Compare against additional elementwise varnames
-  DO iVar2=1,nVarElemData
-    IF (STRICMP(VarName, VarNamesElemData(iVar2))) THEN
+  DO iVar2=1,nVar_ElemData
+    IF (STRICMP(VarName, VarNames_ElemData(iVar2))) THEN
       nVarVisu_ElemData = nVarVisu_ElemData + 1
       VarNamesVisu_ElemData(nVarVisu_ElemData) = VarName
     END IF
   END DO
   ! Compare against additional pointwise varnames
-  DO iVar2=1,nVarFieldData
-    IF (STRICMP(VarName, VarNamesAddField(iVar2))) THEN
+  DO iVar2=1,nVar_FieldData
+    IF (STRICMP(VarName, VarNames_FieldData(iVar2))) THEN
       nVarVisu_FieldData = nVarVisu_FieldData + 1
       VarNamesVisu_FieldData(nVarVisu_FieldData) = VarName
     END IF
@@ -244,13 +235,13 @@ END DO
 ! quantities are computed in this operator, which can be used for calculation of other quantities
 ! directly. Therefore the dependecies of the primitive variables on the conservative variables 
 ! can be removed.
-CALL FillDepTable(withGradients)
+IF(calcDeps) CALL FillDepTable(DepTable,withGradients)
 
 ! print the dependecy table
 SWRITE(*,*) "Dependencies: ", withGradients
 WRITE(format,'(I2)') SIZE(DepTable,2)
 DO iVar=1,nVarTotal
-  SWRITE (*,'('//format//'I3,A)') DepTable(iVar,:), TRIM(DepNames(iVar))
+  SWRITE (*,'('//format//'I3,A)') DepTable(iVar,:), TRIM(VarNamesTotal(iVar))
 END DO
 
 ! Build :
@@ -289,5 +280,6 @@ SWRITE (*,'(A,'//format//'I3)') "mapCalc ",mapCalc
 SWRITE (*,'(A,'//format//'I3)') "mapVisu ",mapVisu
 
 END SUBROUTINE Build_mapCalc_mapVisu
+
 
 END MODULE MOD_Posti_Mappings

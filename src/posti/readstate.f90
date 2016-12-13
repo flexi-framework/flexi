@@ -36,13 +36,8 @@ INTERFACE ReadState
   MODULE PROCEDURE ReadState
 END INTERFACE
 
-INTERFACE ReadFieldData
-  MODULE PROCEDURE ReadFieldData
-END INTERFACE
-
 PUBLIC:: ReadStateAndGradients
 PUBLIC:: ReadState
-PUBLIC:: ReadFieldData
 
 CONTAINS
 
@@ -142,7 +137,7 @@ CALL InitRestart(statefile)
 
 IF (changedMeshFile.OR.changedWithGradients) THEN
   CALL FinalizeMesh()
-  CALL InitMesh(withoutMetrics=.FALSE.,MeshFile_IN=MeshFile)
+  CALL InitMesh(meshMode=2,MeshFile_IN=MeshFile)
 END IF
 
 CALL InitFilter()
@@ -175,7 +170,7 @@ END SUBROUTINE ReadStateAndGradients
 !> Read 'U' directly from a state file.
 !===================================================================================================================================
 SUBROUTINE ReadState(prmfile,statefile)
-! MODULES                                                                   
+! MODULES
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Posti_Vars
@@ -188,12 +183,14 @@ USE MOD_Mesh_Vars           ,ONLY: nElems,offsetElem
 USE MOD_HDF5_Input,          ONLY: OpenDataFile,ReadArray,CloseDataFile
 USE MOD_DG_Vars             ,ONLY: U
 USE MOD_EOS                 ,ONLY: DefineParametersEos,InitEOS
+USE MOD_Interpolation       ,ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 CHARACTER(LEN=255),INTENT(IN):: prmfile
 CHARACTER(LEN=255),INTENT(IN):: statefile
 ! LOCAL VARIABLES
 !===================================================================================================================================
+CALL FinalizeInterpolation()
 #if USE_MPI
 IF (changedMeshFile) THEN
   CALL FinalizeMPI()
@@ -203,6 +200,7 @@ END IF
 ! read options from parameter file
 CALL DefineParametersMPI()
 CALL DefineParametersIO_HDF5()
+CALL DefineParametersInterpolation()
 CALL DefineParametersMesh()
 CALL DefineParametersEOS()
 CALL prms%read_options(prmfile)
@@ -211,9 +209,10 @@ CALL prms%read_options(prmfile)
 CALL InitIOHDF5()
 CALL InitEOS()
 
+CALL InitInterpolation()
 IF (changedMeshFile) THEN
   CALL FinalizeMesh()
-  CALL InitMesh(withoutMetrics=.TRUE.,MeshFile_IN=MeshFile)
+  CALL InitMesh(meshMode=0,MeshFile_IN=MeshFile)
 END IF
 
 SDEALLOCATE(U)
@@ -224,39 +223,5 @@ CALL CloseDataFile()
 
 CALL FinalizeParameters()
 END SUBROUTINE ReadState
-
-!===================================================================================================================================
-!> Read additional pointwise data directly from a state file.
-!> Assumes that the state file is openend at the moment!
-!===================================================================================================================================
-SUBROUTINE ReadFieldData()
-! MODULES                                                                   
-USE MOD_Globals
-USE MOD_PreProc
-USE MOD_Posti_Vars   ,ONLY: FieldData,VarNamesAddField,nVarFieldData
-USE MOD_Mesh_Vars    ,ONLY: nElems,OffsetElem
-USE MOD_HDF5_Input   ,ONLY: GetDataSize,DatasetExists,ReadAttribute,File_ID,nDims,HSize,OpenDataFile,CloseDataFile,ReadArray
-IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
-! LOCAL VARIABLES
-LOGICAL  :: FieldDataFound
-!===================================================================================================================================
-CALL DatasetExists(File_ID, 'FieldData', FieldDataFound)
-nVarFieldData = 0
-IF (FieldDataFound) THEN
-  ! get size of FieldData array
-  CALL GetDataSize(File_ID,'FieldData',nDims,HSize)
-  nVarFieldData=INT(HSize(1),4)
-  ! read FieldData
-  SDEALLOCATE(FieldData)
-  ALLOCATE(FieldData(nVarFieldData,0:PP_N,0:PP_N,0:PP_N,nElems))
-  CALL ReadArray('FieldData',5,(/nVarFieldData,PP_N+1,PP_N+1,PP_N+1,nElems/),OffsetElem,5,RealArray=FieldData)
-  ! read variable names of additional data in FieldData
-  SDEALLOCATE(VarNamesAddField)
-  ALLOCATE(VarNamesAddField(nVarFieldData))
-  CALL ReadAttribute(File_ID,'VarNamesAddField',nVarFieldData,StrArray=VarNamesAddField)
-END IF
-
-END SUBROUTINE ReadFieldData
 
 END MODULE MOD_Posti_ReadState

@@ -70,7 +70,6 @@ USE MOD_Posti_Vars
 USE MOD_Interpolation      ,ONLY: GetVandermonde
 USE MOD_ChangeBasis        ,ONLY: ChangeBasis3D
 USE MOD_Interpolation_Vars ,ONLY: NodeType,NodeTypeVisu
-USE MOD_EOS_Posti_Vars     ,ONLY: nVarTotal
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -104,13 +103,13 @@ END SUBROUTINE ConvertToVisu_DG
 SUBROUTINE ConvertToVisu_FV(mapCalc,maskVisu,reallocate)
 USE MOD_Globals
 USE MOD_PreProc
+USE MOD_Posti_Vars         ,ONLY: nVarTotal,VarNamesTotal
 USE MOD_Posti_Vars         ,ONLY: mapVisu,UVisu_FV,nVarVisu,NVisu_FV,nElems_FV,UCalc_FV
 USE MOD_Posti_Vars         ,ONLY: nVarVisu_ElemData, nVarVisu_FieldData
 USE MOD_ReadInTools        ,ONLY: GETINT
 USE MOD_Interpolation      ,ONLY: GetVandermonde
 USE MOD_ChangeBasis        ,ONLY: ChangeBasis3D
 USE MOD_Interpolation_Vars ,ONLY: NodeType,NodeTypeVisu
-USE MOD_EOS_Posti_Vars     ,ONLY: nVarTotal,DepNames
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 INTEGER,INTENT(IN)          :: mapCalc(nVarTotal)
@@ -132,7 +131,7 @@ DO iVar=1,nVarTotal
   iVarVisu = mapVisu(iVar) 
   iVarVisu = MERGE(maskVisu(iVar)*iVarVisu, iVarVisu, PRESENT(maskVisu))
   IF (iVarVisu.GT.0) THEN
-    SWRITE(*,*) "    ", TRIM(DepNames(iVar))
+    SWRITE(*,*) "    ", TRIM(VarNamesTotal(iVar))
     iVarCalc = mapCalc(iVar) 
     DO iElem = 1,nElems_FV
       DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
@@ -162,7 +161,6 @@ USE MOD_FV_Vars            ,ONLY: FV_dx_XI_L,FV_dx_ETA_L,FV_dx_ZETA_L
 USE MOD_FV_Vars            ,ONLY: FV_dx_XI_R,FV_dx_ETA_R,FV_dx_ZETA_R
 USE MOD_EOS                ,ONLY: PrimToCons
 USE MOD_DG_Vars            ,ONLY: UPrim
-USE MOD_EOS_Posti_Vars     ,ONLY: nVarTotal
 USE MOD_EOS_Posti          ,ONLY: GetMaskPrim
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
@@ -255,7 +253,6 @@ SUBROUTINE ConvertToVisu_ElemData()
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Posti_Vars
-USE MOD_Restart_Vars       ,ONLY: nVarElemData,ElemData,VarNamesElemData
 USE MOD_StringTools        ,ONLY: STRICMP
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
@@ -264,10 +261,10 @@ IMPLICIT NONE
 INTEGER            :: iVarElemData,iVarVisu,iElem_DG,iElem_FV,iElem
 !===================================================================================================================================
 SWRITE(*,*) "Convert ElemData to Visu grid"
-DO iVarElemData=1,nVarElemData
+DO iVarElemData=1,nVar_ElemData
   DO iVarVisu=1,nVarVisu_ElemData
-    IF (STRICMP(VarNamesElemData(iVarElemData),VarNamesVisu_ElemData(iVarVisu))) THEN
-      SWRITE(*,*) "  ",TRIM(VarNamesElemData(iVarElemData))
+    IF (STRICMP(VarNames_ElemData(iVarElemData),VarNamesVisu_ElemData(iVarVisu))) THEN
+      SWRITE(*,*) "  ",TRIM(VarNames_ElemData(iVarElemData))
       DO iElem_DG=1,nElems_DG
         iElem = mapElems_DG(iElem_DG)
         UVisu_DG(:,:,:,iElem_DG,nVarVisu+iVarVisu) = ElemData(iVarElemData,iElem)
@@ -307,10 +304,10 @@ CALL GetVandermonde(PP_N,NodeType,NVisu_FV,NodeTypeVisuPosti,Vdm_N_NVisu_FV,moda
 ALLOCATE(Vdm_N_NVisu(0:NVisu,0:PP_N))
 CALL GetVandermonde(PP_N,NodeType,NVisu,NodeTypeVisuPosti,Vdm_N_NVisu,modal=.FALSE.)
 
-DO iVarFieldData=1,nVarFieldData
+DO iVarFieldData=1,nVar_FieldData
   DO iVarVisu=1,nVarVisu_FieldData
-    IF (STRICMP(VarNamesAddField(iVarFieldData),VarNamesVisu_FieldData(iVarVisu))) THEN
-      SWRITE(*,*) "  ",TRIM(VarNamesAddField(iVarFieldData))
+    IF (STRICMP(VarNames_FieldData(iVarFieldData),VarNamesVisu_FieldData(iVarVisu))) THEN
+      SWRITE(*,*) "  ",TRIM(VarNames_FieldData(iVarFieldData))
       DO iElem_DG=1,nElems_DG
         iElem = mapElems_DG(iElem_DG)
         CALL ChangeBasis3D(PP_N,NVisu,Vdm_N_NVisu,FieldData(iVarFieldData,:,:,:,iElem),&

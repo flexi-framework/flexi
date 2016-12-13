@@ -472,10 +472,9 @@ SUBROUTINE WriteVarnamesToVTK_array(nDep,mapVisu,varnames_out,components_out)
 USE ISO_C_BINDING
 ! MODULES
 USE MOD_Globals
-USE MOD_Posti_Vars     ,ONLY: nVarVisu,nVarVisu_ElemData,VarNamesVisu_ElemData,nVarVisu_FieldData,VarNamesVisu_FieldData
-USE MOD_Posti_Vars     ,ONLY: VarNamesAddField,nVarFieldData
-USE MOD_EOS_Posti_Vars ,ONLY: DepNames
-USE MOD_Restart_Vars   ,ONLY: nVarElemData,VarNamesElemData
+USE MOD_Posti_Vars     ,ONLY: VarNamesTotal,nVarVisu
+USE MOD_Posti_Vars     ,ONLY: nVarVisu_ElemData,VarNamesVisu_ElemData,nVarVisu_FieldData,VarNamesVisu_FieldData
+USE MOD_Posti_Vars     ,ONLY: VarNames_ElemData,nVar_ElemData,VarNames_FieldData,nVar_FieldData
 USE MOD_StringTools    ,ONLY: STRICMP
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -506,28 +505,28 @@ DO iVar=1,nDep
   IF (mapVisu(iVar).GT.0) THEN
     iVarVisu=iVarVisu+1
     DO i=1,255
-      VarNames_loc(i,iVarVisu) = DepNames(iVar)(i:i)
+      VarNames_loc(i,iVarVisu) = VarNamesTotal(iVar)(i:i)
     END DO
     components_loc(iVarVisu) = 1
   END IF
 END DO
 
-DO iVarElemData=1,nVarElemData
+DO iVarElemData=1,nVar_ElemData
   DO iVar=1,nVarVisu_ElemData
-    IF (STRICMP(VarNamesElemData(iVarElemData),VarNamesVisu_ElemData(iVar))) THEN
+    IF (STRICMP(VarNames_ElemData(iVarElemData),VarNamesVisu_ElemData(iVar))) THEN
       DO i=1,255
-        VarNames_loc(i,iVarVisu+iVar) = VarNamesElemData(iVarElemData)(i:i)
+        VarNames_loc(i,iVarVisu+iVar) = VarNames_ElemData(iVarElemData)(i:i)
       END DO
       components_loc(iVarVisu+iVar) = 1
     END IF
   END DO
 END DO
 
-DO iVarFieldData=1,nVarFieldData
+DO iVarFieldData=1,nVar_FieldData
   DO iVar=1,nVarVisu_FieldData
-    IF (STRICMP(VarNamesAddField(iVarFieldData),VarNamesVisu_FieldData(iVar))) THEN
+    IF (STRICMP(VarNames_FieldData(iVarFieldData),VarNamesVisu_FieldData(iVar))) THEN
       DO i=1,255
-        VarNames_loc(i,iVarVisu+nVarVisu_ElemData+iVar) = VarNamesAddField(iVarFieldData)(i:i)
+        VarNames_loc(i,iVarVisu+nVarVisu_ElemData+iVar) = VarNames_FieldData(iVarFieldData)(i:i)
       END DO
       components_loc(iVarVisu+nVarVisu_ElemData+iVar) = 1
     END IF
