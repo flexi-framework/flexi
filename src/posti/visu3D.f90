@@ -574,9 +574,23 @@ END SUBROUTINE visu3d_dealloc_nodeids
 !> Deallocate arrays used by visu3D.
 !===================================================================================================================================
 SUBROUTINE visu3D_finalize() 
+USE MOD_Globals
 USE MOD_Posti_Vars
 IMPLICIT NONE
 !===================================================================================================================================
+SWRITE (*,*) "VISU3D FINALIZE"
+prmfile_old = ""
+statefile_old = ""
+MeshFile = ""
+MeshFile_old = ""
+NodeTypeVisuPosti = "VISU"
+NodeTypeVisuPosti_old = ""
+NVisu     = -1
+NVisu_old = -1
+nVar_State_old = -1
+withGradients_old = .FALSE.
+hasFV_Elems = .FALSE.
+
 SDEALLOCATE(mapCalc)
 #if FV_ENABLED && FV_RECONSTRUCT
 SDEALLOCATE(mapCalc_FV)

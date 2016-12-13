@@ -59,7 +59,10 @@ IMPLICIT NONE
 CHARACTER(LEN=255),INTENT(IN) :: statefile
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER           :: iElem,iElem2,iVar
+INTEGER           :: iElem
+#if FV_ENABLED
+INTEGER           :: iElem2,iVar
+#endif
 INTEGER           :: nElems_FV_glob
 !===================================================================================================================================
 SDEALLOCATE(FV_Elems_loc)
@@ -88,7 +91,7 @@ DO iElem=1,nElems
   END IF
 END DO ! iElem
 
-! build the mapping, that holds the global indices of all FV elements
+! build the mapping, that holds the global indices of all DG elements
 SDEALLOCATE(mapElems_DG)
 ALLOCATE(mapElems_DG(1:nElems_DG))
 iElem2 =1
@@ -105,7 +108,7 @@ nElems_DG = nElems
 nElems_FV = 0
 NVisu_FV = 0
 
-! build the mapping, that holds the global indices of all FV elements
+! build the mapping, that holds the global indices of all DG elements
 SDEALLOCATE(mapElems_DG)
 ALLOCATE(mapElems_DG(1:nElems_DG))
 DO iElem=1,nElems
@@ -114,7 +117,7 @@ END DO
 #endif
 
 
-! check if the distribution of FV elements has changed
+! check if the distribution of DG/FV elements has changed
 changedFV_Elems=.TRUE.
 IF (ALLOCATED(FV_Elems_old).AND.(SIZE(FV_Elems_loc).EQ.SIZE(FV_Elems_old))) THEN
   changedFV_Elems = .NOT.ALL(FV_Elems_loc.EQ.FV_Elems_old) 
