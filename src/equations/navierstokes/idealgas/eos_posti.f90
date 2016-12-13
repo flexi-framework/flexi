@@ -28,10 +28,6 @@ PRIVATE
 ! Private Part ---------------------------------------------------------------------------------------------------------------------
 ! Public Part ----------------------------------------------------------------------------------------------------------------------
 
-INTERFACE InitDepTable
-  MODULE PROCEDURE InitDepTable
-END INTERFACE 
-
 INTERFACE FillDepTable
   MODULE PROCEDURE FillDepTable
 END INTERFACE
@@ -42,10 +38,6 @@ INTERFACE AppendNeededPrims
 END INTERFACE
 PUBLIC :: AppendNeededPrims
 #endif
-
-INTERFACE GetVarnames
-  MODULE PROCEDURE GetVarnames
-END INTERFACE
 
 INTERFACE GetMaskCons
   MODULE PROCEDURE GetMaskCons
@@ -82,10 +74,7 @@ END INTERFACE
 PUBLIC:: CalcConsFromPrim
 #endif
 
-
-PUBLIC :: InitDepTable
 PUBLIC :: FillDepTable
-PUBLIC :: GetVarnames
 PUBLIC :: GetMaskCons
 PUBLIC :: GetMaskPrim
 PUBLIC :: GetMaskGrad
@@ -95,180 +84,41 @@ PUBLIC :: CalcQuantities
 CONTAINS
 
 !==================================================================================================================================
-!> Build a table containing the information on which other variabels all variables depent.
-!==================================================================================================================================
-SUBROUTINE InitDepTable() 
-USE MOD_EOS_Posti_Vars
-IMPLICIT NONE
-!--------------------------------------------------------------------------------------------------------------------------------
-!LOCAL VARIABLES
-!================================================================================================================================
-                                        
-
-! ATTENTION: The first     5 variables must be the conservative ones
-!            The following 5 variables must be the primitive ones
-!                          E            
-!                          n            
-!                          e                 
-!                          r                 
-!                          g                 
-!                          y                    E              V
-!                          S            V       n              o
-!                          t            e     E t   T          r
-!                          a            l     n h   o          t
-!                          g            o     e a   t          i
-!                          n            c V   r l   a T        c
-!                          a            i e   g p   l o        i
-!                          t         T  t l   y y   T t        t
-!                          i         e  y o   S S   e a  V V V y     D Q
-!                G   M M M o V V V   m  M c   t t   m l  o o o M     i C S
-!                r   o o o n e e e P p  a i   a a   p P  r r r a H   l r c 
-!                a D m m m D l l l r e  g t   g g E e r  t t t g e L a i h  
-!                d e e e e e o o o e r  n y   n n n r e  i i i n l a t t l  
-!                i n n n n n c c c s a  i S   a a t a s  c c c i i m a e i  
-!                e s t t t s i i i s t  t o M t t r t s  i i i t c b t r e  
-!                n i u u u i t t t u u  u u a i i o u u  t t t u i d i i r  
-!                t t m m m t y y y r r  d n c o o p r r  y y y d t a o o e  
-!                s y X Y Z y X Y Z e e  e d h n n y e e  X Y Z e y 2 n n n  
-DepTable(1 ,:)=(/0,1,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! Density
-DepTable(2 ,:)=(/0,0,1,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! MomentumX
-DepTable(3 ,:)=(/0,0,0,1,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! MomentumY
-DepTable(4 ,:)=(/0,0,0,0,1,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! MomentumZ
-DepTable(5 ,:)=(/0,0,0,0,0,1,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! EnergyStagnationDensity
-DepTable(6 ,:)=(/0,1,1,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! VelocityX
-DepTable(7 ,:)=(/0,1,0,1,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! VelocityY
-DepTable(8 ,:)=(/0,1,0,0,1,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! VelocityZ
-DepTable(9 ,:)=(/0,1,1,1,1,1,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! Pressure
-DepTable(10,:)=(/0,1,0,0,0,0,0,0,0,1,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! Temperature
-                                                         
-DepTable(11,:)=(/0,0,0,0,0,0,1,1,1,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! VelocityMagnitude 
-DepTable(12,:)=(/0,1,0,0,0,0,0,0,0,1,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! VelocitySound     
-DepTable(13,:)=(/0,0,0,0,0,0,0,0,0,0,0, 1,1,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! Mach              
-DepTable(14,:)=(/0,1,0,0,0,1,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! EnergyStagnation  
-DepTable(15,:)=(/0,1,0,0,0,0,0,0,0,1,0, 0,0,0,1,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! EnthalpyStagnation
-DepTable(16,:)=(/0,1,0,0,0,0,0,0,0,0,1, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! Entropy           
-DepTable(17,:)=(/0,0,0,0,0,0,0,0,0,0,1, 1,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! TotalTemperature  
-DepTable(18,:)=(/0,1,0,0,0,0,0,0,0,1,0, 1,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! TotalPressure     
-#if PARABOLIC                                                         
-DepTable(19,:)=(/1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! VorticityX
-DepTable(20,:)=(/1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! VorticityY
-DepTable(21,:)=(/1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! VorticityZ
-DepTable(22,:)=(/1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 1,1,1,0,0,0,0,0,0 /) ! VorticityMagnitude
-DepTable(23,:)=(/1,0,0,0,0,0,1,1,1,0,0, 1,0,0,0,0,0,0,0, 1,1,1,1,0,0,0,0,0 /) ! Helicity
-DepTable(24,:)=(/1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! Lambda2
-DepTable(25,:)=(/1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! Dilatation
-DepTable(26,:)=(/1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! QCriterion
-DepTable(27,:)=(/1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0 /) ! Schlieren
-#endif
-
-CALL FillDepNames()
-
-#if FV_ENABLED && FV_RECONSTRUCT
-!                                    E            
-!                                    n            
-!                                    e                 
-!                                    r                 
-!                                    g                 
-!                                    y          
-!                                    S          
-!                                    t          
-!                                    a          
-!                                    g          
-!                                    n          
-!                                    a          
-!                                    t         T
-!                                    i         e
-!                          G   M M M o V V V   m
-!                          r   o o o n e e e P p 
-!                          a D m m m D l l l r e  
-!                          d e e e e e o o o e r  
-!                          i n n n n n c c c s a  
-!                          e s t t t s i i i s t  
-!                          n i u u u i t t t u u  
-!                          t t m m m t y y y r r  
-!                          s y X Y Z y X Y Z e e  
-DepTablePrimToCons(1 ,:)=(/0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0/) ! Density
-DepTablePrimToCons(2 ,:)=(/0,1,0,0,0,0,1,0,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0/) ! MomentumX
-DepTablePrimToCons(3 ,:)=(/0,1,0,0,0,0,0,1,0,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0/) ! MomentumY
-DepTablePrimToCons(4 ,:)=(/0,1,0,0,0,0,0,0,1,0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0/) ! MomentumZ
-DepTablePrimToCons(5 ,:)=(/0,1,0,0,0,0,1,1,1,1,0, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0/) ! EnergyStagnationDensity
-#endif
-END SUBROUTINE InitDepTable  
-
-!==================================================================================================================================
-!> Build an array containing all available variable names.
-!==================================================================================================================================
-SUBROUTINE FillDepNames() 
-USE MOD_EOS_Posti_Vars
-IMPLICIT NONE
-!===================================================================================================================================
-DepNames(1 ) = "Density"
-DepNames(2 ) = "MomentumX"
-DepNames(3 ) = "MomentumY"
-DepNames(4 ) = "MomentumZ"
-DepNames(5 ) = "EnergyStagnationDensity"
-DepNames(6 ) = "VelocityX"
-DepNames(7 ) = "VelocityY"
-DepNames(8 ) = "VelocityZ"
-DepNames(9 ) = "Pressure"
-DepNames(10) = "Temperature"
-DepNames(11) = "VelocityMagnitude" 
-DepNames(12) = "VelocitySound"     
-DepNames(13) = "Mach"              
-DepNames(14) = "EnergyStagnation"  
-DepNames(15) = "EnthalpyStagnation"
-DepNames(16) = "Entropy"           
-DepNames(17) = "TotalTemperature"  
-DepNames(18) = "TotalPressure"     
-#if PARABOLIC
-DepNames(19) = "VorticityX"
-DepNames(20) = "VorticityY"
-DepNames(21) = "VorticityZ"
-DepNames(22) = "VorticityMagnitude"
-DepNames(23) = "Helicity"
-DepNames(24) = "Lambda2"
-DepNames(25) = "Dilatation"
-DepNames(26) = "QCriterion"
-DepNames(27) = "Schlieren"
-#endif
-END SUBROUTINE FillDepNames
-
-!==================================================================================================================================
 !> Build the actual dependencies. If we call the DGTimeDerivative_weakForm, the primitive variables will be calculated
 !> in there and don't need to be computed from the conservative variables.
 !> Also, recursively add the dependencies of variabels that a variable depends on to the dependency of the first variable.
 !==================================================================================================================================
-SUBROUTINE FillDepTable(withGradients) 
+SUBROUTINE FillDepTable(DepTable_In,withGradients)
 USE MOD_EOS_Posti_Vars
 USE MOD_Equation_Vars ,ONLY: StrVarNames,StrVarNamesPrim
 USE MOD_StringTools   ,ONLY: STRICMP
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
-LOGICAL,INTENT(IN) :: withGradients
+INTEGER,INTENT(INOUT) :: DepTable_In(1:nVarTotalEOS,0:nVarTotalEOS)
+LOGICAL,INTENT(IN)    :: withGradients
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: iVar,ivar2,iVarPrim,nVar
+INTEGER            :: iVar,ivar2,iVarPrim
 !===================================================================================================================================
 ! if withGradients==True then the DGTimeDerivative_weakForm routine is called and the primitive
 ! quantities are computed in this operator, which can be used for calculation of other quantities
-! directly. Therefore the dependecies of the primitive variables on the conservative variables 
+! directly. Therefore the dependecies of the primitive variables on the conservative variables
 ! can be removed.
 IF (withGradients) THEN ! remove conservative from all prim variables
-  nVar = nVarTotal
-  DO iVar=1,nVar ; DO iVarPrim=1,PP_nVarPrim ! search prim
+  DO iVar=1,nVarTotalEOS ; DO iVarPrim=1,PP_nVarPrim ! search prim
     IF (STRICMP(StrVarNamesPrim(iVarPrim),DepNames(iVar))) THEN
-      DepTable(iVar,:)    = 0
-      DepTable(iVar,iVar) = 1
+      DepTable_In(iVar,:)    = 0
+      DepTable_In(iVar,iVar) = 1
     END IF
   END DO ; END DO
 END IF
 
 ! for each quantity copy from all quantities that this quantity depends on the dependencies.
-DO iVar=1,nVarTotal
-  DepTable(iVar,iVar) = 1
+DO iVar=1,nVarTotalEOS
+  DepTable_In(iVar,iVar) = 1
   DO iVar2=1,iVar-1
-    IF (DepTable(iVar,iVar2).EQ.1) THEN
-      DepTable(iVar,:) = MAX(DepTable(iVar,:), DepTable(iVar2,:))
+    IF (DepTable_In(iVar,iVar2).EQ.1) THEN
+      DepTable_In(iVar,:) = MAX(DepTable_In(iVar,:), DepTable_In(iVar2,:))
     END IF
   END DO
 END DO

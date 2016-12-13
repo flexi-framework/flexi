@@ -51,9 +51,6 @@ USE MOD_Posti_Vars
 USE MOD_ReadInTools ,ONLY: GETSTR,CountOption
 USE MOD_StringTools ,ONLY: STRICMP
 USE MOD_Mesh_Vars   ,ONLY: nElems
-#if FV_ENABLED
-USE MOD_Restart_Vars,ONLY: nVarElemData,ElemData,VarNamesElemData
-#endif
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=255),INTENT(IN) :: statefile
@@ -149,9 +146,7 @@ USE MOD_Globals
 USE MOD_Posti_Vars
 USE MOD_ReadInTools     ,ONLY: GETSTR,CountOption
 USE MOD_StringTools     ,ONLY: STRICMP
-USE MOD_EOS_Posti_Vars  ,ONLY: nVarTotal,DepNames,DepTable
-USE MOD_EOS_Posti       ,ONLY: InitDepTable,FillDepTable
-USE MOD_Restart_Vars    ,ONLY: nVarElemData,VarNamesElemData
+USE MOD_EOS_Posti       ,ONLY: FillDepTable
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -241,13 +236,13 @@ END DO
 ! quantities are computed in this operator, which can be used for calculation of other quantities
 ! directly. Therefore the dependecies of the primitive variables on the conservative variables 
 ! can be removed.
-CALL FillDepTable(withGradients)
+IF(calcDeps) CALL FillDepTable(DepTable,withGradients)
 
 ! print the dependecy table
 SWRITE(*,*) "Dependencies: ", withGradients
 WRITE(format,'(I2)') SIZE(DepTable,2)
 DO iVar=1,nVarTotal
-  SWRITE (*,'('//format//'I3,A)') DepTable(iVar,:), TRIM(DepNames(iVar))
+  SWRITE (*,'('//format//'I3,A)') DepTable(iVar,:), TRIM(VarNamesTotal(iVar))
 END DO
 
 ! Build :
@@ -286,5 +281,6 @@ SWRITE (*,'(A,'//format//'I3)') "mapCalc ",mapCalc
 SWRITE (*,'(A,'//format//'I3)') "mapVisu ",mapVisu
 
 END SUBROUTINE Build_mapCalc_mapVisu
+
 
 END MODULE MOD_Posti_Mappings
