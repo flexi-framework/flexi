@@ -98,6 +98,10 @@ INTERFACE GetFileExtension
   MODULE PROCEDURE GetFileExtension
 END INTERFACE
 
+INTERFACE KEYVALUE
+  MODULE PROCEDURE KEYVALUE
+END INTERFACE
+
 PUBLIC :: LowCase
 PUBLIC :: STRICMP
 PUBLIC :: StripSpaces
@@ -106,6 +110,7 @@ PUBLIC :: ISINT
 PUBLIC :: set_formatting
 PUBLIC :: clear_formatting
 PUBLIC :: GetFileExtension
+PUBLIC :: KEYVALUE
 
 LOGICAL :: use_escape_codes = .TRUE.  !< If set to .FALSE., output will consist only of standard text, allowing the 
                                       !< escape characters to be switched off in environments which don't support them.
@@ -414,5 +419,28 @@ iExt=INDEX(filename,'.',BACK = .TRUE.) ! Position of file extension
 ALLOCATE(CHARACTER(LEN_TRIM(filename) - iExt) :: GetFileExtension)
 GetFileExtension = filename(iExt+1:LEN_TRIM(filename))
 END FUNCTION GetFileExtension
+
+!==================================================================================================================================
+!> Retrieves value from key-value pairs stored as arrays
+!==================================================================================================================================
+FUNCTION KEYVALUE(keys,values,key)
+! INPUT / OUTPUT VARIABLES
+CHARACTER(LEN=255),INTENT(IN) :: keys(:)
+CHARACTER(LEN=*),INTENT(IN)   :: key
+INTEGER,INTENT(IN)            :: values(:)
+INTEGER                       :: KEYVALUE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER :: i
+!===================================================================================================================================
+IF (SIZE(keys,1).NE.SIZE(values,1)) STOP 'Key and value arrays have different size.'
+DO i=1,SIZE(keys,1)
+  IF (STRICMP(keys(i),key)) THEN
+    KEYVALUE = values(i)
+    RETURN
+  END IF
+END DO
+STOP 'Key not found'
+END FUNCTION KEYVALUE
 
 END MODULE MOD_StringTools
