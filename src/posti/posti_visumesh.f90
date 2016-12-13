@@ -54,7 +54,7 @@ USE MOD_Posti_Vars         ,ONLY: CoordsVisu_FV,changedMeshFile,changedFV_Elems
 USE MOD_Interpolation_Vars ,ONLY: NodeTypeVisu,NodeTypeFVEqui,NodeType
 USE MOD_Interpolation      ,ONLY: GetVandermonde
 USE MOD_ChangeBasis        ,ONLY: ChangeBasis3D
-USE MOD_Mesh_Vars          ,ONLY: nElems,NodeCoords,Elem_xGP,NGeo
+USE MOD_Mesh_Vars          ,ONLY: nElems,Elem_xGP
 IMPLICIT NONE
 LOGICAL,INTENT(IN) :: withGradients
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -69,17 +69,10 @@ CHARACTER(LEN=255) :: NodeType_loc
 INTEGER            :: Nloc
 REAL,POINTER       :: NodeCoords_loc(:,:,:,:,:)
 !===================================================================================================================================
-IF (withGradients) THEN
-  SWRITE(*,*) "  use Elem_xGP"
-  Nloc = PP_N
-  NodeType_loc = NodeType
-  NodeCoords_loc(1:3,0:Nloc,0:Nloc,0:Nloc,1:nElems) => Elem_xGP
-ELSE
-  SWRITE(*,*) "  use NodeCoords"
-  Nloc = NGeo
-  NodeType_loc = NodeTypeVisu
-  NodeCoords_loc(1:3,0:Nloc,0:Nloc,0:Nloc,1:nElems) => NodeCoords
-END IF
+! Always use Elem_xGP for visualization in case TreeMappings are used or N<NGeo
+Nloc = PP_N
+NodeType_loc = NodeType
+NodeCoords_loc(1:3,0:Nloc,0:Nloc,0:Nloc,1:nElems) => Elem_xGP
 
 ! Convert coordinates to visu grid
 SWRITE (*,*) "[MESH] Convert coordinates to visu grid (DG)"
@@ -127,14 +120,14 @@ SUBROUTINE VisualizeMesh(postifile,meshfile_in,coordsDG_out,valuesDG_out,nodeids
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Posti_Vars
-USE MOD_ReadInTools         ,ONLY: prms,GETINT
-USE MOD_ReadInTools         ,ONLY: FinalizeParameters
-USE MOD_MPI                 ,ONLY: FinalizeMPI
-USE MOD_Interpolation_Vars  ,ONLY: NodeTypeVisu
-USE MOD_Interpolation       ,ONLY: DefineParametersInterpolation,InitInterpolation
-USE MOD_Mesh_Vars           ,ONLY: nElems,Ngeo
-USE MOD_Mesh                ,ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
-USE MOD_VTK                 ,ONLY: WriteCoordsToVTK_array
+USE MOD_ReadInTools   ,ONLY: prms,GETINT
+USE MOD_ReadInTools   ,ONLY: FinalizeParameters
+USE MOD_MPI           ,ONLY: FinalizeMPI
+USE MOD_Interpolation ,ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
+USE MOD_Mesh_Vars     ,ONLY: nElems,Ngeo
+USE MOD_Mesh          ,ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
+USE MOD_VTK           ,ONLY: WriteCoordsToVTK_array
+USE MOD_HDF5_Input    ,ONLY: ReadAttribute,File_ID,OpenDataFile,CloseDataFile
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 CHARACTER(LEN=255),INTENT(IN):: postifile
@@ -154,22 +147,27 @@ INTEGER             :: iElem
 CALL FinalizeMPI()
 #endif
 CALL FinalizeMesh()
+CALL FinalizeInterpolation()
+
+CALL OpenDataFile(meshfile_in,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+CALL ReadAttribute(File_ID,'Ngeo',1,IntegerScalar=Ngeo)
+CALL CloseDataFile()
 
 IF (LEN_TRIM(postifile).GT.0) THEN
   ! read options from parameter file
+  CALL DefineParametersInterpolation()
   CALL DefineParametersMesh()
   CALL prms%SetSection("posti")
   CALL prms%CreateIntOption('NVisu', "Number of points at which solution is sampled for visualization.")
-  CALL prms%CreateIntOption('useCurveds', "")
   CALL prms%read_options(postifile)
-  NVisu = GETINT('NVisu')                    ! Degree of visualization basis
+  NVisu = GETINT('NVisu') ! Degree of visualization basis
 ELSE
-  NVisu = NGeo ! TODO: correct?
+  NVisu = 2*NGeo ! TODO: correct?
 END IF
 
 ! read mesh
-CALL InitMesh(withoutMetrics=.TRUE., MeshFile_IN=meshfile_in)
-
+CALL InitInterpolation(Ngeo)
+CALL InitMesh(meshMode=0, MeshFile_IN=meshfile_in)
 
 ! convert to visu grid
 nElems_DG = nElems
@@ -193,6 +191,7 @@ valuesFV_out%len  =0
 varnames_out%len  =0
 components_out%len=0
 
+CALL FinalizeInterpolation()
 CALL FinalizeParameters()
 END SUBROUTINE VisualizeMesh
 
