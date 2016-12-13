@@ -55,6 +55,7 @@ PUBLIC :: File_ID,HSize,nDims        ! Variables from MOD_IO_HDF5 that need to b
 PUBLIC :: OpenDataFile,CloseDataFile ! Subroutines from MOD_IO_HDF5 that need to be public
 PUBLIC :: ISVALIDHDF5FILE,ISVALIDMESHFILE,GetDataSize,GetDataProps,GetNextFileName
 PUBLIC :: ReadArray,ReadAttribute
+PUBLIC :: GetArrayAndName
 PUBLIC :: DatasetExists
 !==================================================================================================================================
 
@@ -331,6 +332,54 @@ SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE GetDataProps
 
 
+!===================================================================================================================================
+!> High level wrapper to ReadArray and ReadAttrib. Check if array exists and directly
+!> allocate, read array and attribs
+!> Assume that the array to be read is of size (nVar,.,.,.,.,nElems) and that an associated
+!> attribute containing the variable names exists
+!===================================================================================================================================
+SUBROUTINE GetArrayAndName(ArrayName,AttribName,nVal,Array,VarNames)
+! MODULES
+USE MOD_Globals
+USE MOD_Mesh_Vars    ,ONLY: nElems,nGlobalElems,OffsetElem
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+CHARACTER(LEN=*),INTENT(IN)     :: ArrayName   !< name of array to be read
+CHARACTER(LEN=*),INTENT(IN)     :: AttribName  !< name of varnames to be read
+INTEGER,INTENT(OUT)             :: nVal(15)    !< size of array
+REAL,ALLOCATABLE,INTENT(OUT)    :: Array(:)    !< array to be read
+CHARACTER(LEN=255),ALLOCATABLE,INTENT(OUT) :: VarNames(:) !< variable names
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+LOGICAL  :: found
+INTEGER  :: dims
+!===================================================================================================================================
+nVal=-1
+SDEALLOCATE(Array)
+SDEALLOCATE(VarNames)
+
+CALL DatasetExists(File_ID, TRIM(ArrayName), found)
+IF (found) THEN
+  ! get size of array
+  CALL GetDataSize(File_ID,TRIM(ArrayName),dims,HSize)
+  nVal(1:dims)=INT(HSize)
+  IF(nVal(dims).NE.nGlobalElems) STOP 'Last array dimension != nElems !'
+  nVal(dims)=nElems
+  DEALLOCATE(HSize)
+  ALLOCATE(array(PRODUCT(nVal(1:dims))))
+  ALLOCATE(VarNames(nVal(1)))
+
+  ! read array
+  CALL ReadArray(TRIM(ArrayName),dims,nVal(1:dims),OffsetElem,dims,RealArray=array)
+
+  ! read variable names
+  CALL ReadAttribute(File_ID,TRIM(AttribName),nVal(1),StrArray=VarNames)
+END IF
+
+END SUBROUTINE GetArrayAndName
+
+
 !==================================================================================================================================
 !> Subroutine to read arrays of rank "Rank" with dimensions "Dimsf(1:Rank)".
 !==================================================================================================================================
@@ -360,6 +409,10 @@ Dimsf=nVal
 LOGWRITE(*,*)'Dimsf,Offset=',Dimsf,Offset_in
 CALL H5SCREATE_SIMPLE_F(Rank, Dimsf, MemSpace, iError)
 CALL H5DOPEN_F(File_ID, TRIM(ArrayName) , DSet_ID, iError)
+
+IF(iError.NE.0) &
+  CALL Abort(__STAMP__,'Array '//TRIM(ArrayName)//' does not exist.')
+
 ! Define and select the hyperslab to use for reading.
 CALL H5DGET_SPACE_F(DSet_ID, FileSpace, iError)
 Offset(:)=0
@@ -448,6 +501,10 @@ END IF
 ! Create scalar data space for the attribute.
 ! Create the attribute for group Loc_ID.
 CALL H5AOPEN_F(Loc_ID, TRIM(AttribName), Attr_ID, iError)
+
+IF(iError.NE.0) &
+  CALL Abort(__STAMP__,'Attribute '//TRIM(AttribName)//' does not exist.')
+
 CALL H5AGET_TYPE_F(Attr_ID, Type_ID, iError)
 
 ! Nullify
