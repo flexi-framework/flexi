@@ -294,9 +294,7 @@ END SUBROUTINE CalcQuantities
 
 SUBROUTINE CalcDerivedQuantity(iVarCalc,DepName,nVarCalc,Nloc,nElems_loc,iElems,mapCalc,UCalc)
 ! MODULES
-#if PARABOLIC
 USE MOD_PreProc
-#endif
 USE MOD_EOS_Posti_Vars
 USE MOD_EOS_Vars        ,ONLY: cp,kappa,R,sKappaM1
 USE MOD_StringTools     ,ONLY: LowCase,KEYVALUE
