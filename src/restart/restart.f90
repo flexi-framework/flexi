@@ -183,7 +183,7 @@ REAL               :: Vdm_NRestart_N(0:PP_N,0:N_Restart)
 REAL               :: Vdm_3Ngeo_NRestart(0:N_Restart,0:3*NGeo)
 LOGICAL            :: doFlushFiles_loc
 #if FV_ENABLED
-INTEGER,ALLOCATABLE :: nVal(:)
+INTEGER             :: nVal(15)
 REAL,ALLOCATABLE    :: ElemData(:,:),tmp(:)
 CHARACTER(LEN=255),ALLOCATABLE :: VarNamesElemData(:)
 #endif
@@ -207,7 +207,7 @@ IF(DoRestart)THEN
       IndValue = ElemData(iVar,:)
     END IF
   END DO
-  DEALLOCATE(nVal,ElemData,VarNamesElemData,tmp)
+  DEALLOCATE(ElemData,VarNamesElemData,tmp)
 #endif
   ! Read in state
   IF(.NOT. InterpolateSolution)THEN

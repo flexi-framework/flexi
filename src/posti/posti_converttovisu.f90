@@ -129,7 +129,7 @@ IF (reallocate_loc) THEN
 END IF
 DO iVar=1,nVarTotal
   iVarVisu = mapVisu(iVar) 
-  iVarVisu = MERGE(maskVisu(iVar)*iVarVisu, iVarVisu, PRESENT(maskVisu))
+  IF (PRESENT(maskVisu)) iVarVisu = maskVisu(iVar)*iVarVisu
   IF (iVarVisu.GT.0) THEN
     SWRITE(*,*) "    ", TRIM(VarNamesTotal(iVar))
     iVarCalc = mapCalc(iVar) 

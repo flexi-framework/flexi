@@ -63,13 +63,6 @@ INTERFACE CalcQuantities
   MODULE PROCEDURE CalcQuantities
 END INTERFACE
 
-#if FV_ENABLED && FV_RECONSTRUCT
-INTERFACE CalcConsFromPrim
-  MODULE PROCEDURE CalcConsFromPrim
-END INTERFACE
-PUBLIC:: CalcConsFromPrim
-#endif
-
 PUBLIC :: FillDepTable
 PUBLIC :: GetMaskCons
 PUBLIC :: GetMaskPrim
@@ -96,18 +89,7 @@ LOGICAL,INTENT(IN)    :: withGradients
 ! LOCAL VARIABLES
 INTEGER            :: iVar,ivar2,iVarPrim
 !===================================================================================================================================
-! if withGradients==True then the DGTimeDerivative_weakForm routine is called and the primitive
-! quantities are computed in this operator, which can be used for calculation of other quantities
-! directly. Therefore the dependecies of the primitive variables on the conservative variables
-! can be removed.
-IF (withGradients) THEN ! remove conservative from all prim variables
-  DO iVar=1,nVarTotalEOS ; DO iVarPrim=1,PP_nVarPrim ! search prim
-    IF (STRICMP(StrVarNamesPrim(iVarPrim),DepNames(iVar))) THEN
-      DepTable_In(iVar,:)    = 0
-      DepTable_In(iVar,iVar) = 1
-    END IF
-  END DO ; END DO
-END IF
+
 
 ! for each quantity copy from all quantities that this quantity depends on the dependencies.
 DO iVar=1,nVarTotalEOS
@@ -264,8 +246,6 @@ SUBROUTINE CalcQuantities(nVarCalc,Nloc,nElems_loc,iElems,mapCalc,UCalc,maskCalc
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_EOS_Posti_Vars
-USE MOD_DG_Vars         ,ONLY: UPrim
-USE MOD_Mesh_Vars       ,ONLY: nElems
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
@@ -279,9 +259,7 @@ INTEGER,INTENT(IN) :: maskCalc(nVarTotalEOS)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: iVar,iVarCalc
-INTEGER            :: maskPrim(nVarTotalEOS)
 !===================================================================================================================================
-maskPrim = GetMaskPrim()
 DO iVar=1,nVarTotalEOS
   iVarCalc = mapCalc(iVar)
   IF (iVarCalc.GT.0 .AND. maskCalc(iVar).GT.0) THEN
@@ -323,6 +301,27 @@ REAL               :: Denominator
 !===================================================================================================================================
 CALL LowCase(DepName,DepName_low)
 SELECT CASE(DepName_low)
+  CASE("momentumx")
+    iDens = KEYVALUE(DepNames,mapCalc,"density"    )
+    iVel1 = KEYVALUE(DepNames,mapCalc,"velocityx"  )
+    UCalc(:,:,:,:,iVarCalc) = UCalc(:,:,:,:,iDens)*UCalc(:,:,:,:,iVel1)
+  CASE("momentumy")
+    iDens = KEYVALUE(DepNames,mapCalc,"density"    )
+    iVel2 = KEYVALUE(DepNames,mapCalc,"velocityy"  )
+    UCalc(:,:,:,:,iVarCalc) = UCalc(:,:,:,:,iDens)*UCalc(:,:,:,:,iVel2)
+  CASE("momentumz")
+    iDens = KEYVALUE(DepNames,mapCalc,"density"    )
+    iVel3 = KEYVALUE(DepNames,mapCalc,"velocityz"  )
+    UCalc(:,:,:,:,iVarCalc) = UCalc(:,:,:,:,iDens)*UCalc(:,:,:,:,iVel3)
+  CASE("energystagnationdensity")
+    iDens = KEYVALUE(DepNames,mapCalc,"density"    )
+    iVel1 = KEYVALUE(DepNames,mapCalc,"velocityx"  )
+    iVel2 = KEYVALUE(DepNames,mapCalc,"velocityy"  )
+    iVel3 = KEYVALUE(DepNames,mapCalc,"velocityz"  )
+    iPres = KEYVALUE(DepNames,mapCalc,"pressure"   )
+    ! TODO: use a function from eos.f90
+    UCalc(:,:,:,:,iVarCalc) = sKappaM1*UCalc(:,:,:,:,iPres) + 0.5*UCalc(:,:,:,:,iDens)* &
+        (UCalc(:,:,:,:,iVel1)**2 + UCalc(:,:,:,:,iVel2)**2 + UCalc(:,:,:,:,iVel3)**2)
   CASE("velocityx")
     iDens = KEYVALUE(DepNames,mapCalc,'density'  )
     iMom  = KEYVALUE(DepNames,mapCalc,'momentumx')
@@ -417,66 +416,6 @@ SELECT CASE(DepName_low)
 #endif
 END SELECT
 END SUBROUTINE CalcDerivedQuantity
-
-
-
-#if FV_ENABLED && FV_RECONSTRUCT
-SUBROUTINE CalcConsFromPrim(mapCalc,nVarCalc,Nloc,nElems_loc,UCalc) 
-USE MOD_Globals    
-USE MOD_PreProc     
-USE MOD_EOS_Posti_Vars
-USE MOD_EOS_Vars       ,ONLY: sKappaM1
-USE MOD_StringTools    ,ONLY: LowCase,KEYVALUE
-USE MOD_Posti_Vars     ,ONLY: nElems_FV,mapElems_FV
-IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
-INTEGER,INTENT(IN)          :: mapCalc(nVarTotalEOS)
-INTEGER,INTENT(IN)          :: nVarCalc
-INTEGER,INTENT(IN)          :: Nloc
-INTEGER,INTENT(IN)          :: nElems_loc
-REAL,INTENT(INOUT)          :: UCalc(0:Nloc,0:Nloc,0:Nloc,1:nElems_loc,1:nVarCalc)
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-INTEGER            :: iDens, iVel1, iVel2, iVel3, iPres, iTemp
-INTEGER            :: iVar,iVarCalc,iElem,iElem_FV
-CHARACTER(LEN=255) :: DepName_low
-INTEGER            :: mapCons(nVarTotalEOS)
-INTEGER            :: maskCons(nVarTotalEOS)
-!===================================================================================================================================
-! check wether any cons-quantity is needed
-maskCons = GetMaskCons()
-mapCons = maskCons * mapCalc
-IF (SUM(mapCons).GT.0) THEN
-  ! calculate all needed conservative variables
-  iDens = KEYVALUE(DepNames,mapCalc,"density"    )
-  iVel1 = KEYVALUE(DepNames,mapCalc,"velocityx"  )
-  iVel2 = KEYVALUE(DepNames,mapCalc,"velocityy"  )
-  iVel3 = KEYVALUE(DepNames,mapCalc,"velocityz"  )
-  iPres = KEYVALUE(DepNames,mapCalc,"pressure"   )
-  iTemp = KEYVALUE(DepNames,mapCalc,"temperature")
-
-  DO iVar=1,nVarTotalEOS
-    IF (mapCons(iVar).GT.0) THEN
-      iVarCalc = mapCalc(iVar)
-      SWRITE(*,*) "  ", TRIM(DepNames(iVar)), " (NVisu_FV)"
-      CALL LowCase(DepNames(iVar),DepName_low)
-      SELECT CASE(DepName_low)
-      CASE("momentumx")
-        UCalc(:,:,:,:,iVarCalc) = UCalc(:,:,:,:,iDens)*UCalc(:,:,:,:,iVel1)
-      CASE("momentumy")
-        UCalc(:,:,:,:,iVarCalc) = UCalc(:,:,:,:,iDens)*UCalc(:,:,:,:,iVel2)
-      CASE("momentumz")
-        UCalc(:,:,:,:,iVarCalc) = UCalc(:,:,:,:,iDens)*UCalc(:,:,:,:,iVel3)
-      CASE("energystagnationdensity")
-        ! TODO: use a function from eos.f90
-        UCalc(:,:,:,:,iVarCalc) = sKappaM1*UCalc(:,:,:,:,iPres) + 0.5*UCalc(:,:,:,:,iDens)* &
-            (UCalc(:,:,:,:,iVel1)**2 + UCalc(:,:,:,:,iVel2)**2 + UCalc(:,:,:,:,iVel3)**2)
-      END SELECT
-    END IF
-  END DO
-END IF
-END SUBROUTINE CalcConsFromPrim
-#endif
 
 #if PARABOLIC
 PURE SUBROUTINE FillVorticity(nElems_calc,indices,Nloc,Vorticity,dir)

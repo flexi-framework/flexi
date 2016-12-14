@@ -66,7 +66,9 @@ NVisu_FV = (PP_N+1)*2-1
 
 FV_Elems_loc = 0
 DO iVar=1,nVar_ElemData
+  print*, VarNames_ElemData(iVar)
   IF (STRICMP(VarNames_ElemData(iVar),"FV_Elems")) THEN
+    print*, "@@@@@@@@@@@@ FV_Elems found"
     FV_Elems_loc = INT(ElemData(iVar,:))
   END IF
 END DO
@@ -126,6 +128,7 @@ nElems_FV_glob = SUM(FV_Elems_loc)
 CALL MPI_ALLREDUCE(MPI_IN_PLACE,nElems_FV_glob,1,MPI_INTEGER,MPI_MAX,MPI_COMM_WORLD,iError)
 #endif
 hasFV_Elems = (nElems_FV_glob.GT.0)
+print*, "@@@@@@@@@@@@ hasFV_Elems", hasFV_Elems
 
 
 END SUBROUTINE Build_FV_DG_distribution
