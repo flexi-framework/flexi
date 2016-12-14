@@ -236,12 +236,9 @@ SELECT CASE(TRIM(FileType))
 CASE('Mesh')
 CASE('State')
 
-  CALL Build_FV_DG_distribution()
-
   ! Read in ElemData and additional Field Data
   CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
   CALL GetArrayAndName('FieldData','VarNamesAddField',nVal,tmp,VarNames_FieldData)
-
   IF(ALL(nVal(1:5).GT.0))THEN
     ALLOCATE(FieldData(nVal(1),0:nVal(2)-1,0:nVal(3)-1,0:nVal(4)-1,nVal(5)))
     FieldData=RESHAPE(tmp,nVal(1:5))
@@ -255,6 +252,9 @@ CASE('State')
   END IF
   SDEALLOCATE(tmp)
   CALL CloseDataFile()
+
+  CALL Build_FV_DG_distribution()
+
 
   nVarTotal=nVarTotalEOS
   ALLOCATE(VarNamesTotal(nVarTotal))
