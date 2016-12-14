@@ -26,10 +26,6 @@ PRIVATE
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 
-INTERFACE FillDepTable
-  MODULE PROCEDURE FillDepTable
-END INTERFACE
-
 INTERFACE GetMaskCons
   MODULE PROCEDURE GetMaskCons
 END INTERFACE
@@ -66,7 +62,6 @@ PUBLIC :: AppendNeededPrims
 PUBLIC:: CalcConsFromPrim
 #endif
 
-PUBLIC :: FillDepTable
 PUBLIC :: GetMaskCons
 PUBLIC :: GetMaskPrim
 PUBLIC :: GetMaskGrad
@@ -75,46 +70,6 @@ PUBLIC :: CalcQuantities
 
 CONTAINS
 
-!==================================================================================================================================
-!> Build the actual dependencies. If we call the DGTimeDerivative_weakForm, the primitive variables will be calculated
-!> in there and don't need to be computed from the conservative variables.
-!> Also, recursively add the dependencies of variabels that a variable depends on to the dependency of the first variable.
-!==================================================================================================================================
-SUBROUTINE FillDepTable(DepTable_In,withGradients)
-USE MOD_EOS_Posti_Vars
-USE MOD_Equation_Vars ,ONLY: StrVarNames,StrVarNamesPrim
-USE MOD_StringTools   ,ONLY: STRICMP
-IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(INOUT) :: DepTable_In(1:nVarTotalEOS,0:nVarTotalEOS)
-LOGICAL,INTENT(IN)    :: withGradients
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-INTEGER            :: iVar,ivar2,iVarPrim
-!===================================================================================================================================
-! if withGradients==True then the DGTimeDerivative_weakForm routine is called and the primitive
-! quantities are computed in this operator, which can be used for calculation of other quantities
-! directly. Therefore the dependecies of the primitive variables on the conservative variables
-! can be removed.
-IF (withGradients) THEN ! remove conservative from all prim variables
-  DO iVar=1,nVarTotalEOS ; DO iVarPrim=1,PP_nVarPrim ! search prim
-    IF (STRICMP(StrVarNamesPrim(iVarPrim),DepNames(iVar))) THEN
-      DepTable_In(iVar,:)    = 0
-      DepTable_In(iVar,iVar) = 1
-    END IF
-  END DO ; END DO
-END IF
-
-! for each quantity copy from all quantities that this quantity depends on the dependencies.
-DO iVar=1,nVarTotalEOS
-  DepTable_In(iVar,iVar) = 1
-  DO iVar2=1,iVar-1
-    IF (DepTable_In(iVar,iVar2).EQ.1) THEN
-      DepTable_In(iVar,:) = MAX(DepTable_In(iVar,:), DepTable_In(iVar2,:))
-    END IF
-  END DO
-END DO
-END SUBROUTINE FillDepTable
 
 #if FV_ENABLED && FV_RECONSTRUCT
 SUBROUTINE AppendNeededPrims(mapCalc,mapCalc_FV,nVarCalc) 
@@ -278,7 +233,8 @@ maskPrim = GetMaskPrim()
 DO iVar=1,nVarTotalEOS
   iVarCalc = mapCalc(iVar)
   IF (iVarCalc.GT.0 .AND. maskCalc(iVar).GT.0) THEN
-    SWRITE(*,*) "  ",TRIM(DepNames(iVar))
+    SWRITE(*,*) "  ",TRIM(DepNames(iVar)); CALL FLUSH()
+    print*, nVarCalc
     CALL CalcDerivedQuantity(iVarCalc,DepNames(iVar),nVarCalc,Nloc,nElems_loc,iElems,mapCalc,UCalc)
   END IF
 END DO
@@ -317,8 +273,11 @@ REAL               :: Denominator
 CALL LowCase(DepName,DepName_low)
 SELECT CASE(DepName_low)
   CASE("velocityx")
+    print*, depnames; CALL FLUSH()
+    print*, mapcalc; CALL FLUSH()
     iDens = KEYVALUE(DepNames,mapCalc,'density'  )
     iMom  = KEYVALUE(DepNames,mapCalc,'momentumx')
+    print*, iDens,iMom,iVarCalc; CALL FLUSH()
     UCalc(:,:,:,:,iVarCalc) = UCalc(:,:,:,:,iMom) / UCalc(:,:,:,:,iDens)
   CASE("velocityy")
     iDens = KEYVALUE(DepNames,mapCalc,'density'  )

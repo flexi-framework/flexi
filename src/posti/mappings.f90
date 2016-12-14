@@ -148,7 +148,6 @@ USE MOD_Globals
 USE MOD_Posti_Vars
 USE MOD_ReadInTools     ,ONLY: GETSTR,CountOption
 USE MOD_StringTools     ,ONLY: STRICMP
-USE MOD_EOS_Posti       ,ONLY: FillDepTable
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -230,12 +229,15 @@ DO iVar=1,nVarTotal
   END IF
 END DO
 
-! calculate all dependencies 
-! if withGradients==True then the DGTimeDerivative_weakForm routine is called and the primitive
-! quantities are computed in this operator, which can be used for calculation of other quantities
-! directly. Therefore the dependecies of the primitive variables on the conservative variables 
-! can be removed.
-IF(calcDeps) CALL FillDepTable(DepTable,withGradients)
+! Calculate all dependencies:
+! For each quantity copy from all quantities that this quantity depends on the dependencies.
+DO iVar=1,nVarTotal
+  DepTable(iVar,iVar) = 1
+  DO iVar2=1,iVar-1
+    IF (DepTable(iVar,iVar2).EQ.1) &
+      DepTable(iVar,:) = MAX(DepTable(iVar,:), DepTable(iVar2,:))
+  END DO
+END DO
 
 ! print the dependecy table
 SWRITE(*,*) "Dependencies: ", withGradients
