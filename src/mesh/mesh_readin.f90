@@ -178,7 +178,7 @@ USE MOD_Globals
 USE MOD_Mesh_Vars,          ONLY:tElem,tSide
 USE MOD_Mesh_Vars,          ONLY:NGeo,NGeoTree
 USE MOD_Mesh_Vars,          ONLY:NodeCoords,TreeCoords
-USE MOD_Mesh_Vars,          ONLY:offsetElem,offsetTree,nElems,nGlobalElems,nTrees,nGlobalTrees
+USE MOD_Mesh_Vars,          ONLY:offsetElem,offsetTree,nElems,nTrees,nGlobalTrees
 USE MOD_Mesh_Vars,          ONLY:xiMinMax,ElemToTree
 USE MOD_Mesh_Vars,          ONLY:nSides,nInnerSides,nBCSides,nMPISides,nAnalyzeSides
 USE MOD_Mesh_Vars,          ONLY:nMortarSides,isMortarMesh
@@ -188,7 +188,7 @@ USE MOD_Mesh_Vars,          ONLY:MeshInitIsDone
 USE MOD_Mesh_Vars,          ONLY:Elems
 USE MOD_Mesh_Vars,          ONLY:GETNEWELEM,GETNEWSIDE
 #if USE_MPI
-USE MOD_MPI_Vars,           ONLY:offsetElemMPI,nMPISides_Proc,nNbProcs,NbProc
+USE MOD_MPI_Vars,           ONLY:nMPISides_Proc,nNbProcs,NbProc
 #endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------

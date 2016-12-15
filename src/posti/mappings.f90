@@ -44,36 +44,50 @@ CONTAINS
 !>  3. build the mappings (mapElems_FV/DG) that hold the global indices of the FV/DG element indices.
 !>  4. check wether the distribution of FV elements has changed
 !===================================================================================================================================
-SUBROUTINE Build_FV_DG_distribution()
+SUBROUTINE Build_FV_DG_distribution(statefile)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Posti_Vars
+USE MOD_HDF5_Input  ,ONLY: GetArrayAndName,OpenDataFile,CloseDataFile
 USE MOD_ReadInTools ,ONLY: GETSTR,CountOption
 USE MOD_StringTools ,ONLY: STRICMP
 USE MOD_Mesh_Vars   ,ONLY: nElems
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
+CHARACTER(LEN=255),INTENT(IN)  :: statefile
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER           :: iElem
+INTEGER                        :: iElem
 #if FV_ENABLED
-INTEGER           :: iElem2,iVar
+INTEGER                        :: iElem2,iVar
 #endif
-INTEGER           :: nElems_FV_glob
+INTEGER                        :: nElems_FV_glob
+INTEGER                        :: nVal(15)
+REAL,ALLOCATABLE               :: ElemData_loc(:,:),tmp(:)
+CHARACTER(LEN=255),ALLOCATABLE :: VarNamesElemData_loc(:)
 !===================================================================================================================================
+
+
 SDEALLOCATE(FV_Elems_loc)
 ALLOCATE(FV_Elems_loc(1:nElems))
 #if FV_ENABLED
 NVisu_FV = (PP_N+1)*2-1
 
-FV_Elems_loc = 0
-DO iVar=1,nVar_ElemData
-  print*, VarNames_ElemData(iVar)
-  IF (STRICMP(VarNames_ElemData(iVar),"FV_Elems")) THEN
-    print*, "@@@@@@@@@@@@ FV_Elems found"
-    FV_Elems_loc = INT(ElemData(iVar,:))
-  END IF
-END DO
+CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+CALL GetArrayAndName('ElemData','VarNamesAdd',nVal,tmp,VarNamesElemData_loc)
+CALL CloseDataFile()
+IF (ALLOCATED(VarNamesElemData_loc)) THEN
+  ALLOCATE(ElemData_loc(nVal(1),nVal(2)))
+  ElemData_loc = RESHAPE(tmp,(/nVal(1),nVal(2)/))
+  ! search for FV_Elems and IndValue
+  FV_Elems_loc = 0
+  DO iVar=1,nVal(1)
+    IF (STRICMP(VarNamesElemData_loc(iVar),"FV_Elems")) THEN
+      FV_Elems_loc = INT(ElemData_loc(iVar,:))
+    END IF
+  END DO
+  DEALLOCATE(ElemData_loc,VarNamesElemData_loc,tmp)
+END IF
 
 nElems_FV = SUM(FV_Elems_loc)
 nElems_DG = nElems - nElems_FV
@@ -130,7 +144,6 @@ nElems_FV_glob = SUM(FV_Elems_loc)
 CALL MPI_ALLREDUCE(MPI_IN_PLACE,nElems_FV_glob,1,MPI_INTEGER,MPI_MAX,MPI_COMM_WORLD,iError)
 #endif
 hasFV_Elems = (nElems_FV_glob.GT.0)
-print*, "@@@@@@@@@@@@ hasFV_Elems", hasFV_Elems
 
 
 END SUBROUTINE Build_FV_DG_distribution
@@ -285,6 +298,5 @@ SWRITE (*,'(A,'//format//'I3)') "mapCalc ",mapCalc
 SWRITE (*,'(A,'//format//'I3)') "mapVisu ",mapVisu
 
 END SUBROUTINE Build_mapCalc_mapVisu
-
 
 END MODULE MOD_Posti_Mappings

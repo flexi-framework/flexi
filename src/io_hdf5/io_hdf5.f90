@@ -93,10 +93,15 @@ INTERFACE AddToFieldData
   MODULE PROCEDURE AddToFieldData
 END INTERFACE
 
+INTERFACE GetDatasetNamesInGroup
+  MODULE PROCEDURE GetDatasetNamesInGroup
+END INTERFACE
+
 !==================================================================================================================================
 
 PUBLIC::DefineParametersIO_HDF5,InitIOHDF5,OpenDataFile,CloseDataFile
 PUBLIC::AddToElemData,AddToFieldData
+PUBLIC::GetDatasetNamesInGroup
 
 CONTAINS
 
@@ -362,5 +367,22 @@ ENDIF
 IF(nOpts.NE.1) CALL Abort(__STAMP__,&
   'More then one optional argument passed to AddToFieldData.')
 END SUBROUTINE AddToFieldData
+
+SUBROUTINE GetDatasetNamesInGroup(group,names) 
+IMPLICIT NONE
+! INPUT / OUTPUT VARIABLES 
+CHARACTER(LEN=*)               :: group
+CHARACTER(LEN=255),ALLOCATABLE :: names(:)
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                        :: nMembers,i,type
+!===================================================================================================================================
+CALL H5GN_MEMBERS_F(File_ID, TRIM(group), nMembers, ierror)
+ALLOCATE(names(nMembers))
+DO i=1,nMembers
+  CALL h5gget_obj_info_idx_f(File_ID, TRIM(group), i-1, names(i), type, ierror)
+  IF (type.NE.H5G_DATASET_F) names(i) = ''
+END DO
+END SUBROUTINE GetDatasetNamesInGroup
 
 END MODULE MOD_IO_HDF5
