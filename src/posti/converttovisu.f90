@@ -64,7 +64,6 @@ USE MOD_Posti_Vars
 USE MOD_Interpolation      ,ONLY: GetVandermonde
 USE MOD_ChangeBasis        ,ONLY: ChangeBasis3D
 USE MOD_Interpolation_Vars ,ONLY: NodeType,NodeTypeVisu
-USE MOD_Mesh_Vars          ,ONLY: nElems,offsetElem
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
