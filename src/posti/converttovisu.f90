@@ -248,7 +248,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Posti_Vars
 USE MOD_IO_HDF5            ,ONLY: HSize
-USE MOD_HDF5_Input         ,ONLY: File_ID
+USE MOD_HDF5_Input         ,ONLY: File_ID,GetVarNames
 USE MOD_HDF5_Input         ,ONLY: OpenDataFile,ReadArray,CloseDataFile,DatasetExists,ReadAttribute,GetDataSize
 USE MOD_Mesh_Vars          ,ONLY: nElems,offsetElem
 USE MOD_StringTools        ,ONLY: STRICMP,split_string
@@ -304,45 +304,27 @@ DO iVar=nVarDep+1,nVarTotal
         CALL GetDataSize(File_ID,TRIM(DatasetName),nDims,HSize)
         nVal   = INT(HSize(1))
         nSize  = INT(HSize(2))
-        ! Check if an attribute with the variable names exists
-        CALL DatasetExists(File_ID,"VarNames_"//TRIM(DatasetName),varnamesExist,attrib=.TRUE.)
-        ! If so, read the varnames
-        IF (varnamesExist) THEN
-          SDEALLOCATE(DataSetVarNames)
-          ALLOCATE(DataSetVarNames(nVal))
-          CALL ReadAttribute(File_ID,"VarNames_"//TRIM(DatasetName),nVal,StrArray=DataSetVarNames)
-        END IF
+        SDEALLOCATE(DataSetVarNames)
+        CALL GetVarNames("VarNames_"//TRIM(DatasetName),DatasetVarNames,varnamesExist)
       END IF
+      WRITE (*,*) "varnamesExist", varnamesExist
 
-      ! Compute the index of the variable in the dataset
-      IF (varnamesExist) THEN
-        ! To check which of these variables should be visualized, compare against the varnames from the dataset
-        varFound = .FALSE.
-        DO iVar2=1,nVal
-          IF (STRICMP(TRIM(VariableName),DataSetVarNames(iVar2))) THEN
-            ! This variable should be visualized
-            iVarDataset = iVar2
-            varFound=.TRUE.
-            RETURN
+      iVarDataset = 0
+      ! loop over all varnames
+      DO iVar2=nVarDep+1,nVarTotal
+        CALL split_string(TRIM(VarNamesTotal(iVar2)),':',substrings,substring_count)
+        IF (substring_count.GT.1) THEN
+          ! if dataset is the same increase variable index inside dataset
+          IF (STRICMP(substrings(1),DatasetName)) THEN
+            iVarDataset = iVarDataset+1
+            ! exit if variablename found
+            IF (STRICMP(substrings(2),VariableName)) EXIT
           END IF
-        END DO !iVar2=1,nVal
-        ! Abort if the variable name has not been found in the variable names from the dataset
-        IF (.NOT.varFound) THEN
-          CALL CloseDataFile()
-          CALL Abort(__STAMP__,'Variable '//TRIM(VariableName)//' not found.')
         END IF
-      ELSE ! varnamesExist
-        ! If no variable name attribute is present in the HDF5 file, the variable is named in the format 1,2,3,...
-        READ(VariableName,'(I2)',IOSTAT=stat) iVarDataset
-        ! Abort if read has failed
-        IF (stat.NE.0) THEN
-          CALL CloseDataFile()
-          CALL Abort(__STAMP__,'Variable '//TRIM(VariableName)//' could not be converted to integer value.')
-        END IF
-      END IF ! varnamesExist
+      END DO
 
       ! Read in the data if we have a new dataset. Also allocate Vandermonde matrix used in conversion to visu grid.
-      IF (datasetChanged) THEN
+      IF (datasetChanged.AND.(iVarDataset.GT.0)) THEN
         SELECT CASE(nDims)
         CASE(2) ! Elementwise data
           ! Allocate array and read dataset

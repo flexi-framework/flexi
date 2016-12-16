@@ -370,25 +370,29 @@ SWRITE(UNIT_stdOut,'(A)')' DONE!'
 SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE GetDataProps
 
-SUBROUTINE GetVarnames(AttribName,VarNames) 
+SUBROUTINE GetVarnames(AttribName,VarNames,AttribExists) 
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
-CHARACTER(LEN=*)               :: AttribName
-CHARACTER(LEN=255),ALLOCATABLE :: VarNames(:)
+CHARACTER(LEN=*),INTENT(IN)                :: AttribName
+CHARACTER(LEN=255),ALLOCATABLE,INTENT(OUT) :: VarNames(:)
+LOGICAL,INTENT(OUT)                        :: AttribExists
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER  :: dims, nVal
 !===================================================================================================================================
 SDEALLOCATE(VarNames)
+WRITE (*,*) "GetVarnames ", TRIM(AttribName)
+CALL DatasetExists(File_ID,AttribName,AttribExists,attrib=.TRUE.)
+IF (AttribExists) THEN
+  ! get size of array
+  CALL GetAttributeSize(File_ID,AttribName,dims,HSize)
+  nVal=INT(HSize(1))
+  DEALLOCATE(HSize)
+  ALLOCATE(VarNames(nVal))
 
-! get size of array
-CALL GetAttributeSize(File_ID,AttribName,dims,HSize)
-nVal=INT(HSize(1))
-DEALLOCATE(HSize)
-ALLOCATE(VarNames(nVal))
-
-! read variable names
-CALL ReadAttribute(File_ID,TRIM(AttribName),nVal,StrArray=VarNames)
+  ! read variable names
+  CALL ReadAttribute(File_ID,TRIM(AttribName),nVal,StrArray=VarNames)
+END IF
 END SUBROUTINE GetVarnames
 
 !===================================================================================================================================

@@ -132,7 +132,7 @@ CHARACTER(LEN=255),INTENT(INOUT),ALLOCATABLE,TARGET :: varnames_loc(:)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                                             :: i,j,nVar,dims
-LOGICAL                                             :: varnames_found,readDGsolutionVars,sameVars
+LOGICAL                                             :: varnames_found,readDGsolutionVars,sameVars,VarNamesExist
 CHARACTER(LEN=255),ALLOCATABLE                      :: datasetNames(:)
 CHARACTER(LEN=255),ALLOCATABLE                      :: varnames_tmp(:)
 CHARACTER(LEN=255),ALLOCATABLE                      :: tmp(:)
@@ -150,11 +150,15 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! other file
   ! and set FileType to 'Generic' if not
   IF (STRICMP(FileType,'State')) THEN
     SDEALLOCATE(VarNamesHDF5)
-    CALL GetVarNames("VarNames",VarNamesHDF5)
-    sameVars=.TRUE.
-    DO i=1,SIZE(VarNamesHDF5)
-      sameVars = sameVars.AND.(STRICMP(VarNamesHDF5(i), DepNames(i)))
-    END DO
+    CALL GetVarNames("VarNames",VarNamesHDF5,VarNamesExist)
+    IF (VarNamesExist) THEN
+      sameVars=.TRUE.
+      DO i=1,SIZE(VarNamesHDF5)
+        sameVars = sameVars.AND.(STRICMP(VarNamesHDF5(i), DepNames(i)))
+      END DO
+    ELSE 
+      sameVars=.FALSE.
+    END IF
     IF (.NOT.sameVars) FileType='Generic'
   END IF
 
@@ -172,18 +176,19 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! other file
 
   DO i=1,SIZE(datasetNames)
     SDEALLOCATE(varnames_tmp)
+    VarNamesExist=.FALSE.
     CALL DatasetExists(File_ID,"VarNames_"//TRIM(datasetNames(i)),varnames_found,attrib=.TRUE.)
     IF (varnames_found) THEN
-          CALL GetVarNames("VarNames_"//TRIM(datasetNames(i)),varnames_tmp)
+          CALL GetVarNames("VarNames_"//TRIM(datasetNames(i)),varnames_tmp,VarNamesExist)
     ELSE
       IF (STRICMP(datasetNames(i), "DG_Solution")) THEN
         IF (readDGsolutionVars) THEN
-          CALL GetVarNames("VarNames",varnames_tmp)
+          CALL GetVarNames("VarNames",varnames_tmp,VarNamesExist)
         END IF
       ELSE IF(STRICMP(datasetNames(i), "ElemData")) THEN
-        CALL GetVarNames("VarNamesAdd",varnames_tmp)
+        CALL GetVarNames("VarNamesAdd",varnames_tmp,VarNamesExist)
       ELSE IF(STRICMP(datasetNames(i), "FieldData")) THEN
-        CALL GetVarNames("VarNamesAddField",varnames_tmp)
+        CALL GetVarNames("VarNamesAddField",varnames_tmp,VarNamesExist)
       ELSE
         CALL GetDataSize(File_ID,TRIM(datasetNames(i)),dims,HSize)
         ALLOCATE(varnames_tmp(INT(HSize(1))))
@@ -192,7 +197,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! other file
         END DO
       END IF
     END IF
-    IF (.NOT.ALLOCATED(varnames_tmp)) CYCLE
+    IF (.NOT.VarNamesExist) CYCLE
     
     ! increase array 'varnames_loc'  
     IF (nVar.GT.0) THEN
