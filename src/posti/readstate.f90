@@ -38,6 +38,7 @@ CONTAINS
 
 SUBROUTINE ReadState(prmfile,statefile)
 USE MOD_Globals
+USE MOD_PreProc
 USE MOD_Posti_Vars  ,ONLY:withDGOperator
 USE MOD_ReadInTools ,ONLY:ExtractParameterFile
 IMPLICIT NONE
@@ -47,18 +48,23 @@ CHARACTER(LEN=255),INTENT(IN)    :: statefile
 ! LOCAL VARIABLES
 LOGICAL                          :: userblockFound
 !===================================================================================================================================
+userblockFound = .TRUE.
 IF (LEN_TRIM(prmfile).EQ.0) THEN
   prmfile = ".flexi.ini"
   CALL ExtractParameterFile(statefile,prmfile,userblockFound)
-  IF (.NOT.userblockFound) THEN
-    CALL CollectiveStop(__STAMP__, "No userblock found in state file '"//TRIM(statefile)//"'")
+  IF (.NOT.userblockFound.AND.withDGOperator) THEN
+    CALL CollectiveStop(__STAMP__, "No userblock found in state file '"//TRIM(statefile)//"' and no parameter file specified.")
   END IF
 END IF
 SWRITE(*,*) "[ALL] get solution. withDGOperator = ", withDGOperator
 IF (withDGOperator) THEN
   CALL ReadStateAndGradients(prmfile,statefile)
 ELSE
-  CALL ReadStateWithoutGradients(prmfile,statefile)
+  IF (.NOT.userblockFound) THEN
+    CALL ReadStateWithoutGradients(prmfile,statefile,PP_N)
+  ELSE
+    CALL ReadStateWithoutGradients(prmfile,statefile)
+  END IF
 END IF
 END SUBROUTINE ReadState
 
@@ -191,7 +197,7 @@ END SUBROUTINE ReadStateAndGradients
 !===================================================================================================================================
 !> Read 'U' directly from a state file.
 !===================================================================================================================================
-SUBROUTINE ReadStateWithoutGradients(prmfile,statefile)
+SUBROUTINE ReadStateWithoutGradients(prmfile,statefile,Nin)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
@@ -210,6 +216,7 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 CHARACTER(LEN=255),INTENT(IN):: prmfile
 CHARACTER(LEN=255),INTENT(IN):: statefile
+INTEGER,INTENT(IN),OPTIONAL  :: Nin
 ! LOCAL VARIABLES
 !===================================================================================================================================
 CALL FinalizeInterpolation()
@@ -232,7 +239,11 @@ CALL prms%read_options(prmfile)
 CALL InitIOHDF5()
 CALL InitEOS()
 
-CALL InitInterpolation()
+IF (PRESENT(NIn)) THEN
+  CALL InitInterpolation(Nin)
+ELSE
+  CALL InitInterpolation()
+END IF
 IF (changedMeshFile) THEN
   CALL FinalizeMesh()
   CALL InitMesh(meshMode=0,MeshFile_IN=MeshFile)
