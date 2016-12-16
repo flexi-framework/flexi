@@ -51,6 +51,7 @@ USE MOD_Posti_Vars
 USE MOD_HDF5_Input  ,ONLY: GetArrayAndName,OpenDataFile,CloseDataFile
 USE MOD_ReadInTools ,ONLY: GETSTR,CountOption
 USE MOD_StringTools ,ONLY: STRICMP
+USE MOD_Mesh_ReadIn ,ONLY: BuildPartition
 USE MOD_Mesh_Vars   ,ONLY: nElems
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
@@ -66,7 +67,10 @@ INTEGER                        :: nVal(15)
 REAL,ALLOCATABLE               :: ElemData_loc(:,:),tmp(:)
 CHARACTER(LEN=255),ALLOCATABLE :: VarNamesElemData_loc(:)
 !===================================================================================================================================
-
+! Build partition to get nElems
+CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+CALL BuildPartition() 
+CALL CloseDataFile()
 
 SDEALLOCATE(FV_Elems_loc)
 ALLOCATE(FV_Elems_loc(1:nElems))
@@ -79,7 +83,7 @@ CALL CloseDataFile()
 IF (ALLOCATED(VarNamesElemData_loc)) THEN
   ALLOCATE(ElemData_loc(nVal(1),nVal(2)))
   ElemData_loc = RESHAPE(tmp,(/nVal(1),nVal(2)/))
-  ! search for FV_Elems and IndValue
+  ! search for FV_Elems 
   FV_Elems_loc = 0
   DO iVar=1,nVal(1)
     IF (STRICMP(VarNamesElemData_loc(iVar),"FV_Elems")) THEN
@@ -171,83 +175,35 @@ IMPLICIT NONE
 INTEGER             :: iVar,iVar2
 CHARACTER(LEN=255)  :: VarName
 CHARACTER(LEN=20)   :: format
-LOGICAL             :: changedVarNames_ElemData,changedVarNames_FieldData
 !===================================================================================================================================
 ! Read Varnames from parameter file and fill
 !   mapVisu = map, which stores at position x the position/index of the x.th quantity in the UVisu array
 !             if a quantity is not visualized it is zero
 SDEALLOCATE(mapVisu)
-SDEALLOCATE(VarNamesVisu_ElemData)
-SDEALLOCATE(VarNamesVisu_FieldData)
 ALLOCATE(mapVisu(1:nVarTotal))
-ALLOCATE(VarNamesVisu_ElemData( nVarIni))
-ALLOCATE(VarNamesVisu_FieldData(nVarIni))
 mapVisu = 0
-nVarVisu = 0
-nVarVisu_ElemData = 0
-nVarVisu_FieldData = 0
+nVarVisuTotal = 0
 ! Compare varnames that should be visualized with availabe varnames
-DO iVar=1,nVarIni
-  VarName = VarNamesIni(iVar)
-  ! Compare against conservative, primitve and derived varnames
+DO iVar=1,CountOption("VarName")
+  VarName = GETSTR("VarName")
   DO iVar2=1,nVarTotal
     IF (STRICMP(VarName, VarNamesTotal(iVar2))) THEN
-      mapVisu(iVar2) = nVarVisu+1
-      nVarVisu = nVarVisu + 1
-    END IF
-  END DO
-  ! Compare against additional elementwise varnames
-  DO iVar2=1,nVar_ElemData
-    IF (STRICMP(VarName, VarNames_ElemData(iVar2))) THEN
-      nVarVisu_ElemData = nVarVisu_ElemData + 1
-      VarNamesVisu_ElemData(nVarVisu_ElemData) = VarName
-    END IF
-  END DO
-  ! Compare against additional pointwise varnames
-  DO iVar2=1,nVar_FieldData
-    IF (STRICMP(VarName, VarNames_FieldData(iVar2))) THEN
-      nVarVisu_FieldData = nVarVisu_FieldData + 1
-      VarNamesVisu_FieldData(nVarVisu_FieldData) = VarName
+      mapVisu(iVar2) = nVarVisuTotal+1
+      nVarVisuTotal = nVarVisuTotal + 1
     END IF
   END DO
 END DO
 
-! Check if the pointwise additional varnames have changed
-changedVarNames_FieldData = (nVarVisu_FieldData.NE.nVarVisu_FieldData_old) ! First check: number of variables
-IF (.NOT.changedVarNames_FieldData) THEN ! Second check: Names of all variabels (if number is the same)
-  DO iVar=1,nVarVisu_FieldData
-
-    changedVarNames_FieldData = changedVarNames_FieldData &
-        .OR.  (.NOT.STRICMP(VarNamesVisu_FieldData(iVar),VarNamesVisu_FieldData_old(iVar)))
-  END DO
-END IF
-SDEALLOCATE(VarNamesVisu_FieldData_old)
-ALLOCATE(VarNamesVisu_FieldData_old(SIZE(VarNamesVisu_FieldData)))
-VarNamesVisu_FieldData_old = VarNamesVisu_FieldData
-
-! Check if the elementwise additional varnames have changed
-changedVarNames_ElemData = (nVarVisu_ElemData.NE.nVarVisu_ElemData_old)
-IF (.NOT.changedVarNames_ElemData) THEN
-  DO iVar=1,nVarVisu_ElemData
-
-    changedVarNames_ElemData = changedVarNames_ElemData &
-        .OR.  (.NOT.STRICMP(VarNamesVisu_ElemData(iVar),VarNamesVisu_ElemData_old(iVar)))
-  END DO
-END IF
-SDEALLOCATE(VarNamesVisu_ElemData_old)
-ALLOCATE(VarNamesVisu_ElemData_old(SIZE(VarNamesVisu_ElemData)))
-VarNamesVisu_ElemData_old = VarNamesVisu_ElemData
-
 ! check whether gradients are needed for any quantity
-DO iVar=1,nVarTotal
+DO iVar=1,nVarDep
   IF (mapVisu(iVar).GT.0) THEN
-    withGradients = withGradients .OR. (DepTable(iVar,0).GT.0)
+    withDGOperator = withDGOperator .OR. (DepTable(iVar,0).GT.0)
   END IF
 END DO
 
 ! Calculate all dependencies:
 ! For each quantity copy from all quantities that this quantity depends on the dependencies.
-DO iVar=1,nVarTotal
+DO iVar=1,nVarDep
   DepTable(iVar,iVar) = 1
   DO iVar2=1,iVar-1
     IF (DepTable(iVar,iVar2).EQ.1) &
@@ -256,26 +212,26 @@ DO iVar=1,nVarTotal
 END DO
 
 ! print the dependecy table
-SWRITE(*,*) "Dependencies: ", withGradients
+SWRITE(*,*) "Dependencies: ", withDGOperator
 WRITE(format,'(I2)') SIZE(DepTable,2)
-DO iVar=1,nVarTotal
-  SWRITE (*,'('//format//'I3,A)') DepTable(iVar,:), TRIM(VarNamesTotal(iVar))
+DO iVar=1,nVarDep
+  SWRITE (*,'('//format//'I2,A)') DepTable(iVar,:), " "//TRIM(VarNamesTotal(iVar))
 END DO
 
 ! Build :
 !   mapCalc = map, which stores at position x the position/index of the x.th quantity in the UCalc array
 !             if a quantity is not calculated it is zero
 SDEALLOCATE(mapCalc)
-ALLOCATE(mapCalc(1:nVarTotal))
+ALLOCATE(mapCalc(1:nVarDep))
 mapCalc = 0
-DO iVar=1,nVarTotal
+DO iVar=1,nVarDep
   IF (mapVisu(iVar).GT.0) THEN
-    mapCalc = MAX(mapCalc,DepTable(iVar,1:nVarTotal))
+    mapCalc = MAX(mapCalc,DepTable(iVar,1:nVarDep))
   END IF
 END DO
 ! enumerate mapCalc
 nVarCalc = 0
-DO iVar=1,nVarTotal
+DO iVar=1,nVarDep
   IF (mapCalc(iVar).GT.0) THEN
     nVarCalc = nVarCalc + 1
     mapCalc(iVar) = nVarCalc
@@ -287,7 +243,7 @@ changedVarNames = .TRUE.
 IF (ALLOCATED(mapVisu_old).AND.(SIZE(mapVisu).EQ.SIZE(mapVisu_old))) THEN
   changedVarNames = .NOT.ALL(mapVisu.EQ.mapVisu_old) 
 END IF
-changedVarNames = changedVarNames .OR. changedVarNames_ElemData .OR. changedVarNames_FieldData
+changedVarNames = changedVarNames
 SDEALLOCATE(mapVisu_old)
 ALLOCATE(mapVisu_old(1:nVarTotal))
 mapVisu_old = mapVisu

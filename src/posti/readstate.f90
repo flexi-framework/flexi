@@ -28,18 +28,39 @@ PRIVATE
 ! Private Part ---------------------------------------------------------------------------------------------------------------------
 ! Public Part ----------------------------------------------------------------------------------------------------------------------
 
-INTERFACE ReadStateAndGradients
-  MODULE PROCEDURE ReadStateAndGradients
-END INTERFACE
-
 INTERFACE ReadState
   MODULE PROCEDURE ReadState
 END INTERFACE
 
-PUBLIC:: ReadStateAndGradients
 PUBLIC:: ReadState
 
 CONTAINS
+
+SUBROUTINE ReadState(prmfile,statefile)
+USE MOD_Globals
+USE MOD_Posti_Vars  ,ONLY:withDGOperator
+USE MOD_ReadInTools ,ONLY:ExtractParameterFile
+IMPLICIT NONE
+! INPUT / OUTPUT VARIABLES 
+CHARACTER(LEN=255),INTENT(INOUT) :: prmfile
+CHARACTER(LEN=255),INTENT(IN)    :: statefile
+! LOCAL VARIABLES
+LOGICAL                          :: userblockFound
+!===================================================================================================================================
+IF (LEN_TRIM(prmfile).EQ.0) THEN
+  prmfile = ".flexi.ini"
+  CALL ExtractParameterFile(statefile,prmfile,userblockFound)
+  IF (.NOT.userblockFound) THEN
+    CALL CollectiveStop(__STAMP__, "No userblock found in state file '"//TRIM(statefile)//"'")
+  END IF
+END IF
+SWRITE(*,*) "[ALL] get solution. withDGOperator = ", withDGOperator
+IF (withDGOperator) THEN
+  CALL ReadStateAndGradients(prmfile,statefile)
+ELSE
+  CALL ReadStateWithoutGradients(prmfile,statefile)
+END IF
+END SUBROUTINE ReadState
 
 !===================================================================================================================================
 !> Read a state file via Restart routine and preforms one DGTimeDerivative_weakForm.
@@ -90,7 +111,7 @@ CALL FinalizeFV()
 CALL FinalizeMortar()
 CALL FinalizeRestart()
 #if USE_MPI
-IF (changedMeshFile.OR.changedWithGradients) THEN
+IF (changedMeshFile.OR.changedWithDGOperator) THEN
   CALL FinalizeMPI()
 END IF
 #endif
@@ -104,6 +125,7 @@ CALL FinalizeLifting()
 #endif
 
 ! read options from parameter file
+CALL FinalizeParameters()
 CALL DefineParametersMPI()
 CALL DefineParametersIO_HDF5()
 CALL DefineParametersInterpolation()
@@ -135,7 +157,7 @@ CALL InitRestart(statefile)
 
 ! TODO: what todo with vars that are set in InitOutput, that normally is executed here.
 
-IF (changedMeshFile.OR.changedWithGradients) THEN
+IF (changedMeshFile.OR.changedWithDGOperator) THEN
   CALL FinalizeMesh()
   CALL InitMesh(meshMode=2,MeshFile_IN=MeshFile)
 END IF
@@ -144,7 +166,7 @@ CALL InitFilter()
 CALL InitOverintegration()
 CALL InitIndicator()
 #if USE_MPI
-IF (changedMeshFile.OR.changedWithGradients) THEN
+IF (changedMeshFile.OR.changedWithDGOperator) THEN
   CALL InitMPIvars()
 END IF
 #endif
@@ -169,7 +191,7 @@ END SUBROUTINE ReadStateAndGradients
 !===================================================================================================================================
 !> Read 'U' directly from a state file.
 !===================================================================================================================================
-SUBROUTINE ReadState(prmfile,statefile)
+SUBROUTINE ReadStateWithoutGradients(prmfile,statefile)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
@@ -198,6 +220,7 @@ END IF
 #endif
 
 ! read options from parameter file
+CALL FinalizeParameters()
 CALL DefineParametersMPI()
 CALL DefineParametersIO_HDF5()
 CALL DefineParametersInterpolation()
@@ -222,6 +245,6 @@ CALL ReadArray('DG_Solution',5,(/nVar_State,PP_N+1,PP_N+1,PP_N+1,nElems/),offset
 CALL CloseDataFile()
 
 CALL FinalizeParameters()
-END SUBROUTINE ReadState
+END SUBROUTINE ReadStateWithoutGradients
 
 END MODULE MOD_Posti_ReadState

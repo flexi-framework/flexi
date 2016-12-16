@@ -37,8 +37,8 @@ INTEGER                           :: NVisu_old = -1
 INTEGER                           :: nVar_State
 INTEGER                           :: nVar_State_old = -1
 INTEGER                           :: nElems_DG
-LOGICAL                           :: withGradients
-LOGICAL                           :: withGradients_old = .FALSE.
+LOGICAL                           :: withDGOperator
+LOGICAL                           :: withDGOperator_old = .FALSE.
 LOGICAL                           :: calcDeps
 INTEGER                           :: nElems_FV
 INTEGER                           :: NVisu_FV
@@ -51,35 +51,20 @@ LOGICAL                           :: changedMeshFile
 LOGICAL                           :: changedNVisu
 LOGICAL                           :: changedVarNames
 LOGICAL                           :: changedFV_Elems
-LOGICAL                           :: changedWithGradients
-LOGICAL                           :: changedPrmFile
+LOGICAL                           :: changedWithDGOperator
 
 ! Ini file variables
-INTEGER                           :: nVarIni                 ! variables in ini file
-CHARACTER(LEN=255),ALLOCATABLE    :: VarNamesIni(:)          ! varnames in ini file
 ! HDF5 file variables
 CHARACTER(LEN=255),ALLOCATABLE,TARGET :: VarNamesHDF5(:)     ! varnames of solution in file
 ! EOS related or raw data
 INTEGER                           :: nVarTotal               ! total number of possible visu variables
-CHARACTER(LEN=255),ALLOCATABLE    :: VarNamesTotal(:)        ! names of all available variables
-INTEGER,ALLOCATABLE               :: DepTable(:,:)           ! dependency map
-
-! Additional pointwise data, unrelated to EOS
-INTEGER                           :: nVar_FieldData          ! Number of pointwise variables
-REAL,ALLOCATABLE                  :: FieldData(:,:,:,:,:)    ! Additional pointwise data from state file
-CHARACTER(LEN=255),ALLOCATABLE    :: VarNames_FieldData(:)   ! Variable names of pointwise data
-INTEGER                           :: nVarVisu_FieldData, nVarVisu_FieldData_old=0
-CHARACTER(LEN=255),ALLOCATABLE    :: VarNamesVisu_FieldData(:)
-CHARACTER(LEN=255),ALLOCATABLE    :: VarNamesVisu_FieldData_old(:)
-
-
-! Additional elementwise data, unrelated to EOS
-INTEGER                           :: nVar_ElemData           ! Number of elementwise variables
-REAL,ALLOCATABLE                  :: ElemData(:,:)           ! Additional elementwise data from state file
-CHARACTER(LEN=255),ALLOCATABLE    :: VarNames_ElemData(:)
-INTEGER                           :: nVarVisu_ElemData, nVarVisu_ElemData_old=0
-CHARACTER(LEN=255),ALLOCATABLE    :: VarNamesVisu_ElemData(:)
-CHARACTER(LEN=255),ALLOCATABLE    :: VarNamesVisu_ElemData_old(:)
+INTEGER                           :: nVarDep                 ! 
+INTEGER                           :: nVarRaw                 !
+INTEGER                           :: nVarVisuTotal
+INTEGER                           :: nVarVisuDep
+INTEGER                           :: nVarVisuRaw
+CHARACTER(LEN=255),ALLOCATABLE,TARGET :: VarNamesTotal(:)
+INTEGER,ALLOCATABLE               :: DepTable(:,:)
 
 
 
@@ -89,7 +74,7 @@ REAL(C_DOUBLE),ALLOCATABLE,TARGET :: UVisu_DG(:,:,:,:,:)     ! state at visu poi
 INTEGER,ALLOCATABLE,TARGET        :: nodeids_FV(:)           ! visu nodeids
 REAL(C_DOUBLE),ALLOCATABLE,TARGET :: CoordsVisu_FV(:,:,:,:,:)! visu coordinates
 REAL(C_DOUBLE),ALLOCATABLE,TARGET :: UVisu_FV(:,:,:,:,:)     ! state at visu points
-INTEGER                           :: nVarCalc,nVarVisu
+INTEGER                           :: nVarCalc
 INTEGER,ALLOCATABLE               :: mapCalc(:)
 #if FV_ENABLED && FV_RECONSTRUCT
 INTEGER                           :: nVarCalc_FV

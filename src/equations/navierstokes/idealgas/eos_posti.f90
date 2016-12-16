@@ -226,8 +226,7 @@ INTEGER            :: iVar,iVarCalc
 DO iVar=1,nVarTotalEOS
   iVarCalc = mapCalc(iVar)
   IF (iVarCalc.GT.0 .AND. maskCalc(iVar).GT.0) THEN
-    SWRITE(*,*) "  ",TRIM(DepNames(iVar)); CALL FLUSH()
-    print*, nVarCalc
+    SWRITE(*,*) "  ",TRIM(DepNames(iVar))
     CALL CalcDerivedQuantity(iVarCalc,DepNames(iVar),nVarCalc,Nloc,nElems_loc,iElems,mapCalc,UCalc)
   END IF
 END DO

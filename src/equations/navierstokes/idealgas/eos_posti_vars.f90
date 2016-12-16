@@ -40,20 +40,20 @@ INTEGER,PARAMETER :: nVarTotalEOS=19
 !           S            V       n       P               o
 !           t            e     E t   T   r               r
 !           a            l     n h   o   e               t
-!           g            o     e a   t   s               i
-!           n            c V   r l   a T s               c
-!           a            i e   g p   l o u               i
-!           t         T  t l   y y   T t r               t
-!           i         e  y o   S S   e a e         V V V y     D Q
+! W         g            o     e a   t   s               i
+! i         n            c V   r l   a T s               c
+! t         a            i e   g p   l o u               i
+! h         t         T  t l   y y   T t r               t
+! D         i         e  y o   S S   e a e         V V V y     D Q
 ! G   M M M o V V V   m  M c   t t   m l T         o o o M     i C S
-! r   o o o n e e e P p  a i   a a   p P i         r r r a H   l r c
-! a D m m m D l l l r e  g t   g g E e r m         t t t g e L a i h
-! d e e e e e o o o e r  n y   n n n r e e         i i i n l a t t l
-! i n n n n n c c c s a  i S   a a t a s D         c c c i i m a e i
-! e s t t t s i i i s t  t o M t t r t s e         i i i t c b t r e
-! n i u u u i t t t u u  u u a i i o u u r         t t t u i d i i r
-! t t m m m t y y y r r  d n c o o p r r i         y y y d t a o o e
-! s y X Y Z y X Y Z e e  e d h n n y e e v         X Y Z e y 2 n n n
+! O   o o o n e e e P p  a i   a a   p P i         r r r a H   l r c
+! p D m m m D l l l r e  g t   g g E e r m         t t t g e L a i h
+! e e e e e e o o o e r  n y   n n n r e e         i i i n l a t t l
+! r n n n n n c c c s a  i S   a a t a s D         c c c i i m a e i
+! a s t t t s i i i s t  t o M t t r t s e         i i i t c b t r e
+! t i u u u i t t t u u  u u a i i o u u r         t t t u i d i i r
+! o t m m m t y y y r r  d n c o o p r r i         y y y d t a o o e
+! r y X Y Z y X Y Z e e  e d h n n y e e v         X Y Z e y 2 n n n
 INTEGER,DIMENSION(1:nVarTotalEOS,0:nVarTotalEOS),PARAMETER :: DepTableEOS = TRANSPOSE(RESHAPE(&
 (/&
   0,1,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, CUT(&) 0,0,0,0,0,0,0,0,0 ,& !1  Density
@@ -98,20 +98,20 @@ INTEGER,DIMENSION(1:nVarTotalEOS,0:nVarTotalEOS),PARAMETER :: DepTableEOS = TRAN
 !           S
 !           t
 !           a
-!           g
-!           n
-!           a
-!           t         T
-!           i         e
+! W         g
+! i         n
+! t         a
+! h         t         T
+! D         i         e
 ! G   M M M o V V V   m
-! r   o o o n e e e P p
-! a D m m m D l l l r e
-! d e e e e e o o o e r
-! i n n n n n c c c s a
-! e s t t t s i i i s t
-! n i u u u i t t t u u
-! t t m m m t y y y r r
-! s y X Y Z y X Y Z e e
+! O   o o o n e e e P p
+! p D m m m D l l l r e
+! e e e e e e o o o e r
+! r n n n n n c c c s a
+! a s t t t s i i i s t
+! t i u u u i t t t u u
+! o t m m m t y y y r r
+! r y X Y Z y X Y Z e e
 INTEGER,DIMENSION(PP_nVar,0:nVarTotalEOS),PARAMETER :: DepTablePrimToCons =TRANSPOSE(RESHAPE(&
 (/&
   0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, CUT(&) 0,0,0,0,0,0,0,0,0 ,& !1 Density

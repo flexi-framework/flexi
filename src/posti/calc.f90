@@ -59,7 +59,7 @@ USE MOD_StringTools    ,ONLY: STRICMP
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: maskCalc(nVarTotal)
+INTEGER            :: maskCalc(nVarDep)
 !===================================================================================================================================
 ! calc DG solution 
 SWRITE(*,*) "[DG] calc quantities"
@@ -112,52 +112,57 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                      :: maskCalc(nVarTotal)
+INTEGER                      :: maskCalc(nVarDep)
 #if FV_RECONSTRUCT 
-INTEGER                      :: maskPrim(nVarTotal),maskGrad(nVarTotal)
+INTEGER                      :: maskPrim(nVarDep),maskGrad(nVarDep)
 INTEGER                      :: iVar
 #endif
 !===================================================================================================================================
+SDEALLOCATE(UVisu_FV)
+ALLOCATE(UVisu_FV(0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV,nVarVisuTotal))
 #if FV_RECONSTRUCT
-  ! calc FV solution 
+  ! generate a new mapCalc_FV, which is a copy of the original mapCalc but is extended in the following way.
+  ! Since the reconstruction is performed in primitive quantities, the calculation of conservative quantities from them 
+  ! introduce for the conservatives dependcies from the primitive ones. Therefore all primitive quantities that
+  ! are needed to build the requested conservatives must be added to the mapCalc_FV. 
   SDEALLOCATE(mapCalc_FV)
-  ALLOCATE(mapCalc_FV(1:nVarTotal))
+  ALLOCATE(mapCalc_FV(1:nVarDep))
   CALL AppendNeededPrims(mapCalc,mapCalc_FV,nVarCalc_FV)
   SWRITE (*,*) "[FVRE] nVarCalc_FV", nVarCalc_FV
   SWRITE (*,"(A,27I3)") "  mapCalc_FV",  mapCalc_FV
   
-  ! convert primitive quantities to the visu grid
+  ! convert primitive quantities to the visu grid, but store it UCalc_FV, since all dependent calculations including
+  ! reconstructed values are performed on the visu grid.
   SDEALLOCATE(UCalc_FV)
   ALLOCATE(UCalc_FV(0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV,1:nVarCalc_FV))
   SWRITE(*,*) "[FVRE] ConvertToVisu_FV_Reconstruct"
   CALL ConvertToVisu_FV_Reconstruct()
 
-  ! calculate all nonPrim, nonGrad quantities on the visu grid
+  ! calculate all nonPrim, nonGrad quantities on the visu grid.
   maskPrim=GetMaskPrim()
   maskGrad=GetMaskGrad()
   maskCalc = 1-MAX(maskPrim,maskGrad)
   SWRITE(*,*) "[FVRE] CalcQuantities (nonPrim,nonGrad)"
   CALL CalcQuantities(nVarCalc_FV,NVisu_FV,nElems_FV,mapElems_FV,mapCalc_FV,UCalc_FV,maskCalc)
 
-  ! copy cons, prim and all other non-grad quantities to the UVisu_FV array
+  ! copy cons, prim and all other non-grad quantities (namely all quantities that are build with reconstruction)
+  ! to the UVisu_FV array
   SWRITE(*,*) "[FVRE] copy all non-grad quantities to UVisu_FV"
-  SDEALLOCATE(UVisu_FV)
-  ALLOCATE(UVisu_FV(0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV,nVarVisu+nVarVisu_ElemData))
-  DO iVar=1,nVarTotal
-    IF (mapVisu(iVar)*(1-maskGrad(iVar)).GT.0) THEN
+  DO iVar=1,nVarDep
+    IF (mapVisu(iVar)*(1-maskGrad(iVar)).GT.0) THEN ! visu var, but no gradient var
       SWRITE(*,*) "  ", TRIM(VarNamesTotal(iVar))
       UVisu_FV(:,:,:,:,mapVisu(iVar)) = UCalc_FV(:,:,:,:,mapCalc_FV(iVar))
     END IF
   END DO
   
-  ! calc all grad quantities on the normal cell centers and convert them to visu grid
+  ! calc all grad quantities on the normal cell centers and convert them afterwards to visu grid
   IF (SUM(maskGrad*mapCalc_FV).GT.0) THEN
     SDEALLOCATE(UCalc_FV)
     ALLOCATE(UCalc_FV(0:PP_N,0:PP_N,0:PP_N,nElems_FV,1:nVarCalc_FV))
     SWRITE(*,*) "[FVRE] CalcQuantitiesWithGradients"
     CALL CalcQuantities(nVarCalc,PP_N,nElems_FV,mapElems_FV,mapCalc_FV,UCalc_FV,maskGrad)
     SWRITE(*,*) "[FVRE] ConvertToVisu_FV"
-    CALL ConvertToVisu_FV(mapCalc_FV,maskGrad,reallocate=.FALSE.)
+    CALL ConvertToVisu_FV(mapCalc_FV,maskGrad)
   END IF
 #else
   ! calc FV solution 
@@ -198,14 +203,14 @@ INTEGER,INTENT(IN)    :: nElems_calc
 INTEGER,INTENT(IN)    :: indices(nElems_calc)
 REAL,INTENT(IN)       :: UIn(nVar,0:Nloc,0:Nloc,0:Nloc,nElems)
 REAL,INTENT(OUT)      :: UOut(0:Nloc,0:Nloc,0:Nloc,nElems_calc,nVarCalc)
-INTEGER,INTENT(INOUT) :: maskCalc(nVarTotal)
+INTEGER,INTENT(INOUT) :: maskCalc(nVarDep)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
 INTEGER               :: iVarOut,iVarIn
 INTEGER               :: iElem,iElem_calc
 !==================================================================================================================================
 ! Copy exisiting variables from solution array
-DO iVarOut=1,nVarTotal ! iterate over all out variables
+DO iVarOut=1,nVarDep ! iterate over all out variables
   IF (mapCalc(iVarOut).LT.1) CYCLE ! check if variable must be calculated
   DO iVarIn=1,nVar_State ! iterate over all in variables
     IF( STRICMP(VarNamesTotal(iVarOut),VarNamesHDF5(iVarIn))) THEN

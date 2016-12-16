@@ -47,17 +47,6 @@ PUBLIC:: ConvertToVisu_FV_Reconstruct
 #endif /* FV_RECONSTRUCT */
 #endif /* FV_ENABLED */
 
-INTERFACE ConvertToVisu_ElemData
-  MODULE PROCEDURE ConvertToVisu_ElemData
-END INTERFACE
-
-INTERFACE ConvertToVisu_FieldData
-  MODULE PROCEDURE ConvertToVisu_FieldData
-END INTERFACE
-
-PUBLIC:: ConvertToVisu_ElemData
-PUBLIC:: ConvertToVisu_FieldData
-
 CONTAINS
 
 !===================================================================================================================================
@@ -83,8 +72,8 @@ ALLOCATE(Vdm_N_NVisu(0:NVisu,0:PP_N))
 CALL GetVandermonde(PP_N,NodeType,NVisu,NodeTypeVisuPosti,Vdm_N_NVisu,modal=.FALSE.)
 ! convert DG solution to UVisu_DG
 SDEALLOCATE(UVisu_DG)
-ALLOCATE(UVisu_DG(0:NVisu,0:NVisu,0:NVisu,nElems_DG,nVarVisu+nVarVisu_ElemData+nVarVisu_FieldData))
-DO iVar=1,nVarTotal
+ALLOCATE(UVisu_DG(0:NVisu,0:NVisu,0:NVisu,nElems_DG,nVarVisuTotal))
+DO iVar=1,nVarDep
   IF (mapVisu(iVar).GT.0) THEN
     iVarCalc = mapCalc(iVar) 
     iVarVisu = mapVisu(iVar) 
@@ -100,34 +89,26 @@ END SUBROUTINE ConvertToVisu_DG
 !===================================================================================================================================
 !> Convert the calculated FV quantities to the visualization grid.
 !===================================================================================================================================
-SUBROUTINE ConvertToVisu_FV(mapCalc,maskVisu,reallocate)
+SUBROUTINE ConvertToVisu_FV(mapCalc,maskVisu)
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Posti_Vars         ,ONLY: nVarTotal,VarNamesTotal
-USE MOD_Posti_Vars         ,ONLY: mapVisu,UVisu_FV,nVarVisu,NVisu_FV,nElems_FV,UCalc_FV
-USE MOD_Posti_Vars         ,ONLY: nVarVisu_ElemData, nVarVisu_FieldData
+USE MOD_Posti_Vars         ,ONLY: nVarDep,VarNamesTotal
+USE MOD_Posti_Vars         ,ONLY: mapVisu,UVisu_FV,nElems_FV,UCalc_FV
 USE MOD_ReadInTools        ,ONLY: GETINT
 USE MOD_Interpolation      ,ONLY: GetVandermonde
 USE MOD_ChangeBasis        ,ONLY: ChangeBasis3D
 USE MOD_Interpolation_Vars ,ONLY: NodeType,NodeTypeVisu
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
-INTEGER,INTENT(IN)          :: mapCalc(nVarTotal)
-INTEGER,INTENT(IN),OPTIONAL :: maskVisu(nVarTotal)
-LOGICAL,INTENT(IN),OPTIONAL :: reallocate
+INTEGER,INTENT(IN)          :: mapCalc(nVarDep)
+INTEGER,INTENT(IN),OPTIONAL :: maskVisu(nVarDep)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: iVar,i,j,k,iElem
 INTEGER            :: iVarVisu,iVarCalc
-LOGICAL            :: reallocate_loc
 !===================================================================================================================================
 ! compute UVisu_FV
-reallocate_loc = MERGE(reallocate, .TRUE., PRESENT(reallocate))
-IF (reallocate_loc) THEN
-  SDEALLOCATE(UVisu_FV)
-  ALLOCATE(UVisu_FV(0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV,nVarVisu+nVarVisu_ElemData+nVarVisu_FieldData))
-END IF
-DO iVar=1,nVarTotal
+DO iVar=1,nVarDep
   iVarVisu = mapVisu(iVar) 
   IF (PRESENT(maskVisu)) iVarVisu = maskVisu(iVar)*iVarVisu
   IF (iVarVisu.GT.0) THEN
@@ -171,7 +152,7 @@ INTEGER             :: iVarCalc
 INTEGER             :: nVarPrim,iVarPrim
 INTEGER             :: mapUPrim(PP_nVarPrim)
 INTEGER             :: mapUCalc(PP_nVarPrim)
-INTEGER             :: maskPrim(nVarTotal)
+INTEGER             :: maskPrim(nVarDep)
 !===================================================================================================================================
 ! Build local maps of maximal size PP_nVarPrim:
 ! - mapUCalc(1:nVarPrim) = indices of the nVarPrim primitive quantities that should be visualized in the UCalc_FV array
@@ -184,7 +165,7 @@ INTEGER             :: maskPrim(nVarTotal)
 nVarPrim = 0
 iVarPrim = 0
 maskPrim = GetMaskPrim()
-DO iVar=1,nVarTotal
+DO iVar=1,nVarDep
   IF (maskPrim(iVar).GT.0) THEN
     iVarPrim = iVarPrim + 1
     IF (mapCalc_FV(iVar).GT.0) THEN
@@ -245,82 +226,5 @@ END SUBROUTINE ConvertToVisu_FV_Reconstruct
 #endif /* FV_RECONSTRUCT */
 
 #endif /* FV_ENABLED */
-
-!===================================================================================================================================
-!> Convert ElemData variables that should be visualized to the visu grid.
-!===================================================================================================================================
-SUBROUTINE ConvertToVisu_ElemData() 
-USE MOD_Globals
-USE MOD_PreProc
-USE MOD_Posti_Vars
-USE MOD_StringTools        ,ONLY: STRICMP
-IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-INTEGER            :: iVarElemData,iVarVisu,iElem_DG,iElem_FV,iElem
-!===================================================================================================================================
-SWRITE(*,*) "Convert ElemData to Visu grid"
-DO iVarElemData=1,nVar_ElemData
-  DO iVarVisu=1,nVarVisu_ElemData
-    IF (STRICMP(VarNames_ElemData(iVarElemData),VarNamesVisu_ElemData(iVarVisu))) THEN
-      SWRITE(*,*) "  ",TRIM(VarNames_ElemData(iVarElemData))
-      DO iElem_DG=1,nElems_DG
-        iElem = mapElems_DG(iElem_DG)
-        UVisu_DG(:,:,:,iElem_DG,nVarVisu+iVarVisu) = ElemData(iVarElemData,iElem)
-      END DO
-      DO iElem_FV=1,nElems_FV
-        iElem = mapElems_FV(iElem_FV)
-        UVisu_FV(:,:,:,iElem_FV,nVarVisu+iVarVisu) = ElemData(iVarElemData,iElem)
-      END DO
-    END IF
-  END DO
-END DO 
-END SUBROUTINE ConvertToVisu_ElemData
-
-!===================================================================================================================================
-!> Convert FieldData variables that should be visualized to the visu grid.
-!===================================================================================================================================
-SUBROUTINE ConvertToVisu_FieldData() 
-USE MOD_Globals
-USE MOD_PreProc
-USE MOD_Posti_Vars
-USE MOD_StringTools        ,ONLY: STRICMP
-USE MOD_Interpolation      ,ONLY: GetVandermonde
-USE MOD_ChangeBasis        ,ONLY: ChangeBasis3D
-USE MOD_Interpolation_Vars ,ONLY: NodeType,NodeTypeVisu
-IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-INTEGER            :: iVarFieldData,iVarVisu,iElem_DG,iElem_FV,iElem
-REAL,ALLOCATABLE   :: Vdm_N_NVisu(:,:)                  ! Vandermonde from state to visualisation nodes
-REAL,ALLOCATABLE   :: Vdm_N_NVisu_FV(:,:)                ! Vandermonde from state to fv visualisation nodes
-!===================================================================================================================================
-SWRITE(*,*) "Convert FieldData to Visu grid"
-
-ALLOCATE(Vdm_N_NVisu_FV(0:NVisu_FV,0:PP_N))
-CALL GetVandermonde(PP_N,NodeType,NVisu_FV,NodeTypeVisuPosti,Vdm_N_NVisu_FV,modal=.FALSE.)
-ALLOCATE(Vdm_N_NVisu(0:NVisu,0:PP_N))
-CALL GetVandermonde(PP_N,NodeType,NVisu,NodeTypeVisuPosti,Vdm_N_NVisu,modal=.FALSE.)
-
-DO iVarFieldData=1,nVar_FieldData
-  DO iVarVisu=1,nVarVisu_FieldData
-    IF (STRICMP(VarNames_FieldData(iVarFieldData),VarNamesVisu_FieldData(iVarVisu))) THEN
-      SWRITE(*,*) "  ",TRIM(VarNames_FieldData(iVarFieldData))
-      DO iElem_DG=1,nElems_DG
-        iElem = mapElems_DG(iElem_DG)
-        CALL ChangeBasis3D(PP_N,NVisu,Vdm_N_NVisu,FieldData(iVarFieldData,:,:,:,iElem),&
-                                                  UVisu_DG(:,:,:,iElem_DG,nVarVisu+nVarVisu_ElemData+iVarVisu))
-      END DO
-      DO iElem_FV=1,nElems_FV
-        iElem = mapElems_FV(iElem_FV)
-        CALL ChangeBasis3D(PP_N,NVisu,Vdm_N_NVisu_FV,FieldData(iVarFieldData,:,:,:,iElem),&
-                                                     UVisu_FV(:,:,:,iElem_FV,nVarVisu+nVarVisu_ElemData+iVarVisu))
-      END DO
-    END IF
-  END DO
-END DO 
-END SUBROUTINE ConvertToVisu_FieldData
 
 END MODULE MOD_Posti_ConvertToVisu

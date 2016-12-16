@@ -472,9 +472,9 @@ SUBROUTINE WriteVarnamesToVTK_array(nDep,mapVisu,varnames_out,components_out)
 USE ISO_C_BINDING
 ! MODULES
 USE MOD_Globals
-USE MOD_Posti_Vars     ,ONLY: VarNamesTotal,nVarVisu
-USE MOD_Posti_Vars     ,ONLY: nVarVisu_ElemData,VarNamesVisu_ElemData,nVarVisu_FieldData,VarNamesVisu_FieldData
-USE MOD_Posti_Vars     ,ONLY: VarNames_ElemData,nVar_ElemData,VarNames_FieldData,nVar_FieldData
+USE MOD_Posti_Vars     ,ONLY: VarNamesTotal,nVarTotal,nVarVisuTotal
+!USE MOD_Posti_Vars     ,ONLY: nVarVisu_ElemData,VarNamesVisu_ElemData,nVarVisu_FieldData,VarNamesVisu_FieldData
+!USE MOD_Posti_Vars     ,ONLY: VarNames_ElemData,nVar_ElemData,VarNames_FieldData,nVar_FieldData
 USE MOD_StringTools    ,ONLY: STRICMP
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -488,9 +488,9 @@ TYPE (CARRAY), INTENT(INOUT) :: components_out
 ! LOCAL VARIABLES
 CHARACTER(C_CHAR),POINTER    :: VarNames_loc(:,:)
 INTEGER(C_INT),POINTER       :: components_loc(:)
-INTEGER                      :: nVar_loc,i,iVar,iVarVisu,iVarElemData,iVarFieldData
+INTEGER                      :: nVar_loc,i,iVar,iVarVisu
 !===================================================================================================================================
-nVar_loc = nVarVisu+nVarVisu_ElemData+nVarVisu_FieldData
+nVar_loc = nVarVisuTotal
 ! copy varnames
 ALLOCATE(VarNames_loc(255,nVar_loc))
 varnames_out%len  = nVar_loc*255
@@ -501,7 +501,7 @@ components_out%len  = nVar_loc
 components_out%data = C_LOC(components_loc(1))
 
 iVarVisu = 0
-DO iVar=1,nDep
+DO iVar=1,nVarTotal
   IF (mapVisu(iVar).GT.0) THEN
     iVarVisu=iVarVisu+1
     DO i=1,255
@@ -511,27 +511,6 @@ DO iVar=1,nDep
   END IF
 END DO
 
-DO iVarElemData=1,nVar_ElemData
-  DO iVar=1,nVarVisu_ElemData
-    IF (STRICMP(VarNames_ElemData(iVarElemData),VarNamesVisu_ElemData(iVar))) THEN
-      DO i=1,255
-        VarNames_loc(i,iVarVisu+iVar) = VarNames_ElemData(iVarElemData)(i:i)
-      END DO
-      components_loc(iVarVisu+iVar) = 1
-    END IF
-  END DO
-END DO
-
-DO iVarFieldData=1,nVar_FieldData
-  DO iVar=1,nVarVisu_FieldData
-    IF (STRICMP(VarNames_FieldData(iVarFieldData),VarNamesVisu_FieldData(iVar))) THEN
-      DO i=1,255
-        VarNames_loc(i,iVarVisu+nVarVisu_ElemData+iVar) = VarNames_FieldData(iVarFieldData)(i:i)
-      END DO
-      components_loc(iVarVisu+nVarVisu_ElemData+iVar) = 1
-    END IF
-  END DO
-END DO
 END SUBROUTINE WriteVarnamesToVTK_array
 
 END MODULE MOD_VTK

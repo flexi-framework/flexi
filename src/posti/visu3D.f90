@@ -84,6 +84,7 @@ SUBROUTINE visu3d_requestInformation(mpi_comm_IN, strlen_state, statefile_IN, va
 ! MODULES
 USE MOD_Globals
 USE MOD_MPI     ,ONLY: InitMPI
+USE MOD_Posti_Vars,ONLY: VarNamesTotal
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -95,14 +96,13 @@ TYPE (CARRAY), INTENT(INOUT)          :: varnames
 ! LOCAL
 CHARACTER(LEN=255)                    :: statefile
 CHARACTER(LEN=255),POINTER            :: varnames_pointer(:)
-CHARACTER(LEN=255),ALLOCATABLE,TARGET :: varnames_loc(:)
 !===================================================================================================================================
 statefile = cstrToChar255(statefile_IN, strlen_state)
 
 CALL InitMPI(mpi_comm_IN) 
-CALL visu3d_getVarNames(statefile,varnames_loc)
-IF (ALLOCATED(varnames_loc)) THEN
-  varnames_pointer => varnames_loc
+CALL visu3d_getVarNamesAndFileType(statefile,VarNamesTotal)
+IF (ALLOCATED(VarNamesTotal)) THEN
+  varnames_pointer => VarNamesTotal
   varnames%len  = SIZE(varnames_pointer)*255 
   varnames%data = C_LOC(varnames_pointer(1))
 ELSE
@@ -111,9 +111,15 @@ ELSE
 END IF
 END SUBROUTINE visu3d_requestInformation
 
-SUBROUTINE visu3d_getVarNames(statefile,varnames_loc) 
+!===================================================================================================================================
+! TODO:
+!> Create a list of available variables for ParaView. This list contains the conservative, primitve and derived quantities
+!> that are available in the current equation system as well as the additional variables read from the state file.
+!> The additional variables are stored in the datasets 'ElemData' (elementwise data) and 'FieldData' (pointwise data).
+!===================================================================================================================================
+SUBROUTINE visu3d_getVarNamesAndFileType(statefile,varnames_loc) 
 USE MOD_Globals
-USE MOD_Posti_Vars     ,ONLY: FileType
+USE MOD_Posti_Vars     ,ONLY: FileType,VarNamesHDF5
 USE MOD_HDF5_Input     ,ONLY: OpenDataFile,CloseDataFile,GetDataSize,GetVarNames,ISVALIDMESHFILE,ISVALIDHDF5FILE,ReadAttribute
 USE MOD_HDF5_Input     ,ONLY: DatasetExists
 USE MOD_IO_HDF5        ,ONLY: GetDatasetNamesInGroup,File_ID,HSize
@@ -126,7 +132,7 @@ CHARACTER(LEN=255),INTENT(INOUT),ALLOCATABLE,TARGET :: varnames_loc(:)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                                             :: i,j,nVar,dims
-LOGICAL                                             :: varnames_found,readDGsolutionVars
+LOGICAL                                             :: varnames_found,readDGsolutionVars,sameVars
 CHARACTER(LEN=255),ALLOCATABLE                      :: datasetNames(:)
 CHARACTER(LEN=255),ALLOCATABLE                      :: varnames_tmp(:)
 CHARACTER(LEN=255),ALLOCATABLE                      :: tmp(:)
@@ -134,36 +140,37 @@ CHARACTER(LEN=255),ALLOCATABLE                      :: tmp(:)
 
 IF (ISVALIDMESHFILE(statefile)) THEN      ! MESH
   SDEALLOCATE(varnames_loc)
+  FileType='Mesh'
 ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! other file
   SDEALLOCATE(varnames_loc)
-  nVar=0
-
   CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
   CALL ReadAttribute(File_ID,'File_Type',   1,StrScalar =FileType)
 
-  SELECT CASE(FileType)
-  CASE('State')
-    SDEALLOCATE(varnames_tmp)
-    CALL GetVarNames("VarNames",varnames_tmp)
-    readDGsolutionVars=.FALSE.
-    DO i=1,SIZE(varnames_tmp)
-      readDGsolutionVars = readDGsolutionVars.OR.(.NOT.STRICMP(varnames_tmp(i), DepNames(i)))
+  ! check if variables in state file are the same as in the EQNSYS
+  ! and set FileType to 'Generic' if not
+  IF (STRICMP(FileType,'State')) THEN
+    SDEALLOCATE(VarNamesHDF5)
+    CALL GetVarNames("VarNames",VarNamesHDF5)
+    sameVars=.TRUE.
+    DO i=1,SIZE(VarNamesHDF5)
+      sameVars = sameVars.AND.(STRICMP(VarNamesHDF5(i), DepNames(i)))
     END DO
-    IF (.NOT.readDGsolutionVars) THEN
-      nVar = nVarTotalEOS
-      ALLOCATE(varnames_loc(nVar))
-      varnames_loc(1:nVar)=DepNames
-    END IF
-  CASE DEFAULT
+    IF (.NOT.sameVars) FileType='Generic'
+  END IF
+
+  IF (STRICMP(FileType,'State')) THEN
+    nVar = nVarTotalEOS
+    ALLOCATE(varnames_loc(nVar))
+    varnames_loc(1:nVar)=DepNames
+    readDGsolutionVars = .FALSE.
+  ELSE
     nVar=0
     readDGsolutionVars = .TRUE.
-  END SELECT
+  END IF
 
   CALL GetDatasetNamesInGroup("/",datasetNames)
-  SWRITE (*,*) "FOUND Datasets:"
 
   DO i=1,SIZE(datasetNames)
-    SWRITE(*,*) "  ", TRIM(datasetNames(i))
     SDEALLOCATE(varnames_tmp)
     CALL DatasetExists(File_ID,"VarNames_"//TRIM(datasetNames(i)),varnames_found,attrib=.TRUE.)
     IF (varnames_found) THEN
@@ -206,12 +213,9 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! other file
   CALL CloseDataFile()
   SDEALLOCATE(datasetNames)
 END IF
-END SUBROUTINE visu3d_getVarNames
+END SUBROUTINE visu3d_getVarNamesAndFileType
 
 !===================================================================================================================================
-!> Create a list of available variables for ParaView. This list contains the conservative, primitve and derived quantities
-!> that are available in the current equation system as well as the additional variables read from the state file.
-!> The additional variables are stored in the datasets 'ElemData' (elementwise data) and 'FieldData' (pointwise data).
 !===================================================================================================================================
 SUBROUTINE visu3d_InitFile(statefile,postifile)
 ! MODULES
@@ -220,15 +224,14 @@ USE MOD_Preproc
 USE MOD_Globals
 USE MOD_Posti_Vars
 USE MOD_EOS_Posti_Vars
-USE MOD_MPI            ,ONLY: InitMPI
-USE MOD_HDF5_Input     ,ONLY: ISVALIDMESHFILE,ISVALIDHDF5FILE,GetArrayAndName
-USE MOD_HDF5_Input     ,ONLY: ReadAttribute,File_ID,OpenDataFile,GetDataProps,CloseDataFile
-USE MOD_Interpolation_Vars,ONLY: NodeType
-USE MOD_Output_Vars    ,ONLY: ProjectName
-USE MOD_StringTools    ,ONLY: STRICMP
-USE MOD_Mesh_ReadIn    ,ONLY: BuildPartition
-USE MOD_Posti_Mappings ,ONLY: Build_FV_DG_distribution
-USE MOD_ReadInTools    ,ONLY: prms,GETINT,GETLOGICAL,addStrListEntry,GETSTR,CountOption,FinalizeParameters
+USE MOD_MPI                ,ONLY: InitMPI
+USE MOD_HDF5_Input         ,ONLY: ISVALIDMESHFILE,ISVALIDHDF5FILE,GetArrayAndName
+USE MOD_HDF5_Input         ,ONLY: ReadAttribute,File_ID,OpenDataFile,GetDataProps,CloseDataFile
+USE MOD_Interpolation_Vars ,ONLY: NodeType
+USE MOD_Output_Vars        ,ONLY: ProjectName
+USE MOD_StringTools        ,ONLY: STRICMP
+USE MOD_ReadInTools        ,ONLY: prms,GETINT,GETLOGICAL,addStrListEntry,GETSTR,CountOption,FinalizeParameters
+USE MOD_Posti_Mappings     ,ONLY: Build_FV_DG_distribution,Build_mapCalc_mapVisu
 
 IMPLICIT NONE
 CHARACTER(LEN=255),INTENT(IN)    :: statefile
@@ -237,38 +240,52 @@ CHARACTER(LEN=255),INTENT(INOUT) :: postifile
 ! LOCAL
 INTEGER                          :: nElems_State,iVar 
 CHARACTER(LEN=255)               :: NodeType_State 
-INTEGER                          :: postiUnit = 104
+INTEGER                          :: postiUnit 
 INTEGER                          :: stat
 !===================================================================================================================================
+CALL visu3d_getVarNamesAndFileType(statefile,VarNamesTotal)
+IF (STRICMP(statefile,'Mesh')) THEN
+    CALL CollectiveStop(__STAMP__, &
+        "FileType==Mesh, but we try to initialize a state file!")
+END IF
 
-! always read in the meshfile from state, in case the meshfile specified in the parameter file is empty
+! open state file to be able to read attributes
 CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+
+! read the meshfile attribute from statefile
 CALL ReadAttribute(File_ID,'MeshFile',    1,StrScalar =MeshFile_state)
-CALL CloseDataFile()
+
+! read options from posti parameter file
+CALL prms%read_options(postifile)
+NVisu             = GETINT("NVisu")
+! again read MeshFile from posti prm file (this overwrites the MeshFile read from the state file)
+Meshfile          = GETSTR("MeshFile",MeshFile_state) 
+VisuDimension     = GETINT("VisuDimension")
+NodeTypeVisuPosti = GETSTR('NodeTypeVisu')
+
+! check if state, mesh or NVisu changed 
 changedStateFile = .NOT.STRICMP(statefile,statefile_old)
-SWRITE(*,*) "ChangedFile: ", TRIM(statefile_old), " -> ",TRIM(statefile)
+changedMeshFile  = .NOT.(STRICMP(MeshFile,MeshFile_old))
+changedNVisu     = ((NVisu.NE.NVisu_old) .OR. (NodeTypeVisuPosti.NE.NodeTypeVisuPosti_old))
+
+SWRITE(*,*) "state file old -> new: ", TRIM(statefile_old), " -> ",TRIM(statefile)
+SWRITE(*,*) " mesh file old -> new: ", TRIM(MeshFile_old) , " -> ",TRIM(MeshFile)
+
+! if Mesh or State changed readin some more attributes/parameters
 IF (changedStateFile.OR.changedMeshFile) THEN
-  ! Read in parameters from the State file
-  CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
   CALL GetDataProps(nVar_State,PP_N,nElems_State,NodeType_State)
   IF (.NOT.STRICMP(NodeType_State, NodeType)) THEN
     CALL CollectiveStop(__STAMP__, &
         "NodeType of state does not match with NodeType the visu3D-posti is compiled with!")
   END IF
-  CALL ReadAttribute(File_ID,'File_Type',   1,StrScalar =FileType)
-  CALL ReadAttribute(File_ID,'MeshFile',    1,StrScalar =MeshFile_state)
   CALL ReadAttribute(File_ID,'Project_Name',1,StrScalar =ProjectName)
   CALL ReadAttribute(File_ID,'Time',        1,RealScalar=OutputTime)
-  SDEALLOCATE(VarNamesHDF5)
-  ALLOCATE(VarNamesHDF5(nVar_State))
-  CALL ReadAttribute(File_ID,'VarNames',nVar_State,StrArray=VarNamesHDF5)
-  CALL CloseDataFile()
 
+  ! if no explicit posti parameter file is given, then generate a default '.posti.ini' file
   IF (LEN_TRIM(postifile).EQ.0) THEN
     postifile = ".posti.ini"
-    ! no posti parameter file given => write a default .posti.ini file
     IF (MPIRoot) THEN
-      OPEN(UNIT=postiUnit,FILE=TRIM(postifile),STATUS='UNKNOWN',ACTION='WRITE',ACCESS='SEQUENTIAL',IOSTAT=stat)
+      OPEN(NEWUNIT=postiUnit,FILE=TRIM(postifile),STATUS='UNKNOWN',ACTION='WRITE',ACCESS='SEQUENTIAL',IOSTAT=stat)
       WRITE(postiUnit,'(A,I3)') "NVisu   = ", PP_N+1
       DO iVar=1,nVar_State
         WRITE(postiUnit,'(A,A)') "VarName = ", TRIM(VarNamesHDF5(iVar))
@@ -279,60 +296,42 @@ IF (changedStateFile.OR.changedMeshFile) THEN
   END IF
 END IF
 
-CALL prms%read_options(postifile)
-NVisu  = GETINT("NVisu")
-Meshfile = GETSTR("MeshFile",MeshFile_state)
-VisuDimension = GETINT("VisuDimension")
-NodeTypeVisuPosti = GETSTR('NodeTypeVisu')
-NodeTypeVisuPosti_old=NodeTypeVisuPosti
+CALL CloseDataFile()
 
-changedMeshFile = .NOT.(STRICMP(MeshFile,MeshFile_old))
-changedNVisu = ((NVisu.NE.NVisu_old) .OR. (NodeTypeVisuPosti.NE.NodeTypeVisuPosti_old))
-
-SDEALLOCATE(VarNamesIni)
-nVarIni = CountOption("VarName")
-ALLOCATE(VarNamesIni(nVarIni))
-DO iVar=1,nVarIni
-  VarNamesIni(iVar) = GETSTR("VarName")
-END DO
-
-CALL FinalizeParameters()
-
-nVarTotal=0
-nVar_ElemData=0
-nVar_FieldData=0
+! set number of dependent and raw variables 
 SDEALLOCATE(DepTable)
-SDEALLOCATE(FieldData)
-SDEALLOCATE(ElemData)
-SDEALLOCATE(VarNamesTotal)
-SDEALLOCATE(VarNames_ElemData)
-SDEALLOCATE(VarNames_FieldData)
-
-!print*,'readdata'; CALL FLUSH()
+nVarTotal=SIZE(VarNamesTotal)
 IF (STRICMP(FileType,'State')) THEN
-  nVarTotal=nVarTotalEOS
-  ALLOCATE(VarNamesTotal(nVarTotal))
-  VarNamesTotal=DepNames
-
-  ALLOCATE(DepTable(1:nVarTotal,0:nVarTotal))
-  DepTable=DepTableEOS
-  calcDeps      = .TRUE.
+  nVarDep = nVarTotalEOS
+  nVarRaw = nVarTotal - nVarDep
+  calcDeps= .TRUE.
+  ALLOCATE(DepTable(nVarDep,nVarDep))
+  DepTable = DepTableEOS
 ELSE 
-  nVarTotal=SIZE(VarNamesHDF5,1)
-  ALLOCATE(VarNamesTotal(nVarTotal))
-
-  VarNamesTotal=VarNamesHDF5
-  ALLOCATE(DepTable(1:nVarTotal,0:nVarTotal))
-  DepTable=0
-  DO iVar=1,nVarTotal
-    DepTable(iVar,iVar)=1
-  END DO
-  calcDeps      = .FALSE.
-
-  CALL CollectiveStop(__STAMP__,"The type of '"//TRIM(statefile)//"' is unknown.")
+  nVarDep = 0
+  nVarRaw = nVarTotal
+  calcDeps= .FALSE.
+  ALLOCATE(DepTable(nVarDep,nVarDep))
+  DepTable = 0
 END IF
 
-print*,'initfiledone'; CALL FLUSH()
+! build distribution of FV and DG elements, which is stored in FV_Elems_loc
+IF (changedStateFile.OR.changedMeshFile) THEN
+  CALL Build_FV_DG_distribution(statefile) 
+END IF 
+
+! reset withDGOperator flag and check if it is needed due to existing FV elements
+withDGOperator = .FALSE.
+#if FV_RECONSTRUCT
+! force calculation of metrics if there are any FV elements
+IF (hasFV_Elems) withDGOperator = .TRUE.
+#endif
+
+! build mappings of variables which must be calculated/visualized
+! also set withDGOperator flag if a dependent variable requires the evaluation of the DG operator
+CALL Build_mapCalc_mapVisu()
+
+changedWithDGOperator = (withDGOperator.NEQV.withDGOperator_old)
 END SUBROUTINE visu3d_InitFile
 
 
@@ -367,11 +366,9 @@ CHARACTER(LEN=255)            :: prmfile
 CHARACTER(LEN=255)            :: postifile
 CHARACTER(LEN=255)            :: statefile
 !===================================================================================================================================
-print*,'startwrap'; CALL FLUSH()
 prmfile   = cstrToChar255(prmfile_IN,   strlen_prm)
 postifile = cstrToChar255(postifile_IN, strlen_posti)
 statefile = cstrToChar255(statefile_IN, strlen_state)
-print*,'startwrapvisu'; CALL FLUSH()
 CALL visu3D(mpi_comm_IN, prmfile, postifile, statefile, &
         coordsDG_out,valuesDG_out,nodeidsDG_out, &
         coordsFV_out,valuesFV_out,nodeidsFV_out,varnames_out,components_out)
@@ -391,16 +388,13 @@ USE MOD_PreProc
 USE MOD_Posti_Vars
 USE MOD_MPI                 ,ONLY: InitMPI
 USE MOD_HDF5_Input          ,ONLY: ISVALIDMESHFILE,ISVALIDHDF5FILE,OpenDataFile,CloseDataFile
-USE MOD_Mesh_ReadIn         ,ONLY: BuildPartition
-USE MOD_Posti_Mappings      ,ONLY: Build_FV_DG_distribution,Build_mapCalc_mapVisu
-USE MOD_Posti_Mappings      ,ONLY: Build_mapCalc_mapVisu
-USE MOD_Posti_ReadState     ,ONLY: ReadStateAndGradients,ReadState
+USE MOD_Posti_ReadState     ,ONLY: ReadState
 USE MOD_Posti_VisuMesh      ,ONLY: VisualizeMesh
 USE MOD_Posti_Calc          ,ONLY: CalcQuantities_DG
 #if FV_ENABLED
 USE MOD_Posti_Calc          ,ONLY: CalcQuantities_ConvertToVisu_FV
 #endif
-USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_DG,ConvertToVisu_ElemData,ConvertToVisu_FieldData
+USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_DG
 USE MOD_ReadInTools         ,ONLY: prms,FinalizeParameters,ExtractParameterFile
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
@@ -418,9 +412,8 @@ TYPE (CARRAY), INTENT(INOUT)     :: varnames_out
 TYPE (CARRAY), INTENT(INOUT)     :: components_out
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-LOGICAL                          :: userblockFound
+LOGICAL                          :: changedPrmFile
 !===================================================================================================================================
-print*,'start'; CALL FLUSH()
 CALL InitMPI(mpi_comm_IN) 
 SWRITE (*,*) "READING FROM: ", TRIM(statefile)
 
@@ -484,13 +477,13 @@ SWRITE (*,*) "READING FROM: ", TRIM(statefile)
 !   - changedVarNames:      new set of variables to visualize
 !   - changedNVisu:         new NVisu, new Nodetype
 !   - changedFV_Elems:      new distribution of FV/DG elements (only if changedStateFile==TRUE)
-!   - changedWithGradients: different mode, with/without gradients
+!   - changedWithDGOperator: different mode, with/without gradients
 !   
 ! WORKFLOW:
 ! * The main steps are:
 !   1. get nElems             (if changedStateFile)
 !   2. get FV/DG distribution (if changedStateFile)
-!   3. read solution          (if changedStateFile or changedWithGradients)
+!   3. read solution          (if changedStateFile or changedWithDGOperator)
 !   4. read Mesh              (if changedMeshFile)
 !   5. compute UCalc          (if changedStateFile or changedVarNames) 
 !   6. convert to UVisu       (if changedStateFile or changedVarNames or changedNVisu)
@@ -513,57 +506,25 @@ changedMeshFile      = .FALSE.
 changedNVisu         = .FALSE.
 changedVarNames      = .FALSE.
 changedFV_Elems      = .FALSE.
-changedWithGradients = .FALSE.
+changedWithDGOperator = .FALSE.
 
 IF (ISVALIDMESHFILE(statefile)) THEN ! visualize mesh
   SWRITE(*,*) "MeshFile Mode"
   MeshFile      = statefile
   nVar_State    = 0
-  withGradients = .FALSE.
+  withDGOperator = .FALSE.
   CALL VisualizeMesh(postifile,MeshFile,coordsDG_out,valuesDG_out,nodeidsDG_out, &
       coordsFV_out,valuesFV_out,nodeidsFV_out,varnames_out,components_out)
 ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
-  print*,'state'; CALL FLUSH()
-
   SWRITE(*,*) "State Mode"
+  ! initialize state file
   CALL visu3d_InitFile(statefile,postifile)
 
-  IF (changedStateFile.OR.changedMeshFile) THEN
-    ! Build partition to get nElems
-    CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
-    CALL BuildPartition() 
-    CALL CloseDataFile()
-
-    CALL Build_FV_DG_distribution(statefile) 
-  END IF ! changedStateFile
-
-  withGradients = .FALSE.
-#if FV_RECONSTRUCT
-  ! force calculation of metrics if there are any FV elements
-  IF (hasFV_Elems) withGradients = .TRUE.
-#endif
-  CALL Build_mapCalc_mapVisu()
-
-  changedWithGradients = (withGradients.NEQV.withGradients_old)
-
-  ! get solution
+  ! read solution from state file (either direct or including a evaluation of the DG operator)
   changedPrmFile = (prmfile .NE. prmfile_old)  
-  IF (changedStateFile.OR.changedWithGradients.OR.changedPrmFile) THEN
-    IF (LEN_TRIM(prmfile).EQ.0) THEN
-      prmfile = ".flexi.ini"
-      CALL ExtractParameterFile(statefile,prmfile,userblockFound)
-      IF (.NOT.userblockFound) THEN
-        CALL CollectiveStop(__STAMP__, "No userblock found in state file '"//TRIM(statefile)//"'")
-      END IF
-    END IF
-    SWRITE(*,*) "[ALL] get solution. withGradients = ", withGradients
-    IF (withGradients) THEN
-      CALL ReadStateAndGradients(prmfile,statefile)
-    ELSE
+  IF (changedStateFile.OR.changedWithDGOperator.OR.changedPrmFile) THEN
       CALL ReadState(prmfile,statefile)
-    END IF
   END IF
-  print*,'readstatedone'; CALL FLUSH()
 
   ! calc DG solution 
   IF (changedStateFile.OR.changedVarNames) THEN
@@ -583,14 +544,11 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
 
   ! convert ElemData and FieldData to visu grid
   IF (changedStateFile.OR.changedVarNames.OR.changedNVisu) THEN
-    CALL ConvertToVisu_ElemData()
-    CALL ConvertToVisu_FieldData()
   END IF
 
   CALL Visu3D_Build_VTK(coordsDG_out,valuesDG_out,nodeidsDG_out, &
                         coordsFV_out,valuesFV_out,nodeidsFV_out, &
                         varnames_out,components_out)
-
 END IF
 
 MeshFile_old          = MeshFile
@@ -598,7 +556,7 @@ prmfile_old           = prmfile
 statefile_old         = statefile
 NVisu_old             = NVisu
 nVar_State_old        = nVar_State
-withGradients_old     = withGradients
+withDGOperator_old    = withDGOperator
 NodeTypeVisuPosti_old = NodeTypeVisuPosti
 
 SWRITE(UNIT_StdOut,'(132("-"))')
@@ -637,25 +595,25 @@ CHARACTER(LEN=255) :: strOutputFile
 ! write UVisu to VTK 2D / 3D arrays (must be done always!)
 IF (VisuDimension.EQ.3) THEN
 
-  CALL WriteDataToVTK_array(nVarVisu+nVarVisu_ElemData+nVarVisu_FieldData,NVisu   ,nElems_DG,valuesDG_out,UVisu_DG,3)
-  CALL WriteDataToVTK_array(nVarVisu+nVarVisu_ElemData+nVarVisu_FieldData,NVisu_FV,nElems_FV,valuesFV_out,UVisu_FV,3)
+  CALL WriteDataToVTK_array(nVarVisuTotal,NVisu   ,nElems_DG,valuesDG_out,UVisu_DG,3)
+  CALL WriteDataToVTK_array(nVarVisuTotal,NVisu_FV,nElems_FV,valuesFV_out,UVisu_FV,3)
 
 ELSE IF (VisuDimension.EQ.2) THEN
 
   ! allocate Visu 2D array and copy from first zeta-slice of 3D array
   SDEALLOCATE(UVisu_DG_2D)
-  ALLOCATE(UVisu_DG_2D(0:NVisu,0:NVisu,0:0,1:nElems_DG,1:(nVarVisu+nVarVisu_ElemData+nVarVisu_FieldData)))
+  ALLOCATE(UVisu_DG_2D(0:NVisu,0:NVisu,0:0,1:nElems_DG,1:(nVarVisuTotal)))
   UVisu_DG_2D = UVisu_DG(:,:,0:0,:,:)
   SDEALLOCATE(UVisu_FV_2D)
-  ALLOCATE(UVisu_FV_2D(0:NVisu_FV,0:NVisu_FV,0:0,1:nElems_FV,1:(nVarVisu+nVarVisu_ElemData+nVarVisu_FieldData)))
+  ALLOCATE(UVisu_FV_2D(0:NVisu_FV,0:NVisu_FV,0:0,1:nElems_FV,1:(nVarVisuTotal)))
 #if FV_ENABLED
   UVisu_FV_2D = UVisu_FV(:,:,0:0,:,:)
 #else
   CoordsVisu_FV_2D = 0
 #endif
 
-  CALL WriteDataToVTK_array(nVarVisu+nVarVisu_ElemData+nVarVisu_FieldData,NVisu   ,nElems_DG,valuesDG_out,UVisu_DG_2D,2)
-  CALL WriteDataToVTK_array(nVarVisu+nVarVisu_ElemData+nVarVisu_FieldData,NVisu_FV,nElems_FV,valuesFV_out,UVisu_FV_2D,2)
+  CALL WriteDataToVTK_array(nVarVisuTotal,NVisu   ,nElems_DG,valuesDG_out,UVisu_DG_2D,2)
+  CALL WriteDataToVTK_array(nVarVisuTotal,NVisu_FV,nElems_FV,valuesFV_out,UVisu_FV_2D,2)
 
 END IF
 
@@ -760,7 +718,7 @@ NodeTypeVisuPosti_old = ""
 NVisu     = -1
 NVisu_old = -1
 nVar_State_old = -1
-withGradients_old = .FALSE.
+withDGOperator_old = .FALSE.
 hasFV_Elems = .FALSE.
 
 SDEALLOCATE(mapCalc)
@@ -776,15 +734,6 @@ SDEALLOCATE(mapElems_DG)
 SDEALLOCATE(mapElems_FV)
 SDEALLOCATE(FV_Elems_loc)
 
-SDEALLOCATE(ElemData)
-SDEALLOCATE(VarNames_ElemData)
-SDEALLOCATE(VarNamesVisu_ElemData)
-SDEALLOCATE(VarNamesVisu_ElemData_old)
-
-SDEALLOCATE(FieldData)
-SDEALLOCATE(VarNames_FieldData)
-SDEALLOCATE(VarNamesVisu_FieldData)
-SDEALLOCATE(VarNamesVisu_FieldData_old)
 END SUBROUTINE FinalizeVisu3D
 
 END MODULE MOD_Visu3D
