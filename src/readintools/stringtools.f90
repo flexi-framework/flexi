@@ -102,6 +102,10 @@ INTERFACE KEYVALUE
   MODULE PROCEDURE KEYVALUE
 END INTERFACE
 
+INTERFACE split_string
+  MODULE PROCEDURE split_string
+END INTERFACE
+
 PUBLIC :: LowCase
 PUBLIC :: STRICMP
 PUBLIC :: StripSpaces
@@ -111,6 +115,7 @@ PUBLIC :: set_formatting
 PUBLIC :: clear_formatting
 PUBLIC :: GetFileExtension
 PUBLIC :: KEYVALUE
+PUBLIC::  split_string
 
 LOGICAL :: use_escape_codes = .TRUE.  !< If set to .FALSE., output will consist only of standard text, allowing the 
                                       !< escape characters to be switched off in environments which don't support them.

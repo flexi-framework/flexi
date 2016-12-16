@@ -394,7 +394,7 @@ USE MOD_Posti_Calc          ,ONLY: CalcQuantities_DG
 #if FV_ENABLED
 USE MOD_Posti_Calc          ,ONLY: CalcQuantities_ConvertToVisu_FV
 #endif
-USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_DG
+USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_DG,ConvertToVisu_GenericData
 USE MOD_ReadInTools         ,ONLY: prms,FinalizeParameters,ExtractParameterFile
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
@@ -542,8 +542,9 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   END IF
 #endif /* FV_ENABLED */
 
-  ! convert ElemData and FieldData to visu grid
+  ! convert generic data to visu grid
   IF (changedStateFile.OR.changedVarNames.OR.changedNVisu) THEN
+    CALL ConvertToVisu_GenericData(statefile)
   END IF
 
   CALL Visu3D_Build_VTK(coordsDG_out,valuesDG_out,nodeidsDG_out, &
