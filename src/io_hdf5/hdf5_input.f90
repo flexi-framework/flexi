@@ -381,7 +381,6 @@ LOGICAL,INTENT(OUT)                        :: AttribExists
 INTEGER  :: dims, nVal
 !===================================================================================================================================
 SDEALLOCATE(VarNames)
-WRITE (*,*) "GetVarnames ", TRIM(AttribName)
 CALL DatasetExists(File_ID,AttribName,AttribExists,attrib=.TRUE.)
 IF (AttribExists) THEN
   ! get size of array
