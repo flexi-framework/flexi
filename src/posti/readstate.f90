@@ -15,7 +15,7 @@
 
 !===================================================================================================================================
 !> Contains routines to read in the state (with or without gradients) - if we want the gradients, DGTimeDerivative_weakForm is
-!> called once. Also contains a routine to read content of dataset 'FieldData'.
+!> called once.
 !===================================================================================================================================
 MODULE MOD_Posti_ReadState
 ! MODULES
@@ -36,22 +36,36 @@ PUBLIC:: ReadState
 
 CONTAINS
 
+!===================================================================================================================================
+!> This routine will read in the current state from the statefile. Will call one of two routines: ReadStateWithoutGradients if no
+!> gradients have to be visualized or calculated and so no DG operator call is necessary, or ReadStateAndGradients if gradients
+!> are needed and we need to calculate the DG operator once.
+!> If the DG operator has to be called, we need some parameters. Either a seperate parameter file is passed,  then this one will 
+!> be used, or we try to extract the parameter file from the userblock.
+!> If both fails and we need to compute the DG operator, the program will abort.
+!> If the DG operator should not be called and no parameter file (seperate or from userblock) can be found,
+!> we specify PP_N from the state file as our polynomial degree (later needed by InitInterpolation).
+!===================================================================================================================================
 SUBROUTINE ReadState(prmfile,statefile)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Posti_Vars  ,ONLY:withDGOperator
 USE MOD_ReadInTools ,ONLY:ExtractParameterFile
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES 
-CHARACTER(LEN=255),INTENT(INOUT) :: prmfile
-CHARACTER(LEN=255),INTENT(IN)    :: statefile
+CHARACTER(LEN=255),INTENT(INOUT) :: prmfile      !< FLEXI parameter file, used if DG operator is called
+CHARACTER(LEN=255),INTENT(IN)    :: statefile    !< HDF5 state file
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL                          :: userblockFound
 !===================================================================================================================================
-userblockFound = .TRUE.
-IF (LEN_TRIM(prmfile).EQ.0) THEN
+userblockFound = .TRUE. ! Set to true to later test for existing parameters either form userblock or from seperate file
+IF (LEN_TRIM(prmfile).EQ.0) THEN ! No seperate parameter file has been given
+  ! Try to extract parameter file 
   prmfile = ".flexi.ini"
   CALL ExtractParameterFile(statefile,prmfile,userblockFound)
+  ! Only abort if we need some parameters to call the DG operator
   IF (.NOT.userblockFound.AND.withDGOperator) THEN
     CALL CollectiveStop(__STAMP__, "No userblock found in state file '"//TRIM(statefile)//"' and no parameter file specified.")
   END IF
@@ -60,6 +74,7 @@ SWRITE(*,*) "[ALL] get solution. withDGOperator = ", withDGOperator
 IF (withDGOperator) THEN
   CALL ReadStateAndGradients(prmfile,statefile)
 ELSE
+  ! If no parameters have been specified, use PP_N to later initialize the interpolation routines.
   IF (.NOT.userblockFound) THEN
     CALL ReadStateWithoutGradients(prmfile,statefile,PP_N)
   ELSE
@@ -104,9 +119,11 @@ USE MOD_ReadInTools   ,ONLY: prms
 USE MOD_ReadInTools   ,ONLY: FinalizeParameters
 USE MOD_Restart_Vars  ,ONLY: RestartTime
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES 
-CHARACTER(LEN=255),INTENT(IN):: prmfile
-CHARACTER(LEN=255),INTENT(IN):: statefile
+CHARACTER(LEN=255),INTENT(IN):: prmfile       !< FLEXI parameter file, used if DG operator is called
+CHARACTER(LEN=255),INTENT(IN):: statefile     !< HDF5 state file
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
 CALL FinalizeInterpolation()
@@ -213,10 +230,12 @@ USE MOD_DG_Vars             ,ONLY: U
 USE MOD_EOS                 ,ONLY: DefineParametersEos,InitEOS
 USE MOD_Interpolation       ,ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES 
-CHARACTER(LEN=255),INTENT(IN):: prmfile
-CHARACTER(LEN=255),INTENT(IN):: statefile
-INTEGER,INTENT(IN),OPTIONAL  :: Nin
+CHARACTER(LEN=255),INTENT(IN):: prmfile       !< FLEXI parameter file, used if DG operator is called
+CHARACTER(LEN=255),INTENT(IN):: statefile     !< HDF5 state file
+INTEGER,INTENT(IN),OPTIONAL  :: Nin           !< Polynomial degree used in InitInterpolation (OPTIONAL)
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
 CALL FinalizeInterpolation()
