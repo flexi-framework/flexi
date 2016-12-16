@@ -100,7 +100,7 @@ REAL,INTENT(OUT) :: Elem_xGP(3,0:PP_N,0:PP_N,0:PP_N,nElems)
 ! LOCAL VARIABLES
 INTEGER :: i,iElem
 REAL    :: XCL_N(3,0:PP_N,0:PP_N,0:PP_N)
-REAL,DIMENSION(0:PP_N,0:NGeo) :: Vdm_xi_N,Vdm_eta_N,Vdm_zeta_N
+REAL,DIMENSION(0:PP_N,0:PP_N) :: Vdm_xi_N,Vdm_eta_N,Vdm_zeta_N
 REAL    :: Vdm_EQNgeo_CLN( 0:PP_N ,0:Ngeo)
 REAL    :: Vdm_CLN_N     ( 0:PP_N ,0:PP_N)
 REAL    :: xi0(3),dxi(3),length(3)
