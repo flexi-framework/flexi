@@ -141,15 +141,15 @@ CASE (OVERINTEGRATIONTYPE_CONSCUTOFF) ! conservative modal cut-off filter: Here,
   IF(NUnder.LT.PP_N)THEN
     !global
     ALLOCATE(Vdm_N_NUnder(0:NUnder,0:PP_N),Vdm_NUnder_N(0:PP_N,0:NUnder))
-    ALLOCATE(sJNUnder(0:NUnder,0:NUnder,0:NUnder,nElems))
+    ALLOCATE(sJNUnder(0:NUnder,0:NUnder,0:PP_NUnderZ,nElems))
     CALL GetVandermonde(PP_N,NodeType,NUnder,NodeType,Vdm_N_NUnder,Vdm_NUnder_N,modal=.TRUE.)
     !local
-    ALLOCATE(Vdm_NGeoRef_NUnder(0:NUnder,0:NGeoRef),DetJac_NUnder(1,0:NUnder,0:NUnder,0:NUnder))
+    ALLOCATE(Vdm_NGeoRef_NUnder(0:NUnder,0:NGeoRef),DetJac_NUnder(1,0:NUnder,0:NUnder,0:PP_NUnderZ))
     CALL GetVandermonde(NGeoRef,NodeType,NUnder,NodeType,Vdm_NGeoRef_NUnder,modal=.TRUE.)
 
     DO iElem=1,nElems
       CALL ChangeBasis3D(1,NGeoRef,NUnder,Vdm_NGeoRef_NUnder,DetJac_Ref(:,:,:,:,iElem),DetJac_NUnder)
-      DO k=0,NUnder; DO j=0,NUnder; DO i=0,NUnder
+      DO k=0,PP_NUnderZ; DO j=0,NUnder; DO i=0,NUnder
         sJNUnder(i,j,k,iElem)=1./DetJac_NUnder(1,i,j,k)
       END DO; END DO; END DO !i,j,k=0,PP_N
     END DO
@@ -163,11 +163,13 @@ CASE (OVERINTEGRATIONTYPE_CONSCUTOFF) ! conservative modal cut-off filter: Here,
 CASE (OVERINTEGRATIONTYPE_SELECTIVE) ! selective overintegration of advective fluxes
 
   NOver = GETINT('NOver')
+
   IF(NOver.LE.PP_N)THEN
     NOver=PP_N
     SWRITE(UNIT_stdOut,'(A)') ' WARNING: Overintegration is disabled for Nover <= N !!!'
     OverintegrationType = 0
   ELSE
+
 #if (PP_NodeType!=1)
     CALL CollectiveStop(__STAMP__,&
       ' ABORT: OverintegrationType==3 ONLY implemented for GAUSS points!')
@@ -211,7 +213,7 @@ USE MOD_Filter               ,ONLY: Filter_Pointer
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(INOUT)  :: U_in(PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems) !< Time derivative vector to be filtered
+REAL,INTENT(INOUT)  :: U_in(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< Time derivative vector to be filtered
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
@@ -228,7 +230,7 @@ CASE DEFAULT
 END SELECT
 END SUBROUTINE Overintegration
 
-
+!TODO Implement 2d
 
 !==================================================================================================================================
 !> Modal cutoff filter conserving both JU and U

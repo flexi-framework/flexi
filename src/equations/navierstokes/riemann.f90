@@ -201,14 +201,14 @@ USE MOD_Flux         ,ONLY:EvalEulerFlux1D_fast
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)                                    :: NLoc       !< local polynomial degree
-REAL,DIMENSION(PP_nVar    ,0:NLoc,0:NLoc),INTENT(IN)  :: U_L        !< conservative solution at left side of the interface
-REAL,DIMENSION(PP_nVar    ,0:NLoc,0:NLoc),INTENT(IN)  :: U_R        !< conservative solution at right side of the interface
-REAL,DIMENSION(PP_nVarPrim,0:NLoc,0:NLoc),INTENT(IN)  :: UPrim_L    !< primitive solution at left side of the interface
-REAL,DIMENSION(PP_nVarPrim,0:NLoc,0:NLoc),INTENT(IN)  :: UPrim_R    !< primitive solution at right side of the interface
-REAL,DIMENSION(       3,0:NLoc,0:NLoc),INTENT(IN)     :: nv,t1,t2   !< normal vector and tangential vectors at side
+INTEGER,INTENT(IN)                                    :: Nloc       !< local polynomial degree
+REAL,DIMENSION(PP_nVar    ,0:Nloc,0:Nloc),INTENT(IN)  :: U_L        !< conservative solution at left side of the interface
+REAL,DIMENSION(PP_nVar    ,0:Nloc,0:Nloc),INTENT(IN)  :: U_R        !< conservative solution at right side of the interface
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:Nloc),INTENT(IN)  :: UPrim_L    !< primitive solution at left side of the interface
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:Nloc),INTENT(IN)  :: UPrim_R    !< primitive solution at right side of the interface
+REAL,DIMENSION(       3,0:Nloc,0:Nloc),INTENT(IN)     :: nv,t1,t2   !< normal vector and tangential vectors at side
 LOGICAL,INTENT(IN)                                    :: doBC       !< marker whether side is a BC side
-REAL,DIMENSION(PP_nVar    ,0:NLoc,0:NLoc),INTENT(OUT) :: FOut       !< advective flux
+REAL,DIMENSION(PP_nVar    ,0:Nloc,0:Nloc),INTENT(OUT) :: FOut       !< advective flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                 :: i,j
@@ -223,7 +223,7 @@ ELSE
 END IF
 
 ! Momentum has to be rotatet using the normal system individual for each
-DO j=0,NLoc; DO i=0,NLoc
+DO j=0,Nloc; DO i=0,Nloc
   ! left state: U_L
   U_LL(DENS)=U_L(DENS,i,j)
   U_LL(SRHO)=1./U_LL(DENS)
@@ -289,11 +289,11 @@ REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:Nloc),INTENT(IN)   :: gradUx_L,gradUx_R,grad
 REAL,INTENT(IN)                                        :: nv(3,0:Nloc,0:Nloc) !< normal vector
 REAL,INTENT(OUT)                                       :: F(PP_nVar,0:Nloc,0:Nloc) !< viscous flux
 #ifdef EDDYVISCOSITY
-REAL,INTENT(IN)                                        :: Face_xGP(3,0:NLoc,0:NLoc)  !< face Gauss points
+REAL,INTENT(IN)                                        :: Face_xGP(3,0:Nloc,0:Nloc)  !< face Gauss points
                                                        !> Filter width for eddy viscosity left/right of the interface
 REAL,INTENT(IN)                                        :: DeltaS_L,DeltaS_R
                                                        !> Indicator for eddy viscosity left/right of the interface
-REAL,DIMENSION(0:NLoc,0:NLoc),INTENT(IN)               :: SGS_Ind_L,SGS_Ind_R
+REAL,DIMENSION(0:Nloc,0:Nloc),INTENT(IN)               :: SGS_Ind_L,SGS_Ind_R
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES

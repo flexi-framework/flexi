@@ -11,6 +11,8 @@
 !
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
+#include "flexi.h"
+
 !==================================================================================================================================
 !> Contains the routine EvalFlux3D which computes the complete flux f,g,h for all DOFs in one Element: used in volume integral
 !==================================================================================================================================
@@ -48,14 +50,14 @@ CONTAINS
 !==================================================================================================================================
 !> Compute linear scalar advection fluxes with velocity AdvVel(3) using the conservative variables for a single element.
 !==================================================================================================================================
-SUBROUTINE EvalFlux3D(NLoc,ULoc,dummy,f,g,h)
+SUBROUTINE EvalFlux3D(Nloc,ULoc,dummy,f,g,h)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Equation_Vars,ONLY:AdvVel
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)                                     :: NLoc     !< Polynomial degree
+INTEGER,INTENT(IN)                                     :: Nloc     !< Polynomial degree
 REAL,DIMENSION(1,0:Nloc,0:Nloc,0:PP_NlocZ),INTENT(IN)  :: ULoc     !< Solution
 REAL,DIMENSION(1,0:Nloc,0:Nloc,0:PP_NlocZ),INTENT(IN)  :: dummy    !< primitive solution (useless here)
 REAL,DIMENSION(1,0:Nloc,0:Nloc,0:PP_NlocZ),INTENT(OUT) :: f        !< Cartesian fluxes (iVar,i,j,k)

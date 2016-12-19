@@ -96,35 +96,35 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT DG...'
 CALL InitDGBasis(PP_N, xGP,wGP,L_minus,L_plus,D ,D_T ,D_Hat ,D_Hat_T ,L_HatMinus ,L_HatPlus)
 
 ! Allocate the local DG solution (JU or U): element-based 
-ALLOCATE(U(        PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems))
+ALLOCATE(U(        PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 ! Allocate the time derivative / solution update /residual vector dU/dt: element-based
-ALLOCATE(Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems))
+ALLOCATE(Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 U=0.
 Ut=0.
 
 ! Allocate the 2D solution vectors on the sides, one array for the data belonging to the proc (the master) 
 ! and one for the sides which belong to another proc (slaves): side-based
-ALLOCATE(U_master(PP_nVar,0:PP_N,0:PP_N,1:nSides))
-ALLOCATE(U_slave( PP_nVar,0:PP_N,0:PP_N,1:nSides))
+ALLOCATE(U_master(PP_nVar,0:PP_N,0:PP_NZ,1:nSides))
+ALLOCATE(U_slave( PP_nVar,0:PP_N,0:PP_NZ,1:nSides))
 U_master=0.
 U_slave=0.
 
 ! Repeat the U, U_Minus, U_Plus structure for the primitive quantities
-ALLOCATE(UPrim(       PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,nElems))
-ALLOCATE(UPrim_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides))
-ALLOCATE(UPrim_slave( PP_nVarPrim,0:PP_N,0:PP_N,1:nSides))
+ALLOCATE(UPrim(       PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+ALLOCATE(UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides))
+ALLOCATE(UPrim_slave( PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides))
 UPrim=0.
 UPrim_master=0.
 UPrim_slave=0.
 
 ! Allocate two fluxes per side (necessary for coupling of FV and DG)
-ALLOCATE(Flux_master(PP_nVar,0:PP_N,0:PP_N,1:nSides))
-ALLOCATE(Flux_slave (PP_nVar,0:PP_N,0:PP_N,1:nSides))
+ALLOCATE(Flux_master(PP_nVar,0:PP_N,0:PP_NZ,1:nSides))
+ALLOCATE(Flux_slave (PP_nVar,0:PP_N,0:PP_NZ,1:nSides))
 Flux_master=0.
 Flux_slave=0.
 
 ! variables for performance tricks
-nDOFElem=(PP_N+1)**3
+nDOFElem=(PP_N+1)**PP_dim
 nTotalU=PP_nVar*nDOFElem*nElems
 
 ! Allocate variables for selective Overintegration of advective fluxes
@@ -143,19 +143,19 @@ IF(OverintegrationType.EQ.SELECTIVE)THEN
   SDEALLOCATE(L_HatMinusO)
   SDEALLOCATE(L_HatPlusO)
 
-  ALLOCATE(UO    (PP_nVar    ,0:NOver,0:NOver,0:NOver,nElems))
-  ALLOCATE(UPrimO(PP_nVarPrim,0:NOver,0:NOver,0:NOver,nElems))
-  ALLOCATE(UtO   (PP_nVar    ,0:NOver,0:NOver,0:NOver,nElems))
+  ALLOCATE(UO    (PP_nVar    ,0:NOver,0:NOver,0:PP_NOverZ,nElems))
+  ALLOCATE(UPrimO(PP_nVarPrim,0:NOver,0:NOver,0:PP_NOverZ,nElems))
+  ALLOCATE(UtO   (PP_nVar    ,0:NOver,0:NOver,0:PP_NOverZ,nElems))
   UO=0.
   UPrimO=0.
   UtO=0.
-  nDOFElemO=(NOver+1)**3 ! variable for performance tricks
+  nDOFElemO=(NOver+1)**PP_dim ! variable for performance tricks
 
-  ALLOCATE(U_masterO(PP_nVar,0:NOver,0:NOver,1:nSides))
-  ALLOCATE(U_slaveO( PP_nVar,0:NOver,0:NOver,1:nSides))
-  ALLOCATE(UPrim_masterO(PP_nVarPrim,0:NOver,0:NOver,1:nSides))
-  ALLOCATE(UPrim_slaveO( PP_nVarPrim,0:NOver,0:NOver,1:nSides))
-  ALLOCATE(FluxO(    PP_nVar,0:NOver,0:NOver,1:nSides))
+  ALLOCATE(U_masterO(PP_nVar,0:NOver,0:PP_NOverZ,1:nSides))
+  ALLOCATE(U_slaveO( PP_nVar,0:NOver,0:PP_NOverZ,1:nSides))
+  ALLOCATE(UPrim_masterO(PP_nVarPrim,0:NOver,0:PP_NOverZ,1:nSides))
+  ALLOCATE(UPrim_slaveO( PP_nVarPrim,0:NOver,0:PP_NOverZ,1:nSides))
+  ALLOCATE(FluxO(    PP_nVar,0:NOver,0:PP_NOverZ,1:nSides))
   U_masterO=0.
   U_slaveO=0.
   UPrim_masterO=0.
@@ -589,7 +589,7 @@ END SUBROUTINE DGTimeDerivative_weakForm
 !==================================================================================================================================
 !> Fills the solution array U with a initial solution provided by the ExactFunc subroutine though interpolation
 !==================================================================================================================================
-SUBROUTINE FillIni(NLoc,xGP,U)
+SUBROUTINE FillIni(Nloc,xGP,U)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! MODULES
 USE MOD_PreProc
@@ -599,9 +599,9 @@ USE MOD_Mesh_Vars     ,ONLY: nElems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)              :: NLoc                                    !< Polynomial degree of solution 
-REAL,INTENT(IN)                 :: xGP(3,    0:NLoc,0:NLoc,0:NLoc,nElems)  !< Coordinates of Gauss-points
-REAL,INTENT(OUT)                :: U(PP_nVar,0:NLoc,0:NLoc,0:NLoc,nElems)  !< Solution array
+INTEGER,INTENT(IN)              :: Nloc                                    !< Polynomial degree of solution 
+REAL,INTENT(IN)                 :: xGP(3,    0:Nloc,0:Nloc,0:PP_NlocZ,nElems)  !< Coordinates of Gauss-points
+REAL,INTENT(OUT)                :: U(PP_nVar,0:Nloc,0:Nloc,0:PP_NlocZ,nElems)  !< Solution array
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                         :: i,j,k,iElem
@@ -609,7 +609,7 @@ INTEGER                         :: i,j,k,iElem
 
 ! Evaluate the initial solution at the nodes and fill the solutin vector U. 
 DO iElem=1,nElems
-  DO k=0,NLoc; DO j=0,NLoc; DO i=0,NLoc
+  DO k=0,PP_NlocZ; DO j=0,Nloc; DO i=0,Nloc
     CALL ExactFunc(IniExactFunc,0.,xGP(1:3,i,j,k,iElem),U(:,i,j,k,iElem))
   END DO; END DO; END DO
 END DO

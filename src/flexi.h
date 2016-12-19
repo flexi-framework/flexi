@@ -114,13 +114,14 @@
 #define SELECTIVE 3
 
 !2d functionality 
-#if (PP_dim=2)
+#if (PP_dim==2)
 #define PP_NOverZ 0
 #define PP_NlocZ 0
 #define PP_NZ 0 
+#define PP_NUnderZ 0 
 #else
 #define PP_NOverZ NOver
 #define PP_NlocZ Nloc 
 #define PP_NZ PP_N 
-
+#define PP_NUnderZ NUnder
 #endif

@@ -11,6 +11,8 @@
 !
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
+#include "flexi.h"
+
 !==================================================================================================================================
 !> Contains routines to compute the riemann (Advection, Diffusion) for a given Face
 !==================================================================================================================================
@@ -62,7 +64,7 @@ SUBROUTINE GetFlux(Nloc,F,U_L,U_R, &
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)                                       :: NLoc                         !< Polynomial degree
+INTEGER,INTENT(IN)                                       :: Nloc                         !< Polynomial degree
 REAL,DIMENSION(PP_nVar,0:Nloc,0:PP_NlocZ),INTENT(IN)     :: U_L                          !< Left state
 REAL,DIMENSION(PP_nVar,0:Nloc,0:PP_NlocZ),INTENT(IN)     :: U_R                          !< Right state
 #if PARABOLIC
@@ -82,7 +84,7 @@ REAL,INTENT(OUT)                                         :: F(PP_nVar,0:Nloc,0:P
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                                             :: Fv(PP_nVar,0:NLoc,0:PP_NlocZ)
+REAL                                             :: Fv(PP_nVar,0:Nloc,0:PP_NlocZ)
 !==================================================================================================================================
 CALL Riemann(Nloc,F,U_L,U_R,U_L,U_R,nv,t1,t2,doBC=doBC)
 #if PARABOLIC
@@ -104,7 +106,7 @@ USE MOD_Equation_Vars,ONLY:AdvVel
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)                                        :: NLoc                         !< Polynomial degree
+INTEGER,INTENT(IN)                                        :: Nloc                         !< Polynomial degree
 REAL,DIMENSION(PP_nVar,    0:Nloc,0:PP_NlocZ),INTENT(IN)  :: U_L                          !< Left state
 REAL,DIMENSION(PP_nVar,    0:Nloc,0:PP_NlocZ),INTENT(IN)  :: U_R                          !< Right state
 REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:PP_NlocZ),INTENT(IN)  :: dummy_L                      !< primitive state (useless here) 

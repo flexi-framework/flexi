@@ -85,17 +85,17 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 LOGICAL,INTENT(IN) :: doMPISides  !< = .TRUE. only MINE (where the proc is master)  MPISides are filled, =.FALSE. InnerSides
 REAL,INTENT(IN)    :: t           !< physical time required for BC state evaluation in case of time dependent BCs
-REAL,INTENT(OUT)   :: Flux_master(1:PP_nVar,0:PP_N,0:PP_N,1:nSides)  ! sum of advection and diffusion fluxes across the boundary
-REAL,INTENT(OUT)   :: Flux_slave (1:PP_nVar,0:PP_N,0:PP_N,1:nSides)  ! sum of advection and diffusion fluxes across the boundary
-REAL,INTENT(INOUT) :: U_master(PP_nVar,0:PP_N, 0:PP_N, 1:nSides) !< solution on master sides
-REAL,INTENT(INOUT) :: U_slave( PP_nVar,0:PP_N, 0:PP_N, 1:nSides) !< solution on slave sides
-REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N, 0:PP_N, 1:nSides) !< solution on master sides
-REAL,INTENT(IN)    :: UPrim_slave( PP_nVarPrim,0:PP_N, 0:PP_N, 1:nSides) !< solution on slave sides
+REAL,INTENT(OUT)   :: Flux_master(1:PP_nVar,0:PP_N,0:PP_NZ,1:nSides)  ! sum of advection and diffusion fluxes across the boundary
+REAL,INTENT(OUT)   :: Flux_slave (1:PP_nVar,0:PP_N,0:PP_NZ,1:nSides)  ! sum of advection and diffusion fluxes across the boundary
+REAL,INTENT(INOUT) :: U_master(PP_nVar,0:PP_N, 0:PP_NZ, 1:nSides) !< solution on master sides
+REAL,INTENT(INOUT) :: U_slave( PP_nVar,0:PP_N, 0:PP_NZ, 1:nSides) !< solution on slave sides
+REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N, 0:PP_NZ, 1:nSides) !< solution on master sides
+REAL,INTENT(IN)    :: UPrim_slave( PP_nVarPrim,0:PP_N, 0:PP_NZ, 1:nSides) !< solution on slave sides
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER :: SideID,p,q,firstSideID_wo_BC,firstSideID ,lastSideID
 #if PARABOLIC
-REAL    :: FluxV_loc(PP_nVar,0:PP_N, 0:PP_N)
+REAL    :: FluxV_loc(PP_nVar,0:PP_N, 0:PP_NZ)
 #endif /*PARABOLIC*/
 INTEGER :: FV_Elems_Max(1:nSides) ! 0 if both sides DG, 1 else
 LOGICAL :: addToOutput_loc
@@ -260,12 +260,12 @@ END IF ! .NOT. MPISIDES
 ! 3. multiply by SurfElem
 DO SideID=firstSideID,lastSideID
   ! multiply with SurfElem
-  DO q=0,PP_N; DO p=0,PP_N
+  DO q=0,PP_NZ; DO p=0,PP_N
     Flux_master(:,p,q,SideID) = Flux_master(:,p,q,SideID) * SurfElem(p,q,FV_Elems_Max(SideID),SideID)
   END DO; END DO
   ! multiply FluxO with SurfElem0 before projection from NOver to N
   IF ((FV_Elems_Sum(SideID).EQ.0).AND.(OverintegrationType.EQ.SELECTIVE)) THEN
-    DO q=0,NOver; DO p=0,NOver
+    DO q=0,PP_NOverZ; DO p=0,NOver
       FluxO(:,p,q,SideID) = FluxO(:,p,q,SideID) * SurfElemO(p,q,0,SideID)
     END DO; END DO
   END IF

@@ -62,24 +62,24 @@ CONTAINS
 !==================================================================================================================================
 !> Compute Navier-Stokes fluxes using the conservative variables and derivatives for every volume Gauss point.
 !==================================================================================================================================
-SUBROUTINE EvalFlux3D(NLoc,U,UPrim,f,g,h)
+SUBROUTINE EvalFlux3D(Nloc,U,UPrim,f,g,h)
 ! MODULES
 USE MOD_PreProc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: NLoc
-REAL,DIMENSION(PP_nVar    ,0:NLoc,0:NLoc,0:NLoc),INTENT(IN)  :: U        !< Conservative solution
-REAL,DIMENSION(PP_nVarPrim,0:NLoc,0:NLoc,0:NLoc),INTENT(IN)  :: UPrim    !< Primitive solution
-REAL,DIMENSION(PP_nVar    ,0:NLoc,0:NLoc,0:NLoc),INTENT(OUT) :: f        !< Cartesian flux in x (iVar,i,j,k)
-REAL,DIMENSION(PP_nVar    ,0:NLoc,0:NLoc,0:NLoc),INTENT(OUT) :: g        !< Cartesian flux in y (iVar,i,j,k)
-REAL,DIMENSION(PP_nVar    ,0:NLoc,0:NLoc,0:NLoc),INTENT(OUT) :: h        !< Cartesian flux in z (iVar,i,j,k)
+INTEGER,INTENT(IN) :: Nloc
+REAL,DIMENSION(PP_nVar    ,0:Nloc,0:Nloc,0:Nloc),INTENT(IN)  :: U        !< Conservative solution
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:Nloc,0:Nloc),INTENT(IN)  :: UPrim    !< Primitive solution
+REAL,DIMENSION(PP_nVar    ,0:Nloc,0:Nloc,0:Nloc),INTENT(OUT) :: f        !< Cartesian flux in x (iVar,i,j,k)
+REAL,DIMENSION(PP_nVar    ,0:Nloc,0:Nloc,0:Nloc),INTENT(OUT) :: g        !< Cartesian flux in y (iVar,i,j,k)
+REAL,DIMENSION(PP_nVar    ,0:Nloc,0:Nloc,0:Nloc),INTENT(OUT) :: h        !< Cartesian flux in z (iVar,i,j,k)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                :: Ep
 INTEGER             :: i,j,k
 !==================================================================================================================================
-DO k=0,NLoc;  DO j=0,NLoc; DO i=0,NLoc
+DO k=0,Nloc;  DO j=0,Nloc; DO i=0,Nloc
   ! auxiliary variables
   Ep   = U(5,i,j,k) + UPrim(5,i,j,k)
   ! Euler part
@@ -272,7 +272,7 @@ REAL,DIMENSION(PP_nVar,0:Nloc,0:Nloc),INTENT(OUT) :: f,g,h                      
 #ifdef EDDYVISCOSITY 
 REAL,INTENT(IN)     :: SGS_Ind(0:Nloc,0:Nloc)     !< Indicator for eddy viscosity
 REAL,INTENT(IN)     :: DeltaS                     !< Filter width for eddy viscosity
-REAL,INTENT(IN)     :: Face_xGP(3,0:NLoc,0:NLoc)  !< Gauss-point coordinates on face
+REAL,INTENT(IN)     :: Face_xGP(3,0:Nloc,0:Nloc)  !< Gauss-point coordinates on face
 #endif 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
