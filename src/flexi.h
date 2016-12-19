@@ -114,7 +114,7 @@
 #define SELECTIVE 3
 
 !2d functionality 
-#if (PP_dim=2)
+#if (PP_dim==2)
 #define PP_NOverZ 0
 #define PP_NlocZ 0
 #define PP_NZ 0 
