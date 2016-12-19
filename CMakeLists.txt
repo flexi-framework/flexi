@@ -183,9 +183,9 @@ ENDIF()
 # Dimension related preproc variables
 # =========================================================================
 IF(FLEXI_2D)
-  ADD_DEFINITIONS(-DPP_NlocZ=0 -DPP_NZ=0 -DPP_dim=2)
+  ADD_DEFINITIONS(-DPP_dim=2)
 ELSE()
-  ADD_DEFINITIONS(-DPP_NlocZ=Nloc -DPP_NZ=${FLEXI_POLYNOMIAL_DEGREE} -DPP_dim=3)
+  ADD_DEFINITIONS(-DPP_dim=3)
 ENDIF()
 
 # =========================================================================
