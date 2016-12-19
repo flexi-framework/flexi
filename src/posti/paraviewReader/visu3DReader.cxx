@@ -117,8 +117,6 @@ int visu3DReader::RequestInformation(vtkInformation *,
       if(ProcessId == 0) std::cout << "dirfolder of statefile not found: " << dirname(dir) << " \n"; 
    }
 
-   __mod_visu3d_MOD_finalizevisu3d();
-
    // We take the first state file and use it to read the varnames
    if(ProcessId == 0) std::cout << "RequestInformation: State file: " << FileNames[0] << std::endl;
 
@@ -360,7 +358,6 @@ vtkStringArray* visu3DReader::GetNodeTypeVisuList() {
    this -> Modified(); // tell paraview to render data
    MPI_Barrier(mpiComm);
 
-   std::cout << "VISU 3D finished (PARAVIEW) " << ProcessId << "\n";
    return 1;
 }
 
@@ -459,14 +456,9 @@ void visu3DReader::InsertData(vtkSmartPointer<vtkUnstructuredGrid> &output, stru
 
 visu3DReader::~visu3DReader(){
    delete [] FileName;
-    //vtkErrorMacro(
-      //<< "This class requires the MPI runtime, "
-      //<< "you must run ParaView in client-server mode launched via mpiexec.");
 
    // Finalize the Posti tool (deallocate all arrays)
-   std::cout << "FINALIZE processid: " << ProcessId << "\n";
-
-   //__mod_visu3d_MOD_finalizevisu3d();
+   __mod_visu3d_MOD_finalizevisu3d();
 
    this->VarDataArraySelection->Delete();
 }
