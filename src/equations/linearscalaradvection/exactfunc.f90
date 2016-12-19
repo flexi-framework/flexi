@@ -259,7 +259,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 REAL,INTENT(IN)     :: t                                       !< solution time
-REAL,INTENT(INOUT)  :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems) !< solution time derivative
+REAL,INTENT(INOUT)  :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< solution time derivative
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER             :: iElem,i,j,k
@@ -269,7 +269,7 @@ Pi = ACOS(-1.)
 SELECT CASE (IniExactFunc)
 CASE(31)
   DO iElem=1,nElems
-    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       Ut(:,i,j,k,iElem)=Ut(:,i,j,k,iElem)+AdvVel(1)/2.*COS(Pi*(Elem_xGP(1,i,j,k,iElem)-AdvVel(1)/2.*t))*Pi
 #if PARABOLIC
       Ut(:,i,j,k,iElem)=Ut(:,i,j,k,iElem)+Pi*Pi*SIN(Pi*(Elem_xGP(1,i,j,k,iElem)-AdvVel(1)/2.*t))*diffC

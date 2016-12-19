@@ -135,7 +135,7 @@ END SUBROUTINE InitBC
 !> Computes the boundary values for a given Cartesian mesh face (defined by FaceID)
 !> BCType: 1...periodic, 2...exact BC
 !==================================================================================================================================
-SUBROUTINE GetBoundaryFlux(SideID,t,Nloc,Flux,UPrim_master,                   &
+SUBROUTINE GetBoundaryFlux(SideID,t,Nloc,Flux,UPrim_master,          &
 #if PARABOLIC
                            gradUx_master,gradUy_master,gradUz_master,&
 #endif
@@ -153,18 +153,20 @@ USE MOD_FV_Vars      ,ONLY: FV_Elems_master
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)                   :: SideID  
-REAL,INTENT(IN)                      :: t       !< current time (provided by time integration scheme)
-INTEGER,INTENT(IN)                   :: Nloc    !< polynomial degree
-REAL,INTENT(IN)                      :: UPrim_master( PP_nVarPrim,0:Nloc,0:Nloc,1:nSides) !< inner surface solution
+INTEGER,INTENT(IN)                   :: SideID                                               !< ID of current side
+REAL,INTENT(IN)                      :: t                                                    !< current time
+INTEGER,INTENT(IN)                   :: Nloc                                                 !< polynomial degree
+REAL,INTENT(IN)                      :: UPrim_master(PP_nVarPrim,0:Nloc,0:PP_NlocZ,1:nSides) !< inner surface solution
 #if PARABOLIC
-                                                                           !> inner surface solution gradients in x/y/z-direction
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:Nloc,1:nSides),INTENT(IN)  :: gradUx_master,gradUy_master,gradUz_master
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:PP_NlocZ,1:nSides),INTENT(IN)  :: gradUx_master          !< gradient in x-direction
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:PP_NlocZ,1:nSides),INTENT(IN)  :: gradUy_master          !< gradient in y-direction
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:PP_NlocZ,1:nSides),INTENT(IN)  :: gradUz_master          !< gradient in z-direction
 #endif /*PARABOLIC*/
-                                                                           !> normal and tangential vectors on surfaces
-REAL,DIMENSION(      3,0:Nloc,0:Nloc,0:FV_ENABLED,1:nSides),INTENT(IN)  :: NormVec,TangVec1,TangVec2
-REAL,DIMENSION(      3,0:Nloc,0:Nloc,0:FV_ENABLED,1:nSides),INTENT(IN)  :: Face_xGP   !< positions of surface flux points
-REAL,DIMENSION(PP_nVar,0:Nloc,0:Nloc,1:nSides),INTENT(OUT) :: Flux       !< resulting boundary fluxes
+REAL,DIMENSION(      3,    0:Nloc,0:PP_NlocZ,0:FV_ENABLED,1:nSides),INTENT(IN)  :: NormVec   !< Normal vector
+REAL,DIMENSION(      3,    0:Nloc,0:PP_NlocZ,0:FV_ENABLED,1:nSides),INTENT(IN)  :: TangVec1  !< First tangential vector
+REAL,DIMENSION(      3,    0:Nloc,0:PP_NlocZ,0:FV_ENABLED,1:nSides),INTENT(IN)  :: TangVec2  !< Second tangential vector
+REAL,DIMENSION(      3,    0:Nloc,0:PP_NlocZ,0:FV_ENABLED,1:nSides),INTENT(IN)  :: Face_xGP  !< positions of surface flux points
+REAL,DIMENSION(PP_nVar,    0:Nloc,0:PP_NlocZ,1:nSides),INTENT(OUT) :: Flux                   !< resulting boundary fluxes
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                              :: iBC,iSide,p,q
@@ -187,7 +189,7 @@ DO iBC=1,nBCs
       FVEM = FV_Elems_master(SideID)
 #endif
       !IF(BCState.EQ.0)THEN
-        DO q=0,Nloc; DO p=0,Nloc
+        DO q=0,PP_NlocZ; DO p=0,Nloc
           CALL ExactFunc(IniExactFunc,t,Face_xGP(:,p,q,FVEM,SideID),U_Face_loc(:,p,q))
         END DO; END DO
       !ELSE
@@ -292,9 +294,9 @@ USE MOD_FV_Vars      ,ONLY: FV_Elems_master
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(IN)                      :: t                                    !< current time (provided by time integration scheme)
-REAL,INTENT(IN)                      :: U_master(PP_nVar,0:PP_N,0:PP_N,nBCSides)
-REAL,INTENT(OUT)                     :: Flux(PP_nVar,0:PP_N,0:PP_N,nBCSides) !< lifting boundary flux
+REAL,INTENT(IN)                      :: t                                         !< current time
+REAL,INTENT(IN)                      :: U_master(PP_nVar,0:PP_N,0:PP_NZ,nBCSides) !< solution on side
+REAL,INTENT(OUT)                     :: Flux(PP_nVar,0:PP_N,0:PP_NZ,nBCSides)     !< resultin lifting boundary flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                              :: iBC,iSide,p,q,SideID
@@ -318,7 +320,7 @@ DO iBC=1,nBCs
 #if FV_ENABLED
         FVEM = FV_Elems_master(SideID)
 #endif
-        DO q=0,PP_N; DO p=0,PP_N
+        DO q=0,PP_NZ; DO p=0,PP_N
           CALL ExactFunc(IniExactFunc,t,Face_xGP(:,p,q,FVEM,SideID),U_Face_loc(:,p,q))
         END DO; END DO
         Flux(:,:,:,SideID)=0.5*(U_master(:,:,:,SideID)+U_Face_loc)
@@ -343,7 +345,7 @@ IF(.NOT.doWeakLifting)THEN
 END IF
 
 DO iSide=1,nBCSides
-  DO q=0,PP_N; DO p=0,PP_N
+  DO q=0,PP_NZ; DO p=0,PP_N
     Flux(:,p,q,iSide)=Flux(:,p,q,iSide)*SurfElem(p,q,0,iSide)
   END DO; END DO
 END DO ! iSide
@@ -353,7 +355,7 @@ END SUBROUTINE Lifting_GetBoundaryFlux
 
 
 !==================================================================================================================================
-!> Initialize boundary conditions
+!> Finalize boundary conditions
 !==================================================================================================================================
 SUBROUTINE FinalizeBC()
 ! MODULES

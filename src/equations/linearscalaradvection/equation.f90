@@ -86,6 +86,11 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT SCALAR LINADV...'
 
 ! Read the velocity vector from ini file
 AdvVel = GETREALARRAY('AdvVel',3)
+#if PP_dim==2
+! Make sure advection velocity is 0 in third dimension for two-dimensional computations,
+! computing wave speeds etc. will get easier.
+AdvVel(3) = 0.
+#endif
 ! Read the diffusion constant from ini file
 DiffC  = GETREAL('DiffC','0.')
 
@@ -108,10 +113,10 @@ USE MOD_Mesh_Vars,ONLY:nSides
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)  :: U_master(        PP_nVar,0:PP_N,0:PP_N,1:nSides) !< conservative solution on master sides
-REAL,INTENT(IN)  :: U_slave(         PP_nVar,0:PP_N,0:PP_N,1:nSides) !< conservative solution on slave sides
-REAL,INTENT(OUT) :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< primitive solution on master sides
-REAL,INTENT(OUT) :: UPrim_slave( PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< primitive solution on slave sides
+REAL,INTENT(IN)  :: U_master(        PP_nVar,0:PP_N,0:PP_NZ,1:nSides) !< conservative solution on master sides
+REAL,INTENT(IN)  :: U_slave(         PP_nVar,0:PP_N,0:PP_NZ,1:nSides) !< conservative solution on slave sides
+REAL,INTENT(OUT) :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< primitive solution on master sides
+REAL,INTENT(OUT) :: UPrim_slave( PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< primitive solution on slave sides
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
@@ -132,13 +137,13 @@ USE MOD_Mesh_Vars,ONLY: firstInnerSide,firstMPISide_YOUR,lastMPISide_YOUR,nSides
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< primitive solution on master sides
-REAL,INTENT(IN)    :: UPrim_slave( PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< primitive solution on slave sides
-REAL,INTENT(OUT)   :: U_master(        PP_nVar,0:PP_N,0:PP_N,1:nSides) !< conservative solution on master sides
-REAL,INTENT(OUT)   :: U_slave(         PP_nVar,0:PP_N,0:PP_N,1:nSides) !< conservative solution on slave sides
-INTEGER,INTENT(IN) :: mask_master(1:nSides)                            !< mask: only convert solution if mask(SideID) == mask_ref 
-INTEGER,INTENT(IN) :: mask_slave (1:nSides)                            !< mask: only convert solution if mask(SideID) == mask_ref 
-INTEGER,INTENT(IN) :: mask_ref                                         !< reference value for mask comparison
+REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< primitive solution on master sides
+REAL,INTENT(IN)    :: UPrim_slave( PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< primitive solution on slave sides
+REAL,INTENT(OUT)   :: U_master(        PP_nVar,0:PP_N,0:PP_NZ,1:nSides) !< conservative solution on master sides
+REAL,INTENT(OUT)   :: U_slave(         PP_nVar,0:PP_N,0:PP_NZ,1:nSides) !< conservative solution on slave sides
+INTEGER,INTENT(IN) :: mask_master(1:nSides)                             !< mask: only convert solution if mask(SideID) == mask_ref 
+INTEGER,INTENT(IN) :: mask_slave (1:nSides)                             !< mask: only convert solution if mask(SideID) == mask_ref 
+INTEGER,INTENT(IN) :: mask_ref                                          !< reference value for mask comparison
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================

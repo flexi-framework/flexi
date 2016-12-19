@@ -62,27 +62,27 @@ SUBROUTINE GetFlux(Nloc,F,U_L,U_R, &
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)                               :: NLoc                    !< Polynomial degree
-REAL,DIMENSION(PP_nVar,0:Nloc,0:Nloc),INTENT(IN) :: U_L                     !< Left state
-REAL,DIMENSION(PP_nVar,0:Nloc,0:Nloc),INTENT(IN) :: U_R                     !< Right state
+INTEGER,INTENT(IN)                                       :: NLoc                         !< Polynomial degree
+REAL,DIMENSION(PP_nVar,0:Nloc,0:PP_NlocZ),INTENT(IN)     :: U_L                          !< Left state
+REAL,DIMENSION(PP_nVar,0:Nloc,0:PP_NlocZ),INTENT(IN)     :: U_R                          !< Right state
 #if PARABOLIC
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:Nloc),INTENT(IN) :: gradUx_L            !< Left gradient in x-direction
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:Nloc),INTENT(IN) :: gradUy_L            !< Left gradient in y-direction
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:Nloc),INTENT(IN) :: gradUz_L            !< Left gradient in z-direction
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:Nloc),INTENT(IN) :: gradUx_R            !< Right gradient in x-direction
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:Nloc),INTENT(IN) :: gradUy_R            !< Right gradient in y-direction
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:Nloc),INTENT(IN) :: gradUz_R            !< Right gradient in z-direction
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:PP_NlocZ),INTENT(IN) :: gradUx_L                     !< Left gradient in x-direction
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:PP_NlocZ),INTENT(IN) :: gradUy_L                     !< Left gradient in y-direction
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:PP_NlocZ),INTENT(IN) :: gradUz_L                     !< Left gradient in z-direction
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:PP_NlocZ),INTENT(IN) :: gradUx_R                     !< Right gradient in x-direction
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:PP_NlocZ),INTENT(IN) :: gradUy_R                     !< Right gradient in y-direction
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:PP_NlocZ),INTENT(IN) :: gradUz_R                     !< Right gradient in z-direction
 #endif
-REAL,INTENT(IN)                                  :: nv(3,0:Nloc,0:Nloc)     !< Normal vector
-REAL,INTENT(IN)                                  :: t1(3,0:Nloc,0:Nloc)     !< First tangential vector
-REAL,INTENT(IN)                                  :: t2(3,0:Nloc,0:Nloc)     !< Second tangential vector
-LOGICAL,INTENT(IN)                               :: doBC                    !< Switch to do BC sides or not
-REAL,INTENT(OUT)                                 :: F(PP_nVar,0:Nloc,0:Nloc)!< Flux
+REAL,INTENT(IN)                                          :: nv(3,0:Nloc,0:PP_NlocZ)      !< Normal vector
+REAL,INTENT(IN)                                          :: t1(3,0:Nloc,0:PP_NlocZ)      !< First tangential vector
+REAL,INTENT(IN)                                          :: t2(3,0:Nloc,0:PP_NlocZ)      !< Second tangential vector
+LOGICAL,INTENT(IN)                                       :: doBC                         !< Switch to do BC sides or not
+REAL,INTENT(OUT)                                         :: F(PP_nVar,0:Nloc,0:PP_NlocZ) !< Flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                                             :: Fv(PP_nVar,0:NLoc,0:NLoc)
+REAL                                             :: Fv(PP_nVar,0:NLoc,0:PP_NlocZ)
 !==================================================================================================================================
 CALL Riemann(Nloc,F,U_L,U_R,U_L,U_R,nv,t1,t2,doBC=doBC)
 #if PARABOLIC
@@ -104,21 +104,21 @@ USE MOD_Equation_Vars,ONLY:AdvVel
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)                                    :: NLoc                    !< Polynomial degree
-REAL,DIMENSION(PP_nVar,    0:Nloc,0:Nloc),INTENT(IN)  :: U_L                     !< Left state
-REAL,DIMENSION(PP_nVar,    0:Nloc,0:Nloc),INTENT(IN)  :: U_R                     !< Right state
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:Nloc),INTENT(IN)  :: dummy_L                 !< primitive state (useless here) 
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:Nloc),INTENT(IN)  :: dummy_R                 !< primitive state (useless here)
-REAL,INTENT(IN)                                       :: nv(3,0:Nloc,0:Nloc)     !< Normal vector
-REAL,INTENT(IN)                                       :: t1(3,0:Nloc,0:Nloc)     !< First tangential vector
-REAL,INTENT(IN)                                       :: t2(3,0:Nloc,0:Nloc)     !< Second tangential vector
-LOGICAL,INTENT(IN)                                    :: doBC                    !< Switch to do BC sides or not
-REAL,INTENT(OUT)                                      :: F(PP_nVar,0:Nloc,0:Nloc)!< Flux
+INTEGER,INTENT(IN)                                        :: NLoc                         !< Polynomial degree
+REAL,DIMENSION(PP_nVar,    0:Nloc,0:PP_NlocZ),INTENT(IN)  :: U_L                          !< Left state
+REAL,DIMENSION(PP_nVar,    0:Nloc,0:PP_NlocZ),INTENT(IN)  :: U_R                          !< Right state
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:PP_NlocZ),INTENT(IN)  :: dummy_L                      !< primitive state (useless here) 
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:PP_NlocZ),INTENT(IN)  :: dummy_R                      !< primitive state (useless here)
+REAL,INTENT(IN)                                           :: nv(3,0:Nloc,0:PP_NlocZ)      !< Normal vector
+REAL,INTENT(IN)                                           :: t1(3,0:Nloc,0:PP_NlocZ)      !< First tangential vector
+REAL,INTENT(IN)                                           :: t2(3,0:Nloc,0:PP_NlocZ)      !< Second tangential vector
+LOGICAL,INTENT(IN)                                        :: doBC                         !< Switch to do BC sides or not
+REAL,INTENT(OUT)                                          :: F(PP_nVar,0:Nloc,0:PP_NlocZ) !< Flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                                             :: LambdaMax(0:Nloc,0:Nloc)
+REAL                                             :: LambdaMax(0:Nloc,0:PP_NlocZ)
 !==================================================================================================================================
 LambdaMax = AdvVel(1)*nv(1,:,:) +  AdvVel(2)*nv(2,:,:) + AdvVel(3)*nv(3,:,:)
 ! Compute the classic upwind flux into normal direction for each face GP
@@ -138,22 +138,22 @@ USE MOD_Flux, ONLY:EvalDiffFlux2D
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)                                          :: Nloc                    !< Polynomial degree
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:Nloc),INTENT(IN)        :: U_L                     !< Left state
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:Nloc),INTENT(IN)        :: U_R                     !< Right state
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:Nloc),INTENT(IN),TARGET :: gradUx_L                !< Left gradient in x-direction
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:Nloc),INTENT(IN),TARGET :: gradUy_L                !< Left gradient in y-direction
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:Nloc),INTENT(IN),TARGET :: gradUz_L                !< Left gradient in z-direction
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:Nloc),INTENT(IN),TARGET :: gradUx_R                !< Right gradient in x-direction
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:Nloc),INTENT(IN),TARGET :: gradUy_R                !< Right gradient in y-direction
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:Nloc),INTENT(IN),TARGET :: gradUz_R                !< Right gradient in z-direction
-REAL,INTENT(IN)                                         :: nv(3,0:Nloc,0:Nloc)         !< Normal vector
-REAL,INTENT(OUT)                                        :: F(PP_nVar,0:Nloc,0:Nloc)    !< Flux
+INTEGER,INTENT(IN)                                              :: Nloc                         !< Polynomial degree
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:PP_NlocZ),INTENT(IN)        :: U_L                          !< Left state
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:PP_NlocZ),INTENT(IN)        :: U_R                          !< Right state
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:PP_NlocZ),INTENT(IN),TARGET :: gradUx_L                     !< Left gradient in x-direction
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:PP_NlocZ),INTENT(IN),TARGET :: gradUy_L                     !< Left gradient in y-direction
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:PP_NlocZ),INTENT(IN),TARGET :: gradUz_L                     !< Left gradient in z-direction
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:PP_NlocZ),INTENT(IN),TARGET :: gradUx_R                     !< Right gradient in x-direction
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:PP_NlocZ),INTENT(IN),TARGET :: gradUy_R                     !< Right gradient in y-direction
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:PP_NlocZ),INTENT(IN),TARGET :: gradUz_R                     !< Right gradient in z-direction
+REAL,INTENT(IN)                                                 :: nv(3,0:Nloc,0:PP_NlocZ)      !< Normal vector
+REAL,INTENT(OUT)                                                :: F(PP_nVar,0:Nloc,0:PP_NlocZ) !< Flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL,DIMENSION(PP_nVar,0:Nloc,0:Nloc),TARGET     ::  f_L, f_R, g_L, g_R, h_L, h_R
+REAL,DIMENSION(PP_nVar,0:Nloc,0:PP_NlocZ),TARGET ::  f_L, f_R, g_L, g_R, h_L, h_R
 REAL,DIMENSION(:,:,:),POINTER                    :: Pf_L,Pf_R,Pg_L,Pg_R,Ph_L,Ph_R
 !==================================================================================================================================
 ! Don't forget the diffusion contribution, my young padawan
@@ -163,8 +163,10 @@ CALL EvalDiffFlux2D(Nloc,f_R,g_R,h_R,U_R,gradUx_R,gradUy_R,gradUz_R)
 Pf_L => f_L; Pg_L => g_L; Ph_L => h_L
 Pf_R => f_R; Pg_R => g_R; Ph_R => h_R
 F(1,:,:)=0.5*(nv(1,:,:)*(Pf_L(1,:,:)+Pf_R(1,:,:)) &
-             +nv(2,:,:)*(Pg_L(1,:,:)+Pg_R(1,:,:)) &
-             +nv(3,:,:)*(Ph_L(1,:,:)+Ph_R(1,:,:)))
+             +nv(2,:,:)*(Pg_L(1,:,:)+Pg_R(1,:,:)))
+#if PP_dim==3
+F(1,:,:)=F(1,:,:)+0.5*nv(3,:,:)*(Ph_L(1,:,:)+Ph_R(1,:,:))
+#endif
 END SUBROUTINE ViscousFlux
 #endif /* PARABOLIC */
 
