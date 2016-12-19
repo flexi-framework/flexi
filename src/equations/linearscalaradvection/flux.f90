@@ -16,6 +16,7 @@
 !==================================================================================================================================
 !> Contains the routine EvalFlux3D which computes the complete flux f,g,h for all DOFs in one Element: used in volume integral
 !==================================================================================================================================
+#include "flexi.h"
 MODULE MOD_Flux
 ! MODULES
 IMPLICIT NONE

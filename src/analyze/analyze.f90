@@ -121,32 +121,43 @@ END IF
 WriteData_dt = Analyze_dt*nWriteData
 
 ! precompute integration weights
-ALLOCATE(wGPSurf(0:PP_N,0:PP_N),wGPVol(0:PP_N,0:PP_N,0:PP_N))
+ALLOCATE(wGPSurf(0:PP_N,0:PP_NZ),wGPVol(0:PP_N,0:PP_N,0:PP_NZ))
+#if PP_dim == 3
 DO j=0,PP_N; DO i=0,PP_N
   wGPSurf(i,j)  = wGP(i)*wGP(j)
 END DO; END DO
 DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
   wGPVol(i,j,k) = wGP(i)*wGP(j)*wGP(k)
 END DO; END DO; END DO
+#else
+DO i=0,PP_N
+  wGPSurf(i,0)  = wGP(i)*2.0
+END DO
+DO j=0,PP_N; DO i=0,PP_N
+  wGPVol(i,j,0) = wGP(i)*wGP(j)*2.0
+END DO; END DO
+#endif
 
 ! precompute volume of the domain
 ALLOCATE(ElemVol(nElems))
 ElemVol=0.
 DO iElem=1,nElems
-  DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     ElemVol(iElem)=ElemVol(iElem)+wGPVol(i,j,k)/sJ(i,j,k,iElem,0)
   END DO; END DO; END DO !i,j,k
 END DO ! iElem
 Vol=SUM(ElemVol)
 
 
+
 ! compute surface of each boundary
+
 ALLOCATE(Surf(nBCs))
 Surf=0.
 DO iSide=1,nSides
   iSurf=AnalyzeSide(iSide)
   IF(iSurf.EQ.0) CYCLE
-  DO j=0,PP_N; DO i=0,PP_N
+  DO j=0,PP_NZ; DO i=0,PP_N
     Surf(iSurf)=Surf(iSurf)+wGPSurf(i,j)*SurfElem(i,j,0,iSide)
   END DO; END DO
 END DO
@@ -210,9 +221,15 @@ ALLOCATE(wGPVolAnalyze(0:Nanalyze_in,0:Nanalyze_in,0:Nanalyze_in),Vdm_GaussN_NAn
 CALL GetNodesAndWeights(NAnalyze_in,NodeTypeGL,XiAnalyze,wAnalyze)
 CALL InitializeVandermonde(N_in,NAnalyze_in,wBary,xGP,XiAnalyze,Vdm_GaussN_NAnalyze)
 
+#if PP_dim == 3
 DO k=0,Nanalyze_in; DO j=0,Nanalyze_in; DO i=0,Nanalyze_in
   wGPVolAnalyze(i,j,k) = wAnalyze(i)*wAnalyze(j)*wAnalyze(k)
 END DO; END DO; END DO
+#else
+DO j=0,Nanalyze_in; DO i=0,Nanalyze_in
+  wGPVolAnalyze(i,j,0) = wAnalyze(i)*wAnalyze(j)*2.0
+END DO; END DO
+#endif
 
 END SUBROUTINE InitAnalyzeBasis
 

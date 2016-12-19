@@ -295,6 +295,21 @@ SDEALLOCATE(TreeCoords)
 SDEALLOCATE(xiMinMax)
 SDEALLOCATE(ElemToTree)
 
+#if PP_dim == 2
+CALL to2D_rank5((/1,0,0,0,1/),  (/3,PP_N,PP_N,PP_N,nElems/),4,Elem_xGP)
+CALL to2D_rank6((/1,0,0,0,1,0/),(/3,PP_N,PP_N,PP_N,nElems,FV_ENABLED/),4,Metrics_fTilde)
+CALL to2D_rank6((/1,0,0,0,1,0/),(/3,PP_N,PP_N,PP_N,nElems,FV_ENABLED/),4,Metrics_gTilde)
+CALL to2D_rank6((/1,0,0,0,1,0/),(/3,PP_N,PP_N,PP_N,nElems,FV_ENABLED/),4,Metrics_hTilde)
+CALL to2D_rank5((/0,0,0,1,0/),  (/PP_N,PP_N,PP_N,nElems,FV_ENABLED/),3,sJ)
+CALL to2D_rank5((/1,0,0,0,1/),  (/1,NgeoRef,NgeoRef,NgeoRef,nElems/),4,DetJac_Ref)
+
+CALL to2D_rank5((/1,0,0,0,1/),(/3,PP_N,PP_N,FV_ENABLED,nSides/),3,Face_xGP)
+CALL to2D_rank5((/1,0,0,0,1/),(/3,PP_N,PP_N,FV_ENABLED,nSides/),3,NormVec)
+CALL to2D_rank5((/1,0,0,0,1/),(/3,PP_N,PP_N,FV_ENABLED,nSides/),3,TangVec1)
+CALL to2D_rank5((/1,0,0,0,1/),(/3,PP_N,PP_N,FV_ENABLED,nSides/),3,TangVec2)
+CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,FV_ENABLED,nSides/),2,SurfElem)
+#endif
+
 ! debugmesh: param specifies format to output, 0: no output, 1: tecplot ascii, 2: tecplot binary, 3: paraview binary
 CALL WriteDebugMesh(GETINT('debugmesh','0'))
 
@@ -304,6 +319,111 @@ MeshInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT MESH DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitMesh
+
+SUBROUTINE to2D_rank4(lbound_in,ubound_in,index3D,array) 
+IMPLICIT NONE
+! INPUT / OUTPUT VARIABLES 
+INTEGER,INTENT(IN)             :: lbound_in(4)
+INTEGER,INTENT(IN)             :: ubound_in(4)
+INTEGER,INTENT(IN)             :: index3D
+REAL,INTENT(INOUT),ALLOCATABLE :: array(:,:,:,:)
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL,ALLOCATABLE               :: array_loc(:,:,:,:)
+INTEGER                        :: ubound_loc(4)
+!===================================================================================================================================
+ubound_loc = ubound_in
+ubound_loc(index3D) = lbound_in(index3D)
+ALLOCATE(array_loc(lbound_in(1):ubound_loc(1),&
+                   lbound_in(2):ubound_loc(2),&
+                   lbound_in(3):ubound_loc(3),&
+                   lbound_in(4):ubound_loc(4)))
+array_loc = array( lbound_in(1):ubound_loc(1),&             
+                   lbound_in(2):ubound_loc(2),&
+                   lbound_in(3):ubound_loc(3),&
+                   lbound_in(4):ubound_loc(4))
+DEALLOCATE(array)               
+ALLOCATE(array    (lbound_in(1):ubound_loc(1),&
+                   lbound_in(2):ubound_loc(2),&
+                   lbound_in(3):ubound_loc(3),&
+                   lbound_in(4):ubound_loc(4)))
+array = array_loc
+DEALLOCATE(array_loc)
+
+END SUBROUTINE to2D_rank4
+
+SUBROUTINE to2D_rank5(lbound_in,ubound_in,index3D,array) 
+IMPLICIT NONE
+! INPUT / OUTPUT VARIABLES 
+INTEGER,INTENT(IN)             :: lbound_in(5)
+INTEGER,INTENT(IN)             :: ubound_in(5)
+INTEGER,INTENT(IN)             :: index3D
+REAL,INTENT(INOUT),ALLOCATABLE :: array(:,:,:,:,:)
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL,ALLOCATABLE               :: array_loc(:,:,:,:,:)
+INTEGER                        :: ubound_loc(5)
+!===================================================================================================================================
+ubound_loc = ubound_in
+ubound_loc(index3D) = lbound_in(index3D)
+ALLOCATE(array_loc(lbound_in(1):ubound_loc(1),&
+                   lbound_in(2):ubound_loc(2),&
+                   lbound_in(3):ubound_loc(3),&
+                   lbound_in(4):ubound_loc(4),&
+                   lbound_in(5):ubound_loc(5)))
+array_loc = array( lbound_in(1):ubound_loc(1),&             
+                   lbound_in(2):ubound_loc(2),&
+                   lbound_in(3):ubound_loc(3),&
+                   lbound_in(4):ubound_loc(4),&
+                   lbound_in(5):ubound_loc(5))
+DEALLOCATE(array)               
+ALLOCATE(array    (lbound_in(1):ubound_loc(1),&
+                   lbound_in(2):ubound_loc(2),&
+                   lbound_in(3):ubound_loc(3),&
+                   lbound_in(4):ubound_loc(4),&
+                   lbound_in(5):ubound_loc(5)))
+array = array_loc
+DEALLOCATE(array_loc)
+
+END SUBROUTINE to2D_rank5
+
+SUBROUTINE to2D_rank6(lbound_in,ubound_in,index3D,array) 
+IMPLICIT NONE
+! INPUT / OUTPUT VARIABLES 
+INTEGER,INTENT(IN)             :: lbound_in(6)
+INTEGER,INTENT(IN)             :: ubound_in(6)
+INTEGER,INTENT(IN)             :: index3D
+REAL,INTENT(INOUT),ALLOCATABLE :: array(:,:,:,:,:,:)
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL,ALLOCATABLE               :: array_loc(:,:,:,:,:,:)
+INTEGER                        :: ubound_loc(6)
+!===================================================================================================================================
+ubound_loc = ubound_in
+ubound_loc(index3D) = lbound_in(index3D)
+ALLOCATE(array_loc(lbound_in(1):ubound_loc(1),&
+                   lbound_in(2):ubound_loc(2),&
+                   lbound_in(3):ubound_loc(3),&
+                   lbound_in(4):ubound_loc(4),&
+                   lbound_in(5):ubound_loc(5),&
+                   lbound_in(6):ubound_loc(6)))
+array_loc = array( lbound_in(1):ubound_loc(1),&             
+                   lbound_in(2):ubound_loc(2),&
+                   lbound_in(3):ubound_loc(3),&
+                   lbound_in(4):ubound_loc(4),&
+                   lbound_in(5):ubound_loc(5),&
+                   lbound_in(6):ubound_loc(6))
+DEALLOCATE(array)               
+ALLOCATE(array    (lbound_in(1):ubound_loc(1),&
+                   lbound_in(2):ubound_loc(2),&
+                   lbound_in(3):ubound_loc(3),&
+                   lbound_in(4):ubound_loc(4),&
+                   lbound_in(5):ubound_loc(5),&
+                   lbound_in(6):ubound_loc(6)))
+array = array_loc
+DEALLOCATE(array_loc)
+
+END SUBROUTINE to2D_rank6
 
 
 !==================================================================================================================================
@@ -364,7 +484,6 @@ DO iElem=1,nElems
                        NormVecO,TangVec1O,TangVec2O,SurfElemO,Face_xGPO)
 END DO
 END SUBROUTINE BuildOverintMesh
-
 
 !============================================================================================================================
 !> Deallocate mesh data.

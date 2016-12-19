@@ -398,7 +398,11 @@ REAL               :: tmp(        3,0:Nloc,0:Nloc)
 REAL               :: tmp2(       3,0:Nloc,0:Nloc)
 !==================================================================================================================================
 
+#if PP_dim == 3
 DO iLocSide=1,6
+#else    
+DO iLocSide=2,5
+#endif    
   IF(ElemToSide(E2S_FLIP,iLocSide,iElem).NE.0) CYCLE ! only master sides with flip=0
   SideID=ElemToSide(E2S_SIDE_ID,iLocSide,iElem)
 
