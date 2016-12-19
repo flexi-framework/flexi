@@ -519,7 +519,11 @@ DO iElem=FirstElemInd,LastElemInd
 END DO !iElem
 DO iElem=FirstElemInd,LastElemInd
   aElem=>Elems(iElem)%ep
+#if PP_dim == 3
   DO iLocSide=1,6
+#else    
+  DO iLocSide=2,5
+#endif    
     aSide=>aElem%Side(iLocSide)%sp
     nMortars=aSide%nMortars
     DO iMortar=0,nMortars
