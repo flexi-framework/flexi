@@ -195,6 +195,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! other file
         DO j=1,INT(HSize(1))
           WRITE(varnames_tmp(j),'(I0)') j
         END DO
+        VarNamesExist=.TRUE.
       END IF
     END IF
     IF (.NOT.VarNamesExist) CYCLE
