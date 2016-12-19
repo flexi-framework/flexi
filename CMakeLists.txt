@@ -93,6 +93,7 @@ OPTION(FLEXI_EDDYVISCOSITY "Enable eddy viscosity modells" OFF)
 OPTION(FLEXI_MKL "Use MKL libraries instead of BLAS/LAPACK" OFF)
 OPTION(FLEXI_PAPI "Use PAPI library to perform performance measurements (e.g. flop counts)." OFF)
 OPTION(FLEXI_FV "Enable Finite Volume subcell shock capturing" OFF)
+OPTION(FLEXI_2D "Enable two dimensional computation" OFF)
 CMAKE_DEPENDENT_OPTION(FLEXI_FV_RECONSTRUCTION "Enable 2nd order reconstruction for FV" ON
                                                "FLEXI_FV" OFF)
 SET(   FLEXI_BUILD_HDF5 ON  CACHE BOOL "Compile and build hdf5 library")
@@ -157,7 +158,7 @@ IF (FLEXI_PARABOLIC)
     MESSAGE(ERROR "No such LIFTING known.")
   ENDIF()
 
-  #### Set the lifting
+  #### Set the law for viscosity
   IF(FLEXI_EQNSYSNAME STREQUAL "navierstokes")
     SET(FLEXI_VISCOSITY "constant" CACHE STRING "Method to calculate viscosity (constant/sutherland/powerlaw)")
     SET_PROPERTY(CACHE FLEXI_VISCOSITY PROPERTY STRINGS constant sutherland powerlaw)
@@ -176,6 +177,15 @@ IF (FLEXI_PARABOLIC)
   ENDIF()
 ELSE()
   ADD_DEFINITIONS(-DPARABOLIC=0)
+ENDIF()
+
+# =========================================================================
+# Dimension related preproc variables
+# =========================================================================
+IF(FLEXI_2D)
+  ADD_DEFINITIONS(-DPP_NlocZ=0 -DPP_NZ=0 -DPP_dim=2)
+ELSE()
+  ADD_DEFINITIONS(-DPP_NlocZ=Nloc -DPP_NZ=${FLEXI_POLYNOMIAL_DEGREE} -DPP_dim=3)
 ENDIF()
 
 # =========================================================================
