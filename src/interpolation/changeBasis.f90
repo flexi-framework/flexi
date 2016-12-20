@@ -95,7 +95,11 @@ PUBLIC :: ChangeBasis1D
 !==================================================================================================================================
 CONTAINS
 
-#define _ADD_DIM ,1
+#if PP_dim == 2
+#  define _ADD_DIM ,1
+#else
+#  define _ADD_DIM
+#endif
 #include "changeBasis.t90"
 #undef _ADD_DIM
 END MODULE MOD_ChangeBasisByDim

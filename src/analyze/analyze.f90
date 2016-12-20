@@ -323,7 +323,7 @@ REAL                            :: U_exact(PP_nVar)
 REAL                            :: U_NAnalyze(1:PP_nVar,0:NAnalyze,0:NAnalyze,0:NAnalyze)
 REAL                            :: Coords_NAnalyze(3,0:NAnalyze,0:NAnalyze,0:NAnalyze)
 REAL                            :: J_NAnalyze(1,0:NAnalyze,0:NAnalyze,0:NAnalyze)
-REAL                            :: J_N(1,0:PP_N,0:PP_N,0:PP_N)
+REAL                            :: J_N(1,0:PP_N,0:PP_N,0:PP_NZ)
 REAL                            :: IntegrationWeight
 #if FV_ENABLED
 REAL                            :: FV_w3
@@ -341,7 +341,7 @@ L_2_Error(:)=0.
 DO iElem=1,nElems
 #if FV_ENABLED
   IF (FV_Elems(iElem).GT.0) THEN ! FV Element
-    DO m=0,PP_N
+    DO m=0,PP_NZ
       DO l=0,PP_N
         DO k=0,PP_N
           CALL ExactFunc(IniExactFunc,time,Elem_xGP(1:3,k,l,m,iElem),U_DG(:,k,l,m))
