@@ -201,7 +201,12 @@ sRho=1./cons(1)
 ! rho
 prim(1)=cons(1)
 ! vel/rho
-prim(2:4)=cons(2:4)*sRho
+prim(2:3)=cons(2:3)*sRho
+#if (PP_dim==3)
+prim(4)=cons(4)*sRho
+#else
+prim(4)=0.
+#endif
 ! pressure
 prim(5)=KappaM1*(cons(5)-0.5*SUM(cons(2:4)*prim(2:4)))
 ! temperature
@@ -218,19 +223,24 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: Nloc
-REAL,INTENT(IN)    :: cons(PP_nVar    ,0:Nloc,0:Nloc) !< vector of conservative variables
-REAL,INTENT(OUT)   :: prim(PP_nVarPrim,0:Nloc,0:Nloc) !< vector of primitive variables 
+REAL,INTENT(IN)    :: cons(PP_nVar    ,0:Nloc,0:PP_NlocZ) !< vector of conservative variables
+REAL,INTENT(OUT)   :: prim(PP_nVarPrim,0:Nloc,0:PP_NlocZ) !< vector of primitive variables 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL             :: sRho    ! 1/Rho
 INTEGER          :: p,q
 !==================================================================================================================================
-DO q=0,Nloc; DO p=0,Nloc
+DO q=0,PP_NlocZ; DO p=0,Nloc
   sRho=1./cons(1,p,q)
   ! rho
   prim(1,p,q)=cons(1,p,q)
   ! vel/rho
-  prim(2:4,p,q)=cons(2:4,p,q)*sRho
+  prim(2:3,p,q)=cons(2:3,p,q)*sRho
+#if (PP_dim==3)
+  prim(4,p,q)=cons(4,p,q)*sRho
+#else
+  prim(4,p,q)=0.
+#endif
   ! pressure
   prim(5,p,q)=KappaM1*(cons(5,p,q)-0.5*SUM(cons(2:4,p,q)*prim(2:4,p,q)))
   ! temperature
@@ -249,20 +259,25 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: Nloc
-REAL,INTENT(IN)    :: cons(PP_nVar    ,0:Nloc,0:Nloc,0:Nloc,1:nElems) !< vector of conservative variables
-REAL,INTENT(OUT)   :: prim(PP_nVarPrim,0:Nloc,0:Nloc,0:Nloc,1:nElems) !< vector of primitive variables 
+REAL,INTENT(IN)    :: cons(PP_nVar    ,0:Nloc,0:Nloc,0:PP_NlocZ,1:nElems) !< vector of conservative variables
+REAL,INTENT(OUT)   :: prim(PP_nVarPrim,0:Nloc,0:Nloc,0:PP_NlocZ,1:nElems) !< vector of primitive variables 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL             :: sRho    ! 1/Rho
 INTEGER          :: i,j,k,iElem
 !==================================================================================================================================
 DO iElem=1,nElems
-  DO k=0,Nloc; DO j=0,Nloc; DO i=0,Nloc
+  DO k=0,PP_NlocZ; DO j=0,Nloc; DO i=0,Nloc
     sRho=1./cons(1,i,j,k,iElem)
     ! rho
     prim(1,i,j,k,iElem)=cons(1,i,j,k,iElem)
     ! vel/rho
-    prim(2:4,i,j,k,iElem)=cons(2:4,i,j,k,iElem)*sRho
+    prim(2:3,i,j,k,iElem)=cons(2:3,i,j,k,iElem)*sRho
+#if (PP_dim==3)
+    prim(4,i,j,k,iElem)=cons(4,i,j,k,iElem)*sRho
+#else
+    prim(4,i,j,k,iElem)=0.
+#endif
     ! pressure
     prim(5,i,j,k,iElem)=KappaM1*(cons(5,i,j,k,iElem)-0.5*SUM(cons(2:4,i,j,k,iElem)*prim(2:4,i,j,k,iElem)))
     ! temperature
@@ -288,7 +303,12 @@ REAL,INTENT(OUT) :: cons(PP_nVar)     !< vector of conservative variables
 ! conversion
 cons(1)=prim(1)
 ! rho
-cons(2:4)=prim(2:4)*prim(1)
+cons(2:3)=prim(2:3)*prim(1)
+#if (PP_dim==3)
+cons(4)=prim(4)*prim(1)
+#else
+cons(4)=0.
+#endif
 ! vel/rho
 cons(5)=sKappaM1*prim(5)+0.5*SUM(cons(2:4)*prim(2:4))
 ! inner energy
@@ -304,17 +324,22 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN):: Nloc
-REAL,INTENT(IN)   :: prim(PP_nVarPrim,0:Nloc,0:Nloc) !< vector of primitive variables
-REAL,INTENT(OUT)  :: cons(PP_nVar    ,0:Nloc,0:Nloc)     !< vector of conservative variables
+REAL,INTENT(IN)   :: prim(PP_nVarPrim,0:Nloc,0:PP_NlocZ) !< vector of primitive variables
+REAL,INTENT(OUT)  :: cons(PP_nVar    ,0:Nloc,0:PP_NlocZ)     !< vector of conservative variables
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER           :: p,q
 !==================================================================================================================================
-DO q=0,Nloc; DO p=0,Nloc
+DO q=0,PP_NlocZ; DO p=0,Nloc
   ! conversion
   cons(1,p,q)=prim(1,p,q)
   ! rho
-  cons(2:4,p,q)=prim(2:4,p,q)*prim(1,p,q)
+  cons(2:3,p,q)=prim(2:3,p,q)*prim(1,p,q)
+#if (PP_dim==3)
+  cons(4,p,q)=prim(4,p,q)*prim(1,p,q)
+#else
+  cons(4,p,q)=0.
+#endif
   ! vel/rho
   cons(5,p,q)=sKappaM1*prim(5,p,q)+0.5*SUM(cons(2:4,p,q)*prim(2:4,p,q))
 END DO; END DO ! p,q=0,Nloc
