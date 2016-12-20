@@ -9,7 +9,7 @@ PROGRAM ChangeBasisUnitTest
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_ChangeBasis,       ONLY: ChangeBasis2D,ChangeBasis2D_selective,ChangeBasis3D,ChangeBasis3D_XYZ
+USE MOD_ChangeBasis
 USE MOD_Basis,             ONLY: EQUALTOTOLERANCE
 
 IMPLICIT NONE
@@ -76,10 +76,10 @@ DO iElem=1,nElems
 END DO
 
 ! Check ChangeBasis3D_Mult
-CALL ChangeBasis3D(nVar,nElems,NIn,NOut,Vdm,UIn,UOut(:,:,:,:,:,1),.FALSE.)
+CALL ChangeBasis3D(nVar,NIn,NOut,1,nElems,1,nElems,Vdm,UIn,UOut(:,:,:,:,:,1),addToOutput=.FALSE.)
 
 ! Check ChangeBasis3D_Mult with add to UOut 
-CALL ChangeBasis3D(nVar,nElems,NIn,NOut,Vdm,UIn,UOut(:,:,:,:,:,2),.TRUE.)
+CALL ChangeBasis3D(nVar,NIn,NOut,1,nElems,1,nElems,Vdm,UIn,UOut(:,:,:,:,:,2),addToOutput=.TRUE.)
 
 ! Check ChangeBasis3D_Single
 CALL ChangeBasis3D(nVar,NIn,NOut,Vdm,UIn(:,:,:,:,1),UOut(:,:,:,:,1,3))
@@ -93,8 +93,8 @@ UOut2D = UOut(:,:,:,0,:,1:3)
 CALL ChangeBasis2D(nVar,NIn,NOut,Vdm,UIn2D(:,:,:,1),UOut2D(:,:,:,1,1))
 
 ! Check ChangeBasis2D_Mult
-CALL ChangeBasis2D_selective(nVar,NIn,NOut,1,nElems,2,nElems-1,Vdm,UIn2D,UOut2D(:,:,:,:,2),addToOutput=.FALSE.)
-CALL ChangeBasis2D_selective(nVar,NIn,NOut,1,nElems,2,nElems-1,Vdm,UIn2D,UOut2D(:,:,:,:,3),addToOutput=.TRUE.)
+CALL ChangeBasis2D(nVar,NIn,NOut,1,nElems,2,nElems-1,Vdm,UIn2D,UOut2D(:,:,:,:,2),addToOutput=.FALSE.)
+CALL ChangeBasis2D(nVar,NIn,NOut,1,nElems,2,nElems-1,Vdm,UIn2D,UOut2D(:,:,:,:,3),addToOutput=.TRUE.)
 
 IF (doGenerateReference) THEN
   ! Save the calculated solution to a binary file for later comparison

@@ -118,10 +118,14 @@
 #define PP_NOverZ 0
 #define PP_NlocZ 0
 #define PP_NZ 0 
-#define PP_NUnderZ 0 
+#define PP_NUnderZ 0
+#define ChangeBasisVolume ChangeBasis2D
+#define ChangeBasisSurf ChangeBasis1D
 #else
 #define PP_NOverZ NOver
 #define PP_NlocZ Nloc 
 #define PP_NZ PP_N 
 #define PP_NUnderZ NUnder
+#define ChangeBasisVolume ChangeBasis3D
+#define ChangeBasisSurf ChangeBasis2D
 #endif

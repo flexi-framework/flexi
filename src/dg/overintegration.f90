@@ -117,6 +117,7 @@ NUnder=PP_N
 NOver =PP_N
 
 OverintegrationType = GETINTFROMSTR('OverintegrationType')
+print*, OverintegrationType
 SELECT CASE(OverintegrationType)
 CASE (OVERINTEGRATIONTYPE_NONE) ! no overintegration, collocation DGSEM )
   OverintegrationType = 0

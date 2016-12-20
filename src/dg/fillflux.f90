@@ -60,7 +60,7 @@ USE MOD_Mesh_Vars,       ONLY: NormVec, TangVec1, TangVec2, SurfElem, Face_xGP
 USE MOD_Mesh_Vars,       ONLY: NormVecO,TangVec1O,TangVec2O,SurfElemO,Face_xGPO
 USE MOD_Mesh_Vars,       ONLY: firstInnerSide,lastInnerSide,firstMPISide_MINE,lastMPISide_MINE
 USE MOD_Mesh_Vars,       ONLY: nSides,firstBCSide
-USE MOD_ChangeBasis,     ONLY: ChangeBasis2D,ChangeBasis2D_selective
+USE MOD_ChangeBasis,     ONLY: ChangeBasisSurf
 USE MOD_Riemann,         ONLY: Riemann
 USE MOD_GetBoundaryFlux, ONLY: GetBoundaryFlux
 USE MOD_Overintegration_Vars, ONLY: OverintegrationType,NOver,VdmNOverToN,VdmNToNOver
@@ -145,11 +145,11 @@ IF(OverintegrationType.EQ.SELECTIVE)THEN
   ! for surface overintegration, solution (and gradients for BCs) at boundaries at NOver are required:
   ! Interpolate surface states from N to Nover
 #if FV_ENABLED
-  CALL ChangeBasis2D_selective(PP_nVar,PP_N,Nover,1,nSides,firstSideID    ,lastSideID,VdmNToNOver,U_master,U_masterO,FV_Elems_Sum,0)
-  CALL ChangeBasis2D_selective(PP_nVar,PP_N,Nover,1,nSides,firstSideID_wo_BC,lastSideID,VdmNToNOver,U_slave,U_slaveO,FV_Elems_Sum,0)
+  CALL ChangeBasisSurf(PP_nVar,PP_N,Nover,1,nSides,firstSideID    ,lastSideID,VdmNToNOver,U_master,U_masterO,FV_Elems_Sum,0)
+  CALL ChangeBasisSurf(PP_nVar,PP_N,Nover,1,nSides,firstSideID_wo_BC,lastSideID,VdmNToNOver,U_slave,U_slaveO,FV_Elems_Sum,0)
 #else
-  CALL ChangeBasis2D_selective(PP_nVar,PP_N,Nover,1,nSides,firstSideID    ,lastSideID,VdmNToNOver,U_master,U_masterO)
-  CALL ChangeBasis2D_selective(PP_nVar,PP_N,Nover,1,nSides,firstSideID_wo_BC,lastSideID,VdmNToNOver,U_slave,U_slaveO)
+  CALL ChangeBasisSurf(PP_nVar,PP_N,Nover,1,nSides,firstSideID    ,lastSideID,VdmNToNOver,U_master,U_masterO)
+  CALL ChangeBasisSurf(PP_nVar,PP_N,Nover,1,nSides,firstSideID_wo_BC,lastSideID,VdmNToNOver,U_slave,U_slaveO)
 #endif
   DO SideID=firstSideID,lastSideID
     IF (FV_Elems_Sum(SideID).EQ.0) THEN
@@ -165,18 +165,18 @@ IF(OverintegrationType.EQ.SELECTIVE)THEN
 #if PARABOLIC
   IF(.NOT.doMPISides)THEN
 #if FV_ENABLED
-    CALL ChangeBasis2D_selective(PP_nVarPrim,PP_N,Nover,1,nBCSides,1,nBCSides,VdmNToNOver,&
+    CALL ChangeBasisSurf(PP_nVarPrim,PP_N,Nover,1,nBCSides,1,nBCSides,VdmNToNOver,&
         gradUx_master(:,:,:,1:nBCSides),gradUx_masterO,FV_Elems_master,0)
-    CALL ChangeBasis2D_selective(PP_nVarPrim,PP_N,Nover,1,nBCSides,1,nBCSides,VdmNToNOver,&
+    CALL ChangeBasisSurf(PP_nVarPrim,PP_N,Nover,1,nBCSides,1,nBCSides,VdmNToNOver,&
         gradUy_master(:,:,:,1:nBCSides),gradUy_masterO,FV_Elems_master,0)
-    CALL ChangeBasis2D_selective(PP_nVarPrim,PP_N,Nover,1,nBCSides,1,nBCSides,VdmNToNOver,&
+    CALL ChangeBasisSurf(PP_nVarPrim,PP_N,Nover,1,nBCSides,1,nBCSides,VdmNToNOver,&
         gradUz_master(:,:,:,1:nBCSides),gradUz_masterO,FV_Elems_master,0)
 #else
-    CALL ChangeBasis2D_selective(PP_nVarPrim,PP_N,Nover,1,nBCSides,1,nBCSides,VdmNToNOver,&
+    CALL ChangeBasisSurf(PP_nVarPrim,PP_N,Nover,1,nBCSides,1,nBCSides,VdmNToNOver,&
         gradUx_master(:,:,:,1:nBCSides),gradUx_masterO)
-    CALL ChangeBasis2D_selective(PP_nVarPrim,PP_N,Nover,1,nBCSides,1,nBCSides,VdmNToNOver,&
+    CALL ChangeBasisSurf(PP_nVarPrim,PP_N,Nover,1,nBCSides,1,nBCSides,VdmNToNOver,&
         gradUy_master(:,:,:,1:nBCSides),gradUy_masterO)
-    CALL ChangeBasis2D_selective(PP_nVarPrim,PP_N,Nover,1,nBCSides,1,nBCSides,VdmNToNOver,&
+    CALL ChangeBasisSurf(PP_nVarPrim,PP_N,Nover,1,nBCSides,1,nBCSides,VdmNToNOver,&
         gradUz_master(:,:,:,1:nBCSides),gradUz_masterO)
 #endif
   END IF
@@ -281,10 +281,10 @@ IF (OverintegrationType.EQ.SELECTIVE) THEN
 #endif      
     ! project Flux back on N: For parabolic, add the contribution to the flux (on N), for Euler, this is the full flux already
 #if FV_ENABLED
-    CALL ChangeBasis2D_selective(PP_nVar,Nover,PP_N,1,nSides,firstSideID,lastSideID,VdmNOverToN,FluxO,Flux_master,FV_Elems_Sum,0,&
+    CALL ChangeBasisSurf(PP_nVar,Nover,PP_N,1,nSides,firstSideID,lastSideID,VdmNOverToN,FluxO,Flux_master,FV_Elems_Sum,0,&
         addToOutput=addToOutput_loc)
 #else
-    CALL ChangeBasis2D_selective(PP_nVar,Nover,PP_N,1,nSides,firstSideID,lastSideID,VdmNOverToN,FluxO,Flux_master,&
+    CALL ChangeBasisSurf(PP_nVar,Nover,PP_N,1,nSides,firstSideID,lastSideID,VdmNOverToN,FluxO,Flux_master,&
         addToOutput=addToOutput_loc)
 #endif
 END IF
@@ -299,8 +299,8 @@ END DO !SideID
 #if FV_ENABLED
 ! 6. convert flux on FV points to DG points for all DG faces at mixed interfaces
 ! only inner sides can be mixed (BC do not require a change basis)
-CALL ChangeBasis2D_selective(PP_nVar,PP_N,1,nSides,firstSideID_wo_BC,lastSideID,FV_sVdm,Flux_master,FV_Elems_Sum,2)
-CALL ChangeBasis2D_selective(PP_nVar,PP_N,1,nSides,firstSideID_wo_BC,lastSideID,FV_sVdm,Flux_slave ,FV_Elems_Sum,1)
+CALL ChangeBasisSurf(PP_nVar,PP_N,1,nSides,firstSideID_wo_BC,lastSideID,FV_sVdm,Flux_master,FV_Elems_Sum,2)
+CALL ChangeBasisSurf(PP_nVar,PP_N,1,nSides,firstSideID_wo_BC,lastSideID,FV_sVdm,Flux_slave ,FV_Elems_Sum,1)
 #endif
 
 END SUBROUTINE FillFlux

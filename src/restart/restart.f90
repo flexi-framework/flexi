@@ -163,7 +163,7 @@ USE MOD_Indicator_Vars     ,ONLY: IndValue
 USE MOD_DG_Vars,            ONLY: U
 USE MOD_Mesh_Vars,          ONLY: offsetElem,detJac_Ref,Ngeo
 USE MOD_Mesh_Vars,          ONLY: nElems
-USE MOD_ChangeBasis,        ONLY: ChangeBasis3D
+USE MOD_ChangeBasisByDim,   ONLY: ChangeBasisVolume
 USE MOD_HDF5_input,         ONLY: OpenDataFile,CloseDataFile,ReadArray
 USE MOD_HDF5_Output,        ONLY: FlushFiles
 USE MOD_Interpolation,      ONLY: GetVandermonde
@@ -238,11 +238,11 @@ IF(DoRestart)THEN
     IF(N_Restart.GT.PP_N)THEN
       DO iElem=1,nElems
         IF (FV_Elems(iElem).EQ.0) THEN ! DG element
-          CALL ChangeBasis3D(1,3*Ngeo,N_Restart,Vdm_3Ngeo_NRestart,detJac_Ref(:,:,:,:,iElem),JNR)
+          CALL ChangeBasisVolume(1,3*Ngeo,N_Restart,Vdm_3Ngeo_NRestart,detJac_Ref(:,:,:,:,iElem),JNR)
           DO k=0,N_Restart; DO j=0,N_Restart; DO i=0,N_Restart
             U_local(:,i,j,k,iElem)=U_local(:,i,j,k,iElem)*JNR(1,i,j,k)
           END DO; END DO; END DO
-          CALL ChangeBasis3D(PP_nVar,N_Restart,PP_N,Vdm_NRestart_N,U_local(:,:,:,:,iElem),U(:,:,:,:,iElem))
+          CALL ChangeBasisVolume(PP_nVar,N_Restart,PP_N,Vdm_NRestart_N,U_local(:,:,:,:,iElem),U(:,:,:,:,iElem))
 #if FV_ENABLED          
         ELSE ! FV element
           STOP 'Not implemented yet'
@@ -254,7 +254,7 @@ IF(DoRestart)THEN
     ELSE
       DO iElem=1,nElems
         IF (FV_Elems(iElem).EQ.0) THEN ! DG element
-          CALL ChangeBasis3D(PP_nVar,N_Restart,PP_N,Vdm_NRestart_N,U_local(:,:,:,:,iElem),U(:,:,:,:,iElem))
+          CALL ChangeBasisVolume(PP_nVar,N_Restart,PP_N,Vdm_NRestart_N,U_local(:,:,:,:,iElem),U(:,:,:,:,iElem))
 #if FV_ENABLED          
         ELSE ! FV element
           STOP 'Not implemented yet'

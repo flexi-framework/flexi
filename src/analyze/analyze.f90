@@ -303,8 +303,8 @@ USE MOD_PreProc
 USE MOD_Mesh_Vars,          ONLY: Elem_xGP,sJ,nElems
 USE MOD_Equation_Vars,      ONLY: IniExactFunc
 USE MOD_DG_Vars,            ONLY: U
-USE MOD_Exactfunc,           ONLY: ExactFunc
-USE MOD_ChangeBasis,        ONLY: ChangeBasis3D
+USE MOD_Exactfunc,          ONLY: ExactFunc
+USE MOD_ChangeBasisByDim,   ONLY: ChangeBasisVolume
 USE MOD_Analyze_Vars,       ONLY: NAnalyze,Vdm_GaussN_NAnalyze
 USE MOD_Analyze_Vars,       ONLY: wGPVolAnalyze,Vol
 #if FV_ENABLED
@@ -348,7 +348,7 @@ DO iElem=1,nElems
         END DO ! k
       END DO ! l
     END DO ! m
-    CALL ChangeBasis3D(PP_nVar,PP_N,PP_N,FV_Vdm,U_DG(:,:,:,:),U_FV(:,:,:,:))
+    CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,U_DG(:,:,:,:),U_FV(:,:,:,:))
     DO m=0,PP_N
       DO l=0,PP_N
         DO k=0,PP_N
@@ -362,12 +362,12 @@ DO iElem=1,nElems
   ELSE
 #endif
    ! Interpolate the physical position Elem_xGP to the analyze position, needed for exact function
-   CALL ChangeBasis3D(3,PP_N,NAnalyze,Vdm_GaussN_NAnalyze,Elem_xGP(1:3,:,:,:,iElem),Coords_NAnalyze(1:3,:,:,:))
+   CALL ChangeBasisVolume(3,PP_N,NAnalyze,Vdm_GaussN_NAnalyze,Elem_xGP(1:3,:,:,:,iElem),Coords_NAnalyze(1:3,:,:,:))
    ! Interpolate the Jacobian to the analyze grid: be carefull we interpolate the inverse of the inverse of the jacobian ;-)
    J_N(1,0:PP_N,0:PP_N,0:PP_N)=1./sJ(:,:,:,iElem,0)
-   CALL ChangeBasis3D(1,PP_N,NAnalyze,Vdm_GaussN_NAnalyze,J_N(1:1,0:PP_N,0:PP_N,0:PP_N),J_NAnalyze(1:1,:,:,:))
+   CALL ChangeBasisVolume(1,PP_N,NAnalyze,Vdm_GaussN_NAnalyze,J_N(1:1,0:PP_N,0:PP_N,0:PP_N),J_NAnalyze(1:1,:,:,:))
    ! Interpolate the solution to the analyze grid
-   CALL ChangeBasis3D(PP_nVar,PP_N,NAnalyze,Vdm_GaussN_NAnalyze,U(1:PP_nVar,:,:,:,iElem),U_NAnalyze(1:PP_nVar,:,:,:))
+   CALL ChangeBasisVolume(PP_nVar,PP_N,NAnalyze,Vdm_GaussN_NAnalyze,U(1:PP_nVar,:,:,:,iElem),U_NAnalyze(1:PP_nVar,:,:,:))
    DO m=0,NAnalyze
      DO l=0,NAnalyze
        DO k=0,NAnalyze

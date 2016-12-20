@@ -874,7 +874,7 @@ ELSE
   CALL GetVandermonde(N_HDF5,NodeType_HDF5,PP_N,NodeType,Vdm_NHDF5_N,modal=.TRUE.)
 
   SWRITE(UNIT_stdOut,*)'Interpolate base flow from restart grid with N=',N_HDF5,' to computational grid with N=',PP_N
-  CALL ChangeBasis3D(PP_nVar,nElems,N_HDF5,PP_N,Vdm_NHDF5_N,U_local,U_N,.FALSE.)
+  CALL ChangeBasis3D(PP_nVar,N_HDF5,PP_N,1,nElems,1,nElems,Vdm_NHDF5_N,U_local,U_N)
   DEALLOCATE(Vdm_NHDF5_N)
 END IF
 

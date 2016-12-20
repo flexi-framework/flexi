@@ -202,7 +202,7 @@ END SUBROUTINE InitFV
 SUBROUTINE FV_Switch(AllowToDG)
 ! MODULES
 USE MOD_PreProc
-USE MOD_ChangeBasis    ,ONLY: ChangeBasis3D
+USE MOD_ChangeBasisByDim,ONLY: ChangeBasisVolume
 USE MOD_DG_Vars        ,ONLY: U
 USE MOD_Indicator_Vars ,ONLY: IndValue
 USE MOD_Indicator      ,ONLY: IndPersson
@@ -227,13 +227,13 @@ DO iElem=1,nElems
     IF (IndValue(iElem).GT.FV_IndUpperThreshold) THEN
       ! switch Element to FV
       FV_Elems(iElem) = 1
-      CALL ChangeBasis3D(PP_nVar,PP_N,PP_N,FV_Vdm,U(:,:,:,:,iElem),U_FV)
+      CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,U(:,:,:,:,iElem),U_FV)
       U(:,:,:,:,iElem) = U_FV
     END IF
   ELSE ! FV Element
     ! Switch FV to DG Element, if Indicator is lower then IndMax
     IF ((IndValue(iElem).LT.FV_IndLowerThreshold).AND.AllowToDG) THEN
-      CALL ChangeBasis3D(PP_nVar,PP_N,PP_N,FV_sVdm,U(:,:,:,:,iElem),U_DG)
+      CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_sVdm,U(:,:,:,:,iElem),U_DG)
       IF (FV_toDG_indicator) THEN
         ind = IndPersson(U_DG(:,:,:,:))
         IF (ind.GT.FV_toDG_limit) CYCLE
@@ -289,7 +289,7 @@ USE MOD_Mesh_Vars         ,ONLY: nElems
 USE MOD_FV_Vars           ,ONLY: FV_Elems
 USE MOD_Indicator         ,ONLY: CalcIndicator
 USE MOD_Interpolation     ,ONLY: GetVandermonde 
-USE MOD_ChangeBasis       ,ONLY: ChangeBasis3D
+USE MOD_ChangeBasisByDim  ,ONLY: ChangeBasisVolume
 USE MOD_Mesh_Vars         ,ONLY: Elem_xGP
 USE MOD_Equation_Vars     ,ONLY: IniExactFunc
 USE MOD_Exactfunc         ,ONLY: ExactFunc
@@ -311,7 +311,7 @@ CALL GetVandermonde(PP_N,NodetypeG,(PP_N+1)**2-1,NodeTypeVISUInner,Vdm)
 DO iElem=1,nElems
   IF (FV_Elems(iElem).EQ.0) CYCLE ! DG element
   ! supersample all subcells
-  CALL ChangeBasis3D(3,PP_N,(PP_N+1)**2-1,Vdm,Elem_xGP(1:3,:,:,:,iElem),xx)
+  CALL ChangeBasisVolume(3,PP_N,(PP_N+1)**2-1,Vdm,Elem_xGP(1:3,:,:,:,iElem),xx)
   DO k=0,PP_N
     DO j=0,PP_N
       DO i=0,PP_N
@@ -336,7 +336,7 @@ SUBROUTINE FV_DGtoFV(nVar,U_master,U_slave)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_ChangeBasis ,ONLY: ChangeBasis2D_selective
+USE MOD_ChangeBasisByDim ,ONLY: ChangeBasisSurf
 USE MOD_FV_Vars
 USE MOD_Mesh_Vars   ,ONLY: firstInnerSide,lastMPISide_MINE,nSides
 ! IMPLICIT VARIABLE HANDLING
@@ -344,8 +344,8 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: nVar
-REAL,INTENT(INOUT) :: U_master(nVar,0:PP_N,0:PP_N,1:nSides) !< Solution on master side
-REAL,INTENT(INOUT) :: U_slave (nVar,0:PP_N,0:PP_N,1:nSides) !< Solution on slave side
+REAL,INTENT(INOUT) :: U_master(nVar,0:PP_N,0:PP_NZ,1:nSides) !< Solution on master side
+REAL,INTENT(INOUT) :: U_slave (nVar,0:PP_N,0:PP_NZ,1:nSides) !< Solution on slave side
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER     :: firstSideID,lastSideID
@@ -353,8 +353,8 @@ INTEGER     :: firstSideID,lastSideID
 firstSideID = firstInnerSide
 lastSideID  = lastMPISide_MINE
 
-CALL ChangeBasis2D_selective(nVar,PP_N,1,nSides,firstSideID,lastSideID,FV_Vdm,U_master,FV_Elems_Sum,2)
-CALL ChangeBasis2D_selective(nVar,PP_N,1,nSides,firstSideID,lastSideID,FV_Vdm,U_slave ,FV_Elems_Sum,1)
+CALL ChangeBasisSurf(nVar,PP_N,1,nSides,firstSideID,lastSideID,FV_Vdm,U_master,FV_Elems_Sum,2)
+CALL ChangeBasisSurf(nVar,PP_N,1,nSides,firstSideID,lastSideID,FV_Vdm,U_slave ,FV_Elems_Sum,1)
 END SUBROUTINE FV_DGtoFV
 
 
