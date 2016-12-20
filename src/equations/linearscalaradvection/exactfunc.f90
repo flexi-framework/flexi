@@ -175,6 +175,15 @@ CASE(2) !sinus
     Resu_t =-Amplitude*COS(Omega*SUM(Cent))*Omega*SUM(AdvVel)
     Resu_tt=-Amplitude*SIN(Omega*SUM(Cent))*Omega*SUM(AdvVel)*Omega*SUM(AdvVel)
   END IF
+CASE(22) ! two-dimensional sinus with source for convergence test
+  Frequency=1.
+  Amplitude=1.
+  Omega=2.*PP_PI*Frequency
+  Resu=Amplitude*SIN(Omega*SUM(Cent))
+  IF(fullBoundaryOrder)THEN
+    Resu_t =-Amplitude*COS(Omega*SUM(Cent))*Omega*SUM(AdvVel)
+    Resu_tt=-Amplitude*SIN(Omega*SUM(Cent))*Omega*SUM(AdvVel)*Omega*SUM(AdvVel)
+  END IF
 CASE(41) ! sinus in x direction
   Frequency=0.5
   Amplitude=1.
@@ -249,8 +258,8 @@ END SUBROUTINE ExactFunc
 SUBROUTINE CalcSource(Ut,t)
 ! MODULES
 USE MOD_Globals,       ONLY:Abort
-USE MOD_Equation_Vars, ONLY:IniExactFunc,AdvVel
-USE MOD_Mesh_Vars,     ONLY:nElems,Elem_xGP
+USE MOD_Equation_Vars, ONLY:IniExactFunc,AdvVel,doCalcSource
+USE MOD_Mesh_Vars,     ONLY:nElems,Elem_xGP,sJ
 USE MOD_PreProc
 #if PARABOLIC
 USE MOD_Equation_Vars, ONLY:DiffC
@@ -263,19 +272,39 @@ REAL,INTENT(INOUT)  :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< solution time
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER             :: iElem,i,j,k
-REAL                :: Pi
+REAL                :: Omega
+REAL                :: Ut_src(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 !==================================================================================================================================
-Pi = ACOS(-1.)
 SELECT CASE (IniExactFunc)
+CASE(22)
+#if PARABOLIC
+  Omega=2.*PP_PI
+  DO iElem=1,nElems
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+      Ut_src(:,i,j,k)=-2.*DiffC*Omega**2.*SIN(Omega*(AdvVel(1)*t-Elem_xGP(1,i,j,k,iElem) + &
+                                                     AdvVel(2)*t-Elem_xGP(2,i,j,k,iElem)))
+    END DO; END DO; END DO ! i,j,k
+    ! Add contribution and take jacobian into account
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+      Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem)+Ut_src(:,i,j,k)/(sJ(i,j,k,iElem,0))
+    END DO; END DO; END DO ! i,j,k
+  END DO ! iElem
+#endif
 CASE(31)
   DO iElem=1,nElems
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      Ut(:,i,j,k,iElem)=Ut(:,i,j,k,iElem)+AdvVel(1)/2.*COS(Pi*(Elem_xGP(1,i,j,k,iElem)-AdvVel(1)/2.*t))*Pi
+      Ut_src(:,i,j,k) = AdvVel(1)/2.*COS(PP_PI*(Elem_xGP(1,i,j,k,iElem)-AdvVel(1)/2.*t))*PP_PI
 #if PARABOLIC
-      Ut(:,i,j,k,iElem)=Ut(:,i,j,k,iElem)+Pi*Pi*SIN(Pi*(Elem_xGP(1,i,j,k,iElem)-AdvVel(1)/2.*t))*diffC
+      Ut_src(:,i,j,k) = Ut_src(:,i,j,k) + PP_PI*PP_Pi*SIN(PP_PI*(Elem_xGP(1,i,j,k,iElem)-AdvVel(1)/2.*t))*diffC
 #endif
     END DO; END DO; END DO ! i,j,k
+    ! Add contribution and take jacobian into account
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+      Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem)+Ut_src(:,i,j,k)/(sJ(i,j,k,iElem,0))
+    END DO; END DO; END DO ! i,j,k
   END DO ! iElem
+CASE DEFAULT
+  doCalcSource=.FALSE.
 END SELECT ! ExactFunction
 END SUBROUTINE CalcSource
 

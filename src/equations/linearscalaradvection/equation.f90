@@ -97,6 +97,9 @@ DiffC  = GETREAL('DiffC','0.')
 ! Call initialization of exactfunc
 CALL InitExactFunc()
 
+! Always set docalcsource true, set false by calcsource itself on first run if not needed
+doCalcSource=.TRUE.
+
 EquationInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT LINADV DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
