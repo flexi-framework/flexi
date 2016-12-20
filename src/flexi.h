@@ -60,6 +60,8 @@
 #define ERRWRITE(a,b) CALL CreateErrFile(); IF(ErrorFiles) WRITE(UNIT_errOut,b) 
 #define LOGWRITE(a,b) IF(Logging) WRITE(UNIT_logOut,b)
 #define SDEALLOCATE(A) IF(ALLOCATED(A)) DEALLOCATE(A)
+#define ADEALLOCATE(A) IF(ASSOCIATED(A)) DEALLOCATE(A)
+
 
 ! Loop variables
 #define PP_IJK     i,j,k
@@ -118,7 +120,7 @@
 #define PP_NOverZ 0
 #define PP_NlocZ 0
 #define PP_NZ 0 
-#define PP_NUnderZ 0 
+#define PP_NUnderZ 0
 #define ChangeBasisVolume ChangeBasis2D
 #define ChangeBasisSurf ChangeBasis1D
 #else

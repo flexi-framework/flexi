@@ -461,45 +461,48 @@ USE MOD_Metrics,             ONLY: CalcSurfMetrics
 USE MOD_Interpolation,       ONLY: GetVandermonde
 USE MOD_Interpolation_Vars,  ONLY: NodeTypeCL,NodeType
 USE MOD_Overintegration_Vars,ONLY: NOver,VdmNToNOver
-USE MOD_ChangeBasis,         ONLY: ChangeBasis3D,ChangeBasis2D
+USE MOD_ChangeBasisByDim,    ONLY: ChangeBasisVolume
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL              :: JaCL_NSurf(3,3,0:NOver,0:NOver,0:NOver) !< metric terms P\in NOver
-REAL              :: XCL_NSurf(   3,0:NOver,0:NOver,0:NOver) !< geometry on P\in NOver
+REAL              :: JaCL_NSurf(3,3,0:NOver,0:NOver,0:PP_NOverZ) !< metric terms P\in NOver
+REAL              :: XCL_NSurf(   3,0:NOver,0:NOver,0:PP_NOverZ) !< geometry on P\in NOver
 REAL              :: Vdm_N_CLNSurf(0:NOver,0:PP_N)
 REAL              :: Vdm_CLNSurf_NSurf(0:NOver,0:NOver)
 INTEGER           :: iElem
 !==================================================================================================================================
 
 ! Build geometry for volume overintegration
-ALLOCATE(      Elem_xGPO(3,0:NOver,0:NOver,0:NOver,nElems)) ! only needed once by fillini
-ALLOCATE(Metrics_fTildeO(3,0:NOver,0:NOver,0:NOver,nElems))
-ALLOCATE(Metrics_gTildeO(3,0:NOver,0:NOver,0:NOver,nElems))
-ALLOCATE(Metrics_hTildeO(3,0:NOver,0:NOver,0:NOver,nElems))
+ALLOCATE(      Elem_xGPO(3,0:NOver,0:NOver,0:PP_NOverZ,nElems)) ! only needed once by fillini
+ALLOCATE(Metrics_fTildeO(3,0:NOver,0:NOver,0:PP_NOverZ,nElems))
+ALLOCATE(Metrics_gTildeO(3,0:NOver,0:NOver,0:PP_NOverZ,nElems))
+ALLOCATE(Metrics_hTildeO(3,0:NOver,0:NOver,0:PP_NOverZ,nElems))
 IF(NOver.GT.PP_N)THEN
-  CALL ChangeBasis3D(3,nElems,PP_N,NOver,VdmNToNOver,Elem_xGP,      Elem_xGPO,                   addToOutput=.FALSE.)
-  CALL ChangeBasis3D(3,nElems,PP_N,NOver,VdmNToNOver,Metrics_fTilde(:,:,:,:,:,0),Metrics_fTildeO,addToOutput=.FALSE.)
-  CALL ChangeBasis3D(3,nElems,PP_N,NOver,VdmNToNOver,Metrics_gTilde(:,:,:,:,:,0),Metrics_gTildeO,addToOutput=.FALSE.)
-  CALL ChangeBasis3D(3,nElems,PP_N,NOver,VdmNToNOver,Metrics_hTilde(:,:,:,:,:,0),Metrics_hTildeO,addToOutput=.FALSE.)
+  CALL ChangeBasisVolume(3,PP_N,NOver,1,nElems,1,nElems,VdmNToNOver,Elem_xGP,      Elem_xGPO)
+  CALL ChangeBasisVolume(3,PP_N,NOver,1,nElems,1,nElems,VdmNToNOver,Metrics_fTilde(:,:,:,:,:,0),Metrics_fTildeO)
+  CALL ChangeBasisVolume(3,PP_N,NOver,1,nElems,1,nElems,VdmNToNOver,Metrics_gTilde(:,:,:,:,:,0),Metrics_gTildeO)
+  CALL ChangeBasisVolume(3,PP_N,NOver,1,nElems,1,nElems,VdmNToNOver,Metrics_hTilde(:,:,:,:,:,0),Metrics_hTildeO)
 END IF
 
 ! Build geometry for surface overintegration
-ALLOCATE(Face_xGPO(3,0:NOver,0:NOver,0:0,1:nSides))
-ALLOCATE( NormVecO(3,0:NOver,0:NOver,0:0,1:nSides))
-ALLOCATE(TangVec1O(3,0:NOver,0:NOver,0:0,1:nSides))
-ALLOCATE(TangVec2O(3,0:NOver,0:NOver,0:0,1:nSides))
-ALLOCATE(SurfElemO(  0:NOver,0:NOver,0:0,1:nSides))
+ALLOCATE(Face_xGPO(3,0:NOver,0:PP_NOverZ,0:0,1:nSides))
+ALLOCATE( NormVecO(3,0:NOver,0:PP_NOverZ,0:0,1:nSides))
+ALLOCATE(TangVec1O(3,0:NOver,0:PP_NOverZ,0:0,1:nSides))
+ALLOCATE(TangVec2O(3,0:NOver,0:PP_NOverZ,0:0,1:nSides))
+ALLOCATE(SurfElemO(  0:NOver,0:PP_NOverZ,0:0,1:nSides))
 
 CALL GetVandermonde( PP_N , NodeType  , NOver , NodeTypeCL , Vdm_N_CLNSurf     , modal=.FALSE.)
 CALL GetVandermonde( NOver, NodeTypeCL, NOver , NodeType   , Vdm_CLNSurf_NSurf , modal=.FALSE.)
 DO iElem=1,nElems
-  CALL ChangeBasis3D(3,PP_N,NOver,Vdm_N_CLNSurf,Metrics_fTilde(:,:,:,:,iElem,0),JaCL_NSurf(1,:,:,:,:))
-  CALL ChangeBasis3D(3,PP_N,NOver,Vdm_N_CLNSurf,Metrics_gTilde(:,:,:,:,iElem,0),JaCL_NSurf(2,:,:,:,:))
-  CALL ChangeBasis3D(3,PP_N,NOver,Vdm_N_CLNSurf,Metrics_hTilde(:,:,:,:,iElem,0),JaCL_NSurf(3,:,:,:,:))
-  CALL ChangeBasis3D(3,PP_N,NOver,Vdm_N_CLNSurf,Elem_xGP(:,:,:,:,iElem),XCL_NSurf)
+  CALL ChangeBasisVolume(3,PP_N,NOver,Vdm_N_CLNSurf,Metrics_fTilde(:,:,:,:,iElem,0),JaCL_NSurf(1,:,:,:,:))
+  CALL ChangeBasisVolume(3,PP_N,NOver,Vdm_N_CLNSurf,Metrics_gTilde(:,:,:,:,iElem,0),JaCL_NSurf(2,:,:,:,:))
+  CALL ChangeBasisVolume(3,PP_N,NOver,Vdm_N_CLNSurf,Metrics_hTilde(:,:,:,:,iElem,0),JaCL_NSurf(3,:,:,:,:))
+  CALL ChangeBasisVolume(3,PP_N,NOver,Vdm_N_CLNSurf,Elem_xGP(:,:,:,:,iElem),XCL_NSurf)
+#if PP_dim==2
+  STOP 'Surface metric computation not implemented yet'
+#endif
   CALL CalcSurfMetrics(NOver,JaCL_NSurf,XCL_NSurf,Vdm_CLNSurf_NSurf,iElem,&
                        NormVecO,TangVec1O,TangVec2O,SurfElemO,Face_xGPO)
 END DO

@@ -50,6 +50,7 @@ REAL                 :: calcTimeRestart=0.                !< contains simulation
 ! ErrorNorms
 INTEGER              :: NAnalyze                          !< polynomial degree analysis is performed at (e.g. computation of L2
                                                           !< norms). Number of points: NAnalyze+1
+INTEGER              :: NAnalyzeZ  
 REAL,ALLOCATABLE     :: wGPVolAnalyze(:,:,:)              !< product of GL integration weights used for analyze routines
 REAL,ALLOCATABLE     :: Vdm_GaussN_NAnalyze(:,:)          !< Vandermonde for interpolating the solution to analyze points
 

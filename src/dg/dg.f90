@@ -74,7 +74,7 @@ USE MOD_Interpolation_Vars,   ONLY: xGP,wGP,L_minus,L_plus
 USE MOD_Interpolation_Vars,   ONLY: InterpolationInitIsDone
 USE MOD_Restart_Vars,         ONLY: DoRestart,RestartInitIsDone
 USE MOD_Mesh_Vars,            ONLY: nElems,nSides,Elem_xGP,Elem_xGPO,MeshInitIsDone
-USE MOD_ChangeBasis,          ONLY: ChangeBasis3D
+USE MOD_ChangeBasisByDim,     ONLY: ChangeBasisVolume
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -168,7 +168,7 @@ IF(.NOT.DoRestart)THEN
   IF(OverintegrationType.EQ.SELECTIVE) THEN 
     ! Interpolate onto the NOver grid, then project onto N
     CALL FillIni(NOver,Elem_xGPO,UO)
-    CALL ChangeBasis3D(PP_nVar,nElems,NOver,PP_N,VdmNOverToN,UO,U,.FALSE.)
+    CALL ChangeBasisVolume(PP_nVar,NOver,PP_N,1,nElems,1,nElems,VdmNOverToN,UO,U)
   ELSE
     CALL FillIni(PP_N,Elem_xGP,U)
   END IF
@@ -263,7 +263,7 @@ USE MOD_ApplyJacobianCons   ,ONLY: ApplyJacobianCons
 USE MOD_Interpolation_Vars  ,ONLY: L_Minus,L_Plus
 USE MOD_Overintegration_Vars,ONLY: NOver,VdmNOverToN,VdmNToNOver,OverintegrationType
 USE MOD_Overintegration,     ONLY: Overintegration
-USE MOD_ChangeBasis         ,ONLY: ChangeBasis3D
+USE MOD_ChangeBasisByDim    ,ONLY: ChangeBasisVolume
 USE MOD_Testcase            ,ONLY: TestcaseSource
 USE MOD_Testcase_Vars       ,ONLY: doTCSource
 USE MOD_Mesh_Vars           ,ONLY: nElems
@@ -400,7 +400,7 @@ CALL U_MortarPrim(FV_multi_master,FV_multi_slave,doMPiSides=.FALSE.)
 !{2.}Prepare data for selective volume integral (for DG elements only)
 !    (latency hiding before finishing communication of side data in 1.4) )
 IF(OverintegrationType.EQ.SELECTIVE)THEN
-  CALL ChangeBasis3D(PP_nVar,nElems,PP_N,NOver,VdmNToNOver,U,UO,.FALSE.)
+  CALL ChangeBasisVolume(PP_nVar,PP_N,NOver,1,nElems,1,nElems,VdmNToNOver,U,UO)
   CALL ConsToPrim(NOver,UPrimO,UO)
 END IF
 
@@ -557,7 +557,7 @@ CALL SurfIntCons(PP_N,Flux_master,Flux_slave,Ut,.TRUE.,L_HatMinus,L_HatPlus)
 
 ! 9. Add advection volume integral to residual for selective overintegration
 IF(OverintegrationType.EQ.SELECTIVE)THEN
-  CALL ChangeBasis3D(PP_nVar,nElems,NOver,PP_N,VdmNOverToN,UtO,Ut,.TRUE.)
+  CALL ChangeBasisVolume(PP_nVar,NOver,PP_N,1,nElems,1,nElems,VdmNOverToN,UtO,Ut,addToOutput=.TRUE.)
 END IF
 
 ! 10. Swap to right sign :) 

@@ -338,7 +338,7 @@ DO q=0,PP_NlocZ; DO p=0,Nloc
 #if (PP_dim==3)
   cons(4,p,q)=prim(4,p,q)*prim(1,p,q)
 #else
-  cons(4)=0.
+  cons(4,p,q)=0.
 #endif
   ! vel/rho
   cons(5,p,q)=sKappaM1*prim(5,p,q)+0.5*SUM(cons(2:4,p,q)*prim(2:4,p,q))
