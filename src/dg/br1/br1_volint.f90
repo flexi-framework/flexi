@@ -12,6 +12,8 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #if PARABOLIC
+#include "flexi.h"
+
 !==================================================================================================================================
 !> \brief Routines for computing the lifting volume integral for the BR1 scheme.
 !>
@@ -99,7 +101,7 @@ DO iElem=1,nElems
                           + Metrics_gTilde(1,i,j,k,iElem,0)*gradUeta  
     gradUy(:,i,j,k,iElem) = Metrics_fTilde(2,i,j,k,iElem,0)*gradUxi   &
                           + Metrics_gTilde(2,i,j,k,iElem,0)*gradUeta  
-#endif
+#endif /*PP_dim==3*/
    END DO; END DO; END DO ! i,j,k
 #if FV_ENABLED
   ELSE
@@ -122,7 +124,7 @@ DO iElem=1,nElems
 #endif
    END DO; END DO; END DO! i,j,k=0,PP_N
   END IF
-#endif    
+#endif /*FV_ENABLED*/
 END DO ! iElem=1,nElems
 END SUBROUTINE Lifting_VolInt_Nonconservative
 
@@ -207,7 +209,7 @@ DO iElem=1,nElems
                            + FV_Metrics_gTilde_sJ(dir,i,j,k,iElem)*gradUeta_central (:,i,j,k,iElem) 
     END DO; END DO; END DO! i,j,k=0,PP_N
   END IF
-#endif    
+#endif /*FV_ENABLED*/
 
 END DO ! iElem=1,nElems
 END SUBROUTINE Lifting_VolInt_Conservative
@@ -246,6 +248,5 @@ END DO ! i
 END SUBROUTINE Lifting_Metrics
 
 
-#endif
 END MODULE MOD_Lifting_VolInt
 #endif /*PARABOLIC*/
