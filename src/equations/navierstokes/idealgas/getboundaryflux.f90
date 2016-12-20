@@ -491,6 +491,9 @@ ELSE
 #endif /*PARABOLIC*/
 
   CASE(3,4,9) ! Walls
+#ifdef EDDYVISCOSITY
+    SGS_Ind_Master(1,:,:,SideID)=0.
+#endif
     DO q=0,Nloc; DO p=0,Nloc
       P_RP(p,q) = Additionals(1,p,q)
       ! Now we compute the 1D Euler flux, but use the info that the normal component u=0

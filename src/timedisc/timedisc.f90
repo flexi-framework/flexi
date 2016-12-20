@@ -397,6 +397,9 @@ USE MOD_Indicator    ,ONLY: doCalcIndicator,CalcIndicator
 #if FV_ENABLED
 USE MOD_FV           ,ONLY: FV_Switch
 #endif
+#ifdef EDDYVISCOSITY
+USE MOD_EddyVisc_Vars, ONLY: testfilter, eddyViscType
+#endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -411,6 +414,12 @@ INTEGER  :: iStage
 b_dt=RKb*dt
 
 IF(CalcPruettDamping) CALL TempFilterTimeDeriv(U,dt)
+#ifdef EDDYVISCOSITY
+IF((eddyViscType.EQ.2))THEN
+  CALL testfilter(U)
+END IF
+#endif
+
 ! First evaluation of DG operator already done in timedisc
 CurrentStage=1
 tStage=t
@@ -462,6 +471,9 @@ USE MOD_Indicator    ,ONLY: doCalcIndicator,CalcIndicator
 #if FV_ENABLED
 USE MOD_FV            ,ONLY: FV_Switch
 #endif
+#ifdef EDDYVISCOSITY
+USE MOD_EddyVisc_Vars, ONLY: testfilter, eddyViscType
+#endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -474,6 +486,12 @@ REAL     :: tStage,b_dt(1:nRKStages)
 INTEGER  :: iStage
 !===================================================================================================================================
 IF(CalcPruettDamping) CALL TempFilterTimeDeriv(U,dt)
+
+#ifdef EDDYVISCOSITY
+IF((eddyViscType.EQ.2))THEN
+  CALL testfilter(U)
+END IF
+#endif
 
 ! Premultiply with dt
 b_dt=RKb*dt

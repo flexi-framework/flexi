@@ -162,7 +162,9 @@ MPIRequest_FV_gradU = MPI_REQUEST_NULL
 #endif
 #ifdef EDDYVISCOSITY
 ALLOCATE(MPIRequest_DeltaS(nNbProcs,2) )
-MPIRequest_DeltaS = MPI_REQUEST_NULL
+ALLOCATE(MPIRequest_SGS_Ind(nNbProcs,2) )
+MPIRequest_DeltaS  = MPI_REQUEST_NULL
+MPIRequest_SGS_Ind = MPI_REQUEST_NULL
 #endif
 
 #if PARABOLIC
@@ -172,7 +174,10 @@ MPIRequest_gradU = MPI_REQUEST_NULL
 
 DataSizeSide      =PP_nVar*(PP_N+1)**2
 DataSizeSidePrim  =PP_nVarPrim*(PP_N+1)**2
-DataSizeSideO =PP_nVar*(nOver+1)**2
+DataSizeSideO     =PP_nVar*(nOver+1)**2
+#ifdef EDDYVISCOSITY
+DataSizeSideScalar= (PP_N+1)**2
+#endif
 
 ! split communicator into smaller groups (e.g. for local nodes)
 GroupSize=GETINT('GroupSize','0')

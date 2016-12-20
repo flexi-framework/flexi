@@ -55,6 +55,7 @@ USE MOD_Preproc
 USE MOD_Globals
 USE MOD_EddyVisc_Vars
 USE MOD_Smagorinsky
+USE MOD_DynSmag
 USE MOD_DefaultEddyVisc
 USE MOD_Mesh_Vars  ,ONLY:nElems,nSides
 USE MOD_ReadInTools,ONLY: GETINTFROMSTR
@@ -78,6 +79,8 @@ ALLOCATE(muSGS(1,0:PP_N,0:PP_N,0:PP_N,nElems))
 ALLOCATE(muSGSmax(nElems))
 muSGS = 0.
 muSGSmax=0.
+ALLOCATE(FilterMat_Testfilter(0:PP_N,0:PP_N))
+FilterMat_Testfilter = 0.
 ! Set Prandtl number !=0 because we need to divide by this number to get the turbulent heat conductivity (will be zero anyway
 ! since muSGS=0)
 PrSGS = 0.7
@@ -92,6 +95,11 @@ SELECT CASE(eddyViscType)
     CALL InitSmagorinsky()
     eddyViscosity          => Smagorinsky
     eddyViscosity_surf     => Smagorinsky_surf
+  CASE(2) !Smagorinsky*DynSmag indicator with optional Van Driest damping for channel flow
+    CALL InitDynSmag
+    eddyViscosity      => DynSmag 
+    eddyViscosity_surf => DynSmag_surf 
+    testfilter         => Compute_cd
   CASE DEFAULT
     CALL CollectiveStop(__STAMP__,&
       'Eddy Viscosity Type not specified!')

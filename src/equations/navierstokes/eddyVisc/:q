@@ -31,21 +31,13 @@ ABSTRACT INTERFACE
   END SUBROUTINE
 END INTERFACE
 
-ABSTRACT INTERFACE
-  SUBROUTINE testfilterInt(U_in)
-    USE MOD_PreProc
-    USE MOD_Mesh_Vars,              ONLY:nElems
-    REAL,INTENT(IN)  :: U_in(PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems)
-  END SUBROUTINE
-END INTERFACE
-
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
 INTEGER                             :: eddyViscType           !< type of eddy viscosity
 PROCEDURE(EddyViscInt)     ,POINTER :: eddyViscosity          !< pointer to routine for computing volume eddy viscosity
 PROCEDURE(EddyVisc_surfInt),POINTER :: eddyViscosity_surf     !< pointer to routine for computing surface eddy viscosity
-PROCEDURE(testfilterInt),POINTER       :: testfilter     !< pointer to routine for computing test filter
+PROCEDURE(testfilter),POINTER       :: testfilter     !< pointer to routine for computing test filter
 
 !Smagosinsky Standard
 REAL,ALLOCATABLE  :: DeltaS(:)         !< filter width, used by Smagorinsky modell
@@ -56,13 +48,11 @@ REAL,ALLOCATABLE  :: muSGSmax(:)       !< Viscosity for the sub-grid
 REAL              :: CS                !< Smagorinsky constant, LES
 REAL              :: PrSGS             !< Prandtl number for the sub-grid scales
 !TKECUbed
-REAL,ALLOCATABLE  :: FilterMat_Testfilter(:,:) 
 REAL,ALLOCATABLE  :: SGS_Ind(:,:,:,:,:) 
 REAL,ALLOCATABLE  :: SGS_Ind_master(:,:,:,:) 
 REAL,ALLOCATABLE  :: SGS_Ind_slave(:,:,:,:) 
 
 LOGICAL           :: VanDriest=.FALSE.
 LOGICAL           :: SmagorinskyInitIsDone=.FALSE.
-LOGICAL           :: DynSmagInitIsDone=.FALSE.
 
 END MODULE MOD_EddyVisc_Vars
