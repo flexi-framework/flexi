@@ -57,10 +57,10 @@ USE MOD_FV_Vars      ,ONLY: gradUxi_central, gradUeta_central, gradUzeta_central
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)                              :: UPrim( PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,1:nElems) !< solution
-REAL,INTENT(OUT)                             :: gradUx(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,1:nElems) !< gradients in x-direction
-REAL,INTENT(OUT)                             :: gradUy(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,1:nElems) !< gradients in y-direction
-REAL,INTENT(OUT)                             :: gradUz(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,1:nElems) !< gradients in z-direction
+REAL,INTENT(IN)                              :: UPrim( PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< solution
+REAL,INTENT(OUT)                             :: gradUx(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< gradients in x-direction
+REAL,INTENT(OUT)                             :: gradUy(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< gradients in y-direction
+REAL,INTENT(OUT)                             :: gradUz(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< gradients in z-direction
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL,DIMENSION(PP_nVarPrim)                  :: gradUxi,gradUeta,gradUzeta
@@ -71,15 +71,20 @@ DO iElem=1,nElems
 #if FV_ENABLED
   IF (FV_Elems(iElem).EQ.0) THEN ! DG element
 #endif
-    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       gradUxi     =             D_T(0,i)*UPrim(:,0,j,k,iElem)
       gradUeta    =             D_T(0,j)*UPrim(:,i,0,k,iElem)
+#if (PP_dim==3)
       gradUzeta   =             D_T(0,k)*UPrim(:,i,j,0,iElem)
+#endif
       DO l=1,PP_N
         gradUxi   = gradUxi   + D_T(l,i)*UPrim(:,l,j,k,iElem)
         gradUeta  = gradUeta  + D_T(l,j)*UPrim(:,i,l,k,iElem)
+#if (PP_dim==3)
         gradUzeta = gradUzeta + D_T(l,k)*UPrim(:,i,j,l,iElem)
+#endif
       END DO
+#if (PP_dim==3)
     gradUx(:,i,j,k,iElem) = Metrics_fTilde(1,i,j,k,iElem,0)*gradUxi   &
                           + Metrics_gTilde(1,i,j,k,iElem,0)*gradUeta  &
                           + Metrics_hTilde(1,i,j,k,iElem,0)*gradUzeta
@@ -89,10 +94,17 @@ DO iElem=1,nElems
     gradUz(:,i,j,k,iElem) = Metrics_fTilde(3,i,j,k,iElem,0)*gradUxi   &
                           + Metrics_gTilde(3,i,j,k,iElem,0)*gradUeta  &
                           + Metrics_hTilde(3,i,j,k,iElem,0)*gradUzeta
-    END DO; END DO; END DO ! i,j,k
+#else
+    gradUx(:,i,j,k,iElem) = Metrics_fTilde(1,i,j,k,iElem,0)*gradUxi   &
+                          + Metrics_gTilde(1,i,j,k,iElem,0)*gradUeta  
+    gradUy(:,i,j,k,iElem) = Metrics_fTilde(2,i,j,k,iElem,0)*gradUxi   &
+                          + Metrics_gTilde(2,i,j,k,iElem,0)*gradUeta  
+#endif
+   END DO; END DO; END DO ! i,j,k
 #if FV_ENABLED
   ELSE
-    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+#if (PP_dim==3)
       gradUx(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ(1,i,j,k,iElem)*gradUxi_central  (:,i,j,k,iElem) &
                             + FV_Metrics_gTilde_sJ(1,i,j,k,iElem)*gradUeta_central (:,i,j,k,iElem) &
                             + FV_Metrics_hTilde_sJ(1,i,j,k,iElem)*gradUzeta_central(:,i,j,k,iElem)
@@ -102,7 +114,13 @@ DO iElem=1,nElems
       gradUz(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ(3,i,j,k,iElem)*gradUxi_central  (:,i,j,k,iElem) &
                             + FV_Metrics_gTilde_sJ(3,i,j,k,iElem)*gradUeta_central (:,i,j,k,iElem) &
                             + FV_Metrics_hTilde_sJ(3,i,j,k,iElem)*gradUzeta_central(:,i,j,k,iElem)
-    END DO; END DO; END DO! i,j,k=0,PP_N
+#else
+      gradUx(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ(1,i,j,k,iElem)*gradUxi_central  (:,i,j,k,iElem) &
+                            + FV_Metrics_gTilde_sJ(1,i,j,k,iElem)*gradUeta_central (:,i,j,k,iElem) 
+      gradUy(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ(2,i,j,k,iElem)*gradUxi_central  (:,i,j,k,iElem) &
+                            + FV_Metrics_gTilde_sJ(2,i,j,k,iElem)*gradUeta_central (:,i,j,k,iElem) 
+#endif
+   END DO; END DO; END DO! i,j,k=0,PP_N
   END IF
 #endif    
 END DO ! iElem=1,nElems
@@ -140,12 +158,12 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)                           :: dir       !< direction (x,y,z)
-REAL,INTENT(IN)                              :: UPrim(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,1:nElems) !< solution
-REAL,INTENT(OUT)                             :: gradU(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,1:nElems) !< solution gradient in direction dir
+REAL,INTENT(IN)                              :: UPrim(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< solution
+REAL,INTENT(OUT)                             :: gradU(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< solution gradient in direction dir
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                             :: DMat(0:PP_N,0:PP_N)
-REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N) :: UE_f,UE_g,UE_h
+REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ) :: UE_f,UE_g,UE_h
 INTEGER                                          :: iElem,i,j,k,l
 !==================================================================================================================================
 IF(doWeakLifting)THEN
@@ -165,22 +183,28 @@ DO iElem=1,nElems
                        Metrics_hTilde(:,:,:,:,iElem,0),&
                        UE_f,UE_g,UE_h)
 
-  DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     gradU(:,i,j,k,iElem)   =                      DMat(0,i)*UE_f(:,0,j,k)+&
-                                                  DMat(0,j)*UE_g(:,i,0,k)+&
-                                                  DMat(0,k)*UE_h(:,i,j,0)
+#if (PP_dim==3)
+                                                  DMat(0,k)*UE_h(:,i,j,0)+&
+#endif
+                                                  DMat(0,j)*UE_g(:,i,0,k)
     DO l=1,PP_N
       gradU(:,i,j,k,iElem) = gradU(:,i,j,k,iElem)+DMat(l,i)*UE_f(:,l,j,k)+&
-                                                  DMat(l,j)*UE_g(:,i,l,k)+&
-                                                  DMat(l,k)*UE_h(:,i,j,l)
+#if (PP_dim==3)
+                                                  DMat(l,k)*UE_h(:,i,j,l)+&
+#endif
+                                                  DMat(l,j)*UE_g(:,i,l,k)
     END DO ! l
   END DO; END DO; END DO ! i,j,k
 #if FV_ENABLED
   ELSE
-    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       gradU(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ(dir,i,j,k,iElem)*gradUxi_central  (:,i,j,k,iElem) &
-                           + FV_Metrics_gTilde_sJ(dir,i,j,k,iElem)*gradUeta_central (:,i,j,k,iElem) &
-                           + FV_Metrics_hTilde_sJ(dir,i,j,k,iElem)*gradUzeta_central(:,i,j,k,iElem)
+#if (PP_dim==3)
+                           + FV_Metrics_hTilde_sJ(dir,i,j,k,iElem)*gradUzeta_central(:,i,j,k,iElem) &
+#endif
+                           + FV_Metrics_gTilde_sJ(dir,i,j,k,iElem)*gradUeta_central (:,i,j,k,iElem) 
     END DO; END DO; END DO! i,j,k=0,PP_N
   END IF
 #endif    
@@ -215,10 +239,13 @@ INTEGER                                      :: i
 DO i=1,nDOFElem
   UPrim_f(:,i) = Mf(dir,i)*UPrim(:,i)
   UPrim_g(:,i) = Mg(dir,i)*UPrim(:,i)
+#if (PP_dim==3)
   UPrim_h(:,i) = Mh(dir,i)*UPrim(:,i)
+#endif
 END DO ! i
 END SUBROUTINE Lifting_Metrics
 
 
+#endif
 END MODULE MOD_Lifting_VolInt
 #endif /*PARABOLIC*/

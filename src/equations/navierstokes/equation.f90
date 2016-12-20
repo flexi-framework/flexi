@@ -178,22 +178,22 @@ USE MOD_Mesh_Vars,ONLY: firstInnerSide,firstMPISide_YOUR,lastMPISide_YOUR,nSides
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)  :: U_master(        PP_nVar,0:PP_N,0:PP_N,1:nSides) !< conservative solution on master sides
-REAL,INTENT(IN)  :: U_slave(         PP_nVar,0:PP_N,0:PP_N,1:nSides) !< conservative solution on slave sides
-REAL,INTENT(OUT) :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< primitive solution on master sides
-REAL,INTENT(OUT) :: UPrim_slave( PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< primitive solution on slave sides
+REAL,INTENT(IN)  :: U_master(        PP_nVar,0:PP_N,0:PP_NZ,1:nSides) !< conservative solution on master sides
+REAL,INTENT(IN)  :: U_slave(         PP_nVar,0:PP_N,0:PP_NZ,1:nSides) !< conservative solution on slave sides
+REAL,INTENT(OUT) :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< primitive solution on master sides
+REAL,INTENT(OUT) :: UPrim_slave( PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< primitive solution on slave sides
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER          :: i,j,iSide
 !==================================================================================================================================
 DO iSide=1,nSides
   IF(iSide.GE.firstMPISide_YOUR.AND.iSide.LE.lastMPISide_YOUR) CYCLE
-  DO j=0,PP_N; DO i=0,PP_N
+  DO j=0,PP_NZ; DO i=0,PP_N
     CALL ConsToPrim(UPrim_master(:,i,j,iSide),U_master(:,i,j,iSide))
   END DO; END DO
 END DO
 DO iSide=firstInnerSide,lastMPISide_YOUR
-  DO j=0,PP_N; DO i=0,PP_N
+  DO j=0,PP_NZ; DO i=0,PP_N
     CALL ConsToPrim(UPrim_slave(:,i,j,iSide),U_slave(:,i,j,iSide))
   END DO; END DO
 END DO
@@ -225,10 +225,10 @@ USE MOD_Mesh_Vars,ONLY: firstInnerSide,firstMPISide_YOUR,lastMPISide_YOUR,nSides
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< primitive solution on master sides
-REAL,INTENT(IN)    :: UPrim_slave( PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< primitive solution on slave sides
-REAL,INTENT(OUT)   :: U_master(        PP_nVar,0:PP_N,0:PP_N,1:nSides) !< conservative solution on master sides
-REAL,INTENT(OUT)   :: U_slave(         PP_nVar,0:PP_N,0:PP_N,1:nSides) !< conservative solution on slave sides
+REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< primitive solution on master sides
+REAL,INTENT(IN)    :: UPrim_slave( PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< primitive solution on slave sides
+REAL,INTENT(OUT)   :: U_master(        PP_nVar,0:PP_N,0:PP_NZ,1:nSides) !< conservative solution on master sides
+REAL,INTENT(OUT)   :: U_slave(         PP_nVar,0:PP_N,0:PP_NZ,1:nSides) !< conservative solution on slave sides
 INTEGER,INTENT(IN) :: mask_master(1:nSides)                            !< mask: only convert solution if mask(SideID) == mask_ref 
 INTEGER,INTENT(IN) :: mask_slave (1:nSides)                            !< mask: only convert solution if mask(SideID) == mask_ref 
 INTEGER,INTENT(IN) :: mask_ref                                         !< reference value for mask comparison
@@ -239,14 +239,14 @@ INTEGER          :: i,j,SideID
 DO SideID=1,nSides
   IF ((firstMPISide_YOUR.LE.SideID).AND.(SideID.LE.lastMPISide_YOUR)) CYCLE
   IF (mask_master(SideID).EQ.mask_ref) THEN
-    DO j=0,PP_N; DO i=0,PP_N
+    DO j=0,PP_NZ; DO i=0,PP_N
       CALL PrimToCons(UPrim_master(:,i,j,SideID),U_master(:,i,j,SideID))
     END DO; END DO
   END IF
 END DO
 DO SideID=firstInnerSide,lastMPISide_YOUR
   IF (mask_slave(SideID).EQ.mask_ref) THEN
-    DO j=0,PP_N; DO i=0,PP_N
+    DO j=0,PP_NZ; DO i=0,PP_N
       CALL PrimToCons(UPrim_slave(:,i,j,SideID),U_slave(:,i,j,SideID))
     END DO; END DO
   END IF
