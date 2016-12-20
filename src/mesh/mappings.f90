@@ -215,9 +215,14 @@ IF(PRESENT(FS2M))THEN
 END IF
 
 ! Perform sanity checks
+#if PP_dim == 3
 DO f = 0, 4
   DO s = 1, 6
-    DO q = 0,Nloc; DO p = 0,Nloc
+#else    
+DO f = 0, 1
+  DO s = 2, 5
+#endif    
+    DO q = 0,PP_NlocZ; DO p = 0,Nloc
       ijk = S2V_check(:,0,p,q,f,s)
       pq = V2S_check(:,ijk(1),ijk(2),ijk(3),f,s)
       IF ((pq(1).NE.p).OR.(pq(2).NE.q)) THEN
@@ -228,9 +233,14 @@ DO f = 0, 4
   END DO ! s = 1, 6
 END DO ! f = 0, 4
 
+#if PP_dim == 3
 DO f = 0, 4
   DO s = 1, 6
-    DO k=0,Nloc; DO j=0,Nloc; DO i=0,Nloc
+#else    
+DO f = 0, 1
+  DO s = 2, 5
+#endif    
+    DO k=0,PP_NlocZ; DO j=0,Nloc; DO i=0,Nloc
       pq = V2S_check(:,i,j,k,f,s)
       ijk(1:2) = S2V2_check(:,pq(1),pq(2),f,s)
       correct=.TRUE.
@@ -271,6 +281,7 @@ INTEGER,DIMENSION(2) :: Flip_S2M
 ! LOCAL VARIABLES
 !==================================================================================================================================
 SELECT CASE(flip)
+#if PP_dim == 3
   CASE(0)
     Flip_S2M = (/     p,     q/)
   CASE(1)
@@ -281,6 +292,12 @@ SELECT CASE(flip)
     Flip_S2M = (/Nloc-q,Nloc-p/)
   CASE(4)
     Flip_S2M = (/     p,Nloc-q/)
+#else
+  CASE(0)
+    Flip_S2M = (/     p,     0/)
+  CASE(1)
+    Flip_S2M = (/Nloc-p,     0/)
+#endif    
 END SELECT
 END FUNCTION Flip_S2M
 
@@ -320,6 +337,7 @@ INTEGER,DIMENSION(3) :: CGNS_VolToSide
 ! LOCAL VARIABLES
 !==================================================================================================================================
 SELECT CASE(locSideID)
+#if PP_dim == 3
   CASE(XI_MINUS)
     CGNS_VolToSide = (/k,j,i/)
   CASE(XI_PLUS)
@@ -332,6 +350,16 @@ SELECT CASE(locSideID)
     CGNS_VolToSide = (/j,i,k/)
   CASE(ZETA_PLUS)
     CGNS_VolToSide = (/i,j,Nloc-k/)
+#else
+  CASE(XI_MINUS)
+    CGNS_VolToSide = (/Nloc-j,i,0/)
+  CASE(XI_PLUS)
+    CGNS_VolToSide = (/j,Nloc-i,0/)
+  CASE(ETA_MINUS)
+    CGNS_VolToSide = (/i,j,0/)
+  CASE(ETA_PLUS)
+    CGNS_VolToSide = (/Nloc-i,Nloc-j,0/)
+#endif  
 END SELECT
 END FUNCTION CGNS_VolToSide
 
@@ -354,6 +382,7 @@ INTEGER,DIMENSION(3) :: CGNS_SideToVol
 ! LOCAL VARIABLES
 !==================================================================================================================================
 SELECT CASE(locSideID)
+#if PP_dim == 3
   CASE(XI_MINUS)
     CGNS_SideToVol = (/l,q,p/)
   CASE(XI_PLUS)
@@ -366,6 +395,16 @@ SELECT CASE(locSideID)
     CGNS_SideToVol = (/q,p,l/)
   CASE(ZETA_PLUS)
     CGNS_SideToVol = (/p,q,Nloc-l/)
+#else
+  CASE(XI_MINUS)
+    CGNS_SideToVol = (/l,Nloc-p,0/)
+  CASE(XI_PLUS)
+    CGNS_SideToVol = (/Nloc-l,p,0/)
+  CASE(ETA_MINUS)
+    CGNS_SideToVol = (/p,l,0/)
+  CASE(ETA_PLUS)
+    CGNS_SideToVol = (/Nloc-p,Nloc-l,0/)
+#endif    
 END SELECT
 END FUNCTION CGNS_SideToVol
 
@@ -388,6 +427,7 @@ INTEGER,DIMENSION(2) :: CGNS_SideToVol2
 ! LOCAL VARIABLES
 !==================================================================================================================================
 SELECT CASE(locSideID)
+#if PP_dim == 3
   CASE(XI_MINUS)
     CGNS_SideToVol2 = (/q,p/)
   CASE(XI_PLUS)
@@ -400,6 +440,16 @@ SELECT CASE(locSideID)
     CGNS_SideToVol2 = (/q,p/)
   CASE(ZETA_PLUS)
     CGNS_SideToVol2 = (/p,q/)
+#else
+  CASE(XI_MINUS)
+    CGNS_SideToVol2 = (/Nloc-p,0/)
+  CASE(XI_PLUS)
+    CGNS_SideToVol2 = (/p,0/)
+  CASE(ETA_MINUS)
+    CGNS_SideToVol2 = (/p,0/)
+  CASE(ETA_PLUS)
+    CGNS_SideToVol2 = (/Nloc-p,0/)
+#endif    
 END SELECT
 END FUNCTION CGNS_SideToVol2
 
