@@ -60,7 +60,7 @@ USE MOD_Mesh_Vars,       ONLY: NormVec, TangVec1, TangVec2, SurfElem, Face_xGP
 USE MOD_Mesh_Vars,       ONLY: NormVecO,TangVec1O,TangVec2O,SurfElemO,Face_xGPO
 USE MOD_Mesh_Vars,       ONLY: firstInnerSide,lastInnerSide,firstMPISide_MINE,lastMPISide_MINE
 USE MOD_Mesh_Vars,       ONLY: nSides,firstBCSide
-USE MOD_ChangeBasis,     ONLY: ChangeBasisSurf
+USE MOD_ChangeBasisByDim,ONLY: ChangeBasisSurf
 USE MOD_Riemann,         ONLY: Riemann
 USE MOD_GetBoundaryFlux, ONLY: GetBoundaryFlux
 USE MOD_Overintegration_Vars, ONLY: OverintegrationType,NOver,VdmNOverToN,VdmNToNOver
