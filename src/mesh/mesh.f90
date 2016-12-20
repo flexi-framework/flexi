@@ -115,7 +115,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 REAL              :: x(3),meshScale
 REAL,POINTER      :: coords(:,:,:,:,:)
-INTEGER           :: iElem,i,j,k,nElemsLoc
+INTEGER           :: iElem,i,j,k,nElemsLoc,iSide
 LOGICAL           :: validMesh
 INTEGER           :: firstMasterSide     ! lower side ID of array U_master/gradUx_master...
 INTEGER           :: lastMasterSide      ! upper side ID of array U_master/gradUx_master...
@@ -308,6 +308,26 @@ CALL to2D_rank5((/1,0,0,0,1/),(/3,PP_N,PP_N,FV_ENABLED,nSides/),3,NormVec)
 CALL to2D_rank5((/1,0,0,0,1/),(/3,PP_N,PP_N,FV_ENABLED,nSides/),3,TangVec1)
 CALL to2D_rank5((/1,0,0,0,1/),(/3,PP_N,PP_N,FV_ENABLED,nSides/),3,TangVec2)
 CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,FV_ENABLED,nSides/),2,SurfElem)
+
+Elem_xGP(3,:,:,:,:) = 0.
+Metrics_fTilde(3,:,:,:,:,:) = 0.
+Metrics_gTilde(3,:,:,:,:,:) = 0.
+Metrics_hTilde(:,:,:,:,:,:) = 0.
+
+DO iSide=1,nSides
+  SELECT CASE (SideToElem(S2E_LOC_SIDE_ID,iSide))
+  CASE(XI_MINUS)
+    TangVec1(:,:,:,:,iSide) = -TangVec1(:,:,:,:,iSide)
+  CASE(ETA_MINUS)
+    TangVec1(:,:,:,:,iSide) = -TangVec2(:,:,:,:,iSide)
+  CASE(ETA_PLUS)
+    TangVec1(:,:,:,:,iSide) = -TangVec2(:,:,:,:,iSide)
+  END SELECT
+END DO
+NormVec (3,:,:,:,:) = 0.
+TangVec1(3,:,:,:,:) = 0.
+TangVec2(:,:,:,:,:) = 0.
+Face_xGP(3,:,:,:,:) = 0.
 #endif
 
 ! debugmesh: param specifies format to output, 0: no output, 1: tecplot ascii, 2: tecplot binary, 3: paraview binary
