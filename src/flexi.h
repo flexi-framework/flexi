@@ -60,6 +60,8 @@
 #define ERRWRITE(a,b) CALL CreateErrFile(); IF(ErrorFiles) WRITE(UNIT_errOut,b) 
 #define LOGWRITE(a,b) IF(Logging) WRITE(UNIT_logOut,b)
 #define SDEALLOCATE(A) IF(ALLOCATED(A)) DEALLOCATE(A)
+#define ADEALLOCATE(A) IF(ASSOCIATED(A)) DEALLOCATE(A)
+
 
 ! Loop variables
 #define PP_IJK     i,j,k

@@ -101,7 +101,7 @@ REAL                           :: StartT,EndT
 REAL,POINTER                   :: UOut(:,:,:,:,:)
 REAL                           :: Utmp(5,0:PP_N,0:PP_N,0:PP_N)
 REAL                           :: JN(1,0:PP_N,0:PP_N,0:PP_N),JOut(1,0:NOut,0:NOut,0:NOut)
-INTEGER                        :: iElem,i,j,k
+INTEGER                        :: iElem,i,j,k,iVar
 #if FV_ENABLED & FV_RECONSTRUCT
 REAL                           :: UPrim(1:PP_nVarPrim)
 REAL                           :: UCons(1:PP_nVar)
@@ -148,8 +148,14 @@ IF(NOut.NE.PP_N)THEN
   ALLOCATE(UOut(PP_nVar,0:NOut,0:NOut,0:NOut,nElems))
   DO iElem=1,nElems
     JN(1,:,:,:)=1./sJ(:,:,:,iElem,0)
-    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+#if PP_dim == 3        
       Utmp(:,i,j,k)=U(:,i,j,k,iElem)*JN(1,i,j,k)
+#else
+      DO iVar=1,PP_nVar
+        Utmp(iVar,i,j,:)=U(iVar,i,j,k,iElem)*JN(1,i,j,k)
+      END DO ! iVar=1,PP_nVar
+#endif        
     END DO; END DO; END DO
     CALL ChangeBasis3D(PP_nVar,PP_N,NOut,Vdm_N_NOut,&
                        Utmp,UOut(1:PP_nVar,:,:,:,iElem))
@@ -160,7 +166,18 @@ IF(NOut.NE.PP_N)THEN
     END DO; END DO; END DO
   END DO
 ELSE
+#if PP_dim == 3  
   UOut => U
+#else
+  ALLOCATE(UOut(PP_nVar,0:NOut,0:NOut,0:NOut,nElems))
+  DO iElem=1,nElems
+    DO j=0,NOut; DO i=0,NOut
+      DO iVar=1,PP_nVar
+        UOut(iVar,i,j,:,iElem)=U(iVar,i,j,0,iElem)
+      END DO ! iVar=1,PP_nVar
+    END DO; END DO
+  END DO
+#endif  
 END IF
 
 ! Reopen file and write DG solution
@@ -197,7 +214,7 @@ CALL GatheredWriteArray(FileName,create=.FALSE.,&
                         collective=.TRUE., RealArray=gradUz)
 #endif
                     
-IF(NOut.NE.PP_N) DEALLOCATE(UOut)
+ADEALLOCATE(UOut)
 
 CALL WriteAdditionalElemData(FileName,ElementOut)
 CALL WriteAdditionalFieldData(FileName,FieldOut)
