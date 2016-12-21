@@ -25,7 +25,7 @@ SUBROUTINE ProlongToFace(&
 USE MOD_Mesh_Vars,          ONLY: nElems
 USE MOD_Mesh_Vars,          ONLY: SideToElem
 USE MOD_Mesh_Vars,          ONLY: firstMPISide_YOUR, lastMPISide_MINE, nSides
-USE MOD_Mesh_Vars,          ONLY: CS2V2,V2S2
+USE MOD_Mesh_Vars,          ONLY: S2V2
 #if FV_ENABLED
 USE MOD_FV_Vars,            ONLY: FV_Elems,FV_Elems_master,FV_Elems_slave
 #endif
@@ -62,6 +62,7 @@ DO SideID=firstSideID,lastSideID
   !master sides
   IF(ElemID.GT.0)THEN
     locSide = SideToElem(S2E_LOC_SIDE_ID,SideID)
+    flip    = 0
 
     IF(PP_NodeType.EQ.1.AND.FV_Elems(ElemID).EQ.0)THEN
       CALL EvalElemFaceG(&
@@ -78,7 +79,7 @@ DO SideID=firstSideID,lastSideID
     END IF
 
     DO q=0,PP_NlocZ; DO p=0,Nloc
-      Uface_master(:,p,q,SideID)=Uface(:,CS2V2(1,p,q,locSide),CS2V2(2,p,q,locSide))
+      Uface_master(:,p,q,SideID)=Uface(:,S2V2(1,p,q,flip,locSide),S2V2(2,p,q,flip,locSide))
     END DO; END DO
 #if FV_ENABLED
     FV_Elems_master(SideID) = FV_Elems(ElemID)
@@ -105,7 +106,7 @@ DO SideID=firstSideID,lastSideID
     END IF
 
     DO q=0,PP_NlocZ; DO p=0,Nloc
-      Uface_slave( :,p,q,SideID)=Uface(:,V2S2(1,p,q,flip,nblocSide),V2S2(2,p,q,flip,nblocSide))
+      Uface_slave( :,p,q,SideID)=Uface(:,S2V2(1,p,q,flip,nblocSide),S2V2(2,p,q,flip,nblocSide))
     END DO; END DO
 #if FV_ENABLED
     FV_Elems_slave(SideID) = FV_Elems(nbElemID)

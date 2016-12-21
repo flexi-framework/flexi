@@ -829,7 +829,7 @@ SUBROUTINE ReadBCFlow(FileName)
 USE MOD_PreProc
 USE MOD_Globals
 USE MOD_Equation_Vars     ,ONLY:BCData,BCDataPrim
-USE MOD_Mesh_Vars         ,ONLY:offsetElem,nElems,nBCSides,CS2V2,SideToElem
+USE MOD_Mesh_Vars         ,ONLY:offsetElem,nElems,nBCSides,S2V2,SideToElem
 USE MOD_HDF5_Input        ,ONLY:OpenDataFile,GetDataProps,CloseDataFile,ReadAttribute,ReadArray
 USE MOD_Interpolation     ,ONLY:GetVandermonde
 USE MOD_ProlongToFace     ,ONLY:EvalElemFace
@@ -889,7 +889,7 @@ DO SideID=1,nBCSides
   CALL EvalElemFace(PP_nVar,PP_N,U_N(:,:,:,:,ElemID),Uface,locSide)
 #endif
   DO q=0,PP_N; DO p=0,PP_N
-    BCData(:,p,q,SideID)=Uface(:,CS2V2(1,p,q,locSide),CS2V2(2,p,q,locSide))
+    BCData(:,p,q,SideID)=Uface(:,S2V2(1,p,q,locSide),S2V2(2,p,q,locSide))
     CALL ConsToPrim(BCDataPrim(:,p,q,SideID),BCData(:,p,q,SideID))
   END DO; END DO
 END DO

@@ -368,7 +368,7 @@ SUBROUTINE CalcSurfMetrics(Nloc,JaCL_N,XCL_N,Vdm_CLN_N,iElem,NormVec,TangVec1,Ta
 USE MOD_Globals,        ONLY:CROSS
 USE MOD_Mesh_Vars,      ONLY:ElemToSide,MortarType,nSides
 USE MOD_Mesh_Vars,      ONLY:NormalDirs,TangDirs,NormalSigns
-USE MOD_Mappings,       ONLY:CGNS_SideToVol2
+USE MOD_Mappings,       ONLY:SideToVol2
 USE MOD_ChangeBasis,    ONLY:ChangeBasis2D
 USE MOD_Mortar_Metrics, ONLY:Mortar_CalcSurfMetrics
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -388,7 +388,7 @@ REAL,INTENT(OUT)   ::   Face_xGP(3,0:Nloc,0:Nloc,0:FV_ENABLED,1:nSides) !< (OUT)
 REAL,INTENT(OUT),OPTIONAL :: Ja_Face(3,3,0:Nloc,0:Nloc,1:nSides)  !< (OUT) surface metrics
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: p,q,pq(2),dd,iLocSide,SideID,SideID2,iMortar,nbSideIDs(4)
+INTEGER            :: p,q,ijk(2),dd,iLocSide,SideID,SideID2,iMortar,nbSideIDs(4)
 INTEGER            :: NormalDir,TangDir
 REAL               :: NormalSign
 REAL               :: Ja_Face_l(3,3,0:Nloc,0:Nloc)
@@ -423,9 +423,9 @@ DO iLocSide=2,5
   CALL ChangeBasis2D(3,Nloc,Nloc,Vdm_CLN_N,tmp,tmp2)
   ! turn into right hand system of side
   DO q=0,Nloc; DO p=0,Nloc
-    pq=CGNS_SideToVol2(Nloc,p,q,iLocSide)
+    ijk=SideToVol2(Nloc,p,q,0,iLocSide,3)
     ! Compute Face_xGP for sides
-    Face_xGP(1:3,p,q,0,sideID)=tmp2(:,pq(1),pq(2))
+    Face_xGP(1:3,p,q,0,sideID)=tmp2(:,ijk(1),ijk(2))
   END DO; END DO ! p,q
 
   DO dd=1,3
@@ -446,8 +446,8 @@ DO iLocSide=2,5
     CALL ChangeBasis2D(3,Nloc,Nloc,Vdm_CLN_N,tmp,tmp2)
     ! turn into right hand system of side
     DO q=0,Nloc; DO p=0,Nloc
-      pq=CGNS_SideToVol2(Nloc,p,q,iLocSide)
-      Ja_Face_l(dd,1:3,p,q)=tmp2(:,pq(1),pq(2))
+      ijk=SideToVol2(Nloc,p,q,0,iLocSide,3)
+      Ja_Face_l(dd,1:3,p,q)=tmp2(:,ijk(1),ijk(2))
     END DO; END DO ! p,q
   END DO ! dd
   IF(PRESENT(Ja_Face)) Ja_Face(:,:,:,:,SideID)=Ja_Face_l

@@ -36,17 +36,6 @@ INTERFACE Flip_M2S
   MODULE PROCEDURE Flip_M2S
 END INTERFACE
 
-INTERFACE CGNS_SideToVol
-  MODULE PROCEDURE CGNS_SideToVol
-END INTERFACE
-
-INTERFACE CGNS_SideToVol2
-  MODULE PROCEDURE CGNS_SideToVol2
-END INTERFACE
-
-INTERFACE CGNS_VolToSide
-  MODULE PROCEDURE CGNS_VolToSide
-END INTERFACE
 
 INTERFACE SideToVol
   MODULE PROCEDURE SideToVol
@@ -64,26 +53,14 @@ INTERFACE VolToSide2
   MODULE PROCEDURE VolToSide2
 END INTERFACE
 
-INTERFACE VolToVol
-  MODULE PROCEDURE VolToVol
-END INTERFACE
-
-INTERFACE ElemToNbElem
-  MODULE PROCEDURE ElemToNbElem
-END INTERFACE
 
 PUBLIC::BuildMappings
 PUBLIC::Flip_S2M
 PUBLIC::Flip_M2S
-PUBLIC::CGNS_SideToVol
-PUBLIC::CGNS_SideToVol2
-PUBLIC::CGNS_VolToSide
 PUBLIC::SideToVol
 PUBLIC::SideToVol2
 PUBLIC::VolToSide
 PUBLIC::VolToSide2
-PUBLIC::VolToVol
-PUBLIC::ElemToNbElem
 !==================================================================================================================================
 
 CONTAINS
@@ -91,125 +68,119 @@ CONTAINS
 !==================================================================================================================================
 !> Routine which prebuilds mappings for a specific polynomial degree and allocates and stores them in given mapping arrays.
 !==================================================================================================================================
-SUBROUTINE buildMappings(Nloc,V2S,V2S2,CV2S,S2V,S2V2,CS2V2,FS2M)
+SUBROUTINE buildMappings(Nloc,V2S,V2S2,S2V,S2V2,FS2M,dim)
 ! MODULES
 USE MOD_Globals,           ONLY:CollectiveStop
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)                       :: Nloc              !< Polynomial degree to build mappings on
-INTEGER,ALLOCATABLE,INTENT(OUT),OPTIONAL :: V2S(:,:,:,:,:,:)  !< VolumeToSide mapping
-INTEGER,ALLOCATABLE,INTENT(OUT),OPTIONAL :: V2S2(:,:,:,:,:)   !< VolumeToSide2 mapping
-INTEGER,ALLOCATABLE,INTENT(OUT),OPTIONAL :: S2V(:,:,:,:,:,:)  !< SideToVolume mapping
-INTEGER,ALLOCATABLE,INTENT(OUT),OPTIONAL :: CV2S(:,:,:,:,:)   !< CGNS VolumeToSide mappping
-INTEGER,ALLOCATABLE,INTENT(OUT),OPTIONAL :: S2V2(:,:,:,:,:)   !< SideToVolume2 mapping
-INTEGER,ALLOCATABLE,INTENT(OUT),OPTIONAL :: CS2V2(:,:,:,:)    !< CGNS SideToVolume2 mapping
-INTEGER,ALLOCATABLE,INTENT(OUT),OPTIONAL :: FS2M(:,:,:,:)     !< FlipSlaveToMaster mapping
+INTEGER,INTENT(IN)                         :: Nloc              !< Polynomial degree to build mappings on
+INTEGER,ALLOCATABLE,INTENT(INOUT),OPTIONAL :: V2S(:,:,:,:,:,:)  !< VolumeToSide mapping
+INTEGER,ALLOCATABLE,INTENT(INOUT),OPTIONAL :: V2S2(:,:,:,:,:)   !< VolumeToSide2 mapping
+INTEGER,ALLOCATABLE,INTENT(INOUT),OPTIONAL :: S2V(:,:,:,:,:,:)  !< SideToVolume mapping
+INTEGER,ALLOCATABLE,INTENT(INOUT),OPTIONAL :: S2V2(:,:,:,:,:)   !< SideToVolume2 mapping
+INTEGER,ALLOCATABLE,INTENT(INOUT),OPTIONAL :: FS2M(:,:,:,:)     !< FlipSlaveToMaster mapping
+INTEGER,INTENT(IN),OPTIONAL                :: dim               !< dimension (2 or 3)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER             :: i,j,k,p,q,f,s,ijk(3),pq(3)
+INTEGER             :: i,j,k,p,q,l,f,s,ijk(3),pq(3),NlocZ
 INTEGER,ALLOCATABLE :: V2S_check(:,:,:,:,:,:)
 INTEGER,ALLOCATABLE :: S2V_check(:,:,:,:,:,:)
 INTEGER,ALLOCATABLE :: S2V2_check(:,:,:,:,:)
 LOGICAL             :: correct
+INTEGER             :: Flip_lower,Flip_upper,locSide_lower,locSide_upper,dim_loc
 !==================================================================================================================================
+dim_loc = MERGE(dim, 3, PRESENT(dim))
+IF (dim_loc.EQ.2) THEN
+  NlocZ = 0
+  Flip_lower = 0
+  Flip_upper = 1
+  locSide_lower = 2
+  locSide_upper = 5
+ELSE
+  NlocZ = Nloc
+  Flip_lower = 0
+  Flip_upper = 4
+  locSide_lower = 1
+  locSide_upper = 6
+END IF
 
 ! VolToSide
-ALLOCATE(V2S_check(3,0:Nloc,0:Nloc,0:Nloc,0:4,1:6)) ! used for sanity check
-DO k=0,Nloc; DO j=0,Nloc; DO i=0,Nloc
-  DO f=0,4
-    DO s=1,6
-      V2S_check(:,i,j,k,f,s) = VolToSide(Nloc,i,j,k,f,s)
+ALLOCATE(V2S_check(3,0:Nloc,0:Nloc,0:NlocZ,Flip_lower:Flip_upper,locSide_lower:locSide_upper)) ! used for sanity check
+DO k=0,NlocZ; DO j=0,Nloc; DO i=0,Nloc
+  DO f = Flip_lower,Flip_upper
+    DO s = locSide_lower,locSide_upper
+      V2S_check(:,i,j,k,f,s) = VolToSide(Nloc,i,j,k,f,s,dim_loc)
     END DO
   END DO
 END DO; END DO; END DO
 
 IF(PRESENT(V2S))THEN
-  ALLOCATE(V2S(3,0:Nloc,0:Nloc,0:Nloc,0:4,1:6))
+  SDEALLOCATE(V2S)
+  ALLOCATE(V2S(3,0:Nloc,0:Nloc,0:NlocZ,Flip_lower:Flip_upper,locSide_lower:locSide_upper))
   V2S = V2S_check
 END IF
 
 ! VolToSide2
 IF(PRESENT(V2S2))THEN
-  ALLOCATE(V2S2(2,0:Nloc,0:Nloc,0:4,1:6))
-  DO j=0,Nloc; DO i=0,Nloc
-    DO f=0,4
-      DO s=1,6
-        V2S2(:,i,j,f,s) = VolToSide2(Nloc,i,j,f,s)
+  SDEALLOCATE(V2S2)
+  ALLOCATE(V2S2(2,0:Nloc,0:NlocZ,Flip_lower:Flip_upper,locSide_lower:locSide_upper))
+  DO j=0,NlocZ; DO i=0,Nloc
+  DO f = Flip_lower,Flip_upper
+    DO s = locSide_lower,locSide_upper
+        V2S2(:,i,j,f,s) = VolToSide2(Nloc,i,j,f,s, dim_loc)
       END DO
     END DO
   END DO; END DO
 END IF
 
-! CGNS_VolToSide
-IF(PRESENT(CV2S))THEN
-  ALLOCATE(CV2S(3,0:Nloc,0:Nloc,0:Nloc,1:6))
-  DO k=0,Nloc; DO j=0,Nloc; DO i=0,Nloc
-    DO s=1,6
-      CV2S(:,i,j,k,s) = CGNS_VolToSide(Nloc,i,j,k,s)
-    END DO
-  END DO; END DO; END DO
-END IF
-
 ! SideToVol
-ALLOCATE(S2V_check(3,0:Nloc,0:Nloc,0:Nloc,0:4,1:6)) ! used for sanity check
-DO k=0,Nloc; DO j=0,Nloc; DO i=0,Nloc
-  DO f=0,4
-    DO s=1,6
-      S2V_check(:,i,j,k,f,s) = SideToVol(Nloc,i,j,k,f,s)
+ALLOCATE(S2V_check(3,0:Nloc,0:Nloc,0:NlocZ,Flip_lower:Flip_upper,locSide_lower:locSide_upper)) ! used for sanity check
+DO q=0,NlocZ; DO p=0,Nloc; DO l=0,Nloc
+  DO f = Flip_lower,Flip_upper
+    DO s = locSide_lower,locSide_upper
+      S2V_check(:,l,p,q,f,s) = SideToVol(Nloc,l,p,q,f,s, dim_loc)
     END DO
   END DO
 END DO; END DO; END DO
 
 IF(PRESENT(S2V))THEN
-  ALLOCATE(S2V(3,0:Nloc,0:Nloc,0:Nloc,0:4,1:6))
+  SDEALLOCATE(S2V)
+  ALLOCATE(S2V(3,0:Nloc,0:Nloc,0:NlocZ,Flip_lower:Flip_upper,locSide_lower:locSide_upper))
   S2V = S2V_check
 END IF
 
 ! SideToVol2
-ALLOCATE(S2V2_check(2,0:Nloc,0:Nloc,0:4,1:6)) ! used for sanity check
-DO j=0,Nloc; DO i=0,Nloc
-  DO f=0,4
-    DO s=1,6
-      S2V2_check(:,i,j,f,s) = SideToVol2(Nloc,i,j,f,s)
+ALLOCATE(S2V2_check(2,0:Nloc,0:NlocZ,Flip_lower:Flip_upper,locSide_lower:locSide_upper)) ! used for sanity check
+DO j=0,NlocZ; DO i=0,Nloc
+  DO f = Flip_lower,Flip_upper
+    DO s = locSide_lower,locSide_upper
+      S2V2_check(:,i,j,f,s) = SideToVol2(Nloc,i,j,f,s,dim_loc)
     END DO
   END DO
 END DO; END DO
 
 IF(PRESENT(S2V2))THEN
-  ALLOCATE(S2V2(2,0:Nloc,0:Nloc,0:4,1:6))
+  SDEALLOCATE(S2V2)
+  ALLOCATE(S2V2(2,0:Nloc,0:NlocZ,Flip_lower:Flip_upper,locSide_lower:locSide_upper))
   S2V2 = S2V2_check
-END IF
-
-! CGNS_SideToVol2
-IF(PRESENT(CS2V2))THEN
-  ALLOCATE(CS2V2(2,0:Nloc,0:Nloc,1:6))
-  DO j=0,Nloc; DO i=0,Nloc
-    DO s=1,6
-      CS2V2(:,i,j,s) = CGNS_SideToVol2(Nloc,i,j,s)
-    END DO
-  END DO; END DO
 END IF
 
 ! Flip_S2M
 IF(PRESENT(FS2M))THEN
-  ALLOCATE(FS2M(2,0:Nloc,0:Nloc,0:4))
-  DO j=0,Nloc; DO i=0,Nloc
-    DO f=0,4
-      FS2M(:,i,j,f) = Flip_S2M(Nloc,i,j,f)
+  SDEALLOCATE(FS2M)
+  ALLOCATE(FS2M(2,0:Nloc,0:NlocZ,Flip_lower:Flip_upper))
+  DO j=0,NlocZ; DO i=0,Nloc
+    DO f = Flip_lower,Flip_upper
+      FS2M(:,i,j,f) = Flip_S2M(Nloc,i,j,f,dim_loc)
     END DO
   END DO; END DO
 END IF
 
 ! Perform sanity checks
-#if PP_dim == 3
-DO f = 0, 4
-  DO s = 1, 6
-#else    
-DO f = 0, 1
-  DO s = 2, 5
-#endif    
-    DO q = 0,PP_NlocZ; DO p = 0,Nloc
+DO f = Flip_lower,Flip_upper
+  DO s = locSide_lower,locSide_upper
+    DO q = 0,NlocZ; DO p = 0,Nloc
       ijk = S2V_check(:,0,p,q,f,s)
       pq = V2S_check(:,ijk(1),ijk(2),ijk(3),f,s)
       IF ((pq(1).NE.p).OR.(pq(2).NE.q)) THEN
@@ -217,17 +188,12 @@ DO f = 0, 1
           'SideToVol does not fit to VolToSide')
       END IF
     END DO; END DO
-  END DO ! s = 1, 6
-END DO ! f = 0, 4
+  END DO ! s = locSide_lower,locSide_upper
+END DO ! f = Flip_lower,Flip_upper
 
-#if PP_dim == 3
-DO f = 0, 4
-  DO s = 1, 6
-#else    
-DO f = 0, 1
-  DO s = 2, 5
-#endif    
-    DO k=0,PP_NlocZ; DO j=0,Nloc; DO i=0,Nloc
+DO f = Flip_lower,Flip_upper
+  DO s = locSide_lower,locSide_upper
+    DO k=0,NlocZ; DO j=0,Nloc; DO i=0,Nloc
       pq = V2S_check(:,i,j,k,f,s)
       ijk(1:2) = S2V2_check(:,pq(1),pq(2),f,s)
       correct=.TRUE.
@@ -244,8 +210,8 @@ DO f = 0, 1
           'SideToVol2 does not fit to VolToSide')
       END IF
     END DO; END DO; END DO! i,j,k=0,Nloc
-  END DO ! s = 1, 6
-END DO ! f = 0, 4
+  END DO ! s = locSide_lower,locSide_upper
+END DO ! f = Flip_lower,Flip_upper
 
 ! Deallocate arrays used for sanity check
 DEALLOCATE(V2S_check,S2V_check,S2V2_check)
@@ -257,18 +223,18 @@ END SUBROUTINE BuildMappings
 !>    input: p,q in Slave-RHS, flip;
 !>   output: indices in Master-RHS
 !==================================================================================================================================
-FUNCTION Flip_S2M(Nloc, p, q, flip)
+FUNCTION Flip_S2M(Nloc, p, q, flip, dim)
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: p,q,flip,Nloc
+INTEGER,INTENT(IN) :: p,q,flip,Nloc,dim
 INTEGER,DIMENSION(2) :: Flip_S2M
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
-SELECT CASE(flip)
-#if PP_dim == 3
+IF (dim.EQ.3) THEN
+  SELECT CASE(flip)
   CASE(0)
     Flip_S2M = (/     p,     q/)
   CASE(1)
@@ -279,13 +245,15 @@ SELECT CASE(flip)
     Flip_S2M = (/Nloc-q,Nloc-p/)
   CASE(4)
     Flip_S2M = (/     p,Nloc-q/)
-#else
+  END SELECT    
+ELSE  
+  SELECT CASE(flip)
   CASE(0)
     Flip_S2M = (/     p,     0/)
   CASE(1)
     Flip_S2M = (/Nloc-p,     0/)
-#endif    
-END SELECT
+  END SELECT
+END IF
 END FUNCTION Flip_S2M
 
 
@@ -293,17 +261,17 @@ END FUNCTION Flip_S2M
 !> Transforms Coordinates from RHS of Master to RHS of Slave
 !>   actualy this is the same function as Flip_S2M
 !==================================================================================================================================
-FUNCTION Flip_M2S(Nloc, p, q, flip)
+FUNCTION Flip_M2S(Nloc, p, q, flip, dim)
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)   :: p,q,flip,Nloc
+INTEGER,INTENT(IN)   :: p,q,flip,Nloc,dim
 INTEGER,DIMENSION(2) :: Flip_M2S
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
-Flip_M2S=Flip_S2M(Nloc,p,q,flip)
+Flip_M2S=Flip_S2M(Nloc,p,q,flip,dim)
 END FUNCTION Flip_M2S
 
 
@@ -313,18 +281,18 @@ END FUNCTION Flip_M2S
 !>   where: i,j,k = volume-indices
 !> output: indices in Master-RHS  +  volume-index which is not used (depending on locSideID)
 !==================================================================================================================================
-FUNCTION CGNS_VolToSide(Nloc, i, j, k, locSideID)
+FUNCTION CGNS_VolToSide(Nloc, i, j, k, locSideID, dim)
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)   :: i,j,k,locSideID,Nloc
+INTEGER,INTENT(IN)   :: i,j,k,locSideID,Nloc,dim
 INTEGER,DIMENSION(3) :: CGNS_VolToSide
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
-SELECT CASE(locSideID)
-#if PP_dim == 3
+IF (dim.EQ.3) THEN
+  SELECT CASE(locSideID)
   CASE(XI_MINUS)
     CGNS_VolToSide = (/k,j,i/)
   CASE(XI_PLUS)
@@ -337,7 +305,9 @@ SELECT CASE(locSideID)
     CGNS_VolToSide = (/j,i,k/)
   CASE(ZETA_PLUS)
     CGNS_VolToSide = (/i,j,Nloc-k/)
-#else
+  END SELECT
+ELSE
+  SELECT CASE(locSideID)
   CASE(XI_MINUS)
     CGNS_VolToSide = (/Nloc-j,i,0/)
   CASE(XI_PLUS)
@@ -346,8 +316,8 @@ SELECT CASE(locSideID)
     CGNS_VolToSide = (/i,j,0/)
   CASE(ETA_PLUS)
     CGNS_VolToSide = (/Nloc-i,Nloc-j,0/)
-#endif  
-END SELECT
+  END SELECT
+END IF
 END FUNCTION CGNS_VolToSide
 
 
@@ -358,18 +328,18 @@ END FUNCTION CGNS_VolToSide
 !>          l is the xi-,eta- or zeta-index in 0:Nloc corresponding to locSideID
 !> output: volume-indices
 !==================================================================================================================================
-FUNCTION CGNS_SideToVol(Nloc, l, p, q, locSideID)
+FUNCTION CGNS_SideToVol(Nloc, l, p, q, locSideID, dim)
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: l,p,q,locSideID,Nloc
+INTEGER,INTENT(IN) :: l,p,q,locSideID,Nloc,dim
 INTEGER,DIMENSION(3) :: CGNS_SideToVol
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
-SELECT CASE(locSideID)
-#if PP_dim == 3
+IF (dim.EQ.3) THEN
+  SELECT CASE(locSideID)
   CASE(XI_MINUS)
     CGNS_SideToVol = (/l,q,p/)
   CASE(XI_PLUS)
@@ -382,7 +352,9 @@ SELECT CASE(locSideID)
     CGNS_SideToVol = (/q,p,l/)
   CASE(ZETA_PLUS)
     CGNS_SideToVol = (/p,q,Nloc-l/)
-#else
+  END SELECT
+ELSE  
+  SELECT CASE(locSideID)
   CASE(XI_MINUS)
     CGNS_SideToVol = (/l,Nloc-p,0/)
   CASE(XI_PLUS)
@@ -391,8 +363,8 @@ SELECT CASE(locSideID)
     CGNS_SideToVol = (/p,l,0/)
   CASE(ETA_PLUS)
     CGNS_SideToVol = (/Nloc-p,Nloc-l,0/)
-#endif    
-END SELECT
+  END SELECT
+END IF
 END FUNCTION CGNS_SideToVol
 
 
@@ -403,18 +375,18 @@ END FUNCTION CGNS_SideToVol
 !>          l is the xi-,eta- or zeta-index in 0:Nloc corresponding to locSideID
 !> output: Surface coordinates in volume frame
 !==================================================================================================================================
-FUNCTION CGNS_SideToVol2(Nloc, p, q, locSideID)
+FUNCTION CGNS_SideToVol2(Nloc, p, q, locSideID, dim)
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)   :: p,q,locSideID,Nloc
+INTEGER,INTENT(IN)   :: p,q,locSideID,Nloc,dim
 INTEGER,DIMENSION(2) :: CGNS_SideToVol2
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
-SELECT CASE(locSideID)
-#if PP_dim == 3
+IF (dim.EQ.3) THEN
+  SELECT CASE(locSideID)
   CASE(XI_MINUS)
     CGNS_SideToVol2 = (/q,p/)
   CASE(XI_PLUS)
@@ -427,7 +399,9 @@ SELECT CASE(locSideID)
     CGNS_SideToVol2 = (/q,p/)
   CASE(ZETA_PLUS)
     CGNS_SideToVol2 = (/p,q/)
-#else
+  END SELECT
+ELSE
+  SELECT CASE(locSideID)
   CASE(XI_MINUS)
     CGNS_SideToVol2 = (/Nloc-p,0/)
   CASE(XI_PLUS)
@@ -436,8 +410,8 @@ SELECT CASE(locSideID)
     CGNS_SideToVol2 = (/p,0/)
   CASE(ETA_PLUS)
     CGNS_SideToVol2 = (/Nloc-p,0/)
-#endif    
-END SELECT
+  END SELECT
+END IF
 END FUNCTION CGNS_SideToVol2
 
 
@@ -447,19 +421,19 @@ END FUNCTION CGNS_SideToVol2
 !>   where: i,j,k = volume-indices
 !> output: indices in Master-RHS
 !==================================================================================================================================
-FUNCTION VolToSide(Nloc, i, j, k, flip, locSideID)
+FUNCTION VolToSide(Nloc, i, j, k, flip, locSideID, dim)
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)   :: i,j,k,flip,locSideID,Nloc
+INTEGER,INTENT(IN)   :: i,j,k,flip,locSideID,Nloc,dim
 INTEGER,DIMENSION(3) :: VolToSide
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER,DIMENSION(3) :: pq
 !==================================================================================================================================
-pq = CGNS_VolToSide(Nloc,i,j,k,locSideID)
-VolToSide(1:2) = Flip_S2M(Nloc,pq(1),pq(2),flip)
+pq = CGNS_VolToSide(Nloc,i,j,k,locSideID, dim)
+VolToSide(1:2) = Flip_S2M(Nloc,pq(1),pq(2),flip, dim)
 VolToSide(3) = pq(3)
 END FUNCTION VolToSide
 
@@ -471,19 +445,19 @@ END FUNCTION VolToSide
 !>   where: i,j = volume-indices
 !> output: indices in Master-RHS
 !==================================================================================================================================
-FUNCTION VolToSide2(Nloc, i, j, flip, locSideID)
+FUNCTION VolToSide2(Nloc, i, j, flip, locSideID, dim)
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)   :: i,j,flip,locSideID,Nloc
+INTEGER,INTENT(IN)   :: i,j,flip,locSideID,Nloc,dim
 INTEGER,DIMENSION(2) :: VolToSide2
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER,DIMENSION(2) :: pq
 !==================================================================================================================================
-pq = Flip_M2S(Nloc,i,j,flip)
-VolToSide2 = CGNS_SideToVol2(Nloc,pq(1),pq(2),locSideID)
+pq = Flip_M2S(Nloc,i,j,flip,dim)
+VolToSide2 = CGNS_SideToVol2(Nloc,pq(1),pq(2),locSideID,dim)
 END FUNCTION VolToSide2
 
 
@@ -494,19 +468,19 @@ END FUNCTION VolToSide2
 !>            l is the xi-,eta- or zeta-index in 0:Nloc corresponding to locSideID
 !> output: volume-indices
 !==================================================================================================================================
-FUNCTION SideToVol(Nloc, l, p, q, flip, locSideID)
+FUNCTION SideToVol(Nloc, l, p, q, flip, locSideID,dim)
 ! MODULES
 IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-INTEGER,INTENT(IN)   :: l,p,q,flip,locSideID,Nloc
+INTEGER,INTENT(IN)   :: l,p,q,flip,locSideID,Nloc,dim
 INTEGER,DIMENSION(3) :: SideToVol
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER,DIMENSION(2) :: pq
 !==================================================================================================================================
-pq = Flip_M2S(Nloc,p,q,flip)
-SideToVol = CGNS_SideToVol(Nloc,l,pq(1),pq(2),locSideID)
+pq = Flip_M2S(Nloc,p,q,flip,dim)
+SideToVol = CGNS_SideToVol(Nloc,l,pq(1),pq(2),locSideID,dim)
 END FUNCTION SideToVol
 
 !==================================================================================================================================
@@ -515,48 +489,48 @@ END FUNCTION SideToVol
 !>     where: p,q are in Master-RHS;
 !> output: volume-indicies
 !==================================================================================================================================
-FUNCTION SideToVol2(Nloc, p, q, flip, locSideID)
+FUNCTION SideToVol2(Nloc, p, q, flip, locSideID,dim)
 ! MODULES
 IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-INTEGER,INTENT(IN)   :: p,q,flip,locSideID,Nloc
+INTEGER,INTENT(IN)   :: p,q,flip,locSideID,Nloc,dim
 INTEGER,DIMENSION(2) :: SideToVol2
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER,DIMENSION(2) :: pq
 !==================================================================================================================================
-pq = Flip_M2S(Nloc,p,q,flip)
-SideToVol2 = CGNS_SideToVol2(Nloc,pq(1),pq(2),locSideID)
+pq = Flip_M2S(Nloc,p,q,flip,dim)
+SideToVol2 = CGNS_SideToVol2(Nloc,pq(1),pq(2),locSideID,dim)
 END FUNCTION SideToVol2
 
 !==================================================================================================================================
 !> Get the index of neighbor element, return -1 if none exists
 !==================================================================================================================================
-FUNCTION ElemToNbElem(locSideID,iElem)
-! MODULES
-USE MOD_Mesh_Vars,ONLY:ElemToSide,SideToElem,firstInnerSide,lastInnerSide
-IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)   :: locSideID,iElem
-INTEGER              :: ElemToNBElem
-!----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-INTEGER              :: flip, SideID
-!==================================================================================================================================
-SideID=ElemToSide(E2S_SIDE_ID,locSideID,iElem)
-IF ((SideID.GE.firstInnerSide).AND.(SideID.LE.lastInnerSide)) THEN
-  flip  =ElemToSide(E2S_FLIP,locSideID,iElem)
-  IF (flip.EQ.0) THEN
-    ElemToNbElem = SideToElem(S2E_NB_ELEM_ID,SideID)
-  ELSE
-    ElemToNbElem = SideToElem(S2E_ELEM_ID,SideID)
-  END IF
-ELSE
-  ElemToNbElem = -1
-END IF
-END FUNCTION ElemToNbElem
+!FUNCTION ElemToNbElem(locSideID,iElem)
+!! MODULES
+!USE MOD_Mesh_Vars,ONLY:ElemToSide,SideToElem,firstInnerSide,lastInnerSide
+!IMPLICIT NONE
+!!----------------------------------------------------------------------------------------------------------------------------------
+!! INPUT/OUTPUT VARIABLES
+!INTEGER,INTENT(IN)   :: locSideID,iElem
+!INTEGER              :: ElemToNBElem
+!!----------------------------------------------------------------------------------------------------------------------------------
+!! LOCAL VARIABLES
+!INTEGER              :: flip, SideID
+!!==================================================================================================================================
+!SideID=ElemToSide(E2S_SIDE_ID,locSideID,iElem)
+!IF ((SideID.GE.firstInnerSide).AND.(SideID.LE.lastInnerSide)) THEN
+  !flip  =ElemToSide(E2S_FLIP,locSideID,iElem)
+  !IF (flip.EQ.0) THEN
+    !ElemToNbElem = SideToElem(S2E_NB_ELEM_ID,SideID)
+  !ELSE
+    !ElemToNbElem = SideToElem(S2E_ELEM_ID,SideID)
+  !END IF
+!ELSE
+  !ElemToNbElem = -1
+!END IF
+!END FUNCTION ElemToNbElem
 
 
 !==================================================================================================================================
@@ -566,31 +540,31 @@ END FUNCTION ElemToNbElem
 !>            locSideID  side to the neighboring element
 !> output: volume-indices of neighboring element, that are next to ijk in direction of locSideID
 !==================================================================================================================================
-FUNCTION VolToVol(Nloc,i,j,k,locSideID,iElem)
-! MODULES
-USE MOD_Mesh_Vars,ONLY:ElemToSide,SideToElem
-IMPLICIT NONE
-! INPUT/OUTPUT VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
-INTEGER,INTENT(IN)   :: i,j,k,locSideID,iElem,Nloc
-INTEGER,DIMENSION(3) :: VolToVol
-!----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-INTEGER,DIMENSION(3) :: pq
-INTEGER              :: flip, l, SideID, neighbor_flip, neighbor_locSideID
-!==================================================================================================================================
-SideID=ElemToSide(E2S_SIDE_ID,locSideID,iElem)
-flip  =ElemToSide(E2S_FLIP,locSideID,iElem)
-pq    =VolToSide(Nloc, i,j,k, flip, locSideID)
-l = pq(3)
-IF (flip.EQ.0) THEN
-  neighbor_locSideID = SideToElem(S2E_NB_LOC_SIDE_ID,SideID)
-  neighbor_flip      = SideToElem(S2E_FLIP,SideID)
-ELSE
-  neighbor_locSideID = SideToElem(S2E_LOC_SIDE_ID,SideID)
-  neighbor_flip      = 0
-END IF
-VolToVol = SideToVol(Nloc, l, pq(1), pq(2), neighbor_flip, neighbor_locSideID)
-END FUNCTION VolToVol
+!FUNCTION VolToVol(Nloc,i,j,k,locSideID,iElem)
+!! MODULES
+!USE MOD_Mesh_Vars,ONLY:ElemToSide,SideToElem
+!IMPLICIT NONE
+!! INPUT/OUTPUT VARIABLES
+!!----------------------------------------------------------------------------------------------------------------------------------
+!INTEGER,INTENT(IN)   :: i,j,k,locSideID,iElem,Nloc
+!INTEGER,DIMENSION(3) :: VolToVol
+!!----------------------------------------------------------------------------------------------------------------------------------
+!! LOCAL VARIABLES
+!INTEGER,DIMENSION(3) :: pq
+!INTEGER              :: flip, l, SideID, neighbor_flip, neighbor_locSideID
+!!==================================================================================================================================
+!SideID=ElemToSide(E2S_SIDE_ID,locSideID,iElem)
+!flip  =ElemToSide(E2S_FLIP,locSideID,iElem)
+!pq    =VolToSide(Nloc, i,j,k, flip, locSideID)
+!l = pq(3)
+!IF (flip.EQ.0) THEN
+  !neighbor_locSideID = SideToElem(S2E_NB_LOC_SIDE_ID,SideID)
+  !neighbor_flip      = SideToElem(S2E_FLIP,SideID)
+!ELSE
+  !neighbor_locSideID = SideToElem(S2E_LOC_SIDE_ID,SideID)
+  !neighbor_flip      = 0
+!END IF
+!VolToVol = SideToVol(Nloc, l, pq(1), pq(2), neighbor_flip, neighbor_locSideID)
+!END FUNCTION VolToVol
 
 END MODULE MOD_Mappings
