@@ -268,9 +268,10 @@ DO j=0,PP_NlocZ; DO i=0,Nloc
 
   ! Back Rotate the normal flux into Cartesian direction
   Fout(DENS,i,j)=F(DENS)
-  Fout(MOMV,i,j)=nv(:,i,j)*F(MOM1)     & 
+  Fout(MOMV,i,j)=nv(:,i,j)*F(MOM1)     &
                   + t1(:,i,j)*F(MOM2)  &
                   + t2(:,i,j)*F(MOM3)  
+  Fout(ENER,i,j)=F(ENER)
 END DO; END DO
 
 END SUBROUTINE Riemann
