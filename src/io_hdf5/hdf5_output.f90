@@ -149,13 +149,13 @@ IF(NOut.NE.PP_N)THEN
   DO iElem=1,nElems
     JN(1,:,:,:)=1./sJ(:,:,:,iElem,0)
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-#if PP_dim == 3        
+#if PP_dim == 3
       Utmp(:,i,j,k)=U(:,i,j,k,iElem)*JN(1,i,j,k)
 #else
       DO iVar=1,PP_nVar
         Utmp(iVar,i,j,:)=U(iVar,i,j,k,iElem)*JN(1,i,j,k)
       END DO ! iVar=1,PP_nVar
-#endif        
+#endif
     END DO; END DO; END DO
     CALL ChangeBasis3D(PP_nVar,PP_N,NOut,Vdm_N_NOut,&
                        Utmp,UOut(1:PP_nVar,:,:,:,iElem))
@@ -166,7 +166,7 @@ IF(NOut.NE.PP_N)THEN
     END DO; END DO; END DO
   END DO
 ELSE
-#if PP_dim == 3  
+#if PP_dim == 3
   UOut => U
 #else
   ALLOCATE(UOut(PP_nVar,0:NOut,0:NOut,0:NOut,nElems))
@@ -213,8 +213,14 @@ CALL GatheredWriteArray(FileName,create=.FALSE.,&
                         offset=    (/0,      0,     0,     0,     offsetElem/),  &
                         collective=.TRUE., RealArray=gradUz)
 #endif
-                    
-ADEALLOCATE(UOut)
+
+#if PP_dim == 3
+! Only deallocate UOut if it does not point to U
+IF(NOut.NE.PP_N) DEALLOCATE(UOut)
+#else
+DEALLOCATE(UOut)
+#endif
+
 
 CALL WriteAdditionalElemData(FileName,ElementOut)
 CALL WriteAdditionalFieldData(FileName,FieldOut)
