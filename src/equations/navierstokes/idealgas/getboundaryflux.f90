@@ -129,8 +129,8 @@ IF(MaxBCState.GT.nRefState)THEN
 END IF
 
 ! Allocate buffer array to store temp data for all BC sides
-ALLOCATE(BCData(PP_nVar,    0:PP_N,0:PP_N,nBCSides))
-ALLOCATE(BCDataPrim(PP_nVarPrim,0:PP_N,0:PP_N,nBCSides))
+ALLOCATE(BCData(PP_nVar,    0:PP_N,0:PP_NZ,nBCSides))
+ALLOCATE(BCDataPrim(PP_nVarPrim,0:PP_N,0:PP_NZ,nBCSides))
 BCData=0.
 BCDataPrim=0.
 

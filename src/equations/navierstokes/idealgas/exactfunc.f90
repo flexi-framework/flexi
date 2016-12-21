@@ -107,10 +107,21 @@ IniExactFunc = GETINTFROMSTR('IniExactFunc')
 SELECT CASE (IniExactFunc)
 CASE(2,3,4,41,42,43) ! synthetic test cases
   AdvVel       = GETREALARRAY('AdvVel',3)
+#if PP_dim==2
+  IF(AdvVel(3).NE.0.) THEN
+    CALL CollectiveStop(__STAMP__,'You are computing in 2D! Please set AdvVel(3) = 0!') 
+  END IF
+  IF ((IniExactFunc.EQ.4).OR.(IniExactFunc.EQ.41).OR.(IniExactFunc.EQ.42).OR.(IniExactFunc.EQ.43)) THEN
+    CALL CollectiveStop(__STAMP__,'You are computing in 2D! IniExactFunc=4,41,42,43 are not implemented!') 
+  END IF
+#endif
 CASE(7) ! Shu Vortex
   IniRefState  = GETINT('IniRefState')
   IniCenter    = GETREALARRAY('IniCenter',3,'(/0.,0.,0./)')
   IniAxis      = GETREALARRAY('IniAxis',3,'(/0.,0.,1./)')
+#if PP_dim==2
+  CALL CollectiveStop(__STAMP__,'You are computing in 2D! Shu Vortex is not available!') 
+#endif
   IniAmplitude = GETREAL('IniAmplitude','0.2')
   IniHalfwidth = GETREAL('IniHalfwidth','0.2')
 CASE(8) ! couette-poiseuille flow
@@ -229,6 +240,7 @@ CASE(3) ! linear in rho
     Resu_t(2:4)=Resu_t(1)*prim(2:4) ! rho*vel
     Resu_t(5)=0.5*Resu_t(1)*SUM(prim(2:4)*prim(2:4))
   END IF
+#if PP_dim==3
 CASE(4) ! exact function
   Frequency=1.
   Amplitude=0.1
@@ -307,6 +319,7 @@ CASE(43) ! SINUS in z
     Resu_t(4) = Resu_t(1)
     Resu_tt(5)=2.*(Resu_t(1)*Resu_t(1) + Resu(1)*Resu_tt(1))
   END IF
+#endif
 CASE(5) !Roundjet Bogey Bailly 2002, Re=65000, x-axis is jet axis
   prim(1)  =1.
   prim(2:4)=0.
@@ -504,20 +517,21 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 REAL,INTENT(IN)     :: t                                       !< current solution time
-REAL,INTENT(INOUT)  :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems) !< DG time derivative
+REAL,INTENT(INOUT)  :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< DG time derivative
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER             :: i,j,k,iElem
-REAL                :: Ut_src(5,0:PP_N,0:PP_N,0:PP_N)
+REAL                :: Ut_src(5,0:PP_N,0:PP_N,0:PP_NZ)
 REAL                :: Frequency,Amplitude,Omega,a
 REAL                :: sinXGP,sinXGP2,cosXGP,at
 REAL                :: tmp(6)
 REAL                :: C
 #if FV_ENABLED
-REAL                :: Ut_src2(5,0:PP_N,0:PP_N,0:PP_N)
+REAL                :: Ut_src2(5,0:PP_N,0:PP_N,0:PP_NZ)
 #endif
 !==================================================================================================================================
 SELECT CASE (IniExactFunc)
+#if PP_dim==3
 CASE(4) ! exact function
   Frequency=1.
   Amplitude=0.1
@@ -710,6 +724,7 @@ CASE(43) ! Sinus in z
     END IF
 #endif
   END DO
+#endif
 CASE DEFAULT
   ! No source -> do nothing and set marker to not run again
   doCalcSource=.FALSE.

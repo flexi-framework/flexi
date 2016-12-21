@@ -135,10 +135,10 @@ DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
 END DO; END DO; END DO
 #else
 DO i=0,PP_N
-  wGPSurf(i,0)  = wGP(i)*2.0
+  wGPSurf(i,0)  = wGP(i)
 END DO
 DO j=0,PP_N; DO i=0,PP_N
-  wGPVol(i,j,0) = wGP(i)*wGP(j)*2.0
+  wGPVol(i,j,0) = wGP(i)*wGP(j)
 END DO; END DO
 #endif
 
@@ -200,7 +200,7 @@ END SUBROUTINE InitAnalyze
 !> - Builds Vandermonde to interpolate the solution onto a Gauss-Lobatto mesh at a higher polynomial degree
 !> - Precomputes volume interpolation weights
 !==================================================================================================================================
-SUBROUTINE InitAnalyzeBasis(N_in,Nanalyze_in,xGP,wBary)
+SUBROUTINE InitAnalyzeBasis(N_in,Nloc,xGP,wBary)
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
@@ -212,26 +212,26 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)               :: N_in                  !< input polynomial degree
-INTEGER,INTENT(IN)               :: Nanalyze_in           !< polynomial degree of analysis polynomial
+INTEGER,INTENT(IN)               :: Nloc                  !< polynomial degree of analysis polynomial
 REAL,INTENT(IN)                  :: xGP(0:N_in)           !< interpolation points
 REAL,INTENT(IN)                  :: wBary(0:N_in)         !< barycentric weights
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                             :: XiAnalyze(0:Nanalyze_in)
-REAL                             :: wAnalyze( 0:NAnalyze_in)  ! GL integration weights used for the analyze
+REAL                             :: XiAnalyze(0:Nloc)
+REAL                             :: wAnalyze( 0:Nloc)  ! GL integration weights used for the analyze
 INTEGER                          :: i,j,k
 !==================================================================================================================================
-ALLOCATE(wGPVolAnalyze(0:Nanalyze_in,0:Nanalyze_in,0:Nanalyze_in),Vdm_GaussN_NAnalyze(0:NAnalyze_in,0:N_in))
-CALL GetNodesAndWeights(NAnalyze_in,NodeTypeGL,XiAnalyze,wAnalyze)
-CALL InitializeVandermonde(N_in,NAnalyze_in,wBary,xGP,XiAnalyze,Vdm_GaussN_NAnalyze)
+ALLOCATE(wGPVolAnalyze(0:Nloc,0:Nloc,0:PP_NlocZ),Vdm_GaussN_NAnalyze(0:Nloc,0:N_in))
+CALL GetNodesAndWeights(Nloc,NodeTypeGL,XiAnalyze,wAnalyze)
+CALL InitializeVandermonde(N_in,Nloc,wBary,xGP,XiAnalyze,Vdm_GaussN_NAnalyze)
 
 #if PP_dim == 3
-DO k=0,Nanalyze_in; DO j=0,Nanalyze_in; DO i=0,Nanalyze_in
+DO k=0,Nloc; DO j=0,Nloc; DO i=0,Nloc
   wGPVolAnalyze(i,j,k) = wAnalyze(i)*wAnalyze(j)*wAnalyze(k)
 END DO; END DO; END DO
 #else
-DO j=0,Nanalyze_in; DO i=0,Nanalyze_in
-  wGPVolAnalyze(i,j,0) = wAnalyze(i)*wAnalyze(j)*2.0
+DO j=0,Nloc; DO i=0,Nloc
+  wGPVolAnalyze(i,j,0) = wAnalyze(i)*wAnalyze(j)
 END DO; END DO
 #endif
 

@@ -368,7 +368,7 @@ DO SideID=1,nBCSides
   iBC=BC(SideID)
   IF(Boundarytype(iBC,BC_TYPE) .EQ. 1) CYCLE
 
-  DO j=0,PP_N; DO i=0,PP_N
+  DO j=0,PP_NZ; DO i=0,PP_N
     ! TODO: ATTENTION: Temperature of UE not filled!!!
     UE(CONS)=U_master(1:5,i,j,SideID)
     UE(SRHO)=1./UE(DENS)
@@ -473,7 +473,7 @@ FV_w2 = FV_w**2
 DO iSide=1,nBCSides
   iBC=BC(iSide)
   IF((BoundaryType(iBC,BC_TYPE).NE.3).AND.(BoundaryType(iBC,BC_TYPE).NE.4).AND.(BoundaryType(iBC,BC_TYPE).NE.9)) CYCLE
-  DO j=0,PP_N; DO i=0,PP_N
+  DO j=0,PP_NZ; DO i=0,PP_N
     Vel=UPrim_master(2:4,i,j,iSide)
     ! Calculate velocity magnitude
     locV=NORM2(vel)
@@ -550,7 +550,7 @@ DO iSide=1,nSides-nMPISides_YOUR
     END DO; END DO
   ELSE ! DG element
 #endif
-    DO j=0,PP_N; DO i=0,PP_N
+    DO j=0,PP_NZ; DO i=0,PP_N
       ! Don't multiply with Surfelem, its already contained in the fluxes
       MeanFlux(:,iSurf)=MeanFlux(:,iSurf)+Flux_master(:,i,j,iSide)*wGPSurf(i,j)
     END DO; END DO

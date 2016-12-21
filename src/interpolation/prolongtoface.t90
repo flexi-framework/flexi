@@ -11,6 +11,7 @@
 !
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
+#include "flexi.h"
 
 !==================================================================================================================================
 !> Interpolates the interior volume data (stored at the Gauss or Gauss-Lobatto points) to the surface
