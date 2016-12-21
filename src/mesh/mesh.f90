@@ -227,7 +227,7 @@ SWRITE(UNIT_stdOut,'(A)') "NOW CALLING deleteMeshPointer..."
 CALL deleteMeshPointer()
 
 ! Build necessary mappings 
-CALL buildMappings(PP_N,V2S=V2S,V2S2=V2S2,S2V=S2V,S2V2=S2V2,S2V3=S2V3,CS2V2=CS2V2,FS2M=FS2M)
+CALL buildMappings(PP_N,V2S=V2S,V2S2=V2S2,S2V=S2V,S2V2=S2V2,CS2V2=CS2V2,FS2M=FS2M)
 
 ! if trees are available: compute metrics on tree level and interpolate to elements
 interpolateFromTree=.FALSE.
@@ -552,7 +552,6 @@ SDEALLOCATE(SurfElemO)
 SDEALLOCATE(FS2M)
 SDEALLOCATE(V2S)
 SDEALLOCATE(V2S2)
-SDEALLOCATE(S2V3)
 SDEALLOCATE(CS2V2)
 
 MeshInitIsDone = .FALSE.

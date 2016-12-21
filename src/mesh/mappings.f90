@@ -91,7 +91,7 @@ CONTAINS
 !==================================================================================================================================
 !> Routine which prebuilds mappings for a specific polynomial degree and allocates and stores them in given mapping arrays.
 !==================================================================================================================================
-SUBROUTINE buildMappings(Nloc,V2S,V2S2,CV2S,S2V,S2V2,S2V3,CS2V2,FS2M)
+SUBROUTINE buildMappings(Nloc,V2S,V2S2,CV2S,S2V,S2V2,CS2V2,FS2M)
 ! MODULES
 USE MOD_Globals,           ONLY:CollectiveStop
 IMPLICIT NONE
@@ -103,7 +103,6 @@ INTEGER,ALLOCATABLE,INTENT(OUT),OPTIONAL :: V2S2(:,:,:,:,:)   !< VolumeToSide2 m
 INTEGER,ALLOCATABLE,INTENT(OUT),OPTIONAL :: S2V(:,:,:,:,:,:)  !< SideToVolume mapping
 INTEGER,ALLOCATABLE,INTENT(OUT),OPTIONAL :: CV2S(:,:,:,:,:)   !< CGNS VolumeToSide mappping
 INTEGER,ALLOCATABLE,INTENT(OUT),OPTIONAL :: S2V2(:,:,:,:,:)   !< SideToVolume2 mapping
-INTEGER,ALLOCATABLE,INTENT(OUT),OPTIONAL :: S2V3(:,:,:,:,:)   !< SideToVolume3 mapping
 INTEGER,ALLOCATABLE,INTENT(OUT),OPTIONAL :: CS2V2(:,:,:,:)    !< CGNS SideToVolume2 mapping
 INTEGER,ALLOCATABLE,INTENT(OUT),OPTIONAL :: FS2M(:,:,:,:)     !< FlipSlaveToMaster mapping
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -180,18 +179,6 @@ END DO; END DO
 IF(PRESENT(S2V2))THEN
   ALLOCATE(S2V2(2,0:Nloc,0:Nloc,0:4,1:6))
   S2V2 = S2V2_check
-END IF
-
-! SideToVol3
-IF(PRESENT(S2V3))THEN
-  ALLOCATE(S2V3(2,0:Nloc,0:Nloc,0:4,1:6))
-  DO j=0,Nloc; DO i=0,Nloc
-    DO f=0,4
-      DO s=1,6
-        S2V3(:,i,j,f,s) = SideToVol3(Nloc,i,j,f,s)
-      END DO
-    END DO
-  END DO; END DO
 END IF
 
 ! CGNS_SideToVol2
@@ -542,29 +529,6 @@ INTEGER,DIMENSION(2) :: pq
 pq = Flip_M2S(Nloc,p,q,flip)
 SideToVol2 = CGNS_SideToVol2(Nloc,pq(1),pq(2),locSideID)
 END FUNCTION SideToVol2
-
-!==================================================================================================================================
-!> Transform RHS-Coordinates of Slave to Surface Coordinates in Volume frame.
-!> This is: SideToVol3 = CGNS_SideToVol2(Flip_S2M(...))
-!> input: p,q, flip, locSideID
-!>     where: p,q are in Master-RHS;
-!> output: volume-indices
-!==================================================================================================================================
-FUNCTION SideToVol3(Nloc, p, q, flip, locSideID)
-! MODULES
-IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)   :: p,q,flip,locSideID,Nloc
-INTEGER,DIMENSION(2) :: SideToVol3
-!----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-INTEGER,DIMENSION(2) :: pq
-!==================================================================================================================================
-pq = CGNS_SideToVol2(Nloc,p,q,locSideID)
-SideToVol3 = Flip_S2M(Nloc,pq(1),pq(2),flip)
-END FUNCTION SideToVol3
-
 
 !==================================================================================================================================
 !> Get the index of neighbor element, return -1 if none exists

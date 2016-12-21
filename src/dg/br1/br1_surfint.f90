@@ -58,7 +58,7 @@ USE MOD_PreProc
 USE MOD_SurfintPrim,        ONLY: DoSurfIntPrim
 USE MOD_Mesh_Vars,          ONLY: SideToElem,nSides,nElems
 USE MOD_Mesh_Vars,          ONLY: firstMPISide_YOUR,lastMPISide_MINE
-USE MOD_Mesh_Vars,          ONLY: S2V3,CS2V2
+USE MOD_Mesh_Vars,          ONLY: S2V2
 USE MOD_Mesh_Vars,          ONLY: nElems
 #if FV_ENABLED
 USE MOD_FV_Vars,            ONLY: FV_Elems_master,FV_Elems_slave
@@ -100,9 +100,10 @@ DO SideID=firstSideID,lastSideID
   IF(ElemID.GT.0)THEN
     IF (FV_Elems_master(SideID).EQ.0) THEN ! DG element
       locSideID   = SideToElem(S2E_LOC_SIDE_ID,SideID)
+      flip        = 0
       ! orient flux to fit flip and locSide to element local system
       DO q=0,PP_NlocZ; DO p=0,Nloc
-        FluxTmp(:,p,q)=Flux(:,CS2V2(1,p,q,locSideID),CS2V2(2,p,q,locSideID),SideID)
+        FluxTmp(:,p,q)=Flux(:,S2V2(1,p,q,flip,locSideID),S2V2(2,p,q,flip,locSideID),SideID)
       END DO; END DO ! p,q
 #if   (PP_NodeType==1)
       CALL DoSurfIntPrim(Nloc,FluxTmp,L_HatMinus,   L_HatPlus,      locSideID,gradU(:,:,:,:,ElemID))
@@ -120,12 +121,12 @@ DO SideID=firstSideID,lastSideID
       ! orient flux to fit flip and locSide to element local system
       IF(weak)THEN
         DO q=0,PP_NlocZ; DO p=0,Nloc
-          FluxTmp(:,p,q)=-Flux(:,S2V3(1,p,q,flip,nblocSideID),S2V3(2,p,q,flip,nblocSideID),SideID)
+          FluxTmp(:,p,q)=-Flux(:,S2V2(1,p,q,flip,nblocSideID),S2V2(2,p,q,flip,nblocSideID),SideID)
         END DO; END DO ! p,q
       ELSE
         ! In strong form, don't flip the sign since the slave flux is the negative of the master flux
         DO q=0,PP_NlocZ; DO p=0,Nloc
-          FluxTmp(:,p,q)= Flux(:,S2V3(1,p,q,flip,nblocSideID),S2V3(2,p,q,flip,nblocSideID),SideID)
+          FluxTmp(:,p,q)= Flux(:,S2V2(1,p,q,flip,nblocSideID),S2V2(2,p,q,flip,nblocSideID),SideID)
         END DO; END DO ! p,q
       END IF
 #if   (PP_NodeType==1)
