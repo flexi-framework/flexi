@@ -214,7 +214,7 @@ CALL GatheredWriteArray(FileName,create=.FALSE.,&
                         collective=.TRUE., RealArray=gradUz)
 #endif
                     
-ADEALLOCATE(UOut)
+IF((PP_N .NE. NOut).OR.(PP_dim .EQ. 2)) DEALLOCATE(UOut)
 
 CALL WriteAdditionalElemData(FileName,ElementOut)
 CALL WriteAdditionalFieldData(FileName,FieldOut)
@@ -419,16 +419,23 @@ REAL,ALLOCATABLE,TARGET        :: tmp(:,:,:,:,:)
 REAL,POINTER                   :: NodeData(:,:,:,:,:)
 INTEGER                        :: nVar,nVarTotal
 TYPE(tFieldOut),POINTER        :: f
+INTEGER                        :: mask(3)
 !==================================================================================================================================
 ! TODO: Perform one write for each dataset.
 IF(.NOT. ASSOCIATED(FieldList)) RETURN
+
+#if PP_dim == 3
+mask=(/PP_N+1,PP_N+1,PP_N+1/)
+#else
+mask=(/PP_N+1,PP_N+1,1/)
+#endif
 
 ! Count fixed size and total number of entries 
 nVar=0
 nVarTotal=0
 f=>FieldList
 DO WHILE(ASSOCIATED(f))
-  IF(ALL(f%nVal(2:4).EQ.PP_N+1)) nVar=nVar+f%nVal(1)
+  IF(ALL(f%nVal(2:4).EQ.mask)) nVar=nVar+f%nVal(1)
   nVarTotal=nVarTotal+f%nVal(1)
   f=>f%next
 END DO
@@ -449,7 +456,7 @@ END IF
 ! Write the arrays (variable size)
 f=>FieldList
 DO WHILE(ASSOCIATED(f))
-  IF(ANY(f%nVal(2:4).NE.PP_N+1))THEN ! not fixed size
+  IF(.NOT. ALL(f%nVal(2:4).EQ.mask))THEN ! not fixed size
     IF(ASSOCIATED(f%RealArray)) THEN ! real array
       NodeData=>f%RealArray
     ELSE IF(ASSOCIATED(f%Eval)) THEN ! eval function
@@ -473,14 +480,14 @@ END DO
 IF(nVar.LE.0) RETURN ! no standard data present
 
 ALLOCATE(VarNames(nVar))
-ALLOCATE(tmp(nVar,0:PP_N,0:PP_N,0:PP_N,nElems))
+ALLOCATE(tmp(nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 
 ! Write the attributes (fixed size)
 IF(MPIRoot)THEN
   nVar=0
   f=>FieldList
   DO WHILE(ASSOCIATED(f))
-    IF(ALL(f%nVal(2:4).EQ.PP_N+1))THEN
+    IF(ALL(f%nVal(2:4).EQ.mask))THEN
       VarNames(nVar+1:nVar+f%nVal(1))=f%VarNames
       nVar=nVar+f%nVal(1)
     END IF
@@ -495,7 +502,7 @@ END IF
 nVar=0
 f=>FieldList
 DO WHILE(ASSOCIATED(f))
-  IF(ALL(f%nVal(2:4).EQ.PP_N+1))THEN
+  IF(ALL(f%nVal(2:4).EQ.mask))THEN
     IF(ASSOCIATED(f%RealArray))THEN ! real array
       tmp(nVar+1:nVar+f%nVal(1),:,:,:,:)=f%RealArray
     ELSEIF(ASSOCIATED(f%Eval))THEN  ! eval function
@@ -508,8 +515,8 @@ END DO
 ! Write the arrays (fixed size)
 CALL GatheredWriteArray(FileName,create=.FALSE.,&
                         DataSetName='FieldData', rank=5,  &
-                        nValGlobal=(/nVar,PP_N+1,PP_N+1,PP_N+1,nGlobalElems/),&
-                        nVal=      (/nVar,PP_N+1,PP_N+1,PP_N+1,nElems      /),&
+                        nValGlobal=(/nVar,PP_N+1,PP_N+1,PP_NZ+1,nGlobalElems/),&
+                        nVal=      (/nVar,PP_N+1,PP_N+1,PP_NZ+1,nElems      /),&
                         offset=    (/0   ,0     ,0     ,0     ,offsetElem  /),&
                         collective=.TRUE.,RealArray=tmp)
 DEALLOCATE(VarNames,tmp)
@@ -729,6 +736,7 @@ CALL H5SCLOSE_F(FileSpace, iError)
 
 ! Write dataset properties "Time","MeshFile","NextFile","NodeType","VarNames"
 CALL WriteAttribute(File_ID,'N',1,IntScalar=PP_N)
+CALL WriteAttribute(File_ID,'Dimension',1,IntScalar=PP_dim)
 CALL WriteAttribute(File_ID,'Time',1,RealScalar=OutputTime)
 CALL WriteAttribute(File_ID,'MeshFile',1,StrScalar=(/TRIM(MeshFileName)/))
 IF(PRESENT(FutureTime))THEN
