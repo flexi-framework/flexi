@@ -365,15 +365,18 @@ DO iElem=1,nElems
     FV_iElem = FV_iElem+1
 
     CALL ChangeBasis3D(3,PP_N,FV_NVisu,Vdm_GaussN_FV_NVisu,Elem_xGP(1:3,:,:,:,iElem),FV_Coords_NVisu(1:3,:,:,:,FV_iElem))
-    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       CALL ConsToPrim(UPrim ,U(:,i,j,k,iElem))
       DO kk=0,1; DO jj=0,1; DO ii=0,1
         kkk=k*2+kk; jjj=j*2+jj; iii=i*2+ii
 #if FV_RECONSTRUCT            
         dx = MERGE(  -FV_dx_XI_L(i,j,k,iElem),  FV_dx_XI_R(i,j,k,iElem),ii.EQ.0)
         dy = MERGE( -FV_dx_ETA_L(i,j,k,iElem), FV_dx_ETA_R(i,j,k,iElem),jj.EQ.0)
+        UPrim2 = UPrim + gradUxi(:,j,k,i,iElem) * dx + gradUeta(:,i,k,j,iElem) * dy 
+#if PP_dim == 3        
         dz = MERGE(-FV_dx_ZETA_L(i,j,k,iElem),FV_dx_ZETA_R(i,j,k,iElem),kk.EQ.0)
-        UPrim2 = UPrim + gradUxi(:,j,k,i,iElem) * dx + gradUeta(:,i,k,j,iElem) * dy + gradUzeta(:,i,j,k,iElem) * dz
+        UPrim2 = UPrim2 + gradUzeta(:,i,j,k,iElem) * dz
+#endif        
 #else
         UPrim2 = UPrim
 #endif                                                                  
