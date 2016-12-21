@@ -889,7 +889,7 @@ DO SideID=1,nBCSides
   CALL EvalElemFace(PP_nVar,PP_N,U_N(:,:,:,:,ElemID),Uface,locSide)
 #endif
   DO q=0,PP_N; DO p=0,PP_N
-    BCData(:,p,q,SideID)=Uface(:,S2V2(1,p,q,locSide),S2V2(2,p,q,locSide))
+    BCData(:,p,q,SideID)=Uface(:,S2V2(1,p,q,0,locSide),S2V2(2,p,q,0,locSide))
     CALL ConsToPrim(BCDataPrim(:,p,q,SideID),BCData(:,p,q,SideID))
   END DO; END DO
 END DO
