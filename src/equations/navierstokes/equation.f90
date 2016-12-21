@@ -126,6 +126,11 @@ IF(nRefState .GT. 0)THEN
   ALLOCATE(RefStateCons(nRefState,PP_nVar))
   DO i=1,nRefState
     RefStatePrim(i,1:5)  = GETREALARRAY('RefState',5)
+#if PP_dim==2
+  IF(RefStatePrim(i,4).NE.0) THEN
+    CALL CollectiveStop(__STAMP__,'You are computing in 2D! Please set RefStatePrim(4) = 0!') 
+  END IF
+#endif
     ! TODO: ATTENTION only sRho and Pressure of UE filled!!!
     UE(SRHO) = 1./RefStatePrim(i,1)
     UE(PRES) = RefStatePrim(i,5)
