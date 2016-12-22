@@ -513,20 +513,20 @@ DO iElem=1,nElems
     IF ((firstBCSide.LE.SideID.AND.SideID.LE.lastBCSide)) THEN ! BC side
       ! if we are at a BC side, then we have to use the local data, which is prolongated into UJameson_master 
       DO q=0,PP_N; DO p=0,PP_N
-        ijk = SideToVol(PP_N,-1,p,q,Flip,iSide)
+        ijk = SideToVol(PP_N,-1,p,q,Flip,iSide,PP_dim)
         v(ijk(1),ijk(2),ijk(3)) = UJameson_master(1,p,q,SideID)
       END DO; END DO ! p,q=0,PP_N
     ELSE
       IF (Flip.EQ.0) THEN ! non BC side
         ! Master side => use data from slave side
         DO q=0,PP_N; DO p=0,PP_N
-          ijk = SideToVol(PP_N,-1,p,q,Flip,iSide)
+          ijk = SideToVol(PP_N,-1,p,q,Flip,iSide,PP_dim)
           v(ijk(1),ijk(2),ijk(3)) = UJameson_slave(1,p,q,SideID)
         END DO; END DO ! p,q=0,PP_N
       ELSE
         ! Slave side => use data from master side 
         DO q=0,PP_N; DO p=0,PP_N
-          ijk = SideToVol(PP_N,-1,p,q,Flip,iSide)
+          ijk = SideToVol(PP_N,-1,p,q,Flip,iSide,PP_dim)
           v(ijk(1),ijk(2),ijk(3)) = UJameson_master(1,p,q,SideID)
         END DO; END DO ! p,q=0,PP_N
       END IF
