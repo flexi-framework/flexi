@@ -491,10 +491,6 @@ void visu3DReader::InsertData(vtkSmartPointer<vtkUnstructuredGrid> &output, stru
 visu3DReader::~visu3DReader(){
    SWRITE("~visu3DReader");
    delete [] FileName;
-
-   // Finalize the Posti tool (deallocate all arrays)
-   //__mod_visu3d_MOD_finalizevisu3d();
-
    this->VarDataArraySelection->Delete();
 }
 
