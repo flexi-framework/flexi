@@ -83,10 +83,9 @@ int visu3DReader::RequestInformation(vtkInformation *,
       vtkInformationVector **,
       vtkInformationVector *outputVector)
 {
-   SWRITE("RequestInformation");
-   vtkInformation* info = outputVector->GetInformationObject(0);
-   info->Set(vtkAlgorithm::CAN_HANDLE_PIECE_REQUEST(), 1);
-   //#if USE_MPI
+   // We take the first state file and use it to read the varnames
+   SWRITE("RequestInformation: State file: " << FileNames[0]);
+
    // Set up MPI communicator   
    this->Controller = NULL;
    this->SetController(vtkMultiProcessController::GetGlobalController());
@@ -117,20 +116,19 @@ int visu3DReader::RequestInformation(vtkInformation *,
    outInfo->Set(vtkStreamingDemandDrivenPipeline::TIME_RANGE(), timeRange, 2);
 
    // Change to directory of state file (path of mesh file is stored relative to path of state file)
-   char dir[511];
-   strcpy(dir, FileNames[0].c_str());
-   int ret = chdir(dirname(dir));
-   if (ret != 0 ) {
-      SWRITE("dirfolder of statefile not found: " << dirname(dir));
+   char* dir = strdup(FileNames[0].c_str());
+   dir = dirname(dir);
+   int ret = chdir(dir);
+   if (ret != 0) {
+      SWRITE("Directory of state file not found: " << dir);
+      return 0;
    }
-
-   // We take the first state file and use it to read the varnames
-   SWRITE("RequestInformation: State file: " << FileNames[0]);
-
-
+   
+   // convert the MPI communicator to a Fortran communicator
    int fcomm;
    fcomm = MPI_Comm_c2f(mpiComm);
    MPI_Barrier(mpiComm);
+
    struct CharARRAY varnames;
    // Call Posti-function requestInformation:
    // This function returns the varnames of state, primitive and derived quantities
@@ -138,10 +136,11 @@ int visu3DReader::RequestInformation(vtkInformation *,
    __mod_visu3d_MOD_visu3d_requestinformation(&fcomm, &str_len, FileNames[0].c_str(), &varnames);
 
    MPI_Barrier(mpiComm);
+
    // We copy the varnames to the corresponding DataArraySelection objects.
    // These objects are used to build the gui. 
    // (see the functions below: 
-   //   DisableAllVar...Arrays, EnableAllVar...Arrays, GetNumberOfVar...Arrays, GetVar...ArrayName, GetVar...ArrayStatus, SetVar...ArrayStatus,
+   //   DisableAllVarArrays, EnableAllVarArrays, GetNumberOfVarArrays, GetVarArrayName, GetVarArrayStatus, SetVarArrayStatus,
    // )
    for (int iVar=0; iVar<varnames.len/255; iVar++) {
       char tmps[255];
