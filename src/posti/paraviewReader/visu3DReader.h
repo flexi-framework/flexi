@@ -49,11 +49,11 @@ class VTKIOPARALLEL_EXPORT visu3DReader :  public vtkMultiBlockDataSetAlgorithm
 
       static visu3DReader *New();
 
-      // macros to set Filename, InputNsuper (see visu2DReader.xml)
+      // macros to set GUI changes to variables
       // gui interaction
       vtkSetStringMacro(FileName);
       vtkSetStringMacro(MeshFileOverwrite);
-      vtkSetMacro(InputNsuper,int);
+      vtkSetMacro(NVisu,int);
       vtkSetStringMacro(NodeTypeVisu);
       vtkSetMacro(Mode2d,int);
 
@@ -106,17 +106,25 @@ class VTKIOPARALLEL_EXPORT visu3DReader :  public vtkMultiBlockDataSetAlgorithm
 
 
       char* FileName;
-      int InputNsuper;   // NVisu (see visu2DReader.xml)
+      int   NVisu;
+      int   NVisu_old;  
       char* NodeTypeVisu;
-      int Mode2d;
+      std::string NodeTypeVisu_old;
+      int   Mode2d;
+      int   Mode2d_old;
       char* ParameterFileOverwrite;
+      std::string ParameterFileOverwrite_old;
       char* MeshFileOverwrite;
+      std::string MeshFileOverwrite_old;
+      std::vector<bool> VarNames_selected;
+      std::vector<bool> VarNames_selected_old;
 
       int NumProcesses;
       int ProcessId;
 
       // all loaded filenames, timesteps (multiple for timeseries)
       std::vector<std::string> FileNames;
+      std::string FileName_old;
       std::vector<double> Timesteps;
 
       int FindClosestTimeStep(double requestedTimeValue);

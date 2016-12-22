@@ -41,15 +41,20 @@
 vtkStandardNewMacro(visu3DReader);
 vtkCxxSetObjectMacro(visu3DReader, Controller, vtkMultiProcessController);
 
+#define SWRITE(x) {if (ProcessId == 0) std::cout << "@@@ " << this << " " << x << "\n";};
+
 /*
  * Construtor of State Reader
  */
 visu3DReader::visu3DReader()
 {
+   SWRITE("visu3DReader");
    this->FileName = NULL;
-   this->InputNsuper = 0;
+   this->NVisu = 0;
+   this->NVisu_old = 0;
    this->NodeTypeVisu = NULL;
    this->Mode2d = 0;
+   this->Mode2d_old = 0;
    this->ParameterFileOverwrite = NULL;
    this->MeshFileOverwrite = NULL;
    this->SetNumberOfInputPorts(0);
@@ -67,6 +72,7 @@ visu3DReader::visu3DReader()
    this->VarDataArraySelection = vtkDataArraySelection::New();
    // add an observer 
    this->VarDataArraySelection->AddObserver(vtkCommand::ModifiedEvent, this->SelectionObserver);
+
 }
 
 /*
@@ -77,6 +83,7 @@ int visu3DReader::RequestInformation(vtkInformation *,
       vtkInformationVector **,
       vtkInformationVector *outputVector)
 {
+   SWRITE("RequestInformation");
    vtkInformation* info = outputVector->GetInformationObject(0);
    info->Set(vtkAlgorithm::CAN_HANDLE_PIECE_REQUEST(), 1);
    //#if USE_MPI
@@ -114,13 +121,11 @@ int visu3DReader::RequestInformation(vtkInformation *,
    strcpy(dir, FileNames[0].c_str());
    int ret = chdir(dirname(dir));
    if (ret != 0 ) {
-      if(ProcessId == 0) std::cout << "dirfolder of statefile not found: " << dirname(dir) << " \n"; 
+      SWRITE("dirfolder of statefile not found: " << dirname(dir));
    }
 
-   __mod_visu3d_MOD_finalizevisu3d();
-
    // We take the first state file and use it to read the varnames
-   if(ProcessId == 0) std::cout << "RequestInformation: State file: " << FileNames[0] << std::endl;
+   SWRITE("RequestInformation: State file: " << FileNames[0]);
 
 
    int fcomm;
@@ -151,7 +156,7 @@ int visu3DReader::RequestInformation(vtkInformation *,
 
          // Select Density, FV_Elems by default
          if (varname.compare("Density") == 0) this->VarDataArraySelection->EnableArray(varname.c_str());
-         if (varname.compare("FV_Elems") == 0) this->VarDataArraySelection->EnableArray(varname.c_str());
+         if (varname.compare("ElemData:FV_Elems") == 0) this->VarDataArraySelection->EnableArray(varname.c_str());
       }
    }
    return 1; 
@@ -163,6 +168,7 @@ int visu3DReader::RequestInformation(vtkInformation *,
  * Attention: For multiple files, we assume a timeseries.
  */
 void visu3DReader::AddFileName(const char* filename_in) {
+   SWRITE("AddFileName");
    // append the filename to the list of filenames
    this->FileNames.push_back(filename_in);
    this->Modified();
@@ -170,7 +176,7 @@ void visu3DReader::AddFileName(const char* filename_in) {
    // open the file with HDF5 and read the attribute 'time' to build a timeseries  
    hid_t state = H5Fopen(filename_in, H5F_ACC_RDONLY, H5P_DEFAULT);
    hid_t attr = H5Aopen(state, "Time", H5P_DEFAULT);
-   if(ProcessId == 0) std::cout<<"attribute Time"<<attr<<"\n";
+   SWRITE("attribute Time"<<attr);
    double time; 
    if (attr > -1){
       hid_t attr_type = H5Aget_type( attr );
@@ -205,10 +211,6 @@ int visu3DReader::FindClosestTimeStep(double requestedTimeValue)
    return ts;
 }
 
-//void visu3DReader::SetNodeTypeVisu(const char* nodetypevisu) {
-   //NodeTypeVisu = nodetypevisu;
-//}
-
 vtkStringArray* visu3DReader::GetNodeTypeVisuList() {
    vtkStringArray* arr = vtkStringArray::New();
    arr->InsertNextValue("VISU");
@@ -216,46 +218,80 @@ vtkStringArray* visu3DReader::GetNodeTypeVisuList() {
    arr->InsertNextValue("GAUSS-LOBATTO");
    arr->InsertNextValue("VISU_INNER");
    return arr;
-};
+}
 
 /*
  * This function is called, when the user presses the 'Apply' button.
  * Here we call the Posti and load all the data.
  */
-   int visu3DReader::RequestData(
-         vtkInformation *vtkNotUsed(request),
-         vtkInformationVector **vtkNotUsed(inputVector),
-         vtkInformationVector *outputVector)
+   
+int visu3DReader::RequestData(
+      vtkInformation *vtkNotUsed(request),
+      vtkInformationVector **vtkNotUsed(inputVector),
+      vtkInformationVector *outputVector)
 {
+   SWRITE("RequestData");
 
-   // get the number of the timestep to load
+   // get the index of the timestep to load
    int timestepToLoad = 0;
+   std::string FileToLoad;
    vtkSmartPointer<vtkInformation> outInfo = outputVector->GetInformationObject(0);
    if (outInfo->Has(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP())) {
       // get the requested time
       double requestedTimeValue = outInfo->Get(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP());
       timestepToLoad = FindClosestTimeStep(requestedTimeValue);
-
-      // get the output and set the time value
-      vtkSmartPointer<vtkUnstructuredGrid> output = vtkUnstructuredGrid::SafeDownCast(outInfo->Get(vtkDataObject::DATA_OBJECT()));
-      //output->GetInformation()->Set(vtkDataObject::DATA_TIME_STEP(), Timesteps[timestepToLoad]);
+      FileToLoad = FileNames[timestepToLoad];
    }
 
-   vtkDataObject* doOutput = outInfo->Get(vtkDataObject::DATA_OBJECT());
-   vtkMultiBlockDataSet* mb = vtkMultiBlockDataSet::SafeDownCast(doOutput);
-   if (!mb)
+   // get all variables selected for visualization 
+   // and check if they are the same as before (bug workaround, explanation see below)
+   int nVars = VarDataArraySelection->GetNumberOfArrays();
+   VarNames_selected.resize(nVars);
+   bool sameVars = (VarNames_selected_old.size() == nVars);
+   for (int i = 0; i< nVars; ++i)
    {
-      std::cout << "DownCast to MultiBlockDataset Failed!" << std::endl;
-      return 0;
+      const char* name = VarDataArraySelection->GetArrayName(i);
+      VarNames_selected[i] = VarDataArraySelection->ArrayIsEnabled(name);
+      if (VarNames_selected_old.size() == nVars) {
+         sameVars &= (VarNames_selected_old[i] == VarNames_selected[i]);
+      }
    }
+
+   // check if anything in the GUI was changed.
+   // This is a bug workaround for the following problem:
+   // When loading a second file (after opening it from the file dialog and before press of Apply button) 
+   // this RequestData routine is called for the FIRST file, even so nothing in the GUI was changed. 
+   // Of course the data that should be visualized is the same, so we can skip the call of the Posti-Fortran-Visu3D code.
+   bool sameNVisu    = (NVisu_old == NVisu);
+   bool sameNodeType = strcmp(NodeTypeVisu_old.c_str(),NodeTypeVisu) == 0;
+   bool sameMode2d   = Mode2d_old == Mode2d;
+   bool samePrmFile  = strcmp(ParameterFileOverwrite_old.c_str(), ParameterFileOverwrite) == 0;
+   bool sameMeshFile = strcmp(MeshFileOverwrite_old.c_str(), MeshFileOverwrite) == 0;
+   bool sameFileName = strcmp(FileName_old.c_str(), FileToLoad.c_str()) == 0;
+   bool nothingChanged = sameNVisu && sameNodeType && sameMode2d && samePrmFile && sameMeshFile && sameFileName && sameVars;
+
+   if (nothingChanged)   
+   {
+      SWRITE("NOTHING CHANGED");
+   } else {
+      SWRITE("CHANGED: "); 
+      SWRITE("   NVisu:     " << sameNVisu    << " : "<< NVisu_old << " -> " << NVisu);
+      SWRITE("   NodeType:  " << sameNodeType << " : "<< NodeTypeVisu_old << " -> " << NodeTypeVisu );
+      SWRITE("   Mode2D:    " << sameMode2d   << " : "<< Mode2d_old << " -> " << Mode2d );
+      SWRITE("   PrmFile:   " << samePrmFile  << " : "<< ParameterFileOverwrite_old << " -> " << ParameterFileOverwrite );
+      SWRITE("   MeshFile:  " << sameMeshFile << " : "<< MeshFileOverwrite_old << " -> " << MeshFileOverwrite );
+      SWRITE("   StateFile: " << sameFileName << " : "<< FileName_old << " -> " << FileToLoad );
+      SWRITE("   sameVars:  " << sameVars     << " : "<< sameVars );
+   } 
 
 
    // Change to directory of state file (path of mesh file is stored relative to path of state file)
-   char dir[511];
-   strcpy(dir, FileNames[timestepToLoad].c_str());
-   int ret = chdir(dirname(dir));
-   if (ret != 0 ) {
-      if(ProcessId == 0) std::cout << "dirfolder of statefile not found: " << dirname(dir) << " \n"; 
+   char* dir = strdup(FileToLoad.c_str());
+   dir = dirname(dir);
+   int ret = chdir(dir);
+   if (ret != 0) {
+      SWRITE("Directory of state file not found: " << dir);
+      return 0;
    }
 
    // Write temporary parameter file for Posti tool 
@@ -269,7 +305,28 @@ vtkStringArray* visu3DReader::GetNodeTypeVisuList() {
    std::strcpy(posti_filename, "/tmp/f2p_posti_XXXXXX.ini");
    int posti_unit = mkstemps(posti_filename,4);
 
+   // write settings to Posti parameter file
+   dprintf(posti_unit, "NVisu = %d\n", NVisu); // insert NVisu
+   dprintf(posti_unit, "NodeTypeVisu = %s\n", NodeTypeVisu); // insert NodeType
+   dprintf(posti_unit, "VisuDimension = %s\n", (this->Mode2d ? "2" : "3"));
+   if (strlen(MeshFileOverwrite) > 0) {
+      dprintf(posti_unit, "MeshFile = %s\n", MeshFileOverwrite);
+   }
 
+   // write selected state varnames to the parameter file
+   VarNames_selected_old.resize(nVars);
+   for (int i = 0; i< nVars; ++i)
+   {
+      if (VarNames_selected[i]) {
+         const char* name = VarDataArraySelection->GetArrayName(i);
+         dprintf(posti_unit, "VarName = %s\n", name) ;
+      }
+      VarNames_selected_old[i] = VarNames_selected[i];
+   }
+   close(posti_unit);
+
+   // if a Flexi parameter file is given, which should overwrite the parameter file from the userblock stored
+   // in the h5-file, then this must be copied to prm_filename 
    if (strlen(ParameterFileOverwrite) > 0) {
       // use parameter file to overwrite userblock-parameterfile 
       std::strcpy(prm_filename, ParameterFileOverwrite);
@@ -277,90 +334,64 @@ vtkStringArray* visu3DReader::GetNodeTypeVisuList() {
       std::strcpy(prm_filename, "");
    }
 
-   dprintf(posti_unit, "NVisu = %d\n", InputNsuper); // insert NVisu
-   dprintf(posti_unit, "NodeTypeVisu = %s\n", NodeTypeVisu); // insert NodeType
-   dprintf(posti_unit, "VisuDimension = %s\n", (this->Mode2d ? "2" : "3"));
-   if (strlen(MeshFileOverwrite) > 0) {
-      dprintf(posti_unit, "MeshFile = %s\n", MeshFileOverwrite);
+   // only call the Fortran Posti code if something in the GUI changed (bug workaround, see above)
+   if (! nothingChanged) {
+      // convert the MPI communicator to a fortran communicator
+      int fcomm = MPI_Comm_c2f(mpiComm);
+      MPI_Barrier(mpiComm); // all processes should call the Fortran code at the same time
+
+      // call Posti tool (Fortran code)
+      // the arrays coords_*, values_* and nodeids_* are allocated in the Posti tool 
+      // and contain the vtk data
+      int strlen_prm = strlen(prm_filename);
+      int strlen_posti = strlen(posti_filename);
+      int strlen_state = strlen(FileToLoad.c_str()); 
+      __mod_visu3d_MOD_visu3d_cwrapper(&fcomm, 
+            &strlen_prm, prm_filename, 
+            &strlen_posti, posti_filename, 
+            &strlen_state, FileToLoad.c_str(),
+            &coords_DG,&values_DG,&nodeids_DG,
+            &coords_FV,&values_FV,&nodeids_FV,&varnames,&components);
+
+      NVisu_old = NVisu;
+      NodeTypeVisu_old = NodeTypeVisu;
+      Mode2d_old = Mode2d;
+      ParameterFileOverwrite_old = ParameterFileOverwrite;
+      MeshFileOverwrite_old = MeshFileOverwrite;
+      FileName_old = FileToLoad;
    }
 
-   int totalVars = 0;
-   // write selected state varnames to the parameter file
-   int nVars = VarDataArraySelection->GetNumberOfArrays();
-   for (int i = 0; i< nVars; ++i)
-   {
-      const char* name = VarDataArraySelection->GetArrayName(i);
-      if (VarDataArraySelection->ArrayIsEnabled(name)) {
-         dprintf(posti_unit, "VarName = %s\n", name) ;
-         totalVars++;
-      }
+   MPI_Barrier(mpiComm); // wait until all processors returned from the Fortran Posti code
+
+
+   // get the MultiBlockDataset 
+   vtkMultiBlockDataSet* mb = vtkMultiBlockDataSet::SafeDownCast(outInfo->Get(vtkDataObject::DATA_OBJECT()));
+   if (!mb) {
+      std::cout << "DownCast to MultiBlockDataset Failed!" << std::endl;
+      return 0;
    }
-   close(posti_unit);
 
-   int fcomm = MPI_Comm_c2f(mpiComm);
-   MPI_Barrier(mpiComm);
-   // call Posti tool 
-   // the arrays coords_*, values_* and nodeids_* are allocated in the Posti tool 
-   // and contain the vtk data
-   int strlen_prm = strlen(prm_filename);
-   int strlen_posti = strlen(posti_filename);
-   int strlen_state = strlen(FileNames[timestepToLoad].c_str()); 
-   __mod_visu3d_MOD_visu3d_cwrapper(&fcomm, 
-         &strlen_prm, prm_filename, 
-         &strlen_posti, posti_filename, 
-         &strlen_state, FileNames[timestepToLoad].c_str(),
-         &coords_DG,&values_DG,&nodeids_DG,
-         &coords_FV,&values_FV,&nodeids_FV,&varnames,&components);
-   MPI_Barrier(mpiComm);
-
-   this->Blocks.resize(0);
-
-   // insert data into output (DG)
-   this->Blocks.resize(this->Blocks.size()+1);
-   vtkSmartPointer<vtkUnstructuredGrid> output_DG = this->Blocks[this->Blocks.size()-1];
-   if (!output_DG)
-   {
-      output_DG = vtkUnstructuredGrid::New();
-      this->Blocks[this->Blocks.size()-1] = output_DG;
-      output_DG->Delete();
+   // adjust the number of Blocks in the MultiBlockDataset to 2 (DG and FV)
+   SWRITE("Number of Blocks in MultiBlockDataset : " << mb->GetNumberOfBlocks());
+   if (mb->GetNumberOfBlocks() < 2) {
+      SWRITE("Create new DG and FV output Blocks");
+      mb->SetBlock(0, vtkUnstructuredGrid::New());
+      mb->SetBlock(1, vtkUnstructuredGrid::New());
    }
-   // Insert data into output
+
+    // Insert DG data into output
+   vtkSmartPointer<vtkUnstructuredGrid> output_DG = vtkUnstructuredGrid::SafeDownCast(mb->GetBlock(0));
    InsertData(output_DG, &coords_DG, &values_DG, &nodeids_DG, &varnames, &components);
 
-   // insert data into output (FV)
-   this->Blocks.resize(this->Blocks.size()+1);
-   vtkSmartPointer<vtkUnstructuredGrid> output_FV = this->Blocks[this->Blocks.size()-1];
-   if (!output_FV)
-   {
-      output_FV = vtkUnstructuredGrid::New();
-      this->Blocks[this->Blocks.size()-1] = output_FV;
-      output_FV->Delete();
-   }
-   // Insert data into output
+    // Insert FV data into output
+   vtkSmartPointer<vtkUnstructuredGrid> output_FV = vtkUnstructuredGrid::SafeDownCast(mb->GetBlock(1));
    InsertData(output_FV, &coords_FV, &values_FV, &nodeids_FV, &varnames, &components);
 
+   // tell paraview to render data
+   this -> Modified(); 
 
-   // the nodeids are copied in the 'InsertData' function. Therefore deallocate the arrays in the Posti tool
-   __mod_visu3d_MOD_visu3d_dealloc_nodeids();
-   MPI_Barrier(mpiComm);
-   int minusBlock = 0;
-
-
-   if(ProcessId == 0) std::cout << "minusBlock " << minusBlock << " " << std::endl;
-   int firstBlock=0; 
-   mb->SetNumberOfBlocks(this->Blocks.size()-minusBlock); // missing -1
-   for(unsigned int i=0; i<this->Blocks.size()-minusBlock; i++) // missing -1
-   {
-      vtkUnstructuredGrid* nthOutput = this->Blocks[i];
-      firstBlock=firstBlock+1;
-      mb->SetBlock(i, nthOutput);
-   }
-
-
-   this -> Modified(); // tell paraview to render data
-   MPI_Barrier(mpiComm);
-
-   std::cout << "VISU 3D finished (PARAVIEW) " << ProcessId << "\n";
+   MPI_Barrier(mpiComm); // synchronize again (needed?)
+   SWRITE("RequestData finished");
    return 1;
 }
 
@@ -458,14 +489,10 @@ void visu3DReader::InsertData(vtkSmartPointer<vtkUnstructuredGrid> &output, stru
 }
 
 visu3DReader::~visu3DReader(){
+   SWRITE("~visu3DReader");
    delete [] FileName;
-    //vtkErrorMacro(
-      //<< "This class requires the MPI runtime, "
-      //<< "you must run ParaView in client-server mode launched via mpiexec.");
 
    // Finalize the Posti tool (deallocate all arrays)
-   std::cout << "FINALIZE processid: " << ProcessId << "\n";
-
    //__mod_visu3d_MOD_finalizevisu3d();
 
    this->VarDataArraySelection->Delete();
