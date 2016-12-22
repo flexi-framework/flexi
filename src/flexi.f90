@@ -54,8 +54,8 @@ USE MOD_ReadInTools,       ONLY:prms,IgnoredParameters,PrintDefaultParameterFile
 #ifdef EDDYVISCOSITY
 USE MOD_EddyVisc,          ONLY:DefineParametersEddyVisc
 #endif
-USE MOD_GenerateUnittestReferenceData
-USE MOD_StringTools  ,ONLY:STRICMP
+USE MOD_Unittest,          ONLY:GenerateUnittestReferenceData
+USE MOD_StringTools,       ONLY:STRICMP
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

@@ -485,7 +485,8 @@ FILE(GLOB_RECURSE flexiF90 ./src/interpolation/*.f90
                            ./src/io_hdf5/*.f90
                            ./src/timedisc/*.f90
                            ./src/testcase/${FLEXI_TESTCASE}/*.f90
-                           ./unitTests/generateunittestreferencedata.f90)
+                           ./unitTests/unittest.f90
+                           ./unitTests/unittest_vars.f90)
 
 FILE(GLOB eqnsysF90        ./src/equations/${FLEXI_EQNSYSNAME}/*.f90)
 IF (WITHEOS GREATER 0)
