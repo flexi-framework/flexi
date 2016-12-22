@@ -301,7 +301,7 @@ REAL,INTENT(OUT)                     :: Flux(PP_nVar,0:PP_N,0:PP_NZ,nBCSides)   
 ! LOCAL VARIABLES
 INTEGER                              :: iBC,iSide,p,q,SideID
 INTEGER                              :: BCType,BCState,nBCLoc
-REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N):: U_Face_loc
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_NZ):: U_Face_loc
 INTEGER                              :: FVEM=0 ! FV_Elems_master
 !==================================================================================================================================
 DO iBC=1,nBCs
