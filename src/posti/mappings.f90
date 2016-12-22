@@ -75,61 +75,64 @@ CALL CloseDataFile()
 SDEALLOCATE(FV_Elems_loc)
 ALLOCATE(FV_Elems_loc(1:nElems))
 #if FV_ENABLED
-NVisu_FV = (PP_N+1)*2-1
+IF (.NOT.DGonly) THEN
+  NVisu_FV = (PP_N+1)*2-1
 
-CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
-CALL GetArrayAndName('ElemData','VarNamesAdd',nVal,tmp,VarNamesElemData_loc)
-CALL CloseDataFile()
-IF (ALLOCATED(VarNamesElemData_loc)) THEN
-  ALLOCATE(ElemData_loc(nVal(1),nVal(2)))
-  ElemData_loc = RESHAPE(tmp,(/nVal(1),nVal(2)/))
-  ! search for FV_Elems 
-  FV_Elems_loc = 0
-  DO iVar=1,nVal(1)
-    IF (STRICMP(VarNamesElemData_loc(iVar),"FV_Elems")) THEN
-      FV_Elems_loc = INT(ElemData_loc(iVar,:))
+  CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+  CALL GetArrayAndName('ElemData','VarNamesAdd',nVal,tmp,VarNamesElemData_loc)
+  CALL CloseDataFile()
+  IF (ALLOCATED(VarNamesElemData_loc)) THEN
+    ALLOCATE(ElemData_loc(nVal(1),nVal(2)))
+    ElemData_loc = RESHAPE(tmp,(/nVal(1),nVal(2)/))
+    ! search for FV_Elems 
+    FV_Elems_loc = 0
+    DO iVar=1,nVal(1)
+      IF (STRICMP(VarNamesElemData_loc(iVar),"FV_Elems")) THEN
+        FV_Elems_loc = INT(ElemData_loc(iVar,:))
+      END IF
+    END DO
+    DEALLOCATE(ElemData_loc,VarNamesElemData_loc,tmp)
+  END IF
+
+  nElems_FV = SUM(FV_Elems_loc)
+  nElems_DG = nElems - nElems_FV
+
+  ! build the mapping, that holds the global indices of all FV elements
+  SDEALLOCATE(mapElems_FV)
+  ALLOCATE(mapElems_FV(1:nElems_FV))
+  iElem2 =1
+  DO iElem=1,nElems
+    IF (FV_Elems_loc(iElem).EQ.1) THEN
+      mapElems_FV(iElem2) = iElem
+      iElem2 = iElem2 + 1
     END IF
+  END DO ! iElem
+
+  ! build the mapping, that holds the global indices of all DG elements
+  SDEALLOCATE(mapElems_DG)
+  ALLOCATE(mapElems_DG(1:nElems_DG))
+  iElem2 =1
+  DO iElem=1,nElems
+    IF (FV_Elems_loc(iElem).EQ.0) THEN
+      mapElems_DG(iElem2) = iElem
+      iElem2 = iElem2 + 1
+    END IF
+  END DO ! iElem
+ELSE
+#endif
+  FV_Elems_loc = 0
+  nElems_DG = nElems
+  nElems_FV = 0
+  NVisu_FV = 0
+
+  ! build the mapping, that holds the global indices of all DG elements
+  SDEALLOCATE(mapElems_DG)
+  ALLOCATE(mapElems_DG(1:nElems_DG))
+  DO iElem=1,nElems
+    mapElems_DG(iElem) = iElem
   END DO
-  DEALLOCATE(ElemData_loc,VarNamesElemData_loc,tmp)
+#if FV_ENABLED
 END IF
-
-nElems_FV = SUM(FV_Elems_loc)
-nElems_DG = nElems - nElems_FV
-
-! build the mapping, that holds the global indices of all FV elements
-SDEALLOCATE(mapElems_FV)
-ALLOCATE(mapElems_FV(1:nElems_FV))
-iElem2 =1
-DO iElem=1,nElems
-  IF (FV_Elems_loc(iElem).EQ.1) THEN
-    mapElems_FV(iElem2) = iElem
-    iElem2 = iElem2 + 1
-  END IF
-END DO ! iElem
-
-! build the mapping, that holds the global indices of all DG elements
-SDEALLOCATE(mapElems_DG)
-ALLOCATE(mapElems_DG(1:nElems_DG))
-iElem2 =1
-DO iElem=1,nElems
-  IF (FV_Elems_loc(iElem).EQ.0) THEN
-    mapElems_DG(iElem2) = iElem
-    iElem2 = iElem2 + 1
-  END IF
-END DO ! iElem
-
-#else 
-FV_Elems_loc = 0
-nElems_DG = nElems
-nElems_FV = 0
-NVisu_FV = 0
-
-! build the mapping, that holds the global indices of all DG elements
-SDEALLOCATE(mapElems_DG)
-ALLOCATE(mapElems_DG(1:nElems_DG))
-DO iElem=1,nElems
-  mapElems_DG(iElem) = iElem
-END DO
 #endif
 
 

@@ -269,11 +269,13 @@ CALL GETCWD(MeshFile)
 Meshfile          =  TRIM(Meshfile) // "/" // GETSTR("MeshFile",MeshFile_state) 
 VisuDimension     = GETINT("VisuDimension")
 NodeTypeVisuPosti = GETSTR('NodeTypeVisu')
+DGonly            = GETLOGICAL('DGonly')
 
-! check if state, mesh or NVisu changed 
+! check if state, mesh, NVisu or DGonly changed 
 changedStateFile = .NOT.STRICMP(statefile,statefile_old)
 changedMeshFile  = .NOT.(STRICMP(MeshFile,MeshFile_old))
 changedNVisu     = ((NVisu.NE.NVisu_old) .OR. (NodeTypeVisuPosti.NE.NodeTypeVisuPosti_old))
+changedDGonly    = (DGonly.NEQV.DGonly_old)
 
 SWRITE(*,*) "state file old -> new: ", TRIM(statefile_old), " -> ",TRIM(statefile)
 SWRITE(*,*) " mesh file old -> new: ", TRIM(MeshFile_old) , " -> ",TRIM(MeshFile)
@@ -323,7 +325,7 @@ ELSE
 END IF
 
 ! build distribution of FV and DG elements, which is stored in FV_Elems_loc
-IF (changedStateFile.OR.changedMeshFile) THEN
+IF (changedStateFile.OR.changedMeshFile.OR.changedDGonly) THEN
   CALL Build_FV_DG_distribution(statefile) 
 END IF 
 
@@ -485,16 +487,17 @@ SWRITE (*,*) "READING FROM: ", TRIM(statefile)
 !   - changedNVisu:         new NVisu, new Nodetype
 !   - changedFV_Elems:      new distribution of FV/DG elements (only if changedStateFile==TRUE)
 !   - changedWithDGOperator: different mode, with/without gradients
+!   - changedDGonly:        the visualization of FV elements as DG elements was set or unset
 !   
 ! WORKFLOW:
 ! * The main steps are:
 !   1. get nElems             (if changedStateFile)
-!   2. get FV/DG distribution (if changedStateFile)
-!   3. read solution          (if changedStateFile or changedWithDGOperator)
+!   2. get FV/DG distribution (if changedStateFile or changedDGonly)
+!   3. read solution          (if changedStateFile or changedWithDGOperator or changedDGonly)
 !   4. read Mesh              (if changedMeshFile)
-!   5. compute UCalc          (if changedStateFile or changedVarNames) 
-!   6. convert to UVisu       (if changedStateFile or changedVarNames or changedNVisu)
-!   6. build visu mesh        (if changedMeshFile  or changedNVisu or changedFV_Elems)
+!   5. compute UCalc          (if changedStateFile or changedVarNames or changedDGonly) 
+!   6. convert to UVisu       (if changedStateFile or changedVarNames or changedNVisu or changedDGonly)
+!   6. build visu mesh        (if changedMeshFile  or changedNVisu or changedFV_Elems or changedDGonly)
 !   7. write VTK arrays       (always!) 
 !
 !**********************************************************************************************
@@ -507,6 +510,7 @@ CALL prms%CreateStringOption("VarName"      , "Names of variables, which should 
 CALL prms%CreateIntOption(   "NVisu"        ,  "Polynomial degree at which solution is sampled for visualization.")
 CALL prms%CreateIntOption(   "VisuDimension", "2 = Slice at first Gauss point in zeta-direction to get 2D solution.","3")
 CALL prms%CreateStringOption("NodeTypeVisu" , "NodeType for visualization. Visu, Gauss,Gauss-Lobatto,Visu_inner"    ,"VISU")
+CALL prms%CreateLogicalOption("DGonly"      , "Visualize FV elements as DG elements."    ,".FALSE.")
 
 changedStateFile     = .FALSE.
 changedMeshFile      = .FALSE.
@@ -529,28 +533,28 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
 
   ! read solution from state file (either direct or including a evaluation of the DG operator)
   changedPrmFile = (prmfile .NE. prmfile_old)  
-  IF (changedStateFile.OR.changedWithDGOperator.OR.changedPrmFile) THEN
+  IF (changedStateFile.OR.changedWithDGOperator.OR.changedPrmFile.OR.changedDGonly) THEN
       CALL ReadState(prmfile,statefile)
   END IF
 
   ! calc DG solution 
-  IF (changedStateFile.OR.changedVarNames) THEN
+  IF (changedStateFile.OR.changedVarNames.OR.changedDGonly) THEN
     CALL CalcQuantities_DG()
   END IF
   ! convert DG solution to visu grid
-  IF (changedStateFile.OR.changedVarNames.OR.changedNVisu) THEN
+  IF (changedStateFile.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly) THEN
     CALL ConvertToVisu_DG()
   END IF
 
 #if FV_ENABLED
   ! calc FV solution and convert to visu grid
-  IF ((changedStateFile.OR.changedVarNames).AND.hasFV_Elems) THEN
+  IF ((changedStateFile.OR.changedVarNames).AND.hasFV_Elems.OR.changedDGonly) THEN
     CALL CalcQuantities_ConvertToVisu_FV()
   END IF
 #endif /* FV_ENABLED */
 
   ! convert generic data to visu grid
-  IF (changedStateFile.OR.changedVarNames.OR.changedNVisu) THEN
+  IF (changedStateFile.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly) THEN
     CALL ConvertToVisu_GenericData(statefile)
   END IF
 
@@ -565,6 +569,7 @@ statefile_old         = statefile
 NVisu_old             = NVisu
 nVar_State_old        = nVar_State
 withDGOperator_old    = withDGOperator
+DGonly_old            = DGonly
 NodeTypeVisuPosti_old = NodeTypeVisuPosti
 
 SWRITE(UNIT_StdOut,'(132("-"))')
@@ -626,7 +631,7 @@ ELSE IF (VisuDimension.EQ.2) THEN
 END IF
 
 ! Convert coordinates to visu grid
-IF (changedMeshFile.OR.changedNVisu.OR.changedFV_Elems) THEN
+IF (changedMeshFile.OR.changedNVisu.OR.changedFV_Elems.OR.changedDGonly) THEN
   CALL BuildVisuCoords()
 END IF
 

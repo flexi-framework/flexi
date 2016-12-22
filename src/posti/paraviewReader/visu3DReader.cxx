@@ -55,6 +55,8 @@ visu3DReader::visu3DReader()
    this->NodeTypeVisu = NULL;
    this->Mode2d = 0;
    this->Mode2d_old = 0;
+   this->DGonly = 0;
+   this->DGonly_old = 0;
    this->ParameterFileOverwrite = NULL;
    this->MeshFileOverwrite = NULL;
    this->SetNumberOfInputPorts(0);
@@ -264,10 +266,11 @@ int visu3DReader::RequestData(
    bool sameNVisu    = (NVisu_old == NVisu);
    bool sameNodeType = strcmp(NodeTypeVisu_old.c_str(),NodeTypeVisu) == 0;
    bool sameMode2d   = Mode2d_old == Mode2d;
+   bool sameDGonly   = DGonly_old == DGonly;
    bool samePrmFile  = strcmp(ParameterFileOverwrite_old.c_str(), ParameterFileOverwrite) == 0;
    bool sameMeshFile = strcmp(MeshFileOverwrite_old.c_str(), MeshFileOverwrite) == 0;
    bool sameFileName = strcmp(FileName_old.c_str(), FileToLoad.c_str()) == 0;
-   bool nothingChanged = sameNVisu && sameNodeType && sameMode2d && samePrmFile && sameMeshFile && sameFileName && sameVars;
+   bool nothingChanged = sameNVisu && sameNodeType && sameMode2d && sameDGonly && samePrmFile && sameMeshFile && sameFileName && sameVars;
 
    if (nothingChanged)   
    {
@@ -277,6 +280,7 @@ int visu3DReader::RequestData(
       SWRITE("   NVisu:     " << sameNVisu    << " : "<< NVisu_old << " -> " << NVisu);
       SWRITE("   NodeType:  " << sameNodeType << " : "<< NodeTypeVisu_old << " -> " << NodeTypeVisu );
       SWRITE("   Mode2D:    " << sameMode2d   << " : "<< Mode2d_old << " -> " << Mode2d );
+      SWRITE("   DGonly:    " << sameDGonly   << " : "<< DGonly_old << " -> " << DGonly );
       SWRITE("   PrmFile:   " << samePrmFile  << " : "<< ParameterFileOverwrite_old << " -> " << ParameterFileOverwrite );
       SWRITE("   MeshFile:  " << sameMeshFile << " : "<< MeshFileOverwrite_old << " -> " << MeshFileOverwrite );
       SWRITE("   StateFile: " << sameFileName << " : "<< FileName_old << " -> " << FileToLoad );
@@ -308,6 +312,7 @@ int visu3DReader::RequestData(
    dprintf(posti_unit, "NVisu = %d\n", NVisu); // insert NVisu
    dprintf(posti_unit, "NodeTypeVisu = %s\n", NodeTypeVisu); // insert NodeType
    dprintf(posti_unit, "VisuDimension = %s\n", (this->Mode2d ? "2" : "3"));
+   dprintf(posti_unit, "DGonly = %s\n", (this->DGonly ? "T" : "F"));
    if (strlen(MeshFileOverwrite) > 0) {
       dprintf(posti_unit, "MeshFile = %s\n", MeshFileOverwrite);
    }
@@ -355,6 +360,7 @@ int visu3DReader::RequestData(
       NVisu_old = NVisu;
       NodeTypeVisu_old = NodeTypeVisu;
       Mode2d_old = Mode2d;
+      DGonly_old = DGonly;
       ParameterFileOverwrite_old = ParameterFileOverwrite;
       MeshFileOverwrite_old = MeshFileOverwrite;
       FileName_old = FileToLoad;
