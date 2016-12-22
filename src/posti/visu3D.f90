@@ -265,7 +265,11 @@ CALL ReadAttribute(File_ID,'MeshFile',    1,StrScalar =MeshFile_state)
 CALL prms%read_options(postifile)
 NVisu             = GETINT("NVisu")
 ! again read MeshFile from posti prm file (this overwrites the MeshFile read from the state file)
+
+!!!!!!
+! WARNING: GETCWD is a GNU extension to the Fortran standard and will probably not work on other compilers
 CALL GETCWD(MeshFile)
+!!!!!!
 Meshfile          =  TRIM(Meshfile) // "/" // GETSTR("MeshFile",MeshFile_state) 
 VisuDimension     = GETINT("VisuDimension")
 NodeTypeVisuPosti = GETSTR('NodeTypeVisu')
@@ -311,13 +315,11 @@ nVarTotal=SIZE(VarNamesTotal)
 IF (STRICMP(FileType,'State')) THEN
   nVarDep = nVarTotalEOS
   nVarRaw = nVarTotal - nVarDep
-  calcDeps= .TRUE.
   ALLOCATE(DepTable(nVarDep,nVarDep))
   DepTable = DepTableEOS
 ELSE 
   nVarDep = 0
   nVarRaw = nVarTotal
-  calcDeps= .FALSE.
   ALLOCATE(DepTable(nVarDep,nVarDep))
   DepTable = 0
 END IF

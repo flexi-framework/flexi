@@ -39,7 +39,6 @@ INTEGER                           :: nVar_State_old = -1
 INTEGER                           :: nElems_DG
 LOGICAL                           :: withDGOperator
 LOGICAL                           :: withDGOperator_old = .FALSE.
-LOGICAL                           :: calcDeps
 INTEGER                           :: nElems_FV
 INTEGER                           :: NVisu_FV
 REAL                              :: OutputTime
