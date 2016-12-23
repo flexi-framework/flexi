@@ -35,6 +35,7 @@ END INTERFACE
 PUBLIC::to2D_rank4
 PUBLIC::to2D_rank5
 PUBLIC::to2D_rank6
+PUBLIC::ExpandArrayTo3D
 
 CONTAINS
 
@@ -142,5 +143,52 @@ array = array_loc
 DEALLOCATE(array_loc)
 
 END SUBROUTINE to2D_rank6
+
+!==================================================================================================================================
+!> Routine to expand an array along a certain dimension, generally to make it compatible with 3D input/output routines.
+!> The size of the array in the dimension to be expanded must be one!
+!> The arrays will be used like a vector with a single dimension.
+!==================================================================================================================================
+SUBROUTINE ExpandArrayTo3D(rank,nVal,index3D,size3D,arrayIn,arrayOut) 
+! MODULES                                                                                                                          !
+USE MOD_Globals
+!----------------------------------------------------------------------------------------------------------------------------------!
+IMPLICIT NONE
+! INPUT / OUTPUT VARIABLES 
+INTEGER,INTENT(IN)             :: rank                           !< number of dimensions of the arrays
+INTEGER,INTENT(IN)             :: nVal(rank)                     !< number of entries per dimension
+INTEGER,INTENT(IN)             :: index3D                        !< index of te dimension that should be expanded
+INTEGER,INTENT(IN)             :: size3D                         !< expanded size of the 3D dimension 
+REAL,INTENT(IN)                :: arrayIn(PRODUCT(nVal))         !< Input array with a flat dimension
+REAL,INTENT(OUT)               :: arrayOut(PRODUCT(nVal)*size3D) !< Output array with a expanded dimension
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER           :: i,j,size1,size2,indexArrayIn_lower,indexArrayIn_upper,indexArrayOut_lower,indexArrayOut_upper
+!===================================================================================================================================
+! Sanity check
+IF (nVal(index3D).NE.1) &
+  CALL Abort(__STAMP__,"Size of third dimension of array to be expanded is not one!")
+
+size1 = PRODUCT(nVal(1:index3D-1))    ! number of entries in array up to dimension that should be expanded
+size2 = PRODUCT(nVal(index3D+1:rank)) ! number of entries in array after dimension that should be expanded
+
+! Iterate over the number of entries that come after the 3D dimension
+DO i=1,size2
+  ! Calculate the indizes of the chunk of entries that come before the 3D dimension in this current iteration 
+  ! for the flat array
+  indexArrayIn_lower = (i-1)*size1+1
+  indexArrayIn_upper = indexArrayIn_lower + size1 -1
+  ! Iterate over the size of the 3D dimension, write the chunk of entries from above that many times consecutively
+  DO j=1,size3D
+    ! Calculate the current indizes for the expanded array
+    indexArrayOut_lower = (i-1)*size1*size3D + (j-1)*size1 + 1
+    indexArrayOut_upper = indexArrayOut_lower + size1 - 1
+
+    ! Write the chunk of entries to the expanded array
+    arrayOut(indexArrayOut_lower:indexArrayOut_upper) = arrayIn(indexArrayIn_lower:indexArrayIn_upper)
+  END DO ! j=1,size3D
+END DO ! i=1,size2
+
+END SUBROUTINE ExpandArrayTo3D
 
 END MODULE MOD_2D
