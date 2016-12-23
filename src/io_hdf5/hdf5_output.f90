@@ -563,6 +563,10 @@ REAL,INTENT(IN)                :: OutputTime         !< Time of output
 ! LOCAL VARIABLES
 CHARACTER(LEN=255)             :: FileName
 REAL                           :: StartT,EndT
+REAL,POINTER                   :: UOut(:,:,:,:,:)
+#if PP_dim == 2
+INTEGER                        :: iElem,i,j,k,iVar
+#endif
 !==================================================================================================================================
 IF(MPIROOT)THEN
   WRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' WRITE BASE FLOW TO HDF5 FILE...'
@@ -573,6 +577,19 @@ END IF
 FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_BaseFlow',OutputTime))//'.h5'
 IF(MPIRoot) CALL GenerateFileSkeleton(TRIM(FileName),'BaseFlow',PP_nVar,PP_N,StrVarNames,MeshFileName,OutputTime)
 
+#if PP_dim == 3
+  UOut => SpBaseFlow
+#else
+  ALLOCATE(UOut(PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems))
+  DO iElem=1,nElems
+    DO j=0,PP_N; DO i=0,PP_N
+      DO iVar=1,PP_nVar
+        UOut(iVar,i,j,:,iElem)=SpBaseFlow(iVar,i,j,0,iElem)
+      END DO ! iVar=1,PP_nVar
+    END DO; END DO
+  END DO
+#endif  
+
 ! Write DG solution
 #if MPI
 CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
@@ -582,7 +599,7 @@ CALL GatheredWriteArray(FileName,create=.FALSE.,&
                         nValGlobal=(/PP_nVar,PP_N+1,PP_N+1,PP_N+1,nGlobalElems/),&
                         nVal=      (/PP_nVar,PP_N+1,PP_N+1,PP_N+1,nElems/),&
                         offset=    (/0,      0,     0,     0,     offsetElem/),&
-                        collective=.TRUE., RealArray=SpBaseFlow)
+                        collective=.TRUE., RealArray=UOut)
 
 IF(MPIRoot)THEN
   GETTIME(EndT)

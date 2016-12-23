@@ -203,17 +203,17 @@ END SELECT
 
 ! Preparation of the baseflow on each Gauss Point
 SWRITE(UNIT_StdOut,'(A)') '  Initialize Sponge Base Flow...'
-ALLOCATE(SpBaseFlow(PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems))
+ALLOCATE(SpBaseFlow(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 SELECT CASE(SpBaseflowType)
 CASE(SPONGEBASEFLOW_CONSTANT) ! constant baseflow from refstate
   DO iElem=1,nElems
-    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       SpBaseFlow(:,i,j,k,iElem)=RefStateCons(spongeRefState,:)
     END DO; END DO; END DO
   END DO
 CASE(SPONGEBASEFLOW_EXACTFUNC) ! Exactfunction
   DO iElem=1,nElems
-    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       !Save exactFunc state for later use
       CALL ExactFunc(SpongeExactFunc,0.,Elem_xGP(:,i,j,k,iElem),SpBaseFlow(:,i,j,k,iElem))
     END DO; END DO; END DO
@@ -230,7 +230,7 @@ CASE(SPONGEBASEFLOW_PRUETT) ! Pruett: RefState for computation from scratch, Bas
       SpongeExactFunc = IniExactFunc
     END IF
     DO iElem=1,nElems
-      DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+      DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
         !Save exactFunc state for later use
         CALL ExactFunc(SpongeExactFunc,0.,Elem_xGP(:,i,j,k,iElem),SpBaseFlow(:,i,j,k,iElem))
       END DO; END DO; END DO
@@ -275,19 +275,19 @@ USE MOD_VTK               ,ONLY:WriteDataToVTK3D
 INTEGER,INTENT(IN) :: SpongeShape                         !< sponge shape: 1: linear, 2: cylindrical
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-LOGICAL                                :: applySponge(nElems)
-INTEGER                                :: iElem,iSpongeElem,i,j,k
-CHARACTER(LEN=255)                     :: FileString,VarNameSponge(1)
-REAL,DIMENSION(  0:PP_N,0:PP_N,0:PP_N) :: sigma, x_star
-REAL                                   :: r_vec(3)
-REAL,ALLOCATABLE                       :: SpongeMat_NVisu(:,:,:,:,:),Coords_NVisu(:,:,:,:,:),SpDummy(:,:,:,:)
+LOGICAL                                 :: applySponge(nElems)
+INTEGER                                 :: iElem,iSpongeElem,i,j,k,NVisuZ
+CHARACTER(LEN=255)                      :: FileString,VarNameSponge(1)
+REAL,DIMENSION(  0:PP_N,0:PP_N,0:PP_NZ) :: sigma, x_star
+REAL                                    :: r_vec(3)
+REAL,ALLOCATABLE                        :: SpongeMat_NVisu(:,:,:,:,:),Coords_NVisu(:,:,:,:,:),SpDummy(:,:,:,:)
 !==================================================================================================================================
 SWRITE(UNIT_StdOut,'(A)') '  Initialize Sponge Ramping Function...'
 
 ! Precalculation of the sponge strength on the whole domain to determine actual sponge region
 applySponge=.FALSE.
 DO iElem=1,nElems
-  DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     SELECT CASE(SpongeShape)
       CASE(SPONGESHAPE_RAMP) ! ramp aligned with a vector
       x_star(i,j,k) =       SUM((Elem_xGP(:,i,j,k,iElem)-xStart)*SpVec)/SpDistance
@@ -301,7 +301,7 @@ END DO !iElem=1,nElems
 
 ! Get sponge count and build sponge mappings
 nSpongeElems=COUNT(applySponge)
-ALLOCATE(SpongeMat(0:PP_N,0:PP_N,0:PP_N,nSpongeElems))
+ALLOCATE(SpongeMat(0:PP_N,0:PP_N,0:PP_NZ,nSpongeElems))
 ALLOCATE(SpongeMap(nSpongeElems))
 iSpongeElem=0
 DO iElem=1,nElems
@@ -315,7 +315,7 @@ END DO
 SpongeMat=0.
 DO iSpongeElem=1,nSpongeElems
   iElem=spongeMap(iSpongeElem)
-  DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     SELECT CASE(SpongeShape)
       CASE(SPONGESHAPE_RAMP) ! ramp aligned with a vector
       x_star(i,j,k) =       SUM((Elem_xGP(:,i,j,k,iElem)-xStart)*SpVec)/SpDistance
@@ -337,9 +337,14 @@ END DO !iSpongeElem=1,nSpongeElems
 ! Visualize the Sponge Ramp
 IF(SpongeViz) THEN
   FileString=TRIM(INTSTAMP(TRIM(ProjectName),myRank))//'_SpongeRamp.vtu'
-  ALLOCATE(Coords_NVisu(1:3, 0:NVisu,0:NVisu,0:NVisu,nElems))
-  ALLOCATE(SpongeMat_NVisu(1,0:NVisu,0:NVisu,0:NVisu,nElems))
-  ALLOCATE(SpDummy(1,0:PP_N,0:PP_N,0:PP_N))
+#if PP_dim == 3
+  NVisuZ=NVisu
+#else
+  NVisuZ=0
+#endif
+  ALLOCATE(Coords_NVisu(1:3, 0:NVisu,0:NVisu,0:NVisuZ,nElems))
+  ALLOCATE(SpongeMat_NVisu(1,0:NVisu,0:NVisu,0:NVisuZ,nElems))
+  ALLOCATE(SpDummy(1,0:PP_N,0:PP_N,0:PP_NZ))
   ! Create coordinates of visualization points
   DO iElem=1,nElems
     CALL ChangeBasis3D(3,PP_N,NVisu,Vdm_GaussN_NVisu,Elem_xGP(1:3,:,:,:,iElem),Coords_NVisu(1:3,:,:,:,iElem))
@@ -361,7 +366,7 @@ END IF !SpongeViz
 ! Finally add the contribution of the Jacobian to SpongeMat (JU_src = (U-UBase)*SpMat)
 DO iSpongeElem=1,nSpongeElems
   iElem=spongeMap(iSpongeElem)
-  DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     SpongeMat(i,j,k,iSpongeElem) = SpongeMat(i,j,k,iSpongeElem)/sJ(i,j,k,iElem,0)
   END DO; END DO; END DO
 END DO
@@ -410,8 +415,7 @@ ENDIF
 ! Read in state
 IF((N_Base.EQ.PP_N).AND.(TRIM(NodeType_Base).EQ.TRIM(NodeType)))THEN
   ! No interpolation needed, read solution directly from file
-  CALL ReadArray('DG_Solution',5,(/PP_nVar,PP_N+1,PP_N+1,PP_N+1,nElems/),OffsetElem,5,RealArray=SpBaseFlow)
-  ! TODO: read additional data (e.g. indicators etc), if applicable
+  CALL ReadArray('DG_Solution',5,(/PP_nVar,PP_N+1,PP_N+1,PP_NZ+1,nElems/),OffsetElem,5,RealArray=SpBaseFlow)
 ELSE
   ! We need to interpolate the solution to the new computational grid
   SWRITE(UNIT_stdOut,*)'Interpolating base flow from file with N_Base=',N_Base,' to N=',PP_N
@@ -420,7 +424,11 @@ ELSE
   CALL GetVandermonde(N_Base,NodeType_Base,PP_N,NodeType,Vdm_NBase_N,modal=.TRUE.)
   CALL ReadArray('DG_Solution',5,(/PP_nVar,N_Base+1,N_Base+1,N_Base+1,nElems/),OffsetElem,5,RealArray=UTmp)
   DO iElem=1,nElems
+#if PP_dim == 3
     CALL ChangeBasis3D(PP_nVar,N_Base,PP_N,Vdm_NBase_N,UTmp(:,:,:,:,iElem),SpBaseFlow(:,:,:,:,iElem))
+#else
+    CALL ChangeBasis3D(PP_nVar,N_Base,PP_N,Vdm_NBase_N,UTmp(:,:,:,0:0,iElem),SpBaseFlow(:,:,:,:,iElem))
+#endif
   END DO
   DEALLOCATE(UTmp,Vdm_NBase_N)
 END IF
@@ -453,14 +461,14 @@ USE MOD_Mesh_Vars   ,ONLY: sJ
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(INOUT)  :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems) !< DG solution time derivative
+REAL,INTENT(INOUT)  :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< DG solution time derivative
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER             :: iElem,iSpongeElem,i,j,k
 #if FV_ENABLED    
-REAL                :: SpongeMatTmp(1,0:PP_N,0:PP_N,0:PP_N)
-REAL                :: SpongeMat_FV(1,0:PP_N,0:PP_N,0:PP_N)
-REAL                :: SpBaseFlow_FV(1:PP_nVar,0:PP_N,0:PP_N,0:PP_N)
+REAL                :: SpongeMatTmp(1,0:PP_N,0:PP_N,0:PP_NZ)
+REAL                :: SpongeMat_FV(1,0:PP_N,0:PP_N,0:PP_NZ)
+REAL                :: SpBaseFlow_FV(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 #endif
 !==================================================================================================================================
 DO iSpongeElem=1,nSpongeElems
@@ -468,20 +476,20 @@ DO iSpongeElem=1,nSpongeElems
 #if FV_ENABLED
   IF (FV_Elems(iElem).GT.0) THEN ! FV elem     
     ! Remove DG Jacobi from SpongeMat
-    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       SpongeMatTmp(1,i,j,k) = sJ(i,j,k,iElem,0)*SpongeMat(i,j,k,iSpongeElem)
     END DO; END DO; END DO ! i,j,k
     ! Change Basis of SpongeMat and SpongeBaseFlow to FV grid
     CALL ChangeBasis3D(1,PP_N,PP_N,FV_Vdm,SpongeMatTmp(:,:,:,:),SpongeMat_FV(:,:,:,:))
     CALL ChangeBasis3D(PP_nVar,PP_N,PP_N,FV_Vdm,SpBaseFlow(:,:,:,:,iElem),SpBaseFlow_FV(:,:,:,:))
     ! Calc and add source, take the FV Jacobian into account
-    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) - SpongeMat_Fv(1,i,j,k)/sJ(i,j,k,iElem,1) * &
                           (U(:,i,j,k,iElem) - SpBaseFlow_FV(:,i,j,k))
     END DO; END DO; END DO ! i,j,k
   ELSE
 #endif
-    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) - SpongeMat(   i,j,k,iSpongeElem) * &
                           (U(:,i,j,k,iElem) - SpBaseFlow(:,i,j,k,iElem))
     END DO; END DO; END DO
