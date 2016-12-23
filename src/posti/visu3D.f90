@@ -83,8 +83,8 @@ END FUNCTION cstrToChar255
 SUBROUTINE visu3d_requestInformation(mpi_comm_IN, strlen_state, statefile_IN, varnames)
 ! MODULES
 USE MOD_Globals
-USE MOD_MPI     ,ONLY: InitMPI
-USE MOD_Posti_Vars,ONLY: VarNamesTotal
+USE MOD_MPI        ,ONLY: InitMPI
+USE MOD_Posti_Vars ,ONLY: VarNamesTotal
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -289,20 +289,6 @@ IF (changedStateFile.OR.changedMeshFile) THEN
   END IF
   CALL ReadAttribute(File_ID,'Project_Name',1,StrScalar =ProjectName)
   CALL ReadAttribute(File_ID,'Time',        1,RealScalar=OutputTime)
-
-  ! if no explicit posti parameter file is given, then generate a default '.posti.ini' file
-  IF (LEN_TRIM(postifile).EQ.0) THEN
-    postifile = ".posti.ini"
-    IF (MPIRoot) THEN
-      OPEN(NEWUNIT=postiUnit,FILE=TRIM(postifile),STATUS='UNKNOWN',ACTION='WRITE',ACCESS='SEQUENTIAL',IOSTAT=stat)
-      WRITE(postiUnit,'(A,I3)') "NVisu   = ", PP_N+1
-      DO iVar=1,nVar_State
-        WRITE(postiUnit,'(A,A)') "VarName = ", TRIM(VarNamesHDF5(iVar))
-      END DO
-      CLOSE(postiUnit)
-    END IF
-    CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
-  END IF
 END IF
 
 CALL CloseDataFile()
@@ -347,9 +333,10 @@ END SUBROUTINE visu3d_InitFile
 !===================================================================================================================================
 !> C wrapper routine for the visu3D call from ParaView.
 !===================================================================================================================================
-SUBROUTINE visu3D_CWrapper(mpi_comm_IN, strlen_prm, prmfile_IN, strlen_posti, postifile_IN, strlen_state, statefile_IN,&
-        coordsDG_out,valuesDG_out,nodeidsDG_out, &
-        coordsFV_out,valuesFV_out,nodeidsFV_out,varnames_out,components_out)
+SUBROUTINE visu3D_CWrapper(mpi_comm_IN, &
+    strlen_prm, prmfile_IN, strlen_posti, postifile_IN, strlen_state, statefile_IN,&
+    coordsDG_out,valuesDG_out,nodeidsDG_out, &
+    coordsFV_out,valuesFV_out,nodeidsFV_out,varnames_out,components_out)
 USE ISO_C_BINDING
 USE MOD_Globals
 IMPLICIT NONE
@@ -405,6 +392,7 @@ USE MOD_Posti_Calc          ,ONLY: CalcQuantities_ConvertToVisu_FV
 #endif
 USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_DG,ConvertToVisu_GenericData
 USE MOD_ReadInTools         ,ONLY: prms,FinalizeParameters,ExtractParameterFile
+USE MOD_StringTools         ,ONLY: STRICMP
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)               :: mpi_comm_IN    
@@ -512,12 +500,13 @@ CALL prms%CreateIntOption(   "VisuDimension", "2 = Slice at first Gauss point in
 CALL prms%CreateStringOption("NodeTypeVisu" , "NodeType for visualization. Visu, Gauss,Gauss-Lobatto,Visu_inner"    ,"VISU")
 CALL prms%CreateLogicalOption("DGonly"      , "Visualize FV elements as DG elements."    ,".FALSE.")
 
-changedStateFile     = .FALSE.
-changedMeshFile      = .FALSE.
-changedNVisu         = .FALSE.
-changedVarNames      = .FALSE.
-changedFV_Elems      = .FALSE.
+changedStateFile      = .FALSE.
+changedMeshFile       = .FALSE.
+changedNVisu          = .FALSE.
+changedVarNames       = .FALSE.
+changedFV_Elems       = .FALSE.
 changedWithDGOperator = .FALSE.
+changedDGonly         = .FALSE.
 
 IF (ISVALIDMESHFILE(statefile)) THEN ! visualize mesh
   SWRITE(*,*) "MeshFile Mode"
@@ -532,7 +521,19 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   CALL visu3d_InitFile(statefile,postifile)
 
   ! read solution from state file (either direct or including a evaluation of the DG operator)
-  changedPrmFile = (prmfile .NE. prmfile_old)  
+  IF (LEN_TRIM(prmfile).EQ.0) THEN
+    changedPrmFile = .NOT.STRICMP(prmfile_old, ".flexi.ini")
+  ELSE
+    changedPrmFile = (prmfile .NE. prmfile_old)  
+  END IF
+  SWRITE (*,*) "changedStateFile     ", changedStateFile     
+  SWRITE (*,*) "changedMeshFile      ", changedMeshFile      
+  SWRITE (*,*) "changedNVisu         ", changedNVisu         
+  SWRITE (*,*) "changedVarNames      ", changedVarNames      
+  SWRITE (*,*) "changedFV_Elems      ", changedFV_Elems      
+  SWRITE (*,*) "changedWithDGOperator", changedWithDGOperator
+  SWRITE (*,*) "changedDGonly        ", changedDGonly
+  SWRITE (*,*) "changedPrmFile       ", changedPrmFile, TRIM(prmfile_old), " -> ", TRIM(prmfile)
   IF (changedStateFile.OR.changedWithDGOperator.OR.changedPrmFile.OR.changedDGonly) THEN
       CALL ReadState(prmfile,statefile)
   END IF

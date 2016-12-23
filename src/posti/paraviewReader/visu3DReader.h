@@ -108,26 +108,17 @@ class VTKIOPARALLEL_EXPORT visu3DReader :  public vtkMultiBlockDataSetAlgorithm
 
       char* FileName;
       int   NVisu;
-      int   NVisu_old;  
       char* NodeTypeVisu;
-      std::string NodeTypeVisu_old;
       int   Mode2d;
-      int   Mode2d_old;
       int   DGonly;
-      int   DGonly_old;
       char* ParameterFileOverwrite;
-      std::string ParameterFileOverwrite_old;
       char* MeshFileOverwrite;
-      std::string MeshFileOverwrite_old;
       std::vector<bool> VarNames_selected;
-      std::vector<bool> VarNames_selected_old;
-
       int NumProcesses;
       int ProcessId;
 
       // all loaded filenames, timesteps (multiple for timeseries)
       std::vector<std::string> FileNames;
-      std::string FileName_old;
       std::vector<double> Timesteps;
 
       int FindClosestTimeStep(double requestedTimeValue);
@@ -140,10 +131,6 @@ class VTKIOPARALLEL_EXPORT visu3DReader :  public vtkMultiBlockDataSetAlgorithm
       ~visu3DReader();
 
       virtual int FillOutputPortInformation(int port, vtkInformation* info);
-
-      std::vector<vtkSmartPointer<vtkUnstructuredGrid> > Blocks;
-
-
    private:
       // MPI
       vtkMultiProcessController *Controller;
