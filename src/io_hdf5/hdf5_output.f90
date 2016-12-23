@@ -73,19 +73,20 @@ CONTAINS
 !> Subroutine to write the solution U to HDF5 format
 !> Is used for postprocessing and for restart
 !==================================================================================================================================
-SUBROUTINE WriteState(MeshFileName,OutputTime,FutureTime,isErrorFile   )
+SUBROUTINE WriteState(MeshFileName,OutputTime,FutureTime,isErrorFile)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_DG_Vars      ,ONLY: U
-USE MOD_Output_Vars  ,ONLY: ProjectName,NOut,Vdm_N_NOut
-USE MOD_Mesh_Vars    ,ONLY: offsetElem,nGlobalElems,sJ,nElems
-USE MOD_ChangeBasis  ,ONLY: ChangeBasis3D
-USE MOD_Equation_Vars,ONLY: StrVarNames
+USE MOD_DG_Vars           ,ONLY: U
+USE MOD_Output_Vars       ,ONLY: ProjectName,NOut,Vdm_N_NOut
+USE MOD_Mesh_Vars         ,ONLY: offsetElem,nGlobalElems,sJ,nElems
+USE MOD_ChangeBasisByDim  ,ONLY: ChangeBasisVolume
+USE MOD_Equation_Vars     ,ONLY: StrVarNames
+USE MOD_2D                ,ONLY: ExpandArrayTo3D
 #if FV_ENABLED && FV_RECONSTRUCT
-USE MOD_FV_Vars      ,ONLY: gradUxi,gradUeta,gradUzeta,FV_dx_XI_L,FV_dx_ETA_L,FV_dx_ZETA_L
-USE MOD_FV_Vars      ,ONLY: FV_dx_XI_R,FV_dx_ETA_R,FV_dx_ZETA_R
-USE MOD_EOS          ,ONLY: ConsToPrim,PrimToCons
+USE MOD_FV_Vars           ,ONLY: gradUxi,gradUeta,gradUzeta,FV_dx_XI_L,FV_dx_ETA_L,FV_dx_ZETA_L
+USE MOD_FV_Vars           ,ONLY: FV_dx_XI_R,FV_dx_ETA_R,FV_dx_ZETA_R
+USE MOD_EOS               ,ONLY: ConsToPrim,PrimToCons
 #endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -99,16 +100,17 @@ LOGICAL,INTENT(IN)             :: isErrorFile    !< indicate whether an error fi
 CHARACTER(LEN=255)             :: FileName,FileType
 REAL                           :: StartT,EndT
 REAL,POINTER                   :: UOut(:,:,:,:,:)
-REAL                           :: Utmp(5,0:PP_N,0:PP_N,0:PP_N)
-REAL                           :: JN(1,0:PP_N,0:PP_N,0:PP_N),JOut(1,0:NOut,0:NOut,0:NOut)
-INTEGER                        :: iElem,i,j,k,iVar
-#if FV_ENABLED & FV_RECONSTRUCT
-REAL                           :: UPrim(1:PP_nVarPrim)
-REAL                           :: UCons(1:PP_nVar)
-REAL                           :: gradUx(1:PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems)
-REAL                           :: gradUy(1:PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems)
-REAL                           :: gradUz(1:PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems)
-#endif
+REAL,ALLOCATABLE               :: UOutTmp(:,:,:,:,:)
+REAL                           :: Utmp(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
+REAL                           :: JN(1,0:PP_N,0:PP_N,0:PP_NZ),JOut(1,0:NOut,0:NOut,0:PP_NOutZ)
+INTEGER                        :: iElem,i,j,k,iVar,nVal(5)
+!#if FV_ENABLED & FV_RECONSTRUCT
+!REAL                           :: UPrim(1:PP_nVarPrim)
+!REAL                           :: UCons(1:PP_nVar)
+!REAL                           :: gradUx(1:PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems)
+!REAL                           :: gradUy(1:PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems)
+!REAL                           :: gradUz(1:PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems)
+!#endif
 !==================================================================================================================================
 IF(MPIRoot)THEN
   WRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' WRITE STATE TO HDF5 FILE...'
@@ -138,6 +140,9 @@ FileType=MERGE('ERROR_State','State      ',isErrorFile)
 FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_'//TRIM(FileType),OutputTime))//'.h5'
 IF(MPIRoot) CALL GenerateFileSkeleton(TRIM(FileName),'State',PP_nVar,NOut,StrVarNames,MeshFileName,OutputTime,FutureTime)
 
+! Set size of output 
+nVal=(/PP_nVar,NOut+1,NOut+1,PP_NOutZ+1,nElems/)
+
 ! build output data
 IF(NOut.NE.PP_N)THEN
 #if FV_ENABLED
@@ -145,40 +150,53 @@ IF(NOut.NE.PP_N)THEN
       "NOut not working for FV!")
 #endif
   ! Project JU and J to NOut, compute U on Nout
-  ALLOCATE(UOut(PP_nVar,0:NOut,0:NOut,0:NOut,nElems))
+  ALLOCATE(UOut(PP_nVar,0:NOut,0:NOut,0:PP_NOutZ,nElems))
   DO iElem=1,nElems
     JN(1,:,:,:)=1./sJ(:,:,:,iElem,0)
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-#if PP_dim == 3
       Utmp(:,i,j,k)=U(:,i,j,k,iElem)*JN(1,i,j,k)
-#else
       DO iVar=1,PP_nVar
         Utmp(iVar,i,j,:)=U(iVar,i,j,k,iElem)*JN(1,i,j,k)
       END DO ! iVar=1,PP_nVar
-#endif
     END DO; END DO; END DO
-    CALL ChangeBasis3D(PP_nVar,PP_N,NOut,Vdm_N_NOut,&
-                       Utmp,UOut(1:PP_nVar,:,:,:,iElem))
+    CALL ChangeBasisVolume(PP_nVar,PP_N,NOut,Vdm_N_NOut,&
+                           Utmp,UOut(1:PP_nVar,:,:,:,iElem))
     ! Jacobian
-    CALL ChangeBasis3D(1,PP_N,NOut,Vdm_N_NOut,JN,JOut)
-    DO k=0,NOut; DO j=0,NOut; DO i=0,NOut
+    CALL ChangeBasisVolume(1,PP_N,NOut,Vdm_N_NOut,JN,JOut)
+    DO k=0,PP_NOutZ; DO j=0,NOut; DO i=0,NOut
       UOut(:,i,j,k,iElem)=UOut(:,i,j,k,iElem)/JOut(1,i,j,k)
     END DO; END DO; END DO
   END DO
-ELSE
+#if PP_dim == 2
+  ! If the output should be done with a full third dimension in a two dimensional computation, we need to expand the solution
+  IF (.NOT.IO_2D) THEN 
+    ALLOCATE(UOutTmp(PP_nVar,0:NOut,0:NOut,0:PP_NOutZ,nElems))
+    UOutTmp = UOut
+    DEALLOCATE(UOut)
+    ALLOCATE(UOut(PP_nVar,0:NOut,0:NOut,0:NOut,nElems))
+    CALL ExpandArrayTo3D(5,nVal,4,Nout+1,UOutTmp,UOut)
+    DEALLOCATE(UOutTmp)
+    nVal=(/PP_nVar,NOut+1,NOut+1,NOut+1,nElems/)
+  END IF
+#endif
+
+ELSE ! write state on same polynomial degree as the solution
+
 #if PP_dim == 3
   UOut => U
 #else
-  ALLOCATE(UOut(PP_nVar,0:NOut,0:NOut,0:NOut,nElems))
-  DO iElem=1,nElems
-    DO j=0,NOut; DO i=0,NOut
-      DO iVar=1,PP_nVar
-        UOut(iVar,i,j,:,iElem)=U(iVar,i,j,0,iElem)
-      END DO ! iVar=1,PP_nVar
-    END DO; END DO
-  END DO
-#endif  
-END IF
+  IF (.NOT.IO_2D) THEN
+    ! If the output should be done with a full third dimension in a two dimensional computation, we need to expand the solution
+    ALLOCATE(UOut(PP_nVar,0:NOut,0:NOut,0:PP_N,nElems))
+    CALL ExpandArrayTo3D(5,(/PP_nVar,PP_N+1,PP_N+1,PP_NZ+1,nElems/),4,Nout+1,U,UOut)
+    ! Correct size of the output array
+    nVal=(/PP_nVar,NOut+1,NOut+1,NOut+1,nElems/)
+  ELSE
+    UOut => U
+  END IF
+#endif
+END IF ! (NOut.NE.PP_N)
+
 
 ! Reopen file and write DG solution
 #if MPI
@@ -187,7 +205,7 @@ CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
 CALL GatheredWriteArray(FileName,create=.FALSE.,&
                         DataSetName='DG_Solution', rank=5,&
                         nValGlobal=(/PP_nVar,NOut+1,NOut+1,NOut+1,nGlobalElems/),&
-                        nVal=      (/PP_nVar,NOut+1,NOut+1,NOut+1,nElems/),&
+                        nVal=nVal                                              ,&
                         offset=    (/0,      0,     0,     0,     offsetElem/),&
                         collective=.TRUE.,RealArray=UOut)
 
@@ -214,7 +232,8 @@ CALL GatheredWriteArray(FileName,create=.FALSE.,&
                         !collective=.TRUE., RealArray=gradUz)
 !#endif
                     
-IF((PP_N .NE. NOut).OR.(PP_dim .EQ. 2)) DEALLOCATE(UOut)
+! Deallocate UOut only if we did not point to U
+IF((PP_N .NE. NOut).OR.((PP_dim .EQ. 2).AND.(.NOT.IO_2D))) DEALLOCATE(UOut)
 
 CALL WriteAdditionalElemData(FileName,ElementOut)
 CALL WriteAdditionalFieldData(FileName,FieldOut)
@@ -544,6 +563,10 @@ REAL,INTENT(IN)                :: OutputTime         !< Time of output
 ! LOCAL VARIABLES
 CHARACTER(LEN=255)             :: FileName
 REAL                           :: StartT,EndT
+REAL,POINTER                   :: UOut(:,:,:,:,:)
+#if PP_dim == 2
+INTEGER                        :: iElem,i,j,k,iVar
+#endif
 !==================================================================================================================================
 IF(MPIROOT)THEN
   WRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' WRITE BASE FLOW TO HDF5 FILE...'
@@ -554,6 +577,19 @@ END IF
 FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_BaseFlow',OutputTime))//'.h5'
 IF(MPIRoot) CALL GenerateFileSkeleton(TRIM(FileName),'BaseFlow',PP_nVar,PP_N,StrVarNames,MeshFileName,OutputTime)
 
+#if PP_dim == 3
+  UOut => SpBaseFlow
+#else
+  ALLOCATE(UOut(PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems))
+  DO iElem=1,nElems
+    DO j=0,PP_N; DO i=0,PP_N
+      DO iVar=1,PP_nVar
+        UOut(iVar,i,j,:,iElem)=SpBaseFlow(iVar,i,j,0,iElem)
+      END DO ! iVar=1,PP_nVar
+    END DO; END DO
+  END DO
+#endif  
+
 ! Write DG solution
 #if MPI
 CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
@@ -563,7 +599,7 @@ CALL GatheredWriteArray(FileName,create=.FALSE.,&
                         nValGlobal=(/PP_nVar,PP_N+1,PP_N+1,PP_N+1,nGlobalElems/),&
                         nVal=      (/PP_nVar,PP_N+1,PP_N+1,PP_N+1,nElems/),&
                         offset=    (/0,      0,     0,     0,     offsetElem/),&
-                        collective=.TRUE., RealArray=SpBaseFlow)
+                        collective=.TRUE., RealArray=UOut)
 
 IF(MPIRoot)THEN
   GETTIME(EndT)
@@ -697,7 +733,11 @@ CALL OpenDataFile(TRIM(FileName),create=.TRUE.,single=.TRUE.,readOnly=.FALSE.,us
 CALL WriteHeader(TRIM(TypeString),File_ID)
 
 ! Preallocate the data space for the dataset.
-Dimsf=(/nVar,NData+1,NData+1,NData+1,nGlobalElems/)
+IF(IO_2D) THEN
+  Dimsf=(/nVar,NData+1,NData+1,1,nGlobalElems/)
+ELSE
+  Dimsf=(/nVar,NData+1,NData+1,NData+1,nGlobalElems/)
+END IF
 
 CALL H5SCREATE_SIMPLE_F(5, Dimsf, FileSpace, iError)
 ! Create the dataset with default properties.

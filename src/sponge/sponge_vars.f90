@@ -35,6 +35,6 @@ REAL             :: SpDistance            !< Length of sponge ramp.
                                           !< The sponge will have maximum strength at the end of the ramp and after that point
 REAL             :: SpRadius              !< Radius of the sponge zone (SpongeShape=2)
 REAL,ALLOCATABLE :: SpongeMat(:,:,:,:)    !< precomputed sponge functions per DOF and sponge elem
-REAL,ALLOCATABLE :: SpBaseFlow(:,:,:,:,:) !< precompute global reference state for whole field
+REAL,ALLOCATABLE,TARGET :: SpBaseFlow(:,:,:,:,:) !< precompute global reference state for whole field
 !==================================================================================================================================
 END MODULE MOD_Sponge_Vars
