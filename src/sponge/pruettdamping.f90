@@ -75,7 +75,7 @@ USE MOD_Mesh_Vars,  ONLY:nElems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN) :: UIn(PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems) !< Global solution array
+REAL,INTENT(IN) :: UIn(PP_nVar,0:PP_N,0:PP_NZ,0:PP_N,nElems) !< Global solution array
 REAL,INTENT(IN) :: dt                                       !< Current timestep
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
