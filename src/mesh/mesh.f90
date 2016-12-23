@@ -375,6 +375,23 @@ END SUBROUTINE BuildOverintMesh
 #if PP_dim == 2
 !==================================================================================================================================
 !> This routine converts all 3D mesh quantities to a 2D mesh, including mappings, rotations etc.
+!> We use CGNS notation, which is for 2D:
+!>
+!>         ^
+!>         |
+!>         |  eta
+!>
+!>       <---
+!>     +-------+
+!>   | |       | ^
+!>   | |       | |   --->  xi
+!>   v |       | |
+!>     +-------+
+!>       --->
+!>
+!> The arrows along the square indicate the coordinate system on the side. These correspond to the first index of the 3D side 
+!> coordinate systems, except for XI_MINUS, where it corresponds to the negative of the second index, so all values need to be 
+!> rotated accordingly from 3D on these sides.
 !==================================================================================================================================
 SUBROUTINE Convert2D()
 ! MODULES
@@ -391,6 +408,7 @@ IMPLICIT NONE
 INTEGER :: iElem,i,j,iSide
 REAL    :: tmp(3,0:PP_N,0:PP_N,0:FV_ENABLED)
 !==================================================================================================================================
+! In 2D, there is only one flip for the slave sides (1)
 DO iSide=1,nSides
   SideToElem(S2E_FLIP,iSide) = MERGE(SideToElem(S2E_FLIP,iSide), 1, SideToElem(S2E_FLIP,iSide).LE.0)
 END DO 
@@ -404,6 +422,8 @@ END DO
 
 CALL buildMappings(PP_N,V2S=V2S,V2S2=V2S2,S2V=S2V,S2V2=S2V2,FS2M=FS2M, dim=2)
 
+! Correctly flip and rotate all values on the XI_MINUS sides.
+! The tangential vector is always stored in TangVec1.
 DO iSide=1,nSides
   SELECT CASE (SideToElem(S2E_LOC_SIDE_ID,iSide))
   CASE(XI_MINUS)
@@ -431,6 +451,7 @@ DO iSide=1,nSides
   END SELECT
 END DO
 
+! Nullify all components in the third dimension
 Elem_xGP(3,:,:,:,:) = 0.
 Metrics_fTilde(3,:,:,:,:,:) = 0.
 Metrics_gTilde(3,:,:,:,:,:) = 0.
@@ -441,6 +462,7 @@ TangVec1(3,:,:,:,:) = 0.
 TangVec2(:,:,:,:,:) = 0.
 Face_xGP(3,:,:,:,:) = 0.
 
+! Reduce the bounds of the arrays to be 0:0 in the third dimension (dimension is still kept for compatibility reasons)
 CALL to2D_rank5((/1,0,0,0,1/),  (/3,PP_N,PP_N,PP_N,nElems/),4,Elem_xGP)
 CALL to2D_rank6((/1,0,0,0,1,0/),(/3,PP_N,PP_N,PP_N,nElems,FV_ENABLED/),4,Metrics_fTilde)
 CALL to2D_rank6((/1,0,0,0,1,0/),(/3,PP_N,PP_N,PP_N,nElems,FV_ENABLED/),4,Metrics_gTilde)

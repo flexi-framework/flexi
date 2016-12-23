@@ -14,6 +14,7 @@
 #include "flexi.h"
 
 !==================================================================================================================================
+!> Module containing routines that are provided for 2D computations.
 !==================================================================================================================================
 MODULE MOD_2D
 ! MODULES
@@ -39,13 +40,16 @@ PUBLIC::ExpandArrayTo3D
 
 CONTAINS
 
+!==================================================================================================================================
+!> Reduce the size of a single dimension of a rank 4 array to 1.
+!==================================================================================================================================
 SUBROUTINE to2D_rank4(lbound_in,ubound_in,index3D,array) 
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
-INTEGER,INTENT(IN)             :: lbound_in(4)
-INTEGER,INTENT(IN)             :: ubound_in(4)
-INTEGER,INTENT(IN)             :: index3D
-REAL,INTENT(INOUT),ALLOCATABLE :: array(:,:,:,:)
+INTEGER,INTENT(IN)             :: lbound_in(4)    !< Lower bounds of array
+INTEGER,INTENT(IN)             :: ubound_in(4)    !< Upper bounds of array
+INTEGER,INTENT(IN)             :: index3D         !< Dimension that will get reduced
+REAL,INTENT(INOUT),ALLOCATABLE :: array(:,:,:,:)  !< Array of rank 4
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL,ALLOCATABLE               :: array_loc(:,:,:,:)
@@ -71,13 +75,16 @@ DEALLOCATE(array_loc)
 
 END SUBROUTINE to2D_rank4
 
+!==================================================================================================================================
+!> Reduce the size of a single dimension of a rank 5 array to 1.
+!==================================================================================================================================
 SUBROUTINE to2D_rank5(lbound_in,ubound_in,index3D,array) 
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
-INTEGER,INTENT(IN)             :: lbound_in(5)
-INTEGER,INTENT(IN)             :: ubound_in(5)
-INTEGER,INTENT(IN)             :: index3D
-REAL,INTENT(INOUT),ALLOCATABLE :: array(:,:,:,:,:)
+INTEGER,INTENT(IN)             :: lbound_in(5)      !< Lower bounds of array
+INTEGER,INTENT(IN)             :: ubound_in(5)      !< Upper bounds of array
+INTEGER,INTENT(IN)             :: index3D           !< Dimension that will get reduced
+REAL,INTENT(INOUT),ALLOCATABLE :: array(:,:,:,:,:)  !< Array of rank 5
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL,ALLOCATABLE               :: array_loc(:,:,:,:,:)
@@ -106,13 +113,16 @@ DEALLOCATE(array_loc)
 
 END SUBROUTINE to2D_rank5
 
+!==================================================================================================================================
+!> Reduce the size of a single dimension of a rank 6 array to 1.
+!==================================================================================================================================
 SUBROUTINE to2D_rank6(lbound_in,ubound_in,index3D,array) 
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
-INTEGER,INTENT(IN)             :: lbound_in(6)
-INTEGER,INTENT(IN)             :: ubound_in(6)
-INTEGER,INTENT(IN)             :: index3D
-REAL,INTENT(INOUT),ALLOCATABLE :: array(:,:,:,:,:,:)
+INTEGER,INTENT(IN)             :: lbound_in(6)        !< Lower bounds of array
+INTEGER,INTENT(IN)             :: ubound_in(6)        !< Upper bounds of array
+INTEGER,INTENT(IN)             :: index3D             !< Dimension that will get reduced
+REAL,INTENT(INOUT),ALLOCATABLE :: array(:,:,:,:,:,:)  !< Array of rank 6
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL,ALLOCATABLE               :: array_loc(:,:,:,:,:,:)
