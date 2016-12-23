@@ -91,7 +91,6 @@ END SUBROUTINE DefineParametersMesh
 SUBROUTINE InitMesh()
 ! MODULES
 USE MOD_Globals
-USE MOD_2D
 USE MOD_PreProc
 USE MOD_Mesh_Vars
 USE MOD_HDF5_Input
@@ -116,7 +115,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 REAL              :: x(3),meshScale
 REAL,POINTER      :: coords(:,:,:,:,:)
-INTEGER           :: iElem,i,j,k,nElemsLoc,iSide,locSide
+INTEGER           :: iElem,i,j,k,nElemsLoc
 LOGICAL           :: validMesh
 INTEGER           :: firstMasterSide     ! lower side ID of array U_master/gradUx_master...
 INTEGER           :: lastMasterSide      ! upper side ID of array U_master/gradUx_master...
@@ -289,17 +288,6 @@ CALL CalcMetrics()     ! DG metrics
 CALL InitFV_Metrics()  ! FV metrics
 #endif
 
-#if PP_dim == 2
-DO iSide=1,nSides
-  SideToElem(S2E_FLIP,iSide) = MERGE(0, 1, SideToElem(S2E_FLIP,iSide).EQ.0)
-END DO 
-DO iElem=1,nElems
-  DO locSide=2,5
-    ElemToSide(E2S_FLIP,locSide,iElem) = MERGE(0, 1, ElemToSide(E2S_FLIP,locSide,iElem).EQ.0)
-  END DO 
-END DO 
-#endif
-
 DEALLOCATE(NodeCoords)
 DEALLOCATE(dXCL_N)
 DEALLOCATE(Ja_Face)
@@ -307,42 +295,8 @@ SDEALLOCATE(TreeCoords)
 SDEALLOCATE(xiMinMax)
 SDEALLOCATE(ElemToTree)
 
-
 #if PP_dim == 2
-CALL buildMappings(PP_N,V2S=V2S,V2S2=V2S2,S2V=S2V,S2V2=S2V2,FS2M=FS2M, dim=2)
-
-CALL to2D_rank5((/1,0,0,0,1/),  (/3,PP_N,PP_N,PP_N,nElems/),4,Elem_xGP)
-CALL to2D_rank6((/1,0,0,0,1,0/),(/3,PP_N,PP_N,PP_N,nElems,FV_ENABLED/),4,Metrics_fTilde)
-CALL to2D_rank6((/1,0,0,0,1,0/),(/3,PP_N,PP_N,PP_N,nElems,FV_ENABLED/),4,Metrics_gTilde)
-CALL to2D_rank6((/1,0,0,0,1,0/),(/3,PP_N,PP_N,PP_N,nElems,FV_ENABLED/),4,Metrics_hTilde)
-CALL to2D_rank5((/0,0,0,1,0/),  (/PP_N,PP_N,PP_N,nElems,FV_ENABLED/),3,sJ)
-CALL to2D_rank5((/1,0,0,0,1/),  (/1,NgeoRef,NgeoRef,NgeoRef,nElems/),4,DetJac_Ref)
-
-CALL to2D_rank5((/1,0,0,0,1/),(/3,PP_N,PP_N,FV_ENABLED,nSides/),3,Face_xGP)
-CALL to2D_rank5((/1,0,0,0,1/),(/3,PP_N,PP_N,FV_ENABLED,nSides/),3,NormVec)
-CALL to2D_rank5((/1,0,0,0,1/),(/3,PP_N,PP_N,FV_ENABLED,nSides/),3,TangVec1)
-CALL to2D_rank5((/1,0,0,0,1/),(/3,PP_N,PP_N,FV_ENABLED,nSides/),3,TangVec2)
-CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,FV_ENABLED,nSides/),2,SurfElem)
-
-Elem_xGP(3,:,:,:,:) = 0.
-Metrics_fTilde(3,:,:,:,:,:) = 0.
-Metrics_gTilde(3,:,:,:,:,:) = 0.
-Metrics_hTilde(:,:,:,:,:,:) = 0.
-
-DO iSide=1,nSides
-  SELECT CASE (SideToElem(S2E_LOC_SIDE_ID,iSide))
-  CASE(XI_MINUS)
-    TangVec1(:,:,:,:,iSide) = -TangVec1(:,:,:,:,iSide)
-  CASE(ETA_MINUS)
-    TangVec1(:,:,:,:,iSide) = -TangVec2(:,:,:,:,iSide)
-  CASE(ETA_PLUS)
-    TangVec1(:,:,:,:,iSide) = -TangVec2(:,:,:,:,iSide)
-  END SELECT
-END DO
-NormVec (3,:,:,:,:) = 0.
-TangVec1(3,:,:,:,:) = 0.
-TangVec2(:,:,:,:,:) = 0.
-Face_xGP(3,:,:,:,:) = 0.
+CALL Convert2D()
 #endif
 
 ! debugmesh: param specifies format to output, 0: no output, 1: tecplot ascii, 2: tecplot binary, 3: paraview binary
@@ -416,6 +370,91 @@ DO iElem=1,nElems
                        NormVecO,TangVec1O,TangVec2O,SurfElemO,Face_xGPO)
 END DO
 END SUBROUTINE BuildOverintMesh
+
+
+#if PP_dim == 2
+!==================================================================================================================================
+!> This routine converts all 3D mesh quantities to a 2D mesh, including mappings, rotations etc.
+!==================================================================================================================================
+SUBROUTINE Convert2D()
+! MODULES
+USE MOD_PreProc
+USE MOD_Globals
+USE MOD_Mesh_Vars
+USE MOD_2D
+USE MOD_Mappings,           ONLY:buildMappings
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER :: iElem,i,j,iSide
+REAL    :: tmp(3,0:PP_N,0:PP_N,0:FV_ENABLED)
+!==================================================================================================================================
+DO iSide=1,nSides
+  SideToElem(S2E_FLIP,iSide) = MERGE(SideToElem(S2E_FLIP,iSide), 1, SideToElem(S2E_FLIP,iSide).LE.0)
+END DO 
+ElemToSide(:,1,:) = -999
+ElemToSide(:,6,:) = -999
+DO iElem=1,nElems
+  DO iSide=2,5
+    ElemToSide(E2S_FLIP,iSide,iElem) = MERGE(ElemToSide(E2S_FLIP,iSide,iElem), 1, ElemToSide(E2S_FLIP,iSide,iElem).LE.0)
+  END DO 
+END DO 
+
+CALL buildMappings(PP_N,V2S=V2S,V2S2=V2S2,S2V=S2V,S2V2=S2V2,FS2M=FS2M, dim=2)
+
+DO iSide=1,nSides
+  SELECT CASE (SideToElem(S2E_LOC_SIDE_ID,iSide))
+  CASE(XI_MINUS)
+    ! has to be flipped
+    tmp=Face_xGP(:,:,:,:,iSide)
+    DO j=0,PP_N; DO i=0,PP_N
+      Face_xGP(:,PP_N-j,i,:,iSide)=tmp(:,i,j,:)
+    END DO; END DO
+    tmp=NormVec(:,:,:,:,iSide)
+    DO j=0,PP_N; DO i=0,PP_N
+      NormVec(:,PP_N-j,i,:,iSide)=tmp(:,i,j,:)
+    END DO; END DO
+    tmp=-TangVec1(:,:,:,:,iSide)
+    DO j=0,PP_N; DO i=0,PP_N
+      TangVec1(:,PP_N-j,i,:,iSide)=tmp(:,i,j,:)
+    END DO; END DO
+    tmp(1,:,:,:)=SurfElem(:,:,:,iSide)
+    DO j=0,PP_N; DO i=0,PP_N
+      SurfElem(PP_N-j,i,:,iSide)=tmp(1,i,j,:)
+    END DO; END DO
+  CASE(ETA_MINUS)
+    TangVec1(:,:,:,:,iSide) = -TangVec2(:,:,:,:,iSide)
+  CASE(ETA_PLUS)
+    TangVec1(:,:,:,:,iSide) = -TangVec2(:,:,:,:,iSide)
+  END SELECT
+END DO
+
+Elem_xGP(3,:,:,:,:) = 0.
+Metrics_fTilde(3,:,:,:,:,:) = 0.
+Metrics_gTilde(3,:,:,:,:,:) = 0.
+Metrics_hTilde(:,:,:,:,:,:) = 0.
+
+NormVec (3,:,:,:,:) = 0.
+TangVec1(3,:,:,:,:) = 0.
+TangVec2(:,:,:,:,:) = 0.
+Face_xGP(3,:,:,:,:) = 0.
+
+CALL to2D_rank5((/1,0,0,0,1/),  (/3,PP_N,PP_N,PP_N,nElems/),4,Elem_xGP)
+CALL to2D_rank6((/1,0,0,0,1,0/),(/3,PP_N,PP_N,PP_N,nElems,FV_ENABLED/),4,Metrics_fTilde)
+CALL to2D_rank6((/1,0,0,0,1,0/),(/3,PP_N,PP_N,PP_N,nElems,FV_ENABLED/),4,Metrics_gTilde)
+CALL to2D_rank6((/1,0,0,0,1,0/),(/3,PP_N,PP_N,PP_N,nElems,FV_ENABLED/),4,Metrics_hTilde)
+CALL to2D_rank5((/0,0,0,1,0/),  (/PP_N,PP_N,PP_N,nElems,FV_ENABLED/),3,sJ)
+CALL to2D_rank5((/1,0,0,0,1/),  (/1,NgeoRef,NgeoRef,NgeoRef,nElems/),4,DetJac_Ref)
+
+CALL to2D_rank5((/1,0,0,0,1/),(/3,PP_N,PP_N,FV_ENABLED,nSides/),3,Face_xGP)
+CALL to2D_rank5((/1,0,0,0,1/),(/3,PP_N,PP_N,FV_ENABLED,nSides/),3,NormVec)
+CALL to2D_rank5((/1,0,0,0,1/),(/3,PP_N,PP_N,FV_ENABLED,nSides/),3,TangVec1)
+CALL to2D_rank5((/1,0,0,0,1/),(/3,PP_N,PP_N,FV_ENABLED,nSides/),3,TangVec2)
+CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,FV_ENABLED,nSides/),2,SurfElem)
+END SUBROUTINE Convert2D
+#endif
 
 !============================================================================================================================
 !> Deallocate mesh data.
