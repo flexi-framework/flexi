@@ -55,17 +55,17 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 LOGICAL,INTENT(IN)        :: doMPISides
-REAL,INTENT(INOUT),TARGET :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
-REAL,INTENT(INOUT),TARGET :: UPrim_slave (PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
-REAL,INTENT(INOUT)        :: FV_multi_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
-REAL,INTENT(INOUT)        :: FV_multi_slave (PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
-REAL,INTENT(IN)           :: FV_surf_gradU_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
-REAL,INTENT(IN)           :: FV_surf_gradU_slave (PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
+REAL,INTENT(INOUT),TARGET :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides)
+REAL,INTENT(INOUT),TARGET :: UPrim_slave (PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides)
+REAL,INTENT(INOUT)        :: FV_multi_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides)
+REAL,INTENT(INOUT)        :: FV_multi_slave (PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides)
+REAL,INTENT(IN)           :: FV_surf_gradU_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides)
+REAL,INTENT(IN)           :: FV_surf_gradU_slave (PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
 INTEGER :: SideID,firstSideID,lastSideID
 INTEGER :: p,q
-REAL    :: gradU(1:PP_nVarPrim,0:PP_N,0:PP_N)
+REAL    :: gradU(1:PP_nVarPrim,0:PP_N,0:PP_NZ)
 !==================================================================================================================================
 ! reconstruct UPrim_master/slave for sides ranging between firstSideID and lastSideID 
 IF(doMPISides)THEN 
@@ -84,7 +84,7 @@ DO SideID=firstSideID,lastSideID
     ! see 'FV_PrepareSurfGradient' subroutine in fv_reconstruction.f90 for details.
     ! FV_surf_gradU_master contains the gradient over the DG element interface and is calculated in 'FV_SurfCalcGradients'
     ! subroutine in fv_reconstruction.f90
-    DO q=0,PP_N; DO p=0,PP_N
+    DO q=0,PP_NZ; DO p=0,PP_N
       CALL FV_Limiter(FV_multi_master(:,p,q,SideID), FV_surf_gradU_master(:,p,q,SideID), gradU(:,p,q)) 
       UPrim_master(:,p,q,SideID) = UPrim_master(:,p,q,SideID) - gradU(:,p,q) * FV_dx_master(1,p,q,SideID)
     END DO; END DO ! p,q=0,PP_N
@@ -92,7 +92,7 @@ DO SideID=firstSideID,lastSideID
   IF (SideID.GE.firstInnerSide) THEN
     IF (FV_Elems_slave(SideID).GT.0) THEN ! FV element
       ! see comment above for FV_multi_master and FV_surf_gradU_master. Same holds for FV_multi_slave and FV_surf_gradU_slave.
-      DO q=0,PP_N; DO p=0,PP_N
+      DO q=0,PP_NZ; DO p=0,PP_N
         CALL FV_Limiter(FV_multi_slave(:,p,q,SideID), FV_surf_gradU_slave(:,p,q,SideID), gradU(:,p,q)) 
         UPrim_slave(:,p,q,SideID) = UPrim_slave(:,p,q,SideID) - gradU(:,p,q) * FV_dx_slave(1,p,q,SideID)
       END DO; END DO ! p,q=0,PP_N

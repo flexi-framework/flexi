@@ -44,6 +44,7 @@ CONTAINS
 SUBROUTINE InitFV_Metrics()
 ! MODULES
 USE MOD_Globals
+USE MOD_2D
 USE MOD_PreProc
 USE MOD_FV_Vars
 USE MOD_FV_Basis
@@ -352,7 +353,11 @@ DO iElem=1,nElems
   FV_sdx_ZETA(:,:,:,iElem) = 1. / FV_dx_ZETA
 
   ! Calculate distance between first GaussPoint and interface
+#if PP_dim == 3  
   DO locSideID=1,6
+#else    
+  DO locSideID=2,5
+#endif    
     length=0.
     SideID = ElemToSide(E2S_SIDE_ID,locSideID,iElem)
     flip   = ElemToSide(E2S_FLIP,   locSideID,iElem)
@@ -380,14 +385,14 @@ DO iElem=1,nElems
     END SELECT
 
     IF (flip.EQ.0) THEN ! master side
-      DO q=0,PP_N; DO p=0,PP_N
+      DO q=0,PP_NZ; DO p=0,PP_N
         ijk(1:2) = S2V2(:,p,q,flip,locSideID)
         DG_dx_master(1,p,q,SideID) = length(ijk(1),ijk(2))
         ijk = S2V(:,0,p,q,flip,locSideID)
         FV_dx_master(1,p,q,SideID) = FV_dx_P(ijk(1),ijk(2),ijk(3))
       END DO; END DO
     ELSE ! slave side
-      DO q=0,PP_N; DO p=0,PP_N
+      DO q=0,PP_NZ; DO p=0,PP_N
         ijk(1:2) = S2V2(:,p,q,flip,locSideID)
         DG_dx_slave(1,p,q,SideID) = length(ijk(1),ijk(2))
         ijk = S2V(:,0,p,q,flip,locSideID)
@@ -450,6 +455,46 @@ DO iElem=1,nElems
   END DO
 #endif
 END DO
+#endif
+
+#if PP_dim == 2
+#if FV_RECONSTRUCT
+CALL to2D_rank4((/1,0,0,1/),  (/PP_N,PP_N,PP_N,nElems/),3,FV_sdx_XI  ) 
+CALL to2D_rank4((/0,1,0,1/),  (/PP_N,PP_N,PP_N,nElems/),3,FV_sdx_ETA ) 
+CALL to2D_rank4((/0,0,1,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_sdx_ZETA) 
+
+CALL to2D_rank4((/0,0,1,1/),  (/PP_N,PP_N,3,lastMPISide_MINE/),2,FV_sdx_Face) 
+
+CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,PP_N,nElems/),3,FV_dx_XI_L  )
+CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,PP_N,nElems/),3,FV_dx_XI_R  )
+CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,PP_N,nElems/),3,FV_dx_ETA_L )
+CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,PP_N,nElems/),3,FV_dx_ETA_R )
+CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_dx_ZETA_L)
+CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_dx_ZETA_R)
+
+CALL to2D_rank4((/1,0,0,1/),  (/1,PP_N,PP_N,nSides/),3,FV_dx_slave )
+CALL to2D_rank4((/1,0,0,1/),  (/1,PP_N,PP_N,nSides/),3,FV_dx_master)
+#endif
+                                                          ! p,q = general face index
+CALL to2D_rank4((/0,0,1,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_SurfElemXi_sw  ) ! Attention: storage order is (p,q,i,iElem)
+CALL to2D_rank4((/0,0,1,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_SurfElemEta_sw ) ! Attention: storage order is (p,q,j,iElem)
+CALL to2D_rank4((/0,0,1,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_SurfElemZeta_sw) ! Attention: storage order is (p,q,k,iElem)
+
+CALL to2D_rank5((/1,0,0,1,1/),  (/3,PP_N,PP_N,PP_N,nElems/),3,FV_NormVecXi   )  ! Attention: storage order is (p,q,i,iElem)
+CALL to2D_rank5((/1,0,0,1,1/),  (/3,PP_N,PP_N,PP_N,nElems/),3,FV_TangVec1Xi  )  !  -"-
+CALL to2D_rank5((/1,0,0,1,1/),  (/3,PP_N,PP_N,PP_N,nElems/),3,FV_TangVec2Xi  )  !  -"-
+CALL to2D_rank5((/1,0,0,1,1/),  (/3,PP_N,PP_N,PP_N,nElems/),3,FV_NormVecEta  )  ! Attention: storage order is (p,q,j,iElem)
+CALL to2D_rank5((/1,0,0,1,1/),  (/3,PP_N,PP_N,PP_N,nElems/),3,FV_TangVec1Eta )  !  -"-
+CALL to2D_rank5((/1,0,0,1,1/),  (/3,PP_N,PP_N,PP_N,nElems/),3,FV_TangVec2Eta )  !  -"-
+CALL to2D_rank5((/1,0,0,1,1/),  (/3,PP_N,PP_N,PP_N,nElems/),3,FV_NormVecZeta )  ! Attention: storage order is (p,q,k,iElem)
+CALL to2D_rank5((/1,0,0,1,1/),  (/3,PP_N,PP_N,PP_N,nElems/),3,FV_TangVec1Zeta)  !  -"-
+CALL to2D_rank5((/1,0,0,1,1/),  (/3,PP_N,PP_N,PP_N,nElems/),3,FV_TangVec2Zeta)  !  -"-
+
+#if PARABOLIC
+CALL to2D_rank5((/1,0,0,0,1/),  (/3,PP_N,PP_N,PP_N,nElems/),4,FV_Metrics_fTilde_sJ)
+CALL to2D_rank5((/1,0,0,0,1/),  (/3,PP_N,PP_N,PP_N,nElems/),4,FV_Metrics_gTilde_sJ)
+CALL to2D_rank5((/1,0,0,0,1/),  (/3,PP_N,PP_N,PP_N,nElems/),4,FV_Metrics_hTilde_sJ)
+#endif
 #endif
 
 SWRITE(UNIT_stdOut,'(A)')' Done !'

@@ -164,27 +164,27 @@ FV_Elems_Sum = 0
 
 #if FV_RECONSTRUCT
 ! allocate array for multipurpose 
-ALLOCATE(FV_multi_master(1:PP_nVarPrim,0:PP_N,0:PP_N,1:nSides))
-ALLOCATE(FV_multi_slave (1:PP_nVarPrim,0:PP_N,0:PP_N,1:nSides))
+ALLOCATE(FV_multi_master(1:PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides))
+ALLOCATE(FV_multi_slave (1:PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides))
 FV_multi_slave = 0.0
 FV_multi_master = 0.0
 
 ! allocate array for FD-gradient over faces
-ALLOCATE(FV_surf_gradU_master(1:PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)) 
-ALLOCATE(FV_surf_gradU_slave (1:PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)) 
+ALLOCATE(FV_surf_gradU_master(1:PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides)) 
+ALLOCATE(FV_surf_gradU_slave (1:PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides)) 
 FV_surf_gradU_master = 0.0
 FV_surf_gradU_slave = 0.0
 
 ! The gradients of the conservative variables are stored at each volume integration point
-ALLOCATE(gradUxi(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,nElems))
-ALLOCATE(gradUeta(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,nElems))
-ALLOCATE(gradUzeta(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,nElems))
+ALLOCATE(gradUxi  (PP_nVarPrim,0:PP_N,0:PP_NZ,0:PP_N,nElems))
+ALLOCATE(gradUeta (PP_nVarPrim,0:PP_N,0:PP_NZ,0:PP_N,nElems))
+ALLOCATE(gradUzeta(PP_nVarPrim,0:PP_N,0:PP_NZ,0:PP_N,nElems))
 gradUxi=0.
 gradUeta=0.
 gradUzeta=0.
-ALLOCATE(gradUxi_central  (PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,nElems))
-ALLOCATE(gradUeta_central (PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,nElems))
-ALLOCATE(gradUzeta_central(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,nElems))
+ALLOCATE(gradUxi_central  (PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+ALLOCATE(gradUeta_central (PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+ALLOCATE(gradUzeta_central(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 gradUxi_central  =0.
 gradUeta_central =0.
 gradUzeta_central=0.
@@ -216,8 +216,8 @@ IMPLICIT NONE
 LOGICAL,INTENT(IN) :: AllowToDG
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL    :: U_DG(PP_nVar,0:PP_N,0:PP_N,0:PP_N)
-REAL    :: U_FV(PP_nVar,0:PP_N,0:PP_N,0:PP_N)
+REAL    :: U_DG(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
+REAL    :: U_FV(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 REAL    :: ind
 INTEGER :: iElem
 !==================================================================================================================================
@@ -298,8 +298,8 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER           :: i,iElem, j,k,ii,jj,kk,iVar
-REAL              :: Vdm(0:(PP_N+1)**2-1,0:PP_N), xx(1:3,0:(PP_N+1)**2-1,0:(PP_N+1)**2-1,0:(PP_N+1)**2-1)
-REAL              :: tmp(1:PP_nVar,0:PP_N,0:PP_N,0:PP_N)
+REAL              :: Vdm(0:(PP_N+1)**2-1,0:PP_N), xx(1:3,0:(PP_N+1)**2-1,0:(PP_N+1)**2-1,0:(PP_NZ+1)**2-1)
+REAL              :: tmp(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 !===================================================================================================================================
 ! initial call of indicator
 CALL CalcIndicator(U,0.)
@@ -312,16 +312,16 @@ DO iElem=1,nElems
   IF (FV_Elems(iElem).EQ.0) CYCLE ! DG element
   ! supersample all subcells
   CALL ChangeBasisVolume(3,PP_N,(PP_N+1)**2-1,Vdm,Elem_xGP(1:3,:,:,:,iElem),xx)
-  DO k=0,PP_N
+  DO k=0,PP_NZ
     DO j=0,PP_N
       DO i=0,PP_N
         ! evaluate ExactFunc for all supersampled points of subcell (i,j,k)
-        DO kk=0,PP_N; DO jj=0,PP_N; DO ii=0,PP_N
-          CALL ExactFunc(IniExactFunc,0.,xx(1:3,i*(PP_N+1)+ii,j*(PP_N+1)+jj,k*(PP_N+1)+kk),tmp(:,ii,jj,kk))
+        DO kk=0,PP_NZ; DO jj=0,PP_N; DO ii=0,PP_N
+          CALL ExactFunc(IniExactFunc,0.,xx(1:3,i*(PP_N+1)+ii,j*(PP_N+1)+jj,k*(PP_NZ+1)+kk),tmp(:,ii,jj,kk))
         END DO; END DO; END DO
         ! mean value 
         DO iVar=1,PP_nVar
-          U(iVar,i,j,k,iElem) = SUM(tmp(iVar,:,:,:)) / (PP_N+1)**3
+          U(iVar,i,j,k,iElem) = SUM(tmp(iVar,:,:,:)) / (PP_N+1)**2*(PP_NZ+1)
         END DO
       END DO ! i
     END DO ! j

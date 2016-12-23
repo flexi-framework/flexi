@@ -339,7 +339,7 @@ INTEGER             :: i,j
 REAL                :: muSGS 
 #endif 
 !==================================================================================================================================
-DO j=0,Nloc ; DO i=0,Nloc
+DO j=0,PP_NlocZ ; DO i=0,Nloc
   prim = UPrim_Face(:,i,j)
   v1=UPrim_Face(2,i,j)
   v2=UPrim_Face(3,i,j)

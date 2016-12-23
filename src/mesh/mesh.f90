@@ -115,7 +115,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 REAL              :: x(3),meshScale
 REAL,POINTER      :: coords(:,:,:,:,:)
-INTEGER           :: iElem,i,j,k,nElemsLoc,iSide
+INTEGER           :: iElem,i,j,k,nElemsLoc
 LOGICAL           :: validMesh
 INTEGER           :: firstMasterSide     ! lower side ID of array U_master/gradUx_master...
 INTEGER           :: lastMasterSide      ! upper side ID of array U_master/gradUx_master...
@@ -227,7 +227,7 @@ SWRITE(UNIT_stdOut,'(A)') "NOW CALLING deleteMeshPointer..."
 CALL deleteMeshPointer()
 
 ! Build necessary mappings 
-CALL buildMappings(PP_N,V2S=V2S,V2S2=V2S2,S2V=S2V,S2V2=S2V2,CS2V2=CS2V2,FS2M=FS2M)
+CALL buildMappings(PP_N,V2S=V2S,V2S2=V2S2,S2V=S2V,S2V2=S2V2,FS2M=FS2M)
 
 ! if trees are available: compute metrics on tree level and interpolate to elements
 interpolateFromTree=.FALSE.
@@ -296,38 +296,7 @@ SDEALLOCATE(xiMinMax)
 SDEALLOCATE(ElemToTree)
 
 #if PP_dim == 2
-CALL to2D_rank5((/1,0,0,0,1/),  (/3,PP_N,PP_N,PP_N,nElems/),4,Elem_xGP)
-CALL to2D_rank6((/1,0,0,0,1,0/),(/3,PP_N,PP_N,PP_N,nElems,FV_ENABLED/),4,Metrics_fTilde)
-CALL to2D_rank6((/1,0,0,0,1,0/),(/3,PP_N,PP_N,PP_N,nElems,FV_ENABLED/),4,Metrics_gTilde)
-CALL to2D_rank6((/1,0,0,0,1,0/),(/3,PP_N,PP_N,PP_N,nElems,FV_ENABLED/),4,Metrics_hTilde)
-CALL to2D_rank5((/0,0,0,1,0/),  (/PP_N,PP_N,PP_N,nElems,FV_ENABLED/),3,sJ)
-CALL to2D_rank5((/1,0,0,0,1/),  (/1,NgeoRef,NgeoRef,NgeoRef,nElems/),4,DetJac_Ref)
-
-CALL to2D_rank5((/1,0,0,0,1/),(/3,PP_N,PP_N,FV_ENABLED,nSides/),3,Face_xGP)
-CALL to2D_rank5((/1,0,0,0,1/),(/3,PP_N,PP_N,FV_ENABLED,nSides/),3,NormVec)
-CALL to2D_rank5((/1,0,0,0,1/),(/3,PP_N,PP_N,FV_ENABLED,nSides/),3,TangVec1)
-CALL to2D_rank5((/1,0,0,0,1/),(/3,PP_N,PP_N,FV_ENABLED,nSides/),3,TangVec2)
-CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,FV_ENABLED,nSides/),2,SurfElem)
-
-Elem_xGP(3,:,:,:,:) = 0.
-Metrics_fTilde(3,:,:,:,:,:) = 0.
-Metrics_gTilde(3,:,:,:,:,:) = 0.
-Metrics_hTilde(:,:,:,:,:,:) = 0.
-
-DO iSide=1,nSides
-  SELECT CASE (SideToElem(S2E_LOC_SIDE_ID,iSide))
-  CASE(XI_MINUS)
-    TangVec1(:,:,:,:,iSide) = -TangVec1(:,:,:,:,iSide)
-  CASE(ETA_MINUS)
-    TangVec1(:,:,:,:,iSide) = -TangVec2(:,:,:,:,iSide)
-  CASE(ETA_PLUS)
-    TangVec1(:,:,:,:,iSide) = -TangVec2(:,:,:,:,iSide)
-  END SELECT
-END DO
-NormVec (3,:,:,:,:) = 0.
-TangVec1(3,:,:,:,:) = 0.
-TangVec2(:,:,:,:,:) = 0.
-Face_xGP(3,:,:,:,:) = 0.
+CALL Convert2D()
 #endif
 
 ! debugmesh: param specifies format to output, 0: no output, 1: tecplot ascii, 2: tecplot binary, 3: paraview binary
@@ -339,112 +308,6 @@ MeshInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT MESH DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitMesh
-
-SUBROUTINE to2D_rank4(lbound_in,ubound_in,index3D,array) 
-IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
-INTEGER,INTENT(IN)             :: lbound_in(4)
-INTEGER,INTENT(IN)             :: ubound_in(4)
-INTEGER,INTENT(IN)             :: index3D
-REAL,INTENT(INOUT),ALLOCATABLE :: array(:,:,:,:)
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-REAL,ALLOCATABLE               :: array_loc(:,:,:,:)
-INTEGER                        :: ubound_loc(4)
-!===================================================================================================================================
-ubound_loc = ubound_in
-ubound_loc(index3D) = lbound_in(index3D)
-ALLOCATE(array_loc(lbound_in(1):ubound_loc(1),&
-                   lbound_in(2):ubound_loc(2),&
-                   lbound_in(3):ubound_loc(3),&
-                   lbound_in(4):ubound_loc(4)))
-array_loc = array( lbound_in(1):ubound_loc(1),&             
-                   lbound_in(2):ubound_loc(2),&
-                   lbound_in(3):ubound_loc(3),&
-                   lbound_in(4):ubound_loc(4))
-DEALLOCATE(array)               
-ALLOCATE(array    (lbound_in(1):ubound_loc(1),&
-                   lbound_in(2):ubound_loc(2),&
-                   lbound_in(3):ubound_loc(3),&
-                   lbound_in(4):ubound_loc(4)))
-array = array_loc
-DEALLOCATE(array_loc)
-
-END SUBROUTINE to2D_rank4
-
-SUBROUTINE to2D_rank5(lbound_in,ubound_in,index3D,array) 
-IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
-INTEGER,INTENT(IN)             :: lbound_in(5)
-INTEGER,INTENT(IN)             :: ubound_in(5)
-INTEGER,INTENT(IN)             :: index3D
-REAL,INTENT(INOUT),ALLOCATABLE :: array(:,:,:,:,:)
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-REAL,ALLOCATABLE               :: array_loc(:,:,:,:,:)
-INTEGER                        :: ubound_loc(5)
-!===================================================================================================================================
-ubound_loc = ubound_in
-ubound_loc(index3D) = lbound_in(index3D)
-ALLOCATE(array_loc(lbound_in(1):ubound_loc(1),&
-                   lbound_in(2):ubound_loc(2),&
-                   lbound_in(3):ubound_loc(3),&
-                   lbound_in(4):ubound_loc(4),&
-                   lbound_in(5):ubound_loc(5)))
-array_loc = array( lbound_in(1):ubound_loc(1),&             
-                   lbound_in(2):ubound_loc(2),&
-                   lbound_in(3):ubound_loc(3),&
-                   lbound_in(4):ubound_loc(4),&
-                   lbound_in(5):ubound_loc(5))
-DEALLOCATE(array)               
-ALLOCATE(array    (lbound_in(1):ubound_loc(1),&
-                   lbound_in(2):ubound_loc(2),&
-                   lbound_in(3):ubound_loc(3),&
-                   lbound_in(4):ubound_loc(4),&
-                   lbound_in(5):ubound_loc(5)))
-array = array_loc
-DEALLOCATE(array_loc)
-
-END SUBROUTINE to2D_rank5
-
-SUBROUTINE to2D_rank6(lbound_in,ubound_in,index3D,array) 
-IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
-INTEGER,INTENT(IN)             :: lbound_in(6)
-INTEGER,INTENT(IN)             :: ubound_in(6)
-INTEGER,INTENT(IN)             :: index3D
-REAL,INTENT(INOUT),ALLOCATABLE :: array(:,:,:,:,:,:)
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-REAL,ALLOCATABLE               :: array_loc(:,:,:,:,:,:)
-INTEGER                        :: ubound_loc(6)
-!===================================================================================================================================
-ubound_loc = ubound_in
-ubound_loc(index3D) = lbound_in(index3D)
-ALLOCATE(array_loc(lbound_in(1):ubound_loc(1),&
-                   lbound_in(2):ubound_loc(2),&
-                   lbound_in(3):ubound_loc(3),&
-                   lbound_in(4):ubound_loc(4),&
-                   lbound_in(5):ubound_loc(5),&
-                   lbound_in(6):ubound_loc(6)))
-array_loc = array( lbound_in(1):ubound_loc(1),&             
-                   lbound_in(2):ubound_loc(2),&
-                   lbound_in(3):ubound_loc(3),&
-                   lbound_in(4):ubound_loc(4),&
-                   lbound_in(5):ubound_loc(5),&
-                   lbound_in(6):ubound_loc(6))
-DEALLOCATE(array)               
-ALLOCATE(array    (lbound_in(1):ubound_loc(1),&
-                   lbound_in(2):ubound_loc(2),&
-                   lbound_in(3):ubound_loc(3),&
-                   lbound_in(4):ubound_loc(4),&
-                   lbound_in(5):ubound_loc(5),&
-                   lbound_in(6):ubound_loc(6)))
-array = array_loc
-DEALLOCATE(array_loc)
-
-END SUBROUTINE to2D_rank6
-
 
 !==================================================================================================================================
 !> In case the selective version of overintegration is used, all mesh data also needs to be provided on the degree NOver of the
@@ -508,6 +371,91 @@ DO iElem=1,nElems
 END DO
 END SUBROUTINE BuildOverintMesh
 
+
+#if PP_dim == 2
+!==================================================================================================================================
+!> This routine converts all 3D mesh quantities to a 2D mesh, including mappings, rotations etc.
+!==================================================================================================================================
+SUBROUTINE Convert2D()
+! MODULES
+USE MOD_PreProc
+USE MOD_Globals
+USE MOD_Mesh_Vars
+USE MOD_2D
+USE MOD_Mappings,           ONLY:buildMappings
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER :: iElem,i,j,iSide
+REAL    :: tmp(3,0:PP_N,0:PP_N,0:FV_ENABLED)
+!==================================================================================================================================
+DO iSide=1,nSides
+  SideToElem(S2E_FLIP,iSide) = MERGE(SideToElem(S2E_FLIP,iSide), 1, SideToElem(S2E_FLIP,iSide).LE.0)
+END DO 
+ElemToSide(:,1,:) = -999
+ElemToSide(:,6,:) = -999
+DO iElem=1,nElems
+  DO iSide=2,5
+    ElemToSide(E2S_FLIP,iSide,iElem) = MERGE(ElemToSide(E2S_FLIP,iSide,iElem), 1, ElemToSide(E2S_FLIP,iSide,iElem).LE.0)
+  END DO 
+END DO 
+
+CALL buildMappings(PP_N,V2S=V2S,V2S2=V2S2,S2V=S2V,S2V2=S2V2,FS2M=FS2M, dim=2)
+
+DO iSide=1,nSides
+  SELECT CASE (SideToElem(S2E_LOC_SIDE_ID,iSide))
+  CASE(XI_MINUS)
+    ! has to be flipped
+    tmp=Face_xGP(:,:,:,:,iSide)
+    DO j=0,PP_N; DO i=0,PP_N
+      Face_xGP(:,PP_N-j,i,:,iSide)=tmp(:,i,j,:)
+    END DO; END DO
+    tmp=NormVec(:,:,:,:,iSide)
+    DO j=0,PP_N; DO i=0,PP_N
+      NormVec(:,PP_N-j,i,:,iSide)=tmp(:,i,j,:)
+    END DO; END DO
+    tmp=-TangVec1(:,:,:,:,iSide)
+    DO j=0,PP_N; DO i=0,PP_N
+      TangVec1(:,PP_N-j,i,:,iSide)=tmp(:,i,j,:)
+    END DO; END DO
+    tmp(1,:,:,:)=SurfElem(:,:,:,iSide)
+    DO j=0,PP_N; DO i=0,PP_N
+      SurfElem(PP_N-j,i,:,iSide)=tmp(1,i,j,:)
+    END DO; END DO
+  CASE(ETA_MINUS)
+    TangVec1(:,:,:,:,iSide) = -TangVec2(:,:,:,:,iSide)
+  CASE(ETA_PLUS)
+    TangVec1(:,:,:,:,iSide) = -TangVec2(:,:,:,:,iSide)
+  END SELECT
+END DO
+
+Elem_xGP(3,:,:,:,:) = 0.
+Metrics_fTilde(3,:,:,:,:,:) = 0.
+Metrics_gTilde(3,:,:,:,:,:) = 0.
+Metrics_hTilde(:,:,:,:,:,:) = 0.
+
+NormVec (3,:,:,:,:) = 0.
+TangVec1(3,:,:,:,:) = 0.
+TangVec2(:,:,:,:,:) = 0.
+Face_xGP(3,:,:,:,:) = 0.
+
+CALL to2D_rank5((/1,0,0,0,1/),  (/3,PP_N,PP_N,PP_N,nElems/),4,Elem_xGP)
+CALL to2D_rank6((/1,0,0,0,1,0/),(/3,PP_N,PP_N,PP_N,nElems,FV_ENABLED/),4,Metrics_fTilde)
+CALL to2D_rank6((/1,0,0,0,1,0/),(/3,PP_N,PP_N,PP_N,nElems,FV_ENABLED/),4,Metrics_gTilde)
+CALL to2D_rank6((/1,0,0,0,1,0/),(/3,PP_N,PP_N,PP_N,nElems,FV_ENABLED/),4,Metrics_hTilde)
+CALL to2D_rank5((/0,0,0,1,0/),  (/PP_N,PP_N,PP_N,nElems,FV_ENABLED/),3,sJ)
+CALL to2D_rank5((/1,0,0,0,1/),  (/1,NgeoRef,NgeoRef,NgeoRef,nElems/),4,DetJac_Ref)
+
+CALL to2D_rank5((/1,0,0,0,1/),(/3,PP_N,PP_N,FV_ENABLED,nSides/),3,Face_xGP)
+CALL to2D_rank5((/1,0,0,0,1/),(/3,PP_N,PP_N,FV_ENABLED,nSides/),3,NormVec)
+CALL to2D_rank5((/1,0,0,0,1/),(/3,PP_N,PP_N,FV_ENABLED,nSides/),3,TangVec1)
+CALL to2D_rank5((/1,0,0,0,1/),(/3,PP_N,PP_N,FV_ENABLED,nSides/),3,TangVec2)
+CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,FV_ENABLED,nSides/),2,SurfElem)
+END SUBROUTINE Convert2D
+#endif
+
 !============================================================================================================================
 !> Deallocate mesh data.
 !============================================================================================================================
@@ -552,7 +500,8 @@ SDEALLOCATE(SurfElemO)
 SDEALLOCATE(FS2M)
 SDEALLOCATE(V2S)
 SDEALLOCATE(V2S2)
-SDEALLOCATE(CS2V2)
+SDEALLOCATE(S2V)
+SDEALLOCATE(S2V2)
 
 MeshInitIsDone = .FALSE.
 END SUBROUTINE FinalizeMesh

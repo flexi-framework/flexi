@@ -65,7 +65,7 @@ USE MOD_Mesh_Vars,       ONLY: firstInnerSide,   lastInnerSide
 USE MOD_Mesh_Vars,       ONLY: firstMPISide_MINE,lastMPISide_MINE
 #if FV_ENABLED
 USE MOD_FV_Vars         ,ONLY: FV_Elems_Sum,FV_sVdm
-USE MOD_ChangeBasis     ,ONLY: ChangeBasis2D_selective
+USE MOD_ChangeBasisByDim,ONLY: ChangeBasisSurf
 #endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -102,8 +102,8 @@ ELSE
 END IF
 
 #if FV_ENABLED
-CALL ChangeBasis2D_selective(PP_nVarPrim,PP_N,PP_N,1,nSides,firstSideID,lastSideID,FV_sVdm,UPrimface_master,UPrim_glob,FV_Elems_Sum,1)
-CALL ChangeBasis2D_selective(PP_nVarPrim,PP_N,PP_N,1,nSides,firstSideID,lastSideID,FV_sVdm,UPrimface_slave ,UPrim_glob,FV_Elems_Sum,2)
+CALL ChangeBasisSurf(PP_nVarPrim,PP_N,PP_N,1,nSides,firstSideID,lastSideID,FV_sVdm,UPrimface_master,UPrim_glob,FV_Elems_Sum,1)
+CALL ChangeBasisSurf(PP_nVarPrim,PP_N,PP_N,1,nSides,firstSideID,lastSideID,FV_sVdm,UPrimface_slave ,UPrim_glob,FV_Elems_Sum,2)
 #endif
 
 DO SideID=firstSideID,lastSideID

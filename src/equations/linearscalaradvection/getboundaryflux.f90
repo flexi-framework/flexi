@@ -231,14 +231,14 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 REAL,INTENT(IN)     :: t
-REAL,INTENT(IN)     :: U_inner(PP_nVar,0:PP_N,0:PP_N,1:nSides)
-REAL,INTENT(OUT)    :: gradU(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
+REAL,INTENT(IN)     :: U_inner(PP_nVar,0:PP_N,0:PP_NZ,1:nSides)
+REAL,INTENT(OUT)    :: gradU(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER :: p,q
-REAL    :: U_Face_loc(PP_nVar,0:PP_N,0:PP_N)
-REAL    :: UPrim_inner   (PP_nVarPrim,0:PP_N,0:PP_N)
-REAL    :: UPrim_Face_loc(PP_nVarPrim,0:PP_N,0:PP_N)
+REAL    :: U_Face_loc(PP_nVar,0:PP_N,0:PP_NZ)
+REAL    :: UPrim_inner   (PP_nVarPrim,0:PP_N,0:PP_NZ)
+REAL    :: UPrim_Face_loc(PP_nVarPrim,0:PP_N,0:PP_NZ)
 INTEGER        :: iBC,iSide,SideID
 INTEGER        :: BCType,BCState,nBCLoc
 !==================================================================================================================================
@@ -254,7 +254,7 @@ DO iBC=1,nBCs
     ! Determine the exact BC state
     DO iSide=1,nBCLoc
       SideID=BCSideID(iBC,iSide)
-      DO q=0,PP_N; DO p=0,PP_N
+      DO q=0,PP_NZ; DO p=0,PP_N
           CALL ExactFunc(IniExactFunc,t,Face_xGP(:,p,q,1,SideID),U_Face_loc(:,p,q))
       END DO ; END DO
       gradU(:,:,:,SideID) = U_inner(:,:,:,SideID) - U_Face_loc
@@ -301,7 +301,7 @@ REAL,INTENT(OUT)                     :: Flux(PP_nVar,0:PP_N,0:PP_NZ,nBCSides)   
 ! LOCAL VARIABLES
 INTEGER                              :: iBC,iSide,p,q,SideID
 INTEGER                              :: BCType,BCState,nBCLoc
-REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N):: U_Face_loc
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_NZ):: U_Face_loc
 INTEGER                              :: FVEM=0 ! FV_Elems_master
 !==================================================================================================================================
 DO iBC=1,nBCs

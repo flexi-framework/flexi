@@ -268,9 +268,10 @@ DO j=0,PP_NlocZ; DO i=0,Nloc
 
   ! Back Rotate the normal flux into Cartesian direction
   Fout(DENS,i,j)=F(DENS)
-  Fout(MOMV,i,j)=nv(:,i,j)*F(MOM1)     & 
+  Fout(MOMV,i,j)=nv(:,i,j)*F(MOM1)     &
                   + t1(:,i,j)*F(MOM2)  &
                   + t2(:,i,j)*F(MOM3)  
+  Fout(ENER,i,j)=F(ENER)
 END DO; END DO
 
 END SUBROUTINE Riemann
@@ -298,10 +299,10 @@ INTEGER,INTENT(IN)                                         :: Nloc     !< local 
 REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:PP_NlocZ),INTENT(IN)   :: UPrim_L,UPrim_R
                                                            !> solution gradients in x/y/z-direction left/right of the interface 
 REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:PP_NlocZ),INTENT(IN)   :: gradUx_L,gradUx_R,gradUy_L,gradUy_R,gradUz_L,gradUz_R
-REAL,INTENT(IN)                                            :: nv(PP_dim,0:Nloc,0:PP_NlocZ) !< normal vector
+REAL,INTENT(IN)                                            :: nv(3,0:Nloc,0:PP_NlocZ) !< normal vector
 REAL,INTENT(OUT)                                           :: F(PP_nVar,0:Nloc,0:PP_NlocZ) !< viscous flux
 #ifdef EDDYVISCOSITY
-REAL,INTENT(IN)                                            :: Face_xGP(PP_dim,0:Nloc,0:PP_NlocZ)  !< face Gauss points
+REAL,INTENT(IN)                                            :: Face_xGP(3,0:Nloc,0:PP_NlocZ)  !< face Gauss points
                                                            !> Filter width for eddy viscosity left/right of the interface
 REAL,INTENT(IN)                                            :: DeltaS_L,DeltaS_R
                                                            !> Indicator for eddy viscosity left/right of the interface
