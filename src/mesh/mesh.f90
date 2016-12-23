@@ -288,6 +288,9 @@ CALL CalcMetrics()     ! DG metrics
 CALL InitFV_Metrics()  ! FV metrics
 #endif
 
+#if PP_dim == 2
+CALL Convert2D()
+#endif
 DEALLOCATE(NodeCoords)
 DEALLOCATE(dXCL_N)
 DEALLOCATE(Ja_Face)
@@ -295,9 +298,6 @@ SDEALLOCATE(TreeCoords)
 SDEALLOCATE(xiMinMax)
 SDEALLOCATE(ElemToTree)
 
-#if PP_dim == 2
-CALL Convert2D()
-#endif
 
 ! debugmesh: param specifies format to output, 0: no output, 1: tecplot ascii, 2: tecplot binary, 3: paraview binary
 CALL WriteDebugMesh(GETINT('debugmesh','0'))
@@ -388,8 +388,8 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER :: iElem,i,j,iSide
-REAL    :: tmp(3,0:PP_N,0:PP_N,0:FV_ENABLED)
+INTEGER :: iElem,i,j,k,iSide
+REAL    :: tmp(3,0:PP_N,0:PP_N,0:FV_ENABLED),delta
 !==================================================================================================================================
 DO iSide=1,nSides
   SideToElem(S2E_FLIP,iSide) = MERGE(SideToElem(S2E_FLIP,iSide), 1, SideToElem(S2E_FLIP,iSide).LE.0)
@@ -453,6 +453,16 @@ CALL to2D_rank5((/1,0,0,0,1/),(/3,PP_N,PP_N,FV_ENABLED,nSides/),3,NormVec)
 CALL to2D_rank5((/1,0,0,0,1/),(/3,PP_N,PP_N,FV_ENABLED,nSides/),3,TangVec1)
 CALL to2D_rank5((/1,0,0,0,1/),(/3,PP_N,PP_N,FV_ENABLED,nSides/),3,TangVec2)
 CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,FV_ENABLED,nSides/),2,SurfElem)
+
+delta=0.
+DO iElem=1,nElems
+  DO j=0,Ngeo; DO i=0,Ngeo
+    delta=delta+abs(nodeCoords(3,i,j,Ngeo,iElem)-nodeCoords(3,i,j,0,iElem))
+  END DO; END DO! i,j=0,PP_N
+END DO ! iElem
+delta=delta/(nElems*(Ngeo+1)**2)/2
+sJ=sJ*delta
+SurfElem=SurfElem/delta
 END SUBROUTINE Convert2D
 #endif
 
