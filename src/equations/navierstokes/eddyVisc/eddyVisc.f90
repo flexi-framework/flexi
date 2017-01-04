@@ -44,6 +44,7 @@ CALL prms%SetSection("EddyViscParameters")
 CALL prms%CreateRealOption(   'CS',       "EddyViscParameters constant")
 CALL prms%CreateRealOption(   'PrSGS',    "Turbulent Prandtl number",'0.7')
 CALL prms%CreateLogicalOption('VanDriest',"Van Driest damping, only for channel flow!", '.FALSE.')
+CALL prms%CreateIntOption('N_Testfilter',"Number of basis for the test filter")
 END SUBROUTINE DefineParametersEddyVisc
 
 !===================================================================================================================================
