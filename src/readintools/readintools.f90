@@ -503,7 +503,7 @@ IF(MPIROOT)THEN
 END IF
 
 !broadcast number of lines, read and broadcast file content
-#ifdef MPI
+#if MPI
 CALL MPI_BCAST(nLines,1,MPI_INTEGER,0,MPI_COMM_WORLD,iError)
 #endif
 ALLOCATE(FileContent(nLines))
@@ -514,7 +514,7 @@ IF (MPIROOT) THEN
   READ(iniUnit,'(A)') FileContent
   CLOSE(iniUnit)
 END IF
-#ifdef MPI
+#if MPI
 CALL MPI_BCAST(FileContent,LEN(FileContent)*nLines,MPI_CHARACTER,0,MPI_COMM_WORLD,iError)
 #endif
 
