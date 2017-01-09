@@ -61,6 +61,7 @@ USE MOD_DefaultEddyVisc
 USE MOD_Mesh_Vars  ,ONLY:nElems,nSides
 USE MOD_ReadInTools,ONLY: GETINTFROMSTR
 USE MOD_IO_HDF5    ,ONLY: AddToFieldData
+USE MOD_EOS_Vars, ONLY: mu0
 !===================================================================================================================================
 
 ! Allocate arrays needed by all SGS models
@@ -79,7 +80,8 @@ SGS_Ind_slave=0.
 ALLOCATE(muSGS(1,0:PP_N,0:PP_N,0:PP_N,nElems))
 ALLOCATE(muSGSmax(nElems))
 muSGS = 0.
-muSGSmax=0.
+!muSGSmax=0.
+muSGSmax=1000.*mu0
 ALLOCATE(FilterMat_Testfilter(0:PP_N,0:PP_N))
 FilterMat_Testfilter = 0.
 ! Set Prandtl number !=0 because we need to divide by this number to get the turbulent heat conductivity (will be zero anyway

@@ -204,7 +204,7 @@ SUBROUTINE compute_cd(U_in)
 USE MOD_PreProc
 USE MOD_EddyVisc_Vars,          ONLY:SGS_Ind,FilterMat_testfilter
 USE MOD_EddyVisc_Vars,          ONLY:SGS_Ind,SGS_Ind_Slave,SGS_Ind_Master
-USE MOD_ProlongToFacePrim,      ONLY: ProlongToFacePrim
+USE MOD_ProlongToFace1,         ONLY: ProlongToFace1
 USE MOD_Filter,                 ONLY:Filter_General
 USE MOD_Lifting_Vars,           ONLY:gradUx,gradUy,gradUz
 USE MOD_Interpolation_Vars,     ONLY:wGP
@@ -473,11 +473,11 @@ END DO
 ! 4.2)
 CALL StartReceiveMPIData(SGS_Ind_master,DataSizeSideScalar,1,nSides,MPIRequest_SGS_Ind(:,SEND),SendID=1)
                                                          ! Receive YOUR / FV_surf_gradU_slave: master -> slave
-CALL ProlongToFacePrim(1,SGS_Ind(1:1,:,:,:,:),SGS_Ind_master(:,:,:,:),SGS_Ind_Slave(:,:,:,:),L_Minus,L_Plus,.TRUE.)
+CALL ProlongToFace1(PP_N,SGS_Ind(1:1,:,:,:,:),SGS_Ind_master(:,:,:,:),SGS_Ind_Slave(:,:,:,:),L_Minus,L_Plus,.TRUE.)
 CALL StartSendMPIData(SGS_Ind_master,DataSizeSideScalar,1,nSides,MPIRequest_SGS_Ind(:,RECV),SendID=1)
 #endif
 ! Prolong to face for BCSides, InnerSides and MPI sides - receive direction
-CALL ProlongToFacePrim(1,SGS_Ind(1:1,:,:,:,:),SGS_Ind_master(:,:,:,:),SGS_Ind_Slave(:,:,:,:),L_Minus,L_Plus,.FALSE.)
+CALL ProlongToFace1(PP_N,SGS_Ind(1:1,:,:,:,:),SGS_Ind_master(:,:,:,:),SGS_Ind_Slave(:,:,:,:),L_Minus,L_Plus,.FALSE.)
 #if MPI  
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_SGS_Ind)  ! U_slave: slave -> master 
 #endif

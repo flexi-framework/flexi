@@ -87,7 +87,7 @@ INTEGER                     :: SplitDG
 #ifdef DEBUG
 REAL,DIMENSION(PP_nVar    ) :: U         ! dummy variables, only to suppress compiler warnings
 REAL,DIMENSION(PP_nVarPrim) :: UPrim     ! dummy variables, only to suppress compiler warnings
-REAL,DIMENSION(PP_nVar    ) :: f,g,h,F   ! dummy variables, only to suppress compiler warnings
+REAL,DIMENSION(PP_nVar    ) :: f,g,h!,F   ! dummy variables, only to suppress compiler warnings
 REAL,DIMENSION(PP_2Var    ) :: U_LL,U_RR ! dummy variables, only to suppress compiler warnings
 #endif
 !==================================================================================================================================
