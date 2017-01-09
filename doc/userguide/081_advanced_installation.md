@@ -37,9 +37,10 @@ be placed in the file
 Here add the desired module location to the **first** position 
 in the list (e.g. `/opt/Modules`) or use one of the predefined
 locations. The environment variable $MODULEPATH should
-contain all the selected paths.
-The `envbuild.sh` script will install its module files (not the
-actual libraries) in the **first** path found in this variable.
+contain all the selected paths and is set by the init command
+below. The `envbuild.sh` script will install its module files
+(not the actual libraries) in the **first** path found in this
+variable.
 
 Copy the contents of the `tools/envbuild/Modules` folder to the
 path you specified (`/opt/Modules`). It already comes with few
