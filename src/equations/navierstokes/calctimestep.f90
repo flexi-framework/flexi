@@ -111,6 +111,9 @@ USE MOD_TimeDisc_Vars,ONLY:CFLScale,ViscousTimeStep,dtElem
 #if FV_ENABLED
 USE MOD_FV_Vars      ,ONLY: FV_Elems
 #endif
+#ifdef EDDYVISCOSITY
+USE MOD_EddyVisc_Vars, ONLY: muSGSMax
+#endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -160,7 +163,11 @@ DO iElem=1,nElems
 #if PARABOLIC
     ! Viscous Eigenvalues
     prim = UE(PRIM)
-    mu=VISCOSITY_PRIM(prim)
+    mu=(VISCOSITY_PRIM(prim) &
+#ifdef EDDYVISCOSITY
+      +muSGSMax(iElem) &
+#endif
+    )
     Max_Lambda_v=MAX(Max_Lambda_v,mu*UE(SRHO)*MetricsVisc(:,i,j,k,iElem,FVE))
 #endif /* PARABOLIC*/
   END DO; END DO; END DO ! i,j,k
