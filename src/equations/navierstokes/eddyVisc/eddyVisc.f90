@@ -81,7 +81,7 @@ ALLOCATE(muSGS(1,0:PP_N,0:PP_N,0:PP_N,nElems))
 ALLOCATE(muSGSmax(nElems))
 muSGS = 0.
 !muSGSmax=0.
-muSGSmax=1000.*mu0
+muSGSmax=2.*mu0
 ALLOCATE(FilterMat_Testfilter(0:PP_N,0:PP_N))
 FilterMat_Testfilter = 0.
 ! Set Prandtl number !=0 because we need to divide by this number to get the turbulent heat conductivity (will be zero anyway

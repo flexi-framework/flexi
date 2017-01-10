@@ -72,6 +72,9 @@ USE MOD_Lifting_Vars ,ONLY: gradUx,gradUy,gradUz
 #if FV_ENABLED
 USE MOD_FV_Vars      ,ONLY: FV_Elems
 #endif
+#if EDDYVISCOSITY
+USE MOD_EddyVisc_Vars, ONLY: muSGSmax
+#endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -82,6 +85,9 @@ INTEGER            :: i,j,k,l,iElem
 REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_N) :: f,g,h,fv,gv,hv  !< Volume fluxes at GP
 !==================================================================================================================================
 ! Diffusive part
+#if EDDYVISCOSITY
+muSGSmax=0.
+#endif
 DO iElem=1,nElems
 #if FV_ENABLED
   IF (FV_Elems(iElem).EQ.1) CYCLE ! FV Elem

@@ -114,7 +114,7 @@ USE MOD_Equation_Vars,ONLY: s23,s43
 USE MOD_EOS_Vars,     ONLY: cp,Pr
 USE MOD_Viscosity
 #ifdef EDDYVISCOSITY
-USE MOD_EddyVisc_Vars,ONLY: muSGS,PrSGS,eddyViscosity
+USE MOD_EddyVisc_Vars,ONLY: muSGS,muSGSmax,PrSGS,eddyViscosity
 #endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
