@@ -406,7 +406,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER :: iElem,i,j,k,iSide
-REAL    :: tmp(3,0:PP_N,0:PP_N,0:FV_ENABLED),delta
+REAL    :: tmp(3,0:PP_N,0:PP_N,0:FV_ENABLED),zlength
 !==================================================================================================================================
 ! In 2D, there is only one flip for the slave sides (1)
 DO iSide=1,nSides
@@ -476,15 +476,14 @@ CALL to2D_rank5((/1,0,0,0,1/),(/3,PP_N,PP_N,FV_ENABLED,nSides/),3,TangVec1)
 CALL to2D_rank5((/1,0,0,0,1/),(/3,PP_N,PP_N,FV_ENABLED,nSides/),3,TangVec2)
 CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,FV_ENABLED,nSides/),2,SurfElem)
 
-delta=0.
-DO iElem=1,nElems
-  DO j=0,Ngeo; DO i=0,Ngeo
-    delta=delta+abs(nodeCoords(3,i,j,Ngeo,iElem)-nodeCoords(3,i,j,0,iElem))
-  END DO; END DO! i,j=0,PP_N
-END DO ! iElem
-delta=delta/(nElems*(Ngeo+1)**2)/2
-sJ=sJ*delta
-SurfElem=SurfElem/delta
+
+!computation of z length 
+zlength=abs(nodeCoords(3,0,0,Ngeo,1)-nodeCoords(3,0,0,0,1))
+!normalization of geometric terms by z length (reference elemt has length 2 [-1,1])
+sJ=sJ*(zlength/2.)
+SurfElem=SurfElem/(zlength/2.)
+Metrics_fTilde = Metrics_fTilde/(zlength/2.)
+Metrics_gTilde = Metrics_gTilde/(zlength/2.)
 END SUBROUTINE Convert2D
 #endif
 
