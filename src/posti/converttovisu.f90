@@ -262,9 +262,9 @@ CHARACTER(LEN=255),INTENT(IN)  :: statefile   !< HDF5 state file
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: iVarVisu,iElem_DG,iElem_FV,iElem,iVarDataset,iVar,iVar2
-INTEGER                        :: substring_count,nDims,nVal,nSize,stat
+INTEGER                        :: substring_count,nDims,nVal,nSize
 CHARACTER(LEN=255)             :: substrings(2),DatasetName,VariableName,DataSetOld
-LOGICAL                        :: datasetFound,varnamesExist,varFound,datasetChanged
+LOGICAL                        :: datasetFound,varnamesExist,datasetChanged
 REAL,ALLOCATABLE               :: ElemData(:,:),FieldData(:,:,:,:,:)
 REAL,ALLOCATABLE               :: Vdm_DG_Visu(:,:),Vdm_FV_Visu(:,:)
 CHARACTER(LEN=255),ALLOCATABLE :: DatasetVarNames(:)

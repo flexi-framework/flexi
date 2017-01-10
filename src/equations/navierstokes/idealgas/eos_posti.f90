@@ -38,18 +38,6 @@ INTERFACE GetMaskGrad
   MODULE PROCEDURE GetMaskGrad
 END INTERFACE
 
-INTERFACE FillPressure
-  MODULE PROCEDURE FillPressure
-END INTERFACE
-
-INTERFACE FillTemperature
-  MODULE PROCEDURE FillTemperature
-END INTERFACE
-
-INTERFACE CalcQuantities
-  MODULE PROCEDURE CalcQuantities
-END INTERFACE
-
 #if FV_ENABLED && FV_RECONSTRUCT
 INTERFACE AppendNeededPrims
   MODULE PROCEDURE AppendNeededPrims
@@ -68,8 +56,11 @@ CONTAINS
 
 #if FV_ENABLED && FV_RECONSTRUCT
 SUBROUTINE AppendNeededPrims(mapCalc,mapCalc_FV,nVarCalc) 
+!==================================================================================================================================
+! MODULES
 USE MOD_EOS_Posti_Vars
 IMPLICIT NONE
+!---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES 
 INTEGER,INTENT(IN)      :: mapCalc(nVarTotalEOS)
 INTEGER,INTENT(OUT)     :: mapCalc_FV(nVarTotalEOS)
@@ -98,9 +89,13 @@ END SUBROUTINE AppendNeededPrims
 
 
 FUNCTION GetMaskCons() 
-USE MOD_EOS_Posti_Vars
+!==================================================================================================================================
+! MODULES
+USE MOD_EOS_Posti_Vars,ONLY: nVarTotalEOS,DepTableEOS,DepNames
 USE MOD_Equation_Vars ,ONLY: StrVarNames
 USE MOD_StringTools   ,ONLY: STRICMP
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES 
 INTEGER :: GetMaskCons(nVarTotalEOS)
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -119,9 +114,13 @@ END FUNCTION GetMaskCons
 
 
 FUNCTION GetMaskPrim() 
-USE MOD_EOS_Posti_Vars
+!==================================================================================================================================
+! MODULES
+USE MOD_EOS_Posti_Vars,ONLY: nVarTotalEOS,DepTableEOS,DepNames
 USE MOD_Equation_Vars ,ONLY: StrVarNamesPrim
 USE MOD_StringTools   ,ONLY: STRICMP
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES 
 INTEGER :: GetMaskPrim(nVarTotalEOS)
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -140,247 +139,194 @@ END FUNCTION GetMaskPrim
 
 
 FUNCTION GetMaskGrad()
-USE MOD_EOS_Posti_Vars
+!==================================================================================================================================
+! MODULES
+USE MOD_EOS_Posti_Vars,ONLY: nVarTotalEOS,DepTableEOS
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
+! INPUT / OUTPUT VARIABLES
 INTEGER :: GetMaskGrad(nVarTotalEOS)
 !===================================================================================================================================
 GetMaskGrad = DepTableEOS(:,0)
 END FUNCTION GetMaskGrad
 
 
-
-SUBROUTINE FillPressure(nElems_calc,indices,Nloc,nElems,U,Pressure)
+SUBROUTINE CalcQuantities(nVarCalc,nVal,iElems,mapCalc,UCalc,maskCalc,gradUx,gradUy,gradUz)
 !==================================================================================================================================
-! MODULES
-USE MOD_Eos_Vars  ,ONLY: KappaM1
-IMPLICIT NONE 
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: nElems_calc
-INTEGER,INTENT(IN) :: indices(nElems_calc)
-INTEGER,INTENT(IN) :: Nloc
-INTEGER,INTENT(IN) :: nElems
-REAL,INTENT(IN)    :: U(PP_nVar,0:Nloc,0:Nloc,0:Nloc,nElems)
-REAL,INTENT(OUT)   :: Pressure( 0:Nloc,0:Nloc,0:Nloc,nElems_calc)
-!----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
-INTEGER         :: i,j,k,iElem,iElem_calc
-REAL            :: UE(PP_2Var)
-!==================================================================================================================================
-DO iElem_calc=1,nElems_calc
-  iElem = indices(iElem_calc)
-  DO k=0,Nloc; DO j=0,Nloc; DO i=0,Nloc
-    UE(SRHO) = 1./U(1,i,j,k,iElem)
-    UE(MOMV) = U(2:4,i,j,k,iElem)
-    UE(ENER) = U(5,i,j,k,iElem)
-    UE(VELV) = UE(SRHO)*U(2:4,i,j,k,iElem)
-    Pressure(i,j,k,iElem_calc) = PRESSURE_HE(UE) 
-  END DO; END DO; END DO! i,j,k=0,Nloc
-END DO ! iElem
-END SUBROUTINE FillPressure
-
-PURE SUBROUTINE FillTemperature(nElems,Nloc,Density,Pressure,Temperature)
-!==================================================================================================================================
-! MODULES
-USE MOD_Eos_Vars  ,ONLY: R
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE 
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: nElems
-INTEGER,INTENT(IN) :: Nloc
-REAL,INTENT(IN)    :: Density    (0:Nloc,0:Nloc,0:Nloc,nElems)
-REAL,INTENT(IN)    :: Pressure   (0:Nloc,0:Nloc,0:Nloc,nElems)
-REAL,INTENT(OUT)   :: Temperature(0:Nloc,0:Nloc,0:Nloc,nElems)
-!----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
-INTEGER         :: i,j,k,iElem
-REAL            :: UE(PP_2Var)
-!==================================================================================================================================
-DO iElem=1,nElems
-  DO k=0,Nloc; DO j=0,Nloc; DO i=0,Nloc
-    UE(SRHO) = 1./Density(i,j,k,iElem)
-    UE(PRES) = Pressure(i,j,k,iElem)
-    Temperature(i,j,k,iElem) = TEMPERATURE_HE(UE) 
-  END DO; END DO; END DO! i,j,k=0,Nloc
-END DO 
-END SUBROUTINE FillTemperature
-
-SUBROUTINE CalcQuantities(nVarCalc,Nloc,nElems_loc,iElems,mapCalc,UCalc,maskCalc) 
 ! MODULES
 USE MOD_Globals,ONLY: MPIRoot
 USE MOD_EOS_Posti_Vars
-!----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+!----------------------------------------------------------------------------------------------------------------------------------!
+! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: nVarCalc
-INTEGER,INTENT(IN) :: Nloc
-INTEGER,INTENT(IN) :: nElems_loc
-INTEGER,INTENT(IN) :: iElems(nElems_loc)
+INTEGER,INTENT(IN) :: nVal(:)
+INTEGER,INTENT(IN) :: iElems(:)
 INTEGER,INTENT(IN) :: mapCalc(nVarTotalEOS)
-REAL,INTENT(OUT)   :: UCalc(0:Nloc,0:Nloc,0:Nloc,1:nElems_loc,1:nVarCalc)
 INTEGER,INTENT(IN) :: maskCalc(nVarTotalEOS)
+REAL,INTENT(OUT)   :: UCalc(PRODUCT(nVal),1:nVarCalc)
+REAL,DIMENSION(1:PP_nVarPrim,PRODUCT(nVal)),INTENT(IN),OPTIONAL :: gradUx,gradUy,gradUz
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+LOGICAL            :: withGradients
 INTEGER            :: iVar,iVarCalc
 !===================================================================================================================================
+withGradients=(PRESENT(gradUx).AND.PRESENT(gradUy).AND.PRESENT(gradUz))
+print*, 'bin da',withGradients; CALL FLUSH()
+
 DO iVar=1,nVarTotalEOS
   iVarCalc = mapCalc(iVar)
   IF (iVarCalc.GT.0 .AND. maskCalc(iVar).GT.0) THEN
     SWRITE(*,*) "  ",TRIM(DepNames(iVar))
-    CALL CalcDerivedQuantity(iVarCalc,DepNames(iVar),nVarCalc,Nloc,nElems_loc,iElems,mapCalc,UCalc)
+    IF(withGradients)THEN
+      CALL CalcDerivedQuantity(iVarCalc,DepNames(iVar),nVarCalc,nVal,iElems,mapCalc,UCalc,gradUx,gradUy,gradUz)
+    ELSE
+      CALL CalcDerivedQuantity(iVarCalc,DepNames(iVar),nVarCalc,nVal,iElems,mapCalc,UCalc)
+    END IF
   END IF
 END DO
 END SUBROUTINE CalcQuantities
 
 
-SUBROUTINE CalcDerivedQuantity(iVarCalc,DepName,nVarCalc,Nloc,nElems_loc,iElems,mapCalc,UCalc)
+SUBROUTINE CalcDerivedQuantity(iVarCalc,DepName,nVarCalc,nVal,iElems,mapCalc,UCalc,gradUx,gradUy,gradUz)
+!==================================================================================================================================
 ! MODULES
 USE MOD_PreProc
 USE MOD_EOS_Posti_Vars
-USE MOD_EOS_Vars        ,ONLY: cp,kappa,R,sKappaM1
+USE MOD_EOS_Vars
 USE MOD_StringTools     ,ONLY: LowCase,KEYVALUE
-USE MOD_Mesh_Vars       ,ONLY: nElems
-USE MOD_DG_Vars         ,ONLY: U
-!----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES 
 INTEGER,INTENT(IN)            :: iVarCalc
 CHARACTER(LEN=255),INTENT(IN) :: DepName
 INTEGER,INTENT(IN)            :: nVarCalc
-INTEGER,INTENT(IN)            :: Nloc
-INTEGER,INTENT(IN)            :: nElems_loc
-INTEGER,INTENT(IN)            :: iElems(nElems_loc)
+INTEGER,INTENT(IN)            :: nVal(:)
+INTEGER,INTENT(IN)            :: iElems(:)
 INTEGER,INTENT(IN)            :: mapCalc(nVarTotalEOS)
-REAL,INTENT(OUT)              :: UCalc(0:Nloc,0:Nloc,0:Nloc,1:nElems_loc,1:nVarCalc)
+REAL,INTENT(INOUT)            :: UCalc(PRODUCT(nVal),1:nVarCalc)
+REAL,DIMENSION(1:PP_nVarPrim,PRODUCT(nVal)),INTENT(IN),OPTIONAL :: gradUx,gradUy,gradUz
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: iMom,iDens,iPres,iVel1,iVel2,iVel3,iVelM,iVelS,iEner,iTemp
+INTEGER            :: i,iMom1,iMom2,iMom3,iDens,iPres,iVel1,iVel2,iVel3,iVelM,iVelS,iEner,iEnst,iTemp
 CHARACTER(LEN=255) :: DepName_low
+REAL               :: UE(PP_2Var)
+INTEGER            :: nElems_loc,Nloc,nDOF,nDims
 #if PARABOLIC
-INTEGER            :: iVor1,iVor2,iVor3,iVorM
-INTEGER            :: i,j,k,iElem
-REAL               :: Denominator
+INTEGER            :: iVorM
 #endif
+LOGICAL            :: withGradients
 !===================================================================================================================================
+nDims=UBOUND(nVal,1)
+nElems_loc=nVal(nDims)
+nDOF=PRODUCT(nVal(1:nDims-1))
+Nloc=nVal(1)
+
+!IF(.NOT.withGradients.AND.KEYVALUE(DepNames,DepTableEOS(:,0),DepName).EQ.1) &
+!  STOP 'The selected variable requires the computation of gradients.'
+
+!IF(dataSetDim.LT.KEYVALUE(DepNames,requiredDim,DepName))THEN
+!  ! TODO: STOP or RETURN with warning
+!  STOP 'Derived quantity cannot be computed for this dataset.'
+!  !RETURN
+!END IF
+
+withGradients=(PRESENT(gradUx).AND.PRESENT(gradUy).AND.PRESENT(gradUz))
+
+! Already retrieve mappings for conservatives, as theses are required for many quantities
+iDens = KEYVALUE(DepNames,mapCalc,"density"    )
+iMom1 = KEYVALUE(DepNames,mapCalc,'momentumx')
+iMom2 = KEYVALUE(DepNames,mapCalc,'momentumy')
+iMom3 = KEYVALUE(DepNames,mapCalc,'momentumz')
+iVel1 = KEYVALUE(DepNames,mapCalc,"velocityx"  )
+iVel2 = KEYVALUE(DepNames,mapCalc,"velocityy"  )
+iVel3 = KEYVALUE(DepNames,mapCalc,"velocityz"  )
+iPres = KEYVALUE(DepNames,mapCalc,"pressure"   )
+iEner = KEYVALUE(DepNames,mapCalc,'energystagnationdensity')
+iVorM = KEYVALUE(DepNames,mapCalc,"vorticitymagnitude")
+iVelM = KEYVALUE(DepNames,mapCalc,"velocitymagnitude")
+iTemp = KEYVALUE(DepNames,mapCalc,"temperature")
+iVelS = KEYVALUE(DepNames,mapCalc,"velocitysound"    )
+iEnst = KEYVALUE(DepNames,mapCalc,"energystagnation")
+
 CALL LowCase(DepName,DepName_low)
 SELECT CASE(DepName_low)
   CASE("momentumx")
-    iDens = KEYVALUE(DepNames,mapCalc,"density"    )
-    iVel1 = KEYVALUE(DepNames,mapCalc,"velocityx"  )
-    UCalc(:,:,:,:,iVarCalc) = UCalc(:,:,:,:,iDens)*UCalc(:,:,:,:,iVel1)
+    UCalc(:,iVarCalc) = UCalc(:,iDens)*UCalc(:,iVel1)
   CASE("momentumy")
-    iDens = KEYVALUE(DepNames,mapCalc,"density"    )
-    iVel2 = KEYVALUE(DepNames,mapCalc,"velocityy"  )
-    UCalc(:,:,:,:,iVarCalc) = UCalc(:,:,:,:,iDens)*UCalc(:,:,:,:,iVel2)
+    UCalc(:,iVarCalc) = UCalc(:,iDens)*UCalc(:,iVel2)
   CASE("momentumz")
-    iDens = KEYVALUE(DepNames,mapCalc,"density"    )
-    iVel3 = KEYVALUE(DepNames,mapCalc,"velocityz"  )
-    UCalc(:,:,:,:,iVarCalc) = UCalc(:,:,:,:,iDens)*UCalc(:,:,:,:,iVel3)
+    UCalc(:,iVarCalc) = UCalc(:,iDens)*UCalc(:,iVel3)
   CASE("energystagnationdensity")
-    iDens = KEYVALUE(DepNames,mapCalc,"density"    )
-    iVel1 = KEYVALUE(DepNames,mapCalc,"velocityx"  )
-    iVel2 = KEYVALUE(DepNames,mapCalc,"velocityy"  )
-    iVel3 = KEYVALUE(DepNames,mapCalc,"velocityz"  )
-    iPres = KEYVALUE(DepNames,mapCalc,"pressure"   )
     ! TODO: use a function from eos.f90
-    UCalc(:,:,:,:,iVarCalc) = sKappaM1*UCalc(:,:,:,:,iPres) + 0.5*UCalc(:,:,:,:,iDens)* &
-        (UCalc(:,:,:,:,iVel1)**2 + UCalc(:,:,:,:,iVel2)**2 + UCalc(:,:,:,:,iVel3)**2)
+    UCalc(:,iVarCalc) = sKappaM1*UCalc(:,iPres) + 0.5*UCalc(:,iDens)* &
+                        (UCalc(:,iVel1)**2 + UCalc(:,iVel2)**2 + UCalc(:,iVel3)**2)
   CASE("velocityx")
-    print*, depnames; CALL FLUSH()
-    print*, mapcalc; CALL FLUSH()
-    iDens = KEYVALUE(DepNames,mapCalc,'density'  )
-    iMom  = KEYVALUE(DepNames,mapCalc,'momentumx')
-    print*, iDens,iMom,iVarCalc; CALL FLUSH()
-    UCalc(:,:,:,:,iVarCalc) = UCalc(:,:,:,:,iMom) / UCalc(:,:,:,:,iDens)
+    UCalc(:,iVarCalc) = UCalc(:,iMom1) / UCalc(:,iDens)
   CASE("velocityy")
-    iDens = KEYVALUE(DepNames,mapCalc,'density'  )
-    iMom  = KEYVALUE(DepNames,mapCalc,'momentumy')
-    UCalc(:,:,:,:,iVarCalc) = UCalc(:,:,:,:,iMom) / UCalc(:,:,:,:,iDens)
+    UCalc(:,iVarCalc) = UCalc(:,iMom2) / UCalc(:,iDens)
   CASE("velocityz")
-    iDens = KEYVALUE(DepNames,mapCalc,'density'  )
-    iMom  = KEYVALUE(DepNames,mapCalc,'momentumz')
-    UCalc(:,:,:,:,iVarCalc) = UCalc(:,:,:,:,iMom) / UCalc(:,:,:,:,iDens)
+    UCalc(:,iVarCalc) = UCalc(:,iMom3) / UCalc(:,iDens)
   CASE("pressure")
-    CALL FillPressure(nElems_loc,iElems,PP_N,nElems,U,UCalc(:,:,:,:,iVarCalc))
+    DO i=1,nDOF*nElems_loc
+      UE(SRHO) = 1./UCalc(i,iDens)
+      UE(MOM1) =    UCalc(i,iMom1)
+      UE(MOM2) =    UCalc(i,iMom2)
+      UE(MOM3) =    UCalc(i,iMom3)
+      UE(ENER) =    UCalc(i,iEner)
+      UE(VELV) = UE(SRHO)*UE(MOMV)
+      UCalc(i,iVarCalc) = PRESSURE_HE(UE)
+    END DO
   CASE("temperature")
-    iDens = KEYVALUE(DepNames,mapCalc,"density" )
-    iPres = KEYVALUE(DepNames,mapCalc,"pressure")
-    CALL FillTemperature(nElems_loc,PP_N,UCalc(:,:,:,:,iDens),UCalc(:,:,:,:,iPres),UCalc(:,:,:,:,iVarCalc))
+    DO i=1,nDOF*nElems_loc
+      UE(SRHO) = 1./UCalc(i,iDens)
+      UE(PRES) =    UCalc(i,iPres)
+      UCalc(i,iVarCalc) = TEMPERATURE_HE(UE)
+    END DO
   CASE("velocitymagnitude")
-    iVel1 = KEYVALUE(DepNames,mapCalc,"velocityx")
-    iVel2 = KEYVALUE(DepNames,mapCalc,"velocityy")
-    iVel3 = KEYVALUE(DepNames,mapCalc,"velocityz")
-    UCalc(:,:,:,:,iVarCalc) = SQRT(UCalc(:,:,:,:,iVel1)**2 + UCalc(:,:,:,:,iVel2)**2 + UCalc(:,:,:,:,iVel3)**2)
+    UCalc(:,iVarCalc) = SQRT((UCalc(:,iMom1)/UCalc(:,iDens))**2 &
+                           + (UCalc(:,iMom2)/UCalc(:,iDens))**2 &
+                           + (UCalc(:,iMom3)/UCalc(:,iDens))**2)
   CASE("velocitysound")
-    iDens = KEYVALUE(DepNames,mapCalc,"density" )
-    iPres = KEYVALUE(DepNames,mapCalc,"pressure")
-    UCalc(:,:,:,:,iVarCalc) = SQRT(Kappa*UCalc(:,:,:,:,iPres)/UCalc(:,:,:,:,iDens))
+    UCalc(:,iVarCalc) = SQRT(Kappa*UCalc(:,iPres)/UCalc(:,iDens))
   CASE("mach")
-    iVelM = KEYVALUE(DepNames,mapCalc,"velocitymagnitude")
-    iVelS = KEYVALUE(DepNames,mapCalc,"velocitysound"    )
-    UCalc(:,:,:,:,iVarCalc) = UCalc(:,:,:,:,iVelM)/UCalc(:,:,:,:,iVelS)
+    UCalc(:,iVarCalc) = UCalc(:,iVelM)/UCalc(:,iVelS)
   CASE("energystagnation")
-    iDens = KEYVALUE(DepNames,mapCalc,"density"                )
-    iEner = KEYVALUE(DepNames,mapCalc,"energystagnationdensity")
-    UCalc(:,:,:,:,iVarCalc) = UCalc(:,:,:,:,iEner)/UCalc(:,:,:,:,iDens)
+    UCalc(:,iVarCalc) = UCalc(:,iEner)/UCalc(:,iDens)
   CASE("enthalpystagnation")
-    iDens = KEYVALUE(DepNames,mapCalc,"density"         )
-    iPres = KEYVALUE(DepNames,mapCalc,"pressure"        )
-    iEner = KEYVALUE(DepNames,mapCalc,"energystagnation")
-    UCalc(:,:,:,:,iVarCalc) = UCalc(:,:,:,:,iEner) + UCalc(:,:,:,:,iPres)/UCalc(:,:,:,:,iDens)
+    UCalc(:,iVarCalc) = UCalc(:,iEnst) + UCalc(:,iPres)/UCalc(:,iDens)
   CASE("entropy")
-    iDens = KEYVALUE(DepNames,mapCalc,"density"    )
-    iTemp = KEYVALUE(DepNames,mapCalc,"temperature")
-    UCalc(:,:,:,:,iVarCalc) = R*(sKappaM1*LOG(UCalc(:,:,:,:,iTemp))) - LOG(UCalc(:,:,:,:,iDens))
+    UCalc(:,iVarCalc) = R*(sKappaM1*LOG(UCalc(:,iTemp))) - LOG(UCalc(:,iDens))
   CASE("totaltemperature")
-    iTemp = KEYVALUE(DepNames,mapCalc,"temperature"      )
-    iVelM = KEYVALUE(DepNames,mapCalc,"velocitymagnitude")
-    UCalc(:,:,:,:,iVarCalc) = UCalc(:,:,:,:,iTemp)+UCalc(:,:,:,:,iVelM)**2/(2*cp)
+    UCalc(:,iVarCalc) = UCalc(:,iTemp)+UCalc(:,iVelM)**2/(2*cp)
   CASE("totalpressure")
-    iDens = KEYVALUE(DepNames,mapCalc,"density"          )
-    iPres = KEYVALUE(DepNames,mapCalc,"pressure"         )
-    iVelM = KEYVALUE(DepNames,mapCalc,"velocitymagnitude")
-    UCalc(:,:,:,:,iVarCalc) = UCalc(:,:,:,:,iPres)+0.5*UCalc(:,:,:,:,iDens)*UCalc(:,:,:,:,iVelM)**2
+    UCalc(:,iVarCalc) = UCalc(:,iPres)+0.5*UCalc(:,iDens)*UCalc(:,iVelM)**2
   CASE("pressuretimederiv")
-    CALL FillPressureTimeDeriv(nElems_loc,iElems,PP_N,UCalc(:,:,:,:,iVarCalc))
+     CALL FillPressureTimeDeriv(nElems_loc,iElems,Nloc,UCalc(:,iVarCalc))
 #if PARABOLIC      
   CASE("vorticityx")
-    CALL FillVorticity(nElems_loc,iElems,PP_N,UCalc(:,:,:,:,iVarCalc),1)
+    UCalc(:,iVarCalc) = FillVorticity(1,nVal,gradUx,gradUy,gradUz)
   CASE("vorticityy")
-    CALL FillVorticity(nElems_loc,iElems,PP_N,UCalc(:,:,:,:,iVarCalc),2)
+    UCalc(:,iVarCalc) = FillVorticity(2,nVal,gradUx,gradUy,gradUz)
   CASE("vorticityz")
-    CALL FillVorticity(nElems_loc,iElems,PP_N,UCalc(:,:,:,:,iVarCalc),3)
+    UCalc(:,iVarCalc) = FillVorticity(3,nVal,gradUx,gradUy,gradUz)
   CASE("vorticitymagnitude")
-    iVor1 = KEYVALUE(DepNames,mapCalc,"vorticityx")
-    iVor2 = KEYVALUE(DepNames,mapCalc,"vorticityy")
-    iVor3 = KEYVALUE(DepNames,mapCalc,"vorticityy")
-    UCalc(:,:,:,:,iVarCalc) = SQRT(UCalc(:,:,:,:,iVor1)**2 + UCalc(:,:,:,:,iVor2)**2 + UCalc(:,:,:,:,iVor3)**2)
+    UCalc(:,iVarCalc) = SQRT(FillVorticity(1,nVal,gradUx,gradUy,gradUz)**2 &
+                           + FillVorticity(2,nVal,gradUx,gradUy,gradUz)**2 &
+                           + FillVorticity(3,nVal,gradUx,gradUy,gradUz)**2)
   CASE("helicity")
-    iVel1 = KEYVALUE(DepNames,mapCalc,"velocityx" )
-    iVel2 = KEYVALUE(DepNames,mapCalc,"velocityy" )
-    iVel3 = KEYVALUE(DepNames,mapCalc,"velocityz" )
-    iVor1 = KEYVALUE(DepNames,mapCalc,"vorticityx")
-    iVor2 = KEYVALUE(DepNames,mapCalc,"vorticityy")
-    iVor3 = KEYVALUE(DepNames,mapCalc,"vorticityy")
-    iVelM = KEYVALUE(DepNames,mapCalc,"velocitymagnitude" )
-    iVorM = KEYVALUE(DepNames,mapCalc,"vorticitymagnitude")
-    UCalc(:,:,:,:,iVarCalc) = SQRT( UCalc(:,:,:,:,iVor1)*UCalc(:,:,:,:,iVel1) &
-        +UCalc(:,:,:,:,iVor2)*UCalc(:,:,:,:,iVel2) &
-        +UCalc(:,:,:,:,iVor3)*UCalc(:,:,:,:,iVel3))
-    DO iElem=1,nElems_loc
-      DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
-        Denominator = UCalc(i,j,k,iElem,iVelM) * UCalc(i,j,k,iElem,iVorM)
-        UCalc(i,j,k,iElem,iVarCalc) = MERGE(0., UCalc(i,j,k,iElem,iVarCalc)/Denominator ,ABS(Denominator).LE.1e-15)
-      END DO; END DO; END DO! i,j,k=0,PP_N
-    END DO ! iElem
+    UCalc(:,iVarCalc) = SQRT(FillVorticity(1,nVal,gradUx,gradUy,gradUz)*UCalc(:,iMom1)/UCalc(:,iDens) &
+                            +FillVorticity(2,nVal,gradUx,gradUy,gradUz)*UCalc(:,iMom2)/UCalc(:,iDens) &
+                            +FillVorticity(3,nVal,gradUx,gradUy,gradUz)*UCalc(:,iMom3)/UCalc(:,iDens))
+    UCalc(:,iVarCalc) = MERGE(0., UCalc(:,iVarCalc)/(UCalc(:,iVelM)*UCalc(:,iVorM)),ABS(UCalc(:,iVelM)*UCalc(:,iVorM)).LE.1e-12)
   CASE("lambda2")
-    CALL FillLambda2(nElems_loc,iElems,PP_N,UCalc(:,:,:,:,iVarCalc))
+    UCalc(:,iVarCalc) = FillLambda2(nVal,gradUx,gradUy,gradUz)
   CASE("dilatation")
-    CALL FillDilatation(nElems_loc,iElems,PP_N,UCalc(:,:,:,:,iVarCalc))
+    UCalc(:,iVarCalc) = gradUx(2,:) + gradUy(3,:) + gradUz(4,:)  
   CASE("qcriterion")
-    CALL FillQcriterion(nElems_loc,iElems,PP_N,UCalc(:,:,:,:,iVarCalc))
+    UCalc(:,iVarCalc) = FillQcriterion(nVal,gradUx,gradUy,gradUz)
   CASE("schlieren")
-    CALL FillSchlieren(nElems_loc,iElems,PP_N,UCalc(:,:,:,:,iVarCalc))
+    UCalc(:,iVarCalc) = LOG10(SQRT(gradUx(1,:)**2 + gradUy(1,:)**2 + gradUz(1,:)**2)+1.0)
 #endif
 END SELECT
 END SUBROUTINE CalcDerivedQuantity
@@ -389,9 +335,8 @@ END SUBROUTINE CalcDerivedQuantity
 PURE SUBROUTINE FillPressureTimeDeriv(nElems_calc,indices,Nloc,PressureTDeriv)
 !==================================================================================================================================
 ! MODULES
-USE MOD_Eos_Vars  ,ONLY: KappaM1
-USE MOD_DG_Vars,ONLY:Ut,U
-! IMPLICIT VARIABLE HANDLING
+USE MOD_Eos_Vars,ONLY: KappaM1
+USE MOD_DG_Vars ,ONLY:Ut,U
 IMPLICIT NONE 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -403,177 +348,106 @@ REAL,INTENT(OUT)   :: PressureTDeriv(0:Nloc,0:Nloc,0:Nloc,nElems_calc)
 ! LOCAL VARIABLES 
 INTEGER            :: iElem,iElem_calc
 !==================================================================================================================================
+!IF(Nloc.NE.PP_N) STOP 'Not possible here'
 DO iElem_calc=1,nElems_calc
   iElem = indices(iElem_calc)
   PressureTDeriv(:,:,:,iElem_calc)=KappaM1*(Ut(5,:,:,:,iElem)-1/U(1,:,:,:,iElem)*(  &
                                              U(2,:,:,:,iElem)*Ut(2,:,:,:,iElem)  &
                                            + U(3,:,:,:,iElem)*Ut(3,:,:,:,iElem)  &
                                            + U(4,:,:,:,iElem)*Ut(4,:,:,:,iElem)) &
-                                     + 0.5/U(1,:,:,:,iElem)**2*Ut(1,:,:,:,iElem)*(  &
-                                           U(2,:,:,:,iElem)*U(2,:,:,:,iElem)   &
-                                         + U(3,:,:,:,iElem)*U(3,:,:,:,iElem)   &
-                                         + U(4,:,:,:,iElem)*U(4,:,:,:,iElem)))
+                                       + 0.5/U(1,:,:,:,iElem)**2*Ut(1,:,:,:,iElem)*(  &
+                                             U(2,:,:,:,iElem)*U(2,:,:,:,iElem)   &
+                                           + U(3,:,:,:,iElem)*U(3,:,:,:,iElem)   &
+                                           + U(4,:,:,:,iElem)*U(4,:,:,:,iElem)))
 END DO ! iElem
 END SUBROUTINE FillPressureTimeDeriv
 
 
 #if PARABOLIC
-PURE SUBROUTINE FillVorticity(nElems_calc,indices,Nloc,Vorticity,dir)
+FUNCTION FillVorticity(dir,nVal,gradUx,gradUy,gradUz) RESULT(Vorticity)
 !==================================================================================================================================
 ! MODULES
-USE MOD_Lifting_Vars, ONLY: gradUx,gradUy,gradUz
-! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: nElems_calc
-INTEGER,INTENT(IN) :: indices(nElems_calc)
-INTEGER,INTENT(IN) :: Nloc
 INTEGER,INTENT(IN) :: dir
-REAL,INTENT(OUT)   :: Vorticity(0:Nloc,0:Nloc,0:Nloc,nElems_calc)
-!----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
-INTEGER         :: iElem,iElem_calc
+INTEGER,INTENT(IN) :: nVal(:)
+REAL,DIMENSION(PP_nVarPrim,PRODUCT(nVal)),INTENT(IN) :: gradUx,gradUy,gradUz
+REAL               :: Vorticity(PRODUCT(nVal))
 !==================================================================================================================================
 SELECT CASE (dir)
 CASE(1) ! VorticityX = dw/dy-dv/dz
-  DO iElem_calc=1,nElems_calc
-    iElem = indices(iElem_calc)
-    Vorticity(:,:,:,iElem_calc) = gradUy(4,:,:,:,iElem) - gradUz(3,:,:,:,iElem)
-  END DO ! iElem
+  Vorticity = gradUy(4,:) - gradUz(3,:)
 CASE(2) ! VorticityY = du/dz-dw/dx
-  DO iElem_calc=1,nElems_calc
-    iElem = indices(iElem_calc)
-    Vorticity(:,:,:,iElem_calc) = gradUz(2,:,:,:,iElem) - gradUx(4,:,:,:,iElem)
-  END DO ! iElem
+  Vorticity = gradUz(2,:) - gradUx(4,:)
 CASE(3) ! VorticityZ = dv/dx-du/dy
-  DO iElem_calc=1,nElems_calc
-    iElem = indices(iElem_calc)
-    Vorticity(:,:,:,iElem_calc) = gradUx(3,:,:,:,iElem) - gradUy(2,:,:,:,iElem)
-  END DO ! iElem
+  Vorticity = gradUx(3,:) - gradUy(2,:)
 END SELECT
-END SUBROUTINE FillVorticity
+END FUNCTION FillVorticity
 
 
 
-SUBROUTINE FillLambda2(nElems_calc,indices,Nloc,Lambda2)
+FUNCTION FillLambda2(nVal,gradUx,gradUy,gradUz) RESULT(Lambda2)
 !==================================================================================================================================
 ! MODULES
-USE MOD_PreProc
-USE MOD_Lifting_Vars, ONLY: gradUx,gradUy,gradUz
-! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: nElems_calc
-INTEGER,INTENT(IN) :: indices(nElems_calc)
-INTEGER,INTENT(IN) :: Nloc
-REAL,INTENT(OUT)   :: Lambda2(0:Nloc,0:Nloc,0:Nloc,nElems_calc)
+INTEGER,INTENT(IN) :: nVal(:)
+REAL,DIMENSION(PP_nVarPrim,PRODUCT(nVal)),INTENT(IN) :: gradUx,gradUy,gradUz
+REAL               :: Lambda2(PRODUCT(nVal))
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
-INTEGER            :: i,j,k,iElem,iElem_calc
+INTEGER            :: i
 REAL               :: gradUmat(3,3)
 INTEGER            :: INFO
 REAL,DIMENSION(3)  :: Lambda
 REAL,DIMENSION(16) :: WORK
 !==================================================================================================================================
-DO iElem_calc=1,nElems_calc
-  iElem = indices(iElem_calc)
-  DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
-    gradUmat(:,1)= gradUx(2:4,i,j,k,iElem)
-    gradUmat(:,2)= gradUy(2:4,i,j,k,iElem)
-    gradUmat(:,3)= gradUz(2:4,i,j,k,iElem)
-    gradUmat=MATMUL(0.5*(gradUmat+TRANSPOSE(gradUmat)),0.5*(gradUmat+TRANSPOSE(gradUmat))) & ! S^2
-            +MATMUL(0.5*(gradUmat-TRANSPOSE(gradUmat)),0.5*(gradUmat-TRANSPOSE(gradUmat)))   !Omega^2
-    ! Jacobi-Subroutine used from LAPACK 
-    CALL DSYEV('N', 'U', 3, gradUmat, 3, Lambda, WORK, 16, INFO )
-    Lambda2(i,j,k,iElem_calc) = Lambda(2)
-  END DO; END DO; END DO! i,j,k=0,PP_N
-END DO ! iElem
-END SUBROUTINE FillLambda2
+DO i=1,PRODUCT(nVal)
+  gradUmat(:,1)= gradUx(2:4,i)
+  gradUmat(:,2)= gradUy(2:4,i)
+  gradUmat(:,3)= gradUz(2:4,i)
+  gradUmat=MATMUL(0.5*(gradUmat+TRANSPOSE(gradUmat)),0.5*(gradUmat+TRANSPOSE(gradUmat))) & ! S^2
+          +MATMUL(0.5*(gradUmat-TRANSPOSE(gradUmat)),0.5*(gradUmat-TRANSPOSE(gradUmat)))   !Omega^2
+  ! Jacobi-Subroutine used from LAPACK 
+  CALL DSYEV('N', 'U', 3, gradUmat, 3, Lambda, WORK, 16, INFO )
+  Lambda2(i) = Lambda(2)
+END DO
+END FUNCTION FillLambda2
 
-PURE SUBROUTINE FillDilatation(nElems_calc,indices,Nloc,Dilatation)
+
+FUNCTION FillQcriterion(nVal,gradUx,gradUy,gradUz) RESULT(Qcriterion)
 !==================================================================================================================================
 ! MODULES
-USE MOD_Lifting_Vars, ONLY: gradUx,gradUy,gradUz
-! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: nElems_calc
-INTEGER,INTENT(IN) :: indices(nElems_calc)
-INTEGER,INTENT(IN) :: Nloc
-REAL,INTENT(OUT)   :: Dilatation(0:Nloc,0:Nloc,0:Nloc,nElems_calc)
+INTEGER,INTENT(IN) :: nVal(:)
+REAL,DIMENSION(PP_nVarPrim,PRODUCT(nVal)),INTENT(IN) :: gradUx,gradUy,gradUz
+REAL               :: Qcriterion(PRODUCT(nVal))
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
-INTEGER            :: iElem,iElem_calc
-!==================================================================================================================================
-DO iElem_calc=1,nElems_calc
-  iElem = indices(iElem_calc)
-  Dilatation(:,:,:,iElem_calc) = gradUx(2,:,:,:,iElem) + gradUy(3,:,:,:,iElem) + gradUz(4,:,:,:,iElem)  
-END DO ! iElem
-END SUBROUTINE FillDilatation
-
-PURE SUBROUTINE FillQcriterion(nElems_calc,indices,Nloc,Qcriterion)
-!==================================================================================================================================
-! MODULES
-USE MOD_PreProc
-USE MOD_Lifting_Vars, ONLY: gradUx,gradUy,gradUz
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE 
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: nElems_calc
-INTEGER,INTENT(IN) :: indices(nElems_calc)
-INTEGER,INTENT(IN) :: Nloc
-REAL,INTENT(OUT)   :: Qcriterion(0:Nloc,0:Nloc,0:Nloc,nElems_calc)
-!----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
-INTEGER            :: i,j,k,l,m,iElem,iElem_calc
+INTEGER            :: i,m,l
 REAL               :: gradUmat(3,3),Q_loc,S,Rot
 !==================================================================================================================================
-DO iElem_calc=1,nElems_calc
-  iElem = indices(iElem_calc)
-  DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
-    gradUmat(:,1)= gradUx(2:4,i,j,k,iElem)
-    gradUmat(:,2)= gradUy(2:4,i,j,k,iElem)
-    gradUmat(:,3)= gradUz(2:4,i,j,k,iElem)
-    Q_loc=0.
-    DO m=1,3
-      DO l=1,3
-        ! shear rate
-        S=0.5*(gradUmat(l,m)+gradUmat(m,l))
-        ! rotation rate
-        Rot=0.5*(gradUmat(l,m)-gradUmat(m,l))
-        Q_loc=Q_loc+Rot*Rot-S*S
-      END DO  ! l
-    END DO  ! m
-    Qcriterion(i,j,k,iElem_calc)=0.5*Q_loc
-  END DO; END DO; END DO! i,j,k=0,PP_N
-END DO ! iElem
-END SUBROUTINE FillQcriterion
-
-PURE SUBROUTINE FillSchlieren(nElems_calc,indices,Nloc,Schlieren)
-!==================================================================================================================================
-! MODULES
-USE MOD_Lifting_Vars, ONLY: gradUx,gradUy,gradUz
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE 
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: nElems_calc
-INTEGER,INTENT(IN) :: indices(nElems_calc)
-INTEGER,INTENT(IN) :: Nloc
-REAL,INTENT(OUT)   :: Schlieren(0:Nloc,0:Nloc,0:Nloc,nElems_calc)
-!----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
-INTEGER            :: iElem,iElem_calc
-!==================================================================================================================================
-DO iElem_calc=1,nElems_calc
-  iElem = indices(iElem_calc)
-  Schlieren(:,:,:,iElem_calc)=LOG10(SQRT(gradUx(1,:,:,:,iElem)**2 + gradUy(1,:,:,:,iElem)**2 + gradUz(1,:,:,:,iElem)**2)+1.0)
-END DO ! iElem
-END SUBROUTINE FillSchlieren
+DO i=1,PRODUCT(nVal)
+  gradUmat(:,1)= gradUx(2:4,i)
+  gradUmat(:,2)= gradUy(2:4,i)
+  gradUmat(:,3)= gradUz(2:4,i)
+  Q_loc=0.
+  DO m=1,3
+    DO l=1,3
+      ! shear rate
+      S=0.5*(gradUmat(l,m)+gradUmat(m,l))
+      ! rotation rate
+      Rot=0.5*(gradUmat(l,m)-gradUmat(m,l))
+      Q_loc=Q_loc+Rot*Rot-S*S
+    END DO  ! l
+  END DO  ! m
+  Qcriterion(i)=0.5*Q_loc
+END DO
+END FUNCTION FillQcriterion
 #endif
 
 

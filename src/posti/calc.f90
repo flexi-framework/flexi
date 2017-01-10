@@ -56,22 +56,47 @@ USE MOD_EOS_Posti      ,ONLY: CalcQuantities
 USE MOD_Mesh_Vars      ,ONLY: nElems
 USE MOD_DG_Vars        ,ONLY: U
 USE MOD_StringTools    ,ONLY: STRICMP
+#if PARABOLIC
+USE MOD_Lifting_Vars   ,ONLY: gradUx,gradUy,gradUz
+#endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: maskCalc(nVarDep)
+INTEGER            :: maskCalc(nVarDep),nVal(4)
+#if PARABOLIC
+REAL,ALLOCATABLE,DIMENSION(:,:,:,:,:) :: gradUx_tmp,gradUy_tmp,gradUz_tmp
+#endif
 !===================================================================================================================================
 ! calc DG solution 
 SWRITE(*,*) "[DG] calc quantities"
 SDEALLOCATE(UCalc_DG)
 ALLOCATE(UCalc_DG(0:PP_N,0:PP_N,0:PP_N,nElems_DG,1:nVarCalc))
+nVal=(/PP_N+1,PP_N+1,PP_N+1,nElems_DG/)
 
 maskCalc = 1
 ! Copy exisiting variables from solution array
 CALL FillCopy(nVar_State,PP_N,nElems,U,nElems_DG,mapElems_DG,UCalc_DG,maskCalc)
 
 IF(TRIM(FileType).EQ.'State')THEN
-  CALL CalcQuantities(nVarCalc,PP_N,nElems_DG,mapElems_DG,mapCalc,UCalc_DG,maskCalc) 
+  IF(withDGOperator.AND.PARABOLIC.EQ.1)THEN
+#if PARABOLIC
+    IF(nElems_DG.EQ.nElems)THEN
+      CALL CalcQuantities(nVarCalc,nVal,mapElems_DG,mapCalc,UCalc_DG,maskCalc,gradUx,gradUy,gradUz) 
+    ELSE
+      ALLOCATE(gradUx_tmp(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,nElems_DG))
+      ALLOCATE(gradUy_tmp(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,nElems_DG))
+      ALLOCATE(gradUz_tmp(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,nElems_DG))
+      ! nicer, but only as of gfortran 6+: ALLOCATE(gradUx_tmp,gradUy_tmp,gradUz_tmp,MOLD=gradUx)
+      gradUx_tmp=gradUx(:,:,:,:,mapElems_DG)
+      gradUy_tmp=gradUy(:,:,:,:,mapElems_DG)
+      gradUz_tmp=gradUz(:,:,:,:,mapElems_DG)
+      CALL CalcQuantities(nVarCalc,nVal,mapElems_DG,mapCalc,UCalc_DG,maskCalc,gradUx_tmp,gradUy_tmp,gradUz_tmp) 
+      DEALLOCATE(gradUx_tmp,gradUy_tmp,gradUz_tmp)
+    END IF
+#endif
+  ELSE
+    CALL CalcQuantities(nVarCalc,nVal,mapElems_DG,mapCalc,UCalc_DG,maskCalc) 
+  END IF
 END IF
 END SUBROUTINE CalcQuantities_DG
 
@@ -108,14 +133,21 @@ USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_FV_Reconstruct
 USE MOD_Mesh_Vars           ,ONLY: nElems
 USE MOD_DG_Vars             ,ONLY: U
 #endif
+#if PARABOLIC
+USE MOD_Lifting_Vars        ,ONLY: gradUx,gradUy,gradUz
+#endif
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                      :: maskCalc(nVarDep)
+INTEGER                      :: nVal(4)
 #if FV_RECONSTRUCT 
 INTEGER                      :: maskPrim(nVarDep),maskGrad(nVarDep)
 INTEGER                      :: iVar
+#endif
+#if PARABOLIC
+REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,nElems_FV) :: gradUx_tmp,gradUy_tmp,gradUz_tmp
 #endif
 !===================================================================================================================================
 SDEALLOCATE(UVisu_FV)
@@ -125,6 +157,7 @@ ALLOCATE(UVisu_FV(0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV,nVarVisuTotal))
   ! Since the reconstruction is performed in primitive quantities, the calculation of conservative quantities from them 
   ! introduce for the conservatives dependcies from the primitive ones. Therefore all primitive quantities that
   ! are needed to build the requested conservatives must be added to the mapCalc_FV. 
+  nVal=(/NVisu_FV+1,NVisu_FV+1,NVisu_FV+1,nElems_FV/)
   SDEALLOCATE(mapCalc_FV)
   ALLOCATE(mapCalc_FV(1:nVarDep))
   CALL AppendNeededPrims(mapCalc,mapCalc_FV,nVarCalc_FV)
@@ -143,7 +176,7 @@ ALLOCATE(UVisu_FV(0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV,nVarVisuTotal))
   maskGrad=GetMaskGrad()
   maskCalc = 1-MAX(maskPrim,maskGrad)
   SWRITE(*,*) "[FVRE] CalcQuantities (nonPrim,nonGrad)"
-  CALL CalcQuantities(nVarCalc_FV,NVisu_FV,nElems_FV,mapElems_FV,mapCalc_FV,UCalc_FV,maskCalc)
+  CALL CalcQuantities(nVarCalc_FV,nVal,mapElems_FV,mapCalc_FV,UCalc_FV,maskCalc)
 
   ! copy cons, prim and all other non-grad quantities (namely all quantities that are build with reconstruction)
   ! to the UVisu_FV array
@@ -157,14 +190,23 @@ ALLOCATE(UVisu_FV(0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV,nVarVisuTotal))
   
   ! calc all grad quantities on the normal cell centers and convert them afterwards to visu grid
   IF (SUM(maskGrad*mapCalc_FV).GT.0) THEN
+    nVal=(/PP_N+1,PP_N+1,PP_N+1,nElems_FV/)
     SDEALLOCATE(UCalc_FV)
     ALLOCATE(UCalc_FV(0:PP_N,0:PP_N,0:PP_N,nElems_FV,1:nVarCalc_FV))
     SWRITE(*,*) "[FVRE] CalcQuantitiesWithGradients"
-    CALL CalcQuantities(nVarCalc,PP_N,nElems_FV,mapElems_FV,mapCalc_FV,UCalc_FV,maskGrad)
+#if PARABOLIC
+    gradUx_tmp=gradUx(:,:,:,:,mapElems_FV)
+    gradUy_tmp=gradUy(:,:,:,:,mapElems_FV)
+    gradUz_tmp=gradUz(:,:,:,:,mapElems_FV)
+    CALL CalcQuantities(nVarCalc_FV,nVal,mapElems_FV,mapCalc_FV,UCalc_FV,maskGrad,gradUx_tmp,gradUy_tmp,gradUz_tmp)
+#else
+    CALL CalcQuantities(nVarCalc_FV,nVal,mapElems_FV,mapCalc_FV,UCalc_FV,maskGrad)
+#endif
     SWRITE(*,*) "[FVRE] ConvertToVisu_FV"
     CALL ConvertToVisu_FV(mapCalc_FV,maskGrad)
   END IF
 #else
+  nVal=(/PP_N+1,PP_N+1,PP_N+1,nElems_FV/)
   ! calc FV solution 
   SWRITE(*,*) "[FV] calc quantities"
   SDEALLOCATE(UCalc_FV)
@@ -175,7 +217,16 @@ ALLOCATE(UVisu_FV(0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV,nVarVisuTotal))
   CALL FillCopy(nVar_State,PP_N,nElems,U,nElems_FV,mapElems_FV,UCalc_FV,maskCalc)
 
   IF(TRIM(FileType).EQ.'State')THEN
-    CALL CalcQuantities(nVarCalc,PP_N,nElems_FV,mapElems_FV,mapCalc,UCalc_FV,maskCalc) 
+    IF(withDGOperator.AND.PARABOLIC)THEN
+#if PARABOLIC
+      gradUx_tmp=gradUx(:,:,:,:,mapElems_FV)
+      gradUy_tmp=gradUy(:,:,:,:,mapElems_FV)
+      gradUz_tmp=gradUz(:,:,:,:,mapElems_FV)
+      CALL CalcQuantities(nVarCalc_FV,nVal,nElems_FV,mapElems_FV,mapCalc,UCalc_FV,maskCalc,gradUx_tmp,gradUy_tmp,gradUz_tmp)
+#endif
+    ELSE
+      CALL CalcQuantities(nVarCalc_FV,nVal,nElems_FV,mapElems_FV,mapCalc,UCalc_FV,maskCalc) 
+    END IF
   END IF
 
   ! convert FV solution to visu grid
