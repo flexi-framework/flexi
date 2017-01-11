@@ -47,7 +47,7 @@ USE MOD_Mesh_Vars,           ONLY: useCurveds,NGeo,nElems,NodeCoords,offsetElem
 USE MOD_Interpolation_Vars,  ONLY: NodeTypeCL,NodeTypeVisu
 USE MOD_Interpolation,       ONLY: GetVandermonde
 USE MOD_ChangeBasis,         ONLY: ChangeBasis3D
-USE MOD_VTK,                 ONLY: WriteDataToVTK3D,WriteVTKMultiBlockDataSet
+USE MOD_VTK,                 ONLY: WriteDataToVTK,WriteVTKMultiBlockDataSet
 #if MPI
 USE MOD_MPI_Vars,            ONLY: NbProc,nMPISides_Proc
 #endif /*MPI*/
@@ -64,9 +64,11 @@ CHARACTER(LEN=255)             :: InputStateFile,MeshFile
 INTEGER                        :: nVar_State,N_State,nElems_State   ! Properties read from state file
 CHARACTER(LEN=255)             :: NodeType_State                    !     "
 REAL,ALLOCATABLE               :: U(:,:,:,:,:)                      ! Solution from state file
-REAL,ALLOCATABLE               :: U_Visu(:,:,:,:,:)                 ! Solution on visualiation nodes
+REAL,ALLOCATABLE,TARGET        :: U_Visu(:,:,:,:,:)                 ! Solution on visualiation nodes
+REAL,POINTER                   :: U_Visu_p(:,:,:,:,:)                 ! Solution on visualiation nodes
 REAL,ALLOCATABLE               :: Coords_NVisu(:,:,:,:,:)           ! Coordinates of visualisation nodes 
-REAL,ALLOCATABLE               :: Coords_DG(:,:,:,:,:)     
+REAL,ALLOCATABLE,TARGET        :: Coords_DG(:,:,:,:,:)     
+REAL,POINTER                   :: Coords_DG_p(:,:,:,:,:)     
 REAL,ALLOCATABLE               :: Vdm_EQNgeo_NVisu(:,:)             ! Vandermonde from equidistand mesh to visualisation nodes
 REAL,ALLOCATABLE               :: Vdm_N_NVisu(:,:)                  ! Vandermonde from state to visualisation nodes
 INTEGER                        :: nGeo_old,nVar_State_old           ! Variables used to check if we need to reinitialize
@@ -81,9 +83,11 @@ INTEGER                        :: iDG,iFV
 CHARACTER(LEN=255)             :: FileString_FV,FileString_multiblock
 INTEGER                        :: NVisu_FV                          ! Polynomial degree of visualisation for FV
 CHARACTER(LEN=255)             :: NodeTypeVisuOut_FV                ! Stores user selected type of visualisation nodes
-REAL,ALLOCATABLE               :: U_Visu_FV(:,:,:,:,:)              ! Solution on visualiation nodes
+REAL,ALLOCATABLE,TARGET        :: U_Visu_FV(:,:,:,:,:)              ! Solution on visualiation nodes
+REAL,POINTER                   :: U_Visu_FV_p(:,:,:,:,:)              ! Solution on visualiation nodes
 REAL,ALLOCATABLE               :: Coords_NVisu_FV(:,:,:,:,:)        ! Coordinates of visualisation nodes
-REAL,ALLOCATABLE               :: Coords_FV(:,:,:,:,:)      
+REAL,ALLOCATABLE,TARGET        :: Coords_FV(:,:,:,:,:)      
+REAL,POINTER                   :: Coords_FV_p(:,:,:,:,:)      
 REAL,ALLOCATABLE               :: Vdm_CLNGeo_NVisu_FV(:,:)
 INTEGER                        :: nDims,nVarAdd_HDF5,iVarAdd,nLocalElems_FV,nLocalElems_DG
 LOGICAL                        :: elemDataFound
@@ -396,12 +400,14 @@ DO iArgs = 2,nArgs
 #else
   FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))//'.vtu'
 #endif
-  CALL WriteDataToVTK3D(NVisu,iDG,nVar_State,StrVarNames,Coords_DG(:,:,:,:,1:iDG), &
-                        U_Visu(:,:,:,:,1:iDG),TRIM(FileString_DG))
+  Coords_DG_p => Coords_DG(:,:,:,:,1:iDG)
+  U_Visu_p => U_Visu(:,:,:,:,1:iDG)
+  CALL WriteDataToVTK(nVar_State,NVisu,iDG,StrVarNames,Coords_DG_p,U_Visu_p,TRIM(FileString_DG),dim=3,DGFV=0)
 #if FV_ENABLED      
   FileString_FV=TRIM(TIMESTAMP(TRIM(ProjectName)//'_FV',OutputTime))//'.vtu'  
-  CALL WriteDataToVTK3D(NVisu_FV,iFV,nVar_State,StrVarNames,Coords_FV(:,:,:,:,1:iFV), &
-                        U_Visu_FV(:,:,:,:,1:iFV),TRIM(FileString_FV))
+  Coords_FV_p => Coords_FV(:,:,:,:,1:iFV)
+  U_Visu_FV_p => U_Visu_FV(:,:,:,:,1:iFV)
+  CALL WriteDataToVTK(nVar_State,NVisu_FV,iFV,StrVarNames,Coords_FV_p,U_Visu_FV_p,TRIM(FileString_FV),dim=3,DGFV=1)
                       
   IF (MPIRoot) THEN
     ! write multiblock file

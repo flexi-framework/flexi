@@ -251,28 +251,32 @@ USE MOD_Mesh_Vars         ,ONLY:Elem_xGP
 USE MOD_Interpolation_Vars,ONLY:NodeTypeCL,NodeType
 USE MOD_Interpolation     ,ONLY:GetVandermonde
 USE MOD_Output_Vars       ,ONLY:NVisu,Vdm_GaussN_NVisu
-USE MOD_ChangeBasis       ,ONLY:ChangeBasis3D
+USE MOD_ChangeBasisByDim  ,ONLY:ChangeBasisVolume
 USE MOD_Mesh_Vars         ,ONLY:sJ,nElems
-USE MOD_VTK               ,ONLY:WriteDataToVTK3D
+USE MOD_VTK               ,ONLY:WriteDataToVTK
  IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL                                 :: applySponge(nElems)
-INTEGER                                 :: iElem,iSpongeElem,i,j,k,NVisuZ,iRamp
+INTEGER                                 :: iElem,iSpongeElem,i,j,k,iRamp
 CHARACTER(LEN=255)                      :: FileString,VarNameSponge(1)
 REAL,DIMENSION(  0:PP_N,0:PP_N,0:PP_NZ) :: sigma, x_star
 REAL                                    :: r_vec(PP_dim)
-REAL,ALLOCATABLE                        :: SpongeMat_NVisu(:,:,:,:,:),Coords_NVisu(:,:,:,:,:),SpDummy(:,:,:,:)
-INTEGER                         :: nSpongeRamps
-INTEGER,ALLOCATABLE             :: SpongeShape(:)  
-REAL,ALLOCATABLE                :: xStart(:,:)                 ! Starting Point for Sponge Ramp
-REAL,ALLOCATABLE                :: SpVec(:,:)                  ! Vector defining the ramp direction
-REAL,ALLOCATABLE                :: SpDistance(:)               ! Distance of the sponge layer
-REAL,ALLOCATABLE                :: SpRadius(:)                 ! Radius of the cylindrical (3D) / radial (2D) sponge layer
+REAL,ALLOCATABLE,TARGET                 :: SpDummy(:,:,:,:)
+REAL,ALLOCATABLE,TARGET                 :: SpongeMat_NVisu(:,:,:,:,:)
+REAL,ALLOCATABLE,TARGET                 :: Coords_NVisu(:,:,:,:,:)
+REAL,POINTER                            :: SpongeMat_NVisu_p(:,:,:,:,:)
+REAL,POINTER                            :: Coords_NVisu_p(:,:,:,:,:)
+INTEGER                                 :: nSpongeRamps
+INTEGER,ALLOCATABLE                     :: SpongeShape(:)  
+REAL,ALLOCATABLE                        :: xStart(:,:)                 ! Starting Point for Sponge Ramp
+REAL,ALLOCATABLE                        :: SpVec(:,:)                  ! Vector defining the ramp direction
+REAL,ALLOCATABLE                        :: SpDistance(:)               ! Distance of the sponge layer
+REAL,ALLOCATABLE                        :: SpRadius(:)                 ! Radius of the cylindrical (3D) / radial (2D) sponge layer
 #if(PP_dim==3)
-REAL,ALLOCATABLE                :: SpAxis(:,:)                 ! Axis of the cylindrical sponge layer (only 3D)
+REAL,ALLOCATABLE                        :: SpAxis(:,:)                 ! Axis of the cylindrical sponge layer (only 3D)
 #endif
 !==================================================================================================================================
 SWRITE(UNIT_StdOut,'(A)') '  Initialize Sponge Ramping Function...'
@@ -317,7 +321,7 @@ DO iRamp=1,nSpongeRamps
 !    SpRadius(iRamp)=0
 #if PP_dim==3
     SpAxis(:,iRamp)=GETREALARRAY('SpongeAxis',3,'(/0.,0.,1./)')
-#endif END SELECT
+#endif
   END SELECT 
 END DO!iRamp
 
@@ -328,7 +332,7 @@ DO iElem=1,nElems
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     SELECT CASE(SpongeShape(iRamp))
       CASE(SPONGESHAPE_RAMP) ! ramp aligned with a vector
-      x_star(i,j,k) =       SUM((Elem_xGP(:,i,j,k,iElem)-xStart(1:PP_dim,iRamp))*SpVec(1:PP_dim,iRamp))/SpDistance(iRamp)
+      x_star(i,j,k) =       SUM((Elem_xGP(1:PP_dim,i,j,k,iElem)-xStart(1:PP_dim,iRamp))*SpVec(1:PP_dim,iRamp))/SpDistance(iRamp)
       CASE(SPONGESHAPE_CYLINDRICAL) ! cylindrical sponge
       r_vec(:) = Elem_xGP(:,i,j,k,iElem)-xStart(1:PP_dim,iRamp)
 #if(PP_dim==3)
@@ -365,7 +369,7 @@ DO iSpongeElem=1,nSpongeElems
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     SELECT CASE(SpongeShape(iRamp))
       CASE(SPONGESHAPE_RAMP) ! ramp aligned with a vector
-      x_star(i,j,k) =       SUM((Elem_xGP(:,i,j,k,iElem)-xStart(1:PP_dim,iRamp))*SpVec(1:PP_dim,iRamp))/SpDistance(iRamp)
+      x_star(i,j,k) =       SUM((Elem_xGP(1:PP_dim,i,j,k,iElem)-xStart(1:PP_dim,iRamp))*SpVec(1:PP_dim,iRamp))/SpDistance(iRamp)
       CASE(SPONGESHAPE_CYLINDRICAL) ! cylindrical sponge
       r_vec(:) = Elem_xGP(:,i,j,k,iElem)-xStart(1:PP_dim,iRamp)
 #if(PP_dim==3)
@@ -390,30 +394,28 @@ DEALLOCATE(xStart)
 DEALLOCATE(SpVec)
 DEALLOCATE(SpRadius)
 
-! Visualize the Sponge Ramp
+! Visualize the Sponge Ramp - until now only 3D visualization!
 IF(SpongeViz) THEN
   FileString=TRIM(INTSTAMP(TRIM(ProjectName),myRank))//'_SpongeRamp.vtu'
-#if PP_dim == 3
-  NVisuZ=NVisu
-#else
-  NVisuZ=0
-#endif
-  ALLOCATE(Coords_NVisu(1:3, 0:NVisu,0:NVisu,0:NVisuZ,nElems))
-  ALLOCATE(SpongeMat_NVisu(1,0:NVisu,0:NVisu,0:NVisuZ,nElems))
+  ALLOCATE(Coords_NVisu(1:3, 0:NVisu,0:NVisu,0:PP_NVisuZ,nElems))
+  ALLOCATE(SpongeMat_NVisu(1,0:NVisu,0:NVisu,0:PP_NVisuZ,nElems))
   ALLOCATE(SpDummy(1,0:PP_N,0:PP_N,0:PP_NZ))
   ! Create coordinates of visualization points
   DO iElem=1,nElems
-    CALL ChangeBasis3D(3,PP_N,NVisu,Vdm_GaussN_NVisu,Elem_xGP(1:3,:,:,:,iElem),Coords_NVisu(1:3,:,:,:,iElem))
+    CALL ChangeBasisVolume(3,PP_N,NVisu,Vdm_GaussN_NVisu,Elem_xGP(1:3,:,:,:,iElem),Coords_NVisu(1:3,:,:,:,iElem))
   END DO
   ! Interpolate solution onto visu grid
   SpongeMat_NVisu=0.
   DO iSpongeElem=1,nSpongeElems
     iElem=spongeMap(iSpongeElem)
     SpDummy(1,:,:,:)=SpongeMat(:,:,:,iSpongeElem)
-    CALL ChangeBasis3D(1,PP_N,NVisu,Vdm_GaussN_NVisu,SpDummy(1:1,:,:,:),SpongeMat_NVisu(1:1,:,:,:,iElem))
+    CALL ChangeBasisVolume(1,PP_N,NVisu,Vdm_GaussN_NVisu,SpDummy(1:1,:,:,:),SpongeMat_NVisu(1:1,:,:,:,iElem))
   END DO !SpongeElem=1,nSpongeElems
   VarNameSponge(1)='dSponge'
-  CALL WriteDataToVTK3D(NVisu,nElems,1,VarNameSponge,Coords_NVisu(1:3,:,:,:,:),SpongeMat_NVisu,TRIM(FileString))
+  Coords_NVisu_p => Coords_NVisu
+  SpongeMat_NVisu_p => SpongeMat_NVisu
+  CALL WriteDataToVTK(1,NVisu,nElems,VarNameSponge,Coords_NVisu_p,SpongeMat_NVisu_p,TRIM(FileString),dim=PP_dim,DGFV=0)
+  WRITE(*,*) '********************************************************************'
   DEALLOCATE(Coords_NVisu)
   DEALLOCATE(SpongeMat_NVisu)
   DEALLOCATE(SpDummy)
