@@ -476,12 +476,12 @@ CALL to2D_rank5((/1,0,0,0,1/),(/3,PP_N,PP_N,FV_ENABLED,nSides/),3,TangVec1)
 CALL to2D_rank5((/1,0,0,0,1/),(/3,PP_N,PP_N,FV_ENABLED,nSides/),3,TangVec2)
 CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,FV_ENABLED,nSides/),2,SurfElem)
 
-
 !computation of z length 
 zlength=abs(nodeCoords(3,0,0,Ngeo,1)-nodeCoords(3,0,0,0,1))
 !normalization of geometric terms by z length (reference elemt has length 2 [-1,1])
 sJ=sJ*(zlength/2.)
-SurfElem=SurfElem/(zlength/2.)
+! attention: SurfElem contains NANs (MPI_YOUR sides and MPIMortars). Arithemtic with those causes runtime errors with INTEL debug
+SurfElem(:,:,:,1:lastMPISide_MINE)=SurfElem(:,:,:,1:lastMPISide_MINE)/(zlength/2.)  
 Metrics_fTilde = Metrics_fTilde/(zlength/2.)
 Metrics_gTilde = Metrics_gTilde/(zlength/2.)
 END SUBROUTINE Convert2D
