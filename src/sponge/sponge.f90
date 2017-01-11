@@ -443,10 +443,10 @@ SUBROUTINE ReadBaseFlow(FileName)
 USE MOD_PreProc
 USE MOD_Globals
 USE MOD_Sponge_Vars
-USE MOD_Mesh_Vars  ,  ONLY: offsetElem,nGlobalElems,nElems
-USE MOD_HDF5_input ,  ONLY: OpenDataFile,CloseDataFile,ReadArray,GetDataProps
-USE MOD_ChangeBasis,  ONLY: ChangeBasis3D
-USE MOD_Interpolation,ONLY: GetVandermonde
+USE MOD_Mesh_Vars  ,       ONLY: offsetElem,nGlobalElems,nElems
+USE MOD_HDF5_input ,       ONLY: OpenDataFile,CloseDataFile,ReadArray,GetDataProps
+USE MOD_ChangeBasisByDim,  ONLY: ChangeBasisVolume
+USE MOD_Interpolation,     ONLY: GetVandermonde
 USE MOD_Interpolation_Vars,ONLY: NodeType
  IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -463,10 +463,10 @@ SWRITE(UNIT_StdOut,'(A,A)')'  Read Sponge Base Flow from file "',FileName
 CALL OpenDataFile(FileName,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL GetDataProps(nVar_Base,N_Base,nElems_Base,NodeType_Base)
 
-!IF((nElems_Base.NE.nGlobalElems).OR.(nVar_Base.NE.PP_nVar))THEN
-!  CALL abort(__STAMP__,&
-!             'Baseflow file does not match solution. Elements,nVar',nElems_Base,REAL(nVar_Base))
-!ENDIF
+IF(nElems_Base.NE.nGlobalElems)THEN
+  CALL abort(__STAMP__,&
+             'Baseflow file does not match solution. Elements,nVar',nElems_Base,REAL(nVar_Base))
+END IF
 
 ! Read in state
 IF((N_Base.EQ.PP_N).AND.(TRIM(NodeType_Base).EQ.TRIM(NodeType)))THEN
@@ -480,11 +480,7 @@ ELSE
   CALL GetVandermonde(N_Base,NodeType_Base,PP_N,NodeType,Vdm_NBase_N,modal=.TRUE.)
   CALL ReadArray('DG_Solution',5,(/PP_nVar,N_Base+1,N_Base+1,N_Base+1,nElems/),OffsetElem,5,RealArray=UTmp)
   DO iElem=1,nElems
-#if PP_dim == 3
-    CALL ChangeBasis3D(PP_nVar,N_Base,PP_N,Vdm_NBase_N,UTmp(:,:,:,:,iElem),SpBaseFlow(:,:,:,:,iElem))
-#else
-    CALL ChangeBasis3D(PP_nVar,N_Base,PP_N,Vdm_NBase_N,UTmp(:,:,:,0:0,iElem),SpBaseFlow(:,:,:,:,iElem))
-#endif
+    CALL ChangeBasisVolume(PP_nVar,N_Base,PP_N,Vdm_NBase_N,UTmp(:,:,:,:,iElem),SpBaseFlow(:,:,:,:,iElem))
   END DO
   DEALLOCATE(UTmp,Vdm_NBase_N)
 END IF
