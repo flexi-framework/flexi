@@ -286,32 +286,34 @@ SUBROUTINE Visualize(OutputTime,U)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Equation_Vars,ONLY:StrVarNames
-USE MOD_Output_Vars,ONLY:ProjectName,OutputFormat
-USE MOD_Mesh_Vars  ,ONLY:Elem_xGP,nElems
-USE MOD_Output_Vars,ONLY:NVisu,Vdm_GaussN_NVisu
-USE MOD_ChangeBasis,ONLY:ChangeBasis3D
-USE MOD_VTK        ,ONLY:WriteDataToVTK3D,WriteVTKMultiBlockDataSet
+USE MOD_Equation_Vars,    ONLY:StrVarNames
+USE MOD_Output_Vars,      ONLY:ProjectName,OutputFormat
+USE MOD_Mesh_Vars  ,      ONLY:Elem_xGP,nElems
+USE MOD_Output_Vars,      ONLY:NVisu,Vdm_GaussN_NVisu
+USE MOD_ChangeBasisByDim, ONLY:ChangeBasisVolume
+USE MOD_VTK,              ONLY:WriteDataToVTK,WriteVTKMultiBlockDataSet
 #if FV_ENABLED
-USE MOD_FV_Vars    ,ONLY: FV_Elems
+USE MOD_FV_Vars,          ONLY:FV_Elems
 #if FV_RECONSTRUCT
-USE MOD_FV_Vars    ,ONLY: FV_dx_XI_L,FV_dx_XI_R,FV_dx_ETA_L,FV_dx_ETA_R,FV_dx_ZETA_L,FV_dx_ZETA_R
-USE MOD_FV_Vars    ,ONLY: gradUxi,gradUeta,gradUzeta
+USE MOD_FV_Vars,          ONLY:FV_dx_XI_L,FV_dx_XI_R,FV_dx_ETA_L,FV_dx_ETA_R,FV_dx_ZETA_L,FV_dx_ZETA_R
+USE MOD_FV_Vars,          ONLY:gradUxi,gradUeta,gradUzeta
 #endif
-USE MOD_EOS        ,ONLY: PrimToCons,ConsToPrim
+USE MOD_EOS,              ONLY:PrimToCons,ConsToPrim
 USE MOD_FV_Basis
-USE MOD_Indicator_Vars ,ONLY: IndValue
+USE MOD_Indicator_Vars,   ONLY:IndValue
 #endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 REAL,INTENT(IN)               :: OutputTime               !< simulation time of output
-REAL,INTENT(IN)               :: U(PP_nVar,0:PP_N,0:PP_N,0:PP_N,1:nElems) !< solution vector to be visualized
+REAL,INTENT(IN)               :: U(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< solution vector to be visualized
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                       :: iElem,FV_iElem,DG_iElem,PP_nVar_loc,nFV_Elems,iVar
-REAL,ALLOCATABLE              :: Coords_NVisu(:,:,:,:,:) 
-REAL,ALLOCATABLE              :: U_NVisu(:,:,:,:,:)
+REAL,ALLOCATABLE,TARGET       :: Coords_NVisu(:,:,:,:,:) 
+REAL,ALLOCATABLE,TARGET       :: U_NVisu(:,:,:,:,:)
+REAL,POINTER                  :: Coords_NVisu_p(:,:,:,:,:) 
+REAL,POINTER                  :: U_NVisu_p(:,:,:,:,:)
 CHARACTER(LEN=255)            :: FileString_DG
 #if FV_ENABLED
 CHARACTER(LEN=255)            :: FileString_FV
@@ -319,8 +321,10 @@ CHARACTER(LEN=255)            :: FileString_multiblock
 INTEGER                       :: i,j,k,FV_NVisu,iii,jjj,kkk,ii,jj,kk
 REAL                          :: UPrim(1:PP_nVarPrim)
 REAL                          :: UPrim2(1:PP_nVarPrim)
-REAL,ALLOCATABLE              :: FV_Coords_NVisu(:,:,:,:,:)
-REAL,ALLOCATABLE              :: FV_U_NVisu(:,:,:,:,:)
+REAL,ALLOCATABLE,TARGET       :: FV_Coords_NVisu(:,:,:,:,:)
+REAL,POINTER                  :: FV_Coords_NVisu_p(:,:,:,:,:)
+REAL,ALLOCATABLE,TARGET       :: FV_U_NVisu(:,:,:,:,:)
+REAL,POINTER                  :: FV_U_NVisu_p(:,:,:,:,:)
 REAL,ALLOCATABLE              :: Vdm_GaussN_FV_NVisu(:,:)
 #endif
 CHARACTER(LEN=255),ALLOCATABLE:: StrVarNames_loc(:)
@@ -339,14 +343,14 @@ DO iElem=1,nElems
   IF (FV_Elems(iElem).GT.0) nFV_Elems = nFV_Elems + 1 
 END DO
 FV_NVisu = (PP_N+1)*2-1
-ALLOCATE(FV_U_NVisu(PP_nVar_loc,0:FV_NVisu,0:FV_NVisu,0:FV_NVisu,1:nFV_Elems))
-ALLOCATE(FV_Coords_NVisu(1:3,0:FV_NVisu,0:FV_NVisu,0:FV_NVisu,1:nFV_Elems))
+ALLOCATE(FV_U_NVisu(PP_nVar_loc,0:FV_NVisu,0:FV_NVisu,0:PP_FV_NVisuZ,1:nFV_Elems))
+ALLOCATE(FV_Coords_NVisu(1:3,0:FV_NVisu,0:FV_NVisu,0:PP_FV_NVisuZ,1:nFV_Elems))
 ALLOCATE(Vdm_GaussN_FV_NVisu(0:FV_NVisu,0:PP_N))
 CALL FV_Build_VisuVdm(PP_N,Vdm_GaussN_FV_NVisu)
 #endif
-ALLOCATE(U_NVisu(PP_nVar_loc,0:NVisu,0:NVisu,0:NVisu,1:(nElems-nFV_Elems)))
+ALLOCATE(U_NVisu(PP_nVar_loc,0:NVisu,0:NVisu,0:PP_NVisuZ,1:(nElems-nFV_Elems)))
 U_NVisu = 0.
-ALLOCATE(Coords_NVisu(1:3,0:NVisu,0:NVisu,0:NVisu,1:(nElems-nFV_Elems)))
+ALLOCATE(Coords_NVisu(1:3,0:NVisu,0:NVisu,0:PP_NVisuZ,1:(nElems-nFV_Elems)))
 
 DG_iElem=0; FV_iElem=0
 DO iElem=1,nElems
@@ -355,16 +359,16 @@ DO iElem=1,nElems
 #endif
     DG_iElem = DG_iElem+1
     ! Create coordinates of visualization points
-    CALL ChangeBasis3D(3,PP_N,NVisu,Vdm_GaussN_NVisu,Elem_xGP(1:3,:,:,:,iElem),Coords_NVisu(1:3,:,:,:,DG_iElem))
+    CALL ChangeBasisVolume(3,PP_N,NVisu,Vdm_GaussN_NVisu,Elem_xGP(1:3,:,:,:,iElem),Coords_NVisu(1:3,:,:,:,DG_iElem))
     ! Interpolate solution onto visu grid
-    CALL ChangeBasis3D(PP_nVar,PP_N,NVisu,Vdm_GaussN_NVisu,U(1:PP_nVar,:,:,:,iElem),U_NVisu(1:PP_nVar,:,:,:,DG_iElem))
+    CALL ChangeBasisVolume(PP_nVar,PP_N,NVisu,Vdm_GaussN_NVisu,U(1:PP_nVar,:,:,:,iElem),U_NVisu(1:PP_nVar,:,:,:,DG_iElem))
 #if FV_ENABLED
     U_NVisu(PP_nVar_loc-1,:,:,:,DG_iElem) = IndValue(iElem)
     U_NVisu(PP_nVar_loc,:,:,:,DG_iElem) = FV_Elems(iElem)
   ELSE 
     FV_iElem = FV_iElem+1
 
-    CALL ChangeBasis3D(3,PP_N,FV_NVisu,Vdm_GaussN_FV_NVisu,Elem_xGP(1:3,:,:,:,iElem),FV_Coords_NVisu(1:3,:,:,:,FV_iElem))
+    CALL ChangeBasisVolume(3,PP_N,FV_NVisu,Vdm_GaussN_FV_NVisu,Elem_xGP(1:3,:,:,:,iElem),FV_Coords_NVisu(1:3,:,:,:,FV_iElem))
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       CALL ConsToPrim(UPrim ,U(:,i,j,k,iElem))
       DO kk=0,1; DO jj=0,1; DO ii=0,1
@@ -410,12 +414,14 @@ CASE(OUTPUTFORMAT_PARAVIEW)
 #else
   FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))//'.vtu'
 #endif
-  CALL WriteDataToVTK3D(        NVisu,nElems-nFV_Elems,PP_nVar_loc,StrVarNames_loc,Coords_NVisu(1:3,:,:,:,:), &
-                                U_NVisu,TRIM(FileString_DG))
+  Coords_NVisu_p => Coords_NVisu
+  U_NVisu_p => U_NVisu
+  CALL WriteDataToVTK(PP_nVar_loc,NVisu,nElems-nFV_Elems,StrVarNames_loc,Coords_NVisu_p,U_NVisu_p,TRIM(FileString_DG),dim=PP_dim,DGFV=0)
 #if FV_ENABLED                            
   FileString_FV=TRIM(TIMESTAMP(TRIM(ProjectName)//'_FV',OutputTime))//'.vtu'
-  CALL WriteDataToVTK3D(        FV_NVisu,nFV_Elems,PP_nVar_loc,StrVarNames_loc,FV_Coords_NVisu(1:3,:,:,:,:), &
-                                FV_U_NVisu,TRIM(FileString_FV))
+  FV_Coords_NVisu_p => FV_Coords_NVisu
+  FV_U_NVisu_p => FV_U_NVisu
+  CALL WriteDataToVTK(PP_nVar_loc,FV_NVisu,nFV_Elems,StrVarNames_loc,FV_Coords_NVisu_p,FV_U_NVisu_p,TRIM(FileString_FV),dim=PP_dim,DGFV=1)
 
   IF (MPIRoot) THEN                   
     ! write multiblock file

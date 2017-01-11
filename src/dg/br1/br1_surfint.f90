@@ -121,12 +121,14 @@ DO SideID=firstSideID,lastSideID
       ! orient flux to fit flip and locSide to element local system
       IF(weak)THEN
         DO q=0,PP_NlocZ; DO p=0,Nloc
-          FluxTmp(:,p,q)=-Flux(:,S2V2(1,p,q,flip,nblocSideID),S2V2(2,p,q,flip,nblocSideID),SideID)
+          ! p,q are in the master RHS system, they need to be transformed to the slave volume system using S2V2 mapping
+          FluxTmp(:,S2V2(1,p,q,flip,nblocSideID),S2V2(2,p,q,flip,nblocSideID))=-Flux(:,p,q,SideID)
         END DO; END DO ! p,q
       ELSE
         ! In strong form, don't flip the sign since the slave flux is the negative of the master flux
         DO q=0,PP_NlocZ; DO p=0,Nloc
-          FluxTmp(:,p,q)= Flux(:,S2V2(1,p,q,flip,nblocSideID),S2V2(2,p,q,flip,nblocSideID),SideID)
+          ! p,q are in the master RHS system, they need to be transformed to the slave volume system using S2V2 mapping
+          FluxTmp(:,S2V2(1,p,q,flip,nblocSideID),S2V2(2,p,q,flip,nblocSideID))= Flux(:,p,q,SideID)
         END DO; END DO ! p,q
       END IF
 #if   (PP_NodeType==1)

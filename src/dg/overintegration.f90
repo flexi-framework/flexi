@@ -88,7 +88,7 @@ USE MOD_PreProc
 USE MOD_Overintegration_Vars
 USE MOD_Interpolation       ,ONLY:GetVandermonde
 USE MOD_Interpolation_Vars  ,ONLY:InterpolationInitIsDone,Vdm_Leg,sVdm_Leg,NodeType
-USE MOD_ChangeBasis         ,ONLY:ChangeBasis3D
+USE MOD_ChangeBasisByDim    ,ONLY:ChangeBasisVolume
 USE MOD_ReadInTools         ,ONLY:GETINT,GETREAL,GETREALARRAY,GETLOGICAL,GETINTFROMSTR
 USE MOD_Interpolation       ,ONLY:GetVandermonde,InitInterpolationBasis
 USE MOD_Mesh_Vars           ,ONLY:DetJac_Ref,NGeoRef,nElems
@@ -117,7 +117,6 @@ NUnder=PP_N
 NOver =PP_N
 
 OverintegrationType = GETINTFROMSTR('OverintegrationType')
-print*, OverintegrationType
 SELECT CASE(OverintegrationType)
 CASE (OVERINTEGRATIONTYPE_NONE) ! no overintegration, collocation DGSEM )
   OverintegrationType = 0
@@ -149,7 +148,7 @@ CASE (OVERINTEGRATIONTYPE_CONSCUTOFF) ! conservative modal cut-off filter: Here,
     CALL GetVandermonde(NGeoRef,NodeType,NUnder,NodeType,Vdm_NGeoRef_NUnder,modal=.TRUE.)
 
     DO iElem=1,nElems
-      CALL ChangeBasis3D(1,NGeoRef,NUnder,Vdm_NGeoRef_NUnder,DetJac_Ref(:,:,:,:,iElem),DetJac_NUnder)
+      CALL ChangeBasisVolume(1,NGeoRef,NUnder,Vdm_NGeoRef_NUnder,DetJac_Ref(:,:,:,:,iElem),DetJac_NUnder)
       DO k=0,PP_NUnderZ; DO j=0,NUnder; DO i=0,NUnder
         sJNUnder(i,j,k,iElem)=1./DetJac_NUnder(1,i,j,k)
       END DO; END DO; END DO !i,j,k=0,PP_N
@@ -244,7 +243,7 @@ SUBROUTINE FilterConservative(U_in)
 USE MOD_PreProc
 USE MOD_Globals
 USE MOD_Overintegration_Vars,  ONLY: Vdm_N_NUnder,Vdm_NUnder_N,NUnder,sJNUnder
-USE MOD_ChangeBasis,           ONLY: ChangeBasis3D
+USE MOD_ChangeBasisByDim,      ONLY: ChangeBasisVolume
 USE MOD_Vector,                ONLY: VNullify
 USE MOD_Mesh_Vars,             ONLY: nElems
 #if FV_ENABLED
@@ -253,29 +252,45 @@ USE MOD_FV_Vars,               ONLY: FV_Elems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(INOUT)  :: U_in(PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems)    !< Time derivative / JU_t to be filtered
+REAL,INTENT(INOUT)  :: U_in(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems)    !< Time derivative / JU_t to be filtered
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER             :: i,j,k,iElem,iU,jU,kU,nDOF_N,nDOF_NUnder
+INTEGER             :: i,j,k,iElem
+#if PP_dim==2
+REAL                :: U_loc(   PP_nVar,0:NUnder,0:NUnder,0:0,nElems) ! U_t / JU_t on NUnder
+#else
 REAL                :: U_loc(   PP_nVar,0:NUnder,0:NUnder,0:NUnder) ! U_t / JU_t on NUnder
 REAL                :: X3D_Buf1(PP_nVar,0:NUnder,0:PP_N,0:PP_N)     ! intermediate results from 1D interpolations
 REAL                :: X3D_Buf2(PP_nVar,0:NUnder,0:NUnder,0:PP_N)   !
 REAL                :: X3D_Buf3(PP_nVar,0:PP_N,0:NUnder,0:NUnder)   !
 REAL                :: X3D_Buf4(PP_nVar,0:PP_N,0:PP_N,0:NUnder)     !
+INTEGER             :: iU,jU,kU,nDOF_N,nDOF_NUnder
+#endif
 !==================================================================================================================================
-
+#if PP_dim==2
 ! The following 5 lines are original lines of code for the conservative filtering.
 ! The below code does the same, but optimized for performance.
 ! === BEGIN ORIGINAL CODE === 
-!CALL ChangeBasis3D(5,nElems,PP_N,NUnder,Vdm_N_NUnder,U_in,U_loc,.FALSE.)
-!DO iElem=1,nElems
-  !DO k=0,NUnder; DO j=0,NUnder; DO i=0,NUnder
-    !U_loc(:,i,j,k,iElem)=U_loc(:,i,j,k,iElem)*sJNUnder(i,j,k,iElem)
-  !END DO; END DO; END DO
-!END DO
-!CALL ChangeBasis3D(5,nElems,NUnder,PP_N,Vdm_NUnder_N,U_loc,U_in,.FALSE.)
+#if FV_ENABLED
+CALL ChangeBasisVolume(PP_nVar,PP_N,NUnder,1,nElems,1,nElems,Vdm_N_NUnder,U_in,U_loc,FV_Elems,0)
+#else
+CALL ChangeBasisVolume(PP_nVar,PP_N,NUnder,1,nElems,1,nElems,Vdm_N_NUnder,U_in,U_loc)
+#endif
+DO iElem=1,nElems
+#if FV_ENABLED
+  IF (FV_Elems(iElem).GT.0) CYCLE ! Do only, when DG element
+#endif
+  DO j=0,NUnder; DO i=0,NUnder
+    U_loc(:,i,j,0,iElem)=U_loc(:,i,j,0,iElem)*sJNUnder(i,j,0,iElem)
+  END DO; END DO
+END DO
+#if FV_ENABLED
+CALL ChangeBasisVolume(PP_nVar,NUnder,PP_N,1,nElems,1,nElems,Vdm_NUnder_N,U_loc,U_in,FV_Elems,0)
+#else
+CALL ChangeBasisVolume(PP_nVar,NUnder,PP_N,1,nElems,1,nElems,Vdm_NUnder_N,U_loc,U_in)
+#endif
 ! === END ORIGINAL CODE === 
-
+#else
 nDOF_N     =PP_nVar*(PP_N+1  )**3
 nDOF_NUnder=PP_nVar*(NUnder+1)**3
 DO iElem=1,nElems
@@ -354,6 +369,7 @@ DO iElem=1,nElems
   END DO ! kU
 
 END DO
+#endif
 
 END SUBROUTINE FilterConservative
 

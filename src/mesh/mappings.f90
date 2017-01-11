@@ -487,7 +487,7 @@ END FUNCTION SideToVol
 !> Transform RHS-Coordinates of Master to Volume-Coordinates. This is: SideToVol2 = CGNS_SideToVol2(Flip_M2S(...))
 !> input:  p,q, flip, locSideID
 !>     where: p,q are in Master-RHS;
-!> output: volume-indicies
+!> output: volume-indicies (two indices on the specific local side)
 !==================================================================================================================================
 FUNCTION SideToVol2(Nloc, p, q, flip, locSideID,dim)
 ! MODULES

@@ -30,7 +30,7 @@
 !> _Mult means that the routine is not restricted to one element, but the data fields of several elements (nElems) is
 !> processed.
 !==================================================================================================================================
-SUBROUTINE ChangeBasis3D_selective(Dim1,NIn,NOut,range_1,range_N,firstind,lastind,Vdm,X_In,X_Out,mask,mask_ref,&
+PURE SUBROUTINE ChangeBasis3D_selective(Dim1,NIn,NOut,range_1,range_N,firstind,lastind,Vdm,X_In,X_Out,mask,mask_ref,&
         addToOutput)
 !==================================================================================================================================
 !==================================================================================================================================
@@ -134,7 +134,8 @@ DO WHILE (Ind.LE.lastind)
   END DO
 END DO  
 END SUBROUTINE ChangeBasis3D_selective
-SUBROUTINE ChangeBasis2D_selective(Dim1,NIn,NOut,range_1,range_N,firstind,lastind,Vdm,X_In,X_Out,mask,mask_ref,&
+
+PURE SUBROUTINE ChangeBasis2D_selective(Dim1,NIn,NOut,range_1,range_N,firstind,lastind,Vdm,X_In,X_Out,mask,mask_ref,&
         addToOutput)
 !==================================================================================================================================
 !==================================================================================================================================
@@ -223,7 +224,8 @@ DO WHILE (Ind.LE.lastind)
   END DO
 END DO  
 END SUBROUTINE ChangeBasis2D_selective
-SUBROUTINE ChangeBasis1D_selective(Dim1,NIn,NOut,range_1,range_N,firstind,lastind,Vdm,X_In,X_Out,mask,mask_ref,&
+
+PURE SUBROUTINE ChangeBasis1D_selective(Dim1,NIn,NOut,range_1,range_N,firstind,lastind,Vdm,X_In,X_Out,mask,mask_ref,&
         addToOutput)
 !==================================================================================================================================
 !==================================================================================================================================
@@ -301,7 +303,7 @@ END DO
 END SUBROUTINE ChangeBasis1D_selective
 
 
-SUBROUTINE ChangeBasis3D_selective_inplace(Dim1,NIn,range_1,range_N,firstind,lastind,Vdm,X_InOut,mask,mask_ref)
+PURE SUBROUTINE ChangeBasis3D_selective_inplace(Dim1,NIn,range_1,range_N,firstind,lastind,Vdm,X_InOut,mask,mask_ref)
 !==================================================================================================================================
 !==================================================================================================================================
 ! MODULES
@@ -390,7 +392,8 @@ DO WHILE (Ind.LE.lastind)
   END DO
 END DO  
 END SUBROUTINE ChangeBasis3D_selective_inplace
-SUBROUTINE ChangeBasis2D_selective_inplace(Dim1,NIn,range_1,range_N,firstind,lastind,Vdm,X_InOut,mask,mask_ref)
+
+PURE SUBROUTINE ChangeBasis2D_selective_inplace(Dim1,NIn,range_1,range_N,firstind,lastind,Vdm,X_InOut,mask,mask_ref)
 !==================================================================================================================================
 !==================================================================================================================================
 ! MODULES
@@ -446,10 +449,8 @@ DO WHILE (Ind.LE.lastind)
   END DO
 
   ! second direction jI
-  DO jO=0,NIn; DO iO=0,NIn
-    VECOUT(1:iVec-1,iO,jO)=VECOUT(1:iVec-1,iO,jO)+Vdm(jO,0)*X_Buf1(1:iVec-1,iO,0)
-  END DO; END DO
-  DO jI=1,NIn
+  VECOUT=0.
+  DO jI=0,NIn
     DO jO=0,NIn; DO iO=0,NIn
       VECOUT(1:iVec-1,iO,jO)=VECOUT(1:iVec-1,iO,jO)+Vdm(jO,jI)*X_Buf1(1:iVec-1,iO,jI)
     END DO; END DO
@@ -467,7 +468,8 @@ DO WHILE (Ind.LE.lastind)
   END DO
 END DO  
 END SUBROUTINE ChangeBasis2D_selective_inplace
-SUBROUTINE ChangeBasis1D_selective_inplace(Dim1,NIn,range_1,range_N,firstind,lastind,Vdm,X_InOut,mask,mask_ref)
+
+PURE SUBROUTINE ChangeBasis1D_selective_inplace(Dim1,NIn,range_1,range_N,firstind,lastind,Vdm,X_InOut,mask,mask_ref)
 !==================================================================================================================================
 !==================================================================================================================================
 ! MODULES
@@ -536,7 +538,7 @@ END SUBROUTINE ChangeBasis1D_selective_inplace
 !> xi is defined in the 1D referent element \f$ \xi \in [-1,1] \f$.
 !>  _Single is only suitable for one tensor product element
 !==================================================================================================================================
-SUBROUTINE ChangeBasis3D_Single(Dim1,NIn,NOut,Vdm,X_In,X_Out)
+PURE SUBROUTINE ChangeBasis3D_Single(Dim1,NIn,NOut,Vdm,X_In,X_Out)
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -575,7 +577,8 @@ DO kI=0,NIn; DO kO=0,NOut; DO jO=0,NOut
   END DO
 END DO; END DO; END DO
 END SUBROUTINE ChangeBasis3D_Single
-SUBROUTINE ChangeBasis2D_Single(Dim1,NIn,NOut,Vdm,X_In,X_Out)
+
+PURE SUBROUTINE ChangeBasis2D_Single(Dim1,NIn,NOut,Vdm,X_In,X_Out)
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -636,7 +639,7 @@ END SUBROUTINE ChangeBasis1D_Single
 !> positions xi_out(0:NOut) using DIFFERENT 1D Vdm matrices in the xi,eta and zeta directions.
 !> xi is defined in the 1D referent element \f$ \xi \in [-1,1] \f$.
 !==================================================================================================================================
-SUBROUTINE ChangeBasis3D_XYZ(Dim1,NIn,NOut,Vdm_xi,Vdm_eta,Vdm_zeta,X3D_In,X3D_Out)
+PURE SUBROUTINE ChangeBasis3D_XYZ(Dim1,NIn,NOut,Vdm_xi,Vdm_eta,Vdm_zeta,X3D_In,X3D_Out)
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------

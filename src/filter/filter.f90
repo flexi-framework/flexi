@@ -25,7 +25,7 @@ ABSTRACT INTERFACE
   SUBROUTINE FilterInt(U_in,FilterMat)
     USE MOD_PreProc
     USE MOD_Mesh_Vars,ONLY: nElems
-    REAL,INTENT(INOUT) :: U_in(PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems)
+    REAL,INTENT(INOUT) :: U_in(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems)
     REAL,INTENT(IN)    :: FilterMat(   0:PP_N,0:PP_N)
   END SUBROUTINE
 END INTERFACE
@@ -129,6 +129,10 @@ IF(FilterType.GT.0) THEN
     HestFilterParam = GETREALARRAY('HestFilterParam',3,'(/36.,12.,1./)')
     CALL HestFilter()
   CASE (FILTERTYPE_LAF) ! Modal Filter cut-off, adaptive (LAF)
+#if PP_dim==2
+    STOP 'LAF-Filter not implemented in 2D'
+#endif
+    
     NFilter = GETINT('NFilter')
     LAF_alpha= GETREAL('LAF_alpha','1.0')
     ! LAF uses a special filter routine
@@ -241,57 +245,28 @@ END SUBROUTINE HestFilter
 PURE SUBROUTINE Filter(U_in,FilterMat)
 ! MODULES
 USE MOD_PreProc
-USE MOD_Globals
-USE MOD_Mesh_Vars,  ONLY: nElems
+USE MOD_ChangeBasisByDim,  ONLY: ChangeBasisVolume
+USE MOD_Mesh_Vars,         ONLY: nElems
 #if FV_ENABLED
-USE MOD_FV_Vars,    ONLY: FV_Elems
+USE MOD_FV_Vars,           ONLY: FV_Elems
 #endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(INOUT)  :: U_in(PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems) !< solution vector to be filtered
+REAL,INTENT(INOUT)  :: U_in(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< solution vector to be filtered
 REAL,INTENT(IN)     :: FilterMat(0:PP_N,0:PP_N)                  !< filter matrix to be used
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER             :: i,j,k,l,iElem
-REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_N) :: U_Xi,U_Eta
+REAL :: U_test(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< solution vector to be filtered
 !==================================================================================================================================
-! Perform filtering
-DO iElem=1,nElems
+
+!CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,1,nElems,1,nElems,FilterMat,U_in,U_test)
+!U_in=U_test
 #if FV_ENABLED
-  IF (FV_Elems(iElem).GT.0) CYCLE ! Do only, when DG element
+CALL ChangeBasisVolume(PP_nVar,PP_N,1,nElems,1,nElems,FilterMat,U_in,FV_Elems,0)
+#else
+CALL ChangeBasisVolume(PP_nVar,PP_N,1,nElems,1,nElems,FilterMat,U_in)
 #endif
-  U_Xi = 0.
-  DO k=0,PP_N
-    DO j=0,PP_N
-      DO i=0,PP_N
-        DO l=0,PP_N
-          U_Xi(:,i,j,k)       = U_Xi(:,i,j,k)       + FilterMat(i,l)*U_in(:,l,j,k,iElem)
-        END DO !l
-      END DO !i
-    END DO !j
-  END DO !k
-  U_Eta= 0.
-  DO k=0,PP_N
-    DO j=0,PP_N
-      DO i=0,PP_N
-        DO l=0,PP_N
-          U_Eta(:,i,j,k)      = U_Eta(:,i,j,k)      + FilterMat(j,l)*U_Xi(:,i,l,k)
-        END DO !l
-      END DO !i
-    END DO !j
-  END DO !k
-  U_in(:,:,:,:,iElem)=0.
-  DO k=0,PP_N
-    DO j=0,PP_N
-      DO i=0,PP_N
-        DO l=0,PP_N
-          U_in(:,i,j,k,iElem) = U_in(:,i,j,k,iElem) + FilterMat(k,l)*U_Eta(:,i,j,l)
-        END DO !l
-      END DO !i
-    END DO !j
-  END DO !k
-END DO !iElem
 END SUBROUTINE Filter
 
 
@@ -315,7 +290,7 @@ IMPLICIT NONE
 REAL,INTENT(IN)     :: FilterMat(0:PP_N,0:PP_N)                  !< filter matrix to be used
 !-------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(INOUT)  :: U_in(PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems) !< solution vector to be filtered
+REAL,INTENT(INOUT)  :: U_in(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< solution vector to be filtered
 !-------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
 INTEGER                                      :: i,j,k,l,iElem
