@@ -415,7 +415,6 @@ IF(SpongeViz) THEN
   Coords_NVisu_p => Coords_NVisu
   SpongeMat_NVisu_p => SpongeMat_NVisu
   CALL WriteDataToVTK(1,NVisu,nElems,VarNameSponge,Coords_NVisu_p,SpongeMat_NVisu_p,TRIM(FileString),dim=PP_dim,DGFV=0)
-  WRITE(*,*) '********************************************************************'
   DEALLOCATE(Coords_NVisu)
   DEALLOCATE(SpongeMat_NVisu)
   DEALLOCATE(SpDummy)
