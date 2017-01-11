@@ -107,7 +107,8 @@ DO SideID=firstSideID,lastSideID
     flip        = SideToElem(S2E_FLIP,SideID)
     ! orient flux to fit flip and locSide to element local system
     DO q=0,PP_NlocZ; DO p=0,Nloc
-      FluxTmp(:,p,q)=-Flux_slave(:,S2V2(1,p,q,flip,nblocSideID),S2V2(2,p,q,flip,nblocSideID),SideID)
+      ! p,q are in the master RHS system, they need to be transformed to the slave volume system using S2V2 mapping
+      FluxTmp(:,S2V2(1,p,q,flip,nblocSideID),S2V2(2,p,q,flip,nblocSideID))=-Flux_slave(:,p,q,SideID)
     END DO; END DO ! p,q
 #if FV_ENABLED
     IF (FV_Elems_slave(SideID).EQ.0) THEN ! DG Element
@@ -181,7 +182,10 @@ END SUBROUTINE SurfInt_FV
 #endif
 
 !==================================================================================================================================
-!> Update DG time derivative with corresponding SurfInt contribution
+!> \brief Update DG time derivative with corresponding SurfInt contribution
+!>
+!> Takes the time derivative of a single element and the surface flux on a single side as input and performs the surface integral.
+!> The time derivative will be updated. The Flux has to be provided in the volume coordinate system!
 !==================================================================================================================================
 SUBROUTINE DoSurfInt(&
 #ifdef WITHnVars
@@ -193,18 +197,18 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 #ifdef WITHnVars
-INTEGER,INTENT(IN) :: TP_nVar
-#endif        
+INTEGER,INTENT(IN) :: TP_nVar                          !< Number of variables
+#endif
 INTEGER,INTENT(IN) :: Nloc                             !< Polynomial degree either N or NOver in case of overintegration
 INTEGER,INTENT(IN) :: locSideID                        !< sideID of side in global system
-REAL,INTENT(IN)    :: Flux(TP_nVar,0:Nloc,0:PP_NlocZ)         !< Flux on side
+REAL,INTENT(IN)    :: Flux(TP_nVar,0:Nloc,0:PP_NlocZ)  !< Flux on side, in volume system of respective element
 !> Lagrange polynomials evaluated at \f$i \xi=+1 \f$ and \f$ \xi=-1 \f$ premultiplied by mass matrix
 #if (PP_NodeType==1)
 REAL,INTENT(IN)    :: L_HatPlus(0:Nloc),L_HatMinus(0:Nloc)
 #elif (PP_NodeType==2)
 REAL,INTENT(IN)    :: L_HatPlus,L_HatMinus
 #endif
-REAL,INTENT(INOUT) :: Ut(TP_nVar,0:Nloc,0:Nloc,0:PP_NlocZ)
+REAL,INTENT(INOUT) :: Ut(TP_nVar,0:Nloc,0:Nloc,0:PP_NlocZ) !< Time derivative (will be updated)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 #if (PP_NodeType==1)
