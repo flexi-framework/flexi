@@ -242,6 +242,7 @@ DEALLOCATE(HSize)
 ALLOCATE(xi_RP(3,nRP))
 CALL ReadArray('xi_RP',2,(/3,nRP/),offsetRP,2,RealArray=xi_RP)
 
+
 IF(nRP.LT.1) THEN
   RP_onProc=.FALSE.
 ELSE
@@ -282,6 +283,11 @@ IF(RP_onProc)THEN
   FV_RP_ijk=INT((xi_RP+1.)*0.5*(PP_N+1))
   FV_RP_ijk=MAX(FV_RP_ijk,0)
   FV_RP_ijk=MIN(FV_RP_ijk,PP_N)
+
+#if PP_dim==2
+  FV_RP_ijk(3,:)=0
+#endif
+
 #endif
 END IF
 DEALLOCATE(xi_RP)
@@ -314,7 +320,9 @@ INTEGER                       :: iRP
 DO iRP=1,nRP
   CALL LagrangeInterpolationPolys(xi_RP(1,iRP),PP_N,xGP,wBary,L_xi_RP(:,iRP))
   CALL LagrangeInterpolationPolys(xi_RP(2,iRP),PP_N,xGP,wBary,L_eta_RP(:,iRP))
+#if PP_dim == 3
   CALL LagrangeInterpolationPolys(xi_RP(3,iRP),PP_N,xGP,wBary,L_zeta_RP(:,iRP))
+#endif
 END DO
 END SUBROUTINE InitRPBasis
 
@@ -363,8 +371,12 @@ DO iRP=1,nRP
 #if FV_ENABLED
   IF (FV_Elems(RP_ElemID(iRP)).EQ.0)THEN ! DG
 #endif
-    DO k=0,PP_N; DO j=0,PP_N
+    DO k=0,PP_NZ; DO j=0,PP_N
+#if PP_dim==3
       l_eta_zeta_RP=l_eta_RP(j,iRP)*l_zeta_RP(k,iRP)
+#else
+      l_eta_zeta_RP=l_eta_RP(j,iRP)
+#endif
       DO i=0,PP_N
         U_RP(:,iRP)=U_RP(:,iRP) + U(:,i,j,k,RP_ElemID(iRP))*l_xi_RP(i,iRP)*l_eta_zeta_RP
       END DO !i
