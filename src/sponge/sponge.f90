@@ -64,18 +64,23 @@ IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Sponge")
 CALL prms%CreateLogicalOption('SpongeLayer',    "Turn on to use sponge regions for reducing reflections at boundaries.",'.FALSE.')
-CALL prms%CreateRealOption(   'SpongeDistance', "Length of sponge ramp. The sponge will have maximum strength at the end "//&
-                                                "of the ramp and after that point.")
 CALL prms%CreateRealOption(   'damping',        "Damping factor of sponge (0..1).", '0.01')
-CALL prms%CreateIntFromStringOption( 'SpongeShape',    "Set shape of sponge: (1) ramp : cartesian / vector-aligned, (2) cylindrical", '1')
+CALL prms%CreateIntFromStringOption( 'SpongeShape',    "Set shape of sponge: (1) ramp : cartesian / vector-aligned, (2) "//&
+                                                       " cylindrical", multiple=.TRUE.)
 CALL addStrListEntry('SpongeShape','ramp',       SPONGESHAPE_RAMP)
 CALL addStrListEntry('SpongeShape','cylindrical',SPONGESHAPE_CYLINDRICAL)
+!CALL prms%CreateIntOption( 'SpongeShape',    "Set shape of sponge: (1) ramp : cartesian / vector-aligned, (2) "//&
+!                                                       " cylindrical", multiple=.TRUE.)
+CALL prms%CreateRealOption(   'SpongeDistance', "Length of sponge ramp. The sponge will have maximum strength at the end "//&
+                                                "of the ramp and after that point.", multiple=.TRUE.)
 CALL prms%CreateRealArrayOption('xStart',       "Coordinates of start postion of sponge ramp (SpongeShape=ramp) "//&
-                                                "or center (SpongeShape=cylindrical).")
+                                                "or center (SpongeShape=cylindrical).", multiple=.TRUE.)
+CALL prms%CreateRealArrayOption('SpongeDir',    "Direction vector of the sponge ramp (SpongeShape=ramp)", multiple=.TRUE.)
+CALL prms%CreateRealOption(   'SpongeRadius',   "Radius of the sponge zone (SpongeShape=cylindrical)", multiple=.TRUE.)
+#if (PP_dim==3)
+CALL prms%CreateRealArrayOption('SpongeAxis',   "Axis vector of cylindrical sponge (SpongeShape=cylindrical)", multiple=.TRUE.)
+#endif
 CALL prms%CreateLogicalOption('SpongeViz',      "Turn on to write a visualization file of sponge region and strength.",'.FALSE.')
-CALL prms%CreateRealArrayOption('SpongeDir',    "Direction vector of the sponge ramp (SpongeShape=ramp)")
-CALL prms%CreateRealOption(   'SpongeRadius',   "Radius of the sponge zone (SpongeShape=cylindrical)")
-CALL prms%CreateRealArrayOption('SpongeAxis',   "Axis vector of cylindrical sponge (SpongeShape=cylindrical)")
 CALL prms%CreateIntFromStringOption( 'SpongeBaseFlow', "Type of baseflow to be used for sponge. (1) constant: fixed state,"//&
                                                 "(2) exactfunction: exact function, (3) file: read baseflow file, (4) pruett: "//&
                                                 "temporally varying, solution adaptive Pruett baseflow",'1')
@@ -120,7 +125,7 @@ USE MOD_Equation_Vars,ONLY:IniExactFunc
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER             :: iElem,i,j,k
-INTEGER             :: SpongeExactFunc,SpongeRefState,SpongeShape,SpBaseFlowType
+INTEGER             :: SpongeExactFunc,SpongeRefState,SpBaseFlowType
 CHARACTER(LEN=300)  :: BaseFlowFile
 LOGICAL             :: validBaseFlowFile
 !==================================================================================================================================
@@ -129,36 +134,15 @@ IF(.NOT.doSponge) RETURN
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT SPONGE...'
 
-! Readin of the sponge Ramp thickness
-SpDistance = GETREAL('SpongeDistance')
 damping   = GETREAL('damping','0.01')
-IF((SpDistance .LE. 0.) .OR. (damping .LE. 0.))  THEN
+IF(damping .LE. 0.)  THEN
   doSponge = .FALSE.
   RETURN
 END IF
 
-! Readin of geometrical parameters
-SpongeShape=GETINTFROMSTR('SpongeShape')
-
-! start Sponge Ramp at xStart
-xStart= GETREALARRAY('xStart',3,'(/0.,0.,0./)')
 SpongeViz=GETLOGICAL('SpongeViz','.FALSE.')
 
-! Readin of geometrical parameters for different sponge shapes
-SELECT CASE(SpongeShape)
-CASE(SPONGESHAPE_RAMP) ! ramp aligned with a vector
-  SpVec= GETREALARRAY('SpongeDir',3,'(/1.,0.,0./)')
-  SpVec= SpVec/NORM2(SpVec) ! Normalize
-  CALL CalcSpongeRamp(1)
-CASE(SPONGESHAPE_CYLINDRICAL) ! cylindrical sponge
-  SpRadius=GETREAL('SpongeRadius')
-  SpAxis=GETREALARRAY('SpongeAxis',3,'(/0.,0.,1./)')  ! axis for the cylindrical sponge
-  SpAxis=SpAxis/NORM2(SpAxis) ! Normalize SpAxis
-  CALL CalcSpongeRamp(2)
-CASE DEFAULT
-  CALL CollectiveStop(__STAMP__, &
-      "Undefined SpongeShape!")   
-END SELECT
+CALL CalcSpongeRamp()
 
 CalcPruettDamping=.FALSE.
 ! Readin of Baseflow parameters
@@ -256,10 +240,11 @@ END SUBROUTINE InitSponge
 !> If set in the parameter file, a visualization of the sponge strength is written as .vtu files.
 !> At the end, the sponge is pre-multiplied by the Jacobian since we need to do this anyway when the sponge is applied.
 !==================================================================================================================================
-SUBROUTINE CalcSpongeRamp(SpongeShape)
+SUBROUTINE CalcSpongeRamp()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
+USE MOD_ReadInTools
 USE MOD_Sponge_Vars
 USE MOD_Output_Vars       ,ONLY:ProjectName
 USE MOD_Mesh_Vars         ,ONLY:Elem_xGP
@@ -272,31 +257,91 @@ USE MOD_VTK               ,ONLY:WriteDataToVTK3D
  IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: SpongeShape                         !< sponge shape: 1: linear, 2: cylindrical
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL                                 :: applySponge(nElems)
-INTEGER                                 :: iElem,iSpongeElem,i,j,k,NVisuZ
+INTEGER                                 :: iElem,iSpongeElem,i,j,k,NVisuZ,iRamp
 CHARACTER(LEN=255)                      :: FileString,VarNameSponge(1)
 REAL,DIMENSION(  0:PP_N,0:PP_N,0:PP_NZ) :: sigma, x_star
-REAL                                    :: r_vec(3)
+REAL                                    :: r_vec(PP_dim)
 REAL,ALLOCATABLE                        :: SpongeMat_NVisu(:,:,:,:,:),Coords_NVisu(:,:,:,:,:),SpDummy(:,:,:,:)
+INTEGER                         :: nSpongeRamps
+INTEGER,ALLOCATABLE             :: SpongeShape(:)  
+REAL,ALLOCATABLE                :: xStart(:,:)                 ! Starting Point for Sponge Ramp
+REAL,ALLOCATABLE                :: SpVec(:,:)                  ! Vector defining the ramp direction
+REAL,ALLOCATABLE                :: SpDistance(:)               ! Distance of the sponge layer
+REAL,ALLOCATABLE                :: SpRadius(:)                 ! Radius of the cylindrical (3D) / radial (2D) sponge layer
+#if(PP_dim==3)
+REAL,ALLOCATABLE                :: SpAxis(:,:)                 ! Axis of the cylindrical sponge layer (only 3D)
+#endif
 !==================================================================================================================================
 SWRITE(UNIT_StdOut,'(A)') '  Initialize Sponge Ramping Function...'
 
 ! Precalculation of the sponge strength on the whole domain to determine actual sponge region
+
+nSpongeRamps= CountOption('SpongeShape')
+ALLOCATE(SpongeShape(nSpongeRamps))
+ALLOCATE(SpDistance(nSpongeRamps))
+ALLOCATE(xStart(3,nSpongeRamps))
+ALLOCATE(SpVec(3,nSpongeRamps))
+ALLOCATE(SpRadius(nSpongeRamps))
+#if(PP_dim==3)
+ALLOCATE(SpAxis(3,nSpongeRamps))
+#endif
+
+DO iRamp=1,nSpongeRamps
+  ! readin geometrical parameters of the sponge ramp
+  SpongeShape(iRamp)=GETINTFROMSTR('SpongeShape')
+!  SpongeShape(iRamp)=GETINT('SpongeShape')
+  ! Readin of the sponge Ramp thickness  
+  SpDistance(iRamp) = GETREAL('SpongeDistance')
+  ! start Sponge Ramp at xStart 
+  xStart(:,iRamp)= GETREALARRAY('xStart',3,'(/0.,0.,0./)')
+#if PP_dim==2
+    IF(xStart(3,iRamp).NE.0) THEN
+      CALL CollectiveStop(__STAMP__,'You are computing in 2D! Please set xStart(3) = 0!') 
+    END IF
+#endif
+  ! Readin of geometrical parameters for different sponge shapes
+  SELECT CASE(SpongeShape(iRamp))
+  CASE(SPONGESHAPE_RAMP) ! ramp aligned with a vector
+    SpVec(:,iRamp)= GETREALARRAY('SpongeDir',3,'(/1.,0.,0./)')
+#if PP_dim==2
+    IF(SpVec(3,iRamp).NE.0) THEN
+      CALL CollectiveStop(__STAMP__,'You are computing in 2D! Please set SpVec(3) = 0!') 
+    END IF
+#endif
+    SpVec(:,iRamp)=SpVec(:,iRamp)/NORM2(SpVec(:,iRamp)) ! Normalize SpVec
+  CASE(SPONGESHAPE_CYLINDRICAL) ! circular sponge 
+    SpRadius(iRamp)=GETREAL('SpongeRadius')
+!    SpRadius(iRamp)=0
+#if PP_dim==3
+    SpAxis(:,iRamp)=GETREALARRAY('SpongeAxis',3,'(/0.,0.,1./)')
+#endif END SELECT
+  END SELECT 
+END DO!iRamp
+
 applySponge=.FALSE.
 DO iElem=1,nElems
+  x_star=0.
+  DO iRamp=1,nSpongeRamps
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-    SELECT CASE(SpongeShape)
+    SELECT CASE(SpongeShape(iRamp))
       CASE(SPONGESHAPE_RAMP) ! ramp aligned with a vector
-      x_star(i,j,k) =       SUM((Elem_xGP(:,i,j,k,iElem)-xStart)*SpVec)/SpDistance
+      x_star(i,j,k) =       SUM((Elem_xGP(:,i,j,k,iElem)-xStart(1:PP_dim,iRamp))*SpVec(1:PP_dim,iRamp))/SpDistance(iRamp)
       CASE(SPONGESHAPE_CYLINDRICAL) ! cylindrical sponge
-      r_vec(:) = Elem_xGP(:,i,j,k,iElem)-xStart -SUM((Elem_xGP(:,i,j,k,iElem)-xStart)*SpAxis)*SpAxis
-      x_star(i,j,k) = (SQRT(SUM(r_vec*r_vec))-SpRadius)/SpDistance
+      r_vec(:) = Elem_xGP(:,i,j,k,iElem)-xStart(1:PP_dim,iRamp)
+#if(PP_dim==3)
+      r_vec = r_vec  -SUM((Elem_xGP(:,i,j,k,iElem)-xStart(:,iRamp))*SpAxis(:,iRamp))*SpAxis(:,iRamp)
+#endif
+      x_star(i,j,k) = (SQRT(SUM(r_vec*r_vec))-SpRadius(iRamp))/SpDistance(iRamp)
     END SELECT
   END DO; END DO; END DO
-  IF(ANY(x_star.GT.0.)) applySponge(iElem)=.TRUE.
+  IF(ANY(x_star.GT.0.)) THEN
+    applySponge(iElem)=.TRUE.
+     CYCLE
+  END IF
+  END DO !iRamp
 END DO !iElem=1,nElems
 
 ! Get sponge count and build sponge mappings
@@ -315,24 +360,35 @@ END DO
 SpongeMat=0.
 DO iSpongeElem=1,nSpongeElems
   iElem=spongeMap(iSpongeElem)
+  sigma=0.
+  DO iRamp=1,nSpongeRamps
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-    SELECT CASE(SpongeShape)
+    SELECT CASE(SpongeShape(iRamp))
       CASE(SPONGESHAPE_RAMP) ! ramp aligned with a vector
-      x_star(i,j,k) =       SUM((Elem_xGP(:,i,j,k,iElem)-xStart)*SpVec)/SpDistance
+      x_star(i,j,k) =       SUM((Elem_xGP(:,i,j,k,iElem)-xStart(1:PP_dim,iRamp))*SpVec(1:PP_dim,iRamp))/SpDistance(iRamp)
       CASE(SPONGESHAPE_CYLINDRICAL) ! cylindrical sponge
-      r_vec(:) = Elem_xGP(:,i,j,k,iElem)-xStart -SUM((Elem_xGP(:,i,j,k,iElem)-xStart)*SpAxis)*SpAxis
-      x_star(i,j,k) = (SQRT(SUM(r_vec*r_vec))-SpRadius)/SpDistance
+      r_vec(:) = Elem_xGP(:,i,j,k,iElem)-xStart(1:PP_dim,iRamp)
+#if(PP_dim==3)
+      r_vec = r_vec  -SUM((Elem_xGP(:,i,j,k,iElem)-xStart(:,iRamp))*SpAxis(:,iRamp))*SpAxis(:,iRamp)
+#endif
+      x_star(i,j,k) = (SQRT(SUM(r_vec*r_vec))-SpRadius(iRamp))/SpDistance(iRamp)
     END SELECT
   END DO; END DO; END DO
   ! Limit to [0,1]
   x_star = MAX(0.,x_star)
   x_star = MIN(1.,x_star)
   ! Sponge Ramping Function ala Babucke
-  sigma  = 6.*x_star**5. - 15.*x_star**4. + 10.*x_star**3.
+  sigma  = MIN(1.,sigma+6.*x_star**5. - 15.*x_star**4. + 10.*x_star**3.)
+  END DO !iRamp
   ! Apply damping factor
   SpongeMat(:,:,:,iSpongeElem) = damping*sigma(:,:,:)
 END DO !iSpongeElem=1,nSpongeElems
 
+DEALLOCATE(SpongeShape)
+DEALLOCATE(SpDistance)
+DEALLOCATE(xStart)
+DEALLOCATE(SpVec)
+DEALLOCATE(SpRadius)
 
 ! Visualize the Sponge Ramp
 IF(SpongeViz) THEN
@@ -407,10 +463,10 @@ SWRITE(UNIT_StdOut,'(A,A)')'  Read Sponge Base Flow from file "',FileName
 CALL OpenDataFile(FileName,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL GetDataProps(nVar_Base,N_Base,nElems_Base,NodeType_Base)
 
-IF((nElems_Base.NE.nGlobalElems).OR.(nVar_Base.NE.PP_nVar))THEN
-  CALL abort(__STAMP__,&
-             'Baseflow file does not match solution. Elements,nVar',nElems_Base,REAL(nVar_Base))
-ENDIF
+!IF((nElems_Base.NE.nGlobalElems).OR.(nVar_Base.NE.PP_nVar))THEN
+!  CALL abort(__STAMP__,&
+!             'Baseflow file does not match solution. Elements,nVar',nElems_Base,REAL(nVar_Base))
+!ENDIF
 
 ! Read in state
 IF((N_Base.EQ.PP_N).AND.(TRIM(NodeType_Base).EQ.TRIM(NodeType)))THEN

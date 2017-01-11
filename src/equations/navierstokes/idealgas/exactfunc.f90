@@ -130,10 +130,11 @@ END SELECT ! IniExactFunc
 SELECT CASE (IniExactFunc)
 CASE(4,43,7) ! synthetic test cases
   CALL CollectiveStop(__STAMP__,'The selected exact function is not available in 2D!') 
+CASE(2,3,41,42) ! synthetic test cases
+  IF(AdvVel(3).NE.0.) THEN
+    CALL CollectiveStop(__STAMP__,'You are computing in 2D! Please set AdvVel(3) = 0!') 
+  END IF
 END SELECT
-IF(AdvVel(3).NE.0.) THEN
-  CALL CollectiveStop(__STAMP__,'You are computing in 2D! Please set AdvVel(3) = 0!') 
-END IF
 #endif
 
 SWRITE(UNIT_stdOut,'(A)')' INIT EXACT FUNCTION DONE!'
