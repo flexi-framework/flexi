@@ -56,8 +56,8 @@ USE MOD_Mesh_Vars,          ONLY: firstBCSide,       lastMPISide_MINE
 USE MOD_Mesh_Vars,          ONLY: firstMortarMPISide,lastMortarMPISide
 USE MOD_Mesh_Vars,          ONLY: nElems
 USE MOD_Mesh_Vars,          ONLY: sJ
-USE MOD_Mesh_Vars,          ONLY: BC,BoundaryType,nBCSides
 USE MOD_Lifting_Vars,       ONLY: etaBR2
+USE MOD_Mesh_Vars,          ONLY: BC,BoundaryType,nBCSides
 #if FV_ENABLED
 USE MOD_FV_Vars,            ONLY: FV_Elems_master,FV_Elems_slave
 #endif
@@ -80,8 +80,8 @@ INTEGER            :: firstSideID,lastSideID
 INTEGER            :: l
 #else
 REAL               :: L_HatMinus0,L_HatPlusN
-REAL               :: eta
 #endif
+REAL               :: eta
 !==================================================================================================================================
 #if (PP_NodeType>1)
 L_HatMinus0 = L_HatMinus(0)
@@ -103,11 +103,13 @@ DO SideID=firstSideID,lastSideID
   ElemID    = SideToElem(S2E_NB_ELEM_ID,SideID)
   locSideID = SideToElem(S2E_NB_LOC_SIDE_ID,SideID)
   flip      = SideToElem(S2E_FLIP,SideID)
-  ! aditional penalization of wall boundary to prevent high wall velocities
+! aditional penalization of wall boundary to prevent high wall velocities
   !HACK!
   IF(SideID .LE. nBCSides) THEN
     IF (Boundarytype(BC(SideID),BC_TYPE).EQ.4.OR.Boundarytype(BC(SideID),BC_TYPE).EQ.3) THEN
       eta =40.
+    ELSE
+      eta = etaBR2
     END IF
   ELSE
     eta = etaBR2
@@ -481,6 +483,17 @@ DO SideID=firstSideID,lastSideID
   ! master side, flip=0
   ElemID    = SideToElem(S2E_ELEM_ID,SideID)
   locSideID = SideToElem(S2E_LOC_SIDE_ID,SideID)
+! aditional penalization of wall boundary to prevent high wall velocities
+  !HACK!
+  IF(SideID .LE. nBCSides) THEN
+    IF (Boundarytype(BC(SideID),BC_TYPE).EQ.4.OR.Boundarytype(BC(SideID),BC_TYPE).EQ.3) THEN
+      eta =40.
+    ELSE
+      eta = etaBR2
+    END IF
+  ELSE
+    eta = etaBR2
+  END IF
 
   IF (FV_Elems_master(SideID).EQ.0) THEN ! DG element
   ! update gradients with corresponding SurfInt contribution
