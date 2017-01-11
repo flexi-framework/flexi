@@ -1123,7 +1123,7 @@ INTEGER                       :: listSize         ! current size of list
 ! iterate over all options and compare names
 current => prms%firstLink
 DO WHILE (associated(current))
-  IF (current%opt%NAMEEQUALS(name)) THEN
+  IF (current%opt%NAMEEQUALS(name).AND.(.NOT.current%opt%isRemoved)) THEN
     opt => current%opt
     SELECT TYPE (opt)
     CLASS IS (IntFromStringOption)
@@ -1149,6 +1149,8 @@ DO WHILE (associated(current))
           opt%foundInList = .FALSE.
         END IF
         CALL opt%print(prms%maxNameLen, prms%maxValueLen, mode=0)
+        ! remove the option from the linked list of all parameters
+        current%opt%isRemoved = .TRUE.
         RETURN
       END IF
       ! If a string has been supplied, check if this string exists in the list and set it's integer representation according to the
@@ -1158,6 +1160,8 @@ DO WHILE (associated(current))
           value = opt%intList(i)
           opt%listIndex = i ! Store index of the mapping
           CALL opt%print(prms%maxNameLen, prms%maxValueLen, mode=0)
+          ! remove the option from the linked list of all parameters
+          current%opt%isRemoved = .TRUE.
           RETURN
         END IF
       END DO
@@ -1168,7 +1172,7 @@ DO WHILE (associated(current))
   current => current%next
 END DO
 CALL Abort(__STAMP__,&
-    "Unknown option: "//TRIM(name))
+    "Unknown option: "//TRIM(name)//" or already read (use GET... routine only for multiple options more than once).")
 END FUNCTION GETINTFROMSTR
 
 !===================================================================================================================================
