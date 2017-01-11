@@ -829,7 +829,7 @@ SUBROUTINE ReadBCFlow(FileName)
 USE MOD_PreProc
 USE MOD_Globals
 USE MOD_Equation_Vars     ,ONLY:BCData,BCDataPrim
-USE MOD_Mesh_Vars         ,ONLY:offsetElem,nElems,nBCSides,S2V2,SideToElem
+USE MOD_Mesh_Vars         ,ONLY:offsetElem,nElems,nBCSides,S2V2,SideToElem,nGlobalElems
 USE MOD_HDF5_Input        ,ONLY:OpenDataFile,GetDataProps,CloseDataFile,ReadAttribute,ReadArray
 USE MOD_Interpolation     ,ONLY:GetVandermonde
 USE MOD_ProlongToFace     ,ONLY:EvalElemFace
@@ -837,7 +837,7 @@ USE MOD_Interpolation_Vars,ONLY:NodeType
 #if (PP_NodeType==1)
 USE MOD_Interpolation_Vars,ONLY:L_minus,L_plus
 #endif
-USE MOD_ChangeBasis       ,ONLY:ChangeBasis3D
+USE MOD_ChangeBasisByDim  ,ONLY:ChangeBasisVolume
 USE MOD_EOS               ,ONLY:ConsToPrim
  IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -849,20 +849,27 @@ REAL,POINTER                  :: U_N(:,:,:,:,:)=>NULL()
 REAL,ALLOCATABLE,TARGET       :: U_local(:,:,:,:,:)
 REAL,ALLOCATABLE              :: Vdm_NHDF5_N(:,:)
 REAL                          :: Uface(PP_nVar,0:PP_N,0:PP_NZ)
-INTEGER                       :: nVar_HDF5,N_HDF5,nElems_HDF5
+INTEGER                       :: nVar_HDF5,N_HDF5,nElems_HDF5,N_HDF5Z
 INTEGER                       :: p,q,SideID,ElemID,locSide
 CHARACTER(LEN=255)            :: NodeType_HDF5
 LOGICAL                       :: InterpolateSolution
 !==================================================================================================================================
-#if PP_dim == 2
-STOP 'Not implemented for 2D.'
-#endif
 SWRITE(UNIT_StdOut,'(A,A)')'  Read BC state from file "',FileName
 CALL OpenDataFile(FileName,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
-CALL GetDataProps(nVar_HDF5,N_HDF5,nELems_HDF5,NodeType_HDF5)
+CALL GetDataProps(nVar_HDF5,N_HDF5,nElems_HDF5,NodeType_HDF5)
 
-ALLOCATE(U_local(PP_nVar,0:N_HDF5,0:N_HDF5,0:N_HDF5,nElems))
-CALL ReadArray('DG_Solution',5,(/PP_nVar,N_HDF5+1,N_HDF5+1,N_HDF5+1,nElems/),OffsetElem,5,RealArray=U_local)
+IF(nElems_HDF5.NE.nGlobalElems)THEN
+  CALL abort(__STAMP__,&
+             'Baseflow file does not match solution. Elements',nElems_HDF5)
+END IF
+
+#if (PP_dim==2)
+N_HDF5Z=0
+#else
+N_HDF5Z=N_HDF5
+#endif
+ALLOCATE(U_local(PP_nVar,0:N_HDF5,0:N_HDF5,0:N_HDF5Z,nElems))
+CALL ReadArray('DG_Solution',5,(/PP_nVar,N_HDF5+1,N_HDF5+1,N_HDF5Z+1,nElems/),OffsetElem,5,RealArray=U_local)
 CALL CloseDataFile()
 
 ! Read in state
@@ -872,12 +879,12 @@ IF(.NOT. InterpolateSolution)THEN
   U_N=>U_local
 ELSE
   ! We need to interpolate the solution to the new computational grid
-  ALLOCATE(U_N(PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems))
+  ALLOCATE(U_N(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
   ALLOCATE(Vdm_NHDF5_N(0:PP_N,0:N_HDF5))
   CALL GetVandermonde(N_HDF5,NodeType_HDF5,PP_N,NodeType,Vdm_NHDF5_N,modal=.TRUE.)
 
   SWRITE(UNIT_stdOut,*)'Interpolate base flow from restart grid with N=',N_HDF5,' to computational grid with N=',PP_N
-  CALL ChangeBasis3D(PP_nVar,N_HDF5,PP_N,1,nElems,1,nElems,Vdm_NHDF5_N,U_local,U_N)
+  CALL ChangeBasisVolume(PP_nVar,N_HDF5,PP_N,1,nElems,1,nElems,Vdm_NHDF5_N,U_local,U_N)
   DEALLOCATE(Vdm_NHDF5_N)
 END IF
 
@@ -891,7 +898,7 @@ DO SideID=1,nBCSides
 #else
   CALL EvalElemFace(PP_nVar,PP_N,U_N(:,:,:,:,ElemID),Uface,locSide)
 #endif
-  DO q=0,PP_N; DO p=0,PP_N
+  DO q=0,PP_NZ; DO p=0,PP_N
     BCData(:,p,q,SideID)=Uface(:,S2V2(1,p,q,0,locSide),S2V2(2,p,q,0,locSide))
     CALL ConsToPrim(BCDataPrim(:,p,q,SideID),BCData(:,p,q,SideID))
   END DO; END DO

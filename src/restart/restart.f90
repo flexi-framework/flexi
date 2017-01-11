@@ -175,7 +175,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL,ALLOCATABLE   :: U_local(:,:,:,:,:)
-INTEGER            :: iElem,i,j,k
+INTEGER            :: iElem,i,j,k,N_RestartZ
 REAL               :: JNR(1,0:N_Restart,0:N_Restart,0:N_Restart)
 REAL               :: Vdm_NRestart_N(0:PP_N,0:N_Restart)
 REAL               :: Vdm_3Ngeo_NRestart(0:N_Restart,0:3*NGeo)
@@ -217,7 +217,7 @@ IF(DoRestart)THEN
   ! Read in state
   IF(.NOT. InterpolateSolution)THEN
     ! No interpolation needed, read solution directly from file
-    CALL ReadArray('DG_Solution',5,(/PP_nVar,PP_N+1,PP_N+1,PP_N+1,nElems/),OffsetElem,5,RealArray=U)
+    CALL ReadArray('DG_Solution',5,(/PP_nVar,PP_N+1,PP_N+1,PP_NZ+1,nElems/),OffsetElem,5,RealArray=U)
   ELSE
     ! We need to interpolate the solution to the new computational grid
     SWRITE(UNIT_stdOut,*)'Interpolating solution from restart grid with N=',N_restart,' to computational grid with N=',PP_N
@@ -227,9 +227,14 @@ IF(DoRestart)THEN
     CALL GetVandermonde(3*Ngeo,    NodeType,        N_Restart, NodeType_Restart, &
                         Vdm_3Ngeo_NRestart, modal=.TRUE.)
 
-    ALLOCATE(U_local(PP_nVar,0:N_Restart,0:N_Restart,0:N_Restart,nElems))
+#if(PP_dim==2)
+    N_RestartZ=0
+#else
+    N_RestartZ=N_Restart
+#endif
+    ALLOCATE(U_local(PP_nVar,0:N_Restart,0:N_Restart,0:N_RestartZ,nElems))
     CALL ReadArray('DG_Solution',5,&
-                   (/PP_nVar,N_Restart+1,N_Restart+1,N_Restart+1,nElems/),&
+                   (/PP_nVar,N_Restart+1,N_Restart+1,N_RestartZ+1,nElems/),&
                    OffsetElem,5,RealArray=U_local)
 
     ! Transform solution to refspace and project solution to N
@@ -239,7 +244,7 @@ IF(DoRestart)THEN
       DO iElem=1,nElems
         IF (FV_Elems(iElem).EQ.0) THEN ! DG element
           CALL ChangeBasisVolume(1,3*Ngeo,N_Restart,Vdm_3Ngeo_NRestart,detJac_Ref(:,:,:,:,iElem),JNR)
-          DO k=0,N_Restart; DO j=0,N_Restart; DO i=0,N_Restart
+          DO k=0,N_RestartZ; DO j=0,N_Restart; DO i=0,N_Restart
             U_local(:,i,j,k,iElem)=U_local(:,i,j,k,iElem)*JNR(1,i,j,k)
           END DO; END DO; END DO
           CALL ChangeBasisVolume(PP_nVar,N_Restart,PP_N,Vdm_NRestart_N,U_local(:,:,:,:,iElem),U(:,:,:,:,iElem))
