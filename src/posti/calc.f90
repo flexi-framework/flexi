@@ -262,12 +262,14 @@ INTEGER               :: iElem,iElem_calc
 !==================================================================================================================================
 ! Copy exisiting variables from solution array
 DO iVarOut=1,nVarDep ! iterate over all out variables
+WRITE(*,*) 'iVarOut: ',iVarOut
   IF (mapCalc(iVarOut).LT.1) CYCLE ! check if variable must be calculated
+  WRITE(*,*) mapCalc(iVarOut)
   DO iVarIn=1,nVar_State ! iterate over all in variables
     IF( STRICMP(VarNamesTotal(iVarOut),VarNamesHDF5(iVarIn))) THEN
       DO iElem_calc=1,nElems_calc ! copy variable for all elements
         iElem = indices(iElem_calc)
-        UOut(:,:,:,iElem_calc,iVarOut) = UIn(iVarIn,:,:,:,iElem)
+        UOut(:,:,:,iElem_calc,mapCalc(iVarOut)) = UIn(iVarIn,:,:,:,iElem)
       END DO ! iElem
       maskCalc(iVarOut)=0 ! remove variable from maskCalc, since they now got copied and must not be calculated.
     END IF
