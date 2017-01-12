@@ -38,6 +38,7 @@ INTEGER,PARAMETER      :: PRM_RIEMANN_SAME          = -1
 INTEGER,PARAMETER      :: PRM_RIEMANN_LF            = 1
 INTEGER,PARAMETER      :: PRM_RIEMANN_HLLC          = 2
 INTEGER,PARAMETER      :: PRM_RIEMANN_ROE           = 3
+INTEGER,PARAMETER      :: PRM_RIEMANN_ROEL2         = 32
 INTEGER,PARAMETER      :: PRM_RIEMANN_ROEENTROPYFIX = 33
 INTEGER,PARAMETER      :: PRM_RIEMANN_HLL           = 4
 INTEGER,PARAMETER      :: PRM_RIEMANN_HLLE          = 5
@@ -94,6 +95,7 @@ CALL addStrListEntry('Riemann','lf',           PRM_RIEMANN_LF)
 CALL addStrListEntry('Riemann','hllc',         PRM_RIEMANN_HLLC)
 CALL addStrListEntry('Riemann','roe',          PRM_RIEMANN_ROE)
 CALL addStrListEntry('Riemann','roeentropyfix',PRM_RIEMANN_ROEENTROPYFIX)
+CALL addStrListEntry('Riemann','roel2',        PRM_RIEMANN_ROEL2)
 CALL addStrListEntry('Riemann','hll',          PRM_RIEMANN_HLL)
 CALL addStrListEntry('Riemann','hlle',         PRM_RIEMANN_HLLE)
 CALL addStrListEntry('Riemann','hllem',        PRM_RIEMANN_HLLEM)
@@ -105,6 +107,7 @@ CALL addStrListEntry('RiemannBC','lf',           PRM_RIEMANN_LF)
 CALL addStrListEntry('RiemannBC','hllc',         PRM_RIEMANN_HLLC)
 CALL addStrListEntry('RiemannBC','roe',          PRM_RIEMANN_ROE)
 CALL addStrListEntry('RiemannBC','roeentropyfix',PRM_RIEMANN_ROEENTROPYFIX)
+CALL addStrListEntry('RiemannBC','roel2',        PRM_RIEMANN_ROEL2)
 CALL addStrListEntry('RiemannBC','hll',          PRM_RIEMANN_HLL)
 CALL addStrListEntry('RiemannBC','hlle',         PRM_RIEMANN_HLLE)
 CALL addStrListEntry('RiemannBC','hllem',        PRM_RIEMANN_HLLEM)
@@ -141,6 +144,8 @@ CASE(PRM_RIEMANN_ROE)
   Riemann_pointer => Riemann_Roe
 CASE(PRM_RIEMANN_ROEENTROPYFIX)
   Riemann_pointer => Riemann_RoeEntropyFix
+CASE(PRM_RIEMANN_ROEL2)
+  Riemann_pointer => Riemann_RoeL2
 CASE(PRM_RIEMANN_HLL)
   Riemann_pointer => Riemann_HLL
 CASE(PRM_RIEMANN_HLLE)
@@ -167,6 +172,8 @@ CASE(PRM_RIEMANN_ROE)
   RiemannBC_pointer => Riemann_Roe
 CASE(PRM_RIEMANN_ROEENTROPYFIX)
   RiemannBC_pointer => Riemann_RoeEntropyFix
+CASE(PRM_RIEMANN_ROEL2)
+  RiemannBC_pointer => Riemann_RoeL2
 CASE(PRM_RIEMANN_HLL)
   RiemannBC_pointer => Riemann_HLL
 CASE(PRM_RIEMANN_HLLE)
@@ -190,6 +197,8 @@ CASE(PRM_RIEMANN_ROE)
   Riemann_pointer => Riemann_Roe
 CASE(PRM_RIEMANN_ROEENTROPYFIX)
   Riemann_pointer => Riemann_RoeEntropyFix
+CASE(PRM_RIEMANN_ROEL2)
+  Riemann_pointer => Riemann_RoeL2
 CASE(PRM_RIEMANN_Average)
   Riemann_pointer => Riemann_FluxAverage
 CASE DEFAULT
@@ -207,6 +216,8 @@ CASE(PRM_RIEMANN_ROE)
   RiemannBC_pointer => Riemann_Roe
 CASE(PRM_RIEMANN_ROEENTROPYFIX)
   RiemannBC_pointer => Riemann_RoeEntropyFix
+CASE(PRM_RIEMANN_ROEL2)
+  RiemannBC_pointer => Riemann_RoeL2
 CASE(PRM_RIEMANN_Average)
   RiemannBC_pointer => Riemann_FluxAverage
 CASE DEFAULT
@@ -227,11 +238,12 @@ IF (0.EQ.1) THEN
   CALL Riemann_HLLC (F_L,F_R,U_LL,U_RR,F)
   CALL Riemann_Roe  (F_L,F_R,U_LL,U_RR,F)
   CALL Riemann_RoeEntropyFix(F_L,F_R,U_LL,U_RR,F)
+  CALL Riemann_RoeL2(F_L,F_R,U_LL,U_RR,F)
   CALL Riemann_HLL  (F_L,F_R,U_LL,U_RR,F)
   CALL Riemann_HLLE (F_L,F_R,U_LL,U_RR,F)
   CALL Riemann_HLLEM(F_L,F_R,U_LL,U_RR,F)
 END IF
-#endif
+#endif /*DEBUG*/
 END SUBROUTINE InitRiemann
 
 !==================================================================================================================================
@@ -297,7 +309,7 @@ DO j=0,NLoc; DO i=0,NLoc
 # ifndef SPLIT_DG
   CALL EvalEulerFlux1D_fast(U_LL,F_L)
   CALL EvalEulerFlux1D_fast(U_RR,F_R)
-#endif
+#endif /*SPLIT_DG*/
 
   CALL Riemann_loc(F_L,F_R,U_LL,U_RR,F)
 
@@ -671,9 +683,97 @@ F= F - 0.5*(Alpha(1)*a(1)*r1 + &
             Alpha(3)*a(3)*r3 + &
             Alpha(4)*a(4)*r4 + &
             Alpha(5)*a(5)*r5)
-#endif
+#endif /*SPLIT_DG*/
 
 END SUBROUTINE Riemann_RoeEntropyFix
+
+!=================================================================================================================================
+!> low mach number Roe's approximate Riemann solver according to Oßwald(2015)
+!=================================================================================================================================
+SUBROUTINE Riemann_RoeL2(F_L,F_R,U_LL,U_RR,F)
+! MODULES
+USE MOD_EOS_Vars  ,ONLY: kappaM1,kappa
+#ifdef SPLIT_DG
+USE MOD_SplitFlux ,ONLY: SplitDGSurface_pointer,SplitIndicator
+#endif /*SPLIT_DG*/
+IMPLICIT NONE
+!---------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+                                               !> extended solution vector on the left/right side of the interface
+REAL,DIMENSION(PP_2Var),INTENT(IN) :: U_LL,U_RR
+                                               !> advection fluxes on the left/right side of the interface
+REAL,DIMENSION(PP_nVar),INTENT(IN) :: F_L,F_R
+REAL,DIMENSION(PP_nVar),INTENT(OUT):: F        !< resulting Riemann flux
+!---------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL                    :: H_L,H_R
+REAL                    :: SqrtRho_L,SqrtRho_R,sSqrtRho
+REAL                    :: RoeVel(3),RoeH,Roec,absVel
+REAL                    :: Ma_loc ! local Mach-Number
+REAL,DIMENSION(PP_nVar) :: a,r1,r2,r3,r4,r5  ! Roe eigenvectors
+REAL                    :: Alpha1,Alpha2,Alpha3,Alpha4,Alpha5,Delta_U(PP_nVar+1)
+!=================================================================================================================================
+! Roe flux
+H_L       = ENTHALPY_HE(U_LL)
+H_R       = ENTHALPY_HE(U_RR)
+SqrtRho_L = SQRT(U_LL(DENS))
+SqrtRho_R = SQRT(U_RR(DENS))
+
+sSqrtRho  = 1./(SqrtRho_L+SqrtRho_R)
+! Roe mean values
+RoeVel    = (SqrtRho_R*U_RR(VELV) + SqrtRho_L*U_LL(VELV)) * sSqrtRho
+absVel    = DOT_PRODUCT(RoeVel,RoeVel)
+RoeH      = (SqrtRho_R*H_R+SqrtRho_L*H_L) * sSqrtRho
+Roec      = ROEC_RIEMANN_H(RoeH,RoeVel)
+
+! mean eigenvalues and eigenvectors
+a  = (/ RoeVel(1)-Roec, RoeVel(1), RoeVel(1), RoeVel(1), RoeVel(1)+Roec      /)
+r1 = (/ 1.,             a(1),      RoeVel(2), RoeVel(3), RoeH-RoeVel(1)*Roec /)
+r2 = (/ 1.,             RoeVel(1), RoeVel(2), RoeVel(3), 0.5*absVel          /)
+r3 = (/ 0.,             0.,        1.,        0.,        RoeVel(2)           /)
+r4 = (/ 0.,             0.,        0.,        1.,        RoeVel(3)           /)
+r5 = (/ 1.,             a(5),      RoeVel(2), RoeVel(3), RoeH+RoeVel(1)*Roec /)
+
+! calculate differences
+Delta_U(1:5) = U_RR(CONS) - U_LL(CONS)
+Delta_U(6)   = Delta_U(5)-(Delta_U(3)-RoeVel(2)*Delta_U(1))*RoeVel(2) - (Delta_U(4)-RoeVel(3)*Delta_U(1))*RoeVel(3)
+
+! low Mach-Number fix
+Ma_loc = SQRT(absVel)/(Roec*SQRT(kappa))
+Delta_U(2:4) = Delta_U(2:4) * Ma_loc
+
+! calculate factors
+Alpha3 = Delta_U(3) - RoeVel(2)*Delta_U(1)
+Alpha4 = Delta_U(4) - RoeVel(3)*Delta_U(1)
+Alpha2 = ALPHA2_RIEMANN_H(RoeH,RoeVel,Roec,Delta_U)
+Alpha1 = 0.5/Roec * (Delta_U(1)*(RoeVel(1)+Roec) - Delta_U(2) - Roec*Alpha2)
+Alpha5 = Delta_U(1) - Alpha1 - Alpha2
+
+#ifndef SPLIT_DG
+! assemble Roe flux
+F=0.5*((F_L+F_R) - &
+       Alpha1*ABS(a(1))*r1 - &
+       Alpha2*ABS(a(2))*r2 - &
+       Alpha3*ABS(a(3))*r3 - &
+       Alpha4*ABS(a(4))*r4 - &
+       Alpha5*ABS(a(5))*r5)
+#else
+! get split flux
+CALL SplitDGSurface_pointer(U_LL,U_RR,F)
+! for KG and PI flux eigenvalues have to be altered to ensure consistent KE dissipation
+IF (SplitIndicator==3 .OR. SplitIndicator==4) THEN
+  a(1) = MAX(ABS(RoeVel(1)-Roec),ABS(RoeVel(1)+Roec))
+  a(5) = MAX(ABS(RoeVel(1)-Roec),ABS(RoeVel(1)+Roec))
+ENDIF
+! assemble Roe flux
+F = F - 0.5*(Alpha1*ABS(a(1))*r1 + &
+             Alpha2*ABS(a(2))*r2 + &
+             Alpha3*ABS(a(3))*r3 + &
+             Alpha4*ABS(a(4))*r4 + &
+             Alpha5*ABS(a(5))*r5)
+#endif /*SPLIT_DG*/
+
+END SUBROUTINE Riemann_RoeL2
 
 
 !=================================================================================================================================
