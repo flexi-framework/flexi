@@ -617,6 +617,7 @@ USE MOD_PreProc
 USE MOD_Globals
 USE MOD_Output_Vars,ONLY: ProjectName
 USE MOD_Mesh_Vars  ,ONLY: offsetElem,nGlobalElems,nElems
+USE MOD_2D         ,ONLY: ExpandArrayTo3D
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -634,6 +635,8 @@ INTEGER,INTENT(IN)             :: nVar_Fluc                                    !
 ! LOCAL VARIABLES
 CHARACTER(LEN=255)             :: FileName
 REAL                           :: StartT,EndT
+REAL,POINTER                   :: UOut(:,:,:,:,:)
+INTEGER                        :: iVar,i,j,iElem
 !==================================================================================================================================
 IF((nVar_Avg.EQ.0).AND.(nVar_Fluc.EQ.0)) RETURN ! no time averaging
 IF(MPIROOT)THEN
@@ -655,13 +658,24 @@ IF(nVar_Avg.GT.0)THEN
   CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
 #endif
 
+#if PP_dim == 3
+  UOut => UAvg
+#else
+  IF (.NOT.IO_2D) THEN
+    ! If the output should be done with a full third dimension in a two dimensional computation, we need to expand the solution
+    ALLOCATE(UOut(nVar_Avg,0:PP_N,0:PP_N,0:PP_N,nElems))
+    CALL ExpandArrayTo3D(5,(/nVar_Avg,PP_N+1,PP_N+1,PP_NZ+1,nElems/),4,PP_N+1,UAvg,UOut)
+  END IF
+#endif
+
   ! Reopen file and write DG solution
   CALL GatheredWriteArray(FileName,create=.FALSE.,&
                           DataSetName='DG_Solution', rank=5,&
                           nValGlobal=(/nVar_Avg,PP_N+1,PP_N+1,PP_N+1,nGlobalElems/),&
                           nVal=      (/nVar_Avg,PP_N+1,PP_N+1,PP_N+1,nElems/),&
                           offset=    (/0,       0,     0,     0,     offsetElem/),&
-                          collective=.TRUE., RealArray=UAvg)
+                          collective=.TRUE., RealArray=UOut)
+  DEALLOCATE(UOut)
 END IF
 
 ! Write fluctuations ---------------------------------------------------------------------------------------------------------------
@@ -677,13 +691,24 @@ IF(nVar_Fluc.GT.0)THEN
   CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
 #endif
 
+#if PP_dim == 3
+  UOut => UFluc
+#else
+  IF (.NOT.IO_2D) THEN
+    ! If the output should be done with a full third dimension in a two dimensional computation, we need to expand the solution
+    ALLOCATE(UOut(nVar_Fluc,0:PP_N,0:PP_N,0:PP_N,nElems))
+    CALL ExpandArrayTo3D(5,(/nVar_Fluc,PP_N+1,PP_N+1,PP_NZ+1,nElems/),4,PP_N+1,UAvg,UOut)
+  END IF
+#endif
+
   ! Reopen file and write DG solution
   CALL GatheredWriteArray(FileName,create=.FALSE.,&
                           DataSetName='DG_Solution', rank=5,&
                           nValGlobal=(/nVar_Fluc,PP_N+1,PP_N+1,PP_N+1,nGlobalElems/),&
                           nVal=      (/nVar_Fluc,PP_N+1,PP_N+1,PP_N+1,nElems/),&
                           offset=    (/0,        0,     0,     0,     offsetElem/),&
-                          collective=.TRUE., RealArray=UFluc)
+                          collective=.TRUE., RealArray=UOut)
+  DEALLOCATE(UOut)
 END IF
 
 IF(MPIROOT)THEN
