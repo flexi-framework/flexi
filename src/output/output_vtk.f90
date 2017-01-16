@@ -468,22 +468,22 @@ values_out%data = C_LOC(values(0,0,0,1,1))
 SWRITE(UNIT_stdOut,'(A)')" Done!"
 END SUBROUTINE WriteDataToVTK_array
 
-SUBROUTINE WriteVarnamesToVTK_array(nDep,mapVisu,varnames_out,components_out)
+SUBROUTINE WriteVarnamesToVTK_array(nDep,mapVisu,varnames_out,components_out,VarNamesTotal,nVarTotal,nVarVisuTotal)
 USE ISO_C_BINDING
 ! MODULES
 USE MOD_Globals
-USE MOD_Posti_Vars     ,ONLY: VarNamesTotal,nVarTotal,nVarVisuTotal
-!USE MOD_Posti_Vars     ,ONLY: nVarVisu_ElemData,VarNamesVisu_ElemData,nVarVisu_FieldData,VarNamesVisu_FieldData
-!USE MOD_Posti_Vars     ,ONLY: VarNames_ElemData,nVar_ElemData,VarNames_FieldData,nVar_FieldData
 USE MOD_StringTools    ,ONLY: STRICMP
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)           :: nDep
-INTEGER,INTENT(IN)           :: mapVisu(nDep)
-TYPE (CARRAY), INTENT(INOUT) :: varnames_out
-TYPE (CARRAY), INTENT(INOUT) :: components_out
+INTEGER,INTENT(IN)             :: nDep
+INTEGER,INTENT(IN)             :: mapVisu(nDep)
+TYPE (CARRAY), INTENT(INOUT)   :: varnames_out
+TYPE (CARRAY), INTENT(INOUT)   :: components_out
+INTEGER,INTENT(IN)             :: nVarTotal
+INTEGER,INTENT(IN)             :: nVarVisuTotal
+CHARACTER(LEN=255),INTENT(IN)  :: VarNamesTotal(nVarTotal)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(C_CHAR),POINTER    :: VarNames_loc(:,:)

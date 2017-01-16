@@ -646,7 +646,7 @@ IF (VisuDimension.EQ.3) THEN
   CALL WriteCoordsToVTK_array(NVisu_FV,nElems_FV,coordsFV_out,nodeidsFV_out,&
       CoordsVisu_FV,nodeids_FV,dim=3,DGFV=1)
 
-  CALL WriteVarnamesToVTK_array(nVarTotal,mapVisu,varnames_out,components_out)
+  CALL WriteVarnamesToVTK_array(nVarTotal,mapVisu,varnames_out,components_out,VarNamesTotal,nVarTotal,nVarVisuTotal)
 
 ELSE IF (VisuDimension.EQ.2) THEN
 
@@ -667,7 +667,7 @@ ELSE IF (VisuDimension.EQ.2) THEN
   CALL WriteCoordsToVTK_array(NVisu_FV,nElems_FV,coordsFV_out,nodeidsFV_out,&
       CoordsVisu_FV_2D,nodeids_FV_2D,dim=2,DGFV=1)
 
-  CALL WriteVarnamesToVTK_array(nVarTotal,mapVisu,varnames_out,components_out)
+  CALL WriteVarnamesToVTK_array(nVarTotal,mapVisu,varnames_out,components_out,VarNamesTotal,nVarTotal,nVarVisuTotal)
 
 ELSE IF (VisuDimension.EQ.1) THEN ! CSV along 1d line
 

@@ -87,6 +87,7 @@ SUBDIRLIST(TESTCASES  ${CMAKE_CURRENT_SOURCE_DIR}/src/testcase/)
 SUBDIRLIST(EQNSYSTEMS ${CMAKE_CURRENT_SOURCE_DIR}/src/equations/)
 SUBDIRLIST(LIFTINGS   ${CMAKE_CURRENT_SOURCE_DIR}/src/dg/)
 
+OPTION(FLEXI_BUILDPOSTI "Build POSTI toolset" ON)
 OPTION(FLEXI_MPI "Compile SINGLE or MPI version" ON)
 OPTION(FLEXI_PARABOLIC "Enable parabolic terms of equation-system" ON)
 OPTION(FLEXI_EDDYVISCOSITY "Enable eddy viscosity modells" OFF)
@@ -475,7 +476,6 @@ FILE(GLOB_RECURSE flexiF90 ./src/interpolation/*.f90
                            ./src/filter/*.f90
                            ./src/io_hdf5/*.f90
                            ./src/timedisc/*.f90
-                           ./src/posti/*.f90
                            ./src/testcase/${FLEXI_TESTCASE}/*.f90
                            ./unitTests/generateunittestreferencedata.f90)
 
@@ -541,27 +541,8 @@ ADD_DEPENDENCIES(flexi2vtk flexilib HDF5)
 # =========================================================================
 # Posti
 # =========================================================================
-add_exec(posti_visu3D ./src/posti/posti_visu3D.f90)
-ADD_DEPENDENCIES(posti_visu3D flexilib HDF5)
-FIND_PACKAGE(ParaView)
-IF (ParaView_FOUND)
-   INCLUDE(${PARAVIEW_USE_FILE})
-   MESSAGE(STATUS ${PARAVIEW_USE_FILE})
-
-   SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-   INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/src/posti/paraviewReader/)
-   ADD_PARAVIEW_PLUGIN(visu3DReader "1.0"
-      SERVER_MANAGER_XML ${CMAKE_CURRENT_SOURCE_DIR}/src/posti/paraviewReader/visu3DReader.xml
-      SERVER_MANAGER_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/posti/paraviewReader/visu3DReader.cxx
-      REQUIRED_ON_SERVER
-      DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/posti/paraviewReader/visu3DReader.h"
-      )
-
-   ADD_LIBRARY(userblocklib_dummy SHARED ./src/output/read_userblock_dummy.c)
-   SET_TARGET_PROPERTIES(userblocklib_dummy PROPERTIES LINKER_LANGUAGE C)
-   SET_TARGET_PROPERTIES(userblocklib_dummy PROPERTIES COMPILE_FLAGS "-fPIC")
-   ADD_DEPENDENCIES(visu3DReader flexilib userblocklib_dummy HDF5)
-   TARGET_LINK_LIBRARIES(visu3DReader PUBLIC flexilib ${linkedlibs})
+IF(FLEXI_BUILDPOSTI)
+  INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/CMakeLists.txt)
 ENDIF()
 
 # =========================================================================
