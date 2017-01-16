@@ -1,23 +1,35 @@
 # =========================================================================
+# POSTI
+# =========================================================================
+
+# use dummy userblock, as userblocks are often not required for Posti tools
+ADD_LIBRARY(userblocklib_dummy SHARED ./src/output/read_userblock_dummy.c)
+SET_TARGET_PROPERTIES(userblocklib_dummy PROPERTIES LINKER_LANGUAGE C)
+SET_TARGET_PROPERTIES(userblocklib_dummy PROPERTIES COMPILE_FLAGS "-fPIC")
+
+# =========================================================================
 # Visu
 # =========================================================================
 # collect all F90 files needed for visulib
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/posti/visu/) 
-FILE(GLOB       visuF90    ./posti/visu/calc.f90
-	                   ./posti/visu/converttovisu.f90
-			   ./posti/visu/mappings.f90
-			   ./posti/visu/readstate.f90
-			   ./posti/visu/visu3D.f90
-			   ./posti/visu/visu3D_vars.f90
-			   ./posti/visu/visumesh.f90)
+FILE(GLOB visuF90 ./posti/visu/calc.f90
+                  ./posti/visu/converttovisu.f90
+                  ./posti/visu/mappings.f90
+                  ./posti/visu/readstate.f90
+                  ./posti/visu/visu3D.f90
+                  ./posti/visu/visu3D_vars.f90
+                  ./posti/visu/visumesh.f90)
 ADD_LIBRARY(visulibF90 OBJECT ${visuF90})
 SET_TARGET_PROPERTIES(visulibF90 PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}) 
 ADD_LIBRARY(visulib STATIC $<TARGET_OBJECTS:visulibF90>)
 ADD_DEPENDENCIES(visulibF90 flexilibF90 HDF5)
 
+# Standalone Posti executable
 add_exec(posti_visu3D ./posti/visu/posti_visu3D.f90)
-TARGET_LINK_LIBRARIES(posti_visu3D visulib flexilib userblocklib ${linkedlibs})
-ADD_DEPENDENCIES(posti_visu3D visulib flexilib userblocklib HDF5)
+TARGET_LINK_LIBRARIES(posti_visu3D visulib flexilib userblocklib_dummy ${linkedlibs})
+ADD_DEPENDENCIES(     posti_visu3D visulib flexilib userblocklib_dummy ${linkedlibs})
+
+# Posti visu plugin for Paraview
 FIND_PACKAGE(ParaView)
 IF (ParaView_FOUND)
    INCLUDE(${PARAVIEW_USE_FILE})
@@ -32,9 +44,6 @@ IF (ParaView_FOUND)
       DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/posti/visu/paraviewReader/visu3DReader.h"
       )
 
-   ADD_LIBRARY(userblocklib_dummy SHARED ./src/output/read_userblock_dummy.c)
-   SET_TARGET_PROPERTIES(userblocklib_dummy PROPERTIES LINKER_LANGUAGE C)
-   SET_TARGET_PROPERTIES(userblocklib_dummy PROPERTIES COMPILE_FLAGS "-fPIC")
    ADD_DEPENDENCIES(visu3DReader visulib flexilib userblocklib_dummy HDF5)
    TARGET_LINK_LIBRARIES(visu3DReader PUBLIC visulib flexilib ${linkedlibs})
 ENDIF()
