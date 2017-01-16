@@ -243,7 +243,9 @@ iVel2 = KEYVALUE(DepNames,mapCalc,"velocityy"  )
 iVel3 = KEYVALUE(DepNames,mapCalc,"velocityz"  )
 iPres = KEYVALUE(DepNames,mapCalc,"pressure"   )
 iEner = KEYVALUE(DepNames,mapCalc,'energystagnationdensity')
+#if PARABOLIC
 iVorM = KEYVALUE(DepNames,mapCalc,"vorticitymagnitude")
+#endif
 iVelM = KEYVALUE(DepNames,mapCalc,"velocitymagnitude")
 iTemp = KEYVALUE(DepNames,mapCalc,"temperature")
 iVelS = KEYVALUE(DepNames,mapCalc,"velocitysound"    )
