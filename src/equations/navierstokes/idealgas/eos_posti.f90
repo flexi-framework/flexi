@@ -212,7 +212,9 @@ INTEGER            :: i,iMom1,iMom2,iMom3,iDens,iPres,iVel1,iVel2,iVel3,iVelM,iV
 CHARACTER(LEN=255) :: DepName_low
 REAL               :: UE(PP_2Var)
 INTEGER            :: nElems_loc,Nloc,nDOF,nDims
+#if PARABOLIC
 INTEGER            :: iVorM
+#endif
 LOGICAL            :: withGradients
 !===================================================================================================================================
 nDims=UBOUND(nVal,1)
