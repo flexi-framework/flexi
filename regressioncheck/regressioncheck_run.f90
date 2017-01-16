@@ -102,7 +102,7 @@ DO iExample = 1, nExamples ! loop level 1 of 5
       CALL SetSubExample(iExample,iSubExample,parameter_ini)
 
       ! delete pre-existing data files before running the code (e.g. "TGVAnalysis.dat" or "Database.csv")
-      CALL CleanFolder(iExample,MODE=1)
+      CALL CleanFolder(iExample,MODE=1) ! MODE=1: delete pre-existing files and folders
 
 !==================================================================================================================================
       DO iScaling = 1, Examples(iExample)%MPIthreadsN ! loop level 4 of 5: multiple MPI runs with different MPI threads
@@ -117,7 +117,7 @@ DO iExample = 1, nExamples ! loop level 1 of 5
           CALL CompareResults(iExample,iSubExample,MPIthreadsStr)
 
           ! IF all comparisons are successful the error status is 0 -> delete created files in CleanFolder(iExample)
-          IF(Examples(iExample)%ErrorStatus.EQ.0) CALL CleanFolder(iExample,MODE=2)
+          IF(Examples(iExample)%ErrorStatus.EQ.0) CALL CleanFolder(iExample,MODE=2) ! MODE=2: delete files after simulation
         END DO ! iScalingRuns = 1, Examples(iExample)%nRuns
       END DO ! iScaling = 1, Examples(iExample)%MPIthreadsN
     END DO ! iSubExample = 1, MAX(1,SubExampleNumber) (for cases without specified SubExamples: SubExampleNumber=0)
@@ -667,6 +667,9 @@ IF(Examples(iExample)%SubExampleNumber.GT.0)THEN ! SubExample has been specified
                 '=.*/'//TRIM(Examples(iExample)%SubExample)//&
                    '='//TRIM(Examples(iExample)%SubExampleOption(iSubExample))//&
                  '/" '//TRIM(parameter_ini)
+print*,"SYSCOMMAND=",SYSCOMMAND
+!read*
+print*," todo: check if file was changed, if not write output message"
   CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
 END IF
 END SUBROUTINE SetSubExample
