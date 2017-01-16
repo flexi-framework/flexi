@@ -188,7 +188,7 @@ nTotalElems = SUM(nElems_glob)
 
 NVisu_elem = (NVisu+1)**dim
 nVTKPoints = NVisu_elem * nTotalElems
-nVTKCells  = ((NVisu+DGFV)/(1+DGFV))**dim*nTotalElems
+nVTKCells  = ((NVisu+DGFV_loc)/(1+DGFV_loc))**dim*nTotalElems
 
 ! write header of VTK file
 IF(MPIROOT)THEN
@@ -317,7 +317,7 @@ END IF
 
 ! Connectivity and footer
 IF(MPIROOT)THEN
-  CALL CreateConnectivity(NVisu,nTotalElems,nodeids,dim,DGFV)
+  CALL CreateConnectivity(NVisu,nTotalElems,nodeids,dim,DGFV_loc)
 
   nBytes = (4*(dim-1))*nVTKCells*SIZEOF_F(INTdummy)
   WRITE(ivtk) nBytes
