@@ -15,7 +15,8 @@ of libraries, which only have to be built once.
 
 The `envbuild.sh` script in the `tools/envbuild` folder will
 ease the installation of Flexi and build other related tools
-including their environment modules.
+including their environment modules. It is tested with Ubuntu
+LTS 16.04.
 
 ## Environment Modules
 
@@ -37,9 +38,10 @@ be placed in the file
 Here add the desired module location to the **first** position 
 in the list (e.g. `/opt/Modules`) or use one of the predefined
 locations. The environment variable $MODULEPATH should
-contain all the selected paths.
-The `envbuild.sh` script will install its module files (not the
-actual libraries) in the **first** path found in this variable.
+contain all the selected paths and is set by the init command
+below. The `envbuild.sh` script will install its module files
+(not the actual libraries) in the **first** path found in this
+variable.
 
 Copy the contents of the `tools/envbuild/Modules` folder to the
 path you specified (`/opt/Modules`). It already comes with few

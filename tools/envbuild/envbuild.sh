@@ -24,10 +24,12 @@ NPROCS=4                  # Number of processes for compiling
 
 # Items in the list:
 # GNU:          Use GNU environment
-# GNU:          Use intel environment
+# INTEL:        Use Intel environment
 # Compile:      Compile using the selected environments
 # Build module: Build modules for selected environments
 # Set default:  Make the currently built module the default module
+
+# NOTE: If "Compile" and "Build module" options are not set, the GNU/INTEL options are ignored
 
 # Build with      GNU;    INTEL; Compile; Build module Set default
 BUILD_OPENMPI=(    1        0       1          1            1       )
@@ -44,6 +46,7 @@ HDF5_VERSION=1.10.0-patch1
 HDF5_DLPATH='http://www.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.0-patch1/src/hdf5-1.10.0-patch1.tar.bz2'
 
 # Path and version of MPI
+# Note: MPI versions as of 1.10.3+ require autotools (aclocal) 1.15+ to be installed
 OPENMPI_NAME=openmpi
 OPENMPI_VERSION=2.0.1
 OPENMPI_DLPATH='https://www.open-mpi.org/software/ompi/v2.0/downloads/openmpi-2.0.1.tar.bz2'
@@ -55,8 +58,8 @@ CMAKE_DLPATH='https://cmake.org/files/v3.5/cmake-3.5.2.tar.gz'
 
 # Path and version of Paraview
 PARAVIEW_NAME=paraview
-PARAVIEW_VERSION=5.1.2
-PARAVIEW_DLPATH='http://www.paraview.org/paraview-downloads/download.php?submit=Download&version=v5.1&type=source&os=all&downloadFile=ParaView-v5.1.2.tar.gz'
+PARAVIEW_VERSION=5.2.0
+PARAVIEW_DLPATH='http://www.paraview.org/paraview-downloads/download.php?submit=Download&version=v5.2&type=source&os=all&downloadFile=ParaView-v5.2.0.tar.gz'
 
 # Compiler specific subfolders for environment modules (i.e. compiler vendor + version )
 GNU_DIR=gnu54
