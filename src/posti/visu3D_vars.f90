@@ -43,6 +43,8 @@ INTEGER                           :: nElems_FV
 INTEGER                           :: NVisu_FV
 REAL                              :: OutputTime
 LOGICAL                           :: hasFV_Elems = .FALSE.
+LOGICAL                           :: DGonly = .FALSE.
+LOGICAL                           :: DGonly_old = .TRUE.
 INTEGER                           :: VisuDimension
 
 LOGICAL                           :: changedStateFile
@@ -51,6 +53,7 @@ LOGICAL                           :: changedNVisu
 LOGICAL                           :: changedVarNames
 LOGICAL                           :: changedFV_Elems
 LOGICAL                           :: changedWithDGOperator
+LOGICAL                           :: changedDGonly
 
 ! Ini file variables
 ! HDF5 file variables

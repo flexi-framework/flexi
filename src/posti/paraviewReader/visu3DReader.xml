@@ -65,6 +65,18 @@
            Slice at first Gauss point in zeta-direction to get 2D solution.
            </Documentation>
          </IntVectorProperty>
+         <IntVectorProperty command="SetDGonly"
+           default_values="0"
+           animateable="0"
+           name="DGonly"
+           number_of_elements="1"
+           label="Visualize FV as DG"
+           panel_visibility="advanced">
+           <BooleanDomain name="bool" />
+           <Documentation>
+              Visualize all FV elements as if they where DG elements. Therewith no DG operator is required to reconstruct slopes.
+           </Documentation>
+         </IntVectorProperty>
          <StringVectorProperty command="SetParameterFileOverwrite"
            default_value=""
            animateable="0"

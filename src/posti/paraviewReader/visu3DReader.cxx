@@ -35,6 +35,7 @@
 #include <libgen.h>
 #include <unistd.h>
 #include <algorithm>
+#include <sstream>
 
 // MPI
 #include "vtkMultiProcessController.h"
@@ -51,14 +52,12 @@ visu3DReader::visu3DReader()
    SWRITE("visu3DReader");
    this->FileName = NULL;
    this->NVisu = 0;
-   this->NVisu_old = 0;
    this->NodeTypeVisu = NULL;
    this->Mode2d = 0;
-   this->Mode2d_old = 0;
+   this->DGonly = 0;
    this->ParameterFileOverwrite = NULL;
    this->MeshFileOverwrite = NULL;
    this->SetNumberOfInputPorts(0);
-
 
    // Setup the selection callback to modify this object when an array
    // selection is changed.
@@ -242,47 +241,20 @@ int visu3DReader::RequestData(
       FileToLoad = FileNames[timestepToLoad];
    }
 
+
+   // convert the MPI communicator to a fortran communicator
+   int fcomm = MPI_Comm_c2f(mpiComm);
+   MPI_Barrier(mpiComm); // all processes should call the Fortran code at the same time
+
    // get all variables selected for visualization 
    // and check if they are the same as before (bug workaround, explanation see below)
    int nVars = VarDataArraySelection->GetNumberOfArrays();
    VarNames_selected.resize(nVars);
-   bool sameVars = (VarNames_selected_old.size() == nVars);
    for (int i = 0; i< nVars; ++i)
    {
       const char* name = VarDataArraySelection->GetArrayName(i);
       VarNames_selected[i] = VarDataArraySelection->ArrayIsEnabled(name);
-      if (VarNames_selected_old.size() == nVars) {
-         sameVars &= (VarNames_selected_old[i] == VarNames_selected[i]);
-      }
    }
-
-   // check if anything in the GUI was changed.
-   // This is a bug workaround for the following problem:
-   // When loading a second file (after opening it from the file dialog and before press of Apply button) 
-   // this RequestData routine is called for the FIRST file, even so nothing in the GUI was changed. 
-   // Of course the data that should be visualized is the same, so we can skip the call of the Posti-Fortran-Visu3D code.
-   bool sameNVisu    = (NVisu_old == NVisu);
-   bool sameNodeType = strcmp(NodeTypeVisu_old.c_str(),NodeTypeVisu) == 0;
-   bool sameMode2d   = Mode2d_old == Mode2d;
-   bool samePrmFile  = strcmp(ParameterFileOverwrite_old.c_str(), ParameterFileOverwrite) == 0;
-   bool sameMeshFile = strcmp(MeshFileOverwrite_old.c_str(), MeshFileOverwrite) == 0;
-   bool sameFileName = strcmp(FileName_old.c_str(), FileToLoad.c_str()) == 0;
-   bool nothingChanged = sameNVisu && sameNodeType && sameMode2d && samePrmFile && sameMeshFile && sameFileName && sameVars;
-
-   if (nothingChanged)   
-   {
-      SWRITE("NOTHING CHANGED");
-   } else {
-      SWRITE("CHANGED: "); 
-      SWRITE("   NVisu:     " << sameNVisu    << " : "<< NVisu_old << " -> " << NVisu);
-      SWRITE("   NodeType:  " << sameNodeType << " : "<< NodeTypeVisu_old << " -> " << NodeTypeVisu );
-      SWRITE("   Mode2D:    " << sameMode2d   << " : "<< Mode2d_old << " -> " << Mode2d );
-      SWRITE("   PrmFile:   " << samePrmFile  << " : "<< ParameterFileOverwrite_old << " -> " << ParameterFileOverwrite );
-      SWRITE("   MeshFile:  " << sameMeshFile << " : "<< MeshFileOverwrite_old << " -> " << MeshFileOverwrite );
-      SWRITE("   StateFile: " << sameFileName << " : "<< FileName_old << " -> " << FileToLoad );
-      SWRITE("   sameVars:  " << sameVars     << " : "<< sameVars );
-   } 
-
 
    // Change to directory of state file (path of mesh file is stored relative to path of state file)
    char* dir = strdup(FileToLoad.c_str());
@@ -299,66 +271,42 @@ int visu3DReader::RequestData(
 
    // get temporary file for the posti parameter files
    setlocale(LC_ALL, "C"); 
-   char posti_filename[255];
-   char prm_filename[255];
-   std::strcpy(posti_filename, "/tmp/f2p_posti_XXXXXX.ini");
+   char posti_filename[] = "/tmp/f2p_posti_XXXXXX.ini";
    int posti_unit = mkstemps(posti_filename,4);
 
    // write settings to Posti parameter file
    dprintf(posti_unit, "NVisu = %d\n", NVisu); // insert NVisu
    dprintf(posti_unit, "NodeTypeVisu = %s\n", NodeTypeVisu); // insert NodeType
    dprintf(posti_unit, "VisuDimension = %s\n", (this->Mode2d ? "2" : "3"));
+   dprintf(posti_unit, "DGonly = %s\n", (this->DGonly ? "T" : "F"));
    if (strlen(MeshFileOverwrite) > 0) {
       dprintf(posti_unit, "MeshFile = %s\n", MeshFileOverwrite);
    }
 
    // write selected state varnames to the parameter file
-   VarNames_selected_old.resize(nVars);
    for (int i = 0; i< nVars; ++i)
    {
       if (VarNames_selected[i]) {
          const char* name = VarDataArraySelection->GetArrayName(i);
          dprintf(posti_unit, "VarName = %s\n", name) ;
       }
-      VarNames_selected_old[i] = VarNames_selected[i];
    }
    close(posti_unit);
 
-   // if a Flexi parameter file is given, which should overwrite the parameter file from the userblock stored
-   // in the h5-file, then this must be copied to prm_filename 
-   if (strlen(ParameterFileOverwrite) > 0) {
-      // use parameter file to overwrite userblock-parameterfile 
-      std::strcpy(prm_filename, ParameterFileOverwrite);
-   } else {
-      std::strcpy(prm_filename, "");
-   }
+   MPI_Barrier(mpiComm); // all processes should call the Fortran code at the same time
 
-   // only call the Fortran Posti code if something in the GUI changed (bug workaround, see above)
-   if (! nothingChanged) {
-      // convert the MPI communicator to a fortran communicator
-      int fcomm = MPI_Comm_c2f(mpiComm);
-      MPI_Barrier(mpiComm); // all processes should call the Fortran code at the same time
-
-      // call Posti tool (Fortran code)
-      // the arrays coords_*, values_* and nodeids_* are allocated in the Posti tool 
-      // and contain the vtk data
-      int strlen_prm = strlen(prm_filename);
-      int strlen_posti = strlen(posti_filename);
-      int strlen_state = strlen(FileToLoad.c_str()); 
-      __mod_visu3d_MOD_visu3d_cwrapper(&fcomm, 
-            &strlen_prm, prm_filename, 
-            &strlen_posti, posti_filename, 
-            &strlen_state, FileToLoad.c_str(),
-            &coords_DG,&values_DG,&nodeids_DG,
-            &coords_FV,&values_FV,&nodeids_FV,&varnames,&components);
-
-      NVisu_old = NVisu;
-      NodeTypeVisu_old = NodeTypeVisu;
-      Mode2d_old = Mode2d;
-      ParameterFileOverwrite_old = ParameterFileOverwrite;
-      MeshFileOverwrite_old = MeshFileOverwrite;
-      FileName_old = FileToLoad;
-   }
+   // call Posti tool (Fortran code)
+   // the arrays coords_*, values_* and nodeids_* are allocated in the Posti tool 
+   // and contain the vtk data
+   int strlen_prm = strlen(ParameterFileOverwrite);
+   int strlen_posti = strlen(posti_filename);
+   int strlen_state = strlen(FileToLoad.c_str()); 
+   __mod_visu3d_MOD_visu3d_cwrapper(&fcomm, 
+         &strlen_prm, ParameterFileOverwrite, 
+         &strlen_posti, posti_filename, 
+         &strlen_state, FileToLoad.c_str(),
+         &coords_DG,&values_DG,&nodeids_DG,
+         &coords_FV,&values_FV,&nodeids_FV,&varnames,&components);
 
    MPI_Barrier(mpiComm); // wait until all processors returned from the Fortran Posti code
 
@@ -386,6 +334,8 @@ int visu3DReader::RequestData(
    vtkSmartPointer<vtkUnstructuredGrid> output_FV = vtkUnstructuredGrid::SafeDownCast(mb->GetBlock(1));
    InsertData(output_FV, &coords_FV, &values_FV, &nodeids_FV, &varnames, &components);
 
+   __mod_visu3d_MOD_visu3d_dealloc_nodeids();
+
    // tell paraview to render data
    this -> Modified(); 
 
@@ -400,26 +350,24 @@ int visu3DReader::RequestData(
  */
 void visu3DReader::InsertData(vtkSmartPointer<vtkUnstructuredGrid> &output, struct DoubleARRAY* coords,
       struct DoubleARRAY* values, struct IntARRAY* nodeids, struct CharARRAY* varnames, struct IntARRAY* components) {
-
-   // create points(array), cellarray and a hex;
-   vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
-   vtkSmartPointer<vtkCellArray> cellarray = vtkSmartPointer<vtkCellArray>::New();
    // create a 3D double array (must be 3D even we use a 2D Posti tool, since paraview holds the data in 3D)
    vtkSmartPointer <vtkDoubleArray> pdata = vtkSmartPointer<vtkDoubleArray>::New();
    pdata->SetNumberOfComponents(3); // 3D
+   pdata->SetNumberOfTuples(coords->len/3);
+   // copy coordinates 
+   double* ptr = pdata->GetPointer(0);
+   for (long i = 0; i < coords->len; ++i)
+   {
+      *ptr++ = coords->data[i];
+   }
 
-   // assign the coords-data (loaded by the Posti tool) to the general pdata array 
-   // (no copy of data!!! pdata uses the coords-data array)
-
-   pdata->SetArray(coords->data, coords->len, 1);
-   // now we use this vtkDouble Array and assign it to the points-array
-   // (again no copy of data!!!)
+   // create points array to be used for the output
+   vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
    points->SetData(pdata);
-   points->SetNumberOfPoints(coords->len/3);
-   // set the points array to be used for the output
    output->SetPoints(points);
 
-
+   // create cellarray
+   vtkSmartPointer<vtkCellArray> cellarray = vtkSmartPointer<vtkCellArray>::New();
    if (this->Mode2d) {
       vtkSmartPointer<vtkQuad> quad = vtkSmartPointer<vtkQuad>::New();
       // Use the nodeids to build quads
@@ -455,7 +403,6 @@ void visu3DReader::InsertData(vtkSmartPointer<vtkUnstructuredGrid> &output, stru
    }
 
    // assign the actual data, loaded by the Posti tool, to the output
-   std::vector<vtkSmartPointer<vtkDoubleArray> > dataArrays;
    unsigned int nVarCombine = varnames->len/255;
    if (nVarCombine > 0) {
       unsigned int nVar = 0;
@@ -469,20 +416,24 @@ void visu3DReader::InsertData(vtkSmartPointer<vtkUnstructuredGrid> &output, stru
          // For each variable, create a new array and set the number of components to 1
          // Each variable is loaded separately. 
          // One might implement vector variables (velocity), but then must set number of componenets to 2/3
-         dataArrays.push_back( vtkSmartPointer<vtkDoubleArray>::New() );
-         dataArrays.at(iVar)->SetNumberOfComponents(components->data[iVar]);
-         // Assign data of the variable to the array.
-         // (no copy of data!!!)
-         dataArrays.at(iVar)->SetArray(values->data+dataPos, sizePerVar*components->data[iVar], 1);
+         vtkSmartPointer <vtkDoubleArray> vdata = vtkSmartPointer<vtkDoubleArray>::New();
+         vdata->SetNumberOfComponents(components->data[iVar]);
+         vdata->SetNumberOfTuples(sizePerVar/components->data[iVar]);
+         // copy coordinates 
+         double* ptr = vdata->GetPointer(0);
+         for (long i = 0; i < sizePerVar; ++i)
+         {
+            *ptr++ = values->data[dataPos+i];
+         }
          dataPos += sizePerVar * components->data[iVar];
          // set name of variable
          char tmps[255];
          strncpy(tmps, varnames->data+iVar*255, 255);
          std::string varname(tmps);
          varname = varname.substr(0,varname.find(" "));
-         dataArrays.at(iVar)->SetName(varname.c_str());
+         vdata->SetName(varname.c_str());
          // insert array of variable into the output
-         output->GetPointData()->AddArray(dataArrays.at(iVar));
+         output->GetPointData()->AddArray(vdata);
       }
    }
 }

@@ -83,8 +83,8 @@ END FUNCTION cstrToChar255
 SUBROUTINE visu3d_requestInformation(mpi_comm_IN, strlen_state, statefile_IN, varnames)
 ! MODULES
 USE MOD_Globals
-USE MOD_MPI     ,ONLY: InitMPI
-USE MOD_Posti_Vars,ONLY: VarNamesTotal
+USE MOD_MPI        ,ONLY: InitMPI
+USE MOD_Posti_Vars ,ONLY: VarNamesTotal
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -273,11 +273,13 @@ CALL GETCWD(MeshFile)
 Meshfile          =  TRIM(Meshfile) // "/" // GETSTR("MeshFile",MeshFile_state) 
 VisuDimension     = GETINT("VisuDimension")
 NodeTypeVisuPosti = GETSTR('NodeTypeVisu')
+DGonly            = GETLOGICAL('DGonly')
 
-! check if state, mesh or NVisu changed 
+! check if state, mesh, NVisu or DGonly changed 
 changedStateFile = .NOT.STRICMP(statefile,statefile_old)
 changedMeshFile  = .NOT.(STRICMP(MeshFile,MeshFile_old))
 changedNVisu     = ((NVisu.NE.NVisu_old) .OR. (NodeTypeVisuPosti.NE.NodeTypeVisuPosti_old))
+changedDGonly    = (DGonly.NEQV.DGonly_old)
 
 SWRITE(*,*) "state file old -> new: ", TRIM(statefile_old), " -> ",TRIM(statefile)
 SWRITE(*,*) " mesh file old -> new: ", TRIM(MeshFile_old) , " -> ",TRIM(MeshFile)
@@ -291,20 +293,6 @@ IF (changedStateFile.OR.changedMeshFile) THEN
   END IF
   CALL ReadAttribute(File_ID,'Project_Name',1,StrScalar =ProjectName)
   CALL ReadAttribute(File_ID,'Time',        1,RealScalar=OutputTime)
-
-  ! if no explicit posti parameter file is given, then generate a default '.posti.ini' file
-  IF (LEN_TRIM(postifile).EQ.0) THEN
-    postifile = ".posti.ini"
-    IF (MPIRoot) THEN
-      OPEN(NEWUNIT=postiUnit,FILE=TRIM(postifile),STATUS='UNKNOWN',ACTION='WRITE',ACCESS='SEQUENTIAL',IOSTAT=stat)
-      WRITE(postiUnit,'(A,I3)') "NVisu   = ", PP_N+1
-      DO iVar=1,nVar_State
-        WRITE(postiUnit,'(A,A)') "VarName = ", TRIM(VarNamesHDF5(iVar))
-      END DO
-      CLOSE(postiUnit)
-    END IF
-    CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
-  END IF
 END IF
 
 CALL CloseDataFile()
@@ -325,7 +313,7 @@ ELSE
 END IF
 
 ! build distribution of FV and DG elements, which is stored in FV_Elems_loc
-IF (changedStateFile.OR.changedMeshFile) THEN
+IF (changedStateFile.OR.changedMeshFile.OR.changedDGonly) THEN
   CALL Build_FV_DG_distribution(statefile) 
 END IF 
 
@@ -347,9 +335,10 @@ END SUBROUTINE visu3d_InitFile
 !===================================================================================================================================
 !> C wrapper routine for the visu3D call from ParaView.
 !===================================================================================================================================
-SUBROUTINE visu3D_CWrapper(mpi_comm_IN, strlen_prm, prmfile_IN, strlen_posti, postifile_IN, strlen_state, statefile_IN,&
-        coordsDG_out,valuesDG_out,nodeidsDG_out, &
-        coordsFV_out,valuesFV_out,nodeidsFV_out,varnames_out,components_out)
+SUBROUTINE visu3D_CWrapper(mpi_comm_IN, &
+    strlen_prm, prmfile_IN, strlen_posti, postifile_IN, strlen_state, statefile_IN,&
+    coordsDG_out,valuesDG_out,nodeidsDG_out, &
+    coordsFV_out,valuesFV_out,nodeidsFV_out,varnames_out,components_out)
 USE ISO_C_BINDING
 USE MOD_Globals
 IMPLICIT NONE
@@ -405,6 +394,7 @@ USE MOD_Posti_Calc          ,ONLY: CalcQuantities_ConvertToVisu_FV
 #endif
 USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_DG,ConvertToVisu_GenericData
 USE MOD_ReadInTools         ,ONLY: prms,FinalizeParameters,ExtractParameterFile
+USE MOD_StringTools         ,ONLY: STRICMP
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)               :: mpi_comm_IN    
@@ -487,16 +477,17 @@ SWRITE (*,*) "READING FROM: ", TRIM(statefile)
 !   - changedNVisu:         new NVisu, new Nodetype
 !   - changedFV_Elems:      new distribution of FV/DG elements (only if changedStateFile==TRUE)
 !   - changedWithDGOperator: different mode, with/without gradients
+!   - changedDGonly:        the visualization of FV elements as DG elements was set or unset
 !   
 ! WORKFLOW:
 ! * The main steps are:
 !   1. get nElems             (if changedStateFile)
-!   2. get FV/DG distribution (if changedStateFile)
-!   3. read solution          (if changedStateFile or changedWithDGOperator)
+!   2. get FV/DG distribution (if changedStateFile or changedDGonly)
+!   3. read solution          (if changedStateFile or changedWithDGOperator or changedDGonly)
 !   4. read Mesh              (if changedMeshFile)
-!   5. compute UCalc          (if changedStateFile or changedVarNames) 
-!   6. convert to UVisu       (if changedStateFile or changedVarNames or changedNVisu)
-!   6. build visu mesh        (if changedMeshFile  or changedNVisu or changedFV_Elems)
+!   5. compute UCalc          (if changedStateFile or changedVarNames or changedDGonly) 
+!   6. convert to UVisu       (if changedStateFile or changedVarNames or changedNVisu or changedDGonly)
+!   6. build visu mesh        (if changedMeshFile  or changedNVisu or changedFV_Elems or changedDGonly)
 !   7. write VTK arrays       (always!) 
 !
 !**********************************************************************************************
@@ -509,13 +500,15 @@ CALL prms%CreateStringOption("VarName"      , "Names of variables, which should 
 CALL prms%CreateIntOption(   "NVisu"        ,  "Polynomial degree at which solution is sampled for visualization.")
 CALL prms%CreateIntOption(   "VisuDimension", "2 = Slice at first Gauss point in zeta-direction to get 2D solution.","3")
 CALL prms%CreateStringOption("NodeTypeVisu" , "NodeType for visualization. Visu, Gauss,Gauss-Lobatto,Visu_inner"    ,"VISU")
+CALL prms%CreateLogicalOption("DGonly"      , "Visualize FV elements as DG elements."    ,".FALSE.")
 
-changedStateFile     = .FALSE.
-changedMeshFile      = .FALSE.
-changedNVisu         = .FALSE.
-changedVarNames      = .FALSE.
-changedFV_Elems      = .FALSE.
+changedStateFile      = .FALSE.
+changedMeshFile       = .FALSE.
+changedNVisu          = .FALSE.
+changedVarNames       = .FALSE.
+changedFV_Elems       = .FALSE.
 changedWithDGOperator = .FALSE.
+changedDGonly         = .FALSE.
 
 IF (ISVALIDMESHFILE(statefile)) THEN ! visualize mesh
   SWRITE(*,*) "MeshFile Mode"
@@ -530,29 +523,41 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   CALL visu3d_InitFile(statefile,postifile)
 
   ! read solution from state file (either direct or including a evaluation of the DG operator)
-  changedPrmFile = (prmfile .NE. prmfile_old)  
-  IF (changedStateFile.OR.changedWithDGOperator.OR.changedPrmFile) THEN
+  IF (LEN_TRIM(prmfile).EQ.0) THEN
+    changedPrmFile = .NOT.STRICMP(prmfile_old, ".flexi.ini")
+  ELSE
+    changedPrmFile = (prmfile .NE. prmfile_old)  
+  END IF
+  SWRITE (*,*) "changedStateFile     ", changedStateFile     
+  SWRITE (*,*) "changedMeshFile      ", changedMeshFile      
+  SWRITE (*,*) "changedNVisu         ", changedNVisu         
+  SWRITE (*,*) "changedVarNames      ", changedVarNames      
+  SWRITE (*,*) "changedFV_Elems      ", changedFV_Elems      
+  SWRITE (*,*) "changedWithDGOperator", changedWithDGOperator
+  SWRITE (*,*) "changedDGonly        ", changedDGonly
+  SWRITE (*,*) "changedPrmFile       ", changedPrmFile, TRIM(prmfile_old), " -> ", TRIM(prmfile)
+  IF (changedStateFile.OR.changedWithDGOperator.OR.changedPrmFile.OR.changedDGonly) THEN
       CALL ReadState(prmfile,statefile)
   END IF
 
   ! calc DG solution 
-  IF (changedStateFile.OR.changedVarNames) THEN
+  IF (changedStateFile.OR.changedVarNames.OR.changedDGonly) THEN
     CALL CalcQuantities_DG()
   END IF
   ! convert DG solution to visu grid
-  IF (changedStateFile.OR.changedVarNames.OR.changedNVisu) THEN
+  IF (changedStateFile.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly) THEN
     CALL ConvertToVisu_DG()
   END IF
 
 #if FV_ENABLED
   ! calc FV solution and convert to visu grid
-  IF ((changedStateFile.OR.changedVarNames).AND.hasFV_Elems) THEN
+  IF ((changedStateFile.OR.changedVarNames).AND.hasFV_Elems.OR.changedDGonly) THEN
     CALL CalcQuantities_ConvertToVisu_FV()
   END IF
 #endif /* FV_ENABLED */
 
   ! convert generic data to visu grid
-  IF (changedStateFile.OR.changedVarNames.OR.changedNVisu) THEN
+  IF (changedStateFile.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly) THEN
     CALL ConvertToVisu_GenericData(statefile)
   END IF
 
@@ -567,6 +572,7 @@ statefile_old         = statefile
 NVisu_old             = NVisu
 nVar_State_old        = nVar_State
 withDGOperator_old    = withDGOperator
+DGonly_old            = DGonly
 NodeTypeVisuPosti_old = NodeTypeVisuPosti
 
 SWRITE(UNIT_StdOut,'(132("-"))')
@@ -628,7 +634,7 @@ ELSE IF (VisuDimension.EQ.2) THEN
 END IF
 
 ! Convert coordinates to visu grid
-IF (changedMeshFile.OR.changedNVisu.OR.changedFV_Elems) THEN
+IF (changedMeshFile.OR.changedNVisu.OR.changedFV_Elems.OR.changedDGonly) THEN
   CALL BuildVisuCoords()
 END IF
 
