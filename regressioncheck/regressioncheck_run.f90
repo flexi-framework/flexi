@@ -46,6 +46,8 @@ CHARACTER(LEN=255)             :: ReggieBuildExe                    !> cache exe
                                                                     !> this means don't build the same cmake configuration twice
 CHARACTER(LEN=255)             :: parameter_ini                     !> input parameter file depending on EQNSYS
 CHARACTER(LEN=255)             :: parameter_ini2                    !> input parameter file depending on TIMEDISC
+CHARACTER(LEN=15)              :: MPIthreadsStr                     !> string for the number of MPI threads for execution
+                                                                    !> it may differ from "Examples(iExample)%MPIthreadsStr"
 INTEGER                        :: iExample                          !> loop index for example
 INTEGER                        :: N_compile_flags                   !> number of compile-flags
 INTEGER                        :: iReggieBuild,nReggieBuilds ! field handler unit and ??
@@ -108,11 +110,11 @@ DO iExample = 1, nExamples ! loop level 1 of 5
 !==================================================================================================================================
         DO iRun = 1, Examples(iExample)%nRuns ! loop level 5 of 5: repeat the same run multiple times
 !==================================================================================================================================
-          CALL RunTheCode(iExample,iSubExample,iScaling,iRun,EXECPATH,parameter_ini,parameter_ini2,SkipComparison)
+          CALL RunTheCode(iExample,iSubExample,iScaling,iRun,MPIthreadsStr,EXECPATH,parameter_ini,parameter_ini2,SkipComparison)
           IF(SkipComparison)CYCLE ! the execution has failed, no comparisons are needed
 
           ! compare the results and write error messages for the current case
-          CALL CompareResults(iExample,iSubExample)
+          CALL CompareResults(iExample,iSubExample,MPIthreadsStr)
 
           ! IF all comparisons are successful the error status is 0 -> delete created files in CleanFolder(iExample)
           IF(Examples(iExample)%ErrorStatus.EQ.0) CALL CleanFolder(iExample,MODE=2)
@@ -755,7 +757,7 @@ END SUBROUTINE CleanFolder
 !===================================================================================================================================
 !> Execute the binary and check if the attempt was successful
 !===================================================================================================================================
-SUBROUTINE RunTheCode(iExample,iSubExample,iScaling,iRun,EXECPATH,parameter_ini,parameter_ini2,SkipComparison)
+SUBROUTINE RunTheCode(iExample,iSubExample,iScaling,iRun,MPIthreadsStr,EXECPATH,parameter_ini,parameter_ini2,SkipComparison)
 !===================================================================================================================================
 !===================================================================================================================================
 ! MODULES
@@ -768,6 +770,7 @@ IMPLICIT NONE
 ! INPUT VARIABLES
 INTEGER,INTENT(IN)             :: iExample,iSubExample,iScaling,iRun
 CHARACTER(LEN=*),INTENT(IN)    :: parameter_ini,parameter_ini2,EXECPATH
+CHARACTER(LEN=*),INTENT(INOUT) :: MPIthreadsStr
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 LOGICAL,INTENT(OUT)            :: SkipComparison
@@ -775,7 +778,6 @@ LOGICAL,INTENT(OUT)            :: SkipComparison
 ! LOCAL VARIABLES
 INTEGER                        :: iSTATUS                           !> status
 CHARACTER(LEN=1000)            :: SYSCOMMAND                        !> string to fit the system command
-CHARACTER(LEN=15)              :: MPIthreadsStr                     !> string for the number of MPI threads for execution
 CHARACTER(LEN=255)             :: FileSuffix,FolderSuffix,tempStr,StdOutFolderName
 INTEGER                        :: MPIthreadsInteger,PolynomialDegree,MPIthreads
 !===================================================================================================================================
@@ -810,6 +812,7 @@ IF(Examples(iExample)%MPIrun)THEN ! use "mpirun"
                        ADJUSTL(TRIM(MPIthreadsStr))//' '//ADJUSTL(TRIM(tempStr))//' '//TRIM(EXECPATH)//' '//&
            TRIM(parameter_ini)//' '//TRIM(parameter_ini2)//' '//TRIM(Examples(iExample)%RestartFileName)//' 1>std.out 2>err.out'
 ELSE ! single run
+  MPIthreadsStr='-'
   SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && '//TRIM(EXECPATH)//' '//&
            TRIM(parameter_ini)//' '//TRIM(parameter_ini2)//' '//TRIM(Examples(iExample)%RestartFileName)//' 1>std.out 2>err.out'
 END IF
@@ -819,7 +822,7 @@ CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS) ! run the c
 ! -----------------------------------------------------------------------------------------------------------------------
 IF(iSTATUS.EQ.0)THEN ! Computation successful
   SWRITE(UNIT_stdOut,'(A)',ADVANCE='no')  ' successful computation ...'
-  CALL AddError('successful computation',iExample,iSubExample,ErrorStatus=0,ErrorCode=0)
+  CALL AddError(MPIthreadsStr,'successful computation',iExample,iSubExample,ErrorStatus=0,ErrorCode=0)
   CALL str2int(Examples(iExample)%MPIthreadsStr(iScaling),MPIthreads,iSTATUS)
   ! copy the std.out file
   IF(Examples(iExample)%SubExample.EQ.'N')THEN ! when polynomial degree "N" is the SubExample, set special file name
@@ -845,7 +848,7 @@ ELSE ! Computation failed
   SWRITE(UNIT_stdOut,'(A)')   ' Computation of example failed'
   SWRITE(UNIT_stdOut,'(A,A)') ' Out-file: ', TRIM(Examples(iExample)%PATH)//'std.out'
   SWRITE(UNIT_stdOut,'(A,A)') ' Errorfile: ', TRIM(Examples(iExample)%PATH)//'err.out'
-  CALL AddError('Error while executing',iExample,iSubExample,ErrorStatus=1,ErrorCode=2)
+  CALL AddError(MPIthreadsStr,'Error while executing',iExample,iSubExample,ErrorStatus=1,ErrorCode=2)
   SkipComparison=.TRUE. ! when a computation fails no useful output is created for comparison, continue the subexample cycle
 END IF
 END SUBROUTINE RunTheCode

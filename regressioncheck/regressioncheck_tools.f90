@@ -103,12 +103,12 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                        :: nArgs                             ! Number of supplied command line arguments
 !===================================================================================================================================
-RuntimeOption='run'     ! default
-RuntimeOptionType='run' ! default
-RuntimeOptionTypeII=''  ! default
-RuntimeOptionTypeIII='' ! default
-BuildDebug=.FALSE.      ! default
-BuildNoDebug=.FALSE.    ! default
+RuntimeOption='run'           ! only run pre-built executable (no building of new cmake compiler flag combinations)
+RuntimeOptionType='run_basic' ! set to standard case folder 'run_basic'
+RuntimeOptionTypeII=''        ! default
+RuntimeOptionTypeIII=''       ! default
+BuildDebug=.FALSE.            ! default
+BuildNoDebug=.FALSE.          ! default
 ! Get number of command line arguments and read in runtime option of regressioncheck
 nArgs=COMMAND_ARGUMENT_COUNT()
 IF(nArgs.EQ.0)THEN
@@ -130,13 +130,16 @@ ELSE
     IF(TRIM(RuntimeOptionType).EQ.'debug')THEN
       BuildDebug=.TRUE.
       RuntimeOptionType='run_basic' ! debug uses "configuration.reggie" from "run_basic" and displays the complete 
-                                         ! compilation process for debugging
+                                    ! compilation process for debugging
     ELSEIF(TRIM(RuntimeOptionType).EQ.'no-debug')THEN
       BuildNoDebug=.TRUE.
-      RuntimeOptionType='run_basic' ! debug uses "configuration.reggie" from "run_basic" and displays the complete 
+      RuntimeOptionType='run_basic' ! debug uses "configuration.reggie" from "run_basic" and displays no putput 
     END IF
-    IF(TRIM(RuntimeOptionTypeII).EQ.'debug')BuildDebug=.TRUE. ! e.g. ./regressioncheck build feature_convtest debug
-    IF(TRIM(RuntimeOptionType).EQ.'run')RuntimeOptionType='run_basic'
+    IF(TRIM(RuntimeOptionTypeII).EQ.'debug')THEN
+      BuildDebug=.TRUE. ! e.g. ./regressioncheck build feature_convtest debug
+    ELSEIF(TRIM(RuntimeOptionTypeII).EQ.'no-debug')THEN
+      BuildNoDebug=.TRUE. ! redirect std- and err-output channels to "/build_reggie/build_reggie.out"
+    END IF
   ELSE IF((TRIM(RuntimeOption).EQ.'--help').OR.(TRIM(RuntimeOption).EQ.'help').OR.(TRIM(RuntimeOption).EQ.'HELP')) THEN
     CALL Print_Help_Information()
     STOP
@@ -296,15 +299,15 @@ ELSE
 END IF
 
 ! init
-Example%MPIrun                 = .FALSE. ! don't use "mpirun" n default
-Example%MPIcommand             = 'mpirun'! use mpirun for running parallel simulations as default
-Example%MPIthreadsStr          = '1'     ! run with 1 MPI thread on default
-Example%MPIthreadsN            = 1       ! minimum
-Example%nRuns                  = 1       ! minimum
-Example%nVar                   = 0
-Example%ReferenceTolerance     = -1.
-Example%SubExampleNumber       = 0       ! init total number of subexamples
-Example%SubExampleOption(1:20) = '-'     ! default option is nothing
+Example%MPIrun                  = .FALSE. ! don't use "mpirun" n default
+Example%MPIcommand              = 'mpirun'! use mpirun for running parallel simulations as default
+Example%MPIthreadsStr           = '1'     ! run with 1 MPI thread on default
+Example%MPIthreadsN             = 1       ! minimum
+Example%nRuns                   = 1       ! minimum
+Example%nVar                    = 0
+Example%ReferenceTolerance      = -1.
+Example%SubExampleNumber        = 0       ! init total number of subexamples
+Example%SubExampleOption(1:100) = '-'     ! default option is nothing
 DO ! extract reggie information
   READ(ioUnit,'(A)',IOSTAT=iSTATUS) temp1 ! get first line assuming it is something like "nVar= 5"
   IF(iSTATUS.EQ.-1) EXIT ! end of file (EOF) reached
@@ -338,7 +341,7 @@ DO ! extract reggie information
     ! SubExamples - currently one subexample class is allowed with multiple options
     IF(TRIM(readRHS(1)).EQ.'SubExample') CALL GetParameterList(ParameterName   = Example%SubExample,       &
                                                                ParameterList   = Example%SubExampleOption, &
-                                                               nParameters     = 20,                       &
+                                                               nParameters     = 100,                       &
                                                                ParameterNumber = Example%SubExampleNumber)
     ! Line integration (e.g. integrate a property over time, the data is read from a .csv or .dat file)
     ! e.g. in parameter_reggie.ini: IntegrateLine= Database.csv   ,1            ,','       ,1:2        , 1.0e2
@@ -665,7 +668,8 @@ ELSE
   SWRITE(UNIT_stdOut,'(A)') ' '
   aError=>firstError ! set aError to first error in list
   TableRowSpacing=''
-  SWRITE(UNIT_stdOut,'(A45,2x,A30,2x,A10,2x,A15,2x,A35,2x)') 'Example','SubExample','ErrorCode','build','Information'
+  SWRITE(UNIT_stdOut,'(A45,2x,A30,2x,A10,2x,A15,2x,A12,2x,A35,2x)')&
+                       'Example','SubExample','ErrorCode','build','MPI threads','Information'
   DO WHILE (ASSOCIATED(aError))
     IF(TRIM(TableRowSpacing).NE.TRIM(aError%Example))THEN
       SWRITE(UNIT_stdOut,'(A)') ''
@@ -679,6 +683,7 @@ ELSE
     END IF
     SWRITE(UNIT_stdOut,'(I10,2x)',ADVANCE='no') aError%ErrorCode
     SWRITE(UNIT_stdOut,'(A15,2x)',ADVANCE='no') TRIM(aError%Build)
+    SWRITE(UNIT_stdOut,'(A12,2x)',ADVANCE='no') TRIM(aError%MPIthreadsStr)
     SWRITE(UNIT_stdOut,'(A35,2x)',ADVANCE='no') TRIM(aError%Info)
     SWRITE(UNIT_stdOut,'(A)') ' '
     IF(aError%ErrorCode.NE.0) nErrors=nErrors+1
@@ -702,7 +707,7 @@ END SUBROUTINE SummaryOfErrors
 !> Add an Error entry to the list of pointers containing information regarding the compilation process, execution process, 
 !> Error codes and example info
 !==================================================================================================================================
-SUBROUTINE AddError(Info,iExample,iSubExample,ErrorStatus,ErrorCode)
+SUBROUTINE AddError(MPIthreadsStr,Info,iExample,iSubExample,ErrorStatus,ErrorCode)
 !===================================================================================================================================
 !===================================================================================================================================
 ! MODULES
@@ -712,7 +717,7 @@ USE MOD_RegressionCheck_Vars,    ONLY: ExampleNames,Examples,EXECPATH,firstError
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-CHARACTER(len=*),INTENT(IN) :: Info
+CHARACTER(len=*),INTENT(IN) :: Info,MPIthreadsStr
 INTEGER,INTENT(IN)          :: iExample,iSubExample,ErrorStatus,ErrorCode
 !INTEGER         :: a
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -721,6 +726,16 @@ INTEGER,INTENT(IN)          :: iExample,iSubExample,ErrorStatus,ErrorCode
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
+!    !Debugging:
+!    SWRITE(UNIT_stdOut,*)"ErrorCode                                        = [",ErrorCode,"]"
+!    SWRITE(UNIT_stdOut,*)"ExampleNames(iExample)                           = [",Trim(ExampleNames(iExample)),"]"
+!    SWRITE(UNIT_stdOut,*)"Examples(iExample)%SubExample                    = [",Trim(Examples(iExample)%SubExample),"]"
+!    SWRITE(UNIT_stdOut,*)"Examples(iExample)%SubExampleOption(iSubExample) = [",&
+!    Trim(Examples(iExample)%SubExampleOption(iSubExample)),"]"
+!    SWRITE(UNIT_stdOut,*)"Info                                             = [",Trim(Info),"]"
+!    SWRITE(UNIT_stdOut,*)"MPIthreadsStr                                    = [",Trim(MPIthreadsStr),"]"
+!    SWRITE(UNIT_stdOut,*)"Build                                            = [",&
+!    TRIM(EXECPATH(INDEX(EXECPATH,'/',BACK=.TRUE.)+1:LEN(EXECPATH))),"]"
 Examples(iExample)%ErrorStatus=ErrorStatus
 IF(firstError%ErrorCode.EQ.-1)THEN ! first error pointer
   firstError%ErrorCode              =ErrorCode ! no error
@@ -728,6 +743,7 @@ IF(firstError%ErrorCode.EQ.-1)THEN ! first error pointer
   firstError%SubExample             =TRIM(Examples(iExample)%SubExample)
   firstError%SubExampleOption       =TRIM(Examples(iExample)%SubExampleOption(iSubExample))
   firstError%Info                   =TRIM(Info)
+  firstError%MPIthreadsStr          =TRIM(MPIthreadsStr)
   firstError%Build                  =TRIM(EXECPATH(INDEX(EXECPATH,'/',BACK=.TRUE.)+1:LEN(EXECPATH)))
   ALLOCATE(aError)
   aError=>firstError
@@ -738,6 +754,7 @@ ELSE ! next error pointer
   aError%nextError%SubExample       =TRIM(Examples(iExample)%SubExample)
   aError%nextError%SubExampleOption =TRIM(Examples(iExample)%SubExampleOption(iSubExample))
   aError%nextError%Info             =TRIM(Info)
+  aError%nextError%MPIthreadsStr    =TRIM(MPIthreadsStr)
   aError%nextError%Build            =TRIM(EXECPATH(INDEX(EXECPATH,'/',BACK=.TRUE.)+1:LEN(EXECPATH)))
   aError=>aError%nextError
 END IF

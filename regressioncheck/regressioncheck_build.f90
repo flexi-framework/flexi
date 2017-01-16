@@ -333,9 +333,9 @@ SUBROUTINE BuildConfiguration(iExample,iReggieBuild,nReggieBuilds,N_compile_flag
 USE MOD_Globals
 USE MOD_RegressionCheck_Vars,  ONLY: BuildDebug,BuildNoDebug,BuildEQNSYS,BuildTESTCASE,NumberOfProcs,NumberOfProcsStr
 USE MOD_RegressionCheck_Vars,  ONLY: BuildContinue,BuildContinueNumber,BuildDir,BuildTIMEDISCMETHOD,BuildMPI
-USE MOD_RegressionCheck_Vars,  ONLY: CodeNameLowCase,CodeNameUppCase
+USE MOD_RegressionCheck_Vars,  ONLY: CodeNameLowCase,CodeNameUppCase,Examples
 USE MOD_RegressionCheck_tools, ONLY: SummaryOfErrors,AddError
-USE MOD_RegressionCheck_Vars,  ONLY: BuildConfigurations,BuildValid,BuildCounter,BuildIndex
+USE MOD_RegressionCheck_Vars,  ONLY: BuildConfigurations,BuildValid,BuildCounter,BuildIndex,EXECPATH
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -388,10 +388,10 @@ IF(BuildValid(iReggieBuild))THEN
   CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
   ! save compilation flags (even those that are not explicitly selected by the user) for deciding whether a supplied example folder 
   ! can be executed with the compiled executable or not
+  ! check MPI: single or parallel version
+  CALL GetFlagFromFile(TRIM(BuildDir)//'build_reggie/bin/configuration.cmake',&
+                                                             CodeNameUppCase//'_MPI'      ,BuildMPI(iReggieBuild),BACK=.TRUE.)
   IF(iSTATUS.EQ.0)THEN
-    ! check MPI: single or parallel version
-    CALL GetFlagFromFile(TRIM(BuildDir)//'build_reggie/bin/configuration.cmake',&
-                                                               CodeNameUppCase//'_MPI'      ,BuildMPI(iReggieBuild),BACK=.TRUE.)
     ! check TESTCASE: e.g. taylor green vortex
     CALL GetFlagFromFile(TRIM(BuildDir)//'build_reggie/bin/configuration.cmake',&
                                                                CodeNameUppCase//'_TESTCASE'      ,BuildTESTCASE(iReggieBuild))
@@ -406,7 +406,10 @@ IF(BuildValid(iReggieBuild))THEN
     CALL GetFlagFromFile(TRIM(BuildDir)//'build_reggie/bin/configuration.cmake',&
                                                                CodeNameUppCase//'_EQNSYSNAME'     ,BuildEQNSYS(iReggieBuild))
   ELSE ! iSTATUS.NE.0 -> failed to compile cmake configuration build
-    CALL AddError('Error while compiling',iExample,1,ErrorStatus=1,ErrorCode=1) !note: iSubExample is set to 1 as argument
+    ! AddError: note: iSubExample is set to 1 as argument
+    Examples(iExample)%SubExampleOption(1)='-' ! set default for error output
+    EXECPATH='-' ! set default for error output
+    CALL AddError('MPI='//TRIM(BuildMPI(iReggieBuild)),'Error while compiling',iExample,1,ErrorStatus=1,ErrorCode=1)
     CALL SummaryOfErrors() ! the summary or examples and error codes (if they exist) before calling abort
     ! the error that caused the compilation abort (if it was written to "build_reggie.out" due to silent compilation)
     FileName=TRIM(BuildDir)//'build_reggie/build_reggie.out'

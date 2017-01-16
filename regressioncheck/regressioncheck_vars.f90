@@ -86,7 +86,7 @@ TYPE tExample                                                        !> examples
   LOGICAL                          :: CompareDatafileRow             !> read a single row from a file and compare each entry to
                                                                      !> a reference file (each failed comparison will be dispayed)
   INTEGER                          :: SubExampleNumber               !> Numbers of sub examples, currently fixed to 1
-  CHARACTER(LEN=255)               :: SubExampleOption(20)           !> for each sub example class, currently 10 options are allowed
+  CHARACTER(LEN=255)               :: SubExampleOption(100)           !> for each sub example class, currently 10 options are allowed
   CHARACTER(LEN=255)               :: SubExample                     !> sub example class, e.g., TimeDiscMethod can be chosen for 
                                                                      !> testing multiple time integration schemes
 END TYPE
@@ -99,6 +99,7 @@ TYPE tEC                                                             !> Type to 
   CHARACTER(LEN=255) :: SubExample                                   !> name of the subexample
   CHARACTER(LEN=255) :: SubExampleOption                             !> name of the subexample option
   CHARACTER(LEN=255) :: Info                                         !> name of the example
+  CHARACTER(LEN=255) :: MPIthreadsStr                                !> number of used MPI threads or '-' for single computation
   CHARACTER(LEN=255) :: Build                                        !> flexi cmake build name
   Type(tEC),Pointer  :: nextError                                    !> pointer to next error if several errors occure
 END TYPE tEC

@@ -45,7 +45,7 @@ CONTAINS
 !==================================================================================================================================
 !> Compare the results that were created by the binary execution
 !==================================================================================================================================
-SUBROUTINE CompareResults(iExample,iSubExample)
+SUBROUTINE CompareResults(iExample,iSubExample,MPIthreadsStr)
 !===================================================================================================================================
 !===================================================================================================================================
 ! MODULES
@@ -56,6 +56,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 INTEGER,INTENT(IN)             :: iExample,iSubExample
+CHARACTER(LEN=*),INTENT(IN)    :: MPIthreadsStr
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -84,14 +85,14 @@ IF(ErrorStatus.EQ.1)THEN
   SWRITE(UNIT_stdOut,'(A)')   ' For more information: '
   SWRITE(UNIT_stdOut,'(A,A)') ' Out-file: ', TRIM(Examples(iExample)%PATH)//'std.out'
   SWRITE(UNIT_stdOut,'(A,A)') ' Errorfile: ', TRIM(Examples(iExample)%PATH)//'err.out'
-  CALL AddError('Mismatch of error norms',iExample,iSubExample,ErrorStatus=1,ErrorCode=3)
+  CALL AddError(MPIthreadsStr,'Mismatch of error norms',iExample,iSubExample,ErrorStatus=1,ErrorCode=3)
 END IF
 
 ! diff h5 file
 IF(Examples(iExample)%ReferenceStateFile.NE.'')THEN
   CALL CompareDataSet(iExample)
   IF(Examples(iExample)%ErrorStatus.EQ.3)THEN
-    CALL AddError('Mismatch in HDF5-files. Datasets are unequal',iExample,iSubExample,ErrorStatus=3,ErrorCode=4)
+    CALL AddError(MPIthreadsStr,'Mismatch in HDF5-files. Datasets are unequal',iExample,iSubExample,ErrorStatus=3,ErrorCode=4)
     !SWRITE(UNIT_stdOut,'(A)')  ' Mismatch in HDF5-files'
   END IF
 END IF
@@ -100,7 +101,7 @@ END IF
 IF(Examples(iExample)%IntegrateLine)THEN
   CALL IntegrateLine(ErrorStatus,iExample)
   IF(Examples(iExample)%ErrorStatus.EQ.5)THEN
-    CALL AddError('Mismatch in LineIntegral',iExample,iSubExample,ErrorStatus=5,ErrorCode=5)
+    CALL AddError(MPIthreadsStr,'Mismatch in LineIntegral',iExample,iSubExample,ErrorStatus=5,ErrorCode=5)
   END IF
 END IF
 
@@ -108,7 +109,7 @@ END IF
 IF(Examples(iExample)%CompareDatafileRow)THEN
   CALL CompareDatafileRow(ErrorStatus,iExample)
   IF(Examples(iExample)%ErrorStatus.EQ.5)THEN
-    CALL AddError('Mismatch in CompareDatafileRow',iExample,iSubExample,ErrorStatus=5,ErrorCode=5)
+    CALL AddError(MPIthreadsStr,'Mismatch in CompareDatafileRow',iExample,iSubExample,ErrorStatus=5,ErrorCode=5)
   END IF
 END IF
 
