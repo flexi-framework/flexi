@@ -15,7 +15,7 @@
 
 !===================================================================================================================================
 !> Module for generic data output in vtk xml fromat
-!> WARNING: WriteDataToVTK works only for POSTPROCESSING
+!> WARNING: WriteDataToVTK works only for POSTPROCESSING or for debug output during runtime
 !===================================================================================================================================
 MODULE MOD_VTK
 ! MODULES
@@ -56,13 +56,18 @@ PUBLIC::WriteVarnamesToVTK_array
 
 CONTAINS
 
+!===================================================================================================================================
+!> Subroutine to create the connectivity between elements for 2D or 3D vtu output.
+!===================================================================================================================================
 SUBROUTINE CreateConnectivity(NVisu,nElems,nodeids,dim,DGFV) 
+! MODULES
 USE ISO_C_BINDING
 USE MOD_Globals
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES 
-INTEGER,INTENT(IN)                       :: NVisu
-INTEGER,INTENT(IN)                       :: nElems
+INTEGER,INTENT(IN)                       :: NVisu             !< Polynomial degree for visualization
+INTEGER,INTENT(IN)                       :: nElems            !< Number of elements
 INTEGER,ALLOCATABLE,TARGET,INTENT(INOUT) :: nodeids(:)        !< stores the connectivity
 INTEGER,INTENT(IN)                       :: dim               !< 3 = 3d connectivity, 2 = 2d connectivity
 INTEGER,INTENT(IN)                       :: DGFV              !< flag indicating DG = 0 or FV = 1 data
@@ -382,22 +387,22 @@ IF (MPIRoot) THEN
 ENDIF
 END SUBROUTINE WriteVTKMultiBlockDataSet
 
+!===================================================================================================================================
+!> Subroutine to write 2D or 3D coordinates to VTK format
+!===================================================================================================================================
 SUBROUTINE WriteCoordsToVTK_array(NVisu,nElems,coords_out,nodeids_out,coords,nodeids,dim,DGFV)
 USE ISO_C_BINDING
-!===================================================================================================================================
-! Subroutine to write 3D point data to VTK format
-!===================================================================================================================================
 ! MODULES
 USE MOD_Globals
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER,INTENT(IN)                   :: NVisu
-INTEGER,INTENT(IN)                   :: nElems
-INTEGER,INTENT(IN)                   :: dim
-INTEGER,INTENT(IN)                   :: DGFV                    ! flag indicating DG = 0 or FV =1 data
-REAL(C_DOUBLE),ALLOCATABLE,TARGET,INTENT(IN)    :: coords(:,:,:,:,:)
+INTEGER,INTENT(IN)                   :: NVisu                        !< Polynomial degree for visualization
+INTEGER,INTENT(IN)                   :: nElems                       !< Number of elements
+INTEGER,INTENT(IN)                   :: dim                          !< Spacial dimension (2D or 3D)
+INTEGER,INTENT(IN)                   :: DGFV                         !< flag indicating DG = 0 or FV =1 data
+REAL(C_DOUBLE),ALLOCATABLE,TARGET,INTENT(IN)    :: coords(:,:,:,:,:) !< Array containing coordinates
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 INTEGER,ALLOCATABLE,TARGET,INTENT(INOUT) :: nodeids(:)
@@ -429,22 +434,22 @@ nodeids_out%data = C_LOC(nodeids(1))
 SWRITE(UNIT_stdOut,'(A)')" Done!"
 END SUBROUTINE WriteCoordsToVTK_array
 
+!===================================================================================================================================
+!> Subroutine to write actual 2D or 3D point data to VTK format
+!===================================================================================================================================
 SUBROUTINE WriteDataToVTK_array(nVal,NVisu,nElems,Values_out,values,dim)
 USE ISO_C_BINDING
-!===================================================================================================================================
-! Subroutine to write 3D point data to VTK format
-!===================================================================================================================================
 ! MODULES
 USE MOD_Globals
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER,INTENT(IN)                :: nVal                    ! Number of nodal output variables
-INTEGER,INTENT(IN)                :: NVisu
-INTEGER,INTENT(IN)                :: nElems
-INTEGER,INTENT(IN)                :: dim
-REAL(C_DOUBLE),ALLOCATABLE,TARGET,INTENT(IN) :: values(:,:,:,:,:)
+INTEGER,INTENT(IN)                :: nVal                         !> Number of nodal output variables
+INTEGER,INTENT(IN)                :: NVisu                        !> Polynomial degree for visualization
+INTEGER,INTENT(IN)                :: nElems                       !> Number of elements
+INTEGER,INTENT(IN)                :: dim                          !> Spacial dimension (2D or 3D)
+REAL(C_DOUBLE),ALLOCATABLE,TARGET,INTENT(IN) :: values(:,:,:,:,:) !> Array containing the points values
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 TYPE (CARRAY), INTENT(INOUT)      :: values_out
@@ -468,6 +473,9 @@ values_out%data = C_LOC(values(0,0,0,1,1))
 SWRITE(UNIT_stdOut,'(A)')" Done!"
 END SUBROUTINE WriteDataToVTK_array
 
+!===================================================================================================================================
+!> Subroutine to write variable names to VTK format
+!===================================================================================================================================
 SUBROUTINE WriteVarnamesToVTK_array(nDep,mapVisu,varnames_out,components_out,VarNamesTotal,nVarTotal,nVarVisuTotal)
 USE ISO_C_BINDING
 ! MODULES
