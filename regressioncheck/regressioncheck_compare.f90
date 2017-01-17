@@ -21,6 +21,10 @@ INTERFACE CompareResults
   MODULE PROCEDURE CompareResults
 END INTERFACE
 
+INTERFACE CompareConvergence
+  MODULE PROCEDURE CompareConvergence
+END INTERFACE
+
 INTERFACE CompareNorm
   MODULE PROCEDURE CompareNorm
 END INTERFACE
@@ -37,7 +41,7 @@ INTERFACE ReadNorm
   MODULE PROCEDURE ReadNorm
 END INTERFACE
 
-PUBLIC::CompareResults,CompareNorm,CompareDataSet,CompareRuntime,ReadNorm
+PUBLIC::CompareResults,CompareConvergence,CompareNorm,CompareDataSet,CompareRuntime,ReadNorm
 !==================================================================================================================================
 
 CONTAINS
@@ -73,11 +77,11 @@ SWRITE(UNIT_stdOut,'(A)',ADVANCE='no')  ' Comparing results...'
 ALLOCATE(ReferenceNorm(Examples(iExample)%nVar,2))
 IF(Examples(iExample)%ReferenceNormFile.EQ.'')THEN
   ! constant value, should be zero no reference file given
-  CALL CompareNorm(ErrorStatus,iExample)
+  CALL CompareNorm(ErrorStatus,iExample,iSubExample)
 ELSE
   ! read in reference and compare to reference solution
   CALL ReadNorm(iExample,ReferenceNorm)
-  CALL CompareNorm(ErrorStatus,iExample,ReferenceNorm)
+  CALL CompareNorm(ErrorStatus,iExample,iSubExample,ReferenceNorm)
 END IF
 DEALLOCATE(ReferenceNorm)
 IF(ErrorStatus.EQ.1)THEN
@@ -120,6 +124,37 @@ END IF
 
 END SUBROUTINE CompareResults
 
+
+!==================================================================================================================================
+!> Compare the results that were created by the binary execution
+!==================================================================================================================================
+SUBROUTINE CompareConvergence(iExample)
+!===================================================================================================================================
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+USE MOD_RegressionCheck_Tools,   ONLY: AddError
+USE MOD_RegressionCheck_Vars,    ONLY: Examples
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+INTEGER,INTENT(IN)             :: iExample!,iSubExample
+!CHARACTER(LEN=*),INTENT(IN)    :: MPIthreadsStr
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL,ALLOCATABLE               :: ReferenceNorm(:,:)                !> L2 and Linf norm of the executed example from a reference
+                                                                    !> solution
+INTEGER                        :: ErrorStatus                       !> Error-code of regressioncheck
+!==================================================================================================================================
+! -----------------------------------------------------------------------------------------------------------------------
+! compare the results and write error messages for the current case
+! -----------------------------------------------------------------------------------------------------------------------
+
+END SUBROUTINE CompareConvergence
+
+
 !==================================================================================================================================
 !> Compare the runtime of an example  || fixed to a specific system
 !> simply extract the regressioncheck settings from the parameter_reggie.ini
@@ -145,7 +180,7 @@ END SUBROUTINE CompareRuntime
 !> To compare the norms, the std.out file of the simulation is read-in. The last L2- and LInf-norm in the std.out file are
 !> compared to the reference.
 !==================================================================================================================================
-SUBROUTINE CompareNorm(LNormCompare,iExample,ReferenceNorm)
+SUBROUTINE CompareNorm(LNormCompare,iExample,iSubExample,ReferenceNorm)
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
@@ -154,7 +189,7 @@ USE MOD_RegressionCheck_Vars,  ONLY: Examples
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)           :: iExample
+INTEGER,INTENT(IN)           :: iExample,iSubExample
 REAL,INTENT(IN),OPTIONAL     :: ReferenceNorm(Examples(iExample)%nVar,2)
 INTEGER,INTENT(OUT)          :: LNormCompare
 !----------------------------------------------------------------------------------------------------------------------------------

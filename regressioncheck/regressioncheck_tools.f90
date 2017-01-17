@@ -273,15 +273,14 @@ END SUBROUTINE GetExampleList
 !>  optional reference files for error-norms, reference state file and tested dataset and name of the checked state file
 !>  optional a restart filename
 !==================================================================================================================================
-SUBROUTINE InitExample(FilePath,FilePathLength,Example)
+SUBROUTINE InitExample(FilePath,Example)
 ! MODULES
 USE MOD_Globals
 USE MOD_RegressionCheck_Vars,  ONLY: tExample,readRHS
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)                        :: FilePathLength
-CHARACTER(LEN=FilePathLength),INTENT(IN)  :: FilePath
+CHARACTER(LEN=*),INTENT(IN)               :: FilePath
 TYPE(tExample),INTENT(INOUT)              :: Example
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -454,6 +453,45 @@ DO ! extract reggie information
                 Example%CompareDatafileRowHeaderLines.EQ.0         ,&
                 Example%CompareDatafileRowDelimiter(1:3).EQ.'999'/) )) Example%CompareDatafileRow=.FALSE.
     END IF ! 'CompareDatafileRow'
+    ! Convergence Test (h- or p-convergence for increasing the number of cells or increasing the polynomial degree N)
+    ! in parameter_reggie.ini define: 
+    !  for p: ConvergenceTest =       p     ,                   IntegrateLine                      , 0.12434232          , 1e-2
+    !  for h: ConvergenceTest =       h     ,                   Constant                           , 3.99                , 1e-2
+    !                          type (h or p), comparison type (IntegrateLine or power law exponent), value for comparison, Tolerance
+    IF(TRIM(readRHS(1)).EQ.'ConvergenceTest')THEN
+       Example%ConvergenceTest           = .TRUE.
+       Example%ConvergenceTestType       = ''     ! init
+       Example%ConvergenceTestCompType   = ''     ! init
+       Example%ConvergenceTestValue      = -999.0 ! init
+       Example%ConvergenceTestTolerance  = -1     ! init
+       IndNum2=INDEX(readRHS(2),',')
+       IF(IndNum2.GT.0)THEN ! get the type of the convergence test (h- or p-convergence)
+         temp2                     = readRHS(2)
+         Example%ConvergenceTestType= TRIM(ADJUSTL(temp2(1:IndNum2-1))) ! type
+         temp2                     = temp2(IndNum2+1:LEN(TRIM(temp2))) ! next
+         IndNum2                   = INDEX(temp2,',')
+         IF(IndNum2.GT.0)THEN ! get the comparison type
+           Example%ConvergenceTestCompType = TRIM(ADJUSTL(temp2(1:IndNum2-1))) ! ref data file name
+           temp2                          = temp2(IndNum2+1:LEN(TRIM(temp2))) ! next
+           IndNum2                        = INDEX(temp2,',')
+           IF(IndNum2.GT.0)THEN ! get value for comparison
+             CALL str2real(temp2(1:IndNum2-1),Example%ConvergenceTestValue,iSTATUS)
+             temp2                  = temp2(IndNum2+1:LEN(TRIM(temp2))) ! next
+             IndNum2               = INDEX(temp2,',')
+             IF((IndNum2.GT.0).AND.(iSTATUS.EQ.0))THEN ! get tolerance value for comparison
+               CALL str2real(temp2(1:IndNum2-1),Example%ConvergenceTestTolerance,iSTATUS)
+             END IF ! get tolerance value for comparison
+           END IF ! get value for comparison
+         END IF ! get the comparison type
+       END IF ! get the type of the convergence test (h- or p-convergence)
+      ! set ConvergenceTest to false if any of the following cases is true
+      IF(ANY( (/iSTATUS.NE.0                               ,&
+                Example%ConvergenceTestType.EQ.''           ,&
+                Example%ConvergenceTestCompType.EQ.''       ,&
+                Example%ConvergenceTestValue.LT.-999.       ,&
+                Example%ConvergenceTestTolerance.EQ.0        &
+                /) )) Example%ConvergenceTest=.FALSE.
+    END IF ! 'ConvergenceTest'
     ! Next feature
     !IF(TRIM(readRHS(1)).EQ.'NextFeature')
   END IF ! IndNum.GT.0 -> definition found

@@ -32,7 +32,7 @@ CONTAINS
 SUBROUTINE PerformRegressionCheck()
 ! MODULES
 USE MOD_Globals
-USE MOD_RegressionCheck_Compare, ONLY: CompareResults
+USE MOD_RegressionCheck_Compare, ONLY: CompareResults,CompareConvergence
 USE MOD_RegressionCheck_Tools,   ONLY: InitExample
 USE MOD_RegressionCheck_Vars,    ONLY: nExamples,ExampleNames,Examples,EXECPATH,RuntimeOptionType
 IMPLICIT NONE
@@ -65,6 +65,12 @@ DO iExample = 1, nExamples ! loop level 1 of 5
 
   ! set the build configuration environment when BuildSolver=.TRUE.
   CALL GetnReggieBuilds(iExample,ReggieBuildExe,N_compile_flags,nReggieBuilds)
+
+  ! delete pre-existing data files at the beginning of the reggie
+  CALL CleanFolder(iExample,MODE=0) ! MODE=0: INITIAL -> delete pre-existing files and folders
+  
+  ! read the parameters for the current example (parameter_reggie.ini)
+  CALL InitExample(Examples(iExample)%PATH,Examples(iExample))
 !==================================================================================================================================
   DO iReggieBuild = 1, nReggieBuilds ! loop level 2 of 5: cycle the number of build configurations (no configuration = only 1 run)
 !==================================================================================================================================
@@ -72,9 +78,6 @@ DO iExample = 1, nExamples ! loop level 1 of 5
     CALL GetCodeBinary(iExample,iReggieBuild,nReggieBuilds,N_compile_flags,ReggieBuildExe,SkipBuild,ExitBuild)
     IF(SkipBuild)CYCLE ! invalid reggie build but not last reggie build
     IF(ExitBuild)EXIT  ! last reggie build -> exit ("cycle" would start an infinite loop)
-  
-    ! read the parameters for the current example (parameter_reggie.ini)
-    CALL InitExample(TRIM(Examples(iExample)%PATH),LEN(TRIM(Examples(iExample)%PATH)),Examples(iExample))
 
     ! depending on the equation system -> get different Nvar 
     CALL GetNvar(iExample,iReggieBuild)
@@ -83,7 +86,7 @@ DO iExample = 1, nExamples ! loop level 1 of 5
     CALL CheckCompilerFlags(iExample,iReggieBuild,TESTCASE,TIMEDISCMETHOD)
 
     ! remove subexample (before printing the case overview) for certain configurations: e.g. Preconditioner when running explicitly
-    CALL CheckSubExample(iExample,TIMEDISCMETHOD)
+    CALL CheckSubExample(iExample,iReggieBuild,TIMEDISCMETHOD)
 
     ! check folder name and decide whether it can be executed with the current binary (e.g. testcases ...)
     CALL CheckFolderName(iExample,TESTCASE,SkipFolder)
@@ -120,6 +123,8 @@ DO iExample = 1, nExamples ! loop level 1 of 5
           IF(Examples(iExample)%ErrorStatus.EQ.0) CALL CleanFolder(iExample,MODE=2) ! MODE=2: delete files after simulation
         END DO ! iScalingRuns = 1, Examples(iExample)%nRuns
       END DO ! iScaling = 1, Examples(iExample)%MPIthreadsN
+      ! after subexample with "N" or "MeshFile" check if the convergence was successful
+      IF(Examples(iExample)%ConvergenceTest) CALL CompareConvergence(iExample)
     END DO ! iSubExample = 1, MAX(1,SubExampleNumber) (for cases without specified SubExamples: SubExampleNumber=0)
   END DO ! iReggieBuild = 1, nReggieBuilds
 END DO ! iExample=1,nExamples
@@ -442,9 +447,10 @@ END SUBROUTINE CheckCompilerFlags
 
 
 !===================================================================================================================================
-!> Exclude subexamples set in parameter_reggie.ini when the binary is not suited for its execution
+!> 1.) Exclude subexamples set in parameter_reggie.ini when the binary is not suited for its execution
+!> 2.) Check if SubExample is set correctly for possible convergence test (only once when iReggieBuild==1)
 !===================================================================================================================================
-SUBROUTINE CheckSubExample(iExample,TIMEDISCMETHOD)
+SUBROUTINE CheckSubExample(iExample,iReggieBuild,TIMEDISCMETHOD)
 !===================================================================================================================================
 !===================================================================================================================================
 ! MODULES
@@ -454,7 +460,7 @@ USE MOD_RegressionCheck_Vars,    ONLY: Examples
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER,INTENT(IN)             :: iExample
+INTEGER,INTENT(IN)             :: iExample,iReggieBuild
 CHARACTER(LEN=*),INTENT(IN)    :: TIMEDISCMETHOD
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
@@ -467,6 +473,28 @@ IF((TRIM(TIMEDISCMETHOD).NE.'ImplicitO3').AND.(TRIM(Examples(iExample)%SubExampl
   Examples(iExample)%SubExampleNumber = 0
   Examples(iExample)%SubExampleOption(1:20) = '-' ! default option is nothing
 END IF
+IF(iReggieBuild.EQ.1)THEN ! DON'T allocate the field "ConvergenceTestArray" multiple times
+  ! Check if SubExample is set correctly for possible convergence test
+  IF(Examples(iExample)%ConvergenceTest)THEN
+    IF( ((TRIM(Examples(iExample)%SubExample).EQ.'N'       ).AND.(TRIM(Examples(iExample)%ConvergenceTestType).EQ.'p')) .OR. &
+        ((TRIM(Examples(iExample)%SubExample).EQ.'MeshFile').AND.(TRIM(Examples(iExample)%ConvergenceTestType).EQ.'h')) ) THEN
+      IF(Examples(iExample)%SubExampleNumber.GT.0)THEN
+        ALLOCATE(Examples(iExample)%ConvergenceTestArray(Examples(iExample)%SubExampleNumber,Examples(iExample)%nVar,2))
+        Examples(iExample)%ConvergenceTestArray=0 ! init
+print*,"Examples(iExample)%ConvergenceTestArray=",Examples(iExample)%ConvergenceTestArray
+print*,"shape(Examples(iExample)%ConvergenceTestArray)=",shape(Examples(iExample)%ConvergenceTestArray)
+      ELSE
+        SWRITE(UNIT_stdOut,'(A)') 'SubExampleNumber=0: Cannot allocate array in "CheckSubExample" '
+        Examples(iExample)%ConvergenceTest=.FALSE.
+      END IF
+    ELSE
+      SWRITE(UNIT_stdOut,'(A)') 'SubExample not suitable for convergence test. Deactivating convergence test'
+      Examples(iExample)%ConvergenceTest=.FALSE.
+    END IF
+  END IF
+END IF
+print*,"Examples(iExample)%ConvergenceTest=",Examples(iExample)%ConvergenceTest
+read*
 END SUBROUTINE CheckSubExample
 
 
@@ -679,15 +707,16 @@ IF(Examples(iExample)%SubExampleNumber.GT.0)THEN ! SubExample has been specified
     !               =.*/TimeDiscMethod
     !               =carpenterrk4-5
     !               /" parameter_flexi_navierstokes.ini 
-    !print*,"string found. yay!!!!!!!!!!!"
     CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
-  ELSE
+  ELSE ! could not change the SubExampleOption parameter, because the the string [Examples(iExample)%SubExample + '='] was not 
+       ! found in the destination file, e.g., "parameter_flexi_navierstokes.ini". The equation mark "=" must be placed directly
+       ! behind the string that is to be changed!
     Examples(iExample)%SubExampleOption(iSubExample)='**failed**'
     SWRITE(UNIT_stdOut,'(A,I2,A,A)')" SubExampleOption(",iSubExample,")=",TRIM(Examples(iExample)%SubExampleOption(iSubExample))
     SWRITE(UNIT_stdOut,'(A)')" The subexample has failed: Could not find the required string in destination parameter file."
     SWRITE(UNIT_stdOut,'(A,A,A)')"   Required String            : [",TRIM(Examples(iExample)%SubExample),"=]"
     SWRITE(UNIT_stdOut,'(A,A,A)')"   Destination parameter file : [",TRIM(parameter_ini),"]"
-    !print*,"string not found"
+    SWRITE(UNIT_stdOut,'(A,A,A)')" Maybe the equation mark '=' is not placed directly after the parameter which is to be altered"
   END IF
 END IF
 !print*,"stop"
@@ -697,6 +726,7 @@ END SUBROUTINE SetSubExample
 
 !==================================================================================================================================
 !> Remove State-files, std.out and err.out files.
+!> MODE=0: INITIAL -> delete pre-existing files and folders
 !> MODE 1: Delete pre-existing data files before running the code
 !> MODE 2: If the example is computed successfully clean up afterwards
 !==================================================================================================================================
@@ -716,12 +746,13 @@ CHARACTER(LEN=255)             :: tmp
 INTEGER                        :: iSTATUS,ioUnit
 !==================================================================================================================================
 SELECT CASE(MODE)
-CASE(1) ! delete pre-existing files before computation
+  CASE(0) ! MODE=0: INITIAL -> delete pre-existing files and folders
   ! delete "std_files_*" folder
   SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm std_files_* -r > /dev/null 2>&1'
   CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
+CASE(1) ! delete pre-existing files before computation
   ! delete pre-existing data files before running the code 
-  ! 1.) Files needed by "IntegrateLine" comparison
+  ! 1.) Files created during simulation which are needed by, e.g., "IntegrateLine" comparison
   IF(Examples(iExample)%IntegrateLine)THEN
     SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm '//TRIM(Examples(iExample)%IntegrateLineFile)//' > /dev/null 2>&1'
     CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS) ! delete, e.g., "TGVAnalysis.dat" or "Database.csv"
@@ -772,6 +803,9 @@ CASE(2) ! delete existing files after computation
       SWRITE(UNIT_stdOut,'(A)')  ' CleanFolder(',Examples(iExample)%PATH,'): Could not remove tmp.txt'
     END IF
   END IF
+CASE DEFAULT
+  SWRITE(UNIT_stdOut,'(A,I3,A)') ' SUBROUTINE CleanFolder: MODE=',MODE,' does not exist!'
+  ERROR STOP '-1'
 END SELECT
 
 END SUBROUTINE CleanFolder
