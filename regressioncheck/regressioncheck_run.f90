@@ -646,6 +646,7 @@ SUBROUTINE SetSubExample(iExample,iSubExample,parameter_ini)
 ! MODULES
 USE MOD_Globals
 USE MOD_RegressionCheck_Vars,    ONLY: Examples
+USE MOD_RegressionCheck_tools,   ONLY: CheckFileForString
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -658,20 +659,39 @@ CHARACTER(LEN=*),INTENT(IN)    :: parameter_ini
 ! LOCAL VARIABLES
 INTEGER                        :: iSTATUS                           !> status
 CHARACTER(LEN=500)             :: SYSCOMMAND                        !> string to fit the system command
+LOGICAL                        :: ExistStringInFile                 !> search a file for the existence of a string
 !===================================================================================================================================
 IF(Examples(iExample)%SubExampleNumber.GT.0)THEN ! SubExample has been specified
   SWRITE(UNIT_stdOut,'(A)')" "
   SWRITE(UNIT_stdOut,'(A,I2,A,A)')" SubExampleOption(",iSubExample,")=",TRIM(Examples(iExample)%SubExampleOption(iSubExample))
-  SYSCOMMAND=    'cd '//TRIM(Examples(iExample)%PATH)//& ! print the current SubExampleOption(iSubExample) to parameter_ini
- ' && sed -i -e "s/.*'//TRIM(Examples(iExample)%SubExample)//&
-                '=.*/'//TRIM(Examples(iExample)%SubExample)//&
-                   '='//TRIM(Examples(iExample)%SubExampleOption(iSubExample))//&
-                 '/" '//TRIM(parameter_ini)
-print*,"SYSCOMMAND=",SYSCOMMAND
-!read*
-print*," todo: check if file was changed, if not write output message"
-  CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
+  ! check if SubExampleOption is possible in destination file, e.g. in 'parameter_flexi_navierstokes.ini'
+  CALL CheckFileForString(TRIM(Examples(iExample)%PATH)//TRIM(parameter_ini),&
+                          TRIM(Examples(iExample)%SubExample)//'=',ExistStringInFile)
+  IF(ExistStringInFile)THEN
+    SYSCOMMAND=    'cd '//TRIM(Examples(iExample)%PATH)//& ! print the current SubExampleOption(iSubExample) to parameter_ini
+   ' && sed -i -e "s/.*'//TRIM(Examples(iExample)%SubExample)//&
+                  '=.*/'//TRIM(Examples(iExample)%SubExample)//&
+                     '='//TRIM(Examples(iExample)%SubExampleOption(iSubExample))//&
+                   '/" '//TRIM(parameter_ini)
+    ! e.g. 
+    ! SYSCOMMAND= cd ~/Flexi/flexi/build_reggie.dev/../regressioncheck/examples/run_basic/ 
+    ! && sed -i -e "s/.*TimeDiscMethod
+    !               =.*/TimeDiscMethod
+    !               =carpenterrk4-5
+    !               /" parameter_flexi_navierstokes.ini 
+    !print*,"string found. yay!!!!!!!!!!!"
+    CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
+  ELSE
+    Examples(iExample)%SubExampleOption(iSubExample)='**failed**'
+    SWRITE(UNIT_stdOut,'(A,I2,A,A)')" SubExampleOption(",iSubExample,")=",TRIM(Examples(iExample)%SubExampleOption(iSubExample))
+    SWRITE(UNIT_stdOut,'(A)')" The subexample has failed: Could not find the required string in destination parameter file."
+    SWRITE(UNIT_stdOut,'(A,A,A)')"   Required String            : [",TRIM(Examples(iExample)%SubExample),"=]"
+    SWRITE(UNIT_stdOut,'(A,A,A)')"   Destination parameter file : [",TRIM(parameter_ini),"]"
+    !print*,"string not found"
+  END IF
 END IF
+!print*,"stop"
+!read*
 END SUBROUTINE SetSubExample
 
 

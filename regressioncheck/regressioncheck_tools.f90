@@ -44,6 +44,10 @@ INTERFACE GetParameterFromFile
   MODULE PROCEDURE GetParameterFromFile
 END INTERFACE
 
+INTERFACE CheckFileForString
+  MODULE PROCEDURE CheckFileForString
+END INTERFACE
+
 INTERFACE REGGIETIME
   MODULE PROCEDURE REGGIETIME
 END INTERFACE
@@ -64,6 +68,7 @@ PUBLIC::GetExampleList,InitExample,CheckForExecutable,GetCommandLineOption
 PUBLIC::SummaryOfErrors
 PUBLIC::AddError
 PUBLIC::GetParameterFromFile
+PUBLIC::CheckFileForString
 PUBLIC::REGGIETIME
 PUBLIC::str2real,str2int,str2logical
 !==================================================================================================================================
@@ -821,6 +826,71 @@ ELSE
   output='file does not exist'
 END IF
 END SUBROUTINE GetParameterFromFile
+
+
+!==================================================================================================================================
+!> search a file for a specific string, return .TRUE. if it is found
+!==================================================================================================================================
+SUBROUTINE CheckFileForString(FileName,ParameterName,ExistString)
+!===================================================================================================================================
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals,            ONLY: Getfreeunit
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+CHARACTER(LEN=*),INTENT(IN)  :: FileName       !> e.g. './../build_reggie/bin/configuration.cmake'
+CHARACTER(LEN=*),INTENT(IN)  :: ParameterName  !> e.g. 'XX_EQNSYSNAME'
+!INTEGER         :: a
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+LOGICAL,INTENT(OUT) :: ExistString ! e.g. 'navierstokes'
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+LOGICAL                        :: ExistFile    !> file exists=.true., file does not exist=.false.
+INTEGER                        :: iSTATUS      !> status
+CHARACTER(LEN=255)             :: temp,temp2   !> temp variables for read in of file lines
+INTEGER                        :: ioUnit       !> field handler unit and ??
+INTEGER                        :: IndNum       !> Index Number
+!===================================================================================================================================
+!print*,"FileName      = ",TRIM(FileName)
+!print*,"ParameterName = ",TRIM(ParameterName)
+!print*,"Continue? ... "
+!read*
+ExistString=.FALSE.
+INQUIRE(File=TRIM(FileName),EXIST=ExistFile)
+IF(ExistFile) THEN
+  ioUnit=GETFREEUNIT()
+  OPEN(UNIT=ioUnit,FILE=TRIM(FileName),STATUS="OLD",IOSTAT=iSTATUS,ACTION='READ') 
+  DO
+    READ(ioUnit,'(A)',iostat=iSTATUS)temp
+    temp2=ADJUSTL(temp)
+    IF(ADJUSTL(temp2(1:1)).EQ.'!') CYCLE  ! complete line is commented out
+    IF(iSTATUS.EQ.-1)EXIT           ! end of file is reached
+    IF(LEN(trim(temp)).GT.1)THEN    ! exclude empty lines
+      IndNum=INDEX(temp,TRIM(ParameterName)) ! e.g. 'XX_EQNSYSNAME'
+      IF(IndNum.GT.0)THEN
+        !temp2=TRIM(ADJUSTL(temp(IndNum+LEN(TRIM(ParameterName)):LEN(temp))))
+        !IndNum=INDEX(temp2, '=')
+        !IF(IndNum.GT.0)THEN
+          !temp2=temp2(IndNum+1:LEN(TRIM(temp2)))
+          !IndNum=INDEX(temp2, '!')
+          !IF(IndNum.GT.0)THEN
+            !temp2=temp2(1:IndNum-1)
+          !END IF
+        !END IF
+        ExistString=.TRUE.!TRIM(ADJUSTL(temp2))
+        EXIT
+      END IF
+    END IF
+  END DO
+  CLOSE(ioUnit)
+  !IF(ExistString.EQ.'')ExistString=.FALSE.
+ELSE 
+  ExistString=.FALSE.
+END IF
+END SUBROUTINE CheckFileForString
 
 
 !==================================================================================================================================
