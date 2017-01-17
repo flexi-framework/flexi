@@ -59,13 +59,13 @@ CHARACTER(LEN=255),INTENT(IN)  :: statefile
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: iElem
+INTEGER                        :: nElems_FV_glob
 #if FV_ENABLED
 INTEGER                        :: iElem2,iVar
-#endif
-INTEGER                        :: nElems_FV_glob
 INTEGER                        :: nVal(15)
 REAL,ALLOCATABLE               :: ElemData_loc(:,:),tmp(:)
 CHARACTER(LEN=255),ALLOCATABLE :: VarNamesElemData_loc(:)
+#endif
 !===================================================================================================================================
 ! Build partition to get nElems
 CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)

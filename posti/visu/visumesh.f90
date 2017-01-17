@@ -46,10 +46,11 @@ SUBROUTINE BuildVisuCoords()
 USE ISO_C_BINDING
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Posti_Vars         ,ONLY: NVisu,nElems_DG,mapElems_DG,NVisu_FV,nElems_FV,mapElems_FV,hasFV_Elems
 USE MOD_Posti_Vars         ,ONLY: CoordsVisu_DG
 USE MOD_Posti_Vars         ,ONLY: NodeTypeVisuPosti
+USE MOD_Posti_Vars         ,ONLY: NVisu,nElems_DG,mapElems_DG
 #if FV_ENABLED
+USE MOD_Posti_Vars         ,ONLY: NVisu_FV,nElems_FV,mapElems_FV,hasFV_Elems
 USE MOD_Posti_Vars         ,ONLY: CoordsVisu_FV,changedMeshFile,changedFV_Elems
 #endif
 USE MOD_Interpolation_Vars ,ONLY: NodeTypeVisu,NodeTypeFVEqui,NodeType

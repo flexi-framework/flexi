@@ -177,13 +177,13 @@ LOGICAL,INTENT(IN),OPTIONAL :: doFlushFiles
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL,ALLOCATABLE   :: U_local(:,:,:,:,:)
-INTEGER            :: iElem,i,j,k,iVar
+INTEGER            :: iElem,i,j,k
 REAL               :: JNR(1,0:N_Restart,0:N_Restart,0:N_Restart)
 REAL               :: Vdm_NRestart_N(0:PP_N,0:N_Restart)
 REAL               :: Vdm_3Ngeo_NRestart(0:N_Restart,0:3*NGeo)
 LOGICAL            :: doFlushFiles_loc
 #if FV_ENABLED
-INTEGER             :: nVal(15)
+INTEGER             :: nVal(15),iVar
 REAL,ALLOCATABLE    :: ElemData(:,:),tmp(:)
 CHARACTER(LEN=255),ALLOCATABLE :: VarNamesElemData(:)
 #endif

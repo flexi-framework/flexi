@@ -601,13 +601,16 @@ END IF
 
 END SUBROUTINE ReadMesh
 
+
+!==================================================================================================================================
+!> Partition the mesh by numbers of processors. Elements are distributed equally to all processors.
+!==================================================================================================================================
 SUBROUTINE BuildPartition() 
 ! MODULES                                                                                                                          !
 USE MOD_Globals
-USE MOD_Mesh_Vars
-USE MOD_Globals,   ONLY:nProcessors
+USE MOD_Mesh_Vars, ONLY:nElems,nGlobalElems,offsetElem
 #if USE_MPI
-USE MOD_MPI_vars,  ONLY:offsetElemMPI
+USE MOD_MPI_Vars,  ONLY:offsetElemMPI
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
@@ -619,7 +622,6 @@ INTEGER           :: iElem
 INTEGER           :: iProc
 #endif
 !===================================================================================================================================
-
 CALL GetDataSize(File_ID,'ElemInfo',nDims,HSize)
 IF(HSize(1).NE.6) THEN
   CALL abort(__STAMP__,&

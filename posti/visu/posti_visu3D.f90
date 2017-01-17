@@ -53,12 +53,15 @@ CHARACTER(LEN=255),POINTER     :: VarNames_p(:)
 REAL,POINTER                   :: Coords_p(:,:,:,:,:)
 REAL,POINTER                   :: Values_p(:,:,:,:,:)
 CHARACTER(LEN=255)             :: FileString_DG
+#if FV_ENABLED                            
 CHARACTER(LEN=255)             :: FileString_FV
 CHARACTER(LEN=255)             :: FileString_multiblock
+INTEGER                        :: NVisu_k_FV
+#endif
+INTEGER                        :: NVisu_k
 #if !USE_MPI
 INTEGER                        :: MPI_COMM_WORLD = 0
 #endif
-INTEGER                        :: NVisu_k,NVisu_k_FV
 !==================================================================================================================================
 CALL InitMPI()
 CALL ParseCommandlineArguments()
