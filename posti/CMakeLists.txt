@@ -30,8 +30,11 @@ TARGET_LINK_LIBRARIES(posti_visu3D visulib flexilib userblocklib_dummy ${linkedl
 ADD_DEPENDENCIES(     posti_visu3D visulib flexilib userblocklib_dummy ${linkedlibs})
 
 # Posti visu plugin for Paraview
-FIND_PACKAGE(ParaView)
-IF (ParaView_FOUND)
+CMAKE_DEPENDENT_OPTION(POSTI_USE_PARAVIEW "Build the Paraview visualization plugin for Posti." OFF "FLEXI_BUILDPOSTI" OFF)
+IF (POSTI_USE_PARAVIEW)
+  FIND_PACKAGE(ParaView)
+ENDIF()
+IF (POSTI_USE_PARAVIEW AND ParaView_FOUND)
    INCLUDE(${PARAVIEW_USE_FILE})
    MESSAGE(STATUS ${PARAVIEW_USE_FILE})
 
