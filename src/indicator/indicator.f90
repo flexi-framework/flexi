@@ -144,11 +144,19 @@ CASE(INDTYPE_JAMESON)
   CALL Abort(__STAMP__, &
       "Jameson indicator only works with FV_ENABLED.")
 #endif
+#if EQNSYSNR != 2 /* NOT NAVIER-STOKES */ 
+  CALL Abort(__STAMP__, &
+      "Jameson indicator only works with Navier-Stokes equations.")
+#endif /* EQNSYSNR != 2 */
 CASE(INDTYPE_DUCROS)
 #if !(PARABOLIC)
   CALL Abort(__STAMP__, &
       "Ducros indicator not available without PARABOLIC!")
 #endif
+#if EQNSYSNR != 2 /* NOT NAVIER-STOKES */ 
+  CALL Abort(__STAMP__, &
+      "Ducros indicator only works with Navier-Stokes equations.")
+#endif /* EQNSYSNR != 2 */
 CASE(INDTYPE_PERSSON)
   ! number of modes to be checked by Persson indicator
   nModes = GETINT('nModes','2')
@@ -169,10 +177,10 @@ SWRITE(UNIT_stdOut,'(A)')' INIT INDICATOR DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitIndicator
 
+!==================================================================================================================================
+!> Perform calculation of the indicator.
+!==================================================================================================================================
 SUBROUTINE CalcIndicator(U,t)
-!==================================================================================================================================
-! Perform calculation of the limiter
-!==================================================================================================================================
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
@@ -189,10 +197,8 @@ USE MOD_ChangeBasis
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-! U
-REAL,INTENT(INOUT),TARGET :: U(1:PP_nVar,0:PP_N,0:PP_N,0:PP_N,1:nElems)
-REAL,INTENT(IN)           :: t
-! U
+REAL,INTENT(INOUT),TARGET :: U(1:PP_nVar,0:PP_N,0:PP_N,0:PP_N,1:nElems)   !< Solution
+REAL,INTENT(IN)           :: t                                            !< Simulation time
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                   :: iElem
@@ -224,7 +230,7 @@ CASE(INDTYPE_PERSSON) ! Modal Persson indicator
       U_P(1:PP_nVar,0:PP_N,0:PP_N,0:PP_N) => U_DG
     END IF
 #endif
-    IndValue(iElem) = IndPersson(U_P(IndVar,:,:,:))
+    IndValue(iElem) = IndPersson(U_P)
   END DO ! iElem
 #if EQNSYSNR == 2 /* NAVIER-STOKES */ 
 #if FV_ENABLED
@@ -261,34 +267,54 @@ END SELECT
 END SUBROUTINE CalcIndicator
 
 
-FUNCTION IndPersson(U) RESULT(IndValue)
 !==================================================================================================================================
 !> Determine, if given a modal representation solution "U_Modal" is oscillating
 !> Indicator value is scaled to \f$\sigma=0 \ldots 1\f$
 !> Suggested by Persson et al.
 !==================================================================================================================================
+FUNCTION IndPersson(U) RESULT(IndValue)
 USE MOD_PreProc
-USE MOD_Indicator_Vars,ONLY:nModes
+USE MOD_Indicator_Vars,ONLY:nModes,IndVar
 USE MOD_Interpolation_Vars, ONLY:sVdm_Leg
+#if EQNSYSNR == 2 /* NAVIER-STOKES */ 
+USE MOD_EOS_Vars
+#endif /* NAVIER-STOKES */
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)    :: U(0:PP_N,0:PP_N,0:PP_N)
-REAL               :: IndValue
+REAL,INTENT(IN)    :: U(PP_nVar,0:PP_N,0:PP_N,0:PP_N)           !< Solution
+REAL               :: IndValue                                  !< Value of the indicator (Return Value)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: iDeg,i,j,k,l
+INTEGER                              :: iDeg,i,j,k,l
+#if EQNSYSNR == 2 /* NAVIER-STOKES */ 
+REAL                                 :: UE(1:PP_2Var)
+#endif /* NAVIER-STOKES */
+REAL,DIMENSION(0:PP_N,0:PP_N,0:PP_N) :: U_loc
 REAL,DIMENSION(0:PP_N,0:PP_N,0:PP_N) :: U_Xi
 REAL,DIMENSION(0:PP_N,0:PP_N,0:PP_N) :: U_Eta
 REAL,DIMENSION(0:PP_N,0:PP_N,0:PP_N) :: U_Modal
 !==================================================================================================================================
+SELECT CASE (IndVar)
+CASE(1:PP_nVar)
+  U_loc = U(IndVar,:,:,:)
+#if EQNSYSNR == 2 /* NAVIER-STOKES */ 
+CASE(6)
+  DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    UE(CONS)=U(:,i,j,k)
+    UE(SRHO)=1./UE(DENS)
+    UE(VELV)=VELOCITY_HE(UE)
+    U_loc(i,j,k)=PRESSURE_HE(UE)
+  END DO; END DO; END DO! i,j,k=0,PP_N
+#endif /* NAVIER-STOKES */
+END SELECT
 
 ! Transform nodal solution to a modal representation
 U_Xi   = 0.
 U_Eta  = 0.
 U_Modal= 0.
 DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N; DO l=0,PP_N
-  U_Xi(i,j,k)    = U_Xi(i,j,k)    + sVdm_Leg(i,l)*U(l,j,k)
+  U_Xi(i,j,k)    = U_Xi(i,j,k)    + sVdm_Leg(i,l)*U_loc(l,j,k)
 END DO ; END DO ; END DO ; END DO 
 DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N; DO l=0,PP_N
   U_Eta(i,j,k)   = U_Eta(i,j,k)   + sVdm_Leg(j,l)*U_Xi(i,l,k) 
@@ -318,6 +344,9 @@ END FUNCTION IndPersson
 
 #if EQNSYSNR == 2 /* NAVIER-STOKES */ 
 #if PARABOLIC
+!==================================================================================================================================
+!> Indicator by Ducros.
+!==================================================================================================================================
 FUNCTION DucrosIndicator(gradUx, gradUy, gradUz) RESULT(IndValue) 
 USE MOD_PreProc
 USE MOD_Mesh_Vars          ,ONLY: nElems,sJ
@@ -325,11 +354,13 @@ USE MOD_Analyze_Vars       ,ONLY: wGPVol
 #if FV_ENABLED
 USE MOD_FV_Vars            ,ONLY: FV_Elems
 #endif
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES 
-REAL,INTENT(IN)    :: gradUx(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,1:nElems)
-REAL,INTENT(IN)    :: gradUy(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,1:nElems)
-REAL,INTENT(IN)    :: gradUz(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,1:nElems)
-REAL               :: IndValue(1:nElems)
+REAL,INTENT(IN)    :: gradUx(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,1:nElems)   !< Gradients in x-direction
+REAL,INTENT(IN)    :: gradUy(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,1:nElems)   !< Gradients in x-direction
+REAL,INTENT(IN)    :: gradUz(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,1:nElems)   !< Gradients in x-direction
+REAL               :: IndValue(1:nElems)                                  !< Value of the indicator (Return Value)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER :: i,j,k,iElem
@@ -359,6 +390,9 @@ END FUNCTION DucrosIndicator
 #endif /* PARABOLIC */
 
 #if FV_ENABLED
+!==================================================================================================================================
+!> Indicator by Jameson.
+!==================================================================================================================================
 FUNCTION JamesonIndicator(U) RESULT(IndValue)
 USE MOD_PreProc
 USE MOD_Globals
@@ -379,10 +413,11 @@ USE MOD_MPI                ,ONLY: StartReceiveMPIData,StartSendMPIData,FinishExc
 #endif
 USE MOD_FillMortar1        ,ONLY: U_Mortar1,Flux_Mortar1
 USE MOD_FV_Vars            ,ONLY: FV_Elems,FV_Elems_master,FV_Elems_slave
+!----------------------------------------------------------------------------------------------------------------------------------
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
-REAL,INTENT(IN)           :: U(PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems)
-REAL                      :: IndValue(1:nElems)
+REAL,INTENT(IN)           :: U(PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems)              !< Solution
+REAL                      :: IndValue(1:nElems)                                  !< Value of the indicator (Return Value)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                      :: ElemVol,IntegrationWeight
