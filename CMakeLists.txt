@@ -282,19 +282,19 @@ IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
   SET (FLEXI_COMPILE_FLAGS "-xf95-cpp-input -fPIC")
 
 ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
-   #environment specific variables
-   IF(ONHORNET GREATER -1)
-      SET(FLEXI_INSTRUCTION "-xCORE-AVX2")
-   ELSE()
-      SET(FLEXI_INSTRUCTION "-xHost")
-   ENDIF()
-   # set Flags
+  #environment specific variables
+  IF(ONHORNET GREATER -1)
+     SET(FLEXI_INSTRUCTION "-xCORE-AVX2")
+  ELSE()
+     SET(FLEXI_INSTRUCTION "-xHost")
+  ENDIF()
+  # set Flags
   SET (CMAKE_Fortran_FLAGS         "${CMAKE_Fortran_FLAGS} -r8 -i4 -traceback -warn all -shared-intel -DINTEL")
   SET (CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS}    -O3 ${FLEXI_INSTRUCTION} -qopt-report0 -qopt-report-phase=vec -no-prec-div")
   SET (CMAKE_Fortran_FLAGS_PROFILE "${CMAKE_Fortran_FLAGS} -p -O3 ${FLEXI_INSTRUCTION} -qopt-report0 -qopt-report-phase=vec -no-prec-div")
   SET (CMAKE_Fortran_FLAGS_DEBUG   "${CMAKE_Fortran_FLAGS} -g -O0 -fpe0 -traceback -check all,noarg_temp_created,noformat,nooutput_conversion,pointer,uninit -init=snan -init=arrays")
-   # add flags only for compiling not linking!
-   SET (FLEXI_COMPILE_FLAGS "-fpp -assume bscc")
+  # add flags only for compiling not linking!
+  SET (FLEXI_COMPILE_FLAGS "-fpp -allow nofpp_comments -assume bscc")
 
 ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Cray")
   # set Flags

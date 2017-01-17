@@ -414,14 +414,15 @@ END SUBROUTINE clear_formatting
 FUNCTION GetFileExtension(filename) 
 ! INPUT / OUTPUT VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
-CHARACTER(LEN=*),INTENT(IN) :: filename
-CHARACTER(:),ALLOCATABLE    :: GetFileExtension
+CHARACTER(LEN=*),INTENT(IN)  :: filename
+CHARACTER(LEN=:),ALLOCATABLE :: GetFileExtension
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER           :: iExt
+INTEGER           :: iExt,fileExtensionLenght
 !===================================================================================================================================
 iExt=INDEX(filename,'.',BACK = .TRUE.) ! Position of file extension
-ALLOCATE(CHARACTER(LEN_TRIM(filename) - iExt) :: GetFileExtension)
+fileExtensionLenght = LEN_TRIM(filename) - iExt
+ALLOCATE(CHARACTER(fileExtensionLenght) :: GetFileExtension)
 GetFileExtension = filename(iExt+1:LEN_TRIM(filename))
 END FUNCTION GetFileExtension
 
