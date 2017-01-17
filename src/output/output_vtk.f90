@@ -377,9 +377,9 @@ IF (MPIRoot) THEN
   Buffer='<VTKFile type="vtkMultiBlockDataSet" version="1.0" byte_order="LittleEndian" header_type="UInt64">'//lf
   WRITE(ivtk) TRIM(BUFFER)
   Buffer='  <vtkMultiBlockDataSet>'//lf;WRITE(ivtk) TRIM(BUFFER)
-  Buffer='    <DataSet index="0" file="'//TRIM(FileString_DG)//'">'//lf;WRITE(ivtk) TRIM(BUFFER)
+  Buffer='    <DataSet index="0" name="DG" file="'//TRIM(FileString_DG)//'">'//lf;WRITE(ivtk) TRIM(BUFFER)
   Buffer='    </DataSet>'//lf;WRITE(ivtk) TRIM(BUFFER)
-  Buffer='    <DataSet index="1" file="'//TRIM(FileString_FV)//'">'//lf;WRITE(ivtk) TRIM(BUFFER)
+  Buffer='    <DataSet index="1" name="FV" file="'//TRIM(FileString_FV)//'">'//lf;WRITE(ivtk) TRIM(BUFFER)
   Buffer='    </DataSet>'//lf;WRITE(ivtk) TRIM(BUFFER)
   Buffer='  </vtkMultiBlockDataSet>'//lf;WRITE(ivtk) TRIM(BUFFER)
   Buffer='</VTKFile>'//lf;WRITE(ivtk) TRIM(BUFFER)

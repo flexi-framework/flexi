@@ -464,47 +464,74 @@ CHARACTER(LEN=255),INTENT(IN)   :: filename !< name of file to be read
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
 CLASS(link), POINTER  :: current
-INTEGER               :: stat,iniUnit
+INTEGER               :: stat,iniUnit,nLines,i
 TYPE(Varying_String)  :: aStr,bStr
 CHARACTER(LEN=255)    :: HelpStr
 LOGICAL               :: firstWarn=.TRUE.,file_exists
+CHARACTER(LEN=255),ALLOCATABLE :: FileContent(:)
+CHARACTER(LEN=1)      :: tmpChar=''
 !==================================================================================================================================
 CALL this%CreateLogicalOption('ColoredOutput','Colorize stdout, included for compatibility with FLEXI', '.TRUE.')
 
-! Check if first argument is the ini-file 
-IF(.NOT.(STRICMP(GetFileExtension(filename),'ini'))) THEN
-  SWRITE(*,*) "Usage: flexi parameter.ini [restart.h5] [keyword arguments]"
-  SWRITE(*,*) "   or: flexi restart.h5 [keyword arguments]"
-  CALL CollectiveStop(__STAMP__,&
-    'ERROR - Not an parameter file (file-extension must be .ini) or restart file (*.h5): '//TRIM(filename))
-END IF
-INQUIRE(FILE=TRIM(filename), EXIST=file_exists)  
-IF (.NOT.file_exists) THEN
-  CALL CollectiveStop(__STAMP__,&
-      "Ini file does not exist.")
-END IF
-
-SWRITE(UNIT_StdOut,*)'| Reading from parameter file from "',TRIM(filename),'":'
-
-! Open parameter file for reading
-iniUnit= 100 !GETFREEUNIT()
-OPEN(UNIT=iniUnit,FILE=TRIM(filename),STATUS='OLD',ACTION='READ',ACCESS='SEQUENTIAL',IOSTAT=stat)
-IF(stat.NE.0) THEN
-  CALL Abort(__STAMP__,&
-      "Could not open ini file.")
-END IF
-
-! infinte loop. Exit at EOF
-DO
-  ! read a line into 'aStr'
-  CALL Get(iniUnit,aStr,iostat=stat)
-  ! exit loop if EOF
-  IF(IS_IOSTAT_END(stat)) EXIT 
-  IF(.NOT.IS_IOSTAT_EOR(stat)) THEN
+IF(MPIROOT)THEN
+  ! Get name of ini file
+  WRITE(UNIT_StdOut,*)'| Reading from file "',TRIM(filename),'":'
+  INQUIRE(FILE=TRIM(filename), EXIST=file_exists)
+  IF (.NOT.file_exists) THEN
     CALL Abort(__STAMP__,&
-       'Error during ini file read')
+        "Ini file does not exist.")
+  END IF
+  ! Check if first argument is the ini-file 
+  IF(.NOT.(STRICMP(GetFileExtension(filename),'ini'))) THEN
+    SWRITE(*,*) "Usage: flexi parameter.ini [restart.h5] [keyword arguments]"
+    SWRITE(*,*) "   or: flexi restart.h5 [keyword arguments]"
+    CALL CollectiveStop(__STAMP__,&
+      'ERROR - Not an parameter file (file-extension must be .ini) or restart file (*.h5): '//TRIM(filename))
   END IF
 
+  OPEN(NEWUNIT= iniUnit,        &
+       FILE   = TRIM(filename), &
+       STATUS = 'OLD',          &
+       ACTION = 'READ',         &
+       ACCESS = 'SEQUENTIAL',   &
+       IOSTAT = stat)
+  IF(stat.NE.0)THEN
+    CALL abort(__STAMP__,&
+      "Could not open ini file.")
+  END IF
+
+  ! parallel IO: ROOT reads file and sends it to all other procs
+  nLines=0
+  stat=0
+  DO
+    READ(iniunit,"(A)",IOSTAT=stat)tmpChar
+    IF(stat.NE.0)EXIT
+    nLines=nLines+1
+  END DO
+END IF
+
+!broadcast number of lines, read and broadcast file content
+#if MPI
+CALL MPI_BCAST(nLines,1,MPI_INTEGER,0,MPI_COMM_WORLD,iError)
+#endif
+ALLOCATE(FileContent(nLines))
+
+IF (MPIROOT) THEN
+  !read file
+  REWIND(iniUnit)
+  READ(iniUnit,'(A)') FileContent
+  CLOSE(iniUnit)
+END IF
+#if MPI
+CALL MPI_BCAST(FileContent,LEN(FileContent)*nLines,MPI_CHARACTER,0,MPI_COMM_WORLD,iError)
+#endif
+
+! infinte loop. Exit at EOF
+DO i=1,nLines
+  !! Lower case
+  CALL LowCase(FileContent(i),FileContent(i))
+  ! read a line into 'aStr'
+  aStr=Var_Str(FileContent(i))
   ! Remove comments with "!"
   CALL Split(aStr,bStr,"!")
   ! Remove comments with "#"
@@ -517,7 +544,7 @@ DO
   aStr=Replace(aStr,"(/"," ",Every=.true.)
   aStr=Replace(aStr,"/)"," ",Every=.true.)
   ! Lower case
-  CALL LowCase(CHAR(aStr),HelpStr)
+  HelpStr=CHAR(aStr)
   ! If something remaind, this should be an option
   IF (LEN_TRIM(HelpStr).GT.2) THEN
     ! read the option
@@ -534,7 +561,7 @@ END DO
 IF (.NOT.firstWarn) THEN
   SWRITE(UNIT_StdOut,'(100("!"))')
 END IF
-CLOSE(iniUnit)
+DEALLOCATE(FileContent)
 
 ! calculate the maximal string lenght of all option-names and option-values
 this%maxNameLen  = 0
@@ -1131,7 +1158,7 @@ INTEGER                       :: listSize         ! current size of list
 ! iterate over all options and compare names
 current => prms%firstLink
 DO WHILE (associated(current))
-  IF (current%opt%NAMEEQUALS(name)) THEN
+  IF (current%opt%NAMEEQUALS(name).AND.(.NOT.current%opt%isRemoved)) THEN
     opt => current%opt
     SELECT TYPE (opt)
     CLASS IS (IntFromStringOption)
@@ -1157,6 +1184,8 @@ DO WHILE (associated(current))
           opt%foundInList = .FALSE.
         END IF
         CALL opt%print(prms%maxNameLen, prms%maxValueLen, mode=0)
+        ! remove the option from the linked list of all parameters
+        current%opt%isRemoved = .TRUE.
         RETURN
       END IF
       ! If a string has been supplied, check if this string exists in the list and set it's integer representation according to the
@@ -1166,6 +1195,8 @@ DO WHILE (associated(current))
           value = opt%intList(i)
           opt%listIndex = i ! Store index of the mapping
           CALL opt%print(prms%maxNameLen, prms%maxValueLen, mode=0)
+          ! remove the option from the linked list of all parameters
+          current%opt%isRemoved = .TRUE.
           RETURN
         END IF
       END DO
@@ -1176,7 +1207,7 @@ DO WHILE (associated(current))
   current => current%next
 END DO
 CALL Abort(__STAMP__,&
-    "Unknown option: "//TRIM(name))
+    "Unknown option: "//TRIM(name)//" or already read (use GET... routine only for multiple options more than once).")
 END FUNCTION GETINTFROMSTR
 
 !===================================================================================================================================
