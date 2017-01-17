@@ -71,8 +71,8 @@ USE MOD_Globals
 USE MOD_TimeDisc_Vars
 USE MOD_ReadInTools         ,ONLY:GETREAL,GETINT,GETSTR
 USE MOD_StringTools         ,ONLY:LowCase,StripSpaces
-USE MOD_Overintegration_Vars,ONLY:OverintegrationType,NUnder
-USE MOD_Filter_Vars         ,ONLY:FilterType,NFilter
+USE MOD_Overintegration_Vars,ONLY:NUnder
+USE MOD_Filter_Vars         ,ONLY:NFilter
 USE MOD_Mesh_Vars           ,ONLY:nElems
 USE MOD_IO_HDF5             ,ONLY:AddToElemData
 IMPLICIT NONE

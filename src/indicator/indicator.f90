@@ -184,12 +184,12 @@ SUBROUTINE CalcIndicator(U,t)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Indicator_Vars ,ONLY: IndicatorType,IndVar,IndValue,IndStartTime
+USE MOD_Indicator_Vars ,ONLY: IndicatorType,IndValue,IndStartTime
 USE MOD_Mesh_Vars      ,ONLY: offsetElem,Elem_xGP,nElems
 #if FV_ENABLED
 USE MOD_FV_Vars        ,ONLY: FV_Elems,FV_sVdm
 #endif /* FV_ENABLED */
-#if PARABOLIC
+#if PARABOLIC && EQNSYSNR == 2
 USE MOD_Lifting_Vars   ,ONLY: gradUx,gradUy,gradUz
 #endif
 USE MOD_ChangeBasis

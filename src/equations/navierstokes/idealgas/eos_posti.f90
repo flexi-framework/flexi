@@ -172,7 +172,6 @@ LOGICAL            :: withGradients
 INTEGER            :: iVar,iVarCalc
 !===================================================================================================================================
 withGradients=(PRESENT(gradUx).AND.PRESENT(gradUy).AND.PRESENT(gradUz))
-print*, 'bin da',withGradients; CALL FLUSH()
 
 DO iVar=1,nVarTotalEOS
   iVarCalc = mapCalc(iVar)
@@ -338,8 +337,7 @@ SUBROUTINE FillPressureTimeDeriv(nElems_calc,indices,Nloc,PressureTDeriv)
 !==================================================================================================================================
 ! MODULES
 USE MOD_Preproc
-USE MOD_Mesh_Vars,ONLY:nElems
-USE MOD_Eos_Vars,ONLY: KappaM1
+USE MOD_Eos_Vars,ONLY:KappaM1
 USE MOD_DG_Vars ,ONLY:Ut,U
 IMPLICIT NONE 
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -352,11 +350,9 @@ REAL,INTENT(OUT)   :: PressureTDeriv(0:Nloc,0:Nloc,0:Nloc,nElems_calc)
 ! LOCAL VARIABLES 
 INTEGER            :: iElem,iElem_calc
 !==================================================================================================================================
-print*,nElems,nElems_calc
 IF(Nloc.NE.PP_N) STOP 'Not possible here'
 DO iElem_calc=1,nElems_calc
   iElem = indices(iElem_calc)
-IF(iElem.NE.iElem_calc) print*,'passt nicht'
   PressureTDeriv(:,:,:,iElem_calc)=KappaM1*(Ut(5,:,:,:,iElem)-1/U(1,:,:,:,iElem)*(  &
                                              U(2,:,:,:,iElem)*Ut(2,:,:,:,iElem)  &
                                            + U(3,:,:,:,iElem)*Ut(3,:,:,:,iElem)  &

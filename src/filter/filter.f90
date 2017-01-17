@@ -93,8 +93,10 @@ USE MOD_Interpolation_Vars,ONLY:InterpolationInitIsDone,Vdm_Leg,sVdm_Leg,NodeTyp
 USE MOD_ChangeBasis       ,ONLY:ChangeBasis3D
 USE MOD_ReadInTools       ,ONLY:GETINT,GETREAL,GETREALARRAY,GETLOGICAL,GETINTFROMSTR
 USE MOD_Interpolation     ,ONLY:GetVandermonde
-USE MOD_Mesh_Vars         ,ONLY:nElems,sJ
 USE MOD_IO_HDF5           ,ONLY:AddToElemData
+#if EQNSYSNR==2
+USE MOD_Mesh_Vars         ,ONLY:nElems,sJ
+#endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -150,7 +152,7 @@ IF(FilterType.GT.0) THEN
     CALL AddToElemData('LAF_r'     ,RealArray=r)
     Vol = 0.
     DO iElem=1,nElems
-    J_N(0:PP_N,0:PP_N,0:PP_N)=1./sJ(:,:,:,0,iElem)
+      J_N(0:PP_N,0:PP_N,0:PP_N)=1./sJ(:,:,:,0,iElem)
       DO k=0,PP_N
         DO j=0,PP_N
           DO i=0,PP_N

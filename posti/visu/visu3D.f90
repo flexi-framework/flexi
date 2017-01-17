@@ -244,10 +244,8 @@ CHARACTER(LEN=255),INTENT(IN)    :: statefile
 CHARACTER(LEN=255),INTENT(INOUT) :: postifile
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL
-INTEGER                          :: nElems_State,iVar 
+INTEGER                          :: nElems_State
 CHARACTER(LEN=255)               :: NodeType_State 
-INTEGER                          :: postiUnit 
-INTEGER                          :: stat
 !===================================================================================================================================
 CALL visu3d_getVarNamesAndFileType(statefile,VarNamesTotal)
 IF (STRICMP(statefile,'Mesh')) THEN
