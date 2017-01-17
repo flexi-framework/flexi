@@ -122,7 +122,9 @@ USE MOD_PreProc
 USE MOD_Posti_Vars
 USE MOD_ReadInTools   ,ONLY: prms,GETINT
 USE MOD_ReadInTools   ,ONLY: FinalizeParameters
+#if USE_MPI
 USE MOD_MPI           ,ONLY: FinalizeMPI
+#endif
 USE MOD_Interpolation ,ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
 USE MOD_Mesh_Vars     ,ONLY: nElems,Ngeo
 USE MOD_Mesh          ,ONLY: DefineParametersMesh,InitMesh,FinalizeMesh

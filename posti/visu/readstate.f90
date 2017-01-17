@@ -219,7 +219,10 @@ SUBROUTINE ReadStateWithoutGradients(prmfile,statefile,Nin)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Posti_Vars
-USE MOD_MPI,                 ONLY: DefineParametersMPI,FinalizeMPI
+USE MOD_MPI,                 ONLY: DefineParametersMPI
+#if USE_MPI
+USE MOD_MPI,                 ONLY: FinalizeMPI
+#endif
 USE MOD_IO_HDF5,             ONLY: DefineParametersIO_HDF5,InitIOHDF5
 USE MOD_Mesh                ,ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
 USE MOD_ReadInTools         ,ONLY: prms
