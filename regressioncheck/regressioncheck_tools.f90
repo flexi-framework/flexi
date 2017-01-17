@@ -310,6 +310,7 @@ Example%MPIthreadsN             = 1       ! minimum
 Example%nRuns                   = 1       ! minimum
 Example%nVar                    = 0
 Example%ReferenceTolerance      = -1.
+Example%SubExample              = '-'     ! init
 Example%SubExampleNumber        = 0       ! init total number of subexamples
 Example%SubExampleOption(1:100) = '-'     ! default option is nothing
 DO ! extract reggie information
@@ -694,7 +695,7 @@ REAL,INTENT(INOUT),OPTIONAL    :: EndTime            ! Used to track computation
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                           :: Time
-CHARACTER(LEN=255)             :: TableRowSpacing ! set row spacing between examples in table
+CHARACTER(LEN=255)             :: SpacingBetweenExamples ! set row spacing between examples in table
 !===================================================================================================================================
 IF(.NOT.PRESENT(EndTime))THEN
   Time=REGGIETIME() ! Measure processing duration
@@ -710,14 +711,15 @@ ELSE
   SWRITE(UNIT_stdOut,'(A)') ' Summary of Errors (0=no Error): '
   SWRITE(UNIT_stdOut,'(A)') ' '
   aError=>firstError ! set aError to first error in list
-  TableRowSpacing=''
-  SWRITE(UNIT_stdOut,'(A45,2x,A30,2x,A10,2x,A15,2x,A12,2x,A35,2x)')&
-                       'Example','SubExample','ErrorCode','build','MPI threads','Information'
+  SpacingBetweenExamples=''
+  SWRITE(UNIT_stdOut,'(A5,2x,A45,2x,A30,2x,A10,2x,A15,2x,A12,2x,A35,2x)')&
+                       'run#','Example','SubExample','ErrorCode','build','MPI threads','Information'
   DO WHILE (ASSOCIATED(aError))
-    IF(TRIM(TableRowSpacing).NE.TRIM(aError%Example))THEN
-      SWRITE(UNIT_stdOut,'(A)') ''
+    IF(TRIM(SpacingBetweenExamples).NE.TRIM(aError%Example))THEN
+      SWRITE(UNIT_stdOut,'(A)') '' ! include empty line
     END IF
-    TableRowSpacing=TRIM(aError%Example)
+    SpacingBetweenExamples=TRIM(aError%Example)
+    SWRITE(UNIT_stdOut,'(I5,2x)',ADVANCE='no') aError%RunNumber
     SWRITE(UNIT_stdOut,'(A45,2x)',ADVANCE='no') TRIM(aError%Example)
     IF(TRIM(aError%SubExampleOption).EQ.'-')THEN
       SWRITE(UNIT_stdOut,'(A30,2x)',ADVANCE='no') '-'
@@ -755,7 +757,7 @@ SUBROUTINE AddError(MPIthreadsStr,Info,iExample,iSubExample,ErrorStatus,ErrorCod
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_RegressionCheck_Vars,    ONLY: ExampleNames,Examples,EXECPATH,firstError,aError
+USE MOD_RegressionCheck_Vars,    ONLY: ExampleNames,Examples,EXECPATH,firstError,aError,GlobalRunNumber
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -782,6 +784,7 @@ INTEGER,INTENT(IN)          :: iExample,iSubExample,ErrorStatus,ErrorCode
 Examples(iExample)%ErrorStatus=ErrorStatus
 IF(firstError%ErrorCode.EQ.-1)THEN ! first error pointer
   firstError%ErrorCode              =ErrorCode ! no error
+  firstError%RunNumber              =GlobalRunNumber ! 
   firstError%Example                =TRIM(ExampleNames(iExample))
   firstError%SubExample             =TRIM(Examples(iExample)%SubExample)
   firstError%SubExampleOption       =TRIM(Examples(iExample)%SubExampleOption(iSubExample))
@@ -793,6 +796,7 @@ IF(firstError%ErrorCode.EQ.-1)THEN ! first error pointer
 ELSE ! next error pointer
   ALLOCATE(aError%nextError)
   aError%nextError%ErrorCode        =ErrorCode ! no error
+  aError%nextError%RunNumber        =GlobalRunNumber ! 
   aError%nextError%Example          =TRIM(ExampleNames(iExample))
   aError%nextError%SubExample       =TRIM(Examples(iExample)%SubExample)
   aError%nextError%SubExampleOption =TRIM(Examples(iExample)%SubExampleOption(iSubExample))

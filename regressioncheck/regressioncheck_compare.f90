@@ -371,12 +371,10 @@ CHARACTER(LEN=255)             :: DataSet
 CHARACTER(LEN=255)             :: CheckedFileName
 CHARACTER(LEN=255)             :: ReferenceNormFileName
 CHARACTER(LEN=500)             :: SYSCOMMAND
-CHARACTER(LEN=20)              :: tmpTol
+CHARACTER(LEN=21)              :: tmpTol
 INTEGER                        :: iSTATUS
 LOGICAL                        :: ExistCheckedFile,ExistReferenceNormFile
 !==================================================================================================================================
-
-
 CheckedFilename  =TRIM(Examples(iExample)%PATH)//TRIM(Examples(iExample)%CheckedStateFile)
 ReferenceNormFilename=TRIM(Examples(iExample)%PATH)//TRIM(Examples(iExample)%ReferenceStateFile)
 INQUIRE(File=CheckedFilename,EXIST=ExistCheckedFile)

@@ -12,6 +12,7 @@ SAVE
 CHARACTER(LEN=5),PARAMETER    :: CodeNameUppCase='FLEXI'             !> Code name in upper case letters. IMPORTANT: set its length!
 CHARACTER(LEN=5),PARAMETER    :: CodeNameLowCase='flexi'             !> Code name in lower case letters. IMPORTANT: set its length!
 INTEGER                        :: nErrors                            !> number of errors encountered during reggie execution
+INTEGER                        :: GlobalRunNumber                    !> count the number of separate runs for listing in summary
 INTEGER                        :: NumberOfProcs                      !> number of processors for parallel build
 CHARACTER(LEN=20)              :: NumberOfProcsStr                   !> number of processors for parallel build as string
 INTEGER                        :: nExamples                          !> number of regressioncheck examples
@@ -108,6 +109,7 @@ TYPE(tExample), ALLOCATABLE        :: Examples(:)                    !> containe
 
 TYPE tEC                                                             !> Type to simplify error handling
   INTEGER            :: ErrorCode                                    !> interger code of error
+  INTEGER            :: RunNumber                                    !> number of current run
   CHARACTER(LEN=255) :: Example                                      !> name of the example
   CHARACTER(LEN=255) :: SubExample                                   !> name of the subexample
   CHARACTER(LEN=255) :: SubExampleOption                             !> name of the subexample option

@@ -34,7 +34,7 @@ SUBROUTINE PerformRegressionCheck()
 USE MOD_Globals
 USE MOD_RegressionCheck_Compare, ONLY: CompareResults,CompareConvergence
 USE MOD_RegressionCheck_Tools,   ONLY: InitExample
-USE MOD_RegressionCheck_Vars,    ONLY: nExamples,ExampleNames,Examples,EXECPATH,RuntimeOptionType
+USE MOD_RegressionCheck_Vars,    ONLY: nExamples,ExampleNames,Examples,EXECPATH,RuntimeOptionType,GlobalRunNumber 
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -56,7 +56,8 @@ LOGICAL                        :: SkipExample,SkipBuild,ExitBuild,SkipFolder,Ski
 !==================================================================================================================================
 SWRITE(UNIT_stdOut,'(132("="))')
 SWRITE(UNIT_stdOut,'(A)') ' Performing tests ...'
-ReggieBuildExe=''
+ReggieBuildExe='' ! init
+GlobalRunNumber=0      ! init
 !==================================================================================================================================
 DO iExample = 1, nExamples ! loop level 1 of 5
 !==================================================================================================================================
@@ -494,7 +495,7 @@ print*,"shape(Examples(iExample)%ConvergenceTestArray)=",shape(Examples(iExample
   END IF
 END IF
 print*,"Examples(iExample)%ConvergenceTest=",Examples(iExample)%ConvergenceTest
-read*
+!read*
 END SUBROUTINE CheckSubExample
 
 
@@ -696,7 +697,7 @@ IF(Examples(iExample)%SubExampleNumber.GT.0)THEN ! SubExample has been specified
   CALL CheckFileForString(TRIM(Examples(iExample)%PATH)//TRIM(parameter_ini),&
                           TRIM(Examples(iExample)%SubExample)//'=',ExistStringInFile)
   IF(ExistStringInFile)THEN
-    SYSCOMMAND=    'cd '//TRIM(Examples(iExample)%PATH)//& ! print the current SubExampleOption(iSubExample) to parameter_ini
+    SYSCOMMAND=    'cd '//TRIM(Examples(iExample)%PATH)//& ! write the current SubExampleOption(iSubExample) to parameter_ini
    ' && sed -i -e "s/.*'//TRIM(Examples(iExample)%SubExample)//&
                   '=.*/'//TRIM(Examples(iExample)%SubExample)//&
                      '='//TRIM(Examples(iExample)%SubExampleOption(iSubExample))//&
@@ -819,7 +820,7 @@ SUBROUTINE RunTheCode(iExample,iSubExample,iScaling,iRun,MPIthreadsStr,EXECPATH,
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_RegressionCheck_Vars,    ONLY: Examples
+USE MOD_RegressionCheck_Vars,    ONLY: Examples,GlobalRunNumber
 USE MOD_RegressionCheck_tools,   ONLY: AddError,str2int
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -873,6 +874,7 @@ ELSE ! single run
   SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && '//TRIM(EXECPATH)//' '//&
            TRIM(parameter_ini)//' '//TRIM(parameter_ini2)//' '//TRIM(Examples(iExample)%RestartFileName)//' 1>std.out 2>err.out'
 END IF
+GlobalRunNumber=GlobalRunNumber+1
 CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS) ! run the code
 ! -----------------------------------------------------------------------------------------------------------------------
 ! was the run successful? (iSTATUS=0)
