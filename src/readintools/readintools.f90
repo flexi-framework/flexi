@@ -756,10 +756,6 @@ WRITE(fmtNamespace,*) spaceNameLen
 WRITE(fmtValuespace,*) spaceValueLen
 current => prms%firstLink
 DO WHILE (associated(current))
-  IF (STRICMP(current%opt%section,'RecordPoints')) THEN
-    current => current%next
-    CYCLE
-  END IF
   IF ((LEN_TRIM(singlesection).EQ.0).OR.(STRICMP(singlesection,current%opt%section))) THEN
     IF (.NOT.STRICMP(section,current%opt%section)) THEN
       section = current%opt%section
