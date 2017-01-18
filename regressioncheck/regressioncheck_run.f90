@@ -124,8 +124,6 @@ DO iExample = 1, nExamples ! loop level 1 of 5
           IF(Examples(iExample)%ErrorStatus.EQ.0) CALL CleanFolder(iExample,MODE=2) ! MODE=2: delete files after simulation
         END DO ! iScalingRuns = 1, Examples(iExample)%nRuns
       END DO ! iScaling = 1, Examples(iExample)%MPIthreadsN
-      ! after subexample with "N" or "MeshFile" check if the convergence was successful
-      IF(Examples(iExample)%ConvergenceTest) CALL CompareConvergence(iExample)
     END DO ! iSubExample = 1, MAX(1,SubExampleNumber) (for cases without specified SubExamples: SubExampleNumber=0)
   END DO ! iReggieBuild = 1, nReggieBuilds
 END DO ! iExample=1,nExamples
@@ -474,28 +472,61 @@ IF((TRIM(TIMEDISCMETHOD).NE.'ImplicitO3').AND.(TRIM(Examples(iExample)%SubExampl
   Examples(iExample)%SubExampleNumber = 0
   Examples(iExample)%SubExampleOption(1:20) = '-' ! default option is nothing
 END IF
+
+! ConvergenceTest: allocate the array in which the L2 error norms are saved for convergence calculation
 IF(iReggieBuild.EQ.1)THEN ! DON'T allocate the field "ConvergenceTestArray" multiple times
   ! Check if SubExample is set correctly for possible convergence test
-  IF(Examples(iExample)%ConvergenceTest)THEN
-    IF( ((TRIM(Examples(iExample)%SubExample).EQ.'N'       ).AND.(TRIM(Examples(iExample)%ConvergenceTestType).EQ.'p')) .OR. &
-        ((TRIM(Examples(iExample)%SubExample).EQ.'MeshFile').AND.(TRIM(Examples(iExample)%ConvergenceTestType).EQ.'h')) ) THEN
-      IF(Examples(iExample)%SubExampleNumber.GT.0)THEN
-        ALLOCATE(Examples(iExample)%ConvergenceTestArray(Examples(iExample)%SubExampleNumber,Examples(iExample)%nVar,2))
-        Examples(iExample)%ConvergenceTestArray=0 ! init
-print*,"Examples(iExample)%ConvergenceTestArray=",Examples(iExample)%ConvergenceTestArray
-print*,"shape(Examples(iExample)%ConvergenceTestArray)=",shape(Examples(iExample)%ConvergenceTestArray)
+  IF(Examples(iExample)%ConvergenceTest)THEN ! Do ConvergenceTest
+
+
+  ! Check number of sub examples used
+  IF(Examples(iExample)%SubExampleNumber.LT.1)THEN ! less than 2 SubExample are executed, hence, a minimum of 2 points is not used
+    SWRITE(UNIT_stdOut,'(A)') 'SubExampleNumber<2: Cannot allocate array in "CheckSubExample" Deactivating convergence test'
+    Examples(iExample)%ConvergenceTest=.FALSE.
+  ELSE
+    ! check which type of convergence test is used
+    IF(   ((TRIM(Examples(iExample)%SubExample).EQ.'N'       ).AND.(TRIM(Examples(iExample)%ConvergenceTestType).EQ.'p')))THEN
+      ! p-convergence: constant number of DG cells, varying polynomial degree
+      ! 1.) NumberOfCellsN == 1
+      ! 2.) NumberOfCellsN < SubExampleNumber
+      IF( (Examples(iExample)%NumberOfCellsN.EQ.1).AND.&
+          (Examples(iExample)%NumberOfCellsN.LT.Examples(iExample)%SubExampleNumber) )THEN
+        SWRITE(UNIT_stdOut,'(A)') ' Selected p-convergence: constant number of DG cells, varying polynomial degree'
+        !ALLOCATE(Examples(iExample)%ConvergenceTestGridSize(1))
       ELSE
-        SWRITE(UNIT_stdOut,'(A)') 'SubExampleNumber=0: Cannot allocate array in "CheckSubExample" '
+        Examples(iExample)%ConvergenceTest=.FALSE.
+      END IF
+    ELSEIF((TRIM(Examples(iExample)%SubExample).EQ.'MeshFile').AND.(TRIM(Examples(iExample)%ConvergenceTestType).EQ.'h'))THEN
+      ! h-convergence: constant polynomial degree, varying number of DG cells
+      ! NumberOfCellsN == SubExampleNumber
+      IF(Examples(iExample)%NumberOfCellsN.EQ.Examples(iExample)%SubExampleNumber)THEN
+        SWRITE(UNIT_stdOut,'(A)') ' Selected h-convergence: constant polynomial degree, varying number of DG cells'
+        !ALLOCATE(Examples(iExample)%ConvergenceTestGridSize(Examples(iExample)%SubExampleNumber))
+      ELSE
         Examples(iExample)%ConvergenceTest=.FALSE.
       END IF
     ELSE
       SWRITE(UNIT_stdOut,'(A)') 'SubExample not suitable for convergence test. Deactivating convergence test'
+      SWRITE(UNIT_stdOut,'(A)') '  Choose from ...'
+      SWRITE(UNIT_stdOut,'(A)') '  1.) SubExample=N        + ConvergenceTestType=p    OR'
+      SWRITE(UNIT_stdOut,'(A)') '  2.) SubExample=MeshFile + ConvergenceTestType=h'
       Examples(iExample)%ConvergenceTest=.FALSE.
     END IF
+
+    IF(Examples(iExample)%ConvergenceTest)THEN ! Do ConvergenceTest was not changed to false above
+      ! finally: allocate the fields
+      ALLOCATE(Examples(iExample)%ConvergenceTestArray(Examples(iExample)%SubExampleNumber,Examples(iExample)%nVar))
+      Examples(iExample)%ConvergenceTestArray   =0 ! default value
+      ALLOCATE(Examples(iExample)%ConvergenceTestGridSize(Examples(iExample)%SubExampleNumber))
+      Examples(iExample)%ConvergenceTestGridSize=0 ! default value
+    END IF
+  END IF
+
+
+
+
   END IF
 END IF
-print*,"Examples(iExample)%ConvergenceTest=",Examples(iExample)%ConvergenceTest
-!read*
 END SUBROUTINE CheckSubExample
 
 
@@ -845,7 +876,7 @@ SkipComparison=.FALSE.
 ! -----------------------------------------------------------------------------------------------------------------------
 IF(Examples(iExample)%MPIrun)THEN ! use "mpirun"
   !IF(Examples(iExample)%MPIthreads.GT.1)THEN
-  MPIthreadsStr=ADJUSTL(TRIM(Examples(iExample)%MPIthreadsStr(iScaling)))
+  MPIthreadsStr=ADJUSTL(TRIM(Examples(iExample)%MPIthreadsStr(iScaling))) ! copy string containing the number of MPI threads to temp
   CALL str2int(ADJUSTL(TRIM(MPIthreadsStr)),MPIthreadsInteger,iSTATUS) ! sanity check if the number of threads is correct
   IF((MPIthreadsInteger.LE.0).OR.(iSTATUS.NE.0))CALL abort(&
       __STAMP__&
@@ -870,7 +901,7 @@ IF(Examples(iExample)%MPIrun)THEN ! use "mpirun"
                        ADJUSTL(TRIM(MPIthreadsStr))//' '//ADJUSTL(TRIM(tempStr))//' '//TRIM(EXECPATH)//' '//&
            TRIM(parameter_ini)//' '//TRIM(parameter_ini2)//' '//TRIM(Examples(iExample)%RestartFileName)//' 1>std.out 2>err.out'
 ELSE ! single run
-  MPIthreadsStr='-'
+  MPIthreadsStr='-' ! no MPI threads to be used -> single run
   SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && '//TRIM(EXECPATH)//' '//&
            TRIM(parameter_ini)//' '//TRIM(parameter_ini2)//' '//TRIM(Examples(iExample)%RestartFileName)//' 1>std.out 2>err.out'
 END IF

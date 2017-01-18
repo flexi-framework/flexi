@@ -52,6 +52,10 @@ INTERFACE REGGIETIME
   MODULE PROCEDURE REGGIETIME
 END INTERFACE
 
+INTERFACE CalcOrder
+  MODULE PROCEDURE CalcOrder
+END INTERFACE
+
 INTERFACE str2real
   MODULE PROCEDURE str2real
 END INTERFACE
@@ -70,6 +74,7 @@ PUBLIC::AddError
 PUBLIC::GetParameterFromFile
 PUBLIC::CheckFileForString
 PUBLIC::REGGIETIME
+PUBLIC::CalcOrder
 PUBLIC::str2real,str2int,str2logical
 !==================================================================================================================================
 
@@ -324,6 +329,10 @@ DO ! extract reggie information
   IF(IndNum.GT.0)THEN ! definition found
     readRHS(1)=temp1(1:IndNum-1)      ! parameter name
     readRHS(2)=temp1(IndNum+1:MaxNum) ! parameter setting
+    ! number of DG cells in one direction
+    IF(TRIM(readRHS(1)).EQ.'NumberOfCells')CALL GetParameterList(ParameterList   = Example%NumberOfCellsStr,&
+                                                                 nParameters     = 100,               &
+                                                                 ParameterNumber = Example%NumberOfCellsN)
     ! get size of EQNSYS (deprecated)
     IF(TRIM(readRHS(1)).EQ.'nVar')CALL str2int(readRHS(2),Example%nVar,iSTATUS)
     ! single or parallel
@@ -462,7 +471,7 @@ DO ! extract reggie information
     IF(TRIM(readRHS(1)).EQ.'ConvergenceTest')THEN
        Example%ConvergenceTest           = .TRUE.
        Example%ConvergenceTestType       = ''     ! init
-       Example%ConvergenceTestCompType   = ''     ! init
+       Example%ConvergenceTestDomainSize = -999.0 ! init
        Example%ConvergenceTestValue      = -999.0 ! init
        Example%ConvergenceTestTolerance  = -1     ! init
        IndNum2=INDEX(readRHS(2),',')
@@ -471,11 +480,11 @@ DO ! extract reggie information
          Example%ConvergenceTestType= TRIM(ADJUSTL(temp2(1:IndNum2-1))) ! type
          temp2                     = temp2(IndNum2+1:LEN(TRIM(temp2))) ! next
          IndNum2                   = INDEX(temp2,',')
-         IF(IndNum2.GT.0)THEN ! get the comparison type
-           Example%ConvergenceTestCompType = TRIM(ADJUSTL(temp2(1:IndNum2-1))) ! ref data file name
+         IF(IndNum2.GT.0)THEN ! get the size of the domain
+           CALL str2real(temp2(1:IndNum2-1),Example%ConvergenceTestDomainSize,iSTATUS)
            temp2                          = temp2(IndNum2+1:LEN(TRIM(temp2))) ! next
            IndNum2                        = INDEX(temp2,',')
-           IF(IndNum2.GT.0)THEN ! get value for comparison
+           IF((IndNum2.GT.0).AND.(iSTATUS.EQ.0))THEN ! get value for comparison
              CALL str2real(temp2(1:IndNum2-1),Example%ConvergenceTestValue,iSTATUS)
              temp2                  = temp2(IndNum2+1:LEN(TRIM(temp2))) ! next
              IndNum2               = INDEX(temp2,',')
@@ -486,12 +495,18 @@ DO ! extract reggie information
          END IF ! get the comparison type
        END IF ! get the type of the convergence test (h- or p-convergence)
       ! set ConvergenceTest to false if any of the following cases is true
-      IF(ANY( (/iSTATUS.NE.0                               ,&
-                Example%ConvergenceTestType.EQ.''           ,&
-                Example%ConvergenceTestCompType.EQ.''       ,&
-                Example%ConvergenceTestValue.LT.-999.       ,&
-                Example%ConvergenceTestTolerance.EQ.0        &
+      IF(ANY( (/iSTATUS.NE.0                             ,&
+                Example%ConvergenceTestType.EQ.''        ,&
+                Example%ConvergenceTestDomainSize.LT.-1. ,&
+                Example%ConvergenceTestValue.LT.-1.      ,&
+                Example%ConvergenceTestTolerance.EQ.0     &
                 /) )) Example%ConvergenceTest=.FALSE.
+      IF(Example%ConvergenceTest.EQV..FALSE.)THEN
+        SWRITE(UNIT_stdOut,'(A,A)')      'Example%ConvergenceTestType       : ',Example%ConvergenceTestType
+        SWRITE(UNIT_stdOut,'(A,E25.14)') 'Example%ConvergenceTestDomainSize : ',Example%ConvergenceTestDomainSize
+        SWRITE(UNIT_stdOut,'(A,E25.14)') 'Example%ConvergenceTestValue      : ',Example%ConvergenceTestValue
+        SWRITE(UNIT_stdOut,'(A,E25.14)') 'Example%ConvergenceTestTolerance  : ',Example%ConvergenceTestTolerance
+      END IF
     END IF ! 'ConvergenceTest'
     ! Next feature
     !IF(TRIM(readRHS(1)).EQ.'NextFeature')
@@ -970,6 +985,52 @@ REGGIETIME=MPI_WTIME()
 CALL CPU_TIME(REGGIETIME)
 #endif
 END FUNCTION REGGIETIME
+
+
+!==================================================================================================================================
+!> Calculate the average convergence order for vectors h and E
+!==================================================================================================================================
+SUBROUTINE CalcOrder(DimOfVectors,h,E,order)
+!===================================================================================================================================
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+INTEGER,INTENT(IN)       :: DimOfVectors
+REAL,INTENT(IN)          :: h(DimOfVectors)
+REAL,INTENT(IN)          :: E(DimOfVectors)
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL,INTENT(OUT)         :: order
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!CHARACTER(len=*),INTENT(IN) :: str
+!INTEGER,INTENT(OUT)         :: int_number
+INTEGER                  :: I
+REAL                     :: m
+!===================================================================================================================================
+IF(DimOfVectors.LT.2)THEN
+  SWRITE(UNIT_stdOut,'(A)') 'SUBROUTINE CalcOrder(DimOfVectors,h,E,order): input dimension must be larger than 1!'
+  order=-999.
+END IF
+
+!print*,h
+!print*,E
+
+order=0.
+DO I=1,DimOfVectors-1
+  m=LOG(E(i+1)/E(i))/LOG(h(i+1)/h(i))
+!print*,"m=",m
+!read*
+  order=order+m
+END DO
+order=order/(DimOfVectors-1)
+!print*,"order=",order
+!read*
+END SUBROUTINE CalcOrder
 
 
 !==================================================================================================================================

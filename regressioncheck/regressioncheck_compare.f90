@@ -73,7 +73,7 @@ INTEGER                        :: ErrorStatus                       !> Error-cod
 ! compare the results and write error messages for the current case
 ! -----------------------------------------------------------------------------------------------------------------------
 SWRITE(UNIT_stdOut,'(A)',ADVANCE='no')  ' Comparing results...'
-! check error norms
+! check error norms  L2/LInf
 ALLOCATE(ReferenceNorm(Examples(iExample)%nVar,2))
 IF(Examples(iExample)%ReferenceNormFile.EQ.'')THEN
   ! constant value, should be zero no reference file given
@@ -90,6 +90,14 @@ IF(ErrorStatus.EQ.1)THEN
   SWRITE(UNIT_stdOut,'(A,A)') ' Out-file: ', TRIM(Examples(iExample)%PATH)//'std.out'
   SWRITE(UNIT_stdOut,'(A,A)') ' Errorfile: ', TRIM(Examples(iExample)%PATH)//'err.out'
   CALL AddError(MPIthreadsStr,'Mismatch of error norms',iExample,iSubExample,ErrorStatus=1,ErrorCode=3)
+END IF
+
+! ConvergenceTest
+IF(Examples(iExample)%ConvergenceTest)THEN
+  IF(iSubExample.EQ.MAX(1,Examples(iExample)%SubExampleNumber))THEN ! after subexample 
+    ! the subexample must be executed with "N" or "MeshFile": check if the convergence was successful
+    CALL CompareConvergence(iExample)
+  END IF
 END IF
 
 ! diff h5 file
@@ -133,13 +141,12 @@ SUBROUTINE CompareConvergence(iExample)
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_RegressionCheck_Tools,   ONLY: AddError
 USE MOD_RegressionCheck_Vars,    ONLY: Examples
+USE MOD_RegressionCheck_tools,   ONLY: str2int,CalcOrder
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER,INTENT(IN)             :: iExample!,iSubExample
-!CHARACTER(LEN=*),INTENT(IN)    :: MPIthreadsStr
+INTEGER,INTENT(IN)             :: iExample
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -147,11 +154,111 @@ INTEGER,INTENT(IN)             :: iExample!,iSubExample
 REAL,ALLOCATABLE               :: ReferenceNorm(:,:)                !> L2 and Linf norm of the executed example from a reference
                                                                     !> solution
 INTEGER                        :: ErrorStatus                       !> Error-code of regressioncheck
+INTEGER                        :: iSTATUS
+INTEGER                        :: I,J,K
+INTEGER                        :: NumberOfCellsInteger
+INTEGER                        :: iSubExample,p
+REAL,ALLOCATABLE               :: order(:,:)
 !==================================================================================================================================
 ! -----------------------------------------------------------------------------------------------------------------------
 ! compare the results and write error messages for the current case
 ! -----------------------------------------------------------------------------------------------------------------------
 
+DO I=1,Examples(iExample)%SubExampleNumber
+  DO J=1,Examples(iExample)%nVar
+      write(*, '(E25.14)', ADVANCE = "NO") Examples(iExample)%ConvergenceTestArray(I,J)
+    IF(J.EQ.Examples(iExample)%nVar)THEN
+      SWRITE(UNIT_stdOut,'(A)')''
+    END IF
+  END DO
+END DO
+SWRITE(UNIT_stdOut,'(A)')''
+
+! p-convergence
+IF(TRIM(Examples(iExample)%ConvergenceTestType).EQ.'p')THEN
+  SWRITE(UNIT_stdOut,'(A)')'p-convergence'
+  CALL str2int(ADJUSTL(TRIM(Examples(iExample)%NumberOfCellsStr(1))) &
+             ,NumberOfCellsInteger,iSTATUS) ! sanity check if the number of threads is correct
+  print*,"NumberOfCellsInteger=",NumberOfCellsInteger
+  SWRITE(UNIT_stdOut,'(A)')''
+  
+  SWRITE(UNIT_stdOut,'(A)')'ConvergenceTestGridSize'
+  DO iSubExample=1,Examples(iExample)%SubExampleNumber
+    CALL str2int(ADJUSTL(TRIM(Examples(iExample)%SubExampleOption(iSubExample))),p,iSTATUS)
+    Examples(iExample)%ConvergenceTestGridSize(iSubExample)= Examples(iExample)%ConvergenceTestDomainSize/&
+                                                       (NumberOfCellsInteger*(p+1))
+  END DO
+  DO I=1,Examples(iExample)%SubExampleNumber
+        write(*, '(E25.14)') Examples(iExample)%ConvergenceTestGridSize(I)
+  END DO
+  SWRITE(UNIT_stdOut,'(A)')''
+
+  ALLOCATE(order(Examples(iExample)%SubExampleNumber-1,Examples(iExample)%nVar))
+  SWRITE(UNIT_stdOut,'(A)')'order'
+  DO J=1,Examples(iExample)%nVar
+    DO I=1,Examples(iExample)%SubExampleNumber-1
+      CALL CalcOrder(2,Examples(iExample)%ConvergenceTestGridSize(I:I+1),&
+                       Examples(iExample)%ConvergenceTestArray(I:I+1,J),order(I,J))
+    END DO
+  END DO
+  DO I=1,Examples(iExample)%SubExampleNumber-1
+    DO J=1,Examples(iExample)%nVar
+        write(*, '(E25.14)', ADVANCE = "NO") order(I,J)
+      IF(J.EQ.Examples(iExample)%nVar)THEN
+        SWRITE(UNIT_stdOut,'(A)')''
+      END IF
+    END DO
+  END DO
+  SWRITE(UNIT_stdOut,'(A)')''
+END IF
+
+! h-convergence
+IF(TRIM(Examples(iExample)%ConvergenceTestType).EQ.'h')THEN
+  SWRITE(UNIT_stdOut,'(A)')'h-convergence'
+  !ALLOCATE(NumberOfCellsInteger(Examples(iExample)%SubExampleNumber))
+  !NumberOfCellsStr=ADJUSTL(TRIM(Examples(iExample)%NumberOfCellsStr(iSubExample)))
+  DO iSubExample=1,Examples(iExample)%SubExampleNumber
+  END DO
+  SWRITE(UNIT_stdOut,'(A,E25.14)')'polynomial degree approx ',Examples(iExample)%ConvergenceTestValue-1.
+  SWRITE(UNIT_stdOut,'(A)')''
+
+  SWRITE(UNIT_stdOut,'(A)')'ConvergenceTestGridSize'
+  DO iSubExample=1,Examples(iExample)%SubExampleNumber
+    CALL str2int(ADJUSTL(TRIM(Examples(iExample)%NumberOfCellsStr(iSubExample))) &
+                 ,NumberOfCellsInteger,iSTATUS) ! sanity check if the number of threads is correct
+    print*,"NumberOfCellsInteger=",NumberOfCellsInteger
+    !CALL str2int(ADJUSTL(TRIM(Examples(iExample)%SubExampleOption(iSubExample))),p,iSTATUS)
+    Examples(iExample)%ConvergenceTestGridSize(iSubExample)= Examples(iExample)%ConvergenceTestDomainSize/&
+                                                       (NumberOfCellsInteger*(Examples(iExample)%ConvergenceTestValue-1.+1.))
+  END DO
+  DO I=1,Examples(iExample)%SubExampleNumber
+        write(*, '(E25.14)') Examples(iExample)%ConvergenceTestGridSize(I)
+  END DO
+  SWRITE(UNIT_stdOut,'(A)')''
+
+  ALLOCATE(order(1,Examples(iExample)%nVar))
+  SWRITE(UNIT_stdOut,'(A)')'order'
+  DO J=1,Examples(iExample)%nVar
+    !DO I=1,Examples(iExample)%SubExampleNumber-1
+      CALL CalcOrder(Examples(iExample)%SubExampleNumber,Examples(iExample)%ConvergenceTestGridSize(:),&
+                                                         Examples(iExample)%ConvergenceTestArray(:,J),order(1,J))
+    !END DO
+  END DO
+  !DO I=1,Examples(iExample)%SubExampleNumber-1
+    DO J=1,Examples(iExample)%nVar
+        write(*, '(E25.14)', ADVANCE = "NO") order(1,J)
+      IF(J.EQ.Examples(iExample)%nVar)THEN
+        SWRITE(UNIT_stdOut,'(A)')''
+      END IF
+    END DO
+  !END DO
+  SWRITE(UNIT_stdOut,'(A)')''
+
+
+END IF
+
+print*,"stop"
+stop
 END SUBROUTINE CompareConvergence
 
 
@@ -202,7 +309,7 @@ REAL                         :: LNorm(Examples(iExample)%nVar),L2(Examples(iExam
 REAL                         :: eps
 !==================================================================================================================================
 
-! get fileid and open file
+! get fileID and open file
 ioUnit=GETFREEUNIT()
 FileName=TRIM(Examples(iExample)%PATH)//'std.out'
 INQUIRE(File=FileName,EXIST=ExistFile)
@@ -222,7 +329,7 @@ LInfCompare=.TRUE.
 LNormCompare=1
 DO 
   READ(ioUnit,'(A)',IOSTAT=iSTATUS) temp1!,temp2,LNorm(1),LNorm(2),LNorm(3),LNorm(4),LNorm(5)
-  IF(iSTATUS.EQ.-1) EXIT
+  IF(iSTATUS.EQ.-1) EXIT ! End Of File (EOF) reached: exit the loop
   
   READ(temp1,*,IOSTAT=iSTATUS2) temp2,temp3,LNorm
   IF(STRICMP(temp2,'L_2')) THEN
@@ -238,6 +345,11 @@ CLOSE(ioUnit)
 ! when NaN is encountered set the values to HUGE
 IF(ANY(ISNAN(L2)))   L2  =HUGE(1.)
 IF(ANY(ISNAN(LInf))) LInf=HUGE(1.)
+
+! Save values for ConvergenceTest
+IF(Examples(iExample)%ConvergenceTest)THEN
+  Examples(iExample)%ConvergenceTestArray(iSubExample,1:Examples(iExample)%nVar)=L2(1:Examples(iExample)%nVar)
+END IF
 
 ! compare the retrieved norms from the std.out file
 IF(PRESENT(ReferenceNorm))THEN ! use user-defined norm if present, else use 0.001*SQRT(PP_RealTolerance)
