@@ -1,12 +1,12 @@
 ## Taylor Green Vortex 
 
 \hypertarget{tutorial:tgv}{}
-This tutorial describes how to set up and run the basic test case for turbulent flows, the Taylor-Green-Vortex (TGV). We will learn how to avoid catastrophic failure of the code due to non-linear instabilities. This is done by using
-polynomial de-aliasing. In a second step we add the sub grid scale model of Smagorinsky. The tutorail assumes that you are familiar with the general FLEXI and HOPR work flow (please finish the previous tutorials first if this sounds strange to you).
+This tutorial describes how to set up and run the basic test case for turbulent flows, the Taylor-Green-Vortex (TGV) - see e.g. [@gassner2013accuracy]. We will learn how to avoid catastrophic failure of the code due to non-linear instabilities. This is done by using
+polynomial de-aliasing. In a second step we add the sub grid scale model of Smagorinsky. The tutorial assumes that you are familiar with the general FLEXI and HOPR work flow (please finish the previous tutorials first if this sounds strange to you).
 
 ### Flow description
 
-The initial condition to the (TGV) is a sinus distribution in the u and v velocity components. This leads to rapid production of turbulent structures, after a shot initial laminar phase. While the tes case is incompressiple in principle,
+The initial condition to the (TGV) is a sinus distribution in the u and v velocity components. This leads to rapid production of turbulent structures, after a shot initial laminar phase. While the test case is incompressible in principle,
 we solve it here in a compressible setting. The chosen Mach number with respect to the highest velocity in the field is $0.1$. The Reynolds number of the flow is defined as $1/\nu$. The domain is setup as a triple periodic box with edge length $2\pi$.
 ![](tutorials/05_taylorGreenVortex/dns_reference.png)
 
@@ -24,13 +24,13 @@ Make sure that **FLEXI** is compiled with the cmake options listed in the follow
 | FLEXI_EDDYVISCOSITY             | ON                 |  optional    |
 | FLEXI_TESTCASE                  | taylorgreenvortex  |  optional    |
 
-Table: Cmake options for the cavity simulation. \label{tab:tgv_cmakeoptions}
+Table: CMake options for the cavity simulation. \label{tab:tgv_cmakeoptions}
 
 For others you may keep the default values. Compile the code.
 
 #### Mesh Generation with HOPR
 
-We use a mesh with 4 cells per direction for the tutorial. In case you want to generate other meshes the parameter file for HOPR is inculded in the tutorial directory (parameter_hopr.ini),
+We use a mesh with 4 cells per direction for the tutorial. In case you want to generate other meshes the parameter file for HOPR is included in the tutorial directory (parameter_hopr.ini),
 the default mesh is included. Using 4 cells with a polynomial degree of $N=7$, means we use the typical large eddy setup of $32$ DOF per direction.
 
 ### Tutorial - Flow at $Re=1600$
@@ -53,7 +53,7 @@ The parameters in the file are grouped thematically, however, this is not mandat
 
 ##### Output 
 
-The test case has its own analyziation output (PROJECTNAME_TGVAnalysis.csv), that we will use. We don't look at flow visualization in this tutorial. Besides other interesting quantities, the file contains the incompressible dissipation rate. This is the resolved dissipation of the gradient field, computed as the integral over the domain of the strain rate tensor norm $S_{ij}S_{ij}$, times viscosity times $2$. It is stored in the second column of the file. We will use this quantity in the tutorial to verify your results.
+The test case has its own analyze output (PROJECTNAME_TGVAnalysis.csv), that we will use. We don't look at flow visualization in this tutorial. Besides other interesting quantities, the file contains the incompressible dissipation rate. This is the resolved dissipation of the gradient field, computed as the integral over the domain of the strain rate tensor norm $S_{ij}S_{ij}$, times viscosity times $2$. It is stored in the second column of the file. We will use this quantity in the tutorial to verify your results.
 
 ##### Interpolation / Discretization parameters
 
@@ -66,7 +66,7 @@ The test case has its own analyziation output (PROJECTNAME_TGVAnalysis.csv), tha
 
 ~~~~~~~
 
-The parameter *N* sets the degree of the solution polynomial, e.g. in this example, the solution is approximated by a polynomial of degree $7$ in each spatial direction. This results in $(N+1)^3$ degrees of freedom for each (3D) element. In general, *N* can be chosen to be any integer greater or equal to $1$, however, the discretization and the timestep calculation has not extensively been tested beyond $N\approx 23$. Usually, for a good compromise of performance and accuracy is found for $N\in[3,..,9]$.
+The parameter *N* sets the degree of the solution polynomial, e.g. in this example, the solution is approximated by a polynomial of degree $7$ in each spatial direction. This results in $(N+1)^3$ degrees of freedom for each (3D) element. In general, *N* can be chosen to be any integer greater or equal to $1$, however, the discretization and the timestep calculation has not extensively been tested beyond $N\approx 23$. Usually, a good compromise of performance and accuracy is found for $N\in[3,..,9]$.
 
 To apply polynomial de-aliasing there are the following options:
 
@@ -86,9 +86,9 @@ To apply polynomial de-aliasing there are the following options:
 
 ~~~~~~~
 
-FLEXI has three ways of doing polynomial de-aliasing. Mode 0: don't do it. Mode 1: a filter is applyd to the time-update $(J*U_t)$. The filter is formulated as a Galerkin projection of degree $N$ to $NUnder$, the effective resolution is thus $NUnder$. Mode 2: in principle identical to Mode 1, but takes into account non-linear metric terms. For the linear mesh of this tutorial the result is identical, while Mode 2 is slightly more computational expensive, so we omit it. Mode 3: applies the projection filter only to the advective part of the discretisation, ie ignoring the viscous flux. This results in an computationally more efficient scheme. Filtering is here from $NOver$ to $N$, thus the effective resolution is on $N$ in contrast to mode 1 and 2.
+FLEXI has three ways of doing polynomial de-aliasing. Mode 0: don't do it. Mode 1: a filter is applied to the time-update $(J*U_t)$. The filter is formulated as a Galerkin projection of degree $N$ to $NUnder$, the effective resolution is thus $NUnder$. Mode 2: in principle identical to Mode 1, but takes into account non-linear metric terms. For the linear mesh of this tutorial the result is identical, while Mode 2 is slightly more computational expensive, so we omit it. Mode 3: applies the projection filter only to the advective part of the discretization, i.e. ignoring the viscous flux. This results in a computationally more efficient scheme. Filtering is here from $NOver$ to $N$, thus the effective resolution is on $N$ in contrast to mode 1 and 2.
 
-For FLEXI we can run under-resolved computations without sub grid scale model. The only artifical dissiaption is then provided by the Riemann solver used for the inter-cell fluxes. You can change the Riemann solver to see the effect with the following paramerters:
+For FLEXI we can run under-resolved computations without sub grid scale model. The only artifical dissipation is then provided by the Riemann solver used for the inter-cell fluxes. You can change the Riemann solver to see the effect with the following parameters:
 
 ~~~~~~~
     ! ================================================ !
@@ -142,13 +142,13 @@ First we run FLEXI without overintegration/de-aliasing. We will find that the co
 
 
 #### Part II: Overintegration
-We no use overintegration by changing the respective settings in the parameter_flexi.ini file as described above. You can try and use any of the modes 1 or 3. You can compare your result to the plot below.
+We now use overintegration by changing the respective settings in the parameter_flexi.ini file as described above. You can try and use any of the modes 1 or 3. You can compare your result to the plot below.
 ![](tutorials/05_taylorGreenVortex/les_dealiasing.png)
 
 
 
 #### Part III: Explicit LES model
 
-To see the effect of adding explicit eddy viscosity we activate the LES model (Smagorinsky) as described above. To obtain the reference result of the following plot set CS=0.1. Feel free to play around with the constant, have fun!
+To see the effect of adding explicit eddy viscosity we activate the LES model (Smagorinsky) as described above. To obtain the reference result of the following plot set $CS=0.1$. Feel free to play around with the constant, have fun!
 ![](tutorials/05_taylorGreenVortex/les_smago_oi.png)
 
