@@ -53,6 +53,7 @@ CHARACTER(LEN=255),POINTER     :: VarNames_p(:)
 REAL,POINTER                   :: Coords_p(:,:,:,:,:)
 REAL,POINTER                   :: Values_p(:,:,:,:,:)
 CHARACTER(LEN=255)             :: FileString_DG
+CHARACTER(LEN=255)             :: FileString_Surf
 #if FV_ENABLED                            
 CHARACTER(LEN=255)             :: FileString_FV
 CHARACTER(LEN=255)             :: FileString_multiblock
@@ -121,7 +122,12 @@ DO iArg=1+skipArgs,nArgs
     FileString_multiblock=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))//'.vtm'
     CALL WriteVTKMultiBlockDataSet(FileString_multiblock,FileString_DG,FileString_FV)
   ENDIF
+
 #endif
+  ! Surface data
+  FileString_Surf=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Surf',OutputTime))//'.vtu'
+  CALL WriteDataToVTK(nVal,NVisu,nBCSidesVisu,VarNames_p,CoordsSurfVisu_DG,USurfVisu_DG,FileString_Surf,&
+      dim=2,DGFV=0,nValAtLastDimension=.TRUE.)
 END DO
 
 END PROGRAM 

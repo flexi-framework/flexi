@@ -112,6 +112,6 @@ REAL,ALLOCATABLE                  :: UCalcBoundary_DG(:,:,:,:)
 INTEGER                           :: nBCSidesVisu
 INTEGER,ALLOCATABLE               :: mapBCSides(:)
 INTEGER,ALLOCATABLE               :: nSidesPerBCNameVisu(:)
-REAL(C_DOUBLE),ALLOCATABLE,TARGET :: USurfVisu_DG(:,:,:,:)     ! state at visu points
-REAL(C_DOUBLE),ALLOCATABLE,TARGET :: CoordsSurfVisu_DG(:,:,:,:)! visu coordinates
+REAL,POINTER                      :: USurfVisu_DG(     :,:,:,:,:) ! state at visu points
+REAL,POINTER                      :: CoordsSurfVisu_DG(:,:,:,:,:) ! visu coordinates
 END MODULE MOD_Posti_Vars

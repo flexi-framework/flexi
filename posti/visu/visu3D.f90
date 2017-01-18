@@ -580,8 +580,6 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
                         coordsFV_out,valuesFV_out,nodeidsFV_out, &
                         varnames_out,components_out)
   
-  !CALL WriteDataToVTK(nVarCalc,NVisu,nBCSidesVisu,VarNames_p,Coords_p,Values_p,FileString_FV,&
-      !dim=VisuDimension,DGFV=1,nValAtLastDimension=.TRUE.)
 END IF
 
 MeshFile_old          = MeshFile

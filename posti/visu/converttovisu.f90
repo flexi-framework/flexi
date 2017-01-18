@@ -68,7 +68,7 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: iElem,iSide,iVar,iVarVisu,iVarCalc
+INTEGER            :: iElem,iSide,iVar,iVarVisu,iVarCalc,allostat
 REAL,ALLOCATABLE   :: Vdm_N_NVisu(:,:)                  ! Vandermonde from state to visualisation nodes
 !===================================================================================================================================
 
@@ -77,9 +77,9 @@ ALLOCATE(Vdm_N_NVisu(0:NVisu,0:PP_N))
 CALL GetVandermonde(PP_N,NodeType,NVisu,NodeTypeVisuPosti,Vdm_N_NVisu,modal=.FALSE.)
 ! convert DG solution to UVisu_DG
 SDEALLOCATE(UVisu_DG)
-SDEALLOCATE(USurfVisu_DG)
+DEALLOCATE(USurfVisu_DG,STAT=allostat) ! Is now a pointer, to check allocation status does not work
 ALLOCATE(UVisu_DG(0:NVisu,0:NVisu,0:NVisu,nElems_DG,nVarVisuTotal))
-ALLOCATE(USurfVisu_DG(0:NVisu,0:NVisu,nBCSidesVisu,nVarVisuTotal))
+ALLOCATE(USurfVisu_DG(0:NVisu,0:NVisu,1,nBCSidesVisu,nVarVisuTotal))
 DO iVar=1,nVarDep
   IF (mapVisu(iVar).GT.0) THEN
     iVarCalc = mapCalc(iVar) 
@@ -88,7 +88,7 @@ DO iVar=1,nVarDep
       CALL ChangeBasis3D(PP_N,NVisu,Vdm_N_NVisu,UCalc_DG(:,:,:,iElem,iVarCalc),UVisu_DG(:,:,:,iElem,iVarVisu))
     END DO
     DO iSide = 1,nBCSidesVisu
-      CALL ChangeBasis2D(PP_N,NVisu,Vdm_N_NVisu,UCalcBoundary_DG(:,:,iSide,iVarCalc),USurfVisu_DG(:,:,iSide,iVarVisu))
+      CALL ChangeBasis2D(PP_N,NVisu,Vdm_N_NVisu,UCalcBoundary_DG(:,:,iSide,iVarCalc),USurfVisu_DG(:,:,1,iSide,iVarVisu))
     END DO 
   END IF
 END DO 

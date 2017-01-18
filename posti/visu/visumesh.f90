@@ -60,7 +60,7 @@ USE MOD_Mesh_Vars          ,ONLY: nElems,Elem_xGP,Face_xGP,nBCSides
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: iElem, iElem_DG,iSide,iSideVisu
+INTEGER            :: iElem, iElem_DG,iSide,iSideVisu,allostat
 REAL,ALLOCATABLE   :: Vdm_N_NVisu(:,:)    
 #if FV_ENABLED
 INTEGER            :: iElem_FV
@@ -81,9 +81,9 @@ ALLOCATE(Vdm_N_NVisu(0:NVisu,0:Nloc))
 CALL GetVandermonde(Nloc,NodeType_loc,NVisu   ,NodeTypeVisuPosti  ,Vdm_N_NVisu   ,modal=.FALSE.)
 ! convert coords of DG elements
 SDEALLOCATE(CoordsVisu_DG)
-SDEALLOCATE(CoordsSurfVisu_DG)
+DEALLOCATE(CoordsSurfVisu_DG,STAT=allostat) ! Is now a pointer, to check allocation status does not work
 ALLOCATE(CoordsVisu_DG(3,0:NVisu,0:NVisu,0:NVisu,nElems_DG))
-ALLOCATE(CoordsSurfVisu_DG(3,0:NVisu,0:NVisu,nBCSidesVisu))
+ALLOCATE(CoordsSurfVisu_DG(3,0:NVisu,0:NVisu,1,nBCSidesVisu))
 DO iElem_DG = 1,nElems_DG
   iElem = mapElems_DG(iElem_DG)
   CALL ChangeBasis3D(3,Nloc,NVisu,   Vdm_N_NVisu,   NodeCoords_loc(:,:,:,:,iElem),CoordsVisu_DG   (:,:,:,:,iElem_DG))
@@ -91,7 +91,7 @@ END DO
 DO iSide=1,nBCSides
   iSideVisu = mapBCSides(iSide)
   IF (iSideVisu.GT.0)THEN
-    CALL ChangeBasis2D(3,Nloc,NVisu,   Vdm_N_NVisu, Face_xGP(:,:,:,0,iSide),CoordsSurfVisu_DG(:,:,:,iSideVisu))
+    CALL ChangeBasis2D(3,Nloc,NVisu,   Vdm_N_NVisu, Face_xGP(:,:,:,0,iSide),CoordsSurfVisu_DG(:,:,:,1,iSideVisu))
   END IF
 END DO
 SDEALLOCATE(Vdm_N_NVisu)
