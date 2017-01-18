@@ -1244,7 +1244,7 @@ DO WHILE (associated(current))
         opt%strList(1) = TRIM(string_in)
         opt%intList(1) = int_in
         ! Save biggest length of string entry
-        opt%maxLength = LEN_TRIM(string_in)+4+INT(LOG10(REAL(int_in)))
+        opt%maxLength = LEN_TRIM(string_in)+4+INT(LOG10(REAL(ABS(int_in))+EPSILON(0.0)))
       ELSE
         ! Subsequent call to addEntry, re-allocate the lists with one additional entry
         listSize = SIZE(opt%strList)    ! opt size of the list
@@ -1268,7 +1268,7 @@ DO WHILE (associated(current))
         opt%strList(listSize+1) = TRIM(string_in)
         opt%intList(listSize+1) = int_in
         ! Save biggest length of string entry
-        opt%maxLength = MAX(opt%maxLength,LEN_TRIM(string_in)+4+INT(LOG10(REAL(int_in))))
+        opt%maxLength = MAX(opt%maxLength,LEN_TRIM(string_in)+4+INT(LOG10(REAL(ABS(int_in))+EPSILON(0.0))))
       END IF
       RETURN
     CLASS DEFAULT

@@ -271,7 +271,7 @@ DO
 #endif
   IF(nCalcTimestep.LT.1)THEN
     dt_Min=CALCTIMESTEP(errType)
-    nCalcTimestep=MIN(FLOOR(ABS(LOG10(ABS(dt_MinOld/dt_Min-1.)**2.*100.+1.e-16))),nCalcTimeStepMax)
+    nCalcTimestep=MIN(FLOOR(ABS(LOG10(ABS(dt_MinOld/dt_Min-1.)**2.*100.+EPSILON(0.)))),nCalcTimeStepMax)
     dt_MinOld=dt_Min
     IF(errType.NE.0)THEN
       CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,&
