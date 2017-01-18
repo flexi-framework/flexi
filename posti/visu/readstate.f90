@@ -268,7 +268,9 @@ ELSE
 END IF
 IF (changedMeshFile) THEN
   CALL FinalizeMesh()
-  CALL InitMesh(meshMode=0,MeshFile_IN=MeshFile)
+  ! TODO: if no SurfVisu, use meshMode=0
+  ! TODO: move build of Face_xGP to meshMode=1
+  CALL InitMesh(meshMode=2,MeshFile_IN=MeshFile)
 END IF
 
 SDEALLOCATE(U)

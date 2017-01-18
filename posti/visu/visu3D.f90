@@ -84,7 +84,7 @@ SUBROUTINE visu3d_requestInformation(mpi_comm_IN, strlen_state, statefile_IN, va
 ! MODULES
 USE MOD_Globals
 USE MOD_MPI        ,ONLY: InitMPI
-USE MOD_Posti_Vars ,ONLY: VarNamesTotal
+USE MOD_Posti_Vars ,ONLY: VarNamesTotal,BoundaryNamesTotal
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -100,7 +100,7 @@ CHARACTER(LEN=255),POINTER            :: varnames_pointer(:)
 statefile = cstrToChar255(statefile_IN, strlen_state)
 
 CALL InitMPI(mpi_comm_IN) 
-CALL visu3d_getVarNamesAndFileType(statefile,VarNamesTotal)
+CALL visu3d_getVarNamesAndFileType(statefile,VarNamesTotal,BoundaryNamesTotal)
 IF (ALLOCATED(VarNamesTotal)) THEN
   varnames_pointer => VarNamesTotal
   varnames%len  = SIZE(varnames_pointer)*255 
@@ -117,18 +117,19 @@ END SUBROUTINE visu3d_requestInformation
 !> that are available in the current equation system as well as the additional variables read from the state file.
 !> The additional variables are stored in the datasets 'ElemData' (elementwise data) and 'FieldData' (pointwise data).
 !===================================================================================================================================
-SUBROUTINE visu3d_getVarNamesAndFileType(statefile,varnames_loc) 
+SUBROUTINE visu3d_getVarNamesAndFileType(statefile,varnames_loc, bcnames_loc) 
 USE MOD_Globals
-USE MOD_Posti_Vars     ,ONLY: FileType,VarNamesHDF5
+USE MOD_Posti_Vars     ,ONLY: FileType,VarNamesHDF5,nBCNamesTotal
 USE MOD_HDF5_Input     ,ONLY: OpenDataFile,CloseDataFile,GetDataSize,GetVarNames,ISVALIDMESHFILE,ISVALIDHDF5FILE,ReadAttribute
-USE MOD_HDF5_Input     ,ONLY: DatasetExists
-USE MOD_IO_HDF5        ,ONLY: GetDatasetNamesInGroup,File_ID,HSize
+USE MOD_HDF5_Input     ,ONLY: DatasetExists,HSize,nDims,ReadArray
+USE MOD_IO_HDF5        ,ONLY: GetDatasetNamesInGroup,File_ID
 USE MOD_StringTools    ,ONLY: STRICMP
 USE MOD_EOS_Posti_Vars ,ONLY: DepNames,nVarTotalEOS
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 CHARACTER(LEN=255),INTENT(IN)                       :: statefile
 CHARACTER(LEN=255),INTENT(INOUT),ALLOCATABLE,TARGET :: varnames_loc(:)
+CHARACTER(LEN=255),INTENT(INOUT),ALLOCATABLE,TARGET :: bcnames_loc(:)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                                             :: i,j,nVar,dims
@@ -136,6 +137,8 @@ LOGICAL                                             :: varnames_found,readDGsolu
 CHARACTER(LEN=255),ALLOCATABLE                      :: datasetNames(:)
 CHARACTER(LEN=255),ALLOCATABLE                      :: varnames_tmp(:)
 CHARACTER(LEN=255),ALLOCATABLE                      :: tmp(:)
+CHARACTER(LEN=255)                                  :: MeshFile_loc
+INTEGER                                             :: Offset=0 ! Every process reads all BCs
 !===================================================================================================================================
 
 IF (ISVALIDMESHFILE(statefile)) THEN      ! MESH
@@ -216,7 +219,19 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! other file
     END DO
     nVar = nVar + SIZE(varnames_tmp)
   END DO
+
+  CALL ReadAttribute(File_ID,'MeshFile',1,StrScalar =MeshFile_loc)
   CALL CloseDataFile()
+
+  CALL OpenDataFile(MeshFile_loc,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+  CALL GetDataSize(File_ID,'BCNames',nDims,HSize)
+  CHECKSAFEINT(HSize(1),4)
+  nBCNamesTotal=INT(HSize(1),4)
+  DEALLOCATE(HSize)
+  ALLOCATE(bcnames_loc(nBCNamesTotal))
+  CALL ReadArray('BCNames',1,(/nBCNamesTotal/),Offset,1,StrArray=bcnames_loc)  ! Type is a dummy type only
+  CALL CloseDataFile()
+
   SDEALLOCATE(datasetNames)
 END IF
 END SUBROUTINE visu3d_getVarNamesAndFileType
@@ -247,7 +262,7 @@ CHARACTER(LEN=255),INTENT(INOUT) :: postifile
 INTEGER                          :: nElems_State
 CHARACTER(LEN=255)               :: NodeType_State 
 !===================================================================================================================================
-CALL visu3d_getVarNamesAndFileType(statefile,VarNamesTotal)
+CALL visu3d_getVarNamesAndFileType(statefile,VarNamesTotal,BoundaryNamesTotal)
 IF (STRICMP(statefile,'Mesh')) THEN
     CALL CollectiveStop(__STAMP__, &
         "FileType==Mesh, but we try to initialize a state file!")
@@ -500,6 +515,8 @@ CALL prms%CreateIntOption(   "VisuDimension", "2 = Slice at first Gauss point in
 CALL prms%CreateStringOption("NodeTypeVisu" , "NodeType for visualization. Visu, Gauss,Gauss-Lobatto,Visu_inner"    ,"VISU")
 CALL prms%CreateLogicalOption("DGonly"      , "Visualize FV elements as DG elements."    ,".FALSE.")
 
+CALL prms%CreateStringOption("BoundaryName" , "Names of boundaries for surfaces, which should be visualized.", multiple=.TRUE.)
+
 changedStateFile      = .FALSE.
 changedMeshFile       = .FALSE.
 changedNVisu          = .FALSE.
@@ -562,6 +579,9 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   CALL Visu3D_Build_VTK(coordsDG_out,valuesDG_out,nodeidsDG_out, &
                         coordsFV_out,valuesFV_out,nodeidsFV_out, &
                         varnames_out,components_out)
+  
+  !CALL WriteDataToVTK(nVarCalc,NVisu,nBCSidesVisu,VarNames_p,Coords_p,Values_p,FileString_FV,&
+      !dim=VisuDimension,DGFV=1,nValAtLastDimension=.TRUE.)
 END IF
 
 MeshFile_old          = MeshFile

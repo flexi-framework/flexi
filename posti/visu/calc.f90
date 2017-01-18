@@ -52,13 +52,15 @@ SUBROUTINE CalcQuantities_DG()
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Posti_Vars
-USE MOD_EOS_Posti      ,ONLY: CalcQuantities
-USE MOD_Mesh_Vars      ,ONLY: nElems
-USE MOD_DG_Vars        ,ONLY: U
-USE MOD_StringTools    ,ONLY: STRICMP
+USE MOD_EOS_Posti          ,ONLY: CalcQuantities
+USE MOD_Mesh_Vars          ,ONLY: nElems,nBCSides,BC,BoundaryName,SideToElem,CS2V2
+USE MOD_DG_Vars            ,ONLY: U
+USE MOD_Interpolation_Vars ,ONLY: L_Minus,L_Plus
+USE MOD_StringTools        ,ONLY: STRICMP
 #if PARABOLIC
-USE MOD_Lifting_Vars   ,ONLY: gradUx,gradUy,gradUz
+USE MOD_Lifting_Vars       ,ONLY: gradUx,gradUy,gradUz
 #endif
+USE MOD_ProlongToFace      ,ONLY: EvalElemFace
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -66,6 +68,8 @@ INTEGER            :: maskCalc(nVarDep),nVal(4)
 #if PARABOLIC
 REAL,ALLOCATABLE,DIMENSION(:,:,:,:,:) :: gradUx_tmp,gradUy_tmp,gradUz_tmp
 #endif
+INTEGER            :: iSide,iBC,iElem,locSide,iVar,p,q
+REAL               :: Uface(1:nVarCalc,0:PP_N,0:PP_N)
 !===================================================================================================================================
 ! calc DG solution 
 SWRITE(*,*) "[DG] calc quantities"
@@ -98,6 +102,52 @@ IF(TRIM(FileType).EQ.'State')THEN
     CALL CalcQuantities(nVarCalc,nVal,mapElems_DG,mapCalc,UCalc_DG,maskCalc) 
   END IF
 END IF
+
+ALLOCATE(mapBCSides(1:nBCSides))
+ALLOCATE(nSidesPerBCNameVisu(1:nBCNamesVisu))
+mapBCSides = 0
+nSidesPerBCNameVisu = 0
+nBCSidesVisu = 0
+DO iBC=1,nBCNamesTotal
+  IF (mapBCNames(iBC).GT.0) THEN
+    DO iSide=1,nBCSides
+      iElem = SideToElem(S2E_ELEM_ID,iSide)
+      IF (FV_Elems(iElem).GT.0) CYCLE ! FV element
+      IF (STRICMP(BoundaryName(BC(iSide)),BoundaryNamesTotal(iBC))) THEN
+        nBCSidesVisu = nBCSidesVisu + 1
+        mapBCSides(iSide) = nBCSidesVisu
+        nSidesPerBCNameVisu(mapBCNames(iBC)) = nSidesPerBCNameVisu(mapBCNames(iBC)) + 1
+      END IF
+    END DO
+  END IF
+END DO
+!DO iSide=1,nBCSides
+  !WRITE (*,*) TRIM(BoundaryName(BC(iSide))), mapBCSides(iSide)
+!END DO
+!WRITE (*,*) "nSidesPerBCNameVisu", nSidesPerBCNameVisu
+
+ALLOCATE(UCalcBoundary_DG(0:PP_N,0:PP_N,nBCSidesVisu,1:nVarCalc))
+SWRITE (*,*) 'nBCSidesVisu', nBCSidesVisu
+
+! Prolong to face
+DO iSide=1,nBCSides
+  IF (mapBCSides(iSide).GT.0) THEN
+    iElem = SideToElem(S2E_ELEM_ID,iSide)
+    locSide = SideToElem(S2E_LOC_SIDE_ID, iSide)
+    DO iVar=1,nVarCalc
+      IF(PP_NodeType.EQ.1)THEN
+        CALL EvalElemFace(1,PP_N,UCalc_DG(:,:,:,iElem,iVar:iVar),Uface,L_Minus,L_Plus,locSide)
+      ELSE
+        CALL EvalElemFace(1,PP_N,UCalc_DG(:,:,:,iElem,iVar:iVar),Uface,locSide)
+      END IF
+    END DO 
+    DO q=0,PP_N; DO p=0,PP_N
+      UCalcBoundary_DG(p,q,mapBCSides(iSide),:)=Uface(:,CS2V2(1,p,q,locSide),CS2V2(2,p,q,locSide))
+    END DO; END DO
+  END IF
+END DO
+
+
 END SUBROUTINE CalcQuantities_DG
 
 #if FV_ENABLED 

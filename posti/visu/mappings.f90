@@ -177,6 +177,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER             :: iVar,iVar2
 CHARACTER(LEN=255)  :: VarName
+CHARACTER(LEN=255)  :: BoundaryName
 CHARACTER(LEN=20)   :: format
 !===================================================================================================================================
 ! Read Varnames from parameter file and fill
@@ -255,6 +256,24 @@ mapVisu_old = mapVisu
 WRITE(format,'(I2)') nVarTotal
 SWRITE (*,'(A,'//format//'I3)') "mapCalc ",mapCalc
 SWRITE (*,'(A,'//format//'I3)') "mapVisu ",mapVisu
+
+SDEALLOCATE(mapBCNames)
+ALLOCATE(mapBCNames(1:nBCNamesTotal))
+mapBCNames = 0
+nBCNamesVisu = 0
+! Compare varnames that should be visualized with availabe varnames
+DO iVar=1,CountOption("BoundaryName")
+  BoundaryName = GETSTR("BoundaryName")
+  DO iVar2=1,nBCNamesTotal
+    IF (STRICMP(BoundaryName, BoundaryNamesTotal(iVar2))) THEN
+      mapBCNames(iVar2) = nBCNamesVisu+1
+      nBCNamesVisu = nBCNamesVisu + 1
+    END IF
+  END DO
+END DO
+
+WRITE(format,'(I2)') nBCNamesTotal
+SWRITE (*,'(A,'//format//'I3)') "mapBCNames ",mapBCNames
 
 END SUBROUTINE Build_mapCalc_mapVisu
 

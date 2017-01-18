@@ -42,6 +42,7 @@ END INTERFACE
 
 INTERFACE ChangeBasis2D
   MODULE PROCEDURE ChangeBasis2D
+  MODULE PROCEDURE ChangeBasis2D_SingleVar
 END INTERFACE
 
 INTERFACE ChangeBasis2D_selective
@@ -596,6 +597,40 @@ DO WHILE (SideID < lastSideID)
   END DO
 END DO  
 END SUBROUTINE ChangeBasis2D_selective_overwrite
+
+SUBROUTINE ChangeBasis2D_SingleVar(NIn,NOut,Vdm,X2D_In,X2D_Out)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN)  :: NIn                                     !< Input polynomial degree, no. of points = NIn+1
+INTEGER,INTENT(IN)  :: NOut                                    !< Output polynomial degree, no. of points = NOut+1
+REAL,INTENT(IN)     :: X2D_In(0:NIn,0:NIn)        !< Input field, dimensions must match Dim1,NIn
+REAL,INTENT(OUT)    :: X2D_Out(0:NOut,0:NOut)    !< Output field, dimensions must match Dim1,NOut
+REAL,INTENT(IN)     :: Vdm(0:NOut,0:NIn)                       !< 1D Vandermonde In -> Out
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER             :: iNIn,jNIn,iN_Out,jN_Out
+REAL                :: X2D_Buf1(0:NOut,0:NIn)     ! first intermediate results from 1D interpolations
+!==================================================================================================================================
+X2D_buf1=0.
+! first direction iNIn
+DO jNIn=0,NIn
+  DO iNIn=0,NIn
+    DO iN_Out=0,NOut
+      X2D_Buf1(iN_Out,jNIn)=X2D_Buf1(iN_Out,jNIn)+Vdm(iN_Out,iNIn)*X2D_In(iNIn,jNIn)
+    END DO
+  END DO
+END DO
+X2D_Out=0.
+DO jNIn=0,NIn
+  DO jN_Out=0,NOut
+    DO iN_Out=0,NOut
+      X2D_Out(iN_Out,jN_Out)=X2D_Buf1(iN_Out,jN_Out)+Vdm(jN_Out,jNIn)*X2D_Buf1(iN_Out,jNIn)
+    END DO
+  END DO
+END DO
+END SUBROUTINE ChangeBasis2D_SingleVar
 
 ! TODO: documentation, variable bezeichnung im gleichen Stil wie oben
 SUBROUTINE ChangeBasis1D(Dim1,N_In,N_Out,Vdm,X1D_In,X1D_Out)

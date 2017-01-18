@@ -103,4 +103,15 @@ REAL(C_DOUBLE),ALLOCATABLE,TARGET :: UVisu_FV_2D(:,:,:,:,:)     ! state at visu 
 
 LOGICAL                           :: PostiInitIsDone
 
+INTEGER                           :: nBCNamesTotal
+INTEGER                           :: nBCNamesVisu
+INTEGER,ALLOCATABLE               :: mapBCNames(:)
+CHARACTER(LEN=255),ALLOCATABLE,TARGET :: BoundaryNamesTotal(:)
+REAL,ALLOCATABLE                  :: UCalcBoundary_DG(:,:,:,:)
+
+INTEGER                           :: nBCSidesVisu
+INTEGER,ALLOCATABLE               :: mapBCSides(:)
+INTEGER,ALLOCATABLE               :: nSidesPerBCNameVisu(:)
+REAL(C_DOUBLE),ALLOCATABLE,TARGET :: USurfVisu_DG(:,:,:,:)     ! state at visu points
+REAL(C_DOUBLE),ALLOCATABLE,TARGET :: CoordsSurfVisu_DG(:,:,:,:)! visu coordinates
 END MODULE MOD_Posti_Vars

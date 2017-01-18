@@ -62,13 +62,13 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Posti_Vars
 USE MOD_Interpolation      ,ONLY: GetVandermonde
-USE MOD_ChangeBasis        ,ONLY: ChangeBasis3D
+USE MOD_ChangeBasis        ,ONLY: ChangeBasis3D,ChangeBasis2D
 USE MOD_Interpolation_Vars ,ONLY: NodeType,NodeTypeVisu
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: iElem,iVar,iVarVisu,iVarCalc
+INTEGER            :: iElem,iSide,iVar,iVarVisu,iVarCalc
 REAL,ALLOCATABLE   :: Vdm_N_NVisu(:,:)                  ! Vandermonde from state to visualisation nodes
 !===================================================================================================================================
 
@@ -77,7 +77,9 @@ ALLOCATE(Vdm_N_NVisu(0:NVisu,0:PP_N))
 CALL GetVandermonde(PP_N,NodeType,NVisu,NodeTypeVisuPosti,Vdm_N_NVisu,modal=.FALSE.)
 ! convert DG solution to UVisu_DG
 SDEALLOCATE(UVisu_DG)
+SDEALLOCATE(USurfVisu_DG)
 ALLOCATE(UVisu_DG(0:NVisu,0:NVisu,0:NVisu,nElems_DG,nVarVisuTotal))
+ALLOCATE(USurfVisu_DG(0:NVisu,0:NVisu,nBCSidesVisu,nVarVisuTotal))
 DO iVar=1,nVarDep
   IF (mapVisu(iVar).GT.0) THEN
     iVarCalc = mapCalc(iVar) 
@@ -85,6 +87,9 @@ DO iVar=1,nVarDep
     DO iElem = 1,nElems_DG
       CALL ChangeBasis3D(PP_N,NVisu,Vdm_N_NVisu,UCalc_DG(:,:,:,iElem,iVarCalc),UVisu_DG(:,:,:,iElem,iVarVisu))
     END DO
+    DO iSide = 1,nBCSidesVisu
+      CALL ChangeBasis2D(PP_N,NVisu,Vdm_N_NVisu,UCalcBoundary_DG(:,:,iSide,iVarCalc),USurfVisu_DG(:,:,iSide,iVarVisu))
+    END DO 
   END IF
 END DO 
 SDEALLOCATE(Vdm_N_NVisu)
