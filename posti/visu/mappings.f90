@@ -187,7 +187,7 @@ SDEALLOCATE(mapVisu)
 ALLOCATE(mapVisu(1:nVarTotal))
 mapVisu = 0
 nVarVisuTotal = 0
-! Compare varnames that should be visualized with availabe varnames
+! Compare varnames that should be visualized with available varnames
 DO iVar=1,CountOption("VarName")
   VarName = GETSTR("VarName")
   DO iVar2=1,nVarTotal
@@ -257,11 +257,14 @@ WRITE(format,'(I2)') nVarTotal
 SWRITE (*,'(A,'//format//'I3)') "mapCalc ",mapCalc
 SWRITE (*,'(A,'//format//'I3)') "mapVisu ",mapVisu
 
+! Build the mapping for the surface visualization
+! mapBCNames(iBC) stores the ascending visualization index of the all boundaries. 0 means no visualization.
+! nBCNamesVisu is the number of boundaries to be visualized.
 SDEALLOCATE(mapBCNames)
 ALLOCATE(mapBCNames(1:nBCNamesTotal))
 mapBCNames = 0
 nBCNamesVisu = 0
-! Compare varnames that should be visualized with availabe varnames
+! Compare boundary names that should be visualized with available varnames
 DO iVar=1,CountOption("BoundaryName")
   BoundaryName = GETSTR("BoundaryName")
   DO iVar2=1,nBCNamesTotal
@@ -272,7 +275,6 @@ DO iVar=1,CountOption("BoundaryName")
   END DO
 END DO
 
-WRITE(format,'(I2)') nBCNamesTotal
 SWRITE (*,'(A,'//format//'I3)') "mapBCNames ",mapBCNames
 
 END SUBROUTINE Build_mapCalc_mapVisu

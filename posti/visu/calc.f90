@@ -103,6 +103,13 @@ IF(TRIM(FileType).EQ.'State')THEN
   END IF
 END IF
 
+
+!------ Surface visualization ----------!
+
+! Build surface visualization mappings. 
+! mapBCSides(iBCSide) contains the ascending index of the visualization boundary sides. They are sorted after the boundary name.
+! 0 means no visualization of this boundary side.
+! nSidesPerBCNameVisu(iBCNamesVisu) contains how many boundary sides belong to each boundary that should be visualized.
 ALLOCATE(mapBCSides(1:nBCSides))
 ALLOCATE(nSidesPerBCNameVisu(1:nBCNamesVisu))
 mapBCSides = 0
@@ -121,15 +128,12 @@ DO iBC=1,nBCNamesTotal
     END DO
   END IF
 END DO
-!DO iSide=1,nBCSides
-  !WRITE (*,*) TRIM(BoundaryName(BC(iSide))), mapBCSides(iSide)
-!END DO
-!WRITE (*,*) "nSidesPerBCNameVisu", nSidesPerBCNameVisu
 
+! Allocate array that stores the calculated variables on the visualization boundary.
 ALLOCATE(UCalcBoundary_DG(0:PP_N,0:PP_N,nBCSidesVisu,1:nVarCalc))
 SWRITE (*,*) 'nBCSidesVisu', nBCSidesVisu
 
-! Prolong to face
+! Prolong the calculated DG variables to all boundary faces for the surface visualization
 DO iSide=1,nBCSides
   IF (mapBCSides(iSide).GT.0) THEN
     iElem = SideToElem(S2E_ELEM_ID,iSide)

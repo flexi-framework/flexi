@@ -220,16 +220,19 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! other file
     nVar = nVar + SIZE(varnames_tmp)
   END DO
 
+  ! Save mesh file to get boundary names later
   CALL ReadAttribute(File_ID,'MeshFile',1,StrScalar =MeshFile_loc)
+
   CALL CloseDataFile()
 
+  ! Open the mesh file and read all boundary names for surface visualization
   CALL OpenDataFile(MeshFile_loc,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
   CALL GetDataSize(File_ID,'BCNames',nDims,HSize)
   CHECKSAFEINT(HSize(1),4)
   nBCNamesTotal=INT(HSize(1),4)
   DEALLOCATE(HSize)
   ALLOCATE(bcnames_loc(nBCNamesTotal))
-  CALL ReadArray('BCNames',1,(/nBCNamesTotal/),Offset,1,StrArray=bcnames_loc)  ! Type is a dummy type only
+  CALL ReadArray('BCNames',1,(/nBCNamesTotal/),Offset,1,StrArray=bcnames_loc)
   CALL CloseDataFile()
 
   SDEALLOCATE(datasetNames)
@@ -514,7 +517,6 @@ CALL prms%CreateIntOption(   "NVisu"        ,  "Polynomial degree at which solut
 CALL prms%CreateIntOption(   "VisuDimension", "2 = Slice at first Gauss point in zeta-direction to get 2D solution.","3")
 CALL prms%CreateStringOption("NodeTypeVisu" , "NodeType for visualization. Visu, Gauss,Gauss-Lobatto,Visu_inner"    ,"VISU")
 CALL prms%CreateLogicalOption("DGonly"      , "Visualize FV elements as DG elements."    ,".FALSE.")
-
 CALL prms%CreateStringOption("BoundaryName" , "Names of boundaries for surfaces, which should be visualized.", multiple=.TRUE.)
 
 changedStateFile      = .FALSE.
