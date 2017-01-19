@@ -159,6 +159,7 @@ INTEGER                        :: I,J,K
 INTEGER                        :: NumberOfCellsInteger
 INTEGER                        :: iSubExample,p
 REAL,ALLOCATABLE               :: order(:,:)
+REAL                           :: DummyReal
 !==================================================================================================================================
 ! -----------------------------------------------------------------------------------------------------------------------
 ! compare the results and write error messages for the current case
@@ -236,8 +237,19 @@ IF(TRIM(Examples(iExample)%ConvergenceTestType).EQ.'h')THEN
   END DO
   SWRITE(UNIT_stdOut,'(A)')''
 
-  ALLOCATE(order(1,Examples(iExample)%nVar))
   SWRITE(UNIT_stdOut,'(A)')'order'
+  DO I=1,Examples(iExample)%SubExampleNumber-1
+    DO J=1,Examples(iExample)%nVar
+      CALL CalcOrder(2,Examples(iExample)%ConvergenceTestGridSize(I:I+1),&
+                       Examples(iExample)%ConvergenceTestArray(   I:I+1,J),DummyReal)
+      write(*, '(E25.14)', ADVANCE = "NO") DummyReal
+      IF(J.EQ.Examples(iExample)%nVar)THEN
+        SWRITE(UNIT_stdOut,'(A)')''
+      END IF
+    END DO
+  END DO
+  ALLOCATE(order(1,Examples(iExample)%nVar))
+  SWRITE(UNIT_stdOut,'(A)')'order - averaged'
   DO J=1,Examples(iExample)%nVar
     !DO I=1,Examples(iExample)%SubExampleNumber-1
       CALL CalcOrder(Examples(iExample)%SubExampleNumber,Examples(iExample)%ConvergenceTestGridSize(:),&
