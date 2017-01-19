@@ -181,7 +181,7 @@ END SUBROUTINE InitBC
 !==================================================================================================================================
 !> Computes the boundary state for the different boundary conditions.
 !==================================================================================================================================
-SUBROUTINE GetBoundaryState(SideID,t,Nloc,UPrim_boundary,UPrim_master,NormVec,TangVec1,TangVec2,Face_xGP,Additionals)
+SUBROUTINE GetBoundaryState(SideID,t,Nloc,UPrim_boundary,UPrim_master,NormVec,TangVec1,TangVec2,Face_xGP,TangentialVelocities)
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! MODULES                                                                                                                          !
 USE MOD_PreProc
@@ -208,7 +208,7 @@ REAL,INTENT(IN)         :: NormVec(                 3,0:Nloc,0:Nloc,0:FV_ENABLED
 REAL,INTENT(IN)         :: TangVec1(                3,0:Nloc,0:Nloc,0:FV_ENABLED) !< tangent surface vectors 1
 REAL,INTENT(IN)         :: TangVec2(                3,0:Nloc,0:Nloc,0:FV_ENABLED) !< tangent surface vectors 2
 REAL,INTENT(IN)         :: Face_xGP(                3,0:Nloc,0:Nloc,0:FV_ENABLED) !< positions of surface flux points
-REAL,INTENT(OUT)        :: Additionals(             3,0:Nloc,0:Nloc)              !< additional quantities
+REAL,INTENT(OUT)        :: TangentialVelocities(    2,0:Nloc,0:Nloc)              !< tangential velocities for wall BCs (3,4,9)
 REAL,INTENT(OUT)        :: UPrim_boundary(PP_nVarPrim,0:Nloc,0:Nloc)              !< resulting boundary state
 
 ! INPUT / OUTPUT VARIABLES 
@@ -263,17 +263,36 @@ CASE(3,4,9,23,24,25,27)
   END DO; END DO !p,q
 
   SELECT CASE(BCType)
-  CASE(3,4) ! Wall BCs
+  CASE(3,4,9) ! Wall BCs
     DO q=0,Nloc; DO p=0,Nloc
-      Additionals(1,p,q) = PRESSURE_RIEMANN(UPrim_boundary(:,p,q))
+      UPrim_boundary(5,p,q) = PRESSURE_RIEMANN(UPrim_boundary(:,p,q))
+      ! set temperature via ideal gas equation, consistent to density and pressure
+      UPrim_boundary(6,p,q) = UPrim_boundary(5,p,q) / (UPrim_boundary(1,p,q)*R) 
+      TangentialVelocities(1,p,q) = UPrim_boundary(3,p,q) ! save tangential velocities for GetBoundaryFVgradient
+      TangentialVelocities(2,p,q) = UPrim_boundary(4,p,q) ! -"-
     END DO; END DO ! q,p
-  CASE(9)
-    DO q=0,Nloc; DO p=0,Nloc
-      Additionals(1,p,q) = PRESSURE_RIEMANN(UPrim_boundary(:,p,q))
-      Additionals(2,p,q) = UPrim_boundary(3,p,q)
-      Additionals(3,p,q) = UPrim_boundary(4,p,q)
-    END DO; END DO ! q,p
+  END SELECT
 
+  SELECT CASE(BCType)
+  CASE(3) ! Adiabatic wall
+    ! Diffusion: density=inside, velocity=0 (see below, after rotating back to physical space), rhoE=inside
+    ! For adiabatic wall all gradients are 0
+    ! We reconstruct the BC State, rho=rho_L, velocity=0, rhoE_wall = p_Riemann/(Kappa-1)
+    DO q=0,Nloc; DO p=0,Nloc
+      ! UPrim_boundary(2:4) = 0 (this must be done after rotating back to physical space, see below!)
+      UPrim_boundary(6,p,q) = UPrim_master(6,p,q) ! adiabatic => temperature from the inside
+      ! set density via ideal gas equation, consistent to pressure and temperature
+      UPrim_boundary(1,p,q) = UPrim_boundary(5,p,q) / (UPrim_boundary(6,p,q) * R) 
+    END DO; END DO ! q,p
+  CASE(4) ! Isothermal wall
+    ! For isothermal wall, all gradients are from interior
+    ! We reconstruct the BC State, rho=rho_L, velocity=0, rhoE_wall =  rho_L*C_v*Twall
+    DO q=0,Nloc; DO p=0,Nloc
+      ! UPrim_boundary(2:4) = 0 (this must be done after rotating back to physical space, see below!)
+      UPrim_boundary(6,p,q) = RefStatePrim(BCState,6) ! temperature from RefState
+      ! set density via ideal gas equation, consistent to pressure and temperature
+      UPrim_boundary(1,p,q) = UPrim_boundary(5,p,q) / (UPrim_boundary(6,p,q) * R)
+    END DO; END DO ! q,p
   ! Cases 21-29 are taken from NASA report "Inflow/Outflow Boundary Conditions with Application to FUN3D" Jan-Reneé Carlson
   ! and correspond to case BCs 2.1 - 2.9
   ! NOTE: quantities in paper are non-dimensional e.g. T=c^2
@@ -390,6 +409,12 @@ CASE DEFAULT ! unknown BCType
        'no BC defined in navierstokes/getboundaryflux.f90!')
 END SELECT ! BCType
 
+SELECT CASE(BCType)
+CASE(3,4) ! Wall BCs
+  ! no-slip, set velocities to zero
+  UPrim_boundary(2:4,:,:) = 0.
+END SELECT 
+
 END SUBROUTINE GetBoundaryState
 
 !==================================================================================================================================
@@ -446,8 +471,7 @@ INTEGER                              :: BCType,BCState
 REAL                                 :: UPrim_boundary(PP_nVarPrim,0:Nloc,0:Nloc)
 REAL                                 :: UCons_boundary(PP_nVar    ,0:Nloc,0:Nloc)
 REAL                                 :: UCons_master  (PP_nVar    ,0:Nloc,0:Nloc)
-REAL                                 :: P_RP(0:Nloc,0:Nloc)
-REAL                                 :: Additionals(3,0:Nloc,0:Nloc)
+REAL                                 :: TangentialVelocities(2,0:Nloc,0:Nloc)
 #if PARABOLIC
 INTEGER                              :: ivar
 REAL                                 :: nv(3)
@@ -469,7 +493,7 @@ IF (BCType.LT.0) THEN ! testcase boundary condition
                                NormVec,TangVec1,TangVec2,Face_xGP)
 ELSE                       
   CALL GetBoundaryState(SideID,t,Nloc,UPrim_boundary(:,:,:),UPrim_master(:,:,:,SideID),&
-      NormVec(:,:,:,:,SideID),TangVec1(:,:,:,:,SideID),TangVec2(:,:,:,:,SideID),Face_xGP(:,:,:,:,SideID),Additionals)
+      NormVec(:,:,:,:,SideID),TangVec1(:,:,:,:,SideID),TangVec2(:,:,:,:,SideID),Face_xGP(:,:,:,:,SideID),TangentialVelocities)
 
   SELECT CASE(BCType)
   CASE(1) !Periodic already filled!
@@ -495,46 +519,16 @@ ELSE
 
   CASE(3,4,9) ! Walls
     DO q=0,Nloc; DO p=0,Nloc
-      P_RP(p,q) = Additionals(1,p,q)
       ! Now we compute the 1D Euler flux, but use the info that the normal component u=0
       ! we directly tranform the flux back into the Cartesian coords: F=(0,n1*p,n2*p,n3*p,0)^T
       Flux(1  ,p,q,SideID) = 0.
-      Flux(2:4,p,q,SideID) = P_RP(p,q)*NormVec(:,p,q,FVEM,SideID)
+      Flux(2:4,p,q,SideID) = UPrim_boundary(5,p,q)*NormVec(:,p,q,FVEM,SideID)
       Flux(5  ,p,q,SideID) = 0.
     END DO; END DO !p,q
     ! Diffusion
 #if PARABOLIC
     SELECT CASE(BCType)
-    CASE(3)
-      ! Adiabatic wall, Diffusion: density=inside, velocity=0, rhoE=inside
-      ! For adiabatic wall all gradients are 0
-      ! We reconstruct the BC State, rho=rho_L, velocity=0, rhoE_wall = p_Riemann/(Kappa-1)
-      DO q=0,Nloc; DO p=0,Nloc
-        UPrim_boundary(1  ,p,q) = P_RP(p,q)/UPrim_Boundary(5,p,q)*UPrim_Boundary(1,p,q) !pressure from outside
-        UPrim_boundary(2:4,p,q) = 0.
-        UPrim_boundary(5  ,p,q) = P_RP(p,q) ! pressure from outside
-        UPrim_boundary(6  ,p,q) = UPrim_master(6,p,q,SideID) ! adiabatic => temperature from the inside
-      END DO; END DO !p,q
-      ! Evaluate 3D Diffusion Flux with interior state and symmetry gradients
-      CALL EvalDiffFlux2D(Nloc,Fd_Face_loc,Gd_Face_loc,Hd_Face_loc,UPrim_boundary,              &
-          gradUx_master(:,:,:,SideID), gradUy_master(:,:,:,SideID), gradUz_master(:,:,:,SideID) &
-#ifdef EDDYVISCOSITY
-          ,DeltaS_master(SideID),SGS_Ind_master(1,:,:,SideID),Face_xGP(:,:,:,FVEM,SideID)            &
-#endif
-      )
-      ! Enforce energy flux is exactly zero
-      Fd_Face_loc(5,:,:)=0.
-      Gd_Face_loc(5,:,:)=0.
-      Hd_Face_loc(5,:,:)=0.
-    CASE(4)
-      ! For isothermal wall, all gradients are from interior
-      ! We reconstruct the BC State, rho=rho_L, velocity=0, rhoE_wall =  rho_L*C_v*Twall
-      DO q=0,Nloc; DO p=0,Nloc
-        UPrim_boundary(1  ,p,q) = P_RP(p,q)/RefStatePrim(BCState,5)*RefStatePrim(BCState,1)
-        UPrim_boundary(2:4,p,q) = 0.
-        UPrim_boundary(5  ,p,q) = P_RP(p,q) !pressure from outside
-        UPrim_boundary(6  ,p,q) = RefStatePrim(BCState,6) ! temperature from RefState
-      END DO; END DO !p,q
+    CASE(3,4)
       ! Evaluate 3D Diffusion Flux with interior state and symmetry gradients
       CALL EvalDiffFlux2D(Nloc,Fd_Face_loc,Gd_Face_loc,Hd_Face_loc,UPrim_boundary,              &
           gradUx_master(:,:,:,SideID), gradUy_master(:,:,:,SideID), gradUz_master(:,:,:,SideID) &
@@ -575,6 +569,12 @@ ELSE
 #endif
       )
     END SELECT
+    IF (BCType.EQ.3) THEN
+      ! Enforce energy flux is exactly zero at adiabatic wall
+      Fd_Face_loc(5,:,:)=0.
+      Gd_Face_loc(5,:,:)=0.
+      Hd_Face_loc(5,:,:)=0.
+    END IF
 
     ! Sum up Euler and Diffusion Flux
     DO iVar=2,PP_nVar
@@ -620,14 +620,11 @@ REAL,INTENT(OUT)    :: gradU       (PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                :: UPrim_boundary(1:PP_nVarPrim,0:PP_N,0:PP_N)
-REAL                :: Additionals   (3,0:PP_N,0:PP_N)
+REAL                :: TangentialVelocities   (2,0:PP_N,0:PP_N)
 REAL                :: UPrim(PP_nVarPrim)
 INTEGER             :: p,q,SideID
 INTEGER             :: BCType,BCState
-REAL                :: P_RP
-#if PARABOLIC
 REAL                :: prim(PP_nVarPrim)
-#endif
 !==================================================================================================================================
 
 DO SideID=firstBCSide,lastBCSide
@@ -638,7 +635,7 @@ DO SideID=firstBCSide,lastBCSide
     CALL GetBoundaryFVgradientTestcase(SideID,t,gradU,UPrim_master)
   ELSE 
     CALL GetBoundaryState(SideID,t,PP_N,UPrim_boundary(:,:,:),UPrim_master(:,:,:,SideID),&
-        NormVec(:,:,:,:,SideID),TangVec1(:,:,:,:,SideID),TangVec2(:,:,:,:,SideID),Face_xGP(:,:,:,:,SideID),Additionals)
+        NormVec(:,:,:,:,SideID),TangVec1(:,:,:,:,SideID),TangVec2(:,:,:,:,SideID),Face_xGP(:,:,:,:,SideID),TangentialVelocities)
     SELECT CASE(BCType)
     CASE(1) !Periodic already filled!
     CASE(2,12,22,23,24,25,27) ! Riemann-Type BCs 
@@ -647,58 +644,23 @@ DO SideID=firstBCSide,lastBCSide
       END DO; END DO ! p,q=0,PP_N
 
     ! Wall BCs
-    CASE(3,4) 
+    CASE(3,4,9) 
       DO q=0,PP_N; DO p=0,PP_N
-        UPrim_boundary(2  ,p,q) = 0.                    ! Euler
-        UPrim_boundary(3:4,p,q) = Additionals(2:3,p,q)  ! slip condition: keep tangential velocities
-#if PARABOLIC      
-        prim =UPrim_boundary(:,p,q)
-        IF (VISCOSITY_PRIM(prim).GT.0.0) THEN
-          UPrim_boundary(3:4,p,q) = 0. ! set tangential velocities to zero if there is any viscosity
-        END IF
+        ! restore tangential velocities for Euler slip condition
+        prim=UPrim_boundary(:,p,q)
+        IF ((PARABOLIC.EQ.0).OR.(BCType.EQ.9) &
+#if PARABOLIC 
+            .OR.(VISCOSITY_PRIM(prim).LE.0.0)) THEN
+#else
+            ) THEN
 #endif
-      END DO; END DO ! p,q=0,PP_N       
-
-      SELECT CASE(BCType)
-      CASE(3) ! Adiabatic wall
-        DO q=0,PP_N; DO p=0,PP_N
-          P_RP = Additionals(1,p,q)
-          UPrim_boundary(1,p,q) = P_RP/UPrim_boundary(5,p,q)*UPrim_boundary(1,p,q) 
-          UPrim_boundary(5,p,q) = P_RP
-        END DO; END DO ! p,q=0,PP_N       
-      CASE(4) ! Isothermal wall
-        DO q=0,PP_N; DO p=0,PP_N
-          P_RP = Additionals(1,p,q)
-          UPrim_boundary(1,p,q) = P_RP/RefStatePrim(BCState,5)*RefStatePrim(BCState,1)
-          UPrim_boundary(5,p,q) = P_RP
-        END DO; END DO ! p,q=0,PP_N       
-      END SELECT
-
-      DO q=0,PP_N; DO p=0,PP_N
-        ! rotate UPrim back 
-        UPrim_boundary(2:4,p,q) =  NormVec (:,p,q,1,SideID) * UPrim_boundary(2,p,q) &
-                                  +TangVec1(:,p,q,1,SideID) * UPrim_boundary(3,p,q) &
-                                  +TangVec2(:,p,q,1,SideID) * UPrim_boundary(4,p,q)
+          ! restore tangential velocities at the wall and rotate them to physical space
+          UPrim_boundary(2:4,p,q) =  TangentialVelocities(1,p,q)*TangVec1(:,p,q,0,SideID) &
+                                    +TangentialVelocities(2,p,q)*TangVec2(:,p,q,0,SideID)
+        END IF
 
         gradU(:,p,q,SideID) = (UPrim_master(:,p,q,SideID) - UPrim_Boundary(:,p,q)) * FV_sdx_Face(p,q,3,SideID)
       END DO; END DO ! p,q=0,PP_N                     
-
-    CASE(9) ! Euler/(full-)slip wall
-      DO q=0,PP_N; DO p=0,PP_N
-        ! Euler
-        UPrim(1)   = UPrim_boundary(1,p,q)
-        UPrim(2)   = 0.
-        UPrim(3:4) = Additionals(2:3,p,q)
-        UPrim(5)   = Additionals(1,p,q)
-
-        ! rotate U_loc back 
-        UPrim(2:4) =  NormVec (:,p,q,1,SideID) * UPrim(2) &
-                     +TangVec1(:,p,q,1,SideID) * UPrim(3) &
-                     +TangVec2(:,p,q,1,SideID) * UPrim(4)
-
-        gradU(:,p,q,SideID) = (UPrim_master(:,p,q,SideID) - UPrim) * FV_sdx_Face(p,q,3,SideID)
-      END DO; END DO ! p,q=0,PP_N                 
-
     CASE DEFAULT ! unknown BCType
       CALL abort(__STAMP__,&
            'no BC defined in navierstokes/getboundaryflux.f90!')
@@ -740,9 +702,8 @@ REAL,INTENT(OUT)                     :: Flux(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
 INTEGER                              :: p,q,SideID
 INTEGER                              :: BCType,BCState
 REAL                                 :: UPrim_boundary(PP_nVarPrim,0:PP_N,0:PP_N)
-REAL                                 :: Additionals(3,0:PP_N,0:PP_N)
+REAL                                 :: TangentialVelocities(2,0:PP_N,0:PP_N)
 REAL                                 :: P_RP
-REAL,DIMENSION(PP_nVarPrim)          :: UPrim_loc
 !==================================================================================================================================
 
 
@@ -756,47 +717,31 @@ DO SideID=firstBCSide,lastBCSide
     CALL Lifting_GetBoundaryFluxTestcase(SideID,t,UPrim_master,Flux)
   ELSE
     CALL GetBoundaryState(SideID,t,PP_N,UPrim_boundary(:,:,:),UPrim_master(:,:,:,SideID),&
-        NormVec(:,:,:,:,SideID),TangVec1(:,:,:,:,SideID),TangVec2(:,:,:,:,SideID),Face_xGP(:,:,:,:,SideID),Additionals)
+        NormVec(:,:,:,:,SideID),TangVec1(:,:,:,:,SideID),TangVec2(:,:,:,:,SideID),Face_xGP(:,:,:,:,SideID),TangentialVelocities)
     SELECT CASE(BCType)
     CASE(1) !Periodic already filled!
     CASE(2,12,22,23,24,25,27)
         Flux(:,:,:,SideID)=0.5*(UPrim_master(:,:,:,SideID)+UPrim_boundary)
 
     ! Wall BCs
-    CASE(3)
-      ! Adiabatic wall, Diffusion: density=inside, velocity=0, rhoE=inside
-      ! For adiabatic wall all gradients are 0
-      ! We reconstruct the BC State, rho=rho_L, velocity=0, rhoE_wall = p_Riemann/(Kappa-1)
+    CASE(3,4)
       DO q=0,PP_N; DO p=0,PP_N
-        P_RP = Additionals(1,p,q)
-        Flux(1  ,p,q,SideID) = P_RP/UPrim_Boundary(5,p,q)*UPrim_Boundary(1,p,q) !pressure from outside
+        Flux(1  ,p,q,SideID) = UPrim_Boundary(1,p,q) 
         Flux(2:4,p,q,SideID) = 0.
-        Flux(5  ,p,q,SideID) = P_RP !pressure from outside
+        Flux(5  ,p,q,SideID) = UPrim_Boundary(5,p,q)
         Flux(6  ,p,q,SideID) = UPrim_Boundary(6,p,q)
-      END DO; END DO !p,q
-    CASE(4)
-      ! For isothermal wall, all gradients are from interior
-      ! We reconstruct the BC State, rho=rho_L, velocity=0, rhoE_wall =  rho_L*C_v*Twall
-      DO q=0,PP_N; DO p=0,PP_N
-        P_RP = Additionals(1,p,q)
-        Flux(1  ,p,q,SideID)   = P_RP/RefStatePrim(BCState,5)*RefStatePrim(BCState,1)
-        Flux(2:4,p,q,SideID) = 0.
-        Flux(5  ,p,q,SideID)   = P_RP !pressure from outside
-        Flux(6  ,p,q,SideID)   = P_RP/(Flux(1,p,q,SideID)*R)
       END DO; END DO !p,q
     CASE(9)
       ! Euler/(full-)slip wall
       ! symmetry BC, v=0 strategy a la HALO (is very perfect)
       ! U_boundary is already in normal system
       DO q=0,PP_N; DO p=0,PP_N
-        UPrim_boundary(2:4,p,q) = Additionals(2,p,q)*TangVec1(:,p,q,0,SideID)+Additionals(3,p,q)*TangVec2(:,p,q,0,SideID)
-        P_RP = Additionals(1,p,q)
-        UPrim_loc(1:4) = UPrim_boundary(1:4,p,q) 
-        UPrim_loc(5)   = P_RP
-        UPrim_loc(6)   = P_RP/(UPrim_boundary(1,p,q)*R)
+        ! restore tangential velocities at the wall and rotate them to physical space
+        UPrim_boundary(2:4,p,q) =  TangentialVelocities(1,p,q)*TangVec1(:,p,q,0,SideID)&
+                                  +TangentialVelocities(2,p,q)*TangVec2(:,p,q,0,SideID)
         ! Compute Flux
-        Flux(1  ,p,q,SideID) = UPrim_loc(1)
-        Flux(2:PP_nVarPrim,p,q,SideID) = 0.5*(UPrim_loc(2:PP_nVarPrim)+UPrim_master(2:PP_nVarPrim,p,q,SideID))
+        Flux(1  ,p,q,SideID) = UPrim_boundary(1,p,q)
+        Flux(2:PP_nVarPrim,p,q,SideID) = 0.5*(UPrim_boundary(2:PP_nVarPrim,p,q)+UPrim_master(2:PP_nVarPrim,p,q,SideID))
       END DO; END DO !p,q
     CASE DEFAULT ! unknown BCType
       CALL abort(__STAMP__,&
