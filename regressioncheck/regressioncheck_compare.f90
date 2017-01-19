@@ -175,19 +175,21 @@ DO I=1,Examples(iExample)%SubExampleNumber
 END DO
 SWRITE(UNIT_stdOut,'(A)')''
 
+! -----------------------------------------------------------------------------------------------------------------------
 ! p-convergence
+! -----------------------------------------------------------------------------------------------------------------------
 IF(TRIM(Examples(iExample)%ConvergenceTestType).EQ.'p')THEN
   SWRITE(UNIT_stdOut,'(A)')'p-convergence'
-  CALL str2int(ADJUSTL(TRIM(Examples(iExample)%NumberOfCellsStr(1))) &
-             ,NumberOfCellsInteger,iSTATUS) ! sanity check if the number of threads is correct
+  CALL str2int(ADJUSTL(TRIM(Examples(iExample)%NumberOfCellsStr(1))),NumberOfCellsInteger,iSTATUS) ! NumberOfCellsStr -> Int
   print*,"NumberOfCellsInteger=",NumberOfCellsInteger
   SWRITE(UNIT_stdOut,'(A)')''
   
   SWRITE(UNIT_stdOut,'(A)')'ConvergenceTestGridSize'
+  ! Calc the approximate distance between the DG DOF
   DO iSubExample=1,Examples(iExample)%SubExampleNumber
-    CALL str2int(ADJUSTL(TRIM(Examples(iExample)%SubExampleOption(iSubExample))),p,iSTATUS)
-    Examples(iExample)%ConvergenceTestGridSize(iSubExample)= Examples(iExample)%ConvergenceTestDomainSize/&
-                                                       (NumberOfCellsInteger*(p+1))
+    CALL str2int(ADJUSTL(TRIM(Examples(iExample)%SubExampleOption(iSubExample))),p,iSTATUS) ! SubExampleOption -> Int
+    Examples(iExample)%ConvergenceTestGridSize(iSubExample)=&
+    Examples(iExample)%ConvergenceTestDomainSize/(NumberOfCellsInteger*(p+1))
   END DO
   DO I=1,Examples(iExample)%SubExampleNumber
         write(*, '(E25.14)') Examples(iExample)%ConvergenceTestGridSize(I)
@@ -199,7 +201,7 @@ IF(TRIM(Examples(iExample)%ConvergenceTestType).EQ.'p')THEN
   DO J=1,Examples(iExample)%nVar
     DO I=1,Examples(iExample)%SubExampleNumber-1
       CALL CalcOrder(2,Examples(iExample)%ConvergenceTestGridSize(I:I+1),&
-                       Examples(iExample)%ConvergenceTestArray(I:I+1,J),order(I,J))
+                       Examples(iExample)%ConvergenceTestArray(   I:I+1,J),order(I,J))
     END DO
   END DO
   DO I=1,Examples(iExample)%SubExampleNumber-1
@@ -213,28 +215,31 @@ IF(TRIM(Examples(iExample)%ConvergenceTestType).EQ.'p')THEN
   SWRITE(UNIT_stdOut,'(A)')''
 END IF
 
+! -----------------------------------------------------------------------------------------------------------------------
 ! h-convergence
+! -----------------------------------------------------------------------------------------------------------------------
 IF(TRIM(Examples(iExample)%ConvergenceTestType).EQ.'h')THEN
   SWRITE(UNIT_stdOut,'(A)')'h-convergence'
-  !ALLOCATE(NumberOfCellsInteger(Examples(iExample)%SubExampleNumber))
-  !NumberOfCellsStr=ADJUSTL(TRIM(Examples(iExample)%NumberOfCellsStr(iSubExample)))
-  DO iSubExample=1,Examples(iExample)%SubExampleNumber
-  END DO
-  SWRITE(UNIT_stdOut,'(A,E25.14)')'polynomial degree approx ',Examples(iExample)%ConvergenceTestValue-1.
+  SWRITE(UNIT_stdOut,'(A,E25.14)')'Expected polynomial degree = ',Examples(iExample)%ConvergenceTestValue-1.
   SWRITE(UNIT_stdOut,'(A)')''
 
   SWRITE(UNIT_stdOut,'(A)')'ConvergenceTestGridSize'
+  ! Calc the approximate distance between the DG DOF
   DO iSubExample=1,Examples(iExample)%SubExampleNumber
     CALL str2int(ADJUSTL(TRIM(Examples(iExample)%NumberOfCellsStr(iSubExample))) &
                  ,NumberOfCellsInteger,iSTATUS) ! sanity check if the number of threads is correct
-    print*,"NumberOfCellsInteger=",NumberOfCellsInteger
-    !CALL str2int(ADJUSTL(TRIM(Examples(iExample)%SubExampleOption(iSubExample))),p,iSTATUS)
-    Examples(iExample)%ConvergenceTestGridSize(iSubExample)= Examples(iExample)%ConvergenceTestDomainSize/&
-                                                       (NumberOfCellsInteger*(Examples(iExample)%ConvergenceTestValue-1.+1.))
+    !print*,"NumberOfCellsInteger=",NumberOfCellsInteger
+    Examples(iExample)%ConvergenceTestGridSize(iSubExample)=&
+    Examples(iExample)%ConvergenceTestDomainSize/(NumberOfCellsInteger*(Examples(iExample)%ConvergenceTestValue-1.+1.))
+
+ 
+    SWRITE(UNIT_stdOut, '(A22,I5,4x,A,E25.14)') &
+      "NumberOfCellsInteger =",NumberOfCellsInteger,&
+      "Examples(iExample)%ConvergenceTestGridSize(iSubExample)=",Examples(iExample)%ConvergenceTestGridSize(iSubExample)
   END DO
-  DO I=1,Examples(iExample)%SubExampleNumber
-        write(*, '(E25.14)') Examples(iExample)%ConvergenceTestGridSize(I)
-  END DO
+  !DO I=1,Examples(iExample)%SubExampleNumber
+        !write(*, '(E25.14)') Examples(iExample)%ConvergenceTestGridSize(I)
+  !END DO
   SWRITE(UNIT_stdOut,'(A)')''
 
   SWRITE(UNIT_stdOut,'(A)')'order'
