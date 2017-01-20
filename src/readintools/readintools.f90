@@ -61,6 +61,7 @@ TYPE,PUBLIC :: Parameters
   INTEGER              :: maxNameLen          !< maximal string length of the name of an option in the list
   INTEGER              :: maxValueLen         !< maximal string length of the value of an option in the list
   CHARACTER(LEN=255)   :: actualSection = ""  !< actual section, to set section of an option, when inserted into list
+  LOGICAL              :: removeAfterRead=.TRUE. !< specifies whether options shall be marked as removed after being read
 CONTAINS 
   PROCEDURE :: SetSection                 !< routine to set 'actualSection'
   PROCEDURE :: CreateOption               !< general routine to create a option and insert it into the linked list
@@ -908,7 +909,7 @@ DO WHILE (associated(current))
     ! print option and value to stdout
     CALL opt%print(prms%maxNameLen, prms%maxValueLen, mode=0)
     ! remove the option from the linked list of all parameters
-    current%opt%isRemoved = .TRUE.
+    IF(prms%removeAfterRead) current%opt%isRemoved = .TRUE.
     RETURN
   END IF 
   current => current%next
@@ -988,7 +989,7 @@ DO WHILE (associated(current))
     ! print option and value to stdout
     CALL opt%print(prms%maxNameLen, prms%maxValueLen, mode=0)
     ! remove the option from the linked list of all parameters
-    current%opt%isRemoved = .TRUE.
+    IF(prms%removeAfterRead) current%opt%isRemoved = .TRUE.
     RETURN
   END IF 
   current => current%next
@@ -1181,7 +1182,7 @@ DO WHILE (associated(current))
         END IF
         CALL opt%print(prms%maxNameLen, prms%maxValueLen, mode=0)
         ! remove the option from the linked list of all parameters
-        current%opt%isRemoved = .TRUE.
+        IF(prms%removeAfterRead) current%opt%isRemoved = .TRUE.
         RETURN
       END IF
       ! If a string has been supplied, check if this string exists in the list and set it's integer representation according to the
@@ -1192,7 +1193,7 @@ DO WHILE (associated(current))
           opt%listIndex = i ! Store index of the mapping
           CALL opt%print(prms%maxNameLen, prms%maxValueLen, mode=0)
           ! remove the option from the linked list of all parameters
-          current%opt%isRemoved = .TRUE.
+          IF(prms%removeAfterRead) current%opt%isRemoved = .TRUE.
           RETURN
         END IF
       END DO
@@ -1370,11 +1371,11 @@ CALL MPI_BCAST(userblockFound,1,MPI_LOGICAL,0,MPI_COMM_WORLD,iError)
 
 END SUBROUTINE ExtractParameterFile
 
-
 !===================================================================================================================================
 !> Clear parameters list 'prms'.
 !===================================================================================================================================
 SUBROUTINE FinalizeParameters() 
+IMPLICIT NONE
 ! LOCAL VARIABLES
 CLASS(link), POINTER         :: current, tmp
 !===================================================================================================================================

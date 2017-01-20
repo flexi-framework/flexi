@@ -73,26 +73,24 @@ CONTAINS
 !==================================================================================================================================
 !> Subroutine to check if a file is a valid Flexi HDF5 file
 !==================================================================================================================================
-FUNCTION ISVALIDHDF5FILE(FileName,FileVersionOpt)
+FUNCTION ISVALIDHDF5FILE(FileName,ProgramName,FileType,FileVersion)
 ! MODULES
 USE MOD_Globals
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)    :: FileName        !< name of file to be checked
-REAL,INTENT(IN),OPTIONAL       :: FileVersionOpt  !< desired version
+CHARACTER(LEN=255),INTENT(OUT),OPTIONAL :: ProgramName !< program name
+CHARACTER(LEN=255),INTENT(OUT),OPTIONAL :: FileType    !< type of the file (only if valid)
+REAL,INTENT(OUT),OPTIONAL      :: FileVersion     !< desired version
 LOGICAL                        :: isValidHDF5File !< result: file is valid HDF5 file
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                           :: FileVersion,FileVersionRef
 INTEGER(HID_T)                 :: Plist_ID
-CHARACTER(LEN=255)             :: ProgramName
-LOGICAL                        :: fileExists
+LOGICAL                        :: exists
 !==================================================================================================================================
 isValidHDF5File=.TRUE.
 iError=0
-FileVersionRef=0.1
-IF(PRESENT(FileVersionOpt)) FileVersionRef=FileVersionOpt
 
 ! Disable error messages
 CALL H5ESET_AUTO_F(0, iError)
@@ -106,29 +104,42 @@ CALL H5PSET_FAPL_MPIO_F(Plist_ID,MPI_COMM_WORLD, MPIInfo, iError)
 #endif /*USE_MPI*/
 
 ! Check if file exists
-INQUIRE(FILE=TRIM(FileName),EXIST=fileExists)
-IF(.NOT.fileExists) THEN
+INQUIRE(FILE=TRIM(FileName),EXIST=exists)
+IF(.NOT.exists) THEN
   CALL abort(__STAMP__,'ERROR: HDF5 file '//TRIM(FileName)//' does not exist.')
   RETURN
 END IF
 
-
 ! Open HDF5 file
 CALL H5FOPEN_F(TRIM(FileName), H5F_ACC_RDONLY_F, File_ID, iError,access_prp = Plist_ID)
-CALL H5PCLOSE_F(Plist_ID, iError)
 IF(iError.EQ.0) THEN
   isValidHDF5File=.TRUE.
-  ! Check program name -------------------------------------------------------------------------------------------------------------
-  ! Open the attribute "Program" of root group
-  CALL ReadAttribute(File_ID,'Program',1,StrScalar=ProgramName)
-  IF(TRIM(ProgramName) .NE. 'Flexi') isValidHDF5File=.FALSE.
-  IF (isValidHDF5File) THEN
-    ! Check file version -------------------------------------------------------------------------------------------------------------
-    ! Open the attribute "File_Version" of root group
-    CALL ReadAttribute(File_ID,'File_Version',1,RealScalar=FileVersion)
-    IF(FileVersion .LT. FileVersionRef)THEN
+  ! Check attributes file type and version -----------------------------
+  IF(PRESENT(ProgramName))THEN
+    CALL DatasetExists(File_ID,'Program',exists,attrib=.TRUE.)
+    IF(exists)THEN
+      CALL ReadAttribute(File_ID,'Program',1,StrScalar=ProgramName)
+    ELSE
+      ProgramName=''
       isValidHDF5File=.FALSE.
-      SWRITE(UNIT_stdOut,'(A)')' ERROR: FILE VERSION TOO OLD! FileName: '//TRIM(FileName)
+    END IF
+  END IF
+  IF(PRESENT(FileType))THEN
+    CALL DatasetExists(File_ID,'File_Type',exists,attrib=.TRUE.)
+    IF(exists)THEN
+      CALL ReadAttribute(File_ID,'File_Type',1,StrScalar=FileType)
+    ELSE
+      FileType=''
+      isValidHDF5File=.FALSE.
+    END IF
+  END IF
+  IF(PRESENT(FileVersion))THEN
+    CALL DatasetExists(File_ID,'File_Version',exists,attrib=.TRUE.)
+    IF(exists)THEN
+      CALL ReadAttribute(File_ID,'File_Version',1,RealScalar=FileVersion)
+    ELSE
+      FileVersion=-1.
+      isValidHDF5File=.FALSE.
     END IF
   END IF
   ! Close property list

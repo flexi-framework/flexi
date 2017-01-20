@@ -69,7 +69,7 @@ END SUBROUTINE DefineParametersRecordPoints
 !==================================================================================================================================
 !> Read RP parameters from ini file and RP definitions from HDF5
 !==================================================================================================================================
-SUBROUTINE InitRecordPoints()
+SUBROUTINE InitRecordPoints(RPDefFileOpt)
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
@@ -79,14 +79,16 @@ USE MOD_RecordPoints_Vars
  IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
+CHARACTER(LEN=255),INTENT(IN),OPTIONAL :: RPDefFileOpt
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER               :: RP_maxMemory
 INTEGER               :: maxRP
 !==================================================================================================================================
 ! check if recordpoints are activated
-RP_inUse=GETLOGICAL('RP_inUse','.FALSE.')
+RP_inUse=(GETLOGICAL('RP_inUse','.FALSE.') .OR. PRESENT(RPDefFileOpt))
 IF(.NOT.RP_inUse) RETURN
+
 IF((.NOT.InterpolationInitIsDone) .OR. RecordPointsInitIsDone)THEN
    CALL Abort(__STAMP__,&
      "InitRecordPoints not ready to be called or already called.")
@@ -94,7 +96,11 @@ END IF
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT RECORDPOINTS...'
 
-RPDefFile=GETSTR('RP_DefFile')                        ! Filename with RP coords
+IF(PRESENT(RPDefFileOpt))THEN
+  RPDefFile=RPDefFileOpt
+ELSE
+  RPDefFile=GETSTR('RP_DefFile')                        ! Filename with RP coords
+END IF
 CALL ReadRPList(RPDefFile) ! RP_inUse is set to FALSE by ReadRPList if no RP is on proc.
 maxRP=nGlobalRP
 #if USE_MPI
@@ -349,7 +355,7 @@ REAL                    :: u_RP(PP_nVar,nRP)
 REAL                    :: l_eta_zeta_RP
 !----------------------------------------------------------------------------------------------------------------------------------
 IF(MOD(iter,RP_SamplingOffset).NE.0 .AND. .NOT. forceSampling) RETURN
-IF(iter.EQ.0)THEN
+IF(.NOT.ALLOCATED(RP_Data))THEN
   ! Compute required buffersize from timestep and add 20% tolerance
   ! +1 is added to ensure a minimum buffersize of 2
   RP_Buffersize = MIN(CEILING((1.2*WriteData_dt)/(dt*RP_SamplingOffset))+1,RP_MaxBuffersize)
