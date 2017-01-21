@@ -172,7 +172,7 @@ END SUBROUTINE ConvertToVisu_FV
 !===================================================================================================================================
 !> 
 !===================================================================================================================================
-SUBROUTINE ConvertToVisu_FV_Reconstruct()
+SUBROUTINE ConvertToVisu_FV_Reconstruct(gradUx_calc,gradUy_calc,gradUz_calc)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Posti_Vars
@@ -186,9 +186,15 @@ USE MOD_FV_Vars            ,ONLY: FV_dx_XI_R,FV_dx_ETA_R,FV_dx_ZETA_R
 USE MOD_EOS                ,ONLY: PrimToCons
 USE MOD_DG_Vars            ,ONLY: UPrim
 USE MOD_EOS_Posti          ,ONLY: GetMaskPrim
+#if PARABOLIC
+USE MOD_Lifting_Vars       ,ONLY: gradUx, gradUy, gradUz
+#endif
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
+REAL,INTENT(OUT),OPTIONAL    :: gradUx_calc(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV)
+REAL,INTENT(OUT),OPTIONAL    :: gradUy_calc(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV)
+REAL,INTENT(OUT),OPTIONAL    :: gradUz_calc(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV)
 ! LOCAL VARIABLES
 INTEGER             :: iVar,i,j,k,iElem,iElem_FV
 INTEGER             :: iVarCalc
@@ -264,6 +270,21 @@ DO iElem_FV=1,nElems_FV
     END DO
   END DO; END DO; END DO
 END DO ! iElem_FV
+
+#if PARABOLIC
+IF (PRESENT(gradUx_calc).AND.PRESENT(gradUy_calc).AND.PRESENT(gradUz_calc)) THEN
+  DO iElem_FV=1,nElems_FV
+    iElem = mapElems_FV(iElem_FV)
+    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+      DO iVar=1,PP_nVarPrim
+         gradUx_calc(iVar,i*2:i*2+1, j*2:j*2+1, k*2:k*2+1, iElem_FV) = gradUx(iVar,i,j,k,iElem)
+         gradUy_calc(iVar,i*2:i*2+1, j*2:j*2+1, k*2:k*2+1, iElem_FV) = gradUy(iVar,i,j,k,iElem)
+         gradUz_calc(iVar,i*2:i*2+1, j*2:j*2+1, k*2:k*2+1, iElem_FV) = gradUz(iVar,i,j,k,iElem)
+      END DO 
+    END DO; END DO; END DO! i,j,k=0,PP_N
+  END DO
+END IF
+#endif
 END SUBROUTINE ConvertToVisu_FV_Reconstruct
 
 #endif /* FV_RECONSTRUCT */

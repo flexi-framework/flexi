@@ -180,9 +180,7 @@ withVectors=(PRESENT(NormVec).AND.PRESENT(TangVec1).AND.PRESENT(TangVec2))
 DO iVar=1,nVarTotalEOS
   iVarCalc = mapCalc(iVar)
   IF (iVarCalc.GT.0 .AND. maskCalc(iVar).GT.0) THEN
-    IF (.NOT.withVectors) THEN
-      SWRITE(*,*) "  ",TRIM(DepNames(iVar))
-    END IF
+    SWRITE(*,*) "  ",TRIM(DepNames(iVar))
     IF(withGradients)THEN
       IF(withVectors)THEN
         CALL CalcDerivedQuantity(iVarCalc,DepNames(iVar),nVarCalc,nVal,iElems,mapCalc,UCalc,gradUx,gradUy,gradUz,&

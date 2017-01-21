@@ -58,6 +58,7 @@ visu3DReader::visu3DReader()
    this->ParameterFileOverwrite = NULL;
    this->MeshFileOverwrite = NULL;
    this->SetNumberOfInputPorts(0);
+   this->SetNumberOfOutputPorts(2);
 
    // Setup the selection callback to modify this object when an array
    // selection is changed.
@@ -353,12 +354,12 @@ int visu3DReader::RequestData(
 
    // adjust the number of Blocks in the MultiBlockDataset to 4 (DG and FV)
    SWRITE("Number of Blocks in MultiBlockDataset : " << mb->GetNumberOfBlocks());
-   if (mb->GetNumberOfBlocks() < 4) {
+   if (mb->GetNumberOfBlocks() < 2) {
       SWRITE("Create new DG and FV output Blocks");
       mb->SetBlock(0, vtkUnstructuredGrid::New());
       mb->SetBlock(1, vtkUnstructuredGrid::New());
-      mb->SetBlock(2, vtkUnstructuredGrid::New());
-      mb->SetBlock(3, vtkUnstructuredGrid::New());
+      //mb->SetBlock(2, vtkUnstructuredGrid::New());
+      //mb->SetBlock(3, vtkUnstructuredGrid::New());
    }
 
     // Insert DG data into output
@@ -367,11 +368,32 @@ int visu3DReader::RequestData(
     // Insert FV data into output
    InsertData(mb, 1, &coords_FV, &values_FV, &nodeids_FV, &varnames);
 
+
+
+   vtkSmartPointer<vtkInformation> outInfoSurf = outputVector->GetInformationObject(1);
+   // get the MultiBlockDataset 
+   mb = vtkMultiBlockDataSet::SafeDownCast(outInfoSurf->Get(vtkDataObject::DATA_OBJECT()));
+   if (!mb) {
+      std::cout << "DownCast to MultiBlockDataset Failed!" << std::endl;
+      return 0;
+   }
+
+   // adjust the number of Blocks in the MultiBlockDataset to 4 (DG and FV)
+   SWRITE("Number of Blocks in MultiBlockDataset : " << mb->GetNumberOfBlocks());
+   if (mb->GetNumberOfBlocks() < 2) {
+      SWRITE("Create new DG and FV output Blocks");
+      mb->SetBlock(0, vtkUnstructuredGrid::New());
+      mb->SetBlock(1, vtkUnstructuredGrid::New());
+      //mb->SetBlock(2, vtkUnstructuredGrid::New());
+      //mb->SetBlock(3, vtkUnstructuredGrid::New());
+   }
+
+
     // Insert Surface DG data into output
-   InsertData(mb, 2, &coordsSurf_DG, &valuesSurf_DG, &nodeidsSurf_DG, &varnamesSurf);
+   InsertData(mb, 0, &coordsSurf_DG, &valuesSurf_DG, &nodeidsSurf_DG, &varnamesSurf);
 
     // Insert Surface FV data into output
-   InsertData(mb, 3, &coordsSurf_FV, &valuesSurf_FV, &nodeidsSurf_FV, &varnamesSurf);
+   InsertData(mb, 1, &coordsSurf_FV, &valuesSurf_FV, &nodeidsSurf_FV, &varnamesSurf);
 
    __mod_visu3d_cwrapper_MOD_visu3d_dealloc_nodeids();
 

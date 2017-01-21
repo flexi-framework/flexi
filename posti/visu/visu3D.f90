@@ -475,7 +475,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   IF ((changedStateFile.OR.changedVarNames).AND.hasFV_Elems.OR.changedDGonly) THEN
     CALL CalcQuantities_ConvertToVisu_FV()
   END IF
-  ! calc surface FV solution and convert to visu grid
+  ! calc FV solution and convert to visu grid
   IF ((changedStateFile.OR.changedVarNames).AND.hasFV_Elems.OR.changedDGonly.OR.changedBCnames) THEN
     CALL CalcSurfQuantities_ConvertToVisu_FV()
   END IF

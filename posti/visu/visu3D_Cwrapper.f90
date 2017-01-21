@@ -174,11 +174,11 @@ IF (VisuDimension.EQ.3) THEN
 
   ! Surface
   CALL WriteDataToVTK_array(nVarSurfVisuTotal,NVisu   ,nBCSidesVisu_DG,valuesSurfDG_out,USurfVisu_DG,2)
-  CALL WriteDataToVTK_array(0,NVisu_FV,0,valuesSurfFV_out,USurfVisu_FV,2)
+  CALL WriteDataToVTK_array(nVarSurfVisuTotal,NVisu_FV,nBCSidesVisu_FV,valuesSurfFV_out,USurfVisu_FV,2)
 
   CALL WriteCoordsToVTK_array(NVisu   ,nBCSidesVisu_DG,coordsSurfDG_out,nodeidsSurfDG_out,&
       CoordsSurfVisu_DG,nodeidsSurf_DG,dim=2,DGFV=0)
-  CALL WriteCoordsToVTK_array(NVisu_FV,0,coordsSurfFV_out,nodeidsSurfFV_out,&
+  CALL WriteCoordsToVTK_array(NVisu_FV,nBCSidesVisu_FV,coordsSurfFV_out,nodeidsSurfFV_out,&
       CoordsSurfVisu_FV,nodeidsSurf_FV,dim=2,DGFV=1)
 
   CALL WriteVarnamesToVTK_array(nVarTotal,mapSurfVisu,varnamesSurf_out,VarNamesTotal,nVarSurfVisuTotal)

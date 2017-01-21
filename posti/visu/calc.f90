@@ -63,8 +63,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Posti_Vars
 USE MOD_EOS_Posti          ,ONLY: CalcQuantities
-USE MOD_Mesh_Vars          ,ONLY: nElems,nBCSides,BC,BoundaryName,SideToElem
-USE MOD_Mesh_Vars          ,ONLY: NormVec,TangVec1,TangVec2
+USE MOD_Mesh_Vars          ,ONLY: nElems
 USE MOD_DG_Vars            ,ONLY: U
 USE MOD_StringTools        ,ONLY: STRICMP
 #if PARABOLIC
@@ -73,17 +72,10 @@ USE MOD_Lifting_Vars       ,ONLY: gradUx,gradUy,gradUz
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: maskCalc(nVarDep),nVal(4),nValSide(3)
+INTEGER            :: maskCalc(nVarDep),nVal(4)
 #if PARABOLIC
 REAL,ALLOCATABLE,DIMENSION(:,:,:,:,:) :: gradUx_tmp,gradUy_tmp,gradUz_tmp
 #endif
-INTEGER            :: iSide,iBC,iElem,iSide2
-REAL,ALLOCATABLE   :: gradUxFace(:,:,:,:)
-REAL,ALLOCATABLE   :: gradUyFace(:,:,:,:)
-REAL,ALLOCATABLE   :: gradUzFace(:,:,:,:)
-REAL,ALLOCATABLE   :: NormVec_loc(:,:,:,:)
-REAL,ALLOCATABLE   :: TangVec1_loc(:,:,:,:)
-REAL,ALLOCATABLE   :: TangVec2_loc(:,:,:,:)
 !===================================================================================================================================
 ! calc DG solution 
 SWRITE(*,*) "[DG] calc quantities"
@@ -124,24 +116,17 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Posti_Vars
 USE MOD_EOS_Posti          ,ONLY: CalcQuantities
-USE MOD_Mesh_Vars          ,ONLY: nElems,nBCSides,BC,BoundaryName,SideToElem
+USE MOD_Mesh_Vars          ,ONLY: nBCSides,BC,BoundaryName,SideToElem
 USE MOD_Mesh_Vars          ,ONLY: NormVec,TangVec1,TangVec2
-USE MOD_DG_Vars            ,ONLY: U
 USE MOD_StringTools        ,ONLY: STRICMP
-#if PARABOLIC
-USE MOD_Lifting_Vars       ,ONLY: gradUx,gradUy,gradUz
-#endif
 #if FV_ENABLED 
 USE MOD_FV_Vars            ,ONLY: FV_Elems
 #endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: maskCalc(nVarDep),nVal(4),nValSide(3)
-#if PARABOLIC
-REAL,ALLOCATABLE,DIMENSION(:,:,:,:,:) :: gradUx_tmp,gradUy_tmp,gradUz_tmp
-#endif
-INTEGER            :: iSide,iBC,iElem,iSide2,iVar1,iVar2
+INTEGER            :: maskCalc(nVarDep),nValSide(3)
+INTEGER            :: iSide,iBC,iElem,iSide2
 REAL,ALLOCATABLE   :: gradUxFace(:,:,:,:)
 REAL,ALLOCATABLE   :: gradUyFace(:,:,:,:)
 REAL,ALLOCATABLE   :: gradUzFace(:,:,:,:)
@@ -188,18 +173,8 @@ ALLOCATE(TangVec1_loc(1:3,0:PP_N,0:PP_N,nBCSidesVisu_DG))
 ALLOCATE(TangVec2_loc(1:3,0:PP_N,0:PP_N,nBCSidesVisu_DG))
 
 maskCalc=1
-DO iVar1=1,nVarDep ! iterate over all out variables
-  IF (mapCalc(iVar1).LT.1) CYCLE ! check if variable must be calculated
-  DO iVar2=1,nVar_State ! iterate over all out variables
-    IF (STRICMP(VarNamesTotal(iVar1),VarNamesHDF5(iVar2))) THEN
-      maskCalc(iVar1) = 0
-      EXIT
-    END IF
-  END DO
-END DO
-CALL ProlongToFace_independent(nVarCalc,PP_N,nBCSidesVisu_DG,nElems_DG,maskCalc,mapBCSides_DG, &
-    UCalc_DG,UCalcBoundary_DG,&
-    gradUxFace,gradUyFace,gradUzFace,FVE=0)
+CALL ProlongToFace_independent(nVarCalc,nBCSidesVisu_DG,nElems_DG,maskCalc,mapBCSides_DG, &
+    UCalc_DG,UCalcBoundary_DG,gradUxFace,gradUyFace,gradUzFace)
 
 IF(TRIM(FileType).EQ.'State')THEN
   DO iSide=1,nBCSides
@@ -227,6 +202,96 @@ SDEALLOCATE(gradUyFace)
 SDEALLOCATE(gradUzFace)
 
 END SUBROUTINE CalcSurfQuantities_DG
+
+SUBROUTINE ProlongToFace_independent(nVar,nSides_calc,nElems_calc,maskCalc,mapBCSides,UIn,UBoundary,&
+    gradUxFace,gradUyFace,gradUzFace) 
+USE MOD_PreProc
+USE MOD_Posti_Vars
+#if PARABOLIC
+USE MOD_Lifting_Vars       ,ONLY: gradUx,gradUy,gradUz
+#endif
+USE MOD_Interpolation_Vars ,ONLY: L_Minus,L_Plus
+USE MOD_StringTools        ,ONLY: STRICMP
+USE MOD_Mesh_Vars          ,ONLY: nBCSides,SideToElem,S2V2,ElemToSide
+USE MOD_ProlongToFace      ,ONLY: EvalElemFace
+IMPLICIT NONE
+! INPUT / OUTPUT VARIABLES 
+INTEGER,INTENT(IN)            :: nVar,nSides_calc,nElems_calc
+INTEGER,INTENT(IN)            :: mapBCSides(nBCsides)
+REAL,INTENT(IN)               :: UIn(0:PP_N,0:PP_N,0:PP_N,nElems_calc,1:nVar)
+REAL,INTENT(OUT)              :: UBoundary(0:PP_N,0:PP_N,nSides_calc,1:nVar)
+REAL,INTENT(OUT)              :: gradUxFace(1:PP_nVarPrim,0:PP_N,0:PP_N,nSides_calc)
+REAL,INTENT(OUT)              :: gradUyFace(1:PP_nVarPrim,0:PP_N,0:PP_N,nSides_calc)
+REAL,INTENT(OUT)              :: gradUzFace(1:PP_nVarPrim,0:PP_N,0:PP_N,nSides_calc)
+INTEGER,INTENT(INOUT)         :: maskCalc(nVarDep)
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER           :: iVar,iVarIn,iVarOut,iSide,locSide,iElem,p,q,iElem_DG,iSide_DG
+REAL              :: Uface(1,0:PP_N,0:PP_N)
+REAL              :: gradUxFace_tmp(1:PP_nVarPrim,0:PP_N,0:PP_N)
+REAL              :: gradUyFace_tmp(1:PP_nVarPrim,0:PP_N,0:PP_N)
+REAL              :: gradUzFace_tmp(1:PP_nVarPrim,0:PP_N,0:PP_N)
+!===================================================================================================================================
+! Copy exisiting variables from solution array
+DO iVarOut=1,nVarDep ! iterate over all out variables
+  IF (mapCalc(iVarOut).LT.1) CYCLE ! check if variable must be calculated
+  DO iVarIn=1,nVar_State ! iterate over all out variables
+    IF (STRICMP(VarNamesTotal(iVarOut),VarNamesHDF5(iVarIn))) THEN
+      WRITE(*,*) "ProlongToFace_independent", TRIM(VarNamesTotal(iVarOut))
+      iVar=mapCalc(iVarOut)
+
+      DO iElem_DG = 1,nElems_DG                         ! iterate over all DG visu elements
+        iElem = mapElems_DG(iElem_DG)                   ! get global element index
+        DO locSide=1,6 
+          iSide = ElemToSide(E2S_SIDE_ID,locSide,iElem) ! get global side index
+          IF (iSide.LE.nBCSides) THEN                   ! check if BC side
+            iSide_DG = mapBCSides(iSide)             ! get DG visu side index
+            IF (iSide_DG.GT.0) THEN
+              IF(PP_NodeType.EQ.1)THEN                  ! prolong solution to face
+                CALL EvalElemFace(1,PP_N,UIn(:,:,:,iElem_DG,iVar:iVar),Uface(1:1,:,:),L_Minus,L_Plus,locSide)
+              ELSE
+                CALL EvalElemFace(1,PP_N,UIn(:,:,:,iElem_DG,iVar:iVar),Uface(1:1,:,:),locSide)
+              END IF
+              DO q=0,PP_N; DO p=0,PP_N
+                UBoundary(p,q,iSide_DG,iVar)=Uface(1,S2V2(1,p,q,0,locSide),S2V2(2,p,q,0,locSide))
+              END DO; END DO
+            END IF   
+          END IF
+        END DO
+      END DO
+      maskCalc(iVarOut) = 0
+      EXIT
+    END IF
+  END DO
+END DO
+
+IF(TRIM(FileType).EQ.'State')THEN
+  IF(withDGOperator.AND.PARABOLIC.EQ.1)THEN
+#if PARABOLIC
+    DO iSide=1,nBCSides
+      IF (mapBCSides(iSide).GT.0) THEN
+        iElem = SideToElem(S2E_ELEM_ID,iSide)
+        locSide = SideToElem(S2E_LOC_SIDE_ID, iSide)
+        IF(PP_NodeType.EQ.1)THEN
+          CALL EvalElemFace(PP_nVarPrim,PP_N,gradUx(:,:,:,:,iElem),gradUxFace_tmp,L_Minus,L_Plus,locSide)
+          CALL EvalElemFace(PP_nVarPrim,PP_N,gradUy(:,:,:,:,iElem),gradUyFace_tmp,L_Minus,L_Plus,locSide)
+          CALL EvalElemFace(PP_nVarPrim,PP_N,gradUz(:,:,:,:,iElem),gradUzFace_tmp,L_Minus,L_Plus,locSide)
+        ELSE
+          CALL EvalElemFace(PP_nVarPrim,PP_N,gradUx(:,:,:,:,iElem),gradUxFace_tmp,locSide)
+          CALL EvalElemFace(PP_nVarPrim,PP_N,gradUy(:,:,:,:,iElem),gradUyFace_tmp,locSide)
+          CALL EvalElemFace(PP_nVarPrim,PP_N,gradUz(:,:,:,:,iElem),gradUzFace_tmp,locSide)
+        END IF
+        DO q=0,PP_N; DO p=0,PP_N
+          gradUxFace(:,p,q,mapBCSides(iSide))=gradUxFace_tmp(:,S2V2(1,p,q,0,locSide),S2V2(2,p,q,0,locSide))
+          gradUyFace(:,p,q,mapBCSides(iSide))=gradUyFace_tmp(:,S2V2(1,p,q,0,locSide),S2V2(2,p,q,0,locSide))
+          gradUzFace(:,p,q,mapBCSides(iSide))=gradUzFace_tmp(:,S2V2(1,p,q,0,locSide),S2V2(2,p,q,0,locSide))
+        END DO; END DO
+      END IF
+    END DO
+#endif
+  END IF
+END IF
+END SUBROUTINE ProlongToFace_independent
 
 #if FV_ENABLED 
 !===================================================================================================================================
@@ -260,10 +325,11 @@ USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_FV_Reconstruct
 #else
 USE MOD_Mesh_Vars           ,ONLY: nElems
 USE MOD_DG_Vars             ,ONLY: U
-#endif
 #if PARABOLIC
 USE MOD_Lifting_Vars        ,ONLY: gradUx,gradUy,gradUz
 #endif
+#endif
+USE MOD_StringTools         ,ONLY: STRICMP
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -271,13 +337,14 @@ IMPLICIT NONE
 INTEGER                      :: maskCalc(nVarDep)
 INTEGER                      :: nVal(4)
 #if FV_RECONSTRUCT 
-INTEGER                      :: maskPrim(nVarDep),maskGrad(nVarDep)
+INTEGER                      :: maskPrim(nVarDep)
 INTEGER                      :: iVar
 #endif
 #if PARABOLIC
-REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,nElems_FV) :: gradUx_tmp,gradUy_tmp,gradUz_tmp
+REAL,ALLOCATABLE             :: gradUx_calc(:,:,:,:,:),gradUy_calc(:,:,:,:,:),gradUz_calc(:,:,:,:,:) 
 #endif
 !===================================================================================================================================
+
 SDEALLOCATE(UVisu_FV)
 ALLOCATE(UVisu_FV(0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV,nVarVisuTotal))
 #if FV_RECONSTRUCT
@@ -290,50 +357,45 @@ ALLOCATE(UVisu_FV(0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV,nVarVisuTotal))
   ALLOCATE(mapCalc_FV(1:nVarDep))
   CALL AppendNeededPrims(mapCalc,mapCalc_FV,nVarCalc_FV)
   SWRITE (*,*) "[FVRE] nVarCalc_FV", nVarCalc_FV
-  SWRITE (*,"(A,27I3)") "  mapCalc_FV",  mapCalc_FV
+  SWRITE (*,"(A,32I3)") "  mapCalc_FV",  mapCalc_FV
   
   ! convert primitive quantities to the visu grid, but store it UCalc_FV, since all dependent calculations including
   ! reconstructed values are performed on the visu grid.
   SDEALLOCATE(UCalc_FV)
   ALLOCATE(UCalc_FV(0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV,1:nVarCalc_FV))
   SWRITE(*,*) "[FVRE] ConvertToVisu_FV_Reconstruct"
+#if PARABOLIC    
+  ALLOCATE(gradUx_calc(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV))
+  ALLOCATE(gradUy_calc(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV))
+  ALLOCATE(gradUz_calc(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV))
+  CALL ConvertToVisu_FV_Reconstruct(gradUx_calc,gradUy_calc,gradUz_calc)
+#else          
   CALL ConvertToVisu_FV_Reconstruct()
+#endif          
 
-  ! calculate all nonPrim, nonGrad quantities on the visu grid.
+  ! calculate all remaining quantities on the visu grid.
   maskPrim=GetMaskPrim()
-  maskGrad=GetMaskGrad()
-  maskCalc = 1-MAX(maskPrim,maskGrad)
-  SWRITE(*,*) "[FVRE] CalcQuantities (nonPrim,nonGrad)"
+  maskCalc = 1-maskPrim
+  SWRITE(*,*) "[FVRE] CalcQuantities (nonPrim)"
+#if PARABOLIC    
+  CALL CalcQuantities(nVarCalc_FV,nVal,mapElems_FV,mapCalc_FV,UCalc_FV,maskCalc,gradUx_calc,gradUy_calc,gradUz_calc)
+#else
   CALL CalcQuantities(nVarCalc_FV,nVal,mapElems_FV,mapCalc_FV,UCalc_FV,maskCalc)
+#endif
 
-  ! copy cons, prim and all other non-grad quantities (namely all quantities that are build with reconstruction)
-  ! to the UVisu_FV array
-  SWRITE(*,*) "[FVRE] copy all non-grad quantities to UVisu_FV"
+  ! copy all quantities to the UVisu_FV array
+  SWRITE(*,*) "[FVRE] copy all quantities to UVisu_FV"
   DO iVar=1,nVarDep
-    IF (mapVisu(iVar)*(1-maskGrad(iVar)).GT.0) THEN ! visu var, but no gradient var
+    IF (mapVisu(iVar).GT.0) THEN ! visu var
       SWRITE(*,*) "  ", TRIM(VarNamesTotal(iVar))
       UVisu_FV(:,:,:,:,mapVisu(iVar)) = UCalc_FV(:,:,:,:,mapCalc_FV(iVar))
     END IF
   END DO
-  
-  ! calc all grad quantities on the normal cell centers and convert them afterwards to visu grid
-  IF (SUM(maskGrad*mapCalc_FV).GT.0) THEN
-    nVal=(/PP_N+1,PP_N+1,PP_N+1,nElems_FV/)
-    SDEALLOCATE(UCalc_FV)
-    ALLOCATE(UCalc_FV(0:PP_N,0:PP_N,0:PP_N,nElems_FV,1:nVarCalc_FV))
-    SWRITE(*,*) "[FVRE] CalcQuantitiesWithGradients"
-#if PARABOLIC
-    gradUx_tmp=gradUx(:,:,:,:,mapElems_FV)
-    gradUy_tmp=gradUy(:,:,:,:,mapElems_FV)
-    gradUz_tmp=gradUz(:,:,:,:,mapElems_FV)
-    CALL CalcQuantities(nVarCalc_FV,nVal,mapElems_FV,mapCalc_FV,UCalc_FV,maskGrad,gradUx_tmp,gradUy_tmp,gradUz_tmp)
-#else
-    CALL CalcQuantities(nVarCalc_FV,nVal,mapElems_FV,mapCalc_FV,UCalc_FV,maskGrad)
-#endif
-    SWRITE(*,*) "[FVRE] ConvertToVisu_FV"
-    CALL ConvertToVisu_FV(mapCalc_FV,maskGrad)
-  END IF
-#else
+
+
+#else /* FV_RECONSTRUCT */
+
+  ! ================================ WITHOUT RECONSTRUCTION ======================================
   nVal=(/PP_N+1,PP_N+1,PP_N+1,nElems_FV/)
   ! calc FV solution 
   SWRITE(*,*) "[FV] calc quantities"
@@ -347,10 +409,10 @@ ALLOCATE(UVisu_FV(0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV,nVarVisuTotal))
   IF(TRIM(FileType).EQ.'State')THEN
     IF(withDGOperator.AND.PARABOLIC)THEN
 #if PARABOLIC
-      gradUx_tmp=gradUx(:,:,:,:,mapElems_FV)
-      gradUy_tmp=gradUy(:,:,:,:,mapElems_FV)
-      gradUz_tmp=gradUz(:,:,:,:,mapElems_FV)
-      CALL CalcQuantities(nVarCalc_FV,nVal,nElems_FV,mapElems_FV,mapCalc,UCalc_FV,maskCalc,gradUx_tmp,gradUy_tmp,gradUz_tmp)
+      gradUx_calc=gradUx(:,:,:,:,mapElems_FV)
+      gradUy_calc=gradUy(:,:,:,:,mapElems_FV)
+      gradUz_calc=gradUz(:,:,:,:,mapElems_FV)
+      CALL CalcQuantities(nVarCalc_FV,nVal,nElems_FV,mapElems_FV,mapCalc,UCalc_FV,maskCalc,gradUx_calc,gradUy_calc,gradUz_calc)
 #endif
     ELSE
       CALL CalcQuantities(nVarCalc_FV,nVal,nElems_FV,mapElems_FV,mapCalc,UCalc_FV,maskCalc) 
@@ -367,23 +429,21 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Posti_Vars
 USE MOD_EOS_Posti          ,ONLY: CalcQuantities
-USE MOD_Mesh_Vars          ,ONLY: nElems,nBCSides,BC,BoundaryName,SideToElem
-USE MOD_Mesh_Vars          ,ONLY: NormVec,TangVec1,TangVec2
-USE MOD_DG_Vars            ,ONLY: U
+USE MOD_Mesh_Vars          ,ONLY: nBCSides,BC,BoundaryName,SideToElem,ElemToSide
+USE MOD_Mesh_Vars          ,ONLY: NormVec,TangVec1,TangVec2,S2V
 USE MOD_StringTools        ,ONLY: STRICMP
 #if PARABOLIC
 USE MOD_Lifting_Vars       ,ONLY: gradUx,gradUy,gradUz
 #endif
 USE MOD_FV_Vars            ,ONLY: FV_Elems
+USE MOD_Mappings           ,ONLY: buildMappings
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: maskCalc(nVarDep),nVal(4),nValSide(3)
-#if PARABOLIC
-REAL,ALLOCATABLE,DIMENSION(:,:,:,:,:) :: gradUx_tmp,gradUy_tmp,gradUz_tmp
-#endif
-INTEGER            :: iSide,iBC,iElem,iSide2,p,q,dir
+INTEGER            :: maskCalc(nVarDep),nValSide(3)
+INTEGER            :: iSide,iSide_FV,iElem,iElem_FV,iBC,iVar,p,q,dir,ijk(3),locSide
+INTEGER,ALLOCATABLE          :: S2V_NVisu(:,:,:,:,:,:)
 REAL,ALLOCATABLE   :: gradUxFace(:,:,:,:)
 REAL,ALLOCATABLE   :: gradUyFace(:,:,:,:)
 REAL,ALLOCATABLE   :: gradUzFace(:,:,:,:)
@@ -391,9 +451,6 @@ REAL,ALLOCATABLE   :: NormVec_loc(:,:,:,:)
 REAL,ALLOCATABLE   :: TangVec1_loc(:,:,:,:)
 REAL,ALLOCATABLE   :: TangVec2_loc(:,:,:,:)
 !===================================================================================================================================
-
-SWRITE(*,*) "[FV] Calc surface quantities"
-!------ Surface visualization ----------!
 
 ! Build surface visualization mappings. 
 ! mapBCSides_FV(iBCSide) contains the ascending index of the visualization boundary sides. They are sorted after the boundary name.
@@ -419,56 +476,80 @@ DO iBC=1,nBCNamesTotal
     END DO
   END IF
 END DO
-nValSide=(/NVisu_FV+1,NVisu_FV+1,nBCSidesVisu_FV/)
 
-! Allocate array that stores the calculated variables on the visualization boundary.
+nValSide=(/NVisu_FV+1,NVisu_FV+1,nBCSidesVisu_FV/)
+CALL buildMappings(NVisu_FV,S2V=S2V_NVisu)
+SDEALLOCATE(USurfVisu_FV)
+ALLOCATE(USurfVisu_FV(0:NVisu_FV,0:NVisu_FV,0:0,nBCSidesVisu_FV,nVarSurfVisuTotal))
+! ===  Surface visualization ================================
+! copy UCalc_FV to UCalcBoundary_FV
 SDEALLOCATE(UCalcBoundary_FV)
-ALLOCATE(UCalcBoundary_FV(0:NVisu_FV,0:NVisu_FV,nBCSidesVisu_FV,1:nVarCalc))
-ALLOCATE(gradUxFace(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,nBCSidesVisu_FV))
-ALLOCATE(gradUyFace(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,nBCSidesVisu_FV))
-ALLOCATE(gradUzFace(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,nBCSidesVisu_FV))
+ALLOCATE(UCalcBoundary_FV(0:NVisu_FV,0:NVisu_FV,nBCSidesVisu_FV,1:nVarCalc_FV))
+DO iElem_FV = 1,nElems_FV                         ! iterate over all FV visu elements
+  iElem = mapElems_FV(iElem_FV)                   ! get global element index
+  DO locSide=1,6 
+    iSide = ElemToSide(E2S_SIDE_ID,locSide,iElem) ! get global side index
+    IF (iSide.LE.nBCSides) THEN                   ! check if BC side
+      iSide_FV = mapBCSides_FV(iSide)             ! get FV visu side index
+      IF (iSide_FV.GT.0) THEN
+        DO q=0,NVisu_FV; DO p=0,NVisu_FV          ! map volume solution to surface solution
+          ijk = S2V_NVisu(:,0,p,q,0,locSide)
+          UCalcBoundary_FV(p,q,iSide_FV,:) = UCalc_FV(ijk(1),ijk(2),ijk(3),iElem_FV,:)
+        END DO; END DO
+      END IF   
+    END IF
+  END DO
+END DO
+
 ALLOCATE(NormVec_loc (1:3,0:NVisu_FV,0:NVisu_FV,nBCSidesVisu_FV))
 ALLOCATE(TangVec1_loc(1:3,0:NVisu_FV,0:NVisu_FV,nBCSidesVisu_FV))
 ALLOCATE(TangVec2_loc(1:3,0:NVisu_FV,0:NVisu_FV,nBCSidesVisu_FV))
-
-maskCalc = DepSurfaceOnly 
-SWRITE(*,*) "[FV] ProlongToFace_independent"
-WRITE(*,*) LBOUND(UVisu_FV)
-WRITE(*,*) UBOUND(UVisu_FV)
-CALL ProlongToFace_independent(nVarCalc,NVisu_FV,nBCSidesVisu_FV,nElems_FV,maskCalc,mapBCSides_FV, &
-    UVisu_FV,UCalcBoundary_FV,&
-    gradUxFace,gradUyFace,gradUzFace,FVE=1)
-
-
-IF(TRIM(FileType).EQ.'State')THEN
-  DO iSide=1,nBCSides
-    iSide2 = mapBCSides_FV(iSide)
-    IF (iSide2.GT.0) THEN
-      DO q=0,PP_N; DO p=0,PP_N
-        DO dir = 1, 3
-          NormVec_loc (dir,p*2:p*2+1, q*2:q*2+1,iSide2) = NormVec (dir,p,q,1,iSide)
-          TangVec1_loc(dir,p*2:p*2+1, q*2:q*2+1,iSide2) = TangVec1(dir,p,q,1,iSide)
-          TangVec2_loc(dir,p*2:p*2+1, q*2:q*2+1,iSide2) = TangVec2(dir,p,q,1,iSide)
-        END DO ! dir = 1, 3
-      END DO; END DO
-    END IF
-  END DO
-  IF(withDGOperator.AND.PARABOLIC.EQ.1)THEN
-#if PARABOLIC
-    CALL CalcQuantities(nVarCalc,nValSide,mapElems_FV,mapCalc,UCalcBoundary_FV,maskCalc,&
-        gradUxFace,gradUyFace,gradUzFace,&
-        NormVec_loc(:,:,:,:),TangVec1_loc(:,:,:,:),TangVec2_loc(:,:,:,:)) 
-#endif
-  ELSE
-    CALL CalcQuantities(nVarCalc,nValSide,mapElems_FV,mapCalc,UCalcBoundary_FV,maskCalc,& 
-        NormVec=NormVec_loc(:,:,:,:),TangVec1=TangVec1_loc(:,:,:,:),TangVec2=TangVec2_loc(:,:,:,:)) 
+ALLOCATE(gradUxFace(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,nBCSidesVisu_FV))
+ALLOCATE(gradUyFace(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,nBCSidesVisu_FV))
+ALLOCATE(gradUzFace(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,nBCSidesVisu_FV))
+DO iSide=1,nBCSides
+  iSide_FV = mapBCSides_FV(iSide)
+  iElem = SideToElem(S2E_ELEM_ID,iSide)
+  locSide = SideToElem(S2E_LOC_SIDE_ID, iSide)
+  IF (iSide_FV.GT.0) THEN
+    DO q=0,PP_N; DO p=0,PP_N
+      DO dir=1,3
+        NormVec_loc (dir,p*2:p*2+1,q*2:q*2+1,iSide_FV) = NormVec (dir,p,q,1,iSide)
+        TangVec1_loc(dir,p*2:p*2+1,q*2:q*2+1,iSide_FV) = TangVec1(dir,p,q,1,iSide)
+        TangVec2_loc(dir,p*2:p*2+1,q*2:q*2+1,iSide_FV) = TangVec2(dir,p,q,1,iSide)
+      END DO
+      ijk = S2V(:,0,p,q,0,locSide)
+      DO iVar=1,PP_nVarPrim
+        gradUxFace(iVar,p*2:p*2+1,q*2:q*2+1,iSide_FV) = gradUx(iVar,ijk(1),ijk(2),ijk(3),iElem)
+        gradUyFace(iVar,p*2:p*2+1,q*2:q*2+1,iSide_FV) = gradUy(iVar,ijk(1),ijk(2),ijk(3),iElem)
+        gradUzFace(iVar,p*2:p*2+1,q*2:q*2+1,iSide_FV) = gradUz(iVar,ijk(1),ijk(2),ijk(3),iElem)
+      END DO 
+    END DO; END DO ! p,q=0,PP_N
   END IF
+END DO
+
+
+SWRITE(*,*) "[FVRE] CalcSurfQuantities"
+maskCalc = DepSurfaceOnly
+IF(withDGOperator.AND.PARABOLIC.EQ.1)THEN
+#if PARABOLIC
+  CALL CalcQuantities(nVarCalc_FV,nValSide,mapElems_FV,mapCalc_FV,UCalcBoundary_FV,maskCalc,&
+      gradUxFace,gradUyFace,gradUzFace,&
+      NormVec_loc(:,:,:,:),TangVec1_loc(:,:,:,:),TangVec2_loc(:,:,:,:)) 
+#endif
+ELSE
+  CALL CalcQuantities(nVarCalc_FV,nValSide,mapElems_FV,mapCalc_FV,UCalcBoundary_FV,maskCalc,& 
+      NormVec=NormVec_loc(:,:,:,:),TangVec1=TangVec1_loc(:,:,:,:),TangVec2=TangVec2_loc(:,:,:,:)) 
 END IF
 
-SDEALLOCATE(gradUxFace)
-SDEALLOCATE(gradUyFace)
-SDEALLOCATE(gradUzFace)
-
+! copy all quantities to the UVisu_FV array
+SWRITE(*,*) "[FVRE] copy all quantities to USurfVisu_FV"
+DO iVar=1,nVarDep
+  IF (mapSurfVisu(iVar).GT.0) THEN ! visu var
+    SWRITE(*,*) "  ", TRIM(VarNamesTotal(iVar))
+    USurfVisu_FV(:,:,0,:,mapSurfVisu(iVar)) = UCalcBoundary_FV(:,:,:,mapCalc_FV(iVar))
+  END IF
+END DO
 END SUBROUTINE CalcSurfQuantities_ConvertToVisu_FV
 
 #endif /* FV_ENABLED */
@@ -511,101 +592,6 @@ DO iVarOut=1,nVarDep ! iterate over all out variables
   END DO
 END DO
 END SUBROUTINE FillCopy
-
-SUBROUTINE ProlongToFace_independent(nVar,Nloc,nBCsides_IN,nElems_calc,maskCalc,mapBCSides,UIn,UBoundary,&
-    gradUxFace,gradUyFace,gradUzFace, FVE) 
-USE MOD_PreProc
-USE MOD_Posti_Vars
-#if PARABOLIC
-USE MOD_Lifting_Vars       ,ONLY: gradUx,gradUy,gradUz
-#endif
-USE MOD_Interpolation_Vars ,ONLY: L_Minus,L_Plus
-USE MOD_StringTools        ,ONLY: STRICMP
-USE MOD_Mesh_Vars          ,ONLY: nBCSides,SideToElem
-USE MOD_ProlongToFace      ,ONLY: EvalElemFace
-USE MOD_Mappings           ,ONLY: buildMappings
-IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
-INTEGER,INTENT(IN)            :: nVar,Nloc,nBCsides_IN,nElems_calc,FVE
-INTEGER,INTENT(IN)            :: mapBCSides(nBCsides)
-REAL,INTENT(IN)               :: UIn(0:Nloc,0:Nloc,0:Nloc,nElems_calc,1:nVar)
-REAL,INTENT(OUT)              :: UBoundary(0:Nloc,0:Nloc,nBCSides_IN,1:nVar)
-REAL,INTENT(OUT)              :: gradUxFace(1:PP_nVarPrim,0:Nloc,0:Nloc,nBCSides_IN)
-REAL,INTENT(OUT)              :: gradUyFace(1:PP_nVarPrim,0:Nloc,0:Nloc,nBCSides_IN)
-REAL,INTENT(OUT)              :: gradUzFace(1:PP_nVarPrim,0:Nloc,0:Nloc,nBCSides_IN)
-INTEGER,INTENT(IN)            :: maskCalc(nVarDep)
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-INTEGER           :: iVar,iVarIn,iVarOut,iSide,locSide,iElem,p,q
-REAL              :: Uface(1,0:Nloc,0:Nloc)
-REAL              :: gradUxFace_tmp(1:PP_nVarPrim,0:PP_N,0:PP_N)
-REAL              :: gradUyFace_tmp(1:PP_nVarPrim,0:PP_N,0:PP_N)
-REAL              :: gradUzFace_tmp(1:PP_nVarPrim,0:PP_N,0:PP_N)
-INTEGER,ALLOCATABLE :: S2V2(:,:,:,:,:)
-!===================================================================================================================================
-CALL buildMappings(Nloc,S2V2=S2V2)
-! Copy exisiting variables from solution array
-DO iVarOut=1,nVarDep ! iterate over all out variables
-  IF (mapCalc(iVarOut).LT.1) CYCLE ! check if variable must be calculated
-  IF (maskCalc(iVarOut).EQ.0) THEN
-    iVar=mapCalc(iVarOut)
-    WRITE (*,*) iVarOut,iVar
-
-    DO iSide=1,nBCSides
-      IF (mapBCSides(iSide).GT.0) THEN
-        iElem = SideToElem(S2E_ELEM_ID,iSide)
-        locSide = SideToElem(S2E_LOC_SIDE_ID, iSide)
-        IF(PP_NodeType.EQ.1.AND.FVE.EQ.0)THEN
-          CALL EvalElemFace(1,Nloc,UIn(:,:,:,iElem,iVar:iVar),Uface(1:1,:,:),L_Minus,L_Plus,locSide)
-        ELSE
-          CALL EvalElemFace(1,Nloc,UIn(:,:,:,iElem,iVar:iVar),Uface(1:1,:,:),locSide)
-        END IF
-        DO q=0,Nloc; DO p=0,Nloc
-          UBoundary(p,q,mapBCSides(iSide),iVar)=Uface(1,S2V2(1,p,q,0,locSide),S2V2(2,p,q,0,locSide))
-        END DO; END DO
-      END IF
-    END DO
-
-  END IF
-END DO
-
-IF(TRIM(FileType).EQ.'State')THEN
-  IF(withDGOperator.AND.PARABOLIC.EQ.1)THEN
-#if PARABOLIC
-    DO iSide=1,nBCSides
-      IF (mapBCSides(iSide).GT.0) THEN
-        iElem = SideToElem(S2E_ELEM_ID,iSide)
-        locSide = SideToElem(S2E_LOC_SIDE_ID, iSide)
-        IF(PP_NodeType.EQ.1.AND.FVE.EQ.0)THEN
-          CALL EvalElemFace(PP_nVarPrim,PP_N,gradUx(:,:,:,:,iElem),gradUxFace_tmp,L_Minus,L_Plus,locSide)
-          CALL EvalElemFace(PP_nVarPrim,PP_N,gradUy(:,:,:,:,iElem),gradUyFace_tmp,L_Minus,L_Plus,locSide)
-          CALL EvalElemFace(PP_nVarPrim,PP_N,gradUz(:,:,:,:,iElem),gradUzFace_tmp,L_Minus,L_Plus,locSide)
-        ELSE
-          CALL EvalElemFace(PP_nVarPrim,PP_N,gradUx(:,:,:,:,iElem),gradUxFace_tmp,locSide)
-          CALL EvalElemFace(PP_nVarPrim,PP_N,gradUy(:,:,:,:,iElem),gradUyFace_tmp,locSide)
-          CALL EvalElemFace(PP_nVarPrim,PP_N,gradUz(:,:,:,:,iElem),gradUzFace_tmp,locSide)
-        END IF
-        IF (FVE.EQ.0) THEN
-          DO q=0,PP_N; DO p=0,PP_N
-            gradUxFace(:,p,q,mapBCSides(iSide))=gradUxFace_tmp(:,S2V2(1,p,q,0,locSide),S2V2(2,p,q,0,locSide))
-            gradUyFace(:,p,q,mapBCSides(iSide))=gradUyFace_tmp(:,S2V2(1,p,q,0,locSide),S2V2(2,p,q,0,locSide))
-            gradUzFace(:,p,q,mapBCSides(iSide))=gradUzFace_tmp(:,S2V2(1,p,q,0,locSide),S2V2(2,p,q,0,locSide))
-          END DO; END DO
-        ELSE
-          DO q=0,PP_N; DO p=0,PP_N
-            DO iVar=1,PP_nVarPrim
-              gradUxFace(iVar,p*2:p*2+1,q*2:q*2+1,mapBCSides(iSide))=gradUxFace_tmp(iVar,S2V2(1,p,q,0,locSide),S2V2(2,p,q,0,locSide))
-              gradUyFace(iVar,p*2:p*2+1,q*2:q*2+1,mapBCSides(iSide))=gradUyFace_tmp(iVar,S2V2(1,p,q,0,locSide),S2V2(2,p,q,0,locSide))
-              gradUzFace(iVar,p*2:p*2+1,q*2:q*2+1,mapBCSides(iSide))=gradUzFace_tmp(iVar,S2V2(1,p,q,0,locSide),S2V2(2,p,q,0,locSide))
-            END DO 
-          END DO; END DO
-        END IF
-      END IF
-    END DO
-#endif
-  END IF
-END IF
-END SUBROUTINE ProlongToFace_independent
 
 
 END MODULE MOD_Posti_Calc

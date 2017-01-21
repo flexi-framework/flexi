@@ -196,12 +196,13 @@ DO iVar=1,CountOption("VarName")
   VarName = GETSTR("VarName")
   DO iVar2=1,nVarTotal
     IF (STRICMP(VarName, VarNamesTotal(iVar2))) THEN
-      IF (DepSurfaceOnly(iVar2).EQ.0) THEN
-        mapVisu(iVar2) = nVarVisuTotal+1
-        nVarVisuTotal = nVarVisuTotal + 1
-      END IF
-      mapSurfVisu(iVar2) = nVarSurfVisuTotal+1
       nVarSurfVisuTotal = nVarSurfVisuTotal + 1
+      mapSurfVisu(iVar2) = nVarSurfVisuTotal
+      IF (iVar2.LE.nVarDep) THEN
+        IF(DepSurfaceOnly(iVar2).EQ.1) CYCLE
+      END IF
+      nVarVisuTotal = nVarVisuTotal + 1
+      mapVisu(iVar2) = nVarVisuTotal
     END IF
   END DO
 END DO

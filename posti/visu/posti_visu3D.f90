@@ -44,9 +44,10 @@ CHARACTER(LEN=255),POINTER     :: VarNames_p(:)
 REAL,POINTER                   :: Coords_p(:,:,:,:,:)
 REAL,POINTER                   :: Values_p(:,:,:,:,:)
 CHARACTER(LEN=255)             :: FileString_DG
-CHARACTER(LEN=255)             :: FileString_Surf
+CHARACTER(LEN=255)             :: FileString_SurfDG
 #if FV_ENABLED                            
 CHARACTER(LEN=255)             :: FileString_FV
+CHARACTER(LEN=255)             :: FileString_SurfFV
 CHARACTER(LEN=255)             :: FileString_multiblock
 INTEGER                        :: NVisu_k_FV
 #endif
@@ -126,9 +127,18 @@ DO iArg=1+skipArgs,nArgs
 
 !#endif
     ! Surface data
-    FileString_Surf=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Surf',OutputTime))//'.vtu'
+#if FV_ENABLED                            
+    FileString_SurfDG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_SurfDG',OutputTime))//'.vtu'
+#else
+    FileString_SurfDG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Surf',OutputTime))//'.vtu'
+#endif
     CALL WriteDataToVTK(nVarSurfVisuTotal,NVisu,nBCSidesVisu_DG,VarNamesSurf_loc,CoordsSurfVisu_DG,USurfVisu_DG,&
-        FileString_Surf,dim=2,DGFV=0,nValAtLastDimension=.TRUE.)
+        FileString_SurfDG,dim=2,DGFV=0,nValAtLastDimension=.TRUE.)
+#if FV_ENABLED                            
+    FileString_SurfFV=TRIM(TIMESTAMP(TRIM(ProjectName)//'_SurfFV',OutputTime))//'.vtu'
+    CALL WriteDataToVTK(nVarSurfVisuTotal,NVisu_FV,nBCSidesVisu_FV,VarNamesSurf_loc,CoordsSurfVisu_FV,USurfVisu_FV,&
+        FileString_SurfFV,dim=2,DGFV=1,nValAtLastDimension=.TRUE.)
+#endif
   ELSE
     STOP 'implement!'
 

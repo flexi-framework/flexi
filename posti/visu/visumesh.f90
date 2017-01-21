@@ -116,7 +116,8 @@ SUBROUTINE BuildSurfVisuCoords()
 USE ISO_C_BINDING
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Posti_Vars         ,ONLY: CoordsVisu_DG,CoordsSurfVisu_DG,nBCSidesVisu_DG,mapBCSides_DG
+USE MOD_Posti_Vars         ,ONLY: CoordsSurfVisu_DG,nBCSidesVisu_DG,mapBCSides_DG
+USE MOD_Posti_Vars         ,ONLY: CoordsSurfVisu_FV,nBCSidesVisu_FV,mapBCSides_FV
 USE MOD_Posti_Vars         ,ONLY: NodeTypeVisuPosti
 USE MOD_Posti_Vars         ,ONLY: NVisu,nElems_DG,mapElems_DG
 #if FV_ENABLED
@@ -143,7 +144,7 @@ Nloc = PP_N
 NodeType_loc = NodeType
 
 ! Convert coordinates to visu grid
-SWRITE (*,*) "[MESH] Convert coordinates to visu grid (DG)"
+SWRITE (*,*) "[MESH] Convert coordinates to surface visu grid (DG)"
 ALLOCATE(Vdm_N_NVisu(0:NVisu,0:Nloc))
 CALL GetVandermonde(Nloc,NodeType_loc,NVisu   ,NodeTypeVisuPosti  ,Vdm_N_NVisu   ,modal=.FALSE.)
 ! convert coords of DG elements
@@ -157,22 +158,24 @@ DO iSide=1,nBCSides
 END DO
 SDEALLOCATE(Vdm_N_NVisu)
 
-!#if FV_ENABLED
-!IF (hasFV_Elems) THEN
-  !SWRITE (*,*) "[MESH] Convert coordinates to visu grid (FV)"
-  !IF ((.NOT.changedMeshFile).AND.(.NOT.changedFV_Elems)) RETURN ! only NVisu changed, but NVisu_FV is independent of NVisu
-  !ALLOCATE(Vdm_N_NVisu_FV(0:NVisu_FV,0:Nloc))
-  !CALL GetVandermonde(Nloc,NodeType_loc,NVisu_FV,NodeTypeFVEqui,Vdm_N_NVisu_FV,modal=.FALSE.)
-  !! convert coords of FV elements
-  !SDEALLOCATE(CoordsVisu_FV)
-  !ALLOCATE(CoordsVisu_FV(3,0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV))
-  !DO iElem_FV = 1,nElems_FV
-    !iElem = mapElems_FV(iElem_FV)
-    !CALL ChangeBasis3D(3,Nloc,NVisu_FV,Vdm_N_NVisu_FV,NodeCoords_loc(:,:,:,:,iElem),CoordsVisu_FV(:,:,:,:,iElem_FV))
-  !END DO
-  !SDEALLOCATE(Vdm_N_NVisu_FV)
-!END IF
-!#endif
+#if FV_ENABLED
+IF (hasFV_Elems) THEN
+  SWRITE (*,*) "[MESH] Convert coordinates to surface visu grid (FV)"
+  IF ((.NOT.changedMeshFile).AND.(.NOT.changedFV_Elems)) RETURN ! only NVisu changed, but NVisu_FV is independent of NVisu
+  ALLOCATE(Vdm_N_NVisu_FV(0:NVisu_FV,0:Nloc))
+  CALL GetVandermonde(Nloc,NodeType_loc,NVisu_FV,NodeTypeFVEqui,Vdm_N_NVisu_FV,modal=.FALSE.)
+  ! convert coords of FV elements
+  SDEALLOCATE(CoordsSurfVisu_FV)
+  ALLOCATE(CoordsSurfVisu_FV(3,0:NVisu_FV,0:NVisu_FV,0:0,nBCSidesVisu_FV))
+  DO iSide=1,nBCSides
+    iSideVisu = mapBCSides_FV(iSide)
+    IF (iSideVisu.GT.0)THEN
+      CALL ChangeBasis2D(3,Nloc,NVisu_FV,Vdm_N_NVisu_FV,Face_xGP(:,:,:,0,iSide),CoordsSurfVisu_FV(:,:,:,0,iSideVisu))
+    END IF
+  END DO
+  SDEALLOCATE(Vdm_N_NVisu_FV)
+END IF
+#endif
 
 END SUBROUTINE BuildSurfVisuCoords
 
