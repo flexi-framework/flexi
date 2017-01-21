@@ -73,6 +73,13 @@ class VTKIOPARALLEL_EXPORT visu3DReader :  public vtkMultiBlockDataSetAlgorithm
       void DisableAllVarArrays();
       void EnableAllVarArrays();
 
+      int GetNumberOfBCArrays();
+      const char* GetBCArrayName(int index);
+      int GetBCArrayStatus(const char* name);
+      void SetBCArrayStatus(const char* name, int status);
+      void DisableAllBCArrays();
+      void EnableAllBCArrays();
+
       // MPI
       void SetController(vtkMultiProcessController *);
       vtkGetObjectMacro(Controller, vtkMultiProcessController);
@@ -88,15 +95,22 @@ class VTKIOPARALLEL_EXPORT visu3DReader :  public vtkMultiBlockDataSetAlgorithm
       struct DoubleARRAY values_FV;
       struct IntARRAY  nodeids_FV;
       struct CharARRAY varnames;
-      struct IntARRAY components;
+      struct DoubleARRAY coordsSurf_DG;
+      struct DoubleARRAY valuesSurf_DG;
+      struct IntARRAY  nodeidsSurf_DG;
+      struct DoubleARRAY coordsSurf_FV;
+      struct DoubleARRAY valuesSurf_FV;
+      struct IntARRAY  nodeidsSurf_FV;
+      struct CharARRAY varnamesSurf;
 
       int RequestInformation(vtkInformation *, vtkInformationVector **, vtkInformationVector *);
       int RequestData(vtkInformation *, vtkInformationVector **, vtkInformationVector *);
 
-      void InsertData(vtkSmartPointer<vtkUnstructuredGrid> &output, struct DoubleARRAY* coords,
-            struct DoubleARRAY* values, struct IntARRAY* nodeids, struct CharARRAY* varnames, struct IntARRAY* components);
+      void InsertData(vtkMultiBlockDataSet* mb, int blockno, struct DoubleARRAY* coords,
+            struct DoubleARRAY* values, struct IntARRAY* nodeids, struct CharARRAY* varnames);
 
       vtkDataArraySelection* VarDataArraySelection;
+      vtkDataArraySelection* BCDataArraySelection;
 
       // The observer to modify this object when the array selections are modified.
       vtkCallbackCommand* SelectionObserver;
@@ -114,6 +128,7 @@ class VTKIOPARALLEL_EXPORT visu3DReader :  public vtkMultiBlockDataSetAlgorithm
       char* ParameterFileOverwrite;
       char* MeshFileOverwrite;
       std::vector<bool> VarNames_selected;
+      std::vector<bool> BCNames_selected;
       int NumProcesses;
       int ProcessId;
 

@@ -124,6 +124,30 @@
                This property contains a list of the variable names to read.
             </Documentation>
          </StringVectorProperty>
+      <!-- ================================================================== -->
+         <StringVectorProperty name="BCArrayInfo"
+            information_only="1">
+            <ArraySelectionInformationHelper attribute_name="BC" />
+         </StringVectorProperty>
+         <StringVectorProperty name="BCArrayStatus"
+            command="SetBCArrayStatus"
+            number_of_elements="0"
+            repeat_command="1"
+            number_of_elements_per_command="2"
+            element_types="2 0"
+            information_property="BCArrayInfo"
+            label="BCs"
+            >
+            <ArraySelectionDomain name="array_list">
+               <RequiredProperties>
+                  <Property name="BCArrayInfo" function="ArrayList" />
+               </RequiredProperties>
+            </ArraySelectionDomain>
+            <Documentation>
+               This property contains a list of the BCs for surface visualization.
+            </Documentation>
+         </StringVectorProperty>
+      <!-- ================================================================== -->
          <Hints>
             <ReaderFactory extensions="h5"
                file_description="2 Posti Visu3D" />

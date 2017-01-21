@@ -73,3 +73,11 @@
 #elif PP_VISC == 2
 #define VISCOSITY_PRIM(U)              mu0*U(6)**ExpoSuth
 #endif
+
+#if PP_VISC == 0
+#define VISCOSITY_TEMPERATURE(T)       mu0
+#elif PP_VISC == 1
+#define VISCOSITY_TEMPERATURE(T)       muSuth(T)
+#elif PP_VISC == 2
+#define VISCOSITY_TEMPERATURE(T)       mu0*T**ExpoSuth
+#endif

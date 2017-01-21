@@ -34,19 +34,10 @@ USE MOD_StringTools           ,ONLY: STRICMP,GetFileExtension
 impliCIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                        :: iArg
+INTEGER                        :: iArg, iVar
 CHARACTER(LEN=255),TARGET      :: prmfile
 CHARACTER(LEN=255),TARGET      :: postifile
 CHARACTER(LEN=255),TARGET      :: statefile
-TYPE (CARRAY)                  :: coordsDG_out
-TYPE (CARRAY)                  :: valuesDG_out
-TYPE (CARRAY)                  :: nodeidsDG_out
-TYPE (CARRAY)                  :: coordsFV_out
-TYPE (CARRAY)                  :: valuesFV_out
-TYPE (CARRAY)                  :: nodeidsFV_out
-TYPE (CARRAY)                  :: varnames_out
-TYPE (CARRAY)                  :: components_out
-
 INTEGER                        :: skipArgs
 INTEGER                        :: nVal
 CHARACTER(LEN=255),POINTER     :: VarNames_p(:)
@@ -63,6 +54,8 @@ INTEGER                        :: NVisu_k
 #if !USE_MPI
 INTEGER                        :: MPI_COMM_WORLD = 0
 #endif
+CHARACTER(LEN=255),ALLOCATABLE :: VarNames_loc(:)
+CHARACTER(LEN=255),ALLOCATABLE :: VarNamesSurf_loc(:)
 !==================================================================================================================================
 CALL InitMPI()
 CALL ParseCommandlineArguments()
@@ -93,41 +86,79 @@ DO iArg=1+skipArgs,nArgs
   statefile = TRIM(Args(iArg))
   SWRITE(*,*) "Processing state-file: ",TRIM(statefile)
   
-  CALL visu3D(MPI_COMM_WORLD, prmfile, postifile, statefile, &
-      coordsDG_out,valuesDG_out,nodeidsDG_out, &
-      coordsFV_out,valuesFV_out,nodeidsFV_out,varnames_out,components_out)
+  CALL visu3D(MPI_COMM_WORLD, prmfile, postifile, statefile)
 
 #if FV_ENABLED                            
   FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_DG',OutputTime))//'.vtu'
 #else
   FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))//'.vtu'
 #endif
-  nVal = varnames_out%len/255
-  CALL C_F_POINTER(varnames_out%data, VarNames_p, [nVal])
-  NVisu_k = NVisu * (VisuDimension-2)
-  CALL C_F_POINTER(coordsDG_out%data, Coords_p, [3,NVisu+1,NVisu+1,NVisu_k+1,nElems_DG])
-  CALL C_F_POINTER(valuesDG_out%data, Values_p, [  NVisu+1,NVisu+1,NVisu_k+1,nElems_DG,nVal])
-  CALL WriteDataToVTK(nVal,NVisu   ,nElems_DG,VarNames_p,Coords_p,Values_p,FileString_DG,&
+
+  ALLOCATE(varnames_loc(nVarVisuTotal))
+  ALLOCATE(varnamesSurf_loc(nVarSurfVisuTotal))
+  DO iVar=1,nVarTotal
+    IF (mapVisu(iVar).GT.0) THEN
+      VarNames_loc(mapVisu(iVar)) = VarNamesTotal(iVar)
+    END IF
+    IF (mapSurfVisu(iVar).GT.0) THEN
+      VarNamesSurf_loc(mapSurfVisu(iVar)) = VarNamesTotal(iVar)
+    END IF
+  END DO
+
+  IF (VisuDimension.EQ.3) THEN
+    WRITE (*,*) LBOUND(CoordsVisu_DG)
+    WRITE (*,*) UBOUND(CoordsVisu_DG)
+  CALL WriteDataToVTK(nVarVisuTotal,NVisu,nElems_DG,VarNames_loc,CoordsVisu_DG,UVisu_DG,FileString_DG,&
       dim=VisuDimension,DGFV=0,nValAtLastDimension=.TRUE.)
-#if FV_ENABLED                            
-  FileString_FV=TRIM(TIMESTAMP(TRIM(ProjectName)//'_FV',OutputTime))//'.vtu'
-  NVisu_k_FV = NVisu_FV * (VisuDimension-2)
-  CALL C_F_POINTER(coordsFV_out%data, Coords_p, [3,NVisu_FV+1,NVisu_FV+1,NVisu_k_FV+1,nElems_FV])
-  CALL C_F_POINTER(valuesFV_out%data, Values_p, [  NVisu_FV+1,NVisu_FV+1,NVisu_k_FV+1,nElems_FV,nVal])
-  CALL WriteDataToVTK(nVal,NVisu_FV,nElems_FV,VarNames_p,Coords_p,Values_p,FileString_FV,&
-      dim=VisuDimension,DGFV=1,nValAtLastDimension=.TRUE.)
+!#if FV_ENABLED                            
+  !FileString_FV=TRIM(TIMESTAMP(TRIM(ProjectName)//'_FV',OutputTime))//'.vtu'
+  !NVisu_k_FV = NVisu_FV * (VisuDimension-2)
+  !CALL C_F_POINTER(coordsFV_out%data, Coords_p, [3,NVisu_FV+1,NVisu_FV+1,NVisu_k_FV+1,nElems_FV])
+  !CALL C_F_POINTER(valuesFV_out%data, Values_p, [  NVisu_FV+1,NVisu_FV+1,NVisu_k_FV+1,nElems_FV,nVal])
+  !CALL WriteDataToVTK(nVal,NVisu_FV,nElems_FV,VarNames_p,Coords_p,Values_p,FileString_FV,&
+      !dim=VisuDimension,DGFV=1,nValAtLastDimension=.TRUE.)
 
-  IF (MPIRoot) THEN                   
-    ! write multiblock file
-    FileString_multiblock=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))//'.vtm'
-    CALL WriteVTKMultiBlockDataSet(FileString_multiblock,FileString_DG,FileString_FV)
-  ENDIF
+  !IF (MPIRoot) THEN                   
+    !! write multiblock file
+    !FileString_multiblock=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))//'.vtm'
+    !CALL WriteVTKMultiBlockDataSet(FileString_multiblock,FileString_DG,FileString_FV)
+  !ENDIF
 
-#endif
-  ! Surface data
-  FileString_Surf=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Surf',OutputTime))//'.vtu'
-  CALL WriteDataToVTK(nVal,NVisu,nBCSidesVisu,VarNames_p,CoordsSurfVisu_DG,USurfVisu_DG,FileString_Surf,&
-      dim=2,DGFV=0,nValAtLastDimension=.TRUE.)
+!#endif
+    ! Surface data
+    FileString_Surf=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Surf',OutputTime))//'.vtu'
+    CALL WriteDataToVTK(nVarSurfVisuTotal,NVisu,nBCSidesVisu_DG,VarNamesSurf_loc,CoordsSurfVisu_DG,USurfVisu_DG,&
+        FileString_Surf,dim=2,DGFV=0,nValAtLastDimension=.TRUE.)
+  ELSE
+    STOP 'implement!'
+
+!ELSE IF (VisuDimension.EQ.1) THEN ! CSV along 1d line
+
+  !IF (nProcessors.GT.1) &
+    !CALL CollectiveStop(__STAMP__,"1D csv output along lines only supported for single execution")
+
+  !strOutputFile=TRIM(TIMESTAMP(TRIM(ProjectName)//'_extract1D',OutputTime))
+
+  !OPEN(NEWUNIT = iounit, STATUS='REPLACE',FILE=TRIM(strOutputFile)//'_DG.csv')
+  !DO iElem=1,nElems_DG
+    !DO i=0,NVisu
+      !WRITE(iounit,*) CoordsVisu_DG(1,i,0,0,iElem), UVisu_DG(i,0,0,iElem,:)
+    !END DO 
+  !END DO
+  !CLOSE(iounit) ! close the file
+
+!#if FV_ENABLED
+  !OPEN(NEWUNIT = iounit, STATUS='REPLACE',FILE=TRIM(strOutputFile)//'_FV.csv')
+  !DO iElem=1,nElems_FV
+    !DO i=0,NVisu_FV
+      !WRITE(iounit,*) CoordsVisu_FV(1,i,0,0,iElem), UVisu_FV(i,0,0,iElem,:)
+    !END DO 
+  !END DO
+  !CLOSE(iounit) ! close the file
+!#endif
+  END IF
+
+  DEALLOCATE(VarNames_loc)
 END DO
 
 END PROGRAM 

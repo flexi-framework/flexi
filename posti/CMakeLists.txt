@@ -17,6 +17,7 @@ FILE(GLOB visuF90 ./posti/visu/calc.f90
                   ./posti/visu/mappings.f90
                   ./posti/visu/readstate.f90
                   ./posti/visu/visu3D.f90
+                  ./posti/visu/visu3D_Cwrapper.f90
                   ./posti/visu/visu3D_vars.f90
                   ./posti/visu/visumesh.f90)
 ADD_LIBRARY(visulibF90 OBJECT ${visuF90})

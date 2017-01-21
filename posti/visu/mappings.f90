@@ -184,23 +184,31 @@ CHARACTER(LEN=20)   :: format
 !   mapVisu = map, which stores at position x the position/index of the x.th quantity in the UVisu array
 !             if a quantity is not visualized it is zero
 SDEALLOCATE(mapVisu)
+SDEALLOCATE(mapSurfVisu)
 ALLOCATE(mapVisu(1:nVarTotal))
+ALLOCATE(mapSurfVisu(1:nVarTotal))
 mapVisu = 0
+mapSurfVisu = 0
 nVarVisuTotal = 0
+nVarSurfVisuTotal = 0
 ! Compare varnames that should be visualized with available varnames
 DO iVar=1,CountOption("VarName")
   VarName = GETSTR("VarName")
   DO iVar2=1,nVarTotal
     IF (STRICMP(VarName, VarNamesTotal(iVar2))) THEN
-      mapVisu(iVar2) = nVarVisuTotal+1
-      nVarVisuTotal = nVarVisuTotal + 1
+      IF (DepSurfaceOnly(iVar2).EQ.0) THEN
+        mapVisu(iVar2) = nVarVisuTotal+1
+        nVarVisuTotal = nVarVisuTotal + 1
+      END IF
+      mapSurfVisu(iVar2) = nVarSurfVisuTotal+1
+      nVarSurfVisuTotal = nVarSurfVisuTotal + 1
     END IF
   END DO
 END DO
 
 ! check whether gradients are needed for any quantity
 DO iVar=1,nVarDep
-  IF (mapVisu(iVar).GT.0) THEN
+  IF (mapSurfVisu(iVar).GT.0) THEN
     withDGOperator = withDGOperator .OR. (DepTable(iVar,0).GT.0)
   END IF
 END DO
@@ -229,7 +237,7 @@ SDEALLOCATE(mapCalc)
 ALLOCATE(mapCalc(1:nVarDep))
 mapCalc = 0
 DO iVar=1,nVarDep
-  IF (mapVisu(iVar).GT.0) THEN
+  IF (mapSurfVisu(iVar).GT.0) THEN
     mapCalc = MAX(mapCalc,DepTable(iVar,1:nVarDep))
   END IF
 END DO
@@ -244,18 +252,18 @@ END DO
 
 ! check if any varnames changed
 changedVarNames = .TRUE.
-IF (ALLOCATED(mapVisu_old).AND.(SIZE(mapVisu).EQ.SIZE(mapVisu_old))) THEN
-  changedVarNames = .NOT.ALL(mapVisu.EQ.mapVisu_old) 
+IF (ALLOCATED(mapSurfVisu_old).AND.(SIZE(mapSurfVisu).EQ.SIZE(mapSurfVisu_old))) THEN
+  changedVarNames = .NOT.ALL(mapSurfVisu.EQ.mapSurfVisu_old) 
 END IF
-changedVarNames = changedVarNames
-SDEALLOCATE(mapVisu_old)
-ALLOCATE(mapVisu_old(1:nVarTotal))
-mapVisu_old = mapVisu
+SDEALLOCATE(mapSurfVisu_old)
+ALLOCATE(mapSurfVisu_old(1:nVarTotal))
+mapSurfVisu_old = mapSurfVisu
 
 ! print the mappings
 WRITE(format,'(I2)') nVarTotal
 SWRITE (*,'(A,'//format//'I3)') "mapCalc ",mapCalc
 SWRITE (*,'(A,'//format//'I3)') "mapVisu ",mapVisu
+SWRITE (*,'(A,'//format//'I3)') "mapSurfVisu ",mapSurfVisu
 
 ! Build the mapping for the surface visualization
 ! mapBCNames(iBC) stores the ascending visualization index of the all boundaries. 0 means no visualization.
@@ -274,6 +282,16 @@ DO iVar=1,CountOption("BoundaryName")
     END IF
   END DO
 END DO
+
+! check if any boundary changed
+changedBCnames = .TRUE.
+IF (ALLOCATED(mapBCnames_old).AND.(SIZE(mapBCnames).EQ.SIZE(mapBCnames_old))) THEN
+  changedBCnames = .NOT.ALL(mapBCnames.EQ.mapBCnames_old) 
+END IF
+SDEALLOCATE(mapBCnames_old)
+ALLOCATE(mapBCnames_old(1:nBCNamesTotal))
+mapBCnames_old = mapBCnames
+
 
 SWRITE (*,'(A,'//format//'I3)') "mapBCNames ",mapBCNames
 

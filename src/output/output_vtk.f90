@@ -139,9 +139,9 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)          :: nVal                 !< Number of nodal output variables
 INTEGER,INTENT(IN)          :: NVisu                !< Number of output points .EQ. NAnalyze
 INTEGER,INTENT(IN)          :: nElems               !< Number of output elements
-REAL,POINTER,INTENT(IN)     :: Coord(:,:,:,:,:)     !< CoordsVector
+REAL,INTENT(IN)             :: Coord(1:3,0:NVisu,0:NVisu,0:NVisu*(dim-2),nElems)     !< CoordsVector
 CHARACTER(LEN=*),INTENT(IN) :: VarNames(nVal)       !< Names of all variables that will be written out
-REAL,POINTER,INTENT(IN)     :: Value(:,:,:,:,:)     !< Statevector
+REAL,INTENT(IN)             :: Value(0:NVisu,0:NVisu,0:NVisu*(dim-2),nElems,1:nVal)  !< Statevector
 CHARACTER(LEN=*),INTENT(IN) :: FileString           !< Output file name
 INTEGER,INTENT(IN)          :: dim                  !< dimension: 2 or 3
 INTEGER,OPTIONAL,INTENT(IN) :: DGFV                 !< flag indicating DG = 0 or FV =1 data
@@ -412,6 +412,7 @@ TYPE (CARRAY), INTENT(INOUT)         :: nodeids_out
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
+coords_out%dim  = dim
 IF (nElems.EQ.0) THEN
   coords_out%len  = 0
   nodeids_out%len = 0
@@ -457,6 +458,7 @@ TYPE (CARRAY), INTENT(INOUT)      :: values_out
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
+values_out%dim  = dim
 IF (nElems.EQ.0) THEN
   values_out%len  = 0
   RETURN
@@ -476,7 +478,7 @@ END SUBROUTINE WriteDataToVTK_array
 !===================================================================================================================================
 !> Subroutine to write variable names to VTK format
 !===================================================================================================================================
-SUBROUTINE WriteVarnamesToVTK_array(nDep,mapVisu,varnames_out,components_out,VarNamesTotal,nVarTotal,nVarVisuTotal)
+SUBROUTINE WriteVarnamesToVTK_array(nVarTotal,mapVisu,varnames_out,VarNamesTotal,nVarVisuTotal)
 USE ISO_C_BINDING
 ! MODULES
 USE MOD_Globals
@@ -485,37 +487,26 @@ USE MOD_StringTools    ,ONLY: STRICMP
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)             :: nDep
-INTEGER,INTENT(IN)             :: mapVisu(nDep)
-TYPE (CARRAY), INTENT(INOUT)   :: varnames_out
-TYPE (CARRAY), INTENT(INOUT)   :: components_out
 INTEGER,INTENT(IN)             :: nVarTotal
-INTEGER,INTENT(IN)             :: nVarVisuTotal
+INTEGER,INTENT(IN)             :: mapVisu(nVarTotal)
+TYPE (CARRAY), INTENT(INOUT)   :: varnames_out
 CHARACTER(LEN=255),INTENT(IN)  :: VarNamesTotal(nVarTotal)
+INTEGER,INTENT(IN)             :: nVarVisuTotal
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(C_CHAR),POINTER    :: VarNames_loc(:,:)
-INTEGER(C_INT),POINTER       :: components_loc(:)
-INTEGER                      :: nVar_loc,i,iVar,iVarVisu
+INTEGER                      :: i,iVar
 !===================================================================================================================================
-nVar_loc = nVarVisuTotal
 ! copy varnames
-ALLOCATE(VarNames_loc(255,nVar_loc))
-varnames_out%len  = nVar_loc*255
+ALLOCATE(VarNames_loc(255,nVarVisuTotal))
+varnames_out%len  = nVarVisuTotal*255
 varnames_out%data = C_LOC(VarNames_loc(1,1))
 
-ALLOCATE(components_loc(nVar_loc))
-components_out%len  = nVar_loc
-components_out%data = C_LOC(components_loc(1))
-
-iVarVisu = 0
 DO iVar=1,nVarTotal
   IF (mapVisu(iVar).GT.0) THEN
-    iVarVisu=iVarVisu+1
     DO i=1,255
-      VarNames_loc(i,iVarVisu) = VarNamesTotal(iVar)(i:i)
+      VarNames_loc(i,mapVisu(iVar)) = VarNamesTotal(iVar)(i:i)
     END DO
-    components_loc(iVarVisu) = 1
   END IF
 END DO
 

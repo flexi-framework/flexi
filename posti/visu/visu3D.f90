@@ -28,8 +28,8 @@ PRIVATE
 ! Private Part ---------------------------------------------------------------------------------------------------------------------
 ! Public Part ----------------------------------------------------------------------------------------------------------------------
 
-INTERFACE visu3d_requestInformation
-  MODULE PROCEDURE visu3d_requestInformation
+INTERFACE visu3d_getVarNamesAndFileType
+  MODULE PROCEDURE visu3d_getVarNamesAndFileType
 END INTERFACE
 
 INTERFACE Visu3D_InitFile
@@ -40,76 +40,16 @@ INTERFACE visu3D
   MODULE PROCEDURE visu3D
 END INTERFACE
 
-INTERFACE visu3D_CWrapper
-  MODULE PROCEDURE visu3D_CWrapper
-END INTERFACE
-
-INTERFACE visu3d_dealloc_nodeids
-  MODULE PROCEDURE visu3d_dealloc_nodeids
-END INTERFACE
-
 INTERFACE FinalizeVisu3D
   MODULE PROCEDURE FinalizeVisu3D
 END INTERFACE
 
-PUBLIC:: visu3d_requestInformation
+PUBLIC:: visu3d_getVarNamesAndFileType
 PUBLIC:: visu3D_InitFile
 PUBLIC:: visu3D
-PUBLIC:: visu3D_CWrapper
-PUBLIC:: visu3d_dealloc_nodeids
 PUBLIC:: FinalizeVisu3D
 
 CONTAINS
-
-
-FUNCTION cstrToChar255(cstr, strlen) 
-USE ISO_C_BINDING
-! INPUT / OUTPUT VARIABLES 
-TYPE(C_PTR),TARGET,INTENT(IN)  :: cstr
-INTEGER,INTENT(IN)             :: strlen
-CHARACTER(LEN=255)             :: cstrToChar255
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-CHARACTER(KIND=C_CHAR),POINTER :: tmp(:)
-!===================================================================================================================================
-CALL C_F_POINTER(C_LOC(cstr), tmp, [strlen])
-cstrToChar255 = TRANSFER(tmp(1:strlen), cstrToChar255)
-cstrToChar255(strlen+1:255) = ' ' 
-END FUNCTION cstrToChar255
-
-!===================================================================================================================================
-!> Wrapper to visu3D_InitFile for Paraview plugin
-!===================================================================================================================================
-SUBROUTINE visu3d_requestInformation(mpi_comm_IN, strlen_state, statefile_IN, varnames)
-! MODULES
-USE MOD_Globals
-USE MOD_MPI        ,ONLY: InitMPI
-USE MOD_Posti_Vars ,ONLY: VarNamesTotal,BoundaryNamesTotal
-IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-INTEGER,INTENT(IN)                    :: mpi_comm_IN    
-INTEGER,INTENT(IN)                    :: strlen_state
-TYPE(C_PTR),TARGET,INTENT(IN)         :: statefile_IN
-TYPE (CARRAY), INTENT(INOUT)          :: varnames
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL
-CHARACTER(LEN=255)                    :: statefile
-CHARACTER(LEN=255),POINTER            :: varnames_pointer(:)
-!===================================================================================================================================
-statefile = cstrToChar255(statefile_IN, strlen_state)
-
-CALL InitMPI(mpi_comm_IN) 
-CALL visu3d_getVarNamesAndFileType(statefile,VarNamesTotal,BoundaryNamesTotal)
-IF (ALLOCATED(VarNamesTotal)) THEN
-  varnames_pointer => VarNamesTotal
-  varnames%len  = SIZE(varnames_pointer)*255 
-  varnames%data = C_LOC(varnames_pointer(1))
-ELSE
-  varnames%len  = 0
-  varnames%data = C_NULL_PTR
-END IF
-END SUBROUTINE visu3d_requestInformation
 
 !===================================================================================================================================
 ! TODO:
@@ -231,6 +171,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! other file
   CHECKSAFEINT(HSize(1),4)
   nBCNamesTotal=INT(HSize(1),4)
   DEALLOCATE(HSize)
+  SDEALLOCATE(bcnames_loc)
   ALLOCATE(bcnames_loc(nBCNamesTotal))
   CALL ReadArray('BCNames',1,(/nBCNamesTotal/),Offset,1,StrArray=bcnames_loc)
   CALL CloseDataFile()
@@ -315,17 +256,22 @@ CALL CloseDataFile()
 
 ! set number of dependent and raw variables 
 SDEALLOCATE(DepTable)
+SDEALLOCATE(DepSurfaceOnly)
 nVarTotal=SIZE(VarNamesTotal)
 IF (STRICMP(FileType,'State')) THEN
   nVarDep = nVarTotalEOS
   nVarRaw = nVarTotal - nVarDep
-  ALLOCATE(DepTable(nVarDep,nVarDep))
+  ALLOCATE(DepTable(nVarDep,0:nVarDep))
+  ALLOCATE(DepSurfaceOnly(nVarDep))
   DepTable = DepTableEOS
+  DepSurfaceOnly = DepSurfaceOnlyEOS
 ELSE 
   nVarDep = 0
   nVarRaw = nVarTotal
-  ALLOCATE(DepTable(nVarDep,nVarDep))
+  ALLOCATE(DepTable(nVarDep,0:nVarDep))
+  ALLOCATE(DepSurfaceOnly(nVarDep))
   DepTable = 0
+  DepSurfaceOnly = 0
 END IF
 
 ! build distribution of FV and DG elements, which is stored in FV_Elems_loc
@@ -347,55 +293,10 @@ CALL Build_mapCalc_mapVisu()
 changedWithDGOperator = (withDGOperator.NEQV.withDGOperator_old)
 END SUBROUTINE visu3d_InitFile
 
-
-!===================================================================================================================================
-!> C wrapper routine for the visu3D call from ParaView.
-!===================================================================================================================================
-SUBROUTINE visu3D_CWrapper(mpi_comm_IN, &
-    strlen_prm, prmfile_IN, strlen_posti, postifile_IN, strlen_state, statefile_IN,&
-    coordsDG_out,valuesDG_out,nodeidsDG_out, &
-    coordsFV_out,valuesFV_out,nodeidsFV_out,varnames_out,components_out)
-USE ISO_C_BINDING
-USE MOD_Globals
-IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)            :: mpi_comm_IN    
-INTEGER,INTENT(IN)            :: strlen_prm    
-INTEGER,INTENT(IN)            :: strlen_posti    
-INTEGER,INTENT(IN)            :: strlen_state    
-TYPE(C_PTR),TARGET,INTENT(IN) :: prmfile_IN
-TYPE(C_PTR),TARGET,INTENT(IN) :: postifile_IN
-TYPE(C_PTR),TARGET,INTENT(IN) :: statefile_IN
-TYPE (CARRAY), INTENT(INOUT)  :: coordsDG_out
-TYPE (CARRAY), INTENT(INOUT)  :: valuesDG_out
-TYPE (CARRAY), INTENT(INOUT)  :: nodeidsDG_out
-TYPE (CARRAY), INTENT(INOUT)  :: coordsFV_out
-TYPE (CARRAY), INTENT(INOUT)  :: valuesFV_out
-TYPE (CARRAY), INTENT(INOUT)  :: nodeidsFV_out
-TYPE (CARRAY), INTENT(INOUT)  :: varnames_out
-TYPE (CARRAY), INTENT(INOUT)  :: components_out
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-CHARACTER(LEN=255)            :: prmfile
-CHARACTER(LEN=255)            :: postifile
-CHARACTER(LEN=255)            :: statefile
-!===================================================================================================================================
-prmfile   = cstrToChar255(prmfile_IN,   strlen_prm)
-postifile = cstrToChar255(postifile_IN, strlen_posti)
-statefile = cstrToChar255(statefile_IN, strlen_state)
-CALL visu3D(mpi_comm_IN, prmfile, postifile, statefile, &
-        coordsDG_out,valuesDG_out,nodeidsDG_out, &
-        coordsFV_out,valuesFV_out,nodeidsFV_out,varnames_out,components_out)
-END SUBROUTINE visu3D_CWrapper
-
-
 !===================================================================================================================================
 !> Main routine of the visualization tool POSTI. Called either by the ParaView plugin or by the standalone program version.
 !===================================================================================================================================
-SUBROUTINE visu3D(mpi_comm_IN, prmfile, postifile, statefile, &
-                  coordsDG_out,valuesDG_out,nodeidsDG_out,    &
-                  coordsFV_out,valuesFV_out,nodeidsFV_out,    &
-                  varnames_out,components_out)
+SUBROUTINE visu3D(mpi_comm_IN, prmfile, postifile, statefile)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
@@ -404,27 +305,20 @@ USE MOD_MPI                 ,ONLY: InitMPI
 USE MOD_HDF5_Input          ,ONLY: ISVALIDMESHFILE,ISVALIDHDF5FILE,OpenDataFile,CloseDataFile
 USE MOD_Posti_ReadState     ,ONLY: ReadState
 USE MOD_Posti_VisuMesh      ,ONLY: VisualizeMesh
-USE MOD_Posti_Calc          ,ONLY: CalcQuantities_DG
+USE MOD_Posti_Calc          ,ONLY: CalcQuantities_DG,CalcSurfQuantities_DG
 #if FV_ENABLED
-USE MOD_Posti_Calc          ,ONLY: CalcQuantities_ConvertToVisu_FV
+USE MOD_Posti_Calc          ,ONLY: CalcQuantities_ConvertToVisu_FV,CalcSurfQuantities_ConvertToVisu_FV
 #endif
-USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_DG,ConvertToVisu_GenericData
+USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_DG,ConvertToSurfVisu_DG,ConvertToVisu_GenericData
 USE MOD_ReadInTools         ,ONLY: prms,FinalizeParameters,ExtractParameterFile
 USE MOD_StringTools         ,ONLY: STRICMP
+USE MOD_Posti_VisuMesh      ,ONLY: BuildVisuCoords,BuildSurfVisuCoords
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)               :: mpi_comm_IN    
 CHARACTER(LEN=255),INTENT(INOUT) :: prmfile
 CHARACTER(LEN=255),INTENT(INOUT) :: postifile
 CHARACTER(LEN=255),INTENT(IN)    :: statefile
-TYPE (CARRAY), INTENT(INOUT)     :: coordsDG_out
-TYPE (CARRAY), INTENT(INOUT)     :: valuesDG_out
-TYPE (CARRAY), INTENT(INOUT)     :: nodeidsDG_out
-TYPE (CARRAY), INTENT(INOUT)     :: coordsFV_out
-TYPE (CARRAY), INTENT(INOUT)     :: valuesFV_out
-TYPE (CARRAY), INTENT(INOUT)     :: nodeidsFV_out
-TYPE (CARRAY), INTENT(INOUT)     :: varnames_out
-TYPE (CARRAY), INTENT(INOUT)     :: components_out
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL                          :: changedPrmFile
@@ -532,8 +426,8 @@ IF (ISVALIDMESHFILE(statefile)) THEN ! visualize mesh
   MeshFile      = statefile
   nVar_State    = 0
   withDGOperator = .FALSE.
-  CALL VisualizeMesh(postifile,MeshFile,coordsDG_out,valuesDG_out,nodeidsDG_out, &
-      coordsFV_out,valuesFV_out,nodeidsFV_out,varnames_out,components_out)
+  !CALL VisualizeMesh(postifile,MeshFile,coordsDG_out,valuesDG_out,nodeidsDG_out, &
+      !coordsFV_out,valuesFV_out,nodeidsFV_out,varnames_out,components_out)
 ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   SWRITE(*,*) "State Mode"
   ! initialize state file
@@ -553,6 +447,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   SWRITE (*,*) "changedWithDGOperator", changedWithDGOperator
   SWRITE (*,*) "changedDGonly        ", changedDGonly
   SWRITE (*,*) "changedPrmFile       ", changedPrmFile, TRIM(prmfile_old), " -> ", TRIM(prmfile)
+  SWRITE (*,*) "changedBCnames       ", changedBCnames
   IF (changedStateFile.OR.changedWithDGOperator.OR.changedPrmFile.OR.changedDGonly) THEN
       CALL ReadState(prmfile,statefile)
   END IF
@@ -561,15 +456,28 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   IF (changedStateFile.OR.changedVarNames.OR.changedDGonly) THEN
     CALL CalcQuantities_DG()
   END IF
+  ! calc Surface DG solution 
+  IF (changedStateFile.OR.changedVarNames.OR.changedDGonly.OR.changedBCnames) THEN
+    CALL CalcSurfQuantities_DG()
+  END IF
+
   ! convert DG solution to visu grid
   IF (changedStateFile.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly) THEN
     CALL ConvertToVisu_DG()
+  END IF
+  ! convert Surface DG solution to visu grid
+  IF (changedStateFile.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedBCnames) THEN
+    CALL ConvertToSurfVisu_DG()
   END IF
 
 #if FV_ENABLED
   ! calc FV solution and convert to visu grid
   IF ((changedStateFile.OR.changedVarNames).AND.hasFV_Elems.OR.changedDGonly) THEN
     CALL CalcQuantities_ConvertToVisu_FV()
+  END IF
+  ! calc surface FV solution and convert to visu grid
+  IF ((changedStateFile.OR.changedVarNames).AND.hasFV_Elems.OR.changedDGonly.OR.changedBCnames) THEN
+    CALL CalcSurfQuantities_ConvertToVisu_FV()
   END IF
 #endif /* FV_ENABLED */
 
@@ -578,9 +486,20 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
     CALL ConvertToVisu_GenericData(statefile)
   END IF
 
-  CALL Visu3D_Build_VTK(coordsDG_out,valuesDG_out,nodeidsDG_out, &
-                        coordsFV_out,valuesFV_out,nodeidsFV_out, &
-                        varnames_out,components_out)
+
+  ! Convert coordinates to visu grid
+  IF (changedMeshFile.OR.changedNVisu.OR.changedFV_Elems.OR.changedDGonly) THEN
+    CALL BuildVisuCoords()
+  END IF
+  ! Convert surface coordinates to visu grid
+  IF (changedMeshFile.OR.changedNVisu.OR.changedFV_Elems.OR.changedDGonly.OR.changedBCnames) THEN
+    CALL BuildSurfVisuCoords()
+  END IF
+
+
+  !CALL Visu3D_Build_VTK(coordsDG_out,valuesDG_out,nodeidsDG_out, &
+                        !coordsFV_out,valuesFV_out,nodeidsFV_out, &
+                        !varnames_out,components_out)
   
 END IF
 
@@ -597,142 +516,6 @@ SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(*,*) "Visu3D finished for state file: ", TRIM(statefile)
 SWRITE(UNIT_StdOut,'(132("="))')
 END SUBROUTINE visu3D
-
-!===================================================================================================================================
-!> Build VTK arrays from solution
-!===================================================================================================================================
-SUBROUTINE Visu3D_Build_VTK(coordsDG_out,valuesDG_out,nodeidsDG_out, &
-                            coordsFV_out,valuesFV_out,nodeidsFV_out, &
-                            varnames_out,components_out)
-
-USE MOD_Globals
-USE MOD_Posti_Vars
-USE MOD_VTK           ,ONLY: WriteCoordsToVTK_array,WriteDataToVTK_array,WriteVarnamesToVTK_array
-USE MOD_Posti_VisuMesh,ONLY: BuildVisuCoords
-USE MOD_Output_Vars   ,ONLY: ProjectName
-!----------------------------------------------------------------------------------------------------------------------------------!
-IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
-TYPE (CARRAY), INTENT(INOUT)     :: coordsDG_out
-TYPE (CARRAY), INTENT(INOUT)     :: valuesDG_out
-TYPE (CARRAY), INTENT(INOUT)     :: nodeidsDG_out
-TYPE (CARRAY), INTENT(INOUT)     :: coordsFV_out
-TYPE (CARRAY), INTENT(INOUT)     :: valuesFV_out
-TYPE (CARRAY), INTENT(INOUT)     :: nodeidsFV_out
-TYPE (CARRAY), INTENT(INOUT)     :: varnames_out
-TYPE (CARRAY), INTENT(INOUT)     :: components_out
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-INTEGER            :: iounit,i,iElem
-CHARACTER(LEN=255) :: strOutputFile
-!===================================================================================================================================
-! write UVisu to VTK 2D / 3D arrays (must be done always!)
-IF (VisuDimension.EQ.3) THEN
-
-  CALL WriteDataToVTK_array(nVarVisuTotal,NVisu   ,nElems_DG,valuesDG_out,UVisu_DG,3)
-  CALL WriteDataToVTK_array(nVarVisuTotal,NVisu_FV,nElems_FV,valuesFV_out,UVisu_FV,3)
-
-ELSE IF (VisuDimension.EQ.2) THEN
-
-  ! allocate Visu 2D array and copy from first zeta-slice of 3D array
-  SDEALLOCATE(UVisu_DG_2D)
-  ALLOCATE(UVisu_DG_2D(0:NVisu,0:NVisu,0:0,1:nElems_DG,1:(nVarVisuTotal)))
-  UVisu_DG_2D = UVisu_DG(:,:,0:0,:,:)
-  SDEALLOCATE(UVisu_FV_2D)
-  ALLOCATE(UVisu_FV_2D(0:NVisu_FV,0:NVisu_FV,0:0,1:nElems_FV,1:(nVarVisuTotal)))
-#if FV_ENABLED
-  UVisu_FV_2D = UVisu_FV(:,:,0:0,:,:)
-#else
-  CoordsVisu_FV_2D = 0
-#endif
-
-  CALL WriteDataToVTK_array(nVarVisuTotal,NVisu   ,nElems_DG,valuesDG_out,UVisu_DG_2D,2)
-  CALL WriteDataToVTK_array(nVarVisuTotal,NVisu_FV,nElems_FV,valuesFV_out,UVisu_FV_2D,2)
-
-END IF
-
-! Convert coordinates to visu grid
-IF (changedMeshFile.OR.changedNVisu.OR.changedFV_Elems.OR.changedDGonly) THEN
-  CALL BuildVisuCoords()
-END IF
-
-! write coords, UVisu to VTK  2D / 3D arrays (must be done always!)
-IF (VisuDimension.EQ.3) THEN
-
-  CALL WriteCoordsToVTK_array(NVisu   ,nElems_DG,coordsDG_out,nodeidsDG_out,&
-      CoordsVisu_DG,nodeids_DG,dim=3,DGFV=0)
-  CALL WriteCoordsToVTK_array(NVisu_FV,nElems_FV,coordsFV_out,nodeidsFV_out,&
-      CoordsVisu_FV,nodeids_FV,dim=3,DGFV=1)
-
-  CALL WriteVarnamesToVTK_array(nVarTotal,mapVisu,varnames_out,components_out,VarNamesTotal,nVarTotal,nVarVisuTotal)
-
-ELSE IF (VisuDimension.EQ.2) THEN
-
-  ! allocate Coords 2D array and copy from first zeta-slice of 3D array
-  SDEALLOCATE(CoordsVisu_DG_2D)
-  ALLOCATE(CoordsVisu_DG_2D(1:3,0:NVisu,0:NVisu,0:0,1:nElems_DG))
-  CoordsVisu_DG_2D = CoordsVisu_DG(:,:,:,0:0,:)
-  SDEALLOCATE(CoordsVisu_FV_2D)
-  ALLOCATE(CoordsVisu_FV_2D(1:3,0:NVisu_FV,0:NVisu_FV,0:0,1:nElems_FV))
-#if FV_ENABLED    
-  CoordsVisu_FV_2D = CoordsVisu_FV(:,:,:,0:0,:)
-#else
-  CoordsVisu_FV_2D = 0
-#endif
-
-  CALL WriteCoordsToVTK_array(NVisu   ,nElems_DG,coordsDG_out,nodeidsDG_out,&
-      CoordsVisu_DG_2D,nodeids_DG_2D,dim=2,DGFV=0)
-  CALL WriteCoordsToVTK_array(NVisu_FV,nElems_FV,coordsFV_out,nodeidsFV_out,&
-      CoordsVisu_FV_2D,nodeids_FV_2D,dim=2,DGFV=1)
-
-  CALL WriteVarnamesToVTK_array(nVarTotal,mapVisu,varnames_out,components_out,VarNamesTotal,nVarTotal,nVarVisuTotal)
-
-ELSE IF (VisuDimension.EQ.1) THEN ! CSV along 1d line
-
-  IF (nProcessors.GT.1) &
-    CALL CollectiveStop(__STAMP__,"1D csv output along lines only supported for single execution")
-
-  strOutputFile=TRIM(TIMESTAMP(TRIM(ProjectName)//'_extract1D',OutputTime))
-
-  OPEN(NEWUNIT = iounit, STATUS='REPLACE',FILE=TRIM(strOutputFile)//'_DG.csv')
-  DO iElem=1,nElems_DG
-    DO i=0,NVisu
-      WRITE(iounit,*) CoordsVisu_DG(1,i,0,0,iElem), UVisu_DG(i,0,0,iElem,:)
-    END DO 
-  END DO
-  CLOSE(iounit) ! close the file
-
-#if FV_ENABLED
-  OPEN(NEWUNIT = iounit, STATUS='REPLACE',FILE=TRIM(strOutputFile)//'_FV.csv')
-  DO iElem=1,nElems_FV
-    DO i=0,NVisu_FV
-      WRITE(iounit,*) CoordsVisu_FV(1,i,0,0,iElem), UVisu_FV(i,0,0,iElem,:)
-    END DO 
-  END DO
-  CLOSE(iounit) ! close the file
-#endif
-
-END IF
-
-END SUBROUTINE Visu3d_Build_VTK
-
-!===================================================================================================================================
-!> Deallocate the different NodeID arrays.
-!===================================================================================================================================
-SUBROUTINE visu3d_dealloc_nodeids() 
-USE MOD_Posti_Vars
-!----------------------------------------------------------------------------------------------------------------------------------!
-IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-!===================================================================================================================================
-SDEALLOCATE(nodeids_DG)
-SDEALLOCATE(nodeids_FV)
-SDEALLOCATE(nodeids_DG_2D)
-SDEALLOCATE(nodeids_FV_2D)
-END SUBROUTINE visu3d_dealloc_nodeids
-
 
 !===================================================================================================================================
 !> Deallocate arrays used by visu3D.
@@ -760,7 +543,8 @@ SDEALLOCATE(mapCalc)
 SDEALLOCATE(mapCalc_FV)
 #endif
 SDEALLOCATE(mapVisu)
-SDEALLOCATE(mapVisu_old)
+SDEALLOCATE(mapSurfVisu)
+SDEALLOCATE(mapSurfVisu_old)
 SDEALLOCATE(UCalc_DG)
 SDEALLOCATE(UCalc_FV)
 

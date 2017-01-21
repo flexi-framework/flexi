@@ -20,23 +20,27 @@
 #include "pluginTypes_visu3D.h"
 
 extern "C" {
-  extern void __mod_visu3d_MOD_visu3d_requestinformation(int* mpi_comm_IN, 
-        int* str_len, const char* state_file, struct CharARRAY* varnames);
+  extern void __mod_visu3d_cwrapper_MOD_visu3d_requestinformation(int* mpi_comm_IN, 
+        int* str_len, const char* state_file, struct CharARRAY* varnames, struct CharARRAY* bcnames);
 }
 
 extern "C" {
-  extern void __mod_visu3d_MOD_visu3d_cwrapper(int* mpi_comm_IN, 
+  extern void __mod_visu3d_cwrapper_MOD_visu3d_cwrapper(int* mpi_comm_IN, 
         int* strlen_prm,   const char* prmfile_IN, 
         int* strlen_posti, const char* postifile_IN, 
         int* strlen_state, const char* statefile_IN,
         struct DoubleARRAY* coords_out,  struct DoubleARRAY* values_out, 
         struct IntARRAY* nodeids_out,    struct DoubleARRAY* coordsFV_out,
         struct DoubleARRAY* valuesFV_out,struct IntARRAY* nodeidsFV_out,
-        struct CharARRAY* varnames_out,  struct IntARRAY* components_out);
+        struct CharARRAY* varnames_out,
+        struct DoubleARRAY* coordsSurf_out,  struct DoubleARRAY* valuesSurf_out, 
+        struct IntARRAY* nodeidsSurf_out,    struct DoubleARRAY* coordsSurfFV_out,
+        struct DoubleARRAY* valuesSurfFV_out,struct IntARRAY* nodeidsSurfFV_out,
+        struct CharARRAY* varnamesSurf_out);
 }
 
 extern "C" {
-  extern void __mod_visu3d_MOD_visu3d_dealloc_nodeids();
+  extern void __mod_visu3d_cwrapper_MOD_visu3d_dealloc_nodeids();
 }
 
 extern "C" {

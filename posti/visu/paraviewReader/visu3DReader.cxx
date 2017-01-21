@@ -69,8 +69,10 @@ visu3DReader::visu3DReader()
    this->SelectionObserver->SetClientData(this);
    // create array for state,primitive and derived quantities
    this->VarDataArraySelection = vtkDataArraySelection::New();
+   this->BCDataArraySelection = vtkDataArraySelection::New();
    // add an observer 
    this->VarDataArraySelection->AddObserver(vtkCommand::ModifiedEvent, this->SelectionObserver);
+   this->BCDataArraySelection->AddObserver(vtkCommand::ModifiedEvent, this->SelectionObserver);
 
 }
 
@@ -129,10 +131,11 @@ int visu3DReader::RequestInformation(vtkInformation *,
    MPI_Barrier(mpiComm);
 
    struct CharARRAY varnames;
+   struct CharARRAY bcnames;
    // Call Posti-function requestInformation:
    // This function returns the varnames of state, primitive and derived quantities
    int str_len = strlen(FileNames[0].c_str());
-   __mod_visu3d_MOD_visu3d_requestinformation(&fcomm, &str_len, FileNames[0].c_str(), &varnames);
+   __mod_visu3d_cwrapper_MOD_visu3d_requestinformation(&fcomm, &str_len, FileNames[0].c_str(), &varnames, &bcnames);
 
    MPI_Barrier(mpiComm);
 
@@ -154,7 +157,20 @@ int visu3DReader::RequestInformation(vtkInformation *,
 
          // Select Density, FV_Elems by default
          if (varname.compare("Density") == 0) this->VarDataArraySelection->EnableArray(varname.c_str());
+         if (varname.compare("WallFrictionX") == 0) this->VarDataArraySelection->EnableArray(varname.c_str());
          if (varname.compare("ElemData:FV_Elems") == 0) this->VarDataArraySelection->EnableArray(varname.c_str());
+      }
+   }
+   for (int iVar=0; iVar<bcnames.len/255; iVar++) {
+      char tmps[255];
+      strncpy(tmps, bcnames.data+iVar*255, 255);
+      std::string bcname(tmps);
+      bcname = bcname.substr(0,bcname.find(" "));
+
+      if (!this->BCDataArraySelection->ArrayExists(bcname.c_str())) {
+         // function DisableArray deselects the bcname in the gui and if not existend inserts the bcname         
+         this->BCDataArraySelection->DisableArray(bcname.c_str());
+         if (bcname.compare("BC_wall") == 0) this->BCDataArraySelection->EnableArray(bcname.c_str());
       }
    }
    return 1; 
@@ -256,6 +272,14 @@ int visu3DReader::RequestData(
       VarNames_selected[i] = VarDataArraySelection->ArrayIsEnabled(name);
    }
 
+   int nBCs = BCDataArraySelection->GetNumberOfArrays();
+   BCNames_selected.resize(nBCs);
+   for (int i = 0; i< nBCs; ++i)
+   {
+      const char* name = BCDataArraySelection->GetArrayName(i);
+      BCNames_selected[i] = BCDataArraySelection->ArrayIsEnabled(name);
+   }
+
    // Change to directory of state file (path of mesh file is stored relative to path of state file)
    char* dir = strdup(FileToLoad.c_str());
    dir = dirname(dir);
@@ -291,6 +315,13 @@ int visu3DReader::RequestData(
          dprintf(posti_unit, "VarName = %s\n", name) ;
       }
    }
+   for (int i = 0; i< nBCs; ++i)
+   {
+      if (BCNames_selected[i]) {
+         const char* name = BCDataArraySelection->GetArrayName(i);
+         dprintf(posti_unit, "BoundaryName = %s\n", name) ;
+      }
+   }
    close(posti_unit);
 
    MPI_Barrier(mpiComm); // all processes should call the Fortran code at the same time
@@ -301,12 +332,14 @@ int visu3DReader::RequestData(
    int strlen_prm = strlen(ParameterFileOverwrite);
    int strlen_posti = strlen(posti_filename);
    int strlen_state = strlen(FileToLoad.c_str()); 
-   __mod_visu3d_MOD_visu3d_cwrapper(&fcomm, 
+   __mod_visu3d_cwrapper_MOD_visu3d_cwrapper(&fcomm, 
          &strlen_prm, ParameterFileOverwrite, 
          &strlen_posti, posti_filename, 
          &strlen_state, FileToLoad.c_str(),
          &coords_DG,&values_DG,&nodeids_DG,
-         &coords_FV,&values_FV,&nodeids_FV,&varnames,&components);
+         &coords_FV,&values_FV,&nodeids_FV,&varnames,
+         &coordsSurf_DG,&valuesSurf_DG,&nodeidsSurf_DG,
+         &coordsSurf_FV,&valuesSurf_FV,&nodeidsSurf_FV,&varnamesSurf);
 
    MPI_Barrier(mpiComm); // wait until all processors returned from the Fortran Posti code
 
@@ -318,23 +351,29 @@ int visu3DReader::RequestData(
       return 0;
    }
 
-   // adjust the number of Blocks in the MultiBlockDataset to 2 (DG and FV)
+   // adjust the number of Blocks in the MultiBlockDataset to 4 (DG and FV)
    SWRITE("Number of Blocks in MultiBlockDataset : " << mb->GetNumberOfBlocks());
-   if (mb->GetNumberOfBlocks() < 2) {
+   if (mb->GetNumberOfBlocks() < 4) {
       SWRITE("Create new DG and FV output Blocks");
       mb->SetBlock(0, vtkUnstructuredGrid::New());
       mb->SetBlock(1, vtkUnstructuredGrid::New());
+      mb->SetBlock(2, vtkUnstructuredGrid::New());
+      mb->SetBlock(3, vtkUnstructuredGrid::New());
    }
 
     // Insert DG data into output
-   vtkSmartPointer<vtkUnstructuredGrid> output_DG = vtkUnstructuredGrid::SafeDownCast(mb->GetBlock(0));
-   InsertData(output_DG, &coords_DG, &values_DG, &nodeids_DG, &varnames, &components);
+   InsertData(mb, 0, &coords_DG, &values_DG, &nodeids_DG, &varnames);
 
     // Insert FV data into output
-   vtkSmartPointer<vtkUnstructuredGrid> output_FV = vtkUnstructuredGrid::SafeDownCast(mb->GetBlock(1));
-   InsertData(output_FV, &coords_FV, &values_FV, &nodeids_FV, &varnames, &components);
+   InsertData(mb, 1, &coords_FV, &values_FV, &nodeids_FV, &varnames);
 
-   __mod_visu3d_MOD_visu3d_dealloc_nodeids();
+    // Insert Surface DG data into output
+   InsertData(mb, 2, &coordsSurf_DG, &valuesSurf_DG, &nodeidsSurf_DG, &varnamesSurf);
+
+    // Insert Surface FV data into output
+   InsertData(mb, 3, &coordsSurf_FV, &valuesSurf_FV, &nodeidsSurf_FV, &varnamesSurf);
+
+   __mod_visu3d_cwrapper_MOD_visu3d_dealloc_nodeids();
 
    // tell paraview to render data
    this -> Modified(); 
@@ -348,8 +387,10 @@ int visu3DReader::RequestData(
 /*
  * This function inserts the data, loaded by the Posti tool, into a ouput
  */
-void visu3DReader::InsertData(vtkSmartPointer<vtkUnstructuredGrid> &output, struct DoubleARRAY* coords,
-      struct DoubleARRAY* values, struct IntARRAY* nodeids, struct CharARRAY* varnames, struct IntARRAY* components) {
+void visu3DReader::InsertData(vtkMultiBlockDataSet* mb, int blockno, struct DoubleARRAY* coords,
+      struct DoubleARRAY* values, struct IntARRAY* nodeids, struct CharARRAY* varnames) {
+   vtkSmartPointer<vtkUnstructuredGrid> output = vtkUnstructuredGrid::SafeDownCast(mb->GetBlock(blockno));
+
    // create a 3D double array (must be 3D even we use a 2D Posti tool, since paraview holds the data in 3D)
    vtkSmartPointer <vtkDoubleArray> pdata = vtkSmartPointer<vtkDoubleArray>::New();
    pdata->SetNumberOfComponents(3); // 3D
@@ -368,7 +409,7 @@ void visu3DReader::InsertData(vtkSmartPointer<vtkUnstructuredGrid> &output, stru
 
    // create cellarray
    vtkSmartPointer<vtkCellArray> cellarray = vtkSmartPointer<vtkCellArray>::New();
-   if (this->Mode2d) {
+   if (coords->dim == 2) {
       vtkSmartPointer<vtkQuad> quad = vtkSmartPointer<vtkQuad>::New();
       // Use the nodeids to build quads
       // (here we must copy the nodeids, we can not just assign the array of nodeids to some vtk-structure)
@@ -403,29 +444,25 @@ void visu3DReader::InsertData(vtkSmartPointer<vtkUnstructuredGrid> &output, stru
    }
 
    // assign the actual data, loaded by the Posti tool, to the output
-   unsigned int nVarCombine = varnames->len/255;
-   if (nVarCombine > 0) {
-      unsigned int nVar = 0;
-      for (unsigned int iVar=0;iVar<nVarCombine;iVar++) {
-         nVar += components->data[iVar];
-      }
+   unsigned int nVar = varnames->len/255;
+   if (nVar > 0) {
       unsigned int sizePerVar = values->len/nVar;
       int dataPos = 0;
       // loop over all loaded variables
-      for (unsigned int iVar = 0; iVar < nVarCombine; iVar++) {
+      for (unsigned int iVar = 0; iVar < nVar; iVar++) {
          // For each variable, create a new array and set the number of components to 1
          // Each variable is loaded separately. 
          // One might implement vector variables (velocity), but then must set number of componenets to 2/3
          vtkSmartPointer <vtkDoubleArray> vdata = vtkSmartPointer<vtkDoubleArray>::New();
-         vdata->SetNumberOfComponents(components->data[iVar]);
-         vdata->SetNumberOfTuples(sizePerVar/components->data[iVar]);
+         vdata->SetNumberOfComponents(1);
+         vdata->SetNumberOfTuples(sizePerVar);
          // copy coordinates 
          double* ptr = vdata->GetPointer(0);
          for (long i = 0; i < sizePerVar; ++i)
          {
             *ptr++ = values->data[dataPos+i];
          }
-         dataPos += sizePerVar * components->data[iVar];
+         dataPos += sizePerVar;
          // set name of variable
          char tmps[255];
          strncpy(tmps, varnames->data+iVar*255, 255);
@@ -489,6 +526,47 @@ void visu3DReader::SetVarArrayStatus(const char* name, int status)
    else
    {
       this->VarDataArraySelection->DisableArray(name);
+   }
+}
+
+void visu3DReader::DisableAllBCArrays()
+{
+   this->BCDataArraySelection->DisableAllArrays();
+}
+void visu3DReader::EnableAllBCArrays()
+{
+   this->BCDataArraySelection->EnableAllArrays();
+}
+int visu3DReader::GetNumberOfBCArrays()
+{
+   return this->BCDataArraySelection->GetNumberOfArrays();
+}
+
+const char* visu3DReader::GetBCArrayName(int index)
+{
+   if (index >= ( int ) this->GetNumberOfBCArrays() || index < 0)
+   {
+      return NULL;
+   }
+   else
+   {
+      return this->BCDataArraySelection->GetArrayName(index);
+   }
+}
+int visu3DReader::GetBCArrayStatus(const char* name)
+{
+   return this->BCDataArraySelection->ArrayIsEnabled(name);
+}
+
+void visu3DReader::SetBCArrayStatus(const char* name, int status)
+{
+   if (status)
+   {
+      this->BCDataArraySelection->EnableArray(name);
+   }
+   else
+   {
+      this->BCDataArraySelection->DisableArray(name);
    }
 }
 

@@ -54,6 +54,7 @@ LOGICAL                           :: changedVarNames
 LOGICAL                           :: changedFV_Elems
 LOGICAL                           :: changedWithDGOperator
 LOGICAL                           :: changedDGonly
+LOGICAL                           :: changedBCnames
 
 ! Ini file variables
 ! HDF5 file variables
@@ -67,6 +68,7 @@ INTEGER                           :: nVarVisuDep
 INTEGER                           :: nVarVisuRaw
 CHARACTER(LEN=255),ALLOCATABLE,TARGET :: VarNamesTotal(:)
 INTEGER,ALLOCATABLE               :: DepTable(:,:)
+INTEGER,ALLOCATABLE               :: DepSurfaceOnly(:)
 
 
 
@@ -83,7 +85,8 @@ INTEGER                           :: nVarCalc_FV
 INTEGER,ALLOCATABLE               :: mapCalc_FV(:)
 #endif
 INTEGER,ALLOCATABLE               :: mapVisu(:)
-INTEGER,ALLOCATABLE               :: mapVisu_old(:)
+INTEGER,ALLOCATABLE               :: mapSurfVisu(:)
+INTEGER,ALLOCATABLE               :: mapSurfVisu_old(:)
 REAL,ALLOCATABLE                  :: UCalc_DG(:,:,:,:,:)
 REAL,ALLOCATABLE                  :: UCalc_FV(:,:,:,:,:)
 
@@ -106,12 +109,22 @@ LOGICAL                           :: PostiInitIsDone
 INTEGER                           :: nBCNamesTotal
 INTEGER                           :: nBCNamesVisu
 INTEGER,ALLOCATABLE               :: mapBCNames(:)
+INTEGER,ALLOCATABLE               :: mapBCNames_old(:)
 CHARACTER(LEN=255),ALLOCATABLE,TARGET :: BoundaryNamesTotal(:)
 REAL,ALLOCATABLE                  :: UCalcBoundary_DG(:,:,:,:)
+REAL,ALLOCATABLE                  :: UCalcBoundary_FV(:,:,:,:)
 
-INTEGER                           :: nBCSidesVisu
-INTEGER,ALLOCATABLE               :: mapBCSides(:)
-INTEGER,ALLOCATABLE               :: nSidesPerBCNameVisu(:)
-REAL,POINTER                      :: USurfVisu_DG(     :,:,:,:,:) ! state at visu points
-REAL,POINTER                      :: CoordsSurfVisu_DG(:,:,:,:,:) ! visu coordinates
+INTEGER                           :: nVarSurfVisuTotal
+INTEGER                           :: nBCSidesVisu_DG
+INTEGER,ALLOCATABLE               :: mapBCSides_DG(:)
+INTEGER,ALLOCATABLE               :: nSidesPerBCNameVisu_DG(:)
+INTEGER                           :: nBCSidesVisu_FV
+INTEGER,ALLOCATABLE               :: mapBCSides_FV(:)
+INTEGER,ALLOCATABLE               :: nSidesPerBCNameVisu_FV(:)
+INTEGER,ALLOCATABLE,TARGET        :: nodeidsSurf_DG(:)            ! visu nodeids
+REAL(C_DOUBLE),ALLOCATABLE,TARGET :: USurfVisu_DG(     :,:,:,:,:) ! state at visu points
+REAL(C_DOUBLE),ALLOCATABLE,TARGET :: CoordsSurfVisu_DG(:,:,:,:,:) ! visu coordinates
+INTEGER,ALLOCATABLE,TARGET        :: nodeidsSurf_FV(:)            ! visu nodeids
+REAL(C_DOUBLE),ALLOCATABLE,TARGET :: USurfVisu_FV(     :,:,:,:,:) ! state at visu points
+REAL(C_DOUBLE),ALLOCATABLE,TARGET :: CoordsSurfVisu_FV(:,:,:,:,:) ! visu coordinates
 END MODULE MOD_Posti_Vars

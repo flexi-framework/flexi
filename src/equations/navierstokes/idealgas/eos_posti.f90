@@ -151,7 +151,8 @@ GetMaskGrad = DepTableEOS(:,0)
 END FUNCTION GetMaskGrad
 
 
-SUBROUTINE CalcQuantities(nVarCalc,nVal,iElems,mapCalc,UCalc,maskCalc,gradUx,gradUy,gradUz)
+SUBROUTINE CalcQuantities(nVarCalc,nVal,iElems,mapCalc,UCalc,maskCalc,gradUx,gradUy,gradUz,&
+    NormVec,TangVec1,TangVec2)
 !==================================================================================================================================
 ! MODULES
 USE MOD_Globals,ONLY: MPIRoot
@@ -159,35 +160,51 @@ USE MOD_EOS_Posti_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: nVarCalc
-INTEGER,INTENT(IN) :: nVal(:)
-INTEGER,INTENT(IN) :: iElems(:)
-INTEGER,INTENT(IN) :: mapCalc(nVarTotalEOS)
-INTEGER,INTENT(IN) :: maskCalc(nVarTotalEOS)
-REAL,INTENT(OUT)   :: UCalc(PRODUCT(nVal),1:nVarCalc)
+INTEGER,INTENT(IN)                                              :: nVarCalc
+INTEGER,INTENT(IN)                                              :: nVal(:)
+INTEGER,INTENT(IN)                                              :: iElems(:)
+INTEGER,INTENT(IN)                                              :: mapCalc(nVarTotalEOS)
+INTEGER,INTENT(IN)                                              :: maskCalc(nVarTotalEOS)
+REAL,INTENT(OUT)                                                :: UCalc(PRODUCT(nVal),1:nVarCalc)
 REAL,DIMENSION(1:PP_nVarPrim,PRODUCT(nVal)),INTENT(IN),OPTIONAL :: gradUx,gradUy,gradUz
+REAL,DIMENSION(1:3,PRODUCT(nVal)),INTENT(IN),OPTIONAL           :: NormVec,TangVec1,TangVec2
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL            :: withGradients
+LOGICAL            :: withVectors
 INTEGER            :: iVar,iVarCalc
 !===================================================================================================================================
 withGradients=(PRESENT(gradUx).AND.PRESENT(gradUy).AND.PRESENT(gradUz))
+withVectors=(PRESENT(NormVec).AND.PRESENT(TangVec1).AND.PRESENT(TangVec2))
 
 DO iVar=1,nVarTotalEOS
   iVarCalc = mapCalc(iVar)
   IF (iVarCalc.GT.0 .AND. maskCalc(iVar).GT.0) THEN
-    SWRITE(*,*) "  ",TRIM(DepNames(iVar))
+    IF (.NOT.withVectors) THEN
+      SWRITE(*,*) "  ",TRIM(DepNames(iVar))
+    END IF
     IF(withGradients)THEN
-      CALL CalcDerivedQuantity(iVarCalc,DepNames(iVar),nVarCalc,nVal,iElems,mapCalc,UCalc,gradUx,gradUy,gradUz)
+      IF(withVectors)THEN
+        CALL CalcDerivedQuantity(iVarCalc,DepNames(iVar),nVarCalc,nVal,iElems,mapCalc,UCalc,gradUx,gradUy,gradUz,&
+            NormVec,TangVec1,TangVec2)
+      ELSE
+        CALL CalcDerivedQuantity(iVarCalc,DepNames(iVar),nVarCalc,nVal,iElems,mapCalc,UCalc,gradUx,gradUy,gradUz)
+      END IF
     ELSE
-      CALL CalcDerivedQuantity(iVarCalc,DepNames(iVar),nVarCalc,nVal,iElems,mapCalc,UCalc)
+      IF(withVectors)THEN
+        CALL CalcDerivedQuantity(iVarCalc,DepNames(iVar),nVarCalc,nVal,iElems,mapCalc,UCalc,&
+            NormVec=NormVec,TangVec1=TangVec1,TangVec2=TangVec2)
+      ELSE
+        CALL CalcDerivedQuantity(iVarCalc,DepNames(iVar),nVarCalc,nVal,iElems,mapCalc,UCalc)
+      END IF
     END IF
   END IF
 END DO
 END SUBROUTINE CalcQuantities
 
 
-SUBROUTINE CalcDerivedQuantity(iVarCalc,DepName,nVarCalc,nVal,iElems,mapCalc,UCalc,gradUx,gradUy,gradUz)
+SUBROUTINE CalcDerivedQuantity(iVarCalc,DepName,nVarCalc,nVal,iElems,mapCalc,UCalc,gradUx,gradUy,gradUz, &
+    NormVec,TangVec1,TangVec2)
 !==================================================================================================================================
 ! MODULES
 USE MOD_PreProc
@@ -197,17 +214,18 @@ USE MOD_StringTools     ,ONLY: LowCase,KEYVALUE
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES 
-INTEGER,INTENT(IN)            :: iVarCalc
-CHARACTER(LEN=255),INTENT(IN) :: DepName
-INTEGER,INTENT(IN)            :: nVarCalc
-INTEGER,INTENT(IN)            :: nVal(:)
-INTEGER,INTENT(IN)            :: iElems(:)
-INTEGER,INTENT(IN)            :: mapCalc(nVarTotalEOS)
-REAL,INTENT(INOUT)            :: UCalc(PRODUCT(nVal),1:nVarCalc)
+INTEGER,INTENT(IN)                                              :: iVarCalc
+CHARACTER(LEN=255),INTENT(IN)                                   :: DepName
+INTEGER,INTENT(IN)                                              :: nVarCalc
+INTEGER,INTENT(IN)                                              :: nVal(:)
+INTEGER,INTENT(IN)                                              :: iElems(:)
+INTEGER,INTENT(IN)                                              :: mapCalc(nVarTotalEOS)
+REAL,INTENT(INOUT)                                              :: UCalc(PRODUCT(nVal),1:nVarCalc)
 REAL,DIMENSION(1:PP_nVarPrim,PRODUCT(nVal)),INTENT(IN),OPTIONAL :: gradUx,gradUy,gradUz
+REAL,DIMENSION(1:3,PRODUCT(nVal)),INTENT(IN),OPTIONAL           :: NormVec,TangVec1,TangVec2
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: i,iMom1,iMom2,iMom3,iDens,iPres,iVel1,iVel2,iVel3,iVelM,iVelS,iEner,iEnst,iTemp
+INTEGER            :: i,iMom1,iMom2,iMom3,iDens,iPres,iVel1,iVel2,iVel3,iVelM,iVelS,iEner,iEnst,iTemp,iWFriX,iWFriY,iWFriZ
 CHARACTER(LEN=255) :: DepName_low
 REAL               :: UE(PP_2Var)
 INTEGER            :: nElems_loc,Nloc,nDOF,nDims
@@ -215,6 +233,7 @@ INTEGER            :: nElems_loc,Nloc,nDOF,nDims
 INTEGER            :: iVorM
 #endif
 LOGICAL            :: withGradients
+LOGICAL            :: withVectors
 !===================================================================================================================================
 nDims=UBOUND(nVal,1)
 nElems_loc=nVal(nDims)
@@ -231,6 +250,7 @@ Nloc=nVal(1)-1
 !END IF
 
 withGradients=(PRESENT(gradUx).AND.PRESENT(gradUy).AND.PRESENT(gradUz))
+withVectors=(PRESENT(NormVec).AND.PRESENT(TangVec1).AND.PRESENT(TangVec2))
 
 ! Already retrieve mappings for conservatives, as theses are required for many quantities
 iDens = KEYVALUE(DepNames,mapCalc,"density"    )
@@ -249,6 +269,9 @@ iVelM = KEYVALUE(DepNames,mapCalc,"velocitymagnitude")
 iTemp = KEYVALUE(DepNames,mapCalc,"temperature")
 iVelS = KEYVALUE(DepNames,mapCalc,"velocitysound"    )
 iEnst = KEYVALUE(DepNames,mapCalc,"energystagnation")
+iWFriX = KEYVALUE(DepNames,mapCalc,"wallfrictionx")
+iWFriY = KEYVALUE(DepNames,mapCalc,"wallfrictiony")
+iWFriZ = KEYVALUE(DepNames,mapCalc,"wallfrictionz")
 
 CALL LowCase(DepName,DepName_low)
 SELECT CASE(DepName_low)
@@ -269,7 +292,7 @@ SELECT CASE(DepName_low)
   CASE("velocityz")
     UCalc(:,iVarCalc) = UCalc(:,iMom3) / UCalc(:,iDens)
   CASE("pressure")
-    DO i=1,nDOF*nElems_loc
+    DO i=1,PRODUCT(nVal)
       UE(SRHO) = 1./UCalc(i,iDens)
       UE(MOM1) =    UCalc(i,iMom1)
       UE(MOM2) =    UCalc(i,iMom2)
@@ -279,7 +302,7 @@ SELECT CASE(DepName_low)
       UCalc(i,iVarCalc) = PRESSURE_HE(UE)
     END DO
   CASE("temperature")
-    DO i=1,nDOF*nElems_loc
+    DO i=1,PRODUCT(nVal)
       UE(SRHO) = 1./UCalc(i,iDens)
       UE(PRES) =    UCalc(i,iPres)
       UCalc(i,iVarCalc) = TEMPERATURE_HE(UE)
@@ -330,6 +353,20 @@ SELECT CASE(DepName_low)
     UCalc(:,iVarCalc) = LOG10(SQRT(gradUx(1,:)**2 + gradUy(1,:)**2 + gradUz(1,:)**2)+1.0)
 #endif
 END SELECT
+IF (withVectors) THEN
+  SELECT CASE(DepName_low)
+#if PARABOLIC      
+    CASE("wallfrictionx")
+      UCalc(:,iVarCalc) = FillWallFriction(1,nVal,UCalc(:,iTemp),gradUx,gradUy,gradUz,NormVec)
+    CASE("wallfrictiony")
+      UCalc(:,iVarCalc) = FillWallFriction(2,nVal,UCalc(:,iTemp),gradUx,gradUy,gradUz,NormVec)
+    CASE("wallfrictionz")
+      UCalc(:,iVarCalc) = FillWallFriction(3,nVal,UCalc(:,iTemp),gradUx,gradUy,gradUz,NormVec)
+    CASE("wallfrictionmagnitude")
+      UCalc(:,iVarCalc) = SQRT(UCalc(:,iWFriX)**2+UCalc(:,iWFriY)**2+UCalc(:,iWFriZ)**2)
+#endif
+  END SELECT
+END IF
 END SUBROUTINE CalcDerivedQuantity
 
 
@@ -450,6 +487,46 @@ DO i=1,PRODUCT(nVal)
   Qcriterion(i)=0.5*Q_loc
 END DO
 END FUNCTION FillQcriterion
+
+FUNCTION FillWallFriction(dir,nVal,Temperature,gradUx,gradUy,gradUz,NormVec) RESULT(WallFriction)
+!==================================================================================================================================
+! MODULES
+USE MOD_Eos_Vars
+IMPLICIT NONE 
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+INTEGER,INTENT(IN)                                   :: dir,nVal(:)
+REAL,DIMENSION(PRODUCT(nVal)),INTENT(IN)             :: Temperature
+REAL,DIMENSION(PP_nVarPrim,PRODUCT(nVal)),INTENT(IN) :: gradUx,gradUy,gradUz
+REAL,DIMENSION(1:3,PRODUCT(nVal)),INTENT(IN)         :: NormVec
+REAL                                                 :: WallFriction(PRODUCT(nVal))
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES 
+REAL              :: tau(3,3)                  ! Viscous stress tensor
+REAL              :: mu
+REAL              :: GradV(3,3),DivV
+REAL              :: WallFrictionLoc(3)
+REAL              :: temp
+INTEGER           :: i
+!===================================================================================================================================
+DO i=1,PRODUCT(nVal)
+  temp=Temperature(i)
+  mu=VISCOSITY_TEMPERATURE(temp)
+  GradV(1:3,1)=gradUx(2:4,i)
+  GradV(1:3,2)=gradUy(2:4,i)
+  GradV(1:3,3)=gradUz(2:4,i)
+  ! Velocity divergence
+  DivV=GradV(1,1)+GradV(2,2)+GradV(3,3)
+  ! Calculate shear stress tensor
+  tau=mu*(GradV + TRANSPOSE(GradV))
+  tau(1,1)=tau(1,1)-2./3.*mu*DivV
+  tau(2,2)=tau(2,2)-2./3.*mu*DivV
+  tau(3,3)=tau(3,3)-2./3.*mu*DivV
+  ! Calculate viscous force vector
+  WallFrictionLoc(1:3)=-1*MATMUL(tau,NormVec(:,i))
+  WallFriction(i)=WallFrictionLoc(dir)
+END DO
+END FUNCTION FillWallFriction
 #endif
 
 

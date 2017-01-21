@@ -51,6 +51,7 @@ INTEGER           :: doPrintHelp ! 0: no help, 1: help, 2: markdown-help
 
 TYPE, BIND(C) :: CARRAY
   INTEGER (C_INT) :: len
+  INTEGER (C_INT) :: dim
   TYPE (C_PTR)    :: data
 END TYPE CARRAY
 

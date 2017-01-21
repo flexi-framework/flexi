@@ -24,7 +24,7 @@ SAVE
 
 #if PARABOLIC
 #define CUT(x)
-INTEGER,PARAMETER :: nVarTotalEOS=28
+INTEGER,PARAMETER :: nVarTotalEOS=32
 #else 
 #define CUT(x) x!
 INTEGER,PARAMETER :: nVarTotalEOS=19
@@ -33,60 +33,68 @@ INTEGER,PARAMETER :: nVarTotalEOS=19
 !            The following 5 variables must be the primitive ones
 !           E
 !           n
-!           e
-!           r
-!           g
-!           y                    E                       V
-!           S            V       n       P               o
-!           t            e     E t   T   r               r
-!           a            l     n h   o   e               t
-! W         g            o     e a   t   s               i
-! i         n            c V   r l   a T s               c
-! t         a            i e   g p   l o u               i
-! h         t         T  t l   y y   T t r               t
-! D         i         e  y o   S S   e a e         V V V y     D Q
-! G   M M M o V V V   m  M c   t t   m l T         o o o M     i C S
-! O   o o o n e e e P p  a i   a a   p P i         r r r a H   l r c
-! p D m m m D l l l r e  g t   g g E e r m         t t t g e L a i h
-! e e e e e e o o o e r  n y   n n n r e e         i i i n l a t t l
-! r n n n n n c c c s a  i S   a a t a s D         c c c i i m a e i
-! a s t t t s i i i s t  t o M t t r t s e         i i i t c b t r e
-! t i u u u i t t t u u  u u a i i o u u r         t t t u i d i i r
-! o t m m m t y y y r r  d n c o o p r r i         y y y d t a o o e
-! r y X Y Z y X Y Z e e  e d h n n y e e v         X Y Z e y 2 n n n
+!           e                                                              W
+!           r                                                              a 
+!           g                                                              l
+!           y                    E                       V                 l
+!           S            V       n       P               o                 F
+!           t            e     E t   T   r               r                 r
+!           a            l     n h   o   e               t                 i
+! W         g            o     e a   t   s               i                 c
+! i         n            c V   r l   a T s               c           W W W t
+! t         a            i e   g p   l o u               i           a a a i
+! h         t         T  t l   y y   T t r               t           l l l o
+! D         i         e  y o   S S   e a e         V V V y     D Q   l l l n
+! G   M M M o V V V   m  M c   t t   m l T         o o o M     i C S F F F M
+! O   o o o n e e e P p  a i   a a   p P i         r r r a H   l r c r r r a
+! p D m m m D l l l r e  g t   g g E e r m         t t t g e L a i h i i i g
+! e e e e e e o o o e r  n y   n n n r e e         i i i n l a t t l c c c n
+! r n n n n n c c c s a  i S   a a t a s D         c c c i i m a e i t t t i
+! a s t t t s i i i s t  t o M t t r t s e         i i i t c b t r e i i i t
+! t i u u u i t t t u u  u u a i i o u u r         t t t u i d i i r o o o u
+! o t m m m t y y y r r  d n c o o p r r i         y y y d t a o o e n n n d
+! r y X Y Z y X Y Z e e  e d h n n y e e v         X Y Z e y 2 n n n X Y Z e
 INTEGER,DIMENSION(1:nVarTotalEOS,0:nVarTotalEOS),PARAMETER :: DepTableEOS = TRANSPOSE(RESHAPE(&
 (/&
-  0,1,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0 ,& !1  Density
-  0,0,1,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0 ,& !2  MomentumX
-  0,0,0,1,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0 ,& !3  MomentumY
-  0,0,0,0,1,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0 ,& !4  MomentumZ
-  0,0,0,0,0,1,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0 ,& !5  EnergyStagnationDensity
-  0,1,1,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0 ,& !6  VelocityX
-  0,1,0,1,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0 ,& !7  VelocityY
-  0,1,0,0,1,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0 ,& !8  VelocityZ
-  0,1,1,1,1,1,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0 ,& !9  Pressure
-  0,1,0,0,0,0,0,0,0,1,0, 0,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0 ,& !10 Temperature
-  0,1,1,1,1,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0 ,& !11 VelocityMagnitude
-  0,1,0,0,0,0,0,0,0,1,0, 0,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0 ,& !12 VelocitySound
-  0,0,0,0,0,0,0,0,0,0,0, 1,1,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0 ,& !13 Mach
-  0,1,0,0,0,1,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0 ,& !14 EnergyStagnation
-  0,1,0,0,0,0,0,0,0,1,0, 0,0,0,1,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0 ,& !15 EnthalpyStagnation
-  0,1,0,0,0,0,0,0,0,0,1, 0,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0 ,& !16 Entropy
-  0,0,0,0,0,0,0,0,0,0,1, 1,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0 ,& !17 TotalTemperature
-  0,1,0,0,0,0,0,0,0,1,0, 1,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0 ,& !18 TotalPressure
-  1,1,1,1,1,1,0,0,0,0,0, 0,0,0,0,0,0,0,0,0  CUT(&) ,0,0,0,0,0,0,0,0,0 ,& !19 PressureTimeDeriv
-#if PARABOLIC
-  1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0         ,0,0,0,0,0,0,0,0,0 ,& !20 VorticityX
-  1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0         ,0,0,0,0,0,0,0,0,0 ,& !21 VorticityY
-  1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0         ,0,0,0,0,0,0,0,0,0 ,& !22 VorticityZ
-  1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0         ,0,0,0,0,0,0,0,0,0 ,& !23 VorticityMagnitude
-  1,1,1,1,1,0,0,0,0,0,0, 1,0,0,0,0,0,0,0,0         ,0,0,0,1,0,0,0,0,0 ,& !24 Helicity
-  1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0         ,0,0,0,0,0,0,0,0,0 ,& !25 Lambda2
-  1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0         ,0,0,0,0,0,0,0,0,0 ,& !26 Dilatation
-  1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0         ,0,0,0,0,0,0,0,0,0 ,& !27 QCriterion
-  1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0         ,0,0,0,0,0,0,0,0,0  & !28 Schlieren
+  0,1,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !1  Density
+  0,0,1,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !2  MomentumX
+  0,0,0,1,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !3  MomentumY
+  0,0,0,0,1,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !4  MomentumZ
+  0,0,0,0,0,1,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !5  EnergyStagnationDensity
+  0,1,1,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !6  VelocityX
+  0,1,0,1,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !7  VelocityY
+  0,1,0,0,1,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !8  VelocityZ
+  0,1,1,1,1,1,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !9  Pressure
+  0,1,0,0,0,0,0,0,0,1,0, 0,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !10 Temperature
+  0,1,1,1,1,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !11 VelocityMagnitude
+  0,1,0,0,0,0,0,0,0,1,0, 0,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !12 VelocitySound
+  0,0,0,0,0,0,0,0,0,0,0, 1,1,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !13 Mach
+  0,1,0,0,0,1,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !14 EnergyStagnation
+  0,1,0,0,0,0,0,0,0,1,0, 0,0,0,1,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !15 EnthalpyStagnation
+  0,1,0,0,0,0,0,0,0,0,1, 0,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !16 Entropy
+  0,0,0,0,0,0,0,0,0,0,1, 1,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !17 TotalTemperature
+  0,1,0,0,0,0,0,0,0,1,0, 1,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !18 TotalPressure
+  1,1,1,1,1,1,0,0,0,0,0, 0,0,0,0,0,0,0,0,0  CUT(&) ,0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !19 PressureTimeDeriv
+#if PARABOLIC                                                                
+  1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0         ,0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !20 VorticityX
+  1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0         ,0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !21 VorticityY
+  1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0         ,0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !22 VorticityZ
+  1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0         ,0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !23 VorticityMagnitude
+  1,1,1,1,1,0,0,0,0,0,0, 1,0,0,0,0,0,0,0,0         ,0,0,0,1,0,0,0,0,0,0,0,0,0 ,& !24 Helicity
+  1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0         ,0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !25 Lambda2
+  1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0         ,0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !26 Dilatation
+  1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0         ,0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !27 QCriterion
+  1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0         ,0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !28 Schlieren
+  1,0,0,0,0,0,0,0,0,0,1, 0,0,0,0,0,0,0,0,0         ,0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !29 WallFrictionX
+  1,0,0,0,0,0,0,0,0,0,1, 0,0,0,0,0,0,0,0,0         ,0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !30 WallFrictionY
+  1,0,0,0,0,0,0,0,0,0,1, 0,0,0,0,0,0,0,0,0         ,0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !31 WallFrictionZ
+  1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0         ,0,0,0,0,0,0,0,0,0,1,1,1,0  & !32 WallFrictionMagnitude
 #endif
 /),(/nVarTotalEOS+1,nVarTotalEOS/)))
+
+INTEGER,DIMENSION(1:nVarTotalEOS),PARAMETER :: DepSurfaceOnlyEOS = &
+(/  0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0  CUT(&) ,0,0,0,0,0,0,0,0,0,1,1,1,1 &
+/) 
 
 #if FV_ENABLED && FV_RECONSTRUCT
 !           E
@@ -114,11 +122,11 @@ INTEGER,DIMENSION(1:nVarTotalEOS,0:nVarTotalEOS),PARAMETER :: DepTableEOS = TRAN
 ! r y X Y Z y X Y Z e e
 INTEGER,DIMENSION(PP_nVar,0:nVarTotalEOS),PARAMETER :: DepTablePrimToCons =TRANSPOSE(RESHAPE(&
 (/&
-  0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0 ,& !1 Density
-  0,1,0,0,0,0,1,0,0,0,0, 0,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0 ,& !2 MomentumX
-  0,1,0,0,0,0,0,1,0,0,0, 0,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0 ,& !3 MomentumY
-  0,1,0,0,0,0,0,0,1,0,0, 0,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0 ,& !4 MomentumZ
-  0,1,0,0,0,0,1,1,1,1,0, 0,0,0,0,0,0,0,0,0  CUT(&) ,0,0,0,0,0,0,0,0,0  & !5 EnergyStagnationDensity
+  0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !1 Density
+  0,1,0,0,0,0,1,0,0,0,0, 0,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !2 MomentumX
+  0,1,0,0,0,0,0,1,0,0,0, 0,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !3 MomentumY
+  0,1,0,0,0,0,0,0,1,0,0, 0,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !4 MomentumZ
+  0,1,0,0,0,0,1,1,1,1,0, 0,0,0,0,0,0,0,0,0  CUT(&) ,0,0,0,0,0,0,0,0,0,0,0,0,0  & !5 EnergyStagnationDensity
 /),(/nVarTotalEOS+1,5/)))
 #endif
 #undef CUT
@@ -153,7 +161,11 @@ CHARACTER(LEN=255),DIMENSION(nVarTotalEOS),PARAMETER :: DepNames = &
 "Lambda2"                  ,& !25
 "Dilatation"               ,& !26
 "QCriterion"               ,& !27
-"Schlieren"                 & !28
+"Schlieren"                ,& !28
+"WallFrictionX"            ,& !29
+"WallFrictionY"            ,& !30
+"WallFrictionZ"            ,& !31
+"WallFrictionMagnitude"     & !32
 #endif /*PARABOLIC*/
 /)
 
