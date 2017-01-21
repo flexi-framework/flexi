@@ -442,7 +442,7 @@ DO ! extract reggie information
                    IndNum2           = INDEX(temp2,',')
                    IF(IndNum2.GT.0)THEN ! get row number
                      temp2           = temp2(IndNum2+1:LEN(TRIM(temp2))) ! next
-                     IF(ADJUSTL(TRIM(temp2)).EQ.'last')THEN ! use the last line number in file for comparison
+                     IF(ADJUSTL(TRIM(temp2)).EQ.'last')THEN ! use the 'last' line number in file for comparison
                        Example%CompareDatafileRowNumber=HUGE(1)
                        iSTATUS=0
                      ELSE
@@ -473,7 +473,7 @@ DO ! extract reggie information
        Example%ConvergenceTestType       = ''     ! init
        Example%ConvergenceTestDomainSize = -999.0 ! init
        Example%ConvergenceTestValue      = -999.0 ! init
-       Example%ConvergenceTestTolerance  = -1     ! init
+       Example%ConvergenceTestTolerance  = -1.     ! init
        IndNum2=INDEX(readRHS(2),',')
        IF(IndNum2.GT.0)THEN ! get the type of the convergence test (h- or p-convergence)
          temp2                     = readRHS(2)
@@ -486,8 +486,8 @@ DO ! extract reggie information
            IndNum2                        = INDEX(temp2,',')
            IF((IndNum2.GT.0).AND.(iSTATUS.EQ.0))THEN ! get value for comparison
              CALL str2real(temp2(1:IndNum2-1),Example%ConvergenceTestValue,iSTATUS)
-             temp2                  = temp2(IndNum2+1:LEN(TRIM(temp2))) ! next
-             IndNum2               = INDEX(temp2,',')
+             temp2                  = TRIM(ADJUSTL(temp2(IndNum2+1:LEN(TRIM(temp2))))) ! next
+             IndNum2               = LEN(temp2)
              IF((IndNum2.GT.0).AND.(iSTATUS.EQ.0))THEN ! get tolerance value for comparison
                CALL str2real(temp2(1:IndNum2-1),Example%ConvergenceTestTolerance,iSTATUS)
              END IF ! get tolerance value for comparison
@@ -499,7 +499,7 @@ DO ! extract reggie information
                 Example%ConvergenceTestType.EQ.''        ,&
                 Example%ConvergenceTestDomainSize.LT.-1. ,&
                 Example%ConvergenceTestValue.LT.-1.      ,&
-                Example%ConvergenceTestTolerance.EQ.0     &
+                Example%ConvergenceTestTolerance.EQ.-1.     &
                 /) )) Example%ConvergenceTest=.FALSE.
       IF(Example%ConvergenceTest.EQV..FALSE.)THEN
         SWRITE(UNIT_stdOut,'(A,A)')      'Example%ConvergenceTestType       : ',Example%ConvergenceTestType

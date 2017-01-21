@@ -95,7 +95,7 @@ TYPE tExample                                                       !> examples 
   REAL                             :: ConvergenceTestValue          !> single value for comparison
   REAL                             :: ConvergenceTestTolerance      !> relative tolerance when comparing the "ConvergenceTestValue"
   REAL, ALLOCATABLE                :: ConvergenceTestGridSize(:)    !> array for grid step size: cell length / ( p + 1 )
-  REAL, ALLOCATABLE                :: ConvergenceTestArray(:,:)     !> array for L2 errors over iteration or polynomial degree
+  REAL, ALLOCATABLE                :: ConvergenceTestError(:,:)     !> array for L2 errors over iteration or polynomial degree
                                                                     !> dimension for "array" will be: [SubExampleNumber]x[nVar]x[2]
                                                                     !>                array(:,1)=[N] 
                                                                     !>                array(:,2)=[iVar]

@@ -97,6 +97,10 @@ IF(Examples(iExample)%ConvergenceTest)THEN
   IF(iSubExample.EQ.MAX(1,Examples(iExample)%SubExampleNumber))THEN ! after subexample 
     ! the subexample must be executed with "N" or "MeshFile": check if the convergence was successful
     CALL CompareConvergence(iExample)
+    IF(Examples(iExample)%ErrorStatus.EQ.3)THEN
+      CALL AddError(MPIthreadsStr,'Mismatch Order of Convergence',iExample,iSubExample,ErrorStatus=3,ErrorCode=3)
+      !SWRITE(UNIT_stdOut,'(A)')  ' Mismatch in HDF5-files'
+    END IF
   END IF
 END IF
 
@@ -158,124 +162,208 @@ INTEGER                        :: iSTATUS
 INTEGER                        :: I,J,K
 INTEGER                        :: NumberOfCellsInteger
 INTEGER                        :: iSubExample,p
-REAL,ALLOCATABLE               :: order(:,:)
+REAL,ALLOCATABLE               :: Order(:,:),OrderAveraged(:)
+INTEGER,ALLOCATABLE            :: OrderIncrease(:,:)
+LOGICAL,ALLOCATABLE            :: OrderReached(:)
 REAL                           :: DummyReal
+LOGICAL                        :: DoDebugOutput
 !==================================================================================================================================
-! -----------------------------------------------------------------------------------------------------------------------
-! compare the results and write error messages for the current case
-! -----------------------------------------------------------------------------------------------------------------------
-
-DO I=1,Examples(iExample)%SubExampleNumber
-  DO J=1,Examples(iExample)%nVar
-      write(*, '(E25.14)', ADVANCE = "NO") Examples(iExample)%ConvergenceTestArray(I,J)
-    IF(J.EQ.Examples(iExample)%nVar)THEN
-      SWRITE(UNIT_stdOut,'(A)')''
-    END IF
-  END DO
-END DO
+DoDebugOutput=.TRUE. ! change to ".TRUE." if problems with this routine occur for info printed to screen
 SWRITE(UNIT_stdOut,'(A)')''
+SWRITE(UNIT_stdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(A)')' ConvergenceTest: '
+! 
+IF(DoDebugOutput)THEN
+  SWRITE(UNIT_stdOut,'(A,I5,A,I5,A)')' L2 Error for nVar=[',Examples(iExample)%nVar,&
+                                 '] and SubExampleNumber=[',Examples(iExample)%SubExampleNumber,']'
+  SWRITE(UNIT_stdOut,'(A5)', ADVANCE="NO") ''
+  DO J=1,Examples(iExample)%nVar
+    SWRITE(UNIT_stdOut, '(A10,I3,A1)',ADVANCE="NO") 'nVar=[',J,']'
+  END DO
+  SWRITE(UNIT_stdOut,'(A)')''
+  DO I=1,Examples(iExample)%SubExampleNumber
+    SWRITE(UNIT_stdOut,'(I5)', ADVANCE="NO") I
+    DO J=1,Examples(iExample)%nVar
+        SWRITE(UNIT_stdOut, '(E14.6)',ADVANCE="NO") Examples(iExample)%ConvergenceTestError(I,J)
+    END DO
+    SWRITE(UNIT_stdOut,'(A)')''
+  END DO
+  SWRITE(UNIT_stdOut,'(A)')''
+  SWRITE(UNIT_stdOut,'(132("-"))')
+END IF
 
+! Calculate the approximate distance between the DG DOF
 ! -----------------------------------------------------------------------------------------------------------------------
 ! p-convergence
-! -----------------------------------------------------------------------------------------------------------------------
 IF(TRIM(Examples(iExample)%ConvergenceTestType).EQ.'p')THEN
-  SWRITE(UNIT_stdOut,'(A)')'p-convergence'
+  ! for p-convergence, the number of cells is constant: convert type from CHARACTER to INTEGER
   CALL str2int(ADJUSTL(TRIM(Examples(iExample)%NumberOfCellsStr(1))),NumberOfCellsInteger,iSTATUS) ! NumberOfCellsStr -> Int
-  print*,"NumberOfCellsInteger=",NumberOfCellsInteger
+  SWRITE(UNIT_stdOut,'(A,I4,A)')' Selecting p-convergence: Number of cells in one direction=[',NumberOfCellsInteger,'] (const.)'
   SWRITE(UNIT_stdOut,'(A)')''
-  
-  SWRITE(UNIT_stdOut,'(A)')'ConvergenceTestGridSize'
-  ! Calc the approximate distance between the DG DOF
+  ! Calculate the approximate distance between the DG DOF
   DO iSubExample=1,Examples(iExample)%SubExampleNumber
     CALL str2int(ADJUSTL(TRIM(Examples(iExample)%SubExampleOption(iSubExample))),p,iSTATUS) ! SubExampleOption -> Int
     Examples(iExample)%ConvergenceTestGridSize(iSubExample)=&
     Examples(iExample)%ConvergenceTestDomainSize/(NumberOfCellsInteger*(p+1))
   END DO
-  DO I=1,Examples(iExample)%SubExampleNumber
-        write(*, '(E25.14)') Examples(iExample)%ConvergenceTestGridSize(I)
-  END DO
-  SWRITE(UNIT_stdOut,'(A)')''
-
-  ALLOCATE(order(Examples(iExample)%SubExampleNumber-1,Examples(iExample)%nVar))
-  SWRITE(UNIT_stdOut,'(A)')'order'
-  DO J=1,Examples(iExample)%nVar
-    DO I=1,Examples(iExample)%SubExampleNumber-1
-      CALL CalcOrder(2,Examples(iExample)%ConvergenceTestGridSize(I:I+1),&
-                       Examples(iExample)%ConvergenceTestArray(   I:I+1,J),order(I,J))
-    END DO
-  END DO
-  DO I=1,Examples(iExample)%SubExampleNumber-1
-    DO J=1,Examples(iExample)%nVar
-        write(*, '(E25.14)', ADVANCE = "NO") order(I,J)
-      IF(J.EQ.Examples(iExample)%nVar)THEN
-        SWRITE(UNIT_stdOut,'(A)')''
-      END IF
-    END DO
-  END DO
-  SWRITE(UNIT_stdOut,'(A)')''
 END IF
-
 ! -----------------------------------------------------------------------------------------------------------------------
 ! h-convergence
-! -----------------------------------------------------------------------------------------------------------------------
 IF(TRIM(Examples(iExample)%ConvergenceTestType).EQ.'h')THEN
-  SWRITE(UNIT_stdOut,'(A)')'h-convergence'
-  SWRITE(UNIT_stdOut,'(A,E25.14)')'Expected polynomial degree = ',Examples(iExample)%ConvergenceTestValue-1.
+  SWRITE(UNIT_stdOut,'(A,E14.6,A)')&
+  ' Selecting h-convergence: Expected Order of Convergence = [',Examples(iExample)%ConvergenceTestValue,']'
   SWRITE(UNIT_stdOut,'(A)')''
-
-  SWRITE(UNIT_stdOut,'(A)')'ConvergenceTestGridSize'
   ! Calc the approximate distance between the DG DOF
   DO iSubExample=1,Examples(iExample)%SubExampleNumber
     CALL str2int(ADJUSTL(TRIM(Examples(iExample)%NumberOfCellsStr(iSubExample))) &
                  ,NumberOfCellsInteger,iSTATUS) ! sanity check if the number of threads is correct
-    !print*,"NumberOfCellsInteger=",NumberOfCellsInteger
     Examples(iExample)%ConvergenceTestGridSize(iSubExample)=&
     Examples(iExample)%ConvergenceTestDomainSize/(NumberOfCellsInteger*(Examples(iExample)%ConvergenceTestValue-1.+1.))
-
- 
-    SWRITE(UNIT_stdOut, '(A22,I5,4x,A,E25.14)') &
-      "NumberOfCellsInteger =",NumberOfCellsInteger,&
-      "Examples(iExample)%ConvergenceTestGridSize(iSubExample)=",Examples(iExample)%ConvergenceTestGridSize(iSubExample)
   END DO
-  !DO I=1,Examples(iExample)%SubExampleNumber
-        !write(*, '(E25.14)') Examples(iExample)%ConvergenceTestGridSize(I)
-  !END DO
-  SWRITE(UNIT_stdOut,'(A)')''
-
-  SWRITE(UNIT_stdOut,'(A)')'order'
+END IF
+! -----------------------------------------------------------------------------------------------------------------------
+! Calculate ConvergenceTestGridSize (average spacing between DOF)
+ALLOCATE(Order(Examples(iExample)%SubExampleNumber-1,Examples(iExample)%nVar))
+DO J=1,Examples(iExample)%nVar
   DO I=1,Examples(iExample)%SubExampleNumber-1
-    DO J=1,Examples(iExample)%nVar
-      CALL CalcOrder(2,Examples(iExample)%ConvergenceTestGridSize(I:I+1),&
-                       Examples(iExample)%ConvergenceTestArray(   I:I+1,J),DummyReal)
-      write(*, '(E25.14)', ADVANCE = "NO") DummyReal
-      IF(J.EQ.Examples(iExample)%nVar)THEN
-        SWRITE(UNIT_stdOut,'(A)')''
-      END IF
-    END DO
+    CALL CalcOrder(2,Examples(iExample)%ConvergenceTestGridSize(I:I+1),&
+                     Examples(iExample)%ConvergenceTestError(   I:I+1,J),Order(I,J))
   END DO
-  ALLOCATE(order(1,Examples(iExample)%nVar))
-  SWRITE(UNIT_stdOut,'(A)')'order - averaged'
+END DO
+
+! Check, if the Order of Convergece is increasing with increasing polynomial degree (only important for p-convergence)
+ALLOCATE(OrderIncrease(Examples(iExample)%SubExampleNumber-2,Examples(iExample)%nVar))
+DO J=1,Examples(iExample)%nVar
+  DO I=1,Examples(iExample)%SubExampleNumber-2
+    IF(Order(I,J).LT.Order(I+1,J))THEN ! increasing order
+      OrderIncrease(I,J)=1
+    ELSE ! non-increasing order
+      OrderIncrease(I,J)=0
+    END IF
+  END DO
+END DO
+
+! Calculate the averged Order of Convergence (only important for h-convergence)
+ALLOCATE(OrderAveraged(Examples(iExample)%nVar))
+DO J=1,Examples(iExample)%nVar
+  CALL CalcOrder(Examples(iExample)%SubExampleNumber,Examples(iExample)%ConvergenceTestGridSize(:),&
+                                                     Examples(iExample)%ConvergenceTestError(:,J),OrderAveraged(J))
+END DO
+
+! Check the calculated Orders of convergence
+ALLOCATE(OrderReached(Examples(iExample)%nVar))
+OrderReached=.FALSE. ! default
+! -----------------------------------------------------------------------------------------------------------------------
+! p-convergence
+IF(TRIM(Examples(iExample)%ConvergenceTestType).EQ.'p')THEN
+  ! 75% of the calculated values for the order of convergece must be increasing with decreasing grid spacing
   DO J=1,Examples(iExample)%nVar
-    !DO I=1,Examples(iExample)%SubExampleNumber-1
-      CALL CalcOrder(Examples(iExample)%SubExampleNumber,Examples(iExample)%ConvergenceTestGridSize(:),&
-                                                         Examples(iExample)%ConvergenceTestArray(:,J),order(1,J))
-    !END DO
+    IF(REAL(SUM(OrderIncrease(:,J)))/REAL(Examples(iExample)%SubExampleNumber-2).LT.0.75)THEN
+      OrderReached(J)=.FALSE.
+    ELSE
+      OrderReached(J)=.TRUE.
+    END IF
   END DO
-  !DO I=1,Examples(iExample)%SubExampleNumber-1
-    DO J=1,Examples(iExample)%nVar
-        write(*, '(E25.14)', ADVANCE = "NO") order(1,J)
-      IF(J.EQ.Examples(iExample)%nVar)THEN
-        SWRITE(UNIT_stdOut,'(A)')''
-      END IF
-    END DO
-  !END DO
+! -----------------------------------------------------------------------------------------------------------------------
+! h-convergence
+ELSEIF(TRIM(Examples(iExample)%ConvergenceTestType).EQ.'h')THEN
+  ! Check Order of Convergence versus the expected value and tolerance from input
+  DO J=1,Examples(iExample)%nVar
+    OrderReached(J)=AlmostEqualToTolerance( OrderAveraged(J)                            ,&
+                                           Examples(iExample)%ConvergenceTestValue     ,&
+                                           Examples(iExample)%ConvergenceTestTolerance )
+     IF(.NOT.OrderReached(J))THEN
+       !IntegralCompare=1
+       SWRITE(UNIT_stdOut,'(A)')         ' CompareConvergence does not match! Error in computation!'
+       SWRITE(UNIT_stdOut,'(A,E21.14)')  ' OrderAveraged(J)                        = ',OrderAveraged(J)
+       SWRITE(UNIT_stdOut,'(A,E21.14)')  ' Examples(iExample)%ConvergenceTestValue = ',Examples(iExample)%ConvergenceTestValue
+       SWRITE(UNIT_stdOut,'(A,E21.14)')  ' Tolerance                               = ',Examples(iExample)%ConvergenceTestTolerance
+       !SWRITE(UNIT_stdOut,'(A,E21.14)')  ' 0.1*SQRT(PP_RealTolerance)            = ',0.1*SQRT(PP_RealTolerance)
+       !Examples(iExample)%ErrorStatus=5
+     END IF
+  END DO
+END IF
+!     IntegralValuesAreEqual=AlmostEqualToTolerance( Q                                     ,&
+!                                                    Examples(iExample)%IntegrateLineValue ,&
+!                                                    5.e-2                                 )
+!     IF(.NOT.IntegralValuesAreEqual)THEN
+!       IntegralCompare=1
+!       SWRITE(UNIT_stdOut,'(A)')         ' IntegrateLines do not match! Error in computation!'
+!       SWRITE(UNIT_stdOut,'(A,E21.14)')  ' IntegrateLineValue                    = ',Q
+!       SWRITE(UNIT_stdOut,'(A,E21.14)')  ' Examples(iExample)%IntegrateLineValue = ',Examples(iExample)%IntegrateLineValue
+!       SWRITE(UNIT_stdOut,'(A,E21.14)')  ' Tolerance                             = ',1.e-2!0.1*SQRT(PP_RealTolerance)
+!       !SWRITE(UNIT_stdOut,'(A,E21.14)')  ' 0.1*SQRT(PP_RealTolerance)            = ',0.1*SQRT(PP_RealTolerance)
+!       Examples(iExample)%ErrorStatus=5
+!     ELSE
+!       IntegralCompare=0
+!     END IF
+! -----------------------------------------------------------------------------------------------------------------------
+
+
+IF(DoDebugOutput)THEN
+  ! Write average spacing between DOF
+  SWRITE(UNIT_stdOut,'(A)')' ConvergenceTestGridSize (average spacing between DOF)'
+  DO I=1,Examples(iExample)%SubExampleNumber
+        write(*, '(I5,E14.6)') I,Examples(iExample)%ConvergenceTestGridSize(I)
+  END DO
+  ! Write Order of convergence
   SWRITE(UNIT_stdOut,'(A)')''
+  SWRITE(UNIT_stdOut,'(A,I5,A,I5,A)')' Order of convergence for nVar=[',Examples(iExample)%nVar,&
+                                 '] and SubExampleNumber-1=[',Examples(iExample)%SubExampleNumber-1,']'
+  SWRITE(UNIT_stdOut,'(A5)', ADVANCE="NO") ''
+  DO J=1,Examples(iExample)%nVar
+    SWRITE(UNIT_stdOut, '(A10,I3,A1)',ADVANCE="NO") 'nVar=[',J,']'
+  END DO
+  SWRITE(UNIT_stdOut,'(A)')''
+  DO I=1,Examples(iExample)%SubExampleNumber-1
+    SWRITE(UNIT_stdOut,'(I5)', ADVANCE="NO") I
+    DO J=1,Examples(iExample)%nVar
+      SWRITE(UNIT_stdOut,'(E14.6)',ADVANCE="NO") Order(I,J)
+    END DO
+    SWRITE(UNIT_stdOut,'(A)')''
+  END DO
+  ! Write averge convergence order
+  SWRITE(UNIT_stdOut,'(A5)',ADVANCE="NO")'     '
+  DO J=1,Examples(iExample)%nVar
+    SWRITE(UNIT_stdOut, '(A14)',ADVANCE="NO") ' -------------'
+  END DO
+  SWRITE(UNIT_stdOut,'(A)')''
+  SWRITE(UNIT_stdOut,'(A5)',ADVANCE="NO")'mean'
+  DO J=1,Examples(iExample)%nVar
+    SWRITE(UNIT_stdOut,'(E14.6)',ADVANCE="NO") OrderAveraged(J)
+  END DO
+  SWRITE(UNIT_stdOut,'(A)')''
+  SWRITE(UNIT_stdOut,'(A)')''
+  !    ! Write increasing order
+  !    DO I=1,Examples(iExample)%SubExampleNumber-2
+  !      SWRITE(UNIT_stdOut,'(I5)', ADVANCE="NO") I
+  !      DO J=1,Examples(iExample)%nVar
+  !        SWRITE(UNIT_stdOut,'(I14)',ADVANCE="NO") OrderIncrease(I,J)
+  !      END DO
+  !      SWRITE(UNIT_stdOut,'(A)')''
+  !    END DO
+  !    SWRITE(UNIT_stdOut,'(A)')''
 
-
+  ! Write if order of convergence was reached (h- or p-convergence)
+  SWRITE(UNIT_stdOut,'(A5)',ADVANCE="NO")'Check'
+  DO J=1,Examples(iExample)%nVar
+    SWRITE(UNIT_stdOut,'(L14)',ADVANCE="NO") OrderReached(J)
+  END DO
+  SWRITE(UNIT_stdOut,'(A)')''
+  SWRITE(UNIT_stdOut,'(132("-"))')
 END IF
 
-print*,"stop"
-stop
+! 50% of nVar Convergence tests must succeed
+DummyReal=0.
+DO J=1,Examples(iExample)%nVar
+  IF(OrderReached(J))DummyReal=DummyReal+1.
+END DO
+IF(DummyReal/REAL(Examples(iExample)%nVar).LT.0.5)THEN
+  Examples(iExample)%ErrorStatus=3
+ELSE
+  Examples(iExample)%ErrorStatus=0
+END IF
+
 END SUBROUTINE CompareConvergence
 
 
@@ -365,7 +453,7 @@ IF(ANY(ISNAN(LInf))) LInf=HUGE(1.)
 
 ! Save values for ConvergenceTest
 IF(Examples(iExample)%ConvergenceTest)THEN
-  Examples(iExample)%ConvergenceTestArray(iSubExample,1:Examples(iExample)%nVar)=L2(1:Examples(iExample)%nVar)
+  Examples(iExample)%ConvergenceTestError(iSubExample,1:Examples(iExample)%nVar)=L2(1:Examples(iExample)%nVar)
 END IF
 
 ! compare the retrieved norms from the std.out file
@@ -581,7 +669,7 @@ IndLastB =IndMax
 IndexNotFound=.TRUE.
 CurrentColumn=0
 EOL=0
-DO I=1,2 ! read the file twice in order to determine the array size
+DO I=1,2 ! read the file twice in Order to determine the array size
   LineNumbers=0
   DO 
     READ(ioUnit,'(A)',IOSTAT=iSTATUS) temp1 ! get first line assuming it is something like 'nVar= 5'

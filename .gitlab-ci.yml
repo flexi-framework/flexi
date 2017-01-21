@@ -52,6 +52,13 @@ run_gnu:
   script:
     - module load env/gnu ; cd build_gnu/bin/ ; ./regressioncheck
 
+run_gnu_convtest:
+  stage: test
+  tags:
+    - withmodules
+  script:
+    - module load env/gnu ; cd build_gnu/bin/ ; ./regressioncheck run feature_convtest
+
 run_gnu_build_mpi:
   stage: test
   tags:
@@ -80,6 +87,13 @@ run_intel:
     - withmodules
   script:
     - module load env/intel ; cd build_intel/bin/ ; ./regressioncheck
+
+run_intel_convtest:
+  stage: test
+  tags:
+    - withmodules
+  script:
+    - module load env/intel ; cd build_intel/bin/ ; ./regressioncheck run feature_convtest
 
 run_intel_build_mpi:
   stage: test

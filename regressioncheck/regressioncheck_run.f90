@@ -474,7 +474,7 @@ IF((TRIM(TIMEDISCMETHOD).NE.'ImplicitO3').AND.(TRIM(Examples(iExample)%SubExampl
 END IF
 
 ! ConvergenceTest: allocate the array in which the L2 error norms are saved for convergence calculation
-IF(iReggieBuild.EQ.1)THEN ! DON'T allocate the field "ConvergenceTestArray" multiple times
+IF(iReggieBuild.EQ.1)THEN ! DON'T allocate the field "ConvergenceTestError" multiple times
   ! Check if SubExample is set correctly for possible convergence test
   IF(Examples(iExample)%ConvergenceTest)THEN ! Do ConvergenceTest
 
@@ -515,8 +515,8 @@ IF(iReggieBuild.EQ.1)THEN ! DON'T allocate the field "ConvergenceTestArray" mult
 
     IF(Examples(iExample)%ConvergenceTest)THEN ! Do ConvergenceTest was not changed to false above
       ! finally: allocate the fields
-      ALLOCATE(Examples(iExample)%ConvergenceTestArray(Examples(iExample)%SubExampleNumber,Examples(iExample)%nVar))
-      Examples(iExample)%ConvergenceTestArray   =0 ! default value
+      ALLOCATE(Examples(iExample)%ConvergenceTestError(Examples(iExample)%SubExampleNumber,Examples(iExample)%nVar))
+      Examples(iExample)%ConvergenceTestError   =0 ! default value
       ALLOCATE(Examples(iExample)%ConvergenceTestGridSize(Examples(iExample)%SubExampleNumber))
       Examples(iExample)%ConvergenceTestGridSize=0 ! default value
     END IF
