@@ -34,15 +34,15 @@ END INTERFACE
 PUBLIC:: CalcSurfQuantities_DG
 
 #if FV_ENABLED 
-INTERFACE CalcQuantities_ConvertToVisu_FV
-  MODULE PROCEDURE CalcQuantities_ConvertToVisu_FV
+INTERFACE CalcQuantities_FV
+  MODULE PROCEDURE CalcQuantities_FV
 END INTERFACE
-PUBLIC:: CalcQuantities_ConvertToVisu_FV
+PUBLIC:: CalcQuantities_FV
 
-INTERFACE CalcSurfQuantities_ConvertToVisu_FV
-  MODULE PROCEDURE CalcSurfQuantities_ConvertToVisu_FV
+INTERFACE CalcSurfQuantities_FV
+  MODULE PROCEDURE CalcSurfQuantities_FV
 END INTERFACE
-PUBLIC:: CalcSurfQuantities_ConvertToVisu_FV
+PUBLIC:: CalcSurfQuantities_FV
 #endif
 
 INTERFACE FillCopy
@@ -163,8 +163,8 @@ END DO
 nValSide=(/PP_N+1,PP_N+1,nBCSidesVisu_DG/)
 
 ! Allocate array that stores the calculated variables on the visualization boundary.
-SDEALLOCATE(UCalcBoundary_DG)
-ALLOCATE(UCalcBoundary_DG(0:PP_N,0:PP_N,nBCSidesVisu_DG,1:nVarCalc))
+SDEALLOCATE(USurfCalc_DG)
+ALLOCATE(USurfCalc_DG(0:PP_N,0:PP_N,nBCSidesVisu_DG,1:nVarCalc))
 ALLOCATE(gradUxFace(1:PP_nVarPrim,0:PP_N,0:PP_N,nBCSidesVisu_DG))
 ALLOCATE(gradUyFace(1:PP_nVarPrim,0:PP_N,0:PP_N,nBCSidesVisu_DG))
 ALLOCATE(gradUzFace(1:PP_nVarPrim,0:PP_N,0:PP_N,nBCSidesVisu_DG))
@@ -174,7 +174,7 @@ ALLOCATE(TangVec2_loc(1:3,0:PP_N,0:PP_N,nBCSidesVisu_DG))
 
 maskCalc=1
 CALL ProlongToFace_independent(nVarCalc,nBCSidesVisu_DG,nElems_DG,maskCalc,mapBCSides_DG, &
-    UCalc_DG,UCalcBoundary_DG,gradUxFace,gradUyFace,gradUzFace)
+    UCalc_DG,USurfCalc_DG,gradUxFace,gradUyFace,gradUzFace)
 
 IF(TRIM(FileType).EQ.'State')THEN
   DO iSide=1,nBCSides
@@ -187,12 +187,12 @@ IF(TRIM(FileType).EQ.'State')THEN
   END DO
   IF(withDGOperator.AND.PARABOLIC.EQ.1)THEN
 #if PARABOLIC
-    CALL CalcQuantities(nVarCalc,nValSide,mapElems_DG,mapCalc,UCalcBoundary_DG,maskCalc,&
+    CALL CalcQuantities(nVarCalc,nValSide,mapElems_DG,mapCalc,USurfCalc_DG,maskCalc,&
         gradUxFace,gradUyFace,gradUzFace,&
         NormVec_loc(:,:,:,:),TangVec1_loc(:,:,:,:),TangVec2_loc(:,:,:,:)) 
 #endif
   ELSE
-    CALL CalcQuantities(nVarCalc,nValSide,mapElems_DG,mapCalc,UCalcBoundary_DG,maskCalc,& 
+    CALL CalcQuantities(nVarCalc,nValSide,mapElems_DG,mapCalc,USurfCalc_DG,maskCalc,& 
         NormVec=NormVec_loc(:,:,:,:),TangVec1=TangVec1_loc(:,:,:,:),TangVec2=TangVec2_loc(:,:,:,:)) 
   END IF
 END IF
@@ -312,7 +312,7 @@ END SUBROUTINE ProlongToFace_independent
 !> Therefore the conservative quantities are recomputed from the primitive ones but now on the cell centers and not on the visu
 !> grid. Then 'CalcQuantities' is used to calculate gradient quantities only, which are afterwards converted to the FV visu grid.
 !===================================================================================================================================
-SUBROUTINE CalcQuantities_ConvertToVisu_FV() 
+SUBROUTINE CalcQuantities_FV() 
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Posti_Vars
@@ -336,18 +336,16 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                      :: maskCalc(nVarDep)
 INTEGER                      :: nVal(4)
-#if FV_RECONSTRUCT 
-INTEGER                      :: maskPrim(nVarDep)
-INTEGER                      :: iVar
-#endif
 #if PARABOLIC
 REAL,ALLOCATABLE             :: gradUx_calc(:,:,:,:,:),gradUy_calc(:,:,:,:,:),gradUz_calc(:,:,:,:,:) 
 #endif
 !===================================================================================================================================
-
 SDEALLOCATE(UVisu_FV)
 ALLOCATE(UVisu_FV(0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV,nVarVisuTotal))
+
 #if FV_RECONSTRUCT
+  ! ================================ WITH RECONSTRUCTION ======================================
+
   ! generate a new mapCalc_FV, which is a copy of the original mapCalc but is extended in the following way.
   ! Since the reconstruction is performed in primitive quantities, the calculation of conservative quantities from them 
   ! introduce for the conservatives dependcies from the primitive ones. Therefore all primitive quantities that
@@ -357,9 +355,8 @@ ALLOCATE(UVisu_FV(0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV,nVarVisuTotal))
   ALLOCATE(mapCalc_FV(1:nVarDep))
   CALL AppendNeededPrims(mapCalc,mapCalc_FV,nVarCalc_FV)
   SWRITE (*,*) "[FVRE] nVarCalc_FV", nVarCalc_FV
-  SWRITE (*,"(A,32I3)") "  mapCalc_FV",  mapCalc_FV
   
-  ! convert primitive quantities to the visu grid, but store it UCalc_FV, since all dependent calculations including
+  ! convert primitive quantities to the visu grid, but store them in UCalc_FV, since all dependent calculations based on
   ! reconstructed values are performed on the visu grid.
   SDEALLOCATE(UCalc_FV)
   ALLOCATE(UCalc_FV(0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV,1:nVarCalc_FV))
@@ -374,29 +371,28 @@ ALLOCATE(UVisu_FV(0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV,nVarVisuTotal))
 #endif          
 
   ! calculate all remaining quantities on the visu grid.
-  maskPrim=GetMaskPrim()
-  maskCalc = 1-maskPrim
-  SWRITE(*,*) "[FVRE] CalcQuantities (nonPrim)"
+  IF(TRIM(FileType).EQ.'State')THEN
+    maskCalc = 1-GetMaskPrim()   ! exclude primitive quantities
+    SWRITE(*,*) "[FVRE] CalcQuantities (nonPrim)"
+    IF(withDGOperator.AND.(PARABOLIC.EQ.1))THEN
 #if PARABOLIC    
-  CALL CalcQuantities(nVarCalc_FV,nVal,mapElems_FV,mapCalc_FV,UCalc_FV,maskCalc,gradUx_calc,gradUy_calc,gradUz_calc)
-#else
-  CALL CalcQuantities(nVarCalc_FV,nVal,mapElems_FV,mapCalc_FV,UCalc_FV,maskCalc)
+      CALL CalcQuantities(nVarCalc_FV,nVal,mapElems_FV,mapCalc_FV,UCalc_FV,maskCalc,gradUx_calc,gradUy_calc,gradUz_calc)
 #endif
-
-  ! copy all quantities to the UVisu_FV array
-  SWRITE(*,*) "[FVRE] copy all quantities to UVisu_FV"
-  DO iVar=1,nVarDep
-    IF (mapVisu(iVar).GT.0) THEN ! visu var
-      SWRITE(*,*) "  ", TRIM(VarNamesTotal(iVar))
-      UVisu_FV(:,:,:,:,mapVisu(iVar)) = UCalc_FV(:,:,:,:,mapCalc_FV(iVar))
+    ELSE
+      CALL CalcQuantities(nVarCalc_FV,nVal,mapElems_FV,mapCalc_FV,UCalc_FV,maskCalc)
     END IF
-  END DO
+  END IF
 
 
 #else /* FV_RECONSTRUCT */
 
   ! ================================ WITHOUT RECONSTRUCTION ======================================
+  ! Since no reconstruction is involved, we can calculate all dependent quantities from the conservative solution (same
+  ! as for DG). Without reconstruction this can be done on the FV cell-centers (PP_N instead of NVisu_FV).
   nVal=(/PP_N+1,PP_N+1,PP_N+1,nElems_FV/)
+  SDEALLOCATE(mapCalc_FV)
+  ALLOCATE(mapCalc_FV(1:nVarDep))
+  mapCalc_FV = mapCalc
   ! calc FV solution 
   SWRITE(*,*) "[FV] calc quantities"
   SDEALLOCATE(UCalc_FV)
@@ -412,19 +408,17 @@ ALLOCATE(UVisu_FV(0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV,nVarVisuTotal))
       gradUx_calc=gradUx(:,:,:,:,mapElems_FV)
       gradUy_calc=gradUy(:,:,:,:,mapElems_FV)
       gradUz_calc=gradUz(:,:,:,:,mapElems_FV)
-      CALL CalcQuantities(nVarCalc_FV,nVal,nElems_FV,mapElems_FV,mapCalc,UCalc_FV,maskCalc,gradUx_calc,gradUy_calc,gradUz_calc)
+      CALL CalcQuantities(nVarCalc_FV,nVal,nElems_FV,mapElems_FV,mapCalc_FV,UCalc_FV,maskCalc,gradUx_calc,gradUy_calc,gradUz_calc)
 #endif
     ELSE
-      CALL CalcQuantities(nVarCalc_FV,nVal,nElems_FV,mapElems_FV,mapCalc,UCalc_FV,maskCalc) 
+      CALL CalcQuantities(nVarCalc_FV,nVal,nElems_FV,mapElems_FV,mapCalc_FV,UCalc_FV,maskCalc) 
     END IF
   END IF
 
-  ! convert FV solution to visu grid
-  CALL ConvertToVisu_FV(mapCalc)
 #endif /* FV_RECONSTRUCT */
-END SUBROUTINE CalcQuantities_ConvertToVisu_FV
+END SUBROUTINE CalcQuantities_FV
 
-SUBROUTINE CalcSurfQuantities_ConvertToVisu_FV() 
+SUBROUTINE CalcSurfQuantities_FV() 
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Posti_Vars
@@ -482,9 +476,9 @@ CALL buildMappings(NVisu_FV,S2V=S2V_NVisu)
 SDEALLOCATE(USurfVisu_FV)
 ALLOCATE(USurfVisu_FV(0:NVisu_FV,0:NVisu_FV,0:0,nBCSidesVisu_FV,nVarSurfVisuTotal))
 ! ===  Surface visualization ================================
-! copy UCalc_FV to UCalcBoundary_FV
-SDEALLOCATE(UCalcBoundary_FV)
-ALLOCATE(UCalcBoundary_FV(0:NVisu_FV,0:NVisu_FV,nBCSidesVisu_FV,1:nVarCalc_FV))
+! copy UCalc_FV to USurfCalc_FV
+SDEALLOCATE(USurfCalc_FV)
+ALLOCATE(USurfCalc_FV(0:NVisu_FV,0:NVisu_FV,nBCSidesVisu_FV,1:nVarCalc_FV))
 DO iElem_FV = 1,nElems_FV                         ! iterate over all FV visu elements
   iElem = mapElems_FV(iElem_FV)                   ! get global element index
   DO locSide=1,6 
@@ -494,7 +488,7 @@ DO iElem_FV = 1,nElems_FV                         ! iterate over all FV visu ele
       IF (iSide_FV.GT.0) THEN
         DO q=0,NVisu_FV; DO p=0,NVisu_FV          ! map volume solution to surface solution
           ijk = S2V_NVisu(:,0,p,q,0,locSide)
-          UCalcBoundary_FV(p,q,iSide_FV,:) = UCalc_FV(ijk(1),ijk(2),ijk(3),iElem_FV,:)
+          USurfCalc_FV(p,q,iSide_FV,:) = UCalc_FV(ijk(1),ijk(2),ijk(3),iElem_FV,:)
         END DO; END DO
       END IF   
     END IF
@@ -533,24 +527,16 @@ SWRITE(*,*) "[FVRE] CalcSurfQuantities"
 maskCalc = DepSurfaceOnly
 IF(withDGOperator.AND.PARABOLIC.EQ.1)THEN
 #if PARABOLIC
-  CALL CalcQuantities(nVarCalc_FV,nValSide,mapElems_FV,mapCalc_FV,UCalcBoundary_FV,maskCalc,&
+  CALL CalcQuantities(nVarCalc_FV,nValSide,mapElems_FV,mapCalc_FV,USurfCalc_FV,maskCalc,&
       gradUxFace,gradUyFace,gradUzFace,&
       NormVec_loc(:,:,:,:),TangVec1_loc(:,:,:,:),TangVec2_loc(:,:,:,:)) 
 #endif
 ELSE
-  CALL CalcQuantities(nVarCalc_FV,nValSide,mapElems_FV,mapCalc_FV,UCalcBoundary_FV,maskCalc,& 
+  CALL CalcQuantities(nVarCalc_FV,nValSide,mapElems_FV,mapCalc_FV,USurfCalc_FV,maskCalc,& 
       NormVec=NormVec_loc(:,:,:,:),TangVec1=TangVec1_loc(:,:,:,:),TangVec2=TangVec2_loc(:,:,:,:)) 
 END IF
 
-! copy all quantities to the UVisu_FV array
-SWRITE(*,*) "[FVRE] copy all quantities to USurfVisu_FV"
-DO iVar=1,nVarDep
-  IF (mapSurfVisu(iVar).GT.0) THEN ! visu var
-    SWRITE(*,*) "  ", TRIM(VarNamesTotal(iVar))
-    USurfVisu_FV(:,:,0,:,mapSurfVisu(iVar)) = UCalcBoundary_FV(:,:,:,mapCalc_FV(iVar))
-  END IF
-END DO
-END SUBROUTINE CalcSurfQuantities_ConvertToVisu_FV
+END SUBROUTINE CalcSurfQuantities_FV
 
 #endif /* FV_ENABLED */
 

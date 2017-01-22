@@ -307,7 +307,8 @@ USE MOD_Posti_ReadState     ,ONLY: ReadState
 USE MOD_Posti_VisuMesh      ,ONLY: VisualizeMesh
 USE MOD_Posti_Calc          ,ONLY: CalcQuantities_DG,CalcSurfQuantities_DG
 #if FV_ENABLED
-USE MOD_Posti_Calc          ,ONLY: CalcQuantities_ConvertToVisu_FV,CalcSurfQuantities_ConvertToVisu_FV
+USE MOD_Posti_Calc          ,ONLY: CalcQuantities_FV,CalcSurfQuantities_FV
+USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_FV,ConvertToSurfVisu_FV
 #endif
 USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_DG,ConvertToSurfVisu_DG,ConvertToVisu_GenericData
 USE MOD_ReadInTools         ,ONLY: prms,FinalizeParameters,ExtractParameterFile
@@ -473,11 +474,13 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
 #if FV_ENABLED
   ! calc FV solution and convert to visu grid
   IF ((changedStateFile.OR.changedVarNames).AND.hasFV_Elems.OR.changedDGonly) THEN
-    CALL CalcQuantities_ConvertToVisu_FV()
+    CALL CalcQuantities_FV()
+    CALL ConvertToVisu_FV()
   END IF
   ! calc FV solution and convert to visu grid
   IF ((changedStateFile.OR.changedVarNames).AND.hasFV_Elems.OR.changedDGonly.OR.changedBCnames) THEN
-    CALL CalcSurfQuantities_ConvertToVisu_FV()
+    CALL CalcSurfQuantities_FV()
+    CALL ConvertToSurfVisu_FV()
   END IF
 #endif /* FV_ENABLED */
 

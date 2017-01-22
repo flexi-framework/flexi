@@ -121,7 +121,6 @@ USE MOD_Globals
 USE MOD_Posti_Vars
 USE MOD_Visu3D      ,ONLY: visu3D
 USE MOD_VTK         ,ONLY: WriteCoordsToVTK_array,WriteDataToVTK_array,WriteVarnamesToVTK_array
-USE MOD_Output_Vars ,ONLY: ProjectName
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)            :: mpi_comm_IN    

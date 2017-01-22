@@ -49,6 +49,11 @@ INTERFACE ConvertToVisu_FV
 END INTERFACE
 PUBLIC:: ConvertToVisu_FV
 
+INTERFACE ConvertToSurfVisu_FV
+  MODULE PROCEDURE ConvertToSurfVisu_FV
+END INTERFACE
+PUBLIC:: ConvertToSurfVisu_FV
+
 #if FV_RECONSTRUCT
 INTERFACE ConvertToVisu_FV_Reconstruct
   MODULE PROCEDURE ConvertToVisu_FV_Reconstruct
@@ -73,7 +78,7 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: iElem,iSide,iVar,iVarVisu,iVarCalc,allostat
+INTEGER            :: iElem,iVar,iVarVisu,iVarCalc
 REAL,ALLOCATABLE   :: Vdm_N_NVisu(:,:)                  ! Vandermonde from state to visualisation nodes
 !===================================================================================================================================
 
@@ -106,7 +111,7 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: iElem,iSide,iVar,iVarVisu,iVarCalc,allostat
+INTEGER            :: iSide,iVar,iVarVisu,iVarCalc
 REAL,ALLOCATABLE   :: Vdm_N_NVisu(:,:)                  ! Vandermonde from state to visualisation nodes
 !===================================================================================================================================
 
@@ -121,7 +126,7 @@ DO iVar=1,nVarDep
     iVarCalc = mapCalc(iVar) 
     iVarVisu = mapSurfVisu(iVar) 
     DO iSide = 1,nBCSidesVisu_DG
-      CALL ChangeBasis2D(PP_N,NVisu,Vdm_N_NVisu,UCalcBoundary_DG(:,:,iSide,iVarCalc),USurfVisu_DG(:,:,0,iSide,iVarVisu))
+      CALL ChangeBasis2D(PP_N,NVisu,Vdm_N_NVisu,USurfCalc_DG(:,:,iSide,iVarCalc),USurfVisu_DG(:,:,0,iSide,iVarVisu))
     END DO 
   END IF
 END DO 
@@ -132,40 +137,68 @@ END SUBROUTINE ConvertToSurfVisu_DG
 !===================================================================================================================================
 !> Convert the calculated FV quantities to the visualization grid.
 !===================================================================================================================================
-SUBROUTINE ConvertToVisu_FV(mapCalc,maskVisu)
+SUBROUTINE ConvertToVisu_FV()
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Posti_Vars         ,ONLY: nVarDep,VarNamesTotal
+USE MOD_Posti_Vars         ,ONLY: nVarDep,VarNamesTotal,mapCalc_FV
 USE MOD_Posti_Vars         ,ONLY: mapVisu,UVisu_FV,nElems_FV,UCalc_FV
-USE MOD_ReadInTools        ,ONLY: GETINT
-USE MOD_Interpolation      ,ONLY: GetVandermonde
-USE MOD_ChangeBasis        ,ONLY: ChangeBasis3D
-USE MOD_Interpolation_Vars ,ONLY: NodeType,NodeTypeVisu
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
-INTEGER,INTENT(IN)          :: mapCalc(nVarDep)
-INTEGER,INTENT(IN),OPTIONAL :: maskVisu(nVarDep)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: iVar,i,j,k,iElem
+INTEGER            :: iVar,iElem
+#if !(FV_RECONSTRUCT)
+INTEGER            :: i,j,k
+#endif
 INTEGER            :: iVarVisu,iVarCalc
 !===================================================================================================================================
+SWRITE(*,*) "[FV/FVRE] convert to visu grid"
 ! compute UVisu_FV
 DO iVar=1,nVarDep
   iVarVisu = mapVisu(iVar) 
-  IF (PRESENT(maskVisu)) iVarVisu = maskVisu(iVar)*iVarVisu
   IF (iVarVisu.GT.0) THEN
     SWRITE(*,*) "    ", TRIM(VarNamesTotal(iVar))
-    iVarCalc = mapCalc(iVar) 
+    iVarCalc = mapCalc_FV(iVar) 
     DO iElem = 1,nElems_FV
+#if FV_RECONSTRUCT
+      UVisu_FV(:,:,:,:,iVarVisu) = UCalc_FV(:,:,:,:,iVarCalc)
+#else      
       DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
         UVisu_FV(i*2:i*2+1, j*2:j*2+1, k*2:k*2+1,iElem,iVarVisu) = UCalc_FV(i,j,k,iElem,iVarCalc)
       END DO; END DO; END DO
+#endif
     END DO
   END IF
 END DO 
 
 END SUBROUTINE ConvertToVisu_FV
+
+!===================================================================================================================================
+!> Convert the calculated surface FV quantities to the visualization grid.
+!===================================================================================================================================
+SUBROUTINE ConvertToSurfVisu_FV()
+USE MOD_Globals
+USE MOD_PreProc
+USE MOD_Posti_Vars         ,ONLY: nVarDep,VarNamesTotal,mapCalc_FV
+USE MOD_Posti_Vars         ,ONLY: mapSurfVisu,USurfVisu_FV,USurfCalc_FV
+IMPLICIT NONE
+! INPUT / OUTPUT VARIABLES 
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER            :: iVar,iVarVisu
+!===================================================================================================================================
+SWRITE(*,*) "[FV/FVRE] convert to surface visu grid"
+! compute UVisu_FV
+DO iVar=1,nVarDep
+  iVarVisu = mapSurfVisu(iVar) 
+  IF (iVarVisu.GT.0) THEN
+    SWRITE(*,*) "    ", TRIM(VarNamesTotal(iVar))
+    USurfVisu_FV(:,:,0,:,iVarVisu) = USurfCalc_FV(:,:,:,mapCalc_FV(iVar))
+  END IF
+END DO 
+
+END SUBROUTINE ConvertToSurfVisu_FV
+
 
 
 #if FV_RECONSTRUCT

@@ -51,7 +51,7 @@ SUBROUTINE BuildVisuCoords()
 USE ISO_C_BINDING
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Posti_Vars         ,ONLY: CoordsVisu_DG,CoordsSurfVisu_DG,nBCSidesVisu_DG,mapBCSides_DG
+USE MOD_Posti_Vars         ,ONLY: CoordsVisu_DG
 USE MOD_Posti_Vars         ,ONLY: NodeTypeVisuPosti
 USE MOD_Posti_Vars         ,ONLY: NVisu,nElems_DG,mapElems_DG
 #if FV_ENABLED
@@ -61,11 +61,11 @@ USE MOD_Posti_Vars         ,ONLY: CoordsVisu_FV,changedMeshFile,changedFV_Elems
 USE MOD_Interpolation_Vars ,ONLY: NodeTypeVisu,NodeTypeFVEqui,NodeType
 USE MOD_Interpolation      ,ONLY: GetVandermonde
 USE MOD_ChangeBasis        ,ONLY: ChangeBasis3D,ChangeBasis2D
-USE MOD_Mesh_Vars          ,ONLY: nElems,Elem_xGP,Face_xGP,nBCSides
+USE MOD_Mesh_Vars          ,ONLY: nElems,Elem_xGP
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: iElem, iElem_DG,iSide,iSideVisu,allostat
+INTEGER            :: iElem, iElem_DG
 REAL,ALLOCATABLE   :: Vdm_N_NVisu(:,:)    
 #if FV_ENABLED
 INTEGER            :: iElem_FV
@@ -117,24 +117,23 @@ USE ISO_C_BINDING
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Posti_Vars         ,ONLY: CoordsSurfVisu_DG,nBCSidesVisu_DG,mapBCSides_DG
-USE MOD_Posti_Vars         ,ONLY: CoordsSurfVisu_FV,nBCSidesVisu_FV,mapBCSides_FV
 USE MOD_Posti_Vars         ,ONLY: NodeTypeVisuPosti
-USE MOD_Posti_Vars         ,ONLY: NVisu,nElems_DG,mapElems_DG
+USE MOD_Posti_Vars         ,ONLY: NVisu
 #if FV_ENABLED
-USE MOD_Posti_Vars         ,ONLY: NVisu_FV,nElems_FV,mapElems_FV,hasFV_Elems
-USE MOD_Posti_Vars         ,ONLY: CoordsVisu_FV,changedMeshFile,changedFV_Elems
+USE MOD_Posti_Vars         ,ONLY: CoordsSurfVisu_FV,nBCSidesVisu_FV,mapBCSides_FV
+USE MOD_Posti_Vars         ,ONLY: NVisu_FV,hasFV_Elems
+USE MOD_Posti_Vars         ,ONLY: changedMeshFile,changedFV_Elems
 #endif
 USE MOD_Interpolation_Vars ,ONLY: NodeTypeVisu,NodeTypeFVEqui,NodeType
 USE MOD_Interpolation      ,ONLY: GetVandermonde
 USE MOD_ChangeBasis        ,ONLY: ChangeBasis3D,ChangeBasis2D
-USE MOD_Mesh_Vars          ,ONLY: nElems,Elem_xGP,Face_xGP,nBCSides
+USE MOD_Mesh_Vars          ,ONLY: Face_xGP,nBCSides
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: iElem, iElem_DG,iSide,iSideVisu,allostat
+INTEGER            :: iSide,iSideVisu
 REAL,ALLOCATABLE   :: Vdm_N_NVisu(:,:)    
 #if FV_ENABLED
-INTEGER            :: iElem_FV
 REAL,ALLOCATABLE   :: Vdm_N_NVisu_FV(:,:)
 #endif
 CHARACTER(LEN=255) :: NodeType_loc

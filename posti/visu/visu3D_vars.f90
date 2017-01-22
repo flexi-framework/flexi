@@ -111,8 +111,8 @@ INTEGER                           :: nBCNamesVisu
 INTEGER,ALLOCATABLE               :: mapBCNames(:)
 INTEGER,ALLOCATABLE               :: mapBCNames_old(:)
 CHARACTER(LEN=255),ALLOCATABLE,TARGET :: BoundaryNamesTotal(:)
-REAL,ALLOCATABLE                  :: UCalcBoundary_DG(:,:,:,:)
-REAL,ALLOCATABLE                  :: UCalcBoundary_FV(:,:,:,:)
+REAL,ALLOCATABLE                  :: USurfCalc_DG(:,:,:,:)
+REAL,ALLOCATABLE                  :: USurfCalc_FV(:,:,:,:)
 
 INTEGER                           :: nVarSurfVisuTotal
 INTEGER                           :: nBCSidesVisu_DG
