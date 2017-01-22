@@ -206,10 +206,9 @@ IF(TRIM(Examples(iExample)%ConvergenceTestType).EQ.'p')THEN
     Examples(iExample)%ConvergenceTestGridSize(iSubExample)=&
     Examples(iExample)%ConvergenceTestDomainSize/(NumberOfCellsInteger*(p+1))
   END DO
-END IF
 ! -----------------------------------------------------------------------------------------------------------------------
 ! h-convergence
-IF(TRIM(Examples(iExample)%ConvergenceTestType).EQ.'h')THEN
+ELSEIF(TRIM(Examples(iExample)%ConvergenceTestType).EQ.'h')THEN
   SWRITE(UNIT_stdOut,'(A,E14.6,A)')&
   ' Selecting h-convergence: Expected Order of Convergence = [',Examples(iExample)%ConvergenceTestValue,']'
   SWRITE(UNIT_stdOut,'(A)')''
@@ -222,6 +221,7 @@ IF(TRIM(Examples(iExample)%ConvergenceTestType).EQ.'h')THEN
   END DO
 END IF
 ! -----------------------------------------------------------------------------------------------------------------------
+
 ! Calculate ConvergenceTestGridSize (average spacing between DOF)
 ALLOCATE(Order(Examples(iExample)%SubExampleNumber-1,Examples(iExample)%nVar))
 DO J=1,Examples(iExample)%nVar
@@ -272,32 +272,15 @@ ELSEIF(TRIM(Examples(iExample)%ConvergenceTestType).EQ.'h')THEN
     OrderReached(J)=AlmostEqualToTolerance( OrderAveraged(J)                            ,&
                                            Examples(iExample)%ConvergenceTestValue     ,&
                                            Examples(iExample)%ConvergenceTestTolerance )
-     IF(.NOT.OrderReached(J))THEN
+     IF((OrderReached(J).EQV..FALSE.).AND.(OrderAveraged(J).GT.0.0))THEN
        !IntegralCompare=1
        SWRITE(UNIT_stdOut,'(A)')         ' CompareConvergence does not match! Error in computation!'
        SWRITE(UNIT_stdOut,'(A,E21.14)')  ' OrderAveraged(J)                        = ',OrderAveraged(J)
        SWRITE(UNIT_stdOut,'(A,E21.14)')  ' Examples(iExample)%ConvergenceTestValue = ',Examples(iExample)%ConvergenceTestValue
        SWRITE(UNIT_stdOut,'(A,E21.14)')  ' Tolerance                               = ',Examples(iExample)%ConvergenceTestTolerance
-       !SWRITE(UNIT_stdOut,'(A,E21.14)')  ' 0.1*SQRT(PP_RealTolerance)            = ',0.1*SQRT(PP_RealTolerance)
-       !Examples(iExample)%ErrorStatus=5
      END IF
   END DO
 END IF
-!     IntegralValuesAreEqual=AlmostEqualToTolerance( Q                                     ,&
-!                                                    Examples(iExample)%IntegrateLineValue ,&
-!                                                    5.e-2                                 )
-!     IF(.NOT.IntegralValuesAreEqual)THEN
-!       IntegralCompare=1
-!       SWRITE(UNIT_stdOut,'(A)')         ' IntegrateLines do not match! Error in computation!'
-!       SWRITE(UNIT_stdOut,'(A,E21.14)')  ' IntegrateLineValue                    = ',Q
-!       SWRITE(UNIT_stdOut,'(A,E21.14)')  ' Examples(iExample)%IntegrateLineValue = ',Examples(iExample)%IntegrateLineValue
-!       SWRITE(UNIT_stdOut,'(A,E21.14)')  ' Tolerance                             = ',1.e-2!0.1*SQRT(PP_RealTolerance)
-!       !SWRITE(UNIT_stdOut,'(A,E21.14)')  ' 0.1*SQRT(PP_RealTolerance)            = ',0.1*SQRT(PP_RealTolerance)
-!       Examples(iExample)%ErrorStatus=5
-!     ELSE
-!       IntegralCompare=0
-!     END IF
-! -----------------------------------------------------------------------------------------------------------------------
 
 
 IF(DoDebugOutput)THEN
