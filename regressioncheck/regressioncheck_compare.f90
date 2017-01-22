@@ -98,7 +98,8 @@ IF(Examples(iExample)%ConvergenceTest)THEN
     ! the subexample must be executed with "N" or "MeshFile": check if the convergence was successful
     CALL CompareConvergence(iExample)
     IF(Examples(iExample)%ErrorStatus.EQ.3)THEN
-      CALL AddError(MPIthreadsStr,'Mismatch Order of Convergence',iExample,iSubExample,ErrorStatus=3,ErrorCode=3)
+      CALL AddError(MPIthreadsStr,'Mismatch Order of '//TRIM(Examples(iExample)%ConvergenceTestType)&
+                                                      //'-Convergence',iExample,iSubExample,ErrorStatus=3,ErrorCode=3)
       !SWRITE(UNIT_stdOut,'(A)')  ' Mismatch in HDF5-files'
     END IF
   END IF

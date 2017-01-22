@@ -710,7 +710,7 @@ REAL,INTENT(INOUT),OPTIONAL    :: EndTime            ! Used to track computation
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                           :: Time
-CHARACTER(LEN=255)             :: SpacingBetweenExamples ! set row spacing between examples in table
+CHARACTER(LEN=255)             :: SpacingBetweenExamples(2) ! set row spacing between examples in table
 !===================================================================================================================================
 IF(.NOT.PRESENT(EndTime))THEN
   Time=REGGIETIME() ! Measure processing duration
@@ -726,25 +726,27 @@ ELSE
   SWRITE(UNIT_stdOut,'(A)') ' Summary of Errors (0=no Error): '
   SWRITE(UNIT_stdOut,'(A)') ' '
   aError=>firstError ! set aError to first error in list
-  SpacingBetweenExamples=''
+  SpacingBetweenExamples(:)=''
   SWRITE(UNIT_stdOut,'(A5,2x,A45,2x,A30,2x,A10,2x,A15,2x,A12,2x,A35,2x)')&
                        'run#','Example','SubExample','ErrorCode','build','MPI threads','Information'
   DO WHILE (ASSOCIATED(aError))
-    IF(TRIM(SpacingBetweenExamples).NE.TRIM(aError%Example))THEN
+    IF( (TRIM(SpacingBetweenExamples(1)).NE.TRIM(aError%Example)) .OR. & ! IF the exmaple changes, include blank line
+        (TRIM(SpacingBetweenExamples(2)).NE.TRIM(aError%Build  )) )THEN  ! IF the binary  changes, include blank line
       SWRITE(UNIT_stdOut,'(A)') '' ! include empty line
     END IF
-    SpacingBetweenExamples=TRIM(aError%Example)
-    SWRITE(UNIT_stdOut,'(I5,2x)',ADVANCE='no') aError%RunNumber
-    SWRITE(UNIT_stdOut,'(A45,2x)',ADVANCE='no') TRIM(aError%Example)
+    SpacingBetweenExamples(1)=TRIM(aError%Example)
+    SpacingBetweenExamples(2)=TRIM(aError%Build)
+    SWRITE(UNIT_stdOut,'(I5,2x)',ADVANCE='no') aError%RunNumber                                               ! run#
+    SWRITE(UNIT_stdOut,'(A45,2x)',ADVANCE='no') TRIM(aError%Example)                                          ! Example
     IF(TRIM(aError%SubExampleOption).EQ.'-')THEN
       SWRITE(UNIT_stdOut,'(A30,2x)',ADVANCE='no') '-'
     ELSE
-      SWRITE(UNIT_stdOut,'(A30,2x)',ADVANCE='no') TRIM(aError%SubExample)//'='//TRIM(aError%SubExampleOption)
+      SWRITE(UNIT_stdOut,'(A30,2x)',ADVANCE='no') TRIM(aError%SubExample)//'='//TRIM(aError%SubExampleOption) ! SubExample
     END IF
-    SWRITE(UNIT_stdOut,'(I10,2x)',ADVANCE='no') aError%ErrorCode
-    SWRITE(UNIT_stdOut,'(A15,2x)',ADVANCE='no') TRIM(aError%Build)
-    SWRITE(UNIT_stdOut,'(A12,2x)',ADVANCE='no') TRIM(aError%MPIthreadsStr)
-    SWRITE(UNIT_stdOut,'(A35,2x)',ADVANCE='no') TRIM(aError%Info)
+    SWRITE(UNIT_stdOut,'(I10,2x)',ADVANCE='no') aError%ErrorCode                                              ! ErrorCode
+    SWRITE(UNIT_stdOut,'(A15,2x)',ADVANCE='no') TRIM(aError%Build)                                            ! build
+    SWRITE(UNIT_stdOut,'(A12,2x)',ADVANCE='no') TRIM(aError%MPIthreadsStr)                                    ! MPI threads
+    SWRITE(UNIT_stdOut,'(A35,2x)',ADVANCE='no') TRIM(aError%Info)                                             ! Information
     SWRITE(UNIT_stdOut,'(A)') ' '
     IF(aError%ErrorCode.NE.0) nErrors=nErrors+1
     aError=>aError%nextError

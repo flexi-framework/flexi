@@ -53,6 +53,7 @@ INTEGER                        :: N_compile_flags                   !> number of
 INTEGER                        :: iReggieBuild,nReggieBuilds ! field handler unit and ??
 INTEGER                        :: iSubExample,iScaling,iRun
 LOGICAL                        :: SkipExample,SkipBuild,ExitBuild,SkipFolder,SkipComparison
+LOGICAL                        :: UseFV,UseCODE2D,UsePARABOLIC      !> compiler flags currently used for ConvergenceTest
 !==================================================================================================================================
 SWRITE(UNIT_stdOut,'(132("="))')
 SWRITE(UNIT_stdOut,'(A)') ' Performing tests ...'
@@ -84,7 +85,7 @@ DO iExample = 1, nExamples ! loop level 1 of 5
     CALL GetNvar(iExample,iReggieBuild)
 
     ! check if executable is compiled with correct TESTCASE (e.g. for tylorgreenvortex)
-    CALL CheckCompilerFlags(iExample,iReggieBuild,TESTCASE,TIMEDISCMETHOD)
+    CALL CheckCompilerFlags(iExample,iReggieBuild,TESTCASE,TIMEDISCMETHOD,UseFV,UseCODE2D,UsePARABOLIC)
 
     ! remove subexample (before printing the case overview) for certain configurations: e.g. Preconditioner when running explicitly
     CALL CheckSubExample(iExample,iReggieBuild,TIMEDISCMETHOD)
@@ -96,8 +97,11 @@ DO iExample = 1, nExamples ! loop level 1 of 5
     ! get list of parameter files for running the simulation
     CALL GetParameterFiles(iExample,TIMEDISCMETHOD,parameter_ini,parameter_ini2)
 
-    ! Output settings (before going into subexamples)
+    ! Output settings (before going into subexamples): display table with settings
     CALL PrintExampleInfo(iExample,EXECPATH,parameter_ini,parameter_ini2)
+ 
+    ! Set options in parameter.ini file
+    CALL SetParameters(iExample,parameter_ini,UseFV,UseCODE2D,UsePARABOLIC)
 
 !==================================================================================================================================
     DO iSubExample = 1, MAX(1,Examples(iExample)%SubExampleNumber) ! loop level 3 of 5: SubExamples (e.g. different TimeDiscMethods)
@@ -372,12 +376,12 @@ END SUBROUTINE GetCodeBinary
 !===================================================================================================================================
 !> check if executable is compiled with correct TESTCASE (e.g. for tylorgreenvortex)
 !===================================================================================================================================
-SUBROUTINE CheckCompilerFlags(iExample,iReggieBuild,TESTCASE,TIMEDISCMETHOD)
+SUBROUTINE CheckCompilerFlags(iExample,iReggieBuild,TESTCASE,TIMEDISCMETHOD,UseFV,UseCODE2D,UsePARABOLIC)
 !===================================================================================================================================
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_RegressionCheck_Vars,    ONLY: CodeNameLowCase,EXECPATH,Examples
+USE MOD_RegressionCheck_Vars,    ONLY: CodeNameLowCase,EXECPATH,Examples,BuildFV,BuildCODE2D,BuildPARABOLIC
 USE MOD_RegressionCheck_Vars,    ONLY: BuildSolver
 USE MOD_RegressionCheck_Build,   ONLY: BuildConfiguration
 USE MOD_RegressionCheck_Vars,    ONLY: BuildTESTCASE,BuildTIMEDISCMETHOD,BuildMPI,CodeNameUppCase
@@ -387,45 +391,65 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 INTEGER,INTENT(IN)             :: iExample,iReggieBuild
+!CHARACTER(LEN=*),INTENT(INOUT) :: parameter_ini
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(INOUT) :: TESTCASE,TIMEDISCMETHOD
+LOGICAL,INTENT(INOUT)          :: UseFV,UseCODE2D,UsePARABOLIC      !> compiler flags currently used for ConvergenceTest
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+!LOGICAL                        :: UseFV,UseCODE2D,UsePARABOLIC      !> compiler flags currently used for ConvergenceTest
 LOGICAL                        :: ExistFile                         !> file exists=.true., file does not exist=.false.
 CHARACTER(LEN=255)             :: FileName                          !> path to a file or its name
 CHARACTER(LEN=255)             :: tempStr
 LOGICAL                        :: UseMPI
 !===================================================================================================================================
-UseMPI=.FALSE. ! default
+UseMPI       = .FALSE. ! default
+UseFV        = .FALSE. ! default
+UseCODE2D    = .FALSE. ! default
+UsePARABOLIC = .FALSE. ! default
 IF(BuildSolver)THEN
-  TESTCASE=BuildTESTCASE(iReggieBuild)
-  TIMEDISCMETHOD=BuildTIMEDISCMETHOD(iReggieBuild)
-  IF(ADJUSTL(TRIM(BuildMPI(iReggieBuild))).EQ.'ON')UseMPI=.TRUE.
-ELSE
+  TESTCASE       = BuildTESTCASE(iReggieBuild)
+  TIMEDISCMETHOD = BuildTIMEDISCMETHOD(iReggieBuild)
+  IF(ADJUSTL(TRIM(BuildMPI(       iReggieBuild))).EQ.'ON')UseMPI   =.TRUE.
+  IF(ADJUSTL(TRIM(BuildFV(        iReggieBuild))).EQ.'ON')UseFV       =.TRUE.
+  IF(ADJUSTL(TRIM(BuildCODE2D(    iReggieBuild))).EQ.'ON')UseCODE2D   =.TRUE.
+  IF(ADJUSTL(TRIM(BuildPARABOLIC( iReggieBuild))).EQ.'ON')UsePARABOLIC=.TRUE.
+ELSE ! pre-compiled binary
+  ! check if "configuration.cmake" exists and read specific flags from it
   FileName=EXECPATH(1:INDEX(EXECPATH,'/',BACK = .TRUE.))//'configuration.cmake'
   INQUIRE(File=FileName,EXIST=ExistFile)
   IF(ExistFile) THEN
+    ! -----------------------------------------------------------------------------------------------------------------------------
     ! check if binary was compiled with MPI
     CALL  GetFlagFromFile(FileName,CodeNameUppCase//'_MPI',tempStr,BACK=.TRUE.)
     IF(ADJUSTL(TRIM(tempStr)).EQ.'ON')UseMPI=.TRUE.
     IF(TRIM(tempStr).EQ.'flag does not exist')CALL abort(&
       __STAMP__&
       ,CodeNameUppCase//'_MPI flag not found in configuration.cmake!',999,999.)
-
+    ! -----------------------------------------------------------------------------------------------------------------------------
     ! check if binary was compiled for a certain testcase
     CALL  GetFlagFromFile(FileName,CodeNameUppCase//'_TESTCASE',TESTCASE)
     IF(CodeNameLowCase.EQ.'boltzplatz')TESTCASE='default'! set default for boltzplatz (currently no testcases are implemented)
     IF(TRIM(TESTCASE).EQ.'flag does not exist')CALL abort(&
       __STAMP__&
       ,CodeNameUppCase//'_TESTCASE flag not found in configuration.cmake!',999,999.)
-
+    ! -----------------------------------------------------------------------------------------------------------------------------
     ! check if binary was compiled with a certain time integration method
     CALL GetFlagFromFile(FileName,CodeNameUppCase//'_TIMEDISCMETHOD',TIMEDISCMETHOD)
     IF(CodeNameLowCase.EQ.'flexi')TIMEDISCMETHOD='default'! set default for flexi (TIMEDISCMETHOD is not a compile flag)
     IF(TRIM(TIMEDISCMETHOD).EQ.'flag does not exist')CALL abort(&
       __STAMP__&
       ,CodeNameUppCase//'_TIMEDISCMETHOD flag not found in configuration.cmake!',999,999.)
+    ! -----------------------------------------------------------------------------------------------------------------------------
+    ! check if binary was compiled for specific convergence tests
+    CALL  GetFlagFromFile(FileName,CodeNameUppCase//'_FV',tempStr,BACK=.TRUE.)
+    IF(ADJUSTL(TRIM(tempStr)).EQ.'ON')UseFV=.TRUE.
+    CALL  GetFlagFromFile(FileName,CodeNameUppCase//'_CODE2D',tempStr,BACK=.TRUE.)
+    IF(ADJUSTL(TRIM(tempStr)).EQ.'ON')UseCODE2D=.TRUE.
+    CALL  GetFlagFromFile(FileName,CodeNameUppCase//'_PARABOLIC',tempStr,BACK=.TRUE.)
+    IF(ADJUSTL(TRIM(tempStr)).EQ.'ON')UsePARABOLIC=.TRUE.
+    ! -----------------------------------------------------------------------------------------------------------------------------
   ELSE
     SWRITE(UNIT_stdOut,'(A12,A)')     ' ERROR: ','no "configuration.cmake" found at the location of the'//CodeNameLowCase//&
                                                                                                                       ' binary.'
@@ -442,6 +466,9 @@ IF(UseMPI.EQV..FALSE.)THEN ! parameter_reggie.ini supplied with MPI and possibly
   Examples(iExample)%MPIrun=.FALSE. ! deactivate MPI for running reggie
 END IF
 IF(Examples(iExample)%MPIrun.EQV..FALSE.)Examples(iExample)%MPIthreadsN=1  ! set number of mpi ranks to 1
+
+
+
 END SUBROUTINE CheckCompilerFlags
 
 
@@ -477,56 +504,50 @@ END IF
 IF(iReggieBuild.EQ.1)THEN ! DON'T allocate the field "ConvergenceTestError" multiple times
   ! Check if SubExample is set correctly for possible convergence test
   IF(Examples(iExample)%ConvergenceTest)THEN ! Do ConvergenceTest
-
-
-  ! Check number of sub examples used
-  IF(Examples(iExample)%SubExampleNumber.LT.1)THEN ! less than 2 SubExample are executed, hence, a minimum of 2 points is not used
-    SWRITE(UNIT_stdOut,'(A)') 'SubExampleNumber<2: Cannot allocate array in "CheckSubExample" Deactivating convergence test'
-    Examples(iExample)%ConvergenceTest=.FALSE.
-  ELSE
-    ! check which type of convergence test is used
-    IF(   ((TRIM(Examples(iExample)%SubExample).EQ.'N'       ).AND.(TRIM(Examples(iExample)%ConvergenceTestType).EQ.'p')))THEN
-      ! p-convergence: constant number of DG cells, varying polynomial degree
-      ! 1.) NumberOfCellsN == 1
-      ! 2.) NumberOfCellsN < SubExampleNumber
-      IF( (Examples(iExample)%NumberOfCellsN.EQ.1).AND.&
-          (Examples(iExample)%NumberOfCellsN.LT.Examples(iExample)%SubExampleNumber) )THEN
-        SWRITE(UNIT_stdOut,'(A)') ' Selected p-convergence: constant number of DG cells, varying polynomial degree'
-        !ALLOCATE(Examples(iExample)%ConvergenceTestGridSize(1))
-      ELSE
-        Examples(iExample)%ConvergenceTest=.FALSE.
-      END IF
-    ELSEIF((TRIM(Examples(iExample)%SubExample).EQ.'MeshFile').AND.(TRIM(Examples(iExample)%ConvergenceTestType).EQ.'h'))THEN
-      ! h-convergence: constant polynomial degree, varying number of DG cells
-      ! NumberOfCellsN == SubExampleNumber
-      IF(Examples(iExample)%NumberOfCellsN.EQ.Examples(iExample)%SubExampleNumber)THEN
-        SWRITE(UNIT_stdOut,'(A)') ' Selected h-convergence: constant polynomial degree, varying number of DG cells'
-        !ALLOCATE(Examples(iExample)%ConvergenceTestGridSize(Examples(iExample)%SubExampleNumber))
-      ELSE
-        Examples(iExample)%ConvergenceTest=.FALSE.
-      END IF
-    ELSE
-      SWRITE(UNIT_stdOut,'(A)') 'SubExample not suitable for convergence test. Deactivating convergence test'
-      SWRITE(UNIT_stdOut,'(A)') '  Choose from ...'
-      SWRITE(UNIT_stdOut,'(A)') '  1.) SubExample=N        + ConvergenceTestType=p    OR'
-      SWRITE(UNIT_stdOut,'(A)') '  2.) SubExample=MeshFile + ConvergenceTestType=h'
+    ! Check number of sub examples used
+    IF(Examples(iExample)%SubExampleNumber.LT.1)THEN ! less than 2 SubExample are executed, hence, a minimum of 2 points is not used
+      SWRITE(UNIT_stdOut,'(A)') 'SubExampleNumber<2: Cannot allocate array in "CheckSubExample" Deactivating convergence test'
       Examples(iExample)%ConvergenceTest=.FALSE.
-    END IF
-
-    IF(Examples(iExample)%ConvergenceTest)THEN ! Do ConvergenceTest was not changed to false above
-      ! finally: allocate the fields
-      ALLOCATE(Examples(iExample)%ConvergenceTestError(Examples(iExample)%SubExampleNumber,Examples(iExample)%nVar))
-      Examples(iExample)%ConvergenceTestError   =0 ! default value
-      ALLOCATE(Examples(iExample)%ConvergenceTestGridSize(Examples(iExample)%SubExampleNumber))
-      Examples(iExample)%ConvergenceTestGridSize=0 ! default value
-    END IF
-  END IF
-
-
-
-
-  END IF
-END IF
+    ELSE
+      ! check which type of convergence test is used
+      IF(   ((TRIM(Examples(iExample)%SubExample).EQ.'N'       ).AND.(TRIM(Examples(iExample)%ConvergenceTestType).EQ.'p')))THEN
+        ! p-convergence: constant number of DG cells, varying polynomial degree
+        ! 1.) NumberOfCellsN == 1
+        ! 2.) NumberOfCellsN < SubExampleNumber
+        IF( (Examples(iExample)%NumberOfCellsN.EQ.1).AND.&
+            (Examples(iExample)%NumberOfCellsN.LT.Examples(iExample)%SubExampleNumber) )THEN
+          SWRITE(UNIT_stdOut,'(A)') ' Selected p-convergence: constant number of DG cells, varying polynomial degree'
+          !ALLOCATE(Examples(iExample)%ConvergenceTestGridSize(1))
+        ELSE
+          Examples(iExample)%ConvergenceTest=.FALSE.
+        END IF
+      ELSEIF((TRIM(Examples(iExample)%SubExample).EQ.'MeshFile').AND.(TRIM(Examples(iExample)%ConvergenceTestType).EQ.'h'))THEN
+        ! h-convergence: constant polynomial degree, varying number of DG cells
+        ! NumberOfCellsN == SubExampleNumber
+        IF(Examples(iExample)%NumberOfCellsN.EQ.Examples(iExample)%SubExampleNumber)THEN
+          SWRITE(UNIT_stdOut,'(A)') ' Selected h-convergence: constant polynomial degree, varying number of DG cells'
+          !ALLOCATE(Examples(iExample)%ConvergenceTestGridSize(Examples(iExample)%SubExampleNumber))
+        ELSE
+          Examples(iExample)%ConvergenceTest=.FALSE.
+        END IF
+      ELSE
+        SWRITE(UNIT_stdOut,'(A)') 'SubExample not suitable for convergence test. Deactivating convergence test'
+        SWRITE(UNIT_stdOut,'(A)') '  Choose from ...'
+        SWRITE(UNIT_stdOut,'(A)') '  1.) SubExample=N        + ConvergenceTestType=p    OR'
+        SWRITE(UNIT_stdOut,'(A)') '  2.) SubExample=MeshFile + ConvergenceTestType=h'
+        Examples(iExample)%ConvergenceTest=.FALSE.
+      END IF
+      ! Allocate the arrays for L2 Error and GridSize
+      IF(Examples(iExample)%ConvergenceTest)THEN ! Do ConvergenceTest was not changed to false above
+        ! finally: allocate the fields
+        ALLOCATE(Examples(iExample)%ConvergenceTestError(Examples(iExample)%SubExampleNumber,Examples(iExample)%nVar))
+        Examples(iExample)%ConvergenceTestError   =0 ! default value
+        ALLOCATE(Examples(iExample)%ConvergenceTestGridSize(Examples(iExample)%SubExampleNumber))
+        Examples(iExample)%ConvergenceTestGridSize=0 ! default value
+      END IF ! IF(ConvergenceTest==TRUE) - ConvergenceTest was not changed to false above
+    END IF ! Examples(iExample)%SubExampleNumber.LT.1 - less than 2 SubExamples cannot yield a convergence rate
+  END IF ! IF(ConvergenceTest==TRUE)
+END IF ! iReggieBuild.EQ.1
 END SUBROUTINE CheckSubExample
 
 
@@ -697,10 +718,85 @@ SWRITE(UNIT_stdOut,'(A)')      ' parameter files:                ['//TRIM(parame
 END SUBROUTINE PrintExampleInfo
 
 
+
+!===================================================================================================================================
+!> check if executable is compiled with correct TESTCASE (e.g. for tylorgreenvortex)
+!===================================================================================================================================
+SUBROUTINE SetParameters(iExample,parameter_ini,UseFV,UseCODE2D,UsePARABOLIC)
+!===================================================================================================================================
+!===================================================================================================================================
+! MODULES
+USE MOD_Globals
+USE MOD_RegressionCheck_Vars,    ONLY: Examples
+!USE MOD_RegressionCheck_Vars,    ONLY: CodeNameLowCase,EXECPATH,BuildFV,BuildCODE2D,BuildPARABOLIC
+!USE MOD_RegressionCheck_Vars,    ONLY: BuildSolver
+!USE MOD_RegressionCheck_Build,   ONLY: BuildConfiguration
+!USE MOD_RegressionCheck_Vars,    ONLY: BuildTESTCASE,BuildTIMEDISCMETHOD,BuildMPI,CodeNameUppCase
+!USE MOD_RegressionCheck_Build,   ONLY: GetFlagFromFile
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+INTEGER,INTENT(IN)             :: iExample
+LOGICAL,INTENT(INOUT)          :: UseFV,UseCODE2D,UsePARABOLIC      !> compiler flags currently used for ConvergenceTest
+CHARACTER(LEN=*),INTENT(INOUT) :: parameter_ini
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!LOGICAL                        :: UseFV,UseCODE2D,UsePARABOLIC      !> compiler flags currently used for ConvergenceTest
+!LOGICAL                        :: ExistFile                         !> file exists=.true., file does not exist=.false.
+!CHARACTER(LEN=255)             :: FileName                          !> path to a file or its name
+!CHARACTER(LEN=255)             :: tempStr
+!LOGICAL                        :: UseMPI
+!===================================================================================================================================
+
+! Check specific compile flags for ConvergenceTest
+IF(Examples(iExample)%ConvergenceTest)THEN ! Do ConvergenceTest
+  SWRITE(UNIT_stdOut,'(A)') " SUBROUTINE SetParameters ..."
+  ! Check for UseFV (finite volume operator cells)
+  !print*,"UseFV=",UseFV
+  SWRITE(UNIT_stdOut,'(A15,L1,A2)',ADVANCE='NO')" UseFV       =[",UseFV,"] "
+  IF(UseFV)THEN
+      CALL SetSubExample(iExample,-1,parameter_ini,'IndicatorType','33')
+  ELSE
+      CALL SetSubExample(iExample,-1,parameter_ini,'IndicatorType','0')
+  END IF
+  
+  ! Check for 2D version of the code
+  !print*,"UseCODE2D=",UseCODE2D
+  SWRITE(UNIT_stdOut,'(A15,L1,A2)',ADVANCE='NO')" UseCODE2D   =[",UseCODE2D,"] "
+  SWRITE(UNIT_stdOut,'(A)')"Setting option in parameter.ini: NOTHING (not implemented yet)"
+  IF(UseCODE2D)THEN
+      !CALL SetSubExample(iExample,-1,parameter_ini,'MeshFile','33')
+  ELSE
+      !CALL SetSubExample(iExample,-1,parameter_ini,'MeshFile','0')
+  END IF
+
+  ! Check for UsePARABOLIC==OFF -> Euler simulation
+  !print*,"UsePARABOLIC=",UsePARABOLIC
+  SWRITE(UNIT_stdOut,'(A15,L1,A2)',ADVANCE='NO')" UsePARABOLIC=[",UsePARABOLIC,"] "
+  IF(UsePARABOLIC)THEN
+      CALL SetSubExample(iExample,-1,parameter_ini,'IniExactFunc','4')
+  ELSE
+      CALL SetSubExample(iExample,-1,parameter_ini,'IniExactFunc','2')
+  END IF
+
+
+END IF
+
+END SUBROUTINE SetParameters
+
+
+
+
 !===================================================================================================================================
 !> Set the SubExample in the parameter.ini file
+!> Search for "Examples(iExample)%SubExample" + "=" within the parameter.ini file and use "sed" to exchange the line by
+!>            "Examples(iExample)%SubExample" + "=" + "Examples(iExample)%SubExampleOption(iSubExample)"
+!> Example: TimeDiscMethod = carpenterrk4-5
 !===================================================================================================================================
-SUBROUTINE SetSubExample(iExample,iSubExample,parameter_ini)
+SUBROUTINE SetSubExample(iExample,iSubExample,parameter_ini,ChangeOption,ChangeParameter)
 !===================================================================================================================================
 !===================================================================================================================================
 ! MODULES
@@ -711,48 +807,85 @@ USE MOD_RegressionCheck_tools,   ONLY: CheckFileForString
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER,INTENT(IN)             :: iExample,iSubExample
-CHARACTER(LEN=*),INTENT(IN)    :: parameter_ini
+INTEGER,INTENT(IN)                   :: iExample,iSubExample
+CHARACTER(LEN=*),INTENT(IN)          :: parameter_ini
+CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: ChangeOption,ChangeParameter
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                        :: iSTATUS                           !> status
-CHARACTER(LEN=500)             :: SYSCOMMAND                        !> string to fit the system command
-LOGICAL                        :: ExistStringInFile                 !> search a file for the existence of a string
+INTEGER                              :: iSTATUS           !> status
+CHARACTER(LEN=500)                   :: SYSCOMMAND        !> string to fit the system command
+LOGICAL                              :: ExistStringInFile !> search a file for the existence of a string
+INTEGER                              :: MODE              !> 1: change SubExample option parameter in parameter.ini
+                                                          !> 2: change specific parameter in parameter.ini
 !===================================================================================================================================
-IF(Examples(iExample)%SubExampleNumber.GT.0)THEN ! SubExample has been specified
+MODE=0 ! default
+IF(iSubExample.GT.0)MODE=1
+IF(PRESENT(ChangeOption).AND.PRESENT(ChangeParameter))MODE=2
+
+IF((MODE.EQ.1).AND.(Examples(iExample)%SubExampleNumber.GT.0))THEN ! SubExample has been specified
   SWRITE(UNIT_stdOut,'(A)')" "
   SWRITE(UNIT_stdOut,'(A,I2,A,A)')" SubExampleOption(",iSubExample,")=",TRIM(Examples(iExample)%SubExampleOption(iSubExample))
   ! check if SubExampleOption is possible in destination file, e.g. in 'parameter_flexi_navierstokes.ini'
   CALL CheckFileForString(TRIM(Examples(iExample)%PATH)//TRIM(parameter_ini),&
                           TRIM(Examples(iExample)%SubExample)//'=',ExistStringInFile)
-  IF(ExistStringInFile)THEN
-    SYSCOMMAND=    'cd '//TRIM(Examples(iExample)%PATH)//& ! write the current SubExampleOption(iSubExample) to parameter_ini
-   ' && sed -i -e "s/.*'//TRIM(Examples(iExample)%SubExample)//&
-                  '=.*/'//TRIM(Examples(iExample)%SubExample)//&
-                     '='//TRIM(Examples(iExample)%SubExampleOption(iSubExample))//&
-                   '/" '//TRIM(parameter_ini)
-    ! e.g. 
-    ! SYSCOMMAND= cd ~/Flexi/flexi/build_reggie.dev/../regressioncheck/examples/run_basic/ 
-    ! && sed -i -e "s/.*TimeDiscMethod
-    !               =.*/TimeDiscMethod
-    !               =carpenterrk4-5
-    !               /" parameter_flexi_navierstokes.ini 
-    CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
-  ELSE ! could not change the SubExampleOption parameter, because the the string [Examples(iExample)%SubExample + '='] was not 
-       ! found in the destination file, e.g., "parameter_flexi_navierstokes.ini". The equation mark "=" must be placed directly
-       ! behind the string that is to be changed!
+ELSEIF(MODE.EQ.2)THEN
+  CALL CheckFileForString(TRIM(Examples(iExample)%PATH)//TRIM(parameter_ini),&
+                          TRIM(ChangeOption)//'=',ExistStringInFile)
+ELSE
+  RETURN ! do nothing
+END IF
+
+IF(ExistStringInFile)THEN
+  IF(MODE.EQ.1)THEN
+    SYSCOMMAND=      'cd '//TRIM(Examples(iExample)%PATH)//& ! write the current SubExampleOption(iSubExample) to parameter_ini
+     ' && sed -i -e "s/.*'//TRIM(Examples(iExample)%SubExample)//&
+                    '=.*/'//TRIM(Examples(iExample)%SubExample)//&
+                       '='//TRIM(Examples(iExample)%SubExampleOption(iSubExample))//&
+                     '/" '//TRIM(parameter_ini)
+    ! E ! 
+    ! X ! SYSCOMMAND= cd ~/Flexi/flexi/build_reggie.dev/../regressioncheck/examples/run_basic/ 
+    ! A ! && sed -i -e "s/.*TimeDiscMethod
+    ! M !               =.*/TimeDiscMethod
+    ! P !               =carpenterrk4-5
+    ! L !               /" parameter_flexi_navierstokes.ini 
+    ! E !
+  ELSEIF(MODE.EQ.2)THEN
+    SYSCOMMAND=      'cd '//TRIM(Examples(iExample)%PATH)//& ! write the current SubExampleOption(iSubExample) to parameter_ini
+     ' && sed -i -e "s/.*'//TRIM(ChangeOption)//&
+                    '=.*/'//TRIM(ChangeOption)//&
+                       '='//TRIM(ChangeParameter)//&
+                     '/" '//TRIM(parameter_ini)
+    ! E ! 
+    ! X ! SYSCOMMAND= cd ~/Flexi/flexi/build_reggie.dev/../regressioncheck/examples/run_basic/ 
+    ! A ! && sed -i -e "s/.*IniExactFunc
+    ! M !               =.*/IniExactFunc
+    ! P !               =4
+    ! L !               /" parameter_flexi_navierstokes.ini 
+    ! E !
+    SWRITE(UNIT_stdOut,'(A)')"Setting option in parameter.ini: "//TRIM(ChangeOption)//"="//TRIM(ChangeParameter)
+  END IF
+  CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
+ELSE ! could not change the SubExampleOption parameter, because the the string [Examples(iExample)%SubExample + '='] was not 
+     ! found in the destination file ( e.g. "parameter_flexi_navierstokes.ini"). The equation mark "=" must be placed directly
+     ! behind the string that is to be changed!
+  IF(MODE.EQ.1)THEN
     Examples(iExample)%SubExampleOption(iSubExample)='**failed**'
     SWRITE(UNIT_stdOut,'(A,I2,A,A)')" SubExampleOption(",iSubExample,")=",TRIM(Examples(iExample)%SubExampleOption(iSubExample))
     SWRITE(UNIT_stdOut,'(A)')" The subexample has failed: Could not find the required string in destination parameter file."
     SWRITE(UNIT_stdOut,'(A,A,A)')"   Required String            : [",TRIM(Examples(iExample)%SubExample),"=]"
     SWRITE(UNIT_stdOut,'(A,A,A)')"   Destination parameter file : [",TRIM(parameter_ini),"]"
-    SWRITE(UNIT_stdOut,'(A,A,A)')" Maybe the equation mark '=' is not placed directly after the parameter which is to be altered"
+    SWRITE(UNIT_stdOut,'(A,A,A)')" Maybe the equation mark '=' is not placed directly after the parameter that is to be changed"
+  ELSEIF(MODE.EQ.2)THEN
+    !Examples(iExample)%SubExampleOption(iSubExample)='**failed**'
+    SWRITE(UNIT_stdOut,'(A,A1,A)')TRIM(ChangeOption),"=",TRIM(ChangeParameter)
+    SWRITE(UNIT_stdOut,'(A)')" The Parameter change has failed: Could not find the required string in destination parameter file."
+    SWRITE(UNIT_stdOut,'(A,A,A)')"   Required String            : [",TRIM(ChangeOption),"=]"
+    SWRITE(UNIT_stdOut,'(A,A,A)')"   Destination parameter file : [",TRIM(parameter_ini),"]"
+    SWRITE(UNIT_stdOut,'(A,A,A)')" Maybe the equation mark '=' is not placed directly after the parameter that is to be changed"
   END IF
 END IF
-!print*,"stop"
-!read*
 END SUBROUTINE SetSubExample
 
 

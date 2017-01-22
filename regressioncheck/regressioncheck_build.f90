@@ -42,7 +42,7 @@ SUBROUTINE ReadConfiguration(iExample,nReggieBuilds,N_compile_flags)
 ! MODULES
 USE MOD_Globals
 USE MOD_RegressionCheck_Vars,    ONLY: Examples,RuntimeOptionType,BuildEQNSYS,BuildTESTCASE,BuildContinue,BuildContinueNumber
-USE MOD_RegressionCheck_Vars,    ONLY: BuildTIMEDISCMETHOD,BuildMPI
+USE MOD_RegressionCheck_Vars,    ONLY: BuildTIMEDISCMETHOD,BuildMPI,BuildFV,BuildCODE2D,BuildPARABOLIC
 USE MOD_RegressionCheck_Vars,    ONLY: BuildConfigurations,BuildValid,BuildCounter,BuildIndex
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -207,6 +207,12 @@ DO I=1,2
   IF(I.EQ.1)BuildTIMEDISCMETHOD='default'
   IF(I.EQ.1)ALLOCATE(BuildMPI(nReggieBuilds))
   IF(I.EQ.1)BuildMPI='OFF'
+  IF(I.EQ.1)ALLOCATE(BuildFV(nReggieBuilds))
+  IF(I.EQ.1)BuildFV='OFF'
+  IF(I.EQ.1)ALLOCATE(BuildCODE2D(nReggieBuilds))
+  IF(I.EQ.1)BuildCODE2D='OFF'
+  IF(I.EQ.1)ALLOCATE(BuildPARABOLIC(nReggieBuilds))
+  IF(I.EQ.1)BuildPARABOLIC='OFF'
 END DO
 
 
@@ -332,8 +338,8 @@ SUBROUTINE BuildConfiguration(iExample,iReggieBuild,nReggieBuilds,N_compile_flag
 ! MODULES
 USE MOD_Globals
 USE MOD_RegressionCheck_Vars,  ONLY: BuildDebug,BuildNoDebug,BuildEQNSYS,BuildTESTCASE,NumberOfProcs,NumberOfProcsStr
-USE MOD_RegressionCheck_Vars,  ONLY: BuildContinue,BuildContinueNumber,BuildDir,BuildTIMEDISCMETHOD,BuildMPI
-USE MOD_RegressionCheck_Vars,  ONLY: CodeNameLowCase,CodeNameUppCase,Examples
+USE MOD_RegressionCheck_Vars,  ONLY: BuildContinue,BuildContinueNumber,BuildDir,BuildTIMEDISCMETHOD,BuildMPI,BuildFV,BuildCODE2D
+USE MOD_RegressionCheck_Vars,  ONLY: CodeNameLowCase,CodeNameUppCase,Examples,BuildPARABOLIC
 USE MOD_RegressionCheck_tools, ONLY: SummaryOfErrors,AddError
 USE MOD_RegressionCheck_Vars,  ONLY: BuildConfigurations,BuildValid,BuildCounter,BuildIndex,EXECPATH
 ! IMPLICIT VARIABLE HANDLING
@@ -390,21 +396,35 @@ IF(BuildValid(iReggieBuild))THEN
   ! can be executed with the compiled executable or not
   ! check MPI: single or parallel version
   CALL GetFlagFromFile(TRIM(BuildDir)//'build_reggie/bin/configuration.cmake',&
-                                                             CodeNameUppCase//'_MPI'      ,BuildMPI(iReggieBuild),BACK=.TRUE.)
-  IF(iSTATUS.EQ.0)THEN
+                                                            CodeNameUppCase//'_MPI'        ,BuildMPI(iReggieBuild),BACK=.TRUE.)
+  IF(iSTATUS.EQ.0)THEN ! -> succeeded to compile cmake configuration build
     ! check TESTCASE: e.g. taylor green vortex
     CALL GetFlagFromFile(TRIM(BuildDir)//'build_reggie/bin/configuration.cmake',&
-                                                               CodeNameUppCase//'_TESTCASE'      ,BuildTESTCASE(iReggieBuild))
+                                                            CodeNameUppCase//'_TESTCASE'   ,BuildTESTCASE(iReggieBuild))
     ! set default for, e.g., PICLas code (currently no testcases are implemented)
     IF(BuildTESTCASE(iReggieBuild).EQ.'flag does not exist')BuildTESTCASE(iReggieBuild)='default'
     ! check TIMEDISCMETHOD: time integration method
     CALL GetFlagFromFile(TRIM(BuildDir)//'build_reggie/bin/configuration.cmake',&
-                                                               CodeNameUppCase//'_TIMEDISCMETHOD',BuildTIMEDISCMETHOD(iReggieBuild))
+                                                            CodeNameUppCase//'_TIMEDISCMETHOD',BuildTIMEDISCMETHOD(iReggieBuild))
     ! set default for, e.g., FLEXI (not a compilation flag)
     IF(BuildTESTCASE(iReggieBuild).EQ.'flag does not exist')BuildTESTCASE(iReggieBuild)='default'
     ! check EQNSYSNAME: equation system
     CALL GetFlagFromFile(TRIM(BuildDir)//'build_reggie/bin/configuration.cmake',&
-                                                               CodeNameUppCase//'_EQNSYSNAME'     ,BuildEQNSYS(iReggieBuild))
+                                                            CodeNameUppCase//'_EQNSYSNAME',BuildEQNSYS(iReggieBuild))
+    ! check FV: finite volume sub cell operator
+    CALL GetFlagFromFile(TRIM(BuildDir)//'build_reggie/bin/configuration.cmake',&
+                                                            CodeNameUppCase//'_FV'        ,BuildFV(iReggieBuild),BACK=.TRUE.)
+    IF(BuildFV(iReggieBuild).EQ.'flag does not exist')BuildFV(iReggieBuild)='OFF'
+
+    ! check 2D: 2D version of code
+    CALL GetFlagFromFile(TRIM(BuildDir)//'build_reggie/bin/configuration.cmake',&
+                                                            CodeNameUppCase//'_CODE2D'    ,BuildCODE2D(iReggieBuild),BACK=.TRUE.)
+    IF(BuildCODE2D(iReggieBuild).EQ.'flag does not exist')BuildCODE2D(iReggieBuild)='OFF'
+
+    ! check PARABOLIC: with or without parabolic terms
+    CALL GetFlagFromFile(TRIM(BuildDir)//'build_reggie/bin/configuration.cmake',&
+                                                            CodeNameUppCase//'_PARABOLIC' ,BuildPARABOLIC(iReggieBuild),BACK=.TRUE.)
+    IF(BuildPARABOLIC(iReggieBuild).EQ.'flag does not exist')BuildPARABOLIC(iReggieBuild)='OFF'
   ELSE ! iSTATUS.NE.0 -> failed to compile cmake configuration build
     ! AddError: note: iSubExample is set to 1 as argument
     Examples(iExample)%SubExampleOption(1)='-' ! set default for error output
@@ -436,6 +456,9 @@ IF(BuildValid(iReggieBuild))THEN
   SWRITE(UNIT_stdOut,'(A)')"BuildTESTCASE(iReggieBuild)        = ["//TRIM(BuildTESTCASE(iReggieBuild))//"]"
   SWRITE(UNIT_stdOut,'(A)')"BuildTIMEDISCMETHOD(iReggieBuild)) = ["//TRIM(BuildTIMEDISCMETHOD(iReggieBuild))//"]"
   SWRITE(UNIT_stdOut,'(A)')"BuildMPI(iReggieBuild))            = ["//TRIM(BuildMPI(iReggieBuild))//"]"
+  SWRITE(UNIT_stdOut,'(A)')"BuildFV(iReggieBuild))             = ["//TRIM(BuildFV(iReggieBuild))//"]"
+  SWRITE(UNIT_stdOut,'(A)')"BuildCODE2D(iReggieBuild))         = ["//TRIM(BuildCODE2D(iReggieBuild))//"]"
+  SWRITE(UNIT_stdOut,'(A)')"BuildPARABOLIC(iReggieBuild))      = ["//TRIM(BuildPARABOLIC(iReggieBuild))//"]"
   SYSCOMMAND='cd '//TRIM(BuildDir)//'build_reggie'
   IF(.NOT.BuildDebug)SYSCOMMAND=TRIM(SYSCOMMAND)//' && tail -n 1 build_reggie.out'
   CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
