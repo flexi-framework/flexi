@@ -64,7 +64,7 @@ USE MOD_HDF5_Input     ,ONLY: OpenDataFile,CloseDataFile,GetDataSize,GetVarNames
 USE MOD_HDF5_Input     ,ONLY: DatasetExists,HSize,nDims,ReadArray
 USE MOD_IO_HDF5        ,ONLY: GetDatasetNamesInGroup,File_ID
 USE MOD_StringTools    ,ONLY: STRICMP
-USE MOD_EOS_Posti_Vars ,ONLY: DepNames,nVarTotalEOS
+USE MOD_EOS_Posti_Vars ,ONLY: DepNames,nVarDepEOS
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 CHARACTER(LEN=255),INTENT(IN)                       :: statefile
@@ -106,7 +106,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! other file
   END IF
 
   IF (STRICMP(FileType,'State')) THEN
-    nVar = nVarTotalEOS
+    nVar = nVarDepEOS
     ALLOCATE(varnames_loc(nVar))
     varnames_loc(1:nVar)=DepNames
     readDGsolutionVars = .FALSE.
@@ -196,7 +196,7 @@ USE MOD_Interpolation_Vars ,ONLY: NodeType
 USE MOD_Output_Vars        ,ONLY: ProjectName
 USE MOD_StringTools        ,ONLY: STRICMP
 USE MOD_ReadInTools        ,ONLY: prms,GETINT,GETLOGICAL,addStrListEntry,GETSTR,CountOption,FinalizeParameters
-USE MOD_Posti_Mappings     ,ONLY: Build_FV_DG_distribution,Build_mapCalc_mapVisu
+USE MOD_Posti_Mappings     ,ONLY: Build_FV_DG_distribution,Build_mapDepToCalc_mapTotalToVisu
 
 IMPLICIT NONE
 CHARACTER(LEN=255),INTENT(IN)    :: statefile
@@ -259,15 +259,13 @@ SDEALLOCATE(DepTable)
 SDEALLOCATE(DepSurfaceOnly)
 nVarTotal=SIZE(VarNamesTotal)
 IF (STRICMP(FileType,'State')) THEN
-  nVarDep = nVarTotalEOS
-  nVarRaw = nVarTotal - nVarDep
+  nVarDep = nVarDepEOS
   ALLOCATE(DepTable(nVarDep,0:nVarDep))
   ALLOCATE(DepSurfaceOnly(nVarDep))
   DepTable = DepTableEOS
   DepSurfaceOnly = DepSurfaceOnlyEOS
 ELSE 
   nVarDep = 0
-  nVarRaw = nVarTotal
   ALLOCATE(DepTable(nVarDep,0:nVarDep))
   ALLOCATE(DepSurfaceOnly(nVarDep))
   DepTable = 0
@@ -288,7 +286,7 @@ IF (hasFV_Elems) withDGOperator = .TRUE.
 
 ! build mappings of variables which must be calculated/visualized
 ! also set withDGOperator flag if a dependent variable requires the evaluation of the DG operator
-CALL Build_mapCalc_mapVisu()
+CALL Build_mapDepToCalc_mapTotalToVisu()
 
 changedWithDGOperator = (withDGOperator.NEQV.withDGOperator_old)
 END SUBROUTINE visu3d_InitFile
@@ -314,6 +312,7 @@ USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_DG,ConvertToSurfVisu_DG,Convert
 USE MOD_ReadInTools         ,ONLY: prms,FinalizeParameters,ExtractParameterFile
 USE MOD_StringTools         ,ONLY: STRICMP
 USE MOD_Posti_VisuMesh      ,ONLY: BuildVisuCoords,BuildSurfVisuCoords
+USE MOD_Posti_Mappings      ,ONLY: Build_mapBCSides
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)               :: mpi_comm_IN    
@@ -372,11 +371,11 @@ SWRITE (*,*) "READING FROM: ", TRIM(statefile)
 !                    
 ! * Therefore two mappings from all available quantities to the calc-quantities and the
 !   visu-quantities exist:
-!   - 'mapVisu' is a integer array of size (1:nVarTotal), where nVarTotal is the total amount 
+!   - 'mapTotalToVisu' is a integer array of size (1:nVarTotal), where nVarTotal is the total amount 
 !     of available quantities. This map contains a zero for all not-to-visu-quantities and for
 !     all quantities the index where it is stored in 'UVisu'.
 !     This mapping is filled from the 'VarName' entries in the parameter file.
-!   - 'mapCalc' is the same as mapVisu, but for all (intermediate) quantities stored in 'UCalc'.
+!   - 'mapDepToCalc' is the same as mapTotalToVisu, but for all (intermediate) quantities stored in 'UCalc'.
 !     This mapping is filled from the DepTable.
 !
 ! CHANGED system:
@@ -453,6 +452,9 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
       CALL ReadState(prmfile,statefile)
   END IF
 
+  ! build mappings of BC sides for surface visualization
+  CALL Build_mapBCSides()
+
   ! calc DG solution 
   IF (changedStateFile.OR.changedVarNames.OR.changedDGonly) THEN
     CALL CalcQuantities_DG()
@@ -485,7 +487,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
 #endif /* FV_ENABLED */
 
   ! convert generic data to visu grid
-  IF (changedStateFile.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly) THEN
+  IF (changedStateFile.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedBCnames) THEN
     CALL ConvertToVisu_GenericData(statefile)
   END IF
 
@@ -541,18 +543,18 @@ nVar_State_old = -1
 withDGOperator_old = .FALSE.
 hasFV_Elems = .FALSE.
 
-SDEALLOCATE(mapCalc)
+SDEALLOCATE(mapDepToCalc)
 #if FV_ENABLED && FV_RECONSTRUCT
-SDEALLOCATE(mapCalc_FV)
+SDEALLOCATE(mapDepToCalc_FV)
 #endif
-SDEALLOCATE(mapVisu)
-SDEALLOCATE(mapSurfVisu)
-SDEALLOCATE(mapSurfVisu_old)
+SDEALLOCATE(mapTotalToVisu)
+SDEALLOCATE(mapTotalToSurfVisu)
+SDEALLOCATE(mapTotalToSurfVisu_old)
 SDEALLOCATE(UCalc_DG)
 SDEALLOCATE(UCalc_FV)
 
-SDEALLOCATE(mapElems_DG)
-SDEALLOCATE(mapElems_FV)
+SDEALLOCATE(mapDGElemsToAllElems)
+SDEALLOCATE(mapFVElemsToAllElems)
 SDEALLOCATE(FV_Elems_loc)
 
 END SUBROUTINE FinalizeVisu3D

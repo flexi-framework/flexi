@@ -39,19 +39,13 @@ CHARACTER(LEN=255),TARGET      :: prmfile
 CHARACTER(LEN=255),TARGET      :: postifile
 CHARACTER(LEN=255),TARGET      :: statefile
 INTEGER                        :: skipArgs
-INTEGER                        :: nVal
-CHARACTER(LEN=255),POINTER     :: VarNames_p(:)
-REAL,POINTER                   :: Coords_p(:,:,:,:,:)
-REAL,POINTER                   :: Values_p(:,:,:,:,:)
 CHARACTER(LEN=255)             :: FileString_DG
 CHARACTER(LEN=255)             :: FileString_SurfDG
 #if FV_ENABLED                            
 CHARACTER(LEN=255)             :: FileString_FV
 CHARACTER(LEN=255)             :: FileString_SurfFV
 CHARACTER(LEN=255)             :: FileString_multiblock
-INTEGER                        :: NVisu_k_FV
 #endif
-INTEGER                        :: NVisu_k
 #if !USE_MPI
 INTEGER                        :: MPI_COMM_WORLD = 0
 #endif
@@ -98,34 +92,29 @@ DO iArg=1+skipArgs,nArgs
   ALLOCATE(varnames_loc(nVarVisuTotal))
   ALLOCATE(varnamesSurf_loc(nVarSurfVisuTotal))
   DO iVar=1,nVarTotal
-    IF (mapVisu(iVar).GT.0) THEN
-      VarNames_loc(mapVisu(iVar)) = VarNamesTotal(iVar)
+    IF (mapTotalToVisu(iVar).GT.0) THEN
+      VarNames_loc(mapTotalToVisu(iVar)) = VarNamesTotal(iVar)
     END IF
-    IF (mapSurfVisu(iVar).GT.0) THEN
-      VarNamesSurf_loc(mapSurfVisu(iVar)) = VarNamesTotal(iVar)
+    IF (mapTotalToSurfVisu(iVar).GT.0) THEN
+      VarNamesSurf_loc(mapTotalToSurfVisu(iVar)) = VarNamesTotal(iVar)
     END IF
   END DO
 
   IF (VisuDimension.EQ.3) THEN
-    WRITE (*,*) LBOUND(CoordsVisu_DG)
-    WRITE (*,*) UBOUND(CoordsVisu_DG)
-  CALL WriteDataToVTK(nVarVisuTotal,NVisu,nElems_DG,VarNames_loc,CoordsVisu_DG,UVisu_DG,FileString_DG,&
-      dim=VisuDimension,DGFV=0,nValAtLastDimension=.TRUE.)
-!#if FV_ENABLED                            
-  !FileString_FV=TRIM(TIMESTAMP(TRIM(ProjectName)//'_FV',OutputTime))//'.vtu'
-  !NVisu_k_FV = NVisu_FV * (VisuDimension-2)
-  !CALL C_F_POINTER(coordsFV_out%data, Coords_p, [3,NVisu_FV+1,NVisu_FV+1,NVisu_k_FV+1,nElems_FV])
-  !CALL C_F_POINTER(valuesFV_out%data, Values_p, [  NVisu_FV+1,NVisu_FV+1,NVisu_k_FV+1,nElems_FV,nVal])
-  !CALL WriteDataToVTK(nVal,NVisu_FV,nElems_FV,VarNames_p,Coords_p,Values_p,FileString_FV,&
-      !dim=VisuDimension,DGFV=1,nValAtLastDimension=.TRUE.)
+    CALL WriteDataToVTK(nVarVisuTotal,NVisu,nElems_DG,VarNames_loc,CoordsVisu_DG,UVisu_DG,FileString_DG,&
+        dim=VisuDimension,DGFV=0,nValAtLastDimension=.TRUE.)
+#if FV_ENABLED                            
+    FileString_FV=TRIM(TIMESTAMP(TRIM(ProjectName)//'_FV',OutputTime))//'.vtu'
+    CALL WriteDataToVTK(nVarVisuTotal,NVisu_FV,nElems_FV,VarNames_loc,CoordsVisu_FV,UVisu_FV,FileString_FV,&
+        dim=VisuDimension,DGFV=1,nValAtLastDimension=.TRUE.)
 
-  !IF (MPIRoot) THEN                   
-    !! write multiblock file
-    !FileString_multiblock=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))//'.vtm'
-    !CALL WriteVTKMultiBlockDataSet(FileString_multiblock,FileString_DG,FileString_FV)
-  !ENDIF
+    IF (MPIRoot) THEN                   
+      ! write multiblock file
+      FileString_multiblock=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))//'.vtm'
+      CALL WriteVTKMultiBlockDataSet(FileString_multiblock,FileString_DG,FileString_FV)
+    ENDIF
+#endif
 
-!#endif
     ! Surface data
 #if FV_ENABLED                            
     FileString_SurfDG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_SurfDG',OutputTime))//'.vtu'
@@ -138,6 +127,12 @@ DO iArg=1+skipArgs,nArgs
     FileString_SurfFV=TRIM(TIMESTAMP(TRIM(ProjectName)//'_SurfFV',OutputTime))//'.vtu'
     CALL WriteDataToVTK(nVarSurfVisuTotal,NVisu_FV,nBCSidesVisu_FV,VarNamesSurf_loc,CoordsSurfVisu_FV,USurfVisu_FV,&
         FileString_SurfFV,dim=2,DGFV=1,nValAtLastDimension=.TRUE.)
+
+    IF (MPIRoot) THEN                   
+      ! write multiblock file
+      FileString_multiblock=TRIM(TIMESTAMP(TRIM(ProjectName)//'_SurfSolution',OutputTime))//'.vtm'
+      CALL WriteVTKMultiBlockDataSet(FileString_multiblock,FileString_SurfDG,FileString_SurfFV)
+    ENDIF
 #endif
   ELSE
     STOP 'implement!'

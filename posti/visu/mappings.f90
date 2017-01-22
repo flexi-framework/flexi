@@ -28,12 +28,17 @@ INTERFACE Build_FV_DG_distribution
   MODULE PROCEDURE Build_FV_DG_distribution
 END INTERFACE
 
-INTERFACE Build_mapCalc_mapVisu
-  MODULE PROCEDURE Build_mapCalc_mapVisu
+INTERFACE Build_mapDepToCalc_mapTotalToVisu
+  MODULE PROCEDURE Build_mapDepToCalc_mapTotalToVisu
+END INTERFACE
+
+INTERFACE Build_mapBCSides
+  MODULE PROCEDURE Build_mapBCSides
 END INTERFACE
 
 PUBLIC:: Build_FV_DG_distribution
-PUBLIC:: Build_mapCalc_mapVisu
+PUBLIC:: Build_mapDepToCalc_mapTotalToVisu
+PUBLIC:: Build_mapBCSides
 
 CONTAINS
 
@@ -41,7 +46,7 @@ CONTAINS
 !> This routine determines the distribution of DG and FV elements in the state file.
 !>  1. reads the 'ElemData' array in the state-file and fills the 'FV_Elems_loc' array.
 !>  2. count the number of DG/FV elements in FV_Elems_loc.
-!>  3. build the mappings (mapElems_FV/DG) that hold the global indices of the FV/DG element indices.
+!>  3. build the mappings (mapFVElemsToAllElems/DG) that hold the global indices of the FV/DG element indices.
 !>  4. check wether the distribution of FV elements has changed
 !===================================================================================================================================
 SUBROUTINE Build_FV_DG_distribution(statefile)
@@ -98,23 +103,23 @@ IF (.NOT.DGonly) THEN
   nElems_DG = nElems - nElems_FV
 
   ! build the mapping, that holds the global indices of all FV elements
-  SDEALLOCATE(mapElems_FV)
-  ALLOCATE(mapElems_FV(1:nElems_FV))
+  SDEALLOCATE(mapFVElemsToAllElems)
+  ALLOCATE(mapFVElemsToAllElems(1:nElems_FV))
   iElem2 =1
   DO iElem=1,nElems
     IF (FV_Elems_loc(iElem).EQ.1) THEN
-      mapElems_FV(iElem2) = iElem
+      mapFVElemsToAllElems(iElem2) = iElem
       iElem2 = iElem2 + 1
     END IF
   END DO ! iElem
 
   ! build the mapping, that holds the global indices of all DG elements
-  SDEALLOCATE(mapElems_DG)
-  ALLOCATE(mapElems_DG(1:nElems_DG))
+  SDEALLOCATE(mapDGElemsToAllElems)
+  ALLOCATE(mapDGElemsToAllElems(1:nElems_DG))
   iElem2 =1
   DO iElem=1,nElems
     IF (FV_Elems_loc(iElem).EQ.0) THEN
-      mapElems_DG(iElem2) = iElem
+      mapDGElemsToAllElems(iElem2) = iElem
       iElem2 = iElem2 + 1
     END IF
   END DO ! iElem
@@ -126,10 +131,10 @@ ELSE
   NVisu_FV = 0
 
   ! build the mapping, that holds the global indices of all DG elements
-  SDEALLOCATE(mapElems_DG)
-  ALLOCATE(mapElems_DG(1:nElems_DG))
+  SDEALLOCATE(mapDGElemsToAllElems)
+  ALLOCATE(mapDGElemsToAllElems(1:nElems_DG))
   DO iElem=1,nElems
-    mapElems_DG(iElem) = iElem
+    mapDGElemsToAllElems(iElem) = iElem
   END DO
 #if FV_ENABLED
 END IF
@@ -163,10 +168,10 @@ END SUBROUTINE Build_FV_DG_distribution
 !>  3. check wether gradients are needed for any quantity. If this is the case, remove the conservative quantities from the 
 !>     dependecies of the primitive quantities (the primitive quantities are available directly, since the DGTimeDerivative_weakForm
 !>     will be executed.
-!>  4. build the 'mapCalc' that holds for each quantity that will be calculated the index in 'UCalc' array (0 if not calculated)
-!>  5. build the 'mapVisu' that holds for each quantity that will be visualized the index in 'UVisu' array (0 if not visualized)
+!>  4. build the 'mapDepToCalc' that holds for each quantity that will be calculated the index in 'UCalc' array (0 if not calculated)
+!>  5. build the 'mapTotalToVisu' that holds for each quantity that will be visualized the index in 'UVisu' array (0 if not visualized)
 !===================================================================================================================================
-SUBROUTINE Build_mapCalc_mapVisu()
+SUBROUTINE Build_mapDepToCalc_mapTotalToVisu()
 USE MOD_Globals
 USE MOD_Posti_Vars
 USE MOD_ReadInTools     ,ONLY: GETSTR,CountOption
@@ -181,14 +186,14 @@ CHARACTER(LEN=255)  :: BoundaryName
 CHARACTER(LEN=20)   :: format
 !===================================================================================================================================
 ! Read Varnames from parameter file and fill
-!   mapVisu = map, which stores at position x the position/index of the x.th quantity in the UVisu array
+!   mapTotalToVisu = map, which stores at position x the position/index of the x.th quantity in the UVisu array
 !             if a quantity is not visualized it is zero
-SDEALLOCATE(mapVisu)
-SDEALLOCATE(mapSurfVisu)
-ALLOCATE(mapVisu(1:nVarTotal))
-ALLOCATE(mapSurfVisu(1:nVarTotal))
-mapVisu = 0
-mapSurfVisu = 0
+SDEALLOCATE(mapTotalToVisu)
+SDEALLOCATE(mapTotalToSurfVisu)
+ALLOCATE(mapTotalToVisu(1:nVarTotal))
+ALLOCATE(mapTotalToSurfVisu(1:nVarTotal))
+mapTotalToVisu = 0
+mapTotalToSurfVisu = 0
 nVarVisuTotal = 0
 nVarSurfVisuTotal = 0
 ! Compare varnames that should be visualized with available varnames
@@ -197,19 +202,19 @@ DO iVar=1,CountOption("VarName")
   DO iVar2=1,nVarTotal
     IF (STRICMP(VarName, VarNamesTotal(iVar2))) THEN
       nVarSurfVisuTotal = nVarSurfVisuTotal + 1
-      mapSurfVisu(iVar2) = nVarSurfVisuTotal
+      mapTotalToSurfVisu(iVar2) = nVarSurfVisuTotal
       IF (iVar2.LE.nVarDep) THEN
         IF(DepSurfaceOnly(iVar2).EQ.1) CYCLE
       END IF
       nVarVisuTotal = nVarVisuTotal + 1
-      mapVisu(iVar2) = nVarVisuTotal
+      mapTotalToVisu(iVar2) = nVarVisuTotal
     END IF
   END DO
 END DO
 
 ! check whether gradients are needed for any quantity
 DO iVar=1,nVarDep
-  IF (mapSurfVisu(iVar).GT.0) THEN
+  IF (mapTotalToSurfVisu(iVar).GT.0) THEN
     withDGOperator = withDGOperator .OR. (DepTable(iVar,0).GT.0)
   END IF
 END DO
@@ -232,53 +237,53 @@ DO iVar=1,nVarDep
 END DO
 
 ! Build :
-!   mapCalc = map, which stores at position x the position/index of the x.th quantity in the UCalc array
+!   mapDepToCalc = map, which stores at position x the position/index of the x.th quantity in the UCalc array
 !             if a quantity is not calculated it is zero
-SDEALLOCATE(mapCalc)
-ALLOCATE(mapCalc(1:nVarDep))
-mapCalc = 0
+SDEALLOCATE(mapDepToCalc)
+ALLOCATE(mapDepToCalc(1:nVarDep))
+mapDepToCalc = 0
 DO iVar=1,nVarDep
-  IF (mapSurfVisu(iVar).GT.0) THEN
-    mapCalc = MAX(mapCalc,DepTable(iVar,1:nVarDep))
+  IF (mapTotalToSurfVisu(iVar).GT.0) THEN
+    mapDepToCalc = MAX(mapDepToCalc,DepTable(iVar,1:nVarDep))
   END IF
 END DO
-! enumerate mapCalc
+! enumerate mapDepToCalc
 nVarCalc = 0
 DO iVar=1,nVarDep
-  IF (mapCalc(iVar).GT.0) THEN
+  IF (mapDepToCalc(iVar).GT.0) THEN
     nVarCalc = nVarCalc + 1
-    mapCalc(iVar) = nVarCalc
+    mapDepToCalc(iVar) = nVarCalc
   END IF
 END DO
 
 ! check if any varnames changed
 changedVarNames = .TRUE.
-IF (ALLOCATED(mapSurfVisu_old).AND.(SIZE(mapSurfVisu).EQ.SIZE(mapSurfVisu_old))) THEN
-  changedVarNames = .NOT.ALL(mapSurfVisu.EQ.mapSurfVisu_old) 
+IF (ALLOCATED(mapTotalToSurfVisu_old).AND.(SIZE(mapTotalToSurfVisu).EQ.SIZE(mapTotalToSurfVisu_old))) THEN
+  changedVarNames = .NOT.ALL(mapTotalToSurfVisu.EQ.mapTotalToSurfVisu_old) 
 END IF
-SDEALLOCATE(mapSurfVisu_old)
-ALLOCATE(mapSurfVisu_old(1:nVarTotal))
-mapSurfVisu_old = mapSurfVisu
+SDEALLOCATE(mapTotalToSurfVisu_old)
+ALLOCATE(mapTotalToSurfVisu_old(1:nVarTotal))
+mapTotalToSurfVisu_old = mapTotalToSurfVisu
 
 ! print the mappings
 WRITE(format,'(I2)') nVarTotal
-SWRITE (*,'(A,'//format//'I3)') "mapCalc ",mapCalc
-SWRITE (*,'(A,'//format//'I3)') "mapVisu ",mapVisu
-SWRITE (*,'(A,'//format//'I3)') "mapSurfVisu ",mapSurfVisu
+SWRITE (*,'(A,'//format//'I3)') "mapDepToCalc ",mapDepToCalc
+SWRITE (*,'(A,'//format//'I3)') "mapTotalToVisu ",mapTotalToVisu
+SWRITE (*,'(A,'//format//'I3)') "mapTotalToSurfVisu ",mapTotalToSurfVisu
 
 ! Build the mapping for the surface visualization
-! mapBCNames(iBC) stores the ascending visualization index of the all boundaries. 0 means no visualization.
+! mapAllBCNamesToVisuBCNames(iBC) stores the ascending visualization index of the all boundaries. 0 means no visualization.
 ! nBCNamesVisu is the number of boundaries to be visualized.
-SDEALLOCATE(mapBCNames)
-ALLOCATE(mapBCNames(1:nBCNamesTotal))
-mapBCNames = 0
+SDEALLOCATE(mapAllBCNamesToVisuBCNames)
+ALLOCATE(mapAllBCNamesToVisuBCNames(1:nBCNamesTotal))
+mapAllBCNamesToVisuBCNames = 0
 nBCNamesVisu = 0
 ! Compare boundary names that should be visualized with available varnames
 DO iVar=1,CountOption("BoundaryName")
   BoundaryName = GETSTR("BoundaryName")
   DO iVar2=1,nBCNamesTotal
     IF (STRICMP(BoundaryName, BoundaryNamesTotal(iVar2))) THEN
-      mapBCNames(iVar2) = nBCNamesVisu+1
+      mapAllBCNamesToVisuBCNames(iVar2) = nBCNamesVisu+1
       nBCNamesVisu = nBCNamesVisu + 1
     END IF
   END DO
@@ -286,16 +291,69 @@ END DO
 
 ! check if any boundary changed
 changedBCnames = .TRUE.
-IF (ALLOCATED(mapBCnames_old).AND.(SIZE(mapBCnames).EQ.SIZE(mapBCnames_old))) THEN
-  changedBCnames = .NOT.ALL(mapBCnames.EQ.mapBCnames_old) 
+IF (ALLOCATED(mapAllBCNamesToVisuBCNames_old).AND.(SIZE(mapAllBCNamesToVisuBCNames).EQ.SIZE(mapAllBCNamesToVisuBCNames_old))) THEN
+  changedBCnames = .NOT.ALL(mapAllBCNamesToVisuBCNames.EQ.mapAllBCNamesToVisuBCNames_old) 
 END IF
-SDEALLOCATE(mapBCnames_old)
-ALLOCATE(mapBCnames_old(1:nBCNamesTotal))
-mapBCnames_old = mapBCnames
+SDEALLOCATE(mapAllBCNamesToVisuBCNames_old)
+ALLOCATE(mapAllBCNamesToVisuBCNames_old(1:nBCNamesTotal))
+mapAllBCNamesToVisuBCNames_old = mapAllBCNamesToVisuBCNames
 
 
-SWRITE (*,'(A,'//format//'I3)') "mapBCNames ",mapBCNames
+SWRITE (*,'(A,'//format//'I3)') "mapAllBCNamesToVisuBCNames ",mapAllBCNamesToVisuBCNames
 
-END SUBROUTINE Build_mapCalc_mapVisu
+END SUBROUTINE Build_mapDepToCalc_mapTotalToVisu
+
+SUBROUTINE Build_mapBCSides() 
+USE MOD_Posti_Vars
+USE MOD_Mesh_Vars  ,ONLY: nBCSides,BC,SideToElem,BoundaryName
+USE MOD_StringTools ,ONLY: STRICMP
+#if FV_ENABLED
+USE MOD_FV_Vars    ,ONLY: FV_Elems
+#endif
+IMPLICIT NONE
+! INPUT / OUTPUT VARIABLES 
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER           :: iBC,iElem,iSide
+!===================================================================================================================================
+
+! Build surface visualization mappings. 
+! mapAllBCSidesToDGBCSides/FV(iBCSide) contains the ascending index of the visualization boundary sides. They are sorted after the boundary name.
+! 0 means no visualization of this boundary side.
+! nSidesPerBCNameVisu_DG/FV(iBCNamesVisu) contains how many boundary sides belong to each boundary that should be visualized.
+SDEALLOCATE(mapAllBCSidesToDGBCSides)
+SDEALLOCATE(mapAllBCSidesToFVBCSides)
+SDEALLOCATE(nSidesPerBCNameVisu_DG)
+SDEALLOCATE(nSidesPerBCNameVisu_FV)
+ALLOCATE(mapAllBCSidesToDGBCSides(1:nBCSides))
+ALLOCATE(mapAllBCSidesToFVBCSides(1:nBCSides))
+ALLOCATE(nSidesPerBCNameVisu_DG(1:nBCNamesVisu))
+ALLOCATE(nSidesPerBCNameVisu_FV(1:nBCNamesVisu))
+mapAllBCSidesToDGBCSides = 0
+mapAllBCSidesToFVBCSides = 0
+nSidesPerBCNameVisu_DG = 0
+nSidesPerBCNameVisu_FV = 0
+nBCSidesVisu_DG = 0
+nBCSidesVisu_FV = 0
+DO iBC=1,nBCNamesTotal    ! iterate over all bc names
+  IF (mapAllBCNamesToVisuBCNames(iBC).GT.0) THEN 
+    DO iSide=1,nBCSides   ! iterate over all bc sides 
+      IF (STRICMP(BoundaryName(BC(iSide)),BoundaryNamesTotal(iBC))) THEN ! check if side is of specific boundary name
+        iElem = SideToElem(S2E_ELEM_ID,iSide)
+        IF (FV_Elems(iElem).EQ.0)  THEN ! DG element
+          nBCSidesVisu_DG = nBCSidesVisu_DG + 1
+          mapAllBCSidesToDGBCSides(iSide) = nBCSidesVisu_DG
+          nSidesPerBCNameVisu_DG(mapAllBCNamesToVisuBCNames(iBC)) = nSidesPerBCNameVisu_DG(mapAllBCNamesToVisuBCNames(iBC)) + 1
+        ELSE ! FV Element
+          nBCSidesVisu_FV = nBCSidesVisu_FV + 1
+          mapAllBCSidesToFVBCSides(iSide) = nBCSidesVisu_FV
+          nSidesPerBCNameVisu_FV(mapAllBCNamesToVisuBCNames(iBC)) = nSidesPerBCNameVisu_FV(mapAllBCNamesToVisuBCNames(iBC)) + 1
+        END IF
+      END IF
+    END DO
+  END IF
+END DO
+
+END SUBROUTINE Build_mapBCSides
 
 END MODULE MOD_Posti_Mappings

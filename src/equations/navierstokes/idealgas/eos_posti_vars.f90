@@ -24,10 +24,10 @@ SAVE
 
 #if PARABOLIC
 #define CUT(x)
-INTEGER,PARAMETER :: nVarTotalEOS=32
+INTEGER,PARAMETER :: nVarDepEOS=32
 #else 
 #define CUT(x) x!
-INTEGER,PARAMETER :: nVarTotalEOS=19
+INTEGER,PARAMETER :: nVarDepEOS=19
 #endif
 ! ATTENTION: The first     5 variables must be the conservative ones
 !            The following 5 variables must be the primitive ones
@@ -54,7 +54,7 @@ INTEGER,PARAMETER :: nVarTotalEOS=19
 ! t i u u u i t t t u u  u u a i i o u u r         t t t u i d i i r o o o u
 ! o t m m m t y y y r r  d n c o o p r r i         y y y d t a o o e n n n d
 ! r y X Y Z y X Y Z e e  e d h n n y e e v         X Y Z e y 2 n n n X Y Z e
-INTEGER,DIMENSION(1:nVarTotalEOS,0:nVarTotalEOS),PARAMETER :: DepTableEOS = TRANSPOSE(RESHAPE(&
+INTEGER,DIMENSION(1:nVarDepEOS,0:nVarDepEOS),PARAMETER :: DepTableEOS = TRANSPOSE(RESHAPE(&
 (/&
   0,1,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !1  Density
   0,0,1,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !2  MomentumX
@@ -90,9 +90,9 @@ INTEGER,DIMENSION(1:nVarTotalEOS,0:nVarTotalEOS),PARAMETER :: DepTableEOS = TRAN
   1,0,0,0,0,0,0,0,0,0,1, 0,0,0,0,0,0,0,0,0         ,0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !31 WallFrictionZ
   1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0         ,0,0,0,0,0,0,0,0,0,1,1,1,0  & !32 WallFrictionMagnitude
 #endif
-/),(/nVarTotalEOS+1,nVarTotalEOS/)))
+/),(/nVarDepEOS+1,nVarDepEOS/)))
 
-INTEGER,DIMENSION(1:nVarTotalEOS),PARAMETER :: DepSurfaceOnlyEOS = &
+INTEGER,DIMENSION(1:nVarDepEOS),PARAMETER :: DepSurfaceOnlyEOS = &
 (/  0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0  CUT(&) ,0,0,0,0,0,0,0,0,0,1,1,1,1 &
 /) 
 
@@ -120,18 +120,18 @@ INTEGER,DIMENSION(1:nVarTotalEOS),PARAMETER :: DepSurfaceOnlyEOS = &
 ! t i u u u i t t t u u
 ! o t m m m t y y y r r
 ! r y X Y Z y X Y Z e e
-INTEGER,DIMENSION(PP_nVar,0:nVarTotalEOS),PARAMETER :: DepTablePrimToCons =TRANSPOSE(RESHAPE(&
+INTEGER,DIMENSION(PP_nVar,0:nVarDepEOS),PARAMETER :: DepTablePrimToCons =TRANSPOSE(RESHAPE(&
 (/&
   0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !1 Density
   0,1,0,0,0,0,1,0,0,0,0, 0,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !2 MomentumX
   0,1,0,0,0,0,0,1,0,0,0, 0,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !3 MomentumY
   0,1,0,0,0,0,0,0,1,0,0, 0,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !4 MomentumZ
   0,1,0,0,0,0,1,1,1,1,0, 0,0,0,0,0,0,0,0,0  CUT(&) ,0,0,0,0,0,0,0,0,0,0,0,0,0  & !5 EnergyStagnationDensity
-/),(/nVarTotalEOS+1,5/)))
+/),(/nVarDepEOS+1,5/)))
 #endif
 #undef CUT
 
-CHARACTER(LEN=255),DIMENSION(nVarTotalEOS),PARAMETER :: DepNames = &
+CHARACTER(LEN=255),DIMENSION(nVarDepEOS),PARAMETER :: DepNames = &
 (/ CHARACTER(LEN=255) ::    &
 "Density"                  ,& !1
 "MomentumX"                ,& !2

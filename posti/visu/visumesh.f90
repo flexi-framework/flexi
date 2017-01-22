@@ -53,9 +53,9 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Posti_Vars         ,ONLY: CoordsVisu_DG
 USE MOD_Posti_Vars         ,ONLY: NodeTypeVisuPosti
-USE MOD_Posti_Vars         ,ONLY: NVisu,nElems_DG,mapElems_DG
+USE MOD_Posti_Vars         ,ONLY: NVisu,nElems_DG,mapDGElemsToAllElems
 #if FV_ENABLED
-USE MOD_Posti_Vars         ,ONLY: NVisu_FV,nElems_FV,mapElems_FV,hasFV_Elems
+USE MOD_Posti_Vars         ,ONLY: NVisu_FV,nElems_FV,mapFVElemsToAllElems,hasFV_Elems
 USE MOD_Posti_Vars         ,ONLY: CoordsVisu_FV,changedMeshFile,changedFV_Elems
 #endif
 USE MOD_Interpolation_Vars ,ONLY: NodeTypeVisu,NodeTypeFVEqui,NodeType
@@ -88,7 +88,7 @@ CALL GetVandermonde(Nloc,NodeType_loc,NVisu   ,NodeTypeVisuPosti  ,Vdm_N_NVisu  
 SDEALLOCATE(CoordsVisu_DG)
 ALLOCATE(CoordsVisu_DG(3,0:NVisu,0:NVisu,0:NVisu,nElems_DG))
 DO iElem_DG = 1,nElems_DG
-  iElem = mapElems_DG(iElem_DG)
+  iElem = mapDGElemsToAllElems(iElem_DG)
   CALL ChangeBasis3D(3,Nloc,NVisu,   Vdm_N_NVisu,   NodeCoords_loc(:,:,:,:,iElem),CoordsVisu_DG   (:,:,:,:,iElem_DG))
 END DO
 SDEALLOCATE(Vdm_N_NVisu)
@@ -103,7 +103,7 @@ IF (hasFV_Elems) THEN
   SDEALLOCATE(CoordsVisu_FV)
   ALLOCATE(CoordsVisu_FV(3,0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV))
   DO iElem_FV = 1,nElems_FV
-    iElem = mapElems_FV(iElem_FV)
+    iElem = mapFVElemsToAllElems(iElem_FV)
     CALL ChangeBasis3D(3,Nloc,NVisu_FV,Vdm_N_NVisu_FV,NodeCoords_loc(:,:,:,:,iElem),CoordsVisu_FV(:,:,:,:,iElem_FV))
   END DO
   SDEALLOCATE(Vdm_N_NVisu_FV)
@@ -116,11 +116,11 @@ SUBROUTINE BuildSurfVisuCoords()
 USE ISO_C_BINDING
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Posti_Vars         ,ONLY: CoordsSurfVisu_DG,nBCSidesVisu_DG,mapBCSides_DG
+USE MOD_Posti_Vars         ,ONLY: CoordsSurfVisu_DG,nBCSidesVisu_DG,mapAllBCSidesToDGBCSides
 USE MOD_Posti_Vars         ,ONLY: NodeTypeVisuPosti
 USE MOD_Posti_Vars         ,ONLY: NVisu
 #if FV_ENABLED
-USE MOD_Posti_Vars         ,ONLY: CoordsSurfVisu_FV,nBCSidesVisu_FV,mapBCSides_FV
+USE MOD_Posti_Vars         ,ONLY: CoordsSurfVisu_FV,nBCSidesVisu_FV,mapAllBCSidesToFVBCSides
 USE MOD_Posti_Vars         ,ONLY: NVisu_FV,hasFV_Elems
 USE MOD_Posti_Vars         ,ONLY: changedMeshFile,changedFV_Elems
 #endif
@@ -150,7 +150,7 @@ CALL GetVandermonde(Nloc,NodeType_loc,NVisu   ,NodeTypeVisuPosti  ,Vdm_N_NVisu  
 SDEALLOCATE(CoordsSurfVisu_DG)
 ALLOCATE(CoordsSurfVisu_DG(3,0:NVisu,0:NVisu,0:0,nBCSidesVisu_DG))
 DO iSide=1,nBCSides
-  iSideVisu = mapBCSides_DG(iSide)
+  iSideVisu = mapAllBCSidesToDGBCSides(iSide)
   IF (iSideVisu.GT.0)THEN
     CALL ChangeBasis2D(3,Nloc,NVisu,   Vdm_N_NVisu, Face_xGP(:,:,:,0,iSide),CoordsSurfVisu_DG(:,:,:,0,iSideVisu))
   END IF
@@ -167,7 +167,7 @@ IF (hasFV_Elems) THEN
   SDEALLOCATE(CoordsSurfVisu_FV)
   ALLOCATE(CoordsSurfVisu_FV(3,0:NVisu_FV,0:NVisu_FV,0:0,nBCSidesVisu_FV))
   DO iSide=1,nBCSides
-    iSideVisu = mapBCSides_FV(iSide)
+    iSideVisu = mapAllBCSidesToFVBCSides(iSide)
     IF (iSideVisu.GT.0)THEN
       CALL ChangeBasis2D(3,Nloc,NVisu_FV,Vdm_N_NVisu_FV,Face_xGP(:,:,:,0,iSide),CoordsSurfVisu_FV(:,:,:,0,iSideVisu))
     END IF
@@ -246,13 +246,13 @@ CALL InitMesh(meshMode=0, MeshFile_IN=meshfile_in)
 ! convert to visu grid
 nElems_DG = nElems
 nElems_FV = 0
-SDEALLOCATE(mapElems_DG)
-ALLOCATE(mapElems_DG(nElems))
+SDEALLOCATE(mapDGElemsToAllElems)
+ALLOCATE(mapDGElemsToAllElems(nElems))
 DO iElem=1,nElems
-  mapElems_DG(iElem) = iElem
+  mapDGElemsToAllElems(iElem) = iElem
 END DO
 CALL BuildVisuCoords()
-DEALLOCATE(mapElems_DG)
+DEALLOCATE(mapDGElemsToAllElems)
 
 ! write to VTK array
 CALL WriteCoordsToVTK_array(NVisu,nElems,coordsDG_out,nodeidsDG_out,CoordsVisu_DG,nodeids_DG,dim=3,DGFV=0)

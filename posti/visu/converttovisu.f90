@@ -89,9 +89,9 @@ CALL GetVandermonde(PP_N,NodeType,NVisu,NodeTypeVisuPosti,Vdm_N_NVisu,modal=.FAL
 SDEALLOCATE(UVisu_DG)
 ALLOCATE(UVisu_DG(0:NVisu,0:NVisu,0:NVisu,nElems_DG,nVarVisuTotal))
 DO iVar=1,nVarDep
-  IF (mapVisu(iVar).GT.0) THEN
-    iVarCalc = mapCalc(iVar) 
-    iVarVisu = mapVisu(iVar) 
+  IF (mapTotalToVisu(iVar).GT.0) THEN
+    iVarCalc = mapDepToCalc(iVar) 
+    iVarVisu = mapTotalToVisu(iVar) 
     DO iElem = 1,nElems_DG
       CALL ChangeBasis3D(PP_N,NVisu,Vdm_N_NVisu,UCalc_DG(:,:,:,iElem,iVarCalc),UVisu_DG(:,:,:,iElem,iVarVisu))
     END DO
@@ -122,9 +122,9 @@ CALL GetVandermonde(PP_N,NodeType,NVisu,NodeTypeVisuPosti,Vdm_N_NVisu,modal=.FAL
 SDEALLOCATE(USurfVisu_DG)
 ALLOCATE(USurfVisu_DG(0:NVisu,0:NVisu,0:0,nBCSidesVisu_DG,nVarSurfVisuTotal))
 DO iVar=1,nVarDep
-  IF (mapSurfVisu(iVar).GT.0) THEN
-    iVarCalc = mapCalc(iVar) 
-    iVarVisu = mapSurfVisu(iVar) 
+  IF (mapTotalToSurfVisu(iVar).GT.0) THEN
+    iVarCalc = mapDepToCalc(iVar) 
+    iVarVisu = mapTotalToSurfVisu(iVar) 
     DO iSide = 1,nBCSidesVisu_DG
       CALL ChangeBasis2D(PP_N,NVisu,Vdm_N_NVisu,USurfCalc_DG(:,:,iSide,iVarCalc),USurfVisu_DG(:,:,0,iSide,iVarVisu))
     END DO 
@@ -140,8 +140,8 @@ END SUBROUTINE ConvertToSurfVisu_DG
 SUBROUTINE ConvertToVisu_FV()
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Posti_Vars         ,ONLY: nVarDep,VarNamesTotal,mapCalc_FV
-USE MOD_Posti_Vars         ,ONLY: mapVisu,UVisu_FV,nElems_FV,UCalc_FV
+USE MOD_Posti_Vars         ,ONLY: nVarDep,VarNamesTotal,mapDepToCalc_FV
+USE MOD_Posti_Vars         ,ONLY: mapTotalToVisu,UVisu_FV,nElems_FV,UCalc_FV
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -155,10 +155,10 @@ INTEGER            :: iVarVisu,iVarCalc
 SWRITE(*,*) "[FV/FVRE] convert to visu grid"
 ! compute UVisu_FV
 DO iVar=1,nVarDep
-  iVarVisu = mapVisu(iVar) 
+  iVarVisu = mapTotalToVisu(iVar) 
   IF (iVarVisu.GT.0) THEN
     SWRITE(*,*) "    ", TRIM(VarNamesTotal(iVar))
-    iVarCalc = mapCalc_FV(iVar) 
+    iVarCalc = mapDepToCalc_FV(iVar) 
     DO iElem = 1,nElems_FV
 #if FV_RECONSTRUCT
       UVisu_FV(:,:,:,:,iVarVisu) = UCalc_FV(:,:,:,:,iVarCalc)
@@ -179,8 +179,8 @@ END SUBROUTINE ConvertToVisu_FV
 SUBROUTINE ConvertToSurfVisu_FV()
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Posti_Vars         ,ONLY: nVarDep,VarNamesTotal,mapCalc_FV
-USE MOD_Posti_Vars         ,ONLY: mapSurfVisu,USurfVisu_FV,USurfCalc_FV
+USE MOD_Posti_Vars         ,ONLY: nVarDep,VarNamesTotal,mapDepToCalc_FV
+USE MOD_Posti_Vars         ,ONLY: mapTotalToSurfVisu,USurfVisu_FV,USurfCalc_FV
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -190,10 +190,10 @@ INTEGER            :: iVar,iVarVisu
 SWRITE(*,*) "[FV/FVRE] convert to surface visu grid"
 ! compute UVisu_FV
 DO iVar=1,nVarDep
-  iVarVisu = mapSurfVisu(iVar) 
+  iVarVisu = mapTotalToSurfVisu(iVar) 
   IF (iVarVisu.GT.0) THEN
     SWRITE(*,*) "    ", TRIM(VarNamesTotal(iVar))
-    USurfVisu_FV(:,:,0,:,iVarVisu) = USurfCalc_FV(:,:,:,mapCalc_FV(iVar))
+    USurfVisu_FV(:,:,0,:,iVarVisu) = USurfCalc_FV(:,:,:,mapDepToCalc_FV(iVar))
   END IF
 END DO 
 
@@ -250,10 +250,10 @@ maskPrim = GetMaskPrim()
 DO iVar=1,nVarDep
   IF (maskPrim(iVar).GT.0) THEN
     iVarPrim = iVarPrim + 1
-    IF (mapCalc_FV(iVar).GT.0) THEN
+    IF (mapDepToCalc_FV(iVar).GT.0) THEN
       nVarPrim = nVarPrim + 1
       mapUPrim(nVarPrim) = iVarPrim
-      mapUCalc(nVarPrim) = mapCalc_FV(iVar)
+      mapUCalc(nVarPrim) = mapDepToCalc_FV(iVar)
     END IF
   END IF
 END DO
@@ -263,7 +263,7 @@ SWRITE(*,*) "  mapUCalc", mapUCalc(1:nVarPrim)
 
 
 DO iElem_FV=1,nElems_FV
-  iElem = mapElems_FV(iElem_FV)  
+  iElem = mapFVElemsToAllElems(iElem_FV)  
   DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
     DO iVar=1,nVarPrim
       iVarPrim = mapUPrim(iVar)
@@ -307,7 +307,7 @@ END DO ! iElem_FV
 #if PARABOLIC
 IF (PRESENT(gradUx_calc).AND.PRESENT(gradUy_calc).AND.PRESENT(gradUz_calc)) THEN
   DO iElem_FV=1,nElems_FV
-    iElem = mapElems_FV(iElem_FV)
+    iElem = mapFVElemsToAllElems(iElem_FV)
     DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
       DO iVar=1,PP_nVarPrim
          gradUx_calc(iVar,i*2:i*2+1, j*2:j*2+1, k*2:k*2+1, iElem_FV) = gradUx(iVar,i,j,k,iElem)
@@ -370,7 +370,7 @@ DataSetOld = ''  ! Used to decide if arrays and Vandermonde matrix should be re-
 ! Loop over all generic variables that should be visualized - sorted after the dependant variables
 DO iVar=nVarDep+1,nVarTotal
   ! Check if this variable should be visualized
-  IF ((mapVisu(iVar)).GT.0) THEN
+  IF ((mapTotalToVisu(iVar)).GT.0) THEN
     ! The format of the generic data varnames is DATASETNAME:VARIABLENAME - split into DATASETNAME and VARIABLENAME
     CALL split_string(TRIM(VarNamesTotal(iVar)),':',substrings,substring_count)
     ! If we find more than one substring, the variable is additional data
@@ -445,35 +445,33 @@ DO iVar=nVarDep+1,nVarTotal
       END IF ! New dataset
 
       ! Get index of visu array that we should write to
-      iVarVisu= mapVisu(iVar)
+      iVarVisu= mapTotalToVisu(iVar)
       ! Convert the generic data to visu grid
       SELECT CASE(nDims)
       CASE(2) ! Elementwise data
         ! Simply write the elementwise data to all visu points
         DO iElem_DG=1,nElems_DG
-          iElem = mapElems_DG(iElem_DG)
+          iElem = mapDGElemsToAllElems(iElem_DG)
           UVisu_DG(:,:,:,iElem_DG,iVarVisu) = ElemData(iVarDataset,iElem)
         END DO
         DO iElem_FV=1,nElems_FV
-          iElem = mapElems_FV(iElem_FV)
+          iElem = mapFVElemsToAllElems(iElem_FV)
           UVisu_FV(:,:,:,iElem_FV,iVarVisu) = ElemData(iVarDataset,iElem)
         END DO
       CASE(5) ! Pointwise data
         ! Perform changebasis to visu grid
         DO iElem_DG=1,nElems_DG
-          iElem = mapElems_DG(iElem_DG)
-          CALL ChangeBasis3D(nSize-1,NVisu,Vdm_DG_Visu,FieldData(iVarDataset,:,:,:,iElem),&
-                                                    UVisu_DG(:,:,:,iElem_DG,iVarVisu))
+          iElem = mapDGElemsToAllElems(iElem_DG)
+          CALL ChangeBasis3D(nSize-1,NVisu,Vdm_DG_Visu,FieldData(iVarDataset,:,:,:,iElem),UVisu_DG(:,:,:,iElem_DG,iVarVisu))
         END DO
         DO iElem_FV=1,nElems_FV
-          iElem = mapElems_FV(iElem_FV)
-          CALL ChangeBasis3D(nSize-1,NVisu,Vdm_DG_Visu,FieldData(iVarDataset,:,:,:,iElem),&
-                                                       UVisu_FV(:,:,:,iElem_DG,iVarVisu))
+          iElem = mapFVElemsToAllElems(iElem_FV)
+          CALL ChangeBasis3D(nSize-1,NVisu_FV,Vdm_FV_Visu,FieldData(iVarDataset,:,:,:,iElem),UVisu_FV(:,:,:,iElem_FV,iVarVisu))
         END DO
       END SELECT
 
     END IF ! substring_count.GT.1
-  END IF ! mapVisu(iVar).GT.0
+  END IF ! mapTotalToVisu(iVar).GT.0
 
 END DO !iVar=1,
 

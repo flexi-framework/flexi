@@ -55,33 +55,33 @@ CONTAINS
 
 
 #if FV_ENABLED && FV_RECONSTRUCT
-SUBROUTINE AppendNeededPrims(mapCalc,mapCalc_FV,nVarCalc) 
+SUBROUTINE AppendNeededPrims(mapDepToCalc,mapDepToCalc_FV,nVarCalc) 
 !==================================================================================================================================
 ! MODULES
 USE MOD_EOS_Posti_Vars
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES 
-INTEGER,INTENT(IN)      :: mapCalc(nVarTotalEOS)
-INTEGER,INTENT(OUT)     :: mapCalc_FV(nVarTotalEOS)
+INTEGER,INTENT(IN)      :: mapDepToCalc(nVarDepEOS)
+INTEGER,INTENT(OUT)     :: mapDepToCalc_FV(nVarDepEOS)
 INTEGER,INTENT(OUT)     :: nVarCalc
 !---------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER           :: iVar
 !===================================================================================================================================
-mapCalc_FV = mapCalc
+mapDepToCalc_FV = mapDepToCalc
 DO iVar=1,PP_nVar
-  IF (mapCalc(iVar).GT.0) THEN
-    mapCalc_FV = MAX(mapCalc_FV, DepTablePrimToCons(iVar,1:nVarTotalEOS))
+  IF (mapDepToCalc(iVar).GT.0) THEN
+    mapDepToCalc_FV = MAX(mapDepToCalc_FV, DepTablePrimToCons(iVar,1:nVarDepEOS))
   END IF
 END DO
 
-! renumerate mapCalc_FV
+! renumerate mapDepToCalc_FV
 nVarCalc   = 0
-DO iVar=1,nVarTotalEOS
-  IF (mapCalc_FV(iVar).GT.0) THEN
+DO iVar=1,nVarDepEOS
+  IF (mapDepToCalc_FV(iVar).GT.0) THEN
     nVarCalc = nVarCalc + 1
-    mapCalc_FV(iVar) = nVarCalc
+    mapDepToCalc_FV(iVar) = nVarCalc
   END IF
 END DO
 END SUBROUTINE AppendNeededPrims
@@ -91,19 +91,19 @@ END SUBROUTINE AppendNeededPrims
 FUNCTION GetMaskCons() 
 !==================================================================================================================================
 ! MODULES
-USE MOD_EOS_Posti_Vars,ONLY: nVarTotalEOS,DepTableEOS,DepNames
+USE MOD_EOS_Posti_Vars,ONLY: nVarDepEOS,DepTableEOS,DepNames
 USE MOD_Equation_Vars ,ONLY: StrVarNames
 USE MOD_StringTools   ,ONLY: STRICMP
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES 
-INTEGER :: GetMaskCons(nVarTotalEOS)
+INTEGER :: GetMaskCons(nVarDepEOS)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER :: iVar,iVar2
 !===================================================================================================================================
 GetMaskCons = 0
-DO iVar=1,nVarTotalEOS
+DO iVar=1,nVarDepEOS
   DO iVar2=1,PP_nVar
     IF (STRICMP(StrVarNames(iVar2),DepNames(iVar))) THEN
       GetMaskCons(iVar) = 1
@@ -116,19 +116,19 @@ END FUNCTION GetMaskCons
 FUNCTION GetMaskPrim() 
 !==================================================================================================================================
 ! MODULES
-USE MOD_EOS_Posti_Vars,ONLY: nVarTotalEOS,DepTableEOS,DepNames
+USE MOD_EOS_Posti_Vars,ONLY: nVarDepEOS,DepTableEOS,DepNames
 USE MOD_Equation_Vars ,ONLY: StrVarNamesPrim
 USE MOD_StringTools   ,ONLY: STRICMP
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES 
-INTEGER :: GetMaskPrim(nVarTotalEOS)
+INTEGER :: GetMaskPrim(nVarDepEOS)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER :: iVar,iVar2
 !===================================================================================================================================
 GetMaskPrim = 0
-DO iVar=1,nVarTotalEOS
+DO iVar=1,nVarDepEOS
   DO iVar2=1,PP_nVarPrim
     IF (STRICMP(StrVarNamesPrim(iVar2),DepNames(iVar))) THEN
       GetMaskPrim(iVar) = 1
@@ -141,17 +141,17 @@ END FUNCTION GetMaskPrim
 FUNCTION GetMaskGrad()
 !==================================================================================================================================
 ! MODULES
-USE MOD_EOS_Posti_Vars,ONLY: nVarTotalEOS,DepTableEOS
+USE MOD_EOS_Posti_Vars,ONLY: nVarDepEOS,DepTableEOS
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
-INTEGER :: GetMaskGrad(nVarTotalEOS)
+INTEGER :: GetMaskGrad(nVarDepEOS)
 !===================================================================================================================================
 GetMaskGrad = DepTableEOS(:,0)
 END FUNCTION GetMaskGrad
 
 
-SUBROUTINE CalcQuantities(nVarCalc,nVal,iElems,mapCalc,UCalc,maskCalc,gradUx,gradUy,gradUz,&
+SUBROUTINE CalcQuantities(nVarCalc,nVal,iElems,mapDepToCalc,UCalc,maskCalc,gradUx,gradUy,gradUz,&
     NormVec,TangVec1,TangVec2)
 !==================================================================================================================================
 ! MODULES
@@ -163,8 +163,8 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)                                              :: nVarCalc
 INTEGER,INTENT(IN)                                              :: nVal(:)
 INTEGER,INTENT(IN)                                              :: iElems(:)
-INTEGER,INTENT(IN)                                              :: mapCalc(nVarTotalEOS)
-INTEGER,INTENT(IN)                                              :: maskCalc(nVarTotalEOS)
+INTEGER,INTENT(IN)                                              :: mapDepToCalc(nVarDepEOS)
+INTEGER,INTENT(IN)                                              :: maskCalc(nVarDepEOS)
 REAL,INTENT(OUT)                                                :: UCalc(PRODUCT(nVal),1:nVarCalc)
 REAL,DIMENSION(1:PP_nVarPrim,PRODUCT(nVal)),INTENT(IN),OPTIONAL :: gradUx,gradUy,gradUz
 REAL,DIMENSION(1:3,PRODUCT(nVal)),INTENT(IN),OPTIONAL           :: NormVec,TangVec1,TangVec2
@@ -177,23 +177,23 @@ INTEGER            :: iVar,iVarCalc
 withGradients=(PRESENT(gradUx).AND.PRESENT(gradUy).AND.PRESENT(gradUz))
 withVectors=(PRESENT(NormVec).AND.PRESENT(TangVec1).AND.PRESENT(TangVec2))
 
-DO iVar=1,nVarTotalEOS
-  iVarCalc = mapCalc(iVar)
+DO iVar=1,nVarDepEOS
+  iVarCalc = mapDepToCalc(iVar)
   IF (iVarCalc.GT.0 .AND. maskCalc(iVar).GT.0) THEN
     SWRITE(*,*) "  ",TRIM(DepNames(iVar))
     IF(withGradients)THEN
       IF(withVectors)THEN
-        CALL CalcDerivedQuantity(iVarCalc,DepNames(iVar),nVarCalc,nVal,iElems,mapCalc,UCalc,gradUx,gradUy,gradUz,&
+        CALL CalcDerivedQuantity(iVarCalc,DepNames(iVar),nVarCalc,nVal,iElems,mapDepToCalc,UCalc,gradUx,gradUy,gradUz,&
             NormVec,TangVec1,TangVec2)
       ELSE
-        CALL CalcDerivedQuantity(iVarCalc,DepNames(iVar),nVarCalc,nVal,iElems,mapCalc,UCalc,gradUx,gradUy,gradUz)
+        CALL CalcDerivedQuantity(iVarCalc,DepNames(iVar),nVarCalc,nVal,iElems,mapDepToCalc,UCalc,gradUx,gradUy,gradUz)
       END IF
     ELSE
       IF(withVectors)THEN
-        CALL CalcDerivedQuantity(iVarCalc,DepNames(iVar),nVarCalc,nVal,iElems,mapCalc,UCalc,&
+        CALL CalcDerivedQuantity(iVarCalc,DepNames(iVar),nVarCalc,nVal,iElems,mapDepToCalc,UCalc,&
             NormVec=NormVec,TangVec1=TangVec1,TangVec2=TangVec2)
       ELSE
-        CALL CalcDerivedQuantity(iVarCalc,DepNames(iVar),nVarCalc,nVal,iElems,mapCalc,UCalc)
+        CALL CalcDerivedQuantity(iVarCalc,DepNames(iVar),nVarCalc,nVal,iElems,mapDepToCalc,UCalc)
       END IF
     END IF
   END IF
@@ -201,7 +201,7 @@ END DO
 END SUBROUTINE CalcQuantities
 
 
-SUBROUTINE CalcDerivedQuantity(iVarCalc,DepName,nVarCalc,nVal,iElems,mapCalc,UCalc,gradUx,gradUy,gradUz, &
+SUBROUTINE CalcDerivedQuantity(iVarCalc,DepName,nVarCalc,nVal,iElems,mapDepToCalc,UCalc,gradUx,gradUy,gradUz, &
     NormVec,TangVec1,TangVec2)
 !==================================================================================================================================
 ! MODULES
@@ -217,7 +217,7 @@ CHARACTER(LEN=255),INTENT(IN)                                   :: DepName
 INTEGER,INTENT(IN)                                              :: nVarCalc
 INTEGER,INTENT(IN)                                              :: nVal(:)
 INTEGER,INTENT(IN)                                              :: iElems(:)
-INTEGER,INTENT(IN)                                              :: mapCalc(nVarTotalEOS)
+INTEGER,INTENT(IN)                                              :: mapDepToCalc(nVarDepEOS)
 REAL,INTENT(INOUT)                                              :: UCalc(PRODUCT(nVal),1:nVarCalc)
 REAL,DIMENSION(1:PP_nVarPrim,PRODUCT(nVal)),INTENT(IN),OPTIONAL :: gradUx,gradUy,gradUz
 REAL,DIMENSION(1:3,PRODUCT(nVal)),INTENT(IN),OPTIONAL           :: NormVec,TangVec1,TangVec2
@@ -251,25 +251,25 @@ withGradients=(PRESENT(gradUx).AND.PRESENT(gradUy).AND.PRESENT(gradUz))
 withVectors=(PRESENT(NormVec).AND.PRESENT(TangVec1).AND.PRESENT(TangVec2))
 
 ! Already retrieve mappings for conservatives, as theses are required for many quantities
-iDens = KEYVALUE(DepNames,mapCalc,"density"    )
-iMom1 = KEYVALUE(DepNames,mapCalc,'momentumx')
-iMom2 = KEYVALUE(DepNames,mapCalc,'momentumy')
-iMom3 = KEYVALUE(DepNames,mapCalc,'momentumz')
-iVel1 = KEYVALUE(DepNames,mapCalc,"velocityx"  )
-iVel2 = KEYVALUE(DepNames,mapCalc,"velocityy"  )
-iVel3 = KEYVALUE(DepNames,mapCalc,"velocityz"  )
-iPres = KEYVALUE(DepNames,mapCalc,"pressure"   )
-iEner = KEYVALUE(DepNames,mapCalc,'energystagnationdensity')
+iDens = KEYVALUE(DepNames,mapDepToCalc,"density"    )
+iMom1 = KEYVALUE(DepNames,mapDepToCalc,'momentumx')
+iMom2 = KEYVALUE(DepNames,mapDepToCalc,'momentumy')
+iMom3 = KEYVALUE(DepNames,mapDepToCalc,'momentumz')
+iVel1 = KEYVALUE(DepNames,mapDepToCalc,"velocityx"  )
+iVel2 = KEYVALUE(DepNames,mapDepToCalc,"velocityy"  )
+iVel3 = KEYVALUE(DepNames,mapDepToCalc,"velocityz"  )
+iPres = KEYVALUE(DepNames,mapDepToCalc,"pressure"   )
+iEner = KEYVALUE(DepNames,mapDepToCalc,'energystagnationdensity')
 #if PARABOLIC
-iVorM = KEYVALUE(DepNames,mapCalc,"vorticitymagnitude")
+iVorM = KEYVALUE(DepNames,mapDepToCalc,"vorticitymagnitude")
 #endif
-iVelM = KEYVALUE(DepNames,mapCalc,"velocitymagnitude")
-iTemp = KEYVALUE(DepNames,mapCalc,"temperature")
-iVelS = KEYVALUE(DepNames,mapCalc,"velocitysound"    )
-iEnst = KEYVALUE(DepNames,mapCalc,"energystagnation")
-iWFriX = KEYVALUE(DepNames,mapCalc,"wallfrictionx")
-iWFriY = KEYVALUE(DepNames,mapCalc,"wallfrictiony")
-iWFriZ = KEYVALUE(DepNames,mapCalc,"wallfrictionz")
+iVelM = KEYVALUE(DepNames,mapDepToCalc,"velocitymagnitude")
+iTemp = KEYVALUE(DepNames,mapDepToCalc,"temperature")
+iVelS = KEYVALUE(DepNames,mapDepToCalc,"velocitysound"    )
+iEnst = KEYVALUE(DepNames,mapDepToCalc,"energystagnation")
+iWFriX = KEYVALUE(DepNames,mapDepToCalc,"wallfrictionx")
+iWFriY = KEYVALUE(DepNames,mapDepToCalc,"wallfrictiony")
+iWFriZ = KEYVALUE(DepNames,mapDepToCalc,"wallfrictionz")
 
 CALL LowCase(DepName,DepName_low)
 SELECT CASE(DepName_low)

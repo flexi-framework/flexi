@@ -62,7 +62,6 @@ CHARACTER(LEN=255),ALLOCATABLE,TARGET :: VarNamesHDF5(:)     ! varnames of solut
 ! EOS related or raw data
 INTEGER                           :: nVarTotal               ! total number of possible visu variables
 INTEGER                           :: nVarDep                 ! 
-INTEGER                           :: nVarRaw                 !
 INTEGER                           :: nVarVisuTotal
 INTEGER                           :: nVarVisuDep
 INTEGER                           :: nVarVisuRaw
@@ -79,19 +78,19 @@ INTEGER,ALLOCATABLE,TARGET        :: nodeids_FV(:)           ! visu nodeids
 REAL(C_DOUBLE),ALLOCATABLE,TARGET :: CoordsVisu_FV(:,:,:,:,:)! visu coordinates
 REAL(C_DOUBLE),ALLOCATABLE,TARGET :: UVisu_FV(:,:,:,:,:)     ! state at visu points
 INTEGER                           :: nVarCalc
-INTEGER,ALLOCATABLE               :: mapCalc(:)
+INTEGER,ALLOCATABLE               :: mapDepToCalc(:)
 #if FV_ENABLED && FV_RECONSTRUCT
 INTEGER                           :: nVarCalc_FV
-INTEGER,ALLOCATABLE               :: mapCalc_FV(:)
+INTEGER,ALLOCATABLE               :: mapDepToCalc_FV(:)
 #endif
-INTEGER,ALLOCATABLE               :: mapVisu(:)
-INTEGER,ALLOCATABLE               :: mapSurfVisu(:)
-INTEGER,ALLOCATABLE               :: mapSurfVisu_old(:)
+INTEGER,ALLOCATABLE               :: mapTotalToVisu(:)
+INTEGER,ALLOCATABLE               :: mapTotalToSurfVisu(:)
+INTEGER,ALLOCATABLE               :: mapTotalToSurfVisu_old(:)
 REAL,ALLOCATABLE                  :: UCalc_DG(:,:,:,:,:)
 REAL,ALLOCATABLE                  :: UCalc_FV(:,:,:,:,:)
 
-INTEGER,ALLOCATABLE               :: mapElems_DG(:)
-INTEGER,ALLOCATABLE               :: mapElems_FV(:)
+INTEGER,ALLOCATABLE               :: mapDGElemsToAllElems(:)
+INTEGER,ALLOCATABLE               :: mapFVElemsToAllElems(:)
 
 INTEGER,ALLOCATABLE               :: FV_Elems_loc(:)
 INTEGER,ALLOCATABLE               :: FV_Elems_old(:)
@@ -108,18 +107,18 @@ LOGICAL                           :: PostiInitIsDone
 
 INTEGER                           :: nBCNamesTotal
 INTEGER                           :: nBCNamesVisu
-INTEGER,ALLOCATABLE               :: mapBCNames(:)
-INTEGER,ALLOCATABLE               :: mapBCNames_old(:)
+INTEGER,ALLOCATABLE               :: mapAllBCNamesToVisuBCNames(:)
+INTEGER,ALLOCATABLE               :: mapAllBCNamesToVisuBCNames_old(:)
 CHARACTER(LEN=255),ALLOCATABLE,TARGET :: BoundaryNamesTotal(:)
 REAL,ALLOCATABLE                  :: USurfCalc_DG(:,:,:,:)
 REAL,ALLOCATABLE                  :: USurfCalc_FV(:,:,:,:)
 
 INTEGER                           :: nVarSurfVisuTotal
 INTEGER                           :: nBCSidesVisu_DG
-INTEGER,ALLOCATABLE               :: mapBCSides_DG(:)
+INTEGER,ALLOCATABLE               :: mapAllBCSidesToDGBCSides(:)
 INTEGER,ALLOCATABLE               :: nSidesPerBCNameVisu_DG(:)
 INTEGER                           :: nBCSidesVisu_FV
-INTEGER,ALLOCATABLE               :: mapBCSides_FV(:)
+INTEGER,ALLOCATABLE               :: mapAllBCSidesToFVBCSides(:)
 INTEGER,ALLOCATABLE               :: nSidesPerBCNameVisu_FV(:)
 INTEGER,ALLOCATABLE,TARGET        :: nodeidsSurf_DG(:)            ! visu nodeids
 REAL(C_DOUBLE),ALLOCATABLE,TARGET :: USurfVisu_DG(     :,:,:,:,:) ! state at visu points

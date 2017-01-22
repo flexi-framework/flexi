@@ -169,7 +169,7 @@ IF (VisuDimension.EQ.3) THEN
   CALL WriteCoordsToVTK_array(NVisu_FV,nElems_FV,coordsFV_out,nodeidsFV_out,&
       CoordsVisu_FV,nodeids_FV,dim=3,DGFV=1)
 
-  CALL WriteVarnamesToVTK_array(nVarTotal,mapVisu,varnames_out,VarNamesTotal,nVarVisuTotal)
+  CALL WriteVarnamesToVTK_array(nVarTotal,mapTotalToVisu,varnames_out,VarNamesTotal,nVarVisuTotal)
 
   ! Surface
   CALL WriteDataToVTK_array(nVarSurfVisuTotal,NVisu   ,nBCSidesVisu_DG,valuesSurfDG_out,USurfVisu_DG,2)
@@ -180,7 +180,7 @@ IF (VisuDimension.EQ.3) THEN
   CALL WriteCoordsToVTK_array(NVisu_FV,nBCSidesVisu_FV,coordsSurfFV_out,nodeidsSurfFV_out,&
       CoordsSurfVisu_FV,nodeidsSurf_FV,dim=2,DGFV=1)
 
-  CALL WriteVarnamesToVTK_array(nVarTotal,mapSurfVisu,varnamesSurf_out,VarNamesTotal,nVarSurfVisuTotal)
+  CALL WriteVarnamesToVTK_array(nVarTotal,mapTotalToSurfVisu,varnamesSurf_out,VarNamesTotal,nVarSurfVisuTotal)
 ELSE IF (VisuDimension.EQ.2) THEN
   STOP 'implement avg2d'
 
@@ -216,7 +216,7 @@ ELSE IF (VisuDimension.EQ.2) THEN
   CALL WriteCoordsToVTK_array(NVisu_FV,nElems_FV,coordsFV_out,nodeidsFV_out,&
       CoordsVisu_FV_2D,nodeids_FV_2D,dim=2,DGFV=1)
 
-  CALL WriteVarnamesToVTK_array(nVarTotal,mapVisu,varnames_out,VarNamesTotal,nVarVisuTotal)
+  CALL WriteVarnamesToVTK_array(nVarTotal,mapTotalToVisu,varnames_out,VarNamesTotal,nVarVisuTotal)
 END IF
 
 END SUBROUTINE visu3D_CWrapper
