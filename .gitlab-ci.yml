@@ -57,7 +57,7 @@ run_gnu_convtest:
   tags:
     - withmodules
   script:
-    - module load env/gnu ; cd build_gnu/bin/ ; ./regressioncheck run feature_convtest
+    - if [ -n "${DO_NIGHTLY}" ]; then module load env/gnu ; cd build_gnu/bin/ ; ./regressioncheck build feature_convtest 2; fi
 
 run_gnu_build_mpi:
   stage: test
@@ -93,7 +93,7 @@ run_intel_convtest:
   tags:
     - withmodules
   script:
-    - module load env/intel ; cd build_intel/bin/ ; ./regressioncheck run feature_convtest
+    - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel/bin/ ; ./regressioncheck build feature_convtest 2; fi
 
 run_intel_build_mpi:
   stage: test
