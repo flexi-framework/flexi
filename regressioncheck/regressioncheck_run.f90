@@ -924,65 +924,68 @@ INTEGER                        :: iSTATUS,ioUnit
 !==================================================================================================================================
 SELECT CASE(MODE)
   CASE(0) ! MODE=0: INITIAL -> delete pre-existing files and folders
-  ! delete "std_files_*" folder
-  SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm std_files_* -r > /dev/null 2>&1'
-  CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
-CASE(1) ! delete pre-existing files before computation
-  ! delete pre-existing data files before running the code 
-  ! 1.) Files created during simulation which are needed by, e.g., "IntegrateLine" comparison
-  IF(Examples(iExample)%IntegrateLine)THEN
-    SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm '//TRIM(Examples(iExample)%IntegrateLineFile)//' > /dev/null 2>&1'
-    CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS) ! delete, e.g., "TGVAnalysis.dat" or "Database.csv"
-  END IF
-CASE(2) ! delete existing files after computation
-  ! delete all *.out files
-  SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm *.out > /dev/null 2>&1'
-  CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
-  IF(iSTATUS.NE.0)THEN
-    SWRITE(UNIT_stdOut,'(A)')' CleanFolder(',Examples(iExample)%PATH,'): Could not remove *.out files!'
-  END IF
-  ! delete all *State* files except *reference* state files
-  IF((Examples(iExample)%ReferenceStateFile.EQ.'').AND. &
-     (Examples(iExample)%RestartFileName.EQ.'') ) THEN
-    SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm *State* > /dev/null 2>&1'
+    ! delete "std_files_*" folder
+    SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm std_files_* -r > /dev/null 2>&1'
+    CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
+  CASE(1) ! delete pre-existing files before computation
+    ! delete pre-existing data files before running the code 
+    ! 1.) Files created during simulation which are needed by, e.g., "IntegrateLine" comparison
+    IF(Examples(iExample)%IntegrateLine)THEN
+      SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm '//TRIM(Examples(iExample)%IntegrateLineFile)//' > /dev/null 2>&1'
+      CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS) ! delete, e.g., "TGVAnalysis.dat" or "Database.csv"
+    END IF
+  CASE(2) ! delete existing files after computation
+    ! delete all *.out files
+    SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm *.out > /dev/null 2>&1'
     CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
     IF(iSTATUS.NE.0)THEN
-      SWRITE(UNIT_stdOut,'(A)')' CleanFolder(',Examples(iExample)%PATH,'): Could not remove *State* files!'
+      SWRITE(UNIT_stdOut,'(A)')' CleanFolder(',Examples(iExample)%PATH,'): Could not remove *.out files!'
     END IF
-  ELSE
-    ! create list of all *State* files and loop them: don't delete *reference* files
-    SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && ls *State* > tmp.txt'
-    CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
-    IF(iSTATUS.NE.0)THEN
-      SWRITE(UNIT_stdOut,'(A)')' CleanFolder(',Examples(iExample)%PATH,'): Could not remove tmp.txt!'
-    END IF
-    ! read tmp.txt | list of directories if regressioncheck/examples
-    FileName=TRIM(Examples(iExample)%PATH)//'tmp.txt'
-    ioUnit=GETFREEUNIT()
-    OPEN(UNIT = ioUnit, FILE = FileName, STATUS ="OLD", IOSTAT = iSTATUS ) 
-    DO 
-      READ(ioUnit,FMT='(A)',IOSTAT=iSTATUS) tmp
-      IF (iSTATUS.NE.0) EXIT
-      IF((Examples(iExample)%ReferenceStateFile.NE.TRIM(tmp)).AND. &
-         (Examples(iExample)%RestartFileName.NE.TRIM(tmp)) ) THEN
-         SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm '//TRIM(tmp)
-         CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
-         IF(iSTATUS.NE.0) THEN
-           SWRITE(UNIT_stdOut,'(A)')  ' CleanFolder(',Examples(iExample)%PATH,'): Could not remove state file ',TRIM(tmp)
-         END IF
+    ! delete all *State* files except *reference* state files
+    IF((Examples(iExample)%ReferenceStateFile.EQ.'').AND. &
+       (Examples(iExample)%RestartFileName.EQ.'') ) THEN
+      SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm *State* > /dev/null 2>&1'
+      CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
+      IF(iSTATUS.NE.0)THEN
+        SWRITE(UNIT_stdOut,'(A)')' CleanFolder(',Examples(iExample)%PATH,'): Could not remove *State* files!'
       END IF
-    END DO
-    CLOSE(ioUnit)
-    ! clean tmp.txt
-    SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm tmp.txt'
-    CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
-    IF(iSTATUS.NE.0) THEN
-      SWRITE(UNIT_stdOut,'(A)')  ' CleanFolder(',Examples(iExample)%PATH,'): Could not remove tmp.txt'
+    ELSE
+      ! create list of all *State* files and loop them: don't delete *reference* files
+      SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && ls *State* > tmp.txt'
+      CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
+      IF(iSTATUS.NE.0)THEN
+        SWRITE(UNIT_stdOut,'(A)')' CleanFolder(',Examples(iExample)%PATH,'): Could not remove tmp.txt!'
+      END IF
+      ! read tmp.txt | list of directories if regressioncheck/examples
+      FileName=TRIM(Examples(iExample)%PATH)//'tmp.txt'
+      ioUnit=GETFREEUNIT()
+      OPEN(UNIT = ioUnit, FILE = FileName, STATUS ="OLD", IOSTAT = iSTATUS ) 
+      DO 
+        READ(ioUnit,FMT='(A)',IOSTAT=iSTATUS) tmp
+        IF (iSTATUS.NE.0) EXIT
+        IF((Examples(iExample)%ReferenceStateFile.NE.TRIM(tmp)).AND. & ! skip ReferenceStateFile and RestartFileName
+           (Examples(iExample)%RestartFileName.NE.TRIM(tmp)) ) THEN
+           SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm '//TRIM(tmp)
+           CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
+           IF(iSTATUS.NE.0) THEN
+             SWRITE(UNIT_stdOut,'(A)')  ' CleanFolder(',Examples(iExample)%PATH,'): Could not remove state file ',TRIM(tmp)
+           END IF
+        END IF
+      END DO
+      CLOSE(ioUnit)
+      ! clean tmp.txt
+      SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm tmp.txt'
+      CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
+      IF(iSTATUS.NE.0) THEN
+        SWRITE(UNIT_stdOut,'(A)')  ' CleanFolder(',Examples(iExample)%PATH,'): Could not remove tmp.txt'
+      END IF
     END IF
-  END IF
-CASE DEFAULT
-  SWRITE(UNIT_stdOut,'(A,I3,A)') ' SUBROUTINE CleanFolder: MODE=',MODE,' does not exist!'
-  ERROR STOP '-1'
+    ! delete "userblock.tmp"
+    SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm userblock.tmp > /dev/null 2>&1'
+    CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
+  CASE DEFAULT
+    SWRITE(UNIT_stdOut,'(A,I3,A)') ' SUBROUTINE CleanFolder: MODE=',MODE,' does not exist!'
+    ERROR STOP '-1'
 END SELECT
 
 END SUBROUTINE CleanFolder
@@ -1010,12 +1013,14 @@ CHARACTER(LEN=*),INTENT(INOUT) :: MPIthreadsStr
 LOGICAL,INTENT(OUT)            :: SkipComparison
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER                        :: ComputationSTATUS                 !> simulation successful/failed
 INTEGER                        :: iSTATUS                           !> status
 CHARACTER(LEN=1000)            :: SYSCOMMAND                        !> string to fit the system command
-CHARACTER(LEN=255)             :: FileSuffix,FolderSuffix,tempStr,StdOutFolderName
-INTEGER                        :: MPIthreadsInteger,PolynomialDegree,MPIthreads
+CHARACTER(LEN=255)             :: FileSuffix,FolderSuffix,tempStr,FileOutFolderName,StdOutFileName,ErrOutFileName
+INTEGER                        :: MPIthreadsInteger,PolynomialDegree!,MPIthreads
 !===================================================================================================================================
 SkipComparison=.FALSE.
+MPIthreadsInteger=1 ! default: single run
 ! -----------------------------------------------------------------------------------------------------------------------
 ! Run the Code
 ! -----------------------------------------------------------------------------------------------------------------------
@@ -1051,48 +1056,51 @@ ELSE ! single run
            TRIM(parameter_ini)//' '//TRIM(parameter_ini2)//' '//TRIM(Examples(iExample)%RestartFileName)//' 1>std.out 2>err.out'
 END IF
 GlobalRunNumber=GlobalRunNumber+1
-CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS) ! run the code
+CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=ComputationSTATUS) ! run the code
+! -----------------------------------------------------------------------------------------------------------------------
+! copy the std.out and err.out files to sub folder (std_filed_.....)
+! -----------------------------------------------------------------------------------------------------------------------
+IF(Examples(iExample)%SubExample.EQ.'N')THEN ! when polynomial degree "N" is the SubExample, set special file name
+  CALL str2int(Examples(iExample)%SubExampleOption(iSubExample),PolynomialDegree,iSTATUS)
+  WRITE(FileSuffix, '(A10,I8.8,A2,I4.4,A5,I4.4)') 'MPIthreads',MPIthreadsInteger,'_N',PolynomialDegree,'_iRun',iRun
+  WRITE(FolderSuffix,'(A2,I4.4)')'_N',PolynomialDegree
+ELSE
+  IF(Examples(iExample)%MPIrun)THEN
+    WRITE(FileSuffix, '(A10,I8.8,A6,I4.4,A5,I4.4)') 'MPIthreads',MPIthreadsInteger,'_SubEx',iSubExample,'_iRun',iRun
+  ELSE
+    WRITE(FileSuffix, '(I4.4,A6,I4.4,A5,I4.4)') iScaling,'_SubEx',iSubExample,'_iRun',iRun
+  END IF
+  WRITE(FolderSuffix,'(A6,I4.4)')'_SubEx',iSubExample
+END IF
+FileOutFolderName='std_files'//TRIM(FolderSuffix) ! folder for storing all std.out files
+StdOutFileName='std-'//TRIM(FileSuffix)//'.out'
+ErrOutFileName='err-'//TRIM(FileSuffix)//'.out'
+SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && cp std.out '//TRIM(StdOutFileName)
+CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS) ! copy the std.out file
+SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && cp err.out '//TRIM(ErrOutFileName)
+CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS) ! copy the err.out file
+
+SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && mkdir '//TRIM(FileOutFolderName)//' > /dev/null 2>&1'
+CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
+
+SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && mv '//TRIM(StdOutFileName)//' '//TRIM(FileOutFolderName)//'/'
+CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS) ! move new std.out file
+SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && mv '//TRIM(ErrOutFileName)//' '//TRIM(FileOutFolderName)//'/'
+CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS) ! move new err.out file
 ! -----------------------------------------------------------------------------------------------------------------------
 ! was the run successful? (iSTATUS=0)
 ! -----------------------------------------------------------------------------------------------------------------------
-IF(iSTATUS.EQ.0)THEN ! Computation successful
-  SWRITE(UNIT_stdOut,'(A)',ADVANCE='no')  ' successful computation ...'
-  CALL AddError(MPIthreadsStr,'successful computation',iExample,iSubExample,ErrorStatus=0,ErrorCode=0)
-  CALL str2int(Examples(iExample)%MPIthreadsStr(iScaling),MPIthreads,iSTATUS)
-  ! copy the std.out file
-  IF(Examples(iExample)%SubExample.EQ.'N')THEN ! when polynomial degree "N" is the SubExample, set special file name
-    CALL str2int(Examples(iExample)%SubExampleOption(iSubExample),PolynomialDegree,iSTATUS)
-    WRITE(FileSuffix, '(A10,I8.8,A2,I4.4,A5,I4.4)') 'MPIthreads',MPIthreadsInteger,'_N',PolynomialDegree,'_iRun',iRun
-    WRITE(FolderSuffix,'(A2,I4.4)')'_N',PolynomialDegree
-  ELSE
-    IF(Examples(iExample)%MPIrun)THEN
-      WRITE(FileSuffix, '(A10,I8.8,A6,I4.4,A5,I4.4)') 'MPIthreads',MPIthreadsInteger,'_SubEx',iSubExample,'_iRun',iRun
-    ELSE
-      WRITE(FileSuffix, '(I4.4,A6,I4.4,A5,I4.4)') iScaling,'_SubEx',iSubExample,'_iRun',iRun
-    END IF
-    WRITE(FolderSuffix,'(A6,I4.4)')'_SubEx',iSubExample
-  END IF
-  StdOutFolderName='std_files'//TRIM(FolderSuffix) ! folder for storing all std.out files
-  SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && cp std.out std-'//TRIM(FileSuffix)//'.out'
-  CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS) ! copy the std.out file
-  SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && mkdir '//TRIM(StdOutFolderName)//' > /dev/null 2>&1'
-  CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
-  SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && mv std-'//TRIM(FileSuffix)//'.out '//TRIM(StdOutFolderName)//'/'
-  CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
+IF(ComputationSTATUS.EQ.0)THEN ! Computation successful
+  SWRITE(UNIT_stdOut,'(A)',ADVANCE='no')  ' Successful Computation ...'
+  CALL AddError(MPIthreadsStr,'Successful Computation',iExample,iSubExample,ErrorStatus=0,ErrorCode=0)
 ELSE ! Computation failed
-  SWRITE(UNIT_stdOut,'(A)')   ' Computation of example failed'
-  SWRITE(UNIT_stdOut,'(A,A)') ' Out-file: ', TRIM(Examples(iExample)%PATH)//'std.out'
-  SWRITE(UNIT_stdOut,'(A,A)') ' Errorfile: ', TRIM(Examples(iExample)%PATH)//'err.out'
-  CALL AddError(MPIthreadsStr,'Error while executing',iExample,iSubExample,ErrorStatus=1,ErrorCode=2)
+  SWRITE(UNIT_stdOut,'(A)')   ' Failed Computation ...'
+  SWRITE(UNIT_stdOut,'(A,A)') ' Out-file : ', TRIM(Examples(iExample)%PATH)//TRIM(FileOutFolderName)//'/'//TRIM(StdOutFileName)
+  SWRITE(UNIT_stdOut,'(A,A)') ' Errorfile: ', TRIM(Examples(iExample)%PATH)//TRIM(FileOutFolderName)//'/'//TRIM(ErrOutFileName)
+  CALL AddError(MPIthreadsStr,'Failed Computation',iExample,iSubExample,ErrorStatus=1,ErrorCode=2)
   SkipComparison=.TRUE. ! when a computation fails no useful output is created for comparison, continue the subexample cycle
 END IF
 END SUBROUTINE RunTheCode
-
-
-
-
-
-
 
 
 
