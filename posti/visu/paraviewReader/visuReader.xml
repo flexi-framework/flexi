@@ -148,6 +148,8 @@
             </Documentation>
          </StringVectorProperty>
       <!-- ================================================================== -->
+         <OutputPort name="Volume" index="0"/>
+         <OutputPort name="Surface" index="1"/>
          <Hints>
             <ReaderFactory extensions="h5"
                file_description="2 Posti Visu" />

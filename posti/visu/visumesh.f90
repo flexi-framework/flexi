@@ -122,7 +122,7 @@ USE MOD_Posti_Vars         ,ONLY: NVisu
 #if FV_ENABLED
 USE MOD_Posti_Vars         ,ONLY: CoordsSurfVisu_FV,nBCSidesVisu_FV,mapAllBCSidesToFVVisuBCSides
 USE MOD_Posti_Vars         ,ONLY: NVisu_FV,hasFV_Elems
-USE MOD_Posti_Vars         ,ONLY: changedMeshFile,changedFV_Elems
+USE MOD_Posti_Vars         ,ONLY: changedMeshFile,changedFV_Elems,changedBCnames
 #endif
 USE MOD_Interpolation_Vars ,ONLY: NodeTypeVisu,NodeTypeFVEqui,NodeType
 USE MOD_Interpolation      ,ONLY: GetVandermonde
@@ -159,13 +159,15 @@ SDEALLOCATE(Vdm_N_NVisu)
 
 #if FV_ENABLED
 IF (hasFV_Elems) THEN
-  SWRITE (*,*) "[MESH] Convert coordinates to surface visu grid (FV)"
-  IF ((.NOT.changedMeshFile).AND.(.NOT.changedFV_Elems)) RETURN ! only NVisu changed, but NVisu_FV is independent of NVisu
+  SWRITE (*,*) "[MESH] Convert coordinates to surface visu grid (FV)", nBCSidesVisu_FV
+  IF ((.NOT.changedMeshFile).AND.(.NOT.changedFV_Elems).AND.(.NOT.changedBCnames)) RETURN 
   ALLOCATE(Vdm_N_NVisu_FV(0:NVisu_FV,0:Nloc))
   CALL GetVandermonde(Nloc,NodeType_loc,NVisu_FV,NodeTypeFVEqui,Vdm_N_NVisu_FV,modal=.FALSE.)
   ! convert coords of FV elements
   SDEALLOCATE(CoordsSurfVisu_FV)
   ALLOCATE(CoordsSurfVisu_FV(3,0:NVisu_FV,0:NVisu_FV,0:0,nBCSidesVisu_FV))
+  WRITE (*,*) LBOUND(CoordsSurfVisu_FV)
+  WRITE (*,*) UBOUND(CoordsSurfVisu_FV)
   DO iSide=1,nBCSides
     iSideVisu = mapAllBCSidesToFVVisuBCSides(iSide)
     IF (iSideVisu.GT.0)THEN

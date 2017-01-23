@@ -106,16 +106,20 @@ int visuReader::RequestInformation(vtkInformation *,
    }
 
    // get the info object of the output ports 
-   vtkSmartPointer<vtkInformation> outInfo = outputVector->GetInformationObject(0);
+   vtkSmartPointer<vtkInformation> outInfoVolume = outputVector->GetInformationObject(0);
+   vtkSmartPointer<vtkInformation> outInfoSurface = outputVector->GetInformationObject(1);
 
    // sets the number of pieces to the number of processsors
-   outInfo->Set(CAN_HANDLE_PIECE_REQUEST(), 1);
+   outInfoVolume->Set(CAN_HANDLE_PIECE_REQUEST(), 1);
+   outInfoSurface->Set(CAN_HANDLE_PIECE_REQUEST(), 1);
 
    // if we have more then one file loaded at once (timeseries)
    // we have to set the number and range of the timesteps
    double timeRange[2] = {Timesteps[0], Timesteps[Timesteps.size()-1]};
-   outInfo->Set(vtkStreamingDemandDrivenPipeline::TIME_STEPS(), &Timesteps[0], Timesteps.size());
-   outInfo->Set(vtkStreamingDemandDrivenPipeline::TIME_RANGE(), timeRange, 2);
+   outInfoVolume->Set (vtkStreamingDemandDrivenPipeline::TIME_STEPS(), &Timesteps[0], Timesteps.size());
+   outInfoSurface->Set(vtkStreamingDemandDrivenPipeline::TIME_STEPS(), &Timesteps[0], Timesteps.size());
+   outInfoVolume->Set (vtkStreamingDemandDrivenPipeline::TIME_RANGE(), timeRange, 2);
+   outInfoSurface->Set(vtkStreamingDemandDrivenPipeline::TIME_RANGE(), timeRange, 2);
 
    // Change to directory of state file (path of mesh file is stored relative to path of state file)
    char* dir = strdup(FileNames[0].c_str());
@@ -248,10 +252,17 @@ int visuReader::RequestData(
    // get the index of the timestep to load
    int timestepToLoad = 0;
    std::string FileToLoad;
-   vtkSmartPointer<vtkInformation> outInfo = outputVector->GetInformationObject(0);
-   if (outInfo->Has(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP())) {
+   vtkSmartPointer<vtkInformation> outInfoVolume = outputVector->GetInformationObject(0);
+   vtkSmartPointer<vtkInformation> outInfoSurface = outputVector->GetInformationObject(1);
+   if (outInfoVolume->Has(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP())) {
       // get the requested time
-      double requestedTimeValue = outInfo->Get(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP());
+      double requestedTimeValue = outInfoVolume->Get(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP());
+      timestepToLoad = FindClosestTimeStep(requestedTimeValue);
+      FileToLoad = FileNames[timestepToLoad];
+   }
+   if (outInfoSurface->Has(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP())) {
+      // get the requested time
+      double requestedTimeValue = outInfoSurface->Get(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP());
       timestepToLoad = FindClosestTimeStep(requestedTimeValue);
       FileToLoad = FileNames[timestepToLoad];
    }
@@ -344,7 +355,7 @@ int visuReader::RequestData(
 
 
    // get the MultiBlockDataset 
-   vtkMultiBlockDataSet* mb = vtkMultiBlockDataSet::SafeDownCast(outInfo->Get(vtkDataObject::DATA_OBJECT()));
+   vtkMultiBlockDataSet* mb = vtkMultiBlockDataSet::SafeDownCast(outInfoVolume->Get(vtkDataObject::DATA_OBJECT()));
    if (!mb) {
       std::cout << "DownCast to MultiBlockDataset Failed!" << std::endl;
       return 0;
@@ -368,9 +379,8 @@ int visuReader::RequestData(
 
 
 
-   vtkSmartPointer<vtkInformation> outInfoSurf = outputVector->GetInformationObject(1);
    // get the MultiBlockDataset 
-   mb = vtkMultiBlockDataSet::SafeDownCast(outInfoSurf->Get(vtkDataObject::DATA_OBJECT()));
+   mb = vtkMultiBlockDataSet::SafeDownCast(outInfoSurface->Get(vtkDataObject::DATA_OBJECT()));
    if (!mb) {
       std::cout << "DownCast to MultiBlockDataset Failed!" << std::endl;
       return 0;

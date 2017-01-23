@@ -501,11 +501,6 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
     CALL BuildSurfVisuCoords()
   END IF
 
-
-  !CALL Visu_Build_VTK(coordsDG_out,valuesDG_out,nodeidsDG_out, &
-                        !coordsFV_out,valuesFV_out,nodeidsFV_out, &
-                        !varnames_out,components_out)
-  
 END IF
 
 MeshFile_old          = MeshFile

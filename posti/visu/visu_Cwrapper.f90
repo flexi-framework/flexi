@@ -177,6 +177,8 @@ IF (VisuDimension.EQ.3) THEN
 
   CALL WriteCoordsToVTK_array(NVisu   ,nBCSidesVisu_DG,coordsSurfDG_out,nodeidsSurfDG_out,&
       CoordsSurfVisu_DG,nodeidsSurf_DG,dim=2,DGFV=0)
+  WRITE (*,*) LBOUND(CoordsSurfVisu_FV)
+  WRITE (*,*) UBOUND(CoordsSurfVisu_FV)
   CALL WriteCoordsToVTK_array(NVisu_FV,nBCSidesVisu_FV,coordsSurfFV_out,nodeidsSurfFV_out,&
       CoordsSurfVisu_FV,nodeidsSurf_FV,dim=2,DGFV=1)
 
