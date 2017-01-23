@@ -459,18 +459,22 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   IF (changedStateFile.OR.changedVarNames.OR.changedDGonly) THEN
     CALL CalcQuantities_DG()
   END IF
-  ! calc Surface DG solution 
-  IF (changedStateFile.OR.changedVarNames.OR.changedDGonly.OR.changedBCnames) THEN
-    CALL CalcSurfQuantities_DG()
+  IF (doSurfVisu) THEN
+    ! calc Surface DG solution 
+    IF (changedStateFile.OR.changedVarNames.OR.changedDGonly.OR.changedBCnames) THEN
+      CALL CalcSurfQuantities_DG()
+    END IF
   END IF
 
   ! convert DG solution to visu grid
   IF (changedStateFile.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly) THEN
     CALL ConvertToVisu_DG()
   END IF
-  ! convert Surface DG solution to visu grid
-  IF (changedStateFile.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedBCnames) THEN
-    CALL ConvertToSurfVisu_DG()
+  IF (doSurfVisu) THEN
+    ! convert Surface DG solution to visu grid
+    IF (changedStateFile.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedBCnames) THEN
+      CALL ConvertToSurfVisu_DG()
+    END IF
   END IF
 
 #if FV_ENABLED
@@ -480,9 +484,11 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
     CALL ConvertToVisu_FV()
   END IF
   ! calc FV solution and convert to visu grid
-  IF ((changedStateFile.OR.changedVarNames).AND.hasFV_Elems.OR.changedDGonly.OR.changedBCnames) THEN
-    CALL CalcSurfQuantities_FV()
-    CALL ConvertToSurfVisu_FV()
+  IF (doSurfVisu) THEN
+    IF ((changedStateFile.OR.changedVarNames).AND.hasFV_Elems.OR.changedDGonly.OR.changedBCnames) THEN
+      CALL CalcSurfQuantities_FV()
+      CALL ConvertToSurfVisu_FV()
+    END IF
   END IF
 #endif /* FV_ENABLED */
 
@@ -496,9 +502,11 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   IF (changedMeshFile.OR.changedNVisu.OR.changedFV_Elems.OR.changedDGonly) THEN
     CALL BuildVisuCoords()
   END IF
-  ! Convert surface coordinates to visu grid
-  IF (changedMeshFile.OR.changedNVisu.OR.changedFV_Elems.OR.changedDGonly.OR.changedBCnames) THEN
-    CALL BuildSurfVisuCoords()
+  IF (doSurfVisu) THEN
+    ! Convert surface coordinates to visu grid
+    IF (changedMeshFile.OR.changedNVisu.OR.changedFV_Elems.OR.changedDGonly.OR.changedBCnames) THEN
+      CALL BuildSurfVisuCoords()
+    END IF
   END IF
 
 END IF
@@ -547,6 +555,7 @@ SDEALLOCATE(mapAllVarsToSurfVisuVars)
 SDEALLOCATE(mapAllVarsToSurfVisuVars_old)
 SDEALLOCATE(UCalc_DG)
 SDEALLOCATE(UCalc_FV)
+SDEALLOCATE(FV_Elems_loc)
 
 SDEALLOCATE(mapDGElemsToAllElems)
 SDEALLOCATE(mapFVElemsToAllElems)

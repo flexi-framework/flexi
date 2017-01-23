@@ -477,97 +477,99 @@ DO iVar=nVarDep+1,nVarAll
       END SELECT
 
       !-------------------------------- Surface Visualization ---------------------! 
-      ! Get index of visu array that we should write to
-      iVarVisu= mapAllVarsToSurfVisuVars(iVar)
-      SELECT CASE(nDims)
-      CASE(2) ! Elementwise data
-        ! Simply write the elementwise data to all visu points on the surface
-        DO iElem_DG = 1,nElems_DG                         ! iterate over all DG visu elements
-          iElem = mapDGElemsToAllElems(iElem_DG)          ! get global element index
-          DO locSide=1,6 
-            iSide = ElemToSide(E2S_SIDE_ID,locSide,iElem) ! get global side index
-            IF (iSide.LE.nBCSides) THEN                   ! check if BC side
-              iSide_DG = mapAllBCSidesToDGVisuBCSides(iSide)  ! get DG visu side index
-              IF (iSide_DG.GT.0) THEN
-                USurfVisu_DG(:,:,0,iSide_DG,iVarVisu) = ElemData(iVarDataset,iElem)
-              END IF
-            END IF
-          END DO
-        END DO
-        DO iElem_FV = 1,nElems_FV                         ! iterate over all FV visu elements
-          iElem = mapFVElemsToAllElems(iElem_FV)          ! get global element index
-          DO locSide=1,6 
-            iSide = ElemToSide(E2S_SIDE_ID,locSide,iElem) ! get global side index
-            IF (iSide.LE.nBCSides) THEN                   ! check if BC side
-              iSide_FV = mapAllBCSidesToFVVisuBCSides(iSide)  ! get FV visu side index
-              IF (iSide_FV.GT.0) THEN
-                USurfVisu_FV(:,:,0,iSide_FV,iVarVisu) = ElemData(iVarDataset,iElem)
-              END IF
-            END IF
-          END DO
-        END DO
-      CASE(5) ! Pointwise data
-        ! If the dataset has changed, reallocate the mapping for rotation to the master side coordinate system
-        ! as well as the temporary face data arrays.
-        IF (datasetChanged) THEN
-          SDEALLOCATE(S2V2)
-          CALL buildMappings(nSize-1,S2V2=S2V2) ! Array gets allocated in this routine
-          SDEALLOCATE(Uface_tmp)
-          ALLOCATE(Uface_tmp(1,0:nSize-1,0:nSize-1))
-          SDEALLOCATE(Uface)
-          ALLOCATE(Uface(0:nSize-1,0:nSize-1))
-        END IF
-        ! Prolong the pointwise data to the visu face and perform change basis to visu grid
-        DO iElem_DG = 1,nElems_DG                         ! iterate over all DG visu elements
-          iElem = mapDGElemsToAllElems(iElem_DG)          ! get global element index
-          DO locSide=1,6 
-            iSide = ElemToSide(E2S_SIDE_ID,locSide,iElem) ! get global side index
-            IF (iSide.LE.nBCSides) THEN                   ! check if BC side
-              iSide_DG = mapAllBCSidesToDGVisuBCSides(iSide)  ! get DG visu side index
-              IF (iSide_DG.GT.0) THEN
-                IF(PP_NodeType.EQ.1)THEN                  ! prolong solution to face
-                  CALL EvalElemFace(1,nSize-1,FieldData(iVarDataset:iVarDataset,:,:,:,iElem),Uface_tmp(1:1,:,:),&
-                                    L_Minus,L_Plus,locSide)
-                ELSE
-                  CALL EvalElemFace(1,nSize-1,FieldData(iVarDataset:iVarDataset,:,:,:,iElem),Uface_tmp(1:1,:,:),locSide)
+      IF (doSurfVisu) THEN
+        ! Get index of visu array that we should write to
+        iVarVisu= mapAllVarsToSurfVisuVars(iVar)
+        SELECT CASE(nDims)
+        CASE(2) ! Elementwise data
+          ! Simply write the elementwise data to all visu points on the surface
+          DO iElem_DG = 1,nElems_DG                         ! iterate over all DG visu elements
+            iElem = mapDGElemsToAllElems(iElem_DG)          ! get global element index
+            DO locSide=1,6 
+              iSide = ElemToSide(E2S_SIDE_ID,locSide,iElem) ! get global side index
+              IF (iSide.LE.nBCSides) THEN                   ! check if BC side
+                iSide_DG = mapAllBCSidesToDGVisuBCSides(iSide)  ! get DG visu side index
+                IF (iSide_DG.GT.0) THEN
+                  USurfVisu_DG(:,:,0,iSide_DG,iVarVisu) = ElemData(iVarDataset,iElem)
                 END IF
-                ! Turn into master side coordinate system
-                DO q=0,nSize-1; DO p=0,nSize-1
-                  Uface(p,q)=Uface_tmp(1,S2V2(1,p,q,0,locSide),S2V2(2,p,q,0,locSide))
-                END DO; END DO
-                ! Change basis to visu grid
-                CALL ChangeBasis2D(nSize-1,NVisu,Vdm_DG_Visu,Uface(:,:),USurfVisu_DG(:,:,0,iSide_DG,iVarVisu))
               END IF
-            END IF
+            END DO
           END DO
-        END DO
-        ! For FV, we are visualizing on a grid with 2*(PP_N+1) points. This means, to visualize generic datasets on this grid
-        ! only makes sense if they are of polynomial degree PP_N! TODO: More general approach?
-        IF (nSize-1.NE.PP_N) THEN
-          SWRITE(*,*) "Can not convert variable ",TRIM(VariableName)," from dataset ", TRIM(DatasetName), "to FV visu grid",&
-                      "since size is not equal to PP_N!"
-          USurfVisu_FV(:,:,0,:,iVarVisu) = 0.
-        ELSE
           DO iElem_FV = 1,nElems_FV                         ! iterate over all FV visu elements
             iElem = mapFVElemsToAllElems(iElem_FV)          ! get global element index
             DO locSide=1,6 
               iSide = ElemToSide(E2S_SIDE_ID,locSide,iElem) ! get global side index
               IF (iSide.LE.nBCSides) THEN                   ! check if BC side
-                iSide_FV = mapAllBCSidesToFVVisuBCSides(iSide)  ! get DG visu side index
+                iSide_FV = mapAllBCSidesToFVVisuBCSides(iSide)  ! get FV visu side index
                 IF (iSide_FV.GT.0) THEN
-                  CALL EvalElemFace(1,nSize-1,FieldData(iVarDataset:iVarDataset,:,:,:,iElem),Uface_tmp(1:1,:,:),locSide)
-                  ! Turn into master side coordinate system
-                  DO q=0,PP_N; DO p=0,PP_N
-                    Uface(p,q)=Uface_tmp(1,S2V2(1,p,q,0,locSide),S2V2(2,p,q,0,locSide))
-                  END DO; END DO
-                  ! Change basis to visu grid
-                  CALL ChangeBasis2D(nSize-1,NVisu_FV,Vdm_FV_Visu,Uface(:,:),USurfVisu_FV(:,:,0,iSide_DG,iVarVisu))
+                  USurfVisu_FV(:,:,0,iSide_FV,iVarVisu) = ElemData(iVarDataset,iElem)
                 END IF
               END IF
             END DO
           END DO
-        END IF
-      END SELECT
+        CASE(5) ! Pointwise data
+          ! If the dataset has changed, reallocate the mapping for rotation to the master side coordinate system
+          ! as well as the temporary face data arrays.
+          IF (datasetChanged) THEN
+            SDEALLOCATE(S2V2)
+            CALL buildMappings(nSize-1,S2V2=S2V2) ! Array gets allocated in this routine
+            SDEALLOCATE(Uface_tmp)
+            ALLOCATE(Uface_tmp(1,0:nSize-1,0:nSize-1))
+            SDEALLOCATE(Uface)
+            ALLOCATE(Uface(0:nSize-1,0:nSize-1))
+          END IF
+          ! Prolong the pointwise data to the visu face and perform change basis to visu grid
+          DO iElem_DG = 1,nElems_DG                         ! iterate over all DG visu elements
+            iElem = mapDGElemsToAllElems(iElem_DG)          ! get global element index
+            DO locSide=1,6 
+              iSide = ElemToSide(E2S_SIDE_ID,locSide,iElem) ! get global side index
+              IF (iSide.LE.nBCSides) THEN                   ! check if BC side
+                iSide_DG = mapAllBCSidesToDGVisuBCSides(iSide)  ! get DG visu side index
+                IF (iSide_DG.GT.0) THEN
+                  IF(PP_NodeType.EQ.1)THEN                  ! prolong solution to face
+                    CALL EvalElemFace(1,nSize-1,FieldData(iVarDataset:iVarDataset,:,:,:,iElem),Uface_tmp(1:1,:,:),&
+                                      L_Minus,L_Plus,locSide)
+                  ELSE
+                    CALL EvalElemFace(1,nSize-1,FieldData(iVarDataset:iVarDataset,:,:,:,iElem),Uface_tmp(1:1,:,:),locSide)
+                  END IF
+                  ! Turn into master side coordinate system
+                  DO q=0,nSize-1; DO p=0,nSize-1
+                    Uface(p,q)=Uface_tmp(1,S2V2(1,p,q,0,locSide),S2V2(2,p,q,0,locSide))
+                  END DO; END DO
+                  ! Change basis to visu grid
+                  CALL ChangeBasis2D(nSize-1,NVisu,Vdm_DG_Visu,Uface(:,:),USurfVisu_DG(:,:,0,iSide_DG,iVarVisu))
+                END IF
+              END IF
+            END DO
+          END DO
+          ! For FV, we are visualizing on a grid with 2*(PP_N+1) points. This means, to visualize generic datasets on this grid
+          ! only makes sense if they are of polynomial degree PP_N! TODO: More general approach?
+          IF (nSize-1.NE.PP_N) THEN
+            SWRITE(*,*) "Can not convert variable ",TRIM(VariableName)," from dataset ", TRIM(DatasetName), "to FV visu grid",&
+                        "since size is not equal to PP_N!"
+            USurfVisu_FV(:,:,0,:,iVarVisu) = 0.
+          ELSE
+            DO iElem_FV = 1,nElems_FV                         ! iterate over all FV visu elements
+              iElem = mapFVElemsToAllElems(iElem_FV)          ! get global element index
+              DO locSide=1,6 
+                iSide = ElemToSide(E2S_SIDE_ID,locSide,iElem) ! get global side index
+                IF (iSide.LE.nBCSides) THEN                   ! check if BC side
+                  iSide_FV = mapAllBCSidesToFVVisuBCSides(iSide)  ! get DG visu side index
+                  IF (iSide_FV.GT.0) THEN
+                    CALL EvalElemFace(1,nSize-1,FieldData(iVarDataset:iVarDataset,:,:,:,iElem),Uface_tmp(1:1,:,:),locSide)
+                    ! Turn into master side coordinate system
+                    DO q=0,PP_N; DO p=0,PP_N
+                      Uface(p,q)=Uface_tmp(1,S2V2(1,p,q,0,locSide),S2V2(2,p,q,0,locSide))
+                    END DO; END DO
+                    ! Change basis to visu grid
+                    CALL ChangeBasis2D(nSize-1,NVisu_FV,Vdm_FV_Visu,Uface(:,:),USurfVisu_FV(:,:,0,iSide_DG,iVarVisu))
+                  END IF
+                END IF
+              END DO
+            END DO
+          END IF
+        END SELECT
+      END IF ! doSurfVisu
 
     END IF ! substring_count.GT.1
   END IF ! mapAllVarsToVisuVars(iVar).GT.0

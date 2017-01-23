@@ -232,6 +232,9 @@ USE MOD_HDF5_Input,          ONLY: OpenDataFile,ReadArray,CloseDataFile
 USE MOD_DG_Vars             ,ONLY: U
 USE MOD_EOS                 ,ONLY: DefineParametersEos,InitEOS
 USE MOD_Interpolation       ,ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
+#if FV_ENABLED
+USE MOD_FV_Basis            ,ONLY: InitFV_Basis,FinalizeFV_Basis
+#endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES 
@@ -240,10 +243,28 @@ CHARACTER(LEN=255),INTENT(IN):: statefile     !< HDF5 state file
 INTEGER,INTENT(IN),OPTIONAL  :: Nin           !< Polynomial degree used in InitInterpolation (OPTIONAL)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER           :: meshMode_loc
+LOGICAL           :: changedMeshMode
 !===================================================================================================================================
 CALL FinalizeInterpolation()
+
+! Check if any surface visualization should be done
+IF (doSurfVisu) THEN
+  ! If so, do full mesh init to get normal vectors etc.
+  meshMode_loc = 2
+#if FV_ENABLED
+  CALL FinalizeFV_Basis()
+#endif
+ELSE
+  ! Do minimal mesh init
+  meshMode_loc = 0
+END IF
+! check if the mesh mode has changed from the last time
+changedMeshMode = (meshMode_loc.NE.meshMode_old)
+
+
 #if USE_MPI
-IF (changedMeshFile) THEN
+IF ((changedMeshFile).OR.(changedMeshMode)) THEN
   CALL FinalizeMPI()
 END IF
 #endif
@@ -266,12 +287,20 @@ IF (PRESENT(NIn)) THEN
 ELSE
   CALL InitInterpolation()
 END IF
-IF (changedMeshFile) THEN
+
+#if FV_ENABLED
+! Also we need to call the FV basis init to allocate some arrays needed in mesh init
+IF (doSurfVisu) CALL InitFV_Basis()
+#endif
+
+! Call mesh init if the mesh file changed or we need a different mesh mode
+IF ((changedMeshFile).OR.(changedMeshMode)) THEN
   CALL FinalizeMesh()
-  ! TODO: if no SurfVisu, use meshMode=0
-  ! TODO: move build of Face_xGP to meshMode=1
-  CALL InitMesh(meshMode=2,MeshFile_IN=MeshFile)
+  CALL InitMesh(meshMode=meshMode_loc,MeshFile_IN=MeshFile)
 END IF
+
+! save old mesh mode for future comparison
+meshMode_old = meshMode_loc
 
 SDEALLOCATE(U)
 ALLOCATE(U(1:nVar_State,0:PP_N,0:PP_N,0:PP_N,nElems))
