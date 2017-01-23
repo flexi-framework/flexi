@@ -14,10 +14,10 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-!> Module containing the main procedures for the POSTI tool: visu3d_requestInformation is called by ParaView to create a
-!> list of available variables and visu3D is the main routine of POSTI.
+!> Module containing the main procedures for the POSTI tool: visu_requestInformation is called by ParaView to create a
+!> list of available variables and visu is the main routine of POSTI.
 !===================================================================================================================================
-MODULE MOD_Visu3D_Cwrapper
+MODULE MOD_Visu_Cwrapper
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -28,21 +28,21 @@ PRIVATE
 ! Private Part ---------------------------------------------------------------------------------------------------------------------
 ! Public Part ----------------------------------------------------------------------------------------------------------------------
 
-INTERFACE visu3d_requestInformation
-  MODULE PROCEDURE visu3d_requestInformation
+INTERFACE visu_requestInformation
+  MODULE PROCEDURE visu_requestInformation
 END INTERFACE
 
-INTERFACE visu3D_CWrapper
-  MODULE PROCEDURE visu3D_CWrapper
+INTERFACE visu_CWrapper
+  MODULE PROCEDURE visu_CWrapper
 END INTERFACE
 
-INTERFACE visu3d_dealloc_nodeids
-  MODULE PROCEDURE visu3d_dealloc_nodeids
+INTERFACE visu_dealloc_nodeids
+  MODULE PROCEDURE visu_dealloc_nodeids
 END INTERFACE
 
-PUBLIC:: visu3d_requestInformation
-PUBLIC:: visu3D_CWrapper
-PUBLIC:: visu3d_dealloc_nodeids
+PUBLIC:: visu_requestInformation
+PUBLIC:: visu_CWrapper
+PUBLIC:: visu_dealloc_nodeids
 
 CONTAINS
 
@@ -63,14 +63,14 @@ cstrToChar255(strlen+1:255) = ' '
 END FUNCTION cstrToChar255
 
 !===================================================================================================================================
-!> Wrapper to visu3D_InitFile for Paraview plugin
+!> Wrapper to visu_InitFile for Paraview plugin
 !===================================================================================================================================
-SUBROUTINE visu3d_requestInformation(mpi_comm_IN, strlen_state, statefile_IN, varnames, bcnames)
+SUBROUTINE visu_requestInformation(mpi_comm_IN, strlen_state, statefile_IN, varnames, bcnames)
 ! MODULES
 USE MOD_Globals
 USE MOD_MPI        ,ONLY: InitMPI
 USE MOD_Posti_Vars ,ONLY: VarNamesTotal,BCNamesAll
-USE MOD_Visu3D     ,ONLY: visu3d_getVarNamesAndFileType
+USE MOD_Visu       ,ONLY: visu_getVarNamesAndFileType
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -88,7 +88,7 @@ CHARACTER(LEN=255),POINTER            :: bcnames_pointer(:)
 statefile = cstrToChar255(statefile_IN, strlen_state)
 
 CALL InitMPI(mpi_comm_IN) 
-CALL visu3d_getVarNamesAndFileType(statefile,VarNamesTotal,BCNamesAll)
+CALL visu_getVarNamesAndFileType(statefile,VarNamesTotal,BCNamesAll)
 IF (ALLOCATED(VarNamesTotal)) THEN
   varnames_pointer => VarNamesTotal
   varnames%len  = SIZE(varnames_pointer)*255 
@@ -105,12 +105,12 @@ ELSE
   bcnames%len  = 0
   bcnames%data = C_NULL_PTR
 END IF
-END SUBROUTINE visu3d_requestInformation
+END SUBROUTINE visu_requestInformation
 
 !===================================================================================================================================
-!> C wrapper routine for the visu3D call from ParaView.
+!> C wrapper routine for the visu call from ParaView.
 !===================================================================================================================================
-SUBROUTINE visu3D_CWrapper(mpi_comm_IN, &
+SUBROUTINE visu_CWrapper(mpi_comm_IN, &
     strlen_prm, prmfile_IN, strlen_posti, postifile_IN, strlen_state, statefile_IN,&
     coordsDG_out,valuesDG_out,nodeidsDG_out, &
     coordsFV_out,valuesFV_out,nodeidsFV_out,varnames_out, &
@@ -119,7 +119,7 @@ SUBROUTINE visu3D_CWrapper(mpi_comm_IN, &
 USE ISO_C_BINDING
 USE MOD_Globals
 USE MOD_Posti_Vars
-USE MOD_Visu3D      ,ONLY: visu3D
+USE MOD_Visu        ,ONLY: visu
 USE MOD_VTK         ,ONLY: WriteCoordsToVTK_array,WriteDataToVTK_array,WriteVarnamesToVTK_array
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
@@ -153,7 +153,7 @@ CHARACTER(LEN=255)            :: statefile
 prmfile   = cstrToChar255(prmfile_IN,   strlen_prm)
 postifile = cstrToChar255(postifile_IN, strlen_posti)
 statefile = cstrToChar255(statefile_IN, strlen_state)
-CALL visu3D(mpi_comm_IN, prmfile, postifile, statefile)
+CALL visu(mpi_comm_IN, prmfile, postifile, statefile)
 
 ! Map Fortran arrays to C pointer
 
@@ -219,12 +219,12 @@ ELSE IF (VisuDimension.EQ.2) THEN
   CALL WriteVarnamesToVTK_array(nVarTotal,mapTotalToVisu,varnames_out,VarNamesTotal,nVarVisu)
 END IF
 
-END SUBROUTINE visu3D_CWrapper
+END SUBROUTINE visu_CWrapper
 
 !===================================================================================================================================
 !> Deallocate the different NodeID arrays.
 !===================================================================================================================================
-SUBROUTINE visu3d_dealloc_nodeids() 
+SUBROUTINE visu_dealloc_nodeids() 
 USE MOD_Posti_Vars
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
@@ -236,6 +236,6 @@ SDEALLOCATE(nodeids_DG)
 SDEALLOCATE(nodeids_FV)
 SDEALLOCATE(nodeids_DG_2D)
 SDEALLOCATE(nodeids_FV_2D)
-END SUBROUTINE visu3d_dealloc_nodeids
+END SUBROUTINE visu_dealloc_nodeids
 
-END MODULE MOD_Visu3D_Cwrapper
+END MODULE MOD_Visu_Cwrapper

@@ -14,8 +14,8 @@
 !=================================================================================================================================
 */
 
-#ifndef VISU3DREADER_H
-#define VISU3DREADER_H
+#ifndef VISUREADER_H
+#define VISUREADER_H
 
 #include <vtkUnstructuredGridAlgorithm.h>
 #include <cstring>
@@ -33,7 +33,7 @@
 
 #include "vtkStringArray.h"
 
-#include "../pluginTypes_visu3D.h"
+#include "../pluginTypes_visu.h"
 
 #include "vtkIOParallelModule.h" // For export macro
 #include "vtkMultiBlockDataSetAlgorithm.h"
@@ -42,12 +42,12 @@
 class vtkMultiProcessController;
 // MPI
 
-class VTKIOPARALLEL_EXPORT visu3DReader :  public vtkMultiBlockDataSetAlgorithm
+class VTKIOPARALLEL_EXPORT visuReader :  public vtkMultiBlockDataSetAlgorithm
 {
    public:
-      vtkTypeMacro(visu3DReader,vtkMultiBlockDataSetAlgorithm);
+      vtkTypeMacro(visuReader,vtkMultiBlockDataSetAlgorithm);
 
-      static visu3DReader *New();
+      static visuReader *New();
 
       // macros to set GUI changes to variables
       // gui interaction
@@ -142,8 +142,8 @@ class VTKIOPARALLEL_EXPORT visu3DReader :  public vtkMultiBlockDataSetAlgorithm
       vtkStringArray* GetNodeTypeVisuList();
 
    protected:
-      visu3DReader();
-      ~visu3DReader();
+      visuReader();
+      ~visuReader();
 
       virtual int FillOutputPortInformation(int port, vtkInformation* info);
    private:
@@ -152,4 +152,4 @@ class VTKIOPARALLEL_EXPORT visu3DReader :  public vtkMultiBlockDataSetAlgorithm
       MPI_Comm mpiComm;
 };
 
-#endif //VISU3DREADER_H
+#endif //VISUREADER_H

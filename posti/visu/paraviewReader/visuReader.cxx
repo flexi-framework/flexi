@@ -14,8 +14,8 @@
 !=================================================================================================================================
 */
 
-#include "visu3DReader.h"
-#include "../plugin_visu3D.h"
+#include "visuReader.h"
+#include "../plugin_visu.h"
 
 #include "hdf5.h"
 #include <vtkCellArray.h>
@@ -39,17 +39,17 @@
 
 // MPI
 #include "vtkMultiProcessController.h"
-vtkStandardNewMacro(visu3DReader);
-vtkCxxSetObjectMacro(visu3DReader, Controller, vtkMultiProcessController);
+vtkStandardNewMacro(visuReader);
+vtkCxxSetObjectMacro(visuReader, Controller, vtkMultiProcessController);
 
 #define SWRITE(x) {if (ProcessId == 0) std::cout << "@@@ " << this << " " << x << "\n";};
 
 /*
  * Construtor of State Reader
  */
-visu3DReader::visu3DReader()
+visuReader::visuReader()
 {
-   SWRITE("visu3DReader");
+   SWRITE("visuReader");
    this->FileName = NULL;
    this->NVisu = 0;
    this->NodeTypeVisu = NULL;
@@ -62,11 +62,11 @@ visu3DReader::visu3DReader()
 
    // Setup the selection callback to modify this object when an array
    // selection is changed.
-   // Used to tell the visu3DReader, that we (un)selected a state,primite or derived quantity
+   // Used to tell the visuReader, that we (un)selected a state,primite or derived quantity
    // and that the 'Apply' button becomes clickable to reload the data (load the selected quantities)
 
    this->SelectionObserver = vtkCallbackCommand::New();
-   this->SelectionObserver->SetCallback(&visu3DReader::SelectionModifiedCallback);
+   this->SelectionObserver->SetCallback(&visuReader::SelectionModifiedCallback);
    this->SelectionObserver->SetClientData(this);
    // create array for state,primitive and derived quantities
    this->VarDataArraySelection = vtkDataArraySelection::New();
@@ -81,7 +81,7 @@ visu3DReader::visu3DReader()
  * This function is called when a file is inserted into the Pipeline-browser.
  * Here we load the variable names (state,primitive, derived).
  */
-int visu3DReader::RequestInformation(vtkInformation *,
+int visuReader::RequestInformation(vtkInformation *,
       vtkInformationVector **,
       vtkInformationVector *outputVector)
 {
@@ -136,7 +136,7 @@ int visu3DReader::RequestInformation(vtkInformation *,
    // Call Posti-function requestInformation:
    // This function returns the varnames of state, primitive and derived quantities
    int str_len = strlen(FileNames[0].c_str());
-   __mod_visu3d_cwrapper_MOD_visu3d_requestinformation(&fcomm, &str_len, FileNames[0].c_str(), &varnames, &bcnames);
+   __mod_visu_cwrapper_MOD_visu_requestinformation(&fcomm, &str_len, FileNames[0].c_str(), &varnames, &bcnames);
 
    MPI_Barrier(mpiComm);
 
@@ -182,7 +182,7 @@ int visu3DReader::RequestInformation(vtkInformation *,
  * If multiple files are selected in the file-dialog, this function is called multiple times.
  * Attention: For multiple files, we assume a timeseries.
  */
-void visu3DReader::AddFileName(const char* filename_in) {
+void visuReader::AddFileName(const char* filename_in) {
    SWRITE("AddFileName");
    // append the filename to the list of filenames
    this->FileNames.push_back(filename_in);
@@ -204,13 +204,13 @@ void visu3DReader::AddFileName(const char* filename_in) {
    H5Fclose(state);
 }
 
-void visu3DReader::RemoveAllFileNames() {
+void visuReader::RemoveAllFileNames() {
    this->FileNames.clear();
    this->Timesteps.clear();
 }
 
 // Get number of state file in the filenames list closest to the requested time
-int visu3DReader::FindClosestTimeStep(double requestedTimeValue)
+int visuReader::FindClosestTimeStep(double requestedTimeValue)
 {
    int ts = 0;
    double mindist = fabs(Timesteps[0] - requestedTimeValue);
@@ -226,7 +226,7 @@ int visu3DReader::FindClosestTimeStep(double requestedTimeValue)
    return ts;
 }
 
-vtkStringArray* visu3DReader::GetNodeTypeVisuList() {
+vtkStringArray* visuReader::GetNodeTypeVisuList() {
    vtkStringArray* arr = vtkStringArray::New();
    arr->InsertNextValue("VISU");
    arr->InsertNextValue("GAUSS");
@@ -240,7 +240,7 @@ vtkStringArray* visu3DReader::GetNodeTypeVisuList() {
  * Here we call the Posti and load all the data.
  */
    
-int visu3DReader::RequestData(
+int visuReader::RequestData(
       vtkInformation *vtkNotUsed(request),
       vtkInformationVector **vtkNotUsed(inputVector),
       vtkInformationVector *outputVector)
@@ -333,7 +333,7 @@ int visu3DReader::RequestData(
    int strlen_prm = strlen(ParameterFileOverwrite);
    int strlen_posti = strlen(posti_filename);
    int strlen_state = strlen(FileToLoad.c_str()); 
-   __mod_visu3d_cwrapper_MOD_visu3d_cwrapper(&fcomm, 
+   __mod_visu_cwrapper_MOD_visu_cwrapper(&fcomm, 
          &strlen_prm, ParameterFileOverwrite, 
          &strlen_posti, posti_filename, 
          &strlen_state, FileToLoad.c_str(),
@@ -395,7 +395,7 @@ int visu3DReader::RequestData(
     // Insert Surface FV data into output
    InsertData(mb, 1, &coordsSurf_FV, &valuesSurf_FV, &nodeidsSurf_FV, &varnamesSurf);
 
-   __mod_visu3d_cwrapper_MOD_visu3d_dealloc_nodeids();
+   __mod_visu_cwrapper_MOD_visu_dealloc_nodeids();
 
    // tell paraview to render data
    this -> Modified(); 
@@ -409,7 +409,7 @@ int visu3DReader::RequestData(
 /*
  * This function inserts the data, loaded by the Posti tool, into a ouput
  */
-void visu3DReader::InsertData(vtkMultiBlockDataSet* mb, int blockno, struct DoubleARRAY* coords,
+void visuReader::InsertData(vtkMultiBlockDataSet* mb, int blockno, struct DoubleARRAY* coords,
       struct DoubleARRAY* values, struct IntARRAY* nodeids, struct CharARRAY* varnames) {
    vtkSmartPointer<vtkUnstructuredGrid> output = vtkUnstructuredGrid::SafeDownCast(mb->GetBlock(blockno));
 
@@ -497,8 +497,8 @@ void visu3DReader::InsertData(vtkMultiBlockDataSet* mb, int blockno, struct Doub
    }
 }
 
-visu3DReader::~visu3DReader(){
-   SWRITE("~visu3DReader");
+visuReader::~visuReader(){
+   SWRITE("~visuReader");
    delete [] FileName;
    this->VarDataArraySelection->Delete();
 }
@@ -510,20 +510,20 @@ visu3DReader::~visu3DReader(){
  * and return the names of the variables, ....
  */
 
-void visu3DReader::DisableAllVarArrays()
+void visuReader::DisableAllVarArrays()
 {
    this->VarDataArraySelection->DisableAllArrays();
 }
-void visu3DReader::EnableAllVarArrays()
+void visuReader::EnableAllVarArrays()
 {
    this->VarDataArraySelection->EnableAllArrays();
 }
-int visu3DReader::GetNumberOfVarArrays()
+int visuReader::GetNumberOfVarArrays()
 {
    return this->VarDataArraySelection->GetNumberOfArrays();
 }
 
-const char* visu3DReader::GetVarArrayName(int index)
+const char* visuReader::GetVarArrayName(int index)
 {
    if (index >= ( int ) this->GetNumberOfVarArrays() || index < 0)
    {
@@ -534,12 +534,12 @@ const char* visu3DReader::GetVarArrayName(int index)
       return this->VarDataArraySelection->GetArrayName(index);
    }
 }
-int visu3DReader::GetVarArrayStatus(const char* name)
+int visuReader::GetVarArrayStatus(const char* name)
 {
    return this->VarDataArraySelection->ArrayIsEnabled(name);
 }
 
-void visu3DReader::SetVarArrayStatus(const char* name, int status)
+void visuReader::SetVarArrayStatus(const char* name, int status)
 {
    if (status)
    {
@@ -551,20 +551,20 @@ void visu3DReader::SetVarArrayStatus(const char* name, int status)
    }
 }
 
-void visu3DReader::DisableAllBCArrays()
+void visuReader::DisableAllBCArrays()
 {
    this->BCDataArraySelection->DisableAllArrays();
 }
-void visu3DReader::EnableAllBCArrays()
+void visuReader::EnableAllBCArrays()
 {
    this->BCDataArraySelection->EnableAllArrays();
 }
-int visu3DReader::GetNumberOfBCArrays()
+int visuReader::GetNumberOfBCArrays()
 {
    return this->BCDataArraySelection->GetNumberOfArrays();
 }
 
-const char* visu3DReader::GetBCArrayName(int index)
+const char* visuReader::GetBCArrayName(int index)
 {
    if (index >= ( int ) this->GetNumberOfBCArrays() || index < 0)
    {
@@ -575,12 +575,12 @@ const char* visu3DReader::GetBCArrayName(int index)
       return this->BCDataArraySelection->GetArrayName(index);
    }
 }
-int visu3DReader::GetBCArrayStatus(const char* name)
+int visuReader::GetBCArrayStatus(const char* name)
 {
    return this->BCDataArraySelection->ArrayIsEnabled(name);
 }
 
-void visu3DReader::SetBCArrayStatus(const char* name, int status)
+void visuReader::SetBCArrayStatus(const char* name, int status)
 {
    if (status)
    {
@@ -592,13 +592,13 @@ void visu3DReader::SetBCArrayStatus(const char* name, int status)
    }
 }
 
-void visu3DReader::SelectionModifiedCallback(vtkObject*, unsigned long,
+void visuReader::SelectionModifiedCallback(vtkObject*, unsigned long,
       void* clientdata, void*)
 {
-   static_cast<visu3DReader*>(clientdata)->Modified();
+   static_cast<visuReader*>(clientdata)->Modified();
 }
 
-int visu3DReader::FillOutputPortInformation(
+int visuReader::FillOutputPortInformation(
       int vtkNotUsed(port), vtkInformation* info)
 {
    info->Set(vtkDataObject::DATA_TYPE_NAME(), "vtkMultiBlockDataSet");

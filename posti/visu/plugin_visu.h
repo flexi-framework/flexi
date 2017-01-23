@@ -14,18 +14,18 @@
 !=================================================================================================================================
 */
 
-#ifndef VISU3D_PLUGIN_H
-#define VISU3D_PLUGIN_H
+#ifndef VISU_PLUGIN_H
+#define VISU_PLUGIN_H
 
-#include "pluginTypes_visu3D.h"
+#include "pluginTypes_visu.h"
 
 extern "C" {
-  extern void __mod_visu3d_cwrapper_MOD_visu3d_requestinformation(int* mpi_comm_IN, 
+  extern void __mod_visu_cwrapper_MOD_visu_requestinformation(int* mpi_comm_IN, 
         int* str_len, const char* state_file, struct CharARRAY* varnames, struct CharARRAY* bcnames);
 }
 
 extern "C" {
-  extern void __mod_visu3d_cwrapper_MOD_visu3d_cwrapper(int* mpi_comm_IN, 
+  extern void __mod_visu_cwrapper_MOD_visu_cwrapper(int* mpi_comm_IN, 
         int* strlen_prm,   const char* prmfile_IN, 
         int* strlen_posti, const char* postifile_IN, 
         int* strlen_state, const char* statefile_IN,
@@ -40,11 +40,11 @@ extern "C" {
 }
 
 extern "C" {
-  extern void __mod_visu3d_cwrapper_MOD_visu3d_dealloc_nodeids();
+  extern void __mod_visu_cwrapper_MOD_visu_dealloc_nodeids();
 }
 
 extern "C" {
-  extern void __mod_visu3d_MOD_finalizevisu3d();
+  extern void __mod_visu_MOD_finalizevisu();
 }
 
-#endif /* VISU3D_PLUGIN_H */
+#endif /* VISU_PLUGIN_H */

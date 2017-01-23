@@ -13,19 +13,19 @@
 !=================================================================================================================================
 #include "flexi.h"
 !===================================================================================================================================
-!> Standalone version of the Visu3D tool. Read in parameter file, loop over all given State files and call the visu3D routine for
+!> Standalone version of the Visu tool. Read in parameter file, loop over all given State files and call the visu routine for
 !> all of them.
 !>
 !> Usage: posti parameter_posti.ini [parameter_flexi.ini] State1.h5 State2.h5 ...
 !> The optional parameter_flexi.ini is used for FLEXI parameters instead of the ones that are found in the userblock of the 
 !> State file.
 !===================================================================================================================================
-PROGRAM Posti_Visu3D
+PROGRAM Posti_Visu
 USE ISO_C_BINDING
 USE MOD_Globals
 USE MOD_Posti_Vars
 USE MOD_Commandline_Arguments
-USE MOD_Visu3D
+USE MOD_Visu
 USE MOD_ISO_VARYING_STRING
 USE MOD_MPI                   ,ONLY: InitMPI
 USE MOD_VTK                   ,ONLY: WriteDataToVTK,WriteVTKMultiBlockDataSet
@@ -81,7 +81,7 @@ DO iArg=1+skipArgs,nArgs
   statefile = TRIM(Args(iArg))
   SWRITE(*,*) "Processing state-file: ",TRIM(statefile)
   
-  CALL visu3D(MPI_COMM_WORLD, prmfile, postifile, statefile)
+  CALL visu(MPI_COMM_WORLD, prmfile, postifile, statefile)
 
 #if FV_ENABLED                            
   FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_DG',OutputTime))//'.vtu'

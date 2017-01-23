@@ -14,10 +14,10 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-!> Module containing the main procedures for the POSTI tool: visu3d_requestInformation is called by ParaView to create a
-!> list of available variables and visu3D is the main routine of POSTI.
+!> Module containing the main procedures for the POSTI tool: visu_requestInformation is called by ParaView to create a
+!> list of available variables and visu is the main routine of POSTI.
 !===================================================================================================================================
-MODULE MOD_Visu3D
+MODULE MOD_Visu
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -28,26 +28,26 @@ PRIVATE
 ! Private Part ---------------------------------------------------------------------------------------------------------------------
 ! Public Part ----------------------------------------------------------------------------------------------------------------------
 
-INTERFACE visu3d_getVarNamesAndFileType
-  MODULE PROCEDURE visu3d_getVarNamesAndFileType
+INTERFACE visu_getVarNamesAndFileType
+  MODULE PROCEDURE visu_getVarNamesAndFileType
 END INTERFACE
 
-INTERFACE Visu3D_InitFile
-  MODULE PROCEDURE Visu3D_InitFile
+INTERFACE Visu_InitFile
+  MODULE PROCEDURE Visu_InitFile
 END INTERFACE
 
-INTERFACE visu3D
-  MODULE PROCEDURE visu3D
+INTERFACE visu
+  MODULE PROCEDURE visu
 END INTERFACE
 
-INTERFACE FinalizeVisu3D
-  MODULE PROCEDURE FinalizeVisu3D
+INTERFACE FinalizeVisu
+  MODULE PROCEDURE FinalizeVisu
 END INTERFACE
 
-PUBLIC:: visu3d_getVarNamesAndFileType
-PUBLIC:: visu3D_InitFile
-PUBLIC:: visu3D
-PUBLIC:: FinalizeVisu3D
+PUBLIC:: visu_getVarNamesAndFileType
+PUBLIC:: visu_InitFile
+PUBLIC:: visu
+PUBLIC:: FinalizeVisu
 
 CONTAINS
 
@@ -57,7 +57,7 @@ CONTAINS
 !> that are available in the current equation system as well as the additional variables read from the state file.
 !> The additional variables are stored in the datasets 'ElemData' (elementwise data) and 'FieldData' (pointwise data).
 !===================================================================================================================================
-SUBROUTINE visu3d_getVarNamesAndFileType(statefile,varnames_loc, bcnames_loc) 
+SUBROUTINE visu_getVarNamesAndFileType(statefile,varnames_loc, bcnames_loc) 
 USE MOD_Globals
 USE MOD_Posti_Vars     ,ONLY: FileType,VarNamesHDF5,nBCNamesAll
 USE MOD_HDF5_Input     ,ONLY: OpenDataFile,CloseDataFile,GetDataSize,GetVarNames,ISVALIDMESHFILE,ISVALIDHDF5FILE,ReadAttribute
@@ -178,11 +178,11 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! other file
 
   SDEALLOCATE(datasetNames)
 END IF
-END SUBROUTINE visu3d_getVarNamesAndFileType
+END SUBROUTINE visu_getVarNamesAndFileType
 
 !===================================================================================================================================
 !===================================================================================================================================
-SUBROUTINE visu3d_InitFile(statefile,postifile)
+SUBROUTINE visu_InitFile(statefile,postifile)
 ! MODULES
 USE HDF5
 USE MOD_Preproc
@@ -206,7 +206,7 @@ CHARACTER(LEN=255),INTENT(INOUT) :: postifile
 INTEGER                          :: nElems_State
 CHARACTER(LEN=255)               :: NodeType_State 
 !===================================================================================================================================
-CALL visu3d_getVarNamesAndFileType(statefile,VarNamesTotal,BCNamesAll)
+CALL visu_getVarNamesAndFileType(statefile,VarNamesTotal,BCNamesAll)
 IF (STRICMP(statefile,'Mesh')) THEN
     CALL CollectiveStop(__STAMP__, &
         "FileType==Mesh, but we try to initialize a state file!")
@@ -246,7 +246,7 @@ IF (changedStateFile.OR.changedMeshFile) THEN
   CALL GetDataProps(nVar_State,PP_N,nElems_State,NodeType_State)
   IF (.NOT.STRICMP(NodeType_State, NodeType)) THEN
     CALL CollectiveStop(__STAMP__, &
-        "NodeType of state does not match with NodeType the visu3D-posti is compiled with!")
+        "NodeType of state does not match with NodeType the visu-posti is compiled with!")
   END IF
   CALL ReadAttribute(File_ID,'Project_Name',1,StrScalar =ProjectName)
   CALL ReadAttribute(File_ID,'Time',        1,RealScalar=OutputTime)
@@ -289,12 +289,12 @@ IF (hasFV_Elems) withDGOperator = .TRUE.
 CALL Build_mapDepToCalc_mapTotalToVisu()
 
 changedWithDGOperator = (withDGOperator.NEQV.withDGOperator_old)
-END SUBROUTINE visu3d_InitFile
+END SUBROUTINE visu_InitFile
 
 !===================================================================================================================================
 !> Main routine of the visualization tool POSTI. Called either by the ParaView plugin or by the standalone program version.
 !===================================================================================================================================
-SUBROUTINE visu3D(mpi_comm_IN, prmfile, postifile, statefile)
+SUBROUTINE visu(mpi_comm_IN, prmfile, postifile, statefile)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
@@ -327,10 +327,10 @@ CALL InitMPI(mpi_comm_IN)
 SWRITE (*,*) "READING FROM: ", TRIM(statefile)
 
 !**********************************************************************************************
-! General workflow / principles of the visu3D ParaView-plugin
+! General workflow / principles of the visu ParaView-plugin
 !
 ! * all arrays are SDEALLOCATEd just before they are allocated. This is done to keep there
-!   content during successive calls of the visu3D during a ParaView session. They are only
+!   content during successive calls of the visu during a ParaView session. They are only
 !   deallocated and reallocated, if there content should change. For example the coords of the
 !   mesh file only change if the mesh, NVisu or the distribution of DG/FV elements changes.
 !
@@ -380,7 +380,7 @@ SWRITE (*,*) "READING FROM: ", TRIM(statefile)
 !
 ! CHANGED system:
 ! * There are different logical changedXXX variables, which indicated if XXX changed during 
-!   successive calls of the visu3D. These variables control the general workflow of the visu3D.
+!   successive calls of the visu. These variables control the general workflow of the visu.
 !   - changedStateFile:     new state file 
 !   - changedMeshFile:      new mesh file (only possible if changedStateFile==TRUE)
 !   - changedVarNames:      new set of variables to visualize
@@ -431,7 +431,7 @@ IF (ISVALIDMESHFILE(statefile)) THEN ! visualize mesh
 ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   SWRITE(*,*) "State Mode"
   ! initialize state file
-  CALL visu3d_InitFile(statefile,postifile)
+  CALL visu_InitFile(statefile,postifile)
 
   ! read solution from state file (either direct or including a evaluation of the DG operator)
   IF (LEN_TRIM(prmfile).EQ.0) THEN
@@ -502,7 +502,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   END IF
 
 
-  !CALL Visu3D_Build_VTK(coordsDG_out,valuesDG_out,nodeidsDG_out, &
+  !CALL Visu_Build_VTK(coordsDG_out,valuesDG_out,nodeidsDG_out, &
                         !coordsFV_out,valuesFV_out,nodeidsFV_out, &
                         !varnames_out,components_out)
   
@@ -518,19 +518,19 @@ DGonly_old            = DGonly
 NodeTypeVisuPosti_old = NodeTypeVisuPosti
 
 SWRITE(UNIT_StdOut,'(132("-"))')
-SWRITE(*,*) "Visu3D finished for state file: ", TRIM(statefile)
+SWRITE(*,*) "Visu finished for state file: ", TRIM(statefile)
 SWRITE(UNIT_StdOut,'(132("="))')
-END SUBROUTINE visu3D
+END SUBROUTINE visu
 
 !===================================================================================================================================
-!> Deallocate arrays used by visu3D.
+!> Deallocate arrays used by visu.
 !===================================================================================================================================
-SUBROUTINE FinalizeVisu3D()
+SUBROUTINE FinalizeVisu()
 USE MOD_Globals,ONLY: MPIRoot
 USE MOD_Posti_Vars
 IMPLICIT NONE
 !===================================================================================================================================
-SWRITE (*,*) "VISU3D FINALIZE"
+SWRITE (*,*) "VISU FINALIZE"
 prmfile_old = ""
 statefile_old = ""
 MeshFile = ""
@@ -556,6 +556,6 @@ SDEALLOCATE(UCalc_FV)
 SDEALLOCATE(mapDGElemsToAllElems)
 SDEALLOCATE(mapFVElemsToAllElems)
 
-END SUBROUTINE FinalizeVisu3D
+END SUBROUTINE FinalizeVisu
 
-END MODULE MOD_Visu3D
+END MODULE MOD_Visu

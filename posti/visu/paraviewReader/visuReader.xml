@@ -1,7 +1,7 @@
 <ServerManagerConfiguration>
    <ProxyGroup name="sources">
       <!-- ================================================================== -->
-      <SourceProxy name="visu3DReader" class="visu3DReader" label="visu3DReader">
+      <SourceProxy name="visuReader" class="visuReader" label="visuReader">
          <Documentation
             long_help="Read a Flexi state or mesh file ( h5 file )."
             short_help="Read a Flexi state or mesh file ( h5 file ).">
@@ -150,7 +150,7 @@
       <!-- ================================================================== -->
          <Hints>
             <ReaderFactory extensions="h5"
-               file_description="2 Posti Visu3D" />
+               file_description="2 Posti Visu" />
          </Hints>
       </SourceProxy>
    </ProxyGroup>
