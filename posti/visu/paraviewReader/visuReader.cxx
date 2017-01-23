@@ -158,7 +158,6 @@ int visuReader::RequestInformation(vtkInformation *,
 
          // Select Density, FV_Elems by default
          if (varname.compare("Density") == 0) this->VarDataArraySelection->EnableArray(varname.c_str());
-         if (varname.compare("WallFrictionX") == 0) this->VarDataArraySelection->EnableArray(varname.c_str());
          if (varname.compare("ElemData:FV_Elems") == 0) this->VarDataArraySelection->EnableArray(varname.c_str());
       }
    }
@@ -171,7 +170,6 @@ int visuReader::RequestInformation(vtkInformation *,
       if (!this->BCDataArraySelection->ArrayExists(bcname.c_str())) {
          // function DisableArray deselects the bcname in the gui and if not existend inserts the bcname         
          this->BCDataArraySelection->DisableArray(bcname.c_str());
-         if (bcname.compare("BC_wall") == 0) this->BCDataArraySelection->EnableArray(bcname.c_str());
       }
    }
    return 1; 
