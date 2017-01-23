@@ -100,7 +100,6 @@ IF(Examples(iExample)%ConvergenceTest)THEN
     IF(Examples(iExample)%ErrorStatus.EQ.3)THEN
       CALL AddError(MPIthreadsStr,'Mismatch Order of '//TRIM(Examples(iExample)%ConvergenceTestType)&
                                                       //'-Convergence',iExample,iSubExample,ErrorStatus=3,ErrorCode=3)
-      !SWRITE(UNIT_stdOut,'(A)')  ' Mismatch in HDF5-files'
     END IF
   END IF
 END IF
@@ -190,7 +189,6 @@ IF(DoDebugOutput)THEN
     SWRITE(UNIT_stdOut,'(A)')''
   END DO
   SWRITE(UNIT_stdOut,'(A)')''
-  SWRITE(UNIT_stdOut,'(132("-"))')
 END IF
 
 ! Calculate the approximate distance between the DG DOF

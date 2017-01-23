@@ -71,11 +71,13 @@ DO iExample = 1, nExamples ! loop level 1 of 5
   ! delete pre-existing data files at the beginning of the reggie
   CALL CleanFolder(iExample,MODE=0) ! MODE=0: INITIAL -> delete pre-existing files and folders
   
-  ! read the parameters for the current example (parameter_reggie.ini)
-  CALL InitExample(Examples(iExample)%PATH,Examples(iExample))
 !==================================================================================================================================
   DO iReggieBuild = 1, nReggieBuilds ! loop level 2 of 5: cycle the number of build configurations (no configuration = only 1 run)
 !==================================================================================================================================
+    ! read the parameters for the current example (parameter_reggie.ini), must be read separately for every iReggieBuild
+    ! because changes to specific parameters are made depending on the cmake compilation flags, e.g., in "CALL SetParameters(...)"
+    CALL InitExample(Examples(iExample)%PATH,Examples(iExample))
+
     ! Get code binary (build or find it)
     CALL GetCodeBinary(iExample,iReggieBuild,nReggieBuilds,N_compile_flags,ReggieBuildExe,SkipBuild,ExitBuild)
     IF(SkipBuild)CYCLE ! invalid reggie build but not last reggie build
@@ -101,7 +103,8 @@ DO iExample = 1, nExamples ! loop level 1 of 5
     CALL PrintExampleInfo(iExample,EXECPATH,parameter_ini,parameter_ini2)
  
     ! Set options in parameter.ini file
-    CALL SetParameters(iExample,parameter_ini,UseFV,UseCODE2D,UsePARABOLIC)
+    CALL SetParameters(iExample,parameter_ini,UseFV,UseCODE2D,UsePARABOLIC,SkipFolder)
+    IF(SkipFolder)CYCLE ! e.g. p-convergence folder and FV subcells (p-convergence not meaningful)
 
 !==================================================================================================================================
     DO iSubExample = 1, MAX(1,Examples(iExample)%SubExampleNumber) ! loop level 3 of 5: SubExamples (e.g. different TimeDiscMethods)
@@ -722,7 +725,7 @@ END SUBROUTINE PrintExampleInfo
 !===================================================================================================================================
 !> check if executable is compiled with correct TESTCASE (e.g. for tylorgreenvortex)
 !===================================================================================================================================
-SUBROUTINE SetParameters(iExample,parameter_ini,UseFV,UseCODE2D,UsePARABOLIC)
+SUBROUTINE SetParameters(iExample,parameter_ini,UseFV,UseCODE2D,UsePARABOLIC,SkipFolder)
 !===================================================================================================================================
 !===================================================================================================================================
 ! MODULES
@@ -737,6 +740,7 @@ USE MOD_RegressionCheck_Vars,    ONLY: Examples
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
+LOGICAL,INTENT(OUT)            :: SkipFolder
 INTEGER,INTENT(IN)             :: iExample
 LOGICAL,INTENT(INOUT)          :: UseFV,UseCODE2D,UsePARABOLIC      !> compiler flags currently used for ConvergenceTest
 CHARACTER(LEN=*),INTENT(INOUT) :: parameter_ini
@@ -750,7 +754,7 @@ CHARACTER(LEN=*),INTENT(INOUT) :: parameter_ini
 !CHARACTER(LEN=255)             :: tempStr
 !LOGICAL                        :: UseMPI
 !===================================================================================================================================
-
+SkipFolder=.FALSE.
 ! Check specific compile flags for ConvergenceTest
 IF(Examples(iExample)%ConvergenceTest)THEN ! Do ConvergenceTest
   SWRITE(UNIT_stdOut,'(A)') " SUBROUTINE SetParameters ..."
@@ -758,7 +762,15 @@ IF(Examples(iExample)%ConvergenceTest)THEN ! Do ConvergenceTest
   !print*,"UseFV=",UseFV
   SWRITE(UNIT_stdOut,'(A15,L1,A2)',ADVANCE='NO')" UseFV       =[",UseFV,"] "
   IF(UseFV)THEN
-      CALL SetSubExample(iExample,-1,parameter_ini,'IndicatorType','33')
+    CALL SetSubExample(iExample,-1,parameter_ini,'IndicatorType','33')
+    IF(    TRIM(Examples(iExample)%ConvergenceTestType).EQ.'h')THEN ! h-convergence    
+      Examples(iExample)%ConvergenceTestValue=1.4 ! set redueced order of convergence due to FV cells
+      SWRITE(UNIT_stdOut,'(A18,A)')"","Setting option in parameter_reggie.ini: h-ConvergenceTestValue=1.4 (reduced mean order)"
+    ELSEIF(TRIM(Examples(iExample)%ConvergenceTestType).EQ.'p')THEN ! p-convergence
+      SkipFolder=.TRUE.
+      SWRITE(UNIT_stdOut,'(A18,A)')"","Skipping example because [p-convergence] and [FV=ON]"
+      RETURN
+    END IF
   ELSE
       CALL SetSubExample(iExample,-1,parameter_ini,'IndicatorType','0')
   END IF

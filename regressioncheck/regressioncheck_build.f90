@@ -135,7 +135,7 @@ DO I=1,2
           COMPILE_FLAG=TRIM(ADJUSTL(temp(1:INDEX(temp,'=')-1)))
           N_compile_flags=N_compile_flags+1
           IF(I.EQ.1)THEN
-            SWRITE(UNIT_stdOut,'(A)')"include: ",TRIM(COMPILE_FLAG)!,TRIM(temp(INDEX(temp,'='):LEN(temp)))
+            SWRITE(UNIT_stdOut,'(A)')"include: ",TRIM(ADJUSTL(COMPILE_FLAG))!,TRIM(temp(INDEX(temp,'='):LEN(temp)))
           END IF
           IF(I.EQ.2)BuildConfigurations(N_compile_flags,1)=TRIM(ADJUSTL(COMPILE_FLAG))
           temp2=TRIM(ADJUSTL(temp(INDEX(temp,'=')+1:LEN(temp))))
