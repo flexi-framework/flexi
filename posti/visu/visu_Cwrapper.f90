@@ -69,7 +69,7 @@ SUBROUTINE visu_requestInformation(mpi_comm_IN, strlen_state, statefile_IN, varn
 ! MODULES
 USE MOD_Globals
 USE MOD_MPI        ,ONLY: InitMPI
-USE MOD_Posti_Vars ,ONLY: VarNamesTotal,BCNamesAll
+USE MOD_Posti_Vars ,ONLY: VarnamesAll,BCNamesAll
 USE MOD_Visu       ,ONLY: visu_getVarNamesAndFileType
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
@@ -88,9 +88,9 @@ CHARACTER(LEN=255),POINTER            :: bcnames_pointer(:)
 statefile = cstrToChar255(statefile_IN, strlen_state)
 
 CALL InitMPI(mpi_comm_IN) 
-CALL visu_getVarNamesAndFileType(statefile,VarNamesTotal,BCNamesAll)
-IF (ALLOCATED(VarNamesTotal)) THEN
-  varnames_pointer => VarNamesTotal
+CALL visu_getVarNamesAndFileType(statefile,VarnamesAll,BCNamesAll)
+IF (ALLOCATED(VarnamesAll)) THEN
+  varnames_pointer => VarnamesAll
   varnames%len  = SIZE(varnames_pointer)*255 
   varnames%data = C_LOC(varnames_pointer(1))
 ELSE
@@ -169,18 +169,18 @@ IF (VisuDimension.EQ.3) THEN
   CALL WriteCoordsToVTK_array(NVisu_FV,nElems_FV,coordsFV_out,nodeidsFV_out,&
       CoordsVisu_FV,nodeids_FV,dim=3,DGFV=1)
 
-  CALL WriteVarnamesToVTK_array(nVarTotal,mapTotalToVisu,varnames_out,VarNamesTotal,nVarVisu)
+  CALL WriteVarnamesToVTK_array(nVarAll,mapAllVarsToVisuVars,varnames_out,VarnamesAll,nVarVisu)
 
   ! Surface
-  CALL WriteDataToVTK_array(nVarSurfVisuTotal,NVisu   ,nBCSidesVisu_DG,valuesSurfDG_out,USurfVisu_DG,2)
-  CALL WriteDataToVTK_array(nVarSurfVisuTotal,NVisu_FV,nBCSidesVisu_FV,valuesSurfFV_out,USurfVisu_FV,2)
+  CALL WriteDataToVTK_array(nVarSurfVisuAll,NVisu   ,nBCSidesVisu_DG,valuesSurfDG_out,USurfVisu_DG,2)
+  CALL WriteDataToVTK_array(nVarSurfVisuAll,NVisu_FV,nBCSidesVisu_FV,valuesSurfFV_out,USurfVisu_FV,2)
 
   CALL WriteCoordsToVTK_array(NVisu   ,nBCSidesVisu_DG,coordsSurfDG_out,nodeidsSurfDG_out,&
       CoordsSurfVisu_DG,nodeidsSurf_DG,dim=2,DGFV=0)
   CALL WriteCoordsToVTK_array(NVisu_FV,nBCSidesVisu_FV,coordsSurfFV_out,nodeidsSurfFV_out,&
       CoordsSurfVisu_FV,nodeidsSurf_FV,dim=2,DGFV=1)
 
-  CALL WriteVarnamesToVTK_array(nVarTotal,mapTotalToSurfVisu,varnamesSurf_out,VarNamesTotal,nVarSurfVisuTotal)
+  CALL WriteVarnamesToVTK_array(nVarAll,mapAllVarsToSurfVisuVars,varnamesSurf_out,VarnamesAll,nVarSurfVisuAll)
 ELSE IF (VisuDimension.EQ.2) THEN
   STOP 'implement avg2d'
 
@@ -216,7 +216,7 @@ ELSE IF (VisuDimension.EQ.2) THEN
   CALL WriteCoordsToVTK_array(NVisu_FV,nElems_FV,coordsFV_out,nodeidsFV_out,&
       CoordsVisu_FV_2D,nodeids_FV_2D,dim=2,DGFV=1)
 
-  CALL WriteVarnamesToVTK_array(nVarTotal,mapTotalToVisu,varnames_out,VarNamesTotal,nVarVisu)
+  CALL WriteVarnamesToVTK_array(nVarAll,mapAllVarsToVisuVars,varnames_out,VarnamesAll,nVarVisu)
 END IF
 
 END SUBROUTINE visu_CWrapper

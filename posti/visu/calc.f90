@@ -149,7 +149,7 @@ CALL ProlongToFace_independent(nVarCalc,nBCSidesVisu_DG,nElems_DG,maskCalc,UCalc
 
 IF(TRIM(FileType).EQ.'State')THEN
   DO iSide=1,nBCSides
-    iSide2 = mapAllBCSidesToDGBCSides(iSide)
+    iSide2 = mapAllBCSidesToDGVisuBCSides(iSide)
     IF (iSide2.GT.0) THEN
       NormVec_loc (:,:,:,iSide2) = NormVec (:,:,:,0,iSide)
       TangVec1_loc(:,:,:,iSide2) = TangVec1(:,:,:,0,iSide)
@@ -206,8 +206,8 @@ REAL              :: gradUzFace_tmp(1:PP_nVarPrim,0:PP_N,0:PP_N)
 DO iVarOut=1,nVarDep ! iterate over all out variables
   IF (mapDepToCalc(iVarOut).LT.1) CYCLE ! check if variable must be calculated
   DO iVarIn=1,nVar_State ! iterate over all out variables
-    IF (STRICMP(VarNamesTotal(iVarOut),VarNamesHDF5(iVarIn))) THEN
-      WRITE(*,*) "ProlongToFace_independent", TRIM(VarNamesTotal(iVarOut))
+    IF (STRICMP(VarnamesAll(iVarOut),VarNamesHDF5(iVarIn))) THEN
+      WRITE(*,*) "ProlongToFace_independent", TRIM(VarnamesAll(iVarOut))
       iVar=mapDepToCalc(iVarOut)
 
       DO iElem_DG = 1,nElems_DG                         ! iterate over all DG visu elements
@@ -215,7 +215,7 @@ DO iVarOut=1,nVarDep ! iterate over all out variables
         DO locSide=1,6 
           iSide = ElemToSide(E2S_SIDE_ID,locSide,iElem) ! get global side index
           IF (iSide.LE.nBCSides) THEN                   ! check if BC side
-            iSide_DG = mapAllBCSidesToDGBCSides(iSide)  ! get DG visu side index
+            iSide_DG = mapAllBCSidesToDGVisuBCSides(iSide)  ! get DG visu side index
             IF (iSide_DG.GT.0) THEN
               IF(PP_NodeType.EQ.1)THEN                  ! prolong solution to face
                 CALL EvalElemFace(1,PP_N,UIn(:,:,:,iElem_DG,iVar:iVar),Uface(1:1,:,:),L_Minus,L_Plus,locSide)
@@ -239,7 +239,7 @@ IF(TRIM(FileType).EQ.'State')THEN
   IF(withDGOperator.AND.PARABOLIC.EQ.1)THEN
 #if PARABOLIC
     DO iSide=1,nBCSides
-      IF (mapAllBCSidesToDGBCSides(iSide).GT.0) THEN
+      IF (mapAllBCSidesToDGVisuBCSides(iSide).GT.0) THEN
         iElem = SideToElem(S2E_ELEM_ID,iSide)
         locSide = SideToElem(S2E_LOC_SIDE_ID, iSide)
         IF(PP_NodeType.EQ.1)THEN
@@ -251,7 +251,7 @@ IF(TRIM(FileType).EQ.'State')THEN
           CALL EvalElemFace(PP_nVarPrim,PP_N,gradUy(:,:,:,:,iElem),gradUyFace_tmp,locSide)
           CALL EvalElemFace(PP_nVarPrim,PP_N,gradUz(:,:,:,:,iElem),gradUzFace_tmp,locSide)
         END IF
-        iSide_DG = mapAllBCSidesToDGBCSides(iSide)
+        iSide_DG = mapAllBCSidesToDGVisuBCSides(iSide)
         DO q=0,PP_N; DO p=0,PP_N
           gradUxFace(:,p,q,iSide_DG)=gradUxFace_tmp(:,S2V2(1,p,q,0,locSide),S2V2(2,p,q,0,locSide))
           gradUyFace(:,p,q,iSide_DG)=gradUyFace_tmp(:,S2V2(1,p,q,0,locSide),S2V2(2,p,q,0,locSide))
@@ -420,7 +420,7 @@ REAL,ALLOCATABLE   :: TangVec2_loc(:,:,:,:)
 nValSide=(/NVisu_FV+1,NVisu_FV+1,nBCSidesVisu_FV/)
 CALL buildMappings(NVisu_FV,S2V=S2V_NVisu)
 SDEALLOCATE(USurfVisu_FV)
-ALLOCATE(USurfVisu_FV(0:NVisu_FV,0:NVisu_FV,0:0,nBCSidesVisu_FV,nVarSurfVisuTotal))
+ALLOCATE(USurfVisu_FV(0:NVisu_FV,0:NVisu_FV,0:0,nBCSidesVisu_FV,nVarSurfVisuAll))
 ! ===  Surface visualization ================================
 ! copy UCalc_FV to USurfCalc_FV
 SDEALLOCATE(USurfCalc_FV)
@@ -430,7 +430,7 @@ DO iElem_FV = 1,nElems_FV                         ! iterate over all FV visu ele
   DO locSide=1,6 
     iSide = ElemToSide(E2S_SIDE_ID,locSide,iElem) ! get global side index
     IF (iSide.LE.nBCSides) THEN                   ! check if BC side
-      iSide_FV = mapAllBCSidesToFVBCSides(iSide)  ! get FV visu side index
+      iSide_FV = mapAllBCSidesToFVVisuBCSides(iSide)  ! get FV visu side index
       IF (iSide_FV.GT.0) THEN
         DO q=0,NVisu_FV; DO p=0,NVisu_FV          ! map volume solution to surface solution
           ijk = S2V_NVisu(:,0,p,q,0,locSide)
@@ -448,7 +448,7 @@ ALLOCATE(gradUxFace(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,nBCSidesVisu_FV))
 ALLOCATE(gradUyFace(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,nBCSidesVisu_FV))
 ALLOCATE(gradUzFace(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,nBCSidesVisu_FV))
 DO iSide=1,nBCSides
-  iSide_FV = mapAllBCSidesToFVBCSides(iSide)
+  iSide_FV = mapAllBCSidesToFVVisuBCSides(iSide)
   iElem = SideToElem(S2E_ELEM_ID,iSide)
   locSide = SideToElem(S2E_LOC_SIDE_ID, iSide)
   IF (iSide_FV.GT.0) THEN
@@ -514,7 +514,7 @@ INTEGER               :: iElem,iElem_calc
 DO iVarOut=1,nVarDep ! iterate over all out variables
   IF (mapDepToCalc(iVarOut).LT.1) CYCLE ! check if variable must be calculated
   DO iVarIn=1,nVar_State ! iterate over all in variables
-    IF( STRICMP(VarNamesTotal(iVarOut),VarNamesHDF5(iVarIn))) THEN
+    IF( STRICMP(VarnamesAll(iVarOut),VarNamesHDF5(iVarIn))) THEN
       DO iElem_calc=1,nElems_calc ! copy variable for all elements
         iElem = indices(iElem_calc)
         UOut(:,:,:,iElem_calc,mapDepToCalc(iVarOut)) = UIn(iVarIn,:,:,:,iElem)

@@ -66,26 +66,25 @@ LOGICAL                           :: changedBCnames              ! BCnames selec
 
 CHARACTER(LEN=255),ALLOCATABLE,TARGET :: VarNamesHDF5(:)         ! varnames in state file (DG_Solution, not including generic 
                                                                  ! element- or pointwise)
-CHARACTER(LEN=255),ALLOCATABLE,TARGET :: VarNamesTotal(:)        ! all available varnames (state file + dependent vars + generic)
-INTEGER                               :: nVarTotal               ! total number of possible visu variables
+CHARACTER(LEN=255),ALLOCATABLE,TARGET :: VarnamesAll(:)          ! all available varnames (state file + dependent vars + generic)
+INTEGER                               :: nVarAll                 ! number of all available visu variables
 INTEGER                               :: nVarDep                 ! number of dependent variables, that EOS can calculate
 INTEGER                               :: nVarVisu                ! number of variables selected for visualization
-INTEGER,ALLOCATABLE                   :: mapTotalToVisu(:)       ! maps total variable index to visualization variable index
+INTEGER,ALLOCATABLE                   :: mapAllVarsToVisuVars(:) ! maps all available variable index to visualization variable index
 INTEGER,ALLOCATABLE                   :: DepTable(:,:)           ! table holding the EOS dependencies required to calculate 
                                                                  ! variables, that depend on other variables (e.g. primitive ...)
                                                                  ! The i-th line of this table holds the dependency informations of
                                                                  ! the i-th quantity on the previous quantities. The j-th column
-                                                                 ! is 0 if the i-th quantity does NOT depend on the j-th quantity
-                                                                 ! is 1 if the i-th quantity DOES depend on the j-th quantity
-INTEGER,ALLOCATABLE                   :: DepSurfaceOnly(:)       ! same but for quantities that are exclusively available on BCs
+                                                                 ! is 0 if the i-th quantity does NOT depends on the j-th quantity
+                                                                 ! is 1 if the i-th quantity DOES depends on the j-th quantity
 
 REAL,ALLOCATABLE                      :: UCalc_DG(:,:,:,:,:)     ! dependet variables require the computation of intermediate
                                                                  ! variables, that may not be visualized. Therefore the whole
                                                                  ! computation process takes place on this array and is afterwards
                                                                  ! converted to the visualization array (UVisu_DG)
 REAL,ALLOCATABLE                      :: UCalc_FV(:,:,:,:,:)
-INTEGER                               :: nVarCalc                ! number of (intermediated) variables that must be calculated
-INTEGER,ALLOCATABLE                   :: mapDepToCalc(:)         ! maps all dependet variable index to calc variable index
+INTEGER                               :: nVarCalc                ! number of (intermediate) variables that must be calculated
+INTEGER,ALLOCATABLE                   :: mapDepToCalc(:)         ! maps all dependend variable index to calc variable index
 #if FV_ENABLED && FV_RECONSTRUCT
 INTEGER                               :: nVarCalc_FV             ! since FV reconstruction is done in primitive quantities, the 
 INTEGER,ALLOCATABLE                   :: mapDepToCalc_FV(:)      ! dependencies are different to the DG case, where everything is
@@ -104,21 +103,23 @@ INTEGER,ALLOCATABLE,TARGET            :: nodeids_FV(:)           !
 ! ==============================================================================================================================
 ! Surface visualization
 ! ==============================================================================================================================
+INTEGER,ALLOCATABLE                   :: DepSurfaceOnly(:)       ! same but for quantities that are exclusively available on BCs
+
 INTEGER                               :: nBCNamesAll                  ! number of all BC names in mesh file
 CHARACTER(LEN=255),ALLOCATABLE,TARGET :: BCNamesAll(:)                ! all BC names in mesh file 
 INTEGER                               :: nBCNamesVisu                 ! number of BC names selected for visualization
 INTEGER,ALLOCATABLE                   :: mapAllBCNamesToVisuBCNames(:)! maps global BCName index to visu BCName index
 INTEGER,ALLOCATABLE                   :: mapAllBCNamesToVisuBCNames_old(:) 
 
-INTEGER                               :: nVarSurfVisuTotal            ! total number of vars that are visualized on surface
-INTEGER,ALLOCATABLE                   :: mapTotalToSurfVisu(:)        ! maps total variable index to surf. visu. variable index
-INTEGER,ALLOCATABLE                   :: mapTotalToSurfVisu_old(:)    ! saves previous mapTotalToSurfVisu
-INTEGER                               :: nBCSidesVisu_DG              !  number of DG BCsides selected for visualization
-INTEGER                               :: nBCSidesVisu_FV              !  number of FV BCsides selected for visualization
-INTEGER,ALLOCATABLE                   :: mapAllBCSidesToDGBCSides(:)  ! map global BC side index to DG BC sides
-INTEGER,ALLOCATABLE                   :: mapAllBCSidesToFVBCSides(:)  ! map global BC side index to FV BC sides
-INTEGER,ALLOCATABLE                   :: nSidesPerBCNameVisu_DG(:)    ! holds number of DG BCsides for each BCName
-INTEGER,ALLOCATABLE                   :: nSidesPerBCNameVisu_FV(:)    ! holds number of FV BCsides for each BCName
+INTEGER                               :: nVarSurfVisuAll                 ! number of all avail. vars that are visualized on surf.
+INTEGER,ALLOCATABLE                   :: mapAllVarsToSurfVisuVars(:)     ! maps all avail. var index to surf. visu. var index
+INTEGER,ALLOCATABLE                   :: mapAllVarsToSurfVisuVars_old(:) ! saves previous mapAllVarsToSurfVisuVars
+INTEGER                               :: nBCSidesVisu_DG                 ! number of DG BCsides selected for visualization
+INTEGER                               :: nBCSidesVisu_FV                 ! number of FV BCsides selected for visualization
+INTEGER,ALLOCATABLE                   :: mapAllBCSidesToDGVisuBCSides(:) ! map global BC side index to DG visu BC sides
+INTEGER,ALLOCATABLE                   :: mapAllBCSidesToFVVisuBCSides(:) ! map global BC side index to FV visu BC sides
+INTEGER,ALLOCATABLE                   :: nSidesPerBCNameVisu_DG(:)       ! holds number of DG BCsides for each BCName
+INTEGER,ALLOCATABLE                   :: nSidesPerBCNameVisu_FV(:)       ! holds number of FV BCsides for each BCName
 
 REAL,ALLOCATABLE                      :: USurfCalc_DG(:,:,:,:)        ! array on which dependent quantities are calculated
 REAL,ALLOCATABLE                      :: USurfCalc_FV(:,:,:,:)        ! 

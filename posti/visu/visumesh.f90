@@ -116,11 +116,11 @@ SUBROUTINE BuildSurfVisuCoords()
 USE ISO_C_BINDING
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Posti_Vars         ,ONLY: CoordsSurfVisu_DG,nBCSidesVisu_DG,mapAllBCSidesToDGBCSides
+USE MOD_Posti_Vars         ,ONLY: CoordsSurfVisu_DG,nBCSidesVisu_DG,mapAllBCSidesToDGVisuBCSides
 USE MOD_Posti_Vars         ,ONLY: NodeTypeVisuPosti
 USE MOD_Posti_Vars         ,ONLY: NVisu
 #if FV_ENABLED
-USE MOD_Posti_Vars         ,ONLY: CoordsSurfVisu_FV,nBCSidesVisu_FV,mapAllBCSidesToFVBCSides
+USE MOD_Posti_Vars         ,ONLY: CoordsSurfVisu_FV,nBCSidesVisu_FV,mapAllBCSidesToFVVisuBCSides
 USE MOD_Posti_Vars         ,ONLY: NVisu_FV,hasFV_Elems
 USE MOD_Posti_Vars         ,ONLY: changedMeshFile,changedFV_Elems
 #endif
@@ -150,7 +150,7 @@ CALL GetVandermonde(Nloc,NodeType_loc,NVisu   ,NodeTypeVisuPosti  ,Vdm_N_NVisu  
 SDEALLOCATE(CoordsSurfVisu_DG)
 ALLOCATE(CoordsSurfVisu_DG(3,0:NVisu,0:NVisu,0:0,nBCSidesVisu_DG))
 DO iSide=1,nBCSides
-  iSideVisu = mapAllBCSidesToDGBCSides(iSide)
+  iSideVisu = mapAllBCSidesToDGVisuBCSides(iSide)
   IF (iSideVisu.GT.0)THEN
     CALL ChangeBasis2D(3,Nloc,NVisu,   Vdm_N_NVisu, Face_xGP(:,:,:,0,iSide),CoordsSurfVisu_DG(:,:,:,0,iSideVisu))
   END IF
@@ -167,7 +167,7 @@ IF (hasFV_Elems) THEN
   SDEALLOCATE(CoordsSurfVisu_FV)
   ALLOCATE(CoordsSurfVisu_FV(3,0:NVisu_FV,0:NVisu_FV,0:0,nBCSidesVisu_FV))
   DO iSide=1,nBCSides
-    iSideVisu = mapAllBCSidesToFVBCSides(iSide)
+    iSideVisu = mapAllBCSidesToFVVisuBCSides(iSide)
     IF (iSideVisu.GT.0)THEN
       CALL ChangeBasis2D(3,Nloc,NVisu_FV,Vdm_N_NVisu_FV,Face_xGP(:,:,:,0,iSide),CoordsSurfVisu_FV(:,:,:,0,iSideVisu))
     END IF

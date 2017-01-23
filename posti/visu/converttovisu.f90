@@ -89,9 +89,9 @@ CALL GetVandermonde(PP_N,NodeType,NVisu,NodeTypeVisuPosti,Vdm_N_NVisu,modal=.FAL
 SDEALLOCATE(UVisu_DG)
 ALLOCATE(UVisu_DG(0:NVisu,0:NVisu,0:NVisu,nElems_DG,nVarVisu))
 DO iVar=1,nVarDep
-  IF (mapTotalToVisu(iVar).GT.0) THEN
+  IF (mapAllVarsToVisuVars(iVar).GT.0) THEN
     iVarCalc = mapDepToCalc(iVar) 
-    iVarVisu = mapTotalToVisu(iVar) 
+    iVarVisu = mapAllVarsToVisuVars(iVar) 
     DO iElem = 1,nElems_DG
       CALL ChangeBasis3D(PP_N,NVisu,Vdm_N_NVisu,UCalc_DG(:,:,:,iElem,iVarCalc),UVisu_DG(:,:,:,iElem,iVarVisu))
     END DO
@@ -120,11 +120,11 @@ ALLOCATE(Vdm_N_NVisu(0:NVisu,0:PP_N))
 CALL GetVandermonde(PP_N,NodeType,NVisu,NodeTypeVisuPosti,Vdm_N_NVisu,modal=.FALSE.)
 ! convert DG solution to UVisu_DG
 SDEALLOCATE(USurfVisu_DG)
-ALLOCATE(USurfVisu_DG(0:NVisu,0:NVisu,0:0,nBCSidesVisu_DG,nVarSurfVisuTotal))
+ALLOCATE(USurfVisu_DG(0:NVisu,0:NVisu,0:0,nBCSidesVisu_DG,nVarSurfVisuAll))
 DO iVar=1,nVarDep
-  IF (mapTotalToSurfVisu(iVar).GT.0) THEN
+  IF (mapAllVarsToSurfVisuVars(iVar).GT.0) THEN
     iVarCalc = mapDepToCalc(iVar) 
-    iVarVisu = mapTotalToSurfVisu(iVar) 
+    iVarVisu = mapAllVarsToSurfVisuVars(iVar) 
     DO iSide = 1,nBCSidesVisu_DG
       CALL ChangeBasis2D(PP_N,NVisu,Vdm_N_NVisu,USurfCalc_DG(:,:,iSide,iVarCalc),USurfVisu_DG(:,:,0,iSide,iVarVisu))
     END DO 
@@ -140,8 +140,8 @@ END SUBROUTINE ConvertToSurfVisu_DG
 SUBROUTINE ConvertToVisu_FV()
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Posti_Vars         ,ONLY: nVarDep,VarNamesTotal,mapDepToCalc_FV
-USE MOD_Posti_Vars         ,ONLY: mapTotalToVisu,UVisu_FV,nElems_FV,UCalc_FV
+USE MOD_Posti_Vars         ,ONLY: nVarDep,VarnamesAll,mapDepToCalc_FV
+USE MOD_Posti_Vars         ,ONLY: mapAllVarsToVisuVars,UVisu_FV,nElems_FV,UCalc_FV
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -155,9 +155,9 @@ INTEGER            :: iVarVisu,iVarCalc
 SWRITE(*,*) "[FV/FVRE] convert to visu grid"
 ! compute UVisu_FV
 DO iVar=1,nVarDep
-  iVarVisu = mapTotalToVisu(iVar) 
+  iVarVisu = mapAllVarsToVisuVars(iVar) 
   IF (iVarVisu.GT.0) THEN
-    SWRITE(*,*) "    ", TRIM(VarNamesTotal(iVar))
+    SWRITE(*,*) "    ", TRIM(VarnamesAll(iVar))
     iVarCalc = mapDepToCalc_FV(iVar) 
     DO iElem = 1,nElems_FV
 #if FV_RECONSTRUCT
@@ -179,8 +179,8 @@ END SUBROUTINE ConvertToVisu_FV
 SUBROUTINE ConvertToSurfVisu_FV()
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Posti_Vars         ,ONLY: nVarDep,VarNamesTotal,mapDepToCalc_FV
-USE MOD_Posti_Vars         ,ONLY: mapTotalToSurfVisu,USurfVisu_FV,USurfCalc_FV
+USE MOD_Posti_Vars         ,ONLY: nVarDep,VarnamesAll,mapDepToCalc_FV
+USE MOD_Posti_Vars         ,ONLY: mapAllVarsToSurfVisuVars,USurfVisu_FV,USurfCalc_FV
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -190,9 +190,9 @@ INTEGER            :: iVar,iVarVisu
 SWRITE(*,*) "[FV/FVRE] convert to surface visu grid"
 ! compute UVisu_FV
 DO iVar=1,nVarDep
-  iVarVisu = mapTotalToSurfVisu(iVar) 
+  iVarVisu = mapAllVarsToSurfVisuVars(iVar) 
   IF (iVarVisu.GT.0) THEN
-    SWRITE(*,*) "    ", TRIM(VarNamesTotal(iVar))
+    SWRITE(*,*) "    ", TRIM(VarnamesAll(iVar))
     USurfVisu_FV(:,:,0,:,iVarVisu) = USurfCalc_FV(:,:,:,mapDepToCalc_FV(iVar))
   END IF
 END DO 
@@ -368,11 +368,11 @@ CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 DataSetOld = ''  ! Used to decide if arrays and Vandermonde matrix should be re-allocated
 
 ! Loop over all generic variables that should be visualized - sorted after the dependant variables
-DO iVar=nVarDep+1,nVarTotal
+DO iVar=nVarDep+1,nVarAll
   ! Check if this variable should be visualized
-  IF ((mapTotalToVisu(iVar)).GT.0) THEN
+  IF ((mapAllVarsToVisuVars(iVar)).GT.0) THEN
     ! The format of the generic data varnames is DATASETNAME:VARIABLENAME - split into DATASETNAME and VARIABLENAME
-    CALL split_string(TRIM(VarNamesTotal(iVar)),':',substrings,substring_count)
+    CALL split_string(TRIM(VarnamesAll(iVar)),':',substrings,substring_count)
     ! If we find more than one substring, the variable is additional data
     IF (substring_count.GT.1) THEN
       ! Store dataset and variable name
@@ -404,8 +404,8 @@ DO iVar=nVarDep+1,nVarTotal
 
       iVarDataset = 0
       ! loop over all varnames
-      DO iVar2=nVarDep+1,nVarTotal
-        CALL split_string(TRIM(VarNamesTotal(iVar2)),':',substrings,substring_count)
+      DO iVar2=nVarDep+1,nVarAll
+        CALL split_string(TRIM(VarnamesAll(iVar2)),':',substrings,substring_count)
         IF (substring_count.GT.1) THEN
           ! if dataset is the same increase variable index inside dataset
           IF (STRICMP(substrings(1),DatasetName)) THEN
@@ -445,7 +445,7 @@ DO iVar=nVarDep+1,nVarTotal
       END IF ! New dataset
 
       ! Get index of visu array that we should write to
-      iVarVisu= mapTotalToVisu(iVar)
+      iVarVisu= mapAllVarsToVisuVars(iVar)
       ! Convert the generic data to visu grid
       SELECT CASE(nDims)
       CASE(2) ! Elementwise data
@@ -471,7 +471,7 @@ DO iVar=nVarDep+1,nVarTotal
       END SELECT
 
     END IF ! substring_count.GT.1
-  END IF ! mapTotalToVisu(iVar).GT.0
+  END IF ! mapAllVarsToVisuVars(iVar).GT.0
 
 END DO !iVar=1,
 

@@ -90,13 +90,13 @@ DO iArg=1+skipArgs,nArgs
 #endif
 
   ALLOCATE(varnames_loc(nVarVisu))
-  ALLOCATE(varnamesSurf_loc(nVarSurfVisuTotal))
-  DO iVar=1,nVarTotal
-    IF (mapTotalToVisu(iVar).GT.0) THEN
-      VarNames_loc(mapTotalToVisu(iVar)) = VarNamesTotal(iVar)
+  ALLOCATE(varnamesSurf_loc(nVarSurfVisuAll))
+  DO iVar=1,nVarAll
+    IF (mapAllVarsToVisuVars(iVar).GT.0) THEN
+      VarNames_loc(mapAllVarsToVisuVars(iVar)) = VarnamesAll(iVar)
     END IF
-    IF (mapTotalToSurfVisu(iVar).GT.0) THEN
-      VarNamesSurf_loc(mapTotalToSurfVisu(iVar)) = VarNamesTotal(iVar)
+    IF (mapAllVarsToSurfVisuVars(iVar).GT.0) THEN
+      VarNamesSurf_loc(mapAllVarsToSurfVisuVars(iVar)) = VarnamesAll(iVar)
     END IF
   END DO
 
@@ -121,11 +121,11 @@ DO iArg=1+skipArgs,nArgs
 #else
     FileString_SurfDG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Surf',OutputTime))//'.vtu'
 #endif
-    CALL WriteDataToVTK(nVarSurfVisuTotal,NVisu,nBCSidesVisu_DG,VarNamesSurf_loc,CoordsSurfVisu_DG,USurfVisu_DG,&
+    CALL WriteDataToVTK(nVarSurfVisuAll,NVisu,nBCSidesVisu_DG,VarNamesSurf_loc,CoordsSurfVisu_DG,USurfVisu_DG,&
         FileString_SurfDG,dim=2,DGFV=0,nValAtLastDimension=.TRUE.)
 #if FV_ENABLED                            
     FileString_SurfFV=TRIM(TIMESTAMP(TRIM(ProjectName)//'_SurfFV',OutputTime))//'.vtu'
-    CALL WriteDataToVTK(nVarSurfVisuTotal,NVisu_FV,nBCSidesVisu_FV,VarNamesSurf_loc,CoordsSurfVisu_FV,USurfVisu_FV,&
+    CALL WriteDataToVTK(nVarSurfVisuAll,NVisu_FV,nBCSidesVisu_FV,VarNamesSurf_loc,CoordsSurfVisu_FV,USurfVisu_FV,&
         FileString_SurfFV,dim=2,DGFV=1,nValAtLastDimension=.TRUE.)
 
     IF (MPIRoot) THEN                   

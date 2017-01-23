@@ -28,8 +28,8 @@ INTERFACE Build_FV_DG_distribution
   MODULE PROCEDURE Build_FV_DG_distribution
 END INTERFACE
 
-INTERFACE Build_mapDepToCalc_mapTotalToVisu
-  MODULE PROCEDURE Build_mapDepToCalc_mapTotalToVisu
+INTERFACE Build_mapDepToCalc_mapAllVarsToVisuVars
+  MODULE PROCEDURE Build_mapDepToCalc_mapAllVarsToVisuVars
 END INTERFACE
 
 INTERFACE Build_mapBCSides
@@ -37,7 +37,7 @@ INTERFACE Build_mapBCSides
 END INTERFACE
 
 PUBLIC:: Build_FV_DG_distribution
-PUBLIC:: Build_mapDepToCalc_mapTotalToVisu
+PUBLIC:: Build_mapDepToCalc_mapAllVarsToVisuVars
 PUBLIC:: Build_mapBCSides
 
 CONTAINS
@@ -169,9 +169,9 @@ END SUBROUTINE Build_FV_DG_distribution
 !>     dependecies of the primitive quantities (the primitive quantities are available directly, since the DGTimeDerivative_weakForm
 !>     will be executed.
 !>  4. build the 'mapDepToCalc' that holds for each quantity that will be calculated the index in 'UCalc' array (0 if not calculated)
-!>  5. build the 'mapTotalToVisu' that holds for each quantity that will be visualized the index in 'UVisu' array (0 if not visualized)
+!>  5. build the 'mapAllVarsToVisuVars' that holds for each quantity that will be visualized the index in 'UVisu' array (0 if not visualized)
 !===================================================================================================================================
-SUBROUTINE Build_mapDepToCalc_mapTotalToVisu()
+SUBROUTINE Build_mapDepToCalc_mapAllVarsToVisuVars()
 USE MOD_Globals
 USE MOD_Posti_Vars
 USE MOD_ReadInTools     ,ONLY: GETSTR,CountOption
@@ -186,35 +186,35 @@ CHARACTER(LEN=255)  :: BoundaryName
 CHARACTER(LEN=20)   :: format
 !===================================================================================================================================
 ! Read Varnames from parameter file and fill
-!   mapTotalToVisu = map, which stores at position x the position/index of the x.th quantity in the UVisu array
+!   mapAllVarsToVisuVars = map, which stores at position x the position/index of the x.th quantity in the UVisu array
 !             if a quantity is not visualized it is zero
-SDEALLOCATE(mapTotalToVisu)
-SDEALLOCATE(mapTotalToSurfVisu)
-ALLOCATE(mapTotalToVisu(1:nVarTotal))
-ALLOCATE(mapTotalToSurfVisu(1:nVarTotal))
-mapTotalToVisu = 0
-mapTotalToSurfVisu = 0
+SDEALLOCATE(mapAllVarsToVisuVars)
+SDEALLOCATE(mapAllVarsToSurfVisuVars)
+ALLOCATE(mapAllVarsToVisuVars(1:nVarAll))
+ALLOCATE(mapAllVarsToSurfVisuVars(1:nVarAll))
+mapAllVarsToVisuVars = 0
+mapAllVarsToSurfVisuVars = 0
 nVarVisu = 0
-nVarSurfVisuTotal = 0
+nVarSurfVisuAll = 0
 ! Compare varnames that should be visualized with available varnames
 DO iVar=1,CountOption("VarName")
   VarName = GETSTR("VarName")
-  DO iVar2=1,nVarTotal
-    IF (STRICMP(VarName, VarNamesTotal(iVar2))) THEN
-      nVarSurfVisuTotal = nVarSurfVisuTotal + 1
-      mapTotalToSurfVisu(iVar2) = nVarSurfVisuTotal
+  DO iVar2=1,nVarAll
+    IF (STRICMP(VarName, VarnamesAll(iVar2))) THEN
+      nVarSurfVisuAll = nVarSurfVisuAll + 1
+      mapAllVarsToSurfVisuVars(iVar2) = nVarSurfVisuAll
       IF (iVar2.LE.nVarDep) THEN
         IF(DepSurfaceOnly(iVar2).EQ.1) CYCLE
       END IF
       nVarVisu = nVarVisu + 1
-      mapTotalToVisu(iVar2) = nVarVisu
+      mapAllVarsToVisuVars(iVar2) = nVarVisu
     END IF
   END DO
 END DO
 
 ! check whether gradients are needed for any quantity
 DO iVar=1,nVarDep
-  IF (mapTotalToSurfVisu(iVar).GT.0) THEN
+  IF (mapAllVarsToSurfVisuVars(iVar).GT.0) THEN
     withDGOperator = withDGOperator .OR. (DepTable(iVar,0).GT.0)
   END IF
 END DO
@@ -233,7 +233,7 @@ END DO
 SWRITE(*,*) "Dependencies: ", withDGOperator
 WRITE(format,'(I2)') SIZE(DepTable,2)
 DO iVar=1,nVarDep
-  SWRITE (*,'('//format//'I2,A)') DepTable(iVar,:), " "//TRIM(VarNamesTotal(iVar))
+  SWRITE (*,'('//format//'I2,A)') DepTable(iVar,:), " "//TRIM(VarnamesAll(iVar))
 END DO
 
 ! Build :
@@ -243,7 +243,7 @@ SDEALLOCATE(mapDepToCalc)
 ALLOCATE(mapDepToCalc(1:nVarDep))
 mapDepToCalc = 0
 DO iVar=1,nVarDep
-  IF (mapTotalToSurfVisu(iVar).GT.0) THEN
+  IF (mapAllVarsToSurfVisuVars(iVar).GT.0) THEN
     mapDepToCalc = MAX(mapDepToCalc,DepTable(iVar,1:nVarDep))
   END IF
 END DO
@@ -258,18 +258,18 @@ END DO
 
 ! check if any varnames changed
 changedVarNames = .TRUE.
-IF (ALLOCATED(mapTotalToSurfVisu_old).AND.(SIZE(mapTotalToSurfVisu).EQ.SIZE(mapTotalToSurfVisu_old))) THEN
-  changedVarNames = .NOT.ALL(mapTotalToSurfVisu.EQ.mapTotalToSurfVisu_old) 
+IF (ALLOCATED(mapAllVarsToSurfVisuVars_old).AND.(SIZE(mapAllVarsToSurfVisuVars).EQ.SIZE(mapAllVarsToSurfVisuVars_old))) THEN
+  changedVarNames = .NOT.ALL(mapAllVarsToSurfVisuVars.EQ.mapAllVarsToSurfVisuVars_old) 
 END IF
-SDEALLOCATE(mapTotalToSurfVisu_old)
-ALLOCATE(mapTotalToSurfVisu_old(1:nVarTotal))
-mapTotalToSurfVisu_old = mapTotalToSurfVisu
+SDEALLOCATE(mapAllVarsToSurfVisuVars_old)
+ALLOCATE(mapAllVarsToSurfVisuVars_old(1:nVarAll))
+mapAllVarsToSurfVisuVars_old = mapAllVarsToSurfVisuVars
 
 ! print the mappings
-WRITE(format,'(I2)') nVarTotal
+WRITE(format,'(I2)') nVarAll
 SWRITE (*,'(A,'//format//'I3)') "mapDepToCalc ",mapDepToCalc
-SWRITE (*,'(A,'//format//'I3)') "mapTotalToVisu ",mapTotalToVisu
-SWRITE (*,'(A,'//format//'I3)') "mapTotalToSurfVisu ",mapTotalToSurfVisu
+SWRITE (*,'(A,'//format//'I3)') "mapAllVarsToVisuVars ",mapAllVarsToVisuVars
+SWRITE (*,'(A,'//format//'I3)') "mapAllVarsToSurfVisuVars ",mapAllVarsToSurfVisuVars
 
 ! Build the mapping for the surface visualization
 ! mapAllBCNamesToVisuBCNames(iBC) stores the ascending visualization index of the all boundaries. 0 means no visualization.
@@ -301,7 +301,7 @@ mapAllBCNamesToVisuBCNames_old = mapAllBCNamesToVisuBCNames
 
 SWRITE (*,'(A,'//format//'I3)') "mapAllBCNamesToVisuBCNames ",mapAllBCNamesToVisuBCNames
 
-END SUBROUTINE Build_mapDepToCalc_mapTotalToVisu
+END SUBROUTINE Build_mapDepToCalc_mapAllVarsToVisuVars
 
 SUBROUTINE Build_mapBCSides() 
 USE MOD_Posti_Vars
@@ -318,19 +318,19 @@ INTEGER           :: iBC,iElem,iSide
 !===================================================================================================================================
 
 ! Build surface visualization mappings. 
-! mapAllBCSidesToDGBCSides/FV(iBCSide) contains the ascending index of the visualization boundary sides. They are sorted after the boundary name.
+! mapAllBCSidesToDGVisuBCSides/FV(iBCSide) contains the ascending index of the visualization boundary sides. They are sorted after the boundary name.
 ! 0 means no visualization of this boundary side.
 ! nSidesPerBCNameVisu_DG/FV(iBCNamesVisu) contains how many boundary sides belong to each boundary that should be visualized.
-SDEALLOCATE(mapAllBCSidesToDGBCSides)
-SDEALLOCATE(mapAllBCSidesToFVBCSides)
+SDEALLOCATE(mapAllBCSidesToDGVisuBCSides)
+SDEALLOCATE(mapAllBCSidesToFVVisuBCSides)
 SDEALLOCATE(nSidesPerBCNameVisu_DG)
 SDEALLOCATE(nSidesPerBCNameVisu_FV)
-ALLOCATE(mapAllBCSidesToDGBCSides(1:nBCSides))
-ALLOCATE(mapAllBCSidesToFVBCSides(1:nBCSides))
+ALLOCATE(mapAllBCSidesToDGVisuBCSides(1:nBCSides))
+ALLOCATE(mapAllBCSidesToFVVisuBCSides(1:nBCSides))
 ALLOCATE(nSidesPerBCNameVisu_DG(1:nBCNamesVisu))
 ALLOCATE(nSidesPerBCNameVisu_FV(1:nBCNamesVisu))
-mapAllBCSidesToDGBCSides = 0
-mapAllBCSidesToFVBCSides = 0
+mapAllBCSidesToDGVisuBCSides = 0
+mapAllBCSidesToFVVisuBCSides = 0
 nSidesPerBCNameVisu_DG = 0
 nSidesPerBCNameVisu_FV = 0
 nBCSidesVisu_DG = 0
@@ -342,11 +342,11 @@ DO iBC=1,nBCNamesAll    ! iterate over all bc names
         iElem = SideToElem(S2E_ELEM_ID,iSide)
         IF (FV_Elems(iElem).EQ.0)  THEN ! DG element
           nBCSidesVisu_DG = nBCSidesVisu_DG + 1
-          mapAllBCSidesToDGBCSides(iSide) = nBCSidesVisu_DG
+          mapAllBCSidesToDGVisuBCSides(iSide) = nBCSidesVisu_DG
           nSidesPerBCNameVisu_DG(mapAllBCNamesToVisuBCNames(iBC)) = nSidesPerBCNameVisu_DG(mapAllBCNamesToVisuBCNames(iBC)) + 1
         ELSE ! FV Element
           nBCSidesVisu_FV = nBCSidesVisu_FV + 1
-          mapAllBCSidesToFVBCSides(iSide) = nBCSidesVisu_FV
+          mapAllBCSidesToFVVisuBCSides(iSide) = nBCSidesVisu_FV
           nSidesPerBCNameVisu_FV(mapAllBCNamesToVisuBCNames(iBC)) = nSidesPerBCNameVisu_FV(mapAllBCNamesToVisuBCNames(iBC)) + 1
         END IF
       END IF

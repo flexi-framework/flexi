@@ -196,7 +196,7 @@ USE MOD_Interpolation_Vars ,ONLY: NodeType
 USE MOD_Output_Vars        ,ONLY: ProjectName
 USE MOD_StringTools        ,ONLY: STRICMP
 USE MOD_ReadInTools        ,ONLY: prms,GETINT,GETLOGICAL,addStrListEntry,GETSTR,CountOption,FinalizeParameters
-USE MOD_Posti_Mappings     ,ONLY: Build_FV_DG_distribution,Build_mapDepToCalc_mapTotalToVisu
+USE MOD_Posti_Mappings     ,ONLY: Build_FV_DG_distribution,Build_mapDepToCalc_mapAllVarsToVisuVars
 
 IMPLICIT NONE
 CHARACTER(LEN=255),INTENT(IN)    :: statefile
@@ -206,7 +206,7 @@ CHARACTER(LEN=255),INTENT(INOUT) :: postifile
 INTEGER                          :: nElems_State
 CHARACTER(LEN=255)               :: NodeType_State 
 !===================================================================================================================================
-CALL visu_getVarNamesAndFileType(statefile,VarNamesTotal,BCNamesAll)
+CALL visu_getVarNamesAndFileType(statefile,VarnamesAll,BCNamesAll)
 IF (STRICMP(statefile,'Mesh')) THEN
     CALL CollectiveStop(__STAMP__, &
         "FileType==Mesh, but we try to initialize a state file!")
@@ -257,7 +257,7 @@ CALL CloseDataFile()
 ! set number of dependent and raw variables 
 SDEALLOCATE(DepTable)
 SDEALLOCATE(DepSurfaceOnly)
-nVarTotal=SIZE(VarNamesTotal)
+nVarAll=SIZE(VarnamesAll)
 IF (STRICMP(FileType,'State')) THEN
   nVarDep = nVarDepEOS
   ALLOCATE(DepTable(nVarDep,0:nVarDep))
@@ -286,7 +286,7 @@ IF (hasFV_Elems) withDGOperator = .TRUE.
 
 ! build mappings of variables which must be calculated/visualized
 ! also set withDGOperator flag if a dependent variable requires the evaluation of the DG operator
-CALL Build_mapDepToCalc_mapTotalToVisu()
+CALL Build_mapDepToCalc_mapAllVarsToVisuVars()
 
 changedWithDGOperator = (withDGOperator.NEQV.withDGOperator_old)
 END SUBROUTINE visu_InitFile
@@ -371,11 +371,11 @@ SWRITE (*,*) "READING FROM: ", TRIM(statefile)
 !                    
 ! * Therefore two mappings from all available quantities to the calc-quantities and the
 !   visu-quantities exist:
-!   - 'mapTotalToVisu' is a integer array of size (1:nVarTotal), where nVarTotal is the total amount 
+!   - 'mapAllVarsToVisuVars' is a integer array of size (1:nVarAll), where nVarAll is the total amount 
 !     of available quantities. This map contains a zero for all not-to-visu-quantities and for
 !     all quantities the index where it is stored in 'UVisu'.
 !     This mapping is filled from the 'VarName' entries in the parameter file.
-!   - 'mapDepToCalc' is the same as mapTotalToVisu, but for all (intermediate) quantities stored in 'UCalc'.
+!   - 'mapDepToCalc' is the same as mapAllVarsToVisuVars, but for all (intermediate) quantities stored in 'UCalc'.
 !     This mapping is filled from the DepTable.
 !
 ! CHANGED system:
@@ -547,9 +547,9 @@ SDEALLOCATE(mapDepToCalc)
 #if FV_ENABLED && FV_RECONSTRUCT
 SDEALLOCATE(mapDepToCalc_FV)
 #endif
-SDEALLOCATE(mapTotalToVisu)
-SDEALLOCATE(mapTotalToSurfVisu)
-SDEALLOCATE(mapTotalToSurfVisu_old)
+SDEALLOCATE(mapAllVarsToVisuVars)
+SDEALLOCATE(mapAllVarsToSurfVisuVars)
+SDEALLOCATE(mapAllVarsToSurfVisuVars_old)
 SDEALLOCATE(UCalc_DG)
 SDEALLOCATE(UCalc_FV)
 
