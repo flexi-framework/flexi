@@ -49,7 +49,7 @@ CONTAINS
 SUBROUTINE ReadState(prmfile,statefile)
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Posti_Vars  ,ONLY:withDGOperator
+USE MOD_Visu_Vars   ,ONLY:withDGOperator
 USE MOD_ReadInTools ,ONLY:ExtractParameterFile
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -91,7 +91,7 @@ SUBROUTINE ReadStateAndGradients(prmfile,statefile)
 ! MODULES                                                                   
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Posti_Vars
+USE MOD_Visu_Vars
 USE MOD_MPI           ,ONLY: DefineParametersMPI
 #if USE_MPI
 USE MOD_MPI           ,ONLY: InitMPIvars,FinalizeMPI
@@ -218,7 +218,7 @@ SUBROUTINE ReadStateWithoutGradients(prmfile,statefile,Nin)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Posti_Vars
+USE MOD_Visu_Vars
 USE MOD_MPI,                 ONLY: DefineParametersMPI
 #if USE_MPI
 USE MOD_MPI,                 ONLY: FinalizeMPI

@@ -70,7 +70,7 @@ CONTAINS
 SUBROUTINE ConvertToVisu_DG() 
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Posti_Vars
+USE MOD_Visu_Vars
 USE MOD_Interpolation      ,ONLY: GetVandermonde
 USE MOD_ChangeBasis        ,ONLY: ChangeBasis3D,ChangeBasis2D
 USE MOD_Interpolation_Vars ,ONLY: NodeType,NodeTypeVisu
@@ -103,7 +103,7 @@ END SUBROUTINE ConvertToVisu_DG
 SUBROUTINE ConvertToSurfVisu_DG() 
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Posti_Vars
+USE MOD_Visu_Vars
 USE MOD_Interpolation      ,ONLY: GetVandermonde
 USE MOD_ChangeBasis        ,ONLY: ChangeBasis3D,ChangeBasis2D
 USE MOD_Interpolation_Vars ,ONLY: NodeType,NodeTypeVisu
@@ -140,8 +140,8 @@ END SUBROUTINE ConvertToSurfVisu_DG
 SUBROUTINE ConvertToVisu_FV()
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Posti_Vars         ,ONLY: nVarDep,VarnamesAll,mapDepToCalc_FV
-USE MOD_Posti_Vars         ,ONLY: mapAllVarsToVisuVars,UVisu_FV,nElems_FV,UCalc_FV
+USE MOD_Visu_Vars         ,ONLY: nVarDep,VarnamesAll,mapDepToCalc_FV
+USE MOD_Visu_Vars         ,ONLY: mapAllVarsToVisuVars,UVisu_FV,nElems_FV,UCalc_FV
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -179,8 +179,8 @@ END SUBROUTINE ConvertToVisu_FV
 SUBROUTINE ConvertToSurfVisu_FV()
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Posti_Vars         ,ONLY: nVarDep,VarnamesAll,mapDepToCalc_FV
-USE MOD_Posti_Vars         ,ONLY: mapAllVarsToSurfVisuVars,USurfVisu_FV,USurfCalc_FV
+USE MOD_Visu_Vars         ,ONLY: nVarDep,VarnamesAll,mapDepToCalc_FV
+USE MOD_Visu_Vars         ,ONLY: mapAllVarsToSurfVisuVars,USurfVisu_FV,USurfCalc_FV
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -212,7 +212,7 @@ SUBROUTINE ConvertToVisu_FV_Reconstruct(&
         )
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Posti_Vars
+USE MOD_Visu_Vars
 USE MOD_ReadInTools        ,ONLY: GETINT
 USE MOD_Interpolation      ,ONLY: GetVandermonde
 USE MOD_ChangeBasis        ,ONLY: ChangeBasis3D
@@ -344,7 +344,7 @@ END SUBROUTINE ConvertToVisu_FV_Reconstruct
 SUBROUTINE ConvertToVisu_GenericData(statefile) 
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Posti_Vars
+USE MOD_Visu_Vars
 USE MOD_IO_HDF5            ,ONLY: HSize
 USE MOD_HDF5_Input         ,ONLY: File_ID,GetVarNames
 USE MOD_HDF5_Input         ,ONLY: OpenDataFile,ReadArray,CloseDataFile,DatasetExists,ReadAttribute,GetDataSize

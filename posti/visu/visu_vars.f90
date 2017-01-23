@@ -14,7 +14,7 @@
 !==================================================================================================================================
 !> Contains global variables provided by the posti routines 
 !==================================================================================================================================
-MODULE MOD_Posti_Vars
+MODULE MOD_Visu_Vars
 USE ISO_C_BINDING
 ! MODULES
 IMPLICIT NONE
@@ -149,4 +149,4 @@ REAL(C_DOUBLE),ALLOCATABLE,TARGET :: UVisu_FV_2D(:,:,:,:,:)     ! state at visu 
 
 
 
-END MODULE MOD_Posti_Vars
+END MODULE MOD_Visu_Vars

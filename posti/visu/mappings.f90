@@ -52,7 +52,7 @@ CONTAINS
 SUBROUTINE Build_FV_DG_distribution(statefile)
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Posti_Vars
+USE MOD_Visu_Vars
 USE MOD_HDF5_Input  ,ONLY: GetArrayAndName,OpenDataFile,CloseDataFile
 USE MOD_ReadInTools ,ONLY: GETSTR,CountOption
 USE MOD_StringTools ,ONLY: STRICMP
@@ -171,7 +171,7 @@ END SUBROUTINE Build_FV_DG_distribution
 !===================================================================================================================================
 SUBROUTINE Build_mapDepToCalc_mapAllVarsToVisuVars()
 USE MOD_Globals
-USE MOD_Posti_Vars
+USE MOD_Visu_Vars
 USE MOD_ReadInTools     ,ONLY: GETSTR,CountOption
 USE MOD_StringTools     ,ONLY: STRICMP
 IMPLICIT NONE
@@ -306,7 +306,7 @@ SWRITE (*,'(A,'//format//'I3)') "mapAllBCNamesToVisuBCNames ",mapAllBCNamesToVis
 END SUBROUTINE Build_mapDepToCalc_mapAllVarsToVisuVars
 
 SUBROUTINE Build_mapBCSides() 
-USE MOD_Posti_Vars
+USE MOD_Visu_Vars
 USE MOD_Mesh_Vars  ,ONLY: nBCSides,BC,SideToElem,BoundaryName
 USE MOD_StringTools ,ONLY: STRICMP
 IMPLICIT NONE

@@ -59,7 +59,7 @@ CONTAINS
 !===================================================================================================================================
 SUBROUTINE visu_getVarNamesAndFileType(statefile,varnames_loc, bcnames_loc) 
 USE MOD_Globals
-USE MOD_Posti_Vars     ,ONLY: FileType,VarNamesHDF5,nBCNamesAll
+USE MOD_Visu_Vars      ,ONLY: FileType,VarNamesHDF5,nBCNamesAll
 USE MOD_HDF5_Input     ,ONLY: OpenDataFile,CloseDataFile,GetDataSize,GetVarNames,ISVALIDMESHFILE,ISVALIDHDF5FILE,ReadAttribute
 USE MOD_HDF5_Input     ,ONLY: DatasetExists,HSize,nDims,ReadArray
 USE MOD_IO_HDF5        ,ONLY: GetDatasetNamesInGroup,File_ID
@@ -187,7 +187,7 @@ SUBROUTINE visu_InitFile(statefile,postifile)
 USE HDF5
 USE MOD_Preproc
 USE MOD_Globals
-USE MOD_Posti_Vars
+USE MOD_Visu_Vars
 USE MOD_EOS_Posti_Vars
 USE MOD_MPI                ,ONLY: InitMPI
 USE MOD_HDF5_Input         ,ONLY: ISVALIDMESHFILE,ISVALIDHDF5FILE,GetArrayAndName
@@ -298,7 +298,7 @@ SUBROUTINE visu(mpi_comm_IN, prmfile, postifile, statefile)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Posti_Vars
+USE MOD_Visu_Vars
 USE MOD_MPI                 ,ONLY: InitMPI
 USE MOD_HDF5_Input          ,ONLY: ISVALIDMESHFILE,ISVALIDHDF5FILE,OpenDataFile,CloseDataFile
 USE MOD_Posti_ReadState     ,ONLY: ReadState
@@ -530,7 +530,7 @@ END SUBROUTINE visu
 !===================================================================================================================================
 SUBROUTINE FinalizeVisu()
 USE MOD_Globals,ONLY: MPIRoot
-USE MOD_Posti_Vars
+USE MOD_Visu_Vars
 IMPLICIT NONE
 !===================================================================================================================================
 SWRITE (*,*) "VISU FINALIZE"

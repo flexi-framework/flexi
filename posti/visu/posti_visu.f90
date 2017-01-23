@@ -23,7 +23,7 @@
 PROGRAM Posti_Visu
 USE ISO_C_BINDING
 USE MOD_Globals
-USE MOD_Posti_Vars
+USE MOD_Visu_Vars
 USE MOD_Commandline_Arguments
 USE MOD_Visu
 USE MOD_ISO_VARYING_STRING

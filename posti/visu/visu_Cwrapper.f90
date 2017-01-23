@@ -69,7 +69,7 @@ SUBROUTINE visu_requestInformation(mpi_comm_IN, strlen_state, statefile_IN, varn
 ! MODULES
 USE MOD_Globals
 USE MOD_MPI        ,ONLY: InitMPI
-USE MOD_Posti_Vars ,ONLY: VarnamesAll,BCNamesAll
+USE MOD_Visu_Vars  ,ONLY: VarnamesAll,BCNamesAll
 USE MOD_Visu       ,ONLY: visu_getVarNamesAndFileType
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
@@ -118,7 +118,7 @@ SUBROUTINE visu_CWrapper(mpi_comm_IN, &
     coordsSurfFV_out,valuesSurfFV_out,nodeidsSurfFV_out,varnamesSurf_out)
 USE ISO_C_BINDING
 USE MOD_Globals
-USE MOD_Posti_Vars
+USE MOD_Visu_Vars
 USE MOD_Visu        ,ONLY: visu
 USE MOD_VTK         ,ONLY: WriteCoordsToVTK_array,WriteDataToVTK_array,WriteVarnamesToVTK_array
 IMPLICIT NONE
@@ -227,7 +227,7 @@ END SUBROUTINE visu_CWrapper
 !> Deallocate the different NodeID arrays.
 !===================================================================================================================================
 SUBROUTINE visu_dealloc_nodeids() 
-USE MOD_Posti_Vars
+USE MOD_Visu_Vars
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 

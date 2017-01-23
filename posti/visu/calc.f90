@@ -61,7 +61,7 @@ CONTAINS
 SUBROUTINE CalcQuantities_DG() 
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Posti_Vars
+USE MOD_Visu_Vars
 USE MOD_EOS_Posti          ,ONLY: CalcQuantities
 USE MOD_Mesh_Vars          ,ONLY: nElems
 USE MOD_DG_Vars            ,ONLY: U
@@ -114,7 +114,7 @@ END SUBROUTINE CalcQuantities_DG
 SUBROUTINE CalcSurfQuantities_DG() 
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Posti_Vars
+USE MOD_Visu_Vars
 USE MOD_EOS_Posti          ,ONLY: CalcQuantities
 USE MOD_Mesh_Vars          ,ONLY: nBCSides
 USE MOD_Mesh_Vars          ,ONLY: NormVec,TangVec1,TangVec2
@@ -190,7 +190,7 @@ SUBROUTINE ProlongToFace_independent(nVar,nSides_calc,nElems_calc,maskCalc,UIn,U
 #endif        
     ) 
 USE MOD_PreProc
-USE MOD_Posti_Vars
+USE MOD_Visu_Vars
 #if PARABOLIC
 USE MOD_Lifting_Vars       ,ONLY: gradUx,gradUy,gradUz
 USE MOD_Mesh_Vars          ,ONLY: SideToElem
@@ -304,7 +304,7 @@ END SUBROUTINE ProlongToFace_independent
 SUBROUTINE CalcQuantities_FV() 
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Posti_Vars
+USE MOD_Visu_Vars
 USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_FV
 USE MOD_EOS_Posti           ,ONLY: CalcQuantities
 #if FV_RECONSTRUCT
@@ -410,7 +410,7 @@ END SUBROUTINE CalcQuantities_FV
 SUBROUTINE CalcSurfQuantities_FV() 
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Posti_Vars
+USE MOD_Visu_Vars
 USE MOD_EOS_Posti          ,ONLY: CalcQuantities
 USE MOD_Mesh_Vars          ,ONLY: nBCSides,SideToElem,ElemToSide
 USE MOD_Mesh_Vars          ,ONLY: NormVec,TangVec1,TangVec2
@@ -517,7 +517,7 @@ END SUBROUTINE CalcSurfQuantities_FV
 !> Copies variable for given element range from source array to target array using VTK structure
 !==================================================================================================================================
 SUBROUTINE FillCopy(nVar,Nloc,nElems,UIn,nElems_calc,indices,UOut,maskCalc)
-USE MOD_Posti_Vars
+USE MOD_Visu_Vars
 USE MOD_StringTools ,ONLY: STRICMP
 ! MODULES
 IMPLICIT NONE 

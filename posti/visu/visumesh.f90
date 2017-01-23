@@ -51,12 +51,12 @@ SUBROUTINE BuildVisuCoords()
 USE ISO_C_BINDING
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Posti_Vars         ,ONLY: CoordsVisu_DG
-USE MOD_Posti_Vars         ,ONLY: NodeTypeVisuPosti
-USE MOD_Posti_Vars         ,ONLY: NVisu,nElems_DG,mapDGElemsToAllElems
+USE MOD_Visu_Vars          ,ONLY: CoordsVisu_DG
+USE MOD_Visu_Vars          ,ONLY: NodeTypeVisuPosti
+USE MOD_Visu_Vars          ,ONLY: NVisu,nElems_DG,mapDGElemsToAllElems
 #if FV_ENABLED
-USE MOD_Posti_Vars         ,ONLY: NVisu_FV,nElems_FV,mapFVElemsToAllElems,hasFV_Elems
-USE MOD_Posti_Vars         ,ONLY: CoordsVisu_FV,changedMeshFile,changedFV_Elems
+USE MOD_Visu_Vars          ,ONLY: NVisu_FV,nElems_FV,mapFVElemsToAllElems,hasFV_Elems
+USE MOD_Visu_Vars          ,ONLY: CoordsVisu_FV,changedMeshFile,changedFV_Elems
 #endif
 USE MOD_Interpolation_Vars ,ONLY: NodeTypeVisu,NodeTypeFVEqui,NodeType
 USE MOD_Interpolation      ,ONLY: GetVandermonde
@@ -116,13 +116,13 @@ SUBROUTINE BuildSurfVisuCoords()
 USE ISO_C_BINDING
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Posti_Vars         ,ONLY: CoordsSurfVisu_DG,nBCSidesVisu_DG,mapAllBCSidesToDGVisuBCSides
-USE MOD_Posti_Vars         ,ONLY: NodeTypeVisuPosti
-USE MOD_Posti_Vars         ,ONLY: NVisu
+USE MOD_Visu_Vars          ,ONLY: CoordsSurfVisu_DG,nBCSidesVisu_DG,mapAllBCSidesToDGVisuBCSides
+USE MOD_Visu_Vars          ,ONLY: NodeTypeVisuPosti
+USE MOD_Visu_Vars          ,ONLY: NVisu
 #if FV_ENABLED
-USE MOD_Posti_Vars         ,ONLY: CoordsSurfVisu_FV,nBCSidesVisu_FV,mapAllBCSidesToFVVisuBCSides
-USE MOD_Posti_Vars         ,ONLY: NVisu_FV,hasFV_Elems
-USE MOD_Posti_Vars         ,ONLY: changedMeshFile,changedFV_Elems,changedBCnames
+USE MOD_Visu_Vars          ,ONLY: CoordsSurfVisu_FV,nBCSidesVisu_FV,mapAllBCSidesToFVVisuBCSides
+USE MOD_Visu_Vars          ,ONLY: NVisu_FV,hasFV_Elems
+USE MOD_Visu_Vars          ,ONLY: changedMeshFile,changedFV_Elems,changedBCnames
 #endif
 USE MOD_Interpolation_Vars ,ONLY: NodeTypeVisu,NodeTypeFVEqui,NodeType
 USE MOD_Interpolation      ,ONLY: GetVandermonde
@@ -193,7 +193,7 @@ SUBROUTINE VisualizeMesh(postifile,meshfile_in,coordsDG_out,valuesDG_out,nodeids
 ! MODULES                                                                   
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Posti_Vars
+USE MOD_Visu_Vars
 USE MOD_ReadInTools   ,ONLY: prms,GETINT
 USE MOD_ReadInTools   ,ONLY: FinalizeParameters
 #if USE_MPI
