@@ -72,6 +72,9 @@ DeltaS_master=0.
 DeltaS_slave=0.
 DeltaS=0.
 ALLOCATE(SGS_Ind(1,0:PP_N,0:PP_N,0:PP_N,nElems))
+ALLOCATE(MM_Avg(0:PP_N,0:PP_N,0:PP_N,nElems))
+ALLOCATE(ML_Avg(0:PP_N,0:PP_N,0:PP_N,nElems))
+MM_Avg = 0.; ML_Avg = 0.
 ALLOCATE(SGS_Ind_master(1,0:PP_N,0:PP_N,1:nSides))
 ALLOCATE(SGS_Ind_slave (1,0:PP_N,0:PP_N,1:nSides))
 SGS_Ind=0.

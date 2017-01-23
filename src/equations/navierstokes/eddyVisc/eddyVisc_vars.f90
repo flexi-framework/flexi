@@ -58,6 +58,8 @@ REAL              :: PrSGS             !< Prandtl number for the sub-grid scales
 !TKECUbed
 REAL,ALLOCATABLE  :: FilterMat_Testfilter(:,:) 
 REAL,ALLOCATABLE  :: SGS_Ind(:,:,:,:,:) 
+REAL,ALLOCATABLE  :: MM_Avg(:,:,:,:) 
+REAL,ALLOCATABLE  :: ML_Avg(:,:,:,:) 
 REAL,ALLOCATABLE  :: SGS_Ind_master(:,:,:,:) 
 REAL,ALLOCATABLE  :: SGS_Ind_slave(:,:,:,:) 
 

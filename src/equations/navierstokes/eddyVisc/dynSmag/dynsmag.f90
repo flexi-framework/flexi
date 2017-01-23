@@ -159,7 +159,7 @@ S_eN = S_eN + ( grad13 + grad31 )**2.
 S_eN = S_eN + ( grad23 + grad32 )**2.
 S_eN = sqrt(S_eN)
 ! dynsmag model
-muSGS = S_eN*rho*SGS_Ind(1,i,j,k,iElem) * deltaS(iElem)**2
+muSGS = S_eN*rho*SGS_Ind(1,i,j,k,iElem) 
 muSGSmax(iElem) = MAX(muSGS,muSGSmax(iElem))
 END SUBROUTINE dynsmag
 
@@ -193,7 +193,7 @@ S_eN = S_eN + ( grad13 + grad31 )**2.
 S_eN = S_eN + ( grad23 + grad32 )**2.
 S_eN = sqrt(S_eN)
 ! dynsmag model
-muSGS= ( DeltaSS )**2 * cd  * S_eN*rho
+muSGS= cd  * S_eN*rho
 END SUBROUTINE dynsmag_surf
 
 SUBROUTINE compute_cd(U_in)
@@ -204,6 +204,7 @@ SUBROUTINE compute_cd(U_in)
 USE MOD_PreProc
 USE MOD_EddyVisc_Vars,          ONLY:SGS_Ind,FilterMat_testfilter
 USE MOD_EddyVisc_Vars,          ONLY:SGS_Ind,SGS_Ind_Slave,SGS_Ind_Master
+USE MOD_EddyVisc_Vars,          ONLY:MM_Avg, ML_Avg
 USE MOD_ProlongToFace1,         ONLY: ProlongToFace1
 USE MOD_Filter,                 ONLY:Filter_General
 USE MOD_Lifting_Vars,           ONLY:gradUx,gradUy,gradUz
@@ -330,7 +331,7 @@ DO iElem=1,nElems
   D_Ratio=(REAL(N_testfilter+1)/REAL(PP_N+1))**2
   DO i=1,3
     DO k=1,3
-      M_ik(i,k,:,:,:) = -M_ik(i,k,:,:,:) + D_Ratio * S_eN_filtered(:,:,:)*S_ik(i,k,:,:,:)
+      M_ik(i,k,:,:,:) = M_ik(i,k,:,:,:) - D_Ratio * S_eN_filtered(:,:,:)*S_ik(i,k,:,:,:)
     END DO ! k
   END DO ! i
   !
@@ -416,57 +417,57 @@ DO iElem=1,nElems
 !
   !-----CELL LOCAL IN HOMOGENEOUS DIRECTIONS
   !ACHTUNG NUR KARTESISCH UND IN/FUER Y=J!!!
-  dummy1D=0.
-  Vol = 0.
-  DO j=0,PP_N
-    DO i=0,PP_N
-      IntegrationWeight = wGP(i)*wGP(j)
-      dummy1D(:) = dummy1D(:) + ML(i,:,j)*IntegrationWeight
-      Vol = Vol + Integrationweight
-    END DO ! i
-  END DO ! j
-  DO j=0,PP_N
-    DO i=0,PP_N
-      ML(i,:,j) = dummy1D(:)/Vol !CELL average
-    END DO ! i
-  END DO ! j
-  dummy1D=0.
-  DO j=0,PP_N
-    DO i=0,PP_N
-      IntegrationWeight = wGP(i)*wGP(j)
-      dummy1D(:) = dummy1D(:) + MM(i,:,j)*IntegrationWeight
-    END DO ! i
-  END DO ! j
-  DO j=0,PP_N
-    DO i=0,PP_N
-      MM(i,:,j) = dummy1D(:)/Vol !CELL average
-    END DO ! i
-  END DO ! j
-  DO j=0,PP_N
-    DO i=0,PP_N
-      C_d(i,:,j) = 0.5*ML(i,:,j)/MM(i,:,j) !CELL average
-    END DO ! i
-  END DO ! j
-  SGS_Ind(1,:,:,:,iElem) = C_d(:,:,:)
+!  dummy1D=0.
+!  Vol = 0.
+!  DO j=0,PP_N
+!    DO i=0,PP_N
+!      IntegrationWeight = wGP(i)*wGP(j)
+!      dummy1D(:) = dummy1D(:) + ML(i,:,j)*IntegrationWeight
+!      Vol = Vol + Integrationweight
+!    END DO ! i
+!  END DO ! j
+!  DO j=0,PP_N
+!    DO i=0,PP_N
+!      ML(i,:,j) = dummy1D(:)/Vol !CELL average
+!    END DO ! i
+!  END DO ! j
+!  dummy1D=0.
+!  DO j=0,PP_N
+!    DO i=0,PP_N
+!      IntegrationWeight = wGP(i)*wGP(j)
+!      dummy1D(:) = dummy1D(:) + MM(i,:,j)*IntegrationWeight
+!    END DO ! i
+!  END DO ! j
+!  DO j=0,PP_N
+!    DO i=0,PP_N
+!      MM(i,:,j) = dummy1D(:)/Vol !CELL average
+!    END DO ! i
+!  END DO ! j
+!  DO j=0,PP_N
+!    DO i=0,PP_N
+!      C_d(i,:,j) = 0.5*ML(i,:,j)/MM(i,:,j) !CELL average
+!    END DO ! i
+!  END DO ! j
+!  SGS_Ind(1,:,:,:,iElem) = C_d(:,:,:)
 !
 !------------------------------------------
 !Time Average ala pruett
 !Im Nenner steht r=FilterWidth/dt(RK)
 !Simple shot is taking the filter width equal 1, assuming meaningful dimensionless timescale
-!ML_Avg(:,:,:,iElem) = ML_Avg(:,:,:,iElem) + (ML(:,:,:)-ML_Avg(:,:,:,iElem))*(dt/1.)
-!MM_Avg(:,:,:,iElem) = MM_Avg(:,:,:,iElem) + (MM(:,:,:)-MM_Avg(:,:,:,iElem))*(dt/1.)
-!C_d=0.
-!DO i=0,PP_N
-!  DO j=0,PP_N
-!    DO k=0,PP_N
-!!      IF (ABS(MM_Avg(i,j,k,iElem)) .LE. 1e-15) CYCLE 
-!      C_d(i,j,k) = 0.5*ML_Avg(i,j,k,iElem)/MM_Avg(i,j,k,iElem)
-!    END DO ! i
-!  END DO ! j
-!END DO ! k
-!SGS_Ind(1,:,:,:,iElem) = SGS_Ind(1,:,:,:,iElem) + (C_d(:,:,:)-SGS_Ind(1,:,:,:,iElem))/1.*dt
-!!print*,SGS_Ind(1,:,:,:,iElem)
-  SGS_Ind(1,:,:,:,iElem) = C_d(:,:,:)
+ML_Avg(:,:,:,iElem) = ML_Avg(:,:,:,iElem) + (ML(:,:,:)-ML_Avg(:,:,:,iElem))*(dt/1.)
+MM_Avg(:,:,:,iElem) = MM_Avg(:,:,:,iElem) + (MM(:,:,:)-MM_Avg(:,:,:,iElem))*(dt/1.)
+C_d=0.
+DO i=0,PP_N
+  DO j=0,PP_N
+    DO k=0,PP_N
+!      IF (ABS(MM_Avg(i,j,k,iElem)) .LE. 1e-15) CYCLE 
+      C_d(i,j,k) = 0.5*ML_Avg(i,j,k,iElem)/MM_Avg(i,j,k,iElem)
+    END DO ! i
+  END DO ! j
+END DO ! k
+SGS_Ind(1,:,:,:,iElem) = SGS_Ind(1,:,:,:,iElem) + (C_d(:,:,:)-SGS_Ind(1,:,:,:,iElem))/1.*dt
+!print*,SGS_Ind(1,:,:,:,iElem)
+!  SGS_Ind(1,:,:,:,iElem) = C_d(:,:,:)
 !------------------------------------------
 END DO
 #if MPI
