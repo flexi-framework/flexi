@@ -71,13 +71,13 @@ INTEGER                        :: nVal(15)
 REAL,ALLOCATABLE               :: ElemData_loc(:,:),tmp(:)
 CHARACTER(LEN=255),ALLOCATABLE :: VarNamesElemData_loc(:)
 #endif
+INTEGER,ALLOCATABLE            :: FV_Elems_loc(:)             
 !===================================================================================================================================
 ! Build partition to get nElems
 CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL BuildPartition() 
 CALL CloseDataFile()
 
-SDEALLOCATE(FV_Elems_loc)
 ALLOCATE(FV_Elems_loc(1:nElems))
 #if FV_ENABLED
 IF (.NOT.DGonly) THEN
@@ -157,7 +157,7 @@ CALL MPI_ALLREDUCE(MPI_IN_PLACE,nElems_FV_glob,1,MPI_INTEGER,MPI_MAX,MPI_COMM_WO
 #endif
 hasFV_Elems = (nElems_FV_glob.GT.0)
 
-
+DEALLOCATE(FV_Elems_loc)
 END SUBROUTINE Build_FV_DG_distribution
 
 !===================================================================================================================================
@@ -194,7 +194,7 @@ ALLOCATE(mapTotalToVisu(1:nVarTotal))
 ALLOCATE(mapTotalToSurfVisu(1:nVarTotal))
 mapTotalToVisu = 0
 mapTotalToSurfVisu = 0
-nVarVisuTotal = 0
+nVarVisu = 0
 nVarSurfVisuTotal = 0
 ! Compare varnames that should be visualized with available varnames
 DO iVar=1,CountOption("VarName")
@@ -206,8 +206,8 @@ DO iVar=1,CountOption("VarName")
       IF (iVar2.LE.nVarDep) THEN
         IF(DepSurfaceOnly(iVar2).EQ.1) CYCLE
       END IF
-      nVarVisuTotal = nVarVisuTotal + 1
-      mapTotalToVisu(iVar2) = nVarVisuTotal
+      nVarVisu = nVarVisu + 1
+      mapTotalToVisu(iVar2) = nVarVisu
     END IF
   END DO
 END DO
@@ -275,14 +275,14 @@ SWRITE (*,'(A,'//format//'I3)') "mapTotalToSurfVisu ",mapTotalToSurfVisu
 ! mapAllBCNamesToVisuBCNames(iBC) stores the ascending visualization index of the all boundaries. 0 means no visualization.
 ! nBCNamesVisu is the number of boundaries to be visualized.
 SDEALLOCATE(mapAllBCNamesToVisuBCNames)
-ALLOCATE(mapAllBCNamesToVisuBCNames(1:nBCNamesTotal))
+ALLOCATE(mapAllBCNamesToVisuBCNames(1:nBCNamesAll))
 mapAllBCNamesToVisuBCNames = 0
 nBCNamesVisu = 0
 ! Compare boundary names that should be visualized with available varnames
 DO iVar=1,CountOption("BoundaryName")
   BoundaryName = GETSTR("BoundaryName")
-  DO iVar2=1,nBCNamesTotal
-    IF (STRICMP(BoundaryName, BoundaryNamesTotal(iVar2))) THEN
+  DO iVar2=1,nBCNamesAll
+    IF (STRICMP(BoundaryName, BCNamesAll(iVar2))) THEN
       mapAllBCNamesToVisuBCNames(iVar2) = nBCNamesVisu+1
       nBCNamesVisu = nBCNamesVisu + 1
     END IF
@@ -295,7 +295,7 @@ IF (ALLOCATED(mapAllBCNamesToVisuBCNames_old).AND.(SIZE(mapAllBCNamesToVisuBCNam
   changedBCnames = .NOT.ALL(mapAllBCNamesToVisuBCNames.EQ.mapAllBCNamesToVisuBCNames_old) 
 END IF
 SDEALLOCATE(mapAllBCNamesToVisuBCNames_old)
-ALLOCATE(mapAllBCNamesToVisuBCNames_old(1:nBCNamesTotal))
+ALLOCATE(mapAllBCNamesToVisuBCNames_old(1:nBCNamesAll))
 mapAllBCNamesToVisuBCNames_old = mapAllBCNamesToVisuBCNames
 
 
@@ -335,10 +335,10 @@ nSidesPerBCNameVisu_DG = 0
 nSidesPerBCNameVisu_FV = 0
 nBCSidesVisu_DG = 0
 nBCSidesVisu_FV = 0
-DO iBC=1,nBCNamesTotal    ! iterate over all bc names
+DO iBC=1,nBCNamesAll    ! iterate over all bc names
   IF (mapAllBCNamesToVisuBCNames(iBC).GT.0) THEN 
     DO iSide=1,nBCSides   ! iterate over all bc sides 
-      IF (STRICMP(BoundaryName(BC(iSide)),BoundaryNamesTotal(iBC))) THEN ! check if side is of specific boundary name
+      IF (STRICMP(BoundaryName(BC(iSide)),BCNamesAll(iBC))) THEN ! check if side is of specific boundary name
         iElem = SideToElem(S2E_ELEM_ID,iSide)
         IF (FV_Elems(iElem).EQ.0)  THEN ! DG element
           nBCSidesVisu_DG = nBCSidesVisu_DG + 1

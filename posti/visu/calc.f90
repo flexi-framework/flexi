@@ -312,7 +312,7 @@ REAL,ALLOCATABLE             :: gradUx_calc(:,:,:,:,:),gradUy_calc(:,:,:,:,:),gr
 #endif
 !===================================================================================================================================
 SDEALLOCATE(UVisu_FV)
-ALLOCATE(UVisu_FV(0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV,nVarVisuTotal))
+ALLOCATE(UVisu_FV(0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV,nVarVisu))
 
 #if FV_RECONSTRUCT
   ! ================================ WITH RECONSTRUCTION ======================================
@@ -426,11 +426,11 @@ ALLOCATE(USurfVisu_FV(0:NVisu_FV,0:NVisu_FV,0:0,nBCSidesVisu_FV,nVarSurfVisuTota
 SDEALLOCATE(USurfCalc_FV)
 ALLOCATE(USurfCalc_FV(0:NVisu_FV,0:NVisu_FV,nBCSidesVisu_FV,1:nVarCalc_FV))
 DO iElem_FV = 1,nElems_FV                         ! iterate over all FV visu elements
-  iElem = mapFVElemsToAllElems(iElem_FV)                   ! get global element index
+  iElem = mapFVElemsToAllElems(iElem_FV)          ! get global element index
   DO locSide=1,6 
     iSide = ElemToSide(E2S_SIDE_ID,locSide,iElem) ! get global side index
     IF (iSide.LE.nBCSides) THEN                   ! check if BC side
-      iSide_FV = mapAllBCSidesToFVBCSides(iSide)             ! get FV visu side index
+      iSide_FV = mapAllBCSidesToFVBCSides(iSide)  ! get FV visu side index
       IF (iSide_FV.GT.0) THEN
         DO q=0,NVisu_FV; DO p=0,NVisu_FV          ! map volume solution to surface solution
           ijk = S2V_NVisu(:,0,p,q,0,locSide)

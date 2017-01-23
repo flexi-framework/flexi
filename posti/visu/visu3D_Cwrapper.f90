@@ -69,7 +69,7 @@ SUBROUTINE visu3d_requestInformation(mpi_comm_IN, strlen_state, statefile_IN, va
 ! MODULES
 USE MOD_Globals
 USE MOD_MPI        ,ONLY: InitMPI
-USE MOD_Posti_Vars ,ONLY: VarNamesTotal,BoundaryNamesTotal
+USE MOD_Posti_Vars ,ONLY: VarNamesTotal,BCNamesAll
 USE MOD_Visu3D     ,ONLY: visu3d_getVarNamesAndFileType
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
@@ -88,7 +88,7 @@ CHARACTER(LEN=255),POINTER            :: bcnames_pointer(:)
 statefile = cstrToChar255(statefile_IN, strlen_state)
 
 CALL InitMPI(mpi_comm_IN) 
-CALL visu3d_getVarNamesAndFileType(statefile,VarNamesTotal,BoundaryNamesTotal)
+CALL visu3d_getVarNamesAndFileType(statefile,VarNamesTotal,BCNamesAll)
 IF (ALLOCATED(VarNamesTotal)) THEN
   varnames_pointer => VarNamesTotal
   varnames%len  = SIZE(varnames_pointer)*255 
@@ -97,8 +97,8 @@ ELSE
   varnames%len  = 0
   varnames%data = C_NULL_PTR
 END IF
-IF (ALLOCATED(BoundaryNamesTotal)) THEN
-  bcnames_pointer => BoundaryNamesTotal
+IF (ALLOCATED(BCNamesAll)) THEN
+  bcnames_pointer => BCNamesAll
   bcnames%len  = SIZE(bcnames_pointer)*255 
   bcnames%data = C_LOC(bcnames_pointer(1))
 ELSE
@@ -161,15 +161,15 @@ CALL visu3D(mpi_comm_IN, prmfile, postifile, statefile)
 ! write coords, UVisu to VTK  2D / 3D arrays (must be done always!)
 IF (VisuDimension.EQ.3) THEN
   ! Volume
-  CALL WriteDataToVTK_array(nVarVisuTotal,NVisu   ,nElems_DG,valuesDG_out,UVisu_DG,3)
-  CALL WriteDataToVTK_array(nVarVisuTotal,NVisu_FV,nElems_FV,valuesFV_out,UVisu_FV,3)
+  CALL WriteDataToVTK_array(nVarVisu,NVisu   ,nElems_DG,valuesDG_out,UVisu_DG,3)
+  CALL WriteDataToVTK_array(nVarVisu,NVisu_FV,nElems_FV,valuesFV_out,UVisu_FV,3)
 
   CALL WriteCoordsToVTK_array(NVisu   ,nElems_DG,coordsDG_out,nodeidsDG_out,&
       CoordsVisu_DG,nodeids_DG,dim=3,DGFV=0)
   CALL WriteCoordsToVTK_array(NVisu_FV,nElems_FV,coordsFV_out,nodeidsFV_out,&
       CoordsVisu_FV,nodeids_FV,dim=3,DGFV=1)
 
-  CALL WriteVarnamesToVTK_array(nVarTotal,mapTotalToVisu,varnames_out,VarNamesTotal,nVarVisuTotal)
+  CALL WriteVarnamesToVTK_array(nVarTotal,mapTotalToVisu,varnames_out,VarNamesTotal,nVarVisu)
 
   ! Surface
   CALL WriteDataToVTK_array(nVarSurfVisuTotal,NVisu   ,nBCSidesVisu_DG,valuesSurfDG_out,USurfVisu_DG,2)
@@ -186,18 +186,18 @@ ELSE IF (VisuDimension.EQ.2) THEN
 
   ! allocate Visu 2D array and copy from first zeta-slice of 3D array
   SDEALLOCATE(UVisu_DG_2D)
-  ALLOCATE(UVisu_DG_2D(0:NVisu,0:NVisu,0:0,1:nElems_DG,1:(nVarVisuTotal)))
+  ALLOCATE(UVisu_DG_2D(0:NVisu,0:NVisu,0:0,1:nElems_DG,1:(nVarVisu)))
   UVisu_DG_2D = UVisu_DG(:,:,0:0,:,:)
   SDEALLOCATE(UVisu_FV_2D)
-  ALLOCATE(UVisu_FV_2D(0:NVisu_FV,0:NVisu_FV,0:0,1:nElems_FV,1:(nVarVisuTotal)))
+  ALLOCATE(UVisu_FV_2D(0:NVisu_FV,0:NVisu_FV,0:0,1:nElems_FV,1:(nVarVisu)))
 #if FV_ENABLED
   UVisu_FV_2D = UVisu_FV(:,:,0:0,:,:)
 #else
   CoordsVisu_FV_2D = 0
 #endif
 
-  CALL WriteDataToVTK_array(nVarVisuTotal,NVisu   ,nElems_DG,valuesDG_out,UVisu_DG_2D,2)
-  CALL WriteDataToVTK_array(nVarVisuTotal,NVisu_FV,nElems_FV,valuesFV_out,UVisu_FV_2D,2)
+  CALL WriteDataToVTK_array(nVarVisu,NVisu   ,nElems_DG,valuesDG_out,UVisu_DG_2D,2)
+  CALL WriteDataToVTK_array(nVarVisu,NVisu_FV,nElems_FV,valuesFV_out,UVisu_FV_2D,2)
 
   ! allocate Coords 2D array and copy from first zeta-slice of 3D array
   SDEALLOCATE(CoordsVisu_DG_2D)
@@ -216,7 +216,7 @@ ELSE IF (VisuDimension.EQ.2) THEN
   CALL WriteCoordsToVTK_array(NVisu_FV,nElems_FV,coordsFV_out,nodeidsFV_out,&
       CoordsVisu_FV_2D,nodeids_FV_2D,dim=2,DGFV=1)
 
-  CALL WriteVarnamesToVTK_array(nVarTotal,mapTotalToVisu,varnames_out,VarNamesTotal,nVarVisuTotal)
+  CALL WriteVarnamesToVTK_array(nVarTotal,mapTotalToVisu,varnames_out,VarNamesTotal,nVarVisu)
 END IF
 
 END SUBROUTINE visu3D_CWrapper

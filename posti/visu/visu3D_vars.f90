@@ -24,78 +24,116 @@ SAVE
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 !==================================================================================================================================
-CHARACTER(LEN=255)                :: fileType = ""
-CHARACTER(LEN=255)                :: prmfile_old = ""
-CHARACTER(LEN=255)                :: statefile_old = ""
-CHARACTER(LEN=255)                :: MeshFile = ""
-CHARACTER(LEN=255)                :: MeshFile_state = ""
-CHARACTER(LEN=255)                :: MeshFile_old = ""
-CHARACTER(LEN=255)                :: NodeTypeVisuPosti = "VISU"
-CHARACTER(LEN=255)                :: NodeTypeVisuPosti_old = ""
-INTEGER                           :: NVisu
-INTEGER                           :: NVisu_old = -1
-INTEGER                           :: nVar_State
-INTEGER                           :: nVar_State_old = -1
-INTEGER                           :: nElems_DG
-LOGICAL                           :: withDGOperator
-LOGICAL                           :: withDGOperator_old = .FALSE.
-INTEGER                           :: nElems_FV
-INTEGER                           :: NVisu_FV
-REAL                              :: OutputTime
-LOGICAL                           :: hasFV_Elems = .FALSE.
-LOGICAL                           :: DGonly = .FALSE.
-LOGICAL                           :: DGonly_old = .TRUE.
-INTEGER                           :: VisuDimension
-
-LOGICAL                           :: changedStateFile
-LOGICAL                           :: changedMeshFile
-LOGICAL                           :: changedNVisu
-LOGICAL                           :: changedVarNames
-LOGICAL                           :: changedFV_Elems
-LOGICAL                           :: changedWithDGOperator
-LOGICAL                           :: changedDGonly
-LOGICAL                           :: changedBCnames
-
-! Ini file variables
-! HDF5 file variables
-CHARACTER(LEN=255),ALLOCATABLE,TARGET :: VarNamesHDF5(:)     ! varnames of solution in file
-! EOS related or raw data
-INTEGER                           :: nVarTotal               ! total number of possible visu variables
-INTEGER                           :: nVarDep                 ! 
-INTEGER                           :: nVarVisuTotal
-INTEGER                           :: nVarVisuDep
-INTEGER                           :: nVarVisuRaw
-CHARACTER(LEN=255),ALLOCATABLE,TARGET :: VarNamesTotal(:)
-INTEGER,ALLOCATABLE               :: DepTable(:,:)
-INTEGER,ALLOCATABLE               :: DepSurfaceOnly(:)
-
-
-
-INTEGER,ALLOCATABLE,TARGET        :: nodeids_DG(:)           ! visu nodeids
-REAL(C_DOUBLE),ALLOCATABLE,TARGET :: CoordsVisu_DG(:,:,:,:,:)! visu coordinates
-REAL(C_DOUBLE),ALLOCATABLE,TARGET :: UVisu_DG(:,:,:,:,:)     ! state at visu points
-INTEGER,ALLOCATABLE,TARGET        :: nodeids_FV(:)           ! visu nodeids
-REAL(C_DOUBLE),ALLOCATABLE,TARGET :: CoordsVisu_FV(:,:,:,:,:)! visu coordinates
-REAL(C_DOUBLE),ALLOCATABLE,TARGET :: UVisu_FV(:,:,:,:,:)     ! state at visu points
-INTEGER                           :: nVarCalc
-INTEGER,ALLOCATABLE               :: mapDepToCalc(:)
-#if FV_ENABLED && FV_RECONSTRUCT
-INTEGER                           :: nVarCalc_FV
-INTEGER,ALLOCATABLE               :: mapDepToCalc_FV(:)
-#endif
-INTEGER,ALLOCATABLE               :: mapTotalToVisu(:)
-INTEGER,ALLOCATABLE               :: mapTotalToSurfVisu(:)
-INTEGER,ALLOCATABLE               :: mapTotalToSurfVisu_old(:)
-REAL,ALLOCATABLE                  :: UCalc_DG(:,:,:,:,:)
-REAL,ALLOCATABLE                  :: UCalc_FV(:,:,:,:,:)
-
-INTEGER,ALLOCATABLE               :: mapDGElemsToAllElems(:)
+CHARACTER(LEN=255)                :: fileType = ""               ! possible values: 
+                                                                 ! * 'State' for FLEXI state files matching the compiled EOS
+                                                                 ! * 'Generic'  
+                                                                 ! * 'Mesh' 
+CHARACTER(LEN=255)                :: prmfile_old = ""            ! saves the filename of the previous FLEXI parameter file 
+CHARACTER(LEN=255)                :: statefile_old = ""          ! saves the filename of the previous state (*.h5)
+CHARACTER(LEN=255)                :: MeshFile = ""               ! acutal filename of the mesh used for visualization
+CHARACTER(LEN=255)                :: MeshFile_state = ""         ! filename of the mesh given in the state file
+CHARACTER(LEN=255)                :: MeshFile_old = ""           ! saves  previous MeshFile
+CHARACTER(LEN=255)                :: NodeTypeVisuPosti = "VISU"  ! NodeType used for visualization output
+CHARACTER(LEN=255)                :: NodeTypeVisuPosti_old = ""  ! saves previous NodeType
+INTEGER                           :: NVisu                       ! polynomial degree of the visualization
+INTEGER                           :: NVisu_old = -1              ! saves previous NVisu
+INTEGER                           :: NVisu_FV                    ! number of output points for FV elements (always == 2*(PP_N+1))
+INTEGER                           :: nVar_State                  ! number of variables in the state file 
+INTEGER                           :: nVar_State_old = -1         ! saves previous nVar_State_old
+INTEGER                           :: nElems_DG                   ! number of DG elements in state
+INTEGER                           :: nElems_FV                   ! number of FV elements in state
+LOGICAL                           :: withDGOperator              ! flag indicating if call of 'DGTimeDerivative' is required
+LOGICAL                           :: withDGOperator_old = .FALSE.! saves previous withDGOperator
+REAL                              :: OutputTime                  ! simulation time of actual state file 
+LOGICAL                           :: hasFV_Elems = .FALSE.       ! flag indicating if state file contains any FV elements
+LOGICAL                           :: DGonly = .FALSE.            ! flag to force visualization of FV elements as DG elements
+LOGICAL                           :: DGonly_old = .TRUE.         ! saves previous DGonly
+INTEGER,ALLOCATABLE               :: mapDGElemsToAllElems(:)     ! maps element index of DG elements to all elements
 INTEGER,ALLOCATABLE               :: mapFVElemsToAllElems(:)
+INTEGER,ALLOCATABLE               :: FV_Elems_old(:)             ! saves previous FV_Elems, which holds DG/FV elements distribution
+INTEGER                           :: VisuDimension               ! TODO: Avg2D
+                
+! The following flags indicate if during successive visualizations of (different) state files the respective properties
+! changed. For example the mesh file of different state files in a timeseries is the same ...
+LOGICAL                           :: changedStateFile            ! 
+LOGICAL                           :: changedMeshFile             ! 
+LOGICAL                           :: changedNVisu                ! 
+LOGICAL                           :: changedVarNames             ! variables selected for visualization changed (ParaView plugin) 
+LOGICAL                           :: changedFV_Elems             ! different distribution of DG and FV elements 
+LOGICAL                           :: changedWithDGOperator       ! 
+LOGICAL                           :: changedDGonly               ! 
+LOGICAL                           :: changedBCnames              ! BCnames selected for visualization changed (ParaView plugin)
 
-INTEGER,ALLOCATABLE               :: FV_Elems_loc(:)
-INTEGER,ALLOCATABLE               :: FV_Elems_old(:)
+CHARACTER(LEN=255),ALLOCATABLE,TARGET :: VarNamesHDF5(:)         ! varnames in state file (DG_Solution, not including generic 
+                                                                 ! element- or pointwise)
+CHARACTER(LEN=255),ALLOCATABLE,TARGET :: VarNamesTotal(:)        ! all available varnames (state file + dependent vars + generic)
+INTEGER                               :: nVarTotal               ! total number of possible visu variables
+INTEGER                               :: nVarDep                 ! number of dependent variables, that EOS can calculate
+INTEGER                               :: nVarVisu                ! number of variables selected for visualization
+INTEGER,ALLOCATABLE                   :: mapTotalToVisu(:)       ! maps total variable index to visualization variable index
+INTEGER,ALLOCATABLE                   :: DepTable(:,:)           ! table holding the EOS dependencies required to calculate 
+                                                                 ! variables, that depend on other variables (e.g. primitive ...)
+                                                                 ! The i-th line of this table holds the dependency informations of
+                                                                 ! the i-th quantity on the previous quantities. The j-th column
+                                                                 ! is 0 if the i-th quantity does NOT depend on the j-th quantity
+                                                                 ! is 1 if the i-th quantity DOES depend on the j-th quantity
+INTEGER,ALLOCATABLE                   :: DepSurfaceOnly(:)       ! same but for quantities that are exclusively available on BCs
+
+REAL,ALLOCATABLE                      :: UCalc_DG(:,:,:,:,:)     ! dependet variables require the computation of intermediate
+                                                                 ! variables, that may not be visualized. Therefore the whole
+                                                                 ! computation process takes place on this array and is afterwards
+                                                                 ! converted to the visualization array (UVisu_DG)
+REAL,ALLOCATABLE                      :: UCalc_FV(:,:,:,:,:)
+INTEGER                               :: nVarCalc                ! number of (intermediated) variables that must be calculated
+INTEGER,ALLOCATABLE                   :: mapDepToCalc(:)         ! maps all dependet variable index to calc variable index
+#if FV_ENABLED && FV_RECONSTRUCT
+INTEGER                               :: nVarCalc_FV             ! since FV reconstruction is done in primitive quantities, the 
+INTEGER,ALLOCATABLE                   :: mapDepToCalc_FV(:)      ! dependencies are different to the DG case, where everything is
+                                                                 ! based on conservative quantities
+#endif
+
+REAL(C_DOUBLE),ALLOCATABLE,TARGET     :: UVisu_DG(:,:,:,:,:)     ! solution that is written to VTK or send to ParaView
+REAL(C_DOUBLE),ALLOCATABLE,TARGET     :: UVisu_FV(:,:,:,:,:)     ! 
+REAL(C_DOUBLE),ALLOCATABLE,TARGET     :: CoordsVisu_DG(:,:,:,:,:)! coordinates of UVisu_DG
+REAL(C_DOUBLE),ALLOCATABLE,TARGET     :: CoordsVisu_FV(:,:,:,:,:)! 
+INTEGER,ALLOCATABLE,TARGET            :: nodeids_DG(:)           ! nodeids for CoordsVisu_DG
+INTEGER,ALLOCATABLE,TARGET            :: nodeids_FV(:)           ! 
 
 
+
+! ==============================================================================================================================
+! Surface visualization
+! ==============================================================================================================================
+INTEGER                               :: nBCNamesAll                  ! number of all BC names in mesh file
+CHARACTER(LEN=255),ALLOCATABLE,TARGET :: BCNamesAll(:)                ! all BC names in mesh file 
+INTEGER                               :: nBCNamesVisu                 ! number of BC names selected for visualization
+INTEGER,ALLOCATABLE                   :: mapAllBCNamesToVisuBCNames(:)! maps global BCName index to visu BCName index
+INTEGER,ALLOCATABLE                   :: mapAllBCNamesToVisuBCNames_old(:) 
+
+INTEGER                               :: nVarSurfVisuTotal            ! total number of vars that are visualized on surface
+INTEGER,ALLOCATABLE                   :: mapTotalToSurfVisu(:)        ! maps total variable index to surf. visu. variable index
+INTEGER,ALLOCATABLE                   :: mapTotalToSurfVisu_old(:)    ! saves previous mapTotalToSurfVisu
+INTEGER                               :: nBCSidesVisu_DG              !  number of DG BCsides selected for visualization
+INTEGER                               :: nBCSidesVisu_FV              !  number of FV BCsides selected for visualization
+INTEGER,ALLOCATABLE                   :: mapAllBCSidesToDGBCSides(:)  ! map global BC side index to DG BC sides
+INTEGER,ALLOCATABLE                   :: mapAllBCSidesToFVBCSides(:)  ! map global BC side index to FV BC sides
+INTEGER,ALLOCATABLE                   :: nSidesPerBCNameVisu_DG(:)    ! holds number of DG BCsides for each BCName
+INTEGER,ALLOCATABLE                   :: nSidesPerBCNameVisu_FV(:)    ! holds number of FV BCsides for each BCName
+
+REAL,ALLOCATABLE                      :: USurfCalc_DG(:,:,:,:)        ! array on which dependent quantities are calculated
+REAL,ALLOCATABLE                      :: USurfCalc_FV(:,:,:,:)        ! 
+
+REAL(C_DOUBLE),ALLOCATABLE,TARGET     :: USurfVisu_DG(     :,:,:,:,:) ! surf. solution that is written to VTK or send to ParaView
+REAL(C_DOUBLE),ALLOCATABLE,TARGET     :: USurfVisu_FV(     :,:,:,:,:) ! 
+REAL(C_DOUBLE),ALLOCATABLE,TARGET     :: CoordsSurfVisu_DG(:,:,:,:,:) ! coordinates of surface solution 
+REAL(C_DOUBLE),ALLOCATABLE,TARGET     :: CoordsSurfVisu_FV(:,:,:,:,:) ! 
+INTEGER,ALLOCATABLE,TARGET            :: nodeidsSurf_DG(:)            ! nodeids for surface coordinates
+INTEGER,ALLOCATABLE,TARGET            :: nodeidsSurf_FV(:)            ! 
+
+
+! ==============================================================================================================================
+! TODO: Avg2D
+! ==============================================================================================================================
 INTEGER,ALLOCATABLE,TARGET        :: nodeids_DG_2D(:)           ! visu nodeids
 REAL(C_DOUBLE),ALLOCATABLE,TARGET :: CoordsVisu_DG_2D(:,:,:,:,:)! visu coordinates
 REAL(C_DOUBLE),ALLOCATABLE,TARGET :: UVisu_DG_2D(:,:,:,:,:)     ! state at visu points
@@ -103,27 +141,6 @@ INTEGER,ALLOCATABLE,TARGET        :: nodeids_FV_2D(:)           ! visu nodeids
 REAL(C_DOUBLE),ALLOCATABLE,TARGET :: CoordsVisu_FV_2D(:,:,:,:,:)! visu coordinates
 REAL(C_DOUBLE),ALLOCATABLE,TARGET :: UVisu_FV_2D(:,:,:,:,:)     ! state at visu points
 
-LOGICAL                           :: PostiInitIsDone
 
-INTEGER                           :: nBCNamesTotal
-INTEGER                           :: nBCNamesVisu
-INTEGER,ALLOCATABLE               :: mapAllBCNamesToVisuBCNames(:)
-INTEGER,ALLOCATABLE               :: mapAllBCNamesToVisuBCNames_old(:)
-CHARACTER(LEN=255),ALLOCATABLE,TARGET :: BoundaryNamesTotal(:)
-REAL,ALLOCATABLE                  :: USurfCalc_DG(:,:,:,:)
-REAL,ALLOCATABLE                  :: USurfCalc_FV(:,:,:,:)
 
-INTEGER                           :: nVarSurfVisuTotal
-INTEGER                           :: nBCSidesVisu_DG
-INTEGER,ALLOCATABLE               :: mapAllBCSidesToDGBCSides(:)
-INTEGER,ALLOCATABLE               :: nSidesPerBCNameVisu_DG(:)
-INTEGER                           :: nBCSidesVisu_FV
-INTEGER,ALLOCATABLE               :: mapAllBCSidesToFVBCSides(:)
-INTEGER,ALLOCATABLE               :: nSidesPerBCNameVisu_FV(:)
-INTEGER,ALLOCATABLE,TARGET        :: nodeidsSurf_DG(:)            ! visu nodeids
-REAL(C_DOUBLE),ALLOCATABLE,TARGET :: USurfVisu_DG(     :,:,:,:,:) ! state at visu points
-REAL(C_DOUBLE),ALLOCATABLE,TARGET :: CoordsSurfVisu_DG(:,:,:,:,:) ! visu coordinates
-INTEGER,ALLOCATABLE,TARGET        :: nodeidsSurf_FV(:)            ! visu nodeids
-REAL(C_DOUBLE),ALLOCATABLE,TARGET :: USurfVisu_FV(     :,:,:,:,:) ! state at visu points
-REAL(C_DOUBLE),ALLOCATABLE,TARGET :: CoordsSurfVisu_FV(:,:,:,:,:) ! visu coordinates
 END MODULE MOD_Posti_Vars

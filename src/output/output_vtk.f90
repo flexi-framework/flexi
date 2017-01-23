@@ -478,7 +478,7 @@ END SUBROUTINE WriteDataToVTK_array
 !===================================================================================================================================
 !> Subroutine to write variable names to VTK format
 !===================================================================================================================================
-SUBROUTINE WriteVarnamesToVTK_array(nVarTotal,mapVisu,varnames_out,VarNamesTotal,nVarVisuTotal)
+SUBROUTINE WriteVarnamesToVTK_array(nVarTotal,mapVisu,varnames_out,VarNamesTotal,nVarVisu)
 USE ISO_C_BINDING
 ! MODULES
 USE MOD_Globals
@@ -491,15 +491,15 @@ INTEGER,INTENT(IN)             :: nVarTotal
 INTEGER,INTENT(IN)             :: mapVisu(nVarTotal)
 TYPE (CARRAY), INTENT(INOUT)   :: varnames_out
 CHARACTER(LEN=255),INTENT(IN)  :: VarNamesTotal(nVarTotal)
-INTEGER,INTENT(IN)             :: nVarVisuTotal
+INTEGER,INTENT(IN)             :: nVarVisu
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(C_CHAR),POINTER    :: VarNames_loc(:,:)
 INTEGER                      :: i,iVar
 !===================================================================================================================================
 ! copy varnames
-ALLOCATE(VarNames_loc(255,nVarVisuTotal))
-varnames_out%len  = nVarVisuTotal*255
+ALLOCATE(VarNames_loc(255,nVarVisu))
+varnames_out%len  = nVarVisu*255
 varnames_out%data = C_LOC(VarNames_loc(1,1))
 
 DO iVar=1,nVarTotal

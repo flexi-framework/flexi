@@ -89,7 +89,7 @@ DO iArg=1+skipArgs,nArgs
   FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))//'.vtu'
 #endif
 
-  ALLOCATE(varnames_loc(nVarVisuTotal))
+  ALLOCATE(varnames_loc(nVarVisu))
   ALLOCATE(varnamesSurf_loc(nVarSurfVisuTotal))
   DO iVar=1,nVarTotal
     IF (mapTotalToVisu(iVar).GT.0) THEN
@@ -101,11 +101,11 @@ DO iArg=1+skipArgs,nArgs
   END DO
 
   IF (VisuDimension.EQ.3) THEN
-    CALL WriteDataToVTK(nVarVisuTotal,NVisu,nElems_DG,VarNames_loc,CoordsVisu_DG,UVisu_DG,FileString_DG,&
+    CALL WriteDataToVTK(nVarVisu,NVisu,nElems_DG,VarNames_loc,CoordsVisu_DG,UVisu_DG,FileString_DG,&
         dim=VisuDimension,DGFV=0,nValAtLastDimension=.TRUE.)
 #if FV_ENABLED                            
     FileString_FV=TRIM(TIMESTAMP(TRIM(ProjectName)//'_FV',OutputTime))//'.vtu'
-    CALL WriteDataToVTK(nVarVisuTotal,NVisu_FV,nElems_FV,VarNames_loc,CoordsVisu_FV,UVisu_FV,FileString_FV,&
+    CALL WriteDataToVTK(nVarVisu,NVisu_FV,nElems_FV,VarNames_loc,CoordsVisu_FV,UVisu_FV,FileString_FV,&
         dim=VisuDimension,DGFV=1,nValAtLastDimension=.TRUE.)
 
     IF (MPIRoot) THEN                   

@@ -59,7 +59,7 @@ CONTAINS
 !===================================================================================================================================
 SUBROUTINE visu3d_getVarNamesAndFileType(statefile,varnames_loc, bcnames_loc) 
 USE MOD_Globals
-USE MOD_Posti_Vars     ,ONLY: FileType,VarNamesHDF5,nBCNamesTotal
+USE MOD_Posti_Vars     ,ONLY: FileType,VarNamesHDF5,nBCNamesAll
 USE MOD_HDF5_Input     ,ONLY: OpenDataFile,CloseDataFile,GetDataSize,GetVarNames,ISVALIDMESHFILE,ISVALIDHDF5FILE,ReadAttribute
 USE MOD_HDF5_Input     ,ONLY: DatasetExists,HSize,nDims,ReadArray
 USE MOD_IO_HDF5        ,ONLY: GetDatasetNamesInGroup,File_ID
@@ -169,11 +169,11 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! other file
   CALL OpenDataFile(MeshFile_loc,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
   CALL GetDataSize(File_ID,'BCNames',nDims,HSize)
   CHECKSAFEINT(HSize(1),4)
-  nBCNamesTotal=INT(HSize(1),4)
+  nBCNamesAll=INT(HSize(1),4)
   DEALLOCATE(HSize)
   SDEALLOCATE(bcnames_loc)
-  ALLOCATE(bcnames_loc(nBCNamesTotal))
-  CALL ReadArray('BCNames',1,(/nBCNamesTotal/),Offset,1,StrArray=bcnames_loc)
+  ALLOCATE(bcnames_loc(nBCNamesAll))
+  CALL ReadArray('BCNames',1,(/nBCNamesAll/),Offset,1,StrArray=bcnames_loc)
   CALL CloseDataFile()
 
   SDEALLOCATE(datasetNames)
@@ -206,7 +206,7 @@ CHARACTER(LEN=255),INTENT(INOUT) :: postifile
 INTEGER                          :: nElems_State
 CHARACTER(LEN=255)               :: NodeType_State 
 !===================================================================================================================================
-CALL visu3d_getVarNamesAndFileType(statefile,VarNamesTotal,BoundaryNamesTotal)
+CALL visu3d_getVarNamesAndFileType(statefile,VarNamesTotal,BCNamesAll)
 IF (STRICMP(statefile,'Mesh')) THEN
     CALL CollectiveStop(__STAMP__, &
         "FileType==Mesh, but we try to initialize a state file!")
@@ -555,7 +555,6 @@ SDEALLOCATE(UCalc_FV)
 
 SDEALLOCATE(mapDGElemsToAllElems)
 SDEALLOCATE(mapFVElemsToAllElems)
-SDEALLOCATE(FV_Elems_loc)
 
 END SUBROUTINE FinalizeVisu3D
 
