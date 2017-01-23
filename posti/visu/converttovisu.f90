@@ -205,7 +205,11 @@ END SUBROUTINE ConvertToSurfVisu_FV
 !===================================================================================================================================
 !> 
 !===================================================================================================================================
-SUBROUTINE ConvertToVisu_FV_Reconstruct(gradUx_calc,gradUy_calc,gradUz_calc)
+SUBROUTINE ConvertToVisu_FV_Reconstruct(&
+#if PARABOLIC
+    gradUx_calc,gradUy_calc,gradUz_calc &
+#endif        
+        )
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Posti_Vars
@@ -225,9 +229,11 @@ USE MOD_Lifting_Vars       ,ONLY: gradUx, gradUy, gradUz
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
+#if PARABOLIC
 REAL,INTENT(OUT),OPTIONAL    :: gradUx_calc(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV)
 REAL,INTENT(OUT),OPTIONAL    :: gradUy_calc(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV)
 REAL,INTENT(OUT),OPTIONAL    :: gradUz_calc(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV)
+#endif
 ! LOCAL VARIABLES
 INTEGER             :: iVar,i,j,k,iElem,iElem_FV
 INTEGER             :: iVarCalc
