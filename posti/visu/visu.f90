@@ -59,7 +59,7 @@ CONTAINS
 !===================================================================================================================================
 SUBROUTINE visu_getVarNamesAndFileType(statefile,varnames_loc, bcnames_loc) 
 USE MOD_Globals
-USE MOD_Posti_Vars     ,ONLY: FileType,VarNamesHDF5,nBCNamesAll
+USE MOD_Visu_Vars      ,ONLY: FileType,VarNamesHDF5,nBCNamesAll
 USE MOD_HDF5_Input     ,ONLY: OpenDataFile,CloseDataFile,GetDataSize,GetVarNames,ISVALIDMESHFILE,ISVALIDHDF5FILE,ReadAttribute
 USE MOD_HDF5_Input     ,ONLY: DatasetExists,HSize,nDims,ReadArray
 USE MOD_IO_HDF5        ,ONLY: GetDatasetNamesInGroup,File_ID
@@ -187,7 +187,7 @@ SUBROUTINE visu_InitFile(statefile,postifile)
 USE HDF5
 USE MOD_Preproc
 USE MOD_Globals
-USE MOD_Posti_Vars
+USE MOD_Visu_Vars
 USE MOD_EOS_Posti_Vars
 USE MOD_MPI                ,ONLY: InitMPI
 USE MOD_HDF5_Input         ,ONLY: ISVALIDMESHFILE,ISVALIDHDF5FILE,GetArrayAndName
@@ -298,7 +298,7 @@ SUBROUTINE visu(mpi_comm_IN, prmfile, postifile, statefile)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Posti_Vars
+USE MOD_Visu_Vars
 USE MOD_MPI                 ,ONLY: InitMPI
 USE MOD_HDF5_Input          ,ONLY: ISVALIDMESHFILE,ISVALIDHDF5FILE,OpenDataFile,CloseDataFile
 USE MOD_Posti_ReadState     ,ONLY: ReadState
@@ -459,18 +459,22 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   IF (changedStateFile.OR.changedVarNames.OR.changedDGonly) THEN
     CALL CalcQuantities_DG()
   END IF
-  ! calc Surface DG solution 
-  IF (changedStateFile.OR.changedVarNames.OR.changedDGonly.OR.changedBCnames) THEN
-    CALL CalcSurfQuantities_DG()
+  IF (doSurfVisu) THEN
+    ! calc Surface DG solution 
+    IF (changedStateFile.OR.changedVarNames.OR.changedDGonly.OR.changedBCnames) THEN
+      CALL CalcSurfQuantities_DG()
+    END IF
   END IF
 
   ! convert DG solution to visu grid
   IF (changedStateFile.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly) THEN
     CALL ConvertToVisu_DG()
   END IF
-  ! convert Surface DG solution to visu grid
-  IF (changedStateFile.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedBCnames) THEN
-    CALL ConvertToSurfVisu_DG()
+  IF (doSurfVisu) THEN
+    ! convert Surface DG solution to visu grid
+    IF (changedStateFile.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedBCnames) THEN
+      CALL ConvertToSurfVisu_DG()
+    END IF
   END IF
 
 #if FV_ENABLED
@@ -480,9 +484,11 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
     CALL ConvertToVisu_FV()
   END IF
   ! calc FV solution and convert to visu grid
-  IF ((changedStateFile.OR.changedVarNames).AND.hasFV_Elems.OR.changedDGonly.OR.changedBCnames) THEN
-    CALL CalcSurfQuantities_FV()
-    CALL ConvertToSurfVisu_FV()
+  IF (doSurfVisu) THEN
+    IF ((changedStateFile.OR.changedVarNames).AND.hasFV_Elems.OR.changedDGonly.OR.changedBCnames) THEN
+      CALL CalcSurfQuantities_FV()
+      CALL ConvertToSurfVisu_FV()
+    END IF
   END IF
 #endif /* FV_ENABLED */
 
@@ -496,9 +502,11 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   IF (changedMeshFile.OR.changedNVisu.OR.changedFV_Elems.OR.changedDGonly) THEN
     CALL BuildVisuCoords()
   END IF
-  ! Convert surface coordinates to visu grid
-  IF (changedMeshFile.OR.changedNVisu.OR.changedFV_Elems.OR.changedDGonly.OR.changedBCnames) THEN
-    CALL BuildSurfVisuCoords()
+  IF (doSurfVisu) THEN
+    ! Convert surface coordinates to visu grid
+    IF (changedMeshFile.OR.changedNVisu.OR.changedFV_Elems.OR.changedDGonly.OR.changedBCnames) THEN
+      CALL BuildSurfVisuCoords()
+    END IF
   END IF
 
 END IF
@@ -522,7 +530,7 @@ END SUBROUTINE visu
 !===================================================================================================================================
 SUBROUTINE FinalizeVisu()
 USE MOD_Globals,ONLY: MPIRoot
-USE MOD_Posti_Vars
+USE MOD_Visu_Vars
 IMPLICIT NONE
 !===================================================================================================================================
 SWRITE (*,*) "VISU FINALIZE"
@@ -547,6 +555,7 @@ SDEALLOCATE(mapAllVarsToSurfVisuVars)
 SDEALLOCATE(mapAllVarsToSurfVisuVars_old)
 SDEALLOCATE(UCalc_DG)
 SDEALLOCATE(UCalc_FV)
+SDEALLOCATE(FV_Elems_loc)
 
 SDEALLOCATE(mapDGElemsToAllElems)
 SDEALLOCATE(mapFVElemsToAllElems)

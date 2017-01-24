@@ -70,7 +70,7 @@ CONTAINS
 SUBROUTINE ConvertToVisu_DG() 
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Posti_Vars
+USE MOD_Visu_Vars
 USE MOD_Interpolation      ,ONLY: GetVandermonde
 USE MOD_ChangeBasis        ,ONLY: ChangeBasis3D,ChangeBasis2D
 USE MOD_Interpolation_Vars ,ONLY: NodeType,NodeTypeVisu
@@ -103,7 +103,7 @@ END SUBROUTINE ConvertToVisu_DG
 SUBROUTINE ConvertToSurfVisu_DG() 
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Posti_Vars
+USE MOD_Visu_Vars
 USE MOD_Interpolation      ,ONLY: GetVandermonde
 USE MOD_ChangeBasis        ,ONLY: ChangeBasis3D,ChangeBasis2D
 USE MOD_Interpolation_Vars ,ONLY: NodeType,NodeTypeVisu
@@ -140,8 +140,8 @@ END SUBROUTINE ConvertToSurfVisu_DG
 SUBROUTINE ConvertToVisu_FV()
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Posti_Vars         ,ONLY: nVarDep,VarnamesAll,mapDepToCalc_FV
-USE MOD_Posti_Vars         ,ONLY: mapAllVarsToVisuVars,UVisu_FV,nElems_FV,UCalc_FV
+USE MOD_Visu_Vars         ,ONLY: nVarDep,VarnamesAll,mapDepToCalc_FV
+USE MOD_Visu_Vars         ,ONLY: mapAllVarsToVisuVars,UVisu_FV,nElems_FV,UCalc_FV
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -179,8 +179,8 @@ END SUBROUTINE ConvertToVisu_FV
 SUBROUTINE ConvertToSurfVisu_FV()
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Posti_Vars         ,ONLY: nVarDep,VarnamesAll,mapDepToCalc_FV
-USE MOD_Posti_Vars         ,ONLY: mapAllVarsToSurfVisuVars,USurfVisu_FV,USurfCalc_FV
+USE MOD_Visu_Vars         ,ONLY: nVarDep,VarnamesAll,mapDepToCalc_FV
+USE MOD_Visu_Vars         ,ONLY: mapAllVarsToSurfVisuVars,USurfVisu_FV,USurfCalc_FV
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -205,10 +205,14 @@ END SUBROUTINE ConvertToSurfVisu_FV
 !===================================================================================================================================
 !> 
 !===================================================================================================================================
-SUBROUTINE ConvertToVisu_FV_Reconstruct(gradUx_calc,gradUy_calc,gradUz_calc)
+SUBROUTINE ConvertToVisu_FV_Reconstruct(&
+#if PARABOLIC
+    gradUx_calc,gradUy_calc,gradUz_calc &
+#endif        
+        )
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Posti_Vars
+USE MOD_Visu_Vars
 USE MOD_ReadInTools        ,ONLY: GETINT
 USE MOD_Interpolation      ,ONLY: GetVandermonde
 USE MOD_ChangeBasis        ,ONLY: ChangeBasis3D
@@ -225,9 +229,11 @@ USE MOD_Lifting_Vars       ,ONLY: gradUx, gradUy, gradUz
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
+#if PARABOLIC
 REAL,INTENT(OUT),OPTIONAL    :: gradUx_calc(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV)
 REAL,INTENT(OUT),OPTIONAL    :: gradUy_calc(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV)
 REAL,INTENT(OUT),OPTIONAL    :: gradUz_calc(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV)
+#endif
 ! LOCAL VARIABLES
 INTEGER             :: iVar,i,j,k,iElem,iElem_FV
 INTEGER             :: iVarCalc
@@ -338,15 +344,18 @@ END SUBROUTINE ConvertToVisu_FV_Reconstruct
 SUBROUTINE ConvertToVisu_GenericData(statefile) 
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Posti_Vars
+USE MOD_Visu_Vars
 USE MOD_IO_HDF5            ,ONLY: HSize
 USE MOD_HDF5_Input         ,ONLY: File_ID,GetVarNames
 USE MOD_HDF5_Input         ,ONLY: OpenDataFile,ReadArray,CloseDataFile,DatasetExists,ReadAttribute,GetDataSize
-USE MOD_Mesh_Vars          ,ONLY: nElems,offsetElem
+USE MOD_Mesh_Vars          ,ONLY: nElems,offsetElem,nBCSides,ElemToSide
 USE MOD_StringTools        ,ONLY: STRICMP,split_string
 USE MOD_Interpolation      ,ONLY: GetVandermonde
-USE MOD_ChangeBasis        ,ONLY: ChangeBasis3D
+USE MOD_ChangeBasis        ,ONLY: ChangeBasis3D,ChangeBasis2D
 USE MOD_Interpolation_Vars ,ONLY: NodeType,NodeTypeVisu
+USE MOD_Interpolation_Vars ,ONLY: L_Minus,L_Plus
+USE MOD_ProlongToFace      ,ONLY: EvalElemFace
+USE MOD_Mappings           ,ONLY: buildMappings
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES 
@@ -354,12 +363,15 @@ CHARACTER(LEN=255),INTENT(IN)  :: statefile   !< HDF5 state file
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: iVarVisu,iElem_DG,iElem_FV,iElem,iVarDataset,iVar,iVar2
-INTEGER                        :: substring_count,nDims,nVal,nSize
+INTEGER                        :: substring_count,nDims,nVal,nSize,p,q
+INTEGER                        :: iSide,iSide_DG,iSide_FV,locSide
 CHARACTER(LEN=255)             :: substrings(2),DatasetName,VariableName,DataSetOld
 LOGICAL                        :: datasetFound,varnamesExist,datasetChanged
 REAL,ALLOCATABLE               :: ElemData(:,:),FieldData(:,:,:,:,:)
 REAL,ALLOCATABLE               :: Vdm_DG_Visu(:,:),Vdm_FV_Visu(:,:)
+REAL,ALLOCATABLE               :: Uface_tmp(:,:,:),Uface(:,:)
 CHARACTER(LEN=255),ALLOCATABLE :: DatasetVarNames(:)
+INTEGER,ALLOCATABLE            :: S2V2(:,:,:,:,:)
 !===================================================================================================================================
 SWRITE(*,*) "Convert generic datasets to Visu grid"
 ! Open HDF5 file
@@ -470,6 +482,101 @@ DO iVar=nVarDep+1,nVarAll
         END DO
       END SELECT
 
+      !-------------------------------- Surface Visualization ---------------------! 
+      IF (doSurfVisu) THEN
+        ! Get index of visu array that we should write to
+        iVarVisu= mapAllVarsToSurfVisuVars(iVar)
+        SELECT CASE(nDims)
+        CASE(2) ! Elementwise data
+          ! Simply write the elementwise data to all visu points on the surface
+          DO iElem_DG = 1,nElems_DG                         ! iterate over all DG visu elements
+            iElem = mapDGElemsToAllElems(iElem_DG)          ! get global element index
+            DO locSide=1,6 
+              iSide = ElemToSide(E2S_SIDE_ID,locSide,iElem) ! get global side index
+              IF (iSide.LE.nBCSides) THEN                   ! check if BC side
+                iSide_DG = mapAllBCSidesToDGVisuBCSides(iSide)  ! get DG visu side index
+                IF (iSide_DG.GT.0) THEN
+                  USurfVisu_DG(:,:,0,iSide_DG,iVarVisu) = ElemData(iVarDataset,iElem)
+                END IF
+              END IF
+            END DO
+          END DO
+          DO iElem_FV = 1,nElems_FV                         ! iterate over all FV visu elements
+            iElem = mapFVElemsToAllElems(iElem_FV)          ! get global element index
+            DO locSide=1,6 
+              iSide = ElemToSide(E2S_SIDE_ID,locSide,iElem) ! get global side index
+              IF (iSide.LE.nBCSides) THEN                   ! check if BC side
+                iSide_FV = mapAllBCSidesToFVVisuBCSides(iSide)  ! get FV visu side index
+                IF (iSide_FV.GT.0) THEN
+                  USurfVisu_FV(:,:,0,iSide_FV,iVarVisu) = ElemData(iVarDataset,iElem)
+                END IF
+              END IF
+            END DO
+          END DO
+        CASE(5) ! Pointwise data
+          ! If the dataset has changed, reallocate the mapping for rotation to the master side coordinate system
+          ! as well as the temporary face data arrays.
+          IF (datasetChanged) THEN
+            SDEALLOCATE(S2V2)
+            CALL buildMappings(nSize-1,S2V2=S2V2) ! Array gets allocated in this routine
+            SDEALLOCATE(Uface_tmp)
+            ALLOCATE(Uface_tmp(1,0:nSize-1,0:nSize-1))
+            SDEALLOCATE(Uface)
+            ALLOCATE(Uface(0:nSize-1,0:nSize-1))
+          END IF
+          ! Prolong the pointwise data to the visu face and perform change basis to visu grid
+          DO iElem_DG = 1,nElems_DG                         ! iterate over all DG visu elements
+            iElem = mapDGElemsToAllElems(iElem_DG)          ! get global element index
+            DO locSide=1,6 
+              iSide = ElemToSide(E2S_SIDE_ID,locSide,iElem) ! get global side index
+              IF (iSide.LE.nBCSides) THEN                   ! check if BC side
+                iSide_DG = mapAllBCSidesToDGVisuBCSides(iSide)  ! get DG visu side index
+                IF (iSide_DG.GT.0) THEN
+                  IF(PP_NodeType.EQ.1)THEN                  ! prolong solution to face
+                    CALL EvalElemFace(1,nSize-1,FieldData(iVarDataset:iVarDataset,:,:,:,iElem),Uface_tmp(1:1,:,:),&
+                                      L_Minus,L_Plus,locSide)
+                  ELSE
+                    CALL EvalElemFace(1,nSize-1,FieldData(iVarDataset:iVarDataset,:,:,:,iElem),Uface_tmp(1:1,:,:),locSide)
+                  END IF
+                  ! Turn into master side coordinate system
+                  DO q=0,nSize-1; DO p=0,nSize-1
+                    Uface(p,q)=Uface_tmp(1,S2V2(1,p,q,0,locSide),S2V2(2,p,q,0,locSide))
+                  END DO; END DO
+                  ! Change basis to visu grid
+                  CALL ChangeBasis2D(nSize-1,NVisu,Vdm_DG_Visu,Uface(:,:),USurfVisu_DG(:,:,0,iSide_DG,iVarVisu))
+                END IF
+              END IF
+            END DO
+          END DO
+          ! For FV, we are visualizing on a grid with 2*(PP_N+1) points. This means, to visualize generic datasets on this grid
+          ! only makes sense if they are of polynomial degree PP_N! TODO: More general approach?
+          IF (nSize-1.NE.PP_N) THEN
+            SWRITE(*,*) "Can not convert variable ",TRIM(VariableName)," from dataset ", TRIM(DatasetName), "to FV visu grid",&
+                        "since size is not equal to PP_N!"
+            USurfVisu_FV(:,:,0,:,iVarVisu) = 0.
+          ELSE
+            DO iElem_FV = 1,nElems_FV                         ! iterate over all FV visu elements
+              iElem = mapFVElemsToAllElems(iElem_FV)          ! get global element index
+              DO locSide=1,6 
+                iSide = ElemToSide(E2S_SIDE_ID,locSide,iElem) ! get global side index
+                IF (iSide.LE.nBCSides) THEN                   ! check if BC side
+                  iSide_FV = mapAllBCSidesToFVVisuBCSides(iSide)  ! get DG visu side index
+                  IF (iSide_FV.GT.0) THEN
+                    CALL EvalElemFace(1,nSize-1,FieldData(iVarDataset:iVarDataset,:,:,:,iElem),Uface_tmp(1:1,:,:),locSide)
+                    ! Turn into master side coordinate system
+                    DO q=0,PP_N; DO p=0,PP_N
+                      Uface(p,q)=Uface_tmp(1,S2V2(1,p,q,0,locSide),S2V2(2,p,q,0,locSide))
+                    END DO; END DO
+                    ! Change basis to visu grid
+                    CALL ChangeBasis2D(nSize-1,NVisu_FV,Vdm_FV_Visu,Uface(:,:),USurfVisu_FV(:,:,0,iSide_DG,iVarVisu))
+                  END IF
+                END IF
+              END DO
+            END DO
+          END IF
+        END SELECT
+      END IF ! doSurfVisu
+
     END IF ! substring_count.GT.1
   END IF ! mapAllVarsToVisuVars(iVar).GT.0
 
@@ -484,6 +591,10 @@ SDEALLOCATE(FieldData)
 SDEALLOCATE(Vdm_DG_Visu)
 SDEALLOCATE(Vdm_FV_Visu)
 SDEALLOCATE(DataSetVarNames)
+
+SDEALLOCATE(S2V2)
+SDEALLOCATE(Uface)
+SDEALLOCATE(Uface_tmp)
 
 END SUBROUTINE ConvertToVisu_GenericData
 

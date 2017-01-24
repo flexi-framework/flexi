@@ -14,7 +14,7 @@
 !==================================================================================================================================
 !> Contains global variables provided by the posti routines 
 !==================================================================================================================================
-MODULE MOD_Posti_Vars
+MODULE MOD_Visu_Vars
 USE ISO_C_BINDING
 ! MODULES
 IMPLICIT NONE
@@ -50,8 +50,13 @@ LOGICAL                           :: DGonly = .FALSE.            ! flag to force
 LOGICAL                           :: DGonly_old = .TRUE.         ! saves previous DGonly
 INTEGER,ALLOCATABLE               :: mapDGElemsToAllElems(:)     ! maps element index of DG elements to all elements
 INTEGER,ALLOCATABLE               :: mapFVElemsToAllElems(:)
+INTEGER,ALLOCATABLE               :: FV_Elems_loc(:)             ! current distribution of FV/DG elems
 INTEGER,ALLOCATABLE               :: FV_Elems_old(:)             ! saves previous FV_Elems, which holds DG/FV elements distribution
 INTEGER                           :: VisuDimension               ! TODO: Avg2D
+INTEGER                           :: meshMode_old=0              ! Used to check if InitMesh must be called again with different
+                                                                 ! mesh mode
+LOGICAL                           :: doSurfVisu                  ! Flag indicating if any surfaces need to be visualized
+
                 
 ! The following flags indicate if during successive visualizations of (different) state files the respective properties
 ! changed. For example the mesh file of different state files in a timeseries is the same ...
@@ -144,4 +149,4 @@ REAL(C_DOUBLE),ALLOCATABLE,TARGET :: UVisu_FV_2D(:,:,:,:,:)     ! state at visu 
 
 
 
-END MODULE MOD_Posti_Vars
+END MODULE MOD_Visu_Vars

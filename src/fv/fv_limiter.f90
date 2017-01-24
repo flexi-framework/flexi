@@ -61,7 +61,7 @@ USE MOD_ReadInTools ,ONLY: prms,addStrListEntry
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
-CALL prms%SetSection('FV_Limiter')
+CALL prms%SetSection('FV')
 CALL prms%CreateIntFromStringOption('FV_LimiterType',"none (0): NullLimiter (no reconstruction), minmod (1): MinMod limiter,"//&
                                               "sweby (2): Sweby limiter, central (9): Central limiter (UNSTABLE)", '1')
 CALL addStrListEntry('FV_LimiterType','none',   FV_LIMITERTYPE_NULL)

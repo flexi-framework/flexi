@@ -52,7 +52,7 @@ CONTAINS
 SUBROUTINE Build_FV_DG_distribution(statefile)
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Posti_Vars
+USE MOD_Visu_Vars
 USE MOD_HDF5_Input  ,ONLY: GetArrayAndName,OpenDataFile,CloseDataFile
 USE MOD_ReadInTools ,ONLY: GETSTR,CountOption
 USE MOD_StringTools ,ONLY: STRICMP
@@ -71,7 +71,6 @@ INTEGER                        :: nVal(15)
 REAL,ALLOCATABLE               :: ElemData_loc(:,:),tmp(:)
 CHARACTER(LEN=255),ALLOCATABLE :: VarNamesElemData_loc(:)
 #endif
-INTEGER,ALLOCATABLE            :: FV_Elems_loc(:)             
 !===================================================================================================================================
 ! Build partition to get nElems
 CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
@@ -157,7 +156,6 @@ CALL MPI_ALLREDUCE(MPI_IN_PLACE,nElems_FV_glob,1,MPI_INTEGER,MPI_MAX,MPI_COMM_WO
 #endif
 hasFV_Elems = (nElems_FV_glob.GT.0)
 
-DEALLOCATE(FV_Elems_loc)
 END SUBROUTINE Build_FV_DG_distribution
 
 !===================================================================================================================================
@@ -173,7 +171,7 @@ END SUBROUTINE Build_FV_DG_distribution
 !===================================================================================================================================
 SUBROUTINE Build_mapDepToCalc_mapAllVarsToVisuVars()
 USE MOD_Globals
-USE MOD_Posti_Vars
+USE MOD_Visu_Vars
 USE MOD_ReadInTools     ,ONLY: GETSTR,CountOption
 USE MOD_StringTools     ,ONLY: STRICMP
 IMPLICIT NONE
@@ -289,6 +287,10 @@ DO iVar=1,CountOption("BoundaryName")
   END DO
 END DO
 
+! Set flag indicating if surface visualization is needed
+doSurfVisu = nBCNamesVisu.GT.0
+SWRITE (*,*) 'doSurfVisu: ',doSurfVisu
+
 ! check if any boundary changed
 changedBCnames = .TRUE.
 IF (ALLOCATED(mapAllBCNamesToVisuBCNames_old).AND.(SIZE(mapAllBCNamesToVisuBCNames).EQ.SIZE(mapAllBCNamesToVisuBCNames_old))) THEN
@@ -304,12 +306,9 @@ SWRITE (*,'(A,'//format//'I3)') "mapAllBCNamesToVisuBCNames ",mapAllBCNamesToVis
 END SUBROUTINE Build_mapDepToCalc_mapAllVarsToVisuVars
 
 SUBROUTINE Build_mapBCSides() 
-USE MOD_Posti_Vars
+USE MOD_Visu_Vars
 USE MOD_Mesh_Vars  ,ONLY: nBCSides,BC,SideToElem,BoundaryName
 USE MOD_StringTools ,ONLY: STRICMP
-#if FV_ENABLED
-USE MOD_FV_Vars    ,ONLY: FV_Elems
-#endif
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -335,24 +334,26 @@ nSidesPerBCNameVisu_DG = 0
 nSidesPerBCNameVisu_FV = 0
 nBCSidesVisu_DG = 0
 nBCSidesVisu_FV = 0
-DO iBC=1,nBCNamesAll    ! iterate over all bc names
-  IF (mapAllBCNamesToVisuBCNames(iBC).GT.0) THEN 
-    DO iSide=1,nBCSides   ! iterate over all bc sides 
-      IF (STRICMP(BoundaryName(BC(iSide)),BCNamesAll(iBC))) THEN ! check if side is of specific boundary name
-        iElem = SideToElem(S2E_ELEM_ID,iSide)
-        IF (FV_Elems(iElem).EQ.0)  THEN ! DG element
-          nBCSidesVisu_DG = nBCSidesVisu_DG + 1
-          mapAllBCSidesToDGVisuBCSides(iSide) = nBCSidesVisu_DG
-          nSidesPerBCNameVisu_DG(mapAllBCNamesToVisuBCNames(iBC)) = nSidesPerBCNameVisu_DG(mapAllBCNamesToVisuBCNames(iBC)) + 1
-        ELSE ! FV Element
-          nBCSidesVisu_FV = nBCSidesVisu_FV + 1
-          mapAllBCSidesToFVVisuBCSides(iSide) = nBCSidesVisu_FV
-          nSidesPerBCNameVisu_FV(mapAllBCNamesToVisuBCNames(iBC)) = nSidesPerBCNameVisu_FV(mapAllBCNamesToVisuBCNames(iBC)) + 1
+IF (doSurfVisu) THEN
+  DO iBC=1,nBCNamesAll    ! iterate over all bc names
+    IF (mapAllBCNamesToVisuBCNames(iBC).GT.0) THEN 
+      DO iSide=1,nBCSides   ! iterate over all bc sides 
+        IF (STRICMP(BoundaryName(BC(iSide)),BCNamesAll(iBC))) THEN ! check if side is of specific boundary name
+          iElem = SideToElem(S2E_ELEM_ID,iSide)
+          IF (FV_Elems_loc(iElem).EQ.0)  THEN ! DG element
+            nBCSidesVisu_DG = nBCSidesVisu_DG + 1
+            mapAllBCSidesToDGVisuBCSides(iSide) = nBCSidesVisu_DG
+            nSidesPerBCNameVisu_DG(mapAllBCNamesToVisuBCNames(iBC)) = nSidesPerBCNameVisu_DG(mapAllBCNamesToVisuBCNames(iBC)) + 1
+          ELSE ! FV Element
+            nBCSidesVisu_FV = nBCSidesVisu_FV + 1
+            mapAllBCSidesToFVVisuBCSides(iSide) = nBCSidesVisu_FV
+            nSidesPerBCNameVisu_FV(mapAllBCNamesToVisuBCNames(iBC)) = nSidesPerBCNameVisu_FV(mapAllBCNamesToVisuBCNames(iBC)) + 1
+          END IF
         END IF
-      END IF
-    END DO
-  END IF
-END DO
+      END DO
+    END IF
+  END DO
+END IF ! doSurfVisu
 
 END SUBROUTINE Build_mapBCSides
 
