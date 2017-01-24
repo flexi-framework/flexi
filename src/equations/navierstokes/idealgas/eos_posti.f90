@@ -362,6 +362,8 @@ IF (withVectors) THEN
       UCalc(:,iVarCalc) = FillWallFriction(3,nVal,UCalc(:,iTemp),gradUx,gradUy,gradUz,NormVec)
     CASE("wallfrictionmagnitude")
       UCalc(:,iVarCalc) = SQRT(UCalc(:,iWFriX)**2+UCalc(:,iWFriY)**2+UCalc(:,iWFriZ)**2)
+    CASE("wallheattransfer")
+      UCalc(:,iVarCalc) = FillWallHeatTransfer(nVal,UCalc(:,iTemp),gradUx,gradUy,gradUz,NormVec)
 #endif
   END SELECT
 END IF
@@ -525,8 +527,39 @@ DO i=1,PRODUCT(nVal)
   WallFriction(i)=WallFrictionLoc(dir)
 END DO
 END FUNCTION FillWallFriction
-#endif
 
+FUNCTION FillWallHeatTransfer(nVal,Temperature,gradUx,gradUy,gradUz,NormVec) RESULT(WallHeatTransfer)
+!==================================================================================================================================
+! MODULES
+USE MOD_Eos_Vars
+IMPLICIT NONE 
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+INTEGER,INTENT(IN)                                   :: nVal(:)
+REAL,DIMENSION(PRODUCT(nVal)),INTENT(IN)             :: Temperature
+REAL,DIMENSION(PP_nVarPrim,PRODUCT(nVal)),INTENT(IN) :: gradUx,gradUy,gradUz
+REAL,DIMENSION(1:3,PRODUCT(nVal)),INTENT(IN)         :: NormVec
+REAL                                                 :: WallHeatTransfer(PRODUCT(nVal))
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES 
+REAL              :: mu
+REAL              :: GradTn
+REAL              :: temp
+INTEGER           :: i
+!===================================================================================================================================
+DO i=1,PRODUCT(nVal)
+  ! Calculate the viscosity
+  temp=Temperature(i)
+  mu=VISCOSITY_TEMPERATURE(temp)
+  ! Calculate temperature gradient in wall normal direction
+  GradTn = gradUx(6,i)*NormVec(1,i) &
+         + gradUy(6,i)*NormVec(2,i) &
+         + gradUz(6,i)*NormVec(3,i)
+  ! Calculate wall heat transfer
+  WallHeatTransfer(i) = -1.*mu*Kappa*sKappaM1*R/Pr*gradTn
+END DO
+END FUNCTION FillWallHeatTransfer
+#endif
 
 
 END MODULE MOD_EOS_Posti
