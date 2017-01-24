@@ -167,7 +167,7 @@ END FUNCTION GetMaskGrad
 !> Wrapper routine that is called when derived quantities should be calculated. For every variable that should be calculated,
 !> the routine that does the actual calculation CalcDerivedQuantity is called with the approriate arguments.
 !==================================================================================================================================
-SUBROUTINE CalcQuantities(nVarCalc,nVal,iElems,mapDepToCalc,UCalc,maskCalc,gradUx,gradUy,gradUz,&
+SUBROUTINE CalcQuantities(nVarCalc,nVal,mapCalcMeshToGlobalMesh,mapDepToCalc,UCalc,maskCalc,gradUx,gradUy,gradUz,&
     NormVec,TangVec1,TangVec2)
 ! MODULES
 USE MOD_Globals,ONLY: MPIRoot
@@ -177,7 +177,7 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)                                              :: nVarCalc
 INTEGER,INTENT(IN)                                              :: nVal(:)
-INTEGER,INTENT(IN)                                              :: iElems(:)
+INTEGER,INTENT(IN)                                              :: mapCalcMeshToGlobalMesh(:)
 INTEGER,INTENT(IN)                                              :: mapDepToCalc(nVarDepEOS)
 INTEGER,INTENT(IN)                                              :: maskCalc(nVarDepEOS)
 REAL,INTENT(OUT)                                                :: UCalc(PRODUCT(nVal),1:nVarCalc)
@@ -198,17 +198,17 @@ DO iVar=1,nVarDepEOS
     SWRITE(*,*) "  ",TRIM(DepNames(iVar))
     IF(withGradients)THEN
       IF(withVectors)THEN
-        CALL CalcDerivedQuantity(iVarCalc,DepNames(iVar),nVarCalc,nVal,iElems,mapDepToCalc,UCalc,gradUx,gradUy,gradUz,&
+        CALL CalcDerivedQuantity(iVarCalc,DepNames(iVar),nVarCalc,nVal,mapCalcMeshToGlobalMesh,mapDepToCalc,UCalc,gradUx,gradUy,gradUz,&
             NormVec,TangVec1,TangVec2)
       ELSE
-        CALL CalcDerivedQuantity(iVarCalc,DepNames(iVar),nVarCalc,nVal,iElems,mapDepToCalc,UCalc,gradUx,gradUy,gradUz)
+        CALL CalcDerivedQuantity(iVarCalc,DepNames(iVar),nVarCalc,nVal,mapCalcMeshToGlobalMesh,mapDepToCalc,UCalc,gradUx,gradUy,gradUz)
       END IF
     ELSE
       IF(withVectors)THEN
-        CALL CalcDerivedQuantity(iVarCalc,DepNames(iVar),nVarCalc,nVal,iElems,mapDepToCalc,UCalc,&
+        CALL CalcDerivedQuantity(iVarCalc,DepNames(iVar),nVarCalc,nVal,mapCalcMeshToGlobalMesh,mapDepToCalc,UCalc,&
             NormVec=NormVec,TangVec1=TangVec1,TangVec2=TangVec2)
       ELSE
-        CALL CalcDerivedQuantity(iVarCalc,DepNames(iVar),nVarCalc,nVal,iElems,mapDepToCalc,UCalc)
+        CALL CalcDerivedQuantity(iVarCalc,DepNames(iVar),nVarCalc,nVal,mapCalcMeshToGlobalMesh,mapDepToCalc,UCalc)
       END IF
     END IF
   END IF
@@ -221,7 +221,7 @@ END SUBROUTINE CalcQuantities
 !> The routine either does the calculation in itself if the quantity is simple to calculate or calls helper functions
 !> for the more complex ones.
 !==================================================================================================================================
-SUBROUTINE CalcDerivedQuantity(iVarCalc,DepName,nVarCalc,nVal,iElems,mapDepToCalc,UCalc,gradUx,gradUy,gradUz, &
+SUBROUTINE CalcDerivedQuantity(iVarCalc,DepName,nVarCalc,nVal,mapCalcMeshToGlobalMesh,mapDepToCalc,UCalc,gradUx,gradUy,gradUz, &
     NormVec,TangVec1,TangVec2)
 ! MODULES
 USE MOD_PreProc
@@ -235,7 +235,7 @@ INTEGER,INTENT(IN)                                              :: iVarCalc
 CHARACTER(LEN=255),INTENT(IN)                                   :: DepName
 INTEGER,INTENT(IN)                                              :: nVarCalc
 INTEGER,INTENT(IN)                                              :: nVal(:)
-INTEGER,INTENT(IN)                                              :: iElems(:)
+INTEGER,INTENT(IN)                                              :: mapCalcMeshToGlobalMesh(:)
 INTEGER,INTENT(IN)                                              :: mapDepToCalc(nVarDepEOS)
 REAL,INTENT(INOUT)                                              :: UCalc(PRODUCT(nVal),1:nVarCalc)
 REAL,DIMENSION(1:PP_nVarPrim,PRODUCT(nVal)),INTENT(IN),OPTIONAL :: gradUx,gradUy,gradUz
@@ -343,7 +343,7 @@ SELECT CASE(DepName_low)
   CASE("totalpressure")
     UCalc(:,iVarCalc) = UCalc(:,iPres)+0.5*UCalc(:,iDens)*UCalc(:,iVelM)**2
   CASE("pressuretimederiv")
-     CALL FillPressureTimeDeriv(nElems_loc,iElems,Nloc,UCalc(:,iVarCalc))
+     CALL FillPressureTimeDeriv(nElems_loc,mapCalcMeshToGlobalMesh,Nloc,UCalc(:,iVarCalc))
 #if PARABOLIC      
   CASE("vorticityx")
     UCalc(:,iVarCalc) = FillVorticity(1,nVal,gradUx,gradUy,gradUz)
