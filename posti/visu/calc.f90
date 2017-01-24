@@ -174,12 +174,12 @@ IF(TRIM(FileType).EQ.'State')THEN
   END DO
   IF(withDGOperator.AND.PARABOLIC.EQ.1)THEN
 #if PARABOLIC
-    CALL CalcQuantities(nVarCalc,nValSide,mapDGElemsToAllElems,mapDepToCalc,USurfCalc_DG,maskCalc*(1-DepVolumeOnly),&
+    CALL CalcQuantities(nVarCalc,nValSide,mapAllBCSidesToDGVisuBCSides,mapDepToCalc,USurfCalc_DG,maskCalc*(1-DepVolumeOnly),&
         gradUxFace,gradUyFace,gradUzFace,&
         NormVec_loc(:,:,:,:),TangVec1_loc(:,:,:,:),TangVec2_loc(:,:,:,:)) 
 #endif
   ELSE
-    CALL CalcQuantities(nVarCalc,nValSide,mapDGElemsToAllElems,mapDepToCalc,USurfCalc_DG,maskCalc*(1-DepVolumeOnly),& 
+    CALL CalcQuantities(nVarCalc,nValSide,mapAllBCSidesToDGVisuBCSides,mapDepToCalc,USurfCalc_DG,maskCalc*(1-DepVolumeOnly),& 
         NormVec=NormVec_loc(:,:,:,:),TangVec1=TangVec1_loc(:,:,:,:),TangVec2=TangVec2_loc(:,:,:,:)) 
   END IF
 END IF
@@ -521,12 +521,12 @@ SWRITE(*,*) "[FVRE] CalcSurfQuantities"
 maskCalc = DepSurfaceOnly
 IF(withDGOperator.AND.PARABOLIC.EQ.1)THEN
 #if PARABOLIC
-  CALL CalcQuantities(nVarCalc_FV,nValSide,mapFVElemsToAllElems,mapDepToCalc_FV,USurfCalc_FV,maskCalc*(1-DepVolumeOnly),&
+  CALL CalcQuantities(nVarCalc_FV,nValSide,mapAllBCSidesToFVVisuBCSides,mapDepToCalc_FV,USurfCalc_FV,maskCalc*(1-DepVolumeOnly),&
       gradUxFace,gradUyFace,gradUzFace,&
       NormVec_loc(:,:,:,:),TangVec1_loc(:,:,:,:),TangVec2_loc(:,:,:,:)) 
 #endif
 ELSE
-  CALL CalcQuantities(nVarCalc_FV,nValSide,mapFVElemsToAllElems,mapDepToCalc_FV,USurfCalc_FV,maskCalc*(1-DepVolumeOnly),& 
+  CALL CalcQuantities(nVarCalc_FV,nValSide,mapAllBCSidesToFVVisuBCSides,mapDepToCalc_FV,USurfCalc_FV,maskCalc*(1-DepVolumeOnly),& 
       NormVec=NormVec_loc(:,:,:,:),TangVec1=TangVec1_loc(:,:,:,:),TangVec2=TangVec2_loc(:,:,:,:)) 
 END IF
 
