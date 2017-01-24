@@ -270,19 +270,24 @@ CALL CloseDataFile()
 ! set number of dependent and raw variables 
 SDEALLOCATE(DepTable)
 SDEALLOCATE(DepSurfaceOnly)
+SDEALLOCATE(DepVolumeOnly)
 nVarAll=SIZE(VarnamesAll)
 IF (STRICMP(FileType,'State')) THEN
   nVarDep = nVarDepEOS
   ALLOCATE(DepTable(nVarDep,0:nVarDep))
   ALLOCATE(DepSurfaceOnly(nVarDep))
+  ALLOCATE(DepVolumeOnly(nVarDep))
   DepTable = DepTableEOS
   DepSurfaceOnly = DepSurfaceOnlyEOS
+  DepVolumeOnly  = DepVolumeOnlyEOS
 ELSE 
   nVarDep = 0
   ALLOCATE(DepTable(nVarDep,0:nVarDep))
   ALLOCATE(DepSurfaceOnly(nVarDep))
+  ALLOCATE(DepVolumeOnly(nVarDep))
   DepTable = 0
   DepSurfaceOnly = 0
+  DepVolumeOnly  = 0
 END IF
 
 ! build distribution of FV and DG elements, which is stored in FV_Elems_loc

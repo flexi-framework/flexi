@@ -96,8 +96,14 @@ INTEGER,DIMENSION(1:nVarDepEOS,0:nVarDepEOS),PARAMETER :: DepTableEOS = TRANSPOS
 #endif
 /),(/nVarDepEOS+1,nVarDepEOS/)))
 
+! Mark all quantities that can be calculated exclusively on the surface
 INTEGER,DIMENSION(1:nVarDepEOS),PARAMETER :: DepSurfaceOnlyEOS = &
 (/  0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0  CUT(&) ,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1 &
+/) 
+
+! Mark all quantities that can be calculated exclusively in the volume and must be prolonged to the surface from the volume
+INTEGER,DIMENSION(1:nVarDepEOS),PARAMETER :: DepVolumeOnlyEOS = &
+(/  0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,1  CUT(&) ,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 &
 /) 
 
 #if FV_ENABLED && FV_RECONSTRUCT
