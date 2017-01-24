@@ -77,6 +77,7 @@ CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL BuildPartition() 
 CALL CloseDataFile()
 
+SDEALLOCATE(FV_Elems_loc)
 ALLOCATE(FV_Elems_loc(1:nElems))
 #if FV_ENABLED
 IF (.NOT.DGonly) THEN
