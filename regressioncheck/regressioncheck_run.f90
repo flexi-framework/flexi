@@ -394,14 +394,12 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 INTEGER,INTENT(IN)             :: iExample,iReggieBuild
-!CHARACTER(LEN=*),INTENT(INOUT) :: parameter_ini
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(INOUT) :: TESTCASE,TIMEDISCMETHOD
 LOGICAL,INTENT(INOUT)          :: UseFV,UseCODE2D,UsePARABOLIC      !> compiler flags currently used for ConvergenceTest
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-!LOGICAL                        :: UseFV,UseCODE2D,UsePARABOLIC      !> compiler flags currently used for ConvergenceTest
 LOGICAL                        :: ExistFile                         !> file exists=.true., file does not exist=.false.
 CHARACTER(LEN=255)             :: FileName                          !> path to a file or its name
 CHARACTER(LEN=255)             :: tempStr
@@ -469,8 +467,6 @@ IF(UseMPI.EQV..FALSE.)THEN ! parameter_reggie.ini supplied with MPI and possibly
   Examples(iExample)%MPIrun=.FALSE. ! deactivate MPI for running reggie
 END IF
 IF(Examples(iExample)%MPIrun.EQV..FALSE.)Examples(iExample)%MPIthreadsN=1  ! set number of mpi ranks to 1
-
-
 
 END SUBROUTINE CheckCompilerFlags
 
@@ -1013,11 +1009,12 @@ CHARACTER(LEN=*),INTENT(INOUT) :: MPIthreadsStr
 LOGICAL,INTENT(OUT)            :: SkipComparison
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                        :: ComputationSTATUS                 !> simulation successful/failed
-INTEGER                        :: iSTATUS                           !> status
-CHARACTER(LEN=1000)            :: SYSCOMMAND                        !> string to fit the system command
-CHARACTER(LEN=255)             :: FileSuffix,FolderSuffix,tempStr,FileOutFolderName,StdOutFileName,ErrOutFileName
-INTEGER                        :: MPIthreadsInteger,PolynomialDegree!,MPIthreads
+INTEGER                        :: ComputationSTATUS                               !> simulation successful/failed
+INTEGER                        :: iSTATUS                                         !> status
+CHARACTER(LEN=1000)            :: SYSCOMMAND                                      !> string to fit the system command
+CHARACTER(LEN=255)             :: FileSuffix,FolderSuffix,tempStr                 !> auxiliary vars for file and folder names
+CHARACTER(LEN=255)             :: FileOutFolderName,StdOutFileName,ErrOutFileName !> new std.out and err.out files
+INTEGER                        :: MPIthreadsInteger,PolynomialDegree              !> character to integer auxiliaray vars
 !===================================================================================================================================
 SkipComparison=.FALSE.
 MPIthreadsInteger=1 ! default: single run
