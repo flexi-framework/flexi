@@ -174,27 +174,48 @@ CALL visu(mpi_comm_IN, prmfile, postifile, statefile)
 ! write UVisu to VTK 2D / 3D arrays (must be done always!)
 ! write coords, UVisu to VTK  2D / 3D arrays (must be done always!)
 IF (VisuDimension.EQ.3) THEN
-  ! Volume
-  CALL WriteDataToVTK_array(nVarVisu,NVisu   ,nElems_DG,valuesDG_out,UVisu_DG,3)
-  CALL WriteDataToVTK_array(nVarVisu,NVisu_FV,nElems_FV,valuesFV_out,UVisu_FV,3)
+  IF (MeshFileMode) THEN
+    ! Only write the DG coordinates to the VTK file
+    CALL WriteCoordsToVTK_array(NVisu   ,nElems_DG,coordsDG_out,nodeidsDG_out,&
+        CoordsVisu_DG,nodeids_DG,dim=3,DGFV=0)
+    
+    ! set length of all other output arrays to zero so they are not used in the reader
+    valuesDG_out%len      = 0
+    coordsFV_out%len      = 0
+    valuesFV_out%len      = 0
+    nodeidsFV_out%len     = 0
+    varnames_out%len      = 0
+    coordsSurfDG_out%len  = 0
+    valuesSurfDG_out%len  = 0
+    nodeidsSurfDG_out%len = 0
+    coordsSurfFV_out%len  = 0
+    valuesSurfFV_out%len  = 0
+    nodeidsSurfFV_out%len = 0
+    varnamesSurf_out%len  = 0
 
-  CALL WriteCoordsToVTK_array(NVisu   ,nElems_DG,coordsDG_out,nodeidsDG_out,&
-      CoordsVisu_DG,nodeids_DG,dim=3,DGFV=0)
-  CALL WriteCoordsToVTK_array(NVisu_FV,nElems_FV,coordsFV_out,nodeidsFV_out,&
-      CoordsVisu_FV,nodeids_FV,dim=3,DGFV=1)
+  ELSE ! = StateFileMode
+    ! Volume
+    CALL WriteDataToVTK_array(nVarVisu,NVisu   ,nElems_DG,valuesDG_out,UVisu_DG,3)
+    CALL WriteDataToVTK_array(nVarVisu,NVisu_FV,nElems_FV,valuesFV_out,UVisu_FV,3)
 
-  CALL WriteVarnamesToVTK_array(nVarAll,mapAllVarsToVisuVars,varnames_out,VarnamesAll,nVarVisu)
+    CALL WriteCoordsToVTK_array(NVisu   ,nElems_DG,coordsDG_out,nodeidsDG_out,&
+        CoordsVisu_DG,nodeids_DG,dim=3,DGFV=0)
+    CALL WriteCoordsToVTK_array(NVisu_FV,nElems_FV,coordsFV_out,nodeidsFV_out,&
+        CoordsVisu_FV,nodeids_FV,dim=3,DGFV=1)
 
-  ! Surface
-  CALL WriteDataToVTK_array(nVarSurfVisuAll,NVisu   ,nBCSidesVisu_DG,valuesSurfDG_out,USurfVisu_DG,2)
-  CALL WriteDataToVTK_array(nVarSurfVisuAll,NVisu_FV,nBCSidesVisu_FV,valuesSurfFV_out,USurfVisu_FV,2)
+    CALL WriteVarnamesToVTK_array(nVarAll,mapAllVarsToVisuVars,varnames_out,VarnamesAll,nVarVisu)
 
-  CALL WriteCoordsToVTK_array(NVisu   ,nBCSidesVisu_DG,coordsSurfDG_out,nodeidsSurfDG_out,&
-      CoordsSurfVisu_DG,nodeidsSurf_DG,dim=2,DGFV=0)
-  CALL WriteCoordsToVTK_array(NVisu_FV,nBCSidesVisu_FV,coordsSurfFV_out,nodeidsSurfFV_out,&
-      CoordsSurfVisu_FV,nodeidsSurf_FV,dim=2,DGFV=1)
+    ! Surface
+    CALL WriteDataToVTK_array(nVarSurfVisuAll,NVisu   ,nBCSidesVisu_DG,valuesSurfDG_out,USurfVisu_DG,2)
+    CALL WriteDataToVTK_array(nVarSurfVisuAll,NVisu_FV,nBCSidesVisu_FV,valuesSurfFV_out,USurfVisu_FV,2)
 
-  CALL WriteVarnamesToVTK_array(nVarAll,mapAllVarsToSurfVisuVars,varnamesSurf_out,VarnamesAll,nVarSurfVisuAll)
+    CALL WriteCoordsToVTK_array(NVisu   ,nBCSidesVisu_DG,coordsSurfDG_out,nodeidsSurfDG_out,&
+        CoordsSurfVisu_DG,nodeidsSurf_DG,dim=2,DGFV=0)
+    CALL WriteCoordsToVTK_array(NVisu_FV,nBCSidesVisu_FV,coordsSurfFV_out,nodeidsSurfFV_out,&
+        CoordsSurfVisu_FV,nodeidsSurf_FV,dim=2,DGFV=1)
+
+    CALL WriteVarnamesToVTK_array(nVarAll,mapAllVarsToSurfVisuVars,varnamesSurf_out,VarnamesAll,nVarSurfVisuAll)
+  END IF ! MeshFileMode
 ELSE IF (VisuDimension.EQ.2) THEN
   STOP 'implement avg2d'
 

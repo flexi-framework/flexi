@@ -435,13 +435,14 @@ changedDGonly         = .FALSE.
 
 IF (ISVALIDMESHFILE(statefile)) THEN ! visualize mesh
   SWRITE(*,*) "MeshFile Mode"
+  MeshFileMode = .TRUE.
   MeshFile      = statefile
   nVar_State    = 0
   withDGOperator = .FALSE.
-  CALL VisualizeMesh(postifile,MeshFile,coordsDG_out,valuesDG_out,nodeidsDG_out, &
-      coordsFV_out,valuesFV_out,nodeidsFV_out,varnames_out,components_out)
+  CALL VisualizeMesh(postifile,MeshFile)
 ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   SWRITE(*,*) "State Mode"
+  MeshFileMode = .FALSE.
   ! initialize state file
   CALL visu_InitFile(statefile,postifile)
 

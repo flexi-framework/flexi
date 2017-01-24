@@ -55,6 +55,7 @@ INTEGER,ALLOCATABLE               :: FV_Elems_old(:)             !< previous dis
 INTEGER                           :: VisuDimension               !< TODO: Avg2D
 INTEGER                           :: meshMode_old=0              !< Used to check if InitMesh must be called again with different
                                                                  !< mesh mode
+LOGICAL                           :: MeshFileMode                !< Flag indicating a mesh file should be visualized
 LOGICAL                           :: doSurfVisu                  !< Flag indicating if any surfaces need to be visualized
 
                 
