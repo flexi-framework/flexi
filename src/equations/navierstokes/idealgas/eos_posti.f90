@@ -55,8 +55,11 @@ CONTAINS
 
 
 #if FV_ENABLED && FV_RECONSTRUCT
-SUBROUTINE AppendNeededPrims(mapDepToCalc,mapDepToCalc_FV,nVarCalc) 
 !==================================================================================================================================
+!> For FV, the conservative variables must be calculated from the primitive ones. In this routine the primitive variables
+!> needed to calculate all conservative variables that are needed are added to the dep table.
+!==================================================================================================================================
+SUBROUTINE AppendNeededPrims(mapDepToCalc,mapDepToCalc_FV,nVarCalc) 
 ! MODULES
 USE MOD_EOS_Posti_Vars
 IMPLICIT NONE
@@ -88,8 +91,11 @@ END SUBROUTINE AppendNeededPrims
 #endif
 
 
-FUNCTION GetMaskCons() 
 !==================================================================================================================================
+!> Create a mask for the conservative variables. The mask has a length of nVarDepEOS and is 1 at the index of the
+!> conservative variables and 0 everywhere else.
+!==================================================================================================================================
+FUNCTION GetMaskCons() 
 ! MODULES
 USE MOD_EOS_Posti_Vars,ONLY: nVarDepEOS,DepTableEOS,DepNames
 USE MOD_Equation_Vars ,ONLY: StrVarNames
@@ -113,8 +119,11 @@ END DO
 END FUNCTION GetMaskCons
 
 
-FUNCTION GetMaskPrim() 
 !==================================================================================================================================
+!> Create a mask for the primitive variables. The mask has a length of nVarDepEOS and is 1 at the index of the
+!> primitive variables and 0 everywhere else.
+!==================================================================================================================================
+FUNCTION GetMaskPrim() 
 ! MODULES
 USE MOD_EOS_Posti_Vars,ONLY: nVarDepEOS,DepTableEOS,DepNames
 USE MOD_Equation_Vars ,ONLY: StrVarNamesPrim
@@ -138,8 +147,11 @@ END DO
 END FUNCTION GetMaskPrim
 
 
-FUNCTION GetMaskGrad()
 !==================================================================================================================================
+!> Create a mask for the variables that need gradients. The mask has a length of nVarDepEOS and is 1 at the index of the
+!> variables that need gradients and 0 everywhere else.
+!==================================================================================================================================
+FUNCTION GetMaskGrad()
 ! MODULES
 USE MOD_EOS_Posti_Vars,ONLY: nVarDepEOS,DepTableEOS
 IMPLICIT NONE
@@ -151,9 +163,12 @@ GetMaskGrad = DepTableEOS(:,0)
 END FUNCTION GetMaskGrad
 
 
+!==================================================================================================================================
+!> Wrapper routine that is called when derived quantities should be calculated. For every variable that should be calculated,
+!> the routine that does the actual calculation CalcDerivedQuantity is called with the approriate arguments.
+!==================================================================================================================================
 SUBROUTINE CalcQuantities(nVarCalc,nVal,iElems,mapDepToCalc,UCalc,maskCalc,gradUx,gradUy,gradUz,&
     NormVec,TangVec1,TangVec2)
-!==================================================================================================================================
 ! MODULES
 USE MOD_Globals,ONLY: MPIRoot
 USE MOD_EOS_Posti_Vars
@@ -201,9 +216,13 @@ END DO
 END SUBROUTINE CalcQuantities
 
 
+!==================================================================================================================================
+!> Routine that calculates a single derived quantity called DepName and stores them in UCalc(iVarCalc,:). 
+!> The routine either does the calculation in itself if the quantity is simple to calculate or calls helper functions
+!> for the more complex ones.
+!==================================================================================================================================
 SUBROUTINE CalcDerivedQuantity(iVarCalc,DepName,nVarCalc,nVal,iElems,mapDepToCalc,UCalc,gradUx,gradUy,gradUz, &
     NormVec,TangVec1,TangVec2)
-!==================================================================================================================================
 ! MODULES
 USE MOD_PreProc
 USE MOD_EOS_Posti_Vars
@@ -362,14 +381,18 @@ IF (withVectors) THEN
       UCalc(:,iVarCalc) = FillWallFriction(3,nVal,UCalc(:,iTemp),gradUx,gradUy,gradUz,NormVec)
     CASE("wallfrictionmagnitude")
       UCalc(:,iVarCalc) = SQRT(UCalc(:,iWFriX)**2+UCalc(:,iWFriY)**2+UCalc(:,iWFriZ)**2)
+    CASE("wallheattransfer")
+      UCalc(:,iVarCalc) = FillWallHeatTransfer(nVal,UCalc(:,iTemp),gradUx,gradUy,gradUz,NormVec)
 #endif
   END SELECT
 END IF
 END SUBROUTINE CalcDerivedQuantity
 
 
-SUBROUTINE FillPressureTimeDeriv(nElems_calc,indices,Nloc,PressureTDeriv)
 !==================================================================================================================================
+!> Calculate the time derivative of the pressure from the time derivative of the conservative variables using the chain rule.
+!==================================================================================================================================
+SUBROUTINE FillPressureTimeDeriv(nElems_calc,indices,Nloc,PressureTDeriv)
 ! MODULES
 USE MOD_Preproc
 USE MOD_Eos_Vars,ONLY:KappaM1
@@ -401,8 +424,10 @@ END SUBROUTINE FillPressureTimeDeriv
 
 
 #if PARABOLIC
-FUNCTION FillVorticity(dir,nVal,gradUx,gradUy,gradUz) RESULT(Vorticity)
 !==================================================================================================================================
+!> Calculate vorticity in direction dir.
+!==================================================================================================================================
+FUNCTION FillVorticity(dir,nVal,gradUx,gradUy,gradUz) RESULT(Vorticity)
 ! MODULES
 IMPLICIT NONE 
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -423,9 +448,15 @@ END SELECT
 END FUNCTION FillVorticity
 
 
-
-FUNCTION FillLambda2(nVal,gradUx,gradUy,gradUz) RESULT(Lambda2)
 !==================================================================================================================================
+!> Calculate the lambda 2 criterion, see Jeong, Jinhee, and Fazle Hussain. "On the identification of a vortex." Journal of fluid
+!> mechanics 285 (1995): 69-94. 
+!> This criterion is the second eigenvalue of the symmetric tensor ${\bm {\cal S}}^2 + {\bm \Omega}^2$; 
+!> here ${\bm {\cal S}}$ and ${\bm \Omega}$ are respectively the symmetric and antisymmetric parts of 
+!> the velocity gradient tensor ${\bm \Delta}{\bm u}$.
+!> Calculation of the eigenvalues is done using LAPACK.
+!==================================================================================================================================
+FUNCTION FillLambda2(nVal,gradUx,gradUy,gradUz) RESULT(Lambda2)
 ! MODULES
 IMPLICIT NONE 
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -446,7 +477,7 @@ DO i=1,PRODUCT(nVal)
   gradUmat(:,2)= gradUy(2:4,i)
   gradUmat(:,3)= gradUz(2:4,i)
   gradUmat=MATMUL(0.5*(gradUmat+TRANSPOSE(gradUmat)),0.5*(gradUmat+TRANSPOSE(gradUmat))) & ! S^2
-          +MATMUL(0.5*(gradUmat-TRANSPOSE(gradUmat)),0.5*(gradUmat-TRANSPOSE(gradUmat)))   !Omega^2
+          +MATMUL(0.5*(gradUmat-TRANSPOSE(gradUmat)),0.5*(gradUmat-TRANSPOSE(gradUmat)))   ! Omega^2
   ! Jacobi-Subroutine used from LAPACK 
   CALL DSYEV('N', 'U', 3, gradUmat, 3, Lambda, WORK, 16, INFO )
   Lambda2(i) = Lambda(2)
@@ -454,8 +485,10 @@ END DO
 END FUNCTION FillLambda2
 
 
-FUNCTION FillQcriterion(nVal,gradUx,gradUy,gradUz) RESULT(Qcriterion)
 !==================================================================================================================================
+!> Calculate the Q criterion, which is the second invariant of the velocity gradient tensor.
+!==================================================================================================================================
+FUNCTION FillQcriterion(nVal,gradUx,gradUy,gradUz) RESULT(Qcriterion)
 ! MODULES
 IMPLICIT NONE 
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -486,8 +519,10 @@ DO i=1,PRODUCT(nVal)
 END DO
 END FUNCTION FillQcriterion
 
-FUNCTION FillWallFriction(dir,nVal,Temperature,gradUx,gradUy,gradUz,NormVec) RESULT(WallFriction)
 !==================================================================================================================================
+!> Calculate the wall friction in direction dir.
+!==================================================================================================================================
+FUNCTION FillWallFriction(dir,nVal,Temperature,gradUx,gradUy,gradUz,NormVec) RESULT(WallFriction)
 ! MODULES
 USE MOD_Eos_Vars
 IMPLICIT NONE 
@@ -525,8 +560,41 @@ DO i=1,PRODUCT(nVal)
   WallFriction(i)=WallFrictionLoc(dir)
 END DO
 END FUNCTION FillWallFriction
-#endif
 
+!==================================================================================================================================
+!> Calculate the wall heat transfer normal to the wall.
+!==================================================================================================================================
+FUNCTION FillWallHeatTransfer(nVal,Temperature,gradUx,gradUy,gradUz,NormVec) RESULT(WallHeatTransfer)
+! MODULES
+USE MOD_Eos_Vars
+IMPLICIT NONE 
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+INTEGER,INTENT(IN)                                   :: nVal(:)
+REAL,DIMENSION(PRODUCT(nVal)),INTENT(IN)             :: Temperature
+REAL,DIMENSION(PP_nVarPrim,PRODUCT(nVal)),INTENT(IN) :: gradUx,gradUy,gradUz
+REAL,DIMENSION(1:3,PRODUCT(nVal)),INTENT(IN)         :: NormVec
+REAL                                                 :: WallHeatTransfer(PRODUCT(nVal))
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES 
+REAL              :: mu
+REAL              :: GradTn
+REAL              :: temp
+INTEGER           :: i
+!===================================================================================================================================
+DO i=1,PRODUCT(nVal)
+  ! Calculate the viscosity
+  temp=Temperature(i)
+  mu=VISCOSITY_TEMPERATURE(temp)
+  ! Calculate temperature gradient in wall normal direction
+  GradTn = gradUx(6,i)*NormVec(1,i) &
+         + gradUy(6,i)*NormVec(2,i) &
+         + gradUz(6,i)*NormVec(3,i)
+  ! Calculate wall heat transfer
+  WallHeatTransfer(i) = -1.*mu*Kappa*sKappaM1*R/Pr*gradTn
+END DO
+END FUNCTION FillWallHeatTransfer
+#endif
 
 
 END MODULE MOD_EOS_Posti

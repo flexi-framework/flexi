@@ -48,6 +48,7 @@ CONTAINS
 !> Converts the coordinates of the mesh to the visu-mesh.
 !=================================================================================================================================
 SUBROUTINE BuildVisuCoords()
+! MODULES                                                                   
 USE ISO_C_BINDING
 USE MOD_Globals
 USE MOD_PreProc
@@ -138,7 +139,11 @@ SDEALLOCATE(Vdm_N_NVisu)
 
 END SUBROUTINE BuildVisuCoords
 
+!=================================================================================================================================
+!> Converts the coordinates of the surface mesh to the surface visu-mesh.
+!=================================================================================================================================
 SUBROUTINE BuildSurfVisuCoords()
+! MODULES                                                                   
 USE ISO_C_BINDING
 USE MOD_Globals
 USE MOD_PreProc
@@ -214,8 +219,7 @@ END SUBROUTINE BuildSurfVisuCoords
 !> 3. write mesh to VTK array
 !> 4. set length of all other output arrays to zero
 !=================================================================================================================================
-SUBROUTINE VisualizeMesh(postifile,meshfile_in,coordsDG_out,valuesDG_out,nodeidsDG_out, &
-        coordsFV_out,valuesFV_out,nodeidsFV_out,varnames_out,components_out)
+SUBROUTINE VisualizeMesh(postifile,meshfile_in)
 ! MODULES                                                                   
 USE MOD_Globals
 USE MOD_PreProc
@@ -234,14 +238,6 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 CHARACTER(LEN=255),INTENT(IN):: postifile
 CHARACTER(LEN=255),INTENT(IN):: meshfile_in
-TYPE (CARRAY), INTENT(INOUT) :: coordsDG_out
-TYPE (CARRAY), INTENT(INOUT) :: valuesDG_out
-TYPE (CARRAY), INTENT(INOUT) :: nodeidsDG_out
-TYPE (CARRAY), INTENT(INOUT) :: coordsFV_out
-TYPE (CARRAY), INTENT(INOUT) :: valuesFV_out
-TYPE (CARRAY), INTENT(INOUT) :: nodeidsFV_out
-TYPE (CARRAY), INTENT(INOUT) :: varnames_out
-TYPE (CARRAY), INTENT(INOUT) :: components_out
 ! LOCAL VARIABLES
 INTEGER             :: iElem
 !===================================================================================================================================
@@ -281,17 +277,6 @@ DO iElem=1,nElems
 END DO
 CALL BuildVisuCoords()
 DEALLOCATE(mapDGElemsToAllElems)
-
-! write to VTK array
-CALL WriteCoordsToVTK_array(NVisu,nElems,coordsDG_out,nodeidsDG_out,CoordsVisu_DG,nodeids_DG,dim=3,DGFV=0)
-valuesDG_out%len  =0
-
-! set length of all other output arrays to zero
-coordsFV_out%len  =0
-nodeidsFV_out%len =0
-valuesFV_out%len  =0
-varnames_out%len  =0
-components_out%len=0
 
 CALL FinalizeInterpolation()
 CALL FinalizeParameters()

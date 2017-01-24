@@ -111,6 +111,14 @@ END IF
 END SUBROUTINE CalcQuantities_DG
 
 
+!===================================================================================================================================
+!> Calc surface quantities for all DG elements.
+!> 1. Prolong all independent quantities to the boudary sides that should be visualized, also prolong gradients if they are needed
+!> 2. Call CalcQuantities for the surface.
+!>
+!> This means we only prolong the conservative or additional variables to the boundary. All dependent variables will be calculated
+!> on the surface and not prolonged so we don't get interpolation errors.
+!===================================================================================================================================
 SUBROUTINE CalcSurfQuantities_DG() 
 USE MOD_Globals
 USE MOD_PreProc
@@ -184,6 +192,10 @@ DEALLOCATE(gradUzFace)
 
 END SUBROUTINE CalcSurfQuantities_DG
 
+!===================================================================================================================================
+!> Prolong all independent variables (defined as the variables in the state file, e.g. conservative variables for normal
+!> Navier Stokes calculations) to the faces that should be visualiazed. If the gradients are needed, they are also prolonged.
+!===================================================================================================================================
 SUBROUTINE ProlongToFace_independent(nVar,nSides_calc,nElems_calc,maskCalc,UIn,UBoundary&
 #if PARABOLIC
     ,gradUxFace,gradUyFace,gradUzFace &
@@ -200,6 +212,7 @@ USE MOD_StringTools        ,ONLY: STRICMP
 USE MOD_Mesh_Vars          ,ONLY: nBCSides,S2V2,ElemToSide
 USE MOD_ProlongToFace      ,ONLY: EvalElemFace
 IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES 
 INTEGER,INTENT(IN)            :: nVar,nSides_calc,nElems_calc
 REAL,INTENT(IN)               :: UIn(0:PP_N,0:PP_N,0:PP_N,nElems_calc,1:nVar)
@@ -220,16 +233,17 @@ REAL              :: gradUyFace_tmp(1:PP_nVarPrim,0:PP_N,0:PP_N)
 REAL              :: gradUzFace_tmp(1:PP_nVarPrim,0:PP_N,0:PP_N)
 #endif
 !===================================================================================================================================
-! Copy exisiting variables from solution array
+! Loop over all dependent vairbales
 DO iVarOut=1,nVarDep ! iterate over all out variables
   IF (mapDepToCalc(iVarOut).LT.1) CYCLE ! check if variable must be calculated
   DO iVarIn=1,nVar_State ! iterate over all out variables
+    ! Check if this variable is present in the state file, if so define it as independent
     IF (STRICMP(VarnamesAll(iVarOut),VarNamesHDF5(iVarIn))) THEN
       WRITE(*,*) "ProlongToFace_independent", TRIM(VarnamesAll(iVarOut))
       iVar=mapDepToCalc(iVarOut)
 
       DO iElem_DG = 1,nElems_DG                         ! iterate over all DG visu elements
-        iElem = mapDGElemsToAllElems(iElem_DG)                   ! get global element index
+        iElem = mapDGElemsToAllElems(iElem_DG)          ! get global element index
         DO locSide=1,6 
           iSide = ElemToSide(E2S_SIDE_ID,locSide,iElem) ! get global side index
           IF (iSide.LE.nBCSides) THEN                   ! check if BC side
@@ -240,6 +254,7 @@ DO iVarOut=1,nVarDep ! iterate over all out variables
               ELSE
                 CALL EvalElemFace(1,PP_N,UIn(:,:,:,iElem_DG,iVar:iVar),Uface(1:1,:,:),locSide)
               END IF
+              ! Rotate into coordinate system of master side
               DO q=0,PP_N; DO p=0,PP_N
                 UBoundary(p,q,iSide_DG,iVar)=Uface(1,S2V2(1,p,q,0,locSide),S2V2(2,p,q,0,locSide))
               END DO; END DO
@@ -253,6 +268,8 @@ DO iVarOut=1,nVarDep ! iterate over all out variables
   END DO
 END DO
 
+
+! Also prolong the gradients if parabolic terms are needed and the DG operator is called once.
 IF(TRIM(FileType).EQ.'State')THEN
   IF(withDGOperator.AND.PARABOLIC.EQ.1)THEN
 #if PARABOLIC
@@ -405,6 +422,11 @@ REAL,ALLOCATABLE             :: gradUx_calc(:,:,:,:,:),gradUy_calc(:,:,:,:,:),gr
 #endif /* FV_RECONSTRUCT */
 END SUBROUTINE CalcQuantities_FV
 
+!===================================================================================================================================
+!> Calc surface quantities for all FV elements.
+!> For this, the already calculated quantities as well as the gradients in the volume will simply be copied to to the side. 
+!> Also the mesh quantities like normal vectors are prepared and then the CalcQuantities routine is called.
+!===================================================================================================================================
 SUBROUTINE CalcSurfQuantities_FV() 
 USE MOD_Globals
 USE MOD_PreProc

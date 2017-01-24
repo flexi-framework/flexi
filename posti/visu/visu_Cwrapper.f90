@@ -14,8 +14,13 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-!> Module containing the main procedures for the POSTI tool: visu_requestInformation is called by ParaView to create a
-!> list of available variables and visu is the main routine of POSTI.
+!> This module contains all the routines that provide the interfaces between the FORTRAN visu tool and the C ParaView plugin.
+!> These routines include:
+!> * RequestInformation: Called by ParaView when a new state is loaded into the pipeline. Will return the available variable and 
+!>   boundary names to display them in ParaView for the user to choose from.
+!> * visuCwrapper: Called by ParaView when data is requested after he apply button has been pressed. In this routine, the actual
+!>   visu main routine is called with the parameter file created by the ParaView reader (based on the settings in ParaView choosen
+!>   by the user). After the visu routine, the data and coordinate arrays are converted to a C pointer that is passed to ParaView.
 !===================================================================================================================================
 MODULE MOD_Visu_Cwrapper
 ! MODULES
@@ -47,9 +52,14 @@ PUBLIC:: visu_dealloc_nodeids
 CONTAINS
 
 
+!===================================================================================================================================
+!> Function to convert a C string with length strlen to a FORTRAN character array with length 255.
+!===================================================================================================================================
 FUNCTION cstrToChar255(cstr, strlen) 
+! MODULES
 USE ISO_C_BINDING
 ! INPUT / OUTPUT VARIABLES 
+!-----------------------------------------------------------------------------------------------------------------------------------
 TYPE(C_PTR),TARGET,INTENT(IN)  :: cstr
 INTEGER,INTENT(IN)             :: strlen
 CHARACTER(LEN=255)             :: cstrToChar255
@@ -63,7 +73,7 @@ cstrToChar255(strlen+1:255) = ' '
 END FUNCTION cstrToChar255
 
 !===================================================================================================================================
-!> Wrapper to visu_InitFile for Paraview plugin
+!> Wrapper to visu_InitFile for Paraview plugin, returns the available variable names and boundary names.
 !===================================================================================================================================
 SUBROUTINE visu_requestInformation(mpi_comm_IN, strlen_state, statefile_IN, varnames, bcnames)
 ! MODULES
@@ -108,7 +118,9 @@ END IF
 END SUBROUTINE visu_requestInformation
 
 !===================================================================================================================================
-!> C wrapper routine for the visu call from ParaView.
+!> C wrapper routine for the visu call from ParaView. The main visu routine is called with the parameter file created by the
+!> ParaView reader, and afterwards the data and coordinate arrays as well as the variable names are converted to C arrays since
+!> ParaView needs the data in this format.
 !===================================================================================================================================
 SUBROUTINE visu_CWrapper(mpi_comm_IN, &
     strlen_prm, prmfile_IN, strlen_posti, postifile_IN, strlen_state, statefile_IN,&
@@ -116,6 +128,7 @@ SUBROUTINE visu_CWrapper(mpi_comm_IN, &
     coordsFV_out,valuesFV_out,nodeidsFV_out,varnames_out, &
     coordsSurfDG_out,valuesSurfDG_out,nodeidsSurfDG_out, &
     coordsSurfFV_out,valuesSurfFV_out,nodeidsSurfFV_out,varnamesSurf_out)
+! MODULES
 USE ISO_C_BINDING
 USE MOD_Globals
 USE MOD_Visu_Vars
@@ -123,6 +136,7 @@ USE MOD_Visu        ,ONLY: visu
 USE MOD_VTK         ,ONLY: WriteCoordsToVTK_array,WriteDataToVTK_array,WriteVarnamesToVTK_array
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
 INTEGER,INTENT(IN)            :: mpi_comm_IN    
 INTEGER,INTENT(IN)            :: strlen_prm    
 INTEGER,INTENT(IN)            :: strlen_posti    
