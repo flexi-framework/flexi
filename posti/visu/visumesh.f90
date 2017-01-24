@@ -197,8 +197,6 @@ IF (hasFV_Elems) THEN
   ! convert coords of FV elements
   SDEALLOCATE(CoordsSurfVisu_FV)
   ALLOCATE(CoordsSurfVisu_FV(3,0:NVisu_FV,0:NVisu_FV,0:0,nBCSidesVisu_FV))
-  WRITE (*,*) LBOUND(CoordsSurfVisu_FV)
-  WRITE (*,*) UBOUND(CoordsSurfVisu_FV)
   DO iSide=1,nBCSides
     iSideVisu = mapAllBCSidesToFVVisuBCSides(iSide)
     IF (iSideVisu.GT.0)THEN

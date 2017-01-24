@@ -250,6 +250,7 @@ changedStateFile = .NOT.STRICMP(statefile,statefile_old)
 changedMeshFile  = .NOT.(STRICMP(MeshFile,MeshFile_old))
 changedNVisu     = ((NVisu.NE.NVisu_old) .OR. (NodeTypeVisuPosti.NE.NodeTypeVisuPosti_old))
 changedDGonly    = (DGonly.NEQV.DGonly_old)
+changedAvg2D     = (Avg2D.NEQV.Avg2D_old)
 
 SWRITE(*,*) "state file old -> new: ", TRIM(statefile_old), " -> ",TRIM(statefile)
 SWRITE(*,*) " mesh file old -> new: ", TRIM(MeshFile_old) , " -> ",TRIM(MeshFile)
@@ -510,6 +511,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   SWRITE (*,*) "changedFV_Elems      ", changedFV_Elems      
   SWRITE (*,*) "changedWithDGOperator", changedWithDGOperator
   SWRITE (*,*) "changedDGonly        ", changedDGonly
+  SWRITE (*,*) "changedAvg2D         ", changedAvg2D
   SWRITE (*,*) "changedPrmFile       ", changedPrmFile, TRIM(prmfile_old), " -> ", TRIM(prmfile)
   SWRITE (*,*) "changedBCnames       ", changedBCnames
   IF (changedStateFile.OR.changedWithDGOperator.OR.changedPrmFile.OR.changedDGonly) THEN
@@ -542,7 +544,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   END IF
 
   ! ===== convert solution to visu grid =====
-  IF (changedStateFile.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly) THEN
+  IF (changedStateFile.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedAvg2D) THEN
     CALL ConvertToVisu_DG()
 #if FV_ENABLED
     CALL ConvertToVisu_FV()
@@ -565,7 +567,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
 
 
   ! Convert coordinates to visu grid
-  IF (changedMeshFile.OR.changedNVisu.OR.changedFV_Elems.OR.changedDGonly) THEN
+  IF (changedMeshFile.OR.changedNVisu.OR.changedFV_Elems.OR.changedDGonly.OR.changedAvg2D) THEN
     CALL BuildVisuCoords()
   END IF
   IF (doSurfVisu) THEN
@@ -584,6 +586,7 @@ NVisu_old             = NVisu
 nVar_State_old        = nVar_State
 withDGOperator_old    = withDGOperator
 DGonly_old            = DGonly
+Avg2D_old             = Avg2D
 NodeTypeVisuPosti_old = NodeTypeVisuPosti
 
 SWRITE(UNIT_StdOut,'(132("-"))')

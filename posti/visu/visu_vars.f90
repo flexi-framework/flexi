@@ -56,6 +56,8 @@ INTEGER                           :: meshMode_old=0              !< Used to chec
                                                                  !< mesh mode
 LOGICAL                           :: MeshFileMode                !< Flag indicating a mesh file should be visualized
 LOGICAL                           :: doSurfVisu                  !< Flag indicating if any surfaces need to be visualized
+LOGICAL                           :: Avg2D          
+LOGICAL                           :: Avg2D_old = .FALSE.
 
                 
 ! The following flags indicate if during successive visualizations of (different) state files the respective properties
@@ -68,6 +70,7 @@ LOGICAL                           :: changedFV_Elems             !< different di
 LOGICAL                           :: changedWithDGOperator       !< If the DG operator should be called or not changed
 LOGICAL                           :: changedDGonly               !< Visualize FV cells as DG changed
 LOGICAL                           :: changedBCnames              !< BCnames selected for visualization changed (ParaView plugin)
+LOGICAL                           :: changedAvg2D                !< 
 
 CHARACTER(LEN=255),ALLOCATABLE,TARGET :: VarNamesHDF5(:)         !< varnames in state file (DG_Solution, not including generic 
                                                                  !< element- or pointwise)
@@ -140,7 +143,6 @@ INTEGER,ALLOCATABLE,TARGET            :: nodeidsSurf_FV(:)            !< nodeIDs
 ! ==============================================================================================================================
 ! Avg2D
 ! ==============================================================================================================================
-LOGICAL                           :: Avg2D          
 INTEGER,ALLOCATABLE               :: Elem_IJK(:,:)
 INTEGER                           :: nElems_IJK(3)
 REAL,ALLOCATABLE                  :: FVAmountAvg2D(:,:)          ! averaged FV_elems in z-direction at i,j-th element

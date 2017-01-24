@@ -84,6 +84,7 @@ IMPLICIT NONE
 INTEGER            :: iElem,iVar,iVarVisu,iVarCalc
 REAL,ALLOCATABLE   :: Vdm_N_NVisu(:,:)                  ! Vandermonde from state to visualisation nodes
 !===================================================================================================================================
+SWRITE(*,*) "[DG] convert to visu grid"
 
 ! compute UVisu_DG 
 ALLOCATE(Vdm_N_NVisu(0:NVisu,0:PP_N))
@@ -136,6 +137,7 @@ IMPLICIT NONE
 INTEGER            :: iSide,iVar,iVarVisu,iVarCalc
 REAL,ALLOCATABLE   :: Vdm_N_NVisu(:,:)                  ! Vandermonde from state to visualisation nodes
 !===================================================================================================================================
+SWRITE(*,*) "[DG] convert to surface visu grid"
 
 ! compute UVisu_DG 
 ALLOCATE(Vdm_N_NVisu(0:NVisu,0:PP_N))
