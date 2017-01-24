@@ -149,6 +149,7 @@ TYPE (CARRAY), INTENT(INOUT)  :: varnamesSurf_out
 CHARACTER(LEN=255)            :: prmfile
 CHARACTER(LEN=255)            :: postifile
 CHARACTER(LEN=255)            :: statefile
+INTEGER                       :: visuDim
 !===================================================================================================================================
 prmfile   = cstrToChar255(prmfile_IN,   strlen_prm)
 postifile = cstrToChar255(postifile_IN, strlen_posti)
@@ -159,67 +160,31 @@ CALL visu(mpi_comm_IN, prmfile, postifile, statefile)
 
 ! write UVisu to VTK 2D / 3D arrays (must be done always!)
 ! write coords, UVisu to VTK  2D / 3D arrays (must be done always!)
-IF (VisuDimension.EQ.3) THEN
-  ! Volume
-  CALL WriteDataToVTK_array(nVarVisu,NVisu   ,nElems_DG,valuesDG_out,UVisu_DG,3)
-  CALL WriteDataToVTK_array(nVarVisu,NVisu_FV,nElems_FV,valuesFV_out,UVisu_FV,3)
-
-  CALL WriteCoordsToVTK_array(NVisu   ,nElems_DG,coordsDG_out,nodeidsDG_out,&
-      CoordsVisu_DG,nodeids_DG,dim=3,DGFV=0)
-  CALL WriteCoordsToVTK_array(NVisu_FV,nElems_FV,coordsFV_out,nodeidsFV_out,&
-      CoordsVisu_FV,nodeids_FV,dim=3,DGFV=1)
-
-  CALL WriteVarnamesToVTK_array(nVarAll,mapAllVarsToVisuVars,varnames_out,VarnamesAll,nVarVisu)
-
-  ! Surface
-  CALL WriteDataToVTK_array(nVarSurfVisuAll,NVisu   ,nBCSidesVisu_DG,valuesSurfDG_out,USurfVisu_DG,2)
-  CALL WriteDataToVTK_array(nVarSurfVisuAll,NVisu_FV,nBCSidesVisu_FV,valuesSurfFV_out,USurfVisu_FV,2)
-
-  CALL WriteCoordsToVTK_array(NVisu   ,nBCSidesVisu_DG,coordsSurfDG_out,nodeidsSurfDG_out,&
-      CoordsSurfVisu_DG,nodeidsSurf_DG,dim=2,DGFV=0)
-  WRITE (*,*) LBOUND(CoordsSurfVisu_FV)
-  WRITE (*,*) UBOUND(CoordsSurfVisu_FV)
-  CALL WriteCoordsToVTK_array(NVisu_FV,nBCSidesVisu_FV,coordsSurfFV_out,nodeidsSurfFV_out,&
-      CoordsSurfVisu_FV,nodeidsSurf_FV,dim=2,DGFV=1)
-
-  CALL WriteVarnamesToVTK_array(nVarAll,mapAllVarsToSurfVisuVars,varnamesSurf_out,VarnamesAll,nVarSurfVisuAll)
-ELSE IF (VisuDimension.EQ.2) THEN
-  STOP 'implement avg2d'
-
-  ! allocate Visu 2D array and copy from first zeta-slice of 3D array
-  SDEALLOCATE(UVisu_DG_2D)
-  ALLOCATE(UVisu_DG_2D(0:NVisu,0:NVisu,0:0,1:nElems_DG,1:(nVarVisu)))
-  UVisu_DG_2D = UVisu_DG(:,:,0:0,:,:)
-  SDEALLOCATE(UVisu_FV_2D)
-  ALLOCATE(UVisu_FV_2D(0:NVisu_FV,0:NVisu_FV,0:0,1:nElems_FV,1:(nVarVisu)))
-#if FV_ENABLED
-  UVisu_FV_2D = UVisu_FV(:,:,0:0,:,:)
-#else
-  CoordsVisu_FV_2D = 0
-#endif
-
-  CALL WriteDataToVTK_array(nVarVisu,NVisu   ,nElems_DG,valuesDG_out,UVisu_DG_2D,2)
-  CALL WriteDataToVTK_array(nVarVisu,NVisu_FV,nElems_FV,valuesFV_out,UVisu_FV_2D,2)
-
-  ! allocate Coords 2D array and copy from first zeta-slice of 3D array
-  SDEALLOCATE(CoordsVisu_DG_2D)
-  ALLOCATE(CoordsVisu_DG_2D(1:3,0:NVisu,0:NVisu,0:0,1:nElems_DG))
-  CoordsVisu_DG_2D = CoordsVisu_DG(:,:,:,0:0,:)
-  SDEALLOCATE(CoordsVisu_FV_2D)
-  ALLOCATE(CoordsVisu_FV_2D(1:3,0:NVisu_FV,0:NVisu_FV,0:0,1:nElems_FV))
-#if FV_ENABLED    
-  CoordsVisu_FV_2D = CoordsVisu_FV(:,:,:,0:0,:)
-#else
-  CoordsVisu_FV_2D = 0
-#endif
-
-  CALL WriteCoordsToVTK_array(NVisu   ,nElems_DG,coordsDG_out,nodeidsDG_out,&
-      CoordsVisu_DG_2D,nodeids_DG_2D,dim=2,DGFV=0)
-  CALL WriteCoordsToVTK_array(NVisu_FV,nElems_FV,coordsFV_out,nodeidsFV_out,&
-      CoordsVisu_FV_2D,nodeids_FV_2D,dim=2,DGFV=1)
-
-  CALL WriteVarnamesToVTK_array(nVarAll,mapAllVarsToVisuVars,varnames_out,VarnamesAll,nVarVisu)
+IF (Avg2D) THEN
+  visuDim = 2
+ELSE
+  visuDim = 3
 END IF
+CALL WriteDataToVTK_array(nVarVisu,NVisu   ,nElems_DG,valuesDG_out,UVisu_DG,visuDim)
+CALL WriteDataToVTK_array(nVarVisu,NVisu_FV,nElems_FV,valuesFV_out,UVisu_FV,visuDim)
+
+CALL WriteCoordsToVTK_array(NVisu   ,nElems_DG,coordsDG_out,nodeidsDG_out,&
+    CoordsVisu_DG,nodeids_DG,dim=visuDim,DGFV=0)
+CALL WriteCoordsToVTK_array(NVisu_FV,nElems_FV,coordsFV_out,nodeidsFV_out,&
+    CoordsVisu_FV,nodeids_FV,dim=visuDim,DGFV=1)
+
+CALL WriteVarnamesToVTK_array(nVarAll,mapAllVarsToVisuVars,varnames_out,VarnamesAll,nVarVisu)
+
+! Surface
+CALL WriteDataToVTK_array(nVarSurfVisuAll,NVisu   ,nBCSidesVisu_DG,valuesSurfDG_out,USurfVisu_DG,2)
+CALL WriteDataToVTK_array(nVarSurfVisuAll,NVisu_FV,nBCSidesVisu_FV,valuesSurfFV_out,USurfVisu_FV,2)
+
+CALL WriteCoordsToVTK_array(NVisu   ,nBCSidesVisu_DG,coordsSurfDG_out,nodeidsSurfDG_out,&
+    CoordsSurfVisu_DG,nodeidsSurf_DG,dim=2,DGFV=0)
+CALL WriteCoordsToVTK_array(NVisu_FV,nBCSidesVisu_FV,coordsSurfFV_out,nodeidsSurfFV_out,&
+    CoordsSurfVisu_FV,nodeidsSurf_FV,dim=2,DGFV=1)
+
+CALL WriteVarnamesToVTK_array(nVarAll,mapAllVarsToSurfVisuVars,varnamesSurf_out,VarnamesAll,nVarSurfVisuAll)
 
 END SUBROUTINE visu_CWrapper
 
@@ -236,8 +201,6 @@ IMPLICIT NONE
 !===================================================================================================================================
 SDEALLOCATE(nodeids_DG)
 SDEALLOCATE(nodeids_FV)
-SDEALLOCATE(nodeids_DG_2D)
-SDEALLOCATE(nodeids_FV_2D)
 END SUBROUTINE visu_dealloc_nodeids
 
 END MODULE MOD_Visu_Cwrapper

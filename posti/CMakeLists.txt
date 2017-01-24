@@ -12,7 +12,8 @@ SET_TARGET_PROPERTIES(userblocklib_dummy PROPERTIES COMPILE_FLAGS "-fPIC")
 # =========================================================================
 # collect all F90 files needed for visulib
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/posti/visu/) 
-FILE(GLOB visuF90 ./posti/visu/calc.f90
+FILE(GLOB visuF90 ./posti/visu/avg2d.f90
+                  ./posti/visu/calc.f90
                   ./posti/visu/converttovisu.f90
                   ./posti/visu/mappings.f90
                   ./posti/visu/readstate.f90

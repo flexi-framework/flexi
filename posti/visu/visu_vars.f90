@@ -52,7 +52,6 @@ INTEGER,ALLOCATABLE               :: mapDGElemsToAllElems(:)     ! maps element 
 INTEGER,ALLOCATABLE               :: mapFVElemsToAllElems(:)
 INTEGER,ALLOCATABLE               :: FV_Elems_loc(:)             ! current distribution of FV/DG elems
 INTEGER,ALLOCATABLE               :: FV_Elems_old(:)             ! saves previous FV_Elems, which holds DG/FV elements distribution
-INTEGER                           :: VisuDimension               ! TODO: Avg2D
 INTEGER                           :: meshMode_old=0              ! Used to check if InitMesh must be called again with different
                                                                  ! mesh mode
 LOGICAL                           :: doSurfVisu                  ! Flag indicating if any surfaces need to be visualized
@@ -83,11 +82,11 @@ INTEGER,ALLOCATABLE                   :: DepTable(:,:)           ! table holding
                                                                  ! is 0 if the i-th quantity does NOT depends on the j-th quantity
                                                                  ! is 1 if the i-th quantity DOES depends on the j-th quantity
 
-REAL,ALLOCATABLE                      :: UCalc_DG(:,:,:,:,:)     ! dependet variables require the computation of intermediate
+REAL,ALLOCATABLE,TARGET               :: UCalc_DG(:,:,:,:,:)     ! dependet variables require the computation of intermediate
                                                                  ! variables, that may not be visualized. Therefore the whole
                                                                  ! computation process takes place on this array and is afterwards
                                                                  ! converted to the visualization array (UVisu_DG)
-REAL,ALLOCATABLE                      :: UCalc_FV(:,:,:,:,:)
+REAL,ALLOCATABLE,TARGET               :: UCalc_FV(:,:,:,:,:)
 INTEGER                               :: nVarCalc                ! number of (intermediate) variables that must be calculated
 INTEGER,ALLOCATABLE                   :: mapDepToCalc(:)         ! maps all dependend variable index to calc variable index
 #if FV_ENABLED && FV_RECONSTRUCT
@@ -140,12 +139,17 @@ INTEGER,ALLOCATABLE,TARGET            :: nodeidsSurf_FV(:)            !
 ! ==============================================================================================================================
 ! TODO: Avg2D
 ! ==============================================================================================================================
-INTEGER,ALLOCATABLE,TARGET        :: nodeids_DG_2D(:)           ! visu nodeids
-REAL(C_DOUBLE),ALLOCATABLE,TARGET :: CoordsVisu_DG_2D(:,:,:,:,:)! visu coordinates
-REAL(C_DOUBLE),ALLOCATABLE,TARGET :: UVisu_DG_2D(:,:,:,:,:)     ! state at visu points
-INTEGER,ALLOCATABLE,TARGET        :: nodeids_FV_2D(:)           ! visu nodeids
-REAL(C_DOUBLE),ALLOCATABLE,TARGET :: CoordsVisu_FV_2D(:,:,:,:,:)! visu coordinates
-REAL(C_DOUBLE),ALLOCATABLE,TARGET :: UVisu_FV_2D(:,:,:,:,:)     ! state at visu points
+LOGICAL                           :: Avg2D          
+INTEGER,ALLOCATABLE               :: Elem_IJK(:,:)
+INTEGER                           :: nElems_IJK(3)
+REAL,ALLOCATABLE                  :: FVAmountAvg2D(:,:)          ! averaged FV_elems in z-direction at i,j-th element
+INTEGER                           :: nElemsAvg2D_DG
+INTEGER                           :: nElemsAvg2D_FV
+INTEGER,ALLOCATABLE               :: mapElemIJToDGElemAvg2D(:,:) ! maps i,j element index to Avg2D DG element index
+INTEGER,ALLOCATABLE               :: mapElemIJToFVElemAvg2D(:,:) ! maps i,j element index to Avg2D FV element index
+REAL,ALLOCATABLE,TARGET           :: UAvg_DG(:,:,:,:,:)
+REAL,ALLOCATABLE,TARGET           :: UAvg_FV(:,:,:,:,:)
+
 
 
 

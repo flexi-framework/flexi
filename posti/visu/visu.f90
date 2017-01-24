@@ -191,20 +191,23 @@ USE MOD_Visu_Vars
 USE MOD_EOS_Posti_Vars
 USE MOD_MPI                ,ONLY: InitMPI
 USE MOD_HDF5_Input         ,ONLY: ISVALIDMESHFILE,ISVALIDHDF5FILE,GetArrayAndName
-USE MOD_HDF5_Input         ,ONLY: ReadAttribute,File_ID,OpenDataFile,GetDataProps,CloseDataFile
+USE MOD_HDF5_Input         ,ONLY: ReadAttribute,File_ID,OpenDataFile,GetDataProps,CloseDataFile,ReadArray,DatasetExists
 USE MOD_Interpolation_Vars ,ONLY: NodeType
 USE MOD_Output_Vars        ,ONLY: ProjectName
 USE MOD_StringTools        ,ONLY: STRICMP
 USE MOD_ReadInTools        ,ONLY: prms,GETINT,GETLOGICAL,addStrListEntry,GETSTR,CountOption,FinalizeParameters
 USE MOD_Posti_Mappings     ,ONLY: Build_FV_DG_distribution,Build_mapDepToCalc_mapAllVarsToVisuVars
+USE MOD_Mesh_Vars          ,ONLY: nElems,offsetElem
 
 IMPLICIT NONE
 CHARACTER(LEN=255),INTENT(IN)    :: statefile
 CHARACTER(LEN=255),INTENT(INOUT) :: postifile
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL
-INTEGER                          :: nElems_State
+INTEGER                          :: nElems_State,iElem
 CHARACTER(LEN=255)               :: NodeType_State 
+LOGICAL                          :: exists
+INTEGER                          :: ii,jj
 !===================================================================================================================================
 CALL visu_getVarNamesAndFileType(statefile,VarnamesAll,BCNamesAll)
 IF (STRICMP(statefile,'Mesh')) THEN
@@ -228,7 +231,7 @@ NVisu             = GETINT("NVisu")
 CALL GETCWD(MeshFile)
 !!!!!!
 Meshfile          =  TRIM(Meshfile) // "/" // GETSTR("MeshFile",MeshFile_state) 
-VisuDimension     = GETINT("VisuDimension")
+Avg2D             = GETLOGICAL("Avg2D")
 NodeTypeVisuPosti = GETSTR('NodeTypeVisu')
 DGonly            = GETLOGICAL('DGonly')
 
@@ -288,6 +291,53 @@ IF (hasFV_Elems) withDGOperator = .TRUE.
 ! also set withDGOperator flag if a dependent variable requires the evaluation of the DG operator
 CALL Build_mapDepToCalc_mapAllVarsToVisuVars()
 
+IF (Avg2D) THEN
+  CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+  CALL DatasetExists(File_ID,'nElems_IJK',exists)
+  IF (exists) THEN
+    SDEALLOCATE(Elem_IJK)
+    ALLOCATE(Elem_IJK(3,nElems))
+    CALL ReadArray('nElems_IJK',1,(/3/),0,1,IntegerArray=nElems_IJK)
+    CALL ReadArray('Elem_IJK',2,(/3,nElems/),offsetElem,2,IntegerArray=Elem_IJK)
+  ELSE 
+    CALL CollectiveStop(__STAMP__,&
+        "No Elem_IJK sorting found in mesh file. Required for Avg2D!")
+  END IF
+  CALL CloseDataFile()
+
+  SDEALLOCATE(FVAmountAvg2D)
+  ALLOCATE(FVAmountAvg2D(nElems_IJK(1),nElems_IJK(2)))
+  FVAmountAvg2D = 0.
+  DO iElem=1,nElems
+    ii = Elem_IJK(1,iElem)
+    jj = Elem_IJK(2,iElem)
+    FVAmountAvg2D(ii,jj) = FVAmountAvg2D(ii,jj) + FV_Elems_loc(iElem)
+  END DO
+  FVAmountAvg2D = FVAmountAvg2D / REAL(nElems_IJK(3))
+
+  nElemsAvg2D_DG = 0
+  nElemsAvg2D_FV = 0
+  SDEALLOCATE(mapElemIJToDGElemAvg2D)
+  SDEALLOCATE(mapElemIJToFVElemAvg2D)
+  ALLOCATE(mapElemIJToDGElemAvg2D(nElems_IJK(1),nElems_IJK(2)))
+  ALLOCATE(mapElemIJToFVElemAvg2D(nElems_IJK(1),nElems_IJK(2)))
+  mapElemIJToDGElemAvg2D = 0
+  mapElemIJToDGElemAvg2D = 0
+  DO iElem=1,nElems
+    IF (Elem_IJK(3,iElem).EQ.1) THEN
+      ii = Elem_IJK(1,iElem)
+      jj = Elem_IJK(2,iElem)
+      IF (FVAmountAvg2D(ii,jj).LE.0.5) THEN
+        nElemsAvg2D_DG = nElemsAvg2D_DG + 1
+        mapElemIJToDGElemAvg2D(ii,jj) = nElemsAvg2D_DG
+      ELSE
+        nElemsAvg2D_FV = nElemsAvg2D_FV + 1
+        mapElemIJToFVElemAvg2D(ii,jj) = nElemsAvg2D_FV
+      END IF
+    END IF
+  END DO
+END IF
+
 changedWithDGOperator = (withDGOperator.NEQV.withDGOperator_old)
 END SUBROUTINE visu_InitFile
 
@@ -313,6 +363,7 @@ USE MOD_ReadInTools         ,ONLY: prms,FinalizeParameters,ExtractParameterFile
 USE MOD_StringTools         ,ONLY: STRICMP
 USE MOD_Posti_VisuMesh      ,ONLY: BuildVisuCoords,BuildSurfVisuCoords
 USE MOD_Posti_Mappings      ,ONLY: Build_mapBCSides
+USE MOD_Visu_Avg2D          ,ONLY: Average2D
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)               :: mpi_comm_IN    
@@ -405,13 +456,13 @@ SWRITE (*,*) "READING FROM: ", TRIM(statefile)
 CALL FinalizeParameters()
 ! Read Varnames to visualize and build calc and visu dependencies
 CALL prms%SetSection("posti")
-CALL prms%CreateStringOption("MeshFile"     , "Custom mesh file ")
-CALL prms%CreateStringOption("VarName"      , "Names of variables, which should be visualized.", multiple=.TRUE.)
-CALL prms%CreateIntOption(   "NVisu"        ,  "Polynomial degree at which solution is sampled for visualization.")
-CALL prms%CreateIntOption(   "VisuDimension", "2 = Slice at first Gauss point in zeta-direction to get 2D solution.","3")
-CALL prms%CreateStringOption("NodeTypeVisu" , "NodeType for visualization. Visu, Gauss,Gauss-Lobatto,Visu_inner"    ,"VISU")
-CALL prms%CreateLogicalOption("DGonly"      , "Visualize FV elements as DG elements."    ,".FALSE.")
-CALL prms%CreateStringOption("BoundaryName" , "Names of boundaries for surfaces, which should be visualized.", multiple=.TRUE.)
+CALL prms%CreateStringOption( "MeshFile"     , "Custom mesh file ")
+CALL prms%CreateStringOption( "VarName"      , "Names of variables, which should be visualized.", multiple=.TRUE.)
+CALL prms%CreateIntOption(    "NVisu"        , "Polynomial degree at which solution is sampled for visualization.")
+CALL prms%CreateLogicalOption("Avg2D"        , "Average solution in z-direction",".FALSE.")
+CALL prms%CreateStringOption( "NodeTypeVisu" , "NodeType for visualization. Visu, Gauss,Gauss-Lobatto,Visu_inner"    ,"VISU")
+CALL prms%CreateLogicalOption("DGonly"       , "Visualize FV elements as DG elements."    ,".FALSE.")
+CALL prms%CreateStringOption( "BoundaryName" , "Names of boundaries for surfaces, which should be visualized.", multiple=.TRUE.)
 
 changedStateFile      = .FALSE.
 changedMeshFile       = .FALSE.
@@ -455,42 +506,44 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   ! build mappings of BC sides for surface visualization
   CALL Build_mapBCSides()
 
-  ! calc DG solution 
+  ! ===== calc solution =====
   IF (changedStateFile.OR.changedVarNames.OR.changedDGonly) THEN
     CALL CalcQuantities_DG()
+#if FV_ENABLED
+    CALL CalcQuantities_FV()
+#endif
   END IF
   IF (doSurfVisu) THEN
-    ! calc Surface DG solution 
+    ! calc surface solution 
     IF (changedStateFile.OR.changedVarNames.OR.changedDGonly.OR.changedBCnames) THEN
       CALL CalcSurfQuantities_DG()
+#if FV_ENABLED
+      CALL CalcSurfQuantities_FV()
+#endif
     END IF
   END IF
 
-  ! convert DG solution to visu grid
+  ! ===== Avg2d =====
+  IF (Avg2d) THEN
+    CALL Average2D()
+  END IF
+
+  ! ===== convert solution to visu grid =====
   IF (changedStateFile.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly) THEN
     CALL ConvertToVisu_DG()
+#if FV_ENABLED
+    CALL ConvertToVisu_FV()
+#endif
   END IF
   IF (doSurfVisu) THEN
     ! convert Surface DG solution to visu grid
     IF (changedStateFile.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedBCnames) THEN
       CALL ConvertToSurfVisu_DG()
-    END IF
-  END IF
-
 #if FV_ENABLED
-  ! calc FV solution and convert to visu grid
-  IF ((changedStateFile.OR.changedVarNames).AND.hasFV_Elems.OR.changedDGonly) THEN
-    CALL CalcQuantities_FV()
-    CALL ConvertToVisu_FV()
-  END IF
-  ! calc FV solution and convert to visu grid
-  IF (doSurfVisu) THEN
-    IF ((changedStateFile.OR.changedVarNames).AND.hasFV_Elems.OR.changedDGonly.OR.changedBCnames) THEN
-      CALL CalcSurfQuantities_FV()
       CALL ConvertToSurfVisu_FV()
+#endif
     END IF
   END IF
-#endif /* FV_ENABLED */
 
   ! convert generic data to visu grid
   IF (changedStateFile.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedBCnames) THEN
