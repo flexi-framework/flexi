@@ -55,11 +55,13 @@ USE MOD_PreProc
 USE MOD_Visu_Vars          ,ONLY: CoordsVisu_DG
 USE MOD_Visu_Vars          ,ONLY: NodeTypeVisuPosti
 USE MOD_Visu_Vars          ,ONLY: NVisu,nElems_DG,mapDGElemsToAllElems
+USE MOD_Visu_Vars          ,ONLY: nElemsAvg2D_DG,nElemsAvg2D_FV, Avg2D
+USE MOD_Visu_Vars          ,ONLY: nElems_IJK,Elem_IJK,FVAmountAvg2D,mapElemIJToDGElemAvg2D,mapElemIJToFVElemAvg2D
 #if FV_ENABLED
 USE MOD_Visu_Vars          ,ONLY: NVisu_FV,nElems_FV,mapFVElemsToAllElems,hasFV_Elems
 USE MOD_Visu_Vars          ,ONLY: CoordsVisu_FV,changedMeshFile,changedFV_Elems
 #endif
-USE MOD_Interpolation_Vars ,ONLY: NodeTypeVisu,NodeTypeFVEqui,NodeType
+USE MOD_Interpolation_Vars ,ONLY: NodeTypeVisu,NodeTypeFVEqui,NodeType,wGP
 USE MOD_Interpolation      ,ONLY: GetVandermonde
 USE MOD_ChangeBasis        ,ONLY: ChangeBasis3D,ChangeBasis2D
 USE MOD_Mesh_Vars          ,ONLY: nElems,Elem_xGP
@@ -72,44 +74,68 @@ REAL,ALLOCATABLE   :: Vdm_N_NVisu(:,:)
 INTEGER            :: iElem_FV
 REAL,ALLOCATABLE   :: Vdm_N_NVisu_FV(:,:)
 #endif
-CHARACTER(LEN=255) :: NodeType_loc
-INTEGER            :: Nloc
-REAL,POINTER       :: NodeCoords_loc(:,:,:,:,:)
+INTEGER            :: iElemAvg,ii,jj,kk,k
+REAL,ALLOCATABLE   :: CoordsAvg(:,:,:,:,:)
 !===================================================================================================================================
-! Always use Elem_xGP for visualization in case TreeMappings are used or N<NGeo
-Nloc = PP_N
-NodeType_loc = NodeType
-NodeCoords_loc(1:3,0:Nloc,0:Nloc,0:Nloc,1:nElems) => Elem_xGP
-
 ! Convert coordinates to visu grid
 SWRITE (*,*) "[MESH] Convert coordinates to visu grid (DG)"
-ALLOCATE(Vdm_N_NVisu(0:NVisu,0:Nloc))
-CALL GetVandermonde(Nloc,NodeType_loc,NVisu   ,NodeTypeVisuPosti  ,Vdm_N_NVisu   ,modal=.FALSE.)
+ALLOCATE(Vdm_N_NVisu(0:NVisu,0:PP_N))
+CALL GetVandermonde(PP_N,NodeType,NVisu   ,NodeTypeVisuPosti  ,Vdm_N_NVisu   ,modal=.FALSE.)
+ALLOCATE(Vdm_N_NVisu_FV(0:NVisu_FV,0:PP_N))
+CALL GetVandermonde(PP_N,NodeType,NVisu_FV,NodeTypeFVEqui,Vdm_N_NVisu_FV,modal=.FALSE.)
 ! convert coords of DG elements
-SDEALLOCATE(CoordsVisu_DG)
-ALLOCATE(CoordsVisu_DG(3,0:NVisu,0:NVisu,0:NVisu,nElems_DG))
-DO iElem_DG = 1,nElems_DG
-  iElem = mapDGElemsToAllElems(iElem_DG)
-  CALL ChangeBasis3D(3,Nloc,NVisu,   Vdm_N_NVisu,   NodeCoords_loc(:,:,:,:,iElem),CoordsVisu_DG   (:,:,:,:,iElem_DG))
-END DO
-SDEALLOCATE(Vdm_N_NVisu)
+IF (Avg2D) THEN
+  SDEALLOCATE(CoordsVisu_DG)
+  SDEALLOCATE(CoordsVisu_FV)
+  ALLOCATE(CoordsVisu_DG(3,0:NVisu,0:NVisu,0:0,nElemsAvg2D_DG))
+  ALLOCATE(CoordsVisu_FV(3,0:NVisu_FV,0:NVisu_FV,0:0,nElemsAvg2D_FV))
+  ALLOCATE(CoordsAvg(3,0:PP_N,0:PP_N,nElems_IJK(1),nElems_IJK(2)))
+  CoordsAvg = 0.
+  DO iElem = 1,nElems
+    ii = Elem_IJK(1,iElem)
+    jj = Elem_IJK(2,iElem)
+    kk = Elem_IJK(3,iElem)
+    DO k=0,PP_N
+      CoordsAvg(:,:,:,ii,jj) = CoordsAvg(:,:,:,ii,jj) + wGP(k)/2. * Elem_xGP(:,:,:,k,iElem)
+    END DO ! k=0,PP_N
+  END DO
+  DO jj=1,nElems_IJK(2); DO ii=1,nElems_IJK(1)
+    IF (FVAmountAvg2D(ii,jj).LE.0.5) THEN ! DG
+      iElemAvg = mapElemIJToDGElemAvg2D(ii,jj)
+      CALL ChangeBasis2D(3,PP_N,NVisu,Vdm_N_NVisu,CoordsAvg(:,:,:,ii,jj),CoordsVisu_DG(:,:,:,0,iElemAvg))
+    ELSE ! FV
+      iElemAvg = mapElemIJToFVElemAvg2D(ii,jj)
+      CALL ChangeBasis2D(3,PP_N,NVisu_FV,Vdm_N_NVisu_FV,CoordsAvg(:,:,:,ii,jj),CoordsVisu_FV(:,:,:,0,iElemAvg))
+    END IF
+  END DO; END DO
+  DEALLOCATE(CoordsAvg)
+ELSE
+  SDEALLOCATE(CoordsVisu_DG)
+  ALLOCATE(CoordsVisu_DG(3,0:NVisu,0:NVisu,0:NVisu,nElems_DG))
+  DO iElem_DG = 1,nElems_DG
+    iElem = mapDGElemsToAllElems(iElem_DG)
+    CALL ChangeBasis3D(3,PP_N,NVisu,   Vdm_N_NVisu,   Elem_xGP(:,:,:,:,iElem),CoordsVisu_DG   (:,:,:,:,iElem_DG))
+  END DO
 
 #if FV_ENABLED
-IF (hasFV_Elems) THEN
-  SWRITE (*,*) "[MESH] Convert coordinates to visu grid (FV)"
-  IF ((.NOT.changedMeshFile).AND.(.NOT.changedFV_Elems)) RETURN ! only NVisu changed, but NVisu_FV is independent of NVisu
-  ALLOCATE(Vdm_N_NVisu_FV(0:NVisu_FV,0:Nloc))
-  CALL GetVandermonde(Nloc,NodeType_loc,NVisu_FV,NodeTypeFVEqui,Vdm_N_NVisu_FV,modal=.FALSE.)
-  ! convert coords of FV elements
-  SDEALLOCATE(CoordsVisu_FV)
-  ALLOCATE(CoordsVisu_FV(3,0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV))
-  DO iElem_FV = 1,nElems_FV
-    iElem = mapFVElemsToAllElems(iElem_FV)
-    CALL ChangeBasis3D(3,Nloc,NVisu_FV,Vdm_N_NVisu_FV,NodeCoords_loc(:,:,:,:,iElem),CoordsVisu_FV(:,:,:,:,iElem_FV))
-  END DO
-  SDEALLOCATE(Vdm_N_NVisu_FV)
-END IF
+  IF (hasFV_Elems) THEN
+    SWRITE (*,*) "[MESH] Convert coordinates to visu grid (FV)"
+    IF ((.NOT.changedMeshFile).AND.(.NOT.changedFV_Elems)) RETURN ! only NVisu changed, but NVisu_FV is independent of NVisu
+    !ALLOCATE(Vdm_N_NVisu_FV(0:NVisu_FV,0:PP_N))
+    !CALL GetVandermonde(PP_N,NodeType,NVisu_FV,NodeTypeFVEqui,Vdm_N_NVisu_FV,modal=.FALSE.)
+    ! convert coords of FV elements
+    SDEALLOCATE(CoordsVisu_FV)
+    ALLOCATE(CoordsVisu_FV(3,0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV))
+    DO iElem_FV = 1,nElems_FV
+      iElem = mapFVElemsToAllElems(iElem_FV)
+      CALL ChangeBasis3D(3,PP_N,NVisu_FV,Vdm_N_NVisu_FV,Elem_xGP(:,:,:,:,iElem),CoordsVisu_FV(:,:,:,:,iElem_FV))
+    END DO
+    SDEALLOCATE(Vdm_N_NVisu_FV)
+  END IF
 #endif
+
+END IF
+SDEALLOCATE(Vdm_N_NVisu)
 
 END SUBROUTINE BuildVisuCoords
 
@@ -251,7 +277,6 @@ DO iElem=1,nElems
 END DO
 CALL BuildVisuCoords()
 DEALLOCATE(mapDGElemsToAllElems)
-VisuDimension = 3
 
 CALL FinalizeInterpolation()
 CALL FinalizeParameters()

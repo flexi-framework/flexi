@@ -346,8 +346,6 @@ INTEGER                      :: nVal(4)
 REAL,ALLOCATABLE             :: gradUx_calc(:,:,:,:,:),gradUy_calc(:,:,:,:,:),gradUz_calc(:,:,:,:,:) 
 #endif
 !===================================================================================================================================
-SDEALLOCATE(UVisu_FV)
-ALLOCATE(UVisu_FV(0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV,nVarVisu))
 
 #if FV_RECONSTRUCT
   ! ================================ WITH RECONSTRUCTION ======================================

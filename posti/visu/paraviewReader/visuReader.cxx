@@ -53,7 +53,7 @@ visuReader::visuReader()
    this->FileName = NULL;
    this->NVisu = 0;
    this->NodeTypeVisu = NULL;
-   this->Mode2d = 0;
+   this->Avg2d = 0;
    this->DGonly = 0;
    this->ParameterFileOverwrite = NULL;
    this->MeshFileOverwrite = NULL;
@@ -311,7 +311,7 @@ int visuReader::RequestData(
    // write settings to Posti parameter file
    dprintf(posti_unit, "NVisu = %d\n", NVisu); // insert NVisu
    dprintf(posti_unit, "NodeTypeVisu = %s\n", NodeTypeVisu); // insert NodeType
-   dprintf(posti_unit, "VisuDimension = %s\n", (this->Mode2d ? "2" : "3"));
+   dprintf(posti_unit, "Avg2D = %s\n", (this->Avg2d ? "T" : "F"));
    dprintf(posti_unit, "DGonly = %s\n", (this->DGonly ? "T" : "F"));
    if (strlen(MeshFileOverwrite) > 0) {
       dprintf(posti_unit, "MeshFile = %s\n", MeshFileOverwrite);

@@ -100,13 +100,27 @@ DO iArg=1+skipArgs,nArgs
     END IF
   END DO
 
-  IF (VisuDimension.EQ.3) THEN
+  IF (Avg2D) THEN
+    CALL WriteDataToVTK(nVarVisu,NVisu,nElemsAvg2D_DG,VarNames_loc,CoordsVisu_DG,UVisu_DG,FileString_DG,&
+        dim=2,DGFV=0,nValAtLastDimension=.TRUE.)
+#if FV_ENABLED                            
+    FileString_FV=TRIM(TIMESTAMP(TRIM(ProjectName)//'_FV',OutputTime))//'.vtu'
+    CALL WriteDataToVTK(nVarVisu,NVisu_FV,nElemsAvg2D_FV,VarNames_loc,CoordsVisu_FV,UVisu_FV,FileString_FV,&
+        dim=2,DGFV=1,nValAtLastDimension=.TRUE.)
+
+    IF (MPIRoot) THEN                   
+      ! write multiblock file
+      FileString_multiblock=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))//'.vtm'
+      CALL WriteVTKMultiBlockDataSet(FileString_multiblock,FileString_DG,FileString_FV)
+    ENDIF
+#endif
+  ELSE
     CALL WriteDataToVTK(nVarVisu,NVisu,nElems_DG,VarNames_loc,CoordsVisu_DG,UVisu_DG,FileString_DG,&
-        dim=VisuDimension,DGFV=0,nValAtLastDimension=.TRUE.)
+        dim=3,DGFV=0,nValAtLastDimension=.TRUE.)
 #if FV_ENABLED                            
     FileString_FV=TRIM(TIMESTAMP(TRIM(ProjectName)//'_FV',OutputTime))//'.vtu'
     CALL WriteDataToVTK(nVarVisu,NVisu_FV,nElems_FV,VarNames_loc,CoordsVisu_FV,UVisu_FV,FileString_FV,&
-        dim=VisuDimension,DGFV=1,nValAtLastDimension=.TRUE.)
+        dim=3,DGFV=1,nValAtLastDimension=.TRUE.)
 
     IF (MPIRoot) THEN                   
       ! write multiblock file
@@ -134,8 +148,6 @@ DO iArg=1+skipArgs,nArgs
       CALL WriteVTKMultiBlockDataSet(FileString_multiblock,FileString_SurfDG,FileString_SurfFV)
     ENDIF
 #endif
-  ELSE
-    STOP 'implement!'
 
 !ELSE IF (VisuDimension.EQ.1) THEN ! CSV along 1d line
 
