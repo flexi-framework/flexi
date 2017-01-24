@@ -16,7 +16,8 @@
 !===================================================================================================================================
 !> Routines to create several mappings:
 !> * Mapping that contains the distribution of DG and FV elements
-!> * Mappings from all available variables to the ones that should be calculated and visualized
+!> * Mappings from all available variables to the ones that should be calculated and visualized for volume and surface
+!> * Mappings from the available boundaries to the ones that should be visualized
 !===================================================================================================================================
 MODULE MOD_Posti_Mappings
 ! MODULES
@@ -48,6 +49,7 @@ CONTAINS
 !>  2. count the number of DG/FV elements in FV_Elems_loc.
 !>  3. build the mappings (mapFVElemsToAllElems/DG) that hold the global indices of the FV/DG element indices.
 !>  4. check wether the distribution of FV elements has changed
+!>  5. store the current distribution in FV_Elems_loc, is needed for some mappings later
 !===================================================================================================================================
 SUBROUTINE Build_FV_DG_distribution(statefile)
 USE MOD_Globals
@@ -168,6 +170,7 @@ END SUBROUTINE Build_FV_DG_distribution
 !>     will be executed.
 !>  4. build the 'mapDepToCalc' that holds for each quantity that will be calculated the index in 'UCalc' array (0 if not calculated)
 !>  5. build the 'mapAllVarsToVisuVars' that holds for each quantity that will be visualized the index in 'UVisu' array (0 if not visualized)
+!>  6. build the 'mapAllBCNamesToVisuBCNames' that holds for each available boundary the visualization index
 !===================================================================================================================================
 SUBROUTINE Build_mapDepToCalc_mapAllVarsToVisuVars()
 USE MOD_Globals
@@ -269,6 +272,9 @@ SWRITE (*,'(A,'//format//'I3)') "mapDepToCalc ",mapDepToCalc
 SWRITE (*,'(A,'//format//'I3)') "mapAllVarsToVisuVars ",mapAllVarsToVisuVars
 SWRITE (*,'(A,'//format//'I3)') "mapAllVarsToSurfVisuVars ",mapAllVarsToSurfVisuVars
 
+
+!---------------------- Surface visulaization ----------------------------!
+
 ! Build the mapping for the surface visualization
 ! mapAllBCNamesToVisuBCNames(iBC) stores the ascending visualization index of the all boundaries. 0 means no visualization.
 ! nBCNamesVisu is the number of boundaries to be visualized.
@@ -305,9 +311,13 @@ SWRITE (*,'(A,'//format//'I3)') "mapAllBCNamesToVisuBCNames ",mapAllBCNamesToVis
 
 END SUBROUTINE Build_mapDepToCalc_mapAllVarsToVisuVars
 
+!===================================================================================================================================
+!> This routine builds mappings that give for each BC side the index of the visualization side, seperate by FV and DG.
+!> We also store the number of visualization sides per BC name.
+!===================================================================================================================================
 SUBROUTINE Build_mapBCSides() 
 USE MOD_Visu_Vars
-USE MOD_Mesh_Vars  ,ONLY: nBCSides,BC,SideToElem,BoundaryName
+USE MOD_Mesh_Vars   ,ONLY: nBCSides,BC,SideToElem,BoundaryName
 USE MOD_StringTools ,ONLY: STRICMP
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 

@@ -48,6 +48,7 @@ CONTAINS
 !> Converts the coordinates of the mesh to the visu-mesh.
 !=================================================================================================================================
 SUBROUTINE BuildVisuCoords()
+! MODULES                                                                   
 USE ISO_C_BINDING
 USE MOD_Globals
 USE MOD_PreProc
@@ -112,7 +113,11 @@ END IF
 
 END SUBROUTINE BuildVisuCoords
 
+!=================================================================================================================================
+!> Converts the coordinates of the surface mesh to the surface visu-mesh.
+!=================================================================================================================================
 SUBROUTINE BuildSurfVisuCoords()
+! MODULES                                                                   
 USE ISO_C_BINDING
 USE MOD_Globals
 USE MOD_PreProc

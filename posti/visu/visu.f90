@@ -14,8 +14,9 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-!> Module containing the main procedures for the POSTI tool: visu_requestInformation is called by ParaView to create a
-!> list of available variables and visu is the main routine of POSTI.
+!> Module containing the main procedures for the visu tool: visu_requestInformation is called by ParaView to create a
+!> list of available variables and visu is the main routine which is either called by ParaView to get the data it visualizes
+!> or by the standalone tool.
 !===================================================================================================================================
 MODULE MOD_Visu
 ! MODULES
@@ -52,10 +53,10 @@ PUBLIC:: FinalizeVisu
 CONTAINS
 
 !===================================================================================================================================
-! TODO:
 !> Create a list of available variables for ParaView. This list contains the conservative, primitve and derived quantities
 !> that are available in the current equation system as well as the additional variables read from the state file.
 !> The additional variables are stored in the datasets 'ElemData' (elementwise data) and 'FieldData' (pointwise data).
+!> Also a list of all available boundary names is created for surface visualization.
 !===================================================================================================================================
 SUBROUTINE visu_getVarNamesAndFileType(statefile,varnames_loc, bcnames_loc) 
 USE MOD_Globals
@@ -181,6 +182,15 @@ END IF
 END SUBROUTINE visu_getVarNamesAndFileType
 
 !===================================================================================================================================
+!> This routine is used to prepare everything we need to visualize data from a statefile. 
+!> This includes:
+!> * Get the mesh file
+!> * Read the desired visualization polynomial degree, the visualization dimennsion, the node type we want to visualize on and the 
+!>   Dg only option
+!> * Decide whether the state file, the mesh file, the visualization polynomial degree or the dg only option changed. This is
+!>   needed to decide what parts of the visualization routines should be called.
+!> * Call routines that build the distribution between FV and DG elements and the mappings needed to calculate and visualize the
+!>   desired variables.
 !===================================================================================================================================
 SUBROUTINE visu_InitFile(statefile,postifile)
 ! MODULES
@@ -292,7 +302,7 @@ changedWithDGOperator = (withDGOperator.NEQV.withDGOperator_old)
 END SUBROUTINE visu_InitFile
 
 !===================================================================================================================================
-!> Main routine of the visualization tool POSTI. Called either by the ParaView plugin or by the standalone program version.
+!> Main routine of the visualization tool visu. Called either by the ParaView plugin or by the standalone program version.
 !===================================================================================================================================
 SUBROUTINE visu(mpi_comm_IN, prmfile, postifile, statefile)
 ! MODULES
@@ -391,14 +401,16 @@ SWRITE (*,*) "READING FROM: ", TRIM(statefile)
 !   
 ! WORKFLOW:
 ! * The main steps are:
-!   1. get nElems             (if changedStateFile)
-!   2. get FV/DG distribution (if changedStateFile or changedDGonly)
-!   3. read solution          (if changedStateFile or changedWithDGOperator or changedDGonly)
+!   1. call InitFile for FV/DG distribution and mappings
+!   2. read solution          (if changedStateFile or changedWithDGOperator or changedDGonly)
+!   3. build mapping for BC sides that should be visualized (done after read solution since some
+!      mesh infos are needed)
 !   4. read Mesh              (if changedMeshFile)
 !   5. compute UCalc          (if changedStateFile or changedVarNames or changedDGonly) 
 !   6. convert to UVisu       (if changedStateFile or changedVarNames or changedNVisu or changedDGonly)
-!   6. build visu mesh        (if changedMeshFile  or changedNVisu or changedFV_Elems or changedDGonly)
-!   7. write VTK arrays       (always!) 
+!   7. build visu mesh        (if changedMeshFile  or changedNVisu or changedFV_Elems or changedDGonly)
+!   5. - 7. are done seperately for surface variables if surface visualization is turned on
+!   8. write VTK arrays       (always!) 
 !
 !**********************************************************************************************
 
@@ -426,8 +438,8 @@ IF (ISVALIDMESHFILE(statefile)) THEN ! visualize mesh
   MeshFile      = statefile
   nVar_State    = 0
   withDGOperator = .FALSE.
-  !CALL VisualizeMesh(postifile,MeshFile,coordsDG_out,valuesDG_out,nodeidsDG_out, &
-      !coordsFV_out,valuesFV_out,nodeidsFV_out,varnames_out,components_out)
+  CALL VisualizeMesh(postifile,MeshFile,coordsDG_out,valuesDG_out,nodeidsDG_out, &
+      coordsFV_out,valuesFV_out,nodeidsFV_out,varnames_out,components_out)
 ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   SWRITE(*,*) "State Mode"
   ! initialize state file

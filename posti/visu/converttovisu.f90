@@ -14,8 +14,9 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-!> Contains routines that convert the calculated FV or DG quantities to the visualization grid. There are separate routines
-!> to convert the ElemData and FieldData to the visualization grid.
+!> Contains routines that convert the calculated FV or DG quantities to the visualization grid.
+!> The routines are split into surface and volume data. Also there is a routine that handels generic data like additional arrays
+!> or data from non-state files.
 !===================================================================================================================================
 MODULE MOD_Posti_ConvertToVisu
 ! MODULES
@@ -65,7 +66,7 @@ PUBLIC:: ConvertToVisu_FV_Reconstruct
 CONTAINS
 
 !===================================================================================================================================
-!> Perform a ChangeBasis of the calculated DG quantities to the visualization grid.
+!> Perform a ChangeBasis of the calculated volume DG quantities to the visualization grid.
 !===================================================================================================================================
 SUBROUTINE ConvertToVisu_DG() 
 USE MOD_Globals
@@ -100,6 +101,9 @@ END DO
 SDEALLOCATE(Vdm_N_NVisu)
 END SUBROUTINE ConvertToVisu_DG
 
+!===================================================================================================================================
+!> Perform a ChangeBasis of the calculated surface DG quantities to the visualization grid.
+!===================================================================================================================================
 SUBROUTINE ConvertToSurfVisu_DG() 
 USE MOD_Globals
 USE MOD_PreProc
@@ -340,6 +344,7 @@ END SUBROUTINE ConvertToVisu_FV_Reconstruct
 !> so the datasets are not limited to one polynomial degree. Either elementwise (2 dimensions) or pointwise (5 dimensions) datasets
 !> are allowed.
 !> The addtional variables will always be sorted AFTER the conservative or derived quantities.
+!> If surface visualization is needed, the quantities will simply be prolonged to the surfaces.
 !===================================================================================================================================
 SUBROUTINE ConvertToVisu_GenericData(statefile) 
 USE MOD_Globals
