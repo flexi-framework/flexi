@@ -88,7 +88,7 @@ INTEGER,DIMENSION(1:nVarDepEOS,0:nVarDepEOS),PARAMETER :: DepTableEOS = TRANSPOS
   1,0,0,0,0,0,0,0,0,0,1, 0,0,0,0,0,0,0,0,0         ,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !29 WallFrictionX
   1,0,0,0,0,0,0,0,0,0,1, 0,0,0,0,0,0,0,0,0         ,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !30 WallFrictionY
   1,0,0,0,0,0,0,0,0,0,1, 0,0,0,0,0,0,0,0,0         ,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !31 WallFrictionZ
-  1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0         ,0,0,0,0,0,0,0,0,0,1,1,1,0,1,1,1,0 ,& !32 WallFrictionMagnitude
+  1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0         ,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0 ,& !32 WallFrictionMagnitude
   1,0,0,0,0,0,0,0,0,0,1, 0,0,0,0,0,0,0,0,0         ,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !33 WallHeatTransfer
   1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0         ,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0 ,& !34 x+
   1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0         ,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0 ,& !35 y+
@@ -96,8 +96,14 @@ INTEGER,DIMENSION(1:nVarDepEOS,0:nVarDepEOS),PARAMETER :: DepTableEOS = TRANSPOS
 #endif
 /),(/nVarDepEOS+1,nVarDepEOS/)))
 
+! Mark all quantities that can be calculated exclusively on the surface
 INTEGER,DIMENSION(1:nVarDepEOS),PARAMETER :: DepSurfaceOnlyEOS = &
 (/  0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0  CUT(&) ,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1 &
+/) 
+
+! Mark all quantities that can be calculated exclusively in the volume and must be prolonged to the surface from the volume
+INTEGER,DIMENSION(1:nVarDepEOS),PARAMETER :: DepVolumeOnlyEOS = &
+(/  0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,1  CUT(&) ,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 &
 /) 
 
 #if FV_ENABLED && FV_RECONSTRUCT

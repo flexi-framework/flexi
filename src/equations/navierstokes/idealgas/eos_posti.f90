@@ -165,9 +165,9 @@ END FUNCTION GetMaskGrad
 
 !==================================================================================================================================
 !> Wrapper routine that is called when derived quantities should be calculated. For every variable that should be calculated,
-!> the routine that does the actual calculation CalcDerivedQuantity is called with the approriate arguments.
+!> the routine that does the actual calculation CalcDerivedQuantity is called with the appropriate arguments.
 !==================================================================================================================================
-SUBROUTINE CalcQuantities(nVarCalc,nVal,iElems,mapDepToCalc,UCalc,maskCalc,gradUx,gradUy,gradUz,&
+SUBROUTINE CalcQuantities(nVarCalc,nVal,mapCalcMeshToGlobalMesh,mapDepToCalc,UCalc,maskCalc,gradUx,gradUy,gradUz,&
     NormVec,TangVec1,TangVec2)
 ! MODULES
 USE MOD_Globals,ONLY: MPIRoot
@@ -177,7 +177,7 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)                                              :: nVarCalc
 INTEGER,INTENT(IN)                                              :: nVal(:)
-INTEGER,INTENT(IN)                                              :: iElems(:)
+INTEGER,INTENT(IN)                                              :: mapCalcMeshToGlobalMesh(:)
 INTEGER,INTENT(IN)                                              :: mapDepToCalc(nVarDepEOS)
 INTEGER,INTENT(IN)                                              :: maskCalc(nVarDepEOS)
 REAL,INTENT(OUT)                                                :: UCalc(PRODUCT(nVal),1:nVarCalc)
@@ -198,17 +198,17 @@ DO iVar=1,nVarDepEOS
     SWRITE(*,*) "  ",TRIM(DepNames(iVar))
     IF(withGradients)THEN
       IF(withVectors)THEN
-        CALL CalcDerivedQuantity(iVarCalc,DepNames(iVar),nVarCalc,nVal,iElems,mapDepToCalc,UCalc,gradUx,gradUy,gradUz,&
+        CALL CalcDerivedQuantity(iVarCalc,DepNames(iVar),nVarCalc,nVal,mapCalcMeshToGlobalMesh,mapDepToCalc,UCalc,gradUx,gradUy,gradUz,&
             NormVec,TangVec1,TangVec2)
       ELSE
-        CALL CalcDerivedQuantity(iVarCalc,DepNames(iVar),nVarCalc,nVal,iElems,mapDepToCalc,UCalc,gradUx,gradUy,gradUz)
+        CALL CalcDerivedQuantity(iVarCalc,DepNames(iVar),nVarCalc,nVal,mapCalcMeshToGlobalMesh,mapDepToCalc,UCalc,gradUx,gradUy,gradUz)
       END IF
     ELSE
       IF(withVectors)THEN
-        CALL CalcDerivedQuantity(iVarCalc,DepNames(iVar),nVarCalc,nVal,iElems,mapDepToCalc,UCalc,&
+        CALL CalcDerivedQuantity(iVarCalc,DepNames(iVar),nVarCalc,nVal,mapCalcMeshToGlobalMesh,mapDepToCalc,UCalc,&
             NormVec=NormVec,TangVec1=TangVec1,TangVec2=TangVec2)
       ELSE
-        CALL CalcDerivedQuantity(iVarCalc,DepNames(iVar),nVarCalc,nVal,iElems,mapDepToCalc,UCalc)
+        CALL CalcDerivedQuantity(iVarCalc,DepNames(iVar),nVarCalc,nVal,mapCalcMeshToGlobalMesh,mapDepToCalc,UCalc)
       END IF
     END IF
   END IF
@@ -221,7 +221,7 @@ END SUBROUTINE CalcQuantities
 !> The routine either does the calculation in itself if the quantity is simple to calculate or calls helper functions
 !> for the more complex ones.
 !==================================================================================================================================
-SUBROUTINE CalcDerivedQuantity(iVarCalc,DepName,nVarCalc,nVal,iElems,mapDepToCalc,UCalc,gradUx,gradUy,gradUz, &
+SUBROUTINE CalcDerivedQuantity(iVarCalc,DepName,nVarCalc,nVal,mapCalcMeshToGlobalMesh,mapDepToCalc,UCalc,gradUx,gradUy,gradUz, &
     NormVec,TangVec1,TangVec2)
 ! MODULES
 USE MOD_PreProc
@@ -235,14 +235,14 @@ INTEGER,INTENT(IN)                                              :: iVarCalc
 CHARACTER(LEN=255),INTENT(IN)                                   :: DepName
 INTEGER,INTENT(IN)                                              :: nVarCalc
 INTEGER,INTENT(IN)                                              :: nVal(:)
-INTEGER,INTENT(IN)                                              :: iElems(:)
+INTEGER,INTENT(IN)                                              :: mapCalcMeshToGlobalMesh(:)
 INTEGER,INTENT(IN)                                              :: mapDepToCalc(nVarDepEOS)
 REAL,INTENT(INOUT)                                              :: UCalc(PRODUCT(nVal),1:nVarCalc)
 REAL,DIMENSION(1:PP_nVarPrim,PRODUCT(nVal)),INTENT(IN),OPTIONAL :: gradUx,gradUy,gradUz
 REAL,DIMENSION(1:3,PRODUCT(nVal)),INTENT(IN),OPTIONAL           :: NormVec,TangVec1,TangVec2
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: i,iMom1,iMom2,iMom3,iDens,iPres,iVel1,iVel2,iVel3,iVelM,iVelS,iEner,iEnst,iTemp,iWFriX,iWFriY,iWFriZ
+INTEGER            :: i,iMom1,iMom2,iMom3,iDens,iPres,iVel1,iVel2,iVel3,iVelM,iVelS,iEner,iEnst,iTemp,iWFriX,iWFriY,iWFriZ,iWFriMag
 CHARACTER(LEN=255) :: DepName_low
 REAL               :: UE(PP_2Var)
 INTEGER            :: nElems_loc,Nloc,nDOF,nDims
@@ -279,16 +279,17 @@ iVel2 = KEYVALUE(DepNames,mapDepToCalc,"velocityy"  )
 iVel3 = KEYVALUE(DepNames,mapDepToCalc,"velocityz"  )
 iPres = KEYVALUE(DepNames,mapDepToCalc,"pressure"   )
 iEner = KEYVALUE(DepNames,mapDepToCalc,'energystagnationdensity')
-#if PARABOLIC
-iVorM = KEYVALUE(DepNames,mapDepToCalc,"vorticitymagnitude")
-#endif
 iVelM = KEYVALUE(DepNames,mapDepToCalc,"velocitymagnitude")
 iTemp = KEYVALUE(DepNames,mapDepToCalc,"temperature")
 iVelS = KEYVALUE(DepNames,mapDepToCalc,"velocitysound"    )
 iEnst = KEYVALUE(DepNames,mapDepToCalc,"energystagnation")
+#if PARABOLIC
+iVorM = KEYVALUE(DepNames,mapDepToCalc,"vorticitymagnitude")
 iWFriX = KEYVALUE(DepNames,mapDepToCalc,"wallfrictionx")
 iWFriY = KEYVALUE(DepNames,mapDepToCalc,"wallfrictiony")
 iWFriZ = KEYVALUE(DepNames,mapDepToCalc,"wallfrictionz")
+iWFriMag = KEYVALUE(DepNames,mapDepToCalc,"wallfrictionmagnitude")
+#endif
 
 CALL LowCase(DepName,DepName_low)
 SELECT CASE(DepName_low)
@@ -343,7 +344,7 @@ SELECT CASE(DepName_low)
   CASE("totalpressure")
     UCalc(:,iVarCalc) = UCalc(:,iPres)+0.5*UCalc(:,iDens)*UCalc(:,iVelM)**2
   CASE("pressuretimederiv")
-     CALL FillPressureTimeDeriv(nElems_loc,iElems,Nloc,UCalc(:,iVarCalc))
+     CALL FillPressureTimeDeriv(nElems_loc,mapCalcMeshToGlobalMesh,Nloc,UCalc(:,iVarCalc))
 #if PARABOLIC      
   CASE("vorticityx")
     UCalc(:,iVarCalc) = FillVorticity(1,nVal,gradUx,gradUy,gradUz)
@@ -383,6 +384,15 @@ IF (withVectors) THEN
       UCalc(:,iVarCalc) = SQRT(UCalc(:,iWFriX)**2+UCalc(:,iWFriY)**2+UCalc(:,iWFriZ)**2)
     CASE("wallheattransfer")
       UCalc(:,iVarCalc) = FillWallHeatTransfer(nVal,UCalc(:,iTemp),gradUx,gradUy,gradUz,NormVec)
+    CASE("x+")
+      CALL FillNonDimensionalGridSpacing(nElems_loc,mapCalcMeshToGlobalMesh,Nloc,1,UCalc(:,iTemp),UCalc(:,iWFriMag), &
+                                     UCalc(:,iDens),UCalc(:,iVarCalc))
+    CASE("y+")
+      CALL FillNonDimensionalGridSpacing(nElems_loc,mapCalcMeshToGlobalMesh,Nloc,2,UCalc(:,iTemp),UCalc(:,iWFriMag), &
+                                     UCalc(:,iDens),UCalc(:,iVarCalc))
+    CASE("z+")
+      CALL FillNonDimensionalGridSpacing(nElems_loc,mapCalcMeshToGlobalMesh,Nloc,3,UCalc(:,iTemp),UCalc(:,iWFriMag), &
+                                     UCalc(:,iDens),UCalc(:,iVarCalc))
 #endif
   END SELECT
 END IF
@@ -594,6 +604,110 @@ DO i=1,PRODUCT(nVal)
   WallHeatTransfer(i) = -1.*mu*Kappa*sKappaM1*R/Pr*gradTn
 END DO
 END FUNCTION FillWallHeatTransfer
+
+!==================================================================================================================================
+!> Calculate the non dimensional grid spacing. This is a special case since we need information about the mesh. Thus 
+!> a lot of actual FLEXI vars and routines are used. Care has to be taken that those are all available!
+!> The non-dimensional grid spacing is the length of the element expressed in wall unit length, which is defined as 
+!> y+ = y *frictionVel / kinematicVisc where frictionVel = sqrt(WallFriction/rho). Additionaly, the length is normalized with
+!> the number of solution points in each direction per cell.
+!==================================================================================================================================
+SUBROUTINE FillNonDimensionalGridSpacing(nSides_calc,mapBCSideToVisuSides,Nloc,dir,Temperature,WallFrictionMag,Density,wallDistance)
+! MODULES
+USE MOD_Eos_Vars
+USE MOD_Preproc
+USE MOD_Mesh_Vars           ,ONLY: NGeo,Elem_xGP,SideToElem,nBCSides
+USE MOD_Interpolation       ,ONLY: GetVandermonde
+USE MOD_Interpolation_Vars  ,ONLY: NodeType,NodeTypeGL
+USE MOD_ChangeBasis         ,ONLY: ChangeBasis3D
+IMPLICIT NONE 
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+INTEGER,INTENT(IN)                                   :: nSides_calc
+INTEGER,INTENT(IN)                                   :: mapBCSideToVisuSides(nBCSides)
+INTEGER,INTENT(IN)                                   :: Nloc
+INTEGER,INTENT(IN)                                   :: dir
+REAL,DIMENSION(0:Nloc,0:Nloc,nSides_calc),INTENT(IN) :: WallFrictionMag
+REAL,DIMENSION(0:Nloc,0:Nloc,nSides_calc),INTENT(IN) :: Density
+REAL,DIMENSION(0:Nloc,0:Nloc,nSides_calc),INTENT(IN) :: Temperature
+REAL,INTENT(OUT)                                     :: wallDistance(0:Nloc,0:Nloc,nSides_calc)
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES 
+REAL              :: mu,temp,fricVel
+INTEGER           :: iSide,p,q,iSideVisu,i,ElemID,locSideID
+REAL              :: refVec(3),scalProd,scalProdMax,xVec(3),yVec(3),zVec(3),yloc(3),tVec(3,2)
+REAL              :: NodeCoords(3,0:PP_N,0:PP_N,0:PP_N)
+REAL              :: Vdm_N_GLNloc(0:PP_N,0:PP_N)
+!===================================================================================================================================
+! We need a Vandermonde matrix to get the GP coordinates on GL points, i.e. including the surface of the grid cells
+CALL GetVandermonde(PP_N,NodeType,PP_N,NodeTypeGL,Vdm_N_GLNloc)
+
+! Loop over all boundary sides
+DO iSide=1,nBCSides
+  iSideVisu = mapBCSideToVisuSides(iSide) ! Index on visualization side
+  IF (iSideVisu.GT.0) THEN ! Check if this side should be visualized
+    ElemID        = SideToElem(S2E_ELEM_ID,iSide)
+    locSideID     = SideToElem(S2E_LOC_SIDE_ID,iSide)
+
+    ! Get element coordinates on GL points (they include the edges that we use to calculate the element length)
+    CALL ChangeBasis3D(3,PP_N,Nloc,Vdm_N_GLNloc,Elem_xGP(:,:,:,:,ElemID),NodeCoords)
+
+    ! Depending in the local sideID, get the edge vectors of the element in wall-normal direction (stored in yVec) and for the two
+    ! wall-tangential directions (stored in tVec(:,1-2)). These vectors are the connection of the cell vertices, so they do not
+    ! include any information about curvature!!!!
+    SELECT CASE(locSideID)
+    CASE(XI_MINUS,XI_PLUS)
+     yVec(:)   = NodeCoords(:,NGeo,0,0)- NodeCoords(:,0,0,0)
+     tVec(:,1) = NodeCoords(:,0,NGeo,0)- NodeCoords(:,0,0,0)
+     tVec(:,2) = NodeCoords(:,0,0,NGeo)- NodeCoords(:,0,0,0)
+    CASE(ETA_MINUS,ETA_PLUS)
+     yVec(:)   = NodeCoords(:,0,NGeo,0)- NodeCoords(:,0,0,0)
+     tVec(:,1) = NodeCoords(:,NGeo,0,0)- NodeCoords(:,0,0,0)
+     tVec(:,2) = NodeCoords(:,0,0,NGeo)- NodeCoords(:,0,0,0)
+    CASE(ZETA_MINUS,ZETA_PLUS)
+     yVec(:)   = NodeCoords(:,0,0,NGeo)- NodeCoords(:,0,0,0)
+     tVec(:,1) = NodeCoords(:,NGeo,0,0)- NodeCoords(:,0,0,0)
+     tVec(:,2) = NodeCoords(:,0,NGeo,0)- NodeCoords(:,0,0,0)
+    END SELECT
+     
+    ! For the two tangential vectors, we try to find out which one is pointing in the physical x-direction
+    refVec=(/1.,0.,0./) ! Vector in x-direction
+    scalProdMax=0.
+    ! Loop over both tangential vectors
+    DO i=1,2
+     ! Calculate absolute value of scalar product between vector in x-direction and the tangential vectors. This gives us 
+     ! an information about how much the current tangential vector is alinged with the x-direction.
+     scalProd=ABS(SUM(tVec(:,i)*refVec))
+     ! Check if this tangential vector is more aligned with the x-direction than the other one. Store the one
+     ! that is most aligned in xVec.
+     IF(scalProd .GT. scalProdMax) THEN
+       scalProdMax=scalProd
+       xVec=tVec(:,i)
+       zVec=tVec(:,3-i)
+     END IF
+    END DO
+
+    ! Calculate lengths of the cell = lengths of the edge vectors
+    yloc(1)=NORM2(xVec)
+    yloc(2)=NORM2(yVec)
+    yloc(3)=NORM2(zVec)
+
+    ! Normalize the distances with the number of points per direction per cell
+    yloc=yloc/(PP_N+1)
+
+    ! Non-dimensional wall distance is calculated using  y+ = y * frictionVel / kinematicVisc
+    ! where frictionVel = sqrt(WallFriction/rho)
+    DO q=0,Nloc; DO p=0,Nloc
+      fricVel=SQRT(WallFrictionMag(p,q,iSideVisu))
+      temp = Temperature(p,q,iSideVisu)
+      mu   = VISCOSITY_TEMPERATURE(temp)
+      wallDistance(p,q,iSideVisu) = yloc(dir)*fricVel*Density(p,q,iSideVisu)/mu
+    END DO; END DO ! p,q=0,Nloc
+
+  END IF ! iSideVisu.GT.0
+END DO ! iSide = 1,nBCSides
+
+END SUBROUTINE FillNonDimensionalGridSpacing
 #endif
 
 

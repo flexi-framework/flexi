@@ -109,8 +109,10 @@ INTEGER,ALLOCATABLE,TARGET            :: nodeids_FV(:)           !< nodeIDs for 
 ! ==============================================================================================================================
 ! Surface visualization
 ! ==============================================================================================================================
-INTEGER,ALLOCATABLE                   :: DepSurfaceOnly(:)       !< Dependency table for quantities that 
+INTEGER,ALLOCATABLE                   :: DepSurfaceOnly(:)       !< Mask for quantities that 
                                                                  !< are exclusively available on BCs
+INTEGER,ALLOCATABLE                   :: DepVolumeOnly(:)        !< Mask for quantities that 
+                                                                 !< are exclusively available in the volume
 
 INTEGER                               :: nBCNamesAll                  !< number of all BC names in mesh file
 CHARACTER(LEN=255),ALLOCATABLE,TARGET :: BCNamesAll(:)                !< all BC names in mesh file 

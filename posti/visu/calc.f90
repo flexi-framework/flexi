@@ -91,7 +91,7 @@ IF(TRIM(FileType).EQ.'State')THEN
   IF(withDGOperator.AND.PARABOLIC.EQ.1)THEN
 #if PARABOLIC
     IF(nElems_DG.EQ.nElems)THEN
-      CALL CalcQuantities(nVarCalc,nVal,mapDGElemsToAllElems,mapDepToCalc,UCalc_DG,maskCalc,gradUx,gradUy,gradUz) 
+      CALL CalcQuantities(nVarCalc,nVal,mapDGElemsToAllElems,mapDepToCalc,UCalc_DG,maskCalc,gradUx,gradUy,gradUz)
     ELSE
       ALLOCATE(gradUx_tmp(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,nElems_DG))
       ALLOCATE(gradUy_tmp(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,nElems_DG))
@@ -174,12 +174,12 @@ IF(TRIM(FileType).EQ.'State')THEN
   END DO
   IF(withDGOperator.AND.PARABOLIC.EQ.1)THEN
 #if PARABOLIC
-    CALL CalcQuantities(nVarCalc,nValSide,mapDGElemsToAllElems,mapDepToCalc,USurfCalc_DG,maskCalc,&
+    CALL CalcQuantities(nVarCalc,nValSide,mapAllBCSidesToDGVisuBCSides,mapDepToCalc,USurfCalc_DG,maskCalc*(1-DepVolumeOnly),&
         gradUxFace,gradUyFace,gradUzFace,&
         NormVec_loc(:,:,:,:),TangVec1_loc(:,:,:,:),TangVec2_loc(:,:,:,:)) 
 #endif
   ELSE
-    CALL CalcQuantities(nVarCalc,nValSide,mapDGElemsToAllElems,mapDepToCalc,USurfCalc_DG,maskCalc,& 
+    CALL CalcQuantities(nVarCalc,nValSide,mapAllBCSidesToDGVisuBCSides,mapDepToCalc,USurfCalc_DG,maskCalc*(1-DepVolumeOnly),& 
         NormVec=NormVec_loc(:,:,:,:),TangVec1=TangVec1_loc(:,:,:,:),TangVec2=TangVec2_loc(:,:,:,:)) 
   END IF
 END IF
@@ -194,7 +194,8 @@ END SUBROUTINE CalcSurfQuantities_DG
 
 !===================================================================================================================================
 !> Prolong all independent variables (defined as the variables in the state file, e.g. conservative variables for normal
-!> Navier Stokes calculations) to the faces that should be visualiazed. If the gradients are needed, they are also prolonged.
+!> Navier Stokes calculations as well as variables that can only be calculated in the volume and must be prolonged anyway)
+!> to the faces that should be visualized. If the gradients are needed, they are also prolonged.
 !===================================================================================================================================
 SUBROUTINE ProlongToFace_independent(nVar,nSides_calc,nElems_calc,maskCalc,UIn,UBoundary&
 #if PARABOLIC
@@ -238,7 +239,8 @@ DO iVarOut=1,nVarDep ! iterate over all out variables
   IF (mapDepToCalc(iVarOut).LT.1) CYCLE ! check if variable must be calculated
   DO iVarIn=1,nVar_State ! iterate over all out variables
     ! Check if this variable is present in the state file, if so define it as independent
-    IF (STRICMP(VarnamesAll(iVarOut),VarNamesHDF5(iVarIn))) THEN
+    ! Also define variables as independent that can only be computed in the volume
+    IF ((STRICMP(VarnamesAll(iVarOut),VarNamesHDF5(iVarIn))).OR.(DepVolumeOnly(iVarOut).EQ.1)) THEN
       WRITE(*,*) "ProlongToFace_independent", TRIM(VarnamesAll(iVarOut))
       iVar=mapDepToCalc(iVarOut)
 
@@ -500,12 +502,12 @@ SWRITE(*,*) "[FVRE] CalcSurfQuantities"
 maskCalc = DepSurfaceOnly
 IF(withDGOperator.AND.PARABOLIC.EQ.1)THEN
 #if PARABOLIC
-  CALL CalcQuantities(nVarCalc_FV,nValSide,mapFVElemsToAllElems,mapDepToCalc_FV,USurfCalc_FV,maskCalc,&
+  CALL CalcQuantities(nVarCalc_FV,nValSide,mapAllBCSidesToFVVisuBCSides,mapDepToCalc_FV,USurfCalc_FV,maskCalc*(1-DepVolumeOnly),&
       gradUxFace,gradUyFace,gradUzFace,&
       NormVec_loc(:,:,:,:),TangVec1_loc(:,:,:,:),TangVec2_loc(:,:,:,:)) 
 #endif
 ELSE
-  CALL CalcQuantities(nVarCalc_FV,nValSide,mapFVElemsToAllElems,mapDepToCalc_FV,USurfCalc_FV,maskCalc,& 
+  CALL CalcQuantities(nVarCalc_FV,nValSide,mapAllBCSidesToFVVisuBCSides,mapDepToCalc_FV,USurfCalc_FV,maskCalc*(1-DepVolumeOnly),& 
       NormVec=NormVec_loc(:,:,:,:),TangVec1=TangVec1_loc(:,:,:,:),TangVec2=TangVec2_loc(:,:,:,:)) 
 END IF
 
