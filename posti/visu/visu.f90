@@ -323,7 +323,6 @@ USE MOD_Posti_Calc          ,ONLY: CalcQuantities_DG,CalcSurfQuantities_DG
 #if FV_ENABLED
 USE MOD_Posti_Calc          ,ONLY: CalcQuantities_FV,CalcSurfQuantities_FV
 USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_FV,ConvertToSurfVisu_FV
-USE MOD_FV_Vars             ,ONLY: FV_Vdm,FV_sVdm
 #endif
 USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_DG,ConvertToSurfVisu_DG,ConvertToVisu_GenericData
 USE MOD_ReadInTools         ,ONLY: prms,FinalizeParameters,ExtractParameterFile

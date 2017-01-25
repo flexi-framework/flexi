@@ -176,6 +176,7 @@ DO iArg=1+skipArgs,nArgs
   END IF
 
   DEALLOCATE(VarNames_loc)
+  DEALLOCATE(VarNamesSurf_loc)
 END DO
 
 END PROGRAM 

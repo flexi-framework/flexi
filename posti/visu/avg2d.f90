@@ -149,7 +149,7 @@ ELSE IF (NCalc_FV.EQ.(PP_N+1)*2-1) THEN
   ALLOCATE(FV_sVdm (0:PP_N    ,0:PP_N))
   CALL FV_GetVandermonde(PP_N,NodeType, FV_Vdm, FV_sVdm)
   Vdm_DGToFV = MATMUL(FVdouble,FV_Vdm)
-  Vdm_FVToDG = MATMUL(FV_sVdm,TRANSPOSE(FVdouble))
+  Vdm_FVToDG = MATMUL(FV_sVdm,0.5*TRANSPOSE(FVdouble))
   Vdm_FVToVisu = 0.
   DO i = 0, NVisu_FV
     Vdm_FVToVisu(i,i) = 1.
@@ -182,8 +182,9 @@ USE MOD_Visu_Vars          ,ONLY: mapDGElemsToAllElems,mapFVElemsToAllElems
 USE MOD_Visu_Vars          ,ONLY: mapElemIJToDGElemAvg2D,mapElemIJToFVElemAvg2D,mapAllVarsToVisuVars
 USE MOD_Visu_Vars          ,ONLY: nVarVisu,NVisu,NVisu_FV,nElemsAvg2D_FV,nElemsAvg2D_DG,NodeTypeVisuPosti
 USE MOD_Interpolation      ,ONLY: GetVandermonde,GetNodesAndWeights
-USE MOD_Interpolation_Vars ,ONLY: NodeTypeVISUFVEqui
+USE MOD_Interpolation_Vars ,ONLY: NodeTypeVISUFVEqui,xGP
 USE MOD_ChangeBasis        ,ONLY: ChangeBasis2D
+USE MOD_Mesh_Vars          ,ONLY: Elem_xGP
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 INTEGER,INTENT(IN)            :: nVarCalc_DG,nVarCalc_FV,NCalc_DG,NCalc_FV,nElems_DG,nElems_FV
@@ -202,15 +203,19 @@ REAL,INTENT(INOUT)            :: UVisu_FV(0:NVisu_FV,0:NVisu_FV,0:0,1:nElemsAvg2
 
 REAL,ALLOCATABLE :: Utmp(:,:),Utmp2(:,:)
 INTEGER          :: iElem, iElem_DG, iElem_FV, iElemAvg, ii,jj,k,iVar,iVarCalc,iVarVisu
-REAL             :: xGP(0:NCalc_DG),wGP(0:NCalc_DG)
+REAL             :: xGP_loc(0:NCalc_DG),wGP(0:NCalc_DG)
 REAL,ALLOCATABLE :: UAvg_DG(:,:,:,:)
 REAL,ALLOCATABLE :: UAvg_FV(:,:,:,:)
+REAL             :: dx
+REAL             :: dxSum_DG(nElemsAvg2D_DG),dxSum_FV(nElemsAvg2D_FV)
 !===================================================================================================================================
 ALLOCATE(UAvg_DG(0:NCalc_DG,0:NCalc_DG,nElemsAvg2D_DG,nVarVisu))
 ALLOCATE(UAvg_FV(0:NCalc_FV,0:NCalc_FV,nElemsAvg2D_FV,nVarVisu))
 UAvg_DG = 0.
 UAvg_FV = 0.
-CALL GetNodesAndWeights(NCalc_DG,NodeTypeCalc_DG,xGP,wGP)
+dxSum_DG = 0.
+dxSum_FV = 0.
+CALL GetNodesAndWeights(NCalc_DG,NodeTypeCalc_DG,xGP_loc,wGP)
 
 ! average all DG elements first
 SWRITE(*,*) " [Avg2D] Average DG elements"
@@ -221,28 +226,31 @@ DO iElem_DG = 1,nElems_DG                ! iterate over all DG elements
   IF (iElem.EQ.0) CYCLE
   ii = Elem_IJK(1,iElem)
   jj = Elem_IJK(2,iElem)
+  dx = (Elem_xGP(3,0,0,PP_N,iElem) - Elem_xGP(3,0,0,0,iElem))*2.0/(xGP(PP_N)-xGP(0))
   IF (FVAmountAvg2D(ii,jj).LE.0.5) THEN  ! the averaged ii,jj-th element is rather a DG element and this
                                          ! element is a DG element => just average this element and add to UAvg_DG
     iElemAvg = mapElemIJToDGElemAvg2D(ii,jj)
+    dxSum_DG(iElemAvg) = dxSum_DG(iElemAvg) + dx
     DO iVar=startIndexMapVarCalc,endIndexMapVarCalc
       iVarVisu = mapAllVarsToVisuVars(iVar)
       IF (iVarVisu.GT.0) THEN
         iVarCalc = mapVarCalc(iVar)
         DO k=0,NCalc_DG
-          UAvg_DG(:,:,iElemAvg,iVarVisu) = UAvg_DG(:,:,iElemAvg,iVarVisu) + wGP(k)/2. * UCalc_DG(:,:,k,iElem_DG,iVarCalc)
+          UAvg_DG(:,:,iElemAvg,iVarVisu) = UAvg_DG(:,:,iElemAvg,iVarVisu) + wGP(k)/2.*dx * UCalc_DG(:,:,k,iElem_DG,iVarCalc)
         END DO
       END IF
     END DO
   ELSE ! the averaged ii,jj-th element is rather a FV element, but this element is a DG element
        ! => average this element as DG element and convert the average (Utmp) to FV and add to UAvg_FV
     iElemAvg = mapElemIJToFVElemAvg2D(ii,jj)
+    dxSum_FV(iElemAvg) = dxSum_FV(iElemAvg) + dx
     DO iVar=startIndexMapVarCalc,endIndexMapVarCalc
       iVarVisu = mapAllVarsToVisuVars(iVar)
       IF (iVarVisu.GT.0) THEN
         iVarCalc = mapVarCalc(iVar)
         Utmp = 0.
         DO k=0,NCalc_DG
-          Utmp(:,:) = Utmp(:,:) + wGP(k)/2. * UCalc_DG(:,:,k,iElem_DG,iVarCalc)
+          Utmp(:,:) = Utmp(:,:) + wGP(k)/2.*dx * UCalc_DG(:,:,k,iElem_DG,iVarCalc)
         END DO
         CALL ChangeBasis2D(NCalc_DG,NCalc_FV,Vdm_DGToFV,Utmp,Utmp2)
         UAvg_FV(:,:,iElemAvg,iVarVisu) = UAvg_FV(:,:,iElemAvg,iVarVisu) + Utmp2
@@ -263,28 +271,31 @@ DO iElem_FV = 1,nElems_FV                ! iterate over all FV elements
   IF (iElem.EQ.0) CYCLE
   ii = Elem_IJK(1,iElem)
   jj = Elem_IJK(2,iElem)
+  dx = (Elem_xGP(3,0,0,PP_N,iElem) - Elem_xGP(3,0,0,0,iElem))*2.0/(xGP(PP_N)-xGP(0))
   IF (FVAmountAvg2D(ii,jj).GT.0.5) THEN  ! the averaged ii,jj-th element is rather a FV element and this 
                                          ! element is a FV element => just average this element and add to UAvg_FV
     iElemAvg = mapElemIJToFVElemAvg2D(ii,jj)
+    dxSum_FV(iElemAvg) = dxSum_FV(iElemAvg) + dx
     DO iVar=startIndexMapVarCalc,endIndexMapVarCalc
       iVarVisu = mapAllVarsToVisuVars(iVar)
       IF (iVarVisu.GT.0) THEN
         iVarCalc = mapVarCalc(iVar)
         DO k=0,NCalc_FV
-          UAvg_FV(:,:,iElemAvg,iVarVisu) = UAvg_FV(:,:,iElemAvg,iVarVisu) + 1./(NCalc_FV+1) * UCalc_FV(:,:,k,iElem_FV,iVarCalc)
+          UAvg_FV(:,:,iElemAvg,iVarVisu) = UAvg_FV(:,:,iElemAvg,iVarVisu) + 1./(NCalc_FV+1)*dx * UCalc_FV(:,:,k,iElem_FV,iVarCalc)
         END DO
       END IF
     END DO
   ELSE ! the averaged ii,jj-th element is rather a DG element, but this element is a FV element
        ! => average this element as FV element and convert the average (Utmp) to DG and add to UAvg_DG
     iElemAvg = mapElemIJToDGElemAvg2D(ii,jj)
+    dxSum_DG(iElemAvg) = dxSum_DG(iElemAvg) + dx
     DO iVar=startIndexMapVarCalc,endIndexMapVarCalc
       iVarVisu = mapAllVarsToVisuVars(iVar)
       IF (iVarVisu.GT.0) THEN
         iVarCalc = mapVarCalc(iVar)
         Utmp = 0.
         DO k=0,NCalc_FV
-          Utmp(:,:) = Utmp(:,:) +  1./(NCalc_FV+1) * UCalc_FV(:,:,k,iElem_FV,iVarCalc)
+          Utmp(:,:) = Utmp(:,:) +  1./(NCalc_FV+1)*dx * UCalc_FV(:,:,k,iElem_FV,iVarCalc) 
         END DO
         CALL ChangeBasis2D(NCalc_FV,NCalc_DG,Vdm_FVToDG,Utmp,Utmp2)
         UAvg_DG(:,:,iElemAvg,iVarVisu) = UAvg_DG(:,:,iElemAvg,iVarVisu) + Utmp2
@@ -293,9 +304,12 @@ DO iElem_FV = 1,nElems_FV                ! iterate over all FV elements
   END IF
 END DO
 
-! divide average solutions by the number of elements in the average direction
-UAvg_DG = UAvg_DG / nElems_IJK(3)
-UAvg_FV = UAvg_FV / nElems_IJK(3)
+DO iElem_DG = 1,nElemsAvg2D_DG
+  UAvg_DG(:,:,iElem_DG,:) = UAvg_DG(:,:,iElem_DG,:) / dxSum_DG(iElem_DG)
+END DO
+DO iElem_FV = 1,nElemsAvg2D_FV
+  UAvg_FV(:,:,iElem_FV,:) = UAvg_FV(:,:,iElem_FV,:) / dxSum_FV(iElem_FV)
+END DO
 
 DO iVar=startIndexMapVarCalc,endIndexMapVarCalc
   iVarVisu = mapAllVarsToVisuVars(iVar)
