@@ -356,10 +356,16 @@ SELECT CASE(DepName_low)
     UCalc(:,iVarCalc) = SQRT(FillVorticity(1,nVal,gradUx,gradUy,gradUz)**2 &
                            + FillVorticity(2,nVal,gradUx,gradUy,gradUz)**2 &
                            + FillVorticity(3,nVal,gradUx,gradUy,gradUz)**2)
-  CASE("helicity")
-    UCalc(:,iVarCalc) = SQRT(FillVorticity(1,nVal,gradUx,gradUy,gradUz)*UCalc(:,iMom1)/UCalc(:,iDens) &
-                            +FillVorticity(2,nVal,gradUx,gradUy,gradUz)*UCalc(:,iMom2)/UCalc(:,iDens) &
-                            +FillVorticity(3,nVal,gradUx,gradUy,gradUz)*UCalc(:,iMom3)/UCalc(:,iDens))
+  CASE("normalizedhelicity")
+    ! calculate normalized helicity:
+    ! helicity = scalar product of velocity and vorticity
+    ! normalized helicity = helicity divided by magnitude of velocity times magnitude of vorticity
+    ! Will effectively return the cosine of the angle between velocity and vorticity and is thus
+    ! normalized between -1 and 1.
+    UCalc(:,iVarCalc) =  FillVorticity(1,nVal,gradUx,gradUy,gradUz)*UCalc(:,iMom1)/UCalc(:,iDens) &
+                        +FillVorticity(2,nVal,gradUx,gradUy,gradUz)*UCalc(:,iMom2)/UCalc(:,iDens) &
+                        +FillVorticity(3,nVal,gradUx,gradUy,gradUz)*UCalc(:,iMom3)/UCalc(:,iDens)
+    ! Catch division by very small values of magnitude of velocity times magnitude of vorticity
     UCalc(:,iVarCalc) = MERGE(0., UCalc(:,iVarCalc)/(UCalc(:,iVelM)*UCalc(:,iVorM)),ABS(UCalc(:,iVelM)*UCalc(:,iVorM)).LE.1e-12)
   CASE("lambda2")
     UCalc(:,iVarCalc) = FillLambda2(nVal,gradUx,gradUy,gradUz)

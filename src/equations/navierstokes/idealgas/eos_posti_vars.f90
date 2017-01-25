@@ -36,16 +36,16 @@ INTEGER,PARAMETER :: nVarDepEOS=19
 !           e                                                               W
 !           r                                                               a 
 !           g                                                               l
-!           y                    E                        V                 l
-!           S            V       n       P                o                 F
-!           t            e     E t   T   r                r                 r W
-!           a            l     n h   o   e                t                 i a
-! W         g            o     e a   t   s                i                 c l
-! i         n            c V   r l   a T s                c           W W W t l
-! t         a            i e   g p   l o u                i           a a a i H
-! h         t         T  t l   y y   T t r                t           l l l o e
-! D         i         e  y o   S S   e a e          V V V y     D Q   l l l n a
-! G   M M M o V V V   m  M c   t t   m l T          o o o M     i C S F F F M t
+!           y                    E                        V N               l
+!           S            V       n       P                o o               F
+!           t            e     E t   T   r                r r               r W
+!           a            l     n h   o   e                t m               i a
+! W         g            o     e a   t   s                i a               c l
+! i         n            c V   r l   a T s                c l         W W W t l
+! t         a            i e   g p   l o u                i i         a a a i H
+! h         t         T  t l   y y   T t r                t z         l l l o e
+! D         i         e  y o   S S   e a e          V V V y e   D Q   l l l n a
+! G   M M M o V V V   m  M c   t t   m l T          o o o M d   i C S F F F M t
 ! O   o o o n e e e P p  a i   a a   p P i          r r r a H   l r c r r r a T
 ! p D m m m D l l l r e  g t   g g E e r m          t t t g e L a i h i i i g r
 ! e e e e e e o o o e r  n y   n n n r e e          i i i n l a t t l c c c n a
@@ -80,7 +80,7 @@ INTEGER,DIMENSION(1:nVarDepEOS,0:nVarDepEOS),PARAMETER :: DepTableEOS = TRANSPOS
   1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0         ,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !21 VorticityY
   1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0         ,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !22 VorticityZ
   1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0         ,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !23 VorticityMagnitude
-  1,1,1,1,1,0,0,0,0,0,0, 1,0,0,0,0,0,0,0,0         ,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !24 Helicity
+  1,1,1,1,1,0,0,0,0,0,0, 1,0,0,0,0,0,0,0,0         ,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !24 NormalizedHelicity
   1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0         ,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !25 Lambda2
   1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0         ,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !26 Dilatation
   1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0         ,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !27 QCriterion
@@ -167,7 +167,7 @@ CHARACTER(LEN=255),DIMENSION(nVarDepEOS),PARAMETER :: DepNames = &
 "VorticityY"               ,& !21
 "VorticityZ"               ,& !22
 "VorticityMagnitude"       ,& !23
-"Helicity"                 ,& !24
+"NormalizedHelicity"       ,& !24
 "Lambda2"                  ,& !25
 "Dilatation"               ,& !26
 "QCriterion"               ,& !27
