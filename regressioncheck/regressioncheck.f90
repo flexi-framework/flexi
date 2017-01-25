@@ -7,8 +7,8 @@
 !> Each example consists of the mesh-file (h5), parameter file, regressiocheck.ini and a reference solution. In order to deal with
 !> different compiler, a relative high tolerance is set to 100*epsMach. Please note, that this scaling factor can be modified by
 !> the user.
-!> Usage: ./regressioncheck run   - uses the already built versions of flexi and only runs the examples with the given executable
-!>        ./regressioncheck build - previous to the execution and comparison step, flexi is built with all possible 
+!> Usage: ./regressioncheck run   - uses the prev. built binaries and only runs the examples with the given executable
+!>        ./regressioncheck build - previous to the execution and comparison step, binaries are built with all possible 
 !>                                - parameter combinations. each combination is tested with each example
 !> error codes are handled by a pointer list and summarized at the end of the program
 !> error codes: 0 - no error
@@ -16,32 +16,28 @@
 !>              2 - computation of example failed
 !>              3 - mismatch in norms
 !>              4 - mismatch in dataset
-!>             77 - no flexi executable found for option run
+!>             77 - no executable found for option run
 !>             99 - fail of execute_system_command
 !==================================================================================================================================
 PROGRAM RegressionCheck
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_RegressionCheck_tools, ONLY: InitExample,CleanExample,GetExampleList,CheckForExecutable,GetCommandLineOption
+USE MOD_RegressionCheck_tools, ONLY: InitExample,GetExampleList,CheckForExecutable,GetCommandLineOption
+USE MOD_RegressionCheck_tools, ONLY: SummaryOfErrors
 USE MOD_RegressionCheck_Run,   ONLY: PerformRegressionCheck
-USE MOD_RegressionCheck_Vars,  ONLY: ExampleNames,Examples,firstError,aError,BuildSolver
-USE MOD_MPI,                   ONLY: InitMPI,DefineParametersMPI
+USE MOD_RegressionCheck_Vars,  ONLY: ExampleNames,Examples,firstError,aError,BuildSolver,nErrors
+USE MOD_RegressionCheck_Vars,  ONLY: CodeNameUppCase,CodeNameLowCase
+USE MOD_MPI,                   ONLY: InitMPI
 USE MOD_Mesh,                  ONLY: FinalizeMesh
-!#ifdef MPI
-!USE MOD_MPI_Vars,            ONLY: NbProc,nMPISides_Proc
-!#endif /*MPI*/
+USE MOD_RegressionCheck_tools, ONLY: REGGIETIME
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                           :: Time                              ! Used to track computation time  
-!INTEGER                        :: iExample                       ! Loop counters 
-!INTEGER                        :: iSTATUS                           ! system-command status
-INTEGER                        :: ioUnit,nReggieBuilds              ! field handler unit and ??
-INTEGER                        :: nErrors                           ! number of errors
-CHARACTER(LEN=500)             :: SYSCOMMAND                        ! string to fit the system command
-CHARACTER(LEN=255)             :: FileName                          ! filename
-CHARACTER(LEN=255)             :: tmpstr                           ! tmp variable
+REAL                           :: EndTime             ! time at the end of the reggie execution
+INTEGER                        :: nReggieBuilds       ! number of different cmake builds (with different flags)
+CHARACTER(LEN=500)             :: SYSCOMMAND          ! string to fit the system command
+CHARACTER(LEN=255)             :: FileName            ! filename
 !==================================================================================================================================
 ! errorcodes
 ALLOCATE(firstError)
@@ -50,13 +46,25 @@ NULLIFY(aError)
 nReggieBuilds=0
 SYSCOMMAND=''
 FileName=''
-ioUnit=GETFREEUNIT()
+!IF(CodeNameUppCase.EQ.'BOLTZPLATZ')CALL InitGlobals() ! only "boltzplatz"
 CALL InitMPI()
-! Define parameters for Converter
+! Check Code Names
+IF(LEN(CodeNameUppCase).NE.LEN(ADJUSTL(TRIM(CodeNameUppCase))))       CALL abort(&
+  __STAMP__&
+  ,'CodeNameUppCase=['//CodeNameUppCase//']: the variable has an incorrect length!')
+IF((CodeNameUppCase.NE.'FLEXI').AND.(CodeNameUppCase.NE.'BOLTZPLATZ'))CALL abort(&
+  __STAMP__&
+  ,'CodeNameUppCase=['//CodeNameUppCase//']: the code name is unknown! Add here if it is correct.')
+IF(LEN(CodeNameLowCase).NE.LEN(ADJUSTL(TRIM(CodeNameLowCase))))       CALL abort(&
+  __STAMP__&
+  ,'CodeNameLowCase=['//CodeNameLowCase//']: the variable has an incorrect length!')
+IF((CodeNameLowCase.NE.'flexi').AND.(CodeNameLowCase.NE.'boltzplatz'))CALL abort(&
+  __STAMP__&
+  ,'CodeNameLowCase=['//CodeNameLowCase//']: the code name is unknown! Add here if it is correct.')
+
 
 SWRITE(UNIT_stdOut,'(132("="))')
-SWRITE(UNIT_stdOut,'(A)') &
-"  Little ReggressionCheck, add nice ASCII art here"
+SWRITE(UNIT_stdOut,'(A)')"  Little ReggressionCheck, add nice ASCII art here"
 SWRITE(UNIT_stdOut,'(132("="))')
 
 ! get the command line option
@@ -66,7 +74,7 @@ CALL GetCommandLineOption()
 IF(.NOT.BuildSolver) CALL CheckForExecutable(Mode=1)
 
 ! Measure regressioncheck runtime 
-StartTime=FLEXITIME()
+StartTime=REGGIETIME()
 
 ! check if examples are checked out and get list
 CALL GetExampleList()
@@ -74,62 +82,22 @@ CALL GetExampleList()
 ! perform the regressioncheck
 CALL PerformRegressionCheck()
 
-
-!   ! clean all successful tests
-!   DO iExample = 1, nExamples
-!     ! insert code here
-!     IF(Examples(iExample)%ErrorStatus.EQ.0) CALL CleanExample(iExample)
-!   END DO ! iExample=1,nExamples
-
 ! deallocate example names and example type
 DEALLOCATE(ExampleNames)
 DEALLOCATE(Examples)
 
 ! Measure processing duration
-Time=FLEXITIME()
-#ifdef MPI
+EndTime=REGGIETIME()
+
+#if MPI
 CALL MPI_FINALIZE(iError)
-IF(iError .NE. 0) &
-  CALL abort(__STAMP__,'MPI finalize error',iError,999.)
+IF(iError .NE. 0) CALL abort(&
+  __STAMP__&
+  ,'MPI finalize error',iError,999.)
 #endif
 
-SWRITE(UNIT_stdOut,'(132("="))')
-nErrors=0
-IF(.NOT.ASSOCIATED(aError))THEN
-  SWRITE(UNIT_stdOut,'(A)') ' No Examples were executed'
-ELSE
-  NULLIFY(aError%nextError) ! nullyfy unused next error pointer
-  SWRITE(UNIT_stdOut,'(A)') ' Summary of Errors (0=no Error): '
-  SWRITE(UNIT_stdOut,'(A)') ' '
-  aError=>firstError ! set aError to first error in list
-  tmpstr=''
-  SWRITE(UNIT_stdOut,'(A45,2x,A20,2x,A10,2x,A10,2x,A65,2x)') 'Example','SubExample','ErrorCode','build','Information'
-  DO WHILE (ASSOCIATED(aError))
-    IF(TRIM(tmpstr).NE.TRIM(aError%Example))THEN
-      SWRITE(UNIT_stdOut,*) ''
-    END IF
-    tmpstr=TRIM(aError%Example)
-    SWRITE(UNIT_stdOut,'(A45,2x)',ADVANCE='no') TRIM(aError%Example)
-    SWRITE(UNIT_stdOut,'(A20,2x)',ADVANCE='no') TRIM(aError%SubExampleOption)
-    SWRITE(UNIT_stdOut,'(I10,2x)',ADVANCE='no') aError%ErrorCode
-    SWRITE(UNIT_stdOut,'(A10,2x)',ADVANCE='no') TRIM(aError%Build)
-    SWRITE(UNIT_stdOut,'(A65,2x)',ADVANCE='no') TRIM(aError%Info)
-    SWRITE(UNIT_stdOut,*) ''
-    IF(aError%ErrorCode.NE.0) nErrors=nErrors+1
-    aError=>aError%nextError
-  END DO
-  SWRITE(UNIT_stdOut,'(A,I4)') ' Number of errors:  ', nErrors
-END IF
+! Print the summary or examples and error codes (if they exist)
+CALL SummaryOfErrors(EndTime)
 
-IF(nErrors.GT.0)THEN
-  SWRITE(UNIT_stdOut,'(132("-"))')
-  SWRITE(UNIT_stdOut,'(A,F8.2,A)') ' RegressionCheck FAILED! [',Time-StartTime,' sec ]'
-  SWRITE(UNIT_stdOut,'(132("-"))')
-  ERROR STOP '999'
-ELSE
-  SWRITE(UNIT_stdOut,'(132("-"))')
-  SWRITE(UNIT_stdOut,'(A,F8.2,A)') ' RegressionCheck SUCCESSFUL! [',Time-StartTime,' sec ]'
-  SWRITE(UNIT_stdOut,'(132("-"))')
-END IF
-SWRITE(UNIT_stdOut,'(132("="))')
+IF(nErrors.GT.0) ERROR STOP '999'
 END PROGRAM RegressionCheck
