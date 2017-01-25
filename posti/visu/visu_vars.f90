@@ -38,6 +38,7 @@ CHARACTER(LEN=255)                :: NodeTypeVisuPosti_old = ""  !< saves previo
 INTEGER                           :: NVisu                       !< polynomial degree of the visualization
 INTEGER                           :: NVisu_old = -1              !< saves previous NVisu
 INTEGER                           :: NVisu_FV                    !< number of output points for FV elements (always == 2*(PP_N+1))
+INTEGER                           :: NCalc_FV                    !< number of calculation points for FV elements (NVisu_FV or PP_N)
 INTEGER                           :: nVar_State                  !< number of variables in the state file 
 INTEGER                           :: nVar_State_old = -1         !< saves previous nVar_State_old
 INTEGER                           :: nElems_DG                   !< number of DG elements in state
@@ -151,5 +152,9 @@ INTEGER                           :: nElemsAvg2D_FV
 INTEGER,ALLOCATABLE               :: mapElemIJToDGElemAvg2D(:,:) ! maps i,j element index to Avg2D DG element index
 INTEGER,ALLOCATABLE               :: mapElemIJToFVElemAvg2D(:,:) ! maps i,j element index to Avg2D FV element index
 
+REAL,ALLOCATABLE                  :: Vdm_DGToFV  (:,:)
+REAL,ALLOCATABLE                  :: Vdm_FVToDG  (:,:)
+REAL,ALLOCATABLE                  :: Vdm_DGToVisu(:,:)
+REAL,ALLOCATABLE                  :: Vdm_FVToVisu(:,:)
 
 END MODULE MOD_Visu_Vars

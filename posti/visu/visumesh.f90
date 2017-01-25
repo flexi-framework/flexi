@@ -81,14 +81,18 @@ REAL,ALLOCATABLE   :: CoordsAvg(:,:,:,:,:)
 SWRITE (*,*) "[MESH] Convert coordinates to visu grid (DG)"
 ALLOCATE(Vdm_N_NVisu(0:NVisu,0:PP_N))
 CALL GetVandermonde(PP_N,NodeType,NVisu   ,NodeTypeVisuPosti  ,Vdm_N_NVisu   ,modal=.FALSE.)
+#if FV_ENABLED
 ALLOCATE(Vdm_N_NVisu_FV(0:NVisu_FV,0:PP_N))
 CALL GetVandermonde(PP_N,NodeType,NVisu_FV,NodeTypeVISUFVEqui,Vdm_N_NVisu_FV,modal=.FALSE.)
+#endif
 ! convert coords of DG elements
 IF (Avg2D) THEN
   SDEALLOCATE(CoordsVisu_DG)
-  SDEALLOCATE(CoordsVisu_FV)
   ALLOCATE(CoordsVisu_DG(3,0:NVisu,0:NVisu,0:0,nElemsAvg2D_DG))
+#if FV_ENABLED
+  SDEALLOCATE(CoordsVisu_FV)
   ALLOCATE(CoordsVisu_FV(3,0:NVisu_FV,0:NVisu_FV,0:0,nElemsAvg2D_FV))
+#endif
   ALLOCATE(CoordsAvg(3,0:PP_N,0:PP_N,nElems_IJK(1),nElems_IJK(2)))
   CoordsAvg = 0.
   DO iElem = 1,nElems
@@ -100,13 +104,17 @@ IF (Avg2D) THEN
     END DO ! k=0,PP_N
   END DO
   DO jj=1,nElems_IJK(2); DO ii=1,nElems_IJK(1)
+#if FV_ENABLED    
     IF (FVAmountAvg2D(ii,jj).LE.0.5) THEN ! DG
+#endif
       iElemAvg = mapElemIJToDGElemAvg2D(ii,jj)
       CALL ChangeBasis2D(3,PP_N,NVisu,Vdm_N_NVisu,CoordsAvg(:,:,:,ii,jj),CoordsVisu_DG(:,:,:,0,iElemAvg))
+#if FV_ENABLED    
     ELSE ! FV
       iElemAvg = mapElemIJToFVElemAvg2D(ii,jj)
       CALL ChangeBasis2D(3,PP_N,NVisu_FV,Vdm_N_NVisu_FV,CoordsAvg(:,:,:,ii,jj),CoordsVisu_FV(:,:,:,0,iElemAvg))
     END IF
+#endif
   END DO; END DO
   DEALLOCATE(CoordsAvg)
 ELSE
