@@ -275,6 +275,7 @@ dtOld=0.
 dtAvg=0.
 
 DEALLOCATE(VarNamesAvgList,VarNamesAvgIni,VarNamesFlucIni)
+DEALLOCATE(VarNamesFlucList)
 END SUBROUTINE InitCalcTimeAverage
 
 
@@ -508,6 +509,7 @@ SDEALLOCATE(UAvg)
 SDEALLOCATE(UFluc)
 SDEALLOCATE(VarNamesAvgOut)
 SDEALLOCATE(VarNamesFlucOut)
+SDEALLOCATE(FlucAvgMap)
 END SUBROUTINE FinalizeTimeAverage
 
 END MODULE MOD_TimeAverage

@@ -97,17 +97,17 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT RECORDPOINTS...'
 RPDefFile=GETSTR('RP_DefFile')                        ! Filename with RP coords
 CALL ReadRPList(RPDefFile) ! RP_inUse is set to FALSE by ReadRPList if no RP is on proc.
 maxRP=nGlobalRP
-#if MPI
+#if USE_MPI
 CALL InitRPCommunicator()
-#endif /*MPI*/
+#endif /*USE_MPI*/
 
 IF(RP_onProc)THEN
   RP_maxMemory=GETINT('RP_MaxMemory','100')           ! Max buffer (100MB)
   RP_SamplingOffset=GETINT('RP_SamplingOffset','1')   ! Sampling offset (iteration)
   maxRP=nGlobalRP
-# if MPI
+#if USE_MPI
   CALL MPI_ALLREDUCE(nRP,maxRP,1,MPI_INTEGER,MPI_MAX,RP_COMM,iError)
-# endif /*MPI*/
+# endif /*USE_MPI*/
   RP_MaxBufferSize = RP_MaxMemory*131072/(maxRP*(PP_nVar+1)) != size in bytes/(real*maxRP*nVar)
   ALLOCATE(lastSample(0:PP_nVar,nRP))
   lastSample=0.
@@ -119,7 +119,7 @@ SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitRecordPoints
 
 
-#if MPI
+#if USE_MPI
 !==================================================================================================================================
 !> Read RP parameters from ini file and RP definitions from HDF5
 !==================================================================================================================================
@@ -170,7 +170,7 @@ IF(RP_onProc) CALL MPI_COMM_SIZE(RP_COMM, nRP_Procs,iError)
 IF(myRPrank.EQ.0 .AND. RP_onProc) WRITE(*,*) 'RP COMM:',nRP_Procs,'procs'
 
 END SUBROUTINE InitRPCommunicator
-#endif /*MPI*/
+#endif /*USE_MPI*/
 
 
 !==================================================================================================================================
@@ -434,7 +434,7 @@ IF(myRPrank.EQ.0)THEN
   CALL CloseDataFile()
 END IF
 
-#if MPI
+#if USE_MPI
 CALL MPI_BARRIER(RP_COMM,iError)
 CALL OpenDataFile(Filestring,create=.FALSE.,single=.FALSE.,readOnly=.FALSE.,communicatorOpt=RP_COMM)
 #else

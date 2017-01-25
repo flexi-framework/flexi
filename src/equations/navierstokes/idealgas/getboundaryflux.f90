@@ -118,9 +118,9 @@ DO iSide=1,nBCSides
                'No inflow refstate (Tt,alpha,beta,empty,pT) in refstate defined for BC_TYPE',locType)
 END DO
 MaxBCStateGLobal=MaxBCState
-#if MPI
+#if USE_MPI
 CALL MPI_ALLREDUCE(MPI_IN_PLACE,MaxBCStateGlobal,1,MPI_INTEGER,MPI_MAX,MPI_COMM_WORLD,iError)
-#endif /*MPI*/
+#endif /*USE_MPI*/
 
 ! Sanity check for BCs
 IF(MaxBCState.GT.nRefState)THEN
@@ -191,7 +191,7 @@ USE MOD_EOS          ,ONLY: ConsToPrim,PrimtoCons
 USE MOD_EOS          ,ONLY: PRESSURE_RIEMANN
 USE MOD_EOS_Vars     ,ONLY: sKappaM1,Kappa,KappaM1,R
 USE MOD_ExactFunc    ,ONLY: ExactFunc
-USE MOD_Equation_Vars,ONLY: IniExactFunc,BCDataPrim,RefStatePrim
+USE MOD_Equation_Vars,ONLY: IniExactFunc,BCDataPrim,RefStatePrim,nRefState
 #if FV_ENABLED
 USE MOD_FV_Vars      ,ONLY: FV_Elems_master
 #endif
@@ -215,6 +215,7 @@ REAL,INTENT(OUT)        :: UPrim_boundary(PP_nVarPrim,0:Nloc,0:Nloc)            
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                 :: p,q
+REAL                    :: absdiff(1:nRefState)
 INTEGER                 :: BCType,BCState
 REAL,DIMENSION(PP_nVar) :: Cons
 REAL                    :: MaOut
@@ -308,7 +309,12 @@ CASE(3,4,9,23,24,25,27)
       vmag=SUM(UPrim_boundary(2:4,p,q)*UPrim_boundary(2:4,p,q))
       ! if subsonic use specified pressure, else use solution from the inside
       IF(vmag<c)THEN
-        pb        = RefStatePrim(BCState,5)
+        IF (BCState.GT.0) THEN
+          pb = RefStatePrim(BCState,5)
+        ELSE
+          absdiff = ABS(RefStatePrim(:,5) - UPrim_boundary(5,p,q))
+          pb = RefStatePrim(MINLOC(absdiff,1),5)
+        END IF
         UPrim_boundary(1,p,q)=kappa*pb/c
         UPrim_boundary(5,p,q)=pb
         UPrim_boundary(6,p,q)=UPrim_boundary(5,p,q)/(R*UPrim_boundary(1,p,q))

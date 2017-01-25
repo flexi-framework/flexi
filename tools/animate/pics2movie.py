@@ -11,8 +11,9 @@ import shutil
 parser = argparse.ArgumentParser(description='Merge pictures to movie')
 parser.add_argument('-t','--trim', help='Trim pictures before merge', action='store_true')
 parser.add_argument('-f','--fps', type=int, default=10, help='Frames per second')
-parser.add_argument('-b','--bitrate', type=int, default=10000, help='Bitrate of movie')
+parser.add_argument('-b','--bitrate', type=int, default=3000, help='Bitrate of movie')
 parser.add_argument('-o','--output', type=str, default='output.avi', help='Output-Filename')
+parser.add_argument('-c','--codec', type=str, default='h264', help='Codec (h264,mp4) default: h264')
 parser.add_argument('pictures', nargs='+', help='Picture to animate')
 
 args = parser.parse_args()
@@ -60,9 +61,14 @@ cmd.append('fps=%d' % args.fps)
 cmd.append('-o')
 cmd.append('%s' % args.output)
 cmd.append('-ovc')
-cmd.append('lavc')
-cmd.append('-lavcopts')
-cmd.append('vcodec=msmpeg4v2:vbitrate=%d' % args.bitrate)
+if args.codec == "mp4" :
+    cmd.append('lavc')
+    cmd.append('-lavcopts')
+    cmd.append('vcodec=msmpeg4v2:vbitrate=%d' % args.bitrate)
+elif args.codec == "h264" :
+    cmd.append('x264')
+    cmd.append('-x264encopts')
+    cmd.append('preset=veryslow:tune=film:crf=15:frameref=15:fast_pskip=0:bitrate=%d:threads=auto' % args.bitrate)
 p = subprocess.Popen(cmd)
 p.wait()
 print 'done'

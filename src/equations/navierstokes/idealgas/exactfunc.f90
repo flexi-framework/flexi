@@ -103,12 +103,12 @@ SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT EXACT FUNCTION...'
 
 IniExactFunc = GETINTFROMSTR('IniExactFunc')
+IniRefState  = GETINT('IniRefState', "-1")
 ! Read in boundary parameters
 SELECT CASE (IniExactFunc)
-CASE(2,3,4,41,42,43) ! synthetic test cases
+CASE(2,21,3,4,41,42,43) ! synthetic test cases
   AdvVel       = GETREALARRAY('AdvVel',3)
 CASE(7) ! Shu Vortex
-  IniRefState  = GETINT('IniRefState')
   IniCenter    = GETREALARRAY('IniCenter',3,'(/0.,0.,0./)')
   IniAxis      = GETREALARRAY('IniAxis',3,'(/0.,0.,1./)')
   IniAmplitude = GETREAL('IniAmplitude','0.2')
@@ -122,7 +122,6 @@ CASE(10) ! shock
 CASE(11) ! Sod shock tube
 CASE(13) ! Double Mach Reflection
 CASE DEFAULT
-  IniRefState  = GETINT('IniRefState')
 END SELECT ! IniExactFunc
 
 SWRITE(UNIT_stdOut,'(A)')' INIT EXACT FUNCTION DONE!'
@@ -208,6 +207,33 @@ CASE(2) ! sinus
     Resu_t(5)=0.5*Resu_t(1)*SUM(prim(2:4)*prim(2:4))
     ! g''(t)
     Resu_tt(1)=-Amplitude*sin(Omega*SUM(cent(1:3)))*ov**2.
+    Resu_tt(2:4)=Resu_tt(1)*prim(2:4)
+    Resu_tt(5)=0.5*Resu_tt(1)*SUM(prim(2:4)*prim(2:4))
+  END IF
+CASE(21) ! sinus x
+  Frequency=0.5
+  Amplitude=0.3
+  Omega=2.*PP_Pi*Frequency
+  ! base flow
+  prim(1)   = 1.
+  prim(2:4) = AdvVel
+  prim(5)   = 1.
+  Vel=prim(2:4)
+  cent=x-Vel*tEval
+  prim(1)=prim(1)*(1.+Amplitude*SIN(Omega*cent(1)))
+  ! g(t)
+  Resu(1)=prim(1) ! rho
+  Resu(2:4)=prim(1)*prim(2:4) ! rho*vel
+  Resu(5)=prim(5)*sKappaM1+0.5*prim(1)*SUM(prim(2:4)*prim(2:4)) ! rho*e
+
+  IF(fullBoundaryOrder)THEN
+    ov=Omega*SUM(vel)
+    ! g'(t)
+    Resu_t(1)=-Amplitude*cos(Omega*cent(1))*ov
+    Resu_t(2:4)=Resu_t(1)*prim(2:4) ! rho*vel
+    Resu_t(5)=0.5*Resu_t(1)*SUM(prim(2:4)*prim(2:4))
+    ! g''(t)
+    Resu_tt(1)=-Amplitude*sin(Omega*cent(1))*ov**2.
     Resu_tt(2:4)=Resu_tt(1)*prim(2:4)
     Resu_tt(5)=0.5*Resu_tt(1)*SUM(prim(2:4)*prim(2:4))
   END IF
@@ -448,6 +474,19 @@ CASE(11) ! Sod Shock tube
   ELSE
     Resu = RefStateCons(2,:)
   END IF
+CASE(12) ! Shu Osher density fluctuations shock wave interaction 
+  IF (x(1).LT.-4.0) THEN
+    prim(1) = 3.857143
+    prim(2) = 2.629369
+    prim(3:4) = 0.
+    prim(5) = 10.33333
+  ELSE
+    prim(1) = 1.+0.2*SIN(5.*x(1))
+    prim(2:4) = 0.
+    prim(5) = 1.
+  END IF
+  CALL PrimToCons(prim,resu)
+
 CASE(13) ! DoubleMachReflection (see e.g. http://www.astro.princeton.edu/~jstone/Athena/tests/dmr/dmr.html )
   IF (x(1).EQ.0.) THEN
     prim = RefStatePrim(1,:)

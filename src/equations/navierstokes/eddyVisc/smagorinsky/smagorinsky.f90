@@ -49,10 +49,10 @@ USE MOD_Interpolation_Vars,   ONLY:wGP
 USE MOD_Mesh_Vars,            ONLY:sJ,nSides
 USE MOD_Mesh_Vars,            ONLY:ElemToSide
 USE MOD_Testcase_Vars,        ONLY:testcase
-#if MPI
+#if USE_MPI
 USE MOD_MPI,                  ONLY:StartReceiveMPIData,FinishExchangeMPIData,StartSendMPIData
 USE MOD_MPI_Vars,             ONLY:MPIRequest_DeltaS,nNbProcs
-#endif /*MPI*/ 
+#endif /*USE_MPI*/ 
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -100,12 +100,12 @@ DO iElem=1,nElems
      END IF
   END DO
 END DO
-#if MPI
+#if USE_MPI
 ! Send YOUR - receive MINE
 CALL StartReceiveMPIData(DeltaS_slave, 1, 1,nSides,MPIRequest_DeltaS( :,SEND),SendID=1)
 CALL StartSendMPIData(   DeltaS_slave, 1, 1,nSides,MPIRequest_DeltaS( :,RECV),SendID=1)
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_DeltaS ) !Send MINE -receive YOUR
-#endif /*MPI*/
+#endif /*USE_MPI*/
 
 SmagorinskyInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT SMAGORINSKY DONE!'

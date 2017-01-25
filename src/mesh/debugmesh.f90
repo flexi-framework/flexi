@@ -45,7 +45,7 @@ USE MOD_PreProc
 USE MOD_Output_Vars,ONLY:NVisu,Vdm_GaussN_NVisu
 USE MOD_Mesh_Vars,  ONLY:nElems,Elem_xGP,ElemToSide,BC,nBCSides
 USE MOD_ChangeBasis,ONLY:ChangeBasis3D
-USE MOD_VTK,        ONLY:writeDataToVTK3D
+USE MOD_VTK,        ONLY:WriteDataToVTK
 IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -53,10 +53,12 @@ IMPLICIT NONE
 INTEGER,INTENT(IN):: debugMesh !< file type to be used: 1-2: Tecplot format (deprecated), 3: Paraview format
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER           :: iElem,iLocSide,SideID,bctype_loc
-CHARACTER(LEN=32) :: VarNames(6)
-REAL,ALLOCATABLE  :: debugVisu(:,:,:,:,:)
-REAL,ALLOCATABLE  :: X_NVisu(:,:,:,:,:)
+INTEGER                  :: iElem,iLocSide,SideID,bctype_loc
+CHARACTER(LEN=32)        :: VarNames(6)
+REAL,ALLOCATABLE,TARGET  :: debugVisu(:,:,:,:,:)
+REAL,POINTER             :: debugVisu_p(:,:,:,:,:)
+REAL,ALLOCATABLE,TARGET  :: X_NVisu(:,:,:,:,:)
+REAL,POINTER             :: X_NVisu_p(:,:,:,:,:)
 !==================================================================================================================================
 IF(debugMesh.LE.0) RETURN
 
@@ -125,9 +127,13 @@ CASE(1)
 CASE(2)
   STOP 'Tecplot Output removed (license issues)'
 CASE(3)
-  CALL WriteDataToVTK3D(         NVisu,nElems,6,  VarNames,X_NVisu,debugVisu,'Debugmesh.vtu')
+  X_NVisu_p => X_NVisu
+  debugVisu_p => debugVisu
+  CALL WriteDataToVTK(5,NVisu,nElems,VarNames,X_NVisu_p,debugVisu_p,'Debugmesh.vtu',dim=3)
 END SELECT
 
+DEALLOCATE(X_NVisu)
+DEALLOCATE(debugVisu)
 SWRITE(UNIT_stdOut,'(A)')' WRITE DEBUGMESH DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE WriteDebugMesh
