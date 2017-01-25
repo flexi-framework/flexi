@@ -371,8 +371,7 @@ USE MOD_Interpolation_Vars ,ONLY: NodeType,NodeTypeVisu
 USE MOD_Interpolation_Vars ,ONLY: L_Minus,L_Plus
 USE MOD_ProlongToFace      ,ONLY: EvalElemFace
 USE MOD_Mappings           ,ONLY: buildMappings
-USE MOD_Visu_Avg2D         ,ONLY: Average2D
-USE MOD_FV_Basis           ,ONLY: FV_GetVandermonde
+USE MOD_Visu_Avg2D         ,ONLY: Average2D,BuildVandermonds_Avg2D
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES 
@@ -393,13 +392,8 @@ INTEGER                        :: mapIdentityDG(nElems)
 INTEGER                        :: mapIdentityFV(nElems)
 INTEGER                        :: mapVarIdentity(1)
 REAL,ALLOCATABLE               :: FieldData_DG(:,:,:,:,:),FieldData_FV(:,:,:,:,:)
-
-REAL,ALLOCATABLE :: Vdm_DGToFV  (:,:)
-REAL,ALLOCATABLE :: Vdm_FVToDG  (:,:)
-REAL,ALLOCATABLE :: Vdm_DGToVisu(:,:)
-REAL,ALLOCATABLE :: Vdm_FVToVisu(:,:)
-REAL,ALLOCATABLE :: FVdouble(:,:)
-INTEGER           :: i
+INTEGER                        :: i
+REAL,ALLOCATABLE               :: FVdouble(:,:)
 !===================================================================================================================================
 SWRITE(*,*) "Convert generic datasets to Visu grid"
 ! Open HDF5 file
@@ -533,8 +527,6 @@ DO iVar=nVarDep+1,nVarAll
             CALL CollectiveStop(__STAMP__,&
                 "Avg2D only works for FieldData on PP_N!")
           END IF
-          SDEALLOCATE(FieldData_DG)
-          SDEALLOCATE(FieldData_FV)
           ALLOCATE(FieldData_DG(0:nSize-1,0:nSize-1,0:nSize-1,nElems_DG,1))
           ALLOCATE(FieldData_FV(0:nSize-1,0:nSize-1,0:nSize-1,nElems_FV,1))
           DO iElem_DG=1,nElems_DG
@@ -543,21 +535,14 @@ DO iVar=nVarDep+1,nVarAll
           DO iElem_FV=1,nElems_FV
             FieldData_FV(:,:,:,iElem_FV,1) = FieldData(iVarDataset,:,:,:,mapFVElemsToAllElems(iElem_FV))
           END DO
-      ALLOCATE(Vdm_DGToFV  (0:nSize-1 ,0:nSize-1))
-      ALLOCATE(Vdm_FVToDG  (0:nSize-1 ,0:nSize-1))
-      ALLOCATE(Vdm_DGToVisu(0:NVisu   ,0:nSize-1))
-      ALLOCATE(FVdouble(0:NVisu_FV,0:nSize-1))
-      FVdouble = 0.
-      DO i = 0, nSize-1
-        FVdouble(i*2  ,i) = 1. 
-        FVdouble(i*2+1,i) = 1.
-      END DO ! i = 0, nSize-1
-      CALL FV_GetVandermonde(nSize-1,NodeType,Vdm_DGToFV,Vdm_FVToDG)
-      CALL GetVandermonde(PP_N,NodeType,NVisu,NodeTypeVisuPosti,Vdm_DGToVisu,modal=.FALSE.)
+
+          CALL BuildVandermonds_Avg2D(nSize-1,nSize-1)
           CALL Average2D(1,1,nSize-1,nSize-1,nElems_DG,nElems_FV,NodeType,&
               FieldData_DG,FieldData_FV, &
               Vdm_DGToFV,Vdm_FVToDG,Vdm_DGToVisu,FVdouble, &
               iVar,iVar,mapVarIdentity,UVisu_DG,UVisu_FV)
+          DEALLOCATE(FieldData_DG)
+          DEALLOCATE(FieldData_FV)
         ELSE
           ! Perform changebasis to visu grid
           DO iElem_DG=1,nElems_DG

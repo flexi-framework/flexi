@@ -28,13 +28,147 @@ PRIVATE
 ! Private Part ---------------------------------------------------------------------------------------------------------------------
 ! Public Part ----------------------------------------------------------------------------------------------------------------------
 
+INTERFACE InitAverage2D
+  MODULE PROCEDURE InitAverage2D
+END INTERFACE
+
+INTERFACE BuildVandermonds_Avg2D
+  MODULE PROCEDURE BuildVandermonds_Avg2D
+END INTERFACE
+
 INTERFACE Average2D
   MODULE PROCEDURE Average2D
 END INTERFACE
 
+PUBLIC:: InitAverage2D
+PUBLIC:: BuildVandermonds_Avg2D
 PUBLIC:: Average2D
 
 CONTAINS
+
+SUBROUTINE InitAverage2D()
+USE MOD_PreProc
+USE MOD_Globals
+USE MOD_Visu_Vars
+USE MOD_HDF5_Input         ,ONLY: ISVALIDMESHFILE,ISVALIDHDF5FILE,GetArrayAndName
+USE MOD_HDF5_Input         ,ONLY: ReadAttribute,File_ID,OpenDataFile,GetDataProps,CloseDataFile,ReadArray,DatasetExists
+USE MOD_Mesh_Vars          ,ONLY: nElems,offsetElem
+IMPLICIT NONE
+! INPUT / OUTPUT VARIABLES 
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+LOGICAL                          :: exists
+INTEGER                          :: ii,jj,iElem
+!===================================================================================================================================
+CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+CALL DatasetExists(File_ID,'nElems_IJK',exists)
+IF (exists) THEN
+  SDEALLOCATE(Elem_IJK)
+  ALLOCATE(Elem_IJK(3,nElems))
+  CALL ReadArray('nElems_IJK',1,(/3/),0,1,IntegerArray=nElems_IJK)
+  CALL ReadArray('Elem_IJK',2,(/3,nElems/),offsetElem,2,IntegerArray=Elem_IJK)
+ELSE 
+  CALL CollectiveStop(__STAMP__,&
+      "No Elem_IJK sorting found in mesh file. Required for Avg2D!")
+END IF
+CALL CloseDataFile()
+
+SDEALLOCATE(FVAmountAvg2D)
+ALLOCATE(FVAmountAvg2D(nElems_IJK(1),nElems_IJK(2)))
+FVAmountAvg2D = 0.
+DO iElem=1,nElems
+  ii = Elem_IJK(1,iElem)
+  jj = Elem_IJK(2,iElem)
+  FVAmountAvg2D(ii,jj) = FVAmountAvg2D(ii,jj) + FV_Elems_loc(iElem)
+END DO
+FVAmountAvg2D = FVAmountAvg2D / REAL(nElems_IJK(3))
+
+nElemsAvg2D_DG = 0
+nElemsAvg2D_FV = 0
+SDEALLOCATE(mapElemIJToDGElemAvg2D)
+SDEALLOCATE(mapElemIJToFVElemAvg2D)
+ALLOCATE(mapElemIJToDGElemAvg2D(nElems_IJK(1),nElems_IJK(2)))
+ALLOCATE(mapElemIJToFVElemAvg2D(nElems_IJK(1),nElems_IJK(2)))
+mapElemIJToDGElemAvg2D = 0
+mapElemIJToDGElemAvg2D = 0
+DO iElem=1,nElems
+  IF (Elem_IJK(3,iElem).EQ.1) THEN
+    ii = Elem_IJK(1,iElem)
+    jj = Elem_IJK(2,iElem)
+    IF (FVAmountAvg2D(ii,jj).LE.0.5) THEN
+      nElemsAvg2D_DG = nElemsAvg2D_DG + 1
+      mapElemIJToDGElemAvg2D(ii,jj) = nElemsAvg2D_DG
+    ELSE
+      nElemsAvg2D_FV = nElemsAvg2D_FV + 1
+      mapElemIJToFVElemAvg2D(ii,jj) = nElemsAvg2D_FV
+    END IF
+  END IF
+END DO
+END SUBROUTINE InitAverage2D
+
+SUBROUTINE BuildVandermonds_Avg2D(NCalc_DG,NCalc_FV) 
+USE MOD_Globals
+USE MOD_PreProc
+USE MOD_Visu_Vars          ,ONLY: Vdm_DGToFV,Vdm_FVToDG,Vdm_DGToVisu,Vdm_FVToVisu,NodeTypeVisuPosti
+USE MOD_Visu_Vars          ,ONLY: NVisu,NVisu_FV
+USE MOD_Interpolation      ,ONLY: GetVandermonde
+USE MOD_Interpolation_Vars ,ONLY: NodeType
+#if FV_ENABLED
+USE MOD_FV_Basis           ,ONLY: FV_GetVandermonde
+#endif
+IMPLICIT NONE
+! INPUT / OUTPUT VARIABLES 
+INTEGER,INTENT(IN) :: NCalc_DG,NCalc_FV
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL,ALLOCATABLE   :: FV_Vdm(:,:),FV_sVdm(:,:)
+REAL,ALLOCATABLE   :: FVdouble(:,:)
+INTEGER            :: i
+!===================================================================================================================================
+SDEALLOCATE(Vdm_DGToFV)
+SDEALLOCATE(Vdm_FVToDG)
+SDEALLOCATE(Vdm_DGToVisu)
+SDEALLOCATE(Vdm_FVToVisu)
+#if FV_ENABLED
+ALLOCATE(Vdm_DGToFV  (0:NCalc_FV,0:NCalc_DG))
+ALLOCATE(Vdm_FVToDG  (0:NCalc_DG,0:NCalc_FV))
+ALLOCATE(Vdm_DGToVisu(0:NVisu   ,0:NCalc_DG))
+ALLOCATE(Vdm_FVToVisu(0:NVisu_FV,0:NCalc_FV))
+ALLOCATE(FVdouble(0:NVisu_FV,0:PP_N))
+FVdouble = 0.
+DO i = 0, PP_N
+  FVdouble(i*2  ,i) = 1. 
+  FVdouble(i*2+1,i) = 1.
+END DO ! i = 0, PP_N
+
+IF (NCalc_FV.EQ.NCalc_DG) THEN
+  CALL FV_GetVandermonde(PP_N,NodeType, Vdm_DGToFV, Vdm_FVToDG)
+  Vdm_FVToVisu = FVdouble
+ELSE IF (NCalc_FV.EQ.(PP_N+1)*2-1) THEN
+  ALLOCATE(FV_Vdm  (0:PP_N    ,0:PP_N))
+  ALLOCATE(FV_sVdm (0:PP_N    ,0:PP_N))
+  CALL FV_GetVandermonde(PP_N,NodeType, FV_Vdm, FV_sVdm)
+  Vdm_DGToFV = MATMUL(FVdouble,FV_Vdm)
+  Vdm_FVToDG = MATMUL(FV_sVdm,TRANSPOSE(FVdouble))
+  Vdm_FVToVisu = 0.
+  DO i = 0, NVisu_FV
+    Vdm_FVToVisu(i,i) = 1.
+  END DO
+  DEALLOCATE(FV_Vdm)
+  DEALLOCATE(FV_sVdm)
+ELSE
+  CALL CollectiveStop(__STAMP__,&
+      "BuildVandermonds_Avg2D called with wrong NCalc_DG and NCalc_FV")
+END IF
+DEALLOCATE(FVdouble)
+#else
+ALLOCATE(Vdm_DGToFV  (0:0       ,0:NCalc_DG))
+ALLOCATE(Vdm_FVToDG  (0:NCalc_DG,0:0       ))
+ALLOCATE(Vdm_DGToVisu(0:NVisu   ,0:NCalc_DG))
+ALLOCATE(Vdm_FVToVisu(0:NVisu_FV,0:0       ))
+#endif
+CALL GetVandermonde(NCalc_DG,NodeType,NVisu,NodeTypeVisuPosti,Vdm_DGToVisu,modal=.FALSE.)
+END SUBROUTINE BuildVandermonds_Avg2D
 
 SUBROUTINE Average2D(nVarCalc_DG,nVarCalc_FV,NCalc_DG,NCalc_FV,nElems_DG,nElems_FV,&
     NodeTypeCalc_DG,UCalc_DG,UCalc_FV,&

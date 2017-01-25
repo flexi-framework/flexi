@@ -207,17 +207,14 @@ USE MOD_Output_Vars        ,ONLY: ProjectName
 USE MOD_StringTools        ,ONLY: STRICMP
 USE MOD_ReadInTools        ,ONLY: prms,GETINT,GETLOGICAL,addStrListEntry,GETSTR,CountOption,FinalizeParameters
 USE MOD_Posti_Mappings     ,ONLY: Build_FV_DG_distribution,Build_mapDepToCalc_mapAllVarsToVisuVars
-USE MOD_Mesh_Vars          ,ONLY: nElems,offsetElem
-
+USE MOD_Visu_Avg2D         ,ONLY: InitAverage2D,BuildVandermonds_Avg2D
 IMPLICIT NONE
 CHARACTER(LEN=255),INTENT(IN)    :: statefile
 CHARACTER(LEN=255),INTENT(INOUT) :: postifile
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL
-INTEGER                          :: nElems_State,iElem
+INTEGER                          :: nElems_State
 CHARACTER(LEN=255)               :: NodeType_State 
-LOGICAL                          :: exists
-INTEGER                          :: ii,jj
 !===================================================================================================================================
 CALL visu_getVarNamesAndFileType(statefile,VarnamesAll,BCNamesAll)
 IF (STRICMP(statefile,'Mesh')) THEN
@@ -303,50 +300,8 @@ IF (hasFV_Elems) withDGOperator = .TRUE.
 CALL Build_mapDepToCalc_mapAllVarsToVisuVars()
 
 IF (Avg2D) THEN
-  CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
-  CALL DatasetExists(File_ID,'nElems_IJK',exists)
-  IF (exists) THEN
-    SDEALLOCATE(Elem_IJK)
-    ALLOCATE(Elem_IJK(3,nElems))
-    CALL ReadArray('nElems_IJK',1,(/3/),0,1,IntegerArray=nElems_IJK)
-    CALL ReadArray('Elem_IJK',2,(/3,nElems/),offsetElem,2,IntegerArray=Elem_IJK)
-  ELSE 
-    CALL CollectiveStop(__STAMP__,&
-        "No Elem_IJK sorting found in mesh file. Required for Avg2D!")
-  END IF
-  CALL CloseDataFile()
-
-  SDEALLOCATE(FVAmountAvg2D)
-  ALLOCATE(FVAmountAvg2D(nElems_IJK(1),nElems_IJK(2)))
-  FVAmountAvg2D = 0.
-  DO iElem=1,nElems
-    ii = Elem_IJK(1,iElem)
-    jj = Elem_IJK(2,iElem)
-    FVAmountAvg2D(ii,jj) = FVAmountAvg2D(ii,jj) + FV_Elems_loc(iElem)
-  END DO
-  FVAmountAvg2D = FVAmountAvg2D / REAL(nElems_IJK(3))
-
-  nElemsAvg2D_DG = 0
-  nElemsAvg2D_FV = 0
-  SDEALLOCATE(mapElemIJToDGElemAvg2D)
-  SDEALLOCATE(mapElemIJToFVElemAvg2D)
-  ALLOCATE(mapElemIJToDGElemAvg2D(nElems_IJK(1),nElems_IJK(2)))
-  ALLOCATE(mapElemIJToFVElemAvg2D(nElems_IJK(1),nElems_IJK(2)))
-  mapElemIJToDGElemAvg2D = 0
-  mapElemIJToDGElemAvg2D = 0
-  DO iElem=1,nElems
-    IF (Elem_IJK(3,iElem).EQ.1) THEN
-      ii = Elem_IJK(1,iElem)
-      jj = Elem_IJK(2,iElem)
-      IF (FVAmountAvg2D(ii,jj).LE.0.5) THEN
-        nElemsAvg2D_DG = nElemsAvg2D_DG + 1
-        mapElemIJToDGElemAvg2D(ii,jj) = nElemsAvg2D_DG
-      ELSE
-        nElemsAvg2D_FV = nElemsAvg2D_FV + 1
-        mapElemIJToFVElemAvg2D(ii,jj) = nElemsAvg2D_FV
-      END IF
-    END IF
-  END DO
+  CALL InitAverage2D()
+  CALL BuildVandermonds_Avg2D(PP_N,NCalc_FV)
 END IF
 
 changedWithDGOperator = (withDGOperator.NEQV.withDGOperator_old)
@@ -377,7 +332,6 @@ USE MOD_Posti_VisuMesh      ,ONLY: BuildVisuCoords,BuildSurfVisuCoords
 USE MOD_Posti_Mappings      ,ONLY: Build_mapBCSides
 USE MOD_Visu_Avg2D          ,ONLY: Average2D
 USE MOD_Interpolation_Vars  ,ONLY: NodeType,NodeTypeVISUFVEqui
-USE MOD_Interpolation       ,ONLY: GetVandermonde
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)               :: mpi_comm_IN    
@@ -387,12 +341,6 @@ CHARACTER(LEN=255),INTENT(IN)    :: statefile
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL                          :: changedPrmFile
-REAL,ALLOCATABLE :: Vdm_DGToFV  (:,:)
-REAL,ALLOCATABLE :: Vdm_FVToDG  (:,:)
-REAL,ALLOCATABLE :: Vdm_DGToVisu(:,:)
-REAL,ALLOCATABLE :: Vdm_FVToVisu(:,:)
-REAL,ALLOCATABLE :: FVdouble(:,:)
-INTEGER           :: i
 !===================================================================================================================================
 CALL InitMPI(mpi_comm_IN) 
 SWRITE (*,*) "READING FROM: ", TRIM(statefile)
@@ -555,33 +503,9 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
       SDEALLOCATE(UVisu_FV)
       ALLOCATE(UVisu_DG(0:NVisu   ,0:NVisu   ,0:0,nElemsAvg2D_DG,nVarVisu))
       ALLOCATE(UVisu_FV(0:NVisu_FV,0:NVisu_FV,0:0,nElemsAvg2D_FV,nVarVisu))
-#if FV_RECONSTRUCT      
-      ALLOCATE(Vdm_DGToFV  (0:NVisu_FV,0:PP_N    ))
-      ALLOCATE(Vdm_FVToDG  (0:PP_N    ,0:NVisu_FV))
-      ALLOCATE(Vdm_DGToVisu(0:NVisu   ,0:PP_N    ))
-      ALLOCATE(Vdm_FVToVisu(0:NVisu_FV,0:NVisu_FV))
-      ALLOCATE(FVdouble(0:NVisu_FV,0:PP_N))
-      FVdouble = 0.
-      DO i = 0, PP_N
-        FVdouble(i*2  ,i) = 1. 
-        FVdouble(i*2+1,i) = 1.
-      END DO ! i = 0, PP_N
-      Vdm_DGToFV = MATMUL(FVdouble,FV_Vdm)
-      Vdm_FVToDG = MATMUL(FV_sVdm,TRANSPOSE(FVdouble))
-      Vdm_FVToVisu = 0.
-      DO i = 0, NVisu_FV
-        Vdm_FVToVisu(i,i) = 1.
-      END DO
-      CALL GetVandermonde(PP_N,NodeType,NVisu,NodeTypeVisuPosti,Vdm_DGToVisu,modal=.FALSE.)
-
-      CALL Average2D(nVarCalc,nVarCalc_FV,PP_N,NVisu_FV,nElems_DG,nElems_FV,NodeType,UCalc_DG,UCalc_FV,&
-          Vdm_DGToFV,Vdm_FVToDG,Vdm_DGToVisu,Vdm_FVToVisu, &
-          1,nVarDep,mapDepToCalc,&
+      CALL Average2D(nVarCalc,nVarCalc_FV,PP_N,NCalc_FV,nElems_DG,nElems_FV,NodeType,UCalc_DG,UCalc_FV,&
+          Vdm_DGToFV,Vdm_FVToDG,Vdm_DGToVisu,Vdm_FVToVisu,1,nVarDep,mapDepToCalc,&
           UVisu_DG,UVisu_FV)
-#else
-      todo
-#endif
-      
     ELSE 
       CALL ConvertToVisu_DG()
 #if FV_ENABLED

@@ -84,6 +84,11 @@ ALLOCATE(FV_Elems_loc(1:nElems))
 #if FV_ENABLED
 IF (.NOT.DGonly) THEN
   NVisu_FV = (PP_N+1)*2-1
+#if FV_RECONSTRUCT
+  NCalc_FV = NVisu_FV
+#else
+  NCalc_FV = PP_N
+#endif  
 
   CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
   CALL GetArrayAndName('ElemData','VarNamesAdd',nVal,tmp,VarNamesElemData_loc)
@@ -131,6 +136,7 @@ ELSE
   nElems_DG = nElems
   nElems_FV = 0
   NVisu_FV = 0
+  NCalc_FV = 0
 
   ! build the mapping, that holds the global indices of all DG elements
   SDEALLOCATE(mapDGElemsToAllElems)
