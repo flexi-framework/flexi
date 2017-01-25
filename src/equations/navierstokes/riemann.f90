@@ -379,8 +379,8 @@ REAL    :: U_Star(PP_nVar),EStar
 REAL    :: sMu_L,sMu_R
 !=================================================================================================================================
 ! Compute Roe mean values (required for all but LF)
-H_L       = ENTHALPY_HE(U_LL)
-H_R       = ENTHALPY_HE(U_RR)
+H_L       = TOTALENTHALPY_HE(U_LL)
+H_R       = TOTALENTHALPY_HE(U_RR)
 SqrtRho_L = SQRT(U_LL(DENS))
 SqrtRho_R = SQRT(U_RR(DENS))
 sSqrtRho  = 1./(SqrtRho_L+SqrtRho_R)
@@ -444,8 +444,8 @@ REAL,DIMENSION(PP_nVar) :: a,r1,r2,r3,r4,r5  ! Roe eigenvectors
 REAL                    :: Alpha1,Alpha2,Alpha3,Alpha4,Alpha5,Delta_U(PP_nVar+1)
 !=================================================================================================================================
 ! Roe flux
-H_L       = ENTHALPY_HE(U_LL)
-H_R       = ENTHALPY_HE(U_RR)
+H_L       = TOTALENTHALPY_HE(U_LL)
+H_R       = TOTALENTHALPY_HE(U_RR)
 SqrtRho_L = SQRT(U_LL(DENS))
 SqrtRho_R = SQRT(U_RR(DENS))
 
@@ -510,8 +510,8 @@ REAL                    :: tmp,da
 !=================================================================================================================================
 c_L       = SPEEDOFSOUND_HE(U_LL)
 c_R       = SPEEDOFSOUND_HE(U_RR)
-H_L       = ENTHALPY_HE(U_LL)
-H_R       = ENTHALPY_HE(U_RR)
+H_L       = TOTALENTHALPY_HE(U_LL)
+H_R       = TOTALENTHALPY_HE(U_RR)
 SqrtRho_L = SQRT(U_LL(DENS))
 SqrtRho_R = SQRT(U_RR(DENS))
 
@@ -603,8 +603,8 @@ REAL    :: SqrtRho_L,SqrtRho_R,sSqrtRho,absVel
 REAL    :: RoeVel(3),RoeH,Roec
 REAL    :: Ssl,Ssr
 !=================================================================================================================================
-H_L       = ENTHALPY_HE(U_LL)
-H_R       = ENTHALPY_HE(U_RR)
+H_L       = TOTALENTHALPY_HE(U_LL)
+H_R       = TOTALENTHALPY_HE(U_RR)
 SqrtRho_L = SQRT(U_LL(DENS))
 SqrtRho_R = SQRT(U_RR(DENS))
 sSqrtRho  = 1./(SqrtRho_L+SqrtRho_R)
@@ -655,8 +655,8 @@ REAL    :: SqrtRho_L,SqrtRho_R,sSqrtRho,absVel
 REAL    :: RoeVel(3),RoeH,Roec
 REAL    :: Ssl,Ssr,beta
 !=================================================================================================================================
-H_L       = ENTHALPY_HE(U_LL)
-H_R       = ENTHALPY_HE(U_RR)
+H_L       = TOTALENTHALPY_HE(U_LL)
+H_R       = TOTALENTHALPY_HE(U_RR)
 SqrtRho_L = SQRT(U_LL(DENS))
 SqrtRho_R = SQRT(U_RR(DENS))
 sSqrtRho  = 1./(SqrtRho_L+SqrtRho_R)
@@ -707,8 +707,8 @@ REAL                                   :: Ssl,Ssr
 REAL                                   :: Alpha(2:4),delta,beta
 REAL,DIMENSION(PP_nVar)                :: r2,r3,r4  ! Roe eigenvectors + jump in prims
 !=================================================================================================================================
-H_L       = ENTHALPY_HE(U_LL)
-H_R       = ENTHALPY_HE(U_RR)
+H_L       = TOTALENTHALPY_HE(U_LL)
+H_R       = TOTALENTHALPY_HE(U_RR)
 SqrtRho_L = SQRT(U_LL(DENS))
 SqrtRho_R = SQRT(U_RR(DENS))
 sSqrtRho  = 1./(SqrtRho_L+SqrtRho_R)
