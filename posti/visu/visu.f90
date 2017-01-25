@@ -368,6 +368,7 @@ USE MOD_Posti_Calc          ,ONLY: CalcQuantities_DG,CalcSurfQuantities_DG
 #if FV_ENABLED
 USE MOD_Posti_Calc          ,ONLY: CalcQuantities_FV,CalcSurfQuantities_FV
 USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_FV,ConvertToSurfVisu_FV
+USE MOD_FV_Vars             ,ONLY: FV_Vdm,FV_sVdm
 #endif
 USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_DG,ConvertToSurfVisu_DG,ConvertToVisu_GenericData
 USE MOD_ReadInTools         ,ONLY: prms,FinalizeParameters,ExtractParameterFile
@@ -375,6 +376,8 @@ USE MOD_StringTools         ,ONLY: STRICMP
 USE MOD_Posti_VisuMesh      ,ONLY: BuildVisuCoords,BuildSurfVisuCoords
 USE MOD_Posti_Mappings      ,ONLY: Build_mapBCSides
 USE MOD_Visu_Avg2D          ,ONLY: Average2D
+USE MOD_Interpolation_Vars  ,ONLY: NodeType,NodeTypeVISUFVEqui
+USE MOD_Interpolation       ,ONLY: GetVandermonde
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)               :: mpi_comm_IN    
@@ -384,6 +387,12 @@ CHARACTER(LEN=255),INTENT(IN)    :: statefile
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL                          :: changedPrmFile
+REAL,ALLOCATABLE :: Vdm_DGToFV  (:,:)
+REAL,ALLOCATABLE :: Vdm_FVToDG  (:,:)
+REAL,ALLOCATABLE :: Vdm_DGToVisu(:,:)
+REAL,ALLOCATABLE :: Vdm_FVToVisu(:,:)
+REAL,ALLOCATABLE :: FVdouble(:,:)
+INTEGER           :: i
 !===================================================================================================================================
 CALL InitMPI(mpi_comm_IN) 
 SWRITE (*,*) "READING FROM: ", TRIM(statefile)
@@ -538,17 +547,47 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
     END IF
   END IF
 
-  ! ===== Avg2d =====
-  IF (Avg2d) THEN
-    CALL Average2D()
-  END IF
-
   ! ===== convert solution to visu grid =====
   IF (changedStateFile.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedAvg2D) THEN
-    CALL ConvertToVisu_DG()
-#if FV_ENABLED
-    CALL ConvertToVisu_FV()
+    ! ===== Avg2d =====
+    IF (Avg2d) THEN
+      SDEALLOCATE(UVisu_DG)
+      SDEALLOCATE(UVisu_FV)
+      ALLOCATE(UVisu_DG(0:NVisu   ,0:NVisu   ,0:0,nElemsAvg2D_DG,nVarVisu))
+      ALLOCATE(UVisu_FV(0:NVisu_FV,0:NVisu_FV,0:0,nElemsAvg2D_FV,nVarVisu))
+#if FV_RECONSTRUCT      
+      ALLOCATE(Vdm_DGToFV  (0:NVisu_FV,0:PP_N    ))
+      ALLOCATE(Vdm_FVToDG  (0:PP_N    ,0:NVisu_FV))
+      ALLOCATE(Vdm_DGToVisu(0:NVisu   ,0:PP_N    ))
+      ALLOCATE(Vdm_FVToVisu(0:NVisu_FV,0:NVisu_FV))
+      ALLOCATE(FVdouble(0:NVisu_FV,0:PP_N))
+      FVdouble = 0.
+      DO i = 0, PP_N
+        FVdouble(i*2  ,i) = 1. 
+        FVdouble(i*2+1,i) = 1.
+      END DO ! i = 0, PP_N
+      Vdm_DGToFV = MATMUL(FVdouble,FV_Vdm)
+      Vdm_FVToDG = MATMUL(FV_sVdm,TRANSPOSE(FVdouble))
+      Vdm_FVToVisu = 0.
+      DO i = 0, NVisu_FV
+        Vdm_FVToVisu(i,i) = 1.
+      END DO
+      CALL GetVandermonde(PP_N,NodeType,NVisu,NodeTypeVisuPosti,Vdm_DGToVisu,modal=.FALSE.)
+
+      CALL Average2D(nVarCalc,nVarCalc_FV,PP_N,NVisu_FV,nElems_DG,nElems_FV,NodeType,UCalc_DG,UCalc_FV,&
+          Vdm_DGToFV,Vdm_FVToDG,Vdm_DGToVisu,Vdm_FVToVisu, &
+          1,nVarDep,mapDepToCalc,&
+          UVisu_DG,UVisu_FV)
+#else
+      todo
 #endif
+      
+    ELSE 
+      CALL ConvertToVisu_DG()
+#if FV_ENABLED
+      CALL ConvertToVisu_FV()
+#endif
+    END IF
   END IF
   IF (doSurfVisu) THEN
     ! convert Surface DG solution to visu grid
@@ -561,7 +600,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   END IF
 
   ! convert generic data to visu grid
-  IF (changedStateFile.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedBCnames) THEN
+  IF (changedStateFile.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedBCnames.OR.changedAvg2D) THEN
     CALL ConvertToVisu_GenericData(statefile)
   END IF
 
@@ -576,6 +615,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
       CALL BuildSurfVisuCoords()
     END IF
   END IF
+
 
 END IF
 

@@ -200,7 +200,7 @@ END IF
 NodeTypeVisuOut  = GETSTR('NodeTypeVisu','VISU')    ! Node type of visualization basis
 useCurveds       = GETLOGICAL('useCurveds','.TRUE.')  ! Allow curved mesh or not
 #if FV_ENABLED
-NodeTypeVisuOut_FV = 'FV_EQUI'
+NodeTypeVisuOut_FV = 'VISU_FVEQUI'
 #endif
 
 ! Initialization of I/O routines

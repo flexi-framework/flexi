@@ -93,11 +93,9 @@ REAL,ALLOCATABLE,TARGET               :: UCalc_DG(:,:,:,:,:)     !< dependet var
 REAL,ALLOCATABLE,TARGET               :: UCalc_FV(:,:,:,:,:)
 INTEGER                               :: nVarCalc                !< number of (intermediate) variables that must be calculated
 INTEGER,ALLOCATABLE                   :: mapDepToCalc(:)         !< maps all dependend variable index to calc variable index
-#if FV_ENABLED && FV_RECONSTRUCT
 INTEGER                               :: nVarCalc_FV             !< since FV reconstruction is done in primitive quantities, the 
 INTEGER,ALLOCATABLE                   :: mapDepToCalc_FV(:)      !< dependencies are different to the DG case, where everything is
                                                                  !< based on conservative quantities
-#endif
 
 REAL(C_DOUBLE),ALLOCATABLE,TARGET     :: UVisu_DG(:,:,:,:,:)     !< DG solution that is written to VTK or send to ParaView
 REAL(C_DOUBLE),ALLOCATABLE,TARGET     :: UVisu_FV(:,:,:,:,:)     !< FV solution that is written to VTK or send to ParaView
@@ -150,8 +148,6 @@ INTEGER                           :: nElemsAvg2D_DG
 INTEGER                           :: nElemsAvg2D_FV
 INTEGER,ALLOCATABLE               :: mapElemIJToDGElemAvg2D(:,:) ! maps i,j element index to Avg2D DG element index
 INTEGER,ALLOCATABLE               :: mapElemIJToFVElemAvg2D(:,:) ! maps i,j element index to Avg2D FV element index
-REAL,ALLOCATABLE,TARGET           :: UAvg_DG(:,:,:,:,:)
-REAL,ALLOCATABLE,TARGET           :: UAvg_FV(:,:,:,:,:)
 
 
 END MODULE MOD_Visu_Vars

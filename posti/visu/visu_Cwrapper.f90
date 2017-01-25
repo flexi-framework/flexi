@@ -163,7 +163,6 @@ TYPE (CARRAY), INTENT(INOUT)  :: varnamesSurf_out
 CHARACTER(LEN=255)            :: prmfile
 CHARACTER(LEN=255)            :: postifile
 CHARACTER(LEN=255)            :: statefile
-INTEGER                       :: visuDim
 !===================================================================================================================================
 prmfile   = cstrToChar255(prmfile_IN,   strlen_prm)
 postifile = cstrToChar255(postifile_IN, strlen_posti)
@@ -175,17 +174,16 @@ CALL visu(mpi_comm_IN, prmfile, postifile, statefile)
 ! write UVisu to VTK 2D / 3D arrays (must be done always!)
 ! write coords, UVisu to VTK  2D / 3D arrays (must be done always!)
 IF (Avg2D) THEN
-  visuDim = 2
+  CALL WriteDataToVTK_array(nVarVisu,NVisu   ,nElemsAvg2D_DG,valuesDG_out,UVisu_DG,2)
+  CALL WriteDataToVTK_array(nVarVisu,NVisu_FV,nElemsAvg2D_FV,valuesFV_out,UVisu_FV,2)
+  CALL WriteCoordsToVTK_array(NVisu   ,nElemsAvg2D_DG,coordsDG_out,nodeidsDG_out,CoordsVisu_DG,nodeids_DG,dim=2,DGFV=0)
+  CALL WriteCoordsToVTK_array(NVisu_FV,nElemsAvg2D_FV,coordsFV_out,nodeidsFV_out,CoordsVisu_FV,nodeids_FV,dim=2,DGFV=1)
 ELSE
-  visuDim = 3
+  CALL WriteDataToVTK_array(nVarVisu,NVisu   ,nElems_DG,valuesDG_out,UVisu_DG,3)
+  CALL WriteDataToVTK_array(nVarVisu,NVisu_FV,nElems_FV,valuesFV_out,UVisu_FV,3)
+  CALL WriteCoordsToVTK_array(NVisu   ,nElems_DG,coordsDG_out,nodeidsDG_out,CoordsVisu_DG,nodeids_DG,dim=3,DGFV=0)
+  CALL WriteCoordsToVTK_array(NVisu_FV,nElems_FV,coordsFV_out,nodeidsFV_out,CoordsVisu_FV,nodeids_FV,dim=3,DGFV=1)
 END IF
-CALL WriteDataToVTK_array(nVarVisu,NVisu   ,nElems_DG,valuesDG_out,UVisu_DG,visuDim)
-CALL WriteDataToVTK_array(nVarVisu,NVisu_FV,nElems_FV,valuesFV_out,UVisu_FV,visuDim)
-
-CALL WriteCoordsToVTK_array(NVisu   ,nElems_DG,coordsDG_out,nodeidsDG_out,&
-    CoordsVisu_DG,nodeids_DG,dim=visuDim,DGFV=0)
-CALL WriteCoordsToVTK_array(NVisu_FV,nElems_FV,coordsFV_out,nodeidsFV_out,&
-    CoordsVisu_FV,nodeids_FV,dim=visuDim,DGFV=1)
 
 CALL WriteVarnamesToVTK_array(nVarAll,mapAllVarsToVisuVars,varnames_out,VarnamesAll,nVarVisu)
 

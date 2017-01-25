@@ -350,14 +350,7 @@ REAL,ALLOCATABLE             :: gradUx_calc(:,:,:,:,:),gradUy_calc(:,:,:,:,:),gr
 #if FV_RECONSTRUCT
   ! ================================ WITH RECONSTRUCTION ======================================
 
-  ! generate a new mapDepToCalc_FV, which is a copy of the original mapDepToCalc but is extended in the following way.
-  ! Since the reconstruction is performed in primitive quantities, the calculation of conservative quantities from them 
-  ! introduce for the conservatives dependcies from the primitive ones. Therefore all primitive quantities that
-  ! are needed to build the requested conservatives must be added to the mapDepToCalc_FV. 
   nVal=(/NVisu_FV+1,NVisu_FV+1,NVisu_FV+1,nElems_FV/)
-  SDEALLOCATE(mapDepToCalc_FV)
-  ALLOCATE(mapDepToCalc_FV(1:nVarDep))
-  CALL AppendNeededPrims(mapDepToCalc,mapDepToCalc_FV,nVarCalc_FV)
   SWRITE (*,*) "[FVRE] nVarCalc_FV", nVarCalc_FV
   
   ! convert primitive quantities to the visu grid, but store them in UCalc_FV, since all dependent calculations based on
@@ -365,14 +358,6 @@ REAL,ALLOCATABLE             :: gradUx_calc(:,:,:,:,:),gradUy_calc(:,:,:,:,:),gr
   SDEALLOCATE(UCalc_FV)
   ALLOCATE(UCalc_FV(0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV,1:nVarCalc_FV))
   SWRITE(*,*) "[FVRE] ConvertToVisu_FV_Reconstruct"
-#if PARABOLIC    
-  ALLOCATE(gradUx_calc(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV))
-  ALLOCATE(gradUy_calc(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV))
-  ALLOCATE(gradUz_calc(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV))
-  CALL ConvertToVisu_FV_Reconstruct(gradUx_calc,gradUy_calc,gradUz_calc)
-#else          
-  CALL ConvertToVisu_FV_Reconstruct()
-#endif          
 
   ! calculate all remaining quantities on the visu grid.
   IF(TRIM(FileType).EQ.'State')THEN
@@ -380,9 +365,14 @@ REAL,ALLOCATABLE             :: gradUx_calc(:,:,:,:,:),gradUy_calc(:,:,:,:,:),gr
     SWRITE(*,*) "[FVRE] CalcQuantities (nonPrim)"
     IF(withDGOperator.AND.(PARABOLIC.EQ.1))THEN
 #if PARABOLIC    
+      ALLOCATE(gradUx_calc(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV))
+      ALLOCATE(gradUy_calc(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV))
+      ALLOCATE(gradUz_calc(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV))
+      CALL ConvertToVisu_FV_Reconstruct(gradUx_calc,gradUy_calc,gradUz_calc)
       CALL CalcQuantities(nVarCalc_FV,nVal,mapFVElemsToAllElems,mapDepToCalc_FV,UCalc_FV,maskCalc,gradUx_calc,gradUy_calc,gradUz_calc)
 #endif
     ELSE
+      CALL ConvertToVisu_FV_Reconstruct()
       CALL CalcQuantities(nVarCalc_FV,nVal,mapFVElemsToAllElems,mapDepToCalc_FV,UCalc_FV,maskCalc)
     END IF
   END IF
@@ -407,16 +397,7 @@ REAL,ALLOCATABLE             :: gradUx_calc(:,:,:,:,:),gradUy_calc(:,:,:,:,:),gr
   CALL FillCopy(nVar_State,PP_N,nElems,U,nElems_FV,mapFVElemsToAllElems,UCalc_FV,maskCalc)
 
   IF(TRIM(FileType).EQ.'State')THEN
-    IF(withDGOperator.AND.PARABOLIC)THEN
-#if PARABOLIC
-      gradUx_calc=gradUx(:,:,:,:,mapFVElemsToAllElems)
-      gradUy_calc=gradUy(:,:,:,:,mapFVElemsToAllElems)
-      gradUz_calc=gradUz(:,:,:,:,mapFVElemsToAllElems)
-      CALL CalcQuantities(nVarCalc_FV,nVal,nElems_FV,mapFVElemsToAllElems,mapDepToCalc_FV,UCalc_FV,maskCalc,gradUx_calc,gradUy_calc,gradUz_calc)
-#endif
-    ELSE
-      CALL CalcQuantities(nVarCalc_FV,nVal,nElems_FV,mapFVElemsToAllElems,mapDepToCalc_FV,UCalc_FV,maskCalc) 
-    END IF
+    CALL CalcQuantities(nVarCalc_FV,nVal,mapFVElemsToAllElems,mapDepToCalc_FV,UCalc_FV,maskCalc) 
   END IF
 
 #endif /* FV_RECONSTRUCT */

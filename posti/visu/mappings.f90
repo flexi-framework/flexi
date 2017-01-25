@@ -178,6 +178,10 @@ USE MOD_Globals
 USE MOD_Visu_Vars
 USE MOD_ReadInTools     ,ONLY: GETSTR,CountOption
 USE MOD_StringTools     ,ONLY: STRICMP
+#if FV_RECONSTRUCT
+USE MOD_EOS_Posti           ,ONLY: AppendNeededPrims
+#endif
+
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -267,10 +271,24 @@ SDEALLOCATE(mapAllVarsToSurfVisuVars_old)
 ALLOCATE(mapAllVarsToSurfVisuVars_old(1:nVarAll))
 mapAllVarsToSurfVisuVars_old = mapAllVarsToSurfVisuVars
 
+
+SDEALLOCATE(mapDepToCalc_FV)
+ALLOCATE(mapDepToCalc_FV(1:nVarDep))
+mapDepToCalc_FV = mapDepToCalc
+nVarCalc_FV = nVarCalc
+#if FV_RECONSTRUCT
+! generate a new mapDepToCalc_FV, which is a copy of the original mapDepToCalc but is extended in the following way.
+! Since the reconstruction is performed in primitive quantities, the calculation of conservative quantities from them 
+! introduce for the conservatives dependcies from the primitive ones. Therefore all primitive quantities that
+! are needed to build the requested conservatives must be added to the mapDepToCalc_FV. 
+CALL AppendNeededPrims(mapDepToCalc,mapDepToCalc_FV,nVarCalc_FV)
+#endif
+
 ! print the mappings
 WRITE(format,'(I2)') nVarAll
-SWRITE (*,'(A,'//format//'I3)') "mapDepToCalc ",mapDepToCalc
-SWRITE (*,'(A,'//format//'I3)') "mapAllVarsToVisuVars ",mapAllVarsToVisuVars
+SWRITE (*,'(A,'//format//'I3)') "mapDepToCalc             ",mapDepToCalc
+SWRITE (*,'(A,'//format//'I3)') "mapDepToCalc_FV          ",mapDepToCalc_FV
+SWRITE (*,'(A,'//format//'I3)') "mapAllVarsToVisuVars     ",mapAllVarsToVisuVars
 SWRITE (*,'(A,'//format//'I3)') "mapAllVarsToSurfVisuVars ",mapAllVarsToSurfVisuVars
 
 
