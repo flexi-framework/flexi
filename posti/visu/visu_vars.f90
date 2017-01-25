@@ -56,6 +56,8 @@ INTEGER                           :: meshMode_old=0              !< Used to chec
                                                                  !< mesh mode
 LOGICAL                           :: MeshFileMode                !< Flag indicating a mesh file should be visualized
 LOGICAL                           :: doSurfVisu                  !< Flag indicating if any surfaces need to be visualized
+LOGICAL                           :: Avg2D          
+LOGICAL                           :: Avg2D_old = .FALSE.
 
                 
 ! The following flags indicate if during successive visualizations of (different) state files the respective properties
@@ -68,6 +70,7 @@ LOGICAL                           :: changedFV_Elems             !< different di
 LOGICAL                           :: changedWithDGOperator       !< If the DG operator should be called or not changed
 LOGICAL                           :: changedDGonly               !< Visualize FV cells as DG changed
 LOGICAL                           :: changedBCnames              !< BCnames selected for visualization changed (ParaView plugin)
+LOGICAL                           :: changedAvg2D                !< 
 
 CHARACTER(LEN=255),ALLOCATABLE,TARGET :: VarNamesHDF5(:)         !< varnames in state file (DG_Solution, not including generic 
                                                                  !< element- or pointwise)
@@ -90,11 +93,9 @@ REAL,ALLOCATABLE,TARGET               :: UCalc_DG(:,:,:,:,:)     !< dependet var
 REAL,ALLOCATABLE,TARGET               :: UCalc_FV(:,:,:,:,:)
 INTEGER                               :: nVarCalc                !< number of (intermediate) variables that must be calculated
 INTEGER,ALLOCATABLE                   :: mapDepToCalc(:)         !< maps all dependend variable index to calc variable index
-#if FV_ENABLED && FV_RECONSTRUCT
 INTEGER                               :: nVarCalc_FV             !< since FV reconstruction is done in primitive quantities, the 
 INTEGER,ALLOCATABLE                   :: mapDepToCalc_FV(:)      !< dependencies are different to the DG case, where everything is
                                                                  !< based on conservative quantities
-#endif
 
 REAL(C_DOUBLE),ALLOCATABLE,TARGET     :: UVisu_DG(:,:,:,:,:)     !< DG solution that is written to VTK or send to ParaView
 REAL(C_DOUBLE),ALLOCATABLE,TARGET     :: UVisu_FV(:,:,:,:,:)     !< FV solution that is written to VTK or send to ParaView
@@ -142,7 +143,6 @@ INTEGER,ALLOCATABLE,TARGET            :: nodeidsSurf_FV(:)            !< nodeIDs
 ! ==============================================================================================================================
 ! Avg2D
 ! ==============================================================================================================================
-LOGICAL                           :: Avg2D          
 INTEGER,ALLOCATABLE               :: Elem_IJK(:,:)
 INTEGER                           :: nElems_IJK(3)
 REAL,ALLOCATABLE                  :: FVAmountAvg2D(:,:)          ! averaged FV_elems in z-direction at i,j-th element
@@ -150,8 +150,6 @@ INTEGER                           :: nElemsAvg2D_DG
 INTEGER                           :: nElemsAvg2D_FV
 INTEGER,ALLOCATABLE               :: mapElemIJToDGElemAvg2D(:,:) ! maps i,j element index to Avg2D DG element index
 INTEGER,ALLOCATABLE               :: mapElemIJToFVElemAvg2D(:,:) ! maps i,j element index to Avg2D FV element index
-REAL,ALLOCATABLE,TARGET           :: UAvg_DG(:,:,:,:,:)
-REAL,ALLOCATABLE,TARGET           :: UAvg_FV(:,:,:,:,:)
 
 
 END MODULE MOD_Visu_Vars

@@ -71,11 +71,11 @@ CONTAINS
 SUBROUTINE ConvertToVisu_DG() 
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Visu_Vars          ,ONLY: nVarVisu,NodeTypeVisuPosti,nVarDep,NVisu,Avg2D
+USE MOD_Visu_Vars          ,ONLY: nVarVisu,NodeTypeVisuPosti,nVarDep,NVisu
 USE MOD_Visu_Vars          ,ONLY: mapAllVarsToVisuVars,mapDepToCalc
-USE MOD_Visu_Vars          ,ONLY: nElems_DG,nElemsAvg2D_DG,UCalc_DG,UAvg_DG,UVisu_DG
+USE MOD_Visu_Vars          ,ONLY: nElems_DG,UCalc_DG,UVisu_DG
 USE MOD_Interpolation      ,ONLY: GetVandermonde
-USE MOD_ChangeBasis        ,ONLY: ChangeBasis3D,ChangeBasis2D
+USE MOD_ChangeBasis        ,ONLY: ChangeBasis3D
 USE MOD_Interpolation_Vars ,ONLY: NodeType,NodeTypeVisu
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
@@ -84,37 +84,24 @@ IMPLICIT NONE
 INTEGER            :: iElem,iVar,iVarVisu,iVarCalc
 REAL,ALLOCATABLE   :: Vdm_N_NVisu(:,:)                  ! Vandermonde from state to visualisation nodes
 !===================================================================================================================================
+SWRITE(*,*) "[DG] convert to visu grid"
 
 ! compute UVisu_DG 
 ALLOCATE(Vdm_N_NVisu(0:NVisu,0:PP_N))
 CALL GetVandermonde(PP_N,NodeType,NVisu,NodeTypeVisuPosti,Vdm_N_NVisu,modal=.FALSE.)
 
 ! convert DG solution to UVisu_DG
-IF (Avg2D) THEN
-  SDEALLOCATE(UVisu_DG)
-  ALLOCATE(UVisu_DG(0:NVisu,0:NVisu,0:0,nElemsAvg2D_DG,nVarVisu))
-  DO iVar=1,nVarDep
-    IF (mapAllVarsToVisuVars(iVar).GT.0) THEN
-      iVarCalc = mapDepToCalc(iVar) 
-      iVarVisu = mapAllVarsToVisuVars(iVar) 
-      DO iElem = 1,nElemsAvg2D_DG
-        CALL ChangeBasis2D(PP_N,NVisu,Vdm_N_NVisu,UAvg_DG(:,:,0,iElem,iVarCalc),UVisu_DG(:,:,0,iElem,iVarVisu))
-      END DO
-    END IF
-  END DO 
-ELSE
-  SDEALLOCATE(UVisu_DG)
-  ALLOCATE(UVisu_DG(0:NVisu,0:NVisu,0:NVisu,nElems_DG,nVarVisu))
-  DO iVar=1,nVarDep
-    IF (mapAllVarsToVisuVars(iVar).GT.0) THEN
-      iVarCalc = mapDepToCalc(iVar) 
-      iVarVisu = mapAllVarsToVisuVars(iVar) 
-      DO iElem = 1,nElems_DG
-        CALL ChangeBasis3D(PP_N,NVisu,Vdm_N_NVisu,UCalc_DG(:,:,:,iElem,iVarCalc),UVisu_DG(:,:,:,iElem,iVarVisu))
-      END DO
-    END IF
-  END DO 
-END IF
+SDEALLOCATE(UVisu_DG)
+ALLOCATE(UVisu_DG(0:NVisu,0:NVisu,0:NVisu,nElems_DG,nVarVisu))
+DO iVar=1,nVarDep
+  IF (mapAllVarsToVisuVars(iVar).GT.0) THEN
+    iVarCalc = mapDepToCalc(iVar) 
+    iVarVisu = mapAllVarsToVisuVars(iVar) 
+    DO iElem = 1,nElems_DG
+      CALL ChangeBasis3D(PP_N,NVisu,Vdm_N_NVisu,UCalc_DG(:,:,:,iElem,iVarCalc),UVisu_DG(:,:,:,iElem,iVarVisu))
+    END DO
+  END IF
+END DO 
 
 SDEALLOCATE(Vdm_N_NVisu)
 END SUBROUTINE ConvertToVisu_DG
@@ -136,6 +123,7 @@ IMPLICIT NONE
 INTEGER            :: iSide,iVar,iVarVisu,iVarCalc
 REAL,ALLOCATABLE   :: Vdm_N_NVisu(:,:)                  ! Vandermonde from state to visualisation nodes
 !===================================================================================================================================
+SWRITE(*,*) "[DG] convert to surface visu grid"
 
 ! compute UVisu_DG 
 ALLOCATE(Vdm_N_NVisu(0:NVisu,0:PP_N))
@@ -162,9 +150,9 @@ END SUBROUTINE ConvertToSurfVisu_DG
 SUBROUTINE ConvertToVisu_FV()
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Visu_Vars         ,ONLY: nVarDep,VarnamesAll,mapDepToCalc_FV,Avg2D
-USE MOD_Visu_Vars         ,ONLY: mapAllVarsToVisuVars,nVarCalc,nVarVisu,NVisu_FV
-USE MOD_Visu_Vars         ,ONLY: nElems_FV,nElemsAvg2D_FV,UCalc_FV,UAvg_FV,UVisu_FV
+USE MOD_Visu_Vars         ,ONLY: nVarDep,VarnamesAll,mapDepToCalc_FV
+USE MOD_Visu_Vars         ,ONLY: mapAllVarsToVisuVars,nVarVisu,NVisu_FV
+USE MOD_Visu_Vars         ,ONLY: nElems_FV,UCalc_FV,UVisu_FV
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -173,34 +161,24 @@ INTEGER            :: iVar,iElem
 #if !(FV_RECONSTRUCT)
 INTEGER            :: i,j,k
 #endif
-INTEGER            :: iVarVisu,iVarCalc,visuDim,nElems
-REAL,POINTER       :: Up(:,:,:,:,:)
+INTEGER            :: iVarVisu,iVarCalc
 !===================================================================================================================================
 SWRITE(*,*) "[FV/FVRE] convert to visu grid"
-IF (Avg2D) THEN
-  visuDim = 2
-  Up(0:NVisu_FV,0:NVisu_FV,0:0,1:nElemsAvg2D_FV,1:nVarCalc) => UAvg_FV
-  nElems = nElemsAvg2D_FV
-ELSE
-  visuDim = 3
-  Up(0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,1:nElems_FV,1:nVarCalc) => UCalc_FV
-  nElems = nElems_FV
-END IF
 
 SDEALLOCATE(UVisu_FV)
-ALLOCATE(UVisu_FV(0:NVisu_FV,0:NVisu_FV,0:NVisu_FV*(visuDim-2),nElems,nVarVisu))
+ALLOCATE(UVisu_FV(0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV,nVarVisu))
 ! compute UVisu_FV
 DO iVar=1,nVarDep
   iVarVisu = mapAllVarsToVisuVars(iVar) 
   IF (iVarVisu.GT.0) THEN
     SWRITE(*,*) "    ", TRIM(VarnamesAll(iVar))
     iVarCalc = mapDepToCalc_FV(iVar) 
-    DO iElem = 1,nElems
+    DO iElem = 1,nElems_FV
 #if FV_RECONSTRUCT
-      UVisu_FV(:,:,:,:,iVarVisu) = Up(:,:,:,:,iVarCalc)
+      UVisu_FV(:,:,:,:,iVarVisu) = UCalc_FV(:,:,:,:,iVarCalc)
 #else      
-      DO k=0,PP_N*(visuDim-2); DO j=0,PP_N; DO i=0,PP_N
-        UVisu_FV(i*2:i*2+1, j*2:j*2+1, k*2:k*2+1,iElem,iVarVisu) = Up(i,j,k,iElem,iVarCalc)
+      DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+        UVisu_FV(i*2:i*2+1, j*2:j*2+1, k*2:k*2+1,iElem,iVarVisu) = UCalc_FV(i,j,k,iElem,iVarCalc)
       END DO; END DO; END DO
 #endif
     END DO
@@ -393,13 +371,15 @@ USE MOD_Interpolation_Vars ,ONLY: NodeType,NodeTypeVisu
 USE MOD_Interpolation_Vars ,ONLY: L_Minus,L_Plus
 USE MOD_ProlongToFace      ,ONLY: EvalElemFace
 USE MOD_Mappings           ,ONLY: buildMappings
+USE MOD_Visu_Avg2D         ,ONLY: Average2D
+USE MOD_FV_Basis           ,ONLY: FV_GetVandermonde
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES 
 CHARACTER(LEN=255),INTENT(IN)  :: statefile   !< HDF5 state file
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                        :: iVarVisu,iElem_DG,iElem_FV,iElem,iVarDataset,iVar,iVar2
+INTEGER                        :: iVarVisu,iElem_DG,iElem_FV,iElem,iVarDataset,iVar,iVar2,ii,jj
 INTEGER                        :: substring_count,nDims,nVal,nSize,p,q
 INTEGER                        :: iSide,iSide_DG,iSide_FV,locSide
 CHARACTER(LEN=255)             :: substrings(2),DatasetName,VariableName,DataSetOld
@@ -409,12 +389,34 @@ REAL,ALLOCATABLE               :: Vdm_DG_Visu(:,:),Vdm_FV_Visu(:,:)
 REAL,ALLOCATABLE               :: Uface_tmp(:,:,:),Uface(:,:)
 CHARACTER(LEN=255),ALLOCATABLE :: DatasetVarNames(:)
 INTEGER,ALLOCATABLE            :: S2V2(:,:,:,:,:)
+INTEGER                        :: mapIdentityDG(nElems)
+INTEGER                        :: mapIdentityFV(nElems)
+INTEGER                        :: mapVarIdentity(1)
+REAL,ALLOCATABLE               :: FieldData_DG(:,:,:,:,:),FieldData_FV(:,:,:,:,:)
+
+REAL,ALLOCATABLE :: Vdm_DGToFV  (:,:)
+REAL,ALLOCATABLE :: Vdm_FVToDG  (:,:)
+REAL,ALLOCATABLE :: Vdm_DGToVisu(:,:)
+REAL,ALLOCATABLE :: Vdm_FVToVisu(:,:)
+REAL,ALLOCATABLE :: FVdouble(:,:)
+INTEGER           :: i
 !===================================================================================================================================
 SWRITE(*,*) "Convert generic datasets to Visu grid"
 ! Open HDF5 file
 CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 
 DataSetOld = ''  ! Used to decide if arrays and Vandermonde matrix should be re-allocated
+
+mapVarIdentity = 1
+mapIdentityDG = 0
+mapIdentityFV = 0
+DO iElem=1,nElems
+  IF (FV_Elems_loc(iElem).EQ.0) THEN ! DG
+    mapIdentityDG(iElem)=iElem
+  ELSE
+    mapIdentityFV(iElem)=iElem
+  END IF
+END DO
 
 ! Loop over all generic variables that should be visualized - sorted after the dependant variables
 DO iVar=nVarDep+1,nVarAll
@@ -498,25 +500,75 @@ DO iVar=nVarDep+1,nVarAll
       ! Convert the generic data to visu grid
       SELECT CASE(nDims)
       CASE(2) ! Elementwise data
-        ! Simply write the elementwise data to all visu points
-        DO iElem_DG=1,nElems_DG
-          iElem = mapDGElemsToAllElems(iElem_DG)
-          UVisu_DG(:,:,:,iElem_DG,iVarVisu) = ElemData(iVarDataset,iElem)
-        END DO
-        DO iElem_FV=1,nElems_FV
-          iElem = mapFVElemsToAllElems(iElem_FV)
-          UVisu_FV(:,:,:,iElem_FV,iVarVisu) = ElemData(iVarDataset,iElem)
-        END DO
+        IF (Avg2d) THEN
+          UVisu_DG(:,:,:,:,iVarVisu) = 0.
+          UVisu_FV(:,:,:,:,iVarVisu) = 0.
+          DO iElem=1,nElems
+            ii = Elem_IJK(1,iElem)
+            jj = Elem_IJK(2,iElem)
+            IF (FVAmountAvg2D(ii,jj).LE.0.5) THEN
+              iElem_DG = mapElemIJToDGElemAvg2D(ii,jj)
+              UVisu_DG(:,:,:,iElem_DG,iVarVisu) = UVisu_DG(:,:,:,iElem_DG,iVarVisu) + ElemData(iVarDataset,iElem)
+            ELSE
+              iElem_FV = mapElemIJToFVElemAvg2D(ii,jj)
+              UVisu_FV(:,:,:,iElem_FV,iVarVisu) = UVisu_FV(:,:,:,iElem_FV,iVarVisu) + ElemData(iVarDataset,iElem)
+            END IF
+          END DO
+          UVisu_DG(:,:,:,:,iVarVisu) = UVisu_DG(:,:,:,:,iVarVisu) / nElems_IJK(3)
+          UVisu_FV(:,:,:,:,iVarVisu) = UVisu_FV(:,:,:,:,iVarVisu) / nElems_IJK(3)
+        ELSE
+          ! Simply write the elementwise data to all visu points
+          DO iElem_DG=1,nElems_DG
+            iElem = mapDGElemsToAllElems(iElem_DG)
+            UVisu_DG(:,:,:,iElem_DG,iVarVisu) = ElemData(iVarDataset,iElem)
+          END DO
+          DO iElem_FV=1,nElems_FV
+            iElem = mapFVElemsToAllElems(iElem_FV)
+            UVisu_FV(:,:,:,iElem_FV,iVarVisu) = ElemData(iVarDataset,iElem)
+          END DO
+        END IF
       CASE(5) ! Pointwise data
-        ! Perform changebasis to visu grid
-        DO iElem_DG=1,nElems_DG
-          iElem = mapDGElemsToAllElems(iElem_DG)
-          CALL ChangeBasis3D(nSize-1,NVisu,Vdm_DG_Visu,FieldData(iVarDataset,:,:,:,iElem),UVisu_DG(:,:,:,iElem_DG,iVarVisu))
-        END DO
-        DO iElem_FV=1,nElems_FV
-          iElem = mapFVElemsToAllElems(iElem_FV)
-          CALL ChangeBasis3D(nSize-1,NVisu_FV,Vdm_FV_Visu,FieldData(iVarDataset,:,:,:,iElem),UVisu_FV(:,:,:,iElem_FV,iVarVisu))
-        END DO
+        IF (Avg2d) THEN
+          IF (nSize-1.NE.PP_N) THEN
+            CALL CollectiveStop(__STAMP__,&
+                "Avg2D only works for FieldData on PP_N!")
+          END IF
+          SDEALLOCATE(FieldData_DG)
+          SDEALLOCATE(FieldData_FV)
+          ALLOCATE(FieldData_DG(0:nSize-1,0:nSize-1,0:nSize-1,nElems_DG,1))
+          ALLOCATE(FieldData_FV(0:nSize-1,0:nSize-1,0:nSize-1,nElems_FV,1))
+          DO iElem_DG=1,nElems_DG
+            FieldData_DG(:,:,:,iElem_DG,1) = FieldData(iVarDataset,:,:,:,mapDGElemsToAllElems(iElem_DG))
+          END DO
+          DO iElem_FV=1,nElems_FV
+            FieldData_FV(:,:,:,iElem_FV,1) = FieldData(iVarDataset,:,:,:,mapFVElemsToAllElems(iElem_FV))
+          END DO
+      ALLOCATE(Vdm_DGToFV  (0:nSize-1 ,0:nSize-1))
+      ALLOCATE(Vdm_FVToDG  (0:nSize-1 ,0:nSize-1))
+      ALLOCATE(Vdm_DGToVisu(0:NVisu   ,0:nSize-1))
+      ALLOCATE(FVdouble(0:NVisu_FV,0:nSize-1))
+      FVdouble = 0.
+      DO i = 0, nSize-1
+        FVdouble(i*2  ,i) = 1. 
+        FVdouble(i*2+1,i) = 1.
+      END DO ! i = 0, nSize-1
+      CALL FV_GetVandermonde(nSize-1,NodeType,Vdm_DGToFV,Vdm_FVToDG)
+      CALL GetVandermonde(PP_N,NodeType,NVisu,NodeTypeVisuPosti,Vdm_DGToVisu,modal=.FALSE.)
+          CALL Average2D(1,1,nSize-1,nSize-1,nElems_DG,nElems_FV,NodeType,&
+              FieldData_DG,FieldData_FV, &
+              Vdm_DGToFV,Vdm_FVToDG,Vdm_DGToVisu,FVdouble, &
+              iVar,iVar,mapVarIdentity,UVisu_DG,UVisu_FV)
+        ELSE
+          ! Perform changebasis to visu grid
+          DO iElem_DG=1,nElems_DG
+            iElem = mapDGElemsToAllElems(iElem_DG)
+            CALL ChangeBasis3D(nSize-1,NVisu,Vdm_DG_Visu,FieldData(iVarDataset,:,:,:,iElem),UVisu_DG(:,:,:,iElem_DG,iVarVisu))
+          END DO
+          DO iElem_FV=1,nElems_FV
+            iElem = mapFVElemsToAllElems(iElem_FV)
+            CALL ChangeBasis3D(nSize-1,NVisu_FV,Vdm_FV_Visu,FieldData(iVarDataset,:,:,:,iElem),UVisu_FV(:,:,:,iElem_FV,iVarVisu))
+          END DO
+        END IF
       END SELECT
 
       !-------------------------------- Surface Visualization ---------------------! 
