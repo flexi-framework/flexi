@@ -58,7 +58,7 @@ USE MOD_PreProc
 USE MOD_SurfintPrim,        ONLY: DoSurfIntPrim
 USE MOD_Mesh_Vars,          ONLY: SideToElem,nSides,nElems
 USE MOD_Mesh_Vars,          ONLY: firstMPISide_YOUR,lastMPISide_MINE
-USE MOD_Mesh_Vars,          ONLY: S2V3,CS2V2
+USE MOD_Mesh_Vars,          ONLY: S2V2
 USE MOD_Mesh_Vars,          ONLY: nElems
 #if FV_ENABLED
 USE MOD_FV_Vars,            ONLY: FV_Elems_master,FV_Elems_slave
@@ -99,10 +99,11 @@ DO SideID=firstSideID,lastSideID
   ! master sides
   IF(ElemID.GT.0)THEN
     IF (FV_Elems_master(SideID).EQ.0) THEN ! DG element
-      locSideID   = SideToElem(S2E_LOC_SIDE_ID,SideID)
+      locSideID = SideToElem(S2E_LOC_SIDE_ID,SideID)
+      flip      = 0
       ! orient flux to fit flip and locSide to element local system
       DO q=0,NLoc; DO p=0,NLoc
-        FluxTmp(:,p,q)=Flux(:,CS2V2(1,p,q,locSideID),CS2V2(2,p,q,locSideID),SideID)
+        FluxTmp(:,S2V2(1,p,q,flip,locSideID),S2V2(2,p,q,flip,locSideID)) = Flux(:,p,q,SideID)
       END DO; END DO ! p,q
 #if   (PP_NodeType==1)
       CALL DoSurfIntPrim(NLoc,FluxTmp,L_HatMinus,   L_HatPlus,      locSideID,gradU(:,:,:,:,ElemID))
@@ -120,12 +121,14 @@ DO SideID=firstSideID,lastSideID
       ! orient flux to fit flip and locSide to element local system
       IF(weak)THEN
         DO q=0,NLoc; DO p=0,NLoc
-          FluxTmp(:,p,q)=-Flux(:,S2V3(1,p,q,flip,nblocSideID),S2V3(2,p,q,flip,nblocSideID),SideID)
+          ! p,q are in the master RHS system, they need to be transformed to the slave volume system using S2V2 mapping
+          FluxTmp(:,S2V2(1,p,q,flip,nblocSideID),S2V2(2,p,q,flip,nblocSideID)) = -Flux(:,p,q,SideID)
         END DO; END DO ! p,q
       ELSE
         ! In strong form, don't flip the sign since the slave flux is the negative of the master flux
         DO q=0,NLoc; DO p=0,NLoc
-          FluxTmp(:,p,q)= Flux(:,S2V3(1,p,q,flip,nblocSideID),S2V3(2,p,q,flip,nblocSideID),SideID)
+          ! p,q are in the master RHS system, they need to be transformed to the slave volume system using S2V2 mapping
+          FluxTmp(:,S2V2(1,p,q,flip,nblocSideID),S2V2(2,p,q,flip,nblocSideID)) =  Flux(:,p,q,SideID)
         END DO; END DO ! p,q
       END IF
 #if   (PP_NodeType==1)

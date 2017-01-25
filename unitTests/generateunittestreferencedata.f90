@@ -33,7 +33,7 @@ CHARACTER(LEN=255)             :: Filename
 Filename = "UnittestElementData.bin"
 ! Save the calculated solution to a binary file for later comparison
 OPEN(UNIT = 10, STATUS='replace',FILE=TRIM(Filename),FORM='unformatted')  ! replace an existing file or create a new one
-WRITE(10) nElems,SideToElem,firstMPISide_YOUR,lastMPISide_MINE,nSides,S2V3,CS2V2,V2S2,L_Minus,L_Plus,L_HatPlus,L_HatMinus,sJ
+WRITE(10) nElems,SideToElem,firstMPISide_YOUR,lastMPISide_MINE,nSides,FS2M,V2S,S2V,S2V2,L_Minus,L_Plus,L_HatPlus,L_HatMinus,sJ
 CLOSE(10) ! close the file
 WRITE(*,*) "Generated Unittest reference data into: ", TRIM(Filename)
 END SUBROUTINE GenerateUnittestReferenceData
