@@ -483,7 +483,7 @@ ELSE
         gradUx_master(:,:,:,SideID),gradUy_master(:,:,:,SideID),gradUz_master(:,:,:,SideID),&
         NormVec(:,:,:,FVEM,SideID)                                                          &
 #ifdef EDDYVISCOSITY
-        ,DeltaS_master(SideID),DeltaS_master(SideID),SGS_Ind_master(1,:,:,SideID),SGS_Ind_master(1,:,:,SideID),&
+        ,DeltaS_master(SideID),DeltaS_master(SideID),SGS_Ind_Master(1:2,:,:,SideID),SGS_Ind_Master(1:2,:,:,SideID),&
         Face_xGP(:,:,:,FVEM,SideID)&
 #endif
     )
@@ -492,7 +492,7 @@ ELSE
 
   CASE(3,4,9) ! Walls
 #ifdef EDDYVISCOSITY
-    SGS_Ind_Master(1,:,:,SideID)=0.
+    SGS_Ind_Master(1:2,:,:,SideID)=0.
 #endif
     DO q=0,Nloc; DO p=0,Nloc
       P_RP(p,q) = Additionals(1,p,q)
@@ -519,7 +519,7 @@ ELSE
       CALL EvalDiffFlux2D(Nloc,Fd_Face_loc,Gd_Face_loc,Hd_Face_loc,UPrim_boundary,              &
           gradUx_master(:,:,:,SideID), gradUy_master(:,:,:,SideID), gradUz_master(:,:,:,SideID) &
 #ifdef EDDYVISCOSITY
-          ,DeltaS_master(SideID),SGS_Ind_master(1,:,:,SideID),Face_xGP(:,:,:,FVEM,SideID)            &
+          ,DeltaS_master(SideID),SGS_Ind_Master(1:2,:,:,SideID),Face_xGP(:,:,:,FVEM,SideID)            &
 #endif
       )
       ! Enforce energy flux is exactly zero
@@ -539,7 +539,7 @@ ELSE
       CALL EvalDiffFlux2D(Nloc,Fd_Face_loc,Gd_Face_loc,Hd_Face_loc,UPrim_boundary,              &
           gradUx_master(:,:,:,SideID), gradUy_master(:,:,:,SideID), gradUz_master(:,:,:,SideID) &
 #ifdef EDDYVISCOSITY
-          ,DeltaS_master(SideID),SGS_Ind_master(1,:,:,SideID),Face_xGP(:,:,:,FVEM,SideID)            &
+          ,DeltaS_master(SideID),SGS_Ind_Master(1:2,:,:,SideID),Face_xGP(:,:,:,FVEM,SideID)            &
 #endif
       )
     CASE(9)
@@ -571,7 +571,7 @@ ELSE
       CALL EvalDiffFlux2D(Nloc,Fd_Face_loc,Gd_Face_loc,Hd_Face_loc,UPrim_master(:,:,:,SideID),&
           gradUx_Face_loc,gradUy_Face_loc,gradUz_Face_loc                                     &
 #ifdef EDDYVISCOSITY
-          ,DeltaS_master(SideID),SGS_Ind_master(1,:,:,SideID),Face_xGP(:,:,:,FVEM,SideID)          &
+          ,DeltaS_master(SideID),SGS_Ind_Master(1:2,:,:,SideID),Face_xGP(:,:,:,FVEM,SideID)          &
 #endif
       )
     END SELECT

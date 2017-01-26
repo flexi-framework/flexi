@@ -351,7 +351,7 @@ REAL,INTENT(IN)                                        :: Face_xGP(3,0:NLoc,0:NL
                                                        !> Filter width for eddy viscosity left/right of the interface
 REAL,INTENT(IN)                                        :: DeltaS_L,DeltaS_R
                                                        !> Indicator for eddy viscosity left/right of the interface
-REAL,DIMENSION(0:NLoc,0:NLoc),INTENT(IN)               :: SGS_Ind_L,SGS_Ind_R
+REAL,DIMENSION(2,0:NLoc,0:NLoc),INTENT(IN)               :: SGS_Ind_L,SGS_Ind_R
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES

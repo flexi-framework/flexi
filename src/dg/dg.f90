@@ -313,6 +313,11 @@ USE MOD_FV_Mortar           ,ONLY: FV_gradU_mortar
 USE MOD_FV_Reconstruction   ,ONLY: FV_PrepareSurfGradient,FV_SurfCalcGradients,FV_SurfCalcGradients_BC,FV_CalcGradients
 #endif /* FV_RECONSTRUCT */
 #endif /* FV_ENABLED */
+#if EDDYVISCOSITY
+USE MOD_EddyVisc_Vars       ,ONLY:SGS_Ind,SGS_Ind_Master,SGS_Ind_Slave 
+USE MOD_EddyVisc_Vars       ,ONLY:EddyViscType
+USE MOD_ProlongToFace1      ,ONLY: ProlongToFace1
+#endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -508,6 +513,26 @@ END IF
 ! [ 7. Volume integral (advective and viscous) for all FV elements ]
 CALL FV_VolInt(UPrim,Ut)
 #endif
+
+#if EDDYVISCOSITY
+IF(EddyViscType.EQ.2) THEN
+#if MPI
+! 4.2)
+CALL StartReceiveMPIData(SGS_Ind_master,DataSizeSideScalar,1,nSides,MPIRequest_SGS_Ind(:,SEND),SendID=1)
+                                                         ! Receive YOUR / FV_surf_gradU_slave: master -> slave
+CALL ProlongToFace1(PP_N,SGS_Ind(1:2,:,:,:,:),SGS_Ind_master(:,:,:,:),SGS_Ind_Slave(:,:,:,:),L_Minus,L_Plus,.TRUE.)
+CALL StartSendMPIData(SGS_Ind_master,DataSizeSideScalar,1,nSides,MPIRequest_SGS_Ind(:,RECV),SendID=1)
+#endif
+! Prolong to face for BCSides, InnerSides and MPI sides - receive direction
+CALL ProlongToFace1(PP_N,SGS_Ind(1:2,:,:,:,:),SGS_Ind_master(:,:,:,:),SGS_Ind_Slave(:,:,:,:),L_Minus,L_Plus,.FALSE.)
+#if MPI  
+CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_SGS_Ind)  ! U_slave: slave -> master 
+#endif
+
+END IF
+#endif
+
+
 
 #if PARABOLIC && MPI
 ! Complete send / receive for gradUx, gradUy, gradUz, started in the lifting routines

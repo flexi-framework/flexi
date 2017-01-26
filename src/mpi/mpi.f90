@@ -176,7 +176,7 @@ DataSizeSide      =PP_nVar*(PP_N+1)**2
 DataSizeSidePrim  =PP_nVarPrim*(PP_N+1)**2
 DataSizeSideO     =PP_nVar*(nOver+1)**2
 #ifdef EDDYVISCOSITY
-DataSizeSideScalar= (PP_N+1)**2
+DataSizeSideScalar= 2*(PP_N+1)**2
 #endif
 
 ! split communicator into smaller groups (e.g. for local nodes)

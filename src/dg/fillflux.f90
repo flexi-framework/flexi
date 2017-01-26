@@ -221,7 +221,7 @@ DO SideID=firstSideID_wo_BC,lastSideID
       gradUx_slave (:,:,:,SideID),gradUy_slave (:,:,:,SideID), gradUz_slave (:,:,:,SideID),&
       NormVec(:,:,:,FV_Elems_Max(SideID),SideID)&
 #ifdef EDDYVISCOSITY
-      ,DeltaS_master(SideID),DeltaS_slave(SideID),SGS_Ind_master(1,:,:,SideID),SGS_Ind_slave(1,:,:,SideID),&
+      ,DeltaS_master(SideID),DeltaS_slave(SideID),SGS_Ind_Master(1:2,:,:,SideID),SGS_Ind_slave(1:2,:,:,SideID),&
           Face_xGP(:,:,:,FV_Elems_Max(SideID),SideID)&
 #endif
   )

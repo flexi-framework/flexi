@@ -160,6 +160,7 @@ S_eN = S_eN + ( grad23 + grad32 )**2.
 S_eN = sqrt(S_eN)
 ! dynsmag model
 muSGS = S_eN*rho*SGS_Ind(1,i,j,k,iElem) 
+SGS_Ind(2,i,j,k,iElem) = muSGS 
 muSGSmax(iElem) = MAX(muSGS,muSGSmax(iElem))
 END SUBROUTINE dynsmag
 
@@ -203,19 +204,19 @@ SUBROUTINE compute_cd(U_in)
 ! MODULES
 USE MOD_PreProc
 USE MOD_EddyVisc_Vars,          ONLY:SGS_Ind,FilterMat_testfilter
-USE MOD_EddyVisc_Vars,          ONLY:SGS_Ind,SGS_Ind_Slave,SGS_Ind_Master
+USE MOD_EddyVisc_Vars,          ONLY:SGS_Ind!,SGS_Ind_Slave,SGS_Ind_Master
 USE MOD_EddyVisc_Vars,          ONLY:MM_Avg, ML_Avg
-USE MOD_ProlongToFace1,         ONLY: ProlongToFace1
+!USE MOD_ProlongToFace1,         ONLY: ProlongToFace1
 USE MOD_Filter,                 ONLY:Filter_General
 USE MOD_Lifting_Vars,           ONLY:gradUx,gradUy,gradUz
 USE MOD_Interpolation_Vars,     ONLY:wGP
 USE MOD_Mesh_Vars,              ONLY:sJ, nSides, nElems
 USE MOD_Timedisc_Vars,          ONLY:dt
-USE MOD_Interpolation_Vars,     ONLY: L_Minus,L_Plus
-#if MPI
-USE MOD_MPI_Vars
-USE MOD_MPI,                ONLY: StartReceiveMPIData,StartSendMPIData,FinishExchangeMPIData
-#endif
+!USE MOD_Interpolation_Vars,     ONLY: L_Minus,L_Plus
+!#if MPI
+!USE MOD_MPI_Vars
+!USE MOD_MPI,                ONLY: StartReceiveMPIData,StartSendMPIData,FinishExchangeMPIData
+!#endif
 
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -417,71 +418,71 @@ DO iElem=1,nElems
 !
   !-----CELL LOCAL IN HOMOGENEOUS DIRECTIONS
   !ACHTUNG NUR KARTESISCH UND IN/FUER Y=J!!!
-!  dummy1D=0.
-!  Vol = 0.
-!  DO j=0,PP_N
-!    DO i=0,PP_N
-!      IntegrationWeight = wGP(i)*wGP(j)
-!      dummy1D(:) = dummy1D(:) + ML(i,:,j)*IntegrationWeight
-!      Vol = Vol + Integrationweight
-!    END DO ! i
-!  END DO ! j
-!  DO j=0,PP_N
-!    DO i=0,PP_N
-!      ML(i,:,j) = dummy1D(:)/Vol !CELL average
-!    END DO ! i
-!  END DO ! j
-!  dummy1D=0.
-!  DO j=0,PP_N
-!    DO i=0,PP_N
-!      IntegrationWeight = wGP(i)*wGP(j)
-!      dummy1D(:) = dummy1D(:) + MM(i,:,j)*IntegrationWeight
-!    END DO ! i
-!  END DO ! j
-!  DO j=0,PP_N
-!    DO i=0,PP_N
-!      MM(i,:,j) = dummy1D(:)/Vol !CELL average
-!    END DO ! i
-!  END DO ! j
-!  DO j=0,PP_N
-!    DO i=0,PP_N
-!      C_d(i,:,j) = 0.5*ML(i,:,j)/MM(i,:,j) !CELL average
-!    END DO ! i
-!  END DO ! j
+  dummy1D=0.
+  Vol = 0.
+  DO j=0,PP_N
+    DO i=0,PP_N
+      IntegrationWeight = wGP(i)*wGP(j)
+      dummy1D(:) = dummy1D(:) + ML(i,:,j)*IntegrationWeight
+      Vol = Vol + Integrationweight
+    END DO ! i
+  END DO ! j
+  DO j=0,PP_N
+    DO i=0,PP_N
+      ML(i,:,j) = dummy1D(:)/Vol !CELL average
+    END DO ! i
+  END DO ! j
+  dummy1D=0.
+  DO j=0,PP_N
+    DO i=0,PP_N
+      IntegrationWeight = wGP(i)*wGP(j)
+      dummy1D(:) = dummy1D(:) + MM(i,:,j)*IntegrationWeight
+    END DO ! i
+  END DO ! j
+  DO j=0,PP_N
+    DO i=0,PP_N
+      MM(i,:,j) = dummy1D(:)/Vol !CELL average
+    END DO ! i
+  END DO ! j
+  DO j=0,PP_N
+    DO i=0,PP_N
+      C_d(i,:,j) = - 0.5*ML(i,:,j)/MM(i,:,j) !CELL average
+    END DO ! i
+  END DO ! j
 !  SGS_Ind(1,:,:,:,iElem) = C_d(:,:,:)
 !
 !------------------------------------------
-!Time Average ala pruett
-!Im Nenner steht r=FilterWidth/dt(RK)
-!Simple shot is taking the filter width equal 1, assuming meaningful dimensionless timescale
-ML_Avg(:,:,:,iElem) = ML_Avg(:,:,:,iElem) + (ML(:,:,:)-ML_Avg(:,:,:,iElem))*(dt/1.)
-MM_Avg(:,:,:,iElem) = MM_Avg(:,:,:,iElem) + (MM(:,:,:)-MM_Avg(:,:,:,iElem))*(dt/1.)
-C_d=0.
-DO i=0,PP_N
-  DO j=0,PP_N
-    DO k=0,PP_N
-!      IF (ABS(MM_Avg(i,j,k,iElem)) .LE. 1e-15) CYCLE 
-      C_d(i,j,k) = 0.5*ML_Avg(i,j,k,iElem)/MM_Avg(i,j,k,iElem)
-    END DO ! i
-  END DO ! j
-END DO ! k
-SGS_Ind(1,:,:,:,iElem) = SGS_Ind(1,:,:,:,iElem) + (C_d(:,:,:)-SGS_Ind(1,:,:,:,iElem))/1.*dt
+!!Time Average ala pruett
+!!Im Nenner steht r=FilterWidth/dt(RK)
+!!Simple shot is taking the filter width equal 1, assuming meaningful dimensionless timescale
+!ML_Avg(:,:,:,iElem) = ML_Avg(:,:,:,iElem) + (ML(:,:,:)-ML_Avg(:,:,:,iElem))*(dt/5.)
+!MM_Avg(:,:,:,iElem) = MM_Avg(:,:,:,iElem) + (MM(:,:,:)-MM_Avg(:,:,:,iElem))*(dt/5.)
+!!C_d=0.
+!DO i=0,PP_N
+!  DO j=0,PP_N
+!    DO k=0,PP_N
+!!      IF (ABS(MM_Avg(i,j,k,iElem)) .LE. 1e-15) CYCLE 
+!      C_d(i,j,k) = 0.5*ML_Avg(i,j,k,iElem)/MM_Avg(i,j,k,iElem)
+!    END DO ! i
+!  END DO ! j
+!END DO ! k
+SGS_Ind(1,:,:,:,iElem) = SGS_Ind(1,:,:,:,iElem) + (C_d(:,:,:)-SGS_Ind(1,:,:,:,iElem))/3.*dt
 !print*,SGS_Ind(1,:,:,:,iElem)
 !  SGS_Ind(1,:,:,:,iElem) = C_d(:,:,:)
 !------------------------------------------
 END DO
-#if MPI
-! 4.2)
-CALL StartReceiveMPIData(SGS_Ind_master,DataSizeSideScalar,1,nSides,MPIRequest_SGS_Ind(:,SEND),SendID=1)
-                                                         ! Receive YOUR / FV_surf_gradU_slave: master -> slave
-CALL ProlongToFace1(PP_N,SGS_Ind(1:1,:,:,:,:),SGS_Ind_master(:,:,:,:),SGS_Ind_Slave(:,:,:,:),L_Minus,L_Plus,.TRUE.)
-CALL StartSendMPIData(SGS_Ind_master,DataSizeSideScalar,1,nSides,MPIRequest_SGS_Ind(:,RECV),SendID=1)
-#endif
-! Prolong to face for BCSides, InnerSides and MPI sides - receive direction
-CALL ProlongToFace1(PP_N,SGS_Ind(1:1,:,:,:,:),SGS_Ind_master(:,:,:,:),SGS_Ind_Slave(:,:,:,:),L_Minus,L_Plus,.FALSE.)
-#if MPI  
-CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_SGS_Ind)  ! U_slave: slave -> master 
-#endif
+!#if MPI
+!! 4.2)
+!CALL StartReceiveMPIData(SGS_Ind_master,DataSizeSideScalar,1,nSides,MPIRequest_SGS_Ind(:,SEND),SendID=1)
+!                                                         ! Receive YOUR / FV_surf_gradU_slave: master -> slave
+!CALL ProlongToFace1(PP_N,SGS_Ind(1:1,:,:,:,:),SGS_Ind_master(:,:,:,:),SGS_Ind_Slave(:,:,:,:),L_Minus,L_Plus,.TRUE.)
+!CALL StartSendMPIData(SGS_Ind_master,DataSizeSideScalar,1,nSides,MPIRequest_SGS_Ind(:,RECV),SendID=1)
+!#endif
+!! Prolong to face for BCSides, InnerSides and MPI sides - receive direction
+!CALL ProlongToFace1(PP_N,SGS_Ind(1:1,:,:,:,:),SGS_Ind_master(:,:,:,:),SGS_Ind_Slave(:,:,:,:),L_Minus,L_Plus,.FALSE.)
+!#if MPI  
+!CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_SGS_Ind)  ! U_slave: slave -> master 
+!#endif
 END SUBROUTINE compute_cd 
 
 SUBROUTINE Finalizedynsmag()

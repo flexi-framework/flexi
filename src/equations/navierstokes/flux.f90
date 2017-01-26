@@ -131,6 +131,9 @@ REAL                :: tau_xx,tau_yy,tau_zz,tau_xy,tau_xz,tau_yz
 REAL                :: gradT1,gradT2,gradT3,lambda,prim(PP_nVarPrim)
 INTEGER             :: i,j,k
 !==================================================================================================================================
+#if EDDYVISCOSITY
+muSGSmax(iElem)=0.
+#endif
 DO k=0,PP_N;  DO j=0,PP_N; DO i=0,PP_N
   prim = UPrim(:,i,j,k)
   v1   = UPrim(2,i,j,k)
@@ -146,7 +149,9 @@ DO k=0,PP_N;  DO j=0,PP_N; DO i=0,PP_N
                     ,gradUy(2,i,j,k),gradUz(2,i,j,k),gradUx(3,i,j,k)&
                     ,gradUz(3,i,j,k),gradUx(4,i,j,k),gradUy(4,i,j,k)&
                     ,UPrim(1,i,j,k),iElem,i,j,k,muSGS(1,i,j,k,iElem))
-  muS = muS + max(muSGS(1,i,j,k,iElem),0.)
+  !muS = muS + max(muSGS(1,i,j,k,iElem),0.)
+  ! MATTEO: horrible hack
+  muS = muS + min(max(muSGS(1,i,j,k,iElem),0.), 3*muS)
   lambda = lambda + muSGS(1,i,j,k,iElem)*cp/PrSGS
 #endif
   ! gradients of primitive variables are directly available gradU = (/ drho, dv1, dv2, dv3, dT /)
@@ -256,6 +261,7 @@ USE MOD_Viscosity
 USE MOD_EOS_Vars,     ONLY: cp,Pr
 #ifdef EDDYVISCOSITY
 USE MOD_EddyVisc_Vars,ONLY: PrSGS,eddyViscosity_surf
+USE MOD_EddyVisc_Vars,ONLY: EddyViscType 
 #endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -268,7 +274,7 @@ REAL,INTENT(IN)                                   :: gradUy_Face(PP_nVarPrim,0:N
 REAL,INTENT(IN)                                   :: gradUz_Face(PP_nVarPrim,0:Nloc,0:Nloc)    !< gradUz_Face(iVar,i,j)
 REAL,DIMENSION(PP_nVar,0:Nloc,0:Nloc),INTENT(OUT) :: f,g,h                                     !< Cartesian fluxes (iVar,i,j)
 #ifdef EDDYVISCOSITY 
-REAL,INTENT(IN)     :: SGS_Ind(0:Nloc,0:Nloc)     !< Indicator for eddy viscosity
+REAL,INTENT(IN)     :: SGS_Ind(2,0:Nloc,0:Nloc)     !< Indicator for eddy viscosity
 REAL,INTENT(IN)     :: DeltaS                     !< Filter width for eddy viscosity
 REAL,INTENT(IN)     :: Face_xGP(3,0:NLoc,0:NLoc)  !< Gauss-point coordinates on face
 #endif 
@@ -296,11 +302,17 @@ DO j=0,Nloc ; DO i=0,Nloc
   ! In previous versions gradients of conservative variables had been used, see Git commit b984f2895121e236ce24c149ad15615180995b00
   ! gradients of primitive variables are directly available gradU = (/ drho, dv1, dv2, dv3, dp, dT /)
 #ifdef EDDYVISCOSITY
-  CALL eddyViscosity_surf(gradUx_Face(2,i,j),gradUy_Face(3,i,j),gradUz_Face(4,i,j)&
-                         ,gradUy_Face(2,i,j),gradUz_Face(2,i,j),gradUx_Face(3,i,j)&
-                         ,gradUz_Face(3,i,j),gradUx_Face(4,i,j),gradUy_Face(4,i,j)&
-                         ,UPrim_Face(1,i,j),DeltaS,SGS_Ind(i,j),muSGS,Face_xGP(2,i,j))
-  muS = muS + max(muSGS,0.)
+  IF(eddyViscType.EQ.2) THEN
+    muSGS=SGS_Ind(2,i,j)
+  ELSE
+    CALL eddyViscosity_surf(gradUx_Face(2,i,j),gradUy_Face(3,i,j),gradUz_Face(4,i,j)&
+                           ,gradUy_Face(2,i,j),gradUz_Face(2,i,j),gradUx_Face(3,i,j)&
+                           ,gradUz_Face(3,i,j),gradUx_Face(4,i,j),gradUy_Face(4,i,j)&
+                           ,UPrim_Face(1,i,j),DeltaS,SGS_Ind(1,i,j),muSGS,Face_xGP(2,i,j))
+  END IF
+  !muS = muS + max(muSGS,0.)
+  !MATTEO: horrible hack
+  muS = muS + min(max(muSGS,0.),3*muS)
   lambda = lambda + muSGS*cp/PrSGS
 #endif
   ! gradients of primitive variables are directly available gradU = (/ drho, dv1, dv2, dv3, dp, dT /)

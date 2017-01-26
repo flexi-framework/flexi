@@ -71,12 +71,12 @@ ALLOCATE(DeltaS_slave (1:nSides))
 DeltaS_master=0.
 DeltaS_slave=0.
 DeltaS=0.
-ALLOCATE(SGS_Ind(1,0:PP_N,0:PP_N,0:PP_N,nElems))
+ALLOCATE(SGS_Ind(2,0:PP_N,0:PP_N,0:PP_N,nElems))
 ALLOCATE(MM_Avg(0:PP_N,0:PP_N,0:PP_N,nElems))
 ALLOCATE(ML_Avg(0:PP_N,0:PP_N,0:PP_N,nElems))
 MM_Avg = 0.; ML_Avg = 0.
-ALLOCATE(SGS_Ind_master(1,0:PP_N,0:PP_N,1:nSides))
-ALLOCATE(SGS_Ind_slave (1,0:PP_N,0:PP_N,1:nSides))
+ALLOCATE(SGS_Ind_master(2,0:PP_N,0:PP_N,1:nSides))
+ALLOCATE(SGS_Ind_slave (2,0:PP_N,0:PP_N,1:nSides))
 SGS_Ind=0.
 SGS_Ind_master=0.
 SGS_Ind_slave=0.
@@ -84,7 +84,7 @@ ALLOCATE(muSGS(1,0:PP_N,0:PP_N,0:PP_N,nElems))
 ALLOCATE(muSGSmax(nElems))
 muSGS = 0.
 !muSGSmax=0.
-muSGSmax=2.*mu0
+muSGSmax=2000.*mu0
 ALLOCATE(FilterMat_Testfilter(0:PP_N,0:PP_N))
 FilterMat_Testfilter = 0.
 ! Set Prandtl number !=0 because we need to divide by this number to get the turbulent heat conductivity (will be zero anyway
