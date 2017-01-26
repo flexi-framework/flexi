@@ -14,8 +14,12 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-!> Module containing the main procedures for the POSTI tool: visu_requestInformation is called by ParaView to create a
-!> list of available variables and visu is the main routine of POSTI.
+!> Module containing routines needed to average the solution in the zeta direction.
+!> General idea of averaging with both FV and DG elements:
+!> We calculate the amount of FV and DG elements in the average direction for each cell in the 2D output mesh. If more than 50%
+!> of the cells are FV cells, then the averaged DG cells will be converted to the FV grid and the output of this cell will be
+!> like for a pure FV cells. The other way round, if less than 50% are FV cells, then the FV averaged data will be converted
+!> to the DG grid and the cell will be visualized as a pure DG cell.
 !===================================================================================================================================
 MODULE MOD_Visu_Avg2D
 ! MODULES
@@ -46,6 +50,12 @@ PUBLIC:: Average2D
 
 CONTAINS
 
+!===================================================================================================================================
+!> Initialization of the average routines. The IJK sorting of the elements (which is necessary for averaging) is read from the
+!> mehs file and from that a mapping is build. This mapping will lead from the i and j indizes of the elements to the element
+!> index in the averaged output arrays. Also amount of FV cells in the average direction for each 2D cell will be
+!> calculated and stored.
+!===================================================================================================================================
 SUBROUTINE InitAverage2D()
 USE MOD_PreProc
 USE MOD_Globals
@@ -60,6 +70,7 @@ IMPLICIT NONE
 LOGICAL                          :: exists
 INTEGER                          :: ii,jj,iElem
 !===================================================================================================================================
+! Read the IJK sorting from the mesh file. This is required!!
 CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL DatasetExists(File_ID,'nElems_IJK',exists)
 IF (exists) THEN
@@ -73,6 +84,7 @@ ELSE
 END IF
 CALL CloseDataFile()
 
+! For each cell in the 2D grid, store the amount of FV cells in the average direction
 SDEALLOCATE(FVAmountAvg2D)
 ALLOCATE(FVAmountAvg2D(nElems_IJK(1),nElems_IJK(2)))
 FVAmountAvg2D = 0.
@@ -83,6 +95,7 @@ DO iElem=1,nElems
 END DO
 FVAmountAvg2D = FVAmountAvg2D / REAL(nElems_IJK(3))
 
+! Create a mapping from the IJ indizes of each cell to the 2D visu elements, for DG and FV seperately
 nElemsAvg2D_DG = 0
 nElemsAvg2D_FV = 0
 SDEALLOCATE(mapElemIJToDGElemAvg2D)
@@ -106,6 +119,13 @@ DO iElem=1,nElems
 END DO
 END SUBROUTINE InitAverage2D
 
+!===================================================================================================================================
+!> Builds Vandermonde matrizes thar are needed by the averaging routines. These matrizes are:
+!> * Vdm_DGToFV: Conversion of DG solution to FV solution on the calc polynomial degree
+!> * Vdm_FVToDG: Inverse of the above
+!> * Vdm_DGToVisu: Conversion from calc to visu for DG
+!> * Vdm_FVToVisu: Conversion from calc to visu for FV
+!===================================================================================================================================
 SUBROUTINE BuildVandermonds_Avg2D(NCalc_DG,NCalc_FV) 
 USE MOD_Globals
 USE MOD_PreProc
@@ -170,6 +190,9 @@ ALLOCATE(Vdm_FVToVisu(0:NVisu_FV,0:0       ))
 CALL GetVandermonde(NCalc_DG,NodeType,NVisu,NodeTypeVisuPosti,Vdm_DGToVisu,modal=.FALSE.)
 END SUBROUTINE BuildVandermonds_Avg2D
 
+!===================================================================================================================================
+!> Main routine to do the averaging.
+!===================================================================================================================================
 SUBROUTINE Average2D(nVarCalc_DG,nVarCalc_FV,NCalc_DG,NCalc_FV,nElems_DG,nElems_FV,&
     NodeTypeCalc_DG,UCalc_DG,UCalc_FV,&
     Vdm_DGToFV,Vdm_FVToDG,Vdm_DGToVisu,Vdm_FVToVisu, &
