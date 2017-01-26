@@ -170,7 +170,6 @@ END FUNCTION GetMaskGrad
 SUBROUTINE CalcQuantities(nVarCalc,nVal,mapCalcMeshToGlobalMesh,mapDepToCalc,UCalc,maskCalc,gradUx,gradUy,gradUz,&
     NormVec,TangVec1,TangVec2)
 ! MODULES
-USE MOD_Globals,ONLY: MPIRoot
 USE MOD_EOS_Posti_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -242,12 +241,12 @@ REAL,DIMENSION(1:PP_nVarPrim,PRODUCT(nVal)),INTENT(IN),OPTIONAL :: gradUx,gradUy
 REAL,DIMENSION(1:3,PRODUCT(nVal)),INTENT(IN),OPTIONAL           :: NormVec,TangVec1,TangVec2
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: i,iMom1,iMom2,iMom3,iDens,iPres,iVel1,iVel2,iVel3,iVelM,iVelS,iEner,iEnst,iTemp,iWFriX,iWFriY,iWFriZ,iWFriMag
+INTEGER            :: i,iMom1,iMom2,iMom3,iDens,iPres,iVel1,iVel2,iVel3,iVelM,iVelS,iEner,iEnst,iTemp
 CHARACTER(LEN=255) :: DepName_low
 REAL               :: UE(PP_2Var)
 INTEGER            :: nElems_loc,Nloc,nDOF,nDims
 #if PARABOLIC
-INTEGER            :: iVorM
+INTEGER            :: iVorM,iWFriX,iWFriY,iWFriZ,iWFriMag
 #endif
 LOGICAL            :: withGradients
 LOGICAL            :: withVectors

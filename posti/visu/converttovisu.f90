@@ -392,7 +392,6 @@ INTEGER                        :: mapIdentityDG(nElems)
 INTEGER                        :: mapIdentityFV(nElems)
 INTEGER                        :: mapVarIdentity(1)
 REAL,ALLOCATABLE               :: FieldData_DG(:,:,:,:,:),FieldData_FV(:,:,:,:,:)
-INTEGER                        :: i
 REAL,ALLOCATABLE               :: FVdouble(:,:)
 !===================================================================================================================================
 SWRITE(*,*) "Convert generic datasets to Visu grid"

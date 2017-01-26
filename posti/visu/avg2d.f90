@@ -20,6 +20,8 @@
 !> of the cells are FV cells, then the averaged DG cells will be converted to the FV grid and the output of this cell will be
 !> like for a pure FV cells. The other way round, if less than 50% are FV cells, then the FV averaged data will be converted
 !> to the DG grid and the cell will be visualized as a pure DG cell.
+!> The averaging process relies on the IJK sorting of the mesh and only works with meshes that include one. All elements with
+!> the same k index willl be averaged into one cell.
 !===================================================================================================================================
 MODULE MOD_Visu_Avg2D
 ! MODULES
@@ -141,9 +143,11 @@ IMPLICIT NONE
 INTEGER,INTENT(IN) :: NCalc_DG,NCalc_FV
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+#if FV_ENABLED
 REAL,ALLOCATABLE   :: FV_Vdm(:,:),FV_sVdm(:,:)
 REAL,ALLOCATABLE   :: FVdouble(:,:)
 INTEGER            :: i
+#endif
 !===================================================================================================================================
 SDEALLOCATE(Vdm_DGToFV)
 SDEALLOCATE(Vdm_FVToDG)
