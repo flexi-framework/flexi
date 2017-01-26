@@ -149,9 +149,10 @@ DO k=0,PP_N;  DO j=0,PP_N; DO i=0,PP_N
                     ,gradUy(2,i,j,k),gradUz(2,i,j,k),gradUx(3,i,j,k)&
                     ,gradUz(3,i,j,k),gradUx(4,i,j,k),gradUy(4,i,j,k)&
                     ,UPrim(1,i,j,k),iElem,i,j,k,muSGS(1,i,j,k,iElem))
-  !muS = muS + max(muSGS(1,i,j,k,iElem),0.)
+  muSGS(1,i,j,k,iElem) =  max(muSGS(1,i,j,k,iElem),0.)
+  muS = muS + (muSGS(1,i,j,k,iElem))
   ! MATTEO: horrible hack
-  muS = muS + min(max(muSGS(1,i,j,k,iElem),0.), 3*muS)
+  !muS = muS + min(max(muSGS(1,i,j,k,iElem),0.), 3*muS)
   lambda = lambda + muSGS(1,i,j,k,iElem)*cp/PrSGS
 #endif
   ! gradients of primitive variables are directly available gradU = (/ drho, dv1, dv2, dv3, dT /)
@@ -303,16 +304,16 @@ DO j=0,Nloc ; DO i=0,Nloc
   ! gradients of primitive variables are directly available gradU = (/ drho, dv1, dv2, dv3, dp, dT /)
 #ifdef EDDYVISCOSITY
   IF(eddyViscType.EQ.2) THEN
-    muSGS=SGS_Ind(2,i,j)
+    muSGS=max(SGS_Ind(2,i,j),0.)
   ELSE
     CALL eddyViscosity_surf(gradUx_Face(2,i,j),gradUy_Face(3,i,j),gradUz_Face(4,i,j)&
                            ,gradUy_Face(2,i,j),gradUz_Face(2,i,j),gradUx_Face(3,i,j)&
                            ,gradUz_Face(3,i,j),gradUx_Face(4,i,j),gradUy_Face(4,i,j)&
                            ,UPrim_Face(1,i,j),DeltaS,SGS_Ind(1,i,j),muSGS,Face_xGP(2,i,j))
   END IF
-  !muS = muS + max(muSGS,0.)
+  muS = muS + muSGS
   !MATTEO: horrible hack
-  muS = muS + min(max(muSGS,0.),3*muS)
+  !muS = muS + min(max(muSGS,0.),3*muS)
   lambda = lambda + muSGS*cp/PrSGS
 #endif
   ! gradients of primitive variables are directly available gradU = (/ drho, dv1, dv2, dv3, dp, dT /)

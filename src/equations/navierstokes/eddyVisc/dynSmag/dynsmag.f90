@@ -447,6 +447,7 @@ DO iElem=1,nElems
   DO j=0,PP_N
     DO i=0,PP_N
       C_d(i,:,j) = - 0.5*ML(i,:,j)/MM(i,:,j) !CELL average
+      !C_d(i,:,j) = + 0.5*ML(i,:,j)/MM(i,:,j) !CELL average
     END DO ! i
   END DO ! j
 !  SGS_Ind(1,:,:,:,iElem) = C_d(:,:,:)
@@ -466,7 +467,7 @@ DO iElem=1,nElems
 !    END DO ! i
 !  END DO ! j
 !END DO ! k
-SGS_Ind(1,:,:,:,iElem) = SGS_Ind(1,:,:,:,iElem) + (C_d(:,:,:)-SGS_Ind(1,:,:,:,iElem))/3.*dt
+SGS_Ind(1,:,:,:,iElem) = SGS_Ind(1,:,:,:,iElem) + (C_d(:,:,:)-SGS_Ind(1,:,:,:,iElem))/1.*dt
 !print*,SGS_Ind(1,:,:,:,iElem)
 !  SGS_Ind(1,:,:,:,iElem) = C_d(:,:,:)
 !------------------------------------------

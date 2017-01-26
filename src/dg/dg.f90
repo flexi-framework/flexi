@@ -316,7 +316,7 @@ USE MOD_FV_Reconstruction   ,ONLY: FV_PrepareSurfGradient,FV_SurfCalcGradients,F
 #if EDDYVISCOSITY
 USE MOD_EddyVisc_Vars       ,ONLY:SGS_Ind,SGS_Ind_Master,SGS_Ind_Slave 
 USE MOD_EddyVisc_Vars       ,ONLY:EddyViscType
-USE MOD_ProlongToFace1      ,ONLY: ProlongToFace1
+USE MOD_ProlongToFace       ,ONLY: ProlongToFace
 #endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -518,13 +518,12 @@ CALL FV_VolInt(UPrim,Ut)
 IF(EddyViscType.EQ.2) THEN
 #if MPI
 ! 4.2)
-CALL StartReceiveMPIData(SGS_Ind_master,DataSizeSideScalar,1,nSides,MPIRequest_SGS_Ind(:,SEND),SendID=1)
-                                                         ! Receive YOUR / FV_surf_gradU_slave: master -> slave
-CALL ProlongToFace1(PP_N,SGS_Ind(1:2,:,:,:,:),SGS_Ind_master(:,:,:,:),SGS_Ind_Slave(:,:,:,:),L_Minus,L_Plus,.TRUE.)
-CALL StartSendMPIData(SGS_Ind_master,DataSizeSideScalar,1,nSides,MPIRequest_SGS_Ind(:,RECV),SendID=1)
+CALL StartReceiveMPIData(SGS_Ind_slave,DataSizeSideScalar,1,nSides,MPIRequest_SGS_Ind(:,RECV),SendID=2)
+CALL ProlongToFace(2,PP_N,SGS_Ind(1:2,:,:,:,:),SGS_Ind_master(:,:,:,:),SGS_Ind_Slave(:,:,:,:),L_Minus,L_Plus,.TRUE.)
+CALL StartSendMPIData(SGS_Ind_slave,DataSizeSideScalar,1,nSides,MPIRequest_SGS_Ind(:,SEND),SendID=2)
 #endif
 ! Prolong to face for BCSides, InnerSides and MPI sides - receive direction
-CALL ProlongToFace1(PP_N,SGS_Ind(1:2,:,:,:,:),SGS_Ind_master(:,:,:,:),SGS_Ind_Slave(:,:,:,:),L_Minus,L_Plus,.FALSE.)
+CALL ProlongToFace(2,PP_N,SGS_Ind(1:2,:,:,:,:),SGS_Ind_master(:,:,:,:),SGS_Ind_Slave(:,:,:,:),L_Minus,L_Plus,.FALSE.)
 #if MPI  
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_SGS_Ind)  ! U_slave: slave -> master 
 #endif
