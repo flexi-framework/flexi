@@ -170,6 +170,7 @@ END FUNCTION GetMaskGrad
 SUBROUTINE CalcQuantities(nVarCalc,nVal,mapCalcMeshToGlobalMesh,mapDepToCalc,UCalc,maskCalc,gradUx,gradUy,gradUz,&
     NormVec,TangVec1,TangVec2)
 ! MODULES
+USE MOD_Globals
 USE MOD_EOS_Posti_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
