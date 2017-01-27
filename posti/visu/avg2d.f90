@@ -75,14 +75,20 @@ INTEGER                          :: ii,jj,iElem
 ! Read the IJK sorting from the mesh file. This is required!!
 CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL DatasetExists(File_ID,'nElems_IJK',exists)
+SDEALLOCATE(Elem_IJK)
+ALLOCATE(Elem_IJK(3,nElems))
 IF (exists) THEN
-  SDEALLOCATE(Elem_IJK)
-  ALLOCATE(Elem_IJK(3,nElems))
   CALL ReadArray('nElems_IJK',1,(/3/),0,1,IntegerArray=nElems_IJK)
   CALL ReadArray('Elem_IJK',2,(/3,nElems/),offsetElem,2,IntegerArray=Elem_IJK)
 ELSE 
-  CALL CollectiveStop(__STAMP__,&
-      "No Elem_IJK sorting found in mesh file. Required for Avg2D!")
+  nElems_IJK(1) = 1
+  nElems_IJK(2) = nElems
+  nElems_IJK(3) = 1
+  DO iElem=1,nElems
+    Elem_IJK(1,iElem) = 1
+    Elem_IJK(2,iElem) = iElem
+    Elem_IJK(3,iElem) = 1
+  END DO ! iElem
 END IF
 CALL CloseDataFile()
 
