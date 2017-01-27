@@ -43,7 +43,7 @@ IF(success)THEN
   ParameterFile = Args(1)
   IF (.NOT.STRICMP(GetFileExtension(ParameterFile), "ini")) success=.FALSE.
 END IF
-IF(.NOT.success)THEN
+IF(.NOT.success.AND.doPrintHelp.LE.0)THEN
   ! Print out error message containing valid syntax
   CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: preparerec parameter.ini or preparerec --help'// &
   '[option/section name] to print help for a single parameter, parameter sections or all parameters.')

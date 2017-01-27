@@ -47,12 +47,6 @@ SWRITE(UNIT_stdOut,'(A)') " ||=============================||"
 SWRITE(UNIT_stdOut,'(A)') " || Recordpoints Evaluation Tool||" 
 SWRITE(UNIT_stdOut,'(A)') " ||=============================||"
 
-! Check if the number of arguments is correct
-IF (nArgs.LT.2) THEN
-  ! Print out error message containing valid syntax
-  CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: evalrec [parameter.ini] RPDefFile.h5 statefile1.h5...statefileN.h5 or evalrec --help'// &
-  '[option/section name] to print help for a single parameter, parameter sections or all parameters.')
-END IF
 
 CALL DefineParametersMPI()
 CALL DefineParametersIO_HDF5()
@@ -62,33 +56,42 @@ CALL DefineParametersOutput()
 CALL DefineParametersMesh()
 CALL DefineParametersRecordPoints()
 
-iArg=1
-ParameterFile='NOT SET'
-IF(STRICMP(GetFileExtension(Args(iArg)), "ini"))THEN
-  ParameterFile = Args(iArg)
-  iArg=iArg+1
-END IF
-
-RPFile=Args(iArg)
-isValid = ISVALIDHDF5FILE(RPFile,FileType=FileType)
-IF(isValid.AND.STRICMP(FileType,'RecordPoints'))THEN
-  iArg=iArg+1
-ELSE
-  CALL CollectiveStop(__STAMP__,'ERROR: No record point definition file provided.')
-END IF
-
-isValid = ISVALIDHDF5FILE(Args(iArg),FileType=FileType)
-IF(isValid.AND.STRICMP(FileType,'State'))THEN
-  RestartFile=Args(iArg)
-  IF(STRICMP(ParameterFile,'NOT SET'))THEN
-    ParameterFile = ".flexi.ini" 
-    CALL ExtractParameterFile(Args(iArg), ParameterFile, userblockFound)
-    IF (.NOT.userblockFound)&
-      CALL CollectiveStop(__STAMP__, "No userblock provided either by user or state file "//TRIM(RestartFile))
+IF(doPrintHelp.LE.0)THEN
+  ! Check if the number of arguments is correct
+  IF (nArgs.LT.2) THEN
+    ! Print out error message containing valid syntax
+    CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: evalrec [parameter.ini] RPDefFile.h5 statefile1.h5...statefileN.h5 or evalrec --help'// &
+    '[option/section name] to print help for a single parameter, parameter sections or all parameters.')
   END IF
-ELSE
-  CALL CollectiveStop(__STAMP__,'ERROR - Not a valid state file: '//TRIM(RestartFile))
-END IF
+  
+  iArg=1
+  ParameterFile='NOT SET'
+  IF(STRICMP(GetFileExtension(Args(iArg)), "ini"))THEN
+    ParameterFile = Args(iArg)
+    iArg=iArg+1
+  END IF
+  
+  RPFile=Args(iArg)
+  isValid = ISVALIDHDF5FILE(RPFile,FileType=FileType)
+  IF(isValid.AND.STRICMP(FileType,'RecordPoints'))THEN
+    iArg=iArg+1
+  ELSE
+    CALL CollectiveStop(__STAMP__,'ERROR: No record point definition file provided.')
+  END IF
+  
+  isValid = ISVALIDHDF5FILE(Args(iArg),FileType=FileType)
+  IF(isValid.AND.STRICMP(FileType,'State'))THEN
+    RestartFile=Args(iArg)
+    IF(STRICMP(ParameterFile,'NOT SET'))THEN
+      ParameterFile = ".flexi.ini" 
+      CALL ExtractParameterFile(Args(iArg), ParameterFile, userblockFound)
+      IF (.NOT.userblockFound)&
+        CALL CollectiveStop(__STAMP__, "No userblock provided either by user or state file "//TRIM(RestartFile))
+    END IF
+  ELSE
+    CALL CollectiveStop(__STAMP__,'ERROR - Not a valid state file: '//TRIM(RestartFile))
+  END IF
+END IF ! doPrintHelp.LE.0
 
 ! check for command line argument --help or --markdown
 IF (doPrintHelp.GT.0) THEN
