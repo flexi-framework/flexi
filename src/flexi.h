@@ -35,7 +35,7 @@
 #  define IEEE_IS_NAN ISNAN
 #endif
 
-#define SIZEOF_F(x) INT(STORAGE_SIZE(x)/8)
+#define SIZEOF_F(x) (STORAGE_SIZE(x)/8)
 
 #ifdef GNU
 #define CHECKSAFEINT(x,k)  IF(x>HUGE(1_  k).OR.x<-HUGE(1_  k))       CALL ABORT(__STAMP__,'Integer conversion failed: out of range!')
@@ -48,7 +48,7 @@
 #define CHECKSAFEREAL(x,k) IF(x>HUGE(1._ ## k).OR.x<-HUGE(1._ ## k)) CALL ABORT(__STAMP__,'Real conversion failed: out of range!')
 #endif
 
-#if MPI
+#if USE_MPI
 #  define SWRITE IF(MPIRoot) WRITE
 #  define IPWRITE(a,b) WRITE(a,b)myRank,
 #  define GETTIME(a) a=MPI_WTIME()
@@ -59,7 +59,8 @@
 #endif
 #define ERRWRITE(a,b) CALL CreateErrFile(); IF(ErrorFiles) WRITE(UNIT_errOut,b) 
 #define LOGWRITE(a,b) IF(Logging) WRITE(UNIT_logOut,b)
-#define SDEALLOCATE(A) IF(ALLOCATED(A)) DEALLOCATE(A)
+#define SDEALLOCATE(A) IF(ALLOCATED(A))  DEALLOCATE(A)
+#define ADEALLOCATE(A) IF(ASSOCIATED(A)) DEALLOCATE(A)
 
 ! Loop variables
 #define PP_IJK     i,j,k

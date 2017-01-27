@@ -41,7 +41,7 @@ USE MOD_Analyze,           ONLY:DefineParametersAnalyze,InitAnalyze,FinalizeAnal
 USE MOD_RecordPoints,      ONLY:DefineParametersRecordPoints,InitRecordPoints,FinalizeRecordPoints
 USE MOD_TimeDisc,          ONLY:DefineParametersTimedisc,InitTimeDisc,FinalizeTimeDisc,TimeDisc
 USE MOD_MPI,               ONLY:DefineParametersMPI,InitMPI
-#if MPI
+#if USE_MPI
 USE MOD_MPI,               ONLY:InitMPIvars,FinalizeMPI
 #endif
 USE MOD_Sponge,            ONLY:DefineParametersSponge,InitSponge,FinalizeSponge
@@ -50,24 +50,37 @@ USE MOD_FV,                ONLY:DefineParametersFV,InitFV,FinalizeFV
 USE MOD_FV_Basis,          ONLY:InitFV_Basis,FinalizeFV_Basis
 #endif
 USE MOD_Indicator,         ONLY:DefineParametersIndicator,InitIndicator,FinalizeIndicator
-USE MOD_ReadInTools,       ONLY:prms,IgnoredParameters,PrintDefaultParameterFile,FinalizeParameters
+USE MOD_ReadInTools,       ONLY:prms,IgnoredParameters,PrintDefaultParameterFile,FinalizeParameters,ExtractParameterFile
 #ifdef EDDYVISCOSITY
 USE MOD_EddyVisc,          ONLY:DefineParametersEddyVisc
 #endif
 USE MOD_GenerateUnittestReferenceData
-USE MOD_StringTools  ,ONLY:STRICMP
+USE MOD_Restart_Vars      ,ONLY:RestartFile
+USE MOD_StringTools       ,ONLY:STRICMP, GetFileExtension
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                    :: Time                              !< Used to measure simulation time
+LOGICAL                 :: userblockFound
 !==================================================================================================================================
 CALL InitMPI()
 CALL ParseCommandlineArguments()
 ! Check if the number of arguments is correct
-IF ((nArgs.LT.1).OR.(nArgs.GT.2)) THEN
+IF (nArgs.GT.2) THEN
   ! Print out error message containing valid syntax
   CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: flexi parameter.ini [restart.h5] or flexi --help'// &
   '[option/section name] to print help for a single parameter, parameter sections or all parameters.')
+END IF
+ParameterFile = Args(1)
+IF (nArgs.GT.1) THEN
+  RestartFile = Args(2)
+ELSE IF (STRICMP(GetFileExtension(ParameterFile), "h5")) THEN
+  ParameterFile = ".flexi.ini" 
+  CALL ExtractParameterFile(Args(1), ParameterFile, userblockFound)
+  IF (.NOT.userblockFound) THEN
+    CALL CollectiveStop(__STAMP__, "No userblock found in state file '"//TRIM(Args(1))//"'")
+  END IF
+  RestartFile = Args(1)
 END IF
 CALL DefineParametersMPI()
 CALL DefineParametersIO_HDF5()
@@ -98,7 +111,7 @@ CALL DefineParametersRecordPoints()
 
 ! check for command line argument --help or --markdown
 IF (doPrintHelp.GT.0) THEN
-  CALL PrintDefaultParameterFile(doPrintHelp.EQ.2, ParameterFile)
+  CALL PrintDefaultParameterFile(doPrintHelp.EQ.2, Args(1))
   STOP
 END IF
 CALL prms%read_options(ParameterFile)
@@ -144,11 +157,11 @@ CALL InitFV_Basis()
 CALL InitMortar()
 CALL InitRestart()
 CALL InitOutput()
-CALL InitMesh()
+CALL InitMesh(meshMode=2)
 CALL InitFilter()
 CALL InitOverintegration()
 CALL InitIndicator()
-#if MPI
+#if USE_MPI
 CALL InitMPIvars()
 #endif
 CALL InitEquation()
@@ -208,7 +221,8 @@ CALL FinalizeIndicator()
 ! Measure simulation duration
 Time=FLEXITIME()
 CALL FinalizeParameters()
-#if MPI
+CALL FinalizeCommandlineArguments()
+#if USE_MPI
 CALL MPI_FINALIZE(iError)
 IF(iError .NE. 0) STOP 'MPI finalize error'
 CALL FinalizeMPI()

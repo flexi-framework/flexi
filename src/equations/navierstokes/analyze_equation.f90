@@ -283,7 +283,7 @@ REAL,INTENT(OUT)                :: BulkPrim(PP_nVarPrim),BulkCons(PP_nVar)
 ! LOCAL VARIABLES
 REAL                            :: IntegrationWeight
 INTEGER                         :: iElem,i,j,k
-#if MPI
+#if USE_MPI
 REAL                            :: box(PP_nVar+PP_nVarPrim)
 #endif
 #if FV_ENABLED
@@ -315,7 +315,7 @@ DO iElem=1,nElems
 #endif
 END DO ! iElem
 
-#if MPI
+#if USE_MPI
 Box(1:PP_nVarPrim)=BulkPrim; Box(PP_nVarPrim+1:PP_nVarPrim+PP_nVar)=BulkCons
 IF(MPIRoot)THEN
   CALL MPI_REDUCE(MPI_IN_PLACE,box,PP_nVar+PP_nVarPrim,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,iError)
@@ -421,7 +421,7 @@ DO SideID=1,nBCSides
   END DO; END DO
 END DO
 
-#if MPI
+#if USE_MPI
 IF(MPIRoot)THEN
   CALL MPI_REDUCE(MPI_IN_PLACE,meanTotals,4*nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,iError)
 ELSE
@@ -492,7 +492,7 @@ DO iSide=1,nBCSides
   END DO; END DO
 END DO
 
-#if MPI
+#if USE_MPI
 IF(MPIRoot)THEN
   CALL MPI_REDUCE(MPI_IN_PLACE,maxV ,nBCs,MPI_DOUBLE_PRECISION,MPI_MAX,0,MPI_COMM_WORLD,iError)
   CALL MPI_REDUCE(MPI_IN_PLACE,minV ,nBCs,MPI_DOUBLE_PRECISION,MPI_MIN,0,MPI_COMM_WORLD,iError)
@@ -559,7 +559,7 @@ DO iSide=1,nSides-nMPISides_YOUR
 #endif
 END DO
 
-#if MPI
+#if USE_MPI
 i=PP_nVar*nBCs
 IF(MPIRoot)THEN
   CALL MPI_REDUCE(MPI_IN_PLACE,MeanFlux,i,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,iError)
@@ -590,6 +590,7 @@ SDEALLOCATE(isWall)
 SDEALLOCATE(FileName_BodyForce)
 SDEALLOCATE(FileName_WallVel)
 SDEALLOCATE(FileName_MeanFlux)
+SDEALLOCATE(FileName_TotalStates)
 END SUBROUTINE FinalizeAnalyzeEquation
 
 END MODULE MOD_AnalyzeEquation

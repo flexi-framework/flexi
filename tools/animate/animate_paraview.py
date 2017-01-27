@@ -18,7 +18,7 @@ parser.add_argument('plotfiles', nargs='+', help='Files to animate (.vtu/.pvtu-f
 
 args = parser.parse_args()
 
-plotfiles = [f for f in args.plotfiles if (os.path.splitext(f)[1] in ['.pvtu', '.vtu', '.plt']) ]
+plotfiles = [f for f in args.plotfiles if (os.path.splitext(f)[1] in ['.pvtu', '.vtu', '.plt', '.vtm']) ]
 
 i = 0
 for p in plotfiles : 
@@ -35,7 +35,7 @@ servermanager.LoadState('%s')
 statefilename = GetSources() 
 plotfilename = None
 for k in statefilename.keys() :
-    if os.path.splitext(k[0])[1] in ['.pvtu', '.vtu'] :
+    if os.path.splitext(k[0])[1] in ['.pvtu', '.vtu', '.plt', '.vtm'] :
         plotfilename = k[0]
         break
 

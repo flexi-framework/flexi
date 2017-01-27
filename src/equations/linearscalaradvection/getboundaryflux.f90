@@ -94,9 +94,9 @@ DO iSide=1,nBCSides
   locState=BoundaryType(BC(iSide),BC_STATE)
 END DO
 MaxBCStateGLobal=MaxBCState
-#if MPI
+#if USE_MPI
 CALL MPI_ALLREDUCE(MPI_IN_PLACE,MaxBCStateGlobal,1,MPI_INTEGER,MPI_MAX,MPI_COMM_WORLD,iError)
-#endif /*MPI*/
+#endif /*USE_MPI*/
 
 ! Allocate buffer array to store temp data for all BC sides
 ALLOCATE(BCData(PP_nVar,0:PP_N,0:PP_N,nBCSides))

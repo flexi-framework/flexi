@@ -99,7 +99,7 @@ USE MOD_DG_Vars,             ONLY: DGInitIsDone
 USE MOD_Mesh_Vars,           ONLY: nSides,nBCSides
 USE MOD_Mesh_Vars,           ONLY: nElems
 USE MOD_ReadinTools,         ONLY: GETLOGICAL
-#if MPI
+#if USE_MPI
 USE MOD_MPI_Vars
 #endif
 IMPLICIT NONE
@@ -189,7 +189,7 @@ USE MOD_ProlongToFacePrim,  ONLY: ProlongToFacePrim
 USE MOD_ApplyJacobianPrim,  ONLY: ApplyJacobianPrim
 USE MOD_Interpolation_Vars, ONLY: L_Minus,L_Plus
 USE MOD_FillMortarPrim,     ONLY: U_MortarPrim,Flux_MortarPrim
-#if MPI
+#if USE_MPI
 USE MOD_MPI_Vars
 USE MOD_MPI,                ONLY: StartReceiveMPIData,StartSendMPIData,FinishExchangeMPIData
 #endif
@@ -206,7 +206,7 @@ REAL,INTENT(IN) :: t                                                !< current s
 !==================================================================================================================================
 ! fill the global surface flux list
 ! #### use gradUx/y/z_master for storing the fluxes ####
-#if MPI
+#if USE_MPI
 ! Receive YOUR
 CALL StartReceiveMPIData(gradUx_master,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,1,RECV),SendID=1)
 CALL StartReceiveMPIData(gradUy_master,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,2,RECV),SendID=1)
@@ -219,7 +219,7 @@ CALL Lifting_FillFlux(3,UPrim_master,UPrim_slave,gradUz_master,doMPISides=.TRUE.
 CALL StartSendMPIData(   gradUx_master,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,1,SEND),SendID=1)
 CALL StartSendMPIData(   gradUy_master,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,2,SEND),SendID=1)
 CALL StartSendMPIData(   gradUz_master,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,3,SEND),SendID=1)
-#endif /*MPI*/
+#endif /*USE_MPI*/
 
 
 ! compute volume integral contribution and add to ut
@@ -248,7 +248,7 @@ CALL Flux_MortarPrim(gradUz_master,gradUz_master,doMPISides=.FALSE.,weak=doWeakL
 CALL Lifting_SurfInt(PP_N,gradUx_master,gradUx,.FALSE.,L_hatMinus,L_hatPlus,weak=doWeakLifting)
 CALL Lifting_SurfInt(PP_N,gradUy_master,gradUy,.FALSE.,L_hatMinus,L_hatPlus,weak=doWeakLifting)
 CALL Lifting_SurfInt(PP_N,gradUz_master,gradUz,.FALSE.,L_hatMinus,L_hatPlus,weak=doWeakLifting)
-#if MPI
+#if USE_MPI
 ! Complete send / receive
 CALL FinishExchangeMPIData(6*nNbProcs,MPIRequest_gradU)
 ! Attention: we only have one Flux (gradUx/y/z_master) for the Lifting 
@@ -260,7 +260,7 @@ CALL Flux_MortarPrim(gradUz_master,gradUz_master,doMPISides=.TRUE.,weak=doWeakLi
 CALL Lifting_SurfInt(PP_N,gradUx_master,gradUx,.TRUE.,L_hatMinus,L_hatPlus,weak=doWeakLifting)
 CALL Lifting_SurfInt(PP_N,gradUy_master,gradUy,.TRUE.,L_hatMinus,L_hatPlus,weak=doWeakLifting)
 CALL Lifting_SurfInt(PP_N,gradUz_master,gradUz,.TRUE.,L_hatMinus,L_hatPlus,weak=doWeakLifting)
-#endif /*MPI*/
+#endif /*USE_MPI*/
 
 ! Account for the jacobian
 ! The Lifting already has the right sign
@@ -270,7 +270,7 @@ CALL ApplyJacobianPrim(gradUy,toPhysical=.TRUE.,FVE=0)
 CALL ApplyJacobianPrim(gradUz,toPhysical=.TRUE.,FVE=0)
 
 ! We need the gradients at the face of the grid cells
-#if MPI
+#if USE_MPI
 ! Prolong to face for MPI sides - send direction
 CALL StartReceiveMPIData(gradUx_slave,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,1,RECV),SendID=2)
 CALL StartReceiveMPIData(gradUy_slave,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,2,RECV),SendID=2)
@@ -285,7 +285,7 @@ CALL StartSendMPIData(   gradUy_slave,DataSizeSidePrim,1,nSides,MPIRequest_gradU
 CALL ProlongToFacePrim(PP_N,gradUz,gradUz_master,gradUz_slave,L_Minus,L_Plus,doMPISides=.TRUE.)
 CALL U_MortarPrim(gradUz_master,gradUz_slave,doMPISides=.TRUE.)
 CALL StartSendMPIData(   gradUz_slave,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,3,SEND),SendID=2)
-#endif /*MPI*/
+#endif /*USE_MPI*/
 
 ! Prolong to face for BCSides, InnerSides and MPI sides - receive direction
 CALL ProlongToFacePrim(PP_N,gradUx,gradUx_master,gradUx_slave,L_Minus,L_Plus,doMPISides=.FALSE.)

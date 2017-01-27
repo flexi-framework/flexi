@@ -1,0 +1,134 @@
+<ServerManagerConfiguration>
+   <ProxyGroup name="sources">
+      <!-- ================================================================== -->
+      <SourceProxy name="visu3DReader" class="visu3DReader" label="visu3DReader">
+         <Documentation
+            long_help="Read a Flexi state or mesh file ( h5 file )."
+            short_help="Read a Flexi state or mesh file ( h5 file ).">
+         </Documentation>
+         <StringVectorProperty animateable="0"
+            clean_command="RemoveAllFileNames"
+            command="AddFileName"
+            name="FileName"
+            number_of_elements="1"
+            panel_visibility="never"
+            repeat_command="1">
+            <FileListDomain name="files" />
+            <Documentation>The list of files to be read by the
+               reader.</Documentation>
+         </StringVectorProperty>
+         <DoubleVectorProperty information_only="1"
+            name="TimestepValues">
+            <TimeStepsInformationHelper />
+         </DoubleVectorProperty>
+         <IntVectorProperty command="SetNVisu"
+            default_values="1"
+            animateable="0"
+            name="NVisu"
+            number_of_elements="1"
+            label="Polynomial degree for Supersampling">
+            <IntRangeDomain name="range" />
+            <Documentation>
+               This property sets the polynomial degree of the
+               Supersampling points per DG element.
+            </Documentation>
+         </IntVectorProperty>
+         <StringVectorProperty
+            name="NodeTypeVisuInfo"
+            command="GetNodeTypeVisuList"
+            information_only="1">
+            <StringArrayHelper />
+         </StringVectorProperty>
+         <StringVectorProperty
+            name="NodeTypeVisu"
+            command="SetNodeTypeVisu"
+            number_of_elements="1">
+            <StringListDomain name="operation">
+               <RequiredProperties>
+                  <Property name="NodeTypeVisuInfo"
+                     function="ArraySelection"/>
+               </RequiredProperties>
+            </StringListDomain>
+            <Documentation>
+               User-defined NodeType at which to visualize. 
+            </Documentation>
+         </StringVectorProperty>
+         <IntVectorProperty command="SetMode2d"
+           default_values="0"
+           animateable="0"
+           name="Mode2d"
+           number_of_elements="1"
+           label="2D slice"
+           panel_visibility="advanced">
+           <BooleanDomain name="bool" />
+           <Documentation>
+           Slice at first Gauss point in zeta-direction to get 2D solution.
+           </Documentation>
+         </IntVectorProperty>
+         <IntVectorProperty command="SetDGonly"
+           default_values="0"
+           animateable="0"
+           name="DGonly"
+           number_of_elements="1"
+           label="Visualize FV as DG"
+           panel_visibility="advanced">
+           <BooleanDomain name="bool" />
+           <Documentation>
+              Visualize all FV elements as if they where DG elements. Therewith no DG operator is required to reconstruct slopes.
+           </Documentation>
+         </IntVectorProperty>
+         <StringVectorProperty command="SetParameterFileOverwrite"
+           default_value=""
+           animateable="0"
+           name="ParameterFileOverwrite"
+           number_of_elements="1"
+           label="Parameter File OVERWRITE"
+           panel_visibility="advanced">
+           <FileListDomain name="files" />
+           <Documentation>
+           Additional parameter file, that overwrites the parameter file from the USERBLOCK of the state file.
+           </Documentation>
+         </StringVectorProperty>
+         <StringVectorProperty command="SetMeshFileOverwrite"
+           default_value=""
+           animateable="0"
+           name="MeshFileOverwrite"
+           number_of_elements="1"
+           label="Mesh File OVERWRITE"
+           panel_visibility="advanced">
+           <FileListDomain name="files" />
+           <Documentation>
+           Mesh file, that overwrites the one stored in the parameter file from the USERBLOCK of the state file.
+           </Documentation>
+         </StringVectorProperty>
+      <!-- ================================================================== -->
+         <StringVectorProperty name="VarArrayInfo"
+            information_only="1">
+            <ArraySelectionInformationHelper attribute_name="Var" />
+         </StringVectorProperty>
+         <StringVectorProperty name="VarArrayStatus"
+            command="SetVarArrayStatus"
+            number_of_elements="0"
+            repeat_command="1"
+            number_of_elements_per_command="2"
+            element_types="2 0"
+            information_property="VarArrayInfo"
+            label="Variables"
+            >
+            <ArraySelectionDomain name="array_list">
+               <RequiredProperties>
+                  <Property name="VarArrayInfo" function="ArrayList" />
+               </RequiredProperties>
+            </ArraySelectionDomain>
+            <Documentation>
+               This property contains a list of the variable names to read.
+            </Documentation>
+         </StringVectorProperty>
+         <Hints>
+            <ReaderFactory extensions="h5"
+               file_description="2 Posti Visu3D" />
+         </Hints>
+      </SourceProxy>
+   </ProxyGroup>
+   <!-- End Filters Group -->
+</ServerManagerConfiguration>

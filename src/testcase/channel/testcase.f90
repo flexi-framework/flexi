@@ -244,7 +244,7 @@ USE MOD_DG_Vars,        ONLY: U
 USE MOD_Mesh_Vars,      ONLY: sJ
 USE MOD_Analyze_Vars,   ONLY: wGPVol,Vol
 USE MOD_Mesh_Vars,      ONLY: nElems
-#if MPI
+#if USE_MPI
 USE MOD_MPI_Vars
 #endif
 IMPLICIT NONE
@@ -262,7 +262,7 @@ DO iElem=1,nElems
   END DO; END DO; END DO
 END DO
 
-#if MPI
+#if USE_MPI
 CALL MPI_ALLREDUCE(MPI_IN_PLACE,BulkVel,1,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,iError)
 #endif
 BulkVel = BulkVel/Vol

@@ -58,9 +58,9 @@ REAL                           :: Fp_loc(3)
 REAL                           :: Fv_loc(3)
 #endif
 INTEGER                        :: SideID,iBC
-#if MPI
+#if USE_MPI
 REAL                           :: Box(6,nBCs)
-#endif /*MPI*/
+#endif /*USE_MPI*/
 !==================================================================================================================================
 ! Calculate body forces  ! Attention: during the initialization phase no face data / gradients available!
 
@@ -86,7 +86,7 @@ DO SideID=1,nBCSides
 #endif
 END DO
 
-#if MPI
+#if USE_MPI
 Box(1:3,1:nBCs)=Fv; Box(4:6,1:nBCs)=Fp
 IF(MPIRoot)THEN
   CALL MPI_REDUCE(MPI_IN_PLACE,Box,6*nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,iError)

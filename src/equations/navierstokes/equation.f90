@@ -200,21 +200,21 @@ END DO
 
 !! Version 2: Compute UPrim_master/slave from volume UPrim
 !
-!#if MPI
+!#if USE_MPI
 !! Prolong to face for MPI sides - send direction
 !CALL StartReceiveMPIData(UPrim_slave,DataSizeSide,firstSlaveSide,lastSlaveSide,MPIRequest_U(:,SEND),SendID=2) ! Receive MINE
 !CALL ProlongToFaceCons(PP_N,UPrim,UPrim_master,UPrim_slave,L_Minus,L_Plus,doMPISides=.TRUE.)
 !CALL U_Mortar(UPrim_master,UPrim_slave,doMPISides=.TRUE.)
 !CALL StartSendMPIData(   UPrim_slave,DataSizeSide,firstSlaveSide,lastSlaveSide,MPIRequest_U(:,RECV),SendID=2) ! Send YOUR
-!#endif /*MPI*/
+!#endif /*USE_MPI*/
 !
 !CALL ProlongToFaceCons(PP_N,UPrim,UPrim_master,UPrim_slave,L_Minus,L_Plus,doMPISides=.FALSE.)
 !CALL U_Mortar(UPrim_master,UPrim_slave,doMPISides=.FALSE.)
 !
-!#if MPI
+!#if USE_MPI
 !! Complete send / receive
 !CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_U) !Send YOUR - receive MINE
-!#endif /*MPI*/
+!#endif /*USE_MPI*/
 END SUBROUTINE GetPrimitiveStateSurface
 
 SUBROUTINE GetConservativeStateSurface(UPrim_master,UPrim_slave,U_master,U_slave, mask_master, mask_slave, mask_ref)
