@@ -242,10 +242,12 @@ Avg2D             = GETLOGICAL("Avg2D")
 NodeTypeVisuPosti = GETSTR('NodeTypeVisu')
 DGonly            = GETLOGICAL('DGonly')
 
-! check if state, mesh, NVisu or DGonly changed 
+! HDF5 Output for avg2D
+IF (Avg2D) Avg2DHDF5Output = GETLOGICAL("Avg2DHDF5Output")
+
+! check if state, mesh, NVisu, DGonly or Avg2D changed 
 changedStateFile = .NOT.STRICMP(statefile,statefile_old)
 changedMeshFile  = .NOT.(STRICMP(MeshFile,MeshFile_old))
-changedNVisu     = ((NVisu.NE.NVisu_old) .OR. (NodeTypeVisuPosti.NE.NodeTypeVisuPosti_old))
 changedDGonly    = (DGonly.NEQV.DGonly_old)
 changedAvg2D     = (Avg2D.NEQV.Avg2D_old)
 
@@ -264,6 +266,15 @@ IF (changedStateFile.OR.changedMeshFile) THEN
 END IF
 
 CALL CloseDataFile()
+
+! Output of averaged data is only available for NVisu = PP_N and NodeTypeVisuPosti=NodeType_State
+! These settings are enforced here!
+IF (Avg2DHDF5Output) THEN
+        NVisu = PP_N
+        NodeTypeVisuPosti=NodeType_State
+END IF
+! Check for changed visualization basis here to take change done for average output into account
+changedNVisu     = ((NVisu.NE.NVisu_old) .OR. (NodeTypeVisuPosti.NE.NodeTypeVisuPosti_old))
 
 ! set number of dependent and raw variables 
 SDEALLOCATE(DepTable)
@@ -334,7 +345,7 @@ USE MOD_ReadInTools         ,ONLY: prms,FinalizeParameters,ExtractParameterFile
 USE MOD_StringTools         ,ONLY: STRICMP
 USE MOD_Posti_VisuMesh      ,ONLY: BuildVisuCoords,BuildSurfVisuCoords
 USE MOD_Posti_Mappings      ,ONLY: Build_mapBCSides
-USE MOD_Visu_Avg2D          ,ONLY: Average2D
+USE MOD_Visu_Avg2D          ,ONLY: Average2D,WriteAverageToHDF5
 USE MOD_Interpolation_Vars  ,ONLY: NodeType,NodeTypeVISUFVEqui
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
@@ -430,13 +441,14 @@ SWRITE (*,*) "READING FROM: ", TRIM(statefile)
 CALL FinalizeParameters()
 ! Read Varnames to visualize and build calc and visu dependencies
 CALL prms%SetSection("posti")
-CALL prms%CreateStringOption( "MeshFile"     , "Custom mesh file ")
-CALL prms%CreateStringOption( "VarName"      , "Names of variables, which should be visualized.", multiple=.TRUE.)
-CALL prms%CreateIntOption(    "NVisu"        , "Polynomial degree at which solution is sampled for visualization.")
-CALL prms%CreateLogicalOption("Avg2D"        , "Average solution in z-direction",".FALSE.")
-CALL prms%CreateStringOption( "NodeTypeVisu" , "NodeType for visualization. Visu, Gauss,Gauss-Lobatto,Visu_inner"    ,"VISU")
-CALL prms%CreateLogicalOption("DGonly"       , "Visualize FV elements as DG elements."    ,".FALSE.")
-CALL prms%CreateStringOption( "BoundaryName" , "Names of boundaries for surfaces, which should be visualized.", multiple=.TRUE.)
+CALL prms%CreateStringOption( "MeshFile"        , "Custom mesh file ")
+CALL prms%CreateStringOption( "VarName"         , "Names of variables, which should be visualized.", multiple=.TRUE.)
+CALL prms%CreateIntOption(    "NVisu"           , "Polynomial degree at which solution is sampled for visualization.")
+CALL prms%CreateLogicalOption("Avg2D"           , "Average solution in z-direction",".FALSE.")
+CALL prms%CreateLogicalOption("Avg2DHDF5Output" , "Write averaged solution to HDF5 file",".FALSE.")
+CALL prms%CreateStringOption( "NodeTypeVisu"    , "NodeType for visualization. Visu, Gauss,Gauss-Lobatto,Visu_inner"    ,"VISU")
+CALL prms%CreateLogicalOption("DGonly"          , "Visualize FV elements as DG elements."    ,".FALSE.")
+CALL prms%CreateStringOption( "BoundaryName"    , "Names of boundaries for surfaces, which should be visualized.", multiple=.TRUE.)
 
 changedStateFile      = .FALSE.
 changedMeshFile       = .FALSE.
@@ -510,6 +522,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
       CALL Average2D(nVarCalc,nVarCalc_FV,PP_N,NCalc_FV,nElems_DG,nElems_FV,NodeType,UCalc_DG,UCalc_FV,&
           Vdm_DGToFV,Vdm_FVToDG,Vdm_DGToVisu,Vdm_FVToVisu,1,nVarDep,mapDepToCalc,&
           UVisu_DG,UVisu_FV)
+      IF (Avg2DHDF5Output) CALL WriteAverageToHDF5(nVarVisu,NVisu,NVisu_FV,NodeType,OutputTime,MeshFile_state,UVisu_DG,UVisu_FV)
     ELSE 
       CALL ConvertToVisu_DG()
 #if FV_ENABLED
