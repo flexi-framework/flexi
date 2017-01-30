@@ -48,10 +48,20 @@ REAL                                :: Mu0
 !--------------------------------------------------
 ! Turbulence
 LOGICAL                             :: doTurb
-INTEGER                             :: nVar_visu   
+INTEGER                             :: nVarVisu  
 CHARACTER(len=255),ALLOCATABLE      :: VarNamevisu(:)
 INTEGER                             :: OutputFormat
-!INTEGER                             :: Startonline,Endonline
 INTEGER                             :: Skip ! nur jeder skipte RP sample wird eingelesen
+
+
+
+INTEGER,ALLOCATABLE               :: DepTable(:,:)
+CHARACTER(LEN=255),ALLOCATABLE    :: DepNames(:)
+CHARACTER(LEN=255),ALLOCATABLE,TARGET :: VarNamesAll(:)
+INTEGER                           :: nVarDep                 ! 
+INTEGER                           :: nVarCalc
+INTEGER                           :: nVarVisuTotal
+INTEGER,ALLOCATABLE               :: mapCalc(:)
+INTEGER,ALLOCATABLE               :: mapVisu(:)
 !===================================================================================================================================
 END MODULE MOD_Parameters

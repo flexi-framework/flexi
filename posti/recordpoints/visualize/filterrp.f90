@@ -26,7 +26,7 @@ USE MOD_RPData_Vars          ,ONLY: RPTime
 USE MOD_RPSet_Vars           ,ONLY: nRP_global
 USE MOD_RPInterpolation_Vars
 USE MOD_OutputRPVisu_Vars    ,ONLY: nSamples_out,RPData_out
-USE MOD_Parameters           ,ONLY: FilterWidth,nVar_visu,FilterMode
+USE MOD_Parameters           ,ONLY: FilterWidth,nVarVisu,FilterMode
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -34,7 +34,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                         :: iSample,iSample2,iRP
 INTEGER                         :: dnSamples,iSample_left,iSample_right
-REAL                            :: RPData_tmp(nVar_visu,nSamples_out),RPData_f(nVar_visu)
+REAL                            :: RPData_tmp(nVarVisu,nSamples_out),RPData_f(nVarVisu)
 REAL                            :: snSamples_block
 REAL                            :: pi
 !===================================================================================================================================

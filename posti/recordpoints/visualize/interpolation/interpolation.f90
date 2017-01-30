@@ -172,7 +172,7 @@ USE MOD_Globals
 USE MOD_RPSet_Vars           ,ONLY: nRP_global
 USE MOD_RPData_Vars          ,ONLY: RPTime
 USE MOD_RPInterpolation_Vars
-USE MOD_Parameters       ,ONLY: nVar_visu,EquiTimeSpacing
+USE MOD_Parameters       ,ONLY: nVarVisu,EquiTimeSpacing
 USE MOD_OutputRPVisu_Vars          ,ONLY: nSamples_out,RPData_out,RPDataTimeAvg_out
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -184,7 +184,7 @@ INTEGER                 :: iSample
 WRITE(UNIT_stdOut,'(132("-"))')
 WRITE(UNIT_stdOut,'(A)',ADVANCE='NO')' Calculating Time Average...'
 
-ALLOCATE(RPDataTimeAvg_out(1:nVar_visu,nRP_global))
+ALLOCATE(RPDataTimeAvg_out(1:nVarVisu,nRP_global))
 IF(nSamples_out.EQ.1) THEN
   RPDataTimeAvg_out(:,:)=RPData_out(:,:,1)
   WRITE(UNIT_stdOut,'(A)')'done.'

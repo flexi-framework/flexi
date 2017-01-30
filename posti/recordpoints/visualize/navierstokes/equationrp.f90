@@ -3,19 +3,19 @@
 !===================================================================================================================================
 !>
 !===================================================================================================================================
-MODULE MOD_Equation
+MODULE MOD_EquationRP
 ! MODULES
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE InitEquation
-  MODULE PROCEDURE InitEquation
+INTERFACE InitEquationRP
+  MODULE PROCEDURE InitEquationRP
 END INTERFACE
 
-INTERFACE CalcEquation
-  MODULE PROCEDURE CalcEquation
+INTERFACE CalcEquationRP
+  MODULE PROCEDURE CalcEquationRP
 END INTERFACE
 
 INTERFACE Plane_BLProps
@@ -23,11 +23,11 @@ INTERFACE Plane_BLProps
 END INTERFACE
 
 
-INTERFACE FinalizeEquation
-  MODULE PROCEDURE FinalizeEquation
+INTERFACE FinalizeEquationRP
+  MODULE PROCEDURE FinalizeEquationRP
 END INTERFACE
 
-PUBLIC::InitEquation,CalcEquation,Plane_BLProps,FinalizeEquation
+PUBLIC::InitEquationRP,CalcEquationRP,Plane_BLProps,FinalizeEquationRP
 !===================================================================================================================================
 
 CONTAINS
@@ -35,132 +35,91 @@ CONTAINS
 !===================================================================================================================================
 !> Initialize the visualization and map the variable names to classify these in conservative and derived quantities.
 !===================================================================================================================================
-SUBROUTINE InitEquation()
+SUBROUTINE InitEquationRP()
 ! MODULES
 USE MOD_Globals
-USE MOD_EOS               ,ONLY:InitEOS
 USE MOD_RPData_Vars       ,ONLY:VarNames_HDF5,nVar_HDF5
-USE MOD_Parameters        ,ONLY:nVar_visu,VarNameVisu,usePrims
-USE MOD_Parameters        ,ONLY:Plane_doBLProps
-USE MOD_Equation_Vars
+USE MOD_Parameters        
+USE MOD_EquationRP_Vars
+USE MOD_EOS_Posti_Vars    ,ONLY:nVarTotalEOS,DepTableEOS
 USE MOD_VarNameMappingsRP
 USE MOD_VarNameMappingsRP_Vars
+USE MOD_Readintools       ,ONLY:CountOption,GETSTR
+USE MOD_StringTools     ,ONLY: STRICMP
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                               :: iVar1,iVar2,strlen
+INTEGER                               :: iVar,iVar2,strlen,countCons
 INTEGER                               :: mapCand(3)
 CHARACTER(LEN=255)                    :: VarName(5),tmp255,tmp255_2
-LOGICAL                               :: justVisualizeState=.FALSE.
+LOGICAL                               :: justVisualizeState
 !===================================================================================================================================
 WRITE(UNIT_StdOut,'(132("-"))')
-WRITE(UNIT_stdOut,'(A)') ' INIT EQUATION ...'
-
-! Check which conservative variables are to be visualized
-! ReadFromFile detects if any derived quantity already exists in the state file
-! (i.e. with time avg state files)  
-max_nVar_visu= 1
-
-! In case no output variables specified: take instead the variable names out of the hDF5 file (used for timeavg-files)
-IF(nVar_visu .LT. 1) THEN
-  WRITE(*,*) 'No output variables specified, using existing variables from state file.'
-  nVar_visu   = nVar_HDF5
-  SDEALLOCATE(VarNameVisu)
-  ALLOCATE(VarNameVisu(nVar_visu))
-  VarNameVisu = VarNames_HDF5
-END IF
-
+WRITE(UNIT_stdOut,'(A)') ' INIT EquationRP ...'
 
 justVisualizeState=.FALSE.
-IF(usePrims) THEN
-  ! USE THE PRIMITIVE STATE VECTOR FOR ALL DERIVED QUANTITIES 
-  VarName(1) ='Density'
-  VarName(2) ='VelocityX'
-  VarName(3) ='VelocityY'
-  VarName(4) ='VelocityZ'
-  VarName(5) ='Pressure'
-  DO iVar1=1,5
-    ! check if primitive variables are in the state file and create mapping
-    iVar2 = GETMAPBYNAME(VarName(iVar1),VarNames_HDF5,nVar_HDF5)
-    IF(iVar2.NE.-1)THEN
-      PrimMap(iVar1)=iVar2
-    ELSE 
-      justVisualizeState=.TRUE.
-      WRITE(UNIT_StdOut,*) 'WARNING: Not all Primitive Variables available in State File,'
-      WRITE(UNIT_StdOut,*) '         cannot calculate any derived quantities.'
-      WRITE(UNIT_StdOut,*) '         Visualizing State File Variables instead!'
-      EXIT     
-    END IF
+
+! In case no output variables specified: take instead the variable names out of the hDF5 file (used for timeavg-files)
+nVarVisu=CountOption("VarName")
+IF(nVarVisu .LT. 1) THEN
+  WRITE(*,*) 'No output variables specified, using existing variables from state file.'
+  nVarVisu   = nVar_HDF5
+  ALLOCATE(VarNameVisu(nVarVisu))
+  VarNameVisu = VarNames_HDF5
+  nVarDep=nVar_HDF5
+  ALLOCATE(VarNamesAll(nVarDep))
+  VarNamesAll=VarNameVisu
+  ALLOCATE(DepTable(nVarVisu,0:nVarVisu))
+  DepTable=0
+  DO iVar=1,nVarVisu
+    DepTable(iVar,iVar)=1
   END DO
 ELSE
-  ! USE THE CONSERVATIVE STATE VECTOR FOR ALL DERIVED QUANTITIES 
-  !  in this case, the variables in the state file need to be in the order below
-  VarName(1) ='Density'
-  VarName(2) ='MomentumX'
-  VarName(3) ='MomentumY'
-  VarName(4) ='MomentumZ'
-  VarName(5) ='EnergyStagnationDensity'
-  DO iVar1=1,5
-    ! check if main conservative variables  are in the state file
-    iVar2 = GETMAPBYNAME(VarName(iVar1),VarNames_HDF5,nVar_HDF5)
-      PrimMap(iVar1)=iVar2
-    IF(iVar2.EQ.-1)THEN
-      justVisualizeState=.TRUE.
-      WRITE(UNIT_StdOut,*) 'WARNING: Not all Conservative Variables available in State File,'
-      WRITE(UNIT_StdOut,*) '         cannot calculate any derived quantities.'
-      WRITE(UNIT_StdOut,*) '         Visualizing State File Variables instead!'
-      EXIT
-    END IF
+  ALLOCATE(VarNameVisu(nVarVisu))
+  DO iVar=1,nVarVisu
+    VarNameVisu(iVar) = GETSTR("VarName")
   END DO
-  ! check order of the Conservatives
-  DO iVar1=1,5
-    IF(iVar1.NE.PrimMap(iVar1)) THEN
-      justVisualizeState=.TRUE.
-      WRITE(UNIT_StdOut,*) 'WARNING: Conservative Variables are not in the right order,'
-      WRITE(UNIT_StdOut,*) '         cannot calculate any derived quantities.'
-      WRITE(UNIT_StdOut,*) '         Visualizing State File Variables instead!'
-      EXIT
-    END IF
-  END DO
+  !check if Varnames in HDF5 file are conservatives
+  ! TODO: also generate mapping in case conservatives are there but not in the correct order
+  countCons=0
+  IF(nVar_HDF5.GE.PP_nVar)THEN
+    DO iVar=1,PP_nVar
+      IF (STRICMP(VarNames_HDF5(iVar), DepNames(iVar))) THEN
+        countCons=countCons+1
+      END IF
+    END DO
+  END IF
+  IF(countCons.NE.PP_nVar) THEN
+    CALL CollectiveStop(__STAMP__,'Not all necessary variables are present in HDF5 files')
+  END IF
+  nVarDep=nVarTotalEOS
+  ALLOCATE(VarNamesAll(nVarDep))
+  VarNamesAll=DepNames
+  ALLOCATE(DepTable(nVarDep,0:nVarDep))
+  DepTable=DepTableEOS
 END IF
 
-IF(justVisualizeState) THEN
-  ! visualize all state file variables
-  nVar_visu   = nVar_HDF5
-  SDEALLOCATE(VarNameVisu)
-  ALLOCATE(VarNameVisu(nVar_visu))
-  VarNameVisu = VarNames_HDF5
-  CALL CreateStateMappings(nVar_HDF5,VarNames_HDF5,Cons)
-ELSE
-! Create Mappings to the variables to be visualized:
-  ! Variables directly available in State file, usually conservative variables
-  WRITE(UNIT_StdOut,*) 'Preparing variables from state file...'
-  CALL CreateStateMappings(nVar_HDF5,VarNames_HDF5,Cons)
-  
-  ! Primitive variables
-  WRITE(UNIT_StdOut,*) 'Preparing primitive variables...'
-  ! Initialize the primitive Variables calculation
-  CALL InitEOS()
-END IF
+! generate mappings
+CALL Build_mapCalc_mapVisu()
 
 ! For local transforms, we need a mapping to all physical vector quantities
 ! with 3 available components to transform them
-ALLOCATE(TransMap(3,INT(nVar_visu/2)))
-ALLOCATE(is2D(INT(nVar_visu/2)))
+ALLOCATE(TransMap(3,INT(nVarVisu/2)))
+ALLOCATE(is2D(INT(nVarVisu/2)))
 is2D=.FALSE.
 TransMap=-1
 nVecTrans=0
-DO iVar1=1,nVar_visu
-  tmp255=TRIM(VarNameVisu(iVar1))
+DO iVar=1,nVarVisu
+  tmp255=TRIM(VarNameVisu(iVar))
   strlen=LEN(TRIM(ADJUSTL(tmp255)))
   IF(tmp255(strlen:strlen).EQ.TRIM('X')) THEN
     WRITE(tmp255_2,'(A)')TRIM(tmp255(1:strlen-1))//'Y'
-    mapCand(2)=GETMAPBYNAME(TRIM(tmp255_2),VarNameVisu,nVar_visu) 
+    mapCand(2)=GETMAPBYNAME(TRIM(tmp255_2),VarNameVisu,nVarVisu) 
     WRITE(tmp255_2,'(A)')TRIM(tmp255(1:strlen-1))//'Z'
-    mapCand(3)=GETMAPBYNAME(TRIM(tmp255_2),VarNameVisu,nVar_visu) 
-    mapCand(1)=iVar1
+    mapCand(3)=GETMAPBYNAME(TRIM(tmp255_2),VarNameVisu,nVarVisu) 
+    mapCand(1)=iVar
     IF(.NOT.ANY(mapCand.LE.0)) THEN
       nVecTrans=nVecTrans+1
       TransMap(:,nVecTrans)=mapCand
@@ -172,9 +131,9 @@ DO iVar1=1,nVar_visu
   END IF
 END DO
 WRITE(UNIT_StdOut,'(A)')' Quantities to transform to local coordinate system:'
-DO iVar1=1,nVecTrans
+DO iVar=1,nVecTrans
   DO iVar2=1,3
-    WRITE(UNIT_StdOut,'(A,A)')'  ',TRIM(VarNameVisu(TransMap(iVar2,iVar1)))
+    WRITE(UNIT_StdOut,'(A,A)')'  ',TRIM(VarNameVisu(TransMap(iVar2,iVar)))
   END DO
 END DO
 
@@ -193,61 +152,67 @@ IF(Plane_doBLProps) THEN
   VarNames_BLProps(10)='Re_tau'
 END IF
 
-WRITE(UNIT_stdOut,'(A)')' INIT EQUATION DONE!'
+WRITE(UNIT_stdOut,'(A)')' INIT EquationRP DONE!'
 WRITE(UNIT_StdOut,'(132("-"))')
-EquationInitIsDone=.TRUE.
-END SUBROUTINE InitEquation
+EquationRPInitIsDone=.TRUE.
+END SUBROUTINE InitEquationRP
 
 
 
 !===================================================================================================================================
 !> This routine computes the state on the visualization grid 
 !===================================================================================================================================
-SUBROUTINE CalcEquation()
+SUBROUTINE CalcEquationRP()
 ! MODULES
 USE MOD_Globals
-USE MOD_VarNameMappingsRP_Vars
-USE MOD_EOS
-USE MOD_EOS_vars
 USE MOD_RPData_Vars       ,ONLY:RPData       
-USE MOD_RPData_Vars       ,ONLY:nVar_HDF5              
+USE MOD_RPData_Vars       ,ONLY:nVar_HDF5,VarNames_HDF5
 USE MOD_RPSet_Vars        ,ONLY:nRP_global        
-USE MOD_OutputRPVisu_Vars       ,ONLY:nSamples_out
-USE MOD_Parameters        ,ONLY:usePrims
-USE MOD_Parameters        ,ONLY:nVar_visu
+USE MOD_OutputRPVisu_Vars ,ONLY:nSamples_out
+USE MOD_Parameters        ,ONLY:nVarDep,nVarCalc,mapCalc,mapVisu,VarNamesAll
 USE MOD_Parameters        ,ONLY:Line_LocalVel,Plane_LocalVel,Plane_doBLProps
-USE MOD_OutputRPVisu_Vars       ,ONLY:RPData_out 
+USE MOD_OutputRPVisu_Vars ,ONLY:RPData_out 
+USE MOD_EOS_Posti      ,ONLY: CalcQuantities
+USE MOD_StringTools     ,ONLY: STRICMP
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                     :: iSample
-REAL,ALLOCATABLE            :: U_RP_out(:,:)
+INTEGER            :: maskCalc(nVarDep),nVal(3)
+INTEGER            :: iVarOut,iVarIn,iVar,iVarCalc,iVarVisu
+REAL,ALLOCATABLE   :: UCalc(:,:,:)
 !===================================================================================================================================
 WRITE(UNIT_StdOut,'(132("-"))')
 WRITE(UNIT_stdOut,'(A)')" CONVERT DERIVED QUANTITIES..."
 ! CALCULATE DERIVED QUATITIES -----------------------------------------------------------------------------------------------------!
-ALLOCATE(U_RP_out(1:nVar_visu,1:nRP_global))
-
-! Conservative variables
-IF(Cons%nVar_Visu .GT. 0)THEN
-  IF(usePrims)THEN
-    RPData_out(Cons%IndGlobal(Cons%Ind),:,1:nSamples_out)=RPData(Cons%Ind,:,1:nSamples_out)
-  ELSE
-    RPData_out(Cons%IndGlobal(Cons%Ind),:,1:nSamples_out)=RPData(Cons%Ind,:,1:nSamples_out)
-  END IF
-END IF !(nConsVisu .GT. 0)
-
-! Primitive Variables
-IF(Prim%nVar_visu .GT. 0)THEN
-  DO iSample=1,nSamples_out
-    U_RP_out=0.
-    CALL CalcPrims(nVar_HDF5,nRP_global,RPData(:,:,iSample),U_RP_out(1:Prim%nVar_visu,:))
-    RPData_out(Prim%IndGlobal(Prim%Ind),:,iSample)=U_RP_out(1:Prim%nVar_visu,:)
+maskCalc=1
+nVal=(/nVarCalc,nRP_global,nSamples_out/)
+! Copy existing variables from solution array
+ALLOCATE(UCalc(nVarCalc,nRP_global,nSamples_out))
+DO iVarOut=1,nVarDep ! iterate over all out variables
+  IF (mapCalc(iVarOut).LT.1) CYCLE ! check if variable must be calculated
+  DO iVarIn=1,nVar_HDF5 ! iterate over all in variables
+    IF( STRICMP(VarNamesAll(iVarOut),VarNames_HDF5(iVarIn))) THEN
+      UCalc(mapCalc(iVarOut),:,:)=RPData(iVarIn,:,:)
+      maskCalc(iVarOut)=0 ! remove variable from maskCalc, since they now got copied and must not be calculated.
+    END IF
   END DO
-END IF  !(nPrimVisu .GT. 0)
+END DO
+
+! calculate all quantities
+CALL CalcQuantities(nVarCalc,nVal,(/1/),mapCalc,UCalc,maskCalc)
+
+! fill output array
+DO iVar=1,nVarDep
+  IF (mapVisu(iVar).GT.0) THEN
+    iVarCalc = mapCalc(iVar) 
+    iVarVisu = mapVisu(iVar) 
+    RPData_out(iVarVisu,:,:)=UCalc(iVarCalc,:,:)
+  END IF
+END DO 
+DEALLOCATE(UCalc)
 
 ! Coordinate Transform
 IF(Line_LocalVel) &
@@ -256,7 +221,7 @@ IF(Plane_LocalVel) &
   CALL Plane_TransformVel()
 
 WRITE(UNIT_stdOut,'(A)')" CONVERT DERIVED QUANTITIES DONE!"
-END SUBROUTINE CalcEquation
+END SUBROUTINE CalcEquationRP
 
 
 
@@ -268,7 +233,7 @@ SUBROUTINE Line_TransformVel()
 USE MOD_Globals
 USE MOD_OutputRPVisu_Vars           ,ONLY:RPData_out,nSamples_out
 USE MOD_RPSet_Vars            ,ONLY:nLines,Lines,tLine
-USE MOD_Equation_Vars         ,ONLY:nVecTrans,TransMap
+USE MOD_EquationRP_Vars         ,ONLY:nVecTrans,TransMap
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -302,7 +267,7 @@ SUBROUTINE Plane_TransformVel()
 USE MOD_Globals
 USE MOD_OutputRPVisu_Vars           ,ONLY:nSamples_out,RPData_out
 USE MOD_RPSet_Vars            ,ONLY:nPlanes,Planes,tPlane
-USE MOD_Equation_Vars         ,ONLY:nVecTrans,TransMap,is2D
+USE MOD_EquationRP_Vars         ,ONLY:nVecTrans,TransMap,is2D
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -357,7 +322,7 @@ SUBROUTINE Plane_BLProps()
 USE MOD_Globals
 USE MOD_OutputRPVisu_Vars           ,ONLY:nSamples_out,RPDataTimeAvg_out
 USE MOD_RPSet_Vars            ,ONLY:nPlanes,Planes,tPlane,xF_RP
-USE MOD_Equation_Vars         ,ONLY:is2D,TransMap,nBLProps
+USE MOD_EquationRP_Vars         ,ONLY:is2D,TransMap,nBLProps
 USE MOD_Parameters        ,ONLY:Plane_BLvelScaling
 USE MOD_Parameters        ,ONLY:Mu0
 IMPLICIT NONE
@@ -571,11 +536,10 @@ END FUNCTION
 !===================================================================================================================================
 !>
 !===================================================================================================================================
-SUBROUTINE FinalizeEquation()
+SUBROUTINE FinalizeEquationRP()
 ! MODULES
 USE MOD_Globals
-USE MOD_EOS  ,ONLY:FinalizeEOS
-USE MOD_Equation_Vars
+USE MOD_EquationRP_Vars
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -583,9 +547,8 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 !===================================================================================================================================
 DEALLOCATE(TransMap,is2D) 
-CALL FinalizeEOS()
-WRITE(UNIT_stdOut,'(A)') '  EQUATION FINALIZED'
-END SUBROUTINE FinalizeEquation
+WRITE(UNIT_stdOut,'(A)') '  EquationRP FINALIZED'
+END SUBROUTINE FinalizeEquationRP
 
-END MODULE MOD_Equation
+END MODULE MOD_EquationRP
 

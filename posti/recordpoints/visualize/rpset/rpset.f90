@@ -77,7 +77,9 @@ CALL GetDataSize(File_ID,'GroupNames',nDims,HSize)
 nGroups=HSize(1) !number of groups
 DEALLOCATE(HSize)
 ALLOCATE(GroupNames(1:nGroups)) 
-CALL ReadArray('GroupNames',1,(/nGroups/),0,1,StrArray=GroupNames)
+print*,'nGroups',nGroups
+CALL ReadArray(TRIM('GroupNames'),1,(/nGroups/),0,1,StrArray=GroupNames)
+
 
 ! generate output map for groups
 ALLOCATE(OutputGroup(nGroups))

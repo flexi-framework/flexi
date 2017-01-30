@@ -1,4 +1,4 @@
-MODULE MOD_Equation_Vars
+MODULE MOD_EquationRP_Vars
 !===================================================================================================================================
 ! Contains global variables provided by the post processing routines
 !===================================================================================================================================
@@ -11,7 +11,7 @@ SAVE
 ! OUTPUT ---------------------------------------------------------------------------------------------------------------------------
 CHARACTER(LEN=255)                 :: strOutputFile, strMeshFile, strLinkFile
 LOGICAL                            :: InitOutputDone=.FALSE.
-LOGICAL                            :: EquationInitIsDone      =.FALSE.
+LOGICAL                            :: EquationRPInitIsDone      =.FALSE.
 LOGICAL                            :: ConsAvail     =.TRUE.
 INTEGER                            :: PrimMap(5)
 INTEGER                            :: nVecTrans
@@ -20,4 +20,4 @@ LOGICAL,ALLOCATABLE                :: is2D(:)
 INTEGER                            :: nBLProps
 CHARACTER(LEN=255),ALLOCATABLE     :: VarNames_BLProps(:)
 !===================================================================================================================================
-END MODULE MOD_Equation_Vars
+END MODULE MOD_EquationRP_Vars

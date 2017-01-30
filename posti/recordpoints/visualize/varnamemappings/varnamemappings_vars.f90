@@ -8,13 +8,13 @@ PUBLIC
 ! DERIVED QUANTITIES----------------------------------------------------------------------------------------------------------------
 TYPE tDerivedQ            
   INTEGER                          :: nVar 
-  INTEGER                          :: nVar_visu 
+  INTEGER                          :: nVarVisu 
   CHARACTER(LEN=255),ALLOCATABLE   :: VarName(:)
   INTEGER,ALLOCATABLE              :: Ind(:)
   INTEGER,ALLOCATABLE              :: IndGlobal(:)
 END TYPE tDerivedQ
 
-INTEGER                            :: max_nVar_visu
+INTEGER                            :: max_nVarVisu
 TYPE(tDerivedQ)                    :: Cons
 TYPE(tDerivedQ)                    :: Prim
 !-----------------------------------------------------------------------------------------------------------------------------------

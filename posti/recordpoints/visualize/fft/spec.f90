@@ -104,7 +104,7 @@ USE MOD_RPData_Vars          ,ONLY: RPTime
 USE MOD_RPSet_Vars           ,ONLY: nRP_global
 USE MOD_RPInterpolation_Vars
 USE MOD_OutputRPVisu_Vars          ,ONLY: nSamples_out,RPData_out
-USE MOD_Parameters       ,ONLY: doPSD,doFFT,nVar_visu,nBlocks,cutoffFreq,doHanning,fourthDeriv,thirdOct
+USE MOD_Parameters       ,ONLY: doPSD,doFFT,nVarVisu,nBlocks,cutoffFreq,doHanning,fourthDeriv,thirdOct
 USE MOD_Parameters       ,ONLY: u_infPhys,chordPhys 
 USE MOD_RPSet_Vars           ,ONLY: nLines,Lines
 USE FFTW3
@@ -148,7 +148,7 @@ df = 1./Time_Block
 
 ALLOCATE(in(nSamples_block))
 ALLOCATE(out(nSamples_block))
-ALLOCATE(RPData_spec(1:nVar_visu,nRP_global,nSamples_spec))
+ALLOCATE(RPData_spec(1:nVarVisu,nRP_global,nSamples_spec))
 ALLOCATE(RPData_tmp(nSamples_out))
 ALLOCATE(RPData_freq(nSamples_spec))
 DO iSample=1,nSamples_spec
@@ -187,7 +187,7 @@ IF(doPSD .OR. doFFT) THEN
     IF(MOD(iRP,10).EQ.0) THEN
       WRITE(UNIT_stdOut,*)'   Processing RP ',iRP,' of ',nRP_global
     END IF
-    DO iVar=1,nVar_visu
+    DO iVar=1,nVarVisu
       RPData_tmp=RPData_out(iVar,iRP,:)
       IF(fourthDeriv) CALL deriv(RPData_tmp)
       DO iBlock=1,nBlocks
@@ -247,7 +247,7 @@ IF(ThirdOct) THEN
   PhysFreq = RPData_freq*u_infPhys/chordPhys
   nSamples_Oct = 30.
 
-  ALLOCATE(RPData_Oct(1:nVar_visu,nRP_global,nSamples_Oct))
+  ALLOCATE(RPData_Oct(1:nVarVisu,nRP_global,nSamples_Oct))
   ALLOCATE(RPData_FreqOct(nSamples_Oct))
   RPData_Oct=0.
 
@@ -258,7 +258,7 @@ IF(ThirdOct) THEN
   END DO
 
   DO iRP=1,nRP_global
-    DO iVar=1,nVar_visu
+    DO iVar=1,nVarVisu
       iOct = -18.
       DO iSample_Oct=1,nSamples_Oct
         octaveLimUpper=1000.*2**(iOct/3.+1./6.)

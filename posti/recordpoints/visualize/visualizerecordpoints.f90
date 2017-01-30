@@ -6,47 +6,54 @@
 PROGRAM postrec
 ! MODULES
 USE MOD_Globals
+USE MOD_Commandline_Arguments
+USE MOD_StringTools                 ,ONLY:STRICMP, GetFileExtension
+USE MOD_ReadInTools                 ,ONLY: prms
 USE MOD_Parameters                  ,ONLY:equiTimeSpacing,doSpec,doFluctuations,doTurb,doFilter,Plane_doBLProps
-USE MOD_Parameters                  ,ONLY:ProjectName
 USE MOD_RPSet                       ,ONLY:InitRPSet,FinalizeRPSet
 USE MOD_RPData                      ,ONLY:ReadRPData,AssembleRPData,FinalizeRPData
 USE MOD_OutputRPVisu                      
 USE MOD_RPInterpolation
 USE MOD_RPInterpolation_Vars        ,ONLY:CalcTimeAverage
-USE MOD_Equation                
+USE MOD_EquationRP                
 USE MOD_FilterRP                    ,ONLY:FilterRP
 USE MOD_Spec                        ,ONLY:InitSpec,spec,FinalizeSpec
 USE MOD_Turbulence
-#ifdef MPI
 USE MOD_MPI                         ,ONLY:InitMPI
-#endif /* MPI */
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                            :: iArg,nArgs,iExt,nDataFiles
+INTEGER                            :: iArg,iExt,nDataFiles
+LOGICAL                            :: success=.TRUE.
 CHARACTER(LEN=255)                 :: InputIniFile
 CHARACTER(LEN=255)                 :: InputDataFile
 CHARACTER(LEN=255),ALLOCATABLE     :: DataFiles(:)
 !===================================================================================================================================
-#ifdef MPI
 CALL InitMPI() ! NO PARALLELIZATION, ONLY FOR COMPILING WITH MPI FLAGS ON SOME MACHINES OR USING MPI-DEPENDANT HDF5
-#endif /* MPI */
+IF (nProcessors.GT.1) CALL CollectiveStop(__STAMP__, &
+  'This tool is designed for single execution only!')
 WRITE(UNIT_stdOut,'(A)') " ||======================================||"
 WRITE(UNIT_stdOut,'(A)') " || Postprocessing for Flexi Recordpoints||"
 WRITE(UNIT_stdOut,'(A)') " ||======================================||"
 WRITE(UNIT_stdOut,'(A)')
 
+CALL ParseCommandlineArguments()
+IF(nArgs .LT. 2) success=.FALSE.
 
-nArgs=COMMAND_ARGUMENT_COUNT()
-IF(nArgs .LT. 2) CALL Abort(__STAMP__,'Missing argument')
-CALL GET_COMMAND_ARGUMENT(1,InputIniFile)
-! Get start index of file extension
-iExt=INDEX(InputIniFile,'.',BACK = .TRUE.)
-! check if first file is a .ini file
-IF(InputIniFile(iExt+1:iExt+3) .NE. 'ini') &
-  CALL Abort(__STAMP__,'ERROR - No / invalid parameter file given.')
+IF(success)THEN
+  ParameterFile = Args(1)
+  IF (.NOT.STRICMP(GetFileExtension(ParameterFile), "ini")) success=.FALSE.
+END IF
+IF(.NOT.success)THEN
+  ! Print out error message containing valid syntax
+  CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: postrec parameter.ini RPdatafiles.h5')
+END IF
+
+CALL DefineParameters()
+
+CALL prms%read_options(ParameterFile)
+
 CALL InitParameters()
-!CALL InitRPSet(RP_DefFile)
 
 nDataFiles=nArgs-1
 ALLOCATE(DataFiles(1:nDataFiles))
@@ -67,7 +74,7 @@ DO iArg=1,nDataFiles
   ! Get start index of file extension to check if it is a h5 file
   iExt=INDEX(InputDataFile,'.',BACK = .TRUE.)
   IF(InputDataFile(iExt+1:iExt+2) .NE. 'h5') &
-    CALL Abort(__STAMP__,'ERROR - Invalid file extension!')
+    CALL CollectiveStop(__STAMP__,'ERROR - Invalid file extension!')
   ! Read in main attributes from given HDF5 State File
   WRITE(UNIT_stdOUT,*) "READING DATA FROM RP FILE """,TRIM(InputDataFile), """"
   IF(iArg.EQ.1) THEN
@@ -80,12 +87,12 @@ END DO
 ! assemble data to one global array
 CALL AssembleRPData()
 
-CALL InitEquation()
+CALL InitEquationRP()
 CALL InitInterpolation()
 IF(doSpec)             CALL InitSpec()
 CALL InitOutput()
 IF(equiTimeSpacing)    CALL InterpolateEquiTime()
-CALL CalcEquation()
+CALL CalcEquationRP()
 IF(calcTimeAverage)    CALL CalcTimeAvg() 
 IF(doFluctuations)     CALL CalcFluctuations()
 IF(doFilter)           CALL FilterRP()
@@ -96,15 +103,16 @@ IF(Plane_doBLProps)    CALL Plane_BLProps()
 CALL OutputRP()
 IF(doTurb)             CALL Turbulence()
 CALL FinalizeInterpolation()
-CALL FinalizeEquation()
+CALL FinalizeEquationRP()
 CALL FinalizeOutput()
 CALL FinalizeRPSet()
 CALL FinalizeRPData()
 CALL FinalizeSpec()
-#ifdef MPI
+CALL FinalizeCommandlineArguments()
+#if USE_MPI
 CALL MPI_FINALIZE(iError)
 IF(iError .NE. 0) &
-  CALL abort(__STAMP__,'MPI finalize error',iError)
+  CALL CollectiveStop(__STAMP__,'MPI finalize error',iError)
 #endif
 WRITE(UNIT_stdOut,'(132("="))')
 WRITE(UNIT_stdOut,'(A)') ' RECORDPOINTS POSTPROC FINISHED! '
@@ -121,8 +129,9 @@ SUBROUTINE DefineParameters()
 USE MOD_ReadInTools ,ONLY: prms
 IMPLICIT NONE
 !===================================================================================================================================
-CALL prms%SetSection('Visualize Record Points')
+CALL prms%SetSection('Visualize_Record_Points')
 
+CALL prms%CreateStringOption( 'ProjectName'        ,"TODO")
 CALL prms%CreateStringOption( 'GroupName'          ,"TODO",multiple=.TRUE.)
 CALL prms%CreateStringOption( 'VarName'            ,"TODO",multiple=.TRUE.)
 CALL prms%CreateStringOption( 'RP_DefFile'         ,"TODO")
@@ -133,18 +142,19 @@ CALL prms%CreateLogicalOption('OutputTimeAverage'  ,"TODO",".FALSE.")
 CALL prms%CreateLogicalOption('doFluctuations'     ,"TODO",".FALSE.")
 CALL prms%CreateLogicalOption('doFilter'           ,"TODO",".FALSE.")
 CALL prms%CreateLogicalOption('doFFT'              ,"TODO",".FALSE.")
+CALL prms%CreateLogicalOption('doPSD'              ,"TODO",".FALSE.")
 CALL prms%CreateLogicalOption('doTurb'             ,"TODO",".FALSE.")
 CALL prms%CreateLogicalOption('hanning'            ,"TODO",".FALSE.")
 CALL prms%CreateLogicalOption('fourthDeriv'        ,"TODO",".FALSE.")
 CALL prms%CreateLogicalOption('ThirdOct'           ,"TODO",".FALSE.")
 CALL prms%CreateLogicalOption('equiTimeSpacing'    ,"TODO",".FALSE.")
-CALL prms%CreateLogicalOption('OutputPlanes'       ,"TODO",".FALSE.")
 CALL prms%CreateLogicalOption('Plane_LocalCoords'  ,"TODO",".FALSE.")
 CALL prms%CreateLogicalOption('Plane_LocalVel'     ,"TODO",".FALSE.")
 CALL prms%CreateLogicalOption('Plane_doBLProps'    ,"TODO",".FALSE.")
-CALL prms%CreateLogicalOption('OutputLines'        ,"TODO",".FALSE.")
 CALL prms%CreateLogicalOption('Line_LocalCoords'   ,"TODO",".FALSE.")
 CALL prms%CreateLogicalOption('Line_LocalVel'      ,"TODO",".FALSE.")
+CALL prms%CreateLogicalOption('OutputPoints'       ,"TODO",".FALSE.")
+CALL prms%CreateLogicalOption('OutputLines'        ,"TODO",".FALSE.")
 CALL prms%CreateLogicalOption('OutputPlanes'       ,"TODO",".FALSE.")
 
 CALL prms%CreateRealArrayOption('Line_LocalVel_vec',"TODO",".FALSE.")
@@ -152,7 +162,7 @@ CALL prms%CreateRealOption   ('FilterWidth'        ,"TODO",".FALSE.")
 CALL prms%CreateRealOption   ('SamplingFreq'       ,"TODO",".FALSE.")
 CALL prms%CreateRealOption   ('u_inf'              ,"TODO",".FALSE.")
 CALL prms%CreateRealOption   ('chord'              ,"TODO",".FALSE.")
-CALL prms%CreateRealOption   ('mu0'                ,"TODO",".FALSE.") ! probably not needed
+CALL prms%CreateRealOption   ('mu0'                ,"TODO",".FALSE.") 
 
 CALL prms%CreateIntOption    ('FilterMode'         ,"TODO",".FALSE.")
 CALL prms%CreateIntOption    ('nBlocks'            ,"TODO",".FALSE.")
@@ -176,8 +186,8 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                :: iGroup,iVar
 !===================================================================================================================================
+Projectname=GETSTR('ProjectName')
 
-Projectname=GETSTR('ProjectName','')
 ! =============================================================================== !
 ! RP INFO
 ! =============================================================================== !
@@ -187,8 +197,8 @@ DO iGroup=1,nGroups_visu
  GroupNames_visu(iGroup)=GETSTR('Groupname','')
 END DO
 RP_SET_defined=.FALSE.
-RP_DefFile=GETSTR('RP_DefFile','')
-IF(TRIM(RP_defFile).NE.'') THEN
+RP_DefFile=GETSTR('RP_DefFile','none')
+IF(TRIM(RP_defFile).NE.'none') THEN
   RP_SET_defined=.TRUE.
 END IF
 
@@ -198,12 +208,12 @@ usePrims=GETLOGICAL('usePrims','.FALSE.')
 ! =============================================================================== !
 ! TIME INTERVAL
 ! =============================================================================== !
-OutputTimeData   =GETLOGICAL('OutputTimeData','F')
-OutputTimeAverage=GETLOGICAL('OutputTimeAverage','F')
-doFluctuations   =GETLOGICAL('doFluctuations','F')
+OutputTimeData   =GETLOGICAL('OutputTimeData','.FALSE.')
+OutputTimeAverage=GETLOGICAL('OutputTimeAverage','.FALSE.')
+doFluctuations   =GETLOGICAL('doFluctuations','.FALSE.')
 IF(OutputTimeAverage .OR. doFluctuations) CalcTimeAverage=.TRUE.
 
-doFilter=GETLOGICAL('doFilter','F')
+doFilter=GETLOGICAL('doFilter','.FALSE.')
 IF(doFilter) THEN
   FilterWidth=GETREAL('FilterWidth')
   FilterMode=GETINT('FilterMode','0')
@@ -211,8 +221,8 @@ END IF
 ! =============================================================================== !
 ! FOURIER TRANSFORM
 ! =============================================================================== !
-doFFT=GETLOGICAL('doFFT','F')
-doPSD=GETLOGICAL('doPSD','F')
+doFFT=GETLOGICAL('doFFT','.FALSE.')
+doPSD=GETLOGICAL('doPSD','.FALSE.')
 IF(doFFT.OR.doPSD) doSpec=.TRUE.
 IF(doSpec) THEN
   ! two readin "modes" for spectrum averaging:
@@ -223,35 +233,35 @@ IF(doSpec) THEN
   IF(samplingFreq.GT.0.) THEN
     BlockSize=GETINT('BlockSize') 
   END IF
-  doHanning=GETLOGICAL('hanning','F')
-  fourthDeriv=GETLOGICAL('fourthDeriv','F')
-  ThirdOct=GETLOGICAL('ThirdOct','F')
+  doHanning=GETLOGICAL('hanning','.FALSE.')
+  fourthDeriv=GETLOGICAL('fourthDeriv','.FALSE.')
+  ThirdOct=GETLOGICAL('ThirdOct','.FALSE.')
   IF (ThirdOct) THEN
     u_infPhys   = GETREAL('u_inf') !velocity for re-dimensionalization of frequency
     chordPhys = GETREAL('chord')   !length for re-dimensionalization of frequency
   END IF
 END IF
 
-doTurb=GETLOGICAL('doTurb','F')
+doTurb=GETLOGICAL('doTurb','.FALSE.')
 
 IF(doSpec .OR. doTurb) cutoffFreq=GETREAL('cutoffFreq','-999.')
 
 ! for any FFT operation we need equidistant time spacing
 equiTimeSpacing=.FALSE.
-IF(OutputTimeData) equiTimeSpacing=GETLOGICAL('equiTimeSpacing','F')
+IF(OutputTimeData) equiTimeSpacing=GETLOGICAL('equiTimeSpacing','.FALSE.')
 IF(doTurb.OR.doSpec) equiTimeSpacing=.TRUE.
 
 ! =============================================================================== !
 ! PLANE OPTIONS 
 ! =============================================================================== !
-OutputPlanes      =GETLOGICAL('OutputPlanes','T')
-Plane_LocalCoords =GETLOGICAL('Plane_LocalCoords','F')
-Plane_LocalVel    =GETLOGICAL('Plane_LocalVel','F')
-Plane_doBLProps   =GETLOGICAL('Plane_doBLProps','F')
+OutputPlanes      =GETLOGICAL('OutputPlanes','.TRUE.')
+Plane_LocalCoords =GETLOGICAL('Plane_LocalCoords','.FALSE.')
+Plane_LocalVel    =GETLOGICAL('Plane_LocalVel','.FALSE.')
+Plane_doBLProps   =GETLOGICAL('Plane_doBLProps','.FALSE.')
 IF(Plane_doBLProps) THEN ! for BL properties we need local coords and velocities
   WRITE(UNIT_StdOut,'(A)')' BL properties depend on local velocities and coordinates'
   WRITE(UNIT_StdOut,'(A)')' and are calculated based on time-averaged data.'
-  WRITE(UNIT_StdOut,'(A)')' Setting Plane_localCoords=T and Plane_localVel=T.'
+  WRITE(UNIT_StdOut,'(A)')' Setting Plane_localCoords=.TRUE. and Plane_localVel=.TRUE..'
   CalcTimeAverage  =.TRUE.
   OutputTimeAverage=.TRUE.
   Plane_LocalCoords=.TRUE.
@@ -263,9 +273,9 @@ END IF
 ! =============================================================================== !
 ! LINE OPTIONS 
 ! =============================================================================== !
-OutputLines      =GETLOGICAL('OutputLines',     'T')
-Line_LocalCoords =GETLOGICAL('Line_LocalCoords','F')
-Line_LocalVel    =GETLOGICAL('Line_LocalVel',   'F')
+OutputLines      =GETLOGICAL('OutputLines',     '.TRUE.')
+Line_LocalCoords =GETLOGICAL('Line_LocalCoords','.FALSE.')
+Line_LocalVel    =GETLOGICAL('Line_LocalVel',   '.FALSE.')
 IF(Line_LocalVel) THEN 
   Line_LocalVel_vec=GETREALARRAY('Line_LocalVel_vec',3)
   ! normalize the vector
@@ -274,13 +284,13 @@ END IF
 ! =============================================================================== !
 ! POINT OPTIONS 
 ! =============================================================================== !
-OutputPoints     =GETLOGICAL('OutputPoints','T')
+OutputPoints     =GETLOGICAL('OutputPoints','.TRUE.')
 
 skip = GETINT('SkipSample','1')
 
-nVar_visu=CountOption('VarName')
-ALLOCATE(VarNameVisu(nVar_visu))
-DO iVar=1,nVar_visu
+nVarVisu=CountOption('VarName')
+ALLOCATE(VarNameVisu(nVarVisu))
+DO iVar=1,nVarVisu
  VarNameVisu(iVar)=GETSTR('VarName')
 END DO
 
@@ -291,3 +301,85 @@ OutputFormat = GETINT('OutputFormat','0')
 ! when no time averaging and no fft shall be performed, set the output signal to true
 IF(.NOT.ANY( (/doSpec, OutputTimeAverage , doTurb /)) ) OutputTimeData=.TRUE.
 END SUBROUTINE InitParameters
+
+
+!===================================================================================================================================
+!> This routine builds the mappings from the total number of variables available for visualization to number of calculation
+!> and visualization variables.
+!>  1. Read 'VarName' options from the parameter file. This are the quantities that will be visualized.
+!>  2. Initialize the dependecy table
+!>  3. check wether gradients are needed for any quantity. If this is the case, remove the conservative quantities from the 
+!>     dependecies of the primitive quantities (the primitive quantities are available directly, since the DGTimeDerivative_weakForm
+!>     will be executed.
+!>  4. build the 'mapCalc' that holds for each quantity that will be calculated the index in 'UCalc' array (0 if not calculated)
+!>  5. build the 'mapVisu' that holds for each quantity that will be visualized the index in 'UVisu' array (0 if not visualized)
+!===================================================================================================================================
+SUBROUTINE Build_mapCalc_mapVisu()
+USE MOD_Parameters
+USE MOD_ReadInTools     ,ONLY: GETSTR,CountOption
+USE MOD_StringTools     ,ONLY: STRICMP
+IMPLICIT NONE
+! INPUT / OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLESIABLES
+INTEGER             :: iVar,iVar2
+CHARACTER(LEN=20)   :: format
+!===================================================================================================================================
+! Read Varnames from parameter file and fill
+!   mapVisu = map, which stores at position x the position/index of the x.th quantity in the UVisu array
+!             if a quantity is not visualized it is zero
+ALLOCATE(mapVisu(1:nVarDep))
+mapVisu = 0
+nVarVisuTotal = 0
+! Compare varnames that should be visualized with availabe varnames
+DO iVar=1,nVarVisu
+  DO iVar2=1,nVarDep
+    IF (STRICMP(VarNameVisu(iVar), VarNamesAll(iVar2))) THEN
+      mapVisu(iVar2) = nVarVisuTotal+1
+      nVarVisuTotal = nVarVisuTotal + 1
+    END IF
+  END DO
+END DO
+
+! Calculate all dependencies:
+! For each quantity copy from all quantities that this quantity depends on the dependencies.
+DO iVar=1,nVarDep
+  DepTable(iVar,iVar) = 1
+  DO iVar2=1,iVar-1
+    IF (DepTable(iVar,iVar2).EQ.1) &
+      DepTable(iVar,:) = MAX(DepTable(iVar,:), DepTable(iVar2,:))
+  END DO
+END DO
+
+! Build :
+!   mapCalc = map, which stores at position x the position/index of the x.th quantity in the UCalc array
+!             if a quantity is not calculated it is zero
+ALLOCATE(mapCalc(1:nVarDep))
+mapCalc = 0
+DO iVar=1,nVarDep
+  IF (mapVisu(iVar).GT.0) THEN
+    mapCalc = MAX(mapCalc,DepTable(iVar,1:nVarDep))
+  END IF
+END DO
+! enumerate mapCalc
+nVarCalc = 0
+DO iVar=1,nVarDep
+  IF (mapCalc(iVar).GT.0) THEN
+    nVarCalc = nVarCalc + 1
+    mapCalc(iVar) = nVarCalc
+  END IF
+END DO
+
+! print the dependecy table
+WRITE(format,'(I2)') SIZE(DepTable,2)
+DO iVar=1,nVarDep
+  WRITE (*,'('//format//'I2,A)') DepTable(iVar,:), " "//TRIM(VarNamesAll(iVar))
+END DO
+
+! print the mappings
+WRITE(format,'(I2)') nVarDep
+WRITE (*,'(A,'//format//'I3)') "mapCalc ",mapCalc
+WRITE (*,'(A,'//format//'I3)') "mapVisu ",mapVisu
+
+END SUBROUTINE Build_mapCalc_mapVisu
+

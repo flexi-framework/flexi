@@ -17,7 +17,13 @@ CMAKE_DEPENDENT_OPTION(POSTI_BUILD_VISUALIZERECORDPOINTS "Build the Record Point
 CMAKE_DEPENDENT_OPTION(POSTI_BUILD_EVALUATERECORDPOINTS  "Build the Record Point aposteriori evaluation tool" ON  "FLEXI_BUILDPOSTI" OFF)
 
 
+SET(   POSTI_WHICH_EQNSYS "navierstokes" CACHE STRING
+                        "Used equation system (navierstokes)")
+SET(   POSTI_WHICH_EOS    "idealgas" CACHE STRING
+                        "Used equation of state (idealgas)")
+
 IF(POSTI_BUILD_VISUALIZERECORDPOINTS)
+  
   # =========================================================================
   # FFTW (FFT tool)
   # =========================================================================

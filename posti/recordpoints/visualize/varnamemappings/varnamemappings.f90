@@ -31,8 +31,8 @@ CONTAINS
 SUBROUTINE CreateVarMappings(nVar,VarName,DQ)
 ! MODULES
 USE MOD_Globals
-USE MOD_VarNameMappingsRP_Vars    ,ONLY: tDerivedQ,max_nVar_visu
-USE MOD_Parameters                ,ONLY: nVar_visu,VarNameVisu
+USE MOD_VarNameMappingsRP_Vars    ,ONLY: tDerivedQ,max_nVarVisu
+USE MOD_Parameters                ,ONLY: nVarVisu,VarNameVisu
 USE MOD_RPData_Vars               ,ONLY: nVar_HDF5,VarNames_HDF5
 USE MOD_StringTools               ,ONLY: STRICMP
 IMPLICIT NONE
@@ -54,7 +54,7 @@ DQ%nVar      =nVar
 DQ%Varname(1:nVar)=VarName(1:nVar)
 ReadFromFile(:)    =.FALSE.
 Map  =0
-DQ%nVar_visu=0
+DQ%nVarVisu=0
 DO iDQ=1,nVar
   DO iVar=1,nVar_HDF5
     IF(STRICMP(VarNames_HDF5(iVar),VarName(iDQ)))THEN
@@ -63,19 +63,19 @@ DO iDQ=1,nVar
   END DO
 END DO
 DO iDQ=1,nVar
-  DO iVar=1,nVar_visu
+  DO iVar=1,nVarVisu
     IF(STRICMP(VarNameVisu(iVar),VarName(iDQ)) .AND. .NOT.ReadFromFile(iDQ))THEN
       WRITE(UNIT_StdOut,*) '  ',TRIM(VarNameVisu(iVar))
-      DQ%nVar_visu           =DQ%nVar_visu+1
-      Map(iDQ)               =DQ%nVar_visu
+      DQ%nVarVisu           =DQ%nVarVisu+1
+      Map(iDQ)               =DQ%nVarVisu
       DQ%IndGlobal(iDQ)      =iVar
     END IF
   END DO
 END DO
-IF(DQ%nVar_visu .GT. 0)THEN
-  max_nVar_visu=MAX(max_nVar_visu,DQ%nVar_visu)
+IF(DQ%nVarVisu .GT. 0)THEN
+  max_nVarVisu=MAX(max_nVarVisu,DQ%nVarVisu)
   ! Only allocate once per run!
-  IF(.NOT. ALLOCATED(DQ%Ind))ALLOCATE(DQ%Ind(DQ%nVar_visu))
+  IF(.NOT. ALLOCATED(DQ%Ind))ALLOCATE(DQ%Ind(DQ%nVarVisu))
   DO iDQ=1,DQ%nVar
     IF(Map(iDQ) .GT. 0) DQ%Ind(Map(iDQ))=iDQ
   END DO
@@ -90,8 +90,8 @@ END SUBROUTINE CreateVarMappings
 SUBROUTINE CreateStateMappings(nVar,VarName,DQ)
 ! MODULES
 USE MOD_Globals
-USE MOD_VarNameMappingsRP_Vars,ONLY: tDerivedQ,max_nVar_visu
-USE MOD_Parameters            ,ONLY: nVar_visu,VarNameVisu
+USE MOD_VarNameMappingsRP_Vars,ONLY: tDerivedQ,max_nVarVisu
+USE MOD_Parameters            ,ONLY: nVarVisu,VarNameVisu
 USE MOD_StringTools           ,ONLY: STRICMP
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -110,21 +110,21 @@ IF(.NOT. ALLOCATED(DQ%IndGlobal))ALLOCATE(DQ%IndGlobal(1:nVar))
 DQ%nVar      =nVar
 DQ%Varname(1:nVar)=VarName(1:nVar)
 Map  =0
-DQ%nVar_visu=0
+DQ%nVarVisu=0
 DO iDQ=1,nVar
-  DO iVar=1,nVar_visu
+  DO iVar=1,nVarVisu
     IF(STRICMP(VarNameVisu(iVar),VarName(iDQ)))THEN
       WRITE(UNIT_StdOut,*) '  ',TRIM(VarNameVisu(iVar))
-      DQ%nVar_visu           =DQ%nVar_visu+1
-      Map(iDQ)               =DQ%nVar_visu
+      DQ%nVarVisu           =DQ%nVarVisu+1
+      Map(iDQ)               =DQ%nVarVisu
       DQ%IndGlobal(iDQ)      =iVar
     END IF
   END DO
 END DO
-IF(DQ%nVar_visu .GT. 0)THEN
-  max_nVar_visu=MAX(max_nVar_visu,DQ%nVar_visu)
+IF(DQ%nVarVisu .GT. 0)THEN
+  max_nVarVisu=MAX(max_nVarVisu,DQ%nVarVisu)
   ! Only allocate once per run!
-  IF(.NOT. ALLOCATED(DQ%Ind))ALLOCATE(DQ%Ind(DQ%nVar_visu))
+  IF(.NOT. ALLOCATED(DQ%Ind))ALLOCATE(DQ%Ind(DQ%nVarVisu))
   DO iDQ=1,DQ%nVar
     IF(Map(iDQ) .GT. 0) DQ%Ind(Map(iDQ))=iDQ
   END DO
