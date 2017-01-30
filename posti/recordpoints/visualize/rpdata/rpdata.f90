@@ -65,7 +65,7 @@ ELSE
  firstFile_loc=.FALSE.
 END IF
 ! Open data file
-CALL OpenDataFile(FileString,create=.FALSE.,single=.TRUE.,readOnly=.TRUE.)
+CALL OpenDataFile(FileString,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 IF(firstFile_loc.AND.(TRIM(ProjectName).EQ.TRIM(''))) THEN
   CALL ReadAttribute(File_ID,'ProjectName',1,StrScalar=ProjectName)
 END IF
@@ -92,7 +92,7 @@ IF((RP_DefFile_loc.NE.RP_DefFile).AND.(.NOT.RP_SET_defined)) THEN
   CALL ChangeRPSet(RP_DefFile)
 END IF
 
-CALL OpenDataFile(FileString,create=.FALSE.,single=.TRUE.,readOnly=.TRUE.)
+CALL OpenDataFile(FileString,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 ! Readin RP Data
 CALL GetDataSize(File_ID,'RP_Data',nDims,HSize)
 IF(nRP_HDF5 .NE. HSize(2)) THEN

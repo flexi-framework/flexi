@@ -70,14 +70,13 @@ WRITE(UNIT_stdOut,'(A)') ' INIT RECORDPOINT SET...'
 WRITE(UNIT_stdOut,'(A)')' Read recordpoint definitions from data file "'//TRIM(RP_DefFile_in)//'" ...'
  
 ! Open data file
-CALL OpenDataFile(RP_DefFile_in,create=.FALSE.,single=.TRUE.,readOnly=.TRUE.)
+CALL OpenDataFile(RP_DefFile_in,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 
 ! Readin Groups   
 CALL GetDataSize(File_ID,'GroupNames',nDims,HSize)
 nGroups=HSize(1) !number of groups
 DEALLOCATE(HSize)
 ALLOCATE(GroupNames(1:nGroups)) 
-print*,'nGroups',nGroups
 CALL ReadArray(TRIM('GroupNames'),1,(/nGroups/),0,1,StrArray=GroupNames)
 
 

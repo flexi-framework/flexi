@@ -41,11 +41,10 @@ USE MOD_Globals
 USE MOD_RPData_Vars       ,ONLY:VarNames_HDF5,nVar_HDF5
 USE MOD_Parameters        
 USE MOD_EquationRP_Vars
-USE MOD_EOS_Posti_Vars    ,ONLY:nVarTotalEOS,DepTableEOS
-USE MOD_VarNameMappingsRP
-USE MOD_VarNameMappingsRP_Vars
+USE MOD_EOS               ,ONLY:InitEOS
+USE MOD_EOS_Posti_Vars    ,ONLY:nVarTotalEOS,DepTableEOS,DepNames
 USE MOD_Readintools       ,ONLY:CountOption,GETSTR
-USE MOD_StringTools     ,ONLY: STRICMP
+USE MOD_StringTools       ,ONLY: STRICMP
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -54,7 +53,6 @@ IMPLICIT NONE
 INTEGER                               :: iVar,iVar2,strlen,countCons
 INTEGER                               :: mapCand(3)
 CHARACTER(LEN=255)                    :: VarName(5),tmp255,tmp255_2
-LOGICAL                               :: justVisualizeState
 !===================================================================================================================================
 WRITE(UNIT_StdOut,'(132("-"))')
 WRITE(UNIT_stdOut,'(A)') ' INIT EquationRP ...'
@@ -64,18 +62,19 @@ justVisualizeState=.FALSE.
 ! In case no output variables specified: take instead the variable names out of the hDF5 file (used for timeavg-files)
 nVarVisu=CountOption("VarName")
 IF(nVarVisu .LT. 1) THEN
+  justVisualizeState=.TRUE.
   WRITE(*,*) 'No output variables specified, using existing variables from state file.'
   nVarVisu   = nVar_HDF5
-  ALLOCATE(VarNameVisu(nVarVisu))
-  VarNameVisu = VarNames_HDF5
   nVarDep=nVar_HDF5
-  ALLOCATE(VarNamesAll(nVarDep))
-  VarNamesAll=VarNameVisu
-  ALLOCATE(DepTable(nVarVisu,0:nVarVisu))
-  DepTable=0
-  DO iVar=1,nVarVisu
-    DepTable(iVar,iVar)=1
-  END DO
+  ALLOCATE(VarNameVisu(nVar_HDF5))
+  ALLOCATE(VarNamesAll(nVar_HDF5))
+  VarNameVisu = VarNames_HDF5
+  VarNamesAll = VarNames_HDF5
+!  ALLOCATE(DepTable(nVarVisu,0:nVarVisu))
+!  DepTable=0
+!  DO iVar=1,nVarVisu
+!    DepTable(iVar,iVar)=1
+!  END DO
 ELSE
   ALLOCATE(VarNameVisu(nVarVisu))
   DO iVar=1,nVarVisu
@@ -99,10 +98,14 @@ ELSE
   VarNamesAll=DepNames
   ALLOCATE(DepTable(nVarDep,0:nVarDep))
   DepTable=DepTableEOS
+
+  ! generate mappings
+  CALL Build_mapCalc_mapVisu()
+
+  ! initialize EOS
+  CALL InitEOS()
 END IF
 
-! generate mappings
-CALL Build_mapCalc_mapVisu()
 
 ! For local transforms, we need a mapping to all physical vector quantities
 ! with 3 available components to transform them
@@ -169,7 +172,7 @@ USE MOD_RPData_Vars       ,ONLY:RPData
 USE MOD_RPData_Vars       ,ONLY:nVar_HDF5,VarNames_HDF5
 USE MOD_RPSet_Vars        ,ONLY:nRP_global        
 USE MOD_OutputRPVisu_Vars ,ONLY:nSamples_out
-USE MOD_Parameters        ,ONLY:nVarDep,nVarCalc,mapCalc,mapVisu,VarNamesAll
+USE MOD_Parameters        ,ONLY:nVarDep,nVarCalc,mapCalc,mapVisu,VarNamesAll,justVisualizeState
 USE MOD_Parameters        ,ONLY:Line_LocalVel,Plane_LocalVel,Plane_doBLProps
 USE MOD_OutputRPVisu_Vars ,ONLY:RPData_out 
 USE MOD_EOS_Posti      ,ONLY: CalcQuantities
@@ -180,39 +183,45 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: maskCalc(nVarDep),nVal(3)
+INTEGER            :: maskCalc(nVarDep),nVal(2)
 INTEGER            :: iVarOut,iVarIn,iVar,iVarCalc,iVarVisu
 REAL,ALLOCATABLE   :: UCalc(:,:,:)
 !===================================================================================================================================
 WRITE(UNIT_StdOut,'(132("-"))')
 WRITE(UNIT_stdOut,'(A)')" CONVERT DERIVED QUANTITIES..."
 ! CALCULATE DERIVED QUATITIES -----------------------------------------------------------------------------------------------------!
-maskCalc=1
-nVal=(/nVarCalc,nRP_global,nSamples_out/)
-! Copy existing variables from solution array
-ALLOCATE(UCalc(nVarCalc,nRP_global,nSamples_out))
-DO iVarOut=1,nVarDep ! iterate over all out variables
-  IF (mapCalc(iVarOut).LT.1) CYCLE ! check if variable must be calculated
-  DO iVarIn=1,nVar_HDF5 ! iterate over all in variables
-    IF( STRICMP(VarNamesAll(iVarOut),VarNames_HDF5(iVarIn))) THEN
-      UCalc(mapCalc(iVarOut),:,:)=RPData(iVarIn,:,:)
-      maskCalc(iVarOut)=0 ! remove variable from maskCalc, since they now got copied and must not be calculated.
-    END IF
+IF(justVisualizeState)THEN
+  RPData_out=RPData
+ELSE
+  maskCalc=1
+  nVal=(/nRP_global,nSamples_out/)
+  ! Copy existing variables from solution array
+  ! Attention: nVarCalc must be last dimension (needed for CalcQuantities from flexilib!)
+  ALLOCATE(UCalc(nRP_global,nSamples_out,nVarCalc))
+  
+  DO iVarOut=1,nVarDep ! iterate over all out variables
+    IF (mapCalc(iVarOut).LT.1) CYCLE ! check if variable must be calculated
+    DO iVarIn=1,nVar_HDF5 ! iterate over all in variables
+      IF( STRICMP(VarNamesAll(iVarOut),VarNames_HDF5(iVarIn))) THEN
+        UCalc(:,:,mapCalc(iVarOut))=RPData(iVarIn,:,:)
+        maskCalc(iVarOut)=0 ! remove variable from maskCalc, since they now got copied and must not be calculated.
+      END IF
+    END DO
   END DO
-END DO
-
-! calculate all quantities
-CALL CalcQuantities(nVarCalc,nVal,(/1/),mapCalc,UCalc,maskCalc)
-
-! fill output array
-DO iVar=1,nVarDep
-  IF (mapVisu(iVar).GT.0) THEN
-    iVarCalc = mapCalc(iVar) 
-    iVarVisu = mapVisu(iVar) 
-    RPData_out(iVarVisu,:,:)=UCalc(iVarCalc,:,:)
-  END IF
-END DO 
-DEALLOCATE(UCalc)
+  
+  ! calculate all quantities
+  CALL CalcQuantities(nVarCalc,nVal,(/1/),mapCalc,UCalc,maskCalc)
+  
+  ! fill output array
+  DO iVar=1,nVarDep
+    IF (mapVisu(iVar).GT.0) THEN
+      iVarCalc = mapCalc(iVar) 
+      iVarVisu = mapVisu(iVar) 
+      RPData_out(iVarVisu,:,:)=UCalc(:,:,iVarCalc)
+    END IF
+  END DO 
+  DEALLOCATE(UCalc)
+END IF
 
 ! Coordinate Transform
 IF(Line_LocalVel) &

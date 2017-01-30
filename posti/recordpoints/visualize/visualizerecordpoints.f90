@@ -19,7 +19,9 @@ USE MOD_EquationRP
 USE MOD_FilterRP                    ,ONLY:FilterRP
 USE MOD_Spec                        ,ONLY:InitSpec,spec,FinalizeSpec
 USE MOD_Turbulence
-USE MOD_MPI                         ,ONLY:InitMPI
+USE MOD_MPI                         ,ONLY:DefineParametersMPI,InitMPI
+USE MOD_IO_HDF5                     ,ONLY:DefineParametersIO_HDF5,InitIOHDF5
+USE MOD_EOS                         ,ONLY:DefineParametersEOS,InitEOS
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -50,10 +52,14 @@ IF(.NOT.success)THEN
 END IF
 
 CALL DefineParameters()
+CALL DefineParametersMPI()
+CALL DefineParametersIO_HDF5()
+CALL DefineParametersEOS()
 
 CALL prms%read_options(ParameterFile)
 
 CALL InitParameters()
+CALL InitIOHDF5()
 
 nDataFiles=nArgs-1
 ALLOCATE(DataFiles(1:nDataFiles))
@@ -157,19 +163,19 @@ CALL prms%CreateLogicalOption('OutputPoints'       ,"TODO",".FALSE.")
 CALL prms%CreateLogicalOption('OutputLines'        ,"TODO",".FALSE.")
 CALL prms%CreateLogicalOption('OutputPlanes'       ,"TODO",".FALSE.")
 
-CALL prms%CreateRealArrayOption('Line_LocalVel_vec',"TODO",".FALSE.")
-CALL prms%CreateRealOption   ('FilterWidth'        ,"TODO",".FALSE.")
-CALL prms%CreateRealOption   ('SamplingFreq'       ,"TODO",".FALSE.")
-CALL prms%CreateRealOption   ('u_inf'              ,"TODO",".FALSE.")
-CALL prms%CreateRealOption   ('chord'              ,"TODO",".FALSE.")
-CALL prms%CreateRealOption   ('mu0'                ,"TODO",".FALSE.") 
+CALL prms%CreateRealArrayOption('Line_LocalVel_vec',"TODO")
+CALL prms%CreateRealOption   ('FilterWidth'        ,"TODO")
+CALL prms%CreateRealOption   ('SamplingFreq'       ,"TODO")
+CALL prms%CreateRealOption   ('u_inf'              ,"TODO")
+CALL prms%CreateRealOption   ('chord'              ,"TODO")
+CALL prms%CreateRealOption   ('mu0'                ,"TODO") 
 
-CALL prms%CreateIntOption    ('FilterMode'         ,"TODO",".FALSE.")
-CALL prms%CreateIntOption    ('nBlocks'            ,"TODO",".FALSE.")
-CALL prms%CreateIntOption    ('BlockSize'          ,"TODO",".FALSE.")
-CALL prms%CreateIntOption    ('Plane_BLvelScaling' ,"TODO",".FALSE.")
-CALL prms%CreateIntOption    ('SkipSample'         ,"TODO",".FALSE.")
-CALL prms%CreateIntOption    ('OutputFormat'       ,"TODO",".FALSE.")
+CALL prms%CreateIntOption    ('FilterMode'         ,"TODO")
+CALL prms%CreateIntOption    ('nBlocks'            ,"TODO")
+CALL prms%CreateIntOption    ('BlockSize'          ,"TODO")
+CALL prms%CreateIntOption    ('Plane_BLvelScaling' ,"TODO")
+CALL prms%CreateIntOption    ('SkipSample'         ,"TODO")
+CALL prms%CreateIntOption    ('OutputFormat'       ,"TODO")
 END SUBROUTINE DefineParameters
 
 !===================================================================================================================================
@@ -194,7 +200,7 @@ Projectname=GETSTR('ProjectName')
 nGroups_visu=CountOption('GroupName')
 ALLOCATE(GroupNames_visu(nGroups_visu))
 DO iGroup=1,nGroups_visu
- GroupNames_visu(iGroup)=GETSTR('Groupname','')
+  GroupNames_visu(iGroup)=GETSTR('Groupname','none')
 END DO
 RP_SET_defined=.FALSE.
 RP_DefFile=GETSTR('RP_DefFile','none')
@@ -287,12 +293,6 @@ END IF
 OutputPoints     =GETLOGICAL('OutputPoints','.TRUE.')
 
 skip = GETINT('SkipSample','1')
-
-nVarVisu=CountOption('VarName')
-ALLOCATE(VarNameVisu(nVarVisu))
-DO iVar=1,nVarVisu
- VarNameVisu(iVar)=GETSTR('VarName')
-END DO
 
 IF(doTurb.OR.Plane_doBLProps) Mu0=GETREAL('Mu0')
 

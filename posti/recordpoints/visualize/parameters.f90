@@ -9,6 +9,7 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
+LOGICAL                             :: justVisualizeState
 CHARACTER(len=255)                  :: ProjectName
 CHARACTER(len=255)                  :: RP_DefFile 
 CHARACTER(len=255),ALLOCATABLE      :: GroupNames_visu(:)
@@ -56,7 +57,6 @@ INTEGER                             :: Skip ! nur jeder skipte RP sample wird ei
 
 
 INTEGER,ALLOCATABLE               :: DepTable(:,:)
-CHARACTER(LEN=255),ALLOCATABLE    :: DepNames(:)
 CHARACTER(LEN=255),ALLOCATABLE,TARGET :: VarNamesAll(:)
 INTEGER                           :: nVarDep                 ! 
 INTEGER                           :: nVarCalc

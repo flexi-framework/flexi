@@ -38,7 +38,7 @@ USE MOD_RPData_Vars     ,ONLY: nSamples_global
 USE MOD_OutputRPVisu_Vars     ,ONLY: nSamples_out
 USE MOD_OutputRPVisu_Vars     ,ONLY: nCoords,CoordNames
 USE MOD_OutputRPVisu_Vars     ,ONLY: RPData_out
-USE MOD_Equation_Vars   ,ONLY: EquationInitIsDone
+USE MOD_EquationRP_Vars   ,ONLY: EquationRPInitIsDone
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -46,8 +46,8 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER :: offset
 !===================================================================================================================================
-IF (.NOT.EquationInitIsDone) THEN
-  CALL abort(__STAMP__,'InitEquation must be called before InitOutput!')
+IF (.NOT.EquationRPInitIsDone) THEN
+  CALL abort(__STAMP__,'InitEquationRP must be called before InitOutput!')
   ! since initequation defines nVarVisu, VarNameVisu
 END IF
 WRITE(UNIT_StdOut,'(132("-"))')
