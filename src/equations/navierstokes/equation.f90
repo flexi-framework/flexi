@@ -83,6 +83,7 @@ USE MOD_Exactfunc         ,ONLY: InitExactFunc
 USE MOD_ReadInTools       ,ONLY: CountOption,GETREALARRAY,GETSTR
 USE MOD_Testcase          ,ONLY: InitTestcase
 USE MOD_Riemann           ,ONLY: InitRiemann
+USE MOD_GetBoundaryFlux,   ONLY: InitBC
 USE MOD_CalcTimeStep      ,ONLY: InitCalctimestep
 #ifdef EDDYVISCOSITY
 USE MOD_EddyVisc          ,ONLY: InitEddyVisc
@@ -148,12 +149,15 @@ CALL InitCalctimestep()
 CALL InitEddyVisc()
 #endif
 
+CALL InitBC()
+
 EquationInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT NAVIER-STOKES DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
 
 ! Initialize current testcase
 CALL InitTestcase()
+
 END SUBROUTINE InitEquation
 
 
@@ -266,6 +270,7 @@ USE MOD_CalcTimeStep    ,ONLY: FinalizeCalctimestep
 #ifdef EDDYVISCOSITY
 USE MOD_EddyVisc        ,ONLY: FinalizeEddyVisc
 #endif /*EDDYVISCOSITY*/
+USE MOD_GetBoundaryFlux, ONLY: FinalizeBC
 IMPLICIT NONE
 !==================================================================================================================================
 CALL FinalizeTestcase()
@@ -274,6 +279,7 @@ CALL FinalizeCalctimestep()
 #ifdef EDDYVISCOSITY
 CALL FinalizeEddyVisc()
 #endif /*EDDYVISCOSITY*/
+CALL FinalizeBC()
 SDEALLOCATE(RefStatePrim)
 SDEALLOCATE(RefStateCons)
 EquationInitIsDone = .FALSE.
