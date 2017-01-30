@@ -149,7 +149,9 @@ DO k=0,PP_N;  DO j=0,PP_N; DO i=0,PP_N
                     ,gradUy(2,i,j,k),gradUz(2,i,j,k),gradUx(3,i,j,k)&
                     ,gradUz(3,i,j,k),gradUx(4,i,j,k),gradUy(4,i,j,k)&
                     ,UPrim(1,i,j,k),iElem,i,j,k,muSGS(1,i,j,k,iElem))
-  muSGS(1,i,j,k,iElem) =  max(muSGS(1,i,j,k,iElem),0.)
+  !!muSGS(1,i,j,k,iElem) =  max(muSGS(1,i,j,k,iElem),0.)
+  !MATTEO: let musgs have negative values
+  muSGS(1,i,j,k,iElem) =  max(muSGS(1,i,j,k,iElem),-muS)
   muS = muS + (muSGS(1,i,j,k,iElem))
   ! MATTEO: horrible hack
   !muS = muS + min(max(muSGS(1,i,j,k,iElem),0.), 3*muS)
@@ -304,7 +306,9 @@ DO j=0,Nloc ; DO i=0,Nloc
   ! gradients of primitive variables are directly available gradU = (/ drho, dv1, dv2, dv3, dp, dT /)
 #ifdef EDDYVISCOSITY
   IF(eddyViscType.EQ.2) THEN
-    muSGS=max(SGS_Ind(2,i,j),0.)
+    !muSGS=max(SGS_Ind(2,i,j),0.)
+    !MATTEO: letting musgs have negative values
+    muSGS=max(SGS_Ind(2,i,j),-muS)
   ELSE
     CALL eddyViscosity_surf(gradUx_Face(2,i,j),gradUy_Face(3,i,j),gradUz_Face(4,i,j)&
                            ,gradUy_Face(2,i,j),gradUz_Face(2,i,j),gradUx_Face(3,i,j)&

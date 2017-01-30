@@ -329,7 +329,8 @@ DO iElem=1,nElems
   S_eN_filtered(:,:,:)= S_eN_filtered(:,:,:) +  2*(S_ik(3,1,:,:,:) )**2.
   S_eN_filtered(:,:,:)= S_eN_filtered(:,:,:) +  2*(S_ik(3,2,:,:,:) )**2.
   S_eN_filtered(:,:,:)= sqrt(2* S_eN_filtered(:,:,:) )
-  D_Ratio=(REAL(N_testfilter+1)/REAL(PP_N+1))**2
+  !D_Ratio=(REAL(N_testfilter+1)/REAL(PP_N+1))**2
+  D_Ratio=((1./REAL(N_testfilter+1)) / (1./REAL(PP_N+1)))**2
   DO i=1,3
     DO k=1,3
       M_ik(i,k,:,:,:) = M_ik(i,k,:,:,:) - D_Ratio * S_eN_filtered(:,:,:)*S_ik(i,k,:,:,:)
@@ -418,55 +419,55 @@ DO iElem=1,nElems
 !
   !-----CELL LOCAL IN HOMOGENEOUS DIRECTIONS
   !ACHTUNG NUR KARTESISCH UND IN/FUER Y=J!!!
-  dummy1D=0.
-  Vol = 0.
-  DO j=0,PP_N
-    DO i=0,PP_N
-      IntegrationWeight = wGP(i)*wGP(j)
-      dummy1D(:) = dummy1D(:) + ML(i,:,j)*IntegrationWeight
-      Vol = Vol + Integrationweight
-    END DO ! i
-  END DO ! j
-  DO j=0,PP_N
-    DO i=0,PP_N
-      ML(i,:,j) = dummy1D(:)/Vol !CELL average
-    END DO ! i
-  END DO ! j
-  dummy1D=0.
-  DO j=0,PP_N
-    DO i=0,PP_N
-      IntegrationWeight = wGP(i)*wGP(j)
-      dummy1D(:) = dummy1D(:) + MM(i,:,j)*IntegrationWeight
-    END DO ! i
-  END DO ! j
-  DO j=0,PP_N
-    DO i=0,PP_N
-      MM(i,:,j) = dummy1D(:)/Vol !CELL average
-    END DO ! i
-  END DO ! j
-  DO j=0,PP_N
-    DO i=0,PP_N
-      C_d(i,:,j) = - 0.5*ML(i,:,j)/MM(i,:,j) !CELL average
-      !C_d(i,:,j) = + 0.5*ML(i,:,j)/MM(i,:,j) !CELL average
-    END DO ! i
-  END DO ! j
+!  dummy1D=0.
+!  Vol = 0.
+!  DO j=0,PP_N
+!    DO i=0,PP_N
+!      IntegrationWeight = wGP(i)*wGP(j)
+!      dummy1D(:) = dummy1D(:) + ML(i,:,j)*IntegrationWeight
+!      Vol = Vol + Integrationweight
+!    END DO ! i
+!  END DO ! j
+!  DO j=0,PP_N
+!    DO i=0,PP_N
+!      ML(i,:,j) = dummy1D(:)/Vol !CELL average
+!    END DO ! i
+!  END DO ! j
+!  dummy1D=0.
+!  DO j=0,PP_N
+!    DO i=0,PP_N
+!      IntegrationWeight = wGP(i)*wGP(j)
+!      dummy1D(:) = dummy1D(:) + MM(i,:,j)*IntegrationWeight
+!    END DO ! i
+!  END DO ! j
+!  DO j=0,PP_N
+!    DO i=0,PP_N
+!      MM(i,:,j) = dummy1D(:)/Vol !CELL average
+!    END DO ! i
+!  END DO ! j
+!  DO j=0,PP_N
+!    DO i=0,PP_N
+!      C_d(i,:,j) = - 0.5*ML(i,:,j)/MM(i,:,j) !CELL average
+!      !C_d(i,:,j) = + 0.5*ML(i,:,j)/MM(i,:,j) !CELL average
+!    END DO ! i
+!  END DO ! j
 !  SGS_Ind(1,:,:,:,iElem) = C_d(:,:,:)
 !
 !------------------------------------------
-!!Time Average ala pruett
-!!Im Nenner steht r=FilterWidth/dt(RK)
-!!Simple shot is taking the filter width equal 1, assuming meaningful dimensionless timescale
-!ML_Avg(:,:,:,iElem) = ML_Avg(:,:,:,iElem) + (ML(:,:,:)-ML_Avg(:,:,:,iElem))*(dt/5.)
-!MM_Avg(:,:,:,iElem) = MM_Avg(:,:,:,iElem) + (MM(:,:,:)-MM_Avg(:,:,:,iElem))*(dt/5.)
-!!C_d=0.
-!DO i=0,PP_N
-!  DO j=0,PP_N
-!    DO k=0,PP_N
-!!      IF (ABS(MM_Avg(i,j,k,iElem)) .LE. 1e-15) CYCLE 
-!      C_d(i,j,k) = 0.5*ML_Avg(i,j,k,iElem)/MM_Avg(i,j,k,iElem)
-!    END DO ! i
-!  END DO ! j
-!END DO ! k
+!Time Average ala pruett
+!Im Nenner steht r=FilterWidth/dt(RK)
+!Simple shot is taking the filter width equal 1, assuming meaningful dimensionless timescale
+ML_Avg(:,:,:,iElem) = ML_Avg(:,:,:,iElem) + (ML(:,:,:)-ML_Avg(:,:,:,iElem))*(dt/1.)
+MM_Avg(:,:,:,iElem) = MM_Avg(:,:,:,iElem) + (MM(:,:,:)-MM_Avg(:,:,:,iElem))*(dt/1.)
+!C_d=0.
+DO i=0,PP_N
+  DO j=0,PP_N
+    DO k=0,PP_N
+!      IF (ABS(MM_Avg(i,j,k,iElem)) .LE. 1e-15) CYCLE 
+      C_d(i,j,k) =  0.5*ML_Avg(i,j,k,iElem)/MM_Avg(i,j,k,iElem)
+    END DO ! i
+  END DO ! j
+END DO ! k
 SGS_Ind(1,:,:,:,iElem) = SGS_Ind(1,:,:,:,iElem) + (C_d(:,:,:)-SGS_Ind(1,:,:,:,iElem))/1.*dt
 !print*,SGS_Ind(1,:,:,:,iElem)
 !  SGS_Ind(1,:,:,:,iElem) = C_d(:,:,:)
