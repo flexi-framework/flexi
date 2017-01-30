@@ -111,6 +111,7 @@ SELECT CASE(eddyViscType)
       'Eddy Viscosity Type not specified!')
 END SELECT
 CALL AddToFieldData((/1,PP_N+1,PP_N+1,PP_N+1/),'VMSData',(/'muSGS'/),RealArray=muSGS)
+CALL AddToFieldData((/1,PP_N+1,PP_N+1,PP_N+1/),'VMSData',(/'Csmag'/),RealArray=SGS_Ind(1:1,:,:,:,:))
 
 END SUBROUTINE
 
