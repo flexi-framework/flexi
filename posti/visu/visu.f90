@@ -282,6 +282,7 @@ SDEALLOCATE(DepSurfaceOnly)
 SDEALLOCATE(DepVolumeOnly)
 nVarAll=SIZE(VarnamesAll)
 IF (STRICMP(FileType,'State')) THEN
+  StateFileMode = .TRUE.
   nVarDep = nVarDepEOS
   ALLOCATE(DepTable(nVarDep,0:nVarDep))
   ALLOCATE(DepSurfaceOnly(nVarDep))
@@ -307,8 +308,10 @@ END IF
 ! reset withDGOperator flag and check if it is needed due to existing FV elements
 withDGOperator = .FALSE.
 #if FV_RECONSTRUCT
-! force calculation of metrics if there are any FV elements
-IF (hasFV_Elems) withDGOperator = .TRUE.
+! If what we want to visualize is a state and has FV elements, the DG operator needs to be called for reconstruction
+IF (StateFileMode) THEN
+  IF (hasFV_Elems) withDGOperator = .TRUE.
+END IF
 #endif
 
 ! build mappings of variables which must be calculated/visualized

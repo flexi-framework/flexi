@@ -248,17 +248,17 @@ LOGICAL           :: changedMeshMode
 !===================================================================================================================================
 CALL FinalizeInterpolation()
 
-! Check if any surface visualization should be done
-IF (doSurfVisu) THEN
-  ! If so, do full mesh init to get normal vectors etc.
-  meshMode_loc = 2
+! Some features require normal vectors or metrics
+meshMode_loc = 0 ! Minimal mesh init
+IF (doSurfVisu)  meshMode_loc = MAX(meshMode_loc,2)
+IF (hasFV_Elems) meshMode_loc = MAX(meshMode_loc,2)
+
+
 #if FV_ENABLED
-  CALL FinalizeFV_Basis()
+! For FV and higher mesh modes the FV basis is needed
+IF (meshMode_loc.EQ.2) CALL FinalizeFV_Basis()
 #endif
-ELSE
-  ! Do minimal mesh init
-  meshMode_loc = 0
-END IF
+
 ! check if the mesh mode has changed from the last time
 changedMeshMode = (meshMode_loc.NE.meshMode_old)
 
@@ -289,8 +289,8 @@ ELSE
 END IF
 
 #if FV_ENABLED
-! Also we need to call the FV basis init to allocate some arrays needed in mesh init
-IF (doSurfVisu) CALL InitFV_Basis()
+! We need to call the FV basis init to allocate some arrays needed in mesh init
+IF (meshMode_loc.EQ.2) CALL InitFV_Basis()
 #endif
 
 ! Call mesh init if the mesh file changed or we need a different mesh mode

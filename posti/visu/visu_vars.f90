@@ -55,6 +55,8 @@ INTEGER,ALLOCATABLE               :: FV_Elems_loc(:)             !< current dist
 INTEGER,ALLOCATABLE               :: FV_Elems_old(:)             !< previous distribution of FV/DG elems
 INTEGER                           :: meshMode_old=0              !< Used to check if InitMesh must be called again with different
                                                                  !< mesh mode
+LOGICAL                           :: StateFileMode               !< Flag indicating if a state file is being visualized. Only then
+                                                                 !< calculations can be performed, otherwise only pure visu.
 LOGICAL                           :: MeshFileMode                !< Flag indicating a mesh file should be visualized
 LOGICAL                           :: doSurfVisu                  !< Flag indicating if any surfaces need to be visualized
 LOGICAL                           :: Avg2D                       !< Flag indicating if solution should be averaged in zeta dir

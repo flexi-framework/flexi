@@ -185,7 +185,7 @@ USE MOD_Visu_Vars
 USE MOD_ReadInTools     ,ONLY: GETSTR,CountOption
 USE MOD_StringTools     ,ONLY: STRICMP
 #if FV_RECONSTRUCT
-USE MOD_EOS_Posti           ,ONLY: AppendNeededPrims
+USE MOD_EOS_Posti       ,ONLY: AppendNeededPrims
 #endif
 
 IMPLICIT NONE
@@ -287,7 +287,7 @@ nVarCalc_FV = nVarCalc
 ! Since the reconstruction is performed in primitive quantities, the calculation of conservative quantities from them 
 ! introduce for the conservatives dependcies from the primitive ones. Therefore all primitive quantities that
 ! are needed to build the requested conservatives must be added to the mapDepToCalc_FV. 
-CALL AppendNeededPrims(mapDepToCalc,mapDepToCalc_FV,nVarCalc_FV)
+IF (StateFileMode) CALL AppendNeededPrims(mapDepToCalc,mapDepToCalc_FV,nVarCalc_FV)
 #endif
 
 ! print the mappings
@@ -298,7 +298,7 @@ SWRITE (*,'(A,'//format//'I3)') "mapAllVarsToVisuVars     ",mapAllVarsToVisuVars
 SWRITE (*,'(A,'//format//'I3)') "mapAllVarsToSurfVisuVars ",mapAllVarsToSurfVisuVars
 
 
-!---------------------- Surface visulaization ----------------------------!
+!---------------------- Surface visualization ----------------------------!
 
 ! Build the mapping for the surface visualization
 ! mapAllBCNamesToVisuBCNames(iBC) stores the ascending visualization index of the all boundaries. 0 means no visualization.
