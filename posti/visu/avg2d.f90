@@ -390,7 +390,7 @@ USE MOD_Output_Vars,    ONLY: ProjectName
 USE MOD_Visu_Vars,      ONLY: Elem_IJK,VarnamesAll,mapAllVarsToVisuVars,nVarAll
 USE MOD_Visu_Vars,      ONLY: nElemsAvg2D_DG,mapElemIJToDGElemAvg2D,nElemsAvg2D_FV,mapElemIJToFVElemAvg2D
 USE MOD_Mesh_Vars,      ONLY: nGlobalElems,offsetElem,nElems
-#ifdef FV_ENABLED
+#if FV_ENABLED
 USE MOD_Visu_Vars,      ONLY: NCalc_FV
 USE MOD_ChangeBasis,    ONLY: ChangeBasis2D
 USE MOD_FV_Vars,        ONLY: FV_Elems
