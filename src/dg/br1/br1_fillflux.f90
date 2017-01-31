@@ -152,7 +152,7 @@ END SUBROUTINE Lifting_FillFlux
 SUBROUTINE Lifting_FillFlux_BC(t,UPrim_master,FluxX,FluxY,FluxZ)
 ! MODULES
 USE MOD_PreProc
-USE MOD_Mesh_Vars,       ONLY: NormVec,nSides,nBCSides
+USE MOD_Mesh_Vars,       ONLY: NormVec,TangVec1,TangVec2,Face_xGP,SurfElem,nSides,nBCSides
 USE MOD_GetBoundaryFlux, ONLY: Lifting_GetBoundaryFlux
 #if FV_ENABLED  
 USE MOD_FV_Vars         ,ONLY: FV_Elems_master
@@ -162,9 +162,9 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 REAL,INTENT(IN)    :: t                                                !< Current solution time
 REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< Primitive solution from the inside
-REAL,INTENT(OUT)   :: FluxX(       PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< Lifting boundary flux in x direction
-REAL,INTENT(OUT)   :: FluxY(       PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< Lifting boundary flux in y direction
-REAL,INTENT(OUT)   :: FluxZ(       PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< Lifting boundary flux in z direction
+REAL,INTENT(INOUT) :: FluxX(       PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< Lifting boundary flux in x direction
+REAL,INTENT(INOUT) :: FluxY(       PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< Lifting boundary flux in y direction
+REAL,INTENT(INOUT) :: FluxZ(       PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< Lifting boundary flux in z direction
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: SideID,p,q
@@ -172,29 +172,13 @@ INTEGER            :: SideID,p,q
 ! fill flux for boundary sides
 
 ! only compute boundary flux once use FluxZ as temp storage
-CALL Lifting_GetBoundaryFlux(t,UPrim_master,FluxZ)
-
 DO SideID=1,nBCSides
-#if FV_ENABLED
   IF (FV_Elems_master(SideID).GT.0) CYCLE
-#endif
+  CALL Lifting_GetBoundaryFlux(SideID,t,UPrim_master(:,:,:,SideID),FluxZ(:,:,:,SideID),&
+       NormVec(:,:,:,0,SideID),TangVec1(:,:,:,0,SideID),TangVec2(:,:,:,0,SideID),Face_xGP(:,:,:,0,SideID),SurfElem(:,:,0,SideID))
   DO q=0,PP_N; DO p=0,PP_N
     FluxX(:,p,q,SideID)=FluxZ(:,p,q,SideID)*NormVec(1,p,q,0,SideID)
-  END DO; END DO
-END DO
-DO SideID=1,nBCSides
-#if FV_ENABLED  
-  IF (FV_Elems_master(SideID).GT.0) CYCLE
-#endif  
-  DO q=0,PP_N; DO p=0,PP_N
     FluxY(:,p,q,SideID)=FluxZ(:,p,q,SideID)*NormVec(2,p,q,0,SideID)
-  END DO; END DO
-END DO
-DO SideID=1,nBCSides
-#if FV_ENABLED  
-  IF (FV_Elems_master(SideID).GT.0) CYCLE
-#endif
-  DO q=0,PP_N; DO p=0,PP_N
     FluxZ(:,p,q,SideID)=FluxZ(:,p,q,SideID)*NormVec(3,p,q,0,SideID)
   END DO; END DO
 END DO

@@ -364,60 +364,56 @@ IF(MPIRoot) DEALLOCATE(writeBuf)
 END SUBROUTINE
 
 
+
 SUBROUTINE GetBoundaryFluxTestcase(SideID,t,Nloc,Flux,UPrim_master,                   &
 #if PARABOLIC
                            gradUx_master,gradUy_master,gradUz_master,&
 #endif
                            NormVec,TangVec1,TangVec2,Face_xGP)
 ! MODULES
-USE MOD_PreProc
-USE MOD_Mesh_Vars    ,ONLY: nSides
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)   :: SideID  
 REAL,INTENT(IN)      :: t       !< current time (provided by time integration scheme)
 INTEGER,INTENT(IN)   :: Nloc    !< polynomial degree
-REAL,INTENT(IN)      :: UPrim_master( PP_nVarPrim,0:Nloc,0:Nloc,1:nSides) !< inner surface solution
+REAL,INTENT(IN)      :: UPrim_master( PP_nVarPrim,0:Nloc,0:Nloc) !< inner surface solution
 #if PARABOLIC
                                                            !> inner surface solution gradients in x/y/z-direction
-REAL,INTENT(IN)      :: gradUx_master(PP_nVarPrim,0:Nloc,0:Nloc,1:nSides)
-REAL,INTENT(IN)      :: gradUy_master(PP_nVarPrim,0:Nloc,0:Nloc,1:nSides)
-REAL,INTENT(IN)      :: gradUz_master(PP_nVarPrim,0:Nloc,0:Nloc,1:nSides)
+REAL,INTENT(IN)      :: gradUx_master(PP_nVarPrim,0:Nloc,0:Nloc)
+REAL,INTENT(IN)      :: gradUy_master(PP_nVarPrim,0:Nloc,0:Nloc)
+REAL,INTENT(IN)      :: gradUz_master(PP_nVarPrim,0:Nloc,0:Nloc)
 #endif /*PARABOLIC*/
                                                            !> normal and tangential vectors on surfaces
-REAL,INTENT(IN)      :: NormVec (3,0:Nloc,0:Nloc,0:FV_ENABLED,1:nSides)
-REAL,INTENT(IN)      :: TangVec1(3,0:Nloc,0:Nloc,0:FV_ENABLED,1:nSides)
-REAL,INTENT(IN)      :: TangVec2(3,0:Nloc,0:Nloc,0:FV_ENABLED,1:nSides)
-REAL,INTENT(IN)      :: Face_xGP(3,0:Nloc,0:Nloc,0:FV_ENABLED,1:nSides) !< positions of surface flux points
-REAL,INTENT(OUT)     :: Flux(PP_nVar,0:Nloc,0:Nloc,1:nSides)  !< resulting boundary fluxes
+REAL,INTENT(IN)      :: NormVec (3,0:Nloc,0:Nloc)
+REAL,INTENT(IN)      :: TangVec1(3,0:Nloc,0:Nloc)
+REAL,INTENT(IN)      :: TangVec2(3,0:Nloc,0:Nloc)
+REAL,INTENT(IN)      :: Face_xGP(3,0:Nloc,0:Nloc)    !< positions of surface flux points
+REAL,INTENT(OUT)     :: Flux(PP_nVar,0:Nloc,0:Nloc)  !< resulting boundary fluxes
 !==================================================================================================================================
 END SUBROUTINE GetBoundaryFluxTestcase
 
 
 SUBROUTINE GetBoundaryFVgradientTestcase(SideID,t,gradU,UPrim_master)
 USE MOD_PreProc
-USE MOD_Mesh_Vars    ,ONLY: nSides
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: SideID
-REAL,INTENT(IN)    :: t
-REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
-REAL,INTENT(OUT)   :: gradU       (PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
+REAL,INTENT(IN)    :: t                                       !< current time (provided by time integration scheme)
+REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_N) !< primitive solution from the inside
+REAL,INTENT(OUT)   :: gradU       (PP_nVarPrim,0:PP_N,0:PP_N) !< FV boundary gradient
 !==================================================================================================================================
 END SUBROUTINE GetBoundaryFVgradientTestcase
 
 
 SUBROUTINE Lifting_GetBoundaryFluxTestcase(SideID,t,UPrim_master,Flux)
 USE MOD_PreProc
-USE MOD_Mesh_Vars    ,ONLY: nSides
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: SideID
-REAL,INTENT(IN)    :: t                                    !< current time (provided by time integration scheme)
-REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< primitive solution from the inside
-REAL,INTENT(OUT)   :: Flux(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< lifting boundary flux
+REAL,INTENT(IN)    :: t                                       !< current time (provided by time integration scheme)
+REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_N) !< primitive solution from the inside
+REAL,INTENT(OUT)   :: Flux(        PP_nVarPrim,0:PP_N,0:PP_N) !< lifting boundary flux
 !==================================================================================================================================
 END SUBROUTINE Lifting_GetBoundaryFluxTestcase
-
 
 END MODULE MOD_Testcase
