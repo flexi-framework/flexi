@@ -45,7 +45,7 @@ USE MOD_Globals
 USE MOD_RPData_Vars          ,ONLY: RPTime,nSamples_global
 USE MOD_RPInterpolation_Vars
 USE MOD_OutputRPVisu_Vars          ,ONLY: nSamples_out
-USE MOD_Parameters           ,ONLY: equiTimeSpacing,OutputTimeAverage,doFluctuations,nBlocks,doFFT,fourthDeriv,doPSD
+USE MOD_ParametersVisu           ,ONLY: equiTimeSpacing,OutputTimeAverage,doFluctuations,nBlocks,doFFT,fourthDeriv,doPSD
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -106,7 +106,7 @@ SUBROUTINE InterpolateEquiTime()
 ! MODULES
 USE MOD_Globals
 USE MOD_RPData_Vars          ,ONLY: RPTime,nVar_HDF5,nSamples_global,RPData
-USE MOD_RPSet_Vars           ,ONLY: nRP_global
+USE MOD_RPSetVisuVisu_Vars           ,ONLY: nRP_global
 USE MOD_RPInterpolation_Vars
 USE MOD_OutputRPVisu_Vars          ,ONLY: nSamples_out
 USE MOD_Basis                ,ONLY: ALMOSTEQUAL
@@ -169,10 +169,10 @@ END SUBROUTINE InterpolateEquiTime
 SUBROUTINE CalcTimeAvg()
 ! MODULES
 USE MOD_Globals
-USE MOD_RPSet_Vars           ,ONLY: nRP_global
+USE MOD_RPSetVisuVisu_Vars           ,ONLY: nRP_global
 USE MOD_RPData_Vars          ,ONLY: RPTime
 USE MOD_RPInterpolation_Vars
-USE MOD_Parameters       ,ONLY: nVarVisu,EquiTimeSpacing
+USE MOD_ParametersVisu       ,ONLY: nVarVisu,EquiTimeSpacing
 USE MOD_OutputRPVisu_Vars          ,ONLY: nSamples_out,RPData_out,RPDataTimeAvg_out
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------

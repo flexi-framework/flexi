@@ -3,7 +3,7 @@
 !===================================================================================================================================
 !> Module to handle the Recordpoints
 !===================================================================================================================================
-MODULE MOD_RPSet
+MODULE MOD_RPSetVisu
 ! MODULES
 IMPLICIT NONE
 PRIVATE
@@ -34,9 +34,9 @@ SUBROUTINE InitRPSet(RP_DefFile_in)
 ! MODULES
 USE MOD_Globals
 USE MOD_HDF5_Input
-USE MOD_Parameters   ,ONLY: Line_LocalCoords,Line_LocalVel,Plane_LocalCoords
-USE MOD_Parameters   ,ONLY: nGroups_visu,GroupNames_visu
-USE MOD_RPSet_Vars
+USE MOD_ParametersVisu   ,ONLY: Line_LocalCoords,Line_LocalVel,Plane_LocalCoords
+USE MOD_ParametersVisu   ,ONLY: nGroups_visu,GroupNames_visu
+USE MOD_RPSetVisuVisu_Vars
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -302,7 +302,7 @@ SUBROUTINE ChangeRPSet(RP_DefFile_in)
 ! MODULES
 USE MOD_Globals
 USE MOD_HDF5_Input
-USE MOD_RPSet_Vars
+USE MOD_RPSetVisuVisu_Vars
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -368,7 +368,7 @@ END SUBROUTINE ChangeRPSet
 SUBROUTINE CalcLine_LocalCoords()
 ! MODULES
 USE MOD_Globals
-USE MOD_RPSet_Vars, ONLY: nLines,tLine,xF_RP, Lines
+USE MOD_RPSetVisuVisu_Vars, ONLY: nLines,tLine,xF_RP, Lines
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -435,8 +435,8 @@ END SUBROUTINE CalcLine_LocalCoords
 SUBROUTINE CalcLine_LocalVelTransform()
 ! MODULES
 USE MOD_Globals
-USE MOD_RPSet_Vars    ,ONLY:nLines,tLine,xF_RP, Lines
-USE MOD_Parameters,ONLY:Line_LocalVel_vec
+USE MOD_RPSetVisuVisu_Vars    ,ONLY:nLines,tLine,xF_RP, Lines
+USE MOD_ParametersVisu,ONLY:Line_LocalVel_vec
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -468,7 +468,7 @@ END SUBROUTINE CalcLine_LocalVelTransform
 SUBROUTINE CalcPlane_LocalCoords()
 ! MODULES
 USE MOD_Globals
-USE MOD_RPSet_Vars, ONLY: nPlanes,tPlane,xF_RP, Planes
+USE MOD_RPSetVisuVisu_Vars, ONLY: nPlanes,tPlane,xF_RP, Planes
 USE MOD_Spline,     ONLY: GetSpline
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -535,7 +535,7 @@ END SUBROUTINE CalcPlane_LocalCoords
 !===================================================================================================================================
 SUBROUTINE FinalizeRPSet()
 ! MODULES
-USE MOD_RPSet_Vars
+USE MOD_RPSetVisuVisu_Vars
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
@@ -570,4 +570,4 @@ END IF
 RPSetInitIsDone = .FALSE.
 END SUBROUTINE FinalizeRPSet
 
-END MODULE MOD_RPSet
+END MODULE MOD_RPSetVisu

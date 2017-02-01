@@ -1,7 +1,7 @@
 !===================================================================================================================================
 !> Contains global variables provided by the output routines
 !===================================================================================================================================
-MODULE MOD_Parameters
+MODULE MOD_ParametersVisu
 ! MODULES
 IMPLICIT NONE
 PUBLIC
@@ -64,4 +64,4 @@ INTEGER                           :: nVarVisuTotal
 INTEGER,ALLOCATABLE               :: mapCalc(:)
 INTEGER,ALLOCATABLE               :: mapVisu(:)
 !===================================================================================================================================
-END MODULE MOD_Parameters
+END MODULE MOD_ParametersVisu

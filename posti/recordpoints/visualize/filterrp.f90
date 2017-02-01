@@ -23,10 +23,10 @@ SUBROUTINE FilterRP()
 ! MODULES
 USE MOD_Globals
 USE MOD_RPData_Vars          ,ONLY: RPTime
-USE MOD_RPSet_Vars           ,ONLY: nRP_global
+USE MOD_RPSetVisuVisu_Vars           ,ONLY: nRP_global
 USE MOD_RPInterpolation_Vars
 USE MOD_OutputRPVisu_Vars    ,ONLY: nSamples_out,RPData_out
-USE MOD_Parameters           ,ONLY: FilterWidth,nVarVisu,FilterMode
+USE MOD_ParametersVisu           ,ONLY: FilterWidth,nVarVisu,FilterMode
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

@@ -38,15 +38,15 @@ USE MOD_Globals
 USE HDF5
 USE MOD_IO_HDF5
 USE MOD_HDF5_Output
-USE MOD_Parameters      ,ONLY:ProjectName
-USE MOD_Parameters      ,ONLY:Line_LocalCoords,Plane_LocalCoords
-USE MOD_Parameters      ,ONLY:OutputPlanes,OutputLines,OutputPoints
-USE MOD_RPSet_Vars      ,ONLY:GroupNames 
-USE MOD_RPSet_Vars      ,ONLY:OutputGroup 
-USE MOD_RPSet_Vars      ,ONLY:nPoints,Points_IDlist,Points_GroupIDlist
-USE MOD_RPSet_Vars      ,ONLY:nLines,Lines,tLine
-USE MOD_RPSet_Vars      ,ONLY:nPlanes,Planes,tPlane
-USE MOD_RPSet_Vars      ,ONLY:xF_RP
+USE MOD_ParametersVisu      ,ONLY:ProjectName
+USE MOD_ParametersVisu      ,ONLY:Line_LocalCoords,Plane_LocalCoords
+USE MOD_ParametersVisu      ,ONLY:OutputPlanes,OutputLines,OutputPoints
+USE MOD_RPSetVisuVisu_Vars      ,ONLY:GroupNames 
+USE MOD_RPSetVisuVisu_Vars      ,ONLY:OutputGroup 
+USE MOD_RPSetVisuVisu_Vars      ,ONLY:nPoints,Points_IDlist,Points_GroupIDlist
+USE MOD_RPSetVisuVisu_Vars      ,ONLY:nLines,Lines,tLine
+USE MOD_RPSetVisuVisu_Vars      ,ONLY:nPlanes,Planes,tPlane
+USE MOD_RPSetVisuVisu_Vars      ,ONLY:xF_RP
 USE MOD_OutputRPVisu_Vars     ,ONLY:nCoords,CoordNames
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -215,10 +215,10 @@ USE HDF5
 USE MOD_IO_HDF5
 USE MOD_HDF5_Output
 USE MOD_Equation_Vars   ,ONLY:nBLProps,VarNames_BLProps
-USE MOD_Parameters      ,ONLY:ProjectName
-USE MOD_RPSet_Vars      ,ONLY:GroupNames 
-USE MOD_RPSet_Vars      ,ONLY:nPlanes,Planes,tPlane
-USE MOD_RPSet_Vars      ,ONLY:xF_RP
+USE MOD_ParametersVisu      ,ONLY:ProjectName
+USE MOD_RPSetVisuVisu_Vars      ,ONLY:GroupNames 
+USE MOD_RPSetVisuVisu_Vars      ,ONLY:nPlanes,Planes,tPlane
+USE MOD_RPSetVisuVisu_Vars      ,ONLY:xF_RP
 USE MOD_OutputRPVisu_Vars     ,ONLY:nCoords,CoordNames
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------

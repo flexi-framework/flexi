@@ -39,7 +39,7 @@ SUBROUTINE InitEquationRP()
 ! MODULES
 USE MOD_Globals
 USE MOD_RPData_Vars       ,ONLY:VarNames_HDF5,nVar_HDF5
-USE MOD_Parameters        
+USE MOD_ParametersVisu        
 USE MOD_EquationRP_Vars
 USE MOD_EOS               ,ONLY:InitEOS
 USE MOD_EOS_Posti_Vars    ,ONLY:nVarTotalEOS,DepTableEOS,DepNames
@@ -170,10 +170,10 @@ SUBROUTINE CalcEquationRP()
 USE MOD_Globals
 USE MOD_RPData_Vars       ,ONLY:RPData       
 USE MOD_RPData_Vars       ,ONLY:nVar_HDF5,VarNames_HDF5
-USE MOD_RPSet_Vars        ,ONLY:nRP_global        
+USE MOD_RPSetVisuVisu_Vars        ,ONLY:nRP_global        
 USE MOD_OutputRPVisu_Vars ,ONLY:nSamples_out
-USE MOD_Parameters        ,ONLY:nVarDep,nVarCalc,mapCalc,mapVisu,VarNamesAll,justVisualizeState
-USE MOD_Parameters        ,ONLY:Line_LocalVel,Plane_LocalVel,Plane_doBLProps
+USE MOD_ParametersVisu        ,ONLY:nVarDep,nVarCalc,mapCalc,mapVisu,VarNamesAll,justVisualizeState
+USE MOD_ParametersVisu        ,ONLY:Line_LocalVel,Plane_LocalVel,Plane_doBLProps
 USE MOD_OutputRPVisu_Vars ,ONLY:RPData_out 
 USE MOD_EOS_Posti      ,ONLY: CalcQuantities
 USE MOD_StringTools     ,ONLY: STRICMP
@@ -241,7 +241,7 @@ SUBROUTINE Line_TransformVel()
 ! MODULES
 USE MOD_Globals
 USE MOD_OutputRPVisu_Vars           ,ONLY:RPData_out,nSamples_out
-USE MOD_RPSet_Vars            ,ONLY:nLines,Lines,tLine
+USE MOD_RPSetVisuVisu_Vars            ,ONLY:nLines,Lines,tLine
 USE MOD_EquationRP_Vars         ,ONLY:nVecTrans,TransMap
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -275,7 +275,7 @@ SUBROUTINE Plane_TransformVel()
 ! MODULES
 USE MOD_Globals
 USE MOD_OutputRPVisu_Vars           ,ONLY:nSamples_out,RPData_out
-USE MOD_RPSet_Vars            ,ONLY:nPlanes,Planes,tPlane
+USE MOD_RPSetVisuVisu_Vars            ,ONLY:nPlanes,Planes,tPlane
 USE MOD_EquationRP_Vars         ,ONLY:nVecTrans,TransMap,is2D
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -330,10 +330,10 @@ SUBROUTINE Plane_BLProps()
 ! MODULES
 USE MOD_Globals
 USE MOD_OutputRPVisu_Vars           ,ONLY:nSamples_out,RPDataTimeAvg_out
-USE MOD_RPSet_Vars            ,ONLY:nPlanes,Planes,tPlane,xF_RP
+USE MOD_RPSetVisuVisu_Vars            ,ONLY:nPlanes,Planes,tPlane,xF_RP
 USE MOD_EquationRP_Vars         ,ONLY:is2D,TransMap,nBLProps
-USE MOD_Parameters        ,ONLY:Plane_BLvelScaling
-USE MOD_Parameters        ,ONLY:Mu0
+USE MOD_ParametersVisu        ,ONLY:Plane_BLvelScaling
+USE MOD_ParametersVisu        ,ONLY:Mu0
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

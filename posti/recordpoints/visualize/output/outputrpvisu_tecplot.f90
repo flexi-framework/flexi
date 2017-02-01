@@ -47,14 +47,14 @@ SUBROUTINE WriteDataToTecplotBinary(nSamples,nRP,nVal,VarNames,Time,Value,FileSt
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_Parameters      ,ONLY:Line_LocalCoords,Plane_LocalCoords
-USE MOD_Parameters      ,ONLY:OutputPlanes,OutputLines,OutputPoints
-USE MOD_RPSet_Vars          ,ONLY:GroupNames 
-USE MOD_RPSet_Vars          ,ONLY:OutputGroup 
-USE MOD_RPSet_Vars          ,ONLY:nPoints,Points_IDlist,Points_GroupIDlist
-USE MOD_RPSet_Vars          ,ONLY:nLines,Lines,tLine
-USE MOD_RPSet_Vars          ,ONLY:nPlanes,Planes,tPlane
-USE MOD_RPSet_Vars          ,ONLY:xF_RP
+USE MOD_ParametersVisu      ,ONLY:Line_LocalCoords,Plane_LocalCoords
+USE MOD_ParametersVisu      ,ONLY:OutputPlanes,OutputLines,OutputPoints
+USE MOD_RPSetVisuVisu_Vars          ,ONLY:GroupNames 
+USE MOD_RPSetVisuVisu_Vars          ,ONLY:OutputGroup 
+USE MOD_RPSetVisuVisu_Vars          ,ONLY:nPoints,Points_IDlist,Points_GroupIDlist
+USE MOD_RPSetVisuVisu_Vars          ,ONLY:nLines,Lines,tLine
+USE MOD_RPSetVisuVisu_Vars          ,ONLY:nPlanes,Planes,tPlane
+USE MOD_RPSetVisuVisu_Vars          ,ONLY:xF_RP
 USE MOD_OutputRPVisu_Vars         ,ONLY:nCoords,CoordNames
 !-----------------------------------------------------------------------------------------------------------------------------------
 IMPLICIT NONE
@@ -397,14 +397,14 @@ SUBROUTINE WriteTimeAvgDataToTecplotBinary(nRP,nVal,VarNames,Value,FileString)
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_Parameters      ,ONLY:Line_LocalCoords,Plane_LocalCoords
-USE MOD_Parameters      ,ONLY:OutputPlanes,OutputLines,OutputPoints
-USE MOD_RPSet_Vars          ,ONLY:GroupNames 
-USE MOD_RPSet_Vars          ,ONLY:nPoints,Points_IDlist,Points_GroupIDlist
-USE MOD_RPSet_Vars          ,ONLY:nLines,Lines,tLine
-USE MOD_RPSet_Vars          ,ONLY:nPlanes,Planes,tPlane
-USE MOD_RPSet_Vars          ,ONLY:OutputGroup
-USE MOD_RPSet_Vars          ,ONLY:xF_RP
+USE MOD_ParametersVisu      ,ONLY:Line_LocalCoords,Plane_LocalCoords
+USE MOD_ParametersVisu      ,ONLY:OutputPlanes,OutputLines,OutputPoints
+USE MOD_RPSetVisuVisu_Vars          ,ONLY:GroupNames 
+USE MOD_RPSetVisuVisu_Vars          ,ONLY:nPoints,Points_IDlist,Points_GroupIDlist
+USE MOD_RPSetVisuVisu_Vars          ,ONLY:nLines,Lines,tLine
+USE MOD_RPSetVisuVisu_Vars          ,ONLY:nPlanes,Planes,tPlane
+USE MOD_RPSetVisuVisu_Vars          ,ONLY:OutputGroup
+USE MOD_RPSetVisuVisu_Vars          ,ONLY:xF_RP
 USE MOD_OutputRPVisu_Vars         ,ONLY:nCoords,CoordNames
 !-----------------------------------------------------------------------------------------------------------------------------------
 IMPLICIT NONE
@@ -705,9 +705,9 @@ SUBROUTINE WriteBLPropsToTecplotBinary(FileString)
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_RPSet_Vars          ,ONLY:nPlanes,Planes,tPlane
-USE MOD_RPSet_Vars          ,ONLY:OutputGroup,GroupNames
-USE MOD_RPSet_Vars          ,ONLY:xF_RP
+USE MOD_RPSetVisuVisu_Vars          ,ONLY:nPlanes,Planes,tPlane
+USE MOD_RPSetVisuVisu_Vars          ,ONLY:OutputGroup,GroupNames
+USE MOD_RPSetVisuVisu_Vars          ,ONLY:xF_RP
 USE MOD_OutputRPVisu_Vars         ,ONLY:nCoords,CoordNames
 USE MOD_Equation_Vars       ,ONLY:nBLProps,VarNames_BLProps
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -840,7 +840,7 @@ SUBROUTINE WriteDataToTecplot(nSamples,nVal,VarNames,Value,FileString)
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_RPSet_Vars          ,ONLY: nRP_global
+USE MOD_RPSetVisuVisu_Vars          ,ONLY: nRP_global
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

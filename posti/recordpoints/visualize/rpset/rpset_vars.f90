@@ -1,7 +1,7 @@
 !===================================================================================================================================
 !> Contains global variables used for/by the RPSet
 !===================================================================================================================================
-MODULE MOD_RPSet_Vars
+MODULE MOD_RPSetVisuVisu_Vars
 ! MODULES
 IMPLICIT NONE
 PUBLIC
@@ -43,4 +43,4 @@ TYPE(tLine),POINTER             :: Lines(:)
 TYPE(tPlane),POINTER            :: Planes(:)
 
 !===================================================================================================================================
-END MODULE MOD_RPSet_Vars
+END MODULE MOD_RPSetVisuVisu_Vars

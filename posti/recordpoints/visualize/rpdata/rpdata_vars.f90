@@ -42,7 +42,7 @@ SUBROUTINE getNewRPDataSet(RPDataSet,nSamples_in)
 ! Read RP parameters from ini file and RP definitions from HDF5 
 !===================================================================================================================================
 ! MODULES
-USE MOD_RPSet_Vars            ,ONLY: nRP_global
+USE MOD_RPSetVisuVisu_Vars            ,ONLY: nRP_global
 IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)            :: nSamples_in

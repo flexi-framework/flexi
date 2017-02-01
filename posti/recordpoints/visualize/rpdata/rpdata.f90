@@ -34,10 +34,10 @@ SUBROUTINE ReadRPData(FileString,firstFile)
 USE MOD_Globals
 USE MOD_HDF5_Input
 USE MOD_RPData_Vars
-USE MOD_RPSet            ,ONLY: InitRPSet,ChangeRPSet
-USE MOD_RPSet_Vars       ,ONLY: nRP_HDF5,RPOutMap
-USE MOD_Parameters       ,ONLY: ProjectName
-USE MOD_Parameters       ,ONLY: skip,RP_DefFile,RP_SET_defined
+USE MOD_RPSetVisu            ,ONLY: InitRPSet,ChangeRPSet
+USE MOD_RPSetVisuVisu_Vars       ,ONLY: nRP_HDF5,RPOutMap
+USE MOD_ParametersVisu       ,ONLY: ProjectName
+USE MOD_ParametersVisu       ,ONLY: skip,RP_DefFile,RP_SET_defined
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -174,8 +174,8 @@ SUBROUTINE AssembleRPData()
 ! MODULES
 USE MOD_Globals
 USE MOD_RPData_Vars      ,ONLY: firstset,actualset,nSamples_global, RPData, RPTime,nVar_HDF5
-USE MOD_RPSet_Vars       ,ONLY: nRP_global
-USE MOD_Parameters       ,ONLY: skip
+USE MOD_RPSetVisuVisu_Vars       ,ONLY: nRP_global
+USE MOD_ParametersVisu       ,ONLY: skip
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

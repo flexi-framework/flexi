@@ -9,8 +9,8 @@ USE MOD_Globals
 USE MOD_Commandline_Arguments
 USE MOD_StringTools                 ,ONLY:STRICMP, GetFileExtension
 USE MOD_ReadInTools                 ,ONLY: prms
-USE MOD_Parameters                  ,ONLY:equiTimeSpacing,doSpec,doFluctuations,doTurb,doFilter,Plane_doBLProps
-USE MOD_RPSet                       ,ONLY:InitRPSet,FinalizeRPSet
+USE MOD_ParametersVisu              ,ONLY:equiTimeSpacing,doSpec,doFluctuations,doTurb,doFilter,Plane_doBLProps
+USE MOD_RPSetVisu                   ,ONLY:InitRPSet,FinalizeRPSet
 USE MOD_RPData                      ,ONLY:ReadRPData,AssembleRPData,FinalizeRPData
 USE MOD_OutputRPVisu                      
 USE MOD_RPInterpolation
@@ -185,7 +185,7 @@ SUBROUTINE InitParameters()
 ! MODULES
 USE MOD_Globals
 USE MOD_Readintools         ,ONLY:GETINT,GETREAL,GETLOGICAL,GETSTR,GETREALARRAY,CountOption
-USE MOD_Parameters
+USE MOD_ParametersVisu
 USE MOD_RPInterpolation_Vars,ONLY:calcTimeAverage
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -315,7 +315,7 @@ END SUBROUTINE InitParameters
 !>  5. build the 'mapVisu' that holds for each quantity that will be visualized the index in 'UVisu' array (0 if not visualized)
 !===================================================================================================================================
 SUBROUTINE Build_mapCalc_mapVisu()
-USE MOD_Parameters
+USE MOD_ParametersVisu
 USE MOD_ReadInTools     ,ONLY: GETSTR,CountOption
 USE MOD_StringTools     ,ONLY: STRICMP
 IMPLICIT NONE

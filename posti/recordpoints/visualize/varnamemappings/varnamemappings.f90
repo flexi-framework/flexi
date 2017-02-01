@@ -32,7 +32,7 @@ SUBROUTINE CreateVarMappings(nVar,VarName,DQ)
 ! MODULES
 USE MOD_Globals
 USE MOD_VarNameMappingsRP_Vars    ,ONLY: tDerivedQ,max_nVarVisu
-USE MOD_Parameters                ,ONLY: nVarVisu,VarNameVisu
+USE MOD_ParametersVisu                ,ONLY: nVarVisu,VarNameVisu
 USE MOD_RPData_Vars               ,ONLY: nVar_HDF5,VarNames_HDF5
 USE MOD_StringTools               ,ONLY: STRICMP
 IMPLICIT NONE
@@ -91,7 +91,7 @@ SUBROUTINE CreateStateMappings(nVar,VarName,DQ)
 ! MODULES
 USE MOD_Globals
 USE MOD_VarNameMappingsRP_Vars,ONLY: tDerivedQ,max_nVarVisu
-USE MOD_Parameters            ,ONLY: nVarVisu,VarNameVisu
+USE MOD_ParametersVisu            ,ONLY: nVarVisu,VarNameVisu
 USE MOD_StringTools           ,ONLY: STRICMP
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------

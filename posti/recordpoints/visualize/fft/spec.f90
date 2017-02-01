@@ -31,10 +31,10 @@ SUBROUTINE InitSpec()
 ! MODULES
 USE MOD_Globals
 USE MOD_RPData_Vars          ,ONLY: nSamples_global,RPTime
-USE MOD_RPSet_Vars           ,ONLY: nRP_global
+USE MOD_RPSetVisuVisu_Vars           ,ONLY: nRP_global
 USE MOD_OutputRPVisu_Vars          ,ONLY: nSamples_out
 USE MOD_RPInterpolation_Vars ,ONLY: dt_out,TEnd
-USE MOD_Parameters       ,ONLY: nBlocks,samplingFreq,BlockSize,cutoffFreq,doPSD,doHanning,fourthDeriv
+USE MOD_ParametersVisu       ,ONLY: nBlocks,samplingFreq,BlockSize,cutoffFreq,doPSD,doHanning,fourthDeriv
 USE MOD_spec_Vars
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -101,12 +101,12 @@ SUBROUTINE spec()
 ! MODULES
 USE MOD_Globals
 USE MOD_RPData_Vars          ,ONLY: RPTime
-USE MOD_RPSet_Vars           ,ONLY: nRP_global
+USE MOD_RPSetVisuVisu_Vars           ,ONLY: nRP_global
 USE MOD_RPInterpolation_Vars
 USE MOD_OutputRPVisu_Vars          ,ONLY: nSamples_out,RPData_out
-USE MOD_Parameters       ,ONLY: doPSD,doFFT,nVarVisu,nBlocks,cutoffFreq,doHanning,fourthDeriv,thirdOct
-USE MOD_Parameters       ,ONLY: u_infPhys,chordPhys 
-USE MOD_RPSet_Vars           ,ONLY: nLines,Lines
+USE MOD_ParametersVisu       ,ONLY: doPSD,doFFT,nVarVisu,nBlocks,cutoffFreq,doHanning,fourthDeriv,thirdOct
+USE MOD_ParametersVisu       ,ONLY: u_infPhys,chordPhys 
+USE MOD_RPSetVisuVisu_Vars           ,ONLY: nLines,Lines
 USE FFTW3
 USE MOD_spec_Vars
 IMPLICIT NONE

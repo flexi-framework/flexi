@@ -24,9 +24,9 @@ SUBROUTINE Turbulence()
 USE MOD_Globals              
 USE MOD_VarnamemappingsRP_vars 
 USE MOD_RPData_Vars          ,ONLY: RPTime,RPData
-USE MOD_RPSet_Vars           ,ONLY: nRP_global
+USE MOD_RPSetVisuVisu_Vars           ,ONLY: nRP_global
 USE MOD_OutputRPVisu_Vars    ,ONLY: nSamples_out , CoordNames
-USE MOD_Parameters           ,ONLY: Mu0,cutoffFreq , ProjectName
+USE MOD_ParametersVisu           ,ONLY: Mu0,cutoffFreq , ProjectName
 USE FFTW3
 #ifdef WITHTECPLOT
 USE MOD_Tecplot              ,ONLY: WriteDataToTecplotBinary, WriteTimeAvgDataToTecplotBinary
