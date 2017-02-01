@@ -117,11 +117,12 @@ DO iSide=1,nBCSides
                'No inflow refstate (Tt,alpha,beta,empty,pT) in refstate defined for BC_TYPE',locType)
 #if FV_RECONSTRUCT
   IF((locType.EQ.3).OR.(locType.EQ.4))THEN
+    ASSOCIATE(prim => RefStatePrim(locState,:))
 #if PARABOLIC
-    IF(VISCOSITY_PRIM(RefStatePrim(locState)).LE.0) &
+    IF(VISCOSITY_PRIM(prim).LE.0.) &
 #endif
-    CALL abort(__STAMP__,&
-               'No-slip BCs cannot be used without viscosity in case of FV-reconstruction!')
+    CALL abort(__STAMP__,'No-slip BCs cannot be used without viscosity in case of FV-reconstruction!')
+    END ASSOCIATE
   END IF
 #endif
 END DO
