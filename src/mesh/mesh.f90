@@ -267,7 +267,7 @@ IF (meshMode.GT.0) THEN
   CALL deleteMeshPointer()
   
   ! Build necessary mappings 
-  CALL buildMappings(PP_N,V2S=V2S,V2S2=V2S2,S2V=S2V,S2V2=S2V2,S2V3=S2V3,CS2V2=CS2V2,FS2M=FS2M)
+  CALL buildMappings(PP_N,V2S=V2S,S2V=S2V,S2V2=S2V2,FS2M=FS2M)
 END IF
 
 IF (meshMode.GT.1) THEN

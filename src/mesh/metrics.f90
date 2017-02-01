@@ -428,7 +428,7 @@ SUBROUTINE CalcSurfMetrics(Nloc,JaCL_N,XCL_N,Vdm_CLN_N,iElem,NormVec,TangVec1,Ta
 USE MOD_Globals,        ONLY:CROSS
 USE MOD_Mesh_Vars,      ONLY:ElemToSide,MortarType,nSides
 USE MOD_Mesh_Vars,      ONLY:NormalDirs,TangDirs,NormalSigns
-USE MOD_Mappings,       ONLY:CGNS_SideToVol2
+USE MOD_Mappings,       ONLY:SideToVol2
 USE MOD_ChangeBasis,    ONLY:ChangeBasis2D
 USE MOD_Mortar_Metrics, ONLY:Mortar_CalcSurfMetrics
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -448,7 +448,7 @@ REAL,INTENT(OUT)   ::   Face_xGP(3,0:Nloc,0:Nloc,0:FV_ENABLED,1:nSides) !< (OUT)
 REAL,INTENT(OUT),OPTIONAL :: Ja_Face(3,3,0:Nloc,0:Nloc,1:nSides)  !< (OUT) surface metrics
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: p,q,pq(2),dd,iLocSide,SideID,SideID2,iMortar,nbSideIDs(4)
+INTEGER            :: p,q,pq(2),dd,iLocSide,SideID,SideID2,iMortar,nbSideIDs(4),flip
 INTEGER            :: NormalDir,TangDir
 REAL               :: NormalSign
 REAL               :: Ja_Face_l(3,3,0:Nloc,0:Nloc)
@@ -459,7 +459,8 @@ REAL               :: tmp2(       3,0:Nloc,0:Nloc)
 !==================================================================================================================================
 
 DO iLocSide=1,6
-  IF(ElemToSide(E2S_FLIP,iLocSide,iElem).NE.0) CYCLE ! only master sides with flip=0
+  flip = ElemToSide(E2S_FLIP,iLocSide,iElem)
+  IF(flip.NE.0) CYCLE ! only master sides with flip=0
   SideID=ElemToSide(E2S_SIDE_ID,iLocSide,iElem)
 
   SELECT CASE(iLocSide)
@@ -479,7 +480,7 @@ DO iLocSide=1,6
   CALL ChangeBasis2D(3,Nloc,Nloc,Vdm_CLN_N,tmp,tmp2)
   ! turn into right hand system of side
   DO q=0,Nloc; DO p=0,Nloc
-    pq=CGNS_SideToVol2(Nloc,p,q,iLocSide)
+    pq=SideToVol2(Nloc,p,q,flip,iLocSide)
     ! Compute Face_xGP for sides
     Face_xGP(1:3,p,q,0,sideID)=tmp2(:,pq(1),pq(2))
   END DO; END DO ! p,q
@@ -502,7 +503,7 @@ DO iLocSide=1,6
     CALL ChangeBasis2D(3,Nloc,Nloc,Vdm_CLN_N,tmp,tmp2)
     ! turn into right hand system of side
     DO q=0,Nloc; DO p=0,Nloc
-      pq=CGNS_SideToVol2(Nloc,p,q,iLocSide)
+      pq=SideToVol2(Nloc,p,q,flip,iLocSide)
       Ja_Face_l(dd,1:3,p,q)=tmp2(:,pq(1),pq(2))
     END DO; END DO ! p,q
   END DO ! dd
