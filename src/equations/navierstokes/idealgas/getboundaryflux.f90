@@ -117,7 +117,7 @@ DO iSide=1,nBCSides
                'No inflow refstate (Tt,alpha,beta,empty,pT) in refstate defined for BC_TYPE',locType)
 #if FV_RECONSTRUCT
   IF((locType.EQ.3).OR.(locType.EQ.4))THEN
-    ASSOCIATE(prim => RefStatePrim(locState,:))
+    ASSOCIATE(prim => RefStatePrim(:,locState))
 #if PARABOLIC
     IF(VISCOSITY_PRIM(prim).LE.0.) &
 #endif
@@ -153,13 +153,13 @@ DO i=1,nBCs
     IF(.NOT.readBCdone) CALL ReadBCFlow(BCStateFile)
     readBCdone=.TRUE. 
   CASE(27) ! Subsonic inflow 
-    talpha=TAN(ACOS(-1.)/180.*RefStatePrim(locState,2))
-    tbeta =TAN(ACOS(-1.)/180.*RefStatePrim(locState,3))
+    talpha=TAN(ACOS(-1.)/180.*RefStatePrim(2,locState))
+    tbeta =TAN(ACOS(-1.)/180.*RefStatePrim(3,locState))
     ! Compute vector a(1:3) from paper, the projection of the direction normal to the face normal
     ! Multiplication of velocity magnitude by NORM2(a) gives contribution in face normal dir         
-    RefStatePrim(locState,2)=1.    /SQRT((1.+talpha**2+tbeta**2))
-    RefStatePrim(locState,3)=talpha/SQRT((1.+talpha**2+tbeta**2))
-    RefStatePrim(locState,4)=tbeta /SQRT((1.+talpha**2+tbeta**2))
+    RefStatePrim(2,locState)=1.    /SQRT((1.+talpha**2+tbeta**2))
+    RefStatePrim(3,locState)=talpha/SQRT((1.+talpha**2+tbeta**2))
+    RefStatePrim(4,locState)=tbeta /SQRT((1.+talpha**2+tbeta**2))
   END SELECT
 END DO
 
@@ -239,7 +239,7 @@ CASE(2) !Exact function or refstate
     END DO; END DO
   ELSE
     DO q=0,Nloc; DO p=0,Nloc
-      UPrim_boundary(:,p,q) = RefStatePrim(BCState,:)
+      UPrim_boundary(:,p,q) = RefStatePrim(:,BCState)
     END DO; END DO
   END IF
 CASE(12) ! exact BC = Dirichlet BC !!
@@ -286,7 +286,7 @@ CASE(3,4,9,23,24,25,27)
       ! Set pressure by solving local Riemann problem
       UPrim_boundary(5,p,q) = PRESSURE_RIEMANN(UPrim_boundary(:,p,q))
       UPrim_boundary(2:4,p,q)= 0. ! no slip
-      UPrim_boundary(6,p,q) = RefStatePrim(BCState,6) ! temperature from RefState
+      UPrim_boundary(6,p,q) = RefStatePrim(6,BCState) ! temperature from RefState
       ! set density via ideal gas equation, consistent to pressure and temperature
       UPrim_boundary(1,p,q) = UPrim_boundary(5,p,q) / (UPrim_boundary(6,p,q) * R)
     END DO; END DO ! q,p
@@ -309,7 +309,7 @@ CASE(3,4,9,23,24,25,27)
     ! NOTE: Should not be used with adjacent walls (destroys boundary layer profile, like exact function)
     ! Refstate for this case is special, VelocityX specifies outlet mach number
     ! State: (/dummy,Ma,dummy,dummy,dummy/)
-    MaOut=RefStatePrim(BCState,2)
+    MaOut=RefStatePrim(2,BCState)
     DO q=0,Nloc; DO p=0,Nloc
       c=SQRT(kappa*UPrim_boundary(5,p,q)/UPrim_boundary(1,p,q))
       vmag=NORM2(UPrim_boundary(2:4,p,q))
@@ -337,10 +337,10 @@ CASE(3,4,9,23,24,25,27)
       ! if subsonic use specified pressure, else use solution from the inside
       IF(vmag<c)THEN
         IF (BCState.GT.0) THEN
-          pb = RefStatePrim(BCState,5)
+          pb = RefStatePrim(5,BCState)
         ELSE
-          absdiff = ABS(RefStatePrim(:,5) - UPrim_boundary(5,p,q))
-          pb = RefStatePrim(MINLOC(absdiff,1),5)
+          absdiff = ABS(RefStatePrim(5,:) - UPrim_boundary(5,p,q))
+          pb = RefStatePrim(5,MINLOC(absdiff,1))
         END IF
         UPrim_boundary(1,p,q)=kappa*pb/c
         UPrim_boundary(5,p,q)=pb
@@ -353,11 +353,11 @@ CASE(3,4,9,23,24,25,27)
       c=kappa*UPrim_boundary(5,p,q)/UPrim_boundary(1,p,q)
       vmag=SUM(UPrim_boundary(2:4,p,q)*UPrim_boundary(2:4,p,q))
       ! if supersonic use total pressure to compute density
-      pb        = MERGE(UPrim_boundary(5,p,q)+0.5*UPrim_boundary(1,p,q)*vmag,RefStatePrim(BCState,5),vmag>=c)
+      pb        = MERGE(UPrim_boundary(5,p,q)+0.5*UPrim_boundary(1,p,q)*vmag,RefStatePrim(5,BCState),vmag>=c)
       UPrim_boundary(1,p,q)   = kappa*pb/c
       ! ensure outflow
       UPrim_boundary(2:4,p,q) = MERGE(UPrim_boundary(2:4,p,q),SQRT(vmag)*NormVec(:,p,q),UPrim_boundary(2,p,q)>=0.)
-      UPrim_boundary(5,p,q)   = RefStatePrim(BCState,5) ! always outflow pressure
+      UPrim_boundary(5,p,q)   = RefStatePrim(5,BCState) ! always outflow pressure
       UPrim_boundary(6,p,q)   = UPrim_boundary(5,p,q)/(R*UPrim_boundary(1,p,q))
     END DO; END DO !p,q
   CASE(27) ! Subsonic inflow BC
@@ -376,9 +376,9 @@ CASE(3,4,9,23,24,25,27)
       ! John W. Slater: Verification Assessment of Flow Boundary Conditions for CFD
       ! The BC State is described, not the outer state: use BC state to compute flux directly
 
-      Tt=RefStatePrim(BCState,1)
-      nv=RefStatePrim(BCState,2:4)
-      pt=RefStatePrim(BCState,5)
+      Tt=RefStatePrim(1,BCState)
+      nv=RefStatePrim(2:4,BCState)
+      pt=RefStatePrim(5,BCState)
       ! Term A from paper with normal vector defined into the domain, dependent on p,q
       A=SUM(nv(1:3)*(-1.)*NormVec(1:3,p,q))
       ! sound speed from inner state

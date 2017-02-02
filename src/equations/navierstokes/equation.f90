@@ -122,15 +122,15 @@ IF(IniRefState.GT.nRefState)THEN
 END IF
 
 IF(nRefState .GT. 0)THEN
-  ALLOCATE(RefStatePrim(nRefState,PP_nVarPrim))
-  ALLOCATE(RefStateCons(nRefState,PP_nVar))
+  ALLOCATE(RefStatePrim(PP_nVarPrim,nRefState))
+  ALLOCATE(RefStateCons(PP_nVar    ,nRefState))
   DO i=1,nRefState
-    RefStatePrim(i,1:5)  = GETREALARRAY('RefState',5)
+    RefStatePrim(1:5,i)  = GETREALARRAY('RefState',5)
     ! TODO: ATTENTION only sRho and Pressure of UE filled!!!
-    UE(SRHO) = 1./RefStatePrim(i,1)
-    UE(PRES) = RefStatePrim(i,5)
-    RefStatePrim(i,6) = TEMPERATURE_HE(UE)
-    CALL PrimToCons(RefStatePrim(i,:),RefStateCons(i,:))
+    UE(SRHO) = 1./RefStatePrim(1,i)
+    UE(PRES) = RefStatePrim(5,i)
+    RefStatePrim(6,i) = TEMPERATURE_HE(UE)
+    CALL PrimToCons(RefStatePrim(:,i),RefStateCons(:,i))
   END DO
 END IF
 

@@ -137,9 +137,9 @@ uBulk=uBulk/Re_tau
 !prevent wrong pressure in channel testcase
 IF(MPIRoot) THEN
   WRITE(*,*) 'Bulk velocity based on initial velocity Profile =',uBulk
-  WRITE(*,*) 'Associated Pressure for Mach = 0.1 is', (uBulk/0.1)**2*RefStatePrim(IniRefState,1)/kappa
-  IF (ABS(RefStatePrim(IniRefState,5)- (uBulk/0.1)**2*RefStatePrim(IniRefState,1)/kappa)/(uBulk/0.1)**2&
-    *RefStatePrim(IniRefState,1)/kappa .GT. 0.01) THEN
+  WRITE(*,*) 'Associated Pressure for Mach = 0.1 is', (uBulk/0.1)**2*RefStatePrim(1,IniRefState)/kappa
+  IF (ABS(RefStatePrim(5,IniRefState)- (uBulk/0.1)**2*RefStatePrim(1,IniRefState)/kappa)/(uBulk/0.1)**2&
+    *RefStatePrim(1,IniRefState)/kappa .GT. 0.01) THEN
     CALL abort(__STAMP__,'RefState incorrect, correct pressure in parameter file')
   END IF
 END IF
@@ -194,7 +194,7 @@ REAL                            :: yplus,prim(PP_nVarPrim),amplitude
 !==================================================================================================================================
 !Channel Testcase: set mu0 = 1/Re_tau, rho=1, pressure adapted, Mach=0.1 according to Moser!!
 !and hence: u_tau=tau=-dp/dx=1, and t=t+=u_tau*t/delta
-Prim(:) = RefStatePrim(IniRefState,:) ! prim=(/1.,0.3,0.,0.,0.71428571/)
+Prim(:) = RefStatePrim(:,IniRefState) ! prim=(/1.,0.3,0.,0.,0.71428571/)
 IF(x(2).LE.0) THEN
   yPlus = (x(2)+1.)*Re_tau ! Re_tau=590
 ELSE

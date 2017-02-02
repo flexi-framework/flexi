@@ -226,7 +226,7 @@ ELSE
              'Wrong hill geometry')
 END IF
 h=h/28.
-Prim(1:5) = RefStatePrim(IniRefState,:)
+Prim    = RefStatePrim(:,IniRefState)
 Prim(2) = Prim(2)*2.025/(3.025-h)
 Prim(6) = 0. ! T does not matter for prim to cons
 CALL PrimToCons(Prim,Resu)

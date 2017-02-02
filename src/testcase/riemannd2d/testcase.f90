@@ -103,10 +103,10 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT TESTCASE Riemann2D...'
 
 CALL CalcIniStates()
 
-CALL Riemann_Speeds(1,RiemannBC_WaveType(1),RefStatePrim(2,:),RefStatePrim(1,:),RiemannBC_speeds(1,:))
-CALL Riemann_Speeds(2,RiemannBC_WaveType(2),RefStatePrim(3,:),RefStatePrim(2,:),RiemannBC_speeds(2,:))
-CALL Riemann_Speeds(1,RiemannBC_WaveType(3),RefStatePrim(3,:),RefStatePrim(4,:),RiemannBC_speeds(3,:))
-CALL Riemann_Speeds(2,RiemannBC_WaveType(4),RefStatePrim(4,:),RefStatePrim(1,:),RiemannBC_speeds(4,:))
+CALL Riemann_Speeds(1,RiemannBC_WaveType(1),RefStatePrim(:,2),RefStatePrim(:,1),RiemannBC_speeds(1,:))
+CALL Riemann_Speeds(2,RiemannBC_WaveType(2),RefStatePrim(:,3),RefStatePrim(:,2),RiemannBC_speeds(2,:))
+CALL Riemann_Speeds(1,RiemannBC_WaveType(3),RefStatePrim(:,3),RefStatePrim(:,4),RiemannBC_speeds(3,:))
+CALL Riemann_Speeds(2,RiemannBC_WaveType(4),RefStatePrim(:,4),RefStatePrim(:,1),RiemannBC_speeds(4,:))
 
 IF (MPIRoot) THEN
   WRITE(*,*) " Calculate states, shock, discontinuity and expansion speeds for all 4 sides"
@@ -114,17 +114,17 @@ IF (MPIRoot) THEN
   WRITE(*,'(31(" "),A13," speed=",2F8.4)') WAVENAMES(RiemannBC_WaveType(1)), RiemannBC_speeds(1,:)
   WRITE(*,'(14(" "),"|",21("-"),"|",21("-")"|")') 
   WRITE(*,'(14(" "),"|",21(" "),"|",21(" ")"|")') 
-  WRITE(*,'(14(" "),"| p=",F7.4," r=",F7.4," | p=",F7.4," r=",F7.4," |")')  RefStatePrim(2,5), RefStatePrim(2,1),&
-      RefStatePrim(1,5), RefStatePrim(1,1) 
-  WRITE(*,'(14(" "),"| u=",F7.4," v=",F7.4," | u=",F7.4," v=",F7.4," |")')  RefStatePrim(2,2), RefStatePrim(2,3),&
-      RefStatePrim(1,2), RefStatePrim(1,3) 
+  WRITE(*,'(14(" "),"| p=",F7.4," r=",F7.4," | p=",F7.4," r=",F7.4," |")')  RefStatePrim(5,2), RefStatePrim(1,2),&
+      RefStatePrim(5,1), RefStatePrim(1,1) 
+  WRITE(*,'(14(" "),"| u=",F7.4," v=",F7.4," | u=",F7.4," v=",F7.4," |")')  RefStatePrim(2,2), RefStatePrim(3,2),&
+      RefStatePrim(2,1), RefStatePrim(3,1) 
   WRITE(*,'(14(" "),"|",21(" "),"|",21(" ")"|")') 
   WRITE(*,'(A13," |",21("-"),"|",21("-")"| ",A13)') ADJUSTR(TRIM(WAVENAMES(RiemannBC_WaveType(2)))), WAVENAMES(RiemannBC_WaveType(4))
   WRITE(*,'("speed=",8(" "),"|",21(" "),"|",21(" ")"| speed=")') 
   WRITE(*,'(F13.4," | p=",F7.4," r=",F7.4," | p=",F7.4," r=",F7.4," | ",F7.4)') RiemannBC_speeds(2,1), &
-      RefStatePrim(3,5), RefStatePrim(3,1), RefStatePrim(4,5), RefStatePrim(4,1), RiemannBC_speeds(4,1)
+      RefStatePrim(5,3), RefStatePrim(1,3), RefStatePrim(5,4), RefStatePrim(1,4), RiemannBC_speeds(4,1)
   WRITE(*,'(F13.4," | u=",F7.4," v=",F7.4," | u=",F7.4," v=",F7.4," | ",F7.4)') RiemannBC_speeds(2,2), &
-      RefStatePrim(3,2), RefStatePrim(3,3), RefStatePrim(4,2), RefStatePrim(4,3), RiemannBC_speeds(4,2)
+      RefStatePrim(2,3), RefStatePrim(3,3), RefStatePrim(2,4), RefStatePrim(3,4), RiemannBC_speeds(4,2)
   WRITE(*,'(14(" "),"|",21(" "),"|",21(" ")"|")') 
   WRITE(*,'(14(" "),"|",21("-"),"|",21("-")"|")') 
   WRITE(*,'(31(" "),A13," speed=",2F8.4)') WAVENAMES(RiemannBC_WaveType(3)), RiemannBC_speeds(3,:)
@@ -594,21 +594,21 @@ END SELECT
 
 nRefState = 4
 SDEALLOCATE(RefStatePrim)
-ALLOCATE(RefStatePrim(4,PP_nVarPrim))
-RefStatePrim(:,1) = rho
-RefStatePrim(:,2) = u
-RefStatePrim(:,3) = v
-RefStatePrim(:,4) = 0.
-RefStatePrim(:,5) = p
+ALLOCATE(RefStatePrim(PP_nVarPrim,4))
+RefStatePrim(1,:) = rho
+RefStatePrim(2,:) = u
+RefStatePrim(3,:) = v
+RefStatePrim(4,:) = 0.
+RefStatePrim(5,:) = p
 
 SDEALLOCATE(RefStateCons)
-ALLOCATE(RefStateCons(4,PP_nVar))
+ALLOCATE(RefStateCons(PP_nVar,4))
 DO i=1,4
   ! TODO: ATTENTION only sRho and Pressure of UE filled!!!
-  UE(SRHO) = 1./RefStatePrim(i,1)
-  UE(PRES) = RefStatePrim(i,5)
-  RefStatePrim(i,6) = TEMPERATURE_HE(UE)
-  CALL PrimToCons(RefStatePrim(i,:), RefStateCons(i,:))
+  UE(SRHO) = 1./RefStatePrim(1,i)
+  UE(PRES) = RefStatePrim(5,i)
+  RefStatePrim(6,i) = TEMPERATURE_HE(UE)
+  CALL PrimToCons(RefStatePrim(:,i), RefStateCons(:,i))
 END DO 
 END SUBROUTINE CalcIniStates
 
@@ -633,13 +633,13 @@ REAL,INTENT(OUT)                :: Resu_tt(5)  !< second time deriv of exact fuc
 !(see: Solution of Two-Dimensional Riemann Problems for Gas Dynamics without Riemann Problem Solvers
 !      Alexander Kurganov, Eitan Tadmor)
 IF ((x(1).GE.0.0).AND.(x(2).GE.0.0)) THEN
-    Resu = RefStateCons(1,:)
+    Resu = RefStateCons(:,1)
 ELSE IF ((x(1).LT.0.0).AND.(x(2).GE.0.0)) THEN
-    Resu = RefStateCons(2,:)
+    Resu = RefStateCons(:,2)
 ELSE IF ((x(1).LT.0.0).AND.(x(2).LT.0.0)) THEN
-    Resu = RefStateCons(3,:)
+    Resu = RefStateCons(:,3)
 ELSE IF ((x(1).GE.0.0).AND.(x(2).LT.0.0)) THEN
-    Resu = RefStateCons(4,:)
+    Resu = RefStateCons(:,4)
 END IF
 
 Resu_t =0.
@@ -705,20 +705,20 @@ IF (BCType.EQ.-101) THEN
     SELECT CASE (RiemannBC_WaveType(BCState))
     CASE(SHOCK, DISCONTINUITY)
       IF (x.LT.pos(1)) THEN
-        UCons_boundary(:,p,q)=RefStateCons(iL,:)
-        UPrim_boundary(:,p,q)=RefStatePrim(iL,:)
+        UCons_boundary(:,p,q)=RefStateCons(:,iL)
+        UPrim_boundary(:,p,q)=RefStatePrim(:,iL)
       ELSE 
-        UCons_boundary(:,p,q)=RefStateCons(iR,:)
-        UPrim_boundary(:,p,q)=RefStatePrim(iR,:)
+        UCons_boundary(:,p,q)=RefStateCons(:,iR)
+        UPrim_boundary(:,p,q)=RefStatePrim(:,iR)
       END IF
     CASE(RAREFACTION)
       IF (x.LE.pos(1)) THEN
-        UPrim_boundary(:,p,q)=RefStatePrim(iL,:)
+        UPrim_boundary(:,p,q)=RefStatePrim(:,iL)
       ELSE IF( x.GE.pos(2)) THEN
-        UPrim_boundary(:,p,q)=RefStatePrim(iR,:)
+        UPrim_boundary(:,p,q)=RefStatePrim(:,iR)
       ELSE
         rel = (x-pos(1))/(pos(2)-pos(1))
-        UPrim_boundary(:,p,q)= (1-rel)*RefStatePrim(iL,:) + rel*RefStatePrim(iR,:)
+        UPrim_boundary(:,p,q)= (1-rel)*RefStatePrim(:,iL) + rel*RefStatePrim(:,iR)
       END IF
       CALL PrimToCons(UPrim_boundary(:,p,q), UCons_boundary(:,p,q)) 
     END SELECT

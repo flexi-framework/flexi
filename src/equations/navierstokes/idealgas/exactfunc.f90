@@ -182,7 +182,7 @@ CASE DEFAULT
 CASE(0)
   CALL ExactFuncTestcase(tEval,x,Resu,Resu_t,Resu_tt)
 CASE(1) ! constant
-  Resu = RefStateCons(IniRefState,:)
+  Resu = RefStateCons(:,IniRefState)
 CASE(2) ! sinus
   Frequency=0.5
   Amplitude=0.3
@@ -362,7 +362,7 @@ CASE(5) !Roundjet Bogey Bailly 2002, Re=65000, x-axis is jet axis
   Resu=ResuL+(ResuR-ResuL)*0.5*(1.+tanh(x(1)-10.))
 CASE(6)  ! Cylinder flow
   IF(tEval .EQ. 0.)THEN   ! Initialize potential flow
-    prim(1)=RefStatePrim(IniRefState,1)  ! Density
+    prim(1)=RefStatePrim(1,IniRefState)  ! Density
     prim(4)=0.           ! VelocityZ=0. (2D flow)
     ! Calculate cylinder coordinates (0<phi<Pi/2)
     pi_loc=ASIN(1.)*2.
@@ -386,19 +386,19 @@ CASE(6)  ! Cylinder flow
     ! Calculate radius**2
     radius=x(1)*x(1)+x(2)*x(2)
     ! Calculate velocities, radius of cylinder=0.5
-    prim(2)=RefStatePrim(IniRefState,2)*(COS(phi)**2*(1.-0.25/radius)+SIN(phi)**2*(1.+0.25/radius))
-    prim(3)=RefStatePrim(IniRefState,2)*(-2.)*SIN(phi)*COS(phi)*0.25/radius
+    prim(2)=RefStatePrim(2,IniRefState)*(COS(phi)**2*(1.-0.25/radius)+SIN(phi)**2*(1.+0.25/radius))
+    prim(3)=RefStatePrim(2,IniRefState)*(-2.)*SIN(phi)*COS(phi)*0.25/radius
     ! Calculate pressure, RefState(2)=u_infinity
-    prim(5)=RefStatePrim(IniRefState,5) + &
-            0.5*prim(1)*(RefStatePrim(IniRefState,2)*RefStatePrim(IniRefState,2)-prim(2)*prim(2)-prim(3)*prim(3))
+    prim(5)=RefStatePrim(5,IniRefState) + &
+            0.5*prim(1)*(RefStatePrim(2,IniRefState)*RefStatePrim(2,IniRefState)-prim(2)*prim(2)-prim(3)*prim(3))
     prim(6) = prim(5)/(prim(1)*R)
   ELSE  ! Use RefState as BC
-    prim=RefStatePrim(IniRefState,:)
+    prim=RefStatePrim(:,IniRefState)
   END IF  ! t=0
   CALL PrimToCons(prim,resu)
 CASE(7) ! SHU VORTEX,isentropic vortex
   ! base flow
-  prim=RefStatePrim(IniRefState,:)  ! Density
+  prim=RefStatePrim(:,IniRefState)  ! Density
   ! ini-Parameter of the Example
   vel=prim(2:4)
   RT=prim(PP_nVar)/prim(1) !ideal gas
@@ -432,7 +432,7 @@ CASE(9) !lid driven cavity flow from Gao, Hesthaven, Warburton
         !"Absorbing layers for weakly compressible flows", to appear, JSC, 2016
         ! Special "regularized" driven cavity BC to prevent singularities at corners
         ! top BC assumed to be in x-direction from 0..1
-  Prim = RefStatePrim(IniRefState,:)
+  Prim = RefStatePrim(:,IniRefState)
   IF (x(1).LT.0.2) THEN 
     prim(2)=1000*4.9333*x(1)**4-1.4267*1000*x(1)**3+0.1297*1000*x(1)**2-0.0033*1000*x(1)
   ELSEIF (x(1).LE.0.8) THEN
@@ -470,9 +470,9 @@ CASE(10) ! shock
 CASE(11) ! Sod Shock tube
   xs = 0.5
   IF (X(1).LE.xs) THEN
-    Resu = RefStateCons(1,:)
+    Resu = RefStateCons(:,1)
   ELSE
-    Resu = RefStateCons(2,:)
+    Resu = RefStateCons(:,2)
   END IF
 CASE(12) ! Shu Osher density fluctuations shock wave interaction 
   IF (x(1).LT.-4.0) THEN
@@ -489,14 +489,14 @@ CASE(12) ! Shu Osher density fluctuations shock wave interaction
 
 CASE(13) ! DoubleMachReflection (see e.g. http://www.astro.princeton.edu/~jstone/Athena/tests/dmr/dmr.html )
   IF (x(1).EQ.0.) THEN
-    prim = RefStatePrim(1,:)
+    prim = RefStatePrim(:,1)
   ELSE IF (x(1).EQ.4.0) THEN
-    prim = RefStatePrim(2,:)
+    prim = RefStatePrim(:,2)
   ELSE
     IF (x(1).LT.1./6.+(x(2)+20.*t)*1./3.**0.5) THEN
-      prim = RefStatePrim(1,:)
+      prim = RefStatePrim(:,1)
     ELSE
-      prim = RefStatePrim(2,:)
+      prim = RefStatePrim(:,2)
     END IF
   END IF
   CALL PrimToCons(prim,resu)
