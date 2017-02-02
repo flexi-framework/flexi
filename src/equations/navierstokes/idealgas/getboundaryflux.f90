@@ -275,10 +275,10 @@ CASE(3,4,9,23,24,25,27)
     ! For adiabatic wall all gradients are 0
     ! We reconstruct the BC State, rho=rho_L, velocity=0, rhoE_wall = p_Riemann/(Kappa-1)
     DO q=0,Nloc; DO p=0,Nloc
-      UPrim_boundary(2:4,p,q)= 0. ! no slip
-      UPrim_boundary(6,p,q) = UPrim_master(6,p,q) ! adiabatic => temperature from the inside
       ! Set pressure by solving local Riemann problem
       UPrim_boundary(5,p,q) = PRESSURE_RIEMANN(UPrim_boundary(:,p,q))
+      UPrim_boundary(2:4,p,q)= 0. ! no slip
+      UPrim_boundary(6,p,q) = UPrim_master(6,p,q) ! adiabatic => temperature from the inside
       ! set density via ideal gas equation, consistent to pressure and temperature
       UPrim_boundary(1,p,q) = UPrim_boundary(5,p,q) / (UPrim_boundary(6,p,q) * R) 
     END DO; END DO ! q,p
@@ -286,10 +286,10 @@ CASE(3,4,9,23,24,25,27)
     ! For isothermal wall, all gradients are from interior
     ! We reconstruct the BC State, rho=rho_L, velocity=0, rhoE_wall =  rho_L*C_v*Twall
     DO q=0,Nloc; DO p=0,Nloc
-      UPrim_boundary(2:4,p,q)= 0. ! no slip
-      UPrim_boundary(6,p,q) = RefStatePrim(BCState,6) ! temperature from RefState
       ! Set pressure by solving local Riemann problem
       UPrim_boundary(5,p,q) = PRESSURE_RIEMANN(UPrim_boundary(:,p,q))
+      UPrim_boundary(2:4,p,q)= 0. ! no slip
+      UPrim_boundary(6,p,q) = RefStatePrim(BCState,6) ! temperature from RefState
       ! set density via ideal gas equation, consistent to pressure and temperature
       UPrim_boundary(1,p,q) = UPrim_boundary(5,p,q) / (UPrim_boundary(6,p,q) * R)
     END DO; END DO ! q,p
@@ -297,10 +297,10 @@ CASE(3,4,9,23,24,25,27)
     ! vel=(0,v_in,w_in)
     ! NOTE: from this state ONLY the velocities should actually be used for the diffusive flux
     DO q=0,Nloc; DO p=0,Nloc
-      UPrim_boundary(2,p,q) = 0. ! slip in tangential directions
-      UPrim_boundary(6,p,q) = UPrim_master(6,p,q) ! temperature from the inside
       ! Set pressure by solving local Riemann problem
       UPrim_boundary(5,p,q) = PRESSURE_RIEMANN(UPrim_boundary(:,p,q))
+      UPrim_boundary(2,p,q) = 0. ! slip in tangential directions
+      UPrim_boundary(6,p,q) = UPrim_master(6,p,q) ! temperature from the inside
       ! set density via ideal gas equation, consistent to pressure and temperature
       UPrim_boundary(1,p,q) = UPrim_boundary(5,p,q) / (UPrim_boundary(6,p,q) * R) 
     END DO; END DO ! q,p
