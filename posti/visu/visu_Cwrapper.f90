@@ -170,6 +170,27 @@ statefile = cstrToChar255(statefile_IN, strlen_state)
 CALL visu(mpi_comm_IN, prmfile, postifile, statefile)
 
 ! Map Fortran arrays to C pointer
+IF (MeshFileMode) THEN
+  ! Only write the DG coordinates to the VTK file
+  CALL WriteCoordsToVTK_array(NVisu   ,nElems_DG,coordsDG_out,nodeidsDG_out,&
+        CoordsVisu_DG,nodeids_DG,dim=3,DGFV=0)
+
+  ! set length of all other output arrays to zero so they are not used in the reader
+  valuesDG_out%len      = 0
+  coordsFV_out%len      = 0
+  valuesFV_out%len      = 0
+  nodeidsFV_out%len     = 0
+  varnames_out%len      = 0
+  coordsSurfDG_out%len  = 0
+  valuesSurfDG_out%len  = 0
+  nodeidsSurfDG_out%len = 0
+  coordsSurfFV_out%len  = 0
+  valuesSurfFV_out%len  = 0
+  nodeidsSurfFV_out%len = 0
+  varnamesSurf_out%len  = 0
+
+  RETURN
+END IF
 
 ! write UVisu to VTK 2D / 3D arrays (must be done always!)
 ! write coords, UVisu to VTK  2D / 3D arrays (must be done always!)
