@@ -647,7 +647,7 @@ Resu_tt=0.
 
 END SUBROUTINE ExactFuncTestcase
 
-SUBROUTINE GetBoundaryFluxTestcase(SideID,t,Nloc,Flux,UPrim_master,                   &
+SUBROUTINE GetBoundaryFluxTestcase(SideID,t,Nloc,Flux,UPrim_master,  &
 #if PARABOLIC
                            gradUx_master,gradUy_master,gradUz_master,&
 #endif
@@ -656,9 +656,7 @@ SUBROUTINE GetBoundaryFluxTestcase(SideID,t,Nloc,Flux,UPrim_master,             
 USE MOD_PreProc
 USE MOD_Globals
 USE MOD_Testcase_Vars
-USE MOD_Mesh_Vars     ,ONLY: nSides
-USE MOD_Mesh_Vars     ,ONLY: BoundaryType, BC
-USE MOD_FV_Vars       ,ONLY: FV_Elems_master
+USE MOD_Mesh_Vars     ,ONLY: BoundaryType,BC
 USE MOD_Riemann       ,ONLY: Riemann
 USE MOD_EOS           ,ONLY: PrimToCons
 USE MOD_Equation_Vars ,ONLY: RefStatePrim,RefStateCons
@@ -667,41 +665,41 @@ USE MOD_Equation_Vars ,ONLY: RefStatePrim,RefStateCons
 INTEGER,INTENT(IN)   :: SideID  
 REAL,INTENT(IN)      :: t       !< current time (provided by time integration scheme)
 INTEGER,INTENT(IN)   :: Nloc    !< polynomial degree
-REAL,INTENT(IN)      :: UPrim_master( PP_nVarPrim,0:Nloc,0:Nloc,1:nSides) !< inner surface solution
+REAL,INTENT(IN)      :: UPrim_master( PP_nVarPrim,0:Nloc,0:Nloc) !< inner surface solution
 #if PARABOLIC
                                                            !> inner surface solution gradients in x/y/z-direction
-REAL,INTENT(IN)      :: gradUx_master(PP_nVarPrim,0:Nloc,0:Nloc,1:nSides)
-REAL,INTENT(IN)      :: gradUy_master(PP_nVarPrim,0:Nloc,0:Nloc,1:nSides)
-REAL,INTENT(IN)      :: gradUz_master(PP_nVarPrim,0:Nloc,0:Nloc,1:nSides)
+REAL,INTENT(IN)      :: gradUx_master(PP_nVarPrim,0:Nloc,0:Nloc)
+REAL,INTENT(IN)      :: gradUy_master(PP_nVarPrim,0:Nloc,0:Nloc)
+REAL,INTENT(IN)      :: gradUz_master(PP_nVarPrim,0:Nloc,0:Nloc)
 #endif /*PARABOLIC*/
                                                            !> normal and tangential vectors on surfaces
-REAL,INTENT(IN)      :: NormVec (3,0:Nloc,0:Nloc,0:FV_ENABLED,1:nSides)
-REAL,INTENT(IN)      :: TangVec1(3,0:Nloc,0:Nloc,0:FV_ENABLED,1:nSides)
-REAL,INTENT(IN)      :: TangVec2(3,0:Nloc,0:Nloc,0:FV_ENABLED,1:nSides)
-REAL,INTENT(IN)      :: Face_xGP(3,0:Nloc,0:Nloc,0:FV_ENABLED,1:nSides) !< positions of surface flux points
-REAL,INTENT(OUT)     :: Flux(PP_nVar,0:Nloc,0:Nloc,1:nSides)  !< resulting boundary fluxes
+REAL,INTENT(IN)      :: NormVec (3,0:Nloc,0:Nloc)
+REAL,INTENT(IN)      :: TangVec1(3,0:Nloc,0:Nloc)
+REAL,INTENT(IN)      :: TangVec2(3,0:Nloc,0:Nloc)
+REAL,INTENT(IN)      :: Face_xGP(3,0:Nloc,0:Nloc) !< positions of surface flux points
+REAL,INTENT(OUT)     :: Flux(PP_nVar,0:Nloc,0:Nloc)  !< resulting boundary fluxes
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER           :: BCType,BCState, dir, p, q, iL, iR
 REAL              :: pos(2), x, rel
-REAL              :: UCons_boundary(PP_nVar    ,0:PP_N,0:PP_N)
-REAL              :: UPrim_boundary(PP_nVarPrim,0:PP_N,0:PP_N)
+REAL              :: UCons_boundary(PP_nVar    ,0:Nloc,0:Nloc)
+REAL              :: UPrim_boundary(PP_nVarPrim,0:Nloc,0:Nloc)
 REAL              :: UCons_master  (PP_nVar    ,0:Nloc,0:Nloc)
 !==================================================================================================================================
 ! convert primitive inner state to conservative
-DO q=0,PP_N; DO p=0,PP_N
-  CALL PrimToCons(UPrim_master(:,p,q,SideID), UCons_master(:,p,q)) 
+DO q=0,Nloc; DO p=0,Nloc
+  CALL PrimToCons(UPrim_master(:,p,q), UCons_master(:,p,q)) 
 END DO; END DO ! p,q=0,PP_N
 
 BCType  = Boundarytype(BC(SideID),BC_TYPE)
 BCState = Boundarytype(BC(SideID),BC_STATE)
-pos = RiemannBC_Speeds(BCState,:) * t 
-dir = MOD(BCState+1,2)+1
-iL = SideToQuads(1,BCState)
-iR = SideToQuads(2,BCState)
 IF (BCType.EQ.-101) THEN
+  pos = RiemannBC_Speeds(BCState,:) * t 
+  dir = MOD(BCState+1,2)+1
+  iL = SideToQuads(1,BCState)
+  iR = SideToQuads(2,BCState)
   DO q=0,PP_N; DO p=0,PP_N
-    x = Face_xGP(dir,p,q,FV_Elems_master(SideID),SideID)
+    x = Face_xGP(dir,p,q)
     SELECT CASE (RiemannBC_WaveType(BCState))
     CASE(SHOCK, DISCONTINUITY)
       IF (x.LT.pos(1)) THEN
@@ -724,56 +722,49 @@ IF (BCType.EQ.-101) THEN
     END SELECT
   END DO; END DO
 ELSE IF(BCType.EQ.-102) THEN
-  UPrim_boundary = UPrim_master(:,:,:,SideID)
+  UPrim_boundary = UPrim_master
   UCons_boundary = UCons_master
 ELSE
   CALL Abort(__STAMP__, &
       "Unknown Boundary type!")
 END IF
 
-CALL Riemann(Nloc,Flux(:,:,:,SideID),UCons_master,UCons_boundary,UPrim_master(:,:,:,SideID),UPrim_boundary,&
-    NormVec (:,:,:,FV_Elems_master(SideID),SideID),&
-    TangVec1(:,:,:,FV_Elems_master(SideID),SideID),&
-    TangVec2(:,:,:,FV_Elems_master(SideID),SideID),&
-    doBC=.TRUE.)
+CALL Riemann(Nloc,Flux,UCons_master,UCons_boundary,UPrim_master,UPrim_boundary,&
+             NormVec, TangVec1, TangVec2, doBC=.TRUE.)
 
 END SUBROUTINE GetBoundaryFluxTestcase
 
 
 SUBROUTINE GetBoundaryFVgradientTestcase(SideID,t,gradU,UPrim_master)
 USE MOD_PreProc
-USE MOD_Mesh_Vars    ,ONLY: nSides
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: SideID
-REAL,INTENT(IN)    :: t
-REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
-REAL,INTENT(OUT)   :: gradU       (PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
+REAL,INTENT(IN)    :: t                                       !< current time (provided by time integration scheme)
+REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_N) !< primitive solution from the inside
+REAL,INTENT(OUT)   :: gradU       (PP_nVarPrim,0:PP_N,0:PP_N) !< FV boundary gradient
 !==================================================================================================================================
-gradU(:,:,:,SideID) = 0.
+gradU = 0.
 END SUBROUTINE GetBoundaryFVgradientTestcase
 
 
 SUBROUTINE Lifting_GetBoundaryFluxTestcase(SideID,t,UPrim_master,Flux)
 USE MOD_PreProc
-USE MOD_Mesh_Vars    ,ONLY: nSides
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: SideID
-REAL,INTENT(IN)    :: t                                    !< current time (provided by time integration scheme)
-REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< primitive solution from the inside
-REAL,INTENT(OUT)   :: Flux(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< lifting boundary flux
+REAL,INTENT(IN)    :: t                                       !< current time (provided by time integration scheme)
+REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_N) !< primitive solution from the inside
+REAL,INTENT(OUT)   :: Flux(        PP_nVarPrim,0:PP_N,0:PP_N) !< lifting boundary flux
 !==================================================================================================================================
 END SUBROUTINE Lifting_GetBoundaryFluxTestcase
 
+
 SUBROUTINE Riemann_Speeds(dir, wavetype, prim_L, prim_R, speeds)
-!=================================================================================================================================
 !=================================================================================================================================
 ! MODULES
 USE MOD_PreProc
-USE MOD_Globals
 USE MOD_EOS_Vars, ONLY: Kappa,kappaM1,KappaP1
-! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
@@ -781,8 +772,6 @@ INTEGER,INTENT(IN)                 :: dir
 INTEGER,INTENT(IN)                 :: wavetype
 REAL,DIMENSION(PP_nVar),INTENT(IN) :: prim_L, prim_R
 REAL,DIMENSION(1:2),INTENT(OUT)    :: speeds
-!---------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !---------------------------------------------------------------------------------------------------------------------------------
