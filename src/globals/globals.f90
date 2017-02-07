@@ -17,7 +17,6 @@
 !> Provides parameters, used globally (please use EXTREMLY carefully!)
 !==================================================================================================================================
 MODULE MOD_Globals
-USE ISO_C_BINDING
 ! MODULES
 #if USE_MPI
 USE mpi
@@ -48,11 +47,6 @@ INTEGER           ::MPIStatus(MPI_STATUS_SIZE)
 
 LOGICAL           :: doGenerateUnittestReferenceData                         
 INTEGER           :: doPrintHelp ! 0: no help, 1: help, 2: markdown-help
-
-TYPE, BIND(C) :: CARRAY
-  INTEGER (C_INT) :: len
-  TYPE (C_PTR)    :: data
-END TYPE CARRAY
 
 INTERFACE AlmostEqualToTolerance
   MODULE PROCEDURE AlmostEqualToTolerance
