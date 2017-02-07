@@ -158,8 +158,8 @@ CASE(SPONGEBASEFLOW_PRUETT) ! Pruett
   CalcPruettDamping=.TRUE.
   CALL InitPruettDamping()
   IF(DoRestart)THEN
-    BaseFlowFile    = GETSTR('SpongeBaseFlowFile','')
-    IF (TRIM(BaseFlowFile) .EQ. '') THEN
+    BaseFlowFile    = GETSTR('SpongeBaseFlowFile','nobaseflowfile')
+    IF (TRIM(BaseFlowFile) .EQ. 'nobaseflowfile') THEN
       ! If no base flow file has been specified, assume a standard name for the base flow file
       BaseFlowFile=TRIM(TIMESTAMP(TRIM(ProjectName)//'_BaseFlow',RestartTime))//'.h5'
       ! Check if this file exists

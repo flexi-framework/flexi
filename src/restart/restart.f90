@@ -214,6 +214,7 @@ IF(DoRestart)THEN
     END DO
   END IF
 #endif
+
   ! Read in state
   IF(.NOT. InterpolateSolution)THEN
     ! No interpolation needed, read solution directly from file

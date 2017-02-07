@@ -169,7 +169,7 @@ IF(NOut.NE.PP_N)THEN
   END DO
 #if PP_dim == 2
   ! If the output should be done with a full third dimension in a two dimensional computation, we need to expand the solution
-  IF (.NOT.IO_2D) THEN 
+  IF (.NOT.output2D) THEN 
     ALLOCATE(UOutTmp(PP_nVar,0:NOut,0:NOut,0:PP_NOutZ,nElems))
     UOutTmp = UOut
     DEALLOCATE(UOut)
@@ -185,7 +185,7 @@ ELSE ! write state on same polynomial degree as the solution
 #if PP_dim == 3
   UOut => U
 #else
-  IF (.NOT.IO_2D) THEN
+  IF (.NOT.output2D) THEN
     ! If the output should be done with a full third dimension in a two dimensional computation, we need to expand the solution
     ALLOCATE(UOut(PP_nVar,0:NOut,0:NOut,0:PP_N,nElems))
     CALL ExpandArrayTo3D(5,(/PP_nVar,PP_N+1,PP_N+1,PP_NZ+1,nElems/),4,Nout+1,U,UOut)
@@ -233,7 +233,7 @@ CALL GatheredWriteArray(FileName,create=.FALSE.,&
 !#endif
                     
 ! Deallocate UOut only if we did not point to U
-IF((PP_N .NE. NOut).OR.((PP_dim .EQ. 2).AND.(.NOT.IO_2D))) DEALLOCATE(UOut)
+IF((PP_N .NE. NOut).OR.((PP_dim .EQ. 2).AND.(.NOT.output2D))) DEALLOCATE(UOut)
 
 CALL WriteAdditionalElemData(FileName,ElementOut)
 CALL WriteAdditionalFieldData(FileName,FieldOut)
@@ -564,6 +564,7 @@ REAL,INTENT(IN)                :: OutputTime         !< Time of output
 CHARACTER(LEN=255)             :: FileName
 REAL                           :: StartT,EndT
 REAL,POINTER                   :: UOut(:,:,:,:,:)
+INTEGER                        :: NZ_loc
 #if PP_dim == 2
 INTEGER                        :: iElem,i,j,k,iVar
 #endif
@@ -579,7 +580,9 @@ IF(MPIRoot) CALL GenerateFileSkeleton(TRIM(FileName),'BaseFlow',PP_nVar,PP_N,Str
 
 #if PP_dim == 3
   UOut => SpBaseFlow
+  NZ_loc=PP_N
 #else
+IF (.NOT.output2D) THEN
   ALLOCATE(UOut(PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems))
   DO iElem=1,nElems
     DO j=0,PP_N; DO i=0,PP_N
@@ -588,6 +591,11 @@ IF(MPIRoot) CALL GenerateFileSkeleton(TRIM(FileName),'BaseFlow',PP_nVar,PP_N,Str
       END DO ! iVar=1,PP_nVar
     END DO; END DO
   END DO
+  NZ_loc=PP_N
+ELSE
+  UOut => SpBaseFlow
+  NZ_loc=0
+END IF
 #endif  
 
 ! Write DG solution
@@ -596,11 +604,14 @@ CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
 #endif
 CALL GatheredWriteArray(FileName,create=.FALSE.,&
                         DataSetName='DG_Solution', rank=5,&
-                        nValGlobal=(/PP_nVar,PP_N+1,PP_N+1,PP_N+1,nGlobalElems/),&
-                        nVal=      (/PP_nVar,PP_N+1,PP_N+1,PP_N+1,nElems/),&
+                        nValGlobal=(/PP_nVar,PP_N+1,PP_N+1,NZ_loc+1,nGlobalElems/),&
+                        nVal=      (/PP_nVar,PP_N+1,PP_N+1,NZ_loc+1,nElems/),&
                         offset=    (/0,      0,     0,     0,     offsetElem/),&
                         collective=.TRUE., RealArray=UOut)
 
+#if PP_dim == 2
+IF(.NOT.output2D) DEALLOCATE(UOut)
+#endif
 IF(MPIRoot)THEN
   GETTIME(EndT)
   WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',EndT-StartT,'s]'
@@ -636,7 +647,7 @@ INTEGER,INTENT(IN)             :: nVar_Fluc                                    !
 CHARACTER(LEN=255)             :: FileName
 REAL                           :: StartT,EndT
 REAL,POINTER                   :: UOut(:,:,:,:,:)
-INTEGER                        :: iVar,i,j,iElem
+INTEGER                        :: iVar,i,j,iElem,NZ_loc
 !==================================================================================================================================
 IF((nVar_Avg.EQ.0).AND.(nVar_Fluc.EQ.0)) RETURN ! no time averaging
 IF(MPIROOT)THEN
@@ -660,22 +671,28 @@ IF(nVar_Avg.GT.0)THEN
 
 #if PP_dim == 3
   UOut => UAvg
+  NZ_loc=PP_N
 #else
-  IF (.NOT.IO_2D) THEN
+  IF (.NOT.output2D) THEN
     ! If the output should be done with a full third dimension in a two dimensional computation, we need to expand the solution
     ALLOCATE(UOut(nVar_Avg,0:PP_N,0:PP_N,0:PP_N,nElems))
     CALL ExpandArrayTo3D(5,(/nVar_Avg,PP_N+1,PP_N+1,PP_NZ+1,nElems/),4,PP_N+1,UAvg,UOut)
+    NZ_loc=PP_N
+  ELSE
+    UOut => UAvg
+    NZ_loc=0
   END IF
 #endif
 
   ! Reopen file and write DG solution
   CALL GatheredWriteArray(FileName,create=.FALSE.,&
                           DataSetName='DG_Solution', rank=5,&
-                          nValGlobal=(/nVar_Avg,PP_N+1,PP_N+1,PP_N+1,nGlobalElems/),&
-                          nVal=      (/nVar_Avg,PP_N+1,PP_N+1,PP_N+1,nElems/),&
+                          nValGlobal=(/nVar_Avg,PP_N+1,PP_N+1,NZ_loc+1,nGlobalElems/),&
+                          nVal=      (/nVar_Avg,PP_N+1,PP_N+1,NZ_loc+1,nElems/),&
                           offset=    (/0,       0,     0,     0,     offsetElem/),&
                           collective=.TRUE., RealArray=UOut)
-  DEALLOCATE(UOut)
+  ! Deallocate UOut only if we did not point to UAvg
+  IF(.NOT.output2D) DEALLOCATE(UOut)
 END IF
 
 ! Write fluctuations ---------------------------------------------------------------------------------------------------------------
@@ -694,21 +711,25 @@ IF(nVar_Fluc.GT.0)THEN
 #if PP_dim == 3
   UOut => UFluc
 #else
-  IF (.NOT.IO_2D) THEN
+  IF (.NOT.output2D) THEN
     ! If the output should be done with a full third dimension in a two dimensional computation, we need to expand the solution
     ALLOCATE(UOut(nVar_Fluc,0:PP_N,0:PP_N,0:PP_N,nElems))
-    CALL ExpandArrayTo3D(5,(/nVar_Fluc,PP_N+1,PP_N+1,PP_NZ+1,nElems/),4,PP_N+1,UAvg,UOut)
+    CALL ExpandArrayTo3D(5,(/nVar_Fluc,PP_N+1,PP_N+1,PP_NZ+1,nElems/),4,PP_N+1,UFluc,UOut)
+    NZ_loc=PP_N
+  ELSE
+    UOut => UAvg
+    NZ_loc=0
   END IF
 #endif
 
   ! Reopen file and write DG solution
   CALL GatheredWriteArray(FileName,create=.FALSE.,&
                           DataSetName='DG_Solution', rank=5,&
-                          nValGlobal=(/nVar_Fluc,PP_N+1,PP_N+1,PP_N+1,nGlobalElems/),&
-                          nVal=      (/nVar_Fluc,PP_N+1,PP_N+1,PP_N+1,nElems/),&
+                          nValGlobal=(/nVar_Fluc,PP_N+1,PP_N+1,NZ_loc+1,nGlobalElems/),&
+                          nVal=      (/nVar_Fluc,PP_N+1,PP_N+1,NZ_loc+1,nElems/),&
                           offset=    (/0,        0,     0,     0,     offsetElem/),&
                           collective=.TRUE., RealArray=UOut)
-  DEALLOCATE(UOut)
+  IF(.NOT.output2D) DEALLOCATE(UOut)
 END IF
 
 IF(MPIROOT)THEN
@@ -758,7 +779,7 @@ CALL OpenDataFile(TRIM(FileName),create=.TRUE.,single=.TRUE.,readOnly=.FALSE.,us
 CALL WriteHeader(TRIM(TypeString),File_ID)
 
 ! Preallocate the data space for the dataset.
-IF(IO_2D) THEN
+IF(output2D) THEN
   Dimsf=(/nVar,NData+1,NData+1,1,nGlobalElems/)
 ELSE
   Dimsf=(/nVar,NData+1,NData+1,NData+1,nGlobalElems/)
