@@ -19,14 +19,11 @@
 !===================================================================================================================================
 MODULE MOD_Visu3D
 ! MODULES
-! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-! Private Part ---------------------------------------------------------------------------------------------------------------------
-! Public Part ----------------------------------------------------------------------------------------------------------------------
 
 INTERFACE visu3d_requestInformation
   MODULE PROCEDURE visu3d_requestInformation
@@ -81,10 +78,11 @@ END FUNCTION cstrToChar255
 !> Wrapper to visu3D_InitFile for Paraview plugin
 !===================================================================================================================================
 SUBROUTINE visu3d_requestInformation(mpi_comm_IN, strlen_state, statefile_IN, varnames)
+USE ISO_C_BINDING
 ! MODULES
 USE MOD_Globals
 USE MOD_MPI        ,ONLY: InitMPI
-USE MOD_Posti_Vars ,ONLY: VarNamesTotal
+USE MOD_Posti_Vars ,ONLY: VarNamesTotal,CARRAY
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -339,6 +337,7 @@ SUBROUTINE visu3D_CWrapper(mpi_comm_IN, &
     coordsFV_out,valuesFV_out,nodeidsFV_out,varnames_out,components_out)
 USE ISO_C_BINDING
 USE MOD_Globals
+USE MOD_Posti_Vars,ONLY:CARRAY
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)            :: mpi_comm_IN    
