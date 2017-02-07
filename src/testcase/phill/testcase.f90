@@ -318,9 +318,8 @@ IF(MPIRoot)THEN
   END IF
   ioCounter=ioCounter+1
   writeBuf(:,ioCounter) = (/t, dpdx, BulkVel, MassFlowGlobal, MassFlowPeriodic /)
-  IF((ioCounter.EQ.buffer).OR.((tWriteData-t-dt).LT.1e-10))THEN
+  IF((ioCounter.GE.buffer).OR.((tWriteData-t-dt).LT.1e-10))THEN
     CALL WriteStats()
-    ioCounter=0
   END IF
 END IF
 
@@ -366,7 +365,7 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                  :: ioUnit,openStat
+INTEGER                  :: ioUnit,openStat,i
 !==================================================================================================================================
 OPEN(NEWUNIT  = ioUnit     , &
      FILE     = Filename   , &
@@ -379,8 +378,11 @@ IF(openStat.NE.0) THEN
   CALL Abort(__STAMP__, &
     'ERROR: cannot open '//TRIM(Filename))
 END IF
-WRITE(ioUnit,'(5E23.14)') writeBuf(:,1:ioCounter)
+DO i=1,ioCounter
+  WRITE(ioUnit,'(5E23.14)') writeBuf(:,i)
+END DO
 CLOSE(ioUnit)
+ioCounter=0
 
 END SUBROUTINE WriteStats
 
