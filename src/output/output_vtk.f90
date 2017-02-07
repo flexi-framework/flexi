@@ -148,7 +148,7 @@ INTEGER,OPTIONAL,INTENT(IN) :: DGFV                 !< flag indicating DG = 0 or
 LOGICAL,OPTIONAL,INTENT(IN) :: nValAtLastDimension  !< if TRUE, nVal is stored in the last index of value
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                     :: iVal,ivtk=44
+INTEGER                     :: iVal,ivtk
 INTEGER                     :: nElems_glob(0:nProcessors-1)
 INTEGER                     :: NVisu_elem,nVTKPoints,nVTKCells
 INTEGER                     :: nTotalElems
@@ -201,7 +201,7 @@ IF(MPIROOT)THEN
   lf = char(10)
 
   ! Write file
-  OPEN(UNIT=ivtk,FILE=TRIM(FileString),ACCESS='STREAM')
+  OPEN(NEWUNIT=ivtk,FILE=TRIM(FileString),ACCESS='STREAM')
   ! Write header
   Buffer='<?xml version="1.0"?>'//lf;WRITE(ivtk) TRIM(Buffer)
   Buffer='<VTKFile type="UnstructuredGrid" version="0.1" byte_order="LittleEndian">'//lf;WRITE(ivtk) TRIM(Buffer)
@@ -365,13 +365,13 @@ CHARACTER(LEN=*),INTENT(IN) :: FileString_DG  !< Filename of DG VTU file
 CHARACTER(LEN=*),INTENT(IN) :: FileString_FV  !< Filename of FV VTU file 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: ivtk=44
+INTEGER            :: ivtk
 CHARACTER(LEN=200) :: Buffer
 CHARACTER(LEN=1)   :: lf
 !===================================================================================================================================
 IF (MPIRoot) THEN                   
   ! write multiblock file
-  OPEN(UNIT=ivtk,FILE=TRIM(FileString),ACCESS='STREAM')
+  OPEN(NEWUNIT=ivtk,FILE=TRIM(FileString),ACCESS='STREAM')
   ! Line feed character
   lf = char(10)
   Buffer='<VTKFile type="vtkMultiBlockDataSet" version="1.0" byte_order="LittleEndian" header_type="UInt64">'//lf

@@ -397,7 +397,6 @@ REAL                         :: eps
 !==================================================================================================================================
 
 ! get fileID and open file
-ioUnit=GETFREEUNIT()
 FileName=TRIM(Examples(iExample)%PATH)//'std.out'
 INQUIRE(File=FileName,EXIST=ExistFile)
 IF(.NOT.ExistFile) THEN
@@ -405,8 +404,6 @@ IF(.NOT.ExistFile) THEN
   SWRITE(UNIT_stdOut,'(A,A)') ' FileName:                  ','std.out'
   SWRITE(UNIT_stdOut,'(A,L)') ' ExistFile:                 ',ExistFile
   ERROR STOP '-1'
-ELSE
-  OPEN(UNIT=ioUnit,FILE=TRIM(FileName),STATUS='OLD',IOSTAT=iSTATUS,ACTION='READ') 
 END IF
 
 ! find the last L2 and LInf norm the std.out file of the example
@@ -414,6 +411,7 @@ LNorm=-1.
 L2Compare=.TRUE.
 LInfCompare=.TRUE.
 LNormCompare=1
+OPEN(NEWUNIT=ioUnit,FILE=TRIM(FileName),STATUS='OLD',IOSTAT=iSTATUS,ACTION='READ') 
 DO 
   READ(ioUnit,'(A)',IOSTAT=iSTATUS) temp1!,temp2,LNorm(1),LNorm(2),LNorm(3),LNorm(4),LNorm(5)
   IF(iSTATUS.EQ.-1) EXIT ! End Of File (EOF) reached: exit the loop
@@ -516,7 +514,6 @@ LOGICAL                              :: ExistFile
 REAL                                 :: LNorm(Examples(iExample)%nVar)
 !==================================================================================================================================
 ! open file and read in
-ioUnit=GETFREEUNIT()
 FileName=TRIM(Examples(iExample)%PATH)//TRIM(Examples(iExample)%ReferenceNormFile)
 INQUIRE(File=FileName,EXIST=ExistFile)
 IF(.NOT.ExistFile) THEN
@@ -524,11 +521,10 @@ IF(.NOT.ExistFile) THEN
   SWRITE(UNIT_stdOut,'(A,A)') ' FileName:                     ',TRIM(Examples(iExample)%ReferenceNormFile)
   SWRITE(UNIT_stdOut,'(A,L)') ' ExistFile:                    ',ExistFile
   ERROR STOP '-1'
-ELSE
-  OPEN(UNIT=ioUnit,FILE=TRIM(FileName),STATUS='OLD',IOSTAT=iSTATUS,ACTION='READ') 
 END IF
 
 ! read in the norms
+OPEN(NEWUNIT=ioUnit,FILE=TRIM(FileName),STATUS='OLD',IOSTAT=iSTATUS,ACTION='READ') 
 DO 
   READ(ioUnit,'(A)',IOSTAT=iSTATUS) temp1!,temp2,LNorm(1),LNorm(2),LNorm(3),LNorm(4),LNorm(5)
   IF(iSTATUS.EQ.-1) EXIT
@@ -635,8 +631,7 @@ IF(.NOT.ExistFile) THEN
   Examples(iExample)%ErrorStatus=5
   RETURN
 ELSE
-  ioUnit=GETFREEUNIT()
-  OPEN(UNIT=ioUnit,FILE=TRIM(FileName),STATUS='OLD',IOSTAT=iSTATUS,ACTION='READ') 
+  OPEN(NEWUNIT=ioUnit,FILE=TRIM(FileName),STATUS='OLD',IOSTAT=iSTATUS,ACTION='READ') 
 END IF
 ! init parameters for reading the data file
 HeaderLines=Examples(iExample)%IntegrateLineHeaderLines
@@ -791,8 +786,7 @@ DO K=1,2 ! open the data and reference file
     Examples(iExample)%ErrorStatus=5
     RETURN
   ELSE
-    ioUnit=GETFREEUNIT()
-    OPEN(UNIT=ioUnit,FILE=TRIM(FileName),STATUS='OLD',IOSTAT=iSTATUS,ACTION='READ') 
+    OPEN(NEWUNIT=ioUnit,FILE=TRIM(FileName),STATUS='OLD',IOSTAT=iSTATUS,ACTION='READ') 
   END IF
   ! init parameters for reading the data file
   HeaderLines=Examples(iExample)%CompareDatafileRowHeaderLines

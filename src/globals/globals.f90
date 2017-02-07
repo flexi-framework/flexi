@@ -82,10 +82,6 @@ INTERFACE FLEXITIME
   MODULE PROCEDURE FLEXITIME
 END INTERFACE
 
-INTERFACE GETFREEUNIT
-  MODULE PROCEDURE GETFREEUNIT
-END INTERFACE GETFREEUNIT
-
 INTERFACE CreateErrFile
   MODULE PROCEDURE CreateErrFile
 END INTERFACE CreateErrFile
@@ -152,6 +148,7 @@ CALL MPI_FINALIZE(iError)
 ERROR STOP 1
 END SUBROUTINE CollectiveStop
 
+
 !==================================================================================================================================
 !> Terminate program correctly if an error has occurred (important in MPI mode!).
 !> Uses a MPI_ABORT which terminates FLEXI if a single proc calls this routine.
@@ -198,6 +195,7 @@ CALL MPI_ABORT(MPI_COMM_WORLD,signalout,errOut)
 ERROR STOP 2
 END SUBROUTINE Abort
 
+
 !==================================================================================================================================
 !> print a warning to the command line (only MPI root)
 !==================================================================================================================================
@@ -213,6 +211,7 @@ IF (myRank.EQ.0) THEN
   WRITE(UNIT_stdOut,*) '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
 END IF 
 END SUBROUTINE PrintWarning
+
 
 !==================================================================================================================================
 !> Open file for error output
@@ -258,7 +257,6 @@ WRITE(IntStamp,'(A,A5,I6.6)')TRIM(Nam),'_Proc',Num
 END FUNCTION INTSTAMP
 
 
-
 !==================================================================================================================================
 !> Creates a timestamp, consistent of a filename (project name + processor) and current time niveau
 !==================================================================================================================================
@@ -283,7 +281,6 @@ TimeStamp=TRIM(Filename)//'_'//TRIM(TimeStamp)
 END FUNCTION TIMESTAMP
 
 
-
 !==================================================================================================================================
 !> Calculates current time (own function because of a laterMPI implementation)
 !==================================================================================================================================
@@ -306,31 +303,6 @@ END IF
 #endif
 GETTIME(FlexiTime)
 END FUNCTION FLEXITIME
-
-
-!==================================================================================================================================
-!> Get unused file unit number
-!==================================================================================================================================
-FUNCTION GETFREEUNIT()
-! MODULES
-IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-INTEGER :: GetFreeUnit !< File unit number
-!----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-LOGICAL :: connected
-!==================================================================================================================================
-GetFreeUnit=55
-INQUIRE(UNIT=GetFreeUnit, OPENED=connected)
-IF(connected)THEN
-  DO
-    GetFreeUnit=GetFreeUnit+1
-    INQUIRE(UNIT=GetFreeUnit, OPENED=connected)
-    IF(.NOT.connected)EXIT
-  END DO
-END IF
-END FUNCTION GETFREEUNIT
 
 
 !==================================================================================================================================

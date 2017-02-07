@@ -11,8 +11,6 @@ SAVE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-! Private Part ---------------------------------------------------------------------------------------------------------------------
-! Public Part ----------------------------------------------------------------------------------------------------------------------
 
 INTERFACE ReadConfiguration
   MODULE PROCEDURE ReadConfiguration
@@ -38,21 +36,17 @@ CONTAINS
 !> "configurationsX.cmake"
 !==================================================================================================================================
 SUBROUTINE ReadConfiguration(iExample,nReggieBuilds,N_compile_flags)
-!===================================================================================================================================
 ! MODULES
 USE MOD_Globals
 USE MOD_RegressionCheck_Vars,    ONLY: Examples,RuntimeOptionType,BuildEQNSYS,BuildTESTCASE,BuildContinue,BuildContinueNumber
 USE MOD_RegressionCheck_Vars,    ONLY: BuildTIMEDISCMETHOD,BuildMPI,BuildFV,BuildCODE2D,BuildPARABOLIC
 USE MOD_RegressionCheck_Vars,    ONLY: BuildConfigurations,BuildValid,BuildCounter,BuildIndex
-! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
+! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)                           :: iExample
 INTEGER,INTENT(INOUT)                        :: N_compile_flags
 INTEGER,INTENT(INOUT)                        :: nReggieBuilds
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                                   :: ioUnit,iSTATUS,I,J,K
@@ -70,7 +64,6 @@ SWRITE(UNIT_stdOut,'(132("="))')
 SWRITE(UNIT_stdOut,'(A)') &
 "  Regression Check: Read Cmake Configurations"
 SWRITE(UNIT_stdOut,'(132("="))')
-ioUnit=GETFREEUNIT()
 IF(BuildContinue)CALL GetBuildContinue()
 IF(RuntimeOptionType.EQ.'')THEN ! [RuntimeOptionType] has been cleared (set to '') as the input by the user was "all", i.e., use all
                                 ! examples use fixed configuration file (maximum number of builds?) but (maximum number of builds?)
@@ -85,10 +78,9 @@ IF(.NOT.ExistFile) THEN
   SWRITE(UNIT_stdOut,'(A,A)') ' FileName:             ','configurations.reggie'
   SWRITE(UNIT_stdOut,'(A,L)') ' ExistFile:            ',ExistFile
   ERROR STOP '-1'
-ELSE
-  OPEN(UNIT=ioUnit,FILE=TRIM(FileName),STATUS="OLD",IOSTAT=iSTATUS,ACTION='READ') 
 END IF
 
+OPEN(NEWUNIT=ioUnit,FILE=TRIM(FileName),STATUS="OLD",IOSTAT=iSTATUS,ACTION='READ') 
 DO I=1,2
   N_compile_flags=0
   N_exclude=0
@@ -334,7 +326,6 @@ END SUBROUTINE ReadConfiguration
 !> reads the file "configurationsX.cmake" and creates a binary
 !==================================================================================================================================
 SUBROUTINE BuildConfiguration(iExample,iReggieBuild,nReggieBuilds,N_compile_flags)
-!===================================================================================================================================
 ! MODULES
 USE MOD_Globals
 USE MOD_RegressionCheck_Vars,  ONLY: BuildDebug,BuildNoDebug,BuildEQNSYS,BuildTESTCASE,NumberOfProcs,NumberOfProcsStr
@@ -342,13 +333,10 @@ USE MOD_RegressionCheck_Vars,  ONLY: BuildContinue,BuildContinueNumber,BuildDir,
 USE MOD_RegressionCheck_Vars,  ONLY: CodeNameLowCase,CodeNameUppCase,Examples,BuildPARABOLIC
 USE MOD_RegressionCheck_tools, ONLY: SummaryOfErrors,AddError
 USE MOD_RegressionCheck_Vars,  ONLY: BuildConfigurations,BuildValid,BuildCounter,BuildIndex,EXECPATH
-! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
+! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)                        :: iExample,iReggieBuild,N_compile_flags,nReggieBuilds
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                                   :: ioUnit,iSTATUS,J,K
@@ -362,7 +350,6 @@ SWRITE(UNIT_stdOut,'(A,I5,A4,I5,A,I5,A,I5,A)') &
 "  Regression Check: Build Cmake Configurations",COUNT(BuildValid(1:iReggieBuild)),' of ',COUNT(BuildValid)&
                                             ,'  (',iReggieBuild                     ,'/'   ,nReggieBuilds    ,')'
 SWRITE(UNIT_stdOut,'(132("="))')
-ioUnit=GETFREEUNIT()
 IF(BuildValid(iReggieBuild))THEN
   SYSCOMMAND='rm -rf '//TRIM(BuildDir)//'build_reggie > /dev/null 2>&1' ! clear building folder for next build
   CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
@@ -371,7 +358,7 @@ IF(BuildValid(iReggieBuild))THEN
   SWRITE(tempStr,*)iReggieBuild-1 ! previously completed build to file for continuation possibility
   SYSCOMMAND='echo '//TRIM(tempStr)//' > '//TRIM(BuildDir)//'build_reggie/BuildContinue.reggie'
   CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
-  OPEN(UNIT=ioUnit,FILE=TRIM(BuildDir)//'build_reggie/configurationX.cmake',STATUS="NEW",ACTION='WRITE',IOSTAT=iSTATUS)
+  OPEN(NEWUNIT=ioUnit,FILE=TRIM(BuildDir)//'build_reggie/configurationX.cmake',STATUS="NEW",ACTION='WRITE',IOSTAT=iSTATUS)
   DO K=1,N_compile_flags ! the compiler flag command line to "configurationX.cmake"
     SWRITE(ioUnit, '(A)', ADVANCE = "NO") ' -D'
     SWRITE(ioUnit, '(A)', ADVANCE = "NO") TRIM(ADJUSTL(BuildConfigurations(K,1)))
@@ -490,20 +477,13 @@ END SUBROUTINE BuildConfiguration
 !> read compile flags from a specified file
 !==================================================================================================================================
 SUBROUTINE GetFlagFromFile(FileName,Flag,output,BACK)
-!===================================================================================================================================
-!===================================================================================================================================
 ! MODULES
-USE MOD_Globals,            ONLY: Getfreeunit
-! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
+! INPUT/OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)  :: FileName ! e.g. './../build_reggie/bin/configuration.cmake'
 CHARACTER(LEN=*),INTENT(IN)  :: Flag     ! e.g. 'XX_EQNSYSNAME'
 LOGICAL,OPTIONAL,INTENT(IN)  :: BACK     ! get the second argument in the option
-!INTEGER         :: a
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(INOUT) :: output ! e.g. 'navierstokes'
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -516,8 +496,7 @@ INTEGER                        :: IndNum,IndNum2 ! Index Number
 output=''
 INQUIRE(File=TRIM(FileName),EXIST=ExistFile)
 IF(ExistFile) THEN
-  ioUnit=GETFREEUNIT()
-  OPEN(UNIT=ioUnit,FILE=TRIM(FileName),STATUS="OLD",IOSTAT=iSTATUS,ACTION='READ') 
+  OPEN(NEWUNIT=ioUnit,FILE=TRIM(FileName),STATUS="OLD",IOSTAT=iSTATUS,ACTION='READ') 
   DO
     READ(ioUnit,'(A)',iostat=iSTATUS)temp
     IF(ADJUSTL(temp).EQ.'!') CYCLE  ! complete line is commented out
@@ -557,25 +536,19 @@ END SUBROUTINE GetFlagFromFile
 !> If, e.g., the first 10 builds were successful but the 11th failes, the first 10 might want to be skipped (in manual debugging)
 !==================================================================================================================================
 SUBROUTINE GetBuildContinue()
-!===================================================================================================================================
-!===================================================================================================================================
 ! MODULES
 USE MOD_Globals
 USE MOD_RegressionCheck_tools, ONLY:str2int
 USE MOD_RegressionCheck_vars,  ONLY:BuildContinueNumber,BuildDir
-! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
+! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL                                   :: ExistFile
 INTEGER                                   :: ioUnit,iSTATUS
 CHARACTER(LEN=255)                        :: FileName,temp
 !===================================================================================================================================
-ioUnit=GETFREEUNIT()
 FileName=TRIM(BuildDir)//'build_reggie/BuildContinue.reggie'
 INQUIRE(File=TRIM(FileName),EXIST=ExistFile)
 IF(.NOT.ExistFile) THEN
@@ -583,9 +556,8 @@ IF(.NOT.ExistFile) THEN
   SWRITE(UNIT_stdOut,'(A,A)') ' FileName:             ',TRIM(FileName)
   SWRITE(UNIT_stdOut,'(A,L)') ' ExistFile:            ',ExistFile
   ERROR STOP '-1'
-ELSE
-  OPEN(UNIT=ioUnit,FILE=TRIM(FileName),STATUS="OLD",IOSTAT=iSTATUS,ACTION='READ') 
 END IF
+OPEN(NEWUNIT=ioUnit,FILE=TRIM(FileName),STATUS="OLD",IOSTAT=iSTATUS,ACTION='READ') 
 READ(ioUnit,'(A)',iostat=iSTATUS)temp
 CLOSE(ioUnit)
 IF(iSTATUS.NE.0) THEN

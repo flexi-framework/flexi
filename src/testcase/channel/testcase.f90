@@ -152,8 +152,7 @@ ALLOCATE(writeBuf(3,nWriteStats))
 Filename = TRIM(ProjectName)//'_Stats.dat'
 INQUIRE(FILE = Filename, EXIST = fileExists)
 IF(.NOT.fileExists)THEN ! File exists and append data
-  ioUnit=GETFREEUNIT()
-  OPEN(UNIT   = ioUnit       ,&
+  OPEN(NEWUNIT= ioUnit       ,&
        FILE   = Filename     ,&
        STATUS = 'Unknown'    ,&
        ACCESS = 'SEQUENTIAL' ,&
@@ -309,8 +308,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                  :: ioUnit,openStat
 !==================================================================================================================================
-ioUnit=GETFREEUNIT()
-OPEN(UNIT     = ioUnit     , &
+OPEN(NEWUNIT  = ioUnit     , &
      FILE     = Filename   , &
      FORM     = 'FORMATTED', &
      STATUS   = 'OLD'      , &
