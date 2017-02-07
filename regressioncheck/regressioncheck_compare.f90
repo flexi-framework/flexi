@@ -145,6 +145,7 @@ SUBROUTINE CompareConvergence(iExample)
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
+USE MOD_Basis,                 ONLY: AlmostEqualToTolerance
 USE MOD_RegressionCheck_Vars,    ONLY: Examples
 USE MOD_RegressionCheck_tools,   ONLY: str2int,CalcOrder
 IMPLICIT NONE
@@ -378,6 +379,7 @@ SUBROUTINE CompareNorm(LNormCompare,iExample,iSubExample,ReferenceNorm)
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
+USE MOD_Basis,                 ONLY: AlmostEqualToTolerance
 USE MOD_StringTools,           ONLY: STRICMP
 USE MOD_RegressionCheck_Vars,  ONLY: Examples
 IMPLICIT NONE
@@ -606,6 +608,7 @@ SUBROUTINE IntegrateLine(IntegralCompare,iExample)
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
+USE MOD_Basis,                 ONLY: AlmostEqualToTolerance
 USE MOD_RegressionCheck_Vars,  ONLY: Examples
 USE MOD_RegressionCheck_tools, ONLY: str2real
 IMPLICIT NONE
@@ -745,6 +748,7 @@ SUBROUTINE CompareDatafileRow(DataCompare,iExample)
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
+USE MOD_Basis,                 ONLY: AlmostEqualToTolerance
 USE MOD_RegressionCheck_Vars,  ONLY: Examples
 USE MOD_RegressionCheck_tools, ONLY: str2real
 IMPLICIT NONE

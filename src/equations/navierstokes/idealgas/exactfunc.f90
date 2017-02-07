@@ -137,7 +137,8 @@ END SUBROUTINE InitExactFunc
 SUBROUTINE ExactFunc(ExactFunction,tIn,x,resu)
 ! MODULES
 USE MOD_Preproc        ,ONLY: PP_PI
-USE MOD_Globals        ,ONLY: Abort,CROSS
+USE MOD_Globals        ,ONLY: Abort
+USE MOD_Basis          ,ONLY: CROSS
 USE MOD_Eos_Vars       ,ONLY: Kappa,sKappaM1,KappaM1,KappaP1,R
 USE MOD_Exactfunc_Vars ,ONLY: IniCenter,IniHalfwidth,IniAmplitude,IniAxis,AdvVel
 USE MOD_Exactfunc_Vars ,ONLY: MachShock,PreShockDens
