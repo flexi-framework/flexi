@@ -81,6 +81,9 @@ SGS_Ind=0.
 SGS_Ind_master=0.
 SGS_Ind_slave=0.
 ALLOCATE(muSGS(1,0:PP_N,0:PP_N,0:PP_N,nElems))
+!MATTEO: debug output
+ALLOCATE(S_en_out(1,0:PP_N,0:PP_N,0:PP_N,nElems))
+S_en_out = 0.
 ALLOCATE(muSGSmax(nElems))
 muSGS = 0.
 !muSGSmax=0.
@@ -111,7 +114,9 @@ SELECT CASE(eddyViscType)
       'Eddy Viscosity Type not specified!')
 END SELECT
 CALL AddToFieldData((/1,PP_N+1,PP_N+1,PP_N+1/),'VMSData',(/'muSGS'/),RealArray=muSGS)
-CALL AddToFieldData((/1,PP_N+1,PP_N+1,PP_N+1/),'VMSData',(/'Csmag'/),RealArray=SGS_Ind(1:1,:,:,:,:))
+!MATTEO: debug output
+CALL AddToFieldData((/2,PP_N+1,PP_N+1,PP_N+1/),'VMSData',(/'Csmag','muSgsInd'/),RealArray=SGS_Ind)
+CALL AddToFieldData((/1,PP_N+1,PP_N+1,PP_N+1/),'VMSData',(/'S_norm'/),RealArray=S_en_out)
 
 END SUBROUTINE
 

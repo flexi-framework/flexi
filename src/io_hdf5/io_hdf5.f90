@@ -347,7 +347,9 @@ ENDIF
 ! set varname, array size, and data pointer
 NULLIFY(nout%next)
 ALLOCATE(nout%Varnames(nVal(1)))
-nout%VarNames=VarNames(nVal(1))
+!nout%VarNames=VarNames(nVal(1))
+!Matteo: bugfix attempt
+nout%VarNames=VarNames
 nout%DataSetName=DataSetName
 nout%nVal=nVal
 nOpts=0

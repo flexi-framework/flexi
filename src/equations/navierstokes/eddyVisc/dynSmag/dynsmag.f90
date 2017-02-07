@@ -134,7 +134,7 @@ SUBROUTINE dynsmag(grad11,grad22,grad33,grad12,grad13,grad21,grad23,grad31,grad3
 !===================================================================================================================================
 ! MODULES
 USE MOD_PreProc
-USE MOD_EddyVisc_Vars,     ONLY:deltaS,CS,VanDriest,SGS_Ind,muSGSmax
+USE MOD_EddyVisc_Vars,     ONLY:deltaS,CS,VanDriest,SGS_Ind,muSGSmax,S_en_out
 USE MOD_Mesh_Vars,         ONLY:Elem_xGP
 
 ! IMPLICIT VARIABLE HANDLING
@@ -160,6 +160,7 @@ S_eN = S_eN + ( grad23 + grad32 )**2.
 S_eN = sqrt(S_eN)
 ! dynsmag model
 muSGS = S_eN*rho*SGS_Ind(1,i,j,k,iElem) 
+S_en_out(1,i,j,k,iElem) = S_eN
 SGS_Ind(2,i,j,k,iElem) = muSGS 
 muSGSmax(iElem) = MAX(muSGS,muSGSmax(iElem))
 END SUBROUTINE dynsmag
@@ -235,6 +236,7 @@ REAL,DIMENSION(3,3,0:PP_N,0:PP_N,0:PP_N) :: S_ik,M_ik,L_ik
 REAL                                     :: D_Ratio
 REAL, DIMENSION(0:PP_N,0:PP_N,0:PP_N)    :: C_d,MM,ML,S_eN_filtered,S_eN
 REAL, DIMENSION(0:PP_N)                  :: dummy1D
+REAL, DIMENSION(0:PP_N, 0:PP_N)          :: dummy2D
 REAL                                     :: Vol, Integrationweight,dummy
 REAL,DIMENSION(1:3,1:3,0:PP_N,0:PP_N,0:PP_N)         :: gradv_all
 REAL,DIMENSION(0:PP_N,0:PP_N,0:PP_N)             :: gradv11_elem,gradv12_elem,gradv13_elem 
@@ -417,38 +419,64 @@ DO iElem=1,nElems
 !!  SGS_Ind(1,:,:,:,iElem) = MIN(C_d(:,:,:),CS***2)
 !  SGS_Ind(1,:,:,:,iElem) = C_d(:,:,:)
 !
-  !-----CELL LOCAL IN HOMOGENEOUS DIRECTIONS
+ !-----CELL LOCAL IN HOMOGENEOUS DIRECTIONS
+ !ACHTUNG NUR KARTESISCH UND IN/FUER Y=J!!!
+  dummy1D=0.
+  Vol = 0.
+  DO j=0,PP_N
+    DO i=0,PP_N
+      IntegrationWeight = wGP(i)*wGP(j)
+      dummy1D(:) = dummy1D(:) + ML(i,:,j)*IntegrationWeight
+      Vol = Vol + Integrationweight
+    END DO ! i
+  END DO ! j
+  DO j=0,PP_N
+    DO i=0,PP_N
+      ML(i,:,j) = dummy1D(:)/Vol !CELL average
+    END DO ! i
+  END DO ! j
+  dummy1D=0.
+  DO j=0,PP_N
+    DO i=0,PP_N
+      IntegrationWeight = wGP(i)*wGP(j)
+      dummy1D(:) = dummy1D(:) + MM(i,:,j)*IntegrationWeight
+    END DO ! i
+  END DO ! j
+  DO j=0,PP_N
+    DO i=0,PP_N
+      MM(i,:,j) = dummy1D(:)/Vol !CELL average
+    END DO ! i
+  END DO ! j
+  DO j=0,PP_N
+    DO i=0,PP_N
+      C_d(i,:,j) = + 0.5*ML(i,:,j)/MM(i,:,j) !CELL average
+    END DO ! i
+  END DO ! j
+  SGS_Ind(1,:,:,:,iElem) = C_d(:,:,:)
+!
+  !-----CELL AVERAGE ONLY IN Z DIRECTION
   !ACHTUNG NUR KARTESISCH UND IN/FUER Y=J!!!
-!  dummy1D=0.
+!  dummy2D=0.
 !  Vol = 0.
+!  DO i=0,PP_N
+!    IntegrationWeight = wGP(i)
+!    dummy2D(:,:) = dummy2D(:,:) + ML(:,:,i)*IntegrationWeight
+!    Vol = Vol + Integrationweight
+!  END DO ! i
+!  DO i=0,PP_N
+!    ML(:,:,i) = dummy2D(:,:)/Vol !CELL average
+!  END DO ! i
+!  dummy2D=0.
+!  DO i=0,PP_N
+!    IntegrationWeight = wGP(i)
+!    dummy2D(:,:) = dummy2D(:,:) + MM(:,:,i)*IntegrationWeight
+!  END DO ! i
+!  DO i=0,PP_N
+!    MM(:,:,i) = dummy2D(:,:)/Vol !CELL average
+!  END DO ! i
 !  DO j=0,PP_N
 !    DO i=0,PP_N
-!      IntegrationWeight = wGP(i)*wGP(j)
-!      dummy1D(:) = dummy1D(:) + ML(i,:,j)*IntegrationWeight
-!      Vol = Vol + Integrationweight
-!    END DO ! i
-!  END DO ! j
-!  DO j=0,PP_N
-!    DO i=0,PP_N
-!      ML(i,:,j) = dummy1D(:)/Vol !CELL average
-!    END DO ! i
-!  END DO ! j
-!  dummy1D=0.
-!  DO j=0,PP_N
-!    DO i=0,PP_N
-!      IntegrationWeight = wGP(i)*wGP(j)
-!      dummy1D(:) = dummy1D(:) + MM(i,:,j)*IntegrationWeight
-!    END DO ! i
-!  END DO ! j
-!  DO j=0,PP_N
-!    DO i=0,PP_N
-!      MM(i,:,j) = dummy1D(:)/Vol !CELL average
-!    END DO ! i
-!  END DO ! j
-!  DO j=0,PP_N
-!    DO i=0,PP_N
-!      C_d(i,:,j) = - 0.5*ML(i,:,j)/MM(i,:,j) !CELL average
-!      !C_d(i,:,j) = + 0.5*ML(i,:,j)/MM(i,:,j) !CELL average
+!      C_d(i,:,j) = + 0.5*ML(i,:,j)/MM(i,:,j) !CELL average
 !    END DO ! i
 !  END DO ! j
 !  SGS_Ind(1,:,:,:,iElem) = C_d(:,:,:)
@@ -457,21 +485,33 @@ DO iElem=1,nElems
 !Time Average ala pruett
 !Im Nenner steht r=FilterWidth/dt(RK)
 !Simple shot is taking the filter width equal 1, assuming meaningful dimensionless timescale
-ML_Avg(:,:,:,iElem) = ML_Avg(:,:,:,iElem) + (ML(:,:,:)-ML_Avg(:,:,:,iElem))*(dt/1.)
-MM_Avg(:,:,:,iElem) = MM_Avg(:,:,:,iElem) + (MM(:,:,:)-MM_Avg(:,:,:,iElem))*(dt/1.)
-!C_d=0.
-DO i=0,PP_N
-  DO j=0,PP_N
-    DO k=0,PP_N
-!      IF (ABS(MM_Avg(i,j,k,iElem)) .LE. 1e-15) CYCLE 
-      C_d(i,j,k) =  0.5*ML_Avg(i,j,k,iElem)/MM_Avg(i,j,k,iElem)
-    END DO ! i
-  END DO ! j
-END DO ! k
-SGS_Ind(1,:,:,:,iElem) = SGS_Ind(1,:,:,:,iElem) + (C_d(:,:,:)-SGS_Ind(1,:,:,:,iElem))/1.*dt
+!ML_Avg(:,:,:,iElem) = ML_Avg(:,:,:,iElem) + (ML(:,:,:)-ML_Avg(:,:,:,iElem))*(dt/1.)
+!MM_Avg(:,:,:,iElem) = MM_Avg(:,:,:,iElem) + (MM(:,:,:)-MM_Avg(:,:,:,iElem))*(dt/1.)
+!!C_d=0.
+!DO i=0,PP_N
+!  DO j=0,PP_N
+!    DO k=0,PP_N
+!!      IF (ABS(MM_Avg(i,j,k,iElem)) .LE. 1e-15) CYCLE 
+!      C_d(i,j,k) =  0.5*ML_Avg(i,j,k,iElem)/MM_Avg(i,j,k,iElem)
+!    END DO ! i
+!  END DO ! j
+!END DO ! k
+!SGS_Ind(1,:,:,:,iElem) = SGS_Ind(1,:,:,:,iElem) + (C_d(:,:,:)-SGS_Ind(1,:,:,:,iElem))/1.*dt
 !print*,SGS_Ind(1,:,:,:,iElem)
 !  SGS_Ind(1,:,:,:,iElem) = C_d(:,:,:)
 !------------------------------------------
+!NO AVERAGING OF SORT
+!DO i=0,PP_N
+!  DO j=0,PP_N
+!    DO k=0,PP_N
+!      C_d(i,j,k) =  0.5*ML(i,j,k)/MM(i,j,k)
+!    END DO ! i
+!  END DO ! j
+!END DO ! k
+!SGS_Ind(1,:,:,:,iElem) = C_d(:,:,:)
+
+
+
 END DO
 !#if MPI
 !! 4.2)

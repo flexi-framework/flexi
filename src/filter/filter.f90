@@ -462,22 +462,23 @@ DO k=0,PP_N
     END DO !i
   END DO !j
 END DO !k
-U_Eta= 0.
-DO k=0,PP_N
-  DO j=0,PP_N
-    DO i=0,PP_N
-      DO l=0,PP_N
-        U_Eta(:,i,j,k)      = U_Eta(:,i,j,k)      + FilterMat(j,l)*U_Xi(:,i,l,k)
-      END DO !l
-    END DO !i
-  END DO !j
-END DO !k
+!U_Eta= 0.
+!DO k=0,PP_N
+!  DO j=0,PP_N
+!    DO i=0,PP_N
+!      DO l=0,PP_N
+!        U_Eta(:,i,j,k)      = U_Eta(:,i,j,k)      + FilterMat(j,l)*U_Xi(:,i,l,k)
+!      END DO !l
+!    END DO !i
+!  END DO !j
+!END DO !k
 U_in(:,:,:,:)=0.
 DO k=0,PP_N
   DO j=0,PP_N
     DO i=0,PP_N
       DO l=0,PP_N
-        U_in(:,i,j,k) = U_in(:,i,j,k) + FilterMat(k,l)*U_Eta(:,i,j,l)
+        !U_in(:,i,j,k) = U_in(:,i,j,k) + FilterMat(k,l)*U_Eta(:,i,j,l)
+        U_in(:,i,j,k) = U_in(:,i,j,k) + FilterMat(k,l)*U_Xi(:,i,j,l)
       END DO !l
     END DO !i
   END DO !j

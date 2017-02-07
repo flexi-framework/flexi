@@ -62,6 +62,9 @@ REAL,ALLOCATABLE  :: MM_Avg(:,:,:,:)
 REAL,ALLOCATABLE  :: ML_Avg(:,:,:,:) 
 REAL,ALLOCATABLE  :: SGS_Ind_master(:,:,:,:) 
 REAL,ALLOCATABLE  :: SGS_Ind_slave(:,:,:,:) 
+!MATTEO:debug output
+REAL,ALLOCATABLE  :: S_en_out(:,:,:,:,:)  !< Debug output of |S|
+
 
 LOGICAL           :: VanDriest=.FALSE.
 LOGICAL           :: SmagorinskyInitIsDone=.FALSE.
