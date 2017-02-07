@@ -65,7 +65,7 @@ CALL DefineParametersRiemann()
 #ifdef EDDYVISCOSITY
 CALL prms%CreateIntFromStringOption(   'eddyViscType', "(0) none: No eddy viscosity, (1) Smagorinsky",'none')
 CALL addStrListEntry('eddyViscType','none',0)
-CALL addStrListEntry('eddyViscType','smagorinksy',1)
+CALL addStrListEntry('eddyViscType','smagorinsky',1)
 #endif
 END SUBROUTINE DefineParametersEquation
 
