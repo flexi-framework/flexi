@@ -3,7 +3,7 @@
 # =========================================================================
 
 # use dummy userblock, as userblocks are often not required for Posti tools
-ADD_LIBRARY(userblocklib_dummy SHARED ./src/output/read_userblock_dummy.c)
+ADD_LIBRARY(userblocklib_dummy STATIC ./src/output/read_userblock_dummy.c)
 SET_TARGET_PROPERTIES(userblocklib_dummy PROPERTIES LINKER_LANGUAGE C)
 SET_TARGET_PROPERTIES(userblocklib_dummy PROPERTIES COMPILE_FLAGS "-fPIC")
 
