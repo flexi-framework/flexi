@@ -496,7 +496,7 @@ SUBROUTINE Riemann_Roe(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
 USE MOD_EOS_Vars  ,ONLY: kappaM1
 #ifdef SPLIT_DG
-USE MOD_SplitFlux ,ONLY: SplitDGSurface_pointer,SplitIndicator
+USE MOD_SplitFlux ,ONLY: SplitDGSurface_pointer
 #endif /*SPLIT_DG*/
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
@@ -555,11 +555,6 @@ F=0.5*((F_L+F_R) - &
 #else
 ! get split flux
 CALL SplitDGSurface_pointer(U_LL,U_RR,F)
-! for KG and PI flux eigenvalues have to be altered to ensure consistent KE dissipation
-IF (SplitIndicator==3 .OR. SplitIndicator==4) THEN
-  a(1) = MAX(ABS(RoeVel(1)-Roec),ABS(RoeVel(1)+Roec))
-  a(5) = MAX(ABS(RoeVel(1)-Roec),ABS(RoeVel(1)+Roec))
-ENDIF
 ! assemble Roe flux
 F = F - 0.5*(Alpha1*ABS(a(1))*r1 + &
              Alpha2*ABS(a(2))*r2 + &
@@ -578,7 +573,7 @@ SUBROUTINE Riemann_RoeEntropyFix(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
 USE MOD_EOS_Vars      ,ONLY: Kappa,KappaM1
 #ifdef SPLIT_DG
-USE MOD_SplitFlux ,ONLY: SplitDGSurface_pointer,SplitIndicator
+USE MOD_SplitFlux ,ONLY: SplitDGSurface_pointer
 #endif /*SPLIT_DG*/
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
@@ -673,10 +668,6 @@ F=0.5*((F_L+F_R)        - &
 ! get split flux
 CALL SplitDGSurface_pointer(U_LL,U_RR,F)
 ! for KG or PI flux eigenvalues have to be altered to ensure consistent KE dissipation
-IF (SplitIndicator==3 .OR. SplitIndicator==4) THEN
-  a(1) = MAX(ABS(RoeVel(1)-Roec),ABS(RoeVel(1)+Roec))
-  a(5) = MAX(ABS(RoeVel(1)-Roec),ABS(RoeVel(1)+Roec))
-ENDIF
 ! assemble Roe flux
 F= F - 0.5*(Alpha(1)*a(1)*r1 + &
             Alpha(2)*a(2)*r2 + &
@@ -694,7 +685,7 @@ SUBROUTINE Riemann_RoeL2(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
 USE MOD_EOS_Vars  ,ONLY: kappaM1,kappa
 #ifdef SPLIT_DG
-USE MOD_SplitFlux ,ONLY: SplitDGSurface_pointer,SplitIndicator
+USE MOD_SplitFlux ,ONLY: SplitDGSurface_pointer
 #endif /*SPLIT_DG*/
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
@@ -760,11 +751,6 @@ F=0.5*((F_L+F_R) - &
 #else
 ! get split flux
 CALL SplitDGSurface_pointer(U_LL,U_RR,F)
-! for KG and PI flux eigenvalues have to be altered to ensure consistent KE dissipation
-IF (SplitIndicator==3 .OR. SplitIndicator==4) THEN
-  a(1) = MAX(ABS(RoeVel(1)-Roec),ABS(RoeVel(1)+Roec))
-  a(5) = MAX(ABS(RoeVel(1)-Roec),ABS(RoeVel(1)+Roec))
-ENDIF
 ! assemble Roe flux
 F = F - 0.5*(Alpha1*ABS(a(1))*r1 + &
              Alpha2*ABS(a(2))*r2 + &
