@@ -55,6 +55,7 @@ PUBLIC::WriteVTKMultiBlockDataSet
 PUBLIC::WriteCoordsToVTK_array
 PUBLIC::WriteDataToVTK_array
 PUBLIC::WriteVarnamesToVTK_array
+PUBLIC::CARRAY
 !===================================================================================================================================
 
 CONTAINS
@@ -405,7 +406,7 @@ INTEGER,INTENT(IN)                   :: NVisu                        !< Polynomi
 INTEGER,INTENT(IN)                   :: nElems                       !< Number of elements
 INTEGER,INTENT(IN)                   :: dim                          !< Spacial dimension (2D or 3D)
 INTEGER,INTENT(IN)                   :: DGFV                         !< flag indicating DG = 0 or FV =1 data
-REAL(C_DOUBLE),ALLOCATABLE,TARGET,INTENT(IN)    :: coords(:,:,:,:,:) !< Array containing coordinates
+REAL,ALLOCATABLE,TARGET,INTENT(IN)    :: coords(:,:,:,:,:) !< Array containing coordinates
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 INTEGER,ALLOCATABLE,TARGET,INTENT(INOUT) :: nodeids(:)

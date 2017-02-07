@@ -17,14 +17,11 @@
 !> Routines to build the mesh for visualization.
 !=================================================================================================================================
 MODULE MOD_Posti_VisuMesh
-! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-! Private Part ---------------------------------------------------------------------------------------------------------------------
-! Public Part ----------------------------------------------------------------------------------------------------------------------
 
 INTERFACE BuildVisuCoords
   MODULE PROCEDURE BuildVisuCoords
@@ -117,19 +114,19 @@ END SUBROUTINE BuildVisuCoords
 !=================================================================================================================================
 SUBROUTINE VisualizeMesh(postifile,meshfile_in,coordsDG_out,valuesDG_out,nodeidsDG_out, &
         coordsFV_out,valuesFV_out,nodeidsFV_out,varnames_out,components_out)
-! MODULES                                                                   
+! MODULES
+USE ISO_C_BINDING
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Posti_Vars
-USE MOD_ReadInTools   ,ONLY: prms,GETINT
-USE MOD_ReadInTools   ,ONLY: FinalizeParameters
+USE MOD_ReadInTools   ,ONLY: prms,GETINT,FinalizeParameters
 #if USE_MPI
 USE MOD_MPI           ,ONLY: FinalizeMPI
 #endif
 USE MOD_Interpolation ,ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
 USE MOD_Mesh_Vars     ,ONLY: nElems,Ngeo
 USE MOD_Mesh          ,ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
-USE MOD_VTK           ,ONLY: WriteCoordsToVTK_array
+USE MOD_VTK           ,ONLY: WriteCoordsToVTK_array,CARRAY
 USE MOD_HDF5_Input    ,ONLY: ReadAttribute,File_ID,OpenDataFile,CloseDataFile
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
