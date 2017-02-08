@@ -10,7 +10,6 @@ PROGRAM SurfIntUnitTest
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_SurfIntCons,        ONLY: SurfIntCons
-USE MOD_Basis,              ONLY: EQUALTOTOLERANCE
 ! Modules needed to read in reference element
 USE MOD_Mesh_Vars,          ONLY: nElems,sJ,FS2M,V2S,S2V,S2V2
 USE MOD_Mesh_Vars,          ONLY: SideToElem
@@ -142,9 +141,9 @@ ELSE
     ! Check if the computed and the reference solutions are within a given tolerance
     equal =  .TRUE.
     DO i=1,PP_nVar; DO j=0,9; DO k=0,9; DO l=0,9
-      equal = EQUALTOTOLERANCE(Ut(i,j,k,l,1),Ut_ref(1,j,k,l,1),100.*PP_RealTolerance) .AND. equal
+      equal = ALMOSTEQUALABSORREL(Ut(i,j,k,l,1),Ut_ref(1,j,k,l,1),100.*PP_RealTolerance) .AND. equal
 #if FV_ENABLED
-      equal = EQUALTOTOLERANCE(FV_Ut(i,j,k,l,1),FV_Ut_ref(1,j,k,l,1),100.*PP_RealTolerance) .AND. equal
+      equal = ALMOSTEQUALABSORREL(FV_Ut(i,j,k,l,1),FV_Ut_ref(1,j,k,l,1),100.*PP_RealTolerance) .AND. equal
 #endif
     END DO; END DO; END DO; END DO
     IF (.NOT.equal) THEN

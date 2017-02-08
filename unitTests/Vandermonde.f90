@@ -11,8 +11,6 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Interpolation,       ONLY: GetVandermonde
 USE MOD_Interpolation_Vars,  ONLY: NodeTypeG,NodeTypeGL,NodeTypeCL,NodeTypeVISU
-USE MOD_Basis,               ONLY: EQUALTOTOLERANCE
-
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -95,8 +93,8 @@ ELSE
     equal = .TRUE.
     DO k = 1,512
       DO iIn=0,5; DO iOut=0,6
-        equal = EQUALTOTOLERANCE(Vdm_Out_In(iIn,iOut,k),Vdm_Out_In_ref(iIn,iOut,k),100*PP_RealTolerance) .AND. equal
-        equal = EQUALTOTOLERANCE(Vdm_In_Out(iOut,iIn,k),Vdm_In_Out_ref(iOut,iIn,k),100*PP_RealTolerance) .AND. equal
+        equal = ALMOSTEQUALABSORREL(Vdm_Out_In(iIn,iOut,k),Vdm_Out_In_ref(iIn,iOut,k),100.*PP_RealTolerance) .AND. equal
+        equal = ALMOSTEQUALABSORREL(Vdm_In_Out(iOut,iIn,k),Vdm_In_Out_ref(iOut,iIn,k),100.*PP_RealTolerance) .AND. equal
       END DO; END DO
     END DO
     IF (.NOT.equal) THEN

@@ -10,7 +10,6 @@ PROGRAM ProlongToFaceUnitTest
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_ProlongToFaceCons,  ONLY: ProlongToFaceCons
-USE MOD_Basis,              ONLY: EQUALTOTOLERANCE
 ! Modules needed to read in reference element
 USE MOD_Mesh_Vars,          ONLY: nElems,sJ,FS2M,V2S,S2V,S2V2
 USE MOD_Mesh_Vars,          ONLY: SideToElem
@@ -135,14 +134,14 @@ ELSE
     ! Check if the computed and the reference solutions are within a given tolerance
     equal =  .TRUE.
     DO i=1,PP_nVar; DO j=0,9; DO k=0,9; DO l=1,6
-      equal = EQUALTOTOLERANCE(Uface_master(i,j,k,l),Uface_master_ref(j,k,l),100.*PP_RealTolerance) .AND. equal
+      equal = ALMOSTEQUALABSORREL(Uface_master(i,j,k,l),Uface_master_ref(j,k,l),100.*PP_RealTolerance) .AND. equal
 #if FV_ENABLED
-      equal = EQUALTOTOLERANCE(FV_Uface_master(i,j,k,l),FV_Uface_master_ref(j,k,l),100.*PP_RealTolerance) .AND. equal
+      equal = ALMOSTEQUALABSORREL(FV_Uface_master(i,j,k,l),FV_Uface_master_ref(j,k,l),100.*PP_RealTolerance) .AND. equal
 #endif      
     END DO; END DO; END DO; END DO
     ! Plus sides not needed in single element case
     !DO i=1,PP_nVar; DO j=0,9; DO k=0,9; DO l=7,6
-      !equal = EQUALTOTOLERANCE(Uface_slave(i,j,k,l),Uface_slave_ref(j,k,l),100.*PP_RealTolerance) .AND. equal
+      !equal = ALMOSTEQUALABSORREL(Uface_slave(i,j,k,l),Uface_slave_ref(j,k,l),100.*PP_RealTolerance) .AND. equal
     !END DO; END DO; END DO; END DO
     IF (.NOT.equal) THEN
       WRITE(*,*) 'ERROR - Calculated prolonged values deviate from reference.'

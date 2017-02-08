@@ -145,7 +145,6 @@ SUBROUTINE CompareConvergence(iExample)
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_Basis,                 ONLY: AlmostEqualToTolerance
 USE MOD_RegressionCheck_Vars,    ONLY: Examples
 USE MOD_RegressionCheck_tools,   ONLY: str2int,CalcOrder
 IMPLICIT NONE
@@ -269,9 +268,7 @@ IF(TRIM(Examples(iExample)%ConvergenceTestType).EQ.'p')THEN
 ELSEIF(TRIM(Examples(iExample)%ConvergenceTestType).EQ.'h')THEN
   ! Check Order of Convergence versus the expected value and tolerance from input
   DO J=1,Examples(iExample)%nVar
-    OrderReached(J)=AlmostEqualToTolerance( OrderAveraged(J)                            ,&
-                                           Examples(iExample)%ConvergenceTestValue     ,&
-                                           Examples(iExample)%ConvergenceTestTolerance )
+    OrderReached(J)=ALMOSTEQUALRELATIVE( OrderAveraged(J),Examples(iExample)%ConvergenceTestValue,Examples(iExample)%ConvergenceTestTolerance )
      IF((OrderReached(J).EQV..FALSE.).AND.(OrderAveraged(J).GT.0.0))THEN
        !IntegralCompare=1
        SWRITE(UNIT_stdOut,'(A)')         ' CompareConvergence does not match! Error in computation!'
@@ -379,7 +376,6 @@ SUBROUTINE CompareNorm(LNormCompare,iExample,iSubExample,ReferenceNorm)
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_Basis,                 ONLY: AlmostEqualToTolerance
 USE MOD_StringTools,           ONLY: STRICMP
 USE MOD_RegressionCheck_Vars,  ONLY: Examples
 IMPLICIT NONE
@@ -447,7 +443,7 @@ IF(PRESENT(ReferenceNorm))THEN ! use user-defined norm if present, else use 0.00
     eps=0.001*SQRT(PP_RealTolerance)
   END IF
   DO iVar=1,Examples(iExample)%nVar
-    IF(.NOT.AlmostEqualToTolerance(L2(iVar),ReferenceNorm(iVar,1),eps))THEN
+    IF(.NOT.ALMOSTEQUALRELATIVE(L2(iVar),ReferenceNorm(iVar,1),eps))THEN
       L2Compare=.FALSE.
       SWRITE(UNIT_stdOut,'(A)') ''
       SWRITE(UNIT_stdOut,'(A,E21.14)')  ' L2Norm                =',L2(iVar)
@@ -457,7 +453,7 @@ IF(PRESENT(ReferenceNorm))THEN ! use user-defined norm if present, else use 0.00
     END IF
   END DO ! iVar=1,Examples(iExample)%nVar
   DO iVar=1,Examples(iExample)%nVar
-    IF(.NOT.AlmostEqualToTolerance(LInf(iVar),ReferenceNorm(iVar,2),eps))THEN
+    IF(.NOT.ALMOSTEQUALRELATIVE(LInf(iVar),ReferenceNorm(iVar,2),eps))THEN
       LInfCompare=.FALSE.
       SWRITE(UNIT_stdOut,'(A)') ''
       SWRITE(UNIT_stdOut,'(A,E21.14)')  ' LInfNorm              =',LInf(iVar)
@@ -608,7 +604,6 @@ SUBROUTINE IntegrateLine(IntegralCompare,iExample)
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_Basis,                 ONLY: AlmostEqualToTolerance
 USE MOD_RegressionCheck_Vars,  ONLY: Examples
 USE MOD_RegressionCheck_tools, ONLY: str2real
 IMPLICIT NONE
@@ -723,9 +718,7 @@ DO I=1,MaxRow-1
   Q=Q+(Values(I+1,1)-Values(I,1))*(Values(I+1,2)+Values(I,2))/2.
 END DO
 
-IntegralValuesAreEqual=AlmostEqualToTolerance( Q                                     ,&
-                                               Examples(iExample)%IntegrateLineValue ,&
-                                               5.e-2                                 )
+IntegralValuesAreEqual=ALMOSTEQUALRELATIVE( Q, Examples(iExample)%IntegrateLineValue, 5.e-2 )
 IF(.NOT.IntegralValuesAreEqual)THEN
   IntegralCompare=1
   SWRITE(UNIT_stdOut,'(A)')         ' IntegrateLines do not match! Error in computation!'
@@ -748,7 +741,6 @@ SUBROUTINE CompareDatafileRow(DataCompare,iExample)
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_Basis,                 ONLY: AlmostEqualToTolerance
 USE MOD_RegressionCheck_Vars,  ONLY: Examples
 USE MOD_RegressionCheck_tools, ONLY: str2real
 IMPLICIT NONE
@@ -861,9 +853,7 @@ IF(ColumnNumber.GT.0)THEN
   ALLOCATE(ValuesAreEqual(1:ColumnNumber))
   ValuesAreEqual=.FALSE.
   DO J=1,ColumnNumber
-    ValuesAreEqual(J)=AlmostEqualToTolerance(  Values(J)                                      ,&
-                                               ValuesRef(J)                                   ,&
-                                               Examples(iExample)%CompareDatafileRowTolerance)
+    ValuesAreEqual(J)=ALMOSTEQUALRELATIVE( Values(J), ValuesRef(J), Examples(iExample)%CompareDatafileRowTolerance)
     IF(ValuesAreEqual(J).EQV..FALSE.)THEN
       SWRITE(UNIT_stdOut,'(A)')         ' CompareDatafileRows mismatch: '//TRIM(ColumnHeaders(J))
       SWRITE(UNIT_stdOut,'(A,E24.17)')  ' Value in Refernece            = ',ValuesRef(J)

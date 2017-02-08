@@ -48,6 +48,14 @@
 #define CHECKSAFEREAL(x,k) IF(x>HUGE(1._ ## k).OR.x<-HUGE(1._ ## k)) CALL ABORT(__STAMP__,'Real conversion failed: out of range!')
 #endif
 
+
+! Test for equality: read description in mathtools.f90 for further infos
+#define ALMOSTEQUALABSOLUTE(x,y,tol)  (ABS((x)-(y)).LE.(tol))
+#define ALMOSTEQUALRELATIVE(x,y,tol)  (ABS((x)-(y)).LE.MAX(ABS(x),ABS(y))*(tol))
+#define ALMOSTEQUALABSORREL(x,y,tol)  ((ABS((x)-(y)).LE.(tol)) .OR.  (ABS((x)-(y)).LE.MAX(ABS(x),ABS(y))*(tol)))
+#define ALMOSTEQUALABSANDREL(x,y,tol) ((ABS((x)-(y)).LE.(tol)) .AND. (ABS((x)-(y)).LE.MAX(ABS(x),ABS(y))*(tol)))
+
+! Define MPI specific write shortcuts
 #if USE_MPI
 #  define SWRITE IF(MPIRoot) WRITE
 #  define IPWRITE(a,b) WRITE(a,b)myRank,
