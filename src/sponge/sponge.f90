@@ -208,7 +208,7 @@ SELECT CASE(SpBaseflowType)
 CASE(SPONGEBASEFLOW_CONSTANT) ! constant baseflow from refstate
   DO iElem=1,nElems
     DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
-      SpBaseFlow(:,i,j,k,iElem)=RefStateCons(spongeRefState,:)
+      SpBaseFlow(:,i,j,k,iElem)=RefStateCons(:,spongeRefState)
     END DO; END DO; END DO
   END DO
 CASE(SPONGEBASEFLOW_EXACTFUNC) ! Exactfunction
