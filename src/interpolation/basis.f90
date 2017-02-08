@@ -24,10 +24,6 @@ SAVE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE INV
-   MODULE PROCEDURE INV
-END INTERFACE
-
 INTERFACE BuildLegendreVdm
    MODULE PROCEDURE BuildLegendreVdm
 END INTERFACE
@@ -72,23 +68,6 @@ INTERFACE LagrangeInterpolationPolys
    MODULE PROCEDURE LagrangeInterpolationPolys
 END INTERFACE
 
-INTERFACE ALMOSTEQUAL
-   MODULE PROCEDURE ALMOSTEQUAL
-END INTERFACE
-
-INTERFACE EQUALTOTOLERANCE
-   MODULE PROCEDURE EQUALTOTOLERANCE
-END INTERFACE
-
-INTERFACE AlmostEqualToTolerance
-  MODULE PROCEDURE AlmostEqualToTolerance
-END INTERFACE
-
-INTERFACE CROSS
-  MODULE PROCEDURE CROSS
-END INTERFACE CROSS
-
-PUBLIC::INV
 PUBLIC::BuildLegendreVdm
 PUBLIC::InitializeVandermonde
 PUBLIC::LegGaussLobNodesAndWeights
@@ -100,57 +79,10 @@ PUBLIC::LegendrePolynomialAndDerivative
 PUBLIC::PolynomialDerivativeMatrix
 PUBLIC::BarycentricWeights
 PUBLIC::LagrangeInterpolationPolys
-PUBLIC::ALMOSTEQUAL
-PUBLIC::EQUALTOTOLERANCE
-PUBLIC::AlmostEqualToTolerance
-PUBLIC::CROSS
-
 !==================================================================================================================================
-
 
 CONTAINS
 
-
-!==================================================================================================================================
-!> Computes matrix inverse using LAPACK
-!> Input matrix should be a square matrix
-!==================================================================================================================================
-FUNCTION INV(A) RESULT(AINV)
-! MODULES
-IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)  :: A(:,:)                      !< input matrix
-REAL             :: AINV(SIZE(A,1),SIZE(A,2))   !< result: inverse of A
-!----------------------------------------------------------------------------------------------------------------------------------
-! External procedures defined in LAPACK
-EXTERNAL DGETRF
-EXTERNAL DGETRI
-! LOCAL VARIABLES
-REAL    :: work(SIZE(A,1))  ! work array for LAPACK
-INTEGER :: ipiv(SIZE(A,1))  ! pivot indices
-INTEGER :: n,info
-!==================================================================================================================================
-! Store A in Ainv to prevent it from being overwritten by LAPACK
-Ainv = A
-n = size(A,1)
-
-! DGETRF computes an LU factorization of a general M-by-N matrix A
-! using partial pivoting with row interchanges.
-CALL DGETRF(n, n, Ainv, n, ipiv, info)
-
-IF(info.NE.0)THEN
-   STOP 'Matrix is numerically singular!'
-END IF
-
-! DGETRI computes the inverse of a matrix using the LU factorization
-! computed by DGETRF.
-CALL DGETRI(n, Ainv, n, ipiv, work, n, info)
-
-IF(info.NE.0)THEN
-   STOP 'Matrix inversion failed!'
-END IF
-END FUNCTION INV
 
 !==================================================================================================================================
 !> Build a 1D Vandermonde matrix from an orthonormal Legendre basis to a nodal basis and reverse
@@ -159,6 +91,7 @@ SUBROUTINE buildLegendreVdm(N_In,xi_In,Vdm_Leg,sVdm_Leg)
 ! MODULES
 USE MOD_Globals,ONLY:abort
 USE MOD_PreProc,ONLY:PP_RealTolerance
+USE MOD_Mathtools,ONLY:INV
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -617,10 +550,9 @@ END DO ! iLagrange
 END SUBROUTINE PolynomialDerivativeMatrix
 
 
-
 !==================================================================================================================================
 !> Determines if two real numbers are equal up to a specified tolerance (=PP_RealTolerance, normaly set to machine precision)
-!> Takes into account that x,y are located in-between [-1;1]
+!> Takes into account that x,y are located in-between [-1;1] for additional accuracy
 !> Based on Algorithm 139, Kopriva
 !==================================================================================================================================
 FUNCTION ALMOSTEQUAL(x,y)
@@ -641,68 +573,6 @@ ELSE ! x, y not zero
   IF((ABS(x-y).LE.PP_RealTolerance*ABS(x)).AND.((ABS(x-y).LE.PP_RealTolerance*ABS(y)))) AlmostEqual=.TRUE.
 END IF ! x,y zero
 END FUNCTION ALMOSTEQUAL
-
-
-!==================================================================================================================================
-!> Determines if two real numbers are equal up to a given tolerance.
-!> Routine requires: x,y > tolerance
-!==================================================================================================================================
-FUNCTION EQUALTOTOLERANCE(x,y,tolerance) 
-IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN) :: x                !< (IN)  first scalar to be compared
-REAL,INTENT(IN) :: y                !< (IN)  second scalar to be compared
-REAL,INTENT(IN) :: tolerance        !< (IN)  Tolerance to be checked against
-LOGICAL         :: EqualToTolerance !< (OUT) TRUE if x and y are closer than tolerance 
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-REAL            :: diff,maxInput
-!===================================================================================================================================
-EqualToTolerance = .FALSE.
-
-maxInput = MAX(ABS(x),ABS(y))
-diff = ABS(x-y)
-
-! Test absolute error
-IF (diff.LE.tolerance) THEN
-  EqualToTolerance=.TRUE.
-  RETURN
-END IF
-
-! Test relative error
-IF(diff.LT.maxInput*tolerance) EqualToTolerance=.TRUE.
-
-END FUNCTION EQUALTOTOLERANCE
-
-
-FUNCTION AlmostEqualToTolerance(Num1,Num2,Tolerance)
-!===================================================================================================================================
-! Bruce Dawson quote:
-! "There is no silver bullet. You have to choose wisely."
-!    * "If you are comparing against zero, then relative epsilons and ULPs based comparisons are usually meaningless. 
-!      You’ll need to use an absolute epsilon, whose value might be some small multiple of FLT_EPSILON and the inputs 
-!      to your calculation. Maybe."
-!    * "If you are comparing against a non-zero number then relative epsilons or ULPs based comparisons are probably what you want. 
-!      You’ll probably want some small multiple of FLT_EPSILON for your relative epsilon, or some small number of ULPs. 
-!      An absolute epsilon could be used if you knew exactly what number you were comparing against."
-!    * "If you are comparing two arbitrary numbers that could be zero or non-zero then you need the kitchen sink. 
-!      Good luck and God speed."
-!===================================================================================================================================
-! MODULES
-IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN) :: Num1,Num2 !< numbers to compare
-REAL,INTENT(IN) :: Tolerance !< relative epsilon value as input
-LOGICAL         :: AlmostEqualToTolerance
-!===================================================================================================================================
-IF(ABS(Num1-Num2).LE.MAX(ABS(Num1),ABS(Num2))*Tolerance)THEN
-  AlmostEqualToTolerance=.TRUE.
-ELSE
-  AlmostEqualToTolerance=.FALSE.
-END IF
-END FUNCTION AlmostEqualToTolerance
 
 
 !============================================================================================================================
@@ -748,21 +618,5 @@ DO iGP=0,N_in
 END DO
 END SUBROUTINE LagrangeInterpolationPolys
 
-!==================================================================================================================================
-!> computes the cross product of to 3 dimensional vectpors: cross=v1 x v2
-!==================================================================================================================================
-PURE FUNCTION CROSS(v1,v2)
-! MODULES
-IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN) :: v1(3)    !< input vector 1
-REAL,INTENT(IN) :: v2(3)    !< input vector 2
-REAL            :: CROSS(3) !< cross product of vectors
-!----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-!==================================================================================================================================
-CROSS=(/v1(2)*v2(3)-v1(3)*v2(2),v1(3)*v2(1)-v1(1)*v2(3),v1(1)*v2(2)-v1(2)*v2(1)/)
-END FUNCTION CROSS
 
 END MODULE MOD_Basis
