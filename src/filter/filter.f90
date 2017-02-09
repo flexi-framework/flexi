@@ -51,9 +51,14 @@ INTERFACE Filter_General
   MODULE PROCEDURE Filter_General
 END INTERFACE
 
+INTERFACE Filter_Selective
+  MODULE PROCEDURE Filter_Selective
+END INTERFACE
+
 PUBLIC :: InitFilter
 PUBLIC :: Filter_pointer
 PUBLIC :: Filter_General
+PUBLIC :: Filter_Selective
 PUBLIC :: FinalizeFilter
 !==================================================================================================================================
 
@@ -485,6 +490,71 @@ DO k=0,PP_N
 END DO !k
 END SUBROUTINE Filter_General!3Star
 
+
+SUBROUTINE Filter_Selective(NVar,FilterMat,U_in,iElem)
+! MODULES
+USE MOD_PreProc
+USE MOD_Globals
+USE MOD_EddyVisc_Vars, ONLY: filter_ind
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+REAL,INTENT(INOUT)  :: U_in(NVar,0:PP_N,0:PP_N,0:PP_N) !< solution vector to be filtered
+REAL,INTENT(IN)     :: FilterMat(0:PP_N,0:PP_N)                  !< filter matrix to be used
+INTEGER,INTENT(IN)     :: NVar
+INTEGER, INTENT(IN)    :: iElem
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER             :: i,j,k,l
+REAL,DIMENSION(NVar,0:PP_N,0:PP_N,0:PP_N) :: U_Xi,U_Eta
+!==================================================================================================================================
+! Perform filtering
+#if FV_ENABLED
+stop
+#endif
+IF(filter_ind(1,iElem)) THEN
+  U_Xi = 0.
+  DO k=0,PP_N
+    DO j=0,PP_N
+      DO i=0,PP_N
+        DO l=0,PP_N
+          U_Xi(:,i,j,k)       = U_Xi(:,i,j,k)       + FilterMat(i,l)*U_in(:,l,j,k)
+        END DO !l
+      END DO !i
+    END DO !j
+  END DO !k
+ELSE
+  U_Xi = U_in
+END IF
+IF(filter_ind(2,iElem)) THEN
+  U_Eta= 0.
+  DO k=0,PP_N
+    DO j=0,PP_N
+      DO i=0,PP_N
+        DO l=0,PP_N
+          U_Eta(:,i,j,k)      = U_Eta(:,i,j,k)      + FilterMat(j,l)*U_Xi(:,i,l,k)
+        END DO !l
+      END DO !i
+    END DO !j
+  END DO !k
+ELSE
+  U_Eta = U_Xi
+END IF
+IF(filter_ind(3,iElem)) THEN
+  U_in(:,:,:,:)=0.
+  DO k=0,PP_N
+    DO j=0,PP_N
+      DO i=0,PP_N
+        DO l=0,PP_N
+          U_in(:,i,j,k) = U_in(:,i,j,k) + FilterMat(k,l)*U_Eta(:,i,j,l)
+        END DO !l
+      END DO !i
+    END DO !j
+  END DO !k
+ELSE
+  U_in = U_Eta
+END IF
+END SUBROUTINE Filter_Selective
 
 !==================================================================================================================================
 !> Deallocate filter arrays

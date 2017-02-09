@@ -48,7 +48,7 @@ USE MOD_PreProc
 USE MOD_EddyVisc_Vars              
 USE MOD_ReadInTools       ,   ONLY:GETREAL,GETLOGICAL,GETINT
 USE MOD_Interpolation_Vars,   ONLY:InterpolationInitIsDone,Vdm_Leg,sVdm_Leg,NodeType,wGP
-USE MOD_Mesh_Vars         ,   ONLY:MeshInitIsDone
+USE MOD_Mesh_Vars         ,   ONLY:MeshInitIsDone, Elem_xgp
 USE MOD_Interpolation_Vars,   ONLY:wGP
 USE MOD_Mesh_Vars,            ONLY:sJ,nSides,nElems
 USE MOD_Mesh_Vars,            ONLY:ElemToSide
@@ -65,9 +65,12 @@ USE MOD_MPI_Vars,             ONLY:MPIRequest_DeltaS,nNbProcs
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER :: i,iElem,j,k
+INTEGER :: i,iElem,j,k, iDir
 REAL    :: CellVol
 INTEGER :: iLocSide,SideID,FlipID
+REAL    :: vec(3)
+logical :: filter_mask(3)
+integer :: dirv(1)
 !===================================================================================================================================
 IF(((.NOT.InterpolationInitIsDone).AND.(.NOT.MeshInitIsDone)).OR.dynsmagInitIsDone)THEN
    SWRITE(UNIT_StdOut,'(A)') "Initdynsmag not ready to be called or already called."
@@ -84,6 +87,30 @@ IF(testcase.EQ."channel") THEN
   ! Do Van Driest style damping or not
   VanDriest = GETLOGICAL('VanDriest','.FALSE.')
 END IF
+
+!For the moment local, TODO add an input for this
+filter_mask = (/.false., .false., .true./)
+
+!Find in which x, y, z direction are the i, j ,k index pointing, and
+!then decide which index to filter
+DO iElem=1,nElems
+  !i
+  vec = Elem_xgp(:,PP_N,0,0,iElem) - Elem_xgp(:,0,0,0,iElem)
+  vec = vec/sqrt(sum(vec**2))
+  dirv = maxloc(abs(vec))
+  filter_ind(1,iElem) = filter_mask(dirv(1))
+  !j
+  vec = Elem_xgp(:,0,PP_N,0,iElem) - Elem_xgp(:,0,0,0,iElem)
+  vec = vec/sqrt(sum(vec**2))
+  dirv = maxloc(abs(vec))
+  filter_ind(2,iElem) = filter_mask(dirv(1))
+  !k
+  vec = Elem_xgp(:,0,0,PP_N,iElem) - Elem_xgp(:,0,0,0,iElem)
+  vec = vec/sqrt(sum(vec**2))
+  dirv = maxloc(abs(vec))
+  filter_ind(3,iElem) = filter_mask(dirv(1))
+END DO !iElem
+
 
 ! Calculate the filter width deltaS: deltaS=( Cell volume )^(1/3) / ( PP_N+1 )
 
@@ -206,9 +233,9 @@ SUBROUTINE compute_cd(U_in)
 USE MOD_PreProc
 USE MOD_EddyVisc_Vars,          ONLY:SGS_Ind,FilterMat_testfilter
 USE MOD_EddyVisc_Vars,          ONLY:SGS_Ind!,SGS_Ind_Slave,SGS_Ind_Master
-USE MOD_EddyVisc_Vars,          ONLY:MM_Avg, ML_Avg
+USE MOD_EddyVisc_Vars,          ONLY:MM_Avg, ML_Avg, filter_ind
 !USE MOD_ProlongToFace1,         ONLY: ProlongToFace1
-USE MOD_Filter,                 ONLY:Filter_General
+USE MOD_Filter,                 ONLY:Filter_General, Filter_Selective
 USE MOD_Lifting_Vars,           ONLY:gradUx,gradUy,gradUz
 USE MOD_Interpolation_Vars,     ONLY:wGP
 USE MOD_Mesh_Vars,              ONLY:sJ, nSides, nElems
@@ -235,6 +262,7 @@ REAL                :: v1,v2,v3
 REAL,DIMENSION(3,3,0:PP_N,0:PP_N,0:PP_N) :: S_ik,M_ik,L_ik
 REAL                                     :: D_Ratio
 REAL, DIMENSION(0:PP_N,0:PP_N,0:PP_N)    :: C_d,MM,ML,S_eN_filtered,S_eN
+REAL, DIMENSION(0:PP_N,0:PP_N)    :: MMa,MLa
 REAL, DIMENSION(0:PP_N)                  :: dummy1D
 REAL, DIMENSION(0:PP_N, 0:PP_N)          :: dummy2D
 REAL                                     :: Vol, Integrationweight,dummy
@@ -273,14 +301,16 @@ DO iElem=1,nElems
   END DO !i
 
   !Filter velocities
-  CALL Filter_General(3,FilterMat_testfilter,V_filtered) 
+  !CALL Filter_General(3,FilterMat_testfilter,V_filtered) 
+  CALL Filter_Selective(3,FilterMat_testfilter,V_filtered, iElem) 
   !           _ _   __
   !Compute L=-u u + uu  !!TENSOR ik
   DO i=1,3
     DO k=1,3
       L_ik(i,k,:,:,:) = U_in(i+1,:,:,:,iElem)*U_in(k+1,:,:,:,iElem)/U_in(1,:,:,:,iElem)**2
     END DO ! k
-    CALL Filter_General(3,FilterMat_testfilter,L_ik(i,1:3,:,:,:)) 
+    !CALL Filter_General(3,FilterMat_testfilter,L_ik(i,1:3,:,:,:)) 
+    CALL Filter_Selective(3,FilterMat_testfilter,L_ik(i,1:3,:,:,:),iElem) 
   END DO ! i
   DO i=1,3
     DO k=1,3
@@ -303,7 +333,8 @@ DO iElem=1,nElems
     DO k=1,3
       M_ik(i,k,:,:,:) = S_eN(:,:,:)*S_ik(i,k,:,:,:)
     END DO ! k
-    CALL Filter_General(3,FilterMat_testfilter,M_ik(i,1:3,:,:,:)) 
+    !CALL Filter_General(3,FilterMat_testfilter,M_ik(i,1:3,:,:,:)) 
+    CALL Filter_Selective(3,FilterMat_testfilter,M_ik(i,1:3,:,:,:),iElem) 
   END DO ! i
 
   !filtered gradients
@@ -317,9 +348,12 @@ DO iElem=1,nElems
   gradv_all(3,1,:,:,:) = gradv31_elem(:,:,:)
   gradv_all(3,2,:,:,:) = gradv32_elem(:,:,:)
   gradv_all(3,3,:,:,:) = gradv33_elem(:,:,:)
-  CALL Filter_General(3,FilterMat_Testfilter,gradv_all(:,1,:,:,:))
-  CALL Filter_General(3,FilterMat_Testfilter,gradv_all(:,2,:,:,:))
-  CALL Filter_General(3,FilterMat_Testfilter,gradv_all(:,3,:,:,:))
+  !CALL Filter_General(3,FilterMat_Testfilter,gradv_all(:,1,:,:,:))
+  !CALL Filter_General(3,FilterMat_Testfilter,gradv_all(:,2,:,:,:))
+  !CALL Filter_General(3,FilterMat_Testfilter,gradv_all(:,3,:,:,:))
+  CALL Filter_Selective(3,FilterMat_Testfilter,gradv_all(:,1,:,:,:),iElem)
+  CALL Filter_Selective(3,FilterMat_Testfilter,gradv_all(:,2,:,:,:),iElem)
+  CALL Filter_Selective(3,FilterMat_Testfilter,gradv_all(:,3,:,:,:),iElem)
   DO i=1,3
     DO j=1,3
       S_ik(i,j,:,:,:) = (gradv_all(i,j,:,:,:)+gradv_all(j,i,:,:,:))*0.5
@@ -419,40 +453,82 @@ DO iElem=1,nElems
 !!  SGS_Ind(1,:,:,:,iElem) = MIN(C_d(:,:,:),CS***2)
 !  SGS_Ind(1,:,:,:,iElem) = C_d(:,:,:)
 !
- !-----CELL LOCAL IN HOMOGENEOUS DIRECTIONS
- !ACHTUNG NUR KARTESISCH UND IN/FUER Y=J!!!
-  dummy1D=0.
-  Vol = 0.
-  DO j=0,PP_N
+! !-----CELL LOCAL IN HOMOGENEOUS DIRECTIONS
+! !ACHTUNG NUR KARTESISCH UND IN/FUER Y=J!!!
+!  dummy1D=0.
+!  Vol = 0.
+!  DO j=0,PP_N
+!    DO i=0,PP_N
+!      IntegrationWeight = wGP(i)*wGP(j)
+!      dummy1D(:) = dummy1D(:) + ML(i,:,j)*IntegrationWeight
+!      Vol = Vol + Integrationweight
+!    END DO ! i
+!  END DO ! j
+!  DO j=0,PP_N
+!    DO i=0,PP_N
+!      ML(i,:,j) = dummy1D(:)/Vol !CELL average
+!    END DO ! i
+!  END DO ! j
+!  dummy1D=0.
+!  DO j=0,PP_N
+!    DO i=0,PP_N
+!      IntegrationWeight = wGP(i)*wGP(j)
+!      dummy1D(:) = dummy1D(:) + MM(i,:,j)*IntegrationWeight
+!    END DO ! i
+!  END DO ! j
+!  DO j=0,PP_N
+!    DO i=0,PP_N
+!      MM(i,:,j) = dummy1D(:)/Vol !CELL average
+!    END DO ! i
+!  END DO ! j
+!  DO j=0,PP_N
+!    DO i=0,PP_N
+!      C_d(i,:,j) = + 0.5*ML(i,:,j)/MM(i,:,j) !CELL average
+!    END DO ! i
+!  END DO ! j
+!  SGS_Ind(1,:,:,:,iElem) = C_d(:,:,:)
+
+
+  ! Selective cell average (on selected directions)
+  IF(filter_ind(1,iElem)) THEN
+    MMa = 0.; MLa = 0.; Vol = 0.
     DO i=0,PP_N
-      IntegrationWeight = wGP(i)*wGP(j)
-      dummy1D(:) = dummy1D(:) + ML(i,:,j)*IntegrationWeight
-      Vol = Vol + Integrationweight
-    END DO ! i
-  END DO ! j
-  DO j=0,PP_N
+      MMa = MMa + MM(i,:,:)*wGP(i)
+      MLa = MLa + ML(i,:,:)*wGP(i)
+      Vol = Vol + wGP(i)
+    END DO !i
     DO i=0,PP_N
-      ML(i,:,j) = dummy1D(:)/Vol !CELL average
-    END DO ! i
-  END DO ! j
-  dummy1D=0.
-  DO j=0,PP_N
-    DO i=0,PP_N
-      IntegrationWeight = wGP(i)*wGP(j)
-      dummy1D(:) = dummy1D(:) + MM(i,:,j)*IntegrationWeight
-    END DO ! i
-  END DO ! j
-  DO j=0,PP_N
-    DO i=0,PP_N
-      MM(i,:,j) = dummy1D(:)/Vol !CELL average
-    END DO ! i
-  END DO ! j
-  DO j=0,PP_N
-    DO i=0,PP_N
-      C_d(i,:,j) = + 0.5*ML(i,:,j)/MM(i,:,j) !CELL average
-    END DO ! i
-  END DO ! j
+      MM(i,:,:) = MMa/Vol
+      ML(i,:,:) = MLa/Vol
+    END DO !i
+  END IF
+  IF(filter_ind(2,iElem)) THEN
+    MMa = 0.; MLa = 0.; Vol = 0.
+    DO j=0,PP_N
+      MMa = MMa + MM(:,j,:)*wGP(j)
+      MLa = MLa + ML(:,j,:)*wGP(j)
+      Vol = Vol + wGP(j)
+    END DO !j
+    DO j=0,PP_N
+      MM(:,j,:) = MMa/Vol
+      ML(:,j,:) = MLa/Vol
+    END DO !j
+  END IF
+  IF(filter_ind(3,iElem)) THEN
+    MMa = 0.; MLa = 0.; Vol = 0.
+    DO k=0,PP_N
+      MMa = MMa + MM(:,:,k)*wGP(k)
+      MLa = MLa + ML(:,:,k)*wGP(k)
+      Vol = Vol + wGP(k)
+    END DO !k
+    DO k=0,PP_N
+      MM(:,:,k) = MMa/Vol
+      ML(:,:,k) = MLa/Vol
+    END DO !k
+  END IF
+  C_d = 0.5*ML/MM
   SGS_Ind(1,:,:,:,iElem) = C_d(:,:,:)
+
 !
   !-----CELL AVERAGE ONLY IN Z DIRECTION
   !ACHTUNG NUR KARTESISCH UND IN/FUER Y=J!!!

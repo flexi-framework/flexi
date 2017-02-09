@@ -90,6 +90,7 @@ muSGS = 0.
 muSGSmax=2000.*mu0
 ALLOCATE(FilterMat_Testfilter(0:PP_N,0:PP_N))
 FilterMat_Testfilter = 0.
+ALLOCATE(filter_ind(3,nElems))
 ! Set Prandtl number !=0 because we need to divide by this number to get the turbulent heat conductivity (will be zero anyway
 ! since muSGS=0)
 PrSGS = 0.7
@@ -115,7 +116,7 @@ SELECT CASE(eddyViscType)
 END SELECT
 CALL AddToFieldData((/1,PP_N+1,PP_N+1,PP_N+1/),'VMSData',(/'muSGS'/),RealArray=muSGS)
 !MATTEO: debug output
-CALL AddToFieldData((/2,PP_N+1,PP_N+1,PP_N+1/),'VMSData',(/'Csmag','muSgsInd'/),RealArray=SGS_Ind)
+CALL AddToFieldData((/2,PP_N+1,PP_N+1,PP_N+1/),'VMSData',(/'Csmag   ','muSgsInd'/),RealArray=SGS_Ind)
 CALL AddToFieldData((/1,PP_N+1,PP_N+1,PP_N+1/),'VMSData',(/'S_norm'/),RealArray=S_en_out)
 
 END SUBROUTINE
