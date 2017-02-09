@@ -491,18 +491,17 @@ END DO !k
 END SUBROUTINE Filter_General!3Star
 
 
-SUBROUTINE Filter_Selective(NVar,FilterMat,U_in,iElem)
+SUBROUTINE Filter_Selective(NVar,FilterMat,U_in,filter_ind)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_EddyVisc_Vars, ONLY: filter_ind
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 REAL,INTENT(INOUT)  :: U_in(NVar,0:PP_N,0:PP_N,0:PP_N) !< solution vector to be filtered
 REAL,INTENT(IN)     :: FilterMat(0:PP_N,0:PP_N)                  !< filter matrix to be used
 INTEGER,INTENT(IN)     :: NVar
-INTEGER, INTENT(IN)    :: iElem
+LOGICAL, INTENT(IN)    :: filter_ind(:)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER             :: i,j,k,l
@@ -512,7 +511,7 @@ REAL,DIMENSION(NVar,0:PP_N,0:PP_N,0:PP_N) :: U_Xi,U_Eta
 #if FV_ENABLED
 stop
 #endif
-IF(filter_ind(1,iElem)) THEN
+IF(filter_ind(1)) THEN
   U_Xi = 0.
   DO k=0,PP_N
     DO j=0,PP_N
@@ -526,7 +525,7 @@ IF(filter_ind(1,iElem)) THEN
 ELSE
   U_Xi = U_in
 END IF
-IF(filter_ind(2,iElem)) THEN
+IF(filter_ind(2)) THEN
   U_Eta= 0.
   DO k=0,PP_N
     DO j=0,PP_N
@@ -540,7 +539,7 @@ IF(filter_ind(2,iElem)) THEN
 ELSE
   U_Eta = U_Xi
 END IF
-IF(filter_ind(3,iElem)) THEN
+IF(filter_ind(3)) THEN
   U_in(:,:,:,:)=0.
   DO k=0,PP_N
     DO j=0,PP_N

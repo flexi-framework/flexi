@@ -302,7 +302,7 @@ DO iElem=1,nElems
 
   !Filter velocities
   !CALL Filter_General(3,FilterMat_testfilter,V_filtered) 
-  CALL Filter_Selective(3,FilterMat_testfilter,V_filtered, iElem) 
+  CALL Filter_Selective(3,FilterMat_testfilter,V_filtered,filter_ind(:,iElem)) 
   !           _ _   __
   !Compute L=-u u + uu  !!TENSOR ik
   DO i=1,3
@@ -310,7 +310,7 @@ DO iElem=1,nElems
       L_ik(i,k,:,:,:) = U_in(i+1,:,:,:,iElem)*U_in(k+1,:,:,:,iElem)/U_in(1,:,:,:,iElem)**2
     END DO ! k
     !CALL Filter_General(3,FilterMat_testfilter,L_ik(i,1:3,:,:,:)) 
-    CALL Filter_Selective(3,FilterMat_testfilter,L_ik(i,1:3,:,:,:),iElem) 
+    CALL Filter_Selective(3,FilterMat_testfilter,L_ik(i,1:3,:,:,:),filter_ind(:,iElem)) 
   END DO ! i
   DO i=1,3
     DO k=1,3
@@ -334,7 +334,7 @@ DO iElem=1,nElems
       M_ik(i,k,:,:,:) = S_eN(:,:,:)*S_ik(i,k,:,:,:)
     END DO ! k
     !CALL Filter_General(3,FilterMat_testfilter,M_ik(i,1:3,:,:,:)) 
-    CALL Filter_Selective(3,FilterMat_testfilter,M_ik(i,1:3,:,:,:),iElem) 
+    CALL Filter_Selective(3,FilterMat_testfilter,M_ik(i,1:3,:,:,:),filter_ind(:,iElem)) 
   END DO ! i
 
   !filtered gradients
@@ -351,9 +351,9 @@ DO iElem=1,nElems
   !CALL Filter_General(3,FilterMat_Testfilter,gradv_all(:,1,:,:,:))
   !CALL Filter_General(3,FilterMat_Testfilter,gradv_all(:,2,:,:,:))
   !CALL Filter_General(3,FilterMat_Testfilter,gradv_all(:,3,:,:,:))
-  CALL Filter_Selective(3,FilterMat_Testfilter,gradv_all(:,1,:,:,:),iElem)
-  CALL Filter_Selective(3,FilterMat_Testfilter,gradv_all(:,2,:,:,:),iElem)
-  CALL Filter_Selective(3,FilterMat_Testfilter,gradv_all(:,3,:,:,:),iElem)
+  CALL Filter_Selective(3,FilterMat_Testfilter,gradv_all(:,1,:,:,:),filter_ind(:,iElem))
+  CALL Filter_Selective(3,FilterMat_Testfilter,gradv_all(:,2,:,:,:),filter_ind(:,iElem))
+  CALL Filter_Selective(3,FilterMat_Testfilter,gradv_all(:,3,:,:,:),filter_ind(:,iElem))
   DO i=1,3
     DO j=1,3
       S_ik(i,j,:,:,:) = (gradv_all(i,j,:,:,:)+gradv_all(j,i,:,:,:))*0.5
