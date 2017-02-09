@@ -497,10 +497,10 @@ END IF
 CALL FV_VolInt(UPrim,Ut)
 #endif
 
-#if PARABOLIC && MPI
+#if PARABOLIC && USE_MPI
 ! Complete send / receive for gradUx, gradUy, gradUz, started in the lifting routines
 CALL FinishExchangeMPIData(6*nNbProcs,MPIRequest_gradU) ! gradUx,y,z: slave -> master
-#endif /*PARABOLIC && MPI*/
+#endif /*PARABOLIC && USE_MPI*/
 
 
 ! 8. Fill flux and Surface integral
