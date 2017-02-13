@@ -55,10 +55,14 @@ INTEGER,ALLOCATABLE               :: FV_Elems_loc(:)             !< current dist
 INTEGER,ALLOCATABLE               :: FV_Elems_old(:)             !< previous distribution of FV/DG elems
 INTEGER                           :: meshMode_old=0              !< Used to check if InitMesh must be called again with different
                                                                  !< mesh mode
+LOGICAL                           :: StateFileMode               !< Flag indicating if a state file is being visualized. Only then
+                                                                 !< calculations can be performed, otherwise only pure visu.
 LOGICAL                           :: MeshFileMode                !< Flag indicating a mesh file should be visualized
 LOGICAL                           :: doSurfVisu                  !< Flag indicating if any surfaces need to be visualized
-LOGICAL                           :: Avg2D          
-LOGICAL                           :: Avg2D_old = .FALSE.
+LOGICAL                           :: Avg2D                       !< Flag indicating if solution should be averaged in zeta dir
+LOGICAL                           :: Avg2D_old = .FALSE.         !< Previus state of Avg2D flag, used to check for change
+LOGICAL                           :: Avg2DHDF5Output             !< Flag indicating if the averaged solution should be written to a
+                                                                 !< .h5 file
 
                 
 ! The following flags indicate if during successive visualizations of (different) state files the respective properties
@@ -71,7 +75,7 @@ LOGICAL                           :: changedFV_Elems             !< different di
 LOGICAL                           :: changedWithDGOperator       !< If the DG operator should be called or not changed
 LOGICAL                           :: changedDGonly               !< Visualize FV cells as DG changed
 LOGICAL                           :: changedBCnames              !< BCnames selected for visualization changed (ParaView plugin)
-LOGICAL                           :: changedAvg2D                !< 
+LOGICAL                           :: changedAvg2D                !< mode changed between average solution and not
 
 CHARACTER(LEN=255),ALLOCATABLE,TARGET :: VarNamesHDF5(:)         !< varnames in state file (DG_Solution, not including generic 
                                                                  !< element- or pointwise)

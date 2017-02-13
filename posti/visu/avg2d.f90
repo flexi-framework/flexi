@@ -46,6 +46,11 @@ INTERFACE Average2D
   MODULE PROCEDURE Average2D
 END INTERFACE
 
+INTERFACE WriteAverageToHDF5
+  MODULE PROCEDURE WriteAverageToHDF5
+END INTERFACE
+
+PUBLIC:: WriteAverageToHDF5
 PUBLIC:: InitAverage2D
 PUBLIC:: BuildVandermonds_Avg2D
 PUBLIC:: Average2D
@@ -367,5 +372,151 @@ DEALLOCATE(Utmp2)
 DEALLOCATE(UAvg_DG)
 DEALLOCATE(UAvg_FV)
 END SUBROUTINE Average2D
+
+!===================================================================================================================================
+!> HDF5 output routine for 2D averaged data. The very simple idea is to use the 3D mesh (since creating a new 2D mesh would be 
+!> very complicated) and copy the averaged solution to the third dimension.
+!> The output must be done on PP_N and on the calculation NodeType, this is enforced in the InitFile routine.
+!===================================================================================================================================
+SUBROUTINE WriteAverageToHDF5(nVar,NVisu,NVisu_FV,NodeType,OutputTime,MeshFileName,UVisu_DG,UVisu_FV) 
+! MODULES
+USE MOD_Globals
+USE MOD_PreProc
+USE HDF5
+USE MOD_HDF5_Output,    ONLY: GatheredWriteArray,WriteAttribute,WriteHeader,WriteAdditionalElemData
+USE MOD_IO_HDF5,        ONLY: OpenDataFile,CloseDataFile,AddToElemData,ElementOut
+USE MOD_HDF5_Input,     ONLY: File_ID
+USE MOD_Output_Vars,    ONLY: ProjectName
+USE MOD_Visu_Vars,      ONLY: Elem_IJK,VarnamesAll,mapAllVarsToVisuVars,nVarAll
+USE MOD_Visu_Vars,      ONLY: nElemsAvg2D_DG,mapElemIJToDGElemAvg2D,nElemsAvg2D_FV,mapElemIJToFVElemAvg2D
+USE MOD_Mesh_Vars,      ONLY: nGlobalElems,offsetElem,nElems
+#if FV_ENABLED
+USE MOD_Visu_Vars,      ONLY: NCalc_FV
+USE MOD_ChangeBasis,    ONLY: ChangeBasis2D
+USE MOD_FV_Vars,        ONLY: FV_Elems
+#endif
+!----------------------------------------------------------------------------------------------------------------------------------!
+IMPLICIT NONE
+! INPUT / OUTPUT VARIABLES 
+INTEGER,INTENT(IN)             :: nVar,NVisu,NVisu_FV
+CHARACTER(LEN=255)             :: NodeType
+REAL,INTENT(IN)                :: OutputTime
+REAL,INTENT(IN)                :: UVisu_DG(0:NVisu   ,0:NVisu   ,0:0,nElemsAvg2D_DG,nVar)
+REAL,INTENT(IN)                :: UVisu_FV(0:NVisu_FV,0:NVisu_FV,0:0,nElemsAvg2D_FV,nVar)
+CHARACTER(LEN=255),INTENT(IN)  :: MeshFileName
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL                :: UVisu3D(nVar,0:NVisu,0:NVisu,0:NVisu,nElems)
+INTEGER             :: iElemAvg2D_DG,iElemAvg2D_FV,iElem,ii,jj,k,iVar,iVarVisu
+INTEGER(HSIZE_T)    :: Dimsf(5)
+INTEGER(HID_T)      :: DSet_ID,FileSpace,HDF5DataType
+CHARACTER(LEN=255)  :: StrVarNames(nVar)
+CHARACTER(LEN=255)  :: FileName
+#if FV_ENABLED
+INTEGER             :: i
+#if FV_RECONSTRUCT
+REAL                :: Vdm_FVRecon_PP_N(0:PP_N,0:NVisu_FV)
+#endif
+#endif
+!===================================================================================================================================
+#if FV_RECONSTRUCT
+Vdm_FVRecon_PP_N = 0.
+DO i=0,PP_N
+  Vdm_FVRecon_PP_N(i,2*i) = 1.
+END DO ! i=0,PP_N
+#endif
+
+
+
+!================== Prepare output data =============================!
+
+! Create full three dimensional array to write to the 3D mesh file.
+DO iElem=1,nElems
+  ii = Elem_IJK(1,iElem)
+  jj = Elem_IJK(2,iElem)
+  iElemAvg2D_DG = mapElemIJToDGElemAvg2D(ii,jj)
+  iElemAvg2D_FV = mapElemIJToFVElemAvg2D(ii,jj)
+  IF (iElemAvg2D_DG.GT.0) THEN
+    ! Averaged as a DG element
+    DO k=0,NVisu
+      DO iVar=1,nVar
+        UVisu3D(iVar,:,:,k,iElem) = UVisu_DG(:,:,0,iElemAvg2D_DG,iVar)
+      END DO ! iVar=1,nVar
+    END DO ! k=0,NVisu
+#if FV_ENABLED
+    FV_Elems(iElem) = 0
+  ELSE
+    ! Averaged as a FV Element
+    DO k=0,NVisu
+      DO iVar=1,nVar
+#if FV_RECONSTRUCT
+        ! For reconstruction, FV elements will be on 2*(PP_N+1) points
+        CALL ChangeBasis2D(NCalc_FV,PP_N,Vdm_FVRecon_PP_N,UVisu_FV(:,:,0,iElemAvg2D_FV,iVar),UVisu3D(iVar,:,:,k,iElem))
+        !UVisu3D(iVar,:,:,k,iElem) = UVisu_FV(:,:,0,iElemAvg2D_FV,iVar)
+#else
+        UVisu3D(iVar,:,:,k,iElem) = UVisu_FV(:,:,0,iElemAvg2D_FV,iVar)
+#endif
+      END DO ! iVar=1,nVar
+    END DO ! k=0,NVisu
+    FV_Elems(iElem) = 1
+#endif
+  END IF
+END DO ! iElem
+
+! Build string array with the visualize variable names
+DO iVar=1,nVarAll
+  iVarVisu = mapAllVarsToVisuVars(iVar)
+  IF (iVarVisu.GT.0) THEN
+    StrVarNames(iVarVisu) = VarnamesAll(iVar)
+  END IF
+END DO ! iVar=1,nVarAll
+
+
+!================= Create and prepare HDF5 file =======================!
+
+! Create file
+FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_avg2D',OutputTime))//'.h5'
+CALL OpenDataFile(TRIM(FileName),create=.TRUE.,single=.TRUE.,readOnly=.FALSE.)
+
+! Write file header with file type 'Avg2D'
+CALL WriteHeader('Avg2D',File_ID)
+
+! Preallocate the data space for the dataset.
+Dimsf=(/nVar,NVisu+1,NVisu+1,NVisu+1,nGlobalElems/)
+
+CALL H5SCREATE_SIMPLE_F(5, Dimsf, FileSpace, iError)
+! Create the dataset with default properties.
+HDF5DataType=H5T_NATIVE_DOUBLE
+CALL H5DCREATE_F(File_ID,'DG_Solution', HDF5DataType, FileSpace, DSet_ID, iError)
+! Close the filespace and the dataset
+CALL H5DCLOSE_F(Dset_id, iError)
+CALL H5SCLOSE_F(FileSpace, iError)
+
+! Write dataset properties "N","Time","MeshFile","NodeType","VarNames","NComputation"
+CALL WriteAttribute(File_ID,'N',1,IntScalar=NVisu)
+CALL WriteAttribute(File_ID,'Time',1,RealScalar=OutputTime)
+CALL WriteAttribute(File_ID,'MeshFile',1,StrScalar=(/TRIM(MeshFileName)/))
+CALL WriteAttribute(File_ID,'NodeType',1,StrScalar=(/NodeType/))
+CALL WriteAttribute(File_ID,'VarNames',nVar,StrArray=StrVarNames)
+CALL WriteAttribute(File_ID,'NComputation',1,IntScalar=PP_N)
+
+CALL CloseDataFile()
+
+!================= Actual data output =======================!
+
+CALL GatheredWriteArray(TRIM(FileName),create=.FALSE.,&
+                        DataSetName='DG_Solution', rank=5,&
+                        nValGlobal=(/nVar,NVisu+1,NVisu+1,NVisu+1,nGlobalElems/),&
+                        nVal=      (/nVar,NVisu+1,NVisu+1,NVisu+1,nElems/),&
+                        offset=    (/0,      0,     0,     0,     offsetElem/),&
+                        collective=.TRUE.,RealArray=UVisu3D)
+
+#if FV_ENABLED
+!=========== FV/DG element distribution output ===============!
+CALL WriteAdditionalElemData(FileName,ElementOut)
+#endif
+
+
+END SUBROUTINE WriteAverageToHDF5
 
 END MODULE MOD_Visu_Avg2D
