@@ -142,7 +142,7 @@ INTEGER,INTENT(IN)          :: nElems               !< Number of output elements
 INTEGER,INTENT(IN)          :: dim                  !< dimension: 2 or 3
 REAL,INTENT(IN)             :: Coord(1:3,0:NVisu,0:NVisu,0:NVisu*(dim-2),nElems)     !< CoordsVector
 CHARACTER(LEN=*),INTENT(IN) :: VarNames(nVal)       !< Names of all variables that will be written out
-REAL,INTENT(IN)             :: Value(0:NVisu,0:NVisu,0:NVisu*(dim-2),nElems,1:nVal)  !< Statevector
+REAL,INTENT(IN)             :: Value(:,:,:,:,:)     !< Statevector
 CHARACTER(LEN=*),INTENT(IN) :: FileString           !< Output file name
 INTEGER,OPTIONAL,INTENT(IN) :: DGFV                 !< flag indicating DG = 0 or FV =1 data
 LOGICAL,OPTIONAL,INTENT(IN) :: nValAtLastDimension  !< if TRUE, nVal is stored in the last index of value
