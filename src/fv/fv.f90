@@ -107,7 +107,9 @@ USE MOD_FV_Basis
 USE MOD_Basis        ,ONLY: InitializeVandermonde
 USE MOD_Indicator    ,ONLY: doCalcIndicator
 USE MOD_Mesh_Vars    ,ONLY: nElems,nSides
+#if FV_RECONSTRUCT
 USE MOD_FV_Limiter
+#endif
 USE MOD_ReadInTools
 USE MOD_IO_HDF5      ,ONLY: AddToElemData
 ! IMPLICIT VARIABLE HANDLING

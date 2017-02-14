@@ -11,7 +11,7 @@
 !
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
-#if FV_ENABLED && FV_RECONSTRUCT
+#if FV_ENABLED
 #include "flexi.h"
 
 !==================================================================================================================================
@@ -22,6 +22,7 @@ MODULE MOD_FV_Limiter
 IMPLICIT NONE
 PRIVATE
 
+#if FV_RECONSTRUCT
 INTEGER,PARAMETER :: FV_LIMITERTYPE_NULL    = 0
 INTEGER,PARAMETER :: FV_LIMITERTYPE_MINMOD  = 1
 INTEGER,PARAMETER :: FV_LIMITERTYPE_SWEBY   = 2
@@ -49,7 +50,11 @@ PUBLIC::InitFV_Limiter
 PUBLIC::FV_Limiter
 !==================================================================================================================================
 
+#endif /* FV_RECONSTRUCT */
+
 CONTAINS
+
+#if FV_RECONSTRUCT
 
 !==================================================================================================================================
 !> Define parameters for FV Limiter
@@ -179,5 +184,7 @@ REAL,INTENT(OUT) :: s(PP_nVarPrim)
 s = (sL+sR)/2.0
 END SUBROUTINE CentralLimiter
 
+#endif /* FV_RECONSTRUCT */
+
 END MODULE MOD_FV_Limiter
-#endif /* FV_ENABLED && FV_RECONSTRUCT */
+#endif /* FV_ENABLED */
