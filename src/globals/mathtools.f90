@@ -23,15 +23,15 @@ PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE INV
-   MODULE PROCEDURE INV
+INTERFACE INVERSE
+   MODULE PROCEDURE INVERSE
 END INTERFACE
 
 INTERFACE CROSS
   MODULE PROCEDURE CROSS
 END INTERFACE CROSS
 
-PUBLIC::INV
+PUBLIC::INVERSE
 PUBLIC::CROSS
 !==================================================================================================================================
 
@@ -42,7 +42,7 @@ CONTAINS
 !> Computes matrix inverse using LAPACK
 !> Input matrix should be a square matrix
 !==================================================================================================================================
-FUNCTION INV(A) RESULT(AINV)
+FUNCTION INVERSE(A) RESULT(AINV)
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -77,7 +77,7 @@ CALL DGETRI(n, Ainv, n, ipiv, work, n, info)
 IF(info.NE.0)THEN
    STOP 'Matrix inversion failed!'
 END IF
-END FUNCTION INV
+END FUNCTION INVERSE
 
 
 !===================================================================================================================================

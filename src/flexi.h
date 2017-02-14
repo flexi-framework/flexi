@@ -52,8 +52,8 @@
 ! Test for equality: read description in mathtools.f90 for further infos
 #define ALMOSTEQUALABSOLUTE(x,y,tol)  (ABS((x)-(y)).LE.(tol))
 #define ALMOSTEQUALRELATIVE(x,y,tol)  (ABS((x)-(y)).LE.MAX(ABS(x),ABS(y))*(tol))
-#define ALMOSTEQUALABSORREL(x,y,tol)  ((ABS((x)-(y)).LE.(tol)) .OR.  (ABS((x)-(y)).LE.MAX(ABS(x),ABS(y))*(tol)))
-#define ALMOSTEQUALABSANDREL(x,y,tol) ((ABS((x)-(y)).LE.(tol)) .AND. (ABS((x)-(y)).LE.MAX(ABS(x),ABS(y))*(tol)))
+#define ALMOSTEQUALABSORREL(x,y,tol)  (ALMOSTEQUALABSOLUTE(x,y,tol) .OR.  ALMOSTEQUALRELATIVE(x,y,tol))
+#define ALMOSTEQUALABSANDREL(x,y,tol) (ALMOSTEQUALABSOLUTE(x,y,tol) .ANS. ALMOSTEQUALRELATIVE(x,y,tol))
 
 ! Define MPI specific write shortcuts
 #if USE_MPI
