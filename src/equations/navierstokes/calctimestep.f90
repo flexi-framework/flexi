@@ -165,7 +165,8 @@ DO iElem=1,nElems
     prim = UE(PRIM)
     mu=(VISCOSITY_PRIM(prim) &
 #ifdef EDDYVISCOSITY
-      +10.*muSGSMax(iElem) &
+      +1.*muSGSMax(iElem) &
+      !+10.*muSGSMax(iElem) &
 #endif
     )
     Max_Lambda_v=MAX(Max_Lambda_v,mu*UE(SRHO)*MetricsVisc(:,i,j,k,iElem,FVE))

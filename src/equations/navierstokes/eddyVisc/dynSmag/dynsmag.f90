@@ -91,6 +91,7 @@ END IF
 !For the moment local, TODO add an input for this
 filter_mask = (/.false., .false., .true./)
 
+SWRITE(UNIT_stdOut,*)' dynsmag: filtering mask:',filter_mask
 !Find in which x, y, z direction are the i, j ,k index pointing, and
 !then decide which index to filter
 DO iElem=1,nElems
