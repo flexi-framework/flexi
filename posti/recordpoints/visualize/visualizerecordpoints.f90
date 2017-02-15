@@ -27,7 +27,6 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                            :: iArg,iExt,nDataFiles
 LOGICAL                            :: success=.TRUE.
-CHARACTER(LEN=255)                 :: InputIniFile
 CHARACTER(LEN=255)                 :: InputDataFile
 CHARACTER(LEN=255),ALLOCATABLE     :: DataFiles(:)
 !===================================================================================================================================
@@ -191,7 +190,7 @@ USE MOD_RPInterpolation_Vars,ONLY:calcTimeAverage
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                :: iGroup,iVar
+INTEGER                :: iGroup
 !===================================================================================================================================
 Projectname=GETSTR('ProjectName')
 

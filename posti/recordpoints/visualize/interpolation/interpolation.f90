@@ -44,15 +44,15 @@ SUBROUTINE InitInterpolation()
 USE MOD_Globals
 USE MOD_RPData_Vars          ,ONLY: RPTime,nSamples_global
 USE MOD_RPInterpolation_Vars
-USE MOD_OutputRPVisu_Vars          ,ONLY: nSamples_out
-USE MOD_ParametersVisu           ,ONLY: equiTimeSpacing,OutputTimeAverage,doFluctuations,nBlocks,doFFT,fourthDeriv,doPSD
+USE MOD_OutputRPVisu_Vars    ,ONLY: nSamples_out
+USE MOD_ParametersVisu       ,ONLY: equiTimeSpacing
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                         :: iSample
-INTEGER                         :: nSamples_min,nSamples_2n
+INTEGER                         :: nSamples_min
 REAL                            :: dtMin,factor
 !===================================================================================================================================
 WRITE(UNIT_stdOut,'(132("-"))')

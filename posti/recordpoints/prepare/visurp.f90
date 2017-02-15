@@ -30,8 +30,7 @@ USE MOD_RPSet_Vars      ,ONLY: nRP_global
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-CHARACTER(LEN=255)            :: FileName
-CHARACTER(LEN=255)            :: strOutputFile
+CHARACTER(LEN=255)            :: FileName,strOutputFile
 !===================================================================================================================================
 IF(doVisuRP) THEN
 #ifdef HASTECPLOT
@@ -70,9 +69,7 @@ CHARACTER(LEN=*),INTENT(IN)   :: Projectname  !< Output file name
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                     :: ivtk=44
-INTEGER                     :: nElems_glob(0:nProcessors-1)
 INTEGER                     :: nBytes,Offset
-INTEGER                     :: INTdummy
 REAL(KIND=4)                :: FLOATdummy
 CHARACTER(LEN=35)           :: StrOffset,TempStr1,TempStr2
 CHARACTER(LEN=200)          :: Buffer
@@ -81,7 +78,6 @@ CHARACTER(LEN=255)          :: ZoneTitle
 CHARACTER(LEN=255)          :: FileName
 CHARACTER(LEN=255)          :: GroupName
 CHARACTER(LEN=1)            :: lf
-INTEGER                     :: NVisu_k,PointsPerVTKCell
 REAL,ALLOCATABLE            :: PlaneCoord(:,:,:),LineCoord(:,:),PointCoord(:,:)
 TYPE(tPlane),POINTER        :: Plane
 TYPE(tLine),POINTER         :: Line
