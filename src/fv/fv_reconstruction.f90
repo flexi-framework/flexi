@@ -273,24 +273,32 @@ END SUBROUTINE FV_SurfCalcGradients
 !==================================================================================================================================
 SUBROUTINE FV_SurfCalcGradients_BC(UPrim_master,FV_surf_gradU_master,t)
 ! MODULES
-USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Mesh_Vars       ,ONLY: nBCSides,nSides
+USE MOD_Mesh_Vars       ,ONLY: firstBCSide,lastBCSide,nSides
+USE MOD_Mesh_Vars       ,ONLY: NormVec,TangVec1,TangVec2,Face_xGP
+USE MOD_FV_Vars         ,ONLY: FV_Elems_master,FV_sdx_Face
 USE MOD_GetBoundaryFlux ,ONLY: GetBoundaryFVgradient
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(IN)  :: t
-REAL,INTENT(IN)  :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
-REAL,INTENT(OUT) :: FV_surf_gradU_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
+REAL,INTENT(IN)    :: t
+REAL,INTENT(IN)    :: UPrim_master(        PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
+REAL,INTENT(INOUT) :: FV_surf_gradU_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER             :: SideID
 !==================================================================================================================================
-! BCSides are filled
-IF (nBCSides.GT.0) THEN
-    CALL GetBoundaryFVgradient(t, FV_surf_gradU_master, UPrim_master)
-END IF
+DO SideID=firstBCSide,lastBCSide
+  IF (FV_Elems_master(SideID).EQ.0) CYCLE
+  CALL GetBoundaryFVgradient(SideID,t,FV_surf_gradU_master(:,:,:,SideID),&
+                                              UPrim_master(:,:,:,SideID),&
+                                                 NormVec(:,:,:,1,SideID),&
+                                                TangVec1(:,:,:,1,SideID),&
+                                                TangVec2(:,:,:,1,SideID),&
+                                                Face_xGP(:,:,:,1,SideID),&
+                                               FV_sdx_Face(:,:,:,SideID))
+END DO
 END SUBROUTINE FV_SurfCalcGradients_BC
 
 !==================================================================================================================================

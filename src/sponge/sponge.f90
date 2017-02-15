@@ -174,8 +174,8 @@ CASE(SPONGEBASEFLOW_PRUETT) ! Pruett
   CalcPruettDamping=.TRUE.
   CALL InitPruettDamping()
   IF(DoRestart)THEN
-    BaseFlowFile    = GETSTR('SpongeBaseFlowFile','')
-    IF (TRIM(BaseFlowFile) .EQ. '') THEN
+    BaseFlowFile    = GETSTR('SpongeBaseFlowFile','none')
+    IF (TRIM(BaseFlowFile) .EQ. 'none') THEN
       ! If no base flow file has been specified, assume a standard name for the base flow file
       BaseFlowFile=TRIM(TIMESTAMP(TRIM(ProjectName)//'_BaseFlow',RestartTime))//'.h5'
       ! Check if this file exists
@@ -208,7 +208,7 @@ SELECT CASE(SpBaseflowType)
 CASE(SPONGEBASEFLOW_CONSTANT) ! constant baseflow from refstate
   DO iElem=1,nElems
     DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
-      SpBaseFlow(:,i,j,k,iElem)=RefStateCons(spongeRefState,:)
+      SpBaseFlow(:,i,j,k,iElem)=RefStateCons(:,spongeRefState)
     END DO; END DO; END DO
   END DO
 CASE(SPONGEBASEFLOW_EXACTFUNC) ! Exactfunction

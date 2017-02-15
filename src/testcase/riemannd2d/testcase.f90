@@ -14,6 +14,10 @@
 #include "flexi.h"
 #include "eos.h"
 
+#if ! FV_ENABLED
+#error "This testcase is not tested without FV. Please enable FV in cmake."
+#endif
+
 !==================================================================================================================================
 !> Riemann2D testcase 
 !==================================================================================================================================
@@ -103,10 +107,10 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT TESTCASE Riemann2D...'
 
 CALL CalcIniStates()
 
-CALL Riemann_Speeds(1,RiemannBC_WaveType(1),RefStatePrim(2,:),RefStatePrim(1,:),RiemannBC_speeds(1,:))
-CALL Riemann_Speeds(2,RiemannBC_WaveType(2),RefStatePrim(3,:),RefStatePrim(2,:),RiemannBC_speeds(2,:))
-CALL Riemann_Speeds(1,RiemannBC_WaveType(3),RefStatePrim(3,:),RefStatePrim(4,:),RiemannBC_speeds(3,:))
-CALL Riemann_Speeds(2,RiemannBC_WaveType(4),RefStatePrim(4,:),RefStatePrim(1,:),RiemannBC_speeds(4,:))
+CALL Riemann_Speeds(1,RiemannBC_WaveType(1),RefStatePrim(:,2),RefStatePrim(:,1),RiemannBC_speeds(1,:))
+CALL Riemann_Speeds(2,RiemannBC_WaveType(2),RefStatePrim(:,3),RefStatePrim(:,2),RiemannBC_speeds(2,:))
+CALL Riemann_Speeds(1,RiemannBC_WaveType(3),RefStatePrim(:,3),RefStatePrim(:,4),RiemannBC_speeds(3,:))
+CALL Riemann_Speeds(2,RiemannBC_WaveType(4),RefStatePrim(:,4),RefStatePrim(:,1),RiemannBC_speeds(4,:))
 
 IF (MPIRoot) THEN
   WRITE(*,*) " Calculate states, shock, discontinuity and expansion speeds for all 4 sides"
@@ -114,17 +118,17 @@ IF (MPIRoot) THEN
   WRITE(*,'(31(" "),A13," speed=",2F8.4)') WAVENAMES(RiemannBC_WaveType(1)), RiemannBC_speeds(1,:)
   WRITE(*,'(14(" "),"|",21("-"),"|",21("-")"|")') 
   WRITE(*,'(14(" "),"|",21(" "),"|",21(" ")"|")') 
-  WRITE(*,'(14(" "),"| p=",F7.4," r=",F7.4," | p=",F7.4," r=",F7.4," |")')  RefStatePrim(2,5), RefStatePrim(2,1),&
-      RefStatePrim(1,5), RefStatePrim(1,1) 
-  WRITE(*,'(14(" "),"| u=",F7.4," v=",F7.4," | u=",F7.4," v=",F7.4," |")')  RefStatePrim(2,2), RefStatePrim(2,3),&
-      RefStatePrim(1,2), RefStatePrim(1,3) 
+  WRITE(*,'(14(" "),"| p=",F7.4," r=",F7.4," | p=",F7.4," r=",F7.4," |")')  RefStatePrim(5,2), RefStatePrim(1,2),&
+      RefStatePrim(5,1), RefStatePrim(1,1) 
+  WRITE(*,'(14(" "),"| u=",F7.4," v=",F7.4," | u=",F7.4," v=",F7.4," |")')  RefStatePrim(2,2), RefStatePrim(3,2),&
+      RefStatePrim(2,1), RefStatePrim(3,1) 
   WRITE(*,'(14(" "),"|",21(" "),"|",21(" ")"|")') 
   WRITE(*,'(A13," |",21("-"),"|",21("-")"| ",A13)') ADJUSTR(TRIM(WAVENAMES(RiemannBC_WaveType(2)))), WAVENAMES(RiemannBC_WaveType(4))
   WRITE(*,'("speed=",8(" "),"|",21(" "),"|",21(" ")"| speed=")') 
   WRITE(*,'(F13.4," | p=",F7.4," r=",F7.4," | p=",F7.4," r=",F7.4," | ",F7.4)') RiemannBC_speeds(2,1), &
-      RefStatePrim(3,5), RefStatePrim(3,1), RefStatePrim(4,5), RefStatePrim(4,1), RiemannBC_speeds(4,1)
+      RefStatePrim(5,3), RefStatePrim(1,3), RefStatePrim(5,4), RefStatePrim(1,4), RiemannBC_speeds(4,1)
   WRITE(*,'(F13.4," | u=",F7.4," v=",F7.4," | u=",F7.4," v=",F7.4," | ",F7.4)') RiemannBC_speeds(2,2), &
-      RefStatePrim(3,2), RefStatePrim(3,3), RefStatePrim(4,2), RefStatePrim(4,3), RiemannBC_speeds(4,2)
+      RefStatePrim(2,3), RefStatePrim(3,3), RefStatePrim(2,4), RefStatePrim(3,4), RiemannBC_speeds(4,2)
   WRITE(*,'(14(" "),"|",21(" "),"|",21(" ")"|")') 
   WRITE(*,'(14(" "),"|",21("-"),"|",21("-")"|")') 
   WRITE(*,'(31(" "),A13," speed=",2F8.4)') WAVENAMES(RiemannBC_WaveType(3)), RiemannBC_speeds(3,:)
@@ -594,21 +598,21 @@ END SELECT
 
 nRefState = 4
 SDEALLOCATE(RefStatePrim)
-ALLOCATE(RefStatePrim(4,PP_nVarPrim))
-RefStatePrim(:,1) = rho
-RefStatePrim(:,2) = u
-RefStatePrim(:,3) = v
-RefStatePrim(:,4) = 0.
-RefStatePrim(:,5) = p
+ALLOCATE(RefStatePrim(PP_nVarPrim,4))
+RefStatePrim(1,:) = rho
+RefStatePrim(2,:) = u
+RefStatePrim(3,:) = v
+RefStatePrim(4,:) = 0.
+RefStatePrim(5,:) = p
 
 SDEALLOCATE(RefStateCons)
-ALLOCATE(RefStateCons(4,PP_nVar))
+ALLOCATE(RefStateCons(PP_nVar,4))
 DO i=1,4
   ! TODO: ATTENTION only sRho and Pressure of UE filled!!!
-  UE(SRHO) = 1./RefStatePrim(i,1)
-  UE(PRES) = RefStatePrim(i,5)
-  RefStatePrim(i,6) = TEMPERATURE_HE(UE)
-  CALL PrimToCons(RefStatePrim(i,:), RefStateCons(i,:))
+  UE(SRHO) = 1./RefStatePrim(1,i)
+  UE(PRES) = RefStatePrim(5,i)
+  RefStatePrim(6,i) = TEMPERATURE_HE(UE)
+  CALL PrimToCons(RefStatePrim(:,i), RefStateCons(:,i))
 END DO 
 END SUBROUTINE CalcIniStates
 
@@ -633,13 +637,13 @@ REAL,INTENT(OUT)                :: Resu_tt(5)  !< second time deriv of exact fuc
 !(see: Solution of Two-Dimensional Riemann Problems for Gas Dynamics without Riemann Problem Solvers
 !      Alexander Kurganov, Eitan Tadmor)
 IF ((x(1).GE.0.0).AND.(x(2).GE.0.0)) THEN
-    Resu = RefStateCons(1,:)
+    Resu = RefStateCons(:,1)
 ELSE IF ((x(1).LT.0.0).AND.(x(2).GE.0.0)) THEN
-    Resu = RefStateCons(2,:)
+    Resu = RefStateCons(:,2)
 ELSE IF ((x(1).LT.0.0).AND.(x(2).LT.0.0)) THEN
-    Resu = RefStateCons(3,:)
+    Resu = RefStateCons(:,3)
 ELSE IF ((x(1).GE.0.0).AND.(x(2).LT.0.0)) THEN
-    Resu = RefStateCons(4,:)
+    Resu = RefStateCons(:,4)
 END IF
 
 Resu_t =0.
@@ -647,7 +651,7 @@ Resu_tt=0.
 
 END SUBROUTINE ExactFuncTestcase
 
-SUBROUTINE GetBoundaryFluxTestcase(SideID,t,Nloc,Flux,UPrim_master,                   &
+SUBROUTINE GetBoundaryFluxTestcase(SideID,t,Nloc,Flux,UPrim_master,  &
 #if PARABOLIC
                            gradUx_master,gradUy_master,gradUz_master,&
 #endif
@@ -656,9 +660,7 @@ SUBROUTINE GetBoundaryFluxTestcase(SideID,t,Nloc,Flux,UPrim_master,             
 USE MOD_PreProc
 USE MOD_Globals
 USE MOD_Testcase_Vars
-USE MOD_Mesh_Vars     ,ONLY: nSides
-USE MOD_Mesh_Vars     ,ONLY: BoundaryType, BC
-USE MOD_FV_Vars       ,ONLY: FV_Elems_master
+USE MOD_Mesh_Vars     ,ONLY: BoundaryType,BC
 USE MOD_Riemann       ,ONLY: Riemann
 USE MOD_EOS           ,ONLY: PrimToCons
 USE MOD_Equation_Vars ,ONLY: RefStatePrim,RefStateCons
@@ -667,113 +669,106 @@ USE MOD_Equation_Vars ,ONLY: RefStatePrim,RefStateCons
 INTEGER,INTENT(IN)   :: SideID  
 REAL,INTENT(IN)      :: t       !< current time (provided by time integration scheme)
 INTEGER,INTENT(IN)   :: Nloc    !< polynomial degree
-REAL,INTENT(IN)      :: UPrim_master( PP_nVarPrim,0:Nloc,0:Nloc,1:nSides) !< inner surface solution
+REAL,INTENT(IN)      :: UPrim_master( PP_nVarPrim,0:Nloc,0:Nloc) !< inner surface solution
 #if PARABOLIC
                                                            !> inner surface solution gradients in x/y/z-direction
-REAL,INTENT(IN)      :: gradUx_master(PP_nVarPrim,0:Nloc,0:Nloc,1:nSides)
-REAL,INTENT(IN)      :: gradUy_master(PP_nVarPrim,0:Nloc,0:Nloc,1:nSides)
-REAL,INTENT(IN)      :: gradUz_master(PP_nVarPrim,0:Nloc,0:Nloc,1:nSides)
+REAL,INTENT(IN)      :: gradUx_master(PP_nVarPrim,0:Nloc,0:Nloc)
+REAL,INTENT(IN)      :: gradUy_master(PP_nVarPrim,0:Nloc,0:Nloc)
+REAL,INTENT(IN)      :: gradUz_master(PP_nVarPrim,0:Nloc,0:Nloc)
 #endif /*PARABOLIC*/
                                                            !> normal and tangential vectors on surfaces
-REAL,INTENT(IN)      :: NormVec (3,0:Nloc,0:Nloc,0:FV_ENABLED,1:nSides)
-REAL,INTENT(IN)      :: TangVec1(3,0:Nloc,0:Nloc,0:FV_ENABLED,1:nSides)
-REAL,INTENT(IN)      :: TangVec2(3,0:Nloc,0:Nloc,0:FV_ENABLED,1:nSides)
-REAL,INTENT(IN)      :: Face_xGP(3,0:Nloc,0:Nloc,0:FV_ENABLED,1:nSides) !< positions of surface flux points
-REAL,INTENT(OUT)     :: Flux(PP_nVar,0:Nloc,0:Nloc,1:nSides)  !< resulting boundary fluxes
+REAL,INTENT(IN)      :: NormVec (3,0:Nloc,0:Nloc)
+REAL,INTENT(IN)      :: TangVec1(3,0:Nloc,0:Nloc)
+REAL,INTENT(IN)      :: TangVec2(3,0:Nloc,0:Nloc)
+REAL,INTENT(IN)      :: Face_xGP(3,0:Nloc,0:Nloc) !< positions of surface flux points
+REAL,INTENT(OUT)     :: Flux(PP_nVar,0:Nloc,0:Nloc)  !< resulting boundary fluxes
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER           :: BCType,BCState, dir, p, q, iL, iR
 REAL              :: pos(2), x, rel
-REAL              :: UCons_boundary(PP_nVar    ,0:PP_N,0:PP_N)
-REAL              :: UPrim_boundary(PP_nVarPrim,0:PP_N,0:PP_N)
+REAL              :: UCons_boundary(PP_nVar    ,0:Nloc,0:Nloc)
+REAL              :: UPrim_boundary(PP_nVarPrim,0:Nloc,0:Nloc)
 REAL              :: UCons_master  (PP_nVar    ,0:Nloc,0:Nloc)
 !==================================================================================================================================
 ! convert primitive inner state to conservative
-DO q=0,PP_N; DO p=0,PP_N
-  CALL PrimToCons(UPrim_master(:,p,q,SideID), UCons_master(:,p,q)) 
+DO q=0,Nloc; DO p=0,Nloc
+  CALL PrimToCons(UPrim_master(:,p,q), UCons_master(:,p,q)) 
 END DO; END DO ! p,q=0,PP_N
 
 BCType  = Boundarytype(BC(SideID),BC_TYPE)
 BCState = Boundarytype(BC(SideID),BC_STATE)
-pos = RiemannBC_Speeds(BCState,:) * t 
-dir = MOD(BCState+1,2)+1
-iL = SideToQuads(1,BCState)
-iR = SideToQuads(2,BCState)
 IF (BCType.EQ.-101) THEN
+  pos = RiemannBC_Speeds(BCState,:) * t 
+  dir = MOD(BCState+1,2)+1
+  iL = SideToQuads(1,BCState)
+  iR = SideToQuads(2,BCState)
   DO q=0,PP_N; DO p=0,PP_N
-    x = Face_xGP(dir,p,q,FV_Elems_master(SideID),SideID)
+    x = Face_xGP(dir,p,q)
     SELECT CASE (RiemannBC_WaveType(BCState))
     CASE(SHOCK, DISCONTINUITY)
       IF (x.LT.pos(1)) THEN
-        UCons_boundary(:,p,q)=RefStateCons(iL,:)
-        UPrim_boundary(:,p,q)=RefStatePrim(iL,:)
+        UCons_boundary(:,p,q)=RefStateCons(:,iL)
+        UPrim_boundary(:,p,q)=RefStatePrim(:,iL)
       ELSE 
-        UCons_boundary(:,p,q)=RefStateCons(iR,:)
-        UPrim_boundary(:,p,q)=RefStatePrim(iR,:)
+        UCons_boundary(:,p,q)=RefStateCons(:,iR)
+        UPrim_boundary(:,p,q)=RefStatePrim(:,iR)
       END IF
     CASE(RAREFACTION)
       IF (x.LE.pos(1)) THEN
-        UPrim_boundary(:,p,q)=RefStatePrim(iL,:)
+        UPrim_boundary(:,p,q)=RefStatePrim(:,iL)
       ELSE IF( x.GE.pos(2)) THEN
-        UPrim_boundary(:,p,q)=RefStatePrim(iR,:)
+        UPrim_boundary(:,p,q)=RefStatePrim(:,iR)
       ELSE
         rel = (x-pos(1))/(pos(2)-pos(1))
-        UPrim_boundary(:,p,q)= (1-rel)*RefStatePrim(iL,:) + rel*RefStatePrim(iR,:)
+        UPrim_boundary(:,p,q)= (1-rel)*RefStatePrim(:,iL) + rel*RefStatePrim(:,iR)
       END IF
       CALL PrimToCons(UPrim_boundary(:,p,q), UCons_boundary(:,p,q)) 
     END SELECT
   END DO; END DO
 ELSE IF(BCType.EQ.-102) THEN
-  UPrim_boundary = UPrim_master(:,:,:,SideID)
+  UPrim_boundary = UPrim_master
   UCons_boundary = UCons_master
 ELSE
   CALL Abort(__STAMP__, &
       "Unknown Boundary type!")
 END IF
 
-CALL Riemann(Nloc,Flux(:,:,:,SideID),UCons_master,UCons_boundary,UPrim_master(:,:,:,SideID),UPrim_boundary,&
-    NormVec (:,:,:,FV_Elems_master(SideID),SideID),&
-    TangVec1(:,:,:,FV_Elems_master(SideID),SideID),&
-    TangVec2(:,:,:,FV_Elems_master(SideID),SideID),&
-    doBC=.TRUE.)
+CALL Riemann(Nloc,Flux,UCons_master,UCons_boundary,UPrim_master,UPrim_boundary,&
+             NormVec, TangVec1, TangVec2, doBC=.TRUE.)
 
 END SUBROUTINE GetBoundaryFluxTestcase
 
 
 SUBROUTINE GetBoundaryFVgradientTestcase(SideID,t,gradU,UPrim_master)
 USE MOD_PreProc
-USE MOD_Mesh_Vars    ,ONLY: nSides
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: SideID
-REAL,INTENT(IN)    :: t
-REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
-REAL,INTENT(OUT)   :: gradU       (PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
+REAL,INTENT(IN)    :: t                                       !< current time (provided by time integration scheme)
+REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_N) !< primitive solution from the inside
+REAL,INTENT(OUT)   :: gradU       (PP_nVarPrim,0:PP_N,0:PP_N) !< FV boundary gradient
 !==================================================================================================================================
-gradU(:,:,:,SideID) = 0.
+gradU = 0.
 END SUBROUTINE GetBoundaryFVgradientTestcase
 
 
 SUBROUTINE Lifting_GetBoundaryFluxTestcase(SideID,t,UPrim_master,Flux)
 USE MOD_PreProc
-USE MOD_Mesh_Vars    ,ONLY: nSides
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: SideID
-REAL,INTENT(IN)    :: t                                    !< current time (provided by time integration scheme)
-REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< primitive solution from the inside
-REAL,INTENT(OUT)   :: Flux(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< lifting boundary flux
+REAL,INTENT(IN)    :: t                                       !< current time (provided by time integration scheme)
+REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_N) !< primitive solution from the inside
+REAL,INTENT(OUT)   :: Flux(        PP_nVarPrim,0:PP_N,0:PP_N) !< lifting boundary flux
 !==================================================================================================================================
 END SUBROUTINE Lifting_GetBoundaryFluxTestcase
 
+
 SUBROUTINE Riemann_Speeds(dir, wavetype, prim_L, prim_R, speeds)
-!=================================================================================================================================
 !=================================================================================================================================
 ! MODULES
 USE MOD_PreProc
-USE MOD_Globals
 USE MOD_EOS_Vars, ONLY: Kappa,kappaM1,KappaP1
-! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
@@ -781,8 +776,6 @@ INTEGER,INTENT(IN)                 :: dir
 INTEGER,INTENT(IN)                 :: wavetype
 REAL,DIMENSION(PP_nVar),INTENT(IN) :: prim_L, prim_R
 REAL,DIMENSION(1:2),INTENT(OUT)    :: speeds
-!---------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !---------------------------------------------------------------------------------------------------------------------------------
