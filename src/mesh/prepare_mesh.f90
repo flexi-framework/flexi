@@ -202,7 +202,7 @@ DO iElem=FirstElemInd,LastElemInd
     END DO !iMortar
   END DO ! iLocSide=1,6
 END DO !iElem
-IF(iSide.NE.nInnerSides+nBCSides+nMortarInnerSides) STOP'not all SideIDs are set!'
+IF(iSide.NE.nInnerSides+nBCSides+nMortarInnerSides) STOP 'not all SideIDs are set!'
 LOGWRITE(*,*)'-------------------------------------------------------'
 LOGWRITE(*,'(A22,I8)')'nMortarSides:',nMortarSides
 LOGWRITE(*,'(A22,I8)')'nMortarInnerSides:',nMortarInnerSides

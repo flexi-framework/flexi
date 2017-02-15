@@ -194,7 +194,7 @@ USE MOD_FillMortarPrim,    ONLY: U_MortarPrim,Flux_MortarPrim
 USE MOD_MPI_Vars
 USE MOD_MPI,               ONLY: StartReceiveMPIData,StartSendMPIData,FinishExchangeMPIData
 #endif
-USE MOD_Mesh_Vars,         ONLY: nBCSides,nSides
+USE MOD_Mesh_Vars,         ONLY: nSides
 USE MOD_Mesh_Vars,         ONLY: nElems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------

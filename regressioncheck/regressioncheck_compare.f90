@@ -155,11 +155,8 @@ INTEGER,INTENT(IN)             :: iExample
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL,ALLOCATABLE               :: ReferenceNorm(:,:)                !> L2 and Linf norm of the executed example from a reference
-                                                                    !> solution
-INTEGER                        :: ErrorStatus                       !> Error-code of regressioncheck
 INTEGER                        :: iSTATUS
-INTEGER                        :: I,J,K
+INTEGER                        :: I,J
 INTEGER                        :: NumberOfCellsInteger
 INTEGER                        :: iSubExample,p
 REAL,ALLOCATABLE               :: Order(:,:),OrderAveraged(:)
@@ -754,9 +751,8 @@ CHARACTER(LEN=1)               :: Delimiter
 CHARACTER(LEN=255)             :: FileName
 CHARACTER(LEN=255),ALLOCATABLE :: ColumnHeaders(:)
 CHARACTER(LEN=10000)           :: temp1,temp2
-INTEGER                        :: iSTATUS,ioUnit,LineNumbers,I,HeaderLines,j,CurrentColumn,IndNum,MaxColumn!,K
-INTEGER                        :: IndFirstA,IndLastA,IndFirstB,IndLastB,EOL,MaxRow,K,ColumnNumber
-LOGICAL                        :: ExistFile,IndexNotFound,ReadHeaderLine,RowFound
+INTEGER                        :: iSTATUS,ioUnit,LineNumbers,HeaderLines,j,k,ColumnNumber
+LOGICAL                        :: ExistFile,ReadHeaderLine,RowFound
 LOGICAL,ALLOCATABLE            :: ValuesAreEqual(:)
 REAL,ALLOCATABLE               :: Values(:),ValuesRef(:)
 INTEGER                        :: DimValues,DimValuesRef,DimColumnHeaders
@@ -882,7 +878,6 @@ SUBROUTINE GetColumns(InputString,Delimiter,ColumnString,ColumnReal,Column)
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_RegressionCheck_Vars,  ONLY: Examples
 USE MOD_RegressionCheck_tools, ONLY: str2real
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -895,12 +890,9 @@ REAL,ALLOCATABLE,INTENT(INOUT),OPTIONAL             :: ColumnReal(:)
 ! LOCAL VARIABLES
 CHARACTER(LEN=255),ALLOCATABLE :: ColumnStringLocal(:)
 CHARACTER(LEN=1)               :: Delimiter
-CHARACTER(LEN=255)             :: FileName
-CHARACTER(LEN=10000)           :: temp1
 INTEGER                        :: IndNumOld,ColumnNumber
-INTEGER                        :: iSTATUS,ioUnit,LineNumbers,I,HeaderLines,j,CurrentColumn,IndNum,MaxColumn!,K
-LOGICAL                        :: ExistFile,IndexNotFound,IntegralValuesAreEqual,RowFound,InquireColumns
-REAL,ALLOCATABLE               :: Values(:,:),Q
+INTEGER                        :: iSTATUS,j,IndNum
+LOGICAL                        :: InquireColumns
 !==================================================================================================================================
 !print*,"InputString=",TRIM(InputString)
 !print*,"Continue?"
