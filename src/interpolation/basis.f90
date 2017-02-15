@@ -72,6 +72,10 @@ INTERFACE LagrangeInterpolationPolys
    MODULE PROCEDURE LagrangeInterpolationPolys
 END INTERFACE
 
+INTERFACE ALMOSTEQUAL
+   MODULE PROCEDURE ALMOSTEQUAL
+END INTERFACE
+
 INTERFACE EQUALTOTOLERANCE
    MODULE PROCEDURE EQUALTOTOLERANCE
 END INTERFACE
@@ -88,6 +92,7 @@ PUBLIC::LegendrePolynomialAndDerivative
 PUBLIC::PolynomialDerivativeMatrix
 PUBLIC::BarycentricWeights
 PUBLIC::LagrangeInterpolationPolys
+PUBLIC::ALMOSTEQUAL
 PUBLIC::EQUALTOTOLERANCE
 
 !==================================================================================================================================
@@ -195,7 +200,7 @@ END SUBROUTINE buildLegendreVdm
 !> Build a 1D Vandermonde matrix using the Lagrange basis functions of degree
 !> N_In, evaluated at the interpolation points xi_Out
 !===================================================================================================================================
-SUBROUTINE InitializeVandermonde(N_In,N_Out,wBary_In,xi_In,xi_Out,Vdm)
+PURE SUBROUTINE InitializeVandermonde(N_In,N_Out,wBary_In,xi_In,xi_Out,Vdm)
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -222,7 +227,7 @@ END SUBROUTINE InitializeVandermonde
 !> recursive algorithm using the N_in-1 N_in-2 Legendre polynomials
 !> algorithm 22, Kopriva book
 !===================================================================================================================================
-SUBROUTINE LegendrePolynomialAndDerivative(N_in,x,L,Lder)
+ELEMENTAL SUBROUTINE LegendrePolynomialAndDerivative(N_in,x,L,Lder)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -267,7 +272,7 @@ END SUBROUTINE LegendrePolynomialAndDerivative
 !==================================================================================================================================
 !> Compute Chebychev-Gauss nodes and integration weights (algorithm 27, Kopriva book)
 !==================================================================================================================================
-SUBROUTINE ChebyshevGaussNodesAndWeights(N_in,xGP,wGP)
+PURE SUBROUTINE ChebyshevGaussNodesAndWeights(N_in,xGP,wGP)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -293,7 +298,7 @@ END SUBROUTINE ChebyshevGaussNodesAndWeights
 !==================================================================================================================================
 !> Compute Chebychev-Gauss-Lobatto nodes and integration weights (algorithm 27, Kopriva book)
 !==================================================================================================================================
-SUBROUTINE ChebyGaussLobNodesAndWeights(N_in,xGP,wGP)
+PURE SUBROUTINE ChebyGaussLobNodesAndWeights(N_in,xGP,wGP)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -320,7 +325,7 @@ END SUBROUTINE ChebyGaussLobNodesAndWeights
 !==================================================================================================================================
 !> Compute Clenshaw-Curtis nodes and integration weights
 !==================================================================================================================================
-SUBROUTINE ClenshawCurtisNodesAndWeights(N_in,xGP,wGP)
+PURE SUBROUTINE ClenshawCurtisNodesAndWeights(N_in,xGP,wGP)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -441,7 +446,7 @@ END SUBROUTINE LegendreGaussNodesAndWeights
 !> Evaluate the polynomial q=L_{N_in+1}-L_{N_in-1} and its derivative at position x in [-1,1]
 !> Recursive algorithm using the N_in-1 N_in-2 Legendre polynomials. (Algorithm 24, Kopriva book)
 !==================================================================================================================================
-SUBROUTINE qAndLEvaluation(N_in,x,q,qder,L)
+ELEMENTAL SUBROUTINE qAndLEvaluation(N_in,x,q,qder,L)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -551,7 +556,7 @@ END SUBROUTINE LegGaussLobNodesAndWeights
 !==================================================================================================================================
 !> Computes barycentric (interpolation) weights for interpolation polynomial given by set of nodes. (Algorithm 30, Kopriva book)
 !==================================================================================================================================
-SUBROUTINE BarycentricWeights(N_in,xGP,wBary)
+PURE SUBROUTINE BarycentricWeights(N_in,xGP,wBary)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -577,7 +582,7 @@ END SUBROUTINE BarycentricWeights
 !==================================================================================================================================
 !> Computes polynomial differentiation matrix for interpolation polynomial given by set of nodes. (Algorithm 37, Kopriva book)
 !==================================================================================================================================
-SUBROUTINE PolynomialDerivativeMatrix(N_in,xGP,D)
+PURE SUBROUTINE PolynomialDerivativeMatrix(N_in,xGP,D)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -608,7 +613,7 @@ END SUBROUTINE PolynomialDerivativeMatrix
 !> Takes into account that x,y are located in-between [-1;1]
 !> Based on Algorithm 139, Kopriva
 !==================================================================================================================================
-FUNCTION ALMOSTEQUAL(x,y)
+ELEMENTAL FUNCTION ALMOSTEQUAL(x,y)
 USE MOD_PreProc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -632,7 +637,7 @@ END FUNCTION ALMOSTEQUAL
 !> Determines if two real numbers are equal up to a given tolerance.
 !> Routine requires: x,y > tolerance
 !==================================================================================================================================
-FUNCTION EQUALTOTOLERANCE(x,y,tolerance) 
+ELEMENTAL FUNCTION EQUALTOTOLERANCE(x,y,tolerance) 
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -668,7 +673,7 @@ END FUNCTION EQUALTOTOLERANCE
 !> Uses function ALMOSTEQUAL
 !> Algorithm 34, Kopriva book
 !============================================================================================================================
-SUBROUTINE LagrangeInterpolationPolys(x,N_in,xGP,wBary,L)
+PURE SUBROUTINE LagrangeInterpolationPolys(x,N_in,xGP,wBary,L)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
