@@ -23,7 +23,7 @@ SET(   POSTI_WHICH_EOS    "idealgas" CACHE STRING
                         "Used equation of state (idealgas)")
 
 IF(POSTI_BUILD_VISUALIZERECORDPOINTS)
-  
+
   # =========================================================================
   # FFTW (FFT tool)
   # =========================================================================
@@ -37,28 +37,28 @@ IF(POSTI_BUILD_VISUALIZERECORDPOINTS)
   ENDIF()
   SET(POSTI_FFTWTAG "fftw-3.3.6-pl1" CACHE STRING "FFTW version tag")
   SET(POSTI_FFTWDIR ${FLEXI_EXTERNAL_LIB_DIR}/fftw)
-  FIND_PACKAGE(FFTW QUIET)
-  IF (NOT FFTW_FOUND)
-    OPTION(POSTI_BUILDFFTW "Compile and build fftw library" ON)
-  ELSE()
-    OPTION(POSTI_BUILDFFTW "Compile and build fftw library" OFF)
-  ENDIF()
-  IF (POSTI_BUILDFFTW)
-    IF (NOT EXISTS ${POSTI_FFTWDIR}/build/lib/libfftw3.a)
+  # Try to find the library in the share directory or in a global, user-defined $FFTWDIR
+  FIND_PATH(FFTW_INCLUDES fftw3.h HINTS ${FLEXI_EXTERNAL_LIB_DIR}/fftw/build/include ${FFTWDIR}/build/include)
+  FIND_LIBRARY(FFTW_LIBRARIES NAMES fftw3 HINTS ${FLEXI_EXTERNAL_LIB_DIR}/fftw/build/lib ${FFTWDIR}/build/lib)
+  IF(FFTW_INCLUDES STREQUAL "FFTW_INCLUDES-NOTFOUND" OR FFTW_LIBRARIES STREQUAL "FFTW_LIBRARIES-NOTFOUND")
+    MESSAGE(STATUS "FFTW not found, building library")
       ExternalProject_Add(fftw
         GIT_REPOSITORY ${FFTWDOWNLOAD}
         GIT_TAG ${POSTI_FFTWTAG}
         PREFIX  ${POSTI_FFTWDIR}
+	UPDATE_COMMAND ""
         CONFIGURE_COMMAND tar xzf ${POSTI_FFTWTAG}.tar.gz && FC=${CMAKE_Fortran_COMPILER} CC=${CMAKE_C_COMPILER} F77=${CMAKE_F77_COMPILER} ${POSTI_FFTWDIR}/src/fftw/${POSTI_FFTWTAG}/configure --prefix=${POSTI_FFTWDIR}/build
         BUILD_IN_SOURCE 1
       )
-    ENDIF()
     SET(FFTW_INCLUDE_DIR ${POSTI_FFTWDIR}/build/include)
     SET(FFTW_LIBRARY     ${POSTI_FFTWDIR}/build/lib/libfftw3.a)
     SET(FFTW_LIBRARIES   ${POSTI_FFTWDIR}/build/lib/libfftw3.a)
   ELSE()
-    MESSAGE(STATUS "FFTW include dir: " ${FFTW_INCLUDE_DIR})
+    MESSAGE(STATUS "FFTW includes found: " ${FFTW_INCLUDES})
+    SET(FFTW_INCLUDE_DIR ${FFTW_INCLUDES})
+    SET(FFTW_LIBRARY     ${FFTW_LIBRARIES})
   ENDIF()
+
 ENDIF()
 
 
