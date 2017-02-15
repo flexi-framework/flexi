@@ -104,12 +104,12 @@ END SUBROUTINE InitInterpolation
 !===================================================================================================================================
 SUBROUTINE InterpolateEquiTime()
 ! MODULES
+USE MOD_Preproc
 USE MOD_Globals
 USE MOD_RPData_Vars          ,ONLY: RPTime,nVar_HDF5,nSamples_global,RPData
-USE MOD_RPSetVisuVisu_Vars           ,ONLY: nRP_global
+USE MOD_RPSetVisuVisu_Vars   ,ONLY: nRP_global
 USE MOD_RPInterpolation_Vars
-USE MOD_OutputRPVisu_Vars          ,ONLY: nSamples_out
-USE MOD_Basis                ,ONLY: ALMOSTEQUAL
+USE MOD_OutputRPVisu_Vars    ,ONLY: nSamples_out
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -142,7 +142,7 @@ DO iSample=2,nSamples_out
   ! get two closest surrounding samples
   DO
     Time_right=RPTime_tmp(iSample_right)
-    IF((Time_right.GE.Time).OR.ALMOSTEQUAL(Time_right,Time)) EXIT
+    IF((Time_right.GE.Time).OR.ALMOSTEQUALABSORREL(Time_right,Time,PP_RealTolerance)) EXIT
     iSample_right=MIN(iSample_right+1,nSamples_global)
   END DO
   iSample_left=iSample_right-1
