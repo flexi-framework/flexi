@@ -17,7 +17,6 @@
 !> Provides parameters, used globally (please use EXTREMLY carefully!)
 !==================================================================================================================================
 MODULE MOD_Globals
-USE ISO_C_BINDING
 ! MODULES
 #if USE_MPI
 USE mpi
@@ -49,15 +48,6 @@ INTEGER           ::MPIStatus(MPI_STATUS_SIZE)
 LOGICAL           :: doGenerateUnittestReferenceData                         
 INTEGER           :: doPrintHelp ! 0: no help, 1: help, 2: markdown-help
 
-TYPE, BIND(C) :: CARRAY
-  INTEGER (C_INT) :: len
-  TYPE (C_PTR)    :: data
-END TYPE CARRAY
-
-INTERFACE AlmostEqualToTolerance
-  MODULE PROCEDURE AlmostEqualToTolerance
-END INTERFACE
-
 INTERFACE Abort
   MODULE PROCEDURE Abort
 END INTERFACE Abort
@@ -82,17 +72,9 @@ INTERFACE FLEXITIME
   MODULE PROCEDURE FLEXITIME
 END INTERFACE
 
-INTERFACE GETFREEUNIT
-  MODULE PROCEDURE GETFREEUNIT
-END INTERFACE GETFREEUNIT
-
 INTERFACE CreateErrFile
   MODULE PROCEDURE CreateErrFile
 END INTERFACE CreateErrFile
-
-INTERFACE CROSS
-  MODULE PROCEDURE CROSS
-END INTERFACE CROSS
 
 !==================================================================================================================================
 CONTAINS
@@ -152,6 +134,7 @@ CALL MPI_FINALIZE(iError)
 ERROR STOP 1
 END SUBROUTINE CollectiveStop
 
+
 !==================================================================================================================================
 !> Terminate program correctly if an error has occurred (important in MPI mode!).
 !> Uses a MPI_ABORT which terminates FLEXI if a single proc calls this routine.
@@ -198,6 +181,7 @@ CALL MPI_ABORT(MPI_COMM_WORLD,signalout,errOut)
 ERROR STOP 2
 END SUBROUTINE Abort
 
+
 !==================================================================================================================================
 !> print a warning to the command line (only MPI root)
 !==================================================================================================================================
@@ -213,6 +197,7 @@ IF (myRank.EQ.0) THEN
   WRITE(UNIT_stdOut,*) '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
 END IF 
 END SUBROUTINE PrintWarning
+
 
 !==================================================================================================================================
 !> Open file for error output
@@ -258,7 +243,6 @@ WRITE(IntStamp,'(A,A5,I6.6)')TRIM(Nam),'_Proc',Num
 END FUNCTION INTSTAMP
 
 
-
 !==================================================================================================================================
 !> Creates a timestamp, consistent of a filename (project name + processor) and current time niveau
 !==================================================================================================================================
@@ -281,7 +265,6 @@ DO i=1,LEN(TRIM(TimeStamp))
 END DO
 TimeStamp=TRIM(Filename)//'_'//TRIM(TimeStamp)
 END FUNCTION TIMESTAMP
-
 
 
 !==================================================================================================================================
@@ -307,80 +290,5 @@ END IF
 GETTIME(FlexiTime)
 END FUNCTION FLEXITIME
 
-
-!==================================================================================================================================
-!> Get unused file unit number
-!==================================================================================================================================
-FUNCTION GETFREEUNIT()
-! MODULES
-IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-INTEGER :: GetFreeUnit !< File unit number
-!----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-LOGICAL :: connected
-!==================================================================================================================================
-GetFreeUnit=55
-INQUIRE(UNIT=GetFreeUnit, OPENED=connected)
-IF(connected)THEN
-  DO
-    GetFreeUnit=GetFreeUnit+1
-    INQUIRE(UNIT=GetFreeUnit, OPENED=connected)
-    IF(.NOT.connected)EXIT
-  END DO
-END IF
-END FUNCTION GETFREEUNIT
-
-
-!==================================================================================================================================
-!> computes the cross product of to 3 dimensional vectpors: cross=v1 x v2
-!==================================================================================================================================
-PURE FUNCTION CROSS(v1,v2)
-! MODULES
-IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN) :: v1(3)    !< input vector 1
-REAL,INTENT(IN) :: v2(3)    !< input vector 2
-REAL            :: CROSS(3) !< cross product of vectors
-!----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-!==================================================================================================================================
-CROSS=(/v1(2)*v2(3)-v1(3)*v2(2),v1(3)*v2(1)-v1(1)*v2(3),v1(1)*v2(2)-v1(2)*v2(1)/)
-END FUNCTION CROSS
-
-FUNCTION AlmostEqualToTolerance(Num1,Num2,Tolerance)
-!===================================================================================================================================
-! Bruce Dawson quote:
-! "There is no silver bullet. You have to choose wisely."
-!    * "If you are comparing against zero, then relative epsilons and ULPs based comparisons are usually meaningless. 
-!      You’ll need to use an absolute epsilon, whose value might be some small multiple of FLT_EPSILON and the inputs 
-!      to your calculation. Maybe."
-!    * "If you are comparing against a non-zero number then relative epsilons or ULPs based comparisons are probably what you want. 
-!      You’ll probably want some small multiple of FLT_EPSILON for your relative epsilon, or some small number of ULPs. 
-!      An absolute epsilon could be used if you knew exactly what number you were comparing against."
-!    * "If you are comparing two arbitrary numbers that could be zero or non-zero then you need the kitchen sink. 
-!      Good luck and God speed."
-!===================================================================================================================================
-! MODULES
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-REAL            :: Num1,Num2
-REAL            :: Tolerance ! relative epsilon value as input
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-LOGICAL         :: AlmostEqualToTolerance
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-!===================================================================================================================================
-IF(ABS(Num1-Num2).LE.MAX(ABS(Num1),ABS(Num2))*Tolerance)THEN
-   AlmostEqualToTolerance=.TRUE.
-ELSE
-  AlmostEqualToTolerance=.FALSE.
-END IF
-END FUNCTION AlmostEqualToTolerance
 
 END MODULE MOD_Globals

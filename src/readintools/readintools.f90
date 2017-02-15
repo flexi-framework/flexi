@@ -1307,15 +1307,13 @@ IF (MPIRoot) THEN
   SWRITE(UNIT_StdOut,*)'| Extract parameter file from "',TRIM(filename),'" to "',TRIM(prmfile),'"'
 
   ! Open parameter file for reading
-  fileUnit= 100 !GETFREEUNIT()
-  OPEN(UNIT=fileUnit,FILE=TRIM(filename),STATUS='OLD',ACTION='READ',ACCESS='SEQUENTIAL',IOSTAT=stat)
+  OPEN(NEWUNIT=fileUnit,FILE=TRIM(filename),STATUS='OLD',ACTION='READ',ACCESS='SEQUENTIAL',IOSTAT=stat)
   IF(stat.NE.0) THEN
     CALL Abort(__STAMP__,&
         "Could not open '"//TRIM(filename)//"'")
   END IF
 
-  iniUnit= 101 !GETFREEUNIT()
-  OPEN(UNIT=iniUnit,FILE=TRIM(prmfile),STATUS='UNKNOWN',ACTION='WRITE',ACCESS='SEQUENTIAL',IOSTAT=stat)
+  OPEN(NEWUNIT=iniUnit,FILE=TRIM(prmfile),STATUS='UNKNOWN',ACTION='WRITE',ACCESS='SEQUENTIAL',IOSTAT=stat)
   IF(stat.NE.0) THEN
     CALL Abort(__STAMP__,&
         "Could not open '"//TRIM(prmfile)//"'")

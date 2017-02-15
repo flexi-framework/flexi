@@ -28,7 +28,7 @@ USE MOD_Commandline_Arguments
 USE MOD_Visu3D
 USE MOD_ISO_VARYING_STRING
 USE MOD_MPI                   ,ONLY: InitMPI
-USE MOD_VTK                   ,ONLY: WriteDataToVTK,WriteVTKMultiBlockDataSet
+USE MOD_VTK                   ,ONLY: WriteDataToVTK,WriteVTKMultiBlockDataSet,CARRAY
 USE MOD_Output_Vars           ,ONLY: ProjectName
 USE MOD_StringTools           ,ONLY: STRICMP,GetFileExtension
 impliCIT NONE

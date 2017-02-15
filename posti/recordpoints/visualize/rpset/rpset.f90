@@ -368,7 +368,8 @@ END SUBROUTINE ChangeRPSet
 SUBROUTINE CalcLine_LocalCoords()
 ! MODULES
 USE MOD_Globals
-USE MOD_RPSetVisuVisu_Vars, ONLY: nLines,tLine,xF_RP, Lines
+USE MOD_Mathtools         ,ONLY:CROSS
+USE MOD_RPSetVisuVisu_Vars,ONLY: nLines,tLine,xF_RP, Lines
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -434,9 +435,9 @@ END SUBROUTINE CalcLine_LocalCoords
 !===================================================================================================================================
 SUBROUTINE CalcLine_LocalVelTransform()
 ! MODULES
-USE MOD_Globals
-USE MOD_RPSetVisuVisu_Vars    ,ONLY:nLines,tLine,xF_RP, Lines
-USE MOD_ParametersVisu,ONLY:Line_LocalVel_vec
+USE MOD_Mathtools          ,ONLY:CROSS
+USE MOD_RPSetVisuVisu_Vars ,ONLY:nLines,tLine,xF_RP, Lines
+USE MOD_ParametersVisu     ,ONLY:Line_LocalVel_vec
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
