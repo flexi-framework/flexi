@@ -162,6 +162,10 @@ USE MOD_Sponge_Vars         ,ONLY: CalcPruettDamping
 USE MOD_FV
 USE MOD_Analyze_Vars        ,ONLY: totalFV_nElems
 #endif
+#ifdef EDDYVISCOSITY
+USE MOD_EddyVisc_Vars       ,ONLY: muSGSMax 
+USE MOD_EOS_Vars       ,ONLY: mu0 
+#endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -211,6 +215,10 @@ END SELECT
 
 ! Do first RK stage of first timestep to fill gradients
 CALL DGTimeDerivative_weakForm(t)
+
+#ifdef EDDYVISCOSITY
+muSGSMax = 10.0*mu0
+#endif
 
 #if FV_ENABLED
 ! initial switch to FV sub-cells (must be called after DGTimeDerivative_weakForm, since indicator may require gradients)

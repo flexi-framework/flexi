@@ -278,15 +278,15 @@ DO iElem=1,nElems
       v1   = U_in(2,i,j,k,iElem)*srho
       v2   = U_in(3,i,j,k,iElem)*srho
       v3   = U_in(4,i,j,k,iElem)*srho
-      gradv11_elem(i,j,k) = srho*(gradUx(2,i,j,k,iElem) - v1*gradUx(1,i,j,k,iElem))
-      gradv21_elem(i,j,k) = srho*(gradUx(3,i,j,k,iElem) - v2*gradUx(1,i,j,k,iElem))
-      gradv31_elem(i,j,k) = srho*(gradUx(4,i,j,k,iElem) - v3*gradUx(1,i,j,k,iElem))
-      gradv12_elem(i,j,k) = srho*(gradUy(2,i,j,k,iElem) - v1*gradUy(1,i,j,k,iElem))
-      gradv22_elem(i,j,k) = srho*(gradUy(3,i,j,k,iElem) - v2*gradUy(1,i,j,k,iElem))
-      gradv32_elem(i,j,k) = srho*(gradUy(4,i,j,k,iElem) - v3*gradUy(1,i,j,k,iElem))
-      gradv13_elem(i,j,k) = srho*(gradUz(2,i,j,k,iElem) - v1*gradUz(1,i,j,k,iElem))
-      gradv23_elem(i,j,k) = srho*(gradUz(3,i,j,k,iElem) - v2*gradUz(1,i,j,k,iElem))
-      gradv33_elem(i,j,k) = srho*(gradUz(4,i,j,k,iElem) - v3*gradUz(1,i,j,k,iElem))
+      gradv11_elem(i,j,k) = (gradUx(2,i,j,k,iElem) )
+      gradv21_elem(i,j,k) = (gradUx(3,i,j,k,iElem) )
+      gradv31_elem(i,j,k) = (gradUx(4,i,j,k,iElem) )
+      gradv12_elem(i,j,k) = (gradUy(2,i,j,k,iElem) )
+      gradv22_elem(i,j,k) = (gradUy(3,i,j,k,iElem) )
+      gradv32_elem(i,j,k) = (gradUy(4,i,j,k,iElem) )
+      gradv13_elem(i,j,k) = (gradUz(2,i,j,k,iElem) )
+      gradv23_elem(i,j,k) = (gradUz(3,i,j,k,iElem) )
+      gradv33_elem(i,j,k) = (gradUz(4,i,j,k,iElem) )
   END DO; END DO; END DO ! i,j,k
   DO k=0,PP_N;  DO j=0,PP_N; DO i=0,PP_N
       ! die zwei aus der Wurzel gleich hier oben verarbeitet, spart eine Operation
