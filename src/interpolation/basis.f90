@@ -24,10 +24,6 @@ SAVE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE INV
-   MODULE PROCEDURE INV
-END INTERFACE
-
 INTERFACE BuildLegendreVdm
    MODULE PROCEDURE BuildLegendreVdm
 END INTERFACE
@@ -72,11 +68,6 @@ INTERFACE LagrangeInterpolationPolys
    MODULE PROCEDURE LagrangeInterpolationPolys
 END INTERFACE
 
-INTERFACE EQUALTOTOLERANCE
-   MODULE PROCEDURE EQUALTOTOLERANCE
-END INTERFACE
-
-PUBLIC::INV
 PUBLIC::BuildLegendreVdm
 PUBLIC::InitializeVandermonde
 PUBLIC::LegGaussLobNodesAndWeights
@@ -88,54 +79,10 @@ PUBLIC::LegendrePolynomialAndDerivative
 PUBLIC::PolynomialDerivativeMatrix
 PUBLIC::BarycentricWeights
 PUBLIC::LagrangeInterpolationPolys
-PUBLIC::EQUALTOTOLERANCE
-
 !==================================================================================================================================
-
 
 CONTAINS
 
-
-!==================================================================================================================================
-!> Computes matrix inverse using LAPACK
-!> Input matrix should be a square matrix
-!==================================================================================================================================
-FUNCTION INV(A) RESULT(AINV)
-! MODULES
-IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)  :: A(:,:)                      !< input matrix
-REAL             :: AINV(SIZE(A,1),SIZE(A,2))   !< result: inverse of A
-!----------------------------------------------------------------------------------------------------------------------------------
-! External procedures defined in LAPACK
-EXTERNAL DGETRF
-EXTERNAL DGETRI
-! LOCAL VARIABLES
-REAL    :: work(SIZE(A,1))  ! work array for LAPACK
-INTEGER :: ipiv(SIZE(A,1))  ! pivot indices
-INTEGER :: n,info
-!==================================================================================================================================
-! Store A in Ainv to prevent it from being overwritten by LAPACK
-Ainv = A
-n = size(A,1)
-
-! DGETRF computes an LU factorization of a general M-by-N matrix A
-! using partial pivoting with row interchanges.
-CALL DGETRF(n, n, Ainv, n, ipiv, info)
-
-IF(info.NE.0)THEN
-   STOP 'Matrix is numerically singular!'
-END IF
-
-! DGETRI computes the inverse of a matrix using the LU factorization
-! computed by DGETRF.
-CALL DGETRI(n, Ainv, n, ipiv, work, n, info)
-
-IF(info.NE.0)THEN
-   STOP 'Matrix inversion failed!'
-END IF
-END FUNCTION INV
 
 !==================================================================================================================================
 !> Build a 1D Vandermonde matrix from an orthonormal Legendre basis to a nodal basis and reverse
@@ -144,6 +91,7 @@ SUBROUTINE buildLegendreVdm(N_In,xi_In,Vdm_Leg,sVdm_Leg)
 ! MODULES
 USE MOD_Globals,ONLY:abort
 USE MOD_PreProc,ONLY:PP_RealTolerance
+USE MOD_Mathtools,ONLY:INVERSE
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -182,7 +130,7 @@ REAL               :: dummy
 DO i=0,N_In; DO j=0,N_In
   CALL LegendrePolynomialAndDerivative(j,xi_In(i),Vdm_Leg(i,j),dummy)
 END DO; END DO !j
-sVdm_Leg=INV(Vdm_Leg)
+sVdm_Leg=INVERSE(Vdm_Leg)
 !check (Vdm_Leg)^(-1)*Vdm_Leg := I
 dummy=ABS(SUM(ABS(MATMUL(sVdm_Leg,Vdm_Leg)))/(N_In+1.)-1.)
 IF(dummy.GT.10.*PP_RealTolerance) CALL abort(__STAMP__,&
@@ -195,7 +143,7 @@ END SUBROUTINE buildLegendreVdm
 !> Build a 1D Vandermonde matrix using the Lagrange basis functions of degree
 !> N_In, evaluated at the interpolation points xi_Out
 !===================================================================================================================================
-SUBROUTINE InitializeVandermonde(N_In,N_Out,wBary_In,xi_In,xi_Out,Vdm)
+PURE SUBROUTINE InitializeVandermonde(N_In,N_Out,wBary_In,xi_In,xi_Out,Vdm)
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -222,7 +170,7 @@ END SUBROUTINE InitializeVandermonde
 !> recursive algorithm using the N_in-1 N_in-2 Legendre polynomials
 !> algorithm 22, Kopriva book
 !===================================================================================================================================
-SUBROUTINE LegendrePolynomialAndDerivative(N_in,x,L,Lder)
+ELEMENTAL SUBROUTINE LegendrePolynomialAndDerivative(N_in,x,L,Lder)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -267,7 +215,7 @@ END SUBROUTINE LegendrePolynomialAndDerivative
 !==================================================================================================================================
 !> Compute Chebychev-Gauss nodes and integration weights (algorithm 27, Kopriva book)
 !==================================================================================================================================
-SUBROUTINE ChebyshevGaussNodesAndWeights(N_in,xGP,wGP)
+PURE SUBROUTINE ChebyshevGaussNodesAndWeights(N_in,xGP,wGP)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -293,7 +241,7 @@ END SUBROUTINE ChebyshevGaussNodesAndWeights
 !==================================================================================================================================
 !> Compute Chebychev-Gauss-Lobatto nodes and integration weights (algorithm 27, Kopriva book)
 !==================================================================================================================================
-SUBROUTINE ChebyGaussLobNodesAndWeights(N_in,xGP,wGP)
+PURE SUBROUTINE ChebyGaussLobNodesAndWeights(N_in,xGP,wGP)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -320,7 +268,7 @@ END SUBROUTINE ChebyGaussLobNodesAndWeights
 !==================================================================================================================================
 !> Compute Clenshaw-Curtis nodes and integration weights
 !==================================================================================================================================
-SUBROUTINE ClenshawCurtisNodesAndWeights(N_in,xGP,wGP)
+PURE SUBROUTINE ClenshawCurtisNodesAndWeights(N_in,xGP,wGP)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -441,7 +389,7 @@ END SUBROUTINE LegendreGaussNodesAndWeights
 !> Evaluate the polynomial q=L_{N_in+1}-L_{N_in-1} and its derivative at position x in [-1,1]
 !> Recursive algorithm using the N_in-1 N_in-2 Legendre polynomials. (Algorithm 24, Kopriva book)
 !==================================================================================================================================
-SUBROUTINE qAndLEvaluation(N_in,x,q,qder,L)
+ELEMENTAL SUBROUTINE qAndLEvaluation(N_in,x,q,qder,L)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -551,7 +499,7 @@ END SUBROUTINE LegGaussLobNodesAndWeights
 !==================================================================================================================================
 !> Computes barycentric (interpolation) weights for interpolation polynomial given by set of nodes. (Algorithm 30, Kopriva book)
 !==================================================================================================================================
-SUBROUTINE BarycentricWeights(N_in,xGP,wBary)
+PURE SUBROUTINE BarycentricWeights(N_in,xGP,wBary)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -577,7 +525,7 @@ END SUBROUTINE BarycentricWeights
 !==================================================================================================================================
 !> Computes polynomial differentiation matrix for interpolation polynomial given by set of nodes. (Algorithm 37, Kopriva book)
 !==================================================================================================================================
-SUBROUTINE PolynomialDerivativeMatrix(N_in,xGP,D)
+PURE SUBROUTINE PolynomialDerivativeMatrix(N_in,xGP,D)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -602,13 +550,12 @@ END DO ! iLagrange
 END SUBROUTINE PolynomialDerivativeMatrix
 
 
-
 !==================================================================================================================================
 !> Determines if two real numbers are equal up to a specified tolerance (=PP_RealTolerance, normaly set to machine precision)
-!> Takes into account that x,y are located in-between [-1;1]
+!> Takes into account that x,y are located in-between [-1;1] for additional accuracy
 !> Based on Algorithm 139, Kopriva
 !==================================================================================================================================
-FUNCTION ALMOSTEQUAL(x,y)
+ELEMENTAL FUNCTION ALMOSTEQUAL(x,y)
 USE MOD_PreProc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -628,47 +575,13 @@ END IF ! x,y zero
 END FUNCTION ALMOSTEQUAL
 
 
-!==================================================================================================================================
-!> Determines if two real numbers are equal up to a given tolerance.
-!> Routine requires: x,y > tolerance
-!==================================================================================================================================
-FUNCTION EQUALTOTOLERANCE(x,y,tolerance) 
-IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN) :: x                !< (IN)  first scalar to be compared
-REAL,INTENT(IN) :: y                !< (IN)  second scalar to be compared
-REAL,INTENT(IN) :: tolerance        !< (IN)  Tolerance to be checked against
-LOGICAL         :: EqualToTolerance !< (OUT) TRUE if x and y are closer than tolerance 
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-REAL            :: diff,maxInput
-!===================================================================================================================================
-EqualToTolerance = .FALSE.
-
-maxInput = MAX(ABS(x),ABS(y))
-diff = ABS(x-y)
-
-! Test absolute error
-IF (diff.LE.tolerance) THEN
-  EqualToTolerance=.TRUE.
-  RETURN
-END IF
-
-! Test relative error
-IF(diff.LT.maxInput*tolerance) EqualToTolerance=.TRUE.
-
-END FUNCTION EQUALTOTOLERANCE
-
-
-
 !============================================================================================================================
 !> Computes all Lagrange functions evaluated at position x in [-1,1]
 !> For details see paper Barycentric Lagrange Interpolation by Berrut and Trefethen (SIAM 2004)
 !> Uses function ALMOSTEQUAL
 !> Algorithm 34, Kopriva book
 !============================================================================================================================
-SUBROUTINE LagrangeInterpolationPolys(x,N_in,xGP,wBary,L)
+PURE SUBROUTINE LagrangeInterpolationPolys(x,N_in,xGP,wBary,L)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

@@ -478,10 +478,9 @@ END IF
 INQUIRE(FILE = TRIM(Filename_loc), EXIST = fileExists)
 IF(RestartTime.LT.0.0) fileExists=.FALSE.
 !! File processing starts here open old and extratct information or create new file.
-ioUnit=GETFREEUNIT()
 
 IF(fileExists)THEN ! File exists and append data
-  OPEN(UNIT     = ioUnit             , &
+  OPEN(NEWUNIT  = ioUnit             , &
        FILE     = TRIM(Filename_loc) , &
        FORM     = 'FORMATTED'        , &
        STATUS   = 'OLD'              , &
@@ -535,8 +534,7 @@ END IF
 CLOSE(ioUnit) ! outputfile
 
 IF(.NOT.fileExists)THEN ! No restart create new file
-  ioUnit=GETFREEUNIT()
-  OPEN(UNIT   = ioUnit             ,&
+  OPEN(NEWUNIT= ioUnit             ,&
        FILE   = TRIM(Filename_loc) ,&
        STATUS = 'UNKNOWN'          ,&
        ACCESS = 'SEQUENTIAL'       ,&
@@ -594,8 +592,7 @@ ELSE
   FileName_loc = TRIM(FileName)//'.dat'
 END IF
 
-ioUnit=GETFREEUNIT()
-OPEN(UNIT     = ioUnit             , &
+OPEN(NEWUNIT  = ioUnit             , &
      FILE     = TRIM(Filename_loc) , &
      FORM     = 'FORMATTED'        , &
      STATUS   = 'OLD'              , &

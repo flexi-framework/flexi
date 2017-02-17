@@ -265,9 +265,7 @@ IF(TRIM(Examples(iExample)%ConvergenceTestType).EQ.'p')THEN
 ELSEIF(TRIM(Examples(iExample)%ConvergenceTestType).EQ.'h')THEN
   ! Check Order of Convergence versus the expected value and tolerance from input
   DO J=1,Examples(iExample)%nVar
-    OrderReached(J)=AlmostEqualToTolerance( OrderAveraged(J)                            ,&
-                                           Examples(iExample)%ConvergenceTestValue     ,&
-                                           Examples(iExample)%ConvergenceTestTolerance )
+    OrderReached(J)=ALMOSTEQUALRELATIVE( OrderAveraged(J),Examples(iExample)%ConvergenceTestValue,Examples(iExample)%ConvergenceTestTolerance )
      IF((OrderReached(J).EQV..FALSE.).AND.(OrderAveraged(J).GT.0.0))THEN
        !IntegralCompare=1
        SWRITE(UNIT_stdOut,'(A)')         ' CompareConvergence does not match! Error in computation!'
@@ -394,7 +392,6 @@ REAL                         :: eps
 !==================================================================================================================================
 
 ! get fileID and open file
-ioUnit=GETFREEUNIT()
 FileName=TRIM(Examples(iExample)%PATH)//'std.out'
 INQUIRE(File=FileName,EXIST=ExistFile)
 IF(.NOT.ExistFile) THEN
@@ -402,8 +399,6 @@ IF(.NOT.ExistFile) THEN
   SWRITE(UNIT_stdOut,'(A,A)') ' FileName:                  ','std.out'
   SWRITE(UNIT_stdOut,'(A,L)') ' ExistFile:                 ',ExistFile
   ERROR STOP '-1'
-ELSE
-  OPEN(UNIT=ioUnit,FILE=TRIM(FileName),STATUS='OLD',IOSTAT=iSTATUS,ACTION='READ') 
 END IF
 
 ! find the last L2 and LInf norm the std.out file of the example
@@ -411,6 +406,7 @@ LNorm=-1.
 L2Compare=.TRUE.
 LInfCompare=.TRUE.
 LNormCompare=1
+OPEN(NEWUNIT=ioUnit,FILE=TRIM(FileName),STATUS='OLD',IOSTAT=iSTATUS,ACTION='READ') 
 DO 
   READ(ioUnit,'(A)',IOSTAT=iSTATUS) temp1!,temp2,LNorm(1),LNorm(2),LNorm(3),LNorm(4),LNorm(5)
   IF(iSTATUS.EQ.-1) EXIT ! End Of File (EOF) reached: exit the loop
@@ -444,7 +440,7 @@ IF(PRESENT(ReferenceNorm))THEN ! use user-defined norm if present, else use 0.00
     eps=0.001*SQRT(PP_RealTolerance)
   END IF
   DO iVar=1,Examples(iExample)%nVar
-    IF(.NOT.AlmostEqualToTolerance(L2(iVar),ReferenceNorm(iVar,1),eps))THEN
+    IF(.NOT.ALMOSTEQUALRELATIVE(L2(iVar),ReferenceNorm(iVar,1),eps))THEN
       L2Compare=.FALSE.
       SWRITE(UNIT_stdOut,'(A)') ''
       SWRITE(UNIT_stdOut,'(A,E21.14)')  ' L2Norm                =',L2(iVar)
@@ -454,7 +450,7 @@ IF(PRESENT(ReferenceNorm))THEN ! use user-defined norm if present, else use 0.00
     END IF
   END DO ! iVar=1,Examples(iExample)%nVar
   DO iVar=1,Examples(iExample)%nVar
-    IF(.NOT.AlmostEqualToTolerance(LInf(iVar),ReferenceNorm(iVar,2),eps))THEN
+    IF(.NOT.ALMOSTEQUALRELATIVE(LInf(iVar),ReferenceNorm(iVar,2),eps))THEN
       LInfCompare=.FALSE.
       SWRITE(UNIT_stdOut,'(A)') ''
       SWRITE(UNIT_stdOut,'(A,E21.14)')  ' LInfNorm              =',LInf(iVar)
@@ -513,7 +509,6 @@ LOGICAL                              :: ExistFile
 REAL                                 :: LNorm(Examples(iExample)%nVar)
 !==================================================================================================================================
 ! open file and read in
-ioUnit=GETFREEUNIT()
 FileName=TRIM(Examples(iExample)%PATH)//TRIM(Examples(iExample)%ReferenceNormFile)
 INQUIRE(File=FileName,EXIST=ExistFile)
 IF(.NOT.ExistFile) THEN
@@ -521,11 +516,10 @@ IF(.NOT.ExistFile) THEN
   SWRITE(UNIT_stdOut,'(A,A)') ' FileName:                     ',TRIM(Examples(iExample)%ReferenceNormFile)
   SWRITE(UNIT_stdOut,'(A,L)') ' ExistFile:                    ',ExistFile
   ERROR STOP '-1'
-ELSE
-  OPEN(UNIT=ioUnit,FILE=TRIM(FileName),STATUS='OLD',IOSTAT=iSTATUS,ACTION='READ') 
 END IF
 
 ! read in the norms
+OPEN(NEWUNIT=ioUnit,FILE=TRIM(FileName),STATUS='OLD',IOSTAT=iSTATUS,ACTION='READ') 
 DO 
   READ(ioUnit,'(A)',IOSTAT=iSTATUS) temp1!,temp2,LNorm(1),LNorm(2),LNorm(3),LNorm(4),LNorm(5)
   IF(iSTATUS.EQ.-1) EXIT
@@ -632,8 +626,7 @@ IF(.NOT.ExistFile) THEN
   Examples(iExample)%ErrorStatus=5
   RETURN
 ELSE
-  ioUnit=GETFREEUNIT()
-  OPEN(UNIT=ioUnit,FILE=TRIM(FileName),STATUS='OLD',IOSTAT=iSTATUS,ACTION='READ') 
+  OPEN(NEWUNIT=ioUnit,FILE=TRIM(FileName),STATUS='OLD',IOSTAT=iSTATUS,ACTION='READ') 
 END IF
 ! init parameters for reading the data file
 HeaderLines=Examples(iExample)%IntegrateLineHeaderLines
@@ -722,9 +715,7 @@ DO I=1,MaxRow-1
   Q=Q+(Values(I+1,1)-Values(I,1))*(Values(I+1,2)+Values(I,2))/2.
 END DO
 
-IntegralValuesAreEqual=AlmostEqualToTolerance( Q                                     ,&
-                                               Examples(iExample)%IntegrateLineValue ,&
-                                               5.e-2                                 )
+IntegralValuesAreEqual=ALMOSTEQUALRELATIVE( Q, Examples(iExample)%IntegrateLineValue, 5.e-2 )
 IF(.NOT.IntegralValuesAreEqual)THEN
   IntegralCompare=1
   SWRITE(UNIT_stdOut,'(A)')         ' IntegrateLines do not match! Error in computation!'
@@ -787,8 +778,7 @@ DO K=1,2 ! open the data and reference file
     Examples(iExample)%ErrorStatus=5
     RETURN
   ELSE
-    ioUnit=GETFREEUNIT()
-    OPEN(UNIT=ioUnit,FILE=TRIM(FileName),STATUS='OLD',IOSTAT=iSTATUS,ACTION='READ')
+    OPEN(NEWUNIT=ioUnit,FILE=TRIM(FileName),STATUS='OLD',IOSTAT=iSTATUS,ACTION='READ') 
   END IF
   ! init parameters for reading the data file
   HeaderLines=Examples(iExample)%CompareDatafileRowHeaderLines
@@ -859,9 +849,7 @@ IF(ColumnNumber.GT.0)THEN
   ALLOCATE(ValuesAreEqual(1:ColumnNumber))
   ValuesAreEqual=.FALSE.
   DO J=1,ColumnNumber
-    ValuesAreEqual(J)=AlmostEqualToTolerance(  Values(J)                                      ,&
-                                               ValuesRef(J)                                   ,&
-                                               Examples(iExample)%CompareDatafileRowTolerance)
+    ValuesAreEqual(J)=ALMOSTEQUALRELATIVE( Values(J), ValuesRef(J), Examples(iExample)%CompareDatafileRowTolerance)
     IF(ValuesAreEqual(J).EQV..FALSE.)THEN
       SWRITE(UNIT_stdOut,'(A)')         ' CompareDatafileRows mismatch: '//TRIM(ColumnHeaders(J))
       SWRITE(UNIT_stdOut,'(A,E24.17)')  ' Value in Refernece            = ',ValuesRef(J)

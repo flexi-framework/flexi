@@ -143,8 +143,7 @@ IF(.NOT.MPIRoot) RETURN
 Filename = TRIM(ProjectName)//'_Stats.dat'
 INQUIRE(FILE = Filename, EXIST = fileExists)
 IF(.NOT.fileExists)THEN ! File exists and append data
-  ioUnit=GETFREEUNIT()
-  OPEN(UNIT   = ioUnit       ,&
+  OPEN(NEWUNIT= ioUnit       ,&
        FILE   = Filename     ,&
        STATUS = 'Unknown'    ,&
        ACCESS = 'SEQUENTIAL' ,&
@@ -319,9 +318,8 @@ IF(MPIRoot)THEN
   END IF
   ioCounter=ioCounter+1
   writeBuf(:,ioCounter) = (/t, dpdx, BulkVel, MassFlowGlobal, MassFlowPeriodic /)
-  IF((ioCounter.EQ.buffer).OR.((tWriteData-t-dt).LT.1e-10))THEN
+  IF((ioCounter.GE.buffer).OR.((tWriteData-t-dt).LT.1e-10))THEN
     CALL WriteStats()
-    ioCounter=0
   END IF
 END IF
 
@@ -360,17 +358,16 @@ END SUBROUTINE TestcaseSource
 !==================================================================================================================================
 SUBROUTINE WriteStats()
 ! MODULES
-USE MOD_Globals      ,ONLY:GetFreeUnit,Abort
+USE MOD_Globals      ,ONLY:Abort
 USE MOD_TestCase_Vars,ONLY:writeBuf,FileName,ioCounter
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                  :: ioUnit,openStat
+INTEGER                  :: ioUnit,openStat,i
 !==================================================================================================================================
-ioUnit=GETFREEUNIT()
-OPEN(UNIT     = ioUnit     , &
+OPEN(NEWUNIT  = ioUnit     , &
      FILE     = Filename   , &
      FORM     = 'FORMATTED', &
      STATUS   = 'OLD'      , &
@@ -381,8 +378,11 @@ IF(openStat.NE.0) THEN
   CALL Abort(__STAMP__, &
     'ERROR: cannot open '//TRIM(Filename))
 END IF
-WRITE(ioUnit,'(5E23.14)') writeBuf(:,1:ioCounter)
+DO i=1,ioCounter
+  WRITE(ioUnit,'(5E23.14)') writeBuf(:,i)
+END DO
 CLOSE(ioUnit)
+ioCounter=0
 
 END SUBROUTINE WriteStats
 

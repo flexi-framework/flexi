@@ -167,14 +167,13 @@ LOGICAL                        :: ExistFile                         ! file exist
 INTEGER                        :: iSTATUS                           ! status
 INTEGER                        :: ioUnit                            ! IO channel
 !===================================================================================================================================
-ioUnit=GETFREEUNIT()
 IndNum=INDEX(EXECPATH, '/')
 IF(IndNum.GT.0)THEN
   IndNum=INDEX(EXECPATH,'/',BACK = .TRUE.) ! get path without binary
   FileName=EXECPATH(1:IndNum)//'configuration.cmake'
   INQUIRE(File=FileName,EXIST=ExistFile)
   IF(ExistFile) THEN
-    OPEN(UNIT=ioUnit,FILE=TRIM(FileName),STATUS="OLD",IOSTAT=iSTATUS,ACTION='READ') 
+    OPEN(NEWUNIT=ioUnit,FILE=TRIM(FileName),STATUS="OLD",IOSTAT=iSTATUS,ACTION='READ')
     DO
       READ(ioUnit,'(A)',iostat=iSTATUS)temp
       IF(ADJUSTL(temp).EQ.'!') CYCLE
@@ -954,8 +953,7 @@ SELECT CASE(MODE)
       END IF
       ! read tmp.txt | list of directories if regressioncheck/examples
       FileName=TRIM(Examples(iExample)%PATH)//'tmp.txt'
-      ioUnit=GETFREEUNIT()
-      OPEN(UNIT = ioUnit, FILE = FileName, STATUS ="OLD", IOSTAT = iSTATUS ) 
+      OPEN(NEWUNIT = ioUnit, FILE = FileName, STATUS ="OLD", IOSTAT = iSTATUS )
       DO 
         READ(ioUnit,FMT='(A)',IOSTAT=iSTATUS) tmp
         IF (iSTATUS.NE.0) EXIT
