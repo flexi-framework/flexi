@@ -274,9 +274,10 @@ END SUBROUTINE Line_TransformVel
 SUBROUTINE Plane_TransformVel()
 ! MODULES
 USE MOD_Globals
-USE MOD_OutputRPVisu_Vars           ,ONLY:nSamples_out,RPData_out
-USE MOD_RPSetVisuVisu_Vars            ,ONLY:nPlanes,Planes,tPlane
-USE MOD_EquationRP_Vars         ,ONLY:nVecTrans,TransMap,is2D
+USE MOD_Mathtools          ,ONLY:CROSS
+USE MOD_OutputRPVisu_Vars  ,ONLY:nSamples_out,RPData_out
+USE MOD_RPSetVisuVisu_Vars ,ONLY:nPlanes,Planes,tPlane
+USE MOD_EquationRP_Vars    ,ONLY:nVecTrans,TransMap,is2D
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

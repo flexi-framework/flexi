@@ -1,8 +1,8 @@
 #include "flexi.h"
+!===================================================================================================================================
+!> Module to handle the Recordpoints
+!===================================================================================================================================
 MODULE MOD_spec
-!===================================================================================================================================
-! Module to handle the Recordpoints
-!===================================================================================================================================
 ! MODULES
 IMPLICIT NONE
 PRIVATE
@@ -24,22 +24,20 @@ PUBLIC :: InitSpec,spec,FinalizeSpec
 
 CONTAINS
 
+!===================================================================================================================================
+!> Initialize all necessary information for interpolation and FFT
+!===================================================================================================================================
 SUBROUTINE InitSpec()
-!===================================================================================================================================
-! Initialize all necessary information for interpolation and FFT
-!===================================================================================================================================
 ! MODULES
 USE MOD_Globals
 USE MOD_RPData_Vars          ,ONLY: nSamples_global,RPTime
-USE MOD_RPSetVisuVisu_Vars           ,ONLY: nRP_global
-USE MOD_OutputRPVisu_Vars          ,ONLY: nSamples_out
+USE MOD_OutputRPVisu_Vars    ,ONLY: nSamples_out
 USE MOD_RPInterpolation_Vars ,ONLY: dt_out,TEnd
-USE MOD_ParametersVisu       ,ONLY: nBlocks,samplingFreq,BlockSize,cutoffFreq,doPSD,doHanning,fourthDeriv
+USE MOD_ParametersVisu       ,ONLY: nBlocks,samplingFreq,BlockSize,fourthDeriv
 USE MOD_spec_Vars
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL         :: block_fac
@@ -76,7 +74,7 @@ IF(samplingFreq.GT.0) THEN
 ELSE
   ! Create nSamples such as to be multiple of block_fac
   block_fac = (nBlocks+1)/2.
-  nSamples_out = NINT(nSamples_out/(block_fac*2))*block_fac*2+1
+  nSamples_out = NINT(nSamples_out/(nBlocks+1.))*(nBlocks+1)+1
   TEnd =RPTime(nSamples_global) 
 END IF
 dt_out = (TEnd-RPTime(1))/REAL(nSamples_out-1)
@@ -94,25 +92,22 @@ END SUBROUTINE InitSpec
 
 
 
+!===================================================================================================================================
+!> Initialize all necessary information to perform interpolation
+!===================================================================================================================================
 SUBROUTINE spec()
-!===================================================================================================================================
-! Initialize all necessary information to perform interpolation
-!===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_RPData_Vars          ,ONLY: RPTime
-USE MOD_RPSetVisuVisu_Vars           ,ONLY: nRP_global
+USE MOD_RPSetVisuVisu_Vars   ,ONLY: nRP_global
 USE MOD_RPInterpolation_Vars
-USE MOD_OutputRPVisu_Vars          ,ONLY: nSamples_out,RPData_out
+USE MOD_OutputRPVisu_Vars    ,ONLY: nSamples_out,RPData_out
 USE MOD_ParametersVisu       ,ONLY: doPSD,doFFT,nVarVisu,nBlocks,cutoffFreq,doHanning,fourthDeriv,thirdOct
 USE MOD_ParametersVisu       ,ONLY: u_infPhys,chordPhys 
-USE MOD_RPSetVisuVisu_Vars           ,ONLY: nLines,Lines
 USE FFTW3
 USE MOD_spec_Vars
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                         :: iSample,iVar,iRP,iStart,iEnd
@@ -130,7 +125,6 @@ REAL                            :: iOct, octaveLimUpper, octaveLimLower, counter
 REAL,ALLOCATABLE                :: PhysFreq(:)
 INTEGER                         :: iSample_Oct
 REAL                            :: maxdev
-
 !===================================================================================================================================
 WRITE(UNIT_stdOut,'(132("-"))')
 
@@ -245,7 +239,7 @@ END IF!(doPSD .OR. doFFT)
 IF(ThirdOct) THEN
   ALLOCATE(PhysFreq(nSamples_spec))
   PhysFreq = RPData_freq*u_infPhys/chordPhys
-  nSamples_Oct = 30.
+  nSamples_Oct = 30
 
   ALLOCATE(RPData_Oct(1:nVarVisu,nRP_global,nSamples_Oct))
   ALLOCATE(RPData_FreqOct(nSamples_Oct))
@@ -299,10 +293,10 @@ END SUBROUTINE spec
 
 
 
+!===================================================================================================================================
+!> window function for spectra. normalized such that SUM(windowCoeff)=1. For power spectra SUM(windowCoeff)²=1. 
+!===================================================================================================================================
 SUBROUTINE hanning(nSamples,RPData)
-!===================================================================================================================================
-! window function for spectra. normalized such that SUM(windowCoeff)=1. For power spectra SUM(windowCoeff)²=1. 
-!===================================================================================================================================
 ! MODULES
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -328,12 +322,12 @@ END SUBROUTINE hanning
 
 
 
+!===================================================================================================================================
+!>
+!===================================================================================================================================
 SUBROUTINE deriv(RPData)
-!===================================================================================================================================
-! Initialize all necessary information to perform interpolation
-!===================================================================================================================================
 ! MODULES
-USE MOD_OutputRPVisu_Vars          ,ONLY: nSamples_out
+USE MOD_OutputRPVisu_Vars    ,ONLY: nSamples_out
 USE MOD_RPInterpolation_Vars ,ONLY: dt_out
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -360,17 +354,16 @@ END SUBROUTINE deriv
 
 
 
+!===================================================================================================================================
+!> Deallocate global variables
+!===================================================================================================================================
 SUBROUTINE FinalizeSpec()
-!===================================================================================================================================
-! Deallocate global variables
-!===================================================================================================================================
 ! MODULES
 USE MOD_Globals
 USE MOD_Spec_Vars
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================

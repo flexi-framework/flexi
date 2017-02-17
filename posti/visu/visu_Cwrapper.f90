@@ -76,11 +76,13 @@ END FUNCTION cstrToChar255
 !> Wrapper to visu_InitFile for Paraview plugin, returns the available variable names and boundary names.
 !===================================================================================================================================
 SUBROUTINE visu_requestInformation(mpi_comm_IN, strlen_state, statefile_IN, varnames, bcnames)
+USE ISO_C_BINDING
 ! MODULES
 USE MOD_Globals
 USE MOD_MPI        ,ONLY: InitMPI
 USE MOD_Visu_Vars  ,ONLY: VarnamesAll,BCNamesAll
 USE MOD_Visu       ,ONLY: visu_getVarNamesAndFileType
+USE MOD_VTK        ,ONLY: CARRAY
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -133,7 +135,7 @@ USE ISO_C_BINDING
 USE MOD_Globals
 USE MOD_Visu_Vars
 USE MOD_Visu        ,ONLY: visu
-USE MOD_VTK         ,ONLY: WriteCoordsToVTK_array,WriteDataToVTK_array,WriteVarnamesToVTK_array
+USE MOD_VTK         ,ONLY: WriteCoordsToVTK_array,WriteDataToVTK_array,WriteVarnamesToVTK_array,CARRAY
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------

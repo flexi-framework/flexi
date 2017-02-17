@@ -18,14 +18,18 @@
 !> WARNING: WriteDataToVTK works only for POSTPROCESSING or for debug output during runtime
 !===================================================================================================================================
 MODULE MOD_VTK
+USE ISO_C_BINDING
 ! MODULES
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-! Private Part ---------------------------------------------------------------------------------------------------------------------
-! Public Part ----------------------------------------------------------------------------------------------------------------------
+TYPE, BIND(C) :: CARRAY
+  INTEGER (C_INT) :: len
+  INTEGER (C_INT) :: dim
+  TYPE (C_PTR)    :: data
+END TYPE CARRAY
 
 INTERFACE WriteDataToVTK
   MODULE PROCEDURE WriteDataToVTK
@@ -52,6 +56,7 @@ PUBLIC::WriteVTKMultiBlockDataSet
 PUBLIC::WriteCoordsToVTK_array
 PUBLIC::WriteDataToVTK_array
 PUBLIC::WriteVarnamesToVTK_array
+PUBLIC::CARRAY
 !===================================================================================================================================
 
 CONTAINS
@@ -148,7 +153,7 @@ INTEGER,OPTIONAL,INTENT(IN) :: DGFV                 !< flag indicating DG = 0 or
 LOGICAL,OPTIONAL,INTENT(IN) :: nValAtLastDimension  !< if TRUE, nVal is stored in the last index of value
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                     :: iVal,ivtk=44
+INTEGER                     :: iVal,ivtk
 INTEGER                     :: nElems_glob(0:nProcessors-1)
 INTEGER                     :: NVisu_elem,nVTKPoints,nVTKCells
 INTEGER                     :: nTotalElems
@@ -201,7 +206,7 @@ IF(MPIROOT)THEN
   lf = char(10)
 
   ! Write file
-  OPEN(UNIT=ivtk,FILE=TRIM(FileString),ACCESS='STREAM')
+  OPEN(NEWUNIT=ivtk,FILE=TRIM(FileString),ACCESS='STREAM')
   ! Write header
   Buffer='<?xml version="1.0"?>'//lf;WRITE(ivtk) TRIM(Buffer)
   Buffer='<VTKFile type="UnstructuredGrid" version="0.1" byte_order="LittleEndian">'//lf;WRITE(ivtk) TRIM(Buffer)
@@ -365,13 +370,13 @@ CHARACTER(LEN=*),INTENT(IN) :: FileString_DG  !< Filename of DG VTU file
 CHARACTER(LEN=*),INTENT(IN) :: FileString_FV  !< Filename of FV VTU file 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: ivtk=44
+INTEGER            :: ivtk
 CHARACTER(LEN=200) :: Buffer
 CHARACTER(LEN=1)   :: lf
 !===================================================================================================================================
 IF (MPIRoot) THEN                   
   ! write multiblock file
-  OPEN(UNIT=ivtk,FILE=TRIM(FileString),ACCESS='STREAM')
+  OPEN(NEWUNIT=ivtk,FILE=TRIM(FileString),ACCESS='STREAM')
   ! Line feed character
   lf = char(10)
   Buffer='<VTKFile type="vtkMultiBlockDataSet" version="1.0" byte_order="LittleEndian" header_type="UInt64">'//lf
@@ -402,7 +407,7 @@ INTEGER,INTENT(IN)                   :: NVisu                        !< Polynomi
 INTEGER,INTENT(IN)                   :: nElems                       !< Number of elements
 INTEGER,INTENT(IN)                   :: dim                          !< Spacial dimension (2D or 3D)
 INTEGER,INTENT(IN)                   :: DGFV                         !< flag indicating DG = 0 or FV =1 data
-REAL(C_DOUBLE),ALLOCATABLE,TARGET,INTENT(IN)    :: coords(:,:,:,:,:) !< Array containing coordinates
+REAL,ALLOCATABLE,TARGET,INTENT(IN)    :: coords(:,:,:,:,:) !< Array containing coordinates
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 INTEGER,ALLOCATABLE,TARGET,INTENT(INOUT) :: nodeids(:)

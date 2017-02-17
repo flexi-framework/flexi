@@ -91,7 +91,7 @@ USE MOD_ReadInTools ,ONLY: prms
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Testcase")
-CALL prms%CreateIntOption('nWriteStats', "Write testcase statistics to file at every n-th AnalyzeTestcase step.", '1')
+CALL prms%CreateIntOption('nWriteStats', "Write testcase statistics to file at every n-th AnalyzeTestcase step.", '100')
 CALL prms%CreateIntOption('nAnalyzeTestCase', "Call testcase specific analysis routines every n-th timestep. "//&
                                               "(Note: always called at global analyze level)", '1000')
 END SUBROUTINE DefineParametersTestcase
@@ -124,7 +124,7 @@ CALL CollectiveStop(__STAMP__, &
   'The testcase has not been implemented for FV yet!')
 #endif
 
-nWriteStats  = GETINT('nWriteStats','1')
+nWriteStats  = GETINT('nWriteStats','100')
 nAnalyzeTestCase = GETINT( 'nAnalyzeTestCase','1000')
 !uBulkScale=0.98
 uBulkScale=1.
@@ -152,8 +152,7 @@ ALLOCATE(writeBuf(3,nWriteStats))
 Filename = TRIM(ProjectName)//'_Stats.dat'
 INQUIRE(FILE = Filename, EXIST = fileExists)
 IF(.NOT.fileExists)THEN ! File exists and append data
-  ioUnit=GETFREEUNIT()
-  OPEN(UNIT   = ioUnit       ,&
+  OPEN(NEWUNIT= ioUnit       ,&
        FILE   = Filename     ,&
        STATUS = 'Unknown'    ,&
        ACCESS = 'SEQUENTIAL' ,&
@@ -307,22 +306,24 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                  :: ioUnit,openStat
+INTEGER                  :: ioUnit,openStat,i
 !==================================================================================================================================
-ioUnit=GETFREEUNIT()
-OPEN(UNIT     = ioUnit     , &
+OPEN(NEWUNIT  = ioUnit     , &
      FILE     = Filename   , &
      FORM     = 'FORMATTED', &
      STATUS   = 'OLD'      , &
      POSITION = 'APPEND'   , &
      RECL     = 50000      , &
-     IOSTAT = openStat           )
+     IOSTAT = openStat       )
 IF(openStat.NE.0) THEN
   CALL abort(__STAMP__, &
     'ERROR: cannot open '//TRIM(Filename))
 END IF
-WRITE(ioUnit,'(3E23.14)') writeBuf(:,1:ioCounter)
+DO i=1,ioCounter
+  WRITE(ioUnit,'(3E23.14)') writeBuf(:,i)
+END DO
 CLOSE(ioUnit)
+ioCounter=0
 
 END SUBROUTINE WriteStats
 
@@ -344,10 +345,7 @@ REAL,INTENT(IN)                 :: Time                   !< simulation time
 IF(MPIRoot)THEN
   ioCounter=ioCounter+1
   writeBuf(:,ioCounter) = (/Time, dpdx, BulkVel/)
-  IF(ioCounter.EQ.nWriteStats)THEN
-    CALL WriteStats()
-    ioCounter=0
-  END IF
+  IF(ioCounter.GE.nWriteStats) CALL WriteStats()
 END IF
 END SUBROUTINE AnalyzeTestCase
 

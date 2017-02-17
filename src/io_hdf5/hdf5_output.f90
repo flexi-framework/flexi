@@ -22,8 +22,6 @@ USE MOD_IO_HDF5
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! Private Part ---------------------------------------------------------------------------------------------------------------------
-! Public Part ----------------------------------------------------------------------------------------------------------------------
 
 INTERFACE WriteState
   MODULE PROCEDURE WriteState
@@ -696,8 +694,7 @@ InputFile=TRIM(FileName)
 CALL GetNextFileName(Inputfile,NextFile,.TRUE.)
 ! Delete File - only root
 stat=0
-ioUnit=GETFREEUNIT()
-OPEN ( UNIT   = ioUnit,            &
+OPEN ( NEWUNIT= ioUnit,         &
        FILE   = InputFile,      &
        STATUS = 'OLD',          &
        ACTION = 'WRITE',        &
@@ -710,8 +707,7 @@ DO
   CALL GetNextFileName(Inputfile,NextFile,.TRUE.)
   ! Delete File - only root
   stat=0
-  ioUnit=GETFREEUNIT()
-  OPEN ( UNIT   = ioUnit,            &
+  OPEN ( NEWUNIT= ioUnit,         &
          FILE   = InputFile,      &
          STATUS = 'OLD',          &
          ACTION = 'WRITE',        &

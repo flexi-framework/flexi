@@ -24,10 +24,6 @@ SAVE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-INTERFACE INV
-   MODULE PROCEDURE INV
-END INTERFACE
-
 INTERFACE BuildLegendreVdm
    MODULE PROCEDURE BuildLegendreVdm
 END INTERFACE
@@ -72,15 +68,6 @@ INTERFACE LagrangeInterpolationPolys
    MODULE PROCEDURE LagrangeInterpolationPolys
 END INTERFACE
 
-INTERFACE ALMOSTEQUAL
-   MODULE PROCEDURE ALMOSTEQUAL
-END INTERFACE
-
-INTERFACE EQUALTOTOLERANCE
-   MODULE PROCEDURE EQUALTOTOLERANCE
-END INTERFACE
-
-PUBLIC::INV
 PUBLIC::BuildLegendreVdm
 PUBLIC::InitializeVandermonde
 PUBLIC::LegGaussLobNodesAndWeights
@@ -92,55 +79,10 @@ PUBLIC::LegendrePolynomialAndDerivative
 PUBLIC::PolynomialDerivativeMatrix
 PUBLIC::BarycentricWeights
 PUBLIC::LagrangeInterpolationPolys
-PUBLIC::ALMOSTEQUAL
-PUBLIC::EQUALTOTOLERANCE
-
 !==================================================================================================================================
-
 
 CONTAINS
 
-
-!==================================================================================================================================
-!> Computes matrix inverse using LAPACK
-!> Input matrix should be a square matrix
-!==================================================================================================================================
-FUNCTION INV(A) RESULT(AINV)
-! MODULES
-IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)  :: A(:,:)                      !< input matrix
-REAL             :: AINV(SIZE(A,1),SIZE(A,2))   !< result: inverse of A
-!----------------------------------------------------------------------------------------------------------------------------------
-! External procedures defined in LAPACK
-EXTERNAL DGETRF
-EXTERNAL DGETRI
-! LOCAL VARIABLES
-REAL    :: work(SIZE(A,1))  ! work array for LAPACK
-INTEGER :: ipiv(SIZE(A,1))  ! pivot indices
-INTEGER :: n,info
-!==================================================================================================================================
-! Store A in Ainv to prevent it from being overwritten by LAPACK
-Ainv = A
-n = size(A,1)
-
-! DGETRF computes an LU factorization of a general M-by-N matrix A
-! using partial pivoting with row interchanges.
-CALL DGETRF(n, n, Ainv, n, ipiv, info)
-
-IF(info.NE.0)THEN
-   STOP 'Matrix is numerically singular!'
-END IF
-
-! DGETRI computes the inverse of a matrix using the LU factorization
-! computed by DGETRF.
-CALL DGETRI(n, Ainv, n, ipiv, work, n, info)
-
-IF(info.NE.0)THEN
-   STOP 'Matrix inversion failed!'
-END IF
-END FUNCTION INV
 
 !==================================================================================================================================
 !> Build a 1D Vandermonde matrix from an orthonormal Legendre basis to a nodal basis and reverse
@@ -149,6 +91,7 @@ SUBROUTINE buildLegendreVdm(N_In,xi_In,Vdm_Leg,sVdm_Leg)
 ! MODULES
 USE MOD_Globals,ONLY:abort
 USE MOD_PreProc,ONLY:PP_RealTolerance
+USE MOD_Mathtools,ONLY:INVERSE
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -187,7 +130,7 @@ REAL               :: dummy
 DO i=0,N_In; DO j=0,N_In
   CALL LegendrePolynomialAndDerivative(j,xi_In(i),Vdm_Leg(i,j),dummy)
 END DO; END DO !j
-sVdm_Leg=INV(Vdm_Leg)
+sVdm_Leg=INVERSE(Vdm_Leg)
 !check (Vdm_Leg)^(-1)*Vdm_Leg := I
 dummy=ABS(SUM(ABS(MATMUL(sVdm_Leg,Vdm_Leg)))/(N_In+1.)-1.)
 IF(dummy.GT.10.*PP_RealTolerance) CALL abort(__STAMP__,&
@@ -607,10 +550,9 @@ END DO ! iLagrange
 END SUBROUTINE PolynomialDerivativeMatrix
 
 
-
 !==================================================================================================================================
 !> Determines if two real numbers are equal up to a specified tolerance (=PP_RealTolerance, normaly set to machine precision)
-!> Takes into account that x,y are located in-between [-1;1]
+!> Takes into account that x,y are located in-between [-1;1] for additional accuracy
 !> Based on Algorithm 139, Kopriva
 !==================================================================================================================================
 ELEMENTAL FUNCTION ALMOSTEQUAL(x,y)
@@ -631,40 +573,6 @@ ELSE ! x, y not zero
   IF((ABS(x-y).LE.PP_RealTolerance*ABS(x)).AND.((ABS(x-y).LE.PP_RealTolerance*ABS(y)))) AlmostEqual=.TRUE.
 END IF ! x,y zero
 END FUNCTION ALMOSTEQUAL
-
-
-!==================================================================================================================================
-!> Determines if two real numbers are equal up to a given tolerance.
-!> Routine requires: x,y > tolerance
-!==================================================================================================================================
-ELEMENTAL FUNCTION EQUALTOTOLERANCE(x,y,tolerance) 
-IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN) :: x                !< (IN)  first scalar to be compared
-REAL,INTENT(IN) :: y                !< (IN)  second scalar to be compared
-REAL,INTENT(IN) :: tolerance        !< (IN)  Tolerance to be checked against
-LOGICAL         :: EqualToTolerance !< (OUT) TRUE if x and y are closer than tolerance 
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-REAL            :: diff,maxInput
-!===================================================================================================================================
-EqualToTolerance = .FALSE.
-
-maxInput = MAX(ABS(x),ABS(y))
-diff = ABS(x-y)
-
-! Test absolute error
-IF (diff.LE.tolerance) THEN
-  EqualToTolerance=.TRUE.
-  RETURN
-END IF
-
-! Test relative error
-IF(diff.LT.maxInput*tolerance) EqualToTolerance=.TRUE.
-
-END FUNCTION EQUALTOTOLERANCE
-
 
 
 !============================================================================================================================
