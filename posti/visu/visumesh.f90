@@ -172,7 +172,6 @@ INTEGER            :: Nloc
 !===================================================================================================================================
 Nloc = PP_N
 NodeType_loc = NodeType
-SWRITE(*,*) "has fvelems", hasFV_Elems
 
 ! Convert coordinates to visu grid
 SWRITE (*,*) "[MESH] Convert coordinates to surface visu grid (DG)"
