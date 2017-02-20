@@ -49,7 +49,7 @@ CONTAINS
 SUBROUTINE ReadState(prmfile,statefile)
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Posti_Vars  ,ONLY:withDGOperator
+USE MOD_Visu_Vars   ,ONLY:withDGOperator
 USE MOD_ReadInTools ,ONLY:ExtractParameterFile
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -91,7 +91,7 @@ SUBROUTINE ReadStateAndGradients(prmfile,statefile)
 ! MODULES                                                                   
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Posti_Vars
+USE MOD_Visu_Vars
 USE MOD_MPI           ,ONLY: DefineParametersMPI
 #if USE_MPI
 USE MOD_MPI           ,ONLY: InitMPIvars,FinalizeMPI
@@ -218,7 +218,7 @@ SUBROUTINE ReadStateWithoutGradients(prmfile,statefile,Nin)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Posti_Vars
+USE MOD_Visu_Vars
 USE MOD_MPI,                 ONLY: DefineParametersMPI
 #if USE_MPI
 USE MOD_MPI,                 ONLY: FinalizeMPI
@@ -232,6 +232,9 @@ USE MOD_HDF5_Input,          ONLY: OpenDataFile,ReadArray,CloseDataFile
 USE MOD_DG_Vars             ,ONLY: U
 USE MOD_EOS                 ,ONLY: DefineParametersEos,InitEOS
 USE MOD_Interpolation       ,ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
+#if FV_ENABLED
+USE MOD_FV_Basis            ,ONLY: InitFV_Basis,FinalizeFV_Basis
+#endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES 
@@ -240,10 +243,28 @@ CHARACTER(LEN=255),INTENT(IN):: statefile     !< HDF5 state file
 INTEGER,INTENT(IN),OPTIONAL  :: Nin           !< Polynomial degree used in InitInterpolation (OPTIONAL)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER           :: meshMode_loc
+LOGICAL           :: changedMeshMode
 !===================================================================================================================================
 CALL FinalizeInterpolation()
+
+! Some features require normal vectors or metrics
+meshMode_loc = 0 ! Minimal mesh init
+IF (doSurfVisu)  meshMode_loc = MAX(meshMode_loc,2)
+IF (hasFV_Elems) meshMode_loc = MAX(meshMode_loc,2)
+
+
+#if FV_ENABLED
+! For FV and higher mesh modes the FV basis is needed
+IF (meshMode_loc.EQ.2) CALL FinalizeFV_Basis()
+#endif
+
+! check if the mesh mode has changed from the last time
+changedMeshMode = (meshMode_loc.NE.meshMode_old)
+
+
 #if USE_MPI
-IF (changedMeshFile) THEN
+IF ((changedMeshFile).OR.(changedMeshMode)) THEN
   CALL FinalizeMPI()
 END IF
 #endif
@@ -266,10 +287,20 @@ IF (PRESENT(NIn)) THEN
 ELSE
   CALL InitInterpolation()
 END IF
-IF (changedMeshFile) THEN
+
+#if FV_ENABLED
+! We need to call the FV basis init to allocate some arrays needed in mesh init
+IF (meshMode_loc.EQ.2) CALL InitFV_Basis()
+#endif
+
+! Call mesh init if the mesh file changed or we need a different mesh mode
+IF ((changedMeshFile).OR.(changedMeshMode)) THEN
   CALL FinalizeMesh()
-  CALL InitMesh(meshMode=0,MeshFile_IN=MeshFile)
+  CALL InitMesh(meshMode=meshMode_loc,MeshFile_IN=MeshFile)
 END IF
+
+! save old mesh mode for future comparison
+meshMode_old = meshMode_loc
 
 SDEALLOCATE(U)
 ALLOCATE(U(1:nVar_State,0:PP_N,0:PP_N,0:PP_N,nElems))

@@ -28,7 +28,6 @@ USE MOD_Exactfunc,         ONLY:DefineParametersExactFunc
 USE MOD_Mortar,            ONLY:InitMortar,FinalizeMortar
 USE MOD_Equation,          ONLY:DefineParametersEquation,InitEquation,FinalizeEquation
 USE MOD_Testcase,          ONLY:DefineParametersTestcase
-USE MOD_GetBoundaryFlux,   ONLY:InitBC,FinalizeBC
 USE MOD_DG,                ONLY:InitDG,FinalizeDG
 #if PARABOLIC
 USE MOD_Lifting,           ONLY:DefineParametersLifting,InitLifting,FinalizeLifting
@@ -165,7 +164,6 @@ CALL InitIndicator()
 CALL InitMPIvars()
 #endif
 CALL InitEquation()
-CALL InitBC()
 CALL InitDG()
 #if FV_ENABLED
 CALL InitFV()
@@ -205,7 +203,6 @@ CALL FinalizeFV()
 #endif
 CALL FinalizeDG()
 CALL FinalizeEquation()
-CALL FinalizeBC()
 CALL FinalizeInterpolation()
 CALL FinalizeTimeDisc()
 CALL FinalizeRestart()

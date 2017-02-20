@@ -54,28 +54,28 @@ CONTAINS
 
 
 #if FV_ENABLED && FV_RECONSTRUCT
-SUBROUTINE AppendNeededPrims(mapCalc,mapCalc_FV,nVarCalc) 
+SUBROUTINE AppendNeededPrims(mapDepToCalc,mapDepToCalc_FV,nVarCalc) 
 !==================================================================================================================================
 ! MODULES
 USE MOD_EOS_Posti_Vars
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES 
-INTEGER,INTENT(IN)      :: mapCalc(nVarTotalEOS)
-INTEGER,INTENT(OUT)     :: mapCalc_FV(nVarTotalEOS)
+INTEGER,INTENT(IN)      :: mapDepToCalc(nVarDepEOS)
+INTEGER,INTENT(OUT)     :: mapDepToCalc_FV(nVarDepEOS)
 INTEGER,INTENT(OUT)     :: nVarCalc
 !---------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER           :: iVar
 !===================================================================================================================================
-mapCalc_FV = mapCalc
+mapDepToCalc_FV = mapDepToCalc
 
-! renumerate mapCalc_FV
+! renumerate mapDepToCalc_FV
 nVarCalc   = 0
-DO iVar=1,nVarTotalEOS
-  IF (mapCalc_FV(iVar).GT.0) THEN
+DO iVar=1,nVarDepEOS
+  IF (mapDepToCalc_FV(iVar).GT.0) THEN
     nVarCalc = nVarCalc + 1
-    mapCalc_FV(iVar) = nVarCalc
+    mapDepToCalc_FV(iVar) = nVarCalc
   END IF
 END DO
 END SUBROUTINE AppendNeededPrims
@@ -90,13 +90,13 @@ USE MOD_StringTools   ,ONLY: STRICMP
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES 
-INTEGER :: GetMaskCons(nVarTotalEOS)
+INTEGER :: GetMaskCons(nVarDepEOS)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER :: iVar,iVar2
 !===================================================================================================================================
 GetMaskCons = 0
-DO iVar=1,nVarTotalEOS
+DO iVar=1,nVarDepEOS
   DO iVar2=1,PP_nVar
     IF (STRICMP(StrVarNames(iVar2),DepNames(iVar))) THEN
       GetMaskCons(iVar) = 1
@@ -113,7 +113,7 @@ USE MOD_EOS_Posti_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES 
-INTEGER :: GetMaskPrim(nVarTotalEOS)
+INTEGER :: GetMaskPrim(nVarDepEOS)
 !===================================================================================================================================
 GetMaskPrim = 0
 END FUNCTION GetMaskPrim
@@ -126,13 +126,13 @@ USE MOD_EOS_Posti_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
-INTEGER :: GetMaskGrad(nVarTotalEOS)
+INTEGER :: GetMaskGrad(nVarDepEOS)
 !===================================================================================================================================
 GetMaskGrad = DepTableEOS(:,0)
 END FUNCTION GetMaskGrad
 
 
-SUBROUTINE CalcQuantities(nVarCalc,nVal,iElems,mapCalc,UCalc,maskCalc,gradUx,gradUy,gradUz)
+SUBROUTINE CalcQuantities(nVarCalc,nVal,iElems,mapDepToCalc,UCalc,maskCalc,gradUx,gradUy,gradUz)
 !==================================================================================================================================
 ! MODULES
 USE MOD_EOS_Posti_Vars
@@ -142,8 +142,8 @@ IMPLICIT NONE
 INTEGER,INTENT(IN) :: nVarCalc
 INTEGER,INTENT(IN) :: nVal(:)
 INTEGER,INTENT(IN) :: iElems(:)
-INTEGER,INTENT(IN) :: mapCalc(nVarTotalEOS)
-INTEGER,INTENT(IN) :: maskCalc(nVarTotalEOS)
+INTEGER,INTENT(IN) :: mapDepToCalc(nVarDepEOS)
+INTEGER,INTENT(IN) :: maskCalc(nVarDepEOS)
 REAL,INTENT(OUT)   :: UCalc(PRODUCT(nVal),1:nVarCalc)
 REAL,DIMENSION(1:PP_nVarPrim,PRODUCT(nVal)),INTENT(IN),OPTIONAL :: gradUx,gradUy,gradUz
 !===================================================================================================================================
@@ -151,7 +151,7 @@ STOP 'Not available for linear scalar advection.'
 END SUBROUTINE CalcQuantities
 
 
-SUBROUTINE CalcDerivedQuantity(iVarCalc,DepName,nVarCalc,nVal,iElems,mapCalc,UCalc,gradUx,gradUy,gradUz)
+SUBROUTINE CalcDerivedQuantity(iVarCalc,DepName,nVarCalc,nVal,iElems,mapDepToCalc,UCalc,gradUx,gradUy,gradUz)
 !==================================================================================================================================
 ! MODULES
 USE MOD_EOS_Posti_Vars
@@ -163,7 +163,7 @@ CHARACTER(LEN=255),INTENT(IN) :: DepName
 INTEGER,INTENT(IN)            :: nVarCalc
 INTEGER,INTENT(IN)            :: nVal(:)
 INTEGER,INTENT(IN)            :: iElems(:)
-INTEGER,INTENT(IN)            :: mapCalc(nVarTotalEOS)
+INTEGER,INTENT(IN)            :: mapDepToCalc(nVarDepEOS)
 REAL,INTENT(INOUT)            :: UCalc(PRODUCT(nVal),1:nVarCalc)
 REAL,DIMENSION(1:PP_nVarPrim,PRODUCT(nVal)),INTENT(IN),OPTIONAL :: gradUx,gradUy,gradUz
 !===================================================================================================================================

@@ -22,7 +22,7 @@ IMPLICIT NONE
 PUBLIC
 SAVE
 
-INTEGER,PARAMETER :: nVarTotalEOS=1
+INTEGER,PARAMETER :: nVarDepEOS=1
 ! W
 ! i
 ! t
@@ -37,12 +37,12 @@ INTEGER,PARAMETER :: nVarTotalEOS=1
 ! t l
 ! o a
 ! r r
-INTEGER,DIMENSION(1:nVarTotalEOS,0:nVarTotalEOS),PARAMETER :: DepTableEOS = TRANSPOSE(RESHAPE(&
+INTEGER,DIMENSION(1:nVarDepEOS,0:nVarDepEOS),PARAMETER :: DepTableEOS = TRANSPOSE(RESHAPE(&
 (/&
   0,1 & !1  Scalar
-/),(/nVarTotalEOS+1,nVarTotalEOS/)))
+/),(/nVarDepEOS+1,nVarDepEOS/)))
 
-CHARACTER(LEN=255),DIMENSION(nVarTotalEOS),PARAMETER :: DepNames = &
+CHARACTER(LEN=255),DIMENSION(nVarDepEOS),PARAMETER :: DepNames = &
 (/ CHARACTER(LEN=255) :: &
 "Scalar"                 & !1
 /)

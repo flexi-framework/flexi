@@ -14,8 +14,8 @@
 !=================================================================================================================================
 */
 
-#ifndef VISU3DREADER_H
-#define VISU3DREADER_H
+#ifndef VISUREADER_H
+#define VISUREADER_H
 
 #include <vtkUnstructuredGridAlgorithm.h>
 #include <cstring>
@@ -33,7 +33,7 @@
 
 #include "vtkStringArray.h"
 
-#include "../pluginTypes_visu3D.h"
+#include "../pluginTypes_visu.h"
 
 #include "vtkIOParallelModule.h" // For export macro
 #include "vtkMultiBlockDataSetAlgorithm.h"
@@ -42,12 +42,12 @@
 class vtkMultiProcessController;
 // MPI
 
-class VTKIOPARALLEL_EXPORT visu3DReader :  public vtkMultiBlockDataSetAlgorithm
+class VTKIOPARALLEL_EXPORT visuReader :  public vtkMultiBlockDataSetAlgorithm
 {
    public:
-      vtkTypeMacro(visu3DReader,vtkMultiBlockDataSetAlgorithm);
+      vtkTypeMacro(visuReader,vtkMultiBlockDataSetAlgorithm);
 
-      static visu3DReader *New();
+      static visuReader *New();
 
       // macros to set GUI changes to variables
       // gui interaction
@@ -55,7 +55,7 @@ class VTKIOPARALLEL_EXPORT visu3DReader :  public vtkMultiBlockDataSetAlgorithm
       vtkSetStringMacro(MeshFileOverwrite);
       vtkSetMacro(NVisu,int);
       vtkSetStringMacro(NodeTypeVisu);
-      vtkSetMacro(Mode2d,int);
+      vtkSetMacro(Avg2d,int);
       vtkSetMacro(DGonly,int);
 
       // Adds names of files to be read. The files are read in the order they are added.
@@ -73,6 +73,13 @@ class VTKIOPARALLEL_EXPORT visu3DReader :  public vtkMultiBlockDataSetAlgorithm
       void DisableAllVarArrays();
       void EnableAllVarArrays();
 
+      int GetNumberOfBCArrays();
+      const char* GetBCArrayName(int index);
+      int GetBCArrayStatus(const char* name);
+      void SetBCArrayStatus(const char* name, int status);
+      void DisableAllBCArrays();
+      void EnableAllBCArrays();
+
       // MPI
       void SetController(vtkMultiProcessController *);
       vtkGetObjectMacro(Controller, vtkMultiProcessController);
@@ -88,15 +95,22 @@ class VTKIOPARALLEL_EXPORT visu3DReader :  public vtkMultiBlockDataSetAlgorithm
       struct DoubleARRAY values_FV;
       struct IntARRAY  nodeids_FV;
       struct CharARRAY varnames;
-      struct IntARRAY components;
+      struct DoubleARRAY coordsSurf_DG;
+      struct DoubleARRAY valuesSurf_DG;
+      struct IntARRAY  nodeidsSurf_DG;
+      struct DoubleARRAY coordsSurf_FV;
+      struct DoubleARRAY valuesSurf_FV;
+      struct IntARRAY  nodeidsSurf_FV;
+      struct CharARRAY varnamesSurf;
 
       int RequestInformation(vtkInformation *, vtkInformationVector **, vtkInformationVector *);
       int RequestData(vtkInformation *, vtkInformationVector **, vtkInformationVector *);
 
-      void InsertData(vtkSmartPointer<vtkUnstructuredGrid> &output, struct DoubleARRAY* coords,
-            struct DoubleARRAY* values, struct IntARRAY* nodeids, struct CharARRAY* varnames, struct IntARRAY* components);
+      void InsertData(vtkMultiBlockDataSet* mb, int blockno, struct DoubleARRAY* coords,
+            struct DoubleARRAY* values, struct IntARRAY* nodeids, struct CharARRAY* varnames);
 
       vtkDataArraySelection* VarDataArraySelection;
+      vtkDataArraySelection* BCDataArraySelection;
 
       // The observer to modify this object when the array selections are modified.
       vtkCallbackCommand* SelectionObserver;
@@ -109,11 +123,12 @@ class VTKIOPARALLEL_EXPORT visu3DReader :  public vtkMultiBlockDataSetAlgorithm
       char* FileName;
       int   NVisu;
       char* NodeTypeVisu;
-      int   Mode2d;
+      int   Avg2d;
       int   DGonly;
       char* ParameterFileOverwrite;
       char* MeshFileOverwrite;
       std::vector<bool> VarNames_selected;
+      std::vector<bool> BCNames_selected;
       int NumProcesses;
       int ProcessId;
 
@@ -127,8 +142,8 @@ class VTKIOPARALLEL_EXPORT visu3DReader :  public vtkMultiBlockDataSetAlgorithm
       vtkStringArray* GetNodeTypeVisuList();
 
    protected:
-      visu3DReader();
-      ~visu3DReader();
+      visuReader();
+      ~visuReader();
 
       virtual int FillOutputPortInformation(int port, vtkInformation* info);
    private:
@@ -137,4 +152,4 @@ class VTKIOPARALLEL_EXPORT visu3DReader :  public vtkMultiBlockDataSetAlgorithm
       MPI_Comm mpiComm;
 };
 
-#endif //VISU3DREADER_H
+#endif //VISUREADER_H

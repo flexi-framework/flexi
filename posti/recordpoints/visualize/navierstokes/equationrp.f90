@@ -42,7 +42,7 @@ USE MOD_RPData_Vars       ,ONLY:VarNames_HDF5,nVar_HDF5
 USE MOD_ParametersVisu        
 USE MOD_EquationRP_Vars
 USE MOD_EOS               ,ONLY:InitEOS
-USE MOD_EOS_Posti_Vars    ,ONLY:nVarTotalEOS,DepTableEOS,DepNames
+USE MOD_EOS_Posti_Vars    ,ONLY:nVarDepEOS,DepTableEOS,DepNames
 USE MOD_Readintools       ,ONLY:CountOption,GETSTR
 USE MOD_StringTools       ,ONLY: STRICMP
 IMPLICIT NONE
@@ -93,7 +93,7 @@ ELSE
   IF(countCons.NE.PP_nVar) THEN
     CALL CollectiveStop(__STAMP__,'Not all necessary variables are present in HDF5 files')
   END IF
-  nVarDep=nVarTotalEOS
+  nVarDep=nVarDepEOS
   ALLOCATE(VarNamesAll(nVarDep))
   VarNamesAll=DepNames
   ALLOCATE(DepTable(nVarDep,0:nVarDep))

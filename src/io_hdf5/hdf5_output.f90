@@ -51,6 +51,10 @@ INTERFACE WriteAttribute
   MODULE PROCEDURE WriteAttribute
 END INTERFACE
 
+INTERFACE WriteAdditionalElemData
+  MODULE PROCEDURE WriteAdditionalElemData
+END INTERFACE
+
 INTERFACE
   SUBROUTINE copy_userblock(outfilename,infilename) BIND(C)
       USE ISO_C_BINDING, ONLY: C_CHAR
@@ -61,7 +65,7 @@ END INTERFACE
 
 
 PUBLIC :: WriteState,FlushFiles,WriteHeader,WriteTimeAverage,WriteBaseflow
-PUBLIC :: WriteArray,WriteAttribute
+PUBLIC :: WriteArray,WriteAttribute,GatheredWriteArray,WriteAdditionalElemData
 !==================================================================================================================================
 
 CONTAINS
