@@ -541,6 +541,7 @@ END FUNCTION FillQcriterion
 FUNCTION FillWallFriction(dir,nVal,Temperature,gradUx,gradUy,gradUz,NormVec) RESULT(WallFriction)
 ! MODULES
 USE MOD_Eos_Vars
+USE MOD_Viscosity
 IMPLICIT NONE 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -583,6 +584,7 @@ END FUNCTION FillWallFriction
 FUNCTION FillWallHeatTransfer(nVal,Temperature,gradUx,gradUy,gradUz,NormVec) RESULT(WallHeatTransfer)
 ! MODULES
 USE MOD_Eos_Vars
+USE MOD_Viscosity
 IMPLICIT NONE 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -622,6 +624,7 @@ SUBROUTINE FillNonDimensionalGridSpacing(nSides_calc,mapBCSideToVisuSides,Nloc,d
 ! MODULES
 USE MOD_Eos_Vars
 USE MOD_Preproc
+USE MOD_Viscosity
 USE MOD_Mesh_Vars           ,ONLY: NGeo,Elem_xGP,SideToElem,nBCSides
 USE MOD_Interpolation       ,ONLY: GetVandermonde
 USE MOD_Interpolation_Vars  ,ONLY: NodeType,NodeTypeGL
