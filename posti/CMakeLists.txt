@@ -23,7 +23,6 @@ SET(   POSTI_WHICH_EOS    "idealgas" CACHE STRING
                         "Used equation of state (idealgas)")
 
 IF(POSTI_BUILD_VISUALIZERECORDPOINTS)
-
   # =========================================================================
   # FFTW (FFT tool)
   # =========================================================================
