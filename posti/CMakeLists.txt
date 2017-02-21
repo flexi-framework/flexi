@@ -3,50 +3,79 @@
 # =========================================================================
 
 # use dummy userblock, as userblocks are often not required for Posti tools
-ADD_LIBRARY(userblocklib_dummy SHARED ./src/output/read_userblock_dummy.c)
+ADD_LIBRARY(userblocklib_dummy STATIC ./src/output/read_userblock_dummy.c)
 SET_TARGET_PROPERTIES(userblocklib_dummy PROPERTIES LINKER_LANGUAGE C)
 SET_TARGET_PROPERTIES(userblocklib_dummy PROPERTIES COMPILE_FLAGS "-fPIC")
 
-# =========================================================================
-# Visu
-# =========================================================================
-# collect all F90 files needed for visulib
-INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/posti/visu/) 
-FILE(GLOB visuF90 ./posti/visu/calc.f90
-                  ./posti/visu/converttovisu.f90
-                  ./posti/visu/mappings.f90
-                  ./posti/visu/readstate.f90
-                  ./posti/visu/visu3D.f90
-                  ./posti/visu/visu3D_vars.f90
-                  ./posti/visu/visumesh.f90)
-ADD_LIBRARY(visulibF90 OBJECT ${visuF90})
-SET_TARGET_PROPERTIES(visulibF90 PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}) 
-ADD_LIBRARY(visulib STATIC $<TARGET_OBJECTS:visulibF90>)
-ADD_DEPENDENCIES(visulibF90 flexilibF90 HDF5)
+CMAKE_DEPENDENT_OPTION(POSTI_BUILD_VISU                  "Build the visu tool"                        ON  "FLEXI_BUILDPOSTI" OFF)
+#CMAKE_DEPENDENT_OPTION(POSTI_BUILD_MERGETIMEAVERAGE      "Build the time-averaging tool"              ON  "FLEXI_BUILDPOSTI" OFF)
+#CMAKE_DEPENDENT_OPTION(POSTI_BUILD_FLUCTUATIONS          "Build the fluctuations tool"                ON  "FLEXI_BUILDPOSTI" OFF)
+#CMAKE_DEPENDENT_OPTION(POSTI_BUILD_SWAPMESH              "Build the swapmesh tool"                    ON  "FLEXI_BUILDPOSTI" OFF)
+#CMAKE_DEPENDENT_OPTION(POSTI_BUILD_WALLDISTANCE          "Build the walldistance tool"                OFF "FLEXI_BUILDPOSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_BUILD_PREPARERECORDPOINTS   "Build the Record point preprocessing tool"          ON  "FLEXI_BUILDPOSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_BUILD_VISUALIZERECORDPOINTS "Build the Record Point post-processing tool"        OFF "FLEXI_BUILDPOSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_BUILD_EVALUATERECORDPOINTS  "Build the Record Point aposteriori evaluation tool" ON  "FLEXI_BUILDPOSTI" OFF)
 
-# Standalone Posti executable
-add_exec(posti_visu3D ./posti/visu/posti_visu3D.f90)
-TARGET_LINK_LIBRARIES(posti_visu3D visulib flexilib userblocklib_dummy ${linkedlibs})
-ADD_DEPENDENCIES(     posti_visu3D visulib flexilib userblocklib_dummy ${linkedlibs})
 
-# Posti visu plugin for Paraview
-CMAKE_DEPENDENT_OPTION(POSTI_USE_PARAVIEW "Build the Paraview visualization plugin for Posti." OFF "FLEXI_BUILDPOSTI" OFF)
-IF (POSTI_USE_PARAVIEW)
-  FIND_PACKAGE(ParaView)
-ENDIF()
-IF (POSTI_USE_PARAVIEW AND ParaView_FOUND)
-   INCLUDE(${PARAVIEW_USE_FILE})
-   MESSAGE(STATUS ${PARAVIEW_USE_FILE})
+SET(   POSTI_WHICH_EQNSYS "navierstokes" CACHE STRING
+                        "Used equation system (navierstokes)")
+SET(   POSTI_WHICH_EOS    "idealgas" CACHE STRING
+                        "Used equation of state (idealgas)")
 
-   SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-   INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/posti/visu/paraviewReader/)
-   ADD_PARAVIEW_PLUGIN(visu3DReader "1.0"
-      SERVER_MANAGER_XML ${CMAKE_CURRENT_SOURCE_DIR}/posti/visu/paraviewReader/visu3DReader.xml
-      SERVER_MANAGER_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/posti/visu/paraviewReader/visu3DReader.cxx
-      REQUIRED_ON_SERVER
-      DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/posti/visu/paraviewReader/visu3DReader.h"
+IF(POSTI_BUILD_VISUALIZERECORDPOINTS)
+  # =========================================================================
+  # FFTW (FFT tool)
+  # =========================================================================
+  # TODO: Upload new version to FlexiDL
+  IF (HOMERUN GREATER -1)
+    SET (FFTWDOWNLOAD ${FLEXI_DLPATH}libs/FFTW.git )
+  ELSE()
+    SET (FFTWDOWNLOAD ${FLEXI_DLPATH}libs/FFTW.git )
+    #SET (FFTWDOWNLOAD https://github.com/FFTW/fftw3.git ) ! Github repo does not contain all data, use fftw.org instead
+    #SET (FFTWDOWNLOAD http://fftw.org/ ) fftw-3.3.6-pl1.tar.gz
+  ENDIF()
+  SET(POSTI_FFTWTAG "fftw-3.3.6-pl1" CACHE STRING "FFTW version tag")
+  SET(POSTI_FFTWDIR ${FLEXI_EXTERNAL_LIB_DIR}/fftw)
+  # Try to find the library in the share directory or in a global, user-defined $FFTWDIR
+  FIND_PATH(FFTW_INCLUDES fftw3.h HINTS ${FLEXI_EXTERNAL_LIB_DIR}/fftw/build/include ${FFTWDIR}/build/include)
+  FIND_LIBRARY(FFTW_LIBRARIES NAMES fftw3 HINTS ${FLEXI_EXTERNAL_LIB_DIR}/fftw/build/lib ${FFTWDIR}/build/lib)
+  IF(FFTW_INCLUDES STREQUAL "FFTW_INCLUDES-NOTFOUND" OR FFTW_LIBRARIES STREQUAL "FFTW_LIBRARIES-NOTFOUND")
+    MESSAGE(STATUS "FFTW not found, building library")
+      ExternalProject_Add(fftw
+        GIT_REPOSITORY ${FFTWDOWNLOAD}
+        GIT_TAG ${POSTI_FFTWTAG}
+        PREFIX  ${POSTI_FFTWDIR}
+	UPDATE_COMMAND ""
+        CONFIGURE_COMMAND tar xzf ${POSTI_FFTWTAG}.tar.gz && FC=${CMAKE_Fortran_COMPILER} CC=${CMAKE_C_COMPILER} F77=${CMAKE_F77_COMPILER} ${POSTI_FFTWDIR}/src/fftw/${POSTI_FFTWTAG}/configure --prefix=${POSTI_FFTWDIR}/build
+        BUILD_IN_SOURCE 1
       )
+    SET(FFTW_INCLUDE_DIR ${POSTI_FFTWDIR}/build/include)
+    SET(FFTW_LIBRARY     ${POSTI_FFTWDIR}/build/lib/libfftw3.a)
+    SET(FFTW_LIBRARIES   ${POSTI_FFTWDIR}/build/lib/libfftw3.a)
+    SET_PROPERTY(DIRECTORY PROPERTY CLEAN_NO_CUSTOM 1)
+  ELSE()
+    MESSAGE(STATUS "FFTW includes found: " ${FFTW_INCLUDES})
+    SET(FFTW_INCLUDE_DIR ${FFTW_INCLUDES})
+    SET(FFTW_LIBRARY     ${FFTW_LIBRARIES})
+  ENDIF()
 
-   ADD_DEPENDENCIES(visu3DReader visulib flexilib userblocklib_dummy HDF5)
-   TARGET_LINK_LIBRARIES(visu3DReader PUBLIC visulib flexilib ${linkedlibs})
 ENDIF()
+
+
+IF(POSTI_BUILD_VISU)
+  INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/visu/CMakeLists.txt)
+ENDIF()
+
+IF(POSTI_BUILD_PREPARERECORDPOINTS)
+  INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/recordpoints/prepare/CMakeLists.txt)
+ENDIF()
+
+IF(POSTI_BUILD_VISUALIZERECORDPOINTS)
+  INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/recordpoints/visualize/CMakeLists.txt)
+ENDIF()
+
+IF(POSTI_BUILD_EVALUATERECORDPOINTS)
+  INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/recordpoints/evaluate/CMakeLists.txt)
+ENDIF()
+
+

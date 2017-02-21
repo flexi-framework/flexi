@@ -130,6 +130,7 @@ USE MOD_Globals
 USE MOD_Preproc
 USE MOD_Interpolation ,ONLY: GetVandermonde,GetNodesAndWeights
 USE MOD_Basis         ,ONLY: InitializeVandermonde
+USE MOD_Mathtools     ,ONLY: INVERSE
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -201,17 +202,7 @@ FV_Vdm = FV_Vdm * 0.5
 FV_Vdm = MATMUL(FV_Vdm, Vdm_In_tmp)
 
 ! Compute the inverse of FV_Vdm 
-FV_sVdm = FV_Vdm 
-CALL dgetrf(N_in+1,N_in+1,FV_sVdm(0:N_in,0:N_in),N_in+1,IPIV,errorflag)
-IF (errorflag .NE. 0) THEN 
-  CALL abort(__STAMP__,&
-    'LU factorisation of matrix crashed.')
-END IF
-CALL dgetri(N_in+1,FV_sVdm(0:N_in,0:N_in),N_in+1,IPIV,rhs,N_in+1,errorflag)
-IF (errorflag .NE. 0) THEN 
-  CALL abort(__STAMP__,&
-    'Solver crashed.')
-END IF
+FV_sVdm = INVERSE(FV_Vdm)
 END SUBROUTINE FV_GetVandermonde
 
 !==================================================================================================================================

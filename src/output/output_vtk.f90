@@ -18,14 +18,18 @@
 !> WARNING: WriteDataToVTK works only for POSTPROCESSING or for debug output during runtime
 !===================================================================================================================================
 MODULE MOD_VTK
+USE ISO_C_BINDING
 ! MODULES
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-! Private Part ---------------------------------------------------------------------------------------------------------------------
-! Public Part ----------------------------------------------------------------------------------------------------------------------
+TYPE, BIND(C) :: CARRAY
+  INTEGER (C_INT) :: len
+  INTEGER (C_INT) :: dim
+  TYPE (C_PTR)    :: data
+END TYPE CARRAY
 
 INTERFACE WriteDataToVTK
   MODULE PROCEDURE WriteDataToVTK
@@ -52,6 +56,7 @@ PUBLIC::WriteVTKMultiBlockDataSet
 PUBLIC::WriteCoordsToVTK_array
 PUBLIC::WriteDataToVTK_array
 PUBLIC::WriteVarnamesToVTK_array
+PUBLIC::CARRAY
 !===================================================================================================================================
 
 CONTAINS
@@ -139,16 +144,16 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)          :: nVal                 !< Number of nodal output variables
 INTEGER,INTENT(IN)          :: NVisu                !< Number of output points .EQ. NAnalyze
 INTEGER,INTENT(IN)          :: nElems               !< Number of output elements
-REAL,POINTER,INTENT(IN)     :: Coord(:,:,:,:,:)     !< CoordsVector
-CHARACTER(LEN=*),INTENT(IN) :: VarNames(nVal)       !< Names of all variables that will be written out
-REAL,POINTER,INTENT(IN)     :: Value(:,:,:,:,:)     !< Statevector
-CHARACTER(LEN=*),INTENT(IN) :: FileString           !< Output file name
 INTEGER,INTENT(IN)          :: dim                  !< dimension: 2 or 3
+REAL,INTENT(IN)             :: Coord(1:3,0:NVisu,0:NVisu,0:NVisu*(dim-2),nElems)     !< CoordsVector
+CHARACTER(LEN=*),INTENT(IN) :: VarNames(nVal)       !< Names of all variables that will be written out
+REAL,INTENT(IN)             :: Value(:,:,:,:,:)     !< Statevector
+CHARACTER(LEN=*),INTENT(IN) :: FileString           !< Output file name
 INTEGER,OPTIONAL,INTENT(IN) :: DGFV                 !< flag indicating DG = 0 or FV =1 data
 LOGICAL,OPTIONAL,INTENT(IN) :: nValAtLastDimension  !< if TRUE, nVal is stored in the last index of value
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                     :: iVal,ivtk=44
+INTEGER                     :: iVal,ivtk
 INTEGER                     :: nElems_glob(0:nProcessors-1)
 INTEGER                     :: NVisu_elem,nVTKPoints,nVTKCells
 INTEGER                     :: nTotalElems
@@ -201,7 +206,7 @@ IF(MPIROOT)THEN
   lf = char(10)
 
   ! Write file
-  OPEN(UNIT=ivtk,FILE=TRIM(FileString),ACCESS='STREAM')
+  OPEN(NEWUNIT=ivtk,FILE=TRIM(FileString),ACCESS='STREAM')
   ! Write header
   Buffer='<?xml version="1.0"?>'//lf;WRITE(ivtk) TRIM(Buffer)
   Buffer='<VTKFile type="UnstructuredGrid" version="0.1" byte_order="LittleEndian">'//lf;WRITE(ivtk) TRIM(Buffer)
@@ -365,13 +370,13 @@ CHARACTER(LEN=*),INTENT(IN) :: FileString_DG  !< Filename of DG VTU file
 CHARACTER(LEN=*),INTENT(IN) :: FileString_FV  !< Filename of FV VTU file 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: ivtk=44
+INTEGER            :: ivtk
 CHARACTER(LEN=200) :: Buffer
 CHARACTER(LEN=1)   :: lf
 !===================================================================================================================================
 IF (MPIRoot) THEN                   
   ! write multiblock file
-  OPEN(UNIT=ivtk,FILE=TRIM(FileString),ACCESS='STREAM')
+  OPEN(NEWUNIT=ivtk,FILE=TRIM(FileString),ACCESS='STREAM')
   ! Line feed character
   lf = char(10)
   Buffer='<VTKFile type="vtkMultiBlockDataSet" version="1.0" byte_order="LittleEndian" header_type="UInt64">'//lf
@@ -402,7 +407,7 @@ INTEGER,INTENT(IN)                   :: NVisu                        !< Polynomi
 INTEGER,INTENT(IN)                   :: nElems                       !< Number of elements
 INTEGER,INTENT(IN)                   :: dim                          !< Spacial dimension (2D or 3D)
 INTEGER,INTENT(IN)                   :: DGFV                         !< flag indicating DG = 0 or FV =1 data
-REAL(C_DOUBLE),ALLOCATABLE,TARGET,INTENT(IN)    :: coords(:,:,:,:,:) !< Array containing coordinates
+REAL,ALLOCATABLE,TARGET,INTENT(IN)    :: coords(:,:,:,:,:) !< Array containing coordinates
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 INTEGER,ALLOCATABLE,TARGET,INTENT(INOUT) :: nodeids(:)
@@ -412,6 +417,7 @@ TYPE (CARRAY), INTENT(INOUT)         :: nodeids_out
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
+coords_out%dim  = dim
 IF (nElems.EQ.0) THEN
   coords_out%len  = 0
   nodeids_out%len = 0
@@ -457,6 +463,7 @@ TYPE (CARRAY), INTENT(INOUT)      :: values_out
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
+values_out%dim  = dim
 IF (nElems.EQ.0) THEN
   values_out%len  = 0
   RETURN
@@ -476,7 +483,7 @@ END SUBROUTINE WriteDataToVTK_array
 !===================================================================================================================================
 !> Subroutine to write variable names to VTK format
 !===================================================================================================================================
-SUBROUTINE WriteVarnamesToVTK_array(nDep,mapVisu,varnames_out,components_out,VarNamesTotal,nVarTotal,nVarVisuTotal)
+SUBROUTINE WriteVarnamesToVTK_array(nVarTotal,mapVisu,varnames_out,VarNamesTotal,nVarVisu)
 USE ISO_C_BINDING
 ! MODULES
 USE MOD_Globals
@@ -485,37 +492,26 @@ USE MOD_StringTools    ,ONLY: STRICMP
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)             :: nDep
-INTEGER,INTENT(IN)             :: mapVisu(nDep)
-TYPE (CARRAY), INTENT(INOUT)   :: varnames_out
-TYPE (CARRAY), INTENT(INOUT)   :: components_out
 INTEGER,INTENT(IN)             :: nVarTotal
-INTEGER,INTENT(IN)             :: nVarVisuTotal
+INTEGER,INTENT(IN)             :: mapVisu(nVarTotal)
+TYPE (CARRAY), INTENT(INOUT)   :: varnames_out
 CHARACTER(LEN=255),INTENT(IN)  :: VarNamesTotal(nVarTotal)
+INTEGER,INTENT(IN)             :: nVarVisu
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(C_CHAR),POINTER    :: VarNames_loc(:,:)
-INTEGER(C_INT),POINTER       :: components_loc(:)
-INTEGER                      :: nVar_loc,i,iVar,iVarVisu
+INTEGER                      :: i,iVar
 !===================================================================================================================================
-nVar_loc = nVarVisuTotal
 ! copy varnames
-ALLOCATE(VarNames_loc(255,nVar_loc))
-varnames_out%len  = nVar_loc*255
+ALLOCATE(VarNames_loc(255,nVarVisu))
+varnames_out%len  = nVarVisu*255
 varnames_out%data = C_LOC(VarNames_loc(1,1))
 
-ALLOCATE(components_loc(nVar_loc))
-components_out%len  = nVar_loc
-components_out%data = C_LOC(components_loc(1))
-
-iVarVisu = 0
 DO iVar=1,nVarTotal
   IF (mapVisu(iVar).GT.0) THEN
-    iVarVisu=iVarVisu+1
     DO i=1,255
-      VarNames_loc(i,iVarVisu) = VarNamesTotal(iVar)(i:i)
+      VarNames_loc(i,mapVisu(iVar)) = VarNamesTotal(iVar)(i:i)
     END DO
-    components_loc(iVarVisu) = 1
   END IF
 END DO
 

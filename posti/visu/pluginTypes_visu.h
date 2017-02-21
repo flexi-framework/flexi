@@ -19,16 +19,19 @@
 
 struct DoubleARRAY{
   int len; 
+  int dim;
   double* data;
 };
 
 struct IntARRAY{
   int len; 
+  int dim;
   int* data;
 };
 
 struct CharARRAY{
   int len; 
+  int dim;
   char* data;
 };
 

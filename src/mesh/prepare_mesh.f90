@@ -487,9 +487,8 @@ NBinfo(6,1:nNBProcs)=offsetMPISides_YOUR(0:nNBProcs-1)
 CALL MPI_GATHER(NBinfo,6*nNBmax,MPI_INTEGER,NBinfo_glob,6*nNBmax,MPI_INTEGER,0,MPI_COMM_WORLD,iError)
 DEALLOCATE(NBinfo)
 IF(MPIroot)THEN
-  ioUnit=GETFREEUNIT()
   WRITE(PartitionInfoFileName,'(A21,I6.6,A4)')'partitionInfo_nRanks_',nProcessors,'.out'
-  OPEN(UNIT=ioUnit,FILE=TRIM(PartitionInfoFileName),STATUS='REPLACE')
+  OPEN(NEWUNIT=ioUnit,FILE=TRIM(PartitionInfoFileName),STATUS='REPLACE')
   WRITE(ioUnit,*)'Partition Information:'
   WRITE(ioUnit,*)'total number of Procs,',nProcessors
   WRITE(ioUnit,*)'total number of Elems,',SUM(Procinfo_glob(1,:))

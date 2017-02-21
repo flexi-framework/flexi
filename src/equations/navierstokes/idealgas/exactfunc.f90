@@ -1,18 +1,15 @@
 #include "flexi.h"
 
+!==================================================================================================================================
+!> Soubroutines necessary for calculating Navier-Stokes equations
+!==================================================================================================================================
 MODULE MOD_Exactfunc
-!==================================================================================================================================
-! Soubroutines necessary for calculating Navier-Stokes equations
-!==================================================================================================================================
 ! MODULES
-! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-! Private Part --------------------------------------------------------------------------------------------------------------------
-! Public Part ---------------------------------------------------------------------------------------------------------------------
 
 INTERFACE DefineParametersExactFunc
   MODULE PROCEDURE DefineParametersExactFunc
@@ -59,6 +56,7 @@ CALL addStrListEntry('IniExactFunc','testcase' ,-1)
 CALL addStrListEntry('IniExactFunc','testcase' ,0)
 CALL addStrListEntry('IniExactFunc','refstate' ,1)
 CALL addStrListEntry('IniExactFunc','sinedens' ,2)
+CALL addStrListEntry('IniExactFunc','sinedensx',21)
 CALL addStrListEntry('IniExactFunc','lindens'  ,3)
 CALL addStrListEntry('IniExactFunc','sinevel'  ,4)
 CALL addStrListEntry('IniExactFunc','sinevelx' ,41)
@@ -71,6 +69,7 @@ CALL addStrListEntry('IniExactFunc','couette'  ,8)
 CALL addStrListEntry('IniExactFunc','cavity'   ,9)
 CALL addStrListEntry('IniExactFunc','shock'    ,10)
 CALL addStrListEntry('IniExactFunc','sod'      ,11)
+CALL addStrListEntry('IniExactFunc','dmr'      ,13)
 CALL prms%CreateRealArrayOption(    'AdvVel',       "Advection velocity (v1,v2,v3) required for exactfunction CASE(2,21,4,8)")
 CALL prms%CreateRealOption(         'MachShock',    "Parameter required for CASE(10)", '1.5')
 CALL prms%CreateRealOption(         'PreShockDens', "Parameter required for CASE(10)", '1.0')
@@ -137,7 +136,8 @@ END SUBROUTINE InitExactFunc
 SUBROUTINE ExactFunc(ExactFunction,tIn,x,resu)
 ! MODULES
 USE MOD_Preproc        ,ONLY: PP_PI
-USE MOD_Globals        ,ONLY: Abort,CROSS
+USE MOD_Globals        ,ONLY: Abort
+USE MOD_Mathtools      ,ONLY: CROSS
 USE MOD_Eos_Vars       ,ONLY: Kappa,sKappaM1,KappaM1,KappaP1,R
 USE MOD_Exactfunc_Vars ,ONLY: IniCenter,IniHalfwidth,IniAmplitude,IniAxis,AdvVel
 USE MOD_Exactfunc_Vars ,ONLY: MachShock,PreShockDens

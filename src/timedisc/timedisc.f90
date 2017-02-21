@@ -161,6 +161,7 @@ USE MOD_Indicator           ,ONLY: doCalcIndicator,CalcIndicator
 #if FV_ENABLED
 USE MOD_FV
 #endif
+use MOD_IO_HDF5
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -173,6 +174,7 @@ INTEGER                      :: TimeArray(8)              !< Array for system ti
 INTEGER                      :: errType,nCalcTimestep,writeCounter
 LOGICAL                      :: doAnalyze,doFinalize
 !==================================================================================================================================
+
 SWRITE(UNIT_StdOut,'(132("-"))')
 
 ! write number of grid cells and dofs only once per computation

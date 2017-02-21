@@ -55,6 +55,10 @@ INTERFACE MarkWriteSuccessfull
   MODULE PROCEDURE MarkWriteSuccessfull
 END INTERFACE
 
+INTERFACE WriteAdditionalElemData
+  MODULE PROCEDURE WriteAdditionalElemData
+END INTERFACE
+
 INTERFACE
   SUBROUTINE copy_userblock(outfilename,infilename) BIND(C)
       USE ISO_C_BINDING, ONLY: C_CHAR
@@ -65,7 +69,7 @@ END INTERFACE
 
 
 PUBLIC :: WriteState,FlushFiles,WriteHeader,WriteTimeAverage,WriteBaseflow
-PUBLIC :: WriteArray,WriteAttribute,MarkWriteSuccessfull
+PUBLIC :: WriteArray,WriteAttribute,GatheredWriteArray,WriteAdditionalElemData,MarkWriteSuccessfull
 !==================================================================================================================================
 
 CONTAINS
@@ -728,8 +732,7 @@ InputFile=TRIM(FileName)
 CALL GetNextFileName(Inputfile,NextFile,.TRUE.)
 ! Delete File - only root
 stat=0
-ioUnit=GETFREEUNIT()
-OPEN ( UNIT   = ioUnit,            &
+OPEN ( NEWUNIT= ioUnit,         &
        FILE   = InputFile,      &
        STATUS = 'OLD',          &
        ACTION = 'WRITE',        &
@@ -742,8 +745,7 @@ DO
   CALL GetNextFileName(Inputfile,NextFile,.TRUE.)
   ! Delete File - only root
   stat=0
-  ioUnit=GETFREEUNIT()
-  OPEN ( UNIT   = ioUnit,            &
+  OPEN ( NEWUNIT= ioUnit,         &
          FILE   = InputFile,      &
          STATUS = 'OLD',          &
          ACTION = 'WRITE',        &

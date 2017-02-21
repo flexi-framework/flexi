@@ -240,7 +240,7 @@ IF(PRESENT(wIP))THEN
   CASE('fv_gausslob')
     CALL Abort(__STAMP__,&
         'Not implemented!')
-  CASE('fv_equi')
+  CASE('visu_fvequi')
     CALL Abort(__STAMP__,&
         'Not implemented!')
   CASE DEFAULT
@@ -287,7 +287,7 @@ ELSE
       xIP(i*2  ) = -1.+SUM(w(0:i-1))
       xIP(i*2+1) = -1.+SUM(w(0:i  ))
     END DO
-  CASE('fv_equi')
+  CASE('visu_fvequi')
     IF (MOD(N_in,2).EQ.0) THEN
       CALL Abort(__STAMP__,&
         'NodeType "'//NodeType_in//'" needs N to be odd!')
