@@ -628,7 +628,7 @@ withUserblock_loc=.FALSE.
 IF(PRESENT(withUserblock)) withUserblock_loc=withUserblock
 
 CALL OpenDataFile(TRIM(FileName),create=.TRUE.,single=.TRUE.,readOnly=.FALSE.,&
-                  userblockSize=MERGE(userblock_total_len,0,withUserblock))
+                  userblockSize=MERGE(userblock_total_len,0,withUserblock_loc))
 
 ! Write file header
 CALL WriteHeader(TRIM(TypeString),File_ID)
@@ -666,7 +666,7 @@ CALL WriteAttribute(File_ID,'NComputation',1,IntScalar=PP_N)
 CALL CloseDataFile()
 
 ! Add userblock to hdf5-file
-CALL copy_userblock(TRIM(FileName)//C_NULL_CHAR,TRIM(UserblockTmpFile)//C_NULL_CHAR)
+IF(withUserblock_loc) CALL copy_userblock(TRIM(FileName)//C_NULL_CHAR,TRIM(UserblockTmpFile)//C_NULL_CHAR)
 
 END SUBROUTINE GenerateFileSkeleton
 
@@ -686,7 +686,7 @@ CHARACTER(LEN=*),INTENT(IN)    :: FileName           !< Name of the file
 ! LOCAL VARIABLES
 INTEGER                        :: Time(8)
 !==================================================================================================================================
-CALL OpenDataFile(TRIM(FileName),create=.FALSE.,single=.TRUE.,readOnly=.FALSE.,userblockSize=userblock_total_len)
+CALL OpenDataFile(TRIM(FileName),create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
 CALL DATE_AND_TIME(VALUES=time)
 CALL WriteAttribute(File_ID,'TIME',8,IntArray=time)
 CALL CloseDataFile()
