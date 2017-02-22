@@ -95,18 +95,30 @@ SWRITE(UNIT_stdOut,*)' dynsmag: filtering mask:',filter_mask
 !Find in which x, y, z direction are the i, j ,k index pointing, and
 !then decide which index to filter
 DO iElem=1,nElems
-  !i
+  !i, average on the four edges
   vec = Elem_xgp(:,PP_N,0,0,iElem) - Elem_xgp(:,0,0,0,iElem)
+  vec = vec + (Elem_xgp(:,PP_N,PP_N,0,iElem) - Elem_xgp(:,0,PP_N,0,iElem))
+  vec = vec + (Elem_xgp(:,PP_N,0,PP_N,iElem) - Elem_xgp(:,0,0,PP_N,iElem))
+  vec = vec + (Elem_xgp(:,PP_N,PP_N,PP_N,iElem) - Elem_xgp(:,0,PP_N,PP_N,iElem))
+  vec = vec/4.0
   vec = vec/sqrt(sum(vec**2))
   dirv = maxloc(abs(vec))
   filter_ind(1,iElem) = filter_mask(dirv(1))
   !j
   vec = Elem_xgp(:,0,PP_N,0,iElem) - Elem_xgp(:,0,0,0,iElem)
+  vec = vec + (Elem_xgp(:,PP_N,PP_N,0,iElem) - Elem_xgp(:,PP_N,0,0,iElem))
+  vec = vec + (Elem_xgp(:,0,PP_N,PP_N,iElem) - Elem_xgp(:,0,0,PP_N,iElem))
+  vec = vec + (Elem_xgp(:,PP_N,PP_N,PP_N,iElem) - Elem_xgp(:,PP_N,0,PP_N,iElem))
+  vec = vec/4.0
   vec = vec/sqrt(sum(vec**2))
   dirv = maxloc(abs(vec))
   filter_ind(2,iElem) = filter_mask(dirv(1))
   !k
   vec = Elem_xgp(:,0,0,PP_N,iElem) - Elem_xgp(:,0,0,0,iElem)
+  vec = vec + (Elem_xgp(:,PP_N,0,PP_N,iElem) - Elem_xgp(:,PP_N,0,0,iElem))
+  vec = vec + (Elem_xgp(:,0,PP_N,PP_N,iElem) - Elem_xgp(:,0,PP_N,0,iElem))
+  vec = vec + (Elem_xgp(:,PP_N,PP_N,PP_N,iElem) - Elem_xgp(:,PP_N,PP_N,0,iElem))
+  vec = vec/4.0
   vec = vec/sqrt(sum(vec**2))
   dirv = maxloc(abs(vec))
   filter_ind(3,iElem) = filter_mask(dirv(1))
