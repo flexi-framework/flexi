@@ -267,7 +267,7 @@ DO iArgs = 2,nArgs
 
     ! Read in parameters from mesh file
     CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
-    CALL ReadAttribute(File_ID,'Ngeo',1,IntegerScalar=NGeo)
+    CALL ReadAttribute(File_ID,'Ngeo',1,IntScalar=NGeo)
     CALL CloseDataFile()
   
     ! Read the mesh itself

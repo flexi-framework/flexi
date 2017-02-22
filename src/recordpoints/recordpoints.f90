@@ -232,7 +232,7 @@ DEALLOCATE(HSize)
 IF(nGlobalElems_RPList.NE.nGlobalElems) CALL abort(__STAMP__, &
           'nGlobalElems from RPList differs from nGlobalElems from Mesh File!')
 
-CALL ReadArray('OffsetRP',2,(/2,nElems/),OffsetElem,2,IntegerArray=OffsetRPArray)
+CALL ReadArray('OffsetRP',2,(/2,nElems/),OffsetElem,2,IntArray=OffsetRPArray)
 
 ! Check if local domain contains any record points
 ! OffsetRP: first index: 1: offset in RP list for first RP on elem,
