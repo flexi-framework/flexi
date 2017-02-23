@@ -51,7 +51,7 @@ USE MOD_Interpolation_Vars,   ONLY:InterpolationInitIsDone,Vdm_Leg,sVdm_Leg,Node
 USE MOD_Mesh_Vars         ,   ONLY:MeshInitIsDone, Elem_xgp
 USE MOD_Interpolation_Vars,   ONLY:wGP
 USE MOD_Mesh_Vars,            ONLY:sJ,nSides,nElems
-USE MOD_Mesh_Vars,            ONLY:ElemToSide
+USE MOD_Mesh_Vars,            ONLY:ElemToSide,dXCL_N
 USE MOD_Testcase_Vars,        ONLY:testcase
 #if MPI
 USE MOD_MPI,                  ONLY:StartReceiveMPIData,FinishExchangeMPIData,StartSendMPIData
@@ -90,7 +90,7 @@ END IF
 
 !For the moment local, TODO add an input for this
 filter_mask = (/.true., .true., .true./)
-average_mask = (/.true., .false., .true./)
+average_mask = (/.true., .true., .true./)
 
 SWRITE(UNIT_stdOut,*)' dynsmag: filtering mask:',filter_mask
 SWRITE(UNIT_stdOut,*)' dynsmag: averaging  mask:',filter_mask
@@ -128,6 +128,10 @@ DO iElem=1,nElems
   filter_ind(3,iElem) = filter_mask(dirv(1))
   average_ind(3,iElem) = average_mask(dirv(1))
 END DO !iElem
+
+LineElem(1,:,:,:,:) = (dXCL_N(1,1,:,:,:,:)**2+dXCL_N(1,2,:,:,:,:)**2+dXCL_N(1,3,:,:,:,:)**2)**0.5
+LineElem(2,:,:,:,:) = (dXCL_N(2,1,:,:,:,:)**2+dXCL_N(2,2,:,:,:,:)**2+dXCL_N(2,3,:,:,:,:)**2)**0.5
+LineElem(3,:,:,:,:) = (dXCL_N(3,1,:,:,:,:)**2+dXCL_N(3,2,:,:,:,:)**2+dXCL_N(3,3,:,:,:,:)**2)**0.5
 
 
 ! Calculate the filter width deltaS: deltaS=( Cell volume )^(1/3) / ( PP_N+1 )
@@ -249,7 +253,7 @@ SUBROUTINE compute_cd(U_in)
 !===============================================================================================================================
 ! MODULES
 USE MOD_PreProc
-USE MOD_EddyVisc_Vars,          ONLY:SGS_Ind,FilterMat_testfilter
+USE MOD_EddyVisc_Vars,          ONLY:SGS_Ind,FilterMat_testfilter,lineElem
 USE MOD_EddyVisc_Vars,          ONLY:SGS_Ind!,SGS_Ind_Slave,SGS_Ind_Master
 USE MOD_EddyVisc_Vars,          ONLY:MM_Avg, ML_Avg, filter_ind, average_ind
 !USE MOD_ProlongToFace1,         ONLY: ProlongToFace1
@@ -279,7 +283,7 @@ REAL                                         :: srho
 REAL                :: v1,v2,v3
 REAL,DIMENSION(3,3,0:PP_N,0:PP_N,0:PP_N) :: S_ik,M_ik,L_ik
 REAL                                     :: D_Ratio
-REAL, DIMENSION(0:PP_N,0:PP_N,0:PP_N)    :: C_d,MM,ML,S_eN_filtered,S_eN
+REAL, DIMENSION(0:PP_N,0:PP_N,0:PP_N)    :: C_d,MM,ML,S_eN_filtered,S_eN,divV
 REAL, DIMENSION(0:PP_N,0:PP_N)    :: MMa,MLa
 REAL, DIMENSION(0:PP_N)                  :: dummy1D
 REAL, DIMENSION(0:PP_N, 0:PP_N)          :: dummy2D
@@ -304,14 +308,7 @@ DO iElem=1,nElems
       gradv13_elem(i,j,k) = (gradUz(2,i,j,k,iElem) )
       gradv23_elem(i,j,k) = (gradUz(3,i,j,k,iElem) )
       gradv33_elem(i,j,k) = (gradUz(4,i,j,k,iElem) )
-  END DO; END DO; END DO ! i,j,k
-  DO k=0,PP_N;  DO j=0,PP_N; DO i=0,PP_N
-      ! die zwei aus der Wurzel gleich hier oben verarbeitet, spart eine Operation
-      S_eN(i,j,k)= 2*(gradv11_elem(i,j,k)**2. + gradv22_elem(i,j,k)**2. + gradv33_elem(i,j,k)**2.)
-      S_eN(i,j,k)= S_eN(i,j,k) + ( gradv12_elem(i,j,k) + gradv21_elem(i,j,k) )**2.
-      S_eN(i,j,k)= S_eN(i,j,k) + ( gradv13_elem(i,j,k) + gradv31_elem(i,j,k) )**2.
-      S_eN(i,j,k)= S_eN(i,j,k) + ( gradv23_elem(i,j,k) + gradv32_elem(i,j,k) )**2.
-      S_eN(i,j,k)= sqrt( S_eN(i,j,k) )
+      divV(i,j,k) = 2./3.*(gradv11_elem(i,j,k)+gradv22_elem(i,j,k)+gradv33_elem(i,j,k))
   END DO; END DO; END DO ! i,j,k
   ! dynamic Smagorinsky model
   DO i=1,3
@@ -337,15 +334,20 @@ DO iElem=1,nElems
   END DO ! i
   !           _____            _ _   ____
   !Compute M=(Delta/Delta)**2*|S|S - |S|S  !!TENSOR ik
-  S_ik(1,1,:,:,:) = gradv11_elem(:,:,:)
-  S_ik(2,2,:,:,:) = gradv22_elem(:,:,:)
-  S_ik(3,3,:,:,:) = gradv33_elem(:,:,:)
+  S_ik(1,1,:,:,:) = gradv11_elem(:,:,:)-divV(:,:,:)
+  S_ik(2,2,:,:,:) = gradv22_elem(:,:,:)-divV(:,:,:)
+  S_ik(3,3,:,:,:) = gradv33_elem(:,:,:)-divV(:,:,:)
   S_ik(1,2,:,:,:) = (gradv21_elem(:,:,:)+gradv12_elem(:,:,:))*0.5
   S_ik(1,3,:,:,:) = (gradv31_elem(:,:,:)+gradv13_elem(:,:,:))*0.5
   S_ik(2,3,:,:,:) = (gradv23_elem(:,:,:)+gradv32_elem(:,:,:))*0.5
   S_ik(2,1,:,:,:) = S_ik(1,2,:,:,:)
   S_ik(3,1,:,:,:) = S_ik(1,3,:,:,:)
   S_ik(3,2,:,:,:) = S_ik(2,3,:,:,:)
+  S_eN(:,:,:)= (S_ik(1,1,:,:,:)**2 + S_ik(2,2,:,:,:)**2. + S_ik(3,3,:,:,:)**2.)
+  S_eN(:,:,:)= S_eN(:,:,:) +  2*(S_ik(2,1,:,:,:) )**2.
+  S_eN(:,:,:)= S_eN(:,:,:) +  2*(S_ik(3,1,:,:,:) )**2.
+  S_eN(:,:,:)= S_eN(:,:,:) +  2*(S_ik(3,2,:,:,:) )**2.
+  S_eN(:,:,:)= sqrt(2* S_eN(:,:,:) )
 
   DO i=1,3
     DO k=1,3
@@ -372,11 +374,15 @@ DO iElem=1,nElems
   CALL Filter_Selective(3,FilterMat_Testfilter,gradv_all(:,1,:,:,:),filter_ind(:,iElem))
   CALL Filter_Selective(3,FilterMat_Testfilter,gradv_all(:,2,:,:,:),filter_ind(:,iElem))
   CALL Filter_Selective(3,FilterMat_Testfilter,gradv_all(:,3,:,:,:),filter_ind(:,iElem))
+  divV(:,:,:) = 2./3.*(gradv_all(1,1,:,:,:)+gradv_all(2,2,:,:,:)+gradv_all(3,3,:,:,:))
   DO i=1,3
     DO j=1,3
       S_ik(i,j,:,:,:) = (gradv_all(i,j,:,:,:)+gradv_all(j,i,:,:,:))*0.5
     END DO
   END DO
+  S_ik(1,1,:,:,:) = S_ik(1,1,:,:,:) -divV(:,:,:)
+  S_ik(2,2,:,:,:) = S_ik(2,2,:,:,:) -divV(:,:,:)
+  S_ik(3,3,:,:,:) = S_ik(3,3,:,:,:) -divV(:,:,:)
 
   S_eN_filtered(:,:,:)= (S_ik(1,1,:,:,:)**2 + S_ik(2,2,:,:,:)**2. + S_ik(3,3,:,:,:)**2.)
   S_eN_filtered(:,:,:)= S_eN_filtered(:,:,:) +  2*(S_ik(2,1,:,:,:) )**2.
@@ -408,69 +414,22 @@ DO iElem=1,nElems
   END DO ! i
 
 
-  !Average C_d**2 over homogeneous directions, or cell, or in time, or whatever
+!  !Average C_d**2 over homogeneous directions, or cell, or in time, or whatever
 !  !-----CELL AVERAGE
 !  dummy=0.
-!  Vol = 0.
+!  Vol=0.
 !  DO k=0,PP_N
 !    DO j=0,PP_N
 !      DO i=0,PP_N
-!        IntegrationWeight = wGP(i)*wGP(j)*wGP(k)*1/sJ(i,j,k,iElem)
-!        dummy=dummy + C_d(i,j,k)*IntegrationWeight
-!        Vol = Vol + Integrationweight
+!        IntegrationWeight = wGP(i)*wGP(j)*wGP(k)*1/sJ(i,j,k,iElem,0)
+!        dummy=dummy + ML(i,j,k)*Integrationweight
+!        Vol = Vol + MM(i,j,k)*  Integrationweight 
 !      END DO ! i
 !    END DO ! j
 !  END DO ! k
-!  SGS_Ind(1,:,:,:,iElem) =dummy/Vol !CELL average
-!  SGS_Ind(1,:,:,:,iElem) =0.001
+!  SGS_Ind(1,:,:,:,iElem) =0.5*dummy/Vol !CELL average
 !print*,SGS_Ind(1,:,:,:,iElem)
 
-!  !-----CELL LOCAL 
-!  dummy=0.
-!  Vol = 0.
-!  DO k=0,PP_N
-!    DO j=0,PP_N
-!      DO i=0,PP_N
-!        IntegrationWeight = wGP(i)*wGP(j)
-!        dummy = dummy + ML(i,j,k)*IntegrationWeight
-!        Vol = Vol + Integrationweight
-!      END DO ! i
-!    END DO ! j
-!  END DO ! j
-!  DO k=0,PP_N
-!    DO j=0,PP_N
-!      DO i=0,PP_N
-!        ML(i,j,k) = dummy/Vol !CELL average
-!      END DO ! i
-!    END DO ! j
-!  END DO ! j
-!  dummy=0.
-!  DO k=0,PP_N
-!    DO j=0,PP_N
-!      DO i=0,PP_N
-!        IntegrationWeight = wGP(i)*wGP(j)
-!        dummy = dummy + MM(i,j,k)*IntegrationWeight
-!      END DO ! i
-!    END DO ! j
-!  END DO ! j
-!  DO k=0,PP_N
-!    DO j=0,PP_N
-!      DO i=0,PP_N
-!        MM(i,j,k) = dummy/Vol !CELL average
-!      END DO ! i
-!    END DO ! j
-!  END DO ! j
-!  DO k=0,PP_N
-!    DO j=0,PP_N
-!      DO i=0,PP_N
-!        C_d(i,k,j) = -0.5*ML(i,j,k)/MM(i,j,k) !CELL average
-!        IF (ABS(MM(i,j,k)) .LE. 1e-15) C_d(i,j,k)=0. 
-!      END DO ! i
-!    END DO ! j
-!  END DO ! j
-!!  SGS_Ind(1,:,:,:,iElem) = MIN(C_d(:,:,:),CS***2)
-!  SGS_Ind(1,:,:,:,iElem) = C_d(:,:,:)
-!
 ! !-----CELL LOCAL IN HOMOGENEOUS DIRECTIONS
 ! !ACHTUNG NUR KARTESISCH UND IN/FUER Y=J!!!
 !  dummy1D=0.
@@ -511,41 +470,40 @@ DO iElem=1,nElems
   IF(average_ind(1,iElem)) THEN
     MMa = 0.; MLa = 0.; Vol = 0.
     DO i=0,PP_N
-      MMa = MMa + MM(i,:,:)*wGP(i)
-      MLa = MLa + ML(i,:,:)*wGP(i)
-      Vol = Vol + wGP(i)
+      MMa = MMa + MM(i,:,:)*wGP(i)*lineElem(1,i,:,:,iElem)
+      MLa = MLa + ML(i,:,:)*wGP(i)*lineElem(1,i,:,:,iElem)
     END DO !i
     DO i=0,PP_N
-      MM(i,:,:) = MMa/Vol
-      ML(i,:,:) = MLa/Vol
+      MM(i,:,:) = MMa
+      ML(i,:,:) = MLa
     END DO !i
   END IF
   IF(average_ind(2,iElem)) THEN
     MMa = 0.; MLa = 0.; Vol = 0.
     DO j=0,PP_N
-      MMa = MMa + MM(:,j,:)*wGP(j)
-      MLa = MLa + ML(:,j,:)*wGP(j)
-      Vol = Vol + wGP(j)
+      MMa = MMa + MM(:,j,:)*wGP(j)*lineElem(2,:,j,:,iElem)
+      MLa = MLa + ML(:,j,:)*wGP(j)*lineElem(2,:,j,:,iElem)
     END DO !j
     DO j=0,PP_N
-      MM(:,j,:) = MMa/Vol
-      ML(:,j,:) = MLa/Vol
+      MM(:,j,:) = MMa
+      ML(:,j,:) = MLa
     END DO !j
   END IF
   IF(average_ind(3,iElem)) THEN
     MMa = 0.; MLa = 0.; Vol = 0.
     DO k=0,PP_N
-      MMa = MMa + MM(:,:,k)*wGP(k)
-      MLa = MLa + ML(:,:,k)*wGP(k)
-      Vol = Vol + wGP(k)
+      MMa = MMa + MM(:,:,k)*wGP(k)*lineElem(3,:,:,k,iElem)
+      MLa = MLa + ML(:,:,k)*wGP(k)*lineElem(3,:,:,k,iElem)
     END DO !k
     DO k=0,PP_N
-      MM(:,:,k) = MMa/Vol
-      ML(:,:,k) = MLa/Vol
+      MM(:,:,k) = MMa
+      ML(:,:,k) = MLa
     END DO !k
   END IF
   C_d = 0.5*ML/MM
   SGS_Ind(1,:,:,:,iElem) = C_d(:,:,:)
+!  print*,SGS_Ind(1,:,:,:,iElem)
+!stop
 
 !
   !-----CELL AVERAGE ONLY IN Z DIRECTION

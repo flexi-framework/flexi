@@ -289,7 +289,7 @@ CALL InitFV_Metrics()  ! FV metrics
 #endif
 
 DEALLOCATE(NodeCoords)
-DEALLOCATE(dXCL_N)
+!DEALLOCATE(dXCL_N)
 DEALLOCATE(Ja_Face)
 SDEALLOCATE(TreeCoords)
 SDEALLOCATE(xiMinMax)
