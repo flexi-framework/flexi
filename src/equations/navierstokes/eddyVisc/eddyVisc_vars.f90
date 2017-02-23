@@ -64,6 +64,7 @@ REAL,ALLOCATABLE  :: SGS_Ind_master(:,:,:,:)
 REAL,ALLOCATABLE  :: SGS_Ind_slave(:,:,:,:) 
 ! Dynamic Smagorinsky
 LOGICAL, ALLOCATABLE :: filter_ind(:,:) !< Do filter along i,j,k index?
+LOGICAL, ALLOCATABLE :: average_ind(:,:) !< Do average along i,j,k index?
 !MATTEO:debug output
 REAL,ALLOCATABLE  :: S_en_out(:,:,:,:,:)  !< Debug output of |S|
 

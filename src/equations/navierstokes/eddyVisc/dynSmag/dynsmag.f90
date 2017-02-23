@@ -69,7 +69,7 @@ INTEGER :: i,iElem,j,k, iDir
 REAL    :: CellVol
 INTEGER :: iLocSide,SideID,FlipID
 REAL    :: vec(3)
-logical :: filter_mask(3)
+logical :: filter_mask(3), average_mask(3)
 integer :: dirv(1)
 !===================================================================================================================================
 IF(((.NOT.InterpolationInitIsDone).AND.(.NOT.MeshInitIsDone)).OR.dynsmagInitIsDone)THEN
@@ -89,9 +89,11 @@ IF(testcase.EQ."channel") THEN
 END IF
 
 !For the moment local, TODO add an input for this
-filter_mask = (/.false., .false., .true./)
+filter_mask = (/.true., .true., .true./)
+average_mask = (/.true., .false., .true./)
 
 SWRITE(UNIT_stdOut,*)' dynsmag: filtering mask:',filter_mask
+SWRITE(UNIT_stdOut,*)' dynsmag: averaging  mask:',filter_mask
 !Find in which x, y, z direction are the i, j ,k index pointing, and
 !then decide which index to filter
 DO iElem=1,nElems
@@ -104,6 +106,7 @@ DO iElem=1,nElems
   vec = vec/sqrt(sum(vec**2))
   dirv = maxloc(abs(vec))
   filter_ind(1,iElem) = filter_mask(dirv(1))
+  average_ind(1,iElem) = average_mask(dirv(1))
   !j
   vec = Elem_xgp(:,0,PP_N,0,iElem) - Elem_xgp(:,0,0,0,iElem)
   vec = vec + (Elem_xgp(:,PP_N,PP_N,0,iElem) - Elem_xgp(:,PP_N,0,0,iElem))
@@ -113,6 +116,7 @@ DO iElem=1,nElems
   vec = vec/sqrt(sum(vec**2))
   dirv = maxloc(abs(vec))
   filter_ind(2,iElem) = filter_mask(dirv(1))
+  average_ind(2,iElem) = average_mask(dirv(1))
   !k
   vec = Elem_xgp(:,0,0,PP_N,iElem) - Elem_xgp(:,0,0,0,iElem)
   vec = vec + (Elem_xgp(:,PP_N,0,PP_N,iElem) - Elem_xgp(:,PP_N,0,0,iElem))
@@ -122,6 +126,7 @@ DO iElem=1,nElems
   vec = vec/sqrt(sum(vec**2))
   dirv = maxloc(abs(vec))
   filter_ind(3,iElem) = filter_mask(dirv(1))
+  average_ind(3,iElem) = average_mask(dirv(1))
 END DO !iElem
 
 
@@ -246,7 +251,7 @@ SUBROUTINE compute_cd(U_in)
 USE MOD_PreProc
 USE MOD_EddyVisc_Vars,          ONLY:SGS_Ind,FilterMat_testfilter
 USE MOD_EddyVisc_Vars,          ONLY:SGS_Ind!,SGS_Ind_Slave,SGS_Ind_Master
-USE MOD_EddyVisc_Vars,          ONLY:MM_Avg, ML_Avg, filter_ind
+USE MOD_EddyVisc_Vars,          ONLY:MM_Avg, ML_Avg, filter_ind, average_ind
 !USE MOD_ProlongToFace1,         ONLY: ProlongToFace1
 USE MOD_Filter,                 ONLY:Filter_General, Filter_Selective
 USE MOD_Lifting_Vars,           ONLY:gradUx,gradUy,gradUz
@@ -503,7 +508,7 @@ DO iElem=1,nElems
 
 
   ! Selective cell average (on selected directions)
-  IF(filter_ind(1,iElem)) THEN
+  IF(average_ind(1,iElem)) THEN
     MMa = 0.; MLa = 0.; Vol = 0.
     DO i=0,PP_N
       MMa = MMa + MM(i,:,:)*wGP(i)
@@ -515,7 +520,7 @@ DO iElem=1,nElems
       ML(i,:,:) = MLa/Vol
     END DO !i
   END IF
-  IF(filter_ind(2,iElem)) THEN
+  IF(average_ind(2,iElem)) THEN
     MMa = 0.; MLa = 0.; Vol = 0.
     DO j=0,PP_N
       MMa = MMa + MM(:,j,:)*wGP(j)
@@ -527,7 +532,7 @@ DO iElem=1,nElems
       ML(:,j,:) = MLa/Vol
     END DO !j
   END IF
-  IF(filter_ind(3,iElem)) THEN
+  IF(average_ind(3,iElem)) THEN
     MMa = 0.; MLa = 0.; Vol = 0.
     DO k=0,PP_N
       MMa = MMa + MM(:,:,k)*wGP(k)

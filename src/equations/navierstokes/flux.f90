@@ -153,7 +153,7 @@ DO k=0,PP_N;  DO j=0,PP_N; DO i=0,PP_N
   !MATTEO: let musgs have negative values
   !muSGS(1,i,j,k,iElem) =  max(muSGS(1,i,j,k,iElem),-muS)
   !MATTEO: limit heavily the mu sgs for stability
-  muSGS(1,i,j,k,iElem) =  min(max(muSGS(1,i,j,k,iElem),0.),10.0*muS)
+  muSGS(1,i,j,k,iElem) =  min(max(muSGS(1,i,j,k,iElem),0.),8.0*muS)
   muS = muS + (muSGS(1,i,j,k,iElem))
   ! MATTEO: horrible hack
   !muS = muS + min(max(muSGS(1,i,j,k,iElem),0.), 3*muS)
@@ -312,7 +312,7 @@ DO j=0,Nloc ; DO i=0,Nloc
     !MATTEO: letting musgs have negative values
     !muSGS=max(SGS_Ind(2,i,j),-muS)
     !MATTEO: limit the musgs heavily
-    muSGS=min(max(SGS_Ind(2,i,j),0.),10.0*muS)
+    muSGS=min(max(SGS_Ind(2,i,j),0.),8.0*muS)
   ELSE
     CALL eddyViscosity_surf(gradUx_Face(2,i,j),gradUy_Face(3,i,j),gradUz_Face(4,i,j)&
                            ,gradUy_Face(2,i,j),gradUz_Face(2,i,j),gradUx_Face(3,i,j)&
