@@ -43,6 +43,7 @@ END INTERFACE
 ! GLOBAL VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
 INTEGER                             :: eddyViscType           !< type of eddy viscosity
+CHARACTER(LEN=255)                  :: WallDistFile
 PROCEDURE(EddyViscInt)     ,POINTER :: eddyViscosity          !< pointer to routine for computing volume eddy viscosity
 PROCEDURE(EddyVisc_surfInt),POINTER :: eddyViscosity_surf     !< pointer to routine for computing surface eddy viscosity
 PROCEDURE(testfilterInt),POINTER       :: testfilter     !< pointer to routine for computing test filter
@@ -68,6 +69,7 @@ LOGICAL, ALLOCATABLE :: filter_ind(:,:) !< Do filter along i,j,k index?
 LOGICAL, ALLOCATABLE :: average_ind(:,:) !< Do average along i,j,k index?
 !MATTEO:debug output
 REAL,ALLOCATABLE  :: S_en_out(:,:,:,:,:)  !< Debug output of |S|
+REAL,ALLOCATABLE  :: filtdir_out(:)  !< Debug output of filtering directions
 
 
 LOGICAL           :: VanDriest=.FALSE.

@@ -46,13 +46,14 @@ SUBROUTINE Initdynsmag()
 USE MOD_Globals
 USE MOD_PreProc                
 USE MOD_EddyVisc_Vars              
-USE MOD_ReadInTools       ,   ONLY:GETREAL,GETLOGICAL,GETINT
+USE MOD_ReadInTools       ,   ONLY:GETREAL,GETLOGICAL,GETINT, GETSTR
 USE MOD_Interpolation_Vars,   ONLY:InterpolationInitIsDone,Vdm_Leg,sVdm_Leg,NodeType,wGP
-USE MOD_Mesh_Vars         ,   ONLY:MeshInitIsDone, Elem_xgp
+USE MOD_Mesh_Vars         ,   ONLY:MeshInitIsDone, Elem_xgp, offsetElem
 USE MOD_Interpolation_Vars,   ONLY:wGP
 USE MOD_Mesh_Vars,            ONLY:sJ,nSides,nElems
 USE MOD_Mesh_Vars,            ONLY:ElemToSide,dXCL_N
 USE MOD_Testcase_Vars,        ONLY:testcase
+USE MOD_HDF5_input,           ONLY: OpenDataFile,CloseDataFile,ReadArray
 #if MPI
 USE MOD_MPI,                  ONLY:StartReceiveMPIData,FinishExchangeMPIData,StartSendMPIData
 USE MOD_MPI_Vars,             ONLY:MPIRequest_DeltaS,nNbProcs
@@ -68,9 +69,11 @@ USE MOD_MPI_Vars,             ONLY:MPIRequest_DeltaS,nNbProcs
 INTEGER :: i,iElem,j,k, iDir
 REAL    :: CellVol
 INTEGER :: iLocSide,SideID,FlipID
-REAL    :: vec(3)
-logical :: filter_mask(3), average_mask(3)
+REAL    :: vec(3), parvec(3), parcomp, normvec(3), normcomp
+logical :: filter_mask(3), average_mask(3), isn
 integer :: dirv(1)
+REAL    :: EwallDist(3,nElems)
+REAL    :: WallDistTrsh, distNorm
 !===================================================================================================================================
 IF(((.NOT.InterpolationInitIsDone).AND.(.NOT.MeshInitIsDone)).OR.dynsmagInitIsDone)THEN
    SWRITE(UNIT_StdOut,'(A)') "Initdynsmag not ready to be called or already called."
@@ -87,6 +90,13 @@ IF(testcase.EQ."channel") THEN
   ! Do Van Driest style damping or not
   VanDriest = GETLOGICAL('VanDriest','.FALSE.')
 END IF
+WallDistFile = GETSTR('WallDistFile','')
+WallDistTrsh = GETREAL('WallDistanceTreshold','0.0')
+IF (WallDistFile .NE. '') THEN
+  CALL OpenDataFile(WallDistFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+  CALL ReadArray('Walldistance',2,(/3,nElems/),OffsetElem,2,RealArray=EwallDist)
+  CALL CloseDataFile()
+ENDIF
 
 !For the moment local, TODO add an input for this
 filter_mask = (/.true., .true., .true./)
@@ -96,37 +106,58 @@ SWRITE(UNIT_stdOut,*)' dynsmag: filtering mask:',filter_mask
 SWRITE(UNIT_stdOut,*)' dynsmag: averaging  mask:',filter_mask
 !Find in which x, y, z direction are the i, j ,k index pointing, and
 !then decide which index to filter
+!MATTEO: DEBUG
+filtdir_out = 0.0
 DO iElem=1,nElems
-  !i, average on the four edges
-  vec = Elem_xgp(:,PP_N,0,0,iElem) - Elem_xgp(:,0,0,0,iElem)
-  vec = vec + (Elem_xgp(:,PP_N,PP_N,0,iElem) - Elem_xgp(:,0,PP_N,0,iElem))
-  vec = vec + (Elem_xgp(:,PP_N,0,PP_N,iElem) - Elem_xgp(:,0,0,PP_N,iElem))
-  vec = vec + (Elem_xgp(:,PP_N,PP_N,PP_N,iElem) - Elem_xgp(:,0,PP_N,PP_N,iElem))
-  vec = vec/4.0
-  vec = vec/sqrt(sum(vec**2))
-  dirv = maxloc(abs(vec))
-  filter_ind(1,iElem) = filter_mask(dirv(1))
-  average_ind(1,iElem) = average_mask(dirv(1))
-  !j
-  vec = Elem_xgp(:,0,PP_N,0,iElem) - Elem_xgp(:,0,0,0,iElem)
-  vec = vec + (Elem_xgp(:,PP_N,PP_N,0,iElem) - Elem_xgp(:,PP_N,0,0,iElem))
-  vec = vec + (Elem_xgp(:,0,PP_N,PP_N,iElem) - Elem_xgp(:,0,0,PP_N,iElem))
-  vec = vec + (Elem_xgp(:,PP_N,PP_N,PP_N,iElem) - Elem_xgp(:,PP_N,0,PP_N,iElem))
-  vec = vec/4.0
-  vec = vec/sqrt(sum(vec**2))
-  dirv = maxloc(abs(vec))
-  filter_ind(2,iElem) = filter_mask(dirv(1))
-  average_ind(2,iElem) = average_mask(dirv(1))
-  !k
-  vec = Elem_xgp(:,0,0,PP_N,iElem) - Elem_xgp(:,0,0,0,iElem)
-  vec = vec + (Elem_xgp(:,PP_N,0,PP_N,iElem) - Elem_xgp(:,PP_N,0,0,iElem))
-  vec = vec + (Elem_xgp(:,0,PP_N,PP_N,iElem) - Elem_xgp(:,0,PP_N,0,iElem))
-  vec = vec + (Elem_xgp(:,PP_N,PP_N,PP_N,iElem) - Elem_xgp(:,PP_N,PP_N,0,iElem))
-  vec = vec/4.0
-  vec = vec/sqrt(sum(vec**2))
-  dirv = maxloc(abs(vec))
-  filter_ind(3,iElem) = filter_mask(dirv(1))
-  average_ind(3,iElem) = average_mask(dirv(1))
+  distNorm = SQRT(SUM(EwallDist(:,iElem)**2)) 
+  IF (distNorm .GE. WallDistTrsh) THEN !out of the boundary layer
+    ! Filter and average isotropically
+    filter_ind(:,iElem) = .true.
+    average_ind(:,iElem) = .true.
+    !MATTEO: DEBUG
+    filtdir_out(iElem) = 7.0
+  ELSE ! in the boundary layer
+    ! Filter and average only normal to the boundary
+    !i, average on the four edges
+    vec = Elem_xgp(:,PP_N,0,0,iElem) - Elem_xgp(:,0,0,0,iElem)
+    vec = vec + (Elem_xgp(:,PP_N,PP_N,0,iElem) - Elem_xgp(:,0,PP_N,0,iElem))
+    vec = vec + (Elem_xgp(:,PP_N,0,PP_N,iElem) - Elem_xgp(:,0,0,PP_N,iElem))
+    vec = vec + (Elem_xgp(:,PP_N,PP_N,PP_N,iElem) - Elem_xgp(:,0,PP_N,PP_N,iElem))
+    vec = vec/4.0
+    vec = vec/sqrt(sum(vec**2)) !Unit vector of i direction
+    !If i is normal to the distance filter and average in i 
+    isn = isnormal(vec,EwallDist(:,iElem))
+    filter_ind(1,iElem) = isn
+    average_ind(1,iElem) = isn
+    !MATTEO: DEBUG
+    IF(isn) filtdir_out(iElem) = filtdir_out(iElem)+1
+    !j
+    vec = Elem_xgp(:,0,PP_N,0,iElem) - Elem_xgp(:,0,0,0,iElem)
+    vec = vec + (Elem_xgp(:,PP_N,PP_N,0,iElem) - Elem_xgp(:,PP_N,0,0,iElem))
+    vec = vec + (Elem_xgp(:,0,PP_N,PP_N,iElem) - Elem_xgp(:,0,0,PP_N,iElem))
+    vec = vec + (Elem_xgp(:,PP_N,PP_N,PP_N,iElem) - Elem_xgp(:,PP_N,0,PP_N,iElem))
+    vec = vec/4.0
+    vec = vec/sqrt(sum(vec**2))
+    !If j is normal to the distance filter and average in j 
+    isn = isnormal(vec,EwallDist(:,iElem))
+    filter_ind(2,iElem) =  isn
+    average_ind(2,iElem) = isn
+    !MATTEO: DEBUG
+    IF(isn) filtdir_out(iElem) = filtdir_out(iElem)+2
+    !k
+    vec = Elem_xgp(:,0,0,PP_N,iElem) - Elem_xgp(:,0,0,0,iElem)
+    vec = vec + (Elem_xgp(:,PP_N,0,PP_N,iElem) - Elem_xgp(:,PP_N,0,0,iElem))
+    vec = vec + (Elem_xgp(:,0,PP_N,PP_N,iElem) - Elem_xgp(:,0,PP_N,0,iElem))
+    vec = vec + (Elem_xgp(:,PP_N,PP_N,PP_N,iElem) - Elem_xgp(:,PP_N,PP_N,0,iElem))
+    vec = vec/4.0
+    vec = vec/sqrt(sum(vec**2))
+    !If k is normal to the distance filter and average in k 
+    isn = isnormal(vec,EwallDist(:,iElem))
+    filter_ind(3,iElem) = isn
+    average_ind(3,iElem) = isn
+    !MATTEO: DEBUG
+    IF(isn) filtdir_out(iElem) = filtdir_out(iElem)+4
+  END IF !in or out boundary layer
 END DO !iElem
 
 LineElem(1,:,:,:,:) = (dXCL_N(1,1,:,:,:,:)**2+dXCL_N(1,2,:,:,:,:)**2+dXCL_N(1,3,:,:,:,:)**2)**0.5
@@ -468,7 +499,7 @@ DO iElem=1,nElems
 
   ! Selective cell average (on selected directions)
   IF(average_ind(1,iElem)) THEN
-    MMa = 0.; MLa = 0.; Vol = 0.
+    MMa = 0.; MLa = 0.
     DO i=0,PP_N
       MMa = MMa + MM(i,:,:)*wGP(i)*lineElem(1,i,:,:,iElem)
       MLa = MLa + ML(i,:,:)*wGP(i)*lineElem(1,i,:,:,iElem)
@@ -479,7 +510,7 @@ DO iElem=1,nElems
     END DO !i
   END IF
   IF(average_ind(2,iElem)) THEN
-    MMa = 0.; MLa = 0.; Vol = 0.
+    MMa = 0.; MLa = 0.
     DO j=0,PP_N
       MMa = MMa + MM(:,j,:)*wGP(j)*lineElem(2,:,j,:,iElem)
       MLa = MLa + ML(:,j,:)*wGP(j)*lineElem(2,:,j,:,iElem)
@@ -490,7 +521,7 @@ DO iElem=1,nElems
     END DO !j
   END IF
   IF(average_ind(3,iElem)) THEN
-    MMa = 0.; MLa = 0.; Vol = 0.
+    MMa = 0.; MLa = 0.
     DO k=0,PP_N
       MMa = MMa + MM(:,:,k)*wGP(k)*lineElem(3,:,:,k,iElem)
       MLa = MLa + ML(:,:,k)*wGP(k)*lineElem(3,:,:,k,iElem)
@@ -596,5 +627,31 @@ IMPLICIT NONE
 !===============================================================================================================================
 dynsmagInitIsDone = .FALSE.
 END SUBROUTINE Finalizedynsmag
+
+
+!===============================================================================================================================
+! Is vector vec1 "more normal" to vec2 "than parallel"?
+!===============================================================================================================================
+FUNCTION isnormal(vec1,vec2) result(norm)
+REAL, INTENT(IN) :: vec1(:), vec2(:)
+LOGICAL          :: norm 
+
+REAL :: vec2Norm, parcomp, normvec(size(vec1,1)), normcomp
+
+! norm of vec2
+vec2Norm = sqrt(sum(vec2**2))
+! component of vec1 parallel to vec2
+parcomp = sum(vec1*vec2)/vec2Norm
+! part of vec1 normal to vec2
+normvec = vec1 - parcomp*vec2/vec2Norm
+! component of vec1 normal to vec2
+normcomp = sqrt(sum(normvec**2)) 
+IF (normcomp .GE. parcomp) THEN
+  norm = .true.
+ELSE
+  norm = .false.
+ENDIF
+END FUNCTION isnormal
+
 #endif
 END MODULE MOD_dynsmag

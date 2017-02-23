@@ -60,7 +60,7 @@ USE MOD_DynSmag
 USE MOD_DefaultEddyVisc
 USE MOD_Mesh_Vars  ,ONLY:nElems,nSides
 USE MOD_ReadInTools,ONLY: GETINTFROMSTR
-USE MOD_IO_HDF5    ,ONLY: AddToFieldData
+USE MOD_IO_HDF5    ,ONLY: AddToFieldData, AddToElemData
 USE MOD_EOS_Vars, ONLY: mu0
 !===================================================================================================================================
 
@@ -83,6 +83,7 @@ SGS_Ind_slave=0.
 ALLOCATE(muSGS(1,0:PP_N,0:PP_N,0:PP_N,nElems))
 !MATTEO: debug output
 ALLOCATE(S_en_out(1,0:PP_N,0:PP_N,0:PP_N,nElems))
+ALLOCATE(filtdir_out(nElems))
 S_en_out = 0.
 ALLOCATE(muSGSmax(nElems))
 muSGS = 0.
@@ -120,6 +121,7 @@ CALL AddToFieldData((/1,PP_N+1,PP_N+1,PP_N+1/),'VMSData',(/'muSGS'/),RealArray=m
 !MATTEO: debug output
 CALL AddToFieldData((/2,PP_N+1,PP_N+1,PP_N+1/),'VMSData',(/'Csmag   ','muSgsInd'/),RealArray=SGS_Ind)
 CALL AddToFieldData((/1,PP_N+1,PP_N+1,PP_N+1/),'VMSData',(/'S_norm'/),RealArray=S_en_out)
+CALL AddToElemData('FilterInd',RealArray=filtdir_out(:))
 
 END SUBROUTINE
 
