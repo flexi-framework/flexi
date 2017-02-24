@@ -64,9 +64,10 @@ REAL,ALLOCATABLE  :: ML_Avg(:,:,:,:)
 REAL,ALLOCATABLE  :: SGS_Ind_master(:,:,:,:) 
 REAL,ALLOCATABLE  :: SGS_Ind_slave(:,:,:,:) 
 ! Dynamic Smagorinsky
-REAL,ALLOCATABLE  :: lineElem(:,:,:,:,:) 
+REAL,ALLOCATABLE  :: IntElem(:,:,:,:) 
 LOGICAL, ALLOCATABLE :: filter_ind(:,:) !< Do filter along i,j,k index?
 LOGICAL, ALLOCATABLE :: average_ind(:,:) !< Do average along i,j,k index?
+INTEGER              :: average_type
 !MATTEO:debug output
 REAL,ALLOCATABLE  :: S_en_out(:,:,:,:,:)  !< Debug output of |S|
 REAL,ALLOCATABLE  :: filtdir_out(:)  !< Debug output of filtering directions

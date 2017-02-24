@@ -47,11 +47,14 @@ USE MOD_Globals
 USE MOD_PreProc                
 USE MOD_EddyVisc_Vars              
 USE MOD_ReadInTools       ,   ONLY:GETREAL,GETLOGICAL,GETINT, GETSTR
-USE MOD_Interpolation_Vars,   ONLY:InterpolationInitIsDone,Vdm_Leg,sVdm_Leg,NodeType,wGP
 USE MOD_Mesh_Vars         ,   ONLY:MeshInitIsDone, Elem_xgp, offsetElem
+USE MOD_Interpolation_Vars,   ONLY:InterpolationInitIsDone,Vdm_Leg,sVdm_Leg,NodeType,wGP,NodeTypeCL
+USE MOD_Interpolation,        ONLY:GetVandermonde
+USE MOD_ChangeBasis,          ONLY:changeBasis3D
 USE MOD_Interpolation_Vars,   ONLY:wGP
 USE MOD_Mesh_Vars,            ONLY:sJ,nSides,nElems
 USE MOD_Mesh_Vars,            ONLY:ElemToSide,dXCL_N
+USE MOD_Mesh_Vars,            ONLY:Metrics_fTilde,Metrics_gTilde,Metrics_hTilde
 USE MOD_Testcase_Vars,        ONLY:testcase
 USE MOD_HDF5_input,           ONLY: OpenDataFile,CloseDataFile,ReadArray
 #if MPI
@@ -74,6 +77,8 @@ integer :: dirv(1)
 REAL    :: EwallDist(3,nElems)
 REAL    :: WallDistTrsh, distNorm
 LOGICAL :: isn
+REAL    :: Vdm_CLN_N(         0:PP_N   ,0:PP_N)
+REAL    :: dX_N(3, 0:PP_N,  0:PP_N   ,0:PP_N)
 !===================================================================================================================================
 IF(((.NOT.InterpolationInitIsDone).AND.(.NOT.MeshInitIsDone)).OR.dynsmagInitIsDone)THEN
    SWRITE(UNIT_StdOut,'(A)') "Initdynsmag not ready to be called or already called."
@@ -207,10 +212,55 @@ DO iElem=1,nElems
   END IF !in or out boundary layer
 END DO !iElem
 
-LineElem(1,:,:,:,:) = (dXCL_N(1,1,:,:,:,:)**2+dXCL_N(1,2,:,:,:,:)**2+dXCL_N(1,3,:,:,:,:)**2)**0.5
-LineElem(2,:,:,:,:) = (dXCL_N(2,1,:,:,:,:)**2+dXCL_N(2,2,:,:,:,:)**2+dXCL_N(2,3,:,:,:,:)**2)**0.5
-LineElem(3,:,:,:,:) = (dXCL_N(3,1,:,:,:,:)**2+dXCL_N(3,2,:,:,:,:)**2+dXCL_N(3,3,:,:,:,:)**2)**0.5
-
+CALL GetVandermonde(    PP_N   , NodeTypeCL  , PP_N    , NodeType,   Vdm_CLN_N         , modal=.FALSE.)
+DO iElem=1,nElems
+  IF     (average_ind(1,iElem).AND.average_ind(2,iElem).AND.average_ind(3,iElem)) THEN !volume
+    IntElem(:,:,:,iElem) = 1/sJ(:,:,:,iElem,0)
+    DO i=0,PP_N; DO j=0,PP_N; DO k=0,PP_N
+      IntElem(i,j,k,iElem) = IntElem(i,j,k,iElem)*wGP(i)*wGP(j)*wGP(k)
+    END DO; END DO; END DO
+    average_type = 1
+  ELSEIF (.NOT.average_ind(1,iElem).AND.average_ind(2,iElem).AND.average_ind(3,iElem)) THEN ! I-Plane 
+    DO i=0,PP_N; DO j=0,PP_N; DO k=0,PP_N
+      IntElem(i,j,k,iElem) = SQRT(SUM(Metrics_ftilde(:,i,j,k,iElem,0)**2))
+      IntElem(i,j,k,iElem) = IntElem(i,j,k,iElem)*wGP(j)*wGP(k)
+    END DO; END DO; END DO
+    average_type = 2
+  ELSEIF (average_ind(1,iElem).AND..NOT.average_ind(2,iElem).AND.average_ind(3,iElem)) THEN ! J-Plane 
+    DO i=0,PP_N; DO j=0,PP_N; DO k=0,PP_N
+      IntElem(i,j,k,iElem) = SQRT(SUM(Metrics_gtilde(:,i,j,k,iElem,0)**2))
+      IntElem(i,j,k,iElem) = IntElem(i,j,k,iElem)*wGP(i)*wGP(k)
+    END DO; END DO; END DO
+    average_type = 3
+  ELSEIF (average_ind(1,iElem).AND.average_ind(2,iElem).AND..NOT.average_ind(3,iElem)) THEN ! K-Plane 
+    DO i=0,PP_N; DO j=0,PP_N; DO k=0,PP_N
+      IntElem(i,j,k,iElem) = SQRT(SUM(Metrics_htilde(:,i,j,k,iElem,0)**2))
+      IntElem(i,j,k,iElem) = IntElem(i,j,k,iElem)*wGP(i)*wGP(j)
+    END DO; END DO; END DO
+    average_type = 4
+  ELSEIF (average_ind(1,iElem).AND..NOT.average_ind(2,iElem).AND..NOT.average_ind(3,iElem)) THEN ! I-Line 
+    CALL ChangeBasis3D(3,PP_N,PP_N,Vdm_CLN_N,dXCL_N(1,1:3,:,:,:,iElem),dX_N(:,:,:,:))
+    IntElem(:,:,:,iElem) = (dX_N(1,:,:,:)**2+dX_N(2,:,:,:)**2+dX_N(3,:,:,:)**2)**0.5
+    DO i=0,PP_N; DO j=0,PP_N; DO k=0,PP_N
+      IntElem(i,j,k,iElem) = IntElem(i,j,k,iElem)*wGP(i)
+    END DO; END DO; END DO
+    average_type = 5
+  ELSEIF (.NOT.average_ind(1,iElem).AND.average_ind(2,iElem).AND..NOT.average_ind(3,iElem)) THEN ! J-Line 
+    CALL ChangeBasis3D(3,PP_N,PP_N,Vdm_CLN_N,dXCL_N(2,1:3,:,:,:,iElem),dX_N(:,:,:,:))
+    IntElem(:,:,:,iElem) = (dX_N(1,:,:,:)**2+dX_N(2,:,:,:)**2+dX_N(3,:,:,:)**2)**0.5
+    DO i=0,PP_N; DO j=0,PP_N; DO k=0,PP_N
+      IntElem(i,j,k,iElem) = IntElem(i,j,k,iElem)*wGP(j)
+    END DO; END DO; END DO
+    average_type = 6
+  ELSEIF (.NOT.average_ind(1,iElem).AND..NOT.average_ind(2,iElem).AND.average_ind(3,iElem)) THEN ! K-Line
+    CALL ChangeBasis3D(3,PP_N,PP_N,Vdm_CLN_N,dXCL_N(3,1:3,:,:,:,iElem),dX_N(:,:,:,:))
+    IntElem(:,:,:,iElem) = (dX_N(1,:,:,:)**2+dX_N(2,:,:,:)**2+dX_N(3,:,:,:)**2)**0.5
+    DO i=0,PP_N; DO j=0,PP_N; DO k=0,PP_N
+      IntElem(i,j,k,iElem) = IntElem(i,j,k,iElem)*wGP(k)
+    END DO; END DO; END DO
+    average_type = 7
+  END IF
+END DO
 
 ! Calculate the filter width deltaS: deltaS=( Cell volume )^(1/3) / ( PP_N+1 )
 
@@ -330,8 +380,9 @@ SUBROUTINE compute_cd(U_in)
 !compute TKE indicator needed for the modification of Smagorinskys viscosity.
 !===============================================================================================================================
 ! MODULES
+USE MOD_Globals
 USE MOD_PreProc
-USE MOD_EddyVisc_Vars,          ONLY:SGS_Ind,FilterMat_testfilter,lineElem
+USE MOD_EddyVisc_Vars,          ONLY:SGS_Ind,FilterMat_testfilter, IntElem, average_type 
 USE MOD_EddyVisc_Vars,          ONLY:SGS_Ind!,SGS_Ind_Slave,SGS_Ind_Master
 USE MOD_EddyVisc_Vars,          ONLY:MM_Avg, ML_Avg, filter_ind, average_ind
 !USE MOD_ProlongToFace1,         ONLY: ProlongToFace1
@@ -362,9 +413,7 @@ REAL                :: v1,v2,v3
 REAL,DIMENSION(3,3,0:PP_N,0:PP_N,0:PP_N) :: S_ik,M_ik,L_ik
 REAL                                     :: D_Ratio
 REAL, DIMENSION(0:PP_N,0:PP_N,0:PP_N)    :: C_d,MM,ML,S_eN_filtered,S_eN,divV
-REAL, DIMENSION(0:PP_N,0:PP_N)    :: MMa,MLa
-REAL, DIMENSION(0:PP_N)                  :: dummy1D
-REAL, DIMENSION(0:PP_N, 0:PP_N)          :: dummy2D
+REAL                                     :: MMa,MLa
 REAL                                     :: Vol, Integrationweight,dummy
 REAL,DIMENSION(1:3,1:3,0:PP_N,0:PP_N,0:PP_N)         :: gradv_all
 REAL,DIMENSION(0:PP_N,0:PP_N,0:PP_N)             :: gradv11_elem,gradv12_elem,gradv13_elem 
@@ -492,125 +541,87 @@ DO iElem=1,nElems
   END DO ! i
 
 
-!  !Average C_d**2 over homogeneous directions, or cell, or in time, or whatever
-!  !-----CELL AVERAGE
-!  dummy=0.
-!  Vol=0.
-!  DO k=0,PP_N
-!    DO j=0,PP_N
-!      DO i=0,PP_N
-!        IntegrationWeight = wGP(i)*wGP(j)*wGP(k)*1/sJ(i,j,k,iElem,0)
-!        dummy=dummy + ML(i,j,k)*Integrationweight
-!        Vol = Vol + MM(i,j,k)*  Integrationweight 
-!      END DO ! i
-!    END DO ! j
-!  END DO ! k
-!  SGS_Ind(1,:,:,:,iElem) =0.5*dummy/Vol !CELL average
-!print*,SGS_Ind(1,:,:,:,iElem)
-
-! !-----CELL LOCAL IN HOMOGENEOUS DIRECTIONS
-! !ACHTUNG NUR KARTESISCH UND IN/FUER Y=J!!!
-!  dummy1D=0.
-!  Vol = 0.
-!  DO j=0,PP_N
-!    DO i=0,PP_N
-!      IntegrationWeight = wGP(i)*wGP(j)
-!      dummy1D(:) = dummy1D(:) + ML(i,:,j)*IntegrationWeight
-!      Vol = Vol + Integrationweight
-!    END DO ! i
-!  END DO ! j
-!  DO j=0,PP_N
-!    DO i=0,PP_N
-!      ML(i,:,j) = dummy1D(:)/Vol !CELL average
-!    END DO ! i
-!  END DO ! j
-!  dummy1D=0.
-!  DO j=0,PP_N
-!    DO i=0,PP_N
-!      IntegrationWeight = wGP(i)*wGP(j)
-!      dummy1D(:) = dummy1D(:) + MM(i,:,j)*IntegrationWeight
-!    END DO ! i
-!  END DO ! j
-!  DO j=0,PP_N
-!    DO i=0,PP_N
-!      MM(i,:,j) = dummy1D(:)/Vol !CELL average
-!    END DO ! i
-!  END DO ! j
-!  DO j=0,PP_N
-!    DO i=0,PP_N
-!      C_d(i,:,j) = + 0.5*ML(i,:,j)/MM(i,:,j) !CELL average
-!    END DO ! i
-!  END DO ! j
-!  SGS_Ind(1,:,:,:,iElem) = C_d(:,:,:)
-
+  !Average C_d**2 over homogeneous directions, or cell, or in time, or whatever
+  !-----CELL AVERAGE
+  dummy=0.
+  Vol=0.
+  DO k=0,PP_N
+    DO j=0,PP_N
+      DO i=0,PP_N
+        IntegrationWeight = wGP(i)*wGP(j)*wGP(k)*1/sJ(i,j,k,iElem,0)
+        dummy=dummy + ML(i,j,k)*Integrationweight
+        Vol = Vol + MM(i,j,k)*  Integrationweight 
+      END DO ! i
+    END DO ! j
+  END DO ! k
+  SGS_Ind(1,:,:,:,iElem) =0.5*dummy/Vol !CELL average
+  SWRITE(*,*)SGS_Ind(1,1,1,1,iElem)
 
   ! Selective cell average (on selected directions)
-  IF(average_ind(1,iElem)) THEN
+  SELECT CASE (average_type)
+  CASE (1) ! Volume
     MMa = 0.; MLa = 0.
+    DO i=0,PP_N; DO j=0,PP_N; DO k=0,PP_N
+      MMa = MMa + MM(i,j,k)*IntElem(i,j,k,iElem)
+      MLa = MLa + ML(i,j,k)*IntElem(i,j,k,iElem)
+    END DO; END DO; END DO !ijk
+    SGS_Ind(1,:,:,:,iElem) = MLa/MMa 
+  CASE (2) ! I-Plane
     DO i=0,PP_N
-      MMa = MMa + MM(i,:,:)*wGP(i)*lineElem(1,i,:,:,iElem)
-      MLa = MLa + ML(i,:,:)*wGP(i)*lineElem(1,i,:,:,iElem)
+      MMa = 0.; MLa = 0.
+      DO j=0,PP_N; DO k=0,PP_N
+        MMa = MMa + MM(i,j,k)*IntElem(i,j,k,iElem)
+        MLa = MLa + ML(i,j,k)*IntElem(i,j,k,iElem)
+      END DO; END DO !jk
+      SGS_Ind(1,i,:,:,iElem) = MLa/MMa 
     END DO !i
-    DO i=0,PP_N
-      MM(i,:,:) = MMa
-      ML(i,:,:) = MLa
-    END DO !i
-  END IF
-  IF(average_ind(2,iElem)) THEN
-    MMa = 0.; MLa = 0.
+  CASE (3) ! J-Plane
     DO j=0,PP_N
-      MMa = MMa + MM(:,j,:)*wGP(j)*lineElem(2,:,j,:,iElem)
-      MLa = MLa + ML(:,j,:)*wGP(j)*lineElem(2,:,j,:,iElem)
+      MMa = 0.; MLa = 0.
+      DO i=0,PP_N; DO k=0,PP_N
+        MMa = MMa + MM(i,j,k)*IntElem(i,j,k,iElem)
+        MLa = MLa + ML(i,j,k)*IntElem(i,j,k,iElem)
+      END DO; END DO !jk
+      SGS_Ind(1,:,j,:,iElem) = MLa/MMa 
     END DO !j
-    DO j=0,PP_N
-      MM(:,j,:) = MMa
-      ML(:,j,:) = MLa
-    END DO !j
-  END IF
-  IF(average_ind(3,iElem)) THEN
-    MMa = 0.; MLa = 0.
+  CASE (4) ! K-Plane
     DO k=0,PP_N
-      MMa = MMa + MM(:,:,k)*wGP(k)*lineElem(3,:,:,k,iElem)
-      MLa = MLa + ML(:,:,k)*wGP(k)*lineElem(3,:,:,k,iElem)
+      MMa = 0.; MLa = 0.
+      DO i=0,PP_N; DO j=0,PP_N
+        MMa = MMa + MM(i,j,k)*IntElem(i,j,k,iElem)
+        MLa = MLa + ML(i,j,k)*IntElem(i,j,k,iElem)
+      END DO; END DO !jk
+      SGS_Ind(1,:,:,k,iElem) = MLa/MMa 
     END DO !k
-    DO k=0,PP_N
-      MM(:,:,k) = MMa
-      ML(:,:,k) = MLa
-    END DO !k
-  END IF
-  C_d = 0.5*ML/MM
-  SGS_Ind(1,:,:,:,iElem) = C_d(:,:,:)
-!  print*,SGS_Ind(1,:,:,:,iElem)
-!stop
+  CASE (5) ! I-Line
+    DO j=0,PP_N; DO k=0,PP_N
+      MMa = 0.; MLa = 0.
+      DO i=0,PP_N
+        MMa = MMa + MM(i,j,k)*IntElem(i,j,k,iElem)
+        MLa = MLa + ML(i,j,k)*IntElem(i,j,k,iElem)
+      END DO ! i
+      SGS_Ind(1,:,j,k,iElem) = MLa/MMa 
+    END DO; END DO !jk
+  CASE (6) ! J-Line
+    DO i=0,PP_N; DO k=0,PP_N
+      MMa = 0.; MLa = 0.
+      DO j=0,PP_N
+        MMa = MMa + MM(i,j,k)*IntElem(i,j,k,iElem)
+        MLa = MLa + ML(i,j,k)*IntElem(i,j,k,iElem)
+      END DO ! i
+      SGS_Ind(1,i,:,k,iElem) = MLa/MMa 
+    END DO; END DO !jk
+  CASE (7) ! K-Line
+    DO i=0,PP_N; DO j=0,PP_N
+      MMa = 0.; MLa = 0.
+      DO k=0,PP_N
+        MMa = MMa + MM(i,j,k)*IntElem(i,j,k,iElem)
+        MLa = MLa + ML(i,j,k)*IntElem(i,j,k,iElem)
+      END DO ! i
+      SGS_Ind(1,i,j,:,iElem) = MLa/MMa 
+    END DO; END DO!jk
+  END SELECT
 
-!
-  !-----CELL AVERAGE ONLY IN Z DIRECTION
-  !ACHTUNG NUR KARTESISCH UND IN/FUER Y=J!!!
-!  dummy2D=0.
-!  Vol = 0.
-!  DO i=0,PP_N
-!    IntegrationWeight = wGP(i)
-!    dummy2D(:,:) = dummy2D(:,:) + ML(:,:,i)*IntegrationWeight
-!    Vol = Vol + Integrationweight
-!  END DO ! i
-!  DO i=0,PP_N
-!    ML(:,:,i) = dummy2D(:,:)/Vol !CELL average
-!  END DO ! i
-!  dummy2D=0.
-!  DO i=0,PP_N
-!    IntegrationWeight = wGP(i)
-!    dummy2D(:,:) = dummy2D(:,:) + MM(:,:,i)*IntegrationWeight
-!  END DO ! i
-!  DO i=0,PP_N
-!    MM(:,:,i) = dummy2D(:,:)/Vol !CELL average
-!  END DO ! i
-!  DO j=0,PP_N
-!    DO i=0,PP_N
-!      C_d(i,:,j) = + 0.5*ML(i,:,j)/MM(i,:,j) !CELL average
-!    END DO ! i
-!  END DO ! j
-!  SGS_Ind(1,:,:,:,iElem) = C_d(:,:,:)
-!
 !------------------------------------------
 !Time Average ala pruett
 !Im Nenner steht r=FilterWidth/dt(RK)

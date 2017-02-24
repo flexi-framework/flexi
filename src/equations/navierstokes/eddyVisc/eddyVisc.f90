@@ -99,7 +99,7 @@ ALLOCATE(FilterMat_Testfilter(0:PP_N,0:PP_N))
 FilterMat_Testfilter = 0.
 ALLOCATE(filter_ind(3,nElems))
 ALLOCATE(average_ind(3,nElems))
-ALLOCATE(lineELem(3,0:PP_N,0:PP_N,0:PP_N,nElems))
+ALLOCATE(IntELem(0:PP_N,0:PP_N,0:PP_N,nElems))
 ! Set Prandtl number !=0 because we need to divide by this number to get the turbulent heat conductivity (will be zero anyway
 ! since muSGS=0)
 PrSGS = 0.7
