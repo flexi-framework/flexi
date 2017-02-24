@@ -70,6 +70,10 @@ LOGICAL, ALLOCATABLE :: average_ind(:,:) !< Do average along i,j,k index?
 !MATTEO:debug output
 REAL,ALLOCATABLE  :: S_en_out(:,:,:,:,:)  !< Debug output of |S|
 REAL,ALLOCATABLE  :: filtdir_out(:)  !< Debug output of filtering directions
+REAL,ALLOCATABLE  :: walldist_out(:)  !< Debug output of wall distance
+REAL,ALLOCATABLE  :: walldist_x(:)  !< Debug output of wall distance
+REAL,ALLOCATABLE  :: walldist_y(:)  !< Debug output of wall distance
+REAL,ALLOCATABLE  :: walldist_z(:)  !< Debug output of wall distance
 
 
 LOGICAL           :: VanDriest=.FALSE.

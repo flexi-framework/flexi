@@ -69,11 +69,11 @@ USE MOD_MPI_Vars,             ONLY:MPIRequest_DeltaS,nNbProcs
 INTEGER :: i,iElem,j,k, iDir
 REAL    :: CellVol
 INTEGER :: iLocSide,SideID,FlipID
-REAL    :: vec(3), parvec(3), parcomp, normvec(3), normcomp
-logical :: filter_mask(3), average_mask(3), isn
+REAL    :: vec(3), parvec(3), parcomp, normvec(3), normcomp, parcomps(3)
 integer :: dirv(1)
 REAL    :: EwallDist(3,nElems)
 REAL    :: WallDistTrsh, distNorm
+LOGICAL :: isn
 !===================================================================================================================================
 IF(((.NOT.InterpolationInitIsDone).AND.(.NOT.MeshInitIsDone)).OR.dynsmagInitIsDone)THEN
    SWRITE(UNIT_StdOut,'(A)') "Initdynsmag not ready to be called or already called."
@@ -98,64 +98,111 @@ IF (WallDistFile .NE. '') THEN
   CALL CloseDataFile()
 ENDIF
 
-!For the moment local, TODO add an input for this
-filter_mask = (/.true., .true., .true./)
-average_mask = (/.true., .true., .true./)
 
-SWRITE(UNIT_stdOut,*)' dynsmag: filtering mask:',filter_mask
-SWRITE(UNIT_stdOut,*)' dynsmag: averaging  mask:',filter_mask
 !Find in which x, y, z direction are the i, j ,k index pointing, and
 !then decide which index to filter
 !MATTEO: DEBUG
 filtdir_out = 0.0
 DO iElem=1,nElems
   distNorm = SQRT(SUM(EwallDist(:,iElem)**2)) 
+  !MATTEO: debug
+  walldist_out(iElem) = distNorm
+  walldist_x(iElem) = EwallDist(1,iElem)
+  walldist_y(iElem) = EwallDist(2,iElem)
+  walldist_z(iElem) = EwallDist(3,iElem)
   IF (distNorm .GE. WallDistTrsh) THEN !out of the boundary layer
     ! Filter and average isotropically
     filter_ind(:,iElem) = .true.
     average_ind(:,iElem) = .true.
     !MATTEO: DEBUG
-    filtdir_out(iElem) = 7.0
+    filtdir_out(iElem) = 8.0
   ELSE ! in the boundary layer
-    ! Filter and average only normal to the boundary
-    !i, average on the four edges
-    vec = Elem_xgp(:,PP_N,0,0,iElem) - Elem_xgp(:,0,0,0,iElem)
+    !! Filter and average only normal to the boundary
+    !!i, average on the four edges
+    !vec = Elem_xgp(:,PP_N,0,0,iElem) - Elem_xgp(:,0,0,0,iElem)
+    !vec = vec + (Elem_xgp(:,PP_N,PP_N,0,iElem) - Elem_xgp(:,0,PP_N,0,iElem))
+    !vec = vec + (Elem_xgp(:,PP_N,0,PP_N,iElem) - Elem_xgp(:,0,0,PP_N,iElem))
+    !vec = vec + (Elem_xgp(:,PP_N,PP_N,PP_N,iElem) - Elem_xgp(:,0,PP_N,PP_N,iElem))
+    !vec = vec/4.0
+    !vec = vec/sqrt(sum(vec**2)) !Unit vector of i direction
+    !parcomps(1) = proj(vec,EwallDist(:,iElem))
+    !!j
+    !vec = Elem_xgp(:,0,PP_N,0,iElem) - Elem_xgp(:,0,0,0,iElem)
+    !vec = vec + (Elem_xgp(:,PP_N,PP_N,0,iElem) - Elem_xgp(:,PP_N,0,0,iElem))
+    !vec = vec + (Elem_xgp(:,0,PP_N,PP_N,iElem) - Elem_xgp(:,0,0,PP_N,iElem))
+    !vec = vec + (Elem_xgp(:,PP_N,PP_N,PP_N,iElem) - Elem_xgp(:,PP_N,0,PP_N,iElem))
+    !vec = vec/4.0
+    !vec = vec/sqrt(sum(vec**2))
+    !parcomps(2) = proj(vec,EwallDist(:,iElem))
+    !!k
+    !vec = Elem_xgp(:,0,0,PP_N,iElem) - Elem_xgp(:,0,0,0,iElem)
+    !vec = vec + (Elem_xgp(:,PP_N,0,PP_N,iElem) - Elem_xgp(:,PP_N,0,0,iElem))
+    !vec = vec + (Elem_xgp(:,0,PP_N,PP_N,iElem) - Elem_xgp(:,0,PP_N,0,iElem))
+    !vec = vec + (Elem_xgp(:,PP_N,PP_N,PP_N,iElem) - Elem_xgp(:,PP_N,PP_N,0,iElem))
+    !vec = vec/4.0
+    !vec = vec/sqrt(sum(vec**2))
+    !parcomps(3) = proj(vec,EwallDist(:,iElem))
+    !
+    !!Find out which is the direction "more parallel" to distance
+    !iDir = maxloc(parcomps,1)
+    !filter_ind(:,iElem) = .true.
+    !average_ind(:,iElem) = .true.
+    !!Exclude that direction from filtering and averaging
+    !IF(iDir .EQ. 1) THEN
+    !  filter_ind(1,iElem) = .false. 
+    !  average_ind(1,iElem) = .false. 
+    !  !MATTEO: DEBUG
+    !  filtdir_out(iElem) = 1.0
+    !ELSE IF(iDir .EQ. 2) THEN
+    !  filter_ind(2,iElem) = .false. 
+    !  average_ind(2,iElem) = .false. 
+    !  !MATTEO: DEBUG
+    !  filtdir_out(iElem) = 2.0
+    !ELSE IF(iDir .EQ. 3) THEN
+    !  filter_ind(3,iElem) = .false. 
+    !  average_ind(3,iElem) = .false. 
+    !  !MATTEO: DEBUG
+    !  filtdir_out(iElem) = 3.0
+    !END IF
+    ! Filter and average only normal to the boundary                    
+    !i, average on the four edges                                       
+    vec = Elem_xgp(:,PP_N,0,0,iElem) - Elem_xgp(:,0,0,0,iElem)          
     vec = vec + (Elem_xgp(:,PP_N,PP_N,0,iElem) - Elem_xgp(:,0,PP_N,0,iElem))
     vec = vec + (Elem_xgp(:,PP_N,0,PP_N,iElem) - Elem_xgp(:,0,0,PP_N,iElem))
     vec = vec + (Elem_xgp(:,PP_N,PP_N,PP_N,iElem) - Elem_xgp(:,0,PP_N,PP_N,iElem))
-    vec = vec/4.0
-    vec = vec/sqrt(sum(vec**2)) !Unit vector of i direction
-    !If i is normal to the distance filter and average in i 
-    isn = isnormal(vec,EwallDist(:,iElem))
-    filter_ind(1,iElem) = isn
-    average_ind(1,iElem) = isn
-    !MATTEO: DEBUG
-    IF(isn) filtdir_out(iElem) = filtdir_out(iElem)+1
-    !j
-    vec = Elem_xgp(:,0,PP_N,0,iElem) - Elem_xgp(:,0,0,0,iElem)
+    vec = vec/4.0                                                       
+    vec = vec/sqrt(sum(vec**2)) !Unit vector of i direction             
+    !If i is normal to the distance filter and average in i             
+    isn = isnormal(vec,EwallDist(:,iElem))                              
+    filter_ind(1,iElem) = isn                                           
+    average_ind(1,iElem) = isn                                          
+    !MATTEO: DEBUG                                                      
+    IF(isn) filtdir_out(iElem) = filtdir_out(iElem)+1                   
+    !j                                                                  
+    vec = Elem_xgp(:,0,PP_N,0,iElem) - Elem_xgp(:,0,0,0,iElem)          
     vec = vec + (Elem_xgp(:,PP_N,PP_N,0,iElem) - Elem_xgp(:,PP_N,0,0,iElem))
     vec = vec + (Elem_xgp(:,0,PP_N,PP_N,iElem) - Elem_xgp(:,0,0,PP_N,iElem))
     vec = vec + (Elem_xgp(:,PP_N,PP_N,PP_N,iElem) - Elem_xgp(:,PP_N,0,PP_N,iElem))
-    vec = vec/4.0
-    vec = vec/sqrt(sum(vec**2))
-    !If j is normal to the distance filter and average in j 
-    isn = isnormal(vec,EwallDist(:,iElem))
-    filter_ind(2,iElem) =  isn
-    average_ind(2,iElem) = isn
-    !MATTEO: DEBUG
-    IF(isn) filtdir_out(iElem) = filtdir_out(iElem)+2
-    !k
-    vec = Elem_xgp(:,0,0,PP_N,iElem) - Elem_xgp(:,0,0,0,iElem)
+    vec = vec/4.0                                                       
+    vec = vec/sqrt(sum(vec**2))                                         
+    !If j is normal to the distance filter and average in j             
+    isn = isnormal(vec,EwallDist(:,iElem))                              
+    filter_ind(2,iElem) =  isn                                          
+    average_ind(2,iElem) = isn                                          
+    !MATTEO: DEBUG                                                      
+    IF(isn) filtdir_out(iElem) = filtdir_out(iElem)+2                   
+    !k                                                                  
+    vec = Elem_xgp(:,0,0,PP_N,iElem) - Elem_xgp(:,0,0,0,iElem)          
     vec = vec + (Elem_xgp(:,PP_N,0,PP_N,iElem) - Elem_xgp(:,PP_N,0,0,iElem))
     vec = vec + (Elem_xgp(:,0,PP_N,PP_N,iElem) - Elem_xgp(:,0,PP_N,0,iElem))
     vec = vec + (Elem_xgp(:,PP_N,PP_N,PP_N,iElem) - Elem_xgp(:,PP_N,PP_N,0,iElem))
-    vec = vec/4.0
-    vec = vec/sqrt(sum(vec**2))
-    !If k is normal to the distance filter and average in k 
-    isn = isnormal(vec,EwallDist(:,iElem))
-    filter_ind(3,iElem) = isn
-    average_ind(3,iElem) = isn
-    !MATTEO: DEBUG
+    vec = vec/4.0                                                       
+    vec = vec/sqrt(sum(vec**2))                                         
+    !If k is normal to the distance filter and average in k             
+    isn = isnormal(vec,EwallDist(:,iElem))                                                                           
+    filter_ind(3,iElem) = isn                                           
+    average_ind(3,iElem) = isn                                          
+    !MATTEO: DEBUG                                                      
     IF(isn) filtdir_out(iElem) = filtdir_out(iElem)+4
   END IF !in or out boundary layer
 END DO !iElem
@@ -646,12 +693,29 @@ parcomp = sum(vec1*vec2)/vec2Norm
 normvec = vec1 - parcomp*vec2/vec2Norm
 ! component of vec1 normal to vec2
 normcomp = sqrt(sum(normvec**2)) 
-IF (normcomp .GE. parcomp) THEN
+IF (normcomp .GE. abs(parcomp)) THEN
   norm = .true.
 ELSE
   norm = .false.
 ENDIF
 END FUNCTION isnormal
+
+
+!===============================================================================================================================
+! Calculate the absolute value of the projection of vec1 on vec 2
+!===============================================================================================================================
+FUNCTION proj(vec1,vec2) result(parcomp)
+REAL, INTENT(IN) :: vec1(:), vec2(:)
+REAL             :: parcomp 
+
+REAL :: vec2Norm
+
+! norm of vec2
+vec2Norm = sqrt(sum(vec2**2))
+! component of vec1 parallel to vec2
+parcomp = abs(sum(vec1*vec2)/vec2Norm)
+END FUNCTION proj
+
 
 #endif
 END MODULE MOD_dynsmag

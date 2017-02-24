@@ -45,6 +45,8 @@ CALL prms%CreateRealOption(   'CS',       "EddyViscParameters constant")
 CALL prms%CreateRealOption(   'PrSGS',    "Turbulent Prandtl number",'0.7')
 CALL prms%CreateLogicalOption('VanDriest',"Van Driest damping, only for channel flow!", '.FALSE.')
 CALL prms%CreateIntOption('N_Testfilter',"Number of basis for the test filter")
+CALL prms%CreateStringOption(   'WallDistFile',    "File containing the wall distance",'')
+CALL prms%CreateRealOption(   'WallDistanceTreshold',    "Treshold for zonal model filtering",'0.0')
 END SUBROUTINE DefineParametersEddyVisc
 
 !===================================================================================================================================
@@ -84,6 +86,10 @@ ALLOCATE(muSGS(1,0:PP_N,0:PP_N,0:PP_N,nElems))
 !MATTEO: debug output
 ALLOCATE(S_en_out(1,0:PP_N,0:PP_N,0:PP_N,nElems))
 ALLOCATE(filtdir_out(nElems))
+ALLOCATE(walldist_out(nElems))
+ALLOCATE(walldist_x(nElems))
+ALLOCATE(walldist_y(nElems))
+ALLOCATE(walldist_z(nElems))
 S_en_out = 0.
 ALLOCATE(muSGSmax(nElems))
 muSGS = 0.
@@ -122,6 +128,10 @@ CALL AddToFieldData((/1,PP_N+1,PP_N+1,PP_N+1/),'VMSData',(/'muSGS'/),RealArray=m
 CALL AddToFieldData((/2,PP_N+1,PP_N+1,PP_N+1/),'VMSData',(/'Csmag   ','muSgsInd'/),RealArray=SGS_Ind)
 CALL AddToFieldData((/1,PP_N+1,PP_N+1,PP_N+1/),'VMSData',(/'S_norm'/),RealArray=S_en_out)
 CALL AddToElemData('FilterInd',RealArray=filtdir_out(:))
+CALL AddToElemData('WallDist',RealArray=walldist_out(:))
+CALL AddToElemData('WallDist_x',RealArray=walldist_x(:))
+CALL AddToElemData('WallDist_y',RealArray=walldist_y(:))
+CALL AddToElemData('WallDist_z',RealArray=walldist_z(:))
 
 END SUBROUTINE
 
