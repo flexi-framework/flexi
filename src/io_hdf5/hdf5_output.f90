@@ -84,6 +84,9 @@ USE MOD_Output_Vars       ,ONLY: ProjectName,NOut,Vdm_N_NOut
 USE MOD_Mesh_Vars         ,ONLY: offsetElem,nGlobalElems,sJ,nElems
 USE MOD_ChangeBasisByDim  ,ONLY: ChangeBasisVolume
 USE MOD_Equation_Vars     ,ONLY: StrVarNames
+#if PP_dim == 2
+USE MOD_2D                ,ONLY: ExpandArrayTo3D
+#endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -96,6 +99,9 @@ LOGICAL,INTENT(IN)             :: isErrorFile    !< indicate whether an error fi
 CHARACTER(LEN=255)             :: FileName,FileType
 REAL                           :: StartT,EndT
 REAL,POINTER                   :: UOut(:,:,:,:,:)
+#if PP_dim == 2
+REAL,ALLOCATABLE               :: UOutTmp(:,:,:,:,:)
+#endif
 REAL                           :: Utmp(5,0:PP_N,0:PP_N,0:PP_NZ)
 REAL                           :: JN(1,0:PP_N,0:PP_N,0:PP_NZ),JOut(1,0:NOut,0:NOut,0:PP_NOutZ)
 INTEGER                        :: iElem,i,j,k
@@ -592,7 +598,7 @@ INTEGER,INTENT(IN)             :: nVar_Fluc                                    !
 CHARACTER(LEN=255)             :: FileName
 REAL                           :: StartT,EndT
 REAL,POINTER                   :: UOut(:,:,:,:,:)
-INTEGER                        :: iVar,i,j,iElem,NZ_loc
+INTEGER                        :: NZ_loc
 !==================================================================================================================================
 IF((nVar_Avg.EQ.0).AND.(nVar_Fluc.EQ.0)) RETURN ! no time averaging
 IF(MPIROOT)THEN

@@ -186,7 +186,7 @@ IF(GETLOGICAL('meshdeform','.FALSE.'))THEN
   END DO
 END IF
 
-ALLOCATE(Elem_xGP(3,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+ALLOCATE(Elem_xGP(3,0:PP_N,0:PP_N,0:PP_N,nElems))
 CALL BuildCoords(Elem_xGP)
 
 ! Return if no connectivity and metrics are required (e.g. for visualization mode)
@@ -440,7 +440,7 @@ DO iElem=1,nElems
   END DO 
 END DO 
 
-CALL buildMappings(PP_N,V2S=V2S,V2S2=V2S2,S2V=S2V,S2V2=S2V2,FS2M=FS2M, dim=2)
+CALL buildMappings(PP_N,V2S=V2S,S2V=S2V,S2V2=S2V2,FS2M=FS2M, dim=2)
 
 ! Correctly flip and rotate all values on the XI_MINUS sides.
 ! The tangential vector is always stored in TangVec1.

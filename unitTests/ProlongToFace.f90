@@ -133,7 +133,7 @@ ELSE
     CLOSE(10) ! close the file
     ! Check if the computed and the reference solutions are within a given tolerance
     equal =  .TRUE.
-    DO i=1,PP_nVar; DO j=0,9; DO k=0,9; DO l=1,6
+    DO i=1,PP_nVar; DO j=0,NRef; DO k=0,NRefZ; DO l=1,nSidesRef
       equal = ALMOSTEQUALABSORREL(Uface_master(i,j,k,l),Uface_master_ref(j,k,l),100.*PP_RealTolerance) .AND. equal
 #if FV_ENABLED
       equal = ALMOSTEQUALABSORREL(FV_Uface_master(i,j,k,l),FV_Uface_master_ref(j,k,l),100.*PP_RealTolerance) .AND. equal
