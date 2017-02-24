@@ -22,15 +22,15 @@ SAVE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-INTEGER            :: nVar_Restart                  !< number of variables in restart file
-INTEGER            :: N_Restart = 0                 !< polynomial degree of restart solution
-INTEGER            :: nElems_Restart                !< number of elements in restart file
-LOGICAl            :: RestartInitIsDone   = .FALSE. !< flag if restart routines are finished
-LOGICAl            :: DoRestart           = .FALSE. !< flag whether a restart should actually be performed
-LOGICAL            :: InterpolateSolution = .FALSE. !< flag whether restart solution should be interpolated
-                                                    !< if node type or polynomial degree are different
-CHARACTER(LEN=300) :: RestartFile                   !< name of restart file
-CHARACTER(LEN=255) :: NodeType_Restart              !< node type of restart file
-REAL               :: RestartTime                   !< time at which computation is resumed
+INTEGER            :: nVar_Restart                    !< number of variables in restart file
+INTEGER            :: N_Restart = 0                   !< polynomial degree of restart solution
+INTEGER            :: nElems_Restart                  !< number of elements in restart file
+LOGICAl            :: RestartInitIsDone   = .FALSE.   !< flag if restart routines are finished
+LOGICAl            :: DoRestart           = .FALSE.   !< flag whether a restart should actually be performed
+LOGICAL            :: InterpolateSolution = .FALSE.   !< flag whether restart solution should be interpolated
+                                                      !< if node type or polynomial degree are different
+CHARACTER(LEN=300) :: RestartFile =""                 !< name of restart file
+CHARACTER(LEN=255) :: NodeType_Restart                !< node type of restart file
+REAL               :: RestartTime                     !< time at which computation is resumed
 !==================================================================================================================================
 END MODULE MOD_Restart_Vars

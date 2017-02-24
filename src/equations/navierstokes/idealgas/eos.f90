@@ -40,6 +40,7 @@ END INTERFACE
 INTERFACE PrimToCons
   MODULE PROCEDURE PrimToCons
   MODULE PROCEDURE PrimToCons_Side
+  MODULE PROCEDURE PrimToCons_Volume
 END INTERFACE
 
 INTERFACE PRESSURE_RIEMANN
@@ -346,6 +347,36 @@ END DO; END DO ! p,q=0,Nloc
 ! inner energy
 END SUBROUTINE PrimToCons_Side
 
+
+!==================================================================================================================================
+!> Transformation from primitive to conservative variables on a single side
+!==================================================================================================================================
+PURE SUBROUTINE PrimToCons_Volume(Nloc,prim,cons)
+! MODULES
+USE MOD_Eos_Vars,ONLY:sKappaM1
+USE MOD_Mesh_Vars,ONLY:nElems
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN):: Nloc
+REAL,INTENT(IN)   :: prim(PP_nVarPrim,0:Nloc,0:Nloc,0:Nloc,1:nElems)     !< vector of primitive variables
+REAL,INTENT(OUT)  :: cons(PP_nVar    ,0:Nloc,0:Nloc,0:Nloc,1:nElems)     !< vector of conservative variables
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER           :: p,q,r,iElem
+!==================================================================================================================================
+DO iElem=1,nElems
+  DO r=0,Nloc; DO q=0,Nloc; DO p=0,Nloc
+    ! conversion
+    cons(1,p,q,r,iElem)=prim(1,p,q,r,iElem)
+    ! rho
+    cons(2:4,p,q,r,iElem)=prim(2:4,p,q,r,iElem)*prim(1,p,q,r,iElem)
+    ! vel/rho
+    cons(5,p,q,r,iElem)=sKappaM1*prim(5,p,q,r,iElem)+0.5*SUM(cons(2:4,p,q,r,iElem)*prim(2:4,p,q,r,iElem))
+  END DO; END DO; END DO ! p,q=0,Nloc
+  ! inner energy
+END DO
+END SUBROUTINE PrimToCons_Volume
 
 PURE FUNCTION PRESSURE_RIEMANN(U_Prim)
 !==================================================================================================================================

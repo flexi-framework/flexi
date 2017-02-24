@@ -19,7 +19,7 @@
 MODULE MOD_Globals
 USE ISO_C_BINDING
 ! MODULES
-#if MPI
+#if USE_MPI
 USE mpi
 #endif
 IMPLICIT NONE
@@ -42,17 +42,12 @@ INTEGER           ::MPI_COMM_LEADERS                                          !<
 INTEGER           ::MPI_COMM_WORKERS                                          !< all non-master nodes
 LOGICAL           ::MPIRoot                                                   !< flag whether process is MPI root process
 LOGICAL           ::MPILocalRoot                                              !< flag whether process is root of MPI subgroup
-#if MPI
+#if USE_MPI
 INTEGER           ::MPIStatus(MPI_STATUS_SIZE)
 #endif
 
 LOGICAL           :: doGenerateUnittestReferenceData                         
 INTEGER           :: doPrintHelp ! 0: no help, 1: help, 2: markdown-help
-
-TYPE, BIND(C) :: CARRAY
-  INTEGER (C_INT) :: len
-  TYPE (C_PTR)    :: data
-END TYPE CARRAY
 
 INTERFACE Abort
   MODULE PROCEDURE Abort
@@ -78,17 +73,9 @@ INTERFACE FLEXITIME
   MODULE PROCEDURE FLEXITIME
 END INTERFACE
 
-INTERFACE GETFREEUNIT
-  MODULE PROCEDURE GETFREEUNIT
-END INTERFACE GETFREEUNIT
-
 INTERFACE CreateErrFile
   MODULE PROCEDURE CreateErrFile
 END INTERFACE CreateErrFile
-
-INTERFACE CROSS
-  MODULE PROCEDURE CROSS
-END INTERFACE CROSS
 
 !==================================================================================================================================
 CONTAINS
@@ -142,11 +129,12 @@ SWRITE(UNIT_stdOut,*) '_________________________________________________________
                      TRIM(IntString), TRIM(RealString)
 
 CALL FLUSH(UNIT_stdOut)
-#if MPI
+#if USE_MPI
 CALL MPI_FINALIZE(iError)
 #endif
 ERROR STOP 1
 END SUBROUTINE CollectiveStop
+
 
 !==================================================================================================================================
 !> Terminate program correctly if an error has occurred (important in MPI mode!).
@@ -186,13 +174,14 @@ WRITE(UNIT_stdOut,*) '__________________________________________________________
                      TRIM(IntString), TRIM(RealString)
 
 CALL FLUSH(UNIT_stdOut)
-#if MPI
+#if USE_MPI
 signalout=2 ! MPI_ABORT requires an output error-code /=0
 IF(PRESENT(ErrorCode)) signalout=ErrorCode
 CALL MPI_ABORT(MPI_COMM_WORLD,signalout,errOut)
 #endif  
 ERROR STOP 2
 END SUBROUTINE Abort
+
 
 !==================================================================================================================================
 !> print a warning to the command line (only MPI root)
@@ -209,6 +198,7 @@ IF (myRank.EQ.0) THEN
   WRITE(UNIT_stdOut,*) '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
 END IF 
 END SUBROUTINE PrintWarning
+
 
 !==================================================================================================================================
 !> Open file for error output
@@ -254,7 +244,6 @@ WRITE(IntStamp,'(A,A5,I6.6)')TRIM(Nam),'_Proc',Num
 END FUNCTION INTSTAMP
 
 
-
 !==================================================================================================================================
 !> Creates a timestamp, consistent of a filename (project name + processor) and current time niveau
 !==================================================================================================================================
@@ -279,7 +268,6 @@ TimeStamp=TRIM(Filename)//'_'//TRIM(TimeStamp)
 END FUNCTION TIMESTAMP
 
 
-
 !==================================================================================================================================
 !> Calculates current time (own function because of a laterMPI implementation)
 !==================================================================================================================================
@@ -293,7 +281,7 @@ REAL                            :: FlexiTime                                  !<
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
-#if MPI
+#if USE_MPI
 IF(PRESENT(Comm))THEN
   CALL MPI_BARRIER(Comm,iError)
 ELSE
@@ -302,49 +290,6 @@ END IF
 #endif
 GETTIME(FlexiTime)
 END FUNCTION FLEXITIME
-
-
-!==================================================================================================================================
-!> Get unused file unit number
-!==================================================================================================================================
-FUNCTION GETFREEUNIT()
-! MODULES
-IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-INTEGER :: GetFreeUnit !< File unit number
-!----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-LOGICAL :: connected
-!==================================================================================================================================
-GetFreeUnit=55
-INQUIRE(UNIT=GetFreeUnit, OPENED=connected)
-IF(connected)THEN
-  DO
-    GetFreeUnit=GetFreeUnit+1
-    INQUIRE(UNIT=GetFreeUnit, OPENED=connected)
-    IF(.NOT.connected)EXIT
-  END DO
-END IF
-END FUNCTION GETFREEUNIT
-
-
-!==================================================================================================================================
-!> computes the cross product of to 3 dimensional vectpors: cross=v1 x v2
-!==================================================================================================================================
-PURE FUNCTION CROSS(v1,v2)
-! MODULES
-IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN) :: v1(3)    !< input vector 1
-REAL,INTENT(IN) :: v2(3)    !< input vector 2
-REAL            :: CROSS(3) !< cross product of vectors
-!----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-!==================================================================================================================================
-CROSS=(/v1(2)*v2(3)-v1(3)*v2(2),v1(3)*v2(1)-v1(1)*v2(3),v1(1)*v2(2)-v1(2)*v2(1)/)
-END FUNCTION CROSS
 
 
 END MODULE MOD_Globals

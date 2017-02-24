@@ -12,7 +12,11 @@ USE MOD_PreProc
 USE MOD_Unittest_Vars
 USE MOD_Unittest,           ONLY: ReadInReferenceElementData
 USE MOD_SurfIntCons,        ONLY: SurfIntCons
-USE MOD_Basis,              ONLY: EQUALTOTOLERANCE
+! Modules needed to read in reference element
+USE MOD_Mesh_Vars,          ONLY: nElems,sJ,FS2M,V2S,S2V,S2V2
+USE MOD_Mesh_Vars,          ONLY: SideToElem
+USE MOD_Mesh_Vars,          ONLY: firstMPISide_YOUR, lastMPISide_MINE, nSides
+USE MOD_Interpolation_Vars, ONLY: L_Minus,L_Plus
 USE MOD_DG_Vars,            ONLY: L_HatPlus,L_HatMinus
 #if FV_ENABLED        
 USE MOD_FV_Vars,            ONLY: FV_w,FV_w_inv, FV_Elems, FV_Elems_master,FV_Elems_slave
@@ -85,7 +89,7 @@ ELSE
 END IF
 
 
-! Read in data from single curved element
+! Read in data from single curved element 
 CALL ReadInReferenceElementData()
 
 ! Initialize Ut
@@ -136,9 +140,9 @@ ELSE
     ! Check if the computed and the reference solutions are within a given tolerance
     equal =  .TRUE.
     DO i=1,PP_nVar; DO j=0,NRef; DO k=0,NRef; DO l=0,NRefZ
-      equal = EQUALTOTOLERANCE(Ut(i,j,k,l,1),Ut_ref(1,j,k,l,1),100.*PP_RealTolerance) .AND. equal
+      equal = ALMOSTEQUALABSORREL(Ut(i,j,k,l,1),Ut_ref(1,j,k,l,1),100.*PP_RealTolerance) .AND. equal
 #if FV_ENABLED
-      equal = EQUALTOTOLERANCE(FV_Ut(i,j,k,l,1),FV_Ut_ref(1,j,k,l,1),100.*PP_RealTolerance) .AND. equal
+      equal = ALMOSTEQUALABSORREL(FV_Ut(i,j,k,l,1),FV_Ut_ref(1,j,k,l,1),100.*PP_RealTolerance) .AND. equal
 #endif
     END DO; END DO; END DO; END DO
     IF (.NOT.equal) THEN

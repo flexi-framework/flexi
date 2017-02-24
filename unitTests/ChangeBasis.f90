@@ -9,9 +9,7 @@ PROGRAM ChangeBasisUnitTest
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_ChangeBasis
-USE MOD_Basis,             ONLY: EQUALTOTOLERANCE
-
+USE MOD_ChangeBasis,       ONLY: ChangeBasis2D,ChangeBasis3D,ChangeBasis3D_XYZ
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -116,7 +114,7 @@ ELSE
       DO iElem=1,nElems
         DO k=0,NIn; DO j=0,NIn; DO i=0,NIn
           DO iVar=1,nVar
-            equal = EQUALTOTOLERANCE(UOut(iVar,i,j,k,iElem,z),UOut_ref(iVar,i,j,k,iElem,z),50.*PP_RealTolerance) .AND. equal
+            equal = ALMOSTEQUALABSORREL(UOut(iVar,i,j,k,iElem,z),UOut_ref(iVar,i,j,k,iElem,z),50.*PP_RealTolerance) .AND. equal
           END DO
         END DO; END DO; END DO
       END DO
@@ -125,7 +123,7 @@ ELSE
       DO iElem=1,nElems
         DO j=0,NIn; DO i=0,NIn
           DO iVar=1,nVar
-            equal = EQUALTOTOLERANCE(UOut2D(iVar,i,j,iElem,z),UOut2D_ref(iVar,i,j,iElem,z),50.*PP_RealTolerance) .AND. equal
+            equal = ALMOSTEQUALABSORREL(UOut2D(iVar,i,j,iElem,z),UOut2D_ref(iVar,i,j,iElem,z),50.*PP_RealTolerance) .AND. equal
           END DO
         END DO; END DO
       END DO

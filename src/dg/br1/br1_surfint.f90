@@ -99,11 +99,12 @@ DO SideID=firstSideID,lastSideID
   ! master sides
   IF(ElemID.GT.0)THEN
     IF (FV_Elems_master(SideID).EQ.0) THEN ! DG element
-      locSideID   = SideToElem(S2E_LOC_SIDE_ID,SideID)
-      flip        = 0
+      locSideID = SideToElem(S2E_LOC_SIDE_ID,SideID)
+      flip      = 0
       ! orient flux to fit flip and locSide to element local system
       DO q=0,PP_NlocZ; DO p=0,Nloc
-        FluxTmp(:,p,q)=Flux(:,S2V2(1,p,q,flip,locSideID),S2V2(2,p,q,flip,locSideID),SideID)
+        ! note: for master sides, the mapping S2V2 should be a unit matrix
+        FluxTmp(:,S2V2(1,p,q,flip,locSideID),S2V2(2,p,q,flip,locSideID)) = Flux(:,p,q,SideID) 
       END DO; END DO ! p,q
 #if   (PP_NodeType==1)
       CALL DoSurfIntPrim(Nloc,FluxTmp,L_HatMinus,   L_HatPlus,      locSideID,gradU(:,:,:,:,ElemID))

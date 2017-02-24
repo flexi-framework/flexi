@@ -53,6 +53,9 @@ PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
+INTERFACE BuildCoords
+  MODULE PROCEDURE BuildCoords
+END INTERFACE
 
 INTERFACE CalcMetrics
   MODULE PROCEDURE CalcMetrics
@@ -66,12 +69,71 @@ INTERFACE SurfMetricsFromJa
   MODULE PROCEDURE SurfMetricsFromJa
 END INTERFACE
 
+PUBLIC::BuildCoords
 PUBLIC::CalcMetrics
 PUBLIC::CalcSurfMetrics
 PUBLIC::SurfMetricsFromJa
 !==================================================================================================================================
 
 CONTAINS
+
+!==================================================================================================================================
+!> This routine computes the geometries volume metric terms.
+!==================================================================================================================================
+SUBROUTINE BuildCoords(Elem_xGP)
+! MODULES
+USE MOD_Globals
+USE MOD_PreProc
+USE MOD_Mesh_Vars,     ONLY:NGeo,nElems
+USE MOD_Mesh_Vars,     ONLY:ElemToTree,xiMinMax,interpolateFromTree
+USE MOD_Mesh_Vars,     ONLY:NodeCoords,TreeCoords
+USE MOD_Interpolation_Vars
+USE MOD_Interpolation, ONLY:GetVandermonde,GetNodesAndWeights
+USE MOD_ChangeBasis,   ONLY:changeBasis3D,ChangeBasis3D_XYZ
+USE MOD_Basis,         ONLY:LagrangeInterpolationPolys
+!----------------------------------------------------------------------------------------------------------------------------------
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+REAL,INTENT(OUT) :: Elem_xGP(3,0:PP_N,0:PP_N,0:PP_N,nElems)
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER :: i,iElem
+REAL    :: XCL_N(3,0:PP_N,0:PP_N,0:PP_N)
+REAL,DIMENSION(0:PP_N,0:PP_N) :: Vdm_xi_N,Vdm_eta_N,Vdm_zeta_N
+REAL    :: Vdm_EQNgeo_CLN( 0:PP_N ,0:Ngeo)
+REAL    :: Vdm_CLN_N     ( 0:PP_N ,0:PP_N)
+REAL    :: xi0(3),dxi(3),length(3)
+REAL    :: xiCL_N(0:PP_N)   ,wBaryCL_N(0:PP_N)
+!==================================================================================================================================
+
+CALL GetVandermonde(    NGeo, NodeTypeVISU, PP_N, NodeTypeCL, Vdm_EQNgeo_CLN, modal=.FALSE.)
+CALL GetVandermonde(    PP_N, NodeTypeCL  , PP_N, NodeType  , Vdm_CLN_N     , modal=.FALSE.)
+CALL GetNodesAndWeights(PP_N, NodeTypeCL  , xiCL_N  , wIPBary=wBaryCL_N)
+
+! NOTE: Transform intermediately to CL points, to be consistent with metrics being built with CL
+!       Important for curved meshes if NGeo<N, no effect for N>=NGeo
+ 
+!1.a) Transform from EQUI_Ngeo to solution points on N
+IF(interpolateFromTree)THEN
+  DO iElem=1,nElems
+    xi0   =xiMinMax(:,1,iElem)
+    length=xiMinMax(:,2,iElem)-xi0
+    CALL ChangeBasis3D(3,NGeo,PP_N,Vdm_EQNGeo_CLN,TreeCoords(:,:,:,:,ElemToTree(iElem)),XCL_N)
+    DO i=0,PP_N
+      dxi=0.5*(xGP(i)+1.)*length
+      CALL LagrangeInterpolationPolys(xi0(1) + dxi(1),PP_N,xiCL_N,wBaryCL_N,Vdm_xi_N(  i,:))
+      CALL LagrangeInterpolationPolys(xi0(2) + dxi(2),PP_N,xiCL_N,wBaryCL_N,Vdm_eta_N( i,:))
+      CALL LagrangeInterpolationPolys(xi0(3) + dxi(3),PP_N,xiCL_N,wBaryCL_N,Vdm_zeta_N(i,:))
+    END DO
+    CALL ChangeBasis3D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,Vdm_zeta_N,XCL_N,Elem_xGP(:,:,:,:,iElem))
+  END DO
+ELSE
+  Vdm_EQNgeo_CLN=MATMUL(Vdm_CLN_N,Vdm_EQNgeo_CLN)
+  CALL ChangeBasis3D(3,nElems,NGeo,PP_N,Vdm_EQNGeo_CLN,NodeCoords,Elem_xGP,.FALSE.)
+END IF
+
+END SUBROUTINE BuildCoords
 
 !==================================================================================================================================
 !> This routine computes the geometries volume metric terms.
@@ -316,7 +378,6 @@ DO iElem=1,nElems
       CALL LagrangeInterpolationPolys(xi0(2) + dxi(2),PP_N,xiCL_N,wBaryCL_N,Vdm_eta_N( i,:))
       CALL LagrangeInterpolationPolys(xi0(3) + dxi(3),PP_N,xiCL_N,wBaryCL_N,Vdm_zeta_N(i,:))
     END DO
-    CALL ChangeBasis3D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,Vdm_zeta_N,XCL_N            ,Elem_xGP(      :,:,:,:,iElem))
     CALL ChangeBasis3D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,Vdm_zeta_N,JaCL_N(1,:,:,:,:),Metrics_fTilde(:,:,:,:,iElem,0))
     CALL ChangeBasis3D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,Vdm_zeta_N,JaCL_N(2,:,:,:,:),Metrics_gTilde(:,:,:,:,iElem,0))
     CALL ChangeBasis3D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,Vdm_zeta_N,JaCL_N(3,:,:,:,:),Metrics_hTilde(:,:,:,:,iElem,0))
@@ -345,7 +406,6 @@ DO iElem=1,nElems
                          NormVec,TangVec1,TangVec2,SurfElem,Face_xGP,Ja_Face)
   ELSE
     ! interpolate Metrics from Cheb-Lobatto N onto GaussPoints N
-    CALL ChangeBasis3D(3,PP_N,PP_N,Vdm_CLN_N,XCL_N            ,Elem_xGP(      :,:,:,:,iElem))
     CALL ChangeBasis3D(3,PP_N,PP_N,Vdm_CLN_N,JaCL_N(1,:,:,:,:),Metrics_fTilde(:,:,:,:,iElem,0))
     CALL ChangeBasis3D(3,PP_N,PP_N,Vdm_CLN_N,JaCL_N(2,:,:,:,:),Metrics_gTilde(:,:,:,:,iElem,0))
     CALL ChangeBasis3D(3,PP_N,PP_N,Vdm_CLN_N,JaCL_N(3,:,:,:,:),Metrics_hTilde(:,:,:,:,iElem,0))
@@ -365,7 +425,7 @@ END SUBROUTINE CalcMetrics
 !==================================================================================================================================
 SUBROUTINE CalcSurfMetrics(Nloc,JaCL_N,XCL_N,Vdm_CLN_N,iElem,NormVec,TangVec1,TangVec2,SurfElem,Face_xGP,Ja_Face)
 ! MODULES
-USE MOD_Globals,        ONLY:CROSS
+USE MOD_Mathtools,      ONLY:CROSS
 USE MOD_Mesh_Vars,      ONLY:ElemToSide,MortarType,nSides
 USE MOD_Mesh_Vars,      ONLY:NormalDirs,TangDirs,NormalSigns
 USE MOD_Mappings,       ONLY:SideToVol2
@@ -388,7 +448,7 @@ REAL,INTENT(OUT)   ::   Face_xGP(3,0:Nloc,0:Nloc,0:FV_ENABLED,1:nSides) !< (OUT)
 REAL,INTENT(OUT),OPTIONAL :: Ja_Face(3,3,0:Nloc,0:Nloc,1:nSides)  !< (OUT) surface metrics
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: p,q,ijk(2),dd,iLocSide,SideID,SideID2,iMortar,nbSideIDs(4)
+INTEGER            :: p,q,pq(2),dd,iLocSide,SideID,SideID2,iMortar,nbSideIDs(4),flip
 INTEGER            :: NormalDir,TangDir
 REAL               :: NormalSign
 REAL               :: Ja_Face_l(3,3,0:Nloc,0:Nloc)
@@ -403,7 +463,8 @@ DO iLocSide=1,6
 #else    
 DO iLocSide=2,5
 #endif    
-  IF(ElemToSide(E2S_FLIP,iLocSide,iElem).NE.0) CYCLE ! only master sides with flip=0
+  flip = ElemToSide(E2S_FLIP,iLocSide,iElem)
+  IF(flip.NE.0) CYCLE ! only master sides with flip=0
   SideID=ElemToSide(E2S_SIDE_ID,iLocSide,iElem)
 
   SELECT CASE(iLocSide)
@@ -423,9 +484,9 @@ DO iLocSide=2,5
   CALL ChangeBasis2D(3,Nloc,Nloc,Vdm_CLN_N,tmp,tmp2)
   ! turn into right hand system of side
   DO q=0,Nloc; DO p=0,Nloc
-    ijk=SideToVol2(Nloc,p,q,0,iLocSide,3)
+    pq=SideToVol2(Nloc,p,q,0,iLocSide,3)
     ! Compute Face_xGP for sides
-    Face_xGP(1:3,p,q,0,sideID)=tmp2(:,ijk(1),ijk(2))
+    Face_xGP(1:3,p,q,0,sideID)=tmp2(:,pq(1),pq(2))
   END DO; END DO ! p,q
 
   DO dd=1,3
@@ -446,8 +507,8 @@ DO iLocSide=2,5
     CALL ChangeBasis2D(3,Nloc,Nloc,Vdm_CLN_N,tmp,tmp2)
     ! turn into right hand system of side
     DO q=0,Nloc; DO p=0,Nloc
-      ijk=SideToVol2(Nloc,p,q,0,iLocSide,3)
-      Ja_Face_l(dd,1:3,p,q)=tmp2(:,ijk(1),ijk(2))
+      pq=SideToVol2(Nloc,p,q,0,iLocSide,3)
+      Ja_Face_l(dd,1:3,p,q)=tmp2(:,pq(1),pq(2))
     END DO; END DO ! p,q
   END DO ! dd
   IF(PRESENT(Ja_Face)) Ja_Face(:,:,:,:,SideID)=Ja_Face_l
@@ -482,7 +543,7 @@ END SUBROUTINE CalcSurfMetrics
 !==================================================================================================================================
 SUBROUTINE SurfMetricsFromJa(Nloc,NormalDir,TangDir,NormalSign,Ja_Face,NormVec,TangVec1,TangVec2,SurfElem)
 ! MODULES
-USE MOD_Globals,     ONLY: CROSS
+USE MOD_Mathtools,ONLY:CROSS
 !----------------------------------------------------------------------------------------------------------------------------------
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------

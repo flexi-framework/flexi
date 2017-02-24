@@ -117,7 +117,6 @@ CALL prms%CreateIntFromStringOption('ASCIIOutputFormat',"File format for ASCII f
 CALL addStrListEntry('ASCIIOutputFormat','csv',    ASCIIOUTPUTFORMAT_CSV)
 CALL addStrListEntry('ASCIIOutputFormat','tecplot',ASCIIOUTPUTFORMAT_TECPLOT)
 CALL prms%CreateLogicalOption(      'doPrintStatusLine','Print: percentage of time, ...', '.FALSE.')
-CALL prms%CreateLogicalOption(      'ColoredOutput','Colorize stdout', '.TRUE.')
 END SUBROUTINE DefineParametersOutput
 
 !==================================================================================================================================
@@ -248,7 +247,7 @@ totalFV_nElems = totalFV_nElems + FVcounter ! counter for output of FV amount du
 
 IF(.NOT.doPrintStatusLine) RETURN
 
-#if FV_ENABLED && MPI
+#if FV_ENABLED && USE_MPI
 CALL MPI_ALLREDUCE(MPI_IN_PLACE,FVcounter,1,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,iError)
 #endif
 
@@ -482,10 +481,9 @@ END IF
 INQUIRE(FILE = TRIM(Filename_loc), EXIST = fileExists)
 IF(RestartTime.LT.0.0) fileExists=.FALSE.
 !! File processing starts here open old and extratct information or create new file.
-ioUnit=GETFREEUNIT()
 
 IF(fileExists)THEN ! File exists and append data
-  OPEN(UNIT     = ioUnit             , &
+  OPEN(NEWUNIT  = ioUnit             , &
        FILE     = TRIM(Filename_loc) , &
        FORM     = 'FORMATTED'        , &
        STATUS   = 'OLD'              , &
@@ -539,8 +537,7 @@ END IF
 CLOSE(ioUnit) ! outputfile
 
 IF(.NOT.fileExists)THEN ! No restart create new file
-  ioUnit=GETFREEUNIT()
-  OPEN(UNIT   = ioUnit             ,&
+  OPEN(NEWUNIT= ioUnit             ,&
        FILE   = TRIM(Filename_loc) ,&
        STATUS = 'UNKNOWN'          ,&
        ACCESS = 'SEQUENTIAL'       ,&
@@ -598,8 +595,7 @@ ELSE
   FileName_loc = TRIM(FileName)//'.dat'
 END IF
 
-ioUnit=GETFREEUNIT()
-OPEN(UNIT     = ioUnit             , &
+OPEN(NEWUNIT  = ioUnit             , &
      FILE     = TRIM(Filename_loc) , &
      FORM     = 'FORMATTED'        , &
      STATUS   = 'OLD'              , &

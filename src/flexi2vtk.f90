@@ -48,9 +48,9 @@ USE MOD_Interpolation_Vars,  ONLY: NodeTypeCL,NodeTypeVisu
 USE MOD_Interpolation,       ONLY: GetVandermonde
 USE MOD_ChangeBasis,         ONLY: ChangeBasis3D
 USE MOD_VTK,                 ONLY: WriteDataToVTK,WriteVTKMultiBlockDataSet
-#if MPI
+#if USE_MPI
 USE MOD_MPI_Vars,            ONLY: NbProc,nMPISides_Proc
-#endif /*MPI*/
+#endif /*USE_MPI*/
 
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -112,40 +112,37 @@ CALL prms%CreateStringOption( 'NodeTypeVisu',"Node type of the visualization bas
 CALL prms%CreateIntOption(    'NVisu',       "Number of points at which solution is sampled for visualization.")
 CALL prms%CreateLogicalOption('useCurveds',  "Controls usage of high-order information in mesh. Turn off to discard "//&
                                              "high-order data and treat curved meshes as linear meshes.", '.TRUE.')
-CALL prms%CreateLogicalOption('ColoredOutput','Colorize stdout, included for compatibility with FLEXI', '.TRUE.')
 
 ! check for command line argument --help or --markdown
 IF (doPrintHelp.GT.0) THEN
-  CALL PrintDefaultParameterFile(doPrintHelp.EQ.2, ParameterFile)
+  CALL PrintDefaultParameterFile(doPrintHelp.EQ.2, Args(1))
   STOP
+END IF
+
+IF (nArgs.LT.2) THEN
+  ! If not, print out error message containing valid syntax
+  CALL CollectiveStop(__STAMP__,&
+  'ERROR - Please supply a parameter file (or directly specify the NVisu option with --NVisu=INTEGER) and at least one .h5 files.')
 END IF
 
 ! Measure init duration
 StartTime=FLEXITIME()
 
-! Check if at least two arguments have been passed
-IF (nArgs.LT.2) THEN
-  ! If not, print out error message containing valid syntax
-  CALL CollectiveStop(__STAMP__,&
-  'ERROR - Please supply a parameter file (or directly specify the NVisu option with --NVisu=INTEGER) and at least one .h5 files.')
-ELSE
+ParameterFile = Args(1)
 ! Check if first argument is a parameter file or that the NVisu argument has been specified
-  iExt=INDEX(ParameterFile,'.',BACK = .TRUE.) ! Position of file extension
-  IF(ParameterFile(iExt+1:iExt+3) .EQ. 'ini') THEN
-    ! Parameter file has been supplied
-    CmdLineMode = .FALSE.
+iExt=INDEX(ParameterFile,'.',BACK = .TRUE.) ! Position of file extension
+IF(ParameterFile(iExt+1:iExt+3) .EQ. 'ini') THEN
+  ! Parameter file has been supplied
+  CmdLineMode = .FALSE.
+ELSE
+  ! Check if the command line argument specifies NVisu
+  IF (STRICMP(Args(1)(1:8),'--nvisu=')) THEN
+    ! No Paramter file, but NVisu specified per command line option
+    CmdLineMode = .TRUE.
   ELSE
-    ! Convert first argument to lowercase
-    CALL LowCase(ParameterFile)
-    ! Check if the command line argument specifies NVisu
-    IF (TRIM(ParameterFile(1:8)).EQ.'--nvisu=') THEN
-      ! No Paramter file, but NVisu specified per command line option
-      CmdLineMode = .TRUE.
-    ELSE
-    ! Neither parameter file nor NVisu have been specified
-    CALL CollectiveStop(__STAMP__,&
-      'ERROR - First argument must be a parameter file or NVisu must be specified per --NVisu=INTEGER.')
-    END IF
+  ! Neither parameter file nor NVisu have been specified
+  CALL CollectiveStop(__STAMP__,&
+    'ERROR - First argument must be a parameter file or NVisu must be specified per --NVisu=INTEGER.')
   END IF
 END IF
 
@@ -154,17 +151,17 @@ SWRITE(UNIT_stdOut,'(132("="))')
 SWRITE(UNIT_stdOut,'(A)') &
 " ________ ___       _______      ___    ___ ___    _______  ___      ___ _________  ___  __        "
 SWRITE(UNIT_stdOut,'(A)') &
-"|\\  _____\\\\  \\     |\\  ___ \\    |\\  \\  /  /|\\  \\  /  ___  \\|\\  \\    /  /|\\___   ___\\\\  \\|\\  \\      "
+"|\\  _____\\\\  \\     |\\   ___\\    |\\  \\  /  /|\\  \\  /  ___  \\|\\  \\    /  /|\\___   ___\\\\  \\|\\  \\      "
 SWRITE(UNIT_stdOut,'(A)') &
-"\\ \\  \\__/\\ \\  \\    \\ \\   __/|   \\ \\  \\/  / | \\  \\/__/|_/  /\\ \\  \\  /  / ||___ \\  \\_\\ \\  \\/  /|_    "
+"\\ \\  \\__/\\ \\  \\    \\ \\  \\__/    \\ \\  \\/  / | \\  \\/__/|_/  /\\ \\  \\  /  / ||___ \\  \\_\\ \\  \\/  /|_    "
 SWRITE(UNIT_stdOut,'(A)') &
-" \\ \\   __\\\\ \\  \\    \\ \\  \\_|/__  \\ \\    / / \\ \\  \\__|//  / /\\ \\  \\/  / /     \\ \\  \\ \\ \\   ___  \\   "
+" \\ \\   __\\\\ \\  \\    \\ \\   __\\    \\ \\    / / \\ \\  \\__|//  / /\\ \\  \\/  / /     \\ \\  \\ \\ \\   ___  \\   "
 SWRITE(UNIT_stdOut,'(A)') &
-"  \\ \\  \\_| \\ \\  \\____\\ \\  \\_|\\ \\  /     \\/   \\ \\  \\  /  /_/__\\ \\    / /       \\ \\  \\ \\ \\  \\\\ \\  \\  "
+"  \\ \\  \\_| \\ \\  \\____\\ \\  \\_/__   /     \\/   \\ \\  \\  /  /_/__\\ \\    / /       \\ \\  \\ \\ \\  \\\\ \\  \\  "
 SWRITE(UNIT_stdOut,'(A)') &
-"   \\ \\__\\   \\ \\_______\\ \\_______\\/  /\\   \\    \\ \\__\\|\\________\\ \\__/ /         \\ \\__\\ \\ \\__\\\\ \\__\\ "
+"   \\ \\__\\   \\ \\_______\\ \\______\\ /  /\\   \\    \\ \\__\\|\\________\\ \\__/ /         \\ \\__\\ \\ \\__\\\\ \\__\\ "
 SWRITE(UNIT_stdOut,'(A)') &
-"    \\|__|    \\|_______|\\|_______/__/ /\\ __\\    \\|__| \\|_______|\\|__|/           \\|__|  \\|__| \\|__| "
+"    \\|__|    \\|_______|\\|______|/__/ /\\ __\\    \\|__| \\|_______|\\|__|/           \\|__|  \\|__| \\|__| "
 SWRITE(UNIT_stdOut,'(A)') &
 "                                |__|/ \\|__|                                                        "
 SWRITE(UNIT_stdOut,'(A)')
@@ -203,7 +200,7 @@ END IF
 NodeTypeVisuOut  = GETSTR('NodeTypeVisu','VISU')    ! Node type of visualization basis
 useCurveds       = GETLOGICAL('useCurveds','.TRUE.')  ! Allow curved mesh or not
 #if FV_ENABLED
-NodeTypeVisuOut_FV = 'FV_EQUI'
+NodeTypeVisuOut_FV = 'VISU_FVEQUI'
 #endif
 
 ! Initialization of I/O routines
@@ -225,7 +222,7 @@ NodeType_State_old = ''
 
 ! Loop over remaining supplied .h5 files
 DO iArgs = 2,nArgs
-  CALL GET_COMMAND_ARGUMENT(iArgs,InputStateFile)
+  InputStateFile = Args(iArgs)
   ! Check if the argument is a valid .h5 file
   IF(.NOT.ISVALIDHDF5FILE(InputStateFile)) THEN
     CALL CollectiveStop(__STAMP__,&
@@ -262,10 +259,10 @@ DO iArgs = 2,nArgs
     END IF
     ! Deallocate and finalize mesh vars
     SDEALLOCATE(NodeCoords)
-#if MPI
+#if USE_MPI
     SDEALLOCATE(NbProc)
     SDEALLOCATE(nMPISides_Proc)
-#endif /*MPI*/
+#endif /*USE_MPI*/
     CALL FinalizeMesh()
 
     ! Read in parameters from mesh file
@@ -308,6 +305,9 @@ DO iArgs = 2,nArgs
       CALL ChangeBasis3D(3,NGeo,NVisu_FV,Vdm_CLNGeo_NVisu_FV,NodeCoords(:,:,:,:,iElem),Coords_Nvisu_FV(:,:,:,:,iElem))
 #endif
     END DO
+#if FV_ENABLED
+    SDEALLOCATE(Vdm_CLNGeo_NVisu_FV)
+#endif
   END IF ! New mesh
 
   ! Check if we need to reallocate the solution array
@@ -436,7 +436,7 @@ CALL FinalizeMesh()
 
 ! Measure processing duration
 Time=FLEXITIME()
-#if MPI
+#if USE_MPI
 CALL MPI_FINALIZE(iError)
 IF(iError .NE. 0) THEN
   CALL abort(__STAMP__,&
@@ -447,3 +447,4 @@ SWRITE(UNIT_stdOut,'(132("="))')
 SWRITE(UNIT_stdOut,'(A,F8.2,A)') ' FLEXI2VTK FINISHED! [',Time-StartTime,' sec ]'
 SWRITE(UNIT_stdOut,'(132("="))')
 END PROGRAM FLEXI2VTK
+

@@ -43,6 +43,10 @@ INTERFACE GetDataSize
   MODULE PROCEDURE GetDataSize
 END INTERFACE
 
+INTERFACE GetAttributeSize
+  MODULE PROCEDURE GetAttributeSize
+END INTERFACE
+
 INTERFACE GetDataProps
   MODULE PROCEDURE GetDataProps
 END INTERFACE
@@ -51,10 +55,16 @@ INTERFACE ReadAttribute
   MODULE PROCEDURE ReadAttribute
 END INTERFACE
 
+INTERFACE GetVarnames
+  MODULE PROCEDURE GetVarnames
+END INTERFACE
+
 PUBLIC :: File_ID,HSize,nDims        ! Variables from MOD_IO_HDF5 that need to be public
 PUBLIC :: OpenDataFile,CloseDataFile ! Subroutines from MOD_IO_HDF5 that need to be public
-PUBLIC :: ISVALIDHDF5FILE,ISVALIDMESHFILE,GetDataSize,GetDataProps,GetNextFileName
+PUBLIC :: ISVALIDHDF5FILE,ISVALIDMESHFILE,GetDataSize,GetAttributeSize,GetDataProps,GetNextFileName
 PUBLIC :: ReadArray,ReadAttribute
+PUBLIC :: GetArrayAndName
+PUBLIC :: GetVarnames
 PUBLIC :: DatasetExists
 !==================================================================================================================================
 
@@ -63,26 +73,24 @@ CONTAINS
 !==================================================================================================================================
 !> Subroutine to check if a file is a valid Flexi HDF5 file
 !==================================================================================================================================
-FUNCTION ISVALIDHDF5FILE(FileName,FileVersionOpt)
+FUNCTION ISVALIDHDF5FILE(FileName,ProgramName,FileType,FileVersion)
 ! MODULES
 USE MOD_Globals
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)    :: FileName        !< name of file to be checked
-REAL,INTENT(IN),OPTIONAL       :: FileVersionOpt  !< desired version
+CHARACTER(LEN=255),INTENT(OUT),OPTIONAL :: ProgramName !< program name
+CHARACTER(LEN=255),INTENT(OUT),OPTIONAL :: FileType    !< type of the file (only if valid)
+REAL,INTENT(OUT),OPTIONAL      :: FileVersion     !< desired version
 LOGICAL                        :: isValidHDF5File !< result: file is valid HDF5 file
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                           :: FileVersion,FileVersionRef
 INTEGER(HID_T)                 :: Plist_ID
-CHARACTER(LEN=255)             :: ProgramName
-LOGICAL                        :: fileExists
+LOGICAL                        :: exists
 !==================================================================================================================================
 isValidHDF5File=.TRUE.
 iError=0
-FileVersionRef=0.1
-IF(PRESENT(FileVersionOpt)) FileVersionRef=FileVersionOpt
 
 ! Disable error messages
 CALL H5ESET_AUTO_F(0, iError)
@@ -90,35 +98,48 @@ CALL H5ESET_AUTO_F(0, iError)
 CALL H5OPEN_F(iError)
 ! Create property list
 CALL H5PCREATE_F(H5P_FILE_ACCESS_F, Plist_ID, iError)
-#if MPI
+#if USE_MPI
 ! Setup file access property list with parallel I/O access (MPI)
 CALL H5PSET_FAPL_MPIO_F(Plist_ID,MPI_COMM_WORLD, MPIInfo, iError)
-#endif /* MPI */
+#endif /*USE_MPI*/
 
 ! Check if file exists
-INQUIRE(FILE=TRIM(FileName),EXIST=fileExists)
-IF(.NOT.fileExists) THEN
+INQUIRE(FILE=TRIM(FileName),EXIST=exists)
+IF(.NOT.exists) THEN
   CALL abort(__STAMP__,'ERROR: HDF5 file '//TRIM(FileName)//' does not exist.')
   RETURN
 END IF
 
-
 ! Open HDF5 file
 CALL H5FOPEN_F(TRIM(FileName), H5F_ACC_RDONLY_F, File_ID, iError,access_prp = Plist_ID)
-CALL H5PCLOSE_F(Plist_ID, iError)
 IF(iError.EQ.0) THEN
   isValidHDF5File=.TRUE.
-  ! Check program name -------------------------------------------------------------------------------------------------------------
-  ! Open the attribute "Program" of root group
-  CALL ReadAttribute(File_ID,'Program',1,StrScalar=ProgramName)
-  IF(TRIM(ProgramName) .NE. 'Flexi') isValidHDF5File=.FALSE.
-  IF (isValidHDF5File) THEN
-    ! Check file version -------------------------------------------------------------------------------------------------------------
-    ! Open the attribute "File_Version" of root group
-    CALL ReadAttribute(File_ID,'File_Version',1,RealScalar=FileVersion)
-    IF(FileVersion .LT. FileVersionRef)THEN
+  ! Check attributes file type and version -----------------------------
+  IF(PRESENT(ProgramName))THEN
+    CALL DatasetExists(File_ID,'Program',exists,attrib=.TRUE.)
+    IF(exists)THEN
+      CALL ReadAttribute(File_ID,'Program',1,StrScalar=ProgramName)
+    ELSE
+      ProgramName=''
       isValidHDF5File=.FALSE.
-      SWRITE(UNIT_stdOut,'(A)')' ERROR: FILE VERSION TOO OLD! FileName: '//TRIM(FileName)
+    END IF
+  END IF
+  IF(PRESENT(FileType))THEN
+    CALL DatasetExists(File_ID,'File_Type',exists,attrib=.TRUE.)
+    IF(exists)THEN
+      CALL ReadAttribute(File_ID,'File_Type',1,StrScalar=FileType)
+    ELSE
+      FileType=''
+      isValidHDF5File=.FALSE.
+    END IF
+  END IF
+  IF(PRESENT(FileVersion))THEN
+    CALL DatasetExists(File_ID,'File_Version',exists,attrib=.TRUE.)
+    IF(exists)THEN
+      CALL ReadAttribute(File_ID,'File_Version',1,RealScalar=FileVersion)
+    ELSE
+      FileVersion=-1.
+      isValidHDF5File=.FALSE.
     END IF
   END IF
   ! Close property list
@@ -159,10 +180,10 @@ CALL H5ESET_AUTO_F(0, iError)
 CALL H5OPEN_F(iError)
 ! Create property list
 CALL H5PCREATE_F(H5P_FILE_ACCESS_F, Plist_ID, iError)
-#if MPI
+#if USE_MPI
 ! Setup file access property list with parallel I/O access (MPI)
 CALL H5PSET_FAPL_MPIO_F(Plist_ID,MPI_COMM_WORLD, MPIInfo, iError)
-#endif /* MPI */
+#endif /*USE_MPI*/
 
 ! Check if file exists
 INQUIRE(FILE=TRIM(MeshFileName),EXIST=fileExists)
@@ -227,9 +248,39 @@ CALL H5DCLOSE_F(DSet_ID, iError)
 DEALLOCATE(SizeMax)
 END SUBROUTINE GetDataSize
 
+!==================================================================================================================================
+!> Subroutine to determine HDF5 size of attribute
+!==================================================================================================================================
+SUBROUTINE GetAttributeSize(Loc_ID,AttribName,nDims,Size)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+CHARACTER(LEN=*)                     :: AttribName !< name if attribute to be checked
+INTEGER(HID_T),INTENT(IN)            :: Loc_ID   !< ID of dataset
+INTEGER,INTENT(OUT)                  :: nDims    !< found data size dimensions
+INTEGER(HSIZE_T),POINTER,INTENT(OUT) :: Size(:)  !< found data size
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER(HID_T)                       :: Attr_ID,FileSpace
+INTEGER(HSIZE_T), POINTER            :: SizeMax(:)
+!==================================================================================================================================
+! Open the dataset with default properties.
+CALL H5AOPEN_F(Loc_ID, TRIM(AttribName), Attr_ID, iError)
+! Get the data space of the dataset.
+CALL H5AGET_SPACE_F(Attr_ID, FileSpace, iError)
+! Get number of dimensions of data space
+CALL H5SGET_SIMPLE_EXTENT_NDIMS_F(FileSpace, nDims, iError)
+! Get size and max size of data space
+ALLOCATE(Size(nDims),SizeMax(nDims))
+CALL H5SGET_SIMPLE_EXTENT_DIMS_F(FileSpace, Size, SizeMax, iError)
+CALL H5SCLOSE_F(FileSpace, iError)
+CALL H5ACLOSE_F(Attr_ID, iError)
+DEALLOCATE(SizeMax)
+END SUBROUTINE GetAttributeSize
 
 !==================================================================================================================================
-!> @brief Subroutine to check wheter a dataset on the hdf5 file exists
+!> @brief Subroutine to check wheter a dataset in the hdf5 file exists
 !>
 !> We have no "h5dexists_f", so we use the error given by h5dopen_f.
 !> this produces hdf5 error messages even if everything is ok, so we turn the error msgs off
@@ -330,6 +381,77 @@ SWRITE(UNIT_stdOut,'(A)')' DONE!'
 SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE GetDataProps
 
+SUBROUTINE GetVarnames(AttribName,VarNames,AttribExists) 
+IMPLICIT NONE
+! INPUT / OUTPUT VARIABLES 
+CHARACTER(LEN=*),INTENT(IN)                :: AttribName
+CHARACTER(LEN=255),ALLOCATABLE,INTENT(OUT) :: VarNames(:)
+LOGICAL,INTENT(OUT)                        :: AttribExists
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER  :: dims, nVal
+!===================================================================================================================================
+SDEALLOCATE(VarNames)
+CALL DatasetExists(File_ID,AttribName,AttribExists,attrib=.TRUE.)
+IF (AttribExists) THEN
+  ! get size of array
+  CALL GetAttributeSize(File_ID,AttribName,dims,HSize)
+  nVal=INT(HSize(1))
+  DEALLOCATE(HSize)
+  ALLOCATE(VarNames(nVal))
+
+  ! read variable names
+  CALL ReadAttribute(File_ID,TRIM(AttribName),nVal,StrArray=VarNames)
+END IF
+END SUBROUTINE GetVarnames
+
+!===================================================================================================================================
+!> High level wrapper to ReadArray and ReadAttrib. Check if array exists and directly
+!> allocate, read array and attribs
+!> Assume that the array to be read is of size (nVar,.,.,.,.,nElems) and that an associated
+!> attribute containing the variable names exists
+!===================================================================================================================================
+SUBROUTINE GetArrayAndName(ArrayName,AttribName,nVal,Array,VarNames)
+! MODULES
+USE MOD_Globals
+USE MOD_Mesh_Vars    ,ONLY: nElems,nGlobalElems,OffsetElem
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+CHARACTER(LEN=*),INTENT(IN)     :: ArrayName   !< name of array to be read
+CHARACTER(LEN=*),INTENT(IN)     :: AttribName  !< name of varnames to be read
+INTEGER,INTENT(OUT)             :: nVal(15)    !< size of array
+REAL,ALLOCATABLE,INTENT(OUT)    :: Array(:)    !< array to be read
+CHARACTER(LEN=255),ALLOCATABLE,INTENT(OUT) :: VarNames(:) !< variable names
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+LOGICAL  :: found
+INTEGER  :: dims
+!===================================================================================================================================
+nVal=-1
+SDEALLOCATE(Array)
+SDEALLOCATE(VarNames)
+
+CALL DatasetExists(File_ID, TRIM(ArrayName), found)
+IF (found) THEN
+  ! get size of array
+  CALL GetDataSize(File_ID,TRIM(ArrayName),dims,HSize)
+  nVal(1:dims)=INT(HSize)
+  IF(nVal(dims).NE.nGlobalElems) STOP 'Last array dimension != nElems !'
+  nVal(dims)=nElems
+  DEALLOCATE(HSize)
+  ALLOCATE(array(PRODUCT(nVal(1:dims))))
+  ALLOCATE(VarNames(nVal(1)))
+
+  ! read array
+  CALL ReadArray(TRIM(ArrayName),dims,nVal(1:dims),OffsetElem,dims,RealArray=array)
+
+  ! read variable names
+  CALL ReadAttribute(File_ID,TRIM(AttribName),nVal(1),StrArray=VarNames)
+END IF
+
+END SUBROUTINE GetArrayAndName
+
 
 !==================================================================================================================================
 !> Subroutine to read arrays of rank "Rank" with dimensions "Dimsf(1:Rank)".
@@ -360,6 +482,10 @@ Dimsf=nVal
 LOGWRITE(*,*)'Dimsf,Offset=',Dimsf,Offset_in
 CALL H5SCREATE_SIMPLE_F(Rank, Dimsf, MemSpace, iError)
 CALL H5DOPEN_F(File_ID, TRIM(ArrayName) , DSet_ID, iError)
+
+IF(iError.NE.0) &
+  CALL Abort(__STAMP__,'Array '//TRIM(ArrayName)//' does not exist.')
+
 ! Define and select the hyperslab to use for reading.
 CALL H5DGET_SPACE_F(DSet_ID, FileSpace, iError)
 Offset(:)=0
@@ -367,7 +493,7 @@ Offset(offset_dim)=Offset_in
 CALL H5SSELECT_HYPERSLAB_F(FileSpace, H5S_SELECT_SET_F, Offset, Dimsf, iError)
 ! Create property list
 CALL H5PCREATE_F(H5P_DATASET_XFER_F, PList_ID, iError)
-#if MPI
+#if USE_MPI
 ! Set property list to collective dataset read
 CALL H5PSET_DXPL_MPIO_F(PList_ID, H5FD_MPIO_COLLECTIVE_F, iError)
 #endif
@@ -448,6 +574,10 @@ END IF
 ! Create scalar data space for the attribute.
 ! Create the attribute for group Loc_ID.
 CALL H5AOPEN_F(Loc_ID, TRIM(AttribName), Attr_ID, iError)
+
+IF(iError.NE.0) &
+  CALL Abort(__STAMP__,'Attribute '//TRIM(AttribName)//' does not exist.')
+
 CALL H5AGET_TYPE_F(Attr_ID, Type_ID, iError)
 
 ! Nullify
@@ -524,12 +654,12 @@ CALL H5ESET_AUTO_F(0, iError)
 CALL H5OPEN_F(iError)
 ! Setup file access property list
 CALL H5PCREATE_F(H5P_FILE_ACCESS_F, Plist_ID, iError)
-#if MPI
+#if USE_MPI
 IF(.NOT.single)THEN
   ! Set property list to MPI IO
   CALL H5PSET_FAPL_MPIO_F(Plist_ID, MPI_COMM_WORLD, MPI_INFO_NULL, iError)
 END IF
-#endif /* MPI */
+#endif /*USE_MPI*/
 ! Open file
 CALL H5FOPEN_F(TRIM(FileName), H5F_ACC_RDONLY_F, File_ID_loc, iError,access_prp = Plist_ID)
 ReadError=iError

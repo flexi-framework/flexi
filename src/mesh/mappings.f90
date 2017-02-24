@@ -36,7 +36,6 @@ INTERFACE Flip_M2S
   MODULE PROCEDURE Flip_M2S
 END INTERFACE
 
-
 INTERFACE SideToVol
   MODULE PROCEDURE SideToVol
 END INTERFACE
@@ -49,8 +48,12 @@ INTERFACE VolToSide
   MODULE PROCEDURE VolToSide
 END INTERFACE
 
-INTERFACE VolToSide2
-  MODULE PROCEDURE VolToSide2
+INTERFACE ElemToNbElem
+  MODULE PROCEDURE ElemToNbElem
+END INTERFACE
+
+INTERFACE FinalizeMappings
+  MODULE PROCEDURE FinalizeMappings
 END INTERFACE
 
 
@@ -60,7 +63,8 @@ PUBLIC::Flip_M2S
 PUBLIC::SideToVol
 PUBLIC::SideToVol2
 PUBLIC::VolToSide
-PUBLIC::VolToSide2
+PUBLIC::ElemToNbElem
+PUBLIC::FinalizeMappings
 !==================================================================================================================================
 
 CONTAINS
@@ -68,19 +72,18 @@ CONTAINS
 !==================================================================================================================================
 !> Routine which prebuilds mappings for a specific polynomial degree and allocates and stores them in given mapping arrays.
 !==================================================================================================================================
-SUBROUTINE buildMappings(Nloc,V2S,V2S2,S2V,S2V2,FS2M,dim)
+SUBROUTINE buildMappings(Nloc,V2S,S2V,S2V2,FS2M,dim)
 ! MODULES
 USE MOD_Globals,           ONLY:CollectiveStop
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)                         :: Nloc              !< Polynomial degree to build mappings on
-INTEGER,ALLOCATABLE,INTENT(INOUT),OPTIONAL :: V2S(:,:,:,:,:,:)  !< VolumeToSide mapping
-INTEGER,ALLOCATABLE,INTENT(INOUT),OPTIONAL :: V2S2(:,:,:,:,:)   !< VolumeToSide2 mapping
-INTEGER,ALLOCATABLE,INTENT(INOUT),OPTIONAL :: S2V(:,:,:,:,:,:)  !< SideToVolume mapping
-INTEGER,ALLOCATABLE,INTENT(INOUT),OPTIONAL :: S2V2(:,:,:,:,:)   !< SideToVolume2 mapping
-INTEGER,ALLOCATABLE,INTENT(INOUT),OPTIONAL :: FS2M(:,:,:,:)     !< FlipSlaveToMaster mapping
-INTEGER,INTENT(IN),OPTIONAL                :: dim               !< dimension (2 or 3)
+INTEGER,INTENT(IN)                       :: Nloc              !< Polynomial degree to build mappings on
+INTEGER,ALLOCATABLE,INTENT(OUT),OPTIONAL :: V2S(:,:,:,:,:,:)  !< VolumeToSide mapping
+INTEGER,ALLOCATABLE,INTENT(OUT),OPTIONAL :: S2V(:,:,:,:,:,:)  !< SideToVolume mapping
+INTEGER,ALLOCATABLE,INTENT(OUT),OPTIONAL :: S2V2(:,:,:,:,:)   !< SideToVolume2 mapping
+INTEGER,ALLOCATABLE,INTENT(OUT),OPTIONAL :: FS2M(:,:,:,:)     !< FlipSlaveToMaster mapping
+INTEGER,INTENT(IN),OPTIONAL              :: dim               !< dimension (2 or 3)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER             :: i,j,k,p,q,l,f,s,ijk(3),pq(3),NlocZ
@@ -119,19 +122,6 @@ IF(PRESENT(V2S))THEN
   SDEALLOCATE(V2S)
   ALLOCATE(V2S(3,0:Nloc,0:Nloc,0:NlocZ,Flip_lower:Flip_upper,locSide_lower:locSide_upper))
   V2S = V2S_check
-END IF
-
-! VolToSide2
-IF(PRESENT(V2S2))THEN
-  SDEALLOCATE(V2S2)
-  ALLOCATE(V2S2(2,0:Nloc,0:NlocZ,Flip_lower:Flip_upper,locSide_lower:locSide_upper))
-  DO j=0,NlocZ; DO i=0,Nloc
-  DO f = Flip_lower,Flip_upper
-    DO s = locSide_lower,locSide_upper
-        V2S2(:,i,j,f,s) = VolToSide2(Nloc,i,j,f,s, dim_loc)
-      END DO
-    END DO
-  END DO; END DO
 END IF
 
 ! SideToVol
@@ -370,9 +360,8 @@ END FUNCTION CGNS_SideToVol
 
 !==================================================================================================================================
 !> Transforms RHS-Coordinates of Side (CGNS-Notation for side orientation) into side-local tensor product Volume-Coordinates
-!> input: l, p,q, locSideID
+!> input: p,q, locSideID
 !>   where: p,q are in Master-RHS;
-!>          l is the xi-,eta- or zeta-index in 0:Nloc corresponding to locSideID
 !> output: Surface coordinates in volume frame
 !==================================================================================================================================
 FUNCTION CGNS_SideToVol2(Nloc, p, q, locSideID, dim)
@@ -437,30 +426,6 @@ VolToSide(1:2) = Flip_S2M(Nloc,pq(1),pq(2),flip, dim)
 VolToSide(3) = pq(3)
 END FUNCTION VolToSide
 
-
-!==================================================================================================================================
-!> Transform Surface Coordinates in Volume frame to RHS-Coordinates of Slave.
-!> This is: VolToSide2 = Flip_M2S(CGNS_VolToSide2(...))
-!> input: i,j, flip, locSideID
-!>   where: i,j = volume-indices
-!> output: indices in Master-RHS
-!==================================================================================================================================
-FUNCTION VolToSide2(Nloc, i, j, flip, locSideID, dim)
-! MODULES
-IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)   :: i,j,flip,locSideID,Nloc,dim
-INTEGER,DIMENSION(2) :: VolToSide2
-!----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-INTEGER,DIMENSION(2) :: pq
-!==================================================================================================================================
-pq = Flip_M2S(Nloc,i,j,flip,dim)
-VolToSide2 = CGNS_SideToVol2(Nloc,pq(1),pq(2),locSideID,dim)
-END FUNCTION VolToSide2
-
-
 !==================================================================================================================================
 !> Transform RHS-Coordinates of Master to Volume-Coordinates. This is: SideToVol = CGNS_SideToVol(Flip_M2S(...))
 !> input: l, p,q, flip, locSideID
@@ -504,67 +469,43 @@ pq = Flip_M2S(Nloc,p,q,flip,dim)
 SideToVol2 = CGNS_SideToVol2(Nloc,pq(1),pq(2),locSideID,dim)
 END FUNCTION SideToVol2
 
-!==================================================================================================================================
+!!==================================================================================================================================
 !> Get the index of neighbor element, return -1 if none exists
 !==================================================================================================================================
-!FUNCTION ElemToNbElem(locSideID,iElem)
-!! MODULES
-!USE MOD_Mesh_Vars,ONLY:ElemToSide,SideToElem,firstInnerSide,lastInnerSide
-!IMPLICIT NONE
-!!----------------------------------------------------------------------------------------------------------------------------------
-!! INPUT/OUTPUT VARIABLES
-!INTEGER,INTENT(IN)   :: locSideID,iElem
-!INTEGER              :: ElemToNBElem
-!!----------------------------------------------------------------------------------------------------------------------------------
-!! LOCAL VARIABLES
-!INTEGER              :: flip, SideID
-!!==================================================================================================================================
-!SideID=ElemToSide(E2S_SIDE_ID,locSideID,iElem)
-!IF ((SideID.GE.firstInnerSide).AND.(SideID.LE.lastInnerSide)) THEN
-  !flip  =ElemToSide(E2S_FLIP,locSideID,iElem)
-  !IF (flip.EQ.0) THEN
-    !ElemToNbElem = SideToElem(S2E_NB_ELEM_ID,SideID)
-  !ELSE
-    !ElemToNbElem = SideToElem(S2E_ELEM_ID,SideID)
-  !END IF
-!ELSE
-  !ElemToNbElem = -1
-!END IF
-!END FUNCTION ElemToNbElem
-
-
+FUNCTION ElemToNbElem(locSideID,iElem)
+! MODULES
+USE MOD_Mesh_Vars,ONLY:ElemToSide,SideToElem,firstInnerSide,lastInnerSide
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN)   :: locSideID,iElem
+INTEGER              :: ElemToNBElem
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER              :: flip, SideID
 !==================================================================================================================================
-!> Transform Volume-Coordinates to neighboring Volume-Coordinates.  This is: VolToVol = SideToVol(VolToSide(...))
-!> input: i,j,k, iElem, locSideID
-!>     where: i,j,k  are Volume-Indizices of element iElem;
-!>            locSideID  side to the neighboring element
-!> output: volume-indices of neighboring element, that are next to ijk in direction of locSideID
-!==================================================================================================================================
-!FUNCTION VolToVol(Nloc,i,j,k,locSideID,iElem)
-!! MODULES
-!USE MOD_Mesh_Vars,ONLY:ElemToSide,SideToElem
-!IMPLICIT NONE
-!! INPUT/OUTPUT VARIABLES
-!!----------------------------------------------------------------------------------------------------------------------------------
-!INTEGER,INTENT(IN)   :: i,j,k,locSideID,iElem,Nloc
-!INTEGER,DIMENSION(3) :: VolToVol
-!!----------------------------------------------------------------------------------------------------------------------------------
-!! LOCAL VARIABLES
-!INTEGER,DIMENSION(3) :: pq
-!INTEGER              :: flip, l, SideID, neighbor_flip, neighbor_locSideID
-!!==================================================================================================================================
-!SideID=ElemToSide(E2S_SIDE_ID,locSideID,iElem)
-!flip  =ElemToSide(E2S_FLIP,locSideID,iElem)
-!pq    =VolToSide(Nloc, i,j,k, flip, locSideID)
-!l = pq(3)
-!IF (flip.EQ.0) THEN
-  !neighbor_locSideID = SideToElem(S2E_NB_LOC_SIDE_ID,SideID)
-  !neighbor_flip      = SideToElem(S2E_FLIP,SideID)
-!ELSE
-  !neighbor_locSideID = SideToElem(S2E_LOC_SIDE_ID,SideID)
-  !neighbor_flip      = 0
-!END IF
-!VolToVol = SideToVol(Nloc, l, pq(1), pq(2), neighbor_flip, neighbor_locSideID)
-!END FUNCTION VolToVol
+SideID=ElemToSide(E2S_SIDE_ID,locSideID,iElem)
+IF ((SideID.GE.firstInnerSide).AND.(SideID.LE.lastInnerSide)) THEN
+ !flip  =ElemToSide(E2S_FLIP,locSideID,iElem)
+ !IF (flip.EQ.0) THEN
+   !ElemToNbElem = SideToElem(S2E_NB_ELEM_ID,SideID)
+ !ELSE
+   !ElemToNbElem = SideToElem(S2E_ELEM_ID,SideID)
+ !END IF
+ELSE
+ !ElemToNbElem = -1
+END IF
+END FUNCTION ElemToNbElem
+
+SUBROUTINE FinalizeMappings() 
+USE MOD_Mesh_Vars
+IMPLICIT NONE
+!===================================================================================================================================
+SDEALLOCATE(FS2M)
+SDEALLOCATE(V2S)
+SDEALLOCATE(S2V)
+SDEALLOCATE(S2V2)
+SDEALLOCATE(FS2M)
+END SUBROUTINE FinalizeMappings
 
 END MODULE MOD_Mappings

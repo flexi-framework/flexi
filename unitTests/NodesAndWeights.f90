@@ -11,7 +11,6 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Interpolation,       ONLY: GetNodesAndWeights
 USE MOD_Interpolation_Vars,  ONLY: NodeTypeG,NodeTypeGL,NodeTypeCL,NodeTypeVISU
-USE MOD_Basis,               ONLY: EQUALTOTOLERANCE
 
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -66,9 +65,9 @@ ELSE
     ! Check if the computed and the reference solutions are within a given tolerance
     equal =  .TRUE.
     DO i=0,10; DO j=1,10; DO k=1,4
-      equal = EQUALTOTOLERANCE(xi(i,j,k),xi_ref(i,j,k),50.*PP_RealTolerance) .AND. equal
-      equal = EQUALTOTOLERANCE(w(i,j,k),w_ref(i,j,k),50.*PP_RealTolerance) .AND. equal
-      equal = EQUALTOTOLERANCE(wBary(i,j,k),wBary_ref(i,j,k),50.*PP_RealTolerance) .AND. equal
+      equal = ALMOSTEQUALABSORREL(xi(i,j,k),xi_ref(i,j,k),50.*PP_RealTolerance) .AND. equal
+      equal = ALMOSTEQUALABSORREL(w(i,j,k),w_ref(i,j,k),50.*PP_RealTolerance) .AND. equal
+      equal = ALMOSTEQUALABSORREL(wBary(i,j,k),wBary_ref(i,j,k),50.*PP_RealTolerance) .AND. equal
     END DO; END DO; END DO
     IF (.NOT.equal) THEN
       WRITE(*,*) 'ERROR - Calculated nodes and weights deviate from reference.'

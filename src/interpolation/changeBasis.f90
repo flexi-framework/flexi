@@ -27,19 +27,24 @@ PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
+! Private Part ---------------------------------------------------------------------------------------------------------------------
 
+! Public Part ----------------------------------------------------------------------------------------------------------------------
 INTERFACE ChangeBasis3D_XYZ
   MODULE PROCEDURE ChangeBasis3D_XYZ
 END INTERFACE
 
 INTERFACE ChangeBasis3D
   MODULE PROCEDURE ChangeBasis3D_single
+  MODULE PROCEDURE ChangeBasis3D_singleVar
   MODULE PROCEDURE ChangeBasis3D_selective
   MODULE PROCEDURE ChangeBasis3D_selective_inplace
+  MODULE PROCEDURE ChangeBasis3D_Mult
 END INTERFACE
 
 INTERFACE ChangeBasis2D
   MODULE PROCEDURE ChangeBasis2D_single
+  MODULE PROCEDURE ChangeBasis2D_singleVar
   MODULE PROCEDURE ChangeBasis2D_selective
   MODULE PROCEDURE ChangeBasis2D_selective_inplace
 END INTERFACE
@@ -62,7 +67,6 @@ CONTAINS
 #undef _ADD_DIM
 END MODULE MOD_ChangeBasis
 
-
 MODULE MOD_ChangeBasisByDim
 ! MODULES
 IMPLICIT NONE
@@ -74,6 +78,7 @@ PRIVATE
 #if PP_dim == 3
 INTERFACE ChangeBasisVolume
   MODULE PROCEDURE ChangeBasis3D_single
+  MODULE PROCEDURE ChangeBasis3D_singleVar
   MODULE PROCEDURE ChangeBasis3D_selective
   MODULE PROCEDURE ChangeBasis3D_selective_inplace
 END INTERFACE
@@ -85,6 +90,7 @@ INTERFACE ChangeBasisSurf
 INTERFACE ChangeBasisVolume
 #endif  
   MODULE PROCEDURE ChangeBasis2D_single
+  MODULE PROCEDURE ChangeBasis2D_singleVar
   MODULE PROCEDURE ChangeBasis2D_selective
   MODULE PROCEDURE ChangeBasis2D_selective_inplace
 END INTERFACE

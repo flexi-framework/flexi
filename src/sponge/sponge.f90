@@ -158,8 +158,8 @@ CASE(SPONGEBASEFLOW_PRUETT) ! Pruett
   CalcPruettDamping=.TRUE.
   CALL InitPruettDamping()
   IF(DoRestart)THEN
-    BaseFlowFile    = GETSTR('SpongeBaseFlowFile','nobaseflowfile')
-    IF (TRIM(BaseFlowFile) .EQ. 'nobaseflowfile') THEN
+    BaseFlowFile    = GETSTR('SpongeBaseFlowFile','none')
+    IF (TRIM(BaseFlowFile) .EQ. 'none') THEN
       ! If no base flow file has been specified, assume a standard name for the base flow file
       BaseFlowFile=TRIM(TIMESTAMP(TRIM(ProjectName)//'_BaseFlow',RestartTime))//'.h5'
       ! Check if this file exists
@@ -192,7 +192,7 @@ SELECT CASE(SpBaseflowType)
 CASE(SPONGEBASEFLOW_CONSTANT) ! constant baseflow from refstate
   DO iElem=1,nElems
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      SpBaseFlow(:,i,j,k,iElem)=RefStateCons(spongeRefState,:)
+      SpBaseFlow(:,i,j,k,iElem)=RefStateCons(:,spongeRefState)
     END DO; END DO; END DO
   END DO
 CASE(SPONGEBASEFLOW_EXACTFUNC) ! Exactfunction
@@ -414,7 +414,7 @@ IF(SpongeViz) THEN
   VarNameSponge(1)='dSponge'
   Coords_NVisu_p => Coords_NVisu
   SpongeMat_NVisu_p => SpongeMat_NVisu
-  CALL WriteDataToVTK(1,NVisu,nElems,VarNameSponge,Coords_NVisu_p,SpongeMat_NVisu_p,TRIM(FileString),dim=PP_dim,DGFV=0)
+  CALL WriteDataToVTK(1,NVisu,nElems,VarNameSponge,Coords_NVisu_p,SpongeMat_NVisu_p,TRIM(FileString),dim=PP_dim)
   DEALLOCATE(Coords_NVisu)
   DEALLOCATE(SpongeMat_NVisu)
   DEALLOCATE(SpDummy)

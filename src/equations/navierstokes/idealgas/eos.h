@@ -28,7 +28,7 @@
 #define MOMV  2:4 /* momentum vector */
 #define ENER  5   /* energy */
 
-! primitive (exteded) variables
+! primitive (extended) variables
 #define SRHO  6   /* specific volume (1./density) */
 #define VEL1  7   /* velocity x */
 #define VEL2  8   /* velocity y */
@@ -52,8 +52,8 @@
 #define VELOCITY_H(U,sRho)             (U(MOMV)*sRho)
 #define SPEEDOFSOUND_H(p,sRho)         (SQRT(Kappa*p*sRho))
 #define TOTALENERGY_H(U,sRho,Vel)      (U(ENER)/U(DENS))
-#define ENTHALPY_H(U,p,sRho)           ((U(ENER)+p)*sRho)
-#define ENTROPY_H(U,T)                 (R*(sKappaM1*LOG(T)-LOG(U(DENS))) )
+#define TOTALENTHALPY_H(U,p,sRho)      ((U(ENER)+p)*sRho)
+#define ENTROPY_H(U,T)                 (R*(sKappaM1*LOG(T)-LOG(U(DENS))))
 #define TEMPERATURE_H(U)               ((U(ENER)-0.5*DOT_PRODUCT(U(MOMV),U(MOMV))/U(DENS))/(U(DENS)*cv))
 
 ! extended (NOTE: compute from cons. When computing derived (neither prim or cons) variables
@@ -62,7 +62,7 @@
 #define PRESSURE_HE(UE)                (KappaM1*(UE(ENER)-0.5*DOT_PRODUCT(UE(VELV),UE(MOMV))))
 #define SPEEDOFSOUND_HE(UE)            (SQRT(Kappa*UE(PRES)*UE(SRHO)))
 #define TOTALENERGY_HE(UE)             (UE(ENER)*UE(SRHO))
-#define ENTHALPY_HE(UE)                ((UE(ENER)+UE(PRES))*UE(SRHO))
+#define TOTALENTHALPY_HE(UE)           ((UE(ENER)+UE(PRES))*UE(SRHO))
 #define TEMPERATURE_HE(UE)             (UE(PRES)*UE(SRHO)/R)
 #define ENERGY_HE(UE)                  (sKappaM1*UE(PRES)+0.5*DOT_PRODUCT(UE(MOMV),UE(VELV)))
 
@@ -72,4 +72,12 @@
 #define VISCOSITY_PRIM(U)              muSuth(U(6))
 #elif PP_VISC == 2
 #define VISCOSITY_PRIM(U)              mu0*U(6)**ExpoSuth
+#endif
+
+#if PP_VISC == 0
+#define VISCOSITY_TEMPERATURE(T)       mu0
+#elif PP_VISC == 1
+#define VISCOSITY_TEMPERATURE(T)       muSuth(T)
+#elif PP_VISC == 2
+#define VISCOSITY_TEMPERATURE(T)       mu0*T**ExpoSuth
 #endif

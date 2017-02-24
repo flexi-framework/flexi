@@ -94,10 +94,15 @@ INTERFACE AddToFieldData
   MODULE PROCEDURE AddToFieldData
 END INTERFACE
 
+INTERFACE GetDatasetNamesInGroup
+  MODULE PROCEDURE GetDatasetNamesInGroup
+END INTERFACE
+
 !==================================================================================================================================
 
 PUBLIC::DefineParametersIO_HDF5,InitIOHDF5,OpenDataFile,CloseDataFile
 PUBLIC::AddToElemData,AddToFieldData
+PUBLIC::GetDatasetNamesInGroup
 
 CONTAINS
 
@@ -141,7 +146,7 @@ output2D = .FALSE.
 output2D = GETLOGICAL('output2D','.FALSE.')
 #endif
 
-#if MPI
+#if USE_MPI
 CALL MPI_Info_Create(MPIInfo, iError)
 
 !normal case:
@@ -159,7 +164,7 @@ CALL MPI_Info_set(MPIInfo, "romio_ds_write","disable",iError)
 CALL MPI_Info_set(MPIInfo, "romio_cb_read", "enable", iError)
 CALL MPI_Info_set(MPIInfo, "romio_cb_write","enable", iError)
 #endif
-#endif /* MPI */
+#endif /*USE_MPI*/
 END SUBROUTINE InitIOHDF5
 
 
@@ -201,10 +206,10 @@ IF(create)THEN
 ELSE
   CALL H5PCREATE_F(H5P_FILE_ACCESS_F, Plist_ID, iError)
 END IF
-#if MPI
+#if USE_MPI
 comm = MERGE(communicatorOpt,MPI_COMM_WORLD,PRESENT(communicatorOpt))
 IF(.NOT.single)  CALL H5PSET_FAPL_MPIO_F(Plist_ID, comm, MPIInfo, iError)
-#endif /* MPI */
+#endif /*USE_MPI*/
 
 ! Open the file collectively.
 IF(create)THEN
@@ -373,5 +378,22 @@ ENDIF
 IF(nOpts.NE.1) CALL Abort(__STAMP__,&
   'More then one optional argument passed to AddToFieldData.')
 END SUBROUTINE AddToFieldData
+
+SUBROUTINE GetDatasetNamesInGroup(group,names) 
+IMPLICIT NONE
+! INPUT / OUTPUT VARIABLES 
+CHARACTER(LEN=*)               :: group
+CHARACTER(LEN=255),ALLOCATABLE :: names(:)
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                        :: nMembers,i,type
+!===================================================================================================================================
+CALL H5GN_MEMBERS_F(File_ID, TRIM(group), nMembers, ierror)
+ALLOCATE(names(nMembers))
+DO i=1,nMembers
+  CALL h5gget_obj_info_idx_f(File_ID, TRIM(group), i-1, names(i), type, ierror)
+  IF (type.NE.H5G_DATASET_F) names(i) = ''
+END DO
+END SUBROUTINE GetDatasetNamesInGroup
 
 END MODULE MOD_IO_HDF5

@@ -93,19 +93,18 @@ END SUBROUTINE DefineParametersInterpolation
 !=================================================================================================================================
 !> Initialize interpolation. Call basis initialization and calculate Vandermonde matrices between NUnder/N/Over.
 !=================================================================================================================================
-SUBROUTINE InitInterpolation()
+SUBROUTINE InitInterpolation(NIn)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Interpolation_Vars
-USE MOD_ReadInTools,        ONLY:GETINT,GETLOGICAL,CountOption
+USE MOD_ReadInTools,        ONLY:GETINT,CountOption
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
-!input parameters
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN),OPTIONAL :: NIn
 !----------------------------------------------------------------------------------------------------------------------------------
-!output parameters
-!----------------------------------------------------------------------------------------------------------------------------------
-!local variables
+!LOCAL VARIABLES
 #if PP_N != N
 INTEGER :: Ntmp
 #endif
@@ -119,10 +118,18 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT INTERPOLATION...'
 
 ! Access ini-file
 #if PP_N == N
-PP_N = GETINT('N')
+IF(PRESENT(Nin))THEN
+  PP_N = NIn
+ELSE
+  PP_N = GETINT('N')
+END IF
 #else
-Ntmp=PP_N
-IF(CountOption('N').EQ.1) Ntmp=GETINT('N')
+IF(PRESENT(Nin))THEN
+  Ntmp = NIn
+ELSE
+  Ntmp=PP_N
+  IF(CountOption('N').EQ.1) Ntmp=GETINT('N')
+END IF
 IF(PP_N.NE.Ntmp) THEN
   CALL CollectiveStop(__STAMP__,&
   'N in ini-file is different from hard-compiled N in Flexi. Ini/Compiled:',Ntmp,REAL(PP_N))
@@ -186,6 +193,7 @@ END SUBROUTINE InitInterpolationBasis
 SUBROUTINE GetNodesAndWeights(N_in,NodeType_in,xIP,wIP,wIPBary)
 ! MODULES
 USE MOD_Globals
+USE MOD_StringTools, ONLY: LowCase
 USE MOD_Basis,       ONLY: LegendreGaussNodesAndWeights,LegGaussLobNodesAndWeights,ChebyGaussLobNodesAndWeights,BarycentricWeights
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -201,16 +209,18 @@ INTEGER                            :: i
 REAL                               :: x(0:(N_in+1)/2-1)
 REAL                               :: w(0:(N_in+1)/2-1)
 INTEGER                            :: NN
+CHARACTER(LEN=255)                 :: NodeType_loc    !< Type of 1D points
 !==================================================================================================================================
+CALL LowCase(NodeType_in,NodeType_loc)
 IF(PRESENT(wIP))THEN
-  SELECT CASE(TRIM(NodeType_in))
-  CASE('GAUSS')
+  SELECT CASE(TRIM(NodeType_loc))
+  CASE('gauss')
     CALL LegendreGaussNodesAndWeights(N_in,xIP,wIP)
-  CASE('GAUSS-LOBATTO')
+  CASE('gauss-lobatto')
     CALL LegGaussLobNodesAndWeights(N_in,xIP,wIP)
-  CASE('CHEBYSHEV-GAUSS-LOBATTO')
+  CASE('chebyshev-gauss-lobatto')
     CALL ChebyGaussLobNodesAndWeights(N_in,xIP,wIP)
-  CASE('VISU')
+  CASE('visu')
     DO i=0,N_in
       xIP(i) = 2.*REAL(i)/REAL(N_in) - 1.
     END DO
@@ -218,42 +228,42 @@ IF(PRESENT(wIP))THEN
     wIP(:) = 2./REAL(N_in)
     wIP(0) = 0.5*wIP(0)
     wIP(N_in) = 0.5*wIP(N_in)
-  CASE('VISU_INNER')
+  CASE('visu_inner')
     DO i=0,N_in
       xIP(i) = 1./REAL(N_in+1)+2.*REAL(i)/REAL(N_in+1) - 1.
     END DO
     ! first order intergration !!!
     wIP=2./REAL(N_in+1)
-  CASE('FV_GAUSS')
+  CASE('fv_gauss')
     CALL Abort(__STAMP__,&
         'Not implemented!')
-  CASE('FV_GAUSSLOB')
+  CASE('fv_gausslob')
     CALL Abort(__STAMP__,&
         'Not implemented!')
-  CASE('FV_EQUI')
+  CASE('visu_fvequi')
     CALL Abort(__STAMP__,&
         'Not implemented!')
   CASE DEFAULT
     CALL Abort(__STAMP__,&
-      'NodeType "'//TRIM(NodeType_in)//'" in GetNodesAndWeights not found!')
+      'NodeType "'//TRIM(NodeType_loc)//'" in GetNodesAndWeights not found!')
   END SELECT
 ELSE
-  SELECT CASE(TRIM(NodeType_in))
-  CASE('GAUSS')
+  SELECT CASE(TRIM(NodeType_loc))
+  CASE('gauss')
     CALL LegendreGaussNodesAndWeights(N_in,xIP)
-  CASE('GAUSS-LOBATTO')
+  CASE('gauss-lobatto')
     CALL LegGaussLobNodesAndWeights(N_in,xIP)
-  CASE('CHEBYSHEV-GAUSS-LOBATTO')
+  CASE('chebyshev-gauss-lobatto')
     CALL ChebyGaussLobNodesAndWeights(N_in,xIP)
-  CASE('VISU')
+  CASE('visu')
     DO i=0,N_in
       xIP(i) = 2.*REAL(i)/REAL(N_in) - 1.
     END DO
-  CASE('VISU_INNER')
+  CASE('visu_inner')
     DO i=0,N_in
       xIP(i) = 1./REAL(N_in+1)+2.*REAL(i)/REAL(N_in+1) - 1.
     END DO
-  CASE('FV_GAUSS')
+  CASE('fv_gauss')
     IF (MOD(N_in,2).EQ.0) THEN
       CALL Abort(__STAMP__,&
         'NodeType "'//NodeType_in//'" needs N to be odd!')
@@ -265,7 +275,7 @@ ELSE
       xIP(i*2  ) = -1.+SUM(w(0:i-1))
       xIP(i*2+1) = -1.+SUM(w(0:i  ))
     END DO
-  CASE('FV_GAUSSLOB')
+  CASE('fv_gausslob')
     IF (MOD(N_in,2).EQ.0) THEN
       CALL Abort(__STAMP__,&
         'NodeType "'//NodeType_in//'" needs N to be odd!')
@@ -277,7 +287,7 @@ ELSE
       xIP(i*2  ) = -1.+SUM(w(0:i-1))
       xIP(i*2+1) = -1.+SUM(w(0:i  ))
     END DO
-  CASE('FV_EQUI')
+  CASE('visu_fvequi')
     IF (MOD(N_in,2).EQ.0) THEN
       CALL Abort(__STAMP__,&
         'NodeType "'//NodeType_in//'" needs N to be odd!')
@@ -303,6 +313,7 @@ END SUBROUTINE GetNodesAndWeights
 SUBROUTINE GetVandermonde(N_in,NodeType_in,N_out,NodeType_out,Vdm_In_Out,Vdm_Out_In,modal)
 ! MODULES
 USE MOD_Preproc
+USE MOD_StringTools,       ONLY:STRICMP
 USE MOD_Basis,             ONLY:BarycentricWeights,InitializeVandermonde
 USE MOD_Interpolation_Vars,ONLY:NodeType
 IMPLICIT NONE
@@ -332,7 +343,8 @@ modalLoc=.FALSE.
 IF(PRESENT(modal)) modalLoc=modal
 
 ! Check if change Basis is needed
-IF((TRIM(NodeType_out).EQ.TRIM(NodeType_in)).AND.(N_in.EQ.N_out))THEN
+
+IF(STRICMP(NodeType_out,NodeType_in).AND.(N_in.EQ.N_out))THEN
   Vdm_In_Out=0.
   DO i=0,N_in
     Vdm_In_out(i,i)=1.

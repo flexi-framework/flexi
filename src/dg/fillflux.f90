@@ -93,7 +93,7 @@ REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N, 0:PP_NZ, 1:nSides) !< sol
 REAL,INTENT(IN)    :: UPrim_slave( PP_nVarPrim,0:PP_N, 0:PP_NZ, 1:nSides) !< solution on slave sides
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER :: SideID,p,q,firstSideID_wo_BC,firstSideID ,lastSideID
+INTEGER :: SideID,p,q,firstSideID_wo_BC,firstSideID ,lastSideID,FVEM
 #if PARABOLIC
 REAL    :: FluxV_loc(PP_nVar,0:PP_N, 0:PP_NZ)
 #endif /*PARABOLIC*/
@@ -227,9 +227,9 @@ DO SideID=firstSideID_wo_BC,lastSideID
   )
   ! 1.3) add up viscous flux
   IF ((FV_Elems_Sum(SideID).EQ.0).AND.(OverintegrationType.EQ.SELECTIVE)) THEN ! DG/DG interface and selective overintegration
-    Flux_master(:,:,:,SideID) = FluxV_loc(:,:,:) ! here misses the advective flux, which will be added in 5.) from FluxO
+    Flux_master(:,:,:,SideID) = FluxV_loc ! here misses the advective flux, which will be added in 5.) from FluxO
   ELSE
-    Flux_master(:,:,:,SideID) = Flux_master(:,:,:,SideID) + FluxV_loc(:,:,:)
+    Flux_master(:,:,:,SideID) = Flux_master(:,:,:,SideID) + FluxV_loc
   END IF
 #endif /*PARABOLIC*/
 END DO ! SideID
@@ -239,19 +239,34 @@ END DO ! SideID
 IF(.NOT.doMPISides)THEN
   DO SideID=1,nBCSides
     ! if DG element and selective overintegration 
-    IF ((FV_Elems_Sum(SideID).EQ.0).AND.(OverintegrationType.EQ.SELECTIVE)) THEN
-     CALL GetBoundaryFlux(SideID,t,NOver,FluxO,UPrim_masterO, &
+    FVEM = FV_Elems_master(SideID)
+    IF ((FVEM.EQ.0).AND.(OverintegrationType.EQ.SELECTIVE)) THEN
+     CALL GetBoundaryFlux(SideID,t,NOver,&
+         FluxO(         :,:,:,  SideID),&
+         UPrim_masterO( :,:,:,  SideID),&
 #if PARABOLIC
-         gradUx_masterO,gradUy_masterO,gradUz_masterO, &
+         gradUx_masterO(:,:,:,  SideID),&
+         gradUy_masterO(:,:,:,  SideID),&
+         gradUz_masterO(:,:,:,  SideID),&
 #endif
-         NormVecO,TangVec1O,TangVec2O,Face_xGPO)
+         NormVecO(      :,:,:,0,SideID),&
+         TangVec1O(     :,:,:,0,SideID),&
+         TangVec2O(     :,:,:,0,SideID),&
+         Face_xGPO(     :,:,:,0,SideID))
     ELSE 
       ! no selective overintegration or FV element
-      CALL GetBoundaryFlux(SideID,t,PP_N,Flux_master,UPrim_master, &
+      CALL GetBoundaryFlux(SideID,t,PP_N,&
+         Flux_master(  :,:,:,     SideID),&
+         UPrim_master( :,:,:,     SideID),&
 #if PARABOLIC
-          gradUx_master,gradUy_master,gradUz_master,        &
+         gradUx_master(:,:,:,     SideID),&
+         gradUy_master(:,:,:,     SideID),&
+         gradUz_master(:,:,:,     SideID),&
 #endif
-              NormVec,TangVec1,TangVec2,Face_xGP)
+         NormVec(      :,:,:,FVEM,SideID),&
+         TangVec1(     :,:,:,FVEM,SideID),&
+         TangVec2(     :,:,:,FVEM,SideID),&
+         Face_xGP(     :,:,:,FVEM,SideID))
     END IF
   END DO
 END IF ! .NOT. MPISIDES
@@ -289,12 +304,8 @@ IF (OverintegrationType.EQ.SELECTIVE) THEN
 #endif
 END IF
 
-
 ! 5. copy flux from master side to slave side
-DO SideID=firstSideID ,lastSideID
-  Flux_slave(:,:,:,SideID) = Flux_master(:,:,:,SideID)
-END DO !SideID
-
+Flux_slave(:,:,:,firstSideID:lastSideID) = Flux_master(:,:,:,firstSideID:lastSideID)
 
 #if FV_ENABLED
 ! 6. convert flux on FV points to DG points for all DG faces at mixed interfaces

@@ -23,7 +23,6 @@ PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-! Private Part --------------------------------------------------------------------------------------------------------------------
 INTERFACE InitBC
   MODULE PROCEDURE InitBC
 END INTERFACE
@@ -46,11 +45,9 @@ END INTERFACE
 INTERFACE Lifting_GetBoundaryFlux
   MODULE PROCEDURE Lifting_GetBoundaryFlux
 END INTERFACE
-
-! Public Part ---------------------------------------------------------------------------------------------------------------------
-
 PUBLIC :: Lifting_GetBoundaryFlux
 #endif /*PARABOLIC*/
+
 PUBLIC :: InitBC
 PUBLIC :: GetBoundaryFlux
 #if FV_ENABLED
@@ -94,9 +91,9 @@ DO iSide=1,nBCSides
   locState=BoundaryType(BC(iSide),BC_STATE)
 END DO
 MaxBCStateGLobal=MaxBCState
-#if MPI
+#if USE_MPI
 CALL MPI_ALLREDUCE(MPI_IN_PLACE,MaxBCStateGlobal,1,MPI_INTEGER,MPI_MAX,MPI_COMM_WORLD,iError)
-#endif /*MPI*/
+#endif /*USE_MPI*/
 
 ! Allocate buffer array to store temp data for all BC sides
 ALLOCATE(BCData(PP_nVar,0:PP_N,0:PP_N,nBCSides))
@@ -143,212 +140,166 @@ SUBROUTINE GetBoundaryFlux(SideID,t,Nloc,Flux,UPrim_master,          &
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals      ,ONLY: Abort
-USE MOD_Mesh_Vars    ,ONLY: BC,nBCs,BoundaryType,nSides
+USE MOD_Mesh_Vars    ,ONLY: BC,BoundaryType
 USE MOD_Exactfunc    ,ONLY: ExactFunc
 USE MOD_Equation_Vars,ONLY: IniExactFunc
-USE MOD_Equation_Vars,ONLY: nBCByType,BCSideID
 USE MOD_Riemann      ,ONLY: GetFlux
-#if FV_ENABLED
-USE MOD_FV_Vars      ,ONLY: FV_Elems_master
-#endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)                   :: SideID                                               !< ID of current side
-REAL,INTENT(IN)                      :: t                                                    !< current time
-INTEGER,INTENT(IN)                   :: Nloc                                                 !< polynomial degree
-REAL,INTENT(IN)                      :: UPrim_master(PP_nVarPrim,0:Nloc,0:PP_NlocZ,1:nSides) !< inner surface solution
+INTEGER,INTENT(IN)                   :: SideID  
+REAL,INTENT(IN)                      :: t       !< current time (provided by time integration scheme)
+INTEGER,INTENT(IN)                   :: Nloc    !< polynomial degree
+REAL,INTENT(IN)                      :: UPrim_master( PP_nVarPrim,0:Nloc,0:PP_NlocZ) !< inner surface solution
 #if PARABOLIC
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:PP_NlocZ,1:nSides),INTENT(IN)  :: gradUx_master          !< gradient in x-direction
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:PP_NlocZ,1:nSides),INTENT(IN)  :: gradUy_master          !< gradient in y-direction
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:PP_NlocZ,1:nSides),INTENT(IN)  :: gradUz_master          !< gradient in z-direction
+                                                                           !> inner surface solution gradients in x/y/z-direction
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:PP_NlocZ),INTENT(IN)  :: gradUx_master,gradUy_master,gradUz_master
 #endif /*PARABOLIC*/
-REAL,DIMENSION(      3,    0:Nloc,0:PP_NlocZ,0:FV_ENABLED,1:nSides),INTENT(IN)  :: NormVec   !< Normal vector
-REAL,DIMENSION(      3,    0:Nloc,0:PP_NlocZ,0:FV_ENABLED,1:nSides),INTENT(IN)  :: TangVec1  !< First tangential vector
-REAL,DIMENSION(      3,    0:Nloc,0:PP_NlocZ,0:FV_ENABLED,1:nSides),INTENT(IN)  :: TangVec2  !< Second tangential vector
-REAL,DIMENSION(      3,    0:Nloc,0:PP_NlocZ,0:FV_ENABLED,1:nSides),INTENT(IN)  :: Face_xGP  !< positions of surface flux points
-REAL,DIMENSION(PP_nVar,    0:Nloc,0:PP_NlocZ,1:nSides),INTENT(OUT) :: Flux                   !< resulting boundary fluxes
+                                                                           !> normal and tangential vectors on surfaces
+REAL,DIMENSION(      3,0:Nloc,0:PP_NlocZ),INTENT(IN)  :: NormVec,TangVec1,TangVec2
+REAL,DIMENSION(      3,0:Nloc,0:PP_NlocZ),INTENT(IN)  :: Face_xGP   !< positions of surface flux points
+REAL,DIMENSION(PP_nVar,0:Nloc,0:PP_NlocZ),INTENT(OUT) :: Flux       !< resulting boundary fluxes
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                              :: iBC,iSide,p,q
-INTEGER                              :: BCType,BCState,nBCLoc
-REAL,DIMENSION(PP_nVar,0:Nloc,0:Nloc):: U_Face_loc
-INTEGER                              :: FVEM=0 ! FV_Elems_master
+INTEGER                              :: p,q
+INTEGER                              :: BCType,BCState
+REAL                                 :: UPrim_boundary(PP_nVarPrim,0:Nloc,0:Nloc)
 !==================================================================================================================================
-DO iBC=1,nBCs
-  !IF(nBCByType(iBC).LE.0) CYCLE
-  BCType =BoundaryType(BC(SideID),BC_TYPE)
-  BCState=BoundaryType(BC(SideID),BC_STATE)
-  !nBCLoc =nBCByType(iBC)
+BCType =BoundaryType(BC(SideID),BC_TYPE)
+BCState=BoundaryType(BC(SideID),BC_STATE)
 
-  SELECT CASE(BCType)
-  CASE(1) !Periodic already filled!
-  CASE(2) !Exact function or refstate
-    ! BCState specifies refstate to be used, if 0 then use iniexactfunc
-    !DO iSide=1,nBCLoc
-#if FV_ENABLED
-      FVEM = FV_Elems_master(SideID)
-#endif
-      !IF(BCState.EQ.0)THEN
-        DO q=0,PP_NlocZ; DO p=0,Nloc
-          CALL ExactFunc(IniExactFunc,t,Face_xGP(:,p,q,FVEM,SideID),U_Face_loc(:,p,q))
-        END DO; END DO
-      !ELSE
-        !DO q=0,Nloc; DO p=0,Nloc
-          !U_Face_loc(:,p,q) = RefStateCons(BCState,:)
-        !END DO; END DO
-      !END IF
-      CALL GetFlux(Nloc,Flux(:,:,:,SideID),UPrim_master(1:PP_nVar,:,:,SideID),U_Face_loc, &
+SELECT CASE(BCType)
+CASE(1) !Periodic already filled!
+CASE(2) !Exact function or refstate
+  ! BCState specifies refstate to be used, if 0 then use iniexactfunc
+  DO q=0,PP_NlocZ; DO p=0,Nloc
+    CALL ExactFunc(IniExactFunc,t,Face_xGP(:,p,q),UPrim_boundary(:,p,q))
+  END DO; END DO
+  CALL GetFlux(Nloc,Flux,UPrim_master,UPrim_boundary,    &
 #if PARABOLIC
-                 gradUx_master(:,:,:,SideID),gradUy_master(:,:,:,SideID),gradUz_master(:,:,:,SideID),&
-                 gradUx_master(:,:,:,SideID),gradUy_master(:,:,:,SideID),gradUz_master(:,:,:,SideID),&
+               gradUx_master,gradUy_master,gradUz_master,&
+               gradUx_master,gradUy_master,gradUz_master,&
 #endif /*PARABOLIC*/
-                 NormVec(:,:,:,FVEM,SideID),TangVec1(:,:,:,FVEM,SideID),TangVec2(:,:,:,FVEM,SideID),doBC=.TRUE.)
-    !END DO
-
-  CASE DEFAULT ! unknown BCType
-    CALL abort(__STAMP__,&
-         'no BC defined in linearscalaradvection/getboundaryflux.f90!')
-  END SELECT ! BCType
-END DO
+               NormVec,TangVec1,TangVec2,doBC=.TRUE.)
+CASE DEFAULT ! unknown BCType
+  CALL abort(__STAMP__,&
+       'no BC defined in linearscalaradvection/getboundaryflux.f90!')
+END SELECT ! BCType
 
 END SUBROUTINE GetBoundaryFlux
 
 #if FV_ENABLED
-SUBROUTINE GetBoundaryFVgradient(t,gradU,U_inner)
+#if FV_RECONSTRUCT
 !==================================================================================================================================
+!> Computes the gradient at a boundary for FV subcells.
 !==================================================================================================================================
+SUBROUTINE GetBoundaryFVgradient(SideID,t,gradU,UPrim_master,NormVec,TangVec1,TangVec2,Face_xGP,sdx_Face)
 ! MODULES
-USE MOD_Globals       ,ONLY: Abort
 USE MOD_PreProc
+USE MOD_Globals       ,ONLY: Abort
+USE MOD_Mesh_Vars     ,ONLY: BoundaryType,BC
+USE MOD_Testcase      ,ONLY: GetBoundaryFVgradientTestcase
 USE MOD_Exactfunc     ,ONLY: ExactFunc
 USE MOD_Equation_Vars ,ONLY: IniExactFunc
-USE MOD_Equation_Vars ,ONLY: nBCByType,BCSideID
-USE MOD_Mesh_Vars     ,ONLY: nSides,nBCs,BoundaryType
-USE MOD_Mesh_Vars     ,ONLY: Face_xGP
-USE MOD_FV_Vars
-! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(IN)     :: t
-REAL,INTENT(IN)     :: U_inner(PP_nVar,0:PP_N,0:PP_NZ,1:nSides)
-REAL,INTENT(OUT)    :: gradU(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides)
+INTEGER,INTENT(IN):: SideID  
+REAL,INTENT(IN)   :: t
+REAL,INTENT(IN)   :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ)
+REAL,INTENT(OUT)  :: gradU       (PP_nVarPrim,0:PP_N,0:PP_NZ)
+REAL,INTENT(IN)   :: NormVec (              3,0:PP_N,0:PP_NZ)
+REAL,INTENT(IN)   :: TangVec1(              3,0:PP_N,0:PP_NZ)
+REAL,INTENT(IN)   :: TangVec2(              3,0:PP_N,0:PP_NZ)
+REAL,INTENT(IN)   :: Face_xGP(              3,0:PP_N,0:PP_NZ)
+REAL,INTENT(IN)   :: sdx_Face(                0:PP_N,0:PP_NZ,3)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER :: p,q
-REAL    :: U_Face_loc(PP_nVar,0:PP_N,0:PP_NZ)
-REAL    :: UPrim_inner   (PP_nVarPrim,0:PP_N,0:PP_NZ)
-REAL    :: UPrim_Face_loc(PP_nVarPrim,0:PP_N,0:PP_NZ)
-INTEGER        :: iBC,iSide,SideID
-INTEGER        :: BCType,BCState,nBCLoc
+INTEGER :: BCType,BCState
+REAL    :: UPrim_boundary(1:PP_nVarPrim)
 !==================================================================================================================================
-DO iBC=1,nBCs
-  IF(nBCByType(iBC).LE.0) CYCLE
-  BCType =BoundaryType(iBC,BC_TYPE)
-  BCState=BoundaryType(iBC,BC_STATE)
-  nBCLoc =nBCByType(iBC)
- 
+BCType  = Boundarytype(BC(SideID),BC_TYPE)
+BCState = Boundarytype(BC(SideID),BC_STATE)
+
+IF (BCType.LT.0) THEN ! testcase boundary condition
+  CALL GetBoundaryFVgradientTestcase(SideID,t,gradU,UPrim_master)
+ELSE 
   SELECT CASE(BCType)
-  CASE(1) !Periodic already filled!
   CASE(2) ! exact BC = Dirichlet BC !!
     ! Determine the exact BC state
-    DO iSide=1,nBCLoc
-      SideID=BCSideID(iBC,iSide)
-      DO q=0,PP_NZ; DO p=0,PP_N
-          CALL ExactFunc(IniExactFunc,t,Face_xGP(:,p,q,1,SideID),U_Face_loc(:,p,q))
-      END DO ; END DO
-      gradU(:,:,:,SideID) = U_inner(:,:,:,SideID) - U_Face_loc
-    END DO
+    DO q=0,PP_NZ; DO p=0,PP_N
+      CALL ExactFunc(IniExactFunc,t,Face_xGP(:,p,q),UPrim_boundary)
+      gradU(:,p,q) = (UPrim_master(:,p,q) - UPrim_boundary) * sdx_Face(p,q,3)
+    END DO ; END DO
     
+  CASE(1) !Periodic already filled!
   CASE DEFAULT ! unknown BCType
     CALL abort(__STAMP__,&
-         'no BC defined in linearscalaradvection/getboundaryfvgradient.f90!',999,999.)
+         'no BC defined in linearscalaradvection/getboundaryfvgradient.f90!')
   END SELECT ! BCType
-END DO
+END IF
 END SUBROUTINE GetBoundaryFVgradient
 #endif
-
-
+#endif
 
 
 #if PARABOLIC
 !==================================================================================================================================
-!> Computes the boundary values for a given Cartesian mesh face (defined by FaceID)
-!> Attention 1: this is only a tensor of local values U_Face and has to be stored into the right U_Left or U_Right in
-!>              SUBROUTINE CalcSurfInt
-!> Attention 2: U_FacePeriodic is only needed in the case of periodic boundary conditions
+!> Computes the boundary fluxes for the lifting procedure for a given mesh face (defined by SideID).
 !==================================================================================================================================
-SUBROUTINE Lifting_GetBoundaryFlux(t,U_master,Flux)
+SUBROUTINE Lifting_GetBoundaryFlux(SideID,t,UPrim_master,Flux,NormVec,TangVec1,TangVec2,Face_xGP,SurfElem)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals      ,ONLY: Abort
-USE MOD_Mesh_Vars    ,ONLY: nBCSides,nBCs,BoundaryType
-USE MOD_Mesh_Vars    ,ONLY: Face_xGP,SurfElem
+USE MOD_Mesh_Vars    ,ONLY: BoundaryType,BC
+USE MOD_Lifting_Vars ,ONLY: doWeakLifting
+USE MOD_Testcase     ,ONLY: Lifting_GetBoundaryFluxTestcase
 USE MOD_Exactfunc    ,ONLY: ExactFunc
 USE MOD_Equation_Vars,ONLY: IniExactFunc
-USE MOD_Equation_Vars,ONLY: nBCByType,BCSideID
-USE MOD_Lifting_Vars ,ONLY: doWeakLifting
-#if FV_ENABLED
-USE MOD_FV_Vars      ,ONLY: FV_Elems_master
-#endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(IN)                      :: t                                         !< current time
-REAL,INTENT(IN)                      :: U_master(PP_nVar,0:PP_N,0:PP_NZ,nBCSides) !< solution on side
-REAL,INTENT(OUT)                     :: Flux(PP_nVar,0:PP_N,0:PP_NZ,nBCSides)     !< resultin lifting boundary flux
+INTEGER,INTENT(IN):: SideID  
+REAL,INTENT(IN)   :: t                                       !< current time (provided by time integration scheme)
+REAL,INTENT(IN)   :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ) !< primitive solution from the inside
+REAL,INTENT(OUT)  :: Flux(        PP_nVarPrim,0:PP_N,0:PP_NZ) !< lifting boundary flux
+REAL,INTENT(IN)   :: NormVec (              3,0:PP_N,0:PP_NZ)
+REAL,INTENT(IN)   :: TangVec1(              3,0:PP_N,0:PP_NZ)
+REAL,INTENT(IN)   :: TangVec2(              3,0:PP_N,0:PP_NZ)
+REAL,INTENT(IN)   :: Face_xGP(              3,0:PP_N,0:PP_NZ)
+REAL,INTENT(IN)   :: SurfElem(                0:PP_N,0:PP_NZ)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                              :: iBC,iSide,p,q,SideID
-INTEGER                              :: BCType,BCState,nBCLoc
-REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_NZ):: U_Face_loc
-INTEGER                              :: FVEM=0 ! FV_Elems_master
+INTEGER           :: p,q
+INTEGER           :: BCType,BCState
+REAL              :: UPrim_boundary(PP_nVarPrim,0:PP_N,0:PP_NZ)
 !==================================================================================================================================
-DO iBC=1,nBCs
-  IF(nBCByType(iBC).LE.0) CYCLE
-  BCType =BoundaryType(iBC,BC_TYPE)
-  BCState=BoundaryType(iBC,BC_STATE)
-  nBCLoc =nBCByType(iBC)
+BCType  = Boundarytype(BC(SideID),BC_TYPE)
+BCState = Boundarytype(BC(SideID),BC_STATE)
 
+IF (BCType.LT.0) THEN ! testcase boundary conditions
+  CALL Lifting_GetBoundaryFluxTestcase(SideID,t,UPrim_master,Flux)
+ELSE
   SELECT CASE(BCType)
-  CASE(1) !Periodic already filled!
   CASE(2)
-    !IF(BCState.EQ.0)THEN
-      ! BCState specifies refstate to be used, if 0 then use iniexactfunc
-      DO iSide=1,nBCLoc
-        SideID=BCSideID(iBC,iSide)
-#if FV_ENABLED
-        FVEM = FV_Elems_master(SideID)
-#endif
-        DO q=0,PP_NZ; DO p=0,PP_N
-          CALL ExactFunc(IniExactFunc,t,Face_xGP(:,p,q,FVEM,SideID),U_Face_loc(:,p,q))
-        END DO; END DO
-        Flux(:,:,:,SideID)=0.5*(U_master(:,:,:,SideID)+U_Face_loc)
-      END DO
-    !ELSE
-      !DO iSide=1,nBCLoc
-        !SideID=BCSideID(iBC,iSide)
-        !DO q=0,PP_N; DO p=0,PP_N
-          !Flux(:,p,q,SideID)=0.5*(U_master(:,p,q,SideID)+RefStateCons(BCState,:))
-        !END DO; END DO
-      !END DO
-    !END IF
+    DO q=0,PP_NZ; DO p=0,PP_N
+      CALL ExactFunc(IniExactFunc,t,Face_xGP(:,p,q),UPrim_boundary(:,p,q))
+    END DO; END DO
+    Flux=0.5*(UPrim_master+UPrim_boundary)
+  CASE(1) !Periodic already filled!
   CASE DEFAULT ! unknown BCType
     CALL abort(__STAMP__,&
          'no BC defined in navierstokes/getboundaryflux.f90!')
   END SELECT
-END DO ! iBC
 
-IF(.NOT.doWeakLifting)THEN
   !in case lifting is done in strong form
-  Flux(:,:,:,1:nBCSides)=Flux(:,:,:,1:nBCSides)-U_master(    :,:,:,1:nBCSides)
+  IF(.NOT.doWeakLifting) Flux=Flux-UPrim_master
+  
+  DO q=0,PP_NZ; DO p=0,PP_N
+    Flux(:,p,q)=Flux(:,p,q)*SurfElem(p,q)
+  END DO; END DO
 END IF
 
-DO iSide=1,nBCSides
-  DO q=0,PP_NZ; DO p=0,PP_N
-    Flux(:,p,q,iSide)=Flux(:,p,q,iSide)*SurfElem(p,q,0,iSide)
-  END DO; END DO
-END DO ! iSide
 END SUBROUTINE Lifting_GetBoundaryFlux
 #endif /*PARABOLIC*/
 
@@ -359,7 +310,7 @@ END SUBROUTINE Lifting_GetBoundaryFlux
 !==================================================================================================================================
 SUBROUTINE FinalizeBC()
 ! MODULES
-USE MOD_Equation_Vars,ONLY: BCData,nBCByType,BCSideID
+USE MOD_Equation_Vars,ONLY: BCData,BCSideID,nBCByType
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES

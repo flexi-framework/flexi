@@ -104,11 +104,12 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_FV_Vars
 USE MOD_FV_Basis
-USE MOD_FV_Metrics   ,ONLY: InitFV_Metrics
 USE MOD_Basis        ,ONLY: InitializeVandermonde
 USE MOD_Indicator    ,ONLY: doCalcIndicator
 USE MOD_Mesh_Vars    ,ONLY: nElems,nSides
+#if FV_RECONSTRUCT
 USE MOD_FV_Limiter
+#endif
 USE MOD_ReadInTools
 USE MOD_IO_HDF5      ,ONLY: AddToElemData
 ! IMPLICIT VARIABLE HANDLING
@@ -140,6 +141,7 @@ CALL InitFV_Limiter()
 FV_toDG_indicator = GETLOGICAL('FV_toDG_indicator')
 IF (FV_toDG_indicator) FV_toDG_limit = GETREAL('FV_toDG_limit')
 FV_toDGinRK = GETLOGICAL("FV_toDGinRK")
+
 
 ! allocate array for indicators
 ALLOCATE(FV_Elems(nElems))
@@ -264,7 +266,7 @@ INTEGER(KIND=8),INTENT(IN) :: iter !< number of iterations
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
-#if MPI
+#if USE_MPI
 IF(MPIRoot)THEN
   CALL MPI_REDUCE(MPI_IN_PLACE,totalFV_nElems,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_WORLD,iError)
   ! totalFV_nElems is counted in PrintStatusLine
@@ -298,9 +300,16 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER           :: i,iElem, j,k,ii,jj,kk,iVar
+<<<<<<< HEAD
 REAL              :: Vdm(0:(PP_N+1)**2-1,0:PP_N), xx(1:3,0:(PP_N+1)**2-1,0:(PP_N+1)**2-1,0:(PP_NZ+1)**2-1)
 REAL              :: tmp(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
+=======
+REAL              :: Vdm(0:(PP_N+1)**2-1,0:PP_N)
+REAL,ALLOCATABLE  :: xx(:,:,:,:)
+REAL              :: tmp(1:PP_nVar,0:PP_N,0:PP_N,0:PP_N)
+>>>>>>> master
 !===================================================================================================================================
+ALLOCATE(xx(1:3,0:(PP_N+1)**2-1,0:(PP_N+1)**2-1,0:(PP_N+1)**2-1))
 ! initial call of indicator
 CALL CalcIndicator(U,0.)
 FV_Elems = 0
@@ -327,6 +336,7 @@ DO iElem=1,nElems
     END DO ! j
   END DO !k
 END DO ! iElem=1,nElems
+DEALLOCATE(xx)
 END SUBROUTINE FV_FillIni
 
 !==================================================================================================================================
@@ -365,12 +375,11 @@ END SUBROUTINE FV_DGtoFV
 SUBROUTINE FinalizeFV()
 ! MODULES
 USE MOD_FV_Vars
-USE MOD_FV_Metrics,ONLY:FinalizeFV_Metrics
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
 SDEALLOCATE(FV_Elems)
-SDEALLOCATE(FV_Elems_master)
+!SDEALLOCATE(FV_Elems_master) ! moved to mesh.f90
 SDEALLOCATE(FV_Elems_slave)
 SDEALLOCATE(FV_Elems_Counter)
 SDEALLOCATE(FV_Elems_Amount)
@@ -380,9 +389,6 @@ SDEALLOCATE(FV_surf_gradU_master)
 SDEALLOCATE(FV_surf_gradU_slave)
 SDEALLOCATE(FV_multi_master)
 SDEALLOCATE(FV_multi_slave)
-#endif
-
-#if FV_RECONSTRUCT
 SDEALLOCATE(gradUxi)
 SDEALLOCATE(gradUeta)
 SDEALLOCATE(gradUzeta)
@@ -390,8 +396,6 @@ SDEALLOCATE(gradUxi_central)
 SDEALLOCATE(gradUeta_central)
 SDEALLOCATE(gradUzeta_central)
 #endif
-
-CALL FinalizeFV_Metrics()
 
 FVInitIsDone=.FALSE.
 END SUBROUTINE FinalizeFV

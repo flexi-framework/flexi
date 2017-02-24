@@ -22,8 +22,6 @@ USE MOD_IO_HDF5
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! Private Part ---------------------------------------------------------------------------------------------------------------------
-! Public Part ----------------------------------------------------------------------------------------------------------------------
 
 INTERFACE WriteState
   MODULE PROCEDURE WriteState
@@ -53,6 +51,10 @@ INTERFACE WriteAttribute
   MODULE PROCEDURE WriteAttribute
 END INTERFACE
 
+INTERFACE WriteAdditionalElemData
+  MODULE PROCEDURE WriteAdditionalElemData
+END INTERFACE
+
 INTERFACE
   SUBROUTINE copy_userblock(outfilename,infilename) BIND(C)
       USE ISO_C_BINDING, ONLY: C_CHAR
@@ -63,7 +65,7 @@ END INTERFACE
 
 
 PUBLIC :: WriteState,FlushFiles,WriteHeader,WriteTimeAverage,WriteBaseflow
-PUBLIC :: WriteArray,WriteAttribute
+PUBLIC :: WriteArray,WriteAttribute,GatheredWriteArray,WriteAdditionalElemData
 !==================================================================================================================================
 
 CONTAINS
@@ -82,12 +84,6 @@ USE MOD_Output_Vars       ,ONLY: ProjectName,NOut,Vdm_N_NOut
 USE MOD_Mesh_Vars         ,ONLY: offsetElem,nGlobalElems,sJ,nElems
 USE MOD_ChangeBasisByDim  ,ONLY: ChangeBasisVolume
 USE MOD_Equation_Vars     ,ONLY: StrVarNames
-USE MOD_2D                ,ONLY: ExpandArrayTo3D
-#if FV_ENABLED && FV_RECONSTRUCT
-USE MOD_FV_Vars           ,ONLY: gradUxi,gradUeta,gradUzeta,FV_dx_XI_L,FV_dx_ETA_L,FV_dx_ZETA_L
-USE MOD_FV_Vars           ,ONLY: FV_dx_XI_R,FV_dx_ETA_R,FV_dx_ZETA_R
-USE MOD_EOS               ,ONLY: ConsToPrim,PrimToCons
-#endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -100,40 +96,15 @@ LOGICAL,INTENT(IN)             :: isErrorFile    !< indicate whether an error fi
 CHARACTER(LEN=255)             :: FileName,FileType
 REAL                           :: StartT,EndT
 REAL,POINTER                   :: UOut(:,:,:,:,:)
-REAL,ALLOCATABLE               :: UOutTmp(:,:,:,:,:)
-REAL                           :: Utmp(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
+REAL                           :: Utmp(5,0:PP_N,0:PP_N,0:PP_NZ)
 REAL                           :: JN(1,0:PP_N,0:PP_N,0:PP_NZ),JOut(1,0:NOut,0:NOut,0:PP_NOutZ)
-INTEGER                        :: iElem,i,j,k,iVar,nVal(5)
-!#if FV_ENABLED & FV_RECONSTRUCT
-!REAL                           :: UPrim(1:PP_nVarPrim)
-!REAL                           :: UCons(1:PP_nVar)
-!REAL                           :: gradUx(1:PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems)
-!REAL                           :: gradUy(1:PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems)
-!REAL                           :: gradUz(1:PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems)
-!#endif
+INTEGER                        :: iElem,i,j,k
+INTEGER                        :: nVal(5)
 !==================================================================================================================================
 IF(MPIRoot)THEN
   WRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' WRITE STATE TO HDF5 FILE...'
   GETTIME(StartT)
 END IF
-
-!#if FV_ENABLED & FV_RECONSTRUCT
-!! transform physical gradients of FV to reference space gradients (easier POSTI)
-!DO iElem=1,nElems
-  !DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
-    !CALL ConsToPrim(UPrim ,U(:,i,j,k,iElem))
-    !CALL PrimToCons(UPrim+gradUxi(:,j,k,i,iElem)*FV_dx_XI_R(i,j,k,iElem),Ucons)
-    !gradUx(:,i,j,k,iElem) = (Ucons-U(:,i,j,k,iElem))/FV_dx_XI_R  (i,j,k,iElem)* &
-        !(FV_dx_XI_L  (i,j,k,iElem)+FV_dx_XI_R  (i,j,k,iElem)) * 0.5
-    !CALL PrimToCons(UPrim+gradUeta(:,i,k,j,iElem)*FV_dx_ETA_R (i,j,k,iElem),Ucons)
-    !gradUy(:,i,j,k,iElem) = (Ucons-U(:,i,j,k,iElem))/FV_dx_ETA_R (i,j,k,iElem)* & 
-        !(FV_dx_ETA_L (i,j,k,iElem)+FV_dx_ETA_R (i,j,k,iElem)) * 0.5
-    !CALL PrimToCons(UPrim+gradUzeta(:,i,j,k,iElem)*FV_dx_ZETA_R(i,j,k,iElem),Ucons)
-    !gradUz(:,i,j,k,iElem) = (Ucons-U(:,i,j,k,iElem))/FV_dx_ZETA_R(i,j,k,iElem)* & 
-        !(FV_dx_ZETA_L(i,j,k,iElem)+FV_dx_ZETA_R(i,j,k,iElem)) * 0.5
-  !END DO; END DO; END DO! i,j,k=0,PP_N
-!END DO ! iElem
-!#endif
 
 ! Generate skeleton for the file with all relevant data on a single proc (MPIRoot)
 FileType=MERGE('ERROR_State','State      ',isErrorFile)
@@ -155,9 +126,6 @@ IF(NOut.NE.PP_N)THEN
     JN(1,:,:,:)=1./sJ(:,:,:,iElem,0)
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       Utmp(:,i,j,k)=U(:,i,j,k,iElem)*JN(1,i,j,k)
-      DO iVar=1,PP_nVar
-        Utmp(iVar,i,j,:)=U(iVar,i,j,k,iElem)*JN(1,i,j,k)
-      END DO ! iVar=1,PP_nVar
     END DO; END DO; END DO
     CALL ChangeBasisVolume(PP_nVar,PP_N,NOut,Vdm_N_NOut,&
                            Utmp,UOut(1:PP_nVar,:,:,:,iElem))
@@ -199,7 +167,7 @@ END IF ! (NOut.NE.PP_N)
 
 
 ! Reopen file and write DG solution
-#if MPI
+#if USE_MPI
 CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
 #endif
 CALL GatheredWriteArray(FileName,create=.FALSE.,&
@@ -209,29 +177,6 @@ CALL GatheredWriteArray(FileName,create=.FALSE.,&
                         offset=    (/0,      0,     0,     0,     offsetElem/),&
                         collective=.TRUE.,RealArray=UOut)
 
-!#if FV_ENABLED & FV_RECONSTRUCT
-!CALL GatheredWriteArray(FileName,create=.FALSE.,&
-                        !DataSetName='gradUxi', rank=5,&
-                        !nValGlobal=(/PP_nVar,PP_N+1,PP_N+1,PP_N+1,nGlobalElems/),&
-                        !nVal=      (/PP_nVar,PP_N+1,PP_N+1,PP_N+1,nElems/),   &
-                        !offset=    (/0,      0,     0,     0,     offsetElem/),  &
-                        !collective=.TRUE., RealArray=gradUx)
-
-!CALL GatheredWriteArray(FileName,create=.FALSE.,&
-                        !DataSetName='gradUeta', rank=5,&
-                        !nValGlobal=(/PP_nVar,PP_N+1,PP_N+1,PP_N+1,nGlobalElems/),&
-                        !nVal=      (/PP_nVar,PP_N+1,PP_N+1,PP_N+1,nElems/),   &
-                        !offset=    (/0,      0,     0,     0,     offsetElem/),  &
-                        !collective=.TRUE., RealArray=gradUy)
-
-!CALL GatheredWriteArray(FileName,create=.FALSE.,&
-                        !DataSetName='gradUzeta', rank=5,&
-                        !nValGlobal=(/PP_nVar,PP_N+1,PP_N+1,PP_N+1,nGlobalElems/),&
-                        !nVal=      (/PP_nVar,PP_N+1,PP_N+1,PP_N+1,nElems/),   &
-                        !offset=    (/0,      0,     0,     0,     offsetElem/),  &
-                        !collective=.TRUE., RealArray=gradUz)
-!#endif
-                    
 ! Deallocate UOut only if we did not point to U
 IF((PP_N .NE. NOut).OR.((PP_dim .EQ. 2).AND.(.NOT.output2D))) DEALLOCATE(UOut)
 
@@ -268,7 +213,7 @@ INTEGER           ,INTENT(IN),OPTIONAL,TARGET :: IntArray( PRODUCT(nVal)) !< Int
 CHARACTER(LEN=255),INTENT(IN),OPTIONAL,TARGET :: StrArray( PRODUCT(nVal)) !< String array to write
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-#if MPI
+#if USE_MPI
 REAL,              ALLOCATABLE :: UReal(:)
 CHARACTER(LEN=255),ALLOCATABLE :: UStr(:)
 INTEGER,           ALLOCATABLE :: UInt(:)
@@ -333,7 +278,7 @@ ELSE
   IF(PRESENT(StrArray))  CALL WriteArray(DataSetName,rank,nValGlobal,nVal,&
                                                offset,collective,StrArray =StrArray)
   CALL CloseDataFile()
-#if MPI
+#if USE_MPI
 END IF
 #endif
 
@@ -599,7 +544,7 @@ END IF
 #endif  
 
 ! Write DG solution
-#if MPI
+#if USE_MPI
 CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
 #endif
 CALL GatheredWriteArray(FileName,create=.FALSE.,&
@@ -665,7 +610,7 @@ IF(nVar_Avg.GT.0)THEN
     CALL WriteAttribute(File_ID,'AvgTime',1,RealScalar=dtAvg)
     CALL CloseDataFile()
   END IF
-#if MPI
+#if USE_MPI
   CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
 #endif
 
@@ -704,7 +649,7 @@ IF(nVar_Fluc.GT.0)THEN
     CALL WriteAttribute(File_ID,'AvgTime',1,RealScalar=dtAvg)
     CALL CloseDataFile()
   END IF
-#if MPI
+#if USE_MPI
   CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
 #endif
 
@@ -793,33 +738,6 @@ CALL H5DCREATE_F(File_ID,'DG_Solution', HDF5DataType, FileSpace, DSet_ID, iError
 CALL H5DCLOSE_F(Dset_id, iError)
 CALL H5SCLOSE_F(FileSpace, iError)
 
-!#if FV_ENABLED
-!Dimsf=(/nVar,NData+1,NData+1,NData+1,nGlobalElems/)
-!CALL H5SCREATE_SIMPLE_F(5, Dimsf, FileSpace, iError)
-!! Create the dataset with default properties.
-!HDF5DataType=H5T_NATIVE_DOUBLE
-!CALL H5DCREATE_F(File_ID,'gradUxi', HDF5DataType, FileSpace, DSet_ID, iError)
-!! Close the filespace and the dataset
-!CALL H5DCLOSE_F(Dset_id, iError)
-!CALL H5SCLOSE_F(FileSpace, iError)
-!Dimsf=(/nVar,PP_N+1,PP_N+1,PP_N+1,nGlobalElems/)
-!CALL H5SCREATE_SIMPLE_F(5, Dimsf, FileSpace, iError)
-!! Create the dataset with default properties.
-!HDF5DataType=H5T_NATIVE_DOUBLE
-!CALL H5DCREATE_F(File_ID,'gradUeta', HDF5DataType, FileSpace, DSet_ID, iError)
-!! Close the filespace and the dataset
-!CALL H5DCLOSE_F(Dset_id, iError)
-!CALL H5SCLOSE_F(FileSpace, iError)
-!Dimsf=(/nVar,PP_N+1,PP_N+1,PP_N+1,nGlobalElems/)
-!CALL H5SCREATE_SIMPLE_F(5, Dimsf, FileSpace, iError)
-!! Create the dataset with default properties.
-!HDF5DataType=H5T_NATIVE_DOUBLE
-!CALL H5DCREATE_F(File_ID,'gradUzeta', HDF5DataType, FileSpace, DSet_ID, iError)
-!! Close the filespace and the dataset
-!CALL H5DCLOSE_F(Dset_id, iError)
-!CALL H5SCLOSE_F(FileSpace, iError)
-!#endif
-
 ! Write dataset properties "Time","MeshFile","NextFile","NodeType","VarNames"
 CALL WriteAttribute(File_ID,'N',1,IntScalar=PP_N)
 CALL WriteAttribute(File_ID,'Dimension',1,IntScalar=PP_dim)
@@ -883,8 +801,7 @@ InputFile=TRIM(FileName)
 CALL GetNextFileName(Inputfile,NextFile,.TRUE.)
 ! Delete File - only root
 stat=0
-ioUnit=GETFREEUNIT()
-OPEN ( UNIT   = ioUnit,            &
+OPEN ( NEWUNIT= ioUnit,         &
        FILE   = InputFile,      &
        STATUS = 'OLD',          &
        ACTION = 'WRITE',        &
@@ -897,8 +814,7 @@ DO
   CALL GetNextFileName(Inputfile,NextFile,.TRUE.)
   ! Delete File - only root
   stat=0
-  ioUnit=GETFREEUNIT()
-  OPEN ( UNIT   = ioUnit,            &
+  OPEN ( NEWUNIT= ioUnit,         &
          FILE   = InputFile,      &
          STATUS = 'OLD',          &
          ACTION = 'WRITE',        &
@@ -1028,7 +944,7 @@ END IF
 
 ! Create property list for collective dataset write
 CALL H5PCREATE_F(H5P_DATASET_XFER_F, PList_ID, iError)
-#if MPI
+#if USE_MPI
 IF(collective)THEN
   CALL H5PSET_DXPL_MPIO_F(PList_ID, H5FD_MPIO_COLLECTIVE_F,  iError)
 ELSE

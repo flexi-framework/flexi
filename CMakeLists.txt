@@ -87,6 +87,7 @@ SUBDIRLIST(TESTCASES  ${CMAKE_CURRENT_SOURCE_DIR}/src/testcase/)
 SUBDIRLIST(EQNSYSTEMS ${CMAKE_CURRENT_SOURCE_DIR}/src/equations/)
 SUBDIRLIST(LIFTINGS   ${CMAKE_CURRENT_SOURCE_DIR}/src/dg/)
 
+OPTION(FLEXI_BUILDPOSTI "Build POSTI toolset" ON)
 OPTION(FLEXI_MPI "Compile SINGLE or MPI version" ON)
 OPTION(FLEXI_PARABOLIC "Enable parabolic terms of equation-system" ON)
 OPTION(FLEXI_EDDYVISCOSITY "Enable eddy viscosity modells" OFF)
@@ -242,6 +243,7 @@ FOREACH (_var IN LISTS flexiVars)
 ENDFOREACH()
 
 
+
 # =========================================================================
 # Build type
 # =========================================================================
@@ -285,24 +287,24 @@ IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
   SET (CMAKE_Fortran_FLAGS         "${CMAKE_Fortran_FLAGS} -fdefault-real-8 -fdefault-double-8 -fbackslash -ffree-line-length-0 -DGNU")
   SET (CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS}     -O3 ${FLEXI_INSTRUCTION} -finline-functions -fstack-arrays")
   SET (CMAKE_Fortran_FLAGS_PROFILE "${CMAKE_Fortran_FLAGS} -pg -O3 ${FLEXI_INSTRUCTION} -finline-functions -fstack-arrays")
-  SET (CMAKE_Fortran_FLAGS_DEBUG   "${CMAKE_Fortran_FLAGS} -g -O0 -ggdb3 -fbounds-check -finit-real=snan -fbacktrace  -Wall")
+  SET (CMAKE_Fortran_FLAGS_DEBUG   "${CMAKE_Fortran_FLAGS} -g -O0 -ggdb3 -ffpe-trap=invalid -fbounds-check -finit-real=snan -fbacktrace  -Wall")
   # add flags only for compiling not linking!
-  SET (FLEXI_COMPILE_FLAGS "-xf95-cpp-input")
+  SET (FLEXI_COMPILE_FLAGS "-xf95-cpp-input -fPIC")
 
 ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
-   #environment specific variables
-   IF(ONHORNET GREATER -1)
-      SET(FLEXI_INSTRUCTION "-xCORE-AVX2")
-   ELSE()
-      SET(FLEXI_INSTRUCTION "-xHost")
-   ENDIF()
-   # set Flags
+  #environment specific variables
+  IF(ONHORNET GREATER -1)
+     SET(FLEXI_INSTRUCTION "-xCORE-AVX2")
+  ELSE()
+     SET(FLEXI_INSTRUCTION "-xHost")
+  ENDIF()
+  # set Flags
   SET (CMAKE_Fortran_FLAGS         "${CMAKE_Fortran_FLAGS} -r8 -i4 -traceback -warn all -shared-intel -DINTEL")
   SET (CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS}    -O3 ${FLEXI_INSTRUCTION} -qopt-report0 -qopt-report-phase=vec -no-prec-div")
   SET (CMAKE_Fortran_FLAGS_PROFILE "${CMAKE_Fortran_FLAGS} -p -O3 ${FLEXI_INSTRUCTION} -qopt-report0 -qopt-report-phase=vec -no-prec-div")
   SET (CMAKE_Fortran_FLAGS_DEBUG   "${CMAKE_Fortran_FLAGS} -g -O0 -fpe0 -traceback -check all,noarg_temp_created,noformat,nooutput_conversion,pointer,uninit -init=snan -init=arrays")
-   # add flags only for compiling not linking!
-   SET (FLEXI_COMPILE_FLAGS "-fpp -assume bscc")
+  # add flags only for compiling not linking!
+  SET (FLEXI_COMPILE_FLAGS "-fpp -allow nofpp_comments -assume bscc")
 
 ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Cray")
   # set Flags
@@ -435,9 +437,9 @@ IF(FLEXI_MPI)
   MARK_AS_ADVANCED(MPI_LIBRARY MPI_EXTRA_LIBRARY) # don't show these ones
   MESSAGE(STATUS "Building Flexi with MPI")
   MESSAGE(STATUS "MPI Compiler: " ${MPI_Fortran_COMPILER})
-  ADD_DEFINITIONS(-DMPI=1)
+  ADD_DEFINITIONS(-DUSE_MPI=1)
 ELSE()
-  ADD_DEFINITIONS(-DMPI=0)
+  ADD_DEFINITIONS(-DUSE_MPI=0)
 ENDIF()
 
 # ========================================================================= 
@@ -457,7 +459,7 @@ ENDIF()
 
 function(add_exec target)
   ADD_EXECUTABLE(${target} ${ARGN})
-  TARGET_LINK_LIBRARIES(${target} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/userblock.o flexilib ${linkedlibs})
+  TARGET_LINK_LIBRARIES(${target} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/userblock.o flexilib userblocklib ${linkedlibs})
   SET_TARGET_PROPERTIES(${target} PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}) 
   SET_TARGET_PROPERTIES(${target} PROPERTIES LINKER_LANGUAGE Fortran)
   INSTALL(PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${target} DESTINATION bin)
@@ -513,13 +515,15 @@ ENDIF()
 # define libs
 ADD_LIBRARY(flexilibF90 OBJECT ${flexiF90} ${dgF90} ${eqnsysF90})
 SET_TARGET_PROPERTIES(flexilibF90 PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}) 
-ADD_LIBRARY(userblocklib OBJECT ./src/output/read_userblock.c)
-SET_TARGET_PROPERTIES(userblocklib PROPERTIES LINKER_LANGUAGE C)
-ADD_LIBRARY(flexilib STATIC $<TARGET_OBJECTS:flexilibF90> $<TARGET_OBJECTS:userblocklib>)
+ADD_LIBRARY(flexilib STATIC $<TARGET_OBJECTS:flexilibF90>)
 ADD_DEPENDENCIES(flexilibF90 HDF5)
 
+ADD_LIBRARY(userblocklib STATIC ./src/output/read_userblock.c)
+SET_TARGET_PROPERTIES(userblocklib PROPERTIES LINKER_LANGUAGE C)
+SET_TARGET_PROPERTIES(userblocklib PROPERTIES COMPILE_FLAGS "-fPIC")
+
 add_exec(flexi ./src/flexi.f90)
-ADD_DEPENDENCIES(flexi flexilib HDF5)
+ADD_DEPENDENCIES(flexi flexilib userblocklib HDF5)
 
 # special compiler flags to avoid warnings for empty functions of testcase.f90 and overwrite of intrinsic abort in globals.f90
 IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
@@ -544,6 +548,13 @@ ADD_CUSTOM_TARGET(preproc_defines COMMAND echo ${comp_defs_str})
 # =========================================================================
 add_exec(flexi2vtk ./src/flexi2vtk.f90)
 ADD_DEPENDENCIES(flexi2vtk flexilib HDF5)
+
+# =========================================================================
+# Posti
+# =========================================================================
+IF(FLEXI_BUILDPOSTI)
+  INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/CMakeLists.txt)
+ENDIF()
 
 # =========================================================================
 # RegressionCheck tool && Examples
@@ -571,28 +582,28 @@ INSTALL(FILES    ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/configuration.cmake ${CMAKE_R
 # =========================================================================
 # Ctags
 # =========================================================================
-SET(EQNS_WO_ACTUAL ${EQNSYSTEMS})
-LIST(REMOVE_ITEM EQNS_WO_ACTUAL ${FLEXI_EQNSYSNAME})
-SET(EXLUDES "")
-FOREACH(item ${EQNS_WO_ACTUAL})
-   SET(EXLUDES "--exclude=src/equations/${item}/*" ${EXLUDES})
-ENDFOREACH()
-SET(LIFTINGS_WO_ACTUAL ${LIFTINGS})
-LIST(REMOVE_ITEM LIFTINGS_WO_ACTUAL ${FLEXI_LIFTING})
-FOREACH(item ${LIFTINGS_WO_ACTUAL})
-   SET(EXLUDES "--exclude=src/dg/${item}/*" ${EXLUDES})
-ENDFOREACH()
-SET(TESTCASES_WO_ACTUAL ${TESTCASES})
-LIST(REMOVE_ITEM TESTCASES_WO_ACTUAL ${FLEXI_TESTCASE})
-FOREACH(item ${TESTCASES_WO_ACTUAL})
-   SET(EXLUDES "--exclude=src/testcase/${item}/*" ${EXLUDES})
-ENDFOREACH()
-ADD_CUSTOM_COMMAND(OUTPUT ctags.txt COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR} && ctags -R --fortran-kinds=+i+L -f ctags.txt ${EXLUDES} src)
-ADD_CUSTOM_TARGET(tags DEPENDS ctags.txt)
 FIND_PROGRAM(CTAGS_PATH ctags)
 IF(CTAGS_PATH)
-    MESSAGE(STATUS "Found ctags: ${CTAGS_PATH}")
-    ADD_DEPENDENCIES(flexi tags)
+  SET(EQNS_WO_ACTUAL ${EQNSYSTEMS})
+  LIST(REMOVE_ITEM EQNS_WO_ACTUAL ${FLEXI_EQNSYSNAME})
+  SET(EXLUDES "")
+  FOREACH(item ${EQNS_WO_ACTUAL})
+     SET(EXLUDES "--exclude=src/equations/${item}/*" ${EXLUDES})
+  ENDFOREACH()
+  SET(LIFTINGS_WO_ACTUAL ${LIFTINGS})
+  LIST(REMOVE_ITEM LIFTINGS_WO_ACTUAL ${FLEXI_LIFTING})
+  FOREACH(item ${LIFTINGS_WO_ACTUAL})
+     SET(EXLUDES "--exclude=src/dg/${item}/*" ${EXLUDES})
+  ENDFOREACH()
+  SET(TESTCASES_WO_ACTUAL ${TESTCASES})
+  LIST(REMOVE_ITEM TESTCASES_WO_ACTUAL ${FLEXI_TESTCASE})
+  FOREACH(item ${TESTCASES_WO_ACTUAL})
+     SET(EXLUDES "--exclude=src/testcase/${item}/*" ${EXLUDES})
+  ENDFOREACH()
+  ADD_CUSTOM_COMMAND(OUTPUT ctags.txt COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR} && ctags -R --fortran-kinds=+i+L -f ctags.txt ${EXLUDES} src && ctags -R --fortran-kinds=+i+L -f ctags.txt ${EXLUDES} --append posti)
+  ADD_CUSTOM_TARGET(tags DEPENDS ctags.txt)
+  MESSAGE(STATUS "Found ctags: ${CTAGS_PATH}")
+  ADD_DEPENDENCIES(flexi tags)
 ENDIF(CTAGS_PATH)
 
 # =========================================================================

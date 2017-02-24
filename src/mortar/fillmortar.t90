@@ -255,12 +255,12 @@ DO MortarSideID=firstMortarSideID,lastMortarSideID
       Flux_tmp(:,:,:,iMortar)=Flux_master(:,:,:,SideID)
     CASE(1:4) ! slave sides (should only occur for MPI)
       IF(weak)THEN
-        DO q=0,PP_NZ; DO p=0,PP_N
-          Flux_tmp(:,FS2M(1,p,q,flip),FS2M(2,p,q,flip),iMortar)=-Flux_slave(:,p,q,SideID)
+        DO q=0,PP_N; DO p=0,PP_N
+          Flux_tmp(:,p,q,iMortar)=-Flux_slave(:,FS2M(1,p,q,flip),FS2M(2,p,q,flip),SideID)
         END DO; END DO
       ELSE    ! do not change sign if strong form
-        DO q=0,PP_NZ; DO p=0,PP_N
-          Flux_tmp(:,FS2M(1,p,q,flip),FS2M(2,p,q,flip),iMortar)= Flux_slave(:,p,q,SideID)
+        DO q=0,PP_N; DO p=0,PP_N
+          Flux_tmp(:,p,q,iMortar)= Flux_slave(:,FS2M(1,p,q,flip),FS2M(2,p,q,flip),SideID)
         END DO; END DO
       END IF
     END SELECT

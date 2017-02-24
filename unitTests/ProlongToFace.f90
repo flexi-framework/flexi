@@ -12,8 +12,12 @@ USE MOD_PreProc
 USE MOD_Unittest_Vars
 USE MOD_Unittest,           ONLY: ReadInReferenceElementData
 USE MOD_ProlongToFaceCons,  ONLY: ProlongToFaceCons
-USE MOD_Basis,              ONLY: EQUALTOTOLERANCE
+! Modules needed to read in reference element
+USE MOD_Mesh_Vars,          ONLY: nElems,sJ,FS2M,V2S,S2V,S2V2
+USE MOD_Mesh_Vars,          ONLY: SideToElem
+USE MOD_Mesh_Vars,          ONLY: firstMPISide_YOUR, lastMPISide_MINE, nSides
 USE MOD_Interpolation_Vars, ONLY: L_Minus,L_Plus
+USE MOD_DG_Vars,            ONLY: L_HatPlus,L_HatMinus
 #if FV_ENABLED
 USE MOD_FV_Vars,            ONLY: FV_Elems,FV_Elems_master,FV_Elems_slave
 #endif
@@ -85,8 +89,7 @@ ELSE
   END DO
 END IF
 
-
-! Read in data from single curved element
+! Read in data from single curved element 
 CALL ReadInReferenceElementData()
 
 ! Call ProlongToFace
@@ -130,15 +133,15 @@ ELSE
     CLOSE(10) ! close the file
     ! Check if the computed and the reference solutions are within a given tolerance
     equal =  .TRUE.
-    DO i=1,PP_nVar; DO j=0,NRef; DO k=0,NRefZ; DO l=1,nSidesRef
-      equal = EQUALTOTOLERANCE(Uface_master(i,j,k,l),Uface_master_ref(j,k,l),100.*PP_RealTolerance) .AND. equal
+    DO i=1,PP_nVar; DO j=0,9; DO k=0,9; DO l=1,6
+      equal = ALMOSTEQUALABSORREL(Uface_master(i,j,k,l),Uface_master_ref(j,k,l),100.*PP_RealTolerance) .AND. equal
 #if FV_ENABLED
-      equal = EQUALTOTOLERANCE(FV_Uface_master(i,j,k,l),FV_Uface_master_ref(j,k,l),100.*PP_RealTolerance) .AND. equal
+      equal = ALMOSTEQUALABSORREL(FV_Uface_master(i,j,k,l),FV_Uface_master_ref(j,k,l),100.*PP_RealTolerance) .AND. equal
 #endif      
     END DO; END DO; END DO; END DO
     ! Plus sides not needed in single element case
     !DO i=1,PP_nVar; DO j=0,9; DO k=0,9; DO l=7,6
-      !equal = EQUALTOTOLERANCE(Uface_slave(i,j,k,l),Uface_slave_ref(j,k,l),100.*PP_RealTolerance) .AND. equal
+      !equal = ALMOSTEQUALABSORREL(Uface_slave(i,j,k,l),Uface_slave_ref(j,k,l),100.*PP_RealTolerance) .AND. equal
     !END DO; END DO; END DO; END DO
     IF (.NOT.equal) THEN
       WRITE(*,*) 'ERROR - Calculated prolonged values deviate from reference.'

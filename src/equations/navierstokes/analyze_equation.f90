@@ -175,7 +175,8 @@ END SUBROUTINE InitAnalyzeEquation
 
 
 !==================================================================================================================================
-!> Calculates L_infinfity and L_2 norms of state variables using the Analyze Framework (GL points+weights)
+!> Wrapper routine for the equation system specific analyze routines. Will call the specific subroutines to calculate the quantities
+!> set in the parameter file and the respective output routines.
 !==================================================================================================================================
 SUBROUTINE AnalyzeEquation(Time)
 ! MODULES
@@ -189,7 +190,7 @@ USE MOD_Output,             ONLY: OutputToFile
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)                 :: Time
+REAL,INTENT(IN)                 :: Time                              !< Current simulation time
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=40)               :: formatStr
@@ -278,12 +279,13 @@ USE MOD_FV_Vars,            ONLY: FV_Elems,FV_w
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(OUT)                :: BulkPrim(PP_nVarPrim),BulkCons(PP_nVar)
+REAL,INTENT(OUT)                :: BulkPrim(PP_nVarPrim)                   !> Primitive bulk quantities
+REAL,INTENT(OUT)                :: BulkCons(PP_nVar)                       !> Conservative bulk quantities
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                            :: IntegrationWeight
 INTEGER                         :: iElem,i,j,k
-#if MPI
+#if USE_MPI
 REAL                            :: box(PP_nVar+PP_nVarPrim)
 #endif
 #if FV_ENABLED
@@ -315,7 +317,7 @@ DO iElem=1,nElems
 #endif
 END DO ! iElem
 
-#if MPI
+#if USE_MPI
 Box(1:PP_nVarPrim)=BulkPrim; Box(PP_nVarPrim+1:PP_nVarPrim+PP_nVar)=BulkCons
 IF(MPIRoot)THEN
   CALL MPI_REDUCE(MPI_IN_PLACE,box,PP_nVar+PP_nVarPrim,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,iError)
@@ -421,7 +423,7 @@ DO SideID=1,nBCSides
   END DO; END DO
 END DO
 
-#if MPI
+#if USE_MPI
 IF(MPIRoot)THEN
   CALL MPI_REDUCE(MPI_IN_PLACE,meanTotals,4*nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,iError)
 ELSE
@@ -431,7 +433,7 @@ END IF
 
 IF(.NOT.MPIRoot) RETURN
 
-DO iBC=1,nBCs   
+DO iBC=1,nBCs
   IF(Boundarytype(iBC,BC_TYPE) .EQ. 1) CYCLE
   MeanTotals(:,iBC)=MeanTotals(:,iBC)/Surf(iBC)
 END DO
@@ -439,23 +441,26 @@ END SUBROUTINE CalcKessel
 
 
 !==================================================================================================================================
-!> Calculate velocity at walls (euler / isothermal)
+!> Calculate velocity at walls
 !==================================================================================================================================
 SUBROUTINE CalcWallVelocity(maxV,minV,meanV)
 ! MODULES
 USE MOD_Preproc
 USE MOD_Globals
-USE MOD_DG_Vars,           ONLY: UPrim_master
-USE MOD_Mesh_Vars,         ONLY: SurfElem
-USE MOD_Mesh_Vars,         ONLY: nBCSides,BC,BoundaryType,nBCs
-USE MOD_Analyze_Vars,      ONLY: wGPSurf,Surf
+USE MOD_DG_Vars,              ONLY: UPrim_master
+USE MOD_Mesh_Vars,            ONLY: SurfElem
+USE MOD_Mesh_Vars,            ONLY: nBCSides,BC,nBCs
+USE MOD_Analyze_Vars,         ONLY: wGPSurf,Surf
+USE MOD_AnalyzeEquation_Vars, ONLY: isWall
 #if FV_ENABLED
-USE MOD_FV_Vars,           ONLY: FV_Elems_master,FV_w
+USE MOD_FV_Vars,              ONLY: FV_Elems_master,FV_w
 #endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(OUT)               :: maxV(nBCs),minV(nBCs),meanV(nBCs)
+REAL,INTENT(OUT)               :: maxV(nBCs)          !< Maximum of wall velocity per boundary
+REAL,INTENT(OUT)               :: minV(nBCs)          !< Minimum of wall velocity per boundary
+REAL,INTENT(OUT)               :: meanV(nBCs)         !< Mean of wall velocity per boundary
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                           :: dA,Vel(3),locV
@@ -472,7 +477,7 @@ FV_w2 = FV_w**2
 #endif
 DO iSide=1,nBCSides
   iBC=BC(iSide)
-  IF((BoundaryType(iBC,BC_TYPE).NE.3).AND.(BoundaryType(iBC,BC_TYPE).NE.4).AND.(BoundaryType(iBC,BC_TYPE).NE.9)) CYCLE
+  IF(.NOT.isWall(iBC)) CYCLE
   DO j=0,PP_NZ; DO i=0,PP_N
     Vel=UPrim_master(2:4,i,j,iSide)
     ! Calculate velocity magnitude
@@ -492,7 +497,7 @@ DO iSide=1,nBCSides
   END DO; END DO
 END DO
 
-#if MPI
+#if USE_MPI
 IF(MPIRoot)THEN
   CALL MPI_REDUCE(MPI_IN_PLACE,maxV ,nBCs,MPI_DOUBLE_PRECISION,MPI_MAX,0,MPI_COMM_WORLD,iError)
   CALL MPI_REDUCE(MPI_IN_PLACE,minV ,nBCs,MPI_DOUBLE_PRECISION,MPI_MIN,0,MPI_COMM_WORLD,iError)
@@ -504,7 +509,7 @@ ELSE
 END IF
 #endif
 DO iBC=1,nBCs
-  IF((BoundaryType(iBC,BC_TYPE).EQ.3).OR.(BoundaryType(iBC,BC_TYPE).EQ.4).OR.(BoundaryType(iBC,BC_TYPE).EQ.9))&
+  IF(.NOT.isWall(iBC)) CYCLE
     MeanV(iBC)=MeanV(iBC)/Surf(iBC)
 END DO
 
@@ -527,7 +532,7 @@ USE MOD_FV_Vars,           ONLY: FV_Elems_master,FV_w
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(OUT)               :: MeanFlux(PP_nVar,nBCs)
+REAL,INTENT(OUT)               :: MeanFlux(PP_nVar,nBCs)        !< Mean flux in each conservative variable per boundary
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: iSide,iSurf,i,j
@@ -559,7 +564,7 @@ DO iSide=1,nSides-nMPISides_YOUR
 #endif
 END DO
 
-#if MPI
+#if USE_MPI
 i=PP_nVar*nBCs
 IF(MPIRoot)THEN
   CALL MPI_REDUCE(MPI_IN_PLACE,MeanFlux,i,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,iError)
@@ -577,7 +582,7 @@ END SUBROUTINE CalcMeanFlux
 
 
 !==================================================================================================================================
-!> Finalizes variables necessary for analyse subroutines
+!> Finalizes variables necessary for analyze subroutines
 !==================================================================================================================================
 SUBROUTINE FinalizeAnalyzeEquation()
 ! MODULES
@@ -590,6 +595,7 @@ SDEALLOCATE(isWall)
 SDEALLOCATE(FileName_BodyForce)
 SDEALLOCATE(FileName_WallVel)
 SDEALLOCATE(FileName_MeanFlux)
+SDEALLOCATE(FileName_TotalStates)
 END SUBROUTINE FinalizeAnalyzeEquation
 
 END MODULE MOD_AnalyzeEquation

@@ -80,7 +80,7 @@ DO SideID=firstSideID,lastSideID
     END IF
 
     DO q=0,PP_NlocZ; DO p=0,Nloc
-      Uface_master(:,p,q,SideID)=Uface(:,S2V2(1,p,q,flip,locSide),S2V2(2,p,q,flip,locSide))
+      Uface_master(:,p,q,SideID)=Uface(:,S2V2(1,p,q,0,locSide),S2V2(2,p,q,0,locSide))
     END DO; END DO
 #if FV_ENABLED
     FV_Elems_master(SideID) = FV_Elems(ElemID)
@@ -90,7 +90,7 @@ DO SideID=firstSideID,lastSideID
   !slave side (ElemID,locSide and flip =-1 if not existing)
   IF(nbElemID.GT.0)THEN
     nblocSide = SideToElem(S2E_NB_LOC_SIDE_ID,SideID)
-    flip        = SideToElem(S2E_FLIP,SideID)
+    flip      = SideToElem(S2E_FLIP,SideID)
 
     IF(PP_NodeType.EQ.1.AND.FV_Elems(nbElemID).EQ.0)THEN
       CALL EvalElemFaceG(&

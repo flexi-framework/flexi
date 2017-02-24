@@ -143,8 +143,7 @@ IF(.NOT.MPIRoot) RETURN
 Filename = TRIM(ProjectName)//'_Stats.dat'
 INQUIRE(FILE = Filename, EXIST = fileExists)
 IF(.NOT.fileExists)THEN ! File exists and append data
-  ioUnit=GETFREEUNIT()
-  OPEN(UNIT   = ioUnit       ,&
+  OPEN(NEWUNIT= ioUnit       ,&
        FILE   = Filename     ,&
        STATUS = 'Unknown'    ,&
        ACCESS = 'SEQUENTIAL' ,&
@@ -226,7 +225,7 @@ ELSE
              'Wrong hill geometry')
 END IF
 h=h/28.
-Prim(1:5) = RefStatePrim(IniRefState,:)
+Prim    = RefStatePrim(:,IniRefState)
 Prim(2) = Prim(2)*2.025/(3.025-h)
 Prim(6) = 0. ! T does not matter for prim to cons
 CALL PrimToCons(Prim,Resu)
@@ -257,7 +256,7 @@ REAL,INTENT(IN)                 :: dt                     !< current time step
 ! LOCAL VARIABLES
 INTEGER                         :: i,j,k,iElem,SideID
 REAL                            :: massFlow,massFlowGlobal,massFlowPeriodic,tmp
-#if MPI
+#if USE_MPI
 REAL                            :: box(3)
 #endif
 !==================================================================================================================================
@@ -281,7 +280,7 @@ DO iElem=1,nElems
   END DO; END DO; END DO
 END DO
 
-#if MPI
+#if USE_MPI
 box(1) = massFlowGlobal; box(2) = massFlowPeriodic; box(3) = BulkVel
 CALL MPI_ALLREDUCE(MPI_IN_PLACE,box,3,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,iError)
 massFlowGlobal = box(1); massFlowPeriodic = box(2); BulkVel = box(3)
@@ -319,9 +318,8 @@ IF(MPIRoot)THEN
   END IF
   ioCounter=ioCounter+1
   writeBuf(:,ioCounter) = (/t, dpdx, BulkVel, MassFlowGlobal, MassFlowPeriodic /)
-  IF((ioCounter.EQ.buffer).OR.((tWriteData-t-dt).LT.1e-10))THEN
+  IF((ioCounter.GE.buffer).OR.((tWriteData-t-dt).LT.1e-10))THEN
     CALL WriteStats()
-    ioCounter=0
   END IF
 END IF
 
@@ -360,17 +358,16 @@ END SUBROUTINE TestcaseSource
 !==================================================================================================================================
 SUBROUTINE WriteStats()
 ! MODULES
-USE MOD_Globals      ,ONLY:GetFreeUnit,Abort
+USE MOD_Globals      ,ONLY:Abort
 USE MOD_TestCase_Vars,ONLY:writeBuf,FileName,ioCounter
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                  :: ioUnit,openStat
+INTEGER                  :: ioUnit,openStat,i
 !==================================================================================================================================
-ioUnit=GETFREEUNIT()
-OPEN(UNIT     = ioUnit     , &
+OPEN(NEWUNIT  = ioUnit     , &
      FILE     = Filename   , &
      FORM     = 'FORMATTED', &
      STATUS   = 'OLD'      , &
@@ -381,8 +378,11 @@ IF(openStat.NE.0) THEN
   CALL Abort(__STAMP__, &
     'ERROR: cannot open '//TRIM(Filename))
 END IF
-WRITE(ioUnit,'(5E23.14)') writeBuf(:,1:ioCounter)
+DO i=1,ioCounter
+  WRITE(ioUnit,'(5E23.14)') writeBuf(:,i)
+END DO
 CLOSE(ioUnit)
+ioCounter=0
 
 END SUBROUTINE WriteStats
 
@@ -412,52 +412,48 @@ SUBROUTINE GetBoundaryFluxTestcase(SideID,t,Nloc,Flux,UPrim_master,             
 #endif
                            NormVec,TangVec1,TangVec2,Face_xGP)
 ! MODULES
-USE MOD_PreProc
-USE MOD_Mesh_Vars    ,ONLY: nSides
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)   :: SideID  
 REAL,INTENT(IN)      :: t       !< current time (provided by time integration scheme)
 INTEGER,INTENT(IN)   :: Nloc    !< polynomial degree
-REAL,INTENT(IN)      :: UPrim_master( PP_nVarPrim,0:Nloc,0:Nloc,1:nSides) !< inner surface solution
+REAL,INTENT(IN)      :: UPrim_master( PP_nVarPrim,0:Nloc,0:Nloc) !< inner surface solution
 #if PARABOLIC
                                                            !> inner surface solution gradients in x/y/z-direction
-REAL,INTENT(IN)      :: gradUx_master(PP_nVarPrim,0:Nloc,0:Nloc,1:nSides)
-REAL,INTENT(IN)      :: gradUy_master(PP_nVarPrim,0:Nloc,0:Nloc,1:nSides)
-REAL,INTENT(IN)      :: gradUz_master(PP_nVarPrim,0:Nloc,0:Nloc,1:nSides)
+REAL,INTENT(IN)      :: gradUx_master(PP_nVarPrim,0:Nloc,0:Nloc)
+REAL,INTENT(IN)      :: gradUy_master(PP_nVarPrim,0:Nloc,0:Nloc)
+REAL,INTENT(IN)      :: gradUz_master(PP_nVarPrim,0:Nloc,0:Nloc)
 #endif /*PARABOLIC*/
                                                            !> normal and tangential vectors on surfaces
-REAL,INTENT(IN)      :: NormVec (3,0:Nloc,0:Nloc,0:FV_ENABLED,1:nSides)
-REAL,INTENT(IN)      :: TangVec1(3,0:Nloc,0:Nloc,0:FV_ENABLED,1:nSides)
-REAL,INTENT(IN)      :: TangVec2(3,0:Nloc,0:Nloc,0:FV_ENABLED,1:nSides)
-REAL,INTENT(IN)      :: Face_xGP(3,0:Nloc,0:Nloc,0:FV_ENABLED,1:nSides) !< positions of surface flux points
-REAL,INTENT(OUT)     :: Flux(PP_nVar,0:Nloc,0:Nloc,1:nSides)  !< resulting boundary fluxes
+REAL,INTENT(IN)      :: NormVec (3,0:Nloc,0:Nloc)
+REAL,INTENT(IN)      :: TangVec1(3,0:Nloc,0:Nloc)
+REAL,INTENT(IN)      :: TangVec2(3,0:Nloc,0:Nloc)
+REAL,INTENT(IN)      :: Face_xGP(3,0:Nloc,0:Nloc)    !< positions of surface flux points
+REAL,INTENT(OUT)     :: Flux(PP_nVar,0:Nloc,0:Nloc)  !< resulting boundary fluxes
 !==================================================================================================================================
 END SUBROUTINE GetBoundaryFluxTestcase
 
 
 SUBROUTINE GetBoundaryFVgradientTestcase(SideID,t,gradU,UPrim_master)
 USE MOD_PreProc
-USE MOD_Mesh_Vars    ,ONLY: nSides
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: SideID
-REAL,INTENT(IN)    :: t
-REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
-REAL,INTENT(OUT)   :: gradU       (PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
+REAL,INTENT(IN)    :: t                                       !< current time (provided by time integration scheme)
+REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_N) !< primitive solution from the inside
+REAL,INTENT(OUT)   :: gradU       (PP_nVarPrim,0:PP_N,0:PP_N) !< FV boundary gradient
 !==================================================================================================================================
 END SUBROUTINE GetBoundaryFVgradientTestcase
 
 
 SUBROUTINE Lifting_GetBoundaryFluxTestcase(SideID,t,UPrim_master,Flux)
 USE MOD_PreProc
-USE MOD_Mesh_Vars    ,ONLY: nSides
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: SideID
-REAL,INTENT(IN)    :: t                                    !< current time (provided by time integration scheme)
-REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< primitive solution from the inside
-REAL,INTENT(OUT)   :: Flux(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< lifting boundary flux
+REAL,INTENT(IN)    :: t                                       !< current time (provided by time integration scheme)
+REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_N) !< primitive solution from the inside
+REAL,INTENT(OUT)   :: Flux(        PP_nVarPrim,0:PP_N,0:PP_N) !< lifting boundary flux
 !==================================================================================================================================
 END SUBROUTINE Lifting_GetBoundaryFluxTestcase
 

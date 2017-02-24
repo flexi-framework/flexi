@@ -93,8 +93,10 @@ USE MOD_Interpolation_Vars,ONLY:InterpolationInitIsDone,Vdm_Leg,sVdm_Leg,NodeTyp
 USE MOD_ChangeBasis       ,ONLY:ChangeBasis3D
 USE MOD_ReadInTools       ,ONLY:GETINT,GETREAL,GETREALARRAY,GETLOGICAL,GETINTFROMSTR
 USE MOD_Interpolation     ,ONLY:GetVandermonde
-USE MOD_Mesh_Vars         ,ONLY:nElems,sJ
 USE MOD_IO_HDF5           ,ONLY:AddToElemData
+#if EQNSYSNR==2
+USE MOD_Mesh_Vars         ,ONLY:nElems,sJ
+#endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -128,11 +130,8 @@ IF(FilterType.GT.0) THEN
     ! Read in modal filter parameter
     HestFilterParam = GETREALARRAY('HestFilterParam',3,'(/36.,12.,1./)')
     CALL HestFilter()
-  CASE (FILTERTYPE_LAF) ! Modal Filter cut-off, adaptive (LAF)
-#if PP_dim==2
-    STOP 'LAF-Filter not implemented in 2D'
-#endif
-    
+#if EQNSYSNR==2
+  CASE (FILTERTYPE_LAF) ! Modal Filter cut-off, adaptive (LAF), only Euler/Navier-Stokes
     NFilter = GETINT('NFilter')
     LAF_alpha= GETREAL('LAF_alpha','1.0')
     ! LAF uses a special filter routine
@@ -140,24 +139,28 @@ IF(FilterType.GT.0) THEN
     DO iDeg=0,NFilter
       FilterMat(iDeg,iDeg) = 1.
     END DO
-    ALLOCATE(J_N(0:PP_N,0:PP_N,0:PP_N))
+    ALLOCATE(J_N(0:PP_N,0:PP_N,0:PP_NZ))
     ALLOCATE(lim(nElems))
     ALLOCATE(eRatio(nElems))
     ALLOCATE(r(nElems))
     ALLOCATE(ekin_avg_old(nElems))
     ALLOCATE(ekin_fluc_avg_old(nElems))
     ALLOCATE(Vol(nElems))
-    ALLOCATE(Integrationweight(0:PP_N,0:PP_N,0:PP_N,nElems))
+    ALLOCATE(Integrationweight(0:PP_N,0:PP_N,0:PP_NZ,nElems))
     CALL AddToElemData('LAF_eRatio',RealArray=eRatio)
     CALL AddToElemData('LAF_lim'   ,RealArray=lim)
     CALL AddToElemData('LAF_r'     ,RealArray=r)
     Vol = 0.
     DO iElem=1,nElems
-    J_N(0:PP_N,0:PP_N,0:PP_N)=1./sJ(:,:,:,0,iElem)
-      DO k=0,PP_N
+      J_N(0:PP_N,0:PP_N,0:PP_NZ)=1./sJ(:,:,:,0,iElem)
+      DO k=0,PP_NZ
         DO j=0,PP_N
           DO i=0,PP_N
+#if PP_dim == 3
             IntegrationWeight(i,j,k,iElem) = wGP(i)*wGP(j)*wGP(k)*J_N(i,j,k)
+#else
+            IntegrationWeight(i,j,k,iElem) = wGP(i)*wGP(j)*J_N(i,j,k)
+#endif
             Vol(iElem) = Vol(iElem) + IntegrationWeight(i,j,k,iElem)
           END DO ! i
         END DO ! j
@@ -172,6 +175,7 @@ IF(FilterType.GT.0) THEN
     r=0.
     ekin_avg_old=1.E-16
     ekin_fluc_avg_old=1.E-16
+#endif /*EQNSYSNR==2*/
 
   CASE DEFAULT 
     CALL CollectiveStop(__STAMP__,&
@@ -272,8 +276,9 @@ END SUBROUTINE Filter
 
 
 
+#if EQNSYSNR==2
 !===============================================================================================================================
-!> LAF implementation via filter
+!> LAF implementation via filter (only for Euler/Navier-Stokes)
 !===============================================================================================================================
 SUBROUTINE Filter_LAF(U_in,FilterMat)
 ! MODULES
@@ -294,8 +299,8 @@ REAL,INTENT(INOUT)  :: U_in(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< solution ve
 !-------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
 INTEGER                                      :: i,j,k,l,iElem
-REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_N) :: U_Xi,U_Eta, U_filtered
-REAL,DIMENSION(1:3,0:PP_N,0:PP_N,0:PP_N)     :: U_fluc
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ):: U_Xi,U_Eta, U_filtered
+REAL,DIMENSION(1:3,0:PP_N,0:PP_N,0:PP_NZ)    :: U_fluc
 REAL                                         :: ekin_avg,U_avg(5)
 REAL                                         :: ekin_fluc_avg,dedt_lim
 !===============================================================================================================================
@@ -304,7 +309,7 @@ DO iElem=1,nElems
   IF (FV_Elems(iElem).GT.0) CYCLE ! Do only, when DG element
 #endif
   U_Xi = 0.
-  DO k=0,PP_N
+  DO k=0,PP_NZ
     DO j=0,PP_N
       DO i=0,PP_N
         DO l=0,PP_N
@@ -313,8 +318,20 @@ DO iElem=1,nElems
       END DO !i
     END DO !j
   END DO !k
+#if PP_dim == 2
+  U_filtered= 0.
+  DO k=0,PP_NZ
+    DO j=0,PP_N
+      DO i=0,PP_N
+        DO l=0,PP_N
+          U_filtered(:,i,j,k)      = U_filtered(:,i,j,k)      + FilterMat(j,l)*U_Xi(:,i,l,k) 
+        END DO !l
+      END DO !i
+    END DO !j
+  END DO !k
+#else
   U_Eta= 0.
-  DO k=0,PP_N
+  DO k=0,PP_NZ
     DO j=0,PP_N
       DO i=0,PP_N
         DO l=0,PP_N
@@ -325,7 +342,7 @@ DO iElem=1,nElems
   END DO !k
   ! We need the filtered (low mode solution) and the unfiltered (full mode solution)
   U_filtered=0.
-  DO k=0,PP_N
+  DO k=0,PP_NZ
     DO j=0,PP_N
       DO i=0,PP_N
         DO l=0,PP_N
@@ -334,24 +351,31 @@ DO iElem=1,nElems
       END DO !i
     END DO !j
   END DO !k
+#endif
   
   ! Compute the small scale contribution: u_small=u_full - u_large
-  DO k=0,PP_N
+  DO k=0,PP_NZ
     DO j=0,PP_N
       DO i=0,PP_N
-        u_fluc(1,i,j,k) = (U_in(2,i,j,k,iElem)-U_filtered(2,i,j,k))
-        u_fluc(2,i,j,k) = (U_in(3,i,j,k,iElem)-U_filtered(3,i,j,k))
-        u_fluc(3,i,j,k) = (U_in(4,i,j,k,iElem)-U_filtered(4,i,j,k))
+#if PP_dim==3
+        u_fluc(1:3,i,j,k) = (U_in(2:4,i,j,k,iElem)-U_filtered(2:4,i,j,k))
+#else
+        u_fluc(1:2,i,j,k) = (U_in(2:3,i,j,k,iElem)-U_filtered(2:3,i,j,k))
+#endif
       END DO !i
     END DO !j
   END DO !k
 
   ! Compute the average velocities 
   U_Avg=0.
-  DO k=0,PP_N
+  DO k=0,PP_NZ
     DO j=0,PP_N
       DO i=0,PP_N
+#if PP_dim==3
         U_Avg(2:4)=U_Avg(2:4) + U_filtered(2:4,i,j,k)/U_in(1,i,j,k,iElem)*IntegrationWeight(i,j,k,iElem)
+#else
+        U_Avg(2:3)=U_Avg(2:3) + U_filtered(2:3,i,j,k)/U_in(1,i,j,k,iElem)*IntegrationWeight(i,j,k,iElem)
+#endif
       END DO ! i
     END DO ! j
   END DO ! k
@@ -359,16 +383,20 @@ DO iElem=1,nElems
   ekin_avg=0.
   ekin_fluc_avg=0.
   ! compute average and fluc average kinetic energy
-  DO k=0,PP_N
+  DO k=0,PP_NZ
     DO j=0,PP_N
       DO i=0,PP_N
         ekin_fluc_avg = ekin_fluc_avg + (u_fluc(1,i,j,k)*u_fluc(1,i,j,k)/U_in(1,i,j,k,iElem)**2+& 
-                                         u_fluc(2,i,j,k)*u_fluc(2,i,j,k)/U_in(1,i,j,k,iElem)**2+&
-                                         u_fluc(3,i,j,k)*u_fluc(3,i,j,k)/U_in(1,i,j,k,iElem)**2)*IntegrationWeight(i,j,k,iElem)
-        ekin_avg=ekin_avg + ((U_filtered(2,i,j,k)-U_Avg(2))*(U_filtered(2,i,j,k)-U_Avg(2))/U_in(1,i,j,k,iElem)**2+& 
-                            (U_filtered(3,i,j,k)-U_Avg(3))*(U_filtered(3,i,j,k)-U_Avg(3))/U_in(1,i,j,k,iElem)**2+& 
-                            (U_filtered(4,i,j,k)-U_Avg(4))*(U_filtered(4,i,j,k)-U_Avg(4))/U_in(1,i,j,k,iElem)**2)&
-                            *IntegrationWeight(i,j,k,iElem)
+#if PP_dim==3
+                                         u_fluc(3,i,j,k)*u_fluc(3,i,j,k)/U_in(1,i,j,k,iElem)**2+&
+#endif
+                                         u_fluc(2,i,j,k)*u_fluc(2,i,j,k)/U_in(1,i,j,k,iElem)**2)*IntegrationWeight(i,j,k,iElem)
+        ekin_avg=ekin_avg + ((U_filtered(2,i,j,k)-U_Avg(2))*(U_filtered(2,i,j,k)-U_Avg(2))/U_in(1,i,j,k,iElem)**2 & 
+                            +(U_filtered(3,i,j,k)-U_Avg(3))*(U_filtered(3,i,j,k)-U_Avg(3))/U_in(1,i,j,k,iElem)**2 & 
+#if PP_dim==3
+                            +(U_filtered(4,i,j,k)-U_Avg(4))*(U_filtered(4,i,j,k)-U_Avg(4))/U_in(1,i,j,k,iElem)**2 &
+#endif
+                             )*IntegrationWeight(i,j,k,iElem)
           END DO ! i
         END DO ! j
       END DO ! k
@@ -404,6 +432,7 @@ DO iElem=1,nElems
       ekin_fluc_avg_old(iElem)=ekin_fluc_avg
     END DO !iElem
 END SUBROUTINE Filter_LAF
+#endif /*EQNSYSNR==2*/
 
 
 
@@ -417,6 +446,7 @@ USE MOD_Filter_Vars
 IMPLICIT NONE
 !==================================================================================================================================
 SDEALLOCATE(FilterMat)
+#if EQNSYSNR==2
 SDEALLOCATE(lim)
 SDEALLOCATE(eRatio)
 SDEALLOCATE(r)
@@ -424,6 +454,7 @@ SDEALLOCATE(ekin_avg_old)
 SDEALLOCATE(Integrationweight)
 SDEALLOCATE(ekin_fluc_avg_old)
 SDEALLOCATE(Vol)
+#endif /*EQNSYSNR==2*/
 FilterInitIsDone = .FALSE.
 END SUBROUTINE FinalizeFilter
 

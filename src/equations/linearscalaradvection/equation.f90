@@ -135,7 +135,7 @@ END SUBROUTINE GetPrimitiveStateSurface
 SUBROUTINE GetConservativeStateSurface(UPrim_master,UPrim_slave,U_master,U_slave, mask_master, mask_slave, mask_ref)
 ! MODULES
 USE MOD_Preproc
-USE MOD_Mesh_Vars,ONLY: firstInnerSide,firstMPISide_YOUR,lastMPISide_YOUR,nSides
+USE MOD_Mesh_Vars,ONLY: nSides
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------

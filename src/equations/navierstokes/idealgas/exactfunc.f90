@@ -1,18 +1,15 @@
 #include "flexi.h"
 
+!==================================================================================================================================
+!> Soubroutines necessary for calculating Navier-Stokes equations
+!==================================================================================================================================
 MODULE MOD_Exactfunc
-!==================================================================================================================================
-! Soubroutines necessary for calculating Navier-Stokes equations
-!==================================================================================================================================
 ! MODULES
-! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-! Private Part --------------------------------------------------------------------------------------------------------------------
-! Public Part ---------------------------------------------------------------------------------------------------------------------
 
 INTERFACE DefineParametersExactFunc
   MODULE PROCEDURE DefineParametersExactFunc
@@ -59,6 +56,7 @@ CALL addStrListEntry('IniExactFunc','testcase' ,-1)
 CALL addStrListEntry('IniExactFunc','testcase' ,0)
 CALL addStrListEntry('IniExactFunc','refstate' ,1)
 CALL addStrListEntry('IniExactFunc','sinedens' ,2)
+CALL addStrListEntry('IniExactFunc','sinedensx',21)
 CALL addStrListEntry('IniExactFunc','lindens'  ,3)
 CALL addStrListEntry('IniExactFunc','sinevel'  ,4)
 CALL addStrListEntry('IniExactFunc','sinevelx' ,41)
@@ -71,8 +69,8 @@ CALL addStrListEntry('IniExactFunc','couette'  ,8)
 CALL addStrListEntry('IniExactFunc','cavity'   ,9)
 CALL addStrListEntry('IniExactFunc','shock'    ,10)
 CALL addStrListEntry('IniExactFunc','sod'      ,11)
-CALL prms%CreateRealArrayOption(    'AdvVel',       "Advection velocity (v1,v2,v3) required for exactfunction CASE(2,21,4,8)",&
-   '(/0.,0.,0./)')
+CALL addStrListEntry('IniExactFunc','dmr'      ,13)
+CALL prms%CreateRealArrayOption(    'AdvVel',       "Advection velocity (v1,v2,v3) required for exactfunction CASE(2,21,4,8)")
 CALL prms%CreateRealOption(         'MachShock',    "Parameter required for CASE(10)", '1.5')
 CALL prms%CreateRealOption(         'PreShockDens', "Parameter required for CASE(10)", '1.0')
 CALL prms%CreateRealArrayOption(    'IniCenter',    "Shu Vortex CASE(7) (x,y,z)")
@@ -104,12 +102,12 @@ SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT EXACT FUNCTION...'
 
 IniExactFunc = GETINTFROMSTR('IniExactFunc')
+IniRefState  = GETINT('IniRefState', "-1")
 ! Read in boundary parameters
 SELECT CASE (IniExactFunc)
-CASE(2,3,4,41,42,43) ! synthetic test cases
+CASE(2,21,3,4,41,42,43) ! synthetic test cases
   AdvVel       = GETREALARRAY('AdvVel',3)
 CASE(7) ! Shu Vortex
-  IniRefState  = GETINT('IniRefState')
   IniCenter    = GETREALARRAY('IniCenter',3,'(/0.,0.,0./)')
   IniAxis      = GETREALARRAY('IniAxis',3,'(/0.,0.,1./)')
   IniAmplitude = GETREAL('IniAmplitude','0.2')
@@ -123,7 +121,6 @@ CASE(10) ! shock
 CASE(11) ! Sod shock tube
 CASE(13) ! Double Mach Reflection
 CASE DEFAULT
-  IniRefState  = GETINT('IniRefState')
 END SELECT ! IniExactFunc
 
 #if PP_dim==2
@@ -150,7 +147,8 @@ END SUBROUTINE InitExactFunc
 SUBROUTINE ExactFunc(ExactFunction,tIn,x,resu)
 ! MODULES
 USE MOD_Preproc        ,ONLY: PP_PI
-USE MOD_Globals        ,ONLY: Abort,CROSS
+USE MOD_Globals        ,ONLY: Abort
+USE MOD_Mathtools      ,ONLY: CROSS
 USE MOD_Eos_Vars       ,ONLY: Kappa,sKappaM1,KappaM1,KappaP1,R
 USE MOD_Exactfunc_Vars ,ONLY: IniCenter,IniHalfwidth,IniAmplitude,IniAxis,AdvVel
 USE MOD_Exactfunc_Vars ,ONLY: MachShock,PreShockDens
@@ -195,7 +193,7 @@ CASE DEFAULT
 CASE(0)
   CALL ExactFuncTestcase(tEval,x,Resu,Resu_t,Resu_tt)
 CASE(1) ! constant
-  Resu = RefStateCons(IniRefState,:)
+  Resu = RefStateCons(:,IniRefState)
 CASE(2) ! sinus
   Frequency=0.5
   Amplitude=0.3
@@ -220,6 +218,33 @@ CASE(2) ! sinus
     Resu_t(5)=0.5*Resu_t(1)*SUM(prim(2:4)*prim(2:4))
     ! g''(t)
     Resu_tt(1)=-Amplitude*sin(Omega*SUM(cent(1:3)))*ov**2.
+    Resu_tt(2:4)=Resu_tt(1)*prim(2:4)
+    Resu_tt(5)=0.5*Resu_tt(1)*SUM(prim(2:4)*prim(2:4))
+  END IF
+CASE(21) ! sinus x
+  Frequency=0.5
+  Amplitude=0.3
+  Omega=2.*PP_Pi*Frequency
+  ! base flow
+  prim(1)   = 1.
+  prim(2:4) = AdvVel
+  prim(5)   = 1.
+  Vel=prim(2:4)
+  cent=x-Vel*tEval
+  prim(1)=prim(1)*(1.+Amplitude*SIN(Omega*cent(1)))
+  ! g(t)
+  Resu(1)=prim(1) ! rho
+  Resu(2:4)=prim(1)*prim(2:4) ! rho*vel
+  Resu(5)=prim(5)*sKappaM1+0.5*prim(1)*SUM(prim(2:4)*prim(2:4)) ! rho*e
+
+  IF(fullBoundaryOrder)THEN
+    ov=Omega*SUM(vel)
+    ! g'(t)
+    Resu_t(1)=-Amplitude*cos(Omega*cent(1))*ov
+    Resu_t(2:4)=Resu_t(1)*prim(2:4) ! rho*vel
+    Resu_t(5)=0.5*Resu_t(1)*SUM(prim(2:4)*prim(2:4))
+    ! g''(t)
+    Resu_tt(1)=-Amplitude*sin(Omega*cent(1))*ov**2.
     Resu_tt(2:4)=Resu_tt(1)*prim(2:4)
     Resu_tt(5)=0.5*Resu_tt(1)*SUM(prim(2:4)*prim(2:4))
   END IF
@@ -353,7 +378,7 @@ CASE(5) !Roundjet Bogey Bailly 2002, Re=65000, x-axis is jet axis
   Resu=ResuL+(ResuR-ResuL)*0.5*(1.+tanh(x(1)-10.))
 CASE(6)  ! Cylinder flow
   IF(tEval .EQ. 0.)THEN   ! Initialize potential flow
-    prim(1)=RefStatePrim(IniRefState,1)  ! Density
+    prim(1)=RefStatePrim(1,IniRefState)  ! Density
     prim(4)=0.           ! VelocityZ=0. (2D flow)
     ! Calculate cylinder coordinates (0<phi<Pi/2)
     pi_loc=ASIN(1.)*2.
@@ -377,19 +402,19 @@ CASE(6)  ! Cylinder flow
     ! Calculate radius**2
     radius=x(1)*x(1)+x(2)*x(2)
     ! Calculate velocities, radius of cylinder=0.5
-    prim(2)=RefStatePrim(IniRefState,2)*(COS(phi)**2*(1.-0.25/radius)+SIN(phi)**2*(1.+0.25/radius))
-    prim(3)=RefStatePrim(IniRefState,2)*(-2.)*SIN(phi)*COS(phi)*0.25/radius
+    prim(2)=RefStatePrim(2,IniRefState)*(COS(phi)**2*(1.-0.25/radius)+SIN(phi)**2*(1.+0.25/radius))
+    prim(3)=RefStatePrim(2,IniRefState)*(-2.)*SIN(phi)*COS(phi)*0.25/radius
     ! Calculate pressure, RefState(2)=u_infinity
-    prim(5)=RefStatePrim(IniRefState,5) + &
-            0.5*prim(1)*(RefStatePrim(IniRefState,2)*RefStatePrim(IniRefState,2)-prim(2)*prim(2)-prim(3)*prim(3))
+    prim(5)=RefStatePrim(5,IniRefState) + &
+            0.5*prim(1)*(RefStatePrim(2,IniRefState)*RefStatePrim(2,IniRefState)-prim(2)*prim(2)-prim(3)*prim(3))
     prim(6) = prim(5)/(prim(1)*R)
   ELSE  ! Use RefState as BC
-    prim=RefStatePrim(IniRefState,:)
+    prim=RefStatePrim(:,IniRefState)
   END IF  ! t=0
   CALL PrimToCons(prim,resu)
 CASE(7) ! SHU VORTEX,isentropic vortex
   ! base flow
-  prim=RefStatePrim(IniRefState,:)  ! Density
+  prim=RefStatePrim(:,IniRefState)  ! Density
   ! ini-Parameter of the Example
   vel=prim(2:4)
   RT=prim(PP_nVar)/prim(1) !ideal gas
@@ -423,7 +448,7 @@ CASE(9) !lid driven cavity flow from Gao, Hesthaven, Warburton
         !"Absorbing layers for weakly compressible flows", to appear, JSC, 2016
         ! Special "regularized" driven cavity BC to prevent singularities at corners
         ! top BC assumed to be in x-direction from 0..1
-  Prim = RefStatePrim(IniRefState,:)
+  Prim = RefStatePrim(:,IniRefState)
   IF (x(1).LT.0.2) THEN 
     prim(2)=1000*4.9333*x(1)**4-1.4267*1000*x(1)**3+0.1297*1000*x(1)**2-0.0033*1000*x(1)
   ELSEIF (x(1).LE.0.8) THEN
@@ -461,20 +486,33 @@ CASE(10) ! shock
 CASE(11) ! Sod Shock tube
   xs = 0.5
   IF (X(1).LE.xs) THEN
-    Resu = RefStateCons(1,:)
+    Resu = RefStateCons(:,1)
   ELSE
-    Resu = RefStateCons(2,:)
+    Resu = RefStateCons(:,2)
   END IF
+CASE(12) ! Shu Osher density fluctuations shock wave interaction 
+  IF (x(1).LT.-4.0) THEN
+    prim(1) = 3.857143
+    prim(2) = 2.629369
+    prim(3:4) = 0.
+    prim(5) = 10.33333
+  ELSE
+    prim(1) = 1.+0.2*SIN(5.*x(1))
+    prim(2:4) = 0.
+    prim(5) = 1.
+  END IF
+  CALL PrimToCons(prim,resu)
+
 CASE(13) ! DoubleMachReflection (see e.g. http://www.astro.princeton.edu/~jstone/Athena/tests/dmr/dmr.html )
   IF (x(1).EQ.0.) THEN
-    prim = RefStatePrim(1,:)
+    prim = RefStatePrim(:,1)
   ELSE IF (x(1).EQ.4.0) THEN
-    prim = RefStatePrim(2,:)
+    prim = RefStatePrim(:,2)
   ELSE
     IF (x(1).LT.1./6.+(x(2)+20.*t)*1./3.**0.5) THEN
-      prim = RefStatePrim(1,:)
+      prim = RefStatePrim(:,1)
     ELSE
-      prim = RefStatePrim(2,:)
+      prim = RefStatePrim(:,2)
     END IF
   END IF
   CALL PrimToCons(prim,resu)
