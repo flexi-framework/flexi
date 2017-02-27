@@ -315,7 +315,7 @@ REAL,INTENT(IN)                 :: t                      !< Current time
 ! MAIN STEPS        []=FV only,  {}=selective overintegration only
 ! -----------------------------------------------------------------------------
 ! 0.  Convert volume solution to primitive 
-! 1.  Pronlong to face (fill U_master/slave)
+! 1.  Prolong to face (fill U_master/slave)
 !{2.} Prepare terms for advective volume integral (DG selective only)
 ! 3.  ConsToPrim of face data (U_master/slave)
 ![4.] Second order reconstruction for FV 
@@ -454,7 +454,7 @@ CALL FV_ProlongToDGFace(UPrim_master,UPrim_slave,FV_multi_master,FV_multi_slave,
     doMPISides=.TRUE.) 
 #endif /*USE_MPI*/
 
-! Calculate FD-Gradients over inner Sides
+! Calculate FV-Gradients over inner Sides
 ! 4.2)
 CALL FV_SurfCalcGradients(UPrim_master,UPrim_slave,FV_multi_master,FV_multi_slave,&
     FV_surf_gradU_master,FV_surf_gradU_slave,doMPISides=.FALSE.)

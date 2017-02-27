@@ -295,28 +295,23 @@ USE MOD_ChangeBasisByDim  ,ONLY: ChangeBasisVolume
 USE MOD_Mesh_Vars         ,ONLY: Elem_xGP
 USE MOD_Equation_Vars     ,ONLY: IniExactFunc
 USE MOD_Exactfunc         ,ONLY: ExactFunc
-USE MOD_Interpolation_Vars,ONLY: NodeTypeG, NodeTypeVISUInner
+USE MOD_Interpolation_Vars,ONLY: NodeType, NodeTypeVISUInner
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER           :: i,iElem, j,k,ii,jj,kk,iVar
-<<<<<<< HEAD
-REAL              :: Vdm(0:(PP_N+1)**2-1,0:PP_N), xx(1:3,0:(PP_N+1)**2-1,0:(PP_N+1)**2-1,0:(PP_NZ+1)**2-1)
-REAL              :: tmp(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
-=======
 REAL              :: Vdm(0:(PP_N+1)**2-1,0:PP_N)
 REAL,ALLOCATABLE  :: xx(:,:,:,:)
-REAL              :: tmp(1:PP_nVar,0:PP_N,0:PP_N,0:PP_N)
->>>>>>> master
+REAL              :: tmp(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 !===================================================================================================================================
-ALLOCATE(xx(1:3,0:(PP_N+1)**2-1,0:(PP_N+1)**2-1,0:(PP_N+1)**2-1))
+ALLOCATE(xx(1:3,0:(PP_N+1)**2-1,0:(PP_N+1)**2-1,0:(PP_NZ+1)**2-1))
 ! initial call of indicator
 CALL CalcIndicator(U,0.)
 FV_Elems = 0
 CALL FV_Switch(AllowToDG=.FALSE.)
 
 ! build vandermonde to supersample each subcell with PP_N points per direction
-CALL GetVandermonde(PP_N,NodetypeG,(PP_N+1)**2-1,NodeTypeVISUInner,Vdm)
+CALL GetVandermonde(PP_N,Nodetype,(PP_N+1)**2-1,NodeTypeVISUInner,Vdm)
 DO iElem=1,nElems
   IF (FV_Elems(iElem).EQ.0) CYCLE ! DG element
   ! supersample all subcells
@@ -330,7 +325,7 @@ DO iElem=1,nElems
         END DO; END DO; END DO
         ! mean value 
         DO iVar=1,PP_nVar
-          U(iVar,i,j,k,iElem) = SUM(tmp(iVar,:,:,:)) / (PP_N+1)**2*(PP_NZ+1)
+          U(iVar,i,j,k,iElem) = SUM(tmp(iVar,:,:,:)) / ((PP_N+1)**2*(PP_NZ+1))
         END DO
       END DO ! i
     END DO ! j

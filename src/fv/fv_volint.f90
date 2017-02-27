@@ -65,7 +65,7 @@ INTEGER                                          :: i,j,k,p,q,iElem
 REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_NZ)        :: UPrim_L,UPrim_R
 REAL,DIMENSION(PP_nVar    ,0:PP_N,0:PP_NZ)        :: UCons_L,UCons_R
 #if PARABOLIC
-REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)     :: diffFlux_x,diffFlux_y,diffFlux_z
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_NZ,0:PP_N)     :: diffFlux_x,diffFlux_y,diffFlux_z
 REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_NZ)            :: Fvisc_FV
 REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)     :: f,g,h      !< viscous volume fluxes at GP
 #endif  
@@ -193,7 +193,7 @@ DO iElem=1,nElems
       Ut_FV(:,i,j,k  ,iElem) = Ut_FV(:,i,j,k  ,iElem) - F_FV(:,i,j) * FV_SurfElemZeta_sw(i,j,k,iElem)
     END DO; END DO
   END DO ! k
-#endif  
+#endif /* PP_dim == 3 */ 
 
 END DO ! iElem
 END SUBROUTINE FV_VolInt

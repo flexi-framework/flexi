@@ -238,7 +238,7 @@ CASE(2) !Exact function or refstate
       CALL ConsToPrim(UPrim_boundary(:,p,q),Cons)
     END DO; END DO
   ELSE
-    DO q=0,Nloc; DO p=0,Nloc
+    DO q=0,PP_NlocZ; DO p=0,Nloc
       UPrim_boundary(:,p,q) = RefStatePrim(:,BCState)
     END DO; END DO
   END IF

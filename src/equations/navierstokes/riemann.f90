@@ -270,7 +270,11 @@ DO j=0,PP_NlocZ; DO i=0,Nloc
   Fout(DENS,i,j)=F(DENS)
   Fout(MOMV,i,j)=nv(:,i,j)*F(MOM1)     &
                   + t1(:,i,j)*F(MOM2)  &
-                  + t2(:,i,j)*F(MOM3)  
+#if PP_dim==3
+                  + t2(:,i,j)*F(MOM3) 
+#else
+                  + 0.
+#endif
   Fout(ENER,i,j)=F(ENER)
 END DO; END DO
 

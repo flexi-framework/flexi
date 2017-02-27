@@ -1,4 +1,4 @@
-!=================================================================================================================================
+!!=================================================================================================================================
 ! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
@@ -115,10 +115,12 @@ DO SideID=firstSideID,lastSideID
       DO q=0,PP_NZ; DO p=0,PP_N
         tmp(:,p,q) =  (UPrim(:,p,1,q,ElemID) - UPrim(:,p,0,q,ElemID)) * FV_sdx_ETA(p,1,q,ElemID)
       END DO; END DO
+#if PP_dim == 3
     CASE(ZETA_MINUS)
       DO q=0,PP_NZ; DO p=0,PP_N
         tmp(:,p,q) =  (UPrim(:,p,q,1,ElemID) - UPrim(:,p,q,0,ElemID)) * FV_sdx_ZETA(p,q,1,ElemID)
       END DO; END DO
+#endif
     CASE(XI_PLUS)
       DO q=0,PP_NZ; DO p=0,PP_N
         tmp(:,p,q) =  (UPrim(:,PP_N-1,p,q,ElemID) - UPrim(:,PP_N,p,q,ElemID)) * FV_sdx_XI(PP_N,p,q,ElemID)
@@ -127,10 +129,12 @@ DO SideID=firstSideID,lastSideID
       DO q=0,PP_NZ; DO p=0,PP_N
         tmp(:,p,q) =  (UPrim(:,p,PP_N-1,q,ElemID) - UPrim(:,p,PP_N,q,ElemID)) * FV_sdx_ETA(p,PP_N,q,ElemID)
       END DO; END DO
+#if PP_dim == 3
     CASE(ZETA_PLUS)
       DO q=0,PP_NZ; DO p=0,PP_N
         tmp(:,p,q) =  (UPrim(:,p,q,PP_N-1,ElemID) - UPrim(:,p,q,PP_N,ElemID)) * FV_sdx_ZETA(p,q,PP_N,ElemID)
       END DO; END DO
+#endif
     END SELECT
 
     DO q=0,PP_NZ; DO p=0,PP_N
@@ -174,10 +178,12 @@ DO SideID=firstSideID,lastSideID
       DO q=0,PP_NZ; DO p=0,PP_N
         tmp(:,p,q) =  (UPrim(:,p,1,q,ElemID) - UPrim(:,p,0,q,ElemID)) * FV_sdx_ETA(p,1,q,ElemID)
       END DO; END DO
+#if PP_dim == 3
     CASE(ZETA_MINUS)
       DO q=0,PP_NZ; DO p=0,PP_N
         tmp(:,p,q) =  (UPrim(:,p,q,1,ElemID) - UPrim(:,p,q,0,ElemID)) * FV_sdx_ZETA(p,q,1,ElemID)
       END DO; END DO
+#endif
     CASE(XI_PLUS)
       DO q=0,PP_NZ; DO p=0,PP_N
         tmp(:,p,q) =  (UPrim(:,PP_N-1,p,q,ElemID) - UPrim(:,PP_N,p,q,ElemID)) * FV_sdx_XI(PP_N,p,q,ElemID)
@@ -186,10 +192,12 @@ DO SideID=firstSideID,lastSideID
       DO q=0,PP_NZ; DO p=0,PP_N
         tmp(:,p,q) =  (UPrim(:,p,PP_N-1,q,ElemID) - UPrim(:,p,PP_N,q,ElemID)) * FV_sdx_ETA(p,PP_N,q,ElemID)
       END DO; END DO
+#if PP_dim == 3
     CASE(ZETA_PLUS)
       DO q=0,PP_NZ; DO p=0,PP_N
         tmp(:,p,q) =  (UPrim(:,p,q,PP_N-1,ElemID) - UPrim(:,p,q,PP_N,ElemID)) * FV_sdx_ZETA(p,q,PP_N,ElemID)
       END DO; END DO
+#endif
     END SELECT
 
     DO q=0,PP_NZ; DO p=0,PP_N
@@ -282,15 +290,9 @@ USE MOD_GetBoundaryFlux ,ONLY: GetBoundaryFVgradient
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-<<<<<<< HEAD
-REAL,INTENT(IN)  :: t
-REAL,INTENT(IN)  :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides)
-REAL,INTENT(OUT) :: FV_surf_gradU_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides)
-=======
 REAL,INTENT(IN)    :: t
-REAL,INTENT(IN)    :: UPrim_master(        PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
-REAL,INTENT(INOUT) :: FV_surf_gradU_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
->>>>>>> master
+REAL,INTENT(IN)    :: UPrim_master(        PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides)
+REAL,INTENT(INOUT) :: FV_surf_gradU_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER             :: SideID
