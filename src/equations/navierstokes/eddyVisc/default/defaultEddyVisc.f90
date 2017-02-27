@@ -23,7 +23,7 @@ MODULE MOD_DefaultEddyVisc
 IMPLICIT NONE
 PRIVATE
 
-PUBLIC::DefaultEddyVisc,DefaultEddyVisc_surf
+PUBLIC::DefaultEddyVisc,DefaultEddyVisc_surf,FinalizeDefaultEddyViscosity
 !===================================================================================================================================
 
 CONTAINS
@@ -69,5 +69,25 @@ REAL,INTENT(OUT)                          :: muSGS             !< local SGS visc
 !===================================================================================================================================
 muSGS = 0.
 END SUBROUTINE DefaultEddyVisc_surf
+
+!===============================================================================================================================
+!> Deallocate arrays and finalize variables used by Smagorinsky SGS model
+!===============================================================================================================================
+SUBROUTINE FinalizeDefaultEddyviscosity()
+! MODULES
+USE MOD_EddyVisc_Vars
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!===============================================================================================================================
+DEALLOCATE(DeltaS)
+DEALLOCATE(DeltaS_master)
+DEALLOCATE(DeltaS_slave)
+DEALLOCATE(SGS_Ind)
+DEALLOCATE(SGS_Ind_master)
+DEALLOCATE(SGS_Ind_slave)
+DEALLOCATE(muSGS)
+DEALLOCATE(muSGSmax)
+dynsmagInitIsDone = .FALSE.
+END SUBROUTINE FinalizeDefaultEddyViscosity
 
 END MODULE MOD_DefaultEddyVisc

@@ -72,9 +72,6 @@ USE MOD_Lifting_Vars ,ONLY: gradUx,gradUy,gradUz
 #if FV_ENABLED
 USE MOD_FV_Vars      ,ONLY: FV_Elems
 #endif
-#if EDDYVISCOSITY
-USE MOD_EddyVisc_Vars, ONLY: muSGSmax
-#endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
