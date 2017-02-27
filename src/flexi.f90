@@ -53,6 +53,7 @@ USE MOD_Indicator,         ONLY:DefineParametersIndicator,InitIndicator,Finalize
 USE MOD_ReadInTools,       ONLY:prms,IgnoredParameters,PrintDefaultParameterFile,FinalizeParameters
 #ifdef EDDYVISCOSITY
 USE MOD_EddyVisc,          ONLY:DefineParametersEddyVisc
+USE MOD_EddyVisc_Vars,     ONLY:FinalizeEddyViscosity
 #endif
 USE MOD_GenerateUnittestReferenceData
 USE MOD_StringTools  ,ONLY:STRICMP
@@ -201,6 +202,9 @@ CALL FinalizeMortar()
 CALL FinalizeSponge()
 CALL FinalizeOverintegration()
 CALL FinalizeFilter()
+#if EDDYVISCOSITY
+CALL FinalizeEddyViscosity
+#endif
 #if FV_ENABLED
 CALL FinalizeFV_Basis()
 #endif

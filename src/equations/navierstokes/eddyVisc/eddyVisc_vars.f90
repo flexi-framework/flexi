@@ -39,6 +39,11 @@ ABSTRACT INTERFACE
   END SUBROUTINE
 END INTERFACE
 
+ABSTRACT INTERFACE
+  SUBROUTINE FinalizeEddyViscosityInt()
+  END SUBROUTINE
+END INTERFACE
+
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -47,6 +52,7 @@ CHARACTER(LEN=255)                  :: WallDistFile
 PROCEDURE(EddyViscInt)     ,POINTER :: eddyViscosity          !< pointer to routine for computing volume eddy viscosity
 PROCEDURE(EddyVisc_surfInt),POINTER :: eddyViscosity_surf     !< pointer to routine for computing surface eddy viscosity
 PROCEDURE(testfilterInt),POINTER       :: testfilter     !< pointer to routine for computing test filter
+PROCEDURE(FinalizeEddyViscosityInt),POINTER       :: FinalizeEddyViscosity     !< pointer tofinalize routine 
 
 !Smagosinsky Standard
 REAL,ALLOCATABLE  :: DeltaS(:)         !< filter width, used by Smagorinsky modell
@@ -56,18 +62,15 @@ REAL,ALLOCATABLE  :: muSGS(:,:,:,:,:)  !< Viscosity for the sub-grid
 REAL,ALLOCATABLE  :: muSGSmax(:)       !< Viscosity for the sub-grid
 REAL              :: CS                !< Smagorinsky constant, LES
 REAL              :: PrSGS             !< Prandtl number for the sub-grid scales
-!TKECUbed
-REAL,ALLOCATABLE  :: FilterMat_Testfilter(:,:) 
-REAL,ALLOCATABLE  :: SGS_Ind(:,:,:,:,:) 
-REAL,ALLOCATABLE  :: MM_Avg(:,:,:,:) 
-REAL,ALLOCATABLE  :: ML_Avg(:,:,:,:) 
-REAL,ALLOCATABLE  :: SGS_Ind_master(:,:,:,:) 
-REAL,ALLOCATABLE  :: SGS_Ind_slave(:,:,:,:) 
 ! Dynamic Smagorinsky
-REAL,ALLOCATABLE  :: IntElem(:,:,:,:) 
-LOGICAL, ALLOCATABLE :: filter_ind(:,:) !< Do filter along i,j,k index?
-LOGICAL, ALLOCATABLE :: average_ind(:,:) !< Do average along i,j,k index?
-INTEGER              :: average_type
+REAL,ALLOCATABLE     :: FilterMat_Testfilter(:,:) 
+REAL,ALLOCATABLE     :: SGS_Ind(:,:,:,:,:) 
+REAL,ALLOCATABLE     :: SGS_Ind_master(:,:,:,:) 
+REAL,ALLOCATABLE     :: SGS_Ind_slave(:,:,:,:) 
+REAL,ALLOCATABLE     :: IntElem(:,:,:,:) 
+LOGICAL,ALLOCATABLE  :: filter_ind(:,:) !< Do filter along i,j,k index?
+LOGICAL,ALLOCATABLE  :: average_ind(:,:) !< Do average along i,j,k index?
+INTEGER,ALLOCATABLE  :: average_type(:)  !< Type of average_ind for select case
 !MATTEO:debug output
 REAL,ALLOCATABLE  :: S_en_out(:,:,:,:,:)  !< Debug output of |S|
 REAL,ALLOCATABLE  :: filtdir_out(:)  !< Debug output of filtering directions

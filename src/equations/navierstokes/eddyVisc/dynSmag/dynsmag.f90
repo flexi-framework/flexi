@@ -20,10 +20,6 @@ INTERFACE dynsmag
   MODULE PROCEDURE dynsmag
 END INTERFACE
 
-INTERFACE dynsmag_surf
-  MODULE PROCEDURE dynsmag_surf
-END INTERFACE
-
 INTERFACE compute_cd 
   MODULE PROCEDURE compute_cd 
 END INTERFACE
@@ -32,7 +28,7 @@ INTERFACE Finalizedynsmag
   MODULE PROCEDURE Finalizedynsmag
 END INTERFACE
 
-PUBLIC::Initdynsmag,dynsmag,dynsmag_surf,compute_cd,Finalizedynsmag
+PUBLIC::Initdynsmag,dynsmag,compute_cd,Finalizedynsmag
 INTEGER::N_testfilter
 !===================================================================================================================================
 
@@ -52,15 +48,11 @@ USE MOD_Interpolation_Vars,   ONLY:InterpolationInitIsDone,Vdm_Leg,sVdm_Leg,Node
 USE MOD_Interpolation,        ONLY:GetVandermonde
 USE MOD_ChangeBasis,          ONLY:changeBasis3D
 USE MOD_Interpolation_Vars,   ONLY:wGP
-USE MOD_Mesh_Vars,            ONLY:sJ,nSides,nElems
-USE MOD_Mesh_Vars,            ONLY:ElemToSide,dXCL_N
+USE MOD_Mesh_Vars,            ONLY:sJ,nElems
+USE MOD_Mesh_Vars,            ONLY:dXCL_N
 USE MOD_Mesh_Vars,            ONLY:Metrics_fTilde,Metrics_gTilde,Metrics_hTilde
 USE MOD_Testcase_Vars,        ONLY:testcase
 USE MOD_HDF5_input,           ONLY: OpenDataFile,CloseDataFile,ReadArray
-#if MPI
-USE MOD_MPI,                  ONLY:StartReceiveMPIData,FinishExchangeMPIData,StartSendMPIData
-USE MOD_MPI_Vars,             ONLY:MPIRequest_DeltaS,nNbProcs
-#endif /*MPI*/ 
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -69,14 +61,11 @@ USE MOD_MPI_Vars,             ONLY:MPIRequest_DeltaS,nNbProcs
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER :: i,iElem,j,k, iDir
-REAL    :: CellVol
-INTEGER :: iLocSide,SideID,FlipID
-REAL    :: vec(3), parvec(3), parcomp, normvec(3), normcomp, parcomps(3)
-integer :: dirv(1)
-REAL    :: EwallDist(3,nElems)
-REAL    :: WallDistTrsh, distNorm
 LOGICAL :: isn
+INTEGER :: i,j,k,iElem
+REAL    :: WallDistTrsh, distNorm
+REAL    :: vec(3)
+REAL    :: EwallDist(3,nElems)
 REAL    :: Vdm_CLN_N(         0:PP_N   ,0:PP_N)
 REAL    :: dX_N(3, 0:PP_N,  0:PP_N   ,0:PP_N)
 !===================================================================================================================================
@@ -122,54 +111,7 @@ DO iElem=1,nElems
     !MATTEO: DEBUG
     filtdir_out(iElem) = 8.0
   ELSE ! in the boundary layer
-    !! Filter and average only normal to the boundary
-    !!i, average on the four edges
-    !vec = Elem_xgp(:,PP_N,0,0,iElem) - Elem_xgp(:,0,0,0,iElem)
-    !vec = vec + (Elem_xgp(:,PP_N,PP_N,0,iElem) - Elem_xgp(:,0,PP_N,0,iElem))
-    !vec = vec + (Elem_xgp(:,PP_N,0,PP_N,iElem) - Elem_xgp(:,0,0,PP_N,iElem))
-    !vec = vec + (Elem_xgp(:,PP_N,PP_N,PP_N,iElem) - Elem_xgp(:,0,PP_N,PP_N,iElem))
-    !vec = vec/4.0
-    !vec = vec/sqrt(sum(vec**2)) !Unit vector of i direction
-    !parcomps(1) = proj(vec,EwallDist(:,iElem))
-    !!j
-    !vec = Elem_xgp(:,0,PP_N,0,iElem) - Elem_xgp(:,0,0,0,iElem)
-    !vec = vec + (Elem_xgp(:,PP_N,PP_N,0,iElem) - Elem_xgp(:,PP_N,0,0,iElem))
-    !vec = vec + (Elem_xgp(:,0,PP_N,PP_N,iElem) - Elem_xgp(:,0,0,PP_N,iElem))
-    !vec = vec + (Elem_xgp(:,PP_N,PP_N,PP_N,iElem) - Elem_xgp(:,PP_N,0,PP_N,iElem))
-    !vec = vec/4.0
-    !vec = vec/sqrt(sum(vec**2))
-    !parcomps(2) = proj(vec,EwallDist(:,iElem))
-    !!k
-    !vec = Elem_xgp(:,0,0,PP_N,iElem) - Elem_xgp(:,0,0,0,iElem)
-    !vec = vec + (Elem_xgp(:,PP_N,0,PP_N,iElem) - Elem_xgp(:,PP_N,0,0,iElem))
-    !vec = vec + (Elem_xgp(:,0,PP_N,PP_N,iElem) - Elem_xgp(:,0,PP_N,0,iElem))
-    !vec = vec + (Elem_xgp(:,PP_N,PP_N,PP_N,iElem) - Elem_xgp(:,PP_N,PP_N,0,iElem))
-    !vec = vec/4.0
-    !vec = vec/sqrt(sum(vec**2))
-    !parcomps(3) = proj(vec,EwallDist(:,iElem))
-    !
-    !!Find out which is the direction "more parallel" to distance
-    !iDir = maxloc(parcomps,1)
-    !filter_ind(:,iElem) = .true.
-    !average_ind(:,iElem) = .true.
-    !!Exclude that direction from filtering and averaging
-    !IF(iDir .EQ. 1) THEN
-    !  filter_ind(1,iElem) = .false. 
-    !  average_ind(1,iElem) = .false. 
-    !  !MATTEO: DEBUG
-    !  filtdir_out(iElem) = 1.0
-    !ELSE IF(iDir .EQ. 2) THEN
-    !  filter_ind(2,iElem) = .false. 
-    !  average_ind(2,iElem) = .false. 
-    !  !MATTEO: DEBUG
-    !  filtdir_out(iElem) = 2.0
-    !ELSE IF(iDir .EQ. 3) THEN
-    !  filter_ind(3,iElem) = .false. 
-    !  average_ind(3,iElem) = .false. 
-    !  !MATTEO: DEBUG
-    !  filtdir_out(iElem) = 3.0
-    !END IF
-    ! Filter and average only normal to the boundary                    
+    ! Filter and average only the plane normal to the boundary                    
     !i, average on the four edges                                       
     vec = Elem_xgp(:,PP_N,0,0,iElem) - Elem_xgp(:,0,0,0,iElem)          
     vec = vec + (Elem_xgp(:,PP_N,PP_N,0,iElem) - Elem_xgp(:,0,PP_N,0,iElem))
@@ -178,7 +120,7 @@ DO iElem=1,nElems
     vec = vec/4.0                                                       
     vec = vec/sqrt(sum(vec**2)) !Unit vector of i direction             
     !If i is normal to the distance filter and average in i             
-    isn = isnormal(vec,EwallDist(:,iElem))                              
+    isn = ISNORMAL(vec,EwallDist(:,iElem))                              
     filter_ind(1,iElem) = isn                                           
     average_ind(1,iElem) = isn                                          
     !MATTEO: DEBUG                                                      
@@ -191,7 +133,7 @@ DO iElem=1,nElems
     vec = vec/4.0                                                       
     vec = vec/sqrt(sum(vec**2))                                         
     !If j is normal to the distance filter and average in j             
-    isn = isnormal(vec,EwallDist(:,iElem))                              
+    isn = ISNORMAL(vec,EwallDist(:,iElem))                              
     filter_ind(2,iElem) =  isn                                          
     average_ind(2,iElem) = isn                                          
     !MATTEO: DEBUG                                                      
@@ -204,7 +146,7 @@ DO iElem=1,nElems
     vec = vec/4.0                                                       
     vec = vec/sqrt(sum(vec**2))                                         
     !If k is normal to the distance filter and average in k             
-    isn = isnormal(vec,EwallDist(:,iElem))                                                                           
+    isn = ISNORMAL(vec,EwallDist(:,iElem))                                                                           
     filter_ind(3,iElem) = isn                                           
     average_ind(3,iElem) = isn                                          
     !MATTEO: DEBUG                                                      
@@ -219,82 +161,53 @@ DO iElem=1,nElems
     DO i=0,PP_N; DO j=0,PP_N; DO k=0,PP_N
       IntElem(i,j,k,iElem) = IntElem(i,j,k,iElem)*wGP(i)*wGP(j)*wGP(k)
     END DO; END DO; END DO
-    average_type = 1
+    average_type(iElem) = 1
   ELSEIF (.NOT.average_ind(1,iElem).AND.average_ind(2,iElem).AND.average_ind(3,iElem)) THEN ! I-Plane 
     DO i=0,PP_N; DO j=0,PP_N; DO k=0,PP_N
       IntElem(i,j,k,iElem) = SQRT(SUM(Metrics_ftilde(:,i,j,k,iElem,0)**2))
       IntElem(i,j,k,iElem) = IntElem(i,j,k,iElem)*wGP(j)*wGP(k)
     END DO; END DO; END DO
-    average_type = 2
+    average_type(iElem) = 2
   ELSEIF (average_ind(1,iElem).AND..NOT.average_ind(2,iElem).AND.average_ind(3,iElem)) THEN ! J-Plane 
     DO i=0,PP_N; DO j=0,PP_N; DO k=0,PP_N
       IntElem(i,j,k,iElem) = SQRT(SUM(Metrics_gtilde(:,i,j,k,iElem,0)**2))
       IntElem(i,j,k,iElem) = IntElem(i,j,k,iElem)*wGP(i)*wGP(k)
     END DO; END DO; END DO
-    average_type = 3
+    average_type(iElem) = 3
   ELSEIF (average_ind(1,iElem).AND.average_ind(2,iElem).AND..NOT.average_ind(3,iElem)) THEN ! K-Plane 
     DO i=0,PP_N; DO j=0,PP_N; DO k=0,PP_N
       IntElem(i,j,k,iElem) = SQRT(SUM(Metrics_htilde(:,i,j,k,iElem,0)**2))
       IntElem(i,j,k,iElem) = IntElem(i,j,k,iElem)*wGP(i)*wGP(j)
     END DO; END DO; END DO
-    average_type = 4
+    average_type(iElem) = 4
   ELSEIF (average_ind(1,iElem).AND..NOT.average_ind(2,iElem).AND..NOT.average_ind(3,iElem)) THEN ! I-Line 
     CALL ChangeBasis3D(3,PP_N,PP_N,Vdm_CLN_N,dXCL_N(1,1:3,:,:,:,iElem),dX_N(:,:,:,:))
     IntElem(:,:,:,iElem) = (dX_N(1,:,:,:)**2+dX_N(2,:,:,:)**2+dX_N(3,:,:,:)**2)**0.5
     DO i=0,PP_N; DO j=0,PP_N; DO k=0,PP_N
       IntElem(i,j,k,iElem) = IntElem(i,j,k,iElem)*wGP(i)
     END DO; END DO; END DO
-    average_type = 5
+    average_type(iElem) = 5
   ELSEIF (.NOT.average_ind(1,iElem).AND.average_ind(2,iElem).AND..NOT.average_ind(3,iElem)) THEN ! J-Line 
     CALL ChangeBasis3D(3,PP_N,PP_N,Vdm_CLN_N,dXCL_N(2,1:3,:,:,:,iElem),dX_N(:,:,:,:))
     IntElem(:,:,:,iElem) = (dX_N(1,:,:,:)**2+dX_N(2,:,:,:)**2+dX_N(3,:,:,:)**2)**0.5
     DO i=0,PP_N; DO j=0,PP_N; DO k=0,PP_N
       IntElem(i,j,k,iElem) = IntElem(i,j,k,iElem)*wGP(j)
     END DO; END DO; END DO
-    average_type = 6
+    average_type(iElem) = 6
   ELSEIF (.NOT.average_ind(1,iElem).AND..NOT.average_ind(2,iElem).AND.average_ind(3,iElem)) THEN ! K-Line
     CALL ChangeBasis3D(3,PP_N,PP_N,Vdm_CLN_N,dXCL_N(3,1:3,:,:,:,iElem),dX_N(:,:,:,:))
     IntElem(:,:,:,iElem) = (dX_N(1,:,:,:)**2+dX_N(2,:,:,:)**2+dX_N(3,:,:,:)**2)**0.5
     DO i=0,PP_N; DO j=0,PP_N; DO k=0,PP_N
       IntElem(i,j,k,iElem) = IntElem(i,j,k,iElem)*wGP(k)
     END DO; END DO; END DO
-    average_type = 7
+    average_type(iElem) = 7
   END IF
 END DO
 
-! Calculate the filter width deltaS: deltaS=( Cell volume )^(1/3) / ( PP_N+1 )
-
-DO iElem=1,nElems                                        
-  CellVol = 0.
-  DO i=0,PP_N
-    DO j=0,PP_N
-      DO k=0,PP_N
-        CellVol = CellVol +wGP(i)*wGP(j)*wGP(k)/sJ(i,j,k,iElem,0)
-      END DO
-    END DO
-  END DO
-  DeltaS(iElem) = ( CellVol)**(1./3.)  / (REAL(PP_N)+1.)
-  DO iLocSide=1,6
-     SideID=ElemToSide(E2S_SIDE_ID,iLocSide,iElem)
-     FlipID=ElemToSide(E2S_FLIP,iLocSide,iElem) 
-     IF(FlipID.EQ.0) THEN
-       DeltaS_master(SideID)=DeltaS(iElem)
-     ELSE
-       DeltaS_slave(SideID)=DeltaS(iElem)
-     END IF
-  END DO
-END DO
-#if MPI
-! Send YOUR - receive MINE
-CALL StartReceiveMPIData(DeltaS_slave, 1, 1,nSides,MPIRequest_DeltaS( :,SEND),SendID=1)
-CALL StartSendMPIData(   DeltaS_slave, 1, 1,nSides,MPIRequest_DeltaS( :,RECV),SendID=1)
-CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_DeltaS ) !Send MINE -receive YOUR
-#endif /*MPI*/
 N_Testfilter = GETINT('N_Testfilter')
 DO i=0,N_Testfilter
   FilterMat_Testfilter(i,i) = 1.
 END DO
-!FilterMat_Testfilter(N_testfilter+1,N_testfilter+1) = 0.5
 SWRITE(*,'(A)',ADVANCE='NO')'TEST FILTER, FILTER DIAGONAL: '
 DO i=0,PP_N
   SWRITE(*,'(F7.3)',ADVANCE='NO')FilterMat_Testfilter(i,i)
@@ -311,8 +224,7 @@ SUBROUTINE dynsmag(grad11,grad22,grad33,grad12,grad13,grad21,grad23,grad31,grad3
 !===================================================================================================================================
 ! MODULES
 USE MOD_PreProc
-USE MOD_EddyVisc_Vars,     ONLY:deltaS,CS,VanDriest,SGS_Ind,muSGSmax,S_en_out
-USE MOD_Mesh_Vars,         ONLY:Elem_xGP
+USE MOD_EddyVisc_Vars,     ONLY:SGS_Ind,muSGSmax,S_en_out
 
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -328,7 +240,6 @@ REAL,INTENT(INOUT)                          :: muSGS
 REAL                :: S_eN
 REAL                :: divv
 !===================================================================================================================================
-! die zwei aus der Wurzel gleich hier oben verarbeitet, spart eine Operation
 divv    = grad11+grad22+grad33
 S_eN = 2*((grad11-2./3.*divv)**2. + (grad22-2./3.*divv)**2. + (grad33-2./3.*divv)**2.)
 S_eN = S_eN + ( grad12 + grad21 )**2.
@@ -342,39 +253,6 @@ SGS_Ind(2,i,j,k,iElem) = muSGS
 muSGSmax(iElem) = MAX(muSGS,muSGSmax(iElem))
 END SUBROUTINE dynsmag
 
-SUBROUTINE dynsmag_surf(grad11,grad22,grad33,grad12,grad13,grad21,grad23,grad31,grad32,rho,DeltaSS,cd,muSGS,Face_xGP)
-!===================================================================================================================================
-!Compute dynsmag Eddy-Visosity at a given point
-!===================================================================================================================================
-! MODULES
-USE MOD_PreProc
-USE MOD_EddyVisc_Vars,     ONLY:CS
-
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-REAL,INTENT(IN)                           :: grad11,grad22,grad33,grad12,grad13,grad21,grad23,grad31,grad32,rho
-REAL,INTENT(IN)                           :: DeltaSS 
-REAL,INTENT(IN)                           :: cd,Face_xGP
-REAL,INTENT(OUT)                          :: muSGS 
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-REAL                :: S_eN
-REAL                :: divv
-!===================================================================================================================================
-divv    = grad11+grad22+grad33
-S_eN = 2*((grad11-2./3.*divv)**2. + (grad22-2./3.*divv)**2. + (grad33-2./3.*divv)**2.)
-S_eN = S_eN + ( grad12 + grad21 )**2.
-S_eN = S_eN + ( grad13 + grad31 )**2.
-S_eN = S_eN + ( grad23 + grad32 )**2.
-S_eN = sqrt(S_eN)
-! dynsmag model
-muSGS= cd  * S_eN*rho
-END SUBROUTINE dynsmag_surf
-
 SUBROUTINE compute_cd(U_in)
 !===============================================================================================================================
 !compute TKE indicator needed for the modification of Smagorinskys viscosity.
@@ -382,20 +260,11 @@ SUBROUTINE compute_cd(U_in)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_EddyVisc_Vars,          ONLY:SGS_Ind,FilterMat_testfilter, IntElem, average_type 
-USE MOD_EddyVisc_Vars,          ONLY:SGS_Ind!,SGS_Ind_Slave,SGS_Ind_Master
-USE MOD_EddyVisc_Vars,          ONLY:MM_Avg, ML_Avg, filter_ind, average_ind
-!USE MOD_ProlongToFace1,         ONLY: ProlongToFace1
-USE MOD_Filter,                 ONLY:Filter_General, Filter_Selective
+USE MOD_EddyVisc_Vars,          ONLY:SGS_Ind,FilterMat_testfilter, IntElem
+USE MOD_EddyVisc_Vars,          ONLY:filter_ind, average_type 
+USE MOD_Filter,                 ONLY:Filter_Selective
 USE MOD_Lifting_Vars,           ONLY:gradUx,gradUy,gradUz
-USE MOD_Interpolation_Vars,     ONLY:wGP
-USE MOD_Mesh_Vars,              ONLY:sJ, nSides, nElems
-USE MOD_Timedisc_Vars,          ONLY:dt
-!USE MOD_Interpolation_Vars,     ONLY: L_Minus,L_Plus
-!#if MPI
-!USE MOD_MPI_Vars
-!USE MOD_MPI,                ONLY: StartReceiveMPIData,StartSendMPIData,FinishExchangeMPIData
-!#endif
+USE MOD_Mesh_Vars,              ONLY:nElems
 
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -407,43 +276,31 @@ REAL,INTENT(IN)  :: U_in(PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems)
 !-------------------------------------------------------------------------------------------------------------------------------
 ! aOCAL VARIABLES 
 INTEGER                                      :: i,j,k,l,m,iElem
+REAL,DIMENSION(3,3,0:PP_N,0:PP_N,0:PP_N)     :: gradv_all, S_ik, M_ik, L_ik
 REAL,DIMENSION(3,0:PP_N,0:PP_N,0:PP_N)       :: V_filtered
-REAL                                         :: srho
-REAL                :: v1,v2,v3
-REAL,DIMENSION(3,3,0:PP_N,0:PP_N,0:PP_N) :: S_ik,M_ik,L_ik
-REAL                                     :: D_Ratio
-REAL, DIMENSION(0:PP_N,0:PP_N,0:PP_N)    :: C_d,MM,ML,S_eN_filtered,S_eN,divV
-REAL                                     :: MMa,MLa
-REAL                                     :: Vol, Integrationweight,dummy
-REAL,DIMENSION(1:3,1:3,0:PP_N,0:PP_N,0:PP_N)         :: gradv_all
-REAL,DIMENSION(0:PP_N,0:PP_N,0:PP_N)             :: gradv11_elem,gradv12_elem,gradv13_elem 
-REAL,DIMENSION(0:PP_N,0:PP_N,0:PP_N)             :: gradv21_elem,gradv22_elem,gradv23_elem
-REAL,DIMENSION(0:PP_N,0:PP_N,0:PP_N)             :: gradv31_elem,gradv32_elem,gradv33_elem
+REAL, DIMENSION(0:PP_N,0:PP_N,0:PP_N)        :: MM,ML,S_eN_filtered,S_eN,divV
+REAL                                         :: D_Ratio
+REAL                                         :: MMa,MLa
 !===============================================================================================================================
 DO iElem=1,nElems
-    DO k=0,PP_N;  DO j=0,PP_N; DO i=0,PP_N
-      srho = 1. / U_in(1,i,j,k,iElem) ! 1/rho
-      v1   = U_in(2,i,j,k,iElem)*srho
-      v2   = U_in(3,i,j,k,iElem)*srho
-      v3   = U_in(4,i,j,k,iElem)*srho
-      gradv11_elem(i,j,k) = (gradUx(2,i,j,k,iElem) )
-      gradv21_elem(i,j,k) = (gradUx(3,i,j,k,iElem) )
-      gradv31_elem(i,j,k) = (gradUx(4,i,j,k,iElem) )
-      gradv12_elem(i,j,k) = (gradUy(2,i,j,k,iElem) )
-      gradv22_elem(i,j,k) = (gradUy(3,i,j,k,iElem) )
-      gradv32_elem(i,j,k) = (gradUy(4,i,j,k,iElem) )
-      gradv13_elem(i,j,k) = (gradUz(2,i,j,k,iElem) )
-      gradv23_elem(i,j,k) = (gradUz(3,i,j,k,iElem) )
-      gradv33_elem(i,j,k) = (gradUz(4,i,j,k,iElem) )
-      divV(i,j,k) = 2./3.*(gradv11_elem(i,j,k)+gradv22_elem(i,j,k)+gradv33_elem(i,j,k))
-  END DO; END DO; END DO ! i,j,k
+  !store gradients in matrix for readability and filtering
+  gradv_all(1,1,:,:,:) = gradUx(2,:,:,:,iElem)
+  gradv_all(1,2,:,:,:) = gradUy(2,:,:,:,iElem)
+  gradv_all(1,3,:,:,:) = gradUz(2,:,:,:,iElem)
+  gradv_all(2,1,:,:,:) = gradUx(3,:,:,:,iElem)
+  gradv_all(2,2,:,:,:) = gradUy(3,:,:,:,iElem)
+  gradv_all(2,3,:,:,:) = gradUz(3,:,:,:,iElem)
+  gradv_all(3,1,:,:,:) = gradUx(4,:,:,:,iElem)
+  gradv_all(3,2,:,:,:) = gradUy(4,:,:,:,iElem)
+  gradv_all(3,3,:,:,:) = gradUz(4,:,:,:,iElem)
+  divV(:,:,:) = 2./3.*(gradv_all(1,1,:,:,:)+gradv_all(2,2,:,:,:)+gradv_all(3,3,:,:,:))
+
   ! dynamic Smagorinsky model
   DO i=1,3
     V_Filtered(i,:,:,:) = U_in(i+1,:,:,:,iElem)/U_in(1,:,:,:,iElem)
   END DO !i
 
   !Filter velocities
-  !CALL Filter_General(3,FilterMat_testfilter,V_filtered) 
   CALL Filter_Selective(3,FilterMat_testfilter,V_filtered,filter_ind(:,iElem)) 
   !           _ _   __
   !Compute L=-u u + uu  !!TENSOR ik
@@ -451,7 +308,6 @@ DO iElem=1,nElems
     DO k=1,3
       L_ik(i,k,:,:,:) = U_in(i+1,:,:,:,iElem)*U_in(k+1,:,:,:,iElem)/U_in(1,:,:,:,iElem)**2
     END DO ! k
-    !CALL Filter_General(3,FilterMat_testfilter,L_ik(i,1:3,:,:,:)) 
     CALL Filter_Selective(3,FilterMat_testfilter,L_ik(i,1:3,:,:,:),filter_ind(:,iElem)) 
   END DO ! i
   DO i=1,3
@@ -459,45 +315,33 @@ DO iElem=1,nElems
       L_ik(i,k,:,:,:) = L_ik(i,k,:,:,:) - V_filtered(i,:,:,:)*V_filtered(k,:,:,:)
     END DO ! k
   END DO ! i
-  !           _____            _ _   ____
-  !Compute M=(Delta/Delta)**2*|S|S - |S|S  !!TENSOR ik
-  S_ik(1,1,:,:,:) = gradv11_elem(:,:,:)-divV(:,:,:)
-  S_ik(2,2,:,:,:) = gradv22_elem(:,:,:)-divV(:,:,:)
-  S_ik(3,3,:,:,:) = gradv33_elem(:,:,:)-divV(:,:,:)
-  S_ik(1,2,:,:,:) = (gradv21_elem(:,:,:)+gradv12_elem(:,:,:))*0.5
-  S_ik(1,3,:,:,:) = (gradv31_elem(:,:,:)+gradv13_elem(:,:,:))*0.5
-  S_ik(2,3,:,:,:) = (gradv23_elem(:,:,:)+gradv32_elem(:,:,:))*0.5
-  S_ik(2,1,:,:,:) = S_ik(1,2,:,:,:)
-  S_ik(3,1,:,:,:) = S_ik(1,3,:,:,:)
-  S_ik(3,2,:,:,:) = S_ik(2,3,:,:,:)
+  ! Compute shear rate tensor
+  DO i=1,3
+    DO j=1,3
+      S_ik(i,j,:,:,:) = (gradv_all(i,j,:,:,:)+gradv_all(j,i,:,:,:))*0.5
+    END DO
+  END DO
+  !correct for compressibility
+  S_ik(1,1,:,:,:) = S_ik(1,1,:,:,:) -divV(:,:,:)
+  S_ik(2,2,:,:,:) = S_ik(2,2,:,:,:) -divV(:,:,:)
+  S_ik(3,3,:,:,:) = S_ik(3,3,:,:,:) -divV(:,:,:)
+  !Comnpute norm of S_ik
   S_eN(:,:,:)= (S_ik(1,1,:,:,:)**2 + S_ik(2,2,:,:,:)**2. + S_ik(3,3,:,:,:)**2.)
   S_eN(:,:,:)= S_eN(:,:,:) +  2*(S_ik(2,1,:,:,:) )**2.
   S_eN(:,:,:)= S_eN(:,:,:) +  2*(S_ik(3,1,:,:,:) )**2.
   S_eN(:,:,:)= S_eN(:,:,:) +  2*(S_ik(3,2,:,:,:) )**2.
   S_eN(:,:,:)= sqrt(2* S_eN(:,:,:) )
 
+  !            _____            _ _   ____
+  !Compute M=-(Delta/Delta)**2*|S|S + |S|S  !!TENSOR ik
   DO i=1,3
     DO k=1,3
       M_ik(i,k,:,:,:) = S_eN(:,:,:)*S_ik(i,k,:,:,:)
     END DO ! k
-    !CALL Filter_General(3,FilterMat_testfilter,M_ik(i,1:3,:,:,:)) 
     CALL Filter_Selective(3,FilterMat_testfilter,M_ik(i,1:3,:,:,:),filter_ind(:,iElem)) 
   END DO ! i
 
-  !filtered gradients
-
-  gradv_all(1,1,:,:,:) = gradv11_elem(:,:,:) 
-  gradv_all(1,2,:,:,:) = gradv12_elem(:,:,:)
-  gradv_all(1,3,:,:,:) = gradv13_elem(:,:,:)
-  gradv_all(2,1,:,:,:) = gradv21_elem(:,:,:)
-  gradv_all(2,2,:,:,:) = gradv22_elem(:,:,:)
-  gradv_all(2,3,:,:,:) = gradv23_elem(:,:,:)
-  gradv_all(3,1,:,:,:) = gradv31_elem(:,:,:)
-  gradv_all(3,2,:,:,:) = gradv32_elem(:,:,:)
-  gradv_all(3,3,:,:,:) = gradv33_elem(:,:,:)
-  !CALL Filter_General(3,FilterMat_Testfilter,gradv_all(:,1,:,:,:))
-  !CALL Filter_General(3,FilterMat_Testfilter,gradv_all(:,2,:,:,:))
-  !CALL Filter_General(3,FilterMat_Testfilter,gradv_all(:,3,:,:,:))
+  !filter gradients
   CALL Filter_Selective(3,FilterMat_Testfilter,gradv_all(:,1,:,:,:),filter_ind(:,iElem))
   CALL Filter_Selective(3,FilterMat_Testfilter,gradv_all(:,2,:,:,:),filter_ind(:,iElem))
   CALL Filter_Selective(3,FilterMat_Testfilter,gradv_all(:,3,:,:,:),filter_ind(:,iElem))
@@ -510,14 +354,14 @@ DO iElem=1,nElems
   S_ik(1,1,:,:,:) = S_ik(1,1,:,:,:) -divV(:,:,:)
   S_ik(2,2,:,:,:) = S_ik(2,2,:,:,:) -divV(:,:,:)
   S_ik(3,3,:,:,:) = S_ik(3,3,:,:,:) -divV(:,:,:)
-
+  !Comnpute norm of S_ik filtered
   S_eN_filtered(:,:,:)= (S_ik(1,1,:,:,:)**2 + S_ik(2,2,:,:,:)**2. + S_ik(3,3,:,:,:)**2.)
   S_eN_filtered(:,:,:)= S_eN_filtered(:,:,:) +  2*(S_ik(2,1,:,:,:) )**2.
   S_eN_filtered(:,:,:)= S_eN_filtered(:,:,:) +  2*(S_ik(3,1,:,:,:) )**2.
   S_eN_filtered(:,:,:)= S_eN_filtered(:,:,:) +  2*(S_ik(3,2,:,:,:) )**2.
   S_eN_filtered(:,:,:)= sqrt(2* S_eN_filtered(:,:,:) )
-  !D_Ratio=(REAL(N_testfilter+1)/REAL(PP_N+1))**2
-  D_Ratio=((1./REAL(N_testfilter+1)) / (1./REAL(PP_N+1)))**2
+
+  D_Ratio=(REAL(PP_N+1)/REAL(N_testfilter+1))**2
   DO i=1,3
     DO k=1,3
       M_ik(i,k,:,:,:) = M_ik(i,k,:,:,:) - D_Ratio * S_eN_filtered(:,:,:)*S_ik(i,k,:,:,:)
@@ -540,25 +384,8 @@ DO iElem=1,nElems
     END DO ! j
   END DO ! i
 
-
-  !Average C_d**2 over homogeneous directions, or cell, or in time, or whatever
-  !-----CELL AVERAGE
-  dummy=0.
-  Vol=0.
-  DO k=0,PP_N
-    DO j=0,PP_N
-      DO i=0,PP_N
-        IntegrationWeight = wGP(i)*wGP(j)*wGP(k)*1/sJ(i,j,k,iElem,0)
-        dummy=dummy + ML(i,j,k)*Integrationweight
-        Vol = Vol + MM(i,j,k)*  Integrationweight 
-      END DO ! i
-    END DO ! j
-  END DO ! k
-  SGS_Ind(1,:,:,:,iElem) =0.5*dummy/Vol !CELL average
-  SWRITE(*,*)SGS_Ind(1,1,1,1,iElem)
-
   ! Selective cell average (on selected directions)
-  SELECT CASE (average_type)
+  SELECT CASE (average_type(iElem))
   CASE (1) ! Volume
     MMa = 0.; MLa = 0.
     DO i=0,PP_N; DO j=0,PP_N; DO k=0,PP_N
@@ -622,110 +449,61 @@ DO iElem=1,nElems
     END DO; END DO!jk
   END SELECT
 
-!------------------------------------------
-!Time Average ala pruett
-!Im Nenner steht r=FilterWidth/dt(RK)
-!Simple shot is taking the filter width equal 1, assuming meaningful dimensionless timescale
-!ML_Avg(:,:,:,iElem) = ML_Avg(:,:,:,iElem) + (ML(:,:,:)-ML_Avg(:,:,:,iElem))*(dt/1.)
-!MM_Avg(:,:,:,iElem) = MM_Avg(:,:,:,iElem) + (MM(:,:,:)-MM_Avg(:,:,:,iElem))*(dt/1.)
-!!C_d=0.
-!DO i=0,PP_N
-!  DO j=0,PP_N
-!    DO k=0,PP_N
-!!      IF (ABS(MM_Avg(i,j,k,iElem)) .LE. 1e-15) CYCLE 
-!      C_d(i,j,k) =  0.5*ML_Avg(i,j,k,iElem)/MM_Avg(i,j,k,iElem)
-!    END DO ! i
-!  END DO ! j
-!END DO ! k
-!SGS_Ind(1,:,:,:,iElem) = SGS_Ind(1,:,:,:,iElem) + (C_d(:,:,:)-SGS_Ind(1,:,:,:,iElem))/1.*dt
-!print*,SGS_Ind(1,:,:,:,iElem)
-!  SGS_Ind(1,:,:,:,iElem) = C_d(:,:,:)
-!------------------------------------------
-!NO AVERAGING OF SORT
-!DO i=0,PP_N
-!  DO j=0,PP_N
-!    DO k=0,PP_N
-!      C_d(i,j,k) =  0.5*ML(i,j,k)/MM(i,j,k)
-!    END DO ! i
-!  END DO ! j
-!END DO ! k
-!SGS_Ind(1,:,:,:,iElem) = C_d(:,:,:)
-
-
-
 END DO
-!#if MPI
-!! 4.2)
-!CALL StartReceiveMPIData(SGS_Ind_master,DataSizeSideScalar,1,nSides,MPIRequest_SGS_Ind(:,SEND),SendID=1)
-!                                                         ! Receive YOUR / FV_surf_gradU_slave: master -> slave
-!CALL ProlongToFace1(PP_N,SGS_Ind(1:1,:,:,:,:),SGS_Ind_master(:,:,:,:),SGS_Ind_Slave(:,:,:,:),L_Minus,L_Plus,.TRUE.)
-!CALL StartSendMPIData(SGS_Ind_master,DataSizeSideScalar,1,nSides,MPIRequest_SGS_Ind(:,RECV),SendID=1)
-!#endif
-!! Prolong to face for BCSides, InnerSides and MPI sides - receive direction
-!CALL ProlongToFace1(PP_N,SGS_Ind(1:1,:,:,:,:),SGS_Ind_master(:,:,:,:),SGS_Ind_Slave(:,:,:,:),L_Minus,L_Plus,.FALSE.)
-!#if MPI  
-!CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_SGS_Ind)  ! U_slave: slave -> master 
-!#endif
 END SUBROUTINE compute_cd 
-
-SUBROUTINE Finalizedynsmag()
-!===============================================================================================================================
-! Get the constant advection velocity vector from the ini file
-!===============================================================================================================================
-! MODULES
-USE MOD_EddyVisc_Vars,ONLY:dynsmagInitIsDone
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-!-------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-!-------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-!-------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-!===============================================================================================================================
-dynsmagInitIsDone = .FALSE.
-END SUBROUTINE Finalizedynsmag
-
 
 !===============================================================================================================================
 ! Is vector vec1 "more normal" to vec2 "than parallel"?
 !===============================================================================================================================
-FUNCTION isnormal(vec1,vec2) result(norm)
+FUNCTION ISNORMAL(vec1,vec2) result(norm)
 REAL, INTENT(IN) :: vec1(:), vec2(:)
 LOGICAL          :: norm 
 
-REAL :: vec2Norm, parcomp, normvec(size(vec1,1)), normcomp
+REAL :: vec2Norm(size(vec2,1)), parcomp, normvec(size(vec1,1)), normcomp
 
 ! norm of vec2
-vec2Norm = sqrt(sum(vec2**2))
+vec2Norm = vec2/SQRT(SUM(vec2**2))
 ! component of vec1 parallel to vec2
-parcomp = sum(vec1*vec2)/vec2Norm
+parcomp = SUM(vec1*vec2Norm)
 ! part of vec1 normal to vec2
-normvec = vec1 - parcomp*vec2/vec2Norm
+normvec = vec1 - parcomp*vec2Norm
 ! component of vec1 normal to vec2
-normcomp = sqrt(sum(normvec**2)) 
-IF (normcomp .GE. abs(parcomp)) THEN
-  norm = .true.
+normcomp = SQRT(SUM(normvec**2)) 
+IF (normcomp .GE. ABS(parcomp)) THEN
+  norm = .TRUE.
 ELSE
-  norm = .false.
+  norm = .FALSE.
 ENDIF
-END FUNCTION isnormal
+END FUNCTION ISNORMAL
 
 
 !===============================================================================================================================
-! Calculate the absolute value of the projection of vec1 on vec 2
+!> Deallocate arrays and finalize variables used by Smagorinsky SGS model
 !===============================================================================================================================
-FUNCTION proj(vec1,vec2) result(parcomp)
-REAL, INTENT(IN) :: vec1(:), vec2(:)
-REAL             :: parcomp 
+SUBROUTINE Finalizedynsmag()
+! MODULES
+USE MOD_EddyVisc_Vars
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!===============================================================================================================================
+DEALLOCATE(DeltaS)
+DEALLOCATE(DeltaS_master)
+DEALLOCATE(DeltaS_slave)
+DEALLOCATE(SGS_Ind)
+DEALLOCATE(SGS_Ind_master)
+DEALLOCATE(SGS_Ind_slave)
+DEALLOCATE(muSGS)
+DEALLOCATE(muSGSmax)
+DEALLOCATE(FilterMat_Testfilter)
+DEALLOCATE(filter_ind)
+DEALLOCATE(average_ind)
+DEALLOCATE(average_type)
+DEALLOCATE(IntELem)
+dynsmagInitIsDone = .FALSE.
+END SUBROUTINE Finalizedynsmag
 
-REAL :: vec2Norm
 
-! norm of vec2
-vec2Norm = sqrt(sum(vec2**2))
-! component of vec1 parallel to vec2
-parcomp = abs(sum(vec1*vec2)/vec2Norm)
-END FUNCTION proj
+
 
 
 #endif

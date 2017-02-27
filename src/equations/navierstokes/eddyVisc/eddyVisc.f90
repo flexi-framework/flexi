@@ -65,6 +65,7 @@ USE MOD_ReadInTools,ONLY: GETINTFROMSTR
 USE MOD_IO_HDF5    ,ONLY: AddToFieldData, AddToElemData
 USE MOD_EOS_Vars, ONLY: mu0
 !===================================================================================================================================
+eddyViscType = GETINTFROMSTR('eddyViscType')
 
 ! Allocate arrays needed by all SGS models
 ALLOCATE(DeltaS(nElems))
@@ -74,50 +75,51 @@ DeltaS_master=0.
 DeltaS_slave=0.
 DeltaS=0.
 ALLOCATE(SGS_Ind(2,0:PP_N,0:PP_N,0:PP_N,nElems))
-ALLOCATE(MM_Avg(0:PP_N,0:PP_N,0:PP_N,nElems))
-ALLOCATE(ML_Avg(0:PP_N,0:PP_N,0:PP_N,nElems))
-MM_Avg = 0.; ML_Avg = 0.
 ALLOCATE(SGS_Ind_master(2,0:PP_N,0:PP_N,1:nSides))
 ALLOCATE(SGS_Ind_slave (2,0:PP_N,0:PP_N,1:nSides))
 SGS_Ind=0.
 SGS_Ind_master=0.
 SGS_Ind_slave=0.
 ALLOCATE(muSGS(1,0:PP_N,0:PP_N,0:PP_N,nElems))
-!MATTEO: debug output
-ALLOCATE(S_en_out(1,0:PP_N,0:PP_N,0:PP_N,nElems))
-ALLOCATE(filtdir_out(nElems))
-ALLOCATE(walldist_out(nElems))
-ALLOCATE(walldist_x(nElems))
-ALLOCATE(walldist_y(nElems))
-ALLOCATE(walldist_z(nElems))
-S_en_out = 0.
 ALLOCATE(muSGSmax(nElems))
 muSGS = 0.
-!muSGSmax=0.
 muSGSmax=2000.*mu0
-ALLOCATE(FilterMat_Testfilter(0:PP_N,0:PP_N))
-FilterMat_Testfilter = 0.
-ALLOCATE(filter_ind(3,nElems))
-ALLOCATE(average_ind(3,nElems))
-ALLOCATE(IntELem(0:PP_N,0:PP_N,0:PP_N,nElems))
-! Set Prandtl number !=0 because we need to divide by this number to get the turbulent heat conductivity (will be zero anyway
-! since muSGS=0)
-PrSGS = 0.7
 
-eddyViscType = GETINTFROMSTR('eddyViscType')
+IF(eddyViscType.EQ.2) THEN !dynamic Smagorinsky
+  !MATTEO: debug output
+  ALLOCATE(S_en_out(1,0:PP_N,0:PP_N,0:PP_N,nElems))
+  S_en_out = 0.
+  ALLOCATE(filtdir_out(nElems))
+  ALLOCATE(walldist_out(nElems))
+  ALLOCATE(walldist_x(nElems))
+  ALLOCATE(walldist_y(nElems))
+  ALLOCATE(walldist_z(nElems))
+  !!!!!!!!!!
+  ALLOCATE(FilterMat_Testfilter(0:PP_N,0:PP_N))
+  FilterMat_Testfilter = 0.
+  ALLOCATE(filter_ind(3,nElems))
+  ALLOCATE(average_ind(3,nElems))
+  ALLOCATE(average_type(nElems))
+  ALLOCATE(IntELem(0:PP_N,0:PP_N,0:PP_N,nElems))
+  PrSGS = 0.7
+END IF
+
 SELECT CASE(eddyViscType)
   CASE(0) ! No eddy viscosity model, set function pointers to dummy subroutines which do nothing
     ! Nothing to init
     eddyViscosity          => DefaultEddyVisc
     eddyViscosity_surf     => DefaultEddyVisc_surf
+    FinalizeEddyViscosity => FinalizeDefaultEddyViscosity
   CASE(1) !Smagorinsky with optional Van Driest damping for channel flow
     CALL InitSmagorinsky()
     eddyViscosity          => Smagorinsky
     eddyViscosity_surf     => Smagorinsky_surf
+    FinalizeEddyViscosity => Finalizesmagorinsky
   CASE(2) !Smagorinsky*DynSmag indicator with optional Van Driest damping for channel flow
     CALL InitDynSmag
     eddyViscosity      => DynSmag 
-    eddyViscosity_surf => DynSmag_surf 
+    eddyViscosity_surf => DefaultEddyVisc_surf !NOT used, surface muSGS from volume prolongated 
+    FinalizeEddyViscosity => Finalizedynsmag
     testfilter         => Compute_cd
   CASE DEFAULT
     CALL CollectiveStop(__STAMP__,&
