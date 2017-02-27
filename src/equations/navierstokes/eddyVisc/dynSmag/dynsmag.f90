@@ -212,53 +212,54 @@ DO iElem=1,nElems
   END IF !in or out boundary layer
 END DO !iElem
 
+average_type = 0
 CALL GetVandermonde(    PP_N   , NodeTypeCL  , PP_N    , NodeType,   Vdm_CLN_N         , modal=.FALSE.)
 DO iElem=1,nElems
   IF     (average_ind(1,iElem).AND.average_ind(2,iElem).AND.average_ind(3,iElem)) THEN !volume
-    IntElem(:,:,:,iElem) = 1/sJ(:,:,:,iElem,0)
+    IntElem(:,:,:,iElem) = 1./sJ(:,:,:,iElem,0)
     DO i=0,PP_N; DO j=0,PP_N; DO k=0,PP_N
       IntElem(i,j,k,iElem) = IntElem(i,j,k,iElem)*wGP(i)*wGP(j)*wGP(k)
     END DO; END DO; END DO
-    average_type = 1
-  ELSEIF (.NOT.average_ind(1,iElem).AND.average_ind(2,iElem).AND.average_ind(3,iElem)) THEN ! I-Plane 
+    average_type(iElem) = 1
+  ELSEIF ((.NOT.average_ind(1,iElem)).AND.average_ind(2,iElem).AND.average_ind(3,iElem)) THEN ! I-Plane 
     DO i=0,PP_N; DO j=0,PP_N; DO k=0,PP_N
       IntElem(i,j,k,iElem) = SQRT(SUM(Metrics_ftilde(:,i,j,k,iElem,0)**2))
       IntElem(i,j,k,iElem) = IntElem(i,j,k,iElem)*wGP(j)*wGP(k)
     END DO; END DO; END DO
-    average_type = 2
-  ELSEIF (average_ind(1,iElem).AND..NOT.average_ind(2,iElem).AND.average_ind(3,iElem)) THEN ! J-Plane 
+    average_type(iElem) = 2
+  ELSEIF (average_ind(1,iElem).AND.(.NOT.average_ind(2,iElem)).AND.average_ind(3,iElem)) THEN ! J-Plane 
     DO i=0,PP_N; DO j=0,PP_N; DO k=0,PP_N
       IntElem(i,j,k,iElem) = SQRT(SUM(Metrics_gtilde(:,i,j,k,iElem,0)**2))
       IntElem(i,j,k,iElem) = IntElem(i,j,k,iElem)*wGP(i)*wGP(k)
     END DO; END DO; END DO
-    average_type = 3
-  ELSEIF (average_ind(1,iElem).AND.average_ind(2,iElem).AND..NOT.average_ind(3,iElem)) THEN ! K-Plane 
+    average_type(iElem) = 3
+  ELSEIF (average_ind(1,iElem).AND.average_ind(2,iElem).AND.(.NOT.average_ind(3,iElem))) THEN ! K-Plane 
     DO i=0,PP_N; DO j=0,PP_N; DO k=0,PP_N
       IntElem(i,j,k,iElem) = SQRT(SUM(Metrics_htilde(:,i,j,k,iElem,0)**2))
       IntElem(i,j,k,iElem) = IntElem(i,j,k,iElem)*wGP(i)*wGP(j)
     END DO; END DO; END DO
-    average_type = 4
-  ELSEIF (average_ind(1,iElem).AND..NOT.average_ind(2,iElem).AND..NOT.average_ind(3,iElem)) THEN ! I-Line 
+    average_type(iElem) = 4
+  ELSEIF (average_ind(1,iElem).AND.(.NOT.average_ind(2,iElem)).AND.(.NOT.average_ind(3,iElem))) THEN ! I-Line 
     CALL ChangeBasis3D(3,PP_N,PP_N,Vdm_CLN_N,dXCL_N(1,1:3,:,:,:,iElem),dX_N(:,:,:,:))
     IntElem(:,:,:,iElem) = (dX_N(1,:,:,:)**2+dX_N(2,:,:,:)**2+dX_N(3,:,:,:)**2)**0.5
     DO i=0,PP_N; DO j=0,PP_N; DO k=0,PP_N
       IntElem(i,j,k,iElem) = IntElem(i,j,k,iElem)*wGP(i)
     END DO; END DO; END DO
-    average_type = 5
-  ELSEIF (.NOT.average_ind(1,iElem).AND.average_ind(2,iElem).AND..NOT.average_ind(3,iElem)) THEN ! J-Line 
+    average_type(iElem) = 5
+  ELSEIF ((.NOT.average_ind(1,iElem)).AND.average_ind(2,iElem).AND.(.NOT.average_ind(3,iElem))) THEN ! J-Line 
     CALL ChangeBasis3D(3,PP_N,PP_N,Vdm_CLN_N,dXCL_N(2,1:3,:,:,:,iElem),dX_N(:,:,:,:))
     IntElem(:,:,:,iElem) = (dX_N(1,:,:,:)**2+dX_N(2,:,:,:)**2+dX_N(3,:,:,:)**2)**0.5
     DO i=0,PP_N; DO j=0,PP_N; DO k=0,PP_N
       IntElem(i,j,k,iElem) = IntElem(i,j,k,iElem)*wGP(j)
     END DO; END DO; END DO
-    average_type = 6
-  ELSEIF (.NOT.average_ind(1,iElem).AND..NOT.average_ind(2,iElem).AND.average_ind(3,iElem)) THEN ! K-Line
+    average_type(iElem) = 6
+  ELSEIF ((.NOT.average_ind(1,iElem)).AND.(.NOT.average_ind(2,iElem)).AND.average_ind(3,iElem)) THEN ! K-Line
     CALL ChangeBasis3D(3,PP_N,PP_N,Vdm_CLN_N,dXCL_N(3,1:3,:,:,:,iElem),dX_N(:,:,:,:))
     IntElem(:,:,:,iElem) = (dX_N(1,:,:,:)**2+dX_N(2,:,:,:)**2+dX_N(3,:,:,:)**2)**0.5
     DO i=0,PP_N; DO j=0,PP_N; DO k=0,PP_N
       IntElem(i,j,k,iElem) = IntElem(i,j,k,iElem)*wGP(k)
     END DO; END DO; END DO
-    average_type = 7
+    average_type(iElem) = 7
   END IF
 END DO
 
@@ -543,22 +544,22 @@ DO iElem=1,nElems
 
   !Average C_d**2 over homogeneous directions, or cell, or in time, or whatever
   !-----CELL AVERAGE
-  dummy=0.
-  Vol=0.
-  DO k=0,PP_N
-    DO j=0,PP_N
-      DO i=0,PP_N
-        IntegrationWeight = wGP(i)*wGP(j)*wGP(k)*1/sJ(i,j,k,iElem,0)
-        dummy=dummy + ML(i,j,k)*Integrationweight
-        Vol = Vol + MM(i,j,k)*  Integrationweight 
-      END DO ! i
-    END DO ! j
-  END DO ! k
-  SGS_Ind(1,:,:,:,iElem) =0.5*dummy/Vol !CELL average
-  SWRITE(*,*)SGS_Ind(1,1,1,1,iElem)
+  !dummy=0.
+  !Vol=0.
+  !DO k=0,PP_N
+  !  DO j=0,PP_N
+  !    DO i=0,PP_N
+  !      IntegrationWeight = wGP(i)*wGP(j)*wGP(k)*1/sJ(i,j,k,iElem,0)
+  !      dummy=dummy + ML(i,j,k)*Integrationweight
+  !      Vol = Vol + MM(i,j,k)*  Integrationweight 
+  !    END DO ! i
+  !  END DO ! j
+  !END DO ! k
+  !SGS_Ind(1,:,:,:,iElem) =0.5*dummy/Vol !CELL average
+  !SWRITE(*,*)SGS_Ind(1,1,1,1,iElem)
 
   ! Selective cell average (on selected directions)
-  SELECT CASE (average_type)
+  SELECT CASE (average_type(iElem))
   CASE (1) ! Volume
     MMa = 0.; MLa = 0.
     DO i=0,PP_N; DO j=0,PP_N; DO k=0,PP_N
