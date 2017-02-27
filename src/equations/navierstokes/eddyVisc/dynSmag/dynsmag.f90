@@ -78,12 +78,8 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT dynsmag...'
 
 ! Read the variables used for LES model
 ! Smagorinsky model
-CS     = GETREAL('CS')
 PrSGS  = GETREAL('PrSGS','0.7')
-IF(testcase.EQ."channel") THEN
-  ! Do Van Driest style damping or not
-  VanDriest = GETLOGICAL('VanDriest','.FALSE.')
-END IF
+!get wall distance for zonal averaging approach if needed
 WallDistFile = GETSTR('WallDistFile','')
 WallDistTrsh = GETREAL('WallDistanceTreshold','0.0')
 IF (WallDistFile .NE. '') THEN
@@ -154,6 +150,8 @@ DO iElem=1,nElems
   END IF !in or out boundary layer
 END DO !iElem
 
+!build integration weights for each of possibly 7 average types
+!sort average_ind to average_type for select cases
 CALL GetVandermonde(    PP_N   , NodeTypeCL  , PP_N    , NodeType,   Vdm_CLN_N         , modal=.FALSE.)
 DO iElem=1,nElems
   IF     (average_ind(1,iElem).AND.average_ind(2,iElem).AND.average_ind(3,iElem)) THEN !volume
@@ -225,14 +223,13 @@ SUBROUTINE dynsmag(grad11,grad22,grad33,grad12,grad13,grad21,grad23,grad31,grad3
 ! MODULES
 USE MOD_PreProc
 USE MOD_EddyVisc_Vars,     ONLY:SGS_Ind,muSGSmax,S_en_out
-
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 INTEGER,INTENT(IN)                        :: iElem,i,j,k
 REAL,INTENT(IN)                           :: grad11,grad22,grad33,grad12,grad13,grad21,grad23,grad31,grad32,rho
-REAL,INTENT(INOUT)                          :: muSGS 
+REAL,INTENT(INOUT)                        :: muSGS 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -245,7 +242,7 @@ S_eN = 2*((grad11-2./3.*divv)**2. + (grad22-2./3.*divv)**2. + (grad33-2./3.*divv
 S_eN = S_eN + ( grad12 + grad21 )**2.
 S_eN = S_eN + ( grad13 + grad31 )**2.
 S_eN = S_eN + ( grad23 + grad32 )**2.
-S_eN = sqrt(S_eN)
+S_eN = SQRT(S_eN)
 ! dynsmag model
 muSGS = S_eN*rho*SGS_Ind(1,i,j,k,iElem) 
 S_en_out(1,i,j,k,iElem) = S_eN
@@ -346,6 +343,7 @@ DO iElem=1,nElems
   CALL Filter_Selective(3,FilterMat_Testfilter,gradv_all(:,2,:,:,:),filter_ind(:,iElem))
   CALL Filter_Selective(3,FilterMat_Testfilter,gradv_all(:,3,:,:,:),filter_ind(:,iElem))
   divV(:,:,:) = 2./3.*(gradv_all(1,1,:,:,:)+gradv_all(2,2,:,:,:)+gradv_all(3,3,:,:,:))
+  ! Compute filtered shear rate tensor, unfiltered not needed anymore
   DO i=1,3
     DO j=1,3
       S_ik(i,j,:,:,:) = (gradv_all(i,j,:,:,:)+gradv_all(j,i,:,:,:))*0.5
@@ -360,7 +358,8 @@ DO iElem=1,nElems
   S_eN_filtered(:,:,:)= S_eN_filtered(:,:,:) +  2*(S_ik(3,1,:,:,:) )**2.
   S_eN_filtered(:,:,:)= S_eN_filtered(:,:,:) +  2*(S_ik(3,2,:,:,:) )**2.
   S_eN_filtered(:,:,:)= sqrt(2* S_eN_filtered(:,:,:) )
-
+  !                                 _____
+  !D_ratio: square ratio of filter widhts (Delta/Delta)**2, reciprocal of polynomial degrees
   D_Ratio=(REAL(PP_N+1)/REAL(N_testfilter+1))**2
   DO i=1,3
     DO k=1,3
@@ -369,6 +368,7 @@ DO iElem=1,nElems
   END DO ! i
   !
   !Compute C_d**2 =1/2* M_ik*L_ik / M_ik*M_ik  !!SUM OVER ik !!!for muSGS=C_d**2|S|
+  !contract with M_ik according to least square approach of Lilly
   MM=0.
   ML=0.
   DO i=0,PP_N
@@ -448,7 +448,6 @@ DO iElem=1,nElems
       SGS_Ind(1,i,j,:,iElem) = MLa/MMa 
     END DO; END DO!jk
   END SELECT
-
 END DO
 END SUBROUTINE compute_cd 
 
