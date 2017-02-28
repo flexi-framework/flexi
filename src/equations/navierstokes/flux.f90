@@ -149,14 +149,8 @@ DO k=0,PP_N;  DO j=0,PP_N; DO i=0,PP_N
                     ,gradUy(2,i,j,k),gradUz(2,i,j,k),gradUx(3,i,j,k)&
                     ,gradUz(3,i,j,k),gradUx(4,i,j,k),gradUy(4,i,j,k)&
                     ,UPrim(1,i,j,k),iElem,i,j,k,muSGS(1,i,j,k,iElem))
-  !!muSGS(1,i,j,k,iElem) =  max(muSGS(1,i,j,k,iElem),0.)
-  !MATTEO: let musgs have negative values
-  !muSGS(1,i,j,k,iElem) =  max(muSGS(1,i,j,k,iElem),-muS)
-  !MATTEO: limit heavily the mu sgs for stability
   muSGS(1,i,j,k,iElem) =  min(max(muSGS(1,i,j,k,iElem),0.),8.0*muS)
-  muS = muS + (muSGS(1,i,j,k,iElem))
-  ! MATTEO: horrible hack
-  !muS = muS + min(max(muSGS(1,i,j,k,iElem),0.), 3*muS)
+  muS = muS + muSGS(1,i,j,k,iElem)
   lambda = lambda + muSGS(1,i,j,k,iElem)*cp/PrSGS
 #endif
   ! gradients of primitive variables are directly available gradU = (/ drho, dv1, dv2, dv3, dT /)

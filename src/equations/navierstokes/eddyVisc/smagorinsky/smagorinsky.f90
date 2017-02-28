@@ -150,7 +150,7 @@ ELSE
   damp = 1. - EXP(-yPlus/26.) ! Van Driest damping factor
 END IF
 muSGS= (damp*CS*deltaS(iElem))**2. * S_eN*rho
-!muSGSmax(iElem) = MAX(muSGS,muSGSmax(iElem))
+muSGSmax(iElem) = MAX(muSGS,muSGSmax(iElem))
 END SUBROUTINE Smagorinsky
 
 !===================================================================================================================================
