@@ -255,10 +255,11 @@ IMPLICIT NONE
 REAL,INTENT(INOUT)  :: U_in(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems)    !< Time derivative / JU_t to be filtered
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER             :: i,j,k,iElem
 #if PP_dim==2
+INTEGER             :: i,j,iElem
 REAL                :: U_loc(   PP_nVar,0:NUnder,0:NUnder,0:0,nElems) ! U_t / JU_t on NUnder
 #else
+INTEGER             :: i,j,k,iElem
 REAL                :: U_loc(   PP_nVar,0:NUnder,0:NUnder,0:NUnder) ! U_t / JU_t on NUnder
 REAL                :: X3D_Buf1(PP_nVar,0:NUnder,0:PP_N,0:PP_N)     ! intermediate results from 1D interpolations
 REAL                :: X3D_Buf2(PP_nVar,0:NUnder,0:NUnder,0:PP_N)   !

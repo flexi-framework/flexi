@@ -64,7 +64,10 @@ USE MOD_Mesh_Vars ,ONLY: firstMPISide_YOUR,lastMPISide_YOUR,firstInnerSide,lastM
 USE MOD_Mesh_Vars ,ONLY: firstMortarMPISide,lastMortarMPISide,firstBCSide
 USE MOD_Mesh_Vars ,ONLY: S2V,S2V2,SideToElem
 USE MOD_Mesh_Vars ,ONLY: nElems,nSides
-USE MOD_FV_Vars   ,ONLY: FV_Elems,FV_sdx_XI,FV_sdx_ETA,FV_sdx_ZETA
+USE MOD_FV_Vars   ,ONLY: FV_Elems,FV_sdx_XI,FV_sdx_ETA
+#if PP_dim == 3
+USE MOD_FV_Vars   ,ONLY: FV_sdx_ZETA
+#endif
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
@@ -320,9 +323,12 @@ SUBROUTINE FV_CalcGradients(UPrim,FV_surf_gradU_master,FV_surf_gradU_slave,gradU
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_FV_Vars        ,ONLY: FV_sdx_XI,FV_sdx_ETA,FV_sdx_ZETA,FV_Elems
+USE MOD_FV_Vars        ,ONLY: FV_sdx_XI,FV_sdx_ETA,FV_Elems
 USE MOD_FV_Limiter     ,ONLY: FV_Limiter
 USE MOD_Mesh_Vars      ,ONLY: nElems,nSides
+#if PP_dim == 3  
+USE MOD_FV_Vars        ,ONLY: FV_sdx_ZETA
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -340,7 +346,9 @@ REAL,INTENT(OUT)       :: gradUzeta_central(1:PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,
 ! LOCAL VARIABLES
 REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_NZ,0:PP_N+1) :: gradUxi_tmp
 REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_NZ,0:PP_N+1) :: gradUeta_tmp
+#if PP_dim == 3  
 REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_NZ,0:PP_N+1) :: gradUzeta_tmp
+#endif
 INTEGER                                            :: iElem,l,i,j,k,iVar,p,q
 !==================================================================================================================================
 DO iElem=1,nElems

@@ -49,12 +49,19 @@ SUBROUTINE Lifting_VolInt_Nonconservative(UPrim,gradUx,gradUy,gradUz)
 ! MODULES
 USE MOD_PreProc
 USE MOD_DG_Vars      ,ONLY: D_T
-USE MOD_Mesh_Vars    ,ONLY: Metrics_fTilde,Metrics_gTilde,Metrics_hTilde   ! metrics
+USE MOD_Mesh_Vars    ,ONLY: Metrics_fTilde,Metrics_gTilde   ! metrics
+#if (PP_dim==3)
+USE MOD_Mesh_Vars    ,ONLY: Metrics_hTilde   ! metrics
+#endif
 USE MOD_Mesh_Vars    ,ONLY: nElems
 #if FV_ENABLED
 USE MOD_FV_Vars      ,ONLY: FV_Elems
-USE MOD_FV_Vars      ,ONLY: FV_Metrics_fTilde_sJ,FV_Metrics_gTilde_sJ,FV_Metrics_hTilde_sJ  ! metrics
-USE MOD_FV_Vars      ,ONLY: gradUxi_central, gradUeta_central, gradUzeta_central
+USE MOD_FV_Vars      ,ONLY: FV_Metrics_fTilde_sJ,FV_Metrics_gTilde_sJ ! metrics
+USE MOD_FV_Vars      ,ONLY: gradUxi_central, gradUeta_central
+#if (PP_dim==3)
+USE MOD_FV_Vars      ,ONLY: FV_Metrics_hTilde_sJ  ! metrics
+USE MOD_FV_Vars      ,ONLY: gradUzeta_central
+#endif
 #endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -65,7 +72,10 @@ REAL,INTENT(OUT)                             :: gradUy(PP_nVarPrim,0:PP_N,0:PP_N
 REAL,INTENT(OUT)                             :: gradUz(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< gradients in z-direction
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL,DIMENSION(PP_nVarPrim)                  :: gradUxi,gradUeta,gradUzeta
+REAL,DIMENSION(PP_nVarPrim)                  :: gradUxi,gradUeta
+#if (PP_dim==3)
+REAL,DIMENSION(PP_nVarPrim)                  :: gradUzeta
+#endif
 INTEGER                                      :: iElem,i,j,k,l
 !==================================================================================================================================
 ! volume integral
@@ -153,8 +163,12 @@ USE MOD_Mesh_Vars          ,ONLY: Metrics_fTilde,Metrics_gTilde,Metrics_hTilde  
 USE MOD_Mesh_Vars          ,ONLY: nElems
 #if FV_ENABLED
 USE MOD_FV_Vars            ,ONLY: FV_Elems
-USE MOD_FV_Vars            ,ONLY: FV_Metrics_fTilde_sJ,FV_Metrics_gTilde_sJ,FV_Metrics_hTilde_sJ  ! metrics
-USE MOD_FV_Vars            ,ONLY: gradUxi_central, gradUeta_central, gradUzeta_central
+USE MOD_FV_Vars            ,ONLY: FV_Metrics_fTilde_sJ,FV_Metrics_gTilde_sJ ! metrics
+USE MOD_FV_Vars            ,ONLY: gradUxi_central, gradUeta_central
+#if (PP_dim==3)
+USE MOD_FV_Vars            ,ONLY: FV_Metrics_hTilde_sJ  ! metrics
+USE MOD_FV_Vars            ,ONLY: gradUzeta_central
+#endif
 #endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------

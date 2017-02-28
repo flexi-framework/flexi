@@ -13,11 +13,7 @@ USE MOD_Unittest_Vars
 USE MOD_Unittest,           ONLY: ReadInReferenceElementData
 USE MOD_ProlongToFaceCons,  ONLY: ProlongToFaceCons
 ! Modules needed to read in reference element
-USE MOD_Mesh_Vars,          ONLY: nElems,sJ,FS2M,V2S,S2V,S2V2
-USE MOD_Mesh_Vars,          ONLY: SideToElem
-USE MOD_Mesh_Vars,          ONLY: firstMPISide_YOUR, lastMPISide_MINE, nSides
 USE MOD_Interpolation_Vars, ONLY: L_Minus,L_Plus
-USE MOD_DG_Vars,            ONLY: L_HatPlus,L_HatMinus
 #if FV_ENABLED
 USE MOD_FV_Vars,            ONLY: FV_Elems,FV_Elems_master,FV_Elems_slave
 #endif

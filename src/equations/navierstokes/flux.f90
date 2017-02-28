@@ -147,10 +147,15 @@ INTEGER, INTENT(IN)                                          :: iELem           
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                :: muS
-REAL                :: v1,v2,v3
-REAL                :: tau_xx,tau_yy,tau_zz,tau_xy,tau_xz,tau_yz
-REAL                :: gradT1,gradT2,gradT3,lambda,prim(PP_nVarPrim)
+REAL                :: v1,v2
+REAL                :: tau_xx,tau_yy,tau_xy
+REAL                :: gradT1,gradT2,lambda,prim(PP_nVarPrim)
 INTEGER             :: i,j,k
+#if PP_dim==3
+REAL                :: v3
+REAL                :: tau_zz,tau_xz,tau_yz
+REAL                :: gradT3
+#endif
 !==================================================================================================================================
 DO k=0,PP_NZ;  DO j=0,PP_N; DO i=0,PP_N
   prim = UPrim(:,i,j,k)
@@ -331,9 +336,14 @@ REAL,INTENT(IN)     :: Face_xGP(3,0:Nloc,0:PP_NlocZ)  !< Gauss-point coordinates
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                :: muS
-REAL                :: v1,v2,v3
-REAL                :: tau_xx,tau_yy,tau_zz,tau_xy,tau_xz,tau_yz
-REAL                :: gradT1,gradT2,gradT3,lambda,prim(PP_nVarPrim)
+REAL                :: v1,v2
+REAL                :: tau_xx,tau_yy,tau_xy
+REAL                :: gradT1,gradT2,lambda,prim(PP_nVarPrim)
+#if PP_dim==3
+REAL                :: tau_zz,tau_xz,tau_yz
+REAL                :: v3
+REAL                :: gradT3
+#endif 
 INTEGER             :: i,j
 #ifdef EDDYVISCOSITY 
 REAL                :: muSGS 

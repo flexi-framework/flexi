@@ -264,7 +264,10 @@ REAL,DIMENSION(PP_nVar,nDOFs),INTENT(INOUT) :: f,g,h
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                                     :: i
-REAL,DIMENSION(PP_nVar)                     :: fTilde,gTilde,hTilde !< Auxiliary variables needed to store the fluxes at one GP
+REAL,DIMENSION(PP_nVar)                     :: fTilde,gTilde !< Auxiliary variables needed to store the fluxes at one GP
+#if PP_dim==3       
+REAL,DIMENSION(PP_nVar)                     :: hTilde !< Auxiliary variables needed to store the fluxes at one GP
+#endif
 !==================================================================================================================================
 DO i=1,nDOFs
   fTilde=f(:,i)

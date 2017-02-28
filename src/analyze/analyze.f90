@@ -219,7 +219,10 @@ REAL,INTENT(IN)                  :: wBary(0:N_in)         !< barycentric weights
 ! LOCAL VARIABLES
 REAL                             :: XiAnalyze(0:Nloc)
 REAL                             :: wAnalyze( 0:Nloc)  ! GL integration weights used for the analyze
-INTEGER                          :: i,j,k
+INTEGER                          :: i,j
+#if PP_dim == 3
+INTEGER                          :: k
+#endif
 !==================================================================================================================================
 ALLOCATE(wGPVolAnalyze(0:Nloc,0:Nloc,0:PP_NlocZ),Vdm_GaussN_NAnalyze(0:Nloc,0:N_in))
 CALL GetNodesAndWeights(Nloc,NodeTypeGL,XiAnalyze,wAnalyze)

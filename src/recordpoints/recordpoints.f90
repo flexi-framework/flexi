@@ -345,7 +345,10 @@ USE MOD_Timedisc_Vars,    ONLY: dt
 USE MOD_Analyze_Vars,     ONLY: WriteData_dt,tWriteData
 USE MOD_RecordPoints_Vars,ONLY: RP_Data,RP_ElemID
 USE MOD_RecordPoints_Vars,ONLY: RP_Buffersize,RP_MaxBuffersize,RP_SamplingOffset,iSample
-USE MOD_RecordPoints_Vars,ONLY: l_xi_RP,l_eta_RP,l_zeta_RP,nRP
+USE MOD_RecordPoints_Vars,ONLY: l_xi_RP,l_eta_RP,nRP
+#if PP_dim==3
+USE MOD_RecordPoints_Vars,ONLY: l_zeta_RP
+#endif
 #if FV_ENABLED
 USE MOD_RecordPoints_Vars,ONLY: FV_RP_ijk
 USE MOD_FV_Vars          ,ONLY: FV_Elems

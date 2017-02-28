@@ -517,7 +517,7 @@ REAL                           :: StartT,EndT
 REAL,POINTER                   :: UOut(:,:,:,:,:)
 INTEGER                        :: NZ_loc
 #if PP_dim == 2
-INTEGER                        :: iElem,i,j,k,iVar
+INTEGER                        :: iElem,i,j,iVar
 #endif
 !==================================================================================================================================
 IF(MPIROOT)THEN

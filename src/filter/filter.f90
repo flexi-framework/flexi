@@ -89,12 +89,13 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Filter_Vars
 USE MOD_Interpolation     ,ONLY:GetVandermonde
-USE MOD_Interpolation_Vars,ONLY:InterpolationInitIsDone,Vdm_Leg,sVdm_Leg,NodeType,wGP
+USE MOD_Interpolation_Vars,ONLY:InterpolationInitIsDone,Vdm_Leg,sVdm_Leg,NodeType
 USE MOD_ChangeBasis       ,ONLY:ChangeBasis3D
 USE MOD_ReadInTools       ,ONLY:GETINT,GETREAL,GETREALARRAY,GETLOGICAL,GETINTFROMSTR
 USE MOD_Interpolation     ,ONLY:GetVandermonde
 USE MOD_IO_HDF5           ,ONLY:AddToElemData
 #if EQNSYSNR==2
+USE MOD_Interpolation_Vars,ONLY:wGP
 USE MOD_Mesh_Vars         ,ONLY:nElems,sJ
 #endif
 IMPLICIT NONE
@@ -102,7 +103,10 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER             :: iDeg,iElem,i,j,k
+INTEGER             :: iDeg
+#if EQNSYSNR==2
+INTEGER             :: iElem,i,j,k
+#endif
 !==================================================================================================================================
 IF(FilterInitIsDone.OR.(.NOT.InterpolationInitIsDone))THEN
    CALL CollectiveStop(__STAMP__,'InitFilter not ready to be called or already called.')
@@ -261,11 +265,8 @@ REAL,INTENT(INOUT)  :: U_in(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< solution ve
 REAL,INTENT(IN)     :: FilterMat(0:PP_N,0:PP_N)                  !< filter matrix to be used
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL :: U_test(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< solution vector to be filtered
 !==================================================================================================================================
 
-!CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,1,nElems,1,nElems,FilterMat,U_in,U_test)
-!U_in=U_test
 #if FV_ENABLED
 CALL ChangeBasisVolume(PP_nVar,PP_N,1,nElems,1,nElems,FilterMat,U_in,FV_Elems,0)
 #else
@@ -299,7 +300,10 @@ REAL,INTENT(INOUT)  :: U_in(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< solution ve
 !-------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
 INTEGER                                      :: i,j,k,l,iElem
-REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ):: U_Xi,U_Eta, U_filtered
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ):: U_Xi, U_filtered
+#if PP_dim == 3
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ):: U_Eta
+#endif
 REAL,DIMENSION(1:3,0:PP_N,0:PP_N,0:PP_NZ)    :: U_fluc
 REAL                                         :: ekin_avg,U_avg(5)
 REAL                                         :: ekin_fluc_avg,dedt_lim

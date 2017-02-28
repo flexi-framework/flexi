@@ -40,7 +40,10 @@ USE MOD_Globals
 #ifndef GNU
 USE, INTRINSIC :: IEEE_ARITHMETIC,ONLY:IEEE_IS_NAN
 #endif
-USE MOD_Mesh_Vars,          ONLY:sJ,Metrics_fTilde,Metrics_gTilde,Metrics_hTilde
+USE MOD_Mesh_Vars,          ONLY:sJ,Metrics_fTilde,Metrics_gTilde
+#if PP_dim==3       
+USE MOD_Mesh_Vars,          ONLY:Metrics_hTilde
+#endif
 USE MOD_Equation_Vars,      ONLY:AdvVel
 USE MOD_TimeDisc_Vars,      ONLY:CFLScale,ViscousTimeStep
 USE MOD_PreProc
@@ -60,7 +63,10 @@ INTEGER,INTENT(OUT)          :: errType       !< Error code
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                      :: i,j,k,iElem,FVE
-REAL                         :: Lambda1,Lambda2,Lambda3,maxLambda
+REAL                         :: Lambda1,Lambda2,maxLambda
+#if PP_dim==3       
+REAL                         :: Lambda3
+#endif
 REAL                         :: TimeStep(2)
 #if PARABOLIC
 REAL                         :: Lambda_v1,Lambda_v2,Lambda_v3

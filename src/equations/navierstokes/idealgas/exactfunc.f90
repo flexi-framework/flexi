@@ -554,7 +554,10 @@ SUBROUTINE CalcSource(Ut,t)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Equation_Vars,ONLY:IniExactFunc,doCalcSource
-USE MOD_Eos_Vars,ONLY:Kappa,KappaM1
+USE MOD_Eos_Vars,ONLY:Kappa
+#if PP_dim==3
+USE MOD_Eos_Vars,ONLY:KappaM1
+#endif
 USE MOD_Exactfunc_Vars,ONLY:AdvVel
 #if PARABOLIC
 USE MOD_Eos_Vars,ONLY:mu0,Pr
@@ -574,8 +577,10 @@ REAL,INTENT(INOUT)  :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< DG time deriv
 INTEGER             :: i,j,k,iElem
 REAL                :: Ut_src(5,0:PP_N,0:PP_N,0:PP_NZ)
 REAL                :: Frequency,Amplitude,Omega,a
+#if PP_dim==3
 REAL                :: sinXGP,sinXGP2,cosXGP,at
 REAL                :: tmp(6)
+#endif
 REAL                :: C
 #if FV_ENABLED
 REAL                :: Ut_src2(5,0:PP_N,0:PP_N,0:PP_NZ)

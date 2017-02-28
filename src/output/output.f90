@@ -294,8 +294,12 @@ USE MOD_VTK,              ONLY:WriteDataToVTK,WriteVTKMultiBlockDataSet
 #if FV_ENABLED
 USE MOD_FV_Vars,          ONLY:FV_Elems
 #if FV_RECONSTRUCT
-USE MOD_FV_Vars,          ONLY:FV_dx_XI_L,FV_dx_XI_R,FV_dx_ETA_L,FV_dx_ETA_R,FV_dx_ZETA_L,FV_dx_ZETA_R
-USE MOD_FV_Vars,          ONLY:gradUxi,gradUeta,gradUzeta
+USE MOD_FV_Vars,          ONLY:FV_dx_XI_L,FV_dx_XI_R,FV_dx_ETA_L,FV_dx_ETA_R
+USE MOD_FV_Vars,          ONLY:gradUxi,gradUeta
+#if PP_dim == 3        
+USE MOD_FV_Vars,          ONLY:FV_dx_ZETA_L,FV_dx_ZETA_R
+USE MOD_FV_Vars,          ONLY:gradUzeta
+#endif
 #endif
 USE MOD_EOS,              ONLY:PrimToCons,ConsToPrim
 USE MOD_FV_Basis
@@ -328,7 +332,10 @@ REAL,ALLOCATABLE              :: Vdm_GaussN_FV_NVisu(:,:)
 #endif
 CHARACTER(LEN=255),ALLOCATABLE:: StrVarNames_loc(:)
 #if FV_ENABLED && FV_RECONSTRUCT            
-REAL                          :: dx,dy,dz
+REAL                          :: dx,dy
+#if PP_dim == 3        
+REAL                          :: dz
+#endif
 #endif
 !==================================================================================================================================
 IF(outputFormat.LE.0) RETURN

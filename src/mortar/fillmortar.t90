@@ -65,7 +65,9 @@ INTEGER      :: iMortar,nMortars
 INTEGER      :: firstMortarSideID,lastMortarSideID
 INTEGER      :: MortarSideID,SideID,locSide,flip
 REAL         :: U_tmp( TP_nVar,0:PP_N,0:TP_NZ,1:4)
+#if PP_dim == 3
 REAL         :: U_tmp2(TP_nVar,0:PP_N,0:TP_NZ,1:2)
+#endif
 REAL,POINTER :: M1(:,:),M2(:,:)
 !==================================================================================================================================
 !                         doMPISides==True   doMPISides==False
@@ -228,7 +230,9 @@ INTEGER      :: iMortar,nMortars
 INTEGER      :: firstMortarSideID,lastMortarSideID
 INTEGER      :: MortarSideID,SideID,iSide,flip
 REAL         :: Flux_tmp( TP_nVar,0:PP_N,0:PP_NZ,1:4)
+#if PP_dim == 3
 REAL         :: Flux_tmp2(TP_nVar,0:PP_N,0:PP_NZ,1:2)
+#endif
 REAL,POINTER :: M1(:,:),M2(:,:)
 LOGICAL      :: onlyFV_loc
 !==================================================================================================================================

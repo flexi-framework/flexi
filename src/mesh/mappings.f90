@@ -48,9 +48,9 @@ INTERFACE VolToSide
   MODULE PROCEDURE VolToSide
 END INTERFACE
 
-INTERFACE ElemToNbElem
-  MODULE PROCEDURE ElemToNbElem
-END INTERFACE
+!INTERFACE ElemToNbElem
+!  MODULE PROCEDURE ElemToNbElem
+!END INTERFACE
 
 INTERFACE FinalizeMappings
   MODULE PROCEDURE FinalizeMappings
@@ -63,7 +63,7 @@ PUBLIC::Flip_M2S
 PUBLIC::SideToVol
 PUBLIC::SideToVol2
 PUBLIC::VolToSide
-PUBLIC::ElemToNbElem
+!PUBLIC::ElemToNbElem
 PUBLIC::FinalizeMappings
 !==================================================================================================================================
 
@@ -469,33 +469,23 @@ pq = Flip_M2S(Nloc,p,q,flip,dim)
 SideToVol2 = CGNS_SideToVol2(Nloc,pq(1),pq(2),locSideID,dim)
 END FUNCTION SideToVol2
 
+!!!==================================================================================================================================
+!!> Get the index of neighbor element, return -1 if none exists
 !!==================================================================================================================================
-!> Get the index of neighbor element, return -1 if none exists
-!==================================================================================================================================
-FUNCTION ElemToNbElem(locSideID,iElem)
-! MODULES
-USE MOD_Mesh_Vars,ONLY:ElemToSide,SideToElem,firstInnerSide,lastInnerSide
-IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)   :: locSideID,iElem
-INTEGER              :: ElemToNBElem
-!----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-INTEGER              :: flip, SideID
-!==================================================================================================================================
-SideID=ElemToSide(E2S_SIDE_ID,locSideID,iElem)
-IF ((SideID.GE.firstInnerSide).AND.(SideID.LE.lastInnerSide)) THEN
- !flip  =ElemToSide(E2S_FLIP,locSideID,iElem)
- !IF (flip.EQ.0) THEN
-   !ElemToNbElem = SideToElem(S2E_NB_ELEM_ID,SideID)
- !ELSE
-   !ElemToNbElem = SideToElem(S2E_ELEM_ID,SideID)
- !END IF
-ELSE
- !ElemToNbElem = -1
-END IF
-END FUNCTION ElemToNbElem
+!FUNCTION ElemToNbElem(locSideID,iElem)
+!! MODULES
+!USE MOD_Mesh_Vars,ONLY:ElemToSide
+!IMPLICIT NONE
+!!----------------------------------------------------------------------------------------------------------------------------------
+!! INPUT/OUTPUT VARIABLES
+!INTEGER,INTENT(IN)   :: locSideID,iElem
+!INTEGER              :: ElemToNBElem
+!!----------------------------------------------------------------------------------------------------------------------------------
+!! LOCAL VARIABLES
+!INTEGER              :: SideID
+!!==================================================================================================================================
+!SideID=ElemToSide(E2S_SIDE_ID,locSideID,iElem)
+!END FUNCTION ElemToNbElem
 
 SUBROUTINE FinalizeMappings() 
 USE MOD_Mesh_Vars

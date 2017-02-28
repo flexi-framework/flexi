@@ -101,7 +101,10 @@ USE MOD_PreProc
 USE, INTRINSIC :: IEEE_ARITHMETIC,ONLY:IEEE_IS_NAN
 #endif
 USE MOD_DG_Vars      ,ONLY:U
-USE MOD_Mesh_Vars    ,ONLY:sJ,Metrics_fTilde,Metrics_gTilde,Metrics_hTilde,Elem_xGP,nElems
+USE MOD_Mesh_Vars    ,ONLY:sJ,Metrics_fTilde,Metrics_gTilde,Elem_xGP,nElems
+#if PP_dim==3
+USE MOD_Mesh_Vars    ,ONLY:Metrics_hTilde
+#endif
 USE MOD_EOS_Vars
 #if PARABOLIC
 USE MOD_TimeDisc_Vars,ONLY:DFLScale

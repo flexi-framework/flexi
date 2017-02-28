@@ -428,7 +428,7 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER :: iElem,i,j,k,iSide
+INTEGER :: i,j,iSide
 REAL    :: tmp(3,0:PP_N,0:PP_N,0:FV_ENABLED),zlength
 #if FV_ENABLED
 REAL    :: tmpFV(0:PP_N,0:PP_N,3)
