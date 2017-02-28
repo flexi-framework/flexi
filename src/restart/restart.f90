@@ -170,6 +170,9 @@ USE MOD_FV_Vars,            ONLY: FV_Elems
 USE MOD_Indicator_Vars,     ONLY: IndValue
 USE MOD_StringTools,        ONLY: STRICMP
 #endif
+USE MOD_2D,                 ONLY: ExpandArrayTo3D
+USE MOD_IO_HDF5
+USE MOD_HDF5_Input,         ONLY: GetDataSize
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -213,7 +216,21 @@ IF(DoRestart)THEN
   ! Read in state
   IF(.NOT. InterpolateSolution)THEN
     ! No interpolation needed, read solution directly from file
-    CALL ReadArray('DG_Solution',5,(/PP_nVar,PP_N+1,PP_N+1,PP_NZ+1,nElems/),OffsetElem,5,RealArray=U)
+    ! check whether we have 2D data
+    CALL GetDataSize(File_ID,'DG_Solution',nDims,HSize)
+    IF(HSize(4).EQ.1) THEN 
+#if PP_dim == 3
+      ! If either posti or a 3D flexi reads in a 2D state file, expand it to 3D.
+      ALLOCATE(U_local(PP_nVar,0:PP_N,0:PP_N,0:0,nElems))
+      CALL ReadArray('DG_Solution',5,(/PP_nVar,PP_N+1,PP_N+1,1,nElems/),OffsetElem,5,RealArray=U_local)
+      CALL ExpandArrayTo3D(5,(/PP_nVar,PP_N+1,PP_N+1,1,nElems/),4,PP_N+1,U_local,U) 
+      DEALLOCATE(U_local)
+#else
+      CALL ReadArray('DG_Solution',5,(/PP_nVar,PP_N+1,PP_N+1,1,nElems/),OffsetElem,5,RealArray=U)
+#endif
+    ELSE
+      CALL ReadArray('DG_Solution',5,(/PP_nVar,PP_N+1,PP_N+1,PP_NZ+1,nElems/),OffsetElem,5,RealArray=U)
+    END IF
   ELSE
     ! We need to interpolate the solution to the new computational grid
     SWRITE(UNIT_stdOut,*)'Interpolating solution from restart grid with N=',N_restart,' to computational grid with N=',PP_N
