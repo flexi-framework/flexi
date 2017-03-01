@@ -139,8 +139,14 @@ int visuReader::RequestInformation(vtkInformation *,
    struct CharARRAY bcnames;
    // Call Posti-function requestInformation:
    // This function returns the varnames of state, primitive and derived quantities
-   int str_len = strlen(FileNames[0].c_str());
-   __mod_visu_cwrapper_MOD_visu_requestinformation(&fcomm, &str_len, FileNames[0].c_str(), &varnames, &bcnames);
+   int strlen_state = strlen(FileNames[0].c_str());
+   int strlen_mesh;
+   if (MeshFileOverwrite == NULL ) {
+      strlen_mesh = 0;
+   } else {
+      strlen_mesh = strlen(MeshFileOverwrite);
+   }
+   __mod_visu_cwrapper_MOD_visu_requestinformation(&fcomm, &strlen_state, FileNames[0].c_str(), &strlen_mesh, MeshFileOverwrite, &varnames, &bcnames);
 
    MPI_Barrier(mpiComm);
 
@@ -247,6 +253,7 @@ int visuReader::RequestData(
       vtkInformationVector **vtkNotUsed(inputVector),
       vtkInformationVector *outputVector)
 {
+   RequestInformation(NULL,NULL,outputVector);
    SWRITE("RequestData");
 
    // get the index of the timestep to load
