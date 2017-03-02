@@ -132,6 +132,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! other file
         CALL GetVarNames("VarNamesAddField",varnames_tmp,VarNamesExist)
       ELSE
         CALL GetDataSize(File_ID,TRIM(datasetNames(i)),dims,HSize)
+        IF ((dims.NE.5).OR.(dims.NE.2)) CYCLE
         ALLOCATE(varnames_tmp(INT(HSize(1))))
         DO j=1,INT(HSize(1))
           WRITE(varnames_tmp(j),'(I0)') j
