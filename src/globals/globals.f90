@@ -60,6 +60,10 @@ INTERFACE PrintWarning
   MODULE PROCEDURE PrintWarning
 END INTERFACE PrintWarning
 
+INTERFACE FILEEXISTS
+  MODULE PROCEDURE FILEEXISTS
+END INTERFACE FILEEXISTS
+
 INTERFACE INTSTAMP
   MODULE PROCEDURE INTSTAMP
 END INTERFACE INTSTAMP
@@ -224,6 +228,21 @@ IF (ErrorFiles) THEN
 END IF
 END SUBROUTINE CreateErrFile
 
+!==================================================================================================================================
+!> Creates an integer stamp that will afterwards be given to the SOUBRUTINE timestamp
+!==================================================================================================================================
+FUNCTION FILEEXISTS(filename)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+CHARACTER(LEN=*),INTENT(IN) :: filename 
+LOGICAL                     :: FILEEXISTS
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!==================================================================================================================================
+INQUIRE(FILE=TRIM(filename), EXIST=FILEEXISTS)
+END FUNCTION FILEEXISTS
 
 !==================================================================================================================================
 !> Creates an integer stamp that will afterwards be given to the SOUBRUTINE timestamp

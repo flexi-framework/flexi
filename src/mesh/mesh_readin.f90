@@ -216,14 +216,12 @@ INTEGER                        :: iProc
 INTEGER,ALLOCATABLE            :: MPISideCount(:)
 #endif
 LOGICAL                        :: oriented
-LOGICAL                        :: fileExists
 LOGICAL                        :: doConnection
 LOGICAL                        :: dsExists
 !==================================================================================================================================
 IF(MESHInitIsDone) RETURN
 IF(MPIRoot)THEN
-  INQUIRE (FILE=TRIM(FileString), EXIST=fileExists)
-  IF(.NOT.FileExists)  CALL CollectiveStop(__STAMP__, &
+  IF(.NOT.FILEEXISTS(FileString))  CALL CollectiveStop(__STAMP__, &
     'readMesh from data file "'//TRIM(FileString)//'" does not exist')
 END IF
 

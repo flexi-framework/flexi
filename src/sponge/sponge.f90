@@ -179,7 +179,7 @@ CASE(SPONGEBASEFLOW_PRUETT) ! Pruett
       ! If no base flow file has been specified, assume a standard name for the base flow file
       BaseFlowFile=TRIM(TIMESTAMP(TRIM(ProjectName)//'_BaseFlow',RestartTime))//'.h5'
       ! Check if this file exists
-      INQUIRE(FILE=TRIM(BaseFlowFile),EXIST=validBaseFlowFile)
+      validBaseFlowFile = FILEEXISTS(BaseFlowFile)
       IF (.NOT.validBaseFlowFile) THEN
         ! If the assumed base flow file does not exist, use the restart state to initialize the sponge base flow
         BaseFlowFile = RestartFile
@@ -187,7 +187,7 @@ CASE(SPONGEBASEFLOW_PRUETT) ! Pruett
       END IF
     ELSE
       ! check if baseflow exists
-      INQUIRE(FILE=TRIM(BaseFlowFile),EXIST=validBaseFlowFile)
+      validBaseFlowFile = FILEEXISTS(BaseFlowFile)
       IF (.NOT.validBaseFlowFile) THEN
         CALL CollectiveStop(__STAMP__,&
           'ERROR: Sponge base flow file '//TRIM(BaseFlowFile)//' does not exist.')

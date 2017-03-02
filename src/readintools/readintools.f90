@@ -468,7 +468,7 @@ CLASS(link), POINTER  :: current
 INTEGER               :: stat,iniUnit,nLines,i
 TYPE(Varying_String)  :: aStr,bStr
 CHARACTER(LEN=255)    :: HelpStr
-LOGICAL               :: firstWarn=.TRUE.,file_exists
+LOGICAL               :: firstWarn=.TRUE.
 CHARACTER(LEN=255),ALLOCATABLE :: FileContent(:)
 CHARACTER(LEN=1)      :: tmpChar=''
 !==================================================================================================================================
@@ -477,8 +477,7 @@ CALL this%CreateLogicalOption('ColoredOutput','Colorize stdout, included for com
 IF(MPIROOT)THEN
   ! Get name of ini file
   WRITE(UNIT_StdOut,*)'| Reading from file "',TRIM(filename),'":'
-  INQUIRE(FILE=TRIM(filename), EXIST=file_exists)
-  IF (.NOT.file_exists) THEN
+  IF (.NOT.FILEEXISTS(filename)) THEN
     CALL Abort(__STAMP__,&
         "Ini file does not exist.")
   END IF
@@ -1294,12 +1293,11 @@ LOGICAL,INTENT(OUT)           :: userblockFound
 INTEGER               :: stat,iniUnit,fileUnit
 TYPE(Varying_String)  :: aStr
 CHARACTER(LEN=3)      :: tmp
-LOGICAL               :: file_exists,iniFound
+LOGICAL               :: iniFound
 !==================================================================================================================================
 
 IF (MPIRoot) THEN
-  INQUIRE(FILE=TRIM(filename), EXIST=file_exists)  
-  IF (.NOT.file_exists) THEN
+  IF (.NOT.FILEEXISTS(filename)) THEN
     CALL CollectiveStop(__STAMP__,&
         "File '"//TRIM(filename)//"' does not exist.")
   END IF
