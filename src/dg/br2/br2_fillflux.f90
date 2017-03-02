@@ -54,21 +54,21 @@ USE MOD_Mesh_Vars,       ONLY: firstInnerSide,   lastInnerSide
 USE MOD_Mesh_Vars,       ONLY: firstMPISide_MINE,lastMPISide_MINE
 #if FV_ENABLED
 USE MOD_FV_Vars         ,ONLY: FV_Elems_Sum,FV_sVdm
-USE MOD_ChangeBasis     ,ONLY: ChangeBasis2D_selective
+USE MOD_ChangeBasisByDim,ONLY: ChangeBasisSurf
 #endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: dir                        !< direction (x,y,z)
 LOGICAL,INTENT(IN) :: doMPISides                 !< =.TRUE. only MINE MPISides are filled, =.FALSE. InnerSides
-REAL,INTENT(IN)    :: UPrimface_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< solution on the master sides
-REAL,INTENT(IN)    :: UPrimface_slave (PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< solution on the slave sides
-REAL,INTENT(OUT)   :: Flux(1:PP_nVarPrim,0:PP_N,0:PP_N,nSides) !< surface flux contribution
+REAL,INTENT(IN)    :: UPrimface_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< solution on the master sides
+REAL,INTENT(IN)    :: UPrimface_slave (PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< solution on the slave sides
+REAL,INTENT(OUT)   :: Flux(1:PP_nVarPrim,0:PP_N,0:PP_NZ,nSides) !< surface flux contribution
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            ::SideID,p,q,firstSideID,lastSideID
 #if FV_ENABLED  
-REAL               :: UPrim_glob(1:PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
+REAL               :: UPrim_glob(1:PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides)
 #endif
 !==================================================================================================================================
 ! fill flux for sides ranging between firstSideID and lastSideID using Riemann solver
@@ -84,9 +84,9 @@ END IF
 
 #if FV_ENABLED
 ! change basis for the FV element
-CALL ChangeBasis2D_selective(PP_nVarPrim,PP_N,PP_N,1,nSides,firstSideID,lastSideID,&
+CALL ChangeBasisSurf(PP_nVarPrim,PP_N,PP_N,1,nSides,firstSideID,lastSideID,&
                              FV_sVdm,UPrimface_master,UPrim_glob,FV_Elems_Sum,1)
-CALL ChangeBasis2D_selective(PP_nVarPrim,PP_N,PP_N,1,nSides,firstSideID,lastSideID,&
+CALL ChangeBasisSurf(PP_nVarPrim,PP_N,PP_N,1,nSides,firstSideID,lastSideID,&
                              FV_sVdm,UPrimface_slave ,UPrim_glob,FV_Elems_Sum,2)
 #endif
 
@@ -109,7 +109,7 @@ DO SideID = firstSideID,lastSideID
 #endif
 
   ! multiply by surface area
-  DO q=0,PP_N
+  DO q=0,PP_NZ
     DO p=0,PP_N
       Flux(:,p,q,SideID)=Flux(:,p,q,SideID)*NormVec(dir,p,q,0,SideID)*SurfElem(p,q,0,SideID)
     END DO
@@ -140,10 +140,10 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 REAL,INTENT(IN)    :: t                                                !< Current time
-REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< Primitive solution from the inside
-REAL,INTENT(OUT)   :: FluxX(       PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< gradient flux in x-dir
-REAL,INTENT(OUT)   :: FluxY(       PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< gradient flux in y-dir
-REAL,INTENT(OUT)   :: FluxZ(       PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< gradient flux in z-dir
+REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< Primitive solution from the inside
+REAL,INTENT(OUT)   :: FluxX(       PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< gradient flux in x-dir
+REAL,INTENT(OUT)   :: FluxY(       PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< gradient flux in y-dir
+REAL,INTENT(OUT)   :: FluxZ(       PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< gradient flux in z-dir
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: SideID,p,q
@@ -155,10 +155,14 @@ DO SideID=1,nBCSides
   IF (FV_Elems_master(SideID).GT.0) CYCLE
   CALL Lifting_GetBoundaryFlux(SideID,t,UPrim_master(:,:,:,SideID),FluxZ(:,:,:,SideID),&
        NormVec(:,:,:,0,SideID),TangVec1(:,:,:,0,SideID),TangVec2(:,:,:,0,SideID),Face_xGP(:,:,:,0,SideID),SurfElem(:,:,0,SideID))
-  DO q=0,PP_N; DO p=0,PP_N
+  DO q=0,PP_NZ; DO p=0,PP_N
     FluxX(:,p,q,SideID)=FluxZ(:,p,q,SideID)*NormVec(1,p,q,0,SideID)
     FluxY(:,p,q,SideID)=FluxZ(:,p,q,SideID)*NormVec(2,p,q,0,SideID)
+#if PP_dim == 3
     FluxZ(:,p,q,SideID)=FluxZ(:,p,q,SideID)*NormVec(3,p,q,0,SideID)
+#else
+    FluxZ(:,p,q,SideID)=0.
+#endif
   END DO; END DO
 END DO
 

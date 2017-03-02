@@ -32,7 +32,7 @@ PUBLIC::GetFlagFromFile
 CONTAINS
 
 !==================================================================================================================================
-!> read the file "configuirations.reggie" and creates multiple compiler flag configurations for cmake that are written to
+!> read the file "configurations.reggie" and creates multiple compiler flag configurations for cmake that are written to
 !> "configurationsX.cmake"
 !==================================================================================================================================
 SUBROUTINE ReadConfiguration(iExample,nReggieBuilds,N_compile_flags)
