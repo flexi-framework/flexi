@@ -66,7 +66,7 @@ USE MOD_EOS_Posti_Vars ,ONLY: DepNames,nVarDepEOS
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 CHARACTER(LEN=255),INTENT(IN)                       :: statefile
-CHARACTER(LEN=255),INTENT(IN)                       :: meshfile
+CHARACTER(LEN=*)  ,INTENT(IN)                       :: meshfile
 CHARACTER(LEN=255),INTENT(INOUT),ALLOCATABLE,TARGET :: varnames_loc(:)
 CHARACTER(LEN=255),INTENT(INOUT),ALLOCATABLE,TARGET :: bcnames_loc(:)
 !-----------------------------------------------------------------------------------------------------------------------------------
