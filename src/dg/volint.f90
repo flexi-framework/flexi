@@ -220,12 +220,15 @@ USE MOD_SplitFlux    ,ONLY:SplitDGVolume_pointer ! computes volume fluxes in spl
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(OUT)   :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_N,1:nElems) !< Time derivative of the volume integral (viscous part)
+REAL,INTENT(OUT)   :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< Time derivative of the volume integral (viscous part)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: i,j,k,l,iElem
 REAL,DIMENSION(PP_nVar                     ) :: Flux !< auxilery variable for split flux
-REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_N) :: f_c,g_c,h_c,fv,gv,hv  !< Volume fluxes at GP
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: f_c,g_c,h_c  !< Euler fluxes at GP
+#if PARABOLIC
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: fv,gv,hv  !< Parabolic fluxes at GP
+#endif /*PARABOLIC*/
 !==================================================================================================================================
 ! Diffusive part
 DO iElem=1,nElems
@@ -251,7 +254,7 @@ DO iElem=1,nElems
                                         Metrics_hTilde(:,:,:,:,iElem,0))
 #endif
 
-  DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
 
     DO l=i+1,PP_N
        ! compute split flux in x-direction
@@ -289,6 +292,7 @@ DO iElem=1,nElems
 #endif /*PARABOLIC*/
     END DO ! m
 
+#if PP_dim==3
     DO l=k+1,PP_N
        ! compute split flux in z-direction
        CALL SplitDGVolume_pointer(U(:,i,j,k,iElem),UPrim(:,i,j,k,iElem), &
@@ -305,21 +309,28 @@ DO iElem=1,nElems
        !symmetry
        Ut(:,i,j,l,iElem) = Ut(:,i,j,l,iElem) + DVolSurf(k,l)*Flux(:)
 #endif /*PARABOLIC*/
-    END DO ! m
+    END DO ! l
+#endif /*PP_dim==3*/
 
     ! consistency: if both poitns for flux evaluation are the same the standart
     ! euler fluxes are retained
 #if PARABOLIC
     Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + DVolSurf(i,i)*f_c(:,i,j,k) + &
                                             DVolSurf(j,j)*g_c(:,i,j,k) + &
+#if PP_dim==3
                                             DVolSurf(k,k)*h_c(:,i,j,k) + &
+#endif /*PP_dim==3*/
                                             D_Hat_T(i,i)*fv(:,i,j,k)   + &
-                                            D_Hat_T(j,j)*gv(:,i,j,k)   + &
-                                            D_Hat_T(k,k)*hv(:,i,j,k)
+#if PP_dim==3
+                                            D_Hat_T(j,j)*hv(:,i,j,k)   + &
+#endif /*PP_dim==3*/
+                                            D_Hat_T(k,k)*gv(:,i,j,k)
 #else
     Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + DVolSurf(i,i)*f_c(:,i,j,k) + &
-                                            DVolSurf(j,j)*g_c(:,i,j,k) + &
-                                            DVolSurf(k,k)*h_c(:,i,j,k)
+#if PP_dim==3
+                                            DVolSurf(j,j)*h_c(:,i,j,k) + &
+#endif /*PP_dim==3*/
+                                            DVolSurf(k,k)*g_c(:,i,j,k)
 #endif /*PARABOLIC*/
 
   END DO; END DO; END DO !i,j,k
