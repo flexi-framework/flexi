@@ -10,11 +10,11 @@ SET_TARGET_PROPERTIES(userblocklib_dummy PROPERTIES COMPILE_FLAGS "-fPIC")
 CMAKE_DEPENDENT_OPTION(POSTI_BUILD_VISU                  "Build the visu tool"                        ON  "FLEXI_BUILDPOSTI" OFF)
 #CMAKE_DEPENDENT_OPTION(POSTI_BUILD_MERGETIMEAVERAGE      "Build the time-averaging tool"              ON  "FLEXI_BUILDPOSTI" OFF)
 #CMAKE_DEPENDENT_OPTION(POSTI_BUILD_FLUCTUATIONS          "Build the fluctuations tool"                ON  "FLEXI_BUILDPOSTI" OFF)
-#CMAKE_DEPENDENT_OPTION(POSTI_BUILD_SWAPMESH              "Build the swapmesh tool"                    ON  "FLEXI_BUILDPOSTI" OFF)
 #CMAKE_DEPENDENT_OPTION(POSTI_BUILD_WALLDISTANCE          "Build the walldistance tool"                OFF "FLEXI_BUILDPOSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_BUILD_PREPARERECORDPOINTS   "Build the Record point preprocessing tool"          ON  "FLEXI_BUILDPOSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_BUILD_VISUALIZERECORDPOINTS "Build the Record Point post-processing tool"        OFF "FLEXI_BUILDPOSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_BUILD_EVALUATERECORDPOINTS  "Build the Record Point aposteriori evaluation tool" ON  "FLEXI_BUILDPOSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_BUILD_SWAPMESH  "Build the Record Point aposteriori evaluation tool" OFF  "FLEXI_BUILDPOSTI" OFF)
 
 
 SET(   POSTI_WHICH_EQNSYS "navierstokes" CACHE STRING
@@ -78,4 +78,6 @@ IF(POSTI_BUILD_EVALUATERECORDPOINTS)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/recordpoints/evaluate/CMakeLists.txt)
 ENDIF()
 
-
+IF(POSTI_BUILD_SWAPMESH)
+  INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/swapmesh/CMakeLists.txt)
+ENDIF()
