@@ -118,7 +118,7 @@ END SUBROUTINE InitSmagorinsky
 SUBROUTINE Smagorinsky(grad11,grad22,grad33,grad12,grad13,grad21,grad23,grad31,grad32,rho,iElem,i,j,k,muSGS)
 ! MODULES
 USE MOD_PreProc
-USE MOD_EddyVisc_Vars,     ONLY:deltaS,CS,VanDriest!,muSGSmax
+USE MOD_EddyVisc_Vars,     ONLY:deltaS,CS,VanDriest,muSGSmax
 USE MOD_EOS_Vars,          ONLY:mu0
 USE MOD_Mesh_Vars,         ONLY:Elem_xGP
 IMPLICIT NONE
