@@ -135,7 +135,7 @@ ELSE
   FV_Elems_loc = 0
   nElems_DG = nElems
   nElems_FV = 0
-  NVisu_FV = 0
+  NVisu_FV = 1
   NCalc_FV = 0
 
   ! build the mapping, that holds the global indices of all DG elements

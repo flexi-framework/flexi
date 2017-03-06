@@ -609,6 +609,7 @@ DO jI=0,NIn; DO jO=0,NOut
   END DO
 END DO; END DO
 END SUBROUTINE ChangeBasis2D_Single
+
 SUBROUTINE ChangeBasis1D_Single(Dim1,NIn,NOut,Vdm,X_In,X_Out)
 ! MODULES
 IMPLICIT NONE
@@ -633,6 +634,28 @@ DO iI=0,NIn
 END DO
 END SUBROUTINE ChangeBasis1D_Single
 
+SUBROUTINE ChangeBasis1D_SingleVar(NIn,NOut,Vdm,X_In,X_Out)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN)  :: NIn                             !< Input polynomial degree, no. of points = NIn+1
+INTEGER,INTENT(IN)  :: NOut                            !< Output polynomial degree, no. of points = NOut+1
+REAL,INTENT(IN)     :: X_In (0:NIn  _ADD_DIM)          !< Input field, dimensions must match Dim1,NIn
+REAL,INTENT(OUT)    :: X_Out(0:NOut _ADD_DIM)          !< Output field, dimensions must match Dim1,NOut
+REAL,INTENT(IN)     :: Vdm(0:NOut,0:NIn)               !< 1D Vandermonde In -> Out
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER             :: iI,iO
+!==================================================================================================================================
+X_Out=0.
+! first direction iI
+DO iI=0,NIn
+  DO iO=0,NOut
+    X_Out(iO _ADD_DIM)=X_Out(iO _ADD_DIM)+Vdm(iO,iI)*X_In(iI _ADD_DIM)
+  END DO
+END DO
+END SUBROUTINE ChangeBasis1D_SingleVar
 
 
 SUBROUTINE ChangeBasis3D_SingleVar(NIn,NOut,Vdm,X3D_In,X3D_Out)

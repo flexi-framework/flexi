@@ -131,7 +131,8 @@
 #define PP_NOutZ 0
 #define PP_NGeoZ 0 
 #define PP_NVisuZ 0
-#define PP_FV_NVisuZ 0
+#define PP_NVisuZ_FV 0
+#define PP_NCalcZ_FV 0
 #else
 #define PP_NOverZ NOver
 #define PP_NlocZ Nloc 
@@ -140,5 +141,6 @@
 #define PP_NOutZ NOut
 #define PP_NGeoZ NGeo
 #define PP_NVisuZ NVisu
-#define PP_FV_NVisuZ FV_NVisu
+#define PP_NVisuZ_FV NVisu_FV
+#define PP_NCalcZ_FV NCalc_FV
 #endif

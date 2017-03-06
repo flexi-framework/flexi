@@ -98,6 +98,7 @@ END INTERFACE
 #if PP_dim == 2
 INTERFACE ChangeBasisSurf
   MODULE PROCEDURE ChangeBasis1D_single
+  MODULE PROCEDURE ChangeBasis1D_singleVar
   MODULE PROCEDURE ChangeBasis1D_selective
   MODULE PROCEDURE ChangeBasis1D_selective_inplace
 END INTERFACE
