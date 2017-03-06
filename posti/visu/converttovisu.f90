@@ -372,7 +372,7 @@ USE MOD_HDF5_Input         ,ONLY: OpenDataFile,ReadArray,CloseDataFile,DatasetEx
 USE MOD_Mesh_Vars          ,ONLY: nElems,offsetElem,nBCSides,ElemToSide
 USE MOD_StringTools        ,ONLY: STRICMP,split_string
 USE MOD_Interpolation      ,ONLY: GetVandermonde
-USE MOD_ChangeBasis        ,ONLY: ChangeBasis3D,ChangeBasis2D
+USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisVolume,ChangeBasisSurf
 USE MOD_Interpolation_Vars ,ONLY: NodeType,NodeTypeVisu
 USE MOD_Interpolation_Vars ,ONLY: L_Minus,L_Plus
 USE MOD_ProlongToFace      ,ONLY: EvalElemFace
@@ -385,7 +385,7 @@ CHARACTER(LEN=255),INTENT(IN)  :: statefile   !< HDF5 state file
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: iVarVisu,iElem_DG,iElem_FV,iElem,iVarDataset,iVar,iVar2,ii,jj
-INTEGER                        :: substring_count,nDims,nVal,nSize,p,q
+INTEGER                        :: substring_count,nDims,nVal,nSize,nSizeZ,p,q
 INTEGER                        :: iSide,iSide_DG,iSide_FV,locSide
 CHARACTER(LEN=255)             :: substrings(2),DatasetName,VariableName,DataSetOld
 LOGICAL                        :: datasetFound,varnamesExist,datasetChanged
@@ -447,6 +447,11 @@ DO iVar=nVarDep+1,nVarAll
         CALL GetDataSize(File_ID,TRIM(DatasetName),nDims,HSize)
         nVal   = INT(HSize(1))
         nSize  = INT(HSize(2))
+#if PP_dim == 3
+        nSizeZ = nSize
+#else
+        nSizeZ = 1
+#endif        
         SDEALLOCATE(DataSetVarNames)
         CALL GetVarNames("VarNames_"//TRIM(DatasetName),DatasetVarNames,varnamesExist)
       END IF
@@ -477,8 +482,8 @@ DO iVar=nVarDep+1,nVarAll
         CASE(5) ! Pointwise data
           ! Allocate array and read dataset
           SDEALLOCATE(FieldData)
-          ALLOCATE(FieldData(nVal,nSize,nSize,nSize,nElems))
-          CALL ReadArray(TRIM(DatasetName),5,(/nVal,nSize,nSize,nSize,nElems/),offsetElem,5,RealArray=FieldData)  
+          ALLOCATE(FieldData(nVal,nSize,nSize,nSizeZ,nElems))
+          CALL ReadArray(TRIM(DatasetName),5,(/nVal,nSize,nSize,nSizeZ,nElems/),offsetElem,5,RealArray=FieldData)  
           ! Get Vandermonde matrix used to convert to the visu grid
           SDEALLOCATE(Vdm_DG_Visu)
           ALLOCATE(Vdm_DG_Visu(0:NVisu,0:nSize-1))
@@ -532,8 +537,8 @@ DO iVar=nVarDep+1,nVarAll
             CALL CollectiveStop(__STAMP__,&
                 "Avg2D only works for FieldData on PP_N!")
           END IF
-          ALLOCATE(FieldData_DG(0:nSize-1,0:nSize-1,0:nSize-1,nElems_DG,1))
-          ALLOCATE(FieldData_FV(0:nSize-1,0:nSize-1,0:nSize-1,nElems_FV,1))
+          ALLOCATE(FieldData_DG(0:nSize-1,0:nSize-1,0:nSizeZ-1,nElems_DG,1))
+          ALLOCATE(FieldData_FV(0:nSize-1,0:nSize-1,0:nSizeZ-1,nElems_FV,1))
           DO iElem_DG=1,nElems_DG
             FieldData_DG(:,:,:,iElem_DG,1) = FieldData(iVarDataset,:,:,:,mapDGElemsToAllElems(iElem_DG))
           END DO
@@ -552,11 +557,11 @@ DO iVar=nVarDep+1,nVarAll
           ! Perform changebasis to visu grid
           DO iElem_DG=1,nElems_DG
             iElem = mapDGElemsToAllElems(iElem_DG)
-            CALL ChangeBasis3D(nSize-1,NVisu,Vdm_DG_Visu,FieldData(iVarDataset,:,:,:,iElem),UVisu_DG(:,:,:,iElem_DG,iVarVisu))
+            CALL ChangeBasisVolume(nSize-1,NVisu,Vdm_DG_Visu,FieldData(iVarDataset,:,:,:,iElem),UVisu_DG(:,:,:,iElem_DG,iVarVisu))
           END DO
           DO iElem_FV=1,nElems_FV
             iElem = mapFVElemsToAllElems(iElem_FV)
-            CALL ChangeBasis3D(nSize-1,NVisu_FV,Vdm_FV_Visu,FieldData(iVarDataset,:,:,:,iElem),UVisu_FV(:,:,:,iElem_FV,iVarVisu))
+            CALL ChangeBasisVolume(nSize-1,NVisu_FV,Vdm_FV_Visu,FieldData(iVarDataset,:,:,:,iElem),UVisu_FV(:,:,:,iElem_FV,iVarVisu))
           END DO
         END IF
       END SELECT
@@ -607,9 +612,9 @@ DO iVar=nVarDep+1,nVarAll
             SDEALLOCATE(S2V2)
             CALL buildMappings(nSize-1,S2V2=S2V2) ! Array gets allocated in this routine
             SDEALLOCATE(Uface_tmp)
-            ALLOCATE(Uface_tmp(1,0:nSize-1,0:nSize-1))
+            ALLOCATE(Uface_tmp(1,0:nSize-1,0:nSizeZ-1))
             SDEALLOCATE(Uface)
-            ALLOCATE(Uface(0:nSize-1,0:nSize-1))
+            ALLOCATE(Uface(0:nSize-1,0:nSizeZ-1))
           END IF
           ! Prolong the pointwise data to the visu face and perform change basis to visu grid
           DO iElem_DG = 1,nElems_DG                         ! iterate over all DG visu elements
@@ -630,11 +635,11 @@ DO iVar=nVarDep+1,nVarAll
                     CALL EvalElemFace(1,nSize-1,FieldData(iVarDataset:iVarDataset,:,:,:,iElem),Uface_tmp(1:1,:,:),locSide)
                   END IF
                   ! Turn into master side coordinate system
-                  DO q=0,nSize-1; DO p=0,nSize-1
+                  DO q=0,nSizeZ-1; DO p=0,nSize-1
                     Uface(p,q)=Uface_tmp(1,S2V2(1,p,q,0,locSide),S2V2(2,p,q,0,locSide))
                   END DO; END DO
                   ! Change basis to visu grid
-                  CALL ChangeBasis2D(nSize-1,NVisu,Vdm_DG_Visu,Uface(:,:),USurfVisu_DG(:,:,0,iSide_DG,iVarVisu))
+                  CALL ChangeBasisSurf(nSize-1,NVisu,Vdm_DG_Visu,Uface(:,:),USurfVisu_DG(:,:,0,iSide_DG,iVarVisu))
                 END IF
               END IF
             END DO
@@ -663,7 +668,7 @@ DO iVar=nVarDep+1,nVarAll
                       Uface(p,q)=Uface_tmp(1,S2V2(1,p,q,0,locSide),S2V2(2,p,q,0,locSide))
                     END DO; END DO
                     ! Change basis to visu grid
-                    CALL ChangeBasis2D(nSize-1,NVisu_FV,Vdm_FV_Visu,Uface(:,:),USurfVisu_FV(:,:,0,iSide_DG,iVarVisu))
+                    CALL ChangeBasisSurf(nSize-1,NVisu_FV,Vdm_FV_Visu,Uface(:,:),USurfVisu_FV(:,:,0,iSide_DG,iVarVisu))
                   END IF
                 END IF
               END DO
