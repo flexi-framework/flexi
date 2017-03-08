@@ -31,7 +31,6 @@ CHARACTER(LEN=255)      :: ProjectName       !< Name of project, read from state
 REAL                    :: Time              !< Timestamp of project, read from first state file
 
 ! FFT variables
-REAL                    :: pi
 INTEGER(KIND=8)         :: plan
 INTEGER                 :: N_FFT(3)
 INTEGER                 :: nSamples

@@ -125,6 +125,7 @@ DO iArg=2,nArgs
   CALL CloseDataFile()
 
   ! Interpolate solution to FFT grid
+  ! FFT grid is globally equidistant
   CALL PrimStateAtFFTCoords()
 
   ! Perform actual FFT

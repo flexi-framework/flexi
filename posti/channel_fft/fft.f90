@@ -224,6 +224,9 @@ INTEGER           :: j,k
 !===================================================================================================================================
 DO j=1,N_FFT(2)
   DO k=1,N_FFT(3)
+    ! line FFT along i-direction (x in our channel testcases)
+    ! output is amplitude squares of U-spectrum, i.E. U**2(k)
+    ! other variables/directions accordingly
     CALL FFT(U_FFT(2,1:nSamples,j,k),Ex_uu(j,1:nSamples_spec))
     CALL FFT(U_FFT(3,1:nSamples,j,k),Ex_vv(j,1:nSamples_spec))
     CALL FFT(U_FFT(4,1:nSamples,j,k),Ex_ww(j,1:nSamples_spec))
@@ -231,7 +234,7 @@ DO j=1,N_FFT(2)
   END DO
 END DO
 DO j=1,N_FFT(2)
-  DO k=1,N_FFT(3)
+  DO k=1,N_FFT(1)
     CALL FFT(U_FFT(2,k,j,1:nSamples),Ez_uu(j,1:nSamples_spec))
     CALL FFT(U_FFT(3,k,j,1:nSamples),Ez_vv(j,1:nSamples_spec))
     CALL FFT(U_FFT(4,k,j,1:nSamples),Ez_ww(j,1:nSamples_spec))
@@ -239,11 +242,14 @@ DO j=1,N_FFT(2)
   END DO
 END DO
 DO j=1,N_FFT(2)
+  ! For the mean of u,v,w,p compute the sum over J-Planes
+  ! (==Y-Planes in our channel testcase) and add to the
+  ! sum of previous state files
   M_t(j,1)=M_t(j,1)+SUM(U_FFT(2,1:N_FFT(1),j,1:N_FFT(3)))
   M_t(j,2)=M_t(j,2)+SUM(U_FFT(3,1:N_FFT(1),j,1:N_FFT(3)))
   M_t(j,3)=M_t(j,3)+SUM(U_FFT(4,1:N_FFT(1),j,1:N_FFT(3)))
   M_t(j,4)=M_t(j,4)+SUM(U_FFT(5,1:N_FFT(1),j,1:N_FFT(3)))
-  ! uv
+  !  For mean uv
   MS_t(j)=MS_t(j)+SUM(U_FFT(2,1:N_FFT(1),j,1:N_FFT(3))*U_FFT(3,1:N_FFT(1),j,1:N_FFT(3)))
 END DO
 
@@ -251,6 +257,8 @@ END SUBROUTINE PerformFFT
 
 !===================================================================================================================================
 !> Low-level wrapper routine to DFFTW call.
+!> Does single sided FFT spectrum of input U_in
+!> Computes square of amplitude spectrum and adds it to output variable u_hat 
 !===================================================================================================================================
 SUBROUTINE FFT(U_in,U_hat)
 ! MODULES
@@ -270,15 +278,17 @@ REAL,INTENT(INOUT)               ::U_hat(nSamples_spec)
 !===================================================================================================================================
 in=U_in
 CALL DFFTW_EXECUTE_DFT(plan, in, out)
+!for square of single sided spectrum we need "2*amplitude**2"
 out(2:nSamples_spec-1)=2*(1./REAL(nSamples)*ABS(out(2:nSamples_spec-1)))**2
-out(1)=ABS(out(1)/REAL(nSamples))**2 !mean value 
+out(1)=ABS(out(1)/REAL(nSamples))**2 !mean value, not two sided (unique) 
 IF(MOD(nSamples,2).EQ.0.)THEN
+  !Even number of samples,single nyquist stored in one index
   out(nSamples_spec)=ABS(out(nSamples_spec)/REAL(nSamples))**2
-!  WRITE(*,*)"Even number of samples"
 ELSE
-!  WRITE(*,*)"Odd number of samples"
+  !Odd number of samples, nyquist stored two sided (just as any feq) 
   out(nSamples_spec)=2.*(ABS(out(nSamples_spec))/REAL(nSamples))**2
 END IF
+!add squared amplitude 
 U_hat(2:nSamples_spec)=U_hat(2:nSamples_spec)+out(2:nSamples_spec)
 !sum of mean square into first index
 U_hat(1)=U_hat(1)+SUM(out(1:nSamples_spec))
@@ -302,7 +312,7 @@ INTEGER            :: j,k,Fileunit_EK
 CHARACTER(LEN=255) :: FileName_EK
 LOGICAL            :: connected
 !===================================================================================================================================
-!Average over the lower and upper channel halfes
+!Sum up the lower and upper channel halfes
 DO j=N_FFT(2)/2+1,N_FFT(2)
   Ex_uu(j,:)=(Ex_uu(N_FFT(2)-j+1,:)+Ex_uu(j,:))
   Ex_vv(j,:)=(Ex_vv(N_FFT(2)-j+1,:)+Ex_vv(j,:))
@@ -315,23 +325,28 @@ DO j=N_FFT(2)/2+1,N_FFT(2)
   MS_t(j)=(MS_t(N_FFT(2)-j+1)-MS_t(j))
   M_t(j,:)=(M_t(N_FFT(2)-j+1,:)+M_t(j,:))
 END DO
+!Mean of u,v,w,p
 M_t=M_t/((nArgs-1)*N_FFT(1)*N_FFT(3)*2)
+!Mean squares fluctuations in Y-planes of u,v,w,p
 MS_PSD(:,1)=Ex_uu(:,1)/((nArgs-1)*N_FFT(3)*2)-(M_t(:,1))**2
 MS_PSD(:,2)=Ex_vv(:,1)/((nArgs-1)*N_FFT(3)*2)-(M_t(:,2))**2
 MS_PSD(:,3)=Ex_ww(:,1)/((nArgs-1)*N_FFT(3)*2)-(M_t(:,3))**2
 MS_PSD(:,4)=Ex_pp(:,1)/((nArgs-1)*N_FFT(3)*2)-(M_t(:,4))**2
+!Mean square of uv in Y-planes, not computed from spectra as
+!there are non: mathematically equal.
 MS_t(:)=  MS_t(:)  /((nArgs-1)*N_FFT(1)*N_FFT(3)*2)-(M_t(:,1)*M_t(:,2))
-!TWO Times meansquare=amplituden quadrate=>Mittelung entlang z und files
+!TWO Times meansquare summed so far over time and z/x => amplitude squares wanted
+!z/x :: NFFT(3/1) ;  time :: nArgs-1 ; 1/2 for correct mean square
 Ex_uu(:,2:nSamples_Spec)=Ex_uu(:,2:nSamples_Spec)/(N_FFT(3)*REAL(nArgs-1)*2)
 Ex_vv(:,2:nSamples_Spec)=Ex_vv(:,2:nSamples_Spec)/(N_FFT(3)*REAL(nArgs-1)*2)
 Ex_ww(:,2:nSamples_Spec)=Ex_ww(:,2:nSamples_Spec)/(N_FFT(3)*REAL(nArgs-1)*2)
 Ex_pp(:,2:nSamples_Spec)=Ex_pp(:,2:nSamples_Spec)/(N_FFT(3)*REAL(nArgs-1)*2)
-Ez_uu(:,2:nSamples_Spec)=Ez_uu(:,2:nSamples_Spec)/(N_FFT(3)*REAL(nArgs-1)*2)
-Ez_vv(:,2:nSamples_Spec)=Ez_vv(:,2:nSamples_Spec)/(N_FFT(3)*REAL(nArgs-1)*2)
-Ez_ww(:,2:nSamples_Spec)=Ez_ww(:,2:nSamples_Spec)/(N_FFT(3)*REAL(nArgs-1)*2)
-Ez_pp(:,2:nSamples_Spec)=Ez_pp(:,2:nSamples_Spec)/(N_FFT(3)*REAL(nArgs-1)*2)
+Ez_uu(:,2:nSamples_Spec)=Ez_uu(:,2:nSamples_Spec)/(N_FFT(1)*REAL(nArgs-1)*2)
+Ez_vv(:,2:nSamples_Spec)=Ez_vv(:,2:nSamples_Spec)/(N_FFT(1)*REAL(nArgs-1)*2)
+Ez_ww(:,2:nSamples_Spec)=Ez_ww(:,2:nSamples_Spec)/(N_FFT(1)*REAL(nArgs-1)*2)
+Ez_pp(:,2:nSamples_Spec)=Ez_pp(:,2:nSamples_Spec)/(N_FFT(1)*REAL(nArgs-1)*2)
 
-!Write Spectra
+!Write mean square fluctuations data and mean velocity
 FileUnit_EK=155
 INQUIRE(UNIT=FileUnit_EK, OPENED=connected)
 IF (Connected) THEN
@@ -341,9 +356,6 @@ IF (Connected) THEN
     IF (.NOT. connected) EXIT
   END DO
 END IF
-!SWRITE(UNIT_stdOut,*)'------------------------------'
-!SWRITE(UNIT_stdOut,*)' Max. relative error in RMS: ', SQRT(maxdev),RMS_PSD,RMS_t
-!SWRITE(UNIT_stdOut,*)' MEANS: ', E_uu(N(2),1),M_t**2
 FileName_EK=TIMESTAMP(TRIM(ProjectName)//'MS',time)
 FileName_EK=TRIM(Filename_EK)//'.dat'
 OPEN(FileUnit_Ek,FILE=Filename_EK,STATUS="REPLACE")
@@ -364,6 +376,7 @@ DO j=N_FFT(2)/2+1,N_FFT(2)
 END DO
 CLOSE(FILEUnit_EK)
 !-------------------------------------------------
+!write energy spectra in x-direction
 FileName_EK=TIMESTAMP(TRIM(ProjectName)//'_EnergySpectra_x',time)
 FileName_EK=TRIM(Filename_EK)//'.dat'
 OPEN(FileUnit_Ek,FILE=Filename_EK,STATUS="REPLACE")
@@ -385,6 +398,7 @@ DO j=N_FFT(2)/2+1,N_FFT(2)
 END DO
 CLOSE(FILEUnit_EK)
 !-------------------------------------------------
+!write energy spectra in z-direction
 FileName_EK=TIMESTAMP(TRIM(ProjectName)//'_EnergySpectra_z',time)
 FileName_EK=TRIM(Filename_EK)//'.dat'
 OPEN(FileUnit_Ek,FILE=Filename_EK,STATUS="REPLACE")
