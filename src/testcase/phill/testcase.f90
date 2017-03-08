@@ -115,7 +115,6 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 CHARACTER(LEN=255)       :: massFlowBCName
 INTEGER                  :: ioUnit,openStat,i
-LOGICAL                  :: fileExists                   ! Error handler for file
 REAL                     :: maxMemory
 !==================================================================================================================================
 SWRITE(UNIT_StdOut,'(132("-"))')
@@ -141,8 +140,7 @@ IF(massFlowBC.EQ.-1) CALL abort(__STAMP__,'No inflow BC found.')
 IF(.NOT.MPIRoot) RETURN
 
 Filename = TRIM(ProjectName)//'_Stats.dat'
-INQUIRE(FILE = Filename, EXIST = fileExists)
-IF(.NOT.fileExists)THEN ! File exists and append data
+IF(.NOT.FILEEXISTS(Filename))THEN ! File exists and append data
   OPEN(NEWUNIT= ioUnit       ,&
        FILE   = Filename     ,&
        STATUS = 'Unknown'    ,&

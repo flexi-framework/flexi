@@ -461,7 +461,7 @@ REAL,INTENT(OUT),OPTIONAL     :: lastLine(nVar+1)         !< last written line t
 INTEGER                        :: stat                         !< File IO status
 INTEGER                        :: ioUnit,i
 REAL                           :: dummytime                    !< Simulation time read from file
-LOGICAL                        :: fileExists                   !< marker if file exists and is valid
+LOGICAL                        :: file_exists                  !< marker if file exists and is valid
 CHARACTER(LEN=255)             :: FileName_loc                 ! FileName with data type extension
 !==================================================================================================================================
 IF(.NOT.MPIRoot) RETURN
@@ -475,11 +475,11 @@ ELSE
 END IF
 
 ! Check for file
-INQUIRE(FILE = TRIM(Filename_loc), EXIST = fileExists)
-IF(RestartTime.LT.0.0) fileExists=.FALSE.
+file_exists = FILEEXISTS(FileName_loc)
+IF(RestartTime.LT.0.0) file_exists=.FALSE.
 !! File processing starts here open old and extratct information or create new file.
 
-IF(fileExists)THEN ! File exists and append data
+IF(file_exists)THEN ! File exists and append data
   OPEN(NEWUNIT  = ioUnit             , &
        FILE     = TRIM(Filename_loc) , &
        FORM     = 'FORMATTED'        , &
@@ -489,11 +489,11 @@ IF(fileExists)THEN ! File exists and append data
        IOSTAT = stat                 )
   IF(stat.NE.0)THEN
     WRITE(UNIT_stdOut,*)' File '//TRIM(FileName_loc)// ' is invalid. Rewriting file...'
-    fileExists=.FALSE.
+    file_exists=.FALSE.
   END IF
 END IF
 
-IF(fileExists)THEN
+IF(file_exists)THEN
   ! If we have a restart we need to find the position from where to move on.
   ! Read the values from the previous analyse interval, get the CPUtime
   WRITE(UNIT_stdOut,*)' Opening file '//TRIM(FileName_loc)
@@ -504,14 +504,14 @@ IF(fileExists)THEN
     READ(ioUnit,*,IOSTAT=stat)
     IF(stat.NE.0)THEN
       ! file is broken, rewrite
-      fileExists=.FALSE.
+      file_exists=.FALSE.
       WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')' failed. Writing new file.'
       EXIT
     END IF
   END DO
 END IF
 
-IF(fileExists)THEN
+IF(file_exists)THEN
   ! Loop until we have found the position
   Dummytime = 0.0
   stat=0
@@ -533,7 +533,7 @@ IF(fileExists)THEN
 END IF
 CLOSE(ioUnit) ! outputfile
 
-IF(.NOT.fileExists)THEN ! No restart create new file
+IF(.NOT.file_exists)THEN ! No restart create new file
   OPEN(NEWUNIT= ioUnit             ,&
        FILE   = TRIM(Filename_loc) ,&
        STATUS = 'UNKNOWN'          ,&

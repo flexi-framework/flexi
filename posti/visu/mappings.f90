@@ -291,7 +291,7 @@ IF (StateFileMode) CALL AppendNeededPrims(mapDepToCalc,mapDepToCalc_FV,nVarCalc_
 #endif
 
 ! print the mappings
-WRITE(format,'(I2)') nVarAll
+WRITE(format,'(I3)') nVarAll
 SWRITE (*,'(A,'//format//'I3)') "mapDepToCalc             ",mapDepToCalc
 SWRITE (*,'(A,'//format//'I3)') "mapDepToCalc_FV          ",mapDepToCalc_FV
 SWRITE (*,'(A,'//format//'I3)') "mapAllVarsToVisuVars     ",mapAllVarsToVisuVars

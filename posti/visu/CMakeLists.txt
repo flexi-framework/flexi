@@ -44,13 +44,13 @@ IF (POSTI_USE_PARAVIEW AND ParaView_FOUND)
 
    SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
    INCLUDE_DIRECTORIES(${TOOL_DIR}/paraviewReader/)
-   ADD_PARAVIEW_PLUGIN(visu3DReader "1.0"
+   ADD_PARAVIEW_PLUGIN(visuReader "1.0"
      SERVER_MANAGER_XML     ${TOOL_DIR}/paraviewReader/visuReader.xml
      SERVER_MANAGER_SOURCES ${TOOL_DIR}/paraviewReader/visuReader.cxx
      REQUIRED_ON_SERVER
      DEPENDS               "${TOOL_DIR}/paraviewReader/visuReader.h"
      )
 
-   ADD_DEPENDENCIES(     visu3DReader ${TOOL_NAME}lib flexilib userblocklib_dummy HDF5)
-   TARGET_LINK_LIBRARIES(visu3DReader PUBLIC ${TOOL_NAME}lib flexilib ${linkedlibs})
+   ADD_DEPENDENCIES(     visuReader ${TOOL_NAME}lib flexilib userblocklib_dummy HDF5)
+   TARGET_LINK_LIBRARIES(visuReader PUBLIC ${TOOL_NAME}lib flexilib ${linkedlibs})
 ENDIF()

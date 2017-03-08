@@ -145,7 +145,7 @@ IF(.NOT.validMesh) &
 
 useCurveds=GETLOGICAL('useCurveds','.TRUE.')
 CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
-CALL ReadAttribute(File_ID,'Ngeo',1,IntegerScalar=NGeo)
+CALL ReadAttribute(File_ID,'Ngeo',1,IntScalar=NGeo)
 CALL CloseDataFile()
 
 IF(useCurveds.AND.(PP_N.LT.NGeo))THEN

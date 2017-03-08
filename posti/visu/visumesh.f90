@@ -246,7 +246,7 @@ CALL FinalizeMesh()
 CALL FinalizeInterpolation()
 
 CALL OpenDataFile(meshfile_in,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
-CALL ReadAttribute(File_ID,'Ngeo',1,IntegerScalar=Ngeo)
+CALL ReadAttribute(File_ID,'Ngeo',1,IntScalar=Ngeo)
 CALL CloseDataFile()
 
 IF (LEN_TRIM(postifile).GT.0) THEN

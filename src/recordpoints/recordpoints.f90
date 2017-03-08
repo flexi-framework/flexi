@@ -201,7 +201,6 @@ IMPLICIT NONE
 CHARACTER(LEN=255),INTENT(IN) :: FileString
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-LOGICAL                       :: fileExists
 CHARACTER(LEN=255)            :: MeshFile_RPList
 INTEGER                       :: nGlobalElems_RPList
 INTEGER                       :: iElem,iRP,iRP_glob
@@ -209,8 +208,7 @@ INTEGER                       :: OffsetRPArray(2,nElems)
 REAL,ALLOCATABLE              :: xi_RP(:,:)
 !==================================================================================================================================
 IF(MPIRoot)THEN
-  INQUIRE (FILE=TRIM(FileString), EXIST=fileExists)
-  IF(.NOT.FileExists)  CALL abort(__STAMP__, &
+  IF(.NOT.FILEEXISTS(FileString))  CALL abort(__STAMP__, &
           'RPList from data file "'//TRIM(FileString)//'" does not exist')
 END IF
 
@@ -232,7 +230,7 @@ DEALLOCATE(HSize)
 IF(nGlobalElems_RPList.NE.nGlobalElems) CALL abort(__STAMP__, &
           'nGlobalElems from RPList differs from nGlobalElems from Mesh File!')
 
-CALL ReadArray('OffsetRP',2,(/2,nElems/),OffsetElem,2,IntegerArray=OffsetRPArray)
+CALL ReadArray('OffsetRP',2,(/2,nElems/),OffsetElem,2,IntArray=OffsetRPArray)
 
 ! Check if local domain contains any record points
 ! OffsetRP: first index: 1: offset in RP list for first RP on elem,
@@ -402,7 +400,7 @@ USE MOD_Globals
 USE HDF5
 USE MOD_IO_HDF5           ,ONLY: File_ID,OpenDataFile,CloseDataFile
 USE MOD_Equation_Vars     ,ONLY: StrVarNames
-USE MOD_HDF5_Output       ,ONLY: WriteAttribute,WriteArray
+USE MOD_HDF5_Output       ,ONLY: WriteAttribute,WriteArray,MarkWriteSuccessfull
 USE MOD_Output_Vars       ,ONLY: ProjectName
 USE MOD_Mesh_Vars         ,ONLY: MeshFile
 USE MOD_Recordpoints_Vars ,ONLY: RP_COMM,myRPrank,lastSample
@@ -482,6 +480,7 @@ END IF
 CALL CloseDataFile()
 
 IF(myRPrank.EQ.0)THEN
+  CALL MarkWriteSuccessfull(Filestring)
   GETTIME(EndT)
   WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' DONE  [',EndT-StartT,'s]'
 END IF

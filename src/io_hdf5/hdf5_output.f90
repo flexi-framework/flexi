@@ -51,6 +51,10 @@ INTERFACE WriteAttribute
   MODULE PROCEDURE WriteAttribute
 END INTERFACE
 
+INTERFACE MarkWriteSuccessfull
+  MODULE PROCEDURE MarkWriteSuccessfull
+END INTERFACE
+
 INTERFACE WriteAdditionalElemData
   MODULE PROCEDURE WriteAdditionalElemData
 END INTERFACE
@@ -65,7 +69,7 @@ END INTERFACE
 
 
 PUBLIC :: WriteState,FlushFiles,WriteHeader,WriteTimeAverage,WriteBaseflow
-PUBLIC :: WriteArray,WriteAttribute,GatheredWriteArray,WriteAdditionalElemData
+PUBLIC :: WriteArray,WriteAttribute,GatheredWriteArray,WriteAdditionalElemData,MarkWriteSuccessfull
 !==================================================================================================================================
 
 CONTAINS
@@ -108,7 +112,8 @@ END IF
 ! Generate skeleton for the file with all relevant data on a single proc (MPIRoot)
 FileType=MERGE('ERROR_State','State      ',isErrorFile)
 FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_'//TRIM(FileType),OutputTime))//'.h5'
-IF(MPIRoot) CALL GenerateFileSkeleton(TRIM(FileName),'State',PP_nVar,NOut,StrVarNames,MeshFileName,OutputTime,FutureTime)
+IF(MPIRoot) CALL GenerateFileSkeleton(TRIM(FileName),'State',PP_nVar,NOut,StrVarNames,&
+                                      MeshFileName,OutputTime,FutureTime,withUserblock=.TRUE.)
 
 ! build output data
 IF(NOut.NE.PP_N)THEN
@@ -151,7 +156,9 @@ IF(NOut.NE.PP_N) DEALLOCATE(UOut)
 CALL WriteAdditionalElemData(FileName,ElementOut)
 CALL WriteAdditionalFieldData(FileName,FieldOut)
 
+
 IF(MPIRoot)THEN
+  CALL MarkWriteSuccessfull(FileName)
   GETTIME(EndT)
   WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',EndT-StartT,'s]'
 END IF
@@ -491,6 +498,7 @@ CALL GatheredWriteArray(FileName,create=.FALSE.,&
                         collective=.TRUE., RealArray=SpBaseFlow)
 
 IF(MPIRoot)THEN
+  CALL MarkWriteSuccessfull(FileName)
   GETTIME(EndT)
   WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',EndT-StartT,'s]'
 END IF
@@ -551,6 +559,7 @@ IF(nVar_Avg.GT.0)THEN
                           nVal=      (/nVar_Avg,PP_N+1,PP_N+1,PP_N+1,nElems/),&
                           offset=    (/0,       0,     0,     0,     offsetElem/),&
                           collective=.TRUE., RealArray=UAvg)
+  IF(MPIROOT) CALL MarkWriteSuccessfull(FileName)
 END IF
 
 ! Write fluctuations ---------------------------------------------------------------------------------------------------------------
@@ -573,6 +582,7 @@ IF(nVar_Fluc.GT.0)THEN
                           nVal=      (/nVar_Fluc,PP_N+1,PP_N+1,PP_N+1,nElems/),&
                           offset=    (/0,        0,     0,     0,     offsetElem/),&
                           collective=.TRUE., RealArray=UFluc)
+  IF(MPIROOT) CALL MarkWriteSuccessfull(FileName)
 END IF
 
 IF(MPIROOT)THEN
@@ -585,15 +595,15 @@ END SUBROUTINE WriteTimeAverage
 !==================================================================================================================================
 !> Subroutine that generates the output file on a single processor and writes all the necessary attributes (better MPI performance)
 !==================================================================================================================================
-SUBROUTINE GenerateFileSkeleton(FileName,TypeString,nVar,NData,StrVarNames,MeshFileName,OutputTime,FutureTime)
+SUBROUTINE GenerateFileSkeleton(FileName,TypeString,nVar,NData,StrVarNames,MeshFileName,OutputTime,FutureTime,withUserblock)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_Output_Vars  ,ONLY: ProjectName,UserBlockTmpFile,userblock_total_len
+USE MOD_Output_Vars,ONLY: ProjectName,UserBlockTmpFile,userblock_total_len
 USE MOD_Mesh_Vars  ,ONLY: nGlobalElems
 USE MOD_Interpolation_Vars,ONLY: NodeType
 #if FV_ENABLED
-USE MOD_FV_Vars      ,ONLY: FV_X,FV_w
+USE MOD_FV_Vars    ,ONLY: FV_X,FV_w
 #endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -606,6 +616,7 @@ CHARACTER(LEN=*)               :: StrVarNames(nVar)  !< Variabel names
 CHARACTER(LEN=*),INTENT(IN)    :: MeshFileName       !< Name of mesh file
 REAL,INTENT(IN)                :: OutputTime         !< Time of output
 REAL,INTENT(IN),OPTIONAL       :: FutureTime         !< Time of next output
+LOGICAL,INTENT(IN),OPTIONAL    :: withUserblock      !< specify whether userblock data shall be written or not
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER(HID_T)                 :: DSet_ID,FileSpace,HDF5DataType
@@ -614,9 +625,14 @@ CHARACTER(LEN=255)             :: MeshFile255
 #if FV_ENABLED
 REAL                           :: FV_w_array(0:PP_N)
 #endif
+LOGICAL                        :: withUserblock_loc
 !==================================================================================================================================
 ! Create file
-CALL OpenDataFile(TRIM(FileName),create=.TRUE.,single=.TRUE.,readOnly=.FALSE.,userblockSize=userblock_total_len)
+withUserblock_loc=.FALSE.
+IF(PRESENT(withUserblock)) withUserblock_loc=withUserblock
+
+CALL OpenDataFile(TRIM(FileName),create=.TRUE.,single=.TRUE.,readOnly=.FALSE.,&
+                  userblockSize=MERGE(userblock_total_len,0,withUserblock_loc))
 
 ! Write file header
 CALL WriteHeader(TRIM(TypeString),File_ID)
@@ -654,9 +670,31 @@ CALL WriteAttribute(File_ID,'NComputation',1,IntScalar=PP_N)
 CALL CloseDataFile()
 
 ! Add userblock to hdf5-file
-CALL copy_userblock(TRIM(FileName)//C_NULL_CHAR,TRIM(UserblockTmpFile)//C_NULL_CHAR)
+IF(withUserblock_loc) CALL copy_userblock(TRIM(FileName)//C_NULL_CHAR,TRIM(UserblockTmpFile)//C_NULL_CHAR)
 
 END SUBROUTINE GenerateFileSkeleton
+
+
+!==================================================================================================================================
+!> Add time attribute, after all relevant data has been written to a file,
+!> to indicate the writing process has been finished successfully
+!==================================================================================================================================
+SUBROUTINE MarkWriteSuccessfull(FileName)
+! MODULES
+USE MOD_Output_Vars  ,ONLY: userblock_total_len
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+CHARACTER(LEN=*),INTENT(IN)    :: FileName           !< Name of the file
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                        :: Time(8)
+!==================================================================================================================================
+CALL OpenDataFile(TRIM(FileName),create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
+CALL DATE_AND_TIME(VALUES=time)
+CALL WriteAttribute(File_ID,'TIME',8,IntArray=time)
+CALL CloseDataFile()
+END SUBROUTINE MarkWriteSuccessfull
 
 
 !==================================================================================================================================
