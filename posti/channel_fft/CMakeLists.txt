@@ -9,7 +9,7 @@ INCLUDE_DIRECTORIES( ${TOOL_DIR})
 
 FILE(GLOB ${TOOL_NAME}F90 ${TOOL_DIR}/fft.f90
                           ${TOOL_DIR}/fft_vars.f90
-                          ${TOOL_DIR}/fftw/fftw.f90)
+                          ${TOOL_DIR}/../common/fftw/fftw.f90)
 
 ADD_LIBRARY(${TOOL_NAME}libF90 OBJECT ${${TOOL_NAME}F90})
 SET_TARGET_PROPERTIES(${TOOL_NAME}libF90 PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS})
