@@ -236,10 +236,11 @@ REAL,INTENT(INOUT)                        :: muSGS
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                :: S_eN
-REAL                :: divv
+!REAL                :: divv
 !===================================================================================================================================
-divv    = grad11+grad22+grad33
-S_eN = 2*((grad11-2./3.*divv)**2. + (grad22-2./3.*divv)**2. + (grad33-2./3.*divv)**2.)
+!divv    = grad11+grad22+grad33
+!S_eN = 2*((grad11-1./3.*divv)**2. + (grad22-1./3.*divv)**2. + (grad33-1./3.*divv)**2.)
+S_eN = 2*((grad11)**2. + (grad22)**2. + (grad33)**2.)
 S_eN = S_eN + ( grad12 + grad21 )**2.
 S_eN = S_eN + ( grad13 + grad31 )**2.
 S_eN = S_eN + ( grad23 + grad32 )**2.
@@ -291,7 +292,7 @@ DO iElem=1,nElems
   gradv_all(3,1,:,:,:) = gradUx(4,:,:,:,iElem)
   gradv_all(3,2,:,:,:) = gradUy(4,:,:,:,iElem)
   gradv_all(3,3,:,:,:) = gradUz(4,:,:,:,iElem)
-  divV(:,:,:) = 2./3.*(gradv_all(1,1,:,:,:)+gradv_all(2,2,:,:,:)+gradv_all(3,3,:,:,:))
+  divV(:,:,:) = 1./3.*(gradv_all(1,1,:,:,:)+gradv_all(2,2,:,:,:)+gradv_all(3,3,:,:,:))
 
   ! dynamic Smagorinsky model
   DO i=1,3
@@ -319,16 +320,16 @@ DO iElem=1,nElems
       S_ik(i,j,:,:,:) = (gradv_all(i,j,:,:,:)+gradv_all(j,i,:,:,:))*0.5
     END DO
   END DO
-  !correct for compressibility
-  S_ik(1,1,:,:,:) = S_ik(1,1,:,:,:) -divV(:,:,:)
-  S_ik(2,2,:,:,:) = S_ik(2,2,:,:,:) -divV(:,:,:)
-  S_ik(3,3,:,:,:) = S_ik(3,3,:,:,:) -divV(:,:,:)
   !Comnpute norm of S_ik
   S_eN(:,:,:)= (S_ik(1,1,:,:,:)**2 + S_ik(2,2,:,:,:)**2. + S_ik(3,3,:,:,:)**2.)
   S_eN(:,:,:)= S_eN(:,:,:) +  2*(S_ik(2,1,:,:,:) )**2.
   S_eN(:,:,:)= S_eN(:,:,:) +  2*(S_ik(3,1,:,:,:) )**2.
   S_eN(:,:,:)= S_eN(:,:,:) +  2*(S_ik(3,2,:,:,:) )**2.
   S_eN(:,:,:)= sqrt(2* S_eN(:,:,:) )
+  !correct for compressibility
+  S_ik(1,1,:,:,:) = S_ik(1,1,:,:,:) -divV(:,:,:)
+  S_ik(2,2,:,:,:) = S_ik(2,2,:,:,:) -divV(:,:,:)
+  S_ik(3,3,:,:,:) = S_ik(3,3,:,:,:) -divV(:,:,:)
 
   !            _____            _ _   ____
   !Compute M=-(Delta/Delta)**2*|S|S + |S|S  !!TENSOR ik
@@ -343,22 +344,23 @@ DO iElem=1,nElems
   CALL Filter_Selective(3,FilterMat_Testfilter,gradv_all(:,1,:,:,:),filter_ind(:,iElem))
   CALL Filter_Selective(3,FilterMat_Testfilter,gradv_all(:,2,:,:,:),filter_ind(:,iElem))
   CALL Filter_Selective(3,FilterMat_Testfilter,gradv_all(:,3,:,:,:),filter_ind(:,iElem))
-  divV(:,:,:) = 2./3.*(gradv_all(1,1,:,:,:)+gradv_all(2,2,:,:,:)+gradv_all(3,3,:,:,:))
+  divV(:,:,:) = 1./3.*(gradv_all(1,1,:,:,:)+gradv_all(2,2,:,:,:)+gradv_all(3,3,:,:,:))
   ! Compute filtered shear rate tensor, unfiltered not needed anymore
   DO i=1,3
     DO j=1,3
       S_ik(i,j,:,:,:) = (gradv_all(i,j,:,:,:)+gradv_all(j,i,:,:,:))*0.5
     END DO
   END DO
-  S_ik(1,1,:,:,:) = S_ik(1,1,:,:,:) -divV(:,:,:)
-  S_ik(2,2,:,:,:) = S_ik(2,2,:,:,:) -divV(:,:,:)
-  S_ik(3,3,:,:,:) = S_ik(3,3,:,:,:) -divV(:,:,:)
   !Comnpute norm of S_ik filtered
   S_eN_filtered(:,:,:)= (S_ik(1,1,:,:,:)**2 + S_ik(2,2,:,:,:)**2. + S_ik(3,3,:,:,:)**2.)
   S_eN_filtered(:,:,:)= S_eN_filtered(:,:,:) +  2*(S_ik(2,1,:,:,:) )**2.
   S_eN_filtered(:,:,:)= S_eN_filtered(:,:,:) +  2*(S_ik(3,1,:,:,:) )**2.
   S_eN_filtered(:,:,:)= S_eN_filtered(:,:,:) +  2*(S_ik(3,2,:,:,:) )**2.
   S_eN_filtered(:,:,:)= sqrt(2* S_eN_filtered(:,:,:) )
+  !correct for compressibility
+  S_ik(1,1,:,:,:) = S_ik(1,1,:,:,:) -divV(:,:,:)
+  S_ik(2,2,:,:,:) = S_ik(2,2,:,:,:) -divV(:,:,:)
+  S_ik(3,3,:,:,:) = S_ik(3,3,:,:,:) -divV(:,:,:)
   !                                 _____
   !D_ratio: square ratio of filter widhts (Delta/Delta)**2, reciprocal of polynomial degrees
   D_Ratio=(REAL(PP_N+1)/REAL(N_testfilter+1))**2

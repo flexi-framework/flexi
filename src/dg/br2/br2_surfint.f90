@@ -107,7 +107,7 @@ DO SideID=firstSideID,lastSideID
   !HACK!
   IF(SideID .LE. nBCSides) THEN
     IF (Boundarytype(BC(SideID),BC_TYPE).EQ.4.OR.Boundarytype(BC(SideID),BC_TYPE).EQ.3) THEN
-      eta =40.
+      eta =6.
     ELSE
       eta = etaBR2
     END IF
@@ -487,7 +487,7 @@ DO SideID=firstSideID,lastSideID
   !HACK!
   IF(SideID .LE. nBCSides) THEN
     IF (Boundarytype(BC(SideID),BC_TYPE).EQ.4.OR.Boundarytype(BC(SideID),BC_TYPE).EQ.3) THEN
-      eta =40.
+      eta =6.
     ELSE
       eta = etaBR2
     END IF
