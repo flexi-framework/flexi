@@ -296,7 +296,10 @@ USE MOD_FV_VolInt           ,ONLY: FV_VolInt
 USE MOD_MPI                 ,ONLY: StartExchange_FV_Elems
 #endif /*USE_MPI*/
 #if FV_RECONSTRUCT
-USE MOD_FV_Vars             ,ONLY: gradUxi,gradUeta,gradUzeta,gradUxi_central,gradUeta_central,gradUzeta_central
+USE MOD_FV_Vars             ,ONLY: gradUxi,gradUeta,gradUzeta
+#if PARABOLIC
+USE MOD_FV_Vars             ,ONLY: gradUxi_central,gradUeta_central,gradUzeta_central
+#endif
 USE MOD_FV_Vars             ,ONLY: FV_surf_gradU_master,FV_surf_gradU_slave,FV_multi_master,FV_multi_slave
 USE MOD_FV_ProlongToFace    ,ONLY: FV_ProlongToDGFace
 USE MOD_FV_Mortar           ,ONLY: FV_gradU_mortar
@@ -470,8 +473,11 @@ CALL FV_ProlongToDGFace(UPrim_master,UPrim_slave,FV_multi_master,FV_multi_slave,
 ! 4.5) 
 CALL FV_SurfCalcGradients_BC(UPrim_master,FV_surf_gradU_master,t)
 ! 4.6) 
-CALL FV_CalcGradients(UPrim,FV_surf_gradU_master,FV_surf_gradU_slave,gradUxi,gradUeta,gradUzeta,&
-    gradUxi_central,gradUeta_central,gradUzeta_central)
+CALL FV_CalcGradients(UPrim,FV_surf_gradU_master,FV_surf_gradU_slave,gradUxi,gradUeta,gradUzeta &
+#if PARABOLIC    
+    ,gradUxi_central,gradUeta_central,gradUzeta_central &
+#endif    
+    )
 #endif /* FV_ENABLED && FV_RECONSTRUCT */
 
 #if PARABOLIC

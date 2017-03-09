@@ -53,7 +53,7 @@ CONTAINS
 !==================================================================================================================================
 !> Fills FV_multi_master and FV_multi_slave arrays. 
 !> These arrays contain:
-!>  - for DG: solution of first inner layer next to the DG element interface 
+!>  - for DG: solution at the nodes of the first inner layer next to the DG element interface 
 !>  - for FV: slopes in normal direction to the DG element interfaces between first and second layer 
 !==================================================================================================================================
 SUBROUTINE FV_PrepareSurfGradient(UPrim,FV_multi_master,FV_multi_slave,doMPIsides) 
@@ -69,14 +69,16 @@ USE MOD_FV_Vars   ,ONLY: FV_Elems,FV_sdx_XI,FV_sdx_ETA,FV_sdx_ZETA
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 ! real_in, real_out, real_out, log_in
-REAL,INTENT(IN)    :: UPrim(1:PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,1:nElems)
-REAL,INTENT(OUT)   :: FV_multi_master(1:PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
-REAL,INTENT(OUT)   :: FV_multi_slave (1:PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
-LOGICAL,INTENT(IN) :: doMPIsides
+REAL,INTENT(IN)    :: UPrim          (PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,1:nElems) !< primitive volume solution
+REAL,INTENT(OUT)   :: FV_multi_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)        !< DG: solution at first inner layer,
+                                                                                 !< FV: slope between first and second layer
+REAL,INTENT(OUT)   :: FV_multi_slave (PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)        !< DG: solution at first inner layer,
+                                                                                 !< FV: slope between first and second layer
+LOGICAL,INTENT(IN) :: doMPIsides                                       !< =.TRUE. only MPI sides are filled, =.FALSE. inner sides 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER :: p,q,locSideID,ElemID,SideID,flip,firstSideID,lastSideID,ijk0(3),ijk(2)
-REAL    :: tmp(1:PP_nVarPrim,0:PP_N,0:PP_N)
+REAL    :: tmp(PP_nVarPrim,0:PP_N,0:PP_N)
 !==================================================================================================================================
 
 ! First process the Slave sides
@@ -202,8 +204,8 @@ END SUBROUTINE FV_PrepareSurfGradient
 
 
 !==================================================================================================================================
-!> Calculate slopes across DG element interfaces (unlimited). Uses UPrim_master/UPrim_slave as well as FV_multi_master/FV_multi_slave.
-!> They are limited in the FV_ProlongToDGFace routine.
+!> Calculate slopes across DG element interfaces (unlimited). Uses UPrim_master/UPrim_slave as well as 
+!> FV_multi_master/FV_multi_slave. They are limited in the FV_ProlongToDGFace routine.
 !==================================================================================================================================
 SUBROUTINE FV_SurfCalcGradients(UPrim_master,UPrim_slave,FV_multi_master,FV_multi_slave,&
         FV_surf_gradU_master,FV_surf_gradU_slave,doMPIsides)
@@ -217,13 +219,15 @@ USE MOD_Mesh_Vars ,ONLY: nSides
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
-REAL,INTENT(IN)    :: UPrim_slave (PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
-REAL,INTENT(IN)    :: FV_multi_master(1:PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
-REAL,INTENT(IN)    :: FV_multi_slave (1:PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
-LOGICAL,INTENT(IN) :: doMPIsides
-REAL,INTENT(OUT)   :: FV_surf_gradU_master(1:PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
-REAL,INTENT(OUT)   :: FV_surf_gradU_slave (1:PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
+REAL,INTENT(IN)    :: UPrim_master        (PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< primitive master solution (without reconstruction)
+REAL,INTENT(IN)    :: UPrim_slave         (PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< primitive slave solution (without reconstruction)
+REAL,INTENT(IN)    :: FV_multi_master     (PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< DG solution at the first inner node next to the 
+                                                                               !< interface of the master element
+REAL,INTENT(IN)    :: FV_multi_slave      (PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< DG solution at the first inner node next to the
+                                                                               !< interface of the slave element
+LOGICAL,INTENT(IN) :: doMPIsides                                         !< =.TRUE. only MPI sides are filled, =.FALSE. inner sides 
+REAL,INTENT(OUT)   :: FV_surf_gradU_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< slope over the interface 
+REAL,INTENT(OUT)   :: FV_surf_gradU_slave (PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< slope over the interface 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER :: firstSideID,lastSideID,SideID,p,q
@@ -282,9 +286,9 @@ USE MOD_GetBoundaryFlux ,ONLY: GetBoundaryFVgradient
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(IN)    :: t
-REAL,INTENT(IN)    :: UPrim_master(        PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
-REAL,INTENT(INOUT) :: FV_surf_gradU_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
+REAL,INTENT(IN)    :: t                                                        !< physical time 
+REAL,INTENT(IN)    :: UPrim_master(        PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< primitive solution 
+REAL,INTENT(INOUT) :: FV_surf_gradU_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< slope over the BC interface
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER             :: SideID
@@ -307,27 +311,32 @@ END SUBROUTINE FV_SurfCalcGradients_BC
 !> slope limiter can not be applied. (Scenario: inner-cell-stretching)
 !> Additionally build central limited slopes for the computation of gradients used for the viscous fluxes.
 !==================================================================================================================================
-SUBROUTINE FV_CalcGradients(UPrim,FV_surf_gradU_master,FV_surf_gradU_slave,gradUxi,gradUeta,gradUzeta,&
-        gradUxi_central,gradUeta_central,gradUzeta_central)
+SUBROUTINE FV_CalcGradients(UPrim,FV_surf_gradU_master,FV_surf_gradU_slave,gradUxi,gradUeta,gradUzeta &
+#if PARABOLIC    
+        ,gradUxi_central,gradUeta_central,gradUzeta_central &
+#endif
+    )
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_FV_Vars        ,ONLY: FV_sdx_XI,FV_sdx_ETA,FV_sdx_ZETA,FV_Elems
-USE MOD_FV_Limiter     ,ONLY: FV_Limiter
-USE MOD_Mesh_Vars      ,ONLY: nElems,nSides
+USE MOD_FV_Vars    ,ONLY: FV_sdx_XI,FV_sdx_ETA,FV_sdx_ZETA,FV_Elems
+USE MOD_FV_Limiter ,ONLY: FV_Limiter
+USE MOD_Mesh_Vars  ,ONLY: nElems,nSides
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(IN)        :: UPrim(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,nElems)              !< (IN) volume solution
-REAL,INTENT(IN)        :: FV_surf_gradU_master(1:PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)   !< (IN) slopes over DG element interfaces
-REAL,INTENT(IN)        :: FV_surf_gradU_slave (1:PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)   !< 
-REAL,INTENT(OUT)       :: gradUxi  (1:PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,nElems)
-REAL,INTENT(OUT)       :: gradUeta (1:PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,nElems)
-REAL,INTENT(OUT)       :: gradUzeta(1:PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,nElems)
-REAL,INTENT(OUT)       :: gradUxi_central  (1:PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,nElems)
-REAL,INTENT(OUT)       :: gradUeta_central (1:PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,nElems)
-REAL,INTENT(OUT)       :: gradUzeta_central(1:PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,nElems)
+REAL,INTENT(IN)  :: UPrim               (PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,nElems) !< primitive volume solution
+REAL,INTENT(IN)  :: FV_surf_gradU_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)      !< slopes over element interfaces
+REAL,INTENT(IN)  :: FV_surf_gradU_slave (PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)      !< slopes over element interfaces
+REAL,INTENT(OUT) :: gradUxi             (PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,nElems) !< physical slope in   xi-direction (TVD limited)
+REAL,INTENT(OUT) :: gradUeta            (PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,nElems) !< physical slope in  eta-direction (TVD limited)
+REAL,INTENT(OUT) :: gradUzeta           (PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,nElems) !< physical slope in zeta-direction (TVD limited) 
+#if PARABOLIC
+REAL,INTENT(OUT) :: gradUxi_central     (PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,nElems) !< physical slope in   xi-direction (mean value)
+REAL,INTENT(OUT) :: gradUeta_central    (PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,nElems) !< physical slope in  eta-direction (mean value)
+REAL,INTENT(OUT) :: gradUzeta_central   (PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,nElems) !< physical slope in zeta-direction (mean value)
+#endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N+1) :: gradUxi_tmp
@@ -370,12 +379,14 @@ DO iElem=1,nElems
        CALL FV_Limiter(gradUzeta_tmp(:,p,q,l),gradUzeta_tmp(:,p,q,l+1),gradUzeta(:,p,q,l,iElem))
    END DO; END DO ! q, p
   END DO ! l
+#if PARABOLIC
   ! limit with central limiter for viscous fluxes
   DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
     gradUxi_central  (:,i,j,k,iElem) = 0.5*(gradUxi_tmp  (:,j,k,i)+gradUxi_tmp  (:,j,k,i+1))
     gradUeta_central (:,i,j,k,iElem) = 0.5*(gradUeta_tmp (:,i,k,j)+gradUeta_tmp (:,i,k,j+1))
     gradUzeta_central(:,i,j,k,iElem) = 0.5*(gradUzeta_tmp(:,i,j,k)+gradUzeta_tmp(:,i,j,k+1))
   END DO; END DO; END DO! i,j,k=0,PP_N
+#endif
 END DO
 END SUBROUTINE FV_CalcGradients
 
@@ -388,15 +399,15 @@ USE MOD_PreProc        ,ONLY: PP_N
 USE MOD_Mesh_Vars      ,ONLY: V2S,nSides,ElemToSide
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(IN)         :: surface_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< master surface data 
-REAL,INTENT(IN)         :: surface_slave (PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< slave surface data
-INTEGER,INTENT(IN)      :: iElem                                             !< element index 
-INTEGER,INTENT(IN)      :: dir                                               !< face number of the element (1..6)
-INTEGER,INTENT(IN)      :: l                                                 !< volume index where to store the volume data
-REAL,INTENT(INOUT)      :: volume(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N+1)        !< output array
+REAL,INTENT(IN)    :: surface_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< master surface data 
+REAL,INTENT(IN)    :: surface_slave (PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< slave surface data
+INTEGER,INTENT(IN) :: iElem                                              !< element index 
+INTEGER,INTENT(IN) :: dir                                                !< face number of the element (1..6)
+INTEGER,INTENT(IN) :: l                                                  !< volume index where to store the volume data
+REAL,INTENT(INOUT) :: volume(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N+1)         !< output array
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                 :: i,j,pq(2),SideID,flip
+INTEGER            :: i,j,pq(2),SideID,flip
 !================================================================================================================================== 
 SideID=ElemToSide(E2S_SIDE_ID,dir,iElem)
 flip  =ElemToSide(E2S_FLIP,   dir,iElem)

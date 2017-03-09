@@ -78,10 +78,6 @@ IF(InterpolationInitIsDone.AND.FVInitBasisIsDone)THEN
     'InitFV_Basis not ready to be called or already called.')
 END IF
 
-!#if (PP_NodeType!=1) 
-!STOP 'Only Gauss points supported (use: PP_NodeType = 1)'
-!#endif
-
 #if PARABOLIC
 #if !(FV_RECONSTRUCT)
 CALL CollectiveStop(__STAMP__, &
@@ -215,8 +211,10 @@ USE MOD_Basis
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: N
-REAL,INTENT(OUT)   :: FV_X(0:N),FV_w,FV_BdryX(0:N+1)
+INTEGER,INTENT(IN) :: N               !< polynomial degree of DG elements / number of sub-cells per direction (N+1)
+REAL,INTENT(OUT)   :: FV_X(0:N)       !< cell-centers of the sub-cells in reference space
+REAL,INTENT(OUT)   :: FV_w            !< width of the sub-cells in reference space
+REAL,INTENT(OUT)   :: FV_BdryX(0:N+1) !< positions of the boundaries of the sub-cells in reference space 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER :: i
@@ -242,8 +240,8 @@ USE MOD_Basis
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: N
-REAL,INTENT(OUT)   :: Vdm(0:(N+1)*2-1,0:N)
+INTEGER,INTENT(IN) :: N                    !< polynomial degree of DG elements / number of sub-cells per direction (N+1)
+REAL,INTENT(OUT)   :: Vdm(0:(N+1)*2-1,0:N) !< Vandermonde matrix 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
 REAL,DIMENSION(0:PP_N) :: FV_X,xGP,wBary
@@ -280,8 +278,8 @@ USE MOD_Basis
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: N
-REAL,INTENT(OUT)   :: Vdm(0:N+1,0:N)
+INTEGER,INTENT(IN) :: N              !< polynomial degree of DG elements / number of sub-cells per direction (N+1)
+REAL,INTENT(OUT)   :: Vdm(0:N+1,0:N) !< Vandermonde matrix
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
 REAL,DIMENSION(0:PP_N) :: FV_X,xGP,wBary
@@ -303,11 +301,7 @@ END SUBROUTINE FV_Build_Vdm_Gauss_FVboundary
 !==================================================================================================================================
 SUBROUTINE FinalizeFV_Basis() 
 USE MOD_FV_Vars
-!----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
-!----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
 !==================================================================================================================================
 SDEALLOCATE(FV_BdryX)
 SDEALLOCATE(FV_X)

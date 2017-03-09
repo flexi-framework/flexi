@@ -41,7 +41,8 @@ CONTAINS
 !> When this routine is called the slopes over DG element interfaces are computed but not limited. Therefore first these
 !> slopes are limited and then used to calculate the reconstructed solutions UPrim_master/slave at the DG element interfaces.
 !==================================================================================================================================
-SUBROUTINE FV_ProlongToDGFace(UPrim_master,UPrim_slave,FV_multi_master,FV_multi_slave,FV_surf_gradU_master,FV_surf_gradU_slave,doMPISides)
+SUBROUTINE FV_ProlongToDGFace(UPrim_master,UPrim_slave,FV_multi_master,FV_multi_slave,FV_surf_gradU_master,FV_surf_gradU_slave,&
+    doMPISides)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
@@ -54,18 +55,18 @@ USE MOD_Mesh_Vars ,ONLY: firstInnerSide,lastInnerSide,nSides,firstBCSide
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-LOGICAL,INTENT(IN)        :: doMPISides
-REAL,INTENT(INOUT),TARGET :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
-REAL,INTENT(INOUT),TARGET :: UPrim_slave (PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
-REAL,INTENT(INOUT)        :: FV_multi_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
-REAL,INTENT(INOUT)        :: FV_multi_slave (PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
-REAL,INTENT(IN)           :: FV_surf_gradU_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
-REAL,INTENT(IN)           :: FV_surf_gradU_slave (PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
+LOGICAL,INTENT(IN) :: doMPISides  !< =.TRUE. only MPI sides are filled, =.FALSE. inner sides 
+REAL,INTENT(INOUT) :: UPrim_master        (PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< primitive master solution (without reconstruction)
+REAL,INTENT(INOUT) :: UPrim_slave         (PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< primitive slave solution (without reconstruction)
+REAL,INTENT(INOUT) :: FV_multi_master     (PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< first inner slope of the master element
+REAL,INTENT(INOUT) :: FV_multi_slave      (PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< first inner slope of the slave element
+REAL,INTENT(IN)    :: FV_surf_gradU_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< slope over the interface 
+REAL,INTENT(IN)    :: FV_surf_gradU_slave (PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< slope over the interface 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
 INTEGER :: SideID,firstSideID,lastSideID
 INTEGER :: p,q
-REAL    :: gradU(1:PP_nVarPrim,0:PP_N,0:PP_N)
+REAL    :: gradU(PP_nVarPrim,0:PP_N,0:PP_N)
 !==================================================================================================================================
 ! reconstruct UPrim_master/slave for sides ranging between firstSideID and lastSideID 
 IF(doMPISides)THEN 

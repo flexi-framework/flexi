@@ -47,57 +47,57 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_FV_Vars
 USE MOD_FV_Basis
-USE MOD_Mesh_Vars   ,ONLY: nElems,nSides,firstMPISide_YOUR,lastMPISide_YOUR
-USE MOD_Mesh_Vars   ,ONLY: Metrics_fTilde,Metrics_gTilde,Metrics_hTilde,sJ
-USE MOD_Mesh_Vars   ,ONLY: NGeoRef,DetJac_Ref,MortarType,MortarInfo
-USE MOD_Mesh_Vars   ,ONLY: NormalDirs,TangDirs,NormalSigns,SideToElem
-USE MOD_Mesh_Vars   ,ONLY: NormVec,TangVec1,TangVec2,SurfElem,Face_xGP,Ja_Face
-USE MOD_ChangeBasis ,ONLY: ChangeBasis1D,ChangeBasis2D,ChangeBasis3D
-USE MOD_Metrics     ,ONLY: SurfMetricsFromJa
-USE MOD_Interpolation,ONLY:GetVandermonde
-USE MOD_Interpolation_Vars,ONLY:NodeType
+USE MOD_Mesh_Vars          ,ONLY: nElems,nSides,firstMPISide_YOUR,lastMPISide_YOUR
+USE MOD_Mesh_Vars          ,ONLY: Metrics_fTilde,Metrics_gTilde,Metrics_hTilde,sJ
+USE MOD_Mesh_Vars          ,ONLY: NGeoRef,DetJac_Ref,MortarType,MortarInfo
+USE MOD_Mesh_Vars          ,ONLY: NormalDirs,TangDirs,NormalSigns,SideToElem
+USE MOD_Mesh_Vars          ,ONLY: NormVec,TangVec1,TangVec2,SurfElem,Face_xGP,Ja_Face
+USE MOD_ChangeBasis        ,ONLY: ChangeBasis1D,ChangeBasis2D,ChangeBasis3D
+USE MOD_Metrics            ,ONLY: SurfMetricsFromJa
+USE MOD_Interpolation      ,ONLY: GetVandermonde
+USE MOD_Interpolation_Vars ,ONLY: NodeType
 #if FV_RECONSTRUCT
-USE MOD_Mesh_Vars   ,ONLY: firstBCSide,lastBCSide,firstInnerSide,lastMPISide_MINE
-USE MOD_Mesh_Vars   ,ONLY: S2V,S2V2,ElemToSide,dXCL_N
-USE MOD_Interpolation,ONLY:GetNodesAndWeights
-USE MOD_Interpolation_Vars,ONLY: NodeTypeG,NodeTypeCL,xGP
+USE MOD_Mesh_Vars          ,ONLY: firstBCSide,lastBCSide,firstInnerSide,lastMPISide_MINE
+USE MOD_Mesh_Vars          ,ONLY: S2V,S2V2,ElemToSide,dXCL_N
+USE MOD_Interpolation      ,ONLY: GetNodesAndWeights
+USE MOD_Interpolation_Vars ,ONLY: NodeTypeG,NodeTypeCL,xGP
 #if USE_MPI
-USE MOD_MPI         ,ONLY: StartReceiveMPIData,StartSendMPIData,FinishExchangeMPIData
-USE MOD_MPI_Vars    ,ONLY: nNbProcs
+USE MOD_MPI                ,ONLY: StartReceiveMPIData,StartSendMPIData,FinishExchangeMPIData
+USE MOD_MPI_Vars           ,ONLY: nNbProcs
 #endif
 #endif
-USE MOD_FillMortar1 ,ONLY: U_Mortar1
+USE MOD_FillMortar1        ,ONLY: U_Mortar1
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
-INTEGER                          :: p,q,l,iSide,iElem,iLocSide
-INTEGER                          :: dd,NormalDir,TangDir
-REAL                             :: NormalSign
-REAL                             :: Vdm_Gauss_FVboundary(0:PP_N+1,0:PP_N)
-REAL                             :: JaVol(  3,3,0:PP_N+1,0:PP_N+1,0:PP_N+1)
-REAL                             :: FV_Ja_Face(3,3,0:PP_N,0:PP_N)
-REAL,DIMENSION(0:PP_N,0:NgeoRef) :: Vdm_NgeoRef_N,Vdm_NgeoRef_FV
-REAL                             :: FV_DetJac(1,0:PP_N,0:PP_N,0:PP_N)
-INTEGER                          :: flip, SideID, iMortar
+INTEGER                                :: p,q,l,iSide,iElem,iLocSide
+INTEGER                                :: dd,NormalDir,TangDir
+REAL                                   :: NormalSign
+REAL                                   :: Vdm_Gauss_FVboundary(0:PP_N+1,0:PP_N)
+REAL                                   :: JaVol(  3,3,0:PP_N+1,0:PP_N+1,0:PP_N+1)
+REAL                                   :: FV_Ja_Face(3,3,0:PP_N,0:PP_N)
+REAL,DIMENSION(0:PP_N,0:NgeoRef)       :: Vdm_NgeoRef_N,Vdm_NgeoRef_FV
+REAL                                   :: FV_DetJac(1,0:PP_N,0:PP_N,0:PP_N)
+INTEGER                                :: flip, SideID, iMortar
 #if FV_RECONSTRUCT
-INTEGER                          :: ijk(3), locSideID
-REAL                             :: FV_dx_Face(0:PP_N,0:PP_N,1:3)
-REAL                             :: FV_dx_XI(  1:PP_N,0:PP_N,0:PP_N)
-REAL                             :: FV_dx_ETA( 0:PP_N,1:PP_N,0:PP_N)
-REAL                             :: FV_dx_ZETA(0:PP_N,0:PP_N,1:PP_N)
-REAL                             :: DG_dx_slave (1,0:PP_N,0:PP_N,1:nSides)
-REAL                             :: DG_dx_master(1,0:PP_N,0:PP_N,1:nSides)
+INTEGER                                :: ijk(3), locSideID
+REAL                                   :: FV_dx_Face(0:PP_N,0:PP_N,1:3)
+REAL                                   :: FV_dx_XI(  1:PP_N,0:PP_N,0:PP_N)
+REAL                                   :: FV_dx_ETA( 0:PP_N,1:PP_N,0:PP_N)
+REAL                                   :: FV_dx_ZETA(0:PP_N,0:PP_N,1:PP_N)
+REAL                                   :: DG_dx_slave (1,0:PP_N,0:PP_N,1:nSides)
+REAL                                   :: DG_dx_master(1,0:PP_N,0:PP_N,1:nSides)
 
-REAL                             :: tmp2(3,0:PP_N)
-REAL,DIMENSION(0:PP_N)           :: xG,wG,wBaryG
-REAL,DIMENSION(0:PP_N,0:PP_N)    :: Vdm_CLN_FV, Vdm_CLN_GaussN,length
-REAL,DIMENSION(3,0:PP_N,0:PP_N,0:PP_N):: FV_Path_XI, FV_Path_ETA, FV_Path_ZETA
-REAL                             :: x0, xN
-REAL,POINTER                     :: FV_dx_P(:,:,:)
+REAL                                   :: tmp2(3,0:PP_N)
+REAL,DIMENSION(0:PP_N)                 :: xG,wG,wBaryG
+REAL,DIMENSION(0:PP_N,0:PP_N)          :: Vdm_CLN_FV, Vdm_CLN_GaussN,length
+REAL,DIMENSION(3,0:PP_N,0:PP_N,0:PP_N) :: FV_Path_XI, FV_Path_ETA, FV_Path_ZETA
+REAL                                   :: x0, xN
+REAL,POINTER                           :: FV_dx_P(:,:,:)
 #if USE_MPI
-INTEGER                          :: MPIRequest(nNbProcs,2)
+INTEGER                                :: MPIRequest(nNbProcs,2)
 #endif
 #endif
 !==================================================================================================================================
@@ -438,19 +438,22 @@ DO SideID=firstInnerSide,lastMPISide_MINE
 END DO
 
 ! scale metrics for equidistant subcells
-DO iElem=1,nElems
 #if PARABOLIC
+DO iElem=1,nElems
   DO l=1,3
-    FV_Metrics_fTilde_sJ(l,:,:,:,iElem)=FV_w_inv*Metrics_fTilde(l,:,:,:,iElem,1)*(FV_dx_XI_L  (:,:,:,iElem)+FV_dx_XI_R  (:,:,:,iElem))
-    FV_Metrics_gTilde_sJ(l,:,:,:,iElem)=FV_w_inv*Metrics_gTilde(l,:,:,:,iElem,1)*(FV_dx_ETA_L (:,:,:,iElem)+FV_dx_ETA_R (:,:,:,iElem))
-    FV_Metrics_hTilde_sJ(l,:,:,:,iElem)=FV_w_inv*Metrics_hTilde(l,:,:,:,iElem,1)*(FV_dx_ZETA_L(:,:,:,iElem)+FV_dx_ZETA_R(:,:,:,iElem))
+    FV_Metrics_fTilde_sJ(l,:,:,:,iElem)=FV_w_inv*Metrics_fTilde(l,:,:,:,iElem,1)*&
+        (FV_dx_XI_L  (:,:,:,iElem)+FV_dx_XI_R  (:,:,:,iElem))
+    FV_Metrics_gTilde_sJ(l,:,:,:,iElem)=FV_w_inv*Metrics_gTilde(l,:,:,:,iElem,1)*&
+        (FV_dx_ETA_L (:,:,:,iElem)+FV_dx_ETA_R (:,:,:,iElem))
+    FV_Metrics_hTilde_sJ(l,:,:,:,iElem)=FV_w_inv*Metrics_hTilde(l,:,:,:,iElem,1)*&
+        (FV_dx_ZETA_L(:,:,:,iElem)+FV_dx_ZETA_R(:,:,:,iElem))
     FV_Metrics_fTilde_sJ(l,:,:,:,iElem)=FV_Metrics_fTilde_sJ(l,:,:,:,iElem)*sJ(:,:,:,iElem,1)
     FV_Metrics_gTilde_sJ(l,:,:,:,iElem)=FV_Metrics_gTilde_sJ(l,:,:,:,iElem)*sJ(:,:,:,iElem,1)
     FV_Metrics_hTilde_sJ(l,:,:,:,iElem)=FV_Metrics_hTilde_sJ(l,:,:,:,iElem)*sJ(:,:,:,iElem,1)
   END DO
-#endif
 END DO
-#endif
+#endif /* PARABOLIC */
+#endif /* FV_RECONSTRUCT */
 
 SWRITE(UNIT_stdOut,'(A)')' Done !'
 
@@ -463,8 +466,8 @@ END SUBROUTINE InitFV_Metrics
 !==================================================================================================================================
 SUBROUTINE Integrate_Path(Nloc,Nloc2,xGP,wGP,wBary,x0,xN,FV_Path_1D,FV_Length)
 ! MODULES
-USE MOD_Basis              ,ONLY: InitializeVandermonde
-USE MOD_ChangeBasis        ,ONLY: ChangeBasis1D
+USE MOD_Basis       ,ONLY: InitializeVandermonde
+USE MOD_ChangeBasis ,ONLY: ChangeBasis1D
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES 
 INTEGER,INTENT(IN) :: Nloc                                 !< degree of path polynomial
@@ -508,10 +511,6 @@ SUBROUTINE FinalizeFV_Metrics()
 ! MODULES
 USE MOD_FV_Vars
 IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT / OUTPUT VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
 !==================================================================================================================================
 #if FV_RECONSTRUCT
 SDEALLOCATE(FV_sdx_XI)

@@ -56,9 +56,9 @@ USE MOD_Mesh_Vars ,ONLY: firstMortarMPISide,lastMortarMPISide
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(INOUT) :: FV_Elems_master(1:nSides)
-INTEGER,INTENT(INOUT) :: FV_Elems_slave( 1:nSides)
-LOGICAL,INTENT(IN)    :: doMPISides
+INTEGER,INTENT(INOUT) :: FV_Elems_master(1:nSides) !< master side FV_elems
+INTEGER,INTENT(INOUT) :: FV_Elems_slave( 1:nSides) !< slave  side FV_elems
+LOGICAL,INTENT(IN)    :: doMPISides                !< =.TRUE. only MPI sides are filled, =.FALSE. inner sides 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
 INTEGER :: iMortar,nMortars
@@ -101,9 +101,9 @@ USE MOD_FillMortarPrim ,ONLY: Flux_MortarPrim
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(INOUT) :: FV_surf_gradU_master(1:PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
-REAL,INTENT(IN)    :: FV_surf_gradU_slave (1:PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
-LOGICAL,INTENT(IN) :: doMPISides
+REAL,INTENT(INOUT) :: FV_surf_gradU_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) ! slope over interface
+REAL,INTENT(IN)    :: FV_surf_gradU_slave (PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) ! slope over interface
+LOGICAL,INTENT(IN) :: doMPISides  !< =.TRUE. only MPI sides are filled, =.FALSE. inner sides
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
 INTEGER :: firstMortarSideID,lastMortarSideID
