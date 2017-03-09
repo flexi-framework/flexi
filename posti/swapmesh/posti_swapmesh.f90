@@ -14,7 +14,19 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-!> Tool to non-conservatively interpolate the solution from one mesh to another
+!> Tool to non-conservatively interpolate the solution from one mesh to another.
+!> General process is as follows:
+!>   * Read in the mesh coordinates of the old and the new mesh and store as CL points.
+!>   * Search for the parametric coordinates and the elemID in the old mesh of all interpolation points of the new mesh.
+!>     The interpolation points are CL points of a polynomial degree NInter which is usually higher that the new solution
+!>     polynomial degree NNew.
+!>     For the search, a Newton algorithm is employed. To get a good starting point for the Newton algorithm, the old mesh
+!>     is supersampled on a polynomial degree NSuper.
+!>     The found reference coordinates are marked as invalid if the reference coordinates are outside of [-1,1] more than
+!>     maxTol and the code will abort if they are outside more than abortTol.
+!>   * The old state files will then be interpolated to the new interpolation nodes and transformed to the new polynomial degree
+!>     NNew. If some points are marked as invalid and a reference solution has been specified, this reference solution will be 
+!>     used at those points.
 !===================================================================================================================================
 PROGRAM swapMesh
 ! MODULES
@@ -60,14 +72,15 @@ CALL prms%CreateLogicalOption(  "useCurvedsOld"      , "Controls usage of high-o
                                                       "high-order data and treat curved meshes as linear meshes.", '.TRUE.')
 CALL prms%CreateLogicalOption(  "useCurvedsNew"      , "Controls usage of high-order information in new mesh. Turn off to discard "//&
                                                       "high-order data and treat curved meshes as linear meshes.", '.TRUE.')
-CALL prms%CreateIntOption(      "NInter"             , "Polynomial degree used for interpolation (should be equal or higher than "//&
-                                                       "N)",'-1')
-CALL prms%CreateIntOption(      "NNew"               , "Polynomial degree used for solution",'-1')
-CALL prms%CreateIntOption(      "NSuper"             , "Polynomial degree used for supersampling",'-1')
-CALL prms%CreateRealOption(     "maxTolerance"       , "Tolerance used for coarse point search",'5.e-2')
+CALL prms%CreateIntOption(      "NInter"             , "Polynomial degree used for interpolation on new mesh (should be equal or  "//&
+                                                       "higher than N)" )
+CALL prms%CreateIntOption(      "NNew"               , "Polynomial degree used in new state files")
+CALL prms%CreateIntOption(      "NSuper"             , "Polynomial degree used for supersampling on the old mesh")
+CALL prms%CreateRealOption(     "maxTolerance"       , "Tolerance used to mark points as invalid if outside of reference element "//&
+                                                       "more than maxTolerance",'5.e-2')
 CALL prms%CreateLogicalOption(  "printTroublemakers" , "Turn output of not-found points on or off",'.TRUE.')
 CALL prms%CreateRealArrayOption("RefState"           , "If a RefState is defined, this state will be used at points that are "// &
-                                                       "not found - without a RefState, the program will abort")
+                                                        "not found - without a RefState, the program will abort in this case")
 CALL prms%CreateRealOption(     "abortTolerance"     , "Tolerance used to decide if the program should abort if no "// &
                                                        "RefState is given")
 
@@ -110,25 +123,24 @@ CALL InitMPIvars()
 !END IF
 !#endif
 
-! Evaluate solution at new GP
+! Evaluate solution at new solution nodes
 DO iArg=2,nArgs
+  ! Check if a .h5 file has been given to the swapmesh tool
   IF (.NOT.(STRICMP(GetFileExtension(Args(iArg)),'h5'))) THEN
     CALL CollectiveStop(__STAMP__,'ERROR - Must specify .h5 files!')
   END IF
 
+  ! Read in the old state
   SWRITE(UNIT_stdOut,'(132("="))')
   SWRITE(UNIT_stdOut,'(A,I5,A,I5,A)') ' READING STATE FILE ',iArg-1,' of ',nArgs-1,' FILES.'
   SWRITE(UNIT_stdOut,'(A,A,A)') ' ( "',TRIM(Args(iArg)),'" )'
   SWRITE(UNIT_stdOut,'(132("="))')
-
-  ! Read in the old state
   CALL ReadOldStateFile(Args(iArg))
-  SWRITE(UNIT_stdOut,'(A)') ' EVALUATING SOLUTION ON NEW MESH ...'
 
-  ! Interpolate solution to new mesh
+
+  SWRITE(UNIT_stdOut,'(A)') ' EVALUATING SOLUTION ON NEW MESH ...'
   CALL InterpolateSolution()
 
-  ! Write new solution
   SWRITE(UNIT_stdOut,'(A)') ' WRITING NEW SOLUTION ...'
   CALL WriteNewStateFile()
 END DO

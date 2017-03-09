@@ -13,6 +13,10 @@
 !=================================================================================================================================
 #include "flexi.h"
 
+!===================================================================================================================================
+!> Containes the routines that will initialize and finalize the swapmesh routine as well as the routines to read an old state file
+!> and to write the newly interpolated state to a .h5 file.
+!===================================================================================================================================
 MODULE MOD_SwapMesh
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
@@ -88,7 +92,7 @@ CALL CloseDataFile()
 ! change projectname to not re-write the same state
 ProjectName = TRIM(ProjectName)//'_newMesh'
 
-! Read user-defined parameters
+! The old mesh file can be overwritten by the user, if nothing is specified the mesh file read from the state is used
 MeshFileOld = GETSTR('MeshFileOld',TRIM(MeshFile_state))
 
 ! New mesh file, the state will be interpolated to this one
@@ -103,12 +107,13 @@ useCurvedsNew = GETLOGICAL("useCurvedsNew")
 NInter      = GETINT('NInter',INTTOSTR(NState))
 NSuper      = GETINT('NSuper',INTTOSTR(NState))
 NNew        = GETINT('NNew',  INTTOSTR(NState))
-! Set NOut for output state routine
+! Set NOut for output state routine to the polynomial degree of the new state (so no interpolation will be done)
 NOut        = NNew
 
 printTroublemakers = GETLOGICAL('printTroublemakers','.TRUE.')
 
-! Tolerance used in coarse element search - standard is 5% tolerance
+! Tolerance used to mark the position of an interpolation point in the new mesh as invalid. Will be invalid if the reference
+! coordinate is more than maxtol outside of [-1,1], e.g "overshoot tolerance"
 maxTol = 1. + GETREAL('maxTolerance','5.e-2')
 
 IF (CountOption('RefState').GE.1) THEN
@@ -117,7 +122,7 @@ IF (CountOption('RefState').GE.1) THEN
   RefState = GETREALARRAY('RefState',nVar_State)
   abortTol = HUGE(1.)
 ELSE
-  ! Set the abort tolerance, standard is the same as coarse search tolerance
+  ! Set the abort tolerance, standard is the same as "overshoot tolerance"
   WRITE(tmp,*) maxTol
   abortTol     =GETREAL('abortTolerance',TRIM(tmp))
 END IF
@@ -127,7 +132,7 @@ IF (CountOption('displacement').GE.1) THEN
   displacement = GETREALARRAY('displacement',3)
 END IF
 
-! Init interpolation on new polynomial degree
+! Init interpolation on new polynomial degree, will set PP_N to NNew
 CALL InitInterpolation(NNew)
 
 ! Initialize the old mesh, store the mesh coordinates (transformed to CL points) and the number of elements as well as the old NGeo
@@ -152,12 +157,10 @@ SWRITE(UNIT_stdOut,*)'done in ',FLEXITIME()-Time
 ! Set offset elem and local and global number of elements in mesh vars (later needed for output routine)
 nGlobalElems = nElemsNew
 nElems       = nElemsNew
-OffsetElem   = 0
+OffsetElem   = 0 ! OffsetElem is 0 since the tool only works on singel
 
-! Allocate array for new mesh on interpolation points
+! Prepare the necessary Vandermonde matrizes, also interpolate the new mesh coordinates to xCLInter (on polynomial degree of NInter)
 ALLOCATE(xCLInter(3,0:NInter,0:NInter,0:NInter,nElemsNew))
-
-! Prepare the necessary Vandermonde matrizes
 CALL prepareVandermonde()
 
 ! Evaluate parametric coordinates
@@ -167,7 +170,7 @@ ALLOCATE(InterToElem(0:NInter,0:NInter,0:NInter,nElemsNew))
 ALLOCATE(IPDone(     0:NInter,0:NInter,0:NInter,nElemsNew))
 ALLOCATE(equalElem(nElemsNew))
 
-! Find the parametric coordinates of the new gauss points in the old mesh
+! Find the parametric coordinates of the interpolation points of the new state in the old mesh
 CALL GetParametricCoordinates()
 
 ! Allocate aray for new and the old solution - for the new solution, we use the U array from DG vars
@@ -192,11 +195,11 @@ USE MOD_ChangeBasis,           ONLY: ChangeBasis3D
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
-CHARACTER(LEN=255),INTENT(IN)  :: MeshFile
-LOGICAL,INTENT(IN)             :: useCurveds
-REAL,ALLOCATABLE,INTENT(OUT)   :: XCL(:,:,:,:,:)
-INTEGER,INTENT(OUT)            :: NGeo
-INTEGER,INTENT(OUT)            :: nElems
+CHARACTER(LEN=255),INTENT(IN)  :: MeshFile       !< Mesh file to be read
+LOGICAL,INTENT(IN)             :: useCurveds     !< Switch curved interpretation of mesh on or off
+REAL,ALLOCATABLE,INTENT(OUT)   :: XCL(:,:,:,:,:) !< Mesh coordinates on CL points
+INTEGER,INTENT(OUT)            :: NGeo           !< Polynomial degree of mesh representation
+INTEGER,INTENT(OUT)            :: nElems         !< Number of elements in mesh
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL,ALLOCATABLE               :: NodeCoords(:,:,:,:,:)
@@ -370,7 +373,6 @@ USE MOD_Swapmesh_Vars
 USE MOD_DG_Vars,         ONLY: U
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
-! Space-separated list of input and output types. Use: (int|real|logical|...)_(in|out|inout)_dim(n)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================

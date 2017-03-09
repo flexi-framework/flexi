@@ -400,7 +400,7 @@ USE MOD_Globals
 USE HDF5
 USE MOD_IO_HDF5           ,ONLY: File_ID,OpenDataFile,CloseDataFile
 USE MOD_Equation_Vars     ,ONLY: StrVarNames
-USE MOD_HDF5_Output       ,ONLY: WriteAttribute,WriteArray
+USE MOD_HDF5_Output       ,ONLY: WriteAttribute,WriteArray,MarkWriteSuccessfull
 USE MOD_Output_Vars       ,ONLY: ProjectName
 USE MOD_Mesh_Vars         ,ONLY: MeshFile
 USE MOD_Recordpoints_Vars ,ONLY: RP_COMM,myRPrank,lastSample
@@ -480,6 +480,7 @@ END IF
 CALL CloseDataFile()
 
 IF(myRPrank.EQ.0)THEN
+  CALL MarkWriteSuccessfull(Filestring)
   GETTIME(EndT)
   WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' DONE  [',EndT-StartT,'s]'
 END IF

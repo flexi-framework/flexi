@@ -82,7 +82,6 @@ DO iElemNew=1,nElemsNew
   IF(equalElem(iElemNew).GT.0) THEN
     iElemOld=equalElem(iElemNew)
     IF(NState.EQ.Nnew)THEN
-
       U(:,:,:,:,iElemNew)=UOld(:,:,:,:,iElemOld)
     ELSE
       CALL ChangeBasis3D(nVar_State,NState,NNew,Vdm_GPNState_GPNNew,UOld(:,:,:,:,iElemOld),U(:,:,:,:,iElemNew))
@@ -99,9 +98,11 @@ DO iElemNew=1,nElemsNew
     CALL LagrangeInterpolationPolys(xiInter(3,ii,jj,kk,iElemNew),NState,xGP,wBaryGP,L_zeta(:,ii,jj,kk))
   END DO; END DO; END DO
 
-  ! Evaluate old solution at GP
+  ! Evaluate old solution at interpolation points and transform to new state polynomial degree and node type
   DO kk=0,NInter; DO jj=0,NInter; DO ii=0,NInter
     IF(.NOT.IPDone(ii,jj,kk,iElemNew))THEN
+      ! If the interpolation point was not found, overwrite with reference state
+      ! If no reference state was given, the program already aborted
       Utmp(:,ii,jj,kk)=RefState
       CYCLE
     ELSE

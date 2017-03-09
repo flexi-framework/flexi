@@ -14,7 +14,7 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-!> Module to evaluate parametric coordinates of integration points from old mesh in new mesh
+!> Module to evaluate parametric coordinates of interpolation points (IP) of new state in old mesh
 !===================================================================================================================================
 MODULE MOD_SMParametricCoordinates
 ! MODULES
@@ -37,7 +37,7 @@ PUBLIC :: GetParametricCoordinates
 CONTAINS
 
 !===================================================================================================================================
-!> 
+!> Module to evaluate parametric coordinates of interpolation points (IP) of new state in old mesh
 !===================================================================================================================================
 SUBROUTINE GetParametricCoordinates()
 ! MODULES
@@ -86,11 +86,12 @@ CALL ChebyGaussLobNodesAndWeights(NGeoOld,Xi_CLNGeo)
 CALL BarycentricWeights(NGeoOld,Xi_CLNGeo,wBary_CLNGeo)
 CALL GetDerivativeMatrix(NGeoOld,NodeTypeCL,DCL_NGeo)
 
+! Equdistant points (including the edges) for supersampling
 DO i=0,NSuper
   Xi_NSuper(i) = 2./REAL(NSuper) * REAL(i) - 1.
 END DO
 
-! Compute centroids and radii for CL and IP
+! Compute centroids and radii for the old mesh on CL points and the interpolation mesh (new mesh on NInter) 
 DO iElemOld=1,nElemsOld
  CALL getCentroidAndRadius(xCLOld(:,:,:,:,iElemOld),NGeoOld,xCOld(:,iElemOld),radOld(iElemOld))
 END DO
@@ -100,15 +101,16 @@ END DO
 ! add 5 % tolerance to old
 radOld=radOld*1.05
 radNew=radNew
+! Precompute square of radii
 radSqOld=radOld*radOld
 radSqNew=radNew*radNew
 
 xiInter=HUGE(1.)
 InterToElem=-999
 
-IPDone=.FALSE.
-ElemDone=.FALSE.
-ElemDoneOld=.FALSE.
+IPDone=.FALSE.            ! Mark single interpolation point as done
+ElemDone=.FALSE.          ! Mark new element as done
+ElemDoneOld=.FALSE.       ! Mark old element as done
 StartTime=FLEXITIME()
 ElemCounter=0
 nEqualElems=0
@@ -125,12 +127,13 @@ IF(NgeoOld.EQ.NGeoNew) THEN
       IF(ElemDone(iElemNew)) CYCLE
       equal=.FALSE.
       ! check each dimension first only before getting 2Norm
+      ! we compare the distance of the centroids here for a first check!
       IF(ABS(  xCOld(1,iElemOld)-xCNew(1,iElemNew)).GT.maxDist) CYCLE
       IF(ABS(  xCOld(2,iElemOld)-xCNew(2,iElemNew)).GT.maxDist) CYCLE
       IF(ABS(  xCOld(3,iElemOld)-xCNew(3,iElemNew)).GT.maxDist) CYCLE
       dist=SUM((xCOld(:,iElemOld)-xCNew(:,iElemNew))**2)
       IF(dist.GT.maxDist**2) CYCLE
-      ! check the mapping of this element
+      ! now the coordinates of the mesh nodes themselves are compared
       equal=.TRUE.
       DO k=0,NGeoOld; DO j=0,NGeoOld; DO i=0,NGeoOld
         dist=SUM((xCLOld(:,i,j,k,iElemOld)-xCLNew(:,i,j,k,iElemNew))**2)
@@ -145,7 +148,7 @@ IF(NgeoOld.EQ.NGeoNew) THEN
         ElemDoneOld(iElemOld)=.TRUE.
         nEqualElems=nEqualElems+1
 !$OMP END CRITICAL 
-      END IF 
+      END IF ! equal
     END DO! iElemNew=1,nElemsNew
   END DO! iElemOld=1,nElemsOld
 !$OMP END DO
@@ -174,6 +177,7 @@ DO iElemOld=1,nElemsOld
 
   DO iElemNew=1,nElemsNew
     IF(ElemDone(iElemNew)) CYCLE ! all IP already found
+    ! Check if the two elements could be overlapping by comparing the distance between the centroids with the sum of the radii
     maxDist=radNew(iElemNew)+radOld(iElemOld)
     IF(SUM((xCOld(:,iElemOld)-xCNew(:,iElemNew))**2).GT.maxDist**2) CYCLE
 
@@ -186,7 +190,7 @@ DO iElemOld=1,nElemsOld
       IPOverlaps(ii,jj,kk)=(dist.LE.radSqOld(iElemOld))
     END DO; END DO; END DO
 
-    ! TODO: Rest in eine eigene Routine auslagern
+    ! TODO: Move to own routine
     ! Get smallest distance to supersampled points for starting Newton
     DO kk=0,NInter; DO jj=0,NInter; DO ii=0,NInter
       IF(.NOT.IPOverlaps(ii,jj,kk)) CYCLE
@@ -212,7 +216,6 @@ DO iElemOld=1,nElemsOld
         F=F+xCLOld(:,i,j,k,iElemOld)*LagVol(i,j,k)
       END DO; END DO; END DO
 
-      ! TODO: use local error instead of hardcoded eps
       !eps_F=1.E-16
       eps_F=1.E-8*SUM(F*F) ! relative error to initial guess
       iter=0
@@ -228,7 +231,7 @@ DO iElemOld=1,nElemsOld
         sdetJac=DET3(Jac)
         IF(sdetJac.NE.0.) THEN
          sdetJac=1./sdetJac
-        ELSE !shit
+        ELSE
           ! Newton has not converged !?!?
           ! allow Newton to fail without aborting, may happen when far outside of reference space [-1,1]
 !          WRITE(UNIT_stdOut,'(A)')' Newton has not converged! skipping...'        
@@ -279,7 +282,7 @@ END DO ! iElemOld
 !$OMP END DO
 !$OMP END PARALLEL
 
-! check if all IP habe been found
+! check if all interpolation points have been found
 nNotFound=0
 DO iElemNew=1,nElemsNew
   IF(equalElem(iElemNew).GT.0) CYCLE
@@ -303,7 +306,7 @@ DO iElemNew=1,nElemsNew
     END IF
   END DO; END DO; END DO ! ii,jj,kk (IP loop)
 END DO
-WRITE(*,*)nNotFound,' nodes not found.'
+WRITE(*,*) nNotFound,' nodes not found.'
 Time=FLEXITIME() -Time
 WRITE(UNIT_stdOut,'(A,F0.3,A)')' DONE  [',Time,'s]'
 END SUBROUTINE GetParametricCoordinates
@@ -317,12 +320,12 @@ SUBROUTINE getCentroidAndRadius(elem,NGeo,xC,radius)
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER,INTENT(IN) :: NGeo
-REAL,INTENT(IN)    :: elem(3,0:NGeo,0:NGeo,0:NGeo)
+INTEGER,INTENT(IN) :: NGeo                         !> Polynomial degree of mesh representation
+REAL,INTENT(IN)    :: elem(3,0:NGeo,0:NGeo,0:NGeo) !> Coordinates of single element
 !---------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(OUT)   :: xC(3)
-REAL,INTENT(OUT)   :: radius
+REAL,INTENT(OUT)   :: xC(3)                        !> Coordinates of centroid
+REAL,INTENT(OUT)   :: radius                       !> Radius of element
 !---------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: i,j,k,nNodes
@@ -334,7 +337,7 @@ xC(1) = SUM(elem(1,:,:,:))/nNodes
 xC(2) = SUM(elem(2,:,:,:))/nNodes
 xC(3) = SUM(elem(3,:,:,:))/nNodes
 
-! Compute max distance from bary to surface nodes
+! Compute max distance from bary to surface nodes and return as radius
 radius=0.
 DO k=0,NGeo
   onSide(3)=((k.EQ.0).OR.(k.EQ.NGeo))
