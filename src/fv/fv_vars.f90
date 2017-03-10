@@ -63,8 +63,7 @@ REAL,ALLOCATABLE       :: FV_sVdm(:,:)           !< Vandermonde to switch from F
 
 
 #if FV_RECONSTRUCT
-REAL,ALLOCATABLE,TARGET:: FV_surf_gradU_slave (:,:,:,:) !< FD over DG interface
-REAL,ALLOCATABLE,TARGET:: FV_surf_gradU_master(:,:,:,:) !< FD over DG interface
+REAL,ALLOCATABLE,TARGET:: FV_surf_gradU(:,:,:,:) !< FD over DG interface
 REAL,ALLOCATABLE,TARGET:: FV_multi_master(:,:,:,:)      !< multipurpose array: contains: 
 REAL,ALLOCATABLE,TARGET:: FV_multi_slave(:,:,:,:)       !< - DG: first inner value of U next to the face
                                                         !< - FV: first inner gradient from points next and second next to face

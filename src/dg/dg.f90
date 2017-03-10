@@ -300,7 +300,7 @@ USE MOD_FV_Vars             ,ONLY: gradUxi,gradUeta,gradUzeta
 #if PARABOLIC
 USE MOD_FV_Vars             ,ONLY: gradUxi_central,gradUeta_central,gradUzeta_central
 #endif
-USE MOD_FV_Vars             ,ONLY: FV_surf_gradU_master,FV_surf_gradU_slave,FV_multi_master,FV_multi_slave
+USE MOD_FV_Vars             ,ONLY: FV_surf_gradU,FV_multi_master,FV_multi_slave
 USE MOD_FV_ProlongToFace    ,ONLY: FV_ProlongToDGFace
 USE MOD_FV_Mortar           ,ONLY: FV_gradU_mortar
 USE MOD_FV_Reconstruction   ,ONLY: FV_PrepareSurfGradient,FV_SurfCalcGradients,FV_SurfCalcGradients_BC,FV_CalcGradients
@@ -446,34 +446,32 @@ CALL FV_DGtoFV(PP_nVarPrim,FV_multi_master,FV_multi_slave)
 
 #if USE_MPI
 ! 4.2)
-CALL StartReceiveMPIData(FV_surf_gradU_slave,DataSizeSidePrim,1,nSides,MPIRequest_Flux(:,SEND),SendID=1)
-                                                         ! Receive YOUR / FV_surf_gradU_slave: master -> slave
+CALL StartReceiveMPIData(FV_surf_gradU,DataSizeSidePrim,1,nSides,MPIRequest_Flux(:,SEND),SendID=1)
+                                                         ! Receive YOUR / FV_surf_gradU: master -> slave
 CALL FV_SurfCalcGradients(UPrim_master,UPrim_slave,FV_multi_master,FV_multi_slave,&
-    FV_surf_gradU_master,FV_surf_gradU_slave,doMPISides=.TRUE.)
-CALL StartSendMPIData(   FV_surf_gradU_slave,DataSizeSidePrim,1,nSides,MPIRequest_Flux(:,RECV),SendID=1)
-                                                         ! Send MINE  /   FV_surf_gradU_slave: master -> slave
+    FV_surf_gradU,doMPISides=.TRUE.)
+CALL StartSendMPIData(   FV_surf_gradU,DataSizeSidePrim,1,nSides,MPIRequest_Flux(:,RECV),SendID=1)
+                                                         ! Send MINE  /   FV_surf_gradU: master -> slave
 ! 4.4)
-CALL FV_ProlongToDGFace(UPrim_master,UPrim_slave,FV_multi_master,FV_multi_slave,FV_surf_gradU_master,FV_surf_gradU_slave,&
-    doMPISides=.TRUE.) 
+CALL FV_ProlongToDGFace(UPrim_master,UPrim_slave,FV_multi_master,FV_multi_slave,FV_surf_gradU,doMPISides=.TRUE.) 
 #endif /*USE_MPI*/
 
 ! Calculate FD-Gradients over inner Sides
 ! 4.2)
 CALL FV_SurfCalcGradients(UPrim_master,UPrim_slave,FV_multi_master,FV_multi_slave,&
-    FV_surf_gradU_master,FV_surf_gradU_slave,doMPISides=.FALSE.)
+    FV_surf_gradU,doMPISides=.FALSE.)
 ! 4.3) 
-CALL FV_gradU_mortar(FV_surf_gradU_master,FV_surf_gradU_slave,doMPISides=.FALSE.)
+CALL FV_gradU_mortar(FV_surf_gradU,doMPISides=.FALSE.)
 #if USE_MPI
-CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Flux)   ! FV_surf_gradU_slave: master -> slave
-CALL FV_gradU_mortar(FV_surf_gradU_master,FV_surf_gradU_slave,doMPISides=.TRUE.)
+CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Flux)   ! FV_surf_gradU: master -> slave
+CALL FV_gradU_mortar(FV_surf_gradU,doMPISides=.TRUE.)
 #endif
 ! 4.4)
-CALL FV_ProlongToDGFace(UPrim_master,UPrim_slave,FV_multi_master,FV_multi_slave,FV_surf_gradU_master,FV_surf_gradU_slave,&
-    doMPISides=.FALSE.)
+CALL FV_ProlongToDGFace(UPrim_master,UPrim_slave,FV_multi_master,FV_multi_slave,FV_surf_gradU,doMPISides=.FALSE.)
 ! 4.5) 
-CALL FV_SurfCalcGradients_BC(UPrim_master,FV_surf_gradU_master,t)
+CALL FV_SurfCalcGradients_BC(UPrim_master,FV_surf_gradU,t)
 ! 4.6) 
-CALL FV_CalcGradients(UPrim,FV_surf_gradU_master,FV_surf_gradU_slave,gradUxi,gradUeta,gradUzeta &
+CALL FV_CalcGradients(UPrim,FV_surf_gradU,gradUxi,gradUeta,gradUzeta &
 #if PARABOLIC    
     ,gradUxi_central,gradUeta_central,gradUzeta_central &
 #endif    

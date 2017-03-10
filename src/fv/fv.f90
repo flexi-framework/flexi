@@ -195,10 +195,7 @@ FV_multi_master = 0.0
 !    | x  x  x  x | x  x  x  x |                     | = face, x = node
 !               <--->
 !                  ^ the slope over the face 
-ALLOCATE(FV_surf_gradU_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)) 
-ALLOCATE(FV_surf_gradU_slave (PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)) 
-FV_surf_gradU_master = 0.0
-FV_surf_gradU_slave = 0.0
+ALLOCATE(FV_surf_gradU(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)) 
 
 ! The gradients of the primitive variables are stored at each volume integration point and 
 ! are computed by limiting the slopes to the two adjacent points in the respective direction.
@@ -421,8 +418,7 @@ SDEALLOCATE(FV_Elems_Counter)
 SDEALLOCATE(FV_Elems_Amount)
 SDEALLOCATE(FV_Elems_Sum)
 #if FV_RECONSTRUCT
-SDEALLOCATE(FV_surf_gradU_master)
-SDEALLOCATE(FV_surf_gradU_slave)
+SDEALLOCATE(FV_surf_gradU)
 SDEALLOCATE(FV_multi_master)
 SDEALLOCATE(FV_multi_slave)
 SDEALLOCATE(gradUxi)

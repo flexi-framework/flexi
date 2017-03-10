@@ -107,8 +107,8 @@ DO iElem=1,nElems
     DO q=0,PP_N; DO p=0,PP_N
       ! 2. reconstruct solution at left and right side of the interface/slice
 #if FV_RECONSTRUCT      
-      UPrim_L(:,p,q) = UPrim(:,i-1,p,q,iElem) + gradUxi(:,p,q,i-1,iElem) * FV_dx_XI_R(i-1,p,q,iElem) 
-      UPrim_R(:,p,q) = UPrim(:,i  ,p,q,iElem) - gradUxi(:,p,q,i  ,iElem) * FV_dx_XI_L(i  ,p,q,iElem)
+      UPrim_L(:,p,q) = UPrim(:,i-1,p,q,iElem) + gradUxi(:,p,q,i-1,iElem) * FV_dx_XI_R(p,q,i-1,iElem) 
+      UPrim_R(:,p,q) = UPrim(:,i  ,p,q,iElem) - gradUxi(:,p,q,i  ,iElem) * FV_dx_XI_L(p,q,i  ,iElem)
 #else 
       UPrim_L(:,p,q) = UPrim(:,i-1,p,q,iElem) 
       UPrim_R(:,p,q) = UPrim(:,i  ,p,q,iElem)
@@ -154,8 +154,8 @@ DO iElem=1,nElems
     DO q=0,PP_N; DO p=0,PP_N
       ! 2. reconstruct solution at left and right side of the interface/slice
 #if FV_RECONSTRUCT      
-      UPrim_L(:,p,q) = UPrim(:,p,j-1,q,iElem) + gradUeta(:,p,q,j-1,iElem) * FV_dx_ETA_R(p,j-1,q,iElem)
-      UPrim_R(:,p,q) = UPrim(:,p,j  ,q,iElem) - gradUeta(:,p,q,j  ,iElem) * FV_dx_ETA_L(p,j  ,q,iElem)
+      UPrim_L(:,p,q) = UPrim(:,p,j-1,q,iElem) + gradUeta(:,p,q,j-1,iElem) * FV_dx_ETA_R(p,q,j-1,iElem)
+      UPrim_R(:,p,q) = UPrim(:,p,j  ,q,iElem) - gradUeta(:,p,q,j  ,iElem) * FV_dx_ETA_L(p,q,j  ,iElem)
 #else  
       UPrim_L(:,p,q) = UPrim(:,p,j-1,q,iElem)
       UPrim_R(:,p,q) = UPrim(:,p,j  ,q,iElem)
