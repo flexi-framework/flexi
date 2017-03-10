@@ -649,10 +649,10 @@ REAL              :: mu,temp,fricVel
 INTEGER           :: iSide,p,q,iSideVisu,i,ElemID,locSideID
 REAL              :: refVec(3),scalProd,scalProdMax,xVec(3),yVec(3),zVec(3),yloc(3),tVec(3,2)
 REAL              :: NodeCoords(3,0:PP_N,0:PP_N,0:PP_N)
-REAL              :: Vdm_N_GLNloc(0:PP_N,0:PP_N)
+REAL              :: Vdm_G_GL(0:PP_N,0:PP_N)
 !===================================================================================================================================
 ! We need a Vandermonde matrix to get the GP coordinates on GL points, i.e. including the surface of the grid cells
-CALL GetVandermonde(PP_N,NodeType,PP_N,NodeTypeGL,Vdm_N_GLNloc)
+CALL GetVandermonde(PP_N,NodeType,PP_N,NodeTypeGL,Vdm_G_GL)
 
 ! Loop over all boundary sides
 DO iSide=1,nBCSides
@@ -662,7 +662,7 @@ DO iSide=1,nBCSides
     locSideID     = SideToElem(S2E_LOC_SIDE_ID,iSide)
 
     ! Get element coordinates on GL points (they include the edges that we use to calculate the element length)
-    CALL ChangeBasis3D(3,PP_N,PP_N,Vdm_N_GLNloc,Elem_xGP(:,:,:,:,ElemID),NodeCoords)
+    CALL ChangeBasis3D(3,PP_N,PP_N,Vdm_G_GL,Elem_xGP(:,:,:,:,ElemID),NodeCoords)
 
     ! Depending in the local sideID, get the edge vectors of the element in wall-normal direction (stored in yVec) and for the two
     ! wall-tangential directions (stored in tVec(:,1-2)). These vectors are the connection of the cell vertices, so they do not
