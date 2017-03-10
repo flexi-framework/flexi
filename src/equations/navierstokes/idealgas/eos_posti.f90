@@ -629,17 +629,20 @@ USE MOD_Mesh_Vars           ,ONLY: NGeo,Elem_xGP,SideToElem,nBCSides
 USE MOD_Interpolation       ,ONLY: GetVandermonde
 USE MOD_Interpolation_Vars  ,ONLY: NodeType,NodeTypeGL
 USE MOD_ChangeBasis         ,ONLY: ChangeBasis3D
-IMPLICIT NONE 
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)                                   :: nSides_calc
-INTEGER,INTENT(IN)                                   :: mapBCSideToVisuSides(nBCSides)
-INTEGER,INTENT(IN)                                   :: Nloc
-INTEGER,INTENT(IN)                                   :: dir
-REAL,DIMENSION(0:Nloc,0:Nloc,nSides_calc),INTENT(IN) :: WallFrictionMag
-REAL,DIMENSION(0:Nloc,0:Nloc,nSides_calc),INTENT(IN) :: Density
-REAL,DIMENSION(0:Nloc,0:Nloc,nSides_calc),INTENT(IN) :: Temperature
-REAL,INTENT(OUT)                                     :: wallDistance(0:Nloc,0:Nloc,nSides_calc)
+INTEGER,INTENT(IN)                                   :: nSides_calc                   !< Number of sides to perform calculation
+INTEGER,INTENT(IN)                                   :: mapBCSideToVisuSides(nBCSides)!< Map betweeen all BC sides and the 
+                                                                                      !< (FV or DG) visu sides
+INTEGER,INTENT(IN)                                   :: Nloc                          !< Polynomial degree on which calculation
+                                                                                      !< is performed
+INTEGER,INTENT(IN)                                   :: dir                           !< Direction of grid spacing that should 
+                                                                                      !< be calculated (1,2,3)=(x,y,z)
+REAL,DIMENSION(0:Nloc,0:Nloc,nSides_calc),INTENT(IN) :: WallFrictionMag               !< Magnitude of wall friction on sides
+REAL,DIMENSION(0:Nloc,0:Nloc,nSides_calc),INTENT(IN) :: Density                       !< Density on sides
+REAL,DIMENSION(0:Nloc,0:Nloc,nSides_calc),INTENT(IN) :: Temperature                   !< Temperature on sides (for viscosity)
+REAL,INTENT(OUT)                                     :: wallDistance(0:Nloc,0:Nloc,nSides_calc) !< Returned array
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
 REAL              :: mu,temp,fricVel
@@ -659,7 +662,7 @@ DO iSide=1,nBCSides
     locSideID     = SideToElem(S2E_LOC_SIDE_ID,iSide)
 
     ! Get element coordinates on GL points (they include the edges that we use to calculate the element length)
-    CALL ChangeBasis3D(3,PP_N,Nloc,Vdm_N_GLNloc,Elem_xGP(:,:,:,:,ElemID),NodeCoords)
+    CALL ChangeBasis3D(3,PP_N,PP_N,Vdm_N_GLNloc,Elem_xGP(:,:,:,:,ElemID),NodeCoords)
 
     ! Depending in the local sideID, get the edge vectors of the element in wall-normal direction (stored in yVec) and for the two
     ! wall-tangential directions (stored in tVec(:,1-2)). These vectors are the connection of the cell vertices, so they do not
@@ -678,7 +681,7 @@ DO iSide=1,nBCSides
      tVec(:,1) = NodeCoords(:,NGeo,0,0)- NodeCoords(:,0,0,0)
      tVec(:,2) = NodeCoords(:,0,NGeo,0)- NodeCoords(:,0,0,0)
     END SELECT
-     
+
     ! For the two tangential vectors, we try to find out which one is pointing in the physical x-direction
     refVec=(/1.,0.,0./) ! Vector in x-direction
     scalProdMax=0.
