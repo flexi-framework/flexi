@@ -64,12 +64,11 @@ SUBROUTINE InitFV_Basis()
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_FV_Vars
-USE MOD_Interpolation_Vars ,ONLY: InterpolationInitIsDone
+USE MOD_Interpolation_Vars ,ONLY: InterpolationInitIsDone,NodeType
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-CHARACTER(LEN=255) :: NodeType_tmp
 !==================================================================================================================================
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT FV Basis...'
@@ -77,10 +76,6 @@ IF(InterpolationInitIsDone.AND.FVInitBasisIsDone)THEN
   CALL CollectiveStop(__STAMP__, &
     'InitFV_Basis not ready to be called or already called.')
 END IF
-
-!#if (PP_NodeType!=1) 
-!STOP 'Only Gauss points supported (use: PP_NodeType = 1)'
-!#endif
 
 #if PARABOLIC
 #if !(FV_RECONSTRUCT)
@@ -107,9 +102,8 @@ CALL FV_Build_X_w_BdryX(PP_N, FV_X, FV_w, FV_BdryX)
 ! equidistant FV needs Vdm-Matrix to interpolate/reconstruct between FV- and DG-Solution
 ALLOCATE(FV_Vdm(0:PP_N,0:PP_N))    ! used for DG -> FV
 ALLOCATE(FV_sVdm(0:PP_N,0:PP_N))   ! used for FV -> DG
-NodeType_tmp = "GAUSS"
 ! Build Vandermondes for switch between DG and FV
-CALL FV_GetVandermonde(PP_N,NodeType_tmp,FV_Vdm,FV_sVdm)
+CALL FV_GetVandermonde(PP_N,NodeType,FV_Vdm,FV_sVdm)
 
 ! calculate inverse FV-widths (little speedup)
 FV_w_inv = 1.0 / FV_w
@@ -142,16 +136,13 @@ REAL,INTENT(OUT),OPTIONAL     :: FV_sVdm(0:N_in,0:N_in)  ! Vandermonde matrix fo
 ! LOCAL VARIABLES
 REAL                   :: Vdm_In_tmp(0:N_in,0:N_in)
 REAL                   :: Vdm_tmp_IN(0:N_in,0:N_in)
-CHARACTER(LEN=255)     :: NodeType_tmp
 REAL                   :: FV_X(0:N_in),FV_w,FV_BdryX(0:N_In+1)
 REAL,DIMENSION(0:N_In) :: xGP,wGP,wBary,rhs
 REAL                   :: SubxGP(1,0:N_In)
 REAL                   :: VDM(0:N_In,0:N_In)
 INTEGER                :: i,j,k,IPIV(PP_N+1),errorflag
 !==================================================================================================================================
-NodeType_tmp = "GAUSS"
-CALL GetVandermonde(N_in,NodeType_in,N_in,NodeType_tmp,Vdm_In_tmp, Vdm_tmp_IN)
-CALL GetNodesAndWeights(N_in,NodeType_tmp,xGP,wGP,wBary)
+CALL GetNodesAndWeights(N_in,NodeType_in,xGP,wGP,wBary)
 
 ! one DG cell [-1,1] is divided in FV-Subcells
 !
@@ -198,8 +189,6 @@ DO i=0,N_in
 END DO
 ! 4. don't forget the 1/2
 FV_Vdm = FV_Vdm * 0.5
-
-FV_Vdm = MATMUL(FV_Vdm, Vdm_In_tmp)
 
 ! Compute the inverse of FV_Vdm 
 FV_sVdm = INVERSE(FV_Vdm)
