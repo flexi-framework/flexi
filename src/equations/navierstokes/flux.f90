@@ -150,6 +150,7 @@ DO k=0,PP_N;  DO j=0,PP_N; DO i=0,PP_N
                     ,gradUz(3,i,j,k),gradUx(4,i,j,k),gradUy(4,i,j,k)&
                     ,UPrim(1,i,j,k),iElem,i,j,k,muSGS(1,i,j,k,iElem))
   muSGS(1,i,j,k,iElem) =  min(max(muSGS(1,i,j,k,iElem),0.),8.0*muS)
+  muSGSmax(iElem) = MAX(muSGS(1,i,j,k,iElem),muSGSmax(iElem))
   muS = muS + muSGS(1,i,j,k,iElem)
   lambda = lambda + muSGS(1,i,j,k,iElem)*cp/PrSGS
 #endif

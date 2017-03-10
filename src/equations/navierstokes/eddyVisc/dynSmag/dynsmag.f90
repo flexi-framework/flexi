@@ -223,7 +223,7 @@ SUBROUTINE dynsmag(grad11,grad22,grad33,grad12,grad13,grad21,grad23,grad31,grad3
 !===================================================================================================================================
 ! MODULES
 USE MOD_PreProc
-USE MOD_EddyVisc_Vars,     ONLY:SGS_Ind,muSGSmax,S_en_out
+USE MOD_EddyVisc_Vars,     ONLY:SGS_Ind,S_en_out
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -249,7 +249,6 @@ S_eN = SQRT(S_eN)
 muSGS = S_eN*rho*SGS_Ind(1,i,j,k,iElem) 
 S_en_out(1,i,j,k,iElem) = S_eN
 SGS_Ind(2,i,j,k,iElem) = muSGS 
-muSGSmax(iElem) = MAX(muSGS,muSGSmax(iElem))
 END SUBROUTINE dynsmag
 
 SUBROUTINE compute_cd(U_in)
