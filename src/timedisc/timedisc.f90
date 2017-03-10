@@ -518,6 +518,9 @@ USE MOD_TimeDisc_Vars,ONLY:CFLScale,CFLScaleAlpha
 #if PARABOLIC
 USE MOD_TimeDisc_Vars,ONLY:DFLScale,DFLScaleAlpha,RelativeDFL
 #endif /*PARABOLIC*/
+#if FV_ENABLED
+USE MOD_TimeDisc_Vars,ONLY:CFLScaleFV
+#endif /*FV*/
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -536,7 +539,7 @@ INTEGER            :: dummy
 alpha    = CFLScaleAlpha(MIN(15,Nin_CFL))
 CFLScale(0) = CFLScale(0)*alpha
 #if FV_ENABLED
-CFLScale(1) = CFLScale(1)*CFLScaleAlpha(1)/(PP_N+1.) ! equidistant distribution
+CFLScale(1) = CFLScale(1)*CFLScaleFV/(PP_N+1.) ! equidistant distribution
 #endif
 IF((Nin_CFL.GT.15).OR.(CFLScale(0).GT.alpha))THEN
   SWRITE(UNIT_StdOut,'(132("!"))')

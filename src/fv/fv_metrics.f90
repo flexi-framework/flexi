@@ -60,7 +60,7 @@ USE MOD_Interpolation_Vars ,ONLY: NodeType
 USE MOD_Mesh_Vars          ,ONLY: firstBCSide,lastBCSide,firstInnerSide,lastMPISide_MINE
 USE MOD_Mesh_Vars          ,ONLY: S2V2,ElemToSide,dXCL_N
 USE MOD_Interpolation      ,ONLY: GetNodesAndWeights
-USE MOD_Interpolation_Vars ,ONLY: NodeTypeG,NodeTypeCL,xGP
+USE MOD_Interpolation_Vars ,ONLY: NodeTypeCL,xGP,wGP,wBary
 #if USE_MPI
 USE MOD_MPI                ,ONLY: StartReceiveMPIData,StartSendMPIData,FinishExchangeMPIData
 USE MOD_MPI_Vars           ,ONLY: nNbProcs
@@ -88,7 +88,6 @@ REAL                                   :: DG_dx_slave (1,0:PP_N,0:PP_N,1:nSides)
 REAL                                   :: DG_dx_master(1,0:PP_N,0:PP_N,1:nSides)
 
 REAL                                   :: tmp2(3,0:PP_N)
-REAL,DIMENSION(0:PP_N)                 :: xG,wG,wBaryG
 REAL,DIMENSION(0:PP_N,0:PP_N)          :: Vdm_CLN_FV, Vdm_CLN_GaussN,length
 REAL,DIMENSION(3,0:PP_N,0:PP_N,0:PP_N) :: FV_Path_XI, FV_Path_ETA, FV_Path_ZETA
 REAL                                   :: x0, xN
@@ -301,9 +300,8 @@ END DO
 ! Compute distances between FV subcells and between first Gauss point and interface
 ! Integrate path given by dXCL_N, to ensure free stream preservation for N<Ngeo
 !=====================================================================================
-CALL GetVandermonde(PP_N,NodeTypeCL,PP_N,NodeTypeG, Vdm_CLN_GaussN, modal=.FALSE.)
+CALL GetVandermonde(PP_N,NodeTypeCL,PP_N,NodeType, Vdm_CLN_GaussN, modal=.FALSE.)
 Vdm_CLN_FV = MATMUL(FV_Vdm, Vdm_CLN_GaussN)
-CALL GetNodesAndWeights(PP_N,NodeTypeG,xG,wG,wBaryG)
 
 DO iElem=1,nElems
   DO l=0,PP_N
@@ -325,16 +323,16 @@ DO iElem=1,nElems
     ! left
     x0 = FV_BdryX(l)
     xN = x0 + (FV_BdryX(l+1) - FV_BdryX(l)) * 0.5
-    CALL Integrate_Path(PP_N,PP_N, xG,wG,wBaryG, x0,xN, FV_Path_XI  , FV_dx_XI_L  (:,:,l,iElem))
-    CALL Integrate_Path(PP_N,PP_N, xG,wG,wBaryG, x0,xN, FV_Path_ETA , FV_dx_ETA_L (:,:,l,iElem))
-    CALL Integrate_Path(PP_N,PP_N, xG,wG,wBaryG, x0,xN, FV_Path_ZETA, FV_dx_ZETA_L(:,:,l,iElem))
+    CALL Integrate_Path(PP_N,PP_N, xGP,wGP,wBary, x0,xN, FV_Path_XI  , FV_dx_XI_L  (:,:,l,iElem))
+    CALL Integrate_Path(PP_N,PP_N, xGP,wGP,wBary, x0,xN, FV_Path_ETA , FV_dx_ETA_L (:,:,l,iElem))
+    CALL Integrate_Path(PP_N,PP_N, xGP,wGP,wBary, x0,xN, FV_Path_ZETA, FV_dx_ZETA_L(:,:,l,iElem))
     
     ! right
     xN = FV_BdryX(l+1)
     x0 = xN - (FV_BdryX(l+1) - FV_BdryX(l)) * 0.5
-    CALL Integrate_Path(PP_N,PP_N, xG,wG,wBaryG, x0,xN, FV_Path_XI  , FV_dx_XI_R  (:,:,l,iElem))
-    CALL Integrate_Path(PP_N,PP_N, xG,wG,wBaryG, x0,xN, FV_Path_ETA , FV_dx_ETA_R (:,:,l,iElem))
-    CALL Integrate_Path(PP_N,PP_N, xG,wG,wBaryG, x0,xN, FV_Path_ZETA, FV_dx_ZETA_R(:,:,l,iElem))
+    CALL Integrate_Path(PP_N,PP_N, xGP,wGP,wBary, x0,xN, FV_Path_XI  , FV_dx_XI_R  (:,:,l,iElem))
+    CALL Integrate_Path(PP_N,PP_N, xGP,wGP,wBary, x0,xN, FV_Path_ETA , FV_dx_ETA_R (:,:,l,iElem))
+    CALL Integrate_Path(PP_N,PP_N, xGP,wGP,wBary, x0,xN, FV_Path_ZETA, FV_dx_ZETA_R(:,:,l,iElem))
   END DO ! l=0,PP_N
 
   ! build inverse distances (volumes)
@@ -349,22 +347,22 @@ DO iElem=1,nElems
     flip   = ElemToSide(E2S_FLIP,   locSideID,iElem)
     SELECT CASE(locSideID)
     CASE(XI_MINUS)
-      CALL Integrate_Path(PP_N,PP_N, xG,wG,wBaryG, -1., xGP(0),   FV_Path_XI  , length)
+      CALL Integrate_Path(PP_N,PP_N, xGP,wGP,wBary, -1., xGP(0),   FV_Path_XI  , length)
       FV_dx_P(0:PP_N,0:PP_N) => FV_dx_XI_L(:,:,0,iElem)
     CASE(ETA_MINUS)
-      CALL Integrate_Path(PP_N,PP_N, xG,wG,wBaryG, -1., xGP(0),   FV_Path_ETA , length)
+      CALL Integrate_Path(PP_N,PP_N, xGP,wGP,wBary, -1., xGP(0),   FV_Path_ETA , length)
       FV_dx_P(0:PP_N,0:PP_N) => FV_dx_ETA_L(:,:,0,iElem)
     CASE(ZETA_MINUS)
-      CALL Integrate_Path(PP_N,PP_N, xG,wG,wBaryG, -1., xGP(0),   FV_Path_ZETA, length)
+      CALL Integrate_Path(PP_N,PP_N, xGP,wGP,wBary, -1., xGP(0),   FV_Path_ZETA, length)
       FV_dx_P(0:PP_N,0:PP_N) => FV_dx_ZETA_L(:,:,0,iElem)
     CASE(XI_PLUS)
-      CALL Integrate_Path(PP_N,PP_N, xG,wG,wBaryG, xGP(PP_N), 1., FV_Path_XI  , length)
+      CALL Integrate_Path(PP_N,PP_N, xGP,wGP,wBary, xGP(PP_N), 1., FV_Path_XI  , length)
       FV_dx_P(0:PP_N,0:PP_N) => FV_dx_XI_R(:,:,PP_N,iElem)
     CASE(ETA_PLUS)
-      CALL Integrate_Path(PP_N,PP_N, xG,wG,wBaryG, xGP(PP_N), 1., FV_Path_ETA , length)
+      CALL Integrate_Path(PP_N,PP_N, xGP,wGP,wBary, xGP(PP_N), 1., FV_Path_ETA , length)
       FV_dx_P(0:PP_N,0:PP_N) => FV_dx_ETA_R(:,:,PP_N,iElem)
     CASE(ZETA_PLUS)
-      CALL Integrate_Path(PP_N,PP_N, xG,wG,wBaryG, xGP(PP_N), 1., FV_Path_ZETA, length)
+      CALL Integrate_Path(PP_N,PP_N, xGP,wGP,wBary, xGP(PP_N), 1., FV_Path_ZETA, length)
       FV_dx_P(0:PP_N,0:PP_N) => FV_dx_ZETA_R(:,:,PP_N,iElem)
     CASE DEFAULT
       STOP 'Local side index out of range (1...6).'

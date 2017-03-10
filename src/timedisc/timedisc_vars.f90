@@ -41,6 +41,9 @@ REAL             :: dt                        !< current timestep
 REAL             :: TEnd                      !< End time of simulation
 REAL             :: TAnalyze                  !< Analyze time intervall
 REAL             :: CFLScale(0:FV_ENABLED)    !< Convective CFL number
+#if FV_ENABLED
+REAL             :: CFLScaleFV                !< For FV, this is always set to the CFLScale for Gauss and N=1
+#endif /*FV*/
 REAL             :: DFLScale(0:FV_ENABLED)    !< Viscous CFL number (only if PARABOLIC)
 REAL,ALLOCATABLE :: dtElem(:)                 !< Timestep for each element
 INTEGER          :: CurrentStage=1            !< Current Runge-Kutta stage within timestep
@@ -136,6 +139,9 @@ CASE('standardrk3-3')
     (/ 3.1871, 2.2444, 1.7797, 1.5075, 1.3230, 1.1857, 1.0800, 0.9945, 0.9247, 0.8651, 0.8134, 0.7695, 0.7301, 0.6952, 0.6649 /)
   ENDIF
 #endif /*PP_NodeType*/
+#if FV_ENABLED
+  CFLScaleFV = 1.2285
+#endif /*FV*/
 
   ALLOCATE(RKA(2:nRKStages),RKb(1:nRKStages),RKc(2:nRKStages))
   RKA(2:nRKStages) = (/ 5./9.,153./128. /)
@@ -162,6 +168,10 @@ CASE('carpenterrk4-5')
     (/ 4.7497, 3.4144, 2.8451, 2.4739, 2.2027, 1.9912, 1.8225, 1.6830, 1.5682, 1.4692, 1.3849, 1.3106, 1.2454, 1.1880, 1.1362 /)
   END IF
 #endif /*PP_NodeType*/
+#if FV_ENABLED
+  CFLScaleFV = 2.0351
+#endif /*FV*/
+
 #if PARABOLIC
   RelativeDFL=1.853
 #endif
@@ -204,6 +214,10 @@ CASE('niegemannrk4-14')
     (/ 14.7882, 9.5906, 7.9447, 7.0965, 6.5486, 6.1436, 5.8185, 5.5440, 5.3055, 5.0940, 4.9028, 4.7295, 4.5697, 4.4235, 4.2885 /)
   END IF
 #endif /*PP_NodeType*/
+#if FV_ENABLED
+  CFLScaleFV = 6.9716
+#endif /*FV*/
+
 #if PARABOLIC
   RelativeDFL=7.379
 #endif
@@ -272,6 +286,10 @@ CASE('toulorgerk4-8c')
     (/ 8.2506, 5.7006, 4.7876, 4.2616, 3.8866, 3.5946, 3.3536, 3.1516, 2.9766, 2.8246, 2.6786, 2.5356, 2.4096, 2.2976, 2.1966 /)
   END IF
 #endif /*PP_NodeType*/
+#if FV_ENABLED
+  CFLScaleFV = 3.7726
+#endif /*FV*/
+
 #if PARABOLIC
   RelativeDFL=3.328
 #endif
@@ -323,6 +341,10 @@ CASE('toulorgerk3-7c')
     (/ 8.1776, 5.6366, 4.7326, 4.2156, 3.8486, 3.5606, 3.3246, 3.1246, 2.9526, 2.8026, 2.6696, 2.5516, 2.4336, 2.3216, 2.2196 /)
   END IF
 #endif /*PP_NodeType*/
+#if FV_ENABLED
+  CFLScaleFV = 3.7416
+#endif /*FV*/
+
 #if PARABOLIC
   RelativeDFL=3.342
 #endif
@@ -370,6 +392,10 @@ CASE('toulorgerk4-8f')
     (/ 7.9706, 5.5346, 4.6486, 4.1376, 3.7686, 3.4726, 3.2246, 3.0116, 2.8276, 2.6676, 2.5266, 2.4026, 2.2866, 2.1776, 2.0806 /)
   ENDIF 
 #endif /*PP_NodeType*/
+#if FV_ENABLED
+  CFLScaleFV = 3.5856
+#endif /*FV*/
+
 #if PARABOLIC
   RelativeDFL=3.142
 #endif
@@ -427,6 +453,10 @@ CASE('ketchesonrk4-20')
     (/ 14.7882, 9.5906, 7.9447, 7.0965, 6.5486, 6.1436, 5.8185, 5.5440, 5.3055, 5.0940, 4.9028, 4.7295, 4.5697, 4.4235, 4.2885 /)
   ENDIF
 #endif /*PP_NodeType*/
+#if FV_ENABLED
+  CFLScaleFV = 6.9716
+#endif /*FV*/
+
 #if PARABOLIC
   RelativeDFL=7.379
 #endif
@@ -583,6 +613,10 @@ CASE('ketchesonrk4-18')
     (/ 14.7882, 9.5906, 7.9447, 7.0965, 6.5486, 6.1436, 5.8185, 5.5440, 5.3055, 5.0940, 4.9028, 4.7295, 4.5697, 4.4235, 4.2885 /)
   ENDIF
 #endif /*PP_NodeType*/
+#if FV_ENABLED
+  CFLScaleFV = 6.9716
+#endif /*FV*/
+
 #if PARABOLIC
   RelativeDFL=7.379
 #endif
