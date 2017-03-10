@@ -50,6 +50,7 @@ FLEXI uses several external libraries as well as auxilliary functions from open 
 * [LAPACK](http://www.netlib.org/lapack/)
 * [PAPI](http://icl.cs.utk.edu/papi/)
 * [FOUL](http://foul.sourceforge.net/)
+* [OpenMP](http://www.openmp.org/)
 
 [nrg]:  https://nrg.iag.uni-stuttgart.de/
 [flexi]: https://www.flexi-project.org/
