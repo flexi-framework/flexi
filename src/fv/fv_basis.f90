@@ -140,10 +140,10 @@ REAL                   :: Vdm_In_tmp(0:N_in,0:N_in)
 REAL                   :: Vdm_tmp_IN(0:N_in,0:N_in)
 CHARACTER(LEN=255)     :: NodeType_tmp
 REAL                   :: FV_X(0:N_in),FV_w,FV_BdryX(0:N_In+1)
-REAL,DIMENSION(0:N_In) :: xGP,wGP,wBary,rhs
+REAL,DIMENSION(0:N_In) :: xGP,wGP,wBary
 REAL                   :: SubxGP(1,0:N_In)
 REAL                   :: VDM(0:N_In,0:N_In)
-INTEGER                :: i,j,k,IPIV(PP_N+1),errorflag
+INTEGER                :: i,j,k
 !==================================================================================================================================
 NodeType_tmp = "GAUSS"
 CALL GetVandermonde(N_in,NodeType_in,N_in,NodeType_tmp,Vdm_In_tmp, Vdm_tmp_IN)
