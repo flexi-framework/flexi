@@ -243,9 +243,11 @@ DO iExample=1,nExamples
   Examples(iExample)%PATH = TRIM(ExamplesDir)//TRIM(ExampleNames(iExample))
   Examples(iExample)%ReferenceFile=''
   Examples(iExample)%ReferenceNormFile=''
-  Examples(iExample)%CheckedStateFile=''
-  Examples(iExample)%ReferenceStateFile=''
-  Examples(iExample)%ReferenceDataSetName=''
+  Examples(iExample)%H5DIFFCheckedStateFile=''
+  Examples(iExample)%H5DIFFReferenceStateFile=''
+  Examples(iExample)%H5DIFFReferenceDataSetName=''
+  Examples(iExample)%H5diffToleranceType='absolute'
+  Examples(iExample)%H5diffTolerance=-1.
   Examples(iExample)%RestartFileName=''
   Examples(iExample)%ErrorStatus=0
 END DO
@@ -294,6 +296,8 @@ IF(.NOT.ExistFile) THEN
   SWRITE(UNIT_stdOut,'(A12,A)')  ' FileName: ', TRIM(FileName)
   SWRITE(UNIT_stdOut,'(A12,L)') ' ExistFile: ', ExistFile
   ERROR STOP '-1'
+ELSE
+  OPEN(NEWUNIT=ioUnit,FILE=TRIM(FileName),STATUS="OLD",IOSTAT=iSTATUS,ACTION='READ') 
 END IF
 
 ! init
@@ -307,7 +311,6 @@ Example%ReferenceTolerance      = -1.
 Example%SubExample              = '-'     ! init
 Example%SubExampleNumber        = 0       ! init total number of subexamples
 Example%SubExampleOption(1:100) = '-'     ! default option is nothing
-OPEN(NEWUNIT=ioUnit,FILE=TRIM(FileName),STATUS="OLD",IOSTAT=iSTATUS,ACTION='READ')
 DO ! extract reggie information
   READ(ioUnit,'(A)',IOSTAT=iSTATUS) temp1 ! get first line assuming it is something like "nVar= 5"
   IF(iSTATUS.EQ.-1) EXIT ! end of file (EOF) reached
@@ -336,12 +339,14 @@ DO ! extract reggie information
     IF(TRIM(readRHS(1)).EQ.'nRuns')CALL str2int(readRHS(2),Example%nRuns,iSTATUS)
     ! Reference Norm/State
     IF(TRIM(readRHS(1)).EQ.'ReferenceTolerance')CALL str2real(readRHS(2),Example%ReferenceTolerance,iSTATUS)
-    IF(TRIM(readRHS(1)).EQ.'ReferenceFile')          Example%ReferenceFile         =TRIM(ADJUSTL(readRHS(2)))
-    IF(TRIM(readRHS(1)).EQ.'ReferenceNormFile')      Example%ReferenceNormFile     =TRIM(ADJUSTL(readRHS(2)))
-    IF(TRIM(readRHS(1)).EQ.'ReferenceStateFile')     Example%ReferenceStateFile    =TRIM(ADJUSTL(readRHS(2)))
-    IF(TRIM(readRHS(1)).EQ.'CheckedStateFile')       Example%CheckedStateFile      =TRIM(ADJUSTL(readRHS(2)))
-    IF(TRIM(readRHS(1)).EQ.'ReferenceDataSetName')   Example%ReferenceDataSetName  =TRIM(ADJUSTL(readRHS(2)))
-    IF(TRIM(readRHS(1)).EQ.'RestartFileName')        Example%RestartFileName       =TRIM(ADJUSTL(readRHS(2)))
+    IF(TRIM(readRHS(1)).EQ.'ReferenceFile')                Example%ReferenceFile         =TRIM(ADJUSTL(readRHS(2)))
+    IF(TRIM(readRHS(1)).EQ.'ReferenceNormFile')            Example%ReferenceNormFile     =TRIM(ADJUSTL(readRHS(2)))
+    IF(TRIM(readRHS(1)).EQ.'H5DIFFReferenceStateFile')           Example%H5DIFFReferenceStateFile    =TRIM(ADJUSTL(readRHS(2)))
+    IF(TRIM(readRHS(1)).EQ.'H5DIFFCheckedStateFile')       Example%H5DIFFCheckedStateFile      =TRIM(ADJUSTL(readRHS(2)))
+    IF(TRIM(readRHS(1)).EQ.'H5DIFFReferenceDataSetName')   Example%H5DIFFReferenceDataSetName  =TRIM(ADJUSTL(readRHS(2)))
+    IF(TRIM(readRHS(1)).EQ.'H5diffToleranceType')          Example%H5diffToleranceType   =TRIM(ADJUSTL(readRHS(2)))
+    IF(TRIM(readRHS(1)).EQ.'H5diffTolerance')   CALL str2real(readRHS(2),Example%H5diffTolerance,iSTATUS)
+    IF(TRIM(readRHS(1)).EQ.'RestartFileName')              Example%RestartFileName       =TRIM(ADJUSTL(readRHS(2)))
     ! SubExamples - currently one subexample class is allowed with multiple options
     IF(TRIM(readRHS(1)).EQ.'SubExample') CALL GetParameterList(ParameterName   = Example%SubExample,       &
                                                                ParameterList   = Example%SubExampleOption, &
@@ -459,31 +464,31 @@ DO ! extract reggie information
     !  for h: ConvergenceTest =       h     ,                   Constant                           , 3.99                , 1e-2
     !                          type (h or p), comparison type (IntegrateLine or power law exponent), value for comparison, Tolerance
     IF(TRIM(readRHS(1)).EQ.'ConvergenceTest')THEN
-       Example%ConvergenceTest           = .TRUE.
-       Example%ConvergenceTestType       = ''     ! init
-       Example%ConvergenceTestDomainSize = -999.0 ! init
-       Example%ConvergenceTestValue      = -999.0 ! init
-       Example%ConvergenceTestTolerance  = -1.     ! init
-       IndNum2=INDEX(readRHS(2),',')
-       IF(IndNum2.GT.0)THEN ! get the type of the convergence test (h- or p-convergence)
-         temp2                     = readRHS(2)
-         Example%ConvergenceTestType= TRIM(ADJUSTL(temp2(1:IndNum2-1))) ! type
-         temp2                     = temp2(IndNum2+1:LEN(TRIM(temp2))) ! next
-         IndNum2                   = INDEX(temp2,',')
-         IF(IndNum2.GT.0)THEN ! get the size of the domain
-           CALL str2real(temp2(1:IndNum2-1),Example%ConvergenceTestDomainSize,iSTATUS)
-           temp2                          = temp2(IndNum2+1:LEN(TRIM(temp2))) ! next
-           IndNum2                        = INDEX(temp2,',')
-           IF((IndNum2.GT.0).AND.(iSTATUS.EQ.0))THEN ! get value for comparison
-             CALL str2real(temp2(1:IndNum2-1),Example%ConvergenceTestValue,iSTATUS)
-             temp2                  = TRIM(ADJUSTL(temp2(IndNum2+1:LEN(TRIM(temp2))))) ! next
-             IndNum2               = LEN(temp2)
-             IF((IndNum2.GT.0).AND.(iSTATUS.EQ.0))THEN ! get tolerance value for comparison
-               CALL str2real(temp2(1:IndNum2-1),Example%ConvergenceTestTolerance,iSTATUS)
-             END IF ! get tolerance value for comparison
-           END IF ! get value for comparison
-         END IF ! get the comparison type
-       END IF ! get the type of the convergence test (h- or p-convergence)
+      Example%ConvergenceTest           = .TRUE.
+      Example%ConvergenceTestType       = ''     ! init
+      Example%ConvergenceTestDomainSize = -999.0 ! init
+      Example%ConvergenceTestValue      = -999.0 ! init
+      Example%ConvergenceTestTolerance  = -1.     ! init
+      IndNum2=INDEX(readRHS(2),',')
+      IF(IndNum2.GT.0)THEN ! get the type of the convergence test (h- or p-convergence)
+        temp2                     = readRHS(2)
+        Example%ConvergenceTestType= TRIM(ADJUSTL(temp2(1:IndNum2-1))) ! type
+        temp2                     = temp2(IndNum2+1:LEN(TRIM(temp2))) ! next
+        IndNum2                   = INDEX(temp2,',')
+        IF(IndNum2.GT.0)THEN ! get the size of the domain
+          CALL str2real(temp2(1:IndNum2-1),Example%ConvergenceTestDomainSize,iSTATUS)
+          temp2                          = temp2(IndNum2+1:LEN(TRIM(temp2))) ! next
+          IndNum2                        = INDEX(temp2,',')
+          IF((IndNum2.GT.0).AND.(iSTATUS.EQ.0))THEN ! get value for comparison
+            CALL str2real(temp2(1:IndNum2-1),Example%ConvergenceTestValue,iSTATUS)
+            temp2                  = TRIM(ADJUSTL(temp2(IndNum2+1:LEN(TRIM(temp2))))) ! next
+            IndNum2               = LEN(temp2)
+            IF((IndNum2.GT.0).AND.(iSTATUS.EQ.0))THEN ! get tolerance value for comparison
+              CALL str2real(temp2(1:IndNum2-1),Example%ConvergenceTestTolerance,iSTATUS)
+            END IF ! get tolerance value for comparison
+          END IF ! get value for comparison
+        END IF ! get the comparison type
+      END IF ! get the type of the convergence test (h- or p-convergence)
       ! set ConvergenceTest to false if any of the following cases is true
       IF(ANY( (/iSTATUS.NE.0                             ,&
                 Example%ConvergenceTestType.EQ.''        ,&
@@ -498,11 +503,70 @@ DO ! extract reggie information
         SWRITE(UNIT_stdOut,'(A,E25.14)') 'Example%ConvergenceTestTolerance  : ',Example%ConvergenceTestTolerance
       END IF
     END IF ! 'ConvergenceTest'
+    ! Check the bounds of an array in a HDF5 file, if they are outside the supplied ranges -> fail
+    IF(TRIM(readRHS(1)).EQ.'CompareHDF5ArrayBounds')THEN
+      Example%CompareHDF5ArrayBounds           = .TRUE. ! read an array from a HDF5 file and compare certain entry
+      Example%CompareHDF5ArrayBoundsValue(1:2) = 0.     ! value ranges for comparison
+      Example%CompareHDF5ArrayBoundsRange(1:2) = -1     ! HDF5 array dim ranges
+      Example%CompareHDF5ArrayBoundsName       = '-1'   ! array name in HDF5 file
+      Example%CompareHDF5ArrayBoundsFile       = '-1'   ! name of HDF5 file
+      IndNum2=INDEX(readRHS(2),',')
+      IF(IndNum2.GT.0)THEN ! get name of array in HDF5 file
+        temp2                              = readRHS(2)
+        Example%CompareHDF5ArrayBoundsFile = TRIM(ADJUSTL(temp2(1:IndNum2-1))) ! type
+        temp2                              = temp2(IndNum2+1:LEN(TRIM(temp2))) ! next
+        IndNum2                            = INDEX(temp2,',')
+        IF(IndNum2.GT.0)THEN ! get name of array in HDF5 file
+          Example%CompareHDF5ArrayBoundsName = TRIM(ADJUSTL(temp2(1:IndNum2-1))) ! type
+          temp2                              = temp2(IndNum2+1:LEN(TRIM(temp2))) ! next
+          IndNum2                            = INDEX(temp2,',')
+          IF(IndNum2.GT.0)THEN ! HDF5 array dim ranges
+            IndNum2             = INDEX(temp2,',')
+            IndNum3=INDEX(temp2(1:IndNum2),':')
+            IF(IndNum3.GT.0)THEN ! check range
+              CALL str2int(temp2(1        :IndNum3-1),Example%CompareHDF5ArrayBoundsRange(1),iSTATUS) ! column number 1
+              CALL str2int(temp2(IndNum3+1:IndNum2-1),Example%CompareHDF5ArrayBoundsRange(2),iSTATUS) ! column number 2
+              temp2             = temp2(IndNum2+1:LEN(TRIM(temp2))) ! next
+              IndNum2           = LEN(TRIM(temp2))
+              IF(IndNum2.GT.0)THEN ! value ranges for comparison
+                IndNum2           = LEN(temp2)
+                IndNum3=INDEX(temp2(1:IndNum2),':')
+                IF(IndNum3.GT.0)THEN ! check range
+                  CALL str2real(temp2(1        :IndNum3-1),Example%CompareHDF5ArrayBoundsValue(1),iSTATUS) ! column number 1
+                  CALL str2real(temp2(IndNum3+1:IndNum2-1),Example%CompareHDF5ArrayBoundsValue(2),iSTATUS) ! column number 2
+                END IF ! check range
+              END IF ! value ranges for comparison
+            END IF ! check range
+          END IF ! HDF5 array dim ranges
+        END IF ! get name of array in HDF5 file
+      END IF ! get name of HDF5 file
+      ! set "CompareHDF5ArrayBounds" to false if any of the following cases is true
+      IF(ANY( (/iSTATUS.NE.0                                                                           ,&
+                ANY(Example%CompareHDF5ArrayBoundsRange(1:2).EQ.-1)                                    ,&
+                    Example%CompareHDF5ArrayBoundsName.EQ.'-1'                                         ,&
+                    Example%CompareHDF5ArrayBoundsFile.EQ.'-1'                                         ,&
+                    Example%CompareHDF5ArrayBoundsValue(1).GT.Example%CompareHDF5ArrayBoundsValue(2)   ,&
+                    Example%CompareHDF5ArrayBoundsRange(1).GT.Example%CompareHDF5ArrayBoundsRange(2)  /)&
+                  ))Example%CompareHDF5ArrayBounds=.FALSE.
+      IF(Example%CompareHDF5ArrayBounds.EQV..FALSE.)THEN
+        SWRITE(UNIT_stdOut,'(A,E25.14,A)') 'Example%CompareHDF5ArrayBoundsValue(1) : '&
+                                           ,Example%CompareHDF5ArrayBoundsValue(1),' (lower)'
+        SWRITE(UNIT_stdOut,'(A,E25.14,A)') 'Example%CompareHDF5ArrayBoundsValue(2) : '&
+                                           ,Example%CompareHDF5ArrayBoundsValue(2),' (upper)'
+        SWRITE(UNIT_stdOut,'(A,I6,A)') 'Example%CompareHDF5ArrayBoundsRange(1) : '&
+                                           ,Example%CompareHDF5ArrayBoundsRange(1),' (lower)'
+        SWRITE(UNIT_stdOut,'(A,I6,A)') 'Example%CompareHDF5ArrayBoundsRange(2) : '&
+                                           ,Example%CompareHDF5ArrayBoundsRange(2),' (upper)'
+        SWRITE(UNIT_stdOut,'(A,A)')        'Example%CompareHDF5ArrayBoundsName     : ',Example%CompareHDF5ArrayBoundsName
+        SWRITE(UNIT_stdOut,'(A,A)')        'Example%CompareHDF5ArrayBoundsFile     : ',Example%CompareHDF5ArrayBoundsFile
+      END IF
+    END IF ! 'CompareHDF5ArrayBounds'
     ! Next feature
     !IF(TRIM(readRHS(1)).EQ.'NextFeature')
   END IF ! IndNum.GT.0 -> definition found
 END DO
 CLOSE(ioUnit)
+
 END SUBROUTINE InitExample
 
 
@@ -1138,9 +1202,9 @@ SWRITE(UNIT_stdOut,'(A)') '                            |                        
 SWRITE(UNIT_stdOut,'(A)') '        number of variables | nVar= 5 (depricated)                                   '
 SWRITE(UNIT_stdOut,'(A)') '                 MPI on/off | MPI= T                                                 '
 SWRITE(UNIT_stdOut,'(A)') '     L2/Linf reference file | ReferenceNormFile= referencenorm.txt                   '
-SWRITE(UNIT_stdOut,'(A)') '  ref state file for h5diff | ReferenceStateFile= cavity_reference_State_0.200.h5    '
-SWRITE(UNIT_stdOut,'(A)') '      state file for h5diff | CheckedStateFile= cavity_State_0000000.200000000.h5    '
-SWRITE(UNIT_stdOut,'(A)') '      array name for h5diff | ReferenceDataSetName= DG_Solution                      '
+SWRITE(UNIT_stdOut,'(A)') '  ref state file for h5diff | H5DIFFReferenceStateFile= cavity_refe_State_0.20.h5    '
+SWRITE(UNIT_stdOut,'(A)') '      state file for h5diff | H5DIFFCheckedStateFile= cavity_State_0000000.200.h5    '
+SWRITE(UNIT_stdOut,'(A)') '      array name for h5diff | H5DIFFReferenceDataSetName= DG_Solution                '
 SWRITE(UNIT_stdOut,'(A)') '       if restart is wanted | RestartFileName=                                       '
 SWRITE(UNIT_stdOut,'(A)') ' ------------------------------------------------------------------------------------'
 

@@ -78,9 +78,10 @@ IF(.NOT.ExistFile) THEN
   SWRITE(UNIT_stdOut,'(A,A)') ' FileName:             ','configurations.reggie'
   SWRITE(UNIT_stdOut,'(A,L)') ' ExistFile:            ',ExistFile
   ERROR STOP '-1'
+ELSE
+  OPEN(NEWUNIT=ioUnit,FILE=TRIM(FileName),STATUS="OLD",IOSTAT=iSTATUS,ACTION='READ') 
 END IF
 
-OPEN(NEWUNIT=ioUnit,FILE=TRIM(FileName),STATUS="OLD",IOSTAT=iSTATUS,ACTION='READ') 
 DO I=1,2
   N_compile_flags=0
   N_exclude=0
@@ -339,7 +340,7 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)                        :: iExample,iReggieBuild,N_compile_flags,nReggieBuilds
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                                   :: ioUnit,iSTATUS,J,K
+INTEGER                                   :: ioUnit,iSTATUS,iSTATUS2,J,K
 CHARACTER(LEN=255)                        :: FileName
 LOGICAL                                   :: ExistFile
 CHARACTER(LEN=500)                        :: SYSCOMMAND
@@ -430,7 +431,7 @@ IF(BuildValid(iReggieBuild))THEN
       SWRITE(UNIT_stdOut, '(A)')"Error output from: "//TRIM(FileName)
       SWRITE(UNIT_stdOut, '(A)')' '
       SYSCOMMAND='grep -rin error '//TRIM(FileName)
-      CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
+      CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS2)
       SWRITE(UNIT_stdOut,'(132("="))')
       SWRITE(UNIT_stdOut, '(A)')' '
     !ELSE
@@ -478,6 +479,7 @@ END SUBROUTINE BuildConfiguration
 !==================================================================================================================================
 SUBROUTINE GetFlagFromFile(FileName,Flag,output,BACK)
 ! MODULES
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -556,8 +558,9 @@ IF(.NOT.ExistFile) THEN
   SWRITE(UNIT_stdOut,'(A,A)') ' FileName:             ',TRIM(FileName)
   SWRITE(UNIT_stdOut,'(A,L)') ' ExistFile:            ',ExistFile
   ERROR STOP '-1'
+ELSE
+  OPEN(NEWUNIT=ioUnit,FILE=TRIM(FileName),STATUS="OLD",IOSTAT=iSTATUS,ACTION='READ') 
 END IF
-OPEN(NEWUNIT=ioUnit,FILE=TRIM(FileName),STATUS="OLD",IOSTAT=iSTATUS,ACTION='READ') 
 READ(ioUnit,'(A)',iostat=iSTATUS)temp
 CLOSE(ioUnit)
 IF(iSTATUS.NE.0) THEN

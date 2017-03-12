@@ -707,8 +707,8 @@ ELSE
 END IF
 SWRITE(UNIT_stdOut,'(A)')      ' Reference:                      ['//TRIM(Examples(iExample)%ReferenceFile)//']'
 SWRITE(UNIT_stdOut,'(A)')      ' Reference Norm:                 ['//TRIM(Examples(iExample)%ReferenceNormFile)//']'
-SWRITE(UNIT_stdOut,'(A)')      ' State:                          ['//TRIM(Examples(iExample)%ReferenceStateFile)//']'
-SWRITE(UNIT_stdOut,'(A)')      ' HDF5 dataset:                   ['//TRIM(Examples(iExample)%ReferenceDataSetName)//']'
+SWRITE(UNIT_stdOut,'(A)')      ' State:                          ['//TRIM(Examples(iExample)%H5DIFFReferenceStateFile)//']'
+SWRITE(UNIT_stdOut,'(A)')      ' HDF5 dataset:                   ['//TRIM(Examples(iExample)%H5DIFFReferenceDataSetName)//']'
 SWRITE(UNIT_stdOut,'(A)')      ' Restart:                        ['//TRIM(Examples(iExample)%RestartFileName)//']'
 SWRITE(UNIT_stdOut,'(A)')      ' Example%SubExample:             ['//TRIM(Examples(iExample)%SubExample)//']'
 SWRITE(UNIT_stdOut,'(A,I6,A1)')' Example%SubExampleNumber:       [',      Examples(iExample)%SubExampleNumber,']'
@@ -725,12 +725,7 @@ SUBROUTINE SetParameters(iExample,parameter_ini,UseFV,UseCODE2D,UsePARABOLIC,Ski
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_RegressionCheck_Vars,    ONLY: Examples
-!USE MOD_RegressionCheck_Vars,    ONLY: CodeNameLowCase,EXECPATH,BuildFV,BuildCODE2D,BuildPARABOLIC
-!USE MOD_RegressionCheck_Vars,    ONLY: BuildSolver
-!USE MOD_RegressionCheck_Build,   ONLY: BuildConfiguration
-!USE MOD_RegressionCheck_Vars,    ONLY: BuildTESTCASE,BuildTIMEDISCMETHOD,BuildMPI,CodeNameUppCase
-!USE MOD_RegressionCheck_Build,   ONLY: GetFlagFromFile
+USE MOD_RegressionCheck_Vars,    ONLY: Examples,CodeNameUppCase
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -757,17 +752,27 @@ IF(Examples(iExample)%ConvergenceTest)THEN ! Do ConvergenceTest
   !print*,"UseFV=",UseFV
   SWRITE(UNIT_stdOut,'(A15,L1,A2)',ADVANCE='NO')" UseFV       =[",UseFV,"] "
   IF(UseFV)THEN
-    CALL SetSubExample(iExample,-1,parameter_ini,'IndicatorType','33')
-    IF(    TRIM(Examples(iExample)%ConvergenceTestType).EQ.'h')THEN ! h-convergence    
-      Examples(iExample)%ConvergenceTestValue=1.4 ! set redueced order of convergence due to FV cells
-      SWRITE(UNIT_stdOut,'(A18,A)')"","Setting option in parameter_reggie.ini: h-ConvergenceTestValue=1.4 (reduced mean order)"
-    ELSEIF(TRIM(Examples(iExample)%ConvergenceTestType).EQ.'p')THEN ! p-convergence
-      SkipFolder=.TRUE.
-      SWRITE(UNIT_stdOut,'(A18,A)')"","Skipping example because [p-convergence] and [FV=ON]"
-      RETURN
+    IF(    CodeNameUppCase.EQ.'FLEXI')THEN
+      CALL SetSubExample(iExample,-1,parameter_ini,'IndicatorType','33')
+      IF(    TRIM(Examples(iExample)%ConvergenceTestType).EQ.'h')THEN ! h-convergence    
+        Examples(iExample)%ConvergenceTestValue=1.4 ! set redueced order of convergence due to FV cells
+        SWRITE(UNIT_stdOut,'(A18,A)')"","Setting option in parameter_reggie.ini: h-ConvergenceTestValue=1.4 (reduced mean order)"
+      ELSEIF(TRIM(Examples(iExample)%ConvergenceTestType).EQ.'p')THEN ! p-convergence
+        SkipFolder=.TRUE.
+        SWRITE(UNIT_stdOut,'(A18,A)')"","Skipping example because [p-convergence] and [FV=ON]"
+        RETURN
+      END IF
+    ELSEIF(CodeNameUppCase.EQ.'BOLTZPLATZ')THEN
+      SWRITE(UNIT_stdOut,'(A)')"Setting option in parameter.ini: NOTHING (not implemented yet)"
+      ! DO NOTHING
     END IF
   ELSE
+    IF(    CodeNameUppCase.EQ.'FLEXI')THEN
       CALL SetSubExample(iExample,-1,parameter_ini,'IndicatorType','0')
+    ELSEIF(CodeNameUppCase.EQ.'BOLTZPLATZ')THEN
+      SWRITE(UNIT_stdOut,'(A)')"Setting option in parameter.ini: NOTHING (not implemented yet)"
+      ! DO NOTHING
+    END IF
   END IF
   
   ! Check for 2D version of the code
@@ -776,17 +781,23 @@ IF(Examples(iExample)%ConvergenceTest)THEN ! Do ConvergenceTest
   SWRITE(UNIT_stdOut,'(A)')"Setting option in parameter.ini: NOTHING (not implemented yet)"
   IF(UseCODE2D)THEN
       !CALL SetSubExample(iExample,-1,parameter_ini,'MeshFile','33')
+      ! DO NOTHING
   ELSE
       !CALL SetSubExample(iExample,-1,parameter_ini,'MeshFile','0')
+      ! DO NOTHING
   END IF
 
   ! Check for UsePARABOLIC==OFF -> Euler simulation
   !print*,"UsePARABOLIC=",UsePARABOLIC
   SWRITE(UNIT_stdOut,'(A15,L1,A2)',ADVANCE='NO')" UsePARABOLIC=[",UsePARABOLIC,"] "
   IF(UsePARABOLIC)THEN
-      CALL SetSubExample(iExample,-1,parameter_ini,'IniExactFunc','4')
+    CALL SetSubExample(iExample,-1,parameter_ini,'IniExactFunc','4')
   ELSE
+    IF(    CodeNameUppCase.EQ.'FLEXI')THEN
       CALL SetSubExample(iExample,-1,parameter_ini,'IniExactFunc','2')
+    ELSEIF(CodeNameUppCase.EQ.'BOLTZPLATZ')THEN
+      CALL SetSubExample(iExample,-1,parameter_ini,'IniExactFunc','12')
+    END IF
   END IF
 
 
@@ -934,22 +945,22 @@ SELECT CASE(MODE)
     SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm *.out > /dev/null 2>&1'
     CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
     IF(iSTATUS.NE.0)THEN
-      SWRITE(UNIT_stdOut,'(A)')' CleanFolder(',Examples(iExample)%PATH,'): Could not remove *.out files!'
+      SWRITE(UNIT_stdOut,'(A)')' CleanFolder('//TRIM(Examples(iExample)%PATH)//'): Could not remove *.out files!'
     END IF
     ! delete all *State* files except *reference* state files
-    IF((Examples(iExample)%ReferenceStateFile.EQ.'').AND. &
+    IF((Examples(iExample)%H5DIFFReferenceStateFile.EQ.'').AND. &
        (Examples(iExample)%RestartFileName.EQ.'') ) THEN
       SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm *State* > /dev/null 2>&1'
       CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
       IF(iSTATUS.NE.0)THEN
-        SWRITE(UNIT_stdOut,'(A)')' CleanFolder(',Examples(iExample)%PATH,'): Could not remove *State* files!'
+        SWRITE(UNIT_stdOut,'(A)')' CleanFolder('//TRIM(Examples(iExample)%PATH)//'): Could not remove *State* files!'
       END IF
     ELSE
       ! create list of all *State* files and loop them: don't delete *reference* files
       SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && ls *State* > tmp.txt'
       CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
       IF(iSTATUS.NE.0)THEN
-        SWRITE(UNIT_stdOut,'(A)')' CleanFolder(',Examples(iExample)%PATH,'): Could not remove tmp.txt!'
+        SWRITE(UNIT_stdOut,'(A)')' CleanFolder('//TRIM(Examples(iExample)%PATH)//'): Could not create tmp.txt!'
       END IF
       ! read tmp.txt | list of directories if regressioncheck/examples
       FileName=TRIM(Examples(iExample)%PATH)//'tmp.txt'
@@ -957,12 +968,12 @@ SELECT CASE(MODE)
       DO 
         READ(ioUnit,FMT='(A)',IOSTAT=iSTATUS) tmp
         IF (iSTATUS.NE.0) EXIT
-        IF((Examples(iExample)%ReferenceStateFile.NE.TRIM(tmp)).AND. & ! skip ReferenceStateFile and RestartFileName
+        IF((Examples(iExample)%H5DIFFReferenceStateFile.NE.TRIM(tmp)).AND. & ! skip H5DIFFReferenceStateFile and RestartFileName
            (Examples(iExample)%RestartFileName.NE.TRIM(tmp)) ) THEN
            SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm '//TRIM(tmp)
            CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
            IF(iSTATUS.NE.0) THEN
-             SWRITE(UNIT_stdOut,'(A)')  ' CleanFolder(',Examples(iExample)%PATH,'): Could not remove state file ',TRIM(tmp)
+             SWRITE(UNIT_stdOut,'(A)')  ' CleanFolder('//TRIM(Examples(iExample)%PATH)//'): Could not remove state file ',TRIM(tmp)
            END IF
         END IF
       END DO
@@ -971,7 +982,7 @@ SELECT CASE(MODE)
       SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm tmp.txt'
       CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
       IF(iSTATUS.NE.0) THEN
-        SWRITE(UNIT_stdOut,'(A)')  ' CleanFolder(',Examples(iExample)%PATH,'): Could not remove tmp.txt'
+        SWRITE(UNIT_stdOut,'(A)')  ' CleanFolder('//TRIM(Examples(iExample)%PATH)//'): Could not remove tmp.txt'
       END IF
     END IF
     ! delete "userblock.tmp"
