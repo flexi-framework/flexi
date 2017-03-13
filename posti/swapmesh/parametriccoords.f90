@@ -56,7 +56,7 @@ USE MOD_Basis,                 ONLY: LagrangeInterpolationPolys,ChebyGaussLobNod
 USE MOD_Interpolation,         ONLY: GetVandermonde,GetDerivativeMatrix
 USE MOD_Interpolation_Vars,    ONLY: NodeTypeCL
 USE MOD_ChangeBasis,           ONLY: ChangeBasis3D
-USE MOD_Mathtools,             ONLY: INVERSE2,INVERSE3,DET3
+USE MOD_Mathtools,             ONLY: INVERSE
 use omp_lib
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -84,7 +84,7 @@ REAL               :: Xi_CLNGeo(0:NGeoOld),wBary_CLNGeo(0:NGeoOld)
 REAL               :: Xi_NSuper(0:NSuper)
 REAL               :: xInter(3)
 REAL               :: LagXi(0:NGeoOld),LagEta(0:NGeoOld),LagZeta(0:NGeoOld),LagVol(0:NGeoOld,0:NGeoOld,0:NGeoOld)
-REAL               :: F(1:3),eps_F,xi(1:3),Jac(1:3,1:3),sdetJac,sJac(1:3,1:3)
+REAL               :: F(1:3),eps_F,xi(1:3),Jac(1:3,1:3),sJac(1:3,1:3)
 INTEGER            :: ElemCounter,nEqualElems
 INTEGER            :: nNotfound
 REAL               :: Time
@@ -237,19 +237,7 @@ DO iElemOld=1,nElemsOld
         END DO; END DO; END DO
 
         ! Compute inverse of Jacobian
-        sdetJac=DET3(Jac)
-        IF(sdetJac.NE.0.) THEN
-         sdetJac=1./sdetJac
-        ELSE
-          ! Newton has not converged !?!?
-          ! allow Newton to fail without aborting, may happen when far outside of reference space [-1,1]
-!          WRITE(UNIT_stdOut,'(A)')' Newton has not converged! skipping...'        
-!          WRITE(UNIT_stdOut,*)' Xi,Eta,Zeta = ', Xi
-!         CALL abort(__STAMP__, &
-!              'Newton method is singular!')
-          EXIT
-        ENDIF
-        sJac=INVERSE3(Jac,sdetJac)
+        sJac=INVERSE(Jac)
 
         ! Iterate Xi using Newton step
         Xi = Xi - MATMUL(sJac,F)

@@ -31,23 +31,8 @@ INTERFACE CROSS
   MODULE PROCEDURE CROSS
 END INTERFACE CROSS
 
-INTERFACE INVERSE2
-  MODULE PROCEDURE INVERSE2
-END INTERFACE INVERSE2
-
-INTERFACE INVERSE3
-  MODULE PROCEDURE INVERSE3
-END INTERFACE INVERSE3
-
-INTERFACE DET3
-  MODULE PROCEDURE DET3
-END INTERFACE DET3
-
 PUBLIC::INVERSE
 PUBLIC::CROSS
-PUBLIC::INVERSE2
-PUBLIC::INVERSE3
-PUBLIC::DET3
 !==================================================================================================================================
 
 CONTAINS
@@ -69,6 +54,7 @@ REAL             :: AINV(SIZE(A,1),SIZE(A,2))   !< result: inverse of A
 EXTERNAL DGETRF
 EXTERNAL DGETRI
 ! LOCAL VARIABLES
+REAL    :: sdet
 REAL    :: work(SIZE(A,1))  ! work array for LAPACK
 INTEGER :: ipiv(SIZE(A,1))  ! pivot indices
 INTEGER :: n,info
@@ -77,20 +63,41 @@ INTEGER :: n,info
 Ainv = A
 n = size(A,1)
 
-! DGETRF computes an LU factorization of a general M-by-N matrix A
-! using partial pivoting with row interchanges.
-CALL DGETRF(n, n, Ainv, n, ipiv, info)
+IF (n.EQ.2) THEN
+  sdet=1./(A(1,1) * A(2,2) - A(1,2)*A(2,1))
+  AINV(1,1) = (  A(2,2) ) * sdet
+  AINV(1,2) = (- A(1,2) ) * sdet
+  AINV(2,1) = (- A(2,1) ) * sdet
+  AINV(2,2) = (  A(1,1) ) * sdet
+ELSE IF (n.EQ.3) THEN
+  sdet = 1./ (  ( A(1,1) * A(2,2) - A(1,2) * A(2,1) ) * A(3,3) &
+              + ( A(1,2) * A(2,3) - A(1,3) * A(2,2) ) * A(3,1) &
+              + ( A(1,3) * A(2,1) - A(1,1) * A(2,3) ) * A(3,2))
+  AINV(1,1) = ( A(2,2) * A(3,3) - A(2,3) * A(3,2) ) * sdet
+  AINV(1,2) = ( A(1,3) * A(3,2) - A(1,2) * A(3,3) ) * sdet
+  AINV(1,3) = ( A(1,2) * A(2,3) - A(1,3) * A(2,2) ) * sdet
+  AINV(2,1) = ( A(2,3) * A(3,1) - A(2,1) * A(3,3) ) * sdet
+  AINV(2,2) = ( A(1,1) * A(3,3) - A(1,3) * A(3,1) ) * sdet
+  AINV(2,3) = ( A(1,3) * A(2,1) - A(1,1) * A(2,3) ) * sdet
+  AINV(3,1) = ( A(2,1) * A(3,2) - A(2,2) * A(3,1) ) * sdet
+  AINV(3,2) = ( A(1,2) * A(3,1) - A(1,1) * A(3,2) ) * sdet
+  AINV(3,3) = ( A(1,1) * A(2,2) - A(1,2) * A(2,1) ) * sdet
+ELSE
+  ! DGETRF computes an LU factorization of a general M-by-N matrix A
+  ! using partial pivoting with row interchanges.
+  CALL DGETRF(n, n, Ainv, n, ipiv, info)
 
-IF(info.NE.0)THEN
-   STOP 'Matrix is numerically singular!'
-END IF
+  IF(info.NE.0)THEN
+    STOP 'Matrix is numerically singular!'
+  END IF
 
-! DGETRI computes the inverse of a matrix using the LU factorization
-! computed by DGETRF.
-CALL DGETRI(n, Ainv, n, ipiv, work, n, info)
+  ! DGETRI computes the inverse of a matrix using the LU factorization
+  ! computed by DGETRF.
+  CALL DGETRI(n, Ainv, n, ipiv, work, n, info)
 
-IF(info.NE.0)THEN
-   STOP 'Matrix inversion failed!'
+  IF(info.NE.0)THEN
+    STOP 'Matrix inversion failed!'
+  END IF
 END IF
 END FUNCTION INVERSE
 
@@ -101,7 +108,7 @@ END FUNCTION INVERSE
 !>    * "If you are comparing against zero, then relative epsilons and ULPs based comparisons are usually meaningless. 
 !>      You’ll need to use an absolute epsilon, whose value might be some small multiple of FLT_EPSILON and the inputs 
 !>      to your calculation. Maybe."
-!>    * "If you are comparing against a non-zero number then relative epsilons or ULPs based comparisons are probably what you want. 
+!>    * "If you are comparing against a non-zero number then relative epsilons or ULPs based comparisons are probably what you want.
 !>      You’ll probably want some small multiple of FLT_EPSILON for your relative epsilon, or some small number of ULPs. 
 !>      An absolute epsilon could be used if you knew exactly what number you were comparing against."
 !>    * "If you are comparing two arbitrary numbers that could be zero or non-zero then you need the kitchen sink. 
@@ -115,25 +122,25 @@ END FUNCTION INVERSE
 !PURE FUNCTION ALMOSTEQUALRELATIVE(x,y,tol)
 !! MODULES
 !IMPLICIT NONE
-!!-----------------------------------------------------------------------------------------------------------------------------------
+!!----------------------------------------------------------------------------------------------------------------------------------
 !! INPUT/OUTPUT VARIABLES
 !REAL,INTENT(IN) :: x                !< (IN)  first scalar to be compared
 !REAL,INTENT(IN) :: y                !< (IN)  second scalar to be compared
 !REAL,INTENT(IN) :: tol              !< (IN) relative epsilon value as input
 !LOGICAL         :: ALMOSTEQUALRELATIVE
-!!===================================================================================================================================
+!!==================================================================================================================================
 !ALMOSTEQUALRELATIVE=(ABS(x-y).LE.MAX(ABS(x),ABS(y))*tol)
 !END FUNCTION ALMOSTEQUALRELATIVE
 !PURE FUNCTION ALMOSTEQUALABSOLUTE(x,y,tol)
 !! MODULES
 !IMPLICIT NONE
-!!-----------------------------------------------------------------------------------------------------------------------------------
+!!----------------------------------------------------------------------------------------------------------------------------------
 !! INPUT/OUTPUT VARIABLES
 !REAL,INTENT(IN) :: x                !< (IN)  first scalar to be compared
 !REAL,INTENT(IN) :: y                !< (IN)  second scalar to be compared
 !REAL,INTENT(IN) :: tol              !< (IN) relative epsilon value as input
 !LOGICAL         :: ALMOSTEQUALABSOLUTE
-!!===================================================================================================================================
+!!==================================================================================================================================
 !ALMOSTEQUALRELATIVE=(ABS(x-y).LE.tol) 
 !END FUNCTION ALMOSTEQUALABSOLUTE
 
@@ -154,78 +161,5 @@ REAL            :: CROSS(3) !< cross product of vectors
 !==================================================================================================================================
 CROSS=(/v1(2)*v2(3)-v1(3)*v2(2),v1(3)*v2(1)-v1(1)*v2(3),v1(1)*v2(2)-v1(2)*v2(1)/)
 END FUNCTION CROSS
-
-!=================================================================================================================================
-!> compute inverse of 2x2 matrix
-!=================================================================================================================================
-FUNCTION INVERSE2(Mat) RESULT (getInv2)
-! MODULES
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-!---------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-REAL,INTENT(IN)  :: Mat(2,2)
-!---------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-REAL             :: getInv2(2,2)
-!---------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-REAL             :: sdet
-!=================================================================================================================================
-sdet=1./(Mat(1,1) * Mat(2,2) - Mat(1,2)*Mat(2,1))
-getInv2(1,1) = (  Mat(2,2) ) * sdet
-getInv2(1,2) = (- Mat(1,2) ) * sdet
-getInv2(2,1) = (- Mat(2,1) ) * sdet
-getInv2(2,2) = (  Mat(1,1) ) * sdet
-END FUNCTION INVERSE2
-
-!=================================================================================================================================
-!> compute determinant of 3x3 matrix
-!=================================================================================================================================
-FUNCTION DET3(Mat) RESULT (getDet)
-! MODULES
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-!---------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-REAL,INTENT(IN)  :: Mat(3,3)
-!---------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-REAL             :: getDet
-!---------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-!=================================================================================================================================
-getDet=   ( Mat(1,1) * Mat(2,2) - Mat(1,2) * Mat(2,1) ) * Mat(3,3) &
-        + ( Mat(1,2) * Mat(2,3) - Mat(1,3) * Mat(2,2) ) * Mat(3,1) &
-        + ( Mat(1,3) * Mat(2,1) - Mat(1,1) * Mat(2,3) ) * Mat(3,2)
-END FUNCTION DET3
-
-
-!=================================================================================================================================
-!> compute inverse of 3x3 matrix, needs sDet=1/det(Mat)
-!=================================================================================================================================
-FUNCTION INVERSE3(Mat,sdet) RESULT (getInv)
-! MODULES
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-!---------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-REAL,INTENT(IN)  :: Mat(3,3),sDet
-!---------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-REAL             :: getInv(3,3)
-!---------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-!=================================================================================================================================
-getInv(1,1) = ( Mat(2,2) * Mat(3,3) - Mat(2,3) * Mat(3,2) ) * sdet
-getInv(1,2) = ( Mat(1,3) * Mat(3,2) - Mat(1,2) * Mat(3,3) ) * sdet
-getInv(1,3) = ( Mat(1,2) * Mat(2,3) - Mat(1,3) * Mat(2,2) ) * sdet
-getInv(2,1) = ( Mat(2,3) * Mat(3,1) - Mat(2,1) * Mat(3,3) ) * sdet
-getInv(2,2) = ( Mat(1,1) * Mat(3,3) - Mat(1,3) * Mat(3,1) ) * sdet
-getInv(2,3) = ( Mat(1,3) * Mat(2,1) - Mat(1,1) * Mat(2,3) ) * sdet
-getInv(3,1) = ( Mat(2,1) * Mat(3,2) - Mat(2,2) * Mat(3,1) ) * sdet
-getInv(3,2) = ( Mat(1,2) * Mat(3,1) - Mat(1,1) * Mat(3,2) ) * sdet
-getInv(3,3) = ( Mat(1,1) * Mat(2,2) - Mat(1,2) * Mat(2,1) ) * sdet
-END FUNCTION INVERSE3
 
 END MODULE MOD_Mathtools

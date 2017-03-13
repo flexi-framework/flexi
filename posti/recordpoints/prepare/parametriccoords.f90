@@ -58,7 +58,7 @@ SUBROUTINE GetParametricCoordinates()
 ! MODULES
 USE MOD_Preproc
 USE MOD_Globals
-USE MOD_Mathtools,         ONLY: DET3,INVERSE3,INVERSE2
+USE MOD_Mathtools,         ONLY: INVERSE
 USE MOD_Parameters,        ONLY: NSuper,maxTol
 USE MOD_RPSet_Vars,        ONLY: RPlist,nRP_global,tRP
 USE MOD_RPSet_Vars,        ONLY: nRP_global
@@ -199,15 +199,7 @@ DO iElem=1,nElems
       END DO; END DO; END DO
       
       ! Compute inverse of Jacobian
-      sdetJac=DET3(Jac)
-      IF(sdetJac.NE.0.) THEN
-       sdetJac=1./sdetJac
-      ELSE !shit
-       ! Newton has not converged !?!?
-       CALL abort(__STAMP__, &
-            'Newton in FindXiForRecordPoints singular')
-      ENDIF 
-      sJac=INVERSE3(Jac,sdetJac)
+      sJac=INVERSE(Jac)
       
       ! Iterate Xi using Newton step
       Xi = Xi - MATMUL(sJac,F)
@@ -373,7 +365,7 @@ IF(ANY(.NOT.RPFound)) THEN
         END DO !i=0,NSuper
 
         ! Compute inverse of Jacobian
-        sJac2=INVERSE2(Jac2)
+        sJac2=INVERSE(Jac2)
 
         ! Iterate Xi using Newton step
         Xi2 = Xi2 - MATMUL(sJac2,G)
