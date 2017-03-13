@@ -104,6 +104,8 @@ CALL prms%CreateIntFromStringOption('ASCIIOutputFormat',"File format for ASCII f
 CALL addStrListEntry('ASCIIOutputFormat','csv',    ASCIIOUTPUTFORMAT_CSV)
 CALL addStrListEntry('ASCIIOutputFormat','tecplot',ASCIIOUTPUTFORMAT_TECPLOT)
 CALL prms%CreateLogicalOption(      'doPrintStatusLine','Print: percentage of time, ...', '.FALSE.')
+CALL prms%CreateLogicalOption(      'WriteStateFiles','Write HDF5 state files. Disable this only for debugging issues. \n'// & 
+                                                      'NO SOLUTION WILL BE WRITTEN!', '.TRUE.')
 END SUBROUTINE DefineParametersOutput
 
 !==================================================================================================================================
@@ -159,6 +161,8 @@ Logging    =GETLOGICAL('Logging')
 ErrorFiles =GETLOGICAL('ErrorFiles')
 
 doPrintStatusLine=GETLOGICAL("doPrintStatusLine")
+WriteStateFiles=GETLOGICAL("WriteStateFiles")
+IF (.NOT.WriteStateFiles) CALL PrintWarning("Write of state files disabled!")
 
 
 IF (MPIRoot) THEN
