@@ -83,7 +83,7 @@ SGS_Ind_slave=0.
 ALLOCATE(muSGS(1,0:PP_N,0:PP_N,0:PP_N,nElems))
 ALLOCATE(muSGSmax(nElems))
 muSGS = 0.
-muSGSmax=2000.*mu0
+muSGSmax=8.*mu0
 
 IF(eddyViscType.EQ.2) THEN !dynamic Smagorinsky
   !MATTEO: debug output

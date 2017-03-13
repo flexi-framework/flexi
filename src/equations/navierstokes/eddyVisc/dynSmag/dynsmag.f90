@@ -217,19 +217,21 @@ SWRITE(UNIT_stdOut,'(A)')' INIT dynsmag DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE Initdynsmag
 
-SUBROUTINE dynsmag(grad11,grad22,grad33,grad12,grad13,grad21,grad23,grad31,grad32,rho,iElem,i,j,k,muSGS)
+SUBROUTINE dynsmag(iElem,i,j,k,muSGS)
 !===================================================================================================================================
 !Compute dynsmag Eddy-Visosity at a given point
 !===================================================================================================================================
 ! MODULES
 USE MOD_PreProc
-USE MOD_EddyVisc_Vars,     ONLY:SGS_Ind,S_en_out
+USE MOD_EddyVisc_Vars,     ONLY:SGS_Ind,muSGSmax,S_en_out
+USE MOD_EOS_Vars,          ONLY:mu0
+USE MOD_Lifting_Vars,      ONLY:gradUx,gradUy,gradUz
+USE MOD_DG_Vars,           ONLY:U
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 INTEGER,INTENT(IN)                        :: iElem,i,j,k
-REAL,INTENT(IN)                           :: grad11,grad22,grad33,grad12,grad13,grad21,grad23,grad31,grad32,rho
 REAL,INTENT(INOUT)                        :: muSGS 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
@@ -240,15 +242,17 @@ REAL                :: S_eN
 !===================================================================================================================================
 !divv    = grad11+grad22+grad33
 !S_eN = 2*((grad11-1./3.*divv)**2. + (grad22-1./3.*divv)**2. + (grad33-1./3.*divv)**2.)
-S_eN = 2*((grad11)**2. + (grad22)**2. + (grad33)**2.)
-S_eN = S_eN + ( grad12 + grad21 )**2.
-S_eN = S_eN + ( grad13 + grad31 )**2.
-S_eN = S_eN + ( grad23 + grad32 )**2.
+S_eN = 2*(gradUx(2,i,j,k,iElem)**2. + gradUy(3,i,j,k,iElem)**2. + gradUz(4,i,j,k,iElem)**2.)
+S_eN = S_eN + ( gradUy(2,i,j,k,iElem) + gradUx(3,i,j,k,iElem) )**2.
+S_eN = S_eN + ( gradUz(2,i,j,k,iElem) + gradUx(4,i,j,k,iElem) )**2.
+S_eN = S_eN + ( gradUz(3,i,j,k,iElem) + gradUy(4,i,j,k,iElem) )**2.
 S_eN = SQRT(S_eN)
 ! dynsmag model
-muSGS = S_eN*rho*SGS_Ind(1,i,j,k,iElem) 
+muSGS = S_eN*U(1,i,j,k,iElem)*SGS_Ind(1,i,j,k,iElem) 
+muSGS = min(max(muSGS,0.),8.0*mu0)
 S_en_out(1,i,j,k,iElem) = S_eN
 SGS_Ind(2,i,j,k,iElem) = muSGS 
+muSGSmax(iElem) = MAX(muSGS,muSGSmax(iElem))
 END SUBROUTINE dynsmag
 
 SUBROUTINE compute_cd(U_in)

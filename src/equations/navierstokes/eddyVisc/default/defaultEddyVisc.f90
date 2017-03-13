@@ -32,7 +32,7 @@ CONTAINS
 !> Dummy for default eddy viscosity (meaning no eddy viscosity), do nothing since the muSGS arrays will be passed here and they
 !> are zero all the time.
 !===================================================================================================================================
-SUBROUTINE DefaultEddyVisc(grad11,grad22,grad33,grad12,grad13,grad21,grad23,grad31,grad32,rho,iElem,i,j,k,muSGS)
+SUBROUTINE DefaultEddyVisc(iElem,i,j,k,muSGS)
 ! MODULES
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -41,8 +41,6 @@ INTEGER,INTENT(IN)                        :: iElem             !< index of curre
 !> indices of the current volume point
 INTEGER,INTENT(IN)                        :: i,j,k
 !> gradients of the velocities w.r.t. all directions
-REAL,INTENT(IN)                           :: grad11,grad22,grad33,grad12,grad13,grad21,grad23,grad31,grad32
-REAL,INTENT(IN)                           :: rho               !< Density
 REAL,INTENT(INOUT)                        :: muSGS             !< local SGS viscosity
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

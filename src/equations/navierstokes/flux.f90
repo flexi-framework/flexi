@@ -115,6 +115,7 @@ USE MOD_EOS_Vars,     ONLY: cp,Pr
 USE MOD_Viscosity
 #ifdef EDDYVISCOSITY
 USE MOD_EddyVisc_Vars,ONLY: muSGS,muSGSmax,PrSGS,eddyViscosity
+USE MOD_TimeDisc_Vars,ONLY: CurrentStage
 #endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -132,7 +133,7 @@ REAL                :: gradT1,gradT2,gradT3,lambda,prim(PP_nVarPrim)
 INTEGER             :: i,j,k
 !==================================================================================================================================
 #if EDDYVISCOSITY
-muSGSmax(iElem)=0.
+IF(CurrentStage.EQ.1) muSGSmax(iElem)=0.
 #endif
 DO k=0,PP_N;  DO j=0,PP_N; DO i=0,PP_N
   prim = UPrim(:,i,j,k)
@@ -145,12 +146,9 @@ DO k=0,PP_N;  DO j=0,PP_N; DO i=0,PP_N
   lambda=THERMAL_CONDUCTIVITY_H(muS)
   !Add turbulent sub grid scale viscosity to mu
 #ifdef EDDYVISCOSITY
-  CALL eddyViscosity(gradUx(2,i,j,k),gradUy(3,i,j,k),gradUz(4,i,j,k)&
-                    ,gradUy(2,i,j,k),gradUz(2,i,j,k),gradUx(3,i,j,k)&
-                    ,gradUz(3,i,j,k),gradUx(4,i,j,k),gradUy(4,i,j,k)&
-                    ,UPrim(1,i,j,k),iElem,i,j,k,muSGS(1,i,j,k,iElem))
-  muSGS(1,i,j,k,iElem) =  min(max(muSGS(1,i,j,k,iElem),0.),8.0*muS)
-  muSGSmax(iElem) = MAX(muSGS(1,i,j,k,iElem),muSGSmax(iElem))
+  IF(CurrentStage.EQ.1) THEN
+    CALL eddyViscosity(iElem,i,j,k,muSGS(1,i,j,k,iElem))
+  END IF
   muS = muS + muSGS(1,i,j,k,iElem)
   lambda = lambda + muSGS(1,i,j,k,iElem)*cp/PrSGS
 #endif
@@ -303,11 +301,7 @@ DO j=0,Nloc ; DO i=0,Nloc
   ! gradients of primitive variables are directly available gradU = (/ drho, dv1, dv2, dv3, dp, dT /)
 #ifdef EDDYVISCOSITY
   IF(eddyViscType.EQ.2) THEN
-    !muSGS=max(SGS_Ind(2,i,j),0.)
-    !MATTEO: letting musgs have negative values
-    !muSGS=max(SGS_Ind(2,i,j),-muS)
-    !MATTEO: limit the musgs heavily
-    muSGS=min(max(SGS_Ind(2,i,j),0.),8.0*muS)
+    muSGS=SGS_Ind(2,i,j)
   ELSE
     CALL eddyViscosity_surf(gradUx_Face(2,i,j),gradUy_Face(3,i,j),gradUz_Face(4,i,j)&
                            ,gradUy_Face(2,i,j),gradUz_Face(2,i,j),gradUx_Face(3,i,j)&
@@ -315,8 +309,6 @@ DO j=0,Nloc ; DO i=0,Nloc
                            ,UPrim_Face(1,i,j),DeltaS,SGS_Ind(1,i,j),muSGS,Face_xGP(2,i,j))
   END IF
   muS = muS + muSGS
-  !MATTEO: horrible hack
-  !muS = muS + min(max(muSGS,0.),3*muS)
   lambda = lambda + muSGS*cp/PrSGS
 #endif
   ! gradients of primitive variables are directly available gradU = (/ drho, dv1, dv2, dv3, dp, dT /)

@@ -138,7 +138,7 @@ SUBROUTINE TimeDisc()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_TimeDisc_Vars       ,ONLY: TEnd,t,dt,tAnalyze,ViscousTimeStep,maxIter,Timestep,nRKStages,nCalcTimeStepMax
+USE MOD_TimeDisc_Vars       ,ONLY: TEnd,t,dt,tAnalyze,ViscousTimeStep,maxIter,Timestep,nRKStages,nCalcTimeStepMax,CurrentStage
 USE MOD_Analyze_Vars        ,ONLY: Analyze_dt,WriteData_dt,tWriteData,nWriteData
 USE MOD_AnalyzeEquation_Vars,ONLY: doCalcTimeAverage
 USE MOD_Analyze             ,ONLY: Analyze
@@ -164,7 +164,10 @@ USE MOD_Analyze_Vars        ,ONLY: totalFV_nElems
 #endif
 #ifdef EDDYVISCOSITY
 USE MOD_EddyVisc_Vars       ,ONLY: muSGSMax 
-USE MOD_EOS_Vars       ,ONLY: mu0 
+USE MOD_EOS_Vars            ,ONLY: mu0 
+USE MOD_EddyVisc_Vars       ,ONLY: testfilter, eddyViscType
+USE MOD_EddyVisc_Vars,       ONLY: muSGS,muSGSmax,eddyViscosity
+USE MOD_Mesh_Vars           ,ONLY: nElems
 #endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -177,6 +180,9 @@ REAL                         :: CalcTimeStart,CalcTimeEnd
 INTEGER                      :: TimeArray(8)              !< Array for system time
 INTEGER                      :: errType,nCalcTimestep,writeCounter
 LOGICAL                      :: doAnalyze,doFinalize
+#ifdef EDDYVISCOSITY
+INTEGER                      :: i,j,k,iElem
+#endif
 !==================================================================================================================================
 SWRITE(UNIT_StdOut,'(132("-"))')
 
@@ -214,7 +220,20 @@ CASE (2)
 END SELECT
 
 ! Do first RK stage of first timestep to fill gradients
+CurrentStage=1
 CALL DGTimeDerivative_weakForm(t)
+#ifdef EDDYVISCOSITY
+IF((eddyViscType.EQ.2))THEN
+  CALL testfilter(U)
+  !fill muSGSmax for initial timestep
+  DO iElem=1,nElems
+    muSGSmax(iElem)=0.
+    DO k=0,PP_N;  DO j=0,PP_N; DO i=0,PP_N
+      CALL eddyViscosity(iElem,i,j,k,muSGS(1,i,j,k,iElem))
+    END DO; END DO; END DO
+  END DO
+END IF
+#endif
 
 #ifdef EDDYVISCOSITY
 muSGSMax = 10.0*mu0
@@ -269,6 +288,21 @@ END IF ! MPIroot
 tStart = t
 CalcTimeStart=FLEXITIME()
 DO
+  CurrentStage=1
+  CALL DGTimeDerivative_weakForm(t)
+#ifdef EDDYVISCOSITY
+  IF((eddyViscType.EQ.2))THEN
+    ! compute dynamic constant with current gradients and state
+    CALL testfilter(U)
+    !refill muSGSmax for timestep
+    DO iElem=1,nElems
+      muSGSmax(iElem)=0.
+      DO k=0,PP_N;  DO j=0,PP_N; DO i=0,PP_N
+        CALL eddyViscosity(iElem,i,j,k,muSGS(1,i,j,k,iElem))
+      END DO; END DO; END DO
+    END DO
+  END IF
+#endif
   IF(nCalcTimestep.LT.1)THEN
     dt_Min=CALCTIMESTEP(errType)
     nCalcTimestep=MIN(FLOOR(ABS(LOG10(ABS(dt_MinOld/dt_Min-1.)**2.*100.+1.e-16))),nCalcTimeStepMax)
@@ -405,9 +439,6 @@ USE MOD_Indicator    ,ONLY: doCalcIndicator,CalcIndicator
 #if FV_ENABLED
 USE MOD_FV           ,ONLY: FV_Switch
 #endif
-#ifdef EDDYVISCOSITY
-USE MOD_EddyVisc_Vars, ONLY: testfilter, eddyViscType
-#endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -422,16 +453,11 @@ INTEGER  :: iStage
 b_dt=RKb*dt
 
 IF(CalcPruettDamping) CALL TempFilterTimeDeriv(U,dt)
-#ifdef EDDYVISCOSITY
-IF((eddyViscType.EQ.2))THEN
-  CALL testfilter(U)
-END IF
-#endif
 
 ! First evaluation of DG operator already done in timedisc
 CurrentStage=1
 tStage=t
-CALL DGTimeDerivative_weakForm(tStage)
+!CALL DGTimeDerivative_weakForm(tStage)      !allready called in timedisc
 CALL VCopy(nTotalU,Ut_temp,Ut)               !Ut_temp = Ut
 CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(1))    !U       = U + Ut*b_dt(1)
 IF(doCalcIndicator) CALL CalcIndicator(U,t)
@@ -479,9 +505,6 @@ USE MOD_Indicator    ,ONLY: doCalcIndicator,CalcIndicator
 #if FV_ENABLED
 USE MOD_FV            ,ONLY: FV_Switch
 #endif
-#ifdef EDDYVISCOSITY
-USE MOD_EddyVisc_Vars, ONLY: testfilter, eddyViscType
-#endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -495,11 +518,6 @@ INTEGER  :: iStage
 !===================================================================================================================================
 IF(CalcPruettDamping) CALL TempFilterTimeDeriv(U,dt)
 
-#ifdef EDDYVISCOSITY
-IF((eddyViscType.EQ.2))THEN
-  CALL testfilter(U)
-END IF
-#endif
 
 ! Premultiply with dt
 b_dt=RKb*dt
@@ -511,7 +529,7 @@ CurrentStage=1
 tStage=t
 CALL VCopy(nTotalU,Uprev,U)                    !Uprev=U
 CALL VCopy(nTotalU,S2,U)                       !S2=U
-CALL DGTimeDerivative_weakForm(t)
+!CALL DGTimeDerivative_weakForm(t)             ! allready called in timedisc
 CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(1))      !U      = U + Ut*b_dt(1)
 IF(doCalcIndicator) CALL CalcIndicator(U,t)
 #if FV_ENABLED

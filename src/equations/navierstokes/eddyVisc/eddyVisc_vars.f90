@@ -8,13 +8,11 @@ PUBLIC
 SAVE
 
 ABSTRACT INTERFACE
-  SUBROUTINE EddyViscInt(grad11,grad22,grad33,grad12,grad13,grad21,grad23,grad31,grad32,rho,iElem,i,j,k,muSGS)
+  SUBROUTINE EddyViscInt(iElem,i,j,k,muSGS)
   INTEGER,INTENT(IN)  :: iElem  !< index of current element
   !> indices of the c
   INTEGER,INTENT(IN)  :: i,j,k
   !> gradients of the directions
-  REAL,INTENT(IN)     :: grad11,grad22,grad33,grad12,grad13,grad21,grad23,grad31,grad32
-  REAL,INTENT(IN)     :: rho    !< Density
   REAL,INTENT(INOUT)  :: muSGS  !< local SGS viscosity
   END SUBROUTINE
 END INTERFACE
