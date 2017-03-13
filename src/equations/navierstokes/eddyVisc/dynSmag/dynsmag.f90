@@ -53,7 +53,6 @@ USE MOD_Mesh_Vars,            ONLY:dXCL_N
 USE MOD_Mesh_Vars,            ONLY:Metrics_fTilde,Metrics_gTilde,Metrics_hTilde
 USE MOD_Testcase_Vars,        ONLY:testcase
 USE MOD_HDF5_input,           ONLY: OpenDataFile,CloseDataFile,ReadArray
-USE MOD_Testcase_Vars,        ONLY: testcase
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -254,7 +253,7 @@ S_eN = S_eN + ( gradUz(3,i,j,k,iElem) + gradUy(4,i,j,k,iElem) )**2.
 S_eN = SQRT(S_eN)
 ! dynsmag model
 muSGS = S_eN*U(1,i,j,k,iElem)*SGS_Ind(1,i,j,k,iElem) 
-muSGS = min(max(muSGS,0.),8*mu0)
+muSGS = min(max(muSGS,0.),20.*mu0)
 S_en_out(1,i,j,k,iElem) = S_eN
 SGS_Ind(2,i,j,k,iElem) = muSGS 
 muSGSmax(iElem) = MAX(muSGS,muSGSmax(iElem))
@@ -403,7 +402,7 @@ DO iElem=1,nElems
       MMa = MMa + MM(i,j,k)*IntElem(i,j,k,iElem)
       MLa = MLa + ML(i,j,k)*IntElem(i,j,k,iElem)
     END DO; END DO; END DO !ijk
-    SGS_Ind(1,:,:,:,iElem) = MLa/MMa 
+    SGS_Ind(1,:,:,:,iElem) = 0.5*MLa/MMa 
   CASE (2) ! I-Plane
     DO i=0,PP_N
       MMa = 0.; MLa = 0.
@@ -411,7 +410,7 @@ DO iElem=1,nElems
         MMa = MMa + MM(i,j,k)*IntElem(i,j,k,iElem)
         MLa = MLa + ML(i,j,k)*IntElem(i,j,k,iElem)
       END DO; END DO !jk
-      SGS_Ind(1,i,:,:,iElem) = MLa/MMa 
+      SGS_Ind(1,i,:,:,iElem) = 0.5*MLa/MMa 
     END DO !i
   CASE (3) ! J-Plane
     DO j=0,PP_N
@@ -420,7 +419,7 @@ DO iElem=1,nElems
         MMa = MMa + MM(i,j,k)*IntElem(i,j,k,iElem)
         MLa = MLa + ML(i,j,k)*IntElem(i,j,k,iElem)
       END DO; END DO !jk
-      SGS_Ind(1,:,j,:,iElem) = MLa/MMa 
+      SGS_Ind(1,:,j,:,iElem) = 0.5*MLa/MMa 
     END DO !j
   CASE (4) ! K-Plane
     DO k=0,PP_N
@@ -429,7 +428,7 @@ DO iElem=1,nElems
         MMa = MMa + MM(i,j,k)*IntElem(i,j,k,iElem)
         MLa = MLa + ML(i,j,k)*IntElem(i,j,k,iElem)
       END DO; END DO !jk
-      SGS_Ind(1,:,:,k,iElem) = MLa/MMa 
+      SGS_Ind(1,:,:,k,iElem) = 0.5*MLa/MMa 
     END DO !k
   CASE (5) ! I-Line
     DO j=0,PP_N; DO k=0,PP_N
@@ -438,7 +437,7 @@ DO iElem=1,nElems
         MMa = MMa + MM(i,j,k)*IntElem(i,j,k,iElem)
         MLa = MLa + ML(i,j,k)*IntElem(i,j,k,iElem)
       END DO ! i
-      SGS_Ind(1,:,j,k,iElem) = MLa/MMa 
+      SGS_Ind(1,:,j,k,iElem) = 0.5*MLa/MMa 
     END DO; END DO !jk
   CASE (6) ! J-Line
     DO i=0,PP_N; DO k=0,PP_N
@@ -447,7 +446,7 @@ DO iElem=1,nElems
         MMa = MMa + MM(i,j,k)*IntElem(i,j,k,iElem)
         MLa = MLa + ML(i,j,k)*IntElem(i,j,k,iElem)
       END DO ! i
-      SGS_Ind(1,i,:,k,iElem) = MLa/MMa 
+      SGS_Ind(1,i,:,k,iElem) = 0.5*MLa/MMa 
     END DO; END DO !jk
   CASE (7) ! K-Line
     DO i=0,PP_N; DO j=0,PP_N
@@ -456,7 +455,7 @@ DO iElem=1,nElems
         MMa = MMa + MM(i,j,k)*IntElem(i,j,k,iElem)
         MLa = MLa + ML(i,j,k)*IntElem(i,j,k,iElem)
       END DO ! i
-      SGS_Ind(1,i,j,:,iElem) = MLa/MMa 
+      SGS_Ind(1,i,j,:,iElem) = 0.5*MLa/MMa 
     END DO; END DO!jk
   END SELECT
 END DO
@@ -497,8 +496,6 @@ USE MOD_EddyVisc_Vars
 IMPLICIT NONE
 !===============================================================================================================================
 DEALLOCATE(DeltaS)
-DEALLOCATE(DeltaS_master)
-DEALLOCATE(DeltaS_slave)
 DEALLOCATE(SGS_Ind)
 DEALLOCATE(SGS_Ind_master)
 DEALLOCATE(SGS_Ind_slave)
