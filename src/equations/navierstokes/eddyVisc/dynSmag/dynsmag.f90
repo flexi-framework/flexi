@@ -53,6 +53,7 @@ USE MOD_Mesh_Vars,            ONLY:dXCL_N
 USE MOD_Mesh_Vars,            ONLY:Metrics_fTilde,Metrics_gTilde,Metrics_hTilde
 USE MOD_Testcase_Vars,        ONLY:testcase
 USE MOD_HDF5_input,           ONLY: OpenDataFile,CloseDataFile,ReadArray
+USE MOD_Testcase_Vars,        ONLY: testcase
 ! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -148,6 +149,10 @@ DO iElem=1,nElems
     !MATTEO: DEBUG                                                      
     IF(isn) filtdir_out(iElem) = filtdir_out(iElem)+4
   END IF !in or out boundary layer
+  IF(testcase.EQ.'channel') THEN
+    filter_ind(:,iElem)  = (/.TRUE.,.FAlSE.,.TRUE./)
+    average_ind(:,iElem) = (/.TRUE.,.FAlSE.,.TRUE./)
+  END IF
 END DO !iElem
 
 average_type = 0
@@ -249,7 +254,7 @@ S_eN = S_eN + ( gradUz(3,i,j,k,iElem) + gradUy(4,i,j,k,iElem) )**2.
 S_eN = SQRT(S_eN)
 ! dynsmag model
 muSGS = S_eN*U(1,i,j,k,iElem)*SGS_Ind(1,i,j,k,iElem) 
-muSGS = min(max(muSGS,0.),8.0*mu0)
+muSGS = min(max(muSGS,0.),8*mu0)
 S_en_out(1,i,j,k,iElem) = S_eN
 SGS_Ind(2,i,j,k,iElem) = muSGS 
 muSGSmax(iElem) = MAX(muSGS,muSGSmax(iElem))
@@ -366,7 +371,7 @@ DO iElem=1,nElems
   S_ik(3,3,:,:,:) = S_ik(3,3,:,:,:) -divV(:,:,:)
   !                                 _____
   !D_ratio: square ratio of filter widhts (Delta/Delta)**2, reciprocal of polynomial degrees
-  D_Ratio=(REAL(PP_N+1)/REAL(N_testfilter+1))**2
+  D_Ratio=(REAL(PP_N)/REAL(N_testfilter))**2
   DO i=1,3
     DO k=1,3
       M_ik(i,k,:,:,:) = M_ik(i,k,:,:,:) - D_Ratio * S_eN_filtered(:,:,:)*S_ik(i,k,:,:,:)
