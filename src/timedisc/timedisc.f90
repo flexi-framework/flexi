@@ -162,13 +162,6 @@ USE MOD_Sponge_Vars         ,ONLY: CalcPruettDamping
 USE MOD_FV
 USE MOD_Analyze_Vars        ,ONLY: totalFV_nElems
 #endif
-#ifdef EDDYVISCOSITY
-USE MOD_EddyVisc_Vars       ,ONLY: muSGSMax 
-USE MOD_EOS_Vars            ,ONLY: mu0 
-USE MOD_EddyVisc_Vars       ,ONLY: testfilter, eddyViscType
-USE MOD_EddyVisc_Vars,       ONLY: muSGS,muSGSmax,eddyViscosity
-USE MOD_Mesh_Vars           ,ONLY: nElems
-#endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -180,9 +173,6 @@ REAL                         :: CalcTimeStart,CalcTimeEnd
 INTEGER                      :: TimeArray(8)              !< Array for system time
 INTEGER                      :: errType,nCalcTimestep,writeCounter
 LOGICAL                      :: doAnalyze,doFinalize
-#ifdef EDDYVISCOSITY
-INTEGER                      :: i,j,k,iElem
-#endif
 !==================================================================================================================================
 SWRITE(UNIT_StdOut,'(132("-"))')
 
@@ -222,22 +212,6 @@ END SELECT
 ! Do first RK stage of first timestep to fill gradients
 CurrentStage=1
 CALL DGTimeDerivative_weakForm(t)
-#ifdef EDDYVISCOSITY
-IF((eddyViscType.EQ.2))THEN
-  CALL testfilter(U)
-  !fill muSGSmax for initial timestep
-  DO iElem=1,nElems
-    muSGSmax(iElem)=0.
-    DO k=0,PP_N;  DO j=0,PP_N; DO i=0,PP_N
-      CALL eddyViscosity(iElem,i,j,k,muSGS(1,i,j,k,iElem))
-    END DO; END DO; END DO
-  END DO
-END IF
-#endif
-
-#ifdef EDDYVISCOSITY
-muSGSMax = 10.0*mu0
-#endif
 
 #if FV_ENABLED
 ! initial switch to FV sub-cells (must be called after DGTimeDerivative_weakForm, since indicator may require gradients)
@@ -290,19 +264,6 @@ CalcTimeStart=FLEXITIME()
 DO
   CurrentStage=1
   CALL DGTimeDerivative_weakForm(t)
-#ifdef EDDYVISCOSITY
-  IF((eddyViscType.EQ.2))THEN
-    ! compute dynamic constant with current gradients and state
-    CALL testfilter(U)
-    !refill muSGSmax for timestep
-    DO iElem=1,nElems
-      muSGSmax(iElem)=0.
-      DO k=0,PP_N;  DO j=0,PP_N; DO i=0,PP_N
-        CALL eddyViscosity(iElem,i,j,k,muSGS(1,i,j,k,iElem))
-      END DO; END DO; END DO
-    END DO
-  END IF
-#endif
   IF(nCalcTimestep.LT.1)THEN
     dt_Min=CALCTIMESTEP(errType)
     nCalcTimestep=MIN(FLOOR(ABS(LOG10(ABS(dt_MinOld/dt_Min-1.)**2.*100.+1.e-16))),nCalcTimeStepMax)

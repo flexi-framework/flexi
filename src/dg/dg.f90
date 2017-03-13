@@ -315,7 +315,7 @@ USE MOD_FV_Reconstruction   ,ONLY: FV_PrepareSurfGradient,FV_SurfCalcGradients,F
 #endif /* FV_ENABLED */
 #if EDDYVISCOSITY
 USE MOD_EddyVisc_Vars       ,ONLY:SGS_Ind,SGS_Ind_Master,SGS_Ind_Slave 
-USE MOD_EddyVisc_Vars       ,ONLY:EddyViscType
+USE MOD_EddyVisc_Vars       ,ONLY:EddyViscType,testfilter
 USE MOD_ProlongToFace       ,ONLY: ProlongToFace
 USE MOD_TimeDisc_Vars       ,ONLY: CurrentStage
 #endif
@@ -499,6 +499,15 @@ CALL FV_CalcGradients(UPrim,FV_surf_gradU_master,FV_surf_gradU_slave,gradUxi,gra
 CALL Lifting(UPrim,UPrim_master,UPrim_slave,t)
 #endif /*PARABOLIC*/
 
+#if EDDYVISCOSITY
+IF(CurrentStage.EQ.1) THEN
+  IF((eddyViscType.EQ.2))THEN
+    CALL testfilter(U)
+  END IF
+END IF
+
+#endif
+
 ! 6. Compute volume integral contribution and add to Ut
 !    Compute separately in case of selective overintegration
 IF(OverintegrationType.NE.SELECTIVE)THEN
@@ -517,7 +526,7 @@ CALL FV_VolInt(UPrim,Ut)
 
 #if EDDYVISCOSITY
 IF(EddyViscType.EQ.2) THEN
-!  IF(CurrentStage.EQ.1) THEN
+  IF(CurrentStage.EQ.1) THEN
 #if MPI
     ! 4.2)
     CALL StartReceiveMPIData(SGS_Ind_slave,DataSizeSideScalar,1,nSides,MPIRequest_SGS_Ind(:,RECV),SendID=2)
@@ -529,7 +538,7 @@ IF(EddyViscType.EQ.2) THEN
 #if MPI  
     CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_SGS_Ind)  ! U_slave: slave -> master 
 #endif
-!  END IF
+  END IF
 END IF
 #endif
 
