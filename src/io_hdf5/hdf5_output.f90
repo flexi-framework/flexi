@@ -681,7 +681,6 @@ END SUBROUTINE GenerateFileSkeleton
 !==================================================================================================================================
 SUBROUTINE MarkWriteSuccessfull(FileName)
 ! MODULES
-USE MOD_Output_Vars  ,ONLY: userblock_total_len
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

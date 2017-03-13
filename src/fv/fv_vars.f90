@@ -43,7 +43,7 @@ REAL                   :: FV_sweby_beta          !< parameter for Sweby limiter
 
 ! FV/DG 
 INTEGER,ALLOCATABLE    :: FV_Elems(:)            !< indicates if DG element (0) or FV subcells (1) for each element
-INTEGER,ALLOCATABLE,TARGET :: FV_Elems_master(:) !< prolongate FV_Elems to faces
+INTEGER,ALLOCATABLE    :: FV_Elems_master(:) !< prolongate FV_Elems to faces
 INTEGER,ALLOCATABLE    :: FV_Elems_slave(:)   
 INTEGER,ALLOCATABLE    :: FV_Elems_Sum(:)        !< = FV_Elems_master + 2*FV_Elems_slave
                                                  !< array with values from 0..3: 0=both DG, 1=master FV, 2=slave FV, 3=both FV
@@ -63,8 +63,7 @@ REAL,ALLOCATABLE       :: FV_sVdm(:,:)           !< Vandermonde to switch from F
 
 
 #if FV_RECONSTRUCT
-REAL,ALLOCATABLE,TARGET:: FV_surf_gradU_slave (:,:,:,:) !< FD over DG interface
-REAL,ALLOCATABLE,TARGET:: FV_surf_gradU_master(:,:,:,:) !< FD over DG interface
+REAL,ALLOCATABLE,TARGET:: FV_surf_gradU(:,:,:,:) !< FD over DG interface
 REAL,ALLOCATABLE,TARGET:: FV_multi_master(:,:,:,:)      !< multipurpose array: contains: 
 REAL,ALLOCATABLE,TARGET:: FV_multi_slave(:,:,:,:)       !< - DG: first inner value of U next to the face
                                                         !< - FV: first inner gradient from points next and second next to face
@@ -94,9 +93,11 @@ REAL,ALLOCATABLE       :: FV_dx_master(:,:,:,:)  !< contains FV_dx_XI_L/FV_dx_XI
 REAL,ALLOCATABLE,TARGET:: gradUxi  (:,:,:,:,:)        !< FD in XI direction (PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems)
 REAL,ALLOCATABLE,TARGET:: gradUeta (:,:,:,:,:)        !< FD in ETA direction
 REAL,ALLOCATABLE,TARGET:: gradUzeta(:,:,:,:,:)        !< FD in ZETA direction
+#if PARABOLIC
 REAL,ALLOCATABLE       :: gradUxi_central  (:,:,:,:,:)!< FD in XI direction (central limited for viscous fluxes)
 REAL,ALLOCATABLE       :: gradUeta_central (:,:,:,:,:)!< FD in ETA direction (central limited for viscous fluxes)
 REAL,ALLOCATABLE       :: gradUzeta_central(:,:,:,:,:)!< FD in ZETA direction (central limited for viscous fluxes)
+#endif
 #endif
 
 ! Metric terms for FV Volint

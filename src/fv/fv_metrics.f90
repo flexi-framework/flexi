@@ -47,56 +47,53 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_FV_Vars
 USE MOD_FV_Basis
-USE MOD_Mesh_Vars   ,ONLY: nElems,nSides,firstMPISide_YOUR,lastMPISide_YOUR
-USE MOD_Mesh_Vars   ,ONLY: Metrics_fTilde,Metrics_gTilde,Metrics_hTilde,sJ
-USE MOD_Mesh_Vars   ,ONLY: NGeoRef,DetJac_Ref,MortarType,MortarInfo
-USE MOD_Mesh_Vars   ,ONLY: NormalDirs,TangDirs,NormalSigns,SideToElem
-USE MOD_Mesh_Vars   ,ONLY: NormVec,TangVec1,TangVec2,SurfElem,Face_xGP,Ja_Face
-USE MOD_ChangeBasis ,ONLY: ChangeBasis1D,ChangeBasis2D,ChangeBasis3D
-USE MOD_Metrics     ,ONLY: SurfMetricsFromJa
-USE MOD_Interpolation,ONLY:GetVandermonde
-USE MOD_Interpolation_Vars,ONLY:NodeType,xGP,wGP,wBary
+USE MOD_Mesh_Vars          ,ONLY: nElems,nSides,firstMPISide_YOUR,lastMPISide_YOUR
+USE MOD_Mesh_Vars          ,ONLY: Metrics_fTilde,Metrics_gTilde,Metrics_hTilde,sJ
+USE MOD_Mesh_Vars          ,ONLY: NGeoRef,DetJac_Ref,MortarType,MortarInfo
+USE MOD_Mesh_Vars          ,ONLY: NormalDirs,TangDirs,NormalSigns,SideToElem
+USE MOD_Mesh_Vars          ,ONLY: NormVec,TangVec1,TangVec2,SurfElem,Face_xGP,Ja_Face
+USE MOD_ChangeBasis        ,ONLY: ChangeBasis1D,ChangeBasis2D,ChangeBasis3D
+USE MOD_Metrics            ,ONLY: SurfMetricsFromJa
+USE MOD_Interpolation      ,ONLY: GetVandermonde
+USE MOD_Interpolation_Vars ,ONLY: NodeType
 #if FV_RECONSTRUCT
-USE MOD_Mesh_Vars   ,ONLY: firstBCSide,lastBCSide,firstInnerSide,lastMPISide_MINE
-USE MOD_Mesh_Vars   ,ONLY: S2V,S2V2,ElemToSide,dXCL_N
-USE MOD_Interpolation,ONLY:GetNodesAndWeights
-USE MOD_Interpolation_Vars,ONLY:NodeTypeCL
+USE MOD_Mesh_Vars          ,ONLY: firstBCSide,lastBCSide,firstInnerSide,lastMPISide_MINE
+USE MOD_Mesh_Vars          ,ONLY: S2V2,ElemToSide,dXCL_N
+USE MOD_Interpolation      ,ONLY: GetNodesAndWeights
+USE MOD_Interpolation_Vars ,ONLY: NodeTypeCL,xGP,wGP,wBary
 #if USE_MPI
-USE MOD_MPI         ,ONLY: StartReceiveMPIData,StartSendMPIData,FinishExchangeMPIData
-USE MOD_MPI_Vars    ,ONLY: nNbProcs
+USE MOD_MPI                ,ONLY: StartReceiveMPIData,StartSendMPIData,FinishExchangeMPIData
+USE MOD_MPI_Vars           ,ONLY: nNbProcs
 #endif
 #endif
-USE MOD_FillMortar1 ,ONLY: U_Mortar1
+USE MOD_FillMortar1        ,ONLY: U_Mortar1
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
-INTEGER                          :: p,q,l,iSide,iElem,iLocSide
-INTEGER                          :: dd,NormalDir,TangDir
-REAL                             :: NormalSign
-REAL                             :: Vdm_Gauss_FVboundary(0:PP_N+1,0:PP_N)
-REAL                             :: JaVol(  3,3,0:PP_N+1,0:PP_N+1,0:PP_N+1)
-REAL                             :: FV_Ja_Face(3,3,0:PP_N,0:PP_N)
-REAL,DIMENSION(0:PP_N,0:NgeoRef) :: Vdm_NgeoRef_N,Vdm_NgeoRef_FV
-REAL                             :: FV_DetJac(1,0:PP_N,0:PP_N,0:PP_N)
-INTEGER                          :: flip, SideID, iMortar
+INTEGER                                :: i,j,k,p,q,l,d,iSide,iElem,iLocSide
+INTEGER                                :: dd,NormalDir,TangDir
+REAL                                   :: NormalSign
+REAL                                   :: Vdm_Gauss_FVboundary(0:PP_N+1,0:PP_N)
+REAL                                   :: JaVol(3,3,0:PP_N+1,0:PP_N+1,0:PP_N+1)
+REAL                                   :: FV_Ja_Face(3,3,0:PP_N,0:PP_N)
+REAL,DIMENSION(0:PP_N,0:NgeoRef)       :: Vdm_NgeoRef_N,Vdm_NgeoRef_FV
+REAL                                   :: FV_DetJac(1,0:PP_N,0:PP_N,0:PP_N)
+INTEGER                                :: flip, SideID, iMortar
 #if FV_RECONSTRUCT
-INTEGER                          :: ijk(3), locSideID
-REAL                             :: FV_dx_Face(0:PP_N,0:PP_N,1:3)
-REAL                             :: FV_dx_XI(  1:PP_N,0:PP_N,0:PP_N)
-REAL                             :: FV_dx_ETA( 0:PP_N,1:PP_N,0:PP_N)
-REAL                             :: FV_dx_ZETA(0:PP_N,0:PP_N,1:PP_N)
-REAL                             :: DG_dx_slave (1,0:PP_N,0:PP_N,1:nSides)
-REAL                             :: DG_dx_master(1,0:PP_N,0:PP_N,1:nSides)
+INTEGER                                :: ijk(2), locSideID
+REAL                                   :: FV_dx_Face(0:PP_N,0:PP_N,1:3)
+REAL                                   :: DG_dx_slave (1,0:PP_N,0:PP_N,1:nSides)
+REAL                                   :: DG_dx_master(1,0:PP_N,0:PP_N,1:nSides)
 
-REAL                             :: tmp2(3,0:PP_N)
-REAL,DIMENSION(0:PP_N,0:PP_N)    :: Vdm_CLN_FV, Vdm_CLN_GaussN,length
-REAL,DIMENSION(3,0:PP_N,0:PP_N,0:PP_N):: FV_Path_XI, FV_Path_ETA, FV_Path_ZETA
-REAL                             :: x0, xN
-REAL,POINTER                     :: FV_dx_P(:,:,:)
+REAL                                   :: tmp2(3,0:PP_N)
+REAL,DIMENSION(0:PP_N,0:PP_N)          :: Vdm_CLN_FV, Vdm_CLN_GaussN,length
+REAL,DIMENSION(3,0:PP_N,0:PP_N,0:PP_N) :: FV_Path_XI, FV_Path_ETA, FV_Path_ZETA
+REAL                                   :: x0, xN
+REAL,POINTER                           :: FV_dx_P(:,:)
 #if USE_MPI
-INTEGER                          :: MPIRequest(nNbProcs,2)
+INTEGER                                :: MPIRequest(nNbProcs,2)
 #endif
 #endif
 !==================================================================================================================================
@@ -111,11 +108,11 @@ SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') '  Build Metrics ...'
 ! ---------------------------------
 ! |       |       |       |       | 
 ! |<->.   |<->.   |<->.   |<->.   |    FV_dx_XI_L: left distance between Face and center of FV subcell 
-! |       |       |       |       |
+! |       |       |       |       |                (see Attention to storage order below!)
 ! ---------------------------------
 ! |       |       |       |       |
 ! |   .<->|   .<->|   .<->|   .<->|    FV_dx_XI_R: right distance between subcell-Faces and center of FV subcell
-! |       |       |       |       |
+! |       |       |       |       |                (see Attention to storage order below!)
 ! ---------------------------------
 ! |       |       |       |       |
 ! |   .<----->.<----->.<----->.   |    FV_dx_XI: distance between centers of FV subcells 
@@ -138,34 +135,33 @@ SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') '  Build Metrics ...'
 ! |       |       |       |       |                             (see Attention to storage order below!)
 ! ---------------------------------
 
-ALLOCATE(FV_sdx_XI    (1:PP_N,0:PP_N,0:PP_N,nElems)) ! 1. / FV_dx_XI
-ALLOCATE(FV_sdx_ETA   (0:PP_N,1:PP_N,0:PP_N,nElems)) ! 1. / FV_dx_ETA
-ALLOCATE(FV_sdx_ZETA  (0:PP_N,0:PP_N,1:PP_N,nElems)) ! 1. / FV_dx_ZETA
+ALLOCATE(FV_sdx_XI    (0:PP_N,0:PP_N,1:PP_N,nElems)) ! 1. / FV_dx_XI    Attention: storage order is (j,k,i,iElem)
+ALLOCATE(FV_sdx_ETA   (0:PP_N,0:PP_N,1:PP_N,nElems)) ! 1. / FV_dx_ETA   Attention: storage order is (i,k,j,iElem)
+ALLOCATE(FV_sdx_ZETA  (0:PP_N,0:PP_N,1:PP_N,nElems)) ! 1. / FV_dx_ZETA  Attention: storage order is (i,j,k,iElem)
 
 ALLOCATE(FV_sdx_Face (0:PP_N,0:PP_N,1:3,1:lastMPISide_MINE)) ! 1. / FV_dx_Face
 
-ALLOCATE(FV_dx_XI_L  (0:PP_N,0:PP_N,0:PP_N,nElems))
-ALLOCATE(FV_dx_XI_R  (0:PP_N,0:PP_N,0:PP_N,nElems))
-ALLOCATE(FV_dx_ETA_L (0:PP_N,0:PP_N,0:PP_N,nElems))
-ALLOCATE(FV_dx_ETA_R (0:PP_N,0:PP_N,0:PP_N,nElems))
-ALLOCATE(FV_dx_ZETA_L(0:PP_N,0:PP_N,0:PP_N,nElems))
-ALLOCATE(FV_dx_ZETA_R(0:PP_N,0:PP_N,0:PP_N,nElems))
+ALLOCATE(FV_dx_XI_L  (0:PP_N,0:PP_N,0:PP_N,nElems))  ! Attention: storage order is (j,k,i,iElem)
+ALLOCATE(FV_dx_XI_R  (0:PP_N,0:PP_N,0:PP_N,nElems))  ! Attention: storage order is (j,k,i,iElem)
+ALLOCATE(FV_dx_ETA_L (0:PP_N,0:PP_N,0:PP_N,nElems))  ! Attention: storage order is (i,k,j,iElem)
+ALLOCATE(FV_dx_ETA_R (0:PP_N,0:PP_N,0:PP_N,nElems))  ! Attention: storage order is (i,k,j,iElem)
+ALLOCATE(FV_dx_ZETA_L(0:PP_N,0:PP_N,0:PP_N,nElems))  ! Attention: storage order is (i,j,k,iElem)
+ALLOCATE(FV_dx_ZETA_R(0:PP_N,0:PP_N,0:PP_N,nElems))  ! Attention: storage order is (i,j,k,iElem)
 
 ALLOCATE(FV_dx_slave (1,0:PP_N,0:PP_N,1:nSides))
 ALLOCATE(FV_dx_master(1,0:PP_N,0:PP_N,1:nSides))
 #endif
-                                                          ! p,q = general face index
-ALLOCATE(FV_SurfElemXi_sw  (0:PP_N,0:PP_N,1:PP_N,nElems)) ! Attention: storage order is (p,q,i,iElem)
-ALLOCATE(FV_SurfElemEta_sw (0:PP_N,0:PP_N,1:PP_N,nElems)) ! Attention: storage order is (p,q,j,iElem)
-ALLOCATE(FV_SurfElemZeta_sw(0:PP_N,0:PP_N,1:PP_N,nElems)) ! Attention: storage order is (p,q,k,iElem)
+ALLOCATE(FV_SurfElemXi_sw  (0:PP_N,0:PP_N,1:PP_N,nElems)) ! Attention: storage order is (j,k,i,iElem)
+ALLOCATE(FV_SurfElemEta_sw (0:PP_N,0:PP_N,1:PP_N,nElems)) ! Attention: storage order is (i,k,j,iElem)
+ALLOCATE(FV_SurfElemZeta_sw(0:PP_N,0:PP_N,1:PP_N,nElems)) ! Attention: storage order is (i,j,k,iElem)
 
-ALLOCATE(FV_NormVecXi   (3,0:PP_N,0:PP_N,1:PP_N,nElems))  ! Attention: storage order is (p,q,i,iElem)
+ALLOCATE(FV_NormVecXi   (3,0:PP_N,0:PP_N,1:PP_N,nElems))  ! Attention: storage order is (j,k,i,iElem)
 ALLOCATE(FV_TangVec1Xi  (3,0:PP_N,0:PP_N,1:PP_N,nElems))  !  -"-
 ALLOCATE(FV_TangVec2Xi  (3,0:PP_N,0:PP_N,1:PP_N,nElems))  !  -"-
-ALLOCATE(FV_NormVecEta  (3,0:PP_N,0:PP_N,1:PP_N,nElems))  ! Attention: storage order is (p,q,j,iElem)
+ALLOCATE(FV_NormVecEta  (3,0:PP_N,0:PP_N,1:PP_N,nElems))  ! Attention: storage order is (i,k,j,iElem)
 ALLOCATE(FV_TangVec1Eta (3,0:PP_N,0:PP_N,1:PP_N,nElems))  !  -"-
 ALLOCATE(FV_TangVec2Eta (3,0:PP_N,0:PP_N,1:PP_N,nElems))  !  -"-
-ALLOCATE(FV_NormVecZeta (3,0:PP_N,0:PP_N,1:PP_N,nElems))  ! Attention: storage order is (p,q,k,iElem)
+ALLOCATE(FV_NormVecZeta (3,0:PP_N,0:PP_N,1:PP_N,nElems))  ! Attention: storage order is (i,j,k,iElem)
 ALLOCATE(FV_TangVec1Zeta(3,0:PP_N,0:PP_N,1:PP_N,nElems))  !  -"-
 ALLOCATE(FV_TangVec2Zeta(3,0:PP_N,0:PP_N,1:PP_N,nElems))  !  -"-
 
@@ -223,12 +219,12 @@ DO iElem=1,nElems
   !================================================================
 
   ! Xi direction
-  DO q=0,PP_N; DO p=0,PP_N
+  DO k=0,PP_N; DO j=0,PP_N
     ! interpolate Metrics to boundaries of FV subcells in XI direction, other directions stay DG
-    CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_Gauss_FVboundary,Metrics_fTilde(:,:,p,q,iElem,0),JaVol(1,:,:,p,q))
-    CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_Gauss_FVboundary,Metrics_gTilde(:,:,p,q,iElem,0),JaVol(2,:,:,p,q))
-    CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_Gauss_FVboundary,Metrics_hTilde(:,:,p,q,iElem,0),JaVol(3,:,:,p,q))
-  END DO; END DO ! p,q=0,PP_N
+    CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_Gauss_FVboundary,Metrics_fTilde(:,:,j,k,iElem,0),JaVol(1,:,:,j,k))
+    CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_Gauss_FVboundary,Metrics_gTilde(:,:,j,k,iElem,0),JaVol(2,:,:,j,k))
+    CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_Gauss_FVboundary,Metrics_hTilde(:,:,j,k,iElem,0),JaVol(3,:,:,j,k))
+  END DO; END DO ! j,k=0,PP_N
   DO l=1,PP_N
     ! at every inner interface/slice between FV subcells in XI direction: 
     ! convert metrics in the other directions from DG to FV subcells
@@ -247,12 +243,12 @@ DO iElem=1,nElems
   END DO
 
   ! Eta direction
-  DO q=0,PP_N; DO p=0,PP_N
+  DO k=0,PP_N; DO i=0,PP_N
     ! interpolate Metrics to boundaries of FV subcells in ETA direction, other directions stay DG
-    CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_Gauss_FVboundary,Metrics_fTilde(:,p,:,q,iElem,0),JaVol(1,:,p,:,q))
-    CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_Gauss_FVboundary,Metrics_gTilde(:,p,:,q,iElem,0),JaVol(2,:,p,:,q))
-    CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_Gauss_FVboundary,Metrics_hTilde(:,p,:,q,iElem,0),JaVol(3,:,p,:,q))
-  END DO; END DO ! p,q=0,PP_N
+    CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_Gauss_FVboundary,Metrics_fTilde(:,i,:,k,iElem,0),JaVol(1,:,i,:,k))
+    CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_Gauss_FVboundary,Metrics_gTilde(:,i,:,k,iElem,0),JaVol(2,:,i,:,k))
+    CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_Gauss_FVboundary,Metrics_hTilde(:,i,:,k,iElem,0),JaVol(3,:,i,:,k))
+  END DO; END DO ! i,k=0,PP_N
   DO l=1,PP_N
     ! at every inner interface/slice between FV subcells in ETA direction: 
     ! convert metrics in the other directions from DG to FV subcells
@@ -271,12 +267,12 @@ DO iElem=1,nElems
   END DO
 
   ! Zeta direction
-  DO q=0,PP_N; DO p=0,PP_N
+  DO j=0,PP_N; DO i=0,PP_N
     ! interpolate Metrics to boundaries of FV subcells in ZETA direction, other directions stay DG
-    CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_Gauss_FVboundary,Metrics_fTilde(:,p,q,:,iElem,0),JaVol(1,:,p,q,:))
-    CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_Gauss_FVboundary,Metrics_gTilde(:,p,q,:,iElem,0),JaVol(2,:,p,q,:))
-    CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_Gauss_FVboundary,Metrics_hTilde(:,p,q,:,iElem,0),JaVol(3,:,p,q,:))
-  END DO; END DO ! p,q=0,PP_N
+    CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_Gauss_FVboundary,Metrics_fTilde(:,i,j,:,iElem,0),JaVol(1,:,i,j,:))
+    CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_Gauss_FVboundary,Metrics_gTilde(:,i,j,:,iElem,0),JaVol(2,:,i,j,:))
+    CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_Gauss_FVboundary,Metrics_hTilde(:,i,j,:,iElem,0),JaVol(3,:,i,j,:))
+  END DO; END DO ! i,j=0,PP_N
   DO l=1,PP_N
     ! at every inner interface/slice between FV subcells in ZETA direction: 
     ! convert metrics in the other directions from DG to FV subcells
@@ -327,27 +323,22 @@ DO iElem=1,nElems
     ! left
     x0 = FV_BdryX(l)
     xN = x0 + (FV_BdryX(l+1) - FV_BdryX(l)) * 0.5
-    CALL Integrate_Path(PP_N,PP_N, xGP,wGP,wBary, x0,xN, FV_Path_XI  , FV_dx_XI_L  (l,:,:,iElem))
-    CALL Integrate_Path(PP_N,PP_N, xGP,wGP,wBary, x0,xN, FV_Path_ETA , FV_dx_ETA_L (:,l,:,iElem))
+    CALL Integrate_Path(PP_N,PP_N, xGP,wGP,wBary, x0,xN, FV_Path_XI  , FV_dx_XI_L  (:,:,l,iElem))
+    CALL Integrate_Path(PP_N,PP_N, xGP,wGP,wBary, x0,xN, FV_Path_ETA , FV_dx_ETA_L (:,:,l,iElem))
     CALL Integrate_Path(PP_N,PP_N, xGP,wGP,wBary, x0,xN, FV_Path_ZETA, FV_dx_ZETA_L(:,:,l,iElem))
     
     ! right
     xN = FV_BdryX(l+1)
     x0 = xN - (FV_BdryX(l+1) - FV_BdryX(l)) * 0.5
-    CALL Integrate_Path(PP_N,PP_N, xGP,wGP,wBary, x0,xN, FV_Path_XI  , FV_dx_XI_R  (l,:,:,iElem))
-    CALL Integrate_Path(PP_N,PP_N, xGP,wGP,wBary, x0,xN, FV_Path_ETA , FV_dx_ETA_R (:,l,:,iElem))
+    CALL Integrate_Path(PP_N,PP_N, xGP,wGP,wBary, x0,xN, FV_Path_XI  , FV_dx_XI_R  (:,:,l,iElem))
+    CALL Integrate_Path(PP_N,PP_N, xGP,wGP,wBary, x0,xN, FV_Path_ETA , FV_dx_ETA_R (:,:,l,iElem))
     CALL Integrate_Path(PP_N,PP_N, xGP,wGP,wBary, x0,xN, FV_Path_ZETA, FV_dx_ZETA_R(:,:,l,iElem))
   END DO ! l=0,PP_N
 
-  DO q=0,PP_N; DO p=0,PP_N
-    FV_dx_XI  (:,p,q) = FV_dx_XI_R  (0:PP_N-1,p,q,iElem) +  FV_dx_XI_L  (1:PP_N,p,q,iElem)
-    FV_dx_ETA (p,:,q) = FV_dx_ETA_R (p,0:PP_N-1,q,iElem) +  FV_dx_ETA_L (p,1:PP_N,q,iElem)
-    FV_dx_ZETA(p,q,:) = FV_dx_ZETA_R(p,q,0:PP_N-1,iElem) +  FV_dx_ZETA_L(p,q,1:PP_N,iElem)
-  END DO; END DO ! p,q=0,PP_N
   ! build inverse distances (volumes)
-  FV_sdx_XI  (:,:,:,iElem) = 1. / FV_dx_XI
-  FV_sdx_ETA (:,:,:,iElem) = 1. / FV_dx_ETA
-  FV_sdx_ZETA(:,:,:,iElem) = 1. / FV_dx_ZETA
+  FV_sdx_XI  (:,:,:,iElem) = 1. / (FV_dx_XI_R  (:,:,0:PP_N-1,iElem) +  FV_dx_XI_L  (:,:,1:PP_N,iElem)) ! 1 / FV_dx_XI
+  FV_sdx_ETA (:,:,:,iElem) = 1. / (FV_dx_ETA_R (:,:,0:PP_N-1,iElem) +  FV_dx_ETA_L (:,:,1:PP_N,iElem)) ! 1 / FV_dx_ETA
+  FV_sdx_ZETA(:,:,:,iElem) = 1. / (FV_dx_ZETA_R(:,:,0:PP_N-1,iElem) +  FV_dx_ZETA_L(:,:,1:PP_N,iElem)) ! 1 / FV_dx_ZETA
 
   ! Calculate distance between first GaussPoint and interface
   DO locSideID=1,6
@@ -357,39 +348,37 @@ DO iElem=1,nElems
     SELECT CASE(locSideID)
     CASE(XI_MINUS)
       CALL Integrate_Path(PP_N,PP_N, xGP,wGP,wBary, -1., xGP(0),   FV_Path_XI  , length)
-      FV_dx_P(0:PP_N,0:PP_N,0:PP_N) => FV_dx_XI_L(:,:,:,iElem)
+      FV_dx_P(0:PP_N,0:PP_N) => FV_dx_XI_L(:,:,0,iElem)
     CASE(ETA_MINUS)
       CALL Integrate_Path(PP_N,PP_N, xGP,wGP,wBary, -1., xGP(0),   FV_Path_ETA , length)
-      FV_dx_P(0:PP_N,0:PP_N,0:PP_N) => FV_dx_ETA_L(:,:,:,iElem)
+      FV_dx_P(0:PP_N,0:PP_N) => FV_dx_ETA_L(:,:,0,iElem)
     CASE(ZETA_MINUS)
       CALL Integrate_Path(PP_N,PP_N, xGP,wGP,wBary, -1., xGP(0),   FV_Path_ZETA, length)
-      FV_dx_P(0:PP_N,0:PP_N,0:PP_N) => FV_dx_ZETA_L(:,:,:,iElem)
+      FV_dx_P(0:PP_N,0:PP_N) => FV_dx_ZETA_L(:,:,0,iElem)
     CASE(XI_PLUS)
       CALL Integrate_Path(PP_N,PP_N, xGP,wGP,wBary, xGP(PP_N), 1., FV_Path_XI  , length)
-      FV_dx_P(0:PP_N,0:PP_N,0:PP_N) => FV_dx_XI_R(:,:,:,iElem)
+      FV_dx_P(0:PP_N,0:PP_N) => FV_dx_XI_R(:,:,PP_N,iElem)
     CASE(ETA_PLUS)
       CALL Integrate_Path(PP_N,PP_N, xGP,wGP,wBary, xGP(PP_N), 1., FV_Path_ETA , length)
-      FV_dx_P(0:PP_N,0:PP_N,0:PP_N) => FV_dx_ETA_R(:,:,:,iElem)
+      FV_dx_P(0:PP_N,0:PP_N) => FV_dx_ETA_R(:,:,PP_N,iElem)
     CASE(ZETA_PLUS)
       CALL Integrate_Path(PP_N,PP_N, xGP,wGP,wBary, xGP(PP_N), 1., FV_Path_ZETA, length)
-      FV_dx_P(0:PP_N,0:PP_N,0:PP_N) => FV_dx_ZETA_R(:,:,:,iElem)
+      FV_dx_P(0:PP_N,0:PP_N) => FV_dx_ZETA_R(:,:,PP_N,iElem)
     CASE DEFAULT
       STOP 'Local side index out of range (1...6).'
     END SELECT
 
     IF (flip.EQ.0) THEN ! master side
       DO q=0,PP_N; DO p=0,PP_N
-        ijk(1:2) = S2V2(:,p,q,flip,locSideID)
+        ijk = S2V2(:,p,q,flip,locSideID)
         DG_dx_master(1,p,q,SideID) = length(ijk(1),ijk(2))
-        ijk = S2V(:,0,p,q,flip,locSideID)
-        FV_dx_master(1,p,q,SideID) = FV_dx_P(ijk(1),ijk(2),ijk(3))
+        FV_dx_master(1,p,q,SideID) = FV_dx_P(ijk(1),ijk(2))
       END DO; END DO
     ELSE ! slave side
       DO q=0,PP_N; DO p=0,PP_N
-        ijk(1:2) = S2V2(:,p,q,flip,locSideID)
+        ijk = S2V2(:,p,q,flip,locSideID)
         DG_dx_slave(1,p,q,SideID) = length(ijk(1),ijk(2))
-        ijk = S2V(:,0,p,q,flip,locSideID)
-        FV_dx_slave(1,p,q,SideID) = FV_dx_P(ijk(1),ijk(2),ijk(3))
+        FV_dx_slave(1,p,q,SideID) = FV_dx_P(ijk(1),ijk(2))
       END DO; END DO
     END IF
   END DO
@@ -436,19 +425,26 @@ DO SideID=firstInnerSide,lastMPISide_MINE
 END DO
 
 ! scale metrics for equidistant subcells
-DO iElem=1,nElems
 #if PARABOLIC
-  DO l=1,3
-    FV_Metrics_fTilde_sJ(l,:,:,:,iElem)=FV_w_inv*Metrics_fTilde(l,:,:,:,iElem,1)*(FV_dx_XI_L  (:,:,:,iElem)+FV_dx_XI_R  (:,:,:,iElem))
-    FV_Metrics_gTilde_sJ(l,:,:,:,iElem)=FV_w_inv*Metrics_gTilde(l,:,:,:,iElem,1)*(FV_dx_ETA_L (:,:,:,iElem)+FV_dx_ETA_R (:,:,:,iElem))
-    FV_Metrics_hTilde_sJ(l,:,:,:,iElem)=FV_w_inv*Metrics_hTilde(l,:,:,:,iElem,1)*(FV_dx_ZETA_L(:,:,:,iElem)+FV_dx_ZETA_R(:,:,:,iElem))
-    FV_Metrics_fTilde_sJ(l,:,:,:,iElem)=FV_Metrics_fTilde_sJ(l,:,:,:,iElem)*sJ(:,:,:,iElem,1)
-    FV_Metrics_gTilde_sJ(l,:,:,:,iElem)=FV_Metrics_gTilde_sJ(l,:,:,:,iElem)*sJ(:,:,:,iElem,1)
-    FV_Metrics_hTilde_sJ(l,:,:,:,iElem)=FV_Metrics_hTilde_sJ(l,:,:,:,iElem)*sJ(:,:,:,iElem,1)
+DO iElem=1,nElems
+  DO d=1,3
+    DO i=0,PP_N
+      FV_Metrics_fTilde_sJ(d,i,:,:,iElem)=FV_w_inv*Metrics_fTilde(d,i,:,:,iElem,1)*&
+          (FV_dx_XI_L  (:,:,i,iElem)+FV_dx_XI_R  (:,:,i,iElem))
+    END DO ! i=0,PP_N
+    DO j=0,PP_N
+      FV_Metrics_gTilde_sJ(d,:,j,:,iElem)=FV_w_inv*Metrics_gTilde(d,:,j,:,iElem,1)*&
+          (FV_dx_ETA_L (:,:,j,iElem)+FV_dx_ETA_R (:,:,j,iElem))
+    END DO ! j=0,PP_N
+    FV_Metrics_hTilde_sJ(d,:,:,:,iElem)=FV_w_inv*Metrics_hTilde(d,:,:,:,iElem,1)*&
+        (FV_dx_ZETA_L(:,:,:,iElem)+FV_dx_ZETA_R(:,:,:,iElem))
+    FV_Metrics_fTilde_sJ(d,:,:,:,iElem)=FV_Metrics_fTilde_sJ(d,:,:,:,iElem)*sJ(:,:,:,iElem,1)
+    FV_Metrics_gTilde_sJ(d,:,:,:,iElem)=FV_Metrics_gTilde_sJ(d,:,:,:,iElem)*sJ(:,:,:,iElem,1)
+    FV_Metrics_hTilde_sJ(d,:,:,:,iElem)=FV_Metrics_hTilde_sJ(d,:,:,:,iElem)*sJ(:,:,:,iElem,1)
   END DO
-#endif
 END DO
-#endif
+#endif /* PARABOLIC */
+#endif /* FV_RECONSTRUCT */
 
 SWRITE(UNIT_stdOut,'(A)')' Done !'
 
@@ -461,8 +457,8 @@ END SUBROUTINE InitFV_Metrics
 !==================================================================================================================================
 SUBROUTINE Integrate_Path(Nloc,Nloc2,xGP,wGP,wBary,x0,xN,FV_Path_1D,FV_Length)
 ! MODULES
-USE MOD_Basis              ,ONLY: InitializeVandermonde
-USE MOD_ChangeBasis        ,ONLY: ChangeBasis1D
+USE MOD_Basis       ,ONLY: InitializeVandermonde
+USE MOD_ChangeBasis ,ONLY: ChangeBasis1D
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES 
 INTEGER,INTENT(IN) :: Nloc                                 !< degree of path polynomial
@@ -506,10 +502,6 @@ SUBROUTINE FinalizeFV_Metrics()
 ! MODULES
 USE MOD_FV_Vars
 IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT / OUTPUT VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
 !==================================================================================================================================
 #if FV_RECONSTRUCT
 SDEALLOCATE(FV_sdx_XI)
