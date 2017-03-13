@@ -94,9 +94,7 @@ REAL,INTENT(IN)    :: UPrim_slave( PP_nVarPrim,0:PP_N, 0:PP_N, 1:nSides) !< solu
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER :: SideID,p,q,firstSideID_wo_BC,firstSideID ,lastSideID,FVEM
-#if PARABOLIC
 REAL    :: FluxV_loc(PP_nVar,0:PP_N, 0:PP_N)
-#endif /*PARABOLIC*/
 INTEGER :: FV_Elems_Max(1:nSides) ! 0 if both sides DG, 1 else
 !==================================================================================================================================
 ! fill flux for sides ranging between firstSideID and lastSideID using Riemann solver for advection and viscous terms
