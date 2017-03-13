@@ -520,8 +520,8 @@ IF ((MPIROOT).AND.(nLines.GT.0)) THEN
   !read file
   REWIND(iniUnit)
   READ(iniUnit,'(A)') FileContent
-  CLOSE(iniUnit)
 END IF
+IF (MPIROOT) CLOSE(iniUnit)
 #if USE_MPI
 CALL MPI_BCAST(FileContent,LEN(FileContent)*nLines,MPI_CHARACTER,0,MPI_COMM_WORLD,iError)
 #endif
