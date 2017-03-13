@@ -23,20 +23,6 @@ USE ISO_C_BINDING
 IMPLICIT NONE
 
 INTERFACE
-  FUNCTION get_userblock_size()
-      INTEGER :: get_userblock_size
-  END FUNCTION 
-END INTERFACE
-
-INTERFACE
-  FUNCTION get_inifile_size(filename) BIND(C)
-      USE ISO_C_BINDING, ONLY: C_CHAR,C_INT
-      CHARACTER(KIND=C_CHAR) :: filename(*)
-      INTEGER(KIND=C_INT)    :: get_inifile_size
-  END FUNCTION get_inifile_size
-END INTERFACE
-
-INTERFACE
   SUBROUTINE insert_userblock(filename,inifilename) BIND(C)
       USE ISO_C_BINDING, ONLY: C_CHAR
       CHARACTER(KIND=C_CHAR) :: filename(*)
@@ -87,6 +73,7 @@ INTERFACE FinalizeOutput
 END INTERFACE
 
 PUBLIC:: InitOutput,PrintStatusLine,Visualize,InitOutputToFile,OutputToFile,FinalizeOutput
+PUBLIC:: insert_userblock
 !==================================================================================================================================
 
 PUBLIC::DefineParametersOutput
@@ -143,7 +130,6 @@ INTEGER                        :: OpenStat
 CHARACTER(LEN=8)               :: StrDate
 CHARACTER(LEN=10)              :: StrTime
 CHARACTER(LEN=255)             :: LogFile
-INTEGER                        :: inifile_len
 !==================================================================================================================================
 IF ((.NOT.InterpolationInitIsDone).OR.OutputInitIsDone) THEN
   CALL CollectiveStop(__STAMP__,&
@@ -180,9 +166,6 @@ IF (.NOT.WriteStateFiles) CALL PrintWarning("Write of state files disabled!")
 
 
 IF (MPIRoot) THEN
-  ! read userblock length in bytes from data section of flexi-executable
-  userblock_len = get_userblock_size()
-  inifile_len = get_inifile_size(TRIM(ParameterFile)//C_NULL_CHAR)
   ! prepare userblock file
   CALL insert_userblock(TRIM(UserBlockTmpFile)//C_NULL_CHAR,TRIM(ParameterFile)//C_NULL_CHAR)
   INQUIRE(FILE=TRIM(UserBlockTmpFile),SIZE=userblock_total_len)

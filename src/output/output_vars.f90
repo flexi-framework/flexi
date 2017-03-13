@@ -36,7 +36,6 @@ INTEGER                      :: ASCIIOutputFormat=0   !< File format for ASCII o
 LOGICAL                      :: OutputInitIsDone=.FALSE.  !< marks whether output routines have been initialized
 LOGICAL                      :: doPrintStatusLine     !< flag indicating if status line should be printed
 LOGICAL                      :: WriteStateFiles=.TRUE.!< flag indicating if state files should be written
-INTEGER                      :: userblock_len         !< length of userblock file in bytes
 INTEGER                      :: userblock_total_len   !< length of userblock file + length of ini-file (with header) in bytes
 CHARACTER(LEN=255)           :: UserBlockTmpFile='userblock.tmp' !< name of user block temp file
 !==================================================================================================================================
