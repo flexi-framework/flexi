@@ -37,7 +37,16 @@ PUBLIC :: GetParametricCoordinates
 CONTAINS
 
 !===================================================================================================================================
-!> Module to evaluate parametric coordinates of interpolation points (IP) of new state in old mesh
+!> Routine to evaluate parametric coordinates of interpolation points (IP) of new state in old mesh.
+!> In a first step, the centroids and radii of old and new mesh elements are computed. We only consider elements for the search
+!> when they overlap (within a certain tolerance).
+!> Then a check for equal elements is performed, they can simply be copied from the old mesh.
+!> For non-equal elements the procedure is as follows:
+!> Employ a Newton algorithm to find the parametric coordinates xi of an interpolation point in an element defined by CL points on
+!> NGeo. We try to solve F(xi) = x(xi) - x_InterpolationPoint = 0 for the parametric coordinates.
+!> Newton iteration: xi_(n+1) = xi_n - (J(xi_n))^(-1)*F(xi_n), the Jacobian is the derivative of the mesh coordinates w.r.t. the
+!> parametric coordinates.
+!> At the end, a check is performed if all new interpolation points have been found. A certain range outside of [-1,1] is allowed.
 !===================================================================================================================================
 SUBROUTINE GetParametricCoordinates()
 ! MODULES
