@@ -517,7 +517,7 @@ CALL FV_VolInt(UPrim,Ut)
 
 #if EDDYVISCOSITY
 IF(EddyViscType.EQ.2) THEN
-  IF(CurrentStage.EQ.1) THEN
+!  IF(CurrentStage.EQ.1) THEN
 #if MPI
     ! 4.2)
     CALL StartReceiveMPIData(SGS_Ind_slave,DataSizeSideScalar,1,nSides,MPIRequest_SGS_Ind(:,RECV),SendID=2)
@@ -529,7 +529,7 @@ IF(EddyViscType.EQ.2) THEN
 #if MPI  
     CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_SGS_Ind)  ! U_slave: slave -> master 
 #endif
-  END IF
+!  END IF
 END IF
 #endif
 
