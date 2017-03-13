@@ -3,7 +3,7 @@
 !===================================================================================================================================
 !> Module to handle the Recordpoints
 !===================================================================================================================================
-MODULE MOD_ParametricCoords
+MODULE MOD_RPParametricCoords
 ! MODULES
 IMPLICIT NONE
 PRIVATE
@@ -58,6 +58,7 @@ SUBROUTINE GetParametricCoordinates()
 ! MODULES
 USE MOD_Preproc
 USE MOD_Globals
+USE MOD_Mathtools,         ONLY: INVERSE
 USE MOD_Parameters,        ONLY: NSuper,maxTol
 USE MOD_RPSet_Vars,        ONLY: RPlist,nRP_global,tRP
 USE MOD_RPSet_Vars,        ONLY: nRP_global
@@ -198,15 +199,7 @@ DO iElem=1,nElems
       END DO; END DO; END DO
       
       ! Compute inverse of Jacobian
-      sdetJac=getDet(Jac)
-      IF(sdetJac.NE.0.) THEN
-       sdetJac=1./sdetJac
-      ELSE !shit
-       ! Newton has not converged !?!?
-       CALL abort(__STAMP__, &
-            'Newton in FindXiForRecordPoints singular')
-      ENDIF 
-      sJac=getInv(Jac,sdetJac)
+      sJac=INVERSE(Jac)
       
       ! Iterate Xi using Newton step
       Xi = Xi - MATMUL(sJac,F)
@@ -372,7 +365,7 @@ IF(ANY(.NOT.RPFound)) THEN
         END DO !i=0,NSuper
 
         ! Compute inverse of Jacobian
-        sJac2=getInv2(Jac2)
+        sJac2=INVERSE(Jac2)
 
         ! Iterate Xi using Newton step
         Xi2 = Xi2 - MATMUL(sJac2,G)
@@ -510,75 +503,5 @@ END DO !iElem
 
 END SUBROUTINE SortRP
 
-
-
-!=================================================================================================================================
-!> compute determinant of 3x3 matrix
-!=================================================================================================================================
-FUNCTION getDet(Mat)
-! MODULES
-IMPLICIT NONE
-!---------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-REAL,INTENT(IN)  :: Mat(3,3)
-!---------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-REAL             :: getDet
-!=================================================================================================================================
-getDet=   ( Mat(1,1) * Mat(2,2) - Mat(1,2) * Mat(2,1) ) * Mat(3,3) &
-        + ( Mat(1,2) * Mat(2,3) - Mat(1,3) * Mat(2,2) ) * Mat(3,1) &
-        + ( Mat(1,3) * Mat(2,1) - Mat(1,1) * Mat(2,3) ) * Mat(3,2)
-END FUNCTION getDet
-
-
-!=================================================================================================================================
-!> compute inverse of 3x3 matrix, needs sDet=1/det(Mat)
-!=================================================================================================================================
-FUNCTION getInv(Mat,sdet)
-! MODULES
-IMPLICIT NONE
-!---------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-REAL,INTENT(IN)  :: Mat(3,3),sDet
-!---------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-REAL             :: getInv(3,3)
-!=================================================================================================================================
-getInv(1,1) = ( Mat(2,2) * Mat(3,3) - Mat(2,3) * Mat(3,2) ) * sdet
-getInv(1,2) = ( Mat(1,3) * Mat(3,2) - Mat(1,2) * Mat(3,3) ) * sdet
-getInv(1,3) = ( Mat(1,2) * Mat(2,3) - Mat(1,3) * Mat(2,2) ) * sdet
-getInv(2,1) = ( Mat(2,3) * Mat(3,1) - Mat(2,1) * Mat(3,3) ) * sdet
-getInv(2,2) = ( Mat(1,1) * Mat(3,3) - Mat(1,3) * Mat(3,1) ) * sdet
-getInv(2,3) = ( Mat(1,3) * Mat(2,1) - Mat(1,1) * Mat(2,3) ) * sdet
-getInv(3,1) = ( Mat(2,1) * Mat(3,2) - Mat(2,2) * Mat(3,1) ) * sdet
-getInv(3,2) = ( Mat(1,2) * Mat(3,1) - Mat(1,1) * Mat(3,2) ) * sdet
-getInv(3,3) = ( Mat(1,1) * Mat(2,2) - Mat(1,2) * Mat(2,1) ) * sdet
-END FUNCTION getInv 
-
-
-!=================================================================================================================================
-!> compute inverse of 2x2 matrix
-!=================================================================================================================================
-FUNCTION getInv2(Mat)
-! MODULES
-IMPLICIT NONE
-!---------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-REAL,INTENT(IN)  :: Mat(2,2)
-!---------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-REAL             :: getInv2(2,2)
-!---------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-REAL             :: sdet
-!=================================================================================================================================
-sdet=1./(Mat(1,1) * Mat(2,2) - Mat(1,2)*Mat(2,1))
-getInv2(1,1) = (  Mat(2,2) ) * sdet
-getInv2(1,2) = (- Mat(1,2) ) * sdet
-getInv2(2,1) = (- Mat(2,1) ) * sdet
-getInv2(2,2) = (  Mat(1,1) ) * sdet
-END FUNCTION getInv2 
-
-
-END MODULE MOD_ParametricCoords
+END MODULE MOD_RPParametricCoords
 
