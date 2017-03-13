@@ -51,6 +51,7 @@ FLEXI uses several external libraries as well as auxilliary functions from open 
 * [PAPI](http://icl.cs.utk.edu/papi/)
 * [FOUL](http://foul.sourceforge.net/)
 * [OpenMP](http://www.openmp.org/)
+* [FFTW](http://www.fftw.org/)
 
 [nrg]:  https://nrg.iag.uni-stuttgart.de/
 [flexi]: https://www.flexi-project.org/

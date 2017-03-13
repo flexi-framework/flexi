@@ -124,6 +124,11 @@ INTEGER             :: nMPISides_YOUR=0        !< number of YOUR MPI sides (on n
 INTEGER             :: nBCs=0                  !< number of BCs in mesh
 INTEGER             :: nUserBCs=0              !< number of BC in inifile
 !----------------------------------------------------------------------------------------------------------------------------------
+! ijk sorted meshes
+INTEGER             :: nElems_IJK(3)           !< Global number of elements in i,j,k direction
+INTEGER,ALLOCATABLE :: Elem_IJK(:,:)          !< Mapping from space-filling curved sorted element index to ijk sorted index,
+                                               !< first index 1:3 (i,j,k), last index iElem
+!----------------------------------------------------------------------------------------------------------------------------------
 ! Define index ranges for all sides in consecutive order for easier access
 INTEGER             :: firstBCSide             !< First SideID of BCs (in general 1)
 INTEGER             :: firstMortarInnerSide    !< First SideID of Mortars (in general nBCs+1)

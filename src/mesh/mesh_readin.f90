@@ -57,8 +57,13 @@ INTERFACE BuildPartition
   MODULE PROCEDURE BuildPartition
 END INTERFACE
 
+INTERFACE ReadIJKSorting
+  MODULE PROCEDURE ReadIJKSorting
+END INTERFACE
+
 PUBLIC::ReadMesh
 PUBLIC::BuildPartition
+PUBLIC::ReadIJKSorting
 !==================================================================================================================================
 
 CONTAINS
@@ -415,16 +420,6 @@ ELSE
 ENDIF
 nNodes=nElems*(NGeo+1)**3
 
-
-!! IJK SORTING --------------------------------------------
-!!read local ElemInfo from data file
-!CALL DatasetExists(File_ID,'nElems_IJK',dsExists)
-!IF(dsExists)THEN
-!  CALL ReadArray('nElems_IJK',1,(/3/),0,1,IntArray=nElems_IJK)
-!  ALLOCATE(Elem_IJK(3,nLocalElems))
-!  CALL ReadArray('Elem_IJK',2,(/3,nElems/),offsetElem,2,IntArray=Elem_IJK)
-!END IF
-
 ! Get Mortar specific arrays
 dsExists=.FALSE.
 iMortar=0
@@ -697,5 +692,30 @@ END IF
 END FUNCTION ELEMIPROC
 #endif /*USE_MPI*/
 
+!===================================================================================================================================
+!> Read arrays nElems_IJK (global number of elements in i,j,k direction) and Elem_IJK (mapping from global element to i,j,k index)
+!> for meshes thar are i,j,k sorted.
+!===================================================================================================================================
+SUBROUTINE ReadIJKSorting()
+! MODULES                                                                                                                          !
+!----------------------------------------------------------------------------------------------------------------------------------!
+USE MOD_Mesh_Vars,       ONLY: nElems_IJK,Elem_IJK,offsetElem,nElems,MeshFile
+!----------------------------------------------------------------------------------------------------------------------------------!
+IMPLICIT NONE
+! INPUT / OUTPUT VARIABLES 
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+LOGICAL        :: dsExists
+!===================================================================================================================================
+
+CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+CALL DatasetExists(File_ID,'nElems_IJK',dsExists)
+IF(dsExists)THEN
+  CALL ReadArray('nElems_IJK',1,(/3/),0,1,IntArray=nElems_IJK)
+  ALLOCATE(Elem_IJK(3,nElems))
+  CALL ReadArray('Elem_IJK',2,(/3,nElems/),offsetElem,2,IntArray=Elem_IJK)
+END IF
+CALL CloseDataFile()
+END SUBROUTINE ReadIJKSorting
 
 END MODULE MOD_Mesh_ReadIn

@@ -198,13 +198,6 @@ ELSE()
 ENDIF()
 
 # =========================================================================
-# Exclude certain non-compatible combinations from compiling
-# =========================================================================
-IF(FLEXI_FV AND ${FLEXI_NODETYPE} STREQUAL "GAUSS-LOBATTO")
-  MESSAGE(FATAL_ERROR " Gauss-Lobatto nodes not implemented for FV.")
-ENDIF()
-
-# =========================================================================
 # USERBLOCK + Preproc_flags
 # =========================================================================
 

@@ -449,6 +449,9 @@ SDEALLOCATE(TangVec1O)
 SDEALLOCATE(TangVec2O)
 SDEALLOCATE(SurfElemO)
 
+! ijk sorted mesh
+SDEALLOCATE(Elem_IJK)
+
 !> mappings
 CALL FinalizeMappings()
 
