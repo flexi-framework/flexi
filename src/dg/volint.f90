@@ -151,7 +151,10 @@ REAL,DIMENSION(PP_nVar,0:Nloc,0:Nloc,0:Nloc)  :: f,g,h !< Advective volume fluxe
 ! Advective part
 DO iElem=1,nElems
 #if FV_ENABLED
-  IF (FV_Elems(iElem).EQ.1) CYCLE ! FV Elem
+  IF (FV_Elems(iElem).EQ.1) THEN
+    Ut(:,:,:,:,iElem) = 0.
+    CYCLE ! FV Elem
+  END IF
 #endif
   ! Cut out the local DG solution for a grid cell iElem and all Gauss points from the global field
   ! Compute for all Gauss point values the Cartesian flux components

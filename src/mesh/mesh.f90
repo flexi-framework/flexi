@@ -377,7 +377,7 @@ DO iElem=1,nElems
   CALL ChangeBasis3D(3,PP_N,NOver,Vdm_N_CLNSurf,Metrics_gTilde(:,:,:,:,iElem,0),JaCL_NSurf(2,:,:,:,:))
   CALL ChangeBasis3D(3,PP_N,NOver,Vdm_N_CLNSurf,Metrics_hTilde(:,:,:,:,iElem,0),JaCL_NSurf(3,:,:,:,:))
   CALL ChangeBasis3D(3,PP_N,NOver,Vdm_N_CLNSurf,Elem_xGP(:,:,:,:,iElem),XCL_NSurf)
-  CALL CalcSurfMetrics(NOver,JaCL_NSurf,XCL_NSurf,Vdm_CLNSurf_NSurf,iElem,&
+  CALL CalcSurfMetrics(NOver,0,JaCL_NSurf,XCL_NSurf,Vdm_CLNSurf_NSurf,iElem,&
                        NormVecO,TangVec1O,TangVec2O,SurfElemO,Face_xGPO)
 END DO
 END SUBROUTINE BuildOverintMesh
