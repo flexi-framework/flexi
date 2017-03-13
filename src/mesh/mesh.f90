@@ -88,7 +88,7 @@ END SUBROUTINE DefineParametersMesh
 !> - compute the mesh metrics
 !> - provide mesh metrics for overintegration
 !==================================================================================================================================
-SUBROUTINE InitMesh(meshMode,MeshFile_IN,NodeCoords_Out)
+SUBROUTINE InitMesh(meshMode,MeshFile_IN)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
@@ -111,10 +111,9 @@ USE MOD_IO_HDF5,            ONLY:AddToElemData
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)                     :: meshMode !< 0: only read and build Elem_xGP,
-                                                   !< 1: as 0 + build connectivity, 2: as 1 + calc metrics
+INTEGER,INTENT(IN) :: meshMode !< 0: only read and build Elem_xGP,
+                               !< 1: as 0 + build connectivity, 2: as 1 + calc metrics
 CHARACTER(LEN=255),INTENT(IN),OPTIONAL :: MeshFile_IN !< file name of mesh to be read
-REAL,INTENT(OUT),OPTIONAL,ALLOCATABLE  :: NodeCoords_Out(:,:,:,:,:) !< Mesh coordinates on equdistant points
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL              :: x(3),meshScale
@@ -307,16 +306,6 @@ IF (meshMode.GT.1) THEN
   ! debugmesh: param specifies format to output, 0: no output, 1: tecplot ascii, 2: tecplot binary, 3: paraview binary
   CALL WriteDebugMesh(GETINT('debugmesh','0'))
 
-END IF
-
-! Some tools work directly on the mesh coordinates so we optionaly return them as well
-IF (PRESENT(NodeCoords_Out)) THEN
-  IF(useCurveds)THEN
-    ALLOCATE(NodeCoords_Out(3,0:NGeo,0:NGeo,0:NGeo,nElems))
-  ELSE
-    ALLOCATE(NodeCoords_Out(   3,0:1,   0:1,   0:1,   nElems))
-  END IF
-  NodeCoords_Out = coords
 END IF
 
 SDEALLOCATE(NodeCoords)
