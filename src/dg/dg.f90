@@ -326,7 +326,7 @@ REAL,INTENT(IN)                 :: t                      !< Current time
 ! 6.  Volume integral (DG only)
 ![7.] FV volume integral
 ! 8.  Fill flux (Riemann solver) + surface integral
-!{9.} Add advective volume (Ut0) integral to Ut for selective overintegration
+!{9.} Add advective volume (UtO) integral to Ut for selective overintegration
 ! 10. Ut = -Ut
 ! 11. Sponge and source terms
 ! 12. Perform overintegration and apply Jacobian
