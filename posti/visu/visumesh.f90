@@ -260,6 +260,7 @@ IF (LEN_TRIM(postifile).GT.0) THEN
 ELSE
   NVisu = 2*NGeo ! TODO: correct?
 END IF
+NVisu_FV = 1
 
 ! read mesh
 CALL InitInterpolation(Ngeo)

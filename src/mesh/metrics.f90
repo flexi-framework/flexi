@@ -402,14 +402,14 @@ DO iElem=1,nElems
     JaCL_N_quad(:,1,:,:,:)=(length(2)*length(3)/4.)*JaCL_N_quad(:,1,:,:,:)
     JaCL_N_quad(:,2,:,:,:)=(length(1)*length(3)/4.)*JaCL_N_quad(:,2,:,:,:)
     JaCL_N_quad(:,3,:,:,:)=(length(1)*length(2)/4.)*JaCL_N_quad(:,3,:,:,:)
-    CALL CalcSurfMetrics(PP_N,JaCL_N_quad,XCL_N_quad,Vdm_CLN_N,iElem,&
+    CALL CalcSurfMetrics(PP_N,FV_ENABLED,JaCL_N_quad,XCL_N_quad,Vdm_CLN_N,iElem,&
                          NormVec,TangVec1,TangVec2,SurfElem,Face_xGP,Ja_Face)
   ELSE
     ! interpolate Metrics from Cheb-Lobatto N onto GaussPoints N
     CALL ChangeBasis3D(3,PP_N,PP_N,Vdm_CLN_N,JaCL_N(1,:,:,:,:),Metrics_fTilde(:,:,:,:,iElem,0))
     CALL ChangeBasis3D(3,PP_N,PP_N,Vdm_CLN_N,JaCL_N(2,:,:,:,:),Metrics_gTilde(:,:,:,:,iElem,0))
     CALL ChangeBasis3D(3,PP_N,PP_N,Vdm_CLN_N,JaCL_N(3,:,:,:,:),Metrics_hTilde(:,:,:,:,iElem,0))
-    CALL CalcSurfMetrics(PP_N,JaCL_N,XCL_N,Vdm_CLN_N,iElem,&
+    CALL CalcSurfMetrics(PP_N,FV_ENABLED,JaCL_N,XCL_N,Vdm_CLN_N,iElem,&
                          NormVec,TangVec1,TangVec2,SurfElem,Face_xGP,Ja_Face)
   END IF
 END DO !iElem=1,nElems
@@ -423,7 +423,7 @@ END SUBROUTINE CalcMetrics
 !> Input is JaCL_N, the 3D element metrics on Cebychev-Lobatto points.
 !> For each side the volume metrics are interpolated to the surface and rotated into the side reference frame. 
 !==================================================================================================================================
-SUBROUTINE CalcSurfMetrics(Nloc,JaCL_N,XCL_N,Vdm_CLN_N,iElem,NormVec,TangVec1,TangVec2,SurfElem,Face_xGP,Ja_Face)
+SUBROUTINE CalcSurfMetrics(Nloc,FVE,JaCL_N,XCL_N,Vdm_CLN_N,iElem,NormVec,TangVec1,TangVec2,SurfElem,Face_xGP,Ja_Face)
 ! MODULES
 USE MOD_Mathtools,      ONLY:CROSS
 USE MOD_Mesh_Vars,      ONLY:ElemToSide,MortarType,nSides
@@ -436,16 +436,17 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: Nloc                                !< (IN) polynomial degree
+INTEGER,INTENT(IN) :: FVE                                 !< (IN) Finite Volume enabled
 INTEGER,INTENT(IN) :: iElem                               !< (IN) element index
 REAL,INTENT(IN)    :: JaCL_N(  3,3,0:Nloc,0:Nloc,0:Nloc)  !< (IN) volume metrics of element
 REAL,INTENT(IN)    :: XCL_N(     3,0:Nloc,0:Nloc,0:Nloc)  !< (IN) element geo. interpolation points (CL)
 REAL,INTENT(IN)    :: Vdm_CLN_N(   0:Nloc,0:Nloc)         !< (IN) Vandermonde matrix from Cheby-Lob on N to final nodeset on N
-REAL,INTENT(OUT)   ::    NormVec(3,0:Nloc,0:Nloc,0:FV_ENABLED,1:nSides) !< (OUT) element face normal vectors
-REAL,INTENT(OUT)   ::   TangVec1(3,0:Nloc,0:Nloc,0:FV_ENABLED,1:nSides) !< (OUT) element face tangential vectors
-REAL,INTENT(OUT)   ::   TangVec2(3,0:Nloc,0:Nloc,0:FV_ENABLED,1:nSides) !< (OUT) element face tangential vectors
-REAL,INTENT(OUT)   ::   SurfElem(  0:Nloc,0:Nloc,0:FV_ENABLED,1:nSides) !< (OUT) element face surface area
-REAL,INTENT(OUT)   ::   Face_xGP(3,0:Nloc,0:Nloc,0:FV_ENABLED,1:nSides) !< (OUT) element face interpolation points
-REAL,INTENT(OUT),OPTIONAL :: Ja_Face(3,3,0:Nloc,0:Nloc,1:nSides)  !< (OUT) surface metrics
+REAL,INTENT(OUT)   ::    NormVec(3,0:Nloc,0:Nloc,0:FVE,1:nSides) !< (OUT) element face normal vectors
+REAL,INTENT(OUT)   ::   TangVec1(3,0:Nloc,0:Nloc,0:FVE,1:nSides) !< (OUT) element face tangential vectors
+REAL,INTENT(OUT)   ::   TangVec2(3,0:Nloc,0:Nloc,0:FVE,1:nSides) !< (OUT) element face tangential vectors
+REAL,INTENT(OUT)   ::   SurfElem(  0:Nloc,0:Nloc,0:FVE,1:nSides) !< (OUT) element face surface area
+REAL,INTENT(OUT)   ::   Face_xGP(3,0:Nloc,0:Nloc,0:FVE,1:nSides) !< (OUT) element face interpolation points
+REAL,INTENT(OUT),OPTIONAL :: Ja_Face(3,3,0:Nloc,0:Nloc,1:nSides) !< (OUT) surface metrics
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: p,q,pq(2),dd,iLocSide,SideID,SideID2,iMortar,nbSideIDs(4),flip

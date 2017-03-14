@@ -379,7 +379,7 @@ SUBROUTINE FV_DGtoFV(nVar,U_master,U_slave)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_ChangeBasis ,ONLY: ChangeBasis2D_selective
+USE MOD_ChangeBasis ,ONLY: ChangeBasis2D
 USE MOD_FV_Vars
 USE MOD_Mesh_Vars   ,ONLY: firstInnerSide,lastMPISide_MINE,nSides
 ! IMPLICIT VARIABLE HANDLING
@@ -391,13 +391,19 @@ REAL,INTENT(INOUT) :: U_master(nVar,0:PP_N,0:PP_N,1:nSides) !< Solution on maste
 REAL,INTENT(INOUT) :: U_slave (nVar,0:PP_N,0:PP_N,1:nSides) !< Solution on slave side
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER     :: firstSideID,lastSideID
+INTEGER     :: firstSideID,lastSideID,SideID
 !==================================================================================================================================
 firstSideID = firstInnerSide
 lastSideID  = lastMPISide_MINE
 
-CALL ChangeBasis2D_selective(nVar,PP_N,1,nSides,firstSideID,lastSideID,FV_Vdm,U_master,FV_Elems_Sum,2)
-CALL ChangeBasis2D_selective(nVar,PP_N,1,nSides,firstSideID,lastSideID,FV_Vdm,U_slave ,FV_Elems_Sum,1)
+DO SideID=firstSideID,lastSideID
+  IF (FV_Elems_Sum(SideID).EQ.2) THEN
+    CALL ChangeBasis2D(nVar,PP_N,PP_N,FV_Vdm,U_master(:,:,:,SideID))
+  ELSE IF (FV_Elems_Sum(SideID).EQ.1) THEN
+    CALL ChangeBasis2D(nVar,PP_N,PP_N,FV_Vdm,U_slave (:,:,:,SideID))
+  END IF
+END DO
+
 END SUBROUTINE FV_DGtoFV
 
 

@@ -554,10 +554,10 @@ ELSE
 
   SELECT CASE(BCType)
   CASE(2,12,121,22,23,24,25,27) ! Riemann-Type BCs 
-    DO q=0,PP_N; DO p=0,PP_N
+    DO q=0,Nloc; DO p=0,Nloc
       CALL PrimToCons(UPrim_master(  :,p,q),UCons_master(  :,p,q)) 
       CALL PrimToCons(UPrim_boundary(:,p,q),UCons_boundary(:,p,q)) 
-    END DO; END DO ! p,q=0,PP_N
+    END DO; END DO ! p,q=0,Nloc
     CALL Riemann(Nloc,Flux,UCons_master,UCons_boundary,UPrim_master,UPrim_boundary, &
         NormVec,TangVec1,TangVec2,doBC=.TRUE.)
 #if PARABOLIC
