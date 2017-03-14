@@ -16,6 +16,23 @@
 
 !==================================================================================================================================
 !> Routines to provide boundary conditions for the domain. Fills the boundary part of the fluxes list.
+!>
+!> Available boundary conditions are:
+!>  * 1   : Periodic boundary conditions (no work to be done here, are already filled due to mesh connection)
+!>  DIRICHLET BCs:
+!>  * 2   : Use the initial exact function (if BC state = 0) or a refstate as dirichlet boundary conditions
+!>  * 12  : Read in dirichlet boundary conditions from a HDF5 file
+!>  * 121 : Similar to 2, but pre-compute and store the evaluation of a exact func
+!>  WALL BCs:
+!>  * 3   : Adiabatic wall
+!>  * 4   : Isothermal wall (Temperature specified by refstate)
+!>  * 9   : Slip wall
+!>  OUTFLOW BCs:
+!>  * 23  : Outflow BC where the second entry of the refstate specifies the desired Mach number at the outflow
+!>  * 24  : Pressure outflow BC (pressure specified by resfstate)
+!>  * 25  : Subsonic outflow BC
+!>  INFLOW BCs:
+!>  * 27  : Subsonic inflow BC, WARNING: REFSTATE is different: Tt,alpha,beta,<empty>,pT (4th entry ignored!!), angles in DEG
 !==================================================================================================================================
 MODULE MOD_GetBoundaryFlux
 ! MODULES
