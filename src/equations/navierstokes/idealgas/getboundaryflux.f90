@@ -74,11 +74,15 @@ SUBROUTINE InitBC()
 USE MOD_Preproc
 USE MOD_Globals
 USE MOD_Viscosity
+USE MOD_ReadInTools
 USE MOD_Equation_Vars     ,ONLY: EquationInitIsDone
 USE MOD_Equation_Vars     ,ONLY: nRefState,BCData,BCDataPrim,nBCByType,BCSideID
 USE MOD_Equation_Vars     ,ONLY: BCStateFile,RefStatePrim
 USE MOD_Interpolation_Vars,ONLY: InterpolationInitIsDone
 USE MOD_Mesh_Vars         ,ONLY: MeshInitIsDone,nBCSides,BC,BoundaryType,nBCs,Face_xGP
+#if PARABOLIC
+USE MOD_Exactfunc_Vars    ,ONLY: delta99_in,x_in,BlasiusInitDone
+#endif
 USE MOD_EOS               ,ONLY: ConsToPrim
 USE MOD_ExactFunc         ,ONLY: ExactFunc
 IMPLICIT NONE
@@ -142,6 +146,22 @@ IF(MaxBCState.GT.nRefState)THEN
   CALL abort(__STAMP__,&
     'ERROR: Boundary RefState not defined! (MaxBCState,nRefState):',MaxBCState,REAL(nRefState))
 END IF
+
+#if PARABOLIC
+! Check for Blasius BCs and read parameters if this has not happened in the equation init
+IF (.NOT.BlasiusInitDone) THEN
+   DO i=1,nBCs
+     locType =BoundaryType(i,BC_TYPE)
+     locState=BoundaryType(i,BC_STATE)
+     IF ((locType.EQ.121).AND.(locState.EQ.1338)) THEN
+       delta99_in      = GETREAL('delta99_in')
+       x_in            = GETREAL('x_in')
+       BlasiusInitDone = .TRUE.
+       EXIT
+     END IF
+   END DO
+END IF
+#endif
 
 ! Allocate buffer array to store temp data for all BC sides
 ALLOCATE(BCData(    PP_nVar,    0:PP_N,0:PP_N,nBCSides))
