@@ -55,10 +55,6 @@ IF (nProcessors.GT.1) CALL CollectiveStop(__STAMP__, &
      'This tool is designed only for single execution!')
 
 CALL ParseCommandlineArguments()
-! check if parameter file is given
-IF ((nArgs.LT.2).OR.(.NOT.(STRICMP(GetFileExtension(Args(1)),'ini')))) THEN
-  CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: swapmesh prm-file statefile [statefiles]')
-END IF
 
 ! Define parameters needed
 CALL DefineParametersInterpolation()
@@ -85,6 +81,15 @@ CALL prms%CreateRealOption(     "abortTolerance"     , "Tolerance used to decide
                                                        "RefState is given")
 
 ! Parse parameters
+! check for command line argument --help or --markdown
+IF (doPrintHelp.GT.0) THEN
+  CALL PrintDefaultParameterFile(doPrintHelp.EQ.2, Args(1))
+  STOP
+END IF
+! check if parameter file is given
+IF ((nArgs.LT.2).OR.(.NOT.(STRICMP(GetFileExtension(Args(1)),'ini')))) THEN
+  CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: swapmesh prm-file statefile [statefiles]')
+END IF
 CALL prms%read_options(Args(1))
 
 
