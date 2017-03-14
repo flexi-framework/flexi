@@ -167,7 +167,7 @@ END IF ! (NgeoOld.EQ.NGeoNew)
 
 !$OMP PARALLEL DEFAULT(SHARED)
 !$OMP DO PRIVATE(iElemOld,iElemNew,X_NSuper,dXCL_NGeo,IPOverlaps), &
-!$OMP& PRIVATE(ii,jj,kk,xInter,best,i,j,k,dist,xi,LagXi,LagEta,LagZeta,LagVol,F,iter,Jac,sdetJac,sJac) SCHEDULE(DYNAMIC,100)
+!$OMP& PRIVATE(ii,jj,kk,xInter,best,i,j,k,dist,xi,LagXi,LagEta,LagZeta,LagVol,F,iter,Jac,sJac) SCHEDULE(DYNAMIC,100)
 DO iElemOld=1,nElemsOld
   IF(ElemDoneOld(iElemOld)) CYCLE ! already found matching new element
 
