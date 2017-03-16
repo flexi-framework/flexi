@@ -128,8 +128,8 @@ IF(nRefState .GT. 0)THEN
   DO i=1,nRefState
     RefStatePrim(1:5,i)  = GETREALARRAY('RefState',5)
 #if PP_dim==2
-  IF(RefStatePrim(4,i).NE.0) THEN
-    SWRITE(UNIT_StdOut,'(A)')' You are computing in 2D! RefStatePrim(4) wll be set to zero!' 
+  IF(RefStatePrim(4,i).NE.0.) THEN
+    SWRITE(UNIT_StdOut,'(A)')' You are computing in 2D! RefStatePrim(4) will be set to zero!' 
     RefStatePrim(4,i)=0.
   END IF
 #endif

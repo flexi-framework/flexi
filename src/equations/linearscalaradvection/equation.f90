@@ -89,7 +89,10 @@ AdvVel = GETREALARRAY('AdvVel',3)
 #if PP_dim==2
 ! Make sure advection velocity is 0 in third dimension for two-dimensional computations,
 ! computing wave speeds etc. will get easier.
-AdvVel(3) = 0.
+IF(AdvVel(3).NE.0.) THEN
+  SWRITE(UNIT_StdOut,'(A)')' You are computing in 2D! AdvVel(3) will be set to zero!' 
+  AdvVel(3) = 0.
+END IF
 #endif
 ! Read the diffusion constant from ini file
 DiffC  = GETREAL('DiffC','0.')
