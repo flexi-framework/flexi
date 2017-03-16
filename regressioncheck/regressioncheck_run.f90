@@ -445,7 +445,7 @@ ELSE ! pre-compiled binary
     ! check if binary was compiled for specific convergence tests
     CALL  GetFlagFromFile(FileName,CodeNameUppCase//'_FV',tempStr,BACK=.TRUE.)
     IF(ADJUSTL(TRIM(tempStr)).EQ.'ON')UseFV=.TRUE.
-    CALL  GetFlagFromFile(FileName,CodeNameUppCase//'_CODE2D',tempStr,BACK=.TRUE.)
+    CALL  GetFlagFromFile(FileName,CodeNameUppCase//'_2D',tempStr,BACK=.TRUE.)
     IF(ADJUSTL(TRIM(tempStr)).EQ.'ON')UseCODE2D=.TRUE.
     CALL  GetFlagFromFile(FileName,CodeNameUppCase//'_PARABOLIC',tempStr,BACK=.TRUE.)
     IF(ADJUSTL(TRIM(tempStr)).EQ.'ON')UsePARABOLIC=.TRUE.
@@ -726,6 +726,7 @@ SUBROUTINE SetParameters(iExample,parameter_ini,UseFV,UseCODE2D,UsePARABOLIC,Ski
 ! MODULES
 USE MOD_Globals
 USE MOD_RegressionCheck_Vars,    ONLY: Examples
+USE MOD_RegressionCheck_Tools,   ONLY: GetParameterFromFile
 !USE MOD_RegressionCheck_Vars,    ONLY: CodeNameLowCase,EXECPATH,BuildFV,BuildCODE2D,BuildPARABOLIC
 !USE MOD_RegressionCheck_Vars,    ONLY: BuildSolver
 !USE MOD_RegressionCheck_Build,   ONLY: BuildConfiguration
@@ -746,13 +747,14 @@ CHARACTER(LEN=*),INTENT(INOUT) :: parameter_ini
 !LOGICAL                        :: UseFV,UseCODE2D,UsePARABOLIC      !> compiler flags currently used for ConvergenceTest
 !LOGICAL                        :: ExistFile                         !> file exists=.true., file does not exist=.false.
 !CHARACTER(LEN=255)             :: FileName                          !> path to a file or its name
-!CHARACTER(LEN=255)             :: tempStr
 !LOGICAL                        :: UseMPI
+INTEGER                        :: IndNum
+CHARACTER(LEN=255)             :: MeshFile
 !===================================================================================================================================
+SWRITE(UNIT_stdOut,'(A)') " SUBROUTINE SetParameters ..."
 SkipFolder=.FALSE.
 ! Check specific compile flags for ConvergenceTest
 IF(Examples(iExample)%ConvergenceTest)THEN ! Do ConvergenceTest
-  SWRITE(UNIT_stdOut,'(A)') " SUBROUTINE SetParameters ..."
   ! Check for UseFV (finite volume operator cells)
   !print*,"UseFV=",UseFV
   SWRITE(UNIT_stdOut,'(A15,L1,A2)',ADVANCE='NO')" UseFV       =[",UseFV,"] "
@@ -775,7 +777,7 @@ IF(Examples(iExample)%ConvergenceTest)THEN ! Do ConvergenceTest
   SWRITE(UNIT_stdOut,'(A15,L1,A2)',ADVANCE='NO')" UseCODE2D   =[",UseCODE2D,"] "
   SWRITE(UNIT_stdOut,'(A)')"Setting option in parameter.ini: NOTHING (not implemented yet)"
   IF(UseCODE2D)THEN
-      !CALL SetSubExample(iExample,-1,parameter_ini,'MeshFile','33')
+!      CALL SetSubExample(iExample,-1,parameter_ini,'MeshFile','33')
   ELSE
       !CALL SetSubExample(iExample,-1,parameter_ini,'MeshFile','0')
   END IF
@@ -790,6 +792,26 @@ IF(Examples(iExample)%ConvergenceTest)THEN ! Do ConvergenceTest
   END IF
 
 
+END IF
+
+! Check for 2D version of the code
+!print*,"UseCODE2D=",UseCODE2D
+SWRITE(UNIT_stdOut,'(A15,L1,A2)',ADVANCE='NO')" UseCODE2D   =[",UseCODE2D,"] "
+SWRITE(UNIT_stdOut,'(A)')"Setting option in parameter.ini: MESHFILE"
+! read MeshFile from parameter_ini and search for "3D", then substitute with 2D
+CALL GetParameterFromFile(TRIM(Examples(iExample)%PATH)//parameter_ini,'MeshFile',meshFile)
+IF(UseCODE2D)THEN
+  IndNum=INDEX(meshFile,'3D')
+  IF(IndNum.GT.0)THEN
+    meshFile(IndNum:IndNum)='2'
+    CALL SetSubExample(iExample,-1,parameter_ini,'MeshFile',meshFile)
+  END IF
+ELSE
+  IndNum=INDEX(meshFile,'2D')
+  IF(IndNum.GT.0)THEN
+    meshFile(IndNum:IndNum)='3'
+    CALL SetSubExample(iExample,-1,parameter_ini,'MeshFile',meshFile)
+  END IF
 END IF
 
 END SUBROUTINE SetParameters

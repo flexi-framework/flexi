@@ -129,7 +129,8 @@ IF(nRefState .GT. 0)THEN
     RefStatePrim(1:5,i)  = GETREALARRAY('RefState',5)
 #if PP_dim==2
   IF(RefStatePrim(4,i).NE.0) THEN
-    CALL CollectiveStop(__STAMP__,'You are computing in 2D! Please set RefStatePrim(4) = 0!') 
+    SWRITE(UNIT_StdOut,'(A)')' You are computing in 2D! RefStatePrim(4) wll be set to zero!' 
+    RefStatePrim(4,i)=0.
   END IF
 #endif
     ! TODO: ATTENTION only sRho and Pressure of UE filled!!!

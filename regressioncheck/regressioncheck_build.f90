@@ -405,7 +405,7 @@ IF(BuildValid(iReggieBuild))THEN
 
     ! check 2D: 2D version of code
     CALL GetFlagFromFile(TRIM(BuildDir)//'build_reggie/bin/configuration.cmake',&
-                                                            CodeNameUppCase//'_CODE2D'    ,BuildCODE2D(iReggieBuild),BACK=.TRUE.)
+                                                            CodeNameUppCase//'_2D'    ,BuildCODE2D(iReggieBuild),BACK=.TRUE.)
     IF(BuildCODE2D(iReggieBuild).EQ.'flag does not exist')BuildCODE2D(iReggieBuild)='OFF'
 
     ! check PARABOLIC: with or without parabolic terms
