@@ -83,8 +83,8 @@ CALL DatasetExists(File_ID,'nElems_IJK',exists)
 SDEALLOCATE(Elem_IJK)
 ALLOCATE(Elem_IJK(3,nElems))
 IF (exists) THEN
-  CALL ReadArray('nElems_IJK',1,(/3/),0,1,IntegerArray=nElems_IJK)
-  CALL ReadArray('Elem_IJK',2,(/3,nElems/),offsetElem,2,IntegerArray=Elem_IJK)
+  CALL ReadArray('nElems_IJK',1,(/3/),0,1,IntArray=nElems_IJK)
+  CALL ReadArray('Elem_IJK',2,(/3,nElems/),offsetElem,2,IntArray=Elem_IJK)
 ELSE 
   nElems_IJK(1) = 1
   nElems_IJK(2) = nElems

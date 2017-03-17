@@ -55,7 +55,7 @@ CONTAINS
 !> The additional variables are stored in the datasets 'ElemData' (elementwise data) and 'FieldData' (pointwise data).
 !> Also a list of all available boundary names is created for surface visualization.
 !===================================================================================================================================
-SUBROUTINE visu_getVarNamesAndFileType(statefile,varnames_loc, bcnames_loc) 
+SUBROUTINE visu_getVarNamesAndFileType(statefile,meshfile,varnames_loc, bcnames_loc) 
 USE MOD_Globals
 USE MOD_Visu_Vars      ,ONLY: FileType,VarNamesHDF5,nBCNamesAll
 USE MOD_HDF5_Input     ,ONLY: OpenDataFile,CloseDataFile,GetDataSize,GetVarNames,ISVALIDMESHFILE,ISVALIDHDF5FILE,ReadAttribute
@@ -66,12 +66,13 @@ USE MOD_EOS_Posti_Vars ,ONLY: DepNames,nVarDepEOS
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 CHARACTER(LEN=255),INTENT(IN)                       :: statefile
+CHARACTER(LEN=*)  ,INTENT(IN)                       :: meshfile
 CHARACTER(LEN=255),INTENT(INOUT),ALLOCATABLE,TARGET :: varnames_loc(:)
 CHARACTER(LEN=255),INTENT(INOUT),ALLOCATABLE,TARGET :: bcnames_loc(:)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                                             :: i,j,nVar,dims
-LOGICAL                                             :: varnames_found,readDGsolutionVars,sameVars,VarNamesExist
+LOGICAL                                             :: varnames_found,readDGsolutionVars,sameVars,VarNamesExist, file_exists
 CHARACTER(LEN=255),ALLOCATABLE                      :: datasetNames(:)
 CHARACTER(LEN=255),ALLOCATABLE                      :: varnames_tmp(:)
 CHARACTER(LEN=255),ALLOCATABLE                      :: tmp(:)
@@ -132,6 +133,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! other file
         CALL GetVarNames("VarNamesAddField",varnames_tmp,VarNamesExist)
       ELSE
         CALL GetDataSize(File_ID,TRIM(datasetNames(i)),dims,HSize)
+        IF ((dims.NE.5).OR.(dims.NE.2)) CYCLE ! Do not add datasets to the list that can not contain elementwise or field data
         ALLOCATE(varnames_tmp(INT(HSize(1))))
         DO j=1,INT(HSize(1))
           WRITE(varnames_tmp(j),'(I0)') j
@@ -158,21 +160,28 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! other file
     nVar = nVar + SIZE(varnames_tmp)
   END DO
 
-  ! Save mesh file to get boundary names later
-  CALL ReadAttribute(File_ID,'MeshFile',1,StrScalar =MeshFile_loc)
+  IF (LEN_TRIM(meshfile).EQ.0) THEN
+    ! Save mesh file to get boundary names later
+    CALL ReadAttribute(File_ID,'MeshFile',1,StrScalar =MeshFile_loc)
+  ELSE
+    MeshFile_loc = meshfile
+  END IF
 
   CALL CloseDataFile()
 
-  ! Open the mesh file and read all boundary names for surface visualization
-  CALL OpenDataFile(MeshFile_loc,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
-  CALL GetDataSize(File_ID,'BCNames',nDims,HSize)
-  CHECKSAFEINT(HSize(1),4)
-  nBCNamesAll=INT(HSize(1),4)
-  DEALLOCATE(HSize)
-  SDEALLOCATE(bcnames_loc)
-  ALLOCATE(bcnames_loc(nBCNamesAll))
-  CALL ReadArray('BCNames',1,(/nBCNamesAll/),Offset,1,StrArray=bcnames_loc)
-  CALL CloseDataFile()
+  INQUIRE(FILE=TRIM(MeshFile_loc), EXIST=file_exists)
+  IF (file_exists) THEN
+    ! Open the mesh file and read all boundary names for surface visualization
+    CALL OpenDataFile(MeshFile_loc,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+    CALL GetDataSize(File_ID,'BCNames',nDims,HSize)
+    CHECKSAFEINT(HSize(1),4)
+    nBCNamesAll=INT(HSize(1),4)
+    DEALLOCATE(HSize)
+    SDEALLOCATE(bcnames_loc)
+    ALLOCATE(bcnames_loc(nBCNamesAll))
+    CALL ReadArray('BCNames',1,(/nBCNamesAll/),Offset,1,StrArray=bcnames_loc)
+    CALL CloseDataFile()
+  END IF
 
   SDEALLOCATE(datasetNames)
 END IF
@@ -211,10 +220,9 @@ CHARACTER(LEN=255),INTENT(INOUT) :: postifile
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL
 INTEGER                          :: nElems_State
-CHARACTER(LEN=255)               :: NodeType_State 
+CHARACTER(LEN=255)               :: NodeType_State, cwd
 !===================================================================================================================================
-CALL visu_getVarNamesAndFileType(statefile,VarnamesAll,BCNamesAll)
-IF (STRICMP(statefile,'Mesh')) THEN
+IF (STRICMP(fileType,'Mesh')) THEN
     CALL CollectiveStop(__STAMP__, &
         "FileType==Mesh, but we try to initialize a state file!")
 END IF
@@ -230,11 +238,14 @@ CALL prms%read_options(postifile)
 NVisu             = GETINT("NVisu")
 ! again read MeshFile from posti prm file (this overwrites the MeshFile read from the state file)
 
-!!!!!!
-! WARNING: GETCWD is a GNU extension to the Fortran standard and will probably not work on other compilers
-CALL GETCWD(MeshFile)
-!!!!!!
-Meshfile          =  TRIM(Meshfile) // "/" // GETSTR("MeshFile",MeshFile_state) 
+Meshfile          =  GETSTR("MeshFile",MeshFile_state) 
+IF (.NOT.FILEEXISTS(MeshFile)) THEN
+  !!!!!!
+  ! WARNING: GETCWD is a GNU extension to the Fortran standard and will probably not work on other compilers
+  CALL GETCWD(cwd)
+  !!!!!!
+  Meshfile          =  TRIM(cwd) // "/" // TRIM(Meshfile)
+END IF
 Avg2D             = GETLOGICAL("Avg2D")
 #if PP_dim == 2
 IF (Avg2D) THEN
@@ -244,6 +255,11 @@ END IF
 #endif
 NodeTypeVisuPosti = GETSTR('NodeTypeVisu')
 DGonly            = GETLOGICAL('DGonly')
+CALL CloseDataFile()
+
+CALL visu_getVarNamesAndFileType(statefile,"",VarnamesAll,BCNamesAll)
+
+CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 
 ! HDF5 Output for avg2D
 IF (Avg2D) Avg2DHDF5Output = GETLOGICAL("Avg2DHDF5Output")

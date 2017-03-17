@@ -12,525 +12,6 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 
-
-!==================================================================================================================================
-!> Changes a 2D or 3D tensor product polynomial with Lagrange Basis of degree NIn to
-!> 2D or 3D tensor product polynomial of a Lagrange Basis NOut, using two
-!> arbitrary point distributions xi_In(0:NIn) and xi_Out(0:NOut) and a series of 1D operations 
-!> \f[ \tilde{u}_{:,j} = \mathcal{V}_{1D,(Nout+1)x(Nin+1)}^{-1} \hat{u}_{:,j} \f]
-!> \f[ \hat{p}_{i,:} = \mathcal{V}_{1D,(Nout+1)x(Nin+1)}^{-1} \tilde{u}_{i,:} \f]
-!==================================================================================================================================
-
-
-!==================================================================================================================================
-!> Interpolate a 3D tensor product Lagrange polynomial defined by (NIn+1) 1D Lagrange basis functions of order (Nin) and node 
-!> positions xi_In(0:Nin) to another 3D tensor product Lagrange basis defined by (NOut+1) 1D interpolation points on the node
-!> positions xi_out(0:NOut).
-!> xi is defined in the 1D referent element \f$ \xi \in [-1,1] \f$.
-!> _Mult means that the routine is not restricted to one element, but the data fields of several elements (nElems) is
-!> processed.
-!==================================================================================================================================
-PURE SUBROUTINE ChangeBasis3D_selective(Dim1,NIn,NOut,range_1,range_N,firstind,lastind,Vdm,X_In,X_Out,mask,mask_ref,&
-        addToOutput)
-!==================================================================================================================================
-!==================================================================================================================================
-! MODULES
-USE MOD_PreProc
-IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)           :: Dim1,NIn,NOut,firstind,lastind,range_1,range_N
-REAL,INTENT(IN)              :: X_In(1:Dim1,0:NIn,0:NIn,0:NIn,range_1:range_N)
-REAL,INTENT(IN)              :: Vdm(0:NOut,0:NIn)
-REAL,INTENT(INOUT)           :: X_Out(1:Dim1,0:NOut,0:NOut,0:NOut,range_1:range_N)
-INTEGER,INTENT(IN),OPTIONAL  :: mask(range_1:range_N)
-INTEGER,INTENT(IN),OPTIONAL  :: mask_ref
-LOGICAL,INTENT(IN),OPTIONAL  :: addToOutput
-!----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-INTEGER             :: iI,jI,kI,iO,jO,kO,Ind,Ind2,iVec
-REAL                :: X_Buf1(Dim1*PP_VEC,0:NOut,0:NIn,0:NIn)  ! first intermediate results from 1D interpolations
-REAL                :: X_Buf2(Dim1*PP_VEC,0:NOut,0:NOut,0:NIn) ! first intermediate results from 1D interpolations
-REAL                :: VECIN (Dim1*PP_VEC,0:NIn,0:NIn,0:NIn)
-REAL                :: VECOUT(Dim1*PP_VEC,0:NOut,0:NOut,0:NOut)
-INTEGER             :: mask_loc(firstind:lastind), mask_ref_loc
-LOGICAL             :: addToOutput_loc
-!==================================================================================================================================
-IF (PRESENT(mask)) THEN
-  mask_loc = mask(firstind:lastind)
-  mask_ref_loc = mask_ref
-ELSE
-  mask_loc = 0
-  mask_ref_loc = 0
-END IF
-addToOutput_loc=.FALSE.
-IF (PRESENT(addToOutput)) THEN
-  addToOutput_loc = addToOutput
-END IF
-Ind = firstind
-Ind2 = firstind
-
-DO WHILE (Ind.LE.lastind)
-  ! pack solution into vector VECIN
-  iVec = 1
-  DO WHILE (iVec < Dim1*PP_VEC)
-    IF (mask_loc(Ind).EQ.mask_ref_loc) THEN
-      VECIN(iVec:iVec+Dim1-1,:,:,:) = X_In(:,:,:,:,Ind)
-      IF (addToOutput_loc) THEN
-        ! initialize VECOUT with X_Out
-        VECOUT(iVec:iVec+Dim1-1,:,:,:) = X_Out(:,:,:,:,Ind)
-      END IF
-      iVec = iVec + Dim1
-    END IF
-    Ind = Ind + 1
-    IF (Ind.GT.lastind) EXIT
-  END DO
-  ! nullify VECOUT if not initialized with data from X_Out
-  IF (.NOT.addToOutput_loc) THEN
-    VECOUT=0.
-  END IF
-
-
-  ! first direction iI
-  DO kI=0,NIn; DO jI=0,NIn
-    DO iO=0,NOut
-      X_Buf1(1:iVec-1,iO,jI,kI)=Vdm(iO,0)*VECIN(1:iVec-1,0,jI,kI)
-    END DO
-    DO iI=1,NIn
-      DO iO=0,NOut
-        X_Buf1(1:iVec-1,iO,jI,kI)=X_Buf1(1:iVec-1,iO,jI,kI)+Vdm(iO,iI)*VECIN(1:iVec-1,iI,jI,kI)
-      END DO
-    END DO
-  END DO; END DO
-
-  ! second direction jI
-  DO kI=0,NIn
-    DO jO=0,NOut; DO iO=0,NOut
-      X_Buf2(1:iVec-1,iO,jO,kI)=Vdm(jO,0)*X_Buf1(1:iVec-1,iO,0,kI)
-    END DO; END DO
-    DO jI=1,NIn
-      DO jO=0,NOut; DO iO=0,NOut
-        X_Buf2(1:iVec-1,iO,jO,kI)=X_Buf2(1:iVec-1,iO,jO,kI)+Vdm(jO,jI)*X_Buf1(1:iVec-1,iO,jI,kI)
-      END DO; END DO
-    END DO
-  END DO
-
-  ! last direction kI
-  DO kI=0,NIn
-    DO kO=0,NOut; DO jO=0,NOut; DO iO=0,NOut
-      VECOUT(1:iVec-1,iO,jO,kO)=VECOUT(1:iVec-1,iO,jO,kO)+Vdm(kO,kI)*X_Buf2(1:iVec-1,iO,jO,kI)
-    END DO; END DO; END DO
-  END DO
-
-  ! unpack solution from vector VECOUT
-  iVec = 1
-  DO WHILE (iVec < Dim1*PP_VEC)
-    IF (mask_loc(Ind2).EQ.mask_ref_loc) THEN
-      X_Out(:,:,:,:,Ind2) = VECOUT(iVec:iVec+Dim1-1,:,:,:)
-      iVec = iVec + Dim1
-    END IF
-    Ind2 = Ind2 + 1
-    IF (Ind2.GT.lastind) EXIT
-  END DO
-END DO  
-END SUBROUTINE ChangeBasis3D_selective
-
-PURE SUBROUTINE ChangeBasis2D_selective(Dim1,NIn,NOut,range_1,range_N,firstind,lastind,Vdm,X_In,X_Out,mask,mask_ref,&
-        addToOutput)
-!==================================================================================================================================
-!==================================================================================================================================
-! MODULES
-USE MOD_PreProc
-IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)           :: Dim1,NIn,NOut,firstind,lastind,range_1,range_N
-REAL,INTENT(IN)              :: X_In(1:Dim1,0:NIn,0:NIn     _ADD_DIM ,range_1:range_N)
-REAL,INTENT(IN)              :: Vdm(0:NOut,0:NIn)
-REAL,INTENT(INOUT)           :: X_Out(1:Dim1,0:NOut,0:NOut  _ADD_DIM ,range_1:range_N)
-INTEGER,INTENT(IN),OPTIONAL  :: mask(range_1:range_N)
-INTEGER,INTENT(IN),OPTIONAL  :: mask_ref
-LOGICAL,INTENT(IN),OPTIONAL  :: addToOutput
-!----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-INTEGER             :: iI,jI,iO,jO,Ind,Ind2,iVec
-REAL                :: X_Buf1(Dim1*PP_VEC,0:NOut,0:NIn)  ! first intermediate results from 1D interpolations
-REAL                :: VECIN (Dim1*PP_VEC,0:NIn,0:NIn)
-REAL                :: VECOUT(Dim1*PP_VEC,0:NOut,0:NOut)
-INTEGER             :: mask_loc(firstind:lastind), mask_ref_loc
-LOGICAL             :: addToOutput_loc
-!==================================================================================================================================
-IF (PRESENT(mask)) THEN
-  mask_loc = mask(firstind:lastind)
-  mask_ref_loc = mask_ref
-ELSE
-  mask_loc = 0
-  mask_ref_loc = 0
-END IF
-addToOutput_loc=.FALSE.
-IF (PRESENT(addToOutput)) THEN
-  addToOutput_loc = addToOutput
-END IF
-Ind = firstind
-Ind2 = firstind
-DO WHILE (Ind.LE.lastind)
-  ! pack solution into vector VECIN
-  iVec = 1
-  DO WHILE (iVec < Dim1*PP_VEC)
-    IF (mask_loc(Ind).EQ.mask_ref_loc) THEN
-      VECIN(iVec:iVec+Dim1-1,:,:)    = X_In(:,:,:   _ADD_DIM ,Ind)
-      IF (addToOutput_loc) THEN
-        ! initialize VECOUT with X_Out
-        VECOUT(iVec:iVec+Dim1-1,:,:) = X_Out(:,:,:  _ADD_DIM ,Ind)
-      END IF
-      iVec = iVec + Dim1
-    END IF
-    Ind = Ind + 1
-    IF (Ind.GT.lastind) EXIT
-  END DO
-  ! nullify VECOUT if not initialized with data from X_Out
-  IF (.NOT.addToOutput_loc) THEN
-    VECOUT=0.
-  END IF
-
-  ! first direction iI
-  DO jI=0,NIn
-    DO iO=0,NOut
-      X_Buf1(1:iVec-1,iO,jI)=Vdm(iO,0)*VECIN(1:iVec-1,0,jI)
-    END DO
-    DO iI=1,NIn
-      DO iO=0,NOut
-        X_Buf1(1:iVec-1,iO,jI)=X_Buf1(1:iVec-1,iO,jI)+Vdm(iO,iI)*VECIN(1:iVec-1,iI,jI)
-      END DO
-    END DO
-  END DO
-
-  ! second direction jI
-  DO jI=0,NIn
-    DO jO=0,NOut; DO iO=0,NOut
-      VECOUT(1:iVec-1,iO,jO)=VECOUT(1:iVec-1,iO,jO)+Vdm(jO,jI)*X_Buf1(1:iVec-1,iO,jI)
-    END DO; END DO
-  END DO
-
-  ! unpack solution from vector VECOUT
-  iVec = 1
-  DO WHILE (iVec < Dim1*PP_VEC)
-    IF (mask_loc(Ind2).EQ.mask_ref_loc) THEN
-      X_Out(:,:,:  _ADD_DIM ,Ind2) = VECOUT(iVec:iVec+Dim1-1,:,:)
-      iVec = iVec + Dim1
-    END IF
-    Ind2 = Ind2 + 1
-    IF (Ind2.GT.lastind) EXIT
-  END DO
-END DO  
-END SUBROUTINE ChangeBasis2D_selective
-
-PURE SUBROUTINE ChangeBasis1D_selective(Dim1,NIn,NOut,range_1,range_N,firstind,lastind,Vdm,X_In,X_Out,mask,mask_ref,&
-        addToOutput)
-!==================================================================================================================================
-!==================================================================================================================================
-! MODULES
-USE MOD_PreProc
-IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)           :: Dim1,NIn,NOut,firstind,lastind,range_1,range_N
-REAL,INTENT(IN)              :: X_In(1:Dim1,0:NIn    _ADD_DIM ,range_1:range_N)
-REAL,INTENT(IN)              :: Vdm(0:NOut,0:NIn)
-REAL,INTENT(INOUT)           :: X_Out(1:Dim1,0:NOut  _ADD_DIM ,range_1:range_N)
-INTEGER,INTENT(IN),OPTIONAL  :: mask(range_1:range_N)
-INTEGER,INTENT(IN),OPTIONAL  :: mask_ref
-LOGICAL,INTENT(IN),OPTIONAL  :: addToOutput
-!----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-INTEGER             :: iI,iO,Ind,Ind2,iVec
-REAL                :: VECIN (Dim1*PP_VEC,0:NIn)
-REAL                :: VECOUT(Dim1*PP_VEC,0:NOut)
-INTEGER             :: mask_loc(firstind:lastind), mask_ref_loc
-LOGICAL             :: addToOutput_loc
-!==================================================================================================================================
-IF (PRESENT(mask)) THEN
-  mask_loc = mask(firstind:lastind)
-  mask_ref_loc = mask_ref
-ELSE
-  mask_loc = 0
-  mask_ref_loc = 0
-END IF
-addToOutput_loc=.FALSE.
-IF (PRESENT(addToOutput)) THEN
-  addToOutput_loc = addToOutput
-END IF
-Ind = firstind
-Ind2 = firstind
-DO WHILE (Ind.LE.lastind)
-  ! pack solution into vector VECIN
-  iVec = 1
-  DO WHILE (iVec < Dim1*PP_VEC)
-    IF (mask_loc(Ind).EQ.mask_ref_loc) THEN
-      VECIN(iVec:iVec+Dim1-1,:) =    X_In(:,:   _ADD_DIM ,Ind)
-      IF (addToOutput_loc) THEN
-        ! initialize VECOUT with X_Out
-        VECOUT(iVec:iVec+Dim1-1,:) = X_Out(:,:  _ADD_DIM ,Ind)
-      END IF
-      iVec = iVec + Dim1
-    END IF
-    Ind = Ind + 1
-    IF (Ind.GT.lastind) EXIT
-  END DO
-  ! nullify VECOUT if not initialized with data from X_Out
-  IF (.NOT.addToOutput_loc) THEN
-    VECOUT=0.
-  END IF
-
-  ! first direction iI
-  DO iI=0,NIn
-    DO iO=0,NOut
-      VECOUT(1:iVec-1,iO)=VECOUT(1:iVec-1,iO)+Vdm(iO,iI)*VECIN(1:iVec-1,iI)
-    END DO
-  END DO
-
-  ! unpack solution from vector VECOUT
-  iVec = 1
-  DO WHILE (iVec < Dim1*PP_VEC)
-    IF (mask_loc(Ind2).EQ.mask_ref_loc) THEN
-      X_Out(:,:  _ADD_DIM ,Ind2) = VECOUT(iVec:iVec+Dim1-1,:)
-      iVec = iVec + Dim1
-    END IF
-    Ind2 = Ind2 + 1
-    IF (Ind2.GT.lastind) EXIT
-  END DO
-END DO  
-END SUBROUTINE ChangeBasis1D_selective
-
-
-PURE SUBROUTINE ChangeBasis3D_selective_inplace(Dim1,NIn,range_1,range_N,firstind,lastind,Vdm,X_InOut,mask,mask_ref)
-!==================================================================================================================================
-!==================================================================================================================================
-! MODULES
-USE MOD_PreProc
-IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)           :: Dim1,NIn,firstind,lastind,range_1,range_N
-REAL,INTENT(INOUT)           :: X_InOut(1:Dim1,0:NIn,0:NIn,0:NIn,range_1:range_N)
-REAL,INTENT(IN)              :: Vdm(0:NIn,0:NIn)
-INTEGER,INTENT(IN),OPTIONAL  :: mask(range_1:range_N)
-INTEGER,INTENT(IN),OPTIONAL  :: mask_ref
-!----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-INTEGER             :: iI,jI,kI,iO,jO,kO,Ind,Ind2,iVec
-REAL                :: X_Buf1(Dim1*PP_VEC,0:NIn,0:NIn,0:NIn) ! first intermediate results from 1D interpolations
-REAL                :: X_Buf2(Dim1*PP_VEC,0:NIn,0:NIn,0:NIn) ! first intermediate results from 1D interpolations
-REAL                :: VECIN (Dim1*PP_VEC,0:NIn,0:NIn,0:NIn)
-REAL                :: VECOUT(Dim1*PP_VEC,0:NIn,0:NIn,0:NIn)
-INTEGER             :: mask_loc(firstind:lastind), mask_ref_loc
-!==================================================================================================================================
-IF (PRESENT(mask)) THEN
-  mask_loc = mask(firstind:lastind)
-  mask_ref_loc = mask_ref
-ELSE
-  mask_loc = 0
-  mask_ref_loc = 0
-END IF
-Ind = firstind
-Ind2 = firstind
-
-DO WHILE (Ind.LE.lastind)
-  ! pack solution into vector VECIN
-  iVec = 1
-  DO WHILE (iVec < Dim1*PP_VEC)
-    IF (mask_loc(Ind).EQ.mask_ref_loc) THEN
-      VECIN(iVec:iVec+Dim1-1,:,:,:) = X_InOut(:,:,:,:,Ind)
-      iVec = iVec + Dim1
-    END IF
-    Ind = Ind + 1
-    IF (Ind.GT.lastind) EXIT
-  END DO
-  VECOUT=0.
-
-
-  ! first direction iI
-  DO kI=0,NIn; DO jI=0,NIn
-    DO iO=0,NIn
-      X_Buf1(1:iVec-1,iO,jI,kI)=Vdm(iO,0)*VECIN(1:iVec-1,0,jI,kI)
-    END DO
-    DO iI=1,NIn
-      DO iO=0,NIn
-        X_Buf1(1:iVec-1,iO,jI,kI)=X_Buf1(1:iVec-1,iO,jI,kI)+Vdm(iO,iI)*VECIN(1:iVec-1,iI,jI,kI)
-      END DO
-    END DO
-  END DO; END DO
-
-  ! second direction jI
-  DO kI=0,NIn
-    DO jO=0,NIn; DO iO=0,NIn
-      X_Buf2(1:iVec-1,iO,jO,kI)=Vdm(jO,0)*X_Buf1(1:iVec-1,iO,0,kI)
-    END DO; END DO
-    DO jI=1,NIn
-      DO jO=0,NIn; DO iO=0,NIn
-        X_Buf2(1:iVec-1,iO,jO,kI)=X_Buf2(1:iVec-1,iO,jO,kI)+Vdm(jO,jI)*X_Buf1(1:iVec-1,iO,jI,kI)
-      END DO; END DO
-    END DO
-  END DO
-
-  ! last direction kI
-  DO kI=0,NIn
-    DO kO=0,NIn; DO jO=0,NIn; DO iO=0,NIn
-      VECOUT(1:iVec-1,iO,jO,kO)=VECOUT(1:iVec-1,iO,jO,kO)+Vdm(kO,kI)*X_Buf2(1:iVec-1,iO,jO,kI)
-    END DO; END DO; END DO
-  END DO
-
-  ! unpack solution from vector VECOUT
-  iVec = 1
-  DO WHILE (iVec < Dim1*PP_VEC)
-    IF (mask_loc(Ind2).EQ.mask_ref_loc) THEN
-      X_InOut(:,:,:,:,Ind2) = VECOUT(iVec:iVec+Dim1-1,:,:,:)
-      iVec = iVec + Dim1
-    END IF
-    Ind2 = Ind2 + 1
-    IF (Ind2.GT.lastind) EXIT
-  END DO
-END DO  
-END SUBROUTINE ChangeBasis3D_selective_inplace
-
-PURE SUBROUTINE ChangeBasis2D_selective_inplace(Dim1,NIn,range_1,range_N,firstind,lastind,Vdm,X_InOut,mask,mask_ref)
-!==================================================================================================================================
-!==================================================================================================================================
-! MODULES
-USE MOD_PreProc
-IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)           :: Dim1,NIn,firstind,lastind,range_1,range_N
-REAL,INTENT(INOUT)           :: X_InOut(1:Dim1,0:NIn,0:NIn   _ADD_DIM ,range_1:range_N)
-REAL,INTENT(IN)              :: Vdm(0:NIn,0:NIn)
-INTEGER,INTENT(IN),OPTIONAL  :: mask(range_1:range_N)
-INTEGER,INTENT(IN),OPTIONAL  :: mask_ref
-!----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-INTEGER             :: iI,jI,iO,jO,Ind,Ind2,iVec
-REAL                :: X_Buf1(Dim1*PP_VEC,0:NIn,0:NIn)  ! first intermediate results from 1D interpolations
-REAL                :: VECIN (Dim1*PP_VEC,0:NIn,0:NIn)
-REAL                :: VECOUT(Dim1*PP_VEC,0:NIn,0:NIn)
-INTEGER             :: mask_loc(firstind:lastind), mask_ref_loc
-!==================================================================================================================================
-IF (PRESENT(mask)) THEN
-  mask_loc = mask(firstind:lastind)
-  mask_ref_loc = mask_ref
-ELSE
-  mask_loc = 0
-  mask_ref_loc = 0
-END IF
-Ind = firstind
-Ind2 = firstind
-
-DO WHILE (Ind.LE.lastind)
-  ! pack solution into vector VECIN
-  iVec = 1
-  DO WHILE (iVec < Dim1*PP_VEC)
-    IF (mask_loc(Ind).EQ.mask_ref_loc) THEN
-      VECIN(iVec:iVec+Dim1-1,:,:)    = X_InOut(:,:,:  _ADD_DIM ,Ind)
-      iVec = iVec + Dim1
-    END IF
-    Ind = Ind + 1
-    IF (Ind.GT.lastind) EXIT
-  END DO
-
-  ! first direction iI
-  DO jI=0,NIn
-    DO iO=0,NIn
-      X_Buf1(1:iVec-1,iO,jI)=Vdm(iO,0)*VECIN(1:iVec-1,0,jI)
-    END DO
-    DO iI=1,NIn
-      DO iO=0,NIn
-        X_Buf1(1:iVec-1,iO,jI)=X_Buf1(1:iVec-1,iO,jI)+Vdm(iO,iI)*VECIN(1:iVec-1,iI,jI)
-      END DO
-    END DO
-  END DO
-
-  ! second direction jI
-  VECOUT=0.
-  DO jI=0,NIn
-    DO jO=0,NIn; DO iO=0,NIn
-      VECOUT(1:iVec-1,iO,jO)=VECOUT(1:iVec-1,iO,jO)+Vdm(jO,jI)*X_Buf1(1:iVec-1,iO,jI)
-    END DO; END DO
-  END DO
-
-  ! unpack solution from vector VECOUT
-  iVec = 1
-  DO WHILE (iVec < Dim1*PP_VEC)
-    IF (mask_loc(Ind2).EQ.mask_ref_loc) THEN
-      X_InOut(:,:,:  _ADD_DIM ,Ind2) = VECOUT(iVec:iVec+Dim1-1,:,:)
-      iVec = iVec + Dim1
-    END IF
-    Ind2 = Ind2 + 1
-    IF (Ind2.GT.lastind) EXIT
-  END DO
-END DO  
-END SUBROUTINE ChangeBasis2D_selective_inplace
-
-PURE SUBROUTINE ChangeBasis1D_selective_inplace(Dim1,NIn,range_1,range_N,firstind,lastind,Vdm,X_InOut,mask,mask_ref)
-!==================================================================================================================================
-!==================================================================================================================================
-! MODULES
-USE MOD_PreProc
-IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)           :: Dim1,NIn,firstind,lastind,range_1,range_N
-REAL,INTENT(INOUT)           :: X_InOut(1:Dim1,0:NIn   _ADD_DIM ,range_1:range_N)
-REAL,INTENT(IN)              :: Vdm(0:NIn,0:NIn)
-INTEGER,INTENT(IN),OPTIONAL  :: mask(range_1:range_N)
-INTEGER,INTENT(IN),OPTIONAL  :: mask_ref
-!----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-INTEGER             :: iI,iO,Ind,Ind2,iVec
-REAL                :: VECIN (Dim1*PP_VEC,0:NIn)
-REAL                :: VECOUT(Dim1*PP_VEC,0:NIn)
-INTEGER             :: mask_loc(firstind:lastind), mask_ref_loc
-!==================================================================================================================================
-IF (PRESENT(mask)) THEN
-  mask_loc = mask(firstind:lastind)
-  mask_ref_loc = mask_ref
-ELSE
-  mask_loc = 0
-  mask_ref_loc = 0
-END IF
-Ind = firstind
-Ind2 = firstind
-DO WHILE (Ind.LE.lastind)
-  ! pack solution into vector VECIN
-  iVec = 1
-  DO WHILE (iVec < Dim1*PP_VEC)
-    IF (mask_loc(Ind).EQ.mask_ref_loc) THEN
-      VECIN(iVec:iVec+Dim1-1,:) =    X_InOut(:,:  _ADD_DIM ,Ind)
-      iVec = iVec + Dim1
-    END IF
-    Ind = Ind + 1
-    IF (Ind.GT.lastind) EXIT
-  END DO
-
-  ! first direction iI
-  VECOUT=0.
-  DO iI=0,NIn
-    DO iO=0,NIn
-      VECOUT(1:iVec-1,iO)=VECOUT(1:iVec-1,iO)+Vdm(iO,iI)*VECIN(1:iVec-1,iI)
-    END DO
-  END DO
-
-  ! unpack solution from vector VECOUT
-  iVec = 1
-  DO WHILE (iVec < Dim1*PP_VEC)
-    IF (mask_loc(Ind2).EQ.mask_ref_loc) THEN
-      X_InOut(:,:  _ADD_DIM ,Ind2) = VECOUT(iVec:iVec+Dim1-1,:)
-      iVec = iVec + Dim1
-    END IF
-    Ind2 = Ind2 + 1
-    IF (Ind2.GT.lastind) EXIT
-  END DO
-END DO  
-END SUBROUTINE ChangeBasis1D_selective_inplace
-
 !==================================================================================================================================
 !> Interpolate a 3D tensor product Lagrange polynomial defined by (NIn+1) 1D Lagrange basis functions of order (Nin) and node 
 !> positions xi_In(0:Nin) to another 3D tensor product Lagrange basis defined by (NOut+1) 1D interpolation points on the node
@@ -578,6 +59,52 @@ DO kI=0,NIn; DO kO=0,NOut; DO jO=0,NOut
 END DO; END DO; END DO
 END SUBROUTINE ChangeBasis3D_Single
 
+!==================================================================================================================================
+!> Interpolate a 3D tensor product Lagrange polynomial defined by (NIn+1) 1D Lagrange basis functions of order (Nin) and node 
+!> positions xi_In(0:Nin) to another 3D tensor product Lagrange basis defined by (NOut+1) 1D interpolation points on the node
+!> positions xi_out(0:NOut).
+!> xi is defined in the 1D referent element \f$ \xi \in [-1,1] \f$.
+!>  _Single is only suitable for one tensor product element
+!==================================================================================================================================
+PURE SUBROUTINE ChangeBasis3D_Overwrite(Dim1,NIn,NOut,Vdm,X_In)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN)  :: Dim1                                    !< Number of variables
+INTEGER,INTENT(IN)  :: NIn                                     !< Input polynomial degree, no. of points = NIn+1
+INTEGER,INTENT(IN)  :: NOut                                    !< Output polynomial degree, no. of points = NOut+1
+REAL,INTENT(INOUT)  :: X_In(1:Dim1,0:NIn,0:NIn,0:NIn)          !< Input field, dimensions must match Dim1,NIn
+REAL,INTENT(IN)     :: Vdm(0:NOut,0:NIn)                       !< 1D Vandermonde In -> Out
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER             :: iI,jI,kI,iO,jO,kO
+REAL                :: X_Buf1(1:Dim1,0:NOut,0:NIn,0:NIn)       ! first intermediate results from 1D interpolations
+REAL                :: X_Buf2(1:Dim1,0:NOut,0:NOut,0:NIn)      ! second intermediate results from 1D interpolations
+!==================================================================================================================================
+X_buf1=0.
+! first direction iI
+DO kI=0,NIn; DO jI=0,NIn; DO iI=0,NIn
+  DO iO=0,NOut
+    X_Buf1(:,iO,jI,kI)=X_Buf1(:,iO,jI,kI)+Vdm(iO,iI)*X_In(:,iI,jI,kI)
+  END DO
+END DO; END DO; END DO
+X_buf2=0.
+! second direction jI
+DO kI=0,NIn; DO jI=0,NIn; DO jO=0,NOut
+  DO iO=0,NOut
+    X_Buf2(:,iO,jO,kI)=X_Buf2(:,iO,jO,kI)+Vdm(jO,jI)*X_Buf1(:,iO,jI,kI)
+  END DO
+END DO; END DO; END DO
+X_In=0.
+! last direction kI
+DO kI=0,NIn; DO kO=0,NOut; DO jO=0,NOut
+  DO iO=0,NOut
+    X_In(:,iO,jO,kO)=X_In(:,iO,jO,kO)+Vdm(kO,kI)*X_Buf2(:,iO,jO,kI)
+  END DO
+END DO; END DO; END DO
+END SUBROUTINE ChangeBasis3D_Overwrite
+
 PURE SUBROUTINE ChangeBasis2D_Single(Dim1,NIn,NOut,Vdm,X_In,X_Out)
 ! MODULES
 IMPLICIT NONE
@@ -610,6 +137,37 @@ DO jI=0,NIn; DO jO=0,NOut
 END DO; END DO
 END SUBROUTINE ChangeBasis2D_Single
 
+PURE SUBROUTINE ChangeBasis2D_overwrite(Dim1,NIn,NOut,Vdm,X_In)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN)  :: Dim1                                    !< Number of variables
+INTEGER,INTENT(IN)  :: NIn                                     !< Input polynomial degree, no. of points = NIn+1
+INTEGER,INTENT(IN)  :: NOut                                    !< Output polynomial degree, no. of points = NOut+1
+REAL,INTENT(INOUT)  :: X_In(1:Dim1,0:NIn,0:NIn    _ADD_DIM)   !< Input field, dimensions must match Dim1,NIn
+REAL,INTENT(IN)     :: Vdm(0:NOut,0:NIn)                       !< 1D Vandermonde In -> Out
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER             :: iI,jI,iO,jO
+REAL                :: X_Buf1(1:Dim1,0:NOut,0:NIn)       ! first intermediate results from 1D interpolations
+!==================================================================================================================================
+X_buf1=0.
+! first direction iI
+DO jI=0,NIn; DO iI=0,NIn
+  DO iO=0,NOut
+    X_Buf1(:,iO,jI)=X_Buf1(:,iO,jI)+Vdm(iO,iI)*X_In(:,iI,jI _ADD_DIM)
+  END DO
+END DO; END DO
+X_In=0.
+! second direction jI
+DO jI=0,NIn; DO jO=0,NOut
+  DO iO=0,NOut
+    X_In(:,iO,jO _ADD_DIM)=X_In(:,iO,jO _ADD_DIM)+Vdm(jO,jI)*X_Buf1(:,iO,jI)
+  END DO
+END DO; END DO
+END SUBROUTINE ChangeBasis2D_Overwrite
+
 SUBROUTINE ChangeBasis1D_Single(Dim1,NIn,NOut,Vdm,X_In,X_Out)
 ! MODULES
 IMPLICIT NONE
@@ -633,6 +191,31 @@ DO iI=0,NIn
   END DO
 END DO
 END SUBROUTINE ChangeBasis1D_Single
+
+SUBROUTINE ChangeBasis1D_Overwrite(Dim1,NIn,NOut,Vdm,X_In)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN)  :: Dim1                                    !< Number of variables
+INTEGER,INTENT(IN)  :: NIn                                     !< Input polynomial degree, no. of points = NIn+1
+INTEGER,INTENT(IN)  :: NOut                                    !< Output polynomial degree, no. of points = NOut+1
+REAL,INTENT(INOUT)  :: X_In(1:Dim1,0:NIn   _ADD_DIM)           !< Input field, dimensions must match Dim1,NIn
+REAL,INTENT(IN)     :: Vdm(0:NOut,0:NIn)                       !< 1D Vandermonde In -> Out
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER             :: iI,iO
+REAL                :: X_Buf(1:Dim1,0:NOut _ADD_DIM)           ! Buffer
+!==================================================================================================================================
+X_Buf=0.
+! first direction iI
+DO iI=0,NIn
+  DO iO=0,NOut
+    X_Buf(:,iO _ADD_DIM)=X_Buf(:,iO _ADD_DIM)+Vdm(iO,iI)*X_In(:,iI _ADD_DIM)
+  END DO
+END DO
+X_In = X_Buf
+END SUBROUTINE ChangeBasis1D_Overwrite
 
 SUBROUTINE ChangeBasis1D_SingleVar(NIn,NOut,Vdm,X_In,X_Out)
 ! MODULES
@@ -708,6 +291,7 @@ DO kNIn=0,NIn
   END DO
 END DO
 END SUBROUTINE ChangeBasis3D_SingleVar
+
 !==================================================================================================================================
 !> Interpolate a 2D tensor product Lagrange polynomial defined by (NIn+1) 1D Lagrange basis functions of order (Nin) and node 
 !> positions xi_In(0:Nin) to another 2D tensor product Lagrange basis defined by (NOut+1) 1D interpolation points on the node
@@ -749,6 +333,133 @@ DO jNIn=0,NIn
   END DO
 END DO
 END SUBROUTINE ChangeBasis2D_SingleVar
+
+!==================================================================================================================================
+!> Interpolate a 3D tensor product Lagrange polynomial defined by (NIn+1) 1D Lagrange basis functions of order (Nin) and node 
+!> positions xi_In(0:Nin) to another 3D tensor product Lagrange basis defined by (NOut+1) 1D interpolation points on the node
+!> positions xi_out(0:NOut).
+!> xi is defined in the 1D referent element \f$ \xi \in [-1,1] \f$.
+!> _Mult means that the routine is not restricted to one element, but the data fields of several elements (nElems) is
+!> processed.
+!==================================================================================================================================
+SUBROUTINE ChangeBasis2D_Mult(nVar,nElems,NIn,NOut,Vdm,UIn,UOut,addToOutput)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN)  :: nVar                                    !< Number of variables
+INTEGER,INTENT(IN)  :: nElems                                  !< Number of elements
+INTEGER,INTENT(IN)  :: NIn                                     !< Input polynomial degree, no. of points = NIn+1
+INTEGER,INTENT(IN)  :: NOut                                    !< Output polynomial degree, no. of points = NOut+1
+                                   
+REAL,INTENT(IN)     :: UIn(nVar,0:NIn,0:NIn _ADD_DIM,nElems)   !< Input field, dimensions must match nVar,NIn and nElems
+REAL,INTENT(IN)     :: Vdm(0:NOut,0:NIn)                       !< 1D Vandermonde In -> Out
+REAL,INTENT(INOUT)  :: UOut(nVar,0:NOut,0:NOut _ADD_DIM,nElems)!< Output field
+LOGICAL,INTENT(IN)  :: addToOutput                             !< TRUE: add the result to 'in' state of Uout, FALSE: overwrite Uout
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER             :: iI,jI,kI,iO,jO,kO,iElem,a,b,nVar2
+REAL,ALLOCATABLE    :: UBuf1(:,:,:),UBuf2(:,:,:)           ! first and second intermediate results from 1D interpolations
+!==================================================================================================================================
+nVar2=nVar*nElems
+IF(nVar2.GT.2*nVar)THEN
+  ALLOCATE(UBuf2(nVar2,0:NIn,0:NIn))
+  ALLOCATE(UBuf1(nVar2,0:NOut,0:NIn))
+
+  ! pack solution
+  DO iElem=1,nElems
+    a=nVar*(iElem-1)+1
+    b=nVar*iElem
+    DO jI=0,NIn; DO iI=0,NIn
+      Ubuf2(a:b,iI,jI)=UIn(:,iI,jI _ADD_DIM,iElem)
+    END DO; END DO
+  END DO
+
+  ! first direction iI
+  DO jI=0,NIn
+    DO iO=0,NOut
+      UBuf1(:,iO,jI)=Vdm(iO,0)*Ubuf2(:,0,jI)
+    END DO
+    DO iI=1,NIn
+      DO iO=0,NOut
+        UBuf1(:,iO,jI)=UBuf1(:,iO,jI)+Vdm(iO,iI)*Ubuf2(:,iI,jI)
+      END DO
+    END DO
+  END DO
+
+  DEALLOCATE(Ubuf2)
+  ALLOCATE(UBuf2(nVar2,0:NOut,0:NOut))
+
+  ! second direction jI
+  DO jO=0,NOut; DO iO=0,NOut
+    UBuf2(:,iO,jO)=Vdm(jO,0)*UBuf1(:,iO,0)
+  END DO; END DO
+  DO jI=1,NIn
+    DO jO=0,NOut; DO iO=0,NOut
+      UBuf2(:,iO,jO)=UBuf2(:,iO,jO)+Vdm(jO,jI)*UBuf1(:,iO,jI)
+    END DO; END DO
+  END DO
+
+  DEALLOCATE(Ubuf1)
+
+  ! unpack solution
+  IF(addToOutput)THEN
+    DO iElem=1,nElems
+      a=nVar*(iElem-1)+1
+      b=nVar*iElem
+      DO jO=0,NOut; DO iO=0,NOut
+        UOut(:,iO,jO _ADD_DIM,iElem)=UOut(:,iO,jO _ADD_DIM,iElem)+Ubuf2(a:b,iO,jO)
+      END DO; END DO
+    END DO
+  ELSE
+    DO iElem=1,nElems
+      a=nVar*(iElem-1)+1
+      b=nVar*iElem
+      DO jO=0,NOut; DO iO=0,NOut
+        UOut(:,iO,jO _ADD_DIM,iElem)=Ubuf2(a:b,iO,jO)
+      END DO; END DO
+    END DO
+  END IF
+  DEALLOCATE(Ubuf2)
+
+ELSE
+
+  ALLOCATE(UBuf1(nVar,0:NOut,0:NIn))
+  DO iElem=1,nElems
+    ! first direction iI
+    DO jI=0,NIn
+      DO iO=0,NOut
+        UBuf1(:,iO,jI)=Vdm(iO,0)*UIn(:,0,jI _ADD_DIM,iElem)
+      END DO
+      DO iI=1,NIn
+        DO iO=0,NOut
+          UBuf1(:,iO,jI)=UBuf1(:,iO,jI)+Vdm(iO,iI)*UIn(:,iI,jI _ADD_DIM,iElem)
+        END DO
+      END DO
+    END DO
+    ! last direction jI
+    IF(addToOutput)THEN
+      DO jI=0,NIn
+        DO jO=0,NOut; DO iO=0,NOut
+          UOut(:,iO,jO _ADD_DIM,iElem)=UOut(:,iO,jO _ADD_DIM,iElem)+Vdm(jO,jI)*UBuf1(:,iO,jI)
+        END DO; END DO
+      END DO
+    ELSE
+      DO jO=0,NOut; DO iO=0,NOut
+        UOut(:,iO,jO _ADD_DIM,iElem)=Vdm(jO,0)*UBuf1(:,iO,0)
+      END DO; END DO
+      DO jI=1,NIn
+        DO jO=0,NOut; DO iO=0,NOut
+          UOut(:,iO,jO _ADD_DIM,iElem)=UBuf1(:,iO,jO)+Vdm(jO,jI)*UBuf1(:,iO,jI)
+        END DO; END DO
+      END DO
+    END IF
+  END DO
+  DEALLOCATE(UBuf1)
+
+END IF
+END SUBROUTINE ChangeBasis2D_Mult
+
 
 
 !==================================================================================================================================

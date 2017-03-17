@@ -265,13 +265,14 @@ REAL,INTENT(INOUT)  :: U_in(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< solution ve
 REAL,INTENT(IN)     :: FilterMat(0:PP_N,0:PP_N)                  !< filter matrix to be used
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER             :: iElem
 !==================================================================================================================================
-
+DO iElem=1,nElems
 #if FV_ENABLED
-CALL ChangeBasisVolume(PP_nVar,PP_N,1,nElems,1,nElems,FilterMat,U_in,FV_Elems,0)
-#else
-CALL ChangeBasisVolume(PP_nVar,PP_N,1,nElems,1,nElems,FilterMat,U_in)
+  IF (FV_Elems(iElem).GT.0) CYCLE ! Do only, when DG element
 #endif
+  CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FilterMat,U_in(:,:,:,:,iElem))
+END DO ! iElem
 END SUBROUTINE Filter
 
 

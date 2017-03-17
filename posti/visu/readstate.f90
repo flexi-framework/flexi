@@ -186,7 +186,7 @@ IF (changedMeshFile.OR.changedWithDGOperator) THEN
 END IF
 
 CALL InitFilter()
-CALL InitOverintegration()
+CALL InitOverintegration(changedMeshFile.OR.changedWithDGOperator)
 CALL InitIndicator()
 #if USE_MPI
 IF (changedMeshFile.OR.changedWithDGOperator) THEN

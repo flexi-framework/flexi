@@ -21,7 +21,7 @@
 
 extern "C" {
   extern void __mod_visu_cwrapper_MOD_visu_requestinformation(int* mpi_comm_IN, 
-        int* str_len, const char* state_file, struct CharARRAY* varnames, struct CharARRAY* bcnames);
+        int* str_len, const char* state_file, int* str_len_mesh, const char* mesh_file,  struct CharARRAY* varnames, struct CharARRAY* bcnames);
 }
 
 extern "C" {

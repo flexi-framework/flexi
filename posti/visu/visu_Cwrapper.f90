@@ -75,7 +75,7 @@ END FUNCTION cstrToChar255
 !===================================================================================================================================
 !> Wrapper to visu_InitFile for Paraview plugin, returns the available variable names and boundary names.
 !===================================================================================================================================
-SUBROUTINE visu_requestInformation(mpi_comm_IN, strlen_state, statefile_IN, varnames, bcnames)
+SUBROUTINE visu_requestInformation(mpi_comm_IN, strlen_state, statefile_IN, strlen_mesh, meshfile_IN, varnames, bcnames)
 USE ISO_C_BINDING
 ! MODULES
 USE MOD_Globals
@@ -89,18 +89,22 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)                    :: mpi_comm_IN    
 INTEGER,INTENT(IN)                    :: strlen_state
 TYPE(C_PTR),TARGET,INTENT(IN)         :: statefile_IN
+INTEGER,INTENT(IN)                    :: strlen_mesh
+TYPE(C_PTR),TARGET,INTENT(IN)         :: meshfile_IN
 TYPE (CARRAY), INTENT(INOUT)          :: varnames
 TYPE (CARRAY), INTENT(INOUT)          :: bcnames
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL
 CHARACTER(LEN=255)                    :: statefile
+CHARACTER(LEN=255)                    :: meshfile
 CHARACTER(LEN=255),POINTER            :: varnames_pointer(:)
 CHARACTER(LEN=255),POINTER            :: bcnames_pointer(:)
 !===================================================================================================================================
 statefile = cstrToChar255(statefile_IN, strlen_state)
+meshfile  = cstrToChar255(meshfile_IN , strlen_mesh)
 
 CALL InitMPI(mpi_comm_IN) 
-CALL visu_getVarNamesAndFileType(statefile,VarnamesAll,BCNamesAll)
+CALL visu_getVarNamesAndFileType(statefile,meshfile,VarnamesAll,BCNamesAll)
 IF (ALLOCATED(VarnamesAll)) THEN
   varnames_pointer => VarnamesAll
   varnames%len  = SIZE(varnames_pointer)*255 

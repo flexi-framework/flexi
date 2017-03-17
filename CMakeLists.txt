@@ -208,13 +208,6 @@ ELSE()
 ENDIF()
 
 # =========================================================================
-# Exclude certain non-compatible combinations from compiling
-# =========================================================================
-IF(FLEXI_FV AND ${FLEXI_NODETYPE} STREQUAL "GAUSS-LOBATTO")
-  MESSAGE(FATAL_ERROR " Gauss-Lobatto nodes not implemented for FV.")
-ENDIF()
-
-# =========================================================================
 # USERBLOCK + Preproc_flags
 # =========================================================================
 
@@ -572,7 +565,7 @@ SET(FLEXI_REGRESSIONCHECK_EXAMPLES "${CMAKE_CURRENT_SOURCE_DIR}/regressioncheck/
 # Userblock
 # =========================================================================
 ADD_CUSTOM_COMMAND(TARGET flexilib PRE_BUILD COMMAND 
-  sh ${CMAKE_CURRENT_SOURCE_DIR}/tools/userblock/generateuserblock.sh ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+  sh ${CMAKE_CURRENT_SOURCE_DIR}/tools/userblock/generateuserblock.sh ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} ${CMAKE_CURRENT_BINARY_DIR})
 
 # =========================================================================
 # Install

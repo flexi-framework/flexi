@@ -112,7 +112,6 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-LOGICAL                  :: fileExists                   ! Error handler for file
 INTEGER                  :: ioUnit,openStat
 REAL                     :: c1
 !==================================================================================================================================
@@ -150,8 +149,7 @@ IF(.NOT.MPIRoot) RETURN
 
 ALLOCATE(writeBuf(3,nWriteStats))
 Filename = TRIM(ProjectName)//'_Stats.dat'
-INQUIRE(FILE = Filename, EXIST = fileExists)
-IF(.NOT.fileExists)THEN ! File exists and append data
+IF(.NOT.FILEEXISTS(Filename))THEN ! File exists and append data
   OPEN(NEWUNIT= ioUnit       ,&
        FILE   = Filename     ,&
        STATUS = 'Unknown'    ,&

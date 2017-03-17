@@ -104,7 +104,7 @@ CALL H5PSET_FAPL_MPIO_F(Plist_ID,MPI_COMM_WORLD, MPIInfo, iError)
 #endif /*USE_MPI*/
 
 ! Check if file exists
-INQUIRE(FILE=TRIM(FileName),EXIST=exists)
+exists = FILEEXISTS(FileName)
 IF(.NOT.exists) THEN
   CALL abort(__STAMP__,'ERROR: HDF5 file '//TRIM(FileName)//' does not exist.')
   RETURN
@@ -170,7 +170,7 @@ CHARACTER(LEN=*),INTENT(IN)    :: MeshFileName    !< name of mesh file to be che
 LOGICAL                        :: isValidMeshFile !< result: file is valid mesh file
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-LOGICAL                        :: NGeoExists,fileExists
+LOGICAL                        :: NGeoExists
 INTEGER(HID_T)                 :: Plist_ID
 !==================================================================================================================================
 ! Disable error messages
@@ -186,8 +186,7 @@ CALL H5PSET_FAPL_MPIO_F(Plist_ID,MPI_COMM_WORLD, MPIInfo, iError)
 #endif /*USE_MPI*/
 
 ! Check if file exists
-INQUIRE(FILE=TRIM(MeshFileName),EXIST=fileExists)
-IF(.NOT.fileExists) THEN
+IF(.NOT.FILEEXISTS(MeshFileName)) THEN
   CALL abort(__STAMP__,'ERROR: Mesh file '//TRIM(MeshFileName)//' does not exist.')
   isValidMeshFile = .FALSE.
   RETURN
@@ -456,7 +455,7 @@ END SUBROUTINE GetArrayAndName
 !==================================================================================================================================
 !> Subroutine to read arrays of rank "Rank" with dimensions "Dimsf(1:Rank)".
 !==================================================================================================================================
-SUBROUTINE ReadArray(ArrayName,Rank,nVal,Offset_in,Offset_dim,RealArray,IntegerArray,StrArray)
+SUBROUTINE ReadArray(ArrayName,Rank,nVal,Offset_in,Offset_dim,RealArray,IntArray,StrArray)
 ! MODULES
 USE MOD_Globals
 USE,INTRINSIC :: ISO_C_BINDING
@@ -469,7 +468,7 @@ INTEGER                        :: offset_dim            !< which dimension is th
 INTEGER                        :: nVal(Rank)            !< size of complete (local) array to write
 CHARACTER(LEN=*),INTENT(IN)    :: ArrayName             !< name of array to be read
 REAL              ,DIMENSION(PRODUCT(nVal)),OPTIONAL,INTENT(OUT),TARGET :: RealArray    !< only if real array shall be read
-INTEGER           ,DIMENSION(PRODUCT(nVal)),OPTIONAL,INTENT(OUT),TARGET :: IntegerArray !< only if integer array shall be read
+INTEGER           ,DIMENSION(PRODUCT(nVal)),OPTIONAL,INTENT(OUT),TARGET :: IntArray     !< only if integer array shall be read
 CHARACTER(LEN=255),DIMENSION(PRODUCT(nVal)),OPTIONAL,INTENT(OUT),TARGET :: StrArray     !< only if real string shall be read
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -505,8 +504,8 @@ IF(PRESENT(RealArray))THEN
   CALL H5DREAD_F(DSet_ID,Type_ID,RealArray,Dimsf,&
                  iError,mem_space_id=MemSpace,file_space_id=FileSpace,xfer_prp=PList_ID)
 END IF
-IF(PRESENT(IntegerArray))THEN
-  CALL H5DREAD_F(DSet_ID,Type_ID,IntegerArray,Dimsf,&
+IF(PRESENT(IntArray))THEN
+  CALL H5DREAD_F(DSet_ID,Type_ID,IntArray,Dimsf,&
                  iError,mem_space_id=MemSpace,file_space_id=FileSpace,xfer_prp=PList_ID)
 END IF
 IF(PRESENT(StrArray))THEN
@@ -515,7 +514,7 @@ IF(PRESENT(StrArray))THEN
 END IF
 #else /*HDF5_F90*/
 IF(PRESENT(RealArray))    buf=C_LOC(RealArray)
-IF(PRESENT(IntegerArray)) buf=C_LOC(IntegerArray)
+IF(PRESENT(IntArray))     buf=C_LOC(IntArray)
 IF(PRESENT(StrArray))     buf=C_LOC(StrArray(1))
 CALL H5DREAD_F(DSet_ID,Type_ID,buf,iError,mem_space_id=MemSpace,file_space_id=FileSpace,xfer_prp=PList_ID)
 #endif /*HDF5_F90*/
@@ -535,8 +534,8 @@ END SUBROUTINE ReadArray
 !==================================================================================================================================
 !> Subroutine to read attributes from HDF5 file.
 !==================================================================================================================================
-SUBROUTINE ReadAttribute(Loc_ID_in,AttribName,nVal,DatasetName,RealScalar,IntegerScalar,&
-                                 StrScalar,LogicalScalar,RealArray,IntegerArray,StrArray)
+SUBROUTINE ReadAttribute(Loc_ID_in,AttribName,nVal,DatasetName,RealScalar,IntScalar,&
+                                 StrScalar,LogicalScalar,RealArray,IntArray,StrArray)
 ! MODULES
 USE MOD_Globals
 USE,INTRINSIC :: ISO_C_BINDING
@@ -548,9 +547,9 @@ INTEGER           ,INTENT(IN)                  :: nVal              !< number of
 CHARACTER(LEN=*)  ,INTENT(IN)                  :: AttribName        !< name of attribute to be read
 CHARACTER(LEN=*)  ,INTENT(IN) ,OPTIONAL        :: DatasetName       !< dataset name in case attribute is located in a dataset
 REAL              ,INTENT(OUT),OPTIONAL,TARGET :: RealArray(nVal)   !< Array of real array attributes
-INTEGER           ,INTENT(OUT),OPTIONAL,TARGET :: IntegerArray(nVal)!< Array for integer array for attributes
+INTEGER           ,INTENT(OUT),OPTIONAL,TARGET :: IntArray(nVal)    !< Array for integer array for attributes
 REAL              ,INTENT(OUT),OPTIONAL,TARGET :: RealScalar        !< Scalar real attribute
-INTEGER           ,INTENT(OUT),OPTIONAL,TARGET :: IntegerScalar     !< Scalar integer attribute
+INTEGER           ,INTENT(OUT),OPTIONAL,TARGET :: IntScalar         !< Scalar integer attribute
 CHARACTER(LEN=255),INTENT(OUT),OPTIONAL,TARGET :: StrScalar         !< Scalar string attribute
 CHARACTER(LEN=255),INTENT(OUT),OPTIONAL,TARGET :: StrArray(nVal)    !< Array for character array attributes
 LOGICAL           ,INTENT(OUT),OPTIONAL        :: LogicalScalar     !< Scalar logical attribute
@@ -583,8 +582,8 @@ CALL H5AGET_TYPE_F(Attr_ID, Type_ID, iError)
 ! Nullify
 IF(PRESENT(RealArray))     RealArray=0.
 IF(PRESENT(RealScalar))    RealScalar=0.
-IF(PRESENT(IntegerArray))  IntegerArray=0
-IF(PRESENT(IntegerScalar)) IntegerScalar=0
+IF(PRESENT(IntArray))      IntArray=0
+IF(PRESENT(IntScalar))     IntScalar=0
 IF(PRESENT(LogicalScalar)) LogicalScalar=.FALSE.
 IF(PRESENT(StrScalar))     StrScalar=''
 IF(PRESENT(StrArray))THEN
@@ -597,8 +596,8 @@ END IF
 #ifdef HDF5_F90 /* HDF5 compiled without fortran2003 flag */
 IF(PRESENT(RealArray))      CALL H5AREAD_F(Attr_ID, Type_ID, RealArray,     Dimsf, iError)
 IF(PRESENT(RealScalar))     CALL H5AREAD_F(Attr_ID, Type_ID, RealScalar,    Dimsf, iError)
-IF(PRESENT(IntegerArray))   CALL H5AREAD_F(Attr_ID, Type_ID, IntegerArray,  Dimsf, iError)
-IF(PRESENT(IntegerScalar))  CALL H5AREAD_F(Attr_ID, Type_ID, IntegerScalar, Dimsf, iError)
+IF(PRESENT(IntArray))       CALL H5AREAD_F(Attr_ID, Type_ID, IntArray,  Dimsf, iError)
+IF(PRESENT(IntScalar))      CALL H5AREAD_F(Attr_ID, Type_ID, IntScalar, Dimsf, iError)
 IF(PRESENT(LogicalScalar))  CALL H5AREAD_F(Attr_ID, Type_ID, IntToLog,      Dimsf, iError)
 IF(PRESENT(StrScalar))      CALL H5AREAD_F(Attr_ID, Type_ID, StrScalar,     Dimsf, iError)
 IF(PRESENT(StrArray))       CALL H5AREAD_F(Attr_ID, Type_ID, StrArray,      Dimsf, iError)
@@ -606,8 +605,8 @@ IF(PRESENT(StrArray))       CALL H5AREAD_F(Attr_ID, Type_ID, StrArray,      Dims
 StrTmp(1) = ''
 IF(PRESENT(RealArray))      buf=C_LOC(RealArray)
 IF(PRESENT(RealScalar))     buf=C_LOC(RealScalar)
-IF(PRESENT(IntegerArray))   buf=C_LOC(IntegerArray)
-IF(PRESENT(IntegerScalar))  buf=C_LOC(IntegerScalar)
+IF(PRESENT(IntArray))       buf=C_LOC(IntArray)
+IF(PRESENT(IntScalar))      buf=C_LOC(IntScalar)
 IF(PRESENT(LogicalScalar))  buf=C_LOC(IntToLog)
 IF(PRESENT(StrScalar))      buf=C_LOC(StrTmp(1))
 IF(PRESENT(StrArray))       buf=C_LOC(StrArray(1))

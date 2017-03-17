@@ -67,8 +67,7 @@ USE MOD_ReadInTools ,ONLY: prms,addStrListEntry
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection('FV')
-CALL prms%CreateIntFromStringOption('FV_LimiterType',"none (0): NullLimiter (no reconstruction), minmod (1): MinMod limiter,"//&
-                                              "sweby (2): Sweby limiter, central (9): Central limiter (UNSTABLE)", '1')
+CALL prms%CreateIntFromStringOption('FV_LimiterType',"Type of slope limiter of second order reconstruction", '1')
 CALL addStrListEntry('FV_LimiterType','none',   FV_LIMITERTYPE_NULL)
 CALL addStrListEntry('FV_LimiterType','minmod', FV_LIMITERTYPE_MINMOD)
 CALL addStrListEntry('FV_LimiterType','sweby',  FV_LIMITERTYPE_SWEBY)
@@ -115,8 +114,9 @@ PURE SUBROUTINE NullLimiter(sL, sR, s)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(IN)  :: sL(PP_nVarPrim),sR(PP_nVarPrim)
-REAL,INTENT(OUT) :: s(PP_nVarPrim)
+REAL,INTENT(IN)  :: sL(PP_nVarPrim) !< left slope
+REAL,INTENT(IN)  :: sR(PP_nVarPrim) !< right slope
+REAL,INTENT(OUT) :: s(PP_nVarPrim)  !< limited slope
 !==================================================================================================================================
 #ifdef DEBUG
 ! Dummy access to remove compiler warnings
@@ -135,8 +135,9 @@ PURE SUBROUTINE MinMod(sL, sR, s)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(IN)  :: sL(PP_nVarPrim),sR(PP_nVarPrim)
-REAL,INTENT(OUT) :: s(PP_nVarPrim)
+REAL,INTENT(IN)  :: sL(PP_nVarPrim) !< left slope
+REAL,INTENT(IN)  :: sR(PP_nVarPrim) !< right slope
+REAL,INTENT(OUT) :: s(PP_nVarPrim)  !< limited slope
 !==================================================================================================================================
 ! MinMod
 s = MERGE(sL,sR, ABS(sL) .LT. ABS(sR))
@@ -157,8 +158,9 @@ USE MOD_FV_Vars ,ONLY: FV_sweby_beta
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(IN)  :: sL(PP_nVarPrim),sR(PP_nVarPrim)
-REAL,INTENT(OUT) :: s(PP_nVarPrim)
+REAL,INTENT(IN)  :: sL(PP_nVarPrim) !< left slope
+REAL,INTENT(IN)  :: sR(PP_nVarPrim) !< right slope
+REAL,INTENT(OUT) :: s(PP_nVarPrim)  !< limited slope
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
 REAL :: sa(PP_nVarPrim),sb(PP_nVarPrim)
@@ -176,8 +178,9 @@ PURE SUBROUTINE CentralLimiter(sL, sR, s)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(IN)  :: sL(PP_nVarPrim),sR(PP_nVarPrim)
-REAL,INTENT(OUT) :: s(PP_nVarPrim)
+REAL,INTENT(IN)  :: sL(PP_nVarPrim) !< left slope
+REAL,INTENT(IN)  :: sR(PP_nVarPrim) !< right slope
+REAL,INTENT(OUT) :: s(PP_nVarPrim)  !< limited slope
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
 !==================================================================================================================================

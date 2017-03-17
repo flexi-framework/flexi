@@ -145,7 +145,7 @@ IF(.NOT.validMesh) &
 
 useCurveds=GETLOGICAL('useCurveds','.TRUE.')
 CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
-CALL ReadAttribute(File_ID,'Ngeo',1,IntegerScalar=NGeo)
+CALL ReadAttribute(File_ID,'Ngeo',1,IntScalar=NGeo)
 CALL CloseDataFile()
 
 IF(useCurveds.AND.(PP_N.LT.NGeo))THEN
@@ -363,10 +363,10 @@ ALLOCATE(Metrics_fTildeO(3,0:NOver,0:NOver,0:PP_NOverZ,nElems))
 ALLOCATE(Metrics_gTildeO(3,0:NOver,0:NOver,0:PP_NOverZ,nElems))
 ALLOCATE(Metrics_hTildeO(3,0:NOver,0:NOver,0:PP_NOverZ,nElems))
 IF(NOver.GT.PP_N)THEN
-  CALL ChangeBasisVolume(3,PP_N,NOver,1,nElems,1,nElems,VdmNToNOver,Elem_xGP,      Elem_xGPO)
-  CALL ChangeBasisVolume(3,PP_N,NOver,1,nElems,1,nElems,VdmNToNOver,Metrics_fTilde(:,:,:,:,:,0),Metrics_fTildeO)
-  CALL ChangeBasisVolume(3,PP_N,NOver,1,nElems,1,nElems,VdmNToNOver,Metrics_gTilde(:,:,:,:,:,0),Metrics_gTildeO)
-  CALL ChangeBasisVolume(3,PP_N,NOver,1,nElems,1,nElems,VdmNToNOver,Metrics_hTilde(:,:,:,:,:,0),Metrics_hTildeO)
+  CALL ChangeBasisVolume(3,nElems,PP_N,NOver,VdmNToNOver,Elem_xGP,                   Elem_xGPO,      .FALSE.)
+  CALL ChangeBasisVolume(3,nElems,PP_N,NOver,VdmNToNOver,Metrics_fTilde(:,:,:,:,:,0),Metrics_fTildeO,.FALSE.)
+  CALL ChangeBasisVolume(3,nElems,PP_N,NOver,VdmNToNOver,Metrics_gTilde(:,:,:,:,:,0),Metrics_gTildeO,.FALSE.)
+  CALL ChangeBasisVolume(3,nElems,PP_N,NOver,VdmNToNOver,Metrics_hTilde(:,:,:,:,:,0),Metrics_hTildeO,.FALSE.)
 END IF
 
 ! Build geometry for surface overintegration
@@ -386,7 +386,7 @@ DO iElem=1,nElems
 #if PP_dim==2
   STOP 'Surface metric computation not implemented yet'
 #endif
-  CALL CalcSurfMetrics(NOver,JaCL_NSurf,XCL_NSurf,Vdm_CLNSurf_NSurf,iElem,&
+  CALL CalcSurfMetrics(NOver,0,JaCL_NSurf,XCL_NSurf,Vdm_CLNSurf_NSurf,iElem,&
                        NormVecO,TangVec1O,TangVec2O,SurfElemO,Face_xGPO)
 END DO
 END SUBROUTINE BuildOverintMesh
@@ -649,6 +649,9 @@ SDEALLOCATE(NormVecO)
 SDEALLOCATE(TangVec1O)
 SDEALLOCATE(TangVec2O)
 SDEALLOCATE(SurfElemO)
+
+! ijk sorted mesh
+SDEALLOCATE(Elem_IJK)
 
 !> mappings
 CALL FinalizeMappings()

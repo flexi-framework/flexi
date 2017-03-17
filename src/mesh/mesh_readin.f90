@@ -57,8 +57,13 @@ INTERFACE BuildPartition
   MODULE PROCEDURE BuildPartition
 END INTERFACE
 
+INTERFACE ReadIJKSorting
+  MODULE PROCEDURE ReadIJKSorting
+END INTERFACE
+
 PUBLIC::ReadMesh
 PUBLIC::BuildPartition
+PUBLIC::ReadIJKSorting
 !==================================================================================================================================
 
 CONTAINS
@@ -128,7 +133,7 @@ IF((HSize(1).NE.4).OR.(HSize(2).NE.nBCs)) STOP 'Problem in readBC'
 DEALLOCATE(HSize)
 ALLOCATE(BCType(4,nBCs))
 offset=0
-CALL ReadArray('BCType',2,(/4,nBCs/),Offset,1,IntegerArray=BCType)
+CALL ReadArray('BCType',2,(/4,nBCs/),Offset,1,IntArray=BCType)
 ! Now apply boundary mappings
 IF(nUserBCs .GT. 0)THEN
   DO iBC=1,nBCs
@@ -136,9 +141,9 @@ IF(nUserBCs .GT. 0)THEN
       IF((BoundaryType(BCMapping(iBC),1).EQ.1).AND.(BCType(1,iBC).NE.1)) &
         CALL abort(__STAMP__,&
                    'Remapping non-periodic to periodic BCs is not possible!')
-      SWRITE(Unit_StdOut,'(A,A)')    ' |     Boundary in HDF file found |  ',TRIM(BCNames(iBC))
-      SWRITE(Unit_StdOut,'(A,I2,I2)')' |                            was | ',BCType(1,iBC),BCType(3,iBC)
-      SWRITE(Unit_StdOut,'(A,I2,I2)')' |                      is set to | ',BoundaryType(BCMapping(iBC),1:2)
+      SWRITE(Unit_StdOut,'(A,A)')    ' |     Boundary in HDF file found | ',TRIM(BCNames(iBC))
+      SWRITE(Unit_StdOut,'(A,I4,I4)')' |                            was | ',BCType(1,iBC),BCType(3,iBC)
+      SWRITE(Unit_StdOut,'(A,I4,I4)')' |                      is set to | ',BoundaryType(BCMapping(iBC),1:2)
       BCType(1,iBC) = BoundaryType(BCMapping(iBC),BC_TYPE)
       BCType(3,iBC) = BoundaryType(BCMapping(iBC),BC_STATE)
     END IF
@@ -216,14 +221,12 @@ INTEGER                        :: iProc
 INTEGER,ALLOCATABLE            :: MPISideCount(:)
 #endif
 LOGICAL                        :: oriented
-LOGICAL                        :: fileExists
 LOGICAL                        :: doConnection
 LOGICAL                        :: dsExists
 !==================================================================================================================================
 IF(MESHInitIsDone) RETURN
 IF(MPIRoot)THEN
-  INQUIRE (FILE=TRIM(FileString), EXIST=fileExists)
-  IF(.NOT.FileExists)  CALL CollectiveStop(__STAMP__, &
+  IF(.NOT.FILEEXISTS(FileString))  CALL CollectiveStop(__STAMP__, &
     'readMesh from data file "'//TRIM(FileString)//'" does not exist')
 END IF
 
@@ -244,7 +247,7 @@ LastElemInd=offsetElem+nElems
 
 ALLOCATE(Elems(                FirstElemInd:LastElemInd))
 ALLOCATE(ElemInfo(ElemInfoSize,FirstElemInd:LastElemInd))
-CALL ReadArray('ElemInfo',2,(/ElemInfoSize,nElems/),offsetElem,2,IntegerArray=ElemInfo)
+CALL ReadArray('ElemInfo',2,(/ElemInfoSize,nElems/),offsetElem,2,IntArray=ElemInfo)
 
 DO iElem=FirstElemInd,LastElemInd
   iSide=ElemInfo(ELEM_FirstSideInd,iElem) !first index -1 in Sideinfo
@@ -266,7 +269,7 @@ nSideIDs=ElemInfo(ELEM_LastSideInd,LastElemInd)-ElemInfo(ELEM_FirstSideInd,First
 FirstSideInd=offsetSideID+1
 LastSideInd=offsetSideID+nSideIDs
 ALLOCATE(SideInfo(SideInfoSize,FirstSideInd:LastSideInd))
-CALL ReadArray('SideInfo',2,(/SideInfoSize,nSideIDs/),offsetSideID,2,IntegerArray=SideInfo)
+CALL ReadArray('SideInfo',2,(/SideInfoSize,nSideIDs/),offsetSideID,2,IntArray=SideInfo)
 
 DO iElem=FirstElemInd,LastElemInd
   aElem=>Elems(iElem)%ep
@@ -428,26 +431,16 @@ ELSE
 ENDIF
 nNodes=nElems*(NGeo+1)**3
 
-
-!! IJK SORTING --------------------------------------------
-!!read local ElemInfo from data file
-!CALL DatasetExists(File_ID,'nElems_IJK',dsExists)
-!IF(dsExists)THEN
-!  CALL ReadArray('nElems_IJK',1,(/3/),0,1,IntegerArray=nElems_IJK)
-!  ALLOCATE(Elem_IJK(3,nLocalElems))
-!  CALL ReadArray('Elem_IJK',2,(/3,nElems/),offsetElem,2,IntegerArray=Elem_IJK)
-!END IF
-
 ! Get Mortar specific arrays
 dsExists=.FALSE.
 iMortar=0
 CALL DatasetExists(File_ID,'isMortarMesh',dsExists,.TRUE.)
 IF(dsExists)&
-  CALL ReadAttribute(File_ID,'isMortarMesh',1,IntegerScalar=iMortar)
+  CALL ReadAttribute(File_ID,'isMortarMesh',1,IntScalar=iMortar)
 isMortarMesh=(iMortar.EQ.1)
 IF(isMortarMesh)THEN
-  CALL ReadAttribute(File_ID,'NgeoTree',1,IntegerScalar=NGeoTree)
-  CALL ReadAttribute(File_ID,'nTrees',1,IntegerScalar=nGlobalTrees)
+  CALL ReadAttribute(File_ID,'NgeoTree',1,IntScalar=NGeoTree)
+  CALL ReadAttribute(File_ID,'nTrees',1,IntScalar=nGlobalTrees)
 
   ALLOCATE(xiMinMax(3,2,1:nElems))
   xiMinMax=-1.
@@ -455,7 +448,7 @@ IF(isMortarMesh)THEN
 
   ALLOCATE(ElemToTree(1:nElems))
   ElemToTree=0
-  CALL ReadArray('ElemToTree',1,(/nElems/),offsetElem,1,IntegerArray=ElemToTree)
+  CALL ReadArray('ElemToTree',1,(/nElems/),offsetElem,1,IntArray=ElemToTree)
 
   ! only read trees, connected to a procs elements
   offsetTree=MINVAL(ElemToTree)-1
@@ -714,5 +707,30 @@ END IF
 END FUNCTION ELEMIPROC
 #endif /*USE_MPI*/
 
+!===================================================================================================================================
+!> Read arrays nElems_IJK (global number of elements in i,j,k direction) and Elem_IJK (mapping from global element to i,j,k index)
+!> for meshes thar are i,j,k sorted.
+!===================================================================================================================================
+SUBROUTINE ReadIJKSorting()
+! MODULES                                                                                                                          !
+!----------------------------------------------------------------------------------------------------------------------------------!
+USE MOD_Mesh_Vars,       ONLY: nElems_IJK,Elem_IJK,offsetElem,nElems,MeshFile
+!----------------------------------------------------------------------------------------------------------------------------------!
+IMPLICIT NONE
+! INPUT / OUTPUT VARIABLES 
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+LOGICAL        :: dsExists
+!===================================================================================================================================
+
+CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+CALL DatasetExists(File_ID,'nElems_IJK',dsExists)
+IF(dsExists)THEN
+  CALL ReadArray('nElems_IJK',1,(/3/),0,1,IntArray=nElems_IJK)
+  ALLOCATE(Elem_IJK(3,nElems))
+  CALL ReadArray('Elem_IJK',2,(/3,nElems/),offsetElem,2,IntArray=Elem_IJK)
+END IF
+CALL CloseDataFile()
+END SUBROUTINE ReadIJKSorting
 
 END MODULE MOD_Mesh_ReadIn

@@ -300,13 +300,13 @@ DO iElem_FV=1,nElems_FV
           + gradUxi  (iVarPrim,j,k,i,iElem) *   FV_dx_XI_R(i,j,k,iElem) &
           + gradUeta (iVarPrim,i,k,j,iElem) *  FV_dx_ETA_R(i,j,k,iElem)
 #if PP_dim == 3      
-      UCalc_FV(i*2  ,j*2  ,k*2  ,iElem_FV,iVarCalc) = UCalc_FV(i*2  ,j*2  ,k*2  ,iElem_FV,iVarCalc) = & 
+      UCalc_FV(i*2  ,j*2  ,k*2  ,iElem_FV,iVarCalc) = UCalc_FV(i*2  ,j*2  ,k*2  ,iElem_FV,iVarCalc)  & 
           - gradUzeta(iVarPrim,i,j,k,iElem) * FV_dx_ZETA_L(i,j,k,iElem)
-      UCalc_FV(i*2+1,j*2  ,k*2  ,iElem_FV,iVarCalc) = UCalc_FV(i*2+1,j*2  ,k*2  ,iElem_FV,iVarCalc) = & 
+      UCalc_FV(i*2+1,j*2  ,k*2  ,iElem_FV,iVarCalc) = UCalc_FV(i*2+1,j*2  ,k*2  ,iElem_FV,iVarCalc)  & 
           - gradUzeta(iVarPrim,i,j,k,iElem) * FV_dx_ZETA_L(i,j,k,iElem)
-      UCalc_FV(i*2  ,j*2+1,k*2  ,iElem_FV,iVarCalc) = UCalc_FV(i*2  ,j*2+1,k*2  ,iElem_FV,iVarCalc) = & 
+      UCalc_FV(i*2  ,j*2+1,k*2  ,iElem_FV,iVarCalc) = UCalc_FV(i*2  ,j*2+1,k*2  ,iElem_FV,iVarCalc)  & 
           - gradUzeta(iVarPrim,i,j,k,iElem) * FV_dx_ZETA_L(i,j,k,iElem)
-      UCalc_FV(i*2+1,j*2+1,k*2  ,iElem_FV,iVarCalc) = UCalc_FV(i*2+1,j*2+1,k*2  ,iElem_FV,iVarCalc) = & 
+      UCalc_FV(i*2+1,j*2+1,k*2  ,iElem_FV,iVarCalc) = UCalc_FV(i*2+1,j*2+1,k*2  ,iElem_FV,iVarCalc)  & 
           - gradUzeta(iVarPrim,i,j,k,iElem) * FV_dx_ZETA_L(i,j,k,iElem)
 
       UCalc_FV(i*2  ,j*2  ,k*2+1,iElem_FV,iVarCalc) = UPrim(iVarPrim,i,j,k,iElem)  &

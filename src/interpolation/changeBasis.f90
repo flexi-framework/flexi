@@ -37,22 +37,20 @@ END INTERFACE
 INTERFACE ChangeBasis3D
   MODULE PROCEDURE ChangeBasis3D_single
   MODULE PROCEDURE ChangeBasis3D_singleVar
-  MODULE PROCEDURE ChangeBasis3D_selective
-  MODULE PROCEDURE ChangeBasis3D_selective_inplace
+  MODULE PROCEDURE ChangeBasis3D_overwrite
   MODULE PROCEDURE ChangeBasis3D_Mult
 END INTERFACE
 
 INTERFACE ChangeBasis2D
   MODULE PROCEDURE ChangeBasis2D_single
+  MODULE PROCEDURE ChangeBasis2D_overwrite
+  MODULE PROCEDURE ChangeBasis2D_Mult
   MODULE PROCEDURE ChangeBasis2D_singleVar
-  MODULE PROCEDURE ChangeBasis2D_selective
-  MODULE PROCEDURE ChangeBasis2D_selective_inplace
 END INTERFACE
 
 INTERFACE ChangeBasis1D
   MODULE PROCEDURE ChangeBasis1D_single
-  MODULE PROCEDURE ChangeBasis1D_selective
-  MODULE PROCEDURE ChangeBasis1D_selective_inplace
+  MODULE PROCEDURE ChangeBasis1D_overwrite
 END INTERFACE
 
 PUBLIC :: ChangeBasis3D_XYZ
@@ -79,8 +77,8 @@ PRIVATE
 INTERFACE ChangeBasisVolume
   MODULE PROCEDURE ChangeBasis3D_single
   MODULE PROCEDURE ChangeBasis3D_singleVar
-  MODULE PROCEDURE ChangeBasis3D_selective
-  MODULE PROCEDURE ChangeBasis3D_selective_inplace
+  MODULE PROCEDURE ChangeBasis3D_overwrite
+  MODULE PROCEDURE ChangeBasis3D_Mult
 END INTERFACE
 #endif  
 
@@ -91,16 +89,15 @@ INTERFACE ChangeBasisVolume
 #endif  
   MODULE PROCEDURE ChangeBasis2D_single
   MODULE PROCEDURE ChangeBasis2D_singleVar
-  MODULE PROCEDURE ChangeBasis2D_selective
-  MODULE PROCEDURE ChangeBasis2D_selective_inplace
+  MODULE PROCEDURE ChangeBasis2D_overwrite
+  MODULE PROCEDURE ChangeBasis2D_Mult
 END INTERFACE
 
 #if PP_dim == 2
 INTERFACE ChangeBasisSurf
   MODULE PROCEDURE ChangeBasis1D_single
   MODULE PROCEDURE ChangeBasis1D_singleVar
-  MODULE PROCEDURE ChangeBasis1D_selective
-  MODULE PROCEDURE ChangeBasis1D_selective_inplace
+  MODULE PROCEDURE ChangeBasis1D_overwrite
 END INTERFACE
 #endif
 

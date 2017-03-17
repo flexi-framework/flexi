@@ -121,14 +121,14 @@ IF(DSexists) THEN
   CALL ReadArray('LineNames',1,(/nLines_tmp/),0,1,StrArray=Lines_tmp(:)%Name)
   DO iLine=1,nLines_tmp
     aLine=>Lines_tmp(iLine)
-    CALL ReadAttribute(File_ID,'GroupID',1,DatasetName=TRIM(aLine%Name),IntegerScalar=aLine%GroupID)
+    CALL ReadAttribute(File_ID,'GroupID',1,DatasetName=TRIM(aLine%Name),IntScalar=aLine%GroupID)
     ! if this line is for output, get its recordpoints
     IF(OutputGroup(aLine%GroupID)) THEN
       CALL GetDataSize(File_ID,TRIM(aLine%Name),nDims,HSize)
       aLine%nRP=HSize(1) !number of recordpoints on line
       DEALLOCATE(HSize)
       ALLOCATE(aLine%IDlist(aLine%nRP))
-      CALL ReadArray(TRIM(aLine%Name),1,(/aLine%nRP/),0,1,IntegerArray=aLine%IDlist)
+      CALL ReadArray(TRIM(aLine%Name),1,(/aLine%nRP/),0,1,IntArray=aLine%IDlist)
       nLines=nLines+1
       nRP_output=nRP_output + aLine%nRP
     ! if this line is not for output, deallocate it
@@ -161,9 +161,9 @@ IF(DSexists) THEN
   DEALLOCATE(HSize)
   ! first read in all points from file
   ALLOCATE(Points_IDlist_tmp(nPoints_tmp))
-  CALL ReadArray('Points_IDlist',1,(/nPoints_tmp/),0,1,IntegerArray=Points_IDlist_tmp(:))
+  CALL ReadArray('Points_IDlist',1,(/nPoints_tmp/),0,1,IntArray=Points_IDlist_tmp(:))
   ALLOCATE(Points_GroupIDlist_tmp(nPoints_tmp))
-  CALL ReadArray('Points_GroupIDlist',1,(/nPoints_tmp/),0,1,IntegerArray=Points_GroupIDlist_tmp(:))
+  CALL ReadArray('Points_GroupIDlist',1,(/nPoints_tmp/),0,1,IntArray=Points_GroupIDlist_tmp(:))
   !check if group is for output
   DO iRP=1,nPoints_tmp
     IF(OutputGroup(Points_GroupIDlist_tmp(iRP))) THEN
@@ -197,7 +197,7 @@ IF(DSexists) THEN
   CALL ReadArray('PlaneNames',1,(/nPlanes_tmp/),0,1,StrArray=Planes_tmp(:)%Name)
   DO iPlane=1,nPlanes_tmp 
     Plane=>Planes_tmp(iPlane)
-    CALL ReadAttribute(File_ID,'GroupID',1,DatasetName=TRIM(Plane%Name),IntegerScalar=Plane%GroupID)
+    CALL ReadAttribute(File_ID,'GroupID',1,DatasetName=TRIM(Plane%Name),IntScalar=Plane%GroupID)
     !check if group is for output
     IF(OutputGroup(Plane%GroupID)) THEN
       nPlanes=nPlanes+1
@@ -207,7 +207,7 @@ IF(DSexists) THEN
       nRP_output=nRP_output+Plane%nRP(1)*Plane%nRP(2)
       DEALLOCATE(HSize)
       ALLOCATE(Plane%IDlist(Plane%nRP(1),Plane%nRP(2)))
-      CALL ReadArray(TRIM(Plane%Name),2,(/Plane%nRP(1),Plane%nRP(2)/),0,1,IntegerArray=Plane%IDlist)
+      CALL ReadArray(TRIM(Plane%Name),2,(/Plane%nRP(1),Plane%nRP(2)/),0,1,IntArray=Plane%IDlist)
       ! readin norm and tangential vectors if suitable
       PlaneType=TRIM(Plane%Name(1:5))
       IF(PlaneType.EQ.TRIM("Spher")) THEN

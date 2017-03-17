@@ -14,6 +14,7 @@
 #************************************************************************************
 
 # $1: CMAKE_RUNTIME_OUTPUT_DIRECTORY
+# $2: CMAKE_CURRENT_BINARY_DIR
 
 if [ ! -d "$1" ]; then
   exit 1;
@@ -81,6 +82,14 @@ git diff -p                        >> userblock.txt
 
 echo "{[( GIT URL )]}"             >> userblock.txt
 git config --get remote.origin.url >> userblock.txt
+
+builddir=$2/CMakeFiles
+echo "{[( flexilibF90.dir/flags.make )]}"  >> userblock.txt
+cat $builddir/flexilibF90.dir/flags.make   >> userblock.txt
+echo "{[( flexilib.dir/flags.make )]}"     >> userblock.txt
+cat $builddir/flexilib.dir/flags.make      >> userblock.txt
+echo "{[( flexi.dir/flags.make )]}"        >> userblock.txt
+cat $builddir/flexi.dir/flags.make         >> userblock.txt
 
 # Compress the userblock
 tar cJf userblock.tar.xz userblock.txt

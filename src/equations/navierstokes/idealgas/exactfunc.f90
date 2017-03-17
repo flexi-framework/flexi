@@ -1,7 +1,20 @@
+!=================================================================================================================================
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
+! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+!
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+!
+! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+! of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License v3.0 for more details.
+!
+! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
+!=================================================================================================================================
 #include "flexi.h"
 
 !==================================================================================================================================
-!> Soubroutines necessary for calculating Navier-Stokes equations
+!> Soubroutines providing exactly evaluated functions used in initialization or boundary conditions.
 !==================================================================================================================================
 MODULE MOD_Exactfunc
 ! MODULES
@@ -20,7 +33,7 @@ INTERFACE InitExactFunc
 END INTERFACE
 
 INTERFACE ExactFunc
-  MODULE PROCEDURE ExactFunc 
+  MODULE PROCEDURE ExactFunc
 END INTERFACE
 
 INTERFACE CalcSource
@@ -36,10 +49,10 @@ PUBLIC::CalcSource
 
 CONTAINS
 
+!==================================================================================================================================
+!> Define parameters of exact functions
+!==================================================================================================================================
 SUBROUTINE DefineParametersExactFunc()
-!==================================================================================================================================
-! Define parameters of Interpolation
-!==================================================================================================================================
 ! MODULES
 USE MOD_Globals
 USE MOD_ReadInTools ,ONLY: prms,addStrListEntry
@@ -70,6 +83,9 @@ CALL addStrListEntry('IniExactFunc','cavity'   ,9)
 CALL addStrListEntry('IniExactFunc','shock'    ,10)
 CALL addStrListEntry('IniExactFunc','sod'      ,11)
 CALL addStrListEntry('IniExactFunc','dmr'      ,13)
+#if PARABOLIC
+CALL addStrListEntry('IniExactFunc','blasius'  ,1338)
+#endif
 CALL prms%CreateRealArrayOption(    'AdvVel',       "Advection velocity (v1,v2,v3) required for exactfunction CASE(2,21,4,8)")
 CALL prms%CreateRealOption(         'MachShock',    "Parameter required for CASE(10)", '1.5')
 CALL prms%CreateRealOption(         'PreShockDens', "Parameter required for CASE(10)", '1.0')
@@ -77,6 +93,10 @@ CALL prms%CreateRealArrayOption(    'IniCenter',    "Shu Vortex CASE(7) (x,y,z)"
 CALL prms%CreateRealArrayOption(    'IniAxis',      "Shu Vortex CASE(7) (x,y,z)")
 CALL prms%CreateRealOption(         'IniAmplitude', "Shu Vortex CASE(7)", '0.2')
 CALL prms%CreateRealOption(         'IniHalfwidth', "Shu Vortex CASE(7)", '0.2')
+#if PARABOLIC
+CALL prms%CreateRealOption(         'delta99_in',   "Blasius boundary layer CASE(1338)")
+CALL prms%CreateRealOption(         'x_in',         "Blasius boundary layer CASE(1338)")
+#endif
 
 END SUBROUTINE DefineParametersExactFunc
 
@@ -118,8 +138,12 @@ CASE(8) ! couette-poiseuille flow
 CASE(10) ! shock
   MachShock    = GETREAL('MachShock','1.5')
   PreShockDens = GETREAL('PreShockDens','1.0')
-CASE(11) ! Sod shock tube
-CASE(13) ! Double Mach Reflection
+#if PARABOLIC
+CASE(1338) ! Blasius boundary layer solution
+  delta99_in      = GETREAL('delta99_in')
+  x_in            = GETREAL('x_in')
+  BlasiusInitDone = .TRUE. ! Mark Blasius init as done so we don't read the parameters again in BC init
+#endif 
 CASE DEFAULT
 END SELECT ! IniExactFunc
 
@@ -157,6 +181,10 @@ USE MOD_Equation_Vars  ,ONLY: IniRefState,RefStateCons,RefStatePrim
 USE MOD_Timedisc_Vars  ,ONLY: fullBoundaryOrder,CurrentStage,dt,RKb,RKc,t
 USE MOD_TestCase       ,ONLY: ExactFuncTestcase
 USE MOD_EOS            ,ONLY: PrimToCons,ConsToPrim
+#if PARABOLIC
+USE MOD_Eos_Vars       ,ONLY: mu0
+USE MOD_Exactfunc_Vars ,ONLY: delta99_in,x_in
+#endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -179,6 +207,12 @@ REAL                            :: random
 REAL                            :: du, dTemp, RT, r2       ! aux var for SHU VORTEX,isentropic vortex case 12
 REAL                            :: pi_loc,phi,radius       ! needed for cylinder potential flow
 REAL                            :: h,sRT,pexit,pentry   ! needed for Couette-Poiseuille
+#if PARABOLIC
+! needed for blasius BL
+INTEGER                         :: nSteps,i
+REAL                            :: eta,deta,deta2,f,fp,fpp,fppp,fbar,fpbar,fppbar,fpppbar
+REAL                            :: x_eff(3),x_offset
+#endif
 !==================================================================================================================================
 tEval=MERGE(t,tIn,fullBoundaryOrder) ! prevent temporal order degradation, works only for RK3 time integration
 
@@ -516,6 +550,43 @@ CASE(13) ! DoubleMachReflection (see e.g. http://www.astro.princeton.edu/~jstone
     END IF
   END IF
   CALL PrimToCons(prim,resu)
+#if PARABOLIC
+CASE(1338) ! blasius
+  prim=RefStatePrim(:,IniRefState)
+  ! calculate equivalent x for Blasius flat plate to have delta99_in at x_in
+  x_offset=(delta99_in/5)**2*prim(1)*prim(2)/mu0-x_in
+  x_eff=x+(/1.,0.,0./)*x_offset
+  IF(x_eff(2).GE.0 .AND. x_eff(1).GT.0) THEN
+    ! scale bl position in physical space to reference space, eta=5 is ~99% bl thickness
+    eta=x_eff(2)*(prim(1)*prim(2)/(mu0*x_eff(1)))**0.5
+
+    deta=0.02 ! step size
+    nSteps=CEILING(eta/deta)
+    deta =eta/nSteps
+    deta2=0.5*deta
+
+    f=0.
+    fp=0.
+    fpp=0.332 ! default literature value, don't change if you don't know what you're doing
+    fppp=0.
+    !Blasius boundary layer
+    DO i=1,nSteps
+      ! predictor 
+      fbar    = f   + deta * fp
+      fpbar   = fp  + deta * fpp
+      fppbar  = fpp + deta * fppp
+      fpppbar = -0.5*fbar*fppbar
+      ! corrector 
+      f       = f   + deta2 * (fp   + fpbar)
+      fp      = fp  + deta2 * (fpp  + fppbar)
+      fpp     = fpp + deta2 * (fppp + fpppbar)
+      fppp    = -0.5*f*fpp
+    END DO
+    prim(3)=0.5*(mu0*prim(2)/prim(1)/x_eff(1))**0.5*(fp*eta-f)
+    prim(2)=RefStatePrim(2,IniRefState)*fp
+  END IF
+  CALL PrimToCons(prim,resu)
+#endif
 END SELECT ! ExactFunction
 #if PP_dim==2
 Resu(4)=0.

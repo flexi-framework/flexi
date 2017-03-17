@@ -16,6 +16,23 @@
 
 !==================================================================================================================================
 !> Routines to provide boundary conditions for the domain. Fills the boundary part of the fluxes list.
+!>
+!> Available boundary conditions are:
+!>  * 1   : Periodic boundary conditions (no work to be done here, are already filled due to mesh connection)
+!>  DIRICHLET BCs:
+!>  * 2   : Use the initial exact function (if BC state = 0) or a refstate as dirichlet boundary conditions
+!>  * 12  : Read in dirichlet boundary conditions from a HDF5 file
+!>  * 121 : Similar to 2, but pre-compute and store the evaluation of a exact func
+!>  WALL BCs:
+!>  * 3   : Adiabatic wall
+!>  * 4   : Isothermal wall (Temperature specified by refstate)
+!>  * 9   : Slip wall
+!>  OUTFLOW BCs:
+!>  * 23  : Outflow BC where the second entry of the refstate specifies the desired Mach number at the outflow
+!>  * 24  : Pressure outflow BC (pressure specified by resfstate)
+!>  * 25  : Subsonic outflow BC
+!>  INFLOW BCs:
+!>  * 27  : Subsonic inflow BC, WARNING: REFSTATE is different: Tt,alpha,beta,<empty>,pT (4th entry ignored!!), angles in DEG
 !==================================================================================================================================
 MODULE MOD_GetBoundaryFlux
 ! MODULES
@@ -74,11 +91,17 @@ SUBROUTINE InitBC()
 USE MOD_Preproc
 USE MOD_Globals
 USE MOD_Viscosity
+USE MOD_ReadInTools
 USE MOD_Equation_Vars     ,ONLY: EquationInitIsDone
 USE MOD_Equation_Vars     ,ONLY: nRefState,BCData,BCDataPrim,nBCByType,BCSideID
 USE MOD_Equation_Vars     ,ONLY: BCStateFile,RefStatePrim
 USE MOD_Interpolation_Vars,ONLY: InterpolationInitIsDone
-USE MOD_Mesh_Vars         ,ONLY: MeshInitIsDone,nBCSides,BC,BoundaryType,nBCs
+USE MOD_Mesh_Vars         ,ONLY: MeshInitIsDone,nBCSides,BC,BoundaryType,nBCs,Face_xGP
+#if PARABOLIC
+USE MOD_Exactfunc_Vars    ,ONLY: delta99_in,x_in,BlasiusInitDone
+#endif
+USE MOD_EOS               ,ONLY: ConsToPrim
+USE MOD_ExactFunc         ,ONLY: ExactFunc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -89,6 +112,7 @@ INTEGER :: locType,locState
 INTEGER :: MaxBCState,MaxBCStateGlobal
 LOGICAL :: readBCdone
 REAL    :: talpha,tbeta
+INTEGER :: p,q
 !==================================================================================================================================
 IF((.NOT.InterpolationInitIsDone).AND.(.NOT.MeshInitIsDone).AND.(.NOT.EquationInitIsDone))THEN
    CALL CollectiveStop(__STAMP__,&
@@ -99,7 +123,7 @@ MaxBCState = 0
 DO iSide=1,nBCSides
   locType =BoundaryType(BC(iSide),BC_TYPE)
   locState=BoundaryType(BC(iSide),BC_STATE)
-  IF((locType.NE.22).AND.locType.NE.3) MaxBCState = MAX(MaxBCState,locState)
+  IF((locType.NE.22).AND.(locType.NE.3).AND.(locType.NE.121)) MaxBCState = MAX(MaxBCState,locState)
   IF((locType.EQ.4).AND.(locState.LT.1))&
     CALL abort(__STAMP__,&
                'No temperature (refstate) defined for BC_TYPE',locType)
@@ -115,6 +139,9 @@ DO iSide=1,nBCSides
   IF((locType.EQ.27).AND.(locState.LT.1))&
     CALL abort(__STAMP__,&
                'No inflow refstate (Tt,alpha,beta,empty,pT) in refstate defined for BC_TYPE',locType)
+  IF((locType.EQ.121).AND.(locState.LT.1))&
+    CALL abort(__STAMP__,&
+               'No exactfunc defined for BC_TYPE',locType)
 #if FV_RECONSTRUCT
   IF((locType.EQ.3).OR.(locType.EQ.4))THEN
     ASSOCIATE(prim => RefStatePrim(:,locState))
@@ -136,6 +163,22 @@ IF(MaxBCState.GT.nRefState)THEN
   CALL abort(__STAMP__,&
     'ERROR: Boundary RefState not defined! (MaxBCState,nRefState):',MaxBCState,REAL(nRefState))
 END IF
+
+#if PARABOLIC
+! Check for Blasius BCs and read parameters if this has not happened in the equation init
+IF (.NOT.BlasiusInitDone) THEN
+   DO i=1,nBCs
+     locType =BoundaryType(i,BC_TYPE)
+     locState=BoundaryType(i,BC_STATE)
+     IF ((locType.EQ.121).AND.(locState.EQ.1338)) THEN
+       delta99_in      = GETREAL('delta99_in')
+       x_in            = GETREAL('x_in')
+       BlasiusInitDone = .TRUE.
+       EXIT
+     END IF
+   END DO
+END IF
+#endif
 
 ! Allocate buffer array to store temp data for all BC sides
 ALLOCATE(BCData(PP_nVar,        0:PP_N,0:PP_NZ,nBCSides))
@@ -163,6 +206,15 @@ DO i=1,nBCs
   END SELECT
 END DO
 
+! Initialize Dirichlet BCs that use a pre-computed and then stored evaluation of an exact func
+DO iSide=1,nBCSides
+  IF (Boundarytype(BC(iSide),BC_TYPE).EQ.121) THEN
+    DO q=0,PP_N; DO p=0,PP_N
+      CALL ExactFunc(Boundarytype(BC(iSide),BC_STATE),0.,Face_xGP(:,p,q,0,iSide),BCData(:,p,q,iSide))
+      CALL ConsToPrim(BCDataPrim(:,p,q,iSide),BCData(:,p,q,iSide))
+    END DO; END DO ! p,q=0,PP_N
+  END IF
+END DO
 
 ! Count number of sides of each boundary
 ALLOCATE(nBCByType(nBCs))
@@ -242,8 +294,9 @@ CASE(2) !Exact function or refstate
       UPrim_boundary(:,p,q) = RefStatePrim(:,BCState)
     END DO; END DO
   END IF
-CASE(12) ! exact BC = Dirichlet BC !!
-  ! SPECIAL BC: BCState uses readin state
+CASE(12,121) ! exact BC = Dirichlet BC !!
+  ! SPECIAL BC: BCState uses readin state (12)
+  ! SPECIAL BC: BCState uses Exact func computed once at the beginning (121)
   ! Dirichlet means that we use the gradients from inside the grid cell
   UPrim_boundary(:,:,:) = BCDataPrim(:,:,:,SideID)
 CASE(22) ! exact BC = Dirichlet BC !!
@@ -500,10 +553,10 @@ ELSE
       NormVec,TangVec1,TangVec2,Face_xGP)
 
   SELECT CASE(BCType)
-  CASE(2,12,22,23,24,25,27) ! Riemann-Type BCs 
+  CASE(2,12,121,22,23,24,25,27) ! Riemann-Type BCs 
     DO q=0,PP_NlocZ; DO p=0,Nloc
-      CALL PrimToCons(UPrim_master(:,p,q), UCons_master(:,p,q)) 
-      CALL PrimToCons(UPrim_boundary(:,p,q),      UCons_boundary(:,p,q)) 
+      CALL PrimToCons(UPrim_master(:,p,q), UCons_master(:,p,q))
+      CALL PrimToCons(UPrim_boundary(:,p,q),      UCons_boundary(:,p,q))
     END DO; END DO ! p,q=0,PP_N
     CALL Riemann(Nloc,Flux,UCons_master,UCons_boundary,UPrim_master,UPrim_boundary, &
         NormVec,TangVec1,TangVec2,doBC=.TRUE.)
@@ -635,7 +688,7 @@ ELSE
   CALL GetBoundaryState(SideID,t,PP_N,UPrim_boundary,UPrim_master,&
       NormVec,TangVec1,TangVec2,Face_xGP)
   SELECT CASE(BCType)
-  CASE(2,3,4,9,12,22,23,24,25,27)
+  CASE(2,3,4,9,12,121,22,23,24,25,27)
     DO q=0,PP_NZ; DO p=0,PP_N
       gradU(:,p,q) = (UPrim_master(:,p,q) - UPrim_boundary(:,p,q)) * sdx_Face(p,q,3)
     END DO; END DO ! p,q=0,PP_N
@@ -688,7 +741,7 @@ ELSE
   CALL GetBoundaryState(SideID,t,PP_N,UPrim_boundary,UPrim_master,&
                         NormVec,TangVec1,TangVec2,Face_xGP)
   SELECT CASE(BCType)
-  CASE(2,12,22,23,24,25,27) ! Riemann solver based BCs
+  CASE(2,12,121,22,23,24,25,27) ! Riemann solver based BCs
       Flux=0.5*(UPrim_master+UPrim_boundary)
   CASE(3,4) ! No-slip wall BCs
     DO q=0,PP_NZ; DO p=0,PP_N
@@ -788,7 +841,7 @@ ELSE
   CALL GetVandermonde(N_HDF5,NodeType_HDF5,PP_N,NodeType,Vdm_NHDF5_N,modal=.TRUE.)
 
   SWRITE(UNIT_stdOut,*)'Interpolate base flow from restart grid with N=',N_HDF5,' to computational grid with N=',PP_N
-  CALL ChangeBasisVolume(PP_nVar,N_HDF5,PP_N,1,nElems,1,nElems,Vdm_NHDF5_N,U_local,U_N)
+  CALL ChangeBasisVolume(PP_nVar,nElems,N_HDF5,PP_N,Vdm_NHDF5_N,U_local,U_N,.FALSE.)
   DEALLOCATE(Vdm_NHDF5_N)
 END IF
 

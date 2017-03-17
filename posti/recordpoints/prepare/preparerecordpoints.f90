@@ -8,21 +8,21 @@ PROGRAM PrepareRecordPoints
 ! General and support
 USE MOD_Globals
 USE MOD_Commandline_Arguments
-USE MOD_StringTools       ,ONLY:STRICMP, GetFileExtension
-USE MOD_ReadInTools,       ONLY:prms,IgnoredParameters,PrintDefaultParameterFile,FinalizeParameters
+USE MOD_StringTools,        ONLY:STRICMP,GetFileExtension
+USE MOD_ReadInTools,        ONLY:prms,IgnoredParameters,PrintDefaultParameterFile,FinalizeParameters
 ! Flexilib initialization
-USE MOD_MPI,               ONLY:DefineParametersMPI,InitMPI
-USE MOD_IO_HDF5,           ONLY:DefineParametersIO_HDF5,InitIOHDF5
-USE MOD_Interpolation,     ONLY:DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
-USE MOD_Output,            ONLY:DefineParametersOutput,InitOutput,FinalizeOutput
-USE MOD_Output_Vars,       ONLY:ProjectName
-USE MOD_Mesh,              ONLY:DefineParametersMesh,InitMesh,FinalizeMesh
-USE MOD_Mesh_Vars,         ONLY:MeshFile
-USE MOD_Mortar,            ONLY:InitMortar,FinalizeMortar
+USE MOD_MPI,                ONLY:DefineParametersMPI,InitMPI
+USE MOD_IO_HDF5,            ONLY:DefineParametersIO_HDF5,InitIOHDF5
+USE MOD_Interpolation,      ONLY:DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
+USE MOD_Output,             ONLY:DefineParametersOutput,InitOutput,FinalizeOutput
+USE MOD_Output_Vars,        ONLY:ProjectName
+USE MOD_Mesh,               ONLY:DefineParametersMesh,InitMesh,FinalizeMesh
+USE MOD_Mesh_Vars,          ONLY:MeshFile
+USE MOD_Mortar,             ONLY:InitMortar,FinalizeMortar
 ! Recordpoints
 USE MOD_RPSet
-USE MOD_VisuRP,            ONLY:VisuRP
-USE MOD_ParametricCoords,  ONLY:GetRecordPoints
+USE MOD_VisuRP,             ONLY:VisuRP
+USE MOD_RPParametricCoords, ONLY:GetRecordPoints
 USE MOD_HDF5_OutputRP
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------

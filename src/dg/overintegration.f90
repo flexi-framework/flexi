@@ -80,7 +80,7 @@ END SUBROUTINE DefineParametersOverintegration
 !==================================================================================================================================
 !> Initialize all necessary information to perform overintegration 
 !==================================================================================================================================
-SUBROUTINE InitOverintegration()
+SUBROUTINE InitOverintegration(doBuildOverintegrationMesh)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! MODULES
 USE MOD_Globals
@@ -97,14 +97,16 @@ USE MOD_Interpolation       ,ONLY:GetNodesAndWeights
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
+LOGICAL,INTENT(IN),OPTIONAL :: doBuildOverintegrationMesh
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER             :: iDeg,iElem,i,j,k                             !< Loop counters 
 REAL,ALLOCATABLE    :: DetJac_NUnder(:,:,:,:)                       !< Determinant of the Jacobian on Nunder, 
                                                                     !< size [1,0..Nunder,0..Nunder,0..Nunder]  
 REAL,ALLOCATABLE    :: Vdm_NGeoRef_NUnder(:,:)
+LOGICAL             :: doBuildOverintegrationMesh_loc
 !==================================================================================================================================
-! Check if the necessary prerequisites are met 
+! Check if the necessary prerequisites are met
 IF(OverintegrationInitIsDone.OR.(.NOT.InterpolationInitIsDone))THEN
   CALL CollectiveStop(__STAMP__,&
     'InitOverintegration not ready to be called or already called.')
@@ -180,7 +182,8 @@ CASE (OVERINTEGRATIONTYPE_SELECTIVE) ! selective overintegration of advective fl
     ALLOCATE(VdmNToNOver(0:NOver,0:PP_N),VdmNOverToN(0:PP_N,0:NOver))
     CALL GetVandermonde(PP_N,NodeType,NOver,NodeType,VdmNToNOver,modal=.FALSE.)
     CALL GetVandermonde(NOver,NodeType,PP_N,NodeType,VdmNOverToN,modal=.TRUE.)
-    CALL BuildOverintMesh()
+    doBuildOverintegrationMesh_loc = MERGE(doBuildOverintegrationMesh,.TRUE., PRESENT(doBuildOverintegrationMesh))
+    IF (doBuildOverintegrationMesh_loc) CALL BuildOverintMesh()
   END IF
   SWRITE(UNIT_stdOut,'(A)') ' Method of overintegration: selective overintegration of advective fluxes'
 CASE DEFAULT
@@ -257,39 +260,31 @@ REAL,INTENT(INOUT)  :: U_in(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems)    !< Time der
 ! LOCAL VARIABLES
 #if PP_dim==2
 INTEGER             :: i,j,iElem
-REAL                :: U_loc(   PP_nVar,0:NUnder,0:NUnder,0:0,nElems) ! U_t / JU_t on NUnder
 #else
 INTEGER             :: i,j,k,iElem
-REAL                :: U_loc(   PP_nVar,0:NUnder,0:NUnder,0:NUnder) ! U_t / JU_t on NUnder
 REAL                :: X3D_Buf1(PP_nVar,0:NUnder,0:PP_N,0:PP_N)     ! intermediate results from 1D interpolations
 REAL                :: X3D_Buf2(PP_nVar,0:NUnder,0:NUnder,0:PP_N)   !
 REAL                :: X3D_Buf3(PP_nVar,0:PP_N,0:NUnder,0:NUnder)   !
 REAL                :: X3D_Buf4(PP_nVar,0:PP_N,0:PP_N,0:NUnder)     !
 INTEGER             :: iU,jU,kU,nDOF_N,nDOF_NUnder
 #endif
+REAL                :: U_loc(   PP_nVar,0:NUnder,0:NUnder,0:NUnder) ! U_t / JU_t on NUnder
 !==================================================================================================================================
 #if PP_dim==2
 ! The following 5 lines are original lines of code for the conservative filtering.
-! The below code does the same, but optimized for performance.
+! The below code does the same, but optimized for performance. For 2D, we use the non-optimized code.
+! TODO: Use optimized code for 2D!
 ! === BEGIN ORIGINAL CODE === 
-#if FV_ENABLED
-CALL ChangeBasisVolume(PP_nVar,PP_N,NUnder,1,nElems,1,nElems,Vdm_N_NUnder,U_in,U_loc,FV_Elems,0)
-#else
-CALL ChangeBasisVolume(PP_nVar,PP_N,NUnder,1,nElems,1,nElems,Vdm_N_NUnder,U_in,U_loc)
-#endif
 DO iElem=1,nElems
 #if FV_ENABLED
   IF (FV_Elems(iElem).GT.0) CYCLE ! Do only, when DG element
 #endif
+  CALL ChangeBasisVolume(PP_nVar,PP_N,NUnder,Vdm_N_NUnder,U_in(:,:,:,:,iElem),U_loc)
   DO j=0,NUnder; DO i=0,NUnder
-    U_loc(:,i,j,0,iElem)=U_loc(:,i,j,0,iElem)*sJNUnder(i,j,0,iElem)
+    U_loc(:,i,j,0)=U_loc(:,i,j,0)*sJNUnder(i,j,0,iElem)
   END DO; END DO
+  CALL ChangeBasisVolume(PP_nVar,NUnder,PP_N,Vdm_NUnder_N,U_loc,U_in(:,:,:,:,iElem))
 END DO
-#if FV_ENABLED
-CALL ChangeBasisVolume(PP_nVar,NUnder,PP_N,1,nElems,1,nElems,Vdm_NUnder_N,U_loc,U_in,FV_Elems,0)
-#else
-CALL ChangeBasisVolume(PP_nVar,NUnder,PP_N,1,nElems,1,nElems,Vdm_NUnder_N,U_loc,U_in)
-#endif
 ! === END ORIGINAL CODE === 
 #else
 nDOF_N     =PP_nVar*(PP_N+1  )**3

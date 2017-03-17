@@ -350,14 +350,17 @@ DO
     ! Visualize data and write solution
     writeCounter=writeCounter+1
     IF((writeCounter.EQ.nWriteData).OR.doFinalize)THEN
-      ! Visualize data
-      CALL Visualize(t,U)
-      ! Write state to file
-      CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,&
-                            FutureTime=tWriteData,isErrorFile=.FALSE.)
+      ! Write various derived data
       IF(doCalcTimeAverage) CALL CalcTimeAverage(.TRUE.,dt,t)
       IF(RP_onProc)         CALL WriteRP(t,.TRUE.)
       IF(CalcPruettDamping) CALL WriteBaseflow(TRIM(MeshFile),t)
+      ! Write state file
+      ! NOTE: this should be last in the series, so we know all previous data
+      ! has been written correctly when the state file is present
+      CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,&
+                            FutureTime=tWriteData,isErrorFile=.FALSE.)
+      ! Visualize data
+      CALL Visualize(t,U)
       writeCounter=0
       tWriteData=MIN(tAnalyze+WriteData_dt,tEnd)
     END IF
@@ -515,6 +518,9 @@ USE MOD_TimeDisc_Vars,ONLY:CFLScale,CFLScaleAlpha
 #if PARABOLIC
 USE MOD_TimeDisc_Vars,ONLY:DFLScale,DFLScaleAlpha,RelativeDFL
 #endif /*PARABOLIC*/
+#if FV_ENABLED
+USE MOD_TimeDisc_Vars,ONLY:CFLScaleFV
+#endif /*FV*/
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -533,7 +539,7 @@ INTEGER            :: dummy
 alpha    = CFLScaleAlpha(MIN(15,Nin_CFL))
 CFLScale(0) = CFLScale(0)*alpha
 #if FV_ENABLED
-CFLScale(1) = CFLScale(1)*CFLScaleAlpha(1)/(PP_N+1.) ! equidistant distribution
+CFLScale(1) = CFLScale(1)*CFLScaleFV/(PP_N+1.) ! equidistant distribution
 #endif
 IF((Nin_CFL.GT.15).OR.(CFLScale(0).GT.alpha))THEN
   SWRITE(UNIT_StdOut,'(132("!"))')
