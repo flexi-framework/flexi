@@ -172,7 +172,7 @@ IF (.NOT.BlasiusInitDone) THEN
      locState=BoundaryType(i,BC_STATE)
      IF ((locType.EQ.121).AND.(locState.EQ.1338)) THEN
        delta99_in      = GETREAL('delta99_in')
-       x_in            = GETREAL('x_in')
+       x_in            = GETREALARRAY('x_in',2,'(/0.,0./)')
        BlasiusInitDone = .TRUE.
        EXIT
      END IF

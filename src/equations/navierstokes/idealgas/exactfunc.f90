@@ -95,7 +95,7 @@ CALL prms%CreateRealOption(         'IniAmplitude', "Shu Vortex CASE(7)", '0.2')
 CALL prms%CreateRealOption(         'IniHalfwidth', "Shu Vortex CASE(7)", '0.2')
 #if PARABOLIC
 CALL prms%CreateRealOption(         'delta99_in',   "Blasius boundary layer CASE(1338)")
-CALL prms%CreateRealOption(         'x_in',         "Blasius boundary layer CASE(1338)")
+CALL prms%CreateRealArrayOption(    'x_in',         "Blasius boundary layer CASE(1338)")
 #endif
 
 END SUBROUTINE DefineParametersExactFunc
@@ -141,7 +141,7 @@ CASE(10) ! shock
 #if PARABOLIC
 CASE(1338) ! Blasius boundary layer solution
   delta99_in      = GETREAL('delta99_in')
-  x_in            = GETREAL('x_in')
+  x_in            = GETREALARRAY('x_in',2,'(/0.,0./)')
   BlasiusInitDone = .TRUE. ! Mark Blasius init as done so we don't read the parameters again in BC init
 #endif 
 CASE DEFAULT
@@ -211,7 +211,7 @@ REAL                            :: h,sRT,pexit,pentry   ! needed for Couette-Poi
 ! needed for blasius BL
 INTEGER                         :: nSteps,i
 REAL                            :: eta,deta,deta2,f,fp,fpp,fppp,fbar,fpbar,fppbar,fpppbar
-REAL                            :: x_eff(3),x_offset
+REAL                            :: x_eff(3),x_offset(3)
 #endif
 !==================================================================================================================================
 tEval=MERGE(t,tIn,fullBoundaryOrder) ! prevent temporal order degradation, works only for RK3 time integration
@@ -554,8 +554,10 @@ CASE(13) ! DoubleMachReflection (see e.g. http://www.astro.princeton.edu/~jstone
 CASE(1338) ! blasius
   prim=RefStatePrim(:,IniRefState)
   ! calculate equivalent x for Blasius flat plate to have delta99_in at x_in
-  x_offset=(delta99_in/5)**2*prim(1)*prim(2)/mu0-x_in
-  x_eff=x+(/1.,0.,0./)*x_offset
+  x_offset(1)=(delta99_in/5)**2*prim(1)*prim(2)/mu0-x_in(1)
+  x_offset(2)=-x_in(2)
+  x_offset(3)=0.
+  x_eff=x+x_offset
   IF(x_eff(2).GE.0 .AND. x_eff(1).GT.0) THEN
     ! scale bl position in physical space to reference space, eta=5 is ~99% bl thickness
     eta=x_eff(2)*(prim(1)*prim(2)/(mu0*x_eff(1)))**0.5
@@ -584,6 +586,10 @@ CASE(1338) ! blasius
     END DO
     prim(3)=0.5*(mu0*prim(2)/prim(1)/x_eff(1))**0.5*(fp*eta-f)
     prim(2)=RefStatePrim(2,IniRefState)*fp
+  ELSE
+    IF(x_eff(2).LT.0) THEN
+      prim(2)=0.
+    END IF 
   END IF
   CALL PrimToCons(prim,resu)
 #endif
