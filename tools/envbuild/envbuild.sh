@@ -48,8 +48,8 @@ HDF5_DLPATH='http://www.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.0-pat
 # Path and version of MPI
 # Note: MPI versions as of 1.10.3+ require autotools (aclocal) 1.15+ to be installed
 OPENMPI_NAME=openmpi
-OPENMPI_VERSION=2.0.1
-OPENMPI_DLPATH='https://www.open-mpi.org/software/ompi/v2.0/downloads/openmpi-2.0.1.tar.bz2'
+OPENMPI_VERSION=2.1.0
+OPENMPI_DLPATH='https://www.open-mpi.org/software/ompi/v2.1/downloads/openmpi-2.1.0.tar.bz2'
 
 # Path and version of CMake
 CMAKE_NAME=cmake
@@ -179,11 +179,11 @@ build_lib () {
 
   if [ $INSTALL_REQUIRES_ROOT == 1 ] ; then
     sudo mkdir -p $MYLIB_INSTALL
-    sudo make install
+    sudo chmod -R ugo+rwx $MYLIB_INSTALL
   else
          mkdir -p $MYLIB_INSTALL
-         make install
   fi
+  make install
 }
 
 build_module () {
