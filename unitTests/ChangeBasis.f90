@@ -9,7 +9,7 @@ PROGRAM ChangeBasisUnitTest
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_ChangeBasis,       ONLY: ChangeBasis2D,ChangeBasis2D_selective,ChangeBasis3D,ChangeBasis3D_XYZ
+USE MOD_ChangeBasis,       ONLY: ChangeBasis2D,ChangeBasis3D,ChangeBasis3D_XYZ
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -89,10 +89,6 @@ UIn2D = UIn(:,:,:,0,:)
 UOut2D = UOut(:,:,:,0,:,1:3)
 ! Check ChangeBasis2D_Single
 CALL ChangeBasis2D(nVar,NIn,NOut,Vdm,UIn2D(:,:,:,1),UOut2D(:,:,:,1,1))
-
-! Check ChangeBasis2D_Mult
-CALL ChangeBasis2D_selective(nVar,NIn,NOut,1,nElems,2,nElems-1,Vdm,UIn2D,UOut2D(:,:,:,:,2),addToOutput=.FALSE.)
-CALL ChangeBasis2D_selective(nVar,NIn,NOut,1,nElems,2,nElems-1,Vdm,UIn2D,UOut2D(:,:,:,:,3),addToOutput=.TRUE.)
 
 IF (doGenerateReference) THEN
   ! Save the calculated solution to a binary file for later comparison

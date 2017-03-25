@@ -84,7 +84,7 @@ SUBROUTINE WriteState(MeshFileName,OutputTime,FutureTime,isErrorFile   )
 USE MOD_PreProc
 USE MOD_Globals
 USE MOD_DG_Vars      ,ONLY: U
-USE MOD_Output_Vars  ,ONLY: ProjectName,NOut,Vdm_N_NOut
+USE MOD_Output_Vars  ,ONLY: ProjectName,NOut,Vdm_N_NOut,WriteStateFiles
 USE MOD_Mesh_Vars    ,ONLY: offsetElem,nGlobalElems,sJ,nElems
 USE MOD_ChangeBasis  ,ONLY: ChangeBasis3D
 USE MOD_Equation_Vars,ONLY: StrVarNames
@@ -104,6 +104,7 @@ REAL                           :: Utmp(5,0:PP_N,0:PP_N,0:PP_N)
 REAL                           :: JN(1,0:PP_N,0:PP_N,0:PP_N),JOut(1,0:NOut,0:NOut,0:NOut)
 INTEGER                        :: iElem,i,j,k
 !==================================================================================================================================
+IF (.NOT.WriteStateFiles) RETURN
 IF(MPIRoot)THEN
   WRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' WRITE STATE TO HDF5 FILE...'
   GETTIME(StartT)
@@ -681,7 +682,6 @@ END SUBROUTINE GenerateFileSkeleton
 !==================================================================================================================================
 SUBROUTINE MarkWriteSuccessfull(FileName)
 ! MODULES
-USE MOD_Output_Vars  ,ONLY: userblock_total_len
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

@@ -54,7 +54,7 @@ USE MOD_Mesh_Vars,       ONLY: firstInnerSide,   lastInnerSide
 USE MOD_Mesh_Vars,       ONLY: firstMPISide_MINE,lastMPISide_MINE
 #if FV_ENABLED
 USE MOD_FV_Vars         ,ONLY: FV_Elems_Sum,FV_sVdm
-USE MOD_ChangeBasis     ,ONLY: ChangeBasis2D_selective
+USE MOD_ChangeBasis     ,ONLY: ChangeBasis2D
 #endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -63,12 +63,12 @@ INTEGER,INTENT(IN) :: dir                        !< direction (x,y,z)
 LOGICAL,INTENT(IN) :: doMPISides                 !< =.TRUE. only MINE MPISides are filled, =.FALSE. InnerSides
 REAL,INTENT(IN)    :: UPrimface_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< solution on the master sides
 REAL,INTENT(IN)    :: UPrimface_slave (PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< solution on the slave sides
-REAL,INTENT(OUT)   :: Flux(1:PP_nVarPrim,0:PP_N,0:PP_N,nSides) !< surface flux contribution
+REAL,INTENT(OUT)   :: Flux(1:PP_nVarPrim,0:PP_N,0:PP_N,nSides)             !< surface flux contribution
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            ::SideID,p,q,firstSideID,lastSideID
 #if FV_ENABLED  
-REAL               :: UPrim_glob(1:PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
+REAL               :: UPrim_glob(1:PP_nVarPrim,0:PP_N,0:PP_N)
 #endif
 !==================================================================================================================================
 ! fill flux for sides ranging between firstSideID and lastSideID using Riemann solver
@@ -82,14 +82,6 @@ ELSE
    lastSideID =  lastInnerSide
 END IF
 
-#if FV_ENABLED
-! change basis for the FV element
-CALL ChangeBasis2D_selective(PP_nVarPrim,PP_N,PP_N,1,nSides,firstSideID,lastSideID,&
-                             FV_sVdm,UPrimface_master,UPrim_glob,FV_Elems_Sum,1)
-CALL ChangeBasis2D_selective(PP_nVarPrim,PP_N,PP_N,1,nSides,firstSideID,lastSideID,&
-                             FV_sVdm,UPrimface_slave ,UPrim_glob,FV_Elems_Sum,2)
-#endif
-
 DO SideID = firstSideID,lastSideID
 #if FV_ENABLED
   SELECT CASE(FV_Elems_Sum(SideID))
@@ -100,9 +92,11 @@ DO SideID = firstSideID,lastSideID
     Flux(:,:,:,SideID)=0.5*(UPrimface_slave(:,:,:,SideID)-UPrimface_master(:,:,:,SideID))
 #if FV_ENABLED
   CASE(1) ! master=FV, slave=DG
-    Flux(:,:,:,SideID)=0.5*(UPrimface_slave(:,:,:,SideID)-UPrim_glob(:,:,:,SideID))
+    CALL ChangeBasis2D(PP_nVarPrim,PP_N,PP_N,FV_sVdm,UPrimface_master(:,:,:,SideID),UPrim_glob)
+    Flux(:,:,:,SideID)=0.5*(UPrimface_slave(:,:,:,SideID)-UPrim_glob(:,:,:))
   CASE(2) ! master=DG, slave=FV
-    Flux(:,:,:,SideID)=0.5*(UPrim_glob(:,:,:,SideID)-UPrimface_master(:,:,:,SideID))
+    CALL ChangeBasis2D(PP_nVarPrim,PP_N,PP_N,FV_sVdm,UPrimface_slave(:,:,:,SideID),UPrim_glob)
+    Flux(:,:,:,SideID)=0.5*(UPrim_glob(:,:,:)-UPrimface_master(:,:,:,SideID))
   CASE(3) ! both FV
     CYCLE 
   END SELECT

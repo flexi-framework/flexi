@@ -42,12 +42,8 @@ END INTERFACE
 
 INTERFACE ChangeBasis2D
   MODULE PROCEDURE ChangeBasis2D
+  MODULE PROCEDURE ChangeBasis2D_overwrite
   MODULE PROCEDURE ChangeBasis2D_SingleVar
-END INTERFACE
-
-INTERFACE ChangeBasis2D_selective
-  MODULE PROCEDURE ChangeBasis2D_selective
-  MODULE PROCEDURE ChangeBasis2D_selective_overwrite
 END INTERFACE
 
 INTERFACE ChangeBasis1D 
@@ -57,7 +53,6 @@ END INTERFACE
 PUBLIC :: ChangeBasis3D
 PUBLIC :: ChangeBasis3D_XYZ
 PUBLIC :: ChangeBasis2D
-PUBLIC :: ChangeBasis2D_selective
 PUBLIC :: ChangeBasis1D
 !==================================================================================================================================
 
@@ -433,170 +428,41 @@ DO jNIn=0,NIn
 END DO
 END SUBROUTINE ChangeBasis2D
 
-
-! TODO: documentation, variable bezeichnung im gleichen Stil wie oben
-SUBROUTINE ChangeBasis2D_selective(Dim1,N_In,N_Out,SideID_1,SideID_N,firstSideID,lastSideID,Vdm,X2D_In,X2D_Out,mask,mask_ref,&
-        addToOutput)
-!==================================================================================================================================
-!==================================================================================================================================
+SUBROUTINE ChangeBasis2D_overwrite(Dim1,NIn,NOut,Vdm,X2D_In)
 ! MODULES
-USE MOD_PreProc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)           :: Dim1,N_In,N_Out,firstSideID,lastSideID,SideID_1,SideID_N
-REAL,INTENT(IN)              :: X2D_In(1:Dim1,0:N_In,0:N_In,SideID_1:SideID_N)
-REAL,INTENT(IN)              :: Vdm(0:N_Out,0:N_In)
-REAL,INTENT(INOUT)           :: X2D_Out(1:Dim1,0:N_Out,0:N_Out,SideID_1:SideID_N)
-INTEGER,INTENT(IN),OPTIONAL  :: mask(SideID_1:SideID_N)
-INTEGER,INTENT(IN),OPTIONAL  :: mask_ref
-LOGICAL,INTENT(IN),OPTIONAL  :: addToOutput
+INTEGER,INTENT(IN)  :: Dim1                                    !< Number of variables
+INTEGER,INTENT(IN)  :: NIn                                     !< Input polynomial degree, no. of points = NIn+1
+INTEGER,INTENT(IN)  :: NOut                                    !< Output polynomial degree, no. of points = NOut+1
+REAL,INTENT(INOUT)  :: X2D_In(1:Dim1,0:NIn,0:NIn)              !< Input field, dimensions must match Dim1,NIn
+REAL,INTENT(IN)     :: Vdm(0:NOut,0:NIn)                       !< 1D Vandermonde In -> Out
+
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER             :: iN_In,jN_In,iN_Out,jN_Out,SideID,SideID2,iVec
-REAL                :: X2D_Buf1(Dim1*PP_VEC,0:N_Out,0:N_In)  ! first intermediate results from 1D interpolations
-REAL                :: VECIN (Dim1*PP_VEC,0:N_In,0:N_In)
-REAL                :: VECOUT(Dim1*PP_VEC,0:N_Out,0:N_Out)
-INTEGER             :: mask_loc(firstSideID:lastSideID), mask_ref_loc
-LOGICAL             :: addToOutput_loc
+INTEGER             :: iNIn,jNIn,iN_Out,jN_Out
+REAL                :: X2D_Buf1(1:Dim1,0:NOut,0:NIn)           ! first intermediate results from 1D interpolations
 !==================================================================================================================================
-IF (PRESENT(mask)) THEN
-  mask_loc = mask(firstSideID:lastSideID)
-  mask_ref_loc = mask_ref
-ELSE
-  mask_loc = 0
-  mask_ref_loc = 0
-END IF
-addToOutput_loc=.FALSE.
-IF (PRESENT(addToOutput)) THEN
-  addToOutput_loc = addToOutput
-END IF
-SideID = firstSideID
-SideID2 = firstSideID
-DO WHILE (SideID.LE.lastSideID)
-  ! pack solution into vector VECIN
-  iVec = 1
-  DO WHILE (iVec < Dim1*PP_VEC)
-    IF (mask_loc(SideID).EQ.mask_ref_loc) THEN
-      VECIN(iVec:iVec+Dim1-1,:,:) = X2D_In(:,:,:,SideID)
-      IF (addToOutput_loc) THEN
-        ! initialize VECOUT with X2D_Out
-        VECOUT(iVec:iVec+Dim1-1,:,:) = X2D_Out(:,:,:,SideID)
-      END IF
-      iVec = iVec + Dim1
-    END IF
-    SideID = SideID + 1
-    IF (SideID.GT.lastSideID) EXIT
-  END DO
-  ! nullify VECOUT if not initialized with data from X2D_Out
-  IF (.NOT.addToOutput_loc) THEN
-    VECOUT=0.
-  END IF
-
-  X2D_buf1=0.
-  ! first direction iN_In
-  DO jN_In=0,N_In
-    DO iN_In=0,N_In
-      DO iN_Out=0,N_Out
-        X2D_Buf1(1:iVec-1,iN_Out,jN_In)=X2D_Buf1(1:iVec-1,iN_Out,jN_In)+Vdm(iN_Out,iN_In)*VECIN(1:iVec-1,iN_In,jN_In)
-      END DO
+X2D_buf1=0.
+! first direction iNIn
+DO jNIn=0,NIn
+  DO iNIn=0,NIn
+    DO iN_Out=0,NOut
+      X2D_Buf1(:,iN_Out,jNIn)=X2D_Buf1(:,iN_Out,jNIn)+Vdm(iN_Out,iNIn)*X2D_In(:,iNIn,jNIn)
     END DO
   END DO
-  ! second direction jN_In
-  DO jN_In=0,N_In
-    DO jN_Out=0,N_Out
-      DO iN_Out=0,N_Out
-        VECOUT(1:iVec-1,iN_Out,jN_Out)=VECOUT(1:iVec-1,iN_Out,jN_Out)+Vdm(jN_Out,jN_In)*X2D_Buf1(1:iVec-1,iN_Out,jN_In)
-      END DO
+END DO
+X2D_In=0.
+! second direction jNIn
+DO jNIn=0,NIn
+  DO jN_Out=0,NOut
+    DO iN_Out=0,NOut
+      X2D_In(:,iN_Out,jN_Out)=X2D_In(:,iN_Out,jN_Out)+Vdm(jN_Out,jNIn)*X2D_Buf1(:,iN_Out,jNIn)
     END DO
   END DO
-
-  ! unpack solution from vector VECOUT
-  iVec = 1
-  DO WHILE (iVec < Dim1*PP_VEC)
-    IF (mask_loc(SideID2).EQ.mask_ref_loc) THEN
-      X2D_Out(:,:,:,SideID2) = VECOUT(iVec:iVec+Dim1-1,:,:)
-      iVec = iVec + Dim1
-    END IF
-    SideID2 = SideID2 + 1
-    IF (SideID2.GT.lastSideID) EXIT
-  END DO
-END DO  
-END SUBROUTINE ChangeBasis2D_selective
-
-! TODO: documentation, variable bezeichnung im gleichen Stil wie oben
-SUBROUTINE ChangeBasis2D_selective_overwrite(Dim1,N_In,SideID_1,SideID_N,firstSideID,lastSideID,Vdm,X2D_InOut,mask,mask_ref)
-!==================================================================================================================================
-!==================================================================================================================================
-! MODULES
-USE MOD_PreProc
-IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)           :: Dim1,N_In,firstSideID,lastSideID,SideID_1,SideID_N
-REAL,INTENT(INOUT)           :: X2D_InOut(1:Dim1,0:N_In,0:N_In,SideID_1:SideID_N)
-REAL,INTENT(IN)              :: Vdm(0:N_In,0:N_In)
-INTEGER,INTENT(IN),OPTIONAL  :: mask(SideID_1:SideID_N)
-INTEGER,INTENT(IN),OPTIONAL  :: mask_ref
-!----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-INTEGER             :: iN_In,jN_In,iN_Out,jN_Out,SideID,SideID2,iVec
-REAL                :: X2D_Buf1(Dim1*PP_VEC,0:N_In,0:N_In)  ! first intermediate results from 1D interpolations
-REAL                :: VEC     (Dim1*PP_VEC,0:N_In,0:N_In)
-INTEGER             :: mask_loc(firstSideID:lastSideID), mask_ref_loc
-!==================================================================================================================================
-IF (PRESENT(mask)) THEN
-  mask_loc = mask(firstSideID:lastSideID)
-  mask_ref_loc = mask_ref
-ELSE
-  mask_loc = 0
-  mask_ref_loc = 0
-END IF    
-SideID = firstSideID
-SideID2 = firstSideID
-DO WHILE (SideID < lastSideID)
-  ! pack solution into vector VECIN
-  iVec = 1
-  DO WHILE (iVec < Dim1*PP_VEC)
-    IF (mask_loc(SideID).EQ.mask_ref_loc) THEN
-      VEC(iVec:iVec+Dim1-1,:,:) = X2D_InOut(:,:,:,SideID)
-      iVec = iVec + Dim1
-    END IF
-    IF (SideID.EQ.lastSideID) EXIT
-    SideID = SideID + 1
-  END DO
-
-  X2D_buf1=0.
-  ! first direction iN_In
-  DO jN_In=0,N_In
-    DO iN_In=0,N_In
-      DO iN_Out=0,N_In
-        X2D_Buf1(1:iVec-1,iN_Out,jN_In)=X2D_Buf1(1:iVec-1,iN_Out,jN_In)+Vdm(iN_Out,iN_In)*VEC(1:iVec-1,iN_In,jN_In)
-      END DO
-    END DO
-  END DO
-  VEC=0.
-  ! second direction jN_In
-  DO jN_In=0,N_In
-    DO jN_Out=0,N_In
-      DO iN_Out=0,N_In
-        VEC(1:iVec-1,iN_Out,jN_Out)=VEC(1:iVec-1,iN_Out,jN_Out)+Vdm(jN_Out,jN_In)*X2D_Buf1(1:iVec-1,iN_Out,jN_In)
-      END DO
-    END DO
-  END DO
-
-  ! unpack solution from vector VEC
-  iVec = 1
-  DO WHILE (iVec < Dim1*PP_VEC)
-    IF (mask_loc(SideID2).EQ.mask_ref_loc) THEN
-      X2D_InOut(:,:,:,SideID2) = VEC(iVec:iVec+Dim1-1,:,:)
-      iVec = iVec + Dim1
-    END IF
-    IF (SideID2.EQ.lastSideID) EXIT
-    SideID2 = SideID2 + 1
-  END DO
-END DO  
-END SUBROUTINE ChangeBasis2D_selective_overwrite
+END DO
+END SUBROUTINE ChangeBasis2D_overwrite
 
 !==================================================================================================================================
 !> Interpolate a 2D tensor product Lagrange polynomial defined by (NIn+1) 1D Lagrange basis functions of order (Nin) and node 
