@@ -34,7 +34,7 @@ SUBROUTINE PerformRegressionCheck()
 USE MOD_Globals
 USE MOD_RegressionCheck_Compare, ONLY: CompareResults,CompareConvergence
 USE MOD_RegressionCheck_Tools,   ONLY: InitExample
-USE MOD_RegressionCheck_Vars,    ONLY: nExamples,ExampleNames,Examples,EXECPATH,RuntimeOptionType,GlobalRunNumber 
+USE MOD_RegressionCheck_Vars,    ONLY: nExamples,ExampleNames,Examples,EXECPATH,RuntimeOption,GlobalRunNumber 
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -62,7 +62,7 @@ GlobalRunNumber=0      ! init
 !==================================================================================================================================
 DO iExample = 1, nExamples ! loop level 1 of 5
 !==================================================================================================================================
-  CALL CheckExampleName(ExampleNames(iExample),RuntimeOptionType,SkipExample)
+  CALL CheckExampleName(ExampleNames(iExample),RuntimeOption(2),SkipExample)
   IF(SkipExample)CYCLE ! ignore the example folder and continue with the next
 
   ! set the build configuration environment when BuildSolver=.TRUE.

@@ -17,10 +17,7 @@ INTEGER                        :: NumberOfProcs                     !> number of
 CHARACTER(LEN=20)              :: NumberOfProcsStr                  !> number of processors for parallel build as string
 INTEGER                        :: nExamples                         !> number of regressioncheck examples
 CHARACTER(LEN=255),ALLOCATABLE :: ExampleNames(:)                   !> name of each example
-CHARACTER(LEN=255)             :: RuntimeOption                     !> option for the regressioncheck: default (run), run and build
-CHARACTER(LEN=255)             :: RuntimeOptionType                 !> specific option for the regressioncheck: default (run)
-CHARACTER(LEN=255)             :: RuntimeOptionTypeII               !> specific option for the regressioncheck: default (empty)
-CHARACTER(LEN=255)             :: RuntimeOptionTypeIII              !> specific option for the regressioncheck: default (empty)
+CHARACTER(LEN=255)             :: RuntimeOption(4)                  !> options for the regressioncheck
 CHARACTER(LEN=255)             :: EXECPATH                          !> path to solver incl. executable
 CHARACTER(LEN=255)             :: ExamplesDir                       !> path to the regression check example folders
 CHARACTER(LEN=255)             :: readRHS(2)                        !> parameter from parameter_reggie.ini: right hand side 
