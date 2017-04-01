@@ -97,7 +97,7 @@ CONTAINS
 SUBROUTINE GetCommandLineOption()
 ! MODULES
 USE MOD_Globals
-USE MOD_RegressionCheck_Vars, ONLY: RuntimeOption,BuildNoDebug,BuildDebug
+USE MOD_RegressionCheck_Vars, ONLY: RuntimeOption,BuildNoDebug,BuildDebug,DoFullReggie
 USE MOD_RegressionCheck_Vars, ONLY: BuildContinue,BuildSolver,NumberOfProcs
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -106,19 +106,19 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                        :: I
 INTEGER                        :: nArgs                   !> Number of supplied command line arguments
-CHARACTER(LEN=255)             :: Option                  !> auxiliary variable for the regressioncheck options
 INTEGER                        :: iSTATUS                 !> I/O status
 !===================================================================================================================================
 RuntimeOption(1)='run'        ! only run pre-built executable (no building of new cmake compiler flag combinations)
 RuntimeOption(2)='run_basic'  ! set to standard case folder 'run_basic'
 RuntimeOption(3)=''           ! default
 RuntimeOption(4)=''           ! default
-BuildDebug=.FALSE.            ! default
-BuildNoDebug=.FALSE.          ! default
+BuildDebug=.FALSE.            ! default: display the compelte compilation output
+BuildNoDebug=.FALSE.          ! default: don't display the compilation output
 BuildSolver=.FALSE.           ! default: no compiling, just pre-built binary execution
+DoFullReggie=.FALSE.          ! default: don't run reggie recursively using gitlab-ci.yml file
 ! Get number of command line arguments and read in runtime option of regressioncheck
 nArgs=COMMAND_ARGUMENT_COUNT()
-IF(nArgs.GE.5)THEN
+IF(nArgs.GE.7)THEN
   SWRITE(UNIT_stdOut,'(A)') ' ERROR: too many arguments for regressioncheck!'
   ERROR STOP '-2'
 END IF
@@ -126,8 +126,6 @@ END IF
 
 DO I=1,nArgs
   CALL GET_COMMAND_ARGUMENT(I,RuntimeOption(I),STATUS=iSTATUS)
-!print*,TRIM(RuntimeOption(I))
-!read*
   ! check failure 
   IF(iSTATUS.NE.0)THEN
     SWRITE(UNIT_stdOut,'(A)') ' ERROR: wrong argument for regressioncheck!'
@@ -141,8 +139,19 @@ DO I=1,nArgs
   ! set the options
   SELECT CASE(I)
   CASE(1) ! RuntimeOption 1
-    IF(TRIM(RuntimeOption(I)).EQ.'build') THEN
+    IF(TRIM(RuntimeOption(I)).EQ.'run') THEN
+      BuildSolver=.FALSE.
+    ELSEIF(TRIM(RuntimeOption(I)).EQ.'build') THEN
       BuildSolver=.TRUE.
+    ELSEIF(TRIM(RuntimeOption(I)).EQ.'full') THEN
+      BuildSolver=.FALSE.
+      DoFullReggie=.TRUE.
+    ELSEIF(TRIM(RuntimeOption(I)).EQ.'no-full') THEN ! needed for "regressioncheck full" because 'no-full' is added to the flags
+      DoFullReggie=.FALSE.
+      RuntimeOption(1)='run'
+    ELSE
+      SWRITE(UNIT_stdOut,'(A)') ' ERROR: wrong argument for regressioncheck!' 
+      ERROR STOP '-2'
     END IF
   CASE DEFAULT ! RuntimeOption 2 - 4
     IF(BuildSolver.EQV..TRUE.)THEN
@@ -151,12 +160,22 @@ DO I=1,nArgs
         BuildDebug=.TRUE.             ! e.g. "./regressioncheck debug" or "./regressioncheck build feature_convtest debug"
       ELSEIF(TRIM(RuntimeOption(I)).EQ.'no-debug')THEN
         BuildNoDebug=.TRUE.           ! redirect std- and err-output channels to "/build_reggie/build_reggie.out"
+        IF(I.EQ.2)RuntimeOption(2)='run_basic'  ! set to standard case folder 'run_basic'
       END IF
       IF((I.EQ.2).AND.((BuildDebug.EQV..TRUE.).OR.(BuildNoDebug.EQV..TRUE.)))RuntimeOption(I)='run_basic' ! debug uses
                                                                                             !"configuration.reggie" from "run_basic"
+    ELSE
+      IF(TRIM(RuntimeOption(I)).EQ.'no-debug')THEN ! needed for "regressioncheck full" because 'no-debug' is added to the flags
+        IF(I.EQ.2)RuntimeOption(2)='run_basic'  ! set to standard case folder 'run_basic'
+      END IF
     END IF
     ! [RuntimeOption] = all: run all example folders
     IF((I.EQ.2).AND.((TRIM(RuntimeOption(I)).EQ.'all').OR.(TRIM(RuntimeOption(I)).EQ.'ALL')))RuntimeOption(I)=''
+    ! prevent infinite recursive loops
+    IF(TRIM(RuntimeOption(I)).EQ.'no-full') THEN
+      DoFullReggie=.FALSE.
+      IF(I.EQ.2)RuntimeOption(2)='run_basic'  ! set to standard case folder 'run_basic'
+    END IF
   END SELECT
 END DO
 
@@ -172,54 +191,8 @@ SWRITE(UNIT_stdOut,'(A,4(A1,A,A1),A7,I3,A11)')' Running with arguments: ',&
 SWRITE(UNIT_stdOut,'(A,L1,A1)')      ' BuildSolver  :  [',BuildSolver,']'
 SWRITE(UNIT_stdOut,'(A,L1,A1)')      ' BuildDebug   :  [',BuildDebug,']'
 SWRITE(UNIT_stdOut,'(A,L1,A1)')      ' BuildNoDebug :  [',BuildNoDebug,']'
+SWRITE(UNIT_stdOut,'(A,L1,A1)')      ' DoFullReggie :  [',DoFullReggie,']'
 
-
-
-
-! IF(nArgs.EQ.0)THEN
-!   BuildSolver=.FALSE.
-! ELSE
-!   CALL GET_COMMAND_ARGUMENT(1,RuntimeOption)
-!   IF(nArgs.GE.2)CALL GET_COMMAND_ARGUMENT(2,RuntimeOptionType)
-!   IF(nArgs.GE.3)CALL GET_COMMAND_ARGUMENT(3,RuntimeOptionTypeII)
-!   IF(nArgs.GE.4)CALL GET_COMMAND_ARGUMENT(4,RuntimeOptionTypeIII)
-!   IF(nArgs.GE.5)THEN
-!     SWRITE(UNIT_stdOut,'(A)') ' ERROR: too many arguments for regressioncheck!'
-!     ERROR STOP '-2'
-!   END IF
-! 
-!   ! get number of threads/procs for parallel building
-!   CALL GetNumberOfProcs(nArgs)
-! 
-!   IF(TRIM(RuntimeOption).EQ.'run') THEN
-!     BuildSolver=.FALSE.
-!   ELSE IF(TRIM(RuntimeOption(1:5)).EQ.'build') THEN
-!     IF(TRIM(RuntimeOption).EQ.'build-continue')BuildContinue=.TRUE.
-!     BuildSolver=.TRUE.
-!     IF(TRIM(RuntimeOptionType).EQ.'debug')THEN
-!       BuildDebug=.TRUE.
-!       RuntimeOptionType='run_basic' ! debug uses "configuration.reggie" from "run_basic" and displays the complete
-!                                     ! compilation process for debugging
-!     ELSEIF(TRIM(RuntimeOptionType).EQ.'no-debug')THEN
-!       BuildNoDebug=.TRUE.
-!       RuntimeOptionType='run_basic' ! debug uses "configuration.reggie" from "run_basic" and displays no putput
-!     END IF
-!     IF(TRIM(RuntimeOptionTypeII).EQ.'debug')THEN
-!       BuildDebug=.TRUE. ! e.g. ./regressioncheck build feature_convtest debug
-!     ELSEIF(TRIM(RuntimeOptionTypeII).EQ.'no-debug')THEN
-!       BuildNoDebug=.TRUE. ! redirect std- and err-output channels to "/build_reggie/build_reggie.out"
-!     END IF
-!   ELSE IF((TRIM(RuntimeOption).EQ.'--help').OR.(TRIM(RuntimeOption).EQ.'help').OR.(TRIM(RuntimeOption).EQ.'HELP')) THEN
-!     CALL Print_Help_Information()
-!     STOP
-!   ELSE
-!     SWRITE(UNIT_stdOut,'(A)') ' ERROR: wrong argument for regressioncheck!'
-!     ERROR STOP '-2'
-!   END IF
-! 
-!   ! [RuntimeOptionType] = all: run all example folders
-!   IF((TRIM(RuntimeOptionType).EQ.'all').OR.(TRIM(RuntimeOptionType).EQ.'ALL'))RuntimeOptionType=''
-! END IF
 
 END SUBROUTINE GetCommandLineOption
 

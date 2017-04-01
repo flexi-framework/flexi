@@ -1078,7 +1078,7 @@ IF(.NOT.ExistFile) THEN
   Examples(iExample)%ErrorStatus=5
   RETURN
 ELSE
-  OPEN(UNIT=ioUnit,FILE=TRIM(FileName),STATUS='OLD',IOSTAT=iSTATUS,ACTION='READ') 
+  OPEN(NEWUNIT=ioUnit,FILE=TRIM(FileName),STATUS='OLD',IOSTAT=iSTATUS,ACTION='READ') 
 END IF
 
 !!SWRITE(UNIT_stdOut,*)'Reading [',TRIM(Examples(iExample)%CompareHDF5ArrayBoundsName),'] from File:',TRIM(FileName)

@@ -25,12 +25,15 @@ USE MOD_Globals
 USE MOD_Preproc
 USE MOD_RegressionCheck_tools, ONLY: InitExample,GetExampleList,CheckForExecutable,GetCommandLineOption
 USE MOD_RegressionCheck_tools, ONLY: SummaryOfErrors
-USE MOD_RegressionCheck_Run,   ONLY: PerformRegressionCheck
+USE MOD_RegressionCheck_Run,   ONLY: PerformRegressionCheck,PerformFullRegressionCheck
 USE MOD_RegressionCheck_Vars,  ONLY: ExampleNames,Examples,firstError,aError,BuildSolver,nErrors
-USE MOD_RegressionCheck_Vars,  ONLY: CodeNameUppCase,CodeNameLowCase
+USE MOD_RegressionCheck_Vars,  ONLY: CodeNameUppCase,CodeNameLowCase,DoFullReggie
 USE MOD_MPI,                   ONLY: InitMPI
 USE MOD_Mesh,                  ONLY: FinalizeMesh
 USE MOD_RegressionCheck_tools, ONLY: REGGIETIME
+#if USE_MPI
+USE MOD_MPI,                     ONLY: FinalizeMPI
+#endif /*USE_MPI*/
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -76,15 +79,19 @@ IF(.NOT.BuildSolver) CALL CheckForExecutable(Mode=1)
 ! Measure regressioncheck runtime 
 StartTime=REGGIETIME()
 
-! check if examples are checked out and get list
-CALL GetExampleList()
-
-! perform the regressioncheck
-CALL PerformRegressionCheck()
-
-! deallocate example names and example type
-DEALLOCATE(ExampleNames)
-DEALLOCATE(Examples)
+IF(DoFullReggie)THEN ! call regressioncheck recursivly using the commands from gitlab-ci.yml
+  CALL PerformFullRegressionCheck()
+ELSE
+  ! check if examples are checked out and get list
+  CALL GetExampleList()
+  
+  ! perform the regressioncheck
+  CALL PerformRegressionCheck()
+  
+  ! deallocate example names and example type
+  DEALLOCATE(ExampleNames)
+  DEALLOCATE(Examples)
+END IF
 
 ! Measure processing duration
 EndTime=REGGIETIME()
@@ -98,6 +105,12 @@ IF(iError .NE. 0) CALL abort(&
 
 ! Print the summary or examples and error codes (if they exist)
 CALL SummaryOfErrors(EndTime)
+
+#if USE_MPI
+CALL MPI_FINALIZE(iError)
+IF(iError .NE. 0) STOP 'MPI finalize error'
+CALL FinalizeMPI()
+#endif
 
 IF(nErrors.GT.0) ERROR STOP '999'
 END PROGRAM RegressionCheck
