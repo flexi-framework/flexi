@@ -34,8 +34,7 @@ import os
 paraview.simple._DisableFirstRenderCameraReset()
 """)
     if args.reader :
-        f.write("""servermanager.LoadPlugin('%s')
-""" % (args.reader))
+        f.write("servermanager.LoadPlugin('%s')\n" % (args.reader))
 
     f.write("""servermanager.LoadState('%s')
 statefilename = GetSources() 
@@ -50,7 +49,10 @@ if not plotfilename : exit(1)
 reader = FindSource(plotfilename)
 reader.FileName = ['%s'] 
 reader.FileNameChanged() 
-SetActiveView(GetRenderView())
+RenderView1 = GetRenderView()
+if RenderView1.InteractionMode == "2D" :
+    RenderView1.CameraParallelProjection=1 
+SetActiveView(RenderView1)
 Render()
 WriteImage('%s',  Magnification=%d)
 """ % (args.layout, p, os.path.splitext(p)[0] + args.output + '.png', args.scale))
