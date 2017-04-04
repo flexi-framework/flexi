@@ -442,7 +442,7 @@ ENDIF()
 
 function(add_exec target)
   ADD_EXECUTABLE(${target} ${ARGN})
-  TARGET_LINK_LIBRARIES(${target} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/userblock.o flexilib userblocklib ${linkedlibs})
+  TARGET_LINK_LIBRARIES(${target} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/userblock.o flexilib userblocklib stacksizelib ${linkedlibs})
   SET_TARGET_PROPERTIES(${target} PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}) 
   SET_TARGET_PROPERTIES(${target} PROPERTIES LINKER_LANGUAGE Fortran)
   INSTALL(PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${target} DESTINATION bin)
@@ -504,8 +504,11 @@ ADD_LIBRARY(userblocklib STATIC ./src/output/read_userblock.c)
 SET_TARGET_PROPERTIES(userblocklib PROPERTIES LINKER_LANGUAGE C)
 SET_TARGET_PROPERTIES(userblocklib PROPERTIES COMPILE_FLAGS "-fPIC")
 
+ADD_LIBRARY(stacksizelib STATIC ./src/globals/stacksize.c)
+SET_TARGET_PROPERTIES(stacksizelib PROPERTIES LINKER_LANGUAGE C)
+
 add_exec(flexi ./src/flexi.f90)
-ADD_DEPENDENCIES(flexi flexilib userblocklib HDF5)
+ADD_DEPENDENCIES(flexi flexilib userblocklib stacksizelib HDF5)
 
 # special compiler flags to avoid warnings for empty functions of testcase.f90 and overwrite of intrinsic abort in globals.f90
 IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")

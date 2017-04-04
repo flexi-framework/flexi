@@ -373,6 +373,7 @@ CHARACTER(LEN=255),INTENT(IN)    :: statefile
 ! LOCAL VARIABLES
 LOGICAL                          :: changedPrmFile
 !===================================================================================================================================
+CALL SetStackSizeUnlimited()
 CALL InitMPI(mpi_comm_IN) 
 SWRITE (*,*) "READING FROM: ", TRIM(statefile)
 
