@@ -72,7 +72,7 @@ USE MOD_FV_Vars   ,ONLY: FV_sdx_ZETA
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 ! real_in, real_out, real_out, log_in
-REAL,INTENT(IN)    :: UPrim          (PP_nVarPrim,0:PP_N,0:PP_NZ,0:PP_N,1:nElems) !< primitive volume solution
+REAL,INTENT(IN)    :: UPrim          (PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< primitive volume solution
 REAL,INTENT(OUT)   :: FV_multi_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides)        !< DG: solution at first inner layer,
                                                                                   !< FV: slope between first and second layer
 REAL,INTENT(OUT)   :: FV_multi_slave (PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides)        !< DG: solution at first inner layer,
