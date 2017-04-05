@@ -17,10 +17,8 @@ INTEGER                        :: NumberOfProcs                     !> number of
 CHARACTER(LEN=20)              :: NumberOfProcsStr                  !> number of processors for parallel build as string
 INTEGER                        :: nExamples                         !> number of regressioncheck examples
 CHARACTER(LEN=255),ALLOCATABLE :: ExampleNames(:)                   !> name of each example
-CHARACTER(LEN=255)             :: RuntimeOption                     !> option for the regressioncheck: default (run), run and build
-CHARACTER(LEN=255)             :: RuntimeOptionType                 !> specific option for the regressioncheck: default (run)
-CHARACTER(LEN=255)             :: RuntimeOptionTypeII               !> specific option for the regressioncheck: default (empty)
-CHARACTER(LEN=255)             :: RuntimeOptionTypeIII              !> specific option for the regressioncheck: default (empty)
+CHARACTER(LEN=255)             :: RuntimeOption(6)                  !> options for the regressioncheck
+LOGICAL                        :: DoFullReggie                      !> run reggie recursively and test gitlab-ci.yml file locally
 CHARACTER(LEN=255)             :: EXECPATH                          !> path to solver incl. executable
 CHARACTER(LEN=255)             :: ExamplesDir                       !> path to the regression check example folders
 CHARACTER(LEN=255)             :: readRHS(2)                        !> parameter from parameter_reggie.ini: right hand side 
@@ -66,9 +64,11 @@ TYPE tExample                                                       !> examples 
   CHARACTER(LEN=255)               :: ReferenceFile                 !> Name of references L2/LInf
   CHARACTER(LEN=255)               :: ReferenceNormFile             !> Name of reference file (arbitrary file, e.g., *.csv)
   REAL                             :: ReferenceTolerance            !> optional tolerance for L2/LInf
-  CHARACTER(LEN=255)               :: ReferenceStateFile            !> Name of reference state file
-  CHARACTER(LEN=255)               :: CheckedStateFile              !> Name of checked state file
-  CHARACTER(LEN=255)               :: ReferenceDataSetName          !> Name of Dataset in hdf5 file for comparision
+  CHARACTER(LEN=255)               :: H5DIFFReferenceStateFile      !> Name of reference state file
+  CHARACTER(LEN=255)               :: H5DIFFCheckedStateFile        !> Name of checked state file
+  CHARACTER(LEN=255)               :: H5DIFFReferenceDataSetName    !> Name of Dataset in hdf5 file for comparision
+  CHARACTER(LEN=255)               :: H5diffToleranceType           !> type of tolerance for h5diff: relative or absolute
+  REAL                             :: H5diffTolerance               !> value used for the tolerance check in h5diff
   CHARACTER(LEN=255)               :: RestartFileName               !> Name of RestartFile
   INTEGER                          :: ErrorStatus                   !> ErrorStatus
                                                                     !> 0 - success
@@ -91,6 +91,12 @@ TYPE tExample                                                       !> examples 
   INTEGER                          :: CompareDatafileRowHeaderLines !> number of header lines to be ignored from data file
   LOGICAL                          :: CompareDatafileRow            !> read a single row from a file and compare each entry to
                                                                     !> a reference file (each failed comparison will be dispayed)
+  REAL                             :: CompareHDF5ArrayBoundsValue(2)!> value ranges for comparison
+  INTEGER                          :: CompareHDF5ArrayBoundsRange(2)!> HDF5 array dim ranges
+  CHARACTER(LEN=255)               :: CompareHDF5ArrayBoundsName    !> array name in HDF5 file
+  CHARACTER(LEN=255)               :: CompareHDF5ArrayBoundsFile    !> name of HDF5 file
+  LOGICAL                          :: CompareHDF5ArrayBounds        !> read an array from a HDF5 file and compare certain entry 
+                                                                    !> bounds that must be limited to a supplied value range
 
 
   CHARACTER(LEN=255)               :: ConvergenceTestType           !> h- or p-convergence test
@@ -106,7 +112,7 @@ TYPE tExample                                                       !> examples 
   LOGICAL                          :: ConvergenceTest               !> run convergence test in combination with "SubExample" for
                                                                     !> either "N" (p-convergence) or "MeshFile" (h-convergence)
   INTEGER                          :: SubExampleNumber              !> Numbers of sub examples, currently fixed to 1
-  CHARACTER(LEN=255)               :: SubExampleOption(100)          !> for each sub example class, currently 10 options are allowed
+  CHARACTER(LEN=255)               :: SubExampleOption(100)         !> for each sub example class, currently 10 options are allowed
   CHARACTER(LEN=255)               :: SubExample                    !> sub example class, e.g., TimeDiscMethod can be chosen for 
                                                                     !> testing multiple time integration schemes
 END TYPE

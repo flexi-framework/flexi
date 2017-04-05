@@ -97,70 +97,192 @@ CONTAINS
 SUBROUTINE GetCommandLineOption()
 ! MODULES
 USE MOD_Globals
-USE MOD_RegressionCheck_Vars, ONLY: RuntimeOption,RuntimeOptionType,BuildNoDebug,BuildDebug,RuntimeOptionTypeII
-USE MOD_RegressionCheck_Vars, ONLY: RuntimeOptionTypeIII,BuildContinue,BuildSolver
+USE MOD_RegressionCheck_Vars, ONLY: RuntimeOption,BuildNoDebug,BuildDebug,DoFullReggie
+USE MOD_RegressionCheck_Vars, ONLY: BuildContinue,BuildSolver,NumberOfProcs
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                        :: nArgs                             ! Number of supplied command line arguments
+INTEGER                        :: I
+INTEGER                        :: nArgs                   !> Number of supplied command line arguments
+INTEGER                        :: iSTATUS                 !> I/O status
 !===================================================================================================================================
-RuntimeOption='run'           ! only run pre-built executable (no building of new cmake compiler flag combinations)
-RuntimeOptionType='run_basic' ! set to standard case folder 'run_basic'
-RuntimeOptionTypeII=''        ! default
-RuntimeOptionTypeIII=''       ! default
-BuildDebug=.FALSE.            ! default
-BuildNoDebug=.FALSE.          ! default
+RuntimeOption(1)='run'        ! only run pre-built executable (no building of new cmake compiler flag combinations)
+RuntimeOption(2)='run_basic'  ! set to standard case folder 'run_basic'
+RuntimeOption(3)=''           ! default
+RuntimeOption(4)=''           ! default
+BuildDebug=.FALSE.            ! default: display the compelte compilation output
+BuildNoDebug=.FALSE.          ! default: don't display the compilation output
+BuildSolver=.FALSE.           ! default: no compiling, just pre-built binary execution
+DoFullReggie=.FALSE.          ! default: don't run reggie recursively using gitlab-ci.yml file
 ! Get number of command line arguments and read in runtime option of regressioncheck
 nArgs=COMMAND_ARGUMENT_COUNT()
-IF(nArgs.EQ.0)THEN
-  BuildSolver=.FALSE.
-ELSE
-  CALL GET_COMMAND_ARGUMENT(1,RuntimeOption)
-  IF(nArgs.GE.2)CALL GET_COMMAND_ARGUMENT(2,RuntimeOptionType)
-  IF(nArgs.GE.3)CALL GET_COMMAND_ARGUMENT(3,RuntimeOptionTypeII)
-  IF(nArgs.GE.4)CALL GET_COMMAND_ARGUMENT(4,RuntimeOptionTypeIII)
+IF(nArgs.GE.7)THEN
+  SWRITE(UNIT_stdOut,'(A)') ' ERROR: too many arguments for regressioncheck!'
+  ERROR STOP '-2'
+END IF
 
-  ! get number of threads/procs for parallel building
-  CALL GetNumberOfProcs(nArgs)
 
-  IF(TRIM(RuntimeOption).EQ.'run') THEN
-    BuildSolver=.FALSE.
-  ELSE IF(TRIM(RuntimeOption(1:5)).EQ.'build') THEN
-    IF(TRIM(RuntimeOption).EQ.'build-continue')BuildContinue=.TRUE.
-    BuildSolver=.TRUE.
-    IF(TRIM(RuntimeOptionType).EQ.'debug')THEN
-      BuildDebug=.TRUE.
-      RuntimeOptionType='run_basic' ! debug uses "configuration.reggie" from "run_basic" and displays the complete
-                                    ! compilation process for debugging
-    ELSEIF(TRIM(RuntimeOptionType).EQ.'no-debug')THEN
-      BuildNoDebug=.TRUE.
-      RuntimeOptionType='run_basic' ! debug uses "configuration.reggie" from "run_basic" and displays no putput
-    END IF
-    IF(TRIM(RuntimeOptionTypeII).EQ.'debug')THEN
-      BuildDebug=.TRUE. ! e.g. ./regressioncheck build feature_convtest debug
-    ELSEIF(TRIM(RuntimeOptionTypeII).EQ.'no-debug')THEN
-      BuildNoDebug=.TRUE. ! redirect std- and err-output channels to "/build_reggie/build_reggie.out"
-    END IF
-  ELSE IF((TRIM(RuntimeOption).EQ.'--help').OR.(TRIM(RuntimeOption).EQ.'help').OR.(TRIM(RuntimeOption).EQ.'HELP')) THEN
-    CALL Print_Help_Information()
-    STOP
-  ELSE
+DO I=1,nArgs
+  CALL GET_COMMAND_ARGUMENT(I,RuntimeOption(I),STATUS=iSTATUS)
+  ! check failure 
+  IF(iSTATUS.NE.0)THEN
     SWRITE(UNIT_stdOut,'(A)') ' ERROR: wrong argument for regressioncheck!'
     ERROR STOP '-2'
   END IF
+  ! check help output request
+  IF((TRIM(RuntimeOption(I)).EQ.'--help').OR.(TRIM(RuntimeOption(I)).EQ.'help').OR.(TRIM(RuntimeOption(I)).EQ.'HELP')) THEN
+    CALL Print_Help_Information()
+    STOP 0
+  END IF
+  ! set the options
+  SELECT CASE(I)
+  CASE(1) ! RuntimeOption 1
+    IF(TRIM(RuntimeOption(I)).EQ.'run') THEN
+      BuildSolver=.FALSE.
+    ELSEIF(TRIM(RuntimeOption(I)).EQ.'build') THEN
+      BuildSolver=.TRUE.
+    ELSEIF(TRIM(RuntimeOption(I)).EQ.'full') THEN
+      BuildSolver=.FALSE.
+      DoFullReggie=.TRUE.
+    ELSEIF(TRIM(RuntimeOption(I)).EQ.'no-full') THEN ! needed for "regressioncheck full" because 'no-full' is added to the flags
+      DoFullReggie=.FALSE.
+      RuntimeOption(1)='run'
+    ELSE
+      SWRITE(UNIT_stdOut,'(A)') ' ERROR: wrong argument for regressioncheck!' 
+      ERROR STOP '-2'
+    END IF
+  CASE DEFAULT ! RuntimeOption 2 - 4
+    IF(BuildSolver.EQV..TRUE.)THEN
+      IF(TRIM(RuntimeOption(I)).EQ.'build-continue') BuildContinue=.TRUE.
+      IF(TRIM(RuntimeOption(I)).EQ.'debug')THEN
+        BuildDebug=.TRUE.             ! e.g. "./regressioncheck debug" or "./regressioncheck build feature_convtest debug"
+      ELSEIF(TRIM(RuntimeOption(I)).EQ.'no-debug')THEN
+        BuildNoDebug=.TRUE.           ! redirect std- and err-output channels to "/build_reggie/build_reggie.out"
+        IF(I.EQ.2)RuntimeOption(2)='run_basic'  ! set to standard case folder 'run_basic'
+      END IF
+      IF((I.EQ.2).AND.((BuildDebug.EQV..TRUE.).OR.(BuildNoDebug.EQV..TRUE.)))RuntimeOption(I)='run_basic' ! debug uses
+                                                                                            !"configuration.reggie" from "run_basic"
+    ELSE
+      IF(TRIM(RuntimeOption(I)).EQ.'no-debug')THEN ! needed for "regressioncheck full" because 'no-debug' is added to the flags
+        IF(I.EQ.2)RuntimeOption(2)='run_basic'  ! set to standard case folder 'run_basic'
+      END IF
+    END IF
+    ! [RuntimeOption] = all: run all example folders
+    IF((I.EQ.2).AND.((TRIM(RuntimeOption(I)).EQ.'all').OR.(TRIM(RuntimeOption(I)).EQ.'ALL')))RuntimeOption(I)=''
+    ! prevent infinite recursive loops
+    IF(TRIM(RuntimeOption(I)).EQ.'no-full') THEN
+      DoFullReggie=.FALSE.
+      IF(I.EQ.2)RuntimeOption(2)='run_basic'  ! set to standard case folder 'run_basic'
+    END IF
+  END SELECT
+END DO
 
-  ! [RuntimeOptionType] = all: run all example folders
-  IF((TRIM(RuntimeOptionType).EQ.'all').OR.(TRIM(RuntimeOptionType).EQ.'ALL'))RuntimeOptionType=''
-END IF
+! get number of threads/procs for parallel building
+CALL GetNumberOfProcs(nArgs)
 
-SWRITE(UNIT_stdOut,'(A,A1,A,A1,A1,A,A1,A1,A,A1,A1,A,A1)')' Running with arguments: ',&
-'[',TRIM(RuntimeOption)       ,']',&
-'[',TRIM(RuntimeOptionType)   ,']',&
-'[',TRIM(RuntimeOptionTypeII) ,']',&
-'[',TRIM(RuntimeOptionTypeIII),']'
+! display the resulting options
+SWRITE(UNIT_stdOut,'(A,4(A1,A,A1),A7,I3,A11)')' Running with arguments: ',&
+'[',TRIM(RuntimeOption(1)),']',&
+'[',TRIM(RuntimeOption(2)),']',&
+'[',TRIM(RuntimeOption(3)),']',&
+'[',TRIM(RuntimeOption(4)),']',' with [',NumberOfProcs,'] MPI ranks'
+SWRITE(UNIT_stdOut,'(A,L1,A1)')      ' BuildSolver  :  [',BuildSolver,']'
+SWRITE(UNIT_stdOut,'(A,L1,A1)')      ' BuildDebug   :  [',BuildDebug,']'
+SWRITE(UNIT_stdOut,'(A,L1,A1)')      ' BuildNoDebug :  [',BuildNoDebug,']'
+SWRITE(UNIT_stdOut,'(A,L1,A1)')      ' DoFullReggie :  [',DoFullReggie,']'
+
+
 END SUBROUTINE GetCommandLineOption
+
+
+! !==================================================================================================================================
+! !> reads the command line options for the regressioncheck
+! !> options are:
+! !> run [default]:  - runs only the regressioncheck
+! !> build           - builds all valid compiler flag combinations (default uses the configuration.reggie from run_basic) and
+! !>                   performs the tests
+! !>
+! !> ./regressioncheck [RuntimeOption] [RuntimeOptionType]
+! !>
+! !> ./regressioncheck                -> uses default "run" and runs the current compiler build and all "run_" examples
+! !> ./regressioncheck
+! !> ./regressioncheck build          -> runs "run_basic" for numerous builds
+! !> ./regressioncheck build convtest -> runs "feature_convtest" for numerous builds def. "feature_convtest/configuration.reggie"
+! !> ./regressioncheck build all      -> runs all examples for numerous builds defined in "run_basic/configuration.reggie"
+! !==================================================================================================================================
+! SUBROUTINE GetCommandLineOptionOLD()
+! ! MODULES
+! USE MOD_Globals
+! USE MOD_RegressionCheck_Vars, ONLY: RuntimeOption,RuntimeOptionType,BuildNoDebug,BuildDebug,RuntimeOptionTypeII
+! USE MOD_RegressionCheck_Vars, ONLY: RuntimeOptionTypeIII,BuildContinue,BuildSolver
+! IMPLICIT NONE
+! !-----------------------------------------------------------------------------------------------------------------------------------
+! ! INPUT/OUTPUT VARIABLES
+! !-----------------------------------------------------------------------------------------------------------------------------------
+! ! LOCAL VARIABLES
+! INTEGER                        :: nArgs                             ! Number of supplied command line arguments
+! !===================================================================================================================================
+! RuntimeOption='run'           ! only run pre-built executable (no building of new cmake compiler flag combinations)
+! RuntimeOptionType='run_basic' ! set to standard case folder 'run_basic'
+! RuntimeOptionTypeII=''        ! default
+! RuntimeOptionTypeIII=''       ! default
+! BuildDebug=.FALSE.            ! default
+! BuildNoDebug=.FALSE.          ! default
+! ! Get number of command line arguments and read in runtime option of regressioncheck
+! nArgs=COMMAND_ARGUMENT_COUNT()
+! IF(nArgs.EQ.0)THEN
+!   BuildSolver=.FALSE.
+! ELSE
+!   CALL GET_COMMAND_ARGUMENT(1,RuntimeOption)
+!   IF(nArgs.GE.2)CALL GET_COMMAND_ARGUMENT(2,RuntimeOptionType)
+!   IF(nArgs.GE.3)CALL GET_COMMAND_ARGUMENT(3,RuntimeOptionTypeII)
+!   IF(nArgs.GE.4)CALL GET_COMMAND_ARGUMENT(4,RuntimeOptionTypeIII)
+!   IF(nArgs.GE.5)THEN
+!     SWRITE(UNIT_stdOut,'(A)') ' ERROR: too many arguments for regressioncheck!'
+!     ERROR STOP '-2'
+!   END IF
+! 
+!   ! get number of threads/procs for parallel building
+!   CALL GetNumberOfProcs(nArgs)
+! 
+!   IF(TRIM(RuntimeOption).EQ.'run') THEN
+!     BuildSolver=.FALSE.
+!   ELSE IF(TRIM(RuntimeOption(1:5)).EQ.'build') THEN
+!     IF(TRIM(RuntimeOption).EQ.'build-continue')BuildContinue=.TRUE.
+!     BuildSolver=.TRUE.
+!     IF(TRIM(RuntimeOptionType).EQ.'debug')THEN
+!       BuildDebug=.TRUE.
+!       RuntimeOptionType='run_basic' ! debug uses "configuration.reggie" from "run_basic" and displays the complete
+!                                     ! compilation process for debugging
+!     ELSEIF(TRIM(RuntimeOptionType).EQ.'no-debug')THEN
+!       BuildNoDebug=.TRUE.
+!       RuntimeOptionType='run_basic' ! debug uses "configuration.reggie" from "run_basic" and displays no putput
+!     END IF
+!     IF(TRIM(RuntimeOptionTypeII).EQ.'debug')THEN
+!       BuildDebug=.TRUE. ! e.g. ./regressioncheck build feature_convtest debug
+!     ELSEIF(TRIM(RuntimeOptionTypeII).EQ.'no-debug')THEN
+!       BuildNoDebug=.TRUE. ! redirect std- and err-output channels to "/build_reggie/build_reggie.out"
+!     END IF
+!   ELSE IF((TRIM(RuntimeOption).EQ.'--help').OR.(TRIM(RuntimeOption).EQ.'help').OR.(TRIM(RuntimeOption).EQ.'HELP')) THEN
+!     CALL Print_Help_Information()
+!     STOP
+!   ELSE
+!     SWRITE(UNIT_stdOut,'(A)') ' ERROR: wrong argument for regressioncheck!'
+!     ERROR STOP '-2'
+!   END IF
+! 
+!   ! [RuntimeOptionType] = all: run all example folders
+!   IF((TRIM(RuntimeOptionType).EQ.'all').OR.(TRIM(RuntimeOptionType).EQ.'ALL'))RuntimeOptionType=''
+! END IF
+! 
+! SWRITE(UNIT_stdOut,'(A,4(A1,A,A1))')' Running with arguments: ',&
+! '[',TRIM(RuntimeOption)       ,']',&
+! '[',TRIM(RuntimeOptionType)   ,']',&
+! '[',TRIM(RuntimeOptionTypeII) ,']',&
+! '[',TRIM(RuntimeOptionTypeIII),']'
+! END SUBROUTINE GetCommandLineOptionOLD
 
 
 !==================================================================================================================================
@@ -171,7 +293,7 @@ END SUBROUTINE GetCommandLineOption
 SUBROUTINE GetExampleList()
 ! MODULES
 USE MOD_Globals
-USE MOD_RegressionCheck_Vars,  ONLY: nExamples,ExampleNames,Examples,ExamplesDir,BuildDir,RuntimeOptionType
+USE MOD_RegressionCheck_Vars,  ONLY: nExamples,ExampleNames,Examples,ExamplesDir,BuildDir,RuntimeOption
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -198,7 +320,7 @@ IF(ExistFile.EQV..FALSE.)THEN ! use existing example folder
 ELSE ! run regressioncheck for a single folder located anywhere from which the reggie is executed
   ExamplesDir='./../'
   SYSCOMMAND='cd '//TRIM(ExamplesDir)//' && ls -d '//TRIM(FileName)//'/ > tmp.txt'
-  RuntimeOptionType=TRIM(FileName) ! override RuntimeOptionType in order to select only this directory
+  RuntimeOption(2)=TRIM(FileName) ! override RuntimeOption in order to select only this directory
 END IF
 BuildDir=TRIM(BASEDIR(2:LEN(BASEDIR)-1))! use basedir because one cannot use: TRIM(cwd)//'/'
                                         ! because the checked out code source
@@ -243,9 +365,11 @@ DO iExample=1,nExamples
   Examples(iExample)%PATH = TRIM(ExamplesDir)//TRIM(ExampleNames(iExample))
   Examples(iExample)%ReferenceFile=''
   Examples(iExample)%ReferenceNormFile=''
-  Examples(iExample)%CheckedStateFile=''
-  Examples(iExample)%ReferenceStateFile=''
-  Examples(iExample)%ReferenceDataSetName=''
+  Examples(iExample)%H5DIFFCheckedStateFile=''
+  Examples(iExample)%H5DIFFReferenceStateFile=''
+  Examples(iExample)%H5DIFFReferenceDataSetName=''
+  Examples(iExample)%H5diffToleranceType='absolute'
+  Examples(iExample)%H5diffTolerance=-1.
   Examples(iExample)%RestartFileName=''
   Examples(iExample)%ErrorStatus=0
 END DO
@@ -294,6 +418,8 @@ IF(.NOT.ExistFile) THEN
   SWRITE(UNIT_stdOut,'(A12,A)')  ' FileName: ', TRIM(FileName)
   SWRITE(UNIT_stdOut,'(A12,L)') ' ExistFile: ', ExistFile
   ERROR STOP '-1'
+ELSE
+  OPEN(NEWUNIT=ioUnit,FILE=TRIM(FileName),STATUS="OLD",IOSTAT=iSTATUS,ACTION='READ') 
 END IF
 
 ! init
@@ -307,7 +433,6 @@ Example%ReferenceTolerance      = -1.
 Example%SubExample              = '-'     ! init
 Example%SubExampleNumber        = 0       ! init total number of subexamples
 Example%SubExampleOption(1:100) = '-'     ! default option is nothing
-OPEN(NEWUNIT=ioUnit,FILE=TRIM(FileName),STATUS="OLD",IOSTAT=iSTATUS,ACTION='READ')
 DO ! extract reggie information
   READ(ioUnit,'(A)',IOSTAT=iSTATUS) temp1 ! get first line assuming it is something like "nVar= 5"
   IF(iSTATUS.EQ.-1) EXIT ! end of file (EOF) reached
@@ -336,12 +461,14 @@ DO ! extract reggie information
     IF(TRIM(readRHS(1)).EQ.'nRuns')CALL str2int(readRHS(2),Example%nRuns,iSTATUS)
     ! Reference Norm/State
     IF(TRIM(readRHS(1)).EQ.'ReferenceTolerance')CALL str2real(readRHS(2),Example%ReferenceTolerance,iSTATUS)
-    IF(TRIM(readRHS(1)).EQ.'ReferenceFile')          Example%ReferenceFile         =TRIM(ADJUSTL(readRHS(2)))
-    IF(TRIM(readRHS(1)).EQ.'ReferenceNormFile')      Example%ReferenceNormFile     =TRIM(ADJUSTL(readRHS(2)))
-    IF(TRIM(readRHS(1)).EQ.'ReferenceStateFile')     Example%ReferenceStateFile    =TRIM(ADJUSTL(readRHS(2)))
-    IF(TRIM(readRHS(1)).EQ.'CheckedStateFile')       Example%CheckedStateFile      =TRIM(ADJUSTL(readRHS(2)))
-    IF(TRIM(readRHS(1)).EQ.'ReferenceDataSetName')   Example%ReferenceDataSetName  =TRIM(ADJUSTL(readRHS(2)))
-    IF(TRIM(readRHS(1)).EQ.'RestartFileName')        Example%RestartFileName       =TRIM(ADJUSTL(readRHS(2)))
+    IF(TRIM(readRHS(1)).EQ.'ReferenceFile')                Example%ReferenceFile         =TRIM(ADJUSTL(readRHS(2)))
+    IF(TRIM(readRHS(1)).EQ.'ReferenceNormFile')            Example%ReferenceNormFile     =TRIM(ADJUSTL(readRHS(2)))
+    IF(TRIM(readRHS(1)).EQ.'H5DIFFReferenceStateFile')           Example%H5DIFFReferenceStateFile    =TRIM(ADJUSTL(readRHS(2)))
+    IF(TRIM(readRHS(1)).EQ.'H5DIFFCheckedStateFile')       Example%H5DIFFCheckedStateFile      =TRIM(ADJUSTL(readRHS(2)))
+    IF(TRIM(readRHS(1)).EQ.'H5DIFFReferenceDataSetName')   Example%H5DIFFReferenceDataSetName  =TRIM(ADJUSTL(readRHS(2)))
+    IF(TRIM(readRHS(1)).EQ.'H5diffToleranceType')          Example%H5diffToleranceType   =TRIM(ADJUSTL(readRHS(2)))
+    IF(TRIM(readRHS(1)).EQ.'H5diffTolerance')   CALL str2real(readRHS(2),Example%H5diffTolerance,iSTATUS)
+    IF(TRIM(readRHS(1)).EQ.'RestartFileName')              Example%RestartFileName       =TRIM(ADJUSTL(readRHS(2)))
     ! SubExamples - currently one subexample class is allowed with multiple options
     IF(TRIM(readRHS(1)).EQ.'SubExample') CALL GetParameterList(ParameterName   = Example%SubExample,       &
                                                                ParameterList   = Example%SubExampleOption, &
@@ -459,31 +586,31 @@ DO ! extract reggie information
     !  for h: ConvergenceTest =       h     ,                   Constant                           , 3.99                , 1e-2
     !                          type (h or p), comparison type (IntegrateLine or power law exponent), value for comparison, Tolerance
     IF(TRIM(readRHS(1)).EQ.'ConvergenceTest')THEN
-       Example%ConvergenceTest           = .TRUE.
-       Example%ConvergenceTestType       = ''     ! init
-       Example%ConvergenceTestDomainSize = -999.0 ! init
-       Example%ConvergenceTestValue      = -999.0 ! init
-       Example%ConvergenceTestTolerance  = -1.     ! init
-       IndNum2=INDEX(readRHS(2),',')
-       IF(IndNum2.GT.0)THEN ! get the type of the convergence test (h- or p-convergence)
-         temp2                     = readRHS(2)
-         Example%ConvergenceTestType= TRIM(ADJUSTL(temp2(1:IndNum2-1))) ! type
-         temp2                     = temp2(IndNum2+1:LEN(TRIM(temp2))) ! next
-         IndNum2                   = INDEX(temp2,',')
-         IF(IndNum2.GT.0)THEN ! get the size of the domain
-           CALL str2real(temp2(1:IndNum2-1),Example%ConvergenceTestDomainSize,iSTATUS)
-           temp2                          = temp2(IndNum2+1:LEN(TRIM(temp2))) ! next
-           IndNum2                        = INDEX(temp2,',')
-           IF((IndNum2.GT.0).AND.(iSTATUS.EQ.0))THEN ! get value for comparison
-             CALL str2real(temp2(1:IndNum2-1),Example%ConvergenceTestValue,iSTATUS)
-             temp2                  = TRIM(ADJUSTL(temp2(IndNum2+1:LEN(TRIM(temp2))))) ! next
-             IndNum2               = LEN(temp2)
-             IF((IndNum2.GT.0).AND.(iSTATUS.EQ.0))THEN ! get tolerance value for comparison
-               CALL str2real(temp2(1:IndNum2-1),Example%ConvergenceTestTolerance,iSTATUS)
-             END IF ! get tolerance value for comparison
-           END IF ! get value for comparison
-         END IF ! get the comparison type
-       END IF ! get the type of the convergence test (h- or p-convergence)
+      Example%ConvergenceTest           = .TRUE.
+      Example%ConvergenceTestType       = ''     ! init
+      Example%ConvergenceTestDomainSize = -999.0 ! init
+      Example%ConvergenceTestValue      = -999.0 ! init
+      Example%ConvergenceTestTolerance  = -1.     ! init
+      IndNum2=INDEX(readRHS(2),',')
+      IF(IndNum2.GT.0)THEN ! get the type of the convergence test (h- or p-convergence)
+        temp2                     = readRHS(2)
+        Example%ConvergenceTestType= TRIM(ADJUSTL(temp2(1:IndNum2-1))) ! type
+        temp2                     = temp2(IndNum2+1:LEN(TRIM(temp2))) ! next
+        IndNum2                   = INDEX(temp2,',')
+        IF(IndNum2.GT.0)THEN ! get the size of the domain
+          CALL str2real(temp2(1:IndNum2-1),Example%ConvergenceTestDomainSize,iSTATUS)
+          temp2                          = temp2(IndNum2+1:LEN(TRIM(temp2))) ! next
+          IndNum2                        = INDEX(temp2,',')
+          IF((IndNum2.GT.0).AND.(iSTATUS.EQ.0))THEN ! get value for comparison
+            CALL str2real(temp2(1:IndNum2-1),Example%ConvergenceTestValue,iSTATUS)
+            temp2                  = TRIM(ADJUSTL(temp2(IndNum2+1:LEN(TRIM(temp2))))) ! next
+            IndNum2               = LEN(temp2)
+            IF((IndNum2.GT.0).AND.(iSTATUS.EQ.0))THEN ! get tolerance value for comparison
+              CALL str2real(temp2(1:IndNum2-1),Example%ConvergenceTestTolerance,iSTATUS)
+            END IF ! get tolerance value for comparison
+          END IF ! get value for comparison
+        END IF ! get the comparison type
+      END IF ! get the type of the convergence test (h- or p-convergence)
       ! set ConvergenceTest to false if any of the following cases is true
       IF(ANY( (/iSTATUS.NE.0                             ,&
                 Example%ConvergenceTestType.EQ.''        ,&
@@ -498,11 +625,70 @@ DO ! extract reggie information
         SWRITE(UNIT_stdOut,'(A,E25.14)') 'Example%ConvergenceTestTolerance  : ',Example%ConvergenceTestTolerance
       END IF
     END IF ! 'ConvergenceTest'
+    ! Check the bounds of an array in a HDF5 file, if they are outside the supplied ranges -> fail
+    IF(TRIM(readRHS(1)).EQ.'CompareHDF5ArrayBounds')THEN
+      Example%CompareHDF5ArrayBounds           = .TRUE. ! read an array from a HDF5 file and compare certain entry
+      Example%CompareHDF5ArrayBoundsValue(1:2) = 0.     ! value ranges for comparison
+      Example%CompareHDF5ArrayBoundsRange(1:2) = -1     ! HDF5 array dim ranges
+      Example%CompareHDF5ArrayBoundsName       = '-1'   ! array name in HDF5 file
+      Example%CompareHDF5ArrayBoundsFile       = '-1'   ! name of HDF5 file
+      IndNum2=INDEX(readRHS(2),',')
+      IF(IndNum2.GT.0)THEN ! get name of array in HDF5 file
+        temp2                              = readRHS(2)
+        Example%CompareHDF5ArrayBoundsFile = TRIM(ADJUSTL(temp2(1:IndNum2-1))) ! type
+        temp2                              = temp2(IndNum2+1:LEN(TRIM(temp2))) ! next
+        IndNum2                            = INDEX(temp2,',')
+        IF(IndNum2.GT.0)THEN ! get name of array in HDF5 file
+          Example%CompareHDF5ArrayBoundsName = TRIM(ADJUSTL(temp2(1:IndNum2-1))) ! type
+          temp2                              = temp2(IndNum2+1:LEN(TRIM(temp2))) ! next
+          IndNum2                            = INDEX(temp2,',')
+          IF(IndNum2.GT.0)THEN ! HDF5 array dim ranges
+            IndNum2             = INDEX(temp2,',')
+            IndNum3=INDEX(temp2(1:IndNum2),':')
+            IF(IndNum3.GT.0)THEN ! check range
+              CALL str2int(temp2(1        :IndNum3-1),Example%CompareHDF5ArrayBoundsRange(1),iSTATUS) ! column number 1
+              CALL str2int(temp2(IndNum3+1:IndNum2-1),Example%CompareHDF5ArrayBoundsRange(2),iSTATUS) ! column number 2
+              temp2             = temp2(IndNum2+1:LEN(TRIM(temp2))) ! next
+              IndNum2           = LEN(TRIM(temp2))
+              IF(IndNum2.GT.0)THEN ! value ranges for comparison
+                IndNum2           = LEN(temp2)
+                IndNum3=INDEX(temp2(1:IndNum2),':')
+                IF(IndNum3.GT.0)THEN ! check range
+                  CALL str2real(temp2(1        :IndNum3-1),Example%CompareHDF5ArrayBoundsValue(1),iSTATUS) ! column number 1
+                  CALL str2real(temp2(IndNum3+1:IndNum2-1),Example%CompareHDF5ArrayBoundsValue(2),iSTATUS) ! column number 2
+                END IF ! check range
+              END IF ! value ranges for comparison
+            END IF ! check range
+          END IF ! HDF5 array dim ranges
+        END IF ! get name of array in HDF5 file
+      END IF ! get name of HDF5 file
+      ! set "CompareHDF5ArrayBounds" to false if any of the following cases is true
+      IF(ANY( (/iSTATUS.NE.0                                                                           ,&
+                ANY(Example%CompareHDF5ArrayBoundsRange(1:2).EQ.-1)                                    ,&
+                    Example%CompareHDF5ArrayBoundsName.EQ.'-1'                                         ,&
+                    Example%CompareHDF5ArrayBoundsFile.EQ.'-1'                                         ,&
+                    Example%CompareHDF5ArrayBoundsValue(1).GT.Example%CompareHDF5ArrayBoundsValue(2)   ,&
+                    Example%CompareHDF5ArrayBoundsRange(1).GT.Example%CompareHDF5ArrayBoundsRange(2)  /)&
+                  ))Example%CompareHDF5ArrayBounds=.FALSE.
+      IF(Example%CompareHDF5ArrayBounds.EQV..FALSE.)THEN
+        SWRITE(UNIT_stdOut,'(A,E25.14,A)') 'Example%CompareHDF5ArrayBoundsValue(1) : '&
+                                           ,Example%CompareHDF5ArrayBoundsValue(1),' (lower)'
+        SWRITE(UNIT_stdOut,'(A,E25.14,A)') 'Example%CompareHDF5ArrayBoundsValue(2) : '&
+                                           ,Example%CompareHDF5ArrayBoundsValue(2),' (upper)'
+        SWRITE(UNIT_stdOut,'(A,I6,A)') 'Example%CompareHDF5ArrayBoundsRange(1) : '&
+                                           ,Example%CompareHDF5ArrayBoundsRange(1),' (lower)'
+        SWRITE(UNIT_stdOut,'(A,I6,A)') 'Example%CompareHDF5ArrayBoundsRange(2) : '&
+                                           ,Example%CompareHDF5ArrayBoundsRange(2),' (upper)'
+        SWRITE(UNIT_stdOut,'(A,A)')        'Example%CompareHDF5ArrayBoundsName     : ',Example%CompareHDF5ArrayBoundsName
+        SWRITE(UNIT_stdOut,'(A,A)')        'Example%CompareHDF5ArrayBoundsFile     : ',Example%CompareHDF5ArrayBoundsFile
+      END IF
+    END IF ! 'CompareHDF5ArrayBounds'
     ! Next feature
     !IF(TRIM(readRHS(1)).EQ.'NextFeature')
   END IF ! IndNum.GT.0 -> definition found
 END DO
 CLOSE(ioUnit)
+
 END SUBROUTINE InitExample
 
 
@@ -618,11 +804,12 @@ END SUBROUTINE CheckForExecutable
 
 !==================================================================================================================================
 !> Get the number of threads/procs for a parallel compilation
+!> Check each input argument for being an integer and use it for the number of mpi ranks when compiling the code
 !==================================================================================================================================
 SUBROUTINE GetNumberOfProcs(nArgs)
 ! MODULES
 USE MOD_Globals
-USE MOD_RegressionCheck_Vars, ONLY: RuntimeOptionType,RuntimeOptionTypeII,RuntimeOptionTypeIII
+USE MOD_RegressionCheck_Vars, ONLY: RuntimeOption
 USE MOD_RegressionCheck_Vars, ONLY: NumberOfProcs,NumberOfProcsStr
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -630,43 +817,45 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)             :: nArgs
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                        :: iSTATUS                           ! Error status
+INTEGER                        :: iSTATUS                           !> Error status
+INTEGER                        :: I                                 !> loop variable
 !===================================================================================================================================
-IF((nArgs.GE.2))THEN
-  CALL str2int(RuntimeOptionType,NumberOfProcs,iSTATUS)
-  IF(iSTATUS.EQ.0)THEN
-    RuntimeOptionType='run' ! return to default -> needed for setting it to 'run_basic'
-  ELSE
-    IF(nArgs.GE.3)THEN
-      CALL str2int(RuntimeOptionTypeII,NumberOfProcs,iSTATUS)
-      IF(iSTATUS.EQ.0)THEN
-        RuntimeOptionTypeII='' ! return to default
-      ELSE
-        IF(nArgs.GE.4)THEN
-          CALL str2int(RuntimeOptionTypeIII,NumberOfProcs,iSTATUS)
-          IF(iSTATUS.EQ.0)THEN
-            RuntimeOptionTypeIII=''
-          ELSE
-            NumberOfProcs=1
-          END IF
-        ELSE
-          NumberOfProcs=1
+IF(nArgs.GE.1)THEN ! first input argument must be "build"
+  DO I=1,nArgs
+    CALL str2int(RuntimeOption(I),NumberOfProcs,iSTATUS)
+    IF(iSTATUS.EQ.0)THEN
+      IF(I.EQ.1)THEN
+        RuntimeOption(1)='run'        ! return to default -> needed for setting it to 'run_basic'
+        SWRITE(UNIT_stdOut,'(A)') ' First argument cannot be a number! Specify "run" or "build"'
+        STOP 1
+      ELSEIF(I.EQ.2)THEN
+        RuntimeOption(2)='run_basic'  ! set to standard case folder 'run_basic'
+        IF(TRIM(RuntimeOption(1)).EQ.'run')THEN
+          SWRITE(UNIT_stdOut,'(A)') ' An argument with a specific number for building can only be used in "build" mode'
+          STOP 1
         END IF
+      ELSE
+        RuntimeOption(I)=''           ! return to default
       END IF
+      EXIT ! first integer input argument found -> use as number of procs for compilation
     ELSE
       NumberOfProcs=1
     END IF
-  END IF
+  END DO
+  ! sanity check
   IF(iSTATUS.EQ.0)THEN
-    SWRITE(UNIT_stdOut,'(A,I3,A)') ' Building regression checks with',NumberOfProcs,' threads/processors'
-    IF(NumberOfProcs.GT.1)THEN
-      WRITE(UNIT=NumberOfProcsStr,FMT='(I5)') NumberOfProcs
-    ELSE
-      NumberOfProcsStr='fail'
-    END IF
+    SWRITE(UNIT_stdOut,'(A,I3,A)') ' Building regression checks with [',NumberOfProcs,'] threads/processors'
   END IF
 ELSE
   NumberOfProcs=1
+END IF
+! set the number of procs INTEGER/CHARACTER
+IF(NumberOfProcs.GE.1)THEN
+  WRITE(UNIT=NumberOfProcsStr,FMT='(I5)') NumberOfProcs
+ELSE
+  NumberOfProcsStr='fail'
+  SWRITE(UNIT_stdOut,'(A)') ' The number of MPI ranks for building must be >= 1'
+  STOP 1
 END IF
 END SUBROUTINE GetNumberOfProcs
 
@@ -1138,9 +1327,9 @@ SWRITE(UNIT_stdOut,'(A)') '                            |                        
 SWRITE(UNIT_stdOut,'(A)') '        number of variables | nVar= 5 (depricated)                                   '
 SWRITE(UNIT_stdOut,'(A)') '                 MPI on/off | MPI= T                                                 '
 SWRITE(UNIT_stdOut,'(A)') '     L2/Linf reference file | ReferenceNormFile= referencenorm.txt                   '
-SWRITE(UNIT_stdOut,'(A)') '  ref state file for h5diff | ReferenceStateFile= cavity_reference_State_0.200.h5    '
-SWRITE(UNIT_stdOut,'(A)') '      state file for h5diff | CheckedStateFile= cavity_State_0000000.200000000.h5    '
-SWRITE(UNIT_stdOut,'(A)') '      array name for h5diff | ReferenceDataSetName= DG_Solution                      '
+SWRITE(UNIT_stdOut,'(A)') '  ref state file for h5diff | H5DIFFReferenceStateFile= cavity_refe_State_0.20.h5    '
+SWRITE(UNIT_stdOut,'(A)') '      state file for h5diff | H5DIFFCheckedStateFile= cavity_State_0000000.200.h5    '
+SWRITE(UNIT_stdOut,'(A)') '      array name for h5diff | H5DIFFReferenceDataSetName= DG_Solution                '
 SWRITE(UNIT_stdOut,'(A)') '       if restart is wanted | RestartFileName=                                       '
 SWRITE(UNIT_stdOut,'(A)') ' ------------------------------------------------------------------------------------'
 
