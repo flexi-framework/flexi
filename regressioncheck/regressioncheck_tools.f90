@@ -149,6 +149,10 @@ DO I=1,nArgs
     ELSEIF(TRIM(RuntimeOption(I)).EQ.'no-full') THEN ! needed for "regressioncheck full" because 'no-full' is added to the flags
       DoFullReggie=.FALSE.
       RuntimeOption(1)='run'
+    ELSEIF(TRIM(RuntimeOption(I)).EQ.'tutorials') THEN 
+      BuildSolver=.FALSE.
+      RuntimeOption(1)='tutorials'
+      RuntimeOption(2)=''
     ELSE
       SWRITE(UNIT_stdOut,'(A)') ' ERROR: wrong argument for regressioncheck!' 
       ERROR STOP '-2'
@@ -315,7 +319,11 @@ FilePathName=TRIM(cwd)//'/parameter_reggie.ini'       ! check if parameter_reggi
 INQUIRE(File=FilePathName,EXIST=ExistFile)            ! inquire
 
 IF(ExistFile.EQV..FALSE.)THEN ! use existing example folder
-  ExamplesDir=TRIM(BASEDIR(2:LEN(BASEDIR)-1))//'../regressioncheck/examples/'
+  IF(RuntimeOption(1).EQ."tutorials")THEN
+    ExamplesDir=TRIM(BASEDIR(2:LEN(BASEDIR)-1))//'../tutorials/'
+  ELSE
+    ExamplesDir=TRIM(BASEDIR(2:LEN(BASEDIR)-1))//'../regressioncheck/examples/'
+  END IF
   SYSCOMMAND='cd '//TRIM(ExamplesDir)//' && ls -d */ > tmp.txt'
 ELSE ! run regressioncheck for a single folder located anywhere from which the reggie is executed
   ExamplesDir='./../'

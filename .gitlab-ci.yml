@@ -3,6 +3,7 @@ stages:
   - error_clean
   - reggie_short
   - reggie_long
+  - reggie_weekly
   - documentation
   - deploy
 
@@ -133,6 +134,26 @@ intel_build_hdf5_single:
     - withmodules
   script:
     - if [ -n "${DO_NIGHTLY}" ]; then  module load env/intel ; cd build_intel/bin/ ; ./regressioncheck build build_freestream_hdf5_single_18x 2; fi
+
+# ----------------------------------------------------------------------------------------------------------------------------------------------------
+# Stage "reggie_weekly": run 
+#                         - NACA0012 Tutorial 
+#                      examples on weekly
+# ----------------------------------------------------------------------------------------------------------------------------------------------------
+gnu_weekly_mpi:
+  stage: reggie_long
+  tags:
+    - withmodules
+  script:
+    - if [ -n "${DO_WEEKLY}" ]; then  module load env/gnu ; cd build_gnu/bin/ ; ./regressioncheck tutorials ; fi
+
+intel_weekly_mpi:
+  stage: reggie_long
+  tags:
+    - withmodules
+  script:
+    - if [ -n "${DO_WEEKLY}" ]; then module load env/intel ; cd build_intel/bin/ ; ./regressioncheck tutorials ; fi
+
 
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
