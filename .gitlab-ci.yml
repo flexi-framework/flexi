@@ -141,14 +141,14 @@ intel_build_hdf5_single:
 #                      examples on weekly
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 gnu_weekly_mpi:
-  stage: reggie_long
+  stage: reggie_weekly
   tags:
     - withmodules
   script:
     - if [ -n "${DO_WEEKLY}" ]; then  module load env/gnu ; cd build_gnu/bin/ ; ./regressioncheck tutorials ; fi
 
 intel_weekly_mpi:
-  stage: reggie_long
+  stage: reggie_weekly
   tags:
     - withmodules
   script:
