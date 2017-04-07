@@ -17,13 +17,7 @@
 !==================================================================================================================================
 MODULE MOD_PreProc
 ! MODULES
-USE ISO_C_BINDING
 IMPLICIT NONE
-
-INTERFACE
-  SUBROUTINE setstacksizeunlimited() BIND(C)
-  END SUBROUTINE setstacksizeunlimited
-END INTERFACE
 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
@@ -35,6 +29,5 @@ REAL,PARAMETER        :: PP_Pi = ACOS(-1.0D0)              !< Pi up to machine a
   INTEGER             :: PP_N                              !< polynomial degree
 #endif
 
-PUBLIC :: setstacksizeunlimited
 !==================================================================================================================================
 END MODULE MOD_PreProc
