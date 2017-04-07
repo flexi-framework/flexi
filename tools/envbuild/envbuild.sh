@@ -58,8 +58,8 @@ CMAKE_DLPATH='https://cmake.org/files/v3.5/cmake-3.5.2.tar.gz'
 
 # Path and version of Paraview
 PARAVIEW_NAME=paraview
-PARAVIEW_VERSION=5.2.0
-PARAVIEW_DLPATH='http://www.paraview.org/paraview-downloads/download.php?submit=Download&version=v5.2&type=source&os=all&downloadFile=ParaView-v5.2.0.tar.gz'
+PARAVIEW_VERSION=5.3.0
+PARAVIEW_DLPATH='http://www.paraview.org/paraview-downloads/download.php?submit=Download&version=v5.3&type=source&os=all&downloadFile=ParaView-v5.3.0.tar.gz'
 
 # Compiler specific subfolders for environment modules (i.e. compiler vendor + version )
 GNU_DIR=gnu54
@@ -163,6 +163,8 @@ build_lib () {
   if [ ${BUILD_MYLIB[2]} != 1 ]; then
     return
   fi
+  cd $BUILD_DIR
+
   MYLIB_INSTALL=${INSTALL_ROOT}/$MYLIB_NAME/$MYLIB_NAME-$MYLIB_VERSION/$COMPILER_DIR
 
   mkdir -p $COMPILER_DIR
@@ -339,6 +341,8 @@ MYLIB_DLPATH=$PARAVIEW_DLPATH
 MYLIB_USECMAKE=1
 if [ ${BUILD_MYLIB[2]} == 1 ]; then
   prepare_lib
+  cd $MYLIB_DIR
+  patch -p1 < $ROOTDIR/patches/paraview_patch
 fi
 
 # always use GNU for Paraview
