@@ -402,7 +402,7 @@ END SUBROUTINE GetExampleList
 !>  optional reference files for error-norms, reference state file and tested dataset and name of the checked state file
 !>  optional a restart filename
 !==================================================================================================================================
-SUBROUTINE InitExample(FilePath,Example)
+SUBROUTINE InitExample(FilePath,Example,SkipExample)
 ! MODULES
 USE MOD_Globals
 USE MOD_RegressionCheck_Vars,  ONLY: tExample,readRHS
@@ -411,6 +411,7 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)               :: FilePath
 TYPE(tExample),INTENT(INOUT)              :: Example
+LOGICAL,INTENT(OUT)                       :: SkipExample
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                                   :: ioUnit
@@ -418,14 +419,17 @@ INTEGER                                   :: iSTATUS,IndNum,IndNum2,IndNum3,MaxN
 CHARACTER(LEN=255)                        :: FileName,temp1,temp2
 LOGICAL                                   :: ExistFile
 !==================================================================================================================================
+SkipExample=.FALSE.
 ! test if file exists and open
 FileName=TRIM(FilePath)//'parameter_reggie.ini'
 INQUIRE(File=FileName,EXIST=ExistFile)
 IF(.NOT.ExistFile) THEN
-  SWRITE(UNIT_stdOut,'(A12,A)')     ' ERROR: ','no parameter_reggie.ini found.'
-  SWRITE(UNIT_stdOut,'(A12,A)')  ' FileName: ', TRIM(FileName)
-  SWRITE(UNIT_stdOut,'(A12,L)') ' ExistFile: ', ExistFile
-  ERROR STOP '-1'
+  SkipExample=.TRUE.
+  SWRITE(UNIT_stdOut,'(A16,A,A1)') '   FileName  : [', TRIM(FileName),']'
+  SWRITE(UNIT_stdOut,'(A16,L,A1)') '   ExistFile : [', ExistFile,']'
+  SWRITE(UNIT_stdOut,'(A16,A)')    '   ERROR     : ','no parameter_reggie.ini found.                        ...skipping'
+  RETURN
+  !ERROR STOP '-1'
 ELSE
   OPEN(NEWUNIT=ioUnit,FILE=TRIM(FileName),STATUS="OLD",IOSTAT=iSTATUS,ACTION='READ') 
 END IF

@@ -79,7 +79,8 @@ DO iExample = 1, nExamples ! loop level 1 of 5
 !==================================================================================================================================
     ! read the parameters for the current example (parameter_reggie.ini), must be read separately for every iReggieBuild
     ! because changes to specific parameters are made depending on the cmake compilation flags, e.g., in "CALL SetParameters(...)"
-    CALL InitExample(Examples(iExample)%PATH,Examples(iExample))
+    CALL InitExample(Examples(iExample)%PATH,Examples(iExample),SkipExample)
+    IF(SkipExample)CYCLE ! skip if "parameter_reggie.ini" file is missing
 
     ! Get code binary (build or find it)
     CALL GetCodeBinary(iExample,iReggieBuild,nReggieBuilds,N_compile_flags,ReggieBuildExe,SkipBuild,ExitBuild)
@@ -149,10 +150,6 @@ SUBROUTINE PerformFullRegressionCheck()
 ! MODULES
 USE MOD_Globals
 USE MOD_RegressionCheck_Compare, ONLY: CompareResults,CompareConvergence
-USE MOD_RegressionCheck_Tools,   ONLY: InitExample
-!#if USE_MPI
-!USE MOD_MPI,                     ONLY: FinalizeMPI
-!#endif /*USE_MPI*/
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
