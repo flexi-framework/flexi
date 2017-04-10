@@ -1,18 +1,16 @@
 # =========================================================================
 # Flexi CMake configuration
 # =========================================================================
-CMAKE_MINIMUM_REQUIRED(VERSION 2.8.11)
-# TODO: eventually require CMake 3.0 in future releases
-# Advantages: Possible to split string
-IF ("${CMAKE_VERSION}" VERSION_GREATER 3.0.0)
-  cmake_policy (SET CMP0045 OLD)
-  cmake_policy (SET CMP0046 OLD)
-ENDIF()
+# NOTE: use minimum CMake version required by tools/libs (Paraview, HDF5, FFTW)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.3.0)
+# Policies (see https://cmake.org/cmake/help/v3.8/manual/cmake-policies.7.html)
+cmake_policy (SET CMP0045 OLD)
+cmake_policy (SET CMP0046 OLD)
+# Folder for custom CMake source files
 LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 SET_PROPERTY(GLOBAL PROPERTY USE_FOLDERS ON)
 INCLUDE(ExternalProject)
 INCLUDE(CMakeDependentOption)
-
 
 # =========================================================================
 # Check whether we are on Github or at IAG
