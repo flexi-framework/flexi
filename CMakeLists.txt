@@ -549,6 +549,11 @@ ADD_DEPENDENCIES(flexi2vtk flexilib HDF5)
 # =========================================================================
 IF(FLEXI_BUILDPOSTI)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/CMakeLists.txt)
+ELSE()
+  GETLISTOFVARSSTARTINGWITH("POSTI_" postiVars)
+  FOREACH (_var IN LISTS postiVars)
+    UNSET(${_var} CACHE)
+  ENDFOREACH()
 ENDIF()
 
 # =========================================================================
