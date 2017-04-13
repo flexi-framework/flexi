@@ -53,8 +53,8 @@ OPENMPI_DLPATH='https://www.open-mpi.org/software/ompi/v2.1/downloads/openmpi-2.
 
 # Path and version of CMake
 CMAKE_NAME=cmake
-CMAKE_VERSION=3.5.2
-CMAKE_DLPATH='https://cmake.org/files/v3.5/cmake-3.5.2.tar.gz'
+CMAKE_VERSION=3.8.0
+CMAKE_DLPATH='https://cmake.org/files/v3.8/cmake-3.8.0.tar.gz'
 
 # Path and version of Paraview
 PARAVIEW_NAME=paraview
