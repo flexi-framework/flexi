@@ -62,8 +62,8 @@ PARAVIEW_VERSION=5.3.0
 PARAVIEW_DLPATH='http://www.paraview.org/paraview-downloads/download.php?submit=Download&version=v5.3&type=source&os=all&downloadFile=ParaView-v5.3.0.tar.gz'
 
 # Compiler specific subfolders for environment modules (i.e. compiler vendor + version )
-GNU_DIR=gnu54
-INTEL_DIR=ifort17
+GNU_PREFIX=gnu
+INTEL_PREFIX=intel
 
 #########################################
 # Changes after this point at own risk
@@ -126,6 +126,26 @@ unlockmoduledir () {
 trap "lockdir" EXIT
 #trap "lockdir $HDF5_NAME $OPENMPI_NAME $CMAKE_NAME" EXIT
 
+getversion_intel () {
+  if hash ifort 2>/dev/null; then
+    VER=$(ifort -v 2>&1 | cut -d" " -f3)
+  else
+    echo "Could not find Intel Fortran compiler."
+    exit 1
+  fi
+  INTEL_DIR=$INTEL_PREFIX$VER
+}
+
+getversion_gnu () {
+  if hash gfortran 2>/dev/null; then
+    VER=$(gfortran -dumpversion)
+  else
+    echo "Could not find GNU Fortran compiler."
+    exit 1
+  fi
+  GNU_DIR=$GNU_PREFIX$VER
+}
+
 check_module () {
   echo "Checking for module $1"
   modules=$(( module avail ) 2>&1 )
@@ -186,6 +206,9 @@ build_lib () {
          mkdir -p $MYLIB_INSTALL
   fi
   make install
+  if [ $INSTALL_REQUIRES_ROOT == 1 ] ; then
+    sudo chown -R root:root $MYLIB_INSTALL
+  fi
 }
 
 build_module () {
@@ -226,12 +249,14 @@ fi
 
 if [ ${BUILD_MYLIB[0]} == 1 ]; then  # GNU
   COMPILER_NAME=gnu
-  COMPILER_DIR=$GNU_DIR
   check_module env/$COMPILER_NAME
   module unload env
   module load env/$COMPILER_NAME
   export CC=gcc
   export FC=gfortran
+
+  getversion_gnu
+  COMPILER_DIR=$GNU_DIR
 
   build_lib
   build_module
@@ -239,12 +264,14 @@ fi
 
 if [ ${BUILD_MYLIB[1]} == 1 ]; then  # INTEL
   COMPILER_NAME=intel
-  COMPILER_DIR=$INTEL_DIR
   check_module env/$COMPILER_NAME
   module unload env
   module load env/$COMPILER_NAME
   export CC=icc
   export FC=ifort
+
+  getversion_intel
+  COMPILER_DIR=$INTEL_DIR
 
   build_lib
   build_module
@@ -265,13 +292,15 @@ fi
 
 if [ ${BUILD_MYLIB[0]} == 1 ]; then  # GNU
   COMPILER_NAME=gnu
-  COMPILER_DIR=$GNU_DIR
   check_module env/$COMPILER_NAME
   module unload env
   module load env/$COMPILER_NAME
   export CC=gcc
   export FC=gfortran
   export CXX=g++
+
+  getversion_gnu
+  COMPILER_DIR=$GNU_DIR
 
   build_lib
   build_module
@@ -309,11 +338,13 @@ fi
 
 if [ ${BUILD_MYLIB[0]} == 1 ]; then  # GNU
   COMPILER_NAME=gnu
-  COMPILER_DIR=$GNU_DIR
   check_module env/$COMPILER_NAME
   check_module openmpi/$COMPILER_NAME
   module unload env
   module load env/$COMPILER_NAME
+
+  getversion_gnu
+  COMPILER_DIR=$GNU_DIR
 
   build_lib
   build_module
@@ -321,11 +352,13 @@ fi
 
 if [ ${BUILD_MYLIB[1]} == 1 ]; then  # INTEL
   COMPILER_NAME=intel
-  COMPILER_DIR=$INTEL_DIR
   check_module env/$COMPILER_NAME
   check_module openmpi/$COMPILER_NAME
   module unload env
   module load env/$COMPILER_NAME
+
+  getversion_intel
+  COMPILER_DIR=$INTEL_DIR
 
   build_lib
   build_module
@@ -349,13 +382,15 @@ fi
 if [ ${BUILD_MYLIB[0]} == 1 ]; then  # default
   MYLIB_OPTIONS='-DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DBUILD_EXAMPLES=OFF -DPARAVIEW_ENABLE_PYTHON=ON -DPARAVIEW_USE_MPI=ON -DPARAVIEW_USE_VISITBRIDGE=ON -DPARAVIEW_INSTALL_DEVELOPMENT_FILES=ON -DCMAKE_INSTALL_PREFIX='
   COMPILER_NAME=standard
-  COMPILER_DIR=${GNU_DIR}_standard
   check_module env/gnu
   module unload env
   module load env/gnu
   export CC=gcc
   export FC=gfortran
   export CXX=g++
+
+  getversion_gnu
+  COMPILER_DIR=${GNU_DIR}_standard
 
   build_lib
   build_module
@@ -364,13 +399,15 @@ fi
 if [ ${BUILD_MYLIB[1]} == 1 ]; then  # no visit bridge (easier use of Flexi Paraview plugin)
   MYLIB_OPTIONS='-DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DBUILD_EXAMPLES=OFF -DPARAVIEW_ENABLE_PYTHON=ON -DPARAVIEW_USE_MPI=ON -DPARAVIEW_USE_VISITBRIDGE=OFF -DPARAVIEW_INSTALL_DEVELOPMENT_FILES=ON -DCMAKE_INSTALL_PREFIX='
   COMPILER_NAME=novisit
-  COMPILER_DIR=${GNU_DIR}_novisit
   check_module env/gnu
   module unload env
   module load env/gnu
   export CC=gcc
   export FC=gfortran
   export CXX=g++
+
+  getversion_gnu
+  COMPILER_DIR=${GNU_DIR}_novisit
 
   build_lib
   build_module
