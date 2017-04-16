@@ -96,12 +96,12 @@ END IF
 ! Measure processing duration
 EndTime=REGGIETIME()
 
-#if MPI
-CALL MPI_FINALIZE(iError)
-IF(iError .NE. 0) CALL abort(&
-  __STAMP__&
-  ,'MPI finalize error',iError,999.)
-#endif
+!   #if USE_MPI
+!   CALL MPI_FINALIZE(iError)
+!   IF(iError .NE. 0) CALL abort(&
+!     __STAMP__&
+!     ,'MPI finalize error',iError,999.)
+!   #endif
 
 ! Print the summary or examples and error codes (if they exist)
 CALL SummaryOfErrors(EndTime)

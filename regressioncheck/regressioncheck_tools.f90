@@ -1108,7 +1108,7 @@ END SUBROUTINE CheckFileForString
 !==================================================================================================================================
 !> Calculates current time (own function because of a laterMPI implementation)
 !==================================================================================================================================
-#if MPI
+#if USE_MPI
 FUNCTION REGGIETIME(Comm)
 USE MOD_Globals, ONLY:iError,MPI_COMM_WORLD
 USE mpi
@@ -1119,7 +1119,7 @@ FUNCTION REGGIETIME()
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-#if MPI
+#if USE_MPI
 INTEGER, INTENT(IN),OPTIONAL    :: Comm
 #endif
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -1128,16 +1128,14 @@ REAL                            :: REGGIETIME
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
-#if MPI
+#if USE_MPI
 IF(PRESENT(Comm))THEN
   CALL MPI_BARRIER(Comm,iError)
 ELSE
   CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
 END IF
-REGGIETIME=MPI_WTIME()
-#else
-CALL CPU_TIME(REGGIETIME)
 #endif
+GETTIME(REGGIETIME)
 END FUNCTION REGGIETIME
 
 
