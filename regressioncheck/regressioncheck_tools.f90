@@ -1000,6 +1000,7 @@ END SUBROUTINE AddError
 !==================================================================================================================================
 SUBROUTINE GetParameterFromFile(FileName,ParameterName,output)
 ! MODULES
+USE MOD_Globals
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -1041,8 +1042,12 @@ IF(ExistFile) THEN
     END IF
   END DO
   CLOSE(ioUnit)
-  IF(output.EQ.'')output='ParameterName does not exist'
+  IF(output.EQ.'')THEN
+    SWRITE(UNIT_stdOut,'(A)') 'SUBROUTINE GetParameterFromFile: Parameter ['//TRIM(ParameterName)//'] not found.'
+    output='ParameterName does not exist'
+  END IF
 ELSE
+  SWRITE(UNIT_stdOut,'(A)') 'SUBROUTINE GetParameterFromFile: File ['//TRIM(FileName)//'] not found.'
   output='file does not exist'
 END IF
 END SUBROUTINE GetParameterFromFile

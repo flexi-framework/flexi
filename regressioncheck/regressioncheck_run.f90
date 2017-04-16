@@ -150,17 +150,18 @@ SUBROUTINE PerformFullRegressionCheck()
 ! MODULES
 USE MOD_Globals
 USE MOD_RegressionCheck_Compare, ONLY: CompareResults,CompareConvergence
+USE MOD_RegressionCheck_tools,   ONLY: GetParameterFromFile
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=500)            :: SYSCOMMAND                         !> string to fit the system command
-CHARACTER(LEN=500)            :: FileName                           !> file and path strings
+CHARACTER(LEN=500)            :: FileName,OutputFile                !> file and path strings
 INTEGER                       :: ioUnit                             !> io-unit
 INTEGER                       :: iSTATUS                            !> status
 LOGICAL                       :: ExistFile                          !> T=file exists, F=file does not exist
-CHARACTER(len=500)            :: temp,temp2                         !> auxiliary variables
+CHARACTER(len=500)            :: temp,temp2,TmpStr                  !> auxiliary variables
 CHARACTER(len=500)            :: reggie(50)                         !> consider 50 cases maximum
 CHARACTER(len=500)            :: reggieUnique(50)                   !> consider 50 cases maximum
 LOGICAL                       :: isNotUnique                        !> don't repeat the same case twice
@@ -169,6 +170,7 @@ INTEGER                       :: iReggie,nReggie,iReggieDONE        !> number of
 INTEGER                       :: iReggieUnique,nReggieUnique        !> number of cases
 CHARACTER(len=50)             :: PreFix                             !> auxiliary variable
 CHARACTER(LEN=50)             :: FileSuffix                         !> auxiliary vars for file name endings
+INTEGER                       :: IndNum1,IndNum2,Ind1,Ind2          !> index numbers
 !==================================================================================================================================
 SWRITE(UNIT_stdOut,'(132("="))')
 SWRITE(UNIT_stdOut,'(A)') ' Performing FULL regressioncheck ...'
@@ -287,8 +289,17 @@ DO iReggie=1,nReggieUnique
              //TRIM(PreFix)//'full-reggie-'//TRIM(FileSuffix)//'.out'
   SWRITE(UNIT_stdOut,'(A)')' '
   ! display the file where the output will be written
-  SWRITE(UNIT_stdOut,'(A,A,A,A)') ' Running case [',TRIM(FileSuffix),'] and writing the output to ',&
-                                   TRIM(BASEDIR)//TRIM(PreFix)//'full-reggie-'//TRIM(FileSuffix)//'.out'
+  IndNum=INDEX(BASEDIR,'/')
+  IndNum1=INDEX(BASEDIR,'"') ! remove " from file path
+  Ind1=1
+  IF((IndNum1.GT.0).AND.(IndNum1.LT.IndNum))  Ind1=MAX(1,IndNum1+1) ! only valid if ["] comes before [/]
+  IndNum2=INDEX(BASEDIR,'"',BACK = .TRUE.) ! remove " from file path
+  Ind2=LEN(BASEDIR)
+  IF((IndNum2.GT.1).AND.(IndNum1.NE.IndNum2)) Ind2=IndNum2-1        ! only valid if a second ["] exists 
+  
+  OutputFile=TRIM(BASEDIR(Ind1:Ind2))//TRIM(PreFix)//'full-reggie-'//TRIM(FileSuffix)//'.out'
+  SWRITE(UNIT_stdOut,'(A,A,A,A)') ' Running case [',TRIM(FileSuffix),'] and writing the output to ',TRIM(OutputFile)
+                                   !TRIM(BASEDIR)//TRIM(PreFix)//'full-reggie-'//TRIM(FileSuffix)//'.out'
   ! display the command that will be executed
   SWRITE(UNIT_stdOut,'(A)')'   SYSCOMMAND: '//TRIM(SYSCOMMAND)
   ! run the recursive regressioncheck
@@ -298,11 +309,10 @@ DO iReggie=1,nReggieUnique
     SWRITE(UNIT_stdOut,'(A,I5)') '     iSTATUS: ',iSTATUS
     ERROR STOP '-1'
   ELSE
-    SWRITE(UNIT_stdOut,'(A)') '   Successful'
+    CALL GetParameterFromFile(OutputFile,'RegressionCheck SUCCESSFUL!',TmpStr)
+    SWRITE(UNIT_stdOut,'(A,A)') '   RegressionCheck SUCCESSFUL! ',ADJUSTL(TRIM(TmpStr))
   END IF
 END DO
-
-
 
 END SUBROUTINE PerformFullRegressionCheck
 
