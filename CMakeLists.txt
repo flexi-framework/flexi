@@ -506,6 +506,7 @@ SET_TARGET_PROPERTIES(userblocklib PROPERTIES COMPILE_FLAGS "-fPIC")
 
 ADD_LIBRARY(stacksizelib STATIC ./src/globals/stacksize.c)
 SET_TARGET_PROPERTIES(stacksizelib PROPERTIES LINKER_LANGUAGE C)
+SET_TARGET_PROPERTIES(stacksizelib PROPERTIES COMPILE_FLAGS "-fPIC")
 
 add_exec(flexi ./src/flexi.f90)
 ADD_DEPENDENCIES(flexi flexilib userblocklib stacksizelib HDF5)
