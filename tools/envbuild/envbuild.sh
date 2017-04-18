@@ -3,7 +3,7 @@
 #
 # Author:       Thomas Bolemann
 # Institution:  Inst. of Aero- and Gasdynamics, University of Stuttgart
-# Date:         07.11.2016
+# Date:         18.04.2017
 #
 # Description:  This script to downloads, compiles and installs standard libraries
 #               and tools and sets up the corresponding environment modules.
@@ -32,13 +32,15 @@ NPROCS=4                  # Number of processes for compiling
 # NOTE: If "Compile" and "Build module" options are not set, the GNU/INTEL options are ignored
 
 # Build with      GNU;    INTEL; Compile; Build module Set default
-BUILD_OPENMPI=(    1        0       1          1            1       )
+BUILD_OPENMPI=(    0        0       0          0            0       )
 # Build with      GNU;    INTEL; Compile; Build module Set default
-BUILD_HDF5=(       1        0       1          1            1       )
+BUILD_HDF5=(       0        0       0          0            0       )
 # Build with      GNU;           Compile; Build module Set default
-BUILD_CMAKE=(      1        0       1          1            1       )
+BUILD_CMAKE=(      0        0       0          0            0       )
 # Build with  Standard; NoVisit; Compile; Build module Set default
 BUILD_PARAVIEW=(   0        0       0          0            0       )
+# Build with      GNU;    INTEL; Compile; Build module Set default
+BUILD_FFTW=(       0        0       0          0            0       )
 
 # Path and version of HDF5
 HDF5_NAME=hdf5
@@ -60,6 +62,11 @@ CMAKE_DLPATH='https://cmake.org/files/v3.8/cmake-3.8.0.tar.gz'
 PARAVIEW_NAME=paraview
 PARAVIEW_VERSION=5.3.0
 PARAVIEW_DLPATH='http://www.paraview.org/paraview-downloads/download.php?submit=Download&version=v5.3&type=source&os=all&downloadFile=ParaView-v5.3.0.tar.gz'
+
+# Path and version of FFTW
+FFTW_NAME=fftw
+FFTW_VERSION=3.3.6-pl2
+FFTW_DLPATH='http://www.fftw.org/fftw-3.3.6-pl2.tar.gz'
 
 # Compiler specific subfolders for environment modules (i.e. compiler vendor + version )
 GNU_PREFIX=gnu
@@ -425,3 +432,48 @@ fi
 #  build_lib
 #  build_module
 #fi
+
+#############################################################################
+# 5. FFTW
+#############################################################################
+BUILD_MYLIB=("${BUILD_FFTW[@]}")
+MYLIB_NAME=$FFTW_NAME
+MYLIB_VERSION=$FFTW_VERSION
+MYLIB_DLPATH=$FFTW_DLPATH
+MYLIB_USECMAKE=0
+if [ ${BUILD_MYLIB[2]} == 1 ]; then
+  prepare_lib
+  MYLIB_OPTIONS='--prefix='
+  export CC=mpicc
+  export FC=mpif90
+  export CFLAGS=-fPIC
+  export FCFLAGS=-fPIC
+fi
+
+if [ ${BUILD_MYLIB[0]} == 1 ]; then  # GNU
+  COMPILER_NAME=gnu
+  check_module env/$COMPILER_NAME
+  check_module openmpi/$COMPILER_NAME
+  module unload env
+  module load env/$COMPILER_NAME
+
+  getversion_gnu
+  COMPILER_DIR=$GNU_DIR
+
+  build_lib
+  build_module
+fi
+
+if [ ${BUILD_MYLIB[1]} == 1 ]; then  # INTEL
+  COMPILER_NAME=intel
+  check_module env/$COMPILER_NAME
+  check_module openmpi/$COMPILER_NAME
+  module unload env
+  module load env/$COMPILER_NAME
+
+  getversion_intel
+  COMPILER_DIR=$INTEL_DIR
+
+  build_lib
+  build_module
+fi
