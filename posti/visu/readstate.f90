@@ -280,7 +280,6 @@ CALL prms%read_options(prmfile)
 
 ! Initialization of I/O routines
 CALL InitIOHDF5()
-CALL InitEOS()
 
 IF (PRESENT(NIn)) THEN
   CALL InitInterpolation(Nin)
