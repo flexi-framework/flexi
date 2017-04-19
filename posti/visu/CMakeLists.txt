@@ -51,6 +51,6 @@ IF (POSTI_USE_PARAVIEW AND ParaView_FOUND)
      DEPENDS               "${TOOL_DIR}/paraviewReader/visuReader.h"
      )
 
-   ADD_DEPENDENCIES(     visuReader ${TOOL_NAME}lib flexilib userblocklib_dummy HDF5)
-   TARGET_LINK_LIBRARIES(visuReader PUBLIC ${TOOL_NAME}lib flexilib ${linkedlibs})
+   ADD_DEPENDENCIES(     visuReader ${TOOL_NAME}lib flexilib userblocklib_dummy stacksizelib HDF5)
+   TARGET_LINK_LIBRARIES(visuReader PUBLIC ${TOOL_NAME}lib flexilib stacksizelib ${linkedlibs})
 ENDIF()

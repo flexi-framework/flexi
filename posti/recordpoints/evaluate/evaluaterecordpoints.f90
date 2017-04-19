@@ -41,6 +41,7 @@ INTEGER                            :: iArg,start
 CHARACTER(LEN=255)                 :: RPFile,FileType
 LOGICAL                            :: isValid,userblockFound
 !===================================================================================================================================
+CALL SetStackSizeUnlimited()
 CALL InitMPI()
 CALL ParseCommandlineArguments()
 SWRITE(UNIT_stdOut,'(A)') " ||=============================||" 
