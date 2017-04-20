@@ -336,7 +336,7 @@ MYLIB_DLPATH=$HDF5_DLPATH
 MYLIB_USECMAKE=0
 if [ ${BUILD_MYLIB[2]} == 1 ]; then
   prepare_lib
-  MYLIB_OPTIONS='--enable-fortran --enable-parallel --disable-shared --prefix='
+  MYLIB_OPTIONS='--with-pic --enable-fortran --enable-parallel --disable-shared --prefix='
   export CC=mpicc
   export FC=mpif90
   export CFLAGS=-fPIC
