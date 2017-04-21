@@ -134,8 +134,6 @@ REAL,INTENT(OUT)              :: FV_Vdm(0:N_in,0:N_in)   ! Vandermonde matrix fo
 REAL,INTENT(OUT),OPTIONAL     :: FV_sVdm(0:N_in,0:N_in)  ! Vandermonde matrix for converstion from FV to DG
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                   :: Vdm_In_tmp(0:N_in,0:N_in)
-REAL                   :: Vdm_tmp_IN(0:N_in,0:N_in)
 REAL                   :: FV_X(0:N_in),FV_w,FV_BdryX(0:N_In+1)
 REAL,DIMENSION(0:N_In) :: xGP,wGP,wBary
 REAL                   :: SubxGP(1,0:N_In)

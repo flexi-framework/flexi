@@ -7,6 +7,7 @@ PROGRAM PrepareRecordPoints
 ! MODULES
 ! General and support
 USE MOD_Globals
+USE MOD_PreProc
 USE MOD_Commandline_Arguments
 USE MOD_StringTools,        ONLY:STRICMP,GetFileExtension
 USE MOD_ReadInTools,        ONLY:prms,IgnoredParameters,PrintDefaultParameterFile,FinalizeParameters
@@ -29,6 +30,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 LOGICAL                            :: success=.TRUE.
 !===================================================================================================================================
+CALL SetStackSizeUnlimited()
 CALL InitMPI() ! NO PARALLELIZATION, ONLY FOR COMPILING WITH MPI FLAGS ON SOME MACHINES OR USING MPI-DEPENDANT HDF5
 IF (nProcessors.GT.1) CALL CollectiveStop(__STAMP__, &
   'This tool is designed for single execution only!')

@@ -15,12 +15,15 @@ SAVE
 ! Private Part ---------------------------------------------------------------------------------------------------------------------
 ! Public Part ----------------------------------------------------------------------------------------------------------------------
 
-
 INTERFACE PerformRegressionCheck
   MODULE PROCEDURE PerformRegressionCheck
 END INTERFACE
 
-PUBLIC::PerformRegressionCheck
+INTERFACE PerformFullRegressionCheck
+  MODULE PROCEDURE PerformFullRegressionCheck
+END INTERFACE
+
+PUBLIC::PerformRegressionCheck,PerformFullRegressionCheck
 !==================================================================================================================================
 
 CONTAINS
@@ -34,7 +37,7 @@ SUBROUTINE PerformRegressionCheck()
 USE MOD_Globals
 USE MOD_RegressionCheck_Compare, ONLY: CompareResults,CompareConvergence
 USE MOD_RegressionCheck_Tools,   ONLY: InitExample
-USE MOD_RegressionCheck_Vars,    ONLY: nExamples,ExampleNames,Examples,EXECPATH,RuntimeOptionType,GlobalRunNumber 
+USE MOD_RegressionCheck_Vars,    ONLY: nExamples,ExampleNames,Examples,EXECPATH,RuntimeOption,GlobalRunNumber 
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -62,7 +65,7 @@ GlobalRunNumber=0      ! init
 !==================================================================================================================================
 DO iExample = 1, nExamples ! loop level 1 of 5
 !==================================================================================================================================
-  CALL CheckExampleName(ExampleNames(iExample),RuntimeOptionType,SkipExample)
+  CALL CheckExampleName(ExampleNames(iExample),RuntimeOption(2),SkipExample)
   IF(SkipExample)CYCLE ! ignore the example folder and continue with the next
 
   ! set the build configuration environment when BuildSolver=.TRUE.
@@ -136,6 +139,175 @@ DO iExample = 1, nExamples ! loop level 1 of 5
 END DO ! iExample=1,nExamples
 
 END SUBROUTINE PerformRegressionCheck
+
+
+!==================================================================================================================================
+!> Routine which performs the actual regressioncheck. It triggers the builds and execute commands. Additionally, it performs
+!> the checks for L2-error norms, h5-diff and runtime
+!==================================================================================================================================
+SUBROUTINE PerformFullRegressionCheck()
+! MODULES
+USE MOD_Globals
+USE MOD_RegressionCheck_Compare, ONLY: CompareResults,CompareConvergence
+USE MOD_RegressionCheck_Tools,   ONLY: InitExample
+!#if USE_MPI
+!USE MOD_MPI,                     ONLY: FinalizeMPI
+!#endif /*USE_MPI*/
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+CHARACTER(LEN=500)            :: SYSCOMMAND                         !> string to fit the system command
+CHARACTER(LEN=500)            :: FileName                           !> file and path strings
+INTEGER                       :: ioUnit                             !> io-unit
+INTEGER                       :: iSTATUS                            !> status
+LOGICAL                       :: ExistFile                          !> T=file exists, F=file does not exist
+CHARACTER(len=500)            :: temp,temp2                         !> auxiliary variables
+CHARACTER(len=500)            :: reggie(50)                         !> consider 50 cases maximum
+CHARACTER(len=500)            :: reggieUnique(50)                   !> consider 50 cases maximum
+LOGICAL                       :: isNotUnique                        !> don't repeat the same case twice
+INTEGER                       :: IndNum                             !> index
+INTEGER                       :: iReggie,nReggie,iReggieDONE        !> number of cases
+INTEGER                       :: iReggieUnique,nReggieUnique        !> number of cases
+CHARACTER(len=50)             :: PreFix                             !> auxiliary variable
+CHARACTER(LEN=50)             :: FileSuffix                         !> auxiliary vars for file name endings
+!==================================================================================================================================
+SWRITE(UNIT_stdOut,'(132("="))')
+SWRITE(UNIT_stdOut,'(A)') ' Performing FULL regressioncheck ...'
+nReggie=0
+
+! check for the '.gitlab-ci.yml' file
+FileName=TRIM(BASEDIR(2:LEN(BASEDIR)-1))//'../.gitlab-ci.yml'
+INQUIRE(File=FileName,EXIST=ExistFile)              ! inquire existence
+IF(ExistFile.EQV..FALSE.)THEN ! check a second possibility
+  FileName=TRIM(BASEDIR(2:LEN(BASEDIR)-1))//'.gitlab-ci.yml'
+  INQUIRE(File=FileName,EXIST=ExistFile)            ! inquire existence
+END IF
+
+! Read the file if is exists
+IF(ExistFile) THEN
+  print*,"FileName=",TRIM(FileName)
+  OPEN(NEWUNIT=ioUnit,FILE=TRIM(FileName),STATUS="OLD",IOSTAT=iSTATUS,ACTION='READ')
+  IF(iSTATUS.NE.0)THEN
+    SWRITE(UNIT_stdOut,'(A)') ' Could not open .gitlab-ci.yml'
+    ERROR STOP '-1'
+  END IF
+  DO
+    READ(ioUnit,'(A)',iostat=iSTATUS)temp
+    IF(iSTATUS.GT.0)THEN
+      SWRITE(UNIT_stdOut,'(A,I5)') " Read-in failed: iSTATUS=",iSTATUS
+      SWRITE(UNIT_stdOut,'(A)') temp
+      ERROR STOP '-1'
+    ELSE IF(iSTATUS.LT.0)THEN
+      EXIT
+    ELSE ! iSTATUS = 0
+      IndNum=INDEX(temp,'./regressioncheck')
+      IF(IndNum.GT.0)THEN
+        nReggie=nReggie+1
+        temp2=TRIM(ADJUSTL(temp(IndNum:LEN(temp)))) ! +17
+        IndNum=INDEX(temp2,';')
+        IF(IndNum.GT.0)THEN
+          temp=TRIM(ADJUSTL(temp2(1:IndNum-1)))
+          temp2=temp
+        END IF
+        !print*,'[',trim(temp2),']   length=',LEN(TRIM(ADJUSTL(temp2)))
+        reggie(nReggie)=TRIM(ADJUSTL(temp2))//' no-full'//' no-debug'
+      END IF
+    END IF
+  END DO
+  CLOSE(ioUnit)
+ELSE ! could not find 'configuration.cmake' at location of execution binary
+  SWRITE(UNIT_stdOut,'(A13,A)') ' ERROR     : ','no ".gitlab-ci.yml" found.'
+  SWRITE(UNIT_stdOut,'(A13,A)') ' FileName  : ', TRIM(FileName)
+  SWRITE(UNIT_stdOut,'(A13,L)') ' ExistFile : ', ExistFile
+  ERROR STOP '-1'
+END IF
+
+FileName=TRIM(BASEDIR(2:LEN(BASEDIR)-1))//'bin/regressioncheck'
+INQUIRE(File=FileName,EXIST=ExistFile)              ! inquire existence
+IF(ExistFile.EQV..FALSE.)THEN ! check a second possibility
+  FileName=TRIM(BASEDIR(2:LEN(BASEDIR)-1))//'regressioncheck'
+  INQUIRE(File=FileName,EXIST=ExistFile)            ! inquire existence
+  PreFix=''
+ELSE
+  PreFix='bin/'
+END IF
+
+IF(ExistFile.EQV..FALSE.)THEN
+  SWRITE(UNIT_stdOut,'(A13,A)') ' ERROR     : ','no "regressioncheck" found.'
+  SWRITE(UNIT_stdOut,'(A13,A)') ' FileName  : ', TRIM(FileName)
+  SWRITE(UNIT_stdOut,'(A13,L)') ' ExistFile : ', ExistFile
+  ERROR STOP '-1'
+END IF
+SWRITE(UNIT_stdOut,'(A)')' '
+
+! Display an overview of all cases that were found
+SWRITE(UNIT_stdOut,'(A)') " FULL list: The following cases were found in .gitlab-ci.yml"
+SWRITE(UNIT_stdOut,'(132("-"))')
+DO iReggie=1,nReggie
+  SWRITE(UNIT_stdOut,'(A)') ' cd '//TRIM(BASEDIR)//' && '//TRIM(PreFix)//TRIM(reggie(iReggie))
+END DO
+SWRITE(UNIT_stdOut,'(132("-"))')
+
+! sort out duplicate cases
+iReggieUnique=0
+reggieUnique='-1'
+DO iReggie=1,nReggie
+  isNotUnique=.FALSE.
+  DO iReggieDONE=1,iReggie
+    IF(TRIM(reggieUnique(iReggieDONE)).EQ.TRIM(reggie(iReggie)))THEN ! if any old case (reggieUnique) matches 
+                                                                     ! the current case (reggie)
+      isNotUnique=.TRUE.
+    END IF
+  END DO
+  IF(isNotUnique)CYCLE ! don't repeat the same case twice
+  WRITE(FileSuffix,'(I4.4)')iReggieUnique
+  reggieUnique(iReggie)=TRIM(reggie(iReggie))
+  iReggieUnique=iReggieUnique+1
+END DO
+nReggieUnique=iReggieUnique
+iReggieUnique=1
+! map unique cases to reggie()
+DO iReggie=1,nReggie
+  IF(reggieUnique(iReggie).EQ.'-1')CYCLE
+  reggie(iReggieUnique)=reggieUnique(iReggie)
+  iReggieUnique=iReggieUnique+1
+END DO
+
+! Display an overview of all cases that will be run
+SWRITE(UNIT_stdOut,'(A)') " UNIQUE list: The following cases will be executed"
+SWRITE(UNIT_stdOut,'(132("-"))')
+DO iReggie=1,nReggieUnique
+  SWRITE(UNIT_stdOut,'(A)') ' cd '//TRIM(BASEDIR)//' && '//TRIM(PreFix)//TRIM(reggie(iReggie))
+END DO
+SWRITE(UNIT_stdOut,'(132("-"))')
+
+! loop the cases that will be executed
+DO iReggie=1,nReggieUnique
+  WRITE(FileSuffix,'(I4.4)')iReggie
+  SYSCOMMAND='cd '//TRIM(BASEDIR)//' && '//TRIM(PreFix)//TRIM(reggie(iReggie))//' > '& !' | tee '&
+             //TRIM(PreFix)//'full-reggie-'//TRIM(FileSuffix)//'.out'
+  SWRITE(UNIT_stdOut,'(A)')' '
+  ! display the file where the output will be written
+  SWRITE(UNIT_stdOut,'(A,A,A,A)') ' Running case [',TRIM(FileSuffix),'] and writing the output to ',&
+                                   TRIM(BASEDIR)//TRIM(PreFix)//'full-reggie-'//TRIM(FileSuffix)//'.out'
+  ! display the command that will be executed
+  SWRITE(UNIT_stdOut,'(A)')'   SYSCOMMAND: '//TRIM(SYSCOMMAND)
+  ! run the recursive regressioncheck
+  CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
+  IF(iSTATUS.NE.0)THEN
+    SWRITE(UNIT_stdOut,'(A)')    '   Failed running recursive regressioncheck'
+    SWRITE(UNIT_stdOut,'(A,I5)') '     iSTATUS: ',iSTATUS
+    ERROR STOP '-1'
+  ELSE
+    SWRITE(UNIT_stdOut,'(A)') '   Successful'
+  END IF
+END DO
+
+
+
+END SUBROUTINE PerformFullRegressionCheck
 
 
 !==================================================================================================================================
@@ -491,7 +663,7 @@ CHARACTER(LEN=*),INTENT(IN)    :: TIMEDISCMETHOD
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
-! remove subexample (before printing the case overview) for certain configurations: e.g. Preconditioner when running explicitly
+! remove subexample (before displaying the case overview) for certain configurations: e.g. Preconditioner when running explicitly
 IF((TRIM(TIMEDISCMETHOD).NE.'ImplicitO3').AND.(TRIM(Examples(iExample)%SubExample).EQ.'PrecondType'))THEN
   Examples(iExample)%SubExample       = ''
   Examples(iExample)%SubExampleNumber = 0
@@ -707,8 +879,8 @@ ELSE
 END IF
 SWRITE(UNIT_stdOut,'(A)')      ' Reference:                      ['//TRIM(Examples(iExample)%ReferenceFile)//']'
 SWRITE(UNIT_stdOut,'(A)')      ' Reference Norm:                 ['//TRIM(Examples(iExample)%ReferenceNormFile)//']'
-SWRITE(UNIT_stdOut,'(A)')      ' State:                          ['//TRIM(Examples(iExample)%ReferenceStateFile)//']'
-SWRITE(UNIT_stdOut,'(A)')      ' HDF5 dataset:                   ['//TRIM(Examples(iExample)%ReferenceDataSetName)//']'
+SWRITE(UNIT_stdOut,'(A)')      ' State:                          ['//TRIM(Examples(iExample)%H5DIFFReferenceStateFile)//']'
+SWRITE(UNIT_stdOut,'(A)')      ' HDF5 dataset:                   ['//TRIM(Examples(iExample)%H5DIFFReferenceDataSetName)//']'
 SWRITE(UNIT_stdOut,'(A)')      ' Restart:                        ['//TRIM(Examples(iExample)%RestartFileName)//']'
 SWRITE(UNIT_stdOut,'(A)')      ' Example%SubExample:             ['//TRIM(Examples(iExample)%SubExample)//']'
 SWRITE(UNIT_stdOut,'(A,I6,A1)')' Example%SubExampleNumber:       [',      Examples(iExample)%SubExampleNumber,']'
@@ -725,13 +897,7 @@ SUBROUTINE SetParameters(iExample,parameter_ini,UseFV,UseCODE2D,UsePARABOLIC,Ski
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_RegressionCheck_Vars,    ONLY: Examples
-USE MOD_RegressionCheck_Tools,   ONLY: GetParameterFromFile
-!USE MOD_RegressionCheck_Vars,    ONLY: CodeNameLowCase,EXECPATH,BuildFV,BuildCODE2D,BuildPARABOLIC
-!USE MOD_RegressionCheck_Vars,    ONLY: BuildSolver
-!USE MOD_RegressionCheck_Build,   ONLY: BuildConfiguration
-!USE MOD_RegressionCheck_Vars,    ONLY: BuildTESTCASE,BuildTIMEDISCMETHOD,BuildMPI,CodeNameUppCase
-!USE MOD_RegressionCheck_Build,   ONLY: GetFlagFromFile
+USE MOD_RegressionCheck_Vars,    ONLY: Examples,CodeNameUppCase
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -759,17 +925,27 @@ IF(Examples(iExample)%ConvergenceTest)THEN ! Do ConvergenceTest
   !print*,"UseFV=",UseFV
   SWRITE(UNIT_stdOut,'(A15,L1,A2)',ADVANCE='NO')" UseFV       =[",UseFV,"] "
   IF(UseFV)THEN
-    CALL SetSubExample(iExample,-1,parameter_ini,'IndicatorType','33')
-    IF(    TRIM(Examples(iExample)%ConvergenceTestType).EQ.'h')THEN ! h-convergence    
-      Examples(iExample)%ConvergenceTestValue=1.4 ! set redueced order of convergence due to FV cells
-      SWRITE(UNIT_stdOut,'(A18,A)')"","Setting option in parameter_reggie.ini: h-ConvergenceTestValue=1.4 (reduced mean order)"
-    ELSEIF(TRIM(Examples(iExample)%ConvergenceTestType).EQ.'p')THEN ! p-convergence
-      SkipFolder=.TRUE.
-      SWRITE(UNIT_stdOut,'(A18,A)')"","Skipping example because [p-convergence] and [FV=ON]"
-      RETURN
+    IF(    CodeNameUppCase.EQ.'FLEXI')THEN
+      CALL SetSubExample(iExample,-1,parameter_ini,'IndicatorType','33')
+      IF(    TRIM(Examples(iExample)%ConvergenceTestType).EQ.'h')THEN ! h-convergence    
+        Examples(iExample)%ConvergenceTestValue=1.4 ! set redueced order of convergence due to FV cells
+        SWRITE(UNIT_stdOut,'(A18,A)')"","Setting option in parameter_reggie.ini: h-ConvergenceTestValue=1.4 (reduced mean order)"
+      ELSEIF(TRIM(Examples(iExample)%ConvergenceTestType).EQ.'p')THEN ! p-convergence
+        SkipFolder=.TRUE.
+        SWRITE(UNIT_stdOut,'(A18,A)')"","Skipping example because [p-convergence] and [FV=ON]"
+        RETURN
+      END IF
+    ELSEIF(CodeNameUppCase.EQ.'BOLTZPLATZ')THEN
+      SWRITE(UNIT_stdOut,'(A)')"Setting option in parameter.ini: NOTHING (not implemented yet)"
+      ! DO NOTHING
     END IF
   ELSE
+    IF(    CodeNameUppCase.EQ.'FLEXI')THEN
       CALL SetSubExample(iExample,-1,parameter_ini,'IndicatorType','0')
+    ELSEIF(CodeNameUppCase.EQ.'BOLTZPLATZ')THEN
+      SWRITE(UNIT_stdOut,'(A)')"Setting option in parameter.ini: NOTHING (not implemented yet)"
+      ! DO NOTHING
+    END IF
   END IF
   
   ! Check for 2D version of the code
@@ -777,18 +953,24 @@ IF(Examples(iExample)%ConvergenceTest)THEN ! Do ConvergenceTest
   SWRITE(UNIT_stdOut,'(A15,L1,A2)',ADVANCE='NO')" UseCODE2D   =[",UseCODE2D,"] "
   SWRITE(UNIT_stdOut,'(A)')"Setting option in parameter.ini: NOTHING (not implemented yet)"
   IF(UseCODE2D)THEN
-!      CALL SetSubExample(iExample,-1,parameter_ini,'MeshFile','33')
+      !CALL SetSubExample(iExample,-1,parameter_ini,'MeshFile','33')
+      ! DO NOTHING
   ELSE
       !CALL SetSubExample(iExample,-1,parameter_ini,'MeshFile','0')
+      ! DO NOTHING
   END IF
 
   ! Check for UsePARABOLIC==OFF -> Euler simulation
   !print*,"UsePARABOLIC=",UsePARABOLIC
   SWRITE(UNIT_stdOut,'(A15,L1,A2)',ADVANCE='NO')" UsePARABOLIC=[",UsePARABOLIC,"] "
   IF(UsePARABOLIC)THEN
-      CALL SetSubExample(iExample,-1,parameter_ini,'IniExactFunc','4')
+    CALL SetSubExample(iExample,-1,parameter_ini,'IniExactFunc','4')
   ELSE
+    IF(    CodeNameUppCase.EQ.'FLEXI')THEN
       CALL SetSubExample(iExample,-1,parameter_ini,'IniExactFunc','2')
+    ELSEIF(CodeNameUppCase.EQ.'BOLTZPLATZ')THEN
+      CALL SetSubExample(iExample,-1,parameter_ini,'IniExactFunc','12')
+    END IF
   END IF
 
 
@@ -956,22 +1138,22 @@ SELECT CASE(MODE)
     SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm *.out > /dev/null 2>&1'
     CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
     IF(iSTATUS.NE.0)THEN
-      SWRITE(UNIT_stdOut,'(A)')' CleanFolder(',Examples(iExample)%PATH,'): Could not remove *.out files!'
+      SWRITE(UNIT_stdOut,'(A)')' CleanFolder('//TRIM(Examples(iExample)%PATH)//'): Could not remove *.out files!'
     END IF
     ! delete all *State* files except *reference* state files
-    IF((Examples(iExample)%ReferenceStateFile.EQ.'').AND. &
+    IF((Examples(iExample)%H5DIFFReferenceStateFile.EQ.'').AND. &
        (Examples(iExample)%RestartFileName.EQ.'') ) THEN
       SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm *State* > /dev/null 2>&1'
       CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
       IF(iSTATUS.NE.0)THEN
-        SWRITE(UNIT_stdOut,'(A)')' CleanFolder(',Examples(iExample)%PATH,'): Could not remove *State* files!'
+        SWRITE(UNIT_stdOut,'(A)')' CleanFolder('//TRIM(Examples(iExample)%PATH)//'): Could not remove *State* files!'
       END IF
     ELSE
       ! create list of all *State* files and loop them: don't delete *reference* files
       SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && ls *State* > tmp.txt'
       CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
       IF(iSTATUS.NE.0)THEN
-        SWRITE(UNIT_stdOut,'(A)')' CleanFolder(',Examples(iExample)%PATH,'): Could not remove tmp.txt!'
+        SWRITE(UNIT_stdOut,'(A)')' CleanFolder('//TRIM(Examples(iExample)%PATH)//'): Could not create tmp.txt!'
       END IF
       ! read tmp.txt | list of directories if regressioncheck/examples
       FileName=TRIM(Examples(iExample)%PATH)//'tmp.txt'
@@ -979,12 +1161,12 @@ SELECT CASE(MODE)
       DO 
         READ(ioUnit,FMT='(A)',IOSTAT=iSTATUS) tmp
         IF (iSTATUS.NE.0) EXIT
-        IF((Examples(iExample)%ReferenceStateFile.NE.TRIM(tmp)).AND. & ! skip ReferenceStateFile and RestartFileName
+        IF((Examples(iExample)%H5DIFFReferenceStateFile.NE.TRIM(tmp)).AND. & ! skip H5DIFFReferenceStateFile and RestartFileName
            (Examples(iExample)%RestartFileName.NE.TRIM(tmp)) ) THEN
            SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm '//TRIM(tmp)
            CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
            IF(iSTATUS.NE.0) THEN
-             SWRITE(UNIT_stdOut,'(A)')  ' CleanFolder(',Examples(iExample)%PATH,'): Could not remove state file ',TRIM(tmp)
+             SWRITE(UNIT_stdOut,'(A)')  ' CleanFolder('//TRIM(Examples(iExample)%PATH)//'): Could not remove state file ',TRIM(tmp)
            END IF
         END IF
       END DO
@@ -993,7 +1175,7 @@ SELECT CASE(MODE)
       SYSCOMMAND='cd '//TRIM(Examples(iExample)%PATH)//' && rm tmp.txt'
       CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
       IF(iSTATUS.NE.0) THEN
-        SWRITE(UNIT_stdOut,'(A)')  ' CleanFolder(',Examples(iExample)%PATH,'): Could not remove tmp.txt'
+        SWRITE(UNIT_stdOut,'(A)')  ' CleanFolder('//TRIM(Examples(iExample)%PATH)//'): Could not remove tmp.txt'
       END IF
     END IF
     ! delete "userblock.tmp"

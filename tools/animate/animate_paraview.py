@@ -8,6 +8,7 @@ import sys
 
 parser = argparse.ArgumentParser(description='Animate Paraview data')
 parser.add_argument('-l','--layout',  help='Paraview State file (.pvsm-file)')
+parser.add_argument('-r','--reader',  help='Path to custom reader plugin')
 parser.add_argument('-n','--nomovie', help='Only generate pictures', action='store_true')
 parser.add_argument('-f','--fps', type=int, default=10, help='Frames per second')
 parser.add_argument('-b','--bitrate', type=int, default=10000, help='Bitrate of movie')
@@ -18,7 +19,7 @@ parser.add_argument('plotfiles', nargs='+', help='Files to animate (.vtu/.pvtu-f
 
 args = parser.parse_args()
 
-plotfiles = [f for f in args.plotfiles if (os.path.splitext(f)[1] in ['.pvtu', '.vtu', '.plt', '.vtm']) ]
+plotfiles = [f for f in args.plotfiles if (os.path.splitext(f)[1] in ['.pvtu', '.vtu', '.plt', '.vtm', '.h5']) ]
 
 i = 0
 for p in plotfiles : 
@@ -31,11 +32,15 @@ for p in plotfiles :
 import os
 
 paraview.simple._DisableFirstRenderCameraReset()
-servermanager.LoadState('%s')
+""")
+    if args.reader :
+        f.write("servermanager.LoadPlugin('%s')\n" % (args.reader))
+
+    f.write("""servermanager.LoadState('%s')
 statefilename = GetSources() 
 plotfilename = None
 for k in statefilename.keys() :
-    if os.path.splitext(k[0])[1] in ['.pvtu', '.vtu', '.plt', '.vtm'] :
+    if os.path.splitext(k[0])[1] in ['.pvtu', '.vtu', '.plt', '.vtm', '.h5'] :
         plotfilename = k[0]
         break
 
@@ -44,7 +49,10 @@ if not plotfilename : exit(1)
 reader = FindSource(plotfilename)
 reader.FileName = ['%s'] 
 reader.FileNameChanged() 
-SetActiveView(GetRenderView())
+RenderView1 = GetRenderView()
+if RenderView1.InteractionMode == "2D" :
+    RenderView1.CameraParallelProjection=1 
+SetActiveView(RenderView1)
 Render()
 WriteImage('%s',  Magnification=%d)
 """ % (args.layout, p, os.path.splitext(p)[0] + args.output + '.png', args.scale))

@@ -452,7 +452,7 @@ ENDIF()
 
 function(add_exec target)
   ADD_EXECUTABLE(${target} ${ARGN})
-  TARGET_LINK_LIBRARIES(${target} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/userblock.o flexilib userblocklib ${linkedlibs})
+  TARGET_LINK_LIBRARIES(${target} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/userblock.o flexilib userblocklib stacksizelib ${linkedlibs})
   SET_TARGET_PROPERTIES(${target} PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}) 
   SET_TARGET_PROPERTIES(${target} PROPERTIES LINKER_LANGUAGE Fortran)
   INSTALL(PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${target} DESTINATION bin)
@@ -463,7 +463,7 @@ endfunction()
 # include flexi.h 
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/src) 
 
-# collect all F90 files needed for flexilib
+# collect all F90 files needed for flexilib, except the extra files below
 FILE(GLOB_RECURSE flexiF90 ./src/interpolation/*.f90
                            ./src/readintools/*.f90
                            ./src/mortar/*.f90
@@ -482,31 +482,44 @@ FILE(GLOB_RECURSE flexiF90 ./src/interpolation/*.f90
                            ./src/testcase/${FLEXI_TESTCASE}/*.f90
                            ./unitTests/unittest.f90
                            ./unitTests/unittest_vars.f90)
+# 
+# The following files/directories where excluded from the above global recursive search,
+# since some of the subdirectories should only be included if the respective feature is enabled.
 
+# collect F90 files of the equation system (non-recursive) in a new list 'eqnsysF90'
 FILE(GLOB eqnsysF90        ./src/equations/${FLEXI_EQNSYSNAME}/*.f90)
+# append F90 files of the equation of state to 'eqnsysF90'-list
 IF (WITHEOS GREATER 0)
   FILE(GLOB eosF90         ./src/equations/${FLEXI_EQNSYSNAME}/${FLEXI_EOS}/*.f90)
   LIST(APPEND eqnsysF90 ${eosF90})
   INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/src/equations/${FLEXI_EQNSYSNAME}/${FLEXI_EOS}/) 
 ENDIF()
+# append F90 files of the eddy viscosity to 'eqnsysF90'-list
 IF (FLEXI_EDDYVISCOSITY)
   FILE(GLOB_RECURSE eddyviscF90 ./src/equations/${FLEXI_EQNSYSNAME}/eddyVisc/*.f90)
   LIST(APPEND eqnsysF90 ${eddyviscF90})
 ENDIF()
+# append 'eqnsysF90'-list to 'flexiF90'-list
+LIST(APPEND flexiF90 ${eqnsysF90})
 
+# collect F90 files of 'dg' directory (non-recursive) in a new list 'dgF90'
 FILE(GLOB dgF90            ./src/dg/*.f90)
+# append F90 files of lifting to 'dgF90'-list
 IF (FLEXI_PARABOLIC)
   FILE(GLOB liftingF90     ./src/dg/${FLEXI_LIFTING}/*.f90)
   LIST(APPEND dgF90 ${liftingF90})
 ENDIF()
+# append 'dgF90'-list to 'flexiF90'-list
+LIST(APPEND flexiF90 ${dgF90})
+
+# collect F90 files of 'fv' directory (non-recursive) and append to 'flexiF90' list 
 IF (FLEXI_FV)
   FILE(GLOB fvF90 ./src/fv/*.f90)
   LIST(APPEND flexiF90 ${fvF90})
 ENDIF()
 
-
 # define libs
-ADD_LIBRARY(flexilibF90 OBJECT ${flexiF90} ${dgF90} ${eqnsysF90})
+ADD_LIBRARY(flexilibF90 OBJECT ${flexiF90})
 SET_TARGET_PROPERTIES(flexilibF90 PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}) 
 ADD_LIBRARY(flexilib STATIC $<TARGET_OBJECTS:flexilibF90>)
 ADD_DEPENDENCIES(flexilibF90 HDF5)
@@ -515,8 +528,12 @@ ADD_LIBRARY(userblocklib STATIC ./src/output/read_userblock.c)
 SET_TARGET_PROPERTIES(userblocklib PROPERTIES LINKER_LANGUAGE C)
 SET_TARGET_PROPERTIES(userblocklib PROPERTIES COMPILE_FLAGS "-fPIC")
 
+ADD_LIBRARY(stacksizelib STATIC ./src/globals/stacksize.c)
+SET_TARGET_PROPERTIES(stacksizelib PROPERTIES LINKER_LANGUAGE C)
+SET_TARGET_PROPERTIES(stacksizelib PROPERTIES COMPILE_FLAGS "-fPIC")
+
 add_exec(flexi ./src/flexi.f90)
-ADD_DEPENDENCIES(flexi flexilib userblocklib HDF5)
+ADD_DEPENDENCIES(flexi flexilib userblocklib stacksizelib HDF5)
 
 # special compiler flags to avoid warnings for empty functions of testcase.f90 and overwrite of intrinsic abort in globals.f90
 IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
@@ -565,7 +582,7 @@ SET(FLEXI_REGRESSIONCHECK_EXAMPLES "${CMAKE_CURRENT_SOURCE_DIR}/regressioncheck/
 # Userblock
 # =========================================================================
 ADD_CUSTOM_COMMAND(TARGET flexilib PRE_BUILD COMMAND 
-  sh ${CMAKE_CURRENT_SOURCE_DIR}/tools/userblock/generateuserblock.sh ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} ${CMAKE_CURRENT_BINARY_DIR})
+   sh ${CMAKE_CURRENT_SOURCE_DIR}/tools/userblock/generateuserblock.sh ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} ${CMAKE_CACHEFILE_DIR} "${CMAKE_CACHE_MAJOR_VERSION}.${CMAKE_CACHE_MINOR_VERSION}.${CMAKE_CACHE_PATCH_VERSION}")
 
 # =========================================================================
 # Install

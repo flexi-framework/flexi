@@ -14,9 +14,13 @@
 #************************************************************************************
 
 # $1: CMAKE_RUNTIME_OUTPUT_DIRECTORY
-# $2: CMAKE_CURRENT_BINARY_DIR
+# $2: CMAKE_CACHEFILE_DIR
+# $3: CMAKE_CACHE_MAJOR_VERSION.CMAKE_CACHE_MINOR_VERSION.CMAKE_CACHE_PATCH_VERSION
 
 if [ ! -d "$1" ]; then
+  exit 1;
+fi
+if [ ! -d "$2" ]; then
   exit 1;
 fi
 
@@ -83,14 +87,21 @@ git diff -p                        >> userblock.txt
 echo "{[( GIT URL )]}"             >> userblock.txt
 git config --get remote.origin.url >> userblock.txt
 
-builddir=$2/CMakeFiles
-echo "{[( flexilibF90.dir/flags.make )]}"  >> userblock.txt
-cat $builddir/flexilibF90.dir/flags.make   >> userblock.txt
-echo "{[( flexilib.dir/flags.make )]}"     >> userblock.txt
-cat $builddir/flexilib.dir/flags.make      >> userblock.txt
-echo "{[( flexi.dir/flags.make )]}"        >> userblock.txt
-cat $builddir/flexi.dir/flags.make         >> userblock.txt
+# change directory to cmake chache dir
+cd $2/CMakeFiles
+# copy compile flags of the flexi(lib) to userblock
+echo "{[( flexilib.dir/flags.make )]}"     >> $1/userblock.txt
+cat flexilib.dir/flags.make                >> $1/userblock.txt
+echo "{[( flexi.dir/flags.make )]}"        >> $1/userblock.txt
+cat flexi.dir/flags.make                   >> $1/userblock.txt
 
+# change directory to actual cmake version
+cd $3
+# copy detection of compiler to userblock
+echo "{[( COMPILER VERSIONS )]}"           >> $1/userblock.txt
+cat CMakeFortranCompiler.cmake             >> $1/userblock.txt
+
+cd $1 # go back to the runtime output directory
 # Compress the userblock
 tar cJf userblock.tar.xz userblock.txt
 

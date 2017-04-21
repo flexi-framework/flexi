@@ -22,6 +22,7 @@ USE ISO_C_BINDING
 #if USE_MPI
 USE mpi
 #endif
+USE ISO_C_BINDING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
@@ -80,6 +81,12 @@ END INTERFACE
 INTERFACE CreateErrFile
   MODULE PROCEDURE CreateErrFile
 END INTERFACE CreateErrFile
+
+INTERFACE
+  SUBROUTINE setstacksizeunlimited() BIND(C)
+  END SUBROUTINE setstacksizeunlimited
+END INTERFACE
+PUBLIC :: setstacksizeunlimited
 
 !==================================================================================================================================
 CONTAINS

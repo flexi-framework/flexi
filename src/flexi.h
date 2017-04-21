@@ -53,7 +53,7 @@
 #define ALMOSTEQUALABSOLUTE(x,y,tol)  (ABS((x)-(y)).LE.(tol))
 #define ALMOSTEQUALRELATIVE(x,y,tol)  (ABS((x)-(y)).LE.MAX(ABS(x),ABS(y))*(tol))
 #define ALMOSTEQUALABSORREL(x,y,tol)  (ALMOSTEQUALABSOLUTE(x,y,tol) .OR.  ALMOSTEQUALRELATIVE(x,y,tol))
-#define ALMOSTEQUALABSANDREL(x,y,tol) (ALMOSTEQUALABSOLUTE(x,y,tol) .ANS. ALMOSTEQUALRELATIVE(x,y,tol))
+#define ALMOSTEQUALABSANDREL(x,y,tol) (ALMOSTEQUALABSOLUTE(x,y,tol) .AND. ALMOSTEQUALRELATIVE(x,y,tol))
 
 ! Define MPI specific write shortcuts
 #if USE_MPI

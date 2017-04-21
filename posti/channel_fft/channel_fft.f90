@@ -49,6 +49,7 @@ INTEGER                            :: iArg
 INTEGER                            :: nElems_State,nVar_State,N_State
 CHARACTER(LEN=255)                 :: MeshFile_state,NodeType_State
 !===================================================================================================================================
+CALL SetStackSizeUnlimited()
 CALL InitMPI()
 IF (nProcessors.GT.1) CALL CollectiveStop(__STAMP__, &
      'This tool is designed only for single execution!')

@@ -456,7 +456,7 @@ REAL,INTENT(OUT),OPTIONAL     :: lastLine(nVar+1)         !< last written line t
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: stat                         !< File IO status
-INTEGER                        :: ioUnit,i
+INTEGER                        :: ioUnit=0,i
 REAL                           :: dummytime                    !< Simulation time read from file
 LOGICAL                        :: file_exists                  !< marker if file exists and is valid
 CHARACTER(LEN=255)             :: FileName_loc                 ! FileName with data type extension

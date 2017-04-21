@@ -94,13 +94,18 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! other file
     SDEALLOCATE(VarNamesHDF5)
     CALL GetVarNames("VarNames",VarNamesHDF5,VarNamesExist)
     IF (VarNamesExist) THEN
-      sameVars=.TRUE.
-      DO i=1,SIZE(VarNamesHDF5)
-        sameVars = sameVars.AND.(STRICMP(VarNamesHDF5(i), DepNames(i)))
-      END DO
+      IF (PP_nVar.EQ.SIZE(VarNamesHDF5)) THEN
+        sameVars=.TRUE.
+        DO i=1,SIZE(VarNamesHDF5)
+          sameVars = sameVars.AND.(STRICMP(VarNamesHDF5(i), DepNames(i)))
+        END DO
+      ELSE 
+        sameVars=.FALSE.
+      END IF
     ELSE 
       sameVars=.FALSE.
     END IF
+
     IF (.NOT.sameVars) FileType='Generic'
   END IF
 
@@ -379,6 +384,7 @@ CHARACTER(LEN=255),INTENT(IN)    :: statefile
 ! LOCAL VARIABLES
 LOGICAL                          :: changedPrmFile
 !===================================================================================================================================
+CALL SetStackSizeUnlimited()
 CALL InitMPI(mpi_comm_IN) 
 SWRITE (*,*) "READING FROM: ", TRIM(statefile)
 
