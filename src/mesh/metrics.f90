@@ -130,7 +130,9 @@ IF(interpolateFromTree)THEN
   END DO
 ELSE
   Vdm_EQNgeo_CLN=MATMUL(Vdm_CLN_N,Vdm_EQNgeo_CLN)
-  CALL ChangeBasis3D(3,nElems,NGeo,PP_N,Vdm_EQNGeo_CLN,NodeCoords,Elem_xGP,.FALSE.)
+  DO iElem=1,nElems
+    CALL ChangeBasis3D(3,NGeo,PP_N,Vdm_EQNGeo_CLN,NodeCoords(:,:,:,:,iElem),Elem_xGP(:,:,:,:,iElem))
+  END DO
 END IF
 
 END SUBROUTINE BuildCoords

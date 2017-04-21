@@ -296,7 +296,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 REAL,INTENT(IN)               :: OutputTime               !< simulation time of output
-REAL,INTENT(IN)               :: U(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< solution vector to be visualized
+REAL,INTENT(INOUT)            :: U(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< solution vector to be visualized
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                       :: iElem,FV_iElem,DG_iElem,PP_nVar_loc,nFV_Elems,iVar

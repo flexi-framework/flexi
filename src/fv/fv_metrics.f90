@@ -474,7 +474,7 @@ REAL,INTENT(IN)    :: wGP(  0:Nloc)                        !< integration weight
 REAL,INTENT(IN)    :: wBary(0:Nloc)                        !< interpolations weights
 REAL,INTENT(IN)    :: x0                                   !< start point
 REAL,INTENT(IN)    :: xN                                   !< end point
-REAL,INTENT(IN)    :: FV_Path_1D(3,0:Nloc,0:Nloc2,0:Nloc2) !< path polynomial
+REAL,INTENT(INOUT) :: FV_Path_1D(3,0:Nloc,0:Nloc2,0:Nloc2) !< path polynomial
 REAL,INTENT(OUT)   :: FV_Length(          0:Nloc2,0:Nloc2) !< distance
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

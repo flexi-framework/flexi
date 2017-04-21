@@ -363,10 +363,12 @@ ALLOCATE(Metrics_fTildeO(3,0:NOver,0:NOver,0:PP_NOverZ,nElems))
 ALLOCATE(Metrics_gTildeO(3,0:NOver,0:NOver,0:PP_NOverZ,nElems))
 ALLOCATE(Metrics_hTildeO(3,0:NOver,0:NOver,0:PP_NOverZ,nElems))
 IF(NOver.GT.PP_N)THEN
-  CALL ChangeBasisVolume(3,nElems,PP_N,NOver,VdmNToNOver,Elem_xGP,                   Elem_xGPO,      .FALSE.)
-  CALL ChangeBasisVolume(3,nElems,PP_N,NOver,VdmNToNOver,Metrics_fTilde(:,:,:,:,:,0),Metrics_fTildeO,.FALSE.)
-  CALL ChangeBasisVolume(3,nElems,PP_N,NOver,VdmNToNOver,Metrics_gTilde(:,:,:,:,:,0),Metrics_gTildeO,.FALSE.)
-  CALL ChangeBasisVolume(3,nElems,PP_N,NOver,VdmNToNOver,Metrics_hTilde(:,:,:,:,:,0),Metrics_hTildeO,.FALSE.)
+  DO iElem=1,nElems
+    CALL ChangeBasisVolume(3,PP_N,NOver,VdmNToNOver,Elem_xGP(:,:,:,:,iElem),              Elem_xGPO(:,:,:,:,iElem))
+    CALL ChangeBasisVolume(3,PP_N,NOver,VdmNToNOver,Metrics_fTilde(:,:,:,:,iElem,0),Metrics_fTildeO(:,:,:,:,iElem))
+    CALL ChangeBasisVolume(3,PP_N,NOver,VdmNToNOver,Metrics_gTilde(:,:,:,:,iElem,0),Metrics_gTildeO(:,:,:,:,iElem))
+    CALL ChangeBasisVolume(3,PP_N,NOver,VdmNToNOver,Metrics_hTilde(:,:,:,:,iElem,0),Metrics_hTildeO(:,:,:,:,iElem))
+  END DO ! iElem
 END IF
 
 ! Build geometry for surface overintegration

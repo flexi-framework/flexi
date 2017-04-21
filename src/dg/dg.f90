@@ -82,6 +82,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 REAL,ALLOCATABLE :: L_minusO(:),L_plusO(:),L_HatMinusO(:),L_HatPlusO(:),D_O(:,:),D_TO(:,:),D_HatO(:,:) !< dummy variables for 
                                                                                                        !< selective overintegration
+INTEGER          :: iElem
 !==================================================================================================================================
 
 ! Check if all the necessary initialization is done before
@@ -168,7 +169,9 @@ IF(.NOT.DoRestart)THEN
   IF(OverintegrationType.EQ.SELECTIVE) THEN 
     ! Interpolate onto the NOver grid, then project onto N
     CALL FillIni(NOver,Elem_xGPO,UO)
-    CALL ChangeBasisVolume(PP_nVar,nElems,NOver,PP_N,VdmNOverToN,UO,U,.FALSE.)
+    DO iElem=1,nElems
+      CALL ChangeBasisVolume(PP_nVar,NOver,PP_N,VdmNOverToN,UO(:,:,:,:,iElem),U(:,:,:,:,iElem))
+    END DO ! iElem
   ELSE
     CALL FillIni(PP_N,Elem_xGP,U)
   END IF
@@ -312,6 +315,8 @@ IMPLICIT NONE
 REAL,INTENT(IN)                 :: t                      !< Current time
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER           :: iElem
+REAL              :: UtBuf(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 !==================================================================================================================================
 
 ! -----------------------------------------------------------------------------
@@ -403,7 +408,9 @@ CALL U_MortarPrim(FV_multi_master,FV_multi_slave,doMPiSides=.FALSE.)
 !{2.}Prepare data for selective volume integral (for DG elements only)
 !    (latency hiding before finishing communication of side data in 1.4) )
 IF(OverintegrationType.EQ.SELECTIVE)THEN
-  CALL ChangeBasisVolume(PP_nVar,nElems,PP_N,NOver,VdmNToNOver,U,UO,.FALSE.)
+  DO iElem=1,nElems
+    CALL ChangeBasisVolume(PP_nVar,PP_N,NOver,VdmNToNOver,U(:,:,:,:,iElem),UO(:,:,:,:,iElem))
+  END DO ! iElem
   CALL ConsToPrim(NOver,UPrimO,UO)
 END IF
 
@@ -561,7 +568,10 @@ CALL SurfIntCons(PP_N,Flux_master,Flux_slave,Ut,.TRUE.,L_HatMinus,L_HatPlus)
 
 ! 9. Add advection volume integral to residual for selective overintegration
 IF(OverintegrationType.EQ.SELECTIVE)THEN
-  CALL ChangeBasisVolume(PP_nVar,nElems,NOver,PP_N,VdmNOverToN,UtO,Ut,addToOutput=.TRUE.)
+  DO iElem=1,nElems
+    CALL ChangeBasisVolume(PP_nVar,NOver,PP_N,VdmNOverToN,UtO(:,:,:,:,iElem),UtBuf)
+    Ut(:,:,:,:,iElem)=Ut(:,:,:,:,iElem)+UtBuf
+  END DO ! iElem
 END IF
 
 ! 10. Swap to right sign :) 

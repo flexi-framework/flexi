@@ -70,12 +70,12 @@ USE MOD_ChangeBasisByDim,ONLY: ChangeBasisSurf
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: dir                                                                 !< direction of gradients (1=x,2=y,3=z)
-LOGICAL,INTENT(IN) :: doMPISides                                                          !< = .TRUE. only MINE MPISides are filled,
-                                                                                          !< =.FALSE. InnerSides
-REAL,INTENT(IN)    :: UPrimface_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< Solution on master sides
-REAL,INTENT(IN)    :: UPrimface_slave( PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< Solution on slave sides
-REAL,INTENT(OUT)   :: Flux(1:PP_nVarPrim,0:PP_N,0:PP_NZ,nSides)                            !< Lifting-Flux
+INTEGER,INTENT(IN) :: dir                                                   !< direction of gradients (1=x,2=y,3=z)
+LOGICAL,INTENT(IN) :: doMPISides                                            !< = .TRUE. only MINE MPISides are filled,
+                                                                            !< =.FALSE. InnerSides
+REAL,INTENT(INOUT) :: UPrimface_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< Solution on master sides
+REAL,INTENT(INOUT) :: UPrimface_slave( PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< Solution on slave sides
+REAL,INTENT(OUT)   :: Flux(1:PP_nVarPrim,0:PP_N,0:PP_NZ,nSides)             !< Lifting-Flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: SideID,p,q,firstSideID,lastSideID,sig
