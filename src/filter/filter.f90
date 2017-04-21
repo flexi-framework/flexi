@@ -102,13 +102,17 @@ USE MOD_Interpolation_Vars,ONLY:InterpolationInitIsDone,Vdm_Leg,sVdm_Leg,NodeTyp
 USE MOD_ChangeBasis       ,ONLY:ChangeBasis3D
 USE MOD_ReadInTools       ,ONLY:GETINT,GETREAL,GETREALARRAY,GETLOGICAL,GETINTFROMSTR
 USE MOD_Mesh_Vars         ,ONLY:nElems,sJ
+USE MOD_Interpolation     ,ONLY:GetVandermonde
 USE MOD_IO_HDF5           ,ONLY:AddToElemData
+#if EQNSYSNR==2
+USE MOD_Mesh_Vars         ,ONLY:nElems,sJ
+#endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER             :: iDeg,NFilter,iElem,i,j,k
+INTEGER             :: iDeg,iElem,i,j,k
 !==================================================================================================================================
 IF(FilterInitIsDone.OR.(.NOT.InterpolationInitIsDone))THEN
    CALL CollectiveStop(__STAMP__,'InitFilter not ready to be called or already called.')
@@ -121,6 +125,7 @@ FilterType = GETINTFROMSTR('FilterType')
 
 ! set the filterfunction pointer to the cut-off filter, even if the filter itself is not active
 ! necessary for the overintegration, which also uses the filter_pointer
+NFilter = PP_N
 Filter_Pointer=>Filter
 IF(FilterType.GT.0) THEN
   ALLOCATE(FilterMat(0:PP_N,0:PP_N))
@@ -135,7 +140,8 @@ IF(FilterType.GT.0) THEN
     ! Read in modal filter parameter
     HestFilterParam = GETREALARRAY('HestFilterParam',3,'(/36.,12.,1./)')
     CALL HestFilter()
-  CASE (FILTERTYPE_LAF) ! Modal Filter cut-off, adaptive (LAF)
+#if EQNSYSNR==2
+  CASE (FILTERTYPE_LAF) ! Modal Filter cut-off, adaptive (LAF), only Euler/Navier-Stokes
     NFilter = GETINT('NFilter')
     LAF_alpha= GETREAL('LAF_alpha','1.0')
     ! LAF uses a special filter routine
@@ -156,7 +162,7 @@ IF(FilterType.GT.0) THEN
     CALL AddToElemData('LAF_r'     ,RealArray=r)
     Vol = 0.
     DO iElem=1,nElems
-    J_N(0:PP_N,0:PP_N,0:PP_N)=1./sJ(:,:,:,0,iElem)
+      J_N(0:PP_N,0:PP_N,0:PP_N)=1./sJ(:,:,:,0,iElem)
       DO k=0,PP_N
         DO j=0,PP_N
           DO i=0,PP_N
@@ -175,6 +181,7 @@ IF(FilterType.GT.0) THEN
     r=0.
     ekin_avg_old=1.E-16
     ekin_fluc_avg_old=1.E-16
+#endif /*EQNSYSNR==2*/
 
   CASE DEFAULT 
     CALL CollectiveStop(__STAMP__,&
@@ -304,8 +311,9 @@ END SUBROUTINE Filter
 
 
 
+#if EQNSYSNR==2
 !===============================================================================================================================
-!> LAF implementation via filter
+!> LAF implementation via filter (only for Euler/Navier-Stokes)
 !===============================================================================================================================
 SUBROUTINE Filter_LAF(U_in,FilterMat)
 ! MODULES
@@ -436,6 +444,7 @@ DO iElem=1,nElems
       ekin_fluc_avg_old(iElem)=ekin_fluc_avg
     END DO !iElem
 END SUBROUTINE Filter_LAF
+#endif /*EQNSYSNR==2*/
 
 
 SUBROUTINE Filter_General(NVar,FilterMat,U_in)
@@ -564,6 +573,7 @@ USE MOD_Filter_Vars
 IMPLICIT NONE
 !==================================================================================================================================
 SDEALLOCATE(FilterMat)
+#if EQNSYSNR==2
 SDEALLOCATE(lim)
 SDEALLOCATE(eRatio)
 SDEALLOCATE(r)
@@ -571,6 +581,7 @@ SDEALLOCATE(ekin_avg_old)
 SDEALLOCATE(Integrationweight)
 SDEALLOCATE(ekin_fluc_avg_old)
 SDEALLOCATE(Vol)
+#endif /*EQNSYSNR==2*/
 FilterInitIsDone = .FALSE.
 END SUBROUTINE FinalizeFilter
 

@@ -99,7 +99,7 @@ TimeStep(1)=MIN(TimeStep(1),CFLScale(FVE)*2./maxLambda)
 #if PARABOLIC
 TimeStep(2)=MIN(TimeStep(2),DFLScale(FVE)*4./maxLambda_v)
 #endif /* PARABOLIC*/
-#if MPI
+#if USE_MPI
 CALL MPI_ALLREDUCE(MPI_IN_PLACE,TimeStep,2,MPI_DOUBLE_PRECISION,MPI_MIN,MPI_COMM_WORLD,iError)
 #endif
 ViscousTimeStep=(TimeStep(2) .LT. TimeStep(1))

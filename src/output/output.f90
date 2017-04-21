@@ -23,20 +23,6 @@ USE ISO_C_BINDING
 IMPLICIT NONE
 
 INTERFACE
-  FUNCTION get_userblock_size()
-      INTEGER :: get_userblock_size
-  END FUNCTION 
-END INTERFACE
-
-INTERFACE
-  FUNCTION get_inifile_size(filename) BIND(C)
-      USE ISO_C_BINDING, ONLY: C_CHAR,C_INT
-      CHARACTER(KIND=C_CHAR) :: filename(*)
-      INTEGER(KIND=C_INT)    :: get_inifile_size
-  END FUNCTION get_inifile_size
-END INTERFACE
-
-INTERFACE
   SUBROUTINE insert_userblock(filename,inifilename) BIND(C)
       USE ISO_C_BINDING, ONLY: C_CHAR
       CHARACTER(KIND=C_CHAR) :: filename(*)
@@ -87,6 +73,7 @@ INTERFACE FinalizeOutput
 END INTERFACE
 
 PUBLIC:: InitOutput,PrintStatusLine,Visualize,InitOutputToFile,OutputToFile,FinalizeOutput
+PUBLIC:: insert_userblock
 !==================================================================================================================================
 
 PUBLIC::DefineParametersOutput
@@ -117,7 +104,8 @@ CALL prms%CreateIntFromStringOption('ASCIIOutputFormat',"File format for ASCII f
 CALL addStrListEntry('ASCIIOutputFormat','csv',    ASCIIOUTPUTFORMAT_CSV)
 CALL addStrListEntry('ASCIIOutputFormat','tecplot',ASCIIOUTPUTFORMAT_TECPLOT)
 CALL prms%CreateLogicalOption(      'doPrintStatusLine','Print: percentage of time, ...', '.FALSE.')
-CALL prms%CreateLogicalOption(      'ColoredOutput','Colorize stdout', '.TRUE.')
+CALL prms%CreateLogicalOption(      'WriteStateFiles','Write HDF5 state files. Disable this only for debugging issues. \n'// & 
+                                                      'NO SOLUTION WILL BE WRITTEN!', '.TRUE.')
 END SUBROUTINE DefineParametersOutput
 
 !==================================================================================================================================
@@ -142,7 +130,6 @@ INTEGER                        :: OpenStat
 CHARACTER(LEN=8)               :: StrDate
 CHARACTER(LEN=10)              :: StrTime
 CHARACTER(LEN=255)             :: LogFile
-INTEGER                        :: inifile_len
 !==================================================================================================================================
 IF ((.NOT.InterpolationInitIsDone).OR.OutputInitIsDone) THEN
   CALL CollectiveStop(__STAMP__,&
@@ -174,12 +161,11 @@ Logging    =GETLOGICAL('Logging')
 ErrorFiles =GETLOGICAL('ErrorFiles')
 
 doPrintStatusLine=GETLOGICAL("doPrintStatusLine")
+WriteStateFiles=GETLOGICAL("WriteStateFiles")
+IF (.NOT.WriteStateFiles) CALL PrintWarning("Write of state files disabled!")
 
 
 IF (MPIRoot) THEN
-  ! read userblock length in bytes from data section of flexi-executable
-  userblock_len = get_userblock_size()
-  inifile_len = get_inifile_size(TRIM(ParameterFile)//C_NULL_CHAR)
   ! prepare userblock file
   CALL insert_userblock(TRIM(UserBlockTmpFile)//C_NULL_CHAR,TRIM(ParameterFile)//C_NULL_CHAR)
   INQUIRE(FILE=TRIM(UserBlockTmpFile),SIZE=userblock_total_len)
@@ -248,7 +234,7 @@ totalFV_nElems = totalFV_nElems + FVcounter ! counter for output of FV amount du
 
 IF(.NOT.doPrintStatusLine) RETURN
 
-#if FV_ENABLED && MPI
+#if FV_ENABLED && USE_MPI
 CALL MPI_ALLREDUCE(MPI_IN_PLACE,FVcounter,1,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,iError)
 #endif
 
@@ -291,7 +277,7 @@ USE MOD_Output_Vars,ONLY:ProjectName,OutputFormat
 USE MOD_Mesh_Vars  ,ONLY:Elem_xGP,nElems
 USE MOD_Output_Vars,ONLY:NVisu,Vdm_GaussN_NVisu
 USE MOD_ChangeBasis,ONLY:ChangeBasis3D
-USE MOD_VTK        ,ONLY:WriteDataToVTK3D,WriteVTKMultiBlockDataSet
+USE MOD_VTK        ,ONLY:WriteDataToVTK,WriteVTKMultiBlockDataSet
 #if FV_ENABLED
 USE MOD_FV_Vars    ,ONLY: FV_Elems
 #if FV_RECONSTRUCT
@@ -310,8 +296,10 @@ REAL,INTENT(IN)               :: U(PP_nVar,0:PP_N,0:PP_N,0:PP_N,1:nElems) !< sol
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                       :: iElem,FV_iElem,DG_iElem,PP_nVar_loc,nFV_Elems,iVar
-REAL,ALLOCATABLE              :: Coords_NVisu(:,:,:,:,:) 
-REAL,ALLOCATABLE              :: U_NVisu(:,:,:,:,:)
+REAL,ALLOCATABLE,TARGET       :: Coords_NVisu(:,:,:,:,:) 
+REAL,ALLOCATABLE,TARGET       :: U_NVisu(:,:,:,:,:)
+REAL,POINTER                  :: Coords_NVisu_p(:,:,:,:,:) 
+REAL,POINTER                  :: U_NVisu_p(:,:,:,:,:)
 CHARACTER(LEN=255)            :: FileString_DG
 #if FV_ENABLED
 CHARACTER(LEN=255)            :: FileString_FV
@@ -319,8 +307,10 @@ CHARACTER(LEN=255)            :: FileString_multiblock
 INTEGER                       :: i,j,k,FV_NVisu,iii,jjj,kkk,ii,jj,kk
 REAL                          :: UPrim(1:PP_nVarPrim)
 REAL                          :: UPrim2(1:PP_nVarPrim)
-REAL,ALLOCATABLE              :: FV_Coords_NVisu(:,:,:,:,:)
-REAL,ALLOCATABLE              :: FV_U_NVisu(:,:,:,:,:)
+REAL,ALLOCATABLE,TARGET       :: FV_Coords_NVisu(:,:,:,:,:)
+REAL,POINTER                  :: FV_Coords_NVisu_p(:,:,:,:,:)
+REAL,ALLOCATABLE,TARGET       :: FV_U_NVisu(:,:,:,:,:)
+REAL,POINTER                  :: FV_U_NVisu_p(:,:,:,:,:)
 REAL,ALLOCATABLE              :: Vdm_GaussN_FV_NVisu(:,:)
 #endif
 CHARACTER(LEN=255),ALLOCATABLE:: StrVarNames_loc(:)
@@ -407,12 +397,14 @@ CASE(OUTPUTFORMAT_PARAVIEW)
 #else
   FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))//'.vtu'
 #endif
-  CALL WriteDataToVTK3D(        NVisu,nElems-nFV_Elems,PP_nVar_loc,StrVarNames_loc,Coords_NVisu(1:3,:,:,:,:), &
-                                U_NVisu,TRIM(FileString_DG))
+  Coords_NVisu_p => Coords_NVisu
+  U_NVisu_p => U_NVisu
+  CALL WriteDataToVTK(PP_nVar_loc,NVisu,nElems-nFV_Elems,StrVarNames_loc,Coords_NVisu_p,U_NVisu_p,TRIM(FileString_DG),dim=3,DGFV=0)
 #if FV_ENABLED                            
   FileString_FV=TRIM(TIMESTAMP(TRIM(ProjectName)//'_FV',OutputTime))//'.vtu'
-  CALL WriteDataToVTK3D(        FV_NVisu,nFV_Elems,PP_nVar_loc,StrVarNames_loc,FV_Coords_NVisu(1:3,:,:,:,:), &
-                                FV_U_NVisu,TRIM(FileString_FV))
+  FV_Coords_NVisu_p => FV_Coords_NVisu
+  FV_U_NVisu_p => FV_U_NVisu
+  CALL WriteDataToVTK(PP_nVar_loc,FV_NVisu,nFV_Elems,StrVarNames_loc,FV_Coords_NVisu_p,FV_U_NVisu_p,TRIM(FileString_FV),dim=3,DGFV=1)
 
   IF (MPIRoot) THEN                   
     ! write multiblock file
@@ -454,9 +446,9 @@ REAL,INTENT(OUT),OPTIONAL     :: lastLine(nVar+1)         !< last written line t
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: stat                         !< File IO status
-INTEGER                        :: ioUnit,i
+INTEGER                        :: ioUnit=0,i
 REAL                           :: dummytime                    !< Simulation time read from file
-LOGICAL                        :: fileExists                   !< marker if file exists and is valid
+LOGICAL                        :: file_exists                  !< marker if file exists and is valid
 CHARACTER(LEN=255)             :: FileName_loc                 ! FileName with data type extension
 !==================================================================================================================================
 IF(.NOT.MPIRoot) RETURN
@@ -470,13 +462,12 @@ ELSE
 END IF
 
 ! Check for file
-INQUIRE(FILE = TRIM(Filename_loc), EXIST = fileExists)
-IF(RestartTime.LT.0.0) fileExists=.FALSE.
+file_exists = FILEEXISTS(FileName_loc)
+IF(RestartTime.LT.0.0) file_exists=.FALSE.
 !! File processing starts here open old and extratct information or create new file.
-ioUnit=GETFREEUNIT()
 
-IF(fileExists)THEN ! File exists and append data
-  OPEN(UNIT     = ioUnit             , &
+IF(file_exists)THEN ! File exists and append data
+  OPEN(NEWUNIT  = ioUnit             , &
        FILE     = TRIM(Filename_loc) , &
        FORM     = 'FORMATTED'        , &
        STATUS   = 'OLD'              , &
@@ -485,11 +476,11 @@ IF(fileExists)THEN ! File exists and append data
        IOSTAT = stat                 )
   IF(stat.NE.0)THEN
     WRITE(UNIT_stdOut,*)' File '//TRIM(FileName_loc)// ' is invalid. Rewriting file...'
-    fileExists=.FALSE.
+    file_exists=.FALSE.
   END IF
 END IF
 
-IF(fileExists)THEN
+IF(file_exists)THEN
   ! If we have a restart we need to find the position from where to move on.
   ! Read the values from the previous analyse interval, get the CPUtime
   WRITE(UNIT_stdOut,*)' Opening file '//TRIM(FileName_loc)
@@ -500,14 +491,14 @@ IF(fileExists)THEN
     READ(ioUnit,*,IOSTAT=stat)
     IF(stat.NE.0)THEN
       ! file is broken, rewrite
-      fileExists=.FALSE.
+      file_exists=.FALSE.
       WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')' failed. Writing new file.'
       EXIT
     END IF
   END DO
 END IF
 
-IF(fileExists)THEN
+IF(file_exists)THEN
   ! Loop until we have found the position
   Dummytime = 0.0
   stat=0
@@ -529,9 +520,8 @@ IF(fileExists)THEN
 END IF
 CLOSE(ioUnit) ! outputfile
 
-IF(.NOT.fileExists)THEN ! No restart create new file
-  ioUnit=GETFREEUNIT()
-  OPEN(UNIT   = ioUnit             ,&
+IF(.NOT.file_exists)THEN ! No restart create new file
+  OPEN(NEWUNIT= ioUnit             ,&
        FILE   = TRIM(Filename_loc) ,&
        STATUS = 'UNKNOWN'          ,&
        ACCESS = 'SEQUENTIAL'       ,&
@@ -589,8 +579,7 @@ ELSE
   FileName_loc = TRIM(FileName)//'.dat'
 END IF
 
-ioUnit=GETFREEUNIT()
-OPEN(UNIT     = ioUnit             , &
+OPEN(NEWUNIT  = ioUnit             , &
      FILE     = TRIM(Filename_loc) , &
      FORM     = 'FORMATTED'        , &
      STATUS   = 'OLD'              , &

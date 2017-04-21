@@ -82,7 +82,10 @@ REAL,INTENT(OUT)   :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_N,1:nElems) !< Time derivati
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: i,j,k,l,iElem
-REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_N) :: f,g,h,fv,gv,hv  !< Volume fluxes at GP
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_N) :: f,g,h     !< Volume advective fluxes at GP
+#if PARABOLIC
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_N) :: fv,gv,hv  !< Volume viscous fluxes at GP
+#endif
 !==================================================================================================================================
 ! Diffusive part
 DO iElem=1,nElems
@@ -156,7 +159,10 @@ REAL,DIMENSION(PP_nVar,0:Nloc,0:Nloc,0:Nloc)  :: f,g,h !< Advective volume fluxe
 ! Advective part
 DO iElem=1,nElems
 #if FV_ENABLED
-  IF (FV_Elems(iElem).EQ.1) CYCLE ! FV Elem
+  IF (FV_Elems(iElem).EQ.1) THEN
+    Ut(:,:,:,:,iElem) = 0.
+    CYCLE ! FV Elem
+  END IF
 #endif
   ! Cut out the local DG solution for a grid cell iElem and all Gauss points from the global field
   ! Compute for all Gauss point values the Cartesian flux components

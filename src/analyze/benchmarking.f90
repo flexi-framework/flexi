@@ -97,7 +97,7 @@ INTEGER(C_INT)       :: err
 INTEGER(C_LONG_LONG) :: flpops
 !==================================================================================================================================
 CALL PAPIF_FLOPS(realtime,proctime,flpops,mflops,err)
-#if MPI
+#if USE_MPI
 IF(MPIRoot)THEN
   CALL MPI_REDUCE(MPI_IN_PLACE,mflops,1,MPI_FLOAT,MPI_SUM,0,MPI_COMM_WORLD,iError)
   WRITE(UNIT_StdOut,'(A14,ES18.9)')' Sim-MFLOPS : ',mflops

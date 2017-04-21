@@ -1,3 +1,16 @@
+!=================================================================================================================================
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
+! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+!
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+!
+! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+! of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License v3.0 for more details.
+!
+! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
+!=================================================================================================================================
 #include "flexi.h"
 #if FV_ENABLED
 
@@ -51,12 +64,11 @@ SUBROUTINE InitFV_Basis()
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_FV_Vars
-USE MOD_Interpolation_Vars ,ONLY: InterpolationInitIsDone
+USE MOD_Interpolation_Vars ,ONLY: InterpolationInitIsDone,NodeType
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-CHARACTER(LEN=255) :: NodeType_tmp
 !==================================================================================================================================
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT FV Basis...'
@@ -64,10 +76,6 @@ IF(InterpolationInitIsDone.AND.FVInitBasisIsDone)THEN
   CALL CollectiveStop(__STAMP__, &
     'InitFV_Basis not ready to be called or already called.')
 END IF
-
-!#if (PP_NodeType!=1) 
-!STOP 'Only Gauss points supported (use: PP_NodeType = 1)'
-!#endif
 
 #if PARABOLIC
 #if !(FV_RECONSTRUCT)
@@ -94,9 +102,8 @@ CALL FV_Build_X_w_BdryX(PP_N, FV_X, FV_w, FV_BdryX)
 ! equidistant FV needs Vdm-Matrix to interpolate/reconstruct between FV- and DG-Solution
 ALLOCATE(FV_Vdm(0:PP_N,0:PP_N))    ! used for DG -> FV
 ALLOCATE(FV_sVdm(0:PP_N,0:PP_N))   ! used for FV -> DG
-NodeType_tmp = "GAUSS"
 ! Build Vandermondes for switch between DG and FV
-CALL FV_GetVandermonde(PP_N,NodeType_tmp,FV_Vdm,FV_sVdm)
+CALL FV_GetVandermonde(PP_N,NodeType,FV_Vdm,FV_sVdm)
 
 ! calculate inverse FV-widths (little speedup)
 FV_w_inv = 1.0 / FV_w
@@ -117,6 +124,7 @@ USE MOD_Globals
 USE MOD_Preproc
 USE MOD_Interpolation ,ONLY: GetVandermonde,GetNodesAndWeights
 USE MOD_Basis         ,ONLY: InitializeVandermonde
+USE MOD_Mathtools     ,ONLY: INVERSE
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -126,18 +134,13 @@ REAL,INTENT(OUT)              :: FV_Vdm(0:N_in,0:N_in)   ! Vandermonde matrix fo
 REAL,INTENT(OUT),OPTIONAL     :: FV_sVdm(0:N_in,0:N_in)  ! Vandermonde matrix for converstion from FV to DG
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                   :: Vdm_In_tmp(0:N_in,0:N_in)
-REAL                   :: Vdm_tmp_IN(0:N_in,0:N_in)
-CHARACTER(LEN=255)     :: NodeType_tmp
 REAL                   :: FV_X(0:N_in),FV_w,FV_BdryX(0:N_In+1)
-REAL,DIMENSION(0:N_In) :: xGP,wGP,wBary,rhs
+REAL,DIMENSION(0:N_In) :: xGP,wGP,wBary
 REAL                   :: SubxGP(1,0:N_In)
 REAL                   :: VDM(0:N_In,0:N_In)
-INTEGER                :: i,j,k,IPIV(PP_N+1),errorflag
+INTEGER                :: i,j,k
 !==================================================================================================================================
-NodeType_tmp = "GAUSS"
-CALL GetVandermonde(N_in,NodeType_in,N_in,NodeType_tmp,Vdm_In_tmp, Vdm_tmp_IN)
-CALL GetNodesAndWeights(N_in,NodeType_tmp,xGP,wGP,wBary)
+CALL GetNodesAndWeights(N_in,NodeType_in,xGP,wGP,wBary)
 
 ! one DG cell [-1,1] is divided in FV-Subcells
 !
@@ -185,20 +188,8 @@ END DO
 ! 4. don't forget the 1/2
 FV_Vdm = FV_Vdm * 0.5
 
-FV_Vdm = MATMUL(FV_Vdm, Vdm_In_tmp)
-
 ! Compute the inverse of FV_Vdm 
-FV_sVdm = FV_Vdm 
-CALL dgetrf(N_in+1,N_in+1,FV_sVdm(0:N_in,0:N_in),N_in+1,IPIV,errorflag)
-IF (errorflag .NE. 0) THEN 
-  CALL abort(__STAMP__,&
-    'LU factorisation of matrix crashed.')
-END IF
-CALL dgetri(N_in+1,FV_sVdm(0:N_in,0:N_in),N_in+1,IPIV,rhs,N_in+1,errorflag)
-IF (errorflag .NE. 0) THEN 
-  CALL abort(__STAMP__,&
-    'Solver crashed.')
-END IF
+FV_sVdm = INVERSE(FV_Vdm)
 END SUBROUTINE FV_GetVandermonde
 
 !==================================================================================================================================
@@ -211,8 +202,10 @@ USE MOD_Basis
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: N
-REAL,INTENT(OUT)   :: FV_X(0:N),FV_w,FV_BdryX(0:N+1)
+INTEGER,INTENT(IN) :: N               !< polynomial degree of DG elements / number of sub-cells per direction (N+1)
+REAL,INTENT(OUT)   :: FV_X(0:N)       !< cell-centers of the sub-cells in reference space
+REAL,INTENT(OUT)   :: FV_w            !< width of the sub-cells in reference space
+REAL,INTENT(OUT)   :: FV_BdryX(0:N+1) !< positions of the boundaries of the sub-cells in reference space 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER :: i
@@ -238,8 +231,8 @@ USE MOD_Basis
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: N
-REAL,INTENT(OUT)   :: Vdm(0:(N+1)*2-1,0:N)
+INTEGER,INTENT(IN) :: N                    !< polynomial degree of DG elements / number of sub-cells per direction (N+1)
+REAL,INTENT(OUT)   :: Vdm(0:(N+1)*2-1,0:N) !< Vandermonde matrix 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
 REAL,DIMENSION(0:PP_N) :: FV_X,xGP,wBary
@@ -276,8 +269,8 @@ USE MOD_Basis
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: N
-REAL,INTENT(OUT)   :: Vdm(0:N+1,0:N)
+INTEGER,INTENT(IN) :: N              !< polynomial degree of DG elements / number of sub-cells per direction (N+1)
+REAL,INTENT(OUT)   :: Vdm(0:N+1,0:N) !< Vandermonde matrix
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
 REAL,DIMENSION(0:PP_N) :: FV_X,xGP,wBary
@@ -299,13 +292,12 @@ END SUBROUTINE FV_Build_Vdm_Gauss_FVboundary
 !==================================================================================================================================
 SUBROUTINE FinalizeFV_Basis() 
 USE MOD_FV_Vars
-!----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
-!----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
 !==================================================================================================================================
-DEALLOCATE(FV_BdryX,FV_X,FV_Vdm,FV_sVdm)
+SDEALLOCATE(FV_BdryX)
+SDEALLOCATE(FV_X)
+SDEALLOCATE(FV_Vdm)
+SDEALLOCATE(FV_sVdm)
 FVInitBasisIsDone=.FALSE.
 END SUBROUTINE FinalizeFV_Basis
 

@@ -80,7 +80,7 @@ END SUBROUTINE DefineParametersOverintegration
 !==================================================================================================================================
 !> Initialize all necessary information to perform overintegration 
 !==================================================================================================================================
-SUBROUTINE InitOverintegration()
+SUBROUTINE InitOverintegration(doBuildOverintegrationMesh)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! MODULES
 USE MOD_Globals
@@ -97,20 +97,26 @@ USE MOD_Interpolation       ,ONLY:GetNodesAndWeights
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
+LOGICAL,INTENT(IN),OPTIONAL :: doBuildOverintegrationMesh
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER             :: iDeg,iElem,i,j,k                             !< Loop counters 
 REAL,ALLOCATABLE    :: DetJac_NUnder(:,:,:,:)                       !< Determinant of the Jacobian on Nunder, 
                                                                     !< size [1,0..Nunder,0..Nunder,0..Nunder]  
 REAL,ALLOCATABLE    :: Vdm_NGeoRef_NUnder(:,:)
+LOGICAL             :: doBuildOverintegrationMesh_loc
 !==================================================================================================================================
-! Check if the necessary prerequisites are met 
+! Check if the necessary prerequisites are met
 IF(OverintegrationInitIsDone.OR.(.NOT.InterpolationInitIsDone))THEN
   CALL CollectiveStop(__STAMP__,&
     'InitOverintegration not ready to be called or already called.')
 END IF
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT OVERINTEGRATION...'
+
+!Set default values
+NUnder=PP_N
+NOver =PP_N
 
 OverintegrationType = GETINTFROMSTR('OverintegrationType')
 SELECT CASE(OverintegrationType)
@@ -174,7 +180,8 @@ CASE (OVERINTEGRATIONTYPE_SELECTIVE) ! selective overintegration of advective fl
     ALLOCATE(VdmNToNOver(0:NOver,0:PP_N),VdmNOverToN(0:PP_N,0:NOver))
     CALL GetVandermonde(PP_N,NodeType,NOver,NodeType,VdmNToNOver,modal=.FALSE.)
     CALL GetVandermonde(NOver,NodeType,PP_N,NodeType,VdmNOverToN,modal=.TRUE.)
-    CALL BuildOverintMesh()
+    doBuildOverintegrationMesh_loc = MERGE(doBuildOverintegrationMesh,.TRUE., PRESENT(doBuildOverintegrationMesh))
+    IF (doBuildOverintegrationMesh_loc) CALL BuildOverintMesh()
   END IF
   SWRITE(UNIT_stdOut,'(A)') ' Method of overintegration: selective overintegration of advective fluxes'
 CASE DEFAULT
@@ -367,6 +374,8 @@ SDEALLOCATE(Vdm_NUnder_N)
 SDEALLOCATE(Vdm_N_NUnder)
 SDEALLOCATE(VdmNToNOver)
 SDEALLOCATE(VdmNOverToN)
+SDEALLOCATE(xGPO)
+SDEALLOCATE(wGPO)
 OverintegrationInitIsDone = .FALSE.
 END SUBROUTINE FinalizeOverintegration
 

@@ -15,98 +15,202 @@
 
 !===================================================================================================================================
 !> Module for generic data output in vtk xml fromat
-!> WARNING: WriteDataToVTK works only for POSTPROCESSING
+!> WARNING: WriteDataToVTK works only for POSTPROCESSING or for debug output during runtime
 !===================================================================================================================================
 MODULE MOD_VTK
+USE ISO_C_BINDING
 ! MODULES
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-! Private Part ---------------------------------------------------------------------------------------------------------------------
-! Public Part ----------------------------------------------------------------------------------------------------------------------
+TYPE, BIND(C) :: CARRAY
+  INTEGER (C_INT) :: len
+  INTEGER (C_INT) :: dim
+  TYPE (C_PTR)    :: data
+END TYPE CARRAY
 
-INTERFACE WriteDataToVTK3D
-  MODULE PROCEDURE WriteDataToVTK3D
+INTERFACE WriteDataToVTK
+  MODULE PROCEDURE WriteDataToVTK
 END INTERFACE
 
 INTERFACE WriteVTKMultiBlockDataSet
   MODULE PROCEDURE WriteVTKMultiBlockDataSet
 END INTERFACE
 
-PUBLIC::WriteDataToVTK3D
+INTERFACE WriteCoordsToVTK_array
+  MODULE PROCEDURE WriteCoordsToVTK_array
+END INTERFACE
+
+INTERFACE WriteDataToVTK_array
+  MODULE PROCEDURE WriteDataToVTK_array
+END INTERFACE
+
+INTERFACE WriteVarnamesToVTK_array
+  MODULE PROCEDURE WriteVarnamesToVTK_array
+END INTERFACE
+
+PUBLIC::WriteDataToVTK
 PUBLIC::WriteVTKMultiBlockDataSet
+PUBLIC::WriteCoordsToVTK_array
+PUBLIC::WriteDataToVTK_array
+PUBLIC::WriteVarnamesToVTK_array
+PUBLIC::CARRAY
 !===================================================================================================================================
 
 CONTAINS
 
 !===================================================================================================================================
-!> Subroutine to write 3D point data to VTK format
+!> Subroutine to create the connectivity between elements for 2D or 3D vtu output.
 !===================================================================================================================================
-SUBROUTINE WriteDataToVTK3D(NPlot,nElems,nVal,VarNames,Coord,Value,FileString)
+SUBROUTINE CreateConnectivity(NVisu,nElems,nodeids,dim,DGFV) 
+! MODULES
+USE ISO_C_BINDING
+USE MOD_Globals
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES 
+INTEGER,INTENT(IN)                       :: NVisu             !< Polynomial degree for visualization
+INTEGER,INTENT(IN)                       :: nElems            !< Number of elements
+INTEGER,ALLOCATABLE,TARGET,INTENT(INOUT) :: nodeids(:)        !< stores the connectivity
+INTEGER,INTENT(IN)                       :: dim               !< 3 = 3d connectivity, 2 = 2d connectivity
+INTEGER,INTENT(IN)                       :: DGFV              !< flag indicating DG = 0 or FV = 1 data
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER           :: i,j,k,iElem
+INTEGER           :: NodeID,NodeIDElem
+INTEGER           :: NVisu_k, NVisu_elem, NVisu_p1_2
+INTEGER           :: nVTKCells
+!===================================================================================================================================
+IF (dim.EQ.3) THEN
+  NVisu_k    = NVisu
+ELSE IF (dim.EQ.2) THEN
+  NVisu_k    = 1
+ELSE
+  CALL Abort(__STAMP__, &
+      "Only 2D and 3D connectivity can be created. dim must be 2 or 3.")
+END IF
+
+NVisu_elem = (NVisu+1)**dim
+NVisu_p1_2 = (NVisu+1)**2
+  
+nVTKCells  = ((NVisu+DGFV)/(1+DGFV))**dim*nElems
+SDEALLOCATE(nodeids)
+ALLOCATE(nodeids((4*(dim-1))*nVTKCells))
+
+
+! create connectivity
+NodeID = 0
+NodeIDElem = 0
+DO iElem=1,nElems
+  DO k=1,NVisu_k,(DGFV+1)
+    DO j=1,NVisu,(DGFV+1)
+      DO i=1,NVisu,(DGFV+1)
+        NodeID=NodeID+1
+        nodeids(NodeID) = NodeIDElem+i+   j   *(NVisu+1)+(k-1)*NVisu_p1_2-1 !P4(CGNS=tecVisu standard)
+        NodeID=NodeID+1
+        nodeids(NodeID) = NodeIDElem+i+  (j-1)*(NVisu+1)+(k-1)*NVisu_p1_2-1 !P1
+        NodeID=NodeID+1
+        nodeids(NodeID) = NodeIDElem+i+1+(j-1)*(NVisu+1)+(k-1)*NVisu_p1_2-1 !P2
+        NodeID=NodeID+1
+        nodeids(NodeID) = NodeIDElem+i+1+ j   *(NVisu+1)+(k-1)*NVisu_p1_2-1 !P3
+        IF (dim.EQ.3) THEN
+          NodeID=NodeID+1
+          nodeids(NodeID)=NodeIDElem+i+   j   *(NVisu+1)+ k   *NVisu_p1_2-1 !P8
+          NodeID=NodeID+1
+          nodeids(NodeID)=NodeIDElem+i+  (j-1)*(NVisu+1)+ k   *NVisu_p1_2-1 !P5
+          NodeID=NodeID+1
+          nodeids(NodeID)=NodeIDElem+i+1+(j-1)*(NVisu+1)+ k   *NVisu_p1_2-1 !P6
+          NodeID=NodeID+1
+          nodeids(NodeID)=NodeIDElem+i+1+ j   *(NVisu+1)+ k   *NVisu_p1_2-1 !P7
+        END IF
+      END DO
+    END DO
+  END DO
+  NodeIDElem=NodeIDElem+NVisu_elem
+END DO
+END SUBROUTINE CreateConnectivity
+
+!===================================================================================================================================
+!> Subroutine to write 2D or 3D point data to VTK format
+!===================================================================================================================================
+SUBROUTINE WriteDataToVTK(nVal,NVisu,nElems,VarNames,Coord,Value,FileString,dim,DGFV,nValAtLastDimension)
 ! MODULES
 USE MOD_Globals
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)          :: nVal                                        !< Number of nodal output variables
-INTEGER,INTENT(IN)          :: NPlot                                       !< Number of output points .EQ. NAnalyze
-INTEGER,INTENT(IN)          :: nElems                                      !< Number of output elements
-REAL,INTENT(IN)             :: Coord(3,0:NPlot,0:NPlot,0:NPlot,nElems)     !< CoordsVector
-CHARACTER(LEN=*),INTENT(IN) :: VarNames(nVal)                              !< Names of all variables that will be written out
-REAL,INTENT(IN)             :: Value(nVal,0:NPlot,0:NPlot,0:NPlot,nElems)  !< Statevector
-CHARACTER(LEN=*),INTENT(IN) :: FileString                                  !< Output file name
+INTEGER,INTENT(IN)          :: nVal                 !< Number of nodal output variables
+INTEGER,INTENT(IN)          :: NVisu                !< Number of output points .EQ. NAnalyze
+INTEGER,INTENT(IN)          :: nElems               !< Number of output elements
+INTEGER,INTENT(IN)          :: dim                  !< dimension: 2 or 3
+REAL,INTENT(IN)             :: Coord(1:3,0:NVisu,0:NVisu,0:NVisu*(dim-2),nElems)     !< CoordsVector
+CHARACTER(LEN=*),INTENT(IN) :: VarNames(nVal)       !< Names of all variables that will be written out
+REAL,INTENT(IN)             :: Value(:,:,:,:,:)     !< Statevector
+CHARACTER(LEN=*),INTENT(IN) :: FileString           !< Output file name
+INTEGER,OPTIONAL,INTENT(IN) :: DGFV                 !< flag indicating DG = 0 or FV =1 data
+LOGICAL,OPTIONAL,INTENT(IN) :: nValAtLastDimension  !< if TRUE, nVal is stored in the last index of value
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: i,j,k,iVal,iElem,Offset,nBytes,nVTKPoints,nVTKCells,ivtk=44
-INTEGER            :: nGlobalElems_loc
-INTEGER            :: INTdummy
-INTEGER            :: NPlot_p1_3,NPlot_p1_2,PointID,CellID,ElemType
-INTEGER,ALLOCATABLE:: Vertex(:,:)
-CHARACTER(LEN=35)  :: StrOffset,TempStr1,TempStr2
-CHARACTER(LEN=200) :: Buffer
-CHARACTER(LEN=1)   :: lf
-REAL(KIND=4)       :: FLOATdummy
-#if MPI
-INTEGER            :: iProc,nElems_proc,nElemsMax
-REAL,ALLOCATABLE   :: buf(:,:,:,:), buf2(:,:,:,:,:)
-#endif /*MPI*/
-INTEGER            :: nElems_glob(0:nProcessors-1)
+INTEGER                     :: iVal,ivtk
+INTEGER                     :: nElems_glob(0:nProcessors-1)
+INTEGER                     :: NVisu_elem,nVTKPoints,nVTKCells
+INTEGER                     :: nTotalElems
+INTEGER                     :: nBytes,Offset
+INTEGER                     :: INTdummy
+REAL(KIND=4)                :: FLOATdummy
+CHARACTER(LEN=35)           :: StrOffset,TempStr1,TempStr2
+CHARACTER(LEN=200)          :: Buffer
+CHARACTER(LEN=1)            :: lf
+INTEGER                     :: ElemType,iElem
+INTEGER,ALLOCATABLE,TARGET  :: nodeids(:)
+INTEGER                     :: NVisu_k,PointsPerVTKCell
+#if USE_MPI
+INTEGER                     :: iProc,nElems_proc,nElemsMax
+REAL,ALLOCATABLE            :: buf(:,:,:,:), buf2(:,:,:,:,:)
+#endif /*USE_MPI*/
+INTEGER                     :: DGFV_loc
+LOGICAL                     :: nValAtLastDimension_loc
 !===================================================================================================================================
-SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO')"   WRITE 3D DATA TO VTX XML BINARY (VTU) FILE..."
+DGFV_loc = MERGE(DGFV, 0, PRESENT(DGFV))
+nValAtLastDimension_loc = MERGE(nValAtLastDimension, .FALSE., PRESENT(nValAtLastDimension))
+IF (dim.EQ.3) THEN
+  NVisu_k    = NVisu
+  PointsPerVTKCell = 8
+ELSE IF (dim.EQ.2) THEN
+  NVisu_k    = 0
+  PointsPerVTKCell = 4
+ELSE
+  CALL Abort(__STAMP__, &
+      "Only 2D and 3D connectivity can be created. dim must be 2 or 3.")
+END IF
 
-NPlot_p1_3=(NPlot+1)**3
-NPlot_p1_2=(NPlot+1)**2
+SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='NO')"   WRITE ",dim,"D DATA TO VTX XML BINARY (VTU) FILE..."
 
-#if MPI
+! get total number of elements on all processors
+#if USE_MPI
 CALL MPI_GATHER(nElems,1,MPI_INTEGER,nElems_glob,1,MPI_INTEGER,0,MPI_COMM_WORLD,iError)
 #else
 nElems_glob(0) = nElems
 #endif
+nTotalElems = SUM(nElems_glob)
 
+NVisu_elem = (NVisu+1)**dim
+nVTKPoints = NVisu_elem * nTotalElems
+nVTKCells  = ((NVisu+DGFV_loc)/(1+DGFV_loc))**dim*nTotalElems
+
+! write header of VTK file
 IF(MPIROOT)THEN
-  ! here comes the MPI stuff
-  nGlobalElems_loc=nElems
-#if MPI
-  !ALLOCATE buffer for Root
-  nElemsMax=MAXVAL(nElems_glob)
-  ALLOCATE(buf(   0:Nplot,0:Nplot,0:Nplot,nElemsMax))
-  ALLOCATE(buf2(3,0:Nplot,0:Nplot,0:Nplot,nElemsMax))
-  nGlobalElems_loc=SUM(nElems_glob)
-#endif /*MPI*/
-
   ! Line feed character
   lf = char(10)
 
   ! Write file
-  OPEN(UNIT=ivtk,FILE=TRIM(FileString),ACCESS='STREAM')
+  OPEN(NEWUNIT=ivtk,FILE=TRIM(FileString),ACCESS='STREAM')
   ! Write header
   Buffer='<?xml version="1.0"?>'//lf;WRITE(ivtk) TRIM(Buffer)
   Buffer='<VTKFile type="UnstructuredGrid" version="0.1" byte_order="LittleEndian">'//lf;WRITE(ivtk) TRIM(Buffer)
   ! Specify file type
-  nVTKPoints=NPlot_p1_3*nGlobalElems_loc
-  nVTKCells =NPlot**3  *nGlobalElems_loc
   Buffer='  <UnstructuredGrid>'//lf;WRITE(ivtk) TRIM(Buffer)
   WRITE(TempStr1,'(I16)')nVTKPoints
   WRITE(TempStr2,'(I16)')nVTKCells
@@ -117,8 +221,8 @@ IF(MPIROOT)THEN
   Offset=0
   WRITE(StrOffset,'(I16)')Offset
   DO iVal=1,nVal
-    Buffer='        <DataArray type="Float32" Name="'//TRIM(VarNames(iVal))//'" &
-           &format="appended" offset="'//TRIM(ADJUSTL(StrOffset))//'"/>'//lf;WRITE(ivtk) TRIM(Buffer)
+    Buffer='        <DataArray type="Float32" Name="'//TRIM(VarNames(iVal))//'" '// &
+                     'format="appended" offset="'//TRIM(ADJUSTL(StrOffset))//'"/>'//lf;WRITE(ivtk) TRIM(Buffer)
     Offset=Offset+SIZEOF_F(INTdummy)+nVTKPoints*SIZEOF_F(FLOATdummy)
     WRITE(StrOffset,'(I16)')Offset
   END DO
@@ -127,26 +231,26 @@ IF(MPIROOT)THEN
   Buffer='      <CellData> </CellData>'//lf;WRITE(ivtk) TRIM(Buffer)
   ! Specify coordinate data
   Buffer='      <Points>'//lf;WRITE(ivtk) TRIM(Buffer)
-  Buffer='        <DataArray type="Float32" Name="Coordinates" NumberOfComponents="3" format="appended" &
-         &offset="'//TRIM(ADJUSTL(StrOffset))//'"/>'//lf;WRITE(ivtk) TRIM(Buffer)
+  Buffer='        <DataArray type="Float32" Name="Coordinates" NumberOfComponents="3" format="appended" '// &
+                   'offset="'//TRIM(ADJUSTL(StrOffset))//'"/>'//lf;WRITE(ivtk) TRIM(Buffer)
   Offset=Offset+SIZEOF_F(INTdummy)+3*nVTKPoints*SIZEOF_F(FLOATdummy)
   WRITE(StrOffset,'(I16)')Offset
   Buffer='      </Points>'//lf;WRITE(ivtk) TRIM(Buffer)
   ! Specify necessary cell data
   Buffer='      <Cells>'//lf;WRITE(ivtk) TRIM(Buffer)
   ! Connectivity
-  Buffer='        <DataArray type="Int32" Name="connectivity" format="appended" &
-         &offset="'//TRIM(ADJUSTL(StrOffset))//'"/>'//lf;WRITE(ivtk) TRIM(Buffer)
-  Offset=Offset+SIZEOF_F(INTdummy)+8*nVTKCells*SIZEOF_F(INTdummy)
+  Buffer='        <DataArray type="Int32" Name="connectivity" format="appended" '// &
+                   'offset="'//TRIM(ADJUSTL(StrOffset))//'"/>'//lf;WRITE(ivtk) TRIM(Buffer)
+  Offset=Offset+SIZEOF_F(INTdummy)+PointsPerVTKCell*nVTKCells*SIZEOF_F(INTdummy)
   WRITE(StrOffset,'(I16)')Offset
   ! Offsets
-  Buffer='        <DataArray type="Int32" Name="offsets" format="appended" &
-         &offset="'//TRIM(ADJUSTL(StrOffset))//'"/>'//lf;WRITE(ivtk) TRIM(Buffer)
+  Buffer='        <DataArray type="Int32" Name="offsets" format="appended" ' // &
+                   'offset="'//TRIM(ADJUSTL(StrOffset))//'"/>'//lf;WRITE(ivtk) TRIM(Buffer)
   Offset=Offset+SIZEOF_F(INTdummy)+nVTKCells*SIZEOF_F(INTdummy)
   WRITE(StrOffset,'(I16)')Offset
   ! Elem types
-  Buffer='        <DataArray type="Int32" Name="types" format="appended" &
-         &offset="'//TRIM(ADJUSTL(StrOffset))//'"/>'//lf;WRITE(ivtk) TRIM(Buffer)
+  Buffer='        <DataArray type="Int32" Name="types" format="appended" '// &
+                   'offset="'//TRIM(ADJUSTL(StrOffset))//'"/>'//lf;WRITE(ivtk) TRIM(Buffer)
   Buffer='      </Cells>'//lf;WRITE(ivtk) TRIM(Buffer)
   Buffer='    </Piece>'//lf;WRITE(ivtk) TRIM(Buffer)
   Buffer='  </UnstructuredGrid>'//lf;WRITE(ivtk) TRIM(Buffer)
@@ -154,95 +258,108 @@ IF(MPIROOT)THEN
   Buffer='  <AppendedData encoding="raw">'//lf;WRITE(ivtk) TRIM(Buffer)
   ! Write leading data underscore
   Buffer='_';WRITE(ivtk) TRIM(Buffer)
-
 END IF
+
+
+
+#if USE_MPI
+IF(MPIroot)THEN
+  !ALLOCATE buffer for Root
+  nElemsMax=MAXVAL(nElems_glob)
+  ALLOCATE(buf(   0:NVisu,0:NVisu,0:NVisu_k,nElemsMax))
+END IF
+#endif
 
 ! Write binary raw data into append section
 ! Solution data
 DO iVal=1,nVal
   IF(MPIroot)THEN
     nBytes = nVTKPoints*SIZEOF_F(FLOATdummy)
-    WRITE(ivtk) nBytes,REAL(Value(iVal,:,:,:,:),4)
-#if MPI
+    IF (nValAtLastDimension_loc) THEN
+      WRITE(ivtk) nBytes,REAL(Value(:,:,:,:,iVal),4)
+    ELSE
+      WRITE(ivtk) nBytes,REAL(Value(iVal,:,:,:,:),4)
+    END IF
+#if USE_MPI
     DO iProc=1,nProcessors-1
       nElems_proc=nElems_glob(iProc)
-      CALL MPI_RECV(buf(:,:,:,1:nElems_proc),nElems_proc*NPlot_p1_3,MPI_DOUBLE_PRECISION,iProc,0,MPI_COMM_WORLD,MPIstatus,iError)
+      CALL MPI_RECV(buf(:,:,:,1:nElems_proc),nElems_proc*NVisu_elem,MPI_DOUBLE_PRECISION,iProc,0,MPI_COMM_WORLD,MPIstatus,iError)
       WRITE(ivtk) REAL(buf(:,:,:,1:nElems_proc),4)
     END DO !iProc
   ELSE
-    CALL MPI_SEND(Value(iVal,:,:,:,:),nElems*NPlot_p1_3,MPI_DOUBLE_PRECISION, 0,0,MPI_COMM_WORLD,iError)
-#endif /*MPI*/
+    IF (nValAtLastDimension_loc) THEN
+      CALL MPI_SEND(Value(:,:,:,:,iVal),nElems*NVisu_elem,MPI_DOUBLE_PRECISION, 0,0,MPI_COMM_WORLD,iError)
+    ELSE
+      CALL MPI_SEND(Value(iVal,:,:,:,:),nElems*NVisu_elem,MPI_DOUBLE_PRECISION, 0,0,MPI_COMM_WORLD,iError)
+    END IF
+#endif /*USE_MPI*/
   END IF !MPIroot
 END DO       ! iVar
+
+#if USE_MPI
+IF(MPIroot)THEN
+  SDEALLOCATE(buf)
+  ALLOCATE(buf2(3,0:NVisu,0:NVisu,0:NVisu_k,nElemsMax))
+END IF
+#endif
 
 ! Coordinates
 IF(MPIRoot)THEN
   nBytes = nVTKPoints*SIZEOF_F(FLOATdummy) * 3
   WRITE(ivtk) nBytes
   WRITE(ivtk) REAL(Coord(:,:,:,:,:),4)
-#if MPI
+#if USE_MPI
   DO iProc=1,nProcessors-1
     nElems_proc=nElems_glob(iProc)
-    CALL MPI_RECV(buf2(:,:,:,:,1:nElems_proc),nElems_proc*NPlot_p1_3*3,MPI_DOUBLE_PRECISION,iProc,0,MPI_COMM_WORLD,MPIstatus,iError)
+    CALL MPI_RECV(buf2(:,:,:,:,1:nElems_proc),nElems_proc*NVisu_elem*3,MPI_DOUBLE_PRECISION,iProc,0,MPI_COMM_WORLD,MPIstatus,iError)
     WRITE(ivtk) REAL(buf2(:,:,:,:,1:nElems_proc),4)
   END DO !iProc
 ELSE
-  CALL MPI_SEND(Coord(:,:,:,:,:),nElems*NPlot_p1_3*3,MPI_DOUBLE_PRECISION, 0,0,MPI_COMM_WORLD,iError)
-#endif /*MPI*/
+  CALL MPI_SEND(Coord(:,:,:,:,:),nElems*NVisu_elem*3,MPI_DOUBLE_PRECISION, 0,0,MPI_COMM_WORLD,iError)
+#endif /*USE_MPI*/
 END IF !MPIroot
 
+#if USE_MPI
+IF(MPIroot)THEN
+  SDEALLOCATE(buf2)
+END IF
+#endif
 
-! Connectivity
+! Connectivity and footer
 IF(MPIROOT)THEN
-  PointID=0
-  CellID=0
-  ALLOCATE(Vertex(8,nVTKCells))
-  DO iElem=1,nGlobalElems_loc
-    DO k=1,NPlot; DO j=1,NPlot; DO i=1,NPlot
-      CellID=CellID+1
-      !
-      Vertex(:,CellID)=(/                                       &
-        PointID+i+   j   *(NPlot+1)+(k-1)*NPlot_p1_2-1,      & !P4(CGNS=tecplot standard)
-        PointID+i+  (j-1)*(NPlot+1)+(k-1)*NPlot_p1_2-1,      & !P1
-        PointID+i+1+(j-1)*(NPlot+1)+(k-1)*NPlot_p1_2-1,      & !P2
-        PointID+i+1+ j   *(NPlot+1)+(k-1)*NPlot_p1_2-1,      & !P3
-        PointID+i+   j   *(NPlot+1)+ k   *NPlot_p1_2-1,      & !P8
-        PointID+i+  (j-1)*(NPlot+1)+ k   *NPlot_p1_2-1,      & !P5
-        PointID+i+1+(j-1)*(NPlot+1)+ k   *NPlot_p1_2-1,      & !P6
-        PointID+i+1+ j   *(NPlot+1)+ k   *NPlot_p1_2-1      /) !P7
-    END DO; END DO; END DO
-    PointID=PointID+NPlot_p1_3
-  END DO
-  nBytes = 8*nVTKCells*SIZEOF_F(INTdummy)
+  CALL CreateConnectivity(NVisu,nTotalElems,nodeids,dim,DGFV_loc)
+
+  nBytes = (4*(dim-1))*nVTKCells*SIZEOF_F(INTdummy)
   WRITE(ivtk) nBytes
-  WRITE(ivtk) Vertex(:,:)
+  WRITE(ivtk) nodeids
   ! Offset
   nBytes = nVTKCells*SIZEOF_F(INTdummy)
   WRITE(ivtk) nBytes
-  WRITE(ivtk) (Offset,Offset=8,8*nVTKCells,8)
+  WRITE(ivtk) (Offset,Offset=PointsPerVTKCell,PointsPerVTKCell*nVTKCells,PointsPerVTKCell)
   ! Elem type
-  ElemType = 12 ! VTK_HEXAHEDRON
+  IF (dim.EQ.3) THEN
+    ElemType = 12 ! VTK_HEXAHEDRON
+  ELSE
+    ElemType = 9  ! VTK_QUAD
+  END IF  
   WRITE(ivtk) nBytes
   WRITE(ivtk) (ElemType,iElem=1,nVTKCells)
-  ! Write footer
+
+  DEALLOCATE(nodeids)
+
+  ! Footer
+  lf = char(10)
   Buffer=lf//'  </AppendedData>'//lf;WRITE(ivtk) TRIM(Buffer)
   Buffer='</VTKFile>'//lf;WRITE(ivtk) TRIM(Buffer)
   CLOSE(ivtk)
-  SDEALLOCATE(Vertex)
-#if MPI
-  SDEALLOCATE(buf)
-  SDEALLOCATE(buf2)
-#endif /*MPI*/
 ENDIF
 SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES')"DONE"
-END SUBROUTINE WriteDataToVTK3D
+END SUBROUTINE WriteDataToVTK
 
-
-
+!===================================================================================================================================
+!> Links DG and FV VTK files together
+!===================================================================================================================================
 SUBROUTINE WriteVTKMultiBlockDataSet(FileString,FileString_DG,FileString_FV)
-!===================================================================================================================================
-! Linkes VTK data- und mesh-files together
-!===================================================================================================================================
 ! MODULES
 USE MOD_Globals
 IMPLICIT NONE
@@ -253,26 +370,151 @@ CHARACTER(LEN=*),INTENT(IN) :: FileString_DG  !< Filename of DG VTU file
 CHARACTER(LEN=*),INTENT(IN) :: FileString_FV  !< Filename of FV VTU file 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: ivtk=44
+INTEGER            :: ivtk
 CHARACTER(LEN=200) :: Buffer
 CHARACTER(LEN=1)   :: lf
 !===================================================================================================================================
 IF (MPIRoot) THEN                   
   ! write multiblock file
-  OPEN(UNIT=ivtk,FILE=TRIM(FileString),ACCESS='STREAM')
+  OPEN(NEWUNIT=ivtk,FILE=TRIM(FileString),ACCESS='STREAM')
   ! Line feed character
   lf = char(10)
   Buffer='<VTKFile type="vtkMultiBlockDataSet" version="1.0" byte_order="LittleEndian" header_type="UInt64">'//lf
   WRITE(ivtk) TRIM(BUFFER)
   Buffer='  <vtkMultiBlockDataSet>'//lf;WRITE(ivtk) TRIM(BUFFER)
-  Buffer='    <DataSet index="0" file="'//TRIM(FileString_DG)//'">'//lf;WRITE(ivtk) TRIM(BUFFER)
+  Buffer='    <DataSet index="0" name="DG" file="'//TRIM(FileString_DG)//'">'//lf;WRITE(ivtk) TRIM(BUFFER)
   Buffer='    </DataSet>'//lf;WRITE(ivtk) TRIM(BUFFER)
-  Buffer='    <DataSet index="1" file="'//TRIM(FileString_FV)//'">'//lf;WRITE(ivtk) TRIM(BUFFER)
+  Buffer='    <DataSet index="1" name="FV" file="'//TRIM(FileString_FV)//'">'//lf;WRITE(ivtk) TRIM(BUFFER)
   Buffer='    </DataSet>'//lf;WRITE(ivtk) TRIM(BUFFER)
   Buffer='  </vtkMultiBlockDataSet>'//lf;WRITE(ivtk) TRIM(BUFFER)
   Buffer='</VTKFile>'//lf;WRITE(ivtk) TRIM(BUFFER)
   CLOSE(ivtk)
 ENDIF
 END SUBROUTINE WriteVTKMultiBlockDataSet
+
+!===================================================================================================================================
+!> Subroutine to write 2D or 3D coordinates to VTK format
+!===================================================================================================================================
+SUBROUTINE WriteCoordsToVTK_array(NVisu,nElems,coords_out,nodeids_out,coords,nodeids,dim,DGFV)
+USE ISO_C_BINDING
+! MODULES
+USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+INTEGER,INTENT(IN)                   :: NVisu                        !< Polynomial degree for visualization
+INTEGER,INTENT(IN)                   :: nElems                       !< Number of elements
+INTEGER,INTENT(IN)                   :: dim                          !< Spacial dimension (2D or 3D)
+INTEGER,INTENT(IN)                   :: DGFV                         !< flag indicating DG = 0 or FV =1 data
+REAL,ALLOCATABLE,TARGET,INTENT(IN)    :: coords(:,:,:,:,:) !< Array containing coordinates
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+INTEGER,ALLOCATABLE,TARGET,INTENT(INOUT) :: nodeids(:)
+TYPE (CARRAY), INTENT(INOUT)         :: coords_out
+TYPE (CARRAY), INTENT(INOUT)         :: nodeids_out
+
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!===================================================================================================================================
+coords_out%dim  = dim
+IF (nElems.EQ.0) THEN
+  coords_out%len  = 0
+  nodeids_out%len = 0
+  RETURN
+END IF
+SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='NO')"   WRITE ",dim,"D COORDS TO VTX XML BINARY (VTU) ARRAY..."
+! values and coords are already in the correct structure of VTK/Paraview 
+
+! create connectivity
+CALL CreateConnectivity(NVisu,nElems,nodeids,dim,DGFV)
+
+! set the sizes of the arrays
+coords_out%len = 3*(NVisu+1)**dim*nElems
+nodeids_out%len = (4*(dim-1))*((NVisu+DGFV)/(1+DGFV))**dim*nElems
+
+! assign data to the arrays (no copy!!!)
+coords_out%data = C_LOC(Coords(1,0,0,0,1))
+nodeids_out%data = C_LOC(nodeids(1))
+
+SWRITE(UNIT_stdOut,'(A)')" Done!"
+END SUBROUTINE WriteCoordsToVTK_array
+
+!===================================================================================================================================
+!> Subroutine to write actual 2D or 3D point data to VTK format
+!===================================================================================================================================
+SUBROUTINE WriteDataToVTK_array(nVal,NVisu,nElems,Values_out,values,dim)
+USE ISO_C_BINDING
+! MODULES
+USE MOD_Globals
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+INTEGER,INTENT(IN)                :: nVal                         !> Number of nodal output variables
+INTEGER,INTENT(IN)                :: NVisu                        !> Polynomial degree for visualization
+INTEGER,INTENT(IN)                :: nElems                       !> Number of elements
+INTEGER,INTENT(IN)                :: dim                          !> Spacial dimension (2D or 3D)
+REAL(C_DOUBLE),ALLOCATABLE,TARGET,INTENT(IN) :: values(:,:,:,:,:) !> Array containing the points values
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+TYPE (CARRAY), INTENT(INOUT)      :: values_out
+
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!===================================================================================================================================
+values_out%dim  = dim
+IF (nElems.EQ.0) THEN
+  values_out%len  = 0
+  RETURN
+END IF
+SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='NO')"   WRITE ",dim,"D DATA TO VTX XML BINARY (VTU) ARRAY..."
+
+! values and coords are already in the correct structure of VTK/Paraview 
+! set the sizes of the arrays
+values_out%len = nVal*(NVisu+1)**dim*nElems
+
+! assign data to the arrays (no copy!!!)
+values_out%data = C_LOC(values(0,0,0,1,1))
+
+SWRITE(UNIT_stdOut,'(A)')" Done!"
+END SUBROUTINE WriteDataToVTK_array
+
+!===================================================================================================================================
+!> Subroutine to write variable names to VTK format
+!===================================================================================================================================
+SUBROUTINE WriteVarnamesToVTK_array(nVarTotal,mapVisu,varnames_out,VarNamesTotal,nVarVisu)
+USE ISO_C_BINDING
+! MODULES
+USE MOD_Globals
+USE MOD_StringTools    ,ONLY: STRICMP
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN)             :: nVarTotal
+INTEGER,INTENT(IN)             :: mapVisu(nVarTotal)
+TYPE (CARRAY), INTENT(INOUT)   :: varnames_out
+CHARACTER(LEN=255),INTENT(IN)  :: VarNamesTotal(nVarTotal)
+INTEGER,INTENT(IN)             :: nVarVisu
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+CHARACTER(C_CHAR),POINTER    :: VarNames_loc(:,:)
+INTEGER                      :: i,iVar
+!===================================================================================================================================
+! copy varnames
+ALLOCATE(VarNames_loc(255,nVarVisu))
+varnames_out%len  = nVarVisu*255
+varnames_out%data = C_LOC(VarNames_loc(1,1))
+
+DO iVar=1,nVarTotal
+  IF (mapVisu(iVar).GT.0) THEN
+    DO i=1,255
+      VarNames_loc(i,mapVisu(iVar)) = VarNamesTotal(iVar)(i:i)
+    END DO
+  END IF
+END DO
+
+END SUBROUTINE WriteVarnamesToVTK_array
 
 END MODULE MOD_VTK

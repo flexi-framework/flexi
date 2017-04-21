@@ -18,14 +18,15 @@
 MODULE MOD_PreProc
 ! MODULES
 IMPLICIT NONE
+
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-INTEGER,PARAMETER     :: PP_VEC=250
 REAL,PARAMETER        :: PP_RealTolerance = EPSILON(1.0D0) !< machine precision
 REAL,PARAMETER        :: PP_Pi = ACOS(-1.0D0)              !< Pi up to machine accuracy
 #if PP_N == N
   INTEGER             :: PP_N                              !< polynomial degree
 #endif
+
 !==================================================================================================================================
 END MODULE MOD_PreProc

@@ -61,6 +61,7 @@ TYPE,PUBLIC :: Parameters
   INTEGER              :: maxNameLen          !< maximal string length of the name of an option in the list
   INTEGER              :: maxValueLen         !< maximal string length of the value of an option in the list
   CHARACTER(LEN=255)   :: actualSection = ""  !< actual section, to set section of an option, when inserted into list
+  LOGICAL              :: removeAfterRead=.TRUE. !< specifies whether options shall be marked as removed after being read
 CONTAINS 
   PROCEDURE :: SetSection                 !< routine to set 'actualSection'
   PROCEDURE :: CreateOption               !< general routine to create a option and insert it into the linked list
@@ -135,6 +136,10 @@ INTERFACE addStrListEntry
   MODULE PROCEDURE addStrListEntry
 END INTERFACE
 
+INTERFACE ExtractParameterFile
+  MODULE PROCEDURE ExtractParameterFile
+END INTERFACE
+
 INTERFACE FinalizeParameters
   MODULE PROCEDURE FinalizeParameters
 END INTERFACE
@@ -154,6 +159,7 @@ PUBLIC :: GETDESCRIPTION
 PUBLIC :: GETINTFROMSTR
 PUBLIC :: addStrListEntry
 PUBLIC :: FinalizeParameters
+PUBLIC :: ExtractParameterFile
 
 TYPE(Parameters) :: prms
 PUBLIC :: prms
@@ -450,6 +456,7 @@ END SUBROUTINE insertOption
 !==================================================================================================================================
 SUBROUTINE read_options(this, filename) 
 ! MODULES
+USE MOD_StringTools ,ONLY: STRICMP,GetFileExtension
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -458,45 +465,73 @@ CHARACTER(LEN=255),INTENT(IN)   :: filename !< name of file to be read
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
 CLASS(link), POINTER  :: current
-INTEGER               :: stat,iniUnit,iExt
+INTEGER               :: stat,iniUnit,nLines,i
 TYPE(Varying_String)  :: aStr,bStr
 CHARACTER(LEN=255)    :: HelpStr
-LOGICAL               :: firstWarn=.TRUE.,file_exists
+LOGICAL               :: firstWarn=.TRUE.
+CHARACTER(LEN=255),ALLOCATABLE :: FileContent(:)
+CHARACTER(LEN=1)      :: tmpChar=''
 !==================================================================================================================================
-! Check if first argument is the ini-file 
-iExt=INDEX(filename,'.',BACK = .TRUE.) ! Position of file extension
-IF(filename(iExt+1:iExt+3) .NE. 'ini') THEN
-  SWRITE(*,*) "Usage: flexi parameter.ini [restart.h5] [keyword arguments]"
-  CALL CollectiveStop(__STAMP__,&
-    'ERROR - Not an parameter file (file-extension must be .ini): '//TRIM(filename))
-END IF
-INQUIRE(FILE=TRIM(filename), EXIST=file_exists)  
-IF (.NOT.file_exists) THEN
-  CALL CollectiveStop(__STAMP__,&
-      "Ini file does not exist.")
-END IF
+CALL this%CreateLogicalOption('ColoredOutput','Colorize stdout, included for compatibility with FLEXI', '.TRUE.')
 
+IF(MPIROOT)THEN
+  ! Get name of ini file
+  WRITE(UNIT_StdOut,*)'| Reading from file "',TRIM(filename),'":'
+  IF (.NOT.FILEEXISTS(filename)) THEN
+    CALL Abort(__STAMP__,&
+        "Ini file does not exist.")
+  END IF
+  ! Check if first argument is the ini-file 
+  IF(.NOT.(STRICMP(GetFileExtension(filename),'ini'))) THEN
+    SWRITE(*,*) "Usage: flexi parameter.ini [restart.h5] [keyword arguments]"
+    SWRITE(*,*) "   or: flexi restart.h5 [keyword arguments]"
+    CALL CollectiveStop(__STAMP__,&
+      'ERROR - Not an parameter file (file-extension must be .ini) or restart file (*.h5): '//TRIM(filename))
+  END IF
 
-SWRITE(UNIT_StdOut,*)'| Reading from file "',TRIM(filename),'":'
-
-! Open parameter file for reading
-iniUnit= 100 !GETFREEUNIT()
-OPEN(UNIT=iniUnit,FILE=TRIM(filename),STATUS='OLD',ACTION='READ',ACCESS='SEQUENTIAL',IOSTAT=stat)
-IF(stat.NE.0) THEN
-  CALL Abort(__STAMP__,&
+  OPEN(NEWUNIT= iniUnit,        &
+       FILE   = TRIM(filename), &
+       STATUS = 'OLD',          &
+       ACTION = 'READ',         &
+       ACCESS = 'SEQUENTIAL',   &
+       IOSTAT = stat)
+  IF(stat.NE.0)THEN
+    CALL abort(__STAMP__,&
       "Could not open ini file.")
+  END IF
+
+  ! parallel IO: ROOT reads file and sends it to all other procs
+  nLines=0
+  stat=0
+  DO
+    READ(iniunit,"(A)",IOSTAT=stat)tmpChar
+    IF(stat.NE.0)EXIT
+    nLines=nLines+1
+  END DO
 END IF
+
+!broadcast number of lines, read and broadcast file content
+#if USE_MPI
+CALL MPI_BCAST(nLines,1,MPI_INTEGER,0,MPI_COMM_WORLD,iError)
+#endif
+ALLOCATE(FileContent(nLines))
+
+IF ((MPIROOT).AND.(nLines.GT.0)) THEN
+  !read file
+  REWIND(iniUnit)
+  READ(iniUnit,'(A)') FileContent
+END IF
+IF (MPIROOT) CLOSE(iniUnit)
+#if USE_MPI
+CALL MPI_BCAST(FileContent,LEN(FileContent)*nLines,MPI_CHARACTER,0,MPI_COMM_WORLD,iError)
+#endif
 
 ! infinte loop. Exit at EOF
-DO
+DO i=1,nLines
+  !! Lower case
+  CALL LowCase(FileContent(i),FileContent(i))
   ! read a line into 'aStr'
-  CALL Get(iniUnit,aStr,iostat=stat)
-  ! exit loop if EOF
-  IF(IS_IOSTAT_END(stat)) EXIT 
-  IF(.NOT.IS_IOSTAT_EOR(stat)) THEN
-    CALL Abort(__STAMP__,&
-       'Error during ini file read')
-  END IF
+  aStr=Var_Str(FileContent(i))
   ! Remove comments with "!"
   CALL Split(aStr,bStr,"!")
   ! Remove comments with "#"
@@ -509,7 +544,7 @@ DO
   aStr=Replace(aStr,"(/"," ",Every=.true.)
   aStr=Replace(aStr,"/)"," ",Every=.true.)
   ! Lower case
-  CALL LowCase(CHAR(aStr),HelpStr)
+  HelpStr=CHAR(aStr)
   ! If something remaind, this should be an option
   IF (LEN_TRIM(HelpStr).GT.2) THEN
     ! read the option
@@ -526,7 +561,7 @@ END DO
 IF (.NOT.firstWarn) THEN
   SWRITE(UNIT_StdOut,'(100("!"))')
 END IF
-CLOSE(iniUnit)
+DEALLOCATE(FileContent)
 
 ! calculate the maximal string lenght of all option-names and option-values
 this%maxNameLen  = 0
@@ -592,8 +627,14 @@ DO WHILE (associated(current))
       END IF
     END IF
     ! parse option
-    CALL current%opt%parse(rest)
-    current%opt%isSet = .TRUE.
+    IF(LEN_TRIM(rest).NE.0)THEN
+      CALL current%opt%parse(rest)
+      current%opt%isSet = .TRUE.
+    ELSE
+      CALL set_formatting("bright red")
+      SWRITE(UNIT_StdOut,*) 'WARNING: Option "', TRIM(name), '" is specified in file but is empty!'
+      CALL clear_formatting()
+    END IF
     RETURN
   END IF
   current => current%next
@@ -615,7 +656,7 @@ CLASS(link), POINTER :: current
 current => prms%firstLink
 CALL set_formatting("bright red")
 SWRITE(UNIT_StdOut,'(100("!"))')
-SWRITE(UNIT_StdOut,*) "WARNING: The following options are defined, but NOT set in parameter-file or readin:"
+SWRITE(UNIT_StdOut,'(A)') "WARNING: The following options are defined, but NOT set in parameter-file or readin:"
 DO WHILE (associated(current))
   IF (.NOT.current%opt%isRemoved) THEN
     SWRITE(UNIT_StdOut,*) "   ", TRIM(current%opt%name)
@@ -715,10 +756,6 @@ WRITE(fmtNamespace,*) spaceNameLen
 WRITE(fmtValuespace,*) spaceValueLen
 current => prms%firstLink
 DO WHILE (associated(current))
-  IF (STRICMP(current%opt%section,'RecordPoints')) THEN
-    current => current%next
-    CYCLE
-  END IF
   IF ((LEN_TRIM(singlesection).EQ.0).OR.(STRICMP(singlesection,current%opt%section))) THEN
     IF (.NOT.STRICMP(section,current%opt%section)) THEN
       section = current%opt%section
@@ -871,7 +908,7 @@ DO WHILE (associated(current))
     ! print option and value to stdout
     CALL opt%print(prms%maxNameLen, prms%maxValueLen, mode=0)
     ! remove the option from the linked list of all parameters
-    current%opt%isRemoved = .TRUE.
+    IF(prms%removeAfterRead) current%opt%isRemoved = .TRUE.
     RETURN
   END IF 
   current => current%next
@@ -951,7 +988,7 @@ DO WHILE (associated(current))
     ! print option and value to stdout
     CALL opt%print(prms%maxNameLen, prms%maxValueLen, mode=0)
     ! remove the option from the linked list of all parameters
-    current%opt%isRemoved = .TRUE.
+    IF(prms%removeAfterRead) current%opt%isRemoved = .TRUE.
     RETURN
   END IF 
   current => current%next
@@ -1117,7 +1154,7 @@ INTEGER                       :: listSize         ! current size of list
 ! iterate over all options and compare names
 current => prms%firstLink
 DO WHILE (associated(current))
-  IF (current%opt%NAMEEQUALS(name)) THEN
+  IF (current%opt%NAMEEQUALS(name).AND.(.NOT.current%opt%isRemoved)) THEN
     opt => current%opt
     SELECT TYPE (opt)
     CLASS IS (IntFromStringOption)
@@ -1143,6 +1180,8 @@ DO WHILE (associated(current))
           opt%foundInList = .FALSE.
         END IF
         CALL opt%print(prms%maxNameLen, prms%maxValueLen, mode=0)
+        ! remove the option from the linked list of all parameters
+        IF(prms%removeAfterRead) current%opt%isRemoved = .TRUE.
         RETURN
       END IF
       ! If a string has been supplied, check if this string exists in the list and set it's integer representation according to the
@@ -1152,6 +1191,8 @@ DO WHILE (associated(current))
           value = opt%intList(i)
           opt%listIndex = i ! Store index of the mapping
           CALL opt%print(prms%maxNameLen, prms%maxValueLen, mode=0)
+          ! remove the option from the linked list of all parameters
+          IF(prms%removeAfterRead) current%opt%isRemoved = .TRUE.
           RETURN
         END IF
       END DO
@@ -1162,7 +1203,7 @@ DO WHILE (associated(current))
   current => current%next
 END DO
 CALL Abort(__STAMP__,&
-    "Unknown option: "//TRIM(name))
+    "Unknown option: "//TRIM(name)//" or already read (use GET... routine only for multiple options more than once).")
 END FUNCTION GETINTFROMSTR
 
 !===================================================================================================================================
@@ -1199,7 +1240,7 @@ DO WHILE (associated(current))
         opt%strList(1) = TRIM(string_in)
         opt%intList(1) = int_in
         ! Save biggest length of string entry
-        opt%maxLength = LEN_TRIM(string_in)
+        opt%maxLength = LEN_TRIM(string_in)+4+INT(LOG10(REAL(ABS(int_in))+EPSILON(0.0)))
       ELSE
         ! Subsequent call to addEntry, re-allocate the lists with one additional entry
         listSize = SIZE(opt%strList)    ! opt size of the list
@@ -1223,7 +1264,7 @@ DO WHILE (associated(current))
         opt%strList(listSize+1) = TRIM(string_in)
         opt%intList(listSize+1) = int_in
         ! Save biggest length of string entry
-        opt%maxLength = MAX(opt%maxLength,LEN_TRIM(string_in))
+        opt%maxLength = MAX(opt%maxLength,LEN_TRIM(string_in)+4+INT(LOG10(REAL(ABS(int_in))+EPSILON(0.0))))
       END IF
       RETURN
     CLASS DEFAULT
@@ -1237,23 +1278,117 @@ CALL Abort(__STAMP__,&
     "Option not yet set: "//TRIM(name))
 
 END SUBROUTINE addStrListEntry
+
+SUBROUTINE ExtractParameterFile(filename,prmfile,userblockFound) 
+! MODULES
+USE MOD_StringTools ,ONLY: STRICMP
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+CHARACTER(LEN=255),INTENT(IN) :: filename !< name of file to be read
+CHARACTER(LEN=*),INTENT(IN)   :: prmfile  !< name of file to be written
+LOGICAL,INTENT(OUT)           :: userblockFound
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES 
+INTEGER               :: stat,iniUnit,fileUnit
+TYPE(Varying_String)  :: aStr
+CHARACTER(LEN=3)      :: tmp
+LOGICAL               :: iniFound
+!==================================================================================================================================
+
+IF (MPIRoot) THEN
+  IF (.NOT.FILEEXISTS(filename)) THEN
+    CALL CollectiveStop(__STAMP__,&
+        "File '"//TRIM(filename)//"' does not exist.")
+  END IF
+
+  SWRITE(UNIT_StdOut,*)'| Extract parameter file from "',TRIM(filename),'" to "',TRIM(prmfile),'"'
+
+  ! Open parameter file for reading
+  OPEN(NEWUNIT=fileUnit,FILE=TRIM(filename),STATUS='OLD',ACTION='READ',ACCESS='SEQUENTIAL',IOSTAT=stat)
+  IF(stat.NE.0) THEN
+    CALL Abort(__STAMP__,&
+        "Could not open '"//TRIM(filename)//"'")
+  END IF
+
+  OPEN(NEWUNIT=iniUnit,FILE=TRIM(prmfile),STATUS='UNKNOWN',ACTION='WRITE',ACCESS='SEQUENTIAL',IOSTAT=stat)
+  IF(stat.NE.0) THEN
+    CALL Abort(__STAMP__,&
+        "Could not open '"//TRIM(prmfile)//"'")
+  END IF
+
+  iniFound = .FALSE.
+  userblockFound = .FALSE.
+  ! infinte loop. Exit at EOF
+  DO
+    ! read a line into 'aStr'
+    CALL Get(fileUnit,aStr,iostat=stat)
+    ! exit loop if EOF
+    IF(IS_IOSTAT_END(stat)) EXIT 
+    IF(.NOT.IS_IOSTAT_EOR(stat)) THEN
+      CALL Abort(__STAMP__,&
+          'Error during ini file read')
+    END IF
+    ! check if file starts "{[(" and therewith has a userblock
+    IF (.NOT.userblockFound) THEN
+      tmp = CHAR(extract(aStr,1,3))
+      userblockFound = STRICMP(tmp,"{[(")
+    END IF
+    IF (.NOT.userblockFound) THEN
+      SWRITE(*,*) "No Userblock found!"
+      EXIT
+    END IF
+
+    ! search for begin of inifile
+    IF (STRICMP(CHAR(aStr),"{[( INIFILE )]}")) THEN
+      iniFound = .TRUE.
+      CYCLE
+    END IF
+    IF (.NOT.iniFound) THEN
+      ! if not found cycle (other userblock stuff)
+      CYCLE
+    ELSE
+      ! if found and string starts with {[(, than this is the beginning of another userblock entry
+      ! => finish reading of inifile
+      tmp = CHAR(extract(aStr,1,3))
+      IF (STRICMP(tmp, "{[(")) THEN
+        EXIT
+      END IF
+    END IF
+    WRITE(iniUnit,'(A)') CHAR(aStr)
+  END DO
+
+  CLOSE(fileUnit)
+  CLOSE(iniUnit)
+END IF
+#if USE_MPI
+CALL MPI_BCAST(userblockFound,1,MPI_LOGICAL,0,MPI_COMM_WORLD,iError)
+#endif /*USE_MPI*/
+
+END SUBROUTINE ExtractParameterFile
+
 !===================================================================================================================================
 !> Clear parameters list 'prms'.
 !===================================================================================================================================
 SUBROUTINE FinalizeParameters() 
+IMPLICIT NONE
 ! LOCAL VARIABLES
 CLASS(link), POINTER         :: current, tmp
 !===================================================================================================================================
 
-current => prms%firstLink
-DO WHILE (associated(current%next))
-  DEALLOCATE(current%opt)
-  NULLIFY(current%opt)
-  tmp => current%next
-  DEALLOCATE(current)
-  NULLIFY(current)
-  current => tmp
-END DO
+if(associated(prms%firstlink))then
+  current => prms%firstLink
+  DO WHILE (associated(current%next))
+    DEALLOCATE(current%opt)
+    NULLIFY(current%opt)
+    tmp => current%next
+    DEALLOCATE(current)
+    NULLIFY(current)
+    current => tmp
+  END DO
+end if
+prms%firstLink => null()
+prms%lastLink  => null()
 END SUBROUTINE FinalizeParameters
 
 END MODULE MOD_ReadInTools

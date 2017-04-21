@@ -68,7 +68,7 @@ CALL DefineParametersRiemann()
 #ifdef EDDYVISCOSITY
 CALL prms%CreateIntFromStringOption(   'eddyViscType', "(0) none: No eddy viscosity, (1) Smagorinsky",'none')
 CALL addStrListEntry('eddyViscType','none',0)
-CALL addStrListEntry('eddyViscType','smagorinksy',1)
+CALL addStrListEntry('eddyViscType','smagorinsky',1)
 #endif
 #ifdef SPLIT_DG
 CALL DefineParametersSplitDG()
@@ -89,6 +89,7 @@ USE MOD_Exactfunc         ,ONLY: InitExactFunc
 USE MOD_ReadInTools       ,ONLY: CountOption,GETREALARRAY,GETSTR
 USE MOD_Testcase          ,ONLY: InitTestcase
 USE MOD_Riemann           ,ONLY: InitRiemann
+USE MOD_GetBoundaryFlux,   ONLY: InitBC
 USE MOD_CalcTimeStep      ,ONLY: InitCalctimestep
 #ifdef EDDYVISCOSITY
 USE MOD_EddyVisc          ,ONLY: InitEddyVisc
@@ -131,15 +132,15 @@ IF(IniRefState.GT.nRefState)THEN
 END IF
 
 IF(nRefState .GT. 0)THEN
-  ALLOCATE(RefStatePrim(nRefState,PP_nVarPrim))
-  ALLOCATE(RefStateCons(nRefState,PP_nVar))
+  ALLOCATE(RefStatePrim(PP_nVarPrim,nRefState))
+  ALLOCATE(RefStateCons(PP_nVar    ,nRefState))
   DO i=1,nRefState
-    RefStatePrim(i,1:5)  = GETREALARRAY('RefState',5)
+    RefStatePrim(1:5,i)  = GETREALARRAY('RefState',5)
     ! TODO: ATTENTION only sRho and Pressure of UE filled!!!
-    UE(SRHO) = 1./RefStatePrim(i,1)
-    UE(PRES) = RefStatePrim(i,5)
-    RefStatePrim(i,6) = TEMPERATURE_HE(UE)
-    CALL PrimToCons(RefStatePrim(i,:),RefStateCons(i,:))
+    UE(SRHO) = 1./RefStatePrim(1,i)
+    UE(PRES) = RefStatePrim(5,i)
+    RefStatePrim(6,i) = TEMPERATURE_HE(UE)
+    CALL PrimToCons(RefStatePrim(:,i),RefStateCons(:,i))
   END DO
 END IF
 
@@ -161,6 +162,7 @@ CALL InitEddyVisc()
 ! Initialize SplitDG
 CALL InitSplitDG()
 #endif /*SPLIT_DG*/
+CALL InitBC()
 
 EquationInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT NAVIER-STOKES DONE!'
@@ -168,6 +170,7 @@ SWRITE(UNIT_StdOut,'(132("-"))')
 
 ! Initialize current testcase
 CALL InitTestcase()
+
 END SUBROUTINE InitEquation
 
 
@@ -214,21 +217,21 @@ END DO
 
 !! Version 2: Compute UPrim_master/slave from volume UPrim
 !
-!#if MPI
+!#if USE_MPI
 !! Prolong to face for MPI sides - send direction
 !CALL StartReceiveMPIData(UPrim_slave,DataSizeSide,firstSlaveSide,lastSlaveSide,MPIRequest_U(:,SEND),SendID=2) ! Receive MINE
 !CALL ProlongToFaceCons(PP_N,UPrim,UPrim_master,UPrim_slave,L_Minus,L_Plus,doMPISides=.TRUE.)
 !CALL U_Mortar(UPrim_master,UPrim_slave,doMPISides=.TRUE.)
 !CALL StartSendMPIData(   UPrim_slave,DataSizeSide,firstSlaveSide,lastSlaveSide,MPIRequest_U(:,RECV),SendID=2) ! Send YOUR
-!#endif /*MPI*/
+!#endif /*USE_MPI*/
 !
 !CALL ProlongToFaceCons(PP_N,UPrim,UPrim_master,UPrim_slave,L_Minus,L_Plus,doMPISides=.FALSE.)
 !CALL U_Mortar(UPrim_master,UPrim_slave,doMPISides=.FALSE.)
 !
-!#if MPI
+!#if USE_MPI
 !! Complete send / receive
 !CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_U) !Send YOUR - receive MINE
-!#endif /*MPI*/
+!#endif /*USE_MPI*/
 END SUBROUTINE GetPrimitiveStateSurface
 
 SUBROUTINE GetConservativeStateSurface(UPrim_master,UPrim_slave,U_master,U_slave, mask_master, mask_slave, mask_ref)
@@ -280,6 +283,7 @@ USE MOD_CalcTimeStep    ,ONLY: FinalizeCalctimestep
 #ifdef EDDYVISCOSITY
 USE MOD_EddyVisc        ,ONLY: FinalizeEddyVisc
 #endif /*EDDYVISCOSITY*/
+USE MOD_GetBoundaryFlux, ONLY: FinalizeBC
 IMPLICIT NONE
 !==================================================================================================================================
 CALL FinalizeTestcase()
@@ -288,6 +292,7 @@ CALL FinalizeCalctimestep()
 #ifdef EDDYVISCOSITY
 CALL FinalizeEddyVisc()
 #endif /*EDDYVISCOSITY*/
+CALL FinalizeBC()
 SDEALLOCATE(RefStatePrim)
 SDEALLOCATE(RefStateCons)
 EquationInitIsDone = .FALSE.

@@ -27,7 +27,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Mesh_Vars ,ONLY: SideToElem,nSides
 USE MOD_Mesh_Vars ,ONLY: firstMPISide_YOUR,lastMPISide_MINE
-USE MOD_Mesh_Vars ,ONLY: S2V3,CS2V2,nElems
+USE MOD_Mesh_Vars ,ONLY: S2V2,nElems
 #if FV_ENABLED
 USE MOD_FV_Vars   ,ONLY: FV_Elems_master,FV_Elems_slave,FV_w_inv
 #endif /* FV_ENABLED */
@@ -68,10 +68,11 @@ DO SideID=firstSideID,lastSideID
 
   ! master sides
   IF(ElemID.GT.0)THEN
-    locSideID   = SideToElem(S2E_LOC_SIDE_ID,SideID)
+    locSideID = SideToElem(S2E_LOC_SIDE_ID,SideID)
+    flip      = 0
     ! orient flux to fit flip and locSide to element local system
     DO q=0,NLoc; DO p=0,NLoc
-      FluxTmp(:,p,q)=Flux_master(:,CS2V2(1,p,q,locSideID),CS2V2(2,p,q,locSideID),SideID)
+      FluxTmp(:,S2V2(1,p,q,flip,locSideID),S2V2(2,p,q,flip,locSideID)) = Flux_master(:,p,q,SideID)
     END DO; END DO ! p,q
 #if FV_ENABLED
     IF (FV_Elems_master(SideID).EQ.0) THEN ! DG Element
@@ -106,7 +107,8 @@ DO SideID=firstSideID,lastSideID
     flip        = SideToElem(S2E_FLIP,SideID)
     ! orient flux to fit flip and locSide to element local system
     DO q=0,NLoc; DO p=0,NLoc
-      FluxTmp(:,p,q)=-Flux_slave(:,S2V3(1,p,q,flip,nblocSideID),S2V3(2,p,q,flip,nblocSideID),SideID)
+      ! p,q are in the master RHS system, they need to be transformed to the slave volume system using S2V2 mapping
+      FluxTmp(:,S2V2(1,p,q,flip,nblocSideID),S2V2(2,p,q,flip,nblocSideID)) = -Flux_slave(:,p,q,SideID)
     END DO; END DO ! p,q
 #if FV_ENABLED
     IF (FV_Elems_slave(SideID).EQ.0) THEN ! DG Element

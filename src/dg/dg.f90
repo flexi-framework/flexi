@@ -222,7 +222,7 @@ ALLOCATE(D_Hat(0:N_in,0:N_in), D_Hat_T(0:N_in,0:N_in))
 CALL PolynomialDerivativeMatrix(N_in,xGP,D)
 D_T=TRANSPOSE(D)
 
-! Build D_Hat matrix. (D^ = M^(-1) * D^T * M
+! Build D_Hat matrix. D^ = - (M^(-1) * D^T * M)
 M=0.
 Minv=0.
 DO iMass=0,N_in
@@ -292,22 +292,25 @@ USE MOD_FillMortarPrim      ,ONLY: U_MortarPrim
 USE MOD_Lifting             ,ONLY: Lifting
 USE MOD_Lifting_Vars
 #endif /*PARABOLIC*/
-#if MPI
+#if USE_MPI
 USE MOD_MPI_Vars
 USE MOD_MPI                 ,ONLY: StartReceiveMPIData,StartSendMPIData,FinishExchangeMPIData
 USE MOD_Mesh_Vars,           ONLY: nSides
-#endif /*MPI*/
+#endif /*USE_MPI*/
 #if FV_ENABLED
 USE MOD_FV_Vars             ,ONLY: FV_Elems_master,FV_Elems_slave,FV_Elems_Sum
 USE MOD_FV_Mortar           ,ONLY: FV_Elems_Mortar
 USE MOD_FV                  ,ONLY: FV_DGtoFV
 USE MOD_FV_VolInt           ,ONLY: FV_VolInt
-#if MPI
+#if USE_MPI
 USE MOD_MPI                 ,ONLY: StartExchange_FV_Elems
-#endif /*MPI*/
+#endif /*USE_MPI*/
 #if FV_RECONSTRUCT
-USE MOD_FV_Vars             ,ONLY: gradUxi,gradUeta,gradUzeta,gradUxi_central,gradUeta_central,gradUzeta_central
-USE MOD_FV_Vars             ,ONLY: FV_surf_gradU_master,FV_surf_gradU_slave,FV_multi_master,FV_multi_slave
+USE MOD_FV_Vars             ,ONLY: gradUxi,gradUeta,gradUzeta
+#if PARABOLIC
+USE MOD_FV_Vars             ,ONLY: gradUxi_central,gradUeta_central,gradUzeta_central
+#endif
+USE MOD_FV_Vars             ,ONLY: FV_surf_gradU,FV_multi_master,FV_multi_slave
 USE MOD_FV_ProlongToFace    ,ONLY: FV_ProlongToDGFace
 USE MOD_FV_Mortar           ,ONLY: FV_gradU_mortar
 USE MOD_FV_Reconstruction   ,ONLY: FV_PrepareSurfGradient,FV_SurfCalcGradients,FV_SurfCalcGradients_BC,FV_CalcGradients
@@ -339,7 +342,7 @@ REAL,INTENT(IN)                 :: t                      !< Current time
 ! 6.  Volume integral (DG only)
 ![7.] FV volume integral
 ! 8.  Fill flux (Riemann solver) + surface integral
-!{9.} Add advective volume (Ut0) integral to Ut for selective overintegration
+!{9.} Add advective volume (UtO) integral to Ut for selective overintegration
 ! 10. Ut = -Ut
 ! 11. Sponge and source terms
 ! 12. Perform overintegration and apply Jacobian
@@ -375,9 +378,7 @@ CALL ConsToPrim(PP_N,UPrim,U)
 !       FV_multi_master/slave. 
 ! 1.4)  Finish all started MPI communications (after step 2. due to latency hiding) 
 
-
-
-#if MPI
+#if USE_MPI
 ! Step 1 for all slave MPI sides
 ! 1.1)
 CALL StartReceiveMPIData(U_slave,DataSizeSide,1,nSides,MPIRequest_U(:,SEND),SendID=2) ! Receive MINE / U_slave: slave -> master
@@ -399,7 +400,7 @@ CALL StartSendMPIData(   FV_multi_slave,DataSizeSidePrim,1,nSides,MPIRequest_FV_
                                                                  ! SEND YOUR / FV_multi_slave: slave -> master
 #endif /* FV_RECONSTRUCT */
 #endif /* FV_ENABLED */
-#endif /* MPI */
+#endif /*USE_MPI*/
 
 ! Step 1 for all remaining sides
 ! 1.1)
@@ -422,7 +423,7 @@ IF(OverintegrationType.EQ.SELECTIVE)THEN
   CALL ConsToPrim(NOver,UPrimO,UO)
 END IF
 
-#if MPI
+#if USE_MPI
 ! 1.4) complete send / receive of side data from step 1.
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_U)        ! U_slave: slave -> master 
 #if FV_ENABLED
@@ -459,37 +460,38 @@ FV_Elems_Sum = FV_Elems_master + 2*FV_Elems_slave
 ! 4.1)
 CALL FV_DGtoFV(PP_nVarPrim,FV_multi_master,FV_multi_slave)
 
-#if MPI
+#if USE_MPI
 ! 4.2)
-CALL StartReceiveMPIData(FV_surf_gradU_slave,DataSizeSidePrim,1,nSides,MPIRequest_Flux(:,SEND),SendID=1)
-                                                         ! Receive YOUR / FV_surf_gradU_slave: master -> slave
+CALL StartReceiveMPIData(FV_surf_gradU,DataSizeSidePrim,1,nSides,MPIRequest_Flux(:,SEND),SendID=1)
+                                                         ! Receive YOUR / FV_surf_gradU: master -> slave
 CALL FV_SurfCalcGradients(UPrim_master,UPrim_slave,FV_multi_master,FV_multi_slave,&
-    FV_surf_gradU_master,FV_surf_gradU_slave,doMPISides=.TRUE.)
-CALL StartSendMPIData(   FV_surf_gradU_slave,DataSizeSidePrim,1,nSides,MPIRequest_Flux(:,RECV),SendID=1)
-                                                         ! Send MINE  /   FV_surf_gradU_slave: master -> slave
+    FV_surf_gradU,doMPISides=.TRUE.)
+CALL StartSendMPIData(   FV_surf_gradU,DataSizeSidePrim,1,nSides,MPIRequest_Flux(:,RECV),SendID=1)
+                                                         ! Send MINE  /   FV_surf_gradU: master -> slave
 ! 4.4)
-CALL FV_ProlongToDGFace(UPrim_master,UPrim_slave,FV_multi_master,FV_multi_slave,FV_surf_gradU_master,FV_surf_gradU_slave,&
-    doMPISides=.TRUE.) 
-#endif /*MPI*/
+CALL FV_ProlongToDGFace(UPrim_master,UPrim_slave,FV_multi_master,FV_multi_slave,FV_surf_gradU,doMPISides=.TRUE.) 
+#endif /*USE_MPI*/
 
 ! Calculate FD-Gradients over inner Sides
 ! 4.2)
 CALL FV_SurfCalcGradients(UPrim_master,UPrim_slave,FV_multi_master,FV_multi_slave,&
-    FV_surf_gradU_master,FV_surf_gradU_slave,doMPISides=.FALSE.)
+    FV_surf_gradU,doMPISides=.FALSE.)
 ! 4.3) 
-CALL FV_gradU_mortar(FV_surf_gradU_master,FV_surf_gradU_slave,doMPISides=.FALSE.)
-#if MPI
-CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Flux)   ! FV_surf_gradU_slave: master -> slave
-CALL FV_gradU_mortar(FV_surf_gradU_master,FV_surf_gradU_slave,doMPISides=.TRUE.)
+CALL FV_gradU_mortar(FV_surf_gradU,doMPISides=.FALSE.)
+#if USE_MPI
+CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Flux)   ! FV_surf_gradU: master -> slave
+CALL FV_gradU_mortar(FV_surf_gradU,doMPISides=.TRUE.)
 #endif
 ! 4.4)
-CALL FV_ProlongToDGFace(UPrim_master,UPrim_slave,FV_multi_master,FV_multi_slave,FV_surf_gradU_master,FV_surf_gradU_slave,&
-    doMPISides=.FALSE.)
+CALL FV_ProlongToDGFace(UPrim_master,UPrim_slave,FV_multi_master,FV_multi_slave,FV_surf_gradU,doMPISides=.FALSE.)
 ! 4.5) 
-CALL FV_SurfCalcGradients_BC(UPrim_master,FV_surf_gradU_master,t)
+CALL FV_SurfCalcGradients_BC(UPrim_master,FV_surf_gradU,t)
 ! 4.6) 
-CALL FV_CalcGradients(UPrim,FV_surf_gradU_master,FV_surf_gradU_slave,gradUxi,gradUeta,gradUzeta,&
-    gradUxi_central,gradUeta_central,gradUzeta_central)
+CALL FV_CalcGradients(UPrim,FV_surf_gradU,gradUxi,gradUeta,gradUzeta &
+#if PARABOLIC    
+    ,gradUxi_central,gradUeta_central,gradUzeta_central &
+#endif    
+    )
 #endif /* FV_ENABLED && FV_RECONSTRUCT */
 
 #if PARABOLIC
@@ -524,6 +526,7 @@ END IF
 CALL FV_VolInt(UPrim,Ut)
 #endif
 
+#if PARABOLIC
 #if EDDYVISCOSITY
 IF(EddyViscType.EQ.2) THEN
   IF(CurrentStage.EQ.1) THEN
@@ -541,13 +544,12 @@ IF(EddyViscType.EQ.2) THEN
   END IF
 END IF
 #endif
+#endif
 
-
-
-#if PARABOLIC && MPI
+#if PARABOLIC && USE_MPI
 ! Complete send / receive for gradUx, gradUy, gradUz, started in the lifting routines
 CALL FinishExchangeMPIData(6*nNbProcs,MPIRequest_gradU) ! gradUx,y,z: slave -> master
-#endif /*PARABOLIC && MPI*/
+#endif /*PARABOLIC && USE_MPI*/
 
 
 ! 8. Fill flux and Surface integral
@@ -578,14 +580,14 @@ CALL FV_DGtoFV(PP_nVarPrim,UPrim_master ,UPrim_slave )
 CALL GetConservativeStateSurface(UPrim_master, UPrim_slave, U_master, U_slave, FV_Elems_master, FV_Elems_slave, 1)
 #endif
 
-#if MPI
+#if USE_MPI
 ! 8.3)
 CALL StartReceiveMPIData(Flux_slave, DataSizeSide, 1,nSides,MPIRequest_Flux( :,SEND),SendID=1)
                                                                               ! Receive YOUR / Flux_slave: master -> slave
 CALL FillFlux(t,Flux_master,Flux_slave,U_master,U_slave,UPrim_master,UPrim_slave,doMPISides=.TRUE.)
 CALL StartSendMPIData(   Flux_slave, DataSizeSide, 1,nSides,MPIRequest_Flux( :,RECV),SendID=1)
                                                                               ! Send MINE  /   Flux_slave: master -> slave
-#endif /* MPI*/
+#endif /*USE_MPI*/
 
 ! 8.3)
 CALL FillFlux(t,Flux_master,Flux_slave,U_master,U_slave,UPrim_master,UPrim_slave,doMPISides=.FALSE.)
@@ -594,13 +596,13 @@ CALL Flux_MortarCons(Flux_master,Flux_slave,doMPISides=.FALSE.,weak=.TRUE.)
 ! 8.5)
 CALL SurfIntCons(PP_N,Flux_master,Flux_slave,Ut,.FALSE.,L_HatMinus,L_hatPlus)
 
-#if MPI
+#if USE_MPI
 ! 8.4)
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Flux )                                        ! Flux_slave: master -> slave 
 CALL Flux_MortarCons(Flux_master,Flux_slave,doMPISides=.TRUE.,weak=.TRUE.)
 ! 8.5)
 CALL SurfIntCons(PP_N,Flux_master,Flux_slave,Ut,.TRUE.,L_HatMinus,L_HatPlus)
-#endif /*MPI*/
+#endif /*USE_MPI*/
 
 ! 9. Add advection volume integral to residual for selective overintegration
 IF(OverintegrationType.EQ.SELECTIVE)THEN
@@ -698,6 +700,9 @@ SDEALLOCATE(FluxO)
 SDEALLOCATE(UPrim)
 SDEALLOCATE(UPrim_master)
 SDEALLOCATE(UPrim_slave)
+SDEALLOCATE(UPrimO)
+SDEALLOCATE(UPrim_masterO)
+SDEALLOCATE(UPrim_slaveO)
 DGInitIsDone = .FALSE.
 END SUBROUTINE FinalizeDG
 

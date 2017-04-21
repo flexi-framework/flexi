@@ -1,3 +1,16 @@
+!=================================================================================================================================
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
+! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+!
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+!
+! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+! of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License v3.0 for more details.
+!
+! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
+!=================================================================================================================================
 #include "flexi.h"
 
 !==================================================================================================================================
@@ -43,9 +56,9 @@ USE MOD_Mesh_Vars ,ONLY: firstMortarMPISide,lastMortarMPISide
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(INOUT) :: FV_Elems_master(1:nSides)
-INTEGER,INTENT(INOUT) :: FV_Elems_slave( 1:nSides)
-LOGICAL,INTENT(IN)    :: doMPISides
+INTEGER,INTENT(INOUT) :: FV_Elems_master(1:nSides) !< master side FV_elems
+INTEGER,INTENT(INOUT) :: FV_Elems_slave( 1:nSides) !< slave  side FV_elems
+LOGICAL,INTENT(IN)    :: doMPISides                !< =.TRUE. only MPI sides are filled, =.FALSE. inner sides 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
 INTEGER :: iMortar,nMortars
@@ -72,10 +85,10 @@ END DO !MortarSideID
 END SUBROUTINE FV_Elems_Mortar
 
 !==================================================================================================================================
-!> Fill master/big mortar sides parts of FV_surf_gradU_master/slave array.
+!> Fill master/big mortar sides parts of FV_surf_gradU array.
 !> Comparable to Flux_Mortar routine, but not totally the same
 !==================================================================================================================================
-SUBROUTINE FV_gradU_mortar(FV_surf_gradU_master,FV_surf_gradU_slave,doMPISides)
+SUBROUTINE FV_gradU_mortar(FV_surf_gradU,doMPISides)
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
@@ -88,15 +101,16 @@ USE MOD_FillMortarPrim ,ONLY: Flux_MortarPrim
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(INOUT) :: FV_surf_gradU_master(1:PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
-REAL,INTENT(IN)    :: FV_surf_gradU_slave (1:PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
-LOGICAL,INTENT(IN) :: doMPISides
+REAL,INTENT(INOUT) :: FV_surf_gradU(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) ! slope over interface
+LOGICAL,INTENT(IN) :: doMPISides  !< =.TRUE. only MPI sides are filled, =.FALSE. inner sides
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
 INTEGER :: firstMortarSideID,lastMortarSideID
 INTEGER :: MortarSideID
 !==================================================================================================================================
-CALL Flux_MortarPrim(FV_surf_gradU_master,FV_surf_gradU_slave,doMPISides,weak=.FALSE.,onlyFV=.TRUE.)
+! Attention: we only have one Flux_surf_gradU (no master/slave) 
+!            => input it to Flux_Mortar for both fluxes (master/slave)
+CALL Flux_MortarPrim(FV_surf_gradU,FV_surf_gradU,doMPISides,weak=.FALSE.,onlyFV=.TRUE.)
 
 !                         doMPISides==True   doMPISides==False
 firstMortarSideID = MERGE(firstMortarMPISide,firstMortarInnerSide,doMPISides) 
@@ -107,11 +121,11 @@ DO MortarSideID=firstMortarSideID,lastMortarSideID
 
   SELECT CASE(MortarType(1,MortarSideID))
   CASE(1) !1->4
-    FV_surf_gradU_master(:,:,:,MortarSideID) = 0.25 * FV_surf_gradU_master(:,:,:,MortarSideID)
+    FV_surf_gradU(:,:,:,MortarSideID) = 0.25 * FV_surf_gradU(:,:,:,MortarSideID)
   CASE(2) !1->2 in eta
-    FV_surf_gradU_master(:,:,:,MortarSideID) = 0.5  * FV_surf_gradU_master(:,:,:,MortarSideID)
+    FV_surf_gradU(:,:,:,MortarSideID) = 0.5  * FV_surf_gradU(:,:,:,MortarSideID)
   CASE(3) !1->2 in xi
-    FV_surf_gradU_master(:,:,:,MortarSideID) = 0.5  * FV_surf_gradU_master(:,:,:,MortarSideID)
+    FV_surf_gradU(:,:,:,MortarSideID) = 0.5  * FV_surf_gradU(:,:,:,MortarSideID)
   END SELECT
 END DO
 

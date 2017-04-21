@@ -1,3 +1,16 @@
+!=================================================================================================================================
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
+! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+!
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+!
+! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+! of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License v3.0 for more details.
+!
+! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
+!=================================================================================================================================
 MODULE MOD_FV_Vars
 !==================================================================================================================================
 ! Contains global variables used by the FV modules.
@@ -22,13 +35,15 @@ REAL                   :: FV_IndLowerThreshold   !< Lower threshold: Element is 
 LOGICAL                :: FV_toDG_indicator      !< additional Persson indicator applied to DG solution after switch from FV to DG
                                                  !< to check if DG solution is valid
 REAL                   :: FV_toDG_limit          !< limit for ^ this indicator: If FV_toDG_indicator is above limit, keep FV
+LOGICAL                :: FV_toDGinRK            !< Flag that allows switching of FV elements to DG during Runge Kutta stages. 
+                                                 !< This may violated the DG timestep restriction of the element.
 
 ! Limiting
 REAL                   :: FV_sweby_beta          !< parameter for Sweby limiter
 
 ! FV/DG 
 INTEGER,ALLOCATABLE    :: FV_Elems(:)            !< indicates if DG element (0) or FV subcells (1) for each element
-INTEGER,ALLOCATABLE,TARGET :: FV_Elems_master(:) !< prolongate FV_Elems to faces
+INTEGER,ALLOCATABLE    :: FV_Elems_master(:) !< prolongate FV_Elems to faces
 INTEGER,ALLOCATABLE    :: FV_Elems_slave(:)   
 INTEGER,ALLOCATABLE    :: FV_Elems_Sum(:)        !< = FV_Elems_master + 2*FV_Elems_slave
                                                  !< array with values from 0..3: 0=both DG, 1=master FV, 2=slave FV, 3=both FV
@@ -37,7 +52,7 @@ INTEGER,ALLOCATABLE    :: FV_Elems_counter(:)    !< counts for every element the
 INTEGER                :: FV_Switch_counter      !< counts how often FV_Switch is called, nullified after hdf5-output
                                                  !< should be identical to nTimesteps * nRkStages
 
-REAL,ALLOCATABLE       :: FV_Elems_Amount(:)    !< counts for every element the RK stages it was DG or FV, nullified after
+REAL,ALLOCATABLE       :: FV_Elems_Amount(:)     !< counts for every element the RK stages it was DG or FV, nullified after
 ! FV variables on reference element
 REAL,ALLOCATABLE       :: FV_X(:)                !< positions of 'midpoints' of FV subcells in [-1,1]
 REAL,ALLOCATABLE       :: FV_BdryX(:)            !< positions of boundaries of FV subcells in [-1,1]
@@ -48,8 +63,7 @@ REAL,ALLOCATABLE       :: FV_sVdm(:,:)           !< Vandermonde to switch from F
 
 
 #if FV_RECONSTRUCT
-REAL,ALLOCATABLE,TARGET:: FV_surf_gradU_slave (:,:,:,:) !< FD over DG interface
-REAL,ALLOCATABLE,TARGET:: FV_surf_gradU_master(:,:,:,:) !< FD over DG interface
+REAL,ALLOCATABLE,TARGET:: FV_surf_gradU(:,:,:,:) !< FD over DG interface
 REAL,ALLOCATABLE,TARGET:: FV_multi_master(:,:,:,:)      !< multipurpose array: contains: 
 REAL,ALLOCATABLE,TARGET:: FV_multi_slave(:,:,:,:)       !< - DG: first inner value of U next to the face
                                                         !< - FV: first inner gradient from points next and second next to face
@@ -79,9 +93,11 @@ REAL,ALLOCATABLE       :: FV_dx_master(:,:,:,:)  !< contains FV_dx_XI_L/FV_dx_XI
 REAL,ALLOCATABLE,TARGET:: gradUxi  (:,:,:,:,:)        !< FD in XI direction (PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems)
 REAL,ALLOCATABLE,TARGET:: gradUeta (:,:,:,:,:)        !< FD in ETA direction
 REAL,ALLOCATABLE,TARGET:: gradUzeta(:,:,:,:,:)        !< FD in ZETA direction
+#if PARABOLIC
 REAL,ALLOCATABLE       :: gradUxi_central  (:,:,:,:,:)!< FD in XI direction (central limited for viscous fluxes)
 REAL,ALLOCATABLE       :: gradUeta_central (:,:,:,:,:)!< FD in ETA direction (central limited for viscous fluxes)
 REAL,ALLOCATABLE       :: gradUzeta_central(:,:,:,:,:)!< FD in ZETA direction (central limited for viscous fluxes)
+#endif
 #endif
 
 ! Metric terms for FV Volint

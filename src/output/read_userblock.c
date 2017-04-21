@@ -9,14 +9,6 @@ long get_userblock_size_(void)
    return (unsigned long)(&userblock_size);
 }
 
-long get_inifile_size(char* filename) 
-{
-   FILE* fp = fopen(filename, "rb");
-   fseek(fp,0,SEEK_END);
-   long length=ftell(fp);
-   fclose(fp);
-   return length;
-}
 
 void insert_userblock(char* filename, char* inifilename) 
 {

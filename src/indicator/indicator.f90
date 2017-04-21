@@ -1,3 +1,16 @@
+!=================================================================================================================================
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
+! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+!
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+!
+! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+! of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License v3.0 for more details.
+!
+! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
+!=================================================================================================================================
 #include "flexi.h"
 #if EQNSYSNR == 2 /* NAVIER-STOKES */ 
 #include "eos.h"
@@ -93,6 +106,7 @@ CALL prms%CreateIntOption('IndVar',        "Specify variable upon which indicato
 CALL prms%CreateRealOption('IndStartTime', "Specify physical time when indicator evalution starts. Before this time"//&
                                            "a high indicator value is returned from indicator calculation."//&
                                            "(Idea: FV everywhere at begin of computation to smooth solution)", '0.0')
+CALL prms%CreateIntOption('nModes',        "Number of highest modes to be checked for Persson modal indicator.",'2')
 END SUBROUTINE DefineParametersIndicator
 
 
@@ -107,6 +121,8 @@ USE MOD_Indicator_Vars
 USE MOD_ReadInTools    ,ONLY: GETINT,GETREAL,GETINTFROMSTR
 USE MOD_Mesh_Vars      ,ONLY: nElems
 USE MOD_IO_HDF5        ,ONLY: AddToElemData
+USE MOD_Overintegration_Vars,ONLY:NUnder
+USE MOD_Filter_Vars,ONLY:NFilter
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -128,11 +144,23 @@ CASE(INDTYPE_JAMESON)
   CALL Abort(__STAMP__, &
       "Jameson indicator only works with FV_ENABLED.")
 #endif
+#if EQNSYSNR != 2 /* NOT NAVIER-STOKES */ 
+  CALL Abort(__STAMP__, &
+      "Jameson indicator only works with Navier-Stokes equations.")
+#endif /* EQNSYSNR != 2 */
 CASE(INDTYPE_DUCROS)
 #if !(PARABOLIC)
   CALL Abort(__STAMP__, &
       "Ducros indicator not available without PARABOLIC!")
 #endif
+#if EQNSYSNR != 2 /* NOT NAVIER-STOKES */ 
+  CALL Abort(__STAMP__, &
+      "Ducros indicator only works with Navier-Stokes equations.")
+#endif /* EQNSYSNR != 2 */
+CASE(INDTYPE_PERSSON)
+  ! number of modes to be checked by Persson indicator
+  nModes = GETINT('nModes','2')
+  nModes = MAX(1,nModes+PP_N-MIN(NUnder,NFilter))-1 ! increase by number of empty modes in case of overintegration
 CASE(-1) ! legacy
   IndicatorType=INDTYPE_DG
 END SELECT
@@ -140,7 +168,7 @@ END SELECT
 IndStartTime = GETREAL('IndStartTime')
 ALLOCATE(IndValue(nElems))
 IndValue=0.
-CALL AddToElemData('Indicator',RealArray=IndValue)
+CALL AddToElemData('IndValue',RealArray=IndValue)
 
 IndVar = GETINT('IndVar','1')
 
@@ -149,19 +177,19 @@ SWRITE(UNIT_stdOut,'(A)')' INIT INDICATOR DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitIndicator
 
+!==================================================================================================================================
+!> Perform calculation of the indicator.
+!==================================================================================================================================
 SUBROUTINE CalcIndicator(U,t)
-!==================================================================================================================================
-! Perform calculation of the limiter
-!==================================================================================================================================
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Indicator_Vars ,ONLY: IndicatorType,IndVar,IndValue,IndStartTime
+USE MOD_Indicator_Vars ,ONLY: IndicatorType,IndValue,IndStartTime
 USE MOD_Mesh_Vars      ,ONLY: offsetElem,Elem_xGP,nElems
 #if FV_ENABLED
 USE MOD_FV_Vars        ,ONLY: FV_Elems,FV_sVdm
 #endif /* FV_ENABLED */
-#if PARABOLIC
+#if PARABOLIC && EQNSYSNR == 2
 USE MOD_Lifting_Vars   ,ONLY: gradUx,gradUy,gradUz
 #endif
 USE MOD_ChangeBasis
@@ -169,10 +197,8 @@ USE MOD_ChangeBasis
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-! U
-REAL,INTENT(INOUT),TARGET :: U(1:PP_nVar,0:PP_N,0:PP_N,0:PP_N,1:nElems)
-REAL,INTENT(IN)           :: t
-! U
+REAL,INTENT(INOUT),TARGET :: U(1:PP_nVar,0:PP_N,0:PP_N,0:PP_N,1:nElems)   !< Solution
+REAL,INTENT(IN)           :: t                                            !< Simulation time
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                   :: iElem
@@ -204,7 +230,7 @@ CASE(INDTYPE_PERSSON) ! Modal Persson indicator
       U_P(1:PP_nVar,0:PP_N,0:PP_N,0:PP_N) => U_DG
     END IF
 #endif
-    IndValue(iElem) = IndPersson(U_P(IndVar,:,:,:))
+    IndValue(iElem) = IndPersson(U_P)
   END DO ! iElem
 #if EQNSYSNR == 2 /* NAVIER-STOKES */ 
 #if FV_ENABLED
@@ -241,33 +267,54 @@ END SELECT
 END SUBROUTINE CalcIndicator
 
 
-FUNCTION IndPersson(U) RESULT(IndValue)
 !==================================================================================================================================
 !> Determine, if given a modal representation solution "U_Modal" is oscillating
 !> Indicator value is scaled to \f$\sigma=0 \ldots 1\f$
 !> Suggested by Persson et al.
 !==================================================================================================================================
+FUNCTION IndPersson(U) RESULT(IndValue)
 USE MOD_PreProc
+USE MOD_Indicator_Vars,ONLY:nModes,IndVar
 USE MOD_Interpolation_Vars, ONLY:sVdm_Leg
+#if EQNSYSNR == 2 /* NAVIER-STOKES */ 
+USE MOD_EOS_Vars
+#endif /* NAVIER-STOKES */
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)    :: U(0:PP_N,0:PP_N,0:PP_N)
-REAL               :: IndValue
+REAL,INTENT(IN)    :: U(PP_nVar,0:PP_N,0:PP_N,0:PP_N)           !< Solution
+REAL               :: IndValue                                  !< Value of the indicator (Return Value)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: nDeg,iDeg,i,j,k,l
+INTEGER                              :: iDeg,i,j,k,l
+#if EQNSYSNR == 2 /* NAVIER-STOKES */ 
+REAL                                 :: UE(1:PP_2Var)
+#endif /* NAVIER-STOKES */
+REAL,DIMENSION(0:PP_N,0:PP_N,0:PP_N) :: U_loc
 REAL,DIMENSION(0:PP_N,0:PP_N,0:PP_N) :: U_Xi
 REAL,DIMENSION(0:PP_N,0:PP_N,0:PP_N) :: U_Eta
 REAL,DIMENSION(0:PP_N,0:PP_N,0:PP_N) :: U_Modal
 !==================================================================================================================================
+SELECT CASE (IndVar)
+CASE(1:PP_nVar)
+  U_loc = U(IndVar,:,:,:)
+#if EQNSYSNR == 2 /* NAVIER-STOKES */ 
+CASE(6)
+  DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    UE(CONS)=U(:,i,j,k)
+    UE(SRHO)=1./UE(DENS)
+    UE(VELV)=VELOCITY_HE(UE)
+    U_loc(i,j,k)=PRESSURE_HE(UE)
+  END DO; END DO; END DO! i,j,k=0,PP_N
+#endif /* NAVIER-STOKES */
+END SELECT
 
 ! Transform nodal solution to a modal representation
 U_Xi   = 0.
 U_Eta  = 0.
 U_Modal= 0.
 DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N; DO l=0,PP_N
-  U_Xi(i,j,k)    = U_Xi(i,j,k)    + sVdm_Leg(i,l)*U(l,j,k)
+  U_Xi(i,j,k)    = U_Xi(i,j,k)    + sVdm_Leg(i,l)*U_loc(l,j,k)
 END DO ; END DO ; END DO ; END DO 
 DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N; DO l=0,PP_N
   U_Eta(i,j,k)   = U_Eta(i,j,k)   + sVdm_Leg(j,l)*U_Xi(i,l,k) 
@@ -278,9 +325,7 @@ END DO ; END DO ; END DO ; END DO
 
 ! Adapted Persson indicator
 IndValue=TINY(0.)
-nDeg=MIN(PP_N-1,1)
-!nDeg=0
-DO iDeg=0,nDeg
+DO iDeg=0,nModes
   ! Build maximum of 1D indicators
   ! Xi
   IndValue=MAX(IndValue,SUM(U_Modal(PP_N-iDeg:PP_N-iDeg,:,:))**2 /  &
@@ -299,6 +344,9 @@ END FUNCTION IndPersson
 
 #if EQNSYSNR == 2 /* NAVIER-STOKES */ 
 #if PARABOLIC
+!==================================================================================================================================
+!> Indicator by Ducros.
+!==================================================================================================================================
 FUNCTION DucrosIndicator(gradUx, gradUy, gradUz) RESULT(IndValue) 
 USE MOD_PreProc
 USE MOD_Mesh_Vars          ,ONLY: nElems,sJ
@@ -306,11 +354,13 @@ USE MOD_Analyze_Vars       ,ONLY: wGPVol
 #if FV_ENABLED
 USE MOD_FV_Vars            ,ONLY: FV_Elems
 #endif
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES 
-REAL,INTENT(IN)    :: gradUx(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,1:nElems)
-REAL,INTENT(IN)    :: gradUy(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,1:nElems)
-REAL,INTENT(IN)    :: gradUz(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,1:nElems)
-REAL               :: IndValue(1:nElems)
+REAL,INTENT(IN)    :: gradUx(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,1:nElems)   !< Gradients in x-direction
+REAL,INTENT(IN)    :: gradUy(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,1:nElems)   !< Gradients in x-direction
+REAL,INTENT(IN)    :: gradUz(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,1:nElems)   !< Gradients in x-direction
+REAL               :: IndValue(1:nElems)                                  !< Value of the indicator (Return Value)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER :: i,j,k,iElem
@@ -340,6 +390,9 @@ END FUNCTION DucrosIndicator
 #endif /* PARABOLIC */
 
 #if FV_ENABLED
+!==================================================================================================================================
+!> Indicator by Jameson.
+!==================================================================================================================================
 FUNCTION JamesonIndicator(U) RESULT(IndValue)
 USE MOD_PreProc
 USE MOD_Globals
@@ -354,16 +407,17 @@ USE MOD_Mesh_Vars          ,ONLY: sJ
 USE MOD_Mappings           ,ONLY: SideToVol
 USE MOD_Analyze_Vars       ,ONLY: wGPVol
 USE MOD_ProlongToFace1     ,ONLY: ProlongToFace1
-#if MPI
+#if USE_MPI
 USE MOD_MPI_Vars           ,ONLY: MPIRequest_U,MPIRequest_Flux,nNbProcs
 USE MOD_MPI                ,ONLY: StartReceiveMPIData,StartSendMPIData,FinishExchangeMPIData
 #endif
 USE MOD_FillMortar1        ,ONLY: U_Mortar1,Flux_Mortar1
 USE MOD_FV_Vars            ,ONLY: FV_Elems,FV_Elems_master,FV_Elems_slave
+!----------------------------------------------------------------------------------------------------------------------------------
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
-REAL,INTENT(IN)           :: U(PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems)
-REAL                      :: IndValue(1:nElems)
+REAL,INTENT(IN)           :: U(PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems)              !< Solution
+REAL                      :: IndValue(1:nElems)                                  !< Value of the indicator (Return Value)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                      :: ElemVol,IntegrationWeight
@@ -406,11 +460,11 @@ FV_Elems_slave  = 1
 
 ! prolongate UJameson to the faces (FV everywhere) 
 ! and bring it from the big to the small mortar faces
-#if MPI
+#if USE_MPI
 CALL ProlongToFace1(PP_N,UJameson,UJameson_master,UJameson_slave,L_Minus,L_Plus,doMPiSides=.TRUE.)
 #endif
 CALL ProlongToFace1(PP_N,UJameson,UJameson_master,UJameson_slave,L_Minus,L_Plus,doMPiSides=.FALSE.)
-#if MPI
+#if USE_MPI
 ! revert the temporal forcing to use FV everywhere in the ProlongToFace
 FV_Elems        = TMP       
 FV_Elems_master = TMP_master
@@ -421,7 +475,7 @@ CALL U_Mortar1(UJameson_master,UJameson_slave,doMPiSides=.FALSE.)
 
 ! communicate UJameson_master from master to slave
 ! communicate UJameson_slave  from slave  to master
-#if MPI
+#if USE_MPI
 DataSizeSide_loc = (PP_N+1)**2
 CALL StartReceiveMPIData(UJameson_slave ,DataSizeSide_loc,1,nSides,MPIRequest_U(   :,SEND),SendID=2) !  U_slave: slave -> master
 CALL StartSendMPIData(   UJameson_slave ,DataSizeSide_loc,1,nSides,MPIRequest_U(   :,RECV),SendID=2) !  U_slave: slave -> master
@@ -433,21 +487,22 @@ CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Flux)
 
 ! bring UJameson from small to big mortar faces
 DO tf=0,1
-  CALL Flux_Mortar1(UJameson_master,UJameson_slave,doMPISides=(tf.EQ.0),weak=.FALSE.)
+  ! ATTENTION: call Flux_Mortar1 with swapped slave/master arguments, since we use it to bring the small
+  !            side UJameson to the big Mortar UJameson!
+  CALL Flux_Mortar1(UJameson_slave,UJameson_master,doMPISides=(tf.EQ.0),weak=.FALSE.)
   firstMortarSideID = MERGE(firstMortarMPISide,firstMortarInnerSide,tf.EQ.0) 
    lastMortarSideID = MERGE( lastMortarMPISide, lastMortarInnerSide,tf.EQ.0) 
   DO MortarSideID=firstMortarSideID,lastMortarSideID
     SELECT CASE(MortarType(1,MortarSideID))
     CASE(1) !1->4
-      UJameson_master(:,:,:,MortarSideID) = 0.25 * UJameson_master(:,:,:,MortarSideID)
+      UJameson_slave(:,:,:,MortarSideID) = 0.25 * UJameson_slave(:,:,:,MortarSideID)
     CASE(2) !1->2 in eta
-      UJameson_master(:,:,:,MortarSideID) = 0.5  * UJameson_master(:,:,:,MortarSideID)
+      UJameson_slave(:,:,:,MortarSideID) = 0.5  * UJameson_slave(:,:,:,MortarSideID)
     CASE(3) !1->2 in xi
-      UJameson_master(:,:,:,MortarSideID) = 0.5  * UJameson_master(:,:,:,MortarSideID)
+      UJameson_slave(:,:,:,MortarSideID) = 0.5  * UJameson_slave(:,:,:,MortarSideID)
     END SELECT
   END DO
 END DO
-
 
 ! evaluate the Jameson indicator for each element
 DO iElem=1,nElems

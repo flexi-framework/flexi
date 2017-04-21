@@ -9,9 +9,7 @@ PROGRAM ChangeBasisUnitTest
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_ChangeBasis,       ONLY: ChangeBasis2D,ChangeBasis2D_selective,ChangeBasis3D,ChangeBasis3D_XYZ
-USE MOD_Basis,             ONLY: EQUALTOTOLERANCE
-
+USE MOD_ChangeBasis,       ONLY: ChangeBasis2D,ChangeBasis3D,ChangeBasis3D_XYZ
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -92,10 +90,6 @@ UOut2D = UOut(:,:,:,0,:,1:3)
 ! Check ChangeBasis2D_Single
 CALL ChangeBasis2D(nVar,NIn,NOut,Vdm,UIn2D(:,:,:,1),UOut2D(:,:,:,1,1))
 
-! Check ChangeBasis2D_Mult
-CALL ChangeBasis2D_selective(nVar,NIn,NOut,1,nElems,2,nElems-1,Vdm,UIn2D,UOut2D(:,:,:,:,2),addToOutput=.FALSE.)
-CALL ChangeBasis2D_selective(nVar,NIn,NOut,1,nElems,2,nElems-1,Vdm,UIn2D,UOut2D(:,:,:,:,3),addToOutput=.TRUE.)
-
 IF (doGenerateReference) THEN
   ! Save the calculated solution to a binary file for later comparison
   OPEN(UNIT = 10, STATUS='replace',FILE=TRIM(BinaryString),FORM='unformatted')  ! replace an existing file or create a new one
@@ -116,7 +110,7 @@ ELSE
       DO iElem=1,nElems
         DO k=0,NIn; DO j=0,NIn; DO i=0,NIn
           DO iVar=1,nVar
-            equal = EQUALTOTOLERANCE(UOut(iVar,i,j,k,iElem,z),UOut_ref(iVar,i,j,k,iElem,z),50.*PP_RealTolerance) .AND. equal
+            equal = ALMOSTEQUALABSORREL(UOut(iVar,i,j,k,iElem,z),UOut_ref(iVar,i,j,k,iElem,z),50.*PP_RealTolerance) .AND. equal
           END DO
         END DO; END DO; END DO
       END DO
@@ -125,7 +119,7 @@ ELSE
       DO iElem=1,nElems
         DO j=0,NIn; DO i=0,NIn
           DO iVar=1,nVar
-            equal = EQUALTOTOLERANCE(UOut2D(iVar,i,j,iElem,z),UOut2D_ref(iVar,i,j,iElem,z),50.*PP_RealTolerance) .AND. equal
+            equal = ALMOSTEQUALABSORREL(UOut2D(iVar,i,j,iElem,z),UOut2D_ref(iVar,i,j,iElem,z),50.*PP_RealTolerance) .AND. equal
           END DO
         END DO; END DO
       END DO

@@ -36,7 +36,7 @@ INTEGER           :: NGeoRef                   !< polynomial degree of reference
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 REAL,ALLOCATABLE,TARGET :: NodeCoords(:,:,:,:,:) !< XYZ positions (equidistant,NGeo) of element interpolation points from meshfile
-REAL,ALLOCATABLE :: Elem_xGP(:,:,:,:,:)          !< XYZ positions (first index 1:3) of the volume Gauss Point
+REAL,ALLOCATABLE,TARGET :: Elem_xGP(:,:,:,:,:)          !< XYZ positions (first index 1:3) of the volume Gauss Point
 REAL,ALLOCATABLE :: Elem_xGPO(:,:,:,:,:)         !< XYZ positions (first index 1:3) of the volume Gauss Point
 REAL,ALLOCATABLE :: Face_xGP(:,:,:,:,:)          !< XYZ positions (first index 1:3) of the Face Gauss Point
 REAL,ALLOCATABLE :: Face_xGPO(:,:,:,:,:)         !< XYZ positions (first index 1:3) of the Face Gauss Point
@@ -106,11 +106,8 @@ REAL   ,PARAMETER :: NormalSigns(6)= (/-1.,-1., 1., 1.,-1., 1./) !< normal vecto
 !----------------------------------------------------------------------------------------------------------------------------------
 INTEGER,ALLOCATABLE :: FS2M(:,:,:,:)     !< flip slave side to master and reverse
 INTEGER,ALLOCATABLE :: V2S(:,:,:,:,:,:)  !< volume to side mapping
-INTEGER,ALLOCATABLE :: V2S2(:,:,:,:,:)   !< volume to side mapping 2
 INTEGER,ALLOCATABLE :: S2V(:,:,:,:,:,:)  !< side to volume
 INTEGER,ALLOCATABLE :: S2V2(:,:,:,:,:)   !< side to volume 2
-INTEGER,ALLOCATABLE :: S2V3(:,:,:,:,:)   !< side to volume 3
-INTEGER,ALLOCATABLE :: CS2V2(:,:,:,:)    !< CGNS side to volume 2
 !----------------------------------------------------------------------------------------------------------------------------------
 INTEGER             :: nGlobalElems=0          !< number of elements in mesh
 INTEGER             :: nElems=0                !< number of local elements
@@ -126,6 +123,11 @@ INTEGER             :: nMPISides_MINE=0        !< number of MINE MPI sides (on l
 INTEGER             :: nMPISides_YOUR=0        !< number of YOUR MPI sides (on neighbour processors)
 INTEGER             :: nBCs=0                  !< number of BCs in mesh
 INTEGER             :: nUserBCs=0              !< number of BC in inifile
+!----------------------------------------------------------------------------------------------------------------------------------
+! ijk sorted meshes
+INTEGER             :: nElems_IJK(3)           !< Global number of elements in i,j,k direction
+INTEGER,ALLOCATABLE :: Elem_IJK(:,:)          !< Mapping from space-filling curved sorted element index to ijk sorted index,
+                                               !< first index 1:3 (i,j,k), last index iElem
 !----------------------------------------------------------------------------------------------------------------------------------
 ! Define index ranges for all sides in consecutive order for easier access
 INTEGER             :: firstBCSide             !< First SideID of BCs (in general 1)

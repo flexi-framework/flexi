@@ -69,9 +69,11 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: NLoc
-REAL,DIMENSION(PP_nVar    ,0:NLoc,0:NLoc,0:NLoc),INTENT(IN)  :: U
-REAL,DIMENSION(PP_nVarPrim,0:NLoc,0:NLoc,0:NLoc),INTENT(IN)  :: UPrim
-REAL,DIMENSION(PP_nVar    ,0:NLoc,0:NLoc,0:NLoc),INTENT(OUT) :: f,g,h    ! Cartesian fluxes (iVar,i,j,k)
+REAL,DIMENSION(PP_nVar    ,0:NLoc,0:NLoc,0:NLoc),INTENT(IN)  :: U        !< Conservative solution
+REAL,DIMENSION(PP_nVarPrim,0:NLoc,0:NLoc,0:NLoc),INTENT(IN)  :: UPrim    !< Primitive solution
+REAL,DIMENSION(PP_nVar    ,0:NLoc,0:NLoc,0:NLoc),INTENT(OUT) :: f        !< Cartesian flux in x (iVar,i,j,k)
+REAL,DIMENSION(PP_nVar    ,0:NLoc,0:NLoc,0:NLoc),INTENT(OUT) :: g        !< Cartesian flux in y (iVar,i,j,k)
+REAL,DIMENSION(PP_nVar    ,0:NLoc,0:NLoc,0:NLoc),INTENT(OUT) :: h        !< Cartesian flux in z (iVar,i,j,k)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                :: Ep

@@ -23,10 +23,12 @@ SAVE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
+INTEGER                :: NFilter
 INTEGER                :: FilterType            !< filter to be applied 0: no filter, 1: cut-off filter, 2 :Hesthaven filter
 REAL                   :: HestFilterParam(3)    !< filter parameters for modal Hesthaven style filter
 REAL,ALLOCATABLE       :: FilterMat(:,:)        !< 1D nodal filter matrix
 LOGICAL                :: FilterInitIsDone = .FALSE. !< filter routines have been initialized
+#if EQNSYSNR==2
 REAL,ALLOCATABLE       :: lim(:),eRatio(:),r(:) !< Analysis data for LAF model
 REAL,ALLOCATABLE       :: ekin_avg_old(:)       !< cell integral value for ekin avg (LAF)
 REAL,ALLOCATABLE       :: ekin_fluc_avg_old(:)  !< cell integral value for ekin fluc avg (LAF))
@@ -35,5 +37,6 @@ REAL,ALLOCATABLE       :: Integrationweight(:,:,:,:)  !< integration weights (LA
 REAL                   :: normMod               !< spectral normalization (LAF) 
 REAL,ALLOCATABLE       :: J_N(:,:,:)            !< Jacobi for volume integral (LAF) 
 REAL                   :: LAF_alpha             !< Relaxation factor (LAF)
+#endif
 !==================================================================================================================================
 END MODULE MOD_Filter_Vars

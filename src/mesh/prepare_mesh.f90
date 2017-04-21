@@ -33,7 +33,7 @@ END INTERFACE
 
 PUBLIC::setLocalSideIDs,fillMeshInfo
 
-#if MPI
+#if USE_MPI
 INTERFACE exchangeFlip
   MODULE PROCEDURE exchangeFlip
 END INTERFACE
@@ -64,7 +64,7 @@ USE MOD_Mesh_Vars,  ONLY:tElem,tSide
 USE MOD_Mesh_Vars,  ONLY: nElems,nInnerSides,nSides,nBCSides,offsetElem
 USE MOD_Mesh_Vars,  ONLY: Elems,nMPISides_MINE,nMPISides_YOUR,BoundaryType,nBCs
 USE MOD_Mesh_Vars,  ONLY: nMortarSides,nMortarInnerSides,nMortarMPISides
-#if MPI
+#if USE_MPI
 USE MOD_ReadInTools,ONLY: GETLOGICAL
 USE MOD_MPI_Vars
 #endif
@@ -79,7 +79,7 @@ INTEGER   :: iLocSide,iSide,iInnerSide,iBCSide
 INTEGER   :: iMortar,iMortarInnerSide,iMortarMPISide,nMortars
 INTEGER   :: i,j
 INTEGER   :: PeriodicBCMap(nBCs)       !connected periodic BCs
-#if MPI
+#if USE_MPI
 INTEGER   :: nSmallMortarSides
 INTEGER   :: nSmallMortarInnerSides
 INTEGER   :: nSmallMortarMPISides_MINE
@@ -211,7 +211,7 @@ LOGWRITE(*,*)'-------------------------------------------------------'
 
 nMPISides_MINE=0
 nMPISides_YOUR=0
-#if MPI
+#if USE_MPI
 ! SPLITTING MPISides in MINE and YOURS
 ALLOCATE(nMPISides_MINE_Proc(1:nNbProcs),nMPISides_YOUR_Proc(1:nNbProcs))
 nMPISides_MINE_Proc=0
@@ -487,9 +487,8 @@ NBinfo(6,1:nNBProcs)=offsetMPISides_YOUR(0:nNBProcs-1)
 CALL MPI_GATHER(NBinfo,6*nNBmax,MPI_INTEGER,NBinfo_glob,6*nNBmax,MPI_INTEGER,0,MPI_COMM_WORLD,iError)
 DEALLOCATE(NBinfo)
 IF(MPIroot)THEN
-  ioUnit=GETFREEUNIT()
   WRITE(PartitionInfoFileName,'(A21,I6.6,A4)')'partitionInfo_nRanks_',nProcessors,'.out'
-  OPEN(UNIT=ioUnit,FILE=TRIM(PartitionInfoFileName),STATUS='REPLACE')
+  OPEN(NEWUNIT=ioUnit,FILE=TRIM(PartitionInfoFileName),STATUS='REPLACE')
   WRITE(ioUnit,*)'Partition Information:'
   WRITE(ioUnit,*)'total number of Procs,',nProcessors
   WRITE(ioUnit,*)'total number of Elems,',SUM(Procinfo_glob(1,:))
@@ -575,7 +574,7 @@ IF(MPIroot)THEN
   CLOSE(ioUnit)
 END IF !MPIroot
 DEALLOCATE(NBinfo_glob,nNBProcs_glob,ProcInfo_glob)
-#endif /*MPI*/
+#endif /*USE_MPI*/
 END SUBROUTINE setLocalSideIDs
 
 
@@ -596,7 +595,7 @@ USE MOD_Mesh_Vars,ONLY: nElems,offsetElem,nBCSides
 USE MOD_Mesh_Vars,ONLY: firstMortarInnerSide,lastMortarInnerSide,nMortarInnerSides,firstMortarMPISide
 USE MOD_Mesh_Vars,ONLY: ElemToSide,SideToElem,BC,AnalyzeSide
 USE MOD_Mesh_Vars,ONLY: MortarType,MortarInfo
-#if MPI
+#if USE_MPI
 USE MOD_MPI_Vars
 #endif
 IMPLICIT NONE
@@ -661,7 +660,7 @@ DO iElem=1,nElems
   END DO ! LocSideID
 END DO ! iElem
 
-#if MPI
+#if USE_MPI
 IF(MPIroot)THEN
   CALL MPI_REDUCE(MPI_IN_PLACE,nSides_flip,5,MPI_INTEGER,MPI_SUM,0,MPI_COMM_WORLD,iError)
 ELSE
@@ -672,7 +671,7 @@ IF(MPIroot)THEN
 ELSE
   CALL MPI_REDUCE(nSides_MortarType,nSides_MortarType,3,MPI_INTEGER,MPI_SUM,0,MPI_COMM_WORLD,iError)
 END IF
-#endif /*MPI*/
+#endif /*USE_MPI*/
 SWRITE(UNIT_StdOut,'(132("."))')
 SWRITE(*,'(A,A34,I0)')' |','nSides with Flip=0     | ',nSides_flip(0)
 SWRITE(*,'(A,A34,I0)')' |','nSides with Flip=1     | ',nSides_flip(1)
@@ -710,7 +709,7 @@ LOGWRITE(*,*)'============================= END SIDE CHECKER ===================
 END SUBROUTINE fillMeshInfo
 
 
-#if MPI
+#if USE_MPI
 !==================================================================================================================================
 !> This routine communicates the flip between MPI sides, as the flip determines wheter
 !> a side is a master or a slave side. The flip of MINE sides is set to zero, therefore

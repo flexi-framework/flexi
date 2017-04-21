@@ -183,12 +183,12 @@ CASE(SPONGEBASEFLOW_PRUETT) ! Pruett
   CalcPruettDamping=.TRUE.
   CALL InitPruettDamping()
   IF(DoRestart)THEN
-    BaseFlowFile    = GETSTR('SpongeBaseFlowFile','')
-    IF (TRIM(BaseFlowFile) .EQ. '') THEN
+    BaseFlowFile    = GETSTR('SpongeBaseFlowFile','none')
+    IF (TRIM(BaseFlowFile) .EQ. 'none') THEN
       ! If no base flow file has been specified, assume a standard name for the base flow file
       BaseFlowFile=TRIM(TIMESTAMP(TRIM(ProjectName)//'_BaseFlow',RestartTime))//'.h5'
       ! Check if this file exists
-      INQUIRE(FILE=TRIM(BaseFlowFile),EXIST=validBaseFlowFile)
+      validBaseFlowFile = FILEEXISTS(BaseFlowFile)
       IF (.NOT.validBaseFlowFile) THEN
         ! If the assumed base flow file does not exist, use the restart state to initialize the sponge base flow
         BaseFlowFile = RestartFile
@@ -196,7 +196,7 @@ CASE(SPONGEBASEFLOW_PRUETT) ! Pruett
       END IF
     ELSE
       ! check if baseflow exists
-      INQUIRE(FILE=TRIM(BaseFlowFile),EXIST=validBaseFlowFile)
+      validBaseFlowFile = FILEEXISTS(BaseFlowFile)
       IF (.NOT.validBaseFlowFile) THEN
         CALL CollectiveStop(__STAMP__,&
           'ERROR: Sponge base flow file '//TRIM(BaseFlowFile)//' does not exist.')
@@ -217,7 +217,7 @@ SELECT CASE(SpBaseflowType)
 CASE(SPONGEBASEFLOW_CONSTANT) ! constant baseflow from refstate
   DO iElem=1,nElems
     DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
-      SpBaseFlow(:,i,j,k,iElem)=RefStateCons(spongeRefState,:)
+      SpBaseFlow(:,i,j,k,iElem)=RefStateCons(:,spongeRefState)
     END DO; END DO; END DO
   END DO
 CASE(SPONGEBASEFLOW_EXACTFUNC) ! Exactfunction
@@ -277,7 +277,7 @@ USE MOD_Interpolation     ,ONLY:GetVandermonde
 USE MOD_Output_Vars       ,ONLY:NVisu,Vdm_GaussN_NVisu
 USE MOD_ChangeBasis       ,ONLY:ChangeBasis3D
 USE MOD_Mesh_Vars         ,ONLY:sJ,nElems
-USE MOD_VTK               ,ONLY:WriteDataToVTK3D
+USE MOD_VTK               ,ONLY:WriteDataToVTK
  IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -289,7 +289,9 @@ INTEGER                                :: iElem,iSpongeElem,i,j,k
 CHARACTER(LEN=255)                     :: FileString,VarNameSponge(1)
 REAL,DIMENSION(  0:PP_N,0:PP_N,0:PP_N) :: sigma, x_star
 REAL                                   :: r_vec(3), r_vec2(3)
-REAL,ALLOCATABLE                       :: SpongeMat_NVisu(:,:,:,:,:),Coords_NVisu(:,:,:,:,:),SpDummy(:,:,:,:)
+REAL,ALLOCATABLE,TARGET                :: SpongeMat_NVisu(:,:,:,:,:),Coords_NVisu(:,:,:,:,:),SpDummy(:,:,:,:)
+REAL,POINTER                           :: SpongeMat_NVisu_p(:,:,:,:,:)
+REAL,POINTER                           :: Coords_NVisu_p(:,:,:,:,:)
 !==================================================================================================================================
 SWRITE(UNIT_StdOut,'(A)') '  Initialize Sponge Ramping Function...'
 
@@ -371,7 +373,9 @@ IF(SpongeViz) THEN
     CALL ChangeBasis3D(1,PP_N,NVisu,Vdm_GaussN_NVisu,SpDummy(1:1,:,:,:),SpongeMat_NVisu(1:1,:,:,:,iElem))
   END DO !SpongeElem=1,nSpongeElems
   VarNameSponge(1)='dSponge'
-  CALL WriteDataToVTK3D(NVisu,nElems,1,VarNameSponge,Coords_NVisu(1:3,:,:,:,:),SpongeMat_NVisu,TRIM(FileString))
+  Coords_NVisu_p => Coords_NVisu
+  SpongeMat_NVisu_p => SpongeMat_NVisu
+  CALL WriteDataToVTK(1,NVisu,nElems,VarNameSponge,Coords_NVisu_p,SpongeMat_NVisu_p,TRIM(FileString),dim=3)
   DEALLOCATE(Coords_NVisu)
   DEALLOCATE(SpongeMat_NVisu)
   DEALLOCATE(SpDummy)

@@ -1,4 +1,17 @@
-#if FV_ENABLED && FV_RECONSTRUCT
+!=================================================================================================================================
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
+! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+!
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+!
+! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+! of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License v3.0 for more details.
+!
+! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
+!=================================================================================================================================
+#if FV_ENABLED
 #include "flexi.h"
 
 !==================================================================================================================================
@@ -9,6 +22,7 @@ MODULE MOD_FV_Limiter
 IMPLICIT NONE
 PRIVATE
 
+#if FV_RECONSTRUCT
 INTEGER,PARAMETER :: FV_LIMITERTYPE_NULL    = 0
 INTEGER,PARAMETER :: FV_LIMITERTYPE_MINMOD  = 1
 INTEGER,PARAMETER :: FV_LIMITERTYPE_SWEBY   = 2
@@ -36,7 +50,11 @@ PUBLIC::InitFV_Limiter
 PUBLIC::FV_Limiter
 !==================================================================================================================================
 
+#endif /* FV_RECONSTRUCT */
+
 CONTAINS
+
+#if FV_RECONSTRUCT
 
 !==================================================================================================================================
 !> Define parameters for FV Limiter
@@ -48,9 +66,8 @@ USE MOD_ReadInTools ,ONLY: prms,addStrListEntry
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !==================================================================================================================================
-CALL prms%SetSection('FV_Limiter')
-CALL prms%CreateIntFromStringOption('FV_LimiterType',"none (0): NullLimiter (no reconstruction), minmod (1): MinMod limiter,"//&
-                                              "sweby (2): Sweby limiter, central (9): Central limiter (UNSTABLE)", '1')
+CALL prms%SetSection('FV')
+CALL prms%CreateIntFromStringOption('FV_LimiterType',"Type of slope limiter of second order reconstruction", '1')
 CALL addStrListEntry('FV_LimiterType','none',   FV_LIMITERTYPE_NULL)
 CALL addStrListEntry('FV_LimiterType','minmod', FV_LIMITERTYPE_MINMOD)
 CALL addStrListEntry('FV_LimiterType','sweby',  FV_LIMITERTYPE_SWEBY)
@@ -97,8 +114,9 @@ PURE SUBROUTINE NullLimiter(sL, sR, s)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(IN)  :: sL(PP_nVarPrim),sR(PP_nVarPrim)
-REAL,INTENT(OUT) :: s(PP_nVarPrim)
+REAL,INTENT(IN)  :: sL(PP_nVarPrim) !< left slope
+REAL,INTENT(IN)  :: sR(PP_nVarPrim) !< right slope
+REAL,INTENT(OUT) :: s(PP_nVarPrim)  !< limited slope
 !==================================================================================================================================
 #ifdef DEBUG
 ! Dummy access to remove compiler warnings
@@ -117,8 +135,9 @@ PURE SUBROUTINE MinMod(sL, sR, s)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(IN)  :: sL(PP_nVarPrim),sR(PP_nVarPrim)
-REAL,INTENT(OUT) :: s(PP_nVarPrim)
+REAL,INTENT(IN)  :: sL(PP_nVarPrim) !< left slope
+REAL,INTENT(IN)  :: sR(PP_nVarPrim) !< right slope
+REAL,INTENT(OUT) :: s(PP_nVarPrim)  !< limited slope
 !==================================================================================================================================
 ! MinMod
 s = MERGE(sL,sR, ABS(sL) .LT. ABS(sR))
@@ -139,8 +158,9 @@ USE MOD_FV_Vars ,ONLY: FV_sweby_beta
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(IN)  :: sL(PP_nVarPrim),sR(PP_nVarPrim)
-REAL,INTENT(OUT) :: s(PP_nVarPrim)
+REAL,INTENT(IN)  :: sL(PP_nVarPrim) !< left slope
+REAL,INTENT(IN)  :: sR(PP_nVarPrim) !< right slope
+REAL,INTENT(OUT) :: s(PP_nVarPrim)  !< limited slope
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
 REAL :: sa(PP_nVarPrim),sb(PP_nVarPrim)
@@ -158,13 +178,16 @@ PURE SUBROUTINE CentralLimiter(sL, sR, s)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(IN)  :: sL(PP_nVarPrim),sR(PP_nVarPrim)
-REAL,INTENT(OUT) :: s(PP_nVarPrim)
+REAL,INTENT(IN)  :: sL(PP_nVarPrim) !< left slope
+REAL,INTENT(IN)  :: sR(PP_nVarPrim) !< right slope
+REAL,INTENT(OUT) :: s(PP_nVarPrim)  !< limited slope
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
 !==================================================================================================================================
 s = (sL+sR)/2.0
 END SUBROUTINE CentralLimiter
 
+#endif /* FV_RECONSTRUCT */
+
 END MODULE MOD_FV_Limiter
-#endif /* FV_ENABLED && FV_RECONSTRUCT */
+#endif /* FV_ENABLED */

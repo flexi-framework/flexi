@@ -89,7 +89,7 @@ for grid in grids :
         print_header(['grid '] + len(L2)*['L2 err   EOC     '] + len(Linf)*['Linf err  EOC    '])
 
         # print initial values
-        print_values([x_array[i-1]]+L2+Linf, ["%03d  "] + (len(L2)+len(Linf)) * ["%8.4f         "])
+        print_values([x_array[i-1]]+L2+Linf, ["%03d  "] + (len(L2)+len(Linf)) * ["%8.4e         "])
     else :
         # print L2, Linf errors and EOC
         vals = [x_array[i-1]]
@@ -101,7 +101,7 @@ for grid in grids :
             conv = math.log(last_Linf[j] / Linf[j]) / math.log(x_array[i-1]/float(x_array[i-2]))
             vals.append(Linf[j])
             vals.append(conv)
-        print_values(vals, ["%03d  "] + (len(L2)+len(Linf)) * ["%8.4f","%8.4f"])
+        print_values(vals, ["%03d  "] + (len(L2)+len(Linf)) * ["%8.2e","%8.4f"])
     
     if len(L2) < 5:
       index = 0

@@ -199,11 +199,11 @@ END DO ! iElem=1,nElems
 
 TimeStep(1)=TimeStepConv
 TimeStep(2)=TimeStepVisc
-#if MPI
+#if USE_MPI
 TimeStep(3)=-errType ! reduce with timestep, minus due to MPI_MIN
 CALL MPI_ALLREDUCE(MPI_IN_PLACE,TimeStep,3,MPI_DOUBLE_PRECISION,MPI_MIN,MPI_COMM_WORLD,iError)
 errType=INT(-TimeStep(3))
-#endif /*MPI*/
+#endif /*USE_MPI*/
 ViscousTimeStep=(TimeStep(2) .LT. TimeStep(1))
 CalcTimeStep=MINVAL(TimeStep(1:2))
 END FUNCTION CALCTIMESTEP

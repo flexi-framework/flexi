@@ -91,7 +91,7 @@ USE MOD_ReadInTools ,ONLY: prms
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Testcase")
-CALL prms%CreateIntOption('nWriteStats', "Write testcase statistics to file at every n-th AnalyzeTestcase step.", '1')
+CALL prms%CreateIntOption('nWriteStats', "Write testcase statistics to file at every n-th AnalyzeTestcase step.", '100')
 CALL prms%CreateIntOption('nAnalyzeTestCase', "Call testcase specific analysis routines every n-th timestep. "//&
                                               "(Note: always called at global analyze level)", '1000')
 END SUBROUTINE DefineParametersTestcase
@@ -112,7 +112,6 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-LOGICAL                  :: fileExists                   ! Error handler for file
 INTEGER                  :: ioUnit,openStat
 REAL                     :: c1
 !==================================================================================================================================
@@ -124,7 +123,7 @@ CALL CollectiveStop(__STAMP__, &
   'The testcase has not been implemented for FV yet!')
 #endif
 
-nWriteStats  = GETINT('nWriteStats','1')
+nWriteStats  = GETINT('nWriteStats','100')
 nAnalyzeTestCase = GETINT( 'nAnalyzeTestCase','1000')
 !uBulkScale=0.98
 uBulkScale=1.
@@ -137,9 +136,9 @@ uBulk=uBulk/Re_tau
 !prevent wrong pressure in channel testcase
 IF(MPIRoot) THEN
   WRITE(*,*) 'Bulk velocity based on initial velocity Profile =',uBulk
-  WRITE(*,*) 'Associated Pressure for Mach = 0.1 is', (uBulk/0.1)**2*RefStatePrim(IniRefState,1)/kappa
-  IF (ABS(RefStatePrim(IniRefState,5)- (uBulk/0.1)**2*RefStatePrim(IniRefState,1)/kappa)/(uBulk/0.1)**2&
-    *RefStatePrim(IniRefState,1)/kappa .GT. 0.01) THEN
+  WRITE(*,*) 'Associated Pressure for Mach = 0.1 is', (uBulk/0.1)**2*RefStatePrim(1,IniRefState)/kappa
+  IF (ABS(RefStatePrim(5,IniRefState)- (uBulk/0.1)**2*RefStatePrim(1,IniRefState)/kappa)/(uBulk/0.1)**2&
+    *RefStatePrim(1,IniRefState)/kappa .GT. 0.01) THEN
     CALL abort(__STAMP__,'RefState incorrect, correct pressure in parameter file')
   END IF
 END IF
@@ -150,10 +149,8 @@ IF(.NOT.MPIRoot) RETURN
 
 ALLOCATE(writeBuf(3,nWriteStats))
 Filename = TRIM(ProjectName)//'_Stats.dat'
-INQUIRE(FILE = Filename, EXIST = fileExists)
-IF(.NOT.fileExists)THEN ! File exists and append data
-  ioUnit=GETFREEUNIT()
-  OPEN(UNIT   = ioUnit       ,&
+IF(.NOT.FILEEXISTS(Filename))THEN ! File exists and append data
+  OPEN(NEWUNIT= ioUnit       ,&
        FILE   = Filename     ,&
        STATUS = 'Unknown'    ,&
        ACCESS = 'SEQUENTIAL' ,&
@@ -194,7 +191,7 @@ REAL                            :: yplus,prim(PP_nVarPrim),amplitude
 !==================================================================================================================================
 !Channel Testcase: set mu0 = 1/Re_tau, rho=1, pressure adapted, Mach=0.1 according to Moser!!
 !and hence: u_tau=tau=-dp/dx=1, and t=t+=u_tau*t/delta
-Prim(:) = RefStatePrim(IniRefState,:) ! prim=(/1.,0.3,0.,0.,0.71428571/)
+Prim(:) = RefStatePrim(:,IniRefState) ! prim=(/1.,0.3,0.,0.,0.71428571/)
 IF(x(2).LE.0) THEN
   yPlus = (x(2)+1.)*Re_tau ! Re_tau=590
 ELSE
@@ -244,7 +241,7 @@ USE MOD_DG_Vars,        ONLY: U
 USE MOD_Mesh_Vars,      ONLY: sJ
 USE MOD_Analyze_Vars,   ONLY: wGPVol,Vol
 USE MOD_Mesh_Vars,      ONLY: nElems
-#if MPI
+#if USE_MPI
 USE MOD_MPI_Vars
 #endif
 IMPLICIT NONE
@@ -262,7 +259,7 @@ DO iElem=1,nElems
   END DO; END DO; END DO
 END DO
 
-#if MPI
+#if USE_MPI
 CALL MPI_ALLREDUCE(MPI_IN_PLACE,BulkVel,1,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,iError)
 #endif
 BulkVel = BulkVel/Vol
@@ -307,22 +304,24 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                  :: ioUnit,openStat
+INTEGER                  :: ioUnit,openStat,i
 !==================================================================================================================================
-ioUnit=GETFREEUNIT()
-OPEN(UNIT     = ioUnit     , &
+OPEN(NEWUNIT  = ioUnit     , &
      FILE     = Filename   , &
      FORM     = 'FORMATTED', &
      STATUS   = 'OLD'      , &
      POSITION = 'APPEND'   , &
      RECL     = 50000      , &
-     IOSTAT = openStat           )
+     IOSTAT = openStat       )
 IF(openStat.NE.0) THEN
   CALL abort(__STAMP__, &
     'ERROR: cannot open '//TRIM(Filename))
 END IF
-WRITE(ioUnit,'(3E23.14)') writeBuf(:,1:ioCounter)
+DO i=1,ioCounter
+  WRITE(ioUnit,'(3E23.14)') writeBuf(:,i)
+END DO
 CLOSE(ioUnit)
+ioCounter=0
 
 END SUBROUTINE WriteStats
 
@@ -344,10 +343,7 @@ REAL,INTENT(IN)                 :: Time                   !< simulation time
 IF(MPIRoot)THEN
   ioCounter=ioCounter+1
   writeBuf(:,ioCounter) = (/Time, dpdx, BulkVel/)
-  IF(ioCounter.EQ.nWriteStats)THEN
-    CALL WriteStats()
-    ioCounter=0
-  END IF
+  IF(ioCounter.GE.nWriteStats) CALL WriteStats()
 END IF
 END SUBROUTINE AnalyzeTestCase
 
@@ -364,60 +360,56 @@ IF(MPIRoot) DEALLOCATE(writeBuf)
 END SUBROUTINE
 
 
+
 SUBROUTINE GetBoundaryFluxTestcase(SideID,t,Nloc,Flux,UPrim_master,                   &
 #if PARABOLIC
                            gradUx_master,gradUy_master,gradUz_master,&
 #endif
                            NormVec,TangVec1,TangVec2,Face_xGP)
 ! MODULES
-USE MOD_PreProc
-USE MOD_Mesh_Vars    ,ONLY: nSides
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)   :: SideID  
 REAL,INTENT(IN)      :: t       !< current time (provided by time integration scheme)
 INTEGER,INTENT(IN)   :: Nloc    !< polynomial degree
-REAL,INTENT(IN)      :: UPrim_master( PP_nVarPrim,0:Nloc,0:Nloc,1:nSides) !< inner surface solution
+REAL,INTENT(IN)      :: UPrim_master( PP_nVarPrim,0:Nloc,0:Nloc) !< inner surface solution
 #if PARABOLIC
                                                            !> inner surface solution gradients in x/y/z-direction
-REAL,INTENT(IN)      :: gradUx_master(PP_nVarPrim,0:Nloc,0:Nloc,1:nSides)
-REAL,INTENT(IN)      :: gradUy_master(PP_nVarPrim,0:Nloc,0:Nloc,1:nSides)
-REAL,INTENT(IN)      :: gradUz_master(PP_nVarPrim,0:Nloc,0:Nloc,1:nSides)
+REAL,INTENT(IN)      :: gradUx_master(PP_nVarPrim,0:Nloc,0:Nloc)
+REAL,INTENT(IN)      :: gradUy_master(PP_nVarPrim,0:Nloc,0:Nloc)
+REAL,INTENT(IN)      :: gradUz_master(PP_nVarPrim,0:Nloc,0:Nloc)
 #endif /*PARABOLIC*/
                                                            !> normal and tangential vectors on surfaces
-REAL,INTENT(IN)      :: NormVec (3,0:Nloc,0:Nloc,0:FV_ENABLED,1:nSides)
-REAL,INTENT(IN)      :: TangVec1(3,0:Nloc,0:Nloc,0:FV_ENABLED,1:nSides)
-REAL,INTENT(IN)      :: TangVec2(3,0:Nloc,0:Nloc,0:FV_ENABLED,1:nSides)
-REAL,INTENT(IN)      :: Face_xGP(3,0:Nloc,0:Nloc,0:FV_ENABLED,1:nSides) !< positions of surface flux points
-REAL,INTENT(OUT)     :: Flux(PP_nVar,0:Nloc,0:Nloc,1:nSides)  !< resulting boundary fluxes
+REAL,INTENT(IN)      :: NormVec (3,0:Nloc,0:Nloc)
+REAL,INTENT(IN)      :: TangVec1(3,0:Nloc,0:Nloc)
+REAL,INTENT(IN)      :: TangVec2(3,0:Nloc,0:Nloc)
+REAL,INTENT(IN)      :: Face_xGP(3,0:Nloc,0:Nloc)    !< positions of surface flux points
+REAL,INTENT(OUT)     :: Flux(PP_nVar,0:Nloc,0:Nloc)  !< resulting boundary fluxes
 !==================================================================================================================================
 END SUBROUTINE GetBoundaryFluxTestcase
 
 
 SUBROUTINE GetBoundaryFVgradientTestcase(SideID,t,gradU,UPrim_master)
 USE MOD_PreProc
-USE MOD_Mesh_Vars    ,ONLY: nSides
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: SideID
-REAL,INTENT(IN)    :: t
-REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
-REAL,INTENT(OUT)   :: gradU       (PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)
+REAL,INTENT(IN)    :: t                                       !< current time (provided by time integration scheme)
+REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_N) !< primitive solution from the inside
+REAL,INTENT(OUT)   :: gradU       (PP_nVarPrim,0:PP_N,0:PP_N) !< FV boundary gradient
 !==================================================================================================================================
 END SUBROUTINE GetBoundaryFVgradientTestcase
 
 
 SUBROUTINE Lifting_GetBoundaryFluxTestcase(SideID,t,UPrim_master,Flux)
 USE MOD_PreProc
-USE MOD_Mesh_Vars    ,ONLY: nSides
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: SideID
-REAL,INTENT(IN)    :: t                                    !< current time (provided by time integration scheme)
-REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< primitive solution from the inside
-REAL,INTENT(OUT)   :: Flux(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< lifting boundary flux
+REAL,INTENT(IN)    :: t                                       !< current time (provided by time integration scheme)
+REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_N) !< primitive solution from the inside
+REAL,INTENT(OUT)   :: Flux(        PP_nVarPrim,0:PP_N,0:PP_N) !< lifting boundary flux
 !==================================================================================================================================
 END SUBROUTINE Lifting_GetBoundaryFluxTestcase
-
 
 END MODULE MOD_Testcase

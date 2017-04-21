@@ -53,7 +53,17 @@ INTERFACE ReadMesh
   MODULE PROCEDURE ReadMesh
 END INTERFACE
 
+INTERFACE BuildPartition
+  MODULE PROCEDURE BuildPartition
+END INTERFACE
+
+INTERFACE ReadIJKSorting
+  MODULE PROCEDURE ReadIJKSorting
+END INTERFACE
+
 PUBLIC::ReadMesh
+PUBLIC::BuildPartition
+PUBLIC::ReadIJKSorting
 !==================================================================================================================================
 
 CONTAINS
@@ -123,7 +133,7 @@ IF((HSize(1).NE.4).OR.(HSize(2).NE.nBCs)) STOP 'Problem in readBC'
 DEALLOCATE(HSize)
 ALLOCATE(BCType(4,nBCs))
 offset=0
-CALL ReadArray('BCType',2,(/4,nBCs/),Offset,1,IntegerArray=BCType)
+CALL ReadArray('BCType',2,(/4,nBCs/),Offset,1,IntArray=BCType)
 ! Now apply boundary mappings
 IF(nUserBCs .GT. 0)THEN
   DO iBC=1,nBCs
@@ -131,9 +141,9 @@ IF(nUserBCs .GT. 0)THEN
       IF((BoundaryType(BCMapping(iBC),1).EQ.1).AND.(BCType(1,iBC).NE.1)) &
         CALL abort(__STAMP__,&
                    'Remapping non-periodic to periodic BCs is not possible!')
-      SWRITE(Unit_StdOut,'(A,A)')    ' |     Boundary in HDF file found |  ',TRIM(BCNames(iBC))
-      SWRITE(Unit_StdOut,'(A,I2,I2)')' |                            was | ',BCType(1,iBC),BCType(3,iBC)
-      SWRITE(Unit_StdOut,'(A,I2,I2)')' |                      is set to | ',BoundaryType(BCMapping(iBC),1:2)
+      SWRITE(Unit_StdOut,'(A,A)')    ' |     Boundary in HDF file found | ',TRIM(BCNames(iBC))
+      SWRITE(Unit_StdOut,'(A,I4,I4)')' |                            was | ',BCType(1,iBC),BCType(3,iBC)
+      SWRITE(Unit_StdOut,'(A,I4,I4)')' |                      is set to | ',BoundaryType(BCMapping(iBC),1:2)
       BCType(1,iBC) = BoundaryType(BCMapping(iBC),BC_TYPE)
       BCType(3,iBC) = BoundaryType(BCMapping(iBC),BC_STATE)
     END IF
@@ -173,7 +183,7 @@ USE MOD_Globals
 USE MOD_Mesh_Vars,          ONLY:tElem,tSide
 USE MOD_Mesh_Vars,          ONLY:NGeo,NGeoTree
 USE MOD_Mesh_Vars,          ONLY:NodeCoords,TreeCoords
-USE MOD_Mesh_Vars,          ONLY:offsetElem,offsetTree,nElems,nGlobalElems,nTrees,nGlobalTrees
+USE MOD_Mesh_Vars,          ONLY:offsetElem,offsetTree,nElems,nTrees,nGlobalTrees
 USE MOD_Mesh_Vars,          ONLY:xiMinMax,ElemToTree
 USE MOD_Mesh_Vars,          ONLY:nSides,nInnerSides,nBCSides,nMPISides,nAnalyzeSides
 USE MOD_Mesh_Vars,          ONLY:nMortarSides,isMortarMesh
@@ -182,8 +192,8 @@ USE MOD_Mesh_Vars,          ONLY:BoundaryType
 USE MOD_Mesh_Vars,          ONLY:MeshInitIsDone
 USE MOD_Mesh_Vars,          ONLY:Elems
 USE MOD_Mesh_Vars,          ONLY:GETNEWELEM,GETNEWSIDE
-#if MPI
-USE MOD_MPI_Vars,           ONLY:offsetElemMPI,nMPISides_Proc,nNbProcs,NbProc
+#if USE_MPI
+USE MOD_MPI_Vars,           ONLY:nMPISides_Proc,nNbProcs,NbProc
 #endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -204,21 +214,19 @@ INTEGER                        :: nPeriodicSides,nMPIPeriodics
 INTEGER                        :: ReduceData(10)
 INTEGER                        :: nSideIDs,offsetSideID
 INTEGER                        :: iMortar,jMortar,nMortars
-#if MPI
+#if USE_MPI
 INTEGER                        :: ReduceData_glob(10)
 INTEGER                        :: iNbProc
 INTEGER                        :: iProc
 INTEGER,ALLOCATABLE            :: MPISideCount(:)
 #endif
 LOGICAL                        :: oriented
-LOGICAL                        :: fileExists
 LOGICAL                        :: doConnection
 LOGICAL                        :: dsExists
 !==================================================================================================================================
 IF(MESHInitIsDone) RETURN
 IF(MPIRoot)THEN
-  INQUIRE (FILE=TRIM(FileString), EXIST=fileExists)
-  IF(.NOT.FileExists)  CALL CollectiveStop(__STAMP__, &
+  IF(.NOT.FILEEXISTS(FileString))  CALL CollectiveStop(__STAMP__, &
     'readMesh from data file "'//TRIM(FileString)//'" does not exist')
 END IF
 
@@ -226,39 +234,7 @@ SWRITE(UNIT_stdOut,'(A)')'READ MESH FROM DATA FILE "'//TRIM(FileString)//'" ...'
 SWRITE(UNIT_StdOut,'(132("-"))')
 ! Open data file
 CALL OpenDataFile(FileString,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
-
-CALL GetDataSize(File_ID,'ElemInfo',nDims,HSize)
-IF(HSize(1).NE.6) THEN
-  CALL abort(__STAMP__,&
-    'ERROR: Wrong size of ElemInfo, should be 6')
-END IF
-CHECKSAFEINT(HSize(2),4)
-nGlobalElems=INT(HSize(2),4)
-DEALLOCATE(HSize)
-#if MPI
-IF(nGlobalElems.LT.nProcessors) THEN
-  CALL Abort(__STAMP__,&
-  'ERROR: Number of elements (1) is smaller then number of processors (2)!',nGlobalElems,REAL(nProcessors))
-END IF
-
-!simple partition: nGlobalelems/nprocs, do this on proc 0
-IF(ALLOCATED(offsetElemMPI)) DEALLOCATE(offsetElemMPI)
-ALLOCATE(offsetElemMPI(0:nProcessors))
-offsetElemMPI=0
-nElems=nGlobalElems/nProcessors
-iElem=nGlobalElems-nElems*nProcessors
-DO iProc=0,nProcessors-1
-  offsetElemMPI(iProc)=nElems*iProc+MIN(iProc,iElem)
-END DO
-offsetElemMPI(nProcessors)=nGlobalElems
-!local nElems and offset
-nElems=offsetElemMPI(myRank+1)-offsetElemMPI(myRank)
-offsetElem=offsetElemMPI(myRank)
-LOGWRITE(*,*)'offset,nElems',offsetElem,nElems
-#else /* MPI */
-nElems=nGlobalElems   !local number of Elements
-offsetElem=0          ! offset is the index of first entry, hdf5 array starts at 0-.GT. -1
-#endif /* MPI */
+CALL BuildPartition()
 
 CALL readBCs()
 !----------------------------------------------------------------------------------------------------------------------------
@@ -271,7 +247,7 @@ LastElemInd=offsetElem+nElems
 
 ALLOCATE(Elems(                FirstElemInd:LastElemInd))
 ALLOCATE(ElemInfo(ElemInfoSize,FirstElemInd:LastElemInd))
-CALL ReadArray('ElemInfo',2,(/ElemInfoSize,nElems/),offsetElem,2,IntegerArray=ElemInfo)
+CALL ReadArray('ElemInfo',2,(/ElemInfoSize,nElems/),offsetElem,2,IntArray=ElemInfo)
 
 DO iElem=FirstElemInd,LastElemInd
   iSide=ElemInfo(ELEM_FirstSideInd,iElem) !first index -1 in Sideinfo
@@ -293,7 +269,7 @@ nSideIDs=ElemInfo(ELEM_LastSideInd,LastElemInd)-ElemInfo(ELEM_FirstSideInd,First
 FirstSideInd=offsetSideID+1
 LastSideInd=offsetSideID+nSideIDs
 ALLOCATE(SideInfo(SideInfoSize,FirstSideInd:LastSideInd))
-CALL ReadArray('SideInfo',2,(/SideInfoSize,nSideIDs/),offsetSideID,2,IntegerArray=SideInfo)
+CALL ReadArray('SideInfo',2,(/SideInfoSize,nSideIDs/),offsetSideID,2,IntArray=SideInfo)
 
 DO iElem=FirstElemInd,LastElemInd
   aElem=>Elems(iElem)%ep
@@ -402,7 +378,7 @@ DO iElem=FirstElemInd,LastElemInd
             END DO !jMortar
           END DO !nbLocSide
         ELSE !MPI connection
-#if MPI
+#if USE_MPI
           aSide%connection=>GETNEWSIDE()
           aSide%connection%flip=aSide%flip
           aSide%connection%Elem=>GETNEWELEM()
@@ -444,26 +420,16 @@ ELSE
 ENDIF
 nNodes=nElems*(NGeo+1)**3
 
-
-!! IJK SORTING --------------------------------------------
-!!read local ElemInfo from data file
-!CALL DatasetExists(File_ID,'nElems_IJK',dsExists)
-!IF(dsExists)THEN
-!  CALL ReadArray('nElems_IJK',1,(/3/),0,1,IntegerArray=nElems_IJK)
-!  ALLOCATE(Elem_IJK(3,nLocalElems))
-!  CALL ReadArray('Elem_IJK',2,(/3,nElems/),offsetElem,2,IntegerArray=Elem_IJK)
-!END IF
-
 ! Get Mortar specific arrays
 dsExists=.FALSE.
 iMortar=0
 CALL DatasetExists(File_ID,'isMortarMesh',dsExists,.TRUE.)
 IF(dsExists)&
-  CALL ReadAttribute(File_ID,'isMortarMesh',1,IntegerScalar=iMortar)
+  CALL ReadAttribute(File_ID,'isMortarMesh',1,IntScalar=iMortar)
 isMortarMesh=(iMortar.EQ.1)
 IF(isMortarMesh)THEN
-  CALL ReadAttribute(File_ID,'NgeoTree',1,IntegerScalar=NGeoTree)
-  CALL ReadAttribute(File_ID,'nTrees',1,IntegerScalar=nGlobalTrees)
+  CALL ReadAttribute(File_ID,'NgeoTree',1,IntScalar=NGeoTree)
+  CALL ReadAttribute(File_ID,'nTrees',1,IntScalar=nGlobalTrees)
 
   ALLOCATE(xiMinMax(3,2,1:nElems))
   xiMinMax=-1.
@@ -471,7 +437,7 @@ IF(isMortarMesh)THEN
 
   ALLOCATE(ElemToTree(1:nElems))
   ElemToTree=0
-  CALL ReadArray('ElemToTree',1,(/nElems/),offsetElem,1,IntegerArray=ElemToTree)
+  CALL ReadArray('ElemToTree',1,(/nElems/),offsetElem,1,IntArray=ElemToTree)
 
   ! only read trees, connected to a procs elements
   offsetTree=MINVAL(ElemToTree)-1
@@ -501,7 +467,7 @@ nSides=0
 nPeriodicSides=0
 nMPIPeriodics=0
 nMPISides=0
-#if MPI
+#if USE_MPI
 ALLOCATE(MPISideCount(0:nProcessors-1))
 MPISideCount=0
 #endif
@@ -534,7 +500,7 @@ DO iElem=FirstElemInd,LastElemInd
           IF(ASSOCIATED(aSide%connection))THEN
             IF(BoundaryType(aSide%BCindex,BC_TYPE).EQ.1)THEN
               nPeriodicSides=nPeriodicSides+1
-#if MPI
+#if USE_MPI
               IF(aSide%NbProc.NE.-1) nMPIPeriodics=nMPIPeriodics+1
 #endif
             END IF
@@ -545,7 +511,7 @@ DO iElem=FirstElemInd,LastElemInd
           END IF
         END IF
         IF(aSide%MortarType.GT.0) nMortarSides=nMortarSides+1
-#if MPI
+#if USE_MPI
         IF(aSide%NbProc.NE.-1) THEN
           nMPISides=nMPISides+1
           MPISideCount(aSide%NbProc)=MPISideCount(aSide%NbProc)+1
@@ -565,7 +531,7 @@ LOGWRITE(*,'(A22,I8)')'nInnerSides:',nInnerSides
 LOGWRITE(*,'(A22,I8)')'nMPISides:',nMPISides
 LOGWRITE(*,*)'-------------------------------------------------------'
  !now MPI sides
-#if MPI
+#if USE_MPI
 nNBProcs=0
 DO iProc=0,nProcessors-1
   IF(iProc.EQ.myRank) CYCLE
@@ -591,7 +557,7 @@ ELSE
 END IF
 DEALLOCATE(MPISideCount)
 
-#endif /*MPI*/
+#endif /*USE_MPI*/
 
 ReduceData(1)=nElems
 ReduceData(2)=nSides
@@ -604,10 +570,10 @@ ReduceData(8)=nAnalyzeSides
 ReduceData(9)=nMortarSides
 ReduceData(10)=nMPIPeriodics
 
-#if MPI
+#if USE_MPI
 CALL MPI_REDUCE(ReduceData,ReduceData_glob,10,MPI_INTEGER,MPI_SUM,0,MPI_COMM_WORLD,iError)
 ReduceData=ReduceData_glob
-#endif /*MPI*/
+#endif /*USE_MPI*/
 
 IF(MPIRoot)THEN
   WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nElems | ',ReduceData(1) !nElems
@@ -629,7 +595,61 @@ END IF
 END SUBROUTINE ReadMesh
 
 
-#if MPI
+!==================================================================================================================================
+!> Partition the mesh by numbers of processors. Elements are distributed equally to all processors.
+!==================================================================================================================================
+SUBROUTINE BuildPartition() 
+! MODULES                                                                                                                          !
+USE MOD_Globals
+USE MOD_Mesh_Vars, ONLY:nElems,nGlobalElems,offsetElem
+#if USE_MPI
+USE MOD_MPI_Vars,  ONLY:offsetElemMPI
+#endif
+!----------------------------------------------------------------------------------------------------------------------------------!
+IMPLICIT NONE
+! INPUT / OUTPUT VARIABLES 
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+#if USE_MPI
+INTEGER           :: iElem
+INTEGER           :: iProc
+#endif
+!===================================================================================================================================
+CALL GetDataSize(File_ID,'ElemInfo',nDims,HSize)
+IF(HSize(1).NE.6) THEN
+  CALL abort(__STAMP__,&
+    'ERROR: Wrong size of ElemInfo, should be 6')
+END IF
+CHECKSAFEINT(HSize(2),4)
+nGlobalElems=INT(HSize(2),4)
+DEALLOCATE(HSize)
+#if USE_MPI
+IF(nGlobalElems.LT.nProcessors) THEN
+  CALL Abort(__STAMP__,&
+  'ERROR: Number of elements (1) is smaller then number of processors (2)!',nGlobalElems,REAL(nProcessors))
+END IF
+
+!simple partition: nGlobalelems/nprocs, do this on proc 0
+IF(ALLOCATED(offsetElemMPI)) DEALLOCATE(offsetElemMPI)
+ALLOCATE(offsetElemMPI(0:nProcessors))
+offsetElemMPI=0
+nElems=nGlobalElems/nProcessors
+iElem=nGlobalElems-nElems*nProcessors
+DO iProc=0,nProcessors-1
+  offsetElemMPI(iProc)=nElems*iProc+MIN(iProc,iElem)
+END DO
+offsetElemMPI(nProcessors)=nGlobalElems
+!local nElems and offset
+nElems=offsetElemMPI(myRank+1)-offsetElemMPI(myRank)
+offsetElem=offsetElemMPI(myRank)
+LOGWRITE(*,*)'offset,nElems',offsetElem,nElems
+#else /*USE_MPI*/
+nElems=nGlobalElems   !local number of Elements
+offsetElem=0          ! offset is the index of first entry, hdf5 array starts at 0-.GT. -1
+#endif /*USE_MPI*/
+END SUBROUTINE BuildPartition
+
+#if USE_MPI
 !==================================================================================================================================
 !> Find the id of a processor on which an element with a given ElemID lies, based on the MPI element offsets defined earlier.
 !> Use a bisection algorithm for faster search.
@@ -670,7 +690,32 @@ ELSE
   END DO
 END IF
 END FUNCTION ELEMIPROC
-#endif /* MPI */
+#endif /*USE_MPI*/
 
+!===================================================================================================================================
+!> Read arrays nElems_IJK (global number of elements in i,j,k direction) and Elem_IJK (mapping from global element to i,j,k index)
+!> for meshes thar are i,j,k sorted.
+!===================================================================================================================================
+SUBROUTINE ReadIJKSorting()
+! MODULES                                                                                                                          !
+!----------------------------------------------------------------------------------------------------------------------------------!
+USE MOD_Mesh_Vars,       ONLY: nElems_IJK,Elem_IJK,offsetElem,nElems,MeshFile
+!----------------------------------------------------------------------------------------------------------------------------------!
+IMPLICIT NONE
+! INPUT / OUTPUT VARIABLES 
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+LOGICAL        :: dsExists
+!===================================================================================================================================
+
+CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+CALL DatasetExists(File_ID,'nElems_IJK',dsExists)
+IF(dsExists)THEN
+  CALL ReadArray('nElems_IJK',1,(/3/),0,1,IntArray=nElems_IJK)
+  ALLOCATE(Elem_IJK(3,nElems))
+  CALL ReadArray('Elem_IJK',2,(/3,nElems/),offsetElem,2,IntArray=Elem_IJK)
+END IF
+CALL CloseDataFile()
+END SUBROUTINE ReadIJKSorting
 
 END MODULE MOD_Mesh_ReadIn

@@ -69,7 +69,7 @@ END SUBROUTINE DefineParametersRecordPoints
 !==================================================================================================================================
 !> Read RP parameters from ini file and RP definitions from HDF5
 !==================================================================================================================================
-SUBROUTINE InitRecordPoints()
+SUBROUTINE InitRecordPoints(RPDefFileOpt)
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
@@ -79,14 +79,16 @@ USE MOD_RecordPoints_Vars
  IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
+CHARACTER(LEN=255),INTENT(IN),OPTIONAL :: RPDefFileOpt
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER               :: RP_maxMemory
 INTEGER               :: maxRP
 !==================================================================================================================================
 ! check if recordpoints are activated
-RP_inUse=GETLOGICAL('RP_inUse','.FALSE.')
+RP_inUse=(GETLOGICAL('RP_inUse','.FALSE.') .OR. PRESENT(RPDefFileOpt))
 IF(.NOT.RP_inUse) RETURN
+
 IF((.NOT.InterpolationInitIsDone) .OR. RecordPointsInitIsDone)THEN
    CALL Abort(__STAMP__,&
      "InitRecordPoints not ready to be called or already called.")
@@ -94,20 +96,24 @@ END IF
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT RECORDPOINTS...'
 
-RPDefFile=GETSTR('RP_DefFile')                        ! Filename with RP coords
+IF(PRESENT(RPDefFileOpt))THEN
+  RPDefFile=RPDefFileOpt
+ELSE
+  RPDefFile=GETSTR('RP_DefFile')                        ! Filename with RP coords
+END IF
 CALL ReadRPList(RPDefFile) ! RP_inUse is set to FALSE by ReadRPList if no RP is on proc.
 maxRP=nGlobalRP
-#if MPI
+#if USE_MPI
 CALL InitRPCommunicator()
-#endif /*MPI*/
+#endif /*USE_MPI*/
 
 IF(RP_onProc)THEN
   RP_maxMemory=GETINT('RP_MaxMemory','100')           ! Max buffer (100MB)
   RP_SamplingOffset=GETINT('RP_SamplingOffset','1')   ! Sampling offset (iteration)
   maxRP=nGlobalRP
-# if MPI
+#if USE_MPI
   CALL MPI_ALLREDUCE(nRP,maxRP,1,MPI_INTEGER,MPI_MAX,RP_COMM,iError)
-# endif /*MPI*/
+#endif /*USE_MPI*/
   RP_MaxBufferSize = RP_MaxMemory*131072/(maxRP*(PP_nVar+1)) != size in bytes/(real*maxRP*nVar)
   ALLOCATE(lastSample(0:PP_nVar,nRP))
   lastSample=0.
@@ -119,7 +125,7 @@ SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitRecordPoints
 
 
-#if MPI
+#if USE_MPI
 !==================================================================================================================================
 !> Read RP parameters from ini file and RP definitions from HDF5
 !==================================================================================================================================
@@ -170,7 +176,7 @@ IF(RP_onProc) CALL MPI_COMM_SIZE(RP_COMM, nRP_Procs,iError)
 IF(myRPrank.EQ.0 .AND. RP_onProc) WRITE(*,*) 'RP COMM:',nRP_Procs,'procs'
 
 END SUBROUTINE InitRPCommunicator
-#endif /*MPI*/
+#endif /*USE_MPI*/
 
 
 !==================================================================================================================================
@@ -195,7 +201,6 @@ IMPLICIT NONE
 CHARACTER(LEN=255),INTENT(IN) :: FileString
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-LOGICAL                       :: fileExists
 CHARACTER(LEN=255)            :: MeshFile_RPList
 INTEGER                       :: nGlobalElems_RPList
 INTEGER                       :: iElem,iRP,iRP_glob
@@ -203,8 +208,7 @@ INTEGER                       :: OffsetRPArray(2,nElems)
 REAL,ALLOCATABLE              :: xi_RP(:,:)
 !==================================================================================================================================
 IF(MPIRoot)THEN
-  INQUIRE (FILE=TRIM(FileString), EXIST=fileExists)
-  IF(.NOT.FileExists)  CALL abort(__STAMP__, &
+  IF(.NOT.FILEEXISTS(FileString))  CALL abort(__STAMP__, &
           'RPList from data file "'//TRIM(FileString)//'" does not exist')
 END IF
 
@@ -226,7 +230,7 @@ DEALLOCATE(HSize)
 IF(nGlobalElems_RPList.NE.nGlobalElems) CALL abort(__STAMP__, &
           'nGlobalElems from RPList differs from nGlobalElems from Mesh File!')
 
-CALL ReadArray('OffsetRP',2,(/2,nElems/),OffsetElem,2,IntegerArray=OffsetRPArray)
+CALL ReadArray('OffsetRP',2,(/2,nElems/),OffsetElem,2,IntArray=OffsetRPArray)
 
 ! Check if local domain contains any record points
 ! OffsetRP: first index: 1: offset in RP list for first RP on elem,
@@ -349,7 +353,7 @@ REAL                    :: u_RP(PP_nVar,nRP)
 REAL                    :: l_eta_zeta_RP
 !----------------------------------------------------------------------------------------------------------------------------------
 IF(MOD(iter,RP_SamplingOffset).NE.0 .AND. .NOT. forceSampling) RETURN
-IF(iter.EQ.0)THEN
+IF(.NOT.ALLOCATED(RP_Data))THEN
   ! Compute required buffersize from timestep and add 20% tolerance
   ! +1 is added to ensure a minimum buffersize of 2
   RP_Buffersize = MIN(CEILING((1.2*WriteData_dt)/(dt*RP_SamplingOffset))+1,RP_MaxBuffersize)
@@ -396,7 +400,7 @@ USE MOD_Globals
 USE HDF5
 USE MOD_IO_HDF5           ,ONLY: File_ID,OpenDataFile,CloseDataFile
 USE MOD_Equation_Vars     ,ONLY: StrVarNames
-USE MOD_HDF5_Output       ,ONLY: WriteAttribute,WriteArray
+USE MOD_HDF5_Output       ,ONLY: WriteAttribute,WriteArray,MarkWriteSuccessfull
 USE MOD_Output_Vars       ,ONLY: ProjectName
 USE MOD_Mesh_Vars         ,ONLY: MeshFile
 USE MOD_Recordpoints_Vars ,ONLY: RP_COMM,myRPrank,lastSample
@@ -434,7 +438,7 @@ IF(myRPrank.EQ.0)THEN
   CALL CloseDataFile()
 END IF
 
-#if MPI
+#if USE_MPI
 CALL MPI_BARRIER(RP_COMM,iError)
 CALL OpenDataFile(Filestring,create=.FALSE.,single=.FALSE.,readOnly=.FALSE.,communicatorOpt=RP_COMM)
 #else
@@ -476,6 +480,7 @@ END IF
 CALL CloseDataFile()
 
 IF(myRPrank.EQ.0)THEN
+  CALL MarkWriteSuccessfull(Filestring)
   GETTIME(EndT)
   WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')' DONE  [',EndT-StartT,'s]'
 END IF

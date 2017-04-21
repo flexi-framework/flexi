@@ -15,7 +15,7 @@
 !> Contains the variables that are used to control non-blocking communication
 !==================================================================================================================================
 MODULE MOD_MPI_Vars
-#if MPI
+#if USE_MPI
 ! MODULES
 IMPLICIT NONE
 PUBLIC
