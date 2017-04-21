@@ -29,7 +29,7 @@ CHARACTER(LEN=255),ALLOCATABLE :: BuildTESTCASE(:)                  !> TESTCASE 
 CHARACTER(LEN=255),ALLOCATABLE :: BuildTIMEDISCMETHOD(:)            !> TIMEDISCMETHOD for each build: only PICLas
 CHARACTER(LEN=255),ALLOCATABLE :: BuildMPI(:)                       !> ON/OFF: build is created with/without MPI
 CHARACTER(LEN=255),ALLOCATABLE :: BuildFV(:)                        !> ON/OFF: build is created with/without FV (finite volume)
-CHARACTER(LEN=255),ALLOCATABLE :: BuildCODE2D(:)                    !> ON/OFF: build is created with/without 2D only
+CHARACTER(LEN=255),ALLOCATABLE :: Build2D(:)                        !> ON/OFF: build is created with/without 2D only
 CHARACTER(LEN=255),ALLOCATABLE :: BuildPARABOLIC(:)                 !> ON/OFF: build is created with/without PARABOLIC terms
 
 LOGICAL                        :: BuildSolver                       !> Flag for automatic building of different flexi cmake configs

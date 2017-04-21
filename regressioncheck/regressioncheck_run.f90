@@ -56,7 +56,7 @@ INTEGER                        :: N_compile_flags                   !> number of
 INTEGER                        :: iReggieBuild,nReggieBuilds ! field handler unit and ??
 INTEGER                        :: iSubExample,iScaling,iRun
 LOGICAL                        :: SkipExample,SkipBuild,ExitBuild,SkipFolder,SkipComparison
-LOGICAL                        :: UseFV,UseCODE2D,UsePARABOLIC      !> compiler flags currently used for ConvergenceTest
+LOGICAL                        :: UseFV,Use2D,UsePARABOLIC      !> compiler flags currently used for ConvergenceTest
 !==================================================================================================================================
 SWRITE(UNIT_stdOut,'(132("="))')
 SWRITE(UNIT_stdOut,'(A)') ' Performing tests ...'
@@ -90,7 +90,7 @@ DO iExample = 1, nExamples ! loop level 1 of 5
     CALL GetNvar(iExample,iReggieBuild)
 
     ! check if executable is compiled with correct TESTCASE (e.g. for tylorgreenvortex)
-    CALL CheckCompilerFlags(iExample,iReggieBuild,TESTCASE,TIMEDISCMETHOD,UseFV,UseCODE2D,UsePARABOLIC)
+    CALL CheckCompilerFlags(iExample,iReggieBuild,TESTCASE,TIMEDISCMETHOD,UseFV,Use2D,UsePARABOLIC)
 
     ! remove subexample (before printing the case overview) for certain configurations: e.g. Preconditioner when running explicitly
     CALL CheckSubExample(iExample,iReggieBuild,TIMEDISCMETHOD)
@@ -106,7 +106,7 @@ DO iExample = 1, nExamples ! loop level 1 of 5
     CALL PrintExampleInfo(iExample,EXECPATH,parameter_ini,parameter_ini2)
  
     ! Set options in parameter.ini file
-    CALL SetParameters(iExample,parameter_ini,UseFV,UseCODE2D,UsePARABOLIC,SkipFolder)
+    CALL SetParameters(iExample,parameter_ini,UseFV,Use2D,UsePARABOLIC,SkipFolder)
     IF(SkipFolder)CYCLE ! e.g. p-convergence folder and FV subcells (p-convergence not meaningful)
 
 !==================================================================================================================================
@@ -550,12 +550,12 @@ END SUBROUTINE GetCodeBinary
 !===================================================================================================================================
 !> check if executable is compiled with correct TESTCASE (e.g. for tylorgreenvortex)
 !===================================================================================================================================
-SUBROUTINE CheckCompilerFlags(iExample,iReggieBuild,TESTCASE,TIMEDISCMETHOD,UseFV,UseCODE2D,UsePARABOLIC)
+SUBROUTINE CheckCompilerFlags(iExample,iReggieBuild,TESTCASE,TIMEDISCMETHOD,UseFV,Use2D,UsePARABOLIC)
 !===================================================================================================================================
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_RegressionCheck_Vars,    ONLY: CodeNameLowCase,EXECPATH,Examples,BuildFV,BuildCODE2D,BuildPARABOLIC
+USE MOD_RegressionCheck_Vars,    ONLY: CodeNameLowCase,EXECPATH,Examples,BuildFV,Build2D,BuildPARABOLIC
 USE MOD_RegressionCheck_Vars,    ONLY: BuildSolver
 USE MOD_RegressionCheck_Build,   ONLY: BuildConfiguration
 USE MOD_RegressionCheck_Vars,    ONLY: BuildTESTCASE,BuildTIMEDISCMETHOD,BuildMPI,CodeNameUppCase
@@ -568,7 +568,7 @@ INTEGER,INTENT(IN)             :: iExample,iReggieBuild
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(INOUT) :: TESTCASE,TIMEDISCMETHOD
-LOGICAL,INTENT(INOUT)          :: UseFV,UseCODE2D,UsePARABOLIC      !> compiler flags currently used for ConvergenceTest
+LOGICAL,INTENT(INOUT)          :: UseFV,Use2D,UsePARABOLIC      !> compiler flags currently used for ConvergenceTest
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL                        :: ExistFile                         !> file exists=.true., file does not exist=.false.
@@ -578,14 +578,14 @@ LOGICAL                        :: UseMPI
 !===================================================================================================================================
 UseMPI       = .FALSE. ! default
 UseFV        = .FALSE. ! default
-UseCODE2D    = .FALSE. ! default
+Use2D    = .FALSE. ! default
 UsePARABOLIC = .FALSE. ! default
 IF(BuildSolver)THEN
   TESTCASE       = BuildTESTCASE(iReggieBuild)
   TIMEDISCMETHOD = BuildTIMEDISCMETHOD(iReggieBuild)
-  IF(ADJUSTL(TRIM(BuildMPI(       iReggieBuild))).EQ.'ON')UseMPI   =.TRUE.
+  IF(ADJUSTL(TRIM(BuildMPI(       iReggieBuild))).EQ.'ON')UseMPI      =.TRUE.
   IF(ADJUSTL(TRIM(BuildFV(        iReggieBuild))).EQ.'ON')UseFV       =.TRUE.
-  IF(ADJUSTL(TRIM(BuildCODE2D(    iReggieBuild))).EQ.'ON')UseCODE2D   =.TRUE.
+  IF(ADJUSTL(TRIM(Build2D(        iReggieBuild))).EQ.'ON')Use2D       =.TRUE.
   IF(ADJUSTL(TRIM(BuildPARABOLIC( iReggieBuild))).EQ.'ON')UsePARABOLIC=.TRUE.
 ELSE ! pre-compiled binary
   ! check if "configuration.cmake" exists and read specific flags from it
@@ -618,7 +618,7 @@ ELSE ! pre-compiled binary
     CALL  GetFlagFromFile(FileName,CodeNameUppCase//'_FV',tempStr,BACK=.TRUE.)
     IF(ADJUSTL(TRIM(tempStr)).EQ.'ON')UseFV=.TRUE.
     CALL  GetFlagFromFile(FileName,CodeNameUppCase//'_2D',tempStr,BACK=.TRUE.)
-    IF(ADJUSTL(TRIM(tempStr)).EQ.'ON')UseCODE2D=.TRUE.
+    IF(ADJUSTL(TRIM(tempStr)).EQ.'ON')Use2D=.TRUE.
     CALL  GetFlagFromFile(FileName,CodeNameUppCase//'_PARABOLIC',tempStr,BACK=.TRUE.)
     IF(ADJUSTL(TRIM(tempStr)).EQ.'ON')UsePARABOLIC=.TRUE.
     ! -----------------------------------------------------------------------------------------------------------------------------
@@ -892,7 +892,7 @@ END SUBROUTINE PrintExampleInfo
 !===================================================================================================================================
 !> check if executable is compiled with correct TESTCASE (e.g. for tylorgreenvortex)
 !===================================================================================================================================
-SUBROUTINE SetParameters(iExample,parameter_ini,UseFV,UseCODE2D,UsePARABOLIC,SkipFolder)
+SUBROUTINE SetParameters(iExample,parameter_ini,UseFV,Use2D,UsePARABOLIC,SkipFolder)
 !===================================================================================================================================
 !===================================================================================================================================
 ! MODULES
@@ -905,13 +905,13 @@ IMPLICIT NONE
 ! INPUT VARIABLES
 LOGICAL,INTENT(OUT)            :: SkipFolder
 INTEGER,INTENT(IN)             :: iExample
-LOGICAL,INTENT(INOUT)          :: UseFV,UseCODE2D,UsePARABOLIC      !> compiler flags currently used for ConvergenceTest
+LOGICAL,INTENT(INOUT)          :: UseFV,Use2D,UsePARABOLIC      !> compiler flags currently used for ConvergenceTest
 CHARACTER(LEN=*),INTENT(INOUT) :: parameter_ini
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-!LOGICAL                        :: UseFV,UseCODE2D,UsePARABOLIC      !> compiler flags currently used for ConvergenceTest
+!LOGICAL                        :: UseFV,Use2D,UsePARABOLIC      !> compiler flags currently used for ConvergenceTest
 !LOGICAL                        :: ExistFile                         !> file exists=.true., file does not exist=.false.
 !CHARACTER(LEN=255)             :: FileName                          !> path to a file or its name
 !LOGICAL                        :: UseMPI
@@ -950,10 +950,10 @@ IF(Examples(iExample)%ConvergenceTest)THEN ! Do ConvergenceTest
   END IF
   
   ! Check for 2D version of the code
-  !print*,"UseCODE2D=",UseCODE2D
-  SWRITE(UNIT_stdOut,'(A15,L1,A2)',ADVANCE='NO')" UseCODE2D   =[",UseCODE2D,"] "
+  !print*,"Use2D=",Use2D
+  SWRITE(UNIT_stdOut,'(A15,L1,A2)',ADVANCE='NO')" Use2D   =[",Use2D,"] "
   SWRITE(UNIT_stdOut,'(A)')"Setting option in parameter.ini: NOTHING (not implemented yet)"
-  IF(UseCODE2D)THEN
+  IF(Use2D)THEN
       !CALL SetSubExample(iExample,-1,parameter_ini,'MeshFile','33')
       ! DO NOTHING
   ELSE
@@ -978,12 +978,12 @@ IF(Examples(iExample)%ConvergenceTest)THEN ! Do ConvergenceTest
 END IF
 
 ! Check for 2D version of the code
-!print*,"UseCODE2D=",UseCODE2D
-SWRITE(UNIT_stdOut,'(A15,L1,A2)',ADVANCE='NO')" UseCODE2D   =[",UseCODE2D,"] "
+!print*,"Use2D=",Use2D
+SWRITE(UNIT_stdOut,'(A15,L1,A2)',ADVANCE='NO')" Use2D   =[",Use2D,"] "
 SWRITE(UNIT_stdOut,'(A)')"Setting option in parameter.ini: MESHFILE"
 ! read MeshFile from parameter_ini and search for "3D", then substitute with 2D
 CALL GetParameterFromFile(TRIM(Examples(iExample)%PATH)//parameter_ini,'MeshFile',meshFile)
-IF(UseCODE2D)THEN
+IF(Use2D)THEN
   IndNum=INDEX(meshFile,'3D')
   IF(IndNum.GT.0)THEN
     meshFile(IndNum:IndNum)='2'
