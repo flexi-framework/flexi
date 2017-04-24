@@ -61,8 +61,8 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: dir                        !< direction (x,y,z)
 LOGICAL,INTENT(IN) :: doMPISides                 !< =.TRUE. only MINE MPISides are filled, =.FALSE. InnerSides
-REAL,INTENT(IN)    :: UPrimface_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< solution on the master sides
-REAL,INTENT(IN)    :: UPrimface_slave (PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< solution on the slave sides
+REAL,INTENT(INOUT) :: UPrimface_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< solution on the master sides
+REAL,INTENT(INOUT) :: UPrimface_slave (PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< solution on the slave sides
 REAL,INTENT(OUT)   :: Flux(1:PP_nVarPrim,0:PP_N,0:PP_NZ,nSides)             !< surface flux contribution
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
