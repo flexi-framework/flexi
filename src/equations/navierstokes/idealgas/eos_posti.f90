@@ -256,7 +256,6 @@ nDims=UBOUND(nVal,1)
 nElems_loc=nVal(nDims)
 nDOF=PRODUCT(nVal(1:nDims-1))
 Nloc=nVal(1)-1
-
 !IF(.NOT.withGradients.AND.KEYVALUE(DepNames,DepTableEOS(:,0),DepName).EQ.1) &
 !  STOP 'The selected variable requires the computation of gradients.'
 
@@ -411,6 +410,7 @@ END SUBROUTINE CalcDerivedQuantity
 SUBROUTINE FillPressureTimeDeriv(nElems_calc,indices,Nloc,PressureTDeriv)
 ! MODULES
 USE MOD_Preproc
+USE MOD_Globals
 USE MOD_Eos_Vars,ONLY:KappaM1
 USE MOD_DG_Vars ,ONLY:Ut,U
 IMPLICIT NONE 
@@ -422,19 +422,35 @@ INTEGER,INTENT(IN) :: Nloc
 REAL,INTENT(OUT)   :: PressureTDeriv(0:Nloc,0:Nloc,0:Nloc,nElems_calc)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
-INTEGER            :: iElem,iElem_calc
+INTEGER            :: iElem,iElem_calc,i,j,k
 !==================================================================================================================================
-IF(Nloc.NE.PP_N) STOP 'Not possible here'
 DO iElem_calc=1,nElems_calc
   iElem = indices(iElem_calc)
-  PressureTDeriv(:,:,:,iElem_calc)=KappaM1*(Ut(5,:,:,:,iElem)-1/U(1,:,:,:,iElem)*(  &
-                                             U(2,:,:,:,iElem)*Ut(2,:,:,:,iElem)  &
-                                           + U(3,:,:,:,iElem)*Ut(3,:,:,:,iElem)  &
-                                           + U(4,:,:,:,iElem)*Ut(4,:,:,:,iElem)) &
-                                       + 0.5/U(1,:,:,:,iElem)**2*Ut(1,:,:,:,iElem)*(  &
-                                             U(2,:,:,:,iElem)*U(2,:,:,:,iElem)   &
-                                           + U(3,:,:,:,iElem)*U(3,:,:,:,iElem)   &
-                                           + U(4,:,:,:,iElem)*U(4,:,:,:,iElem)))
+  IF (Nloc+1.EQ.(PP_N+1)*2) THEN
+    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    
+      PressureTDeriv(i*2:i*2+1,j*2:j*2+1,k*2:k*2+1,iElem_calc)= &
+                                       KappaM1*(Ut(5,i,j,k,iElem)-  1/U(1,i,j,k,iElem)*(  &
+                                                 U(2,i,j,k,iElem)*   Ut(2,i,j,k,iElem)  &
+                                               + U(3,i,j,k,iElem)*   Ut(3,i,j,k,iElem)  &
+                                               + U(4,i,j,k,iElem)*   Ut(4,i,j,k,iElem)) &
+                                           + 0.5/U(1,i,j,k,iElem)**2*Ut(1,i,j,k,iElem)*(  &
+                                                 U(2,i,j,k,iElem)*    U(2,i,j,k,iElem)   &
+                                               + U(3,i,j,k,iElem)*    U(3,i,j,k,iElem)   &
+                                               + U(4,i,j,k,iElem)*    U(4,i,j,k,iElem)))
+    END DO; END DO; END DO! i,j,k=0,PP_N
+  ELSEIF (Nloc.EQ.PP_N) THEN 
+    PressureTDeriv(:,:,:,iElem_calc)=KappaM1*(Ut(5,:,:,:,iElem)-1/U(1,:,:,:,iElem)*(  &
+                                               U(2,:,:,:,iElem)*Ut(2,:,:,:,iElem)  &
+                                             + U(3,:,:,:,iElem)*Ut(3,:,:,:,iElem)  &
+                                             + U(4,:,:,:,iElem)*Ut(4,:,:,:,iElem)) &
+                                         + 0.5/U(1,:,:,:,iElem)**2*Ut(1,:,:,:,iElem)*(  &
+                                               U(2,:,:,:,iElem)*U(2,:,:,:,iElem)   &
+                                             + U(3,:,:,:,iElem)*U(3,:,:,:,iElem)   &
+                                             + U(4,:,:,:,iElem)*U(4,:,:,:,iElem)))
+  ELSE
+    CALL ABORT(__STAMP__,'Not possible here')
+  END IF
 END DO ! iElem
 END SUBROUTINE FillPressureTimeDeriv
 
