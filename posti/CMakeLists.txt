@@ -37,9 +37,9 @@ IF(POSTI_BUILD_VISUALIZERECORDPOINTS OR POSTI_BUILD_CHANNEL_FFT)
   ENDIF()
   SET(POSTI_FFTWTAG "fftw-3.3.6-pl1" CACHE STRING "FFTW version tag")
   SET(POSTI_FFTWDIR ${FLEXI_EXTERNAL_LIB_DIR}/fftw)
-  # Try to find the library in the share directory or in a global, user-defined $FFTWDIR
-  FIND_PATH(FFTW_INCLUDES fftw3.h HINTS ${FLEXI_EXTERNAL_LIB_DIR}/fftw/build/include ${FFTWDIR}/build/include)
-  FIND_LIBRARY(FFTW_LIBRARIES NAMES fftw3 HINTS ${FLEXI_EXTERNAL_LIB_DIR}/fftw/build/lib ${FFTWDIR}/build/lib)
+  # Try to find the library in the share directory or in a global, user-defined $FFTW_DIR
+  FIND_PATH(FFTW_INCLUDES fftw3.h         HINTS $ENV{FFTW_DIR}/include ${FLEXI_EXTERNAL_LIB_DIR}/fftw/build/include)
+  FIND_LIBRARY(FFTW_LIBRARIES NAMES fftw3 HINTS $ENV{FFTW_DIR}/lib     ${FLEXI_EXTERNAL_LIB_DIR}/fftw/build/lib    )
   IF(FFTW_INCLUDES STREQUAL "FFTW_INCLUDES-NOTFOUND" OR FFTW_LIBRARIES STREQUAL "FFTW_LIBRARIES-NOTFOUND")
     MESSAGE(STATUS "FFTW not found, building library")
       ExternalProject_Add(fftw
