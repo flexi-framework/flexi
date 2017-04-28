@@ -30,6 +30,7 @@
 !===================================================================================================================================
 PROGRAM swapMesh
 ! MODULES
+USE MOD_PreProc
 USE MOD_Globals
 USE MOD_SwapMesh_Vars
 USE MOD_Commandline_Arguments
@@ -50,6 +51,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                            :: iArg
 !===================================================================================================================================
+CALL SetStackSizeUnlimited()
 CALL InitMPI()
 IF (nProcessors.GT.1) CALL CollectiveStop(__STAMP__, &
      'This tool is designed only for single execution!')

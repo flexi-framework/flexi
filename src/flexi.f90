@@ -19,6 +19,7 @@
 PROGRAM Flexi
 ! MODULES
 USE MOD_Globals
+USE MOD_PreProc
 USE MOD_Commandline_Arguments
 USE MOD_Restart,           ONLY:DefineParametersRestart,InitRestart,Restart,FinalizeRestart
 USE MOD_Interpolation,     ONLY:DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
@@ -62,6 +63,7 @@ IMPLICIT NONE
 REAL                    :: Time                              !< Used to measure simulation time
 LOGICAL                 :: userblockFound
 !==================================================================================================================================
+CALL SetStackSizeUnlimited()
 CALL InitMPI()
 CALL ParseCommandlineArguments()
 ! Check if the number of arguments is correct

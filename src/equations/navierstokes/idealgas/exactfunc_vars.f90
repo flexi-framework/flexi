@@ -36,7 +36,7 @@ REAL              :: P_Parameter       !< parameter for Couette-Poiseuille flow
 REAL              :: U_Parameter       !< parameter for Couette-Poiseuille flow
 #if PARABOLIC
 REAL              :: delta99_in        !< boundary layer thickness for Blasius solution
-REAL              :: x_in              !< inflow position for Blasius solution
+REAL              :: x_in(2)              !< inflow position for Blasius solution
 LOGICAL           :: BlasiusInitDone = .FALSE. !< Flag indicating that the parameters for Blasius have been read (they can be read
                                                !< both in exact func init and in BC init)
 #endif

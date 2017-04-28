@@ -1,18 +1,16 @@
 # =========================================================================
 # Flexi CMake configuration
 # =========================================================================
-CMAKE_MINIMUM_REQUIRED(VERSION 2.8.11)
-# TODO: eventually require CMake 3.0 in future releases
-# Advantages: Possible to split string
-IF ("${CMAKE_VERSION}" VERSION_GREATER 3.0.0)
-  cmake_policy (SET CMP0045 OLD)
-  cmake_policy (SET CMP0046 OLD)
-ENDIF()
+# NOTE: use minimum CMake version required by tools/libs (Paraview, HDF5, FFTW)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.3.0)
+# Policies (see https://cmake.org/cmake/help/v3.8/manual/cmake-policies.7.html)
+cmake_policy (SET CMP0045 OLD)
+cmake_policy (SET CMP0046 OLD)
+# Folder for custom CMake source files
 LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 SET_PROPERTY(GLOBAL PROPERTY USE_FOLDERS ON)
 INCLUDE(ExternalProject)
 INCLUDE(CMakeDependentOption)
-
 
 # =========================================================================
 # Check whether we are on Github or at IAG
@@ -350,7 +348,7 @@ ELSE()
       GIT_TAG ${HDF5TAG}
       PREFIX ${FLEXI_HDF5_DIR}
       UPDATE_COMMAND ""
-      CONFIGURE_COMMAND FC=${FLEXI_HDF5FC} CC=${FLEXI_HDF5CC} ${FLEXI_HDF5_DIR}/src/HDF5/configure --prefix=${FLEXI_HDF5_DIR} --enable-fortran ${FLEXI_HDF5PARALLEL} --disable-shared --libdir=${FLEXI_HDF5_DIR}/lib
+      CONFIGURE_COMMAND FC=${FLEXI_HDF5FC} CC=${FLEXI_HDF5CC} ${FLEXI_HDF5_DIR}/src/HDF5/configure --prefix=${FLEXI_HDF5_DIR} --with-pic --enable-fortran ${FLEXI_HDF5PARALLEL} --disable-shared --libdir=${FLEXI_HDF5_DIR}/lib
       BUILD_COMMAND ${MAKE}
     )
     # CMake HDF5 is fast but not that reliable
@@ -384,8 +382,6 @@ IF(FLEXI_HDF5_CMAKE)
   LIST(APPEND linkedlibs ${HDF5_FORTRAN_STATIC_LIBRARY} ${HDF5_LIBRARIES})
 ELSE()
   INCLUDE_DIRECTORIES (${HDF5_INCLUDE_DIR_FORTRAN} ${HDF5_INCLUDE_DIR})
-  LIST(INSERT HDF5_LIBRARIES 0 ${HDF5_hdf5_fortran_LIBRARY_RELEASE})
-  LIST(REMOVE_DUPLICATES HDF5_LIBRARIES)
   MESSAGE(STATUS "Found HDF5 Libs: " ${HDF5_LIBRARIES})
   LIST(APPEND linkedlibs ${HDF5_LIBRARIES} )
 ENDIF()
@@ -442,7 +438,7 @@ ENDIF()
 
 function(add_exec target)
   ADD_EXECUTABLE(${target} ${ARGN})
-  TARGET_LINK_LIBRARIES(${target} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/userblock.o flexilib userblocklib ${linkedlibs})
+  TARGET_LINK_LIBRARIES(${target} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/userblock.o flexilib userblocklib stacksizelib ${linkedlibs})
   SET_TARGET_PROPERTIES(${target} PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}) 
   SET_TARGET_PROPERTIES(${target} PROPERTIES LINKER_LANGUAGE Fortran)
   INSTALL(PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${target} DESTINATION bin)
@@ -453,7 +449,7 @@ endfunction()
 # include flexi.h 
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/src) 
 
-# collect all F90 files needed for flexilib
+# collect all F90 files needed for flexilib, except the extra files below
 FILE(GLOB_RECURSE flexiF90 ./src/interpolation/*.f90
                            ./src/readintools/*.f90
                            ./src/mortar/*.f90
@@ -471,31 +467,44 @@ FILE(GLOB_RECURSE flexiF90 ./src/interpolation/*.f90
                            ./src/timedisc/*.f90
                            ./src/testcase/${FLEXI_TESTCASE}/*.f90
                            ./unitTests/generateunittestreferencedata.f90)
+# 
+# The following files/directories where excluded from the above global recursive search,
+# since some of the subdirectories should only be included if the respective feature is enabled.
 
+# collect F90 files of the equation system (non-recursive) in a new list 'eqnsysF90'
 FILE(GLOB eqnsysF90        ./src/equations/${FLEXI_EQNSYSNAME}/*.f90)
+# append F90 files of the equation of state to 'eqnsysF90'-list
 IF (WITHEOS GREATER 0)
   FILE(GLOB eosF90         ./src/equations/${FLEXI_EQNSYSNAME}/${FLEXI_EOS}/*.f90)
   LIST(APPEND eqnsysF90 ${eosF90})
   INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/src/equations/${FLEXI_EQNSYSNAME}/${FLEXI_EOS}/) 
 ENDIF()
+# append F90 files of the eddy viscosity to 'eqnsysF90'-list
 IF (FLEXI_EDDYVISCOSITY)
   FILE(GLOB_RECURSE eddyviscF90 ./src/equations/${FLEXI_EQNSYSNAME}/eddyVisc/*.f90)
   LIST(APPEND eqnsysF90 ${eddyviscF90})
 ENDIF()
+# append 'eqnsysF90'-list to 'flexiF90'-list
+LIST(APPEND flexiF90 ${eqnsysF90})
 
+# collect F90 files of 'dg' directory (non-recursive) in a new list 'dgF90'
 FILE(GLOB dgF90            ./src/dg/*.f90)
+# append F90 files of lifting to 'dgF90'-list
 IF (FLEXI_PARABOLIC)
   FILE(GLOB liftingF90     ./src/dg/${FLEXI_LIFTING}/*.f90)
   LIST(APPEND dgF90 ${liftingF90})
 ENDIF()
+# append 'dgF90'-list to 'flexiF90'-list
+LIST(APPEND flexiF90 ${dgF90})
+
+# collect F90 files of 'fv' directory (non-recursive) and append to 'flexiF90' list 
 IF (FLEXI_FV)
   FILE(GLOB fvF90 ./src/fv/*.f90)
   LIST(APPEND flexiF90 ${fvF90})
 ENDIF()
 
-
 # define libs
-ADD_LIBRARY(flexilibF90 OBJECT ${flexiF90} ${dgF90} ${eqnsysF90})
+ADD_LIBRARY(flexilibF90 OBJECT ${flexiF90})
 SET_TARGET_PROPERTIES(flexilibF90 PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}) 
 ADD_LIBRARY(flexilib STATIC $<TARGET_OBJECTS:flexilibF90>)
 ADD_DEPENDENCIES(flexilibF90 HDF5)
@@ -504,8 +513,12 @@ ADD_LIBRARY(userblocklib STATIC ./src/output/read_userblock.c)
 SET_TARGET_PROPERTIES(userblocklib PROPERTIES LINKER_LANGUAGE C)
 SET_TARGET_PROPERTIES(userblocklib PROPERTIES COMPILE_FLAGS "-fPIC")
 
+ADD_LIBRARY(stacksizelib STATIC ./src/globals/stacksize.c)
+SET_TARGET_PROPERTIES(stacksizelib PROPERTIES LINKER_LANGUAGE C)
+SET_TARGET_PROPERTIES(stacksizelib PROPERTIES COMPILE_FLAGS "-fPIC")
+
 add_exec(flexi ./src/flexi.f90)
-ADD_DEPENDENCIES(flexi flexilib userblocklib HDF5)
+ADD_DEPENDENCIES(flexi flexilib userblocklib stacksizelib HDF5)
 
 # special compiler flags to avoid warnings for empty functions of testcase.f90 and overwrite of intrinsic abort in globals.f90
 IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
@@ -536,6 +549,11 @@ ADD_DEPENDENCIES(flexi2vtk flexilib HDF5)
 # =========================================================================
 IF(FLEXI_BUILDPOSTI)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/CMakeLists.txt)
+ELSE()
+  GETLISTOFVARSSTARTINGWITH("POSTI_" postiVars)
+  FOREACH (_var IN LISTS postiVars)
+    UNSET(${_var} CACHE)
+  ENDFOREACH()
 ENDIF()
 
 # =========================================================================
@@ -554,7 +572,7 @@ SET(FLEXI_REGRESSIONCHECK_EXAMPLES "${CMAKE_CURRENT_SOURCE_DIR}/regressioncheck/
 # Userblock
 # =========================================================================
 ADD_CUSTOM_COMMAND(TARGET flexilib PRE_BUILD COMMAND 
-  sh ${CMAKE_CURRENT_SOURCE_DIR}/tools/userblock/generateuserblock.sh ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} ${CMAKE_CURRENT_BINARY_DIR})
+   sh ${CMAKE_CURRENT_SOURCE_DIR}/tools/userblock/generateuserblock.sh ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} ${CMAKE_CACHEFILE_DIR} "${CMAKE_CACHE_MAJOR_VERSION}.${CMAKE_CACHE_MINOR_VERSION}.${CMAKE_CACHE_PATCH_VERSION}")
 
 # =========================================================================
 # Install

@@ -2,7 +2,7 @@
 % Numerics Research Group,
   Institute for Aerodynamics and Gas Dynamics
   University of Stuttgart, Germany
-% August 18, 2016
+% \today
 
 \hypertarget{introduction}{}
 

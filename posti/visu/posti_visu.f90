@@ -22,6 +22,7 @@
 !===================================================================================================================================
 PROGRAM Posti_Visu
 USE ISO_C_BINDING
+USE MOD_PreProc
 USE MOD_Globals
 USE MOD_Visu_Vars
 USE MOD_Commandline_Arguments
@@ -52,6 +53,7 @@ INTEGER                        :: MPI_COMM_WORLD = 0
 CHARACTER(LEN=255),ALLOCATABLE :: VarNames_loc(:)
 CHARACTER(LEN=255),ALLOCATABLE :: VarNamesSurf_loc(:)
 !==================================================================================================================================
+CALL SetStackSizeUnlimited()
 CALL InitMPI()
 CALL ParseCommandlineArguments()
 IF (nArgs.LT.1) THEN
