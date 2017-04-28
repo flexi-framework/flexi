@@ -1035,11 +1035,9 @@ SUBROUTINE CompareHDF5ArrayBounds(ArrayCompare,iExample)
 USE MOD_Globals
 USE MOD_Preproc
 USE MOD_RegressionCheck_Vars,  ONLY: Examples
-USE MOD_HDF5_input,            ONLY: CloseDataFile,ReadArray,ReadAttribute
-!USE MOD_IO_HDF,                ONLY: OpenDataFile
+USE MOD_HDF5_input,            ONLY: OpenDataFile,CloseDataFile,ReadArray,ReadAttribute
 USE MOD_HDF5_Input,            ONLY: DatasetExists,File_ID,GetDataSize
 USE MOD_IO_HDF5,               ONLY: HSize
-USE MOD_HDF5_input ,  ONLY: OpenDataFile
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

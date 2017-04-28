@@ -96,12 +96,13 @@ END IF
 ! Measure processing duration
 EndTime=REGGIETIME()
 
+! remove the following if never used again
 !   #if USE_MPI
 !   CALL MPI_FINALIZE(iError)
 !   IF(iError .NE. 0) CALL abort(&
 !     __STAMP__&
 !     ,'MPI finalize error',iError,999.)
-!   #endif
+!   #endif /*USE_MPI*/
 
 ! Print the summary or examples and error codes (if they exist)
 CALL SummaryOfErrors(EndTime)
@@ -110,7 +111,7 @@ CALL SummaryOfErrors(EndTime)
 CALL MPI_FINALIZE(iError)
 IF(iError .NE. 0) STOP 'MPI finalize error'
 CALL FinalizeMPI()
-#endif
+#endif /*USE_MPI*/
 
 IF(nErrors.GT.0) ERROR STOP '999'
 END PROGRAM RegressionCheck
