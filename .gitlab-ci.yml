@@ -162,7 +162,7 @@ intel_weekly_mpi:
 doxygen:
   stage: documentation
   tags:
-    - pomodoro
+    - withmodules
   script:
     - echo 'skipping...'
     #- cd doc/doxygen ; ./builddoxy.sh
@@ -170,7 +170,7 @@ doxygen:
 userguide:
   stage: documentation
   tags:
-    - pomodoro
+    - withmodules
   script:
     - echo 'skipping...'
     #- cd doc/userguide ; make
@@ -183,7 +183,7 @@ userguide:
 deploy_homepage:
   stage: deploy
   tags:
-    - pomodoro
+    - withmodules
   script:
     - echo 'skipping...'
     #- if [ -n "${DO_DEPLOY}" ]; then if [ -d "doc/doxygen/doxygen" ]; then ssh flexi@euler rm -rf homepage/doxygen ; scp -r doc/doxygen/doxygen flexi@euler:~/homepage/. ; fi ; fi
@@ -192,7 +192,7 @@ deploy_homepage:
 deploy_github:
   stage: deploy
   tags:
-    - pomodoro
+    - withmodules
   script:
     - echo 'skipping...'
     #- if [ -z "${DO_DEPLOY}" ]; then exit ; fi
