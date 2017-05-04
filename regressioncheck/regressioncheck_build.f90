@@ -378,7 +378,11 @@ IF(BuildValid(iReggieBuild))THEN
    'build_reggie && cmake `cat configurationX.cmake` ../../ > build_reggie.out  && make '//CodeNameLowCase//&
                                                                                                          ' >> build_reggie.out 2>&1'
   END IF
-  IF(NumberOfProcs.GT.1)SYSCOMMAND=TRIM(SYSCOMMAND)//' -j '//TRIM(ADJUSTL(NumberOfProcsStr))
+  IF(NumberOfProcs.GT.0)THEN
+    SYSCOMMAND=TRIM(SYSCOMMAND)//' -j '//TRIM(ADJUSTL(NumberOfProcsStr))
+  ELSE
+    SYSCOMMAND=TRIM(SYSCOMMAND)//' -j'
+  ENDIF
   CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
   ! save compilation flags (even those that are not explicitly selected by the user) for deciding whether a supplied example folder 
   ! can be executed with the compiled executable or not
