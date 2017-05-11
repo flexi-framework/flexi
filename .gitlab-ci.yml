@@ -27,7 +27,7 @@ build_gnu:
     - withmodules
   script:
     - module load env/gnu ; rm -rf build_gnu || true 
-    - mkdir -p build_gnu ; cd build_gnu ; cmake .. -DFLEXI_BUILD_HDF5=OFF ; make all
+    - mkdir -p build_gnu ; cd build_gnu ; cmake .. -DFLEXI_BUILD_HDF5=OFF ; make -j all
 
 build_intel:
   stage: build
@@ -35,7 +35,7 @@ build_intel:
     - withmodules
   script:
     - module load env/intel ; rm -rf build_intel || true 
-    - mkdir -p build_intel ; cd build_intel ; cmake .. -DFLEXI_BUILD_HDF5=OFF ; make all
+    - mkdir -p build_intel ; cd build_intel ; cmake .. -DFLEXI_BUILD_HDF5=OFF ; make -j all
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "clean": delete build folders if previous builds fail and exit
@@ -81,28 +81,28 @@ gnu_build_mpi:
   tags:
     - withmodules
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then  module load env/gnu ; cd build_gnu/bin/ ; ./regressioncheck build 2; fi
+    - if [ -n "${DO_NIGHTLY}" ]; then  module load env/gnu ; cd build_gnu/bin/ ; ./regressioncheck build -1; fi
 
 gnu_convtest:
   stage: reggie_long
   tags:
     - withmodules
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then module load env/gnu ; cd build_gnu/bin/ ; ./regressioncheck build feature_convtest 2; fi
+    - if [ -n "${DO_NIGHTLY}" ]; then module load env/gnu ; cd build_gnu/bin/ ; ./regressioncheck build feature_convtest -1; fi
 
 gnu_build_hdf5:
   stage: reggie_long
   tags:
     - withmodules
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then  module load env/gnu ; cd build_gnu/bin/ ; ./regressioncheck build build_freestream_hdf5_mpi_1x 2 ; fi
+    - if [ -n "${DO_NIGHTLY}" ]; then  module load env/gnu ; cd build_gnu/bin/ ; ./regressioncheck build build_freestream_hdf5_mpi_1x -1 ; fi
 
 gnu_build_hdf5_single:
   stage: reggie_long
   tags:
     - withmodules
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then  module load env/gnu ; cd build_gnu/bin/ ; ./regressioncheck build build_freestream_hdf5_single_18x 2; fi
+    - if [ -n "${DO_NIGHTLY}" ]; then  module load env/gnu ; cd build_gnu/bin/ ; ./regressioncheck build build_freestream_hdf5_single_18x -1; fi
 
 
 
@@ -112,28 +112,28 @@ intel_build_mpi:
   tags:
     - withmodules
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel/bin/ ; ./regressioncheck build 2; fi
+    - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel/bin/ ; ./regressioncheck build -1; fi
 
 intel_convtest:
   stage: reggie_long
   tags:
     - withmodules
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel/bin/ ; ./regressioncheck build feature_convtest 2; fi
+    - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel/bin/ ; ./regressioncheck build feature_convtest -1; fi
 
 intel_build_hdf5:
   stage: reggie_long
   tags:
     - withmodules
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then  module load env/intel ; cd build_intel/bin/ ; ./regressioncheck build build_freestream_hdf5_mpi_1x 2 ; fi
+    - if [ -n "${DO_NIGHTLY}" ]; then  module load env/intel ; cd build_intel/bin/ ; ./regressioncheck build build_freestream_hdf5_mpi_1x -1 ; fi
 
 intel_build_hdf5_single:
   stage: reggie_long
   tags:
     - withmodules
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then  module load env/intel ; cd build_intel/bin/ ; ./regressioncheck build build_freestream_hdf5_single_18x 2; fi
+    - if [ -n "${DO_NIGHTLY}" ]; then  module load env/intel ; cd build_intel/bin/ ; ./regressioncheck build build_freestream_hdf5_single_18x -1; fi
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "reggie_weekly": run 
