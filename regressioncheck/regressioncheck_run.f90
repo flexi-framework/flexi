@@ -755,7 +755,7 @@ INTEGER                        :: IndNum                           !> index numb
 SkipFolder=.False.
 IndNum=INDEX(ExampleNames(iExample), 'TESTCASE') ! look for TESTCASE- flag in folder name of example
 IF(IndNum.GT.0)THEN ! folder name contains 'TESTCASE'
-  FolderName=ExampleNames(iExample) ! e.g. run_TESTCASE-taylorgreenvortex/
+  FolderName=ExampleNames(iExample)               ! e.g. run_TESTCASE-taylorgreenvortex/
   FolderName=FolderName(IndNum+9:LEN(FolderName)) ! e.g. taylorgreenvortex/
   IndNum=INDEX(FolderName, '_')                   ! e.g. taylorgreenvortex_full/
   IF(IndNum.GT.0)FolderName=FolderName(1:IndNum-1)! e.g. taylorgreenvortex

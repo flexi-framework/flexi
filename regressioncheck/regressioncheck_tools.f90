@@ -427,7 +427,7 @@ IF(.NOT.ExistFile) THEN
   SkipExample=.TRUE.
   SWRITE(UNIT_stdOut,'(A16,A,A1)') '   FileName  : [', TRIM(FileName),']'
   SWRITE(UNIT_stdOut,'(A16,L,A1)') '   ExistFile : [', ExistFile,']'
-  SWRITE(UNIT_stdOut,'(A16,A)')    '   ERROR     : ','no parameter_reggie.ini found.                        ...skipping'
+  SWRITE(UNIT_stdOut,'(A15,A)')    '   ERROR     : ','no parameter_reggie.ini found.                        ...skipping'
   RETURN
   !ERROR STOP '-1'
 ELSE
@@ -1043,11 +1043,11 @@ IF(ExistFile) THEN
   END DO
   CLOSE(ioUnit)
   IF(output.EQ.'')THEN
-    SWRITE(UNIT_stdOut,'(A)') 'SUBROUTINE GetParameterFromFile: Parameter ['//TRIM(ParameterName)//'] not found.'
+    SWRITE(UNIT_stdOut,'(A)') ' SUBROUTINE GetParameterFromFile: Parameter ['//TRIM(ParameterName)//'] not found.'
     output='ParameterName does not exist'
   END IF
 ELSE
-  SWRITE(UNIT_stdOut,'(A)') 'SUBROUTINE GetParameterFromFile: File ['//TRIM(FileName)//'] not found.'
+  SWRITE(UNIT_stdOut,'(A)') ' SUBROUTINE GetParameterFromFile: File ['//TRIM(FileName)//'] not found.'
   output='file does not exist'
 END IF
 END SUBROUTINE GetParameterFromFile
