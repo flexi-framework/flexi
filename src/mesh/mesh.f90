@@ -176,9 +176,13 @@ IF(ABS(meshScale-1.).GT.1e-14)&
 
 IF(GETLOGICAL('meshdeform','.FALSE.'))THEN
   DO iElem=1,nElemsLoc
-    DO k=0,NGeo; DO j=0,NGeo; DO i=0,NGeo
+    DO k=0,PP_NGeoZ; DO j=0,NGeo; DO i=0,NGeo
       x(:)=Coords(:,i,j,k,iElem)
+#if PP_dim==3
       Coords(:,i,j,k,iElem) = x+ 0.1*SIN(PP_Pi*x(1))*SIN(PP_Pi*x(2))*SIN(PP_Pi*x(3))
+#else
+      Coords(:,i,j,k,iElem) = x+ 0.1*SIN(PP_Pi*x(1))*SIN(PP_Pi*x(2))
+#endif
     END DO; END DO; END DO;
   END DO
 END IF
@@ -306,15 +310,22 @@ IF (meshMode.GT.1) THEN
 #endif
   ! debugmesh: param specifies format to output, 0: no output, 1: tecplot ascii, 2: tecplot binary, 3: paraview binary
   CALL WriteDebugMesh(GETINT('debugmesh','0'))
-
 END IF
+
+#if PP_dim == 2
+  CALL Convert2D(meshMode)
+#endif
 
 ALLOCATE(SideToGlobalSide(nSides))
 DO iElem=1,nElems
+#if PP_dim == 3
   DO LocSideID=1,6
+#else    
+  DO LocSideID=2,5
+#endif    
     SideID = ElemToSide(E2S_SIDE_ID,LocSideID,iElem)
-    iSide=ElemInfo(3,iElem+offsetElem) + LocSideID
-    SideToGlobalSide(SideID) = abs(SideInfo(2,iSide))
+    iSide = ElemInfo(3,iElem+offsetElem) + LocSideID
+    SideToGlobalSide(SideID) = ABS(SideInfo(2,iSide))
   END DO
 END DO ! iElem
 
@@ -332,7 +343,6 @@ SWRITE(UNIT_stdOut,'(A)')' INIT MESH DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitMesh
 
-
 !==================================================================================================================================
 !> In case the selective version of overintegration is used, all mesh data also needs to be provided on the degree NOver of the
 !> higher quadrature rule.
@@ -348,50 +358,258 @@ USE MOD_Metrics,             ONLY: CalcSurfMetrics
 USE MOD_Interpolation,       ONLY: GetVandermonde
 USE MOD_Interpolation_Vars,  ONLY: NodeTypeCL,NodeType
 USE MOD_Overintegration_Vars,ONLY: NOver,VdmNToNOver
-USE MOD_ChangeBasis,         ONLY: ChangeBasis3D,ChangeBasis2D
+USE MOD_ChangeBasisByDim,    ONLY: ChangeBasisVolume
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL              :: JaCL_NSurf(3,3,0:NOver,0:NOver,0:NOver) !< metric terms P\in NOver
-REAL              :: XCL_NSurf(   3,0:NOver,0:NOver,0:NOver) !< geometry on P\in NOver
+REAL              :: JaCL_NSurf(3,3,0:NOver,0:NOver,0:PP_NOverZ) !< metric terms P\in NOver
+REAL              :: XCL_NSurf(   3,0:NOver,0:NOver,0:PP_NOverZ) !< geometry on P\in NOver
 REAL              :: Vdm_N_CLNSurf(0:NOver,0:PP_N)
 REAL              :: Vdm_CLNSurf_NSurf(0:NOver,0:NOver)
 INTEGER           :: iElem
 !==================================================================================================================================
 
 ! Build geometry for volume overintegration
-ALLOCATE(      Elem_xGPO(3,0:NOver,0:NOver,0:NOver,nElems)) ! only needed once by fillini
-ALLOCATE(Metrics_fTildeO(3,0:NOver,0:NOver,0:NOver,nElems))
-ALLOCATE(Metrics_gTildeO(3,0:NOver,0:NOver,0:NOver,nElems))
-ALLOCATE(Metrics_hTildeO(3,0:NOver,0:NOver,0:NOver,nElems))
+ALLOCATE(      Elem_xGPO(3,0:NOver,0:NOver,0:PP_NOverZ,nElems)) ! only needed once by fillini
+ALLOCATE(Metrics_fTildeO(3,0:NOver,0:NOver,0:PP_NOverZ,nElems))
+ALLOCATE(Metrics_gTildeO(3,0:NOver,0:NOver,0:PP_NOverZ,nElems))
+ALLOCATE(Metrics_hTildeO(3,0:NOver,0:NOver,0:PP_NOverZ,nElems))
 IF(NOver.GT.PP_N)THEN
-  CALL ChangeBasis3D(3,nElems,PP_N,NOver,VdmNToNOver,Elem_xGP,      Elem_xGPO,                   addToOutput=.FALSE.)
-  CALL ChangeBasis3D(3,nElems,PP_N,NOver,VdmNToNOver,Metrics_fTilde(:,:,:,:,:,0),Metrics_fTildeO,addToOutput=.FALSE.)
-  CALL ChangeBasis3D(3,nElems,PP_N,NOver,VdmNToNOver,Metrics_gTilde(:,:,:,:,:,0),Metrics_gTildeO,addToOutput=.FALSE.)
-  CALL ChangeBasis3D(3,nElems,PP_N,NOver,VdmNToNOver,Metrics_hTilde(:,:,:,:,:,0),Metrics_hTildeO,addToOutput=.FALSE.)
+  DO iElem=1,nElems
+    CALL ChangeBasisVolume(3,PP_N,NOver,VdmNToNOver,Elem_xGP(:,:,:,:,iElem),              Elem_xGPO(:,:,:,:,iElem))
+    CALL ChangeBasisVolume(3,PP_N,NOver,VdmNToNOver,Metrics_fTilde(:,:,:,:,iElem,0),Metrics_fTildeO(:,:,:,:,iElem))
+    CALL ChangeBasisVolume(3,PP_N,NOver,VdmNToNOver,Metrics_gTilde(:,:,:,:,iElem,0),Metrics_gTildeO(:,:,:,:,iElem))
+    CALL ChangeBasisVolume(3,PP_N,NOver,VdmNToNOver,Metrics_hTilde(:,:,:,:,iElem,0),Metrics_hTildeO(:,:,:,:,iElem))
+  END DO ! iElem
 END IF
 
 ! Build geometry for surface overintegration
-ALLOCATE(Face_xGPO(3,0:NOver,0:NOver,0:0,1:nSides))
-ALLOCATE( NormVecO(3,0:NOver,0:NOver,0:0,1:nSides))
-ALLOCATE(TangVec1O(3,0:NOver,0:NOver,0:0,1:nSides))
-ALLOCATE(TangVec2O(3,0:NOver,0:NOver,0:0,1:nSides))
-ALLOCATE(SurfElemO(  0:NOver,0:NOver,0:0,1:nSides))
+ALLOCATE(Face_xGPO(3,0:NOver,0:PP_NOverZ,0:0,1:nSides))
+ALLOCATE( NormVecO(3,0:NOver,0:PP_NOverZ,0:0,1:nSides))
+ALLOCATE(TangVec1O(3,0:NOver,0:PP_NOverZ,0:0,1:nSides))
+ALLOCATE(TangVec2O(3,0:NOver,0:PP_NOverZ,0:0,1:nSides))
+ALLOCATE(SurfElemO(  0:NOver,0:PP_NOverZ,0:0,1:nSides))
 
 CALL GetVandermonde( PP_N , NodeType  , NOver , NodeTypeCL , Vdm_N_CLNSurf     , modal=.FALSE.)
 CALL GetVandermonde( NOver, NodeTypeCL, NOver , NodeType   , Vdm_CLNSurf_NSurf , modal=.FALSE.)
 DO iElem=1,nElems
-  CALL ChangeBasis3D(3,PP_N,NOver,Vdm_N_CLNSurf,Metrics_fTilde(:,:,:,:,iElem,0),JaCL_NSurf(1,:,:,:,:))
-  CALL ChangeBasis3D(3,PP_N,NOver,Vdm_N_CLNSurf,Metrics_gTilde(:,:,:,:,iElem,0),JaCL_NSurf(2,:,:,:,:))
-  CALL ChangeBasis3D(3,PP_N,NOver,Vdm_N_CLNSurf,Metrics_hTilde(:,:,:,:,iElem,0),JaCL_NSurf(3,:,:,:,:))
-  CALL ChangeBasis3D(3,PP_N,NOver,Vdm_N_CLNSurf,Elem_xGP(:,:,:,:,iElem),XCL_NSurf)
+  CALL ChangeBasisVolume(3,PP_N,NOver,Vdm_N_CLNSurf,Metrics_fTilde(:,:,:,:,iElem,0),JaCL_NSurf(1,:,:,:,:))
+  CALL ChangeBasisVolume(3,PP_N,NOver,Vdm_N_CLNSurf,Metrics_gTilde(:,:,:,:,iElem,0),JaCL_NSurf(2,:,:,:,:))
+  CALL ChangeBasisVolume(3,PP_N,NOver,Vdm_N_CLNSurf,Metrics_hTilde(:,:,:,:,iElem,0),JaCL_NSurf(3,:,:,:,:))
+  CALL ChangeBasisVolume(3,PP_N,NOver,Vdm_N_CLNSurf,Elem_xGP(:,:,:,:,iElem),XCL_NSurf)
+#if PP_dim==2
+  STOP 'Surface metric computation not implemented yet'
+#endif
   CALL CalcSurfMetrics(NOver,0,JaCL_NSurf,XCL_NSurf,Vdm_CLNSurf_NSurf,iElem,&
                        NormVecO,TangVec1O,TangVec2O,SurfElemO,Face_xGPO)
 END DO
 END SUBROUTINE BuildOverintMesh
 
+
+#if PP_dim == 2
+!==================================================================================================================================
+!> This routine converts all 3D mesh quantities to a 2D mesh, including mappings, rotations etc.
+!> We use CGNS notation, which is for 2D:
+!>
+!>         ^
+!>         |
+!>         |  eta
+!>
+!>       <---
+!>     +-------+
+!>   | |       | ^
+!>   | |       | |   --->  xi
+!>   v |       | |
+!>     +-------+
+!>       --->
+!>
+!> The arrows along the square indicate the coordinate system on the side. These correspond to the first index of the 3D side 
+!> coordinate systems, except for XI_MINUS, where it corresponds to the negative of the second index, so all values need to be 
+!> rotated accordingly from 3D on these sides.
+!==================================================================================================================================
+SUBROUTINE Convert2D(meshMode)
+! MODULES
+USE MOD_PreProc
+USE MOD_Globals
+USE MOD_Mesh_Vars
+USE MOD_2D
+#if FV_ENABLED
+USE MOD_FV_Vars
+#endif
+USE MOD_Mappings ,ONLY: buildMappings
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN) :: meshMode
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER            :: i,j,iSide
+REAL               :: tmp(3,0:PP_N,0:PP_N,0:FV_ENABLED),zlength
+#if FV_ENABLED
+REAL               :: tmpFV(0:PP_N,0:PP_N,3)
+#endif
+!==================================================================================================================================
+SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_StdOut,'(A)') " CONVERT TO 2D ... "
+
+! Nullify all components in the third dimension
+Elem_xGP(3,:,:,:,:) = 0.
+CALL to2D_rank5((/1,0,0,0,1/),  (/3,PP_N,PP_N,PP_N,nElems/),4,Elem_xGP)
+
+IF (meshMode.GT.0) THEN
+  ! In 2D, there is only one flip for the slave sides (1)
+  SideToElem(S2E_FLIP,:) = MIN(1,SideToElem(S2E_FLIP,:))
+  ElemToSide(:,1,:) = -999
+  ElemToSide(:,6,:) = -999
+  ElemToSide(E2S_FLIP,:,:) = MIN(1,ElemToSide(E2S_FLIP,:,:))
+  MortarInfo(MI_FLIP,:,:)  = MIN(1,MortarInfo(MI_FLIP,:,:))
+
+  CALL buildMappings(PP_N,V2S=V2S,S2V=S2V,S2V2=S2V2,FS2M=FS2M, dim=2)
+END IF
+
+IF (meshMode.GT.1) THEN
+  ! Correctly flip and rotate all values on the XI_MINUS sides.
+  ! The tangential vector is always stored in TangVec1.
+  DO iSide=1,nSides
+    SELECT CASE (SideToElem(S2E_LOC_SIDE_ID,iSide))
+    CASE(XI_MINUS)
+      ! has to be flipped
+      tmp=Face_xGP(:,:,:,:,iSide)
+      DO j=0,PP_N; DO i=0,PP_N
+        Face_xGP(:,PP_N-j,i,:,iSide)=tmp(:,i,j,:)
+      END DO; END DO
+      tmp=NormVec(:,:,:,:,iSide)
+      DO j=0,PP_N; DO i=0,PP_N
+        NormVec(:,PP_N-j,i,:,iSide)=tmp(:,i,j,:)
+      END DO; END DO
+      tmp=-TangVec1(:,:,:,:,iSide)
+      DO j=0,PP_N; DO i=0,PP_N
+        TangVec1(:,PP_N-j,i,:,iSide)=tmp(:,i,j,:)
+      END DO; END DO
+      tmp(1,:,:,:)=SurfElem(:,:,:,iSide)
+      DO j=0,PP_N; DO i=0,PP_N
+        SurfElem(PP_N-j,i,:,iSide)=tmp(1,i,j,:)
+      END DO; END DO
+    CASE(ETA_MINUS)
+      TangVec1(:,:,:,:,iSide) = -TangVec2(:,:,:,:,iSide)
+    CASE(ETA_PLUS)
+      TangVec1(:,:,:,:,iSide) = -TangVec2(:,:,:,:,iSide)
+    END SELECT
+  END DO
+
+  ! Nullify all components in the third dimension
+  Metrics_fTilde(3,:,:,:,:,:) = 0.
+  Metrics_gTilde(3,:,:,:,:,:) = 0.
+  Metrics_hTilde(:,:,:,:,:,:) = 0.
+
+  NormVec (3,:,:,:,:) = 0.
+  TangVec1(3,:,:,:,:) = 0.
+  TangVec2(:,:,:,:,:) = 0.
+  Face_xGP(3,:,:,:,:) = 0.
+
+  ! Reduce the bounds of the arrays to be 0:0 in the third dimension (dimension is still kept for compatibility reasons)
+  CALL to2D_rank6((/1,0,0,0,1,0/),(/3,PP_N,PP_N,PP_N,nElems,FV_ENABLED/),4,Metrics_fTilde)
+  CALL to2D_rank6((/1,0,0,0,1,0/),(/3,PP_N,PP_N,PP_N,nElems,FV_ENABLED/),4,Metrics_gTilde)
+  CALL to2D_rank6((/1,0,0,0,1,0/),(/3,PP_N,PP_N,PP_N,nElems,FV_ENABLED/),4,Metrics_hTilde)
+  CALL to2D_rank5((/0,0,0,1,0/),  (/PP_N,PP_N,PP_N,nElems,FV_ENABLED/),3,sJ)
+  CALL to2D_rank5((/1,0,0,0,1/),  (/1,NgeoRef,NgeoRef,NgeoRef,nElems/),4,DetJac_Ref)
+
+  CALL to2D_rank5((/1,0,0,0,1/),(/3,PP_N,PP_N,FV_ENABLED,nSides/),3,Face_xGP)
+  CALL to2D_rank5((/1,0,0,0,1/),(/3,PP_N,PP_N,FV_ENABLED,nSides/),3,NormVec)
+  CALL to2D_rank5((/1,0,0,0,1/),(/3,PP_N,PP_N,FV_ENABLED,nSides/),3,TangVec1)
+  CALL to2D_rank5((/1,0,0,0,1/),(/3,PP_N,PP_N,FV_ENABLED,nSides/),3,TangVec2)
+  CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,FV_ENABLED,nSides/),2,SurfElem)
+
+  !computation of z length 
+  zlength=abs(nodeCoords(3,0,0,Ngeo,1)-nodeCoords(3,0,0,0,1))
+  !normalization of geometric terms by z length (reference elemt has length 2 [-1,1])
+  sJ=sJ*(zlength/2.)
+  ! attention: SurfElem contains NANs (MPI_YOUR sides and MPIMortars). Arithemtic with those causes runtime errors with INTEL debug
+  SurfElem(:,:,:,1:lastMPISide_MINE)=SurfElem(:,:,:,1:lastMPISide_MINE)/(zlength/2.)  
+  Metrics_fTilde = Metrics_fTilde/(zlength/2.)
+  Metrics_gTilde = Metrics_gTilde/(zlength/2.)
+
+
+#if FV_ENABLED
+  FV_TangVec1Eta=-FV_TangVec2Eta
+
+
+#if FV_RECONSTRUCT
+  ! Correctly flip and rotate all values on the XI_MINUS sides.
+  ! The tangential vector is always stored in TangVec1.
+  DO iSide=1,nSides
+    SELECT CASE (SideToElem(S2E_LOC_SIDE_ID,iSide))
+    CASE(XI_MINUS)
+      ! has to be flipped
+      tmpFV=FV_sdx_Face(:,:,:,iSide)
+      DO j=0,PP_N; DO i=0,PP_N
+        FV_sdx_Face(PP_N-j,i,:,iSide)=tmpFV(i,j,:)
+      END DO; END DO
+
+      tmpFV(:,:,1)=FV_dx_slave(1,:,:,iSide)
+      DO j=0,PP_N; DO i=0,PP_N
+        FV_dx_slave(1,PP_N-j,i,iSide)=tmpFV(i,j,1)
+      END DO; END DO
+      tmpFV(:,:,1)=FV_dx_master(1,:,:,iSide)
+      DO j=0,PP_N; DO i=0,PP_N
+        FV_dx_master(1,PP_N-j,i,iSide)=tmpFV(i,j,1)
+      END DO; END DO
+    END SELECT
+  END DO
+
+  CALL to2D_rank4((/0,0,1,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_sdx_XI  ) 
+  CALL to2D_rank4((/0,0,1,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_sdx_ETA ) 
+  CALL to2D_rank4((/0,0,1,1/),  (/PP_N,PP_N,PP_N,nElems/),3,FV_sdx_ZETA) 
+
+  CALL to2D_rank4((/0,0,1,1/),  (/PP_N,PP_N,3,lastMPISide_MINE/),2,FV_sdx_Face) 
+
+  CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_dx_XI_L  )
+  CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_dx_XI_R  )
+  CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_dx_ETA_L )
+  CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_dx_ETA_R )
+  CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,PP_N,nElems/),3,FV_dx_ZETA_L)
+  CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,PP_N,nElems/),3,FV_dx_ZETA_R)
+
+  CALL to2D_rank4((/1,0,0,1/),  (/1,PP_N,PP_N,nSides/),3,FV_dx_slave )
+  CALL to2D_rank4((/1,0,0,1/),  (/1,PP_N,PP_N,nSides/),3,FV_dx_master)
+#endif
+  ! p,q = general face index
+  CALL to2D_rank4((/0,0,1,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_SurfElemXi_sw  ) ! Attention: storage order is (p,q,i,iElem)
+  CALL to2D_rank4((/0,0,1,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_SurfElemEta_sw ) ! Attention: storage order is (p,q,j,iElem)
+  CALL to2D_rank4((/0,0,1,1/),  (/PP_N,PP_N,PP_N,nElems/),3,FV_SurfElemZeta_sw) ! Attention: storage order is (p,q,k,iElem)
+
+  CALL to2D_rank5((/1,0,0,1,1/),  (/3,PP_N,PP_N,PP_N,nElems/),2,FV_NormVecXi   )  ! Attention: storage order is (p,q,i,iElem)
+  CALL to2D_rank5((/1,0,0,1,1/),  (/3,PP_N,PP_N,PP_N,nElems/),2,FV_TangVec1Xi  )  !  -"-
+  CALL to2D_rank5((/1,0,0,1,1/),  (/3,PP_N,PP_N,PP_N,nElems/),2,FV_TangVec2Xi  )  !  -"-
+  CALL to2D_rank5((/1,0,0,1,1/),  (/3,PP_N,PP_N,PP_N,nElems/),2,FV_NormVecEta  )  ! Attention: storage order is (p,q,j,iElem)
+  CALL to2D_rank5((/1,0,0,1,1/),  (/3,PP_N,PP_N,PP_N,nElems/),2,FV_TangVec1Eta )  !  -"-
+  CALL to2D_rank5((/1,0,0,1,1/),  (/3,PP_N,PP_N,PP_N,nElems/),2,FV_TangVec2Eta )  !  -"-
+  CALL to2D_rank5((/1,0,0,1,1/),  (/3,PP_N,PP_N,PP_N,nElems/),3,FV_NormVecZeta )  ! Attention: storage order is (p,q,k,iElem)
+  CALL to2D_rank5((/1,0,0,1,1/),  (/3,PP_N,PP_N,PP_N,nElems/),3,FV_TangVec1Zeta)  !  -"-
+  CALL to2D_rank5((/1,0,0,1,1/),  (/3,PP_N,PP_N,PP_N,nElems/),3,FV_TangVec2Zeta)  !  -"-
+
+#if PARABOLIC
+  CALL to2D_rank5((/1,0,0,0,1/),  (/3,PP_N,PP_N,PP_N,nElems/),4,FV_Metrics_fTilde_sJ)
+  CALL to2D_rank5((/1,0,0,0,1/),  (/3,PP_N,PP_N,PP_N,nElems/),4,FV_Metrics_gTilde_sJ)
+  CALL to2D_rank5((/1,0,0,0,1/),  (/3,PP_N,PP_N,PP_N,nElems/),4,FV_Metrics_hTilde_sJ)
+  FV_Metrics_fTilde_sJ = FV_Metrics_fTilde_sJ/(zlength/2.)
+  FV_Metrics_gTilde_sJ = FV_Metrics_gTilde_sJ/(zlength/2.)
+#endif
+
+  ! attention: SurfElem contains NANs (MPI_YOUR sides and MPIMortars). Arithemtic with those causes runtime errors with INTEL debug
+  FV_SurfElemXi_sw=FV_SurfElemXi_sw/(zlength/2.)  
+  FV_SurfElemEta_sw=FV_SurfElemEta_sw/(zlength/2.)  
+  FV_SurfElemZeta_sw=FV_SurfElemZeta_sw/(zlength/2.)  
+
+#endif /* FV_ENABLED */
+END IF
+
+SWRITE(UNIT_stdOut,'(A)')'   DONE!'
+SWRITE(UNIT_StdOut,'(132("-"))')
+END SUBROUTINE Convert2D
+#endif
 
 !============================================================================================================================
 !> Deallocate mesh data.

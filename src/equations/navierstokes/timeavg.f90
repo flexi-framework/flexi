@@ -268,7 +268,7 @@ END IF
 #endif /* PARABOLIC */
 
 ! Allocate arrays
-ALLOCATE(UAvg(nVarAvg,0:PP_N,0:PP_N,0:PP_N,nElems),UFluc(nVarFluc,0:PP_N,0:PP_N,0:PP_N,nElems))
+ALLOCATE(UAvg(nVarAvg,0:PP_N,0:PP_N,0:PP_NZ,nElems),UFluc(nVarFluc,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 UAvg = 0.
 UFluc = 0.
 dtOld=0.
@@ -336,9 +336,9 @@ INTEGER                         :: i,j,k,iElem
 REAL                            :: tFuture
 REAL                            :: dtStep
 REAL                            :: vel(3), Mach
-REAL                            :: tmpVars(nVarAvg,0:PP_N,0:PP_N,0:PP_N)
+REAL                            :: tmpVars(nVarAvg,0:PP_N,0:PP_N,0:PP_NZ)
 LOGICAL                         :: getPrims=.FALSE.
-REAL                            :: prim(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N),UE(PP_2Var)
+REAL                            :: prim(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ),UE(PP_2Var)
 #if PARABOLIC
 INTEGER                         :: p,q
 REAL                            :: GradVel(1:3,1:3), Shear(1:3,1:3)
@@ -352,7 +352,7 @@ IF(ANY(CalcAvg(6:nMaxVarAvg))) getPrims=.TRUE.
 
 DO iElem=1,nElems
   IF(getPrims)THEN
-    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       CALL ConsToPrim(prim(:,i,j,k),U(:,i,j,k,iElem))
     END DO; END DO; END DO
   END IF
@@ -383,7 +383,7 @@ DO iElem=1,nElems
     tmpVars(iAvg(8),:,:,:)=prim(4,:,:,:)
 
   IF(CalcAvg(9))THEN  !'VelocityMagnitude'
-    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       tmpVars(iAvg(9),i,j,k)=SQRT(SUM(prim(2:4,i,j,k)**2))
     END DO; END DO; END DO
   END IF
@@ -392,7 +392,7 @@ DO iElem=1,nElems
     tmpVars(iAvg(10),:,:,:)=prim(5,:,:,:)
 
   IF(CalcAvg(11))THEN !'VelocitySound'
-    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       UE(CONS)=U(:,i,j,k,iElem)
       UE(PRIM)=prim(:,i,j,k)
       UE(SRHO)=1./prim(1,i,j,k)
@@ -401,7 +401,7 @@ DO iElem=1,nElems
   END IF
 
   IF(CalcAvg(12))THEN !'Mach'
-    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       UE(CONS)=U(:,i,j,k,iElem)
       UE(PRIM)=prim(:,i,j,k)
       UE(SRHO)=1./prim(1,i,j,k)
@@ -410,13 +410,13 @@ DO iElem=1,nElems
   END IF
 
   IF(CalcAvg(13))THEN !'Temperature'
-    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       tmpVars(iAvg(13),i,j,k)=prim(6,i,j,k)
     END DO; END DO; END DO
   END IF
 
   IF(CalcAvg(14))THEN !'TotalTemperature'
-    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       UE(CONS)=U(:,i,j,k,iElem)
       UE(PRIM)=prim(:,i,j,k)
       UE(SRHO)=1./prim(1,i,j,k)
@@ -426,7 +426,7 @@ DO iElem=1,nElems
   END IF
 
   IF(CalcAvg(15))THEN !'TotalPressure
-    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       UE(CONS)=U(:,i,j,k,iElem)
       UE(PRIM)=prim(:,i,j,k)
       UE(SRHO)=1./prim(1,i,j,k)
@@ -445,7 +445,7 @@ END DO ! iElem
 #if PARABOLIC
 IF(CalcFluc(17).OR.CalcFluc(18))THEN  !'Dissipation via vel gradients'
   DO iElem=1,nElems
-    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       GradVel(:,1)=GradUx(2:4,i,j,k,iElem)
       GradVel(:,2)=GradUy(2:4,i,j,k,iElem)
       GradVel(:,3)=GradUz(2:4,i,j,k,iElem)
@@ -467,7 +467,7 @@ END IF
 
 IF(CalcFluc(19))THEN  !'TKE'
   DO iElem=1,nElems
-    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       vel(1:3) =U(2:4,i,j,k,iElem)/U(1,i,j,k,iElem)
       UFluc(iFluc(19),i,j,k,iElem)=UFluc(iFluc(19),i,j,k,iElem)+SUM(vel(:)**2)*dtStep
     END DO; END DO; END DO

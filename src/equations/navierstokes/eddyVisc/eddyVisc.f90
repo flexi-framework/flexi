@@ -68,13 +68,13 @@ ALLOCATE(DeltaS_slave (1:nSides))
 DeltaS_master=0.
 DeltaS_slave=0.
 DeltaS=0.
-ALLOCATE(SGS_Ind(1,0:PP_N,0:PP_N,0:PP_N,nElems))
-ALLOCATE(SGS_Ind_master(1,0:PP_N,0:PP_N,1:nSides))
-ALLOCATE(SGS_Ind_slave (1,0:PP_N,0:PP_N,1:nSides))
+ALLOCATE(SGS_Ind(1,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+ALLOCATE(SGS_Ind_master(1,0:PP_N,0:PP_NZ,1:nSides))
+ALLOCATE(SGS_Ind_slave (1,0:PP_N,0:PP_NZ,1:nSides))
 SGS_Ind=0.
 SGS_Ind_master=0.
 SGS_Ind_slave=0.
-ALLOCATE(muSGS(1,0:PP_N,0:PP_N,0:PP_N,nElems))
+ALLOCATE(muSGS(1,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 ALLOCATE(muSGSmax(nElems))
 muSGS = 0.
 muSGSmax=0.
@@ -96,7 +96,7 @@ SELECT CASE(eddyViscType)
     CALL CollectiveStop(__STAMP__,&
       'Eddy Viscosity Type not specified!')
 END SELECT
-CALL AddToFieldData((/1,PP_N+1,PP_N+1,PP_N+1/),'VMSData',(/'muSGS'/),RealArray=muSGS)
+CALL AddToFieldData((/1,PP_N+1,PP_N+1,PP_NZ+1/),'VMSData',(/'muSGS'/),RealArray=muSGS)
 
 END SUBROUTINE
 

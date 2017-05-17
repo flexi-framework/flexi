@@ -147,6 +147,17 @@ CASE(1338) ! Blasius boundary layer solution
 CASE DEFAULT
 END SELECT ! IniExactFunc
 
+#if PP_dim==2
+SELECT CASE (IniExactFunc)
+CASE(4,43,7) ! synthetic test cases
+  CALL CollectiveStop(__STAMP__,'The selected exact function is not available in 2D!') 
+CASE(2,3,41,42) ! synthetic test cases
+  IF(AdvVel(3).NE.0.) THEN
+    CALL CollectiveStop(__STAMP__,'You are computing in 2D! Please set AdvVel(3) = 0!') 
+  END IF
+END SELECT
+#endif
+
 SWRITE(UNIT_stdOut,'(A)')' INIT EXACT FUNCTION DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitExactFunc
@@ -289,6 +300,7 @@ CASE(3) ! linear in rho
     Resu_t(2:4)=Resu_t(1)*prim(2:4) ! rho*vel
     Resu_t(5)=0.5*Resu_t(1)*SUM(prim(2:4)*prim(2:4))
   END IF
+#if PP_dim==3
 CASE(4) ! exact function
   Frequency=1.
   Amplitude=0.1
@@ -306,6 +318,8 @@ CASE(4) ! exact function
     Resu_tt(1:4)=-a*a*Amplitude*sin(Omega*SUM(x) - a*tEval)
     Resu_tt(5)=2.*(Resu_t(1)*Resu_t(1) + Resu(1)*Resu_tt(1))
   END IF
+#endif
+
 CASE(41) ! SINUS in x
   Frequency=1.
   Amplitude=0.1
@@ -346,6 +360,7 @@ CASE(42) ! SINUS in y
     Resu_t(3) = Resu_t(1)
     Resu_tt(5)=2.*(Resu_t(1)*Resu_t(1) + Resu(1)*Resu_tt(1))
   END IF
+#if PP_dim==3
 CASE(43) ! SINUS in z
   Frequency=1.
   Amplitude=0.1
@@ -367,6 +382,7 @@ CASE(43) ! SINUS in z
     Resu_t(4) = Resu_t(1)
     Resu_tt(5)=2.*(Resu_t(1)*Resu_t(1) + Resu(1)*Resu_tt(1))
   END IF
+#endif
 CASE(5) !Roundjet Bogey Bailly 2002, Re=65000, x-axis is jet axis
   prim(1)  =1.
   prim(2:4)=0.
@@ -578,9 +594,16 @@ CASE(1338) ! blasius
   CALL PrimToCons(prim,resu)
 #endif
 END SELECT ! ExactFunction
+#if PP_dim==2
+Resu(4)=0.
+#endif
 
 ! For O3 LS 3-stage RK, we have to define proper time dependent BC
 IF(fullBoundaryOrder)THEN ! add resu_t, resu_tt if time dependant
+#if PP_dim==2
+  Resu_t=0.
+  Resu_tt=0.
+#endif
   SELECT CASE(CurrentStage)
   CASE(1)
     ! resu = g(t)
@@ -596,6 +619,8 @@ IF(fullBoundaryOrder)THEN ! add resu_t, resu_tt if time dependant
                'Exactfuntion works only for 3 Stage O3 LS RK!')
   END SELECT
 END IF
+
+
 END SUBROUTINE ExactFunc
 
 !==================================================================================================================================
@@ -606,7 +631,10 @@ SUBROUTINE CalcSource(Ut,t)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Equation_Vars,ONLY:IniExactFunc,doCalcSource
-USE MOD_Eos_Vars,ONLY:Kappa,KappaM1
+USE MOD_Eos_Vars,ONLY:Kappa
+#if PP_dim==3
+USE MOD_Eos_Vars,ONLY:KappaM1
+#endif
 USE MOD_Exactfunc_Vars,ONLY:AdvVel
 #if PARABOLIC
 USE MOD_Eos_Vars,ONLY:mu0,Pr
@@ -620,20 +648,23 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 REAL,INTENT(IN)     :: t                                       !< current solution time
-REAL,INTENT(INOUT)  :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems) !< DG time derivative
+REAL,INTENT(INOUT)  :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< DG time derivative
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER             :: i,j,k,iElem
-REAL                :: Ut_src(5,0:PP_N,0:PP_N,0:PP_N)
+REAL                :: Ut_src(5,0:PP_N,0:PP_N,0:PP_NZ)
 REAL                :: Frequency,Amplitude,Omega,a
+#if PP_dim==3
 REAL                :: sinXGP,sinXGP2,cosXGP,at
 REAL                :: tmp(6)
+#endif
 REAL                :: C
 #if FV_ENABLED
-REAL                :: Ut_src2(5,0:PP_N,0:PP_N,0:PP_N)
+REAL                :: Ut_src2(5,0:PP_N,0:PP_N,0:PP_NZ)
 #endif
 !==================================================================================================================================
 SELECT CASE (IniExactFunc)
+#if PP_dim==3
 CASE(4) ! exact function
   Frequency=1.
   Amplitude=0.1
@@ -652,7 +683,7 @@ CASE(4) ! exact function
   tmp=tmp*Amplitude
   at=a*t
   DO iElem=1,nElems
-    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       cosXGP=COS(omega*SUM(Elem_xGP(:,i,j,k,iElem))-at)
       sinXGP=SIN(omega*SUM(Elem_xGP(:,i,j,k,iElem))-at)
       sinXGP2=2.*sinXGP*cosXGP !=SIN(2.*(omega*SUM(Elem_xGP(:,i,j,k,iElem))-a*t))
@@ -663,18 +694,19 @@ CASE(4) ! exact function
 #if FV_ENABLED    
     IF (FV_Elems(iElem).GT.0) THEN ! FV elem     
       CALL ChangeBasis3D(PP_nVar,PP_N,PP_N,FV_Vdm,Ut_src(:,:,:,:),Ut_src2(:,:,:,:))
-      DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+      DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
         Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem)+Ut_src2(:,i,j,k)/sJ(i,j,k,iElem,1)
       END DO; END DO; END DO ! i,j,k
     ELSE
 #endif      
-      DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+      DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
         Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem)+Ut_src(:,i,j,k)/sJ(i,j,k,iElem,0)
       END DO; END DO; END DO ! i,j,k
 #if FV_ENABLED    
     END IF
 #endif
   END DO ! iElem
+#endif
 CASE(41) ! Sinus in x
   Frequency=1.
   Amplitude=0.1
@@ -683,7 +715,7 @@ CASE(41) ! Sinus in x
   C = 2.0
 
   DO iElem=1,nElems
-    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
 #if PARABOLIC      
       Ut_src(1,i,j,k) = (-Amplitude*a+Amplitude*omega)*cos(omega*Elem_xGP(1,i,j,k,iElem)-a*t)
 
@@ -713,12 +745,12 @@ CASE(41) ! Sinus in x
 #if FV_ENABLED    
     IF (FV_Elems(iElem).GT.0) THEN ! FV elem
       CALL ChangeBasis3D(PP_nVar,PP_N,PP_N,FV_Vdm,Ut_src(:,:,:,:),Ut_src2(:,:,:,:))
-      DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+      DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
         Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem)+Ut_src2(:,i,j,k)/sJ(i,j,k,iElem,1)
       END DO; END DO; END DO ! i,j,k
     ELSE
 #endif
-      DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+      DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
         Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem)+Ut_src(:,i,j,k)/sJ(i,j,k,iElem,0)
       END DO; END DO; END DO ! i,j,k
 #if FV_ENABLED    
@@ -733,7 +765,7 @@ CASE(42) ! Sinus in y
   C = 2.0
 
   DO iElem=1,nElems
-    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
 #if PARABOLIC      
       Ut_src(1,i,j,k) = (-Amplitude*a+Amplitude*omega)*cos(omega*Elem_xGP(2,i,j,k,iElem)-a*t)
       Ut_src(2,i,j,k) = 0.0
@@ -764,12 +796,12 @@ CASE(42) ! Sinus in y
 #if FV_ENABLED    
     IF (FV_Elems(iElem).GT.0) THEN ! FV elem
       CALL ChangeBasis3D(PP_nVar,PP_N,PP_N,FV_Vdm,Ut_src(:,:,:,:),Ut_src2(:,:,:,:))
-      DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+      DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
         Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem)+Ut_src2(:,i,j,k)/sJ(i,j,k,iElem,1)
       END DO; END DO; END DO ! i,j,k
     ELSE
 #endif
-      DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+      DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
         Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem)+Ut_src(:,i,j,k)/sJ(i,j,k,iElem,0)
       END DO; END DO; END DO ! i,j,k
 #if FV_ENABLED    
@@ -777,6 +809,7 @@ CASE(42) ! Sinus in y
 #endif
   END DO
 
+#if PP_dim==3
 CASE(43) ! Sinus in z
   Frequency=1.
   Amplitude=0.1
@@ -826,6 +859,7 @@ CASE(43) ! Sinus in z
     END IF
 #endif
   END DO
+#endif
 CASE DEFAULT
   ! No source -> do nothing and set marker to not run again
   doCalcSource=.FALSE.

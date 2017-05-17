@@ -130,7 +130,9 @@ IF(interpolateFromTree)THEN
   END DO
 ELSE
   Vdm_EQNgeo_CLN=MATMUL(Vdm_CLN_N,Vdm_EQNgeo_CLN)
-  CALL ChangeBasis3D(3,nElems,NGeo,PP_N,Vdm_EQNGeo_CLN,NodeCoords,Elem_xGP,.FALSE.)
+  DO iElem=1,nElems
+    CALL ChangeBasis3D(3,NGeo,PP_N,Vdm_EQNGeo_CLN,NodeCoords(:,:,:,:,iElem),Elem_xGP(:,:,:,:,iElem))
+  END DO
 END IF
 
 END SUBROUTINE BuildCoords
@@ -459,7 +461,11 @@ REAL               :: tmp(        3,0:Nloc,0:Nloc)
 REAL               :: tmp2(       3,0:Nloc,0:Nloc)
 !==================================================================================================================================
 
+#if PP_dim == 3
 DO iLocSide=1,6
+#else    
+DO iLocSide=2,5
+#endif    
   flip = ElemToSide(E2S_FLIP,iLocSide,iElem)
   IF(flip.NE.0) CYCLE ! only master sides with flip=0
   SideID=ElemToSide(E2S_SIDE_ID,iLocSide,iElem)
@@ -481,7 +487,7 @@ DO iLocSide=1,6
   CALL ChangeBasis2D(3,Nloc,Nloc,Vdm_CLN_N,tmp,tmp2)
   ! turn into right hand system of side
   DO q=0,Nloc; DO p=0,Nloc
-    pq=SideToVol2(Nloc,p,q,flip,iLocSide)
+    pq=SideToVol2(Nloc,p,q,0,iLocSide,3)
     ! Compute Face_xGP for sides
     Face_xGP(1:3,p,q,0,sideID)=tmp2(:,pq(1),pq(2))
   END DO; END DO ! p,q
@@ -504,7 +510,7 @@ DO iLocSide=1,6
     CALL ChangeBasis2D(3,Nloc,Nloc,Vdm_CLN_N,tmp,tmp2)
     ! turn into right hand system of side
     DO q=0,Nloc; DO p=0,Nloc
-      pq=SideToVol2(Nloc,p,q,flip,iLocSide)
+      pq=SideToVol2(Nloc,p,q,0,iLocSide,3)
       Ja_Face_l(dd,1:3,p,q)=tmp2(:,pq(1),pq(2))
     END DO; END DO ! p,q
   END DO ! dd

@@ -65,22 +65,22 @@ USE MOD_Mesh_Vars,       ONLY: firstInnerSide,   lastInnerSide
 USE MOD_Mesh_Vars,       ONLY: firstMPISide_MINE,lastMPISide_MINE
 #if FV_ENABLED
 USE MOD_FV_Vars         ,ONLY: FV_Elems_Sum,FV_sVdm
-USE MOD_ChangeBasis     ,ONLY: ChangeBasis2D
+USE MOD_ChangeBasisByDim,ONLY: ChangeBasisSurf
 #endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: dir                                                  !< direction of gradients (1=x,2=y,3=z)
-LOGICAL,INTENT(IN) :: doMPISides                                           !< = .TRUE. only MINE MPISides are filled,
-                                                                           !< =.FALSE. InnerSides
-REAL,INTENT(IN)    :: UPrimface_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< Solution on master sides
-REAL,INTENT(IN)    :: UPrimface_slave( PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< Solution on slave sides
-REAL,INTENT(OUT)   :: Flux(1:PP_nVarPrim,0:PP_N,0:PP_N,nSides)             !< Lifting-Flux
+INTEGER,INTENT(IN) :: dir                                                   !< direction of gradients (1=x,2=y,3=z)
+LOGICAL,INTENT(IN) :: doMPISides                                            !< = .TRUE. only MINE MPISides are filled,
+                                                                            !< =.FALSE. InnerSides
+REAL,INTENT(INOUT) :: UPrimface_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< Solution on master sides
+REAL,INTENT(INOUT) :: UPrimface_slave( PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< Solution on slave sides
+REAL,INTENT(OUT)   :: Flux(1:PP_nVarPrim,0:PP_N,0:PP_NZ,nSides)             !< Lifting-Flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: SideID,p,q,firstSideID,lastSideID,sig
 #if FV_ENABLED  
-REAL               :: UPrim_glob(1:PP_nVarPrim,0:PP_N,0:PP_N)
+REAL               :: UPrim_glob(1:PP_nVarPrim,0:PP_N,0:PP_NZ)
 #endif
 !==================================================================================================================================
 ! fill flux for sides ranging between firstSideID and lastSideID using Riemann solver
@@ -109,18 +109,18 @@ DO SideID=firstSideID,lastSideID
     Flux(:,:,:,SideID) = sig*UPrimface_master(:,:,:,SideID) + UPrimface_slave(:,:,:,SideID)
 #if FV_ENABLED
   CASE(1) ! master=FV, slave=DG
-    CALL ChangeBasis2D(PP_nVarPrim,PP_N,PP_N,FV_sVdm,UPrimface_master(:,:,:,SideID),UPrim_glob)
+    CALL ChangeBasisSurf(PP_nVarPrim,PP_N,PP_N,FV_sVdm,UPrimface_master(:,:,:,SideID),UPrim_glob)
     Flux(:,:,:,SideID) = sig*UPrim_glob + UPrimface_slave(:,:,:,SideID)
   CASE(2) ! master=DG, slave=FV
-    CALL ChangeBasis2D(PP_nVarPrim,PP_N,PP_N,FV_sVdm,UPrimface_slave(:,:,:,SideID),UPrim_glob)
+    CALL ChangeBasisSurf(PP_nVarPrim,PP_N,PP_N,FV_sVdm,UPrimface_slave(:,:,:,SideID),UPrim_glob)
     Flux(:,:,:,SideID) = sig*UPrimface_master(:,:,:,SideID) + UPrim_glob
   CASE(3) ! both FV
-    CYCLE 
+    CYCLE
   END SELECT
 #endif
 
   ! BR1 uses arithmetic mean value of states for the Riemann flux
-  DO q=0,PP_N
+  DO q=0,PP_NZ
     DO p=0,PP_N
       Flux(:,p,q,SideID)=0.5*Flux(:,p,q,SideID)*NormVec(dir,p,q,0,SideID)*SurfElem(p,q,0,SideID)
     END DO
@@ -158,10 +158,10 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 REAL,INTENT(IN)    :: t                                                !< Current solution time
-REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< Primitive solution from the inside
-REAL,INTENT(INOUT) :: FluxX(       PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< Lifting boundary flux in x direction
-REAL,INTENT(INOUT) :: FluxY(       PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< Lifting boundary flux in y direction
-REAL,INTENT(INOUT) :: FluxZ(       PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< Lifting boundary flux in z direction
+REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< Primitive solution from the inside
+REAL,INTENT(OUT)   :: FluxX(       PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< Lifting boundary flux in x direction
+REAL,INTENT(OUT)   :: FluxY(       PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< Lifting boundary flux in y direction
+REAL,INTENT(OUT)   :: FluxZ(       PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< Lifting boundary flux in z direction
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: SideID,p,q
@@ -173,10 +173,14 @@ DO SideID=1,nBCSides
   IF (FV_Elems_master(SideID).GT.0) CYCLE
   CALL Lifting_GetBoundaryFlux(SideID,t,UPrim_master(:,:,:,SideID),FluxZ(:,:,:,SideID),&
        NormVec(:,:,:,0,SideID),TangVec1(:,:,:,0,SideID),TangVec2(:,:,:,0,SideID),Face_xGP(:,:,:,0,SideID),SurfElem(:,:,0,SideID))
-  DO q=0,PP_N; DO p=0,PP_N
+  DO q=0,PP_NZ; DO p=0,PP_N
     FluxX(:,p,q,SideID)=FluxZ(:,p,q,SideID)*NormVec(1,p,q,0,SideID)
     FluxY(:,p,q,SideID)=FluxZ(:,p,q,SideID)*NormVec(2,p,q,0,SideID)
+#if (PP_dim==3)
     FluxZ(:,p,q,SideID)=FluxZ(:,p,q,SideID)*NormVec(3,p,q,0,SideID)
+#else
+    FluxZ(:,p,q,SideID)=0.
+#endif
   END DO; END DO
 END DO
 

@@ -86,11 +86,22 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT SCALAR LINADV...'
 
 ! Read the velocity vector from ini file
 AdvVel = GETREALARRAY('AdvVel',3)
+#if PP_dim==2
+! Make sure advection velocity is 0 in third dimension for two-dimensional computations,
+! computing wave speeds etc. will get easier.
+IF(AdvVel(3).NE.0.) THEN
+  SWRITE(UNIT_StdOut,'(A)')' You are computing in 2D! AdvVel(3) will be set to zero!' 
+  AdvVel(3) = 0.
+END IF
+#endif
 ! Read the diffusion constant from ini file
 DiffC  = GETREAL('DiffC','0.')
 
 ! Call initialization of exactfunc
 CALL InitExactFunc()
+
+! Always set docalcsource true, set false by calcsource itself on first run if not needed
+doCalcSource=.TRUE.
 
 EquationInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT LINADV DONE!'
@@ -108,10 +119,10 @@ USE MOD_Mesh_Vars,ONLY:nSides
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)  :: U_master(        PP_nVar,0:PP_N,0:PP_N,1:nSides) !< conservative solution on master sides
-REAL,INTENT(IN)  :: U_slave(         PP_nVar,0:PP_N,0:PP_N,1:nSides) !< conservative solution on slave sides
-REAL,INTENT(OUT) :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< primitive solution on master sides
-REAL,INTENT(OUT) :: UPrim_slave( PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< primitive solution on slave sides
+REAL,INTENT(IN)  :: U_master(        PP_nVar,0:PP_N,0:PP_NZ,1:nSides) !< conservative solution on master sides
+REAL,INTENT(IN)  :: U_slave(         PP_nVar,0:PP_N,0:PP_NZ,1:nSides) !< conservative solution on slave sides
+REAL,INTENT(OUT) :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< primitive solution on master sides
+REAL,INTENT(OUT) :: UPrim_slave( PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< primitive solution on slave sides
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
@@ -132,13 +143,13 @@ USE MOD_Mesh_Vars,ONLY: nSides
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< primitive solution on master sides
-REAL,INTENT(IN)    :: UPrim_slave( PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< primitive solution on slave sides
-REAL,INTENT(OUT)   :: U_master(        PP_nVar,0:PP_N,0:PP_N,1:nSides) !< conservative solution on master sides
-REAL,INTENT(OUT)   :: U_slave(         PP_nVar,0:PP_N,0:PP_N,1:nSides) !< conservative solution on slave sides
-INTEGER,INTENT(IN) :: mask_master(1:nSides)                            !< mask: only convert solution if mask(SideID) == mask_ref 
-INTEGER,INTENT(IN) :: mask_slave (1:nSides)                            !< mask: only convert solution if mask(SideID) == mask_ref 
-INTEGER,INTENT(IN) :: mask_ref                                         !< reference value for mask comparison
+REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< primitive solution on master sides
+REAL,INTENT(IN)    :: UPrim_slave( PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< primitive solution on slave sides
+REAL,INTENT(OUT)   :: U_master(        PP_nVar,0:PP_N,0:PP_NZ,1:nSides) !< conservative solution on master sides
+REAL,INTENT(OUT)   :: U_slave(         PP_nVar,0:PP_N,0:PP_NZ,1:nSides) !< conservative solution on slave sides
+INTEGER,INTENT(IN) :: mask_master(1:nSides)                             !< mask: only convert solution if mask(SideID) == mask_ref 
+INTEGER,INTENT(IN) :: mask_slave (1:nSides)                             !< mask: only convert solution if mask(SideID) == mask_ref 
+INTEGER,INTENT(IN) :: mask_ref                                          !< reference value for mask comparison
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================

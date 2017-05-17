@@ -140,7 +140,11 @@ nMortarInnerSides=0
 nMortarMPISides=0
 DO iElem=FirstElemInd,LastElemInd
   aElem=>Elems(iElem)%ep
+#if PP_dim == 3
   DO iLocSide=1,6
+#else    
+  DO iLocSide=2,5
+#endif    
     aSide=>aElem%Side(iLocSide)%sp
     aSide%tmp=0
     IF(aSide%nMortars.GT.0)THEN
@@ -168,7 +172,11 @@ iInnerSide=nBCSides+nMortarInnerSides
 iMortarMPISide=nSides-nMortarMPISides
 DO iElem=FirstElemInd,LastElemInd
   aElem=>Elems(iElem)%ep
+#if PP_dim == 3
   DO iLocSide=1,6
+#else    
+  DO iLocSide=2,5
+#endif    
     aSide=>aElem%Side(iLocSide)%sp
     nMortars=aSide%nMortars
     DO iMortar=0,nMortars
@@ -245,7 +253,11 @@ DO iNbProc=1,nNbProcs
   iSide=0
   DO iElem=FirstElemInd,LastElemInd
     aElem=>Elems(iElem)%ep
+#if PP_dim == 3
     DO iLocSide=1,6
+#else    
+    DO iLocSide=2,5
+#endif    
       aSide=>aElem%Side(iLocSide)%sp
       nMortars=aSide%nMortars
       DO iMortar=0,nMortars
@@ -263,7 +275,11 @@ DO iNbProc=1,nNbProcs
   IF(iSide.GT.1) CALL MergeSort(SideIDMap(1:iSide),iSide) !sort by global side index
   DO iElem=FirstElemInd,LastElemInd
     aElem=>Elems(iElem)%ep
+#if PP_dim == 3
     DO iLocSide=1,6
+#else    
+    DO iLocSide=2,5
+#endif    
       aSide=>aElem%Side(iLocSide)%sp
       nMortars=aSide%nMortars
       DO iMortar=0,nMortars
@@ -290,7 +306,11 @@ DO iNbProc=1,nNbProcs
 END DO !nbProc(i)
 DO iElem=FirstElemInd,LastElemInd
   aElem=>Elems(iElem)%ep
+#if PP_dim == 3
   DO iLocSide=1,6
+#else    
+  DO iLocSide=2,5
+#endif    
     aSide=>aElem%Side(iLocSide)%sp
     nMortars=aSide%nMortars
     DO iMortar=0,nMortars
@@ -611,7 +631,11 @@ INTEGER             :: nSides_MortarType(1:3),iMortar
 nSides_flip=0
 DO iElem=1,nElems
   aElem=>Elems(iElem+offsetElem)%ep
+#if PP_dim == 3
   DO LocSideID=1,6
+#else    
+  DO LocSideID=2,5
+#endif    
     aSide=>aElem%Side(LocSideID)%sp
     ElemToSide(E2S_SIDE_ID,LocSideID,iElem)=aSide%SideID
     ElemToSide(E2S_FLIP,LocSideID,iElem)   =aSide%Flip
@@ -622,7 +646,11 @@ END DO ! iElem
 ! Side to Element mapping, sorted by SideID
 DO iElem=1,nElems
   aElem=>Elems(iElem+offsetElem)%ep
+#if PP_dim == 3
   DO LocSideID=1,6
+#else    
+  DO LocSideID=2,5
+#endif    
     aSide=>aElem%Side(LocSideID)%sp
     IF(aSide%Flip.EQ.0)THEN !root side
       SideToElem(S2E_ELEM_ID,aSide%SideID)         = iElem !root Element
@@ -688,7 +716,11 @@ LOGWRITE(*,*)'============================= START SIDE CHECKER =================
 DO iElem=1,nElems
   aElem=>Elems(iElem+offsetElem)%ep
   LOGWRITE(*,*)'=============== iElem= ',iElem, '==================='
+#if PP_dim == 3
   DO LocSideID=1,6
+#else    
+  DO LocSideID=2,5
+#endif    
     aSide=>aElem%Side(LocSideID)%sp
     LOGWRITE(*,'(5(A,I4))')'globSideID= ',aSide%ind, &
                  ', flip= ',aSide%flip ,&
@@ -737,7 +769,11 @@ IF(nProcessors.EQ.1) RETURN
 !fill MINE flip info
 DO iElem=1,nElems
   aElem=>Elems(iElem+offsetElem)%ep
+#if PP_dim == 3
   DO LocSideID=1,6
+#else    
+  DO LocSideID=2,5
+#endif    
     aSide=>aElem%Side(LocSideID)%sp
     nMortars=aSide%nMortars
     DO iMortar=0,nMortars
@@ -773,7 +809,11 @@ DO iNbProc=1,nNbProcs
 END DO !iProc=1,nNBProcs
 DO iElem=1,nElems
   aElem=>Elems(iElem+offsetElem)%ep
+#if PP_dim == 3
   DO LocSideID=1,6
+#else    
+  DO LocSideID=2,5
+#endif    
     aSide=>aElem%Side(LocSideID)%sp
     nMortars=aSide%nMortars
     DO iMortar=0,nMortars

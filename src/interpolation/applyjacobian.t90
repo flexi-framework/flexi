@@ -11,6 +11,7 @@
 !
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !==================================================================================================================================
+#include "flexi.h"
 
 !==================================================================================================================================
 !> Convert solution between physical <-> reference space, separate input and output variables
@@ -32,8 +33,8 @@ IMPLICIT NONE
 #ifdef WITHnVar
 INTEGER,INTENT(IN)  :: TP_nVar
 #endif        
-REAL,INTENT(IN)     :: U_in( TP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems) !< Input: Solution to be transformed
-REAL,INTENT(OUT)    :: U_out(TP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems) !< Output: transformed solution
+REAL,INTENT(IN)     :: U_in( TP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< Input: Solution to be transformed
+REAL,INTENT(OUT)    :: U_out(TP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< Output: transformed solution
 LOGICAL,INTENT(IN)  :: toPhysical                                 !< Switch for physical<-->reference transformation
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -41,13 +42,13 @@ INTEGER             :: i,j,k,iElem
 !==================================================================================================================================
 IF(toPhysical)THEN
   DO iElem=1,nElems
-    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       U_out(:,i,j,k,iElem)=U_in(:,i,j,k,iElem)*sJ(i,j,k,iElem,FV_Elems(iElem))
     END DO; END DO; END DO
   END DO
 ELSE
   DO iElem=1,nElems
-    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       U_out(:,i,j,k,iElem)=U_in(:,i,j,k,iElem)/sJ(i,j,k,iElem,FV_Elems(iElem))
     END DO; END DO; END DO
   END DO
@@ -75,7 +76,7 @@ IMPLICIT NONE
 #ifdef WITHnVar
 INTEGER,INTENT(IN) :: TP_nVar
 #endif        
-REAL,INTENT(INOUT) :: U(TP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems)
+REAL,INTENT(INOUT) :: U(TP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems)
 LOGICAL,INTENT(IN) :: toPhysical
 INTEGER,INTENT(IN) :: FVE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -87,7 +88,7 @@ IF(toPhysical)THEN
 #if FV_ENABLED
     IF (FV_Elems(iElem).EQ.FVE) THEN ! DG element
 #endif
-      DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+      DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
         U(:,i,j,k,iElem)=U(:,i,j,k,iElem)*sJ(i,j,k,iElem,FVE)
       END DO; END DO; END DO
 #if FV_ENABLED
@@ -99,7 +100,7 @@ ELSE
 #if FV_ENABLED
     IF (FV_Elems(iElem).EQ.FVE) THEN ! DG element
 #endif
-      DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+      DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
         U(:,i,j,k,iElem)=U(:,i,j,k,iElem)/sJ(i,j,k,iElem,FVE)
       END DO; END DO; END DO
 #if FV_ENABLED
@@ -129,7 +130,7 @@ IMPLICIT NONE
 #ifdef WITHnVar
 INTEGER,INTENT(IN) :: TP_nVar
 #endif        
-REAL,INTENT(INOUT) :: U(TP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems)     !< Input/Output: Solution to be transformed 
+REAL,INTENT(INOUT) :: U(TP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems)     !< Input/Output: Solution to be transformed 
 LOGICAL,INTENT(IN) :: toPhysical                                 !< Switch for physical<-->reference transformation
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -137,13 +138,13 @@ INTEGER            :: i,j,k,iElem
 !==================================================================================================================================
 IF(toPhysical)THEN
   DO iElem=1,nElems
-    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       U(:,i,j,k,iElem)=U(:,i,j,k,iElem)*sJ(i,j,k,iElem,FV_Elems(iElem))
     END DO; END DO; END DO
   END DO
 ELSE
   DO iElem=1,nElems
-    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       U(:,i,j,k,iElem)=U(:,i,j,k,iElem)/sJ(i,j,k,iElem,FV_Elems(iElem))
     END DO; END DO; END DO
   END DO

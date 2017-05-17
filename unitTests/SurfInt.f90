@@ -9,12 +9,10 @@ PROGRAM SurfIntUnitTest
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
+USE MOD_Unittest_Vars
+USE MOD_Unittest,           ONLY: ReadInReferenceElementData
 USE MOD_SurfIntCons,        ONLY: SurfIntCons
 ! Modules needed to read in reference element
-USE MOD_Mesh_Vars,          ONLY: nElems,sJ,FS2M,V2S,S2V,S2V2
-USE MOD_Mesh_Vars,          ONLY: SideToElem
-USE MOD_Mesh_Vars,          ONLY: firstMPISide_YOUR, lastMPISide_MINE, nSides
-USE MOD_Interpolation_Vars, ONLY: L_Minus,L_Plus
 USE MOD_DG_Vars,            ONLY: L_HatPlus,L_HatMinus
 #if FV_ENABLED        
 USE MOD_FV_Vars,            ONLY: FV_w,FV_w_inv, FV_Elems, FV_Elems_master,FV_Elems_slave
@@ -22,11 +20,11 @@ USE MOD_FV_Vars,            ONLY: FV_w,FV_w_inv, FV_Elems, FV_Elems_master,FV_El
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                           :: Flux(0:9,0:9,1:6)
-REAL                           :: Flux_nVar(PP_nVar,0:9,0:9,1:6)
-REAL                           :: Ut(PP_nVar,0:9,0:9,0:9,1),Ut_ref(1,0:9,0:9,0:9,1)
+REAL                           :: Flux(0:NRef,0:NRefZ,1:nSidesRef)
+REAL                           :: Flux_nVar(PP_nVar,0:NRef,0:NRefZ,1:nSidesRef)
+REAL                           :: Ut(PP_nVar,0:NRef,0:NRef,0:NRefZ,nElemsRef),Ut_ref(1,0:NRef,0:NRef,0:NRefZ,nElemsRef)
 #if FV_ENABLED
-REAL                           :: FV_Ut(PP_nVar,0:9,0:9,0:9,1),FV_Ut_ref(1,0:9,0:9,0:9,1)
+REAL                           :: FV_Ut(PP_nVar,0:NRef,0:NRef,0:NRefZ,nElemsRef),FV_Ut_ref(1,0:NRef,0:NRef,0:NRefZ,nElemsRef)
 #endif
 ! Therefore the data in CurvedSingleElementData.bin should be generate without formerly firstMasterSideID...
 INTEGER                        :: i,j,k,l,nArgs
@@ -36,11 +34,18 @@ CHARACTER(LEN=255)             :: BinaryString,argument
 !==================================================================================================================================
 ! Set file name for different node types
 #if (PP_NodeType==1)
-BinaryString='SurfInt_G.bin'
-#elif (PP_NodeType==2)
-BinaryString='SurfInt_GL.bin'
+#if PP_dim == 3
+BinaryString='SurfInt_G3D.bin'
+#else
+BinaryString='SurfInt_G2D.bin'
 #endif
-
+#elif (PP_NodeType==2)
+#if PP_dim == 3
+BinaryString='SurfInt_GL3D.bin'
+#else
+BinaryString='SurfInt_GL2D.bin'
+#endif
+#endif
 
 ! Check for command line arguments to generate the reference solution
 nArgs=COMMAND_ARGUMENT_COUNT()
@@ -71,27 +76,17 @@ ELSE
   CLOSE(10) ! close the file
   ! Build flux on PP_nVar as expected by SurfInt
   DO i=1,PP_nVar
+#if PP_dim == 3
     Flux_nVar(i,:,:,:) = Flux(:,:,:)
+#else
+    Flux_nVar(i,:,0,:) = Flux(:,0,:)
+#endif
   END DO
 END IF
 
 
-! Read in data from single curved element
-ALLOCATE(SideToElem(1:5,1:6))
-ALLOCATE(L_Minus(0:9))
-ALLOCATE(L_Plus(0:9))
-ALLOCATE(L_HatMinus(0:9))
-ALLOCATE(L_HatPlus(0:9))
-!TODO: adjust sJ for FV
-ALLOCATE(sJ(0:9,0:9,0:9,0:1,1:1))
-ALLOCATE(FS2M(1:2,0:9,0:9,0:4))
-ALLOCATE(V2S(1:3,0:9,0:9,0:9,0:4,1:6))
-ALLOCATE(S2V(1:3,0:9,0:9,0:9,0:4,1:6))
-ALLOCATE(S2V2(1:2,0:9,0:9,0:4,1:6))
-OPEN(UNIT = 10, STATUS='old',FILE='UnittestElementData.bin',FORM='unformatted')  ! open an existing file
-READ(10) nElems,SideToElem,firstMPISide_YOUR,lastMPISide_MINE,nSides,FS2M,V2S,S2V,S2V2,L_Minus,L_Plus,L_HatPlus,L_HatMinus,sJ
-CLOSE(10) ! close the file
-
+! Read in data from single curved element 
+CALL ReadInReferenceElementData()
 
 ! Initialize Ut
 Ut = 0.
@@ -101,19 +96,19 @@ FV_Ut = 0.
 FV_w  = 2.0 / (9+1) ! equidistant widths of FV-Subcells
 FV_w_inv = 1./FV_w
 ALLOCATE(FV_Elems(1:1))
-ALLOCATE(FV_Elems_master(1:6))
-ALLOCATE(FV_Elems_slave (1:6))
+ALLOCATE(FV_Elems_master(1:nSidesRef))
+ALLOCATE(FV_Elems_slave (1:nSidesRef))
 FV_Elems = 0
 FV_Elems_master = 0
 FV_Elems_slave = 0
 #endif
 ! Call SurfInt
-CALL SurfIntCons(9,Flux_nVar,Flux_nVar,Ut,.FALSE.,L_HatMinus,L_HatPlus)
+CALL SurfIntCons(NRef,Flux_nVar,Flux_nVar,Ut,.FALSE.,L_HatMinus,L_HatPlus)
 #if FV_ENABLED
 FV_Elems = 1
 FV_Elems_master = 1
 FV_Elems_slave = 1
-CALL SurfIntCons(9,Flux_nVar,Flux_nVar,FV_Ut,.FALSE.,L_HatMinus,L_HatPlus)
+CALL SurfIntCons(NRef,Flux_nVar,Flux_nVar,FV_Ut,.FALSE.,L_HatMinus,L_HatPlus)
 #endif
 
 
@@ -140,7 +135,7 @@ ELSE
     CLOSE(10) ! close the file
     ! Check if the computed and the reference solutions are within a given tolerance
     equal =  .TRUE.
-    DO i=1,PP_nVar; DO j=0,9; DO k=0,9; DO l=0,9
+    DO i=1,PP_nVar; DO j=0,NRef; DO k=0,NRef; DO l=0,NRefZ
       equal = ALMOSTEQUALABSORREL(Ut(i,j,k,l,1),Ut_ref(1,j,k,l,1),100.*PP_RealTolerance) .AND. equal
 #if FV_ENABLED
       equal = ALMOSTEQUALABSORREL(FV_Ut(i,j,k,l,1),FV_Ut_ref(1,j,k,l,1),100.*PP_RealTolerance) .AND. equal
@@ -149,6 +144,8 @@ ELSE
     IF (.NOT.equal) THEN
       WRITE(*,*) 'ERROR - Calculated surface integral deviates from reference.'
       STOP -1
+    ELSE
+      WRITE(*,*) 'Compared surface integral against stored data in ',TRIM(BinaryString), ' -- SUCCESSFUL.'
     END IF
   ELSE
     WRITE(*,*) 'ERROR - No reference solution has been found.'

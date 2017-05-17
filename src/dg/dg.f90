@@ -74,7 +74,7 @@ USE MOD_Interpolation_Vars,   ONLY: xGP,wGP,L_minus,L_plus
 USE MOD_Interpolation_Vars,   ONLY: InterpolationInitIsDone
 USE MOD_Restart_Vars,         ONLY: DoRestart,RestartInitIsDone
 USE MOD_Mesh_Vars,            ONLY: nElems,nSides,Elem_xGP,Elem_xGPO,MeshInitIsDone
-USE MOD_ChangeBasis,          ONLY: ChangeBasis3D
+USE MOD_ChangeBasisByDim,     ONLY: ChangeBasisVolume
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -82,6 +82,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 REAL,ALLOCATABLE :: L_minusO(:),L_plusO(:),L_HatMinusO(:),L_HatPlusO(:),D_O(:,:),D_TO(:,:),D_HatO(:,:) !< dummy variables for 
                                                                                                        !< selective overintegration
+INTEGER          :: iElem
 !==================================================================================================================================
 
 ! Check if all the necessary initialization is done before
@@ -96,35 +97,35 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT DG...'
 CALL InitDGBasis(PP_N, xGP,wGP,L_minus,L_plus,D ,D_T ,D_Hat ,D_Hat_T ,L_HatMinus ,L_HatPlus)
 
 ! Allocate the local DG solution (JU or U): element-based 
-ALLOCATE(U(        PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems))
+ALLOCATE(U(        PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 ! Allocate the time derivative / solution update /residual vector dU/dt: element-based
-ALLOCATE(Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems))
+ALLOCATE(Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 U=0.
 Ut=0.
 
 ! Allocate the 2D solution vectors on the sides, one array for the data belonging to the proc (the master) 
 ! and one for the sides which belong to another proc (slaves): side-based
-ALLOCATE(U_master(PP_nVar,0:PP_N,0:PP_N,1:nSides))
-ALLOCATE(U_slave( PP_nVar,0:PP_N,0:PP_N,1:nSides))
+ALLOCATE(U_master(PP_nVar,0:PP_N,0:PP_NZ,1:nSides))
+ALLOCATE(U_slave( PP_nVar,0:PP_N,0:PP_NZ,1:nSides))
 U_master=0.
 U_slave=0.
 
 ! Repeat the U, U_Minus, U_Plus structure for the primitive quantities
-ALLOCATE(UPrim(       PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,nElems))
-ALLOCATE(UPrim_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides))
-ALLOCATE(UPrim_slave( PP_nVarPrim,0:PP_N,0:PP_N,1:nSides))
+ALLOCATE(UPrim(       PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+ALLOCATE(UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides))
+ALLOCATE(UPrim_slave( PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides))
 UPrim=0.
 UPrim_master=0.
 UPrim_slave=0.
 
 ! Allocate two fluxes per side (necessary for coupling of FV and DG)
-ALLOCATE(Flux_master(PP_nVar,0:PP_N,0:PP_N,1:nSides))
-ALLOCATE(Flux_slave (PP_nVar,0:PP_N,0:PP_N,1:nSides))
+ALLOCATE(Flux_master(PP_nVar,0:PP_N,0:PP_NZ,1:nSides))
+ALLOCATE(Flux_slave (PP_nVar,0:PP_N,0:PP_NZ,1:nSides))
 Flux_master=0.
 Flux_slave=0.
 
 ! variables for performance tricks
-nDOFElem=(PP_N+1)**3
+nDOFElem=(PP_N+1)**PP_dim
 nTotalU=PP_nVar*nDOFElem*nElems
 
 ! Allocate variables for selective Overintegration of advective fluxes
@@ -143,19 +144,19 @@ IF(OverintegrationType.EQ.SELECTIVE)THEN
   SDEALLOCATE(L_HatMinusO)
   SDEALLOCATE(L_HatPlusO)
 
-  ALLOCATE(UO    (PP_nVar    ,0:NOver,0:NOver,0:NOver,nElems))
-  ALLOCATE(UPrimO(PP_nVarPrim,0:NOver,0:NOver,0:NOver,nElems))
-  ALLOCATE(UtO   (PP_nVar    ,0:NOver,0:NOver,0:NOver,nElems))
+  ALLOCATE(UO    (PP_nVar    ,0:NOver,0:NOver,0:PP_NOverZ,nElems))
+  ALLOCATE(UPrimO(PP_nVarPrim,0:NOver,0:NOver,0:PP_NOverZ,nElems))
+  ALLOCATE(UtO   (PP_nVar    ,0:NOver,0:NOver,0:PP_NOverZ,nElems))
   UO=0.
   UPrimO=0.
   UtO=0.
-  nDOFElemO=(NOver+1)**3 ! variable for performance tricks
+  nDOFElemO=(NOver+1)**PP_dim ! variable for performance tricks
 
-  ALLOCATE(U_masterO(PP_nVar,0:NOver,0:NOver,1:nSides))
-  ALLOCATE(U_slaveO( PP_nVar,0:NOver,0:NOver,1:nSides))
-  ALLOCATE(UPrim_masterO(PP_nVarPrim,0:NOver,0:NOver,1:nSides))
-  ALLOCATE(UPrim_slaveO( PP_nVarPrim,0:NOver,0:NOver,1:nSides))
-  ALLOCATE(FluxO(    PP_nVar,0:NOver,0:NOver,1:nSides))
+  ALLOCATE(U_masterO(PP_nVar,0:NOver,0:PP_NOverZ,1:nSides))
+  ALLOCATE(U_slaveO( PP_nVar,0:NOver,0:PP_NOverZ,1:nSides))
+  ALLOCATE(UPrim_masterO(PP_nVarPrim,0:NOver,0:PP_NOverZ,1:nSides))
+  ALLOCATE(UPrim_slaveO( PP_nVarPrim,0:NOver,0:PP_NOverZ,1:nSides))
+  ALLOCATE(FluxO(    PP_nVar,0:NOver,0:PP_NOverZ,1:nSides))
   U_masterO=0.
   U_slaveO=0.
   UPrim_masterO=0.
@@ -168,7 +169,9 @@ IF(.NOT.DoRestart)THEN
   IF(OverintegrationType.EQ.SELECTIVE) THEN 
     ! Interpolate onto the NOver grid, then project onto N
     CALL FillIni(NOver,Elem_xGPO,UO)
-    CALL ChangeBasis3D(PP_nVar,nElems,NOver,PP_N,VdmNOverToN,UO,U,.FALSE.)
+    DO iElem=1,nElems
+      CALL ChangeBasisVolume(PP_nVar,NOver,PP_N,VdmNOverToN,UO(:,:,:,:,iElem),U(:,:,:,:,iElem))
+    END DO ! iElem
   ELSE
     CALL FillIni(PP_N,Elem_xGP,U)
   END IF
@@ -263,7 +266,7 @@ USE MOD_ApplyJacobianCons   ,ONLY: ApplyJacobianCons
 USE MOD_Interpolation_Vars  ,ONLY: L_Minus,L_Plus
 USE MOD_Overintegration_Vars,ONLY: NOver,VdmNOverToN,VdmNToNOver,OverintegrationType
 USE MOD_Overintegration,     ONLY: Overintegration
-USE MOD_ChangeBasis         ,ONLY: ChangeBasis3D
+USE MOD_ChangeBasisByDim    ,ONLY: ChangeBasisVolume
 USE MOD_Testcase            ,ONLY: TestcaseSource
 USE MOD_Testcase_Vars       ,ONLY: doTCSource
 USE MOD_Mesh_Vars           ,ONLY: nElems
@@ -312,13 +315,15 @@ IMPLICIT NONE
 REAL,INTENT(IN)                 :: t                      !< Current time
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER           :: iElem
+REAL              :: UtBuf(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 !==================================================================================================================================
 
 ! -----------------------------------------------------------------------------
 ! MAIN STEPS        []=FV only,  {}=selective overintegration only
 ! -----------------------------------------------------------------------------
 ! 0.  Convert volume solution to primitive 
-! 1.  Pronlong to face (fill U_master/slave)
+! 1.  Prolong to face (fill U_master/slave)
 !{2.} Prepare terms for advective volume integral (DG selective only)
 ! 3.  ConsToPrim of face data (U_master/slave)
 ![4.] Second order reconstruction for FV 
@@ -403,7 +408,9 @@ CALL U_MortarPrim(FV_multi_master,FV_multi_slave,doMPiSides=.FALSE.)
 !{2.}Prepare data for selective volume integral (for DG elements only)
 !    (latency hiding before finishing communication of side data in 1.4) )
 IF(OverintegrationType.EQ.SELECTIVE)THEN
-  CALL ChangeBasis3D(PP_nVar,nElems,PP_N,NOver,VdmNToNOver,U,UO,.FALSE.)
+  DO iElem=1,nElems
+    CALL ChangeBasisVolume(PP_nVar,PP_N,NOver,VdmNToNOver,U(:,:,:,:,iElem),UO(:,:,:,:,iElem))
+  END DO ! iElem
   CALL ConsToPrim(NOver,UPrimO,UO)
 END IF
 
@@ -456,7 +463,7 @@ CALL StartSendMPIData(   FV_surf_gradU,DataSizeSidePrim,1,nSides,MPIRequest_Flux
 CALL FV_ProlongToDGFace(UPrim_master,UPrim_slave,FV_multi_master,FV_multi_slave,FV_surf_gradU,doMPISides=.TRUE.) 
 #endif /*USE_MPI*/
 
-! Calculate FD-Gradients over inner Sides
+! Calculate FV-Gradients over inner Sides
 ! 4.2)
 CALL FV_SurfCalcGradients(UPrim_master,UPrim_slave,FV_multi_master,FV_multi_slave,&
     FV_surf_gradU,doMPISides=.FALSE.)
@@ -561,7 +568,10 @@ CALL SurfIntCons(PP_N,Flux_master,Flux_slave,Ut,.TRUE.,L_HatMinus,L_HatPlus)
 
 ! 9. Add advection volume integral to residual for selective overintegration
 IF(OverintegrationType.EQ.SELECTIVE)THEN
-  CALL ChangeBasis3D(PP_nVar,nElems,NOver,PP_N,VdmNOverToN,UtO,Ut,.TRUE.)
+  DO iElem=1,nElems
+    CALL ChangeBasisVolume(PP_nVar,NOver,PP_N,VdmNOverToN,UtO(:,:,:,:,iElem),UtBuf)
+    Ut(:,:,:,:,iElem)=Ut(:,:,:,:,iElem)+UtBuf
+  END DO ! iElem
 END IF
 
 ! 10. Swap to right sign :) 
@@ -593,7 +603,7 @@ END SUBROUTINE DGTimeDerivative_weakForm
 !==================================================================================================================================
 !> Fills the solution array U with a initial solution provided by the ExactFunc subroutine though interpolation
 !==================================================================================================================================
-SUBROUTINE FillIni(NLoc,xGP,U)
+SUBROUTINE FillIni(Nloc,xGP,U)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! MODULES
 USE MOD_PreProc
@@ -603,9 +613,9 @@ USE MOD_Mesh_Vars     ,ONLY: nElems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)              :: NLoc                                    !< Polynomial degree of solution 
-REAL,INTENT(IN)                 :: xGP(3,    0:NLoc,0:NLoc,0:NLoc,nElems)  !< Coordinates of Gauss-points
-REAL,INTENT(OUT)                :: U(PP_nVar,0:NLoc,0:NLoc,0:NLoc,nElems)  !< Solution array
+INTEGER,INTENT(IN)              :: Nloc                                    !< Polynomial degree of solution 
+REAL,INTENT(IN)                 :: xGP(3,    0:Nloc,0:Nloc,0:PP_NlocZ,nElems)  !< Coordinates of Gauss-points
+REAL,INTENT(OUT)                :: U(PP_nVar,0:Nloc,0:Nloc,0:PP_NlocZ,nElems)  !< Solution array
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                         :: i,j,k,iElem
@@ -613,7 +623,7 @@ INTEGER                         :: i,j,k,iElem
 
 ! Evaluate the initial solution at the nodes and fill the solutin vector U. 
 DO iElem=1,nElems
-  DO k=0,NLoc; DO j=0,NLoc; DO i=0,NLoc
+  DO k=0,PP_NlocZ; DO j=0,Nloc; DO i=0,Nloc
     CALL ExactFunc(IniExactFunc,0.,xGP(1:3,i,j,k,iElem),U(:,i,j,k,iElem))
   END DO; END DO; END DO
 END DO

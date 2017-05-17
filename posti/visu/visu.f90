@@ -252,6 +252,12 @@ IF (.NOT.FILEEXISTS(MeshFile)) THEN
   Meshfile          =  TRIM(cwd) // "/" // TRIM(Meshfile)
 END IF
 Avg2D             = GETLOGICAL("Avg2D")
+#if PP_dim == 2
+IF (Avg2D) THEN
+  CALL PrintWarning("Avg2D not available for 2D-Posti! Switching it OFF.")
+  Avg2D = .FALSE.
+END IF
+#endif
 NodeTypeVisuPosti = GETSTR('NodeTypeVisu')
 DGonly            = GETLOGICAL('DGonly')
 CALL CloseDataFile()

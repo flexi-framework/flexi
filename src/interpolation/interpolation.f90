@@ -266,7 +266,7 @@ ELSE
   CASE('fv_gauss')
     IF (MOD(N_in,2).EQ.0) THEN
       CALL Abort(__STAMP__,&
-        'NodeType "'//NodeType_in//'" needs N to be odd!')
+        'NodeType "'//TRIM(NodeType_in)//'" needs N to be odd!')
     END IF
     NN=(N_in+1)/2 -1
     CALL LegendreGaussNodesAndWeights(NN,x,w)
@@ -278,7 +278,7 @@ ELSE
   CASE('fv_gausslob')
     IF (MOD(N_in,2).EQ.0) THEN
       CALL Abort(__STAMP__,&
-        'NodeType "'//NodeType_in//'" needs N to be odd!')
+        'NodeType "'//TRIM(NodeType_in)//'" needs N to be odd!')
     END IF
     NN=(N_in+1)/2 -1
     CALL LegGaussLobNodesAndWeights(NN,x,w)
@@ -290,7 +290,7 @@ ELSE
   CASE('visu_fvequi')
     IF (MOD(N_in,2).EQ.0) THEN
       CALL Abort(__STAMP__,&
-        'NodeType "'//NodeType_in//'" needs N to be odd!')
+        'NodeType "'//TRIM(NodeType_in)//'" needs N to be odd!')
     END IF
     NN=(N_in-1)/2
     DO i=0,NN

@@ -64,10 +64,10 @@ REAL                         :: KappasPr_max
 #endif /*PARABOLIC*/
 !==================================================================================================================================
 
-ALLOCATE(MetricsAdv(3,0:PP_N,0:PP_N,0:PP_N,nElems,0:FV_ENABLED))
+ALLOCATE(MetricsAdv(3,0:PP_N,0:PP_N,0:PP_NZ,nElems,0:FV_ENABLED))
 DO FVE=0,FV_ENABLED
   DO iElem=1,nElems
-    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       MetricsAdv(1,i,j,k,iElem,FVE)=sJ(i,j,k,iElem,FVE)*NORM2(Metrics_fTilde(:,i,j,k,iElem,FVE))
       MetricsAdv(2,i,j,k,iElem,FVE)=sJ(i,j,k,iElem,FVE)*NORM2(Metrics_gTilde(:,i,j,k,iElem,FVE))
       MetricsAdv(3,i,j,k,iElem,FVE)=sJ(i,j,k,iElem,FVE)*NORM2(Metrics_hTilde(:,i,j,k,iElem,FVE))
@@ -75,11 +75,11 @@ DO FVE=0,FV_ENABLED
   END DO
 END DO
 #if PARABOLIC
-ALLOCATE(MetricsVisc(3,0:PP_N,0:PP_N,0:PP_N,nElems,0:FV_ENABLED))
+ALLOCATE(MetricsVisc(3,0:PP_N,0:PP_N,0:PP_NZ,nElems,0:FV_ENABLED))
 KappasPr_max=KAPPASPR_MAX_TIMESTEP_H()
 DO FVE=0,FV_ENABLED
   DO iElem=1,nElems
-    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       MetricsVisc(1,i,j,k,iElem,FVE)=KappasPR_max*(SUM((Metrics_fTilde(:,i,j,k,iElem,FVE)*sJ(i,j,k,iElem,FVE))**2))
       MetricsVisc(2,i,j,k,iElem,FVE)=KappasPR_max*(SUM((Metrics_gTilde(:,i,j,k,iElem,FVE)*sJ(i,j,k,iElem,FVE))**2))
       MetricsVisc(3,i,j,k,iElem,FVE)=KappasPR_max*(SUM((Metrics_hTilde(:,i,j,k,iElem,FVE)*sJ(i,j,k,iElem,FVE))**2))
@@ -101,7 +101,10 @@ USE MOD_PreProc
 USE, INTRINSIC :: IEEE_ARITHMETIC,ONLY:IEEE_IS_NAN
 #endif
 USE MOD_DG_Vars      ,ONLY:U
-USE MOD_Mesh_Vars    ,ONLY:sJ,Metrics_fTilde,Metrics_gTilde,Metrics_hTilde,Elem_xGP,nElems
+USE MOD_Mesh_Vars    ,ONLY:sJ,Metrics_fTilde,Metrics_gTilde,Elem_xGP,nElems
+#if PP_dim==3
+USE MOD_Mesh_Vars    ,ONLY:Metrics_hTilde
+#endif
 USE MOD_EOS_Vars
 #if PARABOLIC
 USE MOD_TimeDisc_Vars,ONLY:DFLScale
@@ -137,7 +140,7 @@ DO iElem=1,nElems
 #if PARABOLIC
   Max_Lambda_v=0.
 #endif /*PARABOLIC*/
-  DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     ! TODO: ATTENTION: Temperature of UE not filled!!!
     UE(CONS)=U(:,i,j,k,iElem)
     UE(SRHO)=1./UE(DENS)
@@ -155,8 +158,10 @@ DO iElem=1,nElems
                                               c*MetricsAdv(1,i,j,k,iElem,FVE))
     Max_Lambda(2)=MAX(Max_Lambda(2),ABS(SUM(Metrics_gTilde(:,i,j,k,iElem,FVE)*vsJ)) + &
                                               c*MetricsAdv(2,i,j,k,iElem,FVE))
+#if PP_dim==3
     Max_Lambda(3)=MAX(Max_Lambda(3),ABS(SUM(Metrics_hTilde(:,i,j,k,iElem,FVE)*vsJ)) + &
                                               c*MetricsAdv(3,i,j,k,iElem,FVE))
+#endif
 #if PARABOLIC
     ! Viscous Eigenvalues
     prim = UE(PRIM)
