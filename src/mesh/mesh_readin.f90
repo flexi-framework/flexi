@@ -192,6 +192,7 @@ USE MOD_Mesh_Vars,          ONLY:BoundaryType
 USE MOD_Mesh_Vars,          ONLY:MeshInitIsDone
 USE MOD_Mesh_Vars,          ONLY:Elems
 USE MOD_Mesh_Vars,          ONLY:GETNEWELEM,GETNEWSIDE
+USE MOD_Mesh_Vars,          ONLY:ElemInfo,SideInfo
 #if USE_MPI
 USE MOD_MPI_Vars,           ONLY:nMPISides_Proc,nNbProcs,NbProc
 #endif
@@ -204,7 +205,6 @@ CHARACTER(LEN=*),INTENT(IN)  :: FileString !< (IN) mesh filename
 TYPE(tElem),POINTER            :: aElem
 TYPE(tSide),POINTER            :: aSide,bSide
 REAL,ALLOCATABLE               :: NodeCoordsTmp(:,:,:,:,:)
-INTEGER,ALLOCATABLE            :: ElemInfo(:,:),SideInfo(:,:)
 INTEGER                        :: BCindex
 INTEGER                        :: iElem,ElemID,nNodes
 INTEGER                        :: iLocSide,nbLocSide
@@ -404,7 +404,6 @@ DO iElem=FirstElemInd,LastElemInd
   END DO !iLocSide
 END DO !iElem
 
-DEALLOCATE(ElemInfo,SideInfo)
 
 !----------------------------------------------------------------------------------------------------------------------------
 !                              NODES

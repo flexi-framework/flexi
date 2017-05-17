@@ -124,6 +124,7 @@ INTEGER           :: firstMasterSide     ! lower side ID of array U_master/gradU
 INTEGER           :: lastMasterSide      ! upper side ID of array U_master/gradUx_master...
 INTEGER           :: firstSlaveSide      ! lower side ID of array U_slave/gradUx_slave...
 INTEGER           :: lastSlaveSide       ! upper side ID of array U_slave/gradUx_slave...
+INTEGER           :: iSide,LocSideID,SideID
 !==================================================================================================================================
 IF((.NOT.InterpolationInitIsDone).OR.MeshInitIsDone) THEN
   CALL CollectiveStop(__STAMP__,&
@@ -314,6 +315,19 @@ END IF
 #if PP_dim == 2
   CALL Convert2D(meshMode)
 #endif
+
+ALLOCATE(SideToGlobalSide(nSides))
+DO iElem=1,nElems
+#if PP_dim == 3
+  DO LocSideID=1,6
+#else    
+  DO LocSideID=2,5
+#endif    
+    SideID = ElemToSide(E2S_SIDE_ID,LocSideID,iElem)
+    iSide = ElemInfo(3,iElem+offsetElem) + LocSideID
+    SideToGlobalSide(SideID) = ABS(SideInfo(2,iSide))
+  END DO
+END DO ! iElem
 
 SDEALLOCATE(NodeCoords)
 SDEALLOCATE(dXCL_N)
@@ -654,6 +668,8 @@ SDEALLOCATE(SurfElemO)
 
 ! ijk sorted mesh
 SDEALLOCATE(Elem_IJK)
+SDEALLOCATE(ElemInfo)
+SDEALLOCATE(SideInfo)
 
 !> mappings
 CALL FinalizeMappings()
