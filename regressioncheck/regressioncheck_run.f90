@@ -899,6 +899,7 @@ SUBROUTINE SetParameters(iExample,parameter_ini,UseFV,Use2D,UsePARABOLIC,SkipFol
 USE MOD_Globals
 USE MOD_RegressionCheck_Vars,    ONLY: Examples,CodeNameUppCase
 USE MOD_RegressionCheck_tools,   ONLY: GetParameterFromFile
+USE MOD_RegressionCheck_Vars,    ONLY: ExampleNames
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -916,6 +917,7 @@ CHARACTER(LEN=*),INTENT(INOUT) :: parameter_ini
 !CHARACTER(LEN=255)             :: FileName                          !> path to a file or its name
 !LOGICAL                        :: UseMPI
 INTEGER                        :: IndNum
+INTEGER                        :: iSubExample
 CHARACTER(LEN=255)             :: MeshFile
 !===================================================================================================================================
 SWRITE(UNIT_stdOut,'(A)') " SUBROUTINE SetParameters ..."
@@ -948,29 +950,50 @@ IF(Examples(iExample)%ConvergenceTest)THEN ! Do ConvergenceTest
       ! DO NOTHING
     END IF
   END IF
-  
+
+  ! Check for UsePARABOLIC==OFF -> Euler simulation
+  SWRITE(UNIT_stdOut,'(A15,L1,A2)',ADVANCE='NO')" UsePARABOLIC=[",UsePARABOLIC,"] "
+  IF(UsePARABOLIC)THEN
+    CALL SetSubExample(iExample,-1,parameter_ini,'IniExactFunc','4') !Sine wave in vel
+  ELSE
+    IF(    CodeNameUppCase.EQ.'FLEXI')THEN
+      CALL SetSubExample(iExample,-1,parameter_ini,'IniExactFunc','2') !Sine wave in density
+    ELSEIF(CodeNameUppCase.EQ.'BOLTZPLATZ')THEN
+      CALL SetSubExample(iExample,-1,parameter_ini,'IniExactFunc','12')
+    END IF
+  END IF
+
+ 
   ! Check for 2D version of the code
-  !print*,"Use2D=",Use2D
   SWRITE(UNIT_stdOut,'(A15,L1,A2)',ADVANCE='NO')" Use2D   =[",Use2D,"] "
   SWRITE(UNIT_stdOut,'(A)')"Setting option in parameter.ini: NOTHING (not implemented yet)"
   IF(Use2D)THEN
-      !CALL SetSubExample(iExample,-1,parameter_ini,'MeshFile','33')
-      ! DO NOTHING
-  ELSE
-      !CALL SetSubExample(iExample,-1,parameter_ini,'MeshFile','0')
-      ! DO NOTHING
-  END IF
+      IndNum=INDEX(ExampleNames(iExample), 'mortar') ! look for mortar in folder name of example
+      IF(IndNum.GT.0)THEN ! folder name contains 'mortar'
+        SkipFolder=.TRUE.
+        SWRITE(UNIT_stdOut,'(A18,A)')"","Skipping example because [mortar] and [2D=ON]"
+        RETURN
+      END IF
+      CALL SetSubExample(iExample,-1,parameter_ini,'IniExactFunc','2') !Sine wave in density
+      IF  (TRIM(Examples(iExample)%SubExample).EQ.'MeshFile') THEN
+         DO iSubExample = 1, MAX(1,Examples(iExample)%SubExampleNumber) 
+            IndNum=INDEX(TRIM(Examples(iExample)%SubExampleOption(iSubExample)),'3D')
+            IF(IndNum.GT.0)THEN
+              Examples(iExample)%SubExampleOption(iSubExample)(IndNum:IndNum)='2'
+              SWRITE(UNIT_stdOut,'(A)')"Setting SubExampleOption for MeshFile from 3D to 2D"
+            END IF
+         END DO
+      END IF
 
-  ! Check for UsePARABOLIC==OFF -> Euler simulation
-  !print*,"UsePARABOLIC=",UsePARABOLIC
-  SWRITE(UNIT_stdOut,'(A15,L1,A2)',ADVANCE='NO')" UsePARABOLIC=[",UsePARABOLIC,"] "
-  IF(UsePARABOLIC)THEN
-    CALL SetSubExample(iExample,-1,parameter_ini,'IniExactFunc','4')
   ELSE
-    IF(    CodeNameUppCase.EQ.'FLEXI')THEN
-      CALL SetSubExample(iExample,-1,parameter_ini,'IniExactFunc','2')
-    ELSEIF(CodeNameUppCase.EQ.'BOLTZPLATZ')THEN
-      CALL SetSubExample(iExample,-1,parameter_ini,'IniExactFunc','12')
+    IF  (TRIM(Examples(iExample)%SubExample).EQ.'MeshFile') THEN
+       DO iSubExample = 1, MAX(1,Examples(iExample)%SubExampleNumber) 
+          IndNum=INDEX(TRIM(Examples(iExample)%SubExampleOption(iSubExample)),'2D')
+          IF(IndNum.GT.0)THEN
+            Examples(iExample)%SubExampleOption(iSubExample)(IndNum:IndNum)='3'
+            SWRITE(UNIT_stdOut,'(A)')"Setting SubExampleOption for MeshFile from 2D to 3D"
+          END IF
+       END DO
     END IF
   END IF
 
