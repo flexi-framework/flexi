@@ -79,6 +79,7 @@ USE MOD_HDF5_Input,         ONLY: ISVALIDHDF5FILE
 USE MOD_Interpolation_Vars, ONLY: InterpolationInitIsDone,NodeType
 USE MOD_HDF5_Input,         ONLY: OpenDataFile,CloseDataFile,GetDataProps,ReadAttribute,File_ID
 USE MOD_ReadInTools,        ONLY: GETLOGICAL,GETREALARRAY
+USE MOD_Mesh_Vars,          ONLY: nGlobalElems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -114,6 +115,12 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
   ResetTime=GETLOGICAL('ResetTime','.FALSE.')
   IF(ResetTime) RestartTime=0.
   CALL CloseDataFile()
+
+  IF ((nVar_Restart.NE.PP_nVar).OR.(nElems_Restart.NE.nGlobalElems)) THEN
+    WRITE (*,*) nVar_Restart, PP_nVar
+    WRITE (*,*) nElems_Restart, nGlobalElems
+    CALL CollectiveStop(__STAMP__, "Restart File has different number of variables or elements!")
+  END IF
 ELSE
   ! No restart
   RestartTime = 0.
@@ -213,14 +220,11 @@ IF(DoRestart)THEN
   DEALLOCATE(ElemData,VarNamesElemData,tmp)
 #endif
 
-  CALL GetDataSize(File_ID,'DG_Solution',nDims,HSize)
-  IF (HSize(5).NE.nGlobalElems) THEN
-    CALL CollectiveStop(__STAMP__, "Restart File has different number of elements!")
-  END IF 
   ! Read in state
   IF(.NOT. InterpolateSolution)THEN
     ! No interpolation needed, read solution directly from file
     ! check whether we have 2D data
+    CALL GetDataSize(File_ID,'DG_Solution',nDims,HSize)
     IF(HSize(4).EQ.1) THEN 
 #if PP_dim == 3
       ! If either posti or a 3D flexi reads in a 2D state file, expand it to 3D.
