@@ -213,14 +213,14 @@ IF(DoRestart)THEN
   DEALLOCATE(ElemData,VarNamesElemData,tmp)
 #endif
 
+  CALL GetDataSize(File_ID,'DG_Solution',nDims,HSize)
+  IF (HSize(5).NE.nElems) THEN
+    CALL CollectiveStop(__STAMP__, "Restart File has different number of elements!")
+  END IF 
   ! Read in state
   IF(.NOT. InterpolateSolution)THEN
     ! No interpolation needed, read solution directly from file
     ! check whether we have 2D data
-    CALL GetDataSize(File_ID,'DG_Solution',nDims,HSize)
-    IF (HSize(5).NE.nElems) THEN
-      CALL CollectiveStop(__STAMP__, "Restart File has different number of elements!")
-    END IF 
     IF(HSize(4).EQ.1) THEN 
 #if PP_dim == 3
       ! If either posti or a 3D flexi reads in a 2D state file, expand it to 3D.
