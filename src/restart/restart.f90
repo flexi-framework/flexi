@@ -117,8 +117,6 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
   CALL CloseDataFile()
 
   IF ((nVar_Restart.NE.PP_nVar).OR.(nElems_Restart.NE.nGlobalElems)) THEN
-    WRITE (*,*) nVar_Restart, PP_nVar
-    WRITE (*,*) nElems_Restart, nGlobalElems
     CALL CollectiveStop(__STAMP__, "Restart File has different number of variables or elements!")
   END IF
 ELSE
