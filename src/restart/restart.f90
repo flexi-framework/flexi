@@ -79,7 +79,7 @@ USE MOD_HDF5_Input,         ONLY: ISVALIDHDF5FILE
 USE MOD_Interpolation_Vars, ONLY: InterpolationInitIsDone,NodeType
 USE MOD_HDF5_Input,         ONLY: OpenDataFile,CloseDataFile,GetDataProps,ReadAttribute,File_ID
 USE MOD_ReadInTools,        ONLY: GETLOGICAL,GETREALARRAY
-USE MOD_Mesh_Vars,          ONLY: nGlobalElems
+USE MOD_Mesh_Vars,          ONLY: nGlobalElems,NGeo
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -128,6 +128,8 @@ END IF
 ! Check if we need to interpolate the restart file to our current polynomial degree and node type
 IF(DoRestart .AND. ((N_Restart.NE.PP_N) .OR. (TRIM(NodeType_Restart).NE.TRIM(NodeType))))THEN
   InterpolateSolution=.TRUE.
+  IF(MIN(N_Restart,PP_N).LT.NGeo) &
+    CALL PrintWarning('The geometry is or was underresolved and will potentially change on restart!')
 #if FV_ENABLED
   CALL CollectiveStop(__STAMP__,'ERROR: The restart to a different polynomial degree is not available for FV.') 
 #endif
