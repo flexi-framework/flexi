@@ -350,9 +350,11 @@ CASE(3,4,9,23,24,25,27)
       ! Set pressure by solving local Riemann problem
       UPrim_boundary(5,p,q) = PRESSURE_RIEMANN(UPrim_boundary(:,p,q))
       UPrim_boundary(2,p,q) = 0. ! slip in tangential directions
-      UPrim_boundary(6,p,q) = UPrim_master(6,p,q) ! temperature from the inside
-      ! set density via ideal gas equation, consistent to pressure and temperature
-      UPrim_boundary(1,p,q) = UPrim_boundary(5,p,q) / (UPrim_boundary(6,p,q) * R) 
+      ! Referring to Toro: Riemann Solvers and Numerical Methods for Fluid Dynamics (Chapter 6.3.3 Boundary Conditions)
+      ! the density is chosen from the inside
+      UPrim_boundary(1,p,q) = UPrim_master(1,p,q) ! density from inside
+      ! set temperature via ideal gas equation, consistent to density and pressure
+      UPrim_boundary(6,p,q) = UPrim_boundary(5,p,q) / (UPrim_boundary(1,p,q) * R)
     END DO; END DO ! q,p
 
   ! Cases 21-29 are taken from NASA report "Inflow/Outflow Boundary Conditions with Application to FUN3D" Jan-Reneé Carlson
