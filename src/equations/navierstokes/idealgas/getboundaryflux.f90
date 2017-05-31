@@ -753,13 +753,13 @@ ELSE
       Flux(6  ,p,q) = UPrim_Boundary(6,p,q)
     END DO; END DO !p,q
   CASE(9)
-    ! Euler/(full-)slip wall
-    ! symmetry BC, v=0 strategy a la HALO (is very perfect)
-    ! U_boundary is already in normal system
+    ! Euler/(full-)slip wall, symmetry BC
+    ! Solution from the inside with velocity normal component set to 0 (done in GetBoundaryState)
     DO q=0,PP_NZ; DO p=0,PP_N
       ! Compute Flux
-      Flux(1            ,p,q) = UPrim_boundary(1,p,q)
-      Flux(2:PP_nVarPrim,p,q) = 0.5*(UPrim_boundary(2:PP_nVarPrim,p,q)+UPrim_master(2:PP_nVarPrim,p,q))
+      Flux(1            ,p,q) = UPrim_master(1,p,q)
+      Flux(2:4          ,p,q) = UPrim_boundary(2:4,p,q)
+      Flux(5:PP_nVarPrim,p,q) = UPrim_master(5:PP_nVarPrim,p,q)
     END DO; END DO !p,q
   CASE(1) !Periodic already filled!
   CASE DEFAULT ! unknown BCType
