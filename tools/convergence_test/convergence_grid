@@ -78,7 +78,7 @@ for grid in grids :
     start_time = time.time()
     try :
         L2, Linf = execute_flexi(args.flexi, args.prm, projectname, \
-                [get_last_L2_error, get_last_Linf_error], mpi_procs = args.procs)
+                [get_last_L2_error, get_last_Linf_error], mpi_procs = min(args.procs,x_array[i-1]**3))
     except :
         shutil.rmtree(tmp_dir)
         exit(1)
@@ -89,7 +89,7 @@ for grid in grids :
         print_header(['grid '] + len(L2)*['L2 err   EOC     '] + len(Linf)*['Linf err  EOC    '])
 
         # print initial values
-        print_values([x_array[i-1]]+L2+Linf, ["%03d  "] + (len(L2)+len(Linf)) * ["%8.4e         "])
+        print_values([x_array[i-1]]+L2+Linf, ["%03d  "] + (len(L2)+len(Linf)) * ["%8.2e         "])
     else :
         # print L2, Linf errors and EOC
         vals = [x_array[i-1]]
