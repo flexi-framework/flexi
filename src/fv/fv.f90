@@ -186,8 +186,8 @@ CALL AddToElemData('FV_Elems_Amount',RealArray=FV_Elems_Amount)
 !    |  x    x    x    x  |                          | = face, x = node
 !                         ^ to this interface   
 !                      ^ the solution at this node   
-ALLOCATE(FV_multi_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides))
-ALLOCATE(FV_multi_slave (PP_nVarPrim,0:PP_N,0:PP_N,1:nSides))
+ALLOCATE(FV_multi_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides))
+ALLOCATE(FV_multi_slave (PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides))
 FV_multi_slave = 0.0
 FV_multi_master = 0.0
 
@@ -195,16 +195,16 @@ FV_multi_master = 0.0
 !    | x  x  x  x | x  x  x  x |                     | = face, x = node
 !               <--->
 !                  ^ the slope over the face 
-ALLOCATE(FV_surf_gradU(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)) 
+ALLOCATE(FV_surf_gradU(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides))
 
 ! The gradients of the primitive variables are stored at each volume integration point and 
 ! are computed by limiting the slopes to the two adjacent points in the respective direction.
 ! These are physical gradients, but they are labeled ...xi/eta/zeta, since they are the slopes
 ! along the xi-/eta-/zeta-lines in physical space. These slopes are required to reconstruct
 ! the solution at the sub-cell boundaries.
-ALLOCATE(gradUxi(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,nElems))
-ALLOCATE(gradUeta(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,nElems))
-ALLOCATE(gradUzeta(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,nElems))
+ALLOCATE(gradUxi  (PP_nVarPrim,0:PP_N,0:PP_NZ,0:PP_N,nElems))
+ALLOCATE(gradUeta (PP_nVarPrim,0:PP_N,0:PP_NZ,0:PP_N,nElems))
+ALLOCATE(gradUzeta(PP_nVarPrim,0:PP_N,0:PP_NZ,0:PP_N,nElems))
 gradUxi=0.
 gradUeta=0.
 gradUzeta=0.
@@ -213,9 +213,9 @@ gradUzeta=0.
 ! adjacent points is used. These slopes are used to calculate the physical gradients in 
 ! x-/y-/z-direction, which are required for the parabolic/viscous flux.
 ! The gradients in x-/y-/z-direction are stored in the gradUx/y/z arrays of the lifting.
-ALLOCATE(gradUxi_central  (PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,nElems))
-ALLOCATE(gradUeta_central (PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,nElems))
-ALLOCATE(gradUzeta_central(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,nElems))
+ALLOCATE(gradUxi_central  (PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+ALLOCATE(gradUeta_central (PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+ALLOCATE(gradUzeta_central(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 gradUxi_central  =0.
 gradUeta_central =0.
 gradUzeta_central=0.
@@ -234,7 +234,7 @@ END SUBROUTINE InitFV
 SUBROUTINE FV_Switch(AllowToDG)
 ! MODULES
 USE MOD_PreProc
-USE MOD_ChangeBasis    ,ONLY: ChangeBasis3D
+USE MOD_ChangeBasisByDim,ONLY: ChangeBasisVolume
 USE MOD_DG_Vars        ,ONLY: U
 USE MOD_Indicator_Vars ,ONLY: IndValue
 USE MOD_Indicator      ,ONLY: IndPersson
@@ -248,8 +248,8 @@ IMPLICIT NONE
 LOGICAL,INTENT(IN) :: AllowToDG !< if .TRUE. FV element is allowed to switch to DG
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL    :: U_DG(PP_nVar,0:PP_N,0:PP_N,0:PP_N)
-REAL    :: U_FV(PP_nVar,0:PP_N,0:PP_N,0:PP_N)
+REAL    :: U_DG(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
+REAL    :: U_FV(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 REAL    :: ind
 INTEGER :: iElem
 !==================================================================================================================================
@@ -259,13 +259,13 @@ DO iElem=1,nElems
     IF (IndValue(iElem).GT.FV_IndUpperThreshold) THEN
       ! switch Element to FV
       FV_Elems(iElem) = 1
-      CALL ChangeBasis3D(PP_nVar,PP_N,PP_N,FV_Vdm,U(:,:,:,:,iElem),U_FV)
+      CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,U(:,:,:,:,iElem),U_FV)
       U(:,:,:,:,iElem) = U_FV
     END IF
   ELSE ! FV Element
     ! Switch FV to DG Element, if Indicator is lower then IndMax
     IF ((IndValue(iElem).LT.FV_IndLowerThreshold).AND.AllowToDG) THEN
-      CALL ChangeBasis3D(PP_nVar,PP_N,PP_N,FV_sVdm,U(:,:,:,:,iElem),U_DG)
+      CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_sVdm,U(:,:,:,:,iElem),U_DG)
       IF (FV_toDG_indicator) THEN
         ind = IndPersson(U_DG(:,:,:,:))
         IF (ind.GT.FV_toDG_limit) CYCLE
@@ -321,8 +321,8 @@ USE MOD_DG_Vars           ,ONLY: U
 USE MOD_Mesh_Vars         ,ONLY: nElems
 USE MOD_FV_Vars           ,ONLY: FV_Elems
 USE MOD_Indicator         ,ONLY: CalcIndicator
-USE MOD_Interpolation     ,ONLY: GetVandermonde 
-USE MOD_ChangeBasis       ,ONLY: ChangeBasis3D
+USE MOD_Interpolation     ,ONLY: GetVandermonde
+USE MOD_ChangeBasisByDim  ,ONLY: ChangeBasisVolume
 USE MOD_Mesh_Vars         ,ONLY: Elem_xGP
 USE MOD_Equation_Vars     ,ONLY: IniExactFunc
 USE MOD_Exactfunc         ,ONLY: ExactFunc
@@ -334,7 +334,7 @@ IMPLICIT NONE
 INTEGER           :: i,iElem, j,k,ii,jj,kk,iVar
 REAL              :: Vdm(0:(PP_N+1)**2-1,0:PP_N)
 REAL,ALLOCATABLE  :: xx(:,:,:,:)
-REAL              :: tmp(PP_nVar,0:PP_N,0:PP_N,0:PP_N)
+REAL              :: tmp(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 !===================================================================================================================================
 ! initial call of indicator
 CALL CalcIndicator(U,0.)
@@ -346,23 +346,23 @@ CALL FV_Switch(AllowToDG=.FALSE.)
 ! may lead to non valid solutions inside a sub-cell.!
 !!! THIS IS EXPENSIVE !!!
 IF (GETLOGICAL("FV_IniSupersample")) THEN
-  ALLOCATE(xx(1:3,0:(PP_N+1)**2-1,0:(PP_N+1)**2-1,0:(PP_N+1)**2-1))
+  ALLOCATE(xx(1:3,0:(PP_N+1)**2-1,0:(PP_N+1)**2-1,0:(PP_NZ+1)**2-1))
   ! build vandermonde to supersample each subcell with PP_N points per direction
   CALL GetVandermonde(PP_N,Nodetype,(PP_N+1)**2-1,NodeTypeVISUInner,Vdm)
   DO iElem=1,nElems
     IF (FV_Elems(iElem).EQ.0) CYCLE ! DG element
     ! supersample all subcells
-    CALL ChangeBasis3D(3,PP_N,(PP_N+1)**2-1,Vdm,Elem_xGP(1:3,:,:,:,iElem),xx)
-    DO k=0,PP_N
+    CALL ChangeBasisVolume(3,PP_N,(PP_N+1)**2-1,Vdm,Elem_xGP(1:3,:,:,:,iElem),xx)
+    DO k=0,PP_NZ
       DO j=0,PP_N
         DO i=0,PP_N
           ! evaluate ExactFunc for all supersampled points of subcell (i,j,k)
-          DO kk=0,PP_N; DO jj=0,PP_N; DO ii=0,PP_N
-            CALL ExactFunc(IniExactFunc,0.,xx(1:3,i*(PP_N+1)+ii,j*(PP_N+1)+jj,k*(PP_N+1)+kk),tmp(:,ii,jj,kk))
+          DO kk=0,PP_NZ; DO jj=0,PP_N; DO ii=0,PP_N
+            CALL ExactFunc(IniExactFunc,0.,xx(1:3,i*(PP_N+1)+ii,j*(PP_N+1)+jj,k*(PP_NZ+1)+kk),tmp(:,ii,jj,kk))
           END DO; END DO; END DO
           ! mean value 
           DO iVar=1,PP_nVar
-            U(iVar,i,j,k,iElem) = SUM(tmp(iVar,:,:,:)) / (PP_N+1)**3
+            U(iVar,i,j,k,iElem) = SUM(tmp(iVar,:,:,:)) / ((PP_N+1)**2*(PP_NZ+1))
           END DO
         END DO ! i
       END DO ! j
@@ -379,7 +379,7 @@ SUBROUTINE FV_DGtoFV(nVar,U_master,U_slave)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_ChangeBasis ,ONLY: ChangeBasis2D
+USE MOD_ChangeBasisByDim ,ONLY: ChangeBasisSurf
 USE MOD_FV_Vars
 USE MOD_Mesh_Vars   ,ONLY: firstInnerSide,lastMPISide_MINE,nSides
 ! IMPLICIT VARIABLE HANDLING
@@ -387,8 +387,8 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: nVar
-REAL,INTENT(INOUT) :: U_master(nVar,0:PP_N,0:PP_N,1:nSides) !< Solution on master side
-REAL,INTENT(INOUT) :: U_slave (nVar,0:PP_N,0:PP_N,1:nSides) !< Solution on slave side
+REAL,INTENT(INOUT) :: U_master(nVar,0:PP_N,0:PP_NZ,1:nSides) !< Solution on master side
+REAL,INTENT(INOUT) :: U_slave (nVar,0:PP_N,0:PP_NZ,1:nSides) !< Solution on slave side
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER     :: firstSideID,lastSideID,SideID
@@ -398,9 +398,9 @@ lastSideID  = lastMPISide_MINE
 
 DO SideID=firstSideID,lastSideID
   IF (FV_Elems_Sum(SideID).EQ.2) THEN
-    CALL ChangeBasis2D(nVar,PP_N,PP_N,FV_Vdm,U_master(:,:,:,SideID))
+    CALL ChangeBasisSurf(nVar,PP_N,PP_N,FV_Vdm,U_master(:,:,:,SideID))
   ELSE IF (FV_Elems_Sum(SideID).EQ.1) THEN
-    CALL ChangeBasis2D(nVar,PP_N,PP_N,FV_Vdm,U_slave (:,:,:,SideID))
+    CALL ChangeBasisSurf(nVar,PP_N,PP_N,FV_Vdm,U_slave (:,:,:,SideID))
   END IF
 END DO
 

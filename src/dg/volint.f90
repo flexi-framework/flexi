@@ -11,6 +11,7 @@
 !
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
+#include "flexi.h"
 
 !==================================================================================================================================
 !>\brief Computes the DGSEM volume integral
@@ -70,13 +71,13 @@ USE MOD_FV_Vars      ,ONLY: FV_Elems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(OUT)   :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_N,1:nElems) !< Time derivative of the volume integral (viscous part)
+REAL,INTENT(OUT)   :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< Time derivative of the volume integral (viscous part)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: i,j,k,l,iElem
-REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_N) :: f,g,h     !< Volume advective fluxes at GP
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: f,g,h     !< Volume advective fluxes at GP
 #if PARABOLIC
-REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_N) :: fv,gv,hv  !< Volume viscous fluxes at GP
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: fv,gv,hv  !< Volume viscous fluxes at GP
 #endif
 !==================================================================================================================================
 ! Diffusive part
@@ -96,19 +97,23 @@ DO iElem=1,nElems
 
   f=f+fv
   g=g+gv
+#if PP_dim==3
   h=h+hv
+#endif
 #endif
 
   CALL VolInt_Metrics(nDOFElem,f,g,h,Metrics_fTilde(:,:,:,:,iElem,0),&
                                      Metrics_gTilde(:,:,:,:,iElem,0),&
                                      Metrics_hTilde(:,:,:,:,iElem,0))
 
-  DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     DO l=0,PP_N
       ! Update the time derivative with the spatial derivatives of the transformed fluxes
       Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + D_Hat_T(l,i)*f(:,l,j,k) + &
-                                              D_Hat_T(l,j)*g(:,i,l,k) + &
-                                              D_Hat_T(l,k)*h(:,i,j,l)
+#if PP_dim==3
+                                              D_Hat_T(l,k)*h(:,i,j,l) + &
+#endif
+                                              D_Hat_T(l,j)*g(:,i,l,k) 
     END DO ! l
   END DO; END DO; END DO !i,j,k
 END DO ! iElem
@@ -137,16 +142,16 @@ INTEGER,INTENT(IN) :: nDOFElem   !< Number of DOFs per element
 REAL,INTENT(IN)    :: D_Hat_T(0:Nloc,0:Nloc)!< Transpose of differentiation matrix premultiplied by 
                                             !< mass matrix, size [0..Nloc,0..Nloc].
                                                                 !> Metric terms in \f$ \xi\ / \eta / \zeta \f$-direction
-REAL,INTENT(IN)    :: Metrics_fTilde(1:3,0:Nloc,0:Nloc,0:Nloc,1:nElems)
-REAL,INTENT(IN)    :: Metrics_gTilde(1:3,0:Nloc,0:Nloc,0:Nloc,1:nElems)
-REAL,INTENT(IN)    :: Metrics_hTilde(1:3,0:Nloc,0:Nloc,0:Nloc,1:nElems)
-REAL,INTENT(IN)    :: U    (PP_nVar    ,0:Nloc,0:Nloc,0:Nloc,1:nElems)  !< conservative solution vector 
-REAL,INTENT(IN)    :: UPrim(PP_nVarPrim,0:Nloc,0:Nloc,0:Nloc,1:nElems)  !< primitive solution vector 
-REAL,INTENT(OUT)   :: Ut(PP_nVar,0:Nloc,0:Nloc,0:Nloc,1:nElems) !< Time derivative of the volume integral (advection part)
+REAL,INTENT(IN)    :: Metrics_fTilde(1:3,0:Nloc,0:Nloc,0:PP_NlocZ,1:nElems)
+REAL,INTENT(IN)    :: Metrics_gTilde(1:3,0:Nloc,0:Nloc,0:PP_NlocZ,1:nElems)
+REAL,INTENT(IN)    :: Metrics_hTilde(1:3,0:Nloc,0:Nloc,0:PP_NlocZ,1:nElems)
+REAL,INTENT(IN)    :: U    (PP_nVar    ,0:Nloc,0:Nloc,0:PP_NlocZ,1:nElems)  !< conservative solution vector 
+REAL,INTENT(IN)    :: UPrim(PP_nVarPrim,0:Nloc,0:Nloc,0:PP_NlocZ,1:nElems)  !< primitive solution vector 
+REAL,INTENT(OUT)   :: Ut(PP_nVar,0:Nloc,0:Nloc,0:PP_NlocZ,1:nElems) !< Time derivative of the volume integral (advection part)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: i,j,k,l,iElem
-REAL,DIMENSION(PP_nVar,0:Nloc,0:Nloc,0:Nloc)  :: f,g,h !< Advective volume fluxes at GP
+REAL,DIMENSION(PP_nVar,0:Nloc,0:Nloc,0:PP_NlocZ)  :: f,g,h !< Advective volume fluxes at GP
 !==================================================================================================================================
 ! Advective part
 DO iElem=1,nElems
@@ -158,11 +163,11 @@ DO iElem=1,nElems
 #endif
   ! Cut out the local DG solution for a grid cell iElem and all Gauss points from the global field
   ! Compute for all Gauss point values the Cartesian flux components
-  CALL EvalFlux3D(NLoc,U(:,:,:,:,iElem),UPrim(:,:,:,:,iElem),f,g,h)
+  CALL EvalFlux3D(Nloc,U(:,:,:,:,iElem),UPrim(:,:,:,:,iElem),f,g,h)
   CALL VolInt_Metrics(nDOFElem,f,g,h,Metrics_fTilde(:,:,:,:,iElem),&
                                      Metrics_gTilde(:,:,:,:,iElem),&
                                      Metrics_hTilde(:,:,:,:,iElem))
-  DO k=0,Nloc
+  DO k=0,PP_NlocZ
     DO j=0,Nloc
       DO i=0,Nloc
         Ut(:,i,j,k,iElem) = D_Hat_T(0,i)*f(:,0,j,k) + &
@@ -171,8 +176,10 @@ DO iElem=1,nElems
         DO l=1,Nloc
           ! Update the time derivative with the spatial derivatives of the transformed fluxes
           Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + D_Hat_T(l,i)*f(:,l,j,k) + &
-                                                  D_Hat_T(l,j)*g(:,i,l,k) + &
-                                                  D_Hat_T(l,k)*h(:,i,j,l)
+#if PP_dim==3
+                                                  D_Hat_T(l,k)*h(:,i,j,l) + &
+#endif
+                                                  D_Hat_T(l,j)*g(:,i,l,k) 
         END DO ! l
       END DO !i
     END DO ! j
@@ -204,11 +211,11 @@ USE MOD_Lifting_Vars ,ONLY: gradUx,gradUy,gradUz
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(INOUT) :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_N,1:nElems) !< Time derivative of the volume integral (viscous part)
+REAL,INTENT(INOUT) :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< Time derivative of the volume integral (viscous part)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: i,j,k,l,iElem
-REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_N) :: f,g,h           !< Viscous volume fluxes at GP
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: f,g,h           !< Viscous volume fluxes at GP
 !==================================================================================================================================
 ! Diffusive part
 DO iElem=1,nElems
@@ -226,12 +233,14 @@ DO iElem=1,nElems
                                      Metrics_gTilde(:,:,:,:,iElem,0),&
                                      Metrics_hTilde(:,:,:,:,iElem,0))
 
-  DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     DO l=0,PP_N
       ! Update the time derivative with the spatial derivatives of the transformed fluxes
       Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + D_Hat_T(l,i)*f(:,l,j,k) + &
-                                              D_Hat_T(l,j)*g(:,i,l,k) + &
-                                              D_Hat_T(l,k)*h(:,i,j,l)
+#if PP_dim==3
+                                              D_Hat_T(l,k)*h(:,i,j,l) +&
+#endif                                                  
+                                              D_Hat_T(l,j)*g(:,i,l,k) 
     END DO ! l
   END DO; END DO; END DO !i,j,k
 END DO ! iElem
@@ -258,12 +267,17 @@ REAL,DIMENSION(PP_nVar,nDOFs),INTENT(INOUT) :: f,g,h
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                                     :: i
-REAL,DIMENSION(PP_nVar)                     :: fTilde,gTilde,hTilde !< Auxiliary variables needed to store the fluxes at one GP
+REAL,DIMENSION(PP_nVar)                     :: fTilde,gTilde !< Auxiliary variables needed to store the fluxes at one GP
+#if PP_dim==3       
+REAL,DIMENSION(PP_nVar)                     :: hTilde !< Auxiliary variables needed to store the fluxes at one GP
+#endif
 !==================================================================================================================================
 DO i=1,nDOFs
   fTilde=f(:,i)
   gTilde=g(:,i)
+#if PP_dim==3       
   hTilde=h(:,i)
+
   ! Compute the transformed fluxes with the metric terms
   ! Attention 1: we store the transformed fluxes in f,g,h again
   f(:,i) = fTilde*Mf(1,i) + &
@@ -275,6 +289,12 @@ DO i=1,nDOFs
   h(:,i) = fTilde*Mh(1,i) + &
            gTilde*Mh(2,i) + &
            hTilde*Mh(3,i)
+#else
+  f(:,i) = fTilde*Mf(1,i) + &
+           gTilde*Mf(2,i) 
+  g(:,i) = fTilde*Mg(1,i) + &
+           gTilde*Mg(2,i) 
+#endif
 END DO ! i
 END SUBROUTINE VolInt_Metrics
 

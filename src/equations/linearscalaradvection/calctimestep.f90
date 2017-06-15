@@ -40,7 +40,10 @@ USE MOD_Globals
 #ifndef GNU
 USE, INTRINSIC :: IEEE_ARITHMETIC,ONLY:IEEE_IS_NAN
 #endif
-USE MOD_Mesh_Vars,          ONLY:sJ,Metrics_fTilde,Metrics_gTilde,Metrics_hTilde
+USE MOD_Mesh_Vars,          ONLY:sJ,Metrics_fTilde,Metrics_gTilde
+#if PP_dim==3       
+USE MOD_Mesh_Vars,          ONLY:Metrics_hTilde
+#endif
 USE MOD_Equation_Vars,      ONLY:AdvVel
 USE MOD_TimeDisc_Vars,      ONLY:CFLScale,ViscousTimeStep
 USE MOD_PreProc
@@ -60,7 +63,10 @@ INTEGER,INTENT(OUT)          :: errType       !< Error code
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                      :: i,j,k,iElem,FVE
-REAL                         :: Lambda1,Lambda2,Lambda3,maxLambda
+REAL                         :: Lambda1,Lambda2,maxLambda
+#if PP_dim==3       
+REAL                         :: Lambda3
+#endif
 REAL                         :: TimeStep(2)
 #if PARABOLIC
 REAL                         :: Lambda_v1,Lambda_v2,Lambda_v3
@@ -78,18 +84,26 @@ Lambda_v3=1.0E-10
 TimeStep=HUGE(1.)
 DO iElem=1,nElems
   FVE = FV_Elems(iElem)
-  DO k=0,PP_N
+  DO k=0,PP_NZ
     DO j=0,PP_N
       DO i=0,PP_N
         Lambda1=ABS(SUM(Metrics_fTilde(:,i,j,k,iElem,FVE)*AdvVel))
         Lambda2=ABS(SUM(Metrics_gTilde(:,i,j,k,iElem,FVE)*AdvVel))
+#if PP_dim==3       
         Lambda3=ABS(SUM(Metrics_hTilde(:,i,j,k,iElem,FVE)*AdvVel))
         maxLambda=MAX(maxLambda,sJ(i,j,k,iElem,FVE)*(Lambda1+Lambda2+Lambda3))
+#else
+        maxLambda=MAX(maxLambda,sJ(i,j,k,iElem,FVE)*(Lambda1+Lambda2))
+#endif
 #if PARABOLIC
         Lambda_v1=MAX(Lambda_v1,DiffC*(SUM((Metrics_fTilde(:,i,j,k,iElem,FVE)*sJ(i,j,k,iElem,FVE))**2)))
         Lambda_v2=MAX(Lambda_v2,DiffC*(SUM((Metrics_gTilde(:,i,j,k,iElem,FVE)*sJ(i,j,k,iElem,FVE))**2)))
+#if PP_dim==3       
         Lambda_v3=MAX(Lambda_v3,DiffC*(SUM((Metrics_hTilde(:,i,j,k,iElem,FVE)*sJ(i,j,k,iElem,FVE))**2)))
         maxLambda_v=MAX(maxLambda_v,(Lambda_v1+Lambda_v2+Lambda_v3))
+#else
+        maxLambda_v=MAX(maxLambda_v,(Lambda_v1+Lambda_v2))
+#endif
 #endif /* PARABOLIC*/
       END DO ! i
     END DO ! j

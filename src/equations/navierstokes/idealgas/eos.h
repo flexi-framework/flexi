@@ -28,7 +28,7 @@
 #define MOMV  2:4 /* momentum vector */
 #define ENER  5   /* energy */
 
-! primitive (exteded) variables
+! primitive (extended) variables
 #define SRHO  6   /* specific volume (1./density) */
 #define VEL1  7   /* velocity x */
 #define VEL2  8   /* velocity y */

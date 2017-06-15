@@ -1,0 +1,351 @@
+!=================================================================================================================================
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
+! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+!
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+!
+! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+! of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License v3.0 for more details.
+!
+! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
+!=================================================================================================================================
+
+!==================================================================================================================================
+!> Interpolate an array of Dim1 1D Lagrange polynomials (defined by X_In) of order NIn to 1D Lagrange polynomials of order NOut
+!> using the Vandermonde matrix Vdm.
+!> If X_Out is present, the output will be written to X_Out, otherwise X_In will be overwritten.
+!==================================================================================================================================
+SUBROUTINE ChangeBasis1D(Dim1,NIn,NOut,Vdm,X_In,X_Out)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN)        :: Dim1                              !< Number of variables
+INTEGER,INTENT(IN)        :: NIn                               !< Input polynomial degree, no. of points = NIn+1
+INTEGER,INTENT(IN)        :: NOut                              !< Output polynomial degree, no. of points = NOut+1
+REAL,INTENT(INOUT)        :: X_In( 1:Dim1,0:NIn  _ADD_DIM)     !< Input field, dimensions must match (Dim1,NIn)
+REAL,INTENT(OUT),OPTIONAL :: X_Out(1:Dim1,0:NOut _ADD_DIM)     !< Output field, dimensions must match (Dim1,NOut),OPTIONAL
+REAL,INTENT(IN)           :: Vdm(0:NOut,0:NIn)                 !< 1D Vandermonde In -> Out
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER             :: iI,iO
+REAL                :: X_Buf(1:Dim1,0:NOut _ADD_DIM)           ! Buffer
+!==================================================================================================================================
+IF (PRESENT(X_Out)) THEN
+  X_Out=0.
+  ! first direction iI
+  DO iI=0,NIn
+    DO iO=0,NOut
+      X_Out(:,iO _ADD_DIM)=X_Out(:,iO _ADD_DIM)+Vdm(iO,iI)*X_In(:,iI _ADD_DIM)
+    END DO
+  END DO
+ELSE
+  X_Buf=0.
+  ! first direction iI
+  DO iI=0,NIn
+    DO iO=0,NOut
+      X_Buf(:,iO _ADD_DIM)=X_Buf(:,iO _ADD_DIM)+Vdm(iO,iI)*X_In(:,iI _ADD_DIM)
+    END DO
+  END DO
+  X_In = X_Buf
+END IF
+END SUBROUTINE ChangeBasis1D
+
+!==================================================================================================================================
+!> Interpolate a single 1D Lagrange polynomial (defined by X_In) of order NIn to a 1D Lagrange polynomial of order NOut
+!> using the Vandermonde matrix Vdm.
+!> If X_Out is present, the output will be written to X_Out, otherwise X_In will be overwritten.
+!==================================================================================================================================
+SUBROUTINE ChangeBasis1D_SingleVar(NIn,NOut,Vdm,X_In,X_Out)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN)        :: NIn                          !< Input polynomial degree, no. of points = NIn+1
+INTEGER,INTENT(IN)        :: NOut                         !< Output polynomial degree, no. of points = NOut+1
+REAL,INTENT(INOUT)        :: X_In (0:NIn  _ADD_DIM)       !< Input field, dimensions must match Dim1,NIn
+REAL,INTENT(OUT),OPTIONAL :: X_Out(0:NOut _ADD_DIM)       !< Output field, dimensions must match Dim1,NOut,OPTIONAL
+REAL,INTENT(IN)           :: Vdm(0:NOut,0:NIn)            !< 1D Vandermonde In -> Out
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER             :: iI,iO
+REAL                :: X_Buf(0:NOut _ADD_DIM)             ! Buffer
+!==================================================================================================================================
+IF (PRESENT(X_Out)) THEN
+  X_Out=0.
+  ! first direction iI
+  DO iI=0,NIn
+    DO iO=0,NOut
+      X_Out(iO _ADD_DIM)=X_Out(iO _ADD_DIM)+Vdm(iO,iI)*X_In(iI _ADD_DIM)
+    END DO
+  END DO
+ELSE
+  X_Buf=0.
+  ! first direction iI
+  DO iI=0,NIn
+    DO iO=0,NOut
+      X_Buf(iO _ADD_DIM)=X_Buf(iO _ADD_DIM)+Vdm(iO,iI)*X_In(iI _ADD_DIM)
+    END DO
+  END DO
+  X_In = X_Buf
+END IF
+END SUBROUTINE ChangeBasis1D_SingleVar
+
+!==================================================================================================================================
+!> Interpolate an array of Dim1 2D tensor product Lagrange polynomials (defined by X_In) of order NIn to 2D Lagrange polynomials
+!> of order NOut using the 1D Vandermonde matrix Vdm.
+!> If X_Out is present, the output will be written to X_Out, otherwise X_In will be overwritten.
+!==================================================================================================================================
+PURE SUBROUTINE ChangeBasis2D(Dim1,NIn,NOut,Vdm,X_In,X_Out)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN)        :: Dim1                                    !< Number of variables
+INTEGER,INTENT(IN)        :: NIn                                     !< Input polynomial degree, no. of points = NIn+1
+INTEGER,INTENT(IN)        :: NOut                                    !< Output polynomial degree, no. of points = NOut+1
+REAL,INTENT(INOUT)        :: X_In(1:Dim1,0:NIn,0:NIn    _ADD_DIM)    !< Input field, dimensions must match Dim1,NIn
+REAL,INTENT(OUT),OPTIONAL :: X_Out(1:Dim1,0:NOut,0:NOut _ADD_DIM)    !< Output field, dimensions must match Dim1,NOut, OPTIONAL
+REAL,INTENT(IN)           :: Vdm(0:NOut,0:NIn)                       !< 1D Vandermonde In -> Out
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER             :: iI,jI,iO,jO
+REAL                :: X_Buf1(1:Dim1,0:NOut,0:NIn)       ! first intermediate results from 1D interpolations
+!==================================================================================================================================
+X_buf1=0.
+! first direction iI
+DO jI=0,NIn; DO iI=0,NIn
+  DO iO=0,NOut
+    X_Buf1(:,iO,jI)=X_Buf1(:,iO,jI)+Vdm(iO,iI)*X_In(:,iI,jI _ADD_DIM)
+  END DO
+END DO; END DO
+IF (PRESENT(X_OUT)) THEN
+  X_OUT=0.
+  ! SECOND DIRECTION JI
+  DO JI=0,NIN; DO JO=0,NOUT
+    DO IO=0,NOUT
+      X_OUT(:,IO,JO _ADD_DIM)=X_OUT(:,IO,JO _ADD_DIM)+VDM(JO,JI)*X_BUF1(:,IO,JI)
+    END DO
+  END DO; END DO
+ELSE
+  X_IN=0.
+  ! SECOND DIRECTION JI
+  DO JI=0,NIN; DO JO=0,NOUT
+    DO IO=0,NOUT
+      X_IN(:,IO,JO _ADD_DIM)=X_IN(:,IO,JO _ADD_DIM)+VDM(JO,JI)*X_BUF1(:,IO,JI)
+    END DO
+  END DO; END DO
+END IF
+END SUBROUTINE ChangeBasis2D
+
+!==================================================================================================================================
+!> Interpolate single 2D tensor product Lagrange polynomial (defined by X_In) of order NIn to 2D Lagrange polynomial
+!> of order NOut using the 1D Vandermonde matrix Vdm.
+!==================================================================================================================================
+SUBROUTINE ChangeBasis2D_SingleVar(NIn,NOut,Vdm,X2D_In,X2D_Out)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN)  :: NIn                                     !< Input polynomial degree, no. of points = NIn+1
+INTEGER,INTENT(IN)  :: NOut                                    !< Output polynomial degree, no. of points = NOut+1
+REAL,INTENT(IN)     :: X2D_In(0:NIn,0:NIn      _ADD_DIM)       !< Input field, dimensions must match Dim1,NIn
+REAL,INTENT(OUT)    :: X2D_Out(0:NOut,0:NOut   _ADD_DIM)       !< Output field, dimensions must match Dim1,NOut
+REAL,INTENT(IN)     :: Vdm(0:NOut,0:NIn)                       !< 1D Vandermonde In -> Out
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER             :: iNIn,jNIn,iN_Out,jN_Out
+REAL                :: X2D_Buf1(0:NOut,0:NIn)                  ! first intermediate results from 1D interpolations
+!==================================================================================================================================
+X2D_buf1=0.
+! first direction iNIn
+DO jNIn=0,NIn
+  DO iNIn=0,NIn
+    DO iN_Out=0,NOut
+      X2D_Buf1(iN_Out,jNIn)=X2D_Buf1(iN_Out,jNIn)+Vdm(iN_Out,iNIn)*X2D_In(iNIn,jNIn _ADD_DIM)
+    END DO
+  END DO
+END DO
+X2D_Out=0.
+! second direction jNIn
+DO jNIn=0,NIn
+  DO jN_Out=0,NOut
+    DO iN_Out=0,NOut
+      X2D_Out(iN_Out,jN_Out _ADD_DIM)=X2D_Out(iN_Out,jN_Out _ADD_DIM)+Vdm(jN_Out,jNIn)*X2D_Buf1(iN_Out,jNIn)
+    END DO
+  END DO
+END DO
+END SUBROUTINE ChangeBasis2D_SingleVar
+
+!==================================================================================================================================
+!> Interpolate an array of Dim1 3D tensor product Lagrange polynomials (defined by X_In) of order NIn to 3D Lagrange polynomials
+!> of order NOut using the 1D Vandermonde matrix Vdm.
+!> If X_Out is present, the output will be written to X_Out, otherwise X_In will be overwritten.
+!==================================================================================================================================
+PURE SUBROUTINE ChangeBasis3D(Dim1,NIn,NOut,Vdm,X_In,X_Out)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN)        :: Dim1                                    !< Number of variables
+INTEGER,INTENT(IN)        :: NIn                                     !< Input polynomial degree, no. of points = NIn+1
+INTEGER,INTENT(IN)        :: NOut                                    !< Output polynomial degree, no. of points = NOut+1
+REAL,INTENT(INOUT)        :: X_In(1:Dim1,0:NIn,0:NIn,0:NIn)          !< Input field, dimensions must match Dim1,NIn
+REAL,INTENT(OUT),OPTIONAL :: X_Out(1:Dim1,0:NOut,0:NOut,0:NOut)      !< Output field, dimensions must match Dim1,NOut, OPTIONAL
+REAL,INTENT(IN)           :: Vdm(0:NOut,0:NIn)                       !< 1D Vandermonde In -> Out
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER             :: iI,jI,kI,iO,jO,kO
+REAL                :: X_Buf1(1:Dim1,0:NOut,0:NIn,0:NIn)       ! first intermediate results from 1D interpolations
+REAL                :: X_Buf2(1:Dim1,0:NOut,0:NOut,0:NIn)      ! second intermediate results from 1D interpolations
+!==================================================================================================================================
+X_buf1=0.
+! first direction iI
+DO kI=0,NIn; DO jI=0,NIn; DO iI=0,NIn
+  DO iO=0,NOut
+    X_Buf1(:,iO,jI,kI)=X_Buf1(:,iO,jI,kI)+Vdm(iO,iI)*X_In(:,iI,jI,kI)
+  END DO
+END DO; END DO; END DO
+X_buf2=0.
+! second direction jI
+DO kI=0,NIn; DO jI=0,NIn; DO jO=0,NOut
+  DO iO=0,NOut
+    X_Buf2(:,iO,jO,kI)=X_Buf2(:,iO,jO,kI)+Vdm(jO,jI)*X_Buf1(:,iO,jI,kI)
+  END DO
+END DO; END DO; END DO
+IF (PRESENT(X_Out)) THEN
+  X_Out=0.
+  ! last direction kI
+  DO kI=0,NIn; DO kO=0,NOut; DO jO=0,NOut
+    DO iO=0,NOut
+      X_Out(:,iO,jO,kO)=X_Out(:,iO,jO,kO)+Vdm(kO,kI)*X_Buf2(:,iO,jO,kI)
+    END DO
+  END DO; END DO; END DO
+ELSE
+  X_In=0.
+  ! last direction kI
+  DO kI=0,NIn; DO kO=0,NOut; DO jO=0,NOut
+    DO iO=0,NOut
+      X_In(:,iO,jO,kO)=X_In(:,iO,jO,kO)+Vdm(kO,kI)*X_Buf2(:,iO,jO,kI)
+    END DO
+  END DO; END DO; END DO
+END IF
+END SUBROUTINE ChangeBasis3D
+
+
+!==================================================================================================================================
+!> Interpolate single 3D tensor product Lagrange polynomial (defined by X_In) of order NIn to 3D Lagrange polynomial
+!> of order NOut using the 1D Vandermonde matrix Vdm.
+!==================================================================================================================================
+SUBROUTINE ChangeBasis3D_SingleVar(NIn,NOut,Vdm,X3D_In,X3D_Out)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN) :: NIn                              !< Input polynomial degree, no. of points = NIn+1
+INTEGER,INTENT(IN) :: NOut                             !< Output polynomial degree, no. of points = NOut+1
+REAL,INTENT(IN)    :: X3D_In(0:NIn,0:NIn,0:NIn)        !< Input field, dimensions must match Dim1,NIn
+REAL,INTENT(OUT)   :: X3D_Out(0:NOut,0:NOut,0:NOut)    !< Output field, dimensions must match Dim1,NOut
+REAL,INTENT(IN)    :: Vdm(0:NOut,0:NIn)                !< 1D Vandermonde In -> Out
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER             :: iNIn,jNIn,kNIn,iN_Out,jN_Out,kN_Out
+REAL                :: X3D_Buf1(0:NOut,0:NIn,0:NIn)     ! first intermediate results from 1D interpolations
+REAL                :: X3D_Buf2(0:NOut,0:NOut,0:NIn)    ! second intermediate results from 1D interpolations
+!==================================================================================================================================
+X3D_buf1=0.
+! first direction iNIn
+DO kNIn=0,NIn
+  DO jNIn=0,NIn
+    DO iNIn=0,NIn
+      DO iN_Out=0,NOut
+        X3D_Buf1(iN_Out,jNIn,kNIn)=X3D_Buf1(iN_Out,jNIn,kNIn)+Vdm(iN_Out,iNIn)*X3D_In(iNIn,jNIn,kNIn)
+      END DO
+    END DO
+  END DO
+END DO
+X3D_buf2=0.
+! second direction jNIn
+DO kNIn=0,NIn
+  DO jNIn=0,NIn
+    DO jN_Out=0,NOut
+      DO iN_Out=0,NOut
+        X3D_Buf2(iN_Out,jN_Out,kNIn)=X3D_Buf2(iN_Out,jN_Out,kNIn)+Vdm(jN_Out,jNIn)*X3D_Buf1(iN_Out,jNIn,kNIn)
+      END DO
+    END DO
+  END DO
+END DO
+X3D_Out=0.
+! last direction kNIn
+DO kNIn=0,NIn
+  DO kN_Out=0,NOut
+    DO jN_Out=0,NOut
+      DO iN_Out=0,NOut
+        X3D_Out(iN_Out,jN_Out,kN_Out)=X3D_Out(iN_Out,jN_Out,kN_Out)+Vdm(kN_Out,kNIn)*X3D_Buf2(iN_Out,jN_Out,kNIn)
+      END DO
+    END DO
+  END DO
+END DO
+END SUBROUTINE ChangeBasis3D_SingleVar
+
+!==================================================================================================================================
+!> Interpolate an array of Dim1 3D tensor product Lagrange polynomials (defined by X_In) of order NIn to 3D Lagrange polynomials
+!> of order NOut using a seperate 1D Vandermonde matrix per reference direction.
+!==================================================================================================================================
+PURE SUBROUTINE ChangeBasis3D_XYZ(Dim1,NIn,NOut,Vdm_xi,Vdm_eta,Vdm_zeta,X3D_In,X3D_Out)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN)  :: Dim1                                    !< Number of variables
+INTEGER,INTENT(IN)  :: NIn                                     !< Input polynomial degree, no. of points = NIn+1
+INTEGER,INTENT(IN)  :: NOut                                    !< Output polynomial degree, no. of points = NOut+1
+REAL,INTENT(IN)     :: X3D_In(1:Dim1,0:NIn,0:NIn,0:NIn)        !< Input field, dimensions must match Dim1,NIn
+REAL,INTENT(OUT)    :: X3D_Out(1:Dim1,0:NOut,0:NOut,0:NOut)    !< Output field, dimensions must match Dim1,NOut
+REAL,INTENT(IN)     :: Vdm_xi(0:NOut,0:NIn)                    !< 1D Vandermonde In -> Out xi direction
+REAL,INTENT(IN)     :: Vdm_eta(0:NOut,0:NIn)                   !< 1D Vandermonde In -> Out eta direction
+REAL,INTENT(IN)     :: Vdm_zeta(0:NOut,0:NIn)                  !< 1D Vandermonde In -> Out zeta direction
+
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER             :: iI,jI,kI,iO,jO,kO
+REAL                :: X3D_Buf1(1:Dim1,0:NOut,0:NIn,0:NIn)     ! first intermediate results from 1D interpolations
+REAL                :: X3D_Buf2(1:Dim1,0:NOut,0:NOut,0:NIn)    ! second intermediate results from 1D interpolations
+!==================================================================================================================================
+X3D_buf1=0.
+! first direction iI
+DO kI=0,NIn
+  DO jI=0,NIn
+    DO iI=0,NIn
+      DO iO=0,NOut
+        X3D_Buf1(:,iO,jI,kI)=X3D_Buf1(:,iO,jI,kI)+Vdm_xi(iO,iI)*X3D_In(:,iI,jI,kI)
+      END DO
+    END DO
+  END DO
+END DO
+X3D_buf2=0.
+! second direction jI
+DO kI=0,NIn
+  DO jI=0,NIn
+    DO jO=0,NOut
+      DO iO=0,NOut
+        X3D_Buf2(:,iO,jO,kI)=X3D_Buf2(:,iO,jO,kI)+Vdm_eta(jO,jI)*X3D_Buf1(:,iO,jI,kI)
+      END DO
+    END DO
+  END DO
+END DO
+X3D_Out=0.
+! last direction kI
+DO kI=0,NIn
+  DO kO=0,NOut
+    DO jO=0,NOut
+      DO iO=0,NOut
+        X3D_Out(:,iO,jO,kO)=X3D_Out(:,iO,jO,kO)+Vdm_zeta(kO,kI)*X3D_Buf2(:,iO,jO,kI)
+      END DO
+    END DO
+  END DO
+END DO
+END SUBROUTINE ChangeBasis3D_XYZ
+

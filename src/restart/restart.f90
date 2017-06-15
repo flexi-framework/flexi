@@ -79,6 +79,7 @@ USE MOD_HDF5_Input,         ONLY: ISVALIDHDF5FILE
 USE MOD_Interpolation_Vars, ONLY: InterpolationInitIsDone,NodeType
 USE MOD_HDF5_Input,         ONLY: OpenDataFile,CloseDataFile,GetDataProps,ReadAttribute,File_ID
 USE MOD_ReadInTools,        ONLY: GETLOGICAL,GETREALARRAY
+USE MOD_Mesh_Vars,          ONLY: nGlobalElems,NGeo
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -114,6 +115,10 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
   ResetTime=GETLOGICAL('ResetTime','.FALSE.')
   IF(ResetTime) RestartTime=0.
   CALL CloseDataFile()
+
+  IF ((nVar_Restart.NE.PP_nVar).OR.(nElems_Restart.NE.nGlobalElems)) THEN
+    CALL CollectiveStop(__STAMP__, "Restart File has different number of variables or elements!")
+  END IF
 ELSE
   ! No restart
   RestartTime = 0.
@@ -123,6 +128,8 @@ END IF
 ! Check if we need to interpolate the restart file to our current polynomial degree and node type
 IF(DoRestart .AND. ((N_Restart.NE.PP_N) .OR. (TRIM(NodeType_Restart).NE.TRIM(NodeType))))THEN
   InterpolateSolution=.TRUE.
+  IF(MIN(N_Restart,PP_N).LT.NGeo) &
+    CALL PrintWarning('The geometry is or was underresolved and will potentially change on restart!')
 #if FV_ENABLED
   CALL CollectiveStop(__STAMP__,'ERROR: The restart to a different polynomial degree is not available for FV.') 
 #endif
@@ -159,7 +166,7 @@ USE MOD_Restart_Vars
 USE MOD_DG_Vars,            ONLY: U
 USE MOD_Mesh_Vars,          ONLY: offsetElem,detJac_Ref,Ngeo
 USE MOD_Mesh_Vars,          ONLY: nElems
-USE MOD_ChangeBasis,        ONLY: ChangeBasis3D
+USE MOD_ChangeBasisByDim,   ONLY: ChangeBasisVolume
 USE MOD_HDF5_Input,         ONLY: OpenDataFile,CloseDataFile,ReadArray,GetArrayAndName
 USE MOD_HDF5_Output,        ONLY: FlushFiles
 USE MOD_Interpolation,      ONLY: GetVandermonde
@@ -170,6 +177,9 @@ USE MOD_FV_Vars,            ONLY: FV_Elems
 USE MOD_Indicator_Vars,     ONLY: IndValue
 USE MOD_StringTools,        ONLY: STRICMP
 #endif
+USE MOD_2D,                 ONLY: ExpandArrayTo3D
+USE MOD_IO_HDF5
+USE MOD_HDF5_Input,         ONLY: GetDataSize
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -177,8 +187,8 @@ LOGICAL,INTENT(IN),OPTIONAL :: doFlushFiles
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL,ALLOCATABLE   :: U_local(:,:,:,:,:)
-INTEGER            :: iElem,i,j,k
-REAL               :: JNR(1,0:N_Restart,0:N_Restart,0:N_Restart)
+INTEGER            :: iElem,i,j,k,N_RestartZ
+REAL,ALLOCATABLE   :: JNR(:,:,:,:)
 REAL               :: Vdm_NRestart_N(0:PP_N,0:N_Restart)
 REAL               :: Vdm_3Ngeo_NRestart(0:N_Restart,0:3*NGeo)
 LOGICAL            :: doFlushFiles_loc
@@ -209,10 +219,25 @@ IF(DoRestart)THEN
   END DO
   DEALLOCATE(ElemData,VarNamesElemData,tmp)
 #endif
+
   ! Read in state
   IF(.NOT. InterpolateSolution)THEN
     ! No interpolation needed, read solution directly from file
-    CALL ReadArray('DG_Solution',5,(/PP_nVar,PP_N+1,PP_N+1,PP_N+1,nElems/),OffsetElem,5,RealArray=U)
+    ! check whether we have 2D data
+    CALL GetDataSize(File_ID,'DG_Solution',nDims,HSize)
+    IF(HSize(4).EQ.1) THEN 
+#if PP_dim == 3
+      ! If either posti or a 3D flexi reads in a 2D state file, expand it to 3D.
+      ALLOCATE(U_local(PP_nVar,0:PP_N,0:PP_N,0:0,nElems))
+      CALL ReadArray('DG_Solution',5,(/PP_nVar,PP_N+1,PP_N+1,1,nElems/),OffsetElem,5,RealArray=U_local)
+      CALL ExpandArrayTo3D(5,(/PP_nVar,PP_N+1,PP_N+1,1,nElems/),4,PP_N+1,U_local,U) 
+      DEALLOCATE(U_local)
+#else
+      CALL ReadArray('DG_Solution',5,(/PP_nVar,PP_N+1,PP_N+1,1,nElems/),OffsetElem,5,RealArray=U)
+#endif
+    ELSE
+      CALL ReadArray('DG_Solution',5,(/PP_nVar,PP_N+1,PP_N+1,PP_NZ+1,nElems/),OffsetElem,5,RealArray=U)
+    END IF
   ELSE
     ! We need to interpolate the solution to the new computational grid
     SWRITE(UNIT_stdOut,*)'Interpolating solution from restart grid with N=',N_restart,' to computational grid with N=',PP_N
@@ -222,9 +247,15 @@ IF(DoRestart)THEN
     CALL GetVandermonde(3*Ngeo,    NodeType,        N_Restart, NodeType_Restart, &
                         Vdm_3Ngeo_NRestart, modal=.TRUE.)
 
-    ALLOCATE(U_local(PP_nVar,0:N_Restart,0:N_Restart,0:N_Restart,nElems))
+#if(PP_dim==2)
+    N_RestartZ=0
+#else
+    N_RestartZ=N_Restart
+#endif
+    ALLOCATE(JNR(1,0:N_Restart,0:N_Restart,0:N_RestartZ))
+    ALLOCATE(U_local(PP_nVar,0:N_Restart,0:N_Restart,0:N_RestartZ,nElems))
     CALL ReadArray('DG_Solution',5,&
-                   (/PP_nVar,N_Restart+1,N_Restart+1,N_Restart+1,nElems/),&
+                   (/PP_nVar,N_Restart+1,N_Restart+1,N_RestartZ+1,nElems/),&
                    OffsetElem,5,RealArray=U_local)
 
     ! Transform solution to refspace and project solution to N
@@ -233,11 +264,11 @@ IF(DoRestart)THEN
     IF(N_Restart.GT.PP_N)THEN
       DO iElem=1,nElems
         IF (FV_Elems(iElem).EQ.0) THEN ! DG element
-          CALL ChangeBasis3D(1,3*Ngeo,N_Restart,Vdm_3Ngeo_NRestart,detJac_Ref(:,:,:,:,iElem),JNR)
-          DO k=0,N_Restart; DO j=0,N_Restart; DO i=0,N_Restart
+          CALL ChangeBasisVolume(1,3*Ngeo,N_Restart,Vdm_3Ngeo_NRestart,detJac_Ref(:,:,:,:,iElem),JNR)
+          DO k=0,N_RestartZ; DO j=0,N_Restart; DO i=0,N_Restart
             U_local(:,i,j,k,iElem)=U_local(:,i,j,k,iElem)*JNR(1,i,j,k)
           END DO; END DO; END DO
-          CALL ChangeBasis3D(PP_nVar,N_Restart,PP_N,Vdm_NRestart_N,U_local(:,:,:,:,iElem),U(:,:,:,:,iElem))
+          CALL ChangeBasisVolume(PP_nVar,N_Restart,PP_N,Vdm_NRestart_N,U_local(:,:,:,:,iElem),U(:,:,:,:,iElem))
 #if FV_ENABLED          
         ELSE ! FV element
           STOP 'Not implemented yet'
@@ -249,7 +280,7 @@ IF(DoRestart)THEN
     ELSE
       DO iElem=1,nElems
         IF (FV_Elems(iElem).EQ.0) THEN ! DG element
-          CALL ChangeBasis3D(PP_nVar,N_Restart,PP_N,Vdm_NRestart_N,U_local(:,:,:,:,iElem),U(:,:,:,:,iElem))
+          CALL ChangeBasisVolume(PP_nVar,N_Restart,PP_N,Vdm_NRestart_N,U_local(:,:,:,:,iElem),U(:,:,:,:,iElem))
 #if FV_ENABLED          
         ELSE ! FV element
           STOP 'Not implemented yet'
@@ -258,7 +289,7 @@ IF(DoRestart)THEN
       END DO
     END IF
 
-    DEALLOCATE(U_local)
+    DEALLOCATE(U_local,JNR)
     SWRITE(UNIT_stdOut,*)'DONE!'
   END IF
   CALL CloseDataFile()

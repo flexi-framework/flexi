@@ -121,3 +121,26 @@
 #define CUTOFF 1
 #define CUTOFFCONS 2
 #define SELECTIVE 3
+
+!2d functionality 
+#if (PP_dim==2)
+#define PP_NOverZ 0
+#define PP_NlocZ 0
+#define PP_NZ 0 
+#define PP_NUnderZ 0
+#define PP_NOutZ 0
+#define PP_NGeoZ 0 
+#define PP_NVisuZ 0
+#define PP_NVisuZ_FV 0
+#define PP_NCalcZ_FV 0
+#else
+#define PP_NOverZ NOver
+#define PP_NlocZ Nloc 
+#define PP_NZ PP_N 
+#define PP_NUnderZ NUnder
+#define PP_NOutZ NOut
+#define PP_NGeoZ NGeo
+#define PP_NVisuZ NVisu
+#define PP_NVisuZ_FV NVisu_FV
+#define PP_NCalcZ_FV NCalc_FV
+#endif

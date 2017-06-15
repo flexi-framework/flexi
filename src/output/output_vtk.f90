@@ -61,18 +61,13 @@ PUBLIC::CARRAY
 
 CONTAINS
 
-!===================================================================================================================================
-!> Subroutine to create the connectivity between elements for 2D or 3D vtu output.
-!===================================================================================================================================
 SUBROUTINE CreateConnectivity(NVisu,nElems,nodeids,dim,DGFV) 
-! MODULES
 USE ISO_C_BINDING
 USE MOD_Globals
 IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES 
-INTEGER,INTENT(IN)                       :: NVisu             !< Polynomial degree for visualization
-INTEGER,INTENT(IN)                       :: nElems            !< Number of elements
+INTEGER,INTENT(IN)                       :: NVisu
+INTEGER,INTENT(IN)                       :: nElems
 INTEGER,ALLOCATABLE,TARGET,INTENT(INOUT) :: nodeids(:)        !< stores the connectivity
 INTEGER,INTENT(IN)                       :: dim               !< 3 = 3d connectivity, 2 = 2d connectivity
 INTEGER,INTENT(IN)                       :: DGFV              !< flag indicating DG = 0 or FV = 1 data
@@ -80,13 +75,18 @@ INTEGER,INTENT(IN)                       :: DGFV              !< flag indicating
 ! LOCAL VARIABLES
 INTEGER           :: i,j,k,iElem
 INTEGER           :: NodeID,NodeIDElem
-INTEGER           :: NVisu_k, NVisu_elem, NVisu_p1_2
+INTEGER           :: NVisu_k, NVisu_j, NVisu_elem, NVisu_p1_2
 INTEGER           :: nVTKCells
 !===================================================================================================================================
 IF (dim.EQ.3) THEN
-  NVisu_k    = NVisu
+  NVisu_k = NVisu
+  NVisu_j = NVisu
 ELSE IF (dim.EQ.2) THEN
-  NVisu_k    = 1
+  NVisu_k = 1
+  NVisu_j = NVisu
+ELSE IF (dim.EQ.1) THEN
+  NVisu_k = 1
+  NVisu_j = 1
 ELSE
   CALL Abort(__STAMP__, &
       "Only 2D and 3D connectivity can be created. dim must be 2 or 3.")
@@ -97,7 +97,7 @@ NVisu_p1_2 = (NVisu+1)**2
   
 nVTKCells  = ((NVisu+DGFV)/(1+DGFV))**dim*nElems
 SDEALLOCATE(nodeids)
-ALLOCATE(nodeids((4*(dim-1))*nVTKCells))
+ALLOCATE(nodeids((2**dim)*nVTKCells))
 
 
 ! create connectivity
@@ -105,16 +105,20 @@ NodeID = 0
 NodeIDElem = 0
 DO iElem=1,nElems
   DO k=1,NVisu_k,(DGFV+1)
-    DO j=1,NVisu,(DGFV+1)
+    DO j=1,NVisu_j,(DGFV+1)
       DO i=1,NVisu,(DGFV+1)
-        NodeID=NodeID+1
-        nodeids(NodeID) = NodeIDElem+i+   j   *(NVisu+1)+(k-1)*NVisu_p1_2-1 !P4(CGNS=tecVisu standard)
+        IF (dim.GE.2) THEN
+          NodeID=NodeID+1
+          nodeids(NodeID) = NodeIDElem+i+   j   *(NVisu+1)+(k-1)*NVisu_p1_2-1 !P4(CGNS=tecVisu standard)
+        END IF
         NodeID=NodeID+1
         nodeids(NodeID) = NodeIDElem+i+  (j-1)*(NVisu+1)+(k-1)*NVisu_p1_2-1 !P1
         NodeID=NodeID+1
         nodeids(NodeID) = NodeIDElem+i+1+(j-1)*(NVisu+1)+(k-1)*NVisu_p1_2-1 !P2
-        NodeID=NodeID+1
-        nodeids(NodeID) = NodeIDElem+i+1+ j   *(NVisu+1)+(k-1)*NVisu_p1_2-1 !P3
+        IF (dim.GE.2) THEN
+          NodeID=NodeID+1
+          nodeids(NodeID) = NodeIDElem+i+1+ j   *(NVisu+1)+(k-1)*NVisu_p1_2-1 !P3
+        END IF
         IF (dim.EQ.3) THEN
           NodeID=NodeID+1
           nodeids(NodeID)=NodeIDElem+i+   j   *(NVisu+1)+ k   *NVisu_p1_2-1 !P8
@@ -145,7 +149,7 @@ INTEGER,INTENT(IN)          :: nVal                 !< Number of nodal output va
 INTEGER,INTENT(IN)          :: NVisu                !< Number of output points .EQ. NAnalyze
 INTEGER,INTENT(IN)          :: nElems               !< Number of output elements
 INTEGER,INTENT(IN)          :: dim                  !< dimension: 2 or 3
-REAL,INTENT(IN)             :: Coord(1:3,0:NVisu,0:NVisu,0:NVisu*(dim-2),nElems)     !< CoordsVector
+REAL,INTENT(IN)             :: Coord(1:3,0:NVisu,0:NVisu*(MERGE(1,0,dim.GT.1)),0:NVisu*(MERGE(1,0,dim.GT.2)),nElems)     !< CoordsVector
 CHARACTER(LEN=*),INTENT(IN) :: VarNames(nVal)       !< Names of all variables that will be written out
 REAL,INTENT(IN)             :: Value(:,:,:,:,:)     !< Statevector
 CHARACTER(LEN=*),INTENT(IN) :: FileString           !< Output file name
@@ -165,7 +169,7 @@ CHARACTER(LEN=200)          :: Buffer
 CHARACTER(LEN=1)            :: lf
 INTEGER                     :: ElemType,iElem
 INTEGER,ALLOCATABLE,TARGET  :: nodeids(:)
-INTEGER                     :: NVisu_k,PointsPerVTKCell
+INTEGER                     :: NVisu_k,NVisu_j,PointsPerVTKCell
 #if USE_MPI
 INTEGER                     :: iProc,nElems_proc,nElemsMax
 REAL,ALLOCATABLE            :: buf(:,:,:,:), buf2(:,:,:,:,:)
@@ -176,14 +180,20 @@ LOGICAL                     :: nValAtLastDimension_loc
 DGFV_loc = MERGE(DGFV, 0, PRESENT(DGFV))
 nValAtLastDimension_loc = MERGE(nValAtLastDimension, .FALSE., PRESENT(nValAtLastDimension))
 IF (dim.EQ.3) THEN
-  NVisu_k    = NVisu
+  NVisu_k = NVisu
+  NVisu_j = NVisu
   PointsPerVTKCell = 8
 ELSE IF (dim.EQ.2) THEN
-  NVisu_k    = 0
+  NVisu_k = 0
+  NVisu_j = NVisu
   PointsPerVTKCell = 4
+ELSE IF (dim.EQ.1) THEN
+  NVisu_k = 0
+  NVisu_j = 0
+  PointsPerVTKCell = 2
 ELSE
   CALL Abort(__STAMP__, &
-      "Only 2D and 3D connectivity can be created. dim must be 2 or 3.")
+      "Only 2D and 3D connectivity can be created. dim must be 1, 2 or 3.")
 END IF
 
 SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='NO')"   WRITE ",dim,"D DATA TO VTX XML BINARY (VTU) FILE..."
@@ -266,7 +276,7 @@ END IF
 IF(MPIroot)THEN
   !ALLOCATE buffer for Root
   nElemsMax=MAXVAL(nElems_glob)
-  ALLOCATE(buf(   0:NVisu,0:NVisu,0:NVisu_k,nElemsMax))
+  ALLOCATE(buf(   0:NVisu,0:NVisu_j,0:NVisu_k,nElemsMax))
 END IF
 #endif
 
@@ -299,7 +309,7 @@ END DO       ! iVar
 #if USE_MPI
 IF(MPIroot)THEN
   SDEALLOCATE(buf)
-  ALLOCATE(buf2(3,0:NVisu,0:NVisu,0:NVisu_k,nElemsMax))
+  ALLOCATE(buf2(3,0:NVisu,0:NVisu_j,0:NVisu_k,nElemsMax))
 END IF
 #endif
 
@@ -329,7 +339,7 @@ END IF
 IF(MPIROOT)THEN
   CALL CreateConnectivity(NVisu,nTotalElems,nodeids,dim,DGFV_loc)
 
-  nBytes = (4*(dim-1))*nVTKCells*SIZEOF_F(INTdummy)
+  nBytes = PointsPerVTKCell*nVTKCells*SIZEOF_F(INTdummy)
   WRITE(ivtk) nBytes
   WRITE(ivtk) nodeids
   ! Offset
@@ -339,8 +349,10 @@ IF(MPIROOT)THEN
   ! Elem type
   IF (dim.EQ.3) THEN
     ElemType = 12 ! VTK_HEXAHEDRON
-  ELSE
+  ELSE IF (dim.EQ.2) THEN
     ElemType = 9  ! VTK_QUAD
+  ELSE IF (dim.EQ.1) THEN
+    ElemType = 3  ! VTK_LINE
   END IF  
   WRITE(ivtk) nBytes
   WRITE(ivtk) (ElemType,iElem=1,nVTKCells)
@@ -431,7 +443,7 @@ CALL CreateConnectivity(NVisu,nElems,nodeids,dim,DGFV)
 
 ! set the sizes of the arrays
 coords_out%len = 3*(NVisu+1)**dim*nElems
-nodeids_out%len = (4*(dim-1))*((NVisu+DGFV)/(1+DGFV))**dim*nElems
+nodeids_out%len = (2**dim)*((NVisu+DGFV)/(1+DGFV))**dim*nElems
 
 ! assign data to the arrays (no copy!!!)
 coords_out%data = C_LOC(Coords(1,0,0,0,1))

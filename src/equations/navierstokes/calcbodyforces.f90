@@ -111,9 +111,9 @@ USE MOD_Analyze_Vars,      ONLY:wGPSurf
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL, INTENT(IN)               :: p_Face(0:PP_N,0:PP_N)        !< (IN) pressure on face
-REAL, INTENT(IN)               :: SurfElem(0:PP_N,0:PP_N)      !< (IN) face surface
-REAL, INTENT(IN)               :: NormVec(3,0:PP_N,0:PP_N)     !< (IN) face normal vectors
+REAL, INTENT(IN)               :: p_Face(0:PP_N,0:PP_NZ)        !< (IN) pressure on face
+REAL, INTENT(IN)               :: SurfElem(0:PP_N,0:PP_NZ)      !< (IN) face surface
+REAL, INTENT(IN)               :: NormVec(3,0:PP_N,0:PP_NZ)     !< (IN) face normal vectors
 REAL, INTENT(OUT)              :: Fp(3)                        !< (OUT) integrated pressure force
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -121,7 +121,7 @@ REAL                           :: dA
 INTEGER                        :: i, j
 !==================================================================================================================================
 Fp=0.
-DO j=0,PP_N; DO i=0,PP_N
+DO j=0,PP_NZ; DO i=0,PP_N
   dA=wGPSurf(i,j)*SurfElem(i,j)
   Fp=Fp+p_Face(i,j)*NormVec(:,i,j)*dA
 END DO; END DO
@@ -140,12 +140,12 @@ USE MOD_Analyze_Vars, ONLY:wGPSurf
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL, INTENT(IN)               :: UPrim_Face( PP_nVarPrim,0:PP_N,0:PP_N) !< (IN) primitive solution on face
-REAL, INTENT(IN)               :: gradUx_Face(PP_nVarPrim,0:PP_N,0:PP_N) !< (IN) sln. gradients x-dir on face
-REAL, INTENT(IN)               :: gradUy_Face(PP_nVarPrim,0:PP_N,0:PP_N) !< (IN) sln. gradients y-dir on face
-REAL, INTENT(IN)               :: gradUz_Face(PP_nVarPrim,0:PP_N,0:PP_N) !< (IN) sln. gradients z-dir on face
-REAL, INTENT(IN)               :: SurfElem(0:PP_N,0:PP_N)                !< (IN) face surface
-REAL, INTENT(IN)               :: NormVec(3,0:PP_N,0:PP_N)               !< (IN) face normal vectors
+REAL, INTENT(IN)               :: UPrim_Face( PP_nVarPrim,0:PP_N,0:PP_NZ) !< (IN) primitive solution on face
+REAL, INTENT(IN)               :: gradUx_Face(PP_nVarPrim,0:PP_N,0:PP_NZ) !< (IN) sln. gradients x-dir on face
+REAL, INTENT(IN)               :: gradUy_Face(PP_nVarPrim,0:PP_N,0:PP_NZ) !< (IN) sln. gradients y-dir on face
+REAL, INTENT(IN)               :: gradUz_Face(PP_nVarPrim,0:PP_N,0:PP_NZ) !< (IN) sln. gradients z-dir on face
+REAL, INTENT(IN)               :: SurfElem(0:PP_N,0:PP_NZ)                !< (IN) face surface
+REAL, INTENT(IN)               :: NormVec(3,0:PP_N,0:PP_NZ)               !< (IN) face normal vectors
 REAL, INTENT(OUT)              :: Fv(3)                                  !< (OUT) integrated pressure force
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -156,7 +156,7 @@ INTEGER                        :: i, j
 !==================================================================================================================================
 Fv       =0.
 
-DO j=0,PP_N; DO i=0,PP_N
+DO j=0,PP_NZ; DO i=0,PP_N
   ! calculate viscosity
   prim = UPrim_Face(:,i,j)
   muS=VISCOSITY_PRIM(prim)
@@ -164,7 +164,11 @@ DO j=0,PP_N; DO i=0,PP_N
   ! velocity gradients
   GradV(:,1)=gradUx_Face(2:4,i,j)
   GradV(:,2)=gradUy_Face(2:4,i,j)
+#if PP_dim==3
   GradV(:,3)=gradUz_Face(2:4,i,j)
+#else 
+  GradV(:,3)=0.
+#endif
 
   ! Velocity divergence
   DivV=GradV(1,1)+GradV(2,2)+GradV(3,3)
@@ -172,7 +176,9 @@ DO j=0,PP_N; DO i=0,PP_N
   tau=muS*(GradV + TRANSPOSE(GradV))
   tau(1,1)=tau(1,1)-2./3.*muS*DivV
   tau(2,2)=tau(2,2)-2./3.*muS*DivV
+#if PP_dim==3
   tau(3,3)=tau(3,3)-2./3.*muS*DivV
+#endif
   ! Calculate viscous force vector
   Fv=Fv+MATMUL(tau,NormVec(:,i,j))*wGPSurf(i,j)*SurfElem(i,j)
 END DO; END DO

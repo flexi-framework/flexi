@@ -56,26 +56,26 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 LOGICAL,INTENT(IN) :: doMPISides  !< =.TRUE. only MPI sides are filled, =.FALSE. inner sides 
-REAL,INTENT(INOUT) :: UPrim_master   (PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< primitive master solution (without reconstruction)
-REAL,INTENT(INOUT) :: UPrim_slave    (PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< primitive slave solution (without reconstruction)
-REAL,INTENT(INOUT) :: FV_multi_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< first inner slope of the master element
-REAL,INTENT(INOUT) :: FV_multi_slave (PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< first inner slope of the slave element
-REAL,INTENT(IN)    :: FV_surf_gradU  (PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< slope over the interface 
+REAL,INTENT(INOUT) :: UPrim_master   (PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< primitive master solution (without reconstruction)
+REAL,INTENT(INOUT) :: UPrim_slave    (PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< primitive slave solution (without reconstruction)
+REAL,INTENT(INOUT) :: FV_multi_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< first inner slope of the master element
+REAL,INTENT(INOUT) :: FV_multi_slave (PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< first inner slope of the slave element
+REAL,INTENT(IN)    :: FV_surf_gradU  (PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< slope over the interface 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
 INTEGER :: SideID,firstSideID,lastSideID
 INTEGER :: p,q
-REAL    :: gradU(PP_nVarPrim,0:PP_N,0:PP_N)
+REAL    :: gradU(PP_nVarPrim,0:PP_N,0:PP_NZ)
 !==================================================================================================================================
 ! reconstruct UPrim_master/slave for sides ranging between firstSideID and lastSideID 
-IF(doMPISides)THEN 
+IF(doMPISides)THEN
   ! fill only flux for MINE MPISides
   firstSideID = firstMPISide_MINE
   lastSideID  = lastMPISide_MINE
 ELSE
   ! fill only InnerSides
   firstSideID = firstBCSide
-  lastSideID  = lastInnerSide 
+  lastSideID  = lastInnerSide
 END IF
 
 DO SideID=firstSideID,lastSideID
@@ -84,15 +84,15 @@ DO SideID=firstSideID,lastSideID
     ! see 'FV_PrepareSurfGradient' subroutine in fv_reconstruction.f90 for details.
     ! FV_surf_gradU contains the gradient over the DG element interface and is calculated in 'FV_SurfCalcGradients'
     ! subroutine in fv_reconstruction.f90
-    DO q=0,PP_N; DO p=0,PP_N
-      CALL FV_Limiter(FV_multi_master(:,p,q,SideID), FV_surf_gradU(:,p,q,SideID), gradU(:,p,q)) 
+    DO q=0,PP_NZ; DO p=0,PP_N
+      CALL FV_Limiter(FV_multi_master(:,p,q,SideID), FV_surf_gradU(:,p,q,SideID), gradU(:,p,q))
       UPrim_master(:,p,q,SideID) = UPrim_master(:,p,q,SideID) - gradU(:,p,q) * FV_dx_master(1,p,q,SideID)
     END DO; END DO ! p,q=0,PP_N
   END IF
   IF (SideID.GE.firstInnerSide) THEN
     IF (FV_Elems_slave(SideID).GT.0) THEN ! FV element
-      DO q=0,PP_N; DO p=0,PP_N
-        CALL FV_Limiter(FV_multi_slave(:,p,q,SideID), -FV_surf_gradU(:,p,q,SideID), gradU(:,p,q)) 
+      DO q=0,PP_NZ; DO p=0,PP_N
+        CALL FV_Limiter(FV_multi_slave(:,p,q,SideID), -FV_surf_gradU(:,p,q,SideID), gradU(:,p,q))
         UPrim_slave(:,p,q,SideID) = UPrim_slave(:,p,q,SideID) - gradU(:,p,q) * FV_dx_slave(1,p,q,SideID)
       END DO; END DO ! p,q=0,PP_N
     END IF

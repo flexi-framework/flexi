@@ -75,7 +75,7 @@ USE MOD_Visu_Vars          ,ONLY: nVarVisu,NodeTypeVisuPosti,nVarDep,NVisu
 USE MOD_Visu_Vars          ,ONLY: mapAllVarsToVisuVars,mapDepToCalc
 USE MOD_Visu_Vars          ,ONLY: nElems_DG,UCalc_DG,UVisu_DG
 USE MOD_Interpolation      ,ONLY: GetVandermonde
-USE MOD_ChangeBasis        ,ONLY: ChangeBasis3D
+USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisVolume
 USE MOD_Interpolation_Vars ,ONLY: NodeType,NodeTypeVisu
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
@@ -92,13 +92,13 @@ CALL GetVandermonde(PP_N,NodeType,NVisu,NodeTypeVisuPosti,Vdm_N_NVisu,modal=.FAL
 
 ! convert DG solution to UVisu_DG
 SDEALLOCATE(UVisu_DG)
-ALLOCATE(UVisu_DG(0:NVisu,0:NVisu,0:NVisu,nElems_DG,nVarVisu))
+ALLOCATE(UVisu_DG(0:NVisu,0:NVisu,0:PP_NVisuZ,nElems_DG,nVarVisu))
 DO iVar=1,nVarDep
   IF (mapAllVarsToVisuVars(iVar).GT.0) THEN
     iVarCalc = mapDepToCalc(iVar) 
     iVarVisu = mapAllVarsToVisuVars(iVar) 
     DO iElem = 1,nElems_DG
-      CALL ChangeBasis3D(PP_N,NVisu,Vdm_N_NVisu,UCalc_DG(:,:,:,iElem,iVarCalc),UVisu_DG(:,:,:,iElem,iVarVisu))
+      CALL ChangeBasisVolume(PP_N,NVisu,Vdm_N_NVisu,UCalc_DG(:,:,:,iElem,iVarCalc),UVisu_DG(:,:,:,iElem,iVarVisu))
     END DO
   END IF
 END DO 
@@ -114,7 +114,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Visu_Vars
 USE MOD_Interpolation      ,ONLY: GetVandermonde
-USE MOD_ChangeBasis        ,ONLY: ChangeBasis3D,ChangeBasis2D
+USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisSurf
 USE MOD_Interpolation_Vars ,ONLY: NodeType,NodeTypeVisu
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
@@ -130,13 +130,13 @@ ALLOCATE(Vdm_N_NVisu(0:NVisu,0:PP_N))
 CALL GetVandermonde(PP_N,NodeType,NVisu,NodeTypeVisuPosti,Vdm_N_NVisu,modal=.FALSE.)
 ! convert DG solution to UVisu_DG
 SDEALLOCATE(USurfVisu_DG)
-ALLOCATE(USurfVisu_DG(0:NVisu,0:NVisu,0:0,nBCSidesVisu_DG,nVarSurfVisuAll))
+ALLOCATE(USurfVisu_DG(0:NVisu,0:PP_NVisuZ,0:0,nBCSidesVisu_DG,nVarSurfVisuAll))
 DO iVar=1,nVarDep
   IF (mapAllVarsToSurfVisuVars(iVar).GT.0) THEN
     iVarCalc = mapDepToCalc(iVar) 
     iVarVisu = mapAllVarsToSurfVisuVars(iVar) 
     DO iSide = 1,nBCSidesVisu_DG
-      CALL ChangeBasis2D(PP_N,NVisu,Vdm_N_NVisu,USurfCalc_DG(:,:,iSide,iVarCalc),USurfVisu_DG(:,:,0,iSide,iVarVisu))
+      CALL ChangeBasisSurf(PP_N,NVisu,Vdm_N_NVisu,USurfCalc_DG(:,:,iSide,iVarCalc),USurfVisu_DG(:,:,0,iSide,iVarVisu))
     END DO 
   END IF
 END DO 
@@ -166,7 +166,7 @@ INTEGER            :: iVarVisu,iVarCalc
 SWRITE(*,*) "[FV/FVRE] convert to visu grid"
 
 SDEALLOCATE(UVisu_FV)
-ALLOCATE(UVisu_FV(0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV,nVarVisu))
+ALLOCATE(UVisu_FV(0:NVisu_FV,0:NVisu_FV,0:PP_NVisuZ_FV,nElems_FV,nVarVisu))
 ! compute UVisu_FV
 DO iVar=1,nVarDep
   iVarVisu = mapAllVarsToVisuVars(iVar) 
@@ -177,8 +177,8 @@ DO iVar=1,nVarDep
 #if FV_RECONSTRUCT
       UVisu_FV(:,:,:,:,iVarVisu) = UCalc_FV(:,:,:,:,iVarCalc)
 #else      
-      DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
-        UVisu_FV(i*2:i*2+1, j*2:j*2+1, k*2:k*2+1,iElem,iVarVisu) = UCalc_FV(i,j,k,iElem,iVarCalc)
+      DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+        UVisu_FV(i*2:i*2+1, j*2:j*2+1, k*2:k*2+1*(PP_dim-2),iElem,iVarVisu) = UCalc_FV(i,j,k,iElem,iVarCalc)
       END DO; END DO; END DO
 #endif
     END DO
@@ -229,7 +229,6 @@ USE MOD_PreProc
 USE MOD_Visu_Vars
 USE MOD_ReadInTools        ,ONLY: GETINT
 USE MOD_Interpolation      ,ONLY: GetVandermonde
-USE MOD_ChangeBasis        ,ONLY: ChangeBasis3D
 USE MOD_Interpolation_Vars ,ONLY: NodeType,NodeTypeVisu
 USE MOD_FV_Vars            ,ONLY: gradUxi,gradUeta,gradUzeta
 USE MOD_FV_Vars            ,ONLY: FV_dx_XI_L,FV_dx_ETA_L,FV_dx_ZETA_L
@@ -244,9 +243,9 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
 #if PARABOLIC
-REAL,INTENT(OUT),OPTIONAL    :: gradUx_calc(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV)
-REAL,INTENT(OUT),OPTIONAL    :: gradUy_calc(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV)
-REAL,INTENT(OUT),OPTIONAL    :: gradUz_calc(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,0:NVisu_FV,nElems_FV)
+REAL,INTENT(OUT),OPTIONAL    :: gradUx_calc(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,0:PP_NVisuZ_FV,nElems_FV)
+REAL,INTENT(OUT),OPTIONAL    :: gradUy_calc(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,0:PP_NVisuZ_FV,nElems_FV)
+REAL,INTENT(OUT),OPTIONAL    :: gradUz_calc(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,0:PP_NVisuZ_FV,nElems_FV)
 #endif
 ! LOCAL VARIABLES
 INTEGER             :: iVar,i,j,k,iElem,iElem_FV
@@ -284,30 +283,36 @@ SWRITE(*,*) "  mapUCalc", mapUCalc(1:nVarPrim)
 
 DO iElem_FV=1,nElems_FV
   iElem = mapFVElemsToAllElems(iElem_FV)  
-  DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     DO iVar=1,nVarPrim
       iVarPrim = mapUPrim(iVar)
       iVarCalc = mapUCalc(iVar)
       UCalc_FV(i*2  ,j*2  ,k*2  ,iElem_FV,iVarCalc) = UPrim(iVarPrim,i,j,k,iElem) &
           - gradUxi  (iVarPrim,j,k,i,iElem) *   FV_dx_XI_L(i,j,k,iElem) &
-          - gradUeta (iVarPrim,i,k,j,iElem) *  FV_dx_ETA_L(i,j,k,iElem) &
-          - gradUzeta(iVarPrim,i,j,k,iElem) * FV_dx_ZETA_L(i,j,k,iElem)
+          - gradUeta (iVarPrim,i,k,j,iElem) *  FV_dx_ETA_L(i,j,k,iElem) 
       UCalc_FV(i*2+1,j*2  ,k*2  ,iElem_FV,iVarCalc) = UPrim(iVarPrim,i,j,k,iElem) &
           + gradUxi  (iVarPrim,j,k,i,iElem) *   FV_dx_XI_R(i,j,k,iElem) &
-          - gradUeta (iVarPrim,i,k,j,iElem) *  FV_dx_ETA_L(i,j,k,iElem) &
-          - gradUzeta(iVarPrim,i,j,k,iElem) * FV_dx_ZETA_L(i,j,k,iElem)
+          - gradUeta (iVarPrim,i,k,j,iElem) *  FV_dx_ETA_L(i,j,k,iElem) 
       UCalc_FV(i*2  ,j*2+1,k*2  ,iElem_FV,iVarCalc) = UPrim(iVarPrim,i,j,k,iElem)  &
           - gradUxi  (iVarPrim,j,k,i,iElem) *   FV_dx_XI_L(i,j,k,iElem) &
-          + gradUeta (iVarPrim,i,k,j,iElem) *  FV_dx_ETA_R(i,j,k,iElem) &
+          + gradUeta (iVarPrim,i,k,j,iElem) *  FV_dx_ETA_R(i,j,k,iElem)
+      UCalc_FV(i*2+1,j*2+1,k*2  ,iElem_FV,iVarCalc) = UPrim(iVarPrim,i,j,k,iElem) &
+          + gradUxi  (iVarPrim,j,k,i,iElem) *   FV_dx_XI_R(i,j,k,iElem) &
+          + gradUeta (iVarPrim,i,k,j,iElem) *  FV_dx_ETA_R(i,j,k,iElem)
+#if PP_dim == 3      
+      UCalc_FV(i*2  ,j*2  ,k*2  ,iElem_FV,iVarCalc) = UCalc_FV(i*2  ,j*2  ,k*2  ,iElem_FV,iVarCalc)  & 
           - gradUzeta(iVarPrim,i,j,k,iElem) * FV_dx_ZETA_L(i,j,k,iElem)
+      UCalc_FV(i*2+1,j*2  ,k*2  ,iElem_FV,iVarCalc) = UCalc_FV(i*2+1,j*2  ,k*2  ,iElem_FV,iVarCalc)  & 
+          - gradUzeta(iVarPrim,i,j,k,iElem) * FV_dx_ZETA_L(i,j,k,iElem)
+      UCalc_FV(i*2  ,j*2+1,k*2  ,iElem_FV,iVarCalc) = UCalc_FV(i*2  ,j*2+1,k*2  ,iElem_FV,iVarCalc)  & 
+          - gradUzeta(iVarPrim,i,j,k,iElem) * FV_dx_ZETA_L(i,j,k,iElem)
+      UCalc_FV(i*2+1,j*2+1,k*2  ,iElem_FV,iVarCalc) = UCalc_FV(i*2+1,j*2+1,k*2  ,iElem_FV,iVarCalc)  & 
+          - gradUzeta(iVarPrim,i,j,k,iElem) * FV_dx_ZETA_L(i,j,k,iElem)
+
       UCalc_FV(i*2  ,j*2  ,k*2+1,iElem_FV,iVarCalc) = UPrim(iVarPrim,i,j,k,iElem)  &
           - gradUxi  (iVarPrim,j,k,i,iElem) *   FV_dx_XI_L(i,j,k,iElem) &
           - gradUeta (iVarPrim,i,k,j,iElem) *  FV_dx_ETA_L(i,j,k,iElem) &
           + gradUzeta(iVarPrim,i,j,k,iElem) * FV_dx_ZETA_R(i,j,k,iElem)
-      UCalc_FV(i*2+1,j*2+1,k*2  ,iElem_FV,iVarCalc) = UPrim(iVarPrim,i,j,k,iElem) &
-          + gradUxi  (iVarPrim,j,k,i,iElem) *   FV_dx_XI_R(i,j,k,iElem) &
-          + gradUeta (iVarPrim,i,k,j,iElem) *  FV_dx_ETA_R(i,j,k,iElem) &
-          - gradUzeta(iVarPrim,i,j,k,iElem) * FV_dx_ZETA_L(i,j,k,iElem)
       UCalc_FV(i*2+1,j*2  ,k*2+1,iElem_FV,iVarCalc) = UPrim(iVarPrim,i,j,k,iElem) &
           + gradUxi  (iVarPrim,j,k,i,iElem) *   FV_dx_XI_R(i,j,k,iElem) &
           - gradUeta (iVarPrim,i,k,j,iElem) *  FV_dx_ETA_L(i,j,k,iElem) &
@@ -320,6 +325,7 @@ DO iElem_FV=1,nElems_FV
           + gradUxi  (iVarPrim,j,k,i,iElem) *   FV_dx_XI_R(i,j,k,iElem) &
           + gradUeta (iVarPrim,i,k,j,iElem) *  FV_dx_ETA_R(i,j,k,iElem) &
           + gradUzeta(iVarPrim,i,j,k,iElem) * FV_dx_ZETA_R(i,j,k,iElem)
+#endif      
     END DO
   END DO; END DO; END DO
 END DO ! iElem_FV
@@ -328,11 +334,11 @@ END DO ! iElem_FV
 IF (PRESENT(gradUx_calc).AND.PRESENT(gradUy_calc).AND.PRESENT(gradUz_calc)) THEN
   DO iElem_FV=1,nElems_FV
     iElem = mapFVElemsToAllElems(iElem_FV)
-    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       DO iVar=1,PP_nVarPrim
-         gradUx_calc(iVar,i*2:i*2+1, j*2:j*2+1, k*2:k*2+1, iElem_FV) = gradUx(iVar,i,j,k,iElem)
-         gradUy_calc(iVar,i*2:i*2+1, j*2:j*2+1, k*2:k*2+1, iElem_FV) = gradUy(iVar,i,j,k,iElem)
-         gradUz_calc(iVar,i*2:i*2+1, j*2:j*2+1, k*2:k*2+1, iElem_FV) = gradUz(iVar,i,j,k,iElem)
+         gradUx_calc(iVar,i*2:i*2+1, j*2:j*2+1, k*2:k*2+1*(PP_dim-2), iElem_FV) = gradUx(iVar,i,j,k,iElem)
+         gradUy_calc(iVar,i*2:i*2+1, j*2:j*2+1, k*2:k*2+1*(PP_dim-2), iElem_FV) = gradUy(iVar,i,j,k,iElem)
+         gradUz_calc(iVar,i*2:i*2+1, j*2:j*2+1, k*2:k*2+1*(PP_dim-2), iElem_FV) = gradUz(iVar,i,j,k,iElem)
       END DO 
     END DO; END DO; END DO! i,j,k=0,PP_N
   END DO
@@ -366,7 +372,7 @@ USE MOD_HDF5_Input         ,ONLY: OpenDataFile,ReadArray,CloseDataFile,DatasetEx
 USE MOD_Mesh_Vars          ,ONLY: nElems,offsetElem,nBCSides,ElemToSide
 USE MOD_StringTools        ,ONLY: STRICMP,split_string
 USE MOD_Interpolation      ,ONLY: GetVandermonde
-USE MOD_ChangeBasis        ,ONLY: ChangeBasis3D,ChangeBasis2D
+USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisVolume,ChangeBasisSurf
 USE MOD_Interpolation_Vars ,ONLY: NodeType,NodeTypeVisu
 USE MOD_Interpolation_Vars ,ONLY: L_Minus,L_Plus
 USE MOD_ProlongToFace      ,ONLY: EvalElemFace
@@ -379,7 +385,7 @@ CHARACTER(LEN=255),INTENT(IN)  :: statefile   !< HDF5 state file
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: iVarVisu,iElem_DG,iElem_FV,iElem,iVarDataset,iVar,iVar2,ii,jj
-INTEGER                        :: substring_count,nDims,nVal,nSize,p,q
+INTEGER                        :: substring_count,nDims,nVal,nSize,nSizeZ,p,q
 INTEGER                        :: iSide,iSide_DG,iSide_FV,locSide
 CHARACTER(LEN=255)             :: substrings(2),DatasetName,VariableName,DataSetOld
 LOGICAL                        :: datasetFound,varnamesExist,datasetChanged
@@ -441,6 +447,11 @@ DO iVar=nVarDep+1,nVarAll
         CALL GetDataSize(File_ID,TRIM(DatasetName),nDims,HSize)
         nVal   = INT(HSize(1))
         nSize  = INT(HSize(2))
+#if PP_dim == 3
+        nSizeZ = nSize
+#else
+        nSizeZ = 1
+#endif        
         SDEALLOCATE(DataSetVarNames)
         CALL GetVarNames("VarNames_"//TRIM(DatasetName),DatasetVarNames,varnamesExist)
       END IF
@@ -471,8 +482,8 @@ DO iVar=nVarDep+1,nVarAll
         CASE(5) ! Pointwise data
           ! Allocate array and read dataset
           SDEALLOCATE(FieldData)
-          ALLOCATE(FieldData(nVal,nSize,nSize,nSize,nElems))
-          CALL ReadArray(TRIM(DatasetName),5,(/nVal,nSize,nSize,nSize,nElems/),offsetElem,5,RealArray=FieldData)  
+          ALLOCATE(FieldData(nVal,nSize,nSize,nSizeZ,nElems))
+          CALL ReadArray(TRIM(DatasetName),5,(/nVal,nSize,nSize,nSizeZ,nElems/),offsetElem,5,RealArray=FieldData)  
           ! Get Vandermonde matrix used to convert to the visu grid
           SDEALLOCATE(Vdm_DG_Visu)
           ALLOCATE(Vdm_DG_Visu(0:NVisu,0:nSize-1))
@@ -526,8 +537,8 @@ DO iVar=nVarDep+1,nVarAll
             CALL CollectiveStop(__STAMP__,&
                 "Avg2D only works for FieldData on PP_N!")
           END IF
-          ALLOCATE(FieldData_DG(0:nSize-1,0:nSize-1,0:nSize-1,nElems_DG,1))
-          ALLOCATE(FieldData_FV(0:nSize-1,0:nSize-1,0:nSize-1,nElems_FV,1))
+          ALLOCATE(FieldData_DG(0:nSize-1,0:nSize-1,0:nSizeZ-1,nElems_DG,1))
+          ALLOCATE(FieldData_FV(0:nSize-1,0:nSize-1,0:nSizeZ-1,nElems_FV,1))
           DO iElem_DG=1,nElems_DG
             FieldData_DG(:,:,:,iElem_DG,1) = FieldData(iVarDataset,:,:,:,mapDGElemsToAllElems(iElem_DG))
           END DO
@@ -546,11 +557,11 @@ DO iVar=nVarDep+1,nVarAll
           ! Perform changebasis to visu grid
           DO iElem_DG=1,nElems_DG
             iElem = mapDGElemsToAllElems(iElem_DG)
-            CALL ChangeBasis3D(nSize-1,NVisu,Vdm_DG_Visu,FieldData(iVarDataset,:,:,:,iElem),UVisu_DG(:,:,:,iElem_DG,iVarVisu))
+            CALL ChangeBasisVolume(nSize-1,NVisu,Vdm_DG_Visu,FieldData(iVarDataset,:,:,:,iElem),UVisu_DG(:,:,:,iElem_DG,iVarVisu))
           END DO
           DO iElem_FV=1,nElems_FV
             iElem = mapFVElemsToAllElems(iElem_FV)
-            CALL ChangeBasis3D(nSize-1,NVisu_FV,Vdm_FV_Visu,FieldData(iVarDataset,:,:,:,iElem),UVisu_FV(:,:,:,iElem_FV,iVarVisu))
+            CALL ChangeBasisVolume(nSize-1,NVisu_FV,Vdm_FV_Visu,FieldData(iVarDataset,:,:,:,iElem),UVisu_FV(:,:,:,iElem_FV,iVarVisu))
           END DO
         END IF
       END SELECT
@@ -564,7 +575,11 @@ DO iVar=nVarDep+1,nVarAll
           ! Simply write the elementwise data to all visu points on the surface
           DO iElem_DG = 1,nElems_DG                         ! iterate over all DG visu elements
             iElem = mapDGElemsToAllElems(iElem_DG)          ! get global element index
+#if PP_dim == 3
             DO locSide=1,6 
+#else              
+            DO locSide=2,5 
+#endif              
               iSide = ElemToSide(E2S_SIDE_ID,locSide,iElem) ! get global side index
               IF (iSide.LE.nBCSides) THEN                   ! check if BC side
                 iSide_DG = mapAllBCSidesToDGVisuBCSides(iSide)  ! get DG visu side index
@@ -576,7 +591,11 @@ DO iVar=nVarDep+1,nVarAll
           END DO
           DO iElem_FV = 1,nElems_FV                         ! iterate over all FV visu elements
             iElem = mapFVElemsToAllElems(iElem_FV)          ! get global element index
+#if PP_dim == 3
             DO locSide=1,6 
+#else
+            DO locSide=2,5 
+#endif
               iSide = ElemToSide(E2S_SIDE_ID,locSide,iElem) ! get global side index
               IF (iSide.LE.nBCSides) THEN                   ! check if BC side
                 iSide_FV = mapAllBCSidesToFVVisuBCSides(iSide)  ! get FV visu side index
@@ -593,14 +612,18 @@ DO iVar=nVarDep+1,nVarAll
             SDEALLOCATE(S2V2)
             CALL buildMappings(nSize-1,S2V2=S2V2) ! Array gets allocated in this routine
             SDEALLOCATE(Uface_tmp)
-            ALLOCATE(Uface_tmp(1,0:nSize-1,0:nSize-1))
+            ALLOCATE(Uface_tmp(1,0:nSize-1,0:nSizeZ-1))
             SDEALLOCATE(Uface)
-            ALLOCATE(Uface(0:nSize-1,0:nSize-1))
+            ALLOCATE(Uface(0:nSize-1,0:nSizeZ-1))
           END IF
           ! Prolong the pointwise data to the visu face and perform change basis to visu grid
           DO iElem_DG = 1,nElems_DG                         ! iterate over all DG visu elements
             iElem = mapDGElemsToAllElems(iElem_DG)          ! get global element index
+#if PP_dim == 3
             DO locSide=1,6 
+#else
+            DO locSide=2,5 
+#endif
               iSide = ElemToSide(E2S_SIDE_ID,locSide,iElem) ! get global side index
               IF (iSide.LE.nBCSides) THEN                   ! check if BC side
                 iSide_DG = mapAllBCSidesToDGVisuBCSides(iSide)  ! get DG visu side index
@@ -612,11 +635,11 @@ DO iVar=nVarDep+1,nVarAll
                     CALL EvalElemFace(1,nSize-1,FieldData(iVarDataset:iVarDataset,:,:,:,iElem),Uface_tmp(1:1,:,:),locSide)
                   END IF
                   ! Turn into master side coordinate system
-                  DO q=0,nSize-1; DO p=0,nSize-1
+                  DO q=0,nSizeZ-1; DO p=0,nSize-1
                     Uface(p,q)=Uface_tmp(1,S2V2(1,p,q,0,locSide),S2V2(2,p,q,0,locSide))
                   END DO; END DO
                   ! Change basis to visu grid
-                  CALL ChangeBasis2D(nSize-1,NVisu,Vdm_DG_Visu,Uface(:,:),USurfVisu_DG(:,:,0,iSide_DG,iVarVisu))
+                  CALL ChangeBasisSurf(nSize-1,NVisu,Vdm_DG_Visu,Uface(:,:),USurfVisu_DG(:,:,0,iSide_DG,iVarVisu))
                 END IF
               END IF
             END DO
@@ -630,7 +653,11 @@ DO iVar=nVarDep+1,nVarAll
           ELSE
             DO iElem_FV = 1,nElems_FV                         ! iterate over all FV visu elements
               iElem = mapFVElemsToAllElems(iElem_FV)          ! get global element index
-              DO locSide=1,6 
+#if PP_dim == 3
+            DO locSide=1,6 
+#else
+            DO locSide=2,5 
+#endif
                 iSide = ElemToSide(E2S_SIDE_ID,locSide,iElem) ! get global side index
                 IF (iSide.LE.nBCSides) THEN                   ! check if BC side
                   iSide_FV = mapAllBCSidesToFVVisuBCSides(iSide)  ! get DG visu side index
@@ -641,7 +668,7 @@ DO iVar=nVarDep+1,nVarAll
                       Uface(p,q)=Uface_tmp(1,S2V2(1,p,q,0,locSide),S2V2(2,p,q,0,locSide))
                     END DO; END DO
                     ! Change basis to visu grid
-                    CALL ChangeBasis2D(nSize-1,NVisu_FV,Vdm_FV_Visu,Uface(:,:),USurfVisu_FV(:,:,0,iSide_DG,iVarVisu))
+                    CALL ChangeBasisSurf(nSize-1,NVisu_FV,Vdm_FV_Visu,Uface(:,:),USurfVisu_FV(:,:,0,iSide_DG,iVarVisu))
                   END IF
                 END IF
               END DO

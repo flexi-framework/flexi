@@ -78,6 +78,11 @@ REAL,ALLOCATABLE :: TangVec1O(:,:,:,:,:)         !< tangential vector 1 for each
 REAL,ALLOCATABLE :: TangVec2O(:,:,:,:,:)         !< tangential vector 3 for each side for overintegration (1:3,0:M,0:M,nSides)
 REAL,ALLOCATABLE :: SurfElemO(:,:,:,:)           !< surface area for each side        for overintegration (    0:M,0:M,nSides)
 !----------------------------------------------------------------------------------------------------------------------------------
+INTEGER,ALLOCATABLE :: ElemInfo(:,:)           !< array containing the node and side connectivity of the elments as stored in the
+                                               !< mesh file
+INTEGER,ALLOCATABLE :: SideInfo(:,:)           !< array containing the connectivity, flip,... of the sides as stored in the
+                                               !< mesh file
+INTEGER,ALLOCATABLE :: SideToGlobalSide(:)     !< maps the local SideIDs to global SideIDs (for parallel debug purposes)
 INTEGER,ALLOCATABLE :: ElemToSide(:,:,:)       !< Array containing element-wise connectivity information to sides
                                                !< SideID    = ElemToSide(E2S_SIDE_ID,ZETA_PLUS,iElem)
                                                !< flip      = ElemToSide(E2S_FLIP,ZETA_PLUS,iElem)

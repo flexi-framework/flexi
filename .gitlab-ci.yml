@@ -8,7 +8,7 @@ stages:
   - deploy
 
 cache:
-  key: "$CI_BUILD_REF"
+  key: "$CI_COMMIT_SHA"
   paths: 
     - build_gnu/    
     - build_gnu_hdf5/    

@@ -12,6 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #if PARABOLIC
+#include "flexi.h"
 !==================================================================================================================================
 !> Routines for computing the lifting volume integral for the BR2 scheme
 !> Computes the volume integral contribution based on the derivative of U and updates gradU
@@ -51,15 +52,19 @@ USE MOD_Mesh_Vars          ,ONLY: nElems
 #if FV_ENABLED
 USE MOD_FV_Vars            ,ONLY: FV_Elems
 USE MOD_FV_Vars            ,ONLY: FV_Metrics_fTilde_sJ,FV_Metrics_gTilde_sJ,FV_Metrics_hTilde_sJ  ! metrics
+#if PP_dim == 3
 USE MOD_FV_Vars            ,ONLY: gradUxi_central, gradUeta_central, gradUzeta_central
+#else
+USE MOD_FV_Vars            ,ONLY: gradUxi_central, gradUeta_central
+#endif
 #endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)            :: UPrim( PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,1:nElems) !< solution
-REAL,INTENT(OUT)           :: gradUx(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,1:nElems) !< gradients in x-direction
-REAL,INTENT(OUT)           :: gradUy(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,1:nElems) !< gradients in y-direction
-REAL,INTENT(OUT)           :: gradUz(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,1:nElems) !< gradients in z-direction
+REAL,INTENT(IN)            :: UPrim( PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< solution
+REAL,INTENT(OUT)           :: gradUx(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< gradients in x-direction
+REAL,INTENT(OUT)           :: gradUy(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< gradients in y-direction
+REAL,INTENT(OUT)           :: gradUz(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< gradients in z-direction
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL,DIMENSION(PP_nVarPrim):: gradUxi,gradUeta,gradUzeta ! gradients in xi/eta/zeta directions
@@ -70,38 +75,58 @@ DO iElem=1,nElems
 #if FV_ENABLED
   IF (FV_Elems(iElem).EQ.0) THEN ! DG element
 #endif
-  DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     gradUxi     =             D_T(0,i)*UPrim(:,0,j,k,iElem)
     gradUeta    =             D_T(0,j)*UPrim(:,i,0,k,iElem)
+#if PP_dim == 3
     gradUzeta   =             D_T(0,k)*UPrim(:,i,j,0,iElem)
+#endif 
     DO l=1,PP_N
       gradUxi   = gradUxi   + D_T(l,i)*UPrim(:,l,j,k,iElem)
       gradUeta  = gradUeta  + D_T(l,j)*UPrim(:,i,l,k,iElem)
+#if PP_dim == 3
       gradUzeta = gradUzeta + D_T(l,k)*UPrim(:,i,j,l,iElem)
+#endif 
     END DO
     gradUx(:,i,j,k,iElem) = Metrics_fTilde(1,i,j,k,iElem,0)*gradUxi   &
                           + Metrics_gTilde(1,i,j,k,iElem,0)*gradUeta  &
+#if PP_dim == 3
                           + Metrics_hTilde(1,i,j,k,iElem,0)*gradUzeta
+#else
+                          +0.
+#endif 
     gradUy(:,i,j,k,iElem) = Metrics_fTilde(2,i,j,k,iElem,0)*gradUxi   &
                           + Metrics_gTilde(2,i,j,k,iElem,0)*gradUeta  &
+#if PP_dim == 3
                           + Metrics_hTilde(2,i,j,k,iElem,0)*gradUzeta
+#else
+                          +0.
+#endif 
+#if PP_dim == 3
     gradUz(:,i,j,k,iElem) = Metrics_fTilde(3,i,j,k,iElem,0)*gradUxi   &
                           + Metrics_gTilde(3,i,j,k,iElem,0)*gradUeta  &
                           + Metrics_hTilde(3,i,j,k,iElem,0)*gradUzeta
+#else
+    gradUz(:,i,j,k,iElem) = 0.
+#endif 
   END DO; END DO; END DO ! i,j,k
 #if FV_ENABLED
   ! in FV elements, the central gradients are transformed, i.e. they are multiplied by the metrics terms
   ELSE
-    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       gradUx(:,i,j,k,iElem) =                       FV_Metrics_fTilde_sJ(1,i,j,k,iElem)*gradUxi_central  (:,i,j,k,iElem)
       gradUx(:,i,j,k,iElem) = gradUx(:,i,j,k,iElem)+FV_Metrics_gTilde_sJ(1,i,j,k,iElem)*gradUeta_central (:,i,j,k,iElem)
+#if PP_dim == 3
       gradUx(:,i,j,k,iElem) = gradUx(:,i,j,k,iElem)+FV_Metrics_hTilde_sJ(1,i,j,k,iElem)*gradUzeta_central(:,i,j,k,iElem)
+#endif
       gradUy(:,i,j,k,iElem) =                       FV_Metrics_fTilde_sJ(2,i,j,k,iElem)*gradUxi_central  (:,i,j,k,iElem)
       gradUy(:,i,j,k,iElem) = gradUy(:,i,j,k,iElem)+FV_Metrics_gTilde_sJ(2,i,j,k,iElem)*gradUeta_central (:,i,j,k,iElem)
+#if PP_dim == 3
       gradUy(:,i,j,k,iElem) = gradUy(:,i,j,k,iElem)+FV_Metrics_hTilde_sJ(2,i,j,k,iElem)*gradUzeta_central(:,i,j,k,iElem)
       gradUz(:,i,j,k,iElem) =                       FV_Metrics_fTilde_sJ(3,i,j,k,iElem)*gradUxi_central  (:,i,j,k,iElem)
       gradUz(:,i,j,k,iElem) = gradUz(:,i,j,k,iElem)+FV_Metrics_gTilde_sJ(3,i,j,k,iElem)*gradUeta_central (:,i,j,k,iElem)
       gradUz(:,i,j,k,iElem) = gradUz(:,i,j,k,iElem)+FV_Metrics_hTilde_sJ(3,i,j,k,iElem)*gradUzeta_central(:,i,j,k,iElem)
+#endif
     END DO; END DO; END DO! i,j,k=0,PP_N
   END IF
 #endif    
@@ -131,11 +156,11 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)                           :: dir                                          !< direction (x,y,z)
-REAL,INTENT(IN)                              :: UPrim(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,1:nElems) !< solution
-REAL,INTENT(OUT)                             :: gradU(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,1:nElems) !< solution gradient in direction dir
+REAL,INTENT(IN)                              :: UPrim(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< solution
+REAL,INTENT(OUT)                             :: gradU(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< solution gradient in direction dir
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N) :: UE_f,UE_g,UE_h ! transformed gradient flux (i.e. transformed solution)
+REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ) :: UE_f,UE_g,UE_h ! transformed gradient flux (i.e. transformed solution)
 INTEGER                                          :: iElem,i,j,k,l
 !==================================================================================================================================
 ! volume integral
@@ -151,23 +176,33 @@ DO iElem=1,nElems
                        UE_f,UE_g,UE_h)
 
   ! calculate the volume integral of the gradient "flux"
-  DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     gradU(:,i,j,k,iElem)   =                      D_T(0,i)*UE_f(:,0,j,k)+&
                                                   D_T(0,j)*UE_g(:,i,0,k)+&
+#if PP_dim == 3
                                                   D_T(0,k)*UE_h(:,i,j,0)
+#else
+                                                  0.
+#endif 
     DO l=1,PP_N
       gradU(:,i,j,k,iElem) = gradU(:,i,j,k,iElem)+D_T(l,i)*UE_f(:,l,j,k)+&
                                                   D_T(l,j)*UE_g(:,i,l,k)+&
+#if PP_dim == 3
                                                   D_T(l,k)*UE_h(:,i,j,l)
+#else
+                                                  0.
+#endif 
     END DO ! l
   END DO; END DO; END DO ! i,j,k
 #if FV_ENABLED
   ! in FV elements, the central gradients are transformed, i.e. they are multiplied by the metrics terms
   ELSE
-    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       gradU(:,i,j,k,iElem) =                      FV_Metrics_fTilde_sJ(dir,i,j,k,iElem)*gradUxi_central  (:,i,j,k,iElem)
       gradU(:,i,j,k,iElem) = gradU(:,i,j,k,iElem)+FV_Metrics_gTilde_sJ(dir,i,j,k,iElem)*gradUeta_central (:,i,j,k,iElem)
+#if PP_dim == 3
       gradU(:,i,j,k,iElem) = gradU(:,i,j,k,iElem)+FV_Metrics_hTilde_sJ(dir,i,j,k,iElem)*gradUzeta_central(:,i,j,k,iElem)
+#endif 
     END DO; END DO; END DO! i,j,k=0,PP_N
   END IF
 #endif    
@@ -201,7 +236,9 @@ INTEGER            :: i
 DO i=1,nDOFElem
   UPrim_f(:,i) = Mf(dir,i)*UPrim(:,i)
   UPrim_g(:,i) = Mg(dir,i)*UPrim(:,i)
+#if PP_dim == 3
   UPrim_h(:,i) = Mh(dir,i)*UPrim(:,i)
+#endif
 END DO ! i
 END SUBROUTINE Lifting_Metrics
 

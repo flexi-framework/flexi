@@ -201,14 +201,14 @@ USE MOD_Flux         ,ONLY:EvalEulerFlux1D_fast
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)                                    :: NLoc       !< local polynomial degree
-REAL,DIMENSION(PP_nVar    ,0:NLoc,0:NLoc),INTENT(IN)  :: U_L        !< conservative solution at left side of the interface
-REAL,DIMENSION(PP_nVar    ,0:NLoc,0:NLoc),INTENT(IN)  :: U_R        !< conservative solution at right side of the interface
-REAL,DIMENSION(PP_nVarPrim,0:NLoc,0:NLoc),INTENT(IN)  :: UPrim_L    !< primitive solution at left side of the interface
-REAL,DIMENSION(PP_nVarPrim,0:NLoc,0:NLoc),INTENT(IN)  :: UPrim_R    !< primitive solution at right side of the interface
-REAL,DIMENSION(       3,0:NLoc,0:NLoc),INTENT(IN)     :: nv,t1,t2   !< normal vector and tangential vectors at side
-LOGICAL,INTENT(IN)                                    :: doBC       !< marker whether side is a BC side
-REAL,DIMENSION(PP_nVar    ,0:NLoc,0:NLoc),INTENT(OUT) :: FOut       !< advective flux
+INTEGER,INTENT(IN)                                        :: Nloc       !< local polynomial degree
+REAL,DIMENSION(PP_nVar    ,0:Nloc,0:PP_NlocZ),INTENT(IN)  :: U_L        !< conservative solution at left side of the interface
+REAL,DIMENSION(PP_nVar    ,0:Nloc,0:PP_NlocZ),INTENT(IN)  :: U_R        !< conservative solution at right side of the interface
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:PP_NlocZ),INTENT(IN)  :: UPrim_L    !< primitive solution at left side of the interface
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:PP_NlocZ),INTENT(IN)  :: UPrim_R    !< primitive solution at right side of the interface
+REAL,DIMENSION(          3,0:Nloc,0:PP_NlocZ),INTENT(IN)  :: nv,t1,t2   !< normal vector and tangential vectors at side
+LOGICAL,INTENT(IN)                                        :: doBC       !< marker whether side is a BC side
+REAL,DIMENSION(PP_nVar    ,0:Nloc,0:PP_NlocZ),INTENT(OUT) :: FOut       !< advective flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                 :: i,j
@@ -223,20 +223,26 @@ ELSE
 END IF
 
 ! Momentum has to be rotatet using the normal system individual for each
-DO j=0,NLoc; DO i=0,NLoc
+DO j=0,PP_NlocZ; DO i=0,Nloc
   ! left state: U_L
   U_LL(DENS)=U_L(DENS,i,j)
   U_LL(SRHO)=1./U_LL(DENS)
   U_LL(ENER)=U_L(5,i,j)
   U_LL(PRES)=UPrim_L(5,i,j)
+  
+
   ! rotate velocity in normal and tangential direction 
   U_LL(VEL1)=DOT_PRODUCT(UPrim_L(2:4,i,j),nv(:,i,j))
   U_LL(VEL2)=DOT_PRODUCT(UPrim_L(2:4,i,j),t1(:,i,j))
-  U_LL(VEL3)=DOT_PRODUCT(UPrim_L(2:4,i,j),t2(:,i,j))
   U_LL(MOM1)=U_LL(DENS)*U_LL(VEL1)
   U_LL(MOM2)=U_LL(DENS)*U_LL(VEL2)
+#if PP_dim==3
+  U_LL(VEL3)=DOT_PRODUCT(UPrim_L(2:4,i,j),t2(:,i,j))
   U_LL(MOM3)=U_LL(DENS)*U_LL(VEL3)
-
+#else
+  U_LL(VEL3)=0.
+  U_LL(MOM3)=0.
+#endif
   ! right state: U_R
   U_RR(DENS)=U_R(DENS,i,j)
   U_RR(SRHO)=1./U_RR(DENS)
@@ -245,10 +251,15 @@ DO j=0,NLoc; DO i=0,NLoc
   ! rotate momentum in normal and tangential direction 
   U_RR(VEL1)=DOT_PRODUCT(UPRIM_R(2:4,i,j),nv(:,i,j))
   U_RR(VEL2)=DOT_PRODUCT(UPRIM_R(2:4,i,j),t1(:,i,j))
-  U_RR(VEL3)=DOT_PRODUCT(UPRIM_R(2:4,i,j),t2(:,i,j))
   U_RR(MOM1)=U_RR(DENS)*U_RR(VEL1)
   U_RR(MOM2)=U_RR(DENS)*U_RR(VEL2)
+#if PP_dim==3
+  U_RR(VEL3)=DOT_PRODUCT(UPRIM_R(2:4,i,j),t2(:,i,j))
   U_RR(MOM3)=U_RR(DENS)*U_RR(VEL3)
+#else
+  U_RR(VEL3)=0.
+  U_RR(MOM3)=0.
+#endif
 
   CALL EvalEulerFlux1D_fast(U_LL,F_L)
   CALL EvalEulerFlux1D_fast(U_RR,F_R)
@@ -257,7 +268,13 @@ DO j=0,NLoc; DO i=0,NLoc
 
   ! Back Rotate the normal flux into Cartesian direction
   Fout(DENS,i,j)=F(DENS)
-  Fout(MOMV,i,j)=nv(:,i,j)*F(MOM1) + t1(:,i,j)*F(MOM2) + t2(:,i,j)*F(MOM3)
+  Fout(MOMV,i,j)=nv(:,i,j)*F(MOM1)     &
+                  + t1(:,i,j)*F(MOM2)  &
+#if PP_dim==3
+                  + t2(:,i,j)*F(MOM3) 
+#else
+                  + 0.
+#endif
   Fout(ENER,i,j)=F(ENER)
 END DO; END DO
 
@@ -281,27 +298,27 @@ USE MOD_Flux,ONLY: EvalDiffFlux2D
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)                                     :: Nloc     !< local polynomial degree
-                                                       !> solution in primitive variables at left/right side of the interface 
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:Nloc),INTENT(IN)   :: UPrim_L,UPrim_R
-                                                       !> solution gradients in x/y/z-direction left/right of the interface 
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:Nloc),INTENT(IN)   :: gradUx_L,gradUx_R,gradUy_L,gradUy_R,gradUz_L,gradUz_R
-REAL,INTENT(IN)                                        :: nv(3,0:Nloc,0:Nloc) !< normal vector
-REAL,INTENT(OUT)                                       :: F(PP_nVar,0:Nloc,0:Nloc) !< viscous flux
+INTEGER,INTENT(IN)                                         :: Nloc     !< local polynomial degree
+                                                           !> solution in primitive variables at left/right side of the interface 
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:PP_NlocZ),INTENT(IN)   :: UPrim_L,UPrim_R
+                                                           !> solution gradients in x/y/z-direction left/right of the interface 
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:PP_NlocZ),INTENT(IN)   :: gradUx_L,gradUx_R,gradUy_L,gradUy_R,gradUz_L,gradUz_R
+REAL,INTENT(IN)                                            :: nv(3,0:Nloc,0:PP_NlocZ) !< normal vector
+REAL,INTENT(OUT)                                           :: F(PP_nVar,0:Nloc,0:PP_NlocZ) !< viscous flux
 #ifdef EDDYVISCOSITY
-REAL,INTENT(IN)                                        :: Face_xGP(3,0:NLoc,0:NLoc)  !< face Gauss points
-                                                       !> Filter width for eddy viscosity left/right of the interface
-REAL,INTENT(IN)                                        :: DeltaS_L,DeltaS_R
-                                                       !> Indicator for eddy viscosity left/right of the interface
-REAL,DIMENSION(0:NLoc,0:NLoc),INTENT(IN)               :: SGS_Ind_L,SGS_Ind_R
+REAL,INTENT(IN)                                            :: Face_xGP(3,0:Nloc,0:PP_NlocZ)  !< face Gauss points
+                                                           !> Filter width for eddy viscosity left/right of the interface
+REAL,INTENT(IN)                                            :: DeltaS_L,DeltaS_R
+                                                           !> Indicator for eddy viscosity left/right of the interface
+REAL,DIMENSION(0:Nloc,0:PP_NlocZ),INTENT(IN)               :: SGS_Ind_L,SGS_Ind_R
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                                          :: p,q
-REAL,DIMENSION(PP_nVar,0:Nloc,0:Nloc)            :: diffFluxX_L,diffFluxY_L,diffFluxZ_L
-REAL,DIMENSION(PP_nVar,0:Nloc,0:Nloc)            :: diffFluxX_R,diffFluxY_R,diffFluxZ_R
+INTEGER                                              :: p,q
+REAL,DIMENSION(PP_nVar,0:Nloc,0:PP_NlocZ)            :: diffFluxX_L,diffFluxY_L,diffFluxZ_L
+REAL,DIMENSION(PP_nVar,0:Nloc,0:PP_NlocZ)            :: diffFluxX_R,diffFluxY_R,diffFluxZ_R
 !==================================================================================================================================
 ! Don't forget the diffusion contribution, my young padawan
 ! Compute NSE Diffusion flux
@@ -316,7 +333,7 @@ REAL,DIMENSION(PP_nVar,0:Nloc,0:Nloc)            :: diffFluxX_R,diffFluxY_R,diff
 #endif
       )
 ! BR1 uses arithmetic mean of the fluxes
-DO q=0,Nloc; DO p=0,Nloc
+DO q=0,PP_NlocZ; DO p=0,Nloc
   F(:,p,q)=0.5*(nv(1,p,q)*(diffFluxX_L(1:5,p,q)+diffFluxX_R(1:5,p,q)) &
                +nv(2,p,q)*(diffFluxY_L(1:5,p,q)+diffFluxY_R(1:5,p,q)) &
                +nv(3,p,q)*(diffFluxZ_L(1:5,p,q)+diffFluxZ_R(1:5,p,q)))

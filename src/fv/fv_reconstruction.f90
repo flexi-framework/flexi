@@ -1,4 +1,4 @@
-!=================================================================================================================================
+!!=================================================================================================================================
 ! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
@@ -64,21 +64,24 @@ USE MOD_Mesh_Vars ,ONLY: firstMPISide_YOUR,lastMPISide_YOUR,firstInnerSide,lastM
 USE MOD_Mesh_Vars ,ONLY: firstMortarMPISide,lastMortarMPISide,firstBCSide
 USE MOD_Mesh_Vars ,ONLY: S2V,S2V2,SideToElem
 USE MOD_Mesh_Vars ,ONLY: nElems,nSides
-USE MOD_FV_Vars   ,ONLY: FV_Elems,FV_sdx_XI,FV_sdx_ETA,FV_sdx_ZETA
+USE MOD_FV_Vars   ,ONLY: FV_Elems,FV_sdx_XI,FV_sdx_ETA
+#if PP_dim == 3
+USE MOD_FV_Vars   ,ONLY: FV_sdx_ZETA
+#endif
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 ! real_in, real_out, real_out, log_in
-REAL,INTENT(IN)    :: UPrim          (PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,1:nElems) !< primitive volume solution
-REAL,INTENT(OUT)   :: FV_multi_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)        !< DG: solution at first inner layer,
-                                                                                 !< FV: slope between first and second layer
-REAL,INTENT(OUT)   :: FV_multi_slave (PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)        !< DG: solution at first inner layer,
-                                                                                 !< FV: slope between first and second layer
+REAL,INTENT(IN)    :: UPrim          (PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< primitive volume solution
+REAL,INTENT(OUT)   :: FV_multi_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides)        !< DG: solution at first inner layer,
+                                                                                  !< FV: slope between first and second layer
+REAL,INTENT(OUT)   :: FV_multi_slave (PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides)        !< DG: solution at first inner layer,
+                                                                                  !< FV: slope between first and second layer
 LOGICAL,INTENT(IN) :: doMPIsides                                       !< =.TRUE. only MPI sides are filled, =.FALSE. inner sides 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER :: p,q,i,j,k,locSideID,ElemID,SideID,flip,firstSideID,lastSideID,ijk0(3),ijk(2)
-REAL    :: tmp(PP_nVarPrim,0:PP_N,0:PP_N)
+REAL    :: tmp(PP_nVarPrim,0:PP_N,0:PP_NZ)
 !==================================================================================================================================
 
 ! First process the Slave sides
@@ -101,7 +104,7 @@ DO SideID=firstSideID,lastSideID
 
   IF (FV_Elems(ElemID).EQ.0) THEN ! DG Element
     ! for DG elements copy solution of first inner layer next to the interface
-    DO q=0,PP_N; DO p=0,PP_N
+    DO q=0,PP_NZ; DO p=0,PP_N
       ijk0=S2V(:,0,p,q,flip,locSideID)
       FV_multi_slave(:,p,q,SideID) = UPrim(:,ijk0(1),ijk0(2),ijk0(3),ElemID)
     END DO; END DO
@@ -110,34 +113,38 @@ DO SideID=firstSideID,lastSideID
     !    TODO: USE S2V directly in each of the following 6 cases and not S2V2 below!!!
     SELECT CASE(locSideID)
     CASE(XI_MINUS)
-      DO k=0,PP_N; DO j=0,PP_N
+      DO k=0,PP_NZ; DO j=0,PP_N
         tmp(:,j,k) =  (UPrim(:,1,j,k,ElemID) - UPrim(:,0,j,k,ElemID)) * FV_sdx_XI(j,k,1,ElemID)
       END DO; END DO
     CASE(ETA_MINUS)
-      DO k=0,PP_N; DO i=0,PP_N
+      DO k=0,PP_NZ; DO i=0,PP_N
         tmp(:,i,k) =  (UPrim(:,i,1,k,ElemID) - UPrim(:,i,0,k,ElemID)) * FV_sdx_ETA(i,k,1,ElemID)
       END DO; END DO
+#if PP_dim == 3
     CASE(ZETA_MINUS)
-      DO j=0,PP_N; DO i=0,PP_N
+      DO j=0,PP_NZ; DO i=0,PP_N
         tmp(:,i,j) =  (UPrim(:,i,j,1,ElemID) - UPrim(:,i,j,0,ElemID)) * FV_sdx_ZETA(i,j,1,ElemID)
       END DO; END DO
+#endif
     CASE(XI_PLUS)
-      DO k=0,PP_N; DO j=0,PP_N
+      DO k=0,PP_NZ; DO j=0,PP_N
         tmp(:,j,k) =  (UPrim(:,PP_N-1,j,k,ElemID) - UPrim(:,PP_N,j,k,ElemID)) * FV_sdx_XI(j,k,PP_N,ElemID)
       END DO; END DO
     CASE(ETA_PLUS)
-      DO k=0,PP_N; DO i=0,PP_N
+      DO k=0,PP_NZ; DO i=0,PP_N
         tmp(:,i,k) =  (UPrim(:,i,PP_N-1,k,ElemID) - UPrim(:,i,PP_N,k,ElemID)) * FV_sdx_ETA(i,k,PP_N,ElemID)
       END DO; END DO
+#if PP_dim == 3
     CASE(ZETA_PLUS)
-      DO j=0,PP_N; DO i=0,PP_N
+      DO j=0,PP_NZ; DO i=0,PP_N
         tmp(:,i,j) =  (UPrim(:,i,j,PP_N-1,ElemID) - UPrim(:,i,j,PP_N,ElemID)) * FV_sdx_ZETA(i,j,PP_N,ElemID)
       END DO; END DO
+#endif
     END SELECT
 
-    DO q=0,PP_N; DO p=0,PP_N
+    DO q=0,PP_NZ; DO p=0,PP_N
       ijk=S2V2(:,p,q,flip,locSideID)
-      FV_multi_slave(:,p,q,SideID) = tmp(:,ijk(1),ijk(2)) 
+      FV_multi_slave(:,p,q,SideID) = tmp(:,ijk(1),ijk(2))
     END DO; END DO
   END IF
 END DO
@@ -154,13 +161,13 @@ ELSE
    lastSideID = lastMPISide_MINE
 END IF
 DO SideID=firstSideID,lastSideID
-  ElemID    = SideToElem(S2E_ELEM_ID,SideID)  
+  ElemID    = SideToElem(S2E_ELEM_ID,SideID)
   locSideID = SideToElem(S2E_LOC_SIDE_ID,SideID)
   IF (ElemID.EQ.-1) CYCLE
-  
+
   IF (FV_Elems(ElemID).EQ.0) THEN ! DG Element
     ! for DG elements copy solution of first inner layer next to the interface
-    DO q=0,PP_N; DO p=0,PP_N
+    DO q=0,PP_NZ; DO p=0,PP_N
       ijk0=S2V(:,0,p,q,0,locSideID)
       FV_multi_master(:,p,q,SideID) = UPrim(:,ijk0(1),ijk0(2),ijk0(3),ElemID)
     END DO; END DO
@@ -169,34 +176,38 @@ DO SideID=firstSideID,lastSideID
     !    TODO: USE S2V directly in each of the following 6 cases and not S2V2 below!!!
     SELECT CASE(locSideID)
     CASE(XI_MINUS)
-      DO k=0,PP_N; DO j=0,PP_N
+      DO k=0,PP_NZ; DO j=0,PP_N
         tmp(:,j,k) =  (UPrim(:,1,j,k,ElemID) - UPrim(:,0,j,k,ElemID)) * FV_sdx_XI(j,k,1,ElemID)
       END DO; END DO
     CASE(ETA_MINUS)
-      DO k=0,PP_N; DO i=0,PP_N
+      DO k=0,PP_NZ; DO i=0,PP_N
         tmp(:,i,k) =  (UPrim(:,i,1,k,ElemID) - UPrim(:,i,0,k,ElemID)) * FV_sdx_ETA(i,k,1,ElemID)
       END DO; END DO
+#if PP_dim == 3
     CASE(ZETA_MINUS)
-      DO j=0,PP_N; DO i=0,PP_N
+      DO j=0,PP_NZ; DO i=0,PP_N
         tmp(:,i,j) =  (UPrim(:,i,j,1,ElemID) - UPrim(:,i,j,0,ElemID)) * FV_sdx_ZETA(i,j,1,ElemID)
       END DO; END DO
+#endif
     CASE(XI_PLUS)
-      DO k=0,PP_N; DO j=0,PP_N
+      DO k=0,PP_NZ; DO j=0,PP_N
         tmp(:,j,k) =  (UPrim(:,PP_N-1,j,k,ElemID) - UPrim(:,PP_N,j,k,ElemID)) * FV_sdx_XI(j,k,PP_N,ElemID)
       END DO; END DO
     CASE(ETA_PLUS)
-      DO k=0,PP_N; DO i=0,PP_N
+      DO k=0,PP_NZ; DO i=0,PP_N
         tmp(:,i,k) =  (UPrim(:,i,PP_N-1,k,ElemID) - UPrim(:,i,PP_N,k,ElemID)) * FV_sdx_ETA(i,k,PP_N,ElemID)
       END DO; END DO
+#if PP_dim == 3
     CASE(ZETA_PLUS)
-      DO j=0,PP_N; DO i=0,PP_N
+      DO j=0,PP_NZ; DO i=0,PP_N
         tmp(:,i,j) =  (UPrim(:,i,j,PP_N-1,ElemID) - UPrim(:,i,j,PP_N,ElemID)) * FV_sdx_ZETA(i,j,PP_N,ElemID)
       END DO; END DO
+#endif
     END SELECT
 
-    DO q=0,PP_N; DO p=0,PP_N
+    DO q=0,PP_NZ; DO p=0,PP_N
       ijk=S2V2(:,p,q,0,locSideID)
-      FV_multi_master(:,p,q,SideID) = tmp(:,ijk(1),ijk(2)) 
+      FV_multi_master(:,p,q,SideID) = tmp(:,ijk(1),ijk(2))
     END DO; END DO
   END IF
 END DO !SideID
@@ -219,14 +230,14 @@ USE MOD_Mesh_Vars ,ONLY: nSides
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(IN)    :: UPrim_master   (PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< primitive master solution (without reconstruction)
-REAL,INTENT(IN)    :: UPrim_slave    (PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< primitive slave solution (without reconstruction)
-REAL,INTENT(IN)    :: FV_multi_master(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< DG solution at the first inner node next to the 
-                                                                          !< interface of the master element
-REAL,INTENT(IN)    :: FV_multi_slave (PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< DG solution at the first inner node next to the
-                                                                          !< interface of the slave element
-LOGICAL,INTENT(IN) :: doMPIsides                                          !< =.TRUE. only MPI sides are filled, =.FALSE. inner sides
-REAL,INTENT(OUT)   :: FV_surf_gradU  (PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< slope over the interface 
+REAL,INTENT(IN)    :: UPrim_master   (PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< primitive master solution (without reconstruction)
+REAL,INTENT(IN)    :: UPrim_slave    (PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< primitive slave solution (without reconstruction)
+REAL,INTENT(IN)    :: FV_multi_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< DG solution at the first inner node next to the 
+                                                                           !< interface of the master element
+REAL,INTENT(IN)    :: FV_multi_slave (PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< DG solution at the first inner node next to the
+                                                                           !< interface of the slave element
+LOGICAL,INTENT(IN) :: doMPIsides                                           !< =.TRUE. only MPI sides are filled, =.FALSE. inner sides
+REAL,INTENT(OUT)   :: FV_surf_gradU  (PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< slope over the interface 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER :: firstSideID,lastSideID,SideID,p,q
@@ -239,7 +250,7 @@ IF(doMPISides)THEN
 ELSE
   ! fill only InnerSides
   firstSideID = firstInnerSide
-  lastSideID  = lastInnerSide 
+  lastSideID  = lastInnerSide
 END IF
 
 DO SideID=firstSideID,lastSideID
@@ -247,17 +258,17 @@ DO SideID=firstSideID,lastSideID
   CASE(0) ! both DG
     CYCLE
   CASE(1) ! master=FV, slave=DG
-    DO q=0,PP_N; DO p=0,PP_N
+    DO q=0,PP_NZ; DO p=0,PP_N
       ! use FV_multi_slave (see FV_PrepareSurfGradient)
       FV_surf_gradU(:,p,q,SideID) = (UPrim_master(:,p,q,SideID) - FV_multi_slave(:,p,q,SideID)) * FV_sdx_Face(p,q,1,SideID)
     END DO; END DO ! p,q=0,PP_N
   CASE(2) ! master=DG, slave=FV
-    DO q=0,PP_N; DO p=0,PP_N
+    DO q=0,PP_NZ; DO p=0,PP_N
       ! use FV_multi_master (see FV_PrepareSurfGradient)
       FV_surf_gradU(:,p,q,SideID) = (FV_multi_master(:,p,q,SideID) - UPrim_slave(:,p,q,SideID)) * FV_sdx_Face(p,q,2,SideID)
     END DO; END DO ! p,q=0,PP_N
   CASE(3) ! both FV
-    DO q=0,PP_N; DO p=0,PP_N
+    DO q=0,PP_NZ; DO p=0,PP_N
       FV_surf_gradU(:,p,q,SideID) = (UPrim_master(:,p,q,SideID) - UPrim_slave(:,p,q,SideID)) * FV_sdx_Face(p,q,3,SideID) 
     END DO; END DO ! p,q=0,PP_N
   CASE DEFAULT
@@ -283,8 +294,8 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 REAL,INTENT(IN)    :: t                                                 !< physical time 
-REAL,INTENT(IN)    :: UPrim_master( PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< primitive solution 
-REAL,INTENT(INOUT) :: FV_surf_gradU(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< slope over the BC interface
+REAL,INTENT(IN)    :: UPrim_master( PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< primitive solution 
+REAL,INTENT(INOUT) :: FV_surf_gradU(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< slope over the BC interface
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER             :: SideID
@@ -315,31 +326,36 @@ SUBROUTINE FV_CalcGradients(UPrim,FV_surf_gradU,gradUxi,gradUeta,gradUzeta &
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_FV_Vars    ,ONLY: FV_sdx_XI,FV_sdx_ETA,FV_sdx_ZETA,FV_Elems
-USE MOD_FV_Limiter ,ONLY: FV_Limiter
-USE MOD_Mesh_Vars  ,ONLY: nElems,nSides
+USE MOD_FV_Vars        ,ONLY: FV_sdx_XI,FV_sdx_ETA,FV_Elems
+USE MOD_FV_Limiter     ,ONLY: FV_Limiter
+USE MOD_Mesh_Vars      ,ONLY: nElems,nSides
+#if PP_dim == 3  
+USE MOD_FV_Vars        ,ONLY: FV_sdx_ZETA
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(IN)  :: UPrim            (PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,nElems) !< primitive volume solution
-REAL,INTENT(IN)  :: FV_surf_gradU    (PP_nVarPrim,0:PP_N,0:PP_N,1:nSides)      !< slopes over element interfaces
-REAL,INTENT(OUT) :: gradUxi          (PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,nElems) !< physical slope in   xi-direction (TVD limited)
-REAL,INTENT(OUT) :: gradUeta         (PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,nElems) !< physical slope in  eta-direction (TVD limited)
-REAL,INTENT(OUT) :: gradUzeta        (PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,nElems) !< physical slope in zeta-direction (TVD limited) 
+REAL,INTENT(IN)  :: UPrim            (PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< primitive volume solution
+REAL,INTENT(IN)  :: FV_surf_gradU    (PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides)      !< slopes over element interfaces
+REAL,INTENT(OUT) :: gradUxi          (PP_nVarPrim,0:PP_N,0:PP_NZ,0:PP_N,nElems) !< physical slope in   xi-direction (TVD limited)
+REAL,INTENT(OUT) :: gradUeta         (PP_nVarPrim,0:PP_N,0:PP_NZ,0:PP_N,nElems) !< physical slope in  eta-direction (TVD limited)
+REAL,INTENT(OUT) :: gradUzeta        (PP_nVarPrim,0:PP_N,0:PP_NZ,0:PP_N,nElems) !< physical slope in zeta-direction (TVD limited) 
 #if PARABOLIC
-REAL,INTENT(OUT) :: gradUxi_central  (PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,nElems) !< physical slope in   xi-direction (mean value)
-REAL,INTENT(OUT) :: gradUeta_central (PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,nElems) !< physical slope in  eta-direction (mean value)
-REAL,INTENT(OUT) :: gradUzeta_central(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,nElems) !< physical slope in zeta-direction (mean value)
+REAL,INTENT(OUT) :: gradUxi_central  (PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< physical slope in   xi-direction (mean value)
+REAL,INTENT(OUT) :: gradUeta_central (PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< physical slope in  eta-direction (mean value)
+REAL,INTENT(OUT) :: gradUzeta_central(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< physical slope in zeta-direction (mean value)
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N+1) :: gradUxi_tmp
-REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N+1) :: gradUeta_tmp
-REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N+1) :: gradUzeta_tmp
-INTEGER                                            :: iElem,l,iVar,p,q
+REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_NZ,0:PP_N+1) :: gradUxi_tmp
+REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_NZ,0:PP_N+1) :: gradUeta_tmp
+#if PP_dim == 3
+REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_NZ,0:PP_N+1) :: gradUzeta_tmp
+#endif
+INTEGER                                             :: iElem,l,iVar,p,q
 #if PARABOLIC
-INTEGER                                            :: i,j,k
+INTEGER                                             :: i,j,k
 #endif
 !==================================================================================================================================
 DO iElem=1,nElems
@@ -355,7 +371,9 @@ DO iElem=1,nElems
     DO iVar=1,PP_nVarPrim
       gradUxi_tmp  (iVar,:,:,l) = (UPrim(iVar,l,:,:,iElem) - UPrim(iVar,l-1,:,:,iElem)) * FV_sdx_XI  (:,:,l,iElem)
       gradUeta_tmp (iVar,:,:,l) = (UPrim(iVar,:,l,:,iElem) - UPrim(iVar,:,l-1,:,iElem)) * FV_sdx_ETA (:,:,l,iElem)
+#if PP_dim == 3  
       gradUzeta_tmp(iVar,:,:,l) = (UPrim(iVar,:,:,l,iElem) - UPrim(iVar,:,:,l-1,iElem)) * FV_sdx_ZETA(:,:,l,iElem)
+#endif
     END DO
   END DO 
   ! 2. gradients of subcells at DG interface
@@ -366,23 +384,29 @@ DO iElem=1,nElems
   CALL CopySurfaceToVolume(FV_surf_gradU,gradUeta_tmp,iElem,ETA_MINUS,0)
   CALL CopySurfaceToVolume(FV_surf_gradU,gradUeta_tmp,iElem,ETA_PLUS ,PP_N+1)
   ! zeta direction
+#if PP_dim == 3  
   CALL CopySurfaceToVolume(FV_surf_gradU,gradUzeta_tmp,iElem,ZETA_MINUS,0)
   CALL CopySurfaceToVolume(FV_surf_gradU,gradUzeta_tmp,iElem,ZETA_PLUS ,PP_N+1)
+#endif  
 
   ! 3. limit
   DO l=0,PP_N
-   DO q=0,PP_N; DO p=0,PP_N
+   DO q=0,PP_NZ; DO p=0,PP_N
        CALL FV_Limiter(gradUxi_tmp  (:,p,q,l),gradUxi_tmp  (:,p,q,l+1),gradUxi  (:,p,q,l,iElem))
        CALL FV_Limiter(gradUeta_tmp (:,p,q,l),gradUeta_tmp (:,p,q,l+1),gradUeta (:,p,q,l,iElem))
+#if PP_dim == 3  
        CALL FV_Limiter(gradUzeta_tmp(:,p,q,l),gradUzeta_tmp(:,p,q,l+1),gradUzeta(:,p,q,l,iElem))
+#endif       
    END DO; END DO ! q, p
   END DO ! l
 #if PARABOLIC
   ! limit with central limiter for viscous fluxes
-  DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     gradUxi_central  (:,i,j,k,iElem) = 0.5*(gradUxi_tmp  (:,j,k,i)+gradUxi_tmp  (:,j,k,i+1))
     gradUeta_central (:,i,j,k,iElem) = 0.5*(gradUeta_tmp (:,i,k,j)+gradUeta_tmp (:,i,k,j+1))
+#if PP_dim == 3  
     gradUzeta_central(:,i,j,k,iElem) = 0.5*(gradUzeta_tmp(:,i,j,k)+gradUzeta_tmp(:,i,j,k+1))
+#endif
   END DO; END DO; END DO! i,j,k=0,PP_N
 #endif
 END DO
@@ -397,11 +421,11 @@ USE MOD_PreProc        ,ONLY: PP_N
 USE MOD_Mesh_Vars      ,ONLY: S2V2,nSides,ElemToSide
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(IN)    :: surface(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) !< master surface data 
-INTEGER,INTENT(IN) :: iElem                                       !< element index 
-INTEGER,INTENT(IN) :: dir                                         !< face number of the element (1..6)
-INTEGER,INTENT(IN) :: l                                           !< volume index where to store the volume data
-REAL,INTENT(INOUT) :: volume(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N+1)  !< output array
+REAL,INTENT(IN)    :: surface(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< master surface data 
+INTEGER,INTENT(IN) :: iElem                                        !< element index 
+INTEGER,INTENT(IN) :: dir                                          !< face number of the element (1..6)
+INTEGER,INTENT(IN) :: l                                            !< volume index where to store the volume data
+REAL,INTENT(INOUT) :: volume(PP_nVarPrim,0:PP_N,0:PP_NZ,0:PP_N+1)  !< output array
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: p,q,ijk(2),SideID,flip
@@ -411,12 +435,12 @@ flip  =ElemToSide(E2S_FLIP,   dir,iElem)
 
 SELECT CASE(dir)
 CASE(XI_MINUS,ETA_MINUS,ZETA_MINUS)
-  DO q=0,PP_N; DO p=0,PP_N
+  DO q=0,PP_NZ; DO p=0,PP_N
     ijk = S2V2(:,p,q,flip,dir)
     volume(:,ijk(1),ijk(2),l) = surface(:,p,q,SideID)
   END DO; END DO ! p,q=0,PP_N
 CASE(XI_PLUS,ETA_PLUS,ZETA_PLUS)
-  DO q=0,PP_N; DO p=0,PP_N
+  DO q=0,PP_NZ; DO p=0,PP_N
     ijk = S2V2(:,p,q,flip,dir)
     volume(:,ijk(1),ijk(2),l) = -surface(:,p,q,SideID)
   END DO; END DO ! p,q=0,PP_N

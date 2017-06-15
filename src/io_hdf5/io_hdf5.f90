@@ -38,6 +38,7 @@ END INTERFACE
 !----------------------------------------------------------------------------------------------------------------------------------
 LOGICAL                  :: gatheredWrite       !< flag whether every process should output data or data should first be gathered
                                                 !< on IO processes first
+LOGICAL                  :: output2D               !< Flag whether to use true 2D input/output or not
 INTEGER(HID_T)           :: File_ID             !< file which is currently opened
 INTEGER(HSIZE_T),POINTER :: HSize(:)            !< HDF5 array size (temporary variable)
 INTEGER                  :: nDims               !< 
@@ -118,6 +119,9 @@ CALL prms%SetSection("IO_HDF5")
 CALL prms%CreateLogicalOption('gatheredWrite', "Set true to activate gathered HDF5 IO for parallel computations. "//&
                                                "Only local group masters will write data after gathering from local slaves.",&
                                                '.FALSE.')
+#if PP_dim == 2
+CALL prms%CreateLogicalOption('output2D'     , "Set true to activate hdf5 data output with flat third dimension.",'.FALSE.')
+#endif
 END SUBROUTINE DefineParametersIO_HDF5
 
 !==================================================================================================================================
@@ -135,6 +139,13 @@ IMPLICIT NONE
 !==================================================================================================================================
 gatheredWrite=.FALSE.
 IF(nLeaderProcs.LT.nProcessors) gatheredWrite=GETLOGICAL('gatheredWrite','.FALSE.')
+
+#if PP_dim == 3
+output2D = .FALSE.
+#else
+output2D = GETLOGICAL('output2D','.FALSE.')
+#endif
+
 #if USE_MPI
 CALL MPI_Info_Create(MPIInfo, iError)
 

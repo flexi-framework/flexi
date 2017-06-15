@@ -54,7 +54,6 @@ USE MOD_ReadInTools,       ONLY:prms,IgnoredParameters,PrintDefaultParameterFile
 #ifdef EDDYVISCOSITY
 USE MOD_EddyVisc,          ONLY:DefineParametersEddyVisc
 #endif
-USE MOD_GenerateUnittestReferenceData
 USE MOD_Restart_Vars      ,ONLY:RestartFile
 USE MOD_StringTools       ,ONLY:STRICMP, GetFileExtension
 IMPLICIT NONE
@@ -156,9 +155,9 @@ CALL InitInterpolation()
 CALL InitFV_Basis()
 #endif
 CALL InitMortar()
-CALL InitRestart()
 CALL InitOutput()
 CALL InitMesh(meshMode=2)
+CALL InitRestart()
 CALL InitFilter()
 CALL InitOverintegration()
 CALL InitIndicator()
@@ -188,10 +187,6 @@ SWRITE(UNIT_stdOut,'(132("="))')
 
 ! Run Simulation
 CALL TimeDisc()
-
-IF (doGenerateUnittestReferenceData) THEN
-  CALL GenerateUnittestReferenceData()
-END IF
 
 !Finalize
 CALL FinalizeOutput()

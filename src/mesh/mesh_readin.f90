@@ -192,6 +192,7 @@ USE MOD_Mesh_Vars,          ONLY:BoundaryType
 USE MOD_Mesh_Vars,          ONLY:MeshInitIsDone
 USE MOD_Mesh_Vars,          ONLY:Elems
 USE MOD_Mesh_Vars,          ONLY:GETNEWELEM,GETNEWSIDE
+USE MOD_Mesh_Vars,          ONLY:ElemInfo,SideInfo
 #if USE_MPI
 USE MOD_MPI_Vars,           ONLY:nMPISides_Proc,nNbProcs,NbProc
 #endif
@@ -204,7 +205,6 @@ CHARACTER(LEN=*),INTENT(IN)  :: FileString !< (IN) mesh filename
 TYPE(tElem),POINTER            :: aElem
 TYPE(tSide),POINTER            :: aSide,bSide
 REAL,ALLOCATABLE               :: NodeCoordsTmp(:,:,:,:,:)
-INTEGER,ALLOCATABLE            :: ElemInfo(:,:),SideInfo(:,:)
 INTEGER                        :: BCindex
 INTEGER                        :: iElem,ElemID,nNodes
 INTEGER                        :: iLocSide,nbLocSide
@@ -282,6 +282,17 @@ DO iElem=FirstElemInd,LastElemInd
     ! ALLOCATE MORTAR
     ElemID=SideInfo(SIDE_nbElemID,iSide) !IF nbElemID <0, this marks a mortar master side.
                                          ! The number (-1,-2,-3) is the Type of mortar
+#if PP_dim == 2
+    IF ((iLocSide.EQ.1).OR.(iLocSide.EQ.6)) THEN
+      BCindex = SideInfo(SIDE_BCID,iSide)
+      IF ((iElem.NE.ElemID).AND.(BCindex.LE.0)) THEN
+        CALL Abort(__STAMP__, &
+            "Mesh not oriented in z-direction or more than layer of elements in z-direction! " // &
+            "Please set 'orientZ = T' or change number of element in z-direction in HOPR parameter file.")
+      END IF
+    END IF
+#endif
+
     IF(ElemID.LT.0)THEN ! mortar Sides attached!
       aSide%MortarType=ABS(ElemID)
       SELECT CASE(aSide%MortarType)
@@ -393,7 +404,6 @@ DO iElem=FirstElemInd,LastElemInd
   END DO !iLocSide
 END DO !iElem
 
-DEALLOCATE(ElemInfo,SideInfo)
 
 !----------------------------------------------------------------------------------------------------------------------------
 !                              NODES
@@ -485,7 +495,11 @@ DO iElem=FirstElemInd,LastElemInd
 END DO !iElem
 DO iElem=FirstElemInd,LastElemInd
   aElem=>Elems(iElem)%ep
+#if PP_dim == 3
   DO iLocSide=1,6
+#else    
+  DO iLocSide=2,5
+#endif    
     aSide=>aElem%Side(iLocSide)%sp
     nMortars=aSide%nMortars
     DO iMortar=0,nMortars

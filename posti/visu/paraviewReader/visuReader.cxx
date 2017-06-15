@@ -23,6 +23,7 @@
 #include <vtkDoubleArray.h>
 #include <vtkHexahedron.h>
 #include <vtkQuad.h>
+#include <vtkLine.h>
 #include <vtkInformation.h>
 #include <vtkInformationVector.h>
 #include <vtkObjectFactory.h>
@@ -446,7 +447,23 @@ void visuReader::InsertData(vtkMultiBlockDataSet* mb, int blockno, struct Double
 
    // create cellarray
    vtkSmartPointer<vtkCellArray> cellarray = vtkSmartPointer<vtkCellArray>::New();
-   if (coords->dim == 2) {
+   if (coords->dim == 1) {
+      vtkSmartPointer<vtkLine> line = vtkSmartPointer<vtkLine>::New();
+      // Use the nodeids to build quads
+      // (here we must copy the nodeids, we can not just assign the array of nodeids to some vtk-structure)
+      int gi = 0;
+      // loop over all Quads
+      for (int iQuad=0; iQuad<nodeids->len/2; iQuad++) {
+         // each Line has 2 points
+         for (int i=0; i<2; i++) {
+            line->GetPointIds()->SetId(i, nodeids->data[gi]);
+            gi++;
+         }
+         // insert the line into the cellarray
+         cellarray->InsertNextCell(line);
+      }
+      output->SetCells({VTK_LINE}, cellarray);
+   } else if (coords->dim == 2) {
       vtkSmartPointer<vtkQuad> quad = vtkSmartPointer<vtkQuad>::New();
       // Use the nodeids to build quads
       // (here we must copy the nodeids, we can not just assign the array of nodeids to some vtk-structure)
@@ -462,7 +479,7 @@ void visuReader::InsertData(vtkMultiBlockDataSet* mb, int blockno, struct Double
          cellarray->InsertNextCell(quad);
       }
       output->SetCells({VTK_QUAD}, cellarray);
-   } else {
+   } else if (coords->dim == 3) {
       vtkSmartPointer<vtkHexahedron> hex = vtkSmartPointer<vtkHexahedron>::New();
       // Use the nodeids to build hexas
       // (here we must copy the nodeids, we can not just assign the array of nodeids to some vtk-structure)
@@ -478,6 +495,8 @@ void visuReader::InsertData(vtkMultiBlockDataSet* mb, int blockno, struct Double
          cellarray->InsertNextCell(hex);
       }
       output->SetCells({VTK_HEXAHEDRON}, cellarray);
+   } else {
+      exit(1);
    }
 
    // assign the actual data, loaded by the Posti tool, to the output

@@ -51,7 +51,7 @@ CONTAINS
 !> \f$ -1 \f$. This means we don't have to flip the sign on the flux for the slave side in strong form as we normally do to
 !> get the flux on the slave side.
 !==================================================================================================================================
-SUBROUTINE Lifting_SurfInt(NLoc,Flux,gradU,doMPISides,L_HatMinus,L_HatPlus,weak)
+SUBROUTINE Lifting_SurfInt(Nloc,Flux,gradU,doMPISides,L_HatMinus,L_HatPlus,weak)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
@@ -66,21 +66,21 @@ USE MOD_FV_Vars,            ONLY: FV_Elems_master,FV_Elems_slave
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: NLoc                                             !< polynomial degree
+INTEGER,INTENT(IN) :: Nloc                                             !< polynomial degree
 LOGICAL,INTENT(IN) :: doMPISides                                       !< = .TRUE. only MPISides_YOUR+MPIMortar are filled
                                                                        !< =.FALSE. BCSides+(Mortar-)InnerSides+MPISides_MINE
-REAL,INTENT(IN)    :: Flux(1:PP_nVarPrim,0:NLoc,0:NLoc,nSides)         !< flux to be filled
-REAL,INTENT(IN)    :: L_HatPlus(0:NLoc)                                !< lagrange polynomials at xi=+1 and pre-divided by
+REAL,INTENT(IN)    :: Flux(1:PP_nVarPrim,0:Nloc,0:PP_NlocZ,nSides)         !< flux to be filled
+REAL,INTENT(IN)    :: L_HatPlus(0:Nloc)                                !< lagrange polynomials at xi=+1 and pre-divided by
                                                                        !< integration weight
-REAL,INTENT(IN)    :: L_HatMinus(0:NLoc)                               !< lagrange polynomials at xi=-1 and pre-divided by
+REAL,INTENT(IN)    :: L_HatMinus(0:Nloc)                               !< lagrange polynomials at xi=-1 and pre-divided by
                                                                        !< integration weight
-REAL,INTENT(INOUT) :: gradU(PP_nVarPrim,0:NLoc,0:NLoc,0:NLoc,1:nElems) !< time derivative of solution
+REAL,INTENT(INOUT) :: gradU(PP_nVarPrim,0:Nloc,0:Nloc,0:PP_NlocZ,1:nElems) !< time derivative of solution
 LOGICAL,INTENT(IN) :: weak                                             !< switch for weak or strong formulation
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: ElemID,nbElemID,locSideID,nblocSideID,SideID,p,q,flip
 INTEGER            :: firstSideID,lastSideID
-REAL               :: FluxTmp(1:PP_nVarPrim,0:NLoc,0:NLoc)
+REAL               :: FluxTmp(1:PP_nVarPrim,0:Nloc,0:PP_NlocZ)
 !==================================================================================================================================
 IF(doMPISides)THEN
   ! MPI YOUR
@@ -102,13 +102,14 @@ DO SideID=firstSideID,lastSideID
       locSideID = SideToElem(S2E_LOC_SIDE_ID,SideID)
       flip      = 0
       ! orient flux to fit flip and locSide to element local system
-      DO q=0,NLoc; DO p=0,NLoc
-        FluxTmp(:,S2V2(1,p,q,flip,locSideID),S2V2(2,p,q,flip,locSideID)) = Flux(:,p,q,SideID)
+      DO q=0,PP_NlocZ; DO p=0,Nloc
+        ! note: for master sides, the mapping S2V2 should be a unit matrix
+        FluxTmp(:,S2V2(1,p,q,flip,locSideID),S2V2(2,p,q,flip,locSideID)) = Flux(:,p,q,SideID) 
       END DO; END DO ! p,q
 #if   (PP_NodeType==1)
-      CALL DoSurfIntPrim(NLoc,FluxTmp,L_HatMinus,   L_HatPlus,      locSideID,gradU(:,:,:,:,ElemID))
+      CALL DoSurfIntPrim(Nloc,FluxTmp,L_HatMinus,   L_HatPlus,      locSideID,gradU(:,:,:,:,ElemID))
 #elif (PP_NodeType==2)
-      CALL DoSurfIntPrim(NLoc,FluxTmp,L_HatMinus(0),L_HatPlus(Nloc),locSideID,gradU(:,:,:,:,ElemID))
+      CALL DoSurfIntPrim(Nloc,FluxTmp,L_HatMinus(0),L_HatPlus(Nloc),locSideID,gradU(:,:,:,:,ElemID))
 #endif
     END IF
   END IF
@@ -120,21 +121,21 @@ DO SideID=firstSideID,lastSideID
       flip        = SideToElem(S2E_FLIP,SideID)
       ! orient flux to fit flip and locSide to element local system
       IF(weak)THEN
-        DO q=0,NLoc; DO p=0,NLoc
+        DO q=0,PP_NlocZ; DO p=0,Nloc
           ! p,q are in the master RHS system, they need to be transformed to the slave volume system using S2V2 mapping
-          FluxTmp(:,S2V2(1,p,q,flip,nblocSideID),S2V2(2,p,q,flip,nblocSideID)) = -Flux(:,p,q,SideID)
+          FluxTmp(:,S2V2(1,p,q,flip,nblocSideID),S2V2(2,p,q,flip,nblocSideID))=-Flux(:,p,q,SideID)
         END DO; END DO ! p,q
       ELSE
         ! In strong form, don't flip the sign since the slave flux is the negative of the master flux
-        DO q=0,NLoc; DO p=0,NLoc
+        DO q=0,PP_NlocZ; DO p=0,Nloc
           ! p,q are in the master RHS system, they need to be transformed to the slave volume system using S2V2 mapping
-          FluxTmp(:,S2V2(1,p,q,flip,nblocSideID),S2V2(2,p,q,flip,nblocSideID)) =  Flux(:,p,q,SideID)
+          FluxTmp(:,S2V2(1,p,q,flip,nblocSideID),S2V2(2,p,q,flip,nblocSideID))= Flux(:,p,q,SideID)
         END DO; END DO ! p,q
       END IF
 #if   (PP_NodeType==1)
-      CALL DoSurfIntPrim(NLoc,FluxTmp,L_HatMinus,   L_HatPlus,      nblocSideID,gradU(:,:,:,:,nbElemID))
+      CALL DoSurfIntPrim(Nloc,FluxTmp,L_HatMinus,   L_HatPlus,      nblocSideID,gradU(:,:,:,:,nbElemID))
 #elif (PP_NodeType==2)
-      CALL DoSurfIntPrim(NLoc,FluxTmp,L_HatMinus(0),L_HatPlus(Nloc),nblocSideID,gradU(:,:,:,:,nbElemID))
+      CALL DoSurfIntPrim(Nloc,FluxTmp,L_HatMinus(0),L_HatPlus(Nloc),nblocSideID,gradU(:,:,:,:,nbElemID))
 #endif
     END IF
   END IF

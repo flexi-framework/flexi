@@ -109,7 +109,11 @@ doAnalyzeToFile   =GETLOGICAL('AnalyzeToFile','.FALSE.')
 Analyze_dt        =GETREAL('Analyze_dt','0.0')
 nWriteData        =GETINT('nWriteData' ,'1')
 NAnalyze          =GETINT('NAnalyze'   ,INTTOSTR(2*(PP_N+1)))
-
+#if PP_dim == 3
+NAnalyzeZ         =NAnalyze
+#else
+NAnalyzeZ         =0
+#endif
 ! If Analyze_dt is set to 0 (default) or to a negative value, no analyze calls should be performed at all.
 ! To achieve this, Analyze_dt is set to the final simulation time. This will prevent any calls of the analyze routine
 ! except at the beginning and the end of the simulation.
@@ -121,32 +125,43 @@ END IF
 WriteData_dt = Analyze_dt*nWriteData
 
 ! precompute integration weights
-ALLOCATE(wGPSurf(0:PP_N,0:PP_N),wGPVol(0:PP_N,0:PP_N,0:PP_N))
+ALLOCATE(wGPSurf(0:PP_N,0:PP_NZ),wGPVol(0:PP_N,0:PP_N,0:PP_NZ))
+#if PP_dim == 3
 DO j=0,PP_N; DO i=0,PP_N
   wGPSurf(i,j)  = wGP(i)*wGP(j)
 END DO; END DO
 DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
   wGPVol(i,j,k) = wGP(i)*wGP(j)*wGP(k)
 END DO; END DO; END DO
+#else
+DO i=0,PP_N
+  wGPSurf(i,0)  = wGP(i)
+END DO
+DO j=0,PP_N; DO i=0,PP_N
+  wGPVol(i,j,0) = wGP(i)*wGP(j)
+END DO; END DO
+#endif
 
 ! precompute volume of the domain
 ALLOCATE(ElemVol(nElems))
 ElemVol=0.
 DO iElem=1,nElems
-  DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     ElemVol(iElem)=ElemVol(iElem)+wGPVol(i,j,k)/sJ(i,j,k,iElem,0)
   END DO; END DO; END DO !i,j,k
 END DO ! iElem
 Vol=SUM(ElemVol)
 
 
+
 ! compute surface of each boundary
+
 ALLOCATE(Surf(nBCs))
 Surf=0.
 DO iSide=1,nSides
   iSurf=AnalyzeSide(iSide)
   IF(iSurf.EQ.0) CYCLE
-  DO j=0,PP_N; DO i=0,PP_N
+  DO j=0,PP_NZ; DO i=0,PP_N
     Surf(iSurf)=Surf(iSurf)+wGPSurf(i,j)*SurfElem(i,j,0,iSide)
   END DO; END DO
 END DO
@@ -185,7 +200,7 @@ END SUBROUTINE InitAnalyze
 !> - Builds Vandermonde to interpolate the solution onto a Gauss-Lobatto mesh at a higher polynomial degree
 !> - Precomputes volume interpolation weights
 !==================================================================================================================================
-SUBROUTINE InitAnalyzeBasis(N_in,Nanalyze_in,xGP,wBary)
+SUBROUTINE InitAnalyzeBasis(N_in,Nloc,xGP,wBary)
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
@@ -197,22 +212,31 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)               :: N_in                  !< input polynomial degree
-INTEGER,INTENT(IN)               :: Nanalyze_in           !< polynomial degree of analysis polynomial
+INTEGER,INTENT(IN)               :: Nloc                  !< polynomial degree of analysis polynomial
 REAL,INTENT(IN)                  :: xGP(0:N_in)           !< interpolation points
 REAL,INTENT(IN)                  :: wBary(0:N_in)         !< barycentric weights
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                             :: XiAnalyze(0:Nanalyze_in)
-REAL                             :: wAnalyze( 0:NAnalyze_in)  ! GL integration weights used for the analyze
-INTEGER                          :: i,j,k
+REAL                             :: XiAnalyze(0:Nloc)
+REAL                             :: wAnalyze( 0:Nloc)  ! GL integration weights used for the analyze
+INTEGER                          :: i,j
+#if PP_dim == 3
+INTEGER                          :: k
+#endif
 !==================================================================================================================================
-ALLOCATE(wGPVolAnalyze(0:Nanalyze_in,0:Nanalyze_in,0:Nanalyze_in),Vdm_GaussN_NAnalyze(0:NAnalyze_in,0:N_in))
-CALL GetNodesAndWeights(NAnalyze_in,NodeTypeGL,XiAnalyze,wAnalyze)
-CALL InitializeVandermonde(N_in,NAnalyze_in,wBary,xGP,XiAnalyze,Vdm_GaussN_NAnalyze)
+ALLOCATE(wGPVolAnalyze(0:Nloc,0:Nloc,0:PP_NlocZ),Vdm_GaussN_NAnalyze(0:Nloc,0:N_in))
+CALL GetNodesAndWeights(Nloc,NodeTypeGL,XiAnalyze,wAnalyze)
+CALL InitializeVandermonde(N_in,Nloc,wBary,xGP,XiAnalyze,Vdm_GaussN_NAnalyze)
 
-DO k=0,Nanalyze_in; DO j=0,Nanalyze_in; DO i=0,Nanalyze_in
+#if PP_dim == 3
+DO k=0,Nloc; DO j=0,Nloc; DO i=0,Nloc
   wGPVolAnalyze(i,j,k) = wAnalyze(i)*wAnalyze(j)*wAnalyze(k)
 END DO; END DO; END DO
+#else
+DO j=0,Nloc; DO i=0,Nloc
+  wGPVolAnalyze(i,j,0) = wAnalyze(i)*wAnalyze(j)
+END DO; END DO
+#endif
 
 END SUBROUTINE InitAnalyzeBasis
 
@@ -286,9 +310,9 @@ USE MOD_PreProc
 USE MOD_Mesh_Vars,          ONLY: Elem_xGP,sJ,nElems
 USE MOD_Equation_Vars,      ONLY: IniExactFunc
 USE MOD_DG_Vars,            ONLY: U
-USE MOD_Exactfunc,           ONLY: ExactFunc
-USE MOD_ChangeBasis,        ONLY: ChangeBasis3D
-USE MOD_Analyze_Vars,       ONLY: NAnalyze,Vdm_GaussN_NAnalyze
+USE MOD_Exactfunc,          ONLY: ExactFunc
+USE MOD_ChangeBasisByDim,   ONLY: ChangeBasisVolume
+USE MOD_Analyze_Vars,       ONLY: NAnalyze,NAnalyzeZ,Vdm_GaussN_NAnalyze
 USE MOD_Analyze_Vars,       ONLY: wGPVolAnalyze,Vol
 #if FV_ENABLED
 USE MOD_FV_Vars,            ONLY: FV_Elems,FV_Vdm,FV_w
@@ -303,10 +327,10 @@ REAL,INTENT(OUT)                :: L_Inf_Error(PP_nVar)   !< LInf error of the s
 ! LOCAL VARIABLES
 INTEGER                         :: iElem,k,l,m
 REAL                            :: U_exact(PP_nVar)
-REAL                            :: U_NAnalyze(1:PP_nVar,0:NAnalyze,0:NAnalyze,0:NAnalyze)
-REAL                            :: Coords_NAnalyze(3,0:NAnalyze,0:NAnalyze,0:NAnalyze)
-REAL                            :: J_NAnalyze(1,0:NAnalyze,0:NAnalyze,0:NAnalyze)
-REAL                            :: J_N(1,0:PP_N,0:PP_N,0:PP_N)
+REAL                            :: U_NAnalyze(1:PP_nVar,0:NAnalyze,0:NAnalyze,0:NAnalyzeZ)
+REAL                            :: Coords_NAnalyze(3,0:NAnalyze,0:NAnalyze,0:NAnalyzeZ)
+REAL                            :: J_NAnalyze(1,0:NAnalyze,0:NAnalyze,0:NAnalyzeZ)
+REAL                            :: J_N(1,0:PP_N,0:PP_N,0:PP_NZ)
 REAL                            :: IntegrationWeight
 #if FV_ENABLED
 REAL                            :: FV_w3
@@ -324,15 +348,15 @@ L_2_Error(:)=0.
 DO iElem=1,nElems
 #if FV_ENABLED
   IF (FV_Elems(iElem).GT.0) THEN ! FV Element
-    DO m=0,PP_N
+    DO m=0,PP_NZ
       DO l=0,PP_N
         DO k=0,PP_N
           CALL ExactFunc(IniExactFunc,time,Elem_xGP(1:3,k,l,m,iElem),U_DG(:,k,l,m))
         END DO ! k
       END DO ! l
     END DO ! m
-    CALL ChangeBasis3D(PP_nVar,PP_N,PP_N,FV_Vdm,U_DG(:,:,:,:),U_FV(:,:,:,:))
-    DO m=0,PP_N
+    CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,U_DG(:,:,:,:),U_FV(:,:,:,:))
+    DO m=0,PP_NZ
       DO l=0,PP_N
         DO k=0,PP_N
           L_Inf_Error = MAX(L_Inf_Error,ABS(U(:,k,l,m,iElem) - U_FV(:,k,l,m)))
@@ -345,13 +369,13 @@ DO iElem=1,nElems
   ELSE
 #endif
    ! Interpolate the physical position Elem_xGP to the analyze position, needed for exact function
-   CALL ChangeBasis3D(3,PP_N,NAnalyze,Vdm_GaussN_NAnalyze,Elem_xGP(1:3,:,:,:,iElem),Coords_NAnalyze(1:3,:,:,:))
+   CALL ChangeBasisVolume(3,PP_N,NAnalyze,Vdm_GaussN_NAnalyze,Elem_xGP(1:3,:,:,:,iElem),Coords_NAnalyze(1:3,:,:,:))
    ! Interpolate the Jacobian to the analyze grid: be carefull we interpolate the inverse of the inverse of the jacobian ;-)
-   J_N(1,0:PP_N,0:PP_N,0:PP_N)=1./sJ(:,:,:,iElem,0)
-   CALL ChangeBasis3D(1,PP_N,NAnalyze,Vdm_GaussN_NAnalyze,J_N(1:1,0:PP_N,0:PP_N,0:PP_N),J_NAnalyze(1:1,:,:,:))
+   J_N(1,0:PP_N,0:PP_N,0:PP_NZ)=1./sJ(:,:,:,iElem,0)
+   CALL ChangeBasisVolume(1,PP_N,NAnalyze,Vdm_GaussN_NAnalyze,J_N,J_NAnalyze)
    ! Interpolate the solution to the analyze grid
-   CALL ChangeBasis3D(PP_nVar,PP_N,NAnalyze,Vdm_GaussN_NAnalyze,U(1:PP_nVar,:,:,:,iElem),U_NAnalyze(1:PP_nVar,:,:,:))
-   DO m=0,NAnalyze
+   CALL ChangeBasisVolume(PP_nVar,PP_N,NAnalyze,Vdm_GaussN_NAnalyze,U(1:PP_nVar,:,:,:,iElem),U_NAnalyze(1:PP_nVar,:,:,:))
+   DO m=0,NAnalyzeZ
      DO l=0,NAnalyze
        DO k=0,NAnalyze
          CALL ExactFunc(IniExactFunc,time,Coords_NAnalyze(1:3,k,l,m),U_exact)
