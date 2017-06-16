@@ -1007,10 +1007,9 @@ IF(Examples(iExample)%ConvergenceTest)THEN ! Do ConvergenceTest
 
 END IF
 
-! Check for 2D version of the code
-!print*,"Use2D=",Use2D
+! Check for 2D version of the code: use different file names for 2D or 3D code version
 SWRITE(UNIT_stdOut,'(A15,L1,A2)',ADVANCE='NO')" Use2D   =[",Use2D,"] "
-SWRITE(UNIT_stdOut,'(A)')"Setting option in parameter.ini: MESHFILE"
+SWRITE(UNIT_stdOut,'(A)')"Setting option in parameter.ini: MESHFILE (if file name contains '2D' it will be exchanged with '3D)"
 ! read MeshFile from parameter_ini and search for "3D", then substitute with 2D
 CALL GetParameterFromFile(TRIM(Examples(iExample)%PATH)//parameter_ini,'MeshFile',meshFile)
 IF(Use2D)THEN

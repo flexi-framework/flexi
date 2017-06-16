@@ -367,22 +367,29 @@ IF(BuildValid(iReggieBuild))THEN
     SWRITE(ioUnit, '(A)', ADVANCE = "NO") TRIM(ADJUSTL(BuildConfigurations(K,BuildCounter(K)+1)))
   END DO
   CLOSE(ioUnit)
+  ! display the compile flag options
   SYSCOMMAND='cd '//TRIM(BuildDir)//'build_reggie && echo  `cat configurationX.cmake` '
   CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
-  SYSCOMMAND='cd '//TRIM(BuildDir)//&
-   'build_reggie && cmake `cat configurationX.cmake` ../../ > build_reggie.out  && make '//CodeNameLowCase//' >> build_reggie.out'
-  IF(BuildDebug)THEN
-    SYSCOMMAND='cd '//TRIM(BuildDir)//'build_reggie && cmake `cat configurationX.cmake` ../../  && make '//CodeNameLowCase
-  ELSEIF(BuildNoDebug)THEN
-    SYSCOMMAND='cd '//TRIM(BuildDir)//&
-   'build_reggie && cmake `cat configurationX.cmake` ../../ > build_reggie.out  && make '//CodeNameLowCase//&
-                                                                                                         ' >> build_reggie.out 2>&1'
+
+  ! 1 of 4: set compilation command line
+  SYSCOMMAND='cd '//TRIM(BuildDir)//'build_reggie && cmake `cat configurationX.cmake` ../../'
+
+  ! 2 of 4: set output for cmake
+  IF(BuildDebug.EQV..FALSE.) SYSCOMMAND=TRIM(SYSCOMMAND)//' > build_reggie.out'
+
+  ! 3 of 4: set threads for compilation of make
+  SYSCOMMAND=TRIM(SYSCOMMAND)//' && make '//CodeNameLowCase//' -j'
+  IF(NumberOfProcs.GT.0) SYSCOMMAND=TRIM(SYSCOMMAND)//' '//TRIM(ADJUSTL(NumberOfProcsStr))
+
+  ! 4 of 4: pipe output of make
+  IF(BuildDebug.EQV..FALSE.)THEN
+    SYSCOMMAND=TRIM(SYSCOMMAND)//' >> build_reggie.out'
+    IF(BuildNoDebug)SYSCOMMAND=TRIM(SYSCOMMAND)//' 2>&1'
   END IF
-  IF(NumberOfProcs.GT.0)THEN
-    SYSCOMMAND=TRIM(SYSCOMMAND)//' -j '//TRIM(ADJUSTL(NumberOfProcsStr))
-  ELSE
-    SYSCOMMAND=TRIM(SYSCOMMAND)//' -j'
-  ENDIF
+
+  ! build the code
+  SWRITE(UNIT_stdOut, '(A)')' Building with ['//TRIM(SYSCOMMAND)//']'
+  SWRITE(UNIT_stdOut, '(A)')' '
   CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
   ! save compilation flags (even those that are not explicitly selected by the user) for deciding whether a supplied example folder 
   ! can be executed with the compiled executable or not

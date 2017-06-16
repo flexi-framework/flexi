@@ -168,7 +168,7 @@ INTEGER                        :: iSTATUS
 INTEGER                        :: I,J
 INTEGER                        :: NumberOfCellsInteger
 INTEGER                        :: iSubExample,p
-REAL,ALLOCATABLE               :: Order(:,:),OrderAveraged(:)
+REAL,ALLOCATABLE               :: Order(:,:),OrderAvg(:)
 INTEGER,ALLOCATABLE            :: OrderIncrease(:,:)
 LOGICAL,ALLOCATABLE            :: OrderReached(:)
 REAL                           :: DummyReal
@@ -249,10 +249,10 @@ DO J=1,Examples(iExample)%nVar
 END DO
 
 ! Calculate the averged Order of Convergence (only important for h-convergence)
-ALLOCATE(OrderAveraged(Examples(iExample)%nVar))
+ALLOCATE(OrderAvg(Examples(iExample)%nVar))
 DO J=1,Examples(iExample)%nVar
   CALL CalcOrder(Examples(iExample)%SubExampleNumber,Examples(iExample)%ConvergenceTestGridSize(:),&
-                                                     Examples(iExample)%ConvergenceTestError(:,J),OrderAveraged(J))
+                                                     Examples(iExample)%ConvergenceTestError(:,J),OrderAvg(J))
 END DO
 
 ! Check the calculated Orders of convergence
@@ -274,11 +274,11 @@ IF(TRIM(Examples(iExample)%ConvergenceTestType).EQ.'p')THEN
 ELSEIF(TRIM(Examples(iExample)%ConvergenceTestType).EQ.'h')THEN
   ! Check Order of Convergence versus the expected value and tolerance from input
   DO J=1,Examples(iExample)%nVar
-    OrderReached(J)=ALMOSTEQUALRELATIVE( OrderAveraged(J),Examples(iExample)%ConvergenceTestValue,Examples(iExample)%ConvergenceTestTolerance )
-     IF((OrderReached(J).EQV..FALSE.).AND.(OrderAveraged(J).GT.0.0))THEN
+OrderReached(J)=ALMOSTEQUALRELATIVE(OrderAvg(J),Examples(iExample)%ConvergenceTestValue,Examples(iExample)%ConvergenceTestTolerance)
+     IF((OrderReached(J).EQV..FALSE.).AND.(OrderAvg(J).GT.0.0))THEN
        !IntegralCompare=1
        SWRITE(UNIT_stdOut,'(A)')         ' CompareConvergence does not match! Error in computation!'
-       SWRITE(UNIT_stdOut,'(A,E21.14)')  ' OrderAveraged(J)                        = ',OrderAveraged(J)
+       SWRITE(UNIT_stdOut,'(A,E21.14)')  ' OrderAvg(J)                             = ',OrderAvg(J)
        SWRITE(UNIT_stdOut,'(A,E21.14)')  ' Examples(iExample)%ConvergenceTestValue = ',Examples(iExample)%ConvergenceTestValue
        SWRITE(UNIT_stdOut,'(A,E21.14)')  ' Tolerance                               = ',Examples(iExample)%ConvergenceTestTolerance
      END IF
@@ -316,7 +316,7 @@ IF(DoDebugOutput)THEN
   SWRITE(UNIT_stdOut,'(A)')''
   SWRITE(UNIT_stdOut,'(A5)',ADVANCE="NO")'mean'
   DO J=1,Examples(iExample)%nVar
-    SWRITE(UNIT_stdOut,'(E14.6)',ADVANCE="NO") OrderAveraged(J)
+    SWRITE(UNIT_stdOut,'(E14.6)',ADVANCE="NO") OrderAvg(J)
   END DO
   SWRITE(UNIT_stdOut,'(A)')''
   SWRITE(UNIT_stdOut,'(A)')''
@@ -815,7 +815,8 @@ END DO
 
 Q=Q*Examples(iExample)%IntegrateLineMultiplier ! use multiplier if needed
 
-IntegralValuesAreEqual=ALMOSTEQUALRELATIVE( Q, Examples(iExample)%IntegrateLineValue, 5.e-2 )
+IntegralValuesAreEqual=ALMOSTEQUALRELATIVE(Q,Examples(iExample)%IntegrateLineValue,Examples(iExample)%IntegrateLineTolerance)
+
 IF(.NOT.IntegralValuesAreEqual)THEN
   IntegralCompare=1
   SWRITE(UNIT_stdOut,'(A)')         ' IntegrateLines do not match! Error in computation!'
@@ -939,7 +940,7 @@ IF(ColumnNumber.GT.0)THEN
   ALLOCATE(ValuesAreEqual(1:ColumnNumber))
   ValuesAreEqual=.FALSE.
   DO J=1,ColumnNumber
-    ValuesAreEqual(J)=ALMOSTEQUALRELATIVE( Values(J), ValuesRef(J), Examples(iExample)%CompareDatafileRowTolerance)
+    ValuesAreEqual(J)=ALMOSTEQUALRELATIVE(Values(J),ValuesRef(J),Examples(iExample)%CompareDatafileRowTolerance)
     IF(ValuesAreEqual(J).EQV..FALSE.)THEN
       SWRITE(UNIT_stdOut,'(A)')         ' CompareDatafileRows mismatch: '//TRIM(ColumnHeaders(J))
       SWRITE(UNIT_stdOut,'(A,E24.17)')  ' Value in Refernece            = ',ValuesRef(J)
