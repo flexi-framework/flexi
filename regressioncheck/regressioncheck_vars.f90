@@ -75,8 +75,11 @@ TYPE tExample                                                       !> examples 
                                                                     !> 1 - failed during execution
                                                                     !> 2 - test failed
   CHARACTER(LEN=255)               :: IntegrateLineFile             !> File name with ACSI number columns
+  CHARACTER(LEN=255)               :: IntegrateLineOption           !> speciel settings for integrate line function
+  REAL                             :: IntegrateLineMultiplier       !> multiply the integrated value by this factor
   INTEGER                          :: IntegrateLineRange(2)         !> the numerbs of two coulumns with data
   REAL                             :: IntegrateLineValue            !> the reference integral value
+  REAL                             :: IntegrateLineTolerance        !> the reference integral tolerance
   CHARACTER(LEN=255)               :: IntegrateLineDelimiter        !> delimiter string for reading the data file
   INTEGER                          :: IntegrateLineHeaderLines      !> number of header lines to be ignored from data file
   LOGICAL                          :: IntegrateLine                 !> read two columns from a file and integrate over line

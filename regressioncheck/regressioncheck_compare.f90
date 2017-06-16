@@ -705,7 +705,8 @@ CHARACTER(LEN=355)             :: temp1,temp2
 INTEGER                        :: iSTATUS,ioUnit,LineNumbers,I,HeaderLines,j,IndMax,CurrentColumn,IndNum,MaxColumn!,K
 INTEGER                        :: IndFirstA,IndLastA,IndFirstB,IndLastB,EOL,MaxRow
 LOGICAL                        :: ExistFile,IndexNotFound,IntegralValuesAreEqual
-REAL,ALLOCATABLE               :: Values(:,:),Q
+REAL,ALLOCATABLE               :: Values(:,:)
+REAL                           :: dx,dQ,Q
 !==================================================================================================================================
 ! check if output file with data for integration over line exists
 Filename=TRIM(Examples(iExample)%PATH)//TRIM(Examples(iExample)%IntegrateLineFile)
@@ -801,16 +802,28 @@ END DO
 ! integrate the values numerically
 Q=0.
 DO I=1,MaxRow-1
-  Q=Q+(Values(I+1,1)-Values(I,1))*(Values(I+1,2)+Values(I,2))/2.
+  ! use trapezoidal rule (also known as the trapezoid rule or trapezium rule)
+  dx = Values(I+1,1)-Values(I,1)
+  dQ = dx * (Values(I+1,2)+Values(I,2))/2.
+  IF(TRIM(Examples(iExample)%IntegrateLineOption).EQ.'DivideByTimeStep')THEN ! assume that the first column is the time!
+    IF(ABS(dx).GT.0.0)THEN ! dx is assumed to be dt
+      dQ = dQ / dx
+    END IF
+  END IF
+  Q  = Q + dQ
 END DO
+
+Q=Q*Examples(iExample)%IntegrateLineMultiplier ! use multiplier if needed
 
 IntegralValuesAreEqual=ALMOSTEQUALRELATIVE( Q, Examples(iExample)%IntegrateLineValue, 5.e-2 )
 IF(.NOT.IntegralValuesAreEqual)THEN
   IntegralCompare=1
   SWRITE(UNIT_stdOut,'(A)')         ' IntegrateLines do not match! Error in computation!'
+  SWRITE(UNIT_stdOut,'(A)')         ' IntegrateLineOption                   =  '//TRIM(Examples(iExample)%IntegrateLineOption)
   SWRITE(UNIT_stdOut,'(A,E21.14)')  ' IntegrateLineValue                    = ',Q
   SWRITE(UNIT_stdOut,'(A,E21.14)')  ' Examples(iExample)%IntegrateLineValue = ',Examples(iExample)%IntegrateLineValue
-  SWRITE(UNIT_stdOut,'(A,E21.14)')  ' Tolerance                             = ',1.e-2!0.1*SQRT(PP_RealTolerance)
+  SWRITE(UNIT_stdOut,'(A,E21.14)')  ' Error                                 = ',ABS(Q/Examples(iExample)%IntegrateLineValue-1)
+  SWRITE(UNIT_stdOut,'(A,E21.14)')  ' Tolerance                             = ',Examples(iExample)%IntegrateLineTolerance
   !SWRITE(UNIT_stdOut,'(A,E21.14)')  ' 0.1*SQRT(PP_RealTolerance)            = ',0.1*SQRT(PP_RealTolerance)
   Examples(iExample)%ErrorStatus=5
 ELSE
