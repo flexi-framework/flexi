@@ -1229,6 +1229,7 @@ SUBROUTINE RunTheCode(iExample,iSubExample,iScaling,iRun,MPIthreadsStr,EXECPATH,
 USE MOD_Globals
 USE MOD_RegressionCheck_Vars,    ONLY: Examples,GlobalRunNumber
 USE MOD_RegressionCheck_tools,   ONLY: AddError,str2int
+USE MOD_RegressionCheck_tools,   ONLY: GetParameterFromFile
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -1247,6 +1248,8 @@ CHARACTER(LEN=1000)            :: SYSCOMMAND                                    
 CHARACTER(LEN=255)             :: FileSuffix,FolderSuffix,tempStr                 !> auxiliary vars for file and folder names
 CHARACTER(LEN=255)             :: FileOutFolderName,StdOutFileName,ErrOutFileName !> new std.out and err.out files
 INTEGER                        :: MPIthreadsInteger,PolynomialDegree              !> character to integer auxiliaray vars
+CHARACTER(LEN=255)             :: ComputationResult                               !> auxiliary var to determine a failed computation
+                                                                                  !>  even if EXITSTATUS=0
 !===================================================================================================================================
 SkipComparison=.FALSE.
 MPIthreadsInteger=1 ! default: single run
@@ -1286,6 +1289,12 @@ ELSE ! single run
 END IF
 GlobalRunNumber=GlobalRunNumber+1
 CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=ComputationSTATUS) ! run the code
+CALL GetParameterFromFile(TRIM(Examples(iExample)%PATH)//'std.out',&
+                          'Program abort caused',ComputationResult,DoDisplayInfo=.FALSE.)
+IF((TRIM(ComputationResult).NE.'ParameterName does not exist').AND.(TRIM(ComputationResult).NE.'file does not exist'))THEN
+  ComputationSTATUS=1 ! an abort was caused (works for MPI=ON/OFF)
+  SWRITE(UNIT_stdOut, '(A)')' Program abort caused '//TRIM(ComputationResult)
+END IF
 ! -----------------------------------------------------------------------------------------------------------------------
 ! copy the std.out and err.out files to sub folder (std_filed_.....)
 ! -----------------------------------------------------------------------------------------------------------------------

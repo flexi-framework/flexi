@@ -1042,22 +1042,23 @@ END SUBROUTINE AddError
 !==================================================================================================================================
 !> read parameter values from a specified file
 !==================================================================================================================================
-SUBROUTINE GetParameterFromFile(FileName,ParameterName,output)
+SUBROUTINE GetParameterFromFile(FileName,ParameterName,output,DoDisplayInfo)
 ! MODULES
 USE MOD_Globals
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=*),INTENT(IN)  :: FileName ! e.g. './../build_reggie/bin/configuration.cmake'
-CHARACTER(LEN=*),INTENT(IN)  :: ParameterName     ! e.g. 'XX_EQNSYSNAME'
-CHARACTER(LEN=*),INTENT(INOUT) :: output ! e.g. 'navierstokes'
+CHARACTER(LEN=*),INTENT(IN)     :: FileName      ! e.g. './../build_reggie/bin/configuration.cmake'
+CHARACTER(LEN=*),INTENT(IN)     :: ParameterName ! e.g. 'XX_EQNSYSNAME'
+CHARACTER(LEN=*),INTENT(INOUT)  :: output        ! e.g. 'navierstokes'
+LOGICAL, INTENT(IN),OPTIONAL    :: DoDisplayInfo ! display error output if the parameter or the file is not found
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-LOGICAL                        :: ExistFile    ! file exists=.true., file does not exist=.false.
-INTEGER                        :: iSTATUS      ! status
-CHARACTER(LEN=255)             :: temp,temp2   ! temp variables for read in of file lines
-INTEGER                        :: ioUnit       ! field handler unit and ??
-INTEGER                        :: IndNum       ! Index Number
+LOGICAL                         :: ExistFile    ! file exists=.true., file does not exist=.false.
+INTEGER                         :: iSTATUS      ! status
+CHARACTER(LEN=255)              :: temp,temp2   ! temp variables for read in of file lines
+INTEGER                         :: ioUnit       ! field handler unit and ??
+INTEGER                         :: IndNum       ! Index Number
 !===================================================================================================================================
 output=''
 INQUIRE(File=TRIM(FileName),EXIST=ExistFile)
@@ -1087,11 +1088,23 @@ IF(ExistFile) THEN
   END DO
   CLOSE(ioUnit)
   IF(output.EQ.'')THEN
-    SWRITE(UNIT_stdOut,'(A)') ' SUBROUTINE GetParameterFromFile: Parameter ['//TRIM(ParameterName)//'] not found.'
+    IF(PRESENT(DoDisplayInfo))THEN
+      IF(DoDisplayInfo)THEN
+        SWRITE(UNIT_stdOut,'(A)') ' SUBROUTINE GetParameterFromFile: Parameter ['//TRIM(ParameterName)//'] not found.'
+      END IF
+    ELSE
+      SWRITE(UNIT_stdOut,'(A)') ' SUBROUTINE GetParameterFromFile: Parameter ['//TRIM(ParameterName)//'] not found.'
+    END IF
     output='ParameterName does not exist'
   END IF
 ELSE
-  SWRITE(UNIT_stdOut,'(A)') ' SUBROUTINE GetParameterFromFile: File ['//TRIM(FileName)//'] not found.'
+    IF(PRESENT(DoDisplayInfo))THEN
+      IF(DoDisplayInfo)THEN
+        SWRITE(UNIT_stdOut,'(A)') ' SUBROUTINE GetParameterFromFile: File ['//TRIM(FileName)//'] not found.'
+      END IF
+    ELSE
+      SWRITE(UNIT_stdOut,'(A)') ' SUBROUTINE GetParameterFromFile: File ['//TRIM(FileName)//'] not found.'
+    END IF
   output='file does not exist'
 END IF
 END SUBROUTINE GetParameterFromFile
