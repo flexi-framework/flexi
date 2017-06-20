@@ -320,9 +320,11 @@ USE MOD_PreProc
 USE MOD_DG_Vars           ,ONLY: U
 USE MOD_Mesh_Vars         ,ONLY: nElems
 USE MOD_FV_Vars           ,ONLY: FV_Elems
+USE MOD_FV_Basis          ,ONLY: FV_Build_X_w_BdryX
 USE MOD_Indicator         ,ONLY: CalcIndicator
-USE MOD_Interpolation     ,ONLY: GetVandermonde
-USE MOD_ChangeBasisByDim  ,ONLY: ChangeBasisVolume
+USE MOD_Basis             ,ONLY: InitializeVandermonde
+USE MOD_Interpolation     ,ONLY: GetNodesAndWeights
+USE MOD_ChangeBasis       ,ONLY: ChangeBasis2D_XYZ, ChangeBasis3D_XYZ
 USE MOD_Mesh_Vars         ,ONLY: Elem_xGP
 USE MOD_Equation_Vars     ,ONLY: IniExactFunc
 USE MOD_Exactfunc         ,ONLY: ExactFunc
@@ -331,10 +333,12 @@ USE MOD_ReadInTools       ,ONLY: GETLOGICAL
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER           :: i,iElem, j,k,ii,jj,kk,iVar
-REAL              :: Vdm(0:(PP_N+1)**2-1,0:PP_N)
-REAL,ALLOCATABLE  :: xx(:,:,:,:)
-REAL              :: tmp(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
+INTEGER                :: i,iElem, j,k,ii,jj,kk,iVar
+REAL                   :: FV_w,FV_BdryX(0:PP_N+1)
+REAL,DIMENSION(0:PP_N) :: FV_X,xGP,wGP,wBary,SubxGP
+REAL                   :: VDM(0:PP_N,0:PP_N,0:PP_N)
+REAL,ALLOCATABLE       :: xx(:,:,:,:)
+REAL                   :: tmp(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 !===================================================================================================================================
 ! initial call of indicator
 CALL CalcIndicator(U,0.)
@@ -346,19 +350,34 @@ CALL FV_Switch(AllowToDG=.FALSE.)
 ! may lead to non valid solutions inside a sub-cell.!
 !!! THIS IS EXPENSIVE !!!
 IF (GETLOGICAL("FV_IniSupersample")) THEN
-  ALLOCATE(xx(1:3,0:(PP_N+1)**2-1,0:(PP_N+1)**2-1,0:(PP_NZ+1)**2-1))
-  ! build vandermonde to supersample each subcell with PP_N points per direction
-  CALL GetVandermonde(PP_N,Nodetype,(PP_N+1)**2-1,NodeTypeVISUInner,Vdm)
+  
+  CALL GetNodesAndWeights(PP_N,NodeType,xGP,wGP,wBary)
+  CALL FV_Build_X_w_BdryX(PP_N,FV_X,FV_w,FV_BdryX)
+  DO i=0,PP_N
+    ! compute equidistant supersampling points inside FV sub-cell
+    DO j=0,PP_N
+      SubxGP(j) = FV_BdryX(i) + (j+0.5)/(PP_N+1)*FV_w
+    END DO
+    ! build Vandermonde for mapping the whole interval [-1,1] to the i-th FV subcell
+    CALL InitializeVandermonde(PP_N,PP_N,wBary,xGP,SubxGP,VDM(:,:,i))
+  END DO
+
+
+  ALLOCATE(xx(1:3,0:PP_N,0:PP_N,0:PP_NZ)) ! coordinates supersampled to FV subcell
   DO iElem=1,nElems
     IF (FV_Elems(iElem).EQ.0) CYCLE ! DG element
-    ! supersample all subcells
-    CALL ChangeBasisVolume(3,PP_N,(PP_N+1)**2-1,Vdm,Elem_xGP(1:3,:,:,:,iElem),xx)
     DO k=0,PP_NZ
       DO j=0,PP_N
         DO i=0,PP_N
+          ! supersample coordinates to i,j,k-th subcells
+#if PP_dim == 3
+          CALL ChangeBasis3D_XYZ(3,PP_N,PP_N,Vdm(:,:,i),Vdm(:,:,j),Vdm(:,:,k),Elem_xGP(1:3,:,:,:,iElem),xx)
+#else          
+          CALL ChangeBasis2D_XYZ(3,PP_N,PP_N,Vdm(:,:,i),Vdm(:,:,j),Elem_xGP(1:3,:,:,0,iElem),xx(:,:,:,0))
+#endif
           ! evaluate ExactFunc for all supersampled points of subcell (i,j,k)
           DO kk=0,PP_NZ; DO jj=0,PP_N; DO ii=0,PP_N
-            CALL ExactFunc(IniExactFunc,0.,xx(1:3,i*(PP_N+1)+ii,j*(PP_N+1)+jj,k*(PP_NZ+1)+kk),tmp(:,ii,jj,kk))
+            CALL ExactFunc(IniExactFunc,0.,xx(1:3,ii,jj,kk),tmp(:,ii,jj,kk))
           END DO; END DO; END DO
           ! mean value 
           DO iVar=1,PP_nVar

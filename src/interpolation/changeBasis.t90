@@ -180,6 +180,47 @@ END DO
 END SUBROUTINE ChangeBasis2D_SingleVar
 
 !==================================================================================================================================
+!> Interpolate an array of Dim1 2D tensor product Lagrange polynomials (defined by X_In) of order NIn to 2D Lagrange polynomials
+!> of order NOut using a seperate 1D Vandermonde matrix per reference direction.
+!==================================================================================================================================
+PURE SUBROUTINE ChangeBasis2D_XYZ(Dim1,NIn,NOut,Vdm_xi,Vdm_eta,X2D_In,X2D_Out)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN) :: Dim1                          ! < Number of variables
+INTEGER,INTENT(IN) :: NIn                           ! < Input polynomial degree, no. of points = NIn+1
+INTEGER,INTENT(IN) :: NOut                          ! < Output polynomial degree, no. of points = NOut+1
+REAL,INTENT(IN)    :: X2D_In(1:Dim1,0:NIn,0:NIn)    ! < Input field, dimensions must match Dim1,NIn
+REAL,INTENT(OUT)   :: X2D_Out(1:Dim1,0:NOut,0:NOut) ! < Output field, dimensions must match Dim1,NOut
+REAL,INTENT(IN)    :: Vdm_xi(0:NOut,0:NIn)          ! < 1D Vandermonde In -> Out xi direction
+REAL,INTENT(IN)    :: Vdm_eta(0:NOut,0:NIn)         ! < 1D Vandermonde In -> Out eta direction
+
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER             :: iI,jI,iO,jO
+REAL                :: X2D_Buf1(1:Dim1,0:NOut,0:NIn)  ! intermediate results from 1D interpolations
+!==================================================================================================================================
+X2D_buf1=0.
+! first direction iI
+DO jI=0,NIn
+  DO iI=0,NIn
+    DO iO=0,NOut
+      X2D_Buf1(:,iO,jI)=X2D_Buf1(:,iO,jI)+Vdm_xi(iO,iI)*X2D_In(:,iI,jI)
+    END DO
+  END DO
+END DO
+! second direction jI
+DO jI=0,NIn
+  DO jO=0,NOut
+    DO iO=0,NOut
+      X2D_Out(:,iO,jO)=X2D_Out(:,iO,jO)+Vdm_eta(jO,jI)*X2D_Buf1(:,iO,jI)
+    END DO
+  END DO
+END DO
+END SUBROUTINE ChangeBasis2D_XYZ
+
+!==================================================================================================================================
 !> Interpolate an array of Dim1 3D tensor product Lagrange polynomials (defined by X_In) of order NIn to 3D Lagrange polynomials
 !> of order NOut using the 1D Vandermonde matrix Vdm.
 !> If X_Out is present, the output will be written to X_Out, otherwise X_In will be overwritten.
