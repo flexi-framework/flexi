@@ -81,6 +81,6 @@ After a successful completion, the last lines in this files should look like in 
 To visualize the solution, the *State*-files must be converted into a format suitable for **ParaView**. Issue the command 
 
 ~~~~~~~
-flexi2vtk parameter_flexi2vtk.ini cartbox_State_000000*.h5
+flexi2vtk parameter_flexi.ini cartbox_State_000000*.h5
 ~~~~~~~
 to generate the corresponding *vtu*-files, which can then be loaded into **ParaView**. 
