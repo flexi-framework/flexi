@@ -8,6 +8,7 @@ import shutil
 import tempfile
 import time
 import argparse
+import csv
 
 from modify_prm import modify_prm, read_prm
 from analyze_functions import get_last_L2_error, get_last_Linf_error
@@ -22,6 +23,7 @@ def copy2temporary(tmp_dir, f) :
 
 parser = argparse.ArgumentParser(description='Tool to calculate the convergence rate')
 parser.add_argument('--N', type=int, default=3, help='polynomial degree N')
+parser.add_argument('-d','--dim', type=int, default=3, help='number of spatial dimensions (1/2/3)')
 parser.add_argument('-p','--procs', type=int, default=1, help='number of processors used to run Flexi')
 parser.add_argument('-g','--gnuplot', action='store_true', help='generate gnuplot pics (needs python-gnuplot package)')
 parser.add_argument('--printprmfile', action='store_true', help='output parameter file at the beginning')
@@ -53,7 +55,8 @@ EOC = int(read_prm(args.prm,'N'))+1
 modify_prm(args.prm, {'N' : args.N})
 
 # open file to print order of convergence
-convfile = projectname+'_convfile_N.csv'
+convfile = open(projectname+'_hconvfile_N'+str(args.N)+'.csv','wb')
+csvwriter=csv.writer(convfile, delimiter=',',quotechar='"',quoting=csv.QUOTE_MINIMAL)
 
 x_array = [1.,2.,4.,8.]
 grids = ['CART_HEX_PERIODIC_001_mesh.h5', \
@@ -78,7 +81,7 @@ for grid in grids :
     start_time = time.time()
     try :
         L2, Linf = execute_flexi(args.flexi, args.prm, projectname, \
-                [get_last_L2_error, get_last_Linf_error], mpi_procs = min(args.procs,x_array[i-1]**3))
+                [get_last_L2_error, get_last_Linf_error], mpi_procs = min(args.procs,x_array[i-1]**args.dim))
     except :
         shutil.rmtree(tmp_dir)
         exit(1)
@@ -88,20 +91,36 @@ for grid in grids :
         # output header of output-table
         print_header(['grid '] + len(L2)*['L2 err   EOC     '] + len(Linf)*['Linf err  EOC    '])
 
+        L2Err=[]
+        L2EOC=[]
+        LInfErr=[]
+        LInfEOC=[]
+        for j in range(len(L2)) :
+            L2Err.append(' L2 Err V'+str(j+1))
+            L2EOC.append(' L2 EOC V'+str(j+1))
+        for j in range(len(Linf)) :
+            LInfErr.append(' Linf Err V'+str(j+1))
+            LInfEOC.append(' Linf EOC V'+str(j+1))
+        csvwriter.writerow([' grid '] + L2Err + LInfErr + L2EOC + LInfEOC)
+
         # print initial values
         print_values([x_array[i-1]]+L2+Linf, ["%03d  "] + (len(L2)+len(Linf)) * ["%8.2e         "])
+        csvwriter.writerow([x_array[i-1]]+L2+Linf)
     else :
+        convL2=[None]*len(L2)
+        convLinf=[None]*len(Linf)
         # print L2, Linf errors and EOC
         vals = [x_array[i-1]]
         for j in range(len(L2)) :
-            conv = math.log(  last_L2[j] /   L2[j]) / math.log(x_array[i-1]/float(x_array[i-2]))
+            convL2[j] = math.log(  last_L2[j] /   L2[j]) / math.log(x_array[i-1]/float(x_array[i-2]))
             vals.append(L2[j])
-            vals.append(conv)
+            vals.append(convL2[j])
         for j in range(len(Linf)) :
-            conv = math.log(last_Linf[j] / Linf[j]) / math.log(x_array[i-1]/float(x_array[i-2]))
+            convLinf[j] = math.log(last_Linf[j] / Linf[j]) / math.log(x_array[i-1]/float(x_array[i-2]))
             vals.append(Linf[j])
-            vals.append(conv)
+            vals.append(convLinf[j])
         print_values(vals, ["%03d  "] + (len(L2)+len(Linf)) * ["%8.2e","%8.4f"])
+        csvwriter.writerow([x_array[i-1]]+L2+Linf+convL2+convLinf)
     
     if len(L2) < 5:
       index = 0
@@ -112,6 +131,7 @@ for grid in grids :
     #print end_time - start_time
     sys.stdout.flush()
 
+convfile.closed
 
 if args.gnuplot :
     # Try to import gnuplot for line plot output. If not on the system, set a flag to supress this output
