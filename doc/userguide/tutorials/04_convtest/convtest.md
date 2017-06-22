@@ -88,7 +88,7 @@ The inviscid convergence test is run from the parameter file *parameter_convtest
 
 The default settings for the time integration are displayed in table \ref{tab:convtest_num_set}.
 
-Table: Numerical settings for time integration \label{tab:freestream_num_set}
+Table: Numerical settings for time integration \label{tab:convtest_num_set}
 
 | Variable        | Description                            | Value         |
 | --------------- |:--------------------------------------:|:-------------:|
