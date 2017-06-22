@@ -32,6 +32,7 @@ The simulation setup is defined in *parameter_flexi.ini* and includes options fo
 
 Explanation of the Finite Volume specific options:
 \label{sec:fv_options}
+
 * ``IndicatorType``: specifies the indicator function that is used to detect DG elements that contain a discontinuity. The ``Persson`` indicator [@Persson06shock] is an element local indicator, which compares the different modes of the DG polynomial. If the amount of solution in the highest mode compared to the amount in the lower modes is high the DG polynomial may oscillate. All indicator functions return a high value for trouble elements and a low value for smooth elements.
 * ``IndVar``: Variable that is used to evaluate the indicator function. Here the density is used. In general the pressure (6) is a good choice.
 * ``IndStartTime``: Until this time the actual indicator function is overwritten by a very high value to force the use of FV elements in the hole domain. This is necessary if initial discontinuities (like in this example) are placed perfectly at the element boundaries. In this case an element local indicator (like Persson) can not detect the discontinuity.
