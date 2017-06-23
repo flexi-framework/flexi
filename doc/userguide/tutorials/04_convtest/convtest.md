@@ -107,7 +107,7 @@ Two scripts are provided, the file *convergence_grid* calculates the order of gr
 The command
 
 ~~~~~~~
-$FLEXIROOT/tools/convergence_test/convergence_grid $FLEXIDIR/bin/flexi parameter_convtest_flexi.ini
+$FLEXIROOT/tools/convergence_test/convergence_grid $FLEXIDIR/bin/flexi parameter_convtest_flexi.ini --gnuplot
 ~~~~~~~
 
 runs the code. The standard output of **FLEXI** is written into the logfile *ConvTest.log*. An ASCII file *ConvTest_convfile_grid.csv* is written that includes all L2 and L_inf error norms for the state vector $U$ for all meshes and the corresponding orders of convergence. Furthermore, a PDF file *ConvTest_convtest_grid.pdf* is generated that plots the L2 error of the momentum in $x$-direction against the number of elements of the meshes. Another curve represents the theoretical order of convergence for the chosen polynomial degree.
@@ -115,7 +115,7 @@ runs the code. The standard output of **FLEXI** is written into the logfile *Con
 Spectral convergence can be investigated using the command
 
 ~~~~~~~
-$FLEXIROOT/tools/convergence_test/convergence $FLEXIDIR/bin/flexi parameter_convtest_flexi.ini
+$FLEXIROOT/tools/convergence_test/convergence $FLEXIDIR/bin/flexi parameter_convtest_flexi.ini --gnuplot
 ~~~~~~~
 
 Corresponding files are produced, where *\_grid* is replaced by *\_N*. Figure \ref{fig:convtest_convergence_grid} shows the result for grid convergence.
@@ -162,7 +162,7 @@ The parameter file for this case is *parameter_convtestvisc_flexi.ini*. Some mod
 Execution of the convergence tests is analogously to the inviscid case, e.g.
 
 ~~~~~~~
-$FLEXIROOT/tools/convergence_test/convergence_grid $FLEXIDIR/bin/flexi parameter_convtestvisc_flexi.ini
+$FLEXIROOT/tools/convergence_test/convergence_grid $FLEXIDIR/bin/flexi parameter_convtestvisc_flexi.ini --gnuplot
 ~~~~~~~
 
 
