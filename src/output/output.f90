@@ -602,22 +602,15 @@ IF(openStat.NE.0) THEN
 END IF
 ! Choose between CSV and tecplot output format
 IF (ASCIIOutputFormat.EQ.ASCIIOUTPUTFORMAT_CSV) THEN
-  DO i=1,nVar(2) ! Loop over all output times (equals lines to write)
-    ! Write time stamp
-    WRITE(ioUnit,'(E23.14E5)',ADVANCE='NO') time(i)
-    DO j=1,nVar(1)-1 ! Loop over variables
-      WRITE(ioUnit,'(1A,E23.14E5)',ADVANCE='NO') ",",output(nVar(1)*(i-1)+j)
-    END DO ! 
-    ! New line at last variable
-    WRITE(ioUnit,'(1A,E23.14E5)',ADVANCE='YES') ",",output(nVar(1)*(i-1)+nVar(2))
-  END DO
+  ! Create format string for the variable output: WITH COMMA SEPARATION
+  WRITE(formatStr,'(A10,I2,A18)')'(E23.14E5,',nVar(1),'(",",1X,E23.14E5))'
 ELSE
-  ! Create format string for the variable output
+  ! Create format string for the variable output: WITH BLANK SEPARATION
   WRITE(formatStr,'(A10,I2,A14)')'(E23.14E5,',nVar(1),'(1X,E23.14E5))'
-  DO i=1,nVar(2)
-    WRITE(ioUnit,formatstr) time(i),output(nVar(1)*(i-1)+1:nVar(1)*i)
-  END DO
 END IF
+DO i=1,nVar(2)
+  WRITE(ioUnit,formatstr) time(i),output(nVar(1)*(i-1)+1:nVar(1)*i)
+END DO
 CLOSE(ioUnit) ! outputfile
 END SUBROUTINE OutputToFile
 
