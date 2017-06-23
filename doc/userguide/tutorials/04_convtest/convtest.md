@@ -61,13 +61,12 @@ The manufactured solution is
 
 The advantage is that for the Euler equation, the resulting source term is zero, $Q(x,t) \equiv 0$.
 
-As mesh, a Cartesian box is used with periodic boundaries. The mesh and the corresponding solution is shown in \ref{fig:convtest_mesh_and_result}.
-
+As mesh, a Cartesian box is used with periodic boundaries. The mesh and the corresponding solution are shown in  following figure:
 
 ![](tutorials/04_convtest/convtest_mesh.png)   ![](tutorials/04_convtest/convtest_result.png) 
 Figure: Mesh and flow field solution of the density. View in $x$-$y$-plane.\label{fig:convtest_mesh_and_result}
 
-To investigate the order of convergence of a given polynomial degree $N$, the mesh resolution has to increase. We provide meshes with 1, 2, 4 and 8 elements. They are provided in the tutorial directory with an according parameter file for the preprocessing tool HOPR.
+To investigate the order of convergence of a given polynomial degree $N$, the mesh resolution has to increase. We provide meshes with 1, 2, 4 and 8 elements in each spatial direction. They are provided in the tutorial directory with an according parameter file for the preprocessing tool HOPR.
 
 #### Flow Simulation with FLEXI
 
@@ -119,7 +118,7 @@ Spectral convergence can be investigated using the command
 $FLEXIROOT/tools/convergence_test/convergence $FLEXIDIR/bin/flexi parameter_convtest_flexi.ini
 ~~~~~~~
 
-Corresponding files are produced, where *\_grid* is replaced by *\_N*. Figure \ref{fig:convtest_convergenceplots} shows the result for grid convergence.
+Corresponding files are produced, where *\_grid* is replaced by *\_N*. Figure \ref{fig:convtest_convergence_grid} shows the result for grid convergence.
 
 ![Plot of grid convergence \label{fig:convtest_convergence_grid}](tutorials/04_convtest/ConvTest_convtest_grid.pdf)
 
@@ -153,7 +152,7 @@ For this case, another manufactured solution is chosen
 The same function is applied to the momentum in all spatial directions. The mass specific total energy in this case is $\rho e = \rho \rho$.
 This manufactured solution has a non-zero source term. In **FLEXI**, this source term is added in the routine *CalcSource* in the file 
 
-         $FLEXIROOT/src/equations/navierstokes/equations.f90
+         $FLEXIROOT/src/equations/navierstokes/idealgas/exactfunc.f90
 
 
 Note that this manufacture can also be solved without considering the viscous terms. In this case the source term does not vanish.
@@ -184,8 +183,4 @@ The convergence test scripts are provided in the directory
 including the Python script to execute **FLEXI**
 
        $FLEXIROOT/tools/convergence_test/execute_flexi.py
-
-The mesh files and the parameter files are also available in the directory
-
-       $FLEXIROOT/ini/convtest
 
