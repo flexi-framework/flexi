@@ -179,12 +179,12 @@ ALLOCATE(MPIRequest_gradU(nNbProcs,3,2))
 MPIRequest_gradU = MPI_REQUEST_NULL
 #endif /*PARABOLIC*/
 
-DataSizeSide      =PP_nVar*(PP_N+1)**2
-DataSizeSidePrim  =PP_nVarPrim*(PP_N+1)**2
-DataSizeSideO     =PP_nVar*(nOver+1)**2
 #ifdef EDDYVISCOSITY
 DataSizeSideScalar= 2*(PP_N+1)**2
 #endif
+DataSizeSide      =PP_nVar*(PP_N+1)*(PP_NZ+1)
+DataSizeSidePrim  =PP_nVarPrim*(PP_N+1)*(PP_NZ+1)
+DataSizeSideO =PP_nVar*(nOver+1)*(PP_NOverZ+1)
 
 ! split communicator into smaller groups (e.g. for local nodes)
 GroupSize=GETINT('GroupSize','0')

@@ -17,6 +17,7 @@
 !> Provides parameters, used globally (please use EXTREMLY carefully!)
 !==================================================================================================================================
 MODULE MOD_Globals
+USE ISO_C_BINDING
 ! MODULES
 #if USE_MPI
 USE mpi

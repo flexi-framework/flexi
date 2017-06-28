@@ -1,18 +1,16 @@
 # =========================================================================
 # Flexi CMake configuration
 # =========================================================================
-CMAKE_MINIMUM_REQUIRED(VERSION 2.8.11)
-# TODO: eventually require CMake 3.0 in future releases
-# Advantages: Possible to split string
-IF ("${CMAKE_VERSION}" VERSION_GREATER 3.0.0)
-  cmake_policy (SET CMP0045 OLD)
-  cmake_policy (SET CMP0046 OLD)
-ENDIF()
+# NOTE: use minimum CMake version required by tools/libs (Paraview, HDF5, FFTW)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.3.0)
+# Policies (see https://cmake.org/cmake/help/v3.8/manual/cmake-policies.7.html)
+cmake_policy (SET CMP0045 OLD)
+cmake_policy (SET CMP0046 OLD)
+# Folder for custom CMake source files
 LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 SET_PROPERTY(GLOBAL PROPERTY USE_FOLDERS ON)
 INCLUDE(ExternalProject)
 INCLUDE(CMakeDependentOption)
-
 
 # =========================================================================
 # Check whether we are on Github or at IAG
@@ -94,6 +92,7 @@ OPTION(FLEXI_EDDYVISCOSITY "Enable eddy viscosity modells" OFF)
 OPTION(FLEXI_MKL "Use MKL libraries instead of BLAS/LAPACK" OFF)
 OPTION(FLEXI_PAPI "Use PAPI library to perform performance measurements (e.g. flop counts)." OFF)
 OPTION(FLEXI_FV "Enable Finite Volume subcell shock capturing" OFF)
+OPTION(FLEXI_2D "Enable two dimensional computation" OFF)
 CMAKE_DEPENDENT_OPTION(FLEXI_FV_RECONSTRUCTION "Enable 2nd order reconstruction for FV" ON
                                                "FLEXI_FV" OFF)
 SET(   FLEXI_BUILD_HDF5 ON  CACHE BOOL "Compile and build hdf5 library")
@@ -164,7 +163,7 @@ IF (FLEXI_PARABOLIC)
     MESSAGE(ERROR "No such LIFTING known.")
   ENDIF()
 
-  #### Set the lifting
+  #### Set the law for viscosity
   IF(FLEXI_EQNSYSNAME STREQUAL "navierstokes")
     SET(FLEXI_VISCOSITY "constant" CACHE STRING "Method to calculate viscosity (constant/sutherland/powerlaw)")
     SET_PROPERTY(CACHE FLEXI_VISCOSITY PROPERTY STRINGS constant sutherland powerlaw)
@@ -183,6 +182,15 @@ IF (FLEXI_PARABOLIC)
   ENDIF()
 ELSE()
   ADD_DEFINITIONS(-DPARABOLIC=0)
+ENDIF()
+
+# =========================================================================
+# Dimension related preproc variables
+# =========================================================================
+IF(FLEXI_2D)
+  ADD_DEFINITIONS(-DPP_dim=2)
+ELSE()
+  ADD_DEFINITIONS(-DPP_dim=3)
 ENDIF()
 
 # =========================================================================
@@ -356,7 +364,7 @@ ELSE()
       GIT_TAG ${HDF5TAG}
       PREFIX ${FLEXI_HDF5_DIR}
       UPDATE_COMMAND ""
-      CONFIGURE_COMMAND FC=${FLEXI_HDF5FC} CC=${FLEXI_HDF5CC} ${FLEXI_HDF5_DIR}/src/HDF5/configure --prefix=${FLEXI_HDF5_DIR} --enable-fortran ${FLEXI_HDF5PARALLEL} --disable-shared --libdir=${FLEXI_HDF5_DIR}/lib
+      CONFIGURE_COMMAND FC=${FLEXI_HDF5FC} CC=${FLEXI_HDF5CC} ${FLEXI_HDF5_DIR}/src/HDF5/configure --prefix=${FLEXI_HDF5_DIR} --with-pic --enable-fortran ${FLEXI_HDF5PARALLEL} --disable-shared --libdir=${FLEXI_HDF5_DIR}/lib
       BUILD_COMMAND ${MAKE}
     )
     # CMake HDF5 is fast but not that reliable
@@ -390,8 +398,6 @@ IF(FLEXI_HDF5_CMAKE)
   LIST(APPEND linkedlibs ${HDF5_FORTRAN_STATIC_LIBRARY} ${HDF5_LIBRARIES})
 ELSE()
   INCLUDE_DIRECTORIES (${HDF5_INCLUDE_DIR_FORTRAN} ${HDF5_INCLUDE_DIR})
-  LIST(INSERT HDF5_LIBRARIES 0 ${HDF5_hdf5_fortran_LIBRARY_RELEASE})
-  LIST(REMOVE_DUPLICATES HDF5_LIBRARIES)
   MESSAGE(STATUS "Found HDF5 Libs: " ${HDF5_LIBRARIES})
   LIST(APPEND linkedlibs ${HDF5_LIBRARIES} )
 ENDIF()
@@ -476,7 +482,8 @@ FILE(GLOB_RECURSE flexiF90 ./src/interpolation/*.f90
                            ./src/io_hdf5/*.f90
                            ./src/timedisc/*.f90
                            ./src/testcase/${FLEXI_TESTCASE}/*.f90
-                           ./unitTests/generateunittestreferencedata.f90)
+                           ./unitTests/unittest.f90
+                           ./unitTests/unittest_vars.f90)
 # 
 # The following files/directories where excluded from the above global recursive search,
 # since some of the subdirectories should only be included if the respective feature is enabled.
@@ -559,6 +566,11 @@ ADD_DEPENDENCIES(flexi2vtk flexilib HDF5)
 # =========================================================================
 IF(FLEXI_BUILDPOSTI)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/CMakeLists.txt)
+ELSE()
+  GETLISTOFVARSSTARTINGWITH("POSTI_" postiVars)
+  FOREACH (_var IN LISTS postiVars)
+    UNSET(${_var} CACHE)
+  ENDFOREACH()
 ENDIF()
 
 # =========================================================================

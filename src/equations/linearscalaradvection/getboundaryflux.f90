@@ -149,15 +149,15 @@ USE MOD_Riemann      ,ONLY: GetFlux
 INTEGER,INTENT(IN)                   :: SideID  
 REAL,INTENT(IN)                      :: t       !< current time (provided by time integration scheme)
 INTEGER,INTENT(IN)                   :: Nloc    !< polynomial degree
-REAL,INTENT(IN)                      :: UPrim_master( PP_nVarPrim,0:Nloc,0:Nloc) !< inner surface solution
+REAL,INTENT(IN)                      :: UPrim_master( PP_nVarPrim,0:Nloc,0:PP_NlocZ) !< inner surface solution
 #if PARABOLIC
                                                                            !> inner surface solution gradients in x/y/z-direction
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:Nloc),INTENT(IN)  :: gradUx_master,gradUy_master,gradUz_master
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:PP_NlocZ),INTENT(IN)  :: gradUx_master,gradUy_master,gradUz_master
 #endif /*PARABOLIC*/
                                                                            !> normal and tangential vectors on surfaces
-REAL,DIMENSION(      3,0:Nloc,0:Nloc),INTENT(IN)  :: NormVec,TangVec1,TangVec2
-REAL,DIMENSION(      3,0:Nloc,0:Nloc),INTENT(IN)  :: Face_xGP   !< positions of surface flux points
-REAL,DIMENSION(PP_nVar,0:Nloc,0:Nloc),INTENT(OUT) :: Flux       !< resulting boundary fluxes
+REAL,DIMENSION(      3,0:Nloc,0:PP_NlocZ),INTENT(IN)  :: NormVec,TangVec1,TangVec2
+REAL,DIMENSION(      3,0:Nloc,0:PP_NlocZ),INTENT(IN)  :: Face_xGP   !< positions of surface flux points
+REAL,DIMENSION(PP_nVar,0:Nloc,0:PP_NlocZ),INTENT(OUT) :: Flux       !< resulting boundary fluxes
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                              :: p,q
@@ -171,7 +171,7 @@ SELECT CASE(BCType)
 CASE(1) !Periodic already filled!
 CASE(2) !Exact function or refstate
   ! BCState specifies refstate to be used, if 0 then use iniexactfunc
-  DO q=0,Nloc; DO p=0,Nloc
+  DO q=0,PP_NlocZ; DO p=0,Nloc
     CALL ExactFunc(IniExactFunc,t,Face_xGP(:,p,q),UPrim_boundary(:,p,q))
   END DO; END DO
   CALL GetFlux(Nloc,Flux,UPrim_master,UPrim_boundary,    &
@@ -205,13 +205,13 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN):: SideID  
 REAL,INTENT(IN)   :: t
-REAL,INTENT(IN)   :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_N)
-REAL,INTENT(OUT)  :: gradU       (PP_nVarPrim,0:PP_N,0:PP_N)
-REAL,INTENT(IN)   :: NormVec (              3,0:PP_N,0:PP_N)
-REAL,INTENT(IN)   :: TangVec1(              3,0:PP_N,0:PP_N)
-REAL,INTENT(IN)   :: TangVec2(              3,0:PP_N,0:PP_N)
-REAL,INTENT(IN)   :: Face_xGP(              3,0:PP_N,0:PP_N)
-REAL,INTENT(IN)   :: sdx_Face(                0:PP_N,0:PP_N,3)
+REAL,INTENT(IN)   :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ)
+REAL,INTENT(OUT)  :: gradU       (PP_nVarPrim,0:PP_N,0:PP_NZ)
+REAL,INTENT(IN)   :: NormVec (              3,0:PP_N,0:PP_NZ)
+REAL,INTENT(IN)   :: TangVec1(              3,0:PP_N,0:PP_NZ)
+REAL,INTENT(IN)   :: TangVec2(              3,0:PP_N,0:PP_NZ)
+REAL,INTENT(IN)   :: Face_xGP(              3,0:PP_N,0:PP_NZ)
+REAL,INTENT(IN)   :: sdx_Face(                0:PP_N,0:PP_NZ,3)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER :: p,q
@@ -227,7 +227,7 @@ ELSE
   SELECT CASE(BCType)
   CASE(2) ! exact BC = Dirichlet BC !!
     ! Determine the exact BC state
-    DO q=0,PP_N; DO p=0,PP_N
+    DO q=0,PP_NZ; DO p=0,PP_N
       CALL ExactFunc(IniExactFunc,t,Face_xGP(:,p,q),UPrim_boundary)
       gradU(:,p,q) = (UPrim_master(:,p,q) - UPrim_boundary) * sdx_Face(p,q,3)
     END DO ; END DO
@@ -261,18 +261,18 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN):: SideID  
 REAL,INTENT(IN)   :: t                                       !< current time (provided by time integration scheme)
-REAL,INTENT(IN)   :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_N) !< primitive solution from the inside
-REAL,INTENT(OUT)  :: Flux(        PP_nVarPrim,0:PP_N,0:PP_N) !< lifting boundary flux
-REAL,INTENT(IN)   :: NormVec (              3,0:PP_N,0:PP_N)
-REAL,INTENT(IN)   :: TangVec1(              3,0:PP_N,0:PP_N)
-REAL,INTENT(IN)   :: TangVec2(              3,0:PP_N,0:PP_N)
-REAL,INTENT(IN)   :: Face_xGP(              3,0:PP_N,0:PP_N)
-REAL,INTENT(IN)   :: SurfElem(                0:PP_N,0:PP_N)
+REAL,INTENT(IN)   :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ) !< primitive solution from the inside
+REAL,INTENT(OUT)  :: Flux(        PP_nVarPrim,0:PP_N,0:PP_NZ) !< lifting boundary flux
+REAL,INTENT(IN)   :: NormVec (              3,0:PP_N,0:PP_NZ)
+REAL,INTENT(IN)   :: TangVec1(              3,0:PP_N,0:PP_NZ)
+REAL,INTENT(IN)   :: TangVec2(              3,0:PP_N,0:PP_NZ)
+REAL,INTENT(IN)   :: Face_xGP(              3,0:PP_N,0:PP_NZ)
+REAL,INTENT(IN)   :: SurfElem(                0:PP_N,0:PP_NZ)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER           :: p,q
 INTEGER           :: BCType,BCState
-REAL              :: UPrim_boundary(PP_nVarPrim,0:PP_N,0:PP_N)
+REAL              :: UPrim_boundary(PP_nVarPrim,0:PP_N,0:PP_NZ)
 !==================================================================================================================================
 BCType  = Boundarytype(BC(SideID),BC_TYPE)
 BCState = Boundarytype(BC(SideID),BC_STATE)
@@ -282,7 +282,7 @@ IF (BCType.LT.0) THEN ! testcase boundary conditions
 ELSE
   SELECT CASE(BCType)
   CASE(2)
-    DO q=0,PP_N; DO p=0,PP_N
+    DO q=0,PP_NZ; DO p=0,PP_N
       CALL ExactFunc(IniExactFunc,t,Face_xGP(:,p,q),UPrim_boundary(:,p,q))
     END DO; END DO
     Flux=0.5*(UPrim_master+UPrim_boundary)
@@ -295,7 +295,7 @@ ELSE
   !in case lifting is done in strong form
   IF(.NOT.doWeakLifting) Flux=Flux-UPrim_master
   
-  DO q=0,PP_N; DO p=0,PP_N
+  DO q=0,PP_NZ; DO p=0,PP_N
     Flux(:,p,q)=Flux(:,p,q)*SurfElem(p,q)
   END DO; END DO
 END IF
@@ -306,7 +306,7 @@ END SUBROUTINE Lifting_GetBoundaryFlux
 
 
 !==================================================================================================================================
-!> Initialize boundary conditions
+!> Finalize boundary conditions
 !==================================================================================================================================
 SUBROUTINE FinalizeBC()
 ! MODULES

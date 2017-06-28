@@ -73,13 +73,7 @@ DO iElem=1,nElems
   END DO; END DO; END DO! i,j,k=0,NIn
 END DO
 
-! Check ChangeBasis3D_Mult
-CALL ChangeBasis3D(nVar,nElems,NIn,NOut,Vdm,UIn,UOut(:,:,:,:,:,1),.FALSE.)
-
-! Check ChangeBasis3D_Mult with add to UOut 
-CALL ChangeBasis3D(nVar,nElems,NIn,NOut,Vdm,UIn,UOut(:,:,:,:,:,2),.TRUE.)
-
-! Check ChangeBasis3D_Single
+! Check ChangeBasis3D
 CALL ChangeBasis3D(nVar,NIn,NOut,Vdm,UIn(:,:,:,:,1),UOut(:,:,:,:,1,3))
 
 ! Check ChangeBasis3D_XYZ
@@ -87,7 +81,7 @@ CALL ChangeBasis3D_XYZ(nVar,NIn,NOut,Vdm,Vdm2,Vdm3,UIn(:,:,:,:,1),UOut(:,:,:,:,1
 
 UIn2D = UIn(:,:,:,0,:)
 UOut2D = UOut(:,:,:,0,:,1:3)
-! Check ChangeBasis2D_Single
+! Check ChangeBasis2D
 CALL ChangeBasis2D(nVar,NIn,NOut,Vdm,UIn2D(:,:,:,1),UOut2D(:,:,:,1,1))
 
 IF (doGenerateReference) THEN
@@ -127,6 +121,8 @@ ELSE
     IF (.NOT.equal) THEN
       WRITE(*,*) 'ERROR - Calculated ChangeBasis deviate from reference.'
       STOP -1
+    ELSE
+      WRITE(*,*) 'Compared ChangeBasis against stored data -- SUCCESSFUL.'
     END IF
   ELSE
     WRITE(*,*) 'ERROR - No reference solution has been found.'

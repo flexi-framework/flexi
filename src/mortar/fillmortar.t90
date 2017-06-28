@@ -55,8 +55,8 @@ IMPLICIT NONE
 #ifdef WITHnVar
 INTEGER,INTENT(IN) :: TP_nVar
 #endif
-REAL,INTENT(INOUT) :: U_in_master(1:TP_nVar,0:PP_N,0:PP_N,1:nSides) !< (INOUT) can be U or Grad_Ux/y/z_master
-REAL,INTENT(INOUT) :: U_in_slave( 1:TP_nVar,0:PP_N,0:PP_N,1:nSides) !< (INOUT) can be U or Grad_Ux/y/z_master
+REAL,INTENT(INOUT) :: U_in_master(1:TP_nVar,0:PP_N,0:TP_NZ,1:nSides) !< (INOUT) can be U or Grad_Ux/y/z_master
+REAL,INTENT(INOUT) :: U_in_slave( 1:TP_nVar,0:PP_N,0:TP_NZ,1:nSides) !< (INOUT) can be U or Grad_Ux/y/z_master
 LOGICAL,INTENT(IN) :: doMPISides                                 !< flag whether MPI sides are processed
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -64,8 +64,10 @@ INTEGER      :: p,q,l
 INTEGER      :: iMortar,nMortars
 INTEGER      :: firstMortarSideID,lastMortarSideID
 INTEGER      :: MortarSideID,SideID,locSide,flip
-REAL         :: U_tmp( TP_nVar,0:PP_N,0:PP_N,1:4)
-REAL         :: U_tmp2(TP_nVar,0:PP_N,0:PP_N,1:2)
+REAL         :: U_tmp( TP_nVar,0:PP_N,0:TP_NZ,1:4)
+#if PP_dim == 3
+REAL         :: U_tmp2(TP_nVar,0:PP_N,0:TP_NZ,1:2)
+#endif
 REAL,POINTER :: M1(:,:),M2(:,:)
 !==================================================================================================================================
 !                         doMPISides==True   doMPISides==False
@@ -85,6 +87,7 @@ DO MortarSideID=firstMortarSideID,lastMortarSideID
   END IF
 #endif
 
+#if PP_dim == 3
   SELECT CASE(MortarType(1,MortarSideID))
   CASE(1) !1->4
     !first in eta
@@ -127,7 +130,7 @@ DO MortarSideID=firstMortarSideID,lastMortarSideID
     !    U_tmp(iVar,p,:,1)  =  M1 * U_in_master(iVar,p,:,MortarSideID)
     !    U_tmp(iVar,p,:,2)  =  M2 * U_in_master(iVar,p,:,MortarSideID)
     DO q=0,PP_N
-      DO p=0,PP_N ! for every xi-layer perform Mortar operation in eta-direction 
+      DO p=0,PP_N ! for every xi-layer perform Mortar operation in eta-direction
         U_tmp(:,p,q,1)=                 M1(0,q)*U_in_master(:,p,0,MortarSideID)
         U_tmp(:,p,q,2)=                 M2(0,q)*U_in_master(:,p,0,MortarSideID)
         DO l=1,PP_N
@@ -137,8 +140,9 @@ DO MortarSideID=firstMortarSideID,lastMortarSideID
       END DO
     END DO
 
-  CASE(3) !1->2 in xi
-    DO q=0,PP_N ! for every eta-layer perform Mortar operation in xi-direction
+  CASE(3) !1->2 in xi      NOTE: In 2D only XI mortars!!!
+#endif
+    DO q=0,TP_NZ ! for every eta-layer perform Mortar operation in xi-direction
       ! The following p- and l-loop are two MATMULs: (ATTENTION M1 and M2 are already transposed in mortar.f90)
       !    U_tmp(iVar,:,q,1)  =  M1 * U_in_master(iVar,:,q,MortarSideID)
       !    U_tmp(iVar,:,q,2)  =  M2 * U_in_master(iVar,:,q,MortarSideID)
@@ -151,7 +155,9 @@ DO MortarSideID=firstMortarSideID,lastMortarSideID
         END DO
       END DO
     END DO
+#if PP_dim == 3
   END SELECT ! mortarType(SideID)
+#endif
 
   nMortars=MERGE(4,2,MortarType(1,MortarSideID).EQ.1)
   locSide=MortarType(2,MortarSideID)
@@ -162,7 +168,7 @@ DO MortarSideID=firstMortarSideID,lastMortarSideID
       CASE(0) ! master side
         U_in_master(:,:,:,SideID)=U_tmp(:,:,:,iMortar)
       CASE(1:4) ! slave side
-        DO q=0,PP_N; DO p=0,PP_N
+        DO q=0,TP_NZ; DO p=0,PP_N
           U_in_slave(:,p,q,SideID)=U_tmp(:,FS2M(1,p,q,flip), &
                                            FS2M(2,p,q,flip),iMortar)
         END DO; END DO ! q, p
@@ -212,8 +218,8 @@ IMPLICIT NONE
 #ifdef WITHnVar
 INTEGER,INTENT(IN) :: TP_nVar
 #endif
-REAL,INTENT(INOUT) :: Flux_master(1:TP_nVar,0:PP_N,0:PP_N,1:nSides) !< input data
-REAL,INTENT(IN)    :: Flux_slave (1:TP_nVar,0:PP_N,0:PP_N,1:nSides) !< input data
+REAL,INTENT(INOUT) :: Flux_master(1:TP_nVar,0:PP_N,0:PP_NZ,1:nSides) !< input data
+REAL,INTENT(IN)    :: Flux_slave (1:TP_nVar,0:PP_N,0:PP_NZ,1:nSides) !< input data
 LOGICAL,INTENT(IN) :: doMPISides                             !< flag whether MPI sides are processed
 LOGICAL,INTENT(IN) :: weak                                   !< flag whether strong or weak form is used
 LOGICAL,INTENT(IN),OPTIONAL :: onlyFV                        !< flag whether only FV sides should be handled
@@ -223,8 +229,10 @@ INTEGER      :: p,q,l
 INTEGER      :: iMortar,nMortars
 INTEGER      :: firstMortarSideID,lastMortarSideID
 INTEGER      :: MortarSideID,SideID,iSide,flip
-REAL         :: Flux_tmp( TP_nVar,0:PP_N,0:PP_N,1:4)
-REAL         :: Flux_tmp2(TP_nVar,0:PP_N,0:PP_N,1:2)
+REAL         :: Flux_tmp( TP_nVar,0:PP_N,0:PP_NZ,1:4)
+#if PP_dim == 3
+REAL         :: Flux_tmp2(TP_nVar,0:PP_N,0:PP_NZ,1:2)
+#endif
 REAL,POINTER :: M1(:,:),M2(:,:)
 LOGICAL      :: onlyFV_loc
 !==================================================================================================================================
@@ -251,11 +259,11 @@ DO MortarSideID=firstMortarSideID,lastMortarSideID
       Flux_tmp(:,:,:,iMortar)=Flux_master(:,:,:,SideID)
     CASE(1:4) ! slave sides (should only occur for MPI)
       IF(weak)THEN
-        DO q=0,PP_N; DO p=0,PP_N
+        DO q=0,PP_NZ; DO p=0,PP_N
           Flux_tmp(:,p,q,iMortar)=-Flux_slave(:,FS2M(1,p,q,flip),FS2M(2,p,q,flip),SideID)
         END DO; END DO
       ELSE    ! do not change sign if strong form
-        DO q=0,PP_N; DO p=0,PP_N
+        DO q=0,PP_NZ; DO p=0,PP_N
           Flux_tmp(:,p,q,iMortar)= Flux_slave(:,FS2M(1,p,q,flip),FS2M(2,p,q,flip),SideID)
         END DO; END DO
       END IF
@@ -271,6 +279,7 @@ DO MortarSideID=firstMortarSideID,lastMortarSideID
     M2=>   M_2_0
   END IF
 #endif
+#if PP_dim == 3
   SELECT CASE(MortarType(1,MortarSideID))
   CASE(1) !1->4
     ! first in xi
@@ -312,8 +321,9 @@ DO MortarSideID=firstMortarSideID,lastMortarSideID
       END DO
     END DO
 
-  CASE(3) !1->2 in xi
-    DO q=0,PP_N ! for every eta-layer perform Mortar operation in xi-direction 
+  CASE(3) !1->2 in xi   NOTE: In 2D only XI mortars
+#endif
+    DO q=0,PP_NZ ! for every eta-layer perform Mortar operation in xi-direction 
       ! The following p- and l-loop are two MATMULs: (ATTENTION M1 and M2 are already transposed in mortar.f90)
       !    Flux_master(iVar,:,q,MortarSideID)  =   M1 * Flux_tmp(iVar,:,q,1) + M2 * Flux_tmp(iVar,:,q,2)
       DO p=0,PP_N
@@ -324,6 +334,8 @@ DO MortarSideID=firstMortarSideID,lastMortarSideID
       END DO
     END DO
 
+#if PP_dim == 3
   END SELECT ! mortarType(MortarSideID)
+#endif
 END DO !MortarSideID
 END SUBROUTINE Flux_Mortar

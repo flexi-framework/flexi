@@ -820,6 +820,8 @@ INTEGER,INTENT(IN)             :: nArgs
 INTEGER                        :: iSTATUS                           !> Error status
 INTEGER                        :: I                                 !> loop variable
 !===================================================================================================================================
+!TODO: use -j notation like in make (i.e. -j x uses x procs for compiling)
+
 IF(nArgs.GE.1)THEN ! first input argument must be "build"
   DO I=1,nArgs
     CALL str2int(RuntimeOption(I),NumberOfProcs,iSTATUS)
@@ -849,8 +851,9 @@ IF(nArgs.GE.1)THEN ! first input argument must be "build"
 ELSE
   NumberOfProcs=1
 END IF
+
 ! set the number of procs INTEGER/CHARACTER
-IF(NumberOfProcs.GE.1)THEN
+IF(NumberOfProcs.GT.0 .OR. NumberOfProcs.EQ.-1)THEN
   WRITE(UNIT=NumberOfProcsStr,FMT='(I5)') NumberOfProcs
 ELSE
   NumberOfProcsStr='fail'

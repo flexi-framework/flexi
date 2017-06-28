@@ -192,18 +192,18 @@ USE MOD_FV_Vars        ,ONLY: FV_Elems,FV_sVdm
 #if PARABOLIC && EQNSYSNR == 2
 USE MOD_Lifting_Vars   ,ONLY: gradUx,gradUy,gradUz
 #endif
-USE MOD_ChangeBasis
+USE MOD_ChangeBasisByDim,ONLY:ChangeBasisVolume
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(INOUT),TARGET :: U(1:PP_nVar,0:PP_N,0:PP_N,0:PP_N,1:nElems)   !< Solution
+REAL,INTENT(INOUT),TARGET :: U(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)   !< Solution
 REAL,INTENT(IN)           :: t                                            !< Simulation time
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                   :: iElem
 #if FV_ENABLED
-REAL,TARGET               :: U_DG(1:PP_nVar,0:PP_N,0:PP_N,0:PP_N)
+REAL,TARGET               :: U_DG(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 #endif
 REAL,POINTER              :: U_P(:,:,:,:)
 !==================================================================================================================================
@@ -223,11 +223,11 @@ CASE(INDTYPE_PERSSON) ! Modal Persson indicator
 #if FV_ENABLED
     IF (FV_Elems(iElem).EQ.0) THEN ! DG Element 
 #endif      
-      U_P(1:PP_nVar,0:PP_N,0:PP_N,0:PP_N) => U(:,:,:,:,iElem)
+      U_P(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) => U(:,:,:,:,iElem)
 #if FV_ENABLED
     ELSE
-      CALL ChangeBasis3D(PP_nVar,PP_N,PP_N,FV_sVdm,U(:,:,:,:,iElem),U_DG)
-      U_P(1:PP_nVar,0:PP_N,0:PP_N,0:PP_N) => U_DG
+      CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_sVdm,U(:,:,:,:,iElem),U_DG)
+      U_P(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) => U_DG
     END IF
 #endif
     IndValue(iElem) = IndPersson(U_P)
@@ -282,7 +282,7 @@ USE MOD_EOS_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)    :: U(PP_nVar,0:PP_N,0:PP_N,0:PP_N)           !< Solution
+REAL,INTENT(IN)    :: U(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)          !< Solution
 REAL               :: IndValue                                  !< Value of the indicator (Return Value)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -290,17 +290,17 @@ INTEGER                              :: iDeg,i,j,k,l
 #if EQNSYSNR == 2 /* NAVIER-STOKES */ 
 REAL                                 :: UE(1:PP_2Var)
 #endif /* NAVIER-STOKES */
-REAL,DIMENSION(0:PP_N,0:PP_N,0:PP_N) :: U_loc
-REAL,DIMENSION(0:PP_N,0:PP_N,0:PP_N) :: U_Xi
-REAL,DIMENSION(0:PP_N,0:PP_N,0:PP_N) :: U_Eta
-REAL,DIMENSION(0:PP_N,0:PP_N,0:PP_N) :: U_Modal
+REAL,DIMENSION(0:PP_N,0:PP_N,0:PP_NZ) :: U_loc
+REAL,DIMENSION(0:PP_N,0:PP_N,0:PP_NZ) :: U_Xi
+REAL,DIMENSION(0:PP_N,0:PP_N,0:PP_NZ) :: U_Eta
+REAL,DIMENSION(0:PP_N,0:PP_N,0:PP_NZ) :: U_Modal
 !==================================================================================================================================
 SELECT CASE (IndVar)
 CASE(1:PP_nVar)
   U_loc = U(IndVar,:,:,:)
 #if EQNSYSNR == 2 /* NAVIER-STOKES */ 
 CASE(6)
-  DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     UE(CONS)=U(:,i,j,k)
     UE(SRHO)=1./UE(DENS)
     UE(VELV)=VELOCITY_HE(UE)
@@ -313,15 +313,21 @@ END SELECT
 U_Xi   = 0.
 U_Eta  = 0.
 U_Modal= 0.
-DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N; DO l=0,PP_N
+DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N; DO l=0,PP_N
   U_Xi(i,j,k)    = U_Xi(i,j,k)    + sVdm_Leg(i,l)*U_loc(l,j,k)
 END DO ; END DO ; END DO ; END DO 
+#if PP_dim == 2
+DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N; DO l=0,PP_N
+  U_Modal(i,j,k) = U_Modal(i,j,k) + sVdm_Leg(j,l)*U_Xi(i,l,k) 
+END DO ; END DO ; END DO ; END DO 
+#else
 DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N; DO l=0,PP_N
   U_Eta(i,j,k)   = U_Eta(i,j,k)   + sVdm_Leg(j,l)*U_Xi(i,l,k) 
 END DO ; END DO ; END DO ; END DO 
 DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N; DO l=0,PP_N
   U_Modal(i,j,k) = U_Modal(i,j,k) + sVdm_Leg(k,l)*U_Eta(i,j,l) 
 END DO ; END DO ; END DO ; END DO 
+#endif
 
 ! Adapted Persson indicator
 IndValue=TINY(0.)
@@ -333,9 +339,11 @@ DO iDeg=0,nModes
   ! Eta
   IndValue=MAX(IndValue,SUM(U_Modal(:,PP_N-iDeg:PP_N-iDeg,:))**2 /  &
                         (SUM(U_Modal(:,0:PP_N-iDeg,:))**2+EPSILON(0.)))
+#if PP_dim == 3
   ! Zeta
   IndValue=MAX(IndValue,SUM(U_Modal(:,:,PP_N-iDeg:PP_N-iDeg))**2 /  &
                         (SUM(U_Modal(:,:,0:PP_N-iDeg))**2+EPSILON(0.)))
+#endif
 END DO
 ! Normalize indicator value
 IndValue=LOG10(IndValue)
@@ -357,9 +365,9 @@ USE MOD_FV_Vars            ,ONLY: FV_Elems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES 
-REAL,INTENT(IN)    :: gradUx(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,1:nElems)   !< Gradients in x-direction
-REAL,INTENT(IN)    :: gradUy(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,1:nElems)   !< Gradients in x-direction
-REAL,INTENT(IN)    :: gradUz(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,1:nElems)   !< Gradients in x-direction
+REAL,INTENT(IN)    :: gradUx(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)   !< Gradients in x-direction
+REAL,INTENT(IN)    :: gradUy(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)   !< Gradients in x-direction
+REAL,INTENT(IN)    :: gradUz(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)   !< Gradients in x-direction
 REAL               :: IndValue(1:nElems)                                  !< Value of the indicator (Return Value)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -369,13 +377,22 @@ REAL    :: divV2
 !==================================================================================================================================
 DO iElem=1,nElems
   IndValue = 0.
-  DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+#if PP_dim==3
       VorticityLoc(1)=gradUy(4,i,j,k,iElem)-gradUz(3,i,j,k,iElem)  ! dw/dy-dv/dz
       VorticityLoc(2)=gradUz(2,i,j,k,iElem)-gradUx(4,i,j,k,iElem)  ! du/dz-dw/dx
+#else
+      VorticityLoc(1)=0.
+      VorticityLoc(2)=0.
+#endif
       VorticityLoc(3)=gradUx(3,i,j,k,iElem)-gradUy(2,i,j,k,iElem)  ! dv/dx-du/dy
       Vorticity2=SUM(VorticityLoc(:)**2)
       
+#if PP_dim==3
       divV2 = (gradUx(2,i,j,k,iElem) + gradUy(3,i,j,k,iElem) + gradUz(4,i,j,k,iElem))**2
+#else
+      divV2 = (gradUx(2,i,j,k,iElem) + gradUy(3,i,j,k,iElem))**2
+#endif
 
       IntegrationWeight=wGPVol(i,j,k)/sJ(i,j,k,iElem,FV_Elems(iElem))
       IF (Vorticity2.LT.100) Vorticity2 = 0.
@@ -416,16 +433,21 @@ USE MOD_FV_Vars            ,ONLY: FV_Elems,FV_Elems_master,FV_Elems_slave
 !----------------------------------------------------------------------------------------------------------------------------------
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
-REAL,INTENT(IN)           :: U(PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems)              !< Solution
+REAL,INTENT(IN)           :: U(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems)              !< Solution
 REAL                      :: IndValue(1:nElems)                                  !< Value of the indicator (Return Value)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                      :: ElemVol,IntegrationWeight
 INTEGER                   :: i,j,k,flip,p,q,SideID,ijk(3),iSide,iElem
-REAL                      :: v(-1:PP_N+1,-1:PP_N+1,-1:PP_N+1),vmin,vmax
-REAL                      :: UJameson(1:1,0:PP_N,0:PP_N,0:PP_N,1:nElems)
-REAL                      :: UJameson_master(1:1,0:PP_N,0:PP_N,1:nSides)
-REAL                      :: UJameson_slave( 1:1,0:PP_N,0:PP_N,1:nSides)
+REAL                      :: vmin,vmax
+#if PP_dim == 3
+REAL                      :: v(-1:PP_N+1,-1:PP_N+1,-1:PP_N+1)
+#else
+REAL                      :: v(-1:PP_N+1,-1:PP_N+1,0:0)
+#endif
+REAL                      :: UJameson(1:1,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
+REAL                      :: UJameson_master(1:1,0:PP_N,0:PP_NZ,1:nSides)
+REAL                      :: UJameson_slave( 1:1,0:PP_N,0:PP_NZ,1:nSides)
 REAL                      :: UE(1:PP_2Var)
 INTEGER                   :: TMP(1:nElems)
 INTEGER                   :: TMP_master(1:nSides)
@@ -440,7 +462,7 @@ CASE(1:PP_nVar)
   UJameson(1,:,:,:,:) = U(IndVar,:,:,:,:)
 CASE(6)
   DO iElem=1,nElems
-    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       UE(CONS)=U(:,i,j,k,iElem)
       UE(SRHO)=1./UE(DENS)
       UE(VELV)=VELOCITY_HE(UE)
@@ -476,7 +498,7 @@ CALL U_Mortar1(UJameson_master,UJameson_slave,doMPiSides=.FALSE.)
 ! communicate UJameson_master from master to slave
 ! communicate UJameson_slave  from slave  to master
 #if USE_MPI
-DataSizeSide_loc = (PP_N+1)**2
+DataSizeSide_loc = (PP_N+1)*(PP_NZ+1)
 CALL StartReceiveMPIData(UJameson_slave ,DataSizeSide_loc,1,nSides,MPIRequest_U(   :,SEND),SendID=2) !  U_slave: slave -> master
 CALL StartSendMPIData(   UJameson_slave ,DataSizeSide_loc,1,nSides,MPIRequest_U(   :,RECV),SendID=2) !  U_slave: slave -> master
 CALL StartReceiveMPIData(UJameson_master,DataSizeSide_loc,1,nSides,MPIRequest_Flux(:,SEND),SendID=1) !  U_master: master -> slave
@@ -506,28 +528,32 @@ END DO
 
 ! evaluate the Jameson indicator for each element
 DO iElem=1,nElems
-  v(0:PP_N,0:PP_N,0:PP_N) = UJameson(1,0:PP_N,0:PP_N,0:PP_N,iElem)
+  v(0:PP_N,0:PP_N,0:PP_NZ) = UJameson(1,0:PP_N,0:PP_N,0:PP_NZ,iElem)
 
+#if PP_dim ==3
   DO iSide=1,6
+#else
+  DO iSide=2,5
+#endif
     Flip   = ElemToSide(E2S_FLIP,   iSide,iElem)
     SideID = ElemToSide(E2S_SIDE_ID,iSide,iElem)
     IF ((firstBCSide.LE.SideID.AND.SideID.LE.lastBCSide)) THEN ! BC side
       ! if we are at a BC side, then we have to use the local data, which is prolongated into UJameson_master 
-      DO q=0,PP_N; DO p=0,PP_N
-        ijk = SideToVol(PP_N,-1,p,q,Flip,iSide)
+      DO q=0,PP_NZ; DO p=0,PP_N
+        ijk = SideToVol(PP_N,-1,p,q,Flip,iSide,PP_dim)
         v(ijk(1),ijk(2),ijk(3)) = UJameson_master(1,p,q,SideID)
       END DO; END DO ! p,q=0,PP_N
     ELSE
       IF (Flip.EQ.0) THEN ! non BC side
         ! Master side => use data from slave side
-        DO q=0,PP_N; DO p=0,PP_N
-          ijk = SideToVol(PP_N,-1,p,q,Flip,iSide)
+        DO q=0,PP_NZ; DO p=0,PP_N
+          ijk = SideToVol(PP_N,-1,p,q,Flip,iSide,PP_dim)
           v(ijk(1),ijk(2),ijk(3)) = UJameson_slave(1,p,q,SideID)
         END DO; END DO ! p,q=0,PP_N
       ELSE
         ! Slave side => use data from master side 
-        DO q=0,PP_N; DO p=0,PP_N
-          ijk = SideToVol(PP_N,-1,p,q,Flip,iSide)
+        DO q=0,PP_NZ; DO p=0,PP_N
+          ijk = SideToVol(PP_N,-1,p,q,Flip,iSide,PP_dim)
           v(ijk(1),ijk(2),ijk(3)) = UJameson_master(1,p,q,SideID)
         END DO; END DO ! p,q=0,PP_N
       END IF
@@ -536,15 +562,19 @@ DO iElem=1,nElems
 
   ElemVol = 0.0
   IndValue(iElem) = 0.
-  DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     IntegrationWeight=wGPVol(i,j,k)/sJ(i,j,k,iElem,FV_Elems(iElem))
     ElemVol = ElemVol + IntegrationWeight
     vmin = MIN(v(i,j,k),v(i-1,j,k),v(i+1,j,k))
     vmin = MIN(vmin,    v(i,j-1,k),v(i,j+1,k))
+#if PP_dim == 3
     vmin = MIN(vmin,    v(i,j,k-1),v(i,j,k+1))
+#endif
     vmax = MAX(v(i,j,k),v(i-1,j,k),v(i+1,j,k))
     vmax = MAX(vmax,    v(i,j-1,k),v(i,j+1,k))
+#if PP_dim == 3
     vmax = MAX(vmax,    v(i,j,k-1),v(i,j,k+1))
+#endif
     IndValue(iElem) = IndValue(iElem) + ABS(vmin-2.*v(i,j,k)+vmax)/ABS(vmin+2.*v(i,j,k)+vmax) * IntegrationWeight
   END DO; END DO; END DO! i,j,k=0,PP_N
   IndValue(iElem) = IndValue(iElem) / ElemVol

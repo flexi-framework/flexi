@@ -79,15 +79,18 @@ CONTAINS
 !> Subroutine to write the solution U to HDF5 format
 !> Is used for postprocessing and for restart
 !==================================================================================================================================
-SUBROUTINE WriteState(MeshFileName,OutputTime,FutureTime,isErrorFile   )
+SUBROUTINE WriteState(MeshFileName,OutputTime,FutureTime,isErrorFile)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_DG_Vars      ,ONLY: U
-USE MOD_Output_Vars  ,ONLY: ProjectName,NOut,Vdm_N_NOut,WriteStateFiles
-USE MOD_Mesh_Vars    ,ONLY: offsetElem,nGlobalElems,sJ,nElems
-USE MOD_ChangeBasis  ,ONLY: ChangeBasis3D
-USE MOD_Equation_Vars,ONLY: StrVarNames
+USE MOD_DG_Vars           ,ONLY: U
+USE MOD_Output_Vars       ,ONLY: ProjectName,NOut,Vdm_N_NOut,WriteStateFiles
+USE MOD_Mesh_Vars         ,ONLY: offsetElem,nGlobalElems,sJ,nElems
+USE MOD_ChangeBasisByDim  ,ONLY: ChangeBasisVolume
+USE MOD_Equation_Vars     ,ONLY: StrVarNames
+#if PP_dim == 2
+USE MOD_2D                ,ONLY: ExpandArrayTo3D
+#endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -100,9 +103,13 @@ LOGICAL,INTENT(IN)             :: isErrorFile    !< indicate whether an error fi
 CHARACTER(LEN=255)             :: FileName,FileType
 REAL                           :: StartT,EndT
 REAL,POINTER                   :: UOut(:,:,:,:,:)
-REAL                           :: Utmp(5,0:PP_N,0:PP_N,0:PP_N)
-REAL                           :: JN(1,0:PP_N,0:PP_N,0:PP_N),JOut(1,0:NOut,0:NOut,0:NOut)
+#if PP_dim == 2
+REAL,ALLOCATABLE               :: UOutTmp(:,:,:,:,:)
+#endif
+REAL                           :: Utmp(5,0:PP_N,0:PP_N,0:PP_NZ)
+REAL                           :: JN(1,0:PP_N,0:PP_N,0:PP_NZ),JOut(1,0:NOut,0:NOut,0:PP_NOutZ)
 INTEGER                        :: iElem,i,j,k
+INTEGER                        :: nVal(5)
 !==================================================================================================================================
 IF (.NOT.WriteStateFiles) RETURN
 IF(MPIRoot)THEN
@@ -116,6 +123,9 @@ FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_'//TRIM(FileType),OutputTime))//'.h
 IF(MPIRoot) CALL GenerateFileSkeleton(TRIM(FileName),'State',PP_nVar,NOut,StrVarNames,&
                                       MeshFileName,OutputTime,FutureTime,withUserblock=.TRUE.)
 
+! Set size of output 
+nVal=(/PP_nVar,NOut+1,NOut+1,PP_NOutZ+1,nElems/)
+
 ! build output data
 IF(NOut.NE.PP_N)THEN
 #if FV_ENABLED
@@ -123,23 +133,50 @@ IF(NOut.NE.PP_N)THEN
       "NOut not working for FV!")
 #endif
   ! Project JU and J to NOut, compute U on Nout
-  ALLOCATE(UOut(PP_nVar,0:NOut,0:NOut,0:NOut,nElems))
+  ALLOCATE(UOut(PP_nVar,0:NOut,0:NOut,0:PP_NOutZ,nElems))
   DO iElem=1,nElems
     JN(1,:,:,:)=1./sJ(:,:,:,iElem,0)
-    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       Utmp(:,i,j,k)=U(:,i,j,k,iElem)*JN(1,i,j,k)
     END DO; END DO; END DO
-    CALL ChangeBasis3D(PP_nVar,PP_N,NOut,Vdm_N_NOut,&
-                       Utmp,UOut(1:PP_nVar,:,:,:,iElem))
+    CALL ChangeBasisVolume(PP_nVar,PP_N,NOut,Vdm_N_NOut,&
+                           Utmp,UOut(1:PP_nVar,:,:,:,iElem))
     ! Jacobian
-    CALL ChangeBasis3D(1,PP_N,NOut,Vdm_N_NOut,JN,JOut)
-    DO k=0,NOut; DO j=0,NOut; DO i=0,NOut
+    CALL ChangeBasisVolume(1,PP_N,NOut,Vdm_N_NOut,JN,JOut)
+    DO k=0,PP_NOutZ; DO j=0,NOut; DO i=0,NOut
       UOut(:,i,j,k,iElem)=UOut(:,i,j,k,iElem)/JOut(1,i,j,k)
     END DO; END DO; END DO
   END DO
-ELSE
+#if PP_dim == 2
+  ! If the output should be done with a full third dimension in a two dimensional computation, we need to expand the solution
+  IF (.NOT.output2D) THEN 
+    ALLOCATE(UOutTmp(PP_nVar,0:NOut,0:NOut,0:PP_NOutZ,nElems))
+    UOutTmp = UOut
+    DEALLOCATE(UOut)
+    ALLOCATE(UOut(PP_nVar,0:NOut,0:NOut,0:NOut,nElems))
+    CALL ExpandArrayTo3D(5,nVal,4,Nout+1,UOutTmp,UOut)
+    DEALLOCATE(UOutTmp)
+    nVal=(/PP_nVar,NOut+1,NOut+1,NOut+1,nElems/)
+  END IF
+#endif
+
+ELSE ! write state on same polynomial degree as the solution
+
+#if PP_dim == 3
   UOut => U
-END IF
+#else
+  IF (.NOT.output2D) THEN
+    ! If the output should be done with a full third dimension in a two dimensional computation, we need to expand the solution
+    ALLOCATE(UOut(PP_nVar,0:NOut,0:NOut,0:PP_N,nElems))
+    CALL ExpandArrayTo3D(5,(/PP_nVar,PP_N+1,PP_N+1,PP_NZ+1,nElems/),4,Nout+1,U,UOut)
+    ! Correct size of the output array
+    nVal=(/PP_nVar,NOut+1,NOut+1,NOut+1,nElems/)
+  ELSE
+    UOut => U
+  END IF
+#endif
+END IF ! (NOut.NE.PP_N)
+
 
 ! Reopen file and write DG solution
 #if USE_MPI
@@ -148,11 +185,12 @@ CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
 CALL GatheredWriteArray(FileName,create=.FALSE.,&
                         DataSetName='DG_Solution', rank=5,&
                         nValGlobal=(/PP_nVar,NOut+1,NOut+1,NOut+1,nGlobalElems/),&
-                        nVal=      (/PP_nVar,NOut+1,NOut+1,NOut+1,nElems/),&
+                        nVal=nVal                                              ,&
                         offset=    (/0,      0,     0,     0,     offsetElem/),&
                         collective=.TRUE.,RealArray=UOut)
 
-IF(NOut.NE.PP_N) DEALLOCATE(UOut)
+! Deallocate UOut only if we did not point to U
+IF((PP_N .NE. NOut).OR.((PP_dim .EQ. 2).AND.(.NOT.output2D))) DEALLOCATE(UOut)
 
 CALL WriteAdditionalElemData(FileName,ElementOut)
 CALL WriteAdditionalFieldData(FileName,FieldOut)
@@ -359,16 +397,23 @@ REAL,ALLOCATABLE,TARGET        :: tmp(:,:,:,:,:)
 REAL,POINTER                   :: NodeData(:,:,:,:,:)
 INTEGER                        :: nVar,nVarTotal
 TYPE(tFieldOut),POINTER        :: f
+INTEGER                        :: mask(3)
 !==================================================================================================================================
 ! TODO: Perform one write for each dataset.
 IF(.NOT. ASSOCIATED(FieldList)) RETURN
+
+#if PP_dim == 3
+mask=(/PP_N+1,PP_N+1,PP_N+1/)
+#else
+mask=(/PP_N+1,PP_N+1,1/)
+#endif
 
 ! Count fixed size and total number of entries 
 nVar=0
 nVarTotal=0
 f=>FieldList
 DO WHILE(ASSOCIATED(f))
-  IF(ALL(f%nVal(2:4).EQ.PP_N+1)) nVar=nVar+f%nVal(1)
+  IF(ALL(f%nVal(2:4).EQ.mask)) nVar=nVar+f%nVal(1)
   nVarTotal=nVarTotal+f%nVal(1)
   f=>f%next
 END DO
@@ -389,7 +434,7 @@ END IF
 ! Write the arrays (variable size)
 f=>FieldList
 DO WHILE(ASSOCIATED(f))
-  IF(ANY(f%nVal(2:4).NE.PP_N+1))THEN ! not fixed size
+  IF(.NOT. ALL(f%nVal(2:4).EQ.mask))THEN ! not fixed size
     IF(ASSOCIATED(f%RealArray)) THEN ! real array
       NodeData=>f%RealArray
     ELSE IF(ASSOCIATED(f%Eval)) THEN ! eval function
@@ -413,14 +458,14 @@ END DO
 IF(nVar.LE.0) RETURN ! no standard data present
 
 ALLOCATE(VarNames(nVar))
-ALLOCATE(tmp(nVar,0:PP_N,0:PP_N,0:PP_N,nElems))
+ALLOCATE(tmp(nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 
 ! Write the attributes (fixed size)
 IF(MPIRoot)THEN
   nVar=0
   f=>FieldList
   DO WHILE(ASSOCIATED(f))
-    IF(ALL(f%nVal(2:4).EQ.PP_N+1))THEN
+    IF(ALL(f%nVal(2:4).EQ.mask))THEN
       VarNames(nVar+1:nVar+f%nVal(1))=f%VarNames
       nVar=nVar+f%nVal(1)
     END IF
@@ -435,7 +480,7 @@ END IF
 nVar=0
 f=>FieldList
 DO WHILE(ASSOCIATED(f))
-  IF(ALL(f%nVal(2:4).EQ.PP_N+1))THEN
+  IF(ALL(f%nVal(2:4).EQ.mask))THEN
     IF(ASSOCIATED(f%RealArray))THEN ! real array
       tmp(nVar+1:nVar+f%nVal(1),:,:,:,:)=f%RealArray
     ELSEIF(ASSOCIATED(f%Eval))THEN  ! eval function
@@ -448,8 +493,8 @@ END DO
 ! Write the arrays (fixed size)
 CALL GatheredWriteArray(FileName,create=.FALSE.,&
                         DataSetName='FieldData', rank=5,  &
-                        nValGlobal=(/nVar,PP_N+1,PP_N+1,PP_N+1,nGlobalElems/),&
-                        nVal=      (/nVar,PP_N+1,PP_N+1,PP_N+1,nElems      /),&
+                        nValGlobal=(/nVar,PP_N+1,PP_N+1,PP_NZ+1,nGlobalElems/),&
+                        nVal=      (/nVar,PP_N+1,PP_N+1,PP_NZ+1,nElems      /),&
                         offset=    (/0   ,0     ,0     ,0     ,offsetElem  /),&
                         collective=.TRUE.,RealArray=tmp)
 DEALLOCATE(VarNames,tmp)
@@ -477,6 +522,11 @@ REAL,INTENT(IN)                :: OutputTime         !< Time of output
 ! LOCAL VARIABLES
 CHARACTER(LEN=255)             :: FileName
 REAL                           :: StartT,EndT
+REAL,POINTER                   :: UOut(:,:,:,:,:)
+INTEGER                        :: NZ_loc
+#if PP_dim == 2
+INTEGER                        :: iElem,i,j,iVar
+#endif
 !==================================================================================================================================
 IF(MPIROOT)THEN
   WRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' WRITE BASE FLOW TO HDF5 FILE...'
@@ -487,17 +537,40 @@ END IF
 FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_BaseFlow',OutputTime))//'.h5'
 IF(MPIRoot) CALL GenerateFileSkeleton(TRIM(FileName),'BaseFlow',PP_nVar,PP_N,StrVarNames,MeshFileName,OutputTime)
 
+#if PP_dim == 3
+  UOut => SpBaseFlow
+  NZ_loc=PP_N
+#else
+IF (.NOT.output2D) THEN
+  ALLOCATE(UOut(PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems))
+  DO iElem=1,nElems
+    DO j=0,PP_N; DO i=0,PP_N
+      DO iVar=1,PP_nVar
+        UOut(iVar,i,j,:,iElem)=SpBaseFlow(iVar,i,j,0,iElem)
+      END DO ! iVar=1,PP_nVar
+    END DO; END DO
+  END DO
+  NZ_loc=PP_N
+ELSE
+  UOut => SpBaseFlow
+  NZ_loc=0
+END IF
+#endif  
+
 ! Write DG solution
 #if USE_MPI
 CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
 #endif
 CALL GatheredWriteArray(FileName,create=.FALSE.,&
                         DataSetName='DG_Solution', rank=5,&
-                        nValGlobal=(/PP_nVar,PP_N+1,PP_N+1,PP_N+1,nGlobalElems/),&
-                        nVal=      (/PP_nVar,PP_N+1,PP_N+1,PP_N+1,nElems/),&
+                        nValGlobal=(/PP_nVar,PP_N+1,PP_N+1,NZ_loc+1,nGlobalElems/),&
+                        nVal=      (/PP_nVar,PP_N+1,PP_N+1,NZ_loc+1,nElems/),&
                         offset=    (/0,      0,     0,     0,     offsetElem/),&
-                        collective=.TRUE., RealArray=SpBaseFlow)
+                        collective=.TRUE., RealArray=UOut)
 
+#if PP_dim == 2
+IF(.NOT.output2D) DEALLOCATE(UOut)
+#endif
 IF(MPIRoot)THEN
   CALL MarkWriteSuccessfull(FileName)
   GETTIME(EndT)
@@ -515,6 +588,7 @@ USE MOD_PreProc
 USE MOD_Globals
 USE MOD_Output_Vars,ONLY: ProjectName
 USE MOD_Mesh_Vars  ,ONLY: offsetElem,nGlobalElems,nElems
+USE MOD_2D         ,ONLY: ExpandArrayTo3D
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -532,6 +606,8 @@ INTEGER,INTENT(IN)             :: nVar_Fluc                                    !
 ! LOCAL VARIABLES
 CHARACTER(LEN=255)             :: FileName
 REAL                           :: StartT,EndT
+REAL,POINTER                   :: UOut(:,:,:,:,:)
+INTEGER                        :: NZ_loc
 !==================================================================================================================================
 IF((nVar_Avg.EQ.0).AND.(nVar_Fluc.EQ.0)) RETURN ! no time averaging
 IF(MPIROOT)THEN
@@ -553,13 +629,32 @@ IF(nVar_Avg.GT.0)THEN
   CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
 #endif
 
+#if PP_dim == 3
+  UOut => UAvg
+  NZ_loc=PP_N
+#else
+  IF (.NOT.output2D) THEN
+    ! If the output should be done with a full third dimension in a two dimensional computation, we need to expand the solution
+    ALLOCATE(UOut(nVar_Avg,0:PP_N,0:PP_N,0:PP_N,nElems))
+    CALL ExpandArrayTo3D(5,(/nVar_Avg,PP_N+1,PP_N+1,PP_NZ+1,nElems/),4,PP_N+1,UAvg,UOut)
+    NZ_loc=PP_N
+  ELSE
+    UOut => UAvg
+    NZ_loc=0
+  END IF
+#endif
+
   ! Reopen file and write DG solution
   CALL GatheredWriteArray(FileName,create=.FALSE.,&
                           DataSetName='DG_Solution', rank=5,&
-                          nValGlobal=(/nVar_Avg,PP_N+1,PP_N+1,PP_N+1,nGlobalElems/),&
-                          nVal=      (/nVar_Avg,PP_N+1,PP_N+1,PP_N+1,nElems/),&
+                          nValGlobal=(/nVar_Avg,PP_N+1,PP_N+1,NZ_loc+1,nGlobalElems/),&
+                          nVal=      (/nVar_Avg,PP_N+1,PP_N+1,NZ_loc+1,nElems/),&
                           offset=    (/0,       0,     0,     0,     offsetElem/),&
-                          collective=.TRUE., RealArray=UAvg)
+                          collective=.TRUE., RealArray=UOut)
+#if PP_dim == 2
+  ! Deallocate UOut only if we did not point to UAvg
+  IF(.NOT.output2D) DEALLOCATE(UOut)
+#endif
   IF(MPIROOT) CALL MarkWriteSuccessfull(FileName)
 END IF
 
@@ -576,13 +671,30 @@ IF(nVar_Fluc.GT.0)THEN
   CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
 #endif
 
+#if PP_dim == 3
+  UOut => UFluc
+#else
+  IF (.NOT.output2D) THEN
+    ! If the output should be done with a full third dimension in a two dimensional computation, we need to expand the solution
+    ALLOCATE(UOut(nVar_Fluc,0:PP_N,0:PP_N,0:PP_N,nElems))
+    CALL ExpandArrayTo3D(5,(/nVar_Fluc,PP_N+1,PP_N+1,PP_NZ+1,nElems/),4,PP_N+1,UFluc,UOut)
+    NZ_loc=PP_N
+  ELSE
+    UOut => UFluc
+    NZ_loc=0
+  END IF
+#endif
+
   ! Reopen file and write DG solution
   CALL GatheredWriteArray(FileName,create=.FALSE.,&
                           DataSetName='DG_Solution', rank=5,&
-                          nValGlobal=(/nVar_Fluc,PP_N+1,PP_N+1,PP_N+1,nGlobalElems/),&
-                          nVal=      (/nVar_Fluc,PP_N+1,PP_N+1,PP_N+1,nElems/),&
+                          nValGlobal=(/nVar_Fluc,PP_N+1,PP_N+1,NZ_loc+1,nGlobalElems/),&
+                          nVal=      (/nVar_Fluc,PP_N+1,PP_N+1,NZ_loc+1,nElems/),&
                           offset=    (/0,        0,     0,     0,     offsetElem/),&
-                          collective=.TRUE., RealArray=UFluc)
+                          collective=.TRUE., RealArray=UOut)
+#if PP_dim == 2
+  IF(.NOT.output2D) DEALLOCATE(UOut)
+#endif
   IF(MPIROOT) CALL MarkWriteSuccessfull(FileName)
 END IF
 
@@ -639,7 +751,11 @@ CALL OpenDataFile(TRIM(FileName),create=.TRUE.,single=.TRUE.,readOnly=.FALSE.,&
 CALL WriteHeader(TRIM(TypeString),File_ID)
 
 ! Preallocate the data space for the dataset.
-Dimsf=(/nVar,NData+1,NData+1,NData+1,nGlobalElems/)
+IF(output2D) THEN
+  Dimsf=(/nVar,NData+1,NData+1,1,nGlobalElems/)
+ELSE
+  Dimsf=(/nVar,NData+1,NData+1,NData+1,nGlobalElems/)
+END IF
 
 CALL H5SCREATE_SIMPLE_F(5, Dimsf, FileSpace, iError)
 ! Create the dataset with default properties.
@@ -651,6 +767,7 @@ CALL H5SCLOSE_F(FileSpace, iError)
 
 ! Write dataset properties "Time","MeshFile","NextFile","NodeType","VarNames"
 CALL WriteAttribute(File_ID,'N',1,IntScalar=PP_N)
+CALL WriteAttribute(File_ID,'Dimension',1,IntScalar=PP_dim)
 CALL WriteAttribute(File_ID,'Time',1,RealScalar=OutputTime)
 CALL WriteAttribute(File_ID,'MeshFile',1,StrScalar=(/TRIM(MeshFileName)/))
 IF(PRESENT(FutureTime))THEN

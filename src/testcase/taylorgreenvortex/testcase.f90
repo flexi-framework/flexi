@@ -229,9 +229,9 @@ INTEGER                         :: ii,i,j,k,p,q
 REAL                            :: Vel(1:3),GradVel(1:3,1:3),Volume,Ekin,uprime
 REAL                            :: U_NAnalyze(1:PP_nVar, 0:NAnalyze, 0:NAnalyze, 0:NAnalyze)
 REAL                            :: sJ_NAnalyze(1, 0:NAnalyze, 0:NAnalyze, 0:NAnalyze)
-REAL                            :: GradUx_NAnalyze(1:PP_nVar, 0:NAnalyze, 0:NAnalyze, 0:NAnalyze)
-REAL                            :: GradUy_NAnalyze(1:PP_nVar, 0:NAnalyze, 0:NAnalyze, 0:NAnalyze)
-REAL                            :: GradUz_NAnalyze(1:PP_nVar, 0:NAnalyze, 0:NAnalyze, 0:NAnalyze)
+REAL                            :: GradVelx(1:3, 0:NAnalyze, 0:NAnalyze, 0:NAnalyze)
+REAL                            :: GradVely(1:3, 0:NAnalyze, 0:NAnalyze, 0:NAnalyze)
+REAL                            :: GradVelz(1:3, 0:NAnalyze, 0:NAnalyze, 0:NAnalyze)
 REAL                            :: Vorticity(1:3),max_Vorticity,mean_temperature, temperature
 !REAL                            :: lambda,nu,tnu,Rlambda
 REAL                            :: S(1:3,1:3)                    ! Strain rate tensor S (symmetric)
@@ -263,9 +263,9 @@ mean_Temperature=0.
 DO ii=1,nElems
 
   !Interpolate the gradient of the velocity to the analyze grid
-  CALL ChangeBasis3D(PP_nVar, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, GradUx(1:PP_nVar,:,:,:,ii), GradUx_NAnalyze(1:PP_nVar,:,:,:))
-  CALL ChangeBasis3D(PP_nVar, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, GradUy(1:PP_nVar,:,:,:,ii), GradUy_NAnalyze(1:PP_nVar,:,:,:))
-  CALL ChangeBasis3D(PP_nVar, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, GradUz(1:PP_nVar,:,:,:,ii), GradUz_NAnalyze(1:PP_nVar,:,:,:))
+  CALL ChangeBasis3D(3, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, GradUx(2:4,:,:,:,ii), GradVelx)
+  CALL ChangeBasis3D(3, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, GradUy(2:4,:,:,:,ii), GradVely)
+  CALL ChangeBasis3D(3, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, GradUz(2:4,:,:,:,ii), GradVelz)
   !Interpolate the jacobian to the analyze grid
   sJ_N(1,:,:,:)=sJ(:,:,:,ii,0)
   CALL ChangeBasis3D(1, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, sJ_N(1:1,0:PP_N,0:PP_N,0:PP_N), sJ_NAnalyze(1:1,:,:,:))
@@ -277,9 +277,9 @@ DO ii=1,nElems
       DO i=0,NAnalyze
         ! compute primitive gradients (of u,v,w) at each GP
         Vel(1:3)=U_NAnalyze(2:4,i,j,k)/U_NAnalyze(1,i,j,k)
-        GradVel(:,1)=1./(U_NAnalyze(1,i,j,k))*(GradUx_NAnalyze(2:4,i,j,k)-Vel(1:3)*GradUx_NAnalyze(1,i,j,k))
-        GradVel(:,2)=1./(U_NAnalyze(1,i,j,k))*(GradUy_NAnalyze(2:4,i,j,k)-Vel(1:3)*GradUy_NAnalyze(1,i,j,k))
-        GradVel(:,3)=1./(U_NAnalyze(1,i,j,k))*(GradUz_NAnalyze(2:4,i,j,k)-Vel(1:3)*GradUz_NAnalyze(1,i,j,k))
+        GradVel(:,1)=GradVelx(:,i,j,k)
+        GradVel(:,2)=GradVely(:,i,j,k)
+        GradVel(:,3)=GradVelz(:,i,j,k)
         ! Pressure
         Pressure=KappaM1*(U_NAnalyze(5,i,j,k)-0.5*SUM(U_NAnalyze(2:4,i,j,k)*Vel(1:3)))
         ! compute divergence of velocity

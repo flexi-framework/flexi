@@ -66,7 +66,8 @@ USE MOD_MPI                ,ONLY: StartReceiveMPIData,StartSendMPIData,FinishExc
 USE MOD_MPI_Vars           ,ONLY: nNbProcs
 #endif
 #endif
-USE MOD_FillMortar1        ,ONLY: U_Mortar1
+USE MOD_2D
+USE MOD_FillMortar1_3D     ,ONLY: U_Mortar1
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -341,7 +342,11 @@ DO iElem=1,nElems
   FV_sdx_ZETA(:,:,:,iElem) = 1. / (FV_dx_ZETA_R(:,:,0:PP_N-1,iElem) +  FV_dx_ZETA_L(:,:,1:PP_N,iElem)) ! 1 / FV_dx_ZETA
 
   ! Calculate distance between first GaussPoint and interface
+#if PP_dim == 3  
   DO locSideID=1,6
+#else    
+  DO locSideID=2,5
+#endif    
     length=0.
     SideID = ElemToSide(E2S_SIDE_ID,locSideID,iElem)
     flip   = ElemToSide(E2S_FLIP,   locSideID,iElem)
@@ -446,6 +451,7 @@ END DO
 #endif /* PARABOLIC */
 #endif /* FV_RECONSTRUCT */
 
+
 SWRITE(UNIT_stdOut,'(A)')' Done !'
 
 END SUBROUTINE InitFV_Metrics
@@ -468,7 +474,7 @@ REAL,INTENT(IN)    :: wGP(  0:Nloc)                        !< integration weight
 REAL,INTENT(IN)    :: wBary(0:Nloc)                        !< interpolations weights
 REAL,INTENT(IN)    :: x0                                   !< start point
 REAL,INTENT(IN)    :: xN                                   !< end point
-REAL,INTENT(IN)    :: FV_Path_1D(3,0:Nloc,0:Nloc2,0:Nloc2) !< path polynomial
+REAL,INTENT(INOUT) :: FV_Path_1D(3,0:Nloc,0:Nloc2,0:Nloc2) !< path polynomial
 REAL,INTENT(OUT)   :: FV_Length(          0:Nloc2,0:Nloc2) !< distance
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

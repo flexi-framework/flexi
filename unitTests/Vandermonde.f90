@@ -100,6 +100,8 @@ ELSE
     IF (.NOT.equal) THEN
       WRITE(*,*) 'ERROR - Calculated Vandermondes deviate from reference.'
       STOP -1
+    ELSE
+      WRITE(*,*) 'Checked Vandermondes against stored data -- SUCCESSFUL.'
     END IF
   ELSE
     WRITE(*,*) 'ERROR - No reference solution has been found.'

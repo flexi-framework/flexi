@@ -42,6 +42,8 @@ REAL,ALLOCATABLE :: gradUy(:,:,:,:,:)             !< gradients in y-dir at degre
 REAL,ALLOCATABLE :: gradUz(:,:,:,:,:)             !< gradients in z-dir at degree N
 REAL             :: etaBR2                        !< Lifting penalty for BR2. Increase improves stability
                                                   !< at the cost of performance and reduces jumps between two cells
+REAL             :: etaBR2_wall                   !< Lifting penalty for BR2 at the wall. Can be choosen different from etaBR2 
+                                                  !< to decrease wall velocities
 LOGICAL          :: doWeakLifting=.FALSE.         !< BR2 is always strong
 LOGICAL          :: doConservativeLifting=.FALSE. !< marks whether volume contribution to the gradients is computed in
                                                   !< conservative form, i.e. deriving the solution divided by the metric terms,
