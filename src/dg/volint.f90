@@ -224,10 +224,10 @@ REAL,INTENT(OUT)   :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< Time derivat
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: i,j,k,l,iElem
-REAL,DIMENSION(PP_nVar                     ) :: Flux !< auxilery variable for split flux
+REAL,DIMENSION(PP_nVar                     )  :: Flux         !< temp variable for split flux
 REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: f_c,g_c,h_c  !< Euler fluxes at GP
 #if PARABOLIC
-REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: fv,gv,hv  !< Parabolic fluxes at GP
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: fv,gv,hv     !< Parabolic fluxes at GP
 #endif /*PARABOLIC*/
 !==================================================================================================================================
 ! Diffusive part
