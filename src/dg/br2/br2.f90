@@ -74,7 +74,7 @@ CALL prms%CreateLogicalOption('doConservativeLifting', "Set true to compute the 
 CALL prms%CreateRealOption(   'etaBR2',                "Lifting penalty for BR2. Increase improves stability at the cost of "//&
                                                        "performance and reduces jumps between two cells.", '2.')
 CALL prms%CreateRealOption(   'etaBR2_wall',           "Lifting penalty for BR2 at wall boundaries. Can be choosen different from"//&
-                                                       "to decrease wall velocities.", 'etaBR2')
+                                                       "to decrease wall velocities.", '-1')
 END SUBROUTINE DefineParametersLifting
 
 

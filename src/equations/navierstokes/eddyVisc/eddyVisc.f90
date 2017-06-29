@@ -45,7 +45,7 @@ CALL prms%CreateRealOption(   'CS',       "EddyViscParameters constant")
 CALL prms%CreateRealOption(   'PrSGS',    "Turbulent Prandtl number",'0.7')
 CALL prms%CreateLogicalOption('VanDriest',"Van Driest damping, only for channel flow!", '.FALSE.')
 CALL prms%CreateIntOption('N_Testfilter',"Number of basis for the test filter")
-CALL prms%CreateStringOption(   'WallDistFile',    "File containing the wall distance",'')
+CALL prms%CreateStringOption(   'WallDistFile',    "File containing the wall distance",'noFile')
 CALL prms%CreateRealOption(   'WallDistanceTreshold',    "Treshold for zonal model filtering",'0.0')
 END SUBROUTINE DefineParametersEddyVisc
 
@@ -75,8 +75,8 @@ DeltaS_master=0.
 DeltaS_slave=0.
 DeltaS=0.
 ALLOCATE(SGS_Ind(2,0:PP_N,0:PP_N,0:PP_NZ,nElems))
-ALLOCATE(SGS_Ind_master(1,0:PP_N,0:PP_NZ,1:nSides))
-ALLOCATE(SGS_Ind_slave (1,0:PP_N,0:PP_NZ,1:nSides))
+ALLOCATE(SGS_Ind_master(2,0:PP_N,0:PP_NZ,1:nSides))
+ALLOCATE(SGS_Ind_slave (2,0:PP_N,0:PP_NZ,1:nSides))
 SGS_Ind=0.
 SGS_Ind_master=0.
 SGS_Ind_slave=0.

@@ -80,79 +80,82 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT dynsmag...'
 ! Smagorinsky model
 PrSGS  = GETREAL('PrSGS','0.7')
 !get wall distance for zonal averaging approach if needed
-WallDistFile = GETSTR('WallDistFile','')
+WallDistFile = GETSTR('WallDistFile','noFile')
 WallDistTrsh = GETREAL('WallDistanceTreshold','0.0')
-IF (WallDistFile .NE. '') THEN
+IF (WallDistFile .NE. 'noFile') THEN
   CALL OpenDataFile(WallDistFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
   CALL ReadArray('Walldistance',2,(/3,nElems/),OffsetElem,2,RealArray=EwallDist)
   CALL CloseDataFile()
+
+  !Find in which x, y, z direction are the i, j ,k index pointing, and
+  !then decide which index to filter
+  !MATTEO: DEBUG
+  filtdir_out = 0.0
+  DO iElem=1,nElems
+    distNorm = SQRT(SUM(EwallDist(:,iElem)**2)) 
+    !MATTEO: debug
+    walldist_out(iElem) = distNorm
+    walldist_x(iElem) = EwallDist(1,iElem)
+    walldist_y(iElem) = EwallDist(2,iElem)
+    walldist_z(iElem) = EwallDist(3,iElem)
+    IF (distNorm .GE. WallDistTrsh) THEN !out of the boundary layer
+      ! Filter and average isotropically
+      filter_ind(:,iElem) = .true.
+      average_ind(:,iElem) = .true.
+      !MATTEO: DEBUG
+      filtdir_out(iElem) = 8.0
+    ELSE ! in the boundary layer
+      ! Filter and average only the plane normal to the boundary                    
+      !i, average on the four edges                                       
+      vec = Elem_xgp(:,PP_N,0,0,iElem) - Elem_xgp(:,0,0,0,iElem)          
+      vec = vec + (Elem_xgp(:,PP_N,PP_N,0,iElem) - Elem_xgp(:,0,PP_N,0,iElem))
+      vec = vec + (Elem_xgp(:,PP_N,0,PP_N,iElem) - Elem_xgp(:,0,0,PP_N,iElem))
+      vec = vec + (Elem_xgp(:,PP_N,PP_N,PP_N,iElem) - Elem_xgp(:,0,PP_N,PP_N,iElem))
+      vec = vec/4.0                                                       
+      vec = vec/sqrt(sum(vec**2)) !Unit vector of i direction             
+      !If i is normal to the distance filter and average in i             
+      isn = ISNORMAL(vec,EwallDist(:,iElem))                              
+      filter_ind(1,iElem) = isn                                           
+      average_ind(1,iElem) = isn                                          
+      !MATTEO: DEBUG                                                      
+      IF(isn) filtdir_out(iElem) = filtdir_out(iElem)+1                   
+      !j                                                                  
+      vec = Elem_xgp(:,0,PP_N,0,iElem) - Elem_xgp(:,0,0,0,iElem)          
+      vec = vec + (Elem_xgp(:,PP_N,PP_N,0,iElem) - Elem_xgp(:,PP_N,0,0,iElem))
+      vec = vec + (Elem_xgp(:,0,PP_N,PP_N,iElem) - Elem_xgp(:,0,0,PP_N,iElem))
+      vec = vec + (Elem_xgp(:,PP_N,PP_N,PP_N,iElem) - Elem_xgp(:,PP_N,0,PP_N,iElem))
+      vec = vec/4.0                                                       
+      vec = vec/sqrt(sum(vec**2))                                         
+      !If j is normal to the distance filter and average in j             
+      isn = ISNORMAL(vec,EwallDist(:,iElem))                              
+      filter_ind(2,iElem) =  isn                                          
+      average_ind(2,iElem) = isn                                          
+      !MATTEO: DEBUG                                                      
+      IF(isn) filtdir_out(iElem) = filtdir_out(iElem)+2                   
+      !k                                                                  
+      vec = Elem_xgp(:,0,0,PP_N,iElem) - Elem_xgp(:,0,0,0,iElem)          
+      vec = vec + (Elem_xgp(:,PP_N,0,PP_N,iElem) - Elem_xgp(:,PP_N,0,0,iElem))
+      vec = vec + (Elem_xgp(:,0,PP_N,PP_N,iElem) - Elem_xgp(:,0,PP_N,0,iElem))
+      vec = vec + (Elem_xgp(:,PP_N,PP_N,PP_N,iElem) - Elem_xgp(:,PP_N,PP_N,0,iElem))
+      vec = vec/4.0                                                       
+      vec = vec/sqrt(sum(vec**2))                                         
+      !If k is normal to the distance filter and average in k             
+      isn = ISNORMAL(vec,EwallDist(:,iElem))                                                                           
+      filter_ind(3,iElem) = isn                                           
+      average_ind(3,iElem) = isn                                          
+      !MATTEO: DEBUG                                                      
+      IF(isn) filtdir_out(iElem) = filtdir_out(iElem)+4
+    END IF !in or out boundary layer
+  END DO !iElem
+ELSEIF(testcase.EQ.'channel') THEN
+  DO iElem=1,nElems
+    filter_ind(:,iElem)  = (/.TRUE.,.FALSE.,.TRUE./)
+    average_ind(:,iElem) = (/.TRUE.,.FALSE.,.TRUE./)
+  END DO !iElem
+ELSE
+  filter_ind(:,iElem)  = (/.TRUE.,.TRUE.,.TRUE./)
+  average_ind(:,iElem) = (/.TRUE.,.TRUE.,.TRUE./)
 ENDIF
-
-
-!Find in which x, y, z direction are the i, j ,k index pointing, and
-!then decide which index to filter
-!MATTEO: DEBUG
-filtdir_out = 0.0
-DO iElem=1,nElems
-  distNorm = SQRT(SUM(EwallDist(:,iElem)**2)) 
-  !MATTEO: debug
-  walldist_out(iElem) = distNorm
-  walldist_x(iElem) = EwallDist(1,iElem)
-  walldist_y(iElem) = EwallDist(2,iElem)
-  walldist_z(iElem) = EwallDist(3,iElem)
-  IF (distNorm .GE. WallDistTrsh) THEN !out of the boundary layer
-    ! Filter and average isotropically
-    filter_ind(:,iElem) = .true.
-    average_ind(:,iElem) = .true.
-    !MATTEO: DEBUG
-    filtdir_out(iElem) = 8.0
-  ELSE ! in the boundary layer
-    ! Filter and average only the plane normal to the boundary                    
-    !i, average on the four edges                                       
-    vec = Elem_xgp(:,PP_N,0,0,iElem) - Elem_xgp(:,0,0,0,iElem)          
-    vec = vec + (Elem_xgp(:,PP_N,PP_N,0,iElem) - Elem_xgp(:,0,PP_N,0,iElem))
-    vec = vec + (Elem_xgp(:,PP_N,0,PP_N,iElem) - Elem_xgp(:,0,0,PP_N,iElem))
-    vec = vec + (Elem_xgp(:,PP_N,PP_N,PP_N,iElem) - Elem_xgp(:,0,PP_N,PP_N,iElem))
-    vec = vec/4.0                                                       
-    vec = vec/sqrt(sum(vec**2)) !Unit vector of i direction             
-    !If i is normal to the distance filter and average in i             
-    isn = ISNORMAL(vec,EwallDist(:,iElem))                              
-    filter_ind(1,iElem) = isn                                           
-    average_ind(1,iElem) = isn                                          
-    !MATTEO: DEBUG                                                      
-    IF(isn) filtdir_out(iElem) = filtdir_out(iElem)+1                   
-    !j                                                                  
-    vec = Elem_xgp(:,0,PP_N,0,iElem) - Elem_xgp(:,0,0,0,iElem)          
-    vec = vec + (Elem_xgp(:,PP_N,PP_N,0,iElem) - Elem_xgp(:,PP_N,0,0,iElem))
-    vec = vec + (Elem_xgp(:,0,PP_N,PP_N,iElem) - Elem_xgp(:,0,0,PP_N,iElem))
-    vec = vec + (Elem_xgp(:,PP_N,PP_N,PP_N,iElem) - Elem_xgp(:,PP_N,0,PP_N,iElem))
-    vec = vec/4.0                                                       
-    vec = vec/sqrt(sum(vec**2))                                         
-    !If j is normal to the distance filter and average in j             
-    isn = ISNORMAL(vec,EwallDist(:,iElem))                              
-    filter_ind(2,iElem) =  isn                                          
-    average_ind(2,iElem) = isn                                          
-    !MATTEO: DEBUG                                                      
-    IF(isn) filtdir_out(iElem) = filtdir_out(iElem)+2                   
-    !k                                                                  
-    vec = Elem_xgp(:,0,0,PP_N,iElem) - Elem_xgp(:,0,0,0,iElem)          
-    vec = vec + (Elem_xgp(:,PP_N,0,PP_N,iElem) - Elem_xgp(:,PP_N,0,0,iElem))
-    vec = vec + (Elem_xgp(:,0,PP_N,PP_N,iElem) - Elem_xgp(:,0,PP_N,0,iElem))
-    vec = vec + (Elem_xgp(:,PP_N,PP_N,PP_N,iElem) - Elem_xgp(:,PP_N,PP_N,0,iElem))
-    vec = vec/4.0                                                       
-    vec = vec/sqrt(sum(vec**2))                                         
-    !If k is normal to the distance filter and average in k             
-    isn = ISNORMAL(vec,EwallDist(:,iElem))                                                                           
-    filter_ind(3,iElem) = isn                                           
-    average_ind(3,iElem) = isn                                          
-    !MATTEO: DEBUG                                                      
-    IF(isn) filtdir_out(iElem) = filtdir_out(iElem)+4
-  END IF !in or out boundary layer
-  IF(testcase.EQ.'channel') THEN
-    filter_ind(:,iElem)  = (/.TRUE.,.FAlSE.,.TRUE./)
-    average_ind(:,iElem) = (/.TRUE.,.FAlSE.,.TRUE./)
-  END IF
-END DO !iElem
 
 average_type = 0
 !build integration weights for each of possibly 7 average types

@@ -167,7 +167,7 @@ ALLOCATE(MPIRequest_FV_gradU(nNbProcs,2) )
 MPIRequest_FV_Elems = MPI_REQUEST_NULL
 MPIRequest_FV_gradU = MPI_REQUEST_NULL
 #endif
-#ifdef EDDYVISCOSITY
+#if EDDYVISCOSITY
 ALLOCATE(MPIRequest_DeltaS(nNbProcs,2) )
 ALLOCATE(MPIRequest_SGS_Ind(nNbProcs,2) )
 MPIRequest_DeltaS  = MPI_REQUEST_NULL
@@ -179,7 +179,7 @@ ALLOCATE(MPIRequest_gradU(nNbProcs,3,2))
 MPIRequest_gradU = MPI_REQUEST_NULL
 #endif /*PARABOLIC*/
 
-#ifdef EDDYVISCOSITY
+#if EDDYVISCOSITY
 DataSizeSideScalar= 2*(PP_N+1)**2
 #endif
 DataSizeSide      =PP_nVar*(PP_N+1)*(PP_NZ+1)
