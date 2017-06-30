@@ -537,7 +537,7 @@ CALL FV_VolInt(UPrim,Ut)
 #if EDDYVISCOSITY
 IF(EddyViscType.EQ.2) THEN
   IF(CurrentStage.EQ.1) THEN
-#if MPI
+#if USE_MPI
     ! 4.2)
     CALL StartReceiveMPIData(SGS_Ind_slave,DataSizeSideScalar,1,nSides,MPIRequest_SGS_Ind(:,RECV),SendID=2)
     CALL ProlongToFace(2,PP_N,SGS_Ind(1:2,:,:,:,:),SGS_Ind_master(:,:,:,:),SGS_Ind_Slave(:,:,:,:),L_Minus,L_Plus,.TRUE.)
@@ -545,7 +545,7 @@ IF(EddyViscType.EQ.2) THEN
 #endif
     ! Prolong to face for BCSides, InnerSides and MPI sides - receive direction
     CALL ProlongToFace(2,PP_N,SGS_Ind(1:2,:,:,:,:),SGS_Ind_master(:,:,:,:),SGS_Ind_Slave(:,:,:,:),L_Minus,L_Plus,.FALSE.)
-#if MPI  
+#if USE_MPI  
     CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_SGS_Ind)  ! U_slave: slave -> master 
 #endif
   END IF
