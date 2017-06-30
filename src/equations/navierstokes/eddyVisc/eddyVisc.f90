@@ -126,14 +126,16 @@ SELECT CASE(eddyViscType)
       'Eddy Viscosity Type not specified!')
 END SELECT
 CALL AddToFieldData((/1,PP_N+1,PP_N+1,PP_NZ+1/),'VMSData',(/'muSGS'/),RealArray=muSGS)
-!MATTEO: debug output
-CALL AddToFieldData((/2,PP_N+1,PP_N+1,PP_NZ+1/),'VMSData',(/'Csmag   ','muSgsInd'/),RealArray=SGS_Ind)
-CALL AddToFieldData((/1,PP_N+1,PP_N+1,PP_NZ+1/),'VMSData',(/'S_norm'/),RealArray=S_en_out)
-CALL AddToElemData('FilterInd',RealArray=filtdir_out(:))
-CALL AddToElemData('WallDist',RealArray=walldist_out(:))
-CALL AddToElemData('WallDist_x',RealArray=walldist_x(:))
-CALL AddToElemData('WallDist_y',RealArray=walldist_y(:))
-CALL AddToElemData('WallDist_z',RealArray=walldist_z(:))
+IF(eddyViscType.EQ.2) THEN
+  !MATTEO: debug output
+  CALL AddToFieldData((/2,PP_N+1,PP_N+1,PP_NZ+1/),'VMSData',(/'Csmag   ','muSgsInd'/),RealArray=SGS_Ind)
+  CALL AddToFieldData((/1,PP_N+1,PP_N+1,PP_NZ+1/),'VMSData',(/'S_norm'/),RealArray=S_en_out)
+  CALL AddToElemData('FilterInd',RealArray=filtdir_out(:))
+  CALL AddToElemData('WallDist',RealArray=walldist_out(:))
+  CALL AddToElemData('WallDist_x',RealArray=walldist_x(:))
+  CALL AddToElemData('WallDist_y',RealArray=walldist_y(:))
+  CALL AddToElemData('WallDist_z',RealArray=walldist_z(:))
+END IF
 
 END SUBROUTINE
 
