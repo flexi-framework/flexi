@@ -171,6 +171,15 @@ ELSE
 END IF
 
 DO SideID=firstSideID,lastSideID
+  IF(SideID .LE. nBCSides) THEN
+    IF (Boundarytype(BC(SideID),BC_TYPE).EQ.4.OR.Boundarytype(BC(SideID),BC_TYPE).EQ.3) THEN
+      eta =etaBR2_wall
+    ELSE
+      eta = etaBR2
+    END IF
+  ELSE
+    eta = etaBR2
+  END IF
   ElemID      = SideToElem(S2E_ELEM_ID,   SideID)
   ! master sides
   IF(ElemID.GT.0)THEN
