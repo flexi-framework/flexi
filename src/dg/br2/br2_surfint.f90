@@ -86,11 +86,6 @@ REAL               :: L_HatMinus0,L_HatPlusN
 REAL               :: eta
 !==================================================================================================================================
 
-#if (PP_NodeType>1)
-L_HatMinus0 = L_HatMinus(0)
-L_HatPlusN  = L_HatPlus(PP_N)
-#endif
-
 !slave Sides
 IF(doMPISides)THEN
   ! only MPI YOUR
@@ -102,18 +97,8 @@ ELSE
   lastSideID  =  lastInnerSide
 END IF
 
+eta = etaBR2
 DO SideID=firstSideID,lastSideID
-! aditional penalization of wall boundary to prevent high wall velocities
-  !HACK!
-  IF(SideID .LE. nBCSides) THEN
-    IF (Boundarytype(BC(SideID),BC_TYPE).EQ.4.OR.Boundarytype(BC(SideID),BC_TYPE).EQ.3) THEN
-      eta =etaBR2_wall
-    ELSE
-      eta = etaBR2
-    END IF
-  ELSE
-    eta = etaBR2
-  END IF
   nbElemID    = SideToElem(S2E_NB_ELEM_ID,SideID)
 
   ! slave sides
@@ -121,40 +106,19 @@ DO SideID=firstSideID,lastSideID
     IF (FV_Elems_slave(SideID).EQ.0) THEN ! DG element
       nblocSideID = SideToElem(S2E_NB_LOC_SIDE_ID,SideID)
       flip        = SideToElem(S2E_FLIP,SideID)
-#if (PP_NodeType==1)
-      SELECT CASE(nblocSideID)
-        CASE(XI_MINUS,ETA_MINUS,ZETA_MINUS)
-          L_hat = L_hatMinus
-          L_    = L_Minus
-        CASE(XI_PLUS,ETA_PLUS,ZETA_PLUS)
-          L_hat = L_hatPlus
-          L_    = L_Plus
-      END SELECT
-        DO l=0,PP_N; DO q=0,PP_NZ; DO p=0,PP_N
-          ijk=S2V(1:3,l,p,q,flip,nblocSideID) ! get volume indices belonging to the local side indices p,q,l
-          F_loc=sJ(ijk(1),ijk(2),ijk(3),nbElemID,0)*Flux(:,p,q,SideID)*L_hat(l)
-          ! contribution to volume gradient
-          gradU(:,ijk(1),ijk(2),ijk(3),nbElemID)=gradU(:,ijk(1),ijk(2),ijk(3),nbElemID)+F_loc
-          ! local contribution to surface gradient
-          gradU_slave(:,p,q,SideID) = gradU_slave(:,p,q,SideID)+eta*L_(l)*F_loc
-        END DO; END DO; END DO ! l,q,p
-#elif (PP_NodeType==2)
-      SELECT CASE(nblocSideID)
-        CASE(XI_MINUS,ETA_MINUS,ZETA_MINUS)
-          L_hat = L_hatMinus0
-        CASE(XI_PLUS,ETA_PLUS,ZETA_PLUS)
-          L_hat = L_hatPlusN
-      END SELECT
-      l = 0 ! special mapping, returns 0 or PP_N dep. on locSideID and flip
       DO q=0,PP_NZ; DO p=0,PP_N
+#if (PP_NodeType==1)
+        DO l=0,PP_N 
+#elif (PP_NodeType==2)
+        DO l=0,0 ! special mapping, returns 0 or PP_N dep. on locSideID and flip
+#endif
         ijk=S2V(1:3,l,p,q,flip,nblocSideID) ! get volume indices belonging to the local side indices p,q,l
-        F_loc=sJ(ijk(1),ijk(2),ijk(3),nbElemID,0)*Flux(:,p,q,SideID)*L_hat
+        F_loc=sJ(ijk(1),ijk(2),ijk(3),nbElemID,0)*Flux(:,p,q,SideID)*L_hatMinus(l)
         ! contribution to volume gradient
         gradU(:,ijk(1),ijk(2),ijk(3),nbElemID)=gradU(:,ijk(1),ijk(2),ijk(3),nbElemID)+F_loc
         ! local contribution to surface gradient
-        gradU_slave(:,p,q,SideID) = gradU_slave(:,p,q,SideID)+eta*F_loc
-      END DO; END DO ! q,p
-#endif
+        gradU_slave(:,p,q,SideID) = gradU_slave(:,p,q,SideID)+eta*L_Minus(l)*F_loc
+      END DO; END DO; END DO ! l,q,p
     END IF
   END IF
 END DO ! SideID=1,nSides
@@ -186,40 +150,19 @@ DO SideID=firstSideID,lastSideID
     IF (FV_Elems_master(SideID).EQ.0) THEN ! DG element
       locSideID = SideToElem(S2E_LOC_SIDE_ID,SideID)
       flip      = 0
-#if (PP_NodeType==1)
-      SELECT CASE(locSideID)
-        CASE(XI_MINUS,ETA_MINUS,ZETA_MINUS)
-          L_hat = L_hatMinus
-          L_    = L_Minus
-        CASE(XI_PLUS,ETA_PLUS,ZETA_PLUS)
-          L_hat = L_hatPlus
-          L_    = L_Plus
-      END SELECT
-        DO l=0,PP_N; DO q=0,PP_NZ; DO p=0,PP_N
-          ijk=S2V(1:3,l,p,q,flip,locSideID) ! get volume indices belonging to the local side indices p,q,l
-          F_loc=sJ(ijk(1),ijk(2),ijk(3),ElemID,0)*Flux(:,p,q,SideID)*L_hat(l)
-          ! contribution to volume gradient
-          gradU(:,ijk(1),ijk(2),ijk(3),ElemID) = gradU(:,ijk(1),ijk(2),ijk(3),ElemID)+F_loc
-          ! local contribution to surface gradient
-          gradU_master(:,p,q,SideID) = gradU_master(:,p,q,SideID)+eta*L_(l)*F_loc
-        END DO; END DO; END DO ! l,q,p
-#elif (PP_NodeType==2)
-      SELECT CASE(locSideID)
-        CASE(XI_MINUS,ETA_MINUS,ZETA_MINUS)
-          L_hat = L_hatMinus0
-        CASE(XI_PLUS,ETA_PLUS,ZETA_PLUS)
-          L_hat = L_hatPlusN
-      END SELECT
-      l = 0 ! special mapping, returns 0 or PP_N dep. on locSideID and flip
       DO q=0,PP_NZ; DO p=0,PP_N
-        ijk=S2V(1:3,l,p,q,flip,locSideID) ! get volume indices belonging to the local side indices p,q,l
-        F_loc=sJ(ijk(1),ijk(2),ijk(3),ElemID,0)*Flux(:,p,q,SideID)*L_hat
-        ! contribution to volume gradient
-        gradU(:,ijk(1),ijk(2),ijk(3),ElemID)=gradU(:,ijk(1),ijk(2),ijk(3),ElemID)+F_loc
-        ! local contribution to surface gradient
-        gradU_master(:,p,q,SideID) = gradU_master(:,p,q,SideID)+eta*F_loc
-      END DO; END DO ! q,p
+#if (PP_NodeType==1)
+        DO l=0,PP_N 
+#elif (PP_NodeType==2)
+        DO l=0,0 ! special mapping, returns 0 or PP_N dep. on locSideID and flip
 #endif
+        ijk=S2V(1:3,l,p,q,flip,locSideID) ! get volume indices belonging to the local side indices p,q,l
+        F_loc=sJ(ijk(1),ijk(2),ijk(3),ElemID,0)*Flux(:,p,q,SideID)*L_hatMinus(l)
+        ! contribution to volume gradient
+        gradU(:,ijk(1),ijk(2),ijk(3),ElemID) = gradU(:,ijk(1),ijk(2),ijk(3),ElemID)+F_loc
+        ! local contribution to surface gradient
+        gradU_master(:,p,q,SideID) = gradU_master(:,p,q,SideID)+eta*L_Minus(l)*F_loc
+      END DO; END DO; END DO ! l,q,p
     END IF
   END IF
 END DO ! SideID=1,nSides
