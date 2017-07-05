@@ -47,17 +47,12 @@ INTERFACE FinalizeFilter
   MODULE PROCEDURE FinalizeFilter
 END INTERFACE
 
-INTERFACE Filter_General
-  MODULE PROCEDURE Filter_General
-END INTERFACE
-
 INTERFACE Filter_Selective
   MODULE PROCEDURE Filter_Selective
 END INTERFACE
 
 PUBLIC :: InitFilter
 PUBLIC :: Filter_pointer
-PUBLIC :: Filter_General
 PUBLIC :: Filter_Selective
 PUBLIC :: FinalizeFilter
 !==================================================================================================================================
@@ -450,58 +445,6 @@ DO iElem=1,nElems
 END SUBROUTINE Filter_LAF
 #endif /*EQNSYSNR==2*/
 
-
-SUBROUTINE Filter_General(NVar,FilterMat,U_in)
-! MODULES
-USE MOD_PreProc
-USE MOD_Globals
-IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-REAL,INTENT(INOUT)  :: U_in(NVar,0:PP_N,0:PP_N,0:PP_N) !< solution vector to be filtered
-REAL,INTENT(IN)     :: FilterMat(0:PP_N,0:PP_N)                  !< filter matrix to be used
-INTEGER,INTENT(IN)     :: NVar
-!----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-INTEGER             :: i,j,k,l
-REAL,DIMENSION(NVar,0:PP_N,0:PP_N,0:PP_N) :: U_Xi,U_Eta
-!==================================================================================================================================
-! Perform filtering
-#if FV_ENABLED
-stop
-#endif
-U_Xi = 0.
-DO k=0,PP_N
-  DO j=0,PP_N
-    DO i=0,PP_N
-      DO l=0,PP_N
-        U_Xi(:,i,j,k)       = U_Xi(:,i,j,k)       + FilterMat(i,l)*U_in(:,l,j,k)
-      END DO !l
-    END DO !i
-  END DO !j
-END DO !k
-!U_Eta= 0.
-!DO k=0,PP_N
-!  DO j=0,PP_N
-!    DO i=0,PP_N
-!      DO l=0,PP_N
-!        U_Eta(:,i,j,k)      = U_Eta(:,i,j,k)      + FilterMat(j,l)*U_Xi(:,i,l,k)
-!      END DO !l
-!    END DO !i
-!  END DO !j
-!END DO !k
-U_in(:,:,:,:)=0.
-DO k=0,PP_N
-  DO j=0,PP_N
-    DO i=0,PP_N
-      DO l=0,PP_N
-        !U_in(:,i,j,k) = U_in(:,i,j,k) + FilterMat(k,l)*U_Eta(:,i,j,l)
-        U_in(:,i,j,k) = U_in(:,i,j,k) + FilterMat(k,l)*U_Xi(:,i,j,l)
-      END DO !l
-    END DO !i
-  END DO !j
-END DO !k
-END SUBROUTINE Filter_General!3Star
 
 
 SUBROUTINE Filter_Selective(NVar,FilterMat,U_in,filter_ind)
