@@ -34,6 +34,10 @@ Components of the FLEXI package can be selected using the following options: \la
 
     This variable specifies the CTAGS install directory.
 
+* ``FLEXI_2D``: ON/OFF
+
+    If set to ON the code will run in two-dimensional mode. You have to provide a mesh that consists of only one layer of elements in the third dimension.
+
 * ``FLEXI_BUILD_HDF5``: ON/OFF
 
     This will be set to ON if no rebuilt HDF5 installation was found on your machine. In this case a HDF5 version will be build and used instead.
