@@ -19,6 +19,7 @@
  * Automatic domain decomposition for parallel simulations based on a space filling curve
  * High order explicit time Runge-Kutta time integration
  * I/O using the HDF5 library optimized for massively parallel jobs
+ * Shock capturing employing finite volume subcells
  
 ## How to use the user guide
 

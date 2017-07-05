@@ -44,6 +44,14 @@ Components of the FLEXI package can be selected using the following options: \la
     * *Navierstokes*
     * *Linearscalaradvection*
     
+* ``FLEXI_FV``:  ON/OFF
+    
+    Set this to ON to enable the usage of the finite volume subcell shock capturing mechanism.
+    
+* ``FLEXI_FV_RECONSTRUCTION``:  ON/OFF
+    
+    Only available if FLEXI_FV is set to ON. Enables the reconstruction of interface values in the finite volume subcells. Needed for calculation of gradients and to use a second order finite volume scheme.
+    
 * ``FLEXI_LIFTING``:
 
     Two different lifting methods for the parabolic part of the equation system are implemented. Possible values are
