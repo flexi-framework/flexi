@@ -316,18 +316,20 @@ END IF
   CALL Convert2D(meshMode)
 #endif
 
-ALLOCATE(SideToGlobalSide(nSides))
-DO iElem=1,nElems
+IF (meshMode.GT.0) THEN
+  ALLOCATE(SideToGlobalSide(nSides))
+  DO iElem=1,nElems
 #if PP_dim == 3
-  DO LocSideID=1,6
+    DO LocSideID=1,6
 #else    
-  DO LocSideID=2,5
+    DO LocSideID=2,5
 #endif    
-    SideID = ElemToSide(E2S_SIDE_ID,LocSideID,iElem)
-    iSide = ElemInfo(3,iElem+offsetElem) + LocSideID
-    SideToGlobalSide(SideID) = ABS(SideInfo(2,iSide))
-  END DO
-END DO ! iElem
+      SideID = ElemToSide(E2S_SIDE_ID,LocSideID,iElem)
+      iSide = ElemInfo(3,iElem+offsetElem) + LocSideID
+      SideToGlobalSide(SideID) = ABS(SideInfo(2,iSide))
+    END DO
+  END DO ! iElem
+END IF
 
 SDEALLOCATE(NodeCoords)
 SDEALLOCATE(dXCL_N)

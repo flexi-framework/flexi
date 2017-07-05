@@ -8,6 +8,7 @@ import shutil
 import tempfile
 import time
 import argparse
+import csv
 
 from modify_prm import modify_prm, read_prm
 from analyze_functions import get_last_L2_error, get_last_Linf_error
@@ -49,7 +50,8 @@ if args.printprmfile :
 projectname = read_prm(args.prm,'ProjectName')
 
 # open file to print order of convergence
-convfile = projectname+'_convfile_N.csv'
+convfile = open(projectname+'_pconvfile.csv','wb')
+csvwriter=csv.writer(convfile, delimiter=',',quotechar='"',quoting=csv.QUOTE_MINIMAL)
 
 x_array  = []
 L2_array = []
@@ -80,20 +82,36 @@ for N in range(1,args.Nmax+1) :
         # output header of output-table
         print_header([' N '] + len(L2)*['L2 err   EOC     '] + len(Linf)*['Linf err  EOC    '])
 
+        L2Err=[]
+        L2EOC=[]
+        LInfErr=[]
+        LInfEOC=[]
+        for j in range(len(L2)) :
+            L2Err.append(' L2 Err V'+str(j+1))
+            L2EOC.append(' L2 EOC V'+str(j+1))
+        for j in range(len(Linf)) :
+            LInfErr.append(' Linf Err V'+str(j+1))
+            LInfEOC.append(' Linf EOC V'+str(j+1))
+        csvwriter.writerow([' N '] + L2Err + LInfErr + L2EOC + LInfEOC)
+
         # print initial values
         print_values([N]+L2+Linf, ["%3d"] + (len(L2)+len(Linf)) * ["%8.2e         "])
+        csvwriter.writerow([N]+L2+Linf)
     else :
         # print L2, Linf errors and EOC
+        convL2=[None]*len(L2)
+        convLinf=[None]*len(Linf)
         vals = [N]
         for j in range(len(L2)) :
-            conv = math.log(  last_L2[j] /   L2[j]) / math.log(float(N+1)/float(last_N+1))
+            convL2[j] = math.log(  last_L2[j] /   L2[j]) / math.log(float(N+1)/float(last_N+1))
             vals.append(L2[j])
-            vals.append(conv)
+            vals.append(convL2[j])
         for j in range(len(Linf)) :
-            conv = math.log(last_Linf[j] / Linf[j]) / math.log(float(N+1)/float(last_N+1))
+            convLinf[j] = math.log(last_Linf[j] / Linf[j]) / math.log(float(N+1)/float(last_N+1))
             vals.append(Linf[j])
-            vals.append(conv)
+            vals.append(convLinf[j])
         print_values(vals, ["%3d"] + (len(L2)+len(Linf)) * ["%8.2e","%8.4f"])
+        csvwriter.writerow([N]+L2+Linf)
     
     x_array.append(i)
     L2_array.append(L2[1]) # x- Momentum
@@ -102,6 +120,8 @@ for N in range(1,args.Nmax+1) :
     sys.stdout.flush()
     last_N = N
 
+
+convfile.closed
 
 if args.gnuplot :
     # Try to import gnuplot for line plot output. If not on the system, set a flag to supress this output
