@@ -44,12 +44,12 @@ CHARACTER(LEN=255)             :: FileName            ! filename
 !==================================================================================================================================
 ! errorcodes
 ALLOCATE(firstError)
-firstError%ErrorCode=-1
 NULLIFY(aError)
+firstError%ErrorCode=-1
 nReggieBuilds=0
 SYSCOMMAND=''
 FileName=''
-!IF(CodeNameUppCase.EQ.'BOLTZPLATZ')CALL InitGlobals() ! only "boltzplatz"
+!CALL InitGlobals() ! only "boltzplatz"
 CALL InitMPI()
 ! Check Code Names
 IF(LEN(CodeNameUppCase).NE.LEN(ADJUSTL(TRIM(CodeNameUppCase))))       CALL abort(&
@@ -109,9 +109,9 @@ CALL SummaryOfErrors(EndTime)
 
 #if USE_MPI
 CALL MPI_FINALIZE(iError)
-IF(iError .NE. 0) STOP 'MPI finalize error'
+IF(iError .NE. 0) ERROR STOP 'MPI finalize error'
 CALL FinalizeMPI()
 #endif /*USE_MPI*/
 
-IF(nErrors.GT.0) ERROR STOP '999'
+IF(nErrors.GT.0) ERROR STOP 999
 END PROGRAM RegressionCheck

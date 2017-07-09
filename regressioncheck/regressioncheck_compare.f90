@@ -155,7 +155,7 @@ SUBROUTINE CompareConvergence(iExample)
 ! MODULES
 USE MOD_Globals
 USE MOD_RegressionCheck_Vars,    ONLY: Examples
-USE MOD_RegressionCheck_tools,   ONLY: str2int,CalcOrder
+USE MOD_RegressionCheck_tools,   ONLY: CalcOrder
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
@@ -171,7 +171,7 @@ INTEGER                        :: iSubExample,p
 REAL,ALLOCATABLE               :: Order(:,:),OrderAvg(:)
 INTEGER,ALLOCATABLE            :: OrderIncrease(:,:)
 LOGICAL,ALLOCATABLE            :: OrderReached(:)
-REAL                           :: DummyReal
+REAL                           :: SuccessRuns,SuccessRate
 LOGICAL                        :: DoDebugOutput
 !==================================================================================================================================
 DoDebugOutput=.TRUE. ! change to ".TRUE." if problems with this routine occur for info written to screen
@@ -278,9 +278,9 @@ OrderReached(J)=ALMOSTEQUALRELATIVE(OrderAvg(J),Examples(iExample)%ConvergenceTe
      IF((OrderReached(J).EQV..FALSE.).AND.(OrderAvg(J).GT.0.0))THEN
        !IntegralCompare=1
        SWRITE(UNIT_stdOut,'(A)')         ' CompareConvergence does not match! Error in computation!'
-       SWRITE(UNIT_stdOut,'(A,E21.14)')  ' OrderAvg(J)                             = ',OrderAvg(J)
-       SWRITE(UNIT_stdOut,'(A,E21.14)')  ' Examples(iExample)%ConvergenceTestValue = ',Examples(iExample)%ConvergenceTestValue
-       SWRITE(UNIT_stdOut,'(A,E21.14)')  ' Tolerance                               = ',Examples(iExample)%ConvergenceTestTolerance
+       SWRITE(UNIT_stdOut,'(A,E25.14E3)')  ' OrderAvg(J)                             = ',OrderAvg(J)
+       SWRITE(UNIT_stdOut,'(A,E25.14E3)')  ' Examples(iExample)%ConvergenceTestValue = ',Examples(iExample)%ConvergenceTestValue
+       SWRITE(UNIT_stdOut,'(A,E25.14E3)')  ' Tolerance                               = ',Examples(iExample)%ConvergenceTestTolerance
      END IF
   END DO
 END IF
@@ -339,16 +339,22 @@ IF(DoDebugOutput)THEN
   SWRITE(UNIT_stdOut,'(132("-"))')
 END IF
 
-! 50% of nVar Convergence tests must succeed
-DummyReal=0.
+! The Success Rate (default if 50%) of nVar Convergence tests must succeed
+SuccessRuns=0.
 DO J=1,Examples(iExample)%nVar
-  IF(OrderReached(J))DummyReal=DummyReal+1.
+  IF(OrderReached(J))SuccessRuns=SuccessRuns+1.
 END DO
-IF(DummyReal/REAL(Examples(iExample)%nVar).LT.0.5)THEN
-  Examples(iExample)%ErrorStatus=3
-ELSE
+SuccessRate=SuccessRuns/REAL(Examples(iExample)%nVar)
+IF((SuccessRate.GT.Examples(iExample)%ConvergenceTestSuccessRate).OR.&
+   (ALMOSTEQUALRELATIVE(SuccessRate,Examples(iExample)%ConvergenceTestSuccessRate,1e-3)))THEN
   Examples(iExample)%ErrorStatus=0
+  SWRITE(UNIT_stdOut,'(A)')' Convergence successful ...'
+ELSE
+  Examples(iExample)%ErrorStatus=3
+  SWRITE(UNIT_stdOut,'(A)')' Failed convergence test because the success rate could no be met'
 END IF
+SWRITE(UNIT_stdOut,'(A,E25.14E3)')  ' Success Rate = ',SuccessRate
+SWRITE(UNIT_stdOut,'(A,E25.14E3)')  ' Tolerance    = ',Examples(iExample)%ConvergenceTestSuccessRate
 
 END SUBROUTINE CompareConvergence
 
@@ -395,7 +401,7 @@ INTEGER,INTENT(OUT)          :: LNormCompare
 INTEGER                      :: iSTATUS2,iSTATUS,iVar
 INTEGER                      :: ioUnit
 CHARACTER(LEN=255)           :: FileName,temp1,temp2,temp3
-LOGICAL                      :: ExistFile,L2Compare,LInfCompare
+LOGICAL                      :: ExistFile,L2Compare,LInfCompare,L2Found,LInfFound
 REAL                         :: LNorm(Examples(iExample)%nVar),L2(Examples(iExample)%nVar),LInf(Examples(iExample)%nVar)
 REAL                         :: eps
 !==================================================================================================================================
@@ -407,7 +413,7 @@ IF(.NOT.ExistFile) THEN
   SWRITE(UNIT_stdOut,'(A,A)') ' CompareNorm: no File found under ',TRIM(Examples(iExample)%PATH)
   SWRITE(UNIT_stdOut,'(A,A)') ' FileName:                  ','std.out'
   SWRITE(UNIT_stdOut,'(A,L)') ' ExistFile:                 ',ExistFile
-  ERROR STOP '-1'
+  ERROR STOP 1
 ELSE
   OPEN(NEWUNIT=ioUnit,FILE=TRIM(FileName),STATUS='OLD',IOSTAT=iSTATUS,ACTION='READ') 
 END IF
@@ -417,6 +423,8 @@ LNorm=-1.
 L2Compare=.TRUE.
 LInfCompare=.TRUE.
 LNormCompare=1
+L2Found=.FALSE.
+LInfFound=.FALSE.
 DO 
   READ(ioUnit,'(A)',IOSTAT=iSTATUS) temp1!,temp2,LNorm(1),LNorm(2),LNorm(3),LNorm(4),LNorm(5)
   IF(iSTATUS.EQ.-1) EXIT ! End Of File (EOF) reached: exit the loop
@@ -424,13 +432,23 @@ DO
   READ(temp1,*,IOSTAT=iSTATUS2) temp2,temp3,LNorm
   IF(STRICMP(temp2,'L_2')) THEN
     L2=LNorm
+    L2Found=.TRUE.
   END IF
   IF(STRICMP(temp2,'L_inf')) THEN
     LInf=LNorm
+    LInfFound=.TRUE.
   END IF
 END DO
 ! close the file
 CLOSE(ioUnit)
+
+! check if L_2 or L_inf was found in *.out file
+IF(.NOT.L2Found)THEN
+  L2=0.
+END IF
+IF(.NOT.LInfFound)THEN
+  LInf=0.
+END IF
 
 ! when NaN is encountered set the values to HUGE
 IF(ANY(ISNAN(L2)))   L2  =HUGE(1.)
@@ -453,9 +471,9 @@ IF(PRESENT(ReferenceNorm))THEN ! use user-defined norm if present, else use 0.00
     IF(.NOT.ALMOSTEQUALRELATIVE(L2(iVar),ReferenceNorm(iVar,1),eps))THEN
       L2Compare=.FALSE.
       SWRITE(UNIT_stdOut,'(A)') ''
-      SWRITE(UNIT_stdOut,'(A,E21.14)')  ' L2Norm                =',L2(iVar)
-      SWRITE(UNIT_stdOut,'(A,E21.14)')  ' ReferenceNorm(iVar,1) =',ReferenceNorm(iVar,1)
-      SWRITE(UNIT_stdOut,'(A,E21.14)')  ' eps                   =',eps
+      SWRITE(UNIT_stdOut,'(A,E25.14E3)')  ' L2Norm                =',L2(iVar)
+      SWRITE(UNIT_stdOut,'(A,E25.14E3)')  ' ReferenceNorm(iVar,1) =',ReferenceNorm(iVar,1)
+      SWRITE(UNIT_stdOut,'(A,E25.14E3)')  ' eps (tolerance)       =',eps
       RETURN ! fail
     END IF
   END DO ! iVar=1,Examples(iExample)%nVar
@@ -463,9 +481,9 @@ IF(PRESENT(ReferenceNorm))THEN ! use user-defined norm if present, else use 0.00
     IF(.NOT.ALMOSTEQUALRELATIVE(LInf(iVar),ReferenceNorm(iVar,2),eps))THEN
       LInfCompare=.FALSE.
       SWRITE(UNIT_stdOut,'(A)') ''
-      SWRITE(UNIT_stdOut,'(A,E21.14)')  ' LInfNorm              =',LInf(iVar)
-      SWRITE(UNIT_stdOut,'(A,E21.14)')  ' ReferenceNorm(iVar,1) =',ReferenceNorm(iVar,2)
-      SWRITE(UNIT_stdOut,'(A,E21.14)')  ' eps                   =',eps
+      SWRITE(UNIT_stdOut,'(A,E25.14E3)')  ' LInfNorm              =',LInf(iVar)
+      SWRITE(UNIT_stdOut,'(A,E25.14E3)')  ' ReferenceNorm(iVar,1) =',ReferenceNorm(iVar,2)
+      SWRITE(UNIT_stdOut,'(A,E25.14E3)')  ' eps (tolerance)       =',eps
       RETURN ! fail
     END IF
   END DO ! iVar=1,Examples(iExample)%nVar
@@ -479,15 +497,15 @@ ELSE ! use user-defined norm if present, else use 100.*PP_RealTolerance
   IF(ANY(L2.GT.eps))THEN
     L2Compare=.FALSE.
     SWRITE(UNIT_stdOut,'(A)') ''
-    SWRITE(UNIT_stdOut,'(A,E21.14)')  ' L2Norm                =',MAXVAL(L2)
-    SWRITE(UNIT_stdOut,'(A,E21.14)')  ' eps                   =',eps
+    SWRITE(UNIT_stdOut,'(A,E25.14E3)')  ' L2Norm                =',MAXVAL(L2)
+    SWRITE(UNIT_stdOut,'(A,E25.14E3)')  ' eps (tolerance)       =',eps
     RETURN ! fail
   END IF
   IF(ANY(LInf.GT.eps))THEN
     LInfCompare=.FALSE.
     SWRITE(UNIT_stdOut,'(A)') ''
-    SWRITE(UNIT_stdOut,'(A,E21.14)')  ' LInfNorm              =',MAXVAL(LInf)
-    SWRITE(UNIT_stdOut,'(A,E21.14)')  ' eps                   =',eps
+    SWRITE(UNIT_stdOut,'(A,E25.14E3)')  ' LInfNorm              =',MAXVAL(LInf)
+    SWRITE(UNIT_stdOut,'(A,E25.14E3)')  ' eps (tolerance)       =',eps
     RETURN ! fail
   END IF
 END IF
@@ -525,7 +543,7 @@ IF(.NOT.ExistFile) THEN
   SWRITE(UNIT_stdOut,'(A,A)') ' ReadNorm: no File found under ',TRIM(Examples(iExample)%PATH)
   SWRITE(UNIT_stdOut,'(A,A)') ' FileName:                     ',TRIM(Examples(iExample)%ReferenceNormFile)
   SWRITE(UNIT_stdOut,'(A,L)') ' ExistFile:                    ',ExistFile
-  ERROR STOP '-1'
+  ERROR STOP 1
 ELSE
   OPEN(NEWUNIT=ioUnit,FILE=TRIM(FileName),STATUS='OLD',IOSTAT=iSTATUS,ACTION='READ') 
 END IF
@@ -570,7 +588,7 @@ INTEGER,INTENT(IN)             :: iExample
 ! LOCAL VARIABLES
 CHARACTER(LEN=255)             :: DataSet,tmp
 CHARACTER(LEN=999)             :: CheckedFileName,OutputFileName,OutputFileName2,ReferenceStateFile,SYSCOMMAND
-CHARACTER(LEN=21)              :: tmpTol,tmpInt
+CHARACTER(LEN=25)              :: tmpTol,tmpInt
 INTEGER                        :: iSTATUS,iSTATUS2,ioUnit,I
 LOGICAL                        :: ExistCheckedFile,ExistReferenceNormFile,ExistFile
 !==================================================================================================================================
@@ -595,9 +613,9 @@ DataSet=TRIM(Examples(iExample)%H5DIFFReferenceDataSetName)
 OutputFileName=TRIM(Examples(iExample)%PATH)//'H5DIFF_info.out'
 
 IF(Examples(iExample)%H5diffTolerance.GT.0.0)THEN
-  WRITE(tmpTol,'(E21.14)') Examples(iExample)%H5diffTolerance
+  WRITE(tmpTol,'(E25.14E3)') Examples(iExample)%H5diffTolerance
 ELSE
-  WRITE(tmpTol,'(E21.14)') SQRT(PP_RealTolerance)
+  WRITE(tmpTol,'(E25.14E3)') SQRT(PP_RealTolerance)
 END IF
 IF(Examples(iExample)%H5diffToleranceType.EQ.'absolute')THEN
   SYSCOMMAND=H5DIFF//' -r --delta='//ADJUSTL(TRIM(tmpTol))//' '//TRIM(ReferenceStateFile)//' ' &
@@ -691,7 +709,6 @@ SUBROUTINE IntegrateLine(IntegralCompare,iExample)
 USE MOD_Globals
 USE MOD_Preproc
 USE MOD_RegressionCheck_Vars,  ONLY: Examples
-USE MOD_RegressionCheck_tools, ONLY: str2real
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -767,7 +784,7 @@ DO I=1,2 ! read the file twice in Order to determine the array size
                 SWRITE(UNIT_stdOut,'(A)')  ' IntegrateLines failed to read data! Error in computation!'
                 SWRITE(UNIT_stdOut,'(A)')  ' The chosen column for line integration is larger than the available ones!'
                 Examples(iExample)%ErrorStatus=5
-                stop
+                ERROR STOP 1
                 RETURN
               END IF!IF(EOL.GT.1)
             END IF!IF(IndNum.GT.0)
@@ -790,7 +807,7 @@ DO I=1,2 ! read the file twice in Order to determine the array size
          !IF(I.EQ.2)THEN
            !DO J=1,MaxRow
              !DO K=1,2
-                 !write(*,'(E21.14,A)', ADVANCE = 'NO') Values(J,K),'  '
+                 !write(*,'(E25.14E3,A)', ADVANCE = 'NO') Values(J,K),'  '
                !IF(K.EQ.2)print*,''
              !END DO
            !END DO
@@ -819,13 +836,17 @@ IntegralValuesAreEqual=ALMOSTEQUALRELATIVE(Q,Examples(iExample)%IntegrateLineVal
 
 IF(.NOT.IntegralValuesAreEqual)THEN
   IntegralCompare=1
-  SWRITE(UNIT_stdOut,'(A)')         ' IntegrateLines do not match! Error in computation!'
-  SWRITE(UNIT_stdOut,'(A)')         ' IntegrateLineOption                   =  '//TRIM(Examples(iExample)%IntegrateLineOption)
-  SWRITE(UNIT_stdOut,'(A,E21.14)')  ' IntegrateLineValue                    = ',Q
-  SWRITE(UNIT_stdOut,'(A,E21.14)')  ' Examples(iExample)%IntegrateLineValue = ',Examples(iExample)%IntegrateLineValue
-  SWRITE(UNIT_stdOut,'(A,E21.14)')  ' Error                                 = ',ABS(Q/Examples(iExample)%IntegrateLineValue-1)
-  SWRITE(UNIT_stdOut,'(A,E21.14)')  ' Tolerance                             = ',Examples(iExample)%IntegrateLineTolerance
-  !SWRITE(UNIT_stdOut,'(A,E21.14)')  ' 0.1*SQRT(PP_RealTolerance)            = ',0.1*SQRT(PP_RealTolerance)
+  SWRITE(UNIT_stdOut,'(A)')           ' IntegrateLines do not match! Error in computation!'
+  SWRITE(UNIT_stdOut,'(A)')           ' IntegrateLineOption                   = '//TRIM(Examples(iExample)%IntegrateLineOption)
+  SWRITE(UNIT_stdOut,'(A,E25.14E3)')  ' IntegrateLineValue                    = ',Q
+  SWRITE(UNIT_stdOut,'(A,E25.14E3)')  ' Examples(iExample)%IntegrateLineValue = ',Examples(iExample)%IntegrateLineValue
+  IF(ABS(Examples(iExample)%IntegrateLineValue).GT.0.0)THEN
+    SWRITE(UNIT_stdOut,'(A,E25.14E3)')' relative Error                        = ',ABS(Q/Examples(iExample)%IntegrateLineValue-1)
+  ELSE
+    SWRITE(UNIT_stdOut,'(A,E25.14E3)')' absolute Error (compare with 0)       = ',ABS(Q)
+  END IF
+  SWRITE(UNIT_stdOut,'(A,E25.14E3)')  ' Tolerance                             = ',Examples(iExample)%IntegrateLineTolerance
+  !SWRITE(UNIT_stdOut,'(A,E25.14E3)')  ' 0.1*SQRT(PP_RealTolerance)            = ',0.1*SQRT(PP_RealTolerance)
   Examples(iExample)%ErrorStatus=5
 ELSE
   IntegralCompare=0
@@ -842,7 +863,6 @@ SUBROUTINE CompareDatafileRow(DataCompare,iExample)
 USE MOD_Globals
 USE MOD_Preproc
 USE MOD_RegressionCheck_Vars,  ONLY: Examples
-USE MOD_RegressionCheck_tools, ONLY: str2real
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -939,13 +959,23 @@ SWRITE(UNIT_stdOut,'(A)') ""
 IF(ColumnNumber.GT.0)THEN
   ALLOCATE(ValuesAreEqual(1:ColumnNumber))
   ValuesAreEqual=.FALSE.
+  SWRITE(UNIT_stdOut,'(A)') ''
   DO J=1,ColumnNumber
     ValuesAreEqual(J)=ALMOSTEQUALRELATIVE(Values(J),ValuesRef(J),Examples(iExample)%CompareDatafileRowTolerance)
+    IF((ABS(ValuesRef(J)).LE.0.0).OR.(ABS(Values(J)).LE.0.0))THEN ! if the one value is zero -> absolute comparison with tolerance
+      IF(MAX(ABS(ValuesRef(J)),ABS(Values(J))).LT.Examples(iExample)%CompareDatafileRowTolerance)ValuesAreEqual(J)=.TRUE.
+    END IF
     IF(ValuesAreEqual(J).EQV..FALSE.)THEN
-      SWRITE(UNIT_stdOut,'(A)')         ' CompareDatafileRows mismatch: '//TRIM(ColumnHeaders(J))
-      SWRITE(UNIT_stdOut,'(A,E24.17)')  ' Value in Refernece            = ',ValuesRef(J)
-      SWRITE(UNIT_stdOut,'(A,E24.17)')  ' Value in data file            = ',Values(J)
-      SWRITE(UNIT_stdOut,'(A,E24.17)')  ' Tolerance                     = ',Examples(iExample)%CompareDatafileRowTolerance
+      SWRITE(UNIT_stdOut,'(A)')             ' CompareDatafileRows mismatch for ['//TRIM(ColumnHeaders(J))//']'
+      SWRITE(UNIT_stdOut,'(A,E25.14E3)')      ' Value in Reference              = ',ValuesRef(J)
+      SWRITE(UNIT_stdOut,'(A,E25.14E3)')      ' Value in data file              = ',Values(J)
+      SWRITE(UNIT_stdOut,'(A,E25.14E3)')      ' Tolerance                       = ',Examples(iExample)%CompareDatafileRowTolerance
+      IF(ABS(ValuesRef(J)).GT.0.0)THEN
+        SWRITE(UNIT_stdOut,'(A,E25.14E3)')  ' relative Error                  = ',ABS(Values(J)/ValuesRef(J)-1)
+      ELSE
+        SWRITE(UNIT_stdOut,'(A,E25.14E3)')  ' absolute Error (compare with 0) = ',ABS(Values(J))
+      END IF
+      SWRITE(UNIT_stdOut,'(A)') ''
     END IF
   END DO
 END IF
@@ -966,7 +996,6 @@ SUBROUTINE GetColumns(InputString,Delimiter,ColumnString,ColumnReal,Column)
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_RegressionCheck_tools, ONLY: str2real
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -1156,8 +1185,6 @@ END DO
 
 CALL CloseDataFile() 
 SDEALLOCATE(HDF5DataArray)
-!print*,"stop"
-!stop
 
 IF(ArrayCompare.GT.0)THEN
   SWRITE(UNIT_stdOut,'(A)')         ' CompareHDF5ArrayBounds do not match! Error in computation!'
