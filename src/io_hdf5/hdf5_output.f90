@@ -651,8 +651,10 @@ IF(nVar_Avg.GT.0)THEN
                           nVal=      (/nVar_Avg,PP_N+1,PP_N+1,NZ_loc+1,nElems/),&
                           offset=    (/0,       0,     0,     0,     offsetElem/),&
                           collective=.TRUE., RealArray=UOut)
+#if PP_dim == 2
   ! Deallocate UOut only if we did not point to UAvg
   IF(.NOT.output2D) DEALLOCATE(UOut)
+#endif
   IF(MPIROOT) CALL MarkWriteSuccessfull(FileName)
 END IF
 
@@ -690,7 +692,9 @@ IF(nVar_Fluc.GT.0)THEN
                           nVal=      (/nVar_Fluc,PP_N+1,PP_N+1,NZ_loc+1,nElems/),&
                           offset=    (/0,        0,     0,     0,     offsetElem/),&
                           collective=.TRUE., RealArray=UOut)
+#if PP_dim == 2
   IF(.NOT.output2D) DEALLOCATE(UOut)
+#endif
   IF(MPIROOT) CALL MarkWriteSuccessfull(FileName)
 END IF
 

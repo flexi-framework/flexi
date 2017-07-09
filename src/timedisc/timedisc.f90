@@ -183,15 +183,9 @@ SWRITE(UNIT_stdOut,'(A13,ES16.7)')'#DOFs      : ',REAL(nGlobalElems)*REAL((PP_N+
 SWRITE(UNIT_stdOut,'(A13,ES16.7)')'#Procs     : ',REAL(nProcessors)
 SWRITE(UNIT_stdOut,'(A13,ES16.7)')'#DOFs/Proc : ',REAL(nGlobalElems*(PP_N+1)**PP_dim/nProcessors)
 
-IF(.NOT.DoRestart)THEN
-  t=0.
-  SWRITE(UNIT_StdOut,*)'WRITING INITIAL SOLUTION:'
-ELSE
-  t=RestartTime
-  SWRITE(UNIT_StdOut,*)'REWRITING SOLUTION:'
-END IF
 
 ! Determine next write time, since it will be written into output file
+t = MERGE(RestartTime,0.,DoRestart)
 tWriteData=MIN(t+WriteData_dt,tEnd)
 tAnalyze=MIN(t+Analyze_dt,tEnd)
 
@@ -219,6 +213,12 @@ IF(.NOT.DoRestart)THEN
   CALL FV_FillIni()
 END IF
 #endif
+
+IF(.NOT.DoRestart)THEN
+  SWRITE(UNIT_StdOut,*)'WRITING INITIAL SOLUTION:'
+ELSE
+  SWRITE(UNIT_StdOut,*)'REWRITING SOLUTION:'
+END IF
 
 ! TODO: Should this be done before or after Overintegration? (see above) For FV we need it after DGTimeDerivative_weakForm!
 ! Write the state at time=0, i.e. the initial condition
