@@ -45,10 +45,8 @@ SUBROUTINE Lifting_SurfInt(Flux,gradU,gradU_master,gradU_slave,doMPISides)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_DG_Vars,            ONLY: L_HatPlus,L_HatMinus
-#if (PP_NodeType==1) /* Gauss */
-USE MOD_Interpolation_Vars, ONLY: L_Plus,L_Minus
-#endif
+USE MOD_DG_Vars,            ONLY: L_HatMinus
+USE MOD_Interpolation_Vars, ONLY: L_Minus
 USE MOD_Mesh_Vars,          ONLY: SideToElem,nSides
 USE MOD_Mesh_Vars,          ONLY: nElems
 USE MOD_Mesh_Vars,          ONLY: sJ
@@ -77,12 +75,6 @@ REAL,INTENT(INOUT)   :: gradU_slave( PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< Gra
 REAL               :: F_loc(PP_nVarPrim)
 INTEGER            :: ElemID,nbElemID,l,p,q,Flip,SideID,locSideID,nblocSideID,ijk(3)
 INTEGER            :: firstSideID,lastSideID
-#if (PP_NodeType==1) /* Gauss */
-REAL               :: L_Hat(0:PP_N),L_(0:PP_N)
-#else
-REAL               :: L_Hat
-REAL               :: L_HatMinus0,L_HatPlusN
-#endif
 REAL               :: eta
 !==================================================================================================================================
 
