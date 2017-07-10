@@ -60,6 +60,8 @@ USE MOD_EddyVisc_Vars
 USE MOD_Smagorinsky
 USE MOD_DynSmag
 USE MOD_DefaultEddyVisc
+USE MOD_Vreman
+USE MOD_SigmaModel
 USE MOD_Mesh_Vars  ,ONLY:nElems,nSides
 USE MOD_ReadInTools,ONLY: GETINTFROMSTR
 USE MOD_IO_HDF5    ,ONLY: AddToFieldData, AddToElemData
@@ -121,6 +123,16 @@ SELECT CASE(eddyViscType)
     eddyViscosity_surf => DefaultEddyVisc_surf !NOT used, surface muSGS from volume prolongated 
     FinalizeEddyViscosity => Finalizedynsmag
     testfilter         => Compute_cd
+  CASE(3) !Vreman model 2004 
+    CALL InitVreman()
+    eddyViscosity          => vreman
+    eddyViscosity_surf     => vreman_surf
+    FinalizeEddyViscosity => Finalizevreman
+  CASE(4) !sigma Model 2015
+    CALL InitSigmaModel()
+    eddyViscosity          => SigmaModel
+    eddyViscosity_surf     => SigmaModel_surf
+    FinalizeEddyViscosity => FinalizeSigmaModel
   CASE DEFAULT
     CALL CollectiveStop(__STAMP__,&
       'Eddy Viscosity Type not specified!')

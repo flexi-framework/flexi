@@ -95,5 +95,7 @@ REAL,ALLOCATABLE  :: walldist_z(:)  !< Debug output of wall distance
 LOGICAL           :: VanDriest=.FALSE.
 LOGICAL           :: SmagorinskyInitIsDone=.FALSE.
 LOGICAL           :: DynSmagInitIsDone=.FALSE.
+LOGICAL           :: VremanInitIsDone=.FALSE.
+LOGICAL           :: SigmaModelInitIsDone=.FALSE.
 
 END MODULE MOD_EddyVisc_Vars

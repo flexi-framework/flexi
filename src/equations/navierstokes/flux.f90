@@ -365,7 +365,7 @@ DO j=0,PP_NlocZ ; DO i=0,Nloc
   ! In previous versions gradients of conservative variables had been used, see Git commit b984f2895121e236ce24c149ad15615180995b00
   ! gradients of primitive variables are directly available gradU = (/ drho, dv1, dv2, dv3, dp, dT /)
 #ifdef EDDYVISCOSITY
-  IF(eddyViscType.EQ.2) THEN
+  IF(eddyViscType.NE.1) THEN
     muSGS=SGS_Ind(2,i,j)
   ELSE
     CALL eddyViscosity_surf(gradUx_Face(2,i,j),gradUy_Face(3,i,j),gradUz_Face(4,i,j)&

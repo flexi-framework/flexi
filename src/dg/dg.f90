@@ -535,7 +535,7 @@ CALL FV_VolInt(UPrim,Ut)
 
 #if PARABOLIC
 #if EDDYVISCOSITY
-IF(EddyViscType.EQ.2) THEN
+IF(EddyViscType.NE.1) THEN
   IF(CurrentStage.EQ.1) THEN
 #if USE_MPI
     ! 4.2)

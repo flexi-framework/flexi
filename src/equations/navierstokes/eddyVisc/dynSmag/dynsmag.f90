@@ -83,6 +83,8 @@ REAL    :: WallDistTrsh, distNorm
 REAL    :: vec(3)
 REAL    :: EwallDist(3,nElems)
 REAL    :: Vdm_CLN_N(0:PP_N,0:PP_N)
+REAL,ALLOCATABLE    :: Vdm_N_Ntest(:,:)
+REAL,ALLOCATABLE    :: Vdm_Ntest_N(:,:)
 REAL    :: dX_N(3,0:PP_N,0:PP_N,0:PP_N)
 !===================================================================================================================================
 IF(((.NOT.InterpolationInitIsDone).AND.(.NOT.MeshInitIsDone)).OR.dynsmagInitIsDone)THEN
@@ -105,7 +107,16 @@ SWRITE(*,'(A)',ADVANCE='NO')'TEST FILTER, FILTER DIAGONAL: '
 DO i=0,PP_N
   SWRITE(*,'(F7.3)',ADVANCE='NO')FilterMat_Testfilter(i,i)
 END DO
-FilterMat_Testfilter=MATMUL(MATMUL(Vdm_Leg,FilterMat_Testfilter),sVdm_Leg)
+
+ALLOCATE(Vdm_N_Ntest(0:N_testfilter,0:PP_N))
+ALLOCATE(Vdm_Ntest_N(0:PP_N,0:N_testfilter))
+CALL GetVandermonde(PP_N,NodeType,N_Testfilter,NodeType,Vdm_N_Ntest,Vdm_Ntest_N,modal=.FALSE.)
+FilterMat_Testfilter=MATMUL(Vdm_Ntest_N,Vdm_N_Ntest)
+DEALLOCATE(Vdm_N_Ntest)
+DEALLOCATE(Vdm_Ntest_N)
+
+
+!FilterMat_Testfilter=MATMUL(MATMUL(Vdm_Leg,FilterMat_Testfilter),sVdm_Leg)
 
 !get wall distance for zonal averaging approach if needed
 WallDistFile = GETSTR('WallDistFile','noFile')
@@ -209,8 +220,9 @@ DO iElem=1,nElems
     average_type(iElem) = 2
   ELSEIF (average_ind(1,iElem).AND.(.NOT.average_ind(2,iElem)).AND.average_ind(3,iElem)) THEN ! J-Plane
     DO i=0,PP_N; DO j=0,PP_N; DO k=0,PP_N
-      IntElem(i,j,k,iElem) = SQRT(SUM(Metrics_gtilde(:,i,j,k,iElem,0)**2))
-      IntElem(i,j,k,iElem) = IntElem(i,j,k,iElem)*wGP(i)*wGP(k)
+!      IntElem(i,j,k,iElem) = SQRT(SUM(Metrics_gtilde(:,i,j,k,iElem,0)**2))
+!      IntElem(i,j,k,iElem) = IntElem(i,j,k,iElem)*wGP(i)*wGP(k)
+      IntElem(i,j,k,iElem) = wGP(i)*wGP(k)
     END DO; END DO; END DO
     average_type(iElem) = 3
   ELSEIF (average_ind(1,iElem).AND.average_ind(2,iElem).AND.(.NOT.average_ind(3,iElem))) THEN ! K-Plane
@@ -281,7 +293,7 @@ S_eN = S_eN + ( gradUz(3,i,j,k,iElem) + gradUy(4,i,j,k,iElem) )**2.
 S_eN = SQRT(S_eN)
 ! Dynsmag model
 muSGS = S_eN*U(1,i,j,k,iElem)*SGS_Ind(1,i,j,k,iElem)
-muSGS = min(max(muSGS,0.),20.*mu0)
+muSGS = 0.!min(max(muSGS,0.),10*mu0)
 S_en_out(1,i,j,k,iElem) = S_eN
 SGS_Ind(2,i,j,k,iElem) = muSGS
 muSGSmax(iElem) = MAX(muSGS,muSGSmax(iElem))
@@ -310,22 +322,28 @@ REAL,INTENT(IN)  :: U_in(PP_nVar,0:PP_N,0:PP_N,0:PP_N,nElems) !< Conservative vo
 ! aOCAL VARIABLES
 INTEGER                                      :: i,j,k,l,m,iElem
 REAL,DIMENSION(3,3,0:PP_N,0:PP_N,0:PP_N)     :: gradv_all, S_ik, M_ik, L_ik
-REAL,DIMENSION(3,0:PP_N,0:PP_N,0:PP_N)       :: V_filtered
+REAL,DIMENSION(3,0:PP_N,0:PP_N,0:PP_N)       :: V_filtered,V_In
 REAL, DIMENSION(0:PP_N,0:PP_N,0:PP_N)        :: MM,ML,S_eN_filtered,S_eN,divV
 REAL                                         :: D_Ratio
 REAL                                         :: MMa,MLa
 !===============================================================================================================================
 DO iElem=1,nElems
+  DO i=1,3!TODO USe UPrim here!!
+    V_In(i,:,:,:) = U_in(i+1,:,:,:,iElem)/U_in(1,:,:,:,iElem)
+  END DO !i
   !store gradients in matrix for readability and filtering
-  gradv_all(1,1,:,:,:) = gradUx(2,:,:,:,iElem)
-  gradv_all(1,2,:,:,:) = gradUy(2,:,:,:,iElem)
-  gradv_all(1,3,:,:,:) = gradUz(2,:,:,:,iElem)
-  gradv_all(2,1,:,:,:) = gradUx(3,:,:,:,iElem)
-  gradv_all(2,2,:,:,:) = gradUy(3,:,:,:,iElem)
-  gradv_all(2,3,:,:,:) = gradUz(3,:,:,:,iElem)
-  gradv_all(3,1,:,:,:) = gradUx(4,:,:,:,iElem)
-  gradv_all(3,2,:,:,:) = gradUy(4,:,:,:,iElem)
-  gradv_all(3,3,:,:,:) = gradUz(4,:,:,:,iElem)
+  CALL gradient(1,V_In,gradv_all(:,1,:,:,:),iElem)
+  CALL gradient(2,V_In,gradv_all(:,2,:,:,:),iElem)
+  CALL gradient(3,V_In,gradv_all(:,3,:,:,:),iElem)
+!  gradv_all(1,1,:,:,:) = gradUx(2,:,:,:,iElem)
+!  gradv_all(1,2,:,:,:) = gradUy(2,:,:,:,iElem)
+!  gradv_all(1,3,:,:,:) = gradUz(2,:,:,:,iElem)
+!  gradv_all(2,1,:,:,:) = gradUx(3,:,:,:,iElem)
+!  gradv_all(2,2,:,:,:) = gradUy(3,:,:,:,iElem)
+!  gradv_all(2,3,:,:,:) = gradUz(3,:,:,:,iElem)
+!  gradv_all(3,1,:,:,:) = gradUx(4,:,:,:,iElem)
+!  gradv_all(3,2,:,:,:) = gradUy(4,:,:,:,iElem)
+!  gradv_all(3,3,:,:,:) = gradUz(4,:,:,:,iElem)
   divV(:,:,:) = 1./3.*(gradv_all(1,1,:,:,:)+gradv_all(2,2,:,:,:)+gradv_all(3,3,:,:,:))
 
   ! dynamic Smagorinsky model
@@ -374,11 +392,18 @@ DO iElem=1,nElems
     CALL Filter_Selective(3,FilterMat_testfilter,M_ik(i,1:3,:,:,:),filter_ind(:,iElem))
   END DO ! i
 
-  !filter gradients
-  CALL Filter_Selective(3,FilterMat_Testfilter,gradv_all(:,1,:,:,:),filter_ind(:,iElem))
-  CALL Filter_Selective(3,FilterMat_Testfilter,gradv_all(:,2,:,:,:),filter_ind(:,iElem))
-  CALL Filter_Selective(3,FilterMat_Testfilter,gradv_all(:,3,:,:,:),filter_ind(:,iElem))
+!  !filter gradients
+!  CALL Filter_Selective(3,FilterMat_Testfilter,gradv_all(:,1,:,:,:),filter_ind(:,iElem))
+!  CALL Filter_Selective(3,FilterMat_Testfilter,gradv_all(:,2,:,:,:),filter_ind(:,iElem))
+!  CALL Filter_Selective(3,FilterMat_Testfilter,gradv_all(:,3,:,:,:),filter_ind(:,iElem))
+
+!  !filter gradients
+  CALL gradient(1,V_Filtered,gradv_all(:,1,:,:,:),iElem)
+  CALL gradient(2,V_Filtered,gradv_all(:,2,:,:,:),iElem)
+  CALL gradient(3,V_Filtered,gradv_all(:,3,:,:,:),iElem)
+
   divV(:,:,:) = 1./3.*(gradv_all(1,1,:,:,:)+gradv_all(2,2,:,:,:)+gradv_all(3,3,:,:,:))
+
   ! Compute filtered shear rate tensor, unfiltered not needed anymore
   DO i=1,3
     DO j=1,3
@@ -420,6 +445,7 @@ DO iElem=1,nElems
       END DO ! k
     END DO ! j
   END DO ! i
+!  SGS_Ind(1,:,:,:,iElem) = ML(:,:,:)/MM(:,:,:)
 
   ! Selective cell average (on selected directions)
   SELECT CASE (average_type(iElem))
@@ -516,6 +542,70 @@ ELSE
 ENDIF
 END FUNCTION ISNORMAL
 
+SUBROUTINE gradient(dir,UPrim,gradU,iElem)
+! MODULES
+USE MOD_PreProc
+USE MOD_DG_Vars      ,ONLY: D_T
+USE MOD_Mesh_Vars    ,ONLY: Metrics_fTilde,Metrics_gTilde,Metrics_hTilde,sJ   ! metrics
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN)                           :: dir,iElem                      !< direction (x,y,z)
+REAL,INTENT(IN)                              :: UPrim(3,0:PP_N,0:PP_N,0:PP_NZ) !< solution
+REAL,INTENT(OUT)                             :: gradU(3,0:PP_N,0:PP_N,0:PP_NZ) !< solution gradient in direction dir
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL,DIMENSION(3,0:PP_N,0:PP_N,0:PP_NZ) :: UE_f,UE_g,UE_h ! transformed gradient flux (i.e. transformed solution)
+INTEGER                                          :: i,j,k,l
+!==================================================================================================================================
+! volume integral
+! transform the gradient "flux" into the reference element coordinates
+CALL Lifting_Metrics(dir,UPrim(:,:,:,:),&
+                     Metrics_fTilde(:,:,:,:,iElem,0),&
+                     Metrics_gTilde(:,:,:,:,iElem,0),&
+                     Metrics_hTilde(:,:,:,:,iElem,0),&
+                     UE_f,UE_g,UE_h)
+
+! calculate the volume integral of the gradient "flux"
+DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+  gradU(:,i,j,k)   =                      D_T(0,i)*UE_f(:,0,j,k)+&
+                                                D_T(0,j)*UE_g(:,i,0,k)+&
+                                                D_T(0,k)*UE_h(:,i,j,0)
+  DO l=1,PP_N
+    gradU(:,i,j,k) = gradU(:,i,j,k)+D_T(l,i)*UE_f(:,l,j,k)+&
+                                                D_T(l,j)*UE_g(:,i,l,k)+&
+                                                D_T(l,k)*UE_h(:,i,j,l)
+  END DO ! l
+  gradU(:,i,j,k) = gradU(:,i,j,k) * sJ(i,j,k,iElem,0)
+END DO; END DO; END DO ! i,j,k
+END SUBROUTINE gradient
+
+SUBROUTINE Lifting_Metrics(dir,UPrim,Mf,Mg,Mh,UPrim_f,UPrim_g,UPrim_h)
+! MODULES
+USE MOD_DG_Vars,ONLY:nDOFElem
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN) :: dir                                 !< direction (x,y,z)
+REAL,INTENT(IN)    :: Mf(3,nDOFElem)                      !< metrics in xi
+REAL,INTENT(IN)    :: Mg(3,nDOFElem)                      !< metrics in eta
+REAL,INTENT(IN)    :: Mh(3,nDOFElem)                      !< metrics in zeta
+REAL,INTENT(IN)    :: UPrim(3,nDOFElem)         !< solution ("flux")
+REAL,INTENT(OUT)   :: UPrim_f(3,nDOFElem)       !< gradient flux xi
+REAL,INTENT(OUT)   :: UPrim_g(3,nDOFElem)       !< gradient flux eta
+REAL,INTENT(OUT)   :: UPrim_h(3,nDOFElem)       !< gradient flux zeta
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER            :: i
+!==================================================================================================================================
+DO i=1,nDOFElem
+  UPrim_f(:,i) = Mf(dir,i)*UPrim(:,i)
+  UPrim_g(:,i) = Mg(dir,i)*UPrim(:,i)
+  UPrim_h(:,i) = Mh(dir,i)*UPrim(:,i)
+END DO ! i
+END SUBROUTINE Lifting_Metrics
+
+
 !===============================================================================================================================
 !> Deallocate arrays and finalize variables used by dynamic Smagorinsky SGS model
 !===============================================================================================================================
@@ -525,17 +615,6 @@ USE MOD_EddyVisc_Vars
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !===============================================================================================================================
-DEALLOCATE(DeltaS)
-DEALLOCATE(SGS_Ind)
-DEALLOCATE(SGS_Ind_master)
-DEALLOCATE(SGS_Ind_slave)
-DEALLOCATE(muSGS)
-DEALLOCATE(muSGSmax)
-DEALLOCATE(FilterMat_Testfilter)
-DEALLOCATE(filter_ind)
-DEALLOCATE(average_ind)
-DEALLOCATE(average_type)
-DEALLOCATE(IntELem)
 dynsmagInitIsDone = .FALSE.
 END SUBROUTINE FinalizeDynsmag
 
