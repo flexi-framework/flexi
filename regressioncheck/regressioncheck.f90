@@ -42,6 +42,7 @@ INTEGER                        :: nReggieBuilds       ! number of different cmak
 CHARACTER(LEN=500)             :: SYSCOMMAND          ! string to fit the system command
 CHARACTER(LEN=255)             :: FileName            ! filename
 !==================================================================================================================================
+
 ! errorcodes
 ALLOCATE(firstError)
 NULLIFY(aError)
@@ -51,6 +52,10 @@ SYSCOMMAND=''
 FileName=''
 !CALL InitGlobals() ! only "boltzplatz"
 CALL InitMPI()
+
+! Measure regressioncheck runtime 
+StartTime=REGGIETIME()
+
 ! Check Code Names
 IF(LEN(CodeNameUppCase).NE.LEN(ADJUSTL(TRIM(CodeNameUppCase))))       CALL abort(&
   __STAMP__&
@@ -76,9 +81,6 @@ CALL GetCommandLineOption()
 ! set paths for execution
 IF(.NOT.BuildSolver) CALL CheckForExecutable(Mode=1)
 
-! Measure regressioncheck runtime 
-StartTime=REGGIETIME()
-
 IF(DoFullReggie)THEN ! call regressioncheck recursivly using the commands from gitlab-ci.yml
   CALL PerformFullRegressionCheck()
 ELSE
@@ -93,9 +95,6 @@ ELSE
   DEALLOCATE(Examples)
 END IF
 
-! Measure processing duration
-EndTime=REGGIETIME()
-
 ! remove the following if never used again
 !   #if USE_MPI
 !   CALL MPI_FINALIZE(iError)
@@ -105,7 +104,7 @@ EndTime=REGGIETIME()
 !   #endif /*USE_MPI*/
 
 ! Print the summary or examples and error codes (if they exist)
-CALL SummaryOfErrors(EndTime)
+CALL SummaryOfErrors()
 
 #if USE_MPI
 CALL MPI_FINALIZE(iError)
