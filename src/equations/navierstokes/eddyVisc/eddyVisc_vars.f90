@@ -68,6 +68,7 @@ PROCEDURE(FinalizeEddyViscosityInt),POINTER       :: FinalizeEddyViscosity     !
 
 !Smagosinsky Standard
 REAL,ALLOCATABLE  :: DeltaS(:)         !< filter width, used by Smagorinsky modell
+REAL,ALLOCATABLE  :: DeltaS_m(:,:)     !< filter width per direction, used by Vreman modell, apr. by cartesian cells
 REAL,ALLOCATABLE  :: DeltaS_master(:)
 REAL,ALLOCATABLE  :: DeltaS_slave(:)
 REAL,ALLOCATABLE  :: muSGS(:,:,:,:,:)  !< Viscosity for the sub-grid
@@ -84,12 +85,12 @@ LOGICAL,ALLOCATABLE  :: filter_ind(:,:) !< Do filter along i,j,k index?
 LOGICAL,ALLOCATABLE  :: average_ind(:,:) !< Do average along i,j,k index?
 INTEGER,ALLOCATABLE  :: average_type(:)  !< Type of average_ind for select case
 !MATTEO:debug output
-REAL,ALLOCATABLE  :: S_en_out(:,:,:,:,:)  !< Debug output of |S|
-REAL,ALLOCATABLE  :: filtdir_out(:)  !< Debug output of filtering directions
-REAL,ALLOCATABLE  :: walldist_out(:)  !< Debug output of wall distance
-REAL,ALLOCATABLE  :: walldist_x(:)  !< Debug output of wall distance
-REAL,ALLOCATABLE  :: walldist_y(:)  !< Debug output of wall distance
-REAL,ALLOCATABLE  :: walldist_z(:)  !< Debug output of wall distance
+!REAL,ALLOCATABLE  :: S_en_out(:,:,:,:,:)  !< Debug output of |S|
+!REAL,ALLOCATABLE  :: filtdir_out(:)  !< Debug output of filtering directions
+!REAL,ALLOCATABLE  :: walldist_out(:)  !< Debug output of wall distance
+!REAL,ALLOCATABLE  :: walldist_x(:)  !< Debug output of wall distance
+!REAL,ALLOCATABLE  :: walldist_y(:)  !< Debug output of wall distance
+!REAL,ALLOCATABLE  :: walldist_z(:)  !< Debug output of wall distance
 
 
 LOGICAL           :: VanDriest=.FALSE.

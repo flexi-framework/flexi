@@ -63,7 +63,7 @@ USE MOD_DefaultEddyVisc
 USE MOD_Vreman
 USE MOD_SigmaModel
 USE MOD_Mesh_Vars  ,ONLY:nElems,nSides
-USE MOD_ReadInTools,ONLY: GETINTFROMSTR
+USE MOD_ReadInTools,ONLY: GETINTFROMSTR, GETREAL
 USE MOD_IO_HDF5    ,ONLY: AddToFieldData, AddToElemData
 USE MOD_EOS_Vars, ONLY: mu0
 !===================================================================================================================================
@@ -71,6 +71,7 @@ eddyViscType = GETINTFROMSTR('eddyViscType')
 
 ! Allocate arrays needed by all SGS models
 ALLOCATE(DeltaS(nElems))
+ALLOCATE(DeltaS_m(3,nElems))
 ALLOCATE(DeltaS_master(1:nSides))
 ALLOCATE(DeltaS_slave (1:nSides))
 DeltaS_master=0.
@@ -86,24 +87,25 @@ ALLOCATE(muSGS(1,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 ALLOCATE(muSGSmax(nElems))
 muSGS = 0.
 muSGSmax=8.*mu0
+! Turbulent Prandtl number
+PrSGS  = GETREAL('PrSGS','0.7')
 
 IF(eddyViscType.EQ.2) THEN !dynamic Smagorinsky
-  !MATTEO: debug output
-  ALLOCATE(S_en_out(1,0:PP_N,0:PP_N,0:PP_N,nElems))
-  S_en_out = 0.
-  ALLOCATE(filtdir_out(nElems))
-  ALLOCATE(walldist_out(nElems))
-  ALLOCATE(walldist_x(nElems))
-  ALLOCATE(walldist_y(nElems))
-  ALLOCATE(walldist_z(nElems))
-  !!!!!!!!!!
+!  !MATTEO: debug output
+!  ALLOCATE(S_en_out(1,0:PP_N,0:PP_N,0:PP_N,nElems))
+!  S_en_out = 0.
+!  ALLOCATE(filtdir_out(nElems))
+!  ALLOCATE(walldist_out(nElems))
+!  ALLOCATE(walldist_x(nElems))
+!  ALLOCATE(walldist_y(nElems))
+!  ALLOCATE(walldist_z(nElems))
+!  !!!!!!!!!!
   ALLOCATE(FilterMat_Testfilter(0:PP_N,0:PP_N))
   FilterMat_Testfilter = 0.
   ALLOCATE(filter_ind(3,nElems))
   ALLOCATE(average_ind(3,nElems))
   ALLOCATE(average_type(nElems))
   ALLOCATE(IntELem(0:PP_N,0:PP_N,0:PP_N,nElems))
-  PrSGS = 0.7
 END IF
 
 SELECT CASE(eddyViscType)
@@ -138,16 +140,16 @@ SELECT CASE(eddyViscType)
       'Eddy Viscosity Type not specified!')
 END SELECT
 CALL AddToFieldData((/1,PP_N+1,PP_N+1,PP_NZ+1/),'VMSData',(/'muSGS'/),RealArray=muSGS)
-IF(eddyViscType.EQ.2) THEN
-  !MATTEO: debug output
-  CALL AddToFieldData((/2,PP_N+1,PP_N+1,PP_NZ+1/),'VMSData',(/'Csmag   ','muSgsInd'/),RealArray=SGS_Ind)
-  CALL AddToFieldData((/1,PP_N+1,PP_N+1,PP_NZ+1/),'VMSData',(/'S_norm'/),RealArray=S_en_out)
-  CALL AddToElemData('FilterInd',RealArray=filtdir_out(:))
-  CALL AddToElemData('WallDist',RealArray=walldist_out(:))
-  CALL AddToElemData('WallDist_x',RealArray=walldist_x(:))
-  CALL AddToElemData('WallDist_y',RealArray=walldist_y(:))
-  CALL AddToElemData('WallDist_z',RealArray=walldist_z(:))
-END IF
+!IF(eddyViscType.EQ.2) THEN
+!  !MATTEO: debug output
+!  CALL AddToFieldData((/2,PP_N+1,PP_N+1,PP_NZ+1/),'VMSData',(/'Csmag   ','muSgsInd'/),RealArray=SGS_Ind)
+!  CALL AddToFieldData((/1,PP_N+1,PP_N+1,PP_NZ+1/),'VMSData',(/'S_norm'/),RealArray=S_en_out)
+!  CALL AddToElemData('FilterInd',RealArray=filtdir_out(:))
+!  CALL AddToElemData('WallDist',RealArray=walldist_out(:))
+!  CALL AddToElemData('WallDist_x',RealArray=walldist_x(:))
+!  CALL AddToElemData('WallDist_y',RealArray=walldist_y(:))
+!  CALL AddToElemData('WallDist_z',RealArray=walldist_z(:))
+!END IF
 
 END SUBROUTINE
 
