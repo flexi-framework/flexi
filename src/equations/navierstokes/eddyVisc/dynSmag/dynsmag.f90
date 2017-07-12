@@ -95,8 +95,6 @@ SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT Dynsmag...'
 
 ! Read the variables used for LES model
-! Turbulent Prandtl number
-PrSGS  = GETREAL('PrSGS','0.7')
 ! Polynomial degree used in testfilter
 N_Testfilter = GETINT('N_Testfilter')
 ! Build testfilter filter matrix  (cut-off filter)
@@ -132,20 +130,20 @@ IF (WallDistFile .NE. 'noFile') THEN
   !Find in which x, y, z direction are the i, j ,k index pointing, and
   !then decide which index to filter
   !MATTEO: DEBUG
-  filtdir_out = 0.0
+!  filtdir_out = 0.0
   DO iElem=1,nElems
     distNorm = SQRT(SUM(EwallDist(:,iElem)**2))
-    !MATTEO: debug
-    walldist_out(iElem) = distNorm
-    walldist_x(iElem) = EwallDist(1,iElem)
-    walldist_y(iElem) = EwallDist(2,iElem)
-    walldist_z(iElem) = EwallDist(3,iElem)
+!    !MATTEO: debug
+!    walldist_out(iElem) = distNorm
+!    walldist_x(iElem) = EwallDist(1,iElem)
+!    walldist_y(iElem) = EwallDist(2,iElem)
+!    walldist_z(iElem) = EwallDist(3,iElem)
     IF (distNorm .GE. WallDistTrsh) THEN !out of the boundary layer
       ! Filter and average isotropically
       filter_ind(:,iElem) = .true.
       average_ind(:,iElem) = .true.
-      !MATTEO: DEBUG
-      filtdir_out(iElem) = 8.0
+!      !MATTEO: DEBUG
+!      filtdir_out(iElem) = 8.0
     ELSE ! in the boundary layer
       ! Filter and average only the plane normal to the boundary
       !i, average on the four edges
@@ -160,7 +158,7 @@ IF (WallDistFile .NE. 'noFile') THEN
       filter_ind(1,iElem) = isn
       average_ind(1,iElem) = isn
       !MATTEO: DEBUG
-      IF(isn) filtdir_out(iElem) = filtdir_out(iElem)+1
+!      IF(isn) filtdir_out(iElem) = filtdir_out(iElem)+1
       !j
       vec = Elem_xgp(:,0,PP_N,0,iElem) - Elem_xgp(:,0,0,0,iElem)
       vec = vec + (Elem_xgp(:,PP_N,PP_N,0,iElem) - Elem_xgp(:,PP_N,0,0,iElem))
@@ -173,7 +171,7 @@ IF (WallDistFile .NE. 'noFile') THEN
       filter_ind(2,iElem) =  isn
       average_ind(2,iElem) = isn
       !MATTEO: DEBUG
-      IF(isn) filtdir_out(iElem) = filtdir_out(iElem)+2
+!      IF(isn) filtdir_out(iElem) = filtdir_out(iElem)+2
       !k
       vec = Elem_xgp(:,0,0,PP_N,iElem) - Elem_xgp(:,0,0,0,iElem)
       vec = vec + (Elem_xgp(:,PP_N,0,PP_N,iElem) - Elem_xgp(:,PP_N,0,0,iElem))
@@ -186,7 +184,7 @@ IF (WallDistFile .NE. 'noFile') THEN
       filter_ind(3,iElem) = isn
       average_ind(3,iElem) = isn
       !MATTEO: DEBUG
-      IF(isn) filtdir_out(iElem) = filtdir_out(iElem)+4
+!      IF(isn) filtdir_out(iElem) = filtdir_out(iElem)+4
     END IF !in or out boundary layer
   END DO !iElem
 ELSEIF(testcase.EQ.'channel') THEN
@@ -266,7 +264,7 @@ END SUBROUTINE InitDynsmag
 SUBROUTINE Dynsmag(iElem,i,j,k,muSGS)
 ! MODULES
 USE MOD_PreProc
-USE MOD_EddyVisc_Vars ,ONLY: SGS_Ind,muSGSmax,S_en_out
+USE MOD_EddyVisc_Vars ,ONLY: SGS_Ind,muSGSmax!,S_en_out
 USE MOD_EOS_Vars      ,ONLY: mu0
 USE MOD_Lifting_Vars  ,ONLY: gradUx,gradUy,gradUz
 USE MOD_DG_Vars       ,ONLY: U
@@ -282,10 +280,7 @@ REAL,INTENT(INOUT)                        :: muSGS  !< Pointwise eddy viscosity
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                :: S_eN
-!REAL                :: divv
 !===================================================================================================================================
-!divv    = grad11+grad22+grad33
-!S_eN = 2*((grad11-1./3.*divv)**2. + (grad22-1./3.*divv)**2. + (grad33-1./3.*divv)**2.)
 S_eN = 2*(gradUx(2,i,j,k,iElem)**2. + gradUy(3,i,j,k,iElem)**2. + gradUz(4,i,j,k,iElem)**2.)
 S_eN = S_eN + ( gradUy(2,i,j,k,iElem) + gradUx(3,i,j,k,iElem) )**2.
 S_eN = S_eN + ( gradUz(2,i,j,k,iElem) + gradUx(4,i,j,k,iElem) )**2.
@@ -293,8 +288,8 @@ S_eN = S_eN + ( gradUz(3,i,j,k,iElem) + gradUy(4,i,j,k,iElem) )**2.
 S_eN = SQRT(S_eN)
 ! Dynsmag model
 muSGS = S_eN*U(1,i,j,k,iElem)*SGS_Ind(1,i,j,k,iElem)
-muSGS = 0.!min(max(muSGS,0.),10*mu0)
-S_en_out(1,i,j,k,iElem) = S_eN
+muSGS = min(max(muSGS,-mu0*0.95),100*mu0)
+!S_en_out(1,i,j,k,iElem) = S_eN
 SGS_Ind(2,i,j,k,iElem) = muSGS
 muSGSmax(iElem) = MAX(muSGS,muSGSmax(iElem))
 END SUBROUTINE Dynsmag
