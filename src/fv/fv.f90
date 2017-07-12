@@ -91,6 +91,7 @@ CALL prms%CreateLogicalOption('FV_toDGinRK'         ,"Allow switching of FV elem
                                                      "This may violated the DG timestep restriction of the element.", '.FALSE.')
 CALL prms%CreateLogicalOption('FV_IniSupersample'   ,"Supersample initial solution inside each sub-cell and take mean value \n"// &
                                                      "as average sub-cell value.", '.TRUE.')
+CALL prms%CreateLogicalOption('FV_IniSharp'         ,"Maintain a sharp interface in the initial solution in the FV region", '.FALSE.')
 #if FV_RECONSTRUCT
 CALL DefineParametersFV_Limiter()
 #endif
@@ -319,12 +320,13 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_DG_Vars           ,ONLY: U
 USE MOD_Mesh_Vars         ,ONLY: nElems
-USE MOD_FV_Vars           ,ONLY: FV_Elems
+USE MOD_FV_Vars           ,ONLY: FV_Elems,FV_Vdm
 USE MOD_FV_Basis          ,ONLY: FV_Build_X_w_BdryX
 USE MOD_Indicator         ,ONLY: CalcIndicator
 USE MOD_Basis             ,ONLY: InitializeVandermonde
 USE MOD_Interpolation     ,ONLY: GetNodesAndWeights
 USE MOD_ChangeBasis       ,ONLY: ChangeBasis2D_XYZ, ChangeBasis3D_XYZ
+USE MOD_ChangeBasisByDim  ,ONLY: ChangeBasisVolume
 USE MOD_Mesh_Vars         ,ONLY: Elem_xGP
 USE MOD_Equation_Vars     ,ONLY: IniExactFunc
 USE MOD_Exactfunc         ,ONLY: ExactFunc
@@ -339,6 +341,7 @@ REAL,DIMENSION(0:PP_N) :: FV_X,xGP,wGP,wBary,SubxGP
 REAL                   :: VDM(0:PP_N,0:PP_N,0:PP_N)
 REAL,ALLOCATABLE       :: xx(:,:,:,:)
 REAL                   :: tmp(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
+REAL                   :: Elem_xFV(1:3,0:PP_N,0:PP_N,0:PP_NZ)
 !===================================================================================================================================
 ! initial call of indicator
 CALL CalcIndicator(U,0.)
@@ -346,48 +349,64 @@ FV_Elems = 0
 ! Switch DG elements to FV if necessary (converts initial DG solution to FV solution)
 CALL FV_Switch(AllowToDG=.FALSE.)
 
-! Super sample initial solution of all FV elements. Necessary if already initial DG solution contains oscillations, which
-! may lead to non valid solutions inside a sub-cell.!
-!!! THIS IS EXPENSIVE !!!
-IF (GETLOGICAL("FV_IniSupersample")) THEN
-  
-  CALL GetNodesAndWeights(PP_N,NodeType,xGP,wGP,wBary)
-  CALL FV_Build_X_w_BdryX(PP_N,FV_X,FV_w,FV_BdryX)
-  DO i=0,PP_N
-    ! compute equidistant supersampling points inside FV sub-cell
-    DO j=0,PP_N
-      SubxGP(j) = FV_BdryX(i) + (j+0.5)/(PP_N+1)*FV_w
+IF (.NOT.(GETLOGICAL("FV_IniSharp"))) THEN
+  ! Super sample initial solution of all FV elements. Necessary if already initial DG solution contains oscillations, which
+  ! may lead to non valid solutions inside a sub-cell.!
+  !!! THIS IS EXPENSIVE !!!
+  IF (GETLOGICAL("FV_IniSupersample")) THEN
+    
+    CALL GetNodesAndWeights(PP_N,NodeType,xGP,wGP,wBary)
+    CALL FV_Build_X_w_BdryX(PP_N,FV_X,FV_w,FV_BdryX)
+    DO i=0,PP_N
+      ! compute equidistant supersampling points inside FV sub-cell
+      DO j=0,PP_N
+        SubxGP(j) = FV_BdryX(i) + (j+0.5)/(PP_N+1)*FV_w
+      END DO
+      ! build Vandermonde for mapping the whole interval [-1,1] to the i-th FV subcell
+      CALL InitializeVandermonde(PP_N,PP_N,wBary,xGP,SubxGP,VDM(:,:,i))
     END DO
-    ! build Vandermonde for mapping the whole interval [-1,1] to the i-th FV subcell
-    CALL InitializeVandermonde(PP_N,PP_N,wBary,xGP,SubxGP,VDM(:,:,i))
-  END DO
-
-
-  ALLOCATE(xx(1:3,0:PP_N,0:PP_N,0:PP_NZ)) ! coordinates supersampled to FV subcell
+  
+  
+    ALLOCATE(xx(1:3,0:PP_N,0:PP_N,0:PP_NZ)) ! coordinates supersampled to FV subcell
+    DO iElem=1,nElems
+      IF (FV_Elems(iElem).EQ.0) CYCLE ! DG element
+      DO k=0,PP_NZ
+        DO j=0,PP_N
+          DO i=0,PP_N
+            ! supersample coordinates to i,j,k-th subcells
+#if PP_dim == 3
+            CALL ChangeBasis3D_XYZ(3,PP_N,PP_N,Vdm(:,:,i),Vdm(:,:,j),Vdm(:,:,k),Elem_xGP(1:3,:,:,:,iElem),xx)
+#else          
+            CALL ChangeBasis2D_XYZ(3,PP_N,PP_N,Vdm(:,:,i),Vdm(:,:,j),Elem_xGP(1:3,:,:,0,iElem),xx(:,:,:,0))
+#endif
+            ! evaluate ExactFunc for all supersampled points of subcell (i,j,k)
+            DO kk=0,PP_NZ; DO jj=0,PP_N; DO ii=0,PP_N
+              CALL ExactFunc(IniExactFunc,0.,xx(1:3,ii,jj,kk),tmp(:,ii,jj,kk))
+            END DO; END DO; END DO
+            ! mean value 
+            DO iVar=1,PP_nVar
+              U(iVar,i,j,k,iElem) = SUM(tmp(iVar,:,:,:)) / ((PP_N+1)**2*(PP_NZ+1))
+            END DO
+          END DO ! i
+        END DO ! j
+      END DO !k
+    END DO ! iElem=1,nElems
+    DEALLOCATE(xx)
+  END IF
+ELSE
+  ! maintain a sharp interface in the FV region
   DO iElem=1,nElems
     IF (FV_Elems(iElem).EQ.0) CYCLE ! DG element
+    ! get coordinates of the FV elements
+    CALL ChangeBasisVolume(3,PP_N,PP_N,FV_Vdm,Elem_xGP(1:3,:,:,:,iElem),Elem_xFV(1:3,:,:,:))
     DO k=0,PP_NZ
       DO j=0,PP_N
         DO i=0,PP_N
-          ! supersample coordinates to i,j,k-th subcells
-#if PP_dim == 3
-          CALL ChangeBasis3D_XYZ(3,PP_N,PP_N,Vdm(:,:,i),Vdm(:,:,j),Vdm(:,:,k),Elem_xGP(1:3,:,:,:,iElem),xx)
-#else          
-          CALL ChangeBasis2D_XYZ(3,PP_N,PP_N,Vdm(:,:,i),Vdm(:,:,j),Elem_xGP(1:3,:,:,0,iElem),xx(:,:,:,0))
-#endif
-          ! evaluate ExactFunc for all supersampled points of subcell (i,j,k)
-          DO kk=0,PP_NZ; DO jj=0,PP_N; DO ii=0,PP_N
-            CALL ExactFunc(IniExactFunc,0.,xx(1:3,ii,jj,kk),tmp(:,ii,jj,kk))
-          END DO; END DO; END DO
-          ! mean value 
-          DO iVar=1,PP_nVar
-            U(iVar,i,j,k,iElem) = SUM(tmp(iVar,:,:,:)) / ((PP_N+1)**2*(PP_NZ+1))
-          END DO
+          CALL ExactFunc(IniExactFunc,0.,Elem_xFV(:,i,j,k),U(1:PP_nVar,i,j,k,iElem))
         END DO ! i
       END DO ! j
     END DO !k
   END DO ! iElem=1,nElems
-  DEALLOCATE(xx)
 END IF
 END SUBROUTINE FV_FillIni
 
