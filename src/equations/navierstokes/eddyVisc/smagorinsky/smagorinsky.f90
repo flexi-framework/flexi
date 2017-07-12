@@ -72,7 +72,6 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT SMAGORINSKY...'
 ! Read the variables used for LES model
 ! Smagorinsky model
 CS     = GETREAL('CS')
-PrSGS  = GETREAL('PrSGS','0.7')
 IF(testcase.EQ."channel") THEN
   ! Do Van Driest style damping or not
   VanDriest = GETLOGICAL('VanDriest','.FALSE.')
@@ -149,7 +148,7 @@ ELSE
   yPlus = (1. - ABS(Elem_xGP(2,i,j,k,iElem)))/mu0
   damp = 1. - EXP(-yPlus/26.) ! Van Driest damping factor
 END IF
-muSGS= (damp*CS*deltaS(iElem))**2. * S_eN*U(1,i,j,k,iElem)
+muSGS= (damp**2*CS*deltaS(iElem))**2. * S_eN*U(1,i,j,k,iElem)
 muSGSmax(iElem) = MAX(muSGS,muSGSmax(iElem))
 END SUBROUTINE Smagorinsky
 
