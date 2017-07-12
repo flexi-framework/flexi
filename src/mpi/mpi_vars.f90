@@ -41,7 +41,7 @@ INTEGER             :: nSendVal
 INTEGER             :: nRecVal
 INTEGER             :: DataSizeSide             !< datasize of one face, =PP_nVar*(PP_N+1)**2
 INTEGER             :: DataSizeSidePrim         !< datasize of one face for (primitive) gradients, =PP_nVarPrim*(PP_N+1)**2
-INTEGER             :: DataSizeSideScalar         !< datasize of one face for a scalar, =1*(PP_N+1)**2
+INTEGER             :: DataSizeSideSGS         !< datasize of one face for a 2 values, =2*(PP_N+1)**2
 INTEGER             :: DataSizeSideO            !< datasize of one face for overintegration =PP_nVar*(nOver+1)**2
 
 INTEGER             :: SideID_start,SideID_end

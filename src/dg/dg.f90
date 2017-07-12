@@ -539,9 +539,9 @@ IF(EddyViscType.NE.1) THEN
   IF(CurrentStage.EQ.1) THEN
 #if USE_MPI
     ! 4.2)
-    CALL StartReceiveMPIData(SGS_Ind_slave,DataSizeSideScalar,1,nSides,MPIRequest_SGS_Ind(:,RECV),SendID=2)
+    CALL StartReceiveMPIData(SGS_Ind_slave,DataSizeSideSGS,1,nSides,MPIRequest_SGS_Ind(:,RECV),SendID=2)
     CALL ProlongToFace(2,PP_N,SGS_Ind(1:2,:,:,:,:),SGS_Ind_master(:,:,:,:),SGS_Ind_Slave(:,:,:,:),L_Minus,L_Plus,.TRUE.)
-    CALL StartSendMPIData(SGS_Ind_slave,DataSizeSideScalar,1,nSides,MPIRequest_SGS_Ind(:,SEND),SendID=2)
+    CALL StartSendMPIData(SGS_Ind_slave,DataSizeSideSGS,1,nSides,MPIRequest_SGS_Ind(:,SEND),SendID=2)
 #endif
     ! Prolong to face for BCSides, InnerSides and MPI sides - receive direction
     CALL ProlongToFace(2,PP_N,SGS_Ind(1:2,:,:,:,:),SGS_Ind_master(:,:,:,:),SGS_Ind_Slave(:,:,:,:),L_Minus,L_Plus,.FALSE.)

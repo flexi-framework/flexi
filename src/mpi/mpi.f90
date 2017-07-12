@@ -180,7 +180,7 @@ MPIRequest_gradU = MPI_REQUEST_NULL
 #endif /*PARABOLIC*/
 
 #if EDDYVISCOSITY
-DataSizeSideScalar= 2*(PP_N+1)**2
+DataSizeSideSGS= 2*(PP_N+1)**2
 #endif
 DataSizeSide      =PP_nVar*(PP_N+1)*(PP_NZ+1)
 DataSizeSidePrim  =PP_nVarPrim*(PP_N+1)*(PP_NZ+1)
