@@ -89,7 +89,7 @@ CALL addStrListEntry('SplitDG','pi',           PRM_SPLITDG_PI)
 END SUBROUTINE DefineParametersSplitDG
 
 !==================================================================================================================================!
-!> Initialize Riemann solver routines, read inner and BC Riemann solver parameters and set pointers
+!> Initialize function pointers for the specific split version in use 
 !==================================================================================================================================!
 SUBROUTINE InitSplitDG()
 ! MODULES
