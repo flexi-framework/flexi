@@ -558,7 +558,7 @@ CASE(1338) ! blasius
   x_offset(2)=-x_in(2)
   x_offset(3)=0.
   x_eff=x+x_offset
-  IF(x_eff(2).GE.0 .AND. x_eff(1).GT.0) THEN
+  IF(x_eff(2).GT.0 .AND. x_eff(1).GT.0) THEN
     ! scale bl position in physical space to reference space, eta=5 is ~99% bl thickness
     eta=x_eff(2)*(prim(1)*prim(2)/(mu0*x_eff(1)))**0.5
 
