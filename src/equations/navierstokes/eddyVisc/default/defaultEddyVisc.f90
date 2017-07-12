@@ -65,7 +65,6 @@ REAL,INTENT(OUT)                          :: muSGS             !< local SGS visc
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
-muSGS = 0.
 END SUBROUTINE DefaultEddyVisc_surf
 
 !===============================================================================================================================
@@ -77,15 +76,6 @@ USE MOD_EddyVisc_Vars
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !===============================================================================================================================
-DEALLOCATE(DeltaS)
-DEALLOCATE(DeltaS_master)
-DEALLOCATE(DeltaS_slave)
-DEALLOCATE(SGS_Ind)
-DEALLOCATE(SGS_Ind_master)
-DEALLOCATE(SGS_Ind_slave)
-DEALLOCATE(muSGS)
-DEALLOCATE(muSGSmax)
-dynsmagInitIsDone = .FALSE.
 END SUBROUTINE FinalizeDefaultEddyViscosity
 
 END MODULE MOD_DefaultEddyVisc
