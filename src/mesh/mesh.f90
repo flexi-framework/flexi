@@ -578,17 +578,17 @@ IF (meshMode.GT.1) THEN
   CALL to2D_rank4((/1,0,0,1/),  (/1,PP_N,PP_N,nSides/),3,FV_dx_master)
 #endif
   ! p,q = general face index
-  CALL to2D_rank4((/0,0,1,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_SurfElemXi_sw  ) ! Attention: storage order is (p,q,i,iElem)
-  CALL to2D_rank4((/0,0,1,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_SurfElemEta_sw ) ! Attention: storage order is (p,q,j,iElem)
-  CALL to2D_rank4((/0,0,1,1/),  (/PP_N,PP_N,PP_N,nElems/),3,FV_SurfElemZeta_sw) ! Attention: storage order is (p,q,k,iElem)
+  CALL to2D_rank4((/0,0,1,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_SurfElemXi_sw  ) ! Attention: storage order is (j,k,i,iElem)
+  CALL to2D_rank4((/0,0,1,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_SurfElemEta_sw ) ! Attention: storage order is (i,k,j,iElem)
+  CALL to2D_rank4((/0,0,1,1/),  (/PP_N,PP_N,PP_N,nElems/),3,FV_SurfElemZeta_sw) ! Attention: storage order is (i,j,k,iElem)
 
-  CALL to2D_rank5((/1,0,0,1,1/),  (/3,PP_N,PP_N,PP_N,nElems/),3,FV_NormVecXi   )  ! Attention: storage order is (p,q,i,iElem)
+  CALL to2D_rank5((/1,0,0,1,1/),  (/3,PP_N,PP_N,PP_N,nElems/),3,FV_NormVecXi   )  ! Attention: storage order is (j,k,i,iElem)
   CALL to2D_rank5((/1,0,0,1,1/),  (/3,PP_N,PP_N,PP_N,nElems/),3,FV_TangVec1Xi  )  !  -"-
   CALL to2D_rank5((/1,0,0,1,1/),  (/3,PP_N,PP_N,PP_N,nElems/),3,FV_TangVec2Xi  )  !  -"-
-  CALL to2D_rank5((/1,0,0,1,1/),  (/3,PP_N,PP_N,PP_N,nElems/),3,FV_NormVecEta  )  ! Attention: storage order is (p,q,j,iElem)
+  CALL to2D_rank5((/1,0,0,1,1/),  (/3,PP_N,PP_N,PP_N,nElems/),3,FV_NormVecEta  )  ! Attention: storage order is (i,k,j,iElem)
   CALL to2D_rank5((/1,0,0,1,1/),  (/3,PP_N,PP_N,PP_N,nElems/),3,FV_TangVec1Eta )  !  -"-
   CALL to2D_rank5((/1,0,0,1,1/),  (/3,PP_N,PP_N,PP_N,nElems/),3,FV_TangVec2Eta )  !  -"-
-  CALL to2D_rank5((/1,0,0,1,1/),  (/3,PP_N,PP_N,PP_N,nElems/),4,FV_NormVecZeta )  ! Attention: storage order is (p,q,k,iElem)
+  CALL to2D_rank5((/1,0,0,1,1/),  (/3,PP_N,PP_N,PP_N,nElems/),4,FV_NormVecZeta )  ! Attention: storage order is (i,j,k,iElem)
   CALL to2D_rank5((/1,0,0,1,1/),  (/3,PP_N,PP_N,PP_N,nElems/),4,FV_TangVec1Zeta)  !  -"-
   CALL to2D_rank5((/1,0,0,1,1/),  (/3,PP_N,PP_N,PP_N,nElems/),4,FV_TangVec2Zeta)  !  -"-
 
