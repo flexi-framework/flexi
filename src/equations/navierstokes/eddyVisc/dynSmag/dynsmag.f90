@@ -253,6 +253,29 @@ DO iElem=1,nElems
   END IF
 END DO
 
+DO iElem=1,nElems                                        
+  !i, average on the four edges                                       
+  vec = Elem_xgp(:,PP_N,0,0,iElem) - Elem_xgp(:,0,0,0,iElem)          
+  vec = vec + (Elem_xgp(:,PP_N,PP_N,0,iElem) - Elem_xgp(:,0,PP_N,0,iElem))
+  vec = vec + (Elem_xgp(:,PP_N,0,PP_N,iElem) - Elem_xgp(:,0,0,PP_N,iElem))
+  vec = vec + (Elem_xgp(:,PP_N,PP_N,PP_N,iElem) - Elem_xgp(:,0,PP_N,PP_N,iElem))
+  vec = vec/4. !average vector of cell edges
+  DeltaS_m(1,iElem) = SQRT(SUM(vec**2))/(PP_N+1)
+  !j
+  vec = Elem_xgp(:,0,PP_N,0,iElem) - Elem_xgp(:,0,0,0,iElem)          
+  vec = vec + (Elem_xgp(:,PP_N,PP_N,0,iElem) - Elem_xgp(:,PP_N,0,0,iElem))
+  vec = vec + (Elem_xgp(:,0,PP_N,PP_N,iElem) - Elem_xgp(:,0,0,PP_N,iElem))
+  vec = vec + (Elem_xgp(:,PP_N,PP_N,PP_N,iElem) - Elem_xgp(:,PP_N,0,PP_N,iElem))
+  vec = vec/4. !average vector of cell edges
+  DeltaS_m(2,iElem) = SQRT(SUM(vec**2))/(PP_N+1)
+  !k                                                                  
+  vec = Elem_xgp(:,0,0,PP_N,iElem) - Elem_xgp(:,0,0,0,iElem)          
+  vec = vec + (Elem_xgp(:,PP_N,0,PP_N,iElem) - Elem_xgp(:,PP_N,0,0,iElem))
+  vec = vec + (Elem_xgp(:,0,PP_N,PP_N,iElem) - Elem_xgp(:,0,PP_N,0,iElem))
+  vec = vec + (Elem_xgp(:,PP_N,PP_N,PP_N,iElem) - Elem_xgp(:,PP_N,PP_N,0,iElem))
+  vec = vec/4. !average vector of cell edges
+  DeltaS_m(3,iElem) = SQRT(SUM(vec**2))/(PP_N+1)
+END DO
 dynsmagInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT Dynsmag DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
@@ -302,7 +325,7 @@ SUBROUTINE Compute_Cd(U_in)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_EddyVisc_Vars ,ONLY: SGS_Ind,FilterMat_testfilter, IntElem
-USE MOD_EddyVisc_Vars ,ONLY: filter_ind, average_type
+USE MOD_EddyVisc_Vars ,ONLY: filter_ind, average_type, DeltaS_m
 USE MOD_Filter        ,ONLY: Filter_Selective
 USE MOD_Lifting_Vars  ,ONLY: gradUx,gradUy,gradUz
 USE MOD_Mesh_Vars     ,ONLY: nElems
@@ -327,6 +350,7 @@ DO iElem=1,nElems
     V_In(i,:,:,:) = U_in(i+1,:,:,:,iElem)/U_in(1,:,:,:,iElem)
   END DO !i
   !store gradients in matrix for readability and filtering
+  gradv_all = 0.
   CALL gradient(1,V_In,gradv_all(:,1,:,:,:),iElem)
   CALL gradient(2,V_In,gradv_all(:,2,:,:,:),iElem)
   CALL gradient(3,V_In,gradv_all(:,3,:,:,:),iElem)
@@ -394,7 +418,7 @@ DO iElem=1,nElems
 
 !  !filter gradients
   CALL gradient(1,V_Filtered,gradv_all(:,1,:,:,:),iElem)
-  CALL gradient(2,V_Filtered,gradv_all(:,2,:,:,:),iElem)
+!  CALL gradient(2,V_Filtered,gradv_all(:,2,:,:,:),iElem)
   CALL gradient(3,V_Filtered,gradv_all(:,3,:,:,:),iElem)
 
   divV(:,:,:) = 1./3.*(gradv_all(1,1,:,:,:)+gradv_all(2,2,:,:,:)+gradv_all(3,3,:,:,:))
@@ -417,7 +441,11 @@ DO iElem=1,nElems
   S_ik(3,3,:,:,:) = S_ik(3,3,:,:,:) -divV(:,:,:)
   !                                 _____
   !D_ratio: square ratio of filter widhts (Delta/Delta)**2, reciprocal of polynomial degrees
-  D_Ratio=(REAL(PP_N)/REAL(N_testfilter))**2
+  !Germano eq. 19
+  DeltaS_m = 2*DeltaS_m !twice dx Germano
+  D_Ratio=(REAL(PP_N)/REAL(N_testfilter)) !ratio of filter width, alpha by Germano
+  D_Ratio = (D_Ratio*DeltaS_m(1,iElem)**2+DeltaS_m(2,iElem)**2+(D_Ratio*DeltaS_m(3,iElem))**2)/&
+            (DeltaS_m(1,iElem)**2+DeltaS_m(2,iElem)**2+DeltaS_m(3,iElem)**2) 
   DO i=1,3
     DO k=1,3
       M_ik(i,k,:,:,:) = M_ik(i,k,:,:,:) - D_Ratio * S_eN_filtered(:,:,:)*S_ik(i,k,:,:,:)
