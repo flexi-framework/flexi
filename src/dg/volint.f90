@@ -321,10 +321,10 @@ DO iElem=1,nElems
                                             DVolSurf(k,k)*h_c(:,i,j,k) + &
 #endif /*PP_dim==3*/
                                             D_Hat_T(i,i)*fv(:,i,j,k)   + &
+                                            D_Hat_T(j,j)*gv(:,i,j,k)   + &
 #if PP_dim==3
-                                            D_Hat_T(j,j)*hv(:,i,j,k)   + &
+                                            D_Hat_T(k,k)*hv(:,i,j,k)
 #endif /*PP_dim==3*/
-                                            D_Hat_T(k,k)*gv(:,i,j,k)
 #else
     Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + DVolSurf(i,i)*f_c(:,i,j,k) + &
 #if PP_dim==3
