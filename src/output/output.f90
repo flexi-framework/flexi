@@ -456,10 +456,11 @@ REAL,INTENT(OUT),OPTIONAL     :: lastLine(nVar+1)         !< last written line t
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: stat                         !< File IO status
-INTEGER                        :: ioUnit=0,i
+INTEGER                        :: ioUnit=0,i                   !< IO Unit
 REAL                           :: dummytime                    !< Simulation time read from file
 LOGICAL                        :: file_exists                  !< marker if file exists and is valid
-CHARACTER(LEN=255)             :: FileName_loc                 ! FileName with data type extension
+LOGICAL                        :: isOpen                       !< unit is open
+CHARACTER(LEN=255)             :: FileName_loc                 !< FileName with data type extension
 !==================================================================================================================================
 IF(.NOT.MPIRoot) RETURN
 IF(PRESENT(lastLine)) lastLine=-HUGE(1.)
@@ -528,7 +529,8 @@ IF(file_exists)THEN
     WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')' failed. Appending data to end of file.'
   END IF
 END IF
-CLOSE(ioUnit) ! outputfile
+INQUIRE(UNIT=ioUnit,OPENED=isOpen)
+IF(isOpen) CLOSE(ioUnit)
 
 IF(.NOT.file_exists)THEN ! No restart create new file
   OPEN(NEWUNIT= ioUnit             ,&
@@ -579,7 +581,7 @@ REAL,INTENT(IN)               :: output(nVar(1)*nVar(2))  !< array containing on
 ! LOCAL VARIABLES
 INTEGER                        :: openStat                !< File IO status
 CHARACTER(LEN=50)              :: formatStr               !< format string for the output and Tecplot header
-INTEGER                        :: ioUnit,i,j
+INTEGER                        :: ioUnit,i
 CHARACTER(LEN=255)             :: FileName_loc            ! FileName with data type extension
 !==================================================================================================================================
 ! Append data type extension to FileName
