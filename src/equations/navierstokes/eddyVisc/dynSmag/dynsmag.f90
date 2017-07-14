@@ -106,15 +106,15 @@ DO i=0,PP_N
   SWRITE(*,'(F7.3)',ADVANCE='NO')FilterMat_Testfilter(i,i)
 END DO
 
-ALLOCATE(Vdm_N_Ntest(0:N_testfilter,0:PP_N))
-ALLOCATE(Vdm_Ntest_N(0:PP_N,0:N_testfilter))
-CALL GetVandermonde(PP_N,NodeType,N_Testfilter,NodeType,Vdm_N_Ntest,Vdm_Ntest_N,modal=.FALSE.)
-FilterMat_Testfilter=MATMUL(Vdm_Ntest_N,Vdm_N_Ntest)
-DEALLOCATE(Vdm_N_Ntest)
-DEALLOCATE(Vdm_Ntest_N)
+!ALLOCATE(Vdm_N_Ntest(0:N_testfilter,0:PP_N))
+!ALLOCATE(Vdm_Ntest_N(0:PP_N,0:N_testfilter))
+!CALL GetVandermonde(PP_N,NodeType,N_Testfilter,NodeType,Vdm_N_Ntest,Vdm_Ntest_N,modal=.FALSE.)
+!FilterMat_Testfilter=MATMUL(Vdm_Ntest_N,Vdm_N_Ntest)
+!DEALLOCATE(Vdm_N_Ntest)
+!DEALLOCATE(Vdm_Ntest_N)
 
 
-!FilterMat_Testfilter=MATMUL(MATMUL(Vdm_Leg,FilterMat_Testfilter),sVdm_Leg)
+FilterMat_Testfilter=MATMUL(MATMUL(Vdm_Leg,FilterMat_Testfilter),sVdm_Leg)
 
 !get wall distance for zonal averaging approach if needed
 WallDistFile = GETSTR('WallDistFile','noFile')
@@ -276,6 +276,7 @@ DO iElem=1,nElems
   vec = vec/4. !average vector of cell edges
   DeltaS_m(3,iElem) = SQRT(SUM(vec**2))/(PP_N+1)
 END DO
+DeltaS_m = 2*DeltaS_m !twice dx Germano
 dynsmagInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT Dynsmag DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
@@ -311,7 +312,7 @@ S_eN = S_eN + ( gradUz(3,i,j,k,iElem) + gradUy(4,i,j,k,iElem) )**2.
 S_eN = SQRT(S_eN)
 ! Dynsmag model
 muSGS = S_eN*U(1,i,j,k,iElem)*SGS_Ind(1,i,j,k,iElem)
-muSGS = min(max(muSGS,-mu0*0.95),100*mu0)
+muSGS = min(max(muSGS,0.),100*mu0)
 !S_en_out(1,i,j,k,iElem) = S_eN
 SGS_Ind(2,i,j,k,iElem) = muSGS
 muSGSmax(iElem) = MAX(muSGS,muSGSmax(iElem))
@@ -351,18 +352,18 @@ DO iElem=1,nElems
   END DO !i
   !store gradients in matrix for readability and filtering
   gradv_all = 0.
-  CALL gradient(1,V_In,gradv_all(:,1,:,:,:),iElem)
-  CALL gradient(2,V_In,gradv_all(:,2,:,:,:),iElem)
-  CALL gradient(3,V_In,gradv_all(:,3,:,:,:),iElem)
-!  gradv_all(1,1,:,:,:) = gradUx(2,:,:,:,iElem)
-!  gradv_all(1,2,:,:,:) = gradUy(2,:,:,:,iElem)
-!  gradv_all(1,3,:,:,:) = gradUz(2,:,:,:,iElem)
-!  gradv_all(2,1,:,:,:) = gradUx(3,:,:,:,iElem)
-!  gradv_all(2,2,:,:,:) = gradUy(3,:,:,:,iElem)
-!  gradv_all(2,3,:,:,:) = gradUz(3,:,:,:,iElem)
-!  gradv_all(3,1,:,:,:) = gradUx(4,:,:,:,iElem)
-!  gradv_all(3,2,:,:,:) = gradUy(4,:,:,:,iElem)
-!  gradv_all(3,3,:,:,:) = gradUz(4,:,:,:,iElem)
+!  CALL gradient(1,V_In,gradv_all(:,1,:,:,:),iElem)
+!  CALL gradient(2,V_In,gradv_all(:,2,:,:,:),iElem)
+!  CALL gradient(3,V_In,gradv_all(:,3,:,:,:),iElem)
+  gradv_all(1,1,:,:,:) = gradUx(2,:,:,:,iElem)
+  gradv_all(1,2,:,:,:) = gradUy(2,:,:,:,iElem)
+  gradv_all(1,3,:,:,:) = gradUz(2,:,:,:,iElem)
+  gradv_all(2,1,:,:,:) = gradUx(3,:,:,:,iElem)
+  gradv_all(2,2,:,:,:) = gradUy(3,:,:,:,iElem)
+  gradv_all(2,3,:,:,:) = gradUz(3,:,:,:,iElem)
+  gradv_all(3,1,:,:,:) = gradUx(4,:,:,:,iElem)
+  gradv_all(3,2,:,:,:) = gradUy(4,:,:,:,iElem)
+  gradv_all(3,3,:,:,:) = gradUz(4,:,:,:,iElem)
   divV(:,:,:) = 1./3.*(gradv_all(1,1,:,:,:)+gradv_all(2,2,:,:,:)+gradv_all(3,3,:,:,:))
 
   ! dynamic Smagorinsky model
@@ -412,14 +413,14 @@ DO iElem=1,nElems
   END DO ! i
 
 !  !filter gradients
-!  CALL Filter_Selective(3,FilterMat_Testfilter,gradv_all(:,1,:,:,:),filter_ind(:,iElem))
-!  CALL Filter_Selective(3,FilterMat_Testfilter,gradv_all(:,2,:,:,:),filter_ind(:,iElem))
-!  CALL Filter_Selective(3,FilterMat_Testfilter,gradv_all(:,3,:,:,:),filter_ind(:,iElem))
+  CALL Filter_Selective(3,FilterMat_Testfilter,gradv_all(:,1,:,:,:),filter_ind(:,iElem))
+  CALL Filter_Selective(3,FilterMat_Testfilter,gradv_all(:,2,:,:,:),filter_ind(:,iElem))
+  CALL Filter_Selective(3,FilterMat_Testfilter,gradv_all(:,3,:,:,:),filter_ind(:,iElem))
 
 !  !filter gradients
-  CALL gradient(1,V_Filtered,gradv_all(:,1,:,:,:),iElem)
+!  CALL gradient(1,V_Filtered,gradv_all(:,1,:,:,:),iElem)
 !  CALL gradient(2,V_Filtered,gradv_all(:,2,:,:,:),iElem)
-  CALL gradient(3,V_Filtered,gradv_all(:,3,:,:,:),iElem)
+!  CALL gradient(3,V_Filtered,gradv_all(:,3,:,:,:),iElem)
 
   divV(:,:,:) = 1./3.*(gradv_all(1,1,:,:,:)+gradv_all(2,2,:,:,:)+gradv_all(3,3,:,:,:))
 
@@ -442,10 +443,11 @@ DO iElem=1,nElems
   !                                 _____
   !D_ratio: square ratio of filter widhts (Delta/Delta)**2, reciprocal of polynomial degrees
   !Germano eq. 19
-  DeltaS_m = 2*DeltaS_m !twice dx Germano
   D_Ratio=(REAL(PP_N)/REAL(N_testfilter)) !ratio of filter width, alpha by Germano
   D_Ratio = (D_Ratio*DeltaS_m(1,iElem)**2+DeltaS_m(2,iElem)**2+(D_Ratio*DeltaS_m(3,iElem))**2)/&
             (DeltaS_m(1,iElem)**2+DeltaS_m(2,iElem)**2+DeltaS_m(3,iElem)**2) 
+  !Germano eq. 18
+!  D_Ratio =  (REAL(PP_N)/REAL(N_testfilter))**(4./3.)
   DO i=1,3
     DO k=1,3
       M_ik(i,k,:,:,:) = M_ik(i,k,:,:,:) - D_Ratio * S_eN_filtered(:,:,:)*S_ik(i,k,:,:,:)
