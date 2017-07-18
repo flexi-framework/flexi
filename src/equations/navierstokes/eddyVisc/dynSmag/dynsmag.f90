@@ -98,23 +98,24 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT Dynsmag...'
 ! Polynomial degree used in testfilter
 N_Testfilter = GETINT('N_Testfilter')
 ! Build testfilter filter matrix  (cut-off filter)
-DO i=0,N_Testfilter
-  FilterMat_Testfilter(i,i) = 1.
-END DO
-SWRITE(*,'(A)',ADVANCE='NO')'TEST FILTER, FILTER DIAGONAL: '
-DO i=0,PP_N
-  SWRITE(*,'(F7.3)',ADVANCE='NO')FilterMat_Testfilter(i,i)
-END DO
+!DO i=0,N_Testfilter
+!  FilterMat_Testfilter(i,i) = 1.
+!END DO
+!SWRITE(*,'(A)',ADVANCE='NO')'TEST FILTER, FILTER DIAGONAL: '
+!DO i=0,PP_N
+!  SWRITE(*,'(F7.3)',ADVANCE='NO')FilterMat_Testfilter(i,i)
+!END DO
+!FilterMat_Testfilter=MATMUL(MATMUL(Vdm_Leg,FilterMat_Testfilter),sVdm_Leg)
 
-!ALLOCATE(Vdm_N_Ntest(0:N_testfilter,0:PP_N))
-!ALLOCATE(Vdm_Ntest_N(0:PP_N,0:N_testfilter))
-!CALL GetVandermonde(PP_N,NodeType,N_Testfilter,NodeType,Vdm_N_Ntest,Vdm_Ntest_N,modal=.FALSE.)
-!FilterMat_Testfilter=MATMUL(Vdm_Ntest_N,Vdm_N_Ntest)
-!DEALLOCATE(Vdm_N_Ntest)
-!DEALLOCATE(Vdm_Ntest_N)
+!use a interpolation filter as testfilter instead of polynomial cut-off
+ALLOCATE(Vdm_N_Ntest(0:N_testfilter,0:PP_N))
+ALLOCATE(Vdm_Ntest_N(0:PP_N,0:N_testfilter))
+CALL GetVandermonde(PP_N,NodeType,N_Testfilter,NodeType,Vdm_N_Ntest,Vdm_Ntest_N,modal=.FALSE.)
+FilterMat_Testfilter=MATMUL(Vdm_Ntest_N,Vdm_N_Ntest)
+DEALLOCATE(Vdm_N_Ntest)
+DEALLOCATE(Vdm_Ntest_N)
 
 
-FilterMat_Testfilter=MATMUL(MATMUL(Vdm_Leg,FilterMat_Testfilter),sVdm_Leg)
 
 !get wall distance for zonal averaging approach if needed
 WallDistFile = GETSTR('WallDistFile','noFile')
@@ -218,9 +219,8 @@ DO iElem=1,nElems
     average_type(iElem) = 2
   ELSEIF (average_ind(1,iElem).AND.(.NOT.average_ind(2,iElem)).AND.average_ind(3,iElem)) THEN ! J-Plane
     DO i=0,PP_N; DO j=0,PP_N; DO k=0,PP_N
-!      IntElem(i,j,k,iElem) = SQRT(SUM(Metrics_gtilde(:,i,j,k,iElem,0)**2))
-!      IntElem(i,j,k,iElem) = IntElem(i,j,k,iElem)*wGP(i)*wGP(k)
-      IntElem(i,j,k,iElem) = wGP(i)*wGP(k)
+      IntElem(i,j,k,iElem) = SQRT(SUM(Metrics_gtilde(:,i,j,k,iElem,0)**2))
+      IntElem(i,j,k,iElem) = IntElem(i,j,k,iElem)*wGP(i)*wGP(k)
     END DO; END DO; END DO
     average_type(iElem) = 3
   ELSEIF (average_ind(1,iElem).AND.average_ind(2,iElem).AND.(.NOT.average_ind(3,iElem))) THEN ! K-Plane
@@ -441,13 +441,66 @@ DO iElem=1,nElems
   S_ik(2,2,:,:,:) = S_ik(2,2,:,:,:) -divV(:,:,:)
   S_ik(3,3,:,:,:) = S_ik(3,3,:,:,:) -divV(:,:,:)
   !                                 _____
-  !D_ratio: square ratio of filter widhts (Delta/Delta)**2, reciprocal of polynomial degrees
-  !Germano eq. 19
   D_Ratio=(REAL(PP_N)/REAL(N_testfilter)) !ratio of filter width, alpha by Germano
-  D_Ratio = (D_Ratio*DeltaS_m(1,iElem)**2+DeltaS_m(2,iElem)**2+(D_Ratio*DeltaS_m(3,iElem))**2)/&
+  !D_ratio: square ratio of filter widhts (Delta/Delta)**2, reciprocal of polynomial degrees
+
+  SELECT CASE (average_type(iElem))
+  CASE (1) ! Volume
+  !Germano eq. 19 is =  eq. 18 also for volume average
+!  D_Ratio = ((D_Ratio*DeltaS_m(1,iElem))**2&
+!            +(D_Ratio*DeltaS_m(2,iElem))**2&
+!            +(D_Ratio*DeltaS_m(3,iElem))**2)/&
+!            (DeltaS_m(1,iElem)**2+DeltaS_m(2,iElem)**2+DeltaS_m(3,iElem)**2) 
+  D_Ratio = D_Ratio**2
+  CASE (2) ! I-Plane
+  !Germano eq. 19
+  D_Ratio = (        DeltaS_m(1,iElem)**2&
+           +(D_Ratio*DeltaS_m(2,iElem))**2&
+           +(D_Ratio*DeltaS_m(3,iElem))**2)/&
             (DeltaS_m(1,iElem)**2+DeltaS_m(2,iElem)**2+DeltaS_m(3,iElem)**2) 
   !Germano eq. 18
 !  D_Ratio =  (REAL(PP_N)/REAL(N_testfilter))**(4./3.)
+  CASE (3) ! J-Plane
+  !Germano eq. 19
+  D_Ratio = ((D_Ratio*DeltaS_m(1,iElem))**2&
+                     +DeltaS_m(2,iElem)**2&
+            +(D_Ratio*DeltaS_m(3,iElem))**2)/&
+            (DeltaS_m(1,iElem)**2+DeltaS_m(2,iElem)**2+DeltaS_m(3,iElem)**2) 
+  !Germano eq. 18
+!  D_Ratio =  (REAL(PP_N)/REAL(N_testfilter))**(4./3.)
+  CASE (4) ! K-Plane
+  !Germano eq. 19
+  D_Ratio = ((D_Ratio*DeltaS_m(1,iElem))**2&
+            +(D_Ratio*DeltaS_m(2,iElem))**2&
+                    +(DeltaS_m(3,iElem))**2)/&
+            (DeltaS_m(1,iElem)**2+DeltaS_m(2,iElem)**2+DeltaS_m(3,iElem)**2) 
+  !Germano eq. 18
+!  D_Ratio =  (REAL(PP_N)/REAL(N_testfilter))**(4./3.)
+  CASE (5) ! I-Line
+  !Germano eq. 19
+  D_Ratio = ((D_Ratio*DeltaS_m(1,iElem))**2&
+                     +DeltaS_m(2,iElem)**2&
+                     +DeltaS_m(3,iElem)**2)/&
+            (DeltaS_m(1,iElem)**2+DeltaS_m(2,iElem)**2+DeltaS_m(3,iElem)**2) 
+  !Germano eq. 18
+!  D_Ratio =  (REAL(PP_N)/REAL(N_testfilter))**(2./3.)
+  CASE (6) ! J-Line
+  !Germano eq. 19
+  D_Ratio = (        DeltaS_m(1,iElem)**2&
+           +(D_Ratio*DeltaS_m(2,iElem))**2&
+                    +DeltaS_m(3,iElem)**2)/&
+            (DeltaS_m(1,iElem)**2+DeltaS_m(2,iElem)**2+DeltaS_m(3,iElem)**2) 
+  !Germano eq. 18
+!  D_Ratio =  (REAL(PP_N)/REAL(N_testfilter))**(2./3.)
+  CASE (7) ! K-Line
+  !Germano eq. 19
+  D_Ratio = (        DeltaS_m(1,iElem)**2&
+                    +DeltaS_m(2,iElem)**2&
+           +(D_Ratio*DeltaS_m(3,iElem))**2)/&
+            (DeltaS_m(1,iElem)**2+DeltaS_m(2,iElem)**2+DeltaS_m(3,iElem)**2) 
+  !Germano eq. 18
+!  D_Ratio =  (REAL(PP_N)/REAL(N_testfilter))**(2./3.)
+  END SELECT
   DO i=1,3
     DO k=1,3
       M_ik(i,k,:,:,:) = M_ik(i,k,:,:,:) - D_Ratio * S_eN_filtered(:,:,:)*S_ik(i,k,:,:,:)
