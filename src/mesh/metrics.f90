@@ -78,33 +78,34 @@ PUBLIC::SurfMetricsFromJa
 CONTAINS
 
 !==================================================================================================================================
-!> This routine computes the geometries volume metric terms.
+!> This routine computes the coordinates of the volume solution points.
 !==================================================================================================================================
 SUBROUTINE BuildCoords(Elem_xGP)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Mesh_Vars,     ONLY:NGeo,nElems
-USE MOD_Mesh_Vars,     ONLY:ElemToTree,xiMinMax,interpolateFromTree
-USE MOD_Mesh_Vars,     ONLY:NodeCoords,TreeCoords
+USE MOD_Mesh_Vars          ,ONLY: NGeo,nElems
+USE MOD_Mesh_Vars          ,ONLY: ElemToTree,xiMinMax,interpolateFromTree
+USE MOD_Mesh_Vars          ,ONLY: NodeCoords,TreeCoords
 USE MOD_Interpolation_Vars
-USE MOD_Interpolation, ONLY:GetVandermonde,GetNodesAndWeights
-USE MOD_ChangeBasis,   ONLY:changeBasis3D,ChangeBasis3D_XYZ
-USE MOD_Basis,         ONLY:LagrangeInterpolationPolys
+USE MOD_Interpolation      ,ONLY: GetVandermonde,GetNodesAndWeights
+USE MOD_ChangeBasis        ,ONLY: changeBasis3D,ChangeBasis3D_XYZ
+USE MOD_ChangeBasisByDim   ,ONLY: changeBasisVolume
+USE MOD_Basis              ,ONLY: LagrangeInterpolationPolys
 !----------------------------------------------------------------------------------------------------------------------------------
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(OUT) :: Elem_xGP(3,0:PP_N,0:PP_N,0:PP_N,nElems)
+REAL,INTENT(OUT) :: Elem_xGP(3,0:PP_N,0:PP_N,0:PP_NZ,nElems)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER :: i,iElem
-REAL    :: XCL_N(3,0:PP_N,0:PP_N,0:PP_N)
+INTEGER                       :: i,iElem
+REAL                          :: XCL_N(3,0:PP_N,0:PP_N,0:PP_N)
 REAL,DIMENSION(0:PP_N,0:PP_N) :: Vdm_xi_N,Vdm_eta_N,Vdm_zeta_N
-REAL    :: Vdm_EQNgeo_CLN( 0:PP_N ,0:Ngeo)
-REAL    :: Vdm_CLN_N     ( 0:PP_N ,0:PP_N)
-REAL    :: xi0(3),dxi(3),length(3)
-REAL    :: xiCL_N(0:PP_N)   ,wBaryCL_N(0:PP_N)
+REAL                          :: Vdm_EQNgeo_CLN( 0:PP_N ,0:Ngeo)
+REAL                          :: Vdm_CLN_N     ( 0:PP_N ,0:PP_N)
+REAL                          :: xi0(3),dxi(3),length(3)
+REAL                          :: xiCL_N(0:PP_N)   ,wBaryCL_N(0:PP_N)
 !==================================================================================================================================
 
 CALL GetVandermonde(    NGeo, NodeTypeVISU, PP_N, NodeTypeCL, Vdm_EQNgeo_CLN, modal=.FALSE.)
@@ -113,9 +114,10 @@ CALL GetNodesAndWeights(PP_N, NodeTypeCL  , xiCL_N  , wIPBary=wBaryCL_N)
 
 ! NOTE: Transform intermediately to CL points, to be consistent with metrics being built with CL
 !       Important for curved meshes if NGeo<N, no effect for N>=NGeo
- 
+
 !1.a) Transform from EQUI_Ngeo to solution points on N
 IF(interpolateFromTree)THEN
+  ! TODO
   DO iElem=1,nElems
     xi0   =xiMinMax(:,1,iElem)
     length=xiMinMax(:,2,iElem)-xi0
@@ -131,9 +133,15 @@ IF(interpolateFromTree)THEN
 ELSE
   Vdm_EQNgeo_CLN=MATMUL(Vdm_CLN_N,Vdm_EQNgeo_CLN)
   DO iElem=1,nElems
-    CALL ChangeBasis3D(3,NGeo,PP_N,Vdm_EQNGeo_CLN,NodeCoords(:,:,:,:,iElem),Elem_xGP(:,:,:,:,iElem))
+    CALL ChangeBasisVolume(3,NGeo,PP_N,Vdm_EQNGeo_CLN,NodeCoords(:,:,:,:,iElem),Elem_xGP(:,:,:,:,iElem))
   END DO
 END IF
+
+#if (PP_dim == 2)
+! Nullify coordinates in the third dimension
+Elem_xGP(3,:,:,:,:) = 0.
+#endif
+
 
 END SUBROUTINE BuildCoords
 
@@ -144,16 +152,17 @@ SUBROUTINE CalcMetrics()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Mesh_Vars,     ONLY:NGeo,NgeoRef,nElems,offsetElem,crossProductMetrics
-USE MOD_Mesh_Vars,     ONLY:Metrics_fTilde,Metrics_gTilde,Metrics_hTilde,dXCL_N
-USE MOD_Mesh_Vars,     ONLY:sJ,detJac_Ref,Ja_Face
-USE MOD_Mesh_Vars,     ONLY:NodeCoords,TreeCoords,Elem_xGP
-USE MOD_Mesh_Vars,     ONLY:ElemToTree,xiMinMax,interpolateFromTree
-USE MOD_Mesh_Vars,     ONLY:NormVec,TangVec1,TangVec2,SurfElem,Face_xGP
+USE MOD_Mesh_Vars          ,ONLY: NGeo,NgeoRef,nElems,offsetElem,crossProductMetrics
+USE MOD_Mesh_Vars          ,ONLY: Metrics_fTilde,Metrics_gTilde,Metrics_hTilde,dXCL_N
+USE MOD_Mesh_Vars          ,ONLY: sJ,detJac_Ref,Ja_Face
+USE MOD_Mesh_Vars          ,ONLY: NodeCoords,TreeCoords,Elem_xGP
+USE MOD_Mesh_Vars          ,ONLY: ElemToTree,xiMinMax,interpolateFromTree
+USE MOD_Mesh_Vars          ,ONLY: NormVec,TangVec1,TangVec2,SurfElem,Face_xGP
 USE MOD_Interpolation_Vars
-USE MOD_Interpolation, ONLY:GetVandermonde,GetNodesAndWeights,GetDerivativeMatrix
-USE MOD_ChangeBasis,   ONLY:changeBasis3D,ChangeBasis3D_XYZ
-USE MOD_Basis,         ONLY:LagrangeInterpolationPolys
+USE MOD_Interpolation      ,ONLY: GetVandermonde,GetNodesAndWeights,GetDerivativeMatrix
+USE MOD_ChangeBasis        ,ONLY: changeBasis3D,ChangeBasis3D_XYZ
+USE MOD_Basis              ,ONLY: LagrangeInterpolationPolys
+USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisVolume
 !----------------------------------------------------------------------------------------------------------------------------------
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -163,19 +172,19 @@ IMPLICIT NONE
 INTEGER :: i,j,k,q,iElem
 INTEGER :: ll
 ! Jacobian on CL N and NGeoRef
-REAL    :: DetJac_N( 1,0:PP_N,   0:PP_N,   0:PP_N)
-REAL    :: tmp(      1,0:NgeoRef,0:NgeoRef,0:NgeoRef)
+REAL    :: DetJac_N( 1,0:PP_N,   0:PP_N,   0:PP_NZ)
+REAL    :: tmp(      1,0:NgeoRef,0:NgeoRef,0:PP_NGeoRefZ)
 !REAL    :: tmp2(     1,0:Ngeo,0:Ngeo,0:Ngeo)
 ! interpolation points and derivatives on CL N
-REAL    :: XCL_N(      3,  0:PP_N,0:PP_N,0:PP_N)          ! mapping X(xi) P\in N
-REAL    :: XCL_Ngeo(   3,  0:Ngeo,0:Ngeo,0:Ngeo)          ! mapping X(xi) P\in Ngeo
-REAL    :: XCL_N_quad( 3,  0:PP_N,0:PP_N,0:PP_N)          ! mapping X(xi) P\in N
-REAL    :: dXCL_Ngeo(  3,3,0:Ngeo,0:Ngeo,0:Ngeo)          ! jacobi matrix on CL Ngeo
-REAL    :: dX_NgeoRef( 3,3,0:NgeoRef,0:NgeoRef,0:NgeoRef) ! jacobi matrix on SOL NgeoRef
+REAL    :: XCL_N(      3,  0:PP_N,0:PP_N,0:PP_NZ)          ! mapping X(xi) P\in N
+REAL    :: XCL_Ngeo(   3,  0:Ngeo,0:Ngeo,0:PP_NGeoZ)          ! mapping X(xi) P\in Ngeo
+REAL    :: XCL_N_quad( 3,  0:PP_N,0:PP_N,0:PP_NZ)          ! mapping X(xi) P\in N
+REAL    :: dXCL_Ngeo(  3,3,0:Ngeo,0:Ngeo,0:PP_NGeoZ)          ! jacobi matrix on CL Ngeo
+REAL    :: dX_NgeoRef( 3,3,0:NgeoRef,0:NgeoRef,0:PP_NGeoRefZ) ! jacobi matrix on SOL NgeoRef
 
-REAL    :: R_CL_N(     3,3,0:PP_N,0:PP_N,0:PP_N)    ! buffer for metric terms, uses XCL_N,dXCL_N
-REAL    :: JaCL_N(     3,3,0:PP_N,0:PP_N,0:PP_N)    ! metric terms P\in N
-REAL    :: JaCL_N_quad(3,3,0:PP_N,0:PP_N,0:PP_N)    ! metric terms P\in N
+REAL    :: R_CL_N(     3,3,0:PP_N,0:PP_N,0:PP_NZ)    ! buffer for metric terms, uses XCL_N,dXCL_N
+REAL    :: JaCL_N(     3,3,0:PP_N,0:PP_N,0:PP_NZ)    ! metric terms P\in N
+REAL    :: JaCL_N_quad(3,3,0:PP_N,0:PP_N,0:PP_NZ)    ! metric terms P\in N
 REAL    :: scaledJac(2)
 
 ! Polynomial derivativion matrices
@@ -232,34 +241,43 @@ DO iElem=1,nElems
   IF(interpolateFromTree)THEN
     xi0   =xiMinMax(:,1,iElem)
     length=xiMinMax(:,2,iElem)-xi0
-    CALL ChangeBasis3D(3,NGeo,NGeo,Vdm_EQNGeo_CLNGeo,TreeCoords(:,:,:,:,ElemToTree(iElem)),XCL_Ngeo)
+    CALL ChangeBasisVolume(3,NGeo,NGeo,Vdm_EQNGeo_CLNGeo,TreeCoords(:,:,:,:,ElemToTree(iElem)),XCL_Ngeo)
   ELSE
-    CALL ChangeBasis3D(3,NGeo,NGeo,Vdm_EQNGeo_CLNGeo,NodeCoords(:,:,:,:,iElem)            ,XCL_Ngeo)
+    CALL ChangeBasisVolume(3,NGeo,NGeo,Vdm_EQNGeo_CLNGeo,NodeCoords(:,:,:,:,iElem)            ,XCL_Ngeo)
   END IF
-  CALL   ChangeBasis3D(3,NGeo,PP_N,Vdm_CLNGeo_CLN,   XCL_Ngeo                             ,XCL_N)
+  CALL   ChangeBasisVolume(3,NGeo,PP_N,Vdm_CLNGeo_CLN,   XCL_Ngeo                             ,XCL_N)
 
   !1.b) Jacobi Matrix of d/dxi_dd(X_nn): dXCL_NGeo(dd,nn,i,j,k))
   dXCL_NGeo=0.
-  DO k=0,Ngeo; DO j=0,Ngeo; DO i=0,Ngeo
+  DO k=0,PP_NGeoZ; DO j=0,Ngeo; DO i=0,Ngeo
     ! Matrix-vector multiplication
     DO ll=0,Ngeo
-      dXCL_Ngeo(1,:,i,j,k)=dXCL_Ngeo(1,:,i,j,k) + DCL_Ngeo(i,ll)*XCL_Ngeo(:,ll,j,k)
-      dXCL_Ngeo(2,:,i,j,k)=dXCL_Ngeo(2,:,i,j,k) + DCL_Ngeo(j,ll)*XCL_Ngeo(:,i,ll,k)
+      dXCL_Ngeo(1,1:PP_dim,i,j,k)=dXCL_Ngeo(1,1:PP_dim,i,j,k) + DCL_Ngeo(i,ll)*XCL_Ngeo(1:PP_dim,ll,j,k)
+      dXCL_Ngeo(2,1:PP_dim,i,j,k)=dXCL_Ngeo(2,1:PP_dim,i,j,k) + DCL_Ngeo(j,ll)*XCL_Ngeo(1:PP_dim,i,ll,k)
+#if (PP_dim == 3)
       dXCL_Ngeo(3,:,i,j,k)=dXCL_Ngeo(3,:,i,j,k) + DCL_Ngeo(k,ll)*XCL_Ngeo(:,i,j,ll)
+#endif
     END DO !l=0,N
   END DO; END DO; END DO !i,j,k=0,Ngeo
 
   ! 1.c)Jacobians! grad(X_1) (grad(X_2) x grad(X_3))
   ! Compute Jacobian on NGeo and then interpolate:
   ! required to guarantee conservativity when restarting with N<NGeo
-  CALL ChangeBasis3D(3,Ngeo,NgeoRef,Vdm_CLNGeo_NgeoRef,dXCL_NGeo(:,1,:,:,:),dX_NgeoRef(:,1,:,:,:))
-  CALL ChangeBasis3D(3,Ngeo,NgeoRef,Vdm_CLNGeo_NgeoRef,dXCL_NGeo(:,2,:,:,:),dX_NgeoRef(:,2,:,:,:))
-  CALL ChangeBasis3D(3,Ngeo,NgeoRef,Vdm_CLNGeo_NgeoRef,dXCL_NGeo(:,3,:,:,:),dX_NgeoRef(:,3,:,:,:))
-  DO k=0,NgeoRef; DO j=0,NgeoRef; DO i=0,NgeoRef
-    detJac_Ref(1,i,j,k,iElem)=detJac_Ref(1,i,j,k,iElem) & 
+  CALL ChangeBasisVolume(3,Ngeo,NgeoRef,Vdm_CLNGeo_NgeoRef,dXCL_NGeo(:,1,:,:,:),dX_NgeoRef(:,1,:,:,:))
+  CALL ChangeBasisVolume(3,Ngeo,NgeoRef,Vdm_CLNGeo_NgeoRef,dXCL_NGeo(:,2,:,:,:),dX_NgeoRef(:,2,:,:,:))
+#if (PP_dim == 3)
+  CALL ChangeBasisVolume(3,Ngeo,NgeoRef,Vdm_CLNGeo_NgeoRef,dXCL_NGeo(:,3,:,:,:),dX_NgeoRef(:,3,:,:,:))
+#endif
+  DO k=0,PP_NGeoRefZ  ; DO j=0,NgeoRef; DO i=0,NgeoRef
+#if (PP_dim == 3)
+    detJac_Ref(1,i,j,k,iElem)=detJac_Ref(1,i,j,k,iElem) &
       + dX_NgeoRef(1,1,i,j,k)*(dX_NgeoRef(2,2,i,j,k)*dX_NgeoRef(3,3,i,j,k) - dX_NgeoRef(3,2,i,j,k)*dX_NgeoRef(2,3,i,j,k))  &
       + dX_NgeoRef(2,1,i,j,k)*(dX_NgeoRef(3,2,i,j,k)*dX_NgeoRef(1,3,i,j,k) - dX_NgeoRef(1,2,i,j,k)*dX_NgeoRef(3,3,i,j,k))  &
-      + dX_NgeoRef(3,1,i,j,k)*(dX_NgeoRef(1,2,i,j,k)*dX_NgeoRef(2,3,i,j,k) - dX_NgeoRef(2,2,i,j,k)*dX_NgeoRef(1,3,i,j,k))  
+      + dX_NgeoRef(3,1,i,j,k)*(dX_NgeoRef(1,2,i,j,k)*dX_NgeoRef(2,3,i,j,k) - dX_NgeoRef(2,2,i,j,k)*dX_NgeoRef(1,3,i,j,k))
+#else
+      detJac_Ref(1,i,j,k,iElem)=detJac_Ref(1,i,j,k,iElem) &
+        + dX_NgeoRef(1,1,i,j,k)*dX_NgeoRef(2,2,i,j,k) - dX_NgeoRef(2,1,i,j,k)*dX_NgeoRef(1,2,i,j,k)
+#endif
   END DO; END DO; END DO !i,j,k=0,NgeoRef
 
   IF(interpolateFromTree)THEN
@@ -275,15 +293,15 @@ DO iElem=1,nElems
                            tmp,DetJac_Ref(:,:,:,:,iElem))
   END IF
   ! interpolate detJac_ref to the solution points
-  CALL ChangeBasis3D(1,NgeoRef,PP_N,Vdm_NgeoRef_N,DetJac_Ref(:,:,:,:,iElem),DetJac_N)
+  CALL ChangeBasisVolume(1,NgeoRef,PP_N,Vdm_NgeoRef_N,DetJac_Ref(:,:,:,:,iElem),DetJac_N)
 
   ! assign to global Variable sJ
-  DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     sJ(i,j,k,iElem,0)=1./DetJac_N(1,i,j,k)
   END DO; END DO; END DO !i,j,k=0,PP_N
 
   ! check for negative Jacobians
-  DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     IF(detJac_N(1,i,j,k).LE.0.)&
       WRITE(Unit_StdOut,*) 'Negative Jacobian found on Gauss point. Coords:', Elem_xGP(:,i,j,k,iElem)
   END DO; END DO; END DO !i,j,k=0,N
@@ -299,23 +317,34 @@ DO iElem=1,nElems
   ! N>=Ngeo: interpolate from dXCL_Ngeo (default)
   ! N< Ngeo: directly derive XCL_N
   IF(PP_N.GE.NGeo)THEN !compute first derivative on Ngeo and then interpolate
-    CALL ChangeBasis3D(3,NGeo,PP_N,Vdm_CLNGeo_CLN,dXCL_NGeo(:,1,:,:,:),dXCL_N(:,1,:,:,:,iElem))
-    CALL ChangeBasis3D(3,NGeo,PP_N,Vdm_CLNGeo_CLN,dXCL_NGeo(:,2,:,:,:),dXCL_N(:,2,:,:,:,iElem))
-    CALL ChangeBasis3D(3,NGeo,PP_N,Vdm_CLNGeo_CLN,dXCL_NGeo(:,3,:,:,:),dXCL_N(:,3,:,:,:,iElem))
+    CALL ChangeBasisVolume(3,NGeo,PP_N,Vdm_CLNGeo_CLN,dXCL_NGeo(:,1,:,:,:),dXCL_N(:,1,:,:,:,iElem))
+    CALL ChangeBasisVolume(3,NGeo,PP_N,Vdm_CLNGeo_CLN,dXCL_NGeo(:,2,:,:,:),dXCL_N(:,2,:,:,:,iElem))
+    CALL ChangeBasisVolume(3,NGeo,PP_N,Vdm_CLNGeo_CLN,dXCL_NGeo(:,3,:,:,:),dXCL_N(:,3,:,:,:,iElem))
   ELSE  !N<Ngeo: first interpolate and then compute derivative (important if curved&periodic)
-    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       ! Matrix-vector multiplication
       ASSOCIATE(dXCL => dXCL_N(:,:,i,j,k,iElem))
       DO ll=0,PP_N
-        dXCL(1,:)=dXCL(1,:) + DCL_N(i,ll)*XCL_N(:,ll,j,k)
-        dXCL(2,:)=dXCL(2,:) + DCL_N(j,ll)*XCL_N(:,i,ll,k)
+        dXCL(1,1:PP_dim)=dXCL(1,1:PP_dim) + DCL_N(i,ll)*XCL_N(1:PP_dim,ll,j,k)
+        dXCL(2,1:PP_dim)=dXCL(2,1:PP_dim) + DCL_N(j,ll)*XCL_N(1:PP_dim,i,ll,k)
+#if (PP_dim == 3)
         dXCL(3,:)=dXCL(3,:) + DCL_N(k,ll)*XCL_N(:,i,j,ll)
+#endif
       END DO !l=0,N
       END ASSOCIATE
     END DO; END DO; END DO !i,j,k=0,N
   END IF !N>=Ngeo
 
   JaCL_N=0.
+#if (PP_dim == 2)
+  ! No need to differentiate between curl and cross product metrics in 2D, we can directly use the calculated derivatives
+  DO k=0,0; DO j=0,PP_N; DO i=0,PP_N
+    JaCL_N(1,1,i,j,k)=  dXCL_N(2,2,i,j,k,iElem)
+    JaCL_N(2,1,i,j,k)=- dXCL_N(1,2,i,j,k,iElem)
+    JaCL_N(1,2,i,j,k)=- dXCL_N(2,1,i,j,k,iElem)
+    JaCL_N(2,2,i,j,k)=  dXCL_N(1,1,i,j,k,iElem)
+  END DO; END DO; END DO !i,j,k=0,N
+#else
   IF(crossProductMetrics)THEN
     ! exact (cross-product) form
     DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
@@ -324,15 +353,15 @@ DO iElem=1,nElems
       ! Ja(:)^nn = ( d/dxi_(nn+1) XCL_N(:) ) x (d/xi_(nn+2) XCL_N(:))
       !
       ! JaCL_N(dd,nn) = dXCL_N(dd+1,nn+1)*dXCL_N(dd+2,nn+2) -dXCL_N(dd+1,nn+2)*dXCL_N(dd+2,nn+1)
-      JaCL_N(1,1,i,j,k)=dXCL(2,2)*dXCL(3,3) - dXCL(2,3)*dXCL(3,2)  
-      JaCL_N(2,1,i,j,k)=dXCL(3,2)*dXCL(1,3) - dXCL(3,3)*dXCL(1,2)  
-      JaCL_N(3,1,i,j,k)=dXCL(1,2)*dXCL(2,3) - dXCL(1,3)*dXCL(2,2)  
-      JaCL_N(1,2,i,j,k)=dXCL(2,3)*dXCL(3,1) - dXCL(2,1)*dXCL(3,3)  
-      JaCL_N(2,2,i,j,k)=dXCL(3,3)*dXCL(1,1) - dXCL(3,1)*dXCL(1,3)  
-      JaCL_N(3,2,i,j,k)=dXCL(1,3)*dXCL(2,1) - dXCL(1,1)*dXCL(2,3)  
-      JaCL_N(1,3,i,j,k)=dXCL(2,1)*dXCL(3,2) - dXCL(2,2)*dXCL(3,1)  
-      JaCL_N(2,3,i,j,k)=dXCL(3,1)*dXCL(1,2) - dXCL(3,2)*dXCL(1,1)  
-      JaCL_N(3,3,i,j,k)=dXCL(1,1)*dXCL(2,2) - dXCL(1,2)*dXCL(2,1)  
+      JaCL_N(1,1,i,j,k)=dXCL(2,2)*dXCL(3,3) - dXCL(2,3)*dXCL(3,2)
+      JaCL_N(2,1,i,j,k)=dXCL(3,2)*dXCL(1,3) - dXCL(3,3)*dXCL(1,2)
+      JaCL_N(3,1,i,j,k)=dXCL(1,2)*dXCL(2,3) - dXCL(1,3)*dXCL(2,2)
+      JaCL_N(1,2,i,j,k)=dXCL(2,3)*dXCL(3,1) - dXCL(2,1)*dXCL(3,3)
+      JaCL_N(2,2,i,j,k)=dXCL(3,3)*dXCL(1,1) - dXCL(3,1)*dXCL(1,3)
+      JaCL_N(3,2,i,j,k)=dXCL(1,3)*dXCL(2,1) - dXCL(1,1)*dXCL(2,3)
+      JaCL_N(1,3,i,j,k)=dXCL(2,1)*dXCL(3,2) - dXCL(2,2)*dXCL(3,1)
+      JaCL_N(2,3,i,j,k)=dXCL(3,1)*dXCL(1,2) - dXCL(3,2)*dXCL(1,1)
+      JaCL_N(3,3,i,j,k)=dXCL(1,1)*dXCL(2,2) - dXCL(1,2)*dXCL(2,1)
       END ASSOCIATE
     END DO; END DO; END DO !i,j,k=0,N
   ELSE ! curl metrics
@@ -343,7 +372,7 @@ DO iElem=1,nElems
       ASSOCIATE(dXCL => dXCL_N(:,:,i,j,k,iElem))
       R_CL_N(:,1,i,j,k)=0.5*(XCL_N(3,i,j,k)*dXCL(:,2) - XCL_N(2,i,j,k)*dXCL(:,3) )
       R_CL_N(:,2,i,j,k)=0.5*(XCL_N(1,i,j,k)*dXCL(:,3) - XCL_N(3,i,j,k)*dXCL(:,1) )
-      R_CL_N(:,3,i,j,k)=0.5*(XCL_N(2,i,j,k)*dXCL(:,1) - XCL_N(1,i,j,k)*dXCL(:,2) ) 
+      R_CL_N(:,3,i,j,k)=0.5*(XCL_N(2,i,j,k)*dXCL(:,1) - XCL_N(1,i,j,k)*dXCL(:,2) )
       END ASSOCIATE
     END DO; END DO; END DO !i,j,k=0,N
     ! Metrics are the curl of R:  Ja(:)^nn = -(curl R_CL(:,nn))
@@ -357,9 +386,9 @@ DO iElem=1,nElems
         JaCL(3,:)=JaCL(3,:) - DCL_N(i,q)*R_CL_N(2,:,q,j,k)
       END DO!q=0,PP_N
       DO q=0,PP_N
-        JaCL(1,:)=JaCL(1,:) + DCL_N(k,q)*R_CL_N(2,:,i,j,q) 
-        JaCL(2,:)=JaCL(2,:) + DCL_N(i,q)*R_CL_N(3,:,q,j,k) 
-        JaCL(3,:)=JaCL(3,:) + DCL_N(j,q)*R_CL_N(1,:,i,q,k) 
+        JaCL(1,:)=JaCL(1,:) + DCL_N(k,q)*R_CL_N(2,:,i,j,q)
+        JaCL(2,:)=JaCL(2,:) + DCL_N(i,q)*R_CL_N(3,:,q,j,k)
+        JaCL(3,:)=JaCL(3,:) + DCL_N(j,q)*R_CL_N(1,:,i,q,k)
       END DO!q=0,PP_N
       END ASSOCIATE
 ! same with only one loop, gives different roundoff ...
@@ -370,6 +399,7 @@ DO iElem=1,nElems
 !      END DO!q=0,PP_N
     END DO; END DO; END DO !i,j,k=0,N
   END IF !crossProductMetrics
+#endif
 
 
   IF(interpolateFromTree)THEN
@@ -408,9 +438,11 @@ DO iElem=1,nElems
                          NormVec,TangVec1,TangVec2,SurfElem,Face_xGP,Ja_Face)
   ELSE
     ! interpolate Metrics from Cheb-Lobatto N onto GaussPoints N
-    CALL ChangeBasis3D(3,PP_N,PP_N,Vdm_CLN_N,JaCL_N(1,:,:,:,:),Metrics_fTilde(:,:,:,:,iElem,0))
-    CALL ChangeBasis3D(3,PP_N,PP_N,Vdm_CLN_N,JaCL_N(2,:,:,:,:),Metrics_gTilde(:,:,:,:,iElem,0))
-    CALL ChangeBasis3D(3,PP_N,PP_N,Vdm_CLN_N,JaCL_N(3,:,:,:,:),Metrics_hTilde(:,:,:,:,iElem,0))
+    CALL ChangeBasisVolume(3,PP_N,PP_N,Vdm_CLN_N,JaCL_N(1,:,:,:,:),Metrics_fTilde(:,:,:,:,iElem,0))
+    CALL ChangeBasisVolume(3,PP_N,PP_N,Vdm_CLN_N,JaCL_N(2,:,:,:,:),Metrics_gTilde(:,:,:,:,iElem,0))
+#if (PP_dim == 3)
+    CALL ChangeBasisVolume(3,PP_N,PP_N,Vdm_CLN_N,JaCL_N(3,:,:,:,:),Metrics_hTilde(:,:,:,:,iElem,0))
+#endif
     CALL CalcSurfMetrics(PP_N,FV_ENABLED,JaCL_N,XCL_N,Vdm_CLN_N,iElem,&
                          NormVec,TangVec1,TangVec2,SurfElem,Face_xGP,Ja_Face)
   END IF
@@ -427,12 +459,13 @@ END SUBROUTINE CalcMetrics
 !==================================================================================================================================
 SUBROUTINE CalcSurfMetrics(Nloc,FVE,JaCL_N,XCL_N,Vdm_CLN_N,iElem,NormVec,TangVec1,TangVec2,SurfElem,Face_xGP,Ja_Face)
 ! MODULES
-USE MOD_Mathtools,      ONLY:CROSS
-USE MOD_Mesh_Vars,      ONLY:ElemToSide,MortarType,nSides
-USE MOD_Mesh_Vars,      ONLY:NormalDirs,TangDirs,NormalSigns
-USE MOD_Mappings,       ONLY:SideToVol2
-USE MOD_ChangeBasis,    ONLY:ChangeBasis2D
-USE MOD_Mortar_Metrics, ONLY:Mortar_CalcSurfMetrics
+USE MOD_Mathtools        ,ONLY: CROSS
+USE MOD_Mesh_Vars        ,ONLY: ElemToSide,MortarType,nSides
+USE MOD_Mesh_Vars        ,ONLY: NormalDirs,TangDirs,NormalSigns
+USE MOD_Mappings         ,ONLY: SideToVol2
+USE MOD_ChangeBasis      ,ONLY: ChangeBasis2D
+USE MOD_ChangeBasisByDim ,ONLY: ChangeBasisSurf
+USE MOD_Mortar_Metrics   ,ONLY: Mortar_CalcSurfMetrics
 !----------------------------------------------------------------------------------------------------------------------------------
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -440,25 +473,25 @@ IMPLICIT NONE
 INTEGER,INTENT(IN) :: Nloc                                !< (IN) polynomial degree
 INTEGER,INTENT(IN) :: FVE                                 !< (IN) Finite Volume enabled
 INTEGER,INTENT(IN) :: iElem                               !< (IN) element index
-REAL,INTENT(IN)    :: JaCL_N(  3,3,0:Nloc,0:Nloc,0:Nloc)  !< (IN) volume metrics of element
-REAL,INTENT(IN)    :: XCL_N(     3,0:Nloc,0:Nloc,0:Nloc)  !< (IN) element geo. interpolation points (CL)
+REAL,INTENT(IN)    :: JaCL_N(  3,3,0:Nloc,0:Nloc,0:PP_NlocZ)  !< (IN) volume metrics of element
+REAL,INTENT(IN)    :: XCL_N(     3,0:Nloc,0:Nloc,0:PP_NlocZ)  !< (IN) element geo. interpolation points (CL)
 REAL,INTENT(IN)    :: Vdm_CLN_N(   0:Nloc,0:Nloc)         !< (IN) Vandermonde matrix from Cheby-Lob on N to final nodeset on N
-REAL,INTENT(OUT)   ::    NormVec(3,0:Nloc,0:Nloc,0:FVE,1:nSides) !< (OUT) element face normal vectors
-REAL,INTENT(OUT)   ::   TangVec1(3,0:Nloc,0:Nloc,0:FVE,1:nSides) !< (OUT) element face tangential vectors
-REAL,INTENT(OUT)   ::   TangVec2(3,0:Nloc,0:Nloc,0:FVE,1:nSides) !< (OUT) element face tangential vectors
-REAL,INTENT(OUT)   ::   SurfElem(  0:Nloc,0:Nloc,0:FVE,1:nSides) !< (OUT) element face surface area
-REAL,INTENT(OUT)   ::   Face_xGP(3,0:Nloc,0:Nloc,0:FVE,1:nSides) !< (OUT) element face interpolation points
-REAL,INTENT(OUT),OPTIONAL :: Ja_Face(3,3,0:Nloc,0:Nloc,1:nSides) !< (OUT) surface metrics
+REAL,INTENT(OUT)   ::    NormVec(3,0:Nloc,0:PP_NlocZ,0:FVE,1:nSides) !< (OUT) element face normal vectors
+REAL,INTENT(OUT)   ::   TangVec1(3,0:Nloc,0:PP_NlocZ,0:FVE,1:nSides) !< (OUT) element face tangential vectors
+REAL,INTENT(OUT)   ::   TangVec2(3,0:Nloc,0:PP_NlocZ,0:FVE,1:nSides) !< (OUT) element face tangential vectors
+REAL,INTENT(OUT)   ::   SurfElem(  0:Nloc,0:PP_NlocZ,0:FVE,1:nSides) !< (OUT) element face surface area
+REAL,INTENT(OUT)   ::   Face_xGP(3,0:Nloc,0:PP_NlocZ,0:FVE,1:nSides) !< (OUT) element face interpolation points
+REAL,INTENT(OUT),OPTIONAL :: Ja_Face(3,3,0:Nloc,0:PP_NlocZ,1:nSides) !< (OUT) surface metrics
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: p,q,pq(2),dd,iLocSide,SideID,SideID2,iMortar,nbSideIDs(4),flip
 INTEGER            :: NormalDir,TangDir
 REAL               :: NormalSign
-REAL               :: Ja_Face_l(3,3,0:Nloc,0:Nloc)
-REAL               :: Mortar_Ja(3,3,0:Nloc,0:Nloc,4)
-REAL               :: Mortar_xGP( 3,0:Nloc,0:Nloc,4)
-REAL               :: tmp(        3,0:Nloc,0:Nloc)
-REAL               :: tmp2(       3,0:Nloc,0:Nloc)
+REAL               :: Ja_Face_l(3,3,0:Nloc,0:PP_NlocZ)
+REAL               :: Mortar_Ja(3,3,0:Nloc,0:PP_NlocZ,4)
+REAL               :: Mortar_xGP( 3,0:Nloc,0:PP_NlocZ,4)
+REAL               :: tmp(        3,0:Nloc,0:PP_NlocZ)
+REAL               :: tmp2(       3,0:Nloc,0:PP_NlocZ)
 !==================================================================================================================================
 
 #if PP_dim == 3
@@ -484,15 +517,16 @@ DO iLocSide=2,5
   CASE(ZETA_PLUS)
     tmp=XCL_N(1:3,:   ,:   ,Nloc)
   END SELECT
-  CALL ChangeBasis2D(3,Nloc,Nloc,Vdm_CLN_N,tmp,tmp2)
+  CALL ChangeBasisSurf(3,Nloc,Nloc,Vdm_CLN_N,tmp,tmp2)
   ! turn into right hand system of side
-  DO q=0,Nloc; DO p=0,Nloc
-    pq=SideToVol2(Nloc,p,q,0,iLocSide,3)
+  DO q=0,PP_NlocZ; DO p=0,Nloc
+    pq=SideToVol2(Nloc,p,q,0,iLocSide,PP_dim)
     ! Compute Face_xGP for sides
     Face_xGP(1:3,p,q,0,sideID)=tmp2(:,pq(1),pq(2))
   END DO; END DO ! p,q
 
-  DO dd=1,3
+  Ja_Face_l=0.
+  DO dd=1,PP_dim
     SELECT CASE(iLocSide)
     CASE(XI_MINUS)
       tmp=JaCL_N(dd,1:3,0   ,:   ,:   )
@@ -507,10 +541,10 @@ DO iLocSide=2,5
     CASE(ZETA_PLUS)
       tmp=JaCL_N(dd,1:3,:   ,:   ,Nloc)
     END SELECT
-    CALL ChangeBasis2D(3,Nloc,Nloc,Vdm_CLN_N,tmp,tmp2)
+    CALL ChangeBasisSurf(3,Nloc,Nloc,Vdm_CLN_N,tmp,tmp2)
     ! turn into right hand system of side
-    DO q=0,Nloc; DO p=0,Nloc
-      pq=SideToVol2(Nloc,p,q,0,iLocSide,3)
+    DO q=0,PP_NlocZ; DO p=0,Nloc
+      pq=SideToVol2(Nloc,p,q,0,iLocSide,PP_dim)
       Ja_Face_l(dd,1:3,p,q)=tmp2(:,pq(1),pq(2))
     END DO; END DO ! p,q
   END DO ! dd
@@ -555,22 +589,34 @@ INTEGER,INTENT(IN) :: Nloc                       !< polynomial degree
 INTEGER,INTENT(IN) :: NormalDir                  !< direction of normal vector
 INTEGER,INTENT(IN) :: TangDir                    !< direction of 1. tangential vector
 REAL,INTENT(IN)    :: NormalSign                 !< sign of normal vector
-REAL,INTENT(IN)    :: Ja_Face(3,3,0:Nloc,0:Nloc) !< face metrics
-REAL,INTENT(OUT)   ::   NormVec(3,0:Nloc,0:Nloc) !< element face normal vectors
-REAL,INTENT(OUT)   ::  TangVec1(3,0:Nloc,0:Nloc) !< element face tangential vectors
-REAL,INTENT(OUT)   ::  TangVec2(3,0:Nloc,0:Nloc) !< element face tangential vectors
-REAL,INTENT(OUT)   ::  SurfElem(  0:Nloc,0:Nloc) !< element face surface area
+REAL,INTENT(IN)    :: Ja_Face(3,3,0:Nloc,0:PP_NlocZ) !< face metrics
+REAL,INTENT(OUT)   ::   NormVec(3,0:Nloc,0:PP_NlocZ) !< element face normal vectors
+REAL,INTENT(OUT)   ::  TangVec1(3,0:Nloc,0:PP_NlocZ) !< element face tangential vectors
+REAL,INTENT(OUT)   ::  TangVec2(3,0:Nloc,0:PP_NlocZ) !< element face tangential vectors
+REAL,INTENT(OUT)   ::  SurfElem(  0:Nloc,0:PP_NlocZ) !< element face surface area
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: p,q
+INTEGER            :: TangDirLoc
 !==================================================================================================================================
-DO q=0,Nloc; DO p=0,Nloc
-  SurfElem(  p,q) = SQRT(SUM(Ja_Face(NormalDir,:,p,q)**2))
+DO q=0,PP_NlocZ; DO p=0,Nloc
+  SurfElem(  p,q) = SQRT(SUM(Ja_Face(NormalDir,1:PP_dim,p,q)**2))
   NormVec( :,p,q) = NormalSign*Ja_Face(NormalDir,:,p,q)/SurfElem(p,q)
-  TangVec1(:,p,q) = Ja_Face(TangDir,:,p,q) - SUM(Ja_Face(TangDir,:,p,q)*NormVec(:,p,q)) &
+#if (PP_dim == 2)
+  ! For two-dimensional computations, the normal direction will be 1 or 2. For the tangential direction
+  ! we then set 2 or 1 accordingly. 
+  TangDirLoc = 3 - NormalDir
+#else
+  TangDirLoc = TangDir
+#endif
+  TangVec1(:,p,q) = Ja_Face(TangDirLoc,:,p,q) - SUM(Ja_Face(TangDirLoc,:,p,q)*NormVec(:,p,q)) &
                     *NormVec(:,p,q)
   TangVec1(:,p,q) = TangVec1(:,p,q)/SQRT(SUM(TangVec1(:,p,q)**2))
+#if (PP_dim == 2)
+  TangVec2(:,p,q) = 0.
+#else
   TangVec2(:,p,q) = CROSS(NormVec(:,p,q),TangVec1(:,p,q))
+#endif
 END DO; END DO ! p,q
 END SUBROUTINE SurfMetricsFromJa
 

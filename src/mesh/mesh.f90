@@ -65,9 +65,11 @@ CALL prms%CreateRealOption(    'meshScale',           "Scale the mesh by this fa
                                                       '1.0')
 CALL prms%CreateLogicalOption( 'meshdeform',          "Apply simple sine-shaped deformation on cartesion mesh (for testing).",&
                                                       '.FALSE.')
+#if (PP_dim == 3)
 CALL prms%CreateLogicalOption( 'crossProductMetrics', "Compute mesh metrics using cross product form. Caution: in this case "//&
                                                       "free-stream preservation is only guaranteed for N=3*NGeo.",&
                                                       '.FALSE.')
+#endif
 CALL prms%CreateIntOption(     'debugmesh',           "Output file with visualization and debug information for the mesh. "//&
                                                       "0: no visualization, 3: Paraview binary",'0')
 CALL prms%CreateStringOption(  'BoundaryName',        "Names of boundary conditions to be set (must be present in the mesh!)."//&
@@ -108,6 +110,9 @@ USE MOD_Prepare_Mesh,       ONLY:exchangeFlip
 USE MOD_FV_Metrics,         ONLY:InitFV_Metrics
 #endif
 USE MOD_IO_HDF5,            ONLY:AddToElemData
+#if (PP_dim == 2)
+USE MOD_2D
+#endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -156,6 +161,13 @@ ENDIF
 
 CALL readMesh(MeshFile) !set nElems
 
+#if (PP_dim == 2)
+! If this is a two dimensional calculation, all subsequent operations are performed on the reduced mesh.
+! The mesh coordinates read in by the readMesh routine are therfore reduced by one dimension.
+CALL to2D_rank5((/1,0,0,0,1/),(/3,NGeo,NGeo,NGeo,nElems/),4,NodeCoords)
+NodeCoords(3,:,:,:,:) = 0.
+#endif
+
 ! if trees are available: compute metrics on tree level and interpolate to elements
 interpolateFromTree=.FALSE.
 IF(isMortarMesh) interpolateFromTree=GETLOGICAL('interpolateFromTree','.TRUE.')
@@ -187,7 +199,7 @@ IF(GETLOGICAL('meshdeform','.FALSE.'))THEN
   END DO
 END IF
 
-ALLOCATE(Elem_xGP(3,0:PP_N,0:PP_N,0:PP_N,nElems))
+ALLOCATE(Elem_xGP(3,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 CALL BuildCoords(Elem_xGP)
 
 ! Return if no connectivity and metrics are required (e.g. for visualization mode)
@@ -195,13 +207,13 @@ IF (meshMode.GT.0) THEN
 
   SWRITE(UNIT_stdOut,'(A)') "NOW CALLING setLocalSideIDs..."
   CALL setLocalSideIDs()
-  
+
 #if USE_MPI
   ! for MPI, we need to exchange flips, so that MINE MPISides have flip>0, YOUR MpiSides flip=0
   SWRITE(UNIT_stdOut,'(A)') "NOW CALLING exchangeFlip..."
   CALL exchangeFlip()
 #endif
-  
+
   !RANGES
   !-----------------|-----------------|-------------------|
   !    U_master     | U_slave         |    FLUX           |
@@ -213,29 +225,29 @@ IF (meshMode.GT.0) THEN
   !                 | MPI_YOUR sides  |    MPI_YOUR sides |
   !  MPIMortars     |                 |    MPIMortars     |
   !-----------------|-----------------|-------------------|
-  
+
   firstBCSide          = 1
   firstMortarInnerSide = firstBCSide         +nBCSides
   firstInnerSide       = firstMortarInnerSide+nMortarInnerSides
   firstMPISide_MINE    = firstInnerSide      +nInnerSides
   firstMPISide_YOUR    = firstMPISide_MINE   +nMPISides_MINE
   firstMortarMPISide   = firstMPISide_YOUR   +nMPISides_YOUR
-  
+
   lastBCSide           = firstMortarInnerSide-1
   lastMortarInnerSide  = firstInnerSide    -1
   lastInnerSide        = firstMPISide_MINE -1
   lastMPISide_MINE     = firstMPISide_YOUR -1
   lastMPISide_YOUR     = firstMortarMPISide-1
   lastMortarMPISide    = nSides
-  
-  
+
+
   firstMasterSide = 1
   lastMasterSide  = nSides
   firstSlaveSide  = firstInnerSide
   lastSlaveSide   = lastMPISide_YOUR
   nSidesMaster    = lastMasterSide-firstMasterSide+1
   nSidesSlave     = lastSlaveSide -firstSlaveSide+1
-  
+
   LOGWRITE(*,*)'-------------------------------------------------------'
   LOGWRITE(*,'(A25,I8)')   'first/lastMasterSide     ', firstMasterSide,lastMasterSide
   LOGWRITE(*,'(A25,I8)')   'first/lastSlaveSide      ', firstSlaveSide, lastSlaveSide
@@ -247,7 +259,7 @@ IF (meshMode.GT.0) THEN
   LOGWRITE(*,'(A25,I8,I8)')'first/lastMPISide_YOUR   ', firstMPISide_YOUR   ,lastMPISide_YOUR
   LOGWRITE(*,'(A30,I8,I8)')'first/lastMortarMPISide  ', firstMortarMPISide  ,lastMortarMPISide
   LOGWRITE(*,*)'-------------------------------------------------------'
-  
+
   ! fill ElemToSide, SideToElem,BC
   ALLOCATE(ElemToSide(2,6,nElems))
   ALLOCATE(SideToElem(5,nSides))
@@ -257,52 +269,63 @@ IF (meshMode.GT.0) THEN
   SideToElem  = -1   !mapping side to elem, sorted by side ID (for surfint)
   BC          = 0
   AnalyzeSide = 0
-  
+
   !NOTE: nMortarSides=nMortarInnerSides+nMortarMPISides
   ALLOCATE(MortarType(2,1:nSides))              ! 1: Type, 2: Index in MortarInfo
   ALLOCATE(MortarInfo(MI_FLIP,4,nMortarSides)) ! [1]: 1: Neighbour sides, 2: Flip, [2]: small sides
   MortarType=-1
   MortarInfo=-1
-  
+
   SWRITE(UNIT_stdOut,'(A)') "NOW CALLING fillMeshInfo..."
   CALL fillMeshInfo()
-  
+
   ! dealloacte pointers
   SWRITE(UNIT_stdOut,'(A)') "NOW CALLING deleteMeshPointer..."
   CALL deleteMeshPointer()
-  
+
+#if (PP_dim ==2)
+  ! In 2D, there is only one flip for the slave sides (1)
+  SideToElem(S2E_FLIP,:) = MIN(1,SideToElem(S2E_FLIP,:))
+  ElemToSide(:,1,:) = -999
+  ElemToSide(:,6,:) = -999
+  ElemToSide(E2S_FLIP,:,:) = MIN(1,ElemToSide(E2S_FLIP,:,:))
+  MortarInfo(MI_FLIP,:,:)  = MIN(1,MortarInfo(MI_FLIP,:,:))
+#endif
+
   ! Build necessary mappings 
-  CALL buildMappings(PP_N,V2S=V2S,S2V=S2V,S2V2=S2V2,FS2M=FS2M)
+  CALL buildMappings(PP_N,V2S=V2S,S2V=S2V,S2V2=S2V2,FS2M=FS2M,dim=PP_dim)
 END IF
 
 IF (meshMode.GT.1) THEN
 
   ! ----- CONNECTIVITY IS NOW COMPLETE AT THIS POINT -----
-  
+
   ! volume data
-  ALLOCATE(      dXCL_N(3,3,0:PP_N,0:PP_N,0:PP_N,nElems)) ! temp
-  ALLOCATE(Metrics_fTilde(3,0:PP_N,0:PP_N,0:PP_N,nElems,0:FV_ENABLED))
-  ALLOCATE(Metrics_gTilde(3,0:PP_N,0:PP_N,0:PP_N,nElems,0:FV_ENABLED))
-  ALLOCATE(Metrics_hTilde(3,0:PP_N,0:PP_N,0:PP_N,nElems,0:FV_ENABLED))
-  ALLOCATE(            sJ(  0:PP_N,0:PP_N,0:PP_N,nElems,0:FV_ENABLED))
+  ALLOCATE(      dXCL_N(3,3,0:PP_N,0:PP_N,0:PP_NZ,nElems)) ! temp
+  ALLOCATE(Metrics_fTilde(3,0:PP_N,0:PP_N,0:PP_NZ,nElems,0:FV_ENABLED))
+  ALLOCATE(Metrics_gTilde(3,0:PP_N,0:PP_N,0:PP_NZ,nElems,0:FV_ENABLED))
+  ALLOCATE(Metrics_hTilde(3,0:PP_N,0:PP_N,0:PP_NZ,nElems,0:FV_ENABLED))
+  ALLOCATE(            sJ(  0:PP_N,0:PP_N,0:PP_NZ,nElems,0:FV_ENABLED))
   NGeoRef=3*NGeo ! build jacobian at higher degree
-  ALLOCATE(    DetJac_Ref(1,0:NgeoRef,0:NgeoRef,0:NgeoRef,nElems))
-  
+  ALLOCATE(    DetJac_Ref(1,0:NgeoRef,0:NgeoRef,0:PP_NGeoRefZ,nElems))
+
   ! surface data
-  ALLOCATE(      Face_xGP(3,0:PP_N,0:PP_N,0:FV_ENABLED,1:nSides))
-  ALLOCATE(       NormVec(3,0:PP_N,0:PP_N,0:FV_ENABLED,1:nSides))
-  ALLOCATE(      TangVec1(3,0:PP_N,0:PP_N,0:FV_ENABLED,1:nSides))
-  ALLOCATE(      TangVec2(3,0:PP_N,0:PP_N,0:FV_ENABLED,1:nSides))
-  ALLOCATE(      SurfElem(  0:PP_N,0:PP_N,0:FV_ENABLED,1:nSides))
-  ALLOCATE(     Ja_Face(3,3,0:PP_N,0:PP_N,             1:nSides)) ! temp
-  
-  
+  ALLOCATE(      Face_xGP(3,0:PP_N,0:PP_NZ,0:FV_ENABLED,1:nSides))
+  ALLOCATE(       NormVec(3,0:PP_N,0:PP_NZ,0:FV_ENABLED,1:nSides))
+  ALLOCATE(      TangVec1(3,0:PP_N,0:PP_NZ,0:FV_ENABLED,1:nSides))
+  ALLOCATE(      TangVec2(3,0:PP_N,0:PP_NZ,0:FV_ENABLED,1:nSides))
+  ALLOCATE(      SurfElem(  0:PP_N,0:PP_NZ,0:FV_ENABLED,1:nSides))
+  ALLOCATE(     Ja_Face(3,3,0:PP_N,0:PP_NZ,             1:nSides)) ! temp
+
+
   ! assign all metrics Metrics_fTilde,Metrics_gTilde,Metrics_hTilde
   ! assign 1/detJ (sJ)
   ! assign normal and tangential vectors and surfElems on faces
-  
+
+#if (PP_dim == 3)
   ! compute metrics using cross product instead of curl form (warning: no free stream preservation!)
   crossProductMetrics=GETLOGICAL('crossProductMetrics','.FALSE.')
+#endif
   SWRITE(UNIT_stdOut,'(A)') "NOW CALLING calcMetrics..."
   CALL CalcMetrics()     ! DG metrics
 #if FV_ENABLED
@@ -312,9 +335,9 @@ IF (meshMode.GT.1) THEN
   CALL WriteDebugMesh(GETINT('debugmesh','0'))
 END IF
 
-#if PP_dim == 2
-  CALL Convert2D(meshMode)
-#endif
+!#if PP_dim == 2
+  !CALL Convert2D(meshMode)
+!#endif
 
 IF (meshMode.GT.0) THEN
   ALLOCATE(SideToGlobalSide(nSides))
