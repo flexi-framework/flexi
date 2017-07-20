@@ -263,8 +263,8 @@ DO iElem=1,nElems
   ! 1.c)Jacobians! grad(X_1) (grad(X_2) x grad(X_3))
   ! Compute Jacobian on NGeo and then interpolate:
   ! required to guarantee conservativity when restarting with N<NGeo
-  CALL ChangeBasisVolume(3,Ngeo,NgeoRef,Vdm_CLNGeo_NgeoRef,dXCL_NGeo(:,1,:,:,:),dX_NgeoRef(:,1,:,:,:))
-  CALL ChangeBasisVolume(3,Ngeo,NgeoRef,Vdm_CLNGeo_NgeoRef,dXCL_NGeo(:,2,:,:,:),dX_NgeoRef(:,2,:,:,:))
+  CALL ChangeBasisVolume(PP_dim,Ngeo,NgeoRef,Vdm_CLNGeo_NgeoRef,dXCL_NGeo(1:PP_dim,1,:,:,:),dX_NgeoRef(1:PP_dim,1,:,:,:))
+  CALL ChangeBasisVolume(PP_dim,Ngeo,NgeoRef,Vdm_CLNGeo_NgeoRef,dXCL_NGeo(1:PP_dim,2,:,:,:),dX_NgeoRef(1:PP_dim,2,:,:,:))
 #if (PP_dim == 3)
   CALL ChangeBasisVolume(3,Ngeo,NgeoRef,Vdm_CLNGeo_NgeoRef,dXCL_NGeo(:,3,:,:,:),dX_NgeoRef(:,3,:,:,:))
 #endif
@@ -317,9 +317,11 @@ DO iElem=1,nElems
   ! N>=Ngeo: interpolate from dXCL_Ngeo (default)
   ! N< Ngeo: directly derive XCL_N
   IF(PP_N.GE.NGeo)THEN !compute first derivative on Ngeo and then interpolate
-    CALL ChangeBasisVolume(3,NGeo,PP_N,Vdm_CLNGeo_CLN,dXCL_NGeo(:,1,:,:,:),dXCL_N(:,1,:,:,:,iElem))
-    CALL ChangeBasisVolume(3,NGeo,PP_N,Vdm_CLNGeo_CLN,dXCL_NGeo(:,2,:,:,:),dXCL_N(:,2,:,:,:,iElem))
+    CALL ChangeBasisVolume(PP_dim,NGeo,PP_N,Vdm_CLNGeo_CLN,dXCL_NGeo(1:PP_dim,1,:,:,:),dXCL_N(1:PP_dim,1,:,:,:,iElem))
+    CALL ChangeBasisVolume(PP_dim,NGeo,PP_N,Vdm_CLNGeo_CLN,dXCL_NGeo(1:PP_dim,2,:,:,:),dXCL_N(1:PP_dim,2,:,:,:,iElem))
+#if (PP_dim == 3)
     CALL ChangeBasisVolume(3,NGeo,PP_N,Vdm_CLNGeo_CLN,dXCL_NGeo(:,3,:,:,:),dXCL_N(:,3,:,:,:,iElem))
+#endif
   ELSE  !N<Ngeo: first interpolate and then compute derivative (important if curved&periodic)
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       ! Matrix-vector multiplication
@@ -438,8 +440,8 @@ DO iElem=1,nElems
                          NormVec,TangVec1,TangVec2,SurfElem,Face_xGP,Ja_Face)
   ELSE
     ! interpolate Metrics from Cheb-Lobatto N onto GaussPoints N
-    CALL ChangeBasisVolume(3,PP_N,PP_N,Vdm_CLN_N,JaCL_N(1,:,:,:,:),Metrics_fTilde(:,:,:,:,iElem,0))
-    CALL ChangeBasisVolume(3,PP_N,PP_N,Vdm_CLN_N,JaCL_N(2,:,:,:,:),Metrics_gTilde(:,:,:,:,iElem,0))
+    CALL ChangeBasisVolume(PP_dim,PP_N,PP_N,Vdm_CLN_N,JaCL_N(1,1:PP_dim,:,:,:),Metrics_fTilde(1:PP_dim,:,:,:,iElem,0))
+    CALL ChangeBasisVolume(PP_dim,PP_N,PP_N,Vdm_CLN_N,JaCL_N(2,1:PP_dim,:,:,:),Metrics_gTilde(1:PP_dim,:,:,:,iElem,0))
 #if (PP_dim == 3)
     CALL ChangeBasisVolume(3,PP_N,PP_N,Vdm_CLN_N,JaCL_N(3,:,:,:,:),Metrics_hTilde(:,:,:,:,iElem,0))
 #endif
