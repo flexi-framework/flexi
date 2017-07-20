@@ -89,8 +89,12 @@ USE MOD_Mesh_Vars          ,ONLY: ElemToTree,xiMinMax,interpolateFromTree
 USE MOD_Mesh_Vars          ,ONLY: NodeCoords,TreeCoords
 USE MOD_Interpolation_Vars
 USE MOD_Interpolation      ,ONLY: GetVandermonde,GetNodesAndWeights
-USE MOD_ChangeBasis        ,ONLY: ChangeBasis3D_XYZ,ChangeBasis2D_XYZ
-USE MOD_ChangeBasisByDim   ,ONLY: changeBasisVolume
+#if (PP_dim == 3)
+USE MOD_ChangeBasis        ,ONLY: ChangeBasis3D_XYZ
+#else
+USE MOD_ChangeBasis        ,ONLY: ChangeBasis2D_XYZ
+#endif
+USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisVolume
 USE MOD_Basis              ,ONLY: LagrangeInterpolationPolys
 !----------------------------------------------------------------------------------------------------------------------------------
 IMPLICIT NONE
@@ -120,7 +124,6 @@ CALL GetNodesAndWeights(PP_N, NodeTypeCL  , xiCL_N  , wIPBary=wBaryCL_N)
 
 !1.a) Transform from EQUI_Ngeo to solution points on N
 IF(interpolateFromTree)THEN
-  ! TODO
   DO iElem=1,nElems
     xi0   =xiMinMax(:,1,iElem)
     length=xiMinMax(:,2,iElem)-xi0
@@ -169,7 +172,11 @@ USE MOD_Mesh_Vars          ,ONLY: ElemToTree,xiMinMax,interpolateFromTree
 USE MOD_Mesh_Vars          ,ONLY: NormVec,TangVec1,TangVec2,SurfElem,Face_xGP
 USE MOD_Interpolation_Vars
 USE MOD_Interpolation      ,ONLY: GetVandermonde,GetNodesAndWeights,GetDerivativeMatrix
-USE MOD_ChangeBasis        ,ONLY: changeBasis3D,ChangeBasis3D_XYZ
+#if (PP_dim == 3)
+USE MOD_ChangeBasis        ,ONLY: ChangeBasis3D_XYZ
+#else
+USE MOD_ChangeBasis        ,ONLY: ChangeBasis2D_XYZ
+#endif
 USE MOD_Basis              ,ONLY: LagrangeInterpolationPolys
 USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisVolume
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -250,6 +257,9 @@ DO iElem=1,nElems
   IF(interpolateFromTree)THEN
     xi0   =xiMinMax(:,1,iElem)
     length=xiMinMax(:,2,iElem)-xi0
+#if (PP_dim == 2)
+    length(3) = 1.
+#endif
     CALL ChangeBasisVolume(3,NGeo,NGeo,Vdm_EQNGeo_CLNGeo,TreeCoords(:,:,:,:,ElemToTree(iElem)),XCL_Ngeo)
   ELSE
     CALL ChangeBasisVolume(3,NGeo,NGeo,Vdm_EQNGeo_CLNGeo,NodeCoords(:,:,:,:,iElem)            ,XCL_Ngeo)
@@ -295,11 +305,18 @@ DO iElem=1,nElems
       dxi=0.5*(xiRef(i)+1.)*Length
       CALL LagrangeInterpolationPolys(xi0(1) + dxi(1),NgeoRef,xiRef,wBaryRef,Vdm_xi_Ref(  i,:))
       CALL LagrangeInterpolationPolys(xi0(2) + dxi(2),NgeoRef,xiRef,wBaryRef,Vdm_eta_Ref( i,:))
+#if (PP_dim == 3)
       CALL LagrangeInterpolationPolys(xi0(3) + dxi(3),NgeoRef,xiRef,wBaryRef,Vdm_zeta_Ref(i,:))
+#endif
     END DO
     tmp=DetJac_Ref(:,:,:,:,iElem)
+#if (PP_dim == 3)
     CALL ChangeBasis3D_XYZ(1,NgeoRef,NgeoRef,Vdm_xi_Ref,Vdm_eta_Ref,Vdm_zeta_Ref,&
                            tmp,DetJac_Ref(:,:,:,:,iElem))
+#else
+    CALL ChangeBasis2D_XYZ(1,NgeoRef,NgeoRef,Vdm_xi_Ref,Vdm_eta_Ref,&
+                           tmp(:,:,:,0),DetJac_Ref(:,:,:,0,iElem))
+#endif
   END IF
   ! interpolate detJac_ref to the solution points
   CALL ChangeBasisVolume(1,NgeoRef,PP_N,Vdm_NgeoRef_N,DetJac_Ref(:,:,:,:,iElem),DetJac_N)
@@ -419,32 +436,51 @@ DO iElem=1,nElems
       dxi=0.5*(xGP(i)+1.)*length
       CALL LagrangeInterpolationPolys(xi0(1) + dxi(1),PP_N,xiCL_N,wBaryCL_N,Vdm_xi_N(  i,:))
       CALL LagrangeInterpolationPolys(xi0(2) + dxi(2),PP_N,xiCL_N,wBaryCL_N,Vdm_eta_N( i,:))
+#if (PP_dim == 3)
       CALL LagrangeInterpolationPolys(xi0(3) + dxi(3),PP_N,xiCL_N,wBaryCL_N,Vdm_zeta_N(i,:))
+#endif
     END DO
+#if (PP_dim == 3)
     CALL ChangeBasis3D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,Vdm_zeta_N,JaCL_N(1,:,:,:,:),Metrics_fTilde(:,:,:,:,iElem,0))
     CALL ChangeBasis3D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,Vdm_zeta_N,JaCL_N(2,:,:,:,:),Metrics_gTilde(:,:,:,:,iElem,0))
     CALL ChangeBasis3D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,Vdm_zeta_N,JaCL_N(3,:,:,:,:),Metrics_hTilde(:,:,:,:,iElem,0))
+#else
+    CALL ChangeBasis2D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,JaCL_N(1,:,:,:,0),Metrics_fTilde(:,:,:,0,iElem,0))
+    CALL ChangeBasis2D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,JaCL_N(2,:,:,:,0),Metrics_gTilde(:,:,:,0,iElem,0))
+#endif
     ! for the metrics and the jacobian, we have to take into account the level !!!!!
     Metrics_fTilde(:,:,:,:,iElem,0)=(length(1)/2.)**2*Metrics_fTilde(:,:,:,:,iElem,0)
     Metrics_gTilde(:,:,:,:,iElem,0)=(length(2)/2.)**2*Metrics_gTilde(:,:,:,:,iElem,0)
+#if (PP_dim == 3)
     Metrics_hTilde(:,:,:,:,iElem,0)=(length(3)/2.)**2*Metrics_hTilde(:,:,:,:,iElem,0)
-    sJ(:,:,:,iElem,0)=(8./PRODUCT(length))*sJ(:,:,:,iElem,0) ! scale down sJ
+#endif
+    sJ(:,:,:,iElem,0)=(2.**PP_dim/PRODUCT(length))*sJ(:,:,:,iElem,0) ! scale down sJ
 
     ! interpolate Metrics and grid to Cheb-Lobatto on quadrant level for Surface metrics
     DO i=0,PP_N
       dxi=0.5*(xiCL_N(i)+1.)*length
       CALL LagrangeInterpolationPolys(xi0(1) + dxi(1),PP_N,xiCL_N,wBaryCL_N,Vdm_xi_N(  i,:))
       CALL LagrangeInterpolationPolys(xi0(2) + dxi(2),PP_N,xiCL_N,wBaryCL_N,Vdm_eta_N( i,:))
+#if (PP_dim == 3)
       CALL LagrangeInterpolationPolys(xi0(3) + dxi(3),PP_N,xiCL_N,wBaryCL_N,Vdm_zeta_N(i,:))
+#endif
     END DO
+#if (PP_dim == 3)
     CALL ChangeBasis3D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,Vdm_zeta_N,XCL_N            ,XCL_N_quad            )
     CALL ChangeBasis3D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,Vdm_zeta_N,JaCL_N(1,:,:,:,:),JaCL_N_quad(1,:,:,:,:))
     CALL ChangeBasis3D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,Vdm_zeta_N,JaCL_N(2,:,:,:,:),JaCL_N_quad(2,:,:,:,:))
     CALL ChangeBasis3D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,Vdm_zeta_N,JaCL_N(3,:,:,:,:),JaCL_N_quad(3,:,:,:,:))
+#else
+    CALL ChangeBasis2D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,XCL_N(   :,:,:,0),XCL_N_quad(   :,:,:,0))
+    CALL ChangeBasis2D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,JaCL_N(1,:,:,:,0),JaCL_N_quad(1,:,:,:,0))
+    CALL ChangeBasis2D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,JaCL_N(2,:,:,:,0),JaCL_N_quad(2,:,:,:,0))
+#endif
     !TODO: scale Ja for anisotropic
-    JaCL_N_quad(:,1,:,:,:)=(length(2)*length(3)/4.)*JaCL_N_quad(:,1,:,:,:)
-    JaCL_N_quad(:,2,:,:,:)=(length(1)*length(3)/4.)*JaCL_N_quad(:,2,:,:,:)
+    JaCL_N_quad(:,1,:,:,:)=(length(2)*length(3)/(2.**(PP_dim-1)))*JaCL_N_quad(:,1,:,:,:)
+    JaCL_N_quad(:,2,:,:,:)=(length(1)*length(3)/(2.**(PP_dim-1)))*JaCL_N_quad(:,2,:,:,:)
+#if (PP_dim == 3)
     JaCL_N_quad(:,3,:,:,:)=(length(1)*length(2)/4.)*JaCL_N_quad(:,3,:,:,:)
+#endif
     CALL CalcSurfMetrics(PP_N,FV_ENABLED,JaCL_N_quad,XCL_N_quad,Vdm_CLN_N,iElem,&
                          NormVec,TangVec1,TangVec2,SurfElem,Face_xGP,Ja_Face)
   ELSE
