@@ -89,7 +89,7 @@ USE MOD_Mesh_Vars          ,ONLY: ElemToTree,xiMinMax,interpolateFromTree
 USE MOD_Mesh_Vars          ,ONLY: NodeCoords,TreeCoords
 USE MOD_Interpolation_Vars
 USE MOD_Interpolation      ,ONLY: GetVandermonde,GetNodesAndWeights
-USE MOD_ChangeBasis        ,ONLY: changeBasis3D,ChangeBasis3D_XYZ
+USE MOD_ChangeBasis        ,ONLY: ChangeBasis3D_XYZ,ChangeBasis2D_XYZ
 USE MOD_ChangeBasisByDim   ,ONLY: changeBasisVolume
 USE MOD_Basis              ,ONLY: LagrangeInterpolationPolys
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -101,7 +101,10 @@ REAL,INTENT(OUT) :: Elem_xGP(3,0:PP_N,0:PP_N,0:PP_NZ,nElems)
 ! LOCAL VARIABLES
 INTEGER                       :: i,iElem
 REAL                          :: XCL_N(3,0:PP_N,0:PP_N,0:PP_N)
-REAL,DIMENSION(0:PP_N,0:PP_N) :: Vdm_xi_N,Vdm_eta_N,Vdm_zeta_N
+REAL,DIMENSION(0:PP_N,0:PP_N) :: Vdm_xi_N,Vdm_eta_N
+#if (PP_dim == 3)
+REAL,DIMENSION(0:PP_N,0:PP_N) :: Vdm_zeta_N
+#endif
 REAL                          :: Vdm_EQNgeo_CLN( 0:PP_N ,0:Ngeo)
 REAL                          :: Vdm_CLN_N     ( 0:PP_N ,0:PP_N)
 REAL                          :: xi0(3),dxi(3),length(3)
@@ -121,14 +124,20 @@ IF(interpolateFromTree)THEN
   DO iElem=1,nElems
     xi0   =xiMinMax(:,1,iElem)
     length=xiMinMax(:,2,iElem)-xi0
-    CALL ChangeBasis3D(3,NGeo,PP_N,Vdm_EQNGeo_CLN,TreeCoords(:,:,:,:,ElemToTree(iElem)),XCL_N)
+    CALL ChangeBasisVolume(3,NGeo,PP_N,Vdm_EQNGeo_CLN,TreeCoords(:,:,:,:,ElemToTree(iElem)),XCL_N)
     DO i=0,PP_N
       dxi=0.5*(xGP(i)+1.)*length
       CALL LagrangeInterpolationPolys(xi0(1) + dxi(1),PP_N,xiCL_N,wBaryCL_N,Vdm_xi_N(  i,:))
       CALL LagrangeInterpolationPolys(xi0(2) + dxi(2),PP_N,xiCL_N,wBaryCL_N,Vdm_eta_N( i,:))
+#if (PP_dim == 3)
       CALL LagrangeInterpolationPolys(xi0(3) + dxi(3),PP_N,xiCL_N,wBaryCL_N,Vdm_zeta_N(i,:))
+#endif
     END DO
+#if (PP_dim == 3)
     CALL ChangeBasis3D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,Vdm_zeta_N,XCL_N,Elem_xGP(:,:,:,:,iElem))
+#else
+    CALL ChangeBasis2D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,XCL_N(:,:,:,0),Elem_xGP(:,:,:,0,iElem))
+#endif
   END DO
 ELSE
   Vdm_EQNgeo_CLN=MATMUL(Vdm_CLN_N,Vdm_EQNgeo_CLN)
