@@ -298,13 +298,16 @@ IF ((changedMeshFile).OR.(changedMeshMode)) THEN
   CALL InitMesh(meshMode=meshMode_loc,MeshFile_IN=MeshFile)
 END IF
 
+! Initialize EOS since some quantities need gas properties like R and kappa
+CALL InitEOS()
+
 ! save old mesh mode for future comparison
 meshMode_old = meshMode_loc
 
 SDEALLOCATE(U)
 ALLOCATE(U(1:nVar_State,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
-CALL ReadArray('DG_Solution',5,(/nVar_State,PP_N+1,PP_N+1,PP_NZ+1,nElems/),offsetElem,5,RealArray=U)  
+CALL ReadArray('DG_Solution',5,(/nVar_State,PP_N+1,PP_N+1,PP_NZ+1,nElems/),offsetElem,5,RealArray=U)
 CALL CloseDataFile()
 
 CALL FinalizeParameters()
