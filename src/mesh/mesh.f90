@@ -332,7 +332,7 @@ IF (meshMode.GT.0) THEN
 END IF
 
 SDEALLOCATE(NodeCoords)
-SDEALLOCATE(dXCL_N)
+!SDEALLOCATE(dXCL_N)!we need this for the dynamic smagorinsky model, shouldn't be to bad to just keep it allways
 SDEALLOCATE(Ja_Face)
 SDEALLOCATE(TreeCoords)
 SDEALLOCATE(xiMinMax)
