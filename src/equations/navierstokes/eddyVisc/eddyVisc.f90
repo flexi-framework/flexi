@@ -59,9 +59,8 @@ USE MOD_Globals
 USE MOD_EddyVisc_Vars
 USE MOD_Smagorinsky
 USE MOD_DynSmag
-USE MOD_DynSmag_P
 USE MOD_DefaultEddyVisc
-!USE MOD_Vreman
+USE MOD_Vreman
 USE MOD_SigmaModel
 USE MOD_Mesh_Vars  ,ONLY:nElems,nSides
 USE MOD_ReadInTools,ONLY: GETINTFROMSTR, GETREAL
@@ -91,7 +90,7 @@ muSGSmax=8.*mu0
 ! Turbulent Prandtl number
 PrSGS  = GETREAL('PrSGS','0.7')
 
-IF((eddyViscType.EQ.2).OR.(eddyViscType.EQ.22)) THEN !dynamic Smagorinsky
+IF(eddyViscType.EQ.2) THEN !dynamic Smagorinsky
 !  !MATTEO: debug output
 !  ALLOCATE(S_en_out(1,0:PP_N,0:PP_N,0:PP_N,nElems))
 !  S_en_out = 0.
@@ -126,17 +125,11 @@ SELECT CASE(eddyViscType)
     eddyViscosity_surf => DefaultEddyVisc_surf !NOT used, surface muSGS from volume prolongated 
     FinalizeEddyViscosity => Finalizedynsmag
     testfilter         => Compute_cd
-  CASE(22) !Dynamic Smagorinsky calculated with Piomelli 1995 localization
-    CALL InitDynSmag_P
-    eddyViscosity      => DynSmag_P
-    eddyViscosity_surf => DefaultEddyVisc_surf !NOT used, surface muSGS from volume prolongated 
-    FinalizeEddyViscosity => Finalizedynsmag_P
-    testfilter         => Compute_cd_P
-  !CASE(3) !Vreman model 2004 
-  !  CALL InitVreman()
-  !  eddyViscosity          => vreman
-  !  eddyViscosity_surf     => vreman_surf
-  !  FinalizeEddyViscosity => Finalizevreman
+  CASE(3) !Vreman model 2004 
+    CALL InitVreman()
+    eddyViscosity          => vreman
+    eddyViscosity_surf     => vreman_surf
+    FinalizeEddyViscosity => Finalizevreman
   CASE(4) !sigma Model 2015
     CALL InitSigmaModel()
     eddyViscosity          => SigmaModel
