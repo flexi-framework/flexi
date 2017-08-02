@@ -206,6 +206,7 @@ END SELECT
 
 ! Do first RK stage of first timestep to fill gradients
 CALL DGTimeDerivative_weakForm(t)
+IF(doCalcIndicator) CALL CalcIndicator(U,t)
 
 #if FV_ENABLED
 ! initial switch to FV sub-cells (must be called after DGTimeDerivative_weakForm, since indicator may require gradients)
