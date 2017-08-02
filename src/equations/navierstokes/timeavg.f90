@@ -75,12 +75,10 @@ nVarFluc = CountOption('VarNameFluc')
 IF((nVarAvg.EQ.0).AND.(nVarFluc.EQ.0))THEN
   CALL CollectiveStop(__STAMP__, &
     'No quantities for time averaging have been specified. Please specify quantities or disable time averaging!')
-#if FV_ENABLED
-ELSE
-  CALL CollectiveStop(__STAMP__, &
-    'Timeaveraging has not been implemented for FV yet!')
-#endif
 END IF
+#if FV_ENABLED
+WRITE(UNIT_StdOut,*) 'Warning: If FV is enabled, time averaging is performed on integral cell mean values.'
+#endif
 
 ! Define variables to be averaged
 nMaxVarAvg=15
@@ -324,6 +322,10 @@ USE MOD_EOS          ,ONLY: ConsToPrim
 USE MOD_EOS_Vars     ,ONLY: Kappa
 USE MOD_Analyze_Vars ,ONLY: WriteData_dt
 USE MOD_AnalyzeEquation_Vars
+#if FV_ENABLED
+USE MOD_FV_Vars      ,ONLY: FV_Elems,FV_Vdm
+USE MOD_ChangeBasisByDim,ONLY:ChangeBasisVolume
+#endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -343,6 +345,10 @@ REAL                            :: prim(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ),UE(PP
 INTEGER                         :: p,q
 REAL                            :: GradVel(1:3,1:3), Shear(1:3,1:3)
 #endif
+REAL,POINTER                    :: Uloc(:,:,:,:)
+#if FV_ENABLED
+REAL,TARGET                     :: UFV(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
+#endif
 !----------------------------------------------------------------------------------------------------------------------------------
 dtStep = (dtOld+dt)*0.5
 IF(Finalize) dtStep = dt*0.5
@@ -351,27 +357,39 @@ dtOld  = dt
 IF(ANY(CalcAvg(6:nMaxVarAvg))) getPrims=.TRUE.
 
 DO iElem=1,nElems
+
+#if FV_ENABLED
+  IF(FV_Elems(iElem).EQ.0) THEN ! DG Element
+    CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,U(:,:,:,:,iElem),UFV)
+    Uloc => UFV
+  ELSE ! already FV
+    Uloc => U(:,:,:,:,iElem)
+  END IF
+#else
+  Uloc   => U(:,:,:,:,iElem)
+#endif
+  
   IF(getPrims)THEN
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      CALL ConsToPrim(prim(:,i,j,k),U(:,i,j,k,iElem))
+      CALL ConsToPrim(prim(:,i,j,k),Uloc(:,i,j,k))
     END DO; END DO; END DO
   END IF
 
   ! Compute time averaged variables and fluctuations of these variables
   IF(CalcAvg(1)) &  !'Density'
-    tmpVars(iAvg(1),:,:,:) = U(1,:,:,:,iElem)
+    tmpVars(iAvg(1),:,:,:) = Uloc(1,:,:,:)
 
   IF(CalcAvg(2)) &  !'MomentumX'
-    tmpVars(iAvg(2),:,:,:) = U(2,:,:,:,iElem)
+    tmpVars(iAvg(2),:,:,:) = Uloc(2,:,:,:)
 
   IF(CalcAvg(3)) &  !'MomentumY'
-    tmpVars(iAvg(3),:,:,:) = U(3,:,:,:,iElem)
+    tmpVars(iAvg(3),:,:,:) = Uloc(3,:,:,:)
 
   IF(CalcAvg(4)) &  !'MomentumZ'
-    tmpVars(iAvg(4),:,:,:) = U(4,:,:,:,iElem)
+    tmpVars(iAvg(4),:,:,:) = Uloc(4,:,:,:)
 
   IF(CalcAvg(5)) &  !'EnergyStagnationDensity'
-    tmpVars(iAvg(5),:,:,:) = U(5,:,:,:,iElem)
+    tmpVars(iAvg(5),:,:,:) = Uloc(5,:,:,:)
 
   IF(CalcAvg(6)) &  !'VelocityX'
     tmpVars(iAvg(6),:,:,:)=prim(2,:,:,:)
@@ -393,7 +411,7 @@ DO iElem=1,nElems
 
   IF(CalcAvg(11))THEN !'VelocitySound'
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      UE(CONS)=U(:,i,j,k,iElem)
+      UE(CONS)=Uloc(:,i,j,k)
       UE(PRIM)=prim(:,i,j,k)
       UE(SRHO)=1./prim(1,i,j,k)
       tmpVars(iAvg(11),i,j,k)=SPEEDOFSOUND_HE(UE)
@@ -402,7 +420,7 @@ DO iElem=1,nElems
 
   IF(CalcAvg(12))THEN !'Mach'
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      UE(CONS)=U(:,i,j,k,iElem)
+      UE(CONS)=Uloc(:,i,j,k)
       UE(PRIM)=prim(:,i,j,k)
       UE(SRHO)=1./prim(1,i,j,k)
       tmpVars(iAvg(12),i,j,k)=SQRT(SUM(prim(2:4,i,j,k)**2)/SPEEDOFSOUND_HE(UE))
@@ -417,7 +435,7 @@ DO iElem=1,nElems
 
   IF(CalcAvg(14))THEN !'TotalTemperature'
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      UE(CONS)=U(:,i,j,k,iElem)
+      UE(CONS)=Uloc(:,i,j,k)
       UE(PRIM)=prim(:,i,j,k)
       UE(SRHO)=1./prim(1,i,j,k)
       Mach=SQRT(SUM(prim(2:4,i,j,k)**2)/SPEEDOFSOUND_HE(UE))
@@ -427,7 +445,7 @@ DO iElem=1,nElems
 
   IF(CalcAvg(15))THEN !'TotalPressure
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      UE(CONS)=U(:,i,j,k,iElem)
+      UE(CONS)=Uloc(:,i,j,k)
       UE(PRIM)=prim(:,i,j,k)
       UE(SRHO)=1./prim(1,i,j,k)
       Mach=SQRT(SUM(prim(2:4,i,j,k)**2)/SPEEDOFSOUND_HE(UE))
@@ -444,6 +462,9 @@ END DO ! iElem
 
 #if PARABOLIC
 IF(CalcFluc(17).OR.CalcFluc(18))THEN  !'Dissipation via vel gradients'
+#if FV_ENABLED
+  STOP 'Not implemented yet for FV!'
+#endif
   DO iElem=1,nElems
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       GradVel(:,1)=GradUx(2:4,i,j,k,iElem)
@@ -468,8 +489,8 @@ END IF
 IF(CalcFluc(19))THEN  !'TKE'
   DO iElem=1,nElems
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      vel(1:3) =U(2:4,i,j,k,iElem)/U(1,i,j,k,iElem)
-      UFluc(iFluc(19),i,j,k,iElem)=UFluc(iFluc(19),i,j,k,iElem)+SUM(vel(:)**2)*dtStep
+      vel =Uloc(2:4,i,j,k)/Uloc(1,i,j,k)
+      UFluc(iFluc(19),i,j,k,iElem)=UFluc(iFluc(19),i,j,k,iElem)+SUM(vel**2)*dtStep
     END DO; END DO; END DO
   END DO ! iElem
 END IF
