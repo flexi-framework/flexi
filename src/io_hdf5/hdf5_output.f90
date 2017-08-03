@@ -589,6 +589,7 @@ USE MOD_Globals
 USE MOD_Output_Vars,ONLY: ProjectName
 USE MOD_Mesh_Vars  ,ONLY: offsetElem,nGlobalElems,nElems
 USE MOD_2D         ,ONLY: ExpandArrayTo3D
+USE MOD_IO_HDF5    ,ONLY: AddToElemData
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -607,13 +608,22 @@ INTEGER,INTENT(IN)             :: nVar_Fluc                                    !
 CHARACTER(LEN=255)             :: FileName
 REAL                           :: StartT,EndT
 REAL,POINTER                   :: UOut(:,:,:,:,:)
-INTEGER                        :: NZ_loc
+INTEGER                        :: NZ_loc,FV_Elems_loc(1:nElems)
+TYPE(tElementOut),POINTER      :: ElementOutTimeAvg
 !==================================================================================================================================
 IF((nVar_Avg.EQ.0).AND.(nVar_Fluc.EQ.0)) RETURN ! no time averaging
 IF(MPIROOT)THEN
   WRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' WRITE TIME AVERAGED STATE AND FLUCTUATIONS TO HDF5 FILE...'
   GETTIME(StartT)
 END IF
+
+NULLIFY(ElementOutTimeAvg)
+CALL AddToElemData(ElementOutTimeAvg,'FV_Elems',IntArray=FV_Elems_loc)
+#if FV_ENABLED
+FV_Elems_loc=1
+#else
+FV_Elems_loc=0
+#endif
 
 ! Write timeaverages ---------------------------------------------------------------------------------------------------------------
 IF(nVar_Avg.GT.0)THEN
@@ -655,6 +665,7 @@ IF(nVar_Avg.GT.0)THEN
   ! Deallocate UOut only if we did not point to UAvg
   IF(.NOT.output2D) DEALLOCATE(UOut)
 #endif
+  CALL WriteAdditionalElemData(FileName,ElementOutTimeAvg)
   IF(MPIROOT) CALL MarkWriteSuccessfull(FileName)
 END IF
 
@@ -695,8 +706,10 @@ IF(nVar_Fluc.GT.0)THEN
 #if PP_dim == 2
   IF(.NOT.output2D) DEALLOCATE(UOut)
 #endif
+  CALL WriteAdditionalElemData(FileName,ElementOutTimeAvg)
   IF(MPIROOT) CALL MarkWriteSuccessfull(FileName)
 END IF
+DEALLOCATE(ElementOutTimeAvg)
 
 IF(MPIROOT)THEN
   GETTIME(EndT)
