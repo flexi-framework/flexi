@@ -107,7 +107,7 @@ USE MOD_Prepare_Mesh,       ONLY:exchangeFlip
 #if FV_ENABLED
 USE MOD_FV_Metrics,         ONLY:InitFV_Metrics
 #endif
-USE MOD_IO_HDF5,            ONLY:AddToElemData
+USE MOD_IO_HDF5,            ONLY:AddToElemData,ElementOut
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -338,7 +338,7 @@ SDEALLOCATE(TreeCoords)
 SDEALLOCATE(xiMinMax)
 SDEALLOCATE(ElemToTree)
 
-CALL AddToElemData('myRank',IntScalar=myRank)
+CALL AddToElemData(ElementOut,'myRank',IntScalar=myRank)
 
 MeshInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT MESH DONE!'

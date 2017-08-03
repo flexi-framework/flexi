@@ -114,7 +114,7 @@ USE MOD_Mesh_Vars   ,ONLY: nElems,nSides
 USE MOD_FV_Limiter
 #endif
 USE MOD_ReadInTools
-USE MOD_IO_HDF5     ,ONLY: AddToElemData
+USE MOD_IO_HDF5     ,ONLY: AddToElemData,ElementOut
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -152,7 +152,7 @@ CALL InitFV_Limiter()
 ALLOCATE(FV_Elems(nElems)) ! holds information if element is DG (0) or FV (1)
 ! All cells are initially DG cells
 FV_Elems = 0
-CALL AddToElemData('FV_Elems',IntArray=FV_Elems) ! append this array to HDF5 output files
+CALL AddToElemData(ElementOut,'FV_Elems',IntArray=FV_Elems) ! append this array to HDF5 output files
 
 ! The elementwise information of 'FV_Elems' is also needed at the faces and therefore
 ! is 'prolongated' to the faces into the arrays 'FV_Elems_master/slave'.
@@ -175,7 +175,7 @@ ALLOCATE(FV_Elems_Amount(nElems))
 FV_Elems_counter  = 0
 FV_Switch_counter = 0
 FV_Elems_Amount = 0
-CALL AddToElemData('FV_Elems_Amount',RealArray=FV_Elems_Amount)
+CALL AddToElemData(ElementOut,'FV_Elems_Amount',RealArray=FV_Elems_Amount)
 
 #if FV_RECONSTRUCT
 ! Allocate array for multi purposes: 

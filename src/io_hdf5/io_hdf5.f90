@@ -261,13 +261,14 @@ END SUBROUTINE CloseDataFile
 !==================================================================================================================================
 !> Set pointers to element-wise scalar arrays which will be gathered and written out
 !==================================================================================================================================
-SUBROUTINE AddToElemData(VarName,RealArray,RealScalar,IntArray,IntScalar,Eval)
+SUBROUTINE AddToElemData(ElementOut_In,VarName,RealArray,RealScalar,IntArray,IntScalar,Eval)
 ! MODULES
 USE MOD_Globals
 USE MOD_Mesh_Vars,ONLY:nElems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
+TYPE(tElementOut),POINTER,INTENT(INOUT) :: ElementOut_In
 CHARACTER(LEN=*),INTENT(IN)        :: VarName
 REAL,INTENT(IN),TARGET,OPTIONAL    :: RealArray(nElems)
 REAL,INTENT(IN),TARGET,OPTIONAL    :: RealScalar
@@ -279,12 +280,12 @@ PROCEDURE(EvalElemInt),POINTER,OPTIONAL :: Eval
 TYPE(tElementOut),POINTER          :: eout
 INTEGER                            :: nOpts
 !==================================================================================================================================
-IF(.NOT.ASSOCIATED(ElementOut))THEN 
+IF(.NOT.ASSOCIATED(ElementOut_In))THEN 
   ! list is empty, create first entry
-  ALLOCATE(ElementOut)
-  eout=>ElementOut
+  ALLOCATE(ElementOut_In)
+  eout=>ElementOut_In
 ELSE
-  eout=>ElementOut
+  eout=>ElementOut_In
   ! loop until last entry
   DO WHILE(ASSOCIATED(eout%next))
     eout=>eout%next
@@ -326,13 +327,14 @@ END SUBROUTINE AddToElemData
 !==================================================================================================================================
 !> Set pointers to node-wise arrays for output
 !==================================================================================================================================
-SUBROUTINE AddToFieldData(nVal,DataSetName,VarNames,RealArray,Eval)
+SUBROUTINE AddToFieldData(FieldOut_In,nVal,DataSetName,VarNames,RealArray,Eval)
 ! MODULES
 USE MOD_Globals
 USE MOD_Mesh_Vars,ONLY:nElems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
+TYPE(tFieldOut),POINTER,INTENT(INOUT) :: FieldOut_In
 INTEGER,INTENT(IN)                 :: nVal(4)
 CHARACTER(LEN=*),INTENT(IN)        :: DataSetName
 CHARACTER(LEN=*),INTENT(IN)        :: VarNames(nVal(1))
@@ -343,13 +345,13 @@ PROCEDURE(EvalFieldInt),POINTER,OPTIONAL :: Eval
 TYPE(tFieldOut),POINTER            :: nout
 INTEGER                            :: nOpts
 !==================================================================================================================================
-IF(.NOT.ASSOCIATED(FieldOut))THEN
+IF(.NOT.ASSOCIATED(FieldOut_In))THEN
   ! list is empty, create first entry
-  ALLOCATE(FieldOut)
-  nout=>FieldOut
+  ALLOCATE(FieldOut_In)
+  nout=>FieldOut_In
 ELSE
   ! loop until last entry
-  nout=>FieldOut
+  nout=>FieldOut_In
   DO WHILE(ASSOCIATED(nout%next))
     nout=>nout%next
   END DO

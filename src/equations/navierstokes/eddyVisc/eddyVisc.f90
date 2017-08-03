@@ -58,7 +58,7 @@ USE MOD_Smagorinsky
 USE MOD_DefaultEddyVisc
 USE MOD_Mesh_Vars  ,ONLY:nElems,nSides
 USE MOD_ReadInTools,ONLY: GETINTFROMSTR
-USE MOD_IO_HDF5    ,ONLY: AddToFieldData
+USE MOD_IO_HDF5    ,ONLY: AddToFieldData,FieldOut
 !===================================================================================================================================
 
 ! Allocate arrays needed by all SGS models
@@ -96,7 +96,7 @@ SELECT CASE(eddyViscType)
     CALL CollectiveStop(__STAMP__,&
       'Eddy Viscosity Type not specified!')
 END SELECT
-CALL AddToFieldData((/1,PP_N+1,PP_N+1,PP_NZ+1/),'VMSData',(/'muSGS'/),RealArray=muSGS)
+CALL AddToFieldData(FieldOut,(/1,PP_N+1,PP_N+1,PP_NZ+1/),'VMSData',(/'muSGS'/),RealArray=muSGS)
 
 END SUBROUTINE
 

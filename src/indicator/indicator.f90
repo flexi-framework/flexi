@@ -120,7 +120,7 @@ USE MOD_Globals
 USE MOD_Indicator_Vars
 USE MOD_ReadInTools    ,ONLY: GETINT,GETREAL,GETINTFROMSTR
 USE MOD_Mesh_Vars      ,ONLY: nElems
-USE MOD_IO_HDF5        ,ONLY: AddToElemData
+USE MOD_IO_HDF5        ,ONLY: AddToElemData,ElementOut
 USE MOD_Overintegration_Vars,ONLY:NUnder
 USE MOD_Filter_Vars,ONLY:NFilter
 IMPLICIT NONE
@@ -168,7 +168,7 @@ END SELECT
 IndStartTime = GETREAL('IndStartTime')
 ALLOCATE(IndValue(nElems))
 IndValue=0.
-CALL AddToElemData('IndValue',RealArray=IndValue)
+CALL AddToElemData(ElementOut,'IndValue',RealArray=IndValue)
 
 IndVar = GETINT('IndVar','1')
 
