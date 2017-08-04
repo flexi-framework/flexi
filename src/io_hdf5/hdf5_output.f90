@@ -582,7 +582,7 @@ END SUBROUTINE WriteBaseflow
 !==================================================================================================================================
 !> Subroutine to write time averaged data and fluctuations HDF5 format
 !==================================================================================================================================
-SUBROUTINE WriteTimeAverage(MeshFileName,OutputTime,FutureTime,VarNamesAvg,VarNamesFluc,UAvg,UFluc,dtAvg,nVar_Avg,nVar_Fluc)
+SUBROUTINE WriteTimeAverage(MeshFileName,OutputTime,dtAvg,FV_Elems,FileType,nVal,VarNamesAvg,UAvg,FileName_In,FutureTime)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
@@ -593,122 +593,79 @@ USE MOD_IO_HDF5    ,ONLY: AddToElemData
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN)             :: nVal(4)                                      !< Dimension of UAvg
+INTEGER,INTENT(IN)             :: FV_Elems(nElems)                             !< Dimension of UAvg
 CHARACTER(LEN=*),INTENT(IN)    :: MeshFileName                                 !< Name of mesh file
-CHARACTER(LEN=*),INTENT(IN)    :: VarNamesAvg(nVar_Avg)                        !< Average variable names
-CHARACTER(LEN=*),INTENT(IN)    :: VarNamesFluc(nVar_Fluc)                      !< Fluctuations variable names
+CHARACTER(LEN=*),INTENT(IN)    :: VarNamesAvg(nVal(1))                         !< Average variable names
+CHARACTER(LEN=*),INTENT(IN)    :: FileType                                     !< Type of file to be written (TimeAvg or Fluc)
 REAL,INTENT(IN)                :: OutputTime                                   !< Time of output
-REAL,INTENT(IN),OPTIONAL       :: FutureTime                                   !< Time of next output
-REAL,INTENT(IN),TARGET         :: UAvg(nVar_Avg,0:PP_N,0:PP_N,0:PP_N,nElems)   !< Averaged Solution
-REAL,INTENT(IN),TARGET         :: UFluc(nVar_Fluc,0:PP_N,0:PP_N,0:PP_N,nElems) !< Fluctuations
 REAL,INTENT(IN)                :: dtAvg                                        !< Timestep of averaging
-INTEGER,INTENT(IN)             :: nVar_Avg                                     !< Number of averaged variables
-INTEGER,INTENT(IN)             :: nVar_Fluc                                    !< Number of fluctuations
+REAL,INTENT(IN),TARGET         :: UAvg(nVal(1),nVal(2),nVal(3),nVal(4),nElems) !< Averaged Solution
+REAL,INTENT(IN),OPTIONAL       :: FutureTime                                   !< Time of next output
+CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: Filename_In                            !< custom filename
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=255)             :: FileName
 REAL                           :: StartT,EndT
 REAL,POINTER                   :: UOut(:,:,:,:,:)
-INTEGER                        :: NZ_loc,FV_Elems_loc(1:nElems)
 TYPE(tElementOut),POINTER      :: ElementOutTimeAvg
+INTEGER                        :: nVal_loc(5), nVal_glob(5)
 !==================================================================================================================================
-IF((nVar_Avg.EQ.0).AND.(nVar_Fluc.EQ.0)) RETURN ! no time averaging
+IF(ANY(nVal(1:4).EQ.0)) RETURN ! no time averaging
 IF(MPIROOT)THEN
-  WRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' WRITE TIME AVERAGED STATE AND FLUCTUATIONS TO HDF5 FILE...'
+  WRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' WRITE TIME AVERAGED STATE TO HDF5 FILE...'
   GETTIME(StartT)
 END IF
 
 NULLIFY(ElementOutTimeAvg)
-CALL AddToElemData(ElementOutTimeAvg,'FV_Elems',IntArray=FV_Elems_loc)
-#if FV_ENABLED
-FV_Elems_loc=1
-#else
-FV_Elems_loc=0
-#endif
+CALL AddToElemData(ElementOutTimeAvg,'FV_Elems',IntArray=FV_Elems)
 
-! Write timeaverages ---------------------------------------------------------------------------------------------------------------
-IF(nVar_Avg.GT.0)THEN
-  ! Generate skeleton for the file with all relevant data on a single proc (MPIRoot)
-  FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_TimeAvg',OutputTime))//'.h5'
-  IF(MPIRoot)THEN
-    CALL GenerateFileSkeleton(TRIM(FileName),'TimeAvg',nVar_Avg,PP_N,VarNamesAvg,MeshFileName,OutputTime,FutureTime)
-    CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
-    CALL WriteAttribute(File_ID,'AvgTime',1,RealScalar=dtAvg)
-    CALL CloseDataFile()
-  END IF
-#if USE_MPI
-  CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
-#endif
+! Write time averaged data --------------------------------------------------------------------------------------------------------
 
-#if PP_dim == 3
-  UOut => UAvg
-  NZ_loc=PP_N
-#else
-  IF (.NOT.output2D) THEN
-    ! If the output should be done with a full third dimension in a two dimensional computation, we need to expand the solution
-    ALLOCATE(UOut(nVar_Avg,0:PP_N,0:PP_N,0:PP_N,nElems))
-    CALL ExpandArrayTo3D(5,(/nVar_Avg,PP_N+1,PP_N+1,PP_NZ+1,nElems/),4,PP_N+1,UAvg,UOut)
-    NZ_loc=PP_N
-  ELSE
-    UOut => UAvg
-    NZ_loc=0
-  END IF
-#endif
-
-  ! Reopen file and write DG solution
-  CALL GatheredWriteArray(FileName,create=.FALSE.,&
-                          DataSetName='DG_Solution', rank=5,&
-                          nValGlobal=(/nVar_Avg,PP_N+1,PP_N+1,NZ_loc+1,nGlobalElems/),&
-                          nVal=      (/nVar_Avg,PP_N+1,PP_N+1,NZ_loc+1,nElems/),&
-                          offset=    (/0,       0,     0,     0,     offsetElem/),&
-                          collective=.TRUE., RealArray=UOut)
-#if PP_dim == 2
-  ! Deallocate UOut only if we did not point to UAvg
-  IF(.NOT.output2D) DEALLOCATE(UOut)
-#endif
-  CALL WriteAdditionalElemData(FileName,ElementOutTimeAvg)
-  IF(MPIROOT) CALL MarkWriteSuccessfull(FileName)
+! Generate skeleton for the file with all relevant data on a single proc (MPIRoot)
+IF(PRESENT(Filename_In))THEN
+  Filename=TRIM(Filename_In)
+ELSE
+  FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_'//TRIM(FileType),OutputTime))//'.h5'
 END IF
-
-! Write fluctuations ---------------------------------------------------------------------------------------------------------------
-IF(nVar_Fluc.GT.0)THEN
-  FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Fluc',OutputTime))//'.h5'
-  IF(MPIRoot)THEN
-    CALL GenerateFileSkeleton(TRIM(FileName),'Fluc',nVar_Fluc,PP_N,VarNamesFluc,MeshFileName,OutputTime,FutureTime)
-    CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
-    CALL WriteAttribute(File_ID,'AvgTime',1,RealScalar=dtAvg)
-    CALL CloseDataFile()
-  END IF
-#if USE_MPI
-  CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
-#endif
-
-#if PP_dim == 3
-  UOut => UFluc
-#else
-  IF (.NOT.output2D) THEN
-    ! If the output should be done with a full third dimension in a two dimensional computation, we need to expand the solution
-    ALLOCATE(UOut(nVar_Fluc,0:PP_N,0:PP_N,0:PP_N,nElems))
-    CALL ExpandArrayTo3D(5,(/nVar_Fluc,PP_N+1,PP_N+1,PP_NZ+1,nElems/),4,PP_N+1,UFluc,UOut)
-    NZ_loc=PP_N
-  ELSE
-    UOut => UFluc
-    NZ_loc=0
-  END IF
-#endif
-
-  ! Reopen file and write DG solution
-  CALL GatheredWriteArray(FileName,create=.FALSE.,&
-                          DataSetName='DG_Solution', rank=5,&
-                          nValGlobal=(/nVar_Fluc,PP_N+1,PP_N+1,NZ_loc+1,nGlobalElems/),&
-                          nVal=      (/nVar_Fluc,PP_N+1,PP_N+1,NZ_loc+1,nElems/),&
-                          offset=    (/0,        0,     0,     0,     offsetElem/),&
-                          collective=.TRUE., RealArray=UOut)
-#if PP_dim == 2
-  IF(.NOT.output2D) DEALLOCATE(UOut)
-#endif
-  CALL WriteAdditionalElemData(FileName,ElementOutTimeAvg)
-  IF(MPIROOT) CALL MarkWriteSuccessfull(FileName)
+IF(MPIRoot)THEN
+  CALL GenerateFileSkeleton(TRIM(FileName),TRIM(FileType),nVal(1),PP_N,VarNamesAvg,MeshFileName,OutputTime,FutureTime)
+  CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
+  CALL WriteAttribute(File_ID,'AvgTime',1,RealScalar=dtAvg)
+  CALL CloseDataFile()
 END IF
+#if USE_MPI
+CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
+#endif
+
+UOut => UAvg
+nVal_loc =(/nVal,nElems/)
+#if PP_dim == 2
+IF (.NOT.output2D) THEN
+  ! If the output should be done with a full third dimension in a two dimensional computation, we need to expand the solution
+  NULLIFY(UOut)
+  nVal_loc(4) = nVal(2)
+  ALLOCATE(UOut(nVal_loc))
+  CALL ExpandArrayTo3D(5,nVal_loc,4,nVal(2),UAvg,UOut)
+END IF
+#endif
+nVal_glob =(/nVal_loc(1:4),nGlobalElems/)
+
+! Reopen file and write DG solution
+CALL GatheredWriteArray(FileName,create=.FALSE.,&
+                        DataSetName='DG_Solution', rank=5,&
+                        nValGlobal=nVal_glob,&
+                        nVal=      nVal_loc,&
+                        offset=    (/0,0,0,0,offsetElem/),&
+                        collective=.TRUE., RealArray=UOut)
+
+#if PP_dim == 2
+! Deallocate UOut only if we did not point to UAvg
+IF(.NOT.output2D) DEALLOCATE(UOut)
+#endif
+CALL WriteAdditionalElemData(FileName,ElementOutTimeAvg)
+IF(MPIROOT) CALL MarkWriteSuccessfull(FileName)
+
 DEALLOCATE(ElementOutTimeAvg)
 
 IF(MPIROOT)THEN

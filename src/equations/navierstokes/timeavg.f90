@@ -99,7 +99,7 @@ VarNamesAvgList(13) ='Temperature'
 VarNamesAvgList(14) ='TotalTemperature'
 VarNamesAvgList(15) ='TotalPressure'
 
-nMaxVarFluc=19
+nMaxVarFluc=21
 ALLOCATE(VarNamesFlucList(nMaxVarFluc),hasAvgVars(nMaxVarFluc))
 hasAvgVars=.TRUE.
 !define fluctuation variables
@@ -128,6 +128,8 @@ VarNamesFlucList(16) = 'vw'
 VarNamesFlucList(17) = 'DR_u'; hasAvgVars(17)=.FALSE.
 VarNamesFlucList(18) = 'DR_S'; hasAvgVars(18)=.FALSE.
 VarNamesFlucList(19) = 'TKE';  hasAvgVars(19)=.FALSE.
+VarNamesFlucList(20) = 'TotalTemperature'
+VarNamesFlucList(21) = 'TotalPressure'
 
 ! Read VarNames from ini file
 ALLOCATE(VarNamesAvgIni(nVarAvg),VarNamesFlucIni(nVarFluc))
@@ -349,6 +351,7 @@ REAL,POINTER                    :: Uloc(:,:,:,:)
 #if FV_ENABLED
 REAL,TARGET                     :: UFV(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 #endif
+INTEGER                         :: FV_Elems_loc(1:nElems)
 !----------------------------------------------------------------------------------------------------------------------------------
 dtStep = (dtOld+dt)*0.5
 IF(Finalize) dtStep = dt*0.5
@@ -361,12 +364,12 @@ DO iElem=1,nElems
 #if FV_ENABLED
   IF(FV_Elems(iElem).EQ.0) THEN ! DG Element
     CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,U(:,:,:,:,iElem),UFV)
-    Uloc => UFV
+    Uloc(1:PP_nVar,0:PP_N,0:PP_N,0:PP_N) => UFV
   ELSE ! already FV
-    Uloc => U(:,:,:,:,iElem)
+    Uloc(1:PP_nVar,0:PP_N,0:PP_N,0:PP_N) => U(:,:,:,:,iElem)
   END IF
 #else
-  Uloc   => U(:,:,:,:,iElem)
+    Uloc(1:PP_nVar,0:PP_N,0:PP_N,0:PP_N) => U(:,:,:,:,iElem)
 #endif
   
   IF(getPrims)THEN
@@ -500,7 +503,13 @@ IF(Finalize)THEN
   UAvg =UAvg /dtAvg
   UFluc=UFluc/dtAvg
   tFuture=t+WriteData_dt
-  CALL WriteTimeAverage(TRIM(MeshFile),t,tFuture,VarNamesAvgOut,VarNamesFlucOut,UAvg,UFluc,dtAvg,nVarAvg,nVarFluc)
+  FV_Elems_loc=FV_ENABLED
+  IF(nVarAvg .GT.0) &
+  CALL WriteTimeAverage(MeshFile,t,dtAvg,FV_Elems_loc,'TimeAvg',&
+                        (/nVarAvg ,PP_N+1,PP_N+1,PP_NZ+1/),VarNamesAvgOut ,UAvg ,FutureTime=tFuture)
+  IF(nVarFluc.GT.0) &
+  CALL WriteTimeAverage(MeshFile,t,dtAvg,FV_Elems_loc,'Fluc',   &
+                        (/nVarFluc,PP_N+1,PP_N+1,PP_NZ+1/),VarNamesFlucOut,UFluc,FutureTime=tFuture)
   UAvg=0.
   UFluc=0.
   dtAvg=0.
