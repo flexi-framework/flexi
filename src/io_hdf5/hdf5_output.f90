@@ -582,7 +582,7 @@ END SUBROUTINE WriteBaseflow
 !==================================================================================================================================
 !> Subroutine to write time averaged data and fluctuations HDF5 format
 !==================================================================================================================================
-SUBROUTINE WriteTimeAverage(MeshFileName,OutputTime,dtAvg,FV_Elems,FileType,nVal,VarNamesAvg,UAvg,FileName_In,FutureTime)
+SUBROUTINE WriteTimeAverage(MeshFileName,OutputTime,dtAvg,FV_Elems_In,FileType,nVal,VarNamesAvg,UAvg,FileName_In,FutureTime)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
@@ -594,7 +594,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)             :: nVal(4)                                      !< Dimension of UAvg
-INTEGER,INTENT(IN)             :: FV_Elems(nElems)                             !< Dimension of UAvg
+INTEGER,INTENT(IN)             :: FV_Elems_In(nElems)                          !< Dimension of UAvg
 CHARACTER(LEN=*),INTENT(IN)    :: MeshFileName                                 !< Name of mesh file
 CHARACTER(LEN=*),INTENT(IN)    :: VarNamesAvg(nVal(1))                         !< Average variable names
 CHARACTER(LEN=*),INTENT(IN)    :: FileType                                     !< Type of file to be written (TimeAvg or Fluc)
@@ -618,7 +618,7 @@ IF(MPIROOT)THEN
 END IF
 
 NULLIFY(ElementOutTimeAvg)
-CALL AddToElemData(ElementOutTimeAvg,'FV_Elems',IntArray=FV_Elems)
+CALL AddToElemData(ElementOutTimeAvg,'FV_Elems',IntArray=FV_Elems_In)
 
 ! Write time averaged data --------------------------------------------------------------------------------------------------------
 
