@@ -183,5 +183,6 @@ DO iArg=1+skipArgs,nArgs
   DEALLOCATE(VarNamesSurf_loc)
 END DO
 
+CALL FinalizeVisu()
 END PROGRAM 
 
