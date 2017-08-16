@@ -102,7 +102,7 @@ INTEGER                               :: nVarCalc_FV             !< since FV rec
 INTEGER,ALLOCATABLE                   :: mapDepToCalc_FV(:)      !< dependencies are different to the DG case, where everything is
                                                                  !< based on conservative quantities
 
-REAL(C_DOUBLE),ALLOCATABLE,TARGET     :: UVisu_DG(:,:,:,:,:)     !< DG solution that is written to VTK or send to ParaView
+REAL(C_DOUBLE),ALLOCATABLE            :: UVisu_DG(:,:,:,:,:)     !< DG solution that is written to VTK or send to ParaView
 REAL(C_DOUBLE),ALLOCATABLE,TARGET     :: UVisu_FV(:,:,:,:,:)     !< FV solution that is written to VTK or send to ParaView
 REAL(C_DOUBLE),ALLOCATABLE,TARGET     :: CoordsVisu_DG(:,:,:,:,:)!< coordinates of UVisu_DG
 REAL(C_DOUBLE),ALLOCATABLE,TARGET     :: CoordsVisu_FV(:,:,:,:,:)!< coordinates of UVisu_FV

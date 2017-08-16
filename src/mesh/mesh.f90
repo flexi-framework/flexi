@@ -561,18 +561,18 @@ IF (meshMode.GT.1) THEN
     END SELECT
   END DO
 
-  CALL to2D_rank4((/0,0,1,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_sdx_XI  ) 
-  CALL to2D_rank4((/0,0,1,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_sdx_ETA ) 
-  CALL to2D_rank4((/0,0,1,1/),  (/PP_N,PP_N,PP_N,nElems/),3,FV_sdx_ZETA) 
+  CALL to2D_rank4((/0,0,1,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_sdx_XI  ) ! Attention: storage order is (j,k,i,iElem)
+  CALL to2D_rank4((/0,0,1,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_sdx_ETA ) ! Attention: storage order is (i,k,j,iElem)
+  CALL to2D_rank4((/0,0,1,1/),  (/PP_N,PP_N,PP_N,nElems/),3,FV_sdx_ZETA) ! Attention: storage order is (i,j,k,iElem)
 
   CALL to2D_rank4((/0,0,1,1/),  (/PP_N,PP_N,3,lastMPISide_MINE/),2,FV_sdx_Face) 
 
-  CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_dx_XI_L  )
-  CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_dx_XI_R  )
-  CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_dx_ETA_L )
-  CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_dx_ETA_R )
-  CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,PP_N,nElems/),3,FV_dx_ZETA_L)
-  CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,PP_N,nElems/),3,FV_dx_ZETA_R)
+  CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_dx_XI_L  ) ! Attention: storage order is (j,k,i,iElem)
+  CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_dx_XI_R  ) !  -"-
+  CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_dx_ETA_L ) ! Attention: storage order is (i,k,j,iElem)
+  CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_dx_ETA_R ) !  -"-
+  CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,PP_N,nElems/),3,FV_dx_ZETA_L) ! Attention: storage order is (i,j,k,iElem)
+  CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,PP_N,nElems/),3,FV_dx_ZETA_R) !  -"-
 
   CALL to2D_rank4((/1,0,0,1/),  (/1,PP_N,PP_N,nSides/),3,FV_dx_slave )
   CALL to2D_rank4((/1,0,0,1/),  (/1,PP_N,PP_N,nSides/),3,FV_dx_master)
