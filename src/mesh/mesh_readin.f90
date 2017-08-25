@@ -206,7 +206,7 @@ TYPE(tElem),POINTER            :: aElem
 TYPE(tSide),POINTER            :: aSide,bSide
 REAL,ALLOCATABLE               :: NodeCoordsTmp(:,:,:,:,:)
 INTEGER                        :: BCindex
-INTEGER                        :: iElem,ElemID,nNodes
+INTEGER                        :: iElem,nbElemID,nNodes
 INTEGER                        :: iLocSide,nbLocSide
 INTEGER                        :: iSide
 INTEGER                        :: FirstSideInd,LastSideInd,FirstElemInd,LastElemInd
@@ -221,7 +221,6 @@ INTEGER                        :: iProc
 INTEGER,ALLOCATABLE            :: MPISideCount(:)
 #endif
 LOGICAL                        :: oriented
-LOGICAL                        :: doConnection
 LOGICAL                        :: dsExists
 !==================================================================================================================================
 IF(MESHInitIsDone) RETURN
@@ -232,27 +231,31 @@ END IF
 
 SWRITE(UNIT_stdOut,'(A)')'READ MESH FROM DATA FILE "'//TRIM(FileString)//'" ...'
 SWRITE(UNIT_StdOut,'(132("-"))')
-! Open data file
+! Open mesh file
 CALL OpenDataFile(FileString,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL BuildPartition()
+FirstElemInd=offsetElem+1
+LastElemInd =offsetElem+nElems
 
 CALL readBCs()
+
 !----------------------------------------------------------------------------------------------------------------------------
 !                              ELEMENTS
+!
+! Build a list of all local elements and set their: global index, type and zone
+! but not the pointers to the sides 
 !----------------------------------------------------------------------------------------------------------------------------
+! list of pointers to tElem objects for all local elements
+ALLOCATE(Elems(FirstElemInd:LastElemInd))
 
-!read local ElemInfo from data file
-FirstElemInd=offsetElem+1
-LastElemInd=offsetElem+nElems
-
-ALLOCATE(Elems(                FirstElemInd:LastElemInd))
+!read local ElemInfo from mesh file
 ALLOCATE(ElemInfo(ElemInfoSize,FirstElemInd:LastElemInd))
 CALL ReadArray('ElemInfo',2,(/ElemInfoSize,nElems/),offsetElem,2,IntArray=ElemInfo)
 
+! Fill list of tElem objects by the information stored in ElemInfo
 DO iElem=FirstElemInd,LastElemInd
-  iSide=ElemInfo(ELEM_FirstSideInd,iElem) !first index -1 in Sideinfo
-  Elems(iElem)%ep=>GETNEWELEM()
-  aElem=>Elems(iElem)%ep
+  Elems(iElem)%ep=>GETNEWELEM() ! create a new element object with default values and store pointer of it in the list
+  aElem=>Elems(iElem)%ep        ! get the element and set: global index, type and zone
   aElem%Ind    = iElem
   aElem%Type   = ElemInfo(ELEM_Type,iElem)
   aElem%Zone   = ElemInfo(ELEM_Zone,iElem)
@@ -260,41 +263,54 @@ END DO
 
 !----------------------------------------------------------------------------------------------------------------------------
 !                              SIDES
+! 
+! Iterate over all elements and within each element over all sides (6 for hexas).
+! For each side set the following informations:
+!  - nMortars   (Number of small sides attached to a big Mortar side)
+!  - MortarType (zero for non Mortar sides; =1,2 or 3 for big Mortar side; -1 for small sides belonging to a Mortar)
+!  - Ind        (global index of the side) 
+!  - flip       
+!  - For the big Mortar sides additionally iterate over the small virtual sides and set:
+!    - Ind
+!    - flip
 !----------------------------------------------------------------------------------------------------------------------------
 
-
+! get offset of local side indices in the global sides
 offsetSideID=ElemInfo(ELEM_FirstSideInd,FirstElemInd) ! hdf5 array starts at 0-> -1
-nSideIDs=ElemInfo(ELEM_LastSideInd,LastElemInd)-ElemInfo(ELEM_FirstSideInd,FirstElemInd)
-!read local SideInfo from data file
+nSideIDs    =ElemInfo(ELEM_LastSideInd,LastElemInd)-ElemInfo(ELEM_FirstSideInd,FirstElemInd)
+!read local SideInfo from mesh file
 FirstSideInd=offsetSideID+1
-LastSideInd=offsetSideID+nSideIDs
+LastSideInd =offsetSideID+nSideIDs
 ALLOCATE(SideInfo(SideInfoSize,FirstSideInd:LastSideInd))
 CALL ReadArray('SideInfo',2,(/SideInfoSize,nSideIDs/),offsetSideID,2,IntArray=SideInfo)
 
+! iterate over all local elements and within each element over all sides
 DO iElem=FirstElemInd,LastElemInd
   aElem=>Elems(iElem)%ep
   iSide=ElemInfo(ELEM_FirstSideInd,iElem) !first index -1 in Sideinfo
-  !build up sides of the element according to CGNS standard
+  ! build up sides of the element according to CGNS standard
   ! assign flip
   DO iLocSide=1,6
     aSide=>aElem%Side(iLocSide)%sp
     iSide=iSide+1
-    ! ALLOCATE MORTAR
-    ElemID=SideInfo(SIDE_nbElemID,iSide) !IF nbElemID <0, this marks a mortar master side.
-                                         ! The number (-1,-2,-3) is the Type of mortar
+    nbElemID=SideInfo(SIDE_nbElemID,iSide) ! get neighboring element index of element adjacent to this side
+                                           
 #if PP_dim == 2
+    ! In 2D check that in z-direction there are no elements
     IF ((iLocSide.EQ.1).OR.(iLocSide.EQ.6)) THEN
       BCindex = SideInfo(SIDE_BCID,iSide)
-      IF ((iElem.NE.ElemID).AND.(BCindex.LE.0)) THEN
+      IF ((iElem.NE.nbElemID).AND.(BCindex.LE.0)) THEN
         CALL Abort(__STAMP__, &
-            "Mesh not oriented in z-direction or more than layer of elements in z-direction! " // &
+            "Mesh not oriented in z-direction or more than one layer of elements in z-direction! " // &
             "Please set 'orientZ = T' or change number of element in z-direction in HOPR parameter file.")
       END IF
     END IF
 #endif
 
-    IF(ElemID.LT.0)THEN ! mortar Sides attached!
-      aSide%MortarType=ABS(ElemID)
+    ! IF nbElemID <0, this marks a mortar master side.
+    ! The number (-1,-2,-3) is the Type of mortar
+    IF(nbElemID.LT.0)THEN ! mortar Sides attached!
+      aSide%MortarType=ABS(nbElemID)
       SELECT CASE(aSide%MortarType)
       CASE(1)
         aSide%nMortars=4
@@ -310,7 +326,7 @@ DO iElem=FirstElemInd,LastElemInd
     END IF
     IF(SideInfo(SIDE_Type,iSide).LT.0) aSide%MortarType=-1 !marks side as belonging to a mortar
 
-    IF(aSide%MortarType.LE.0)THEN
+    IF(aSide%MortarType.LE.0)THEN ! side is not a big Mortar side 
       aSide%Elem=>aElem
       oriented=(Sideinfo(SIDE_ID,iSide).GT.0)
       aSide%Ind=ABS(SideInfo(SIDE_ID,iSide))
@@ -320,20 +336,31 @@ DO iElem=FirstElemInd,LastElemInd
         aSide%flip=MOD(Sideinfo(SIDE_Flip,iSide),10)
         IF((aSide%flip.LT.0).OR.(aSide%flip.GT.4)) STOP 'NodeID doesnt belong to side'
       END IF
-    ELSE !mortartype>0
-      DO iMortar=1,aSide%nMortars
+    ELSE ! side is a big Mortar side
+      DO iMortar=1,aSide%nMortars ! iterate over virtual small Mortar sides
         iSide=iSide+1
-        aSide%mortarSide(iMortar)%sp%Elem=>aElem
+        aSide%mortarSide(iMortar)%sp%Elem=>aElem ! set element pointer to actual element
         IF(SideInfo(SIDE_ID,iSide).LT.0) STOP 'Problem in Mortar readin,should be flip=0'
-        aSide%mortarSide(iMortar)%sp%flip=0
-        aSide%mortarSide(iMortar)%sp%Ind=ABS(SideInfo(SIDE_ID,iSide))
+        aSide%mortarSide(iMortar)%sp%flip=0     
+        aSide%mortarSide(iMortar)%sp%Ind =ABS(SideInfo(SIDE_ID,iSide))
       END DO !iMortar
     END IF
   END DO !i=1,locnSides
 END DO !iElem
 
 
-! build up side connection
+!----------------------------------------------------------------------------------------------------------------------------
+!                              CONNECTIONS
+! 
+! Iterate over all elements and within each element over all sides (6 for hexas).
+! For each side do:
+!   - if BC side:
+!       Reset side and do not connect
+!   - if neighboring element is on local processor: 
+!       loop over all sides of neighboring element and find side with same index as local side => connect
+!   - if neighboring element is on other processor: 
+!       create a new virtual neighboring side and element
+!----------------------------------------------------------------------------------------------------------------------------
 DO iElem=FirstElemInd,LastElemInd
   aElem=>Elems(iElem)%ep
   iSide=ElemInfo(ELEM_FirstSideInd,iElem) !first index -1 in Sideinfo
@@ -347,53 +374,51 @@ DO iElem=FirstElemInd,LastElemInd
         iSide=iSide+1
         aSide=>aElem%Side(iLocSide)%sp%mortarSide(iMortar)%sp
       END IF
-      elemID  = SideInfo(SIDE_nbElemID,iSide)
-      BCindex = SideInfo(SIDE_BCID,iSide)
+      nbElemID      = SideInfo(SIDE_nbElemID,iSide)
+      aSide%BCindex = SideInfo(SIDE_BCID,iSide)
 
-      doConnection=.TRUE. ! for periodic sides if BC is reassigned as non periodic
-      IF(BCindex.NE.0)THEN !BC
-        aSide%BCindex = BCindex
+      ! BC sides don't need a connection
+      IF(aSide%BCindex.NE.0)THEN !BC
         IF((BoundaryType(aSide%BCindex,BC_TYPE).NE.1).AND.&
            (BoundaryType(aSide%BCindex,BC_TYPE).NE.100))THEN ! Reassignement from periodic to non-periodic
-          doConnection=.FALSE.
+          ! Reset flip and Mortar settings. Side is a BC side.
           aSide%flip  =0
           IF(iMortar.EQ.0) aSide%mortarType  = 0
           IF(iMortar.EQ.0) aSide%nMortars    = 0
-          elemID            = 0
+          CYCLE ! BC sides don't need to be connected
         END IF
-      ELSE
-        aSide%BCindex = 0
       END IF
 
-      !no connection for mortar master
-      IF(aSide%mortarType.GT.0) CYCLE
-      IF(.NOT.doConnection) CYCLE
-      IF(ASSOCIATED(aSide%connection)) CYCLE
+      
+      IF(aSide%mortarType.GT.0) CYCLE        ! no connection for mortar master 
+      IF(ASSOCIATED(aSide%connection)) CYCLE ! already connected 
 
-      ! check if neighbor on local proc or MPI connection
-      IF(elemID.NE.0)THEN !connection
-        IF((elemID.LE.LastElemInd).AND.(elemID.GE.FirstElemInd))THEN !local
-          !TODO: Check if this is still ok
-          DO nbLocSide=1,6
-            bSide=>Elems(elemID)%ep%Side(nbLocSide)%sp
+      IF(nbElemID.NE.0)THEN ! neighboring element exists, since it has a valid global index 
+        ! check if neighbor on local proc or MPI connection
+        IF((nbElemID.LE.LastElemInd).AND.(nbElemID.GE.FirstElemInd))THEN !local
+          ! connect sides by looping over the side of the neighboring element and finding the side that 
+          ! has the same index 
+          DO nbLocSide=1,6 
+            bSide=>Elems(nbElemID)%ep%Side(nbLocSide)%sp
             ! LOOP over mortars, if no mortar, then LOOP is executed once
             nMortars=bSide%nMortars
             DO jMortar=0,nMortars
-              IF(jMortar.GT.0) bSide=>Elems(elemID)%ep%Side(nbLocSide)%sp%mortarSide(jMortar)%sp
+              IF(jMortar.GT.0) bSide=>Elems(nbElemID)%ep%Side(nbLocSide)%sp%mortarSide(jMortar)%sp
 
+              ! check for matching indices of local side and side of the neighboring element 
               IF(bSide%ind.EQ.aSide%ind)THEN
                 aSide%connection=>bSide
                 bSide%connection=>aSide
                 EXIT
-              END IF !bSide%ind.EQ.aSide%ind
+              END IF
             END DO !jMortar
           END DO !nbLocSide
-        ELSE !MPI connection
+        ELSE ! MPI connection
 #if USE_MPI
-          aSide%connection=>GETNEWSIDE()
-          aSide%connection%flip=aSide%flip
+          aSide%connection     =>GETNEWSIDE()
+          aSide%connection%flip= aSide%flip
           aSide%connection%Elem=>GETNEWELEM()
-          aSide%NbProc = ELEMIPROC(elemID)
+          aSide%NbProc = ELEMIPROC(nbElemID)
 #else
           CALL abort(__STAMP__, &
             ' ElemID of neighbor not in global Elem list ')
@@ -416,7 +441,9 @@ IF(useCurveds)THEN
 ELSE
   ALLOCATE(NodeCoords(   3,0:1,   0:1,   0:1,   nElems))
   ALLOCATE(NodeCoordsTmp(3,0:NGeo,0:NGeo,0:NGeo,nElems))
+  ! read all nodes 
   CALL ReadArray('NodeCoords',2,(/3,nElems*(NGeo+1)**3/),offsetElem*(NGeo+1)**3,2,RealArray=NodeCoordsTmp)
+  ! throw away all nodes except the 8 corner nodes of each hexa
   NodeCoords(:,0,0,0,:)=NodeCoordsTmp(:,0,   0,   0,   :)
   NodeCoords(:,1,0,0,:)=NodeCoordsTmp(:,NGeo,0,   0,   :)
   NodeCoords(:,0,1,0,:)=NodeCoordsTmp(:,0,   NGeo,0,   :)
@@ -426,11 +453,33 @@ ELSE
   NodeCoords(:,0,1,1,:)=NodeCoordsTmp(:,0,   NGeo,NGeo,:)
   NodeCoords(:,1,1,1,:)=NodeCoordsTmp(:,NGeo,NGeo,NGeo,:)
   DEALLOCATE(NodeCoordsTmp)
-  NGeo=1
+  NGeo=1 ! linear mesh; set polynomial degree of geometry to 1
 ENDIF
-nNodes=nElems*(NGeo+1)**3
+nNodes=nElems*(NGeo+1)**3 ! total number of nodes on this processor
 
-! Get Mortar specific arrays
+! Get Mortar specific additional arrays concering Octrees.
+! General idea of the octrees: 
+!   Starting from a conform mesh each element can be halved in each reference direction leading to 
+!   2, 4 or 8 smaller elements. This bisection can be repeated on the smaller elements. The original 
+!   coarsest element of the conform mesh is the root of a octree and in the following called a 'tree-element'
+!   or just 'tree'. Only the coordinates of the smallest elements are necessary for a valid mesh representation.
+!   Nevertheless the mesh format allows to store additional information of the tree-elements (coordinates)
+!   and the position of the regular elements inside the trees.
+!   
+! If a mesh is build by refining a conform baseline mesh the refining octree can be 
+! stored in the mesh file in the following attibutes and arrays:
+!   'isMortarMesh' : if present and ==1 indicates a non-conforming Mortar mesh
+!   'NgeoTree'     : polynomial degree of the tree-elements
+!   'nTrees'       : number of tree-elements
+!   'nNodeTrees'   : total number of nodes of the tree-elements (NgeoTree+1)^3 * nTrees
+!   'ElemToTree'   : mapping from global element index (ElemID) to octree index (TreeID), which allows to 
+!                    find to each element the corresponding tree.
+!                    size = (1:nElems)
+!   'xiMinMax'     : element bounds of an element inside the reference space [-1,1]^3 of its tree-element
+!                    size = (1:3, 1:2, 1:nElems)
+!                    first index = coordinate
+!                    second index =1 for minimum corner node, =2 for maximum corner node
+!   'TreeCoords'   : coordinates of all nodes of the tree-elements                  
 dsExists=.FALSE.
 iMortar=0
 CALL DatasetExists(File_ID,'isMortarMesh',dsExists,.TRUE.)
@@ -481,6 +530,9 @@ nMPISides=0
 ALLOCATE(MPISideCount(0:nProcessors-1))
 MPISideCount=0
 #endif
+
+! Iterate over all elements and within each element over all sides (6 for hexas)
+! and reset 'tmp' array of each side to zero.
 DO iElem=FirstElemInd,LastElemInd
   aElem=>Elems(iElem)%ep
   DO iLocSide=1,6
@@ -493,6 +545,8 @@ DO iElem=FirstElemInd,LastElemInd
     END DO !iMortar
   END DO !iLocSide
 END DO !iElem
+
+! Iterate over all elements and within each element over all sides (6 for hexas in 3D, 4 for quads in 2D)
 DO iElem=FirstElemInd,LastElemInd
   aElem=>Elems(iElem)%ep
 #if PP_dim == 3
@@ -501,18 +555,19 @@ DO iElem=FirstElemInd,LastElemInd
   DO iLocSide=2,5
 #endif    
     aSide=>aElem%Side(iLocSide)%sp
+    ! LOOP over mortars, if no mortar, then LOOP is executed once
     nMortars=aSide%nMortars
     DO iMortar=0,nMortars
       IF(iMortar.GT.0) aSide=>aElem%Side(iLocSide)%sp%mortarSide(iMortar)%sp
 
-      IF(aSide%tmp.EQ.0)THEN
+      IF(aSide%tmp.EQ.0)THEN ! if side not counted so far
         nSides=nSides+1
-        aSide%tmp=-1 !used as marker
-        IF(ASSOCIATED(aSide%connection)) aSide%connection%tmp=-1
+        aSide%tmp=-1 ! mark side as counted 
+        IF(ASSOCIATED(aSide%connection)) aSide%connection%tmp=-1 ! mark connected side as counted
         IF(aSide%BCindex.NE.0)THEN !side is BC or periodic side
           nAnalyzeSides=nAnalyzeSides+1
           IF(ASSOCIATED(aSide%connection))THEN
-            IF(BoundaryType(aSide%BCindex,BC_TYPE).EQ.1)THEN
+            IF(BoundaryType(aSide%BCindex,BC_TYPE).EQ.1)THEN ! periodic side
               nPeriodicSides=nPeriodicSides+1
 #if USE_MPI
               IF(aSide%NbProc.NE.-1) nMPIPeriodics=nMPIPeriodics+1
@@ -526,7 +581,7 @@ DO iElem=FirstElemInd,LastElemInd
         END IF
         IF(aSide%MortarType.GT.0) nMortarSides=nMortarSides+1
 #if USE_MPI
-        IF(aSide%NbProc.NE.-1) THEN
+        IF(aSide%NbProc.NE.-1) THEN ! count total number of MPI sides and number of MPI sides for each neighboring processor
           nMPISides=nMPISides+1
           MPISideCount(aSide%NbProc)=MPISideCount(aSide%NbProc)+1
         END IF
@@ -547,25 +602,27 @@ LOGWRITE(*,*)'-------------------------------------------------------'
  !now MPI sides
 #if USE_MPI
 nNBProcs=0
+! iterate over all processors and count processors which are neighbors (having a common side)
 DO iProc=0,nProcessors-1
   IF(iProc.EQ.myRank) CYCLE
   IF(MPISideCount(iProc).GT.0) nNBProcs=nNbProcs+1
 END DO
-IF(nNbProcs.EQ.0)THEN !MPI + 1Proc case !
+IF(nNbProcs.EQ.0)THEN ! compiled with MPI, but execute on a single processor !
   ALLOCATE(NbProc(1),nMPISides_Proc(1))
   nNbProcs=1
   NbProc=0
   nMPISides_Proc=0
 ELSE
+  ! build a mapping 1..nNbProcs to the global number of processors (allows to iterate over all neighboring processors)
+  ! and store for each neighboring processor the number of common sides
   ALLOCATE(NbProc(nNbProcs),nMPISides_Proc(1:nNbProcs))
   iNbProc=0
   DO iProc=0,nProcessors-1
     IF(iProc.EQ.myRank) CYCLE
     IF(MPISideCount(iProc).GT.0) THEN
       iNbProc=iNbProc+1
-      NbProc(iNbProc)=iProc
-      ! compute number of MPISides per neighbor proc and divide by two
-      nMPISides_Proc(iNBProc)=MPISideCount(iProc)
+      NbProc(iNbProc)=iProc  ! map neighboring proc number to global proc number
+      nMPISides_Proc(iNBProc)=MPISideCount(iProc) ! store number of common sides
     END IF
   END DO
 END IF
@@ -573,6 +630,7 @@ DEALLOCATE(MPISideCount)
 
 #endif /*USE_MPI*/
 
+! Sum up all element, side and node numbers over all processors (just for stdout)
 ReduceData(1)=nElems
 ReduceData(2)=nSides
 ReduceData(3)=nNodes
