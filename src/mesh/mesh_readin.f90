@@ -352,7 +352,8 @@ END DO !iElem
 !----------------------------------------------------------------------------------------------------------------------------
 !                              CONNECTIONS
 ! 
-! Iterate over all elements and within each element over all sides (6 for hexas).
+! Iterate over all elements and within each element over all sides (6 for hexas) and for each big Mortar side over all
+! small virtual sides.
 ! For each side do:
 !   - if BC side:
 !       Reset side and do not connect
@@ -372,7 +373,7 @@ DO iElem=FirstElemInd,LastElemInd
     DO iMortar=0,nMortars
       IF(iMortar.GT.0)THEN
         iSide=iSide+1
-        aSide=>aElem%Side(iLocSide)%sp%mortarSide(iMortar)%sp
+        aSide=>aElem%Side(iLocSide)%sp%mortarSide(iMortar)%sp ! point to small virtual side
       END IF
       nbElemID      = SideInfo(SIDE_nbElemID,iSide)
       aSide%BCindex = SideInfo(SIDE_BCID,iSide)
@@ -531,7 +532,8 @@ ALLOCATE(MPISideCount(0:nProcessors-1))
 MPISideCount=0
 #endif
 
-! Iterate over all elements and within each element over all sides (6 for hexas)
+! Iterate over all elements and within each element over all sides (6 for hexas) and for each big Mortar side over all
+! small virtual sides
 ! and reset 'tmp' array of each side to zero.
 DO iElem=FirstElemInd,LastElemInd
   aElem=>Elems(iElem)%ep
@@ -540,13 +542,14 @@ DO iElem=FirstElemInd,LastElemInd
     ! LOOP over mortars, if no mortar, then LOOP is executed once
     nMortars=aSide%nMortars
     DO iMortar=0,nMortars
-      IF(iMortar.GT.0) aSide=>aElem%Side(iLocSide)%sp%mortarSide(iMortar)%sp
+      IF(iMortar.GT.0) aSide=>aElem%Side(iLocSide)%sp%mortarSide(iMortar)%sp ! point to small virtual side
       aSide%tmp=0
     END DO !iMortar
   END DO !iLocSide
 END DO !iElem
 
 ! Iterate over all elements and within each element over all sides (6 for hexas in 3D, 4 for quads in 2D)
+! and for each big Mortar side over all small virtual sides
 DO iElem=FirstElemInd,LastElemInd
   aElem=>Elems(iElem)%ep
 #if PP_dim == 3
@@ -558,7 +561,7 @@ DO iElem=FirstElemInd,LastElemInd
     ! LOOP over mortars, if no mortar, then LOOP is executed once
     nMortars=aSide%nMortars
     DO iMortar=0,nMortars
-      IF(iMortar.GT.0) aSide=>aElem%Side(iLocSide)%sp%mortarSide(iMortar)%sp
+      IF(iMortar.GT.0) aSide=>aElem%Side(iLocSide)%sp%mortarSide(iMortar)%sp ! point to small virtual side
 
       IF(aSide%tmp.EQ.0)THEN ! if side not counted so far
         nSides=nSides+1
