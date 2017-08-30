@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -69,9 +69,9 @@ PUBLIC::ReadIJKSorting
 CONTAINS
 
 !==================================================================================================================================
-!> This module will read boundary conditions from the HDF5 mesh file and from the parameter file.
-!> The parameters defined in the mesh file can be overridden by those defined in the parameter file, by specifying the parameters
-!> name and a new boundary condition set: a user-defined boundary condition consists of a type and a state.
+!> This subroutine will read boundary conditions from the HDF5 mesh file and from the parameter file.
+!> The parameters defined in the mesh file can be overridden by those defined in the parameter file, by specifying the boundary
+!> name and a new boundary condition set which consists of a type and a state.
 !==================================================================================================================================
 SUBROUTINE ReadBCs()
 ! MODULES
@@ -98,7 +98,7 @@ IF(nUserBCs.GT.0)THEN
     BoundaryName(iBC)   = GETSTR('BoundaryName')
     BoundaryType(iBC,:) = GETINTARRAY('BoundaryType',2) !(/Type,State/)
   END DO
-END IF !nUserBCs>0
+END IF ! nUserBCs>0
 ! Read boundary names from data file
 CALL GetDataSize(File_ID,'BCNames',nDims,HSize)
 CHECKSAFEINT(HSize(1),4)
@@ -243,7 +243,7 @@ CALL readBCs()
 !                              ELEMENTS
 !
 ! Build a list of all local elements and set their: global index, type and zone
-! but not the pointers to the sides 
+! but not the pointers to the sides
 !----------------------------------------------------------------------------------------------------------------------------
 ! list of pointers to tElem objects for all local elements
 ALLOCATE(Elems(FirstElemInd:LastElemInd))
@@ -263,13 +263,13 @@ END DO
 
 !----------------------------------------------------------------------------------------------------------------------------
 !                              SIDES
-! 
+!
 ! Iterate over all elements and within each element over all sides (6 for hexas).
 ! For each side set the following informations:
 !  - nMortars   (Number of small sides attached to a big Mortar side)
 !  - MortarType (zero for non Mortar sides; =1,2 or 3 for big Mortar side; -1 for small sides belonging to a Mortar)
-!  - Ind        (global index of the side) 
-!  - flip       
+!  - Ind        (global index of the side)
+!  - flip
 !  - For the big Mortar sides additionally iterate over the small virtual sides and set:
 !    - Ind
 !    - flip
@@ -278,7 +278,7 @@ END DO
 ! get offset of local side indices in the global sides
 offsetSideID=ElemInfo(ELEM_FirstSideInd,FirstElemInd) ! hdf5 array starts at 0-> -1
 nSideIDs    =ElemInfo(ELEM_LastSideInd,LastElemInd)-ElemInfo(ELEM_FirstSideInd,FirstElemInd)
-!read local SideInfo from mesh file
+! read local SideInfo from mesh file
 FirstSideInd=offsetSideID+1
 LastSideInd =offsetSideID+nSideIDs
 ALLOCATE(SideInfo(SideInfoSize,FirstSideInd:LastSideInd))
@@ -294,9 +294,9 @@ DO iElem=FirstElemInd,LastElemInd
     aSide=>aElem%Side(iLocSide)%sp
     iSide=iSide+1
     nbElemID=SideInfo(SIDE_nbElemID,iSide) ! get neighboring element index of element adjacent to this side
-                                           
+
 #if PP_dim == 2
-    ! In 2D check that in z-direction there are no elements
+    ! In 2D check that there is only one layer of elements in z-direction
     IF ((iLocSide.EQ.1).OR.(iLocSide.EQ.6)) THEN
       BCindex = SideInfo(SIDE_BCID,iSide)
       IF ((iElem.NE.nbElemID).AND.(BCindex.LE.0)) THEN
@@ -307,7 +307,7 @@ DO iElem=FirstElemInd,LastElemInd
     END IF
 #endif
 
-    ! IF nbElemID <0, this marks a mortar master side.
+    ! If nbElemID <0, this marks a mortar master side.
     ! The number (-1,-2,-3) is the Type of mortar
     IF(nbElemID.LT.0)THEN ! mortar Sides attached!
       aSide%MortarType=ABS(nbElemID)
@@ -326,7 +326,7 @@ DO iElem=FirstElemInd,LastElemInd
     END IF
     IF(SideInfo(SIDE_Type,iSide).LT.0) aSide%MortarType=-1 !marks side as belonging to a mortar
 
-    IF(aSide%MortarType.LE.0)THEN ! side is not a big Mortar side 
+    IF(aSide%MortarType.LE.0)THEN ! side is not a big Mortar side
       aSide%Elem=>aElem
       oriented=(Sideinfo(SIDE_ID,iSide).GT.0)
       aSide%Ind=ABS(SideInfo(SIDE_ID,iSide))
@@ -341,7 +341,7 @@ DO iElem=FirstElemInd,LastElemInd
         iSide=iSide+1
         aSide%mortarSide(iMortar)%sp%Elem=>aElem ! set element pointer to actual element
         IF(SideInfo(SIDE_ID,iSide).LT.0) STOP 'Problem in Mortar readin,should be flip=0'
-        aSide%mortarSide(iMortar)%sp%flip=0     
+        aSide%mortarSide(iMortar)%sp%flip=0
         aSide%mortarSide(iMortar)%sp%Ind =ABS(SideInfo(SIDE_ID,iSide))
       END DO !iMortar
     END IF
@@ -351,15 +351,15 @@ END DO !iElem
 
 !----------------------------------------------------------------------------------------------------------------------------
 !                              CONNECTIONS
-! 
+!
 ! Iterate over all elements and within each element over all sides (6 for hexas) and for each big Mortar side over all
 ! small virtual sides.
 ! For each side do:
 !   - if BC side:
 !       Reset side and do not connect
-!   - if neighboring element is on local processor: 
+!   - if neighboring element is on local processor:
 !       loop over all sides of neighboring element and find side with same index as local side => connect
-!   - if neighboring element is on other processor: 
+!   - if neighboring element is on other processor:
 !       create a new virtual neighboring side and element
 !----------------------------------------------------------------------------------------------------------------------------
 DO iElem=FirstElemInd,LastElemInd
@@ -378,35 +378,35 @@ DO iElem=FirstElemInd,LastElemInd
       nbElemID      = SideInfo(SIDE_nbElemID,iSide)
       aSide%BCindex = SideInfo(SIDE_BCID,iSide)
 
-      ! BC sides don't need a connection
-      IF(aSide%BCindex.NE.0)THEN !BC
+      ! BC sides don't need a connection, except for periodic (BC_TYPE=1) and "dummy" inner BCs (BC_TYPE=100).
+      ! For all other BC sides: reset the flip and mortars settings, do not build a connection.
+      IF(aSide%BCindex.NE.0)THEN ! BC
         IF((BoundaryType(aSide%BCindex,BC_TYPE).NE.1).AND.&
-           (BoundaryType(aSide%BCindex,BC_TYPE).NE.100))THEN ! Reassignement from periodic to non-periodic
-          ! Reset flip and Mortar settings. Side is a BC side.
+           (BoundaryType(aSide%BCindex,BC_TYPE).NE.100))THEN
           aSide%flip  =0
           IF(iMortar.EQ.0) aSide%mortarType  = 0
           IF(iMortar.EQ.0) aSide%nMortars    = 0
-          CYCLE ! BC sides don't need to be connected
+          CYCLE
         END IF
       END IF
 
-      
-      IF(aSide%mortarType.GT.0) CYCLE        ! no connection for mortar master 
-      IF(ASSOCIATED(aSide%connection)) CYCLE ! already connected 
 
-      IF(nbElemID.NE.0)THEN ! neighboring element exists, since it has a valid global index 
+      IF(aSide%mortarType.GT.0) CYCLE        ! no connection for mortar master
+      IF(ASSOCIATED(aSide%connection)) CYCLE ! already connected
+
+      IF(nbElemID.NE.0)THEN ! neighboring element exists, since it has a valid global index
         ! check if neighbor on local proc or MPI connection
         IF((nbElemID.LE.LastElemInd).AND.(nbElemID.GE.FirstElemInd))THEN !local
-          ! connect sides by looping over the side of the neighboring element and finding the side that 
-          ! has the same index 
-          DO nbLocSide=1,6 
+          ! connect sides by looping over the side of the neighboring element and finding the side that
+          ! has the same index
+          DO nbLocSide=1,6
             bSide=>Elems(nbElemID)%ep%Side(nbLocSide)%sp
             ! LOOP over mortars, if no mortar, then LOOP is executed once
             nMortars=bSide%nMortars
             DO jMortar=0,nMortars
               IF(jMortar.GT.0) bSide=>Elems(nbElemID)%ep%Side(nbLocSide)%sp%mortarSide(jMortar)%sp
 
-              ! check for matching indices of local side and side of the neighboring element 
+              ! check for matching indices of local side and side of the neighboring element
               IF(bSide%ind.EQ.aSide%ind)THEN
                 aSide%connection=>bSide
                 bSide%connection=>aSide
@@ -442,7 +442,7 @@ IF(useCurveds)THEN
 ELSE
   ALLOCATE(NodeCoords(   3,0:1,   0:1,   0:1,   nElems))
   ALLOCATE(NodeCoordsTmp(3,0:NGeo,0:NGeo,0:NGeo,nElems))
-  ! read all nodes 
+  ! read all nodes
   CALL ReadArray('NodeCoords',2,(/3,nElems*(NGeo+1)**3/),offsetElem*(NGeo+1)**3,2,RealArray=NodeCoordsTmp)
   ! throw away all nodes except the 8 corner nodes of each hexa
   NodeCoords(:,0,0,0,:)=NodeCoordsTmp(:,0,   0,   0,   :)
@@ -459,28 +459,28 @@ ENDIF
 nNodes=nElems*(NGeo+1)**3 ! total number of nodes on this processor
 
 ! Get Mortar specific additional arrays concering Octrees.
-! General idea of the octrees: 
-!   Starting from a conform mesh each element can be halved in each reference direction leading to 
-!   2, 4 or 8 smaller elements. This bisection can be repeated on the smaller elements. The original 
+! General idea of the octrees:
+!   Starting from a conform mesh each element can be halved in each reference direction leading to
+!   2, 4 or 8 smaller elements. This bisection can be repeated on the smaller elements. The original
 !   coarsest element of the conform mesh is the root of a octree and in the following called a 'tree-element'
 !   or just 'tree'. Only the coordinates of the smallest elements are necessary for a valid mesh representation.
 !   Nevertheless the mesh format allows to store additional information of the tree-elements (coordinates)
 !   and the position of the regular elements inside the trees.
-!   
-! If a mesh is build by refining a conform baseline mesh the refining octree can be 
+!
+! If a mesh is build by refining a conform baseline mesh the refining octree can be
 ! stored in the mesh file in the following attibutes and arrays:
 !   'isMortarMesh' : if present and ==1 indicates a non-conforming Mortar mesh
 !   'NgeoTree'     : polynomial degree of the tree-elements
 !   'nTrees'       : number of tree-elements
 !   'nNodeTrees'   : total number of nodes of the tree-elements (NgeoTree+1)^3 * nTrees
-!   'ElemToTree'   : mapping from global element index (ElemID) to octree index (TreeID), which allows to 
+!   'ElemToTree'   : mapping from global element index (ElemID) to octree index (TreeID), which allows to
 !                    find to each element the corresponding tree.
 !                    size = (1:nElems)
 !   'xiMinMax'     : element bounds of an element inside the reference space [-1,1]^3 of its tree-element
 !                    size = (1:3, 1:2, 1:nElems)
 !                    first index = coordinate
 !                    second index =1 for minimum corner node, =2 for maximum corner node
-!   'TreeCoords'   : coordinates of all nodes of the tree-elements                  
+!   'TreeCoords'   : coordinates of all nodes of the tree-elements
 dsExists=.FALSE.
 iMortar=0
 CALL DatasetExists(File_ID,'isMortarMesh',dsExists,.TRUE.)
@@ -514,12 +514,12 @@ END IF
 
 
 CALL CloseDataFile()
+! Readin of mesh is now finished
 
 
 !----------------------------------------------------------------------------------------------------------------------------
 !                              COUNT SIDES
 !----------------------------------------------------------------------------------------------------------------------------
-! Readin is now finished
 nBCSides=0
 nAnalyzeSides=0
 nMortarSides=0
@@ -533,8 +533,7 @@ MPISideCount=0
 #endif
 
 ! Iterate over all elements and within each element over all sides (6 for hexas) and for each big Mortar side over all
-! small virtual sides
-! and reset 'tmp' array of each side to zero.
+! small virtual sides and reset 'tmp' array of each side to zero.
 DO iElem=FirstElemInd,LastElemInd
   aElem=>Elems(iElem)%ep
   DO iLocSide=1,6
@@ -554,9 +553,9 @@ DO iElem=FirstElemInd,LastElemInd
   aElem=>Elems(iElem)%ep
 #if PP_dim == 3
   DO iLocSide=1,6
-#else    
+#else
   DO iLocSide=2,5
-#endif    
+#endif
     aSide=>aElem%Side(iLocSide)%sp
     ! LOOP over mortars, if no mortar, then LOOP is executed once
     nMortars=aSide%nMortars
@@ -565,7 +564,7 @@ DO iElem=FirstElemInd,LastElemInd
 
       IF(aSide%tmp.EQ.0)THEN ! if side not counted so far
         nSides=nSides+1
-        aSide%tmp=-1 ! mark side as counted 
+        aSide%tmp=-1 ! mark side as counted
         IF(ASSOCIATED(aSide%connection)) aSide%connection%tmp=-1 ! mark connected side as counted
         IF(aSide%BCindex.NE.0)THEN !side is BC or periodic side
           nAnalyzeSides=nAnalyzeSides+1
@@ -596,14 +595,19 @@ END DO !iElem
 nInnerSides=nSides-nBCSides-nMPISides-nMortarSides !periodic side count to inner side!!!
 
 LOGWRITE(*,*)'-------------------------------------------------------'
-LOGWRITE(*,'(A22,I8)')'nSides:',nSides
-LOGWRITE(*,'(A22,I8)')'nBCSides:',nBCSides
+LOGWRITE(*,'(A22,I8)')'nSides:',      nSides
+LOGWRITE(*,'(A22,I8)')'nBCSides:',    nBCSides
 LOGWRITE(*,'(A22,I8)')'nMortarSides:',nMortarSides
-LOGWRITE(*,'(A22,I8)')'nInnerSides:',nInnerSides
-LOGWRITE(*,'(A22,I8)')'nMPISides:',nMPISides
+LOGWRITE(*,'(A22,I8)')'nInnerSides:', nInnerSides
+LOGWRITE(*,'(A22,I8)')'nMPISides:',   nMPISides
 LOGWRITE(*,*)'-------------------------------------------------------'
- !now MPI sides
+
 #if USE_MPI
+! Define variables used for MPI communication:
+!   - nBnProcs: count of neighboring processors (sharing a side with this one)
+!   - NbProc(1:nNbProcs): global index of each neigboring processor
+!   - nMPISides_Proc(1:nNbProcs): count of common sides with each neighboring processor
+
 nNBProcs=0
 ! iterate over all processors and count processors which are neighbors (having a common side)
 DO iProc=0,nProcessors-1
@@ -673,7 +677,7 @@ END SUBROUTINE ReadMesh
 !==================================================================================================================================
 !> Partition the mesh by numbers of processors. Elements are distributed equally to all processors.
 !==================================================================================================================================
-SUBROUTINE BuildPartition() 
+SUBROUTINE BuildPartition()
 ! MODULES                                                                                                                          !
 USE MOD_Globals
 USE MOD_Mesh_Vars, ONLY:nElems,nGlobalElems,offsetElem
@@ -682,7 +686,7 @@ USE MOD_MPI_Vars,  ONLY:offsetElemMPI
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 #if USE_MPI
@@ -777,7 +781,7 @@ SUBROUTINE ReadIJKSorting()
 USE MOD_Mesh_Vars,       ONLY: nElems_IJK,Elem_IJK,offsetElem,nElems,MeshFile
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL        :: dsExists
