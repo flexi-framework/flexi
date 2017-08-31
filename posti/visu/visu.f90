@@ -609,6 +609,8 @@ END SUBROUTINE visu
 SUBROUTINE FinalizeVisu()
 USE MOD_Globals
 USE MOD_Visu_Vars
+USE MOD_DG_Vars
+USE MOD_Mesh_Vars, ONLY: Elem_xGP
 IMPLICIT NONE
 !===================================================================================================================================
 SWRITE (*,*) "VISU FINALIZE"
@@ -638,6 +640,12 @@ SDEALLOCATE(FV_Elems_loc)
 SDEALLOCATE(mapDGElemsToAllElems)
 SDEALLOCATE(mapFVElemsToAllElems)
 
+SDEALLOCATE(CoordsVisu_DG)
+SDEALLOCATE(UVisu_DG)
+SDEALLOCATE(CoordsVisu_FV)
+SDEALLOCATE(UVisu_FV)
+SDEALLOCATE(U)
+SDEALLOCATE(Elem_xGP)
 END SUBROUTINE FinalizeVisu
 
 END MODULE MOD_Visu
