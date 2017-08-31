@@ -78,16 +78,17 @@ PUBLIC::SurfMetricsFromJa
 CONTAINS
 
 !==================================================================================================================================
-!> This routine computes the coordinates of the volume solution points.
+!> This routine takes the equidistant node coordinats of the mesh (on NGeo+1 points) and uses them to build the coordinates
+!> of solution/interpolation points of type NodeType on polynomial degree Nloc (Nloc+1 points per direction).
+!> The coordinates (for a non-conforming mesh) can also be build from an octree if the mesh is based on a conforming baseline mesh.
 !==================================================================================================================================
-SUBROUTINE BuildCoords(Elem_xGP)
+SUBROUTINE BuildCoords(NodeCoords,NodeType,Nloc,VolumeCoords,TreeCoords)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Mesh_Vars          ,ONLY: NGeo,nElems
-USE MOD_Mesh_Vars          ,ONLY: ElemToTree,xiMinMax,interpolateFromTree
-USE MOD_Mesh_Vars          ,ONLY: NodeCoords,TreeCoords
-USE MOD_Interpolation_Vars
+USE MOD_Mesh_Vars          ,ONLY: ElemToTree,xiMinMax,nTrees,NGeoTree
+USE MOD_Interpolation_Vars ,ONLY: NodeTypeCL,NodeTypeVISU
 USE MOD_Interpolation      ,ONLY: GetVandermonde,GetNodesAndWeights
 #if (PP_dim == 3)
 USE MOD_ChangeBasis        ,ONLY: ChangeBasis3D_XYZ
@@ -100,58 +101,65 @@ USE MOD_Basis              ,ONLY: LagrangeInterpolationPolys
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(OUT) :: Elem_xGP(3,0:PP_N,0:PP_N,0:PP_NZ,nElems)
+REAL,INTENT(INOUT)            :: NodeCoords(3,0:NGeo,0:NGeo,0:PP_NGeoZ,nElems)         !< Equidistant mesh coordinates
+CHARACTER(LEN=255),INTENT(IN) :: NodeType                                              !< Type of node that should be converted to
+INTEGER,INTENT(IN)            :: Nloc                                                  !< Convert to Nloc+1 points per direction
+REAL,INTENT(OUT)              :: VolumeCoords(3,0:Nloc,0:Nloc,0:PP_NlocZ,nElems)       !< OUT: Coordinates of solution/interpolation
+                                                                                       !< points
+REAL,INTENT(INOUT),OPTIONAL   :: TreeCoords(3,0:NGeoTree,0:NGeoTree,0:NGeoTree,nTrees) !< coordinates of nodes of tree-elements
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                       :: i,iElem
-REAL                          :: XCL_N(3,0:PP_N,0:PP_N,0:PP_N)
-REAL,DIMENSION(0:PP_N,0:PP_N) :: Vdm_xi_N,Vdm_eta_N
+REAL                          :: XCL_Nloc(3,0:Nloc,0:Nloc,0:Nloc)
+REAL,DIMENSION(0:Nloc,0:Nloc) :: Vdm_xi_N,Vdm_eta_N
 #if (PP_dim == 3)
-REAL,DIMENSION(0:PP_N,0:PP_N) :: Vdm_zeta_N
+REAL,DIMENSION(0:Nloc,0:Nloc) :: Vdm_zeta_N
 #endif
-REAL                          :: Vdm_EQNgeo_CLN( 0:PP_N ,0:Ngeo)
-REAL                          :: Vdm_CLN_N     ( 0:PP_N ,0:PP_N)
+REAL                          :: Vdm_EQNGeo_CLNloc(0:Nloc ,0:Ngeo)
+REAL                          :: Vdm_CLNloc_Nloc  (0:Nloc ,0:Nloc)
 REAL                          :: xi0(3),dxi(3),length(3)
-REAL                          :: xiCL_N(0:PP_N)   ,wBaryCL_N(0:PP_N)
+REAL                          :: xiCL_Nloc(0:Nloc),wBaryCL_Nloc(0:Nloc)
+REAL                          :: xiNloc(0:Nloc)
 !==================================================================================================================================
 
-CALL GetVandermonde(    NGeo, NodeTypeVISU, PP_N, NodeTypeCL, Vdm_EQNgeo_CLN, modal=.FALSE.)
-CALL GetVandermonde(    PP_N, NodeTypeCL  , PP_N, NodeType  , Vdm_CLN_N     , modal=.FALSE.)
-CALL GetNodesAndWeights(PP_N, NodeTypeCL  , xiCL_N  , wIPBary=wBaryCL_N)
+CALL GetVandermonde(    NGeo, NodeTypeVISU, NLoc, NodeTypeCL, Vdm_EQNGeo_CLNloc,  modal=.FALSE.)
+CALL GetVandermonde(    Nloc, NodeTypeCL  , Nloc, NodeType  , Vdm_CLNloc_Nloc,     modal=.FALSE.)
 
 ! NOTE: Transform intermediately to CL points, to be consistent with metrics being built with CL
 !       Important for curved meshes if NGeo<N, no effect for N>=NGeo
 
-!1.a) Transform from EQUI_Ngeo to solution points on N
-IF(interpolateFromTree)THEN
+!1.a) Transform from EQUI_NGeo to solution points on Nloc
+IF(PRESENT(TreeCoords))THEN
+  CALL GetNodesAndWeights(Nloc, NodeTypeCL  , xiCL_Nloc  , wIPBary=wBaryCL_Nloc)
+  CALL GetNodesAndWeights(Nloc, NodeType  ,   xiNloc)
   DO iElem=1,nElems
     xi0   =xiMinMax(:,1,iElem)
     length=xiMinMax(:,2,iElem)-xi0
-    CALL ChangeBasisVolume(3,NGeo,PP_N,Vdm_EQNGeo_CLN,TreeCoords(:,:,:,:,ElemToTree(iElem)),XCL_N)
-    DO i=0,PP_N
-      dxi=0.5*(xGP(i)+1.)*length
-      CALL LagrangeInterpolationPolys(xi0(1) + dxi(1),PP_N,xiCL_N,wBaryCL_N,Vdm_xi_N(  i,:))
-      CALL LagrangeInterpolationPolys(xi0(2) + dxi(2),PP_N,xiCL_N,wBaryCL_N,Vdm_eta_N( i,:))
+    CALL ChangeBasisVolume(3,NGeo,Nloc,Vdm_EQNGeo_CLNloc,TreeCoords(:,:,:,:,ElemToTree(iElem)),XCL_Nloc)
+    DO i=0,Nloc
+      dxi=0.5*(xiNloc(i)+1.)*length
+      CALL LagrangeInterpolationPolys(xi0(1) + dxi(1),Nloc,xiCL_Nloc,wBaryCL_Nloc,Vdm_xi_N(  i,:))
+      CALL LagrangeInterpolationPolys(xi0(2) + dxi(2),Nloc,xiCL_Nloc,wBaryCL_Nloc,Vdm_eta_N( i,:))
 #if (PP_dim == 3)
-      CALL LagrangeInterpolationPolys(xi0(3) + dxi(3),PP_N,xiCL_N,wBaryCL_N,Vdm_zeta_N(i,:))
+      CALL LagrangeInterpolationPolys(xi0(3) + dxi(3),Nloc,xiCL_Nloc,wBaryCL_Nloc,Vdm_zeta_N(i,:))
 #endif
     END DO
 #if (PP_dim == 3)
-    CALL ChangeBasis3D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,Vdm_zeta_N,XCL_N,Elem_xGP(:,:,:,:,iElem))
+    CALL ChangeBasis3D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,Vdm_zeta_N,XCL_Nloc,VolumeCoords(:,:,:,:,iElem))
 #else
-    CALL ChangeBasis2D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,XCL_N(:,:,:,0),Elem_xGP(:,:,:,0,iElem))
+    CALL ChangeBasis2D_XYZ(3,PP_N,PP_N,Vdm_xi_N,Vdm_eta_N,XCL_Nloc(:,:,:,0),VolumeCoords(:,:,:,0,iElem))
 #endif
   END DO
 ELSE
-  Vdm_EQNgeo_CLN=MATMUL(Vdm_CLN_N,Vdm_EQNgeo_CLN)
+  Vdm_EQNGeo_CLNloc=MATMUL(Vdm_CLNloc_Nloc,Vdm_EQNGeo_CLNloc)
   DO iElem=1,nElems
-    CALL ChangeBasisVolume(3,NGeo,PP_N,Vdm_EQNGeo_CLN,NodeCoords(:,:,:,:,iElem),Elem_xGP(:,:,:,:,iElem))
+    CALL ChangeBasisVolume(3,NGeo,Nloc,Vdm_EQNGeo_CLNloc,NodeCoords(:,:,:,:,iElem),VolumeCoords(:,:,:,:,iElem))
   END DO
 END IF
 
 #if (PP_dim == 2)
 ! Nullify coordinates in the third dimension
-Elem_xGP(3,:,:,:,:) = 0.
+VolumeCoords(3,:,:,:,:) = 0.
 #endif
 
 
