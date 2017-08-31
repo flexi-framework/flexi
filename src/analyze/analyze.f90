@@ -333,13 +333,13 @@ REAL                            :: J_NAnalyze(1,0:NAnalyze,0:NAnalyze,0:NAnalyze
 REAL                            :: J_N(1,0:PP_N,0:PP_N,0:PP_NZ)
 REAL                            :: IntegrationWeight
 #if FV_ENABLED
-REAL                            :: FV_w3
+REAL                            :: FV_w_volume
 REAL                            :: U_DG(PP_nVar,0:PP_N,0:PP_N,0:PP_N)
 REAL                            :: U_FV(PP_nVar,0:PP_N,0:PP_N,0:PP_N)
 #endif
 !==================================================================================================================================
 #if FV_ENABLED
-FV_w3 = FV_w**3
+FV_w_volume = FV_w**PP_dim
 #endif
 ! Calculate error norms
 L_Inf_Error(:)=-1.E10
@@ -360,7 +360,7 @@ DO iElem=1,nElems
       DO l=0,PP_N
         DO k=0,PP_N
           L_Inf_Error = MAX(L_Inf_Error,ABS(U(:,k,l,m,iElem) - U_FV(:,k,l,m)))
-          IntegrationWeight = FV_w3/sJ(k,l,m,iElem,1)
+          IntegrationWeight = FV_w_volume/sJ(k,l,m,iElem,1)
           ! To sum over the elements, We compute here the square of the L_2 error
           L_2_Error = L_2_Error+(U(:,k,l,m,iElem) - U_FV(:,k,l,m))*(U(:,k,l,m,iElem) - U_FV(:,k,l,m))*IntegrationWeight
         END DO ! k
