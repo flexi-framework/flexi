@@ -638,7 +638,7 @@ USE MOD_PreProc
 USE MOD_Equation_Vars,ONLY:IniExactFunc,doCalcSource
 USE MOD_Eos_Vars,ONLY:Kappa,KappaM1
 USE MOD_Exactfunc_Vars,ONLY:AdvVel
-#if PARABOLICs
+#if PARABOLIC
 USE MOD_Eos_Vars,ONLY:mu0,Pr
 #endif
 USE MOD_Mesh_Vars,    ONLY:Elem_xGP,sJ,nElems
