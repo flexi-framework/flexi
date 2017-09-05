@@ -428,7 +428,7 @@ END SUBROUTINE CalcMetrics
 SUBROUTINE CalcSurfMetrics(Nloc,FVE,JaCL_N,XCL_N,Vdm_CLN_N,iElem,NormVec,TangVec1,TangVec2,SurfElem,Face_xGP,Ja_Face)
 ! MODULES
 USE MOD_Mathtools,      ONLY:CROSS
-USE MOD_Mesh_Vars,      ONLY:ElemToSide,MortarType,nSides
+USE MOD_Mesh_Vars,      ONLY:ElemToSide,MortarType,nSides,MortarInfo
 USE MOD_Mesh_Vars,      ONLY:NormalDirs,TangDirs,NormalSigns
 USE MOD_Mappings,       ONLY:SideToVol2
 USE MOD_ChangeBasis,    ONLY:ChangeBasis2D
@@ -452,6 +452,7 @@ REAL,INTENT(OUT),OPTIONAL :: Ja_Face(3,3,0:Nloc,0:Nloc,1:nSides) !< (OUT) surfac
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: p,q,pq(2),dd,iLocSide,SideID,SideID2,iMortar,nbSideIDs(4),flip
+INTEGER            :: nMortars,tmp_MI(1:2),SideID_Mortar
 INTEGER            :: NormalDir,TangDir
 REAL               :: NormalSign
 REAL               :: Ja_Face_l(3,3,0:Nloc,0:Nloc)
@@ -489,7 +490,15 @@ DO iLocSide=2,5
   DO q=0,Nloc; DO p=0,Nloc
     pq=SideToVol2(Nloc,p,q,0,iLocSide,3)
     ! Compute Face_xGP for sides
+#if PP_dim == 2
+    IF (iLocSide.EQ.XI_MINUS) THEN
+      dd = pq(1)
+      pq(1) = Nloc-pq(2)
+      pq(2) = dd
+    END IF    
+#endif
     Face_xGP(1:3,p,q,0,sideID)=tmp2(:,pq(1),pq(2))
+
   END DO; END DO ! p,q
 
   DO dd=1,3
@@ -514,6 +523,29 @@ DO iLocSide=2,5
       Ja_Face_l(dd,1:3,p,q)=tmp2(:,pq(1),pq(2))
     END DO; END DO ! p,q
   END DO ! dd
+
+#if PP_dim == 2
+  IF (iLocSide.EQ.XI_MINUS) THEN
+    DO dd=1,3
+      tmp = Ja_Face_l(dd,1:3,:,:)
+      DO q=0,Nloc; DO p=0,Nloc
+        IF (dd.EQ.TangDirs(XI_MINUS)) THEN
+          Ja_Face_l(dd,1:3,p,q) = -tmp(1:3,Nloc-q,p)
+        ELSE
+          Ja_Face_l(dd,1:3,p,q) = tmp(1:3,Nloc-q,p)
+        END IF
+      END DO; END DO ! p,q=0,Nloc
+    END DO
+    nMortars=MERGE(2,0,MortarType(1,sideID).EQ.2 .OR. MortarType(1,sideID).EQ.3)
+    IF (nMortars.EQ.2) THEN
+      SideID_Mortar = MortarType(2,sideID)
+      tmp_MI    = MortarInfo(:,1,SideID_Mortar)
+      MortarInfo(:,1,SideID_Mortar) = MortarInfo(:,2,SideID_Mortar)
+      MortarInfo(:,2,SideID_Mortar) = tmp_MI
+    END IF
+  END IF
+#endif
+
   IF(PRESENT(Ja_Face)) Ja_Face(:,:,:,:,SideID)=Ja_Face_l
 
 
@@ -571,6 +603,11 @@ DO q=0,Nloc; DO p=0,Nloc
                     *NormVec(:,p,q)
   TangVec1(:,p,q) = TangVec1(:,p,q)/SQRT(SUM(TangVec1(:,p,q)**2))
   TangVec2(:,p,q) = CROSS(NormVec(:,p,q),TangVec1(:,p,q))
+#if PP_dim == 2
+  IF (TangDir.EQ.3) THEN
+    TangVec1 = -TangVec2
+  END IF
+#endif
 END DO; END DO ! p,q
 END SUBROUTINE SurfMetricsFromJa
 
