@@ -610,7 +610,7 @@ SUBROUTINE CheckCompilerFlags(iExample,iReggieBuild,TESTCASE,TIMEDISCMETHOD,UseF
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_RegressionCheck_Vars,    ONLY: CodeNameLowCase,EXECPATH,Examples,BuildFV,Build2D,BuildPARABOLIC
+USE MOD_RegressionCheck_Vars,    ONLY: CodeNameLowCase,Examples,BuildFV,Build2D,BuildPARABOLIC
 USE MOD_RegressionCheck_Vars,    ONLY: BuildSolver
 USE MOD_RegressionCheck_Build,   ONLY: BuildConfiguration
 USE MOD_RegressionCheck_Vars,    ONLY: BuildTESTCASE,BuildTIMEDISCMETHOD,BuildMPI,CodeNameUppCase,configuration_cmake

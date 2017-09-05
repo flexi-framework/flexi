@@ -102,9 +102,9 @@ IMPLICIT NONE
 INTEGER,INTENT(IN),OPTIONAL      :: mpi_comm_IN
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+#if USE_MPI
 INTEGER :: mpi_com_loc
 !==================================================================================================================================
-#if USE_MPI
 IF (PRESENT(mpi_comm_IN)) THEN
   mpi_com_loc = mpi_comm_IN
 ELSE
