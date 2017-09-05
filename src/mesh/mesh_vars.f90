@@ -103,7 +103,11 @@ INTEGER,ALLOCATABLE :: AnalyzeSide(:)          !< Marks, wheter a side belongs t
                                                !< SurfIndex = AnalyzeSide(SideID), 1:nSides
 
 INTEGER,PARAMETER :: NormalDirs(6) = (/ 3 , 2 , 1 , 2 , 1 , 3 /) !< normal vector direction for element local side
+#if PP_dim == 3
 INTEGER,PARAMETER :: TangDirs(6)   = (/ 1 , 3 , 2 , 3 , 2 , 1 /) !< first tangential vector direction for element local side
+#else
+INTEGER,PARAMETER :: TangDirs(6)   = (/ 1 , 1 , 2 , 1 , 2 , 1 /) !< first tangential vector direction for element local side
+#endif
 REAL   ,PARAMETER :: NormalSigns(6)= (/-1.,-1., 1., 1.,-1., 1./) !< normal vector sign for element local side
 
 !----------------------------------------------------------------------------------------------------------------------------------

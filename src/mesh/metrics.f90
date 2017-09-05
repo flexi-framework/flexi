@@ -515,7 +515,7 @@ END SUBROUTINE CalcMetrics
 SUBROUTINE CalcSurfMetrics(Nloc,FVE,JaCL_N,XCL_N,Vdm_CLN_N,iElem,NormVec,TangVec1,TangVec2,SurfElem,Face_xGP,Ja_Face)
 ! MODULES
 USE MOD_Mathtools        ,ONLY: CROSS
-USE MOD_Mesh_Vars        ,ONLY: ElemToSide,MortarType,nSides
+USE MOD_Mesh_Vars        ,ONLY: ElemToSide,MortarType,nSides,MortarInfo
 USE MOD_Mesh_Vars        ,ONLY: NormalDirs,TangDirs,NormalSigns
 USE MOD_Mappings         ,ONLY: SideToVol2
 USE MOD_ChangeBasis      ,ONLY: ChangeBasis2D
@@ -541,6 +541,7 @@ REAL,INTENT(OUT),OPTIONAL :: Ja_Face(3,3,0:Nloc,0:PP_NlocZ,1:nSides) !< (OUT) su
 ! LOCAL VARIABLES
 INTEGER            :: p,q,pq(2),dd,iLocSide,SideID,SideID2,iMortar,nbSideIDs(4),flip
 INTEGER            :: NormalDir,TangDir
+INTEGER            :: nMortars,SideID_Mortar,tmp_MI(2)
 REAL               :: NormalSign
 REAL               :: Ja_Face_l(3,3,0:Nloc,0:PP_NlocZ)
 REAL               :: Mortar_Ja(3,3,0:Nloc,0:PP_NlocZ,4)
@@ -611,6 +612,19 @@ DO iLocSide=2,5
                          NormVec(:,:,:,0,SideID),TangVec1(:,:,:,0,SideID),&
                          TangVec2(:,:,:,0,SideID),SurfElem(:,:,0,SideID))
 
+                     
+#if PP_dim == 2
+  IF (iLocSide.EQ.XI_MINUS) THEN
+    nMortars=MERGE(2,0,MortarType(1,sideID).EQ.2 .OR. MortarType(1,sideID).EQ.3)
+    IF (nMortars.EQ.2) THEN
+      SideID_Mortar = MortarType(2,sideID)
+      tmp_MI    = MortarInfo(:,1,SideID_Mortar)
+      MortarInfo(:,1,SideID_Mortar) = MortarInfo(:,2,SideID_Mortar)
+      MortarInfo(:,2,SideID_Mortar) = tmp_MI
+    END IF
+  END IF
+#endif
+
   !compute metrics for mortar faces, interpolate Ja_Face to small sides
   IF(MortarType(1,SideID).GT.0)THEN
     CALL Mortar_CalcSurfMetrics(SideID,Nloc,Ja_Face_l,Face_xGP(:,:,:,0,SideID),&
@@ -652,19 +666,13 @@ REAL,INTENT(OUT)   ::  SurfElem(  0:Nloc,0:PP_NlocZ) !< element face surface are
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: p,q
-INTEGER            :: TangDirLoc
 !==================================================================================================================================
 DO q=0,PP_NlocZ; DO p=0,Nloc
   SurfElem(  p,q) = SQRT(SUM(Ja_Face(NormalDir,1:PP_dim,p,q)**2))
   NormVec( :,p,q) = NormalSign*Ja_Face(NormalDir,:,p,q)/SurfElem(p,q)
-#if (PP_dim == 2)
   ! For two-dimensional computations, the normal direction will be 1 or 2. For the tangential direction
   ! we then set 2 or 1 accordingly. 
-  TangDirLoc = 3 - NormalDir
-#else
-  TangDirLoc = TangDir
-#endif
-  TangVec1(:,p,q) = Ja_Face(TangDirLoc,:,p,q) - SUM(Ja_Face(TangDirLoc,:,p,q)*NormVec(:,p,q)) &
+  TangVec1(:,p,q) = Ja_Face(TangDir,:,p,q) - SUM(Ja_Face(TangDir,:,p,q)*NormVec(:,p,q)) &
                     *NormVec(:,p,q)
   TangVec1(:,p,q) = TangVec1(:,p,q)/SQRT(SUM(TangVec1(:,p,q)**2))
 #if (PP_dim == 2)
