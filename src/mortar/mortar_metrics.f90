@@ -76,21 +76,27 @@ REAL,INTENT(OUT)   :: Mortar_xGP( 3,0:Nloc,0:Nloc,4) !< mortarized face xGP
 INTEGER,INTENT(OUT):: nbSideID(4)                    !< index of neighbour sideIDs
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER  :: p,q,dir1,dir2,iNb,jNb,ind,SideIDMortar
-REAL     :: M_0_12(0:Nloc,0:Nloc,2),M_0_12_h(0:Nloc,0:Nloc,2)
+INTEGER  :: q,dir1,dir2,iNb,SideIDMortar
+#if PP_dim == 3
+INTEGER  :: p,ind,jNb
 REAL     :: Mortar_Ja2(1:3,1:3,0:Nloc,0:Nloc)
 REAL     :: Mortar_xGP2 (  1:3,0:Nloc,0:Nloc)
+#endif
+REAL     :: M_0_12(0:Nloc,0:Nloc,2),M_0_12_h(0:Nloc,0:Nloc,2)
 !==================================================================================================================================
 CALL MortarBasis_BigToSmall(0,Nloc,NodeType,M_0_12(:,:,1),M_0_12(:,:,2))
 ! ATTENTION: MortarBasis_BigToSmall computes the transposed matrices, which is useful when they are used
 !            in hand-written matrix multiplications. For the use with the intrinsic MATMUL, they must be transposed.
 M_0_12_h(:,:,1)=0.5*TRANSPOSE(M_0_12(:,:,1))
 M_0_12_h(:,:,2)=0.5*TRANSPOSE(M_0_12(:,:,2))
+M_0_12(:,:,1) = TRANSPOSE(M_0_12(:,:,1))
+M_0_12(:,:,2) = TRANSPOSE(M_0_12(:,:,2))
 
 nbSideID=-1
 
 ! Surface metrics derived from big sides are only built for inner sides and MPI_MINE sides!
 SideIDMortar=MortarType(2,SideID)
+#if PP_dim == 3
 SELECT CASE(MortarType(1,SideID))
 CASE(1) !1->4
   !inb=1,jNb=1 > Nb=1
@@ -110,8 +116,8 @@ CASE(1) !1->4
     !now in eta
     DO jNb=1,2
       ind=iNb+2*(jNb-1)
-      IF(MortarInfo(E2S_FLIP,ind,SideIDMortar).GT.0) CYCLE !no slave sides (MPI)
-      nbSideID(ind)=MortarInfo(E2S_SIDE_ID,ind,SideIDMortar)
+      IF(MortarInfo(MI_FLIP,ind,SideIDMortar).GT.0) CYCLE !no slave sides (MPI)
+      nbSideID(ind)=MortarInfo(MI_SIDEID,ind,SideIDMortar)
 
       DO p=0,Nloc
         DO dir1=1,3
@@ -126,8 +132,8 @@ CASE(1) !1->4
 
 CASE(2) !1->2 in eta
   DO jNb=1,2
-    IF(MortarInfo(E2S_FLIP,jNb,SideIDMortar).GT.0) CYCLE !no slave sides (MPI)
-    nbSideID(jNb)=MortarInfo(E2S_SIDE_ID,jNb,SideIDMortar)
+    IF(MortarInfo(MI_FLIP,jNb,SideIDMortar).GT.0) CYCLE !no slave sides (MPI)
+    nbSideID(jNb)=MortarInfo(MI_SIDEID,jNb,SideIDMortar)
 
     DO p=0,Nloc
       DO dir1=1,3
@@ -140,9 +146,10 @@ CASE(2) !1->2 in eta
   END DO !jNb
 
 CASE(3) !1->2 in xi
+#endif /* PP_dim == 3 */  
   DO iNb=1,2
-    IF(MortarInfo(E2S_FLIP,iNb,SideIDMortar).GT.0) CYCLE !no slave sides (MPI)
-    nbSideID(iNb)=MortarInfo(E2S_SIDE_ID,iNb,SideIDMortar)
+    IF(MortarInfo(MI_FLIP,iNb,SideIDMortar).GT.0) CYCLE !no slave sides (MPI)
+    nbSideID(iNb)=MortarInfo(MI_SIDEID,iNb,SideIDMortar)
 
     DO q=0,Nloc
       DO dir1=1,3
@@ -154,7 +161,9 @@ CASE(3) !1->2 in xi
     END DO !q=0,Nloc
   END DO !iNb
 
+#if PP_dim == 3
 END SELECT !MortarType
+#endif
 END SUBROUTINE Mortar_CalcSurfMetrics
 
 END MODULE MOD_Mortar_Metrics
