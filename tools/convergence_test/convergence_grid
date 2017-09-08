@@ -71,9 +71,9 @@ elif args.dim == 2 and not args.mortar:
            'CART_HEX_PERIODIC_004_2D_mesh.h5', \
            'CART_HEX_PERIODIC_008_2D_mesh.h5']
 elif args.dim == 3 and args.mortar:
-  grids = ['CART_HEX_PERIODIC_MORTAR_004_mesh.h5', \
-           'CART_HEX_PERIODIC_MORTAR_008_mesh.h5', \
-           'CART_HEX_PERIODIC_MORTAR_016_mesh.h5']
+  grids = ['CART_HEX_PERIODIC_MORTAR_002_mesh.h5', \
+           'CART_HEX_PERIODIC_MORTAR_004_mesh.h5', \
+           'CART_HEX_PERIODIC_MORTAR_008_mesh.h5']
 elif args.dim == 2 and args.mortar:
   grids = ['CART_HEX_PERIODIC_MORTAR_004_2D_mesh.h5', \
            'CART_HEX_PERIODIC_MORTAR_008_2D_mesh.h5', \
