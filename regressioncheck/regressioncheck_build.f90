@@ -344,7 +344,7 @@ END SUBROUTINE ReadConfiguration
 !==================================================================================================================================
 !> reads the file "configurationsX.cmake" and creates a binary
 !==================================================================================================================================
-SUBROUTINE BuildConfiguration(iExample,iReggieBuild,nReggieBuilds,N_compile_flags)
+SUBROUTINE BuildConfiguration(iExample,iReggieBuild,nReggieBuilds)
 ! MODULES
 USE MOD_Globals
 USE MOD_RegressionCheck_Vars,  ONLY: BuildDebug,BuildNoDebug,BuildEQNSYS,BuildTESTCASE,NumberOfProcs,NumberOfProcsStr
@@ -356,7 +356,6 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)                        :: iExample,iReggieBuild,nReggieBuilds
-INTEGER,INTENT(IN),OPTIONAL               :: N_compile_flags
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                                   :: ioUnit,iSTATUS,iSTATUS2
