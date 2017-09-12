@@ -188,7 +188,7 @@ ALLOCATE(FV_Elems_master(1:nSides)) ! Moved from InitFV to here, since needed in
 ! compute FV NormVec, TangVec,.. on boundary of DG-cells
 DO iSide=1,nSides
   IF(iSide.GE.firstMPISide_YOUR.AND.iSide.LE.lastMPISide_YOUR) CYCLE
-  CALL ChangeBasisSurf(3,PP_N,PP_N,FV_Vdm,Face_xGP(:,:,0:PP_NZ,0,iSide),Face_xGP(:,:,0:PP_NZ,1,iSide))
+  CALL ChangeBasisSurf(3,PP_N,PP_N,FV_Vdm,Face_xGP(:,:,:,0,iSide),Face_xGP(:,:,:,1,iSide))
 
   iLocSide=SideToElem(S2E_LOC_SIDE_ID,iSide)
   IF(iLocSide.LT.1) CYCLE
@@ -244,7 +244,7 @@ DO iElem=1,nElems
       CALL ChangeBasisSurf(3,PP_N,PP_N,FV_Vdm,JaVol(dd,1:3,l,0:PP_N,0:PP_NZ),FV_Ja_Face(dd,:,:,:))
     END DO
     ! use metrics to build normal/tangential vectors and surelem at the inner interfaces/slices
-    NormalDir=1; TangDir=2; NormalSign=1.
+    NormalDir=NormalDirs(XI_PLUS); TangDir=TangDirs(XI_PLUS); NormalSign=NormalSigns(XI_PLUS)
     CALL SurfMetricsFromJa(PP_N,NormalDir,TangDir,NormalSign,FV_Ja_Face,&
         FV_NormVecXi  (:,:,:,l,iElem),&
         FV_TangVec1Xi (:,:,:,l,iElem),&
@@ -268,7 +268,7 @@ DO iElem=1,nElems
       CALL ChangeBasisSurf(3,PP_N,PP_N,FV_Vdm,JaVol(dd,1:3,0:PP_N,l,0:PP_NZ),FV_Ja_Face(dd,:,:,:))
     END DO
     ! use metrics to build normal/tangential vectors and surelem at the inner interfaces/slices
-    NormalDir=2; TangDir=3; NormalSign=1.
+    NormalDir=NormalDirs(ETA_PLUS); TangDir=TangDirs(ETA_PLUS); NormalSign=NormalSigns(ETA_PLUS)
     CALL SurfMetricsFromJa(PP_N,NormalDir,TangDir,NormalSign,FV_Ja_Face,&
         FV_NormVecEta  (:,:,:,l,iElem),&
         FV_TangVec1Eta (:,:,:,l,iElem),&
@@ -293,7 +293,7 @@ DO iElem=1,nElems
       CALL ChangeBasisSurf(3,PP_N,PP_N,FV_Vdm,JaVol(dd,1:3,0:PP_N,0:PP_N,l),FV_Ja_Face(dd,:,:,:))
     END DO
     ! use metrics to build normal/tangential vectors and surelem at the inner interfaces/slices
-    NormalDir=3; TangDir=1; NormalSign=1.
+    NormalDir=NormalDirs(ZETA_PLUS); TangDir=TangDirs(ZETA_PLUS); NormalSign=NormalSigns(ZETA_PLUS)
     CALL SurfMetricsFromJa(PP_N,NormalDir,TangDir,NormalSign,FV_Ja_Face,&
         FV_NormVecZeta  (:,:,:,l,iElem),&
         FV_TangVec1Zeta (:,:,:,l,iElem),&
