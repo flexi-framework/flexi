@@ -444,9 +444,9 @@ END DO
 DO SideID=firstInnerSide,lastMPISide_MINE
   ! master=FV, slave=DG 
   FV_dx_Face(:,:,1) = DG_dx_slave(1,:,:,SideID) + FV_dx_master(1,:,:,SideID)
-  ! master=DG, sla                                                                                
+  ! master=DG, slave=FV                                                                                
   FV_dx_Face(:,:,2) = FV_dx_slave(1,:,:,SideID) + DG_dx_master(1,:,:,SideID)
-  ! master=FV, sla                                                                                
+  ! master=FV, slave=FV                                                                                
   FV_dx_Face(:,:,3) = FV_dx_slave(1,:,:,SideID) + FV_dx_master(1,:,:,SideID)
   ! precompute inverse
   FV_sdx_Face(:,:,:,SideID) = 1. / FV_dx_Face
@@ -492,15 +492,15 @@ USE MOD_Basis       ,ONLY: InitializeVandermonde
 USE MOD_ChangeBasis ,ONLY: ChangeBasis1D
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES 
-INTEGER,INTENT(IN) :: Nloc2                                 !< degree of path polynomial
-INTEGER,INTENT(IN) :: Nloc                                !< number of points to compute (Nloc+1)**2
-REAL,INTENT(IN)    :: xGP(  0:Nloc2)                        !< parametric coords
-REAL,INTENT(IN)    :: wGP(  0:Nloc2)                        !< integration weights
-REAL,INTENT(IN)    :: wBary(0:Nloc2)                        !< interpolations weights
-REAL,INTENT(IN)    :: x0                                   !< start point
-REAL,INTENT(IN)    :: xN                                   !< end point
-REAL,INTENT(INOUT) :: FV_Path_1D(3,0:Nloc2,0:Nloc,0:PP_NlocZ) !< path polynomial
-REAL,INTENT(OUT)   :: FV_Length(           0:Nloc,0:PP_NlocZ) !< distance
+INTEGER,INTENT(IN) :: Nloc2                                   ! < degree of path polynomial
+INTEGER,INTENT(IN) :: Nloc                                    ! < number of points to compute (Nloc+1)**2
+REAL,INTENT(IN)    :: xGP(  0:Nloc2)                          ! < parametric coords
+REAL,INTENT(IN)    :: wGP(  0:Nloc2)                          ! < integration weights
+REAL,INTENT(IN)    :: wBary(0:Nloc2)                          ! < interpolations weights
+REAL,INTENT(IN)    :: x0                                      ! < start point
+REAL,INTENT(IN)    :: xN                                      ! < end point
+REAL,INTENT(INOUT) :: FV_Path_1D(3,0:Nloc2,0:Nloc,0:PP_NlocZ) ! < path polynomial
+REAL,INTENT(OUT)   :: FV_Length(           0:Nloc,0:PP_NlocZ) ! < distance
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL               :: VDM(0:Nloc2,0:Nloc2)

@@ -630,19 +630,19 @@ SUBROUTINE CalcSource(Ut,t)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Equation_Vars,ONLY:IniExactFunc,doCalcSource
-USE MOD_Eos_Vars,ONLY:Kappa
+USE MOD_Equation_Vars    ,ONLY: IniExactFunc,doCalcSource
+USE MOD_Eos_Vars         ,ONLY: Kappa
 #if PP_dim==3
-USE MOD_Eos_Vars,ONLY:KappaM1
+USE MOD_Eos_Vars         ,ONLY: KappaM1
 #endif
-USE MOD_Exactfunc_Vars,ONLY:AdvVel
+USE MOD_Exactfunc_Vars   ,ONLY: AdvVel
 #if PARABOLIC
-USE MOD_Eos_Vars,ONLY:mu0,Pr
+USE MOD_Eos_Vars         ,ONLY: mu0,Pr
 #endif
-USE MOD_Mesh_Vars,    ONLY:Elem_xGP,sJ,nElems
+USE MOD_Mesh_Vars        ,ONLY: Elem_xGP,sJ,nElems
 #if FV_ENABLED
-USE MOD_ChangeBasis,  ONLY:ChangeBasis3D
-USE MOD_FV_Vars,      ONLY:FV_Vdm,FV_Elems
+USE MOD_ChangeBasisByDim ,ONLY: ChangeBasisVolume
+USE MOD_FV_Vars          ,ONLY: FV_Vdm,FV_Elems
 #endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -693,7 +693,7 @@ CASE(4) ! exact function
     END DO; END DO; END DO ! i,j,k
 #if FV_ENABLED    
     IF (FV_Elems(iElem).GT.0) THEN ! FV elem     
-      CALL ChangeBasis3D(PP_nVar,PP_N,PP_N,FV_Vdm,Ut_src(:,:,:,:),Ut_src2(:,:,:,:))
+      CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,Ut_src(:,:,:,:),Ut_src2(:,:,:,:))
       DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
         Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem)+Ut_src2(:,i,j,k)/sJ(i,j,k,iElem,1)
       END DO; END DO; END DO ! i,j,k
@@ -744,7 +744,7 @@ CASE(41) ! Sinus in x
     END DO; END DO; END DO ! i,j,k
 #if FV_ENABLED    
     IF (FV_Elems(iElem).GT.0) THEN ! FV elem
-      CALL ChangeBasis3D(PP_nVar,PP_N,PP_N,FV_Vdm,Ut_src(:,:,:,:),Ut_src2(:,:,:,:))
+      CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,Ut_src(:,:,:,:),Ut_src2(:,:,:,:))
       DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
         Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem)+Ut_src2(:,i,j,k)/sJ(i,j,k,iElem,1)
       END DO; END DO; END DO ! i,j,k
@@ -795,7 +795,7 @@ CASE(42) ! Sinus in y
     END DO; END DO; END DO ! i,j,k
 #if FV_ENABLED    
     IF (FV_Elems(iElem).GT.0) THEN ! FV elem
-      CALL ChangeBasis3D(PP_nVar,PP_N,PP_N,FV_Vdm,Ut_src(:,:,:,:),Ut_src2(:,:,:,:))
+      CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,Ut_src(:,:,:,:),Ut_src2(:,:,:,:))
       DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
         Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem)+Ut_src2(:,i,j,k)/sJ(i,j,k,iElem,1)
       END DO; END DO; END DO ! i,j,k
@@ -846,7 +846,7 @@ CASE(43) ! Sinus in z
     END DO; END DO; END DO ! i,j,k
 #if FV_ENABLED    
     IF (FV_Elems(iElem).GT.0) THEN ! FV elem
-      CALL ChangeBasis3D(PP_nVar,PP_N,PP_N,FV_Vdm,Ut_src(:,:,:,:),Ut_src2(:,:,:,:))
+      CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,Ut_src(:,:,:,:),Ut_src2(:,:,:,:))
       DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
         Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem)+Ut_src2(:,i,j,k)/sJ(i,j,k,iElem,1)
       END DO; END DO; END DO ! i,j,k
