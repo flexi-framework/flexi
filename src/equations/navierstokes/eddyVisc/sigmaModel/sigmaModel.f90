@@ -29,7 +29,7 @@ INTERFACE FinalizeSigmaModel
    MODULE PROCEDURE FinalizeSigmaModel
 END INTERFACE
 
-PUBLIC::InitSigmaModel,SigmaModel,SigmaModel_surf,FinalizeSigmaModel
+PUBLIC::InitSigmaModel,SigmaModel,FinalizeSigmaModel
 !===================================================================================================================================
 
 CONTAINS
@@ -42,17 +42,10 @@ SUBROUTINE InitSigmaModel()
 USE MOD_Globals
 USE MOD_PreProc                
 USE MOD_EddyVisc_Vars              
-USE MOD_ReadInTools       ,   ONLY:GETREAL,GETLOGICAL
-USE MOD_Interpolation_Vars,   ONLY:InterpolationInitIsDone
-USE MOD_Mesh_Vars         ,   ONLY:MeshInitIsDone,nElems
-USE MOD_Interpolation_Vars,   ONLY:wGP
-USE MOD_Mesh_Vars,            ONLY:sJ,nSides
-USE MOD_Mesh_Vars,            ONLY:ElemToSide
-USE MOD_Testcase_Vars,        ONLY:testcase
-#if USE_MPI
-USE MOD_MPI,                  ONLY:StartReceiveMPIData,FinishExchangeMPIData,StartSendMPIData
-USE MOD_MPI_Vars,             ONLY:MPIRequest_DeltaS,nNbProcs
-#endif /*USE_MPI*/ 
+USE MOD_ReadInTools        ,ONLY: GETREAL,GETLOGICAL
+USE MOD_Interpolation_Vars ,ONLY: InterpolationInitIsDone,wGP
+USE MOD_Mesh_Vars          ,ONLY: MeshInitIsDone,nElems,sJ
+USE MOD_Testcase_Vars      ,ONLY: testcase
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -60,7 +53,6 @@ USE MOD_MPI_Vars,             ONLY:MPIRequest_DeltaS,nNbProcs
 ! LOCAL VARIABLES
 INTEGER :: i,iElem,j,k
 REAL    :: CellVol
-INTEGER :: iLocSide,SideID,FlipID
 !===================================================================================================================================
 IF(((.NOT.InterpolationInitIsDone).AND.(.NOT.MeshInitIsDone)).OR.SigmaModelInitIsDone)THEN
   CALL CollectiveStop(__STAMP__,&
@@ -89,22 +81,7 @@ DO iElem=1,nElems
     END DO
   END DO
   DeltaS(iElem) = ( CellVol)**(1./3.)  / (REAL(PP_N)+1.)
-  DO iLocSide=1,6
-     SideID=ElemToSide(E2S_SIDE_ID,iLocSide,iElem)
-     FlipID=ElemToSide(E2S_FLIP,iLocSide,iElem) 
-     IF(FlipID.EQ.0) THEN
-       DeltaS_master(SideID)=DeltaS(iElem)
-     ELSE
-       DeltaS_slave(SideID)=DeltaS(iElem)
-     END IF
-  END DO
 END DO
-#if USE_MPI
-! Send YOUR - receive MINE
-CALL StartReceiveMPIData(DeltaS_slave, 1, 1,nSides,MPIRequest_DeltaS( :,SEND),SendID=1)
-CALL StartSendMPIData(   DeltaS_slave, 1, 1,nSides,MPIRequest_DeltaS( :,RECV),SendID=1)
-CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_DeltaS ) !Send MINE -receive YOUR
-#endif /*USE_MPI*/
 
 SigmaModelInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT SigmaModel DONE!'
@@ -117,7 +94,7 @@ END SUBROUTINE InitSigmaModel
 SUBROUTINE SigmaModel(iElem,i,j,k,muSGS)
 ! MODULES
 USE MOD_PreProc
-USE MOD_EddyVisc_Vars,     ONLY:deltaS,CS,muSGSmax,SGS_Ind
+USE MOD_EddyVisc_Vars,     ONLY:deltaS,CS,muSGSmax
 USE MOD_Lifting_Vars,      ONLY:gradUx,gradUy,gradUz
 USE MOD_DG_Vars,           ONLY:U
 IMPLICIT NONE
@@ -174,30 +151,8 @@ ELSE
 END IF
 ! SigmaModel model
 muSGS= (CS*deltaS(iElem))**2. * d_model*U(1,i,j,k,iElem)
-SGS_Ind(2,i,j,k,iElem) = muSGS
 muSGSmax(iElem) = MAX(muSGS,muSGSmax(iElem))
 END SUBROUTINE SigmaModel
-
-!===================================================================================================================================
-!> Compute SigmaModel Eddy-Visosity at a given point at the surface
-!===================================================================================================================================
-SUBROUTINE SigmaModel_surf(grad11,grad22,grad33,grad12,grad13,grad21,grad23,grad31,grad32,rho,DeltaSS,SGS_Ind,muSGS,Face_xGP)
-! MODULES
-IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-!> gradients of the velocities w.r.t. all directions
-REAL,INTENT(IN)                           :: grad11,grad22,grad33,grad12,grad13,grad21,grad23,grad31,grad32
-REAL,INTENT(IN)                           :: rho               !< Density
-REAL,INTENT(IN)                           :: DeltaSS           !< Filter width
-REAL,INTENT(IN)                           :: SGS_Ind           !< Indicator for SGS model
-REAL,INTENT(IN)                           :: Face_xGP          !< Coordinate for van-Driest damping
-REAL,INTENT(OUT)                          :: muSGS             !< local SGS viscosity
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-!===================================================================================================================================
-RETURN!use prolonged from volume
-END SUBROUTINE SigmaModel_surf
 
 !===============================================================================================================================
 !> Deallocate arrays and finalize variables used by SigmaModel SGS model

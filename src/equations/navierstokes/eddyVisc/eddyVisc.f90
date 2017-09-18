@@ -44,9 +44,9 @@ CALL prms%SetSection("EddyViscParameters")
 CALL prms%CreateRealOption(   'CS',       "EddyViscParameters constant")
 CALL prms%CreateRealOption(   'PrSGS',    "Turbulent Prandtl number",'0.7')
 CALL prms%CreateLogicalOption('VanDriest',"Van Driest damping, only for channel flow!", '.FALSE.')
-CALL prms%CreateIntOption('N_Testfilter',"Number of basis for the test filter")
-CALL prms%CreateStringOption(   'WallDistFile',    "File containing the wall distance",'noFile')
-CALL prms%CreateRealOption(   'WallDistanceTreshold',    "Treshold for zonal model filtering",'0.0')
+CALL prms%CreateIntOption(    'N_Testfilter',        "Number of basis for the test filter")
+CALL prms%CreateStringOption( 'WallDistFile',        "File containing the wall distance",'noFile')
+CALL prms%CreateRealOption(   'WallDistanceTreshold',"Treshold for zonal model filtering",'0.0')
 END SUBROUTINE DefineParametersEddyVisc
 
 !===================================================================================================================================
@@ -58,9 +58,7 @@ USE MOD_Preproc
 USE MOD_Globals
 USE MOD_EddyVisc_Vars
 USE MOD_Smagorinsky
-USE MOD_DynSmag
 USE MOD_DefaultEddyVisc
-USE MOD_Vreman
 USE MOD_SigmaModel
 USE MOD_Mesh_Vars  ,ONLY:nElems,nSides
 USE MOD_ReadInTools,ONLY: GETINTFROMSTR, GETREAL
@@ -71,86 +69,36 @@ eddyViscType = GETINTFROMSTR('eddyViscType')
 
 ! Allocate arrays needed by all SGS models
 ALLOCATE(DeltaS(nElems))
-ALLOCATE(DeltaS_m(3,nElems))
-ALLOCATE(DeltaS_master(1:nSides))
-ALLOCATE(DeltaS_slave (1:nSides))
-DeltaS_master=0.
-DeltaS_slave=0.
 DeltaS=0.
-ALLOCATE(SGS_Ind(2,0:PP_N,0:PP_N,0:PP_NZ,nElems))
-ALLOCATE(SGS_Ind_master(2,0:PP_N,0:PP_NZ,1:nSides))
-ALLOCATE(SGS_Ind_slave (2,0:PP_N,0:PP_NZ,1:nSides))
-SGS_Ind=0.
-SGS_Ind_master=0.
-SGS_Ind_slave=0.
 ALLOCATE(muSGS(1,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+ALLOCATE(muSGS_master(1,0:PP_N,0:PP_NZ,nSides))
+ALLOCATE(muSGS_slave (1,0:PP_N,0:PP_NZ,nSides))
+muSGS_master=0.
+muSGS_slave =0.
 ALLOCATE(muSGSmax(nElems))
 muSGS = 0.
 muSGSmax=8.*mu0
 ! Turbulent Prandtl number
 PrSGS  = GETREAL('PrSGS','0.7')
 
-IF(eddyViscType.EQ.2) THEN !dynamic Smagorinsky
-!  !MATTEO: debug output
-!  ALLOCATE(S_en_out(1,0:PP_N,0:PP_N,0:PP_N,nElems))
-!  S_en_out = 0.
-!  ALLOCATE(filtdir_out(nElems))
-!  ALLOCATE(walldist_out(nElems))
-!  ALLOCATE(walldist_x(nElems))
-!  ALLOCATE(walldist_y(nElems))
-!  ALLOCATE(walldist_z(nElems))
-!  !!!!!!!!!!
-  ALLOCATE(FilterMat_Testfilter(0:PP_N,0:PP_N))
-  FilterMat_Testfilter = 0.
-  ALLOCATE(filter_ind(3,nElems))
-  ALLOCATE(average_ind(3,nElems))
-  ALLOCATE(average_type(nElems))
-  ALLOCATE(IntELem(0:PP_N,0:PP_N,0:PP_N,nElems))
-END IF
-
 SELECT CASE(eddyViscType)
   CASE(0) ! No eddy viscosity model, set function pointers to dummy subroutines which do nothing
     ! Nothing to init
     eddyViscosity          => DefaultEddyVisc
-    eddyViscosity_surf     => DefaultEddyVisc_surf
     FinalizeEddyViscosity => FinalizeDefaultEddyViscosity
   CASE(1) !Smagorinsky with optional Van Driest damping for channel flow
     CALL InitSmagorinsky()
     eddyViscosity          => Smagorinsky
-    eddyViscosity_surf     => Smagorinsky_surf
     FinalizeEddyViscosity => Finalizesmagorinsky
-  CASE(2) !Smagorinsky*DynSmag indicator with optional Van Driest damping for channel flow
-    CALL InitDynSmag
-    eddyViscosity      => DynSmag 
-    eddyViscosity_surf => DefaultEddyVisc_surf !NOT used, surface muSGS from volume prolongated 
-    FinalizeEddyViscosity => Finalizedynsmag
-    testfilter         => Compute_cd
-  CASE(3) !Vreman model 2004 
-    CALL InitVreman()
-    eddyViscosity          => vreman
-    eddyViscosity_surf     => vreman_surf
-    FinalizeEddyViscosity => Finalizevreman
   CASE(4) !sigma Model 2015
     CALL InitSigmaModel()
     eddyViscosity          => SigmaModel
-    eddyViscosity_surf     => SigmaModel_surf
     FinalizeEddyViscosity => FinalizeSigmaModel
   CASE DEFAULT
     CALL CollectiveStop(__STAMP__,&
       'Eddy Viscosity Type not specified!')
 END SELECT
 CALL AddToFieldData((/1,PP_N+1,PP_N+1,PP_NZ+1/),'VMSData',(/'muSGS'/),RealArray=muSGS)
-!IF(eddyViscType.EQ.2) THEN
-!  !MATTEO: debug output
-!  CALL AddToFieldData((/2,PP_N+1,PP_N+1,PP_NZ+1/),'VMSData',(/'Csmag   ','muSgsInd'/),RealArray=SGS_Ind)
-!  CALL AddToFieldData((/1,PP_N+1,PP_N+1,PP_NZ+1/),'VMSData',(/'S_norm'/),RealArray=S_en_out)
-!  CALL AddToElemData('FilterInd',RealArray=filtdir_out(:))
-!  CALL AddToElemData('WallDist',RealArray=walldist_out(:))
-!  CALL AddToElemData('WallDist_x',RealArray=walldist_x(:))
-!  CALL AddToElemData('WallDist_y',RealArray=walldist_y(:))
-!  CALL AddToElemData('WallDist_z',RealArray=walldist_z(:))
-!END IF
-
 END SUBROUTINE
 
 !===================================================================================================================================
@@ -162,13 +110,10 @@ USE MOD_EddyVisc_Vars
 USE MOD_Smagorinsky   ,ONLY: FinalizeSmagorinsky
 !===================================================================================================================================
 SDEALLOCATE(DeltaS)
-SDEALLOCATE(DeltaS_master)
-SDEALLOCATE(DeltaS_slave)
 SDEALLOCATE(muSGS)
+SDEALLOCATE(muSGS_master)
+SDEALLOCATE(muSGS_slave)
 SDEALLOCATE(muSGSmax)
-SDEALLOCATE(SGS_Ind)
-SDEALLOCATE(SGS_Ind_master)
-SDEALLOCATE(SGS_Ind_slave)
 SELECT CASE(eddyViscType)
   CASE(1)
     CALL FinalizeSmagorinsky()

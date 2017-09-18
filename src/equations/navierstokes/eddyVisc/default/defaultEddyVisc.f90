@@ -23,7 +23,7 @@ MODULE MOD_DefaultEddyVisc
 IMPLICIT NONE
 PRIVATE
 
-PUBLIC::DefaultEddyVisc,DefaultEddyVisc_surf,FinalizeDefaultEddyViscosity
+PUBLIC::DefaultEddyVisc,FinalizeDefaultEddyViscosity
 !===================================================================================================================================
 
 CONTAINS
@@ -45,27 +45,15 @@ REAL,INTENT(INOUT)                        :: muSGS             !< local SGS visc
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
+#ifdef DEBUG
+! ===============================================================================
+! Following dummy calls do suppress compiler warnings of unused Riemann-functions
+! ===============================================================================
+IF (0.EQ.1) THEN
+  muSGS = i+j+k+iElem 
+END IF
+#endif
 END SUBROUTINE DefaultEddyVisc
-
-!===================================================================================================================================
-!> Dummy for default eddy viscosity (meaning no eddy viscosity). Return zero.
-!===================================================================================================================================
-SUBROUTINE DefaultEddyVisc_surf(grad11,grad22,grad33,grad12,grad13,grad21,grad23,grad31,grad32,rho,DeltaSS,SGS_Ind,muSGS,Face_xGP)
-! MODULES
-IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-!> gradients of the velocities w.r.t. all directions
-REAL,INTENT(IN)                           :: grad11,grad22,grad33,grad12,grad13,grad21,grad23,grad31,grad32
-REAL,INTENT(IN)                           :: rho               !< Density
-REAL,INTENT(IN)                           :: DeltaSS           !< Filter width
-REAL,INTENT(IN)                           :: SGS_Ind           !< Indicator for SGS model
-REAL,INTENT(IN)                           :: Face_xGP          !< Coordinate for van-Driest damping
-REAL,INTENT(OUT)                          :: muSGS             !< local SGS viscosity
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-!===================================================================================================================================
-END SUBROUTINE DefaultEddyVisc_surf
 
 !===============================================================================================================================
 !> Deallocate arrays and finalize variables used by Smagorinsky SGS model

@@ -351,7 +351,7 @@ END SUBROUTINE Riemann
 SUBROUTINE ViscousFlux(Nloc,F,UPrim_L,UPrim_R, &
                        gradUx_L,gradUy_L,gradUz_L,gradUx_R,gradUy_R,gradUz_R,nv&
 #ifdef EDDYVISCOSITY
-                      ,DeltaS_L,DeltaS_R,SGS_Ind_L,SGS_Ind_R,Face_xGP&
+                      ,muSGS_L,muSGS_R&
 #endif
                       )
 ! MODULES
@@ -367,11 +367,8 @@ REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:PP_NlocZ),INTENT(IN)   :: gradUx_L,gradUx_R,
 REAL,INTENT(IN)                                            :: nv(3,0:Nloc,0:PP_NlocZ) !< normal vector
 REAL,INTENT(OUT)                                           :: F(PP_nVar,0:Nloc,0:PP_NlocZ) !< viscous flux
 #ifdef EDDYVISCOSITY
-REAL,INTENT(IN)                                            :: Face_xGP(3,0:Nloc,0:PP_NlocZ)  !< face Gauss points
-                                                           !> Filter width for eddy viscosity left/right of the interface
-REAL,INTENT(IN)                                            :: DeltaS_L,DeltaS_R
-                                                           !> Indicator for eddy viscosity left/right of the interface
-REAL,DIMENSION(2,0:Nloc,0:PP_NlocZ),INTENT(IN)             :: SGS_Ind_L,SGS_Ind_R
+                                                           !> eddy viscosity left/right of the interface
+REAL,DIMENSION(1,0:Nloc,0:PP_NlocZ),INTENT(IN)             :: muSGS_L,muSGS_R
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -385,12 +382,12 @@ REAL,DIMENSION(PP_nVar,0:Nloc,0:PP_NlocZ)            :: diffFluxX_R,diffFluxY_R,
 ! Compute NSE Diffusion flux
   CALL EvalDiffFlux2D(Nloc,diffFluxX_L,diffFluxY_L,diffFluxZ_L,UPrim_L,gradUx_L,gradUy_L,gradUz_L &
 #ifdef EDDYVISCOSITY
-                    ,DeltaS_L,SGS_Ind_L,Face_xGP&
+                    ,muSGS_L&
 #endif
       )
   CALL EvalDiffFlux2D(Nloc,diffFluxX_R,diffFluxY_R,diffFluxZ_R,UPrim_R,gradUx_R,gradUy_R,gradUz_R & 
 #ifdef EDDYVISCOSITY
-                    ,DeltaS_R,SGS_Ind_R,Face_xGP&
+                    ,muSGS_R&
 #endif
       )
 ! BR1 uses arithmetic mean of the fluxes

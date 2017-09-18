@@ -579,7 +579,7 @@ REAL,INTENT(IN)               :: output(nVar(1)*nVar(2))  !< array containing on
 ! LOCAL VARIABLES
 INTEGER                        :: openStat                !< File IO status
 CHARACTER(LEN=50)              :: formatStr               !< format string for the output and Tecplot header
-INTEGER                        :: ioUnit,i,j
+INTEGER                        :: ioUnit,i
 CHARACTER(LEN=255)             :: FileName_loc            ! FileName with data type extension
 !==================================================================================================================================
 ! Append data type extension to FileName

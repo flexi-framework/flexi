@@ -310,7 +310,7 @@ END SUBROUTINE EvalEulerFlux1D_fast
 !==================================================================================================================================
 SUBROUTINE EvalDiffFlux2D(Nloc,f,g,h,UPrim_Face,gradUx_Face,gradUy_Face,gradUz_Face&
 #ifdef EDDYVISCOSITY
-                         ,DeltaS,SGS_Ind,Face_xGP&
+                         ,muSGS_Face&
 #endif
                          )
 ! MODULES
@@ -319,23 +319,20 @@ USE MOD_Equation_Vars,ONLY: s43,s23
 USE MOD_Viscosity
 USE MOD_EOS_Vars,     ONLY: cp,Pr
 #ifdef EDDYVISCOSITY
-USE MOD_EddyVisc_Vars,ONLY: PrSGS,eddyViscosity_surf
-USE MOD_EddyVisc_Vars,ONLY: EddyViscType 
+USE MOD_EddyVisc_Vars,ONLY: PrSGS
 #endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)                                :: Nloc                                      !< Polynomial degree of input
                                                                                                !< solution
-REAL,INTENT(IN)                                   :: UPrim_Face( PP_nVarPrim,0:Nloc,0:PP_NlocZ)    !< U_Face(iVar,i,j,k)
-REAL,INTENT(IN)                                   :: gradUx_Face(PP_nVarPrim,0:Nloc,0:PP_NlocZ)    !< gradUx_Face(iVar,j,k)
-REAL,INTENT(IN)                                   :: gradUy_Face(PP_nVarPrim,0:Nloc,0:PP_NlocZ)    !< gradUy_Face(iVar,i,k)
-REAL,INTENT(IN)                                   :: gradUz_Face(PP_nVarPrim,0:Nloc,0:PP_NlocZ)    !< gradUz_Face(iVar,i,j)
-REAL,DIMENSION(PP_nVar,0:Nloc,0:PP_NlocZ),INTENT(OUT) :: f,g,h                                     !< Cartesian fluxes (iVar,i,j)
+REAL,INTENT(IN)                                   :: UPrim_Face( PP_nVarPrim,0:Nloc,0:PP_NlocZ)!< U_Face(iVar,i,j,k)
+REAL,INTENT(IN)                                   :: gradUx_Face(PP_nVarPrim,0:Nloc,0:PP_NlocZ)!< gradUx_Face(iVar,j,k)
+REAL,INTENT(IN)                                   :: gradUy_Face(PP_nVarPrim,0:Nloc,0:PP_NlocZ)!< gradUy_Face(iVar,i,k)
+REAL,INTENT(IN)                                   :: gradUz_Face(PP_nVarPrim,0:Nloc,0:PP_NlocZ)!< gradUz_Face(iVar,i,j)
+REAL,DIMENSION(PP_nVar,0:Nloc,0:PP_NlocZ),INTENT(OUT) :: f,g,h                                 !< Cartesian fluxes (iVar,i,j)
 #ifdef EDDYVISCOSITY 
-REAL,INTENT(IN)     :: SGS_Ind(2,0:Nloc,0:PP_NlocZ)     !< Indicator for eddy viscosity
-REAL,INTENT(IN)     :: DeltaS                     !< Filter width for eddy viscosity
-REAL,INTENT(IN)     :: Face_xGP(3,0:Nloc,0:PP_NlocZ)  !< Gauss-point coordinates on face
+REAL,INTENT(IN)     :: muSGS_Face(1,0:Nloc,0:PP_NlocZ)
 #endif 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -349,9 +346,6 @@ REAL                :: v3
 REAL                :: gradT3
 #endif 
 INTEGER             :: i,j
-#ifdef EDDYVISCOSITY 
-REAL                :: muSGS 
-#endif 
 !==================================================================================================================================
 DO j=0,PP_NlocZ ; DO i=0,Nloc
   prim = UPrim_Face(:,i,j)
@@ -365,16 +359,8 @@ DO j=0,PP_NlocZ ; DO i=0,Nloc
   ! In previous versions gradients of conservative variables had been used, see Git commit b984f2895121e236ce24c149ad15615180995b00
   ! gradients of primitive variables are directly available gradU = (/ drho, dv1, dv2, dv3, dp, dT /)
 #ifdef EDDYVISCOSITY
-  IF(eddyViscType.NE.1) THEN
-    muSGS=SGS_Ind(2,i,j)
-  ELSE
-    CALL eddyViscosity_surf(gradUx_Face(2,i,j),gradUy_Face(3,i,j),gradUz_Face(4,i,j)&
-                           ,gradUy_Face(2,i,j),gradUz_Face(2,i,j),gradUx_Face(3,i,j)&
-                           ,gradUz_Face(3,i,j),gradUx_Face(4,i,j),gradUy_Face(4,i,j)&
-                           ,UPrim_Face(1,i,j),DeltaS,SGS_Ind(1,i,j),muSGS,Face_xGP(2,i,j))
-  END IF
-  muS = muS + muSGS
-  lambda = lambda + muSGS*cp/PrSGS
+  muS = muS + muSGS_Face(1,i,j)
+  lambda = lambda + muSGS_Face(1,i,j)*cp/PrSGS
 #endif
 
 #if PP_dim==3
