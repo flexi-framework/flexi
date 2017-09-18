@@ -173,6 +173,10 @@ NodeCoords(3,:,:,:,:) = 0.
 interpolateFromTree=.FALSE.
 IF(isMortarMesh) interpolateFromTree=GETLOGICAL('interpolateFromTree','.TRUE.')
 IF(interpolateFromTree)THEN
+#if (PP_dim == 2)
+  CALL CollectiveStop(__STAMP__,&
+      "interpolateFromTree not supported in 2D.")
+#endif
   coords=>TreeCoords
   NGeo=NGeoTree
   nElemsLoc=nTrees
