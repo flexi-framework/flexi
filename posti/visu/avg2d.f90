@@ -384,7 +384,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE HDF5
 USE MOD_HDF5_Output,    ONLY: GatheredWriteArray,WriteAttribute,WriteHeader,WriteAdditionalElemData
-USE MOD_IO_HDF5,        ONLY: OpenDataFile,CloseDataFile,AddToElemData,ElementOut
+USE MOD_IO_HDF5,        ONLY: OpenDataFile,CloseDataFile,AddToElemData
 USE MOD_HDF5_Input,     ONLY: File_ID
 USE MOD_Output_Vars,    ONLY: ProjectName
 USE MOD_Visu_Vars,      ONLY: Elem_IJK,VarnamesAll,mapAllVarsToVisuVars,nVarAll
@@ -394,6 +394,7 @@ USE MOD_Mesh_Vars,      ONLY: nGlobalElems,offsetElem,nElems
 USE MOD_Visu_Vars,      ONLY: NCalc_FV
 USE MOD_ChangeBasis,    ONLY: ChangeBasis2D
 USE MOD_FV_Vars,        ONLY: FV_Elems
+USE MOD_IO_HDF5,        ONLY: ElementOut
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
