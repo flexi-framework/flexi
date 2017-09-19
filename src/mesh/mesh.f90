@@ -332,7 +332,7 @@ IF (meshMode.GT.0) THEN
 END IF
 
 SDEALLOCATE(NodeCoords)
-!SDEALLOCATE(dXCL_N)!we need this for the dynamic smagorinsky model, shouldn't be to bad to just keep it allways
+SDEALLOCATE(dXCL_N)
 SDEALLOCATE(Ja_Face)
 SDEALLOCATE(TreeCoords)
 SDEALLOCATE(xiMinMax)
@@ -449,7 +449,7 @@ INTEGER,INTENT(IN) :: meshMode
 ! LOCAL VARIABLES
 INTEGER            :: i,j,iSide
 REAL               :: tmp(3,0:PP_N,0:PP_N,0:FV_ENABLED),zlength
-#if FV_ENABLED
+#if FV_ENABLED && FV_RECONSTRUCT
 REAL               :: tmpFV(0:PP_N,0:PP_N,3)
 #endif
 !==================================================================================================================================

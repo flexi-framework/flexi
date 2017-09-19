@@ -136,6 +136,15 @@ DO iElem=1,nElems
   END IF
 #endif /*FV_ENABLED*/
 END DO ! iElem=1,nElems
+
+#ifdef DEBUG
+! ===============================================================================
+! Following dummy calls do suppress compiler warnings of unused Riemann-functions
+! ===============================================================================
+IF (0.EQ.1) THEN
+  gradUz = 0.
+END IF
+#endif
 END SUBROUTINE Lifting_VolInt_Nonconservative
 
 
@@ -259,6 +268,16 @@ DO i=1,nDOFElem
   UPrim_h(:,i) = Mh(dir,i)*UPrim(:,i)
 #endif
 END DO ! i
+
+#ifdef DEBUG
+! ===============================================================================
+! Following dummy calls do suppress compiler warnings of unused Riemann-functions
+! ===============================================================================
+IF (0.EQ.1) THEN
+  WRITE (*,*) Mh
+  UPrim_h = 0.
+END IF
+#endif
 END SUBROUTINE Lifting_Metrics
 
 

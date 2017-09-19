@@ -188,6 +188,9 @@ IF (FLEXI_PARABOLIC)
   ENDIF()
 ELSE()
   ADD_DEFINITIONS(-DPARABOLIC=0)
+  IF (FLEXI_EDDYVISCOSITY)
+    MESSAGE(ERROR " FLEXI_EDDYVISCOSITY is enabled, please enable PARABOLIC or disable FLEXI_EDDYVISCOSITY")
+  ENDIF()
 ENDIF()
 
 # =========================================================================

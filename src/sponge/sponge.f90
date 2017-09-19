@@ -29,7 +29,6 @@ SAVE
 
 INTEGER,PARAMETER :: SPONGESHAPE_RAMP        = 1
 INTEGER,PARAMETER :: SPONGESHAPE_CYLINDRICAL = 2
-INTEGER,PARAMETER :: SPONGESHAPE_ELLIPTICAL  = 3
 
 INTEGER,PARAMETER :: SPONGEBASEFLOW_CONSTANT  = 1
 INTEGER,PARAMETER :: SPONGEBASEFLOW_EXACTFUNC = 2
@@ -70,8 +69,6 @@ CALL prms%CreateIntFromStringOption( 'SpongeShape',    "Set shape of sponge: (1)
                                                        " cylindrical", multiple=.TRUE.)
 CALL addStrListEntry('SpongeShape','ramp',       SPONGESHAPE_RAMP)
 CALL addStrListEntry('SpongeShape','cylindrical',SPONGESHAPE_CYLINDRICAL)
-!CALL prms%CreateIntOption( 'SpongeShape',    "Set shape of sponge: (1) ramp : cartesian / vector-aligned, (2) "//&
-!                                                       " cylindrical", multiple=.TRUE.)
 CALL prms%CreateRealOption(   'SpongeDistance', "Length of sponge ramp. The sponge will have maximum strength at the end "//&
                                                 "of the ramp and after that point.", multiple=.TRUE.)
 CALL prms%CreateRealArrayOption('xStart',       "Coordinates of start postion of sponge ramp (SpongeShape=ramp) "//&
@@ -297,7 +294,6 @@ ALLOCATE(SpAxis(3,nSpongeRamps))
 DO iRamp=1,nSpongeRamps
   ! readin geometrical parameters of the sponge ramp
   SpongeShape(iRamp)=GETINTFROMSTR('SpongeShape')
-!  SpongeShape(iRamp)=GETINT('SpongeShape')
   ! Readin of the sponge Ramp thickness  
   SpDistance(iRamp) = GETREAL('SpongeDistance')
   ! start Sponge Ramp at xStart 

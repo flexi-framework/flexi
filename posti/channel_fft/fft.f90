@@ -73,7 +73,6 @@ IMPLICIT NONE
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                         :: iSample,iVar,iRP,iStart,iEnd
 !===================================================================================================================================
 ! Read in user-defined parameters
 NCalc  = GETINT('NCalc')         ! Polynomial degree to perfrom DFFT on
@@ -126,7 +125,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_FFT_Vars
 USE MOD_ChangeBasis           ,ONLY: ChangeBasis3D
-USE MOD_Mesh_Vars             ,ONLY: Elem_IJK,nElems_IJK,Elem_xGP,nGlobalElems
+USE MOD_Mesh_Vars             ,ONLY: Elem_IJK,Elem_xGP,nGlobalElems
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -169,7 +168,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_FFT_Vars
 USE MOD_ChangeBasis                 ,ONLY: ChangeBasis3D
-USE MOD_Mesh_Vars                   ,ONLY: Elem_IJK,nElems_IJK,Elem_xGP,nGlobalElems
+USE MOD_Mesh_Vars                   ,ONLY: Elem_IJK,nGlobalElems
 USE MOD_DG_Vars                     ,ONLY: U
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -289,9 +288,9 @@ ELSE
   out(nSamples_spec)=2.*(ABS(out(nSamples_spec))/REAL(nSamples))**2
 END IF
 !add squared amplitude 
-U_hat(2:nSamples_spec)=U_hat(2:nSamples_spec)+out(2:nSamples_spec)
+U_hat(2:nSamples_spec)=REAL(U_hat(2:nSamples_spec)+out(2:nSamples_spec))
 !sum of mean square into first index
-U_hat(1)=U_hat(1)+SUM(out(1:nSamples_spec))
+U_hat(1)=REAL(U_hat(1)+SUM(out(1:nSamples_spec)))
 
 END SUBROUTINE FFT
 

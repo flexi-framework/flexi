@@ -40,7 +40,6 @@ END INTERFACE
 ! GLOBAL VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
 INTEGER                                      :: eddyViscType          !< type of eddy viscosity
-CHARACTER(LEN=255)                           :: WallDistFile
 PROCEDURE(EddyViscInt),POINTER               :: eddyViscosity         !< pointer to routine for computing volume eddy viscosity
 PROCEDURE(FinalizeEddyViscosityInt),POINTER  :: FinalizeEddyViscosity !< pointer tofinalize routine 
 

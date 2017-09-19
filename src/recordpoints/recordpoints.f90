@@ -328,6 +328,15 @@ DO iRP=1,nRP
   CALL LagrangeInterpolationPolys(xi_RP(3,iRP),PP_N,xGP,wBary,L_zeta_RP(:,iRP))
 #endif
 END DO
+
+#ifdef DEBUG
+! ===============================================================================
+! Following dummy calls do suppress compiler warnings of unused Riemann-functions
+! ===============================================================================
+IF (0.EQ.1) THEN
+  L_zeta_RP = 0.
+END IF
+#endif
 END SUBROUTINE InitRPBasis
 
 

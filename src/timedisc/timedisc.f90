@@ -35,9 +35,19 @@ END INTERFACE
 
 PUBLIC :: InitTimeDisc,FinalizeTimeDisc
 PUBLIC :: TimeDisc
+PUBLIC :: DefineParametersTimeDisc
+
+#ifdef DEBUG
+! Add dummy interfaces to unused subroutines to suppress compiler warnings.
+INTERFACE DUMMY_TimstepStepByLSERKW2
+  MODULE PROCEDURE TimeStepByLSERKW2
+END INTERFACE
+INTERFACE DUMMY_TimstepStepByLSERKK3
+  MODULE PROCEDURE TimeStepByLSERKK3
+END INTERFACE
+#endif /* DEBUG */
 !==================================================================================================================================
 
-PUBLIC::DefineParametersTimeDisc
 CONTAINS
 
 !==================================================================================================================================

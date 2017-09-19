@@ -55,9 +55,20 @@ PUBLIC :: InitFilter
 PUBLIC :: Filter_pointer
 PUBLIC :: Filter_Selective
 PUBLIC :: FinalizeFilter
+PUBLIC :: DefineParametersFilter
 !==================================================================================================================================
 
-PUBLIC::DefineParametersFilter
+#ifdef DEBUG
+#if EQNSYSNR==2
+! Add dummy interfaces to unused subroutines to suppress compiler warnings.
+INTERFACE DUMMY_Filter
+  MODULE PROCEDURE Filter
+END INTERFACE
+INTERFACE DUMMY_Filter_LAF
+  MODULE PROCEDURE Filter_LAF
+END INTERFACE
+#endif
+#endif
 CONTAINS
 
 !==================================================================================================================================
@@ -97,7 +108,6 @@ USE MOD_Interpolation     ,ONLY:GetVandermonde
 USE MOD_Interpolation_Vars,ONLY:InterpolationInitIsDone,Vdm_Leg,sVdm_Leg,NodeType
 USE MOD_ChangeBasis       ,ONLY:ChangeBasis3D
 USE MOD_ReadInTools       ,ONLY:GETINT,GETREAL,GETREALARRAY,GETLOGICAL,GETINTFROMSTR
-USE MOD_Mesh_Vars         ,ONLY:nElems,sJ
 USE MOD_Interpolation     ,ONLY:GetVandermonde
 USE MOD_IO_HDF5           ,ONLY:AddToElemData
 #if EQNSYSNR==2
@@ -454,13 +464,13 @@ USE MOD_Globals
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(INOUT)  :: U_in(NVar,0:PP_N,0:PP_N,0:PP_N) !< solution vector to be filtered
-REAL,INTENT(IN)     :: FilterMat(0:PP_N,0:PP_N)                  !< filter matrix to be used
-INTEGER,INTENT(IN)     :: NVar
-LOGICAL, INTENT(IN)    :: filter_ind(:)
+REAL,INTENT(INOUT)  :: U_in(NVar,0:PP_N,0:PP_N,0:PP_N) ! < solution vector to be filtered
+REAL,INTENT(IN)     :: FilterMat(0:PP_N,0:PP_N)        ! < filter matrix to be used
+INTEGER,INTENT(IN)  :: NVar
+LOGICAL, INTENT(IN) :: filter_ind(:)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER             :: i,j,k,l
+INTEGER                                   :: i,j,k,l
 REAL,DIMENSION(NVar,0:PP_N,0:PP_N,0:PP_N) :: U_Xi,U_Eta
 !==================================================================================================================================
 ! Perform filtering
@@ -473,7 +483,7 @@ IF(filter_ind(1)) THEN
     DO j=0,PP_N
       DO i=0,PP_N
         DO l=0,PP_N
-          U_Xi(:,i,j,k)       = U_Xi(:,i,j,k)       + FilterMat(i,l)*U_in(:,l,j,k)
+          U_Xi(:,i,j,k) = U_Xi(:,i,j,k) + FilterMat(i,l)*U_in(:,l,j,k)
         END DO !l
       END DO !i
     END DO !j
@@ -487,7 +497,7 @@ IF(filter_ind(2)) THEN
     DO j=0,PP_N
       DO i=0,PP_N
         DO l=0,PP_N
-          U_Eta(:,i,j,k)      = U_Eta(:,i,j,k)      + FilterMat(j,l)*U_Xi(:,i,l,k)
+          U_Eta(:,i,j,k) = U_Eta(:,i,j,k) + FilterMat(j,l)*U_Xi(:,i,l,k)
         END DO !l
       END DO !i
     END DO !j

@@ -44,9 +44,6 @@ CALL prms%SetSection("EddyViscParameters")
 CALL prms%CreateRealOption(   'CS',       "EddyViscParameters constant")
 CALL prms%CreateRealOption(   'PrSGS',    "Turbulent Prandtl number",'0.7')
 CALL prms%CreateLogicalOption('VanDriest',"Van Driest damping, only for channel flow!", '.FALSE.')
-CALL prms%CreateIntOption(    'N_Testfilter',        "Number of basis for the test filter")
-CALL prms%CreateStringOption( 'WallDistFile',        "File containing the wall distance",'noFile')
-CALL prms%CreateRealOption(   'WallDistanceTreshold',"Treshold for zonal model filtering",'0.0')
 END SUBROUTINE DefineParametersEddyVisc
 
 !===================================================================================================================================
@@ -60,10 +57,10 @@ USE MOD_EddyVisc_Vars
 USE MOD_Smagorinsky
 USE MOD_DefaultEddyVisc
 USE MOD_SigmaModel
-USE MOD_Mesh_Vars  ,ONLY:nElems,nSides
-USE MOD_ReadInTools,ONLY: GETINTFROMSTR, GETREAL
-USE MOD_IO_HDF5    ,ONLY: AddToFieldData, AddToElemData
-USE MOD_EOS_Vars, ONLY: mu0
+USE MOD_Mesh_Vars       ,ONLY: nElems,nSides
+USE MOD_ReadInTools     ,ONLY: GETINTFROMSTR, GETREAL
+USE MOD_IO_HDF5         ,ONLY: AddToFieldData, AddToElemData
+USE MOD_EOS_Vars        ,ONLY: mu0
 !===================================================================================================================================
 eddyViscType = GETINTFROMSTR('eddyViscType')
 
@@ -71,12 +68,12 @@ eddyViscType = GETINTFROMSTR('eddyViscType')
 ALLOCATE(DeltaS(nElems))
 DeltaS=0.
 ALLOCATE(muSGS(1,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+muSGS = 0.
 ALLOCATE(muSGS_master(1,0:PP_N,0:PP_NZ,nSides))
 ALLOCATE(muSGS_slave (1,0:PP_N,0:PP_NZ,nSides))
 muSGS_master=0.
 muSGS_slave =0.
 ALLOCATE(muSGSmax(nElems))
-muSGS = 0.
 muSGSmax=8.*mu0
 ! Turbulent Prandtl number
 PrSGS  = GETREAL('PrSGS','0.7')
@@ -84,15 +81,15 @@ PrSGS  = GETREAL('PrSGS','0.7')
 SELECT CASE(eddyViscType)
   CASE(0) ! No eddy viscosity model, set function pointers to dummy subroutines which do nothing
     ! Nothing to init
-    eddyViscosity          => DefaultEddyVisc
+    eddyViscosity         => DefaultEddyVisc
     FinalizeEddyViscosity => FinalizeDefaultEddyViscosity
   CASE(1) !Smagorinsky with optional Van Driest damping for channel flow
     CALL InitSmagorinsky()
-    eddyViscosity          => Smagorinsky
+    eddyViscosity         => Smagorinsky
     FinalizeEddyViscosity => Finalizesmagorinsky
   CASE(4) !sigma Model 2015
     CALL InitSigmaModel()
-    eddyViscosity          => SigmaModel
+    eddyViscosity         => SigmaModel
     FinalizeEddyViscosity => FinalizeSigmaModel
   CASE DEFAULT
     CALL CollectiveStop(__STAMP__,&
