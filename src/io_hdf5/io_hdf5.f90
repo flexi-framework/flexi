@@ -188,8 +188,10 @@ INTEGER,INTENT(IN),OPTIONAL   :: userblockSize  !< size of the file to be prepen
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER(HID_T)                :: Plist_ID
-INTEGER                       :: comm
 INTEGER(HSIZE_T)              :: userblockSize_loc, tmp, tmp2
+#if USE_MPI
+INTEGER                       :: comm
+#endif
 !==================================================================================================================================
 LOGWRITE(*,'(A)')'  OPEN HDF5 FILE "',TRIM(FileString),'" ...'
 

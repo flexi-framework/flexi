@@ -39,6 +39,10 @@ INTERFACE ChangeBasis3D
   MODULE PROCEDURE ChangeBasis3D_singleVar
 END INTERFACE
 
+INTERFACE ChangeBasis2D_XYZ
+  MODULE PROCEDURE ChangeBasis2D_XYZ
+END INTERFACE
+
 INTERFACE ChangeBasis2D
   MODULE PROCEDURE ChangeBasis2D
   MODULE PROCEDURE ChangeBasis2D_singleVar
@@ -51,6 +55,7 @@ END INTERFACE
 
 PUBLIC :: ChangeBasis3D_XYZ
 PUBLIC :: ChangeBasis3D
+PUBLIC :: ChangeBasis2D_XYZ
 PUBLIC :: ChangeBasis2D
 PUBLIC :: ChangeBasis1D
 !==================================================================================================================================

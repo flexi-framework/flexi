@@ -472,9 +472,9 @@ INTEGER           ,DIMENSION(PRODUCT(nVal)),OPTIONAL,INTENT(OUT),TARGET :: IntAr
 CHARACTER(LEN=255),DIMENSION(PRODUCT(nVal)),OPTIONAL,INTENT(OUT),TARGET :: StrArray     !< only if real string shall be read
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER(HID_T)                                                   :: DSet_ID,Type_ID,MemSpace,FileSpace,PList_ID
-INTEGER(HSIZE_T)                                                 :: Offset(Rank),Dimsf(Rank)
-TYPE(C_PTR)                                                      :: buf
+INTEGER(HID_T)                 :: DSet_ID,Type_ID,MemSpace,FileSpace,PList_ID
+INTEGER(HSIZE_T)               :: Offset(Rank),Dimsf(Rank)
+TYPE(C_PTR)                    :: buf
 !==================================================================================================================================
 LOGWRITE(*,'(A,I1.1,A,A,A)')'    READ ',Rank,'D ARRAY "',TRIM(ArrayName),'"'
 Dimsf=nVal
@@ -496,31 +496,21 @@ CALL H5PCREATE_F(H5P_DATASET_XFER_F, PList_ID, iError)
 ! Set property list to collective dataset read
 CALL H5PSET_DXPL_MPIO_F(PList_ID, H5FD_MPIO_COLLECTIVE_F, iError)
 #endif
-CALL H5DGET_TYPE_F(DSet_ID, Type_ID, iError)
+
+IF(PRESENT(RealArray)) Type_ID=H5T_NATIVE_DOUBLE
+IF(PRESENT(IntArray))  Type_ID=H5T_NATIVE_INTEGER
+IF(PRESENT(StrArray))  CALL H5DGET_TYPE_F(DSet_ID, Type_ID, iError)
+
+buf=C_NULL_PTR
+IF(PRESENT(RealArray)) buf=C_LOC(RealArray)
+IF(PRESENT(IntArray))  buf=C_LOC(IntArray)
+IF(PRESENT(StrArray))  buf=C_LOC(StrArray(1))
 
 ! Read the data
-#ifdef HDF5_F90 /* HDF5 compiled without fortran2003 flag */
-IF(PRESENT(RealArray))THEN
-  CALL H5DREAD_F(DSet_ID,Type_ID,RealArray,Dimsf,&
-                 iError,mem_space_id=MemSpace,file_space_id=FileSpace,xfer_prp=PList_ID)
-END IF
-IF(PRESENT(IntArray))THEN
-  CALL H5DREAD_F(DSet_ID,Type_ID,IntArray,Dimsf,&
-                 iError,mem_space_id=MemSpace,file_space_id=FileSpace,xfer_prp=PList_ID)
-END IF
-IF(PRESENT(StrArray))THEN
-  CALL H5DREAD_F(DSet_ID,Type_ID,StrArray,Dimsf,&
-                 iError,mem_space_id=MemSpace,file_space_id=FileSpace,xfer_prp=PList_ID)
-END IF
-#else /*HDF5_F90*/
-IF(PRESENT(RealArray))    buf=C_LOC(RealArray)
-IF(PRESENT(IntArray))     buf=C_LOC(IntArray)
-IF(PRESENT(StrArray))     buf=C_LOC(StrArray(1))
 CALL H5DREAD_F(DSet_ID,Type_ID,buf,iError,mem_space_id=MemSpace,file_space_id=FileSpace,xfer_prp=PList_ID)
-#endif /*HDF5_F90*/
 
 ! Close the datatype, property list, dataspaces and dataset.
-CALL H5TCLOSE_F(Type_ID, iError)
+IF(PRESENT(StrArray)) CALL H5TCLOSE_F(Type_ID, iError)
 CALL H5PCLOSE_F(PList_ID,iError)
 CALL H5SCLOSE_F(FileSpace,iError)
 CALL H5DCLOSE_F(DSet_ID, iError)
@@ -557,65 +547,58 @@ LOGICAL           ,INTENT(OUT),OPTIONAL        :: LogicalScalar     !< Scalar lo
 ! LOCAL VARIABLES
 INTEGER(HID_T)                 :: Attr_ID,Type_ID,Loc_ID
 INTEGER(HSIZE_T), DIMENSION(1) :: Dimsf
-INTEGER                        :: i
 INTEGER,TARGET                 :: IntToLog
 CHARACTER(LEN=255),TARGET      :: StrTmp(1)
 TYPE(C_PTR)                    :: buf
 !==================================================================================================================================
 LOGWRITE(*,*)' READ ATTRIBUTE "',TRIM(AttribName),'" FROM HDF5 FILE...'
-StrTmp=''
 Dimsf(1)=nVal
 Loc_ID=Loc_ID_in
 IF(PRESENT(DatasetName))THEN
   ! Open dataset
   IF(TRIM(DataSetName).NE.'') CALL H5DOPEN_F(File_ID, TRIM(DatasetName),Loc_ID, iError)
 END IF
-! Create scalar data space for the attribute.
+
 ! Create the attribute for group Loc_ID.
 CALL H5AOPEN_F(Loc_ID, TRIM(AttribName), Attr_ID, iError)
 
 IF(iError.NE.0) &
   CALL Abort(__STAMP__,'Attribute '//TRIM(AttribName)//' does not exist.')
 
-CALL H5AGET_TYPE_F(Attr_ID, Type_ID, iError)
-
-! Nullify
 IF(PRESENT(RealArray))     RealArray=0.
 IF(PRESENT(RealScalar))    RealScalar=0.
 IF(PRESENT(IntArray))      IntArray=0
 IF(PRESENT(IntScalar))     IntScalar=0
 IF(PRESENT(LogicalScalar)) LogicalScalar=.FALSE.
-IF(PRESENT(StrScalar))     StrScalar=''
-IF(PRESENT(StrArray))THEN
-  DO i=1,nVal
-    StrArray(i)=''
-  END DO
+IF(PRESENT(StrScalar))THEN
+  StrScalar=''
+  StrTmp(1)=''
 END IF
+IF(PRESENT(StrArray))      StrArray(:)=''
+
+IF(PRESENT(RealArray))     Type_ID=H5T_NATIVE_DOUBLE
+IF(PRESENT(RealScalar))    Type_ID=H5T_NATIVE_DOUBLE
+IF(PRESENT(IntArray))      Type_ID=H5T_NATIVE_INTEGER
+IF(PRESENT(IntScalar))     Type_ID=H5T_NATIVE_INTEGER
+IF(PRESENT(LogicalScalar)) Type_ID=H5T_NATIVE_INTEGER
+IF(PRESENT(StrScalar).OR.PRESENT(StrArray)) CALL H5AGET_TYPE_F(Attr_ID, Type_ID, iError)
+
+buf=C_NULL_PTR
+IF(PRESENT(RealArray))     buf=C_LOC(RealArray)
+IF(PRESENT(RealScalar))    buf=C_LOC(RealScalar)
+IF(PRESENT(IntArray))      buf=C_LOC(IntArray)
+IF(PRESENT(IntScalar))     buf=C_LOC(IntScalar)
+IF(PRESENT(LogicalScalar)) buf=C_LOC(IntToLog)
+IF(PRESENT(StrScalar))     buf=C_LOC(StrTmp(1))
+IF(PRESENT(StrArray))      buf=C_LOC(StrArray(1))
 
 ! Read the attribute data.
-#ifdef HDF5_F90 /* HDF5 compiled without fortran2003 flag */
-IF(PRESENT(RealArray))      CALL H5AREAD_F(Attr_ID, Type_ID, RealArray,     Dimsf, iError)
-IF(PRESENT(RealScalar))     CALL H5AREAD_F(Attr_ID, Type_ID, RealScalar,    Dimsf, iError)
-IF(PRESENT(IntArray))       CALL H5AREAD_F(Attr_ID, Type_ID, IntArray,  Dimsf, iError)
-IF(PRESENT(IntScalar))      CALL H5AREAD_F(Attr_ID, Type_ID, IntScalar, Dimsf, iError)
-IF(PRESENT(LogicalScalar))  CALL H5AREAD_F(Attr_ID, Type_ID, IntToLog,      Dimsf, iError)
-IF(PRESENT(StrScalar))      CALL H5AREAD_F(Attr_ID, Type_ID, StrScalar,     Dimsf, iError)
-IF(PRESENT(StrArray))       CALL H5AREAD_F(Attr_ID, Type_ID, StrArray,      Dimsf, iError)
-#else /* HDF5_F90 */
-StrTmp(1) = ''
-IF(PRESENT(RealArray))      buf=C_LOC(RealArray)
-IF(PRESENT(RealScalar))     buf=C_LOC(RealScalar)
-IF(PRESENT(IntArray))       buf=C_LOC(IntArray)
-IF(PRESENT(IntScalar))      buf=C_LOC(IntScalar)
-IF(PRESENT(LogicalScalar))  buf=C_LOC(IntToLog)
-IF(PRESENT(StrScalar))      buf=C_LOC(StrTmp(1))
-IF(PRESENT(StrArray))       buf=C_LOC(StrArray(1))
 CALL H5AREAD_F(Attr_ID, Type_ID, buf, iError)
-IF(PRESENT(StrScalar))      StrScalar=StrTmp(1)
-#endif /* HDF5_F90 */
-IF(PRESENT(LogicalScalar)) LogicalScalar=(IntToLog.EQ.1)
 
-CALL H5TCLOSE_F(Type_ID, iError)
+IF(PRESENT(LogicalScalar)) LogicalScalar=(IntToLog.EQ.1)
+IF(PRESENT(StrScalar))     StrScalar=StrTmp(1)
+IF(PRESENT(StrScalar).OR.PRESENT(StrArray)) CALL H5TCLOSE_F(Type_ID, iError)
+
 ! Close the attribute.
 CALL H5ACLOSE_F(Attr_ID, iError)
 IF(Loc_ID.NE.Loc_ID_in)THEN

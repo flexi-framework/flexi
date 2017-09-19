@@ -86,6 +86,23 @@ INTERFACE
   SUBROUTINE setstacksizeunlimited() BIND(C)
   END SUBROUTINE setstacksizeunlimited
 END INTERFACE
+
+INTERFACE str2real
+  MODULE PROCEDURE str2real
+END INTERFACE
+
+INTERFACE str2int
+  MODULE PROCEDURE str2int
+END INTERFACE
+
+INTERFACE str2logical
+  MODULE PROCEDURE str2logical
+END INTERFACE
+
+INTERFACE GetParameterFromFile
+  MODULE PROCEDURE GetParameterFromFile
+END INTERFACE
+
 PUBLIC :: setstacksizeunlimited
 
 !==================================================================================================================================
@@ -163,13 +180,15 @@ CHARACTER(LEN=*)                  :: CompTime        !< Compilation time
 CHARACTER(LEN=*)                  :: ErrorMessage    !< Error message
 INTEGER,OPTIONAL                  :: IntInfo         !< Error info (integer)
 REAL,OPTIONAL                     :: RealInfo        !< Error info (real)
-INTEGER,OPTIONAL                  :: ErrorCode       !< Error info (integer)
+INTEGER,OPTIONAL                  :: ErrorCode       !< MPI Error info (integer)
 !   There is no way back!
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=50)                 :: IntString,RealString
 INTEGER                           :: errOut          ! Output of MPI_ABORT
+#if USE_MPI
 INTEGER                           :: signalout       ! Output errorcode
+#endif
 !==================================================================================================================================
 IntString = ""
 RealString = ""
@@ -210,6 +229,172 @@ IF (myRank.EQ.0) THEN
 END IF 
 END SUBROUTINE PrintWarning
 
+!==================================================================================================================================
+!> Convert a String to an Integer
+!==================================================================================================================================
+SUBROUTINE str2int(str,int_number,stat)
+!===================================================================================================================================
+!===================================================================================================================================
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+CHARACTER(len=*),INTENT(IN) :: str
+INTEGER,INTENT(OUT)         :: int_number
+INTEGER,INTENT(OUT)         :: stat
+!===================================================================================================================================
+READ(str,*,IOSTAT=stat)  int_number
+END SUBROUTINE str2int
+
+
+!==================================================================================================================================
+!> Convert a String to a REAL
+!==================================================================================================================================
+SUBROUTINE str2real(str,real_number,stat)
+!===================================================================================================================================
+!===================================================================================================================================
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+CHARACTER(len=*),INTENT(IN) :: str
+REAL,INTENT(OUT)            :: real_number
+INTEGER,INTENT(OUT)         :: stat
+!===================================================================================================================================
+READ(str,*,IOSTAT=stat)  real_number
+END SUBROUTINE str2real
+
+
+!==================================================================================================================================
+!> Convert a String to a LOGICAL
+!==================================================================================================================================
+SUBROUTINE str2logical(str,logical_number,stat)
+!===================================================================================================================================
+!===================================================================================================================================
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+CHARACTER(len=*),INTENT(IN) :: str
+LOGICAL,INTENT(OUT)         :: logical_number
+INTEGER,INTENT(OUT)         :: stat
+!===================================================================================================================================
+READ(str,*,IOSTAT=stat)  logical_number
+END SUBROUTINE str2logical
+
+
+!==================================================================================================================================
+!> read compile flags from a specified file
+!> example line in "configuration.cmake": SET(BOLTZPLATZ_EQNSYSNAME "maxwell" CACHE STRING "Used equation system")
+!> ParameterName: timestep
+!> output: 0.1
+!> Type of Msg: [G]et[P]arameter[F]rom[File] -> GPFF: not ordinary read-in tool
+!==================================================================================================================================
+SUBROUTINE GetParameterFromFile(FileName,ParameterName,output,DelimiterSymbolIN,CommentSymbolIN,DoDisplayInfo)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+CHARACTER(LEN=*),INTENT(IN)          :: FileName          !> e.g. './../laser.inp'
+CHARACTER(LEN=*),INTENT(IN)          :: ParameterName     !> e.g. 'timestep'
+CHARACTER(LEN=*),OPTIONAL,INTENT(IN) :: DelimiterSymbolIN !> e.g. '=' (default is '=')
+CHARACTER(LEN=*),OPTIONAL,INTENT(IN) :: CommentSymbolIN   !> e.g. '#' (default is '!')
+CHARACTER(LEN=*),INTENT(INOUT)       :: output            !> e.g. '0.1'
+LOGICAL,OPTIONAL,INTENT(IN)          :: DoDisplayInfo     !> default is: TRUE
+                                                          !> display DefMsg or errors if the parameter or the file is not found 
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+LOGICAL                              :: ExistFile         !> file exists=.true., file does not exist=.false.
+INTEGER                              :: iSTATUS           !> status
+CHARACTER(LEN=255)                   :: temp,temp2,temp3  !> temp variables for read in of file lines
+CHARACTER(LEN=255)                   :: DelimiterSymbol   !> symbol for commenting out code, e.g., "#" or "!"
+CHARACTER(LEN=255)                   :: CommentSymbol     !> symbol for commenting out code, e.g., "#" or "!"
+INTEGER                              :: ioUnit            !> field handler unit and ??
+INTEGER                              :: IndNum            !> Index Number
+CHARACTER(LEN=8)                     :: DefMsg            !> additional flag like "DEFAULT" or "*CUSTOM"
+!===================================================================================================================================
+IF(PRESENT(DelimiterSymbolIN))THEN
+  DelimiterSymbol=TRIM(ADJUSTL(DelimiterSymbolIN))
+ELSE
+  DelimiterSymbol='='
+END IF
+IF(PRESENT(CommentSymbolIN))THEN
+  CommentSymbol=TRIM(ADJUSTL(CommentSymbolIN))
+ELSE
+  CommentSymbol='!'
+END IF
+output=''
+! read from file
+INQUIRE(File=TRIM(FileName),EXIST=ExistFile)
+IF(ExistFile) THEN
+  OPEN(NEWUNIT=ioUnit,FILE=TRIM(FileName),STATUS="OLD",IOSTAT=iSTATUS,ACTION='READ') 
+  DO
+    READ(ioUnit,'(A)',iostat=iSTATUS)temp
+    IF(ADJUSTL(temp(1:LEN(TRIM(CommentSymbol)))).EQ.TRIM(CommentSymbol)) CYCLE  ! complete line is commented out
+    IF(iSTATUS.EQ.-1)EXIT                           ! end of file is reached
+    IF(LEN(trim(temp)).GT.1)THEN                    ! exclude empty lines
+      IndNum=INDEX(temp,TRIM(ParameterName))        ! e.g. 'timestep'
+      IF(IndNum.GT.0)THEN
+        IF(IndNum-1.GT.0)THEN                       ! check if the parameter name is contained within a substring of another 
+          IF(temp(IndNum-1:IndNum-1).NE.' ')CYCLE   ! parameter, e.g., "timestep" within "fd_timestep" -> skip
+        END IF
+        temp2=TRIM(ADJUSTL(temp(IndNum+LEN(TRIM(ParameterName)):LEN(temp))))
+        IF(DelimiterSymbol.NE.'')THEN               ! demiliting symbol must not be empty
+          IndNum=INDEX(temp2,TRIM(DelimiterSymbol)) ! only use string FROM delimiting symbol +1
+          IF(IndNum.GT.0)THEN
+            temp3=TRIM(ADJUSTL(temp2(IndNum+1:LEN(temp2))))
+            temp2=temp3
+          END IF
+        ELSE
+          ! no nothing?
+        END IF
+        IndNum=INDEX(temp2,TRIM(CommentSymbol)) ! only use string UP TO commenting symbol
+        IF(IndNum.EQ.0)IndNum=LEN(TRIM(temp2))+1
+        output=TRIM(ADJUSTL(temp2(1:IndNum-1)))
+        DefMsg='GPFF'
+        SWRITE(UNIT_StdOut,'(a3,a30,a3,a33,a3,a7,a3)')' | ',TRIM(ParameterName),' | ', output,' | ',TRIM(DefMsg),' | '
+        EXIT ! found the parameter -> exit loop
+      END IF
+    END IF
+  END DO
+  CLOSE(ioUnit)
+  IF(output.EQ.'')THEN
+    IF(PRESENT(DoDisplayInfo))THEN                                                                                                 
+      IF(DoDisplayInfo)THEN                                                                                                        
+        SWRITE(UNIT_stdOut,'(A)') ' SUBROUTINE GetParameterFromFile: Parameter ['//TRIM(ParameterName)//'] not found.'             
+      END IF                                                                                                                       
+    ELSE                                                                                                                           
+      SWRITE(UNIT_stdOut,'(A)') ' SUBROUTINE GetParameterFromFile: Parameter ['//TRIM(ParameterName)//'] not found.'               
+    END IF
+    output='ParameterName does not exist'
+  END IF
+ELSE 
+  IF(PRESENT(DoDisplayInfo))THEN                                                                                                 
+    IF(DoDisplayInfo)THEN                                                                                                        
+      SWRITE(UNIT_stdOut,'(A)') ' SUBROUTINE GetParameterFromFile: File ['//TRIM(FileName)//'] not found.'                       
+    END IF                                                                                                                       
+  ELSE                                                                                                                           
+    SWRITE(UNIT_stdOut,'(A)') ' SUBROUTINE GetParameterFromFile: File ['//TRIM(FileName)//'] not found.'                         
+  END IF
+  output='file does not exist'
+END IF
+END SUBROUTINE GetParameterFromFile
 
 !==================================================================================================================================
 !> Open file for error output

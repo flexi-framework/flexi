@@ -1,8 +1,9 @@
 stages:
   - build
   - error_clean
-  - reggie_short
-  - reggie_long
+  - reggie_checkin
+  - reggie_nightly
+  - reggie_weekly
   - documentation
   - deploy
 
@@ -10,9 +11,7 @@ cache:
   key: "$CI_COMMIT_SHA"
   paths: 
     - build_gnu/    
-    - build_gnu_hdf5/    
     - build_intel/    
-    - build_intel_hdf5/    
     - doc/doxygen/doxygen
     - doc/userguide/userguide.pdf
     - regressioncheck/examples
@@ -47,92 +46,82 @@ clean:
     - rm -rf build_gnu
     - rm -rf build_intel
     - rm -rf share
-    - rm -rf build_gnu_hdf5
-    - rm -rf build_intel_hdf5
   when: on_failure
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
-# Stage "reggie_short": Run most simple reggie with previous builds on check-in
+# Stage "reggie_checkin": Run most simple reggie with previous builds on check-in
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 gnu:
-  stage: reggie_short
+  stage: reggie_checkin
   tags:
     - withmodules
   script:
     - module load env/gnu ; cd build_gnu/bin/ ; ./regressioncheck
 
 intel:
-  stage: reggie_short
+  stage: reggie_checkin
   tags:
     - withmodules
   script:
     - module load env/intel ; cd build_intel/bin/ ; ./regressioncheck
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
-# Stage "reggie_long": Build and run
-#                         - build all specified compile options in "run_basic"
+# Stage "reggie_nightly": Build and run
+#                         - build all specified compile options in "run_basic" with BUILD_HDF5=ON
 #                         - h-p-convtests
-#                         - compile HDF5
 #                      examples on nightly
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 gnu_build_mpi:
-  stage: reggie_long
+  stage: reggie_nightly
   tags:
     - withmodules
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then  module load env/gnu ; cd build_gnu/bin/ ; ./regressioncheck build -1; fi
+    - if [ -n "${DO_NIGHTLY}" ]; then  module load env/gnu ; cd build_gnu/bin/ ; ./regressioncheck build -j; fi
 
 gnu_convtest:
-  stage: reggie_long
+  stage: reggie_nightly
   tags:
     - withmodules
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then module load env/gnu ; cd build_gnu/bin/ ; ./regressioncheck build feature_convtest -1; fi
-
-gnu_build_hdf5:
-  stage: reggie_long
-  tags:
-    - withmodules
-  script:
-    - if [ -n "${DO_NIGHTLY}" ]; then  module load env/gnu ; cd build_gnu/bin/ ; ./regressioncheck build build_freestream_hdf5_mpi_1x -1 ; fi
-
-gnu_build_hdf5_single:
-  stage: reggie_long
-  tags:
-    - withmodules
-  script:
-    - if [ -n "${DO_NIGHTLY}" ]; then  module load env/gnu ; cd build_gnu/bin/ ; ./regressioncheck build build_freestream_hdf5_single_18x -1; fi
+    - if [ -n "${DO_NIGHTLY}" ]; then module load env/gnu ; cd build_gnu/bin/ ; ./regressioncheck build feature_convtest -j; fi
 
 
 
 
 intel_build_mpi:
-  stage: reggie_long
+  stage: reggie_nightly
   tags:
     - withmodules
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel/bin/ ; ./regressioncheck build -1; fi
+    - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel/bin/ ; ./regressioncheck build -j; fi
 
 intel_convtest:
-  stage: reggie_long
+  stage: reggie_nightly
   tags:
     - withmodules
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel/bin/ ; ./regressioncheck build feature_convtest -1; fi
+    - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel/bin/ ; ./regressioncheck build feature_convtest -j; fi
 
-intel_build_hdf5:
-  stage: reggie_long
-  tags:
-    - withmodules
-  script:
-    - if [ -n "${DO_NIGHTLY}" ]; then  module load env/intel ; cd build_intel/bin/ ; ./regressioncheck build build_freestream_hdf5_mpi_1x -1 ; fi
 
-intel_build_hdf5_single:
-  stage: reggie_long
+# ----------------------------------------------------------------------------------------------------------------------------------------------------
+# Stage "reggie_weekly": run 
+#                         - NACA0012 Tutorial 
+#                      examples on weekly
+# ----------------------------------------------------------------------------------------------------------------------------------------------------
+gnu_weekly_mpi:
+  stage: reggie_weekly
   tags:
     - withmodules
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then  module load env/intel ; cd build_intel/bin/ ; ./regressioncheck build build_freestream_hdf5_single_18x -1; fi
+    - if [ -n "${DO_WEEKLY}" ]; then  module load env/gnu ; cd build_gnu/bin/ ; ./regressioncheck tutorials ; fi
+
+intel_weekly_mpi:
+  stage: reggie_weekly
+  tags:
+    - withmodules
+  script:
+    - if [ -n "${DO_WEEKLY}" ]; then module load env/intel ; cd build_intel/bin/ ; ./regressioncheck tutorials ; fi
+
 
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
@@ -141,16 +130,18 @@ intel_build_hdf5_single:
 doxygen:
   stage: documentation
   tags:
-    - pomodoro
+    - withmodules
   script:
-    - cd doc/doxygen ; ./builddoxy.sh
+    - echo 'skipping...'
+    #- cd doc/doxygen ; ./builddoxy.sh
 
 userguide:
   stage: documentation
   tags:
-    - pomodoro
+    - withmodules
   script:
-    - cd doc/userguide ; make
+    - echo 'skipping...'
+    #- cd doc/userguide ; make
 
 
 
@@ -160,7 +151,7 @@ userguide:
 deploy_homepage:
   stage: deploy
   tags:
-    - pomodoro
+    - withmodules
   script:
     - if [ -n "${DO_DEPLOY}" ]; then if [ -d "doc/doxygen/doxygen" ]; then ssh flexi@euler rm -rf homepage/doxygen ; scp -r doc/doxygen/doxygen flexi@euler:~/homepage/. ; fi ; fi
     - if [ -n "${DO_DEPLOY}" ]; then if [ -d "doc/userguide" ]; then scp -r doc/userguide flexi@euler:~/homepage/. ; fi ; fi
@@ -168,7 +159,7 @@ deploy_homepage:
 deploy_github:
   stage: deploy
   tags:
-    - pomodoro
+    - withmodules
   script:
     - if [ -z "${DO_DEPLOY}" ]; then exit ; fi
     - git clone --single-branch git@gitlab.iag.uni-stuttgart.de:flexi/flexi.git flexi_github ; cd flexi_github ; git push --mirror git@github.com:flexi-framework/flexi.git ; cd ../

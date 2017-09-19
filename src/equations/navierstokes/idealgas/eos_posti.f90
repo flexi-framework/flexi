@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -15,7 +15,7 @@
 #include "eos.h"
 
 !==================================================================================================================================
-!> Contains all the routines to calculate the (equation system and EOS dependent) conservative/primitive/derived quantities. 
+!> Contains all the routines to calculate the (equation system and EOS dependent) conservative/primitive/derived quantities.
 !> Dependency table will be filled in here.
 !==================================================================================================================================
 MODULE MOD_EOS_Posti
@@ -59,12 +59,12 @@ CONTAINS
 !> For FV, the conservative variables must be calculated from the primitive ones. In this routine the primitive variables
 !> needed to calculate all conservative variables that are needed are added to the dep table.
 !==================================================================================================================================
-SUBROUTINE AppendNeededPrims(mapDepToCalc,mapDepToCalc_FV,nVarCalc) 
+SUBROUTINE AppendNeededPrims(mapDepToCalc,mapDepToCalc_FV,nVarCalc)
 ! MODULES
 USE MOD_EOS_Posti_Vars
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)      :: mapDepToCalc(nVarDepEOS)
 INTEGER,INTENT(OUT)     :: mapDepToCalc_FV(nVarDepEOS)
 INTEGER,INTENT(OUT)     :: nVarCalc
@@ -95,14 +95,14 @@ END SUBROUTINE AppendNeededPrims
 !> Create a mask for the conservative variables. The mask has a length of nVarDepEOS and is 1 at the index of the
 !> conservative variables and 0 everywhere else.
 !==================================================================================================================================
-FUNCTION GetMaskCons() 
+FUNCTION GetMaskCons()
 ! MODULES
 USE MOD_EOS_Posti_Vars,ONLY: nVarDepEOS,DepTableEOS,DepNames
 USE MOD_Equation_Vars ,ONLY: StrVarNames
 USE MOD_StringTools   ,ONLY: STRICMP
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 INTEGER :: GetMaskCons(nVarDepEOS)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -123,14 +123,14 @@ END FUNCTION GetMaskCons
 !> Create a mask for the primitive variables. The mask has a length of nVarDepEOS and is 1 at the index of the
 !> primitive variables and 0 everywhere else.
 !==================================================================================================================================
-FUNCTION GetMaskPrim() 
+FUNCTION GetMaskPrim()
 ! MODULES
 USE MOD_EOS_Posti_Vars,ONLY: nVarDepEOS,DepTableEOS,DepNames
 USE MOD_Equation_Vars ,ONLY: StrVarNamesPrim
 USE MOD_StringTools   ,ONLY: STRICMP
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 INTEGER :: GetMaskPrim(nVarDepEOS)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -217,7 +217,7 @@ END SUBROUTINE CalcQuantities
 
 
 !==================================================================================================================================
-!> Routine that calculates a single derived quantity called DepName and stores them in UCalc(iVarCalc,:). 
+!> Routine that calculates a single derived quantity called DepName and stores them in UCalc(iVarCalc,:).
 !> The routine either does the calculation in itself if the quantity is simple to calculate or calls helper functions
 !> for the more complex ones.
 !==================================================================================================================================
@@ -230,7 +230,7 @@ USE MOD_EOS_Vars
 USE MOD_StringTools     ,ONLY: LowCase,KEYVALUE
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)                                              :: iVarCalc
 CHARACTER(LEN=255),INTENT(IN)                                   :: DepName
 INTEGER,INTENT(IN)                                              :: nVarCalc
@@ -337,14 +337,14 @@ SELECT CASE(DepName_low)
   CASE("enthalpystagnation")
     UCalc(:,iVarCalc) = UCalc(:,iEnst) + UCalc(:,iPres)/UCalc(:,iDens)
   CASE("entropy")
-    UCalc(:,iVarCalc) = R*(sKappaM1*LOG(UCalc(:,iTemp))) - LOG(UCalc(:,iDens))
+    UCalc(:,iVarCalc) = R*(sKappaM1*LOG(UCalc(:,iTemp)) - LOG(UCalc(:,iDens)))
   CASE("totaltemperature")
     UCalc(:,iVarCalc) = UCalc(:,iTemp)+UCalc(:,iVelM)**2/(2*cp)
   CASE("totalpressure")
     UCalc(:,iVarCalc) = UCalc(:,iPres)+0.5*UCalc(:,iDens)*UCalc(:,iVelM)**2
   CASE("pressuretimederiv")
      CALL FillPressureTimeDeriv(nElems_loc,mapCalcMeshToGlobalMesh,Nloc,UCalc(:,iVarCalc))
-#if PARABOLIC      
+#if PARABOLIC
   CASE("vorticityx")
     UCalc(:,iVarCalc) = FillVorticity(1,nVal,gradUx,gradUy,gradUz)
   CASE("vorticityy")
@@ -369,7 +369,7 @@ SELECT CASE(DepName_low)
   CASE("lambda2")
     UCalc(:,iVarCalc) = FillLambda2(nVal,gradUx,gradUy,gradUz)
   CASE("dilatation")
-    UCalc(:,iVarCalc) = gradUx(2,:) + gradUy(3,:) + gradUz(4,:)  
+    UCalc(:,iVarCalc) = gradUx(2,:) + gradUy(3,:) + gradUz(4,:)
   CASE("qcriterion")
     UCalc(:,iVarCalc) = FillQcriterion(nVal,gradUx,gradUy,gradUz)
   CASE("schlieren")
@@ -378,7 +378,7 @@ SELECT CASE(DepName_low)
 END SELECT
 IF (withVectors) THEN
   SELECT CASE(DepName_low)
-#if PARABOLIC      
+#if PARABOLIC
     CASE("wallfrictionx")
       UCalc(:,iVarCalc) = FillWallFriction(1,nVal,UCalc(:,iTemp),gradUx,gradUy,gradUz,NormVec)
     CASE("wallfrictiony")
@@ -413,7 +413,7 @@ USE MOD_Preproc
 USE MOD_Globals
 USE MOD_Eos_Vars,ONLY:KappaM1
 USE MOD_DG_Vars ,ONLY:Ut,U
-IMPLICIT NONE 
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: nElems_calc
@@ -421,14 +421,14 @@ INTEGER,INTENT(IN) :: indices(nElems_calc)
 INTEGER,INTENT(IN) :: Nloc
 REAL,INTENT(OUT)   :: PressureTDeriv(0:Nloc,0:Nloc,0:Nloc,nElems_calc)
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 INTEGER            :: iElem,iElem_calc,i,j,k
 !==================================================================================================================================
 DO iElem_calc=1,nElems_calc
   iElem = indices(iElem_calc)
   IF (Nloc+1.EQ.(PP_N+1)*2) THEN
     DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
-    
+
       PressureTDeriv(i*2:i*2+1,j*2:j*2+1,k*2:k*2+1,iElem_calc)= &
                                        KappaM1*(Ut(5,i,j,k,iElem)-  1/U(1,i,j,k,iElem)*(  &
                                                  U(2,i,j,k,iElem)*   Ut(2,i,j,k,iElem)  &
@@ -439,7 +439,7 @@ DO iElem_calc=1,nElems_calc
                                                + U(3,i,j,k,iElem)*    U(3,i,j,k,iElem)   &
                                                + U(4,i,j,k,iElem)*    U(4,i,j,k,iElem)))
     END DO; END DO; END DO! i,j,k=0,PP_N
-  ELSEIF (Nloc.EQ.PP_N) THEN 
+  ELSEIF (Nloc.EQ.PP_N) THEN
     PressureTDeriv(:,:,:,iElem_calc)=KappaM1*(Ut(5,:,:,:,iElem)-1/U(1,:,:,:,iElem)*(  &
                                                U(2,:,:,:,iElem)*Ut(2,:,:,:,iElem)  &
                                              + U(3,:,:,:,iElem)*Ut(3,:,:,:,iElem)  &
@@ -461,7 +461,7 @@ END SUBROUTINE FillPressureTimeDeriv
 !==================================================================================================================================
 FUNCTION FillVorticity(dir,nVal,gradUx,gradUy,gradUz) RESULT(Vorticity)
 ! MODULES
-IMPLICIT NONE 
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: dir
@@ -482,22 +482,22 @@ END FUNCTION FillVorticity
 
 !==================================================================================================================================
 !> Calculate the lambda 2 criterion, see Jeong, Jinhee, and Fazle Hussain. "On the identification of a vortex." Journal of fluid
-!> mechanics 285 (1995): 69-94. 
-!> This criterion is the second eigenvalue of the symmetric tensor ${\bm {\cal S}}^2 + {\bm \Omega}^2$; 
-!> here ${\bm {\cal S}}$ and ${\bm \Omega}$ are respectively the symmetric and antisymmetric parts of 
+!> mechanics 285 (1995): 69-94.
+!> This criterion is the second eigenvalue of the symmetric tensor ${\bm {\cal S}}^2 + {\bm \Omega}^2$;
+!> here ${\bm {\cal S}}$ and ${\bm \Omega}$ are respectively the symmetric and antisymmetric parts of
 !> the velocity gradient tensor ${\bm \Delta}{\bm u}$.
 !> Calculation of the eigenvalues is done using LAPACK.
 !==================================================================================================================================
 FUNCTION FillLambda2(nVal,gradUx,gradUy,gradUz) RESULT(Lambda2)
 ! MODULES
-IMPLICIT NONE 
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: nVal(:)
 REAL,DIMENSION(PP_nVarPrim,PRODUCT(nVal)),INTENT(IN) :: gradUx,gradUy,gradUz
 REAL               :: Lambda2(PRODUCT(nVal))
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 INTEGER            :: i
 REAL               :: gradUmat(3,3)
 INTEGER            :: INFO
@@ -510,7 +510,7 @@ DO i=1,PRODUCT(nVal)
   gradUmat(:,3)= gradUz(2:4,i)
   gradUmat=MATMUL(0.5*(gradUmat+TRANSPOSE(gradUmat)),0.5*(gradUmat+TRANSPOSE(gradUmat))) & ! S^2
           +MATMUL(0.5*(gradUmat-TRANSPOSE(gradUmat)),0.5*(gradUmat-TRANSPOSE(gradUmat)))   ! Omega^2
-  ! Jacobi-Subroutine used from LAPACK 
+  ! Jacobi-Subroutine used from LAPACK
   CALL DSYEV('N', 'U', 3, gradUmat, 3, Lambda, WORK, 16, INFO )
   Lambda2(i) = Lambda(2)
 END DO
@@ -522,14 +522,14 @@ END FUNCTION FillLambda2
 !==================================================================================================================================
 FUNCTION FillQcriterion(nVal,gradUx,gradUy,gradUz) RESULT(Qcriterion)
 ! MODULES
-IMPLICIT NONE 
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: nVal(:)
 REAL,DIMENSION(PP_nVarPrim,PRODUCT(nVal)),INTENT(IN) :: gradUx,gradUy,gradUz
 REAL               :: Qcriterion(PRODUCT(nVal))
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 INTEGER            :: i,m,l
 REAL               :: gradUmat(3,3),Q_loc,S,Rot
 !==================================================================================================================================
@@ -558,7 +558,7 @@ FUNCTION FillWallFriction(dir,nVal,Temperature,gradUx,gradUy,gradUz,NormVec) RES
 ! MODULES
 USE MOD_Eos_Vars
 USE MOD_Viscosity
-IMPLICIT NONE 
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)                                   :: dir,nVal(:)
@@ -567,7 +567,7 @@ REAL,DIMENSION(PP_nVarPrim,PRODUCT(nVal)),INTENT(IN) :: gradUx,gradUy,gradUz
 REAL,DIMENSION(1:3,PRODUCT(nVal)),INTENT(IN)         :: NormVec
 REAL                                                 :: WallFriction(PRODUCT(nVal))
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 REAL              :: tau(3,3)                  ! Viscous stress tensor
 REAL              :: mu
 REAL              :: GradV(3,3),DivV
@@ -601,7 +601,7 @@ FUNCTION FillWallHeatTransfer(nVal,Temperature,gradUx,gradUy,gradUz,NormVec) RES
 ! MODULES
 USE MOD_Eos_Vars
 USE MOD_Viscosity
-IMPLICIT NONE 
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)                                   :: nVal(:)
@@ -610,7 +610,7 @@ REAL,DIMENSION(PP_nVarPrim,PRODUCT(nVal)),INTENT(IN) :: gradUx,gradUy,gradUz
 REAL,DIMENSION(1:3,PRODUCT(nVal)),INTENT(IN)         :: NormVec
 REAL                                                 :: WallHeatTransfer(PRODUCT(nVal))
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 REAL              :: mu
 REAL              :: GradTn
 REAL              :: temp
@@ -630,9 +630,9 @@ END DO
 END FUNCTION FillWallHeatTransfer
 
 !==================================================================================================================================
-!> Calculate the non dimensional grid spacing. This is a special case since we need information about the mesh. Thus 
+!> Calculate the non dimensional grid spacing. This is a special case since we need information about the mesh. Thus
 !> a lot of actual FLEXI vars and routines are used. Care has to be taken that those are all available!
-!> The non-dimensional grid spacing is the length of the element expressed in wall unit length, which is defined as 
+!> The non-dimensional grid spacing is the length of the element expressed in wall unit length, which is defined as
 !> y+ = y *frictionVel / kinematicVisc where frictionVel = sqrt(WallFriction/rho). Additionaly, the length is normalized with
 !> the number of solution points in each direction per cell.
 !==================================================================================================================================
@@ -649,18 +649,18 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)                                   :: nSides_calc                   !< Number of sides to perform calculation
-INTEGER,INTENT(IN)                                   :: mapBCSideToVisuSides(nBCSides)!< Map betweeen all BC sides and the 
+INTEGER,INTENT(IN)                                   :: mapBCSideToVisuSides(nBCSides)!< Map betweeen all BC sides and the
                                                                                       !< (FV or DG) visu sides
 INTEGER,INTENT(IN)                                   :: Nloc                          !< Polynomial degree on which calculation
                                                                                       !< is performed
-INTEGER,INTENT(IN)                                   :: dir                           !< Direction of grid spacing that should 
+INTEGER,INTENT(IN)                                   :: dir                           !< Direction of grid spacing that should
                                                                                       !< be calculated (1,2,3)=(x,y,z)
 REAL,DIMENSION(0:Nloc,0:Nloc,nSides_calc),INTENT(IN) :: WallFrictionMag               !< Magnitude of wall friction on sides
 REAL,DIMENSION(0:Nloc,0:Nloc,nSides_calc),INTENT(IN) :: Density                       !< Density on sides
 REAL,DIMENSION(0:Nloc,0:Nloc,nSides_calc),INTENT(IN) :: Temperature                   !< Temperature on sides (for viscosity)
 REAL,INTENT(OUT)                                     :: wallDistance(0:Nloc,0:Nloc,nSides_calc) !< Returned array
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 REAL              :: mu,temp,fricVel
 INTEGER           :: iSide,p,q,iSideVisu,i,ElemID,locSideID
 REAL              :: refVec(3),scalProd,scalProdMax,xVec(3),yVec(3),zVec(3),yloc(3),tVec(3,2)
@@ -703,7 +703,7 @@ DO iSide=1,nBCSides
     scalProdMax=0.
     ! Loop over both tangential vectors
     DO i=1,2
-     ! Calculate absolute value of scalar product between vector in x-direction and the tangential vectors. This gives us 
+     ! Calculate absolute value of scalar product between vector in x-direction and the tangential vectors. This gives us
      ! an information about how much the current tangential vector is alinged with the x-direction.
      scalProd=ABS(SUM(tVec(:,i)*refVec))
      ! Check if this tangential vector is more aligned with the x-direction than the other one. Store the one

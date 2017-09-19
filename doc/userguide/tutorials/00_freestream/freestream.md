@@ -1,11 +1,6 @@
 ## Freestream
 
-The setup considers a freestream scenario with constant pressure $p=101325.0$ Pa, density $\rho=1.225$ kg/$m^3$ and flow vector $\textbf{U}=(1,1,1)^T$ m/s.
-
-![](tutorials/00_freestream/freestream_mesh.png)     ![](tutorials/00_freestream/freestream_result.png)
-
-Figure: Mesh and flow field solution with velocity vector plot of the velocity field. View in $x$-$y$-plane.\label{fig:freestream_mesh_and_result}
-
+The setup considers a freestream scenario with constant pressure $p=101325.0$ Pa, density $\rho=1.225$ kg/$m^3$ and velocity vector $\textbf{U}=(1,1,1)^T$ m/s.
 
 Copy the ``freestream`` tutorial folder \label{missing:aliases_tutorial_freestreem}
 
@@ -18,6 +13,11 @@ The mesh files used by **FLEXI** are created by supplying an input file *paramet
     ./hopr parameter_hopr.ini
 
 This creates the mesh file *cartbox_mesh.h5* in HDF5 format. Alternatively, if you do not want to run **hopr**, you can also use the provided mesh.
+
+![](tutorials/00_freestream/freestream_mesh.png)     ![](tutorials/00_freestream/freestream_result.png)
+
+Figure: Mesh and flow field solution with velocity vector plot of the velocity field. View in $x$-$y$-plane.\label{fig:freestream_mesh_and_result}
+
 
 ### Flow Simulation with FLEXI
 
@@ -81,6 +81,6 @@ After a successful completion, the last lines in this files should look like in 
 To visualize the solution, the *State*-files must be converted into a format suitable for **ParaView**. Issue the command 
 
 ~~~~~~~
-flexi2vtk parameter_flexi2vtk.ini cartbox_State_000000*.h5
+flexi2vtk parameter_flexi.ini cartbox_State_000000*.h5
 ~~~~~~~
 to generate the corresponding *vtu*-files, which can then be loaded into **ParaView**. 

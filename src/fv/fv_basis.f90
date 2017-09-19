@@ -136,7 +136,7 @@ REAL,INTENT(OUT),OPTIONAL     :: FV_sVdm(0:N_in,0:N_in)  ! Vandermonde matrix fo
 ! LOCAL VARIABLES
 REAL                   :: FV_X(0:N_in),FV_w,FV_BdryX(0:N_In+1)
 REAL,DIMENSION(0:N_In) :: xGP,wGP,wBary
-REAL                   :: SubxGP(1,0:N_In)
+REAL                   :: SubxGP(0:N_In)
 REAL                   :: VDM(0:N_In,0:N_In)
 INTEGER                :: i,j,k
 !==================================================================================================================================
@@ -175,9 +175,9 @@ CALL FV_Build_X_w_BdryX(N_in, FV_X, FV_w, FV_BdryX)
 !FV_BdryX = (FV_BdryX + 1.)/2. -1.
 DO i=0,N_in
   ! 1. Compute the Gauss points xFV_i in the i-th Subcell
-  SubxGP(1,:) = FV_BdryX(i) + (xGP + 1.)/2. * (FV_BdryX(i+1) - FV_BdryX(i))
+  SubxGP = FV_BdryX(i) + (xGP + 1.)/2. * (FV_BdryX(i+1) - FV_BdryX(i))
   ! 2. Evaluate the all Lagrange-Polys in all Gauss points xFV_i of the i-th Subcell  =>  store in VDM
-  CALL InitializeVandermonde(N_in,N_in,wBary,xGP,SubxGP(1,:),VDM(:,:))
+  CALL InitializeVandermonde(N_in,N_in,wBary,xGP,SubxGP,VDM(:,:))
   ! 3. Multiply wGP^T with VDM and store it in the i-th row of the matrix FV_Vdm
   DO j=0,N_in
     DO k=0,N_in

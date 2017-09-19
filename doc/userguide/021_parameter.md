@@ -409,3 +409,37 @@ VarNameFluc                            Names of variables for which Flucs (time-
                                         
 -----------------------------------------------------------------------------------------
  
+-----------------------------------------------------------------------------------------
+**FV**
+----------------------- -------------- --------------------------------------------------
+**Variable**            **Default**    **Description**
+                                                                                
+FV_IndUpperThreshold                   Upper threshold: Element is switched from DG to FV  
+                                       if indicator  
+                                       rises above this value  
+                                       
+FV_IndLowerThreshold                   Lower threshold: Element is switched from FV to DG  
+                                       if indicator  
+                                       falls below this value  
+                                       
+FV_toDG_indicator                    F Apply additional Persson indicator to check if DG  
+                                       solution after switch  
+                                       from FV to DG is valid.  
+                                       
+FV_toDG_limit                          Threshold for FV_toDG_indicator  
+                                       
+FV_toDGinRK                          F Allow switching of FV elements to DG during Runge  
+                                       Kutta stages.  
+                                       This may violated the DG timestep restriction of  
+                                       the element.  
+                                       
+FV_IniSupersample                    T Supersample initial solution inside each sub-cell  
+                                       and take mean value  
+                                       as average sub-cell value.  
+                                       
+FV_LimiterType                       1 Type of slope limiter of second order  
+                                       reconstruction  
+                                       
+swebyb                                 beta parameter for Sweby limiter  
+
+-----------------------------------------------------------------------------------------

@@ -209,7 +209,7 @@ END DO
 ! Initialize Dirichlet BCs that use a pre-computed and then stored evaluation of an exact func
 DO iSide=1,nBCSides
   IF (Boundarytype(BC(iSide),BC_TYPE).EQ.121) THEN
-    DO q=0,PP_N; DO p=0,PP_N
+    DO q=0,PP_NZ; DO p=0,PP_N
       CALL ExactFunc(Boundarytype(BC(iSide),BC_STATE),0.,Face_xGP(:,p,q,0,iSide),BCData(:,p,q,iSide))
       CALL ConsToPrim(BCDataPrim(:,p,q,iSide),BCData(:,p,q,iSide))
     END DO; END DO ! p,q=0,PP_N

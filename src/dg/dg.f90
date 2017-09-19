@@ -460,8 +460,8 @@ FV_Elems_Sum = FV_Elems_master + 2*FV_Elems_slave
 ! 4.1) Convert FV_multi_master/slave (only the DG parts of it) from DG nodes to FV nodes (equidistant)
 ! 4.2) Reconstruct the slope over the interface (and send it from master to slave)
 ! 4.3) On the slave side combine the slopes from the 2/4 small mortar sides to the big mortar side (when communication finished)
-! 4.4) Use the slope to prolongate the solution to UPrim_master/slave (ATTENTION: U_master/slave are only 1st order!)
-! 4.5) Calculate slopes at boundary conditions 
+! 4.4) Calculate slopes at boundary conditions 
+! 4.5) Use the slope to prolongate the solution to UPrim_master/slave (ATTENTION: U_master/slave are only 1st order!)
 ! 4.6) Calculate the inner (volume) slopes
 
 ! 4.1)
@@ -490,9 +490,9 @@ CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Flux)   ! FV_surf_gradU: master
 CALL FV_gradU_mortar(FV_surf_gradU,doMPISides=.TRUE.)
 #endif
 ! 4.4)
-CALL FV_ProlongToDGFace(UPrim_master,UPrim_slave,FV_multi_master,FV_multi_slave,FV_surf_gradU,doMPISides=.FALSE.)
-! 4.5) 
 CALL FV_SurfCalcGradients_BC(UPrim_master,FV_surf_gradU,t)
+! 4.5) 
+CALL FV_ProlongToDGFace(UPrim_master,UPrim_slave,FV_multi_master,FV_multi_slave,FV_surf_gradU,doMPISides=.FALSE.)
 ! 4.6) 
 CALL FV_CalcGradients(UPrim,FV_surf_gradU,gradUxi,gradUeta,gradUzeta &
 #if PARABOLIC    

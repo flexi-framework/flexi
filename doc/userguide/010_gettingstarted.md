@@ -219,6 +219,9 @@ The currently implemented features of **FLEXI** include \label{missing:featureli
     * Roe-Pike
 * Curved Meshes
 * Nonconforming Meshes via mortar interfaces [@koprivamortar2002]
+* Shock capturing
+    * Employing finite volume subcells
+    * Several shock indicators available
 * Boundary conditions 
     * Various subsonic inflow and outflow conditions [@carlson2011inflow]
     * exact boundaries (Dirichlet)

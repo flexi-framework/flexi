@@ -6,8 +6,8 @@ polynomial de-aliasing. In a second step we add the sub grid scale model of Smag
 
 ### Flow description
 
-The initial condition to the (TGV) is a sinus distribution in the u and v velocity components. This leads to rapid production of turbulent structures, after a shot initial laminar phase. While the test case is incompressible in principle,
-we solve it here in a compressible setting. The chosen Mach number with respect to the highest velocity in the field is $0.1$. The Reynolds number of the flow is defined as $1/\nu$. The domain is setup as a triple periodic box with edge length $2\pi$.
+The initial condition to the (TGV) is a sinus distribution in the u and v velocity components. This leads to rapid production of turbulent structures, after a short initial laminar phase. While the test case is incompressible in principle,
+we solve it here in a compressible setting. The chosen Mach number with respect to the highest velocity in the field is $0.1$. The Reynolds number of the flow is defined as $1/\nu$. The domain is set up as a triple periodic box with edge length $2\pi$.
 ![](tutorials/05_taylorGreenVortex/dns_reference.png)
 
 ### Compiler options
@@ -142,13 +142,13 @@ First we run FLEXI without overintegration/de-aliasing. We will find that the co
 
 
 #### Part II: Overintegration
-We now use overintegration by changing the respective settings in the parameter_flexi.ini file as described above. You can try and use any of the modes 1 or 3. You can compare your result to the plot below.
+We now use overintegration by changing the respective settings in the parameter_flexi.ini file as described above. You can try and use any of the modes 1 or 3. For ``Overintegration==1`` set $N=11$ and $NUnder=7$. For ``OverintegrationType=3`` set $N=7$ and $NOver=11$. You can compare your result to the plot below.
 ![](tutorials/05_taylorGreenVortex/les_dealiasing.png)
 
 
 
 #### Part III: Explicit LES model
 
-To see the effect of adding explicit eddy viscosity we activate the LES model (Smagorinsky) as described above. To obtain the reference result of the following plot set $CS=0.1$. Feel free to play around with the constant, have fun!
+To see the effect of adding explicit eddy viscosity we activate the LES model (Smagorinsky) as described above. To obtain the reference result of the following plot set $CS=0.1$. Don't forget to switch overintegration of again and set polynomial degree to $N=7$. Feel free to play around with the constant, have fun!
 ![](tutorials/05_taylorGreenVortex/les_smago_oi.png)
 

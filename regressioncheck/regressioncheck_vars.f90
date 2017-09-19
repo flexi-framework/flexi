@@ -11,6 +11,7 @@ SAVE
 !----------------------------------------------------------------------------------------------------------------------------------
 CHARACTER(LEN=5),PARAMETER    :: CodeNameUppCase='FLEXI'            !> Code name in upper case letters. IMPORTANT: set its length!
 CHARACTER(LEN=5),PARAMETER    :: CodeNameLowCase='flexi'            !> Code name in lower case letters. IMPORTANT: set its length!
+CHARACTER(LEN=500)             :: configuration_cmake               !> path to configuration.cmake
 INTEGER                        :: nErrors                           !> number of errors encountered during reggie execution
 INTEGER                        :: GlobalRunNumber                   !> count the number of separate runs for listing in summary
 INTEGER                        :: NumberOfProcs                     !> number of processors for parallel build
@@ -37,9 +38,11 @@ LOGICAL                        :: BuildDebug                        !> Prints th
                                                                     !> BuildSolver is true 
 LOGICAL                        :: BuildNoDebug                      !> Don't print any compiler output (if BuildSolver is true) 
 LOGICAL                        :: BuildContinue                     !> allow the building sequence to begin at the last failure
+LOGICAL                        :: RunContinue                       !> use all previously built executables before further compiling
 INTEGER                        :: BuildContinueNumber               !> start building sequence from this point
 
 CHARACTER(LEN=255),ALLOCATABLE :: BuildConfigurations(:,:)          !> CMAKE complie flag and value
+CHARACTER(LEN=2000),ALLOCATABLE :: BuildConfigurationsCombined(:)   !> CMAKE complie flags combinations for valid and invalid builds
 LOGICAL,ALLOCATABLE            :: BuildValid(:)                     !> use the configuration or don't
 INTEGER,ALLOCATABLE            :: BuildCounter(:)                   !> register for creaating all possible cmake configurations
 INTEGER,ALLOCATABLE            :: BuildIndex(:)                     !> number of different flag settings for each specified cmake 
@@ -75,8 +78,11 @@ TYPE tExample                                                       !> examples 
                                                                     !> 1 - failed during execution
                                                                     !> 2 - test failed
   CHARACTER(LEN=255)               :: IntegrateLineFile             !> File name with ACSI number columns
+  CHARACTER(LEN=255)               :: IntegrateLineOption           !> speciel settings for integrate line function
+  REAL                             :: IntegrateLineMultiplier       !> multiply the integrated value by this factor
   INTEGER                          :: IntegrateLineRange(2)         !> the numerbs of two coulumns with data
   REAL                             :: IntegrateLineValue            !> the reference integral value
+  REAL                             :: IntegrateLineTolerance        !> the reference integral tolerance
   CHARACTER(LEN=255)               :: IntegrateLineDelimiter        !> delimiter string for reading the data file
   INTEGER                          :: IntegrateLineHeaderLines      !> number of header lines to be ignored from data file
   LOGICAL                          :: IntegrateLine                 !> read two columns from a file and integrate over line
@@ -103,6 +109,7 @@ TYPE tExample                                                       !> examples 
   REAL                             :: ConvergenceTestDomainSize     !> length of simulation domain, needed for grid step size
   REAL                             :: ConvergenceTestValue          !> single value for comparison
   REAL                             :: ConvergenceTestTolerance      !> relative tolerance when comparing the "ConvergenceTestValue"
+  REAL                             :: ConvergenceTestSuccessRate    !> The Success Rate (default if 50%) of nVar Convergence tests 
   REAL, ALLOCATABLE                :: ConvergenceTestGridSize(:)    !> array for grid step size: cell length / ( p + 1 )
   REAL, ALLOCATABLE                :: ConvergenceTestError(:,:)     !> array for L2 errors over iteration or polynomial degree
                                                                     !> dimension for "array" will be: [SubExampleNumber]x[nVar]x[2]

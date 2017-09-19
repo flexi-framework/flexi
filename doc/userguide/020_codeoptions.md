@@ -34,6 +34,10 @@ Components of the FLEXI package can be selected using the following options: \la
 
     This variable specifies the CTAGS install directory.
 
+* ``FLEXI_2D``: ON/OFF
+
+    If set to ON the code will run in two-dimensional mode. You have to provide a mesh that consists of only one layer of elements in the third dimension.
+
 * ``FLEXI_BUILD_HDF5``: ON/OFF
 
     This will be set to ON if no rebuilt HDF5 installation was found on your machine. In this case a HDF5 version will be build and used instead.
@@ -43,6 +47,14 @@ Components of the FLEXI package can be selected using the following options: \la
     This variable defines the equation system, which will be compiled and used for the simulation. Possible values are
     * *Navierstokes*
     * *Linearscalaradvection*
+    
+* ``FLEXI_FV``:  ON/OFF
+    
+    Set this to ON to enable the usage of the finite volume subcell shock capturing mechanism.
+    
+* ``FLEXI_FV_RECONSTRUCTION``:  ON/OFF
+    
+    Only available if FLEXI_FV is set to ON. Enables the reconstruction of interface values in the finite volume subcells. Needed for calculation of gradients and to use a second order finite volume scheme.
     
 * ``FLEXI_LIFTING``:
 
