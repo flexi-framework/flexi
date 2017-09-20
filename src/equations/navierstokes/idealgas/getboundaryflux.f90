@@ -350,9 +350,11 @@ CASE(3,4,9,23,24,25,27)
       ! Set pressure by solving local Riemann problem
       UPrim_boundary(5,p,q) = PRESSURE_RIEMANN(UPrim_boundary(:,p,q))
       UPrim_boundary(2,p,q) = 0. ! slip in tangential directions
-      UPrim_boundary(6,p,q) = UPrim_master(6,p,q) ! temperature from the inside
-      ! set density via ideal gas equation, consistent to pressure and temperature
-      UPrim_boundary(1,p,q) = UPrim_boundary(5,p,q) / (UPrim_boundary(6,p,q) * R) 
+      ! Referring to Toro: Riemann Solvers and Numerical Methods for Fluid Dynamics (Chapter 6.3.3 Boundary Conditions)
+      ! the density is chosen from the inside
+      UPrim_boundary(1,p,q) = UPrim_master(1,p,q) ! density from inside
+      ! set temperature via ideal gas equation, consistent to density and pressure
+      UPrim_boundary(6,p,q) = UPrim_boundary(5,p,q) / (UPrim_boundary(1,p,q) * R)
     END DO; END DO ! q,p
 
   ! Cases 21-29 are taken from NASA report "Inflow/Outflow Boundary Conditions with Application to FUN3D" Jan-Reneé Carlson
@@ -754,13 +756,13 @@ ELSE
       Flux(6  ,p,q) = UPrim_Boundary(6,p,q)
     END DO; END DO !p,q
   CASE(9)
-    ! Euler/(full-)slip wall
-    ! symmetry BC, v=0 strategy a la HALO (is very perfect)
-    ! U_boundary is already in normal system
+    ! Euler/(full-)slip wall, symmetry BC
+    ! Solution from the inside with velocity normal component set to 0 (done in GetBoundaryState)
     DO q=0,PP_NZ; DO p=0,PP_N
       ! Compute Flux
-      Flux(1            ,p,q) = UPrim_boundary(1,p,q)
-      Flux(2:PP_nVarPrim,p,q) = 0.5*(UPrim_boundary(2:PP_nVarPrim,p,q)+UPrim_master(2:PP_nVarPrim,p,q))
+      Flux(1            ,p,q) = UPrim_master(1,p,q)
+      Flux(2:4          ,p,q) = UPrim_boundary(2:4,p,q)
+      Flux(5:PP_nVarPrim,p,q) = UPrim_master(5:PP_nVarPrim,p,q)
     END DO; END DO !p,q
   CASE(1) !Periodic already filled!
   CASE DEFAULT ! unknown BCType
