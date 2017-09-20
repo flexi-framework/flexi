@@ -73,7 +73,7 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
-INTEGER                                :: i,j,k,p,q,l,d,iSide,iElem,iLocSide
+INTEGER                                :: i,j,k,l,iSide,iElem,iLocSide
 INTEGER                                :: dd,NormalDir,TangDir
 REAL                                   :: NormalSign
 REAL                                   :: Vdm_Gauss_FVboundary(0:PP_N+1,0:PP_N)
@@ -83,7 +83,7 @@ REAL,DIMENSION(0:PP_N,0:NgeoRef)       :: Vdm_NgeoRef_N,Vdm_NgeoRef_FV
 REAL                                   :: FV_DetJac(1,0:PP_N,0:PP_N,0:PP_N)
 INTEGER                                :: flip, SideID, iMortar
 #if FV_RECONSTRUCT
-INTEGER                                :: ijk(2), locSideID
+INTEGER                                :: ijk(2),p,q,locSideID
 REAL                                   :: FV_dx_Face(0:PP_N,0:PP_N,1:3)
 REAL                                   :: DG_dx_slave (1,0:PP_N,0:PP_N,1:nSides)
 REAL                                   :: DG_dx_master(1,0:PP_N,0:PP_N,1:nSides)
@@ -95,6 +95,9 @@ REAL                                   :: x0, xN
 REAL,POINTER                           :: FV_dx_P(:,:)
 #if USE_MPI
 INTEGER                                :: MPIRequest(nNbProcs,2)
+#endif
+#if PARABOLIC
+INTEGER                                :: d
 #endif
 #endif
 !==================================================================================================================================

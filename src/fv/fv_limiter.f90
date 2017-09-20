@@ -48,6 +48,19 @@ PROCEDURE(LimiterInt),POINTER :: FV_Limiter !< limiting function (see: fv_limite
 PUBLIC::DefineParametersFV_Limiter
 PUBLIC::InitFV_Limiter
 PUBLIC::FV_Limiter
+
+#ifdef DEBUG
+! Add dummy interfaces to unused subroutines to suppress compiler warnings.
+INTERFACE DUMMY_CentralLimiter
+  MODULE PROCEDURE CentralLimiter
+END INTERFACE
+INTERFACE DUMMY_Sweby
+  MODULE PROCEDURE Sweby
+END INTERFACE
+INTERFACE DUMMY_NullLimiter
+  MODULE PROCEDURE NullLimiter
+END INTERFACE
+#endif /* DEBUG */
 !==================================================================================================================================
 
 #endif /* FV_RECONSTRUCT */

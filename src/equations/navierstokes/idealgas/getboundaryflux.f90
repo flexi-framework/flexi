@@ -503,7 +503,7 @@ USE MOD_Riemann      ,ONLY: ViscousFlux
 #endif
 USE MOD_Riemann      ,ONLY: Riemann
 #ifdef EDDYVISCOSITY
-USE MOD_EddyVisc_Vars,ONLY: DeltaS_master,SGS_Ind_master
+USE MOD_EddyVisc_Vars,ONLY: muSGS_master
 #endif
 USE MOD_Testcase     ,ONLY: GetBoundaryFluxTestcase
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -566,13 +566,16 @@ ELSE
          gradUx_master,gradUy_master,gradUz_master,&
          NormVec&
 #ifdef EDDYVISCOSITY
-        ,DeltaS_master(SideID),DeltaS_master(SideID),SGS_Ind_master(1,:,:,SideID),SGS_Ind_master(1,:,:,SideID),Face_xGP&
+        ,muSGS_master(:,:,:,SideID),muSGS_master(:,:,:,SideID)&
 #endif
     )
     Flux = Flux + Fd_Face_loc
 #endif /*PARABOLIC*/
 
   CASE(3,4,9) ! Walls
+#ifdef EDDYVISCOSITY
+    muSGS_master(:,:,:,SideID)=0.
+#endif
     DO q=0,PP_NlocZ; DO p=0,Nloc
       ! Now we compute the 1D Euler flux, but use the info that the normal component u=0
       ! we directly tranform the flux back into the Cartesian coords: F=(0,n1*p,n2*p,n3*p,0)^T
@@ -588,7 +591,7 @@ ELSE
       CALL EvalDiffFlux2D(Nloc,Fd_Face_loc,Gd_Face_loc,Hd_Face_loc,UPrim_boundary,&
           gradUx_master, gradUy_master, gradUz_master &
 #ifdef EDDYVISCOSITY
-          ,DeltaS_master(SideID),SGS_Ind_master(1,:,:,SideID),Face_xGP            &
+          ,muSGS_master(:,:,:,SideID) &
 #endif
       )
       IF (BCType.EQ.3) THEN
@@ -628,7 +631,7 @@ ELSE
       CALL EvalDiffFlux2D(Nloc,Fd_Face_loc,Gd_Face_loc,Hd_Face_loc,UPrim_boundary,&
           gradUx_Face_loc,gradUy_Face_loc,gradUz_Face_loc                         &
 #ifdef EDDYVISCOSITY
-          ,DeltaS_master(SideID),SGS_Ind_master(1,:,:,SideID),Face_xGP&
+          ,muSGS_master(:,:,:,SideID)&
 #endif
       )
     END SELECT

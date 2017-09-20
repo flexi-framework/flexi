@@ -448,7 +448,7 @@ INTEGER,INTENT(IN) :: meshMode
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL               :: zlength
-#if FV_ENABLED
+#if FV_ENABLED && FV_RECONSTRUCT
 REAL               :: tmpFV(0:PP_N,0:PP_N,3)
 #if FV_RECONSTRUCT
 INTEGER            :: i,j,iSide

@@ -88,19 +88,22 @@ END SUBROUTINE InitOutput
 SUBROUTINE OutputRP()
 ! MODULES
 USE MOD_Globals
-USE MOD_RPData_Vars     ,ONLY: RPTime
-USE MOD_ParametersVisu      ,ONLY: OutputFormat,thirdOct,ProjectName
+USE MOD_RPData_Vars        ,ONLY: RPTime
+USE MOD_ParametersVisu     ,ONLY: OutputFormat,thirdOct,ProjectName
 #ifdef WITHTECPLOT
 USE MOD_Tecplot   
+USE MOD_OutputRPVisu_Vars  ,ONLY: RPDataTimeAvg_out
 #endif
-USE MOD_OutputRPVisu_Vars     ,ONLY: nSamples_out,RPData_out,RPDataTimeAvg_out,CoordNames 
+USE MOD_OutputRPVisu_Vars  ,ONLY: nSamples_out,RPData_out,CoordNames 
 USE MOD_OutputRPVisu_HDF5
-USE MOD_spec_Vars       ,ONLY: nSamples_spec,RPData_freq,RPData_spec
-USE MOD_spec_Vars       ,ONLY: nSamples_Oct,RPData_freqOct,RPData_Oct
-USE MOD_ParametersVisu      ,ONLY: nVarVisu,VarNameVisu
-USE MOD_ParametersVisu      ,ONLY: OutputTimeAverage,OutputTimeData,doSpec,doFluctuations
-USE MOD_ParametersVisu      ,ONLY: Plane_doBLProps
-USE MOD_RPSetVisuVisu_Vars      ,ONLY: nRP_global
+USE MOD_spec_Vars          ,ONLY: nSamples_spec,RPData_freq,RPData_spec
+USE MOD_spec_Vars          ,ONLY: nSamples_Oct,RPData_freqOct,RPData_Oct
+USE MOD_ParametersVisu     ,ONLY: nVarVisu,VarNameVisu
+USE MOD_ParametersVisu     ,ONLY: OutputTimeAverage,OutputTimeData,doSpec,doFluctuations
+#ifdef WITHBLPROPS
+USE MOD_ParametersVisu     ,ONLY: Plane_doBLProps
+#endif
+USE MOD_RPSetVisuVisu_Vars ,ONLY: nRP_global
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 !-----------------------------------------------------------------------------------------------------------------------------------

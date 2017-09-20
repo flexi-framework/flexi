@@ -1,5 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2017 Prof. Claus-Dieter Munz 
+! Copyright (c) 2016-2017 Gregor Gassner (github.com/project-fluxo/fluxo)
+! Copyright (c) 2016-2017 Florian Hindenlang (github.com/project-fluxo/fluxo)
+! Copyright (c) 2016-2017 Andrew Winters (github.com/project-fluxo/fluxo) 
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -24,7 +27,7 @@ PRIVATE
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ABSTRACT INTERFACE
-  PURE SUBROUTINE RiemannInt(F_L,F_R,U_LL,U_RR,F)
+  SUBROUTINE RiemannInt(F_L,F_R,U_LL,U_RR,F)
     REAL,DIMENSION(PP_2Var),INTENT(IN) :: U_LL,U_RR
     REAL,DIMENSION(PP_nVar),INTENT(IN) :: F_L,F_R
     REAL,DIMENSION(PP_nVar),INTENT(OUT):: F
@@ -38,10 +41,12 @@ INTEGER,PARAMETER      :: PRM_RIEMANN_SAME          = -1
 INTEGER,PARAMETER      :: PRM_RIEMANN_LF            = 1
 INTEGER,PARAMETER      :: PRM_RIEMANN_HLLC          = 2
 INTEGER,PARAMETER      :: PRM_RIEMANN_ROE           = 3
+INTEGER,PARAMETER      :: PRM_RIEMANN_ROEL2         = 32
 INTEGER,PARAMETER      :: PRM_RIEMANN_ROEENTROPYFIX = 33
 INTEGER,PARAMETER      :: PRM_RIEMANN_HLL           = 4
 INTEGER,PARAMETER      :: PRM_RIEMANN_HLLE          = 5
 INTEGER,PARAMETER      :: PRM_RIEMANN_HLLEM         = 6
+INTEGER,PARAMETER      :: PRM_RIEMANN_Average       = 0
 
 INTERFACE InitRiemann
   MODULE PROCEDURE InitRiemann
@@ -93,9 +98,11 @@ CALL addStrListEntry('Riemann','lf',           PRM_RIEMANN_LF)
 CALL addStrListEntry('Riemann','hllc',         PRM_RIEMANN_HLLC)
 CALL addStrListEntry('Riemann','roe',          PRM_RIEMANN_ROE)
 CALL addStrListEntry('Riemann','roeentropyfix',PRM_RIEMANN_ROEENTROPYFIX)
+CALL addStrListEntry('Riemann','roel2',        PRM_RIEMANN_ROEL2)
 CALL addStrListEntry('Riemann','hll',          PRM_RIEMANN_HLL)
 CALL addStrListEntry('Riemann','hlle',         PRM_RIEMANN_HLLE)
 CALL addStrListEntry('Riemann','hllem',        PRM_RIEMANN_HLLEM)
+CALL addStrListEntry('Riemann','avg',          PRM_RIEMANN_Average)
 CALL prms%CreateIntFromStringOption('RiemannBC', "Riemann solver used for boundary conditions: Same, LF, Roe, RoeEntropyFix, "//&
                                                  "HLL, HLLE, HLLEM",&
                                                  "Same")
@@ -103,9 +110,11 @@ CALL addStrListEntry('RiemannBC','lf',           PRM_RIEMANN_LF)
 CALL addStrListEntry('RiemannBC','hllc',         PRM_RIEMANN_HLLC)
 CALL addStrListEntry('RiemannBC','roe',          PRM_RIEMANN_ROE)
 CALL addStrListEntry('RiemannBC','roeentropyfix',PRM_RIEMANN_ROEENTROPYFIX)
+CALL addStrListEntry('RiemannBC','roel2',        PRM_RIEMANN_ROEL2)
 CALL addStrListEntry('RiemannBC','hll',          PRM_RIEMANN_HLL)
 CALL addStrListEntry('RiemannBC','hlle',         PRM_RIEMANN_HLLE)
 CALL addStrListEntry('RiemannBC','hllem',        PRM_RIEMANN_HLLEM)
+CALL addStrListEntry('RiemannBC','avg',          PRM_RIEMANN_Average)
 CALL addStrListEntry('RiemannBC','same',         PRM_RIEMANN_SAME)
 END SUBROUTINE DefineParametersRiemann
 
@@ -127,6 +136,7 @@ REAL,DIMENSION(PP_nVar) :: F_L,F_R,F ! dummy variables, only to suppress compile
 REAL,DIMENSION(PP_2Var) :: U_LL,U_RR ! dummy variables, only to suppress compiler warnings
 #endif
 !==================================================================================================================================
+#ifndef SPLIT_DG
 Riemann = GETINTFROMSTR('Riemann')
 SELECT CASE(Riemann)
 CASE(PRM_RIEMANN_LF)
@@ -137,12 +147,17 @@ CASE(PRM_RIEMANN_ROE)
   Riemann_pointer => Riemann_Roe
 CASE(PRM_RIEMANN_ROEENTROPYFIX)
   Riemann_pointer => Riemann_RoeEntropyFix
+CASE(PRM_RIEMANN_ROEL2)
+  Riemann_pointer => Riemann_RoeL2
 CASE(PRM_RIEMANN_HLL)
   Riemann_pointer => Riemann_HLL
 CASE(PRM_RIEMANN_HLLE)
   Riemann_pointer => Riemann_HLLE
 CASE(PRM_RIEMANN_HLLEM)
   Riemann_pointer => Riemann_HLLEM
+CASE(PRM_RIEMANN_Average)
+  CALL CollectiveStop(__STAMP__,&
+    'Flux averaging only viable for SplitDG!')
 CASE DEFAULT
   CALL CollectiveStop(__STAMP__,&
     'Riemann solver not defined!')
@@ -160,16 +175,59 @@ CASE(PRM_RIEMANN_ROE)
   RiemannBC_pointer => Riemann_Roe
 CASE(PRM_RIEMANN_ROEENTROPYFIX)
   RiemannBC_pointer => Riemann_RoeEntropyFix
+CASE(PRM_RIEMANN_ROEL2)
+  RiemannBC_pointer => Riemann_RoeL2
 CASE(PRM_RIEMANN_HLL)
   RiemannBC_pointer => Riemann_HLL
 CASE(PRM_RIEMANN_HLLE)
   RiemannBC_pointer => Riemann_HLLE
 CASE(PRM_RIEMANN_HLLEM)
   RiemannBC_pointer => Riemann_HLLEM
+CASE(PRM_RIEMANN_Average)
+  CALL CollectiveStop(__STAMP__,&
+    'Flux averaging only viable for SplitDG!')
 CASE DEFAULT
   CALL CollectiveStop(__STAMP__,&
     'RiemannBC solver not defined!')
 END SELECT
+
+#else
+Riemann = GETINTFROMSTR('Riemann')
+SELECT CASE(Riemann)
+CASE(PRM_RIEMANN_LF)
+  Riemann_pointer => Riemann_LF
+CASE(PRM_RIEMANN_ROE)
+  Riemann_pointer => Riemann_Roe
+CASE(PRM_RIEMANN_ROEENTROPYFIX)
+  Riemann_pointer => Riemann_RoeEntropyFix
+CASE(PRM_RIEMANN_ROEL2)
+  Riemann_pointer => Riemann_RoeL2
+CASE(PRM_RIEMANN_Average)
+  Riemann_pointer => Riemann_FluxAverage
+CASE DEFAULT
+  CALL CollectiveStop(__STAMP__,&
+    'Riemann solver not defined!')
+END SELECT
+
+Riemann = GETINTFROMSTR('RiemannBC')
+SELECT CASE(Riemann)
+CASE(PRM_RIEMANN_SAME)
+  RiemannBC_pointer => Riemann_pointer
+CASE(PRM_RIEMANN_LF)
+  RiemannBC_pointer => Riemann_LF
+CASE(PRM_RIEMANN_ROE)
+  RiemannBC_pointer => Riemann_Roe
+CASE(PRM_RIEMANN_ROEENTROPYFIX)
+  RiemannBC_pointer => Riemann_RoeEntropyFix
+CASE(PRM_RIEMANN_ROEL2)
+  RiemannBC_pointer => Riemann_RoeL2
+CASE(PRM_RIEMANN_Average)
+  RiemannBC_pointer => Riemann_FluxAverage
+CASE DEFAULT
+  CALL CollectiveStop(__STAMP__,&
+    'RiemannBC solver not defined!')
+END SELECT
+#endif /*SPLIT_DG*/
 
 #ifdef DEBUG
 ! ===============================================================================
@@ -183,11 +241,13 @@ IF (0.EQ.1) THEN
   CALL Riemann_HLLC (F_L,F_R,U_LL,U_RR,F)
   CALL Riemann_Roe  (F_L,F_R,U_LL,U_RR,F)
   CALL Riemann_RoeEntropyFix(F_L,F_R,U_LL,U_RR,F)
+  CALL Riemann_RoeL2(F_L,F_R,U_LL,U_RR,F)
   CALL Riemann_HLL  (F_L,F_R,U_LL,U_RR,F)
   CALL Riemann_HLLE (F_L,F_R,U_LL,U_RR,F)
   CALL Riemann_HLLEM(F_L,F_R,U_LL,U_RR,F)
+  CALL Riemann_FluxAverage(F_L,F_R,U_LL,U_RR,F)
 END IF
-#endif
+#endif /*DEBUG*/
 END SUBROUTINE InitRiemann
 
 !==================================================================================================================================
@@ -261,8 +321,10 @@ DO j=0,PP_NlocZ; DO i=0,Nloc
   U_RR(MOM3)=0.
 #endif
 
+# ifndef SPLIT_DG
   CALL EvalEulerFlux1D_fast(U_LL,F_L)
   CALL EvalEulerFlux1D_fast(U_RR,F_R)
+#endif /*SPLIT_DG*/
 
   CALL Riemann_loc(F_L,F_R,U_LL,U_RR,F)
 
@@ -278,6 +340,14 @@ DO j=0,PP_NlocZ; DO i=0,Nloc
   Fout(ENER,i,j)=F(ENER)
 END DO; END DO
 
+#ifdef DEBUG
+! ===============================================================================
+! Following dummy calls do suppress compiler warnings of unused Riemann-functions
+! ===============================================================================
+IF (0.EQ.1) THEN
+  WRITE (*,*) t2
+END IF
+#endif
 END SUBROUTINE Riemann
 
 
@@ -290,7 +360,7 @@ END SUBROUTINE Riemann
 SUBROUTINE ViscousFlux(Nloc,F,UPrim_L,UPrim_R, &
                        gradUx_L,gradUy_L,gradUz_L,gradUx_R,gradUy_R,gradUz_R,nv&
 #ifdef EDDYVISCOSITY
-                      ,DeltaS_L,DeltaS_R,SGS_Ind_L,SGS_Ind_R,Face_xGP&
+                      ,muSGS_L,muSGS_R&
 #endif
                       )
 ! MODULES
@@ -306,11 +376,8 @@ REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:PP_NlocZ),INTENT(IN)   :: gradUx_L,gradUx_R,
 REAL,INTENT(IN)                                            :: nv(3,0:Nloc,0:PP_NlocZ) !< normal vector
 REAL,INTENT(OUT)                                           :: F(PP_nVar,0:Nloc,0:PP_NlocZ) !< viscous flux
 #ifdef EDDYVISCOSITY
-REAL,INTENT(IN)                                            :: Face_xGP(3,0:Nloc,0:PP_NlocZ)  !< face Gauss points
-                                                           !> Filter width for eddy viscosity left/right of the interface
-REAL,INTENT(IN)                                            :: DeltaS_L,DeltaS_R
-                                                           !> Indicator for eddy viscosity left/right of the interface
-REAL,DIMENSION(0:Nloc,0:PP_NlocZ),INTENT(IN)               :: SGS_Ind_L,SGS_Ind_R
+                                                           !> eddy viscosity left/right of the interface
+REAL,DIMENSION(1,0:Nloc,0:PP_NlocZ),INTENT(IN)             :: muSGS_L,muSGS_R
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -324,12 +391,12 @@ REAL,DIMENSION(PP_nVar,0:Nloc,0:PP_NlocZ)            :: diffFluxX_R,diffFluxY_R,
 ! Compute NSE Diffusion flux
   CALL EvalDiffFlux2D(Nloc,diffFluxX_L,diffFluxY_L,diffFluxZ_L,UPrim_L,gradUx_L,gradUy_L,gradUz_L &
 #ifdef EDDYVISCOSITY
-                    ,DeltaS_L,SGS_Ind_L,Face_xGP&
+                    ,muSGS_L&
 #endif
       )
   CALL EvalDiffFlux2D(Nloc,diffFluxX_R,diffFluxY_R,diffFluxZ_R,UPrim_R,gradUx_R,gradUy_R,gradUz_R & 
 #ifdef EDDYVISCOSITY
-                    ,DeltaS_R,SGS_Ind_R,Face_xGP&
+                    ,muSGS_R&
 #endif
       )
 ! BR1 uses arithmetic mean of the fluxes
@@ -348,9 +415,12 @@ END SUBROUTINE ViscousFlux
 !==================================================================================================================================
 !> Local Lax-Friedrichs (Rusanov) Riemann solver
 !==================================================================================================================================
-PURE SUBROUTINE Riemann_LF(F_L,F_R,U_LL,U_RR,F)
+SUBROUTINE Riemann_LF(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
 USE MOD_EOS_Vars      ,ONLY: Kappa
+#ifdef SPLIT_DG
+USE MOD_SplitFlux     ,ONLY: SplitDGSurface_pointer
+#endif /*SPLIT_DG*/
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -367,8 +437,23 @@ REAL    :: LambdaMax
 !==================================================================================================================================
 ! Lax-Friedrichs
 LambdaMax = MAX( ABS(U_RR(VEL1)),ABS(U_LL(VEL1)) ) + MAX( SPEEDOFSOUND_HE(U_LL),SPEEDOFSOUND_HE(U_RR) )
+#ifndef SPLIT_DG
 F = 0.5*((F_L+F_R) - LambdaMax*(U_RR(CONS) - U_LL(CONS)))
+#else
+! get split flux
+CALL SplitDGSurface_pointer(U_LL,U_RR,F)
+! compute surface flux
+F = F - 0.5*LambdaMax*(U_RR(CONS) - U_LL(CONS))
+#endif /*SPLIT_DG*/
 
+#ifdef DEBUG
+! ===============================================================================
+! Following dummy calls do suppress compiler warnings of unused Riemann-functions
+! ===============================================================================
+IF (0.EQ.1) THEN
+  WRITE (*,*) F_L,F_R
+END IF
+#endif /*DEBUG*/
 END SUBROUTINE Riemann_LF
 
 
@@ -441,9 +526,12 @@ END SUBROUTINE Riemann_HLLC
 !=================================================================================================================================
 !> Roe's approximate Riemann solver
 !=================================================================================================================================
-PURE SUBROUTINE Riemann_Roe(F_L,F_R,U_LL,U_RR,F)
+SUBROUTINE Riemann_Roe(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
-USE MOD_EOS_Vars ,ONLY: kappaM1
+USE MOD_EOS_Vars  ,ONLY: kappaM1
+#ifdef SPLIT_DG
+USE MOD_SplitFlux ,ONLY: SplitDGSurface_pointer
+#endif /*SPLIT_DG*/
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -490,6 +578,7 @@ Alpha4 = Delta_U(4) - RoeVel(3)*Delta_U(1)
 Alpha2 = ALPHA2_RIEMANN_H(RoeH,RoeVel,Roec,Delta_U)
 Alpha1 = 0.5/Roec * (Delta_U(1)*(RoeVel(1)+Roec) - Delta_U(2) - Roec*Alpha2)
 Alpha5 = Delta_U(1) - Alpha1 - Alpha2
+#ifndef SPLIT_DG
 ! assemble Roe flux
 F=0.5*((F_L+F_R) - &
        Alpha1*ABS(a(1))*r1 - &
@@ -497,16 +586,37 @@ F=0.5*((F_L+F_R) - &
        Alpha3*ABS(a(3))*r3 - &
        Alpha4*ABS(a(4))*r4 - &
        Alpha5*ABS(a(5))*r5)
+#else
+! get split flux
+CALL SplitDGSurface_pointer(U_LL,U_RR,F)
+! assemble Roe flux
+F = F - 0.5*(Alpha1*ABS(a(1))*r1 + &
+             Alpha2*ABS(a(2))*r2 + &
+             Alpha3*ABS(a(3))*r3 + &
+             Alpha4*ABS(a(4))*r4 + &
+             Alpha5*ABS(a(5))*r5)
+#endif /*SPLIT_DG*/
 
+#ifdef DEBUG
+! ===============================================================================
+! Following dummy calls do suppress compiler warnings of unused Riemann-functions
+! ===============================================================================
+IF (0.EQ.1) THEN
+  WRITE (*,*) F_L,F_R
+END IF
+#endif /*DEBUG*/
 END SUBROUTINE Riemann_Roe
 
 
 !=================================================================================================================================
 !> Roe's approximate Riemann solver using the Hartman and Hymen II entropy fix
 !=================================================================================================================================
-PURE SUBROUTINE Riemann_RoeEntropyFix(F_L,F_R,U_LL,U_RR,F)
+SUBROUTINE Riemann_RoeEntropyFix(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
 USE MOD_EOS_Vars      ,ONLY: Kappa,KappaM1
+#ifdef SPLIT_DG
+USE MOD_SplitFlux ,ONLY: SplitDGSurface_pointer
+#endif /*SPLIT_DG*/
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -588,6 +698,7 @@ DO iVar=1,5
   END IF
 END DO
 
+#ifndef SPLIT_DG
 ! assemble Roe flux
 F=0.5*((F_L+F_R)        - &
        Alpha(1)*a(1)*r1 - &
@@ -595,8 +706,118 @@ F=0.5*((F_L+F_R)        - &
        Alpha(3)*a(3)*r3 - &
        Alpha(4)*a(4)*r4 - &
        Alpha(5)*a(5)*r5)
+#else
+! get split flux
+CALL SplitDGSurface_pointer(U_LL,U_RR,F)
+! for KG or PI flux eigenvalues have to be altered to ensure consistent KE dissipation
+! assemble Roe flux
+F= F - 0.5*(Alpha(1)*a(1)*r1 + &
+            Alpha(2)*a(2)*r2 + &
+            Alpha(3)*a(3)*r3 + &
+            Alpha(4)*a(4)*r4 + &
+            Alpha(5)*a(5)*r5)
+#endif /*SPLIT_DG*/
 
+#ifdef DEBUG
+! ===============================================================================
+! Following dummy calls do suppress compiler warnings of unused Riemann-functions
+! ===============================================================================
+IF (0.EQ.1) THEN
+  WRITE (*,*) F_L,F_R
+END IF
+#endif /*DEBUG*/
 END SUBROUTINE Riemann_RoeEntropyFix
+
+!=================================================================================================================================
+!> low mach number Roe's approximate Riemann solver according to Oßwald(2015)
+!=================================================================================================================================
+SUBROUTINE Riemann_RoeL2(F_L,F_R,U_LL,U_RR,F)
+! MODULES
+USE MOD_EOS_Vars  ,ONLY: kappaM1,kappa
+#ifdef SPLIT_DG
+USE MOD_SplitFlux ,ONLY: SplitDGSurface_pointer
+#endif /*SPLIT_DG*/
+IMPLICIT NONE
+!---------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+                                               !> extended solution vector on the left/right side of the interface
+REAL,DIMENSION(PP_2Var),INTENT(IN) :: U_LL,U_RR
+                                               !> advection fluxes on the left/right side of the interface
+REAL,DIMENSION(PP_nVar),INTENT(IN) :: F_L,F_R
+REAL,DIMENSION(PP_nVar),INTENT(OUT):: F        !< resulting Riemann flux
+!---------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL                    :: H_L,H_R
+REAL                    :: SqrtRho_L,SqrtRho_R,sSqrtRho
+REAL                    :: RoeVel(3),RoeH,Roec,absVel
+REAL                    :: Ma_loc ! local Mach-Number
+REAL,DIMENSION(PP_nVar) :: a,r1,r2,r3,r4,r5  ! Roe eigenvectors
+REAL                    :: Alpha1,Alpha2,Alpha3,Alpha4,Alpha5,Delta_U(PP_nVar+1)
+!=================================================================================================================================
+! Roe flux
+H_L       = TOTALENTHALPY_HE(U_LL)
+H_R       = TOTALENTHALPY_HE(U_RR)
+SqrtRho_L = SQRT(U_LL(DENS))
+SqrtRho_R = SQRT(U_RR(DENS))
+
+sSqrtRho  = 1./(SqrtRho_L+SqrtRho_R)
+! Roe mean values
+RoeVel    = (SqrtRho_R*U_RR(VELV) + SqrtRho_L*U_LL(VELV)) * sSqrtRho
+absVel    = DOT_PRODUCT(RoeVel,RoeVel)
+RoeH      = (SqrtRho_R*H_R+SqrtRho_L*H_L) * sSqrtRho
+Roec      = ROEC_RIEMANN_H(RoeH,RoeVel)
+
+! mean eigenvalues and eigenvectors
+a  = (/ RoeVel(1)-Roec, RoeVel(1), RoeVel(1), RoeVel(1), RoeVel(1)+Roec      /)
+r1 = (/ 1.,             a(1),      RoeVel(2), RoeVel(3), RoeH-RoeVel(1)*Roec /)
+r2 = (/ 1.,             RoeVel(1), RoeVel(2), RoeVel(3), 0.5*absVel          /)
+r3 = (/ 0.,             0.,        1.,        0.,        RoeVel(2)           /)
+r4 = (/ 0.,             0.,        0.,        1.,        RoeVel(3)           /)
+r5 = (/ 1.,             a(5),      RoeVel(2), RoeVel(3), RoeH+RoeVel(1)*Roec /)
+
+! calculate differences
+Delta_U(1:5) = U_RR(CONS) - U_LL(CONS)
+Delta_U(6)   = Delta_U(5)-(Delta_U(3)-RoeVel(2)*Delta_U(1))*RoeVel(2) - (Delta_U(4)-RoeVel(3)*Delta_U(1))*RoeVel(3)
+
+! low Mach-Number fix
+Ma_loc = SQRT(absVel)/(Roec*SQRT(kappa))
+Delta_U(2:4) = Delta_U(2:4) * Ma_loc
+
+! calculate factors
+Alpha3 = Delta_U(3) - RoeVel(2)*Delta_U(1)
+Alpha4 = Delta_U(4) - RoeVel(3)*Delta_U(1)
+Alpha2 = ALPHA2_RIEMANN_H(RoeH,RoeVel,Roec,Delta_U)
+Alpha1 = 0.5/Roec * (Delta_U(1)*(RoeVel(1)+Roec) - Delta_U(2) - Roec*Alpha2)
+Alpha5 = Delta_U(1) - Alpha1 - Alpha2
+
+#ifndef SPLIT_DG
+! assemble Roe flux
+F=0.5*((F_L+F_R) - &
+       Alpha1*ABS(a(1))*r1 - &
+       Alpha2*ABS(a(2))*r2 - &
+       Alpha3*ABS(a(3))*r3 - &
+       Alpha4*ABS(a(4))*r4 - &
+       Alpha5*ABS(a(5))*r5)
+#else
+! get split flux
+CALL SplitDGSurface_pointer(U_LL,U_RR,F)
+! assemble Roe flux
+F = F - 0.5*(Alpha1*ABS(a(1))*r1 + &
+             Alpha2*ABS(a(2))*r2 + &
+             Alpha3*ABS(a(3))*r3 + &
+             Alpha4*ABS(a(4))*r4 + &
+             Alpha5*ABS(a(5))*r5)
+#endif /*SPLIT_DG*/
+
+#ifdef DEBUG
+! ===============================================================================
+! Following dummy calls do suppress compiler warnings of unused Riemann-functions
+! ===============================================================================
+IF (0.EQ.1) THEN
+  WRITE (*,*) F_L,F_R
+END IF
+#endif /*DEBUG*/
+END SUBROUTINE Riemann_RoeL2
 
 
 !=================================================================================================================================
@@ -763,6 +984,41 @@ ELSE
 END IF ! subsonic case
 END SUBROUTINE Riemann_HLLEM
 
+#ifdef SPLIT_DG
+!==================================================================================================================================
+!> Riemann solver using purely the average fluxes
+!==================================================================================================================================
+SUBROUTINE Riemann_FluxAverage(F_L,F_R,U_LL,U_RR,F)
+! MODULES
+#ifdef SPLIT_DG
+USE MOD_SplitFlux     ,ONLY: SplitDGSurface_pointer
+#endif /*SPLIT_DG*/
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+                                                !> extended solution vector on the left/right side of the interface
+REAL,DIMENSION(PP_2Var),INTENT(IN) :: U_LL,U_RR
+                                                !> advection fluxes on the left/right side of the interface
+REAL,DIMENSION(PP_nVar),INTENT(IN) :: F_L,F_R
+REAL,DIMENSION(PP_nVar),INTENT(OUT):: F         !< resulting Riemann flux
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!==================================================================================================================================
+! get split flux
+CALL SplitDGSurface_pointer(U_LL,U_RR,F)
+
+#ifdef DEBUG
+! ===============================================================================
+! Following dummy calls do suppress compiler warnings of unused Riemann-functions
+! ===============================================================================
+IF (0.EQ.1) THEN
+  WRITE (*,*) F_L,F_R
+END IF
+#endif /*DEBUG*/
+END SUBROUTINE Riemann_FluxAverage
+#endif /*SPLIT_DG*/
 
 !==================================================================================================================================
 !> Finalize Riemann solver routines

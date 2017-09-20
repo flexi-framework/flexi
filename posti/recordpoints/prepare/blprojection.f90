@@ -43,7 +43,7 @@ REAL,INTENT(IN)                 :: xCP(3,nCP)
 INTEGER                         :: nRP(2),i,j,iCP,iter
 REAL                            :: x_loc(3),s_loc,dx_loc(3)
 TYPE(tRPlist),POINTER           :: RPlist_tmp(:)
-REAL,ALLOCATABLE                :: xRP(:,:),NormVecRP(:,:),TangVecRP(:,:),dh(:)
+REAL,ALLOCATABLE                :: xRP(:,:),xRP_tmp(:,:),NormVecRP(:,:),TangVecRP(:,:),dh(:)
 REAL,ALLOCATABLE                :: s(:),s_mod(:),s_equi(:),coeff(:,:,:)
 REAL                            :: h,t,height_loc,EquiErr
 !===================================================================================================================================
@@ -52,6 +52,7 @@ ALLOCATE(RPlist_tmp(nRP(1)))
 ALLOCATE(NormVecRP(3,nRP(1)))
 ALLOCATE(TangVecRP(3,nRP(1)))
 ALLOCATE(xRP(3,nRP(1)))
+ALLOCATE(xRP_tmp(3,nRP(1)))
 ALLOCATE(s_equi(nRP(1)))
 ALLOCATE(coeff(3,4,nCP-1),s(nCP))
 
@@ -75,7 +76,8 @@ END DO
 !iterate between projection and equidistant partitioning
 DO iter=1,10
   ! get equidistant distribution along projected spline
-  CALL GetEquiPoints(3,nRP(1),nRP(1),xRP,xRP,s_equi)
+  xRP_tmp = xRP
+  CALL GetEquiPoints(3,nRP(1),nRP(1),xRP_tmp,xRP,s_equi)
   DO i=1,nRP(1)
     RPlist_tmp(i)%RP%x=xRP(:,i)
   END DO

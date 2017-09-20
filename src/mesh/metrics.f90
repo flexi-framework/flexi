@@ -428,7 +428,10 @@ END SUBROUTINE CalcMetrics
 SUBROUTINE CalcSurfMetrics(Nloc,FVE,JaCL_N,XCL_N,Vdm_CLN_N,iElem,NormVec,TangVec1,TangVec2,SurfElem,Face_xGP,Ja_Face)
 ! MODULES
 USE MOD_Mathtools,      ONLY:CROSS
-USE MOD_Mesh_Vars,      ONLY:ElemToSide,MortarType,nSides,MortarInfo
+USE MOD_Mesh_Vars,      ONLY:ElemToSide,MortarType,nSides
+#if PP_dim == 2
+USE MOD_Mesh_Vars,      ONLY:MortarInfo
+#endif
 USE MOD_Mesh_Vars,      ONLY:NormalDirs,TangDirs,NormalSigns
 USE MOD_Mappings,       ONLY:SideToVol2
 USE MOD_ChangeBasis,    ONLY:ChangeBasis2D
@@ -452,7 +455,9 @@ REAL,INTENT(OUT),OPTIONAL :: Ja_Face(3,3,0:Nloc,0:Nloc,1:nSides) !< (OUT) surfac
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: p,q,pq(2),dd,iLocSide,SideID,SideID2,iMortar,nbSideIDs(4),flip
+#if PP_dim == 2
 INTEGER            :: nMortars,tmp_MI(1:2),SideID_Mortar
+#endif
 INTEGER            :: NormalDir,TangDir
 REAL               :: NormalSign
 REAL               :: Ja_Face_l(3,3,0:Nloc,0:Nloc)
