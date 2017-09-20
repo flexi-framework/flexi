@@ -797,7 +797,7 @@ END SUBROUTINE CheckForExecutable
 SUBROUTINE GetConfigurationFile(Proposal)
 ! MODULES
 USE MOD_Globals
-USE MOD_RegressionCheck_Vars,  ONLY: EXECPATH,CodeNameLowCase,RunContinue
+USE MOD_RegressionCheck_Vars,  ONLY: EXECPATH,CodeNameLowCase
 USE MOD_RegressionCheck_Vars,  ONLY: BuildSolver,configuration_cmake
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -846,7 +846,6 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 INTEGER,INTENT(IN)                 :: N_compile_flags
 ! LOCAL VARIABLES
-LOGICAL                            :: ExistSolver      ! logical to flag solver
 INTEGER                            :: J
 !===================================================================================================================================
 DO J=1,N_compile_flags

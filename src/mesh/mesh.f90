@@ -498,6 +498,7 @@ SDEALLOCATE(SurfElemO)
 SDEALLOCATE(Elem_IJK)
 SDEALLOCATE(ElemInfo)
 SDEALLOCATE(SideInfo)
+SDEALLOCATE(SideToGlobalSide)
 
 !> mappings
 CALL FinalizeMappings()

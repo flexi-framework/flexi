@@ -180,13 +180,15 @@ CHARACTER(LEN=*)                  :: CompTime        !< Compilation time
 CHARACTER(LEN=*)                  :: ErrorMessage    !< Error message
 INTEGER,OPTIONAL                  :: IntInfo         !< Error info (integer)
 REAL,OPTIONAL                     :: RealInfo        !< Error info (real)
-INTEGER,OPTIONAL                  :: ErrorCode       !< Error info (integer)
+INTEGER,OPTIONAL                  :: ErrorCode       !< MPI Error info (integer)
 !   There is no way back!
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=50)                 :: IntString,RealString
 INTEGER                           :: errOut          ! Output of MPI_ABORT
+#if USE_MPI
 INTEGER                           :: signalout       ! Output errorcode
+#endif
 !==================================================================================================================================
 IntString = ""
 RealString = ""

@@ -230,9 +230,14 @@ USE MOD_Visu_Vars
 USE MOD_ReadInTools        ,ONLY: GETINT
 USE MOD_Interpolation      ,ONLY: GetVandermonde
 USE MOD_Interpolation_Vars ,ONLY: NodeType,NodeTypeVisu
-USE MOD_FV_Vars            ,ONLY: gradUxi,gradUeta,gradUzeta
-USE MOD_FV_Vars            ,ONLY: FV_dx_XI_L,FV_dx_ETA_L,FV_dx_ZETA_L
-USE MOD_FV_Vars            ,ONLY: FV_dx_XI_R,FV_dx_ETA_R,FV_dx_ZETA_R
+USE MOD_FV_Vars            ,ONLY: gradUxi,gradUeta
+USE MOD_FV_Vars            ,ONLY: FV_dx_XI_L,FV_dx_ETA_L
+USE MOD_FV_Vars            ,ONLY: FV_dx_XI_R,FV_dx_ETA_R
+#if PP_dim == 3
+USE MOD_FV_Vars            ,ONLY: gradUzeta
+USE MOD_FV_Vars            ,ONLY: FV_dx_ZETA_L
+USE MOD_FV_Vars            ,ONLY: FV_dx_ZETA_R
+#endif
 USE MOD_EOS                ,ONLY: PrimToCons
 USE MOD_DG_Vars            ,ONLY: UPrim
 USE MOD_EOS_Posti          ,ONLY: GetMaskPrim

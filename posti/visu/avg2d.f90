@@ -203,6 +203,15 @@ ALLOCATE(Vdm_DGToVisu(0:NVisu   ,0:NCalc_DG))
 ALLOCATE(Vdm_FVToVisu(0:NVisu_FV,0:0       ))
 #endif
 CALL GetVandermonde(NCalc_DG,NodeType,NVisu,NodeTypeVisuPosti,Vdm_DGToVisu,modal=.FALSE.)
+
+#ifdef DEBUG
+! ===============================================================================
+! Following dummy statements do suppress compiler warnings of unused Riemann-functions
+! ===============================================================================
+IF (0.EQ.1) THEN
+  WRITE(*,*) NCalc_FV
+END IF
+#endif /* DEBUG */
 END SUBROUTINE BuildVandermonds_Avg2D
 
 !===================================================================================================================================
@@ -384,16 +393,19 @@ USE MOD_Globals
 USE MOD_PreProc
 USE HDF5
 USE MOD_HDF5_Output,    ONLY: GatheredWriteArray,WriteAttribute,WriteHeader,WriteAdditionalElemData
-USE MOD_IO_HDF5,        ONLY: OpenDataFile,CloseDataFile,AddToElemData,ElementOut
+USE MOD_IO_HDF5,        ONLY: OpenDataFile,CloseDataFile,AddToElemData
 USE MOD_HDF5_Input,     ONLY: File_ID
 USE MOD_Output_Vars,    ONLY: ProjectName
 USE MOD_Visu_Vars,      ONLY: Elem_IJK,VarnamesAll,mapAllVarsToVisuVars,nVarAll
 USE MOD_Visu_Vars,      ONLY: nElemsAvg2D_DG,mapElemIJToDGElemAvg2D,nElemsAvg2D_FV,mapElemIJToFVElemAvg2D
 USE MOD_Mesh_Vars,      ONLY: nGlobalElems,offsetElem,nElems
 #if FV_ENABLED
+#if FV_RECONSTRUCT
 USE MOD_Visu_Vars,      ONLY: NCalc_FV
+#endif
 USE MOD_ChangeBasis,    ONLY: ChangeBasis2D
 USE MOD_FV_Vars,        ONLY: FV_Elems
+USE MOD_IO_HDF5,        ONLY: ElementOut
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
@@ -413,8 +425,8 @@ INTEGER(HID_T)      :: DSet_ID,FileSpace,HDF5DataType
 CHARACTER(LEN=255)  :: StrVarNames(nVar)
 CHARACTER(LEN=255)  :: FileName
 #if FV_ENABLED
-INTEGER             :: i
 #if FV_RECONSTRUCT
+INTEGER             :: i
 REAL                :: Vdm_FVRecon_PP_N(0:PP_N,0:NVisu_FV)
 #endif
 #endif
@@ -516,7 +528,14 @@ CALL GatheredWriteArray(TRIM(FileName),create=.FALSE.,&
 CALL WriteAdditionalElemData(FileName,ElementOut)
 #endif
 
-
+#ifdef DEBUG
+! ===============================================================================
+! Following dummy statements do suppress compiler warnings of unused Riemann-functions
+! ===============================================================================
+IF (0.EQ.1) THEN
+  UVisu3D(1,0,0,0,1) = UVisu_FV(0,0,0,1,1)
+END IF
+#endif
 END SUBROUTINE WriteAverageToHDF5
 
 END MODULE MOD_Visu_Avg2D

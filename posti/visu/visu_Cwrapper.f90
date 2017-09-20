@@ -178,7 +178,7 @@ CALL visu(mpi_comm_IN, prmfile, postifile, statefile)
 ! Map Fortran arrays to C pointer
 IF (MeshFileMode) THEN
   ! Write only the DG coordinates to the VTK file
-  CALL WriteCoordsToVTK_array(NVisu   ,nElems_DG,coordsDG_out,nodeidsDG_out,CoordsVisu_DG,nodeids_DG,dim=3,DGFV=0)
+  CALL WriteCoordsToVTK_array(NVisu   ,nElems_DG,coordsDG_out,nodeidsDG_out,CoordsVisu_DG,nodeids_DG,dim=PP_dim,DGFV=0)
 
   ! set length of all other output arrays to zero so they are not used in the reader
   valuesDG_out%len      = 0

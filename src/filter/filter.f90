@@ -47,12 +47,28 @@ INTERFACE FinalizeFilter
   MODULE PROCEDURE FinalizeFilter
 END INTERFACE
 
+INTERFACE Filter_Selective
+  MODULE PROCEDURE Filter_Selective
+END INTERFACE
+
 PUBLIC :: InitFilter
 PUBLIC :: Filter_pointer
+PUBLIC :: Filter_Selective
 PUBLIC :: FinalizeFilter
+PUBLIC :: DefineParametersFilter
 !==================================================================================================================================
 
-PUBLIC::DefineParametersFilter
+#ifdef DEBUG
+#if EQNSYSNR==2
+! Add dummy interfaces to unused subroutines to suppress compiler warnings.
+INTERFACE DUMMY_Filter
+  MODULE PROCEDURE Filter
+END INTERFACE
+INTERFACE DUMMY_Filter_LAF
+  MODULE PROCEDURE Filter_LAF
+END INTERFACE
+#endif
+#endif
 CONTAINS
 
 !==================================================================================================================================
@@ -441,6 +457,69 @@ END SUBROUTINE Filter_LAF
 
 
 
+SUBROUTINE Filter_Selective(NVar,FilterMat,U_in,filter_ind)
+! MODULES
+USE MOD_PreProc
+USE MOD_Globals
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+REAL,INTENT(INOUT)  :: U_in(NVar,0:PP_N,0:PP_N,0:PP_N) ! < solution vector to be filtered
+REAL,INTENT(IN)     :: FilterMat(0:PP_N,0:PP_N)        ! < filter matrix to be used
+INTEGER,INTENT(IN)  :: NVar
+LOGICAL, INTENT(IN) :: filter_ind(:)
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                                   :: i,j,k,l
+REAL,DIMENSION(NVar,0:PP_N,0:PP_N,0:PP_N) :: U_Xi,U_Eta
+!==================================================================================================================================
+! Perform filtering
+#if FV_ENABLED
+stop
+#endif
+IF(filter_ind(1)) THEN
+  U_Xi = 0.
+  DO k=0,PP_N
+    DO j=0,PP_N
+      DO i=0,PP_N
+        DO l=0,PP_N
+          U_Xi(:,i,j,k) = U_Xi(:,i,j,k) + FilterMat(i,l)*U_in(:,l,j,k)
+        END DO !l
+      END DO !i
+    END DO !j
+  END DO !k
+ELSE
+  U_Xi = U_in
+END IF
+IF(filter_ind(2)) THEN
+  U_Eta= 0.
+  DO k=0,PP_N
+    DO j=0,PP_N
+      DO i=0,PP_N
+        DO l=0,PP_N
+          U_Eta(:,i,j,k) = U_Eta(:,i,j,k) + FilterMat(j,l)*U_Xi(:,i,l,k)
+        END DO !l
+      END DO !i
+    END DO !j
+  END DO !k
+ELSE
+  U_Eta = U_Xi
+END IF
+IF(filter_ind(3)) THEN
+  U_in(:,:,:,:)=0.
+  DO k=0,PP_N
+    DO j=0,PP_N
+      DO i=0,PP_N
+        DO l=0,PP_N
+          U_in(:,i,j,k) = U_in(:,i,j,k) + FilterMat(k,l)*U_Eta(:,i,j,l)
+        END DO !l
+      END DO !i
+    END DO !j
+  END DO !k
+ELSE
+  U_in = U_Eta
+END IF
+END SUBROUTINE Filter_Selective
 
 !==================================================================================================================================
 !> Deallocate filter arrays

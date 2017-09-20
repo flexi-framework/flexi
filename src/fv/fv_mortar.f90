@@ -92,7 +92,10 @@ SUBROUTINE FV_gradU_mortar(FV_surf_gradU,doMPISides)
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_Mesh_Vars      ,ONLY: MortarType,nSides
+#if PP_dim == 3
+USE MOD_Mesh_Vars      ,ONLY: MortarType
+#endif
+USE MOD_Mesh_Vars      ,ONLY: nSides
 USE MOD_Mesh_Vars      ,ONLY: firstMortarInnerSide,lastMortarInnerSide
 USE MOD_Mesh_Vars      ,ONLY: firstMortarMPISide,lastMortarMPISide
 USE MOD_FV_Vars        ,ONLY: FV_Elems_master

@@ -149,9 +149,9 @@ END SELECT ! IniExactFunc
 
 #if PP_dim==2
 SELECT CASE (IniExactFunc)
-CASE(4,43,7) ! synthetic test cases
+CASE(43,7) ! synthetic test cases
   CALL CollectiveStop(__STAMP__,'The selected exact function is not available in 2D!') 
-CASE(2,3,41,42) ! synthetic test cases
+CASE(2,3,4,41,42) ! synthetic test cases
   IF(AdvVel(3).NE.0.) THEN
     CALL CollectiveStop(__STAMP__,'You are computing in 2D! Please set AdvVel(3) = 0!') 
   END IF
@@ -300,25 +300,30 @@ CASE(3) ! linear in rho
     Resu_t(2:4)=Resu_t(1)*prim(2:4) ! rho*vel
     Resu_t(5)=0.5*Resu_t(1)*SUM(prim(2:4)*prim(2:4))
   END IF
-#if PP_dim==3
-CASE(4) ! exact function
+CASE(4) ! oblique sine wave (in x,y,z for 3D calculations, and x,y for 2D)
   Frequency=1.
   Amplitude=0.1
   Omega=PP_Pi*Frequency
   a=AdvVel(1)*2.*PP_Pi
 
   ! g(t)
-  Resu(1:4)=2.+ Amplitude*sin(Omega*SUM(x) - a*tEval)
+  Resu(1:PP_dim+1)=2.+ Amplitude*sin(Omega*SUM(x(1:PP_dim)) - a*tEval)
+#if (PP_dim == 2)
+  Resu(4)=0.
+#endif
   Resu(5)=Resu(1)*Resu(1)
   IF(fullBoundaryOrder)THEN
     ! g'(t)
-    Resu_t(1:4)=(-a)*Amplitude*cos(Omega*SUM(x) - a*tEval)
+    Resu_t(1:PP_dim+1)=(-a)*Amplitude*cos(Omega*SUM(x(1:PP_dim)) - a*tEval)
     Resu_t(5)=2.*Resu(1)*Resu_t(1)
     ! g''(t)
-    Resu_tt(1:4)=-a*a*Amplitude*sin(Omega*SUM(x) - a*tEval)
+    Resu_tt(1:PP_dim+1)=-a*a*Amplitude*sin(Omega*SUM(x(1:PP_dim)) - a*tEval)
     Resu_tt(5)=2.*(Resu_t(1)*Resu_t(1) + Resu(1)*Resu_tt(1))
-  END IF
+#if (PP_dim == 2)
+    Resu_t(4)=0.
+    Resu_tt(4)=0.
 #endif
+  END IF
 
 CASE(41) ! SINUS in x
   Frequency=1.
@@ -631,10 +636,7 @@ SUBROUTINE CalcSource(Ut,t)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Equation_Vars    ,ONLY: IniExactFunc,doCalcSource
-USE MOD_Eos_Vars         ,ONLY: Kappa
-#if PP_dim==3
-USE MOD_Eos_Vars         ,ONLY: KappaM1
-#endif
+USE MOD_Eos_Vars         ,ONLY: Kappa,KappaM1
 USE MOD_Exactfunc_Vars   ,ONLY: AdvVel
 #if PARABOLIC
 USE MOD_Eos_Vars         ,ONLY: mu0,Pr
@@ -654,29 +656,35 @@ REAL,INTENT(INOUT)  :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< DG time deriv
 INTEGER             :: i,j,k,iElem
 REAL                :: Ut_src(5,0:PP_N,0:PP_N,0:PP_NZ)
 REAL                :: Frequency,Amplitude,Omega,a
-#if PP_dim==3
 REAL                :: sinXGP,sinXGP2,cosXGP,at
 REAL                :: tmp(6)
-#endif
 REAL                :: C
 #if FV_ENABLED
 REAL                :: Ut_src2(5,0:PP_N,0:PP_N,0:PP_NZ)
 #endif
 !==================================================================================================================================
 SELECT CASE (IniExactFunc)
-#if PP_dim==3
 CASE(4) ! exact function
   Frequency=1.
   Amplitude=0.1
   Omega=PP_Pi*Frequency
   a=AdvVel(1)*2.*PP_Pi
-  tmp(1)=-a+3*Omega
+  tmp(1)=-a+REAL(PP_dim)*Omega
+#if (PP_dim == 3)
   tmp(2)=-a+0.5*Omega*(1.+kappa*5.)
+#else
+  tmp(2)=-a+Omega*(-1.+kappa*3.)
+#endif
   tmp(3)=Amplitude*Omega*KappaM1
+#if (PP_dim == 3)
   tmp(4)=0.5*((9.+Kappa*15.)*Omega-8.*a)
   tmp(5)=Amplitude*(3.*Omega*Kappa-a)
+#else
+  tmp(4)=((2.+Kappa*6.)*Omega-4.*a)
+  tmp(5)=Amplitude*(2.*Omega*Kappa-a)
+#endif
 #if PARABOLIC
-  tmp(6)=3.*mu0*Kappa*Omega*Omega/Pr
+  tmp(6)=REAL(PP_dim)*mu0*Kappa*Omega*Omega/Pr
 #else
   tmp(6)=0.
 #endif
@@ -684,11 +692,14 @@ CASE(4) ! exact function
   at=a*t
   DO iElem=1,nElems
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      cosXGP=COS(omega*SUM(Elem_xGP(:,i,j,k,iElem))-at)
-      sinXGP=SIN(omega*SUM(Elem_xGP(:,i,j,k,iElem))-at)
+      cosXGP=COS(omega*SUM(Elem_xGP(1:PP_dim,i,j,k,iElem))-at)
+      sinXGP=SIN(omega*SUM(Elem_xGP(1:PP_dim,i,j,k,iElem))-at)
       sinXGP2=2.*sinXGP*cosXGP !=SIN(2.*(omega*SUM(Elem_xGP(:,i,j,k,iElem))-a*t))
-      Ut_src(1  ,i,j,k) = tmp(1)*cosXGP
-      Ut_src(2:4,i,j,k) = tmp(2)*cosXGP + tmp(3)*sinXGP2
+      Ut_src(1         ,i,j,k) = tmp(1)*cosXGP
+      Ut_src(2:PP_dim+1,i,j,k) = tmp(2)*cosXGP + tmp(3)*sinXGP2
+#if (PP_dim == 2)
+      Ut_src(4         ,i,j,k) = 0.
+#endif
       Ut_src(5  ,i,j,k) = tmp(4)*cosXGP + tmp(5)*sinXGP2 + tmp(6)*sinXGP
     END DO; END DO; END DO ! i,j,k
 #if FV_ENABLED    
@@ -706,7 +717,6 @@ CASE(4) ! exact function
     END IF
 #endif
   END DO ! iElem
-#endif
 CASE(41) ! Sinus in x
   Frequency=1.
   Amplitude=0.1

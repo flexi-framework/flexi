@@ -52,7 +52,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                               :: iVar,iVar2,strlen,countCons
 INTEGER                               :: mapCand(3)
-CHARACTER(LEN=255)                    :: VarName(5),tmp255,tmp255_2
+CHARACTER(LEN=255)                    :: tmp255,tmp255_2
 !===================================================================================================================================
 WRITE(UNIT_StdOut,'(132("-"))')
 WRITE(UNIT_stdOut,'(A)') ' INIT EquationRP ...'
@@ -168,15 +168,15 @@ END SUBROUTINE InitEquationRP
 SUBROUTINE CalcEquationRP()
 ! MODULES
 USE MOD_Globals
-USE MOD_RPData_Vars       ,ONLY:RPData       
-USE MOD_RPData_Vars       ,ONLY:nVar_HDF5,VarNames_HDF5
-USE MOD_RPSetVisuVisu_Vars        ,ONLY:nRP_global        
-USE MOD_OutputRPVisu_Vars ,ONLY:nSamples_out
-USE MOD_ParametersVisu        ,ONLY:nVarDep,nVarCalc,mapCalc,mapVisu,VarNamesAll,justVisualizeState
-USE MOD_ParametersVisu        ,ONLY:Line_LocalVel,Plane_LocalVel,Plane_doBLProps
-USE MOD_OutputRPVisu_Vars ,ONLY:RPData_out 
-USE MOD_EOS_Posti      ,ONLY: CalcQuantities
-USE MOD_StringTools     ,ONLY: STRICMP
+USE MOD_RPData_Vars        ,ONLY: RPData       
+USE MOD_RPData_Vars        ,ONLY: nVar_HDF5,VarNames_HDF5
+USE MOD_RPSetVisuVisu_Vars ,ONLY: nRP_global        
+USE MOD_OutputRPVisu_Vars  ,ONLY: nSamples_out
+USE MOD_ParametersVisu     ,ONLY: nVarDep,nVarCalc,mapCalc,mapVisu,VarNamesAll,justVisualizeState
+USE MOD_ParametersVisu     ,ONLY: Line_LocalVel,Plane_LocalVel
+USE MOD_OutputRPVisu_Vars  ,ONLY: RPData_out 
+USE MOD_EOS_Posti          ,ONLY: CalcQuantities
+USE MOD_StringTools        ,ONLY: STRICMP
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -330,11 +330,11 @@ END SUBROUTINE Plane_TransformVel
 SUBROUTINE Plane_BLProps()
 ! MODULES
 USE MOD_Globals
-USE MOD_OutputRPVisu_Vars           ,ONLY:nSamples_out,RPDataTimeAvg_out
-USE MOD_RPSetVisuVisu_Vars            ,ONLY:nPlanes,Planes,tPlane,xF_RP
-USE MOD_EquationRP_Vars         ,ONLY:is2D,TransMap,nBLProps
-USE MOD_ParametersVisu        ,ONLY:Plane_BLvelScaling
-USE MOD_ParametersVisu        ,ONLY:Mu0
+USE MOD_OutputRPVisu_Vars  ,ONLY: RPDataTimeAvg_out
+USE MOD_RPSetVisuVisu_Vars ,ONLY: nPlanes,Planes,tPlane
+USE MOD_EquationRP_Vars    ,ONLY: is2D,TransMap,nBLProps
+USE MOD_ParametersVisu     ,ONLY: Plane_BLvelScaling
+USE MOD_ParametersVisu     ,ONLY: Mu0
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -342,7 +342,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER              :: iPlane,i,j,jj,j_max,ndim
-REAL                 :: uu,yy,u_max,y_max,u_int,diffu1,diffu2,y1,y2,u1,u2,u3,rho1,rho2,rho_delta,dudy,dudy1
+REAL                 :: u_max,y_max,diffu1,diffu2,y1,y2,u1,u2,u3,rho1,rho2,rho_delta,dudy,dudy1
 REAL                 :: dy,dy2
 REAL                 :: u_delta,delta99,delta1,theta,u_r,tau_W,u_tau
 REAL,ALLOCATABLE     :: u_loc(:),y_loc(:),u_star(:)

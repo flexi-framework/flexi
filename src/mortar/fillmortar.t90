@@ -140,7 +140,7 @@ DO MortarSideID=firstMortarSideID,lastMortarSideID
       END DO
     END DO
 
-  CASE(3) !1->2 in xi      NOTE: In 2D only XI mortars!!!
+  CASE(3) !1->2 in xi      NOTE: In 2D only the first space index can be a Mortar (second index is always 0)!!!
 #endif
     DO q=0,TP_NZ ! for every eta-layer perform Mortar operation in xi-direction
       ! The following p- and l-loop are two MATMULs: (ATTENTION M1 and M2 are already transposed in mortar.f90)

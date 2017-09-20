@@ -37,7 +37,6 @@ USE MOD_MPI,                     ONLY: FinalizeMPI
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                           :: EndTime             ! time at the end of the reggie execution
 INTEGER                        :: nReggieBuilds       ! number of different cmake builds (with different flags)
 CHARACTER(LEN=500)             :: SYSCOMMAND          ! string to fit the system command
 CHARACTER(LEN=255)             :: FileName            ! filename

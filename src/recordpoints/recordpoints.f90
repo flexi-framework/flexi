@@ -328,6 +328,15 @@ DO iRP=1,nRP
   CALL LagrangeInterpolationPolys(xi_RP(3,iRP),PP_N,xGP,wBary,L_zeta_RP(:,iRP))
 #endif
 END DO
+
+#ifdef DEBUG
+! ===============================================================================
+! Following dummy calls do suppress compiler warnings of unused Riemann-functions
+! ===============================================================================
+IF (0.EQ.1) THEN
+  L_zeta_RP = 0.
+END IF
+#endif
 END SUBROUTINE InitRPBasis
 
 
@@ -418,7 +427,10 @@ USE MOD_Equation_Vars     ,ONLY: StrVarNames
 USE MOD_HDF5_Output       ,ONLY: WriteAttribute,WriteArray,MarkWriteSuccessfull
 USE MOD_Output_Vars       ,ONLY: ProjectName
 USE MOD_Mesh_Vars         ,ONLY: MeshFile
-USE MOD_Recordpoints_Vars ,ONLY: RP_COMM,myRPrank,lastSample
+#if USE_MPI
+USE MOD_Recordpoints_Vars ,ONLY: RP_COMM
+#endif
+USE MOD_Recordpoints_Vars ,ONLY: myRPrank,lastSample
 USE MOD_Recordpoints_Vars ,ONLY: RPDefFile,RP_Data,iSample,nSamples
 USE MOD_Recordpoints_Vars ,ONLY: offsetRP,nRP,nGlobalRP
 USE MOD_Recordpoints_Vars ,ONLY: RP_Buffersize,RP_Maxbuffersize,RP_fileExists,chunkSamples

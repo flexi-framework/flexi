@@ -172,7 +172,10 @@ SUBROUTINE CalcMetrics()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Mesh_Vars          ,ONLY: NGeo,NgeoRef,nElems,offsetElem,crossProductMetrics
+USE MOD_Mesh_Vars          ,ONLY: NGeo,NgeoRef,nElems,offsetElem
+#if PP_dim == 3
+USE MOD_Mesh_Vars          ,ONLY: crossProductMetrics
+#endif
 USE MOD_Mesh_Vars          ,ONLY: Metrics_fTilde,Metrics_gTilde,Metrics_hTilde,dXCL_N
 USE MOD_Mesh_Vars          ,ONLY: sJ,detJac_Ref,Ja_Face
 USE MOD_Mesh_Vars          ,ONLY: NodeCoords,TreeCoords,Elem_xGP
@@ -193,7 +196,10 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER :: i,j,k,q,iElem
+INTEGER :: i,j,k,iElem
+#if PP_dim == 3
+INTEGER :: q
+#endif
 INTEGER :: ll
 ! Jacobian on CL N and NGeoRef
 REAL    :: DetJac_N( 1,0:PP_N,   0:PP_N,   0:PP_NZ)
@@ -206,7 +212,9 @@ REAL    :: XCL_N_quad( 3,  0:PP_N,0:PP_N,0:PP_NZ)          ! mapping X(xi) P\in 
 REAL    :: dXCL_Ngeo(  3,3,0:Ngeo,0:Ngeo,0:PP_NGeoZ)          ! jacobi matrix on CL Ngeo
 REAL    :: dX_NgeoRef( 3,3,0:NgeoRef,0:NgeoRef,0:PP_NGeoRefZ) ! jacobi matrix on SOL NgeoRef
 
+#if PP_dim == 3
 REAL    :: R_CL_N(     3,3,0:PP_N,0:PP_N,0:PP_NZ)    ! buffer for metric terms, uses XCL_N,dXCL_N
+#endif
 REAL    :: JaCL_N(     3,3,0:PP_N,0:PP_N,0:PP_NZ)    ! metric terms P\in N
 REAL    :: JaCL_N_quad(3,3,0:PP_N,0:PP_N,0:PP_NZ)    ! metric terms P\in N
 REAL    :: scaledJac(2)
@@ -223,8 +231,12 @@ REAL    :: Vdm_CLNGeo_CLN(    0:PP_N   ,0:Ngeo)
 REAL    :: Vdm_CLN_N(         0:PP_N   ,0:PP_N)
 
 ! 3D Vandermonde matrices and lengths,nodes,weights
-REAL,DIMENSION(0:NgeoRef,0:NgeoRef) :: Vdm_xi_Ref,Vdm_eta_Ref,Vdm_zeta_Ref
-REAL,DIMENSION(0:PP_N   ,0:PP_N)    :: Vdm_xi_N  ,Vdm_eta_N  ,Vdm_zeta_N
+REAL,DIMENSION(0:NgeoRef,0:NgeoRef) :: Vdm_xi_Ref,Vdm_eta_Ref
+REAL,DIMENSION(0:PP_N   ,0:PP_N)    :: Vdm_xi_N  ,Vdm_eta_N
+#if PP_dim == 3
+REAL,DIMENSION(0:NgeoRef,0:NgeoRef) :: Vdm_zeta_Ref
+REAL,DIMENSION(0:PP_N   ,0:PP_N)    :: Vdm_zeta_N
+#endif
 REAL    :: xiRef( 0:NgeoRef),wBaryRef( 0:NgeoRef)
 REAL    :: xiCL_N(0:PP_N)   ,wBaryCL_N(0:PP_N)
 REAL    :: xi0(3),dxi(3),length(3)
@@ -515,7 +527,10 @@ END SUBROUTINE CalcMetrics
 SUBROUTINE CalcSurfMetrics(Nloc,FVE,JaCL_N,XCL_N,Vdm_CLN_N,iElem,NormVec,TangVec1,TangVec2,SurfElem,Face_xGP,Ja_Face)
 ! MODULES
 USE MOD_Mathtools        ,ONLY: CROSS
-USE MOD_Mesh_Vars        ,ONLY: ElemToSide,MortarType,nSides,MortarInfo
+USE MOD_Mesh_Vars        ,ONLY: ElemToSide,MortarType,nSides
+#if PP_dim == 2
+USE MOD_Mesh_Vars        ,ONLY: MortarInfo
+#endif
 USE MOD_Mesh_Vars        ,ONLY: NormalDirs,TangDirs,NormalSigns
 USE MOD_Mappings         ,ONLY: SideToVol2
 USE MOD_ChangeBasis      ,ONLY: ChangeBasis2D
@@ -540,8 +555,10 @@ REAL,INTENT(OUT),OPTIONAL :: Ja_Face(3,3,0:Nloc,0:PP_NlocZ,1:nSides) !< (OUT) su
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: p,q,pq(2),dd,iLocSide,SideID,SideID2,iMortar,nbSideIDs(4),flip
+#if PP_dim == 2
+INTEGER            :: nMortars,tmp_MI(1:2),SideID_Mortar
+#endif
 INTEGER            :: NormalDir,TangDir
-INTEGER            :: nMortars,SideID_Mortar,tmp_MI(2)
 REAL               :: NormalSign
 REAL               :: Ja_Face_l(3,3,0:Nloc,0:PP_NlocZ)
 REAL               :: Mortar_Ja(3,3,0:Nloc,0:PP_NlocZ,4)
@@ -578,7 +595,15 @@ DO iLocSide=2,5
   DO q=0,PP_NlocZ; DO p=0,Nloc
     pq=SideToVol2(Nloc,p,q,0,iLocSide,PP_dim)
     ! Compute Face_xGP for sides
+#if PP_dim == 2
+    IF (iLocSide.EQ.XI_MINUS) THEN
+      dd = pq(1)
+      pq(1) = Nloc-pq(2)
+      pq(2) = dd
+    END IF    
+#endif
     Face_xGP(1:3,p,q,0,sideID)=tmp2(:,pq(1),pq(2))
+
   END DO; END DO ! p,q
 
   Ja_Face_l=0.
@@ -604,6 +629,29 @@ DO iLocSide=2,5
       Ja_Face_l(dd,1:3,p,q)=tmp2(:,pq(1),pq(2))
     END DO; END DO ! p,q
   END DO ! dd
+
+#if PP_dim == 2
+  IF (iLocSide.EQ.XI_MINUS) THEN
+    DO dd=1,3
+      tmp = Ja_Face_l(dd,1:3,:,:)
+      DO q=0,Nloc; DO p=0,Nloc
+        IF (dd.EQ.TangDirs(XI_MINUS)) THEN
+          Ja_Face_l(dd,1:3,p,q) = -tmp(1:3,Nloc-q,p)
+        ELSE
+          Ja_Face_l(dd,1:3,p,q) = tmp(1:3,Nloc-q,p)
+        END IF
+      END DO; END DO ! p,q=0,Nloc
+    END DO
+    nMortars=MERGE(2,0,MortarType(1,sideID).EQ.2 .OR. MortarType(1,sideID).EQ.3)
+    IF (nMortars.EQ.2) THEN
+      SideID_Mortar = MortarType(2,sideID)
+      tmp_MI    = MortarInfo(:,1,SideID_Mortar)
+      MortarInfo(:,1,SideID_Mortar) = MortarInfo(:,2,SideID_Mortar)
+      MortarInfo(:,2,SideID_Mortar) = tmp_MI
+    END IF
+  END IF
+#endif
+
   IF(PRESENT(Ja_Face)) Ja_Face(:,:,:,:,SideID)=Ja_Face_l
 
 

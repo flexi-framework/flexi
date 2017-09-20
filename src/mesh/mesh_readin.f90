@@ -205,7 +205,9 @@ CHARACTER(LEN=*),INTENT(IN)  :: FileString !< (IN) mesh filename
 TYPE(tElem),POINTER            :: aElem
 TYPE(tSide),POINTER            :: aSide,bSide
 REAL,ALLOCATABLE               :: NodeCoordsTmp(:,:,:,:,:)
+#if PP_dim == 2
 INTEGER                        :: BCindex
+#endif
 INTEGER                        :: iElem,nbElemID,nNodes
 INTEGER                        :: iLocSide,nbLocSide
 INTEGER                        :: iSide

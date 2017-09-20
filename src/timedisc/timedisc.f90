@@ -35,9 +35,19 @@ END INTERFACE
 
 PUBLIC :: InitTimeDisc,FinalizeTimeDisc
 PUBLIC :: TimeDisc
+PUBLIC :: DefineParametersTimeDisc
+
+#ifdef DEBUG
+! Add dummy interfaces to unused subroutines to suppress compiler warnings.
+INTERFACE DUMMY_TimstepStepByLSERKW2
+  MODULE PROCEDURE TimeStepByLSERKW2
+END INTERFACE
+INTERFACE DUMMY_TimstepStepByLSERKK3
+  MODULE PROCEDURE TimeStepByLSERKK3
+END INTERFACE
+#endif /* DEBUG */
 !==================================================================================================================================
 
-PUBLIC::DefineParametersTimeDisc
 CONTAINS
 
 !==================================================================================================================================
@@ -137,7 +147,7 @@ SUBROUTINE TimeDisc()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_TimeDisc_Vars       ,ONLY: TEnd,t,dt,tAnalyze,ViscousTimeStep,maxIter,Timestep,nRKStages,nCalcTimeStepMax
+USE MOD_TimeDisc_Vars       ,ONLY: TEnd,t,dt,tAnalyze,ViscousTimeStep,maxIter,Timestep,nRKStages,nCalcTimeStepMax,CurrentStage
 USE MOD_Analyze_Vars        ,ONLY: Analyze_dt,WriteData_dt,tWriteData,nWriteData
 USE MOD_AnalyzeEquation_Vars,ONLY: doCalcTimeAverage
 USE MOD_Analyze             ,ONLY: Analyze
@@ -205,6 +215,7 @@ CASE (2)
 END SELECT
 
 ! Do first RK stage of first timestep to fill gradients
+CurrentStage=1
 CALL DGTimeDerivative_weakForm(t)
 
 #if FV_ENABLED
@@ -267,6 +278,8 @@ SWRITE(UNIT_StdOut,*)'CALCULATION RUNNING...'
 ! Run computation
 CalcTimeStart=FLEXITIME()
 DO
+  CurrentStage=1
+  CALL DGTimeDerivative_weakForm(t)
   IF(doCalcIndicator) CALL CalcIndicator(U,t)
 #if FV_ENABLED
   CALL FV_Switch(AllowToDG=(nCalcTimestep.LT.1))
@@ -414,10 +427,11 @@ INTEGER  :: iStage
 b_dt=RKb*dt
 
 IF(CalcPruettDamping) CALL TempFilterTimeDeriv(U,dt)
+
 ! First evaluation of DG operator already done in timedisc
 CurrentStage=1
 tStage=t
-CALL DGTimeDerivative_weakForm(tStage)
+!CALL DGTimeDerivative_weakForm(tStage)      !allready called in timedisc
 CALL VCopy(nTotalU,Ut_temp,Ut)               !Ut_temp = Ut
 CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(1))    !U       = U + Ut*b_dt(1)
 
@@ -473,6 +487,7 @@ INTEGER  :: iStage
 !===================================================================================================================================
 IF(CalcPruettDamping) CALL TempFilterTimeDeriv(U,dt)
 
+
 ! Premultiply with dt
 b_dt=RKb*dt
 
@@ -483,7 +498,7 @@ CurrentStage=1
 tStage=t
 CALL VCopy(nTotalU,Uprev,U)                    !Uprev=U
 CALL VCopy(nTotalU,S2,U)                       !S2=U
-CALL DGTimeDerivative_weakForm(t)
+!CALL DGTimeDerivative_weakForm(t)             ! allready called in timedisc
 CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(1))      !U      = U + Ut*b_dt(1)
 
 DO iStage=2,nRKStages
