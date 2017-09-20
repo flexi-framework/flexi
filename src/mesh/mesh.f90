@@ -447,8 +447,7 @@ IMPLICIT NONE
 INTEGER,INTENT(IN) :: meshMode
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: i,j,iSide
-REAL               :: tmp(3,0:PP_N,0:PP_N,0:FV_ENABLED),zlength
+REAL               :: zlength
 #if FV_ENABLED && FV_RECONSTRUCT
 REAL               :: tmpFV(0:PP_N,0:PP_N,3)
 #if FV_RECONSTRUCT

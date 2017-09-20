@@ -101,20 +101,15 @@ PUBLIC :: ChangeBasisSurf
 
 #ifdef DEBUG
 ! Add dummy interfaces to unused subroutines to suppress compiler warnings.
-INTERFACE DUMMY_ChangeBasis3D_XYZ
+INTERFACE DUMMY_ChangeBasis
   MODULE PROCEDURE ChangeBasis3D_XYZ
-END INTERFACE
-INTERFACE DUMMY_ChangeBasis3D
+  MODULE PROCEDURE ChangeBasis2D_XYZ
   MODULE PROCEDURE ChangeBasis3D
   MODULE PROCEDURE ChangeBasis3D_singleVar
-END INTERFACE
-INTERFACE DUMMY_ChangeBasis1D
   MODULE PROCEDURE ChangeBasis1D
   MODULE PROCEDURE ChangeBasis1D_singleVar
 END INTERFACE
-PUBLIC :: DUMMY_ChangeBasis3D_XYZ
-PUBLIC :: DUMMY_ChangeBasis3D
-PUBLIC :: DUMMY_ChangeBasis1D
+PUBLIC :: DUMMY_ChangeBasis
 #endif /* DEBUG */
 !==================================================================================================================================
 CONTAINS

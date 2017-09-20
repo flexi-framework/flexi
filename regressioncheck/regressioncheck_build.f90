@@ -508,6 +508,9 @@ END IF
 ! OLD !         EXIT
 ! OLD !       END IF
 ! OLD !     END DO
+IF (0.EQ.1) THEN
+  WRITE (*,*) N_compile_flags
+END IF
 
 SWRITE(UNIT_stdOut,'(132("="))')
 
