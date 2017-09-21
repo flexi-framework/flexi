@@ -177,7 +177,11 @@ USE MOD_FV_Vars,            ONLY: FV_Elems
 USE MOD_Indicator_Vars,     ONLY: IndValue
 USE MOD_StringTools,        ONLY: STRICMP
 #endif
+#if PP_dim == 3
 USE MOD_2D,                 ONLY: ExpandArrayTo3D
+#else
+USE MOD_2D,                 ONLY: to2D_rank5
+#endif
 USE MOD_IO_HDF5
 USE MOD_HDF5_Input,         ONLY: GetDataSize
 IMPLICIT NONE
@@ -187,7 +191,10 @@ LOGICAL,INTENT(IN),OPTIONAL :: doFlushFiles
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL,ALLOCATABLE   :: U_local(:,:,:,:,:)
-INTEGER            :: iElem,i,j,k,N_RestartZ
+#if PP_dim == 3 
+REAL,ALLOCATABLE   :: U_local2(:,:,:,:,:)
+#endif
+INTEGER            :: iElem,i,j,k
 REAL,ALLOCATABLE   :: JNR(:,:,:,:)
 REAL               :: Vdm_NRestart_N(0:PP_N,0:N_Restart)
 REAL               :: Vdm_3Ngeo_NRestart(0:N_Restart,0:3*NGeo)
@@ -220,25 +227,37 @@ IF(DoRestart)THEN
   DEALLOCATE(ElemData,VarNamesElemData,tmp)
 #endif
 
+
+  CALL GetDataSize(File_ID,'DG_Solution',nDims,HSize)
+! Sanity check
+  IF ((HSize(1).NE.PP_nVar).OR.(HSize(2).NE.N_Restart+1).OR.(HSize(3).NE.N_Restart+1).OR.(HSize(5).NE.nElems)) THEN
+    CALL Abort(__STAMP__,"Dimensions of restart file do not match!")
+  END IF
+  ALLOCATE(U_local(HSize(1),0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,HSize(5)))
+  CALL ReadArray('DG_Solution',5,INT(HSize),OffsetElem,5,RealArray=U_local)
+
   ! Read in state
   IF(.NOT. InterpolateSolution)THEN
     ! No interpolation needed, read solution directly from file
-    ! check whether we have 2D data
-    CALL GetDataSize(File_ID,'DG_Solution',nDims,HSize)
-    IF(HSize(4).EQ.1) THEN 
 #if PP_dim == 3
-      ! If either posti or a 3D flexi reads in a 2D state file, expand it to 3D.
-      ALLOCATE(U_local(PP_nVar,0:PP_N,0:PP_N,0:0,nElems))
-      CALL ReadArray('DG_Solution',5,(/PP_nVar,PP_N+1,PP_N+1,1,nElems/),OffsetElem,5,RealArray=U_local)
+    IF (HSize(4).EQ.1) THEN
+      ! FLEXI compiled 3D, but data is 2D => expand third space dimension
       CALL ExpandArrayTo3D(5,(/PP_nVar,PP_N+1,PP_N+1,1,nElems/),4,PP_N+1,U_local,U) 
-      DEALLOCATE(U_local)
-#else
-      CALL ReadArray('DG_Solution',5,(/PP_nVar,PP_N+1,PP_N+1,1,nElems/),OffsetElem,5,RealArray=U)
-#endif
     ELSE
-      CALL ReadArray('DG_Solution',5,(/PP_nVar,PP_N+1,PP_N+1,PP_NZ+1,nElems/),OffsetElem,5,RealArray=U)
+      ! FLEXI compiled 3D + data 3D 
+      U = U_local
     END IF
-  ELSE
+#else
+    IF (HSize(4).EQ.1) THEN
+      ! FLEXI compiled 2D + data 2D 
+      U = U_local
+    ELSE
+      ! FLEXI compiled 2D, but data is 3D => reduce third space dimension 
+      CALL to2D_rank5((/1,0,0,0,1/),(/PP_nVar,PP_N,PP_N,PP_N,nElems/),4,U_local)
+      U = U_local
+    END IF
+#endif
+  ELSE ! InterpolateSolution 
     ! We need to interpolate the solution to the new computational grid
     SWRITE(UNIT_stdOut,*)'Interpolating solution from restart grid with N=',N_restart,' to computational grid with N=',PP_N
 
@@ -247,17 +266,25 @@ IF(DoRestart)THEN
     CALL GetVandermonde(3*Ngeo,    NodeType,        N_Restart, NodeType_Restart, &
                         Vdm_3Ngeo_NRestart, modal=.TRUE.)
 
-#if(PP_dim==2)
-    N_RestartZ=0
+    ALLOCATE(JNR(1,0:HSize(2),0:HSize(3),0:HSize(3)))
+#if PP_dim == 3
+    IF (HSize(4).EQ.1) THEN
+      ! FLEXI compiled 3D, but data is 2D => expand third space dimension
+      ! use temporary array 'U_local2' to store 3D data
+      ALLOCATE(U_local2(PP_nVar,0:N_Restart,0:N_Restart,0:N_Restart,nElems))
+      CALL ExpandArrayTo3D(5,INT(HSize),4,N_Restart,U_local,U_local2) 
+      ! Reallocate 'U_local' to 3D and mv data from U_local2 to U_local
+      DEALLOCATE(U_local)
+      ALLOCATE(U_local(PP_nVar,0:N_Restart,0:N_Restart,0:N_Restart,nElems))
+      U_local = U_local2
+      DEALLOCATE(U_local2)
+    END IF
 #else
-    N_RestartZ=N_Restart
+    IF (HSize(4).NE.1) THEN
+      ! FLEXI compiled 2D, but data is 3D => reduce third space dimension 
+      CALL to2D_rank5((/1,0,0,0,1/),(/PP_nVar,N_Restart,N_Restart,N_Restart,nElems/),4,U_local)
+    END IF
 #endif
-    ALLOCATE(JNR(1,0:N_Restart,0:N_Restart,0:N_RestartZ))
-    ALLOCATE(U_local(PP_nVar,0:N_Restart,0:N_Restart,0:N_RestartZ,nElems))
-    CALL ReadArray('DG_Solution',5,&
-                   (/PP_nVar,N_Restart+1,N_Restart+1,N_RestartZ+1,nElems/),&
-                   OffsetElem,5,RealArray=U_local)
-
     ! Transform solution to refspace and project solution to N
     ! For conservativity deg of detJac should be identical to EFFECTIVE polynomial deg of solution
     ! (e.g. beware when filtering the jacobian )
@@ -265,7 +292,7 @@ IF(DoRestart)THEN
       DO iElem=1,nElems
         IF (FV_Elems(iElem).EQ.0) THEN ! DG element
           CALL ChangeBasisVolume(1,3*Ngeo,N_Restart,Vdm_3Ngeo_NRestart,detJac_Ref(:,:,:,:,iElem),JNR)
-          DO k=0,N_RestartZ; DO j=0,N_Restart; DO i=0,N_Restart
+          DO k=0,INT(HSize(4)); DO j=0,N_Restart; DO i=0,N_Restart
             U_local(:,i,j,k,iElem)=U_local(:,i,j,k,iElem)*JNR(1,i,j,k)
           END DO; END DO; END DO
           CALL ChangeBasisVolume(PP_nVar,N_Restart,PP_N,Vdm_NRestart_N,U_local(:,:,:,:,iElem),U(:,:,:,:,iElem))
