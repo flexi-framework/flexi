@@ -595,15 +595,7 @@ DO iLocSide=2,5
   DO q=0,PP_NlocZ; DO p=0,Nloc
     pq=SideToVol2(Nloc,p,q,0,iLocSide,PP_dim)
     ! Compute Face_xGP for sides
-#if PP_dim == 2
-    IF (iLocSide.EQ.XI_MINUS) THEN
-      dd = pq(1)
-      pq(1) = Nloc-pq(2)
-      pq(2) = dd
-    END IF    
-#endif
     Face_xGP(1:3,p,q,0,sideID)=tmp2(:,pq(1),pq(2))
-
   END DO; END DO ! p,q
 
   Ja_Face_l=0.
@@ -629,29 +621,6 @@ DO iLocSide=2,5
       Ja_Face_l(dd,1:3,p,q)=tmp2(:,pq(1),pq(2))
     END DO; END DO ! p,q
   END DO ! dd
-
-#if PP_dim == 2
-  IF (iLocSide.EQ.XI_MINUS) THEN
-    DO dd=1,3
-      tmp = Ja_Face_l(dd,1:3,:,:)
-      DO q=0,Nloc; DO p=0,Nloc
-        IF (dd.EQ.TangDirs(XI_MINUS)) THEN
-          Ja_Face_l(dd,1:3,p,q) = -tmp(1:3,Nloc-q,p)
-        ELSE
-          Ja_Face_l(dd,1:3,p,q) = tmp(1:3,Nloc-q,p)
-        END IF
-      END DO; END DO ! p,q=0,Nloc
-    END DO
-    nMortars=MERGE(2,0,MortarType(1,sideID).EQ.2 .OR. MortarType(1,sideID).EQ.3)
-    IF (nMortars.EQ.2) THEN
-      SideID_Mortar = MortarType(2,sideID)
-      tmp_MI    = MortarInfo(:,1,SideID_Mortar)
-      MortarInfo(:,1,SideID_Mortar) = MortarInfo(:,2,SideID_Mortar)
-      MortarInfo(:,2,SideID_Mortar) = tmp_MI
-    END IF
-  END IF
-#endif
-
   IF(PRESENT(Ja_Face)) Ja_Face(:,:,:,:,SideID)=Ja_Face_l
 
 

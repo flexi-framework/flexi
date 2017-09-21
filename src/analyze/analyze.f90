@@ -334,8 +334,8 @@ REAL                            :: J_N(1,0:PP_N,0:PP_N,0:PP_NZ)
 REAL                            :: IntegrationWeight
 #if FV_ENABLED
 REAL                            :: FV_w_volume
-REAL                            :: U_DG(PP_nVar,0:PP_N,0:PP_N,0:PP_N)
-REAL                            :: U_FV(PP_nVar,0:PP_N,0:PP_N,0:PP_N)
+REAL                            :: U_DG(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
+REAL                            :: U_FV(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 #endif
 !==================================================================================================================================
 #if FV_ENABLED
