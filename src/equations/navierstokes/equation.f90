@@ -53,6 +53,9 @@ SUBROUTINE DefineParametersEquation()
 ! MODULES
 USE MOD_ReadInTools,ONLY: prms,addStrListEntry
 USE MOD_Riemann    ,ONLY: DefineParametersRiemann
+#ifdef SPLIT_DG
+USE MOD_SplitFlux  ,ONLY: DefineParametersSplitDG
+#endif /*SPLIT_DG*/
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Equation")
@@ -67,6 +70,9 @@ CALL prms%CreateIntFromStringOption(   'eddyViscType', "(0) none: No eddy viscos
 CALL addStrListEntry('eddyViscType','none',0)
 CALL addStrListEntry('eddyViscType','smagorinsky',1)
 #endif
+#ifdef SPLIT_DG
+CALL DefineParametersSplitDG()
+#endif /*SPLIT_DG*/
 END SUBROUTINE DefineParametersEquation
 
 !==================================================================================================================================
@@ -88,6 +94,9 @@ USE MOD_CalcTimeStep      ,ONLY: InitCalctimestep
 #ifdef EDDYVISCOSITY
 USE MOD_EddyVisc          ,ONLY: InitEddyVisc
 #endif
+#ifdef SPLIT_DG
+USE MOD_SplitFlux         ,ONLY: InitSplitDG
+#endif /*SPLIT_DG*/
  IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -155,6 +164,10 @@ CALL InitCalctimestep()
 CALL InitEddyVisc()
 #endif
 
+#ifdef SPLIT_DG
+! Initialize SplitDG
+CALL InitSplitDG()
+#endif /*SPLIT_DG*/
 CALL InitBC()
 
 EquationInitIsDone=.TRUE.

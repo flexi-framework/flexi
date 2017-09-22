@@ -230,9 +230,14 @@ USE MOD_Visu_Vars
 USE MOD_ReadInTools        ,ONLY: GETINT
 USE MOD_Interpolation      ,ONLY: GetVandermonde
 USE MOD_Interpolation_Vars ,ONLY: NodeType,NodeTypeVisu
-USE MOD_FV_Vars            ,ONLY: gradUxi,gradUeta,gradUzeta
-USE MOD_FV_Vars            ,ONLY: FV_dx_XI_L,FV_dx_ETA_L,FV_dx_ZETA_L
-USE MOD_FV_Vars            ,ONLY: FV_dx_XI_R,FV_dx_ETA_R,FV_dx_ZETA_R
+USE MOD_FV_Vars            ,ONLY: gradUxi,gradUeta
+USE MOD_FV_Vars            ,ONLY: FV_dx_XI_L,FV_dx_ETA_L
+USE MOD_FV_Vars            ,ONLY: FV_dx_XI_R,FV_dx_ETA_R
+#if PP_dim == 3
+USE MOD_FV_Vars            ,ONLY: gradUzeta
+USE MOD_FV_Vars            ,ONLY: FV_dx_ZETA_L
+USE MOD_FV_Vars            ,ONLY: FV_dx_ZETA_R
+#endif
 USE MOD_EOS                ,ONLY: PrimToCons
 USE MOD_DG_Vars            ,ONLY: UPrim
 USE MOD_EOS_Posti          ,ONLY: GetMaskPrim
@@ -288,17 +293,17 @@ DO iElem_FV=1,nElems_FV
       iVarPrim = mapUPrim(iVar)
       iVarCalc = mapUCalc(iVar)
       UCalc_FV(i*2  ,j*2  ,k*2  ,iElem_FV,iVarCalc) = UPrim(iVarPrim,i,j,k,iElem) &
-          - gradUxi  (iVarPrim,j,k,i,iElem) *   FV_dx_XI_L(i,j,k,iElem) &
-          - gradUeta (iVarPrim,i,k,j,iElem) *  FV_dx_ETA_L(i,j,k,iElem) 
+          - gradUxi  (iVarPrim,j,k,i,iElem) *   FV_dx_XI_L(j,k,i,iElem) &
+          - gradUeta (iVarPrim,i,k,j,iElem) *  FV_dx_ETA_L(i,k,j,iElem) 
       UCalc_FV(i*2+1,j*2  ,k*2  ,iElem_FV,iVarCalc) = UPrim(iVarPrim,i,j,k,iElem) &
-          + gradUxi  (iVarPrim,j,k,i,iElem) *   FV_dx_XI_R(i,j,k,iElem) &
-          - gradUeta (iVarPrim,i,k,j,iElem) *  FV_dx_ETA_L(i,j,k,iElem) 
+          + gradUxi  (iVarPrim,j,k,i,iElem) *   FV_dx_XI_R(j,k,i,iElem) &
+          - gradUeta (iVarPrim,i,k,j,iElem) *  FV_dx_ETA_L(i,k,j,iElem) 
       UCalc_FV(i*2  ,j*2+1,k*2  ,iElem_FV,iVarCalc) = UPrim(iVarPrim,i,j,k,iElem)  &
-          - gradUxi  (iVarPrim,j,k,i,iElem) *   FV_dx_XI_L(i,j,k,iElem) &
-          + gradUeta (iVarPrim,i,k,j,iElem) *  FV_dx_ETA_R(i,j,k,iElem)
+          - gradUxi  (iVarPrim,j,k,i,iElem) *   FV_dx_XI_L(j,k,i,iElem) &
+          + gradUeta (iVarPrim,i,k,j,iElem) *  FV_dx_ETA_R(i,k,j,iElem)
       UCalc_FV(i*2+1,j*2+1,k*2  ,iElem_FV,iVarCalc) = UPrim(iVarPrim,i,j,k,iElem) &
-          + gradUxi  (iVarPrim,j,k,i,iElem) *   FV_dx_XI_R(i,j,k,iElem) &
-          + gradUeta (iVarPrim,i,k,j,iElem) *  FV_dx_ETA_R(i,j,k,iElem)
+          + gradUxi  (iVarPrim,j,k,i,iElem) *   FV_dx_XI_R(j,k,i,iElem) &
+          + gradUeta (iVarPrim,i,k,j,iElem) *  FV_dx_ETA_R(i,k,j,iElem)
 #if PP_dim == 3      
       UCalc_FV(i*2  ,j*2  ,k*2  ,iElem_FV,iVarCalc) = UCalc_FV(i*2  ,j*2  ,k*2  ,iElem_FV,iVarCalc)  & 
           - gradUzeta(iVarPrim,i,j,k,iElem) * FV_dx_ZETA_L(i,j,k,iElem)
@@ -310,20 +315,20 @@ DO iElem_FV=1,nElems_FV
           - gradUzeta(iVarPrim,i,j,k,iElem) * FV_dx_ZETA_L(i,j,k,iElem)
 
       UCalc_FV(i*2  ,j*2  ,k*2+1,iElem_FV,iVarCalc) = UPrim(iVarPrim,i,j,k,iElem)  &
-          - gradUxi  (iVarPrim,j,k,i,iElem) *   FV_dx_XI_L(i,j,k,iElem) &
-          - gradUeta (iVarPrim,i,k,j,iElem) *  FV_dx_ETA_L(i,j,k,iElem) &
+          - gradUxi  (iVarPrim,j,k,i,iElem) *   FV_dx_XI_L(j,k,i,iElem) &
+          - gradUeta (iVarPrim,i,k,j,iElem) *  FV_dx_ETA_L(i,k,j,iElem) &
           + gradUzeta(iVarPrim,i,j,k,iElem) * FV_dx_ZETA_R(i,j,k,iElem)
       UCalc_FV(i*2+1,j*2  ,k*2+1,iElem_FV,iVarCalc) = UPrim(iVarPrim,i,j,k,iElem) &
-          + gradUxi  (iVarPrim,j,k,i,iElem) *   FV_dx_XI_R(i,j,k,iElem) &
-          - gradUeta (iVarPrim,i,k,j,iElem) *  FV_dx_ETA_L(i,j,k,iElem) &
+          + gradUxi  (iVarPrim,j,k,i,iElem) *   FV_dx_XI_R(j,k,i,iElem) &
+          - gradUeta (iVarPrim,i,k,j,iElem) *  FV_dx_ETA_L(i,k,j,iElem) &
           + gradUzeta(iVarPrim,i,j,k,iElem) * FV_dx_ZETA_R(i,j,k,iElem)
       UCalc_FV(i*2  ,j*2+1,k*2+1,iElem_FV,iVarCalc) = UPrim(iVarPrim,i,j,k,iElem) &
-          - gradUxi  (iVarPrim,j,k,i,iElem) *   FV_dx_XI_L(i,j,k,iElem) &
-          + gradUeta (iVarPrim,i,k,j,iElem) *  FV_dx_ETA_R(i,j,k,iElem) &
+          - gradUxi  (iVarPrim,j,k,i,iElem) *   FV_dx_XI_L(j,k,i,iElem) &
+          + gradUeta (iVarPrim,i,k,j,iElem) *  FV_dx_ETA_R(i,k,j,iElem) &
           + gradUzeta(iVarPrim,i,j,k,iElem) * FV_dx_ZETA_R(i,j,k,iElem)
       UCalc_FV(i*2+1,j*2+1,k*2+1,iElem_FV,iVarCalc) = UPrim(iVarPrim,i,j,k,iElem)  &
-          + gradUxi  (iVarPrim,j,k,i,iElem) *   FV_dx_XI_R(i,j,k,iElem) &
-          + gradUeta (iVarPrim,i,k,j,iElem) *  FV_dx_ETA_R(i,j,k,iElem) &
+          + gradUxi  (iVarPrim,j,k,i,iElem) *   FV_dx_XI_R(j,k,i,iElem) &
+          + gradUeta (iVarPrim,i,k,j,iElem) *  FV_dx_ETA_R(i,k,j,iElem) &
           + gradUzeta(iVarPrim,i,j,k,iElem) * FV_dx_ZETA_R(i,j,k,iElem)
 #endif      
     END DO

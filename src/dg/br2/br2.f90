@@ -73,6 +73,8 @@ CALL prms%CreateLogicalOption('doConservativeLifting', "Set true to compute the 
                                                        '.FALSE.')
 CALL prms%CreateRealOption(   'etaBR2',                "Lifting penalty for BR2. Increase improves stability at the cost of "//&
                                                        "performance and reduces jumps between two cells.", '2.')
+CALL prms%CreateRealOption(   'etaBR2_wall',           "Lifting penalty for BR2 at wall boundaries. Can be choosen different from"//&
+                                                       "to decrease wall velocities.", '-1')
 END SUBROUTINE DefineParametersLifting
 
 
@@ -118,6 +120,8 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT LIFTING WITH BR2 ...'
 doWeakLifting=.FALSE.
 doConservativeLifting=GETLOGICAL('doConservativeLifting','.FALSE.')
 etaBR2=GETREAL('etaBR2','2.')
+etaBR2_wall=GETREAL('etaBR2_wall','-1.')
+IF(etaBR2_wall .EQ. -1.) etaBR2_wall = etaBR2  !default etaBR2_wall == etaBR2
 
 ! We store the interior gradients at the each element face
 ALLOCATE(gradUx_slave (PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides))

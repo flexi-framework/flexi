@@ -26,11 +26,15 @@ SUBROUTINE VisuRP()
 USE MOD_Globals
 USE MOD_Parameters
 USE MOD_Output_Vars     ,ONLY: ProjectName
+#ifdef HASTECPLOT
 USE MOD_RPSet_Vars      ,ONLY: nRP_global
+#endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+#ifdef HASTECPLOT
 CHARACTER(LEN=255)            :: FileName,strOutputFile
+#endif
 !===================================================================================================================================
 IF(doVisuRP) THEN
 #ifdef HASTECPLOT

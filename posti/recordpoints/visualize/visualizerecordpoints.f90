@@ -9,8 +9,11 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Commandline_Arguments
 USE MOD_StringTools                 ,ONLY:STRICMP, GetFileExtension
-USE MOD_ReadInTools                 ,ONLY: prms
-USE MOD_ParametersVisu              ,ONLY:equiTimeSpacing,doSpec,doFluctuations,doTurb,doFilter,Plane_doBLProps
+USE MOD_ReadInTools                 ,ONLY:prms
+USE MOD_ParametersVisu              ,ONLY:equiTimeSpacing,doSpec,doFluctuations,doTurb,doFilter
+#ifdef WITHBLPROPS
+USE MOD_ParametersVisu              ,ONLY:Plane_doBLProps
+#endif
 USE MOD_RPSetVisu                   ,ONLY:InitRPSet,FinalizeRPSet
 USE MOD_RPData                      ,ONLY:ReadRPData,AssembleRPData,FinalizeRPData
 USE MOD_OutputRPVisu                      

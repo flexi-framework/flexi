@@ -447,10 +447,12 @@ IMPLICIT NONE
 INTEGER,INTENT(IN) :: meshMode
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: i,j,iSide
-REAL               :: tmp(3,0:PP_N,0:PP_N,0:FV_ENABLED),zlength
-#if FV_ENABLED
+REAL               :: zlength
+#if FV_ENABLED && FV_RECONSTRUCT
 REAL               :: tmpFV(0:PP_N,0:PP_N,3)
+#if FV_RECONSTRUCT
+INTEGER            :: i,j,iSide
+#endif
 #endif
 !==================================================================================================================================
 SWRITE(UNIT_StdOut,'(132("-"))')
@@ -472,35 +474,6 @@ IF (meshMode.GT.0) THEN
 END IF
 
 IF (meshMode.GT.1) THEN
-  ! Correctly flip and rotate all values on the XI_MINUS sides.
-  ! The tangential vector is always stored in TangVec1.
-  DO iSide=1,nSides
-    SELECT CASE (SideToElem(S2E_LOC_SIDE_ID,iSide))
-    CASE(XI_MINUS)
-      ! has to be flipped
-      tmp=Face_xGP(:,:,:,:,iSide)
-      DO j=0,PP_N; DO i=0,PP_N
-        Face_xGP(:,PP_N-j,i,:,iSide)=tmp(:,i,j,:)
-      END DO; END DO
-      tmp=NormVec(:,:,:,:,iSide)
-      DO j=0,PP_N; DO i=0,PP_N
-        NormVec(:,PP_N-j,i,:,iSide)=tmp(:,i,j,:)
-      END DO; END DO
-      tmp=-TangVec1(:,:,:,:,iSide)
-      DO j=0,PP_N; DO i=0,PP_N
-        TangVec1(:,PP_N-j,i,:,iSide)=tmp(:,i,j,:)
-      END DO; END DO
-      tmp(1,:,:,:)=SurfElem(:,:,:,iSide)
-      DO j=0,PP_N; DO i=0,PP_N
-        SurfElem(PP_N-j,i,:,iSide)=tmp(1,i,j,:)
-      END DO; END DO
-    CASE(ETA_MINUS)
-      TangVec1(:,:,:,:,iSide) = -TangVec2(:,:,:,:,iSide)
-    CASE(ETA_PLUS)
-      TangVec1(:,:,:,:,iSide) = -TangVec2(:,:,:,:,iSide)
-    END SELECT
-  END DO
-
   ! Nullify all components in the third dimension
   Metrics_fTilde(3,:,:,:,:,:) = 0.
   Metrics_gTilde(3,:,:,:,:,:) = 0.
@@ -561,34 +534,34 @@ IF (meshMode.GT.1) THEN
     END SELECT
   END DO
 
-  CALL to2D_rank4((/0,0,1,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_sdx_XI  ) 
-  CALL to2D_rank4((/0,0,1,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_sdx_ETA ) 
-  CALL to2D_rank4((/0,0,1,1/),  (/PP_N,PP_N,PP_N,nElems/),3,FV_sdx_ZETA) 
+  CALL to2D_rank4((/0,0,1,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_sdx_XI  ) ! Attention: storage order is (j,k,i,iElem)
+  CALL to2D_rank4((/0,0,1,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_sdx_ETA ) ! Attention: storage order is (i,k,j,iElem)
+  CALL to2D_rank4((/0,0,1,1/),  (/PP_N,PP_N,PP_N,nElems/),3,FV_sdx_ZETA) ! Attention: storage order is (i,j,k,iElem)
 
   CALL to2D_rank4((/0,0,1,1/),  (/PP_N,PP_N,3,lastMPISide_MINE/),2,FV_sdx_Face) 
 
-  CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_dx_XI_L  )
-  CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_dx_XI_R  )
-  CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_dx_ETA_L )
-  CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_dx_ETA_R )
-  CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,PP_N,nElems/),3,FV_dx_ZETA_L)
-  CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,PP_N,nElems/),3,FV_dx_ZETA_R)
+  CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_dx_XI_L  ) ! Attention: storage order is (j,k,i,iElem)
+  CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_dx_XI_R  ) !  -"-
+  CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_dx_ETA_L ) ! Attention: storage order is (i,k,j,iElem)
+  CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_dx_ETA_R ) !  -"-
+  CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,PP_N,nElems/),3,FV_dx_ZETA_L) ! Attention: storage order is (i,j,k,iElem)
+  CALL to2D_rank4((/0,0,0,1/),  (/PP_N,PP_N,PP_N,nElems/),3,FV_dx_ZETA_R) !  -"-
 
   CALL to2D_rank4((/1,0,0,1/),  (/1,PP_N,PP_N,nSides/),3,FV_dx_slave )
   CALL to2D_rank4((/1,0,0,1/),  (/1,PP_N,PP_N,nSides/),3,FV_dx_master)
 #endif
   ! p,q = general face index
-  CALL to2D_rank4((/0,0,1,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_SurfElemXi_sw  ) ! Attention: storage order is (p,q,i,iElem)
-  CALL to2D_rank4((/0,0,1,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_SurfElemEta_sw ) ! Attention: storage order is (p,q,j,iElem)
-  CALL to2D_rank4((/0,0,1,1/),  (/PP_N,PP_N,PP_N,nElems/),3,FV_SurfElemZeta_sw) ! Attention: storage order is (p,q,k,iElem)
+  CALL to2D_rank4((/0,0,1,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_SurfElemXi_sw  ) ! Attention: storage order is (j,k,i,iElem)
+  CALL to2D_rank4((/0,0,1,1/),  (/PP_N,PP_N,PP_N,nElems/),2,FV_SurfElemEta_sw ) ! Attention: storage order is (i,k,j,iElem)
+  CALL to2D_rank4((/0,0,1,1/),  (/PP_N,PP_N,PP_N,nElems/),3,FV_SurfElemZeta_sw) ! Attention: storage order is (i,j,k,iElem)
 
-  CALL to2D_rank5((/1,0,0,1,1/),  (/3,PP_N,PP_N,PP_N,nElems/),3,FV_NormVecXi   )  ! Attention: storage order is (p,q,i,iElem)
+  CALL to2D_rank5((/1,0,0,1,1/),  (/3,PP_N,PP_N,PP_N,nElems/),3,FV_NormVecXi   )  ! Attention: storage order is (j,k,i,iElem)
   CALL to2D_rank5((/1,0,0,1,1/),  (/3,PP_N,PP_N,PP_N,nElems/),3,FV_TangVec1Xi  )  !  -"-
   CALL to2D_rank5((/1,0,0,1,1/),  (/3,PP_N,PP_N,PP_N,nElems/),3,FV_TangVec2Xi  )  !  -"-
-  CALL to2D_rank5((/1,0,0,1,1/),  (/3,PP_N,PP_N,PP_N,nElems/),3,FV_NormVecEta  )  ! Attention: storage order is (p,q,j,iElem)
+  CALL to2D_rank5((/1,0,0,1,1/),  (/3,PP_N,PP_N,PP_N,nElems/),3,FV_NormVecEta  )  ! Attention: storage order is (i,k,j,iElem)
   CALL to2D_rank5((/1,0,0,1,1/),  (/3,PP_N,PP_N,PP_N,nElems/),3,FV_TangVec1Eta )  !  -"-
   CALL to2D_rank5((/1,0,0,1,1/),  (/3,PP_N,PP_N,PP_N,nElems/),3,FV_TangVec2Eta )  !  -"-
-  CALL to2D_rank5((/1,0,0,1,1/),  (/3,PP_N,PP_N,PP_N,nElems/),4,FV_NormVecZeta )  ! Attention: storage order is (p,q,k,iElem)
+  CALL to2D_rank5((/1,0,0,1,1/),  (/3,PP_N,PP_N,PP_N,nElems/),4,FV_NormVecZeta )  ! Attention: storage order is (i,j,k,iElem)
   CALL to2D_rank5((/1,0,0,1,1/),  (/3,PP_N,PP_N,PP_N,nElems/),4,FV_TangVec1Zeta)  !  -"-
   CALL to2D_rank5((/1,0,0,1,1/),  (/3,PP_N,PP_N,PP_N,nElems/),4,FV_TangVec2Zeta)  !  -"-
 
@@ -672,6 +645,7 @@ SDEALLOCATE(SurfElemO)
 SDEALLOCATE(Elem_IJK)
 SDEALLOCATE(ElemInfo)
 SDEALLOCATE(SideInfo)
+SDEALLOCATE(SideToGlobalSide)
 
 !> mappings
 CALL FinalizeMappings()

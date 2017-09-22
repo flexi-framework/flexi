@@ -56,48 +56,46 @@ USE MOD_Globals
 USE MOD_EddyVisc_Vars
 USE MOD_Smagorinsky
 USE MOD_DefaultEddyVisc
-USE MOD_Mesh_Vars  ,ONLY:nElems,nSides
-USE MOD_ReadInTools,ONLY: GETINTFROMSTR
+USE MOD_SigmaModel
+USE MOD_Mesh_Vars  ,ONLY: nElems,nSides
+USE MOD_ReadInTools,ONLY: GETINTFROMSTR, GETREAL
 USE MOD_IO_HDF5    ,ONLY: AddToFieldData,FieldOut
+USE MOD_EOS_Vars   ,ONLY: mu0
 !===================================================================================================================================
+eddyViscType = GETINTFROMSTR('eddyViscType')
 
 ! Allocate arrays needed by all SGS models
 ALLOCATE(DeltaS(nElems))
-ALLOCATE(DeltaS_master(1:nSides))
-ALLOCATE(DeltaS_slave (1:nSides))
-DeltaS_master=0.
-DeltaS_slave=0.
 DeltaS=0.
-ALLOCATE(SGS_Ind(1,0:PP_N,0:PP_N,0:PP_NZ,nElems))
-ALLOCATE(SGS_Ind_master(1,0:PP_N,0:PP_NZ,1:nSides))
-ALLOCATE(SGS_Ind_slave (1,0:PP_N,0:PP_NZ,1:nSides))
-SGS_Ind=0.
-SGS_Ind_master=0.
-SGS_Ind_slave=0.
 ALLOCATE(muSGS(1,0:PP_N,0:PP_N,0:PP_NZ,nElems))
-ALLOCATE(muSGSmax(nElems))
 muSGS = 0.
-muSGSmax=0.
-! Set Prandtl number !=0 because we need to divide by this number to get the turbulent heat conductivity (will be zero anyway
-! since muSGS=0)
-PrSGS = 0.7
+ALLOCATE(muSGS_master(1,0:PP_N,0:PP_NZ,nSides))
+ALLOCATE(muSGS_slave (1,0:PP_N,0:PP_NZ,nSides))
+muSGS_master=0.
+muSGS_slave =0.
+ALLOCATE(muSGSmax(nElems))
+muSGSmax=8.*mu0
+! Turbulent Prandtl number
+PrSGS  = GETREAL('PrSGS','0.7')
 
-eddyViscType = GETINTFROMSTR('eddyViscType')
 SELECT CASE(eddyViscType)
   CASE(0) ! No eddy viscosity model, set function pointers to dummy subroutines which do nothing
     ! Nothing to init
-    eddyViscosity          => DefaultEddyVisc
-    eddyViscosity_surf     => DefaultEddyVisc_surf
+    eddyViscosity         => DefaultEddyVisc
+    FinalizeEddyViscosity => FinalizeDefaultEddyViscosity
   CASE(1) !Smagorinsky with optional Van Driest damping for channel flow
     CALL InitSmagorinsky()
-    eddyViscosity          => Smagorinsky
-    eddyViscosity_surf     => Smagorinsky_surf
+    eddyViscosity         => Smagorinsky
+    FinalizeEddyViscosity => Finalizesmagorinsky
+  CASE(4) !sigma Model 2015
+    CALL InitSigmaModel()
+    eddyViscosity         => SigmaModel
+    FinalizeEddyViscosity => FinalizeSigmaModel
   CASE DEFAULT
     CALL CollectiveStop(__STAMP__,&
       'Eddy Viscosity Type not specified!')
 END SELECT
 CALL AddToFieldData(FieldOut,(/1,PP_N+1,PP_N+1,PP_NZ+1/),'VMSData',(/'muSGS'/),RealArray=muSGS)
-
 END SUBROUTINE
 
 !===================================================================================================================================
@@ -109,13 +107,10 @@ USE MOD_EddyVisc_Vars
 USE MOD_Smagorinsky   ,ONLY: FinalizeSmagorinsky
 !===================================================================================================================================
 SDEALLOCATE(DeltaS)
-SDEALLOCATE(DeltaS_master)
-SDEALLOCATE(DeltaS_slave)
 SDEALLOCATE(muSGS)
+SDEALLOCATE(muSGS_master)
+SDEALLOCATE(muSGS_slave)
 SDEALLOCATE(muSGSmax)
-SDEALLOCATE(SGS_Ind)
-SDEALLOCATE(SGS_Ind_master)
-SDEALLOCATE(SGS_Ind_slave)
 SELECT CASE(eddyViscType)
   CASE(1)
     CALL FinalizeSmagorinsky()

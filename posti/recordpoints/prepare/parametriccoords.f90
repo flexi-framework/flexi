@@ -83,7 +83,7 @@ REAL                  :: xRP(3),xC(3)
 REAL                  :: Vdm_N_CLNGeo(0:NGeo,0:PP_N)
 REAL                  :: Vdm_CLNGeo_EquiNSuper(0:NSuper,0:NGeo)
 REAL                  :: Lag(1:3,0:NGeo)
-REAL                  :: F(1:3),eps_F,Xi(1:3),Jac(1:3,1:3),sdetJac,sJac(1:3,1:3)
+REAL                  :: F(1:3),eps_F,Xi(1:3),Jac(1:3,1:3),sJac(1:3,1:3)
 INTEGER               :: i,j,k,l,iElem,nNodes
 INTEGER               :: iRP,NewtonIter
 CHARACTER(LEN=255)    :: NodeType_Super

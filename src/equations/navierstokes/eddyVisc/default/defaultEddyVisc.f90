@@ -23,7 +23,7 @@ MODULE MOD_DefaultEddyVisc
 IMPLICIT NONE
 PRIVATE
 
-PUBLIC::DefaultEddyVisc,DefaultEddyVisc_surf
+PUBLIC::DefaultEddyVisc,FinalizeDefaultEddyViscosity
 !===================================================================================================================================
 
 CONTAINS
@@ -32,7 +32,7 @@ CONTAINS
 !> Dummy for default eddy viscosity (meaning no eddy viscosity), do nothing since the muSGS arrays will be passed here and they
 !> are zero all the time.
 !===================================================================================================================================
-SUBROUTINE DefaultEddyVisc(grad11,grad22,grad33,grad12,grad13,grad21,grad23,grad31,grad32,rho,iElem,i,j,k,muSGS)
+SUBROUTINE DefaultEddyVisc(iElem,i,j,k,muSGS)
 ! MODULES
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -41,33 +41,29 @@ INTEGER,INTENT(IN)                        :: iElem             !< index of curre
 !> indices of the current volume point
 INTEGER,INTENT(IN)                        :: i,j,k
 !> gradients of the velocities w.r.t. all directions
-REAL,INTENT(IN)                           :: grad11,grad22,grad33,grad12,grad13,grad21,grad23,grad31,grad32
-REAL,INTENT(IN)                           :: rho               !< Density
 REAL,INTENT(INOUT)                        :: muSGS             !< local SGS viscosity
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
+#ifdef DEBUG
+! ===============================================================================
+! Following dummy calls do suppress compiler warnings of unused Riemann-functions
+! ===============================================================================
+IF (0.EQ.1) THEN
+  muSGS = i+j+k+iElem 
+END IF
+#endif
 END SUBROUTINE DefaultEddyVisc
 
-!===================================================================================================================================
-!> Dummy for default eddy viscosity (meaning no eddy viscosity). Return zero.
-!===================================================================================================================================
-SUBROUTINE DefaultEddyVisc_surf(grad11,grad22,grad33,grad12,grad13,grad21,grad23,grad31,grad32,rho,DeltaSS,SGS_Ind,muSGS,Face_xGP)
+!===============================================================================================================================
+!> Deallocate arrays and finalize variables used by Smagorinsky SGS model
+!===============================================================================================================================
+SUBROUTINE FinalizeDefaultEddyviscosity()
 ! MODULES
+USE MOD_EddyVisc_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-!> gradients of the velocities w.r.t. all directions
-REAL,INTENT(IN)                           :: grad11,grad22,grad33,grad12,grad13,grad21,grad23,grad31,grad32
-REAL,INTENT(IN)                           :: rho               !< Density
-REAL,INTENT(IN)                           :: DeltaSS           !< Filter width
-REAL,INTENT(IN)                           :: SGS_Ind           !< Indicator for SGS model
-REAL,INTENT(IN)                           :: Face_xGP          !< Coordinate for van-Driest damping
-REAL,INTENT(OUT)                          :: muSGS             !< local SGS viscosity
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-!===================================================================================================================================
-muSGS = 0.
-END SUBROUTINE DefaultEddyVisc_surf
+!===============================================================================================================================
+END SUBROUTINE FinalizeDefaultEddyViscosity
 
 END MODULE MOD_DefaultEddyVisc

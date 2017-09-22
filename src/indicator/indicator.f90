@@ -403,6 +403,15 @@ DO iElem=1,nElems
   END DO; END DO; END DO
   !IndValue = (EXP(IndValue/ElemVol)-EXP(0.))/(EXP(1.)-EXP(0.))
 END DO ! iElem
+
+#ifdef DEBUG
+! ===============================================================================
+! Following dummy calls do suppress compiler warnings of unused Riemann-functions
+! ===============================================================================
+IF (0.EQ.1) THEN
+  WRITE (*,*) gradUz
+END IF
+#endif
 END FUNCTION DucrosIndicator
 #endif /* PARABOLIC */
 

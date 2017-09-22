@@ -47,15 +47,18 @@ SUBROUTINE Lifting_VolInt_Nonconservative(UPrim,gradUx,gradUy,gradUz)
 ! MODULES
 USE MOD_PreProc
 USE MOD_DG_Vars            ,ONLY: D_T
-USE MOD_Mesh_Vars          ,ONLY: Metrics_fTilde,Metrics_gTilde,Metrics_hTilde   ! metrics
+USE MOD_Mesh_Vars          ,ONLY: Metrics_fTilde,Metrics_gTilde   ! metrics
+#if PP_dim == 3
+USE MOD_Mesh_Vars          ,ONLY: Metrics_hTilde   ! metrics
+#endif
 USE MOD_Mesh_Vars          ,ONLY: nElems
 #if FV_ENABLED
 USE MOD_FV_Vars            ,ONLY: FV_Elems
-USE MOD_FV_Vars            ,ONLY: FV_Metrics_fTilde_sJ,FV_Metrics_gTilde_sJ,FV_Metrics_hTilde_sJ  ! metrics
-#if PP_dim == 3
-USE MOD_FV_Vars            ,ONLY: gradUxi_central, gradUeta_central, gradUzeta_central
-#else
+USE MOD_FV_Vars            ,ONLY: FV_Metrics_fTilde_sJ,FV_Metrics_gTilde_sJ  ! metrics
 USE MOD_FV_Vars            ,ONLY: gradUxi_central, gradUeta_central
+#if PP_dim == 3
+USE MOD_FV_Vars            ,ONLY: FV_Metrics_hTilde_sJ  ! metrics
+USE MOD_FV_Vars            ,ONLY: gradUzeta_central
 #endif
 #endif
 IMPLICIT NONE
@@ -67,7 +70,10 @@ REAL,INTENT(OUT)           :: gradUy(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
 REAL,INTENT(OUT)           :: gradUz(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< gradients in z-direction
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL,DIMENSION(PP_nVarPrim):: gradUxi,gradUeta,gradUzeta ! gradients in xi/eta/zeta directions
+REAL,DIMENSION(PP_nVarPrim):: gradUxi,gradUeta ! gradients in xi/eta directions
+#if PP_dim == 3
+REAL,DIMENSION(PP_nVarPrim):: gradUzeta ! gradient in zeta direction
+#endif
 INTEGER                    :: iElem,i,j,k,l
 !==================================================================================================================================
 ! volume integral
@@ -149,8 +155,12 @@ USE MOD_Mesh_Vars    ,ONLY: Metrics_fTilde,Metrics_gTilde,Metrics_hTilde   ! met
 USE MOD_Mesh_Vars    ,ONLY: nElems
 #if FV_ENABLED
 USE MOD_FV_Vars      ,ONLY: FV_Elems
-USE MOD_FV_Vars      ,ONLY: FV_Metrics_fTilde_sJ,FV_Metrics_gTilde_sJ,FV_Metrics_hTilde_sJ  ! metrics
-USE MOD_FV_Vars      ,ONLY: gradUxi_central, gradUeta_central, gradUzeta_central
+USE MOD_FV_Vars      ,ONLY: FV_Metrics_fTilde_sJ,FV_Metrics_gTilde_sJ  ! metrics
+#if PP_dim == 3
+USE MOD_FV_Vars      ,ONLY: FV_Metrics_hTilde_sJ  ! metrics
+USE MOD_FV_Vars      ,ONLY: gradUzeta_central
+#endif
+USE MOD_FV_Vars      ,ONLY: gradUxi_central, gradUeta_central
 #endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -240,6 +250,16 @@ DO i=1,nDOFElem
   UPrim_h(:,i) = Mh(dir,i)*UPrim(:,i)
 #endif
 END DO ! i
+
+#ifdef DEBUG
+! ===============================================================================
+! Following dummy calls do suppress compiler warnings of unused Riemann-functions
+! ===============================================================================
+IF (0.EQ.1) THEN
+  WRITE (*,*) Mh
+  UPrim_h = 0.
+END IF
+#endif
 END SUBROUTINE Lifting_Metrics
 
 

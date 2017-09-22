@@ -410,6 +410,16 @@ DO iElem=1,nElems
   END DO; END DO; END DO! i,j,k=0,PP_N
 #endif
 END DO
+
+#ifdef DEBUG
+! ===============================================================================
+! Following dummy calls do suppress compiler warnings of unused Riemann-functions
+! ===============================================================================
+IF (0.EQ.1) THEN
+  gradUzeta = 0.
+  gradUzeta_central = 0.
+END IF
+#endif
 END SUBROUTINE FV_CalcGradients
 
 !==================================================================================================================================

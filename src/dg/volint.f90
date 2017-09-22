@@ -1,5 +1,8 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2017 Prof. Claus-Dieter Munz 
+! Copyright (c) 2016-2017 Gregor Gassner (github.com/project-fluxo/fluxo)
+! Copyright (c) 2016-2017 Florian Hindenlang (github.com/project-fluxo/fluxo)
+! Copyright (c) 2016-2017 Andrew Winters (github.com/project-fluxo/fluxo) 
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -19,6 +22,7 @@
 !> Computes the volume integral contribution based on U and updates Ut
 !> Volume integral is split into integral of advection and diffusion part
 !==================================================================================================================================
+#include "flexi.h"
 MODULE MOD_VolInt
 !----------------------------------------------------------------------------------------------------------------------------------
 ! MODULES
@@ -26,7 +30,11 @@ IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 INTERFACE VolInt
+#ifndef SPLIT_DG
   MODULE PROCEDURE VolInt_weakForm
+#else
+  MODULE PROCEDURE VolInt_splitForm
+#endif /*SPLIT_DG*/
 END INTERFACE
 
 INTERFACE VolIntAdv
@@ -45,6 +53,14 @@ PUBLIC::VolIntAdv
 #if PARABOLIC
 PUBLIC::VolIntVisc
 #endif
+
+#ifdef DEBUG
+! Add dummy interfaces to unused subroutines to suppress compiler warnings.
+INTERFACE DUMMY_VolInt_weakForm
+  MODULE PROCEDURE VolInt_weakForm
+END INTERFACE
+PUBLIC::DUMMY_VolInt_weakForm
+#endif /* DEBUG */
 !==================================================================================================================================
 CONTAINS
 
@@ -187,6 +203,148 @@ DO iElem=1,nElems
 END DO ! iElem
 END SUBROUTINE VolIntAdv_weakForm
 
+#ifdef SPLIT_DG
+!==================================================================================================================================
+!> Computes the advection and viscous part volume integral in SplitDG formulation
+!> Attention 1: 1/J(i,j,k) is not yet accounted for
+!> Attention 2: input Ut is overwritten with the volume flux derivatives
+!==================================================================================================================================
+SUBROUTINE VolInt_splitForm(Ut)
+!----------------------------------------------------------------------------------------------------------------------------------
+! MODULES
+USE MOD_PreProc
+USE MOD_DG_Vars      ,ONLY: DVolSurf,nDOFElem,UPrim,U
+USE MOD_Mesh_Vars    ,ONLY: Metrics_fTilde,Metrics_gTilde,Metrics_hTilde,nElems
+USE MOD_Flux         ,ONLY: EvalFlux3D      ! computes volume fluxes in local coordinates
+#if PARABOLIC
+USE MOD_DG_Vars      ,ONLY: D_Hat_T
+USE MOD_Flux         ,ONLY: EvalDiffFlux3D  ! computes volume fluxes in local coordinates
+USE MOD_Lifting_Vars ,ONLY: gradUx,gradUy,gradUz
+#endif
+#if FV_ENABLED
+USE MOD_FV_Vars      ,ONLY: FV_Elems
+#endif
+USE MOD_SplitFlux    ,ONLY:SplitDGVolume_pointer ! computes volume fluxes in split formulation
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+REAL,INTENT(OUT)   :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< Time derivative of the volume integral (viscous part)
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER            :: i,j,k,l,iElem
+REAL,DIMENSION(PP_nVar                     )  :: Flux         !< temp variable for split flux
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: f_c,g_c,h_c  !< Euler fluxes at GP
+#if PARABOLIC
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: fv,gv,hv     !< Parabolic fluxes at GP
+#endif /*PARABOLIC*/
+!==================================================================================================================================
+! Diffusive part
+DO iElem=1,nElems
+#if FV_ENABLED
+  IF (FV_Elems(iElem).EQ.1) CYCLE ! FV Elem
+#endif
+  ! Cut out the local DG solution for a grid cell iElem and all Gauss points from the global field
+  ! Compute for all Gauss point values the Cartesian flux components
+  CALL EvalFlux3D(PP_N,U(:,:,:,:,iElem),UPrim(:,:,:,:,iElem),f_c,g_c,h_c)
+  ! Add metric terms to fluxes
+  CALL VolInt_Metrics(nDOFElem,f_c,g_c,h_c,Metrics_fTilde(:,:,:,:,iElem,0),&
+                                           Metrics_gTilde(:,:,:,:,iElem,0),&
+                                           Metrics_hTilde(:,:,:,:,iElem,0))
+#if PARABOLIC
+  CALL EvalDiffFlux3D( UPrim(:,:,:,:,iElem),&
+                      gradUx(:,:,:,:,iElem),&
+                      gradUy(:,:,:,:,iElem),&
+                      gradUz(:,:,:,:,iElem),&
+                      fv,gv,hv,iElem)
+
+  CALL VolInt_Metrics(nDOFElem,fv,gv,hv,Metrics_fTilde(:,:,:,:,iElem,0),&
+                                        Metrics_gTilde(:,:,:,:,iElem,0),&
+                                        Metrics_hTilde(:,:,:,:,iElem,0))
+#endif
+
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+
+    DO l=i+1,PP_N
+       ! compute split flux in x-direction
+       CALL SplitDGVolume_pointer(U(:,i,j,k,iElem),UPrim(:,i,j,k,iElem), &
+                                  U(:,l,j,k,iElem),UPrim(:,l,j,k,iElem), &
+                                  Metrics_fTilde(:,i,j,k,iElem,0),Metrics_fTilde(:,l,j,k,iElem,0),Flux)
+#if PARABOLIC
+       ! add up time derivative
+       Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + DVolSurf(l,i)*Flux(:) + D_Hat_T(l,i)*fv(:,l,j,k)
+       !symmetry
+       Ut(:,l,j,k,iElem) = Ut(:,l,j,k,iElem) + DVolSurf(i,l)*Flux(:) + D_Hat_T(i,l)*fv(:,i,j,k)
+#else
+       ! add up time derivative
+       Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + DVolSurf(l,i)*Flux(:)
+       !symmetry
+       Ut(:,l,j,k,iElem) = Ut(:,l,j,k,iElem) + DVolSurf(i,l)*Flux(:)
+#endif /*PARABOLIC*/
+    END DO ! m
+
+    DO l=j+1,PP_N
+       ! compute split flux in y-direction
+       CALL SplitDGVolume_pointer(U(:,i,j,k,iElem),UPrim(:,i,j,k,iElem), &
+                                  U(:,i,l,k,iElem),UPrim(:,i,l,k,iElem), &
+                                  Metrics_gTilde(:,i,j,k,iElem,0),Metrics_gTilde(:,i,l,k,iElem,0),Flux)
+#if PARABOLIC
+       ! add up time derivative
+       Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + DVolSurf(l,j)*Flux(:) + D_Hat_T(l,j)*gv(:,i,l,k)
+       !symmetry
+       Ut(:,i,l,k,iElem) = Ut(:,i,l,k,iElem) + DVolSurf(j,l)*Flux(:) + D_Hat_T(j,l)*gv(:,i,j,k)
+#else
+       ! add up time derivative
+       Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + DVolSurf(l,j)*Flux(:)
+       !symmetry
+       Ut(:,i,l,k,iElem) = Ut(:,i,l,k,iElem) + DVolSurf(j,l)*Flux(:)
+#endif /*PARABOLIC*/
+    END DO ! m
+
+#if PP_dim==3
+    DO l=k+1,PP_N
+       ! compute split flux in z-direction
+       CALL SplitDGVolume_pointer(U(:,i,j,k,iElem),UPrim(:,i,j,k,iElem), &
+                                  U(:,i,j,l,iElem),UPrim(:,i,j,l,iElem), &
+                                  Metrics_hTilde(:,i,j,k,iElem,0),Metrics_hTilde(:,i,j,l,iElem,0),Flux)
+#if PARABOLIC
+       ! add up time derivative
+       Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + DVolSurf(l,k)*Flux(:) + D_Hat_T(l,k)*hv(:,i,j,l)
+       !symmetry
+       Ut(:,i,j,l,iElem) = Ut(:,i,j,l,iElem) + DVolSurf(k,l)*Flux(:) + D_Hat_T(k,l)*hv(:,i,j,k)
+#else
+       ! add up time derivative
+       Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + DVolSurf(l,k)*Flux(:)
+       !symmetry
+       Ut(:,i,j,l,iElem) = Ut(:,i,j,l,iElem) + DVolSurf(k,l)*Flux(:)
+#endif /*PARABOLIC*/
+    END DO ! l
+#endif /*PP_dim==3*/
+
+    ! consistency: if both poitns for flux evaluation are the same the standart
+    ! euler fluxes are retained
+#if PARABOLIC
+    Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + DVolSurf(i,i)*f_c(:,i,j,k) + &
+                                            DVolSurf(j,j)*g_c(:,i,j,k) + &
+#if PP_dim==3
+                                            DVolSurf(k,k)*h_c(:,i,j,k) + &
+#endif /*PP_dim==3*/
+                                            D_Hat_T(i,i)*fv(:,i,j,k)   + &
+                                            D_Hat_T(j,j)*gv(:,i,j,k)   + &
+#if PP_dim==3
+                                            D_Hat_T(k,k)*hv(:,i,j,k)
+#endif /*PP_dim==3*/
+#else
+    Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + DVolSurf(i,i)*f_c(:,i,j,k) + &
+#if PP_dim==3
+                                            DVolSurf(j,j)*h_c(:,i,j,k) + &
+#endif /*PP_dim==3*/
+                                            DVolSurf(k,k)*g_c(:,i,j,k)
+#endif /*PARABOLIC*/
+
+  END DO; END DO; END DO !i,j,k
+END DO ! iElem
+END SUBROUTINE VolInt_splitForm
+#endif /*SPLIT_DG*/
 
 
 #if PARABOLIC
@@ -296,6 +454,15 @@ DO i=1,nDOFs
            gTilde*Mg(2,i) 
 #endif
 END DO ! i
+
+#ifdef DEBUG
+! ===============================================================================
+! Following dummy calls do suppress compiler warnings of unused Riemann-functions
+! ===============================================================================
+IF (0.EQ.1) THEN
+  WRITE (*,*) Mh,h
+END IF
+#endif
 END SUBROUTINE VolInt_Metrics
 
 

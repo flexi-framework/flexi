@@ -144,7 +144,7 @@ REAL,INTENT(OUT)                :: xP_out(ndim,nP_out),t_equi(nP_out)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
 INTEGER                         :: i,iP,iSp,nSuper,nSp,iter
-REAL                            :: t_ini(nP_in),t_tmp(1,nP_in),s(nP_in)
+REAL                            :: t_ini(nP_in),t_tmp(1,nP_in),s(nP_in),s_tmp(nP_in)
 REAL                            :: t_loc,s_loc,x_loc(ndim),x_loc_old(ndim)
 REAL                            :: coeff(ndim,4,nP_in-1)
 REAL                            :: t_coeff(1,4,nP_in-1)
@@ -182,7 +182,8 @@ DO iter=1,10
   
   ! 3. create inverse mapping t(s) as spline
   t_tmp(1,:)=t_ini
-  CALL GetSpline(1,nP_in,t_tmp,t_coeff,s,s_in=s)
+  s_tmp = s
+  CALL GetSpline(1,nP_in,t_tmp,t_coeff,s,s_in=s_tmp)
   !get new t at equidistant s arclength points
   DO iP=1,nP_out
     s_loc=REAL(iP-1)*ds_equi
