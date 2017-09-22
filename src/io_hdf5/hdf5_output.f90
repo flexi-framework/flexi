@@ -1020,6 +1020,7 @@ INTEGER(HSIZE_T), DIMENSION(1) :: Dimsf
 INTEGER(SIZE_T)                :: AttrLen
 INTEGER,TARGET                 :: logtoint
 TYPE(C_PTR)                    :: buf
+INTEGER                        :: hdferr
 !==================================================================================================================================
 LOGWRITE(*,*)' WRITE ATTRIBUTE "',TRIM(AttribName),'" TO HDF5 FILE...'
 IF(PRESENT(DataSetName))THEN
@@ -1056,7 +1057,13 @@ IF(PRESENT(StrArray))THEN
   CALL H5TSET_SIZE_F(Type_ID, AttrLen, iError)
 ENDIF
 
-CALL H5ACREATE_F(Loc_ID, TRIM(AttribName), Type_ID, DataSpace, Attr_ID, iError)
+CALL h5eset_auto_f(0, hdferr)
+CALL H5AOPEN_F(    Loc_ID, TRIM(AttribName), Attr_ID, iError)
+IF(iError.NE.0)&
+  CALL H5ACREATE_F(Loc_ID, TRIM(AttribName), Type_ID, DataSpace, Attr_ID, iError)
+IF(iError.NE.0) STOP 'Could not open or create attribute!'//TRIM(AttribName)
+CALL h5eset_auto_f(1, hdferr)
+
 ! Write the attribute data.
 buf=C_NULL_PTR
 IF(PRESENT(RealArray))     buf=C_LOC(RealArray)
