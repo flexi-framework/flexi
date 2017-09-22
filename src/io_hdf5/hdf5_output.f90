@@ -1061,7 +1061,7 @@ CALL h5eset_auto_f(0, hdferr)
 CALL H5AOPEN_F(    Loc_ID, TRIM(AttribName), Attr_ID, iError)
 IF(iError.NE.0)&
   CALL H5ACREATE_F(Loc_ID, TRIM(AttribName), Type_ID, DataSpace, Attr_ID, iError)
-IF(iError.NE.0) STOP 'Could not open or create attribute!'//TRIM(AttribName)
+IF(iError.NE.0) STOP 'Could not open or create attribute!'
 CALL h5eset_auto_f(1, hdferr)
 
 ! Write the attribute data.
