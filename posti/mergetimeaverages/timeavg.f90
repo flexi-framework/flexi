@@ -53,7 +53,7 @@ IF (nArgs.LT.2) THEN
   ! Print out error message containing valid syntax
   WRITE(UNIT_stdOut,*) "Please use: timeavg --start=<starttime> --end=<endtime> --coarsen=<factor> FILE1 FILE2 .. FILEN"
   WRITE(UNIT_stdOut,*) "At least two files are required for merging."
-  RETURN
+  STOP
 END IF
 
 ! First check if the first three arguments contain -start=, -end= or -coarsen=
@@ -144,9 +144,9 @@ DO iFile=1,nFiles
     WRITE(UNIT_stdOut,'(A,A)') ' SKIPPING FILE ',TRIM(InputFile)
     nSkipped=nSkipped+1
     IF (nFiles-nSkipped.LE.1) THEN
-      WRITE(UNIT_stdOut,*) "WARNING: All files have been skipped, no output is performed."&
-                           "         Please check start and end time."
-      RETURN
+      WRITE(UNIT_stdOut,*) "WARNING: All files have been skipped, no output is performed."
+      WRITE(UNIT_stdOut,*) "         Please check start and end time."
+      STOP
     END IF
     CYCLE
   END IF
