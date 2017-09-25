@@ -458,23 +458,32 @@ END FUNCTION INTSTAMP
 !==================================================================================================================================
 !> Creates a timestamp, consistent of a filename (project name + processor) and current time niveau
 !==================================================================================================================================
-FUNCTION TIMESTAMP(Filename,Time)
+FUNCTION TIMESTAMP(Filename,Time,Time2)
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 CHARACTER(LEN=*)   :: Filename  !< (file)name
 REAL               :: Time      !< physical time
+REAL,OPTIONAL      :: Time2     !< physical time (in case of range)
 CHARACTER(LEN=255) :: TimeStamp !< the complete timestamp
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: i         ! loop variable
+CHARACTER(LEN=255) :: tmp
 !==================================================================================================================================
 WRITE(TimeStamp,'(F17.9)')Time
 ! Replace spaces with 0's
 DO i=1,LEN(TRIM(TimeStamp))
   IF(TimeStamp(i:i).EQ.' ') TimeStamp(i:i)='0'
 END DO
+IF(PRESENT(Time2))THEN
+  WRITE(tmp,'(F17.9)')Time2
+  DO i=1,LEN(TRIM(tmp))
+    IF(tmp(i:i).EQ.' ') tmp(i:i)='0'
+  END DO
+  TimeStamp=TRIM(tmp)//'-'//TRIM(TimeStamp)
+END IF
 TimeStamp=TRIM(Filename)//'_'//TRIM(TimeStamp)
 END FUNCTION TIMESTAMP
 
