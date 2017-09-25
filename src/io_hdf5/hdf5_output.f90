@@ -588,12 +588,11 @@ USE MOD_Globals
 USE MOD_Output_Vars,ONLY: ProjectName
 USE MOD_Mesh_Vars  ,ONLY: offsetElem,nGlobalElems,nElems
 USE MOD_2D         ,ONLY: ExpandArrayTo3D
-USE MOD_IO_HDF5    ,ONLY: AddToElemData
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)             :: nVal(4)                                      !< Dimension of UAvg
-INTEGER,INTENT(IN)             :: FV_Elems_In(nElems)                          !< Dimension of UAvg
+INTEGER,INTENT(IN)             :: FV_Elems_In(nElems)                          !< Array with custom FV_Elem information
 CHARACTER(LEN=*),INTENT(IN)    :: MeshFileName                                 !< Name of mesh file
 CHARACTER(LEN=*),INTENT(IN)    :: VarNamesAvg(nVal(1))                         !< Average variable names
 CHARACTER(LEN=*),INTENT(IN)    :: FileType                                     !< Type of file to be written (TimeAvg or Fluc)
