@@ -195,6 +195,7 @@ REAL,ALLOCATABLE   :: U_local(:,:,:,:,:)
 REAL,ALLOCATABLE   :: U_local2(:,:,:,:,:)
 #endif
 INTEGER            :: iElem,i,j,k
+INTEGER            :: HSize_proc(5)
 REAL,ALLOCATABLE   :: JNR(:,:,:,:)
 REAL               :: Vdm_NRestart_N(0:PP_N,0:N_Restart)
 REAL               :: Vdm_3Ngeo_NRestart(0:N_Restart,0:3*NGeo)
@@ -230,11 +231,13 @@ IF(DoRestart)THEN
 
   CALL GetDataSize(File_ID,'DG_Solution',nDims,HSize)
 ! Sanity check
-  IF ((HSize(1).NE.PP_nVar).OR.(HSize(2).NE.N_Restart+1).OR.(HSize(3).NE.N_Restart+1).OR.(HSize(5).NE.nElems)) THEN
+  IF ((HSize(1).NE.PP_nVar).OR.(HSize(2).NE.N_Restart+1).OR.(HSize(3).NE.N_Restart+1).OR.(HSize(5).NE.nGlobalElems)) THEN
     CALL Abort(__STAMP__,"Dimensions of restart file do not match!")
   END IF
-  ALLOCATE(U_local(HSize(1),0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,HSize(5)))
-  CALL ReadArray('DG_Solution',5,INT(HSize),OffsetElem,5,RealArray=U_local)
+  HSize_proc = INT(HSize)
+  HSize_proc(5) = nElems
+  ALLOCATE(U_local(PP_nVar,0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,nElems))
+  CALL ReadArray('DG_Solution',5,HSize_proc,OffsetElem,5,RealArray=U_local)
 
   ! Read in state
   IF(.NOT. InterpolateSolution)THEN
@@ -272,7 +275,7 @@ IF(DoRestart)THEN
       ! FLEXI compiled 3D, but data is 2D => expand third space dimension
       ! use temporary array 'U_local2' to store 3D data
       ALLOCATE(U_local2(PP_nVar,0:N_Restart,0:N_Restart,0:N_Restart,nElems))
-      CALL ExpandArrayTo3D(5,INT(HSize),4,N_Restart,U_local,U_local2) 
+      CALL ExpandArrayTo3D(5,HSize_proc,4,N_Restart,U_local,U_local2) 
       ! Reallocate 'U_local' to 3D and mv data from U_local2 to U_local
       DEALLOCATE(U_local)
       ALLOCATE(U_local(PP_nVar,0:N_Restart,0:N_Restart,0:N_Restart,nElems))
