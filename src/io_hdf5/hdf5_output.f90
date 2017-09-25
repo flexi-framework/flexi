@@ -413,18 +413,18 @@ nVar=0
 nVarTotal=0
 f=>FieldList
 DO WHILE(ASSOCIATED(f))
-  IF(ALL(f%nVal(2:4).EQ.mask)) nVar=nVar+f%nVal(1)
+  IF((ALL(f%nVal(2:4).EQ.mask)).AND.(.NOT.f%doSeparateOutput)) nVar=nVar+f%nVal(1)
   nVarTotal=nVarTotal+f%nVal(1)
   f=>f%next
 END DO
 
-! First the variable size arrays 
+! First the variable size arrays or arrays that should always be written as a seperate dataset
 ! Write the attributes (variable size)
 IF(MPIRoot.AND.(nVarTotal.NE.nVar))THEN
   CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
   f=>FieldList
   DO WHILE(ASSOCIATED(f))
-    IF(ANY(f%nVal(2:4).NE.PP_N+1))&
+  IF((.NOT. ALL(f%nVal(2:4).EQ.mask)).OR.(f%doSeparateOutput))&
       CALL WriteAttribute(File_ID,f%DataSetName,f%nVal(1),StrArray=f%VarNames)
     f=>f%next
   END DO
@@ -434,7 +434,7 @@ END IF
 ! Write the arrays (variable size)
 f=>FieldList
 DO WHILE(ASSOCIATED(f))
-  IF(.NOT. ALL(f%nVal(2:4).EQ.mask))THEN ! not fixed size
+  IF((.NOT. ALL(f%nVal(2:4).EQ.mask)).OR.(f%doSeparateOutput))THEN ! not fixed size
     IF(ASSOCIATED(f%RealArray)) THEN ! real array
       NodeData=>f%RealArray
     ELSE IF(ASSOCIATED(f%Eval)) THEN ! eval function
@@ -465,7 +465,7 @@ IF(MPIRoot)THEN
   nVar=0
   f=>FieldList
   DO WHILE(ASSOCIATED(f))
-    IF(ALL(f%nVal(2:4).EQ.mask))THEN
+    IF((ALL(f%nVal(2:4).EQ.mask)).AND.(.NOT.f%doSeparateOutput))THEN
       VarNames(nVar+1:nVar+f%nVal(1))=f%VarNames
       nVar=nVar+f%nVal(1)
     END IF
@@ -480,7 +480,7 @@ END IF
 nVar=0
 f=>FieldList
 DO WHILE(ASSOCIATED(f))
-  IF(ALL(f%nVal(2:4).EQ.mask))THEN
+  IF((ALL(f%nVal(2:4).EQ.mask)).AND.(.NOT.f%doSeparateOutput))THEN
     IF(ASSOCIATED(f%RealArray))THEN ! real array
       tmp(nVar+1:nVar+f%nVal(1),:,:,:,:)=f%RealArray
     ELSEIF(ASSOCIATED(f%Eval))THEN  ! eval function

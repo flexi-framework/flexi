@@ -67,6 +67,7 @@ TYPE tFieldOut
   CHARACTER(LEN=255),ALLOCATABLE :: VarNames(:)        !< variable names in dataset
   REAL,POINTER               :: RealArray(:,:,:,:,:) => NULL()
   PROCEDURE(EvalFieldInt),POINTER,NOPASS :: eval     => NULL()
+  LOGICAL                    :: doSeparateOutput       !< If set, array will be written as seperate dataset, regardless of N
   TYPE(tFieldOut),POINTER    :: next         => NULL() !< next list item
 END TYPE
 
@@ -329,7 +330,7 @@ END SUBROUTINE AddToElemData
 !==================================================================================================================================
 !> Set pointers to node-wise arrays for output
 !==================================================================================================================================
-SUBROUTINE AddToFieldData(FieldOut_In,nVal,DataSetName,VarNames,RealArray,Eval)
+SUBROUTINE AddToFieldData(FieldOut_In,nVal,DataSetName,VarNames,RealArray,Eval,doSeparateOutput)
 ! MODULES
 USE MOD_Globals
 USE MOD_Mesh_Vars,ONLY:nElems
@@ -342,6 +343,7 @@ CHARACTER(LEN=*),INTENT(IN)        :: DataSetName
 CHARACTER(LEN=*),INTENT(IN)        :: VarNames(nVal(1))
 REAL,INTENT(IN),TARGET,OPTIONAL    :: RealArray(nVal(1),nVal(2),nVal(3),nVal(4),nElems)
 PROCEDURE(EvalFieldInt),POINTER,OPTIONAL :: Eval
+LOGICAL,OPTIONAL,INTENT(IN)        :: doSeparateOutput
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 TYPE(tFieldOut),POINTER            :: nout
@@ -368,6 +370,12 @@ ALLOCATE(nout%Varnames(nVal(1)))
 nout%VarNames=VarNames
 nout%DataSetName=DataSetName
 nout%nVal=nVal
+! Optional argument that writes this array as a separate dataset even if N = PP_N
+IF (PRESENT(doSeparateOutput)) THEN
+  nout%doSeparateOutput = doSeparateOutput
+ELSE
+  nout%doSeparateOutput = .FALSE.
+END IF
 nOpts=0
 IF(PRESENT(RealArray))THEN
   nout%RealArray  => RealArray
