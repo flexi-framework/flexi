@@ -38,7 +38,7 @@ END INTERFACE
 !----------------------------------------------------------------------------------------------------------------------------------
 LOGICAL                  :: gatheredWrite       !< flag whether every process should output data or data should first be gathered
                                                 !< on IO processes first
-LOGICAL                  :: output2D               !< Flag whether to use true 2D input/output or not
+LOGICAL                  :: output2D            !< Flag whether to use true 2D input/output or not
 INTEGER(HID_T)           :: File_ID             !< file which is currently opened
 INTEGER(HSIZE_T),POINTER :: HSize(:)            !< HDF5 array size (temporary variable)
 INTEGER                  :: nDims               !< 
@@ -49,26 +49,27 @@ INTEGER                  :: MPIInfo             !< hardware / storage specific /
 !> Alternatively a function pointer can be specified providing the desired data.
 !> Only one of the pointers may be associated.
 TYPE tElementOut
-  CHARACTER(LEN=255)         :: VarName                !< variable name
-  REAL,POINTER               :: RealArray(:) => NULL()
-  REAL,POINTER               :: RealScalar   => NULL()
-  INTEGER,POINTER            :: IntArray(:)  => NULL()
-  INTEGER,POINTER            :: IntScalar    => NULL()
-  PROCEDURE(EvalElemInt),POINTER,NOPASS :: eval  => NULL()
-  TYPE(tElementOut),POINTER  :: next         => NULL() !< next list item
+  CHARACTER(LEN=255)                    :: VarName                    !< variable name
+  REAL,POINTER                          :: RealArray(:) => NULL()
+  REAL,POINTER                          :: RealScalar   => NULL()
+  INTEGER,POINTER                       :: IntArray(:)  => NULL()
+  INTEGER,POINTER                       :: IntScalar    => NULL()
+  PROCEDURE(EvalElemInt),POINTER,NOPASS :: eval         => NULL()
+  TYPE(tElementOut),POINTER             :: next         => NULL()     !< next list item
 END TYPE
 
 !> Type containing pointers to nodal data to be written to HDF5 in a per node fashion.
 !> Alternatively a function pointer can be specified providing the desired data.
 !> Only one of the pointers may be associated.
 TYPE tFieldOut
-  INTEGER                    :: nVal(4)                !< size of array (5th dim is nElems)
-  CHARACTER(LEN=255)         :: DataSetName            !< name of dataset to be created
-  CHARACTER(LEN=255),ALLOCATABLE :: VarNames(:)        !< variable names in dataset
-  REAL,POINTER               :: RealArray(:,:,:,:,:) => NULL()
-  PROCEDURE(EvalFieldInt),POINTER,NOPASS :: eval     => NULL()
-  LOGICAL                    :: doSeparateOutput       !< If set, array will be written as seperate dataset, regardless of N
-  TYPE(tFieldOut),POINTER    :: next         => NULL() !< next list item
+  INTEGER                                :: nVal(4)                        !< size of array (5th dim is nElems)
+  CHARACTER(LEN=255)                     :: DataSetName                    !< name of dataset to be created
+  CHARACTER(LEN=255),ALLOCATABLE         :: VarNames(:)                    !< variable names in dataset
+  REAL,POINTER                           :: RealArray(:,:,:,:,:) => NULL()
+  PROCEDURE(EvalFieldInt),POINTER,NOPASS :: eval                 => NULL()
+  LOGICAL                                :: doSeparateOutput               !< If set, array will be written as seperate dataset,
+                                                                           !< regardless of N
+  TYPE(tFieldOut),POINTER                :: next                 => NULL() !< next list item
 END TYPE
 
 TYPE(tElementOut),POINTER    :: ElementOut   => NULL() !< linked list of output pointers
@@ -178,14 +179,14 @@ USE MOD_Globals
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=*),INTENT(IN)   :: FileString     !< filename to be opened
-LOGICAL,INTENT(IN)            :: create         !< create file if it doesn't exist. Overwrited file if already present!
-LOGICAL,INTENT(IN)            :: single         !< single=T : only one processor opens file, single=F : open/create collectively
-LOGICAL,INTENT(IN)            :: readOnly       !< T : file is opened in read only mode, so file system timestamp remains unchanged
+CHARACTER(LEN=*),INTENT(IN)  :: FileString      !< filename to be opened
+LOGICAL,INTENT(IN)           :: create          !< create file if it doesn't exist. Overwrited file if already present!
+LOGICAL,INTENT(IN)           :: single          !< single=T : only one processor opens file, single=F : open/create collectively
+LOGICAL,INTENT(IN)           :: readOnly        !< T : file is opened in read only mode, so file system timestamp remains unchanged
                                                 !< F: file is open read/write mode
-INTEGER,INTENT(IN),OPTIONAL   :: communicatorOpt !< only MPI and single=F: optional communicator to be used for collective access
-                                                 !< default: MPI_COMM_WORLD
-INTEGER,INTENT(IN),OPTIONAL   :: userblockSize  !< size of the file to be prepended to HDF5 file
+INTEGER,INTENT(IN),OPTIONAL  :: communicatorOpt !< only MPI and single=F: optional communicator to be used for collective access
+                                                !< default: MPI_COMM_WORLD
+INTEGER,INTENT(IN),OPTIONAL  :: userblockSize   !< size of the file to be prepended to HDF5 file
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER(HID_T)                :: Plist_ID
@@ -262,7 +263,8 @@ LOGWRITE(*,*)'...DONE!'
 END SUBROUTINE CloseDataFile
 
 !==================================================================================================================================
-!> Set pointers to element-wise scalar arrays which will be gathered and written out
+!> Set pointers to element-wise arrays or scalars which will be gathered and written out. Both real or integer data types
+!> are supported. It is also possible to pass a function pointer which will be evaluated to calculate the data.
 !==================================================================================================================================
 SUBROUTINE AddToElemData(ElementOut_In,VarName,RealArray,RealScalar,IntArray,IntScalar,Eval)
 ! MODULES
@@ -271,19 +273,19 @@ USE MOD_Mesh_Vars,ONLY:nElems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-TYPE(tElementOut),POINTER,INTENT(INOUT) :: ElementOut_In
-CHARACTER(LEN=*),INTENT(IN)        :: VarName
-REAL,INTENT(IN),TARGET,OPTIONAL    :: RealArray(nElems)
-REAL,INTENT(IN),TARGET,OPTIONAL    :: RealScalar
-INTEGER,INTENT(IN),TARGET,OPTIONAL :: IntArray(nElems)
-INTEGER,INTENT(IN),TARGET,OPTIONAL :: IntScalar
-PROCEDURE(EvalElemInt),POINTER,OPTIONAL :: Eval
+TYPE(tElementOut),POINTER,INTENT(INOUT) :: ElementOut_In     !< Pointer list of element-wise data that is written to the state file
+CHARACTER(LEN=*),INTENT(IN)             :: VarName           !< Name of the current array/scalar
+REAL,INTENT(IN),TARGET,OPTIONAL         :: RealArray(nElems) !< Data is an array containing reals 
+REAL,INTENT(IN),TARGET,OPTIONAL         :: RealScalar        !< Data is a real scalar
+INTEGER,INTENT(IN),TARGET,OPTIONAL      :: IntArray(nElems)  !< Data is an array containing integers
+INTEGER,INTENT(IN),TARGET,OPTIONAL      :: IntScalar         !< Data is a integer scalar
+PROCEDURE(EvalElemInt),POINTER,OPTIONAL :: Eval              !< Data is evaluated using a function pointer
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 TYPE(tElementOut),POINTER          :: eout
 INTEGER                            :: nOpts
 !==================================================================================================================================
-IF(.NOT.ASSOCIATED(ElementOut_In))THEN 
+IF(.NOT.ASSOCIATED(ElementOut_In))THEN
   ! list is empty, create first entry
   ALLOCATE(ElementOut_In)
   eout=>ElementOut_In
@@ -328,7 +330,9 @@ END SUBROUTINE AddToElemData
 
 
 !==================================================================================================================================
-!> Set pointers to node-wise arrays for output
+!> Set pointers to node-wise arrays for output. Only real arrays or a function pointer are supported as input data.
+!> Optionally, arrays can always be written to a separate dataset (even if the size is equal to the DG solution) using the 
+!> doSeparateOutput flag.
 !==================================================================================================================================
 SUBROUTINE AddToFieldData(FieldOut_In,nVal,DataSetName,VarNames,RealArray,Eval,doSeparateOutput)
 ! MODULES
@@ -337,13 +341,13 @@ USE MOD_Mesh_Vars,ONLY:nElems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-TYPE(tFieldOut),POINTER,INTENT(INOUT) :: FieldOut_In
-INTEGER,INTENT(IN)                 :: nVal(4)
-CHARACTER(LEN=*),INTENT(IN)        :: DataSetName
-CHARACTER(LEN=*),INTENT(IN)        :: VarNames(nVal(1))
-REAL,INTENT(IN),TARGET,OPTIONAL    :: RealArray(nVal(1),nVal(2),nVal(3),nVal(4),nElems)
-PROCEDURE(EvalFieldInt),POINTER,OPTIONAL :: Eval
-LOGICAL,OPTIONAL,INTENT(IN)        :: doSeparateOutput
+TYPE(tFieldOut),POINTER,INTENT(INOUT)    :: FieldOut_In       !< Pointer list of field-wise data that is written to the state file
+INTEGER,INTENT(IN)                       :: nVal(4)           !< Size of array
+CHARACTER(LEN=*),INTENT(IN)              :: DataSetName       !< Name of the current array (used for name of dataset)
+CHARACTER(LEN=*),INTENT(IN)              :: VarNames(nVal(1)) !< Names of the variables in the array
+REAL,INTENT(IN),TARGET,OPTIONAL          :: RealArray(nVal(1),nVal(2),nVal(3),nVal(4),nElems) !< Data is a real array
+PROCEDURE(EvalFieldInt),POINTER,OPTIONAL :: Eval              !< Data is evaluated using a function pointer
+LOGICAL,OPTIONAL,INTENT(IN)              :: doSeparateOutput  !< Flag used to always write this array to a separate dataset
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 TYPE(tFieldOut),POINTER            :: nout
@@ -389,7 +393,7 @@ IF(nOpts.NE.1) CALL Abort(__STAMP__,&
   'More then one optional argument passed to AddToFieldData.')
 END SUBROUTINE AddToFieldData
 
-SUBROUTINE GetDatasetNamesInGroup(group,names) 
+SUBROUTINE GetDatasetNamesInGroup(group,names)
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 CHARACTER(LEN=*)               :: group

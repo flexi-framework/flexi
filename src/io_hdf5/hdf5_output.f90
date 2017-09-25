@@ -324,8 +324,8 @@ USE MOD_Mesh_Vars,ONLY: offsetElem,nGlobalElems,nElems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=255),INTENT(IN)  :: FileName           !< Name of the file to be written to
-TYPE(tElementOut),POINTER,INTENT(IN) :: ElemList     !< Linked list of arrays to write to file
+CHARACTER(LEN=255),INTENT(IN)        :: FileName !< Name of the file to be written to
+TYPE(tElementOut),POINTER,INTENT(IN) :: ElemList !< Linked list of arrays to write to file
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=255),ALLOCATABLE :: VarNames(:)
@@ -388,8 +388,8 @@ USE MOD_Mesh_Vars,ONLY: offsetElem,nGlobalElems,nElems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=255),INTENT(IN)  :: FileName          !< Name of the file to be written to
-TYPE(tFieldOut),POINTER,INTENT(IN) :: FieldList     !< Linked list of arrays to write to file
+CHARACTER(LEN=255),INTENT(IN)      :: FileName  !< Name of the file to be written to
+TYPE(tFieldOut),POINTER,INTENT(IN) :: FieldList !< Linked list of arrays to write to file
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=255),ALLOCATABLE :: VarNames(:)
@@ -682,11 +682,11 @@ SUBROUTINE GenerateFileSkeleton(FileName,TypeString,nVar,NData,StrVarNames,MeshF
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_Output_Vars,ONLY: ProjectName,UserBlockTmpFile,userblock_total_len
-USE MOD_Mesh_Vars  ,ONLY: nGlobalElems
-USE MOD_Interpolation_Vars,ONLY: NodeType
+USE MOD_Output_Vars        ,ONLY: ProjectName,UserBlockTmpFile,userblock_total_len
+USE MOD_Mesh_Vars          ,ONLY: nGlobalElems
+USE MOD_Interpolation_Vars ,ONLY: NodeType
 #if FV_ENABLED
-USE MOD_FV_Vars    ,ONLY: FV_X,FV_w
+USE MOD_FV_Vars            ,ONLY: FV_X,FV_w
 #endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -789,10 +789,9 @@ END SUBROUTINE MarkWriteSuccessfull
 !==================================================================================================================================
 SUBROUTINE FlushFiles(FlushTime_In)
 ! MODULES
-!USE MOD_PreProc
 USE MOD_Globals
-USE MOD_Output_Vars,ONLY:ProjectName
-USE MOD_HDF5_Input,ONLY:GetNextFileName
+USE MOD_Output_Vars ,ONLY: ProjectName
+USE MOD_HDF5_Input  ,ONLY: GetNextFileName
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
