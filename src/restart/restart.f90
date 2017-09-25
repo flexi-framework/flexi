@@ -165,7 +165,7 @@ USE MOD_PreProc
 USE MOD_Restart_Vars
 USE MOD_DG_Vars,            ONLY: U
 USE MOD_Mesh_Vars,          ONLY: offsetElem,detJac_Ref,Ngeo
-USE MOD_Mesh_Vars,          ONLY: nElems
+USE MOD_Mesh_Vars,          ONLY: nElems,nGlobalElems
 USE MOD_ChangeBasisByDim,   ONLY: ChangeBasisVolume
 USE MOD_HDF5_Input,         ONLY: OpenDataFile,CloseDataFile,ReadArray,GetArrayAndName
 USE MOD_HDF5_Output,        ONLY: FlushFiles
