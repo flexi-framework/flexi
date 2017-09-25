@@ -336,6 +336,7 @@ END SUBROUTINE AddToElemData
 !==================================================================================================================================
 SUBROUTINE AddToFieldData(FieldOut_In,nVal,DataSetName,VarNames,RealArray,Eval,doSeparateOutput)
 ! MODULES
+USE MOD_PreProc
 USE MOD_Globals
 USE MOD_Mesh_Vars,ONLY:nElems
 IMPLICIT NONE
@@ -352,7 +353,15 @@ LOGICAL,OPTIONAL,INTENT(IN)              :: doSeparateOutput  !< Flag used to al
 ! LOCAL VARIABLES
 TYPE(tFieldOut),POINTER            :: nout
 INTEGER                            :: nOpts
+INTEGER                            :: mask(3)
 !==================================================================================================================================
+! Mask gives the dimension of the DG solution (depending on 2D or 3D calculation)
+#if PP_dim == 3
+mask=(/PP_N+1,PP_N+1,PP_N+1/)
+#else
+mask=(/PP_N+1,PP_N+1,1/)
+#endif
+
 IF(.NOT.ASSOCIATED(FieldOut_In))THEN
   ! list is empty, create first entry
   ALLOCATE(FieldOut_In)
@@ -374,12 +383,11 @@ ALLOCATE(nout%Varnames(nVal(1)))
 nout%VarNames=VarNames
 nout%DataSetName=DataSetName
 nout%nVal=nVal
-! Optional argument that writes this array as a separate dataset even if N = PP_N
-IF (PRESENT(doSeparateOutput)) THEN
-  nout%doSeparateOutput = doSeparateOutput
-ELSE
-  nout%doSeparateOutput = .FALSE.
-END IF
+! Optional argument that writes this array as a separate dataset even if N = PP_N. Arrays with a size different from
+! the DG solution will always be written to a separate dataset.
+nout%doSeparateOutput = .FALSE.
+IF (PRESENT(doSeparateOutput)) nout%doSeparateOutput = doSeparateOutput
+IF (ANY(nVal(2:4).NE.mask)) nout%doSeparateOutput=.TRUE.
 nOpts=0
 IF(PRESENT(RealArray))THEN
   nout%RealArray  => RealArray

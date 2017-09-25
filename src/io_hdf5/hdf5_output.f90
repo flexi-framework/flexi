@@ -379,6 +379,9 @@ END SUBROUTINE WriteAdditionalElemData
 !==================================================================================================================================
 !> Comparable to WriteAdditionalElemData, but for field data (rank 5 arrays, where the last dimension is 1:nElems)
 !> See also general comment of WriteAdditionalElemData.
+!> All arrays that are of the same size as the DG solution will be written to a single dataset, since it is a lot faster than
+!> writing several datasets. All arrays with a different size will be written separately. Also the optional doSeparateOutput
+!> flag can be used to force the output to a separate dataset.
 !==================================================================================================================================
 SUBROUTINE WriteAdditionalFieldData(FileName,FieldList)
 ! MODULES
@@ -397,44 +400,38 @@ REAL,ALLOCATABLE,TARGET        :: tmp(:,:,:,:,:)
 REAL,POINTER                   :: NodeData(:,:,:,:,:)
 INTEGER                        :: nVar,nVarTotal
 TYPE(tFieldOut),POINTER        :: f
-INTEGER                        :: mask(3)
 !==================================================================================================================================
 ! TODO: Perform one write for each dataset.
 IF(.NOT. ASSOCIATED(FieldList)) RETURN
-
-#if PP_dim == 3
-mask=(/PP_N+1,PP_N+1,PP_N+1/)
-#else
-mask=(/PP_N+1,PP_N+1,1/)
-#endif
 
 ! Count fixed size and total number of entries 
 nVar=0
 nVarTotal=0
 f=>FieldList
 DO WHILE(ASSOCIATED(f))
-  IF((ALL(f%nVal(2:4).EQ.mask)).AND.(.NOT.f%doSeparateOutput)) nVar=nVar+f%nVal(1)
+  IF(.NOT.f%doSeparateOutput) nVar=nVar+f%nVal(1)
   nVarTotal=nVarTotal+f%nVal(1)
   f=>f%next
 END DO
 
-! First the variable size arrays or arrays that should always be written as a seperate dataset
-! Write the attributes (variable size)
+! --------------------------------------------------------------------------------------------- !
+! First the variable size arrays or arrays that should always be written as a separate dataset
+! --------------------------------------------------------------------------------------------- !
+! Write the attributes
 IF(MPIRoot.AND.(nVarTotal.NE.nVar))THEN
   CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
   f=>FieldList
   DO WHILE(ASSOCIATED(f))
-  IF((.NOT. ALL(f%nVal(2:4).EQ.mask)).OR.(f%doSeparateOutput))&
-      CALL WriteAttribute(File_ID,f%DataSetName,f%nVal(1),StrArray=f%VarNames)
+  IF(f%doSeparateOutput) CALL WriteAttribute(File_ID,f%DataSetName,f%nVal(1),StrArray=f%VarNames)
     f=>f%next
   END DO
   CALL CloseDataFile()
 END IF
 
-! Write the arrays (variable size)
+! Write the arrays
 f=>FieldList
 DO WHILE(ASSOCIATED(f))
-  IF((.NOT. ALL(f%nVal(2:4).EQ.mask)).OR.(f%doSeparateOutput))THEN ! not fixed size
+  IF(f%doSeparateOutput)THEN
     IF(ASSOCIATED(f%RealArray)) THEN ! real array
       NodeData=>f%RealArray
     ELSE IF(ASSOCIATED(f%Eval)) THEN ! eval function
@@ -454,18 +451,20 @@ DO WHILE(ASSOCIATED(f))
 END DO
 
 
+! --------------------------------------------------------------------------------------------- !
 ! Now process arrays with standard size PP_N
+! --------------------------------------------------------------------------------------------- !
 IF(nVar.LE.0) RETURN ! no standard data present
 
 ALLOCATE(VarNames(nVar))
 ALLOCATE(tmp(nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 
-! Write the attributes (fixed size)
+! Write the attributes
 IF(MPIRoot)THEN
   nVar=0
   f=>FieldList
   DO WHILE(ASSOCIATED(f))
-    IF((ALL(f%nVal(2:4).EQ.mask)).AND.(.NOT.f%doSeparateOutput))THEN
+    IF(.NOT.f%doSeparateOutput)THEN
       VarNames(nVar+1:nVar+f%nVal(1))=f%VarNames
       nVar=nVar+f%nVal(1)
     END IF
@@ -480,7 +479,7 @@ END IF
 nVar=0
 f=>FieldList
 DO WHILE(ASSOCIATED(f))
-  IF((ALL(f%nVal(2:4).EQ.mask)).AND.(.NOT.f%doSeparateOutput))THEN
+  IF(.NOT.f%doSeparateOutput)THEN
     IF(ASSOCIATED(f%RealArray))THEN ! real array
       tmp(nVar+1:nVar+f%nVal(1),:,:,:,:)=f%RealArray
     ELSEIF(ASSOCIATED(f%Eval))THEN  ! eval function
