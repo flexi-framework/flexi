@@ -534,7 +534,7 @@ REAL                                 :: UCons_master  (PP_nVar    ,0:Nloc,0:PP_N
 #if PARABOLIC
 INTEGER                              :: ivar
 REAL                                 :: nv(3)
-REAL                                 :: BCGradMat(3,3)
+REAL                                 :: BCGradMat(1:PP_dim,1:PP_dim)
 REAL,DIMENSION(PP_nVar,    0:Nloc,0:PP_NlocZ):: Fd_Face_loc,    Gd_Face_loc,    Hd_Face_loc
 REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:PP_NlocZ):: gradUx_Face_loc,gradUy_Face_loc,gradUz_Face_loc
 #endif /*PARABOLIC*/
@@ -606,6 +606,7 @@ ELSE
       ! BCGradMat = I - n * n^T = (gradient -normal component of gradient)
       DO q=0,PP_NlocZ; DO p=0,Nloc
         nv = NormVec(:,p,q)
+#if (PP_dim==3)
         BCGradMat(1,1) = 1. - nv(1)*nv(1)
         BCGradMat(2,2) = 1. - nv(2)*nv(2)
         BCGradMat(3,3) = 1. - nv(3)*nv(3)
@@ -624,6 +625,17 @@ ELSE
         gradUz_Face_loc(:,p,q) = BCGradMat(3,1) * gradUx_master(:,p,q) &
                                + BCGradMat(3,2) * gradUy_master(:,p,q) &
                                + BCGradMat(3,3) * gradUz_master(:,p,q)
+#else
+        BCGradMat(1,1) = 1. - nv(1)*nv(1)
+        BCGradMat(2,2) = 1. - nv(2)*nv(2)
+        BCGradMat(1,2) = -nv(1)*nv(2)
+        BCGradMat(2,1) = BCGradMat(1,2)
+        gradUx_Face_loc(:,p,q) = BCGradMat(1,1) * gradUx_master(:,p,q) &
+                               + BCGradMat(1,2) * gradUy_master(:,p,q)
+        gradUy_Face_loc(:,p,q) = BCGradMat(2,1) * gradUx_master(:,p,q) &
+                               + BCGradMat(2,2) * gradUy_master(:,p,q)
+        gradUz_Face_loc(:,p,q) = 0.
+#endif
       END DO; END DO !p,q
 
       ! Evaluate 3D Diffusion Flux with interior state (with normalvel=0) and symmetry gradients
