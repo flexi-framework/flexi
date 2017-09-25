@@ -8,37 +8,41 @@ PROGRAM TimeAvg
 ! MODULES
 USE MOD_Globals
 USE MOD_Commandline_Arguments
-USE MOD_StringTools,ONLY:STRICMP, GetFileExtension
+USE MOD_StringTools,ONLY:STRICMP
 USE MOD_IO_HDF5
 USE MOD_HDF5_Input, ONLY:ReadAttribute,ReadArray,GetDataSize
 USE MOD_MPI,        ONLY:InitMPI
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
+! TYPE AND PARAMETER DEFINITIONS
+REAL,PARAMETER                       :: tol=1.E-7
+INTEGER,PARAMETER                    :: maxDim=16  !< maximum number of permitted array dimension 
+TYPE tFileSet
+  INTEGER                            :: nDataSets  !< number of datasets
+  INTEGER(KIND=8)                    :: totalsize  !< 1D size of all arrays
+  INTEGER,ALLOCATABLE                :: nDims(:)   !< number of dimensions per dataset
+  INTEGER,ALLOCATABLE                :: nVal(:,:)  !< number of entries per dataset
+  CHARACTER(LEN=255),ALLOCATABLE     :: DatasetNames(:) !< names of the datasets
+  CHARACTER(LEN=255)                 :: FileType,MeshFile,NodeType,ProjectName
+  REAL                               :: time       !< time
+END TYPE
+TYPE(tFileSet)                       :: ref,loc
+
 ! LOCAL VARIABLES
 REAL                                 :: AvgTime,TotalAvgTime,TotalAvgTimeGlobal
 INTEGER                              :: iArg
-CHARACTER(LEN=255)                   :: InputFile,LastInputFile 
+CHARACTER(LEN=255)                   :: InputFile,LastInputFile
 CHARACTER(LEN=255)                   :: DataSet=''
-CHARACTER(LEN=255)                   :: Filename_out,tmp,arg
+CHARACTER(LEN=255)                   :: FilenameOut,FileTypeOut,tmp,arg
 REAL,ALLOCATABLE                     :: UAvg(:),Uloc(:)
 LOGICAL                              :: isTimeAvg
-REAL                                 :: AvgStarttime,Time,AvgEndTime
+REAL                                 :: AvgStarttime,Time,TimeStart,AvgEndTime
 INTEGER                              :: StartArgs,nFiles,iFile
 INTEGER                              :: coarsenFac,iCoarse
-REAL                                 :: tol=1.E-7
 REAL                                 :: dt
-INTEGER                              :: startind,endind,offset
+INTEGER(KIND=8)                      :: startind,endind,offset
 INTEGER                              :: locsize(16),i,n
 INTEGER                              :: nSkipped
-
-TYPE tFileSet
-  INTEGER                            :: nDataSets,totalsize
-  INTEGER,ALLOCATABLE                :: nDims(:),nVal(:,:)
-  CHARACTER(LEN=255),ALLOCATABLE     :: DatasetNames(:)
-  CHARACTER(LEN=255)                 :: FileType,MeshFile,NodeType,ProjectName
-  REAL                               :: time
-END TYPE
-TYPE(tFileSet)                       :: ref,loc
 !===================================================================================================================================
 CALL SetStackSizeUnlimited()
 CALL InitMPI()
@@ -47,8 +51,9 @@ CALL ParseCommandlineArguments()
 ! Check if the number of arguments is correct
 IF (nArgs.LT.2) THEN
   ! Print out error message containing valid syntax
-  CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: timeavg --start=<starttime> --end=<endtime> FILE1 FILE2 .. FILEN or timeavg --help'// &
-  '[option/section name] to print help for a single parameter, parameter sections or all parameters.')
+  WRITE(UNIT_stdOut,*) "Please use: timeavg --start=<starttime> --end=<endtime> --coarsen=<factor> FILE1 FILE2 .. FILEN"
+  WRITE(UNIT_stdOut,*) "At least two files are required for merging."
+  RETURN
 END IF
 
 ! First check if the first three arguments contain -start=, -end= or -coarsen=
@@ -93,12 +98,15 @@ CALL GetParams(InputFile,ref)
 SELECT CASE(TRIM(ref%FileType))
 CASE('State')
   isTimeAvg=.FALSE.
+  FileTypeOut='TimeAvg'
 CASE('TimeAvg')
   isTimeAvg=.TRUE.
+  FileTypeOut='TimeAvg'
 CASE('Fluc')
   isTimeAvg=.TRUE.  ! since we have time-averaged correlations
+  FileTypeOut='Fluc'
 CASE DEFAULT
-  CALL Abort(__STAMP__,'Unknown file type.')
+  CALL CollectiveStop(__STAMP__,'Unknown file type: '//TRIM(ref%FileType))
 END SELECT
 
 ALLOCATE(UAvg(ref%totalsize))
@@ -111,6 +119,7 @@ TotalAvgTimeGlobal=0.
 iCoarse=0
 Time=ref%time
 nSkipped=0
+timestart=-999.
 DO iFile=1,nFiles
   InputFile=Args(iFile+StartArgs-1)
   ! check local time 
@@ -118,31 +127,31 @@ DO iFile=1,nFiles
 
   CALL GetParams(InputFile,loc)
   ! Check if input data size has changed
-  IF(TRIM(ref%FileType).NE.TRIM(loc%FileType))&
-    CALL Abort(__STAMP__,'Mixing file types not allowed: '//TRIM(ref%FileType)//' '//TRIM(loc%FileType))
+  IF(.NOT.STRICMP(ref%FileType,loc%FileType))&
+    CALL CollectiveStop(__STAMP__,'Mixing file types is not allowed: '//TRIM(ref%FileType)//' '//TRIM(loc%FileType))
+  IF(.NOT.STRICMP(ref%NodeType,loc%NodeType))&
+    CALL CollectiveStop(__STAMP__,'Change of node type not supported yet!')
+  IF(.NOT.STRICMP(ref%MeshFile,loc%MeshFile))&
+    CALL CollectiveStop(__STAMP__,'Change of mesh file not supported yet!')
   IF(ANY(ref%nVal.NE.loc%nVal))&
-    CALL Abort(__STAMP__,'Change of polynomial degree and variables not supported!')
-  IF(TRIM(ref%NodeType).NE.TRIM(loc%NodeType))&
-    CALL Abort(__STAMP__,'Change of node type not supported yet!')
-  IF(TRIM(ref%MeshFile).NE.TRIM(loc%MeshFile))&
-    CALL Abort(__STAMP__,'Change of meshfile not supported yet!')
+    CALL CollectiveStop(__STAMP__,'Change of polynomial degree and variables not supported!')
+  ! TODO: check change of FV subcells ?!
 
-  ! TODO : time umbasteln
   Time=loc%time
   dt=dt+Time
   ! If the time in the current file is below the starttime, then cycle
   IF ((Time-AvgStartTime.LT.-tol).OR.(Time-AvgEndTime.GT.tol)) THEN 
     WRITE(UNIT_stdOut,'(A,A)') ' SKIPPING FILE ',TRIM(InputFile)
     nSkipped=nSkipped+1
-    ! check if the starttime is later than the last filetime
-    IF (StartArgs.GT.nArgs) THEN
-      CALL CollectiveStop(__STAMP__,'Starttime is greater than latest Filetime!')
-    END IF
     IF (nFiles-nSkipped.LE.1) THEN
-      CALL CollectiveStop(__STAMP__,'No file has time lower than endtime!')
+      WRITE(UNIT_stdOut,*) "WARNING: All files have been skipped, no output is performed."&
+                           "         Please check start and end time."
+      RETURN
     END IF
     CYCLE
   END IF
+
+  IF(iCoarse.EQ.0) TimeStart=Time
 
   WRITE(UNIT_stdOut,'(132("="))')
   WRITE(UNIT_stdOut,'(A,I5,A,I5,A)') ' PROCESSING FILE ',iFile,' of ',nFiles,' FILES.'
@@ -156,7 +165,7 @@ DO iFile=1,nFiles
     CALL ReadAttribute(File_ID,'AvgTime',1,TRIM(DataSet),RealScalar=avgTime)
     WRITE(UNIT_stdOut,'(A,F10.5)') ' Time averaged file, averaging time is: ',avgTime 
   ELSE
-    WRITE(UNIT_stdOut,'(A,A)') ' Normal state file, each file will be weighted identically.'
+    WRITE(UNIT_stdOut,'(A,A)')     ' Normal state file, each file will be weighted identically.'
   END IF
 
   offset=0
@@ -181,8 +190,8 @@ DO iFile=1,nFiles
   IF((iCoarse.EQ.coarsenFac).OR.(iFile.EQ.nFiles).OR.(ABS(Time-AvgEndTime).LT.dt.AND.Time+dt.GT.AvgEndTime))THEN
     ! Compute total average and write file
     UAvg=UAvg/TotalAvgTime
-    FileName_Out=TRIM(TIMESTAMP(TRIM(ref%ProjectName)//'_'//TRIM(ref%FileType),Time))//'_Merged.h5'
-    CALL WriteCopyTimeAverage(InputFile,FileName_Out,ref,UAvg,TotalAvgTime)
+    FileNameOut=TRIM(TIMESTAMP(TRIM(ref%ProjectName)//'_'//TRIM(FileTypeOut)//'_Merged',Time,TimeStart))//'.h5'
+    CALL WriteTimeAverageByCopy(InputFile,FileNameOut,FileTypeOut,ref,UAvg,TotalAvgTime)
     iCoarse=0
     UAvg=0.
 
@@ -201,23 +210,29 @@ SDEALLOCATE(Uloc)
 
 CONTAINS
 
+
+
+!===================================================================================================================================
+!> Retrieves relevant header and dateset parameters from Flexi files and stores them in a type
+!===================================================================================================================================
 SUBROUTINE GetParams(filename,f)
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=*),INTENT(IN) :: filename
-TYPE(tFileSet),INTENT(OUT)  :: f
+CHARACTER(LEN=*),INTENT(IN) :: filename !< input filename
+TYPE(tFileSet),INTENT(OUT)  :: f        !< type with infos to be filled
 !===================================================================================================================================
 CALL OpenDataFile(filename,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL GetDatasetNamesInGroup("/",f%DatasetNames)
 f%nDataSets=SIZE(f%DatasetNames)
 ALLOCATE(f%nDims(f%nDataSets))
-ALLOCATE(f%nVal(16,f%nDataSets))
+ALLOCATE(f%nVal(maxDim,f%nDataSets))
 f%nVal=0
 f%totalsize=0
 DO i=1,f%nDataSets
   CALL GetDataSize(File_ID,TRIM(f%DatasetNames(i)),f%nDims(i),HSize)
-  ! TODO: use checksafeint
+  CHECKSAFEINT(MAXVAL(HSize),4)
+  CHECKSAFEINT(MINVAL(HSize),4)
   f%nVal(1:f%nDims(i),i)=INT(HSize)
   DEALLOCATE(HSize)
   f%totalsize=f%totalsize+PRODUCT(f%nVal(1:f%nDims(i),i))
@@ -232,19 +247,26 @@ CALL CloseDataFile()
 END SUBROUTINE
 
 
-SUBROUTINE WriteCopyTimeAverage(filename_in,filename_out,f,uavg,avgTime)
+!===================================================================================================================================
+!> Copies an existing state or timeavg file as a basis and write the merged data into it.
+!> This ensures that all relevant information is contained in the merged file without too
+!> much coding overhead.
+!===================================================================================================================================
+SUBROUTINE WriteTimeAverageByCopy(filename_in,filename_out,filetype_out,f,uavg,avgTime)
 ! MODULES
 USE MOD_HDF5_Output,ONLY:WriteArray,WriteAttribute
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=*),INTENT(IN) :: filename_in,filename_out
-TYPE(tFileSet),INTENT(IN)   :: f
-REAL,INTENT(IN)             :: UAvg(f%totalsize)
-REAL,INTENT(IN)             :: avgTime
+CHARACTER(LEN=*),INTENT(IN) :: filename_in  !< file to be copied
+CHARACTER(LEN=*),INTENT(IN) :: filename_out !< output file
+CHARACTER(LEN=*),INTENT(IN) :: filetype_out !< filetype of HDF5
+TYPE(tFileSet),INTENT(IN)   :: f            !< type with header and dataset information
+REAL,INTENT(IN)             :: UAvg(f%totalsize) !< merged data (1D array with data for all datasets)
+REAL,INTENT(IN)             :: avgTime      !< averaged time
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER :: offset2(16) = 0
+INTEGER :: offset2(maxDim) = 0
 !===================================================================================================================================
 CALL EXECUTE_COMMAND_LINE("cp -f "//TRIM(filename_in)//" "//TRIM(filename_out))
 
@@ -261,8 +283,9 @@ DO i=1,f%nDataSets
   offset=endInd
 END DO
 CALL WriteAttribute(File_ID,'AvgTime',1,RealScalar=avgTime)
+CALL WriteAttribute(File_ID,'File_Type',1,StrScalar=(/filetype_out/))
 CALL CloseDataFile()
-END SUBROUTINE WriteCopyTimeAverage
+END SUBROUTINE WriteTimeAverageByCopy
 
 
 END PROGRAM TimeAvg
