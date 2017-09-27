@@ -332,6 +332,8 @@ DO iElem=1,nElems
                                             D_Hat_T(j,j)*gv(:,i,j,k)   + &
 #if PP_dim==3
                                             D_Hat_T(k,k)*hv(:,i,j,k)
+#else
+                                            0.
 #endif /*PP_dim==3*/
 #else
     Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + DVolSurf(i,i)*f_c(:,i,j,k) + &

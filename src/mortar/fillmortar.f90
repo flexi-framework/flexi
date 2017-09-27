@@ -123,7 +123,7 @@ IMPLICIT NONE
 PRIVATE
 
 #undef TP_NZ
-#define TP_NZ PP_N
+#define TP_NZ PP_NZ
 INTEGER,PARAMETER :: TP_nVar = 1
 
 INTERFACE U_Mortar1

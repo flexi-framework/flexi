@@ -103,7 +103,11 @@ INTEGER,ALLOCATABLE :: AnalyzeSide(:)          !< Marks, wheter a side belongs t
                                                !< SurfIndex = AnalyzeSide(SideID), 1:nSides
 
 INTEGER,PARAMETER :: NormalDirs(6) = (/ 3 , 2 , 1 , 2 , 1 , 3 /) !< normal vector direction for element local side
+#if PP_dim == 3
 INTEGER,PARAMETER :: TangDirs(6)   = (/ 1 , 3 , 2 , 3 , 2 , 1 /) !< first tangential vector direction for element local side
+#else
+INTEGER,PARAMETER :: TangDirs(6)   = (/ 1 , 1 , 2 , 1 , 2 , 1 /) !< first tangential vector direction for element local side
+#endif
 REAL   ,PARAMETER :: NormalSigns(6)= (/-1.,-1., 1., 1.,-1., 1./) !< normal vector sign for element local side
 
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -136,13 +140,13 @@ INTEGER,ALLOCATABLE :: Elem_IJK(:,:)          !< Mapping from space-filling curv
 !----------------------------------------------------------------------------------------------------------------------------------
 ! Define index ranges for all sides in consecutive order for easier access
 INTEGER             :: firstBCSide             !< First SideID of BCs (in general 1)
-INTEGER             :: firstMortarInnerSide    !< First SideID of Mortars (in general nBCs+1)
+INTEGER             :: firstMortarInnerSide    !< First SideID of Mortars (in general nBCSides+1)
 INTEGER             :: firstInnerSide          !< First SideID of inner sides
 INTEGER             :: firstMPISide_MINE       !< First SideID of MINE MPI sides (on local processor)
 INTEGER             :: firstMPISide_YOUR       !< First SideID of YOUR MPI sides (on neighbour processor)
 INTEGER             :: firstMortarMPISide      !< First SideID of Mortar MPI sides
-INTEGER             :: lastBCSide              !< Last  SideID of BCs (in general nBCs)
-INTEGER             :: lastMortarInnerSide     !< Last  SideID of Mortars (in general nBCs+nMortars)
+INTEGER             :: lastBCSide              !< Last  SideID of BCs (in general nBCSides)
+INTEGER             :: lastMortarInnerSide     !< Last  SideID of Mortars (in general nBCSides+nMortars)
 INTEGER             :: lastInnerSide           !< Last  SideID of inner sides
 INTEGER             :: lastMPISide_MINE        !< Last  SideID of MINE MPI sides (on local processor)
 INTEGER             :: lastMPISide_YOUR        !< Last  SideID of YOUR MPI sides (on neighbour processor)
