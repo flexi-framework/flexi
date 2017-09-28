@@ -23,6 +23,7 @@ def copy2temporary(tmp_dir, f) :
 
 parser = argparse.ArgumentParser(description='Tool to calculate the convergence rate')
 parser.add_argument('--N', type=int, default=3, help='polynomial degree N')
+parser.add_argument('-m','--mortar', action='store_true', help='use non-conforming meshes')
 parser.add_argument('-d','--dim', type=int, default=3, help='number of spatial dimensions (1/2/3)')
 parser.add_argument('-p','--procs', type=int, default=1, help='number of processors used to run Flexi')
 parser.add_argument('-g','--gnuplot', action='store_true', help='generate gnuplot pics (needs python-gnuplot package)')
@@ -59,10 +60,26 @@ convfile = open(projectname+'_hconvfile_N'+str(args.N)+'.csv','wb')
 csvwriter=csv.writer(convfile, delimiter=',',quotechar='"',quoting=csv.QUOTE_MINIMAL)
 
 x_array = [1.,2.,4.,8.]
-grids = ['CART_HEX_PERIODIC_001_mesh.h5', \
-         'CART_HEX_PERIODIC_002_mesh.h5', \
-         'CART_HEX_PERIODIC_004_mesh.h5', \
-         'CART_HEX_PERIODIC_008_mesh.h5']
+if args.dim == 3 and not args.mortar:
+  grids = ['CART_HEX_PERIODIC_001_mesh.h5', \
+           'CART_HEX_PERIODIC_002_mesh.h5', \
+           'CART_HEX_PERIODIC_004_mesh.h5', \
+           'CART_HEX_PERIODIC_008_mesh.h5']
+elif args.dim == 2 and not args.mortar:
+  grids = ['CART_HEX_PERIODIC_001_mesh.h5', \
+           'CART_HEX_PERIODIC_002_2D_mesh.h5', \
+           'CART_HEX_PERIODIC_004_2D_mesh.h5', \
+           'CART_HEX_PERIODIC_008_2D_mesh.h5']
+elif args.dim == 3 and args.mortar:
+  grids = ['CART_HEX_PERIODIC_MORTAR_002_mesh.h5', \
+           'CART_HEX_PERIODIC_MORTAR_004_mesh.h5', \
+           'CART_HEX_PERIODIC_MORTAR_008_mesh.h5']
+elif args.dim == 2 and args.mortar:
+  grids = ['CART_HEX_PERIODIC_MORTAR_004_2D_mesh.h5', \
+           'CART_HEX_PERIODIC_MORTAR_008_2D_mesh.h5', \
+           'CART_HEX_PERIODIC_MORTAR_016_2D_mesh.h5', \
+           'CART_HEX_PERIODIC_MORTAR_032_2D_mesh.h5']
+
 L2_array = []
 i=0
 # loop over polynomial degrees
@@ -112,11 +129,19 @@ for grid in grids :
         # print L2, Linf errors and EOC
         vals = [x_array[i-1]]
         for j in range(len(L2)) :
-            convL2[j] = math.log(  last_L2[j] /   L2[j]) / math.log(x_array[i-1]/float(x_array[i-2]))
+            if L2[j]==0.:
+               convL2[j] = 0.
+            else:
+               convL2[j] = math.log(  last_L2[j] /   L2[j]) / math.log(x_array[i-1]/float(x_array[i-2]))
+
             vals.append(L2[j])
             vals.append(convL2[j])
         for j in range(len(Linf)) :
-            convLinf[j] = math.log(last_Linf[j] / Linf[j]) / math.log(x_array[i-1]/float(x_array[i-2]))
+            if L2[j]==0.:
+               convLinf[j] = 0.
+            else:
+               convLinf[j] = math.log(last_Linf[j] / Linf[j]) / math.log(x_array[i-1]/float(x_array[i-2]))
+
             vals.append(Linf[j])
             vals.append(convLinf[j])
         print_values(vals, ["%03d  "] + (len(L2)+len(Linf)) * ["%8.2e","%8.4f"])

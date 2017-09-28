@@ -92,7 +92,10 @@ SUBROUTINE FV_gradU_mortar(FV_surf_gradU,doMPISides)
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_Mesh_Vars      ,ONLY: MortarType,nSides
+#if PP_dim == 3
+USE MOD_Mesh_Vars      ,ONLY: MortarType
+#endif
+USE MOD_Mesh_Vars      ,ONLY: nSides
 USE MOD_Mesh_Vars      ,ONLY: firstMortarInnerSide,lastMortarInnerSide
 USE MOD_Mesh_Vars      ,ONLY: firstMortarMPISide,lastMortarMPISide
 USE MOD_FV_Vars        ,ONLY: FV_Elems_master
@@ -101,7 +104,7 @@ USE MOD_FillMortarPrim ,ONLY: Flux_MortarPrim
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(INOUT) :: FV_surf_gradU(PP_nVarPrim,0:PP_N,0:PP_N,1:nSides) ! slope over interface
+REAL,INTENT(INOUT) :: FV_surf_gradU(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) ! slope over interface
 LOGICAL,INTENT(IN) :: doMPISides  !< =.TRUE. only MPI sides are filled, =.FALSE. inner sides
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
@@ -119,14 +122,18 @@ firstMortarSideID = MERGE(firstMortarMPISide,firstMortarInnerSide,doMPISides)
 DO MortarSideID=firstMortarSideID,lastMortarSideID
   IF(FV_Elems_master(MortarSideID).EQ.0) CYCLE ! DG
 
+#if (PP_dim == 3)
   SELECT CASE(MortarType(1,MortarSideID))
   CASE(1) !1->4
     FV_surf_gradU(:,:,:,MortarSideID) = 0.25 * FV_surf_gradU(:,:,:,MortarSideID)
   CASE(2) !1->2 in eta
     FV_surf_gradU(:,:,:,MortarSideID) = 0.5  * FV_surf_gradU(:,:,:,MortarSideID)
   CASE(3) !1->2 in xi
+#endif
     FV_surf_gradU(:,:,:,MortarSideID) = 0.5  * FV_surf_gradU(:,:,:,MortarSideID)
+#if (PP_dim == 3)
   END SELECT
+#endif
 END DO
 
 END SUBROUTINE FV_gradU_mortar

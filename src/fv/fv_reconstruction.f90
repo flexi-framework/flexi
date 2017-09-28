@@ -417,7 +417,9 @@ END DO
 ! ===============================================================================
 IF (0.EQ.1) THEN
   gradUzeta = 0.
+#if PARABOLIC
   gradUzeta_central = 0.
+#endif
 END IF
 #endif
 END SUBROUTINE FV_CalcGradients
