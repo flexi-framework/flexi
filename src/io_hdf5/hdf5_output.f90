@@ -324,8 +324,8 @@ USE MOD_Mesh_Vars,ONLY: offsetElem,nGlobalElems,nElems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=255),INTENT(IN)  :: FileName           !< Name of the file to be written to
-TYPE(tElementOut),POINTER,INTENT(IN) :: ElemList     !< Linked list of arrays to write to file
+CHARACTER(LEN=255),INTENT(IN)        :: FileName !< Name of the file to be written to
+TYPE(tElementOut),POINTER,INTENT(IN) :: ElemList !< Linked list of arrays to write to file
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=255),ALLOCATABLE :: VarNames(:)
@@ -379,6 +379,9 @@ END SUBROUTINE WriteAdditionalElemData
 !==================================================================================================================================
 !> Comparable to WriteAdditionalElemData, but for field data (rank 5 arrays, where the last dimension is 1:nElems)
 !> See also general comment of WriteAdditionalElemData.
+!> All arrays that are of the same size as the DG solution will be written to a single dataset, since it is a lot faster than
+!> writing several datasets. All arrays with a different size will be written separately. Also the optional doSeparateOutput
+!> flag can be used to force the output to a separate dataset.
 !==================================================================================================================================
 SUBROUTINE WriteAdditionalFieldData(FileName,FieldList)
 ! MODULES
@@ -388,8 +391,8 @@ USE MOD_Mesh_Vars,ONLY: offsetElem,nGlobalElems,nElems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=255),INTENT(IN)  :: FileName          !< Name of the file to be written to
-TYPE(tFieldOut),POINTER,INTENT(IN) :: FieldList     !< Linked list of arrays to write to file
+CHARACTER(LEN=255),INTENT(IN)      :: FileName  !< Name of the file to be written to
+TYPE(tFieldOut),POINTER,INTENT(IN) :: FieldList !< Linked list of arrays to write to file
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=255),ALLOCATABLE :: VarNames(:)
@@ -397,44 +400,38 @@ REAL,ALLOCATABLE,TARGET        :: tmp(:,:,:,:,:)
 REAL,POINTER                   :: NodeData(:,:,:,:,:)
 INTEGER                        :: nVar,nVarTotal
 TYPE(tFieldOut),POINTER        :: f
-INTEGER                        :: mask(3)
 !==================================================================================================================================
 ! TODO: Perform one write for each dataset.
 IF(.NOT. ASSOCIATED(FieldList)) RETURN
-
-#if PP_dim == 3
-mask=(/PP_N+1,PP_N+1,PP_N+1/)
-#else
-mask=(/PP_N+1,PP_N+1,1/)
-#endif
 
 ! Count fixed size and total number of entries 
 nVar=0
 nVarTotal=0
 f=>FieldList
 DO WHILE(ASSOCIATED(f))
-  IF(ALL(f%nVal(2:4).EQ.mask)) nVar=nVar+f%nVal(1)
+  IF(.NOT.f%doSeparateOutput) nVar=nVar+f%nVal(1)
   nVarTotal=nVarTotal+f%nVal(1)
   f=>f%next
 END DO
 
-! First the variable size arrays 
-! Write the attributes (variable size)
+! --------------------------------------------------------------------------------------------- !
+! First the variable size arrays or arrays that should always be written as a separate dataset
+! --------------------------------------------------------------------------------------------- !
+! Write the attributes
 IF(MPIRoot.AND.(nVarTotal.NE.nVar))THEN
   CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
   f=>FieldList
   DO WHILE(ASSOCIATED(f))
-    IF(ANY(f%nVal(2:4).NE.PP_N+1))&
-      CALL WriteAttribute(File_ID,f%DataSetName,f%nVal(1),StrArray=f%VarNames)
+  IF(f%doSeparateOutput) CALL WriteAttribute(File_ID,f%DataSetName,f%nVal(1),StrArray=f%VarNames)
     f=>f%next
   END DO
   CALL CloseDataFile()
 END IF
 
-! Write the arrays (variable size)
+! Write the arrays
 f=>FieldList
 DO WHILE(ASSOCIATED(f))
-  IF(.NOT. ALL(f%nVal(2:4).EQ.mask))THEN ! not fixed size
+  IF(f%doSeparateOutput)THEN
     IF(ASSOCIATED(f%RealArray)) THEN ! real array
       NodeData=>f%RealArray
     ELSE IF(ASSOCIATED(f%Eval)) THEN ! eval function
@@ -454,18 +451,20 @@ DO WHILE(ASSOCIATED(f))
 END DO
 
 
+! --------------------------------------------------------------------------------------------- !
 ! Now process arrays with standard size PP_N
+! --------------------------------------------------------------------------------------------- !
 IF(nVar.LE.0) RETURN ! no standard data present
 
 ALLOCATE(VarNames(nVar))
 ALLOCATE(tmp(nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 
-! Write the attributes (fixed size)
+! Write the attributes
 IF(MPIRoot)THEN
   nVar=0
   f=>FieldList
   DO WHILE(ASSOCIATED(f))
-    IF(ALL(f%nVal(2:4).EQ.mask))THEN
+    IF(.NOT.f%doSeparateOutput)THEN
       VarNames(nVar+1:nVar+f%nVal(1))=f%VarNames
       nVar=nVar+f%nVal(1)
     END IF
@@ -480,7 +479,7 @@ END IF
 nVar=0
 f=>FieldList
 DO WHILE(ASSOCIATED(f))
-  IF(ALL(f%nVal(2:4).EQ.mask))THEN
+  IF(.NOT.f%doSeparateOutput)THEN
     IF(ASSOCIATED(f%RealArray))THEN ! real array
       tmp(nVar+1:nVar+f%nVal(1),:,:,:,:)=f%RealArray
     ELSEIF(ASSOCIATED(f%Eval))THEN  ! eval function
@@ -582,7 +581,10 @@ END SUBROUTINE WriteBaseflow
 !==================================================================================================================================
 !> Subroutine to write time averaged data and fluctuations HDF5 format
 !==================================================================================================================================
-SUBROUTINE WriteTimeAverage(MeshFileName,OutputTime,FutureTime,VarNamesAvg,VarNamesFluc,UAvg,UFluc,dtAvg,nVar_Avg,nVar_Fluc)
+SUBROUTINE WriteTimeAverage(MeshFileName,OutputTime,dtAvg,FV_Elems_In,nVal,&
+                            nVarAvg,VarNamesAvg,UAvg,&
+                            nVarFluc,VarNamesFluc,UFluc,&
+                            FileName_In,FutureTime)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
@@ -592,111 +594,96 @@ USE MOD_2D         ,ONLY: ExpandArrayTo3D
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN)             :: nVarAvg                                      !< Dimension of UAvg
+INTEGER,INTENT(IN)             :: nVarFluc                                     !< Dimension of UAvg
+INTEGER,INTENT(IN)             :: nVal(3)                                      !< Dimension of UAvg
+INTEGER,INTENT(IN)             :: FV_Elems_In(nElems)                          !< Array with custom FV_Elem information
 CHARACTER(LEN=*),INTENT(IN)    :: MeshFileName                                 !< Name of mesh file
-CHARACTER(LEN=*),INTENT(IN)    :: VarNamesAvg(nVar_Avg)                        !< Average variable names
-CHARACTER(LEN=*),INTENT(IN)    :: VarNamesFluc(nVar_Fluc)                      !< Fluctuations variable names
+CHARACTER(LEN=*),INTENT(IN)    :: VarNamesAvg(nVarAvg)                         !< Average variable names
+CHARACTER(LEN=*),INTENT(IN)    :: VarNamesFluc(nVarFluc)                       !< Average variable names
 REAL,INTENT(IN)                :: OutputTime                                   !< Time of output
-REAL,INTENT(IN),OPTIONAL       :: FutureTime                                   !< Time of next output
-REAL,INTENT(IN),TARGET         :: UAvg(nVar_Avg,0:PP_N,0:PP_N,0:PP_N,nElems)   !< Averaged Solution
-REAL,INTENT(IN),TARGET         :: UFluc(nVar_Fluc,0:PP_N,0:PP_N,0:PP_N,nElems) !< Fluctuations
 REAL,INTENT(IN)                :: dtAvg                                        !< Timestep of averaging
-INTEGER,INTENT(IN)             :: nVar_Avg                                     !< Number of averaged variables
-INTEGER,INTENT(IN)             :: nVar_Fluc                                    !< Number of fluctuations
+REAL,INTENT(IN),TARGET         :: UAvg(nVarAvg,nVal(1),nVal(2),nVal(3),nElems) !< Averaged Solution
+REAL,INTENT(IN),TARGET         :: UFluc(nVarFluc,nVal(1),nVal(2),nVal(3),nElems) !< Averaged Solution
+REAL,INTENT(IN),OPTIONAL       :: FutureTime                                   !< Time of next output
+CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: Filename_In                            !< custom filename
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-CHARACTER(LEN=255)             :: FileName
+CHARACTER(LEN=255)             :: FileName,DataSet
 REAL                           :: StartT,EndT
 REAL,POINTER                   :: UOut(:,:,:,:,:)
-INTEGER                        :: NZ_loc
+TYPE(tElementOut),POINTER      :: ElementOutTimeAvg
+INTEGER                        :: nVar_loc, nVal_loc(5), nVal_glob(5), i
 !==================================================================================================================================
-IF((nVar_Avg.EQ.0).AND.(nVar_Fluc.EQ.0)) RETURN ! no time averaging
+IF(ANY(nVal(1:PP_dim).EQ.0)) RETURN ! no time averaging
+IF(nVarAvg.EQ.0.AND.nVarFluc.EQ.0) RETURN ! no time averaging
 IF(MPIROOT)THEN
-  WRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' WRITE TIME AVERAGED STATE AND FLUCTUATIONS TO HDF5 FILE...'
+  WRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' WRITE TIME AVERAGED STATE TO HDF5 FILE...'
   GETTIME(StartT)
 END IF
 
-! Write timeaverages ---------------------------------------------------------------------------------------------------------------
-IF(nVar_Avg.GT.0)THEN
-  ! Generate skeleton for the file with all relevant data on a single proc (MPIRoot)
-  FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_TimeAvg',OutputTime))//'.h5'
-  IF(MPIRoot)THEN
-    CALL GenerateFileSkeleton(TRIM(FileName),'TimeAvg',nVar_Avg,PP_N,VarNamesAvg,MeshFileName,OutputTime,FutureTime)
-    CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
-    CALL WriteAttribute(File_ID,'AvgTime',1,RealScalar=dtAvg)
-    CALL CloseDataFile()
-  END IF
+! Generate skeleton for the file with all relevant data on a single proc (MPIRoot)
+FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_TimeAvg',OutputTime))//'.h5'
+IF(PRESENT(Filename_In)) Filename=TRIM(Filename_In)
+
+! Write time averaged data --------------------------------------------------------------------------------------------------------
+IF(MPIRoot)THEN
+                    CALL GenerateFileSkeleton(TRIM(FileName),'TimeAvg',1 ,PP_N,(/'DUMMY_DO_NOT_VISUALIZE'/),&
+                           MeshFileName,OutputTime,FutureTime,create=.TRUE.) ! dummy DG_Solution to fix Posti error, tres oegly !!!
+  IF(nVarAvg .GT.0) CALL GenerateFileSkeleton(TRIM(FileName),'TimeAvg',nVarAvg ,PP_N,VarNamesAvg,&
+                           MeshFileName,OutputTime,FutureTime,create=.FALSE.,Dataset='Mean')
+  IF(nVarFluc.GT.0) CALL GenerateFileSkeleton(TRIM(FileName),'TimeAvg',nVarFluc,PP_N,VarNamesFluc,&
+                           MeshFileName,OutputTime,FutureTime,create=.FALSE.,Dataset='MeanSquare')
+
+  CALL OpenDataFile(TRIM(FileName),create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
+  CALL WriteAttribute(File_ID,'AvgTime',1,RealScalar=dtAvg)
+  CALL CloseDataFile()
+END IF
 #if USE_MPI
-  CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
+CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
 #endif
 
-#if PP_dim == 3
-  UOut => UAvg
-  NZ_loc=PP_N
-#else
+! write dummy FV array
+NULLIFY(ElementOutTimeAvg)
+CALL AddToElemData(ElementOutTimeAvg,'FV_Elems',IntArray=FV_Elems_In)
+CALL WriteAdditionalElemData(FileName,ElementOutTimeAvg)
+DEALLOCATE(ElementOutTimeAvg)
+
+DO i=1,2
+  nVar_loc =  MERGE(nVarAvg,nVarFluc,i.EQ.1)
+  IF(nVar_loc.EQ.0) CYCLE
+  DataSet  =  MERGE('Mean      ','MeanSquare',i.EQ.1)
+  nVal_loc =  (/nVar_loc,nVal,nElems/)
+  nVal_glob=  (/nVal_loc(1:4),nGlobalElems/)
+  IF(i.EQ.1)THEN
+    UOut   => UAvg
+  ELSE
+    UOut   => UFluc
+  END IF
+#if PP_dim == 2
   IF (.NOT.output2D) THEN
     ! If the output should be done with a full third dimension in a two dimensional computation, we need to expand the solution
-    ALLOCATE(UOut(nVar_Avg,0:PP_N,0:PP_N,0:PP_N,nElems))
-    CALL ExpandArrayTo3D(5,(/nVar_Avg,PP_N+1,PP_N+1,PP_NZ+1,nElems/),4,PP_N+1,UAvg,UOut)
-    NZ_loc=PP_N
-  ELSE
-    UOut => UAvg
-    NZ_loc=0
+    NULLIFY(UOut)
+    nVal_loc(4) = nVal(2)
+    ALLOCATE(UOut(nVal_loc))
+    CALL ExpandArrayTo3D(5,nVal_loc,4,nVal(2),UAvg,UOut)
   END IF
 #endif
-
+  
   ! Reopen file and write DG solution
   CALL GatheredWriteArray(FileName,create=.FALSE.,&
-                          DataSetName='DG_Solution', rank=5,&
-                          nValGlobal=(/nVar_Avg,PP_N+1,PP_N+1,NZ_loc+1,nGlobalElems/),&
-                          nVal=      (/nVar_Avg,PP_N+1,PP_N+1,NZ_loc+1,nElems/),&
-                          offset=    (/0,       0,     0,     0,     offsetElem/),&
+                          DataSetName=TRIM(DataSet), rank=5,&
+                          nValGlobal=nVal_glob,&
+                          nVal=      nVal_loc,&
+                          offset=    (/0,0,0,0,offsetElem/),&
                           collective=.TRUE., RealArray=UOut)
 #if PP_dim == 2
   ! Deallocate UOut only if we did not point to UAvg
   IF(.NOT.output2D) DEALLOCATE(UOut)
 #endif
-  IF(MPIROOT) CALL MarkWriteSuccessfull(FileName)
-END IF
+END DO
 
-! Write fluctuations ---------------------------------------------------------------------------------------------------------------
-IF(nVar_Fluc.GT.0)THEN
-  FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Fluc',OutputTime))//'.h5'
-  IF(MPIRoot)THEN
-    CALL GenerateFileSkeleton(TRIM(FileName),'Fluc',nVar_Fluc,PP_N,VarNamesFluc,MeshFileName,OutputTime,FutureTime)
-    CALL OpenDataFile(FileName,create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
-    CALL WriteAttribute(File_ID,'AvgTime',1,RealScalar=dtAvg)
-    CALL CloseDataFile()
-  END IF
-#if USE_MPI
-  CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
-#endif
-
-#if PP_dim == 3
-  UOut => UFluc
-#else
-  IF (.NOT.output2D) THEN
-    ! If the output should be done with a full third dimension in a two dimensional computation, we need to expand the solution
-    ALLOCATE(UOut(nVar_Fluc,0:PP_N,0:PP_N,0:PP_N,nElems))
-    CALL ExpandArrayTo3D(5,(/nVar_Fluc,PP_N+1,PP_N+1,PP_NZ+1,nElems/),4,PP_N+1,UFluc,UOut)
-    NZ_loc=PP_N
-  ELSE
-    UOut => UFluc
-    NZ_loc=0
-  END IF
-#endif
-
-  ! Reopen file and write DG solution
-  CALL GatheredWriteArray(FileName,create=.FALSE.,&
-                          DataSetName='DG_Solution', rank=5,&
-                          nValGlobal=(/nVar_Fluc,PP_N+1,PP_N+1,NZ_loc+1,nGlobalElems/),&
-                          nVal=      (/nVar_Fluc,PP_N+1,PP_N+1,NZ_loc+1,nElems/),&
-                          offset=    (/0,        0,     0,     0,     offsetElem/),&
-                          collective=.TRUE., RealArray=UOut)
-#if PP_dim == 2
-  IF(.NOT.output2D) DEALLOCATE(UOut)
-#endif
-  IF(MPIROOT) CALL MarkWriteSuccessfull(FileName)
-END IF
+IF(MPIROOT) CALL MarkWriteSuccessfull(FileName)
 
 IF(MPIROOT)THEN
   GETTIME(EndT)
@@ -708,15 +695,16 @@ END SUBROUTINE WriteTimeAverage
 !==================================================================================================================================
 !> Subroutine that generates the output file on a single processor and writes all the necessary attributes (better MPI performance)
 !==================================================================================================================================
-SUBROUTINE GenerateFileSkeleton(FileName,TypeString,nVar,NData,StrVarNames,MeshFileName,OutputTime,FutureTime,withUserblock)
+SUBROUTINE GenerateFileSkeleton(FileName,TypeString,nVar,NData,StrVarNames,MeshFileName,OutputTime,&
+                                FutureTime,Dataset,create,withUserblock)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_Output_Vars,ONLY: ProjectName,UserBlockTmpFile,userblock_total_len
-USE MOD_Mesh_Vars  ,ONLY: nGlobalElems
-USE MOD_Interpolation_Vars,ONLY: NodeType
+USE MOD_Output_Vars        ,ONLY: ProjectName,UserBlockTmpFile,userblock_total_len
+USE MOD_Mesh_Vars          ,ONLY: nGlobalElems
+USE MOD_Interpolation_Vars ,ONLY: NodeType
 #if FV_ENABLED
-USE MOD_FV_Vars    ,ONLY: FV_X,FV_w
+USE MOD_FV_Vars            ,ONLY: FV_X,FV_w
 #endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -729,26 +717,34 @@ CHARACTER(LEN=*)               :: StrVarNames(nVar)  !< Variabel names
 CHARACTER(LEN=*),INTENT(IN)    :: MeshFileName       !< Name of mesh file
 REAL,INTENT(IN)                :: OutputTime         !< Time of output
 REAL,INTENT(IN),OPTIONAL       :: FutureTime         !< Time of next output
+CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: Dataset      !< Name of the dataset
+LOGICAL,INTENT(IN),OPTIONAL    :: create             !< specify whether file should be newly created
 LOGICAL,INTENT(IN),OPTIONAL    :: withUserblock      !< specify whether userblock data shall be written or not
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER(HID_T)                 :: DSet_ID,FileSpace,HDF5DataType
 INTEGER(HSIZE_T)               :: Dimsf(5)
 CHARACTER(LEN=255)             :: MeshFile255
+CHARACTER(LEN=255)             :: Dataset_Str,Varname_Str
 #if FV_ENABLED
 REAL                           :: FV_w_array(0:PP_N)
 #endif
-LOGICAL                        :: withUserblock_loc
+LOGICAL                        :: withUserblock_loc,create_loc
 !==================================================================================================================================
 ! Create file
+create_loc=.TRUE.
 withUserblock_loc=.FALSE.
-IF(PRESENT(withUserblock)) withUserblock_loc=withUserblock
+IF(PRESENT(create))                       create_loc       =create
+IF(PRESENT(withUserblock).AND.create_loc) withUserblock_loc=withUserblock
+Dataset_Str='DG_Solution'
+Varname_Str='VarNames'
+IF(PRESENT(Dataset))THEN
+  Dataset_Str=TRIM(Dataset)
+  Varname_Str='VarNames_'//TRIM(DataSet)
+END IF
 
-CALL OpenDataFile(TRIM(FileName),create=.TRUE.,single=.TRUE.,readOnly=.FALSE.,&
+CALL OpenDataFile(TRIM(FileName),create=create_loc,single=.TRUE.,readOnly=.FALSE.,&
                   userblockSize=MERGE(userblock_total_len,0,withUserblock_loc))
-
-! Write file header
-CALL WriteHeader(TRIM(TypeString),File_ID)
 
 ! Preallocate the data space for the dataset.
 IF(output2D) THEN
@@ -760,34 +756,41 @@ END IF
 CALL H5SCREATE_SIMPLE_F(5, Dimsf, FileSpace, iError)
 ! Create the dataset with default properties.
 HDF5DataType=H5T_NATIVE_DOUBLE
-CALL H5DCREATE_F(File_ID,'DG_Solution', HDF5DataType, FileSpace, DSet_ID, iError)
+CALL H5DCREATE_F(File_ID,TRIM(Dataset_Str), HDF5DataType, FileSpace, DSet_ID, iError)
 ! Close the filespace and the dataset
 CALL H5DCLOSE_F(Dset_id, iError)
 CALL H5SCLOSE_F(FileSpace, iError)
+CALL WriteAttribute(File_ID,TRIM(Varname_Str),nVar,StrArray=StrVarNames)
 
-! Write dataset properties "Time","MeshFile","NextFile","NodeType","VarNames"
-CALL WriteAttribute(File_ID,'N',1,IntScalar=PP_N)
-CALL WriteAttribute(File_ID,'Dimension',1,IntScalar=PP_dim)
-CALL WriteAttribute(File_ID,'Time',1,RealScalar=OutputTime)
-CALL WriteAttribute(File_ID,'MeshFile',1,StrScalar=(/TRIM(MeshFileName)/))
-IF(PRESENT(FutureTime))THEN
-  MeshFile255=TRIM(TIMESTAMP(TRIM(ProjectName)//'_'//TRIM(TypeString),FutureTime))//'.h5'
-  CALL WriteAttribute(File_ID,'NextFile',1,StrScalar=(/MeshFile255/))
-END IF
-CALL WriteAttribute(File_ID,'NodeType',1,StrScalar=(/NodeType/))
-CALL WriteAttribute(File_ID,'VarNames',nVar,StrArray=StrVarNames)
+! Write default attributes only if file is created
+IF(create_loc)THEN
+
+  ! Write file header
+  CALL WriteHeader(TRIM(TypeString),File_ID)
+  
+  ! Write dataset properties "Time","MeshFile","NextFile","NodeType","VarNames"
+  CALL WriteAttribute(File_ID,'N',1,IntScalar=PP_N)
+  CALL WriteAttribute(File_ID,'Dimension',1,IntScalar=PP_dim)
+  CALL WriteAttribute(File_ID,'Time',1,RealScalar=OutputTime)
+  CALL WriteAttribute(File_ID,'MeshFile',1,StrScalar=(/TRIM(MeshFileName)/))
+  IF(PRESENT(FutureTime))THEN
+    MeshFile255=TRIM(TIMESTAMP(TRIM(ProjectName)//'_'//TRIM(TypeString),FutureTime))//'.h5'
+    CALL WriteAttribute(File_ID,'NextFile',1,StrScalar=(/MeshFile255/))
+  END IF
+  CALL WriteAttribute(File_ID,'NodeType',1,StrScalar=(/NodeType/))
 #if FV_ENABLED
-CALL WriteAttribute(File_ID,'FV_Type',1,IntScalar=2)
-CALL WriteAttribute(File_ID,'FV_X',PP_N+1,RealArray=FV_X)
-FV_w_array(:)= FV_w
-CALL WriteAttribute(File_ID,'FV_w',PP_N+1,RealArray=FV_w_array)
+  CALL WriteAttribute(File_ID,'FV_Type',1,IntScalar=2)
+  CALL WriteAttribute(File_ID,'FV_X',PP_N+1,RealArray=FV_X)
+  FV_w_array(:)= FV_w
+  CALL WriteAttribute(File_ID,'FV_w',PP_N+1,RealArray=FV_w_array)
 #endif
-
-CALL WriteAttribute(File_ID,'NComputation',1,IntScalar=PP_N)
+  
+  CALL WriteAttribute(File_ID,'NComputation',1,IntScalar=PP_N)
+END IF
 
 CALL CloseDataFile()
 
-! Add userblock to hdf5-file
+! Add userblock to hdf5-file (only if create)
 IF(withUserblock_loc) CALL copy_userblock(TRIM(FileName)//C_NULL_CHAR,TRIM(UserblockTmpFile)//C_NULL_CHAR)
 
 END SUBROUTINE GenerateFileSkeleton
@@ -819,10 +822,9 @@ END SUBROUTINE MarkWriteSuccessfull
 !==================================================================================================================================
 SUBROUTINE FlushFiles(FlushTime_In)
 ! MODULES
-!USE MOD_PreProc
 USE MOD_Globals
-USE MOD_Output_Vars,ONLY:ProjectName
-USE MOD_HDF5_Input,ONLY:GetNextFileName
+USE MOD_Output_Vars ,ONLY: ProjectName
+USE MOD_HDF5_Input  ,ONLY: GetNextFileName
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -1050,6 +1052,7 @@ INTEGER(HSIZE_T), DIMENSION(1) :: Dimsf
 INTEGER(SIZE_T)                :: AttrLen
 INTEGER,TARGET                 :: logtoint
 TYPE(C_PTR)                    :: buf
+INTEGER                        :: hdferr
 !==================================================================================================================================
 LOGWRITE(*,*)' WRITE ATTRIBUTE "',TRIM(AttribName),'" TO HDF5 FILE...'
 IF(PRESENT(DataSetName))THEN
@@ -1086,7 +1089,16 @@ IF(PRESENT(StrArray))THEN
   CALL H5TSET_SIZE_F(Type_ID, AttrLen, iError)
 ENDIF
 
+CALL H5ESET_AUTO_F(0, hdferr)
+CALL H5AOPEN_F(    Loc_ID, TRIM(AttribName), Attr_ID, iError)
+IF(iError.EQ.0)THEN
+  CALL H5ACLOSE_F(Attr_ID, iError)
+  CALL H5ADELETE_F(Loc_ID, TRIM(AttribName)         , iError)
+END IF
+CALL H5ESET_AUTO_F(1, hdferr)
 CALL H5ACREATE_F(Loc_ID, TRIM(AttribName), Type_ID, DataSpace, Attr_ID, iError)
+IF(iError.NE.0) STOP 'Could not open or create attribute!'
+
 ! Write the attribute data.
 buf=C_NULL_PTR
 IF(PRESENT(RealArray))     buf=C_LOC(RealArray)

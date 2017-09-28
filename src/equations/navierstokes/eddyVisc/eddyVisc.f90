@@ -57,10 +57,10 @@ USE MOD_EddyVisc_Vars
 USE MOD_Smagorinsky
 USE MOD_DefaultEddyVisc
 USE MOD_SigmaModel
-USE MOD_Mesh_Vars       ,ONLY: nElems,nSides
-USE MOD_ReadInTools     ,ONLY: GETINTFROMSTR, GETREAL
-USE MOD_IO_HDF5         ,ONLY: AddToFieldData, AddToElemData
-USE MOD_EOS_Vars        ,ONLY: mu0
+USE MOD_Mesh_Vars  ,ONLY: nElems,nSides
+USE MOD_ReadInTools,ONLY: GETINTFROMSTR, GETREAL
+USE MOD_IO_HDF5    ,ONLY: AddToFieldData,FieldOut
+USE MOD_EOS_Vars   ,ONLY: mu0
 !===================================================================================================================================
 eddyViscType = GETINTFROMSTR('eddyViscType')
 
@@ -95,7 +95,7 @@ SELECT CASE(eddyViscType)
     CALL CollectiveStop(__STAMP__,&
       'Eddy Viscosity Type not specified!')
 END SELECT
-CALL AddToFieldData((/1,PP_N+1,PP_N+1,PP_NZ+1/),'VMSData',(/'muSGS'/),RealArray=muSGS)
+CALL AddToFieldData(FieldOut,(/1,PP_N+1,PP_N+1,PP_NZ+1/),'VMSData',(/'muSGS'/),RealArray=muSGS)
 END SUBROUTINE
 
 !===================================================================================================================================

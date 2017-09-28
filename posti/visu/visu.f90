@@ -315,6 +315,7 @@ IF (STRICMP(FileType,'State')) THEN
   DepSurfaceOnly = DepSurfaceOnlyEOS
   DepVolumeOnly  = DepVolumeOnlyEOS
 ELSE 
+  StateFileMode = .FALSE.
   nVarDep = 0
   ALLOCATE(DepTable(nVarDep,0:nVarDep))
   ALLOCATE(DepSurfaceOnly(nVarDep))

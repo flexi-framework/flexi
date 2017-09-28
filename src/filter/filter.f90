@@ -109,7 +109,7 @@ USE MOD_Interpolation_Vars,ONLY:InterpolationInitIsDone,Vdm_Leg,sVdm_Leg,NodeTyp
 USE MOD_ChangeBasis       ,ONLY:ChangeBasis3D
 USE MOD_ReadInTools       ,ONLY:GETINT,GETREAL,GETREALARRAY,GETLOGICAL,GETINTFROMSTR
 USE MOD_Interpolation     ,ONLY:GetVandermonde
-USE MOD_IO_HDF5           ,ONLY:AddToElemData
+USE MOD_IO_HDF5           ,ONLY:AddToElemData,ElementOut
 #if EQNSYSNR==2
 USE MOD_Interpolation_Vars,ONLY:wGP
 USE MOD_Mesh_Vars         ,ONLY:nElems,sJ
@@ -167,9 +167,9 @@ IF(FilterType.GT.0) THEN
     ALLOCATE(ekin_fluc_avg_old(nElems))
     ALLOCATE(Vol(nElems))
     ALLOCATE(Integrationweight(0:PP_N,0:PP_N,0:PP_NZ,nElems))
-    CALL AddToElemData('LAF_eRatio',RealArray=eRatio)
-    CALL AddToElemData('LAF_lim'   ,RealArray=lim)
-    CALL AddToElemData('LAF_r'     ,RealArray=r)
+    CALL AddToElemData(ElementOut,'LAF_eRatio',RealArray=eRatio)
+    CALL AddToElemData(ElementOut,'LAF_lim'   ,RealArray=lim)
+    CALL AddToElemData(ElementOut,'LAF_r'     ,RealArray=r)
     Vol = 0.
     DO iElem=1,nElems
       J_N(0:PP_N,0:PP_N,0:PP_NZ)=1./sJ(:,:,:,0,iElem)

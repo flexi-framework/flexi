@@ -84,7 +84,7 @@ USE MOD_StringTools         ,ONLY:LowCase,StripSpaces
 USE MOD_Overintegration_Vars,ONLY:NUnder
 USE MOD_Filter_Vars         ,ONLY:NFilter
 USE MOD_Mesh_Vars           ,ONLY:nElems
-USE MOD_IO_HDF5             ,ONLY:AddToElemData
+USE MOD_IO_HDF5             ,ONLY:AddToElemData,ElementOut
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -131,7 +131,7 @@ SWRITE(UNIT_stdOut,'(A)') ' Method of time integration: '//TRIM(TimeDiscName)
 ALLOCATE(dtElem(nElems))
 dtElem=0.
 
-CALL AddToElemData('dt',dtElem)
+CALL AddToElemData(ElementOut,'dt',dtElem)
 
 TimediscInitIsDone = .TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT TIMEDISC DONE!'
@@ -217,6 +217,7 @@ END SELECT
 ! Do first RK stage of first timestep to fill gradients
 CurrentStage=1
 CALL DGTimeDerivative_weakForm(t)
+IF(doCalcIndicator) CALL CalcIndicator(U,t)
 
 #if FV_ENABLED
 ! initial switch to FV sub-cells (must be called after DGTimeDerivative_weakForm, since indicator may require gradients)
