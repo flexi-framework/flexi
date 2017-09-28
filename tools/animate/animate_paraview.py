@@ -15,9 +15,17 @@ parser.add_argument('-b','--bitrate', type=int, default=10000, help='Bitrate of 
 parser.add_argument('-m','--mpi', type=int, default=1, help='Number of MPI procs for rendering')
 parser.add_argument('-s','--scale', type=int, default=1, help='Magnification of rendering')
 parser.add_argument('-o','--output', default='',  help='Appendix for filenames')
+parser.add_argument('-x','--folder', default='',  help='relative output folder for images and movies')
 parser.add_argument('plotfiles', nargs='+', help='Files to animate (.vtu/.pvtu-files)')
 
+
 args = parser.parse_args()
+
+# if output folder not exists, create it 
+#cwd = os.getcwd()
+fp=os.path.join(os.getcwd(), args.folder)
+if not os.path.exists(fp):
+    os.makedirs(fp)
 
 plotfiles = [f for f in args.plotfiles if (os.path.splitext(f)[1] in ['.pvtu', '.vtu', '.plt', '.vtm', '.h5']) ]
 
@@ -27,7 +35,12 @@ for p in plotfiles :
     sys.stdout.write('\r%05.2f %% Animate: %s' % (100.0 * i / len(plotfiles), p))
     sys.stdout.flush()
     fn = os.path.splitext(p)[0]+'.py'
-    f = open(fn, 'w')
+    f = open(fn, 'w') 
+    # get filename
+    of = os.path.splitext(p)[0] + args.output + '.png' 
+    of2=os.path.basename(of)
+    # create output filename
+    of=os.path.join(os.getcwd(), args.folder, of2)
     f.write("""from paraview.simple import * 
 import os
 
@@ -55,7 +68,7 @@ if RenderView1.InteractionMode == "2D" :
 SetActiveView(RenderView1)
 Render()
 WriteImage('%s',  Magnification=%d)
-""" % (args.layout, p, os.path.splitext(p)[0] + args.output + '.png', args.scale))
+""" % (args.layout, p, of, args.scale))
     f.close()
     if args.mpi > 1 :
         cmd = ['mpirun', '-np', str(args.mpi), 'pvbatch', '--use-offscreen-rendering', fn]
