@@ -34,7 +34,7 @@ for p in plotfiles :
     i = i+1
     sys.stdout.write('\r%05.2f %% Animate: %s' % (100.0 * i / len(plotfiles), p))
     sys.stdout.flush()
-    fn = os.path.splitext(p)[0]+'.py'
+    fn = os.path.splitext(p)[0]+ args.output + '.py'
     f = open(fn, 'w') 
     # get filename
     of = os.path.splitext(p)[0] + args.output + '.png' 
