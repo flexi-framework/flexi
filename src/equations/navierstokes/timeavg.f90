@@ -500,16 +500,14 @@ END IF
 
 ! Calc time average and write solution to file
 IF(Finalize)THEN
-  UAvg =UAvg /dtAvg
-  UFluc=UFluc/dtAvg
+  IF(nVarAvg .GT.0) UAvg =UAvg /dtAvg
+  IF(nVarFluc.GT.0) UFluc=UFluc/dtAvg
   tFuture=t+WriteData_dt
   FV_Elems_loc=FV_ENABLED
-  IF(nVarAvg .GT.0) &
-  CALL WriteTimeAverage(MeshFile,t,dtAvg,FV_Elems_loc,'TimeAvg',&
-                        (/nVarAvg ,PP_N+1,PP_N+1,PP_NZ+1/),VarNamesAvgOut ,UAvg ,FutureTime=tFuture)
-  IF(nVarFluc.GT.0) &
-  CALL WriteTimeAverage(MeshFile,t,dtAvg,FV_Elems_loc,'Fluc',   &
-                        (/nVarFluc,PP_N+1,PP_N+1,PP_NZ+1/),VarNamesFlucOut,UFluc,FutureTime=tFuture)
+  CALL WriteTimeAverage(MeshFile,t,dtAvg,FV_Elems_loc,(/PP_N+1,PP_N+1,PP_NZ+1/),&
+                        nVarAvg ,VarNamesAvgOut ,UAvg ,&
+                        nVarFluc,VarNamesFlucOut,UFluc,&
+                        FutureTime=tFuture)
   UAvg=0.
   UFluc=0.
   dtAvg=0.
