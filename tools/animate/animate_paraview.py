@@ -83,11 +83,11 @@ sys.stdout.write('\n')
 if not args.nomovie :
     print 'Generate movie ....'
     cmd = ['mencoder']
-    cmd.append('mf://%s/*%s.png' % (os.path.dirname(os.path.abspath(args.layout)),args.output ))
+    cmd.append('mf://%s/*%s.png' % (fp,args.output ))
     cmd.append('-mf')
     cmd.append('fps=%d' % args.fps)
     cmd.append('-o')
-    cmd.append('%s' % os.path.splitext(args.layout)[0] + '.avi')
+    cmd.append('%s' % os.path.join(fp, os.path.basename(os.path.splitext(args.layout)[0])) + '.avi')
     cmd.append('-ovc')
     cmd.append('lavc')
     cmd.append('-lavcopts')
