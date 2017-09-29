@@ -611,7 +611,10 @@ CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: Filename_In                            !
 ! LOCAL VARIABLES
 CHARACTER(LEN=255)             :: FileName,DataSet
 REAL                           :: StartT,EndT
-REAL,POINTER                   :: UOut(:,:,:,:,:),UOut2D(:,:,:,:,:)
+REAL,POINTER                   :: UOut(:,:,:,:,:)
+#if PP_dim == 2
+REAL,POINTER                   :: UOut2D(:,:,:,:,:)
+#endif
 TYPE(tElementOut),POINTER      :: ElementOutTimeAvg
 INTEGER                        :: nVar_loc, nVal_loc(5), nVal_glob(5), i
 !==================================================================================================================================
