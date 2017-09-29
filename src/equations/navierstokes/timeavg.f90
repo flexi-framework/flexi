@@ -364,12 +364,12 @@ DO iElem=1,nElems
 #if FV_ENABLED
   IF(FV_Elems(iElem).EQ.0) THEN ! DG Element
     CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,U(:,:,:,:,iElem),UFV)
-    Uloc(1:PP_nVar,0:PP_N,0:PP_N,0:PP_N) => UFV
+    Uloc(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) => UFV
   ELSE ! already FV
-    Uloc(1:PP_nVar,0:PP_N,0:PP_N,0:PP_N) => U(:,:,:,:,iElem)
+    Uloc(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) => U(:,:,:,:,iElem)
   END IF
 #else
-    Uloc(1:PP_nVar,0:PP_N,0:PP_N,0:PP_N) => U(:,:,:,:,iElem)
+    Uloc(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) => U(:,:,:,:,iElem)
 #endif
   
   IF(getPrims)THEN
