@@ -167,8 +167,8 @@ ELSE ! write state on same polynomial degree as the solution
 #else
   IF (.NOT.output2D) THEN
     ! If the output should be done with a full third dimension in a two dimensional computation, we need to expand the solution
-    ALLOCATE(UOut(PP_nVar,0:NOut,0:NOut,0:PP_N,nElems))
-    CALL ExpandArrayTo3D(5,(/PP_nVar,PP_N+1,PP_N+1,PP_NZ+1,nElems/),4,Nout+1,U,UOut)
+    ALLOCATE(UOut(PP_nVar,0:NOut,0:NOut,0:NOut,nElems))
+    CALL ExpandArrayTo3D(5,(/PP_nVar,NOut+1,NOut+1,PP_NOutZ+1,nElems/),4,NOut+1,U,UOut)
     ! Correct size of the output array
     nVal=(/PP_nVar,NOut+1,NOut+1,NOut+1,nElems/)
   ELSE
@@ -611,7 +611,7 @@ CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: Filename_In                            !
 ! LOCAL VARIABLES
 CHARACTER(LEN=255)             :: FileName,DataSet
 REAL                           :: StartT,EndT
-REAL,POINTER                   :: UOut(:,:,:,:,:)
+REAL,POINTER                   :: UOut(:,:,:,:,:),UOut2D(:,:,:,:,:)
 TYPE(tElementOut),POINTER      :: ElementOutTimeAvg
 INTEGER                        :: nVar_loc, nVal_loc(5), nVal_glob(5), i
 !==================================================================================================================================
@@ -653,22 +653,23 @@ DO i=1,2
   nVar_loc =  MERGE(nVarAvg,nVarFluc,i.EQ.1)
   IF(nVar_loc.EQ.0) CYCLE
   DataSet  =  MERGE('Mean      ','MeanSquare',i.EQ.1)
-  nVal_loc =  (/nVar_loc,nVal,nElems/)
-  nVal_glob=  (/nVal_loc(1:4),nGlobalElems/)
   IF(i.EQ.1)THEN
     UOut   => UAvg
   ELSE
     UOut   => UFluc
   END IF
+  nVal_loc =  (/nVar_loc,nVal,nElems/)
 #if PP_dim == 2
   IF (.NOT.output2D) THEN
     ! If the output should be done with a full third dimension in a two dimensional computation, we need to expand the solution
-    NULLIFY(UOut)
-    nVal_loc(4) = nVal(2)
-    ALLOCATE(UOut(nVal_loc))
-    CALL ExpandArrayTo3D(5,nVal_loc,4,nVal(2),UAvg,UOut)
+    NULLIFY(UOut2D)
+    ALLOCATE(UOut2D(nVal_loc(1),nVal_loc(2),nVal_loc(3),nVal(1),nVal_loc(5)))
+    CALL ExpandArrayTo3D(5,nVal_loc,4,nVal(1),UOut,UOut2D)
+    nVal_loc(4)=nVal(1)
+    UOut=>UOut2D
   END IF
 #endif
+  nVal_glob=  (/nVal_loc(1:4),nGlobalElems/)
   
   ! Reopen file and write DG solution
   CALL GatheredWriteArray(FileName,create=.FALSE.,&
@@ -679,7 +680,7 @@ DO i=1,2
                           collective=.TRUE., RealArray=UOut)
 #if PP_dim == 2
   ! Deallocate UOut only if we did not point to UAvg
-  IF(.NOT.output2D) DEALLOCATE(UOut)
+  IF(.NOT.output2D) DEALLOCATE(UOut2D)
 #endif
 END DO
 
