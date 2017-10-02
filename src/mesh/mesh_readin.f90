@@ -460,6 +460,16 @@ ELSE
 ENDIF
 nNodes=nElems*(NGeo+1)**3 ! total number of nodes on this processor
 
+#if PP_dim == 2
+DO iElem=1,nElems
+  IF (NodeCoords(3,0,0,0,iElem).GT.NodeCoords(3,0,0,1,iElem))THEN
+    CALL Abort(__STAMP__, &
+        "Zeta is oriented in negative z-direction, has to be oriented in positive z-direction instead" // &
+        "Please set 'orientZ = T' in HOPR parameter file.")
+  END IF
+END DO
+#endif
+
 ! Get Mortar specific additional arrays concering Octrees.
 ! General idea of the octrees:
 !   Starting from a conform mesh each element can be halved in each reference direction leading to
