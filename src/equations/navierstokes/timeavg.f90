@@ -461,14 +461,12 @@ DO iElem=1,nElems
     UFluc(1:nVarFlucHasAvg,:,:,:,iElem) = UFluc(1:nVarFlucHasAvg,:,:,:,iElem) + &
                                  tmpVars(FlucAvgMap(1,1:nVarFlucHasAvg),:,:,:)*tmpVars(FlucAvgMap(2,1:nVarFlucHasAvg),:,:,:)*dtStep
 
-END DO ! iElem
 
 #if PARABOLIC
-IF(CalcFluc(17).OR.CalcFluc(18))THEN  !'Dissipation via vel gradients'
+  IF(CalcFluc(17).OR.CalcFluc(18))THEN  !'Dissipation via vel gradients'
 #if FV_ENABLED
-  STOP 'Not implemented yet for FV!'
+  STOP 'WriteTimeAverage for dissipation via vel gradients (DR_u / DR_S) not implemented yet for FV!'
 #endif
-  DO iElem=1,nElems
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       GradVel(:,1)=GradUx(2:4,i,j,k,iElem)
       GradVel(:,2)=GradUy(2:4,i,j,k,iElem)
@@ -485,18 +483,17 @@ IF(CalcFluc(17).OR.CalcFluc(18))THEN  !'Dissipation via vel gradients'
         END DO; END DO
       END IF
     END DO; END DO; END DO
-  END DO ! iElem
-END IF
+  END IF
 #endif /* PARABOLIC */
 
-IF(CalcFluc(19))THEN  !'TKE'
-  DO iElem=1,nElems
+  IF(CalcFluc(19))THEN  !'TKE'
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       vel =Uloc(2:4,i,j,k)/Uloc(1,i,j,k)
       UFluc(iFluc(19),i,j,k,iElem)=UFluc(iFluc(19),i,j,k,iElem)+SUM(vel**2)*dtStep
     END DO; END DO; END DO
-  END DO ! iElem
-END IF
+  END IF
+
+END DO ! iElem
 
 ! Calc time average and write solution to file
 IF(Finalize)THEN
