@@ -232,9 +232,9 @@ USE MOD_HDF5_Input,          ONLY: OpenDataFile,ReadArray,CloseDataFile
 USE MOD_DG_Vars             ,ONLY: U
 USE MOD_EOS                 ,ONLY: DefineParametersEos,InitEOS
 USE MOD_Interpolation       ,ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
-USE MOD_Mortar              ,ONLY: InitMortar,FinalizeMortar
 #if FV_ENABLED
 USE MOD_FV_Basis            ,ONLY: InitFV_Basis,FinalizeFV_Basis
+USE MOD_Mortar              ,ONLY: InitMortar,FinalizeMortar
 #endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -257,9 +257,11 @@ IF (hasFV_Elems) meshMode_loc = MAX(meshMode_loc,2)
 
 #if FV_ENABLED
 ! For FV and higher mesh modes the FV basis is needed
-IF (meshMode_loc.EQ.2) CALL FinalizeFV_Basis()
+IF (meshMode_loc.EQ.2)THEN
+  CALL FinalizeFV_Basis()
+  CALL FinalizeMortar()
+END IF
 #endif
-CALL FinalizeMortar()
 
 ! check if the mesh mode has changed from the last time
 changedMeshMode = (meshMode_loc.NE.meshMode_old)
@@ -291,9 +293,11 @@ END IF
 
 #if FV_ENABLED
 ! We need to call the FV basis init to allocate some arrays needed in mesh init
-IF (meshMode_loc.EQ.2) CALL InitFV_Basis()
+IF (meshMode_loc.EQ.2)THEN
+  CALL InitFV_Basis()
+  CALL InitMortar()
+END IF
 #endif
-CALL InitMortar()
 
 ! Call mesh init if the mesh file changed or we need a different mesh mode
 IF ((changedMeshFile).OR.(changedMeshMode)) THEN
