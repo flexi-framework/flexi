@@ -451,8 +451,8 @@ DO iElem=1,nElems
       UE(CONS)=Uloc(:,i,j,k)
       UE(PRIM)=prim(:,i,j,k)
       UE(SRHO)=1./prim(1,i,j,k)
-      Mach=SQRT(SUM(prim(2:4,i,j,k)**2)/SPEEDOFSOUND_HE(UE))
-      tmpVars(iAvg(15),:,:,:)=TOTAL_PRESSURE_H(UE(PRES),Mach)
+      Mach=SQRT(SUM(prim(2:4,i,j,k)**2))/SPEEDOFSOUND_HE(UE)
+      tmpVars(iAvg(15),i,j,k)=TOTAL_PRESSURE_H(UE(PRES),Mach)
     END DO; END DO; END DO
   END IF
 
