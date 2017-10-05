@@ -74,7 +74,7 @@ CALL OpenDataFile(RP_DefFile_in,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 
 ! Readin Groups   
 CALL GetDataSize(File_ID,'GroupNames',nDims,HSize)
-nGroups=HSize(1) !number of groups
+nGroups=INT(HSize(1)) !number of groups
 DEALLOCATE(HSize)
 ALLOCATE(GroupNames(1:nGroups)) 
 CALL ReadArray(TRIM('GroupNames'),1,(/nGroups/),0,1,StrArray=GroupNames)
@@ -103,7 +103,7 @@ nRP_output=0
 
 ! Readin coordinates
 CALL GetDataSize(File_ID,'xF_RP',nDims,HSize)
-nRP_HDF5=HSize(2) !global number of RecordPoints
+nRP_HDF5=INT(HSize(2)) !global number of RecordPoints
 DEALLOCATE(HSize)
 ALLOCATE(xF_RP(3,nRP_HDF5)) 
 CALL ReadArray('xF_RP',2,(/3,nRP_HDF5/),0,2,RealArray=xF_RP)
@@ -115,7 +115,7 @@ nLines=0
 IF(DSexists) THEN
   LinesInFile=.TRUE.
   CALL GetDataSize(File_ID,'LineNames',nDims,HSize)
-  nLines_tmp=HSize(1) !number of lines
+  nLines_tmp=INT(HSize(1)) !number of lines
   DEALLOCATE(HSize)
   ALLOCATE(Lines_tmp(1:nLines_tmp)) 
   CALL ReadArray('LineNames',1,(/nLines_tmp/),0,1,StrArray=Lines_tmp(:)%Name)
@@ -125,7 +125,7 @@ IF(DSexists) THEN
     ! if this line is for output, get its recordpoints
     IF(OutputGroup(aLine%GroupID)) THEN
       CALL GetDataSize(File_ID,TRIM(aLine%Name),nDims,HSize)
-      aLine%nRP=HSize(1) !number of recordpoints on line
+      aLine%nRP=INT(HSize(1)) !number of recordpoints on line
       DEALLOCATE(HSize)
       ALLOCATE(aLine%IDlist(aLine%nRP))
       CALL ReadArray(TRIM(aLine%Name),1,(/aLine%nRP/),0,1,IntArray=aLine%IDlist)
@@ -157,7 +157,7 @@ nPoints=0
 IF(DSexists) THEN
   PointsInFile=.TRUE.
   CALL GetDataSize(File_ID,'Points_IDlist',nDims,HSize)
-  nPoints_tmp=HSize(1) !number of points on file
+  nPoints_tmp=INT(HSize(1)) !number of points on file
   DEALLOCATE(HSize)
   ! first read in all points from file
   ALLOCATE(Points_IDlist_tmp(nPoints_tmp))
@@ -191,7 +191,7 @@ nPlanes=0
 IF(DSexists) THEN
   PlanesInFile=.TRUE.
   CALL GetDataSize(File_ID,'PlaneNames',nDims,HSize)
-  nPlanes_tmp=HSize(1) !number of Planes
+  nPlanes_tmp=INT(HSize(1)) !number of Planes
   DEALLOCATE(HSize)
   ALLOCATE(Planes_tmp(1:nPlanes_tmp)) 
   CALL ReadArray('PlaneNames',1,(/nPlanes_tmp/),0,1,StrArray=Planes_tmp(:)%Name)
@@ -202,8 +202,8 @@ IF(DSexists) THEN
     IF(OutputGroup(Plane%GroupID)) THEN
       nPlanes=nPlanes+1
       CALL GetDataSize(File_ID,TRIM(Plane%Name),nDims,HSize)
-      Plane%nRP(1)=HSize(1) !i number of recordpoints on Plane
-      Plane%nRP(2)=HSize(2) !j number of recordpoints on Plane
+      Plane%nRP(1)=INT(HSize(1)) !i number of recordpoints on Plane
+      Plane%nRP(2)=INT(HSize(2)) !j number of recordpoints on Plane
       nRP_output=nRP_output+Plane%nRP(1)*Plane%nRP(2)
       DEALLOCATE(HSize)
       ALLOCATE(Plane%IDlist(Plane%nRP(1),Plane%nRP(2)))
@@ -326,7 +326,7 @@ CALL OpenDataFile(RP_DefFile_in,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 
 ! Readin coordinates
 CALL GetDataSize(File_ID,'xF_RP',nDims,HSize)
-nRP_HDF5=HSize(2) !global number of RecordPoints
+nRP_HDF5=INT(HSize(2)) !global number of RecordPoints
 DEALLOCATE(HSize)
 ALLOCATE(xF_newset(3,nRP_HDF5)) 
 CALL ReadArray('xF_RP',2,(/3,nRP_HDF5/),0,2,RealArray=xF_newset)

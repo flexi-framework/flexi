@@ -120,7 +120,7 @@ USE MOD_Globals
 USE MOD_Indicator_Vars
 USE MOD_ReadInTools    ,ONLY: GETINT,GETREAL,GETINTFROMSTR
 USE MOD_Mesh_Vars      ,ONLY: nElems
-USE MOD_IO_HDF5        ,ONLY: AddToElemData
+USE MOD_IO_HDF5        ,ONLY: AddToElemData,ElementOut
 USE MOD_Overintegration_Vars,ONLY:NUnder
 USE MOD_Filter_Vars,ONLY:NFilter
 IMPLICIT NONE
@@ -168,7 +168,7 @@ END SELECT
 IndStartTime = GETREAL('IndStartTime')
 ALLOCATE(IndValue(nElems))
 IndValue=0.
-CALL AddToElemData('IndValue',RealArray=IndValue)
+CALL AddToElemData(ElementOut,'IndValue',RealArray=IndValue)
 
 IndVar = GETINT('IndVar','1')
 
@@ -403,6 +403,15 @@ DO iElem=1,nElems
   END DO; END DO; END DO
   !IndValue = (EXP(IndValue/ElemVol)-EXP(0.))/(EXP(1.)-EXP(0.))
 END DO ! iElem
+
+#ifdef DEBUG
+! ===============================================================================
+! Following dummy calls do suppress compiler warnings of unused Riemann-functions
+! ===============================================================================
+IF (0.EQ.1) THEN
+  WRITE (*,*) gradUz
+END IF
+#endif
 END FUNCTION DucrosIndicator
 #endif /* PARABOLIC */
 

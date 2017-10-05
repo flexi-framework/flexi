@@ -350,9 +350,11 @@ CASE(3,4,9,23,24,25,27)
       ! Set pressure by solving local Riemann problem
       UPrim_boundary(5,p,q) = PRESSURE_RIEMANN(UPrim_boundary(:,p,q))
       UPrim_boundary(2,p,q) = 0. ! slip in tangential directions
-      UPrim_boundary(6,p,q) = UPrim_master(6,p,q) ! temperature from the inside
-      ! set density via ideal gas equation, consistent to pressure and temperature
-      UPrim_boundary(1,p,q) = UPrim_boundary(5,p,q) / (UPrim_boundary(6,p,q) * R) 
+      ! Referring to Toro: Riemann Solvers and Numerical Methods for Fluid Dynamics (Chapter 6.3.3 Boundary Conditions)
+      ! the density is chosen from the inside
+      UPrim_boundary(1,p,q) = UPrim_master(1,p,q) ! density from inside
+      ! set temperature via ideal gas equation, consistent to density and pressure
+      UPrim_boundary(6,p,q) = UPrim_boundary(5,p,q) / (UPrim_boundary(1,p,q) * R)
     END DO; END DO ! q,p
 
   ! Cases 21-29 are taken from NASA report "Inflow/Outflow Boundary Conditions with Application to FUN3D" Jan-Reneé Carlson
@@ -503,7 +505,7 @@ USE MOD_Riemann      ,ONLY: ViscousFlux
 #endif
 USE MOD_Riemann      ,ONLY: Riemann
 #ifdef EDDYVISCOSITY
-USE MOD_EddyVisc_Vars,ONLY: DeltaS_master,SGS_Ind_master
+USE MOD_EddyVisc_Vars,ONLY: muSGS_master
 #endif
 USE MOD_Testcase     ,ONLY: GetBoundaryFluxTestcase
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -534,7 +536,7 @@ REAL                                 :: UCons_master  (PP_nVar    ,0:Nloc,0:PP_N
 #if PARABOLIC
 INTEGER                              :: ivar
 REAL                                 :: nv(3)
-REAL                                 :: BCGradMat(3,3)
+REAL                                 :: BCGradMat(1:PP_dim,1:PP_dim)
 REAL,DIMENSION(PP_nVar,    0:Nloc,0:PP_NlocZ):: Fd_Face_loc,    Gd_Face_loc,    Hd_Face_loc
 REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:PP_NlocZ):: gradUx_Face_loc,gradUy_Face_loc,gradUz_Face_loc
 #endif /*PARABOLIC*/
@@ -566,13 +568,16 @@ ELSE
          gradUx_master,gradUy_master,gradUz_master,&
          NormVec&
 #ifdef EDDYVISCOSITY
-        ,DeltaS_master(SideID),DeltaS_master(SideID),SGS_Ind_master(1,:,:,SideID),SGS_Ind_master(1,:,:,SideID),Face_xGP&
+        ,muSGS_master(:,:,:,SideID),muSGS_master(:,:,:,SideID)&
 #endif
     )
     Flux = Flux + Fd_Face_loc
 #endif /*PARABOLIC*/
 
   CASE(3,4,9) ! Walls
+#ifdef EDDYVISCOSITY
+    muSGS_master(:,:,:,SideID)=0.
+#endif
     DO q=0,PP_NlocZ; DO p=0,Nloc
       ! Now we compute the 1D Euler flux, but use the info that the normal component u=0
       ! we directly tranform the flux back into the Cartesian coords: F=(0,n1*p,n2*p,n3*p,0)^T
@@ -588,7 +593,7 @@ ELSE
       CALL EvalDiffFlux2D(Nloc,Fd_Face_loc,Gd_Face_loc,Hd_Face_loc,UPrim_boundary,&
           gradUx_master, gradUy_master, gradUz_master &
 #ifdef EDDYVISCOSITY
-          ,DeltaS_master(SideID),SGS_Ind_master(1,:,:,SideID),Face_xGP            &
+          ,muSGS_master(:,:,:,SideID) &
 #endif
       )
       IF (BCType.EQ.3) THEN
@@ -603,6 +608,7 @@ ELSE
       ! BCGradMat = I - n * n^T = (gradient -normal component of gradient)
       DO q=0,PP_NlocZ; DO p=0,Nloc
         nv = NormVec(:,p,q)
+#if (PP_dim==3)
         BCGradMat(1,1) = 1. - nv(1)*nv(1)
         BCGradMat(2,2) = 1. - nv(2)*nv(2)
         BCGradMat(3,3) = 1. - nv(3)*nv(3)
@@ -621,6 +627,17 @@ ELSE
         gradUz_Face_loc(:,p,q) = BCGradMat(3,1) * gradUx_master(:,p,q) &
                                + BCGradMat(3,2) * gradUy_master(:,p,q) &
                                + BCGradMat(3,3) * gradUz_master(:,p,q)
+#else
+        BCGradMat(1,1) = 1. - nv(1)*nv(1)
+        BCGradMat(2,2) = 1. - nv(2)*nv(2)
+        BCGradMat(1,2) = -nv(1)*nv(2)
+        BCGradMat(2,1) = BCGradMat(1,2)
+        gradUx_Face_loc(:,p,q) = BCGradMat(1,1) * gradUx_master(:,p,q) &
+                               + BCGradMat(1,2) * gradUy_master(:,p,q)
+        gradUy_Face_loc(:,p,q) = BCGradMat(2,1) * gradUx_master(:,p,q) &
+                               + BCGradMat(2,2) * gradUy_master(:,p,q)
+        gradUz_Face_loc(:,p,q) = 0.
+#endif
       END DO; END DO !p,q
 
       ! Evaluate 3D Diffusion Flux with interior state (with normalvel=0) and symmetry gradients
@@ -628,7 +645,7 @@ ELSE
       CALL EvalDiffFlux2D(Nloc,Fd_Face_loc,Gd_Face_loc,Hd_Face_loc,UPrim_boundary,&
           gradUx_Face_loc,gradUy_Face_loc,gradUz_Face_loc                         &
 #ifdef EDDYVISCOSITY
-          ,DeltaS_master(SideID),SGS_Ind_master(1,:,:,SideID),Face_xGP&
+          ,muSGS_master(:,:,:,SideID)&
 #endif
       )
     END SELECT
@@ -751,13 +768,13 @@ ELSE
       Flux(6  ,p,q) = UPrim_Boundary(6,p,q)
     END DO; END DO !p,q
   CASE(9)
-    ! Euler/(full-)slip wall
-    ! symmetry BC, v=0 strategy a la HALO (is very perfect)
-    ! U_boundary is already in normal system
+    ! Euler/(full-)slip wall, symmetry BC
+    ! Solution from the inside with velocity normal component set to 0 (done in GetBoundaryState)
     DO q=0,PP_NZ; DO p=0,PP_N
       ! Compute Flux
-      Flux(1            ,p,q) = UPrim_boundary(1,p,q)
-      Flux(2:PP_nVarPrim,p,q) = 0.5*(UPrim_boundary(2:PP_nVarPrim,p,q)+UPrim_master(2:PP_nVarPrim,p,q))
+      Flux(1            ,p,q) = UPrim_master(1,p,q)
+      Flux(2:4          ,p,q) = UPrim_boundary(2:4,p,q)
+      Flux(5:PP_nVarPrim,p,q) = UPrim_master(5:PP_nVarPrim,p,q)
     END DO; END DO !p,q
   CASE(1) !Periodic already filled!
   CASE DEFAULT ! unknown BCType

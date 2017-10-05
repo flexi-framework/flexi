@@ -135,7 +135,8 @@ USE MOD_Equation_Vars,ONLY: s23,s43
 USE MOD_EOS_Vars,     ONLY: cp,Pr
 USE MOD_Viscosity
 #ifdef EDDYVISCOSITY
-USE MOD_EddyVisc_Vars,ONLY: muSGS,PrSGS,eddyViscosity
+USE MOD_EddyVisc_Vars,ONLY: muSGS,muSGSmax,PrSGS,eddyViscosity
+USE MOD_TimeDisc_Vars,ONLY: CurrentStage
 #endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -143,7 +144,7 @@ IMPLICIT NONE
 REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ),INTENT(IN)  :: UPrim                !< Solution vector
 REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ),INTENT(IN)  :: gradUx,gradUy,gradUz !< Gradients in x,y,z directions
 REAL,DIMENSION(PP_nVar    ,0:PP_N,0:PP_N,0:PP_NZ),INTENT(OUT) :: f,g,h                !< Cartesian fluxes (iVar,i,j,k)
-INTEGER, INTENT(IN)                                          :: iELem                !< element index in global array
+INTEGER, INTENT(IN)                                           :: iELem                !< element index in global array
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                :: muS
@@ -157,6 +158,9 @@ REAL                :: tau_zz,tau_xz,tau_yz
 REAL                :: gradT3
 #endif
 !==================================================================================================================================
+#if EDDYVISCOSITY
+IF(CurrentStage.EQ.1) muSGSmax(iElem)=0.
+#endif
 DO k=0,PP_NZ;  DO j=0,PP_N; DO i=0,PP_N
   prim = UPrim(:,i,j,k)
   v1   = UPrim(2,i,j,k)
@@ -167,11 +171,10 @@ DO k=0,PP_NZ;  DO j=0,PP_N; DO i=0,PP_N
   lambda=THERMAL_CONDUCTIVITY_H(muS)
   !Add turbulent sub grid scale viscosity to mu
 #ifdef EDDYVISCOSITY
-  CALL eddyViscosity(gradUx(2,i,j,k),gradUy(3,i,j,k),gradUz(4,i,j,k)&
-                    ,gradUy(2,i,j,k),gradUz(2,i,j,k),gradUx(3,i,j,k)&
-                    ,gradUz(3,i,j,k),gradUx(4,i,j,k),gradUy(4,i,j,k)&
-                    ,UPrim(1,i,j,k),iElem,i,j,k,muSGS(1,i,j,k,iElem))
-  muS = muS + max(muSGS(1,i,j,k,iElem),0.)
+  IF(CurrentStage.EQ.1) THEN
+    CALL eddyViscosity(iElem,i,j,k,muSGS(1,i,j,k,iElem))
+  END IF
+  muS = muS + muSGS(1,i,j,k,iElem)
   lambda = lambda + muSGS(1,i,j,k,iElem)*cp/PrSGS
 #endif
 
@@ -236,7 +239,14 @@ DO k=0,PP_NZ;  DO j=0,PP_N; DO i=0,PP_N
 
 END DO; END DO; END DO ! i,j,k
 
-i = iElem ! dummy access to ielem, to avoid compiler warnings, when compiled without EDDYVISCOSITY
+#ifdef DEBUG
+! ===============================================================================
+! Following dummy calls do suppress compiler warnings of unused Riemann-functions
+! ===============================================================================
+IF (0.EQ.1) THEN
+  WRITE (*,*) iElem,gradUz
+END IF
+#endif
 END SUBROUTINE EvalDiffFlux3D
 
 #endif /*PARABOLIC*/
@@ -307,7 +317,7 @@ END SUBROUTINE EvalEulerFlux1D_fast
 !==================================================================================================================================
 SUBROUTINE EvalDiffFlux2D(Nloc,f,g,h,UPrim_Face,gradUx_Face,gradUy_Face,gradUz_Face&
 #ifdef EDDYVISCOSITY
-                         ,DeltaS,SGS_Ind,Face_xGP&
+                         ,muSGS_Face&
 #endif
                          )
 ! MODULES
@@ -316,38 +326,34 @@ USE MOD_Equation_Vars,ONLY: s43,s23
 USE MOD_Viscosity
 USE MOD_EOS_Vars,     ONLY: cp,Pr
 #ifdef EDDYVISCOSITY
-USE MOD_EddyVisc_Vars,ONLY: PrSGS,eddyViscosity_surf
+USE MOD_EddyVisc_Vars,ONLY: PrSGS
 #endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)                                :: Nloc                                      !< Polynomial degree of input
-                                                                                               !< solution
-REAL,INTENT(IN)                                   :: UPrim_Face( PP_nVarPrim,0:Nloc,0:PP_NlocZ)    !< U_Face(iVar,i,j,k)
-REAL,INTENT(IN)                                   :: gradUx_Face(PP_nVarPrim,0:Nloc,0:PP_NlocZ)    !< gradUx_Face(iVar,j,k)
-REAL,INTENT(IN)                                   :: gradUy_Face(PP_nVarPrim,0:Nloc,0:PP_NlocZ)    !< gradUy_Face(iVar,i,k)
-REAL,INTENT(IN)                                   :: gradUz_Face(PP_nVarPrim,0:Nloc,0:PP_NlocZ)    !< gradUz_Face(iVar,i,j)
-REAL,DIMENSION(PP_nVar,0:Nloc,0:PP_NlocZ),INTENT(OUT) :: f,g,h                                     !< Cartesian fluxes (iVar,i,j)
+INTEGER,INTENT(IN) :: Nloc                                      !< Polynomial degree of input solution
+REAL,INTENT(IN)    :: UPrim_Face( PP_nVarPrim,0:Nloc,0:PP_NlocZ)!< U_Face(iVar,i,j,k)
+REAL,INTENT(IN)    :: gradUx_Face(PP_nVarPrim,0:Nloc,0:PP_NlocZ)!< gradUx_Face(iVar,j,k)
+REAL,INTENT(IN)    :: gradUy_Face(PP_nVarPrim,0:Nloc,0:PP_NlocZ)!< gradUy_Face(iVar,i,k)
+REAL,INTENT(IN)    :: gradUz_Face(PP_nVarPrim,0:Nloc,0:PP_NlocZ)!< gradUz_Face(iVar,i,j)
+REAL,INTENT(OUT)   :: f(PP_nVar,0:Nloc,0:PP_NlocZ)              !< Cartesian fluxes (iVar,i,j)
+REAL,INTENT(OUT)   :: g(PP_nVar,0:Nloc,0:PP_NlocZ)              !< Cartesian fluxes (iVar,i,j)
+REAL,INTENT(OUT)   :: h(PP_nVar,0:Nloc,0:PP_NlocZ)              !< Cartesian fluxes (iVar,i,j)
 #ifdef EDDYVISCOSITY 
-REAL,INTENT(IN)     :: SGS_Ind(0:Nloc,0:PP_NlocZ)     !< Indicator for eddy viscosity
-REAL,INTENT(IN)     :: DeltaS                     !< Filter width for eddy viscosity
-REAL,INTENT(IN)     :: Face_xGP(3,0:Nloc,0:PP_NlocZ)  !< Gauss-point coordinates on face
+REAL,INTENT(IN)    :: muSGS_Face(1,0:Nloc,0:PP_NlocZ)
 #endif 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                :: muS
-REAL                :: v1,v2
-REAL                :: tau_xx,tau_yy,tau_xy
-REAL                :: gradT1,gradT2,lambda,prim(PP_nVarPrim)
+REAL    :: muS
+REAL    :: v1,v2
+REAL    :: tau_xx,tau_yy,tau_xy
+REAL    :: gradT1,gradT2,lambda,prim(PP_nVarPrim)
 #if PP_dim==3
-REAL                :: tau_zz,tau_xz,tau_yz
-REAL                :: v3
-REAL                :: gradT3
+REAL    :: tau_zz,tau_xz,tau_yz
+REAL    :: v3
+REAL    :: gradT3
 #endif 
-INTEGER             :: i,j
-#ifdef EDDYVISCOSITY 
-REAL                :: muSGS 
-#endif 
+INTEGER :: i,j
 !==================================================================================================================================
 DO j=0,PP_NlocZ ; DO i=0,Nloc
   prim = UPrim_Face(:,i,j)
@@ -361,12 +367,8 @@ DO j=0,PP_NlocZ ; DO i=0,Nloc
   ! In previous versions gradients of conservative variables had been used, see Git commit b984f2895121e236ce24c149ad15615180995b00
   ! gradients of primitive variables are directly available gradU = (/ drho, dv1, dv2, dv3, dp, dT /)
 #ifdef EDDYVISCOSITY
-  CALL eddyViscosity_surf(gradUx_Face(2,i,j),gradUy_Face(3,i,j),gradUz_Face(4,i,j)&
-                         ,gradUy_Face(2,i,j),gradUz_Face(2,i,j),gradUx_Face(3,i,j)&
-                         ,gradUz_Face(3,i,j),gradUx_Face(4,i,j),gradUy_Face(4,i,j)&
-                         ,UPrim_Face(1,i,j),DeltaS,SGS_Ind(i,j),muSGS,Face_xGP(2,i,j))
-  muS = muS + max(muSGS,0.)
-  lambda = lambda + muSGS*cp/PrSGS
+  muS = muS + muSGS_Face(1,i,j)
+  lambda = lambda + muSGS_Face(1,i,j)*cp/PrSGS
 #endif
 
 #if PP_dim==3
@@ -426,6 +428,15 @@ DO j=0,PP_NlocZ ; DO i=0,Nloc
 
 
 END DO ; END DO !i,j
+
+#ifdef DEBUG
+! ===============================================================================
+! Following dummy calls do suppress compiler warnings of unused Riemann-functions
+! ===============================================================================
+IF (0.EQ.1) THEN
+  WRITE (*,*) gradUz_Face
+END IF
+#endif
 END SUBROUTINE EvalDiffFlux2D
 
 #endif /*PARABOLIC*/

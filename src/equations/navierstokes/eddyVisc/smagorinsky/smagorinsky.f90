@@ -29,7 +29,7 @@ INTERFACE FinalizeSmagorinsky
    MODULE PROCEDURE FinalizeSmagorinsky
 END INTERFACE
 
-PUBLIC::InitSmagorinsky,Smagorinsky,Smagorinsky_surf,FinalizeSmagorinsky
+PUBLIC::InitSmagorinsky,Smagorinsky,FinalizeSmagorinsky
 !===================================================================================================================================
 
 CONTAINS
@@ -42,17 +42,10 @@ SUBROUTINE InitSmagorinsky()
 USE MOD_Globals
 USE MOD_PreProc                
 USE MOD_EddyVisc_Vars              
-USE MOD_ReadInTools       ,   ONLY:GETREAL,GETLOGICAL
-USE MOD_Interpolation_Vars,   ONLY:InterpolationInitIsDone
-USE MOD_Mesh_Vars         ,   ONLY:MeshInitIsDone,nElems
-USE MOD_Interpolation_Vars,   ONLY:wGP
-USE MOD_Mesh_Vars,            ONLY:sJ,nSides
-USE MOD_Mesh_Vars,            ONLY:ElemToSide
-USE MOD_Testcase_Vars,        ONLY:testcase
-#if USE_MPI
-USE MOD_MPI,                  ONLY:StartReceiveMPIData,FinishExchangeMPIData,StartSendMPIData
-USE MOD_MPI_Vars,             ONLY:MPIRequest_DeltaS,nNbProcs
-#endif /*USE_MPI*/ 
+USE MOD_ReadInTools        ,ONLY: GETREAL,GETLOGICAL
+USE MOD_Interpolation_Vars ,ONLY: InterpolationInitIsDone,wGP
+USE MOD_Mesh_Vars          ,ONLY: MeshInitIsDone,nElems,sJ
+USE MOD_Testcase_Vars      ,ONLY: testcase
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -60,7 +53,6 @@ USE MOD_MPI_Vars,             ONLY:MPIRequest_DeltaS,nNbProcs
 ! LOCAL VARIABLES
 INTEGER :: i,iElem,j,k
 REAL    :: CellVol
-INTEGER :: iLocSide,SideID,FlipID
 !===================================================================================================================================
 IF(((.NOT.InterpolationInitIsDone).AND.(.NOT.MeshInitIsDone)).OR.SmagorinskyInitIsDone)THEN
   CALL CollectiveStop(__STAMP__,&
@@ -72,7 +64,6 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT SMAGORINSKY...'
 ! Read the variables used for LES model
 ! Smagorinsky model
 CS     = GETREAL('CS')
-PrSGS  = GETREAL('PrSGS','0.7')
 IF(testcase.EQ."channel") THEN
   ! Do Van Driest style damping or not
   VanDriest = GETLOGICAL('VanDriest','.FALSE.')
@@ -90,22 +81,7 @@ DO iElem=1,nElems
     END DO
   END DO
   DeltaS(iElem) = ( CellVol)**(1./3.)  / (REAL(PP_N)+1.)
-  DO iLocSide=1,6
-     SideID=ElemToSide(E2S_SIDE_ID,iLocSide,iElem)
-     FlipID=ElemToSide(E2S_FLIP,iLocSide,iElem) 
-     IF(FlipID.EQ.0) THEN
-       DeltaS_master(SideID)=DeltaS(iElem)
-     ELSE
-       DeltaS_slave(SideID)=DeltaS(iElem)
-     END IF
-  END DO
 END DO
-#if USE_MPI
-! Send YOUR - receive MINE
-CALL StartReceiveMPIData(DeltaS_slave, 1, 1,nSides,MPIRequest_DeltaS( :,SEND),SendID=1)
-CALL StartSendMPIData(   DeltaS_slave, 1, 1,nSides,MPIRequest_DeltaS( :,RECV),SendID=1)
-CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_DeltaS ) !Send MINE -receive YOUR
-#endif /*USE_MPI*/
 
 SmagorinskyInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT SMAGORINSKY DONE!'
@@ -115,12 +91,14 @@ END SUBROUTINE InitSmagorinsky
 !===================================================================================================================================
 !> Compute Smagorinsky Eddy-Visosity at a given point in the volume
 !===================================================================================================================================
-SUBROUTINE Smagorinsky(grad11,grad22,grad33,grad12,grad13,grad21,grad23,grad31,grad32,rho,iElem,i,j,k,muSGS)
+SUBROUTINE Smagorinsky(iElem,i,j,k,muSGS)
 ! MODULES
 USE MOD_PreProc
-USE MOD_EddyVisc_Vars,     ONLY:deltaS,CS,VanDriest!,muSGSmax
+USE MOD_EddyVisc_Vars,     ONLY:deltaS,CS,VanDriest,muSGSmax
 USE MOD_EOS_Vars,          ONLY:mu0
 USE MOD_Mesh_Vars,         ONLY:Elem_xGP
+USE MOD_Lifting_Vars,      ONLY:gradUx,gradUy,gradUz
+USE MOD_DG_Vars,           ONLY:U
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -128,8 +106,6 @@ INTEGER,INTENT(IN)                        :: iElem             !< index of curre
 !> indices of the current volume point
 INTEGER,INTENT(IN)                        :: i,j,k
 !> gradients of the velocities w.r.t. all directions
-REAL,INTENT(IN)                           :: grad11,grad22,grad33,grad12,grad13,grad21,grad23,grad31,grad32
-REAL,INTENT(IN)                           :: rho               !< Density
 REAL,INTENT(INOUT)                        :: muSGS             !< local SGS viscosity
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -137,11 +113,11 @@ REAL                :: S_eN
 REAL                :: yPlus,damp
 !===================================================================================================================================
 ! Already take the square root of 2 into account here
-S_eN = 2*(grad11**2. + grad22**2. + grad33**2.)
-S_eN = S_eN + ( grad12 + grad21 )**2.
-S_eN = S_eN + ( grad13 + grad31 )**2.
-S_eN = S_eN + ( grad23 + grad32 )**2.
-S_eN = sqrt(S_eN)
+S_eN = 2*(gradUx(2,i,j,k,iElem)**2. + gradUy(3,i,j,k,iElem)**2. + gradUz(4,i,j,k,iElem)**2.)
+S_eN = S_eN + ( gradUy(2,i,j,k,iElem) + gradUx(3,i,j,k,iElem) )**2.
+S_eN = S_eN + ( gradUz(2,i,j,k,iElem) + gradUx(4,i,j,k,iElem) )**2.
+S_eN = S_eN + ( gradUz(3,i,j,k,iElem) + gradUy(4,i,j,k,iElem) )**2.
+S_eN = SQRT(S_eN)
 ! Smagorinsky model
 IF(.NOT.VanDriest)THEN
   damp=1.
@@ -149,48 +125,9 @@ ELSE
   yPlus = (1. - ABS(Elem_xGP(2,i,j,k,iElem)))/mu0
   damp = 1. - EXP(-yPlus/26.) ! Van Driest damping factor
 END IF
-muSGS= (damp*CS*deltaS(iElem))**2. * S_eN*rho
-!muSGSmax(iElem) = MAX(muSGS,muSGSmax(iElem))
+muSGS= (damp**2*CS*deltaS(iElem))**2. * S_eN*U(1,i,j,k,iElem)
+muSGSmax(iElem) = MAX(muSGS,muSGSmax(iElem))
 END SUBROUTINE Smagorinsky
-
-!===================================================================================================================================
-!> Compute Smagorinsky Eddy-Visosity at a given point at the surface
-!===================================================================================================================================
-SUBROUTINE Smagorinsky_surf(grad11,grad22,grad33,grad12,grad13,grad21,grad23,grad31,grad32,rho,DeltaSS,SGS_Ind,muSGS,Face_xGP)
-! MODULES
-USE MOD_PreProc
-USE MOD_EddyVisc_Vars,     ONLY:CS,VanDriest
-USE MOD_EOS_Vars,          ONLY:mu0
-IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-!> gradients of the velocities w.r.t. all directions
-REAL,INTENT(IN)                           :: grad11,grad22,grad33,grad12,grad13,grad21,grad23,grad31,grad32
-REAL,INTENT(IN)                           :: rho               !< Density
-REAL,INTENT(IN)                           :: DeltaSS           !< Filter width
-REAL,INTENT(IN)                           :: SGS_Ind           !< Indicator for SGS model
-REAL,INTENT(IN)                           :: Face_xGP          !< Coordinate for van-Driest damping
-REAL,INTENT(OUT)                          :: muSGS             !< local SGS viscosity
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-REAL                :: S_eN
-REAL                :: yPlus,damp
-!===================================================================================================================================
-! Already take the square root of 2 into account here
-S_eN = 2*(grad11**2. + grad22**2. + grad33**2.)&
-     + ( grad12 + grad21 )**2.&
-     + ( grad13 + grad31 )**2.&
-     + ( grad23 + grad32 )**2.
-S_eN = sqrt(S_eN)
-! Smagorinsky model
-IF(.NOT.VanDriest)THEN
-  damp=1.
-ELSE
-  yPlus = (1. - ABS(Face_xGP))/mu0
-  damp  =  1. - EXP(-yPlus/26.) ! Van Driest damping factor
-END IF
-muSGS= (damp*CS*DeltaSS )**2. * S_eN*rho
-END SUBROUTINE Smagorinsky_surf
 
 !===============================================================================================================================
 !> Deallocate arrays and finalize variables used by Smagorinsky SGS model

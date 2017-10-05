@@ -47,12 +47,28 @@ INTERFACE FinalizeFilter
   MODULE PROCEDURE FinalizeFilter
 END INTERFACE
 
+INTERFACE Filter_Selective
+  MODULE PROCEDURE Filter_Selective
+END INTERFACE
+
 PUBLIC :: InitFilter
 PUBLIC :: Filter_pointer
+PUBLIC :: Filter_Selective
 PUBLIC :: FinalizeFilter
+PUBLIC :: DefineParametersFilter
 !==================================================================================================================================
 
-PUBLIC::DefineParametersFilter
+#ifdef DEBUG
+#if EQNSYSNR==2
+! Add dummy interfaces to unused subroutines to suppress compiler warnings.
+INTERFACE DUMMY_Filter
+  MODULE PROCEDURE Filter
+END INTERFACE
+INTERFACE DUMMY_Filter_LAF
+  MODULE PROCEDURE Filter_LAF
+END INTERFACE
+#endif
+#endif
 CONTAINS
 
 !==================================================================================================================================
@@ -93,7 +109,7 @@ USE MOD_Interpolation_Vars,ONLY:InterpolationInitIsDone,Vdm_Leg,sVdm_Leg,NodeTyp
 USE MOD_ChangeBasis       ,ONLY:ChangeBasis3D
 USE MOD_ReadInTools       ,ONLY:GETINT,GETREAL,GETREALARRAY,GETLOGICAL,GETINTFROMSTR
 USE MOD_Interpolation     ,ONLY:GetVandermonde
-USE MOD_IO_HDF5           ,ONLY:AddToElemData
+USE MOD_IO_HDF5           ,ONLY:AddToElemData,ElementOut
 #if EQNSYSNR==2
 USE MOD_Interpolation_Vars,ONLY:wGP
 USE MOD_Mesh_Vars         ,ONLY:nElems,sJ
@@ -151,9 +167,9 @@ IF(FilterType.GT.0) THEN
     ALLOCATE(ekin_fluc_avg_old(nElems))
     ALLOCATE(Vol(nElems))
     ALLOCATE(Integrationweight(0:PP_N,0:PP_N,0:PP_NZ,nElems))
-    CALL AddToElemData('LAF_eRatio',RealArray=eRatio)
-    CALL AddToElemData('LAF_lim'   ,RealArray=lim)
-    CALL AddToElemData('LAF_r'     ,RealArray=r)
+    CALL AddToElemData(ElementOut,'LAF_eRatio',RealArray=eRatio)
+    CALL AddToElemData(ElementOut,'LAF_lim'   ,RealArray=lim)
+    CALL AddToElemData(ElementOut,'LAF_r'     ,RealArray=r)
     Vol = 0.
     DO iElem=1,nElems
       J_N(0:PP_N,0:PP_N,0:PP_NZ)=1./sJ(:,:,:,0,iElem)
@@ -441,6 +457,69 @@ END SUBROUTINE Filter_LAF
 
 
 
+SUBROUTINE Filter_Selective(NVar,FilterMat,U_in,filter_ind)
+! MODULES
+USE MOD_PreProc
+USE MOD_Globals
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+REAL,INTENT(INOUT)  :: U_in(NVar,0:PP_N,0:PP_N,0:PP_N) ! < solution vector to be filtered
+REAL,INTENT(IN)     :: FilterMat(0:PP_N,0:PP_N)        ! < filter matrix to be used
+INTEGER,INTENT(IN)  :: NVar
+LOGICAL, INTENT(IN) :: filter_ind(:)
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                                   :: i,j,k,l
+REAL,DIMENSION(NVar,0:PP_N,0:PP_N,0:PP_N) :: U_Xi,U_Eta
+!==================================================================================================================================
+! Perform filtering
+#if FV_ENABLED
+stop
+#endif
+IF(filter_ind(1)) THEN
+  U_Xi = 0.
+  DO k=0,PP_N
+    DO j=0,PP_N
+      DO i=0,PP_N
+        DO l=0,PP_N
+          U_Xi(:,i,j,k) = U_Xi(:,i,j,k) + FilterMat(i,l)*U_in(:,l,j,k)
+        END DO !l
+      END DO !i
+    END DO !j
+  END DO !k
+ELSE
+  U_Xi = U_in
+END IF
+IF(filter_ind(2)) THEN
+  U_Eta= 0.
+  DO k=0,PP_N
+    DO j=0,PP_N
+      DO i=0,PP_N
+        DO l=0,PP_N
+          U_Eta(:,i,j,k) = U_Eta(:,i,j,k) + FilterMat(j,l)*U_Xi(:,i,l,k)
+        END DO !l
+      END DO !i
+    END DO !j
+  END DO !k
+ELSE
+  U_Eta = U_Xi
+END IF
+IF(filter_ind(3)) THEN
+  U_in(:,:,:,:)=0.
+  DO k=0,PP_N
+    DO j=0,PP_N
+      DO i=0,PP_N
+        DO l=0,PP_N
+          U_in(:,i,j,k) = U_in(:,i,j,k) + FilterMat(k,l)*U_Eta(:,i,j,l)
+        END DO !l
+      END DO !i
+    END DO !j
+  END DO !k
+ELSE
+  U_in = U_Eta
+END IF
+END SUBROUTINE Filter_Selective
 
 !==================================================================================================================================
 !> Deallocate filter arrays

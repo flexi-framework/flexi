@@ -102,11 +102,11 @@ END IF
 IF(nDims.EQ.2) THEN
   nSamples_loc=1
 ELSE
-  nSamples_loc=HSize(3) 
+  nSamples_loc=INT(HSize(3) )
 END IF
 ! first file: get VarNames and create first dataset pointer.
 IF(firstFile_loc.EQV..TRUE.) THEN
-  nVar_HDF5 = HSize(1) -1
+  nVar_HDF5 = INT(HSize(1) -1)
   ALLOCATE(VarNames_HDF5(nVar_HDF5))
   CALL ReadAttribute(File_ID,'VarNames',nVar_HDF5,StrArray=VarNames_HDF5)
   nSamples_global=1 

@@ -114,7 +114,7 @@ USE MOD_Mesh_Vars   ,ONLY: nElems,nSides
 USE MOD_FV_Limiter
 #endif
 USE MOD_ReadInTools
-USE MOD_IO_HDF5     ,ONLY: AddToElemData
+USE MOD_IO_HDF5     ,ONLY: AddToElemData,ElementOut
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -152,7 +152,7 @@ CALL InitFV_Limiter()
 ALLOCATE(FV_Elems(nElems)) ! holds information if element is DG (0) or FV (1)
 ! All cells are initially DG cells
 FV_Elems = 0
-CALL AddToElemData('FV_Elems',IntArray=FV_Elems) ! append this array to HDF5 output files
+CALL AddToElemData(ElementOut,'FV_Elems',IntArray=FV_Elems) ! append this array to HDF5 output files
 
 ! The elementwise information of 'FV_Elems' is also needed at the faces and therefore
 ! is 'prolongated' to the faces into the arrays 'FV_Elems_master/slave'.
@@ -175,7 +175,7 @@ ALLOCATE(FV_Elems_Amount(nElems))
 FV_Elems_counter  = 0
 FV_Switch_counter = 0
 FV_Elems_Amount = 0
-CALL AddToElemData('FV_Elems_Amount',RealArray=FV_Elems_Amount)
+CALL AddToElemData(ElementOut,'FV_Elems_Amount',RealArray=FV_Elems_Amount)
 
 #if FV_RECONSTRUCT
 ! Allocate array for multi purposes: 
@@ -232,11 +232,10 @@ END SUBROUTINE InitFV
 !==================================================================================================================================
 !> Performe switching between DG element and FV sub-cells element (and vise versa) depending on the indicator value
 !==================================================================================================================================
-SUBROUTINE FV_Switch(AllowToDG)
+SUBROUTINE FV_Switch(U,U2,U3,AllowToDG)
 ! MODULES
 USE MOD_PreProc
 USE MOD_ChangeBasisByDim,ONLY: ChangeBasisVolume
-USE MOD_DG_Vars        ,ONLY: U
 USE MOD_Indicator_Vars ,ONLY: IndValue
 USE MOD_Indicator      ,ONLY: IndPersson
 USE MOD_FV_Vars
@@ -246,7 +245,10 @@ USE MOD_Mesh_Vars      ,ONLY: nElems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-LOGICAL,INTENT(IN) :: AllowToDG !< if .TRUE. FV element is allowed to switch to DG
+REAL,INTENT(INOUT)          :: U (PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
+REAL,INTENT(INOUT),OPTIONAL :: U2(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
+REAL,INTENT(INOUT),OPTIONAL :: U3(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
+LOGICAL,INTENT(IN)          :: AllowToDG  ! < if .TRUE. FV element is allowed to switch to DG
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL    :: U_DG(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
@@ -262,6 +264,14 @@ DO iElem=1,nElems
       FV_Elems(iElem) = 1
       CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,U(:,:,:,:,iElem),U_FV)
       U(:,:,:,:,iElem) = U_FV
+      IF (PRESENT(U2)) THEN
+        CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,U2(:,:,:,:,iElem),U_FV)
+        U2(:,:,:,:,iElem) = U_FV
+      END IF
+      IF (PRESENT(U3)) THEN
+        CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,U3(:,:,:,:,iElem),U_FV)
+        U3(:,:,:,:,iElem) = U_FV
+      END IF
     END IF
   ELSE ! FV Element
     ! Switch FV to DG Element, if Indicator is lower then IndMax
@@ -273,6 +283,14 @@ DO iElem=1,nElems
       END IF
       U(:,:,:,:,iElem) = U_DG
       FV_Elems(iElem) = 0  ! switch Elemnent to DG
+      IF (PRESENT(U2)) THEN
+        CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_sVdm,U2(:,:,:,:,iElem),U_DG)
+        U2(:,:,:,:,iElem) = U_DG
+      END IF
+      IF (PRESENT(U3)) THEN
+        CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_sVdm,U3(:,:,:,:,iElem),U_DG)
+        U3(:,:,:,:,iElem) = U_DG
+      END IF
     END IF
   END IF
 END DO !iElem
@@ -347,7 +365,7 @@ REAL                   :: Elem_xFV(1:3,0:PP_N,0:PP_N,0:PP_NZ)
 CALL CalcIndicator(U,0.)
 FV_Elems = 0
 ! Switch DG elements to FV if necessary (converts initial DG solution to FV solution)
-CALL FV_Switch(AllowToDG=.FALSE.)
+CALL FV_Switch(U,AllowToDG=.FALSE.)
 
 IF (.NOT.(GETLOGICAL("FV_IniSharp"))) THEN
   ! Super sample initial solution of all FV elements. Necessary if already initial DG solution contains oscillations, which

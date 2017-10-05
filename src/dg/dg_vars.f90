@@ -45,7 +45,14 @@ REAL,ALLOCATABLE                      :: L_HatPlus(:)           !< Lagrange poly
                                                                 !< premultiplied by mass matrix
 
 REAL,ALLOCATABLE                      :: D_Hat_TO(:,:)          !< Transpose of differentiation matrix
-                                                                !< premultiplied by mass matrix on NOver, size [0..NO,0..NO]. 
+                                                                !< premultiplied by mass matrix on NOver, size [0..NO,0..NO].
+
+#ifdef SPLIT_DG
+REAL,ALLOCATABLE                      :: DVolSurf(:,:)          !< Transpose of differentiation matrix used for calculating the strong form
+                                                                !< DVolSurf = D_T
+                                                                !< DVolSurf(0,0) = D_T(0,0) + 1/(2 * wGP(0))
+                                                                !< DVolSurf(N,N) = D_T(N,N) - 1/(2 * wGP(N)) 
+#endif /*SPLIT_DG*/
 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! DG solution (JU or U) vectors)

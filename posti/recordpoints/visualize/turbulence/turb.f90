@@ -23,20 +23,22 @@ SUBROUTINE Turbulence()
 ! MODULES
 USE MOD_Globals              
 USE MOD_VarnamemappingsRP_vars 
-USE MOD_RPData_Vars          ,ONLY: RPTime,RPData
-USE MOD_RPSetVisuVisu_Vars           ,ONLY: nRP_global
-USE MOD_OutputRPVisu_Vars    ,ONLY: nSamples_out , CoordNames
-USE MOD_ParametersVisu           ,ONLY: Mu0,cutoffFreq , ProjectName
+USE MOD_RPData_Vars            ,ONLY: RPTime,RPData
+USE MOD_RPSetVisuVisu_Vars     ,ONLY: nRP_global
+USE MOD_OutputRPVisu_Vars      ,ONLY: nSamples_out
+USE MOD_ParametersVisu         ,ONLY: Mu0,cutoffFreq
 USE FFTW3
 #ifdef WITHTECPLOT
-USE MOD_Tecplot              ,ONLY: WriteDataToTecplotBinary, WriteTimeAvgDataToTecplotBinary
+USE MOD_OutputRPVisu_Vars      ,ONLY: CoordNames
+USE MOD_Tecplot                ,ONLY: WriteDataToTecplotBinary,WriteTimeAvgDataToTecplotBinary
+USE MOD_ParametersVisu         ,ONLY: ProjectName
 #endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                         :: iSample , nVar_turb, iVar,iRP
+INTEGER                         :: iSample , iVar,iRP
 INTEGER                         :: nSamples_spec
 INTEGER(KIND=8)                 :: plan  
 COMPLEX                         :: in(nSamples_out),out(nSamples_out) 
@@ -44,9 +46,13 @@ REAL                            :: dt_equi , PI , df
 REAL , ALLOCATABLE              :: E_kineticSpec(:,:)
 REAL , ALLOCATABLE              :: velAbs(:,:) , velAbs_avg(:) , density_avg(:) , kk(:,:) , disRate(:,:) , epsilonMean(:,:)
 REAL , ALLOCATABLE              :: nu0(:) , eta(:) , etaK(:,:)
-REAL , ALLOCATABLE              :: RPData_turb(:,:,:) , vel_spec(:,:,:) , velPrim(:,:,:) , RPData_freq(:) , RPData_turb_avg(:,:)
+REAL , ALLOCATABLE              :: vel_spec(:,:,:) , velPrim(:,:,:) , RPData_freq(:)
+#ifdef WITHTECPLOT
+INTEGER                         :: nVar_turb
 CHARACTER(LEN=255),ALLOCATABLE  :: VarNameTurb(:)
-CHARACTER(LEN=255)              :: Filename , stroutputfile
+CHARACTER(LEN=255)              :: Filename,stroutputfile
+REAL , ALLOCATABLE              :: RPData_turb(:,:,:) , RPData_turb_avg(:,:)
+#endif
 !===================================================================================================================================
 
 

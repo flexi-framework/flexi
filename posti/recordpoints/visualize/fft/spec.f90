@@ -196,9 +196,9 @@ IF(doPSD .OR. doFFT) THEN
         out(1:nSamples_spec)=2./REAL(nSamples_block)*ABS(out(1:nSamples_spec))
         out(1)=0.5*out(1) !mean value 
         IF (doPSD) THEN
-          RPData_spec(iVar,iRP,:)=RPData_spec(iVar,iRP,:)+out(1:nSamples_spec)**2
+          RPData_spec(iVar,iRP,:)=REAL(RPData_spec(iVar,iRP,:)+out(1:nSamples_spec)**2)
         ELSE
-          RPData_spec(iVar,iRP,:)=RPData_spec(iVar,iRP,:)+out(1:nSamples_spec)
+          RPData_spec(iVar,iRP,:)=REAL(RPData_spec(iVar,iRP,:)+out(1:nSamples_spec))
         END IF
       END DO ! nBlocks
       IF (doPSD) THEN

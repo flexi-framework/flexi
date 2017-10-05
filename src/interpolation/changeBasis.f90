@@ -50,6 +50,7 @@ END INTERFACE
 
 INTERFACE ChangeBasis1D
   MODULE PROCEDURE ChangeBasis1D
+  MODULE PROCEDURE ChangeBasis1D_singleVar
 END INTERFACE
 
 PUBLIC :: ChangeBasis3D_XYZ
@@ -72,7 +73,6 @@ PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-
 #if PP_dim == 3
 INTERFACE ChangeBasisVolume
   MODULE PROCEDURE ChangeBasis3D
@@ -98,6 +98,19 @@ END INTERFACE
 
 PUBLIC :: ChangeBasisVolume
 PUBLIC :: ChangeBasisSurf
+
+#ifdef DEBUG
+! Add dummy interfaces to unused subroutines to suppress compiler warnings.
+INTERFACE DUMMY_ChangeBasis
+  MODULE PROCEDURE ChangeBasis3D_XYZ
+  MODULE PROCEDURE ChangeBasis2D_XYZ
+  MODULE PROCEDURE ChangeBasis3D
+  MODULE PROCEDURE ChangeBasis3D_singleVar
+  MODULE PROCEDURE ChangeBasis1D
+  MODULE PROCEDURE ChangeBasis1D_singleVar
+END INTERFACE
+PUBLIC :: DUMMY_ChangeBasis
+#endif /* DEBUG */
 !==================================================================================================================================
 CONTAINS
 
