@@ -222,7 +222,7 @@ DO SideID=firstSideID,lastSideID
   IF (FV_Elems_master(SideID).GT.0.AND.SideID.LE.nBCSides) CYCLE ! FV BC already filled
   IF (FV_Elems_Sum(SideID).EQ.3)                           CYCLE ! FV/FV already filled
 #endif
-  IF(MortarType(1,SideID).LE.0)                            CYCLE ! no big mortars
+  IF(MortarType(1,SideID).GT.0)                            CYCLE ! no big mortars
   DO q=0,PP_NZ; DO p=0,PP_N
     FluxX(:,p,q,SideID)=Flux(:,p,q,SideID)*NormVec(1,p,q,0,SideID)
     FluxY(:,p,q,SideID)=Flux(:,p,q,SideID)*NormVec(2,p,q,0,SideID)
