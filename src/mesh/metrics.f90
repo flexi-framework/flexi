@@ -181,6 +181,7 @@ USE MOD_Mesh_Vars          ,ONLY: sJ,detJac_Ref,Ja_Face
 USE MOD_Mesh_Vars          ,ONLY: NodeCoords,TreeCoords,Elem_xGP
 USE MOD_Mesh_Vars          ,ONLY: ElemToTree,xiMinMax,interpolateFromTree
 USE MOD_Mesh_Vars          ,ONLY: NormVec,TangVec1,TangVec2,SurfElem,Face_xGP
+USE MOD_Mesh_Vars          ,ONLY: firstMPISide_MINE,firstMPISide_YOUR,lastMPISide_YOUR,nSides
 USE MOD_Interpolation_Vars
 USE MOD_Interpolation      ,ONLY: GetVandermonde,GetNodesAndWeights,GetDerivativeMatrix
 #if (PP_dim == 3)
@@ -190,6 +191,10 @@ USE MOD_ChangeBasis        ,ONLY: ChangeBasis2D_XYZ
 #endif
 USE MOD_Basis              ,ONLY: LagrangeInterpolationPolys
 USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisVolume
+#if USE_MPI
+USE MOD_MPI_Vars           ,ONLY: nNbProcs
+USE MOD_MPI                ,ONLY: StartReceiveMPIData,StartSendMPIData,FinishExchangeMPIData
+#endif
 !----------------------------------------------------------------------------------------------------------------------------------
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -240,6 +245,11 @@ REAL,DIMENSION(0:PP_N   ,0:PP_N)    :: Vdm_zeta_N
 REAL    :: xiRef( 0:NgeoRef),wBaryRef( 0:NgeoRef)
 REAL    :: xiCL_N(0:PP_N)   ,wBaryCL_N(0:PP_N)
 REAL    :: xi0(3),dxi(3),length(3)
+
+#if USE_MPI
+INTEGER           :: MPIRequest_Geo(nNbProcs,2)
+REAL,ALLOCATABLE  :: Geo(:,:,:,:,:)
+#endif 
 !==================================================================================================================================
 ! Prerequisites
 Metrics_fTilde=0.
@@ -514,6 +524,25 @@ DO iElem=1,nElems
                          NormVec,TangVec1,TangVec2,SurfElem,Face_xGP,Ja_Face)
   END IF
 END DO !iElem=1,nElems
+
+#if USE_MPI
+! Send surface geomtry informations from mpi master to mpi slave
+ALLOCATE(Geo(10,0:PP_N,0:PP_NZ,0:FV_ENABLED,firstMPISide_MINE:nSides))
+Geo=0.
+Geo(1,:,:,:,:)   =SurfElem(  :,0:PP_NZ,:,firstMPISide_MINE:nSides)
+Geo(2:4,:,:,:,:) =NormVec (:,:,0:PP_NZ,:,firstMPISide_MINE:nSides)
+Geo(5:7,:,:,:,:) =TangVec1(:,:,0:PP_NZ,:,firstMPISide_MINE:nSides)
+Geo(8:10,:,:,:,:)=TangVec2(:,:,0:PP_NZ,:,firstMPISide_MINE:nSides)
+MPIRequest_Geo=MPI_REQUEST_NULL
+CALL StartReceiveMPIData(Geo,10*(PP_N+1)**(PP_dim-1)*(FV_ENABLED+1),firstMPISide_MINE,nSides,MPIRequest_Geo(:,RECV),SendID=1) ! Receive YOUR / Geo: master -> slave
+CALL StartSendMPIData(   Geo,10*(PP_N+1)**(PP_dim-1)*(FV_ENABLED+1),firstMPISide_MINE,nSides,MPIRequest_Geo(:,SEND),SendID=1) ! SEND MINE / Geo: master -> slave
+CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Geo) 
+SurfElem  (:,0:PP_NZ,:,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(1   ,:,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
+NormVec (:,:,0:PP_NZ,:,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(2:4 ,:,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
+TangVec1(:,:,0:PP_NZ,:,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(5:7 ,:,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
+TangVec2(:,:,0:PP_NZ,:,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(8:10,:,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
+DEALLOCATE(Geo)
+#endif /*MPI*/
 
 END SUBROUTINE CalcMetrics
 

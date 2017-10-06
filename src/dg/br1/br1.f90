@@ -182,7 +182,7 @@ USE MOD_Globals
 USE MOD_Preproc
 USE MOD_Lifting_Vars
 USE MOD_Lifting_VolInt,     ONLY: Lifting_VolInt
-USE MOD_Lifting_FillFlux,   ONLY: Lifting_FillFlux,Lifting_FillFlux_BC
+USE MOD_Lifting_FillFlux,   ONLY: Lifting_FillFlux,Lifting_FillFlux_BC,Lifting_FillFlux_NormVec
 USE MOD_DG_Vars,            ONLY: L_hatMinus,L_hatPlus
 USE MOD_Lifting_SurfInt,    ONLY: Lifting_SurfInt
 USE MOD_ProlongToFacePrim,  ONLY: ProlongToFacePrim
@@ -205,26 +205,15 @@ REAL,INTENT(IN)    :: t                                                 !< curre
 ! LOCAL VARIABLES
 !==================================================================================================================================
 ! fill the global surface flux list
-! #### use gradUx/y/z_master for storing the fluxes ####
+! #### use gradUz_slave for storing the fluxes, NormVec is applied later ####
+! ## DO NOT USE SAME STORAGE for transformed/untransformed fluxes, since NormVec can be applied before communication is finished ##
 #if USE_MPI
 ! Receive YOUR
-CALL StartReceiveMPIData(gradUx_master,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,1,RECV),SendID=1)
-CALL StartReceiveMPIData(gradUy_master,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,2,RECV),SendID=1)
-#if (PP_dim==3)
-CALL StartReceiveMPIData(gradUz_master,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,3,RECV),SendID=1)
-#endif
+CALL StartReceiveMPIData(gradUz_slave,DataSizeSidePrim,1,nSides,MPIRequest_Flux(:,RECV),SendID=1)
 ! Compute lifting MPI fluxes
-CALL Lifting_FillFlux(1,UPrim_master,UPrim_slave,gradUx_master,doMPISides=.TRUE.)
-CALL Lifting_FillFlux(2,UPrim_master,UPrim_slave,gradUy_master,doMPISides=.TRUE.)
-#if (PP_dim==3)
-CALL Lifting_FillFlux(3,UPrim_master,UPrim_slave,gradUz_master,doMPISides=.TRUE.)
-#endif
+CALL Lifting_FillFlux(   UPrim_master,UPrim_slave,gradUz_slave,doMPISides=.TRUE.)
 ! Start Send MINE
-CALL StartSendMPIData(   gradUx_master,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,1,SEND),SendID=1)
-CALL StartSendMPIData(   gradUy_master,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,2,SEND),SendID=1)
-#if (PP_dim==3)
-CALL StartSendMPIData(   gradUz_master,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,3,SEND),SendID=1)
-#endif
+CALL StartSendMPIData(   gradUz_slave,DataSizeSidePrim,1,nSides,MPIRequest_Flux(:,SEND),SendID=1)
 #endif /*USE_MPI*/
 
 
@@ -240,12 +229,10 @@ ELSE
 END IF
 
 ! fill the all surface fluxes on this proc
-CALL Lifting_FillFlux_BC(t,UPrim_master, gradUx_master, gradUy_master, gradUz_master)
-CALL Lifting_FillFlux(1,UPrim_master,UPrim_slave,gradUx_master,doMPISides=.FALSE.)
-CALL Lifting_FillFlux(2,UPrim_master,UPrim_slave,gradUy_master,doMPISides=.FALSE.)
-#if (PP_dim==3)
-CALL Lifting_FillFlux(3,UPrim_master,UPrim_slave,gradUz_master,doMPISides=.FALSE.)
-#endif
+CALL Lifting_FillFlux_BC(t,UPrim_master,                  gradUz_slave)
+CALL Lifting_FillFlux(     UPrim_master,UPrim_slave,      gradUz_slave,doMPISides=.FALSE.)
+! at this point BC, inner and MPI MINE are filled
+CALL Lifting_FillFlux_NormVec(gradUz_slave,gradUx_master,gradUy_master,gradUz_master,doMPISides=.FALSE.)
 
 ! Attention: we only have one Flux (gradUx/y/z_master) for the Lifting 
 !            => input it to Flux_Mortar for both fluxes (master/slave)
@@ -264,7 +251,8 @@ CALL Lifting_SurfInt(PP_N,gradUz_master,gradUz,.FALSE.,L_hatMinus,L_hatPlus,weak
 #endif
 #if USE_MPI
 ! Complete send / receive
-CALL FinishExchangeMPIData(6*nNbProcs,MPIRequest_gradU)
+CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Flux)
+CALL Lifting_FillFlux_NormVec(gradUz_slave,gradUx_master,gradUy_master,gradUz_master,doMPISides=.TRUE.)
 ! Attention: we only have one Flux (gradUx/y/z_master) for the Lifting 
 !            => input it to Flux_Mortar for both fluxes (master/slave)
 CALL Flux_MortarPrim(gradUx_master,gradUx_master,doMPISides=.TRUE.,weak=doWeakLifting)
