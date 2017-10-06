@@ -53,7 +53,7 @@ IMPLICIT NONE
 INTEGER,INTENT(IN):: debugMesh !< file type to be used: 1-2: Tecplot format (deprecated), 3: Paraview format
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                  :: iElem,iLocSide,SideID,bctype_loc
+INTEGER                  :: iElem,iLocSide,SideID,bcindex_loc
 CHARACTER(LEN=32)        :: VarNames(6)
 REAL,ALLOCATABLE,TARGET  :: debugVisu(:,:,:,:,:)
 REAL,POINTER             :: debugVisu_p(:,:,:,:,:)
@@ -63,7 +63,7 @@ REAL,POINTER             :: X_NVisu_p(:,:,:,:,:)
 IF(debugMesh.LE.0) RETURN
 
 SWRITE(UNIT_stdOut,'(A)')' WRITE DEBUGMESH...'
-! WRITE Debugmesh.dat
+! WRITE Debugmesh.vtu
 ALLOCATE(X_NVisu(3,0:NVisu,0:NVisu,0:NVisu,nElems))
 
 DO iElem=1,nElems
@@ -74,7 +74,7 @@ VarNames(1)='ElemID'
 VarNames(2)='SideID'
 VarNames(3)='FLIP'
 VarNames(4)='iLocSide'
-VarNames(5)='BCType'
+VarNames(5)='BCIndex'
 VarNames(6)='Rank'
 ALLOCATE(debugVisu(6,0:NVisu,0:NVisu,0:NVisu,nElems))
 debugVisu=-1.
@@ -82,40 +82,40 @@ DO iElem=1,nElems
   debugVisu(1,:,:,:,iElem)=REAL(iElem)
   debugVisu(6,:,:,:,iElem)=REAL(myRank)
   DO iLocSide=1,6
-    SideID=ElemToSide(E2S_SIDE_ID,XI_MINUS,iElem)
-     bctype_loc=0
-    IF(SideID.LT.nBCSides) bctype_loc=BC(SideID)
+    SideID=ElemToSide(E2S_SIDE_ID,iLocSide,iElem)
+    bcindex_loc=0
+    IF(SideID.LE.nBCSides) bcindex_loc=BC(SideID)
     SELECT CASE(iLocSide)
     CASE(XI_MINUS)
       debugVisu(2,0,:,:,iElem)=REAL(SideID)
       debugVisu(3,0,:,:,iElem)=REAL(ElemToSide(E2S_FLIP,XI_MINUS,iElem))
       debugVisu(4,0,:,:,iElem)=REAL(iLocSide)
-      debugVisu(5,0,:,:,iElem)=REAL(bctype_loc)
+      debugVisu(5,0,:,:,iElem)=REAL(bcindex_loc)
     CASE(XI_PLUS)
       debugVisu(2,NVisu,:,:,iElem)=REAL(SideID)
       debugVisu(3,NVisu,:,:,iElem)=REAL(ElemToSide(E2S_FLIP,XI_PLUS,iElem))
       debugVisu(4,NVisu,:,:,iElem)=REAL(iLocSide)
-      debugVisu(5,NVisu,:,:,iElem)=REAL(bctype_loc)
+      debugVisu(5,NVisu,:,:,iElem)=REAL(bcindex_loc)
     CASE(ETA_MINUS)
       debugVisu(2,:,0,:,iElem)=REAL(SideID)
       debugVisu(3,:,0,:,iElem)=REAL(ElemToSide(E2S_FLIP,ETA_MINUS,iElem))
       debugVisu(4,:,0,:,iElem)=REAL(iLocSide)
-      debugVisu(5,:,0,:,iElem)=REAL(bctype_loc)
+      debugVisu(5,:,0,:,iElem)=REAL(bcindex_loc)
     CASE(ETA_PLUS)
       debugVisu(2,:,NVisu,:,iElem)=REAL(SideID)
       debugVisu(3,:,NVisu,:,iElem)=REAL(ElemToSide(E2S_FLIP,ETA_PLUS,iElem))
       debugVisu(4,:,NVisu,:,iElem)=REAL(iLocSide)
-      debugVisu(5,:,NVisu,:,iElem)=REAL(bctype_loc)
+      debugVisu(5,:,NVisu,:,iElem)=REAL(bcindex_loc)
     CASE(ZETA_MINUS)
       debugVisu(2,:,:,0,iElem)=REAL(SideID)
       debugVisu(3,:,:,0,iElem)=REAL(ElemToSide(E2S_FLIP,ZETA_MINUS,iElem))
       debugVisu(4,:,:,0,iElem)=REAL(iLocSide)
-      debugVisu(5,:,:,0,iElem)=REAL(bctype_loc)
+      debugVisu(5,:,:,0,iElem)=REAL(bcindex_loc)
     CASE(ZETA_PLUS)
       debugVisu(2,:,:,NVisu,iElem)=REAL(SideID)
       debugVisu(3,:,:,NVisu,iElem)=REAL(ElemToSide(E2S_FLIP,ZETA_PLUS,iElem))
       debugVisu(4,:,:,NVisu,iElem)=REAL(iLocSide)
-      debugVisu(5,:,:,NVisu,iElem)=REAL(bctype_loc)
+      debugVisu(5,:,:,NVisu,iElem)=REAL(bcindex_loc)
     END SELECT
   END DO
 END DO
@@ -129,7 +129,7 @@ CASE(2)
 CASE(3)
   X_NVisu_p => X_NVisu
   debugVisu_p => debugVisu
-  CALL WriteDataToVTK(5,NVisu,nElems,VarNames,X_NVisu_p,debugVisu_p,'Debugmesh.vtu',dim=3)
+  CALL WriteDataToVTK(6,NVisu,nElems,VarNames,X_NVisu_p,debugVisu_p,'Debugmesh.vtu',dim=3)
 END SELECT
 
 DEALLOCATE(X_NVisu)
