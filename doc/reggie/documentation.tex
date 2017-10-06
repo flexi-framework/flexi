@@ -1,0 +1,183 @@
+\documentclass[11pt]{scrartcl}
+\usepackage{a4}
+\usepackage{amsmath,amsfonts,amssymb,amscd,amsthm}
+\usepackage[fixamsmath]{mathtools}
+\usepackage{graphicx}
+\usepackage{mathdots}
+
+\usepackage{subfigure}
+\usepackage{pict2e}
+\usepackage{color}
+\usepackage[percent]{overpic}
+%% Hinzugefügt
+\usepackage[colorlinks=true,linkcolor=black,urlcolor=black]{hyperref}
+\usepackage[english]{babel}
+\usepackage{algorithm, algorithmic}
+\usepackage[ulem={normalem,normalbf}]{changes}
+
+\usepackage{listings}
+
+\usepackage{tabularx}
+
+\newtheorem{assumption}{Assumption}
+\newtheorem{theorem}{Theorem}
+
+
+
+
+
+\renewcommand{\baselinestretch}{1.1}
+\addtolength{\topmargin}{-1.5cm}
+\addtolength{\evensidemargin}{-3.54cm}
+\addtolength{\oddsidemargin}{-1.3cm}
+\addtolength{\textwidth}{3cm}
+
+
+
+
+\usepackage[edges]{forest}
+
+\definecolor{foldercolor}{RGB}{124,166,198}
+\tikzset{pics/folder/.style={code={%
+    \node[inner sep=0pt, minimum size=#1](-foldericon){};
+    \node[folder style, inner sep=0pt, minimum width=0.3*#1, minimum height=0.6*#1, above right, xshift=0.05*#1] at (-foldericon.west){};
+    \node[folder style, inner sep=0pt, minimum size=#1] at (-foldericon.center){};}
+    },
+    pics/folder/.default={20pt},
+    folder style/.style={draw=foldercolor!80!black,top color=foldercolor!40,bottom color=foldercolor}
+}
+\forestset{is file/.style={edge path'/.expanded={%
+        ([xshift=\forestregister{folder indent}]!u.parent anchor) |- (.child anchor)},
+        inner sep=1pt},
+    this folder size/.style={edge path'/.expanded={%
+        ([xshift=\forestregister{folder indent}]!u.parent anchor) |- (.child anchor) pic[solid]{folder=#1}}, inner xsep=0.6*#1},
+    folder tree indent/.style={before computing xy={l=#1}},
+    folder icons/.style={folder, this folder size=#1, folder tree indent=3*#1},
+    folder icons/.default={12pt},
+}
+
+\usepackage{listings}
+\lstset{basicstyle=\footnotesize\ttfamily,breaklines=true}
+\usepackage{adjustbox}
+
+
+
+
+\begin{document}
+
+\title{SiNeP*-Reggie (Simple New Python-Reggie) Documentation}
+\subtitle{*don't read it backwards}
+
+\maketitle
+
+\section{Folder Structure (before run)}
+
+\begin{forest}
+  for tree={font=\ttfamily, grow'=0,
+  folder indent=.9em, folder icons,
+  edge=densely dotted}
+  [examples
+    [build\_group\_1
+      [build.config, is file]
+      [example\_1
+	[parameter.ini, is file]
+	[run.config, is file]
+	[analyze.config, is file]]
+      [example\_2
+	[parameter.ini, is file]
+	[run.config, is file]
+	[analyze.config, is file]]]
+    [build\_group\_2
+      [build.config, is file]
+      [example\_3
+	[parameter.ini, is file]
+	[run.config, is file]
+	[analyze.config, is file]]]]
+\end{forest}
+
+\subsection{\texttt{build.config} File Structure}
+
+
+\begin{adjustbox}{padding=10pt 0pt 10pt 0pt, fbox}
+\begin{lstlisting}
+buildOpt1=value1,value2
+buildOpt2=value1,value2,value3
+buildOpt3=value1
+...
+exclude:buildOpt1=value1,buildOpt2=value3
+exclude:buildOpt1=value2,buildOpt2=value1
+\end{lstlisting}
+\end{adjustbox}
+
+
+
+\subsection{\texttt{run.config} File Structure}
+
+Identical to \texttt{build.config} structure
+
+\begin{adjustbox}{padding=10pt 0pt 10pt 0pt, fbox}
+\begin{lstlisting}
+prm1=value1,value2
+prm2=value1,value2,value3
+prm3=value1
+...
+exclude:prm1=value1,prm2=value3
+exclude:prm1=value2,prm2=value1
+\end{lstlisting}
+\end{adjustbox}
+
+
+
+\subsection{\texttt{analyze.config} File}
+
+Contains: 
+\begin{enumerate}
+ \item which analyze mode to use (ConvTest,h5diff,compTime,...)
+ \item reference values / reference files 
+\end{enumerate}
+
+\subsection{Open Questions}
+
+\begin{enumerate}
+ \item ...
+\end{enumerate}
+
+\section{Reggie execution procedure}
+
+\begin{itemize}
+ \item Reggie can be run for a build group or for an example. In the former case, all examples are run with all configuration permutations from the \texttt{build.config}, in the latter case only one example is run with all these configuration. 
+ \item for each build configuration, Reggie does the following (if called with the \texttt{run} command): 
+ \begin{itemize}
+  \item build the according binary, put it into the \texttt{build\_group\_X} folder and add a sequential number to its name, i.e. \texttt{flexi\_1, flexi\_2, ...}.
+  \item with this binary, sample over all examples
+  \item within each example, sample over all runs and execute them
+  \item after all runs of an example are executed, execute the analyze routine for that example 
+ \end{itemize}
+ \item If an error occurs at any stage (i.e. during the build, run or analyze process), Reggie does the following:
+ \begin{itemize}
+  \item log the error (could be done inherently, since log files are always written)
+  \item rename the currently used binary from \texttt{flexi\_X} to \texttt{flexi\_X\_failed}
+  \item stop (this is a design decision: if one test fails, it does not matter if the others succeed)
+ \end{itemize}
+ \item If Reggie is called with the \texttt{continue} option, Reggie checks for each binary to build if it already exists. If it does, it skips this binary. It does so until it reaches the first binary that does not exist (normally the one with \texttt{\_failed} appended to its name). All following binaries are (re-)built in any case (this might not even be relevant if all runs and analyzes in all examples are executed before the next binary is built)
+ \item If Reggie is called with the \texttt{build} argument, each binary is only called once for a millisecond instead of even considering any example folders (question: should we do this anyways as part of the build process to ensure that the binary is executable?)
+
+
+\end{itemize}
+
+
+
+\subsection{Open Questions}
+
+\begin{enumerate}
+ \item (When) do we delete files?
+ \item ... 
+\end{enumerate}
+
+
+
+\end{document}
+\grid
+
+
+
