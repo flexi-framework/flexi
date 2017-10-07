@@ -22,15 +22,16 @@
 \newtheorem{assumption}{Assumption}
 \newtheorem{theorem}{Theorem}
 
+\newcommand{\todo}[1]{\marginpar{\color{red}\ifodd\thepage\raggedright\tiny{ToDo:\\ #1}\else\raggedleft\hfill\tiny{ToDo:\\ #1}\fi}}
 
 
 
-
-\renewcommand{\baselinestretch}{1.1}
+%\renewcommand{\baselinestretch}{1.1}
 \addtolength{\topmargin}{-1.5cm}
 \addtolength{\evensidemargin}{-3.54cm}
 \addtolength{\oddsidemargin}{-1.3cm}
 \addtolength{\textwidth}{3cm}
+
 
 
 
@@ -72,6 +73,9 @@
 
 \section{Folder Structure (before run)}
 
+   \todo{We should discuss the names!}
+   \todo{Why do we have a parameter.ini and a run.config?}
+   \todo{Should we rename analyze.config to reggie.config?}
 \begin{forest}
   for tree={font=\ttfamily, grow'=0,
   folder indent=.9em, folder icons,
@@ -96,7 +100,7 @@
 \end{forest}
 
 \subsection{\texttt{build.config} File Structure}
-
+\label{sec:build.config}
 
 \begin{adjustbox}{padding=10pt 0pt 10pt 0pt, fbox}
 \begin{lstlisting}
@@ -108,12 +112,29 @@ exclude:buildOpt1=value1,buildOpt2=value3
 exclude:buildOpt1=value2,buildOpt2=value1
 \end{lstlisting}
 \end{adjustbox}
+\vspace{1em}
+
+This file contains all valid combinations of build options, which are used to invoke CMake.
+\todo{Do we support CMAKE only?}
+Constraints:
+\begin{itemize}
+   \item A combination is a set of key-value pairs, where the key is the buildOpt and the value is one of the values listed for this buildOpt. This set must include a key-value pair for all given buildOpts. 
+   \item A exclude is a set of key-value pairs, like a combination, but only contains certain buildOpts with specific values. 
+   \item A combination is called invalid if any of the excludes is a subset of the combination. 
+   \item Otherwise the combination is called valid.
+   \item Comments: Everything behind ! (exclamation mark) in a line is a comment and will be stripped from the file at readin. 
+   \item Empty lines will be ignored.
+   \item All whitespaces in the file are totally ignored! \textbf{ATTENTION:} Never use option names or values that include a space. This is especially important for filenames.
+\end{itemize}
+
+
+
 
 
 
 \subsection{\texttt{run.config} File Structure}
 
-Identical to \texttt{build.config} structure
+Identical to \texttt{build.config} structure.
 
 \begin{adjustbox}{padding=10pt 0pt 10pt 0pt, fbox}
 \begin{lstlisting}
@@ -125,16 +146,24 @@ exclude:prm1=value1,prm2=value3
 exclude:prm1=value2,prm2=value1
 \end{lstlisting}
 \end{adjustbox}
+\vspace{1em}
+
+This file contains all valid combinations of run options (e.g. parameter files for Flexi), which are used to invoke the programm that is tested.
+This file fulfills the same constraints as the \texttt{build.config} in section \ref{sec:build.config}.
 
 
 
 \subsection{\texttt{analyze.config} File}
+\todo{Rename to reggie.config?}
 
-Contains: 
-\begin{enumerate}
- \item which analyze mode to use (ConvTest,h5diff,compTime,...)
- \item reference values / reference files 
-\end{enumerate}
+Contains all options for the regression check: 
+\begin{itemize}
+   \item number of cores for execution
+   \item analyze function
+   \item reference filenames
+   \item restart filenames
+   \item ...
+\end{itemize}
 
 \subsection{Open Questions}
 
@@ -145,22 +174,58 @@ Contains:
 \section{Reggie execution procedure}
 
 \begin{itemize}
- \item Reggie can be run for a build group or for an example. In the former case, all examples are run with all configuration permutations from the \texttt{build.config}, in the latter case only one example is run with all these configuration. 
- \item for each build configuration, Reggie does the following (if called with the \texttt{run} command): 
- \begin{itemize}
-  \item build the according binary, put it into the \texttt{build\_group\_X} folder and add a sequential number to its name, i.e. \texttt{flexi\_1, flexi\_2, ...}.
-  \item with this binary, sample over all examples
-  \item within each example, sample over all runs and execute them
-  \item after all runs of an example are executed, execute the analyze routine for that example 
- \end{itemize}
- \item If an error occurs at any stage (i.e. during the build, run or analyze process), Reggie does the following:
- \begin{itemize}
-  \item log the error (could be done inherently, since log files are always written)
-  \item rename the currently used binary from \texttt{flexi\_X} to \texttt{flexi\_X\_failed}
-  \item stop (this is a design decision: if one test fails, it does not matter if the others succeed)
- \end{itemize}
- \item If Reggie is called with the \texttt{continue} option, Reggie checks for each binary to build if it already exists. If it does, it skips this binary. It does so until it reaches the first binary that does not exist (normally the one with \texttt{\_failed} appended to its name). All following binaries are (re-)built in any case (this might not even be relevant if all runs and analyzes in all examples are executed before the next binary is built)
- \item If Reggie is called with the \texttt{build} argument, each binary is only called once for a millisecond instead of even considering any example folders (question: should we do this anyways as part of the build process to ensure that the binary is executable?)
+   \item Reggie can be run for a build group or for an example.
+      This is specified by passing the path to the directory of the group or the path to the directory of the example to the regression check.
+      In the former case, all examples are run with all build-combinations from the \texttt{build.config}, in the latter case only one example is run with all build-combinations. 
+   \item for each build configuration, Reggie does the following (if called with the \texttt{run} command): 
+      \begin{itemize}
+         \item build the according binary, put it into the \texttt{build\_group\_X} folder and add a sequential number to its name, i.e. \texttt{flexi\_1, flexi\_2, ...}.
+         \item with this binary, sample over all examples
+         \item within each example, sample over all runs and execute them
+         \item after all runs of an example are executed, execute the analyze routine for that example 
+      \end{itemize}
+   \item If an error occurs at any stage (i.e. during the build, run or analyze process), Reggie does the following:
+      \begin{itemize}
+         \item log the error (could be done inherently, since log files are always written)
+         \item rename the currently used binary from \texttt{flexi\_X} to \texttt{flexi\_X\_failed}
+         \item stop (this is a design decision: if one test fails, it does not matter if the others succeed)
+      \end{itemize}
+   \item If Reggie is called with the \texttt{continue} option, Reggie checks for each binary to build if it already exists. If it does, it skips this binary. It does so until it reaches the first binary that does not exist (normally the one with \texttt{\_failed} appended to its name). All following binaries are (re-)built in any case (this might not even be relevant if all runs and analyzes in all examples are executed before the next binary is built)
+   \item If Reggie is called with the \texttt{build} argument, each binary is only called once for a millisecond instead of even considering any example folders (question: should we do this anyways as part of the build process to ensure that the binary is executable?)
+      \todo{Is this really necessary?} 
+   \item Pseudocode that matches above definitions:
+\begin{lstlisting}
+if continue option is NOT set:
+   delete all binaries 
+
+for build in AllValidBuildCombinations (build.config):
+   if binary exists :
+      skip this binary and continue with next build
+   else :
+      compile binary, throws exception if fails
+   for example in AllExamples (either all subdirs or a single subdir) :
+      for run in AllValidRunCombinations (run.config):
+         execute binary with run parameter file, throws exception if fails
+      call analyze routines, throws exception if fails
+
+catch exception :
+   print error
+   print build-combination
+   print path to run-combination
+   rename binary ..._failed
+   print path to renamed binary
+   exit reggie with errorcode != 0
+
+delete all binaries, run files, output files, ...
+exit reggie with errorcode 0
+
+
+
+
+
+
+
+\end{lstlisting}
 
 
 \end{itemize}
@@ -170,7 +235,8 @@ Contains:
 \subsection{Open Questions}
 
 \begin{enumerate}
- \item (When) do we delete files?
+ \item (When) do we delete files? 
+    \todo{When reggie completes successfully. See pseudocode.}
  \item ... 
 \end{enumerate}
 
