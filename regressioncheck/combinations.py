@@ -93,12 +93,8 @@ def getCombinations(filename) :
         doExclude = False
         for ex in exclusions :     # iterate over all exclusions and check if any exclusion matches the actual combination
             allMatch = True        # assume that the values of all keys of the exclusion match with the combination
-            # check if any value of a key in the exclusion does NOT match 
-            # with the respective value in the combination => combination IS valid
-            for name in ex.keys() : 
-                if combination[name] == ex[name] : # value of exclusion does not match combination => exclusion will not match => continue
-                    allMatch = False
-                    break
+            for name in ex.keys() :# iterate over all names of the exclusion and check if all their values match with the respective value in the combination
+                allMatch = allMatch and combination[name] == ex[name]
             if allMatch :          # all values of the exclusion match with the combination => exclusion matches => INVALID
                 doExclude = True
                 break
