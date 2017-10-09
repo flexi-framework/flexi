@@ -420,7 +420,7 @@ IMPLICIT NONE
 REAL,INTENT(IN)  :: t                                     !< current simulation time
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL     :: Ut_temp(1:PP_nVar,0:PP_N,0:PP_N,0:PP_N,1:nElems) ! temporal variable for Ut
+REAL     :: Ut_temp(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) ! temporal variable for Ut
 REAL     :: tStage,b_dt(1:nRKStages)
 INTEGER  :: iStage
 !===================================================================================================================================
@@ -481,8 +481,8 @@ IMPLICIT NONE
 REAL,INTENT(IN)  :: t                                     !< current simulation time
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL     :: S2(1:PP_nVar,0:PP_N,0:PP_N,0:PP_N,1:nElems)
-REAL     :: UPrev(1:PP_nVar,0:PP_N,0:PP_N,0:PP_N,1:nElems)
+REAL     :: S2(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
+REAL     :: UPrev(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
 REAL     :: tStage,b_dt(1:nRKStages)
 INTEGER  :: iStage
 !===================================================================================================================================
