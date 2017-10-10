@@ -187,22 +187,54 @@ Contains all options for the regression check:
    \item If Reggie is called with the \texttt{continue} option, Reggie checks for each binary to build if it already exists. If it does, it skips this binary. It does so until it reaches the first binary that does not exist (normally the one with \texttt{\_failed} appended to its name). All following binaries are (re-)built in any case (this might not even be relevant if all runs and analyzes in all examples are executed before the next binary is built)
    \item If Reggie is called with the \texttt{build} argument, each binary is only called once for a millisecond instead of even considering any example folders (question: should we do this anyways as part of the build process to ensure that the binary is executable?)
       \todo{Is this really necessary?} 
-   \item Pseudocode that matches above definitions:
-\begin{lstlisting}
-if continue option is NOT set:
-   delete all binaries 
 
-for build in AllValidBuildCombinations (build.config):
+
+\end{itemize}
+
+\section{Reggie command line options}
+
+Optional arguments:
+\begin{itemize}
+   \item \texttt{--mode / -m = \{run, build\}}
+   \item \texttt{--carryon / -c}
+   \item \texttt{--exe / -e = path to executable}
+   \item \texttt{--debug / -d = debug level}
+   \item \texttt{--build\_procs / -j = number of procs used for compiling }
+   \item \texttt{--basedir / -b = path to program that is tested }
+\end{itemize}
+Positional arguments:
+\begin{itemize}
+   \item \texttt{path to check or example}
+\end{itemize}
+
+\section{Pseudo-Code}
+\begin{lstlisting}
+if not --carryon :
+   delete all run-output-files
+   if --mode=build :
+      delete all binaries
+
+for build in AllValidRunCombinations (build.config) :
    if binary exists :
-      skip this binary and continue with next build
+      if --mode=build : continue (skip this binary)
    else :
       compile binary, throws exception if fails
-   for example in AllExamples (either all subdirs or a single subdir) :
-      for run in AllValidRunCombinations (run.config):
-         execute binary with run parameter file, throws exception if fails
-      call analyze routines, throws exception if fails
 
-catch exception :
+   for example in AllExamples (either all subdirs or a single subdir) :
+      for run in AllValidRunCombinations (parameter.flexi):
+         if run-output-files exist :
+            if --carryon : continue (skip this run) 
+         execute binary with run parameter file, throws exception if fails
+         catch execute-exception:
+            store exception in list of errors (do not exit reggie)
+            rename run-output-files to ..._failed
+
+      call analyze routines, throws exception if fails
+      catch analyze-exception:
+         store exception in list of errors (do not exit reggie)
+         rename run-output-files to ..._failed
+
+catch build-exception :
    print error
    print build-combination
    print path to run-combination
@@ -220,27 +252,6 @@ exit reggie with errorcode 0
 
 
 \end{lstlisting}
-
-
-\end{itemize}
-
-\section{Reggie command line options}
-
-Optional arguments:
-\begin{itemize}
-   \item \texttt{--mode / -m = \{run, build\}}
-   \item \texttt{--continue / -c}
-   \item \texttt{--exe / -e = path to executable}
-   \item \texttt{--debug / -d = debug level}
-   \item \texttt{--build\_procs / -j = number of procs used for compiling }
-   \item \texttt{--basedir / -b = path to program that is tested }
-\end{itemize}
-Positional arguments:
-\begin{itemize}
-   \item \texttt{path to check or example}
-\end{itemize}
-
-
 
 \subsection{Open Questions}
 
