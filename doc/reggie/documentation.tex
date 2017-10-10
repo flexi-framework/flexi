@@ -3,7 +3,6 @@
 \usepackage{amsmath,amsfonts,amssymb,amscd,amsthm}
 \usepackage[fixamsmath]{mathtools}
 \usepackage{graphicx}
-\usepackage{mathdots}
 
 \usepackage{subfigure}
 \usepackage{pict2e}
@@ -73,30 +72,27 @@
 
 \section{Folder Structure (before run)}
 
-   \todo{We should discuss the names!}
-   \todo{Why do we have a parameter.ini and a run.config?}
-   \todo{Should we rename analyze.config to reggie.config?}
 \begin{forest}
   for tree={font=\ttfamily, grow'=0,
   folder indent=.9em, folder icons,
   edge=densely dotted}
-  [examples
-    [build\_group\_1
-      [build.config, is file]
+  [checks
+    [check\_1
+      [{build.config => set of builds}, is file]
       [example\_1
-	[parameter.ini, is file]
-	[run.config, is file]
-	[analyze.config, is file]]
+        [{parameter.flexi => set of runs}, is file]
+        [parameter.reggie, is file]]
       [example\_2
-	[parameter.ini, is file]
-	[run.config, is file]
-	[analyze.config, is file]]]
-    [build\_group\_2
-      [build.config, is file]
+        [{parameter.flexi => set of runs}, is file]
+        [parameter.reggie, is file]]
+    ]
+    [check\_2
+      [{build.config => set of builds}, is file]
       [example\_3
-	[parameter.ini, is file]
-	[run.config, is file]
-	[analyze.config, is file]]]]
+        [{parameter.flexi => set of runs}, is file]
+        [parameter.reggie, is file]]
+    ]
+  ]
 \end{forest}
 
 \subsection{\texttt{build.config} File Structure}
@@ -115,7 +111,6 @@ exclude:buildOpt1=value2,buildOpt2=value1
 \vspace{1em}
 
 This file contains all valid combinations of build options, which are used to invoke CMake.
-\todo{Do we support CMAKE only?}
 Constraints:
 \begin{itemize}
    \item A combination is a set of key-value pairs, where the key is the buildOpt and the value is one of the values listed for this buildOpt. This set must include a key-value pair for all given buildOpts. 
@@ -154,7 +149,6 @@ This file fulfills the same constraints as the \texttt{build.config} in section 
 
 
 \subsection{\texttt{analyze.config} File}
-\todo{Rename to reggie.config?}
 
 Contains all options for the regression check: 
 \begin{itemize}
@@ -174,8 +168,8 @@ Contains all options for the regression check:
 \section{Reggie execution procedure}
 
 \begin{itemize}
-   \item Reggie can be run for a build group or for an example.
-      This is specified by passing the path to the directory of the group or the path to the directory of the example to the regression check.
+   \item Reggie can be run for a set of builds or for a set of runs of an example.
+      This is specified by passing the path to the directory of the check or the path to the directory of the example to the reggie.
       In the former case, all examples are run with all build-combinations from the \texttt{build.config}, in the latter case only one example is run with all build-combinations. 
    \item for each build configuration, Reggie does the following (if called with the \texttt{run} command): 
       \begin{itemize}
@@ -193,22 +187,54 @@ Contains all options for the regression check:
    \item If Reggie is called with the \texttt{continue} option, Reggie checks for each binary to build if it already exists. If it does, it skips this binary. It does so until it reaches the first binary that does not exist (normally the one with \texttt{\_failed} appended to its name). All following binaries are (re-)built in any case (this might not even be relevant if all runs and analyzes in all examples are executed before the next binary is built)
    \item If Reggie is called with the \texttt{build} argument, each binary is only called once for a millisecond instead of even considering any example folders (question: should we do this anyways as part of the build process to ensure that the binary is executable?)
       \todo{Is this really necessary?} 
-   \item Pseudocode that matches above definitions:
-\begin{lstlisting}
-if continue option is NOT set:
-   delete all binaries 
 
-for build in AllValidBuildCombinations (build.config):
+
+\end{itemize}
+
+\section{Reggie command line options}
+
+Optional arguments:
+\begin{itemize}
+   \item \texttt{--mode / -m = \{run, build\}}
+   \item \texttt{--carryon / -c}
+   \item \texttt{--exe / -e = path to executable}
+   \item \texttt{--debug / -d = debug level}
+   \item \texttt{--build\_procs / -j = number of procs used for compiling }
+   \item \texttt{--basedir / -b = path to program that is tested }
+\end{itemize}
+Positional arguments:
+\begin{itemize}
+   \item \texttt{path to check or example}
+\end{itemize}
+
+\section{Pseudo-Code}
+\begin{lstlisting}
+if not --carryon :
+   delete all run-output-files
+   if --mode=build :
+      delete all binaries
+
+for build in AllValidRunCombinations (build.config) :
    if binary exists :
-      skip this binary and continue with next build
+      if --mode=build : continue (skip this binary)
    else :
       compile binary, throws exception if fails
-   for example in AllExamples (either all subdirs or a single subdir) :
-      for run in AllValidRunCombinations (run.config):
-         execute binary with run parameter file, throws exception if fails
-      call analyze routines, throws exception if fails
 
-catch exception :
+   for example in AllExamples (either all subdirs or a single subdir) :
+      for run in AllValidRunCombinations (parameter.flexi):
+         if run-output-files exist :
+            if --carryon : continue (skip this run) 
+         execute binary with run parameter file, throws exception if fails
+         catch execute-exception:
+            store exception in list of errors (do not exit reggie)
+            rename run-output-files to ..._failed
+
+      call analyze routines, throws exception if fails
+      catch analyze-exception:
+         store exception in list of errors (do not exit reggie)
+         rename run-output-files to ..._failed
+
+catch build-exception :
    print error
    print build-combination
    print path to run-combination
@@ -226,11 +252,6 @@ exit reggie with errorcode 0
 
 
 \end{lstlisting}
-
-
-\end{itemize}
-
-
 
 \subsection{Open Questions}
 
