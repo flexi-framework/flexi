@@ -1,4 +1,9 @@
 import argparse
+import os
+
+import logger
+from combinations import *
+import compile 
 
 parser = argparse.ArgumentParser(description='Regression checker for NRG codes.', formatter_class=argparse.RawTextHelpFormatter)
 parser.add_argument('-m', '--mode', choices=['build', 'run'], default='build', help='''  --mode build : compile code for all binary-combinations and for all binaries run all examples with all run-combinations
@@ -13,4 +18,11 @@ parser.add_argument('-b', '--basedir', help='Path to basedir of code that should
 parser.add_argument('check', help='Path to check-/example-directory.')
 
 args = parser.parse_args()
-print args
+
+# setup logger for printing information, debug messages to stdout
+logger.setup(args.debug)
+
+# remove following lines!!!
+c = getCombinations(os.path.join(args.check, 'configurations.reggie'))
+basedir = compile.find_basedir()
+compile.cmake('build', c[0], basedir)
