@@ -16,6 +16,20 @@ def splitValues(s) :
     #   \)      : matches closing bracket ')', the backslash is the escape-character
     return re.split(r',\s*(?![^()]*\))', s)
 
+def isSubset(a, b) :
+    """Check if the dictionary 'a' is a subset of the dictionary 'b'"""
+    try :
+        # build list of booleans, that contains for every key in 'a', if a[key] == b[key]
+        tmp = [ a[key] == b[key] for key in a.keys() ] 
+    except KeyError : # if a key of 'a' is not in 'b'
+        return False 
+    return all(tmp) # return True if all elements of tmp are True
+
+def anyIsSubset(alist, b) :
+    """Check if any element 'a' of the list 'alist' is a subset of the dictionary 'b'"""
+    tmp = [isSubset(a, b) for a in alist] # build a list of booleans, that contains for every 'a' in alist if 'a' is a subset of 'b'
+    return any(tmp)                       # return True, if any 'a' of alist is a subset of 'b'
+
 def getCombinations(filename) :
     # General worflow:
     # 1.  Read file line by line:
@@ -90,16 +104,8 @@ def getCombinations(filename) :
             combination[option.name] = option.values[j]
 
         # check if valid the combination is valid (does not match any exclusion)
-        doExclude = False
-        for ex in exclusions :     # iterate over all exclusions and check if any exclusion matches the actual combination
-            allMatch = True        # assume that the values of all keys of the exclusion match with the combination
-            for name in ex.keys() :# iterate over all names of the exclusion and check if all their values match with the respective value in the combination
-                allMatch = allMatch and combination[name] == ex[name]
-            if allMatch :          # all values of the exclusion match with the combination => exclusion matches => INVALID
-                doExclude = True
-                break
-                
-        if doExclude : continue # combination matches exclude => cycle and do not add to list of valid combinations
+        if anyIsSubset(exclusions, combination) : 
+            continue # if any exclusion matches the combination, the combination is invalid => cycle and do not add to list of valid combinations
 
         # add valid combination 
         combinations.append(combination)
