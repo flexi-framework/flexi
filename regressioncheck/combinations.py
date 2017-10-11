@@ -1,5 +1,6 @@
 import re
 import logging
+import collections
 
 class Option :
     def __init__(self, name, values) :
@@ -68,6 +69,9 @@ def getCombinations(filename) :
             options.append(option)                   # append option to options list, where 
             continue                                 # reading of option finished -> go on with next line
 
+    options.sort(key=lambda option: len(option.values), reverse=True)
+
+
     # 2. compute combinations
     # 2.1 count total number of possible combinations without the exclusions
     noCombinationsTotal = 1
@@ -79,7 +83,7 @@ def getCombinations(filename) :
 
     # 2.2 build all valid combinations (all that do not match any exclusion)
     for i in range(noCombinationsTotal) :         # iterate index 'i' over noCombinationsTotal
-        combination = {}
+        combination = collections.OrderedDict()
         # build i-th combination by adding all options with their name and a certain value
         for option in options :
             # compute index in the list of values of the option
