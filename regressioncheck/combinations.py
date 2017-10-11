@@ -1,4 +1,5 @@
 import re
+import logging
 
 class Option :
     def __init__(self, name, values) :
@@ -74,7 +75,7 @@ def getCombinations(filename) :
         option.base = noCombinationsTotal         # save total  number of combinations of all options before this option
         noCombinationsTotal = noCombinationsTotal * len(option.values)
 
-    print "  Total number of combinations for '%s' = " % filename, noCombinationsTotal
+    logging.getLogger('logger').info("  Total number of combinations for '%s' = %d" % (filename, noCombinationsTotal))
 
     # 2.2 build all valid combinations (all that do not match any exclusion)
     for i in range(noCombinationsTotal) :         # iterate index 'i' over noCombinationsTotal
@@ -103,13 +104,13 @@ def getCombinations(filename) :
             j = (i / option.base) % len(option.values)
             combination[option.name] = option.values[j]
 
-        # check if valid the combination is valid (does not match any exclusion)
+        # check if the combination is valid (does not match any exclusion)
         if anyIsSubset(exclusions, combination) : 
             continue # if any exclusion matches the combination, the combination is invalid => cycle and do not add to list of valid combinations
 
         # add valid combination 
         combinations.append(combination)
 
-    print "  Number of valid combinations =", len(combinations)
+    logging.getLogger('logger').info("  Number of valid combinations = %d" % len(combinations))
     return combinations
 
