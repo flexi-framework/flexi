@@ -295,7 +295,7 @@ IF(DoRestart)THEN
       DO iElem=1,nElems
         IF (FV_Elems(iElem).EQ.0) THEN ! DG element
           CALL ChangeBasisVolume(1,3*Ngeo,N_Restart,Vdm_3Ngeo_NRestart,detJac_Ref(:,:,:,:,iElem),JNR)
-          DO k=0,INT(HSize(4)); DO j=0,N_Restart; DO i=0,N_Restart
+          DO k=0,INT(HSize(4)-1); DO j=0,N_Restart; DO i=0,N_Restart
             U_local(:,i,j,k,iElem)=U_local(:,i,j,k,iElem)*JNR(1,i,j,k)
           END DO; END DO; END DO
           CALL ChangeBasisVolume(PP_nVar,N_Restart,PP_N,Vdm_NRestart_N,U_local(:,:,:,:,iElem),U(:,:,:,:,iElem))
