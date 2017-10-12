@@ -36,13 +36,15 @@ def getCombinations(filename) :
     # General worflow:
     # 1.  Read file line by line:
     # 1.1   get exclusion from line (if line starts with 'exclude:')
-    # 1.2   get option and it values from line ( option=value1 [,value2 [,value3 ...]] )
+    # 1.2   get noCrossCombination from line (if line starts with 'nocrosscombination:')
+    # 1.3   get option and it values from line ( option=value1 [,value2 [,value3 ...]] )
     # 2.  Compute combinations:
     # 2.1   count total number of all combinations
     # 2.2   build only the valid combinations (that do NOT match any exclusion)
 
     options = []                               # list of all options
     exclusions = []                            # list of all exclusions
+    noCrossCombinations = []                   # list of all noCrossCombinations
     combinations = []                          # list of all VALID combinations
 
     # 1. read options and exclusions from the file
@@ -62,7 +64,15 @@ def getCombinations(filename) :
             exclusions.append(ex)              # append exclusion to the list of all exclusions
             continue                           # reading of exclusion finished -> go on with next line
 
-        # 1.2 read a option and its possible values 
+        # 1.2 read a noCrossCombination
+        if line.lower().startswith('nocrosscombination:') :
+            line = line.split(':', 1)[1]                   # remove everything before ':''
+            noCrossCombination = line.split(',')           # list of keys, that should not be cross combined
+            noCrossCombinations.append(noCrossCombination) # append noCrossCombination to the list of all noCrossCombinations
+            continue                                       # reading of noCrossCombination finished -> go on with next line
+
+
+        # 1.3 read a option and its possible values 
         if '=' in line :
             (key,values) = line.split('=',1)         # split line at '=' 
             option = Option(key,splitValues(values)) # generate new Option with a list of values (splitted at ',' but not inside brackets)
@@ -84,6 +94,7 @@ def getCombinations(filename) :
     # 2.2 build all valid combinations (all that do not match any exclusion)
     for i in range(noCombinationsTotal) :         # iterate index 'i' over noCombinationsTotal
         combination = collections.OrderedDict()
+        digits = collections.OrderedDict()
         # build i-th combination by adding all options with their name and a certain value
         for option in options :
             # compute index in the list of values of the option
@@ -106,11 +117,23 @@ def getCombinations(filename) :
             #   We now can compute the index in the list of values of an option (which is the value of the respective digit in our crazy number system)
             #   by dividing the index i (which is a number in our crazy number system) by the base and modulo the number of values of the option.
             j = (i / option.base) % len(option.values)
-            combination[option.name] = option.values[j]
+            digits[option.name] = j
+
+        for option in options : 
+            combination[option.name] = option.values[digits[option.name]]
 
         # check if the combination is valid (does not match any exclusion)
         if anyIsSubset(exclusions, combination) : 
             continue # if any exclusion matches the combination, the combination is invalid => cycle and do not add to list of valid combinations
+
+        skip = False
+        for noCrossCombination in noCrossCombinations :
+            if not all([digits[key] == digits[noCrossCombination[0]] for key in noCrossCombination]) :
+                skip = True
+                break
+        if skip : continue
+                
+
 
         # add valid combination 
         combinations.append(combination)
