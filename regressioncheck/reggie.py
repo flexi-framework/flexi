@@ -2,7 +2,7 @@ import argparse
 import os
 
 import logger
-from combinations import *
+import combinations 
 import compile 
 
 parser = argparse.ArgumentParser(description='Regression checker for NRG codes.', formatter_class=argparse.RawTextHelpFormatter)
@@ -23,6 +23,32 @@ args = parser.parse_args()
 logger.setup(args.debug)
 
 # remove following lines!!!
-c = getCombinations(os.path.join(args.check, 'configurations.reggie'))
-basedir = compile.find_basedir()
-compile.cmake('build', c[0], basedir)
+builds = combinations.getCombinations(os.path.join(args.check, 'builds.ini'))
+
+
+for build in builds :
+    print "BUILD:", build
+    for example in ["freestream_3D"] :
+        print " EXAMPLE:", example
+        example_path = os.path.join(args.check, example)
+        flexis   = combinations.getCombinations(os.path.join(example_path,'flexi.ini')) # mesh= mesh1, mesh2 
+        reggies  = combinations.getCombinations(os.path.join(example_path,'reggie.ini')) # MPI=1,2,3
+        excludes = combinations.getCombinations(os.path.join(example_path,'excludes.ini'))
+        if combinations.anyIsSubset(excludes, build) : 
+            print "Example is excluded"
+            continue
+        for reggie in reggies :
+            print "  REGGIE:", reggie
+            for flexi in flexis :
+                print "   FLEXI:", flexi
+                
+                #for sample in samples : 
+
+
+
+            #analyze(build, reggieconf)
+
+
+#print type(c), c
+#basedir = compile.find_basedir()
+#compile.cmake('build', c[0], basedir)
