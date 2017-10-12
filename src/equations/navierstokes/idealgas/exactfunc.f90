@@ -168,7 +168,7 @@ END SUBROUTINE InitExactFunc
 !> dt is only needed to compute the time dependent boundary values for the RK scheme
 !> for each function resu and the first and second time derivative resu_t and resu_tt have to be defined (is trivial for constants)
 !==================================================================================================================================
-SUBROUTINE ExactFunc(ExactFunction,tIn,x,resu)
+SUBROUTINE ExactFunc(ExactFunction,tIn,x,resu,RefStateOpt)
 ! MODULES
 USE MOD_Preproc        ,ONLY: PP_PI
 USE MOD_Globals        ,ONLY: Abort
@@ -192,8 +192,10 @@ INTEGER,INTENT(IN)              :: ExactFunction          !< determines the exac
 REAL,INTENT(IN)                 :: x(3)                   !< physical coordinates
 REAL,INTENT(IN)                 :: tIn                    !< solution time (Runge-Kutta stage)
 REAL,INTENT(OUT)                :: Resu(5)                !< state in conservative variables
+INTEGER,INTENT(IN),OPTIONAL     :: RefStateOpt            !< refstate to be used for exact func
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER                         :: RefState
 REAL                            :: tEval
 REAL                            :: Resu_t(5),Resu_tt(5),ov ! state in conservative variables
 REAL                            :: Frequency,Amplitude
@@ -215,6 +217,7 @@ REAL                            :: x_eff(3),x_offset(3)
 #endif
 !==================================================================================================================================
 tEval=MERGE(t,tIn,fullBoundaryOrder) ! prevent temporal order degradation, works only for RK3 time integration
+RefState=MERGE(RefStateOpt,IniRefState,PRESENT(RefStateOpt))
 
 Resu   =0.
 Resu_t =0.
@@ -227,7 +230,7 @@ CASE DEFAULT
 CASE(0)
   CALL ExactFuncTestcase(tEval,x,Resu,Resu_t,Resu_tt)
 CASE(1) ! constant
-  Resu = RefStateCons(:,IniRefState)
+  Resu = RefStateCons(:,RefState)
 CASE(2) ! sinus
   Frequency=0.5
   Amplitude=0.3
@@ -417,7 +420,7 @@ CASE(5) !Roundjet Bogey Bailly 2002, Re=65000, x-axis is jet axis
   Resu=ResuL+(ResuR-ResuL)*0.5*(1.+tanh(x(1)-10.))
 CASE(6)  ! Cylinder flow
   IF(tEval .EQ. 0.)THEN   ! Initialize potential flow
-    prim(1)=RefStatePrim(1,IniRefState)  ! Density
+    prim(1)=RefStatePrim(1,RefState)  ! Density
     prim(4)=0.           ! VelocityZ=0. (2D flow)
     ! Calculate cylinder coordinates (0<phi<Pi/2)
     pi_loc=ASIN(1.)*2.
@@ -441,19 +444,19 @@ CASE(6)  ! Cylinder flow
     ! Calculate radius**2
     radius=x(1)*x(1)+x(2)*x(2)
     ! Calculate velocities, radius of cylinder=0.5
-    prim(2)=RefStatePrim(2,IniRefState)*(COS(phi)**2*(1.-0.25/radius)+SIN(phi)**2*(1.+0.25/radius))
-    prim(3)=RefStatePrim(2,IniRefState)*(-2.)*SIN(phi)*COS(phi)*0.25/radius
+    prim(2)=RefStatePrim(2,RefState)*(COS(phi)**2*(1.-0.25/radius)+SIN(phi)**2*(1.+0.25/radius))
+    prim(3)=RefStatePrim(2,RefState)*(-2.)*SIN(phi)*COS(phi)*0.25/radius
     ! Calculate pressure, RefState(2)=u_infinity
-    prim(5)=RefStatePrim(5,IniRefState) + &
-            0.5*prim(1)*(RefStatePrim(2,IniRefState)*RefStatePrim(2,IniRefState)-prim(2)*prim(2)-prim(3)*prim(3))
+    prim(5)=RefStatePrim(5,RefState) + &
+            0.5*prim(1)*(RefStatePrim(2,RefState)*RefStatePrim(2,RefState)-prim(2)*prim(2)-prim(3)*prim(3))
     prim(6) = prim(5)/(prim(1)*R)
   ELSE  ! Use RefState as BC
-    prim=RefStatePrim(:,IniRefState)
+    prim=RefStatePrim(:,RefState)
   END IF  ! t=0
   CALL PrimToCons(prim,resu)
 CASE(7) ! SHU VORTEX,isentropic vortex
   ! base flow
-  prim=RefStatePrim(:,IniRefState)  ! Density
+  prim=RefStatePrim(:,RefState)  ! Density
   ! ini-Parameter of the Example
   vel=prim(2:4)
   RT=prim(PP_nVar)/prim(1) !ideal gas
@@ -487,7 +490,7 @@ CASE(9) !lid driven cavity flow from Gao, Hesthaven, Warburton
         !"Absorbing layers for weakly compressible flows", to appear, JSC, 2016
         ! Special "regularized" driven cavity BC to prevent singularities at corners
         ! top BC assumed to be in x-direction from 0..1
-  Prim = RefStatePrim(:,IniRefState)
+  Prim = RefStatePrim(:,RefState)
   IF (x(1).LT.0.2) THEN 
     prim(2)=1000*4.9333*x(1)**4-1.4267*1000*x(1)**3+0.1297*1000*x(1)**2-0.0033*1000*x(1)
   ELSEIF (x(1).LE.0.8) THEN
@@ -557,7 +560,7 @@ CASE(13) ! DoubleMachReflection (see e.g. http://www.astro.princeton.edu/~jstone
   CALL PrimToCons(prim,resu)
 #if PARABOLIC
 CASE(1338) ! blasius
-  prim=RefStatePrim(:,IniRefState)
+  prim=RefStatePrim(:,RefState)
   ! calculate equivalent x for Blasius flat plate to have delta99_in at x_in
   x_offset(1)=(delta99_in/5)**2*prim(1)*prim(2)/mu0-x_in(1)
   x_offset(2)=-x_in(2)
@@ -590,7 +593,7 @@ CASE(1338) ! blasius
       fppp    = -0.5*f*fpp
     END DO
     prim(3)=0.5*(mu0*prim(2)/prim(1)/x_eff(1))**0.5*(fp*eta-f)
-    prim(2)=RefStatePrim(2,IniRefState)*fp
+    prim(2)=RefStatePrim(2,RefState)*fp
   ELSE
     IF(x_eff(2).LT.0) THEN
       prim(2)=0.
