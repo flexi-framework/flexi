@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import combinations 
 from execute_cmd import execute_cmd
 
 class BasedirNotFoundException(Exception) :
@@ -40,32 +41,7 @@ def find_basedir() :
     return basedir
 
 
-def cmake(build_directory, cache_entries, basedir) :
-    """Execute cmake inside 'build_directory' with given 'cache_entries' for the source in 'basedir'.""" 
-    os.mkdir(build_directory)                    # create build directory
-    cmd = ["cmake"]                              # start composing cmake command
-    for (key, value) in cache_entries.items() :  # add cache_entries to the cmake command
-        cmd.append("-D%s=%s" % (key, value))    
-    cmd.append(basedir)                          # add basedir to the cmake command
-    
 
-    # execute cmd in build_directory
-    return_code, stdout, stderr = execute_cmd(cmd, build_directory)
-    if return_code != 0 :
-        raise CMakeFailedException(build_directory, "".join(stderr))
-
-
-def make(build_directory, mpi = 0) :
-    """Compile code by invoking make inside 'build_directory'.""" 
-    cmd = ["make"]
-    if mpi > 0 :
-        cmd.append("-j")
-        cmd.append(str(mpi))
-
-    # execute cmd in build_directory
-    return_code, stdout, stderr = execute_cmd(cmd, build_directory)
-    if return_code != 0 :
-        raise MakeFailedException(build_directory, "".join(stderr))
 
 
 
