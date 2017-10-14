@@ -40,7 +40,7 @@ for build in builds :
             reggie.runs = check.getRuns(os.path.join(example.path,'flexi.ini' ), reggie) # mesh= mesh1, mesh2 
             for run in reggie.runs :
                 log.info(str(run))
-                #run.execute()
+                run.execute(build)
 
 print "=========================="
 

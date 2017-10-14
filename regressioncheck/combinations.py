@@ -141,3 +141,10 @@ def getCombinations(filename) :
     logging.getLogger('logger').debug("  Number of valid combinations = %d" % len(combinations))
     return combinations
 
+
+def writeCombinationsToFile(combinations, path) :
+    f = open(path, 'w')
+    for key, value in combinations.items() :
+        f.write("%s=%s\n" % (key, value))
+    f.close()
+

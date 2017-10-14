@@ -2,7 +2,6 @@ import os
 import shutil
 
 from errorhandler import ErrorHandler
-from execute_cmd  import execute_cmd
 import combinations 
 
 def indent(text, amount, ch=' '):
@@ -28,19 +27,18 @@ class Build(ErrorHandler) :
         # CMAKE
         os.makedirs(self.directory)                 # create build directory
         # execute cmd in build directory
-        self.cmake_return_code, self.cmake_stdout, self.cmake_stderr = execute_cmd(self.cmake_cmd, self.directory)
-        if self.cmake_return_code != 0 :
-            shutil.rmtree(self.directory)
+        self.execute_cmd(self.cmake_cmd)
+        if self.return_code != 0 :
+            #shutil.rmtree(self.directory)
             raise Exception("CMAKE failed")
 
         # MAKE
         cmd = ["make", "-j"]
         if buildprocs > 0 : cmd.append(str(buildprocs))
-
         # execute cmd in build directory
-        self.make_return_code, self.make_stdout, self.make_stderr = execute_cmd(cmd, self.directory)
-        if self.make_return_code != 0 :
-            shutil.rmtree(self.directory)
+        self.execute_cmd(cmd)
+        if self.return_code != 0 :
+            #shutil.rmtree(self.directory)
             raise Exception("MAKE failed")
 
     def __str__(self) :
@@ -116,6 +114,12 @@ class Run(ErrorHandler) :
     def __init__(self, parameters, reggie, number) :
         self.parameters = parameters
         ErrorHandler.__init__(self, reggie, 'run', number)
+
+    def execute(self, build) :
+        self.parameter_path = os.path.join(self.directory, "parameter.ini")
+        combinations.writeCombinationsToFile(self.parameters, self.parameter_path)
+        cmd = [os.path.join(os.path.abspath(build.directory), 'dummy'), "parameter.ini"] 
+        self.execute_cmd(cmd)
 
     def __str__(self) :
         s = "RUN parameters:\n"
