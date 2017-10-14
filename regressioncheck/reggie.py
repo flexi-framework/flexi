@@ -30,16 +30,17 @@ builds = check.getBuilds(basedir, os.path.join(args.check, 'builds.ini'))
 
 for build in builds :
     log.info(str(build))
-    build.examples = check.getExamples(args.check, build.configuration)
     build.compile(args.buildprocs)
+    build.examples = check.getExamples(args.check, build)
     for example in build.examples :
         log.info(str(example))
-        example.reggies = check.getReggies(os.path.join(example.path,'reggie.ini')) # MPI=1,2,3
+        example.reggies = check.getReggies(os.path.join(example.path,'reggie.ini'), example) # MPI=1,2,3
         for reggie in example.reggies :
             log.info(str(reggie))
-            reggie.runs    = check.getRuns   (os.path.join(example.path,'flexi.ini' )) # mesh= mesh1, mesh2 
+            reggie.runs = check.getRuns(os.path.join(example.path,'flexi.ini' ), reggie) # mesh= mesh1, mesh2 
             for run in reggie.runs :
                 log.info(str(run))
+                #run.execute()
 
 print "=========================="
 
