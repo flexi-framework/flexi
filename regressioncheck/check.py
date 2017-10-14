@@ -5,12 +5,21 @@ from errorhandler import ErrorHandler
 from execute_cmd  import execute_cmd
 import combinations 
 
+def indent(text, amount, ch=' '):
+    padding = amount * 2 * ch
+    return ''.join(padding+line for line in text.splitlines(True))
+
 class Build(ErrorHandler) :
     def __init__(self, basedir, number, configuration) :
         self.basedir = basedir
         self.number = number
         self.configuration = configuration
         self.build_directory = os.path.join('reggie_outdir', 'build_%04d' % self.number)
+
+        self.cmake_cmd = ["cmake"]                        # start composing cmake command
+        for (key, value) in self.configuration.items() :  # add configuration to the cmake command
+            self.cmake_cmd.append("-D%s=%s" % (key, value))    
+        self.cmake_cmd.append(self.basedir)               # add basedir to the cmake command
 
     def compile(self, buildprocs) :
         # skip compiling if build_directory already exists
@@ -19,17 +28,9 @@ class Build(ErrorHandler) :
 
         # CMAKE
         os.makedirs(self.build_directory)                 # create build directory
-        cmd = ["cmake"]                                   # start composing cmake command
-        for (key, value) in self.configuration.items() :  # add configuration to the cmake command
-            cmd.append("-D%s=%s" % (key, value))    
-        cmd.append(self.basedir)                          # add basedir to the cmake command
-
         # execute cmd in build_directory
-        return_code, stdout, stderr = execute_cmd(cmd, self.build_directory)
-        self.cmake_return_code = return_code
-        self.cmake_stdout = stdout
-        self.cmake_stderr = stderr
-        if return_code != 0 :
+        self.cmake_return_code, self.cmake_stdout, self.cmake_stderr = execute_cmd(self.cmake_cmd, self.build_directory)
+        if self.cmake_return_code != 0 :
             shutil.rmtree(self.build_directory)
             raise Exception("CMAKE failed")
 
@@ -38,13 +39,16 @@ class Build(ErrorHandler) :
         if buildprocs > 0 : cmd.append(str(buildprocs))
 
         # execute cmd in build_directory
-        return_code, stdout, stderr = execute_cmd(cmd, self.build_directory)
-        self.make_return_code = return_code
-        self.make_stdout = stdout
-        self.make_stderr = stderr
-        if return_code != 0 :
+        self.make_return_code, self.make_stdout, self.make_stderr = execute_cmd(cmd, self.build_directory)
+        if self.make_return_code != 0 :
             shutil.rmtree(self.build_directory)
             raise Exception("MAKE failed")
+
+    def __str__(self) :
+        s = "BUILD in: " + self.build_directory + "\n"
+        s += " ".join(self.cmake_cmd)
+        return s
+
 
 def getBuilds(basedir, path) :
     builds = []
@@ -60,8 +64,12 @@ class Example(ErrorHandler) :
     def __init__(self, path) :
         self.path = path
 
+    def __str__(self) :
+        s = "EXAMPLE in: " + self.path
+        return indent(s,1)
+
 def getExamples(path, build_configuration) :
-    example_paths = [os.path.join(path,p) for p in os.listdir(path) if os.path.isdir(os.path.join(path,p))]
+    example_paths = [os.path.join(path,p) for p in sorted(os.listdir(path)) if os.path.isdir(os.path.join(path,p))]
     examples = []
     # iterate over all example paths (directories of the examples)
     for p in example_paths :
@@ -83,6 +91,11 @@ class Reggie(ErrorHandler) :
     def __init__(self, parameters) :
         self.parameters = parameters
 
+    def __str__(self) :
+        s = "REGGIE parameters:\n"
+        s += ",".join(["%s: %s" % (k,v) for k,v in self.parameters.items()])    
+        return indent(s,2)
+
 def getReggies(path) :
     return [Reggie(r) for r in combinations.getCombinations(path)]
 
@@ -94,6 +107,11 @@ def getReggies(path) :
 class Run(ErrorHandler) :
     def __init__(self, parameters) :
         self.parameters = parameters
+
+    def __str__(self) :
+        s = "RUN parameters:\n"
+        s += ",".join(["%s: %s" % (k,v) for k,v in self.parameters.items()])    
+        return indent(s,3)
 
 def getRuns(path) :
     return [Run(r) for r in combinations.getCombinations(path)]

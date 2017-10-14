@@ -89,7 +89,7 @@ def getCombinations(filename) :
         option.base = noCombinationsTotal         # save total  number of combinations of all options before this option
         noCombinationsTotal = noCombinationsTotal * len(option.values)
 
-    logging.getLogger('logger').info("  Total number of combinations for '%s' = %d" % (filename, noCombinationsTotal))
+    logging.getLogger('logger').debug("  Total number of combinations for '%s' = %d" % (filename, noCombinationsTotal))
 
     # 2.2 build all valid combinations (all that do not match any exclusion)
     for i in range(noCombinationsTotal) :         # iterate index 'i' over noCombinationsTotal
@@ -138,6 +138,6 @@ def getCombinations(filename) :
         # add valid combination 
         combinations.append(combination)
 
-    logging.getLogger('logger').info("  Number of valid combinations = %d" % len(combinations))
+    logging.getLogger('logger').debug("  Number of valid combinations = %d" % len(combinations))
     return combinations
 

@@ -1,5 +1,6 @@
 import argparse
 import os
+import logging
 
 import logger
 import compile 
@@ -21,23 +22,24 @@ args = parser.parse_args()
 
 # setup logger for printing information, debug messages to stdout
 logger.setup(args.debug)
+log = logging.getLogger('logger')
 
 basedir = os.path.abspath('dummy_basedir') #compile.find_basedir()
 
 builds = check.getBuilds(basedir, os.path.join(args.check, 'builds.ini'))
 
 for build in builds :
-    print "BUILD:", build.configuration
+    log.info(str(build))
     build.examples = check.getExamples(args.check, build.configuration)
     build.compile(args.buildprocs)
     for example in build.examples :
-        print "  EXAMPLE:", example.path
+        log.info(str(example))
         example.reggies = check.getReggies(os.path.join(example.path,'reggie.ini')) # MPI=1,2,3
         for reggie in example.reggies :
-            print "    REGGIE:",reggie.parameters
+            log.info(str(reggie))
             reggie.runs    = check.getRuns   (os.path.join(example.path,'flexi.ini' )) # mesh= mesh1, mesh2 
             for run in reggie.runs :
-                print "      RUN:",run.parameters
+                log.info(str(run))
 
 print "=========================="
 
