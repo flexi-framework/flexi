@@ -1,7 +1,6 @@
 import argparse
 import os
 import logging
-
 import tools
 import check
 
@@ -20,39 +19,45 @@ parser.add_argument('check', help='Path to check-/example-directory.')
 
 args = parser.parse_args() # reggie command line arguments
 
-print "========================================================="
-print "Running reggie2.0 with the following command line options"
+print('='*132)
+print "reggie2.0, add nice ASCII art here"
+print('='*132)
+print "Running with the following command line options"
 #print "args=",args
 for arg in args.__dict__ :
     print arg.ljust(25)," = [",getattr(args,arg),"]"
-print "========================================================="
+print('='*132)
+cwd = os.getcwd()                                          # start with current working directory
+found = os.path.exists(os.path.join(cwd,args.check)) # check if directory exists
+if not found :
+    print "Check directory not found: ",os.path.join(cwd,args.check)
+    exit(1)
 
 # setup logger for printing information, debug messages to stdout
 tools.setup_logger(args.debug)
 log = logging.getLogger('logger')
 
-basedir = os.path.abspath('dummy_basedir') #tools.find_basedir()
-print "basedir = ",basedir
-basedir = tools.find_basedir()
-print "basedir = ",basedir
-
+# setup basedir (search upward from staring point of reggie)
+if args.dummy :
+    args.check = 'dummy_checks/test'
+    print "Check directoryswitched to ",args.check
+    basedir = os.path.abspath('dummy_basedir')
+    print "basedir = ".ljust(25),basedir
+else :
+    try :
+        basedir = tools.find_basedir()
+        print "basedir = [".ljust(15),basedir,"]"
+    except Exception,ex :
+        basedir = os.path.abspath('dummy_basedir')
+        print "basedir = ".ljust(25),basedir
 
 # delete the building directory
 tools.clean_folder()
 
-
-exit(1)
-
-#try:
-#basedir = tools.find_basedir()
-#except tools.BasedirNotFoundException,var:
-    #print var
-
-
-print "test",basedir
-
+# get builds from checks directory
 builds = check.getBuilds(basedir, os.path.join(args.check, 'builds.ini'))
 
+print " "
 
 try : # if compiling fails -> go to exception
     for build in builds :
@@ -79,11 +84,13 @@ except check.BuildFailedException,ex:
 
 
 
-print "=========================="
+print('='*132)
 
 for build in builds :
     if not build.successful : 
         print "BUILD: failed", build.configuration
+    else :
+        print "BUILD: successful", build.configuration
     for example in build.examples :
         if not example.successful : 
             print "  EXAMPLE: failed", example.path

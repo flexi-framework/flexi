@@ -26,19 +26,27 @@ class Build(Loop) :
         # CMAKE
         os.makedirs(self.directory)          # create build directory
         # execute cmd in build directory
+        self.cmake_cmd.append("-DFLEXI_BUILD_HDF5=OFF")
+        print "cmake with ",self.cmake_cmd," ..."
         self.execute_cmd(self.cmake_cmd)
         if self.return_code != 0 :
             #shutil.rmtree(self.directory)
             raise BuildFailedException(self) # "CMAKE failed"
+        else :
+            print "Done."
 
         # MAKE
         self.make_cmd = ["make", "-j"]
-        if buildprocs > 0 : cmd.append(str(buildprocs))
+        if buildprocs > 0 : self.make_cmd.append(str(buildprocs))
         # execute cmd in build directory
+        print('='*132)
+        print "Building with ",self.make_cmd," ..."
         self.execute_cmd(self.make_cmd)
         if self.return_code != 0 :
-            #shutil.rmtree(self.directory)
+            #shutil.rmtree(self.directory) # remove reggie_outdir/build_0000
             raise BuildFailedException(self) # "MAKE failed"
+        else :
+            print "Done."
 
     def __str__(self) :
         s = "BUILD in: " + self.directory + "\n"
