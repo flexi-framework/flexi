@@ -1,8 +1,7 @@
 import os
 import shutil
-
-from loop import Loop
 import combinations 
+from loop import Loop
 
 def indent(text, amount, ch=' '):
     padding = amount * 2 * ch
@@ -25,7 +24,7 @@ class Build(Loop) :
             return
 
         # CMAKE
-        os.makedirs(self.directory)                 # create build directory
+        os.makedirs(self.directory)          # create build directory
         # execute cmd in build directory
         self.execute_cmd(self.cmake_cmd)
         if self.return_code != 0 :
@@ -54,13 +53,6 @@ def getBuilds(basedir, path) :
         builds.append(Build(basedir, b, i))
         i += 1
     return builds
-
-# class CMakeFailedException(Exception) :
-#     def __init__(self, build_directory, error):
-#         self.build_directory = build_directory
-#         self.error = error
-#     def __str__(self):
-#         return "cmake command faild in directory '%s'. Error Message:\n %s" % (self.build_directory, self.error)
 
 class BuildFailedException(Exception) :
     def __init__(self, build):

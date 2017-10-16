@@ -15,15 +15,33 @@ parser.add_argument('-e', '--exe', help='Path to executable of code that should 
 parser.add_argument('-d', '--debug', type=int, default=0, help='Debug level.')
 parser.add_argument('-j', '--buildprocs', type=int, default=0, help='Number of processors used for compiling (make -j XXX).')
 parser.add_argument('-b', '--basedir', help='Path to basedir of code that should be tested (contains CMakeLists.txt).')
+parser.add_argument('-y', '--dummy', action='store_true',help='use dummy_basedir and dummy_checks for fast testing on dummy code')
 parser.add_argument('check', help='Path to check-/example-directory.')
 
-args = parser.parse_args()
+args = parser.parse_args() # reggie command line arguments
+
+print "========================================================="
+print "Running reggie2.0 with the following command line options"
+#print "args=",args
+for arg in args.__dict__ :
+    print arg.ljust(25)," = [",getattr(args,arg),"]"
+print "========================================================="
 
 # setup logger for printing information, debug messages to stdout
 tools.setup_logger(args.debug)
 log = logging.getLogger('logger')
 
 basedir = os.path.abspath('dummy_basedir') #tools.find_basedir()
+print "basedir = ",basedir
+basedir = tools.find_basedir()
+print "basedir = ",basedir
+
+
+# delete the building directory
+tools.clean_folder()
+
+
+exit(1)
 
 #try:
 #basedir = tools.find_basedir()
@@ -36,7 +54,7 @@ print "test",basedir
 builds = check.getBuilds(basedir, os.path.join(args.check, 'builds.ini'))
 
 
-try :
+try : # if compiling fails -> go to exception
     for build in builds :
         log.info(str(build))
         build.compile(args.buildprocs)
