@@ -1,18 +1,18 @@
 import os
 import shutil
 
-from errorhandler import ErrorHandler
+from loop import Loop
 import combinations 
 
 def indent(text, amount, ch=' '):
     padding = amount * 2 * ch
     return ''.join(padding+line for line in text.splitlines(True))
 
-class Build(ErrorHandler) :
+class Build(Loop) :
     def __init__(self, basedir, configuration, number) :
         self.basedir = basedir
         self.configuration = configuration
-        ErrorHandler.__init__(self, None, 'build', number, mkdir=False)   
+        Loop.__init__(self, None, 'build', number, mkdir=False)   
 
         self.cmake_cmd = ["cmake"]                        # start composing cmake command
         for (key, value) in self.configuration.items() :  # add configuration to the cmake command
@@ -30,16 +30,16 @@ class Build(ErrorHandler) :
         self.execute_cmd(self.cmake_cmd)
         if self.return_code != 0 :
             #shutil.rmtree(self.directory)
-            raise Exception("CMAKE failed")
+            raise BuildFailedException(self) # "CMAKE failed"
 
         # MAKE
-        cmd = ["make", "-j"]
+        self.make_cmd = ["make", "-j"]
         if buildprocs > 0 : cmd.append(str(buildprocs))
         # execute cmd in build directory
-        self.execute_cmd(cmd)
+        self.execute_cmd(self.make_cmd)
         if self.return_code != 0 :
             #shutil.rmtree(self.directory)
-            raise Exception("MAKE failed")
+            raise BuildFailedException(self) # "MAKE failed"
 
     def __str__(self) :
         s = "BUILD in: " + self.directory + "\n"
@@ -55,12 +55,25 @@ def getBuilds(basedir, path) :
         i += 1
     return builds
 
+# class CMakeFailedException(Exception) :
+#     def __init__(self, build_directory, error):
+#         self.build_directory = build_directory
+#         self.error = error
+#     def __str__(self):
+#         return "cmake command faild in directory '%s'. Error Message:\n %s" % (self.build_directory, self.error)
+
+class BuildFailedException(Exception) :
+    def __init__(self, build):
+        self.build = build
+    def __str__(self):
+        return "build.compile faild in directory '%s'." % (self.build.directory)
+
 #==================================================================================================
 
-class Example(ErrorHandler) :
+class Example(Loop) :
     def __init__(self, path, build) :
         self.path = path
-        ErrorHandler.__init__(self, build, os.path.basename(self.path))   
+        Loop.__init__(self, build, os.path.basename(self.path))   
 
     def __str__(self) :
         s = "EXAMPLE in: " + self.path
@@ -85,10 +98,10 @@ def getExamples(path, build) :
 
 #==================================================================================================
 
-class Reggie(ErrorHandler) :
+class Reggie(Loop) :
     def __init__(self, parameters, example, number) :
         self.parameters = parameters
-        ErrorHandler.__init__(self, example, 'reggie', number)
+        Loop.__init__(self, example, 'reggie', number)
 
 
     def __str__(self) :
@@ -110,16 +123,19 @@ def getReggies(path, example) :
 
 #==================================================================================================
 
-class Run(ErrorHandler) :
+class Run(Loop) :
     def __init__(self, parameters, reggie, number) :
         self.parameters = parameters
-        ErrorHandler.__init__(self, reggie, 'run', number)
+        Loop.__init__(self, reggie, 'run', number)
 
-    def execute(self, build) :
+    def execute(self, build, reggie) :
         self.parameter_path = os.path.join(self.directory, "parameter.ini")
         combinations.writeCombinationsToFile(self.parameters, self.parameter_path)
         cmd = [os.path.join(os.path.abspath(build.directory), 'dummy'), "parameter.ini"] 
+        print ">>>>>>>>>>>>>>> MPI=",reggie.parameters['MPI']
         self.execute_cmd(cmd)
+        if self.return_code != 0 :
+            self.successful = False
 
     def __str__(self) :
         s = "RUN parameters:\n"

@@ -2,8 +2,7 @@ import argparse
 import os
 import logging
 
-import logger
-import compile 
+import tools
 import check
 
 parser = argparse.ArgumentParser(description='Regression checker for NRG codes.', formatter_class=argparse.RawTextHelpFormatter)
@@ -21,26 +20,46 @@ parser.add_argument('check', help='Path to check-/example-directory.')
 args = parser.parse_args()
 
 # setup logger for printing information, debug messages to stdout
-logger.setup(args.debug)
+tools.setup_logger(args.debug)
 log = logging.getLogger('logger')
 
-basedir = os.path.abspath('dummy_basedir') #compile.find_basedir()
+basedir = os.path.abspath('dummy_basedir') #tools.find_basedir()
+
+#try:
+#basedir = tools.find_basedir()
+#except tools.BasedirNotFoundException,var:
+    #print var
+
+
+print "test",basedir
 
 builds = check.getBuilds(basedir, os.path.join(args.check, 'builds.ini'))
 
-for build in builds :
-    log.info(str(build))
-    build.compile(args.buildprocs)
-    build.examples = check.getExamples(args.check, build)
-    for example in build.examples :
-        log.info(str(example))
-        example.reggies = check.getReggies(os.path.join(example.path,'reggie.ini'), example) # MPI=1,2,3
-        for reggie in example.reggies :
-            log.info(str(reggie))
-            reggie.runs = check.getRuns(os.path.join(example.path,'flexi.ini' ), reggie) # mesh= mesh1, mesh2 
-            for run in reggie.runs :
-                log.info(str(run))
-                run.execute(build)
+
+try :
+    for build in builds :
+        log.info(str(build))
+        build.compile(args.buildprocs)
+        build.examples = check.getExamples(args.check, build)
+        for example in build.examples :
+            log.info(str(example))
+            example.reggies = check.getReggies(os.path.join(example.path,'reggie.ini'), example) # MPI=1,2,3
+            for reggie in example.reggies :
+                log.info(str(reggie))
+                reggie.runs = check.getRuns(os.path.join(example.path,'flexi.ini' ), reggie) # mesh= mesh1, mesh2 
+                for run in reggie.runs :
+                    log.info(str(run))
+                    run.execute(build,reggie)
+except check.BuildFailedException,ex:
+    print ex
+    print ex.build.make_cmd
+    print " Build failed, see: ",ex.build.stdout_filename
+    print " Build failed, see: ",ex.build.stderr_filename
+    for line in ex.build.stderr[-20:] :
+        print line,
+    exit(1)
+
+
 
 print "=========================="
 
