@@ -1,8 +1,18 @@
 import argparse
+import numpy as np
 import os
 import logging
 import tools
 import check
+from timeit import default_timer as timer
+#import ast
+#import re
+import analyze_functions
+                                
+start = timer()
+global_run_number=0
+global_errors=0
+build_number=0
 
 parser = argparse.ArgumentParser(description='Regression checker for NRG codes.', formatter_class=argparse.RawTextHelpFormatter)
 parser.add_argument('-m', '--mode', choices=['build', 'run'], default='build', help='''  --mode build : compile code for all binary-combinations and for all binaries run all examples with all run-combinations
@@ -22,11 +32,6 @@ args = parser.parse_args() # reggie command line arguments
 print('='*132)
 print "reggie2.0, add nice ASCII art here"
 print('='*132)
-print "Running with the following command line options"
-#print "args=",args
-for arg in args.__dict__ :
-    print arg.ljust(25)," = [",getattr(args,arg),"]"
-print('='*132)
 cwd = os.getcwd()                                          # start with current working directory
 found = os.path.exists(os.path.join(cwd,args.check)) # check if directory exists
 if not found :
@@ -38,66 +43,149 @@ tools.setup_logger(args.debug)
 log = logging.getLogger('logger')
 
 # setup basedir (search upward from staring point of reggie)
-if args.dummy :
+if args.dummy : # 
     args.check = 'dummy_checks/test'
     print "Check directoryswitched to ",args.check
-    basedir = os.path.abspath('dummy_basedir')
-    print "basedir = ".ljust(25),basedir
+    args.basedir = os.path.abspath('dummy_basedir')
+    #print "basedir = ".ljust(25)+basedir
 else :
     try :
-        basedir = tools.find_basedir()
-        print "basedir = [".ljust(15),basedir,"]"
+        args.basedir = tools.find_basedir()
+        #print "basedir = [".ljust(15)+basedir,"]"
     except Exception,ex :
-        basedir = os.path.abspath('dummy_basedir')
-        print "basedir = ".ljust(25),basedir
-
-# delete the building directory
-tools.clean_folder()
+        args.basedir = os.path.abspath('dummy_basedir')
 
 # get builds from checks directory
-builds = check.getBuilds(basedir, os.path.join(args.check, 'builds.ini'))
+if args.exe is None : # if not exe is supplied, get builds
+    builds = check.getBuilds(args.basedir, os.path.join(args.check, 'builds.ini')) # read build combinations from checks/XX/builds.ini
+else :
+    found = os.path.exists(args.exe) # check if executable exists
+    if not found :
+        print tools.bcolors.FAIL+"no executable found under ",args.exe+tools.bcolors.ENDC
+        exit(1)
+    else :
+        builds = [args.exe]
+        args.mode = 'run'
+        args.basedir = None
 
-print " "
+
+
+
+
+
+print "Running with the following command line options"
+for arg in args.__dict__ :
+    print arg.ljust(25)," = [",getattr(args,arg),"]"
+print('='*132)
+
+
+
+
+# delete the building directory
+#tools.clean_folder()
 
 try : # if compiling fails -> go to exception
     for build in builds :
+        build_number+=1
+        print "Build Cmake Configuration ",build_number," of ",len(builds)
         log.info(str(build))
+        
         build.compile(args.buildprocs)
+        exit(1)
         build.examples = check.getExamples(args.check, build)
         for example in build.examples :
             log.info(str(example))
-            example.reggies = check.getReggies(os.path.join(example.path,'reggie.ini'), example) # MPI=1,2,3
-            for reggie in example.reggies :
-                log.info(str(reggie))
-                reggie.runs = check.getRuns(os.path.join(example.path,'flexi.ini' ), reggie) # mesh= mesh1, mesh2 
-                for run in reggie.runs :
+            # get MPI=1,2,3 and binary name 
+            example.command_lines = \
+                    check.getCommand_Lines(os.path.join(example.source_directory,'command_line.ini'), example)
+            example.analyzes = \
+                    check.getAnalyzes(os.path.join(example.source_directory,'analyze.ini'), example)
+            for command_line in example.command_lines :
+                log.info(str(command_line))
+                command_line.runs = \
+                        check.getRuns(os.path.join(example.source_directory,'parameter.ini' ), command_line)
+                for run in command_line.runs :
                     log.info(str(run))
-                    run.execute(build,reggie)
+                    run.execute(build,command_line)
+                    global_run_number+=1
+                    run.globalnumber=global_run_number
+                    run.analyze_results = []
+                    for analyze in example.analyzes :
+                        log.info(str(analyze))
+                        # L2 error check
+                        L2_tolerance = float(analyze.parameters.get('analyze_L2',-1.))
+                        if L2_tolerance > 0 :
+                            L2_errors = np.array(analyze_functions.get_last_L2_error(run.stdout))
+                            if (L2_errors > L2_tolerance).any() :
+                                run.analyze_results.append("analysis failed: L2 error >"+str(L2_tolerance))
+                                global_errors+=1
+                        #exit(1)
+        print('='*132)
 except check.BuildFailedException,ex:
-    print ex
-    print ex.build.make_cmd
-    print " Build failed, see: ",ex.build.stdout_filename
-    print " Build failed, see: ",ex.build.stderr_filename
+    print tools.bcolors.WARNING+""
+    print ex # display error msg
+    print tools.indent(" ".join(build.cmake_cmd),1)
+    print tools.indent(" ".join(ex.build.make_cmd),1)
+    print tools.indent("Build failed, see: "+ex.build.stdout_filename,1)
+    print tools.indent("                   "+ex.build.stderr_filename,1)+tools.bcolors.ENDC
+    print tools.bcolors.FAIL
     for line in ex.build.stderr[-20:] :
-        print line,
+        print tools.indent(line,4),
+    print tools.bcolors.ENDC
+    tools.finalize(start,"FAILED!")
     exit(1)
 
 
 
-print('='*132)
 
+
+
+
+
+
+print('='*132)
+param_str_old=""
+print " Summary of Errors"+"\n"
+#print tools.indent("Compile flags",2)+" build/example/reggie/run".rjust(25)
+d = ' '
+d2 = '.'
+#invalid_keys = {"MPI", "binary", "analyze*"}
+#parameters_removed = tools.without_keys(command_line.parameters, invalid_keys)
+
+print "#run".center(8,d),"options".center(37,d2),"path".center(44,d),"MPI".center(9,d2),"runtime".rjust(10,d),"Information".rjust(15,d2)
 for build in builds :
-    if not build.successful : 
-        print "BUILD: failed", build.configuration
-    else :
-        print "BUILD: successful", build.configuration
+    #print('-'*132)
+    print " "
+    print " ".join(build.cmake_cmd)
     for example in build.examples :
-        if not example.successful : 
-            print "  EXAMPLE: failed", example.path
-        for reggie in example.reggies :
-            if not reggie.successful : 
-                print "    REGGIE: failed", reggie.parameters
-            for run in reggie.runs :
-                if not run.successful : 
-                    print "      RUN: failed", run.parameters
+        for command_line in example.command_lines :
+            #line=", ".join(["%s=%s"%item for item in command_line.parameters.items()])
+            #print tools.yellow(tools.indent(line,4," "))
+            for run in command_line.runs :
+                line=", ".join(["%s=%s"%item for item in run.parameters.items()[1:]]) # skip first index
+                if line != param_str_old : # only print when the parameter set changes
+                    print tools.yellow(tools.indent(line,5))
+                param_str_old=line
+                line=str(run.globalnumber).center(9,d)+" "*3 # global run number
+
+                line+= tools.yellow("%s=%s"%(run.parameters.items()[0])) # only use first index
+                line=line.ljust(55,d) # inner most run variable (e.g. TimeDiscMethod)
+
+                # build/example/reggie/run info
+                line+=os.path.relpath(run.target_directory,"reggie_outdir").ljust(25,d2)
+
+                line+=command_line.parameters.get('MPI','-').center(9,d)
+                line+="%2.2f".rjust(12,d2) % (run.execution_time)
+                line+=run.result.rjust(25,d) # add result (successful or failed)
+                print line
+                for result in run.analyze_results :
+                    print tools.red(result).rjust(137)
+        print ""
+
+if global_errors > 0 :
+    tools.finalize(start,"Failed! Number of errors: "+str(global_errors))
+else :
+    tools.finalize(start,"successful")
+
+
 

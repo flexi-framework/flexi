@@ -1,6 +1,8 @@
 import re
 import logging
 import collections
+import os
+import tools
 
 class Option :
     def __init__(self, name, values) :
@@ -41,6 +43,10 @@ def getCombinations(filename) :
     # 2.  Compute combinations:
     # 2.1   count total number of all combinations
     # 2.2   build only the valid combinations (that do NOT match any exclusion)
+    found = os.path.exists(filename) # check if directory exists
+    if not found :
+        #raise getCombinationException(filename) # file not found
+        raise Exception(tools.red("getCombination failed. file '%s' not found." % filename))
 
     options = []                               # list of all options
     exclusions = []                            # list of all exclusions
@@ -79,7 +85,7 @@ def getCombinations(filename) :
             options.append(option)                   # append option to options list, where 
             continue                                 # reading of option finished -> go on with next line
 
-    options.sort(key=lambda option: len(option.values), reverse=True)
+    options.sort(key=lambda option: len(option.values), reverse=True) # sort list in order to have the most varying option at the beginning
 
 
     # 2. compute combinations
@@ -142,9 +148,17 @@ def getCombinations(filename) :
     return combinations
 
 
-def writeCombinationsToFile(combinations, path) :
+def writeCombinationsToFile(combinations, path) : # write one set of parameters to a file, e.g., parameter.ini
     f = open(path, 'w')
     for key, value in combinations.items() :
         f.write("%s=%s\n" % (key, value))
     f.close()
+
+#class getCombinationException(Exception) : # Exception for missing files, e.g., command_line.ini
+    #def __init__(self, filename):
+        #self.filename = filename
+    #def __str__(self):
+        #return tools.printr("getCombination failed. file '%s' not found." % (self.filename))
+
+
 
