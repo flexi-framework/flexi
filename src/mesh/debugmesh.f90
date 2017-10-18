@@ -44,7 +44,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Output_Vars,ONLY:NVisu,Vdm_GaussN_NVisu
 USE MOD_Mesh_Vars,  ONLY:nElems,Elem_xGP,ElemToSide,BC,nBCSides
-USE MOD_ChangeBasis,ONLY:ChangeBasis3D
+USE MOD_ChangeBasisByDim,ONLY:ChangeBasisVolume
 USE MOD_VTK,        ONLY:WriteDataToVTK
 IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
@@ -64,10 +64,10 @@ IF(debugMesh.LE.0) RETURN
 
 SWRITE(UNIT_stdOut,'(A)')' WRITE DEBUGMESH...'
 ! WRITE Debugmesh.vtu
-ALLOCATE(X_NVisu(3,0:NVisu,0:NVisu,0:NVisu,nElems))
+ALLOCATE(X_NVisu(3,0:NVisu,0:NVisu,0:PP_NVisuZ,nElems))
 
 DO iElem=1,nElems
-  CALL ChangeBasis3D(3,PP_N,NVisu,Vdm_GaussN_Nvisu,Elem_xGP(:,:,:,:,iElem),X_NVisu(:,:,:,:,iElem))
+  CALL ChangeBasisVolume(3,PP_N,NVisu,Vdm_GaussN_Nvisu,Elem_xGP(:,:,:,:,iElem),X_NVisu(:,:,:,:,iElem))
 END DO
 
 VarNames(1)='ElemID'
@@ -76,12 +76,16 @@ VarNames(3)='FLIP'
 VarNames(4)='iLocSide'
 VarNames(5)='BCIndex'
 VarNames(6)='Rank'
-ALLOCATE(debugVisu(6,0:NVisu,0:NVisu,0:NVisu,nElems))
+ALLOCATE(debugVisu(6,0:NVisu,0:NVisu,0:PP_NVisuZ,nElems))
 debugVisu=-1.
 DO iElem=1,nElems
   debugVisu(1,:,:,:,iElem)=REAL(iElem)
   debugVisu(6,:,:,:,iElem)=REAL(myRank)
+#if (PP_dim == 3)
   DO iLocSide=1,6
+#else
+  DO iLocSide=2,5
+#endif
     SideID=ElemToSide(E2S_SIDE_ID,iLocSide,iElem)
     bcindex_loc=0
     IF(SideID.LE.nBCSides) bcindex_loc=BC(SideID)
@@ -129,7 +133,7 @@ CASE(2)
 CASE(3)
   X_NVisu_p => X_NVisu
   debugVisu_p => debugVisu
-  CALL WriteDataToVTK(6,NVisu,nElems,VarNames,X_NVisu_p,debugVisu_p,'Debugmesh.vtu',dim=3)
+  CALL WriteDataToVTK(6,NVisu,nElems,VarNames,X_NVisu_p,debugVisu_p,'Debugmesh.vtu',dim=PP_dim)
 END SELECT
 
 DEALLOCATE(X_NVisu)
