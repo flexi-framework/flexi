@@ -25,9 +25,12 @@ parser.add_argument('-d', '--debug', type=int, default=0, help='Debug level.')
 parser.add_argument('-j', '--buildprocs', type=int, default=0, help='Number of processors used for compiling (make -j XXX).')
 parser.add_argument('-b', '--basedir', help='Path to basedir of code that should be tested (contains CMakeLists.txt).')
 parser.add_argument('-y', '--dummy', action='store_true',help='use dummy_basedir and dummy_checks for fast testing on dummy code')
+parser.add_argument('-r', '--run', action='store_true' ,help='run all binaries for all examples with all run-combinations, compile missing binary-combinations')
 parser.add_argument('check', help='Path to check-/example-directory.')
 
 args = parser.parse_args() # reggie command line arguments
+if args.run :
+    args.mode = 'run'
 
 print('='*132)
 print "reggie2.0, add nice ASCII art here"
@@ -55,27 +58,32 @@ else :
     except Exception,ex :
         args.basedir = os.path.abspath('dummy_basedir')
 
+# delete the building directory when [carryon = False] and [mode = 'build'] before getBuilds is called
+if not args.carryon and args.mode=='build' : tools.clean_folder("reggie_outdir")
 
-# get builds from checks directory
+# get builds from checks directory if no executable is supplied
 if args.exe is None : # if not exe is supplied, get builds
-    builds = check.getBuilds(args.basedir, os.path.join(args.check, 'builds.ini')) # read build combinations from checks/XX/builds.ini
+    # read build combinations from checks/XX/builds.ini
+    builds = check.getBuilds(args.basedir, os.path.join(args.check, 'builds.ini'))
 else :
     found = os.path.exists(args.exe) # check if executable exists
     if not found :
         print tools.bcolors.FAIL+"no executable found under ",args.exe+tools.bcolors.ENDC
         exit(1)
     else :
-        builds = [args.exe]
+        builds = [args.exe] # set builds list to contain only the supplied executable
         args.mode = 'run'
         args.basedir = None
 
 doRun = (args.mode == 'run')
 if doRun :
+    print "doRun -> skip building"
     builds = [build for build in builds if build.skip]
 
 
 
 
+# display all command line arguments
 print "Running with the following command line options"
 for arg in args.__dict__ :
     print arg.ljust(15)," = [",getattr(args,arg),"]"
@@ -83,9 +91,9 @@ print('='*132)
 
 
 
-# delete the building directory when [carryon = False] and [mode = 'build']
-if not args.carryon and args.mode=='build' : tools.clean_folder("reggie_outdir")
 
+
+# compile and run loop
 try : # if compiling fails -> go to exception
     for build in builds :
         build_number+=1
@@ -132,8 +140,7 @@ try : # if compiling fails -> go to exception
 
                         if not all([analyze.successful for analyze in example.analyzes]) : # if one fails rename
                             run.rename_failed()
-
-                    else :
+                    else : # when the run has failed
                         global_errors+=1
         print('='*132)
 except check.BuildFailedException,ex:
