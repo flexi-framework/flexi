@@ -55,6 +55,7 @@ else :
     except Exception,ex :
         args.basedir = os.path.abspath('dummy_basedir')
 
+
 # get builds from checks directory
 if args.exe is None : # if not exe is supplied, get builds
     builds = check.getBuilds(args.basedir, os.path.join(args.check, 'builds.ini')) # read build combinations from checks/XX/builds.ini
@@ -68,7 +69,9 @@ else :
         args.mode = 'run'
         args.basedir = None
 
-
+doRun = (args.mode == 'run')
+if doRun :
+    builds = [build for build in builds if build.skip]
 
 
 
@@ -77,7 +80,6 @@ print "Running with the following command line options"
 for arg in args.__dict__ :
     print arg.ljust(15)," = [",getattr(args,arg),"]"
 print('='*132)
-
 
 
 
@@ -127,6 +129,10 @@ try : # if compiling fails -> go to exception
                                     run.analyze_results.append("analysis failed: L2 error >"+str(L2_tolerance))
                                     global_errors+=1
                                     analyze.successful=False
+
+                        if not all([analyze.successful for analyze in example.analyzes]) : # if one fails rename
+                            run.rename_failed()
+
                     else :
                         global_errors+=1
         print('='*132)

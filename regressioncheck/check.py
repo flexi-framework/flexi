@@ -17,19 +17,17 @@ class Build(Loop) :
 
         # set path to binary/executable
         self.binary_path = os.path.abspath(self.target_directory+'/'+self.parameters['binary'])
+        self.skip = os.path.exists(self.binary_path)
 
         # set cmake command
         self.cmake_cmd = ["cmake"]                        # start composing cmake command
         for (key, value) in self.configuration.items() :  # add configuration to the cmake command
-            #if key == 'binary' :
-                #continue
             self.cmake_cmd.append("-D%s=%s" % (key, value))    
-        #self.cmake_cmd.append("-DFLEXI_BUILD_HDF5=OFF")  # add fixed compiler flag
         self.cmake_cmd.append(self.basedir)               # add basedir to the cmake command
 
     def compile(self, buildprocs) :
         # skip compiling if build directory already exists
-        if os.path.isfile(self.binary_path) :  # if the binary exists, return
+        if self.skip :  # if the binary exists, return
             print "skipping"
             return
         else :
@@ -159,6 +157,10 @@ class Run(Loop) :
           dst = os.path.abspath(os.path.join(self.target_directory,f))
           shutil.copyfile(src, dst)
 
+    def rename_failed(self) :
+        shutil.rmtree(self.target_directory+"_failed",ignore_errors=True)  # remove if exists
+        shutil.move(self.target_directory,self.target_directory+"_failed") # rename folder
+
     def execute(self, build, command_line) :
 
         # set path to parameter file (single combination of values for execution "parameter.ini" for example)
@@ -191,8 +193,7 @@ class Run(Loop) :
 
         if self.return_code != 0 :
             self.successful = False
-            shutil.rmtree(self.target_directory+"_failed",ignore_errors=True)
-            shutil.move(self.target_directory,self.target_directory+"_failed")
+            self.rename_failed()
 
     def __str__(self) :
         s = "RUN parameters:\n"
