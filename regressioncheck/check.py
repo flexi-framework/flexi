@@ -10,32 +10,33 @@ class Build(Loop) :
         self.basedir = basedir
         self.configuration = configuration
         Loop.__init__(self, None, 'build', number, mkdir=False)   
-
-        self.cmake_cmd = ["cmake"]                        # start composing cmake command
-        for (key, value) in self.configuration.items() :  # add configuration to the cmake command
-            self.cmake_cmd.append("-D%s=%s" % (key, value))    
-        #self.cmake_cmd.append("-DFLEXI_BUILD_HDF5=OFF")  # add fixed compiler flag
-        self.cmake_cmd.append(self.basedir)               # add basedir to the cmake command
         
         # move 'binary' from 'configuration' dict to 'parameters' dict
         self.parameters = {'binary':self.configuration.get('binary','no binary supplied')}
         self.configuration.pop('binary', None) # remove binary from config dict
 
+        # set path to binary/executable
         self.binary_path = os.path.abspath(self.target_directory+'/'+self.parameters['binary'])
+
+        # set cmake command
+        self.cmake_cmd = ["cmake"]                        # start composing cmake command
+        for (key, value) in self.configuration.items() :  # add configuration to the cmake command
+            #if key == 'binary' :
+                #continue
+            self.cmake_cmd.append("-D%s=%s" % (key, value))    
+        #self.cmake_cmd.append("-DFLEXI_BUILD_HDF5=OFF")  # add fixed compiler flag
+        self.cmake_cmd.append(self.basedir)               # add basedir to the cmake command
+
     def compile(self, buildprocs) :
-        #binary_path = os.path.abspath(self.target_directory+'/'+self.parameters['binary'])
-        print self.binary_path
         # skip compiling if build directory already exists
-        #if os.path.exists(self.target_directory) :
-        if os.path.isfile(self.binary_path) :
-            print self.target_directory
-            #shutil.rmtree(self.target_directory)
-            print "exists ..... return"
+        if os.path.isfile(self.binary_path) :  # if the binary exists, return
+            print "skipping"
             return
         else :
-            print "does not exist, build"
+            print "removing folder, ",
+            shutil.rmtree(self.target_directory,ignore_errors=True)
+        print "building"
 
-        exit(1)
         # CMAKE
         os.makedirs(self.target_directory)          # create build directory
         # execute cmd in build directory
@@ -82,15 +83,7 @@ class BuildFailedException(Exception) :
 class Example(Loop) :
     def __init__(self, source_directory, build) :
         self.source_directory = source_directory
-        Loop.__init__(self, build, os.path.basename(self.source_directory))   
-#        for f in os.listdir(self.source_directory) :
-#          #print f
-#          src = os.path.abspath(os.path.join(self.source_directory,f))
-#          dst = self.target_directory
-#          print src
-#          print dst
-#          exit(1)
-#          # copyfile(src, dst)
+        Loop.__init__(self, build, os.path.join("examples",os.path.basename(self.source_directory)))
 
     def __str__(self) :
         s = "EXAMPLE in: " + self.source_directory
@@ -155,15 +148,19 @@ def getAnalyzes(path, example) :
 #==================================================================================================
 class Run(Loop) :
     def __init__(self, parameters, path, command_line, number) :
+        self.analyze_results = []
         self.parameters = parameters
         self.source_directory = os.path.dirname(path)
         Loop.__init__(self, command_line, 'run', number)
-        for f in os.listdir(self.source_directory) :
+        if self.skip :
+            return
+        for f in os.listdir(self.source_directory) : # copy all files in the source directory (example) to the target directory
           src = os.path.abspath(os.path.join(self.source_directory,f))
           dst = os.path.abspath(os.path.join(self.target_directory,f))
           shutil.copyfile(src, dst)
 
     def execute(self, build, command_line) :
+
         # set path to parameter file (single combination of values for execution "parameter.ini" for example)
         self.parameter_path = os.path.join(self.target_directory, "parameter.ini")
 
@@ -177,11 +174,6 @@ class Run(Loop) :
         else :
             cmd = []
         
-        # create full path to binary (defined in command_line.ini)
-        #self.binary_path = os.path.abspath(build.target_directory+'/'+command_line.parameters['binary'])
-        print build.binary_path
-        print "exxxitt"
-        exit(1)
         cmd.append(build.binary_path)
         cmd.append("parameter.ini")
 
@@ -193,11 +185,14 @@ class Run(Loop) :
         # execute the command 'cmd'
         start = timer()
         print "Running ["," ".join(cmd),"]",
-        self.execute_cmd(cmd)
-        if self.return_code != 0 :
-            self.successful = False
+        self.execute_cmd(cmd) # run the code
         end = timer()
         self.execution_time = end - start
+
+        if self.return_code != 0 :
+            self.successful = False
+            shutil.rmtree(self.target_directory+"_failed",ignore_errors=True)
+            shutil.move(self.target_directory,self.target_directory+"_failed")
 
     def __str__(self) :
         s = "RUN parameters:\n"

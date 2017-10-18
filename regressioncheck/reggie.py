@@ -75,29 +75,32 @@ else :
 
 print "Running with the following command line options"
 for arg in args.__dict__ :
-    print arg.ljust(25)," = [",getattr(args,arg),"]"
+    print arg.ljust(15)," = [",getattr(args,arg),"]"
 print('='*132)
 
 
 
 
-# delete the building directory
-#tools.clean_folder()
+# delete the building directory when [carryon = False] and [mode = 'build']
+if not args.carryon and args.mode=='build' : tools.clean_folder("reggie_outdir")
 
 try : # if compiling fails -> go to exception
     for build in builds :
         build_number+=1
-        print "Build Cmake Configuration ",build_number," of ",len(builds)
+        print "Build Cmake Configuration ",build_number," of ",len(builds)," ...",
         log.info(str(build))
         
         build.compile(args.buildprocs)
-        exit(1)
+        if not args.carryon and args.mode=='run' :
+            tools.clean_folder(os.path.join(build.target_directory,"examples"))
+        # get examples: run_basic/example1, run_basic/example2
         build.examples = check.getExamples(args.check, build)
         for example in build.examples :
             log.info(str(example))
-            # get MPI=1,2,3 and binary name 
+            # get MPI=1,2,3
             example.command_lines = \
                     check.getCommand_Lines(os.path.join(example.source_directory,'command_line.ini'), example)
+            # get analyze: L2, convtest, line integral
             example.analyzes = \
                     check.getAnalyzes(os.path.join(example.source_directory,'analyze.ini'), example)
             for command_line in example.command_lines :
@@ -106,20 +109,26 @@ try : # if compiling fails -> go to exception
                         check.getRuns(os.path.join(example.source_directory,'parameter.ini' ), command_line)
                 for run in command_line.runs :
                     log.info(str(run))
+                    if run.skip :
+                        continue
                     run.execute(build,command_line)
                     global_run_number+=1
                     run.globalnumber=global_run_number
-                    run.analyze_results = []
-                    for analyze in example.analyzes :
-                        log.info(str(analyze))
-                        # L2 error check
-                        L2_tolerance = float(analyze.parameters.get('analyze_L2',-1.))
-                        if L2_tolerance > 0 :
-                            L2_errors = np.array(analyze_functions.get_last_L2_error(run.stdout))
-                            if (L2_errors > L2_tolerance).any() :
-                                run.analyze_results.append("analysis failed: L2 error >"+str(L2_tolerance))
-                                global_errors+=1
-                        #exit(1)
+
+                    #run.analyze_results = []
+                    if run.successful : # only do analysis if the run was successful
+                        for analyze in example.analyzes :
+                            log.info(str(analyze))
+                            # L2 error check
+                            L2_tolerance = float(analyze.parameters.get('analyze_L2',-1.))
+                            if L2_tolerance > 0 :
+                                L2_errors = np.array(analyze_functions.get_last_L2_error(run.stdout))
+                                if (L2_errors > L2_tolerance).any() :
+                                    run.analyze_results.append("analysis failed: L2 error >"+str(L2_tolerance))
+                                    global_errors+=1
+                                    analyze.successful=False
+                    else :
+                        global_errors+=1
         print('='*132)
 except check.BuildFailedException,ex:
     print tools.bcolors.WARNING+""
@@ -162,6 +171,8 @@ for build in builds :
             #line=", ".join(["%s=%s"%item for item in command_line.parameters.items()])
             #print tools.yellow(tools.indent(line,4," "))
             for run in command_line.runs :
+                if run.skip :
+                    continue
                 line=", ".join(["%s=%s"%item for item in run.parameters.items()[1:]]) # skip first index
                 if line != param_str_old : # only print when the parameter set changes
                     print tools.yellow(tools.indent(line,5))
