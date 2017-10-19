@@ -213,20 +213,20 @@ for build in builds :
                 if line != param_str_old : # only print when the parameter set changes
                     print tools.yellow(tools.indent(line,5))
                 param_str_old=line
-                line=str(run.globalnumber).center(9,d)+" "*3 # global run number
+                line=str(run.globalnumber).center(5,d)+" "*3 # global run number
 
                 line+= tools.yellow("%s=%s"%(run.parameters.items()[0])) # only use first index
-                line=line.ljust(55,d) # inner most run variable (e.g. TimeDiscMethod)
+                line=line.ljust(65,d) # inner most run variable (e.g. TimeDiscMethod)
 
                 # build/example/reggie/run info
-                line+=os.path.relpath(run.target_directory,"reggie_outdir").ljust(25,d2)
+                line+=os.path.relpath(run.target_directory,"reggie_outdir").ljust(65,d2)
 
-                line+=command_line.parameters.get('MPI','-').center(9,d)
-                line+="%2.2f".rjust(12,d2) % (run.execution_time)
+                line+=command_line.parameters.get('MPI','-').center(5,d)
+                line+="%2.2f".rjust(8,d2) % (run.execution_time)
                 line+=run.result.rjust(25,d) # add result (successful or failed)
                 print line
                 for result in run.analyze_results :
-                    print tools.red(result).rjust(137)
+                    print tools.red(result).rjust(158)
         print ""
 
 if global_errors > 0 :

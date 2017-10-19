@@ -61,14 +61,14 @@ class Loop() :
             f.write(line)
         f.close()
         if self.return_code != 0 :
-            self.result=tools.red("Failed.")
+            self.result=tools.red("     Failed")
             self.stderr_filename = os.path.join(self.target_directory,"std.err")
             f = open(self.stderr_filename, 'w')
             for line in self.stderr :
                 f.write(line)
             f.close()
         else :
-            self.result=tools.blue("Successful.")
+            self.result=tools.blue("Successful")
         print self.result
 
         return self.return_code, self.stdout, self.stderr
