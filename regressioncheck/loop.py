@@ -11,19 +11,23 @@ class Loop() :
     def __init__(self, parent, name, number = -1, mkdir=True) :
         self.number = number
         self.parent = parent
+
+        # set parent directory for subfolder creation
         if self.parent :
             parent_dir = self.parent.target_directory
         else :
             parent_dir = "reggie_outdir"
+
+        # numbering of directory (if a number is supplied)
         if number >= 0 :
             self.target_directory = os.path.join(parent_dir, "%s_%04d" %(name, number))
         else :
             self.target_directory = os.path.join(parent_dir, name)
-        self.skip = os.path.exists(self.target_directory)
 
+        # create directory if it is non-existent
         if mkdir :
             if not os.path.exists(self.target_directory) :
-                os.makedirs(self.target_directory)  # create example directory
+                os.makedirs(self.target_directory)
 
     def execute_cmd(self, cmd):
         """Execute an external program specified by 'cmd'. The working directory of this program is set to self.target_directory.
@@ -34,7 +38,9 @@ class Loop() :
         workingDir = os.path.abspath(self.target_directory)
         log.debug(workingDir)
         log.debug(cmd)
-        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, cwd=workingDir)
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, \
+                                        stderr=subprocess.PIPE, \
+                                        universal_newlines=True, cwd=workingDir)
         self.stdout = []
         self.stderr = []
         for line in iter(process.stdout.readline, '') :

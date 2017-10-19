@@ -1,4 +1,5 @@
 # each analyze-function takes the output-lines of a flexi-run 
+import math
 
 # extract the L2 error of the last timestep
 def get_last_L2_error(lines) :
@@ -27,3 +28,15 @@ def get_cpu_per_dof(lines) :
    for line in reversed(lines) :
       if "CALCULATION TIME PER TSTEP/DOF: [" in line :
          return float(line.split("[")[1].split("sec")[0])
+
+def calcOrder_h(h,E) :
+    if len(h) != len(E) :
+        return -1
+
+    order = []
+    for i in range(1,len(h)) :
+        dh=1.0/(h[i]/h[i-1])
+        dE=E[i]/E[i-1]
+        order.append(math.log(dE)/math.log(dh))
+
+    return order

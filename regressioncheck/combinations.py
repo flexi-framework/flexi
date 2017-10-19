@@ -34,15 +34,12 @@ def anyIsSubset(alist, b) :
     tmp = [isSubset(a, b) for a in alist] # build a list of booleans, that contains for every 'a' in alist if 'a' is a subset of 'b'
     return any(tmp)                       # return True, if any 'a' of alist is a subset of 'b'
 
-def getCombinations(filename) :
+def readKeyValueFile(filename) :
     # General worflow:
     # 1.  Read file line by line:
     # 1.1   get exclusion from line (if line starts with 'exclude:')
     # 1.2   get noCrossCombination from line (if line starts with 'nocrosscombination:')
     # 1.3   get option and it values from line ( option=value1 [,value2 [,value3 ...]] )
-    # 2.  Compute combinations:
-    # 2.1   count total number of all combinations
-    # 2.2   build only the valid combinations (that do NOT match any exclusion)
     found = os.path.exists(filename) # check if directory exists
     if not found :
         #raise getCombinationException(filename) # file not found
@@ -51,7 +48,6 @@ def getCombinations(filename) :
     options = []                               # list of all options
     exclusions = []                            # list of all exclusions
     noCrossCombinations = []                   # list of all noCrossCombinations
-    combinations = []                          # list of all VALID combinations
 
     # 1. read options and exclusions from the file
     for line in open(filename).readlines() :   # iterate over all lines of the file
@@ -87,9 +83,22 @@ def getCombinations(filename) :
 
     options.sort(key=lambda option: len(option.values), reverse=True) # sort list in order to have the most varying option at the beginning
 
+    return options, exclusions, noCrossCombinations
 
+def getCombinations(filename) :
+    # 1. get the key-value list from file
+    # 1.1   get exclusion from line (if line starts with 'exclude:')
+    # 1.2   get noCrossCombination from line (if line starts with 'nocrosscombination:')
+    # 1.3   get option and it values from line ( option=value1 [,value2 [,value3 ...]] )
+    options, exclusions, noCrossCombinations = readKeyValueFile(filename)
+
+    # 2.  Compute combinations:
+    # 2.1   count total number of all combinations
+    # 2.2   build only the valid combinations (that do NOT match any exclusion)
     # 2. compute combinations
     # 2.1 count total number of possible combinations without the exclusions
+    combinations = []                          # list of all VALID combinations
+
     noCombinationsTotal = 1
     for option in options :
         option.base = noCombinationsTotal         # save total  number of combinations of all options before this option

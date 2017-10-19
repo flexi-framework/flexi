@@ -2,6 +2,7 @@ import logging
 import shutil
 import os
 from timeit import default_timer as timer
+import re
 
 class bcolors:
     HEADER = '\033[95m'
@@ -65,8 +66,8 @@ def find_basedir() :
 
 def clean_folder(path) :
     print "clean_folder: deleting folder ",path
-    #shutil.rmtree(path,ignore_errors=True)
-    shutil.rmtree(path)
+    shutil.rmtree(path,ignore_errors=True)
+    #shutil.rmtree(path)
 
 def red(text) :
     return bcolors.FAIL+text+bcolors.ENDC
@@ -87,5 +88,7 @@ def finalize(start,text) :
     print "reggie2.0 ",text," [%2.2f sec]" % (end - start)
     print('='*132)
 
-def without_keys(d, keys):
-     return {x: d[x] for x in d if x not in keys}
+def without_keys(d, keys) :
+    return {x: d[x] for x in d if x not in keys}
+
+

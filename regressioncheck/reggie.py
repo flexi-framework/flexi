@@ -7,7 +7,6 @@ import check
 from timeit import default_timer as timer
 #import ast
 #import re
-import analyze_functions
                                 
 start = timer()
 global_run_number=0
@@ -15,22 +14,18 @@ global_errors=0
 build_number=0
 
 parser = argparse.ArgumentParser(description='Regression checker for NRG codes.', formatter_class=argparse.RawTextHelpFormatter)
-parser.add_argument('-m', '--mode', choices=['build', 'run'], default='build', help='''  --mode build : compile code for all binary-combinations and for all binaries run all examples with all run-combinations
-  --mode run   : run all binaries for all examples with all run-combinations, compile missing binary-combinations.''')
 parser.add_argument('-c', '--carryon', action='store_true', help='''Continue build/run process. 
-  --carryon --mode build : build non-existing binary-combinations and run all examples for thoses builds
-  --carryon --mode run   : run all failed examples''')
+  --carryon         : build non-existing binary-combinations and run all examples for thoses builds
+  --carryon --run   : run all failed examples''')
 parser.add_argument('-e', '--exe', help='Path to executable of code that should be tested.')
 parser.add_argument('-d', '--debug', type=int, default=0, help='Debug level.')
 parser.add_argument('-j', '--buildprocs', type=int, default=0, help='Number of processors used for compiling (make -j XXX).')
 parser.add_argument('-b', '--basedir', help='Path to basedir of code that should be tested (contains CMakeLists.txt).')
 parser.add_argument('-y', '--dummy', action='store_true',help='use dummy_basedir and dummy_checks for fast testing on dummy code')
-parser.add_argument('-r', '--run', action='store_true' ,help='run all binaries for all examples with all run-combinations, compile missing binary-combinations')
+parser.add_argument('-r', '--run', action='store_true' ,help='run all binaries for all examples with all run-combinations for all existing binaries')
 parser.add_argument('check', help='Path to check-/example-directory.')
 
 args = parser.parse_args() # reggie command line arguments
-if args.run :
-    args.mode = 'run'
 
 print('='*132)
 print "reggie2.0, add nice ASCII art here"
@@ -58,28 +53,29 @@ else :
     except Exception,ex :
         args.basedir = os.path.abspath('dummy_basedir')
 
-# delete the building directory when [carryon = False] and [mode = 'build'] before getBuilds is called
-if not args.carryon and args.mode=='build' : tools.clean_folder("reggie_outdir")
+# delete the building directory when [carryon = False] and [run = False] before getBuilds is called
+if not args.carryon and not args.run : tools.clean_folder("reggie_outdir")
 
 # get builds from checks directory if no executable is supplied
 if args.exe is None : # if not exe is supplied, get builds
     # read build combinations from checks/XX/builds.ini
-    builds = check.getBuilds(args.basedir, os.path.join(args.check, 'builds.ini'))
+    builds = check.getBuilds(args.basedir, args.check)
 else :
     found = os.path.exists(args.exe) # check if executable exists
     if not found :
-        print tools.bcolors.FAIL+"no executable found under ",args.exe+tools.bcolors.ENDC
+        print tools.red("no executable found under ")
         exit(1)
     else :
-        builds = [args.exe] # set builds list to contain only the supplied executable
-        args.mode = 'run'
+        builds = [check.Standalone(args.exe,args.check)] # set builds list to contain only the supplied executable
+        args.run = True
         args.basedir = None
 
-doRun = (args.mode == 'run')
-if doRun :
-    print "doRun -> skip building"
-    builds = [build for build in builds if build.skip]
 
+if args.run :
+    print "args.run -> skip building"
+    # remove all build from builds when build.binary_exists() = False
+    print builds[0].binary_exists()
+    builds = [build for build in builds if build.binary_exists()]
 
 
 
@@ -92,56 +88,64 @@ print('='*132)
 
 
 
+# General worflow:
+# 1.   loop over alls builds
+# 1.1    compile the build if args.run is false and the binary is non-existent
+# 1.1    read the example directories
+# 2.   loop over all example directories
+# 2.1    read the command line options for binary execution (e.g. number of threads for mpirun) 
+# 2.2    read the analyze options within each example directory
 
 # compile and run loop
 try : # if compiling fails -> go to exception
     for build in builds :
-        build_number+=1
+        build_number+=1 # count number of builds
         print "Build Cmake Configuration ",build_number," of ",len(builds)," ...",
         log.info(str(build))
-        
         build.compile(args.buildprocs)
-        if not args.carryon and args.mode=='run' :
+        if not args.carryon :
             tools.clean_folder(os.path.join(build.target_directory,"examples"))
-        # get examples: run_basic/example1, run_basic/example2
+        # get example folders: run_basic/example1, run_basic/example2 from check folder
         build.examples = check.getExamples(args.check, build)
         for example in build.examples :
             log.info(str(example))
-            # get MPI=1,2,3
+            # get command line options: MPI=1,2,3 from 'command_line.ini'
             example.command_lines = \
                     check.getCommand_Lines(os.path.join(example.source_directory,'command_line.ini'), example)
-            # get analyze: L2, convtest, line integral
+            # get analyze parameters: L2, convtest, line integral from 'analyze.ini'
             example.analyzes = \
                     check.getAnalyzes(os.path.join(example.source_directory,'analyze.ini'), example)
             for command_line in example.command_lines :
                 log.info(str(command_line))
+                # get setup parameters: N=, mesh=, etc. from 'parameter.ini'
                 command_line.runs = \
                         check.getRuns(os.path.join(example.source_directory,'parameter.ini' ), command_line)
                 for run in command_line.runs :
                     log.info(str(run))
-                    if run.skip :
-                        continue
                     run.execute(build,command_line)
                     global_run_number+=1
                     run.globalnumber=global_run_number
-
-                    #run.analyze_results = []
-                    if run.successful : # only do analysis if the run was successful
-                        for analyze in example.analyzes :
-                            log.info(str(analyze))
-                            # L2 error check
-                            L2_tolerance = float(analyze.parameters.get('analyze_L2',-1.))
-                            if L2_tolerance > 0 :
-                                L2_errors = np.array(analyze_functions.get_last_L2_error(run.stdout))
-                                if (L2_errors > L2_tolerance).any() :
-                                    run.analyze_results.append("analysis failed: L2 error >"+str(L2_tolerance))
-                                    global_errors+=1
-                                    analyze.successful=False
-
-                        if not all([analyze.successful for analyze in example.analyzes]) : # if one fails rename
-                            run.rename_failed()
-                    else : # when the run has failed
+                    if not run.successful :
                         global_errors+=1
+
+                print tools.blue(">>>>>>>>>>>>>> ANALYZE <<<<<<<<<<<<<<<")
+                runs_successful = [run for run in command_line.runs if run.successful]
+                for analyze in example.analyzes :
+                    print tools.blue(str(analyze.options))
+                    analyze.perform(runs_successful)
+
+                print tools.blue(">>>>>>>>>>>>>> RENAME <<<<<<<<<<<<<<<")
+                for run in runs_successful : # all successful runs
+                    if not run.analyze_successful : # if analyze fails: rename
+                        print run.target_directory
+                        run.rename_failed()
+
+                #    # h-Convergence test
+
+
+
+
+
         print('='*132)
 except check.BuildFailedException,ex:
     print tools.bcolors.WARNING+""
@@ -168,24 +172,23 @@ except check.BuildFailedException,ex:
 print('='*132)
 param_str_old=""
 print " Summary of Errors"+"\n"
-#print tools.indent("Compile flags",2)+" build/example/reggie/run".rjust(25)
 d = ' '
 d2 = '.'
-#invalid_keys = {"MPI", "binary", "analyze*"}
-#parameters_removed = tools.without_keys(command_line.parameters, invalid_keys)
+#invalid_keys = {"MPI", "binary", "analyze*"} # define keys to be removed from a dict
+#parameters_removed = tools.without_keys(command_line.parameters, invalid_keys) # remove keys from dict
 
 print "#run".center(8,d),"options".center(37,d2),"path".center(44,d),"MPI".center(9,d2),"runtime".rjust(10,d),"Information".rjust(15,d2)
 for build in builds :
     #print('-'*132)
     print " "
-    print " ".join(build.cmake_cmd)
+    if type(build) is check.Build : print " ".join(build.cmake_cmd)
     for example in build.examples :
         for command_line in example.command_lines :
             #line=", ".join(["%s=%s"%item for item in command_line.parameters.items()])
             #print tools.yellow(tools.indent(line,4," "))
             for run in command_line.runs :
-                if run.skip :
-                    continue
+                #if run.target_directory_exists :
+                    #continue
                 line=", ".join(["%s=%s"%item for item in run.parameters.items()[1:]]) # skip first index
                 if line != param_str_old : # only print when the parameter set changes
                     print tools.yellow(tools.indent(line,5))
