@@ -40,3 +40,15 @@ def calcOrder_h(h,E) :
         order.append(math.log(dE)/math.log(dh))
 
     return order
+
+def calcOrder_p(p,E) :
+    if len(p) != len(E) :
+        return -1
+
+    order = []
+    for i in range(1,len(p)) :
+        dp=1.0/((p[i]+1.0)/(p[i-1]+1.0))
+        dE=E[i]/E[i-1]
+        order.append(math.log(dE)/math.log(dp))
+
+    return order

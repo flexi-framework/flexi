@@ -88,64 +88,84 @@ print('='*132)
 
 
 
-# General worflow:
+# General workflow:
 # 1.   loop over alls builds
 # 1.1    compile the build if args.run is false and the binary is non-existent
-# 1.1    read the example directories
+# 1.1    read all example directories in the check directory
 # 2.   loop over all example directories
-# 2.1    read the command line options for binary execution (e.g. number of threads for mpirun) 
-# 2.2    read the analyze options within each example directory
+# 2.1    read the command line options in 'command_line.ini' for binary execution (e.g. number of threads for mpirun) 
+# 2.2    read the analyze options in 'analyze.ini' within each example directory (e.g. L2 error analyze)
+# 3.   loop over all command_line options
+# 3.1    read the executable parameter file 'parameter.ini' (e.g. flexi.ini with which flexi will be started)
+# 4.   loop over all parameter combinations supplied in the parameter file 'parameter.ini'
+# 4.1    execute the binary file for one combination of parameters
+# 5.   loop over all successfully executed binary results and perform analyze tests
+# 6.   rename all run directories for which the analyze step has failed for at least one test
 
 # compile and run loop
 try : # if compiling fails -> go to exception
+
+    # 1.   loop over alls builds
     for build in builds :
         build_number+=1 # count number of builds
         print "Build Cmake Configuration ",build_number," of ",len(builds)," ...",
         log.info(str(build))
+
+        # 1.1    compile the build if args.run is false and the binary is non-existent
         build.compile(args.buildprocs)
         if not args.carryon :
             tools.clean_folder(os.path.join(build.target_directory,"examples"))
+        
+        # 1.1    read the example directories
         # get example folders: run_basic/example1, run_basic/example2 from check folder
         build.examples = check.getExamples(args.check, build)
+
+        # 2.   loop over all example directories
         for example in build.examples :
             log.info(str(example))
-            # get command line options: MPI=1,2,3 from 'command_line.ini'
+            
+            # 2.1    read the command line options in 'command_line.ini' for binary execution 
+            #        (e.g. number of threads for mpirun)
             example.command_lines = \
                     check.getCommand_Lines(os.path.join(example.source_directory,'command_line.ini'), example)
-            # get analyze parameters: L2, convtest, line integral from 'analyze.ini'
+            
+            # 2.2    read the analyze options in 'analyze.ini' within each example directory (e.g. L2 error analyze)
             example.analyzes = \
                     check.getAnalyzes(os.path.join(example.source_directory,'analyze.ini'), example)
+
+            # 3.   loop over all command_line options
             for command_line in example.command_lines :
                 log.info(str(command_line))
-                # get setup parameters: N=, mesh=, etc. from 'parameter.ini'
+
+                # 3.1    read the executable parameter file 'parameter.ini' (e.g. flexi.ini with which 
+                #        flexi will be started), N=, mesh=, etc.
                 command_line.runs = \
                         check.getRuns(os.path.join(example.source_directory,'parameter.ini' ), command_line)
+
+                # 4.   loop over all parameter combinations supplied in the parameter file 'parameter.ini'
                 for run in command_line.runs :
                     log.info(str(run))
+
+                    # 4.1    execute the binary file for one combination of parameters
                     run.execute(build,command_line)
                     global_run_number+=1
                     run.globalnumber=global_run_number
                     if not run.successful :
                         global_errors+=1
 
+                # 5.   loop over all successfully executed binary results and perform analyze tests
                 print tools.blue(">>>>>>>>>>>>>> ANALYZE <<<<<<<<<<<<<<<")
                 runs_successful = [run for run in command_line.runs if run.successful]
                 for analyze in example.analyzes :
-                    print tools.blue(str(analyze.options))
+                    print tools.blue(str(analyze))
                     analyze.perform(runs_successful)
 
+                # 6.   rename all run directories for which the analyze step has failed for at least one test
                 print tools.blue(">>>>>>>>>>>>>> RENAME <<<<<<<<<<<<<<<")
                 for run in runs_successful : # all successful runs
                     if not run.analyze_successful : # if analyze fails: rename
                         print run.target_directory
                         run.rename_failed()
-
-                #    # h-Convergence test
-
-
-
-
-
         print('='*132)
 except check.BuildFailedException,ex:
     print tools.bcolors.WARNING+""
