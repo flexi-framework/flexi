@@ -4,7 +4,7 @@ import os
 import logging
 import tools
 import check
-import analyze
+import analysis
 from timeit import default_timer as timer
 
 print('='*132)
@@ -136,8 +136,10 @@ try : # if compiling fails -> go to exception
                     check.getCommand_Lines(os.path.join(example.source_directory,'command_line.ini'), example)
             
             # 2.2    read the analyze options in 'analyze.ini' within each example directory (e.g. L2 error analyze)
+            print tools.red(str(os.path.join(example.source_directory,'analyze.ini')))
+            print tools.red(str(example))
             example.analyzes = \
-                    analyze.getAnalyzes(os.path.join(example.source_directory,'analyze.ini'), example)
+                    analysis.getAnalyzes(os.path.join(example.source_directory,'analyze.ini'), example)
 
             # 3.   loop over all command_line options
             for command_line in example.command_lines :
