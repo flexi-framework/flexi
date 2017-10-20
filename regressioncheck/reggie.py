@@ -4,9 +4,12 @@ import os
 import logging
 import tools
 import check
+import analyze
 from timeit import default_timer as timer
-#import ast
-#import re
+
+print('='*132)
+print "reggie2.0, add nice ASCII art here"
+print('='*132)
                                 
 start = timer()
 global_run_number=0
@@ -26,10 +29,6 @@ parser.add_argument('-r', '--run', action='store_true' ,help='run all binaries f
 parser.add_argument('check', help='Path to check-/example-directory.')
 
 args = parser.parse_args() # reggie command line arguments
-
-print('='*132)
-print "reggie2.0, add nice ASCII art here"
-print('='*132)
 cwd = os.getcwd()                                          # start with current working directory
 found = os.path.exists(os.path.join(cwd,args.check)) # check if directory exists
 if not found :
@@ -74,8 +73,12 @@ else :
 if args.run :
     print "args.run -> skip building"
     # remove all build from builds when build.binary_exists() = False
-    print builds[0].binary_exists()
-    builds = [build for build in builds if build.binary_exists()]
+    if builds[0].binary_exists() :
+        builds = [build for build in builds]
+        print builds
+    else :
+        print tools.red("no binary found"+str(builds))
+        exit(1)
 
 
 
@@ -118,7 +121,10 @@ try : # if compiling fails -> go to exception
         
         # 1.1    read the example directories
         # get example folders: run_basic/example1, run_basic/example2 from check folder
+        print args.check
+        print build
         build.examples = check.getExamples(args.check, build)
+        log.info("build.examples"+str(build.examples))
 
         # 2.   loop over all example directories
         for example in build.examples :
@@ -131,7 +137,7 @@ try : # if compiling fails -> go to exception
             
             # 2.2    read the analyze options in 'analyze.ini' within each example directory (e.g. L2 error analyze)
             example.analyzes = \
-                    check.getAnalyzes(os.path.join(example.source_directory,'analyze.ini'), example)
+                    analyze.getAnalyzes(os.path.join(example.source_directory,'analyze.ini'), example)
 
             # 3.   loop over all command_line options
             for command_line in example.command_lines :
@@ -154,17 +160,18 @@ try : # if compiling fails -> go to exception
                         global_errors+=1
 
                 # 5.   loop over all successfully executed binary results and perform analyze tests
-                print tools.blue(">>>>>>>>>>>>>> ANALYZE <<<<<<<<<<<<<<<")
                 runs_successful = [run for run in command_line.runs if run.successful]
-                for analyze in example.analyzes :
-                    print tools.blue(str(analyze))
-                    analyze.perform(runs_successful)
+                if runs_successful : # do analyzes only if runs_successful is not emtpy
+                    for analyze in example.analyzes :
+                        #print tools.blue(">>>>>>>>>>>>>> ANALYZE <<<<<<<<<<<<<<<")
+                        print tools.blue(str(analyze))
+                        analyze.perform(runs_successful)
 
                 # 6.   rename all run directories for which the analyze step has failed for at least one test
-                print tools.blue(">>>>>>>>>>>>>> RENAME <<<<<<<<<<<<<<<")
-                for run in runs_successful : # all successful runs
-                    if not run.analyze_successful : # if analyze fails: rename
-                        print run.target_directory
+                for run in runs_successful : # all successful runs (failed runs are already renamed)
+                    if not run.analyze_successful : # if 1 of N analyzes fails: rename
+                        #print tools.blue(">>>>>>>>>>>>>> RENAME <<<<<<<<<<<<<<<")
+                        #print run.target_directory
                         run.rename_failed()
         print('='*132)
 except check.BuildFailedException,ex:
@@ -192,12 +199,14 @@ except check.BuildFailedException,ex:
 print('='*132)
 param_str_old=""
 print " Summary of Errors"+"\n"
-d = ' '
-d2 = '.'
+d  = ' '
+d2 = ' '
+d3 = ' '
+d4 = ' '
 #invalid_keys = {"MPI", "binary", "analyze*"} # define keys to be removed from a dict
 #parameters_removed = tools.without_keys(command_line.parameters, invalid_keys) # remove keys from dict
 
-print "#run".center(8,d),"options".center(37,d2),"path".center(44,d),"MPI".center(9,d2),"runtime".rjust(10,d),"Information".rjust(15,d2)
+print "#run".center(5,d4)+"options".center(51,d4)+"path".center(65,d4)+"MPI".center(3,d4)+"time".rjust(5,d4)+"Information".rjust(12,d4)
 for build in builds :
     #print('-'*132)
     print " "
@@ -207,26 +216,26 @@ for build in builds :
             #line=", ".join(["%s=%s"%item for item in command_line.parameters.items()])
             #print tools.yellow(tools.indent(line,4," "))
             for run in command_line.runs :
-                #if run.target_directory_exists :
-                    #continue
                 line=", ".join(["%s=%s"%item for item in run.parameters.items()[1:]]) # skip first index
                 if line != param_str_old : # only print when the parameter set changes
-                    print tools.yellow(tools.indent(line,5))
+                    print tools.yellow(tools.indent(line,3))
                 param_str_old=line
-                line=str(run.globalnumber).center(5,d)+" "*3 # global run number
+                line=str(run.globalnumber).rjust(4,d3)+" "*3 # global run number
 
                 line+= tools.yellow("%s=%s"%(run.parameters.items()[0])) # only use first index
-                line=line.ljust(65,d) # inner most run variable (e.g. TimeDiscMethod)
+                line=line.ljust(65,d3) # inner most run variable (e.g. TimeDiscMethod)
 
                 # build/example/reggie/run info
                 line+=os.path.relpath(run.target_directory,"reggie_outdir").ljust(65,d2)
 
-                line+=command_line.parameters.get('MPI','-').center(5,d)
-                line+="%2.2f".rjust(8,d2) % (run.execution_time)
-                line+=run.result.rjust(25,d) # add result (successful or failed)
+                line+=command_line.parameters.get('MPI','-').center(4,d3)
+                #run.execution_time=21000.20
+                #print "%2.1f".rjust(10,d2) % (run.execution_time)
+                line+="%2.1f".rjust(5,d2) % (run.execution_time)
+                line+=run.result.center(21,d3) # add result (successful or failed)
                 print line
                 for result in run.analyze_results :
-                    print tools.red(result).rjust(158)
+                    print tools.red(result).rjust(148)
         print ""
 
 if global_errors > 0 :
