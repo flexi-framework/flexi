@@ -136,8 +136,6 @@ try : # if compiling fails -> go to exception
                     check.getCommand_Lines(os.path.join(example.source_directory,'command_line.ini'), example)
             
             # 2.2    read the analyze options in 'analyze.ini' within each example directory (e.g. L2 error analyze)
-            print tools.red(str(os.path.join(example.source_directory,'analyze.ini')))
-            print tools.red(str(example))
             example.analyzes = \
                     analysis.getAnalyzes(os.path.join(example.source_directory,'analyze.ini'), example)
 
@@ -233,11 +231,11 @@ for build in builds :
                 line+=command_line.parameters.get('MPI','-').center(4,d3)
                 #run.execution_time=21000.20
                 #print "%2.1f".rjust(10,d2) % (run.execution_time)
-                line+="%2.1f".rjust(5,d2) % (run.execution_time)
+                line+="%2.1f".rjust(7,d2) % (run.execution_time)
                 line+=run.result.center(21,d3) # add result (successful or failed)
                 print line
                 for result in run.analyze_results :
-                    print tools.red(result).rjust(148)
+                    print tools.red(result).rjust(150)
         print ""
 
 if global_errors > 0 :

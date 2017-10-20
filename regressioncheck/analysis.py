@@ -25,7 +25,6 @@ def getAnalyzes(path, example) :
     # 2.2   h-convergence test
     # 2.3   p-convergence test
     # 2.4   h5diff (relative or absolute HDF5-file comparison of an output file with a reference file)
-    print tools.red("here 123")
 
     # 1.  Read the analyze options from file 'path'
     analyze = []
@@ -40,7 +39,6 @@ def getAnalyzes(path, example) :
 
     # 2.1   L2 error
     L2_tolerance = float(options.get('analyze_l2',-1.))
-    print tools.red(str(L2_tolerance))
     if L2_tolerance > 0 :
         analyze.append(Analyze_L2(L2_tolerance))
     
