@@ -84,7 +84,6 @@ def yellow(text) :
 def finalize(start,text) :
     print('='*132)
     end = timer()
-    #print(end - start)
     print "reggie2.0 ",text," [%2.2f sec]" % (end - start)
     print('='*132)
 

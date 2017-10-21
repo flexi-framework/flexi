@@ -236,6 +236,7 @@ for build in builds :
                 print line
                 for result in run.analyze_results :
                     print tools.red(result).rjust(150)
+            print ""
         print ""
 
 if global_errors > 0 :

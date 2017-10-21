@@ -56,14 +56,14 @@ gnu:
   tags:
     - withmodules
   script:
-    - module load env/gnu ; cd build_gnu/bin/ ; ./regressioncheck
+    - module load env/gnu ; cd build_gnu/regressioncheck/ ; python reggy.py checks/run_basic -e ../build_gnu/bin/flexi
 
 intel:
   stage: reggie_checkin
   tags:
     - withmodules
   script:
-    - module load env/intel ; cd build_intel/bin/ ; ./regressioncheck
+    - module load env/intel ; cd build_intel/regressioncheck/ ; python reggy.py checks/run_basic -e ../build_gnu/bin/flexi
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "reggie_nightly": Build and run
@@ -71,97 +71,97 @@ intel:
 #                         - h-p-convtests
 #                      examples on nightly
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
-gnu_build_mpi:
+gnu_build_all:
   stage: reggie_nightly
   tags:
     - withmodules
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then  module load env/gnu ; cd build_gnu/bin/ ; ./regressioncheck build -j; fi
+    - if [ -n "${DO_NIGHTLY}" ]; then  module load env/gnu ; cd build_gnu/regressioncheck/ ; python reggy.py checks/run_basic ; fi
 
 gnu_convtest:
   stage: reggie_nightly
   tags:
     - withmodules
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then module load env/gnu ; cd build_gnu/bin/ ; ./regressioncheck build feature_convtest -j; fi
+    - if [ -n "${DO_NIGHTLY}" ]; then module load env/gnu ; cd build_gnu/regressioncheck/ ; python reggy.py checks/convtest ; fi 
 
 
 
 
-intel_build_mpi:
+intel_build_all:
   stage: reggie_nightly
   tags:
     - withmodules
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel/bin/ ; ./regressioncheck build -j; fi
+    - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel/regressioncheck/ ; python reggy.py checks/run_basic ; fi
 
 intel_convtest:
   stage: reggie_nightly
   tags:
     - withmodules
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel/bin/ ; ./regressioncheck build feature_convtest -j; fi
+    - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel/regressioncheck/ ; python reggy.py checks/convtest ; fi
 
 
-# ----------------------------------------------------------------------------------------------------------------------------------------------------
-# Stage "reggie_weekly": run 
-#                         - NACA0012 Tutorial 
-#                      examples on weekly
-# ----------------------------------------------------------------------------------------------------------------------------------------------------
-gnu_weekly_mpi:
-  stage: reggie_weekly
-  tags:
-    - withmodules
-  script:
-    - if [ -n "${DO_WEEKLY}" ]; then  module load env/gnu ; cd build_gnu/bin/ ; ./regressioncheck tutorials ; fi
-
-intel_weekly_mpi:
-  stage: reggie_weekly
-  tags:
-    - withmodules
-  script:
-    - if [ -n "${DO_WEEKLY}" ]; then module load env/intel ; cd build_intel/bin/ ; ./regressioncheck tutorials ; fi
-
-
-
-# ----------------------------------------------------------------------------------------------------------------------------------------------------
-# Stage "documentation": creates doxygen documentation & compiles the documentation creating the *.pdf
-# ----------------------------------------------------------------------------------------------------------------------------------------------------
-doxygen:
-  stage: documentation
-  tags:
-    - withmodules
-  script:
-    - echo 'skipping...'
-    #- cd doc/doxygen ; ./builddoxy.sh
-
-userguide:
-  stage: documentation
-  tags:
-    - withmodules
-  script:
-    - echo 'skipping...'
-    #- cd doc/userguide ; make
-
-
-
-# ----------------------------------------------------------------------------------------------------------------------------------------------------
-# Stage "deploy": copies the doxygen documentation and userguide *.pdf to the homepage server & copies the repository to github 
-# ----------------------------------------------------------------------------------------------------------------------------------------------------
-deploy_homepage:
-  stage: deploy
-  tags:
-    - withmodules
-  script:
-    - if [ -n "${DO_DEPLOY}" ]; then if [ -d "doc/doxygen/doxygen" ]; then ssh flexi@euler rm -rf homepage/doxygen ; scp -r doc/doxygen/doxygen flexi@euler:~/homepage/. ; fi ; fi
-    - if [ -n "${DO_DEPLOY}" ]; then if [ -d "doc/userguide" ]; then scp -r doc/userguide flexi@euler:~/homepage/. ; fi ; fi
-
-deploy_github:
-  stage: deploy
-  tags:
-    - withmodules
-  script:
-    - if [ -z "${DO_DEPLOY}" ]; then exit ; fi
-    - git clone --single-branch git@gitlab.iag.uni-stuttgart.de:flexi/flexi.git flexi_github ; cd flexi_github ; git push --mirror git@github.com:flexi-framework/flexi.git ; cd ../
-    - git clone --bare          git@gitlab.iag.uni-stuttgart.de:flexi/HDF5.git  HDF5_github  ; cd HDF5_github  ; git push --mirror git@github.com:flexi-framework/HDF5.git  ; cd ../
-
+#            # ----------------------------------------------------------------------------------------------------------------------------------------------------
+#            # Stage "reggie_weekly": run 
+#            #                         - NACA0012 Tutorial 
+#            #                      examples on weekly
+#            # ----------------------------------------------------------------------------------------------------------------------------------------------------
+#            gnu_weekly_mpi:
+#              stage: reggie_weekly
+#              tags:
+#                - withmodules
+#              script:
+#                - if [ -n "${DO_WEEKLY}" ]; then  module load env/gnu ; cd build_gnu/bin/ ; ./regressioncheck tutorials ; fi
+#            
+#            intel_weekly_mpi:
+#              stage: reggie_weekly
+#              tags:
+#                - withmodules
+#              script:
+#                - if [ -n "${DO_WEEKLY}" ]; then module load env/intel ; cd build_intel/bin/ ; ./regressioncheck tutorials ; fi
+#            
+#            
+#            
+#            # ----------------------------------------------------------------------------------------------------------------------------------------------------
+#            # Stage "documentation": creates doxygen documentation & compiles the documentation creating the *.pdf
+#            # ----------------------------------------------------------------------------------------------------------------------------------------------------
+#            doxygen:
+#              stage: documentation
+#              tags:
+#                - withmodules
+#              script:
+#                - echo 'skipping...'
+#                #- cd doc/doxygen ; ./builddoxy.sh
+#            
+#            userguide:
+#              stage: documentation
+#              tags:
+#                - withmodules
+#              script:
+#                - echo 'skipping...'
+#                #- cd doc/userguide ; make
+#            
+#            
+#            
+#            # ----------------------------------------------------------------------------------------------------------------------------------------------------
+#            # Stage "deploy": copies the doxygen documentation and userguide *.pdf to the homepage server & copies the repository to github 
+#            # ----------------------------------------------------------------------------------------------------------------------------------------------------
+#            deploy_homepage:
+#              stage: deploy
+#              tags:
+#                - withmodules
+#              script:
+#                - if [ -n "${DO_DEPLOY}" ]; then if [ -d "doc/doxygen/doxygen" ]; then ssh flexi@euler rm -rf homepage/doxygen ; scp -r doc/doxygen/doxygen flexi@euler:~/homepage/. ; fi ; fi
+#                - if [ -n "${DO_DEPLOY}" ]; then if [ -d "doc/userguide" ]; then scp -r doc/userguide flexi@euler:~/homepage/. ; fi ; fi
+#            
+#            deploy_github:
+#              stage: deploy
+#              tags:
+#                - withmodules
+#              script:
+#                - if [ -z "${DO_DEPLOY}" ]; then exit ; fi
+#                - git clone --single-branch git@gitlab.iag.uni-stuttgart.de:flexi/flexi.git flexi_github ; cd flexi_github ; git push --mirror git@github.com:flexi-framework/flexi.git ; cd ../
+#                - git clone --bare          git@gitlab.iag.uni-stuttgart.de:flexi/HDF5.git  HDF5_github  ; cd HDF5_github  ; git push --mirror git@github.com:flexi-framework/HDF5.git  ; cd ../
+#            
