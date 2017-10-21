@@ -76,14 +76,14 @@ gnu_build_all:
   tags:
     - withmodules
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then  module load env/gnu ; cd build_gnu/regressioncheck/ ; python reggy.py checks/run_basic ; fi
+    - if [ -n "${DO_NIGHTLY}" ]; then  module load env/gnu ; cd build_gnu ;  python ../regressioncheck/reggy.py ../regressioncheck/checks/run_basic ; fi
 
 gnu_convtest:
   stage: reggie_nightly
   tags:
     - withmodules
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then module load env/gnu ; cd build_gnu/regressioncheck/ ; python reggy.py checks/convtest ; fi 
+    - if [ -n "${DO_NIGHTLY}" ]; then module load env/gnu ; cd build_gnu ;  python ../regressioncheck/reggy.py ../regressioncheck/checks/convtest ; fi 
 
 
 
@@ -93,14 +93,14 @@ intel_build_all:
   tags:
     - withmodules
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel/regressioncheck/ ; python reggy.py checks/run_basic ; fi
+    - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel ;  python ../regressioncheck/reggy.py ../regressioncheck/checks/run_basic ; fi
 
 intel_convtest:
   stage: reggie_nightly
   tags:
     - withmodules
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel/regressioncheck/ ; python reggy.py checks/convtest ; fi
+    - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel ;  python ../regressioncheck/reggy.py ../regressioncheck/checks/convtest ; fi 
 
 
 #            # ----------------------------------------------------------------------------------------------------------------------------------------------------
