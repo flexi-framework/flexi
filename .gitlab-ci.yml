@@ -56,14 +56,14 @@ gnu:
   tags:
     - withmodules
   script:
-    - module load env/gnu ; cd build_gnu ;  python ../regressioncheck/reggie.py ../regressioncheck/checks/run_basic -e ./bin/flexi
+    - module load env/gnu ; cd build_gnu ;  python ../regressioncheck/reggie.py ../regressioncheck/checks/run_basic/freestream_3D -e ./bin/flexi
 
 intel:
   stage: reggie_checkin
   tags:
     - withmodules
   script:
-    - module load env/intel ; cd build_intel ;  python ../regressioncheck/reggie.py ../regressioncheck/checks/run_basic -e ./bin/flexi
+    - module load env/intel ; cd build_intel ;  python ../regressioncheck/reggie.py ../regressioncheck/checks/run_basic/freestream_3D -e ./bin/flexi
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "reggie_nightly": Build and run

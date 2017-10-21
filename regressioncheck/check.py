@@ -66,7 +66,7 @@ class Build(Loop) :
 class Standalone(Build) :
     def __init__(self,binary_path,source_directory) :
         Build.__init__(self, None, source_directory, {}, -1, "standalone")
-        self.binary_path = binary_path
+        self.binary_path = os.path.abspath(binary_path)
 
     def compile(self, buildprocs) :
         pass
