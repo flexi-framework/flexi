@@ -264,6 +264,7 @@ def PerformCheck(start,builds,args,log) :
             # 2.   loop over all example directories
             for example in build.examples :
                 log.info(str(example))
+                print str(example)
                 
                 # 2.1    read the command line options in 'command_line.ini' for binary execution 
                 #        (e.g. number of threads for mpirun)

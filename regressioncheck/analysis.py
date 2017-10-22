@@ -146,6 +146,7 @@ class Analyze_Convtest_h() :
 
             # determine average convergence rate
             mean = [np.mean(all_L2_order[x]) for x in range(nVar)]
+            print mean
             
             # 1.5   determine success rate by comparing the relative convergence error with a tolerance
             print "relative order error ",[abs(mean[x]/(3+1)-1) for x in range(nVar)]
