@@ -4,7 +4,6 @@ import os
 import logging
 import tools
 import check
-import analysis
 from timeit import default_timer as timer
 
 print('='*132)
@@ -12,9 +11,6 @@ print "reggie2.0, add nice ASCII art here"
 print('='*132)
                                 
 start = timer()
-global_run_number=0
-global_errors=0
-build_number=0
 
 parser = argparse.ArgumentParser(description='Regression checker for NRG codes.', formatter_class=argparse.RawTextHelpFormatter)
 parser.add_argument('-c', '--carryon', action='store_true', help='''Continue build/run process. 
@@ -91,158 +87,12 @@ print('='*132)
 
 
 
-# General workflow:
-# 1.   loop over alls builds
-# 1.1    compile the build if args.run is false and the binary is non-existent
-# 1.1    read all example directories in the check directory
-# 2.   loop over all example directories
-# 2.1    read the command line options in 'command_line.ini' for binary execution (e.g. number of threads for mpirun) 
-# 2.2    read the analyze options in 'analyze.ini' within each example directory (e.g. L2 error analyze)
-# 3.   loop over all command_line options
-# 3.1    read the executable parameter file 'parameter.ini' (e.g. flexi.ini with which flexi will be started)
-# 4.   loop over all parameter combinations supplied in the parameter file 'parameter.ini'
-# 4.1    execute the binary file for one combination of parameters
-# 5.   loop over all successfully executed binary results and perform analyze tests
-# 6.   rename all run directories for which the analyze step has failed for at least one test
-
-# compile and run loop
-try : # if compiling fails -> go to exception
-
-    # 1.   loop over alls builds
-    for build in builds :
-        build_number+=1 # count number of builds
-        print "Build Cmake Configuration ",build_number," of ",len(builds)," ...",
-        log.info(str(build))
-
-        # 1.1    compile the build if args.run is false and the binary is non-existent
-        build.compile(args.buildprocs)
-        if not args.carryon :
-            tools.clean_folder(os.path.join(build.target_directory,"examples"))
-        
-        # 1.1    read the example directories
-        # get example folders: run_basic/example1, run_basic/example2 from check folder
-        print args.check
-        print build
-        build.examples = check.getExamples(args.check, build)
-        log.info("build.examples"+str(build.examples))
-
-        # 2.   loop over all example directories
-        for example in build.examples :
-            log.info(str(example))
-            
-            # 2.1    read the command line options in 'command_line.ini' for binary execution 
-            #        (e.g. number of threads for mpirun)
-            example.command_lines = \
-                    check.getCommand_Lines(os.path.join(example.source_directory,'command_line.ini'), example)
-            
-            # 2.2    read the analyze options in 'analyze.ini' within each example directory (e.g. L2 error analyze)
-            example.analyzes = \
-                    analysis.getAnalyzes(os.path.join(example.source_directory,'analyze.ini'), example)
-
-            # 3.   loop over all command_line options
-            for command_line in example.command_lines :
-                log.info(str(command_line))
-
-                # 3.1    read the executable parameter file 'parameter.ini' (e.g. flexi.ini with which 
-                #        flexi will be started), N=, mesh=, etc.
-                command_line.runs = \
-                        check.getRuns(os.path.join(example.source_directory,'parameter.ini' ), command_line)
-
-                # 4.   loop over all parameter combinations supplied in the parameter file 'parameter.ini'
-                for run in command_line.runs :
-                    log.info(str(run))
-
-                    # 4.1    execute the binary file for one combination of parameters
-                    run.execute(build,command_line)
-                    global_run_number+=1
-                    run.globalnumber=global_run_number
-                    if not run.successful :
-                        global_errors+=1
-
-                # 5.   loop over all successfully executed binary results and perform analyze tests
-                runs_successful = [run for run in command_line.runs if run.successful]
-                if runs_successful : # do analyzes only if runs_successful is not emtpy
-                    for analyze in example.analyzes :
-                        #print tools.blue(">>>>>>>>>>>>>> ANALYZE <<<<<<<<<<<<<<<")
-                        print tools.blue(str(analyze))
-                        analyze.perform(runs_successful)
-
-                # 6.   rename all run directories for which the analyze step has failed for at least one test
-                for run in runs_successful : # all successful runs (failed runs are already renamed)
-                    if not run.analyze_successful : # if 1 of N analyzes fails: rename
-                        #print tools.blue(">>>>>>>>>>>>>> RENAME <<<<<<<<<<<<<<<")
-                        #print run.target_directory
-                        run.rename_failed()
-        print('='*132)
-except check.BuildFailedException,ex:
-    print tools.bcolors.WARNING+""
-    print ex # display error msg
-    print tools.indent(" ".join(build.cmake_cmd),1)
-    print tools.indent(" ".join(ex.build.make_cmd),1)
-    print tools.indent("Build failed, see: "+ex.build.stdout_filename,1)
-    print tools.indent("                   "+ex.build.stderr_filename,1)+tools.bcolors.ENDC
-    print tools.bcolors.FAIL
-    for line in ex.build.stderr[-20:] :
-        print tools.indent(line,4),
-    print tools.bcolors.ENDC
-    tools.finalize(start,"FAILED!")
-    exit(1)
+# perform build/run/analyze routines
+check.PerformCheck(start,builds,args,log)
 
 
 
 
-
-
-
-
-
-print('='*132)
-param_str_old=""
-print " Summary of Errors"+"\n"
-d  = ' '
-d2 = ' '
-d3 = ' '
-d4 = ' '
-#invalid_keys = {"MPI", "binary", "analyze*"} # define keys to be removed from a dict
-#parameters_removed = tools.without_keys(command_line.parameters, invalid_keys) # remove keys from dict
-
-print "#run".center(5,d4)+"options".center(51,d4)+"path".center(65,d4)+"MPI".center(3,d4)+"time".rjust(5,d4)+"Information".rjust(12,d4)
-for build in builds :
-    #print('-'*132)
-    print " "
-    if type(build) is check.Build : print " ".join(build.cmake_cmd)
-    for example in build.examples :
-        for command_line in example.command_lines :
-            #line=", ".join(["%s=%s"%item for item in command_line.parameters.items()])
-            #print tools.yellow(tools.indent(line,4," "))
-            for run in command_line.runs :
-                line=", ".join(["%s=%s"%item for item in run.parameters.items()[1:]]) # skip first index
-                if line != param_str_old : # only print when the parameter set changes
-                    print tools.yellow(tools.indent(line,3))
-                param_str_old=line
-                line=str(run.globalnumber).rjust(4,d3)+" "*3 # global run number
-
-                line+= tools.yellow("%s=%s"%(run.parameters.items()[0])) # only use first index
-                line=line.ljust(65,d3) # inner most run variable (e.g. TimeDiscMethod)
-
-                # build/example/reggie/run info
-                line+=os.path.relpath(run.target_directory,"reggie_outdir").ljust(65,d2)
-
-                line+=command_line.parameters.get('MPI','-').center(4,d3)
-                #run.execution_time=21000.20
-                #print "%2.1f".rjust(10,d2) % (run.execution_time)
-                line+="%2.1f".rjust(7,d2) % (run.execution_time)
-                line+=run.result.center(21,d3) # add result (successful or failed)
-                print line
-                for result in run.analyze_results :
-                    print tools.red(result).rjust(150)
-            print ""
-        print ""
-
-if global_errors > 0 :
-    tools.finalize(start,"Failed! Number of errors: "+str(global_errors))
-else :
-    tools.finalize(start,"successful")
-
-
+# print table with summary of errors if all builds where successful
+check.SummaryOfErrors(start,builds)
 

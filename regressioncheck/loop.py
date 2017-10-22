@@ -5,7 +5,10 @@ import tools
 
 class Loop() :
     successful = True
-    errors = []
+
+    # initialize total error counter
+    total_errors = 0
+    #errors = []
     globalnumber = 0
 
     def __init__(self, parent, name, number = -1, mkdir=True) :
@@ -61,7 +64,7 @@ class Loop() :
             f.write(line)
         f.close()
         if self.return_code != 0 :
-            self.result=tools.red("     Failed")
+            self.result=tools.red("Failed")
             self.stderr_filename = os.path.join(self.target_directory,"std.err")
             f = open(self.stderr_filename, 'w')
             for line in self.stderr :

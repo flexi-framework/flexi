@@ -81,13 +81,25 @@ def blue(text) :
 def yellow(text) :
     return bcolors.WARNING+text+bcolors.ENDC
 
-def finalize(start,text) :
+def finalize(start,text,global_errors=0) :
+    text+=str(global_errors)
+    if global_errors > 0:
+        print bcolors.FAIL+""
+    else :
+        print bcolors.OKBLUE+""
     print('='*132)
-    end = timer()
-    print "reggie2.0 ",text," [%2.2f sec]" % (end - start)
-    print('='*132)
+    if start > 0 : # only calculate run time and display output when start > 0
+        end = timer()
+        print "reggie2.0 ",text," [%2.2f sec]" % (end - start)
+        print('='*132)
+    print ""+bcolors.ENDC
 
-def without_keys(d, keys) :
-    return {x: d[x] for x in d if x not in keys}
+
+#invalid_keys = {"MPI", "binary", "analyze*"} # define keys to be removed from a dict
+#parameters_removed = tools.without_keys(command_line.parameters, invalid_keys) # remove keys from dict
+
+#def without_keys(d, keys) :
+#    # remove keys from a dict and return a dict
+#    return {x: d[x] for x in d if x not in keys}
 
 

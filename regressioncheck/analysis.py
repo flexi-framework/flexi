@@ -5,15 +5,6 @@ import combinations
 import check
 import tools
 
-# class Analyze(Loop) :
-#     def __init__(self, parameters, example, number) :
-#         self.parameters = parameters
-#         Loop.__init__(self, example, 'analyze', number, mkdir=False)
-#     def __str__(self) :
-#         s = "analyze parameters:\n"
-#         s += ",".join(["%s: %s" % (k,v) for k,v in self.parameters.items()])    
-#         return tools.indent(s,2)
-
 #==================================================================================================
 
 def getAnalyzes(path, example) :
@@ -103,6 +94,7 @@ class Analyze_L2() :
 
                 # 1.4   set analyzes to fail
                 run.analyze_successful=False
+                run.total_errors+=1
 
     def __str__(self) :
         return "perform L2 error comparison with a pre-defined tolerance"
@@ -177,8 +169,7 @@ class Analyze_Convtest_h() :
 
                     # 1.6.2   set analyzes to fail if success rate is not reached for all runs
                     run.analyze_successful=False
-
-                    #global_errors+=1
+                    run.total_errors+=1
 
         else :
             print "cannot perform conv test, because number of successful runs must equal the number of cells"
@@ -264,6 +255,7 @@ class Analyze_Convtest_p() :
 
                     # 2.8.2   set analyzes to fail if success rate is not reached for all runs
                     run.analyze_successful=False
+                    run.total_errors+=1
 
                     #global_errors+=1
         else :
@@ -323,6 +315,7 @@ class Analyze_h5diff(Loop) :
 
                 # 1.4.2   set analyzes to fail if return a code != 0
                 run.analyze_successful=False
+                run.total_errors+=1
 
                 #global_errors+=1
 
