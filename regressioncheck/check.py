@@ -1,5 +1,6 @@
 import os
 import shutil
+import collections
 import combinations 
 from loop import Loop
 import tools
@@ -7,7 +8,7 @@ from timeit import default_timer as timer
 import analysis
 
 class Build(Loop) :
-    def __init__(self, basedir, source_directory,configuration, number, name='build') :
+    def __init__(self, basedir, source_directory,configuration, number, name='build', binary_path=None) :
         self.basedir          = basedir
         self.source_directory = source_directory
         self.configuration    = configuration
@@ -19,12 +20,18 @@ class Build(Loop) :
         # initialize examples as empty list
         #self.examples = []
         
-        # move 'binary' from 'configuration' dict to 'parameters' dict
-        self.parameters = {'binary':self.configuration.get('binary','no binary supplied')}
-        self.configuration.pop('binary', None) # remove binary from config dict
-
         # set path to binary/executable
-        self.binary_path = os.path.abspath(self.target_directory+'/'+self.parameters['binary'])
+        if binary_path :
+            self.binary_path = binary_path
+        else :
+            # get 'binary' from 'configuration' dict and remove it 
+            try :
+                binary_name = self.configuration["binary"]
+            except :
+                print tools.red("No 'binary'-option with the name of the binary specified in 'builds.ini'")
+                exit(1)
+            self.configuration.pop('binary', None) # remove binary from config dict
+            self.binary_path = os.path.abspath(os.path.join(self.target_directory, binary_name))
 
         # set cmake command
         self.cmake_cmd = ["cmake"]                        # start composing cmake command
@@ -60,8 +67,7 @@ class Build(Loop) :
         print('-'*132)
 
     def __str__(self) :
-        s = "BUILD in: " + self.target_directory + "\n"
-        s += " ".join(self.cmake_cmd)
+        s = "BUILD in: " + self.target_directory
         return s
 
     def binary_exists(self) :
@@ -69,8 +75,7 @@ class Build(Loop) :
 
 class Standalone(Build) :
     def __init__(self,binary_path,source_directory) :
-        Build.__init__(self, None, source_directory, {}, -1, "standalone")
-        self.binary_path = os.path.abspath(binary_path)
+        Build.__init__(self, None, source_directory, {}, -1, "standalone", os.path.abspath(binary_path))
 
     def compile(self, buildprocs) :
         pass
@@ -131,7 +136,7 @@ def getExamples(path, build) :
 class Command_Lines(Loop) :
     def __init__(self, parameters, example, number) :
         self.parameters = parameters
-        Loop.__init__(self, example, 'command_line', number)
+        Loop.__init__(self, example, 'cmd', number)
     def __str__(self) :
         s = "command_line parameters:\n"
         s += ",".join(["%s: %s" % (k,v) for k,v in self.parameters.items()])    
@@ -198,7 +203,7 @@ class Run(Loop) :
 
         # execute the command 'cmd'
         start = timer()
-        print "Running ["," ".join(cmd),"]",
+        print tools.indent("Running [%s]" % (" ".join(cmd)), 2),
         self.execute_cmd(cmd) # run the code
         end = timer()
         self.execution_time = end - start
@@ -254,10 +259,9 @@ def PerformCheck(start,builds,args,log) :
             if not args.carryon : # remove examples folder if not carryon, in order to re-run all examples
                 tools.clean_folder(os.path.join(build.target_directory,"examples"))
             
+            print build
             # 1.1    read the example directories
             # get example folders: run_basic/example1, run_basic/example2 from check folder
-            print args.check
-            print build
             build.examples = getExamples(args.check, build)
             log.info("build.examples"+str(build.examples))
     
@@ -299,7 +303,7 @@ def PerformCheck(start,builds,args,log) :
                     runs_successful = [run for run in command_line.runs if run.successful]
                     if runs_successful : # do analyzes only if runs_successful is not emtpy
                         for analyze in example.analyzes :
-                            print tools.blue(str(analyze))
+                            print tools.indent(tools.blue(str(analyze)),2)
                             analyze.perform(runs_successful)
                     # add errors after analyze
                     build.total_errors+=sum(run.total_errors for run in command_line.runs if run.successful)
@@ -316,107 +320,104 @@ def PerformCheck(start,builds,args,log) :
         SummaryOfErrors(-1.,builds)
     
         # display error message
-        print tools.bcolors.WARNING+"" # activate yellow text color
+        print tools.bcolors.YELLOW+"" # activate yellow text color
         print ex # display error msg
         print tools.indent(" ".join(ex.build.cmake_cmd),1)
         print tools.indent(" ".join(ex.build.make_cmd),1)
         print tools.indent("Build failed, see: "+ex.build.stdout_filename,1)
         print tools.indent("                   "+ex.build.stderr_filename,1)+tools.bcolors.ENDC # de-activate yellow
-        print tools.bcolors.FAIL
+        print tools.bcolors.RED
         for line in ex.build.stderr[-20:] :
             print tools.indent(line,4),
         print tools.bcolors.ENDC
         global_errors = sum([build.total_errors for build in builds]) # sum up all errors from running and analyzing
-        tools.finalize(start,"FAILED!",min(1,global_errors))
+        tools.finalize(start,min(1,global_errors))
         exit(1)
 
 
 def SummaryOfErrors(start,builds) :
     # General workflow:
-    # 1.   loop over alls builds
-    # 1.1    display cmake flags if no external binary was used for execution
-    # 2.   loop over all examples
-    # 3.   loop over all command lines
-    # 4.   loop over all runs
-    # 4.1.   display the run parameters, execpt the inner most (this one is displayed in # 4.2.2)
-    # 4.2.   display one line of interformation for each run
-    # 4.2.1    start line with the global run number
-    # 4.2.2    add the inner most run variable (this one was skipped in # 4.1)
-    # 4.2.3    add the path to directory where the run is executed (build/example/reggie/run info)
-    # 4.2.4    add the number of MPI threads that where used for execution
-    # 4.2.5    add the time that was needed for the execution of the binary and print the line
-    # 4.3.     display the analyze results line by line
-    # 5.   display the number of errors encountered during build/execution/analyze
+    # 1. loop over all builds, examples, command_lines, runs and for every run set the output strings 
+    #    and get the maximal lengths of those strings
+    # 2. print header 
+    # 3. loop over all builds 
+    # 3.1  print some information of the build
+    # 3.2  within each build loop over all examples, command_lines, runs and for every run print some information:
+    # 3.2.1  print an empty separation line if number of MPI threads changes
+    # 3.2.2  print (only if changes) a line with all run parameters except the inner most, which is printed in 3.2.3
+    # 3.2.3  print a line with following information:
+    #          run.globalnumber, run.parameters[0] (the one not printed in 3.2.2), run.target_directory, MPI, run.execution_time, run.result 
+    # 3.2.4  print the analyze results line by line
+    # 4. print the number of errors encountered during build/execution/analyze
     
-    print('='*132)
     param_str_old = ""
     str_MPI_old   = "-"
+
+    # 1. loop over all runs and set output strings
+    max_lens = collections.OrderedDict([ ("#run",4) , ("options",7) , ("path",4) , ("MPI",3), ("time",4) , ("Info",4) ])
+    for build in builds :
+        for example in build.examples :
+            for command_line in example.command_lines :
+                for run in command_line.runs :
+                    run.output_strings = {}
+                    run.output_strings['#run']    = str(run.globalnumber)
+                    run.output_strings['options'] = "%s=%s"%(run.parameters.items()[0])
+                    run.output_strings['path']    = os.path.relpath(run.target_directory,"reggie_outdir")
+                    run.output_strings['MPI']     = command_line.parameters.get('MPI', '-') 
+                    run.output_strings['time']    = "%2.1f" % run.execution_time
+                    run.output_strings['Info']    = run.result
+                    for key in run.output_strings.keys() :
+                        max_lens[key] = max(max_lens[key], len(run.output_strings[key]))
+    
+    # 2. print header
     print " Summary of Errors"+"\n"
-    d  = ' '
-    d1 = ' '
+    spacing = 1
+    for key, value in max_lens.items() :
+        print key.ljust(value),spacing*' ',
+    print ""
     
-    print "#run".center(5,d1)+"options".center(51,d1)+"path".center(65,d1)+"MPI".center(3,d1)+"time".rjust(8,d1)+"Information".rjust(12,d1),"\n"
-    
-    # 1.   loop over alls builds
+    # 3. loop over alls builds
     for build in builds :
     
-        # 1.1    display cmake flags if no external binary was used for execution
+        # 3.1 print cmake flags if no external binary was used for execution
         print('-'*132)
-        if build.__class__ is Build : 
-            print "Build  ",build.number," of ",len(builds),"compiled with ","\n"," ".join(build.cmake_cmd),build.result
-            if build.result == tools.red("Failed") : break # stop output as soon as a failed build in encountered
-        elif build.__class__ is Standalone :
+        if isinstance(build, Standalone) :
             print "Binary supplied externally under ",build.binary_path
+        elif isinstance(build, Build) : 
+            print "Build %d of %d (%s) compiled with:" % (build.number, len(builds), build.result)
+            print " ".join(build.cmake_cmd)
+            if build.result == tools.red("Failed") : break # stop output as soon as a failed build in encountered
     
-        # 2.   loop over all examples
+        # 3.2 loop over all examples, command_lines and runs
         for example in build.examples :
-            print ""
-            
-            # 3.   loop over all command lines
             for command_line in example.command_lines :
-                str_MPI = command_line.parameters.get('MPI','-')
-                if str_MPI != str_MPI_old : print "" # print separation line if MPI threads change
-                str_MPI_old = str_MPI
-    
-                # 4.   loop over all runs
                 for run in command_line.runs :
+                    # 3.2.1 print separation line if MPI threads change
+                    if run.output_strings["MPI"] != str_MPI_old :
+                        print ""
+                        str_MPI_old = run.output_strings["MPI"]
     
-                    # 4.1    display the run parameters, execpt the inner most (this one is displayed in # 4.2.2)
-                    line=", ".join(["%s=%s"%item for item in run.parameters.items()[1:]]) # skip first index
-                    if line != param_str_old : # only print when the parameter set changes
-                        print tools.yellow(tools.indent(line,3))
-                    param_str_old=line
-    
-                    # 4.1.1    start line with the global run number
-                    line=str(run.globalnumber).rjust(4,d)+" "*3
-    
-                    # 4.2.2    add the inner most run variable (this one was skipped in # 4.1)
-                    line+= tools.yellow("%s=%s"%(run.parameters.items()[0]))
-                    line=line.ljust(65,d)
-    
-                    # 4.2.3    add the path to directory where the run is executed (build/example/reggie/run info)
-                    line+=os.path.relpath(run.target_directory,"reggie_outdir").ljust(65,d)
-    
-                    # 4.2.4    add the number of MPI threads that where used for execution
-                    line+=str_MPI.center(4,d)
-    
-                    # 4.2.5    add the time that was needed for the execution of the binary
-                    line+="%7.1f" % (run.execution_time)
-                    #line+="%10.1f".rjust(9,d) % (run.execution_time)
-                    line+=run.result.center(21,d) # add result (successful or failed)
-                    print line
-    
-                    # 4.3.     display the analyze results line by line
+                    # 3.2.2 print the run parameters, execpt the inner most (this one is displayed in # 3.2.3)
+                    param_str =", ".join(["%s=%s"%item for item in run.parameters.items()[1:]]) # skip first index
+                    if param_str  != param_str_old : # only print when the parameter set changes
+                        print "".ljust(max_lens["#run"]), spacing*' ', tools.yellow(param_str)
+                    param_str_old=param_str
+
+                    # 3.2.3 print all output_strings
+                    for key,value in max_lens.items() :
+                        if key == "options" :
+                            print tools.yellow(run.output_strings[key].ljust(value)),
+                        else :
+                            print run.output_strings[key].ljust(value),
+                        print spacing*' ',
+                    print ""
+
+                    # 3.2.4  print the analyze results line by line
                     for result in run.analyze_results :
                         print tools.red(result).rjust(150)
-                #print ""
-            #print ""
     
-    # 5.   display the number of errors encountered during build/execution/analyze
+    # 4. print the number of errors encountered during build/execution/analyze
     global_errors = sum([build.total_errors for build in builds]) # sum up all errors from running and analyzing
-    if global_errors > 0 :
-        tools.finalize(start,"Failed! Number of errors: ",global_errors)
-    else :
-        tools.finalize(start,"successful")
+    tools.finalize(start,global_errors)
 
 

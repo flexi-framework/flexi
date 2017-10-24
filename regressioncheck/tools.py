@@ -4,13 +4,21 @@ import os
 from timeit import default_timer as timer
 import re
 
-class bcolors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
+class bcolors :
+    # Reset
+    ENDC   ='\033[0m'    
+
+    # Regular Colors
+    BLACK  ='\033[0;30m' 
+    RED    ='\033[0;31m' 
+    GREEN  ='\033[0;32m' 
+    YELLOW ='\033[0;33m' 
+    BLUE   ='\033[0;34m' 
+    PURPLE ='\033[0;35m' 
+    CYAN   ='\033[0;36m' 
+    WHITE  ='\033[0;37m' 
+
+    # Text Style
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
@@ -65,41 +73,32 @@ def find_basedir() :
 
 
 def clean_folder(path) :
-    print "clean_folder: deleting folder ",path
+    print "clean_folder: deleting folder '%s'" % path
     shutil.rmtree(path,ignore_errors=True)
     #shutil.rmtree(path)
 
 def red(text) :
-    return bcolors.FAIL+text+bcolors.ENDC
+    return bcolors.RED+text+bcolors.ENDC
 
 def green(text) :
-    return bcolors.OKGREEN+text+bcolors.ENDC
+    return bcolors.GREEN+text+bcolors.ENDC
 
 def blue(text) :
-    return bcolors.OKBLUE+text+bcolors.ENDC
+    return bcolors.BLUE+text+bcolors.ENDC
 
 def yellow(text) :
-    return bcolors.WARNING+text+bcolors.ENDC
+    return bcolors.YELLOW+text+bcolors.ENDC
 
-def finalize(start,text,global_errors=0) :
-    text+=str(global_errors)
-    if global_errors > 0:
-        print bcolors.FAIL+""
-    else :
-        print bcolors.OKBLUE+""
+def finalize(start,global_errors) :
     print('='*132)
+    if global_errors :
+        print red("reggie 2.0  FAILED! Number of errors: %d" % global_errors),
+    else :
+        print blue("reggie 2.0  successful"),
     if start > 0 : # only calculate run time and display output when start > 0
         end = timer()
-        print "reggie2.0 ",text," [%2.2f sec]" % (end - start)
-        print('='*132)
-    print ""+bcolors.ENDC
+        print "in [%2.2f sec]" % (end - start)
+    else :
+        print ""
 
-
-#invalid_keys = {"MPI", "binary", "analyze*"} # define keys to be removed from a dict
-#parameters_removed = tools.without_keys(command_line.parameters, invalid_keys) # remove keys from dict
-
-#def without_keys(d, keys) :
-#    # remove keys from a dict and return a dict
-#    return {x: d[x] for x in d if x not in keys}
-
-
+    print('='*132)
