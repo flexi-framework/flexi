@@ -5,6 +5,7 @@ from loop import Loop
 import tools
 from timeit import default_timer as timer
 import analysis
+import collections
 
 class Build(Loop) :
     def __init__(self, basedir, source_directory,configuration, number, name='build') :
@@ -105,24 +106,40 @@ class Example(Loop) :
         s = "EXAMPLE in: " + self.source_directory
         return tools.indent(s,1)
 
-def getExamples(path, build) :
+def getExamples(path, build, log) :
     # checks directory with 'builds.ini'
     if os.path.exists(os.path.join(build.source_directory, 'builds.ini')) :
-        example_paths = [os.path.join(path,p) for p in sorted(os.listdir(path)) if os.path.isdir(os.path.join(path,p))]
+        example_paths = [os.path.join(path,p) for p in sorted(os.listdir(path)) \
+                                              if os.path.isdir(os.path.join(path,p))]
     else :
         example_paths = [path]
 
-    examples = []
+    examples = [] # list of examples for each build
     # iterate over all example paths (directories of the examples)
     for p in example_paths :
+        log.info('-'*132)
+        log.info(tools.blue("example "+str(p)))
         # check if example should be excluded for the build.configuration
-        exlcude_path = os.path.join(p, 'excludeBuild.ini')
-        if os.path.exists(exlcude_path) :
-            excludes = combinations.getCombinations(exlcude_path) 
+        exclude_path = os.path.join(p, 'excludeBuild.ini')
+        log.info(tools.blue("excludes under "+str(exclude_path)))
+        if os.path.exists(exclude_path) :
+            # get all keys+values in 'excludeBuild.ini'
+            options, _, _ = combinations.readKeyValueFile(exclude_path)
+            excludes = [] # list of all excludes for comparison with 'build.configuration'
+            digits = collections.OrderedDict()     # 
+            for option in options :
+                for i in range(len(option.values)) :
+                    combination = collections.OrderedDict()
+                    digits[option.name]=i
+                    #combination[option.name] = option.values[digits[option.name]]
+                    combination[option.name] = option.values[i]
+                    excludes.append(combination)
             if combinations.anyIsSubset(excludes, build.configuration) :
-                continue # any of the excludes matches the build.configuration. Skip this example for the build.configuration
-
-        # append example to the return list
+                log.info(tools.red("  skipping example"))
+                continue # any of the excludes matches the build.configuration. 
+                         # Skip this example for the build.configuration
+            else :
+                log.info(tools.yellow("  not skipping"))
         examples.append(Example(p, build))
     return  examples
 
@@ -138,7 +155,6 @@ class Command_Lines(Loop) :
         return tools.indent(s,2)
 
 def getCommand_Lines(path, example) :
-    #print path
     command_lines = []
     i = 1
     for r in combinations.getCombinations(path) :
@@ -166,7 +182,10 @@ class Run(Loop) :
         for f in os.listdir(self.source_directory) :
           src = os.path.abspath(os.path.join(self.source_directory,f))
           dst = os.path.abspath(os.path.join(self.target_directory,f))
-          shutil.copyfile(src, dst)
+          if os.path.isdir(src) : # check if file or directory needs to be copied
+              shutil.copytree(src, dst) # copy tree
+          else :
+              shutil.copyfile(src, dst) # copy file
 
     def rename_failed(self) :
         shutil.rmtree(self.target_directory+"_failed",ignore_errors=True)  # remove if exists
@@ -258,7 +277,7 @@ def PerformCheck(start,builds,args,log) :
             # get example folders: run_basic/example1, run_basic/example2 from check folder
             print args.check
             print build
-            build.examples = getExamples(args.check, build)
+            build.examples = getExamples(args.check, build,log)
             log.info("build.examples"+str(build.examples))
     
             # 2.   loop over all example directories

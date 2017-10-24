@@ -73,7 +73,8 @@ if args.run :
         builds = [build for build in builds]
         print builds
     else :
-        print tools.red("no binary found"+str(builds))
+        print tools.red("no binary found under "+builds[0].binary_path)
+        print tools.red(str(builds))
         exit(1)
 
 

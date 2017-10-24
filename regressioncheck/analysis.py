@@ -18,15 +18,15 @@ def getAnalyzes(path, example) :
     # 2.4   h5diff (relative or absolute HDF5-file comparison of an output file with a reference file)
 
     # 1.  Read the analyze options from file 'path'
-    analyze = []
+    analyze = [] # list
     options_list, _, _ = combinations.readKeyValueFile(path)
     
-    options = {}
+    options = {} # dict
     for option in options_list :
         if len(option.values) > 1 :
-            options[option.name.lower()] = option.values
+            options[option.name.lower()] = option.values    # set name to lower case
         else :
-            options[option.name.lower()] = option.values[0]
+            options[option.name.lower()] = option.values[0] # set name to lower case
 
     # 2.1   L2 error
     L2_tolerance = float(options.get('analyze_l2',-1.))
