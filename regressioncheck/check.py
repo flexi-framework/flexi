@@ -126,19 +126,12 @@ def getExamples(path, build, log) :
         log.info(tools.blue("example "+str(p)))
         # check if example should be excluded for the build.configuration
         exclude_path = os.path.join(p, 'excludeBuild.ini')
-        log.info(tools.blue("excludes under "+str(exclude_path)))
         if os.path.exists(exclude_path) :
+            log.info(tools.blue("excludes under "+str(exclude_path)))
             # get all keys+values in 'excludeBuild.ini'
             options, _, _ = combinations.readKeyValueFile(exclude_path)
-            excludes = [] # list of all excludes for comparison with 'build.configuration'
-            digits = collections.OrderedDict()     # 
-            for option in options :
-                for i in range(len(option.values)) :
-                    combination = collections.OrderedDict()
-                    digits[option.name]=i
-                    #combination[option.name] = option.values[digits[option.name]]
-                    combination[option.name] = option.values[i]
-                    excludes.append(combination)
+            # list of all excludes for comparison with 'build.configuration'
+            excludes = [ { option.name : value } for option in options for value in option.values ]
             if combinations.anyIsSubset(excludes, build.configuration) :
                 log.info(tools.red("  skipping example"))
                 continue # any of the excludes matches the build.configuration. 
