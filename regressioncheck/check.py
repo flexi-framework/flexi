@@ -2,18 +2,21 @@ import os
 import shutil
 import collections
 import combinations 
-from loop import Loop
+from loop import Loop, ExternalCommand
 import tools
 from timeit import default_timer as timer
 import analysis
 import collections
 
-class Build(Loop) :
+class Build(Loop,ExternalCommand) :
+    total_errors = 0
+
     def __init__(self, basedir, source_directory,configuration, number, name='build', binary_path=None) :
         self.basedir          = basedir
         self.source_directory = source_directory
         self.configuration    = configuration
         Loop.__init__(self, None, name, number)  
+        ExternalCommand.__init__(self)
 
         # initialize result as empty list
         self.result = tools.yellow("not built")
@@ -53,8 +56,7 @@ class Build(Loop) :
 
         # CMAKE: execute cmd in build directory
         print "C-making with ["," ".join(self.cmake_cmd),"] ...",
-        self.execute_cmd(self.cmake_cmd)
-        if self.return_code != 0 :
+        if self.execute_cmd(self.cmake_cmd, self.target_directory) != 0 :
             raise BuildFailedException(self) # "CMAKE failed"
 
         # MAKE: default with '-j'
@@ -62,8 +64,7 @@ class Build(Loop) :
         if buildprocs > 0 : self.make_cmd.append(str(buildprocs))
         # execute cmd in build directory
         print "Building with ["," ".join(self.make_cmd),"] ...",
-        self.execute_cmd(self.make_cmd)
-        if self.return_code != 0 :
+        if self.execute_cmd(self.make_cmd, self.target_directory) != 0 :
             raise BuildFailedException(self) # "MAKE failed"
         print('-'*132)
 
@@ -162,13 +163,18 @@ def getCommand_Lines(path, example) :
 
 
 #==================================================================================================
-class Run(Loop) :
+class Run(Loop, ExternalCommand) :
+    total_number_of_runs = 0
+
     def __init__(self, parameters, path, command_line, number) :
+        self.successful = True
+        self.globalnumber = -1
         self.analyze_results = []
         self.analyze_successful = True
         self.parameters = parameters
         self.source_directory = os.path.dirname(path)
         Loop.__init__(self, command_line, 'run', number, mkdir=False)
+        ExternalCommand.__init__(self)
 
         self.skip = os.path.exists(self.target_directory)
         if self.skip :
@@ -191,6 +197,8 @@ class Run(Loop) :
         self.target_directory = self.target_directory+"_failed" # set new name for summary of errors
 
     def execute(self, build, command_line) :
+        Run.total_number_of_runs += 1
+        self.globalnumber = Run.total_number_of_runs
 
         # set path to parameter file (single combination of values for execution "parameter.ini" for example)
         self.parameter_path = os.path.join(self.target_directory, "parameter.ini")
@@ -216,7 +224,7 @@ class Run(Loop) :
         # execute the command 'cmd'
         start = timer()
         print tools.indent("Running [%s]" % (" ".join(cmd)), 2),
-        self.execute_cmd(cmd) # run the code
+        self.execute_cmd(cmd, self.target_directory) # run the code
         end = timer()
         self.execution_time = end - start
 
@@ -255,7 +263,6 @@ def PerformCheck(start,builds,args,log) :
     # 5.   loop over all successfully executed binary results and perform analyze tests
     # 6.   rename all run directories for which the analyze step has failed for at least one test
     build_number=0
-    global_run_number=0
     
     # compile and run loop
     try : # if compiling fails -> go to exception
@@ -306,10 +313,8 @@ def PerformCheck(start,builds,args,log) :
     
                         # 4.1    execute the binary file for one combination of parameters
                         run.execute(build,command_line)
-                        global_run_number+=1
-                        run.globalnumber=global_run_number
                         if not run.successful :
-                            build.total_errors+=1 # add error if run fails
+                            Build.total_errors+=1 # add error if run fails
     
                     # 5.   loop over all successfully executed binary results and perform analyze tests
                     runs_successful = [run for run in command_line.runs if run.successful]
@@ -317,8 +322,6 @@ def PerformCheck(start,builds,args,log) :
                         for analyze in example.analyzes :
                             print tools.indent(tools.blue(str(analyze)),2)
                             analyze.perform(runs_successful)
-                    # add errors after analyze
-                    build.total_errors+=sum(run.total_errors for run in command_line.runs if run.successful)
     
                     # 6.   rename all run directories for which the analyze step has failed for at least one test
                     for run in runs_successful :         # all successful runs (failed runs are already renamed)
@@ -342,8 +345,7 @@ def PerformCheck(start,builds,args,log) :
         for line in ex.build.stderr[-20:] :
             print tools.indent(line,4),
         print tools.bcolors.ENDC
-        global_errors = sum([build.total_errors for build in builds]) # sum up all errors from running and analyzing
-        tools.finalize(start,min(1,global_errors))
+        tools.finalize(start,min(1,Build.total_errors))
         exit(1)
 
 
@@ -429,7 +431,6 @@ def SummaryOfErrors(start,builds) :
                         print tools.red(result).rjust(150)
     
     # 4. print the number of errors encountered during build/execution/analyze
-    global_errors = sum([build.total_errors for build in builds]) # sum up all errors from running and analyzing
-    tools.finalize(start,global_errors)
+    tools.finalize(start,Build.total_errors)
 
 

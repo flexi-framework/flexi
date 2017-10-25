@@ -1,5 +1,5 @@
 import numpy as np
-from loop import Loop
+from loop import ExternalCommand
 import analyze_functions
 import combinations 
 import check
@@ -270,7 +270,7 @@ class Analyze_Convtest_p() :
 
 #==================================================================================================
 
-class Analyze_h5diff(Loop) :
+class Analyze_h5diff(ExternalCommand) :
     def __init__(self, h5diff_reference_file, h5diff_file, h5diff_name) :
         self.reference_file = h5diff_reference_file
         self.file           = h5diff_file
@@ -285,7 +285,6 @@ class Analyze_h5diff(Loop) :
         # General workflow:
         # 1.  iterate over all runs
         # 1.2   select relative or absolute comparison
-        # 1.2   set directory in which the program is executed
         # 1.3   execute the command 'cmd' = 'h5diff -r --XXX [number] ref_file file DataArray'
         # 1.4   if the comman 'cmd' return a code != 0, set failed
         # 1.4.1   add failed info if return a code != 0 to run
@@ -305,11 +304,8 @@ class Analyze_h5diff(Loop) :
             cmd = [h5diff,"-r",diffType,"1e-5",str(self.reference_file),str(self.file),str(self.name)," &> h5diff.out"]
             print "Running ["," ".join(cmd),"]",
 
-            # 1.2   set directory in which the program is executed
-            self.target_directory = run.target_directory
-
             # 1.3   execute the command 'cmd' = 'h5diff -r [--type] [number] [ref_file] [file] [DataArrayName]'
-            self.execute_cmd(cmd) # run the code
+            self.execute_cmd(cmd, run.target_directory) # run the code
 
             # 1.4   if the comman 'cmd' return a code != 0, set failed
             if self.return_code != 0 :
