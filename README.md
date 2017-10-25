@@ -56,3 +56,7 @@ FLEXI uses several external libraries as well as auxilliary functions from open 
 [nrg]:  https://nrg.iag.uni-stuttgart.de/
 [flexi]: https://www.flexi-project.org/
 [list]: https://listserv.uni-stuttgart.de/mailman/listinfo/flexi
+
+## Regressioncheck
+
+For informations about the regressioncheck see [REGGIE.md](REGGIE.md).
