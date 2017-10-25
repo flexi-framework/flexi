@@ -24,29 +24,34 @@ parser.add_argument('-y', '--dummy', action='store_true',help='use dummy_basedir
 parser.add_argument('-r', '--run', action='store_true' ,help='run all binaries for all examples with all run-combinations for all existing binaries')
 parser.add_argument('check', help='Path to check-/example-directory.')
 
-args = parser.parse_args() # reggie command line arguments
-cwd = os.getcwd()                                          # start with current working directory
-found = os.path.exists(os.path.join(cwd,args.check)) # check if directory exists
-if not found :
-    print "Check directory not found: ",os.path.join(cwd,args.check)
-    exit(1)
+# get reggie command line arguments
+args = parser.parse_args()
+
+# setup basedir
+if args.dummy : 
+    # For testing reggie during reggie-developement: 
+    # Overwrite basedir and check directory with dummy directories.
+    reggieDir = os.path.dirname(os.path.realpath(__file__))
+    args.basedir = os.path.join(reggieDir, 'dummy_basedir')
+    args.check =   os.path.join(reggieDir, 'dummy_checks/test')
+    print "Basedir directory switched to '%s'" % args.basedir
+    print "Check   directory switched to '%s'" % args.check
+else :
+    # For real reggie-execution:
+    # Setup basedir (containing CMakeLists.txt) by searching upward from current working directory 
+    try :
+        args.basedir = tools.find_basedir()
+    except Exception,ex :
+        print tools.red("Basedir (containing 'CMakeLists.txt') not found!\nEither specify the basedir on the command line or execute reggie within a project with a 'CMakeLists.txt'.")
+        exit(1)
+
+    if not os.path.exists(args.check) : # check if directory exists
+        print tools.red("Check directory not found: '%s'" % args.check)
+        exit(1)
 
 # setup logger for printing information, debug messages to stdout
 tools.setup_logger(args.debug)
 log = logging.getLogger('logger')
-
-# setup basedir (search upward from staring point of reggie)
-if args.dummy : # 
-    args.check = 'dummy_checks/test'
-    print "Check directoryswitched to ",args.check
-    args.basedir = os.path.abspath('dummy_basedir')
-    #print "basedir = ".ljust(25)+basedir
-else :
-    try :
-        args.basedir = tools.find_basedir()
-        #print "basedir = [".ljust(15)+basedir,"]"
-    except Exception,ex :
-        args.basedir = os.path.abspath('dummy_basedir')
 
 # delete the building directory when [carryon = False] and [run = False] before getBuilds is called
 if not args.carryon and not args.run : tools.clean_folder("reggie_outdir")
@@ -56,28 +61,22 @@ if args.exe is None : # if not exe is supplied, get builds
     # read build combinations from checks/XX/builds.ini
     builds = check.getBuilds(args.basedir, args.check)
 else :
-    found = os.path.exists(args.exe) # check if executable exists
-    if not found :
-        print tools.red("no executable found under ")
+    if not os.path.exists(args.exe) : # check if executable exists
+        print tools.red("No executable found under '%s'" % args.exe)
         exit(1)
     else :
         builds = [check.Standalone(args.exe,args.check)] # set builds list to contain only the supplied executable
-        args.run = True
-        args.basedir = None
-
+        args.run = True      # set 'run-mode' do not compile the code
+        args.basedir = None  # since code will not be compiled, the basedir is not needed
 
 if args.run :
     print "args.run -> skip building"
-    # remove all build from builds when build.binary_exists() = False
-    if builds[0].binary_exists() :
-        builds = [build for build in builds]
-        print builds
-    else :
-        print tools.red("no binary found under "+builds[0].binary_path)
-        print tools.red(str(builds))
-        exit(1)
+    # in 'run-mode' remove all build from list of builds if their binaries do not exist (build.binary_exists() == False)
+    builds = [build for build in builds if build.binary_exists()]
 
-
+if len(builds) == 0 :
+    print tools.red("List of 'builds' is empty! Maybe switch off '--run'.")
+    exit(1)
 
 # display all command line arguments
 print "Running with the following command line options"
