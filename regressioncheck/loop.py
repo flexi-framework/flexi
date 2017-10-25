@@ -12,7 +12,7 @@ class ExternalCommand() :
         self.return_code = None
         self.result = ""
 
-    def execute_cmd(self, cmd, target_directory):
+    def execute_cmd(self, cmd, target_directory, name="std"):
         """Execute an external program specified by 'cmd'. The working directory of this program is set to target_directory.
         Returns the return_code of the external program.
         """
@@ -38,14 +38,14 @@ class ExternalCommand() :
         self.return_code = process.wait()
 
         # write std.out and err.out to disk
-        self.stdout_filename = os.path.join(target_directory,"std.out")
+        self.stdout_filename = os.path.join(target_directory,name+".out")
         f = open(self.stdout_filename, 'w')
         for line in self.stdout :
             f.write(line)
         f.close()
         if self.return_code != 0 :
             self.result=tools.red("Failed")
-            self.stderr_filename = os.path.join(target_directory,"std.err")
+            self.stderr_filename = os.path.join(target_directory,name+".err")
             f = open(self.stderr_filename, 'w')
             for line in self.stderr :
                 f.write(line)

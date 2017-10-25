@@ -1,5 +1,5 @@
 import numpy as np
-from loop import ExternalCommand
+from loop import Loop, ExternalCommand
 import analyze_functions
 import combinations 
 import check
@@ -270,7 +270,7 @@ class Analyze_Convtest_p() :
 
 #==================================================================================================
 
-class Analyze_h5diff(ExternalCommand) :
+class Analyze_h5diff(Loop, ExternalCommand) :
     def __init__(self, h5diff_reference_file, h5diff_file, h5diff_name) :
         self.reference_file = h5diff_reference_file
         self.file           = h5diff_file
@@ -301,23 +301,45 @@ class Analyze_h5diff(ExternalCommand) :
                 diffType = "--delta"
             else :
                 diffType = "--relative"
-            cmd = [h5diff,"-r",diffType,"1e-5",str(self.reference_file),str(self.file),str(self.name)," &> h5diff.out"]
+            cmd = [h5diff,"-r",diffType,"1e-5",str(self.reference_file),str(self.file),str(self.name)]
             print "Running ["," ".join(cmd),"]",
 
             # 1.3   execute the command 'cmd' = 'h5diff -r [--type] [number] [ref_file] [file] [DataArrayName]'
-            self.execute_cmd(cmd, run.target_directory) # run the code
+            try :
+                self.execute_cmd(cmd, run.target_directory,"h5diff") # run the code
 
-            # 1.4   if the comman 'cmd' return a code != 0, set failed
-            if self.return_code != 0 :
+                # 1.4   if the comman 'cmd' return a code != 0, set failed
+                if self.return_code != 0 :
+
+                    # 1.4.1   add failed info if return a code != 0 to run
+                    if len(self.stdout) > 20 :
+                        run.analyze_results.append("h5diff failed, self.return_code != 0")
+                        for line in self.stdout[:10] : # print first 10 lines
+                            print line,
+                        print "... leaving out intermediate lines"
+                        for line in self.stdout[-10:] : # print last 10 lines
+                            print line,
+                    else :
+                        print str(self.stdout)
+                        if len(self.stdout) == 1 :
+                            run.analyze_results.append(str(self.stdout))
+
+                    # 1.4.2   set analyzes to fail if return a code != 0
+                    run.analyze_successful=False
+                    run.total_errors+=1
+
+                    #global_errors+=1
+            except Exception,ex :
+                self.result=tools.red("h5diff failed."+str(ex))
+                print self.result
 
                 # 1.4.1   add failed info if return a code != 0 to run
-                run.analyze_results.append("h5diff failed")
+                run.analyze_results.append(self.result)
 
                 # 1.4.2   set analyzes to fail if return a code != 0
                 run.analyze_successful=False
                 run.total_errors+=1
 
-                #global_errors+=1
 
     def __str__(self) :
         return "perform h5diff between two files: ["+str(self.file)+"] + reference ["+str(self.reference_file)+"]"
