@@ -293,19 +293,22 @@ class Analyze_h5diff(Loop) :
 
         # 1.  iterate over all runs
         for run in runs :
-            h5diff = "/opt/hdf5/1.8.18/bin/h5diff"
+            #h5diff = "/opt/hdf5/1.8.18/bin/h5diff"
+            h5diff = "h5diff"
+            # todo: check if h5diff exists on system -> if not deactivate or add failure?
 
             # 1.2   select relative or absolute comparison
             if 1 == 1 :
-                cmd = [h5diff,"-r","--delta","1e-5",str(self.reference_file),str(self.file),str(self.name)]
+                diffType = "--delta"
             else :
-                cmd = [h5diff,"-r","--relative","1e-5",str(self.reference_file),str(self.file),str(self.name)]
+                diffType = "--relative"
+            cmd = [h5diff,"-r",diffType,"1e-5",str(self.reference_file),str(self.file),str(self.name)," &> h5diff.out"]
             print "Running ["," ".join(cmd),"]",
 
             # 1.2   set directory in which the program is executed
             self.target_directory = run.target_directory
 
-            # 1.3   execute the command 'cmd' = 'h5diff -r --XXX [number] ref_file file DataArray'
+            # 1.3   execute the command 'cmd' = 'h5diff -r [--type] [number] [ref_file] [file] [DataArrayName]'
             self.execute_cmd(cmd) # run the code
 
             # 1.4   if the comman 'cmd' return a code != 0, set failed
@@ -321,7 +324,7 @@ class Analyze_h5diff(Loop) :
                 #global_errors+=1
 
     def __str__(self) :
-        return "perform h5diff between two files"
+        return "perform h5diff between two files: ["+str(self.file)+"] + reference ["+str(self.reference_file)+"]"
 
 
 
