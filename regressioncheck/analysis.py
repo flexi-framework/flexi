@@ -2,6 +2,7 @@ import numpy as np
 from loop import Loop, ExternalCommand
 import analyze_functions
 import combinations 
+#from check import Build # this does not work! -> Build.total_errors+=1
 import check
 import tools
 
@@ -94,7 +95,7 @@ class Analyze_L2() :
 
                 # 1.4   set analyzes to fail
                 run.analyze_successful=False
-                run.total_errors+=1
+                check.Build.total_errors+=1
 
     def __str__(self) :
         return "perform L2 error comparison with a pre-defined tolerance"
@@ -170,7 +171,7 @@ class Analyze_Convtest_h() :
 
                     # 1.6.2   set analyzes to fail if success rate is not reached for all runs
                     run.analyze_successful=False
-                    run.total_errors+=1
+                    check.Build.total_errors+=1
 
         else :
             print "cannot perform conv test, because number of successful runs must equal the number of cells"
@@ -256,7 +257,7 @@ class Analyze_Convtest_p() :
 
                     # 2.8.2   set analyzes to fail if success rate is not reached for all runs
                     run.analyze_successful=False
-                    run.total_errors+=1
+                    check.Build.total_errors+=1
 
                     #global_errors+=1
         else :
@@ -326,7 +327,7 @@ class Analyze_h5diff(Loop, ExternalCommand) :
 
                     # 1.4.2   set analyzes to fail if return a code != 0
                     run.analyze_successful=False
-                    run.total_errors+=1
+                    check.Build.total_errors+=1
 
                     #global_errors+=1
             except Exception,ex :
@@ -338,7 +339,7 @@ class Analyze_h5diff(Loop, ExternalCommand) :
 
                 # 1.4.2   set analyzes to fail if return a code != 0
                 run.analyze_successful=False
-                run.total_errors+=1
+                check.Build.total_errors+=1
 
 
     def __str__(self) :

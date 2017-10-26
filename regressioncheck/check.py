@@ -167,7 +167,6 @@ class Run(Loop, ExternalCommand) :
     total_number_of_runs = 0
 
     def __init__(self, parameters, path, command_line, number) :
-        self.total_errors = 0
         self.successful = True
         self.globalnumber = -1
         self.analyze_results = []
@@ -323,8 +322,6 @@ def PerformCheck(start,builds,args,log) :
                         for analyze in example.analyzes :
                             print tools.indent(tools.blue(str(analyze)),2)
                             analyze.perform(runs_successful)
-
-                    Build.total_errors+=sum([run.total_errors for run in command_line.runs]) # add error if analyze fails
     
                     # 6.   rename all run directories for which the analyze step has failed for at least one test
                     for run in runs_successful :         # all successful runs (failed runs are already renamed)
