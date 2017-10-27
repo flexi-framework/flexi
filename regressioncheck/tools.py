@@ -89,16 +89,22 @@ def blue(text) :
 def yellow(text) :
     return bcolors.YELLOW+text+bcolors.ENDC
 
-def finalize(start,global_errors) :
-    print('='*132)
-    if global_errors :
-        print red("reggie 2.0  FAILED! Number of errors: %d" % global_errors),
+def finalize(start, build_errors, run_errors, analyze_errors) :
+    if build_errors + run_errors + analyze_errors > 0 :
+        print bcolors.RED + 132*'='
+        print "reggie 2.0  FAILED!",
     else :
-        print blue("reggie 2.0  successful"),
+        print bcolors.BLUE + 132*'='
+        print "reggie 2.0  successful!",
+
     if start > 0 : # only calculate run time and display output when start > 0
         end = timer()
         print "in [%2.2f sec]" % (end - start)
     else :
         print ""
 
-    print('='*132)
+    print "Number of build   errors: %d" % build_errors
+    print "Number of run     errors: %d" % run_errors
+    print "Number of analyze errors: %d" % analyze_errors
+
+    print '='*132 + bcolors.ENDC
