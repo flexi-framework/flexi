@@ -244,8 +244,9 @@ END IF  !(doCalcBodyforces)
 IF(MPIRoot.AND.doCalcBulkVelocity)THEN
   IF (doWriteBulkVelocity) &
     CALL OutputToFile(FileName_Bulk,(/Time/),(/PP_nVarPrim+PP_nVar-1,1/),(/BulkPrim,BulkCons(2:PP_nVar)/))
-  WRITE(formatStr,'(A,I2,A)')'(A14,',PP_nVar,'ES18.9)'
+  WRITE(formatStr,'(A,I2,A)')'(A14,',PP_nVarPrim,'ES18.9)'
   WRITE(UNIT_StdOut,formatStr)' Bulk Prims : ',bulkPrim
+  WRITE(formatStr,'(A,I2,A)')'(A14,',PP_nVar,'ES18.9)'
   WRITE(UNIT_StdOut,formatStr)' Bulk Cons  : ',bulkCons
 END IF
 
