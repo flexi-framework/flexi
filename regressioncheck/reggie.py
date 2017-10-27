@@ -96,5 +96,7 @@ check.PerformCheck(start,builds,args,log)
 
 
 # print table with summary of errors if all builds where successful
-check.SummaryOfErrors(start,builds)
+check.SummaryOfErrors(builds)
 
+# print the number of errors encountered during build/execution/analyze
+tools.finalize(start, 0, check.Run.total_errors, check.Analyze.total_errors)

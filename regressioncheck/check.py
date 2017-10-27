@@ -5,7 +5,6 @@ import combinations
 from outputdirectory import OutputDirectory
 from externalcommand import ExternalCommand
 import tools
-from timeit import default_timer as timer
 from analysis import Analyze, getAnalyzes
 import collections
 
@@ -223,11 +222,8 @@ class Run(OutputDirectory, ExternalCommand) :
             cmd.append(cmd_suffix)
 
         # execute the command 'cmd'
-        start = timer()
         print tools.indent("Running [%s]" % (" ".join(cmd)), 2),
         self.execute_cmd(cmd, self.target_directory) # run the code
-        end = timer()
-        self.execution_time = end - start
 
         if self.return_code != 0 :
             self.successful = False
@@ -285,6 +281,10 @@ def PerformCheck(start,builds,args,log) :
             build.examples = getExamples(args.check, build,log)
             log.info("build.examples"+str(build.examples))
     
+            if len(build.examples) == 0 :
+                s = tools.yellow("No matching examples found for this build!")
+                build.result += ", " + s
+                print s
             # 2.   loop over all example directories
             for example in build.examples :
                 log.info(str(example))
@@ -333,7 +333,7 @@ def PerformCheck(start,builds,args,log) :
     # catch exception if bulding fails
     except BuildFailedException,ex:
         # print table with summary of errors
-        SummaryOfErrors(-1.,builds)
+        SummaryOfErrors(builds)
     
         # display error message
         print ex # display error msg
@@ -351,7 +351,7 @@ def PerformCheck(start,builds,args,log) :
         exit(1)
 
 
-def SummaryOfErrors(start,builds) :
+def SummaryOfErrors(builds) :
     # General workflow:
     # 1. loop over all builds, examples, command_lines, runs and for every run set the output strings 
     #    and get the maximal lengths of those strings
@@ -362,9 +362,8 @@ def SummaryOfErrors(start,builds) :
     # 3.2.1  print an empty separation line if number of MPI threads changes
     # 3.2.2  print (only if changes) a line with all run parameters except the inner most, which is printed in 3.2.3
     # 3.2.3  print a line with following information:
-    #          run.globalnumber, run.parameters[0] (the one not printed in 3.2.2), run.target_directory, MPI, run.execution_time, run.result 
+    #          run.globalnumber, run.parameters[0] (the one not printed in 3.2.2), run.target_directory, MPI, run.walltime, run.result 
     # 3.2.4  print the analyze results line by line
-    # 4. print the number of errors encountered during build/execution/analyze
     
     param_str_old = ""
     str_MPI_old   = "-"
@@ -380,12 +379,13 @@ def SummaryOfErrors(start,builds) :
                     run.output_strings['options'] = "%s=%s"%(run.parameters.items()[0])
                     run.output_strings['path']    = os.path.relpath(run.target_directory,OutputDirectory.output_dir)
                     run.output_strings['MPI']     = command_line.parameters.get('MPI', '-') 
-                    run.output_strings['time']    = "%2.1f" % run.execution_time
+                    run.output_strings['time']    = "%2.1f" % run.walltime
                     run.output_strings['Info']    = run.result
                     for key in run.output_strings.keys() :
                         max_lens[key] = max(max_lens[key], len(run.output_strings[key]))
     
     # 2. print header
+    print 132*"="
     print " Summary of Errors"+"\n"
     spacing = 1
     for key, value in max_lens.items() :
@@ -400,9 +400,9 @@ def SummaryOfErrors(start,builds) :
         if isinstance(build, Standalone) :
             print "Binary supplied externally under ",build.binary_path
         elif isinstance(build, Build) : 
-            print "Build %d of %d (%s) compiled with:" % (build.number, len(builds), build.result)
+            print "Build %d of %d (%s) compiled with in [%.2f sec]:" % (build.number, len(builds), build.result, build.walltime)
             print " ".join(build.cmake_cmd)
-            if build.result == tools.red("Failed") : break # stop output as soon as a failed build in encountered
+            if build.return_code != 0 : break # stop output as soon as a failed build in encountered
     
         # 3.2 loop over all examples, command_lines and runs
         for example in build.examples :
@@ -432,7 +432,5 @@ def SummaryOfErrors(start,builds) :
                     for result in run.analyze_results :
                         print tools.red(result).rjust(150)
     
-    # 4. print the number of errors encountered during build/execution/analyze
-    tools.finalize(start, 0, Run.total_errors, Analyze.total_errors)
 
 

@@ -2,6 +2,7 @@ import os
 import subprocess
 import logging
 import tools
+from timeit import default_timer as timer
 
 class ExternalCommand() :
     def __init__(self) :
@@ -9,8 +10,9 @@ class ExternalCommand() :
         self.stderr = []
         self.stdout_filename = None
         self.stderr_filename = None
-        self.return_code = None
+        self.return_code = 0
         self.result = ""
+        self.walltime = 0
 
     def execute_cmd(self, cmd, target_directory, name="std"):
         """Execute an external program specified by 'cmd'. The working directory of this program is set to target_directory.
@@ -21,9 +23,12 @@ class ExternalCommand() :
         workingDir = os.path.abspath(target_directory)
         log.debug(workingDir)
         log.debug(cmd)
+        start = timer()
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, \
                                         stderr=subprocess.PIPE, \
                                         universal_newlines=True, cwd=workingDir)
+        end = timer()
+        self.walltime = end - start
         self.stdout = []
         self.stderr = []
         for line in iter(process.stdout.readline, '') :
