@@ -26,6 +26,7 @@ LOGICAL           :: doCalcSource             !< Swith to calculate a source ter
 REAL              :: AdvVel(3)                !< Advection velocity
 REAL              :: DiffC                    !< Diffusion constant
 INTEGER           :: IniExactFunc             !< Number of exact function used for initialization
+INTEGER           :: IniRefState              !< RefState for initialization (dummy)
 REAL,ALLOCATABLE  :: RefStatePrim(:,:)        !< Primite reference state
 REAL,ALLOCATABLE  :: RefStateCons(:,:)        !< Conservative reference state
 
