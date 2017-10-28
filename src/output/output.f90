@@ -364,7 +364,7 @@ DO iElem=1,nElems
     CALL ChangeBasisVolume(3,PP_N,NVisu_FV,Vdm_GaussN_NVisu_FV,Elem_xGP(1:3,:,:,:,iElem),FV_Coords_NVisu(1:3,:,:,:,FV_iElem))
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       CALL ConsToPrim(UPrim ,U(:,i,j,k,iElem))
-      DO kk=0,1; DO jj=0,1; DO ii=0,1
+      DO kk=0,PP_dim-2; DO jj=0,1; DO ii=0,1
         kkk=k*2+kk; jjj=j*2+jj; iii=i*2+ii
 #if FV_RECONSTRUCT            
         dx = MERGE(  -FV_dx_XI_L(j,k,i,iElem),  FV_dx_XI_R(j,k,i,iElem),ii.EQ.0)
