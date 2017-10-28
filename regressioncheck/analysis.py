@@ -1,8 +1,33 @@
+import os
 import numpy as np
 from externalcommand import ExternalCommand
 import analyze_functions
 import combinations 
 import tools
+
+def displayTable(mylist,nVar,nRuns) :
+    # mylist = [[1 2 3] [1 2 3] [1 2 3] [1 2 3] ] example with 4 nVar and 3 nRuns
+    print " nRun   "+"   ".join(7*" "+"nVar=["+str(i).rjust(4)+"]" for i in range(nVar))
+    for j in range(nRuns) :
+        print str(j).rjust(5),
+        for i in range(nVar) :
+            print "%20.12e" % mylist[i][j],
+        print ""
+
+def writeTableToFile(mylist,nVar,nRuns,firstColumn,path,name) :
+    # if a path is supplied, create a .csv file with the data
+    if path is not None :
+        myfile = os.path.join(path,name)
+        f = open(myfile, 'w')
+        for j in range(nRuns) :
+            line  = "%20.12e, " % firstColumn[j]
+            line += ",".join("%20.12e" % mylist[i][j] for i in range(nVar))
+            f.write(line+"\n")
+        f.close()
+
+def displayVector(vector,nVar) :
+    print 8*" "+"   ".join(7*" "+"nVar=["+str(i).rjust(4)+"]" for i in range(nVar))
+    print 6*" "+" ".join("%20.12e" % vector[i] for i in range(nVar))
 
 #==================================================================================================
 
@@ -69,8 +94,10 @@ def getAnalyzes(path, example) :
 
 #==================================================================================================
  
-class Analyze() :
+class Analyze() : # main class from which all analyze functions are derived
     total_errors = 0
+
+#==================================================================================================
 
 class Analyze_L2(Analyze) :
     def __init__(self, L2_tolerance) :
@@ -129,36 +156,41 @@ class Analyze_Convtest_h(Analyze) :
         # 1.7.2   set analyzes to fail if success rate is not reached for all runs
 
         # 1.  check if number of successful runs is euqal the number of supplied cells
-        if len(self.cells) == len(runs) :
+        nRuns = len(runs)
+        if len(self.cells) == nRuns :
 
             # 1.1   read the polynomial degree from the first run -> must not change!
             p = float(runs[0].parameters.get('N',-1))
 
             # 1.2   get L2 errors of all runs and create np.array
-            all_L2_errors = np.array([analyze_functions.get_last_L2_error(run.stdout) for \
+            L2_errors = np.array([analyze_functions.get_last_L2_error(run.stdout) for \
                     run in runs])
-            all_L2_errors = np.transpose(all_L2_errors)
+            L2_errors = np.transpose(L2_errors)
 
             # 1.3   get number of variables from L2 error array
-            nVar = len(all_L2_errors)
-            print tools.blue("L2 errors nVar="+str(nVar))
-            print all_L2_errors
+            nVar = len(L2_errors)
+            print tools.blue("L2 errors for nVar="+str(nVar))
+            displayTable(L2_errors,nVar,nRuns)
+            writeTableToFile(L2_errors,nVar,nRuns,self.cells,os.path.dirname(runs[0].target_directory),"L2_error.csv")
 
             # 1.4   determine order of convergence between two runs
-            all_L2_order = \
-                    np.array([analyze_functions.calcOrder_h(self.cells,all_L2_errors[x]) for \
-                    x in range(nVar)])
+            L2_order = np.array([analyze_functions.calcOrder_h(self.cells,L2_errors[i]) for i in range(nVar)])
             print tools.blue("L2 orders for nVar="+str(nVar))
-            print all_L2_order
+            displayTable(L2_order,nVar,nRuns-1)
 
             # determine average convergence rate
-            mean = [np.mean(all_L2_order[x]) for x in range(nVar)]
-            print mean
+            mean = [np.mean(L2_order[i]) for i in range(nVar)]
+            print tools.blue("L2 average order for nVar="+str(nVar))
+            displayVector(mean,nVar)
             
             # 1.5   determine success rate by comparing the relative convergence error with a tolerance
-            print "relative order error ",[abs(mean[x]/(3+1)-1) for x in range(nVar)]
-            success = [abs(mean[x]/(p+1)-1) < self.tolerance for x in range(nVar)]
-            print "success convergence: ",success
+            print tools.blue( "relative order error (tolerance = %.4e)" % self.tolerance)
+            relErr = [abs(mean[i]/(p+1)-1) for i in range(nVar)]
+            displayVector(relErr,nVar)
+            success = [relErr[i] < self.tolerance for i in range(nVar)]
+            print tools.blue("success convergence")
+            print 5*" "+"".join(str(success[i]).rjust(21) for i in range(nVar))
+
 
             # 1.6   compare success rate with pre-defined rate, fails if not reached
             if float(sum(success))/nVar >= self.rate :
@@ -180,9 +212,9 @@ class Analyze_Convtest_h(Analyze) :
                     Analyze.total_errors+=1
 
         else :
-            print "cannot perform conv test, because number of successful runs must equal the number of cells"
-            print "length(runs) ",len(runs)
-            print "length(conv) ",len(self.cells)
+            print tools.yellow("cannot perform conv test, because number of successful runs must equal the number of cells")
+            print tools.yellow("nRun  "+str(nRuns))
+            print tools.yellow("cells "+str(len(self.cells)))
     def __str__(self) :
         return "perform L2 h-convergence test and compare the order of convergence with the polynomial degree"
 
@@ -211,40 +243,48 @@ class Analyze_Convtest_p(Analyze) :
         p = [float(run.parameters.get('N',-1)) for run in runs] # get polynomial degree
 
         # 2   check if number of successful runs must be euqal the number of supplied cells
-        if len(p) == len(runs) :
+        nRuns = len(runs)
+        if len(p) == nRuns :
 
             # 2.2   get L2 errors of all runs and create np.array
-            all_L2_errors = np.array([analyze_functions.get_last_L2_error(run.stdout) for \
+            L2_errors = np.array([analyze_functions.get_last_L2_error(run.stdout) for \
                     run in runs])
-            all_L2_errors = np.transpose(all_L2_errors)
+            L2_errors = np.transpose(L2_errors)
 
             # 2.3   get number of variables from L2 error array
-            nVar = len(all_L2_errors)
+            nVar = len(L2_errors)
             
             print tools.blue("L2 errors nVar="+str(nVar))
-            print all_L2_errors
+            displayTable(L2_errors,nVar,nRuns)
+            writeTableToFile(L2_errors,nVar,nRuns,p,os.path.dirname(runs[0].target_directory),"L2_error.csv")
 
             # 2.4   determine order of convergence between two runs
-            all_L2_order = \
-                    np.array([analyze_functions.calcOrder_p(p,all_L2_errors[x]) for \
-                    x in range(nVar)])
+            L2_order = \
+                    np.array([analyze_functions.calcOrder_p(p,L2_errors[i]) for \
+                    i in range(nVar)])
             print tools.blue("L2 orders for nVar="+str(nVar))
-            print all_L2_order
+            displayTable(L2_order,nVar,nRuns-1)
 
             # 2.5   check if the order of convergence is always increasing with increasing polynomial degree
             increasing = []
             for j in range(nVar) :
                 increasing_run = []
-                for i in range(1,len(p)) :
-                    increasing_run.append(p[i]>p[i-1])
-                #print increasing_run
-                increasing.append(all(increasing_run))
-            print tools.blue("Increasing order of convergence")
-            print tools.blue(str(increasing))
+                for i in range(1,len(p)-1) :
+                    increasing_run.append(L2_order[j][i]>L2_order[j][i-1]) # check for increasing order of convergence
+                    #print increasing_run,L2_order[j][i],L2_order[j][i-1]
+                print increasing_run
+                if 1==1 :
+                    increasing.append(float(sum(increasing_run))/float(len(increasing_run)))
+                else :
+                    increasing.append(all(increasing_run))
+            print tools.blue("Increasing order of convergence, percentage")
+            print 5*" "+"".join(str(increasing[i]).rjust(21) for i in range(nVar))
             
             # 2.6   determine success rate from increasing convergence
-            success = [increasing[x] for x in range(nVar)]
-            print "success convergence: ",success
+            # 50% of the slopes must be increasing
+            success = [increasing[i] >= 1.0 for i in range(nVar)]
+            print tools.blue("success convergence (if percentage >= 1.0)")
+            print 5*" "+"".join(str(success[i]).rjust(21) for i in range(nVar))
 
             # 2.7   compare success rate with pre-defined rate, fails if not reached
             if float(sum(success))/nVar >= self.rate :
@@ -266,9 +306,9 @@ class Analyze_Convtest_p(Analyze) :
 
                     #global_errors+=1
         else :
-            print "cannot perform conv test, because number of successful runs must equal the number of polynomial degrees"
-            print "length(runs) ",len(runs)
-            print "length(p)    ",len(p)
+            print "cannot perform conv test, because number of successful runs must equal the number of polynomial degrees p"
+            print "nRun   ",nRuns
+            print "len(p) ",len(p)
     def __str__(self) :
         return "perform L2 p-convergence test and check if the order of convergence increases with smaller grid size"
 
@@ -345,22 +385,3 @@ class Analyze_h5diff(Analyze,ExternalCommand) :
     def __str__(self) :
         return "perform h5diff between two files: ["+str(self.file)+"] + reference ["+str(self.reference_file)+"]"
 
-
-
-
-
-# ! set ErrorStatus
-# IF(iSTATUS.EQ.0)THEN
-#   RETURN ! all is safe
-# ELSEIF(iSTATUS.EQ.-5)THEN
-#   SWRITE(UNIT_stdOut,'(A)')  ' h5diff: arrays in h5-files have different ranks.'
-#   Examples(iExample)%ErrorStatus=5
-# ELSEIF(iSTATUS.EQ.2)THEN
-#   SWRITE(UNIT_stdOut,'(A)')  ' h5diff: file to compare not found.'
-#   Examples(iExample)%ErrorStatus=5
-# ELSEIF(iSTATUS.EQ.127)THEN
-#   SWRITE(UNIT_stdOut,'(A)')  ' h5diff executable could not be found.'
-#   Examples(iExample)%ErrorStatus=5
-# ELSE!IF(iSTATUS.NE.0) THEN
-#   Examples(iExample)%ErrorStatus=3
-# END IF

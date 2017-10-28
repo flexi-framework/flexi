@@ -382,7 +382,7 @@ def SummaryOfErrors(builds) :
                     run.output_strings['time']    = "%2.1f" % run.walltime
                     run.output_strings['Info']    = run.result
                     for key in run.output_strings.keys() :
-                        max_lens[key] = max(max_lens[key], len(run.output_strings[key]))
+                        max_lens[key] = max(max_lens[key], len(run.output_strings[key])) # set max column widths for summary table
     
     # 2. print header
     print 132*"="
