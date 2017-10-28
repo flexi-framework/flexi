@@ -31,5 +31,3 @@ for build in buildCombinations :
             prm += name + "=" + run[name] + '\n'
 
         print prm
-    #os.system(cmake)
-    #os.system("make")

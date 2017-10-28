@@ -18,7 +18,7 @@ class Build(OutputDirectory,ExternalCommand) :
         ExternalCommand.__init__(self)
 
         # initialize result as empty list
-        self.result = tools.yellow("not built")
+        self.result = tools.yellow("skipped building")
 
         # initialize examples as empty list
         self.examples = []

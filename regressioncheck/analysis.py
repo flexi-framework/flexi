@@ -41,22 +41,27 @@ def getAnalyzes(path, example) :
         analyze.append(Analyze_Convtest_h(convtest_h_cells,convtest_h_tolerance,convtest_h_rate))
 
     # 2.3   p-convergence test
-    convtest_p_tolerance = float(options.get('analyze_convtest_p_tolerance',1e-2))
+    #convtest_p_tolerance = float(options.get('analyze_convtest_p_tolerance',1e-2))
     convtest_p_rate      = float(options.get('analyze_convtest_p_rate',-1))
     # only do convergence test if convergence rate and tolerance >0
-    if convtest_p_tolerance > 0 and 0.0 <= convtest_p_rate <= 1.0:
-        analyze.append(Analyze_Convtest_p(convtest_p_tolerance,convtest_p_rate))
+    if 0.0 <= convtest_p_rate <= 1.0:
+        analyze.append(Analyze_Convtest_p(convtest_p_rate))
 
     # 2.4   h5diff (relative or absolute HDF5-file comparison of an output file with a reference file)
-    h5diff_reference_file = options.get('h5diff_reference_file',None)
-    h5diff_file = options.get('h5diff_file',None)
-    h5diff_name = options.get('h5diff_name',None)
+    h5diff_reference_file  = options.get('h5diff_reference_file',None)
+    h5diff_file            = options.get('h5diff_file',None)
+    h5diff_data_set        = options.get('h5diff_data_set',None)
+    h5diff_tolerance_value = options.get('h5diff_tolerance_value',1e-5)
+    h5diff_tolerance_type  = options.get('h5diff_tolerance_type','absolute')
     # only do h5diff test if all variables are defined
-    if h5diff_reference_file and h5diff_file and h5diff_name :
-        print h5diff_reference_file
-        print h5diff_file
-        print h5diff_name
-        analyze.append(Analyze_h5diff(h5diff_reference_file,h5diff_file,h5diff_name))
+    if h5diff_reference_file and h5diff_file and h5diff_data_set :
+        if h5diff_tolerance_type in ('absolute', 'delta', '--delta') :
+            h5diff_tolerance_type = "--delta"
+        elif h5diff_tolerance_type in ('relative', "--relative") :
+            h5diff_tolerance_type = "--relative"
+        else :
+            raise Exception(tools.red("initialization of h5diff failed. h5diff_tolerance_type '%s' not accepted." % h5diff_tolerance_type))
+        analyze.append(Analyze_h5diff(h5diff_reference_file, h5diff_file,h5diff_data_set, h5diff_tolerance_value, h5diff_tolerance_type))
     
     #exit(1)
 
@@ -184,8 +189,7 @@ class Analyze_Convtest_h(Analyze) :
 #==================================================================================================
 
 class Analyze_Convtest_p(Analyze) :
-    def __init__(self, tolerance, rate) :
-        self.tolerance = tolerance
+    def __init__(self, rate) :
         self.rate = rate
 
     def perform(self,runs) :
@@ -197,7 +201,7 @@ class Analyze_Convtest_p(Analyze) :
         # 2.3   get number of variables from L2 error array
         # 2.4   determine order of convergence between two runs
         # 2.5   check if the order of convergence is always increasing with increasing polynomial degree
-        # 2.6   determine success rate by comparing the relative convergence error with a tolerance
+        # 2.6   determine success rate from increasing convergence
         # 2.7   compare success rate with pre-defined rate, fails if not reached 
         # 2.8   interate over all runs
         # 2.8.1   add failed info if success rate is not reached to all runs
@@ -238,7 +242,7 @@ class Analyze_Convtest_p(Analyze) :
             print tools.blue("Increasing order of convergence")
             print tools.blue(str(increasing))
             
-            # 2.6   determine success rate by comparing the relative convergence error with a tolerance
+            # 2.6   determine success rate from increasing convergence
             success = [increasing[x] for x in range(nVar)]
             print "success convergence: ",success
 
@@ -273,72 +277,67 @@ class Analyze_Convtest_p(Analyze) :
 #==================================================================================================
 
 class Analyze_h5diff(Analyze,ExternalCommand) :
-    def __init__(self, h5diff_reference_file, h5diff_file, h5diff_name) :
-        self.reference_file = h5diff_reference_file
-        self.file           = h5diff_file
-        self.name           = h5diff_name
+    def __init__(self, h5diff_reference_file, h5diff_file, h5diff_data_set, h5diff_tolerance_value, h5diff_tolerance_type) :
+        self.reference_file   = h5diff_reference_file
+        self.file             = h5diff_file
+        self.data_set          = h5diff_data_set
+        self.tolerance_value  = h5diff_tolerance_value
+        self.tolerance_type   = h5diff_tolerance_type
         ExternalCommand.__init__(self)
 
     def perform(self,runs) :
-        print self.reference_file
-        print self.file
-        print self.name
 
         # General workflow:
         # 1.  iterate over all runs
-        # 1.2   select relative or absolute comparison
-        # 1.3   execute the command 'cmd' = 'h5diff -r --XXX [number] ref_file file DataArray'
-        # 1.4   if the comman 'cmd' return a code != 0, set failed
-        # 1.4.1   add failed info if return a code != 0 to run
-        # 1.4.2   set analyzes to fail if return a code != 0
+        # 1.2   execute the command 'cmd' = 'h5diff -r --XXX [number] ref_file file DataArray'
+        # 1.3   if the command 'cmd' returns a code != 0, set failed
+        # 1.3.1   add failed info (for return a code != 0) to run
+        # 1.3.2   set analyzes to fail (for return a code != 0)
 
         # 1.  iterate over all runs
         for run in runs :
-            #h5diff = "/opt/hdf5/1.8.18/bin/h5diff"
-            h5diff = "h5diff"
-            # todo: check if h5diff exists on system -> if not deactivate or add failure?
-
-            # 1.2   select relative or absolute comparison
-            if 1 == 1 :
-                diffType = "--delta"
-            else :
-                diffType = "--relative"
-            cmd = [h5diff,"-r",diffType,"1e-5",str(self.reference_file),str(self.file),str(self.name)]
+            # 1.2   execute the command 'cmd' = 'h5diff -r [--type] [number] [ref_file] [file] [DataSetName]'
+            print " "
+            cmd = ["h5diff","-r",self.tolerance_type,str(self.tolerance_value),str(self.reference_file),str(self.file),str(self.data_set)]
             print "Running ["," ".join(cmd),"]",
-
-            # 1.3   execute the command 'cmd' = 'h5diff -r [--type] [number] [ref_file] [file] [DataArrayName]'
             try :
                 self.execute_cmd(cmd, run.target_directory,"h5diff") # run the code
 
-                # 1.4   if the comman 'cmd' return a code != 0, set failed
+                # 1.3   if the comman 'cmd' return a code != 0, set failed
                 if self.return_code != 0 :
+                    print "   tolerance_type     : "+self.tolerance_type
+                    print "   tolernace_value    : "+str(self.tolerance_value)
+                    print "   reference          : "+str(self.reference_file)
+                    print "   file               : "+str(self.file)
+                    print "   data_set           : "+str(self.data_set)
 
-                    # 1.4.1   add failed info if return a code != 0 to run
+                    # 1.3.1   add failed info if return a code != 0 to run
                     if len(self.stdout) > 20 :
                         run.analyze_results.append("h5diff failed, self.return_code != 0")
                         for line in self.stdout[:10] : # print first 10 lines
-                            print line,
-                        print "... leaving out intermediate lines"
+                            print " "+line,
+                        print " ... leaving out intermediate lines"
                         for line in self.stdout[-10:] : # print last 10 lines
-                            print line,
+                            print " "+line,
                     else :
-                        print str(self.stdout)
+                        print " "+str(self.stdout)
                         if len(self.stdout) == 1 :
                             run.analyze_results.append(str(self.stdout))
 
-                    # 1.4.2   set analyzes to fail if return a code != 0
+                    # 1.3.2   set analyzes to fail if return a code != 0
                     run.analyze_successful=False
                     Analyze.total_errors+=1
 
                     #global_errors+=1
             except Exception,ex :
-                self.result=tools.red("h5diff failed."+str(ex))
-                print self.result
+                self.result=tools.red("h5diff failed."+str(ex)) # print result here, because it was not added in "execute_cmd"
+                print " "+self.result
 
-                # 1.4.1   add failed info if return a code != 0 to run
-                run.analyze_results.append(self.result)
+                # 1.3.1   add failed info if return a code != 0 to run
+                run.analyze_results.append(tools.red("h5diff failed."+str(ex)))
+                run.analyze_results.append(tools.red("try adding 'export PATH=/opt/hdf5/1.X/bin/:$PATH'"))
 
-                # 1.4.2   set analyzes to fail if return a code != 0
+                # 1.3.2   set analyzes to fail if return a code != 0
                 run.analyze_successful=False
                 Analyze.total_errors+=1
 
@@ -363,11 +362,5 @@ class Analyze_h5diff(Analyze,ExternalCommand) :
 #   SWRITE(UNIT_stdOut,'(A)')  ' h5diff executable could not be found.'
 #   Examples(iExample)%ErrorStatus=5
 # ELSE!IF(iSTATUS.NE.0) THEN
-#   SWRITE(UNIT_stdOut,'(A)')  ' HDF5 Datasets do not match! Error in computation!'
-#   SWRITE(UNIT_stdOut,'(A)')  '    Type               : '//ADJUSTL(TRIM(Examples(iExample)%H5diffToleranceType))
-#   SWRITE(UNIT_stdOut,'(A)')  '    tmpTol             : '//ADJUSTL(TRIM(tmpTol))
-#   SWRITE(UNIT_stdOut,'(A)')  '    H5DIFF             : '//ADJUSTL(TRIM(H5DIFF))
-#   SWRITE(UNIT_stdOut,'(A)')  '    ReferenceStateFile : '//TRIM(Examples(iExample)%H5DIFFReferenceStateFile)
-#   SWRITE(UNIT_stdOut,'(A)')  '    CheckedFileName    : '//TRIM(Examples(iExample)%H5DIFFCheckedStateFile)
 #   Examples(iExample)%ErrorStatus=3
 # END IF
