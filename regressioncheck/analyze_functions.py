@@ -30,25 +30,35 @@ def get_cpu_per_dof(lines) :
          return float(line.split("[")[1].split("sec")[0])
 
 def calcOrder_h(h,E) :
+    h = [float(elem) for elem in h]
+    E = [float(elem) for elem in E]
     if len(h) != len(E) :
         return -1
 
     order = []
     for i in range(1,len(h)) :
         dh=1.0/(h[i]/h[i-1])
-        dE=E[i]/E[i-1]
-        order.append(math.log(dE)/math.log(dh))
+        if E[i-1] == 0.0 :
+            order.append(0.0)
+        else :
+            dE=E[i]/E[i-1]
+            order.append(math.log(dE)/math.log(dh))
 
     return order
 
 def calcOrder_p(p,E) :
+    p = [float(elem) for elem in p]
+    E = [float(elem) for elem in E]
     if len(p) != len(E) :
         return -1
 
     order = []
     for i in range(1,len(p)) :
         dp=1.0/((p[i]+1.0)/(p[i-1]+1.0))
-        dE=E[i]/E[i-1]
-        order.append(math.log(dE)/math.log(dp))
+        if E[i-1] == 0.0 :
+            order.append(0.0)
+        else :
+            dE=E[i]/E[i-1]
+            order.append(math.log(dE)/math.log(dp))
 
     return order

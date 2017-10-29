@@ -67,10 +67,11 @@ def getAnalyzes(path, example) :
 
     # 2.3   p-convergence test
     #convtest_p_tolerance = float(options.get('analyze_convtest_p_tolerance',1e-2))
-    convtest_p_rate      = float(options.get('analyze_convtest_p_rate',-1))
+    convtest_p_rate       = float(options.get('analyze_convtest_p_rate',-1))
+    convtest_p_percentage = float(options.get('analyze_convtest_ppercentage',0.75))
     # only do convergence test if convergence rate and tolerance >0
     if 0.0 <= convtest_p_rate <= 1.0:
-        analyze.append(Analyze_Convtest_p(convtest_p_rate))
+        analyze.append(Analyze_Convtest_p(convtest_p_rate, convtest_p_percentage))
 
     # 2.4   h5diff (relative or absolute HDF5-file comparison of an output file with a reference file)
     h5diff_reference_file  = options.get('h5diff_reference_file',None)
@@ -180,7 +181,7 @@ class Analyze_Convtest_h(Analyze) :
 
             # determine average convergence rate
             mean = [np.mean(L2_order[i]) for i in range(nVar)]
-            print tools.blue("L2 average order for nVar="+str(nVar))
+            print tools.blue("L2 average order for nVar=%s (exprected order = %s)" % (nVar,p+1))
             displayVector(mean,nVar)
             
             # 1.5   determine success rate by comparing the relative convergence error with a tolerance
@@ -221,8 +222,9 @@ class Analyze_Convtest_h(Analyze) :
 #==================================================================================================
 
 class Analyze_Convtest_p(Analyze) :
-    def __init__(self, rate) :
+    def __init__(self, rate, percentage) :
         self.rate = rate
+        self.percentage = percentage
 
     def perform(self,runs) :
 
@@ -281,8 +283,7 @@ class Analyze_Convtest_p(Analyze) :
             print 5*" "+"".join(str(increasing[i]).rjust(21) for i in range(nVar))
             
             # 2.6   determine success rate from increasing convergence
-            # 50% of the slopes must be increasing
-            success = [increasing[i] >= 1.0 for i in range(nVar)]
+            success = [increasing[i] >= self.percentage for i in range(nVar)]
             print tools.blue("success convergence (if percentage >= 1.0)")
             print 5*" "+"".join(str(success[i]).rjust(21) for i in range(nVar))
 

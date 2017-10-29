@@ -93,9 +93,11 @@ def finalize(start, build_errors, run_errors, analyze_errors) :
     if build_errors + run_errors + analyze_errors > 0 :
         print bcolors.RED + 132*'='
         print "reggie 2.0  FAILED!",
+        return_code = 1
     else :
         print bcolors.BLUE + 132*'='
         print "reggie 2.0  successful!",
+        return_code = 0
 
     if start > 0 : # only calculate run time and display output when start > 0
         end = timer()
@@ -108,3 +110,5 @@ def finalize(start, build_errors, run_errors, analyze_errors) :
     print "Number of analyze errors: %d" % analyze_errors
 
     print '='*132 + bcolors.ENDC
+    exit(return_code)
+
