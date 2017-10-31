@@ -4,7 +4,13 @@ from externalcommand import ExternalCommand
 import analyze_functions
 import combinations 
 import tools
-import h5py
+try :
+    import h5py
+    h5py_module_loaded = True
+except ImportError :
+    #raise ImportError('Could not import h5py module. This is needed for anaylze functions.')
+    print tools.red('Could not import h5py module. This is needed for anaylze functions.')
+    h5py_module_loaded = False
 
 def displayTable(mylist,nVar,nRuns) :
     # mylist = [[1 2 3] [1 2 3] [1 2 3] [1 2 3] ] example with 4 nVar and 3 nRuns
@@ -405,6 +411,11 @@ class Analyze_check_hdf5(Analyze) :
         (self.lower, self.upper) = [float(x) for x in check_hdf5_limits.split(":")]
 
     def perform(self,runs) :
+        # check if this anaylze can be performed: h5py must be imported
+        if not h5py_module_loaded : # this boolean is set when importing h5py
+            print tools.red('Could not import h5py module. This is needed for "Analyze_check_hdf5". Aborting.')
+            Analyze.total_errors+=1
+            return
 
         # General workflow:
         # 1.  iterate over all runs
