@@ -4,6 +4,7 @@ from externalcommand import ExternalCommand
 import analyze_functions
 import combinations 
 import tools
+import csv
 try :
     import h5py
     h5py_module_loaded = True
@@ -48,6 +49,7 @@ def getAnalyzes(path, example) :
     # 2.3   p-convergence test
     # 2.4   h5diff (relative or absolute HDF5-file comparison of an output file with a reference file)
     # 2.5   check array bounds in hdf5 file
+    # 2.6   check data file row
 
     # 1.  Read the analyze options from file 'path'
     analyze = [] # list
@@ -105,6 +107,21 @@ def getAnalyzes(path, example) :
     if all([check_hdf5_file, check_hdf5_data_set, check_hdf5_dimension, check_hdf5_limits]) :
         analyze.append(Analyze_check_hdf5(check_hdf5_file, check_hdf5_data_set, check_hdf5_dimension, check_hdf5_limits))
 
+    # 2.6   check data file row
+    compare_data_file_name           = options.get('compare_data_file_name',None)
+    compare_data_file_reference      = options.get('compare_data_file_reference',None)
+    compare_data_file_tolerance      = options.get('compare_data_file_tolerance',None)
+    compare_data_file_tolerance_type = options.get('compare_data_file_tolerance_type','absolute')
+    compare_data_file_line           = options.get('compare_data_file_line','last')
+    compare_data_file_delimiter      = options.get('compare_data_file_delimiter',',')
+    if all([compare_data_file_name, compare_data_file_reference, compare_data_file_tolerance, compare_data_file_line]) :
+        if compare_data_file_tolerance_type in ('absolute', 'delta', '--delta') :
+            compare_data_file_tolerance_type = "absolute"
+        elif compare_data_file_tolerance_type in ('relative', "--relative") :
+            compare_data_file_tolerance_type = "relative"
+        else :
+            raise Exception(tools.red("initialization of compare data file failed. h5diff_tolerance_type '%s' not accepted." % h5diff_tolerance_type))
+        analyze.append(Analyze_compare_data_file(compare_data_file_name, compare_data_file_reference, compare_data_file_tolerance, compare_data_file_line, compare_data_file_delimiter, compare_data_file_tolerance_type ))
 
 
     return analyze
@@ -428,7 +445,14 @@ class Analyze_check_hdf5(Analyze) :
         # 1.  iterate over all runs
         for run in runs :
             # 1.2   Read the hdf5 file
-            f = h5py.File(os.path.join(run.target_directory,self.file),'r')
+            path = os.path.join(run.target_directory,self.file)
+            if not os.path.exists(path) :
+                print tools.red("Analyze_check_hdf5: file does not exist, file=[%s]" % path)
+                run.analyze_successful=False
+                Analyze.total_errors+=1
+                return
+
+            f = h5py.File(path,'r')
             # available keys   : print("Keys: %s" % f.keys())
             # first key in list: a_group_key = list(f.keys())[0]
 
@@ -450,4 +474,91 @@ class Analyze_check_hdf5(Analyze) :
 
     def __str__(self) :
         return "check if the values of an hdf5 array are within specified limits: file= ["+str(self.file)+"], dataset= ["+str(self.data_set)+"]"
+
+#==================================================================================================
+
+class Analyze_compare_data_file(Analyze) :
+    def __init__(self, compare_data_file_name, compare_data_file_reference, compare_data_file_tolerance, compare_data_file_line, compare_data_file_delimiter, compare_data_file_tolerance_type ) :
+        self.file           = compare_data_file_name
+        self.reference      = compare_data_file_reference
+        self.tolerance      = float(compare_data_file_tolerance)
+        self.tolerance_type = compare_data_file_tolerance_type 
+        if compare_data_file_line == 'last' : 
+            self.line = int(1e20)
+        else :
+            self.line = int(compare_data_file_line)
+        self.delimiter = compare_data_file_delimiter
+
+    def perform(self,runs) :
+
+        # General workflow:
+        # 1.  iterate over all runs
+        # 1.2   Check existence the file and reference values
+        # 1.3.1   read data file
+        # 1.3.2   read refernece file
+        # 1.3.3   check length of vectors
+        # 1.3.4   calculate difference and determine compare with tolerance
+
+        # 1.  iterate over all runs
+        for run in runs :
+            # 1.2   Check existence the file and reference values
+            path     = os.path.join(run.target_directory,self.file)
+            path_ref = os.path.join(run.target_directory,self.reference)
+            if not os.path.exists(path) or not os.path.exists(path_ref) :
+                print tools.red("Analyze_compare_data_file: cannot find both file=[%s] and reference file=[%s]" % (self.file, self.reference))
+                run.analyze_successful=False
+                Analyze.total_errors+=1
+                return
+            
+            # 1.3.1   read data file
+            with open(path, 'rb') as csvfile:
+                spamreader = csv.reader(csvfile, delimiter=self.delimiter, quotechar='!')
+                #spamreader = csv.reader(csvfile, delimiter=' ', quotechar='|')
+                i=0
+                header=0
+                for row in spamreader:
+                    try :
+                        line = np.array([float(x) for x in row])
+                    except :
+                        header+=1
+                        header_line = row
+                    i+=1
+                    if i == self.line :
+                        print tools.yellow(str(i)),
+                        break
+                #print line
+                line_len = len(line)
+            
+            # 1.3.2   read refernece file
+            with open(path_ref, 'rb') as csvfile:
+                spamreader = csv.reader(csvfile, delimiter=self.delimiter, quotechar='!')
+                header_ref=0
+                for row in spamreader:
+                    try :
+                        line_ref = np.array([float(x) for x in row])
+                    except :
+                        header_ref+=1
+                #print tools.blue(str(line_ref))
+                line_ref_len = len(line_ref)
+
+            # 1.3.3   check length of vectors
+            if line_len != line_ref_len :
+                print tools.red("Analyze_compare_data_file: length of lines in file and reference file are not of the same length")
+                run.analyze_successful=False
+                Analyze.total_errors+=1
+                return
+
+            # 1.3.4   calculate difference and determine compare with tolerance
+            success = tools.compare_vector(line, line_ref, self.tolerance, self.tolerance_type)
+            if not all(success) :
+                print tools.red("Mismatch in columns: "+", ".join([str(header_line[i]).strip() for i in range(len(success)) if not success[i]]))
+                run.analyze_successful=False
+                Analyze.total_errors+=1
+            
+
+    def __str__(self) :
+        return "compare line in data file (e.g. .csv file): file=[%s] and reference file=[%s]" % (self.file, self.reference)
+
+
+
 

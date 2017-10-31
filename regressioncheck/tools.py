@@ -112,3 +112,27 @@ def finalize(start, build_errors, run_errors, analyze_errors) :
     print '='*132 + bcolors.ENDC
     exit(return_code)
 
+def compare_vector(x,x_ref,tol,tol_type) :
+    # determine diff, either relative of absolute (if the reference value is zero, only use absolute comparison)
+    # x        : vector of real values
+    # x_ref    : vector of real values (reference)
+    # tol      : tolerance value
+    # tol_type : tolerance type, relative or absolute
+
+    if tol_type == 'absolute' :
+        diff = [a-b for (a,b) in zip(x,x_ref)]
+    else : # relative comparison
+        # if the reference value is zero, use absolute comparison
+        diff = [abs(a/b-1.0) if abs(b) > 0.0 else a for (a,b) in zip(x,x_ref) ]
+
+    success = [d <= tol for d in diff]
+
+    if not all(success) :
+        print "Differences in vector comparison:"
+        print "%13s   %13s   %13s" % ("x","x_ref","diff")
+        for i in range(len(diff)) :
+            if diff[i] <= tol : continue
+            print "%13.6e   %13.6e   %13.6e" % (x[i],x_ref[i],diff[i])
+
+    return success
+
