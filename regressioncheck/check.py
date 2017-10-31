@@ -221,6 +221,11 @@ class Run(OutputDirectory, ExternalCommand) :
         if cmd_suffix :
             cmd.append(cmd_suffix)
 
+        # append restart file name
+        cmd_restart_file = command_line.parameters.get('restart_file')
+        if cmd_restart_file :
+            cmd.append(cmd_restart_file)
+
         # execute the command 'cmd'
         print tools.indent("Running [%s]" % (" ".join(cmd)), 2),
         self.execute_cmd(cmd, self.target_directory) # run the code

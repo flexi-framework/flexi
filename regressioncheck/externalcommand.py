@@ -27,8 +27,6 @@ class ExternalCommand() :
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, \
                                         stderr=subprocess.PIPE, \
                                         universal_newlines=True, cwd=workingDir)
-        end = timer()
-        self.walltime = end - start
         self.stdout = []
         self.stderr = []
         for line in iter(process.stdout.readline, '') :
@@ -41,6 +39,9 @@ class ExternalCommand() :
         process.stderr.close()
 
         self.return_code = process.wait()
+
+        end = timer()
+        self.walltime = end - start
 
         # write std.out and err.out to disk
         self.stdout_filename = os.path.join(target_directory,name+".out")
@@ -57,7 +58,7 @@ class ExternalCommand() :
             f.close()
         else :
             self.result=tools.blue("Successful")
-        print self.result
+        print self.result+" [%.2f sec]" % self.walltime
 
         return self.return_code
     

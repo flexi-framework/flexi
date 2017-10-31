@@ -4,6 +4,7 @@ from externalcommand import ExternalCommand
 import analyze_functions
 import combinations 
 import tools
+import h5py
 
 def displayTable(mylist,nVar,nRuns) :
     # mylist = [[1 2 3] [1 2 3] [1 2 3] [1 2 3] ] example with 4 nVar and 3 nRuns
@@ -40,6 +41,7 @@ def getAnalyzes(path, example) :
     # 2.2   h-convergence test
     # 2.3   p-convergence test
     # 2.4   h5diff (relative or absolute HDF5-file comparison of an output file with a reference file)
+    # 2.5   check array bounds in hdf5 file
 
     # 1.  Read the analyze options from file 'path'
     analyze = [] # list
@@ -89,7 +91,15 @@ def getAnalyzes(path, example) :
             raise Exception(tools.red("initialization of h5diff failed. h5diff_tolerance_type '%s' not accepted." % h5diff_tolerance_type))
         analyze.append(Analyze_h5diff(h5diff_reference_file, h5diff_file,h5diff_data_set, h5diff_tolerance_value, h5diff_tolerance_type))
     
-    #exit(1)
+    # 2.5   check array bounds in hdf5 file
+    check_hdf5_file      = options.get('check_hdf5_file',None) 
+    check_hdf5_data_set  = options.get('check_hdf5_data_set',None) 
+    check_hdf5_dimension = options.get('check_hdf5_dimension',None) 
+    check_hdf5_limits    = options.get('check_hdf5_limits',None) 
+    if all([check_hdf5_file, check_hdf5_data_set, check_hdf5_dimension, check_hdf5_limits]) :
+        analyze.append(Analyze_check_hdf5(check_hdf5_file, check_hdf5_data_set, check_hdf5_dimension, check_hdf5_limits))
+
+
 
     return analyze
 
@@ -338,9 +348,8 @@ class Analyze_h5diff(Analyze,ExternalCommand) :
         # 1.  iterate over all runs
         for run in runs :
             # 1.2   execute the command 'cmd' = 'h5diff -r [--type] [number] [ref_file] [file] [DataSetName]'
-            print " "
             cmd = ["h5diff","-r",self.tolerance_type,str(self.tolerance_value),str(self.reference_file),str(self.file),str(self.data_set)]
-            print "Running ["," ".join(cmd),"]",
+            print tools.indent("Running [%s]" % (" ".join(cmd)), 2),
             try :
                 self.execute_cmd(cmd, run.target_directory,"h5diff") # run the code
 
@@ -385,4 +394,49 @@ class Analyze_h5diff(Analyze,ExternalCommand) :
 
     def __str__(self) :
         return "perform h5diff between two files: ["+str(self.file)+"] + reference ["+str(self.reference_file)+"]"
+
+#==================================================================================================
+
+class Analyze_check_hdf5(Analyze) :
+    def __init__(self, check_hdf5_file, check_hdf5_data_set, check_hdf5_dimension, check_hdf5_limits) :
+        self.file                = check_hdf5_file
+        self.data_set            = check_hdf5_data_set
+        (self.dim1, self.dim2)   = [int(x)   for x in check_hdf5_dimension.split(":")]
+        (self.lower, self.upper) = [float(x) for x in check_hdf5_limits.split(":")]
+
+    def perform(self,runs) :
+
+        # General workflow:
+        # 1.  iterate over all runs
+        # 1.2   Read the hdf5 file
+        # 1.3   Read the dataset from the hdf5 file
+        # 1.3.1   loop over each dimension supplied
+        # 1.3.2   Check if all values are within the supplied interval
+        # 1.3.3   set analyzes to fail if return a code != 0
+
+        # 1.  iterate over all runs
+        for run in runs :
+            # 1.2   Read the hdf5 file
+            f = h5py.File(os.path.join(run.target_directory,self.file),'r')
+            # available keys   : print("Keys: %s" % f.keys())
+            # first key in list: a_group_key = list(f.keys())[0]
+
+            # 1.3   Read the dataset from the hdf5 file
+            b = f[self.data_set][:]
+
+            # 1.3.1   loop over each dimension supplied
+            for i in range(self.dim1, self.dim2+1) : 
+
+                # 1.3.2   Check if all values are within the supplied interval
+                if any([x < self.lower for x in b[i]]) or any([x > self.upper for x in b[i]]) :
+                    print tools.red(str(b[i]))
+                    print tools.red("HDF5 array out of bounds for dimension=%2d" % i)
+           
+                    # 1.3.3   set analyzes to fail if return a code != 0
+                    run.analyze_successful=False
+                    Analyze.total_errors+=1
+
+
+    def __str__(self) :
+        return "check if the values of an hdf5 array are within specified limits: file= ["+str(self.file)+"], dataset= ["+str(self.data_set)+"]"
 
