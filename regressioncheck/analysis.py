@@ -40,6 +40,8 @@ def displayVector(vector,nVar) :
 #==================================================================================================
 
 def getAnalyzes(path, example) :
+    """For every example a list of analyzes is built from the specified anaylzes in 'analyze.ini'. 
+    The anaylze list is performed after a set of runs is completed."""
 
     # General workflow:
     # 1.  Read the analyze options from file 'path' into dict 'options'
@@ -170,24 +172,28 @@ class Analyze_L2(Analyze) :
 #==================================================================================================
 
 class Analyze_Convtest_h(Analyze) :
+    """Convergence test for a fixed polynomial degree and different meshes defined in 'parameter.ini'
+    The analyze routine read the L2 error norm from a set of runs and determines the order of convergence 
+    between the runs and averages the values. The average is compared with the polynomial degree p+1."""
     def __init__(self, cells, tolerance, rate) :
         self.cells = cells
         self.tolerance = tolerance
         self.rate = rate
 
     def perform(self,runs) :
-
-        # General workflow:
-        # 1.  check if number of successful runs is euqal the number of supplied cells
-        # 1.1   read the polynomial degree from the first run -> must not change!
-        # 1.2   get L2 errors of all runs and create np.array
-        # 1.3   get number of variables from L2 error array
-        # 1.4   determine order of convergence between two runs
-        # 1.5   determine success rate by comparing the relative convergence error with a tolerance
-        # 1.6   compare success rate with pre-defined rate
-        # 1.7     interate over all runs
-        # 1.7.1   add failed info if success rate is not reached to all runs
-        # 1.7.2   set analyzes to fail if success rate is not reached for all runs
+        """
+        General workflow:
+        1.  check if number of successful runs is euqal the number of supplied cells
+        1.1   read the polynomial degree from the first run -> must not change!
+        1.2   get L2 errors of all runs and create np.array
+        1.3   get number of variables from L2 error array
+        1.4   determine order of convergence between two runs
+        1.5   determine success rate by comparing the relative convergence error with a tolerance
+        1.6   compare success rate with pre-defined rate
+        1.7     interate over all runs
+        1.7.1   add failed info if success rate is not reached to all runs
+        1.7.2   set analyzes to fail if success rate is not reached for all runs
+        """
 
         # 1.  check if number of successful runs is euqal the number of supplied cells
         nRuns = len(runs)

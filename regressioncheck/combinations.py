@@ -5,13 +5,14 @@ import os
 import tools
 
 class Option :
+    """Create an option object with a "name" and "values" similar to dict """
     def __init__(self, name, values) :
         self.name = name
         self.values = values
 
 def splitValues(s) :
-    # split string of values at ',' but not inside brackets, since a value can be
-    # an array, which is written as '(/ a, b, c /)' 
+    """ split string of values at ',' but not inside brackets, since a value can be
+     an array, which is written as '(/ a, b, c /)'  """
     # This is done with a regular expression. Explanation:
     #   ,       : matches comma ','
     #   \s*     : match 0 or more whitespaces (actually not necessary, since we already removed all whitespaces)

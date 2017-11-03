@@ -39,7 +39,7 @@ class Build(OutputDirectory,ExternalCommand) :
         # set cmake command
         self.cmake_cmd = ["cmake"]                        # start composing cmake command
         for (key, value) in self.configuration.items() :  # add configuration to the cmake command
-            self.cmake_cmd.append("-D%s=%s" % (key, value))    
+            self.cmake_cmd.append(tools.blue("-D")+"%s=%s" % (key, value))    
         self.cmake_cmd.append(self.basedir)               # add basedir to the cmake command
 
     def compile(self, buildprocs) :
