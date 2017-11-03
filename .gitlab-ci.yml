@@ -86,13 +86,6 @@ gnu_convtest:
     - if [ -n "${DO_NIGHTLY}" ]; then module load env/gnu ; cd build_gnu ;  python ../regressioncheck/reggie.py ../regressioncheck/checks/convtest ; fi 
 
 
-gnu_h5diff_test_remove_later:
-  stage: reggie_checkin
-  tags:
-    - withmodules
-  script:
-    - module load env/gnu ; cd build_gnu ;  python ../regressioncheck/reggie.py ../regressioncheck/checks/h5diff ; 
-
 
 intel_build_all:
   stage: reggie_nightly
