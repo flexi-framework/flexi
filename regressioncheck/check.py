@@ -38,9 +38,12 @@ class Build(OutputDirectory,ExternalCommand) :
 
         # set cmake command
         self.cmake_cmd = ["cmake"]                        # start composing cmake command
+        self.cmake_cmd_color = ["cmake"]                  # start composing cmake command with colors
         for (key, value) in self.configuration.items() :  # add configuration to the cmake command
-            self.cmake_cmd.append(tools.blue("-D")+"%s=%s" % (key, value))    
+            self.cmake_cmd.append("-D%s=%s" % (key, value))    
+            self.cmake_cmd_color.append(tools.blue("-D")+"%s=%s" % (key, value))    
         self.cmake_cmd.append(self.basedir)               # add basedir to the cmake command
+        self.cmake_cmd_color.append(self.basedir)               # add basedir to the cmake command
 
     def compile(self, buildprocs) :
         # don't compile if build directory already exists
@@ -54,8 +57,8 @@ class Build(OutputDirectory,ExternalCommand) :
         print "building"
 
         # CMAKE: execute cmd in build directory
-        print "C-making with ["," ".join(self.cmake_cmd),"] ...",
-        if self.execute_cmd(self.cmake_cmd, self.target_directory) != 0 :
+        print "C-making with ["," ".join(self.cmake_cmd_color),"] ...",   # print colored string
+        if self.execute_cmd(self.cmake_cmd, self.target_directory) != 0 : # use unclolored string for cmake
             raise BuildFailedException(self) # "CMAKE failed"
 
         # MAKE: default with '-j'
