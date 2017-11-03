@@ -10,7 +10,7 @@ General workflow:
 3.  perform the regression check by a) building executables
                                     b) running the code
                                     c) performing the defined analyzes
-4.  display the summary table with information for each build, run and anaylze step
+4.  display the summary table with information for each build, run and analysis step
 5.  display if regression check was successful or not and return the corresponding error code
 """
 
@@ -29,7 +29,7 @@ log = logging.getLogger('logger')
 #                                     c) performing the defined analyzes
 check.PerformCheck(start,builds,args,log)
 
-# 4.  display the summary table with information for each build, run and anaylze step
+# 4.  display the summary table with information for each build, run and analysis step
 check.SummaryOfErrors(builds)
 
 # 5.  display if regression check was successful or not and return the corresponding error code

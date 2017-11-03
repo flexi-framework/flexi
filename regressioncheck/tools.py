@@ -5,7 +5,8 @@ from timeit import default_timer as timer
 import re
 
 class bcolors :
-    # Reset
+    """color and font style definitions for changing output appearance"""
+    # Reset (user after applying a color to return to normal coloring)
     ENDC   ='\033[0m'    
 
     # Regular Colors
@@ -22,7 +23,20 @@ class bcolors :
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
+def red(text) :
+    return bcolors.RED+text+bcolors.ENDC
+
+def green(text) :
+    return bcolors.GREEN+text+bcolors.ENDC
+
+def blue(text) :
+    return bcolors.BLUE+text+bcolors.ENDC
+
+def yellow(text) :
+    return bcolors.YELLOW+text+bcolors.ENDC
+
 def indent(text, amount, ch=' '):
+    """Indent text line by amount times a white space """
     padding = amount * 2 * ch
     return ''.join(padding+line for line in text.splitlines(True))
 
@@ -77,19 +91,8 @@ def clean_folder(path) :
     shutil.rmtree(path,ignore_errors=True)
     #shutil.rmtree(path)
 
-def red(text) :
-    return bcolors.RED+text+bcolors.ENDC
-
-def green(text) :
-    return bcolors.GREEN+text+bcolors.ENDC
-
-def blue(text) :
-    return bcolors.BLUE+text+bcolors.ENDC
-
-def yellow(text) :
-    return bcolors.YELLOW+text+bcolors.ENDC
-
 def finalize(start, build_errors, run_errors, analyze_errors) :
+    """Display if regression check was successful or not and return the corresponding error code"""
     if build_errors + run_errors + analyze_errors > 0 :
         print bcolors.RED + 132*'='
         print "reggie 2.0  FAILED!",
@@ -112,21 +115,27 @@ def finalize(start, build_errors, run_errors, analyze_errors) :
     print '='*132 + bcolors.ENDC
     exit(return_code)
 
-def compare_vector(x,x_ref,tol,tol_type) :
-    # determine diff, either relative of absolute (if the reference value is zero, only use absolute comparison)
-    # x        : vector of real values
-    # x_ref    : vector of real values (reference)
-    # tol      : tolerance value
-    # tol_type : tolerance type, relative or absolute
+def diff_lists(x,x_ref,tol,tol_type) :
+    """
+    determine diff of two lists of floats, either relative of absolute 
+    (if the reference value is zero, use absolute comparison)
+    x        : vector of real values
+    x_ref    : vector of real values (reference)
+    tol      : tolerance value
+    tol_type : tolerance type, relative or absolute
+    """
 
+    # check tolerance type: absolute/relative (is the reference value is zero, absolute comparison is used)
     if tol_type == 'absolute' :
-        diff = [a-b for (a,b) in zip(x,x_ref)]
+        diff = [abs(a-b) for (a,b) in zip(x,x_ref)]
     else : # relative comparison
         # if the reference value is zero, use absolute comparison
         diff = [abs(a/b-1.0) if abs(b) > 0.0 else a for (a,b) in zip(x,x_ref) ]
 
+    # determie success logical list for return variable
     success = [d <= tol for d in diff]
 
+    # display information when a diff is not successful, display value+reference+difference
     if not all(success) :
         print "Differences in vector comparison:"
         print "%13s   %13s   %13s" % ("x","x_ref","diff")

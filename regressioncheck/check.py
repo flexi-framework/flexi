@@ -195,6 +195,8 @@ class Run(OutputDirectory, ExternalCommand) :
               shutil.copyfile(src, dst) # copy file
 
     def rename_failed(self) :
+        """Rename failed run directories in order to repeat the run when the regression check is repeated.
+        This routine is called if either the execution fails or an analysis."""
         shutil.rmtree(self.target_directory+"_failed",ignore_errors=True)  # remove if exists
         shutil.move(self.target_directory,self.target_directory+"_failed") # rename folder (non-existent folder fails)
         self.target_directory = self.target_directory+"_failed" # set new name for summary of errors
@@ -243,6 +245,7 @@ class Run(OutputDirectory, ExternalCommand) :
         return tools.indent(s,3)
 
 def getRuns(path, command_line) :
+    """Get all combinations in 'parameter.ini'"""
     runs = []
     i = 1
     for r in combinations.getCombinations(path) : # path to parameter.ini (source)
@@ -254,19 +257,22 @@ def getRuns(path, command_line) :
 
 
 def PerformCheck(start,builds,args,log) :
-    # General workflow:
-    # 1.   loop over alls builds
-    # 1.1    compile the build if args.run is false and the binary is non-existent
-    # 1.1    read all example directories in the check directory
-    # 2.   loop over all example directories
-    # 2.1    read the command line options in 'command_line.ini' for binary execution (e.g. number of threads for mpirun) 
-    # 2.2    read the analyze options in 'analyze.ini' within each example directory (e.g. L2 error analyze)
-    # 3.   loop over all command_line options
-    # 3.1    read the executable parameter file 'parameter.ini' (e.g. flexi.ini with which flexi will be started)
-    # 4.   loop over all parameter combinations supplied in the parameter file 'parameter.ini'
-    # 4.1    execute the binary file for one combination of parameters
-    # 5.   loop over all successfully executed binary results and perform analyze tests
-    # 6.   rename all run directories for which the analyze step has failed for at least one test
+    """
+    General workflow:
+    1.   loop over alls builds
+    1.1    compile the build if args.run is false and the binary is non-existent
+    1.1    read all example directories in the check directory
+    2.   loop over all example directories
+    2.1    read the command line options in 'command_line.ini' for binary execution (e.g. number of threads for mpirun) 
+    2.2    read the analyze options in 'analyze.ini' within each example directory (e.g. L2 error analyze)
+    3.   loop over all command_line options
+    3.1    read the executable parameter file 'parameter.ini' (e.g. flexi.ini with which flexi will be started)
+    4.   loop over all parameter combinations supplied in the parameter file 'parameter.ini'
+    4.1    execute the binary file for one combination of parameters
+    5.   loop over all successfully executed binary results and perform analyze tests
+    6.   rename all run directories for which the analyze step has failed for at least one test
+    """
+
     build_number=0
     
     # compile and run loop
@@ -360,18 +366,20 @@ def PerformCheck(start,builds,args,log) :
 
 
 def SummaryOfErrors(builds) :
-    # General workflow:
-    # 1. loop over all builds, examples, command_lines, runs and for every run set the output strings 
-    #    and get the maximal lengths of those strings
-    # 2. print header 
-    # 3. loop over all builds 
-    # 3.1  print some information of the build
-    # 3.2  within each build loop over all examples, command_lines, runs and for every run print some information:
-    # 3.2.1  print an empty separation line if number of MPI threads changes
-    # 3.2.2  print (only if changes) a line with all run parameters except the inner most, which is printed in 3.2.3
-    # 3.2.3  print a line with following information:
-    #          run.globalnumber, run.parameters[0] (the one not printed in 3.2.2), run.target_directory, MPI, run.walltime, run.result 
-    # 3.2.4  print the analyze results line by line
+    """
+    General workflow:
+    1. loop over all builds, examples, command_lines, runs and for every run set the output strings 
+       and get the maximal lengths of those strings
+    2. print header 
+    3. loop over all builds 
+    3.1  print some information of the build
+    3.2  within each build loop over all examples, command_lines, runs and for every run print some information:
+    3.2.1  print an empty separation line if number of MPI threads changes
+    3.2.2  print (only if changes) a line with all run parameters except the inner most, which is printed in 3.2.3
+    3.2.3  print a line with following information:
+             run.globalnumber, run.parameters[0] (the one not printed in 3.2.2), run.target_directory, MPI, run.walltime, run.result 
+    3.2.4  print the analyze results line by line
+    """
     
     param_str_old = ""
     str_MPI_old   = "-"

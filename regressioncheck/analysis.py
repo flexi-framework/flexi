@@ -41,17 +41,18 @@ def displayVector(vector,nVar) :
 
 def getAnalyzes(path, example) :
     """For every example a list of analyzes is built from the specified anaylzes in 'analyze.ini'. 
-    The anaylze list is performed after a set of runs is completed."""
+    The anaylze list is performed after a set of runs is completed.
 
-    # General workflow:
-    # 1.  Read the analyze options from file 'path' into dict 'options'
-    # 2.  Initialize analyze functions
-    # 2.1   L2 error
-    # 2.2   h-convergence test
-    # 2.3   p-convergence test
-    # 2.4   h5diff (relative or absolute HDF5-file comparison of an output file with a reference file)
-    # 2.5   check array bounds in hdf5 file
-    # 2.6   check data file row
+     General workflow:
+     1.  Read the analyze options from file 'path' into dict 'options'
+     2.  Initialize analyze functions
+     2.1   L2 error
+     2.2   h-convergence test
+     2.3   p-convergence test
+     2.4   h5diff (relative or absolute HDF5-file comparison of an output file with a reference file)
+     2.5   check array bounds in hdf5 file
+     2.6   check data file row
+    """
 
     # 1.  Read the analyze options from file 'path'
     analyze = [] # list
@@ -136,17 +137,20 @@ class Analyze() : # main class from which all analyze functions are derived
 #==================================================================================================
 
 class Analyze_L2(Analyze) :
+    """Read the L2 error norms from std.out and compare with pre-defined upper barrier"""
     def __init__(self, L2_tolerance) :
         self.L2_tolerance = L2_tolerance
 
     def perform(self,runs) :
 
-        # General workflow:
-        # 1.  Iterate over all runs
-        # 1.1   read L2 errors from 'std.out' file
-        # 1.2   if one L2 errors is larger than the tolerance -> fail
-        # 1.3   append info for summary of errors
-        # 1.4   set analyzes to fail
+        """
+        General workflow:
+        1.  Iterate over all runs
+        1.1   read L2 errors from 'std.out' file
+        1.2   if one L2 errors is larger than the tolerance -> fail
+        1.3   append info for summary of errors
+        1.4   set analyzes to fail
+        """
 
         # 1.  Iterate over all runs
         for run in runs :
@@ -261,24 +265,29 @@ class Analyze_Convtest_h(Analyze) :
 #==================================================================================================
 
 class Analyze_Convtest_p(Analyze) :
+    """Convergence test for a fixed wmesh and different (increasing!) polynomial degrees defined in 'parameter.ini'
+    The analyze routine read the L2 error norm from a set of runs and determines the order of convergence 
+    between the runs and compares them. With increasing polynomial degree, the order of convergence must increase for this anaylsis to be successful."""
     def __init__(self, rate, percentage) :
         self.rate = rate
         self.percentage = percentage
 
     def perform(self,runs) :
 
-        # General workflow:
-        # 1.  read the polynomial degree  for all runs
-        # 2.  check if number of successful runs must be euqal the number of supplied cells
-        # 2.2   get L2 errors of all runs and create np.array
-        # 2.3   get number of variables from L2 error array
-        # 2.4   determine order of convergence between two runs
-        # 2.5   check if the order of convergence is always increasing with increasing polynomial degree
-        # 2.6   determine success rate from increasing convergence
-        # 2.7   compare success rate with pre-defined rate, fails if not reached 
-        # 2.8   interate over all runs
-        # 2.8.1   add failed info if success rate is not reached to all runs
-        # 2.8.1   set analyzes to fail if success rate is not reached for all runs
+        """
+        General workflow:
+        1.  read the polynomial degree  for all runs
+        2.  check if number of successful runs must be euqal the number of supplied cells
+        2.2   get L2 errors of all runs and create np.array
+        2.3   get number of variables from L2 error array
+        2.4   determine order of convergence between two runs
+        2.5   check if the order of convergence is always increasing with increasing polynomial degree
+        2.6   determine success rate from increasing convergence
+        2.7   compare success rate with pre-defined rate, fails if not reached 
+        2.8   interate over all runs
+        2.8.1   add failed info if success rate is not reached to all runs
+        2.8.1   set analyzes to fail if success rate is not reached for all runs
+        """
 
         # 1.  read the polynomial degree  for all runs
         p = [float(run.parameters.get('N',-1)) for run in runs] # get polynomial degree
@@ -434,7 +443,7 @@ class Analyze_check_hdf5(Analyze) :
         (self.lower, self.upper) = [float(x) for x in check_hdf5_limits.split(":")]
 
     def perform(self,runs) :
-        # check if this anaylze can be performed: h5py must be imported
+        # check if this analysis can be performed: h5py must be imported
         if not h5py_module_loaded : # this boolean is set when importing h5py
             print tools.red('Could not import h5py module. This is needed for "Analyze_check_hdf5". Aborting.')
             Analyze.total_errors+=1
@@ -555,7 +564,7 @@ class Analyze_compare_data_file(Analyze) :
                 return
 
             # 1.3.4   calculate difference and determine compare with tolerance
-            success = tools.compare_vector(line, line_ref, self.tolerance, self.tolerance_type)
+            success = tools.diff_lists(line, line_ref, self.tolerance, self.tolerance_type)
             if not all(success) :
                 print tools.red("Mismatch in columns: "+", ".join([str(header_line[i]).strip() for i in range(len(success)) if not success[i]]))
                 run.analyze_successful=False
