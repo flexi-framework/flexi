@@ -46,7 +46,9 @@ INTEGER,PARAMETER      :: PRM_RIEMANN_ROEENTROPYFIX = 33
 INTEGER,PARAMETER      :: PRM_RIEMANN_HLL           = 4
 INTEGER,PARAMETER      :: PRM_RIEMANN_HLLE          = 5
 INTEGER,PARAMETER      :: PRM_RIEMANN_HLLEM         = 6
+#ifdef SPLIT_DG
 INTEGER,PARAMETER      :: PRM_RIEMANN_Average       = 0
+#endif
 
 INTERFACE InitRiemann
   MODULE PROCEDURE InitRiemann
@@ -102,7 +104,9 @@ CALL addStrListEntry('Riemann','roel2',        PRM_RIEMANN_ROEL2)
 CALL addStrListEntry('Riemann','hll',          PRM_RIEMANN_HLL)
 CALL addStrListEntry('Riemann','hlle',         PRM_RIEMANN_HLLE)
 CALL addStrListEntry('Riemann','hllem',        PRM_RIEMANN_HLLEM)
+#ifdef SPLIT_DG
 CALL addStrListEntry('Riemann','avg',          PRM_RIEMANN_Average)
+#endif
 CALL prms%CreateIntFromStringOption('RiemannBC', "Riemann solver used for boundary conditions: Same, LF, Roe, RoeEntropyFix, "//&
                                                  "HLL, HLLE, HLLEM",&
                                                  "Same")
@@ -114,7 +118,9 @@ CALL addStrListEntry('RiemannBC','roel2',        PRM_RIEMANN_ROEL2)
 CALL addStrListEntry('RiemannBC','hll',          PRM_RIEMANN_HLL)
 CALL addStrListEntry('RiemannBC','hlle',         PRM_RIEMANN_HLLE)
 CALL addStrListEntry('RiemannBC','hllem',        PRM_RIEMANN_HLLEM)
+#ifdef SPLIT_DG
 CALL addStrListEntry('RiemannBC','avg',          PRM_RIEMANN_Average)
+#endif
 CALL addStrListEntry('RiemannBC','same',         PRM_RIEMANN_SAME)
 END SUBROUTINE DefineParametersRiemann
 
@@ -155,9 +161,6 @@ CASE(PRM_RIEMANN_HLLE)
   Riemann_pointer => Riemann_HLLE
 CASE(PRM_RIEMANN_HLLEM)
   Riemann_pointer => Riemann_HLLEM
-CASE(PRM_RIEMANN_Average)
-  CALL CollectiveStop(__STAMP__,&
-    'Flux averaging only viable for SplitDG!')
 CASE DEFAULT
   CALL CollectiveStop(__STAMP__,&
     'Riemann solver not defined!')
@@ -183,9 +186,6 @@ CASE(PRM_RIEMANN_HLLE)
   RiemannBC_pointer => Riemann_HLLE
 CASE(PRM_RIEMANN_HLLEM)
   RiemannBC_pointer => Riemann_HLLEM
-CASE(PRM_RIEMANN_Average)
-  CALL CollectiveStop(__STAMP__,&
-    'Flux averaging only viable for SplitDG!')
 CASE DEFAULT
   CALL CollectiveStop(__STAMP__,&
     'RiemannBC solver not defined!')
@@ -245,7 +245,9 @@ IF (0.EQ.1) THEN
   CALL Riemann_HLL  (F_L,F_R,U_LL,U_RR,F)
   CALL Riemann_HLLE (F_L,F_R,U_LL,U_RR,F)
   CALL Riemann_HLLEM(F_L,F_R,U_LL,U_RR,F)
+#ifdef SPLIT_DG
   CALL Riemann_FluxAverage(F_L,F_R,U_LL,U_RR,F)
+#endif
 END IF
 #endif /*DEBUG*/
 END SUBROUTINE InitRiemann
@@ -990,9 +992,7 @@ END SUBROUTINE Riemann_HLLEM
 !==================================================================================================================================
 SUBROUTINE Riemann_FluxAverage(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
-#ifdef SPLIT_DG
 USE MOD_SplitFlux     ,ONLY: SplitDGSurface_pointer
-#endif /*SPLIT_DG*/
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
