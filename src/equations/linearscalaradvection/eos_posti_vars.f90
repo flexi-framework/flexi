@@ -47,4 +47,10 @@ CHARACTER(LEN=255),DIMENSION(nVarDepEOS),PARAMETER :: DepNames = &
 "Scalar"                 & !1
 /)
 
+! Only dummy variables
+INTEGER,DIMENSION(1:nVarDepEOS),PARAMETER :: DepSurfaceOnlyEOS = &
+(/ 0 /)
+INTEGER,DIMENSION(1:nVarDepEOS),PARAMETER :: DepVolumeOnlyEOS = &
+(/ 0 /)
+
 END MODULE MOD_EOS_Posti_Vars
