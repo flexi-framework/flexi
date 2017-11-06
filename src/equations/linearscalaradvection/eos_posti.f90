@@ -132,20 +132,22 @@ GetMaskGrad = DepTableEOS(:,0)
 END FUNCTION GetMaskGrad
 
 
-SUBROUTINE CalcQuantities(nVarCalc,nVal,iElems,mapDepToCalc,UCalc,maskCalc,gradUx,gradUy,gradUz)
+SUBROUTINE CalcQuantities(nVarCalc,nVal,mapCalcMeshToGlobalMesh,mapDepToCalc,UCalc,maskCalc,gradUx,gradUy,gradUz,&
+    NormVec,TangVec1,TangVec2)
 !==================================================================================================================================
 ! MODULES
 USE MOD_EOS_Posti_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: nVarCalc
-INTEGER,INTENT(IN) :: nVal(:)
-INTEGER,INTENT(IN) :: iElems(:)
-INTEGER,INTENT(IN) :: mapDepToCalc(nVarDepEOS)
-INTEGER,INTENT(IN) :: maskCalc(nVarDepEOS)
-REAL,INTENT(OUT)   :: UCalc(PRODUCT(nVal),1:nVarCalc)
+INTEGER,INTENT(IN)                                              :: nVarCalc
+INTEGER,INTENT(IN)                                              :: nVal(:)
+INTEGER,INTENT(IN)                                              :: mapCalcMeshToGlobalMesh(:)
+INTEGER,INTENT(IN)                                              :: mapDepToCalc(nVarDepEOS)
+INTEGER,INTENT(IN)                                              :: maskCalc(nVarDepEOS)
+REAL,INTENT(OUT)                                                :: UCalc(PRODUCT(nVal),1:nVarCalc)
 REAL,DIMENSION(1:PP_nVarPrim,PRODUCT(nVal)),INTENT(IN),OPTIONAL :: gradUx,gradUy,gradUz
+REAL,DIMENSION(1:3,PRODUCT(nVal)),INTENT(IN),OPTIONAL           :: NormVec,TangVec1,TangVec2
 !===================================================================================================================================
 STOP 'Not available for linear scalar advection.'
 END SUBROUTINE CalcQuantities
