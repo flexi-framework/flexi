@@ -399,7 +399,7 @@ IF(BuildValid(iReggieBuild))THEN
   IF(BuildDebug.EQV..FALSE.) SYSCOMMAND=TRIM(SYSCOMMAND)//' > build_reggie.out'
 
   ! 3 of 4: set threads for compilation of make
-  SYSCOMMAND=TRIM(SYSCOMMAND)//' && make '//CodeNameLowCase//' -j'
+  SYSCOMMAND=TRIM(SYSCOMMAND)//' && make -j'
   IF(NumberOfProcs.GT.0) SYSCOMMAND=TRIM(SYSCOMMAND)//' '//TRIM(ADJUSTL(NumberOfProcsStr))
 
   ! 4 of 4: pipe output of make
