@@ -27,18 +27,24 @@ class ExternalCommand() :
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, \
                                         stderr=subprocess.PIPE, \
                                         universal_newlines=True, cwd=workingDir)
+
+        (stdout, stderr) = process.communicate()
+        log.info(stdout)
+        log.info(stderr)
+
+        stdout = stdout.splitlines()
+        stderr = stderr.splitlines()
+
         self.stdout = []
         self.stderr = []
-        for line in iter(process.stdout.readline, '') :
-            log.info(line.rstrip())
+
+        for line in stdout :
             self.stdout.append(line)
         process.stdout.close()
         
-        for line in iter(process.stderr.readline, '') :
+        for line in stderr :
             self.stderr.append(line)
         process.stderr.close()
-
-        self.return_code = process.wait()
 
         end = timer()
         self.walltime = end - start
