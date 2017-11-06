@@ -76,14 +76,14 @@ gnu_build_mpi:
   tags:
     - withmodules
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then  module load env/gnu ; cd build_gnu/bin/ ; ./regressioncheck build -j; fi
+    - if [ -n "${DO_NIGHTLY}" ]; then  module load env/gnu ; cd build_gnu/bin/ ; ./regressioncheck build -j no-debug; fi
 
 gnu_convtest:
   stage: reggie_nightly
   tags:
     - withmodules
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then module load env/gnu ; cd build_gnu/bin/ ; ./regressioncheck build feature_convtest -j; fi
+    - if [ -n "${DO_NIGHTLY}" ]; then module load env/gnu ; cd build_gnu/bin/ ; ./regressioncheck build feature_convtest -j no-debug; fi
 
 
 
@@ -93,14 +93,14 @@ intel_build_mpi:
   tags:
     - withmodules
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel/bin/ ; ./regressioncheck build -j; fi
+    - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel/bin/ ; ./regressioncheck build -j no-debug; fi
 
 intel_convtest:
   stage: reggie_nightly
   tags:
     - withmodules
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel/bin/ ; ./regressioncheck build feature_convtest -j; fi
+    - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel/bin/ ; ./regressioncheck build feature_convtest -j no-debug; fi
 
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
