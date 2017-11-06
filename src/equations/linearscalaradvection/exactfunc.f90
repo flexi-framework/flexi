@@ -97,7 +97,7 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT EXACT FUNCTION...'
 
 ! Read in boundary parameters
 IniExactFunc = GETINTFROMSTR('IniExactFunc')
-IniRefState  = GETINT('IniRefState', "-1")
+IniRefState  = -1 ! only dummy for linadv
 
 ! Read in parameters specific to certain init functions
 SELECT CASE (IniExactFunc)
