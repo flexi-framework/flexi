@@ -344,7 +344,7 @@ END SUBROUTINE ReadConfiguration
 !==================================================================================================================================
 !> reads the file "configurationsX.cmake" and creates a binary
 !==================================================================================================================================
-SUBROUTINE BuildConfiguration(iExample,iReggieBuild,nReggieBuilds,N_compile_flags)
+SUBROUTINE BuildConfiguration(iExample,iReggieBuild,nReggieBuilds)
 ! MODULES
 USE MOD_Globals
 USE MOD_RegressionCheck_Vars,  ONLY: BuildDebug,BuildNoDebug,BuildEQNSYS,BuildTESTCASE,NumberOfProcs,NumberOfProcsStr
@@ -356,7 +356,6 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)                        :: iExample,iReggieBuild,nReggieBuilds
-INTEGER,INTENT(IN),OPTIONAL               :: N_compile_flags
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                                   :: ioUnit,iSTATUS,iSTATUS2
@@ -400,7 +399,7 @@ IF(BuildValid(iReggieBuild))THEN
   IF(BuildDebug.EQV..FALSE.) SYSCOMMAND=TRIM(SYSCOMMAND)//' > build_reggie.out'
 
   ! 3 of 4: set threads for compilation of make
-  SYSCOMMAND=TRIM(SYSCOMMAND)//' && make '//CodeNameLowCase//' -j'
+  SYSCOMMAND=TRIM(SYSCOMMAND)//' && make -j'
   IF(NumberOfProcs.GT.0) SYSCOMMAND=TRIM(SYSCOMMAND)//' '//TRIM(ADJUSTL(NumberOfProcsStr))
 
   ! 4 of 4: pipe output of make
@@ -508,9 +507,6 @@ END IF
 ! OLD !         EXIT
 ! OLD !       END IF
 ! OLD !     END DO
-IF (0.EQ.1) THEN
-  WRITE (*,*) N_compile_flags
-END IF
 
 SWRITE(UNIT_stdOut,'(132("="))')
 

@@ -83,7 +83,7 @@ DO iExample = 1, nExamples ! loop level 1 of 5
     IF(SkipExample)CYCLE ! skip if "parameter_reggie.ini" file is missing
 
     ! Get code binary (build or find it)
-    CALL GetCodeBinary(iExample,iReggieBuild,nReggieBuilds,N_compile_flags,ReggieBuildExe,SkipBuild,ExitBuild)
+    CALL GetCodeBinary(iExample,iReggieBuild,nReggieBuilds,ReggieBuildExe,SkipBuild,ExitBuild)
     IF(SkipBuild)CYCLE ! invalid reggie build but not last reggie build
     IF(ExitBuild)EXIT  ! last reggie build -> exit ("cycle" would start an infinite loop)
 
@@ -433,7 +433,7 @@ dummystr=TRIM(ADJUSTL(ExampleName)) ! e.g. "run_basic"
 IF(dummystr(1:LEN(TRIM(ADJUSTL(RuntimeOptionType)))).EQ.RuntimeOptionType)THEN ! e.g. "run[_basic]" = "run"
   SWRITE(UNIT_stdOut,'(A)') ''
 END IF
-SWRITE(UNIT_stdOut,'(A,2x,A50)',ADVANCE='no') ' Example-Name: ',  TRIM(ExampleName)
+SWRITE(UNIT_stdOut,'(A65)',ADVANCE='no') ' Example-Name: '//dummystr
 IF(dummystr(1:LEN(TRIM(ADJUSTL(RuntimeOptionType)))).NE.RuntimeOptionType)THEN
   SWRITE(UNIT_stdOut,'(A,2x,A)') '  ...skipping'
   SkipExample=.TRUE.
@@ -497,7 +497,7 @@ END SUBROUTINE GetnReggieBuilds
 !> 2.) use a previously built binary that was created with reggie, e.g., /build_reggie_bin/XXXXX0001
 !> 3.) use an existing binary
 !===================================================================================================================================
-SUBROUTINE GetCodeBinary(iExample,iReggieBuild,nReggieBuilds,N_compile_flags,ReggieBuildExe,SkipBuild,ExitBuild)
+SUBROUTINE GetCodeBinary(iExample,iReggieBuild,nReggieBuilds,ReggieBuildExe,SkipBuild,ExitBuild)
 !===================================================================================================================================
 !===================================================================================================================================
 ! MODULES
@@ -511,7 +511,7 @@ USE MOD_RegressionCheck_Vars,    ONLY: BuildContinue,BuildContinueNumber,RunCont
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER,INTENT(IN)             :: iExample,iReggieBuild,nReggieBuilds,N_compile_flags
+INTEGER,INTENT(IN)             :: iExample,iReggieBuild,nReggieBuilds
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(INOUT) :: ReggieBuildExe
@@ -559,7 +559,7 @@ IF(BuildSolver)THEN
   IF(ExistFile) THEN ! 1. build already exists (e.g. XXXX0001 located in ../build_reggie_bin/)
     EXECPATH=TRIM(FileName)
   ELSE ! 2. build does not exists -> create it
-    CALL BuildConfiguration(iExample,iReggieBuild,nReggieBuilds,N_compile_flags)
+    CALL BuildConfiguration(iExample,iReggieBuild,nReggieBuilds)
     IF(BuildValid(iReggieBuild))THEN ! only move binary if it has been created (only for valid builds)
       SYSCOMMAND='cd '//TRIM(BuildDir)//' && mv build_reggie/bin/'//CodeNameLowCase//' build_reggie_bin/'//TRIM(ReggieBuildExe)
       CALL EXECUTE_COMMAND_LINE(SYSCOMMAND, WAIT=.TRUE., EXITSTAT=iSTATUS)
