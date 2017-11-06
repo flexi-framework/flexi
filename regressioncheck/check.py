@@ -417,7 +417,7 @@ def SummaryOfErrors(builds) :
             print "Binary supplied externally under ",build.binary_path
         elif isinstance(build, Build) : 
             print "Build %d of %d (%s) compiled with in [%.2f sec]:" % (build.number, len(builds), build.result, build.walltime)
-            print " ".join(build.cmake_cmd)
+            print " ".join(build.cmake_cmd_color)
             if build.return_code != 0 : break # stop output as soon as a failed build in encountered
     
         # 3.2 loop over all examples, command_lines and runs
