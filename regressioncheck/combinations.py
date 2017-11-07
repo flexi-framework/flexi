@@ -107,6 +107,10 @@ def getCombinations(filename) :
 
     logging.getLogger('logger').debug("  Total number of combinations for '%s' = %d" % (filename, noCombinationsTotal))
 
+    if noCombinationsTotal > 10000:
+        print tools.red("more than 10000 combinations in parameter.ini not allowed!")
+        exit(1) # TODO: raise exception here!
+
     # 2.2 build all valid combinations (all that do not match any exclusion)
     for i in range(noCombinationsTotal) :         # iterate index 'i' over noCombinationsTotal
         combination = collections.OrderedDict()
@@ -161,7 +165,14 @@ def getCombinations(filename) :
 def writeCombinationsToFile(combinations, path) : # write one set of parameters to a file, e.g., parameter.ini
     f = open(path, 'w')
     for key, value in combinations.items() :
-        f.write("%s=%s\n" % (key, value))
+        # for parameters with value 'crosscombinations' in the key-value pair, replace it with the value from 'crosscombinations'
+        # example: N                 = crosscombinations
+        #          N_Geo             = crosscombinations
+        #          crosscombinations = 1,2,3,4,5
+        if value == 'crosscombinations' :
+            f.write("%s=%s\n" % (key,combinations.get('crosscombinations')))
+        else :
+            f.write("%s=%s\n" % (key, value))
     f.close()
 
 #class getCombinationException(Exception) : # Exception for missing files, e.g., command_line.ini
