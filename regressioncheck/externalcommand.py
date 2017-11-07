@@ -2,6 +2,7 @@ import os
 import subprocess
 import logging
 import tools
+import select
 from timeit import default_timer as timer
 
 class ExternalCommand() :
@@ -24,27 +25,38 @@ class ExternalCommand() :
         log.debug(workingDir)
         log.debug(cmd)
         start = timer()
-        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, \
-                                        stderr=subprocess.PIPE, \
+        (pipeOut_r, pipeOut_w) = os.pipe()
+        (pipeErr_r, pipeErr_w) = os.pipe()
+        process = subprocess.Popen(cmd, stdout=pipeOut_w, \
+                                        stderr=pipeErr_w, \
                                         universal_newlines=True, cwd=workingDir)
-
-        (stdout, stderr) = process.communicate()
-        log.info(stdout)
-        log.info(stderr)
-
-        stdout = stdout.splitlines()
-        stderr = stderr.splitlines()
 
         self.stdout = []
         self.stderr = []
 
-        for line in stdout :
-            self.stdout.append(line)
-        process.stdout.close()
-        
-        for line in stderr :
-            self.stderr.append(line)
-        process.stderr.close()
+        bufOut = ""
+        bufErr = ""
+        while process.poll() is None:
+            # Loop long as the selct mechanism indicates there
+            # is data to be read from the buffer
+            while len(select.select([pipeOut_r], [], [], 0)[0]) == 1:
+                # Read up to a 1 KB chunk of data
+                bufOut = bufOut + os.read(pipeOut_r, 1024)
+                tmp = bufOut.split('\n') 
+                for line in tmp[:-1] :
+                    self.stdout.append(line+'\n')
+                    log.info(line)
+                bufOut = tmp[-1]
+            while len(select.select([pipeErr_r], [], [], 0)[0]) == 1:
+                # Read up to a 1 KB chunk of data
+                bufErr = bufErr + os.read(pipeErr_r, 1024)
+                tmp = bufErr.split('\n') 
+                for line in tmp[:-1] :
+                    self.stderr.append(line+'\n')
+                    log.info(line)
+                bufErr = tmp[-1]
+
+        self.return_code = process.returncode
 
         end = timer()
         self.walltime = end - start
