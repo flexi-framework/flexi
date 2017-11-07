@@ -92,7 +92,8 @@ class Standalone(Build) :
 def getBuilds(basedir, source_directory) :
     builds = []
     i = 1
-    for b in combinations.getCombinations(os.path.join(source_directory, 'builds.ini')) :
+    combis, digits = combinations.getCombinations(os.path.join(source_directory, 'builds.ini')) 
+    for b in combis :
         builds.append(Build(basedir, source_directory,b, i))
         i += 1
     return builds
@@ -158,7 +159,8 @@ class Command_Lines(OutputDirectory) :
 def getCommand_Lines(path, example) :
     command_lines = []
     i = 1
-    for r in combinations.getCombinations(path) :
+    combis, digits = combinations.getCombinations(path) 
+    for r in combis :
         command_lines.append(Command_Lines(r, example, i))
         i += 1
     return command_lines
@@ -169,12 +171,13 @@ class Run(OutputDirectory, ExternalCommand) :
     total_errors = 0
     total_number_of_runs = 0
 
-    def __init__(self, parameters, path, command_line, number) :
+    def __init__(self, parameters, path, command_line, number, digits) :
         self.successful = True
         self.globalnumber = -1
         self.analyze_results = []
         self.analyze_successful = True
         self.parameters = parameters
+        self.digits = digits
         self.source_directory = os.path.dirname(path)
         OutputDirectory.__init__(self, command_line, 'run', number, mkdir=False)
         ExternalCommand.__init__(self)
@@ -248,8 +251,9 @@ def getRuns(path, command_line) :
     """Get all combinations in 'parameter.ini'"""
     runs = []
     i = 1
-    for r in combinations.getCombinations(path) : # path to parameter.ini (source)
-        run = Run(r, path, command_line, i)
+    combis, digits = combinations.getCombinations(path)  # path to parameter.ini (source)
+    for r in combis :
+        run = Run(r, path, command_line, i, digits)
         if not run.skip :
             runs.append(run)
         i += 1
@@ -392,7 +396,9 @@ def SummaryOfErrors(builds) :
                 for run in command_line.runs :
                     run.output_strings = {}
                     run.output_strings['#run']    = str(run.globalnumber)
-                    run.output_strings['options'] = "%s=%s"%(run.parameters.items()[0])
+                    run.output_strings['options'] = ""
+                    if run.digits.items()[0][1] > 0 :
+                        run.output_strings['options'] += "%s=%s"%(run.parameters.items()[0])
                     run.output_strings['path']    = os.path.relpath(run.target_directory,OutputDirectory.output_dir)
                     run.output_strings['MPI']     = command_line.parameters.get('MPI', '-') 
                     run.output_strings['time']    = "%2.1f" % run.walltime
@@ -430,7 +436,8 @@ def SummaryOfErrors(builds) :
                         str_MPI_old = run.output_strings["MPI"]
     
                     # 3.2.2 print the run parameters, execpt the inner most (this one is displayed in # 3.2.3)
-                    param_str =", ".join(["%s=%s"%item for item in run.parameters.items()[1:]]) # skip first index
+                    paramsWithMultipleValues = [item for item in run.parameters.items()[1:] if run.digits[item[0]]>0 ]
+                    param_str =", ".join(["%s=%s"%item for item in paramsWithMultipleValues]) # skip first index
                     if param_str  != param_str_old : # only print when the parameter set changes
                         print "".ljust(max_lens["#run"]), spacing*' ', tools.yellow(param_str)
                     param_str_old=param_str
