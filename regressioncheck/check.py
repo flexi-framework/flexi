@@ -216,8 +216,17 @@ class Run(OutputDirectory, ExternalCommand) :
 
         # check MPI threads for mpirun
         MPIthreads = command_line.parameters.get('MPI')
+
+        # check MPI built binary (only for reggie-compiled binaries possible)
+        MPI_built_flag=os.path.basename(build.binary_path).upper()+"_MPI"
+        MPIbuilt = build.configuration.get(MPI_built_flag,'ON')
+
         if MPIthreads :
-            cmd = ["mpirun","-np",MPIthreads]
+            if MPIbuilt == "ON" :
+                cmd = ["mpirun","-np",MPIthreads]
+            else :
+                print tools.indent(tools.yellow("Found %s=%s (binary has been built with MPI=OFF) with command_line setting MPIthreads=%s, running case in single (without 'mpirun -np')" % (MPI_built_flag,MPIbuilt,MPIthreads)),3)
+                cmd = []
         else :
             cmd = []
         
