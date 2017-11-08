@@ -26,7 +26,7 @@ python reggie.py --help
 
 ## Analyze routines
 
-|**analyze**        | **options*                           | **values**                                            |
+|**analyze**        | **options**                          | **values**                                            |
 |:-----------------:|:-------------------------------------|:------------------------------------------------------|
 |L2 error           | analyze\_L2                          | 1e-5                                                  |
 |h-convergence test | analyze\_Convtest\_h\_cells          | 1,2,4,8                                               |
