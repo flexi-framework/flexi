@@ -56,6 +56,12 @@ class ExternalCommand() :
                     log.info(line)
                 bufErr = tmp[-1]
 
+        os.close(pipeOut_w)
+        os.close(pipeOut_r)
+        os.close(pipeErr_w)
+        os.close(pipeErr_r)
+
+
         self.return_code = process.returncode
 
         end = timer()
@@ -63,17 +69,15 @@ class ExternalCommand() :
 
         # write std.out and err.out to disk
         self.stdout_filename = os.path.join(target_directory,name+".out")
-        f = open(self.stdout_filename, 'w')
-        for line in self.stdout :
-            f.write(line)
-        f.close()
+        with open(self.stdout_filename, 'w') as f :
+            for line in self.stdout :
+                f.write(line)
         if self.return_code != 0 :
             self.result=tools.red("Failed")
             self.stderr_filename = os.path.join(target_directory,name+".err")
-            f = open(self.stderr_filename, 'w')
-            for line in self.stderr :
-                f.write(line)
-            f.close()
+            with open(self.stderr_filename, 'w') as f :
+                for line in self.stderr :
+                    f.write(line)
         else :
             self.result=tools.blue("Successful")
         print self.result+" [%.2f sec]" % self.walltime

@@ -26,12 +26,11 @@ def writeTableToFile(mylist,nVar,nRuns,firstColumn,path,name) :
     # if a path is supplied, create a .csv file with the data
     if path is not None :
         myfile = os.path.join(path,name)
-        f = open(myfile, 'w')
-        for j in range(nRuns) :
-            line  = "%20.12e, " % firstColumn[j]
-            line += ",".join("%20.12e" % mylist[i][j] for i in range(nVar))
-            f.write(line+"\n")
-        f.close()
+        with open(myfile, 'w') as f :
+            for j in range(nRuns) :
+                line  = "%20.12e, " % firstColumn[j]
+                line += ",".join("%20.12e" % mylist[i][j] for i in range(nVar))
+                f.write(line+"\n")
 
 def displayVector(vector,nVar) :
     print 8*" "+"   ".join(7*" "+"nVar=["+str(i).rjust(4)+"]" for i in range(nVar))

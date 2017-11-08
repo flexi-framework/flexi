@@ -51,36 +51,37 @@ def readKeyValueFile(filename) :
     noCrossCombinations = []                   # list of all noCrossCombinations
 
     # 1. read options and exclusions from the file
-    for line in open(filename).readlines() :   # iterate over all lines of the file
-        line = re.sub(r"\s+", "", line)        # remove all whitespaces 
-        if line.startswith('!') : continue     # skip lines starting with a comment
-        line = line.split('!')[0]              # remove comments 
+    with open(filename) as f :
+        for line in f.readlines() :   # iterate over all lines of the file
+            line = re.sub(r"\s+", "", line)        # remove all whitespaces 
+            if line.startswith('!') : continue     # skip lines starting with a comment
+            line = line.split('!')[0]              # remove comments 
 
-        # 1.1 read an exclusion 
-        if line.lower().startswith('exclude:') :
-            line = line.split(':', 1)[1]       # remove everything before ':''
-            ex = {}                            # new dictionary for the exclusion
-            for key_value in splitValues(line):# split at ',' (but not inside brackets) and iterate over key-value-pairs 
-                (key,value) = key_value.split('=') 
-                ex[key] = value                # save key and its value in the exclusion-dictionary
+            # 1.1 read an exclusion 
+            if line.lower().startswith('exclude:') :
+                line = line.split(':', 1)[1]       # remove everything before ':''
+                ex = {}                            # new dictionary for the exclusion
+                for key_value in splitValues(line):# split at ',' (but not inside brackets) and iterate over key-value-pairs 
+                    (key,value) = key_value.split('=') 
+                    ex[key] = value                # save key and its value in the exclusion-dictionary
 
-            exclusions.append(ex)              # append exclusion to the list of all exclusions
-            continue                           # reading of exclusion finished -> go on with next line
+                exclusions.append(ex)              # append exclusion to the list of all exclusions
+                continue                           # reading of exclusion finished -> go on with next line
 
-        # 1.2 read a noCrossCombination
-        if line.lower().startswith('nocrosscombination:') :
-            line = line.split(':', 1)[1]                   # remove everything before ':''
-            noCrossCombination = line.split(',')           # list of keys, that should not be cross combined
-            noCrossCombinations.append(noCrossCombination) # append noCrossCombination to the list of all noCrossCombinations
-            continue                                       # reading of noCrossCombination finished -> go on with next line
+            # 1.2 read a noCrossCombination
+            if line.lower().startswith('nocrosscombination:') :
+                line = line.split(':', 1)[1]                   # remove everything before ':''
+                noCrossCombination = line.split(',')           # list of keys, that should not be cross combined
+                noCrossCombinations.append(noCrossCombination) # append noCrossCombination to the list of all noCrossCombinations
+                continue                                       # reading of noCrossCombination finished -> go on with next line
 
 
-        # 1.3 read a option and its possible values 
-        if '=' in line :
-            (key,values) = line.split('=',1)         # split line at '=' 
-            option = Option(key,splitValues(values)) # generate new Option with a list of values (splitted at ',' but not inside brackets)
-            options.append(option)                   # append option to options list, where 
-            continue                                 # reading of option finished -> go on with next line
+            # 1.3 read a option and its possible values 
+            if '=' in line :
+                (key,values) = line.split('=',1)         # split line at '=' 
+                option = Option(key,splitValues(values)) # generate new Option with a list of values (splitted at ',' but not inside brackets)
+                options.append(option)                   # append option to options list, where 
+                continue                                 # reading of option finished -> go on with next line
 
     options.sort(key=lambda option: len(option.values), reverse=True) # sort list in order to have the most varying option at the beginning
 
@@ -163,17 +164,16 @@ def getCombinations(filename) :
 
 
 def writeCombinationsToFile(combinations, path) : # write one set of parameters to a file, e.g., parameter.ini
-    f = open(path, 'w')
-    for key, value in combinations.items() :
-        # for parameters with value 'crosscombinations' in the key-value pair, replace it with the value from 'crosscombinations'
-        # example: N                 = crosscombinations
-        #          N_Geo             = crosscombinations
-        #          crosscombinations = 1,2,3,4,5
-        if value == 'crosscombinations' :
-            f.write("%s=%s\n" % (key,combinations.get('crosscombinations')))
-        else :
-            f.write("%s=%s\n" % (key, value))
-    f.close()
+    with open(path, 'w') as f :
+        for key, value in combinations.items() :
+            # for parameters with value 'crosscombinations' in the key-value pair, replace it with the value from 'crosscombinations'
+            # example: N                 = crosscombinations
+            #          N_Geo             = crosscombinations
+            #          crosscombinations = 1,2,3,4,5
+            if value == 'crosscombinations' :
+                f.write("%s=%s\n" % (key,combinations.get('crosscombinations')))
+            else :
+                f.write("%s=%s\n" % (key, value))
 
 #class getCombinationException(Exception) : # Exception for missing files, e.g., command_line.ini
     #def __init__(self, filename):
