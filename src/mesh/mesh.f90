@@ -360,7 +360,6 @@ IF (meshMode.GT.0) THEN
   END DO ! iElem
 END IF
 
-SDEALLOCATE(NodeCoords)
 SDEALLOCATE(dXCL_N)
 SDEALLOCATE(Ja_Face)
 SDEALLOCATE(TreeCoords)
@@ -436,6 +435,7 @@ DO iElem=1,nElems
   CALL CalcSurfMetrics(NOver,0,JaCL_NSurf,XCL_NSurf,Vdm_CLNSurf_NSurf,iElem,&
                        NormVecO,TangVec1O,TangVec2O,SurfElemO,Face_xGPO)
 END DO
+SDEALLOCATE(NodeCoords)
 END SUBROUTINE BuildOverintMesh
 
 
