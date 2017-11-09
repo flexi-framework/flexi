@@ -65,14 +65,14 @@ gnu:
   tags:
     - withmodules
   script:
-    - module load env/gnu ; cd build_gnu ;  python ../reggie/rggie.py ../regressioncheck/checks/run_basic/freestream_3D -e ./bin/flexi
+    - module load env/gnu ; cd build_gnu ;  python ../reggie/reggie.py ../regressioncheck/checks/run_basic/freestream_3D -e ./bin/flexi
 
 intel:
   stage: reggie_checkin
   tags:
     - withmodules
   script:
-    - module load env/intel ; cd build_intel ;  python ../reggie/rggie.py ../regressioncheck/checks/run_basic/freestream_3D -e ./bin/flexi
+    - module load env/intel ; cd build_intel ;  python ../reggie/reggie.py ../regressioncheck/checks/run_basic/freestream_3D -e ./bin/flexi
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "reggie_nightly": Build and run
@@ -85,14 +85,14 @@ gnu_build_all:
   tags:
     - withmodules
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then  module load env/gnu ; cd build_gnu ;  python ../reggie/rggie.py ../regressioncheck/checks/run_basic ; fi
+    - if [ -n "${DO_NIGHTLY}" ]; then  module load env/gnu ; cd build_gnu ;  python ../reggie/reggie.py ../regressioncheck/checks/run_basic ; fi
 
 gnu_convtest:
   stage: reggie_nightly
   tags:
     - withmodules
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then module load env/gnu ; cd build_gnu ;  python ../reggie/rggie.py ../regressioncheck/checks/convtest ; fi 
+    - if [ -n "${DO_NIGHTLY}" ]; then module load env/gnu ; cd build_gnu ;  python ../reggie/reggie.py ../regressioncheck/checks/convtest ; fi 
 
 
 
@@ -101,14 +101,14 @@ intel_build_all:
   tags:
     - withmodules
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel ;  python ../reggie/rggie.py ../regressioncheck/checks/run_basic ; fi
+    - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel ;  python ../reggie/reggie.py ../regressioncheck/checks/run_basic ; fi
 
 intel_convtest:
   stage: reggie_nightly
   tags:
     - withmodules
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel ;  python ../reggie/rggie.py ../regressioncheck/checks/convtest ; fi 
+    - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel ;  python ../reggie/reggie.py ../regressioncheck/checks/convtest ; fi 
 
 
 #            # ----------------------------------------------------------------------------------------------------------------------------------------------------
