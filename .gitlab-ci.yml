@@ -15,6 +15,7 @@ cache:
     - doc/doxygen/doxygen
     - doc/userguide/userguide.pdf
     - regressioncheck/examples
+    - reggie/
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "build": Build with intel/gnu on check-in
@@ -53,6 +54,7 @@ clean:
     - rm -rf build_gnu
     - rm -rf build_intel
     - rm -rf share
+    - rm -rf reggie
   when: on_failure
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
