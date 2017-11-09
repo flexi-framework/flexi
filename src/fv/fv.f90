@@ -223,6 +223,10 @@ gradUzeta_central=0.
 #endif /* PARABOLIC */
 #endif /* FV_RECONSTRUCT */
 
+! Options for initial solution
+FV_IniSharp       = GETLOGICAL("FV_IniSharp",'.FALSE.')
+IF (.NOT.FV_IniSharp) FV_IniSupersample = GETLOGICAL("FV_IniSupersample",'.TRUE.')
+
 FVInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT FV DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
@@ -338,7 +342,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_DG_Vars           ,ONLY: U
 USE MOD_Mesh_Vars         ,ONLY: nElems
-USE MOD_FV_Vars           ,ONLY: FV_Elems,FV_Vdm
+USE MOD_FV_Vars           ,ONLY: FV_Elems,FV_Vdm,FV_IniSharp,FV_IniSupersample
 USE MOD_FV_Basis          ,ONLY: FV_Build_X_w_BdryX
 USE MOD_Indicator         ,ONLY: CalcIndicator
 USE MOD_Basis             ,ONLY: InitializeVandermonde
@@ -367,11 +371,11 @@ FV_Elems = 0
 ! Switch DG elements to FV if necessary (converts initial DG solution to FV solution)
 CALL FV_Switch(U,AllowToDG=.FALSE.)
 
-IF (.NOT.(GETLOGICAL("FV_IniSharp"))) THEN
+IF (.NOT.FV_IniSharp) THEN
   ! Super sample initial solution of all FV elements. Necessary if already initial DG solution contains oscillations, which
   ! may lead to non valid solutions inside a sub-cell.!
   !!! THIS IS EXPENSIVE !!!
-  IF (GETLOGICAL("FV_IniSupersample")) THEN
+  IF (FV_IniSupersample) THEN
     
     CALL GetNodesAndWeights(PP_N,NodeType,xGP,wGP,wBary)
     CALL FV_Build_X_w_BdryX(PP_N,FV_X,FV_w,FV_BdryX)
