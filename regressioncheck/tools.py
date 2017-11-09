@@ -3,6 +3,7 @@ import shutil
 import os
 from timeit import default_timer as timer
 import re
+import tools
 
 class bcolors :
     """color and font style definitions for changing output appearance"""
@@ -86,8 +87,8 @@ def find_basedir() :
     return basedir
 
 
-def clean_folder(path) :
-    print "clean_folder: deleting folder '%s'" % path
+def remove_folder(path) :
+    print tools.yellow("[remove_folder]: deleting folder '%s'" % path)
     shutil.rmtree(path,ignore_errors=True)
     #shutil.rmtree(path)
 

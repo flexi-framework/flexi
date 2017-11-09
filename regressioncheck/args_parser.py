@@ -45,7 +45,7 @@ def getArgsAndBuilds() :
     
     
     # delete the building directory when [carryon = False] and [run = False] before getBuilds is called
-    if not args.carryon and not args.run : tools.clean_folder(OutputDirectory.output_dir)
+    if not args.carryon and not args.run : tools.remove_folder(OutputDirectory.output_dir)
     
     # get builds from checks directory if no executable is supplied
     if args.exe is None : # if not exe is supplied, get builds

@@ -293,6 +293,7 @@ def PerformCheck(start,builds,args,log) :
     
         # 1.   loop over alls builds
         for build in builds :
+            remove_build_when_successful = True
             build_number+=1 # count number of builds
             print "Build Cmake Configuration ",build_number," of ",len(builds)," ...",
             log.info(str(build))
@@ -300,7 +301,7 @@ def PerformCheck(start,builds,args,log) :
             # 1.1    compile the build if args.run is false and the binary is non-existent
             build.compile(args.buildprocs)
             if not args.carryon : # remove examples folder if not carryon, in order to re-run all examples
-                tools.clean_folder(os.path.join(build.target_directory,"examples"))
+                tools.remove_folder(os.path.join(build.target_directory,"examples"))
             
             # 1.1    read the example directories
             # get example folders: run_basic/example1, run_basic/example2 from check folder
@@ -350,11 +351,17 @@ def PerformCheck(start,builds,args,log) :
                         for analyze in example.analyzes :
                             print tools.indent(tools.blue(str(analyze)),2)
                             analyze.perform(runs_successful)
+                    else : # don't delete build folder after all examples/runs
+                        remove_build_when_successful = False
     
                     # 6.   rename all run directories for which the analyze step has failed for at least one test
                     for run in runs_successful :         # all successful runs (failed runs are already renamed)
                         if not run.analyze_successful :  # if 1 of N analyzes fails: rename
                             run.rename_failed()
+                    if not any([run.analyze_successful for run in runs_successful]) : remove_build_when_successful = False # don't delete build folder after all examples/runs
+
+            if remove_build_when_successful :
+                tools.remove_folder(build.target_directory)
             print('='*132)
 
     # catch exception if bulding fails
