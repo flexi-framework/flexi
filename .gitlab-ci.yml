@@ -25,6 +25,7 @@ checkout_reggie:
   tags:
     - withmodules
   script:
+    - rm -rf reggie || true
     - git clone git@gitlab.iag.uni-stuttgart.de:reggie/reggie.git
 
 build_gnu:
