@@ -1,5 +1,0 @@
-*.h5
-!*reference*.h5
-!*mesh*.h5
-*.out
-
