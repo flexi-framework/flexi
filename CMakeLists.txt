@@ -611,7 +611,7 @@ INSTALL(FILES    ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/configuration.cmake ${CMAKE_R
 # =========================================================================
 # Ctags
 # =========================================================================
-FIND_PROGRAM(CTAGS_PATH ctags)
+FIND_PROGRAM(CTAGS_PATH ctags-exuberant)
 IF(CTAGS_PATH)
   SET(EQNS_WO_ACTUAL ${EQNSYSTEMS})
   LIST(REMOVE_ITEM EQNS_WO_ACTUAL ${FLEXI_EQNSYSNAME})
@@ -629,7 +629,7 @@ IF(CTAGS_PATH)
   FOREACH(item ${TESTCASES_WO_ACTUAL})
      SET(EXLUDES "--exclude=src/testcase/${item}/*" ${EXLUDES})
   ENDFOREACH()
-  ADD_CUSTOM_COMMAND(OUTPUT ctags.txt COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR} && ctags -R --fortran-kinds=+i+L -f ctags.txt ${EXLUDES} src && ctags -R --fortran-kinds=+i+L -f ctags.txt ${EXLUDES} --append posti)
+  ADD_CUSTOM_COMMAND(OUTPUT ctags.txt COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR} && ${CTAGS_PATH} -R --fortran-kinds=+i+L -f ctags.txt ${EXLUDES} src && ${CTAGS_PATH} -R --fortran-kinds=+i+L -f ctags.txt ${EXLUDES} --append posti)
   ADD_CUSTOM_TARGET(tags DEPENDS ctags.txt)
   MESSAGE(STATUS "Found ctags: ${CTAGS_PATH}")
   ADD_DEPENDENCIES(flexi tags)

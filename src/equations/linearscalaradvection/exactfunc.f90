@@ -79,9 +79,9 @@ SUBROUTINE InitExactFunc()
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_ReadInTools,   ONLY: GETINTFROMSTR,GETREAL
+USE MOD_ReadInTools,   ONLY: GETINTFROMSTR,GETREAL,GETINT
 USE MOD_ExactFunc_Vars 
-USE MOD_Equation_Vars, ONLY: AdvVel,IniExactFunc
+USE MOD_Equation_Vars, ONLY: AdvVel,IniExactFunc,IniRefState
 #if PARABOLIC
 USE MOD_Equation_Vars, ONLY: DiffC
 #endif
@@ -97,6 +97,7 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT EXACT FUNCTION...'
 
 ! Read in boundary parameters
 IniExactFunc = GETINTFROMSTR('IniExactFunc')
+IniRefState  = -1 ! only dummy for linadv
 
 ! Read in parameters specific to certain init functions
 SELECT CASE (IniExactFunc)
@@ -117,7 +118,7 @@ END SUBROUTINE InitExactFunc
 !==================================================================================================================================
 !> Specifies all the initial conditions. The state in conservative variables is returned.
 !==================================================================================================================================
-SUBROUTINE ExactFunc(ExactFunction,tIn,x,resu)
+SUBROUTINE ExactFunc(ExactFunction,tIn,x,resu,RefStateOpt)
 ! MODULES
 USE MOD_Preproc
 USE MOD_Globals
@@ -125,7 +126,7 @@ USE MOD_Equation_Vars, ONLY: AdvVel
 USE MOD_Exactfunc_Vars,ONLY: OmegaRef
 USE MOD_Timedisc_Vars, ONLY: fullBoundaryOrder,CurrentStage,dt,RKb,RKc,t
 #if PARABOLIC
-USE MOD_Equation_Vars, ONLY:DiffC
+USE MOD_Equation_Vars, ONLY: DiffC
 #endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -135,6 +136,7 @@ REAL,INTENT(IN)                 :: tIn                    !< input time (either 
 REAL,INTENT(IN)                 :: x(3)                   !< coordinates to evaluate exact function
 INTEGER,INTENT(IN)              :: ExactFunction          !< specifies the exact function to be used
 REAL,INTENT(OUT)                :: Resu(PP_nVar)          !< output state in conservative variables
+INTEGER,INTENT(IN),OPTIONAL     :: RefStateOpt            !< refstate to be used for exact func (dummy)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                            :: tEval

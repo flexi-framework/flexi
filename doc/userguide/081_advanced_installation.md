@@ -1,6 +1,6 @@
 \hypertarget{advancedinstallation}{}
 
-# Advanced installation using Environment Modules
+# Advanced installation using Environment Modules \label{chap:modules}
 
 If multiple compilers and thus versions of libraries and tools
 are in use the management of all these dependencies can quickly

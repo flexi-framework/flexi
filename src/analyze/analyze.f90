@@ -63,6 +63,10 @@ CALL prms%CreateIntOption(    'nWriteData' ,     "Intervall as multiple of Analy
                                                  '1')
 CALL prms%CreateIntOption(    'NAnalyze'   ,     "Polynomial degree at which analysis is performed (e.g. for L2 errors). "//&
                                                  "Default: 2*N.")
+CALL prms%CreateIntOption(    'AnalyzeExactFunc',"Define exact function used for analyze (e.g. for computing L2 errors). "//&
+                                                 "Default: Same as IniExactFunc")
+CALL prms%CreateIntOption(    'AnalyzeRefState' ,"Define state used for analyze (e.g. for computing L2 errors). "//&
+                                                 "Default: Same as IniRefState")
 CALL prms%CreateLogicalOption('doMeasureFlops',  "Set true to measure flop count, if compiled with PAPI.",&
                                                  '.TRUE.')
 CALL DefineParametersAnalyzeEquation()
@@ -84,7 +88,7 @@ USE MOD_ReadInTools,        ONLY: GETINT,GETREAL,GETLOGICAL
 USE MOD_StringTools,        ONLY: INTTOSTR
 USE MOD_Interpolation_Vars, ONLY: xGP,wGP,wBary,InterpolationInitIsDone
 USE MOD_Mesh_Vars,          ONLY: nBCs,SurfElem,nSides,AnalyzeSide,sJ,nElems
-USE MOD_Equation_Vars,      ONLY: StrVarNames
+USE MOD_Equation_Vars,      ONLY: StrVarNames,IniExactFunc,IniRefState
 USE MOD_Output,             ONLY: InitOutputToFile
 USE MOD_Output_Vars,        ONLY: ProjectName
 USE MOD_Benchmarking,       ONLY: InitBenchmarking
@@ -105,6 +109,8 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT ANALYZE...'
 ! Get the various analysis/output variables
 doCalcErrorNorms  =GETLOGICAL('CalcErrorNorms' ,'.TRUE.')
 doAnalyzeToFile   =GETLOGICAL('AnalyzeToFile','.FALSE.')
+AnalyzeExactFunc  =GETINT('AnalyzeExactFunc',INTTOSTR(IniExactFunc))
+AnalyzeRefState   =GETINT('AnalyzeRefState' ,INTTOSTR(IniRefState))
 
 Analyze_dt        =GETREAL('Analyze_dt','0.0')
 nWriteData        =GETINT('nWriteData' ,'1')
@@ -153,9 +159,7 @@ END DO ! iElem
 Vol=SUM(ElemVol)
 
 
-
 ! compute surface of each boundary
-
 ALLOCATE(Surf(nBCs))
 Surf=0.
 DO iSide=1,nSides
@@ -308,12 +312,11 @@ SUBROUTINE CalcErrorNorms(Time,L_2_Error,L_Inf_Error)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Mesh_Vars,          ONLY: Elem_xGP,sJ,nElems
-USE MOD_Equation_Vars,      ONLY: IniExactFunc
 USE MOD_DG_Vars,            ONLY: U
 USE MOD_Exactfunc,          ONLY: ExactFunc
 USE MOD_ChangeBasisByDim,   ONLY: ChangeBasisVolume
 USE MOD_Analyze_Vars,       ONLY: NAnalyze,NAnalyzeZ,Vdm_GaussN_NAnalyze
-USE MOD_Analyze_Vars,       ONLY: wGPVolAnalyze,Vol
+USE MOD_Analyze_Vars,       ONLY: wGPVolAnalyze,Vol,AnalyzeExactFunc,AnalyzeRefState
 #if FV_ENABLED
 USE MOD_FV_Vars,            ONLY: FV_Elems,FV_Vdm,FV_w
 #endif
@@ -351,7 +354,7 @@ DO iElem=1,nElems
     DO m=0,PP_NZ
       DO l=0,PP_N
         DO k=0,PP_N
-          CALL ExactFunc(IniExactFunc,time,Elem_xGP(1:3,k,l,m,iElem),U_DG(:,k,l,m))
+          CALL ExactFunc(AnalyzeExactFunc,time,Elem_xGP(1:3,k,l,m,iElem),U_DG(:,k,l,m),AnalyzeRefState)
         END DO ! k
       END DO ! l
     END DO ! m
@@ -378,7 +381,7 @@ DO iElem=1,nElems
    DO m=0,NAnalyzeZ
      DO l=0,NAnalyze
        DO k=0,NAnalyze
-         CALL ExactFunc(IniExactFunc,time,Coords_NAnalyze(1:3,k,l,m),U_exact)
+         CALL ExactFunc(AnalyzeExactFunc,time,Coords_NAnalyze(1:3,k,l,m),U_exact,AnalyzeRefState)
          L_Inf_Error = MAX(L_Inf_Error,abs(U_NAnalyze(:,k,l,m) - U_exact))
          IntegrationWeight = wGPVolAnalyze(k,l,m)*J_NAnalyze(1,k,l,m)
          ! To sum over the elements, We compute here the square of the L_2 error

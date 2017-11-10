@@ -6,7 +6,7 @@
 
 ### Prerequisites
 **FLEXI** has been tested for various Linux distributions. This includes Ubuntu 14.04 LTS and 16.04 LTS, OpenSUSE 42.1 and CentOS 7. \label{missing:prerequisites_not_finalized}
-
+The suggested packages in this section can of course be replaced by self compiled versions or be loaded by a module environment as suggested in \ref{chap:modules}.
 
 The required packages for the Ubuntu Linux distributions are listed in table \ref{tab:installation_prereqs_ubuntu}. Under Ubuntu, they can be obtained using the apt environment:
 
@@ -17,15 +17,17 @@ The required packages for the Ubuntu Linux distributions are listed in table \re
 |:----------------:|:---------------:|:---------------:|
 | git              | x               |      x          |
 | cmake            | x               |      x          |
-| cmake-curses-gui | x               |      x          |
+| cmake-curses-gui | o               |      o          |
 | liblapack3       | x               |      x          |
 | liblapack-dev    | x               |      x          |
 | gfortran         | x               |      x          |
 | g++              | x               |      x          |
-|  mpi-default-dev | x               |      x          |
-| zlib1g-dev       | -               |     x           |
+| mpi-default-dev  | x               |      x          |
+| zlib1g-dev       | -               |      x          |
+| exuberant-ctags  | o               |      o          |
 
-Table: Required debian packages under Ubuntu.\label{tab:installation_prereqs_ubuntu}
+Table: Debian/Ubuntu packages.\label{tab:installation_prereqs_ubuntu}
+x: required, o: optional, -: not available
 
 The required packages for OpenSUSE and CentOS are listed in table \ref{tab:installation_prereqs_redhat}.
 
@@ -55,11 +57,14 @@ Additionally, the `PATH` variable must be extended by the openmpi path
 | openmpi          |      x        |    x     |
 | openmpi-devel    |      x        |    x     |
 | zlib-devel       |      x        |    x     |
-| gcc-fortran      |       x       |    x     |
+| gcc-fortran      |      x        |    x     |
 | gcc              |      x        |    -     |
 | gcc-c++          |      x        |    x     |
+| ctags-etags      |      -        |    o     |
 
-Table: Required Red Hat packages under OpenSUSE and CentOS.\label{tab:installation_prereqs_redhat}
+Table: OpenSUSE/CentOS packages.\label{tab:installation_prereqs_redhat}
+x: required, o: optional, -: not available
+
 
 On some systems it may be necessary to increase the size of the stack (part of the memory used to store information about active subroutines) in order to execute FLEXI correctly. This is done using the command
 

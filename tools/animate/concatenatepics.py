@@ -20,19 +20,20 @@ no = 0
 for a,b in zip(sorted(args.pics), sorted(args.appends)) :
    first = None
    last = None
-   for i in range(len(a)) :
+   af=os.path.basename(a)
+   bf=os.path.basename(b)
+   for i in range(len(af)) :
       if not first  :
-         if a[i] != b[i] :
+         if af[i] != bf[i] :
             first = i
             break
 
-   for i in range(len(a)) :
+   for i in range(len(af)) :
       if not last  :
-         if a[len(a)-1-i] != b[len(b)-1-i] :
+         if af[len(af)-1-i] != bf[len(bf)-1-i] :
             last = i
             break
-
-   filename = a[0:len(a)-last] + '_' + b[first:len(b)-last] + a[len(a)-last:]
+   filename =os.path.join(os.getcwd() ,af[0:len(af)-last] + '_' + bf[first:len(bf)-last] + af[len(af)-last:])
    no = no+1
    sys.stdout.write('\r%05.2f %% Process: %s and %s' % (100.0 * no / len(args.pics), a, b))
    sys.stdout.flush()
