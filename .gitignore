@@ -3,6 +3,7 @@
 *.i90
 *.mod
 *.swp
+*.pyc
 src/deplist.mk
 src/preprocflags.f90
 src/srcfiles_pp.mk

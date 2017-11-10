@@ -15,10 +15,19 @@ cache:
     - doc/doxygen/doxygen
     - doc/userguide/userguide.pdf
     - regressioncheck/examples
+    - reggie/
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "build": Build with intel/gnu on check-in
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
+checkout_reggie:
+  stage: build
+  tags:
+    - withmodules
+  script:
+    - rm -rf reggie || true
+    - git clone git@gitlab.iag.uni-stuttgart.de:reggie/reggie.git
+
 build_gnu:
   stage: build
   tags:
@@ -46,6 +55,7 @@ clean:
     - rm -rf build_gnu
     - rm -rf build_intel
     - rm -rf share
+    - rm -rf reggie
   when: on_failure
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
@@ -56,14 +66,14 @@ gnu:
   tags:
     - withmodules
   script:
-    - module load env/gnu ; cd build_gnu/bin/ ; ./regressioncheck
+    - module load env/gnu ; cd build_gnu ;  python ../reggie/reggie.py ../regressioncheck/checks/run_basic/freestream_3D -e ./bin/flexi
 
 intel:
   stage: reggie_checkin
   tags:
     - withmodules
   script:
-    - module load env/intel ; cd build_intel/bin/ ; ./regressioncheck
+    - module load env/intel ; cd build_intel ;  python ../reggie/reggie.py ../regressioncheck/checks/run_basic/freestream_3D -e ./bin/flexi
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "reggie_nightly": Build and run
@@ -71,59 +81,59 @@ intel:
 #                         - h-p-convtests
 #                      examples on nightly
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
-gnu_build_mpi:
+gnu_build_all:
   stage: reggie_nightly
   tags:
     - withmodules
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then  module load env/gnu ; cd build_gnu/bin/ ; ./regressioncheck build -j no-debug; fi
+    - if [ -n "${DO_NIGHTLY}" ]; then  module load env/gnu ; cd build_gnu ;  python ../reggie/reggie.py ../regressioncheck/checks/run_basic ; fi
 
 gnu_convtest:
   stage: reggie_nightly
   tags:
     - withmodules
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then module load env/gnu ; cd build_gnu/bin/ ; ./regressioncheck build feature_convtest -j no-debug; fi
+    - if [ -n "${DO_NIGHTLY}" ]; then module load env/gnu ; cd build_gnu ;  python ../reggie/reggie.py ../regressioncheck/checks/convtest ; fi 
 
 
 
-
-intel_build_mpi:
+intel_build_all:
   stage: reggie_nightly
   tags:
     - withmodules
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel/bin/ ; ./regressioncheck build -j no-debug; fi
+    - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel ;  python ../reggie/reggie.py ../regressioncheck/checks/run_basic ; fi
 
 intel_convtest:
   stage: reggie_nightly
   tags:
     - withmodules
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel/bin/ ; ./regressioncheck build feature_convtest -j no-debug; fi
+    - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel ;  python ../reggie/reggie.py ../regressioncheck/checks/convtest ; fi 
 
 
-# ----------------------------------------------------------------------------------------------------------------------------------------------------
-# Stage "reggie_weekly": run 
-#                         - NACA0012 Tutorial 
-#                      examples on weekly
-# ----------------------------------------------------------------------------------------------------------------------------------------------------
-gnu_weekly_mpi:
-  stage: reggie_weekly
-  tags:
-    - withmodules
-  script:
-    - if [ -n "${DO_WEEKLY}" ]; then  module load env/gnu ; cd build_gnu/bin/ ; ./regressioncheck tutorials ; fi
-
-intel_weekly_mpi:
-  stage: reggie_weekly
-  tags:
-    - withmodules
-  script:
-    - if [ -n "${DO_WEEKLY}" ]; then module load env/intel ; cd build_intel/bin/ ; ./regressioncheck tutorials ; fi
-
-
-
+#            # ----------------------------------------------------------------------------------------------------------------------------------------------------
+#            # Stage "reggie_weekly": run 
+#            #                         - NACA0012 Tutorial 
+#            #                      examples on weekly
+#            # ----------------------------------------------------------------------------------------------------------------------------------------------------
+#            gnu_weekly_mpi:
+#              stage: reggie_weekly
+#              tags:
+#                - withmodules
+#              script:
+#                - if [ -n "${DO_WEEKLY}" ]; then  module load env/gnu ; cd build_gnu/bin/ ; ./regressioncheck tutorials ; fi
+#            
+#            intel_weekly_mpi:
+#              stage: reggie_weekly
+#              tags:
+#                - withmodules
+#              script:
+#                - if [ -n "${DO_WEEKLY}" ]; then module load env/intel ; cd build_intel/bin/ ; ./regressioncheck tutorials ; fi
+#            
+#            
+#            
+ 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "documentation": creates doxygen documentation & compiles the documentation creating the *.pdf
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
@@ -132,17 +142,14 @@ doxygen:
   tags:
     - withmodules
   script:
-    - echo 'skipping...'
-    #- cd doc/doxygen ; ./builddoxy.sh
+    - cd doc/doxygen ; ./builddoxy.sh
 
 userguide:
   stage: documentation
   tags:
     - withmodules
   script:
-    - echo 'skipping...'
-    #- cd doc/userguide ; make
-
+    - cd doc/userguide ; make
 
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
