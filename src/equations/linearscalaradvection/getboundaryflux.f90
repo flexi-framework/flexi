@@ -31,10 +31,12 @@ INTERFACE GetBoundaryFlux
   MODULE PROCEDURE GetBoundaryFlux
 END INTERFACE
 
-#if FV_ENABLED
+#if FV_ENABLED 
+#if FV_RECONSTRUCT
 INTERFACE GetBoundaryFVgradient
   MODULE PROCEDURE GetBoundaryFVgradient
 END INTERFACE
+#endif
 #endif
 
 INTERFACE FinalizeBC
@@ -51,7 +53,9 @@ PUBLIC :: Lifting_GetBoundaryFlux
 PUBLIC :: InitBC
 PUBLIC :: GetBoundaryFlux
 #if FV_ENABLED
+#if FV_RECONSTRUCT
 PUBLIC :: GetBoundaryFVgradient
+#endif
 #endif
 PUBLIC :: FinalizeBC
 !==================================================================================================================================
