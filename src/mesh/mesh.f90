@@ -385,7 +385,7 @@ SUBROUTINE BuildOverintMesh()
 USE MOD_PreProc
 USE MOD_Globals
 USE MOD_Mesh_Vars
-USE MOD_Metrics,             ONLY: CalcSurfMetrics,BuildCoords
+USE MOD_Metrics,             ONLY: CalcSurfMetrics
 USE MOD_Interpolation,       ONLY: GetVandermonde
 USE MOD_Interpolation_Vars,  ONLY: NodeTypeCL,NodeType
 USE MOD_Overintegration_Vars,ONLY: NOver,VdmNToNOver
@@ -404,12 +404,12 @@ INTEGER           :: iElem
 
 ! Build geometry for volume overintegration
 ALLOCATE(      Elem_xGPO(3,0:NOver,0:NOver,0:PP_NOverZ,nElems)) ! only needed once by fillini
-CALL BuildCoords(NodeCoords,NodeType,NOver,Elem_xGPO)
 ALLOCATE(Metrics_fTildeO(3,0:NOver,0:NOver,0:PP_NOverZ,nElems))
 ALLOCATE(Metrics_gTildeO(3,0:NOver,0:NOver,0:PP_NOverZ,nElems))
 ALLOCATE(Metrics_hTildeO(3,0:NOver,0:NOver,0:PP_NOverZ,nElems))
 IF(NOver.GT.PP_N)THEN
   DO iElem=1,nElems
+    CALL ChangeBasisVolume(3,PP_N,NOver,VdmNToNOver,      Elem_xGP(:,:,:,:,iElem)  ,      Elem_xGPO(:,:,:,:,iElem))
     CALL ChangeBasisVolume(3,PP_N,NOver,VdmNToNOver,Metrics_fTilde(:,:,:,:,iElem,0),Metrics_fTildeO(:,:,:,:,iElem))
     CALL ChangeBasisVolume(3,PP_N,NOver,VdmNToNOver,Metrics_gTilde(:,:,:,:,iElem,0),Metrics_gTildeO(:,:,:,:,iElem))
     CALL ChangeBasisVolume(3,PP_N,NOver,VdmNToNOver,Metrics_hTilde(:,:,:,:,iElem,0),Metrics_hTildeO(:,:,:,:,iElem))
