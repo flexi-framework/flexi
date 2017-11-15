@@ -293,14 +293,18 @@ DO iVal=1,nVal
 #if USE_MPI
     DO iProc=1,nProcessors-1
       nElems_proc=nElems_glob(iProc)
-      CALL MPI_RECV(buf(:,:,:,1:nElems_proc),nElems_proc*NVisu_elem,MPI_DOUBLE_PRECISION,iProc,0,MPI_COMM_WORLD,MPIstatus,iError)
-      WRITE(ivtk) REAL(buf(:,:,:,1:nElems_proc),4)
+      IF (nElems_proc.GT.0) THEN
+        CALL MPI_RECV(buf(:,:,:,1:nElems_proc),nElems_proc*NVisu_elem,MPI_DOUBLE_PRECISION,iProc,0,MPI_COMM_WORLD,MPIstatus,iError)
+        WRITE(ivtk) REAL(buf(:,:,:,1:nElems_proc),4)
+      END IF
     END DO !iProc
   ELSE
-    IF (nValAtLastDimension_loc) THEN
-      CALL MPI_SEND(Value(:,:,:,:,iVal),nElems*NVisu_elem,MPI_DOUBLE_PRECISION, 0,0,MPI_COMM_WORLD,iError)
-    ELSE
-      CALL MPI_SEND(Value(iVal,:,:,:,:),nElems*NVisu_elem,MPI_DOUBLE_PRECISION, 0,0,MPI_COMM_WORLD,iError)
+    IF (nElems.GT.0) THEN
+      IF (nValAtLastDimension_loc) THEN
+        CALL MPI_SEND(Value(:,:,:,:,iVal),nElems*NVisu_elem,MPI_DOUBLE_PRECISION, 0,0,MPI_COMM_WORLD,iError)
+      ELSE
+        CALL MPI_SEND(Value(iVal,:,:,:,:),nElems*NVisu_elem,MPI_DOUBLE_PRECISION, 0,0,MPI_COMM_WORLD,iError)
+      END IF
     END IF
 #endif /*USE_MPI*/
   END IF !MPIroot
@@ -321,11 +325,15 @@ IF(MPIRoot)THEN
 #if USE_MPI
   DO iProc=1,nProcessors-1
     nElems_proc=nElems_glob(iProc)
-    CALL MPI_RECV(buf2(:,:,:,:,1:nElems_proc),nElems_proc*NVisu_elem*3,MPI_DOUBLE_PRECISION,iProc,0,MPI_COMM_WORLD,MPIstatus,iError)
-    WRITE(ivtk) REAL(buf2(:,:,:,:,1:nElems_proc),4)
+    IF (nElems_proc.GT.0) THEN
+      CALL MPI_RECV(buf2(:,:,:,:,1:nElems_proc),nElems_proc*NVisu_elem*3,MPI_DOUBLE_PRECISION,iProc,0,MPI_COMM_WORLD,MPIstatus,iError)
+      WRITE(ivtk) REAL(buf2(:,:,:,:,1:nElems_proc),4)
+    END IF
   END DO !iProc
 ELSE
-  CALL MPI_SEND(Coord(:,:,:,:,:),nElems*NVisu_elem*3,MPI_DOUBLE_PRECISION, 0,0,MPI_COMM_WORLD,iError)
+  IF (nElems.GT.0) THEN
+    CALL MPI_SEND(Coord(:,:,:,:,:),nElems*NVisu_elem*3,MPI_DOUBLE_PRECISION, 0,0,MPI_COMM_WORLD,iError)
+  END IF
 #endif /*USE_MPI*/
 END IF !MPIroot
 

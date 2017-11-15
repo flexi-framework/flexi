@@ -189,7 +189,9 @@ END DO
 FV_Vdm = FV_Vdm * 0.5
 
 ! Compute the inverse of FV_Vdm 
-FV_sVdm = INVERSE(FV_Vdm)
+IF (PRESENT(FV_sVdm)) THEN
+  FV_sVdm = INVERSE(FV_Vdm)
+END IF
 END SUBROUTINE FV_GetVandermonde
 
 !==================================================================================================================================

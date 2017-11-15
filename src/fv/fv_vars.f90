@@ -37,6 +37,8 @@ LOGICAL                :: FV_toDG_indicator      !< additional Persson indicator
 REAL                   :: FV_toDG_limit          !< limit for ^ this indicator: If FV_toDG_indicator is above limit, keep FV
 LOGICAL                :: FV_toDGinRK            !< Flag that allows switching of FV elements to DG during Runge Kutta stages. 
                                                  !< This may violated the DG timestep restriction of the element.
+LOGICAL                :: FV_IniSharp            !< Maintain a sharp interface in the initial solution in the FV region
+LOGICAL                :: FV_IniSupersample      !< Supersample initial solution inside each sub-cell
 
 ! Limiting
 REAL                   :: FV_sweby_beta          !< parameter for Sweby limiter
