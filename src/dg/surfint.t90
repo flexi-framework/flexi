@@ -15,7 +15,6 @@
 
 !==================================================================================================================================
 !> In this routine, the surface integral will be computed 
-!> Polynomial degree is either N or NOver (overintegration)
 !==================================================================================================================================
 SUBROUTINE SurfInt(&
 #ifdef WITHnVars
@@ -37,7 +36,7 @@ IMPLICIT NONE
 #ifdef WITHnVars
 INTEGER,INTENT(IN) :: TP_nVar     !< number of variables
 #endif        
-INTEGER,INTENT(IN) :: Nloc        !< (IN) Polynomial degree either N or NOver in case of overintegration
+INTEGER,INTENT(IN) :: Nloc        !< (IN) Polynomial degree
 LOGICAL,INTENT(IN) :: doMPISides  !<= .TRUE. only MPISides_YOUR+MPIMortar are filled
                                   !<=.FALSE. BCSides+(Mortar-)InnerSides+MPISides_MINE
 REAL,INTENT(IN)    :: Flux_master(1:TP_nVar,0:Nloc,0:PP_NlocZ,nSides) !< (IN) Flux on master side
@@ -200,7 +199,7 @@ IMPLICIT NONE
 #ifdef WITHnVars
 INTEGER,INTENT(IN) :: TP_nVar                          !< Number of variables
 #endif
-INTEGER,INTENT(IN) :: Nloc                             !< Polynomial degree either N or NOver in case of overintegration
+INTEGER,INTENT(IN) :: Nloc                             !< Polynomial degree
 INTEGER,INTENT(IN) :: locSideID                        !< sideID of side in global system
 REAL,INTENT(IN)    :: Flux(TP_nVar,0:Nloc,0:PP_NlocZ)  !< Flux on side, in volume system of respective element
 !> Lagrange polynomials evaluated at \f$i \xi=+1 \f$ and \f$ \xi=-1 \f$ premultiplied by mass matrix

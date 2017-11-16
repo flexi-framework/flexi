@@ -25,7 +25,6 @@ PRIVATE
 INTEGER,PARAMETER :: OVERINTEGRATIONTYPE_NONE       = 0
 INTEGER,PARAMETER :: OVERINTEGRATIONTYPE_CUTOFF     = 1
 INTEGER,PARAMETER :: OVERINTEGRATIONTYPE_CONSCUTOFF = 2
-INTEGER,PARAMETER :: OVERINTEGRATIONTYPE_SELECTIVE  = 3
 
 !----------------------------------------------------------------------------------------------------------------------------------
 INTERFACE InitOverintegration
@@ -51,7 +50,7 @@ PUBLIC :: DefineParametersOverintegration
 CONTAINS
 
 !==================================================================================================================================
-!> Define parameters of overintegration module for help output
+!> Define parameters of overintegration module
 !==================================================================================================================================
 SUBROUTINE DefineParametersOverintegration()
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -64,15 +63,11 @@ IMPLICIT NONE
 ! LOCAL VARIABLES 
 !==================================================================================================================================
 CALL prms%SetSection("Overintegration")
-CALL prms%CreateIntFromStringOption('OverintegrationType', "Type of overintegration. None, CutOff, ConsCutOff, Selective",&
-                                                    'None')
+CALL prms%CreateIntFromStringOption('OverintegrationType', "Type of overintegration. None, CutOff, ConsCutOff")
 CALL addStrListEntry('OverintegrationType','none',      OVERINTEGRATIONTYPE_NONE)
 CALL addStrListEntry('OverintegrationType','cutoff',    OVERINTEGRATIONTYPE_CUTOFF)
 CALL addStrListEntry('OverintegrationType','conscutoff',OVERINTEGRATIONTYPE_CONSCUTOFF)
-CALL addStrListEntry('OverintegrationType','selective', OVERINTEGRATIONTYPE_SELECTIVE)
 CALL prms%CreateIntOption('NUnder',             "Polynomial degree to which solution is filtered (OverintegrationType == 1 or 2")
-CALL prms%CreateIntOption('NOver',              "Polynomial degree for computing and integrating the advective fluxes "//&
-                                                "(OverintegrationType == 3)")
 END SUBROUTINE DefineParametersOverintegration
 
 
@@ -80,7 +75,7 @@ END SUBROUTINE DefineParametersOverintegration
 !==================================================================================================================================
 !> Initialize all necessary information to perform overintegration 
 !==================================================================================================================================
-SUBROUTINE InitOverintegration(doBuildOverintegrationMesh)
+SUBROUTINE InitOverintegration()
 !----------------------------------------------------------------------------------------------------------------------------------
 ! MODULES
 USE MOD_Globals
@@ -89,22 +84,17 @@ USE MOD_Overintegration_Vars
 USE MOD_Interpolation       ,ONLY:GetVandermonde
 USE MOD_Interpolation_Vars  ,ONLY:InterpolationInitIsDone,Vdm_Leg,sVdm_Leg,NodeType
 USE MOD_ChangeBasisByDim    ,ONLY:ChangeBasisVolume
-USE MOD_ReadInTools         ,ONLY:GETINT,GETREAL,GETREALARRAY,GETLOGICAL,GETINTFROMSTR
-USE MOD_Interpolation       ,ONLY:GetVandermonde,InitInterpolationBasis
+USE MOD_ReadInTools         ,ONLY:GETINT,GETINTFROMSTR
 USE MOD_Mesh_Vars           ,ONLY:DetJac_Ref,NGeoRef,nElems
-USE MOD_Mesh                ,ONLY:BuildOverintMesh
-USE MOD_Interpolation       ,ONLY:GetNodesAndWeights
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-LOGICAL,INTENT(IN),OPTIONAL :: doBuildOverintegrationMesh
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER             :: iDeg,iElem,i,j,k                             !< Loop counters 
 REAL,ALLOCATABLE    :: DetJac_NUnder(:,:,:,:)                       !< Determinant of the Jacobian on Nunder, 
                                                                     !< size [1,0..Nunder,0..Nunder,0..Nunder]  
 REAL,ALLOCATABLE    :: Vdm_NGeoRef_NUnder(:,:)
-LOGICAL             :: doBuildOverintegrationMesh_loc
 !==================================================================================================================================
 ! Check if the necessary prerequisites are met
 IF(OverintegrationInitIsDone.OR.(.NOT.InterpolationInitIsDone))THEN
@@ -116,11 +106,10 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT OVERINTEGRATION...'
 
 !Set default values
 NUnder=PP_N
-NOver =PP_N
 
 OverintegrationType = GETINTFROMSTR('OverintegrationType')
 SELECT CASE(OverintegrationType)
-CASE (OVERINTEGRATIONTYPE_NONE) ! no overintegration, collocation DGSEM )
+CASE (OVERINTEGRATIONTYPE_NONE) ! no overintegration, collocation DGSEM
   OverintegrationType = 0
 CASE (OVERINTEGRATIONTYPE_CUTOFF) ! modal cut-off filter on Ju_t
   ! Prepare filter matrix for modal filtering: Identity matrix up to Nunder, then zero diagonal entries
@@ -162,30 +151,6 @@ CASE (OVERINTEGRATIONTYPE_CONSCUTOFF) ! conservative modal cut-off filter: Here,
   END IF
   SWRITE(UNIT_stdOut,'(A)') ' Method of overintegration: cut-off filter (conservative)'
 
-CASE (OVERINTEGRATIONTYPE_SELECTIVE) ! selective overintegration of advective fluxes
-
-  NOver = GETINT('NOver')
-
-  IF(NOver.LE.PP_N)THEN
-    NOver=PP_N
-    SWRITE(UNIT_stdOut,'(A)') ' WARNING: Overintegration is disabled for Nover <= N !!!'
-    OverintegrationType = 0
-  ELSE
-
-#if (PP_NodeType!=1)
-    CALL CollectiveStop(__STAMP__,&
-      ' ABORT: OverintegrationType==3 ONLY implemented for GAUSS points!')
-#endif
-    ALLOCATE(xGPO(0:NOver))
-    ALLOCATE(wGPO(0:NOver))
-    CALL GetNodesAndWeights(NOver,NodeType,xGPO,wGPO)
-    ALLOCATE(VdmNToNOver(0:NOver,0:PP_N),VdmNOverToN(0:PP_N,0:NOver))
-    CALL GetVandermonde(PP_N,NodeType,NOver,NodeType,VdmNToNOver,modal=.FALSE.)
-    CALL GetVandermonde(NOver,NodeType,PP_N,NodeType,VdmNOverToN,modal=.TRUE.)
-    doBuildOverintegrationMesh_loc = MERGE(doBuildOverintegrationMesh,.TRUE., PRESENT(doBuildOverintegrationMesh))
-    IF (doBuildOverintegrationMesh_loc) CALL BuildOverintMesh()
-  END IF
-  SWRITE(UNIT_stdOut,'(A)') ' Method of overintegration: selective overintegration of advective fluxes'
 CASE DEFAULT
   CALL Abort(__STAMP__, &
       "Unknown OverintegrationType!")
@@ -203,7 +168,6 @@ END SUBROUTINE InitOverintegration
 !> The Overintegration routine will call the specfic functions needed to perform the selected overintegration type.
 !> For the cut off version (option 1): Call the filter routine to apply the modal cut off filter.
 !> For the conservative cut off version (option 2): Call the special conservative filter routine.
-!> For the selective overintegration (option 3): No need to do anything here, is directly implemented in the DG operator.
 !==================================================================================================================================
 SUBROUTINE Overintegration(U_in)
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -221,12 +185,10 @@ REAL,INTENT(INOUT)  :: U_in(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< Time deriva
 ! LOCAL VARIABLES
 !==================================================================================================================================
 SELECT CASE (OverintegrationType)
-CASE (OVERINTEGRATIONTYPE_CUTOFF) 
+CASE (OVERINTEGRATIONTYPE_CUTOFF)
   CALL Filter_Pointer(U_in, OverintegrationMat)
-CASE (OVERINTEGRATIONTYPE_CONSCUTOFF) 
+CASE (OVERINTEGRATIONTYPE_CONSCUTOFF)
   CALL FilterConservative(U_in)
-CASE (OVERINTEGRATIONTYPE_SELECTIVE) 
-  ! do nothing, since implemented directly within DG operator
 CASE DEFAULT
   CALL Abort(__STAMP__, &
     "OverintegrationType unknown or not allowed!", IntInfo=OverintegrationType)
@@ -384,10 +346,6 @@ SDEALLOCATE(OverintegrationMat)
 SDEALLOCATE(sJNUnder)
 SDEALLOCATE(Vdm_NUnder_N)
 SDEALLOCATE(Vdm_N_NUnder)
-SDEALLOCATE(VdmNToNOver)
-SDEALLOCATE(VdmNOverToN)
-SDEALLOCATE(xGPO)
-SDEALLOCATE(wGPO)
 OverintegrationInitIsDone = .FALSE.
 END SUBROUTINE FinalizeOverintegration
 

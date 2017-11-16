@@ -47,29 +47,23 @@ CONTAINS
 !> Computes the fluxes for inner sides, MPI sides where the local proc is "master"  and boundary conditions.
 !> The flux computation is performed seperately for advection and diffusion fluxes in case
 !> parabolic terms are considered.
-!> If selective overintegration is used, the advection fluxes are evaluated at a higher
-!> polynomial degree and then projected down to the polynomial degree of the solution
 !==================================================================================================================================
 SUBROUTINE FillFlux(t,Flux_master,Flux_slave,U_master,U_slave,UPrim_master,UPrim_slave,doMPISides)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_DG_Vars,         ONLY: U_masterO,U_slaveO,UPrim_masterO,UPrim_slaveO,FluxO
 USE MOD_Mesh_Vars,       ONLY: NormVec, TangVec1, TangVec2, SurfElem, Face_xGP
-USE MOD_Mesh_Vars,       ONLY: NormVecO,TangVec1O,TangVec2O,SurfElemO,Face_xGPO
 USE MOD_Mesh_Vars,       ONLY: firstInnerSide,lastInnerSide,firstMPISide_MINE,lastMPISide_MINE
 USE MOD_Mesh_Vars,       ONLY: nSides,firstBCSide
 USE MOD_ChangeBasisByDim,ONLY: ChangeBasisSurf
 USE MOD_Riemann,         ONLY: Riemann
 USE MOD_GetBoundaryFlux, ONLY: GetBoundaryFlux
-USE MOD_Overintegration_Vars, ONLY: OverintegrationType,NOver,VdmNOverToN,VdmNToNOver
 USE MOD_EOS,             ONLY: ConsToPrim
 USE MOD_Mesh_Vars,       ONLY: nBCSides
 #if PARABOLIC
 USE MOD_Riemann,         ONLY: ViscousFlux
 USE MOD_Lifting_Vars,    ONLY: gradUx_master ,gradUy_master ,gradUz_master ,gradUx_slave,gradUy_slave,gradUz_slave
-USE MOD_Lifting_Vars,    ONLY: gradUx_masterO,gradUy_masterO,gradUz_masterO
 #endif /*PARABOLIC*/
 #ifdef EDDYVISCOSITY
 USE MOD_EddyVisc_Vars,   ONLY: muSGS_master,muSGS_slave
@@ -78,7 +72,7 @@ USE MOD_EddyVisc_Vars,   ONLY: muSGS_master,muSGS_slave
 USE MOD_FV
 USE MOD_FV_Vars
 #endif
-USE MOD_EOS             ,ONLY: PrimToCons
+USE MOD_EOS,             ONLY: PrimToCons
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -94,7 +88,9 @@ REAL,INTENT(IN)    :: UPrim_slave( PP_nVarPrim,0:PP_N, 0:PP_NZ, 1:nSides) !< sol
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER :: SideID,p,q,firstSideID_wo_BC,firstSideID ,lastSideID,FVEM
+#if PARABOLIC
 REAL    :: FluxV_loc(PP_nVar,0:PP_N, 0:PP_NZ)
+#endif
 INTEGER :: FV_Elems_Max(1:nSides) ! 0 if both sides DG, 1 else
 !==================================================================================================================================
 ! fill flux for sides ranging between firstSideID and lastSideID using Riemann solver for advection and viscous terms
@@ -113,90 +109,30 @@ END IF
 
 DO SideID=firstSideID,lastSideID
   FV_Elems_Max(SideID) = MAX(FV_Elems_master(SideID),FV_Elems_slave(SideID))
-END DO 
+END DO
 
 ! =============================
 ! Workflow:
 !
-! numbers marked with curly brackets {..} are only peformed for selective overintegration
-! 
-! {0.} interpolate U_master/slave and gradU.._master/slave from N to NOver for all DG/DG interfaces
 !  1.  compute flux for non-BC sides
-!            no overintegration: store in Flux_master
-!         [with overintegration: store in FluxO]
 !  1.1) advective flux
 !  1.2) viscous flux
 !  1.3) add up viscous flux to Flux_master 
 !  2.  compute flux for BC sides
-!            no overintegration: store in Flux_master
-!         [with overintegration: store in FluxO]
 !  3.  multiply by SurfElem 
-! {4.} project FluxO from NOver to N for all DG/DG interfaces and add to Flux_master
-!  5.  copy flux from Flux_master to Flux_slave
-!  6.  convert FV flux to DG flux at mixed interfaces
+!  4.  copy flux from Flux_master to Flux_slave
+!  5.  convert FV flux to DG flux at mixed interfaces
 !==============================
-
-! 0. interpolate U_master/slave from N to NOver for all pure DG/DG interfaces
-!    interpolate gradUx/y/z_master/slave from N to NOver for all DG BC sides 
-IF(OverintegrationType.EQ.SELECTIVE)THEN
-  ! for surface overintegration, solution (and gradients for BCs) at boundaries at NOver are required:
-  ! Interpolate surface states from N to Nover
-  DO SideID=firstSideID,lastSideID
-    IF (FV_Elems_Sum(SideID).EQ.0) THEN
-      CALL ChangeBasisSurf(PP_nVar,PP_N,Nover,VdmNToNOver,U_master(:,:,:,SideID),U_masterO(:,:,:,SideID))
-      CALL ConsToPrim(NOver,UPrim_masterO(:,:,:,SideID), U_masterO(:,:,:,SideID))
-    END IF
-  END DO
-  DO SideID=firstSideID_wo_BC,lastSideID
-    IF (FV_Elems_Sum(SideID).EQ.0) THEN
-      CALL ChangeBasisSurf(PP_nVar,PP_N,Nover,VdmNToNOver,U_slave(:,:,:,SideID),U_slaveO(:,:,:,SideID))
-      CALL ConsToPrim(NOver,UPrim_slaveO(:,:,:,SideID), U_slaveO(:,:,:,SideID))
-    END IF
-  END DO
-
-#if PARABOLIC
-  IF(.NOT.doMPISides)THEN
-    DO SideID=1,nBCSides
-      IF (FV_Elems_master(SideID).EQ.0) THEN
-        CALL ChangeBasisSurf(PP_nVarPrim,PP_N,Nover,VdmNToNOver,gradUx_master(:,:,:,SideID),gradUx_masterO(:,:,:,SideID))
-        CALL ChangeBasisSurf(PP_nVarPrim,PP_N,Nover,VdmNToNOver,gradUy_master(:,:,:,SideID),gradUy_masterO(:,:,:,SideID))
-        CALL ChangeBasisSurf(PP_nVarPrim,PP_N,Nover,VdmNToNOver,gradUz_master(:,:,:,SideID),gradUz_masterO(:,:,:,SideID))
-      END IF
-    END DO
-  END IF
-#endif
-END IF
 
 ! 1. compute flux for non-BC sides
 DO SideID=firstSideID_wo_BC,lastSideID
   ! 1.1) advective part of flux
-  IF (FV_Elems_Sum(SideID).EQ.0) THEN ! DG/DG interfaces
-    IF(OverintegrationType.EQ.SELECTIVE)THEN
-      ! 1.1 [over_DG]) selective overintegration of advective flux
-      CALL Riemann(NOver,FluxO(:,:,:,SideID),   &
-          U_masterO    ( :,:,:,SideID),U_slaveO    (  :,:,:,SideID),&
-          UPrim_masterO( :,:,:,SideID),UPrim_slaveO(  :,:,:,SideID),&
-          NormVecO (:,:,:,0,SideID),&
-          TangVec1O(:,:,:,0,SideID),&
-          TangVec2O(:,:,:,0,SideID),doBC=.FALSE.)
-    ELSE
-      ! 1.1 [DG]) no selective overintegration of advective flux
-      CALL Riemann(PP_N,Flux_master(:,:,:,SideID),&
-          U_master    (:,:,:,SideID),U_slave    (:,:,:,SideID),       &
-          UPrim_master(:,:,:,SideID),UPrim_slave(:,:,:,SideID),       &
-          NormVec (:,:,:,0,SideID), &
-          TangVec1(:,:,:,0,SideID), &
-          TangVec2(:,:,:,0,SideID),doBC=.FALSE.)
-    END IF
-  ELSE ! at least one of the faces FV
-    ! 1.1 [FV]) no selective overintegration of advective flux for all sides involving at least one FV face
-    CALL Riemann(PP_N,Flux_master(:,:,:,SideID),&
-        U_master    (:,:,:,SideID),U_slave    (:,:,:,SideID),       &
-        UPrim_master(:,:,:,SideID),UPrim_slave(:,:,:,SideID),       &
-        NormVec (:,:,:,1,SideID), &
-        TangVec1(:,:,:,1,SideID), &
-        TangVec2(:,:,:,1,SideID),doBC=.FALSE.)
-  END IF
+  CALL Riemann(PP_N,Flux_master(:,:,:,SideID),&
+      U_master    (:,:,:,SideID),U_slave    (:,:,:,SideID),       &
+      UPrim_master(:,:,:,SideID),UPrim_slave(:,:,:,SideID),       &
+      NormVec (:,:,:,FV_Elems_Max(SideID),SideID), &
+      TangVec1(:,:,:,FV_Elems_Max(SideID),SideID), &
+      TangVec2(:,:,:,FV_Elems_Max(SideID),SideID),doBC=.FALSE.)
 
 #if PARABOLIC
   ! 1.2) Fill viscous flux for non-BC sides
@@ -209,11 +145,7 @@ DO SideID=firstSideID_wo_BC,lastSideID
 #endif
   )
   ! 1.3) add up viscous flux
-  IF ((FV_Elems_Sum(SideID).EQ.0).AND.(OverintegrationType.EQ.SELECTIVE)) THEN ! DG/DG interface and selective overintegration
-    Flux_master(:,:,:,SideID) = FluxV_loc ! here misses the advective flux, which will be added in 5.) from FluxO
-  ELSE
-    Flux_master(:,:,:,SideID) = Flux_master(:,:,:,SideID) + FluxV_loc
-  END IF
+  Flux_master(:,:,:,SideID) = Flux_master(:,:,:,SideID) + FluxV_loc
 #endif /*PARABOLIC*/
 END DO ! SideID
 
@@ -221,36 +153,19 @@ END DO ! SideID
 ! 2. Compute the fluxes at the boundary conditions: 1..nBCSides
 IF(.NOT.doMPISides)THEN
   DO SideID=1,nBCSides
-    ! if DG element and selective overintegration 
     FVEM = FV_Elems_master(SideID)
-    IF ((FVEM.EQ.0).AND.(OverintegrationType.EQ.SELECTIVE)) THEN
-     CALL GetBoundaryFlux(SideID,t,NOver,&
-         FluxO(         :,:,:,  SideID),&
-         UPrim_masterO( :,:,:,  SideID),&
+    CALL GetBoundaryFlux(SideID,t,PP_N,&
+       Flux_master(  :,:,:,     SideID),&
+       UPrim_master( :,:,:,     SideID),&
 #if PARABOLIC
-         gradUx_masterO(:,:,:,  SideID),&
-         gradUy_masterO(:,:,:,  SideID),&
-         gradUz_masterO(:,:,:,  SideID),&
+       gradUx_master(:,:,:,     SideID),&
+       gradUy_master(:,:,:,     SideID),&
+       gradUz_master(:,:,:,     SideID),&
 #endif
-         NormVecO(      :,:,:,0,SideID),&
-         TangVec1O(     :,:,:,0,SideID),&
-         TangVec2O(     :,:,:,0,SideID),&
-         Face_xGPO(     :,:,:,0,SideID))
-    ELSE 
-      ! no selective overintegration or FV element
-      CALL GetBoundaryFlux(SideID,t,PP_N,&
-         Flux_master(  :,:,:,     SideID),&
-         UPrim_master( :,:,:,     SideID),&
-#if PARABOLIC
-         gradUx_master(:,:,:,     SideID),&
-         gradUy_master(:,:,:,     SideID),&
-         gradUz_master(:,:,:,     SideID),&
-#endif
-         NormVec(      :,:,:,FVEM,SideID),&
-         TangVec1(     :,:,:,FVEM,SideID),&
-         TangVec2(     :,:,:,FVEM,SideID),&
-         Face_xGP(     :,:,:,FVEM,SideID))
-    END IF
+       NormVec(      :,:,:,FVEM,SideID),&
+       TangVec1(     :,:,:,FVEM,SideID),&
+       TangVec2(     :,:,:,FVEM,SideID),&
+       Face_xGP(     :,:,:,FVEM,SideID))
   END DO
 END IF ! .NOT. MPISIDES
 
@@ -261,35 +176,13 @@ DO SideID=firstSideID,lastSideID
   DO q=0,PP_NZ; DO p=0,PP_N
     Flux_master(:,p,q,SideID) = Flux_master(:,p,q,SideID) * SurfElem(p,q,FV_Elems_Max(SideID),SideID)
   END DO; END DO
-  ! multiply FluxO with SurfElem0 before projection from NOver to N
-  IF ((FV_Elems_Sum(SideID).EQ.0).AND.(OverintegrationType.EQ.SELECTIVE)) THEN
-    DO q=0,PP_NOverZ; DO p=0,NOver
-      FluxO(:,p,q,SideID) = FluxO(:,p,q,SideID) * SurfElemO(p,q,0,SideID)
-    END DO; END DO
-  END IF
 END DO ! SideID
 
-
-! 4. project flux from NOver to N 
-IF (OverintegrationType.EQ.SELECTIVE) THEN
-  ! project Flux back on N: For parabolic, add the contribution to the flux (on N), for Euler, this is the full flux already
-  DO SideID=firstSideID,lastSideID
-    IF (FV_Elems_Sum(SideID).EQ.0) THEN
-      CALL ChangeBasisSurf(PP_nVar,Nover,PP_N,VdmNOverToN,FluxO(:,:,:,SideID),FluxV_loc)
-#if PARABOLIC
-      Flux_master(:,:,:,SideID) = Flux_master(:,:,:,SideID) + FluxV_loc
-#else 
-      Flux_master(:,:,:,SideID) = FluxV_loc
-#endif
-    END IF
-  END DO
-END IF
-
-! 5. copy flux from master side to slave side
+! 4. copy flux from master side to slave side
 Flux_slave(:,:,:,firstSideID:lastSideID) = Flux_master(:,:,:,firstSideID:lastSideID)
 
 #if FV_ENABLED
-! 6. convert flux on FV points to DG points for all DG faces at mixed interfaces
+! 5. convert flux on FV points to DG points for all DG faces at mixed interfaces
 ! only inner sides can be mixed (BC do not require a change basis)
 DO SideID=firstSideID_wo_BC,lastSideID
   IF (FV_Elems_Sum(SideID).EQ.2) THEN

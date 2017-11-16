@@ -37,22 +37,7 @@ INTERFACE VolInt
 #endif /*SPLIT_DG*/
 END INTERFACE
 
-INTERFACE VolIntAdv
-  MODULE PROCEDURE VolIntAdv_weakForm
-END INTERFACE
-
-#if PARABOLIC
-INTERFACE VolIntVisc
-  MODULE PROCEDURE VolIntVisc_weakForm
-END INTERFACE
-#endif
-
-
 PUBLIC::VolInt
-PUBLIC::VolIntAdv
-#if PARABOLIC
-PUBLIC::VolIntVisc
-#endif
 
 #ifdef DEBUG
 ! Add dummy interfaces to unused subroutines to suppress compiler warnings.
@@ -134,74 +119,6 @@ DO iElem=1,nElems
   END DO; END DO; END DO !i,j,k
 END DO ! iElem
 END SUBROUTINE VolInt_weakForm
-
-!==================================================================================================================================
-!> Computes the advection part volume integral of the weak DG form according to Kopriva
-!> Polynomial degree is either N or NOver (overintegration)
-!> Attention 1: 1/J(i,j,k) is not yet accounted for
-!> Attention 2: input Ut is overwritten with the volume flux derivatives
-!==================================================================================================================================
-SUBROUTINE VolIntAdv_weakForm(Nloc,nDOFElem,D_Hat_T,Metrics_fTilde,Metrics_gTilde,Metrics_hTilde,U,UPrim,Ut)
-!----------------------------------------------------------------------------------------------------------------------------------
-! MODULES
-USE MOD_PreProc
-USE MOD_Mesh_Vars ,ONLY:nElems
-USE MOD_Flux      ,ONLY:EvalFlux3D ! computes volume fluxes in local coordinates
-#if FV_ENABLED
-USE MOD_FV_Vars   ,ONLY:FV_Elems
-#endif
-IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: Nloc       !< Polynomial degree either N or NOver in case of overintegration
-INTEGER,INTENT(IN) :: nDOFElem   !< Number of DOFs per element
-REAL,INTENT(IN)    :: D_Hat_T(0:Nloc,0:Nloc)!< Transpose of differentiation matrix premultiplied by 
-                                            !< mass matrix, size [0..Nloc,0..Nloc].
-                                                                !> Metric terms in \f$ \xi\ / \eta / \zeta \f$-direction
-REAL,INTENT(IN)    :: Metrics_fTilde(1:3,0:Nloc,0:Nloc,0:PP_NlocZ,1:nElems)
-REAL,INTENT(IN)    :: Metrics_gTilde(1:3,0:Nloc,0:Nloc,0:PP_NlocZ,1:nElems)
-REAL,INTENT(IN)    :: Metrics_hTilde(1:3,0:Nloc,0:Nloc,0:PP_NlocZ,1:nElems)
-REAL,INTENT(IN)    :: U    (PP_nVar    ,0:Nloc,0:Nloc,0:PP_NlocZ,1:nElems)  !< conservative solution vector 
-REAL,INTENT(IN)    :: UPrim(PP_nVarPrim,0:Nloc,0:Nloc,0:PP_NlocZ,1:nElems)  !< primitive solution vector 
-REAL,INTENT(OUT)   :: Ut(PP_nVar,0:Nloc,0:Nloc,0:PP_NlocZ,1:nElems) !< Time derivative of the volume integral (advection part)
-!----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-INTEGER            :: i,j,k,l,iElem
-REAL,DIMENSION(PP_nVar,0:Nloc,0:Nloc,0:PP_NlocZ)  :: f,g,h !< Advective volume fluxes at GP
-!==================================================================================================================================
-! Advective part
-DO iElem=1,nElems
-#if FV_ENABLED
-  IF (FV_Elems(iElem).EQ.1) THEN
-    Ut(:,:,:,:,iElem) = 0.
-    CYCLE ! FV Elem
-  END IF
-#endif
-  ! Cut out the local DG solution for a grid cell iElem and all Gauss points from the global field
-  ! Compute for all Gauss point values the Cartesian flux components
-  CALL EvalFlux3D(Nloc,U(:,:,:,:,iElem),UPrim(:,:,:,:,iElem),f,g,h)
-  CALL VolInt_Metrics(nDOFElem,f,g,h,Metrics_fTilde(:,:,:,:,iElem),&
-                                     Metrics_gTilde(:,:,:,:,iElem),&
-                                     Metrics_hTilde(:,:,:,:,iElem))
-  DO k=0,PP_NlocZ
-    DO j=0,Nloc
-      DO i=0,Nloc
-        Ut(:,i,j,k,iElem) = D_Hat_T(0,i)*f(:,0,j,k) + &
-                            D_Hat_T(0,j)*g(:,i,0,k) + &
-                            D_Hat_T(0,k)*h(:,i,j,0)
-        DO l=1,Nloc
-          ! Update the time derivative with the spatial derivatives of the transformed fluxes
-          Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + D_Hat_T(l,i)*f(:,l,j,k) + &
-#if PP_dim==3
-                                                  D_Hat_T(l,k)*h(:,i,j,l) + &
-#endif
-                                                  D_Hat_T(l,j)*g(:,i,l,k) 
-        END DO ! l
-      END DO !i
-    END DO ! j
-  END DO ! k
-END DO ! iElem
-END SUBROUTINE VolIntAdv_weakForm
 
 #ifdef SPLIT_DG
 !==================================================================================================================================
@@ -347,67 +264,6 @@ DO iElem=1,nElems
 END DO ! iElem
 END SUBROUTINE VolInt_splitForm
 #endif /*SPLIT_DG*/
-
-
-#if PARABOLIC
-!==================================================================================================================================
-!> Computes the viscous part volume integral of the weak DG form according to Kopriva
-!> Polynomial degree is either N or NOver (overintegration)
-!> Attention 1: 1/J(i,j,k) is not yet accounted for
-!> Attention 2: input Ut is overwritten with the volume flux derivatives
-!==================================================================================================================================
-SUBROUTINE VolIntVisc_weakForm(Ut)
-!----------------------------------------------------------------------------------------------------------------------------------
-! MODULES
-USE MOD_PreProc
-USE MOD_DG_Vars      ,ONLY: D_hat_T,nDOFElem,UPrim
-USE MOD_Mesh_Vars    ,ONLY: Metrics_fTilde,Metrics_gTilde,Metrics_hTilde
-USE MOD_Mesh_Vars    ,ONLY: nElems
-USE MOD_Flux         ,ONLY: EvalDiffFlux3D  ! computes volume fluxes in local coordinates
-#if FV_ENABLED
-USE MOD_FV_Vars      ,ONLY: FV_Elems
-#endif
-USE MOD_Lifting_Vars ,ONLY: gradUx,gradUy,gradUz
-IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-REAL,INTENT(INOUT) :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< Time derivative of the volume integral (viscous part)
-!----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-INTEGER            :: i,j,k,l,iElem
-REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: f,g,h           !< Viscous volume fluxes at GP
-!==================================================================================================================================
-! Diffusive part
-DO iElem=1,nElems
-#if FV_ENABLED
-  IF (FV_Elems(iElem).EQ.1) CYCLE ! FV Elem
-#endif
-  ! Cut out the local DG solution for a grid cell iElem and all Gauss points from the global field
-  ! Compute for all Gauss point values the Cartesian flux components
-  CALL EvalDiffFlux3D( UPrim(:,:,:,:,iElem),&
-                      gradUx(:,:,:,:,iElem),&
-                      gradUy(:,:,:,:,iElem),&
-                      gradUz(:,:,:,:,iElem),&
-                      f,g,h,iElem)
-  CALL VolInt_Metrics(nDOFElem,f,g,h,Metrics_fTilde(:,:,:,:,iElem,0),&
-                                     Metrics_gTilde(:,:,:,:,iElem,0),&
-                                     Metrics_hTilde(:,:,:,:,iElem,0))
-
-  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-    DO l=0,PP_N
-      ! Update the time derivative with the spatial derivatives of the transformed fluxes
-      Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + D_Hat_T(l,i)*f(:,l,j,k) + &
-#if PP_dim==3
-                                              D_Hat_T(l,k)*h(:,i,j,l) +&
-#endif                                                  
-                                              D_Hat_T(l,j)*g(:,i,l,k) 
-    END DO ! l
-  END DO; END DO; END DO !i,j,k
-END DO ! iElem
-END SUBROUTINE VolIntVisc_weakForm
-#endif /* PARABOLIC */
-
-
 
 !==================================================================================================================================
 !> Compute the tranformed states for all conservative variables using the metric terms

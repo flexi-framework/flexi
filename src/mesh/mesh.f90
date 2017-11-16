@@ -28,16 +28,11 @@ INTERFACE InitMesh
   MODULE PROCEDURE InitMesh
 END INTERFACE
 
-INTERFACE BuildOverintMesh
-  MODULE PROCEDURE BuildOverintMesh
-END INTERFACE
-
 INTERFACE FinalizeMesh
   MODULE PROCEDURE FinalizeMesh
 END INTERFACE
 
 PUBLIC::InitMesh
-PUBLIC::BuildOverintMesh
 PUBLIC::FinalizeMesh
 !==================================================================================================================================
 
@@ -374,71 +369,6 @@ SWRITE(UNIT_stdOut,'(A)')' INIT MESH DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitMesh
 
-!==================================================================================================================================
-!> In case the selective version of overintegration is used, all mesh data also needs to be provided on the degree NOver of the
-!> higher quadrature rule.
-!> This routine interpolates all metric terms from N to NOver, except the surface metrics (normal/tangential vectors, surface area)
-!> which have to be recomputed using the Ja interpolated to NOver.
-!==================================================================================================================================
-SUBROUTINE BuildOverintMesh()
-! MODULES
-USE MOD_PreProc
-USE MOD_Globals
-USE MOD_Mesh_Vars
-USE MOD_Metrics,             ONLY: CalcSurfMetrics
-USE MOD_Interpolation,       ONLY: GetVandermonde
-USE MOD_Interpolation_Vars,  ONLY: NodeTypeCL,NodeType
-USE MOD_Overintegration_Vars,ONLY: NOver,VdmNToNOver
-USE MOD_ChangeBasisByDim,    ONLY: ChangeBasisVolume
-IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-REAL              :: JaCL_NSurf(3,3,0:NOver,0:NOver,0:PP_NOverZ) !< metric terms P\in NOver
-REAL              :: XCL_NSurf(   3,0:NOver,0:NOver,0:PP_NOverZ) !< geometry on P\in NOver
-REAL              :: Vdm_N_CLNSurf(0:NOver,0:PP_N)
-REAL              :: Vdm_CLNSurf_NSurf(0:NOver,0:NOver)
-INTEGER           :: iElem
-!==================================================================================================================================
-
-! Build geometry for volume overintegration
-ALLOCATE(      Elem_xGPO(3,0:NOver,0:NOver,0:PP_NOverZ,nElems)) ! only needed once by fillini
-ALLOCATE(Metrics_fTildeO(3,0:NOver,0:NOver,0:PP_NOverZ,nElems))
-ALLOCATE(Metrics_gTildeO(3,0:NOver,0:NOver,0:PP_NOverZ,nElems))
-ALLOCATE(Metrics_hTildeO(3,0:NOver,0:NOver,0:PP_NOverZ,nElems))
-IF(NOver.GT.PP_N)THEN
-  DO iElem=1,nElems
-    CALL ChangeBasisVolume(3,PP_N,NOver,VdmNToNOver,      Elem_xGP(:,:,:,:,iElem)  ,      Elem_xGPO(:,:,:,:,iElem))
-    CALL ChangeBasisVolume(3,PP_N,NOver,VdmNToNOver,Metrics_fTilde(:,:,:,:,iElem,0),Metrics_fTildeO(:,:,:,:,iElem))
-    CALL ChangeBasisVolume(3,PP_N,NOver,VdmNToNOver,Metrics_gTilde(:,:,:,:,iElem,0),Metrics_gTildeO(:,:,:,:,iElem))
-    CALL ChangeBasisVolume(3,PP_N,NOver,VdmNToNOver,Metrics_hTilde(:,:,:,:,iElem,0),Metrics_hTildeO(:,:,:,:,iElem))
-  END DO ! iElem
-END IF
-
-! Build geometry for surface overintegration
-ALLOCATE(Face_xGPO(3,0:NOver,0:PP_NOverZ,0:0,1:nSides))
-ALLOCATE( NormVecO(3,0:NOver,0:PP_NOverZ,0:0,1:nSides))
-ALLOCATE(TangVec1O(3,0:NOver,0:PP_NOverZ,0:0,1:nSides))
-ALLOCATE(TangVec2O(3,0:NOver,0:PP_NOverZ,0:0,1:nSides))
-ALLOCATE(SurfElemO(  0:NOver,0:PP_NOverZ,0:0,1:nSides))
-
-CALL GetVandermonde( PP_N , NodeType  , NOver , NodeTypeCL , Vdm_N_CLNSurf     , modal=.FALSE.)
-CALL GetVandermonde( NOver, NodeTypeCL, NOver , NodeType   , Vdm_CLNSurf_NSurf , modal=.FALSE.)
-DO iElem=1,nElems
-  CALL ChangeBasisVolume(3,PP_N,NOver,Vdm_N_CLNSurf,Metrics_fTilde(:,:,:,:,iElem,0),JaCL_NSurf(1,:,:,:,:))
-  CALL ChangeBasisVolume(3,PP_N,NOver,Vdm_N_CLNSurf,Metrics_gTilde(:,:,:,:,iElem,0),JaCL_NSurf(2,:,:,:,:))
-  CALL ChangeBasisVolume(3,PP_N,NOver,Vdm_N_CLNSurf,Metrics_hTilde(:,:,:,:,iElem,0),JaCL_NSurf(3,:,:,:,:))
-  CALL ChangeBasisVolume(3,PP_N,NOver,Vdm_N_CLNSurf,Elem_xGP(:,:,:,:,iElem),XCL_NSurf)
-#if PP_dim==2
-  STOP 'Surface metric computation not implemented yet'
-#endif
-  CALL CalcSurfMetrics(NOver,0,JaCL_NSurf,XCL_NSurf,Vdm_CLNSurf_NSurf,iElem,&
-                       NormVecO,TangVec1O,TangVec2O,SurfElemO,Face_xGPO)
-END DO
-END SUBROUTINE BuildOverintMesh
-
-
 !============================================================================================================================
 !> Deallocate mesh data.
 !============================================================================================================================
@@ -476,23 +406,12 @@ SDEALLOCATE(Metrics_hTilde)
 SDEALLOCATE(sJ)
 SDEALLOCATE(DetJac_Ref)
 
-SDEALLOCATE(Elem_xGPO)
-SDEALLOCATE(Metrics_fTildeO)
-SDEALLOCATE(Metrics_gTildeO)
-SDEALLOCATE(Metrics_hTildeO)
-
 !> surface
 SDEALLOCATE(Face_xGP)
 SDEALLOCATE(NormVec)
 SDEALLOCATE(TangVec1)
 SDEALLOCATE(TangVec2)
 SDEALLOCATE(SurfElem)
-
-SDEALLOCATE(Face_xGPO)
-SDEALLOCATE(NormVecO)
-SDEALLOCATE(TangVec1O)
-SDEALLOCATE(TangVec2O)
-SDEALLOCATE(SurfElemO)
 
 ! ijk sorted mesh
 SDEALLOCATE(Elem_IJK)

@@ -83,9 +83,8 @@ END SUBROUTINE DefineParametersLifting
 !> Default ist the non conservative form since this version has the fastest implementation.
 !>
 !> The arrays containing the lifted gradients in x/y/z direction in the volume as well as on the element faces
-!> will be allocated and nullified if necessary. If selective overintergration is used, the gradients on the element faces are
-!> also needed on NOver.
-
+!> will be allocated and nullified if necessary.
+!>
 !> Note that the gradient arrays in x/y/z directions in the volume and on the surfaces contain the gradients of the primitive
 !> variables, i.e. they must be allocated for PP_nVarPrim variables, i.e. \f$ (\rho, u_1,u_2,u_3,p,T) \f$.
 !==================================================================================================================================
@@ -94,9 +93,8 @@ SUBROUTINE InitLifting()
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Lifting_Vars
-USE MOD_Overintegration_Vars,ONLY: OverintegrationType,NOver
 USE MOD_DG_Vars,             ONLY: DGInitIsDone
-USE MOD_Mesh_Vars,           ONLY: nSides,nBCSides
+USE MOD_Mesh_Vars,           ONLY: nSides
 USE MOD_Mesh_Vars,           ONLY: nElems
 USE MOD_ReadinTools,         ONLY: GETLOGICAL
 #if USE_MPI
@@ -132,15 +130,6 @@ gradUz_slave=0.
 gradUx_master=0.
 gradUy_master=0.
 gradUz_master=0.
-
-IF(OverintegrationType.EQ.SELECTIVE)THEN
-  ALLOCATE(gradUx_masterO(PP_nVarPrim,0:NOver,0:PP_NOverZ,1:nBCSides))
-  ALLOCATE(gradUy_masterO(PP_nVarPrim,0:NOver,0:PP_NOverZ,1:nBCSides))
-  ALLOCATE(gradUz_masterO(PP_nVarPrim,0:NOver,0:PP_NOverZ,1:nBCSides))
-  gradUx_masterO=0.
-  gradUy_masterO=0.
-  gradUz_masterO=0.
-ENDIF
 
 ! The gradients of the conservative variables are stored at each volume integration point
 ALLOCATE(gradUx(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,nElems))
@@ -330,9 +319,6 @@ SDEALLOCATE(gradUz_master)
 SDEALLOCATE(gradUx)
 SDEALLOCATE(gradUy)
 SDEALLOCATE(gradUz)
-SDEALLOCATE(gradUx_masterO)
-SDEALLOCATE(gradUy_masterO)
-SDEALLOCATE(gradUz_masterO)
 LiftingInitIsDone = .FALSE.
 END SUBROUTINE FinalizeLifting
 
