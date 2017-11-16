@@ -63,7 +63,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES 
 !==================================================================================================================================
 CALL prms%SetSection("Overintegration")
-CALL prms%CreateIntFromStringOption('OverintegrationType', "Type of overintegration. None, CutOff, ConsCutOff")
+CALL prms%CreateIntFromStringOption('OverintegrationType', "Type of overintegration. None, CutOff, ConsCutOff","none")
 CALL addStrListEntry('OverintegrationType','none',      OVERINTEGRATIONTYPE_NONE)
 CALL addStrListEntry('OverintegrationType','cutoff',    OVERINTEGRATIONTYPE_CUTOFF)
 CALL addStrListEntry('OverintegrationType','conscutoff',OVERINTEGRATIONTYPE_CONSCUTOFF)
