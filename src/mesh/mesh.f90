@@ -283,7 +283,7 @@ IF (meshMode.GT.0) THEN
   !NOTE: nMortarSides=nMortarInnerSides+nMortarMPISides
   ALLOCATE(MortarType(2,1:nSides))              ! 1: Type, 2: Index in MortarInfo
   ALLOCATE(MortarInfo(MI_FLIP,4,nMortarSides)) ! [1]: 1: Neighbour sides, 2: Flip, [2]: small sides
-  MortarType=-1
+  MortarType=0
   MortarInfo=-1
 
   SWRITE(UNIT_stdOut,'(A)') "NOW CALLING fillMeshInfo..."

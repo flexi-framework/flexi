@@ -750,11 +750,15 @@ DO iElem=1,nElems
   aElem=>Elems(iElem+offsetElem)%ep
   DO LocSideID=1,6
     aSide=>aElem%Side(LocSideID)%sp
+    ! Set type of mortar:  
+    !    -1: Small side belonging to big mortar
+    !     0: No mortar
+    ! 1,2,3: Type of big mortar 
+    MortarType(1,aSide%SideID)=aSide%MortarType
     IF(aSide%nMortars.GT.0)THEN ! mortar side
       ! compute index of big mortar in MortarInfo = [1:nMortarSides]
       SideID=aSide%SideID+1-MERGE(firstMortarInnerSide,firstMortarMPISide-nMortarInnerSides,&
                                   aSide%SideID.LE.lastMortarInnerSide)
-      MortarType(1,aSide%SideID)=aSide%MortarType
       MortarType(2,aSide%SideID)=SideID
       DO iMortar=1,aSide%nMortars
         mSide=>aSide%MortarSide(iMortar)%sp
