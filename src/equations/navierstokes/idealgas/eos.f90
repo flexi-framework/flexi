@@ -56,7 +56,6 @@ PUBLIC::DefineParametersEos
 
 CONTAINS
 
-
 !==================================================================================================================================
 !> Define parameters for the used eos
 !==================================================================================================================================
@@ -182,7 +181,6 @@ SWRITE(UNIT_stdOut,'(A)')' INIT IDEAL-GAS DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitEos
 
-
 !==================================================================================================================================
 !> Transformation from conservative variables to primitive variables for a single state
 !==================================================================================================================================
@@ -199,9 +197,9 @@ REAL,INTENT(OUT) :: prim(PP_nVarPrim) !< vector of primitive variables (density,
 REAL             :: sRho    ! 1/Rho
 !==================================================================================================================================
 sRho=1./cons(1)
-! rho
+! density
 prim(1)=cons(1)
-! vel/rho
+! velocity
 prim(2:3)=cons(2:3)*sRho
 #if (PP_dim==3)
 prim(4)=cons(4)*sRho
@@ -233,9 +231,9 @@ INTEGER          :: p,q
 !==================================================================================================================================
 DO q=0,PP_NlocZ; DO p=0,Nloc
   sRho=1./cons(1,p,q)
-  ! rho
+  ! density
   prim(1,p,q)=cons(1,p,q)
-  ! vel/rho
+  ! velocity
   prim(2:3,p,q)=cons(2:3,p,q)*sRho
 #if (PP_dim==3)
   prim(4,p,q)=cons(4,p,q)*sRho
@@ -270,9 +268,9 @@ INTEGER          :: i,j,k,iElem
 DO iElem=1,nElems
   DO k=0,PP_NlocZ; DO j=0,Nloc; DO i=0,Nloc
     sRho=1./cons(1,i,j,k,iElem)
-    ! rho
+    ! density
     prim(1,i,j,k,iElem)=cons(1,i,j,k,iElem)
-    ! vel/rho
+    ! velocity
     prim(2:3,i,j,k,iElem)=cons(2:3,i,j,k,iElem)*sRho
 #if (PP_dim==3)
     prim(4,i,j,k,iElem)=cons(4,i,j,k,iElem)*sRho
@@ -301,18 +299,17 @@ REAL,INTENT(OUT) :: cons(PP_nVar)     !< vector of conservative variables
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
-! conversion
+! density
 cons(1)=prim(1)
-! rho
+! momentum
 cons(2:3)=prim(2:3)*prim(1)
 #if (PP_dim==3)
 cons(4)=prim(4)*prim(1)
 #else
 cons(4)=0.
 #endif
-! vel/rho
+! energy
 cons(5)=sKappaM1*prim(5)+0.5*SUM(cons(2:4)*prim(2:4))
-! inner energy
 END SUBROUTINE PrimToCons
 
 !==================================================================================================================================
@@ -332,24 +329,22 @@ REAL,INTENT(OUT)  :: cons(PP_nVar    ,0:Nloc,0:PP_NlocZ)     !< vector of conser
 INTEGER           :: p,q
 !==================================================================================================================================
 DO q=0,PP_NlocZ; DO p=0,Nloc
-  ! conversion
+  ! density
   cons(1,p,q)=prim(1,p,q)
-  ! rho
+  ! momentum
   cons(2:3,p,q)=prim(2:3,p,q)*prim(1,p,q)
 #if (PP_dim==3)
   cons(4,p,q)=prim(4,p,q)*prim(1,p,q)
 #else
   cons(4,p,q)=0.
 #endif
-  ! vel/rho
+  ! energy
   cons(5,p,q)=sKappaM1*prim(5,p,q)+0.5*SUM(cons(2:4,p,q)*prim(2:4,p,q))
 END DO; END DO ! p,q=0,Nloc
-! inner energy
 END SUBROUTINE PrimToCons_Side
 
-
 !==================================================================================================================================
-!> Transformation from primitive to conservative variables on a single side
+!> Transformation from primitive to conservative variables in the whole volume
 !==================================================================================================================================
 PURE SUBROUTINE PrimToCons_Volume(Nloc,prim,cons)
 ! MODULES
@@ -359,25 +354,32 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN):: Nloc
-REAL,INTENT(IN)   :: prim(PP_nVarPrim,0:Nloc,0:Nloc,0:Nloc,1:nElems)     !< vector of primitive variables
-REAL,INTENT(OUT)  :: cons(PP_nVar    ,0:Nloc,0:Nloc,0:Nloc,1:nElems)     !< vector of conservative variables
+REAL,INTENT(IN)   :: prim(PP_nVarPrim,0:Nloc,0:Nloc,0:PP_NlocZ,1:nElems)     !< vector of primitive variables
+REAL,INTENT(OUT)  :: cons(PP_nVar    ,0:Nloc,0:Nloc,0:PP_NlocZ,1:nElems)     !< vector of conservative variables
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER           :: p,q,r,iElem
 !==================================================================================================================================
 DO iElem=1,nElems
-  DO r=0,Nloc; DO q=0,Nloc; DO p=0,Nloc
-    ! conversion
+  DO r=0,PP_NlocZ; DO q=0,Nloc; DO p=0,Nloc
+    ! density
     cons(1,p,q,r,iElem)=prim(1,p,q,r,iElem)
-    ! rho
-    cons(2:4,p,q,r,iElem)=prim(2:4,p,q,r,iElem)*prim(1,p,q,r,iElem)
-    ! vel/rho
+    ! momentum
+    cons(2:3,p,q,r,iElem)=prim(2:3,p,q,r,iElem)*prim(1,p,q,r,iElem)
+#if (PP_dim==3)
+    cons(4,p,q,r,iElem)=prim(4,p,q,r,iElem)*prim(1,p,q,r,iElem)
+#else
+    cons(4,p,q,r,iElem)=0.
+#endif
+    ! energy
     cons(5,p,q,r,iElem)=sKappaM1*prim(5,p,q,r,iElem)+0.5*SUM(cons(2:4,p,q,r,iElem)*prim(2:4,p,q,r,iElem))
   END DO; END DO; END DO ! p,q=0,Nloc
-  ! inner energy
 END DO
 END SUBROUTINE PrimToCons_Volume
 
+!==================================================================================================================================
+!> Riemann solver function to get pressure at BCs
+!==================================================================================================================================
 PURE FUNCTION PRESSURE_RIEMANN(U_Prim)
 !==================================================================================================================================
 ! MODULES
