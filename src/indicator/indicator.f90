@@ -107,6 +107,9 @@ CALL prms%CreateRealOption('IndStartTime', "Specify physical time when indicator
                                            "a high indicator value is returned from indicator calculation."//&
                                            "(Idea: FV everywhere at begin of computation to smooth solution)", '0.0')
 CALL prms%CreateIntOption('nModes',        "Number of highest modes to be checked for Persson modal indicator.",'2')
+CALL prms%CreateLogicalOption('FVBoundaries',  "Use FV discretization in element that contains a side of a certain BC_TYPE", '.FALSE.')
+CALL prms%CreateIntOption    ('FVBoundaryType',"BC_TYPE that should be discretized with FV."//&
+                                               "Set it to BC_TYPE, setting 0 will apply FV to all BC Sides",'0')
 END SUBROUTINE DefineParametersIndicator
 
 
@@ -118,11 +121,11 @@ SUBROUTINE InitIndicator()
 USE MOD_Preproc
 USE MOD_Globals
 USE MOD_Indicator_Vars
-USE MOD_ReadInTools    ,ONLY: GETINT,GETREAL,GETINTFROMSTR
-USE MOD_Mesh_Vars      ,ONLY: nElems
-USE MOD_IO_HDF5        ,ONLY: AddToElemData,ElementOut
-USE MOD_Overintegration_Vars,ONLY:NUnder
-USE MOD_Filter_Vars,ONLY:NFilter
+USE MOD_ReadInTools         ,ONLY: GETINT,GETREAL,GETINTFROMSTR,GETLOGICAL,CountOption
+USE MOD_Mesh_Vars           ,ONLY: nElems
+USE MOD_IO_HDF5             ,ONLY: AddToElemData,ElementOut
+USE MOD_Overintegration_Vars,ONLY: NUnder
+USE MOD_Filter_Vars         ,ONLY: NFilter
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -171,6 +174,10 @@ IndValue=0.
 CALL AddToElemData(ElementOut,'IndValue',RealArray=IndValue)
 
 IndVar = GETINT('IndVar','1')
+
+! FV element at boundaries
+FVBoundaries   = GETLOGICAL('FVBoundaries','F')
+FVBoundaryType = GETINT('FVBoundaryType','0') ! which BCType should be at an FV element? Default value means every BC will be FV
 
 IndicatorInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT INDICATOR DONE!'
@@ -263,6 +270,9 @@ CASE DEFAULT ! unknown Indicator Type
   CALL abort(__STAMP__,&
     "Unknown IndicatorType!")
 END SELECT
+
+! obtain indicator value for elements that contain domain boundaries
+CALL IndFVBoundaries(IndValue)
 
 END SUBROUTINE CalcIndicator
 
@@ -592,6 +602,53 @@ END FUNCTION JamesonIndicator
 #endif
 
 #endif /* EQNSYSNR == 2 */
+
+
+!==================================================================================================================================
+!> Calculate IndValue for domain boundaries. There are two options:
+!> 1.) All boundaries are treated by FV, i.e. FVBoundaryType=0. In this case, all elements that have a side that is a BCSide 
+!>     will permanently be  FV elements
+!> 2.) FVBoundaryType=BC_TYPE, i.e. only elements that contain a BCSide of BC_TYPE will be FV elements
+!==================================================================================================================================
+SUBROUTINE IndFVBoundaries(IndValue)
+! MODULES
+USE MOD_Globals
+USE MOD_PreProc
+USE MOD_Indicator_Vars,  ONLY: FVBoundaries,FVBoundaryType
+USE MOD_Equation_Vars,   ONLY: nBCByType,BCSideID
+USE MOD_Mesh_Vars,       ONLY: SideToElem,nElems
+USE MOD_Mesh_Vars,       ONLY: nBCs,BoundaryType
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL,INTENT(INOUT) :: IndValue(nElems)
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER            :: SideID,iBC,nBCLoc,BCType,iSide,ElemID
+!==================================================================================================================================
+IF (FVBoundaries) THEN
+  DO iBC=1,nBCs
+    BCType = BoundaryType(iBC,BC_TYPE)
+    nBCLoc = nBCByType(iBC)
+    IF (BCType.EQ.1) CYCLE ! no FV Boundaries at periodic BC
+    IF (BCType.EQ.FVBoundaryType .OR. FVBoundaryType.EQ.0) THEN
+      DO iSide=1,nBCLoc
+        SideID=BCSideID(iBC,iSide)
+        ElemID = SideToElem(S2E_ELEM_ID,SideID)
+        IndValue(ElemID) = 100.E3
+      END DO !iSide
+    ENDIF
+  END DO
+ELSE
+  RETURN
+END IF
+END SUBROUTINE IndFVBoundaries
+
+
+
 
 
 !==================================================================================================================================
