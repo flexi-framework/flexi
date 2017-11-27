@@ -46,7 +46,6 @@ END INTERFACE
 
 PROCEDURE(VolumeFlux),POINTER    :: SplitDGVolume_pointer    !< pointer defining the SpliDG formulation beeing used
 PROCEDURE(SurfaceFlux),POINTER   :: SplitDGSurface_pointer   !< pointer defining the SpliDG formulation beeing used
-INTEGER                :: SplitIndicator           !< specifying which flux to be used
 
 INTEGER,PARAMETER      :: PRM_SPLITDG_SD          = 0
 INTEGER,PARAMETER      :: PRM_SPLITDG_MO          = 1
@@ -59,7 +58,7 @@ INTERFACE InitSplitDG
 END INTERFACE
 
 PUBLIC::InitSplitDG,DefineParametersSplitDG
-PUBLIC::SplitDGSurface_pointer,SplitDGVolume_pointer,SplitIndicator
+PUBLIC::SplitDGSurface_pointer,SplitDGVolume_pointer
 !==================================================================================================================================
 
 CONTAINS
@@ -119,23 +118,18 @@ SELECT CASE(SplitDG)
 CASE(PRM_SPLITDG_SD)
   SplitDGVolume_pointer  => SplitVolumeFluxSD
   SplitDGSurface_pointer => SplitSurfaceFluxSD
-  SplitIndicator = 0
 CASE(PRM_SPLITDG_MO)
   SplitDGVolume_pointer  => SplitVolumeFluxMO
   SplitDGSurface_pointer => SplitSurfaceFluxMO
-  SplitIndicator = 1
 CASE(PRM_SPLITDG_DU)
   SplitDGVolume_pointer  => SplitVolumeFluxDU
   SplitDGSurface_pointer => SplitSurfaceFluxDU
-  SplitIndicator = 2
 CASE(PRM_SPLITDG_KG)
   SplitDGVolume_pointer  => SplitVolumeFluxKG
   SplitDGSurface_pointer => SplitSurfaceFluxKG
-  SplitIndicator = 3
 CASE(PRM_SPLITDG_PI)
   SplitDGVolume_pointer  => SplitVolumeFluxPI
   SplitDGSurface_pointer => SplitSurfaceFluxPI
-  SplitIndicator = 4
 CASE DEFAULT
   CALL CollectiveStop(__STAMP__,&
     'SplitDG formulation not defined!')
