@@ -30,6 +30,6 @@ INTEGER                :: nModes         ! number of modes to check for Persson 
 REAL,ALLOCATABLE       :: IndValue(:)    ! indicator output
 REAL                   :: IndStartTime
 LOGICAL                :: FVBoundaries = .FALSE.
-INTEGER                :: FVBoundaryType
+INTEGER,ALLOCATABLE    :: FVBoundaryType(:)
 !==================================================================================================================================
 END MODULE MOD_Indicator_Vars

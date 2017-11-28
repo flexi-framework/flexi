@@ -109,7 +109,7 @@ CALL prms%CreateRealOption('IndStartTime', "Specify physical time when indicator
 CALL prms%CreateIntOption('nModes',        "Number of highest modes to be checked for Persson modal indicator.",'2')
 CALL prms%CreateLogicalOption('FVBoundaries',  "Use FV discretization in element that contains a side of a certain BC_TYPE", '.FALSE.')
 CALL prms%CreateIntOption    ('FVBoundaryType',"BC_TYPE that should be discretized with FV."//&
-                                               "Set it to BC_TYPE, setting 0 will apply FV to all BC Sides",'0')
+                                               "Set it to BC_TYPE, setting 0 will apply FV to all BC Sides",multiple=.TRUE.)
 END SUBROUTINE DefineParametersIndicator
 
 
@@ -131,6 +131,7 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER                                  :: iBC,nFVBoundaryType
 !==================================================================================================================================
 IF(IndicatorInitIsDone)THEN
   CALL CollectiveStop(__STAMP__,&
@@ -176,8 +177,12 @@ CALL AddToElemData(ElementOut,'IndValue',RealArray=IndValue)
 IndVar = GETINT('IndVar','1')
 
 ! FV element at boundaries
-FVBoundaries   = GETLOGICAL('FVBoundaries','F')
-FVBoundaryType = GETINT('FVBoundaryType','0') ! which BCType should be at an FV element? Default value means every BC will be FV
+FVBoundaries    = GETLOGICAL('FVBoundaries','F')
+nFVBoundaryType = CountOption('FVBoundaryType')
+ALLOCATE(FVBoundaryType(nFVBoundaryType))
+DO iBC=1,nFVBoundaryType
+  FVBoundaryType(iBC) = GETINT('FVBoundaryType','0')! which BCType should be at an FV element? Default value means every BC will be FV
+END DO
 
 IndicatorInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT INDICATOR DONE!'
@@ -634,7 +639,7 @@ IF (FVBoundaries) THEN
     BCType = BoundaryType(iBC,BC_TYPE)
     nBCLoc = nBCByType(iBC)
     IF (BCType.EQ.1) CYCLE ! no FV Boundaries at periodic BC
-    IF (BCType.EQ.FVBoundaryType .OR. FVBoundaryType.EQ.0) THEN
+    IF (ANY(FVBoundaryType.EQ.BCType) .OR. ANY(FVBoundaryType.EQ.0)) THEN
       DO iSide=1,nBCLoc
         SideID=BCSideID(iBC,iSide)
         ElemID = SideToElem(S2E_ELEM_ID,SideID)
@@ -661,6 +666,7 @@ IMPLICIT NONE
 !==================================================================================================================================
 IndicatorInitIsDone=.FALSE.
 SDEALLOCATE(IndValue)
+SDEALLOCATE(FVBoundaryType)
 END SUBROUTINE FinalizeIndicator
 
 END MODULE MOD_Indicator
