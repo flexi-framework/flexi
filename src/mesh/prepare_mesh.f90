@@ -748,7 +748,11 @@ nSides_MortarType=0
 
 DO iElem=1,nElems
   aElem=>Elems(iElem+offsetElem)%ep
+#if PP_dim == 3
   DO LocSideID=1,6
+#else
+  DO LocSideID=2,5
+#endif
     aSide=>aElem%Side(LocSideID)%sp
     ! Set type of mortar:  
     !    -1: Small side belonging to big mortar
