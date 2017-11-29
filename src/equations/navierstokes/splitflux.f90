@@ -46,7 +46,6 @@ END INTERFACE
 
 PROCEDURE(VolumeFlux),POINTER    :: SplitDGVolume_pointer    !< pointer defining the SpliDG formulation beeing used
 PROCEDURE(SurfaceFlux),POINTER   :: SplitDGSurface_pointer   !< pointer defining the SpliDG formulation beeing used
-INTEGER                :: SplitIndicator           !< specifying which flux to be used
 
 INTEGER,PARAMETER      :: PRM_SPLITDG_SD          = 0
 INTEGER,PARAMETER      :: PRM_SPLITDG_MO          = 1
@@ -59,7 +58,7 @@ INTERFACE InitSplitDG
 END INTERFACE
 
 PUBLIC::InitSplitDG,DefineParametersSplitDG
-PUBLIC::SplitDGSurface_pointer,SplitDGVolume_pointer,SplitIndicator
+PUBLIC::SplitDGSurface_pointer,SplitDGVolume_pointer
 !==================================================================================================================================
 
 CONTAINS
@@ -119,23 +118,18 @@ SELECT CASE(SplitDG)
 CASE(PRM_SPLITDG_SD)
   SplitDGVolume_pointer  => SplitVolumeFluxSD
   SplitDGSurface_pointer => SplitSurfaceFluxSD
-  SplitIndicator = 0
 CASE(PRM_SPLITDG_MO)
   SplitDGVolume_pointer  => SplitVolumeFluxMO
   SplitDGSurface_pointer => SplitSurfaceFluxMO
-  SplitIndicator = 1
 CASE(PRM_SPLITDG_DU)
   SplitDGVolume_pointer  => SplitVolumeFluxDU
   SplitDGSurface_pointer => SplitSurfaceFluxDU
-  SplitIndicator = 2
 CASE(PRM_SPLITDG_KG)
   SplitDGVolume_pointer  => SplitVolumeFluxKG
   SplitDGSurface_pointer => SplitSurfaceFluxKG
-  SplitIndicator = 3
 CASE(PRM_SPLITDG_PI)
   SplitDGVolume_pointer  => SplitVolumeFluxPI
   SplitDGSurface_pointer => SplitSurfaceFluxPI
-  SplitIndicator = 4
 CASE DEFAULT
   CALL CollectiveStop(__STAMP__,&
     'SplitDG formulation not defined!')
@@ -180,7 +174,10 @@ REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: Flux ! flux in reverence space
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                    :: EpRef,Ep ! auxilery variable for (rho*e+p)
-REAL,DIMENSION(PP_nVar    )             :: fTilde,gTilde,hTilde ! fluxes in physical space
+REAL,DIMENSION(PP_nVar    )             :: fTilde,gTilde ! flux in physical space
+#if PP_dim == 3
+REAL,DIMENSION(PP_nVar    )             :: hTilde        ! flux in physical space
+#endif
 !==================================================================================================================================
 ! compute auxilery variables
 EpRef = URef(5) + UPrimRef(5)
@@ -190,25 +187,37 @@ Ep    = U(5) + UPrim(5)
   fTilde(1) = (URef(2) + U(2))                                           ! {rho*u}
   fTilde(2) = (URef(2)*UPrimRef(2)+UPrimRef(5) + U(2)*UPrim(2)+UPrim(5)) ! {rho*u²}+{p}
   fTilde(3) = (URef(2)*UPrimRef(3) + U(2)*UPrim(3))                      ! {rho*u*v}
+#if PP_dim == 3
   fTilde(4) = (URef(2)*UPrimRef(4) + U(2)*UPrim(4))                      ! {rho*u*w}
+#else
+  fTilde(4) = 0.
+#endif
   fTilde(5) = (EpRef*UPrimRef(2) + Ep*UPrim(2))                          ! {(rho*e+p)*u}
 ! local Euler fluxes y-direction
   gTilde(1) = (URef(3) + U(3))                                           ! {rho*v}
   gTilde(2) = (URef(2)*UPrimRef(3) + U(2)*UPrim(3))                      ! {rho*u*v}
   gTilde(3) = (URef(3)*UPrimRef(3)+UPrimRef(5) + U(3)*UPrim(3)+UPrim(5)) ! {rho*v²}+{p}
+#if PP_dim == 3
   gTilde(4) = (URef(3)*UPrimRef(4) + U(3)*UPrim(4))                      ! {rho*v*w}
+#else
+  gTilde(4) = 0.
+#endif
   gTilde(5) = (EpRef*UPrimRef(3) + Ep*UPrim(3))                          ! {(rho*e+p)*v}
+#if PP_dim == 3
 ! local Euler fluxes z-direction
   hTilde(1) = (URef(4) + U(4))                                           ! {rho*w}
   hTilde(2) = (URef(2)*UPrimRef(4) + U(2)*UPrim(4))                      ! {rho*u*w}
   hTilde(3) = (URef(3)*UPrimRef(4) + U(3)*UPrim(4))                      ! {rho*v*w}
   hTilde(4) = (URef(4)*UPrimRef(4)+UPrimRef(5) + U(4)*UPrim(4)+UPrim(5)) ! {rho*v²+p}
   hTilde(5) = (EpRef*UPrimRef(4) + Ep*UPrim(4))                          ! {(rho*e+p)*w}
+#endif
 
 ! transform into reference space
 Flux(:) = 0.5*(MRef(1)+M(1))*fTilde(:) + &
-          0.5*(MRef(2)+M(2))*gTilde(:) + &
-          0.5*(MRef(3)+M(3))*hTilde(:)
+#if PP_dim == 3
+          0.5*(MRef(3)+M(3))*hTilde(:) + &
+#endif
+          0.5*(MRef(2)+M(2))*gTilde(:)
 
 END SUBROUTINE SplitVolumeFluxSD
 
@@ -230,7 +239,11 @@ REAL,DIMENSION(PP_nVar),INTENT(OUT) :: F ! resulting flux
 F(1)= 0.5*(U_LL(MOM1)+U_RR(MOM1))                                                ! {rho*u}
 F(2)= 0.5*(U_LL(MOM1)*U_LL(VEL1)+U_LL(PRES)+U_RR(MOM1)*U_RR(VEL1)+U_RR(PRES))    ! {rho*u²}+{p}
 F(3)= 0.5*(U_LL(MOM1)*U_LL(VEL2)+U_RR(MOM1)*U_RR(VEL2))                          ! {rho*u*v}
+#if PP_dim == 3
 F(4)= 0.5*(U_LL(MOM1)*U_LL(VEL3)+U_RR(MOM1)*U_RR(VEL3))                          ! {rho*u*w}
+#else
+F(4)= 0.
+#endif
 F(5)= 0.5*((U_LL(ENER)+U_LL(PRES))*U_LL(VEL1)+(U_RR(ENER)+U_RR(PRES))*U_RR(VEL1))! {(rho*e+p)*u}
 
 END SUBROUTINE SplitSurfaceFluxSD
@@ -251,32 +264,47 @@ REAL,DIMENSION(1:3        ),INTENT(IN)  :: MRef,M ! metric terms
 REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: Flux ! flux in reverence space
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL,DIMENSION(PP_nVar    )             :: fTilde,gTilde,hTilde ! flux in physical space
+REAL,DIMENSION(PP_nVar    )             :: fTilde,gTilde ! flux in physical space
+#if PP_dim == 3
+REAL,DIMENSION(PP_nVar    )             :: hTilde        ! flux in physical space
+#endif
 !==================================================================================================================================
 
 ! local Euler fluxes x-direction
   fTilde(1) = 0.5*(URef(1)+U(1))*(UPrimRef(2)+UPrim(2))                          ! {rho}*{u}
   fTilde(2) = 0.5*(URef(2)+U(2))*(UPrimRef(2)+UPrim(2)) + (UPrimRef(5)+UPrim(5)) ! {rho*u}*{u}+{p}
   fTilde(3) = 0.5*(URef(3)+U(3))*(UPrimRef(2)+UPrim(2))                          ! {rho*v}*{u}
+#if PP_dim == 3
   fTilde(4) = 0.5*(URef(4)+U(4))*(UPrimRef(2)+UPrim(2))                          ! {rho*w}*{u}
+#else
+  fTilde(4) = 0.
+#endif
   fTilde(5) = 0.5*(URef(5)+U(5)+UPrimRef(5)+UPrim(5))*(UPrimRef(2)+UPrim(2))     ! ({rho*e}+{p})*{u}
 ! local Euler fluxes y-direction
   gTilde(1) = 0.5*(URef(1)+U(1))*(UPrimRef(3)+UPrim(3))                          ! {rho}*{v}
   gTilde(2) = 0.5*(URef(2)+U(2))*(UPrimRef(3)+UPrim(3))                          ! {rho*u}*{v}
   gTilde(3) = 0.5*(URef(3)+U(3))*(UPrimRef(3)+UPrim(3)) + (UPrimRef(5)+UPrim(5)) ! {rho*v}*{v}+{p}
+#if PP_dim == 3
   gTilde(4) = 0.5*(URef(4)+U(4))*(UPrimRef(3)+UPrim(3))                          ! {rho*w}*{v}
+#else
+  gTilde(4) = 0.
+#endif
   gTilde(5) = 0.5*(URef(5)+U(5)+UPrimRef(5)+UPrim(5))*(UPrimRef(3)+UPrim(3))     ! ({rho*e}+{p})*{v}
+#if PP_dim == 3
 ! local Euler fluxes z-direction
   hTilde(1) = 0.5*(URef(1)+U(1))*(UPrimRef(4)+UPrim(4))                          ! {rho}*{w}
   hTilde(2) = 0.5*(URef(2)+U(2))*(UPrimRef(4)+UPrim(4))                          ! {rho*u}*{w}
   hTilde(3) = 0.5*(URef(3)+U(3))*(UPrimRef(4)+UPrim(4))                          ! {rho*v}*{w}
   hTilde(4) = 0.5*(URef(4)+U(4))*(UPrimRef(4)+UPrim(4)) + (UPrimRef(5)+UPrim(5)) ! {rho*w}*{w}+{p}
   hTilde(5) = 0.5*(URef(5)+U(5)+UPrimRef(5)+UPrim(5))*(UPrimRef(4)+UPrim(4))     ! ({rho*e}+{p})*{w}
+#endif
 
 ! transform into reference space
 Flux(:) = 0.5*(MRef(1)+M(1))*fTilde(:) + &
-          0.5*(MRef(2)+M(2))*gTilde(:) + &
-          0.5*(MRef(3)+M(3))*hTilde(:)
+#if PP_dim == 3
+          0.5*(MRef(3)+M(3))*hTilde(:) + &
+#endif
+          0.5*(MRef(2)+M(2))*gTilde(:)
 
 END SUBROUTINE SplitVolumeFluxDU
 
@@ -297,7 +325,11 @@ REAL,DIMENSION(PP_nVar),INTENT(OUT) :: F ! resulting flux
 F(1)= 0.25*(U_LL(DENS)+U_RR(DENS))*(U_LL(VEL1)+U_RR(VEL1))                               ! {rho}*{u}
 F(2)= 0.25*(U_LL(MOM1)+U_RR(MOM1))*(U_LL(VEL1)+U_RR(VEL1)) + 0.5*(U_LL(PRES)+U_RR(PRES)) ! {rho*u}*{u}+{p}
 F(3)= 0.25*(U_LL(MOM2)+U_RR(MOM2))*(U_LL(VEL1)+U_RR(VEL1))                               ! {rho*v}*{u}
+#if PP_dim == 3
 F(4)= 0.25*(U_LL(MOM3)+U_RR(MOM3))*(U_LL(VEL1)+U_RR(VEL1))                               ! {rho*w}*{u}
+#else
+F(4)= 0.
+#endif
 F(5)= 0.25*(U_LL(ENER)+U_RR(ENER)+U_LL(PRES)+U_RR(PRES))*(U_LL(VEL1)+U_RR(VEL1))         ! ({rho*e}+{p})*{u}
 
 END SUBROUTINE SplitSurfaceFluxDU
@@ -319,7 +351,10 @@ REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: Flux ! flux in reverence space
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                    :: e,eRef ! auxilery variables for the specific energy
-REAL,DIMENSION(PP_nVar    )             :: fTilde,gTilde,hTilde ! flux in reference space
+REAL,DIMENSION(PP_nVar    )             :: fTilde,gTilde ! flux in physical space
+#if PP_dim == 3
+REAL,DIMENSION(PP_nVar    )             :: hTilde        ! flux in physical space
+#endif
 !==================================================================================================================================
 
 ! specific energy
@@ -330,16 +365,25 @@ e    = U(5)/U(1)
   fTilde(1) = 0.5* (URef(1)+U(1))*(UPrimRef(2)+UPrim(2))                             ! {rho}*{u}
   fTilde(2) = 0.25*(URef(1)+U(1))*(UPrimRef(2)+UPrim(2))**2 + (UPrimRef(5)+UPrim(5)) ! {rho}*{u}²+{p}
   fTilde(3) = 0.25*(URef(1)+U(1))*(UPrimRef(2)+UPrim(2))*(UPrimRef(3)+UPrim(3))      ! {rho}*{u}*{v}
+#if PP_dim == 3
   fTilde(4) = 0.25*(URef(1)+U(1))*(UPrimRef(2)+UPrim(2))*(UPrimRef(4)+UPrim(4))      ! {rho}*{u}*{w}
+#else
+  fTilde(4) = 0.
+#endif
   fTilde(5) = 0.25*(URef(1)+U(1))*(UPrimRef(2)+UPrim(2))*(eRef+e) + &
               0.5* (UPrimRef(5)+UPrim(5))*(UPrimRef(2)+UPrim(2))                     ! {rho}*{e}*{u}+{p}*{u}
 ! local Euler fluxes y-direction
   gTilde(1) = 0.5 *(URef(1)+U(1))*(UPrimRef(3)+UPrim(3))                             ! {rho}*{v}
   gTilde(2) = fTilde(3)                                                              ! {rho}*{v}*{u}
   gTilde(3) = 0.25*(URef(1)+U(1))*(UPrimRef(3)+UPrim(3))**2 + (UPrimRef(5)+UPrim(5)) ! {rho}*{v}²+{p}
+#if PP_dim == 3
   gTilde(4) = 0.25*(URef(1)+U(1))*(UPrimRef(3)+UPrim(3))*(UPrimRef(4)+UPrim(4))      ! {rho}*{v}*{w}
+#else
+  gTilde(4) = 0.
+#endif
   gTilde(5) = 0.25*(URef(1)+U(1))*(UPrimRef(3)+UPrim(3))*(eRef+e) + &
               0.5* (UPrimRef(5)+UPrim(5))*(UPrimRef(3)+UPrim(3))                     ! {rho}*{e}*{v}+{p}*{v}
+#if PP_dim == 3
 ! local Euler fluxes z-direction
   hTilde(1) = 0.5 *(URef(1)+U(1))*(UPrimRef(4)+UPrim(4))                             ! {rho}*{w}
   hTilde(2) = fTilde(4)                                                              ! {rho}*{w}*{u}
@@ -347,11 +391,14 @@ e    = U(5)/U(1)
   hTilde(4) = 0.25*(URef(1)+U(1))*(UPrimRef(4)+UPrim(4))**2 + (UPrimRef(5)+UPrim(5)) ! {rho}*{w}²+{p}
   hTilde(5) = 0.25*(URef(1)+U(1))*(UPrimRef(4)+UPrim(4))*(eRef+e) + &
               0.5 *(UPrimRef(5)+UPrim(5))*(UPrimRef(4)+UPrim(4))                     ! {rho}*{e}*{w}+{p}*{w}
+#endif
 
 ! transform into reference space
 Flux(:) = 0.5*(MRef(1)+M(1))*fTilde(:) + &
-          0.5*(MRef(2)+M(2))*gTilde(:) + &
-          0.5*(MRef(3)+M(3))*hTilde(:)
+#if PP_dim == 3
+          0.5*(MRef(3)+M(3))*hTilde(:) + &
+#endif
+          0.5*(MRef(2)+M(2))*gTilde(:)
 
 END SUBROUTINE SplitVolumeFluxKG
 
@@ -377,7 +424,11 @@ e_RR = U_RR(ENER)/U_RR(DENS)
 F(1)= 0.25* (U_LL(DENS)+U_RR(DENS))*(U_LL(VEL1)+U_RR(VEL1))                                  ! {rho}*{u}
 F(2)= 0.125*(U_LL(DENS)+U_RR(DENS))*(U_LL(VEL1)+U_RR(VEL1))**2 + 0.5*(U_LL(PRES)+U_RR(PRES)) ! {rho}*{u}²+{p}
 F(3)= 0.125*(U_LL(DENS)+U_RR(DENS))*(U_LL(VEL1)+U_RR(VEL1))*(U_LL(VEL2)+U_RR(VEL2))          ! {rho}*{u}*{v}
+#if PP_dim == 3
 F(4)= 0.125*(U_LL(DENS)+U_RR(DENS))*(U_LL(VEL1)+U_RR(VEL1))*(U_LL(VEL3)+U_RR(VEL3))          ! {rho}*{u}*{w}
+#else
+F(4)= 0.
+#endif
 F(5)= 0.125*(U_LL(DENS)+U_RR(DENS))*(e_LL+e_RR)*(U_LL(VEL1)+U_RR(VEL1)) + &
       0.25 *(U_LL(PRES)+U_RR(PRES))*(U_LL(VEL1)+U_RR(VEL1))                                  ! {rho}*{e}*{u}+{p}*{u}
 
@@ -400,7 +451,10 @@ REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: Flux ! flux in reverence space
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                    :: EpRef,Ep ! auxilery variable for inner energy + pressure
-REAL,DIMENSION(PP_nVar    )             :: fTilde,gTilde,hTilde ! flux in physical space
+REAL,DIMENSION(PP_nVar    )             :: fTilde,gTilde ! flux in physical space
+#if PP_dim == 3
+REAL,DIMENSION(PP_nVar    )             :: hTilde        ! flux in physical space
+#endif
 !==================================================================================================================================
 
 ! internal energy + pressure
@@ -411,7 +465,11 @@ Ep    = U(5)-0.5*U(1)*(UPrim(2)**2+UPrim(3)**2+UPrim(4)**2)+UPrim(5)
   fTilde(1) =     (URef(2)+U(2))                                                 ! {rho*u}
   fTilde(2) = 0.5*(URef(2)+U(2))*(UPrimRef(2)+UPrim(2)) + (UPrimRef(5)+UPrim(5)) ! {rho*u}*{u}+{p}
   fTilde(3) = 0.5*(Uref(2)+U(2))*(UPrimRef(3)+UPrim(3))                          ! {rho*u}*{v}
+#if PP_dim == 3
   fTilde(4) = 0.5*(URef(2)+U(2))*(UPrimRef(4)+UPrim(4))                          ! {rho*u}*{w}
+#else
+  fTilde(4) = 0.
+#endif
   fTilde(5) = (EpRef*UPrimRef(2)+Ep*UPrim(2)) + &                                !{(rho*e_int+p)*u} +
               0.5*(URef(2)*UPrimRef(2)+U(2)*UPrim(2))*(UPrimRef(2)+UPrim(2)) + & !{rho*u²}*{u} +
               0.5*(URef(2)*UPrimRef(3)+U(2)*UPrim(3))*(UPrimRef(3)+UPrim(3)) + & !{rho*u*v}*{v} +
@@ -423,7 +481,11 @@ Ep    = U(5)-0.5*U(1)*(UPrim(2)**2+UPrim(3)**2+UPrim(4)**2)+UPrim(5)
   gTilde(1) =     (URef(3)+U(3))                                                 ! {rho*v}
   gTilde(2) = 0.5*(Uref(3)+U(3))*(UPrimRef(2)+UPrim(2))                          ! {rho*v}*{u}
   gTilde(3) = 0.5*(URef(3)+U(3))*(UPrimRef(3)+UPrim(3)) + (UPrimRef(5)+UPrim(5)) ! {rho*v}*{v}+{p}
+#if PP_dim == 3
   gTilde(4) = 0.5*(URef(3)+U(3))*(UPrimRef(4)+UPrim(4))                          ! {rho*v}*{w}
+#else
+  gTilde(4) = 0.
+#endif
   gTilde(5) = (EpRef*UPrimRef(3)+Ep*UPrim(3)) + &                                !{(rho*e_int+p)*v} +
               0.5*(URef(3)*UPrimRef(2)+U(3)*UPrim(2))*(UPrimRef(2)+UPrim(2)) + & !{rho*v*u}*{u} +
               0.5*(URef(3)*UPrimRef(3)+U(3)*UPrim(3))*(UPrimRef(3)+UPrim(3)) + & !{rho*v²}*{v} +
@@ -431,6 +493,7 @@ Ep    = U(5)-0.5*U(1)*(UPrim(2)**2+UPrim(3)**2+UPrim(4)**2)+UPrim(5)
               0.5*(URef(3)*UPrimRef(2)*UPrimRef(2)+U(3)*UPrim(2)*UPrim(2))   - & !1/2*({rho*v*u²} +
               0.5*(URef(3)*UPrimRef(3)*UPrimRef(3)+U(3)*UPrim(3)*UPrim(3))   - & !{rho*v³} +
               0.5*(URef(3)*UPrimRef(4)*UPrimRef(4)+U(3)*UPrim(4)*UPrim(4))       !{rho*v*w²})
+#if PP_dim == 3
 ! local Euler fluxes z-direction
   hTilde(1) =     (URef(4)+U(4))                                                 ! {rho*w}
   hTilde(2) = 0.5*(Uref(4)+U(4))*(UPrimRef(2)+UPrim(2))                          ! {rho*w}*{u}
@@ -443,11 +506,14 @@ Ep    = U(5)-0.5*U(1)*(UPrim(2)**2+UPrim(3)**2+UPrim(4)**2)+UPrim(5)
               0.5*(URef(4)*UPrimRef(2)*UPrimRef(2)+U(4)*UPrim(2)*UPrim(2))   - & !1/2*({rho*w*u²} +
               0.5*(URef(4)*UPrimRef(3)*UPrimRef(3)+U(4)*UPrim(3)*UPrim(3))   - & !{rho*w*v²} +
               0.5*(URef(4)*UPrimRef(4)*UPrimRef(4)+U(4)*UPrim(4)*UPrim(4))       !{rho*w³})
+#endif
 
 ! transform into reference space
 Flux(:) = 0.5*(MRef(1)+M(1))*fTilde(:) + &
-          0.5*(MRef(2)+M(2))*gTilde(:) + &
-          0.5*(MRef(3)+M(3))*hTilde(:)
+#if PP_dim == 3
+          0.5*(MRef(3)+M(3))*hTilde(:) + &
+#endif
+          0.5*(MRef(2)+M(2))*gTilde(:)
 
 END SUBROUTINE SplitVolumeFluxMO
 
@@ -474,7 +540,11 @@ Ep_RR = U_RR(ENER)-0.5*U_RR(DENS)*(U_RR(VEL1)**2+U_RR(VEL2)**2+U_RR(VEL3)**2)+U_
 F(1)= 0.5 *(U_LL(MOM1)+U_RR(MOM1))                                                       ! {rho*u}
 F(2)= 0.25*(U_LL(MOM1)+U_RR(MOM1))*(U_LL(VEL1)+U_RR(VEL1)) + 0.5*(U_LL(PRES)+U_RR(PRES)) ! {rho*u}*{u}+{p}
 F(3)= 0.25*(U_LL(MOM1)+U_RR(MOM1))*(U_LL(VEL2)+U_RR(VEL2))                               ! {rho*u}*{v}
+#if PP_dim == 3
 F(4)= 0.25*(U_LL(MOM1)+U_RR(MOM1))*(U_LL(VEL3)+U_RR(VEL3))                               ! {rho*u}*{w}
+#else
+F(4)= 0.
+#endif
 F(5)= 0.5 *(Ep_LL*U_LL(VEL1)+Ep_RR*U_RR(VEL1)) +  &                                      !{(rho*e_int+p)*u} +
       0.25*(U_LL(MOM1)*U_LL(VEL1)+U_RR(MOM1)*U_RR(VEL1))*(U_LL(VEL1)+U_RR(VEL1)) + &     !{rho*u²}*{u} +
       0.25*(U_LL(MOM1)*U_LL(VEL2)+U_RR(MOM1)*U_RR(VEL2))*(U_LL(VEL2)+U_RR(VEL2)) + &     !{rho*u*v}*{v} +
@@ -502,7 +572,10 @@ REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: Flux ! flux in reverence space
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                    :: e,eRef ! auxilery variables for the specific enthalpy
-REAL,DIMENSION(PP_nVar    )             :: fTilde,gTilde,hTilde ! flux in physical space
+REAL,DIMENSION(PP_nVar    )             :: fTilde,gTilde ! flux in physical space
+#if PP_dim == 3
+REAL,DIMENSION(PP_nVar    )             :: hTilde        ! flux in physical space
+#endif
 !==================================================================================================================================
 
 ! specific enthalpy
@@ -513,25 +586,37 @@ e    = (U(5)+UPrim(5))/U(1)
   fTilde(1) = 0.5 *(URef(1)+U(1))*(UPrimRef(2)+UPrim(2))                             ! {rho}*{u}
   fTilde(2) = 0.25*(URef(1)+U(1))*(UPrimRef(2)+UPrim(2))**2 + (UPrimRef(5)+UPrim(5)) ! {rho}*{u}²+{p}
   fTilde(3) = 0.25*(URef(1)+U(1))*(UPrimRef(2)+UPrim(2))*(UPrimRef(3)+UPrim(3))      ! {rho}*{u}*{v}
+#if PP_dim == 3
   fTilde(4) = 0.25*(URef(1)+U(1))*(UPrimRef(2)+UPrim(2))*(UPrimRef(4)+UPrim(4))      ! {rho}*{u}*{w}
+#else
+  fTilde(4) = 0.
+#endif
   fTilde(5) = 0.25*(URef(1)+U(1))*(UPrimRef(2)+UPrim(2))*(eRef+e)                    ! {rho}*{h}*{u}
 ! local Euler fluxes y-direction
   gTilde(1) = 0.5 *(URef(1)+U(1))*(UPrimRef(3)+UPrim(3))                             ! {rho}*{v}
   gTilde(2) = fTilde(3)                                                              ! {rho}*{v}*{u}
   gTilde(3) = 0.25*(URef(1)+U(1))*(UPrimRef(3)+UPrim(3))**2 + (UPrimRef(5)+UPrim(5)) ! {rho}*{v}²+{p}
+#if PP_dim == 3
   gTilde(4) = 0.25*(URef(1)+U(1))*(UPrimRef(3)+UPrim(3))*(UPrimRef(4)+UPrim(4))      ! {rho}*{v}*{w}
+#else
+  gTilde(4) = 0.
+#endif
   gTilde(5) = 0.25*(URef(1)+U(1))*(UPrimRef(3)+UPrim(3))*(eRef+e)                    ! {rho}*{h}*{v}
+#if PP_dim == 3
 ! local Euler fluxes z-direction
   hTilde(1) = 0.5 *(URef(1)+U(1))*(UPrimRef(4)+UPrim(4))                             ! {rho}*{w}
   hTilde(2) = fTilde(4)                                                              ! {rho}*{w}*{u}
   hTilde(3) = gTilde(4)                                                              ! {rho}*{w}*{v}
   hTilde(4) = 0.25*(URef(1)+U(1))*(UPrimRef(4)+UPrim(4))**2 + (UPrimRef(5)+UPrim(5)) ! {rho}*{w}²+{p}
   hTilde(5) = 0.25*(URef(1)+U(1))*(UPrimRef(4)+UPrim(4))*(eRef+e)                    ! {rho}*{h}*{w}
+#endif
 
 ! transform into reference space
 Flux(:) = 0.5*(MRef(1)+M(1))*fTilde(:) + &
-          0.5*(MRef(2)+M(2))*gTilde(:) + &
-          0.5*(MRef(3)+M(3))*hTilde(:)
+#if PP_dim == 3
+          0.5*(MRef(3)+M(3))*hTilde(:) + &
+#endif
+          0.5*(MRef(2)+M(2))*gTilde(:)
 
 END SUBROUTINE SplitVolumeFluxPI
 
@@ -557,7 +642,11 @@ e_RR = (U_RR(ENER)+U_RR(PRES))/U_RR(DENS)
 F(1)= 0.25* (U_LL(DENS)+U_RR(DENS))*(U_LL(VEL1)+U_RR(VEL1))                                  ! {rho}*{u}
 F(2)= 0.125*(U_LL(DENS)+U_RR(DENS))*(U_LL(VEL1)+U_RR(VEL1))**2 + 0.5*(U_LL(PRES)+U_RR(PRES)) ! {rho}*{u}²+{p}
 F(3)= 0.125*(U_LL(DENS)+U_RR(DENS))*(U_LL(VEL1)+U_RR(VEL1))*(U_LL(VEL2)+U_RR(VEL2))          ! {rho}*{u}*{v}
+#if PP_dim == 3
 F(4)= 0.125*(U_LL(DENS)+U_RR(DENS))*(U_LL(VEL1)+U_RR(VEL1))*(U_LL(VEL3)+U_RR(VEL3))          ! {rho}*{u}*{w}
+#else
+F(4)= 0.
+#endif
 F(5)= 0.125*(U_LL(DENS)+U_RR(DENS))*(e_LL+e_RR)*(U_LL(VEL1)+U_RR(VEL1))                      ! {rho}*{h}*{u}
 
 END SUBROUTINE SplitSurfaceFluxPI
