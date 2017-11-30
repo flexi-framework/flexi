@@ -33,6 +33,19 @@
                Supersampling points per DG element.
             </Documentation>
          </IntVectorProperty>
+         <IntVectorProperty command="SetNCalc"
+            default_values="-1"
+            animateable="0"
+            name="NCalc"
+            number_of_elements="1"
+            panel_visibility="advanced">
+            label="Polynomial degree for calculations">
+            <IntRangeDomain name="range" />
+            <Documentation>
+               This property sets the polynomial degree for the
+               calculations (default: N).
+            </Documentation>
+         </IntVectorProperty>
          <StringVectorProperty
             name="NodeTypeVisuInfo"
             command="GetNodeTypeVisuList"

@@ -60,7 +60,7 @@ IF (nArgs.LT.1) THEN
   CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: posti [posti-prm-file [flexi-prm-file]] statefile [statefiles]')
 END IF
 
-prmfile = ""
+prmfile = ''
 ! check if parameter file is given
 IF(STRICMP(GetFileExtension(Args(1)),'ini')) THEN
   skipArgs = 1 ! first argument is the parameter file

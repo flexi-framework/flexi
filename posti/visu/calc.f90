@@ -80,12 +80,12 @@ REAL,ALLOCATABLE,DIMENSION(:,:,:,:,:) :: gradUx_tmp,gradUy_tmp,gradUz_tmp
 ! calc DG solution 
 SWRITE(*,*) "[DG] calc quantities"
 SDEALLOCATE(UCalc_DG)
-ALLOCATE(UCalc_DG(0:PP_N,0:PP_N,0:PP_NZ,nElems_DG,1:nVarCalc))
-nVal=(/PP_N+1,PP_N+1,PP_NZ+1,nElems_DG/)
+ALLOCATE(UCalc_DG(0:NCalc,0:NCalc,0:PP_NCalcZ,nElems_DG,1:nVarCalc))
+nVal=(/NCalc+1,NCalc+1,PP_NCalcZ+1,nElems_DG/)
 
 maskCalc = 1
 ! Copy exisiting variables from solution array
-CALL FillCopy(nVar_State,PP_N,nElems,U,nElems_DG,mapDGElemsToAllElems,UCalc_DG,maskCalc)
+CALL FillCopy(nVar_State,PP_N,NCalc,nElems,U,nElems_DG,mapDGElemsToAllElems,UCalc_DG,maskCalc)
 
 IF(TRIM(FileType).EQ.'State')THEN
   IF(withDGOperator.AND.PARABOLIC.EQ.1)THEN
@@ -105,7 +105,7 @@ IF(TRIM(FileType).EQ.'State')THEN
     END IF
 #endif
   ELSE
-    CALL CalcQuantities(nVarCalc,nVal,mapDGElemsToAllElems,mapDepToCalc,UCalc_DG,maskCalc) 
+    CALL CalcQuantities(nVarCalc,nVal,mapDGElemsToAllElems,mapDepToCalc,UCalc_DG,maskCalc)
   END IF
 END IF
 END SUBROUTINE CalcQuantities_DG
@@ -529,26 +529,32 @@ END SUBROUTINE CalcSurfQuantities_FV
 !==================================================================================================================================
 !> Copies variable for given element range from source array to target array using VTK structure
 !==================================================================================================================================
-SUBROUTINE FillCopy(nVar,Nloc,nElems,UIn,nElems_calc,indices,UOut,maskCalc)
+SUBROUTINE FillCopy(nVar,NlocIn,NLocOut,nElems,UIn,nElems_calc,indices,UOut,maskCalc)
 USE MOD_Visu_Vars
-USE MOD_StringTools ,ONLY: STRICMP
+USE MOD_Interpolation_Vars,ONLY:NodeType
+USE MOD_StringTools,     ONLY: STRICMP
+USE MOD_Interpolation,   ONLY: GetVandermonde
+USE MOD_ChangeBasisByDim,ONLY: ChangeBasisVolume
 ! MODULES
-IMPLICIT NONE 
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)    :: nVar
-INTEGER,INTENT(IN)    :: Nloc
+INTEGER,INTENT(IN)    :: NlocIn
+INTEGER,INTENT(IN)    :: NlocOut
 INTEGER,INTENT(IN)    :: nElems
 INTEGER,INTENT(IN)    :: nElems_calc
 INTEGER,INTENT(IN)    :: indices(nElems_calc)
-REAL,INTENT(IN)       :: UIn(nVar,0:Nloc,0:Nloc,0:PP_NlocZ,nElems)
-REAL,INTENT(OUT)      :: UOut(0:Nloc,0:Nloc,0:PP_NlocZ,nElems_calc,nVarCalc)
+REAL,INTENT(IN)       :: UIn(nVar,0:NlocIn,0:NlocIn,0:PP_NlocInZ,nElems)
+REAL,INTENT(OUT)      :: UOut(0:NlocOut,0:NlocOut,0:PP_NlocOutZ,nElems_calc,nVarCalc)
 INTEGER,INTENT(INOUT) :: maskCalc(nVarDep)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
 INTEGER               :: iVarOut,iVarIn
 INTEGER               :: iElem,iElem_calc
+REAL                  :: Vdm_NIn_NOut(0:NlocOut,0:NlocIn)
 !==================================================================================================================================
+CALL GetVandermonde(NlocIn,NodeType,NLocOut,NodeTypeVisuPosti,Vdm_NIn_NOut,modal=.FALSE.)
 ! Copy exisiting variables from solution array
 DO iVarOut=1,nVarDep ! iterate over all out variables
   IF (mapDepToCalc(iVarOut).LT.1) CYCLE ! check if variable must be calculated
@@ -556,7 +562,7 @@ DO iVarOut=1,nVarDep ! iterate over all out variables
     IF( STRICMP(VarnamesAll(iVarOut),VarNamesHDF5(iVarIn))) THEN
       DO iElem_calc=1,nElems_calc ! copy variable for all elements
         iElem = indices(iElem_calc)
-        UOut(:,:,:,iElem_calc,mapDepToCalc(iVarOut)) = UIn(iVarIn,:,:,:,iElem)
+        CALL ChangeBasisVolume(NlocIn,NlocOut,Vdm_NIn_NOut,UIn(iVarIn,:,:,:,iElem),UOut(:,:,:,iElem_calc,mapDepToCalc(iVarOut)))
       END DO ! iElem
       maskCalc(iVarOut)=0 ! remove variable from maskCalc, since they now got copied and must not be calculated.
     END IF

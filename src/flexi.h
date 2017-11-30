@@ -126,6 +126,8 @@
 #if (PP_dim==2)
 #define PP_NOverZ 0
 #define PP_NlocZ 0
+#define PP_NlocInZ 0
+#define PP_NlocOutZ 0
 #define PP_NZ 0
 #define PP_NUnderZ 0
 #define PP_NOutZ 0
@@ -133,10 +135,13 @@
 #define PP_NGeoRefZ 0
 #define PP_NVisuZ 0
 #define PP_NVisuZ_FV 0
+#define PP_NCalcZ 0
 #define PP_NCalcZ_FV 0
 #else
 #define PP_NOverZ NOver
 #define PP_NlocZ Nloc
+#define PP_NlocInZ NlocIn
+#define PP_NlocOutZ NlocOut
 #define PP_NZ PP_N
 #define PP_NUnderZ NUnder
 #define PP_NOutZ NOut
@@ -144,5 +149,6 @@
 #define PP_NGeoRefZ NGeoRef
 #define PP_NVisuZ NVisu
 #define PP_NVisuZ_FV NVisu_FV
+#define PP_NCalcZ NCalc
 #define PP_NCalcZ_FV NCalc_FV
 #endif

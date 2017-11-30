@@ -215,7 +215,7 @@ USE MOD_HDF5_Input         ,ONLY: ISVALIDMESHFILE,ISVALIDHDF5FILE,GetArrayAndNam
 USE MOD_HDF5_Input         ,ONLY: ReadAttribute,File_ID,OpenDataFile,GetDataProps,CloseDataFile,ReadArray,DatasetExists
 USE MOD_Interpolation_Vars ,ONLY: NodeType
 USE MOD_Output_Vars        ,ONLY: ProjectName
-USE MOD_StringTools        ,ONLY: STRICMP
+USE MOD_StringTools        ,ONLY: STRICMP,INTTOSTR
 USE MOD_ReadInTools        ,ONLY: prms,GETINT,GETLOGICAL,addStrListEntry,GETSTR,CountOption,FinalizeParameters
 USE MOD_Posti_Mappings     ,ONLY: Build_FV_DG_distribution,Build_mapDepToCalc_mapAllVarsToVisuVars
 USE MOD_Visu_Avg2D         ,ONLY: InitAverage2D,BuildVandermonds_Avg2D
@@ -243,7 +243,7 @@ CALL prms%read_options(postifile)
 NVisu             = GETINT("NVisu")
 ! again read MeshFile from posti prm file (this overwrites the MeshFile read from the state file)
 
-Meshfile          =  GETSTR("MeshFile",MeshFile_state) 
+Meshfile          =  GETSTR("MeshFile",MeshFile_state)
 IF (.NOT.FILEEXISTS(MeshFile)) THEN
   !!!!!!
   ! WARNING: GETCWD is a GNU extension to the Fortran standard and will probably not work on other compilers
@@ -290,6 +290,11 @@ IF (changedStateFile.OR.changedMeshFile) THEN
 END IF
 
 CALL CloseDataFile()
+
+! Polynomial degree for calculations
+NCalc             = GETINT("NCalc",INTTOSTR(PP_N))
+IF (NCalc.LE.0) NCalc = PP_N
+changedNCalc      = NCalc.NE.NCalc_old
 
 ! Output of averaged data is only available for NVisu = PP_N and NodeTypeVisuPosti=NodeType_State
 ! These settings are enforced here!
@@ -377,7 +382,7 @@ USE MOD_Visu_Avg2D          ,ONLY: Average2D,WriteAverageToHDF5
 USE MOD_Interpolation_Vars  ,ONLY: NodeType,NodeTypeVISUFVEqui
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)               :: mpi_comm_IN    
+INTEGER,INTENT(IN)               :: mpi_comm_IN
 CHARACTER(LEN=255),INTENT(INOUT) :: prmfile
 CHARACTER(LEN=255),INTENT(INOUT) :: postifile
 CHARACTER(LEN=255),INTENT(IN)    :: statefile
@@ -386,7 +391,7 @@ CHARACTER(LEN=255),INTENT(IN)    :: statefile
 LOGICAL                          :: changedPrmFile
 !===================================================================================================================================
 CALL SetStackSizeUnlimited()
-CALL InitMPI(mpi_comm_IN) 
+CALL InitMPI(mpi_comm_IN)
 SWRITE (*,*) "READING FROM: ", TRIM(statefile)
 
 !**********************************************************************************************
@@ -473,6 +478,7 @@ CALL prms%SetSection("posti")
 CALL prms%CreateStringOption( "MeshFile"        , "Custom mesh file ")
 CALL prms%CreateStringOption( "VarName"         , "Names of variables, which should be visualized.", multiple=.TRUE.)
 CALL prms%CreateIntOption(    "NVisu"           , "Polynomial degree at which solution is sampled for visualization.")
+CALL prms%CreateIntOption(    "NCalc"           , "Polynomial degree at which calculations are done.")
 CALL prms%CreateLogicalOption("Avg2D"           , "Average solution in z-direction",".FALSE.")
 CALL prms%CreateLogicalOption("Avg2DHDF5Output" , "Write averaged solution to HDF5 file",".FALSE.")
 CALL prms%CreateStringOption( "NodeTypeVisu"    , "NodeType for visualization. Visu, Gauss,Gauss-Lobatto,Visu_inner"    ,"VISU")
@@ -482,6 +488,7 @@ CALL prms%CreateStringOption( "BoundaryName"    , "Names of boundaries for surfa
 changedStateFile      = .FALSE.
 changedMeshFile       = .FALSE.
 changedNVisu          = .FALSE.
+changedNCalc          = .FALSE.
 changedVarNames       = .FALSE.
 changedFV_Elems       = .FALSE.
 changedWithDGOperator = .FALSE.
@@ -504,13 +511,14 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   IF (LEN_TRIM(prmfile).EQ.0) THEN
     changedPrmFile = .NOT.STRICMP(prmfile_old, ".flexi.ini")
   ELSE
-    changedPrmFile = (prmfile .NE. prmfile_old)  
+    changedPrmFile = (prmfile .NE. prmfile_old)
   END IF
-  SWRITE (*,*) "changedStateFile     ", changedStateFile     
-  SWRITE (*,*) "changedMeshFile      ", changedMeshFile      
-  SWRITE (*,*) "changedNVisu         ", changedNVisu         
-  SWRITE (*,*) "changedVarNames      ", changedVarNames      
-  SWRITE (*,*) "changedFV_Elems      ", changedFV_Elems      
+  SWRITE (*,*) "changedStateFile     ", changedStateFile
+  SWRITE (*,*) "changedMeshFile      ", changedMeshFile
+  SWRITE (*,*) "changedNVisu         ", changedNVisu
+  SWRITE (*,*) "changedNCalc         ", changedNCalc
+  SWRITE (*,*) "changedVarNames      ", changedVarNames
+  SWRITE (*,*) "changedFV_Elems      ", changedFV_Elems
   SWRITE (*,*) "changedWithDGOperator", changedWithDGOperator
   SWRITE (*,*) "changedDGonly        ", changedDGonly
   SWRITE (*,*) "changedAvg2D         ", changedAvg2D
@@ -524,7 +532,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   CALL Build_mapBCSides()
 
   ! ===== calc solution =====
-  IF (changedStateFile.OR.changedVarNames.OR.changedDGonly) THEN
+  IF (changedStateFile.OR.changedVarNames.OR.changedDGonly.OR.changedNCalc) THEN
     CALL CalcQuantities_DG()
 #if FV_ENABLED
     CALL CalcQuantities_FV()
@@ -532,7 +540,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   END IF
   IF (doSurfVisu) THEN
     ! calc surface solution 
-    IF (changedStateFile.OR.changedVarNames.OR.changedDGonly.OR.changedBCnames) THEN
+    IF (changedStateFile.OR.changedVarNames.OR.changedDGonly.OR.changedNCalc.OR.changedBCnames) THEN
       CALL CalcSurfQuantities_DG()
 #if FV_ENABLED
       CALL CalcSurfQuantities_FV()
@@ -541,7 +549,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   END IF
 
   ! ===== convert solution to visu grid =====
-  IF (changedStateFile.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedAvg2D) THEN
+  IF (changedStateFile.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedNCalc.OR.changedAvg2D) THEN
     ! ===== Avg2d =====
     IF (Avg2d) THEN
       SDEALLOCATE(UVisu_DG)
@@ -552,7 +560,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
           Vdm_DGToFV,Vdm_FVToDG,Vdm_DGToVisu,Vdm_FVToVisu,1,nVarDep,mapDepToCalc,&
           UVisu_DG,UVisu_FV)
       IF (Avg2DHDF5Output) CALL WriteAverageToHDF5(nVarVisu,NVisu,NVisu_FV,NodeType,OutputTime,MeshFile_state,UVisu_DG,UVisu_FV)
-    ELSE 
+    ELSE
       CALL ConvertToVisu_DG()
 #if FV_ENABLED
       CALL ConvertToVisu_FV()
@@ -561,7 +569,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   END IF
   IF (doSurfVisu) THEN
     ! convert Surface DG solution to visu grid
-    IF (changedStateFile.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedBCnames) THEN
+    IF (changedStateFile.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedNCalc.OR.changedBCnames) THEN
       CALL ConvertToSurfVisu_DG()
 #if FV_ENABLED
       CALL ConvertToSurfVisu_FV()
@@ -593,6 +601,7 @@ MeshFile_old          = MeshFile
 prmfile_old           = prmfile
 statefile_old         = statefile
 NVisu_old             = NVisu
+NCalc_old             = NCalc
 nVar_State_old        = nVar_State
 withDGOperator_old    = withDGOperator
 DGonly_old            = DGonly

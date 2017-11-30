@@ -68,10 +68,10 @@ CONTAINS
 !===================================================================================================================================
 !> Perform a ChangeBasis of the calculated volume DG quantities to the visualization grid.
 !===================================================================================================================================
-SUBROUTINE ConvertToVisu_DG() 
+SUBROUTINE ConvertToVisu_DG()
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Visu_Vars          ,ONLY: nVarVisu,NodeTypeVisuPosti,nVarDep,NVisu
+USE MOD_Visu_Vars          ,ONLY: nVarVisu,NodeTypeVisuPosti,nVarDep,NVisu,NCalc
 USE MOD_Visu_Vars          ,ONLY: mapAllVarsToVisuVars,mapDepToCalc
 USE MOD_Visu_Vars          ,ONLY: nElems_DG,UCalc_DG,UVisu_DG
 USE MOD_Interpolation      ,ONLY: GetVandermonde
@@ -82,28 +82,28 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: iElem,iVar,iVarVisu,iVarCalc
-REAL,ALLOCATABLE   :: Vdm_N_NVisu(:,:)                  ! Vandermonde from state to visualisation nodes
+REAL,ALLOCATABLE   :: Vdm_NCalc_NVisu(:,:)                  ! Vandermonde from state to visualisation nodes
 !===================================================================================================================================
 SWRITE(*,*) "[DG] convert to visu grid"
 
 ! compute UVisu_DG 
-ALLOCATE(Vdm_N_NVisu(0:NVisu,0:PP_N))
-CALL GetVandermonde(PP_N,NodeType,NVisu,NodeTypeVisuPosti,Vdm_N_NVisu,modal=.FALSE.)
+ALLOCATE(Vdm_NCalc_NVisu(0:NVisu,0:NCalc))
+CALL GetVandermonde(NCalc,NodeTypeVisuPosti,NVisu,NodeTypeVisuPosti,Vdm_NCalc_NVisu,modal=.FALSE.)
 
 ! convert DG solution to UVisu_DG
 SDEALLOCATE(UVisu_DG)
 ALLOCATE(UVisu_DG(0:NVisu,0:NVisu,0:PP_NVisuZ,nElems_DG,nVarVisu))
 DO iVar=1,nVarDep
   IF (mapAllVarsToVisuVars(iVar).GT.0) THEN
-    iVarCalc = mapDepToCalc(iVar) 
-    iVarVisu = mapAllVarsToVisuVars(iVar) 
+    iVarCalc = mapDepToCalc(iVar)
+    iVarVisu = mapAllVarsToVisuVars(iVar)
     DO iElem = 1,nElems_DG
-      CALL ChangeBasisVolume(PP_N,NVisu,Vdm_N_NVisu,UCalc_DG(:,:,:,iElem,iVarCalc),UVisu_DG(:,:,:,iElem,iVarVisu))
+      CALL ChangeBasisVolume(NCalc,NVisu,Vdm_NCalc_NVisu,UCalc_DG(:,:,:,iElem,iVarCalc),UVisu_DG(:,:,:,iElem,iVarVisu))
     END DO
   END IF
-END DO 
+END DO
 
-SDEALLOCATE(Vdm_N_NVisu)
+SDEALLOCATE(Vdm_NCalc_NVisu)
 END SUBROUTINE ConvertToVisu_DG
 
 !===================================================================================================================================
