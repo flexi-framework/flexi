@@ -75,7 +75,7 @@ CALL BarycentricWeights(NState,xGP,wBaryGP)
 SWRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' INTERPOLATE STATE TO NEW MESH...'
 Time=FLEXITIME()
 U=0.
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(iElemNew,iElemOld,L_xi,ii,jj,kk,L_eta,L_zeta,Utmp,i,j,k)
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(iElemNew,iElemOld,L_xi,ii,jj,kk,L_eta,L_zeta,L_eta_zeta,Utmp,i,j,k)
 !$OMP DO
 DO iElemNew=1,nElemsNew
   ! equal elements
