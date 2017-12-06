@@ -172,7 +172,7 @@ IF(FilterType.GT.0) THEN
     CALL AddToElemData(ElementOut,'LAF_r'     ,RealArray=r)
     Vol = 0.
     DO iElem=1,nElems
-      J_N(0:PP_N,0:PP_N,0:PP_NZ)=1./sJ(:,:,:,0,iElem)
+      J_N(0:PP_N,0:PP_N,0:PP_NZ)=1./sJ(:,:,:,iElem,0)
       DO k=0,PP_NZ
         DO j=0,PP_N
           DO i=0,PP_N
