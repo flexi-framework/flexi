@@ -82,7 +82,7 @@ USE MOD_TimeDisc_Vars
 USE MOD_ReadInTools         ,ONLY:GETREAL,GETINT,GETSTR
 USE MOD_StringTools         ,ONLY:LowCase,StripSpaces
 USE MOD_Overintegration_Vars,ONLY:NUnder
-USE MOD_Filter_Vars         ,ONLY:NFilter
+USE MOD_Filter_Vars         ,ONLY:NFilter,FilterType
 USE MOD_Mesh_Vars           ,ONLY:nElems
 USE MOD_IO_HDF5             ,ONLY:AddToElemData,ElementOut
 IMPLICIT NONE
@@ -121,6 +121,7 @@ CFLScale = GETREAL('CFLScale')
 DFLScale = GETREAL('DFLScale')
 #endif /*PARABOLIC*/
 NEff=MIN(PP_N,NFilter,NUnder)
+IF(FilterType.GT.2) NEff=PP_N!LAF,HESTHAVEN no timestep effect 
 CALL fillCFL_DFL(NEff,PP_N)
 ! Set timestep to a large number
 dt=HUGE(1.)
