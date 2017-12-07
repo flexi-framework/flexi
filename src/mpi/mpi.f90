@@ -143,7 +143,6 @@ USE MOD_PreProc
 USE MOD_MPI_Vars
 USE MOD_ReadinTools,             ONLY: GETINT
 USE MOD_Interpolation_Vars,      ONLY: InterpolationInitIsDone
-USE MOD_Overintegration_Vars,    ONLY: NOver
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -157,10 +156,8 @@ END IF
 
 ALLOCATE(MPIRequest_U(nNbProcs,2)    )
 ALLOCATE(MPIRequest_Flux(nNbProcs,2) )
-ALLOCATE(MPIRequest_FluxO(nNbProcs,2) )
 MPIRequest_U      = MPI_REQUEST_NULL
 MPIRequest_Flux   = MPI_REQUEST_NULL
-MPIRequest_FluxO  = MPI_REQUEST_NULL
 #if FV_ENABLED
 ALLOCATE(MPIRequest_FV_Elems(nNbProcs,2) )
 ALLOCATE(MPIRequest_FV_gradU(nNbProcs,2) )
@@ -184,7 +181,6 @@ DataSizeSideSGS= (PP_N+1)*(PP_NZ+1)
 #endif
 DataSizeSide      =PP_nVar*(PP_N+1)*(PP_NZ+1)
 DataSizeSidePrim  =PP_nVarPrim*(PP_N+1)*(PP_NZ+1)
-DataSizeSideO =PP_nVar*(nOver+1)*(PP_NOverZ+1)
 
 ! split communicator into smaller groups (e.g. for local nodes)
 GroupSize=GETINT('GroupSize','0')
@@ -364,7 +360,6 @@ IMPLICIT NONE
 !==================================================================================================================================
 SDEALLOCATE(MPIRequest_U)
 SDEALLOCATE(MPIRequest_Flux)
-SDEALLOCATE(MPIRequest_FluxO)
 #if FV_ENABLED
 SDEALLOCATE(MPIRequest_FV_Elems)
 SDEALLOCATE(MPIRequest_FV_gradU)

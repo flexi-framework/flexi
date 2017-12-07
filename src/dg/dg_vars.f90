@@ -44,9 +44,6 @@ REAL,ALLOCATABLE                      :: L_HatMinus(:)          !< Lagrange poly
 REAL,ALLOCATABLE                      :: L_HatPlus(:)           !< Lagrange polynomials evaluated at \f$\xi=+1\f$
                                                                 !< premultiplied by mass matrix
 
-REAL,ALLOCATABLE                      :: D_Hat_TO(:,:)          !< Transpose of differentiation matrix
-                                                                !< premultiplied by mass matrix on NOver, size [0..NO,0..NO].
-
 #ifdef SPLIT_DG
 REAL,ALLOCATABLE                      :: DVolSurf(:,:)          !< Transpose of differentiation matrix used for calculating the strong form
                                                                 !< DVolSurf = D_T
@@ -59,15 +56,9 @@ REAL,ALLOCATABLE                      :: DVolSurf(:,:)          !< Transpose of 
 REAL,ALLOCATABLE,TARGET               :: U(:,:,:,:,:)           !< Solution variable for each equation, node and element, 
                                                                 !< size [1..NVar,0..N,0..N,0..N,nElems]. 
 
-REAL,ALLOCATABLE                      :: UO(:,:,:,:,:)          !< Solution variable for each equation, node and element, 
-                                                                !< size [1..NVar,0..NO,0..NO,0..NO,nElems].  
-
 !----------------------------------------------------------------------------------------------------------------------------------
 ! DG time derivative or Residual U_t
 REAL,ALLOCATABLE                      :: Ut(:,:,:,:,:)          !< Residual/time derivative, size [1..NVar,0..N,0..N,0..N,nElems]. 
-
-REAL,ALLOCATABLE                      :: UtO(:,:,:,:,:)         !< Residual/time derivative, 
-                                                                !< size [1..NVar,0..NO,0..NO,0..NO,nElems]. 
 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! auxilliary counters: number of entries in U, Ut, gradUx, gradUy, gradUz, used of optimization 
@@ -75,9 +66,6 @@ INTEGER                               :: nTotalU                !< Total number 
 
 INTEGER                               :: nDOFElem               !< Degrees of freedom in single element(per equation) 
                                                                 !< $ nDOFElem=(N+1)^3 $.  
-
-INTEGER                               :: nDOFElemO              !< Degrees of freedom in single element(per equation) 
-                                                                !< $ nDOFElemO=(NO+1)^3 $. 
 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! interior face values for all elements
@@ -87,15 +75,8 @@ REAL,ALLOCATABLE                      :: U_master(:,:,:,:)      !< 2D Solution o
 REAL,ALLOCATABLE                      :: U_slave(:,:,:,:)       !< 2D Solution on face nodes for the slave sides, 
                                                                 !< size [1..NVar,0..N,0..N,all_slave_sides] 
 
-REAL,ALLOCATABLE                      :: U_masterO(:,:,:,:)     !< 2D Solution on face nodes for the master sides, 
-                                                                !< size [1..Nvar,0..NO,0..NO,all_master_sides]
-
-REAL,ALLOCATABLE                      :: U_slaveO(:,:,:,:)      !< 2D Solution on face nodes for the slave sides, 
-                                                                !<  size [1..NVar,0..NO,0..NO,all_slave_sides] 
-
-REAL,ALLOCATABLE                      :: Flux_master(:,:,:,:)    !< Fluxes on face, size [1..NVar,0..N,0..N,allsides]. 
-REAL,ALLOCATABLE                      :: Flux_slave (:,:,:,:)    !< Fluxes on face, size [1..NVar,0..N,0..N,allsides]. 
-REAL,ALLOCATABLE                      :: FluxO(:,:,:,:)         !< Fluxes on face on NOver, size [1..NVar,0..NO,0..NO,allsides]. 
+REAL,ALLOCATABLE                      :: Flux_master(:,:,:,:)   !< Fluxes on face, size [1..NVar,0..N,0..N,allsides]. 
+REAL,ALLOCATABLE                      :: Flux_slave (:,:,:,:)   !< Fluxes on face, size [1..NVar,0..N,0..N,allsides]. 
 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! Variables in case of primitive lifting
@@ -105,12 +86,6 @@ REAL,ALLOCATABLE                      :: UPrim_master(:,:,:,:)  !< 2D Solution i
                                                                 !< size [1..NVar,0..N,0..N,all_master_sides] 
 REAL,ALLOCATABLE                      :: UPrim_slave(:,:,:,:)   !< 2D Solution in Primitive variables on face, slave side, 
                                                                 !<size [1..NVar,0..N,0..N,all_slave_sides] 
-REAL,ALLOCATABLE                      :: UPrimO(:,:,:,:,:)      !< Solution in primitive variables per equation, node and element,
-                                                                !< size [1..NVar,0..NO,0..NO,0..NO,nElems]. 
-REAL,ALLOCATABLE                      :: UPrim_masterO(:,:,:,:) !< 2D Solution in Primitive variables on face, master side, 
-                                                                !< size [1..NVar,0..NO,0..NO,all_master_sides] 
-REAL,ALLOCATABLE                      :: UPrim_slaveO(:,:,:,:)  !< 2D Solution in Primitive variables on face, slave side, 
-                                                                !<size [1..NVar,0..NO,0..NO,all_slave_sides] 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! Auxilliary variables
 LOGICAL                               :: DGInitIsDone=.FALSE.   !< Switch to check DGInit status

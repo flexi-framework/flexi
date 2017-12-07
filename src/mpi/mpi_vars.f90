@@ -25,7 +25,6 @@ SAVE
 !----------------------------------------------------------------------------------------------------------------------------------
 INTEGER,ALLOCATABLE :: MPIRequest_U(:,:)        !< communication handle for the surface solution
 INTEGER,ALLOCATABLE :: MPIRequest_Flux(:,:)     !< communication handle for the surface flux
-INTEGER,ALLOCATABLE :: MPIRequest_FluxO(:,:)    !< communication handle for the surface flux used for overintegration
 #if FV_ENABLED
 INTEGER,ALLOCATABLE :: MPIRequest_FV_Elems(:,:) !< communication handle for the FV_Elems array
 INTEGER,ALLOCATABLE :: MPIRequest_FV_gradU(:,:) !< communication handle for the slopes of the FV reconstruction
@@ -37,12 +36,11 @@ INTEGER,ALLOCATABLE :: MPIRequest_SGS(:,:)      !< communication handle for the 
 #if PARABOLIC
 INTEGER,ALLOCATABLE :: MPIRequest_gradU(:,:,:)  !< communication handle for the surface gradients
 #endif /*PARABOLIC*/
-INTEGER             :: nSendVal                
+INTEGER             :: nSendVal
 INTEGER             :: nRecVal
 INTEGER             :: DataSizeSide             !< datasize of one face, =PP_nVar*(PP_N+1)**2
 INTEGER             :: DataSizeSidePrim         !< datasize of one face for (primitive) gradients, =PP_nVarPrim*(PP_N+1)**2
 INTEGER             :: DataSizeSideSGS          !< datasize of one face for one value, =1*(PP_N+1)**2
-INTEGER             :: DataSizeSideO            !< datasize of one face for overintegration =PP_nVar*(nOver+1)**2
 
 INTEGER             :: SideID_start,SideID_end
 INTEGER             :: nNbProcs                 !< number of neighbor procs, is set in ReadMesh

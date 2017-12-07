@@ -97,9 +97,8 @@ SUBROUTINE InitLifting()
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Lifting_Vars
-USE MOD_Overintegration_Vars, ONLY: OverintegrationType,NOver
 USE MOD_DG_Vars,              ONLY: DGInitIsDone
-USE MOD_Mesh_Vars,            ONLY: nSides,nBCSides,nElems
+USE MOD_Mesh_Vars,            ONLY: nSides,nElems
 USE MOD_ReadInTools,          ONLY: GETREAL,GETLOGICAL
 #if USE_MPI
 USE MOD_MPI_Vars
@@ -142,15 +141,6 @@ gradUz_master=0.
 FluxX=0.
 FluxY=0.
 FluxZ=0.
-
-IF(OverintegrationType.EQ.SELECTIVE)THEN
-  ALLOCATE(gradUx_masterO(PP_nVarPrim,0:NOver,0:PP_NOverZ,1:nBCSides))
-  ALLOCATE(gradUy_masterO(PP_nVarPrim,0:NOver,0:PP_NOverZ,1:nBCSides))
-  ALLOCATE(gradUz_masterO(PP_nVarPrim,0:NOver,0:PP_NOverZ,1:nBCSides))
-  gradUx_masterO=0.
-  gradUy_masterO=0.
-  gradUz_masterO=0.
-ENDIF
 
 ! The gradients of the conservative variables are stored at each volume integration point
 ALLOCATE(gradUx(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,nElems))
@@ -350,9 +340,6 @@ SDEALLOCATE(gradUz)
 SDEALLOCATE(FluxX)
 SDEALLOCATE(FluxY)
 SDEALLOCATE(FluxZ)
-SDEALLOCATE(gradUx_masterO)
-SDEALLOCATE(gradUy_masterO)
-SDEALLOCATE(gradUz_masterO)
 LiftingInitIsDone = .FALSE.
 END SUBROUTINE FinalizeLifting
 

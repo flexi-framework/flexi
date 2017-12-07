@@ -17,7 +17,6 @@
 !> - 0: no overintegration: collocation DGSEM
 !> - 1: Filtering of JU_t by modal projection
 !> - 2: Like 1, but collocative division by J on N, not NO. Modal content between N and NO = 0.
-!> - 3: Selective OI, only advection flux operators are computed with higher quadrature precision, test function on N
 !==================================================================================================================================
 MODULE MOD_Overintegration_Vars
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -29,7 +28,6 @@ SAVE
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 INTEGER            :: OverintegrationType         !< 0: no overintegration, 1: cutoff, 2: conservative cutoff, 
-                                                  !< 3: selective OI for advection terms
 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! used for type 1 and 2
@@ -51,23 +49,6 @@ REAL,ALLOCATABLE   :: Vdm_NUnder_N(:,:)           !< 1D Vandermonde NUnder->N, s
 
 REAL,ALLOCATABLE   :: Vdm_N_NUnder(:,:)           !< 1D Vandermonde N->NUnder, size [0..Nunder,0..N];
                                                   !< Overintegrationtype 2 only!
-!----------------------------------------------------------------------------------------------------------------------------------
-! used for type 3 only:
-INTEGER            :: NOver                       !< Polynomial degree of advective flux polynomial representation; 
-                                                  !< Overintegrationtype 3 only!
-
-REAL,ALLOCATABLE   :: xGPO(:)                     !< Gauss point coordinates on NOver, size [0..NOver];
-                                                  !< Overintegrationtype 3 only!
-
-REAL,ALLOCATABLE   :: wGPO(:)                     !< GP integration weights on NOver, size [0..NOver];
-                                                  !< Overintegrationtype 3 only!
-
-REAL,ALLOCATABLE   :: VdmNToNOver(:,:)            !< 1D Vandermonde N->NOver, size [0..NOver,0..N];
-                                                  !< Overintegrationtype 3 only!
-
-REAL,ALLOCATABLE   :: VdmNOverToN(:,:)            !< 1D Vandermonde NOver->N, size [0..N,0..NOver];
-                                                  !< Overintegrationtype 3 only!
-
 !----------------------------------------------------------------------------------------------------------------------------------
 LOGICAL            :: OverintegrationInitIsDone = .FALSE. !< Switch to check if overintegration is initialized
 !==================================================================================================================================
