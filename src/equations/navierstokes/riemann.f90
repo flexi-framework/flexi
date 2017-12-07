@@ -464,7 +464,7 @@ END SUBROUTINE Riemann_LF
 !=================================================================================================================================
 PURE SUBROUTINE Riemann_HLLC(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
-USE MOD_EOS_Vars      ,ONLY: Kappa
+USE MOD_EOS_Vars      ,ONLY: KappaM1
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -477,29 +477,37 @@ REAL,DIMENSION(PP_nVar),INTENT(OUT):: F    !< resulting Riemann flux
 ! LOCAL VARIABLES
 REAL    :: H_L,H_R
 REAL    :: SqrtRho_L,SqrtRho_R,sSqrtRho
-!REAL   :: RoeVel(3),RoeH,Roec,absVel
+REAL    :: RoeVel(3),RoeH,Roec,absVel
 REAL    :: Ssl,Ssr,SStar
 REAL    :: U_Star(PP_nVar),EStar
 REAL    :: sMu_L,sMu_R
+!REAL    :: c_L,c_R
 !=================================================================================================================================
-! Compute Roe mean values (required for all but LF)
+! HLLC flux
+
+! Version A: Basic Davis estimate for wave speed
+!Ssl = U_LL(VEL1) - SPEEDOFSOUND_HE(U_LL)
+!Ssr = U_RR(VEL1) + SPEEDOFSOUND_HE(U_RR)
+
+! Version B: Basic Davis estimate for wave speed
+!c_L = SPEEDOFSOUND_HE(U_LL) 
+!c_R = SPEEDOFSOUND_HE(U_RR) 
+!Ssl = MIN(U_LL(VEL1) - c_L,U_RR(VEL1) - c_R)
+!Ssr = MAX(U_LL(VEL1) + c_L,U_RR(VEL1) + c_R)
+
+! Version C: Better Roe estimate for wave speeds Davis, Einfeldt
 H_L       = TOTALENTHALPY_HE(U_LL)
 H_R       = TOTALENTHALPY_HE(U_RR)
 SqrtRho_L = SQRT(U_LL(DENS))
 SqrtRho_R = SQRT(U_RR(DENS))
 sSqrtRho  = 1./(SqrtRho_L+SqrtRho_R)
-! HLLC flux
-! Basic Davis estimate for wave speed
-Ssl       = U_LL(VEL1) - SPEEDOFSOUND_HE(U_LL)
-Ssr       = U_RR(VEL1) + SPEEDOFSOUND_HE(U_RR)
-! Better Roe estimate for wave speeds Davis, Einfeldt
 ! Roe mean values
-!RoeVel    = (SqrtRho_R*U_RR(VELV) + SqrtRho_L*U_LL(VELV)) * sSqrtRho
-!RoeH      = (SqrtRho_R*H_R   + SqrtRho_L*H_L)   * sSqrtRho
-!absVel    = DOT_PRODUCT(RoeVel,RoeVel)
-!Roec      = SQRT(kappaM1*(RoeH-0.5*absVel))
-!Ssl = RoeVel(1) - Roec
-!Ssr = RoeVel(1) + Roec
+RoeVel    = (SqrtRho_R*U_RR(VELV) + SqrtRho_L*U_LL(VELV)) * sSqrtRho
+RoeH      = (SqrtRho_R*H_R        + SqrtRho_L*H_L       ) * sSqrtRho
+absVel    = DOT_PRODUCT(RoeVel,RoeVel)
+Roec      = SQRT(KappaM1*(RoeH-0.5*absVel))
+Ssl = RoeVel(1) - Roec
+Ssr = RoeVel(1) + Roec
 
 ! positive supersonic speed
 IF(Ssl .GE. 0.)THEN
