@@ -268,6 +268,10 @@ int visuReader::RequestData(
       timestepToLoad = FindClosestTimeStep(requestedTimeValue);
       FileToLoad = FileNames[timestepToLoad];
    }
+   if (outInfoSurface->Has(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP())) {
+      // get the requested time
+      double requestedTimeValue = outInfoSurface->Get(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP());
+   }
 
 
    // convert the MPI communicator to a fortran communicator
