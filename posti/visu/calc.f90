@@ -89,7 +89,7 @@ ALLOCATE(UCalc_DG(0:NCalc,0:NCalc,0:PP_NCalcZ,nElems_DG,1:nVarCalc))
 nVal=(/NCalc+1,NCalc+1,PP_NCalcZ+1,nElems_DG/)
 
 maskCalc = 1
-! Copy exisiting variables from solution array
+! Copy exisiting variables from solution array and interpolate to NCalc
 CALL FillCopy(nVar_State,PP_N,NCalc,nElems,U,nElems_DG,mapDGElemsToAllElems,UCalc_DG,maskCalc)
 
 IF(TRIM(FileType).EQ.'State')THEN
