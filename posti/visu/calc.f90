@@ -463,7 +463,7 @@ REAL,ALLOCATABLE             :: gradUx_calc(:,:,:,:,:),gradUy_calc(:,:,:,:,:),gr
 
   maskCalc = 1
   ! Copy exisiting variables from solution array
-  CALL FillCopy(nVar_State,NCalc_FV,nElems,U,nElems_FV,mapFVElemsToAllElems,UCalc_FV,maskCalc)
+  CALL FillCopy(nVar_State,NCalc_FV,NCalc_FV,nElems,U,nElems_FV,mapFVElemsToAllElems,UCalc_FV,maskCalc)
 
   IF(TRIM(FileType).EQ.'State')THEN
     CALL CalcQuantities(nVarCalc_FV,nVal,mapFVElemsToAllElems,mapDepToCalc_FV,UCalc_FV,maskCalc)
@@ -615,7 +615,7 @@ INTEGER               :: iVarOut,iVarIn
 INTEGER               :: iElem,iElem_calc
 REAL                  :: Vdm_NIn_NOut(0:NlocOut,0:NlocIn)
 !==================================================================================================================================
-CALL GetVandermonde(NlocIn,NodeType,NLocOut,NodeType,Vdm_NIn_NOut,modal=.FALSE.)
+IF (NLocOut.NE.NLocIn) CALL GetVandermonde(NlocIn,NodeType,NLocOut,NodeType,Vdm_NIn_NOut,modal=.FALSE.)
 ! Copy exisiting variables from solution array
 DO iVarOut=1,nVarDep ! iterate over all out variables
   IF (mapDepToCalc(iVarOut).LT.1) CYCLE ! check if variable must be calculated
@@ -623,7 +623,11 @@ DO iVarOut=1,nVarDep ! iterate over all out variables
     IF( STRICMP(VarnamesAll(iVarOut),VarNamesHDF5(iVarIn))) THEN
       DO iElem_calc=1,nElems_calc ! copy variable for all elements
         iElem = indices(iElem_calc)
-        CALL ChangeBasisVolume(NlocIn,NlocOut,Vdm_NIn_NOut,UIn(iVarIn,:,:,:,iElem),UOut(:,:,:,iElem_calc,mapDepToCalc(iVarOut)))
+        IF (NLocOut.NE.NLocIn) THEN
+          CALL ChangeBasisVolume(NlocIn,NlocOut,Vdm_NIn_NOut,UIn(iVarIn,:,:,:,iElem),UOut(:,:,:,iElem_calc,mapDepToCalc(iVarOut)))
+        ELSE
+          UOut(:,:,:,iElem_calc,mapDepToCalc(iVarOut)) = UIn(iVarIn,:,:,:,iElem)
+        END IF
       END DO ! iElem
       maskCalc(iVarOut)=0 ! remove variable from maskCalc, since they now got copied and must not be calculated.
     END IF
