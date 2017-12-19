@@ -451,7 +451,7 @@ REAL,ALLOCATABLE   :: TangVec2_loc(:,:,:,:)
 nValSide=(/NCalc_FV+1,PP_NCalcZ_FV+1,nBCSidesVisu_FV/)
 CALL buildMappings(NCalc_FV,S2V=S2V_NVisu)
 SDEALLOCATE(USurfVisu_FV)
-ALLOCATE(USurfVisu_FV(0:NCalc_FV,0:PP_NCalcZ_FV,0:0,nBCSidesVisu_FV,nVarSurfVisuAll))
+ALLOCATE(USurfVisu_FV(0:NVisu_FV,0:PP_NVisuZ_FV,0:0,nBCSidesVisu_FV,nVarSurfVisuAll))
 ! ===  Surface visualization ================================
 ! copy UCalc_FV to USurfCalc_FV
 SDEALLOCATE(USurfCalc_FV)
@@ -490,11 +490,13 @@ DO iSide=1,nBCSides
   locSide = SideToElem(S2E_LOC_SIDE_ID, iSide)
   IF (iSide_FV.GT.0) THEN
     DO q=0,PP_NZ; DO p=0,PP_N
+#if FV_RECONSTRUCT
       DO dir=1,PP_dim
         NormVec_loc (dir,p*2:p*2+1,q*2:q*2+1*(PP_dim-2),iSide_FV) = NormVec (dir,p,q,1,iSide)
         TangVec1_loc(dir,p*2:p*2+1,q*2:q*2+1*(PP_dim-2),iSide_FV) = TangVec1(dir,p,q,1,iSide)
         TangVec2_loc(dir,p*2:p*2+1,q*2:q*2+1*(PP_dim-2),iSide_FV) = TangVec2(dir,p,q,1,iSide)
       END DO
+#endif
 #if PARABOLIC
       ijk = S2V(:,0,p,q,0,locSide)
       DO iVar=1,PP_nVarPrim
@@ -504,6 +506,11 @@ DO iSide=1,nBCSides
       END DO 
 #endif
     END DO; END DO ! p,q=0,PP_N
+#if !(FV_RECONSTRUCT)
+    NormVec_loc (1:PP_dim,:,:,iSide_FV) = NormVec (1:PP_dim,:,:,1,iSide)
+    TangVec1_loc(1:PP_dim,:,:,iSide_FV) = TangVec1(1:PP_dim,:,:,1,iSide)
+    TangVec2_loc(1:PP_dim,:,:,iSide_FV) = TangVec2(1:PP_dim,:,:,1,iSide)
+#endif
   END IF
 END DO
 
