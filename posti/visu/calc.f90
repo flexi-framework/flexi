@@ -68,6 +68,9 @@ USE MOD_DG_Vars            ,ONLY: U
 USE MOD_StringTools        ,ONLY: STRICMP
 #if PARABOLIC
 USE MOD_Lifting_Vars       ,ONLY: gradUx,gradUy,gradUz
+USE MOD_Interpolation      ,ONLY: GetVandermonde
+USE MOD_Interpolation_Vars ,ONLY: NodeType
+USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisVolume
 #endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -75,9 +78,11 @@ IMPLICIT NONE
 INTEGER            :: maskCalc(nVarDep),nVal(4)
 #if PARABOLIC
 REAL,ALLOCATABLE,DIMENSION(:,:,:,:,:) :: gradUx_tmp,gradUy_tmp,gradUz_tmp
+REAL               :: Vdm_N_NCalc(0:NCalc,0:PP_N)
+INTEGER            :: iElem,iElemDG
 #endif
 !===================================================================================================================================
-! calc DG solution 
+! calc DG solution
 SWRITE(*,*) "[DG] calc quantities"
 SDEALLOCATE(UCalc_DG)
 ALLOCATE(UCalc_DG(0:NCalc,0:NCalc,0:PP_NCalcZ,nElems_DG,1:nVarCalc))
@@ -90,19 +95,18 @@ CALL FillCopy(nVar_State,PP_N,NCalc,nElems,U,nElems_DG,mapDGElemsToAllElems,UCal
 IF(TRIM(FileType).EQ.'State')THEN
   IF(withDGOperator.AND.PARABOLIC.EQ.1)THEN
 #if PARABOLIC
-    IF(nElems_DG.EQ.nElems)THEN
-      CALL CalcQuantities(nVarCalc,nVal,mapDGElemsToAllElems,mapDepToCalc,UCalc_DG,maskCalc,gradUx,gradUy,gradUz)
-    ELSE
-      ALLOCATE(gradUx_tmp(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,nElems_DG))
-      ALLOCATE(gradUy_tmp(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,nElems_DG))
-      ALLOCATE(gradUz_tmp(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,nElems_DG))
-      ! nicer, but only as of gfortran 6+: ALLOCATE(gradUx_tmp,gradUy_tmp,gradUz_tmp,MOLD=gradUx)
-      gradUx_tmp=gradUx(:,:,:,:,mapDGElemsToAllElems)
-      gradUy_tmp=gradUy(:,:,:,:,mapDGElemsToAllElems)
-      gradUz_tmp=gradUz(:,:,:,:,mapDGElemsToAllElems)
-      CALL CalcQuantities(nVarCalc,nVal,mapDGElemsToAllElems,mapDepToCalc,UCalc_DG,maskCalc,gradUx_tmp,gradUy_tmp,gradUz_tmp) 
-      DEALLOCATE(gradUx_tmp,gradUy_tmp,gradUz_tmp)
-    END IF
+    CALL GetVandermonde(PP_N,NodeType,NCalc,NodeType,Vdm_N_NCalc,modal=.FALSE.)
+    ALLOCATE(gradUx_tmp(PP_nVarPrim,0:NCalc,0:NCalc,0:PP_NCalcZ,nElems_DG))
+    ALLOCATE(gradUy_tmp(PP_nVarPrim,0:NCalc,0:NCalc,0:PP_NCalcZ,nElems_DG))
+    ALLOCATE(gradUz_tmp(PP_nVarPrim,0:NCalc,0:NCalc,0:PP_NCalcZ,nElems_DG))
+    DO iElemDG = 1, nElems_DG
+      iElem = mapDGElemsToAllElems(iElemDG)
+      CALL ChangeBasisVolume(PP_nVarPrim,PP_N,NCalc,Vdm_N_NCalc,gradUx(:,:,:,:,iElem),gradUx_tmp(:,:,:,:,iElemDG))
+      CALL ChangeBasisVolume(PP_nVarPrim,PP_N,NCalc,Vdm_N_NCalc,gradUy(:,:,:,:,iElem),gradUy_tmp(:,:,:,:,iElemDG))
+      CALL ChangeBasisVolume(PP_nVarPrim,PP_N,NCalc,Vdm_N_NCalc,gradUz(:,:,:,:,iElem),gradUz_tmp(:,:,:,:,iElemDG))
+    END DO ! i = 1, nElems_DG
+    CALL CalcQuantities(nVarCalc,nVal,mapDGElemsToAllElems,mapDepToCalc,UCalc_DG,maskCalc,gradUx_tmp,gradUy_tmp,gradUz_tmp)
+    DEALLOCATE(gradUx_tmp,gradUy_tmp,gradUz_tmp)
 #endif
   ELSE
     CALL CalcQuantities(nVarCalc,nVal,mapDGElemsToAllElems,mapDepToCalc,UCalc_DG,maskCalc)
