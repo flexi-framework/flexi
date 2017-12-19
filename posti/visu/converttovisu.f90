@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -78,7 +78,7 @@ USE MOD_Interpolation      ,ONLY: GetVandermonde
 USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisVolume
 USE MOD_Interpolation_Vars ,ONLY: NodeType,NodeTypeVisu
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: iElem,iVar,iVarVisu,iVarCalc
@@ -109,7 +109,7 @@ END SUBROUTINE ConvertToVisu_DG
 !===================================================================================================================================
 !> Perform a ChangeBasis of the calculated surface DG quantities to the visualization grid.
 !===================================================================================================================================
-SUBROUTINE ConvertToSurfVisu_DG() 
+SUBROUTINE ConvertToSurfVisu_DG()
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Visu_Vars
@@ -117,33 +117,33 @@ USE MOD_Interpolation      ,ONLY: GetVandermonde
 USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisSurf
 USE MOD_Interpolation_Vars ,ONLY: NodeType,NodeTypeVisu
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: iSide,iVar,iVarVisu,iVarCalc
-REAL,ALLOCATABLE   :: Vdm_N_NVisu(:,:)                  ! Vandermonde from state to visualisation nodes
+REAL,ALLOCATABLE   :: Vdm_NCalc_NVisu(:,:)                  ! Vandermonde from state to visualisation nodes
 !===================================================================================================================================
 SWRITE(*,*) "[DG] convert to surface visu grid"
 
-! compute UVisu_DG 
-ALLOCATE(Vdm_N_NVisu(0:NVisu,0:PP_N))
-CALL GetVandermonde(PP_N,NodeType,NVisu,NodeTypeVisuPosti,Vdm_N_NVisu,modal=.FALSE.)
-! convert DG solution to UVisu_DG
+! Prepare Vandermonde to interpolate the surface data from calculation grid to visualisation grid
+ALLOCATE(Vdm_NCalc_NVisu(0:NVisu,0:NCalc))
+CALL GetVandermonde(NCalc,NodeType,NVisu,NodeTypeVisuPosti,Vdm_NCalc_NVisu,modal=.FALSE.)
+! convert surface DG solution to UVisu_DG
 SDEALLOCATE(USurfVisu_DG)
 ALLOCATE(USurfVisu_DG(0:NVisu,0:PP_NVisuZ,0:0,nBCSidesVisu_DG,nVarSurfVisuAll))
 DO iVar=1,nVarDep
   IF (mapAllVarsToSurfVisuVars(iVar).GT.0) THEN
-    iVarCalc = mapDepToCalc(iVar) 
-    iVarVisu = mapAllVarsToSurfVisuVars(iVar) 
+    iVarCalc = mapDepToCalc(iVar)
+    iVarVisu = mapAllVarsToSurfVisuVars(iVar)
     DO iSide = 1,nBCSidesVisu_DG
-      CALL ChangeBasisSurf(PP_N,NVisu,Vdm_N_NVisu,USurfCalc_DG(:,:,iSide,iVarCalc),USurfVisu_DG(:,:,0,iSide,iVarVisu))
-    END DO 
+      CALL ChangeBasisSurf(NCalc,NVisu,Vdm_NCalc_NVisu,USurfCalc_DG(:,:,iSide,iVarCalc),USurfVisu_DG(:,:,0,iSide,iVarVisu))
+    END DO
   END IF
-END DO 
-SDEALLOCATE(Vdm_N_NVisu)
+END DO
+DEALLOCATE(Vdm_NCalc_NVisu)
 END SUBROUTINE ConvertToSurfVisu_DG
 
-#if FV_ENABLED        
+#if FV_ENABLED
 !===================================================================================================================================
 !> Convert the calculated FV quantities to the visualization grid.
 !===================================================================================================================================
@@ -154,7 +154,7 @@ USE MOD_Visu_Vars         ,ONLY: nVarDep,VarnamesAll,mapDepToCalc_FV
 USE MOD_Visu_Vars         ,ONLY: mapAllVarsToVisuVars,nVarVisu,NVisu_FV
 USE MOD_Visu_Vars         ,ONLY: nElems_FV,UCalc_FV,UVisu_FV
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: iVar,iElem
@@ -169,21 +169,21 @@ SDEALLOCATE(UVisu_FV)
 ALLOCATE(UVisu_FV(0:NVisu_FV,0:NVisu_FV,0:PP_NVisuZ_FV,nElems_FV,nVarVisu))
 ! compute UVisu_FV
 DO iVar=1,nVarDep
-  iVarVisu = mapAllVarsToVisuVars(iVar) 
+  iVarVisu = mapAllVarsToVisuVars(iVar)
   IF (iVarVisu.GT.0) THEN
     SWRITE(*,*) "    ", TRIM(VarnamesAll(iVar))
-    iVarCalc = mapDepToCalc_FV(iVar) 
+    iVarCalc = mapDepToCalc_FV(iVar)
     DO iElem = 1,nElems_FV
 #if FV_RECONSTRUCT
       UVisu_FV(:,:,:,:,iVarVisu) = UCalc_FV(:,:,:,:,iVarCalc)
-#else      
+#else
       DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
         UVisu_FV(i*2:i*2+1, j*2:j*2+1, k*2:k*2+1*(PP_dim-2),iElem,iVarVisu) = UCalc_FV(i,j,k,iElem,iVarCalc)
       END DO; END DO; END DO
 #endif
     END DO
   END IF
-END DO 
+END DO
 
 END SUBROUTINE ConvertToVisu_FV
 
@@ -196,7 +196,7 @@ USE MOD_PreProc
 USE MOD_Visu_Vars         ,ONLY: nVarDep,VarnamesAll,mapDepToCalc_FV
 USE MOD_Visu_Vars         ,ONLY: mapAllVarsToSurfVisuVars,USurfVisu_FV,USurfCalc_FV
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: iVar,iVarVisu
@@ -204,12 +204,12 @@ INTEGER            :: iVar,iVarVisu
 SWRITE(*,*) "[FV/FVRE] convert to surface visu grid"
 ! compute UVisu_FV
 DO iVar=1,nVarDep
-  iVarVisu = mapAllVarsToSurfVisuVars(iVar) 
+  iVarVisu = mapAllVarsToSurfVisuVars(iVar)
   IF (iVarVisu.GT.0) THEN
     SWRITE(*,*) "    ", TRIM(VarnamesAll(iVar))
     USurfVisu_FV(:,:,0,:,iVarVisu) = USurfCalc_FV(:,:,:,mapDepToCalc_FV(iVar))
   END IF
-END DO 
+END DO
 
 END SUBROUTINE ConvertToSurfVisu_FV
 
@@ -217,12 +217,12 @@ END SUBROUTINE ConvertToSurfVisu_FV
 
 #if FV_RECONSTRUCT
 !===================================================================================================================================
-!> 
+!>
 !===================================================================================================================================
 SUBROUTINE ConvertToVisu_FV_Reconstruct(&
 #if PARABOLIC
     gradUx_calc,gradUy_calc,gradUz_calc &
-#endif        
+#endif
         )
 USE MOD_Globals
 USE MOD_PreProc
@@ -245,7 +245,7 @@ USE MOD_EOS_Posti          ,ONLY: GetMaskPrim
 USE MOD_Lifting_Vars       ,ONLY: gradUx, gradUy, gradUz
 #endif
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 #if PARABOLIC
 REAL,INTENT(OUT),OPTIONAL    :: gradUx_calc(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,0:PP_NVisuZ_FV,nElems_FV)
@@ -263,11 +263,11 @@ INTEGER             :: maskPrim(nVarDep)
 ! Build local maps of maximal size PP_nVarPrim:
 ! - mapUCalc(1:nVarPrim) = indices of the nVarPrim primitive quantities that should be visualized in the UCalc_FV array
 ! - mapUPrim(1:nVarPrim) = indices of the nVarPrim primitive quantities in the UPrim array
-! Example: 
+! Example:
 !   If only velocityX and pressure should be visualized then:
-!     nVarPrim = 2 
-!     mapUPrim(1) = 2     mapUCalc(1) = index of velocityX in UCalc_FV 
-!     mapUPrim(2) = 5     mapUCalc(2) = index of pressure  in UCalc_FV 
+!     nVarPrim = 2
+!     mapUPrim(1) = 2     mapUCalc(1) = index of velocityX in UCalc_FV
+!     mapUPrim(2) = 5     mapUCalc(2) = index of pressure  in UCalc_FV
 nVarPrim = 0
 iVarPrim = 0
 maskPrim = GetMaskPrim()
@@ -287,31 +287,31 @@ SWRITE(*,*) "  mapUCalc", mapUCalc(1:nVarPrim)
 
 
 DO iElem_FV=1,nElems_FV
-  iElem = mapFVElemsToAllElems(iElem_FV)  
+  iElem = mapFVElemsToAllElems(iElem_FV)
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     DO iVar=1,nVarPrim
       iVarPrim = mapUPrim(iVar)
       iVarCalc = mapUCalc(iVar)
       UCalc_FV(i*2  ,j*2  ,k*2  ,iElem_FV,iVarCalc) = UPrim(iVarPrim,i,j,k,iElem) &
           - gradUxi  (iVarPrim,j,k,i,iElem) *   FV_dx_XI_L(j,k,i,iElem) &
-          - gradUeta (iVarPrim,i,k,j,iElem) *  FV_dx_ETA_L(i,k,j,iElem) 
+          - gradUeta (iVarPrim,i,k,j,iElem) *  FV_dx_ETA_L(i,k,j,iElem)
       UCalc_FV(i*2+1,j*2  ,k*2  ,iElem_FV,iVarCalc) = UPrim(iVarPrim,i,j,k,iElem) &
           + gradUxi  (iVarPrim,j,k,i,iElem) *   FV_dx_XI_R(j,k,i,iElem) &
-          - gradUeta (iVarPrim,i,k,j,iElem) *  FV_dx_ETA_L(i,k,j,iElem) 
+          - gradUeta (iVarPrim,i,k,j,iElem) *  FV_dx_ETA_L(i,k,j,iElem)
       UCalc_FV(i*2  ,j*2+1,k*2  ,iElem_FV,iVarCalc) = UPrim(iVarPrim,i,j,k,iElem)  &
           - gradUxi  (iVarPrim,j,k,i,iElem) *   FV_dx_XI_L(j,k,i,iElem) &
           + gradUeta (iVarPrim,i,k,j,iElem) *  FV_dx_ETA_R(i,k,j,iElem)
       UCalc_FV(i*2+1,j*2+1,k*2  ,iElem_FV,iVarCalc) = UPrim(iVarPrim,i,j,k,iElem) &
           + gradUxi  (iVarPrim,j,k,i,iElem) *   FV_dx_XI_R(j,k,i,iElem) &
           + gradUeta (iVarPrim,i,k,j,iElem) *  FV_dx_ETA_R(i,k,j,iElem)
-#if PP_dim == 3      
-      UCalc_FV(i*2  ,j*2  ,k*2  ,iElem_FV,iVarCalc) = UCalc_FV(i*2  ,j*2  ,k*2  ,iElem_FV,iVarCalc)  & 
+#if PP_dim == 3
+      UCalc_FV(i*2  ,j*2  ,k*2  ,iElem_FV,iVarCalc) = UCalc_FV(i*2  ,j*2  ,k*2  ,iElem_FV,iVarCalc)  &
           - gradUzeta(iVarPrim,i,j,k,iElem) * FV_dx_ZETA_L(i,j,k,iElem)
-      UCalc_FV(i*2+1,j*2  ,k*2  ,iElem_FV,iVarCalc) = UCalc_FV(i*2+1,j*2  ,k*2  ,iElem_FV,iVarCalc)  & 
+      UCalc_FV(i*2+1,j*2  ,k*2  ,iElem_FV,iVarCalc) = UCalc_FV(i*2+1,j*2  ,k*2  ,iElem_FV,iVarCalc)  &
           - gradUzeta(iVarPrim,i,j,k,iElem) * FV_dx_ZETA_L(i,j,k,iElem)
-      UCalc_FV(i*2  ,j*2+1,k*2  ,iElem_FV,iVarCalc) = UCalc_FV(i*2  ,j*2+1,k*2  ,iElem_FV,iVarCalc)  & 
+      UCalc_FV(i*2  ,j*2+1,k*2  ,iElem_FV,iVarCalc) = UCalc_FV(i*2  ,j*2+1,k*2  ,iElem_FV,iVarCalc)  &
           - gradUzeta(iVarPrim,i,j,k,iElem) * FV_dx_ZETA_L(i,j,k,iElem)
-      UCalc_FV(i*2+1,j*2+1,k*2  ,iElem_FV,iVarCalc) = UCalc_FV(i*2+1,j*2+1,k*2  ,iElem_FV,iVarCalc)  & 
+      UCalc_FV(i*2+1,j*2+1,k*2  ,iElem_FV,iVarCalc) = UCalc_FV(i*2+1,j*2+1,k*2  ,iElem_FV,iVarCalc)  &
           - gradUzeta(iVarPrim,i,j,k,iElem) * FV_dx_ZETA_L(i,j,k,iElem)
 
       UCalc_FV(i*2  ,j*2  ,k*2+1,iElem_FV,iVarCalc) = UPrim(iVarPrim,i,j,k,iElem)  &
@@ -330,7 +330,7 @@ DO iElem_FV=1,nElems_FV
           + gradUxi  (iVarPrim,j,k,i,iElem) *   FV_dx_XI_R(j,k,i,iElem) &
           + gradUeta (iVarPrim,i,k,j,iElem) *  FV_dx_ETA_R(i,k,j,iElem) &
           + gradUzeta(iVarPrim,i,j,k,iElem) * FV_dx_ZETA_R(i,j,k,iElem)
-#endif      
+#endif
     END DO
   END DO; END DO; END DO
 END DO ! iElem_FV
@@ -344,7 +344,7 @@ IF (PRESENT(gradUx_calc).AND.PRESENT(gradUy_calc).AND.PRESENT(gradUz_calc)) THEN
          gradUx_calc(iVar,i*2:i*2+1, j*2:j*2+1, k*2:k*2+1*(PP_dim-2), iElem_FV) = gradUx(iVar,i,j,k,iElem)
          gradUy_calc(iVar,i*2:i*2+1, j*2:j*2+1, k*2:k*2+1*(PP_dim-2), iElem_FV) = gradUy(iVar,i,j,k,iElem)
          gradUz_calc(iVar,i*2:i*2+1, j*2:j*2+1, k*2:k*2+1*(PP_dim-2), iElem_FV) = gradUz(iVar,i,j,k,iElem)
-      END DO 
+      END DO
     END DO; END DO; END DO! i,j,k=0,PP_N
   END DO
 END IF
@@ -356,7 +356,7 @@ END SUBROUTINE ConvertToVisu_FV_Reconstruct
 #endif /* FV_ENABLED */
 
 !===================================================================================================================================
-!> This routine will read all variables that are not conservative or derived quantities and convert the ones that should be 
+!> This routine will read all variables that are not conservative or derived quantities and convert the ones that should be
 !> visualized to the visu grid.
 !> These variables include the additional data from the ElemData and FieldData datasetes as well as other datasets that are
 !> present in the HDF5 file. The variables will be named DATASETNAME:VARIABLENAME if a attribute VarNames_DATASETNAME exist
@@ -367,7 +367,7 @@ END SUBROUTINE ConvertToVisu_FV_Reconstruct
 !> The addtional variables will always be sorted AFTER the conservative or derived quantities.
 !> If surface visualization is needed, the quantities will simply be prolonged to the surfaces.
 !===================================================================================================================================
-SUBROUTINE ConvertToVisu_GenericData(statefile) 
+SUBROUTINE ConvertToVisu_GenericData(statefile)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Visu_Vars
@@ -385,7 +385,7 @@ USE MOD_Mappings           ,ONLY: buildMappings
 USE MOD_Visu_Avg2D         ,ONLY: Average2D,BuildVandermonds_Avg2D
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=255),INTENT(IN)  :: statefile   !< HDF5 state file
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -456,7 +456,7 @@ DO iVar=nVarDep+1,nVarAll
         nSizeZ = nSize
 #else
         nSizeZ = 1
-#endif        
+#endif
         SDEALLOCATE(DataSetVarNames)
         CALL GetVarNames("VarNames_"//TRIM(DatasetName),DatasetVarNames,varnamesExist)
       END IF
@@ -483,12 +483,12 @@ DO iVar=nVarDep+1,nVarAll
           ! Allocate array and read dataset
           SDEALLOCATE(ElemData)
           ALLOCATE(ElemData(nVal,nElems))
-          CALL ReadArray(TRIM(DatasetName),2,(/nVal,nElems/),offsetElem,2,RealArray=ElemData)  
+          CALL ReadArray(TRIM(DatasetName),2,(/nVal,nElems/),offsetElem,2,RealArray=ElemData)
         CASE(5) ! Pointwise data
           ! Allocate array and read dataset
           SDEALLOCATE(FieldData)
           ALLOCATE(FieldData(nVal,nSize,nSize,nSizeZ,nElems))
-          CALL ReadArray(TRIM(DatasetName),5,(/nVal,nSize,nSize,nSizeZ,nElems/),offsetElem,5,RealArray=FieldData)  
+          CALL ReadArray(TRIM(DatasetName),5,(/nVal,nSize,nSize,nSizeZ,nElems/),offsetElem,5,RealArray=FieldData)
           ! Get Vandermonde matrix used to convert to the visu grid
           SDEALLOCATE(Vdm_DG_Visu)
           ALLOCATE(Vdm_DG_Visu(0:NVisu,0:nSize-1))
@@ -571,7 +571,7 @@ DO iVar=nVarDep+1,nVarAll
         END IF
       END SELECT
 
-      !-------------------------------- Surface Visualization ---------------------! 
+      !-------------------------------- Surface Visualization ---------------------!
       IF (doSurfVisu) THEN
         ! Get index of visu array that we should write to
         iVarVisu= mapAllVarsToSurfVisuVars(iVar)
@@ -581,10 +581,10 @@ DO iVar=nVarDep+1,nVarAll
           DO iElem_DG = 1,nElems_DG                         ! iterate over all DG visu elements
             iElem = mapDGElemsToAllElems(iElem_DG)          ! get global element index
 #if PP_dim == 3
-            DO locSide=1,6 
-#else              
-            DO locSide=2,5 
-#endif              
+            DO locSide=1,6
+#else
+            DO locSide=2,5
+#endif
               iSide = ElemToSide(E2S_SIDE_ID,locSide,iElem) ! get global side index
               IF (iSide.LE.nBCSides) THEN                   ! check if BC side
                 iSide_DG = mapAllBCSidesToDGVisuBCSides(iSide)  ! get DG visu side index
@@ -597,9 +597,9 @@ DO iVar=nVarDep+1,nVarAll
           DO iElem_FV = 1,nElems_FV                         ! iterate over all FV visu elements
             iElem = mapFVElemsToAllElems(iElem_FV)          ! get global element index
 #if PP_dim == 3
-            DO locSide=1,6 
+            DO locSide=1,6
 #else
-            DO locSide=2,5 
+            DO locSide=2,5
 #endif
               iSide = ElemToSide(E2S_SIDE_ID,locSide,iElem) ! get global side index
               IF (iSide.LE.nBCSides) THEN                   ! check if BC side
@@ -625,9 +625,9 @@ DO iVar=nVarDep+1,nVarAll
           DO iElem_DG = 1,nElems_DG                         ! iterate over all DG visu elements
             iElem = mapDGElemsToAllElems(iElem_DG)          ! get global element index
 #if PP_dim == 3
-            DO locSide=1,6 
+            DO locSide=1,6
 #else
-            DO locSide=2,5 
+            DO locSide=2,5
 #endif
               iSide = ElemToSide(E2S_SIDE_ID,locSide,iElem) ! get global side index
               IF (iSide.LE.nBCSides) THEN                   ! check if BC side
@@ -659,9 +659,9 @@ DO iVar=nVarDep+1,nVarAll
             DO iElem_FV = 1,nElems_FV                         ! iterate over all FV visu elements
               iElem = mapFVElemsToAllElems(iElem_FV)          ! get global element index
 #if PP_dim == 3
-            DO locSide=1,6 
+            DO locSide=1,6
 #else
-            DO locSide=2,5 
+            DO locSide=2,5
 #endif
                 iSide = ElemToSide(E2S_SIDE_ID,locSide,iElem) ! get global side index
                 IF (iSide.LE.nBCSides) THEN                   ! check if BC side
