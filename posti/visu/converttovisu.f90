@@ -86,9 +86,9 @@ REAL,ALLOCATABLE   :: Vdm_NCalc_NVisu(:,:)                  ! Vandermonde from s
 !===================================================================================================================================
 SWRITE(*,*) "[DG] convert to visu grid"
 
-! compute UVisu_DG 
+! compute UVisu_DG
 ALLOCATE(Vdm_NCalc_NVisu(0:NVisu,0:NCalc))
-CALL GetVandermonde(NCalc,NodeTypeVisuPosti,NVisu,NodeTypeVisuPosti,Vdm_NCalc_NVisu,modal=.FALSE.)
+CALL GetVandermonde(NCalc,NodeType,NVisu,NodeTypeVisuPosti,Vdm_NCalc_NVisu,modal=.FALSE.)
 
 ! convert DG solution to UVisu_DG
 SDEALLOCATE(UVisu_DG)

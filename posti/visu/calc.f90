@@ -553,12 +553,12 @@ REAL,INTENT(IN)       :: UIn(nVar,0:NlocIn,0:NlocIn,0:PP_NlocInZ,nElems)
 REAL,INTENT(OUT)      :: UOut(0:NlocOut,0:NlocOut,0:PP_NlocOutZ,nElems_calc,nVarCalc)
 INTEGER,INTENT(INOUT) :: maskCalc(nVarDep)
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 INTEGER               :: iVarOut,iVarIn
 INTEGER               :: iElem,iElem_calc
 REAL                  :: Vdm_NIn_NOut(0:NlocOut,0:NlocIn)
 !==================================================================================================================================
-CALL GetVandermonde(NlocIn,NodeType,NLocOut,NodeTypeVisuPosti,Vdm_NIn_NOut,modal=.FALSE.)
+CALL GetVandermonde(NlocIn,NodeType,NLocOut,NodeType,Vdm_NIn_NOut,modal=.FALSE.)
 ! Copy exisiting variables from solution array
 DO iVarOut=1,nVarDep ! iterate over all out variables
   IF (mapDepToCalc(iVarOut).LT.1) CYCLE ! check if variable must be calculated
