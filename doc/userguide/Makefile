@@ -19,12 +19,12 @@ all: userguide
 	@echo '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
 
 userguide:
-	pandoc $(SRC)  -o userguide.pdf --toc -s -N -V documentclass=scrreprt --filter pandoc-citeproc --from markdown+implicit_figures --bibliography userguide.bib --listings --template=template.tex --variable version=1.0 
+	pandoc $(SRC)   -o userguide.pdf -s -N --filter pandoc-citeproc --from markdown+implicit_figures --bibliography userguide.bib --listings --template=template.tex
 
 # utility targets
 
 tests:
-	pandoc tests.md -o test.pdf --toc -s -N -V documentclass=scrreprt --filter pandoc-citeproc --from markdown+implicit_figures --bibliography userguide.bib --listings --template=template.tex --variable version=1.0
+	pandoc tests.md -o test.pdf      -s -N --filter pandoc-citeproc --from markdown+implicit_figures --bibliography userguide.bib --listings --template=template.tex
 
 .PHONY: userguide
 

@@ -1,8 +1,19 @@
-% FLEXI Project Documentation
-% Numerics Research Group,
-  Institute for Aerodynamics and Gas Dynamics
-  University of Stuttgart, Germany
-% \today
+---
+title: FLEXI Project Documentation
+author: 
+  - Numerics Research Group
+  - Institute for Aerodynamics and Gas Dynamics
+  - University of Stuttgart, Germany
+date: \today
+documentclass: scrreprt
+lang: en-US
+papersize: a4
+colorlinks: yes
+toc: yes
+header-includes:
+  - \input{header}
+
+---
 
 \hypertarget{introduction}{}
 
