@@ -12,5 +12,5 @@ bin/*
 ini/*
 lib/*
 share/*
-build*
+build/*
 ctags.txt
