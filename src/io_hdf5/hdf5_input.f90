@@ -59,7 +59,7 @@ INTERFACE GetVarnames
   MODULE PROCEDURE GetVarnames
 END INTERFACE
 
-PUBLIC :: File_ID,HSize,nDims        ! Variables from MOD_IO_HDF5 that need to be public
+PUBLIC :: Plist_File_ID,File_ID,HSize,nDims        ! Variables from MOD_IO_HDF5 that need to be public
 PUBLIC :: OpenDataFile,CloseDataFile ! Subroutines from MOD_IO_HDF5 that need to be public
 PUBLIC :: ISVALIDHDF5FILE,ISVALIDMESHFILE,GetDataSize,GetAttributeSize,GetDataProps,GetNextFileName
 PUBLIC :: ReadArray,ReadAttribute
@@ -475,6 +475,7 @@ CHARACTER(LEN=255),DIMENSION(PRODUCT(nVal)),OPTIONAL,INTENT(OUT),TARGET :: StrAr
 INTEGER(HID_T)                 :: DSet_ID,Type_ID,MemSpace,FileSpace,PList_ID
 INTEGER(HSIZE_T)               :: Offset(Rank),Dimsf(Rank)
 TYPE(C_PTR)                    :: buf
+INTEGER(HID_T)                 :: driver
 !==================================================================================================================================
 LOGWRITE(*,'(A,I1.1,A,A,A)')'    READ ',Rank,'D ARRAY "',TRIM(ArrayName),'"'
 Dimsf=nVal
@@ -494,7 +495,8 @@ CALL H5SSELECT_HYPERSLAB_F(FileSpace, H5S_SELECT_SET_F, Offset, Dimsf, iError)
 CALL H5PCREATE_F(H5P_DATASET_XFER_F, PList_ID, iError)
 #if USE_MPI
 ! Set property list to collective dataset read
-CALL H5PSET_DXPL_MPIO_F(PList_ID, H5FD_MPIO_COLLECTIVE_F, iError)
+CALL H5PGET_DRIVER_F(Plist_File_ID,driver,iError)
+IF(driver.EQ.H5FD_MPIO_F) CALL H5PSET_DXPL_MPIO_F(PList_ID, H5FD_MPIO_COLLECTIVE_F, iError)
 #endif
 
 IF(PRESENT(RealArray)) Type_ID=H5T_NATIVE_DOUBLE
