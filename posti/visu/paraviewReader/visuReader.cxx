@@ -271,8 +271,6 @@ int visuReader::RequestData(
    if (outInfoSurface->Has(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP())) {
       // get the requested time
       double requestedTimeValue = outInfoSurface->Get(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP());
-      timestepToLoad = FindClosestTimeStep(requestedTimeValue);
-      FileToLoad = FileNames[timestepToLoad];
    }
 
 

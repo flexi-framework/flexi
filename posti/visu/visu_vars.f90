@@ -40,7 +40,8 @@ INTEGER                           :: NVisu_old = -1              !< saves previo
 INTEGER                           :: NVisu_FV                    !< number of output points for FV elements (always == 2*(PP_N+1))
 INTEGER                           :: NCalc_FV                    !< number of calculation points for FV elements (NVisu_FV or PP_N)
 INTEGER                           :: nVar_State                  !< number of variables in the state file 
-INTEGER                           :: nVar_State_old = -1         !< saves previous nVar_State_old
+INTEGER                           :: nVar_State_old = -1         !< saves previous nVar_State
+INTEGER                           :: nState_old = -1             !< saves previous PP_N
 INTEGER                           :: nElems_DG                   !< number of DG elements in state
 INTEGER                           :: nElems_FV                   !< number of FV elements in state
 LOGICAL                           :: withDGOperator              !< flag indicating if call of 'DGTimeDerivative' is required
