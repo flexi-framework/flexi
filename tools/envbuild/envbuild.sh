@@ -44,19 +44,19 @@ BUILD_FFTW=(       0        0       0          0            0       )
 
 # Path and version of HDF5
 HDF5_NAME=hdf5
-HDF5_VERSION=1.10.0-patch1
-HDF5_DLPATH='http://www.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.0-patch1/src/hdf5-1.10.0-patch1.tar.bz2'
+HDF5_VERSION=1.10.1
+HDF5_DLPATH='http://www.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.1/src/hdf5-1.10.1.tar.bz2'
 
 # Path and version of MPI
 # Note: MPI versions as of 1.10.3+ require autotools (aclocal) 1.15+ to be installed
 OPENMPI_NAME=openmpi
-OPENMPI_VERSION=2.1.0
-OPENMPI_DLPATH='https://www.open-mpi.org/software/ompi/v2.1/downloads/openmpi-2.1.0.tar.bz2'
+OPENMPI_VERSION=2.1.2
+OPENMPI_DLPATH='https://www.open-mpi.org/software/ompi/v2.1/downloads/openmpi-2.1.2.tar.bz2'
 
 # Path and version of CMake
 CMAKE_NAME=cmake
-CMAKE_VERSION=3.8.0
-CMAKE_DLPATH='https://cmake.org/files/v3.8/cmake-3.8.0.tar.gz'
+CMAKE_VERSION=3.10.2
+CMAKE_DLPATH='https://cmake.org/files/v3.10/cmake-3.10.2.tar.gz'
 
 # Path and version of Paraview
 PARAVIEW_NAME=paraview
@@ -65,8 +65,8 @@ PARAVIEW_DLPATH='http://www.paraview.org/paraview-downloads/download.php?submit=
 
 # Path and version of FFTW
 FFTW_NAME=fftw
-FFTW_VERSION=3.3.6-pl2
-FFTW_DLPATH='http://www.fftw.org/fftw-3.3.6-pl2.tar.gz'
+FFTW_VERSION=3.3.7
+FFTW_DLPATH='http://www.fftw.org/fftw-3.3.7.tar.gz'
 
 # Compiler specific subfolders for environment modules (i.e. compiler vendor + version )
 GNU_PREFIX=gnu
