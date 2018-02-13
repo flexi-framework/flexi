@@ -192,7 +192,7 @@ int visuReader::RequestInformation(vtkInformation *,
  * Attention: For multiple files, we assume a timeseries.
  */
 void visuReader::AddFileName(const char* filename_in) {
-   SWRITE("AddFileName");
+   SWRITE("AddFileName "<<filename_in);
    // append the filename to the list of filenames
    this->FileNames.push_back(filename_in);
    this->Modified();
@@ -200,7 +200,7 @@ void visuReader::AddFileName(const char* filename_in) {
    // open the file with HDF5 and read the attribute 'time' to build a timeseries  
    hid_t state = H5Fopen(filename_in, H5F_ACC_RDONLY, H5P_DEFAULT);
    hid_t attr = H5Aopen(state, "Time", H5P_DEFAULT);
-   SWRITE("attribute Time"<<attr);
+   SWRITE("attribute Time "<<attr);
    double time; 
    if (attr > -1){
       hid_t attr_type = H5Aget_type( attr );
@@ -266,8 +266,9 @@ int visuReader::RequestData(
       // get the requested time
       double requestedTimeValue = outInfoVolume->Get(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP());
       timestepToLoad = FindClosestTimeStep(requestedTimeValue);
-      FileToLoad = FileNames[timestepToLoad];
    }
+   FileToLoad = FileNames[timestepToLoad];
+   SWRITE("File to load "<<FileToLoad);
    if (outInfoSurface->Has(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP())) {
       // get the requested time
       double requestedTimeValue = outInfoSurface->Get(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP());
