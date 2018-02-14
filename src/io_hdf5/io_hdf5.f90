@@ -40,6 +40,7 @@ LOGICAL                  :: gatheredWrite       !< flag whether every process sh
                                                 !< on IO processes first
 LOGICAL                  :: output2D            !< Flag whether to use true 2D input/output or not
 INTEGER(HID_T)           :: File_ID             !< file which is currently opened
+INTEGER(HID_T)           :: Plist_File_ID       !< property list of file which is currently opened
 INTEGER(HSIZE_T),POINTER :: HSize(:)            !< HDF5 array size (temporary variable)
 INTEGER                  :: nDims               !< 
 INTEGER                  :: MPIInfo             !< hardware / storage specific / file system MPI parameters to pass to HDF5
@@ -189,7 +190,6 @@ INTEGER,INTENT(IN),OPTIONAL  :: communicatorOpt !< only MPI and single=F: option
 INTEGER,INTENT(IN),OPTIONAL  :: userblockSize   !< size of the file to be prepended to HDF5 file
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER(HID_T)                :: Plist_ID
 INTEGER(HSIZE_T)              :: userblockSize_loc, tmp, tmp2
 #if USE_MPI
 INTEGER                       :: comm
@@ -205,13 +205,13 @@ CALL H5OPEN_F(iError)
 
 ! Setup file access property list with parallel I/O access (MPI) or with default property list.
 IF(create)THEN
-  CALL H5PCREATE_F(H5P_FILE_CREATE_F, Plist_ID, iError)
+  CALL H5PCREATE_F(H5P_FILE_CREATE_F, Plist_File_ID, iError)
 ELSE
-  CALL H5PCREATE_F(H5P_FILE_ACCESS_F, Plist_ID, iError)
+  CALL H5PCREATE_F(H5P_FILE_ACCESS_F, Plist_File_ID, iError)
 END IF
 #if USE_MPI
 comm = MERGE(communicatorOpt,MPI_COMM_WORLD,PRESENT(communicatorOpt))
-IF(.NOT.single)  CALL H5PSET_FAPL_MPIO_F(Plist_ID, comm, MPIInfo, iError)
+IF(.NOT.single)  CALL H5PSET_FAPL_MPIO_F(Plist_File_ID, comm, MPIInfo, iError)
 #endif /*USE_MPI*/
 
 ! Open the file collectively.
@@ -220,22 +220,21 @@ IF(create)THEN
     tmp = userblockSize_loc/512
     IF (MOD(userblockSize_loc,512).GT.0) tmp = tmp+1
     tmp2 = 512*2**CEILING(LOG(REAL(tmp))/LOG(2.))
-    CALL H5PSET_USERBLOCK_F(Plist_ID, tmp2, iError)
+    CALL H5PSET_USERBLOCK_F(Plist_File_ID, tmp2, iError)
   END IF
-  CALL H5FCREATE_F(TRIM(FileString), H5F_ACC_TRUNC_F, File_ID, iError, creation_prp = Plist_ID)
+  CALL H5FCREATE_F(TRIM(FileString), H5F_ACC_TRUNC_F, File_ID, iError, creation_prp = Plist_File_ID)
 ELSE
   IF(.NOT.FILEEXISTS(FileString)) CALL abort(__STAMP__,&
     'ERROR: Specified file '//TRIM(FileString)//' does not exist.')
   IF (readOnly) THEN
-    CALL H5FOPEN_F(  TRIM(FileString), H5F_ACC_RDONLY_F,  File_ID, iError, access_prp = Plist_ID)
+    CALL H5FOPEN_F(  TRIM(FileString), H5F_ACC_RDONLY_F,  File_ID, iError, access_prp = Plist_File_ID)
   ELSE 
-    CALL H5FOPEN_F(  TRIM(FileString), H5F_ACC_RDWR_F,  File_ID, iError, access_prp = Plist_ID)
+    CALL H5FOPEN_F(  TRIM(FileString), H5F_ACC_RDWR_F,  File_ID, iError, access_prp = Plist_File_ID)
   END IF
 END IF
 IF(iError.NE.0) CALL abort(__STAMP__,&
   'ERROR: Could not open or create file '//TRIM(FileString))
 
-CALL H5PCLOSE_F(Plist_ID, iError)
 LOGWRITE(*,*)'...DONE!'
 END SUBROUTINE OpenDataFile
 
@@ -255,6 +254,7 @@ IMPLICIT NONE
 !==================================================================================================================================
 LOGWRITE(*,'(A)')'  CLOSE HDF5 FILE...'
 ! Close file
+CALL H5PCLOSE_F(Plist_File_ID, iError)
 CALL H5FCLOSE_F(File_ID, iError)
 ! Close FORTRAN predefined datatypes.
 CALL H5CLOSE_F(iError)

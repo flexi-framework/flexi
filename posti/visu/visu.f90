@@ -287,6 +287,8 @@ IF (changedStateFile.OR.changedMeshFile) THEN
   END IF
   CALL ReadAttribute(File_ID,'Project_Name',1,StrScalar =ProjectName)
   CALL ReadAttribute(File_ID,'Time',        1,RealScalar=OutputTime)
+  ! If the polynomial degree is changing, we could need new mesh mappings. 
+  IF (NState_old.NE.PP_N) changedMeshFile = .TRUE.
 END IF
 
 CALL CloseDataFile()
@@ -609,6 +611,7 @@ withDGOperator_old    = withDGOperator
 DGonly_old            = DGonly
 Avg2D_old             = Avg2D
 NodeTypeVisuPosti_old = NodeTypeVisuPosti
+NState_old            = PP_N
 
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(*,*) "Visu finished for state file: ", TRIM(statefile)
@@ -635,6 +638,7 @@ NodeTypeVisuPosti_old = ""
 NVisu     = -1
 NVisu_old = -1
 nVar_State_old = -1
+NState_old = -1
 withDGOperator_old = .FALSE.
 hasFV_Elems = .FALSE.
 

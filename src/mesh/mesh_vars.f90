@@ -36,10 +36,8 @@ INTEGER           :: NGeoRef                   !< polynomial degree of reference
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 REAL,ALLOCATABLE,TARGET :: NodeCoords(:,:,:,:,:) !< XYZ positions (equidistant,NGeo) of element interpolation points from meshfile
-REAL,ALLOCATABLE,TARGET :: Elem_xGP(:,:,:,:,:)          !< XYZ positions (first index 1:3) of the volume Gauss Point
-REAL,ALLOCATABLE :: Elem_xGPO(:,:,:,:,:)         !< XYZ positions (first index 1:3) of the volume Gauss Point
-REAL,ALLOCATABLE :: Face_xGP(:,:,:,:,:)          !< XYZ positions (first index 1:3) of the Face Gauss Point
-REAL,ALLOCATABLE :: Face_xGPO(:,:,:,:,:)         !< XYZ positions (first index 1:3) of the Face Gauss Point
+REAL,ALLOCATABLE,TARGET :: Elem_xGP(:,:,:,:,:)   !< XYZ positions (first index 1:3) of the volume Gauss Point
+REAL,ALLOCATABLE        :: Face_xGP(:,:,:,:,:)   !< XYZ positions (first index 1:3) of the Face Gauss Point
 !----------------------------------------------------------------------------------------------------------------------------------
 ! MORTAR DATA FOR NON-CONFORMING MESHES ORIGINATING FROM AN OCTREE BASIS (ONLY ALLOCATED IF isMortarMesh=.TRUE.!!!)
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -60,9 +58,6 @@ REAL,ALLOCATABLE :: dXCL_N(:,:,:,:,:,:)          !< geometry Jacobian matrix on 
 REAL,ALLOCATABLE :: Metrics_fTilde(:,:,:,:,:,:)  !< Metrics for transforming the fluxes f (1:3,0:N,0:N,0:N,nElems,0:FV)
 REAL,ALLOCATABLE :: Metrics_gTilde(:,:,:,:,:,:)  !< Metrics for transforming the fluxes g (1:3,0:N,0:N,0:N,nElems,0:FV)
 REAL,ALLOCATABLE :: Metrics_hTilde(:,:,:,:,:,:)  !< Metrics for transforming the fluxes h (1:3,0:N,0:N,0:N,nElems,0:FV)
-REAL,ALLOCATABLE :: Metrics_fTildeO(:,:,:,:,:)   !< Metrics for transforming the fluxes f for overintegration (1:3,0:M,0:M,0:M,nElems)
-REAL,ALLOCATABLE :: Metrics_gTildeO(:,:,:,:,:)   !< Metrics for transforming the fluxes g for overintegration (1:3,0:M,0:M,0:M,nElems)
-REAL,ALLOCATABLE :: Metrics_hTildeO(:,:,:,:,:)   !< Metrics for transforming the fluxes h for overintegration (1:3,0:M,0:M,0:M,nElems)
 REAL,ALLOCATABLE :: detJac_Ref(:,:,:,:,:)        !< determinant of the mesh Jacobian for each Gauss point at degree 3*NGeo
 REAL,ALLOCATABLE :: sJ(:,:,:,:,:)                !< inverse of Jacobian determinent for each Gauss Point at degree N
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -73,10 +68,6 @@ REAL,ALLOCATABLE :: TangVec1(:,:,:,:,:)          !< tangential vector 1 for each
 REAL,ALLOCATABLE :: TangVec2(:,:,:,:,:)          !< tangential vector 3 for each side (1:3,0:N,0:N,nSides)
 REAL,ALLOCATABLE :: SurfElem(:,:,:,:)            !< surface area for each side        (    0:N,0:N,nSides)
 REAL,ALLOCATABLE :: Ja_Face(:,:,:,:,:)           !< surface  metrics for each side
-REAL,ALLOCATABLE :: NormVecO(:,:,:,:,:)          !< normal vector for each side       for overintegration (1:3,0:M,0:M,nSides)
-REAL,ALLOCATABLE :: TangVec1O(:,:,:,:,:)         !< tangential vector 1 for each side for overintegration (1:3,0:M,0:M,nSides)
-REAL,ALLOCATABLE :: TangVec2O(:,:,:,:,:)         !< tangential vector 3 for each side for overintegration (1:3,0:M,0:M,nSides)
-REAL,ALLOCATABLE :: SurfElemO(:,:,:,:)           !< surface area for each side        for overintegration (    0:M,0:M,nSides)
 !----------------------------------------------------------------------------------------------------------------------------------
 INTEGER,ALLOCATABLE :: ElemInfo(:,:)           !< array containing the node and side connectivity of the elments as stored in the
                                                !< mesh file

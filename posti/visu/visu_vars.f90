@@ -42,7 +42,8 @@ INTEGER                           :: NCalc_FV                    !< number of ca
 INTEGER                           :: NCalc                       !< Different polynomial degree to do calculations on
 INTEGER                           :: NCalc_old                   !< Different polynomial degree to do calculations on
 INTEGER                           :: nVar_State                  !< number of variables in the state file 
-INTEGER                           :: nVar_State_old = -1         !< saves previous nVar_State_old
+INTEGER                           :: nVar_State_old = -1         !< saves previous nVar_State
+INTEGER                           :: nState_old = -1             !< saves previous PP_N
 INTEGER                           :: nElems_DG                   !< number of DG elements in state
 INTEGER                           :: nElems_FV                   !< number of FV elements in state
 LOGICAL                           :: withDGOperator              !< flag indicating if call of 'DGTimeDerivative' is required

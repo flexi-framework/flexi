@@ -30,9 +30,6 @@ REAL,ALLOCATABLE :: gradUz_slave(:,:,:,:)         !< slave side gradients in x-d
 REAL,ALLOCATABLE :: gradUx_master(:,:,:,:)        !< master side gradients in x-dir
 REAL,ALLOCATABLE :: gradUy_master(:,:,:,:)        !< master side gradients in x-dir
 REAL,ALLOCATABLE :: gradUz_master(:,:,:,:)        !< master side gradients in x-dir
-REAL,ALLOCATABLE :: gradUx_masterO(:,:,:,:)       !< master side gradients in x-dir at degree NOver
-REAL,ALLOCATABLE :: gradUy_masterO(:,:,:,:)       !< master side gradients in y-dir at degree NOver
-REAL,ALLOCATABLE :: gradUz_masterO(:,:,:,:)       !< master side gradients in z-dir at degree NOver
 ! the lifted grad
 REAL,ALLOCATABLE :: gradUx(:,:,:,:,:)             !< gradients in x-dir at degree N
 REAL,ALLOCATABLE :: gradUy(:,:,:,:,:)             !< gradients in y-dir at degree N

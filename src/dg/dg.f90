@@ -69,20 +69,16 @@ SUBROUTINE InitDG()
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_DG_Vars
-USE MOD_Overintegration_Vars, ONLY: NOver,VdmNOverToN,xGPO,wGPO,OverintegrationType
 USE MOD_Interpolation_Vars,   ONLY: xGP,wGP,L_minus,L_plus
 USE MOD_Interpolation_Vars,   ONLY: InterpolationInitIsDone
 USE MOD_Restart_Vars,         ONLY: DoRestart,RestartInitIsDone
-USE MOD_Mesh_Vars,            ONLY: nElems,nSides,Elem_xGP,Elem_xGPO,MeshInitIsDone
+USE MOD_Mesh_Vars,            ONLY: nElems,nSides,Elem_xGP,MeshInitIsDone
 USE MOD_ChangeBasisByDim,     ONLY: ChangeBasisVolume
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL,ALLOCATABLE :: L_minusO(:),L_plusO(:),L_HatMinusO(:),L_HatPlusO(:),D_O(:,:),D_TO(:,:),D_HatO(:,:) !< dummy variables for 
-                                                                                                       !< selective overintegration
-INTEGER          :: iElem
 !==================================================================================================================================
 
 ! Check if all the necessary initialization is done before
@@ -128,53 +124,9 @@ Flux_slave=0.
 nDOFElem=(PP_N+1)**PP_dim
 nTotalU=PP_nVar*nDOFElem*nElems
 
-! Allocate variables for selective Overintegration of advective fluxes
-IF(OverintegrationType.EQ.SELECTIVE)THEN 
-  ALLOCATE(L_minusO(0:NOver)) ! dummy variable
-  ALLOCATE(L_plusO(0:NOver))  ! dummy variable
-  ! The following call of InitDGBasis just creates D_Hat_TO. All other outputs of this
-  ! routine are thrown away.
-  CALL InitDGBasis(NOver,xGPO,wGPO,L_minusO,L_plusO,D_O,D_TO,D_HatO,D_Hat_TO,L_HatMinusO,L_HatPlusO)
-  ! Deallocate dummy variables
-  SDEALLOCATE(D_O)
-  SDEALLOCATE(D_TO)
-  SDEALLOCATE(D_HatO)
-  SDEALLOCATE(L_MinusO)
-  SDEALLOCATE(L_PlusO)
-  SDEALLOCATE(L_HatMinusO)
-  SDEALLOCATE(L_HatPlusO)
-
-  ALLOCATE(UO    (PP_nVar    ,0:NOver,0:NOver,0:PP_NOverZ,nElems))
-  ALLOCATE(UPrimO(PP_nVarPrim,0:NOver,0:NOver,0:PP_NOverZ,nElems))
-  ALLOCATE(UtO   (PP_nVar    ,0:NOver,0:NOver,0:PP_NOverZ,nElems))
-  UO=0.
-  UPrimO=0.
-  UtO=0.
-  nDOFElemO=(NOver+1)**PP_dim ! variable for performance tricks
-
-  ALLOCATE(U_masterO(PP_nVar,0:NOver,0:PP_NOverZ,1:nSides))
-  ALLOCATE(U_slaveO( PP_nVar,0:NOver,0:PP_NOverZ,1:nSides))
-  ALLOCATE(UPrim_masterO(PP_nVarPrim,0:NOver,0:PP_NOverZ,1:nSides))
-  ALLOCATE(UPrim_slaveO( PP_nVarPrim,0:NOver,0:PP_NOverZ,1:nSides))
-  ALLOCATE(FluxO(    PP_nVar,0:NOver,0:PP_NOverZ,1:nSides))
-  U_masterO=0.
-  U_slaveO=0.
-  UPrim_masterO=0.
-  UPrim_slaveO=0.
-  FluxO=0.
-END IF
-
 ! Fill the solution vector U with the initial solution by interpolation, if not filled through restart already
 IF(.NOT.DoRestart)THEN
-  IF(OverintegrationType.EQ.SELECTIVE) THEN 
-    ! Interpolate onto the NOver grid, then project onto N
-    CALL FillIni(NOver,Elem_xGPO,UO)
-    DO iElem=1,nElems
-      CALL ChangeBasisVolume(PP_nVar,NOver,PP_N,VdmNOverToN,UO(:,:,:,:,iElem),U(:,:,:,:,iElem))
-    END DO ! iElem
-  ELSE
-    CALL FillIni(PP_N,Elem_xGP,U)
-  END IF
+  CALL FillIni(PP_N,Elem_xGP,U)
 END IF
 
 DGInitIsDone=.TRUE.
@@ -264,8 +216,7 @@ SUBROUTINE DGTimeDerivative_weakForm(t)
 USE MOD_Globals
 USE MOD_Preproc
 USE MOD_Vector
-USE MOD_DG_Vars             ,ONLY: Ut,UtO,U,U_slave,U_master,UO,UPrimO,Flux_master,Flux_slave,L_HatPlus,L_HatMinus
-USE MOD_DG_Vars             ,ONLY: D_Hat_TO,nDOFElemO
+USE MOD_DG_Vars             ,ONLY: Ut,U,U_slave,U_master,Flux_master,Flux_slave,L_HatPlus,L_HatMinus
 USE MOD_DG_Vars             ,ONLY: UPrim,UPrim_master,UPrim_slave
 USE MOD_DG_Vars,             ONLY: nTotalU
 USE MOD_VolInt
@@ -274,13 +225,11 @@ USE MOD_ProlongToFaceCons   ,ONLY: ProlongToFaceCons
 USE MOD_FillFlux            ,ONLY: FillFlux
 USE MOD_ApplyJacobianCons   ,ONLY: ApplyJacobianCons
 USE MOD_Interpolation_Vars  ,ONLY: L_Minus,L_Plus
-USE MOD_Overintegration_Vars,ONLY: NOver,VdmNOverToN,VdmNToNOver,OverintegrationType
+USE MOD_Overintegration_Vars,ONLY: OverintegrationType
 USE MOD_Overintegration,     ONLY: Overintegration
 USE MOD_ChangeBasisByDim    ,ONLY: ChangeBasisVolume
 USE MOD_Testcase            ,ONLY: TestcaseSource
 USE MOD_Testcase_Vars       ,ONLY: doTCSource
-USE MOD_Mesh_Vars           ,ONLY: nElems
-USE MOD_Mesh_Vars,           ONLY: Metrics_fTildeO,Metrics_gTildeO,Metrics_hTildeO
 USE MOD_Equation            ,ONLY: GetPrimitiveStateSurface,GetConservativeStateSurface
 USE MOD_EOS                 ,ONLY: ConsToPrim
 USE MOD_Exactfunc           ,ONLY: CalcSource
@@ -330,27 +279,23 @@ IMPLICIT NONE
 REAL,INTENT(IN)                 :: t                      !< Current time
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER           :: iElem
-REAL              :: UtBuf(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 !==================================================================================================================================
 
 ! -----------------------------------------------------------------------------
-! MAIN STEPS        []=FV only,  {}=selective overintegration only
+! MAIN STEPS        []=FV only
 ! -----------------------------------------------------------------------------
 ! 0.  Convert volume solution to primitive 
 ! 1.  Prolong to face (fill U_master/slave)
-!{2.} Prepare terms for advective volume integral (DG selective only)
-! 3.  ConsToPrim of face data (U_master/slave)
-![4.] Second order reconstruction for FV 
-! 5.  Lifting
-! 6.  Volume integral (DG only)
-![7.] FV volume integral
-! 8.  IF EDDYVISCOSITY: Prolong muSGS to face and send from slave to master
-! 9.  Fill flux (Riemann solver) + surface integral
-!{10.}Add advective volume (UtO) integral to Ut for selective overintegration
-! 11. Ut = -Ut
-! 12. Sponge and source terms
-! 13. Perform overintegration and apply Jacobian
+! 2.  ConsToPrim of face data (U_master/slave)
+![3.] Second order reconstruction for FV 
+! 4.  Lifting
+! 5.  Volume integral (DG only)
+![6.] FV volume integral
+! 7.  IF EDDYVISCOSITY: Prolong muSGS to face and send from slave to master
+! 8.  Fill flux (Riemann solver) + surface integral
+! 9.  Ut = -Ut
+! 10. Sponge and source terms
+! 11. Perform overintegration and apply Jacobian
 ! -----------------------------------------------------------------------------
 
 ! Nullify arrays
@@ -421,15 +366,6 @@ CALL U_MortarPrim(FV_multi_master,FV_multi_slave,doMPiSides=.FALSE.)
 #endif
 #endif
 
-!{2.}Prepare data for selective volume integral (for DG elements only)
-!    (latency hiding before finishing communication of side data in 1.4) )
-IF(OverintegrationType.EQ.SELECTIVE)THEN
-  DO iElem=1,nElems
-    CALL ChangeBasisVolume(PP_nVar,PP_N,NOver,VdmNToNOver,U(:,:,:,:,iElem),UO(:,:,:,:,iElem))
-  END DO ! iElem
-  CALL ConsToPrim(NOver,UPrimO,UO)
-END IF
-
 #if USE_MPI
 ! 1.4) complete send / receive of side data from step 1.
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_U)        ! U_slave: slave -> master 
@@ -441,7 +377,7 @@ CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_FV_gradU) ! FV_multi_slave: sla
 #endif
 #endif
 
-! 3. Convert face data from conservative to primitive variables 
+! 2. Convert face data from conservative to primitive variables 
 !    Attention: For FV with 2nd order reconstruction U_master/slave and therewith UPrim_master/slave are still only 1st order
 ! TODO: Linadv?
 CALL GetPrimitiveStateSurface(U_master,U_slave,UPrim_master,UPrim_slave)
@@ -451,49 +387,49 @@ FV_Elems_Sum = FV_Elems_master + 2*FV_Elems_slave
 #endif
 
 #if FV_ENABLED && FV_RECONSTRUCT
-! [ 4. Second order reconstruction (computation of slopes) ]
+! [ 3. Second order reconstruction (computation of slopes) ]
 !-------------------------------------------------------
 ! General idea at the faces: With the slave data from step 1.) reconstruct the slope over the interface on the master side
 !    and send it back to the slave
 ! Steps:
-! * (steps 4.2 and 4.4 are done for all master MPI sides first and then for all remaining sides)
-! 4.1) Convert FV_multi_master/slave (only the DG parts of it) from DG nodes to FV nodes (equidistant)
-! 4.2) Reconstruct the slope over the interface (and send it from master to slave)
-! 4.3) On the slave side combine the slopes from the 2/4 small mortar sides to the big mortar side (when communication finished)
-! 4.4) Calculate slopes at boundary conditions 
-! 4.5) Use the slope to prolongate the solution to UPrim_master/slave (ATTENTION: U_master/slave are only 1st order!)
-! 4.6) Calculate the inner (volume) slopes
+! * (steps 3.2 and 3.4 are done for all master MPI sides first and then for all remaining sides)
+! 3.1) Convert FV_multi_master/slave (only the DG parts of it) from DG nodes to FV nodes (equidistant)
+! 3.2) Reconstruct the slope over the interface (and send it from master to slave)
+! 3.3) On the slave side combine the slopes from the 2/4 small mortar sides to the big mortar side (when communication finished)
+! 3.4) Calculate slopes at boundary conditions 
+! 3.5) Use the slope to prolongate the solution to UPrim_master/slave (ATTENTION: U_master/slave are only 1st order!)
+! 3.6) Calculate the inner (volume) slopes
 
-! 4.1)
+! 3.1)
 CALL FV_DGtoFV(PP_nVarPrim,FV_multi_master,FV_multi_slave)
 
 #if USE_MPI
-! 4.2)
+! 3.2)
 CALL StartReceiveMPIData(FV_surf_gradU,DataSizeSidePrim,1,nSides,MPIRequest_Flux(:,SEND),SendID=1)
                                                          ! Receive YOUR / FV_surf_gradU: master -> slave
 CALL FV_SurfCalcGradients(UPrim_master,UPrim_slave,FV_multi_master,FV_multi_slave,&
     FV_surf_gradU,doMPISides=.TRUE.)
 CALL StartSendMPIData(   FV_surf_gradU,DataSizeSidePrim,1,nSides,MPIRequest_Flux(:,RECV),SendID=1)
                                                          ! Send MINE  /   FV_surf_gradU: master -> slave
-! 4.4)
+! 3.4)
 CALL FV_ProlongToDGFace(UPrim_master,UPrim_slave,FV_multi_master,FV_multi_slave,FV_surf_gradU,doMPISides=.TRUE.) 
 #endif /*USE_MPI*/
 
 ! Calculate FV-Gradients over inner Sides
-! 4.2)
+! 3.2)
 CALL FV_SurfCalcGradients(UPrim_master,UPrim_slave,FV_multi_master,FV_multi_slave,&
     FV_surf_gradU,doMPISides=.FALSE.)
-! 4.3) 
+! 3.3) 
 CALL FV_gradU_mortar(FV_surf_gradU,doMPISides=.FALSE.)
 #if USE_MPI
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Flux)   ! FV_surf_gradU: master -> slave
 CALL FV_gradU_mortar(FV_surf_gradU,doMPISides=.TRUE.)
 #endif
-! 4.4)
+! 3.4)
 CALL FV_SurfCalcGradients_BC(UPrim_master,FV_surf_gradU,t)
-! 4.5) 
+! 3.5) 
 CALL FV_ProlongToDGFace(UPrim_master,UPrim_slave,FV_multi_master,FV_multi_slave,FV_surf_gradU,doMPISides=.FALSE.)
-! 4.6) 
+! 3.6) 
 CALL FV_CalcGradients(UPrim,FV_surf_gradU,gradUxi,gradUeta,gradUzeta &
 #if PARABOLIC    
     ,gradUxi_central,gradUeta_central,gradUzeta_central &
@@ -502,30 +438,22 @@ CALL FV_CalcGradients(UPrim,FV_surf_gradU,gradUxi,gradUeta,gradUzeta &
 #endif /* FV_ENABLED && FV_RECONSTRUCT */
 
 #if PARABOLIC
-! 5. Lifting 
+! 4. Lifting 
 ! Compute the gradients using Lifting (BR1 scheme,BR2 scheme ...)
 ! The communication of the gradients is initialized within the lifting routines
 CALL Lifting(UPrim,UPrim_master,UPrim_slave,t)
 #endif /*PARABOLIC*/
 
-! 6. Compute volume integral contribution and add to Ut
-!    Compute separately in case of selective overintegration
-IF(OverintegrationType.NE.SELECTIVE)THEN
-  CALL VolInt(Ut)
-ELSE
-  CALL VolIntAdv(NOver,nDOFElemO,D_Hat_TO,Metrics_fTildeO,Metrics_gTildeO,Metrics_hTildeO,UO,UPrimO,UtO)
-#if PARABOLIC
-  CALL VolIntVisc(Ut)
-#endif
-END IF
+! 5. Compute volume integral contribution and add to Ut
+CALL VolInt(Ut)
 
 #if FV_ENABLED
-! [ 7. Volume integral (advective and viscous) for all FV elements ]
+! [ 6. Volume integral (advective and viscous) for all FV elements ]
 CALL FV_VolInt(UPrim,Ut)
 #endif
 
 #if EDDYVISCOSITY && PARABOLIC
-! 8.  Prolong muSGS to face and send from slave to master
+! 7.  Prolong muSGS to face and send from slave to master
 IF(CurrentStage.EQ.1) THEN
 #if USE_MPI
   CALL StartReceiveMPIData(muSGS_slave,DataSizeSideSGS,1,nSides,MPIRequest_SGS(:,RECV),SendID=2)
@@ -546,7 +474,7 @@ CALL FinishExchangeMPIData(6*nNbProcs,MPIRequest_gradU) ! gradUx,y,z: slave -> m
 #endif /*PARABOLIC && USE_MPI*/
 
 
-! 9. Fill flux and Surface integral
+! 8. Fill flux and Surface integral
 ! General idea: U_master/slave and gradUx,y,z_master/slave are filled and can be used to compute the Riemann solver
 !               and viscous flux at the faces. This is done for the MPI master sides first, to start communication early
 !               and then for all other sides.
@@ -554,15 +482,15 @@ CALL FinishExchangeMPIData(6*nNbProcs,MPIRequest_gradU) ! gradUx,y,z: slave -> m
 !               at mixed interfaces must be converted from DG to FV representation.
 !               After communication from master to slave the flux can be integrated over the faces.
 ! Steps:
-! * (step 9.2 is done for all MPI master sides first and then for all remaining sides)
-! * (step 9.3 and 9.4 are done for all other sides first and then for the MPI master sides) 
-![9.1)] Change basis of DG solution and gradients at mixed FV/DG interfaces to the FV grid
-![9.2)] Convert primitive face solution to conservative at FV faces
-! 9.3)  Fill flux (Riemann solver + viscous flux)
-! 9.4)  Combine fluxes from the 2/4 small mortar sides to the flux on the big mortar side (when communication finished)
-! 9.5)  Compute surface integral 
+! * (step 8.2 is done for all MPI master sides first and then for all remaining sides)
+! * (step 8.3 and 8.4 are done for all other sides first and then for the MPI master sides) 
+![8.1)] Change basis of DG solution and gradients at mixed FV/DG interfaces to the FV grid
+![8.2)] Convert primitive face solution to conservative at FV faces
+! 8.3)  Fill flux (Riemann solver + viscous flux)
+! 8.4)  Combine fluxes from the 2/4 small mortar sides to the flux on the big mortar side (when communication finished)
+! 8.5)  Compute surface integral 
 #if FV_ENABLED
-! 9.1) 
+! 8.1) 
 #if PARABOLIC
 CALL FV_DGtoFV(PP_nVarPrim,gradUx_master,gradUx_slave)
 CALL FV_DGtoFV(PP_nVarPrim,gradUy_master,gradUy_slave)
@@ -570,12 +498,12 @@ CALL FV_DGtoFV(PP_nVarPrim,gradUz_master,gradUz_slave)
 #endif
 CALL FV_DGtoFV(PP_nVar    ,U_master     ,U_slave     )
 CALL FV_DGtoFV(PP_nVarPrim,UPrim_master ,UPrim_slave )
-! 9.2) 
+! 8.2) 
 CALL GetConservativeStateSurface(UPrim_master, UPrim_slave, U_master, U_slave, FV_Elems_master, FV_Elems_slave, 1)
 #endif
 
 #if USE_MPI
-! 9.3)
+! 8.3)
 CALL StartReceiveMPIData(Flux_slave, DataSizeSide, 1,nSides,MPIRequest_Flux( :,SEND),SendID=1)
                                                                               ! Receive YOUR / Flux_slave: master -> slave
 CALL FillFlux(t,Flux_master,Flux_slave,U_master,U_slave,UPrim_master,UPrim_slave,doMPISides=.TRUE.)
@@ -583,44 +511,36 @@ CALL StartSendMPIData(   Flux_slave, DataSizeSide, 1,nSides,MPIRequest_Flux( :,R
                                                                               ! Send MINE  /   Flux_slave: master -> slave
 #endif /*USE_MPI*/
 
-! 9.3)
+! 8.3)
 CALL FillFlux(t,Flux_master,Flux_slave,U_master,U_slave,UPrim_master,UPrim_slave,doMPISides=.FALSE.)
-! 9.4)
+! 8.4)
 CALL Flux_MortarCons(Flux_master,Flux_slave,doMPISides=.FALSE.,weak=.TRUE.)
-! 9.5)
+! 8.5)
 CALL SurfIntCons(PP_N,Flux_master,Flux_slave,Ut,.FALSE.,L_HatMinus,L_hatPlus)
 
 #if USE_MPI
-! 9.4)
+! 8.4)
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Flux )                                        ! Flux_slave: master -> slave 
 CALL Flux_MortarCons(Flux_master,Flux_slave,doMPISides=.TRUE.,weak=.TRUE.)
-! 9.5)
+! 8.5)
 CALL SurfIntCons(PP_N,Flux_master,Flux_slave,Ut,.TRUE.,L_HatMinus,L_HatPlus)
 #endif /*USE_MPI*/
 
-! 10. Add advection volume integral to residual for selective overintegration
-IF(OverintegrationType.EQ.SELECTIVE)THEN
-  DO iElem=1,nElems
-    CALL ChangeBasisVolume(PP_nVar,NOver,PP_N,VdmNOverToN,UtO(:,:,:,:,iElem),UtBuf)
-    Ut(:,:,:,:,iElem)=Ut(:,:,:,:,iElem)+UtBuf
-  END DO ! iElem
-END IF
-
-! 11. Swap to right sign :) 
+! 9. Swap to right sign :) 
 Ut=-Ut
 
-! 11. Compute source terms and sponge (in physical space, conversion to reference space inside routines)
+! 10. Compute source terms and sponge (in physical space, conversion to reference space inside routines)
 IF(doCalcSource) CALL CalcSource(Ut,t)
 IF(doSponge)     CALL Sponge(Ut)
 IF(doTCSource)   CALL TestcaseSource(Ut)
 
-! 13. Perform overintegration and apply Jacobian 
+! 11. Perform overintegration and apply Jacobian 
 ! Perform overintegration (projection filtering type overintegration)
 IF(OverintegrationType.GT.0) THEN
   CALL Overintegration(Ut)
 END IF
 ! Apply Jacobian (for OverintegrationType==CUTOFFCONS this is already done within the Overintegration, but for DG only)
-IF (OverintegrationType.EQ.CUTOFFCONS) THEN 
+IF (OverintegrationType.EQ.CUTOFFCONS) THEN
 #if FV_ENABLED
   CALL ApplyJacobianCons(Ut,toPhysical=.TRUE.,FVE=1)
 #endif
@@ -688,21 +608,13 @@ SDEALLOCATE(L_HatMinus)
 SDEALLOCATE(L_HatPlus)
 SDEALLOCATE(U)
 SDEALLOCATE(Ut)
-SDEALLOCATE(UO)
-SDEALLOCATE(UtO)
 SDEALLOCATE(U_master)
 SDEALLOCATE(U_slave)
 SDEALLOCATE(Flux_master)
 SDEALLOCATE(Flux_slave)
-SDEALLOCATE(U_masterO)
-SDEALLOCATE(U_slaveO)
-SDEALLOCATE(FluxO)
 SDEALLOCATE(UPrim)
 SDEALLOCATE(UPrim_master)
 SDEALLOCATE(UPrim_slave)
-SDEALLOCATE(UPrimO)
-SDEALLOCATE(UPrim_masterO)
-SDEALLOCATE(UPrim_slaveO)
 DGInitIsDone = .FALSE.
 END SUBROUTINE FinalizeDG
 

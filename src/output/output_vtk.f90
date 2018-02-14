@@ -494,8 +494,10 @@ SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='NO')"   WRITE ",dim,"D DATA TO VTX XML BI
 ! set the sizes of the arrays
 values_out%len = nVal*(NVisu+1)**dim*nElems
 
-! assign data to the arrays (no copy!!!)
-values_out%data = C_LOC(values(0,0,0,1,1))
+IF (nVal*(NVisu+1)**dim*nElems.GT.0) THEN
+  ! assign data to the arrays (no copy!!!)
+  values_out%data = C_LOC(values(0,0,0,1,1))
+END IF
 
 SWRITE(UNIT_stdOut,'(A)')" Done!"
 END SUBROUTINE WriteDataToVTK_array
@@ -525,15 +527,17 @@ INTEGER                      :: i,iVar
 ! copy varnames
 ALLOCATE(VarNames_loc(255,nVarVisu))
 varnames_out%len  = nVarVisu*255
-varnames_out%data = C_LOC(VarNames_loc(1,1))
-
-DO iVar=1,nVarTotal
-  IF (mapVisu(iVar).GT.0) THEN
-    DO i=1,255
-      VarNames_loc(i,mapVisu(iVar)) = VarNamesTotal(iVar)(i:i)
-    END DO
-  END IF
-END DO
+IF (nVarVisu.GT.0) THEN
+  varnames_out%data = C_LOC(VarNames_loc(1,1))
+  
+  DO iVar=1,nVarTotal
+    IF (mapVisu(iVar).GT.0) THEN
+      DO i=1,255
+        VarNames_loc(i,mapVisu(iVar)) = VarNamesTotal(iVar)(i:i)
+      END DO
+    END IF
+  END DO
+END IF
 
 END SUBROUTINE WriteVarnamesToVTK_array
 

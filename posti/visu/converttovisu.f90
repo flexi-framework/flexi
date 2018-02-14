@@ -172,16 +172,16 @@ DO iVar=1,nVarDep
   iVarVisu = mapAllVarsToVisuVars(iVar)
   IF (iVarVisu.GT.0) THEN
     SWRITE(*,*) "    ", TRIM(VarnamesAll(iVar))
-    iVarCalc = mapDepToCalc_FV(iVar)
-    DO iElem = 1,nElems_FV
+    iVarCalc = mapDepToCalc_FV(iVar) 
 #if FV_RECONSTRUCT
-      UVisu_FV(:,:,:,:,iVarVisu) = UCalc_FV(:,:,:,:,iVarCalc)
-#else
+    UVisu_FV(:,:,:,:,iVarVisu) = UCalc_FV(:,:,:,:,iVarCalc)
+#else      
+    DO iElem = 1,nElems_FV
       DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
         UVisu_FV(i*2:i*2+1, j*2:j*2+1, k*2:k*2+1*(PP_dim-2),iElem,iVarVisu) = UCalc_FV(i,j,k,iElem,iVarCalc)
       END DO; END DO; END DO
-#endif
     END DO
+#endif
   END IF
 END DO
 
@@ -195,11 +195,17 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Visu_Vars         ,ONLY: nVarDep,VarnamesAll,mapDepToCalc_FV
 USE MOD_Visu_Vars         ,ONLY: mapAllVarsToSurfVisuVars,USurfVisu_FV,USurfCalc_FV
+#if !(FV_RECONSTRUCT)
+USE MOD_Visu_Vars         ,ONLY: nBCSidesVisu_FV
+#endif
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: iVar,iVarVisu
+#if !(FV_RECONSTRUCT)
+INTEGER            :: iSide,p,q
+#endif
 !===================================================================================================================================
 SWRITE(*,*) "[FV/FVRE] convert to surface visu grid"
 ! compute UVisu_FV
@@ -207,7 +213,16 @@ DO iVar=1,nVarDep
   iVarVisu = mapAllVarsToSurfVisuVars(iVar)
   IF (iVarVisu.GT.0) THEN
     SWRITE(*,*) "    ", TRIM(VarnamesAll(iVar))
+#if FV_RECONSTRUCT
     USurfVisu_FV(:,:,0,:,iVarVisu) = USurfCalc_FV(:,:,:,mapDepToCalc_FV(iVar))
+#else      
+    ! No reconstruction: Calculations are done directly on the subcells (PP_N+1), visualization is done on 2*(PP_N+1)-1 points
+    DO iSide = 1,nBCSidesVisu_FV
+      DO q=0,PP_NZ; DO p=0,PP_N
+        USurfVisu_FV(p*2:p*2+1, q*2:q*2+1*(PP_dim-2),0,iSide,iVarVisu) = USurfCalc_FV(p,q,iSide,mapDepToCalc_FV(iVar))
+      END DO; END DO
+    END DO
+#endif
   END IF
 END DO
 

@@ -120,11 +120,9 @@
 ! overintegration
 #define CUTOFF 1
 #define CUTOFFCONS 2
-#define SELECTIVE 3
 
 !2d functionality
 #if (PP_dim==2)
-#define PP_NOverZ 0
 #define PP_NlocZ 0
 #define PP_NlocInZ 0
 #define PP_NlocOutZ 0
@@ -138,7 +136,6 @@
 #define PP_NCalcZ 0
 #define PP_NCalcZ_FV 0
 #else
-#define PP_NOverZ NOver
 #define PP_NlocZ Nloc
 #define PP_NlocInZ NlocIn
 #define PP_NlocOutZ NlocOut

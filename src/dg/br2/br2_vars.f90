@@ -30,9 +30,6 @@ REAL,ALLOCATABLE :: gradUz_slave(:,:,:,:)          !< slave side gradients in z-
 REAL,ALLOCATABLE :: gradUx_master(:,:,:,:)         !< master side gradients in x-dir
 REAL,ALLOCATABLE :: gradUy_master(:,:,:,:)         !< master side gradients in y-dir
 REAL,ALLOCATABLE :: gradUz_master(:,:,:,:)         !< master side gradients in z-dir
-REAL,ALLOCATABLE :: gradUx_masterO(:,:,:,:)        !< master side gradients in x-dir at degree NOver
-REAL,ALLOCATABLE :: gradUy_masterO(:,:,:,:)        !< master side gradients in y-dir at degree NOver
-REAL,ALLOCATABLE :: gradUz_masterO(:,:,:,:)        !< master side gradients in z-dir at degree NOver
 REAL,ALLOCATABLE :: FluxX(:,:,:,:)                !< gradient flux in x-dir
 REAL,ALLOCATABLE :: FluxY(:,:,:,:)                !< gradient flux in y-dir
 REAL,ALLOCATABLE :: FluxZ(:,:,:,:)                !< gradient flux in z-dir
