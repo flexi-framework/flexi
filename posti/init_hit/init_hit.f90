@@ -29,7 +29,6 @@ USE MOD_FFT,                     ONLY: InitFFT,Rogallo,FinalizeFFT
 USE MOD_Mesh,                    ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
 USE MOD_Mesh_Vars,               ONLY: nElems,Elem_xGP
 USE MOD_Output,                  ONLY: DefineParametersOutput,InitOutput
-USE MOD_Output_Vars,             ONLY: ProjectName,NOut
 USE MOD_Interpolation,           ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
 USE MOD_IO_HDF5,                 ONLY: DefineParametersIO_HDF5,InitIOHDF5
 USE MOD_MPI,                     ONLY: DefineParametersMPI,InitMPI
@@ -96,14 +95,13 @@ END IF
 CALL prms%read_options(Args(1))
 
 ! Readin Parameters 
-NOut          = GETINT('NOut')
 N_FFT         = GETINT('N_FFT')
 InitSpec      = GETINT('InitSpec')
 MeshFile      = GETSTR('MeshFile')
-ProjectName   = GETSTR('ProjectName')
 
 CALL InitIOHDF5()
 CALL InitInterpolation()
+CALL InitOutput()
 #if USE_MPI
 CALL InitMPIvars()
 #endif
