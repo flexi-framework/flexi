@@ -93,6 +93,7 @@ IF ((nArgs.LT.1).OR.(.NOT.(STRICMP(GetFileExtension(Args(1)),'ini')))) THEN
 END IF
 ! Parse parameters
 CALL prms%read_options(Args(1))
+ParameterFile = Args(1)
 
 ! Readin Parameters 
 N_FFT         = GETINT('N_FFT')
