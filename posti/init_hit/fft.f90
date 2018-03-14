@@ -139,6 +139,7 @@ USE FFTW3
 ! LOCAL VARIABLES
 INTEGER :: i,j,k
 REAL    :: Theta1,Theta2,Phi,kw,kw2,kk(1:3),r,Nenner,a1,a2,a3,a4,a0,E11,specscale,k0,kp,u0
+REAL    :: a,e,kn,ke,nu,l
 COMPLEX :: alpha,beta
 REAL,ALLOCATABLE:: E_P(:)
 INTEGER,ALLOCATABLE:: kperShell(:)
@@ -188,6 +189,17 @@ SELECT CASE(InitSpec)
    DO i=1,kmax+3
      E_p(i)= i**(-5/3.) 
   END DO
+ CASE(5) ! karman-pao
+   a = 1.453 !scaling const Bailly 99
+   u0= 0.3 !rms of u
+   ke= 2.!related to peak of E wavenumber, w ~~ sqrt(12/5) ke
+   nu= 5e-4
+   L=  0.746834/ke
+   e=  u0**3/L
+   kn= e**0.25*nu**(-0.75) !kolmogorov wavenumber e^1/4 nu^3/4 : zB nu=5e-4; e~~u0/L L~~0.746834/ke ke=2. u0=1. e=
+   DO i=1,kmax+3
+     E_p(i) = a * u0**2/ke *(i/ke)**4/(1+(i/ke)**2)**(17/6.)*EXP(-2*(i/kn)**2.)
+   END DO
 END SELECT
 
 

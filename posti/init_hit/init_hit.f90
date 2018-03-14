@@ -126,6 +126,8 @@ DO q=1,PP_nVar! fft of old solution to fourier modes
 END DO
 U_FFT=U_FFT/(N_FFT**3)
 
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,j,k,iw,jw,kw,iElem,q,wavenumber,basis)
+!$OMP DO
 DO iElem=1,nElems
   U_k=0.
   DO k=0,N
@@ -168,6 +170,8 @@ DO iElem=1,nElems
 
   U(:,:,:,:,iElem) = 2*REAL(Uloc_c)
 END DO !iElem
+!$OMP END DO
+!$OMP END PARALLEL
 
 
 ! Write State-File to initialize HIT
