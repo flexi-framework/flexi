@@ -110,9 +110,17 @@ CALL InitMPIvars()
 
 CALL InitMesh(meshMode=2,MeshFile_IN=MeshFile)
 
-CALL InitFFT()  
-do iter =1,1
-CALL Rogallo()
+IF(MPIRoot) THEN
+  CALL InitFFT()  
+END IF
+
+IF (.NOT.(ALLOCATED(U_FFT))) ALLOCATE(U_FFT(1:PP_nVar,1:Endw(1),1:Endw(2),1:Endw(3)))
+
+
+do iter =1,10000
+IF(MPIRoot) THEN
+  CALL Rogallo()
+END IF
 
 IF (.NOT.(ALLOCATED(Uloc_c))) ALLOCATE(Uloc_c(1:nVar,0:N,0:N,0:N))
 IF (.NOT.(ALLOCATED(U_k))) ALLOCATE(U_k(1:nVar,1:endw(1),1:endw(2),0:N))
@@ -122,11 +130,19 @@ IF (.NOT.(ALLOCATED(U))) ALLOCATE(U(1:nVar,0:N,0:N,0:N,nElems))
 U = 0.
 U_FFT = 0.
 Uloc_c = 0.
-DO q=1,PP_nVar! fft of old solution to fourier modes
-  CALL DFFTW_PLAN_DFT_R2C_3D(plan,N_FFT,N_FFT,N_FFT,Uloc(q,:,:,:),U_FFT(q,:,:,:),FFTW_ESTIMATE)
-  CALL DFFTW_Execute(plan,Uloc(q,:,:,:),U_FFT(q,:,:,:))
-END DO
-U_FFT=U_FFT/(N_FFT**3)
+IF(MPIRoot) THEN
+  DO q=1,PP_nVar! fft of old solution to fourier modes
+    CALL DFFTW_PLAN_DFT_R2C_3D(plan,N_FFT,N_FFT,N_FFT,Uloc(q,:,:,:),U_FFT(q,:,:,:),FFTW_ESTIMATE)
+    CALL DFFTW_Execute(plan,Uloc(q,:,:,:),U_FFT(q,:,:,:))
+  END DO
+  U_FFT=U_FFT/(N_FFT**3)
+END IF
+
+#if USE_MPI
+SWRITE(*,*)'BROADCAST U WAVE'
+CALL MPI_BCAST(U_FFT,PP_nVar*endW(1)*endW(2)*endW(3),MPI_COMPLEX,0,MPI_COMM_WORLD,iError)
+SWRITE(*,*)'BROADCAST U WAVE DONE'
+#endif
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,j,k,iw,jw,kw,iElem,q,wavenumber,basis,u_k,u_j,uloc_c)
 !$OMP DO

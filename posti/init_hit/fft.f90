@@ -113,7 +113,6 @@ END DO
 
 
 ! Prepare local Array for result of Forward FFT (so for wavespace results) 
-ALLOCATE(U_FFT(1:PP_nVar,1:Endw(1),1:Endw(2),1:Endw(3)))
 ALLOCATE(F_vv(1:3,1:3,1:endw(1),1:endw(2),1:endw(3)))
 ALLOCATE(fhat(1:3,1:endw(1),1:endw(2),1:endw(3)))
 ALLOCATE(phat(1:endw(1),1:endw(2),1:endw(3)))
@@ -254,6 +253,10 @@ Uloc(1,:,:,:) = 1.0
 ! compute rho*v
 Uloc(2:4,:,:,:)= 1.0*Uloc(2:4,:,:,:)
 CALL Compute_incompressible_P()
+#if USE_MPI
+CALL MPI_BCAST(endw,3,MPI_INTEGER,0,MPI_COMM_WORLD,iError)
+#endif
+
 END SUBROUTINE Rogallo
 
 
