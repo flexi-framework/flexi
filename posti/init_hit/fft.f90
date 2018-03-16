@@ -253,9 +253,6 @@ Uloc(1,:,:,:) = 1.0
 ! compute rho*v
 Uloc(2:4,:,:,:)= 1.0*Uloc(2:4,:,:,:)
 CALL Compute_incompressible_P()
-#if USE_MPI
-CALL MPI_BCAST(endw,3,MPI_INTEGER,0,MPI_COMM_WORLD,iError)
-#endif
 
 END SUBROUTINE Rogallo
 
@@ -340,6 +337,7 @@ END SUBROUTINE Compute_incompressible_P
 !===================================================================================================================================
 SUBROUTINE FinalizeFFT()
 ! MODULES                                                                                                                          !
+USE MOD_Globals
 USE MOD_Init_Hit_Vars
 USE MOD_DG_Vars,       ONLY: U
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -349,16 +347,19 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 !===================================================================================================================================
 SDEALLOCATE(U)
-SDEALLOCATE(Uloc)
 SDEALLOCATE(Uloc_c)
 SDEALLOCATE(U_j)
 SDEALLOCATE(U_k)
 SDEALLOCATE(U_FFT)
-SDEALLOCATE(LocalXYZ)
-SDEALLOCATE(LocalK)
-SDEALLOCATE(phat)
-SDEALLOCATE(fhat)
-SDEALLOCATE(F_vv)
+IF(MPIRoot) THEN
+  SDEALLOCATE(Uloc)
+  SDEALLOCATE(LocalXYZ)
+  SDEALLOCATE(LocalK)
+  SDEALLOCATE(phat)
+  SDEALLOCATE(fhat)
+  SDEALLOCATE(F_vv)
+END IF
+
 END SUBROUTINE FinalizeFFT
 
 END MODULE MOD_FFT

@@ -28,17 +28,17 @@ USE MOD_Interpolation_Vars      ,ONLY: NodeType
 USE MOD_FFT,                     ONLY: InitFFT,Rogallo,FinalizeFFT                     
 USE MOD_Mesh,                    ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
 USE MOD_Mesh_Vars,               ONLY: nElems,Elem_xGP
-USE MOD_Output,                  ONLY: DefineParametersOutput,InitOutput
-USE MOD_Output_Vars,              ONLY: ProjectName
+USE MOD_Output,                  ONLY: DefineParametersOutput,InitOutput,FinalizeOutput
+USE MOD_Output_Vars,             ONLY: ProjectName
 USE MOD_Interpolation,           ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
 USE MOD_IO_HDF5,                 ONLY: DefineParametersIO_HDF5,InitIOHDF5
-USE MOD_MPI,                     ONLY: DefineParametersMPI,InitMPI
 USE MOD_HDF5_Output,             ONLY: WriteState
 USE MOD_Commandline_Arguments
 USE MOD_StringTools,             ONLY: STRICMP,GetFileExtension
 USE MOD_ReadInTools
 USE FFTW3
 #if USE_MPI
+USE MOD_MPI,                     ONLY: DefineParametersMPI,InitMPI
 USE MOD_MPI,                     ONLY: InitMPIvars,FinalizeMPI
 #endif
 ! IMPLICIT VARIABLE HANDLING
@@ -53,8 +53,8 @@ COMPLEX                            :: basis
 
 CALL SetStackSizeUnlimited()
 CALL InitMPI()
-IF (nProcessors.GT.1) CALL CollectiveStop(__STAMP__, &
-     'This tool is designed only for single execution!')
+!IF (nProcessors.GT.1) CALL CollectiveStop(__STAMP__, &
+!     'This tool is designed only for single execution!')
 
 CALL ParseCommandlineArguments()
 
@@ -113,11 +113,13 @@ CALL InitMesh(meshMode=2,MeshFile_IN=MeshFile)
 IF(MPIRoot) THEN
   CALL InitFFT()  
 END IF
-
+#if USE_MPI
+CALL MPI_BCAST(endw,3,MPI_INTEGER,0,MPI_COMM_WORLD,iError)
+#endif
 IF (.NOT.(ALLOCATED(U_FFT))) ALLOCATE(U_FFT(1:PP_nVar,1:Endw(1),1:Endw(2),1:Endw(3)))
 
 
-do iter =1,10000
+do iter =1,1
 IF(MPIRoot) THEN
   CALL Rogallo()
 END IF
@@ -144,8 +146,6 @@ CALL MPI_BCAST(U_FFT,PP_nVar*endW(1)*endW(2)*endW(3),MPI_COMPLEX,0,MPI_COMM_WORL
 SWRITE(*,*)'BROADCAST U WAVE DONE'
 #endif
 
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,j,k,iw,jw,kw,iElem,q,wavenumber,basis,u_k,u_j,uloc_c)
-!$OMP DO
 DO iElem=1,nElems
   U_k=0.
   DO k=0,N
@@ -188,8 +188,6 @@ DO iElem=1,nElems
 
   U(:,:,:,:,iElem) = 2*REAL(Uloc_c)
 END DO !iElem
-!$OMP END DO
-!$OMP END PARALLEL
 
 
 ! Write State-File to initialize HIT
@@ -198,18 +196,21 @@ write(ProjectName,'(A,I5.5)')'FileTest',iter
 CALL WriteState(TRIM(MeshFile),Time,Time,.FALSE.)
 end DO
 
-
+CALL FinalizeParameters()
+CALL FinalizeInterpolation()
+CALL FinalizeOutput()
 CALL FinalizeMesh()
 CALL FinalizeFFT()
 #ifdef MPI
+CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
 CALL MPI_FINALIZE(iError)
-IF(iError .NE. 0) &
-    CALL abort(__STAMP__,'MPI finalize error',iError,999.)
+IF(iError .NE. 0) STOP 'MPI finalize error'
+CALL FinalizeMPI()
 #endif
 
-WRITE(UNIT_stdOut,'(132("="))')
-WRITE(UNIT_stdOut,'(A)') ' initHIT FINISHED! '
-WRITE(UNIT_stdOut,'(132("="))')
+SWRITE(UNIT_stdOut,'(132("="))')
+SWRITE(UNIT_stdOut,'(A)') ' initHIT FINISHED! '
+SWRITE(UNIT_stdOut,'(132("="))')
 
 END PROGRAM init_hit
 
