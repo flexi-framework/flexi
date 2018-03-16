@@ -278,9 +278,6 @@ REAL                 :: vv(1:3,1:3,1:N_FFT,1:N_FFT,1:N_FFT)
 REAL                 :: v(1:3,1:N_FFT,1:N_FFT,1:N_FFT)
 REAL                 :: p(1:N_FFT,1:N_FFT,1:N_FFT)
 INTEGER              :: i,j,k
-!COMPLEX, ALLOCATABLE :: F_vv(:,:,:,:,:)
-!COMPLEX, ALLOCATABLE :: fhat(:,:,:,:)
-!COMPLEX, ALLOCATABLE :: phat(:,:,:)
 !===================================================================================================================================
 sKappaM1=1/0.4 
 Kappa = 1.4 
