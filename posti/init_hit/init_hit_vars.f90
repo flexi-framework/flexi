@@ -36,6 +36,9 @@ COMPLEX,ALLOCATABLE   :: U_k(:,:,:,:)              !<
 COMPLEX,ALLOCATABLE   :: U_FFT(:,:,:,:)            !<
 REAL,ALLOCATABLE      :: LocalXYZ(:,:,:,:)         !<
 REAL,ALLOCATABLE      :: LocalK(:,:,:,:)           !<
+COMPLEX, ALLOCATABLE :: F_vv(:,:,:,:,:)
+COMPLEX, ALLOCATABLE :: fhat(:,:,:,:)
+COMPLEX, ALLOCATABLE :: phat(:,:,:)
 INTEGER               :: kmax                      !< 
 REAL                  :: Pi                        !< 
 REAL                  :: TwoPi                     !< 

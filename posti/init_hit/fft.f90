@@ -114,6 +114,9 @@ END DO
 
 ! Prepare local Array for result of Forward FFT (so for wavespace results) 
 ALLOCATE(U_FFT(1:PP_nVar,1:Endw(1),1:Endw(2),1:Endw(3)))
+ALLOCATE(F_vv(1:3,1:3,1:endw(1),1:endw(2),1:endw(3)))
+ALLOCATE(fhat(1:3,1:endw(1),1:endw(2),1:endw(3)))
+ALLOCATE(phat(1:endw(1),1:endw(2),1:endw(3)))
 GlobalMeshOffset(1:3)=0
 
 SWRITE(UNIT_stdOut,'(A)')' INIT BASIS DONE!'
@@ -260,7 +263,7 @@ SUBROUTINE Compute_incompressible_P
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
-USE MOD_Init_Hit_Vars,      ONLY: endw,localk,TwoPi,II,Uloc,N_FFT,plan,scalefactor
+USE MOD_Init_Hit_Vars,      ONLY: endw,localk,TwoPi,II,Uloc,N_FFT,plan,scalefactor,F_vv,fhat,phat
 USE FFTW3
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -275,17 +278,14 @@ REAL                 :: vv(1:3,1:3,1:N_FFT,1:N_FFT,1:N_FFT)
 REAL                 :: v(1:3,1:N_FFT,1:N_FFT,1:N_FFT)
 REAL                 :: p(1:N_FFT,1:N_FFT,1:N_FFT)
 INTEGER              :: i,j,k
-COMPLEX, ALLOCATABLE :: F_vv(:,:,:,:,:)
-COMPLEX, ALLOCATABLE :: fhat(:,:,:,:)
-COMPLEX, ALLOCATABLE :: phat(:,:,:)
+!COMPLEX, ALLOCATABLE :: F_vv(:,:,:,:,:)
+!COMPLEX, ALLOCATABLE :: fhat(:,:,:,:)
+!COMPLEX, ALLOCATABLE :: phat(:,:,:)
 !===================================================================================================================================
 sKappaM1=1/0.4 
 Kappa = 1.4 
 Mach = 0.1
 
-ALLOCATE(F_vv(1:3,1:3,1:endw(1),1:endw(2),1:endw(3)))
-ALLOCATE(fhat(1:3,1:endw(1),1:endw(2),1:endw(3)))
-ALLOCATE(phat(1:endw(1),1:endw(2),1:endw(3)))
 phat=0.;vmax=0.
 DO i=1,N_FFT; DO j=1,N_FFT; DO k=1,N_FFT
   V(1:3,i,j,k) = Uloc(2:4,i,j,k)/Uloc(1,i,j,k)
@@ -322,9 +322,6 @@ END DO; END DO; END DO! i,j,k=1,End(1,2,3)
 
 CALL DFFTW_PLAN_DFT_C2R_3D(plan,N_FFT,N_FFT,N_FFT,phat(:,:,:),p(:,:,:),FFTW_ESTIMATE)
 CALL DFFTW_Execute(plan,phat(:,:,:),p(:,:,:))
-DEALLOCATE(phat)
-DEALLOCATE(fhat)
-DEALLOCATE(F_vv)
 
 SWRITE(*,*) "Vmax in field is",vmax
 p0=1.*vmax**2/(Kappa*Mach**2)
@@ -359,6 +356,9 @@ SDEALLOCATE(U_k)
 SDEALLOCATE(U_FFT)
 SDEALLOCATE(LocalXYZ)
 SDEALLOCATE(LocalK)
+SDEALLOCATE(phat)
+SDEALLOCATE(fhat)
+SDEALLOCATE(F_vv)
 END SUBROUTINE FinalizeFFT
 
 END MODULE MOD_FFT

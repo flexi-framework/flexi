@@ -29,6 +29,7 @@ USE MOD_FFT,                     ONLY: InitFFT,Rogallo,FinalizeFFT
 USE MOD_Mesh,                    ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
 USE MOD_Mesh_Vars,               ONLY: nElems,Elem_xGP
 USE MOD_Output,                  ONLY: DefineParametersOutput,InitOutput
+USE MOD_Output_Vars,              ONLY: ProjectName
 USE MOD_Interpolation,           ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
 USE MOD_IO_HDF5,                 ONLY: DefineParametersIO_HDF5,InitIOHDF5
 USE MOD_MPI,                     ONLY: DefineParametersMPI,InitMPI
@@ -45,7 +46,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                            :: i,j,k,iw,jw,kw,iElem,q
-INTEGER                            :: nVar=5
+INTEGER                            :: nVar=5,iter
 REAL                               :: wavenumber,Time
 COMPLEX                            :: basis
 !===================================================================================================================================
@@ -110,6 +111,7 @@ CALL InitMPIvars()
 CALL InitMesh(meshMode=2,MeshFile_IN=MeshFile)
 
 CALL InitFFT()  
+do iter =1,1
 CALL Rogallo()
 
 IF (.NOT.(ALLOCATED(Uloc_c))) ALLOCATE(Uloc_c(1:nVar,0:N,0:N,0:N))
@@ -126,7 +128,7 @@ DO q=1,PP_nVar! fft of old solution to fourier modes
 END DO
 U_FFT=U_FFT/(N_FFT**3)
 
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,j,k,iw,jw,kw,iElem,q,wavenumber,basis)
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,j,k,iw,jw,kw,iElem,q,wavenumber,basis,u_k,u_j,uloc_c)
 !$OMP DO
 DO iElem=1,nElems
   U_k=0.
@@ -176,7 +178,9 @@ END DO !iElem
 
 ! Write State-File to initialize HIT
 Time=0.
+write(ProjectName,'(A,I5.5)')'FileTest',iter
 CALL WriteState(TRIM(MeshFile),Time,Time,.FALSE.)
+end DO
 
 
 CALL FinalizeMesh()
