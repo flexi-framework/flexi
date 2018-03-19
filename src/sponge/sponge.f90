@@ -64,7 +64,8 @@ IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Sponge")
 CALL prms%CreateLogicalOption('SpongeLayer',    "Turn on to use sponge regions for reducing reflections at boundaries.",'.FALSE.')
-CALL prms%CreateRealOption(   'damping',        "Damping factor of sponge (0..1).", '0.01')
+CALL prms%CreateRealOption(   'damping',        "Damping factor of sponge. U_t=U_t-damping*(U-U_base) in fully damped "//&
+                                                "regions.", '1.')
 CALL prms%CreateIntFromStringOption( 'SpongeShape',    "Set shape of sponge: (1) ramp : cartesian / vector-aligned, (2) "//&
                                                        " cylindrical", multiple=.TRUE.)
 CALL addStrListEntry('SpongeShape','ramp',       SPONGESHAPE_RAMP)
@@ -132,7 +133,7 @@ IF(.NOT.doSponge) RETURN
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT SPONGE...'
 
-damping   = GETREAL('damping','0.01')
+damping   = GETREAL('damping','1.')
 IF(damping .LE. 0.)  THEN
   doSponge = .FALSE.
   RETURN
