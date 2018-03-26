@@ -210,7 +210,11 @@ ELSE
   CALL H5PCREATE_F(H5P_FILE_ACCESS_F, Plist_File_ID, iError)
 END IF
 #if USE_MPI
-comm = MERGE(communicatorOpt,MPI_COMM_WORLD,PRESENT(communicatorOpt))
+IF (PRESENT(communicatorOpt)) THEN
+  comm = communicatorOpt
+ELSE
+  comm = MPI_COMM_WORLD
+END IF
 IF(.NOT.single)  CALL H5PSET_FAPL_MPIO_F(Plist_File_ID, comm, MPIInfo, iError)
 #endif /*USE_MPI*/
 
