@@ -12,8 +12,8 @@ build_gnu:
   tags:
     - withmodules-concurrent
   script:
-    - git clone git@gitlab.iag.uni-stuttgart.de:reggie/reggie.git
     - module load env/gnu; mkdir -p build_gnu ; cd build_gnu
+    - git clone git@gitlab.iag.uni-stuttgart.de:reggie/reggie.git
     - cmake .. -DFLEXI_BUILD_HDF5=OFF ; make -j all
   cache:
     key: "$CI_COMMIT_REF_SLUG-GNU"
@@ -26,8 +26,8 @@ build_intel:
   tags:
     - withmodules-concurrent
   script:
-    - git clone git@gitlab.iag.uni-stuttgart.de:reggie/reggie.git
     - module load env/intel; mkdir -p build_intel ; cd build_intel
+    - git clone git@gitlab.iag.uni-stuttgart.de:reggie/reggie.git
     - cmake .. -DFLEXI_BUILD_HDF5=OFF ; make -j all
   cache:
     key: "$CI_COMMIT_REF_SLUG-INTEL"
@@ -43,8 +43,9 @@ gnu:
   tags:
     - withmodules-concurrent
   script:
+    - git clone git@gitlab.iag.uni-stuttgart.de:reggie/reggie.git
     - module load env/gnu ; cd build_gnu
-    - python ../reggie/reggie.py ../regressioncheck/checks/run_basic/freestream_3D -e ./bin/flexi
+    - python ./reggie/reggie.py ../regressioncheck/checks/run_basic/freestream_3D -e ./bin/flexi
   cache:
     key: "$CI_COMMIT_REF_SLUG-GNU"
     paths:
@@ -57,7 +58,7 @@ intel:
     - withmodules-concurrent
   script:
     - module load env/intel ; cd build_intel
-    - python ../reggie/reggie.py ../regressioncheck/checks/run_basic/freestream_3D -e ./bin/flexi
+    - python ./reggie/reggie.py ../regressioncheck/checks/run_basic/freestream_3D -e ./bin/flexi
   cache:
     key: "$CI_COMMIT_REF_SLUG-INTEL"
     paths:
@@ -75,7 +76,7 @@ gnu_build_all:
   tags:
     - withmodules-concurrent
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then  module load env/gnu ; cd build_gnu ;  python ../reggie/reggie.py ../regressioncheck/checks/run_basic ; fi
+    - if [ -n "${DO_NIGHTLY}" ]; then  module load env/gnu ; cd build_gnu ;  python ./reggie/reggie.py ../regressioncheck/checks/run_basic ; fi
   cache:
     key: "$CI_COMMIT_REF_SLUG-GNU"
     paths:
@@ -87,7 +88,7 @@ gnu_timediscs:
   tags:
     - withmodules-concurrent
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then  module load env/gnu ; cd build_gnu ;  python ../reggie/reggie.py ../regressioncheck/checks/timedisc ; fi
+    - if [ -n "${DO_NIGHTLY}" ]; then  module load env/gnu ; cd build_gnu ;  python ./reggie/reggie.py ../regressioncheck/checks/timedisc ; fi
   cache:
     key: "$CI_COMMIT_REF_SLUG-GNU"
     paths:
@@ -99,7 +100,7 @@ gnu_convtest:
   tags:
     - withmodules-concurrent
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then module load env/gnu ; cd build_gnu ;  python ../reggie/reggie.py ../regressioncheck/checks/convtest ; fi 
+    - if [ -n "${DO_NIGHTLY}" ]; then module load env/gnu ; cd build_gnu ;  python ./reggie/reggie.py ../regressioncheck/checks/convtest ; fi 
   cache:
     key: "$CI_COMMIT_REF_SLUG-GNU"
     paths:
@@ -113,7 +114,7 @@ intel_build_all:
   tags:
     - withmodules-concurrent
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel ;  python ../reggie/reggie.py ../regressioncheck/checks/run_basic ; fi
+    - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel ;  python ./reggie/reggie.py ../regressioncheck/checks/run_basic ; fi
   cache:
     key: "$CI_COMMIT_REF_SLUG-INTEL"
     paths:
@@ -125,7 +126,7 @@ intel_timediscs:
   tags:
     - withmodules-concurrent
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel ;  python ../reggie/reggie.py ../regressioncheck/checks/timedisc ; fi
+    - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel ;  python ./reggie/reggie.py ../regressioncheck/checks/timedisc ; fi
   cache:
     key: "$CI_COMMIT_REF_SLUG-INTEL"
     paths:
@@ -137,7 +138,7 @@ intel_convtest:
   tags:
     - withmodules-concurrent
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel ;  python ../reggie/reggie.py ../regressioncheck/checks/convtest ; fi 
+    - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel ;  python ./reggie/reggie.py ../regressioncheck/checks/convtest ; fi 
   cache:
     key: "$CI_COMMIT_REF_SLUG-INTEL"
     paths:
