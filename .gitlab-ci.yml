@@ -155,17 +155,17 @@ documentation:
     - withmodules-concurrent
   script:
     - cd doc/doxygen ; ./builddoxy.sh
-    - if [ -n "${DO_DEPLOY}" ]; then ssh flexi@euler rm -rf homepage/doxygen ; scp -r doc/doxygen/doxygen flexi@euler:~/homepage/. ; fi
+    - if [ -n "${DO_DEPLOY}" ]; then ssh flexi@euler rm -rf homepage/doxygen ; scp -r doxygen flexi@euler:~/homepage/. ; fi
 
 userguide:
   stage: deploy
   tags:
     - withmodules-concurrent
   script:
-    - cd userguide ; make
-    - if [ -n "${DO_DEPLOY}" ]; then scp -r doc/userguide flexi@euler:~/homepage/. ; fi
+    - cd doc/userguide ; make; cd ..
+    - if [ -n "${DO_DEPLOY}" ]; then scp -r userguide flexi@euler:~/homepage/. ; fi
 
-deploy_github:
+github:
   stage: deploy
   tags:
     - withmodules-concurrent
