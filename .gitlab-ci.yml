@@ -43,7 +43,6 @@ gnu:
   tags:
     - withmodules-concurrent
   script:
-    - git clone git@gitlab.iag.uni-stuttgart.de:reggie/reggie.git
     - module load env/gnu ; cd build_gnu
     - python ./reggie/reggie.py ../regressioncheck/checks/run_basic/freestream_3D -e ./bin/flexi
   cache:
@@ -118,7 +117,7 @@ intel_build_all:
   cache:
     key: "$CI_COMMIT_REF_SLUG-INTEL"
     paths:
-      - build_gnu
+      - build_intel
     policy: pull
 
 intel_timediscs:
@@ -130,7 +129,7 @@ intel_timediscs:
   cache:
     key: "$CI_COMMIT_REF_SLUG-INTEL"
     paths:
-      - build_gnu
+      - build_intel
     policy: pull
 
 intel_convtest:
@@ -142,7 +141,7 @@ intel_convtest:
   cache:
     key: "$CI_COMMIT_REF_SLUG-INTEL"
     paths:
-      - build_gnu
+      - build_intel
     policy: pull
  
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
