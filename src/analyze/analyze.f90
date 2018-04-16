@@ -228,7 +228,7 @@ INTEGER                          :: i,j
 INTEGER                          :: k
 #endif
 !==================================================================================================================================
-ALLOCATE(wGPVolAnalyze(0:Nloc,0:Nloc,0:PP_NlocZ),Vdm_GaussN_NAnalyze(0:Nloc,0:N_in))
+ALLOCATE(wGPVolAnalyze(0:Nloc,0:Nloc,0:ZDIM(Nloc)),Vdm_GaussN_NAnalyze(0:Nloc,0:N_in))
 CALL GetNodesAndWeights(Nloc,NodeTypeGL,XiAnalyze,wAnalyze)
 CALL InitializeVandermonde(N_in,Nloc,wBary,xGP,XiAnalyze,Vdm_GaussN_NAnalyze)
 

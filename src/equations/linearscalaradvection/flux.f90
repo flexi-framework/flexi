@@ -59,11 +59,11 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)                                     :: Nloc     !< Polynomial degree
-REAL,DIMENSION(1,0:Nloc,0:Nloc,0:PP_NlocZ),INTENT(IN)  :: ULoc     !< Solution
-REAL,DIMENSION(1,0:Nloc,0:Nloc,0:PP_NlocZ),INTENT(IN)  :: dummy    !< primitive solution (useless here)
-REAL,DIMENSION(1,0:Nloc,0:Nloc,0:PP_NlocZ),INTENT(OUT) :: f        !< Cartesian fluxes (iVar,i,j,k)
-REAL,DIMENSION(1,0:Nloc,0:Nloc,0:PP_NlocZ),INTENT(OUT) :: g        !< Cartesian fluxes (iVar,i,j,k)
-REAL,DIMENSION(1,0:Nloc,0:Nloc,0:PP_NlocZ),INTENT(OUT) :: h        !< Cartesian fluxes (iVar,i,j,k)
+REAL,DIMENSION(1,0:Nloc,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: ULoc     !< Solution
+REAL,DIMENSION(1,0:Nloc,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: dummy    !< primitive solution (useless here)
+REAL,DIMENSION(1,0:Nloc,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: f        !< Cartesian fluxes (iVar,i,j,k)
+REAL,DIMENSION(1,0:Nloc,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: g        !< Cartesian fluxes (iVar,i,j,k)
+REAL,DIMENSION(1,0:Nloc,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: h        !< Cartesian fluxes (iVar,i,j,k)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
@@ -87,13 +87,13 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)                              :: Nloc          !< Polynomial degree
-REAL,DIMENSION(1,0:Nloc,0:PP_NlocZ),INTENT(IN)  :: U_Face        !< Solution
-REAL,DIMENSION(1,0:Nloc,0:PP_NlocZ),INTENT(IN)  :: gradUx_Face   !< Gradient in x-direction
-REAL,DIMENSION(1,0:Nloc,0:PP_NlocZ),INTENT(IN)  :: gradUy_Face   !< Gradient in y-direction
-REAL,DIMENSION(1,0:Nloc,0:PP_NlocZ),INTENT(IN)  :: gradUz_Face   !< Gradient in z-direction
-REAL,DIMENSION(1,0:Nloc,0:PP_NlocZ),INTENT(OUT) :: f             !< Cartesian fluxes (iVar,i,j)
-REAL,DIMENSION(1,0:Nloc,0:PP_NlocZ),INTENT(OUT) :: g             !< Cartesian fluxes (iVar,i,j)
-REAL,DIMENSION(1,0:Nloc,0:PP_NlocZ),INTENT(OUT) :: h             !< Cartesian fluxes (iVar,i,j)
+REAL,DIMENSION(1,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_Face        !< Solution
+REAL,DIMENSION(1,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: gradUx_Face   !< Gradient in x-direction
+REAL,DIMENSION(1,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: gradUy_Face   !< Gradient in y-direction
+REAL,DIMENSION(1,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: gradUz_Face   !< Gradient in z-direction
+REAL,DIMENSION(1,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: f             !< Cartesian fluxes (iVar,i,j)
+REAL,DIMENSION(1,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: g             !< Cartesian fluxes (iVar,i,j)
+REAL,DIMENSION(1,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: h             !< Cartesian fluxes (iVar,i,j)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================

@@ -501,8 +501,8 @@ REAL,INTENT(IN)    :: wGP(  0:Nloc2)                          ! < integration we
 REAL,INTENT(IN)    :: wBary(0:Nloc2)                          ! < interpolations weights
 REAL,INTENT(IN)    :: x0                                      ! < start point
 REAL,INTENT(IN)    :: xN                                      ! < end point
-REAL,INTENT(INOUT) :: FV_Path_1D(3,0:Nloc2,0:Nloc,0:PP_NlocZ) ! < path polynomial
-REAL,INTENT(OUT)   :: FV_Length(           0:Nloc,0:PP_NlocZ) ! < distance
+REAL,INTENT(INOUT) :: FV_Path_1D(3,0:Nloc2,0:Nloc,0:ZDIM(Nloc)) ! < path polynomial
+REAL,INTENT(OUT)   :: FV_Length(           0:Nloc,0:ZDIM(Nloc)) ! < distance
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL               :: VDM(0:Nloc2,0:Nloc2)
@@ -514,7 +514,7 @@ subxGP(1,:) = x0 + (xGP + 1.)/2. * (xN-x0)
 CALL InitializeVandermonde(Nloc2,Nloc2,wBary,xGP,subxGP(1,:),Vdm)
 
 FV_Length=0.
-DO q=0,PP_NlocZ; DO p=0,Nloc
+DO q=0,ZDIM(Nloc); DO p=0,Nloc
   ! path to integrate in ref space [-1,1]
   CALL ChangeBasis1D(3,Nloc2,Nloc2,Vdm,FV_Path_1D(:,:,p,q), FV_Path_Cut)
   ! integrate path

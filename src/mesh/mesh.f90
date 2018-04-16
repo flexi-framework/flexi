@@ -188,7 +188,7 @@ IF(ABS(meshScale-1.).GT.1e-14)&
 
 IF(GETLOGICAL('meshdeform','.FALSE.'))THEN
   DO iElem=1,nElemsLoc
-    DO k=0,PP_NGeoZ; DO j=0,NGeo; DO i=0,NGeo
+    DO k=0,ZDIM(NGeo); DO j=0,NGeo; DO i=0,NGeo
       x(:)=Coords(:,i,j,k,iElem)
 #if PP_dim==3
       Coords(:,i,j,k,iElem) = x+ 0.1*SIN(PP_Pi*x(1))*SIN(PP_Pi*x(2))*SIN(PP_Pi*x(3))
@@ -312,7 +312,7 @@ IF (meshMode.GT.1) THEN
   ALLOCATE(Metrics_hTilde(3,0:PP_N,0:PP_N,0:PP_NZ,nElems,0:FV_ENABLED))
   ALLOCATE(            sJ(  0:PP_N,0:PP_N,0:PP_NZ,nElems,0:FV_ENABLED))
   NGeoRef=3*NGeo ! build jacobian at higher degree
-  ALLOCATE(    DetJac_Ref(1,0:NgeoRef,0:NgeoRef,0:PP_NGeoRefZ,nElems))
+  ALLOCATE(    DetJac_Ref(1,0:NgeoRef,0:NgeoRef,0:ZDIM(NGeoRef),nElems))
 
   ! surface data
   ALLOCATE(      Face_xGP(3,0:PP_N,0:PP_NZ,0:FV_ENABLED,1:nSides))

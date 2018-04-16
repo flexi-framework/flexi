@@ -111,7 +111,7 @@ IF (Avg2D) THEN
   END DO
 ELSE
   SDEALLOCATE(CoordsVisu_DG)
-  ALLOCATE(CoordsVisu_DG(3,0:NVisu,0:NVisu,0:PP_NVisuZ,nElems_DG))
+  ALLOCATE(CoordsVisu_DG(3,0:NVisu,0:NVisu,0:ZDIM(NVisu),nElems_DG))
   DO iElem_DG = 1,nElems_DG
     iElem = mapDGElemsToAllElems(iElem_DG)
     CALL ChangeBasisVolume(3,PP_N,NVisu,Vdm_N_NVisu,Elem_xGP(:,:,:,:,iElem),CoordsVisu_DG(:,:,:,:,iElem_DG))
@@ -126,7 +126,7 @@ ELSE
     !CALL GetVandermonde(PP_N,NodeType,NVisu_FV,NodeTypeVISUFVEqui,Vdm_N_NVisu_FV,modal=.FALSE.)
     ! convert coords of FV elements
     SDEALLOCATE(CoordsVisu_FV)
-    ALLOCATE(CoordsVisu_FV(3,0:NVisu_FV,0:NVisu_FV,0:PP_NVisuZ_FV,nElems_FV))
+    ALLOCATE(CoordsVisu_FV(3,0:NVisu_FV,0:NVisu_FV,0:ZDIM(NVisu_FV),nElems_FV))
     DO iElem_FV = 1,nElems_FV
       iElem = mapFVElemsToAllElems(iElem_FV)
       CALL ChangeBasisVolume(3,PP_N,NVisu_FV,Vdm_N_NVisu_FV,Elem_xGP(:,:,:,:,iElem),CoordsVisu_FV(:,:,:,:,iElem_FV))
@@ -180,7 +180,7 @@ ALLOCATE(Vdm_N_NVisu(0:NVisu,0:Nloc))
 CALL GetVandermonde(Nloc,NodeType_loc,NVisu   ,NodeTypeVisuPosti  ,Vdm_N_NVisu   ,modal=.FALSE.)
 ! convert coords of DG elements
 SDEALLOCATE(CoordsSurfVisu_DG)
-ALLOCATE(CoordsSurfVisu_DG(3,0:NVisu,0:PP_NVisuZ,0:0,nBCSidesVisu_DG))
+ALLOCATE(CoordsSurfVisu_DG(3,0:NVisu,0:ZDIM(NVisu),0:0,nBCSidesVisu_DG))
 DO iSide=1,nBCSides
   iSideVisu = mapAllBCSidesToDGVisuBCSides(iSide)
   IF (iSideVisu.GT.0)THEN
@@ -197,7 +197,7 @@ IF (hasFV_Elems) THEN
   CALL GetVandermonde(Nloc,NodeType_loc,NVisu_FV,NodeTypeVISUFVEqui,Vdm_N_NVisu_FV,modal=.FALSE.)
   ! convert coords of FV elements
   SDEALLOCATE(CoordsSurfVisu_FV)
-  ALLOCATE(CoordsSurfVisu_FV(3,0:NVisu_FV,0:PP_NVisuZ_FV,0:0,nBCSidesVisu_FV))
+  ALLOCATE(CoordsSurfVisu_FV(3,0:NVisu_FV,0:ZDIM(NVisu_FV),0:0,nBCSidesVisu_FV))
   DO iSide=1,nBCSides
     iSideVisu = mapAllBCSidesToFVVisuBCSides(iSide)
     IF (iSideVisu.GT.0)THEN

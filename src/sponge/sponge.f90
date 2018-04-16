@@ -394,8 +394,8 @@ DEALLOCATE(SpRadius)
 ! Visualize the Sponge Ramp - until now only 3D visualization!
 IF(SpongeViz) THEN
   FileString=TRIM(INTSTAMP(TRIM(ProjectName),myRank))//'_SpongeRamp.vtu'
-  ALLOCATE(Coords_NVisu(1:3, 0:NVisu,0:NVisu,0:PP_NVisuZ,nElems))
-  ALLOCATE(SpongeMat_NVisu(1,0:NVisu,0:NVisu,0:PP_NVisuZ,nElems))
+  ALLOCATE(Coords_NVisu(1:3, 0:NVisu,0:NVisu,0:ZDIM(NVisu),nElems))
+  ALLOCATE(SpongeMat_NVisu(1,0:NVisu,0:NVisu,0:ZDIM(NVisu),nElems))
   ALLOCATE(SpDummy(1,0:PP_N,0:PP_N,0:PP_NZ))
   ! Create coordinates of visualization points
   DO iElem=1,nElems

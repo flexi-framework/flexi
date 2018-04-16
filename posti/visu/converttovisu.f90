@@ -92,7 +92,7 @@ CALL GetVandermonde(PP_N,NodeType,NVisu,NodeTypeVisuPosti,Vdm_N_NVisu,modal=.FAL
 
 ! convert DG solution to UVisu_DG
 SDEALLOCATE(UVisu_DG)
-ALLOCATE(UVisu_DG(0:NVisu,0:NVisu,0:PP_NVisuZ,nElems_DG,nVarVisu))
+ALLOCATE(UVisu_DG(0:NVisu,0:NVisu,0:ZDIM(NVisu),nElems_DG,nVarVisu))
 DO iVar=1,nVarDep
   IF (mapAllVarsToVisuVars(iVar).GT.0) THEN
     iVarCalc = mapDepToCalc(iVar) 
@@ -130,7 +130,7 @@ ALLOCATE(Vdm_N_NVisu(0:NVisu,0:PP_N))
 CALL GetVandermonde(PP_N,NodeType,NVisu,NodeTypeVisuPosti,Vdm_N_NVisu,modal=.FALSE.)
 ! convert DG solution to UVisu_DG
 SDEALLOCATE(USurfVisu_DG)
-ALLOCATE(USurfVisu_DG(0:NVisu,0:PP_NVisuZ,0:0,nBCSidesVisu_DG,nVarSurfVisuAll))
+ALLOCATE(USurfVisu_DG(0:NVisu,0:ZDIM(NVisu),0:0,nBCSidesVisu_DG,nVarSurfVisuAll))
 DO iVar=1,nVarDep
   IF (mapAllVarsToSurfVisuVars(iVar).GT.0) THEN
     iVarCalc = mapDepToCalc(iVar) 
@@ -166,7 +166,7 @@ INTEGER            :: iVarVisu,iVarCalc
 SWRITE(*,*) "[FV/FVRE] convert to visu grid"
 
 SDEALLOCATE(UVisu_FV)
-ALLOCATE(UVisu_FV(0:NVisu_FV,0:NVisu_FV,0:PP_NVisuZ_FV,nElems_FV,nVarVisu))
+ALLOCATE(UVisu_FV(0:NVisu_FV,0:NVisu_FV,0:ZDIM(NVisu_FV),nElems_FV,nVarVisu))
 ! compute UVisu_FV
 DO iVar=1,nVarDep
   iVarVisu = mapAllVarsToVisuVars(iVar) 
@@ -263,9 +263,9 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
 #if PARABOLIC
-REAL,INTENT(OUT),OPTIONAL    :: gradUx_calc(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,0:PP_NVisuZ_FV,nElems_FV)
-REAL,INTENT(OUT),OPTIONAL    :: gradUy_calc(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,0:PP_NVisuZ_FV,nElems_FV)
-REAL,INTENT(OUT),OPTIONAL    :: gradUz_calc(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,0:PP_NVisuZ_FV,nElems_FV)
+REAL,INTENT(OUT),OPTIONAL    :: gradUx_calc(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,0:ZDIM(NVisu_FV),nElems_FV)
+REAL,INTENT(OUT),OPTIONAL    :: gradUy_calc(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,0:ZDIM(NVisu_FV),nElems_FV)
+REAL,INTENT(OUT),OPTIONAL    :: gradUz_calc(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,0:ZDIM(NVisu_FV),nElems_FV)
 #endif
 ! LOCAL VARIABLES
 INTEGER             :: iVar,i,j,k,iElem,iElem_FV

@@ -153,15 +153,15 @@ USE MOD_Riemann      ,ONLY: GetFlux
 INTEGER,INTENT(IN)                   :: SideID  
 REAL,INTENT(IN)                      :: t       !< current time (provided by time integration scheme)
 INTEGER,INTENT(IN)                   :: Nloc    !< polynomial degree
-REAL,INTENT(IN)                      :: UPrim_master( PP_nVarPrim,0:Nloc,0:PP_NlocZ) !< inner surface solution
+REAL,INTENT(IN)                      :: UPrim_master( PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)) !< inner surface solution
 #if PARABOLIC
                                                                            !> inner surface solution gradients in x/y/z-direction
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:PP_NlocZ),INTENT(IN)  :: gradUx_master,gradUy_master,gradUz_master
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: gradUx_master,gradUy_master,gradUz_master
 #endif /*PARABOLIC*/
                                                                            !> normal and tangential vectors on surfaces
-REAL,DIMENSION(      3,0:Nloc,0:PP_NlocZ),INTENT(IN)  :: NormVec,TangVec1,TangVec2
-REAL,DIMENSION(      3,0:Nloc,0:PP_NlocZ),INTENT(IN)  :: Face_xGP   !< positions of surface flux points
-REAL,DIMENSION(PP_nVar,0:Nloc,0:PP_NlocZ),INTENT(OUT) :: Flux       !< resulting boundary fluxes
+REAL,DIMENSION(      3,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: NormVec,TangVec1,TangVec2
+REAL,DIMENSION(      3,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: Face_xGP   !< positions of surface flux points
+REAL,DIMENSION(PP_nVar,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: Flux       !< resulting boundary fluxes
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                              :: p,q
@@ -175,7 +175,7 @@ SELECT CASE(BCType)
 CASE(1) !Periodic already filled!
 CASE(2) !Exact function or refstate
   ! BCState specifies refstate to be used, if 0 then use iniexactfunc
-  DO q=0,PP_NlocZ; DO p=0,Nloc
+  DO q=0,ZDIM(Nloc); DO p=0,Nloc
     CALL ExactFunc(IniExactFunc,t,Face_xGP(:,p,q),UPrim_boundary(:,p,q))
   END DO; END DO
   CALL GetFlux(Nloc,Flux,UPrim_master,UPrim_boundary,    &

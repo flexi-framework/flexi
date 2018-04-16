@@ -222,14 +222,14 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: Nloc
-REAL,INTENT(IN)    :: cons(PP_nVar    ,0:Nloc,0:PP_NlocZ) !< vector of conservative variables
-REAL,INTENT(OUT)   :: prim(PP_nVarPrim,0:Nloc,0:PP_NlocZ) !< vector of primitive variables 
+REAL,INTENT(IN)    :: cons(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)) !< vector of conservative variables
+REAL,INTENT(OUT)   :: prim(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)) !< vector of primitive variables 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL             :: sRho    ! 1/Rho
 INTEGER          :: p,q
 !==================================================================================================================================
-DO q=0,PP_NlocZ; DO p=0,Nloc
+DO q=0,ZDIM(Nloc); DO p=0,Nloc
   sRho=1./cons(1,p,q)
   ! density
   prim(1,p,q)=cons(1,p,q)
@@ -258,15 +258,15 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: Nloc
-REAL,INTENT(IN)    :: cons(PP_nVar    ,0:Nloc,0:Nloc,0:PP_NlocZ,1:nElems) !< vector of conservative variables
-REAL,INTENT(OUT)   :: prim(PP_nVarPrim,0:Nloc,0:Nloc,0:PP_NlocZ,1:nElems) !< vector of primitive variables 
+REAL,INTENT(IN)    :: cons(PP_nVar    ,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems) !< vector of conservative variables
+REAL,INTENT(OUT)   :: prim(PP_nVarPrim,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems) !< vector of primitive variables 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL             :: sRho    ! 1/Rho
 INTEGER          :: i,j,k,iElem
 !==================================================================================================================================
 DO iElem=1,nElems
-  DO k=0,PP_NlocZ; DO j=0,Nloc; DO i=0,Nloc
+  DO k=0,ZDIM(Nloc); DO j=0,Nloc; DO i=0,Nloc
     sRho=1./cons(1,i,j,k,iElem)
     ! density
     prim(1,i,j,k,iElem)=cons(1,i,j,k,iElem)
@@ -322,13 +322,13 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN):: Nloc
-REAL,INTENT(IN)   :: prim(PP_nVarPrim,0:Nloc,0:PP_NlocZ) !< vector of primitive variables
-REAL,INTENT(OUT)  :: cons(PP_nVar    ,0:Nloc,0:PP_NlocZ)     !< vector of conservative variables
+REAL,INTENT(IN)   :: prim(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)) !< vector of primitive variables
+REAL,INTENT(OUT)  :: cons(PP_nVar    ,0:Nloc,0:ZDIM(Nloc))     !< vector of conservative variables
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER           :: p,q
 !==================================================================================================================================
-DO q=0,PP_NlocZ; DO p=0,Nloc
+DO q=0,ZDIM(Nloc); DO p=0,Nloc
   ! density
   cons(1,p,q)=prim(1,p,q)
   ! momentum
@@ -354,14 +354,14 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN):: Nloc
-REAL,INTENT(IN)   :: prim(PP_nVarPrim,0:Nloc,0:Nloc,0:PP_NlocZ,1:nElems)     !< vector of primitive variables
-REAL,INTENT(OUT)  :: cons(PP_nVar    ,0:Nloc,0:Nloc,0:PP_NlocZ,1:nElems)     !< vector of conservative variables
+REAL,INTENT(IN)   :: prim(PP_nVarPrim,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems)     !< vector of primitive variables
+REAL,INTENT(OUT)  :: cons(PP_nVar    ,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems)     !< vector of conservative variables
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER           :: p,q,r,iElem
 !==================================================================================================================================
 DO iElem=1,nElems
-  DO r=0,PP_NlocZ; DO q=0,Nloc; DO p=0,Nloc
+  DO r=0,ZDIM(Nloc); DO q=0,Nloc; DO p=0,Nloc
     ! density
     cons(1,p,q,r,iElem)=prim(1,p,q,r,iElem)
     ! momentum

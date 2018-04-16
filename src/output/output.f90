@@ -336,14 +336,14 @@ DO iElem=1,nElems
   IF (FV_Elems(iElem).GT.0) nFV_Elems = nFV_Elems + 1 
 END DO
 NVisu_FV = (PP_N+1)*2-1
-ALLOCATE(FV_U_NVisu(PP_nVar_loc,0:NVisu_FV,0:NVisu_FV,0:PP_NVisuZ_FV,1:nFV_Elems))
-ALLOCATE(FV_Coords_NVisu(1:3,0:NVisu_FV,0:NVisu_FV,0:PP_NVisuZ_FV,1:nFV_Elems))
+ALLOCATE(FV_U_NVisu(PP_nVar_loc,0:NVisu_FV,0:NVisu_FV,0:ZDIM(NVisu_FV),1:nFV_Elems))
+ALLOCATE(FV_Coords_NVisu(1:3,0:NVisu_FV,0:NVisu_FV,0:ZDIM(NVisu_FV),1:nFV_Elems))
 ALLOCATE(Vdm_GaussN_NVisu_FV(0:NVisu_FV,0:PP_N))
 CALL FV_Build_VisuVdm(PP_N,Vdm_GaussN_NVisu_FV)
 #endif
-ALLOCATE(U_NVisu(PP_nVar_loc,0:NVisu,0:NVisu,0:PP_NVisuZ,1:(nElems-nFV_Elems)))
+ALLOCATE(U_NVisu(PP_nVar_loc,0:NVisu,0:NVisu,0:ZDIM(NVisu),1:(nElems-nFV_Elems)))
 U_NVisu = 0.
-ALLOCATE(Coords_NVisu(1:3,0:NVisu,0:NVisu,0:PP_NVisuZ,1:(nElems-nFV_Elems)))
+ALLOCATE(Coords_NVisu(1:3,0:NVisu,0:NVisu,0:ZDIM(NVisu),1:(nElems-nFV_Elems)))
 
 DG_iElem=0; FV_iElem=0
 DO iElem=1,nElems
