@@ -4,65 +4,97 @@ stages:
   - reggie_nightly
   - deploy
 
+
+.template: &defaults_gnu
+  tags:
+    - withmodules-concurrent
+  artifacts:
+    name: "${CI_PIPELINE_ID}-${CI_COMMIT_REF_NAME}-${CI_JOB_NAME}"
+    expire_in: 1 day
+    when: on_failure
+    paths:
+      - build_gnu
+  cache:
+    key: "${CI_COMMIT_REF_SLUG}-GNU"
+    paths:
+      - build_gnu
+    policy: pull
+
+.template: &defaults_intel
+  tags:
+    - withmodules-concurrent
+  artifacts:
+    name: "${CI_PIPELINE_ID}-${CI_COMMIT_REF_NAME}-${CI_JOB_NAME}"
+    expire_in: 1 day
+    when: on_failure
+    paths:
+      - build_intel
+  cache:
+    key: "${CI_COMMIT_REF_SLUG}-INTEL"
+    paths:
+      - build_intel
+    policy: pull
+
+
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "build": Build with intel/gnu on check-in
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 build_gnu:
-  stage: build
   tags:
     - withmodules-concurrent
+  artifacts:
+    name: "${CI_PIPELINE_ID}-${CI_COMMIT_REF_NAME}-${CI_JOB_NAME}"
+    expire_in: 1 day
+    when: on_failure
+    paths:
+      - build_gnu
+  cache:
+    key: "${CI_COMMIT_REF_SLUG}-GNU"
+    paths:
+      - build_gnu
+    policy: push
+  stage: build
   script:
     - module load env/gnu; mkdir -p build_gnu ; cd build_gnu
     - git clone git@gitlab.iag.uni-stuttgart.de:reggie/reggie.git
     - cmake .. -DFLEXI_BUILD_HDF5=OFF ; make -j all
-  cache:
-    key: "$CI_COMMIT_REF_SLUG-GNU"
-    paths:
-      - build_gnu
-    policy: push
 
 build_intel:
-  stage: build
   tags:
     - withmodules-concurrent
+  artifacts:
+    name: "${CI_PIPELINE_ID}-${CI_COMMIT_REF_NAME}-${CI_JOB_NAME}"
+    expire_in: 1 day
+    when: on_failure
+    paths:
+      - build_intel
+  cache:
+    key: "${CI_COMMIT_REF_SLUG}-INTEL"
+    paths:
+      - build_intel
+    policy: push
+  stage: build
   script:
     - module load env/intel; mkdir -p build_intel ; cd build_intel
     - git clone git@gitlab.iag.uni-stuttgart.de:reggie/reggie.git
     - cmake .. -DFLEXI_BUILD_HDF5=OFF ; make -j all
-  cache:
-    key: "$CI_COMMIT_REF_SLUG-INTEL"
-    paths:
-      - build_intel
-    policy: push
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "reggie_checkin": Run most simple reggie with previous builds on check-in
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 gnu:
+  <<: *defaults_gnu
   stage: reggie_checkin
-  tags:
-    - withmodules-concurrent
   script:
     - module load env/gnu ; cd build_gnu
     - python ./reggie/reggie.py ../regressioncheck/checks/run_basic/freestream_3D -e ./bin/flexi
-  cache:
-    key: "$CI_COMMIT_REF_SLUG-GNU"
-    paths:
-      - build_gnu
-    policy: pull
 
 intel:
+  <<: *defaults_intel
   stage: reggie_checkin
-  tags:
-    - withmodules-concurrent
   script:
     - module load env/intel ; cd build_intel
     - python ./reggie/reggie.py ../regressioncheck/checks/run_basic/freestream_3D -e ./bin/flexi
-  cache:
-    key: "$CI_COMMIT_REF_SLUG-INTEL"
-    paths:
-      - build_intel
-    policy: pull
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "reggie_nightly": Build and run
@@ -71,78 +103,41 @@ intel:
 #                      examples on nightly
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 gnu_build_all:
+  <<: *defaults_gnu
   stage: reggie_nightly
-  tags:
-    - withmodules-concurrent
   script:
     - if [ -n "${DO_NIGHTLY}" ]; then  module load env/gnu ; cd build_gnu ;  python ./reggie/reggie.py ../regressioncheck/checks/run_basic ; fi
-  cache:
-    key: "$CI_COMMIT_REF_SLUG-GNU"
-    paths:
-      - build_gnu
-    policy: pull
 
 gnu_timediscs:
+  <<: *defaults_gnu
   stage: reggie_nightly
-  tags:
-    - withmodules-concurrent
   script:
     - if [ -n "${DO_NIGHTLY}" ]; then  module load env/gnu ; cd build_gnu ;  python ./reggie/reggie.py ../regressioncheck/checks/timedisc ; fi
-  cache:
-    key: "$CI_COMMIT_REF_SLUG-GNU"
-    paths:
-      - build_gnu
-    policy: pull
 
 gnu_convtest:
+  <<: *defaults_gnu
   stage: reggie_nightly
-  tags:
-    - withmodules-concurrent
   script:
     - if [ -n "${DO_NIGHTLY}" ]; then module load env/gnu ; cd build_gnu ;  python ./reggie/reggie.py ../regressioncheck/checks/convtest ; fi 
-  cache:
-    key: "$CI_COMMIT_REF_SLUG-GNU"
-    paths:
-      - build_gnu
-    policy: pull
-
 
 
 intel_build_all:
+  <<: *defaults_intel
   stage: reggie_nightly
-  tags:
-    - withmodules-concurrent
   script:
     - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel ;  python ./reggie/reggie.py ../regressioncheck/checks/run_basic ; fi
-  cache:
-    key: "$CI_COMMIT_REF_SLUG-INTEL"
-    paths:
-      - build_intel
-    policy: pull
 
 intel_timediscs:
+  <<: *defaults_intel
   stage: reggie_nightly
-  tags:
-    - withmodules-concurrent
   script:
     - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel ;  python ./reggie/reggie.py ../regressioncheck/checks/timedisc ; fi
-  cache:
-    key: "$CI_COMMIT_REF_SLUG-INTEL"
-    paths:
-      - build_intel
-    policy: pull
 
 intel_convtest:
+  <<: *defaults_intel
   stage: reggie_nightly
-  tags:
-    - withmodules-concurrent
   script:
     - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel ;  python ./reggie/reggie.py ../regressioncheck/checks/convtest ; fi 
-  cache:
-    key: "$CI_COMMIT_REF_SLUG-INTEL"
-    paths:
-      - build_intel
-    policy: pull
  
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "deploy": 1. Creates doxygen documentation & compiles the documentation creating the *.pdf
@@ -155,6 +150,13 @@ documentation:
   script:
     - cd doc/doxygen ; ./builddoxy.sh
     - if [ -n "${DO_DEPLOY}" ]; then ssh flexi@euler rm -rf homepage/doxygen ; scp -r doxygen flexi@euler:~/homepage/. ; fi
+  artifacts:
+    name: "${CI_PIPELINE_ID}-${CI_COMMIT_REF_NAME}-${CI_JOB_NAME}"
+    expire_in: 1 day
+    when: on_failure
+    paths:
+      - src
+      - doc/doxygen
 
 userguide:
   stage: deploy
@@ -163,6 +165,12 @@ userguide:
   script:
     - cd doc/userguide ; make; cd ..
     - if [ -n "${DO_DEPLOY}" ]; then scp -r userguide flexi@euler:~/homepage/. ; fi
+  artifacts:
+    name: "${CI_PIPELINE_ID}-${CI_COMMIT_REF_NAME}-${CI_JOB_NAME}"
+    expire_in: 1 day
+    when: on_failure
+    paths:
+      - doc/userguide
 
 github:
   stage: deploy
