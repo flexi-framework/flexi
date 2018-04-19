@@ -87,7 +87,7 @@ int visuReader::RequestInformation(vtkInformation *,
       vtkInformationVector *outputVector)
 {
    // We take the first state file and use it to read the varnames
-   SWRITE("RequestInformation: State file: " << FileNames[0]);
+   SWRITE("RequestInformation");
 
    // Set up MPI communicator   
    this->Controller = NULL;
@@ -113,6 +113,14 @@ int visuReader::RequestInformation(vtkInformation *,
    // sets the number of pieces to the number of processsors
    outInfoVolume->Set(CAN_HANDLE_PIECE_REQUEST(), 1);
    outInfoSurface->Set(CAN_HANDLE_PIECE_REQUEST(), 1);
+
+   // RequestInformation may be called before AddFileName, thus the arrays with timesteps and
+   // file names may be empty.  In this case, simply leave the function. It will be called again
+   // and with the files loaded. This does not make any sense...
+   if (Timesteps.empty()) {
+      std::cout << "No Filenames given, skipping...\n";
+      return 1; 
+   }
 
    // if we have more then one file loaded at once (timeseries)
    // we have to set the number and range of the timesteps
