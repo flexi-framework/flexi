@@ -274,7 +274,6 @@ IF(DoRestart)THEN
     CALL GetVandermonde(3*Ngeo,    NodeType,        N_Restart, NodeType_Restart, &
                         Vdm_3Ngeo_NRestart, modal=.TRUE.)
 
-    ALLOCATE(JNR(1,0:HSize(2),0:HSize(3),0:HSize(3)))
 #if PP_dim == 3
     IF (HSize(4).EQ.1) THEN
       ! FLEXI compiled 3D, but data is 2D => expand third space dimension
@@ -297,10 +296,11 @@ IF(DoRestart)THEN
     ! For conservativity deg of detJac should be identical to EFFECTIVE polynomial deg of solution
     ! (e.g. beware when filtering the jacobian )
     IF(N_Restart.GT.PP_N)THEN
+      ALLOCATE(JNR(1,0:N_Restart,0:N_Restart,0:N_Restart*(PP_dim-2)))
       DO iElem=1,nElems
         IF (FV_Elems(iElem).EQ.0) THEN ! DG element
           CALL ChangeBasisVolume(1,3*Ngeo,N_Restart,Vdm_3Ngeo_NRestart,detJac_Ref(:,:,:,:,iElem),JNR)
-          DO k=0,INT(HSize(4)-1); DO j=0,N_Restart; DO i=0,N_Restart
+          DO k=0,N_Restart*(PP_dim-2); DO j=0,N_Restart; DO i=0,N_Restart
             U_local(:,i,j,k,iElem)=U_local(:,i,j,k,iElem)*JNR(1,i,j,k)
           END DO; END DO; END DO
           CALL ChangeBasisVolume(PP_nVar,N_Restart,PP_N,Vdm_NRestart_N,U_local(:,:,:,:,iElem),U(:,:,:,:,iElem))
@@ -310,6 +310,7 @@ IF(DoRestart)THEN
 #endif
         END IF
       END DO
+      DEALLOCATE(JNR)
       ! Transform back
       CALL ApplyJacobianCons(U,toPhysical=.TRUE.)
     ELSE
@@ -324,7 +325,7 @@ IF(DoRestart)THEN
       END DO
     END IF
 
-    DEALLOCATE(U_local,JNR)
+    DEALLOCATE(U_local)
     SWRITE(UNIT_stdOut,*)'DONE!'
   END IF
   CALL CloseDataFile()
