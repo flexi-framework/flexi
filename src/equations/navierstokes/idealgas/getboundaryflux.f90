@@ -262,12 +262,12 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)      :: SideID
 REAL,INTENT(IN)         :: t       !< current time (provided by time integration scheme)
 INTEGER,INTENT(IN)      :: Nloc    !< polynomial degree
-REAL,INTENT(IN)         :: UPrim_master(  PP_nVarPrim,0:Nloc,0:PP_NlocZ) !< inner surface solution
-REAL,INTENT(IN)         :: NormVec(                 3,0:Nloc,0:PP_NlocZ) !< normal surface vectors
-REAL,INTENT(IN)         :: TangVec1(                3,0:Nloc,0:PP_NlocZ) !< tangent surface vectors 1
-REAL,INTENT(IN)         :: TangVec2(                3,0:Nloc,0:PP_NlocZ) !< tangent surface vectors 2
-REAL,INTENT(IN)         :: Face_xGP(                3,0:Nloc,0:PP_NlocZ) !< positions of surface flux points
-REAL,INTENT(OUT)        :: UPrim_boundary(PP_nVarPrim,0:Nloc,0:PP_NlocZ) !< resulting boundary state
+REAL,INTENT(IN)         :: UPrim_master(  PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)) !< inner surface solution
+REAL,INTENT(IN)         :: NormVec(                 3,0:Nloc,0:ZDIM(Nloc)) !< normal surface vectors
+REAL,INTENT(IN)         :: TangVec1(                3,0:Nloc,0:ZDIM(Nloc)) !< tangent surface vectors 1
+REAL,INTENT(IN)         :: TangVec2(                3,0:Nloc,0:ZDIM(Nloc)) !< tangent surface vectors 2
+REAL,INTENT(IN)         :: Face_xGP(                3,0:Nloc,0:ZDIM(Nloc)) !< positions of surface flux points
+REAL,INTENT(OUT)        :: UPrim_boundary(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)) !< resulting boundary state
 
 ! INPUT / OUTPUT VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -285,12 +285,12 @@ BCState = Boundarytype(BC(SideID),BC_STATE)
 SELECT CASE(BCType)
 CASE(2) !Exact function or refstate
   IF(BCState.EQ.0)THEN
-    DO q=0,PP_NlocZ; DO p=0,Nloc
+    DO q=0,ZDIM(Nloc); DO p=0,Nloc
       CALL ExactFunc(IniExactFunc,t,Face_xGP(:,p,q),Cons)
       CALL ConsToPrim(UPrim_boundary(:,p,q),Cons)
     END DO; END DO
   ELSE
-    DO q=0,PP_NlocZ; DO p=0,Nloc
+    DO q=0,ZDIM(Nloc); DO p=0,Nloc
       UPrim_boundary(:,p,q) = RefStatePrim(:,BCState)
     END DO; END DO
   END IF
@@ -301,7 +301,7 @@ CASE(12,121) ! exact BC = Dirichlet BC !!
   UPrim_boundary(:,:,:) = BCDataPrim(:,:,:,SideID)
 CASE(22) ! exact BC = Dirichlet BC !!
   ! SPECIAL BC: BCState specifies exactfunc to be used!!
-  DO q=0,PP_NlocZ; DO p=0,Nloc
+  DO q=0,ZDIM(Nloc); DO p=0,Nloc
     CALL ExactFunc(BCState,t,Face_xGP(:,p,q),Cons)
     CALL ConsToPrim(UPrim_boundary(:,p,q),Cons)
   END DO; END DO
@@ -309,7 +309,7 @@ CASE(22) ! exact BC = Dirichlet BC !!
 
 CASE(3,4,9,23,24,25,27)
   ! Initialize boundary state with rotated inner state
-  DO q=0,PP_NlocZ; DO p=0,Nloc
+  DO q=0,ZDIM(Nloc); DO p=0,Nloc
     ! transform state into normal system
     UPrim_boundary(1,p,q)= UPrim_master(1,p,q)
     UPrim_boundary(2,p,q)= SUM(UPrim_master(2:4,p,q)*NormVec( :,p,q))
@@ -324,7 +324,7 @@ CASE(3,4,9,23,24,25,27)
     ! Diffusion: density=inside, velocity=0 (see below, after rotating back to physical space), rhoE=inside
     ! For adiabatic wall all gradients are 0
     ! We reconstruct the BC State, rho=rho_L, velocity=0, rhoE_wall = p_Riemann/(Kappa-1)
-    DO q=0,PP_NlocZ; DO p=0,Nloc
+    DO q=0,ZDIM(Nloc); DO p=0,Nloc
       ! Set pressure by solving local Riemann problem
       UPrim_boundary(5,p,q) = PRESSURE_RIEMANN(UPrim_boundary(:,p,q))
       UPrim_boundary(2:4,p,q)= 0. ! no slip
@@ -335,7 +335,7 @@ CASE(3,4,9,23,24,25,27)
   CASE(4) ! Isothermal wall
     ! For isothermal wall, all gradients are from interior
     ! We reconstruct the BC State, rho=rho_L, velocity=0, rhoE_wall =  rho_L*C_v*Twall
-    DO q=0,PP_NlocZ; DO p=0,Nloc
+    DO q=0,ZDIM(Nloc); DO p=0,Nloc
       ! Set pressure by solving local Riemann problem
       UPrim_boundary(5,p,q) = PRESSURE_RIEMANN(UPrim_boundary(:,p,q))
       UPrim_boundary(2:4,p,q)= 0. ! no slip
@@ -346,7 +346,7 @@ CASE(3,4,9,23,24,25,27)
   CASE(9) ! Euler (slip) wall
     ! vel=(0,v_in,w_in)
     ! NOTE: from this state ONLY the velocities should actually be used for the diffusive flux
-    DO q=0,PP_NlocZ; DO p=0,Nloc
+    DO q=0,ZDIM(Nloc); DO p=0,Nloc
       ! Set pressure by solving local Riemann problem
       UPrim_boundary(5,p,q) = PRESSURE_RIEMANN(UPrim_boundary(:,p,q))
       UPrim_boundary(2,p,q) = 0. ! slip in tangential directions
@@ -365,7 +365,7 @@ CASE(3,4,9,23,24,25,27)
     ! Refstate for this case is special, VelocityX specifies outlet mach number
     ! State: (/dummy,Ma,dummy,dummy,dummy/)
     MaOut=RefStatePrim(2,BCState)
-    DO q=0,PP_NlocZ; DO p=0,Nloc
+    DO q=0,ZDIM(Nloc); DO p=0,Nloc
       c=SQRT(kappa*UPrim_boundary(5,p,q)/UPrim_boundary(1,p,q))
       vmag=NORM2(UPrim_boundary(2:4,p,q))
       Ma=vmag/c
@@ -385,7 +385,7 @@ CASE(3,4,9,23,24,25,27)
       UPrim_boundary(6,p,q)=UPrim_boundary(5,p,q)/(R*UPrim_boundary(1,p,q))
     END DO; END DO !p,q
   CASE(24) ! Pressure outflow BC
-    DO q=0,PP_NlocZ; DO p=0,Nloc
+    DO q=0,ZDIM(Nloc); DO p=0,Nloc
       ! check if sub / supersonic (squared quantities)
       c=kappa*UPrim_boundary(5,p,q)/UPrim_boundary(1,p,q)
       vmag=SUM(UPrim_boundary(2:4,p,q)*UPrim_boundary(2:4,p,q))
@@ -403,7 +403,7 @@ CASE(3,4,9,23,24,25,27)
       ENDIF
     END DO; END DO !p,q
   CASE(25) ! Subsonic outflow BC
-    DO q=0,PP_NlocZ; DO p=0,Nloc
+    DO q=0,ZDIM(Nloc); DO p=0,Nloc
       ! check if sub / supersonic (squared quantities)
       c=kappa*UPrim_boundary(5,p,q)/UPrim_boundary(1,p,q)
       vmag=SUM(UPrim_boundary(2:4,p,q)*UPrim_boundary(2:4,p,q))
@@ -422,7 +422,7 @@ CASE(3,4,9,23,24,25,27)
     ! Nv specifies inflow direction of inflow:
     ! if ABS(nv)=0  then inflow vel is always in side normal direction
     ! if ABS(nv)!=0 then inflow vel is in global coords with nv specifying the direction
-    DO q=0,PP_NlocZ; DO p=0,Nloc
+    DO q=0,ZDIM(Nloc); DO p=0,Nloc
       ! Prescribe Total Temp, Total Pressure, inflow angle of attack alpha
       ! and inflow yaw angle beta
       ! WARNING: REFSTATE is different: Tt,alpha,beta,<empty>,pT (4th entry ignored!!), angles in DEG not RAD
@@ -467,7 +467,7 @@ CASE(3,4,9,23,24,25,27)
   END SELECT
 
   ! rotate state back to physical system
-  DO q=0,PP_NlocZ; DO p=0,Nloc
+  DO q=0,ZDIM(Nloc); DO p=0,Nloc
     UPrim_boundary(2:4,p,q) = UPrim_boundary(2,p,q)*NormVec( :,p,q) &
                              +UPrim_boundary(3,p,q)*TangVec1(:,p,q) &
                              +UPrim_boundary(4,p,q)*TangVec2(:,p,q)
@@ -513,32 +513,32 @@ USE MOD_Testcase     ,ONLY: GetBoundaryFluxTestcase
 INTEGER,INTENT(IN)   :: SideID  
 REAL,INTENT(IN)      :: t       !< current time (provided by time integration scheme)
 INTEGER,INTENT(IN)   :: Nloc    !< polynomial degree
-REAL,INTENT(IN)      :: UPrim_master( PP_nVarPrim,0:Nloc,0:PP_NlocZ) !< inner surface solution
+REAL,INTENT(IN)      :: UPrim_master( PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)) !< inner surface solution
 #if PARABOLIC
                                                            !> inner surface solution gradients in x/y/z-direction
-REAL,INTENT(IN)      :: gradUx_master(PP_nVarPrim,0:Nloc,0:PP_NlocZ)
-REAL,INTENT(IN)      :: gradUy_master(PP_nVarPrim,0:Nloc,0:PP_NlocZ)
-REAL,INTENT(IN)      :: gradUz_master(PP_nVarPrim,0:Nloc,0:PP_NlocZ)
+REAL,INTENT(IN)      :: gradUx_master(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc))
+REAL,INTENT(IN)      :: gradUy_master(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc))
+REAL,INTENT(IN)      :: gradUz_master(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc))
 #endif /*PARABOLIC*/
                                                            !> normal and tangential vectors on surfaces
-REAL,INTENT(IN)      :: NormVec (3,0:Nloc,0:PP_NlocZ)
-REAL,INTENT(IN)      :: TangVec1(3,0:Nloc,0:PP_NlocZ)
-REAL,INTENT(IN)      :: TangVec2(3,0:Nloc,0:PP_NlocZ)
-REAL,INTENT(IN)      :: Face_xGP(3,0:Nloc,0:PP_NlocZ) !< positions of surface flux points
-REAL,INTENT(OUT)     :: Flux(PP_nVar,0:Nloc,0:PP_NlocZ)   !< resulting boundary fluxes
+REAL,INTENT(IN)      :: NormVec (3,0:Nloc,0:ZDIM(Nloc))
+REAL,INTENT(IN)      :: TangVec1(3,0:Nloc,0:ZDIM(Nloc))
+REAL,INTENT(IN)      :: TangVec2(3,0:Nloc,0:ZDIM(Nloc))
+REAL,INTENT(IN)      :: Face_xGP(3,0:Nloc,0:ZDIM(Nloc)) !< positions of surface flux points
+REAL,INTENT(OUT)     :: Flux(PP_nVar,0:Nloc,0:ZDIM(Nloc))   !< resulting boundary fluxes
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                              :: p,q
 INTEGER                              :: BCType,BCState
-REAL                                 :: UPrim_boundary(PP_nVarPrim,0:Nloc,0:PP_NlocZ)
-REAL                                 :: UCons_boundary(PP_nVar    ,0:Nloc,0:PP_NlocZ)
-REAL                                 :: UCons_master  (PP_nVar    ,0:Nloc,0:PP_NlocZ)
+REAL                                 :: UPrim_boundary(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc))
+REAL                                 :: UCons_boundary(PP_nVar    ,0:Nloc,0:ZDIM(Nloc))
+REAL                                 :: UCons_master  (PP_nVar    ,0:Nloc,0:ZDIM(Nloc))
 #if PARABOLIC
 INTEGER                              :: ivar
 REAL                                 :: nv(3)
 REAL                                 :: BCGradMat(1:PP_dim,1:PP_dim)
-REAL,DIMENSION(PP_nVar,    0:Nloc,0:PP_NlocZ):: Fd_Face_loc,    Gd_Face_loc,    Hd_Face_loc
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:PP_NlocZ):: gradUx_Face_loc,gradUy_Face_loc,gradUz_Face_loc
+REAL,DIMENSION(PP_nVar,    0:Nloc,0:ZDIM(Nloc)):: Fd_Face_loc,    Gd_Face_loc,    Hd_Face_loc
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)):: gradUx_Face_loc,gradUy_Face_loc,gradUz_Face_loc
 #endif /*PARABOLIC*/
 !==================================================================================================================================
 BCType  = Boundarytype(BC(SideID),BC_TYPE)
@@ -556,7 +556,7 @@ ELSE
 
   SELECT CASE(BCType)
   CASE(2,12,121,22,23,24,25,27) ! Riemann-Type BCs 
-    DO q=0,PP_NlocZ; DO p=0,Nloc
+    DO q=0,ZDIM(Nloc); DO p=0,Nloc
       CALL PrimToCons(UPrim_master(:,p,q), UCons_master(:,p,q))
       CALL PrimToCons(UPrim_boundary(:,p,q),      UCons_boundary(:,p,q))
     END DO; END DO ! p,q=0,PP_N
@@ -578,7 +578,7 @@ ELSE
 #ifdef EDDYVISCOSITY
     muSGS_master(:,:,:,SideID)=0.
 #endif
-    DO q=0,PP_NlocZ; DO p=0,Nloc
+    DO q=0,ZDIM(Nloc); DO p=0,Nloc
       ! Now we compute the 1D Euler flux, but use the info that the normal component u=0
       ! we directly tranform the flux back into the Cartesian coords: F=(0,n1*p,n2*p,n3*p,0)^T
       Flux(1  ,p,q) = 0.
@@ -606,7 +606,7 @@ ELSE
       ! Euler/(full-)slip wall
       ! We prepare the gradients and set the normal derivative to zero (symmetry condition!)
       ! BCGradMat = I - n * n^T = (gradient -normal component of gradient)
-      DO q=0,PP_NlocZ; DO p=0,Nloc
+      DO q=0,ZDIM(Nloc); DO p=0,Nloc
         nv = NormVec(:,p,q)
 #if (PP_dim==3)
         BCGradMat(1,1) = 1. - nv(1)*nv(1)

@@ -132,15 +132,15 @@ CASE (OVERINTEGRATIONTYPE_CONSCUTOFF) ! conservative modal cut-off filter: Here,
   IF(NUnder.LT.PP_N)THEN
     !global
     ALLOCATE(Vdm_N_NUnder(0:NUnder,0:PP_N),Vdm_NUnder_N(0:PP_N,0:NUnder))
-    ALLOCATE(sJNUnder(0:NUnder,0:NUnder,0:PP_NUnderZ,nElems))
+    ALLOCATE(sJNUnder(0:NUnder,0:NUnder,0:ZDIM(NUnder),nElems))
     CALL GetVandermonde(PP_N,NodeType,NUnder,NodeType,Vdm_N_NUnder,Vdm_NUnder_N,modal=.TRUE.)
     !local
-    ALLOCATE(Vdm_NGeoRef_NUnder(0:NUnder,0:NGeoRef),DetJac_NUnder(1,0:NUnder,0:NUnder,0:PP_NUnderZ))
+    ALLOCATE(Vdm_NGeoRef_NUnder(0:NUnder,0:NGeoRef),DetJac_NUnder(1,0:NUnder,0:NUnder,0:ZDIM(NUnder)))
     CALL GetVandermonde(NGeoRef,NodeType,NUnder,NodeType,Vdm_NGeoRef_NUnder,modal=.TRUE.)
 
     DO iElem=1,nElems
       CALL ChangeBasisVolume(1,NGeoRef,NUnder,Vdm_NGeoRef_NUnder,DetJac_Ref(:,:,:,:,iElem),DetJac_NUnder)
-      DO k=0,PP_NUnderZ; DO j=0,NUnder; DO i=0,NUnder
+      DO k=0,ZDIM(NUnder); DO j=0,NUnder; DO i=0,NUnder
         sJNUnder(i,j,k,iElem)=1./DetJac_NUnder(1,i,j,k)
       END DO; END DO; END DO !i,j,k=0,PP_N
     END DO

@@ -69,18 +69,18 @@ IMPLICIT NONE
 INTEGER,INTENT(IN) :: Nloc                                             !< polynomial degree
 LOGICAL,INTENT(IN) :: doMPISides                                       !< = .TRUE. only MPISides_YOUR+MPIMortar are filled
                                                                        !< =.FALSE. BCSides+(Mortar-)InnerSides+MPISides_MINE
-REAL,INTENT(IN)    :: Flux(1:PP_nVarPrim,0:Nloc,0:PP_NlocZ,nSides)         !< flux to be filled
+REAL,INTENT(IN)    :: Flux(1:PP_nVarPrim,0:Nloc,0:ZDIM(Nloc),nSides)         !< flux to be filled
 REAL,INTENT(IN)    :: L_HatPlus(0:Nloc)                                !< lagrange polynomials at xi=+1 and pre-divided by
                                                                        !< integration weight
 REAL,INTENT(IN)    :: L_HatMinus(0:Nloc)                               !< lagrange polynomials at xi=-1 and pre-divided by
                                                                        !< integration weight
-REAL,INTENT(INOUT) :: gradU(PP_nVarPrim,0:Nloc,0:Nloc,0:PP_NlocZ,1:nElems) !< time derivative of solution
+REAL,INTENT(INOUT) :: gradU(PP_nVarPrim,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems) !< time derivative of solution
 LOGICAL,INTENT(IN) :: weak                                             !< switch for weak or strong formulation
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: ElemID,nbElemID,locSideID,nblocSideID,SideID,p,q,flip
 INTEGER            :: firstSideID,lastSideID
-REAL               :: FluxTmp(1:PP_nVarPrim,0:Nloc,0:PP_NlocZ)
+REAL               :: FluxTmp(1:PP_nVarPrim,0:Nloc,0:ZDIM(Nloc))
 !==================================================================================================================================
 IF(doMPISides)THEN
   ! MPI YOUR
@@ -102,7 +102,7 @@ DO SideID=firstSideID,lastSideID
       locSideID = SideToElem(S2E_LOC_SIDE_ID,SideID)
       flip      = 0
       ! orient flux to fit flip and locSide to element local system
-      DO q=0,PP_NlocZ; DO p=0,Nloc
+      DO q=0,ZDIM(Nloc); DO p=0,Nloc
         ! note: for master sides, the mapping S2V2 should be a unit matrix
         FluxTmp(:,S2V2(1,p,q,flip,locSideID),S2V2(2,p,q,flip,locSideID)) = Flux(:,p,q,SideID) 
       END DO; END DO ! p,q
@@ -121,13 +121,13 @@ DO SideID=firstSideID,lastSideID
       flip        = SideToElem(S2E_FLIP,SideID)
       ! orient flux to fit flip and locSide to element local system
       IF(weak)THEN
-        DO q=0,PP_NlocZ; DO p=0,Nloc
+        DO q=0,ZDIM(Nloc); DO p=0,Nloc
           ! p,q are in the master RHS system, they need to be transformed to the slave volume system using S2V2 mapping
           FluxTmp(:,S2V2(1,p,q,flip,nblocSideID),S2V2(2,p,q,flip,nblocSideID))=-Flux(:,p,q,SideID)
         END DO; END DO ! p,q
       ELSE
         ! In strong form, don't flip the sign since the slave flux is the negative of the master flux
-        DO q=0,PP_NlocZ; DO p=0,Nloc
+        DO q=0,ZDIM(Nloc); DO p=0,Nloc
           ! p,q are in the master RHS system, they need to be transformed to the slave volume system using S2V2 mapping
           FluxTmp(:,S2V2(1,p,q,flip,nblocSideID),S2V2(2,p,q,flip,nblocSideID))= Flux(:,p,q,SideID)
         END DO; END DO ! p,q

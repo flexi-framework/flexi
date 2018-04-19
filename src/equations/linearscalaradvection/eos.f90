@@ -91,8 +91,8 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: Nloc                                 !< polynomial degree
-REAL,INTENT(IN)    :: cons(    PP_nVar,0:Nloc,0:PP_NlocZ)  !< conservative variables
-REAL,INTENT(OUT)   :: prim(PP_nVarPrim,0:Nloc,0:PP_NlocZ)  !< primitive variables
+REAL,INTENT(IN)    :: cons(    PP_nVar,0:Nloc,0:ZDIM(Nloc))  !< conservative variables
+REAL,INTENT(OUT)   :: prim(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc))  !< primitive variables
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
@@ -110,8 +110,8 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: Nloc                                                  !< polynomial degree
-REAL,INTENT(IN)    :: cons(    PP_nVar,0:Nloc,0:Nloc,0:PP_NlocZ,1:nElems)   !< conservative variables  
-REAL,INTENT(OUT)   :: prim(PP_nVarPrim,0:Nloc,0:Nloc,0:PP_NlocZ,1:nElems)   !< primitive variables
+REAL,INTENT(IN)    :: cons(    PP_nVar,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems)   !< conservative variables  
+REAL,INTENT(OUT)   :: prim(PP_nVarPrim,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems)   !< primitive variables
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
@@ -145,8 +145,8 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: Nloc
-REAL,INTENT(IN)    :: prim(PP_nVarPrim,0:Nloc,0:PP_NlocZ) !< vector of primitive variables
-REAL,INTENT(OUT)   :: cons(PP_nVar    ,0:Nloc,0:PP_NlocZ) !< vector of conservative variables
+REAL,INTENT(IN)    :: prim(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)) !< vector of primitive variables
+REAL,INTENT(OUT)   :: cons(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)) !< vector of conservative variables
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================

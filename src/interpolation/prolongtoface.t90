@@ -39,14 +39,14 @@ INTEGER,INTENT(IN)              :: TP_nVar
 INTEGER,INTENT(IN)              :: Nloc
 LOGICAL,INTENT(IN)              :: doMPISides  != .TRUE. only YOUR MPISides are filled, =.FALSE. BCSides +InnerSides +MPISides MINE
 REAL,INTENT(IN)                 :: L_Minus(0:Nloc),L_Plus(0:Nloc)
-REAL,INTENT(IN)                 :: Uvol(TP_nVar,0:Nloc,0:Nloc,0:PP_NlocZ,1:nElems)
-REAL,INTENT(INOUT)              :: Uface_master(TP_nVar,0:Nloc,0:PP_NlocZ,1:nSides)
-REAL,INTENT(INOUT)              :: Uface_slave( TP_nVar,0:Nloc,0:PP_NlocZ,1:nSides)
+REAL,INTENT(IN)                 :: Uvol(TP_nVar,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems)
+REAL,INTENT(INOUT)              :: Uface_master(TP_nVar,0:Nloc,0:ZDIM(Nloc),1:nSides)
+REAL,INTENT(INOUT)              :: Uface_slave( TP_nVar,0:Nloc,0:ZDIM(Nloc),1:nSides)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                         :: p,q,firstSideID,lastSideID
 INTEGER                         :: ElemID,nbElemID,locSide,nblocSide,SideID,flip
-REAL                            :: Uface(TP_nVar,0:Nloc,0:PP_NlocZ)
+REAL                            :: Uface(TP_nVar,0:Nloc,0:ZDIM(Nloc))
 !==================================================================================================================================
 IF(doMPISides)THEN
   firstSideID = firstMPISide_YOUR
@@ -79,7 +79,7 @@ DO SideID=firstSideID,lastSideID
           Nloc,UVol(:,:,:,:,ElemID),Uface,locSide)
     END IF
 
-    DO q=0,PP_NlocZ; DO p=0,Nloc
+    DO q=0,ZDIM(Nloc); DO p=0,Nloc
       Uface_master(:,p,q,SideID)=Uface(:,S2V2(1,p,q,0,locSide),S2V2(2,p,q,0,locSide))
     END DO; END DO
 #if FV_ENABLED
@@ -106,7 +106,7 @@ DO SideID=firstSideID,lastSideID
           Nloc,UVol(:,:,:,:,nbElemID),Uface,nblocSide)
     END IF
 
-    DO q=0,PP_NlocZ; DO p=0,Nloc
+    DO q=0,ZDIM(Nloc); DO p=0,Nloc
       Uface_slave( :,p,q,SideID)=Uface(:,S2V2(1,p,q,flip,nblocSide),S2V2(2,p,q,flip,nblocSide))
     END DO; END DO
 #if FV_ENABLED
@@ -136,8 +136,8 @@ INTEGER,INTENT(IN)              :: TP_nVar
 INTEGER,INTENT(IN)              :: Nloc
 INTEGER,INTENT(IN)              :: locSide
 REAL,INTENT(IN)                 :: L_Minus(0:Nloc),L_Plus(0:Nloc)
-REAL,INTENT(IN)                 :: Uvol( TP_nVar,0:Nloc,0:Nloc,0:PP_NlocZ)
-REAL,INTENT(OUT)                :: Uface(TP_nVar,0:Nloc,0:PP_NlocZ)
+REAL,INTENT(IN)                 :: Uvol( TP_nVar,0:Nloc,0:Nloc,0:ZDIM(Nloc))
+REAL,INTENT(OUT)                :: Uface(TP_nVar,0:Nloc,0:ZDIM(Nloc))
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                         :: l
@@ -194,8 +194,8 @@ INTEGER,INTENT(IN)              :: TP_nVar
 #endif
 INTEGER,INTENT(IN)              :: Nloc
 INTEGER,INTENT(IN)              :: locSide
-REAL,INTENT(IN)                 :: Uvol( TP_nVar,0:Nloc,0:Nloc,0:PP_NlocZ)
-REAL,INTENT(OUT)                :: Uface(TP_nVar,0:Nloc,0:PP_NlocZ)
+REAL,INTENT(IN)                 :: Uvol( TP_nVar,0:Nloc,0:Nloc,0:ZDIM(Nloc))
+REAL,INTENT(OUT)                :: Uface(TP_nVar,0:Nloc,0:ZDIM(Nloc))
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
