@@ -206,7 +206,12 @@ REAL,ALLOCATABLE    :: ElemData(:,:),tmp(:)
 CHARACTER(LEN=255),ALLOCATABLE :: VarNamesElemData(:)
 #endif
 !==================================================================================================================================
-doFlushFiles_loc = MERGE(doFlushFiles, .TRUE., PRESENT(doFlushFiles))
+IF (PRESENT(doFlushFiles)) THEN
+  doFlushFiles_loc = doFlushFiles
+ELSE
+  doFlushFiles_loc = .TRUE.
+END IF
+
 IF(DoRestart)THEN
   CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 #if FV_ENABLED  

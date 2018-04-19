@@ -217,7 +217,11 @@ REAL                            :: x_eff(3),x_offset(3)
 #endif
 !==================================================================================================================================
 tEval=MERGE(t,tIn,fullBoundaryOrder) ! prevent temporal order degradation, works only for RK3 time integration
-RefState=MERGE(RefStateOpt,IniRefState,PRESENT(RefStateOpt))
+IF (PRESENT(RefStateOpt)) THEN
+  RefState = RefStateOpt
+ELSE
+  RefState = IniRefState
+END IF
 
 Resu   =0.
 Resu_t =0.

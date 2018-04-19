@@ -239,7 +239,12 @@ LOGICAL      :: onlyFV_loc
 !                         doMPISides==True   doMPISides==False
 firstMortarSideID = MERGE(firstMortarMPISide,firstMortarInnerSide,doMPISides)
  lastMortarSideID = MERGE( lastMortarMPISide, lastMortarInnerSide,doMPISides)
-onlyFV_loc = MERGE(onlyFV, .FALSE., PRESENT(onlyFV))
+IF (PRESENT(onlyFV)) THEN
+  onlyFV_loc = onlyFV
+ELSE
+  onlyFV_loc = .FALSE.
+END IF
+
 
 M1=>M_1_0; M2=>M_2_0
 DO MortarSideID=firstMortarSideID,lastMortarSideID
