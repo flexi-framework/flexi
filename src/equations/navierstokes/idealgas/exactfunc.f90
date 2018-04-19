@@ -595,7 +595,7 @@ CASE(1338) ! blasius
     prim(3)=0.5*(mu0*prim(2)/prim(1)/x_eff(1))**0.5*(fp*eta-f)
     prim(2)=RefStatePrim(2,RefState)*fp
   ELSE
-    IF(x_eff(2).LT.0) THEN
+    IF(x_eff(2).LE.0) THEN
       prim(2)=0.
     END IF 
   END IF
