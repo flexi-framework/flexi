@@ -529,8 +529,7 @@ IF(file_exists)THEN
     WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')' failed. Appending data to end of file.'
   END IF
 END IF
-INQUIRE(UNIT=ioUnit,OPENED=isOpen)
-IF(isOpen) CLOSE(ioUnit)
+CLOSE(ioUnit)
 
 IF(.NOT.file_exists)THEN ! No restart create new file
   OPEN(NEWUNIT= ioUnit             ,&
