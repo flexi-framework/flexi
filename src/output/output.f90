@@ -456,7 +456,8 @@ REAL,INTENT(OUT),OPTIONAL     :: lastLine(nVar+1)         !< last written line t
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: stat                         !< File IO status
-INTEGER                        :: ioUnit=0,i                   !< IO Unit
+INTEGER                        :: ioUnit=0                     !< IO Unit
+INTEGER                        :: i,iMax                       !< Counter for header lines
 REAL                           :: dummytime                    !< Simulation time read from file
 LOGICAL                        :: file_exists                  !< marker if file exists and is valid
 LOGICAL                        :: isOpen                       !< unit is open
@@ -498,7 +499,9 @@ IF(file_exists)THEN
   WRITE(UNIT_stdOut,'(A)',ADVANCE='NO')'Searching for time stamp...'
 
   REWIND(ioUnit)
-  DO i=1,4
+  ! Loop over header and try to read the first data line. Header size depends on output format.
+  iMax =MERGE(2,4,ASCIIOutputFormat.EQ.ASCIIOUTPUTFORMAT_CSV)
+  DO i=1,iMax
     READ(ioUnit,*,IOSTAT=stat)
     IF(stat.NE.0)THEN
       ! file is broken, rewrite
