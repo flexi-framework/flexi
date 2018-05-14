@@ -456,7 +456,7 @@ REAL,INTENT(OUT),OPTIONAL     :: lastLine(nVar+1)         !< last written line t
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: stat                         !< File IO status
-INTEGER                        :: ioUnit=0                     !< IO Unit
+INTEGER                        :: ioUnit                       !< IO Unit
 INTEGER                        :: i,iMax                       !< Counter for header lines
 REAL                           :: dummytime                    !< Simulation time read from file
 LOGICAL                        :: file_exists                  !< marker if file exists and is valid
@@ -477,6 +477,7 @@ END IF
 file_exists = FILEEXISTS(FileName_loc)
 IF(RestartTime.LT.0.0) file_exists=.FALSE.
 !! File processing starts here open old and extratct information or create new file.
+ioUnit = 0
 
 IF(file_exists)THEN ! File exists and append data
   OPEN(NEWUNIT  = ioUnit             , &
