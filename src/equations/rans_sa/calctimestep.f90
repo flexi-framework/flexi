@@ -107,6 +107,7 @@ USE MOD_Mesh_Vars    ,ONLY:Metrics_hTilde
 #endif
 USE MOD_EOS_Vars
 #if PARABOLIC
+USE MOD_Equation_Vars,ONLY:fv1
 USE MOD_TimeDisc_Vars,ONLY:DFLScale
 USE MOD_Viscosity
 #endif /*PARABOLIC*/
@@ -129,6 +130,7 @@ REAL                         :: Max_Lambda(3),c,vsJ(3)
 REAL                         :: Max_Lambda_v(3),mu,prim(PP_nVarPrim)
 #endif /*PARABOLIC*/
 INTEGER                      :: FVE
+REAL                         :: chi,muTurb,muEff,muTilde
 !==================================================================================================================================
 errType=0
 
@@ -166,7 +168,12 @@ DO iElem=1,nElems
     ! Viscous Eigenvalues
     prim = UE(PRIM)
     mu=VISCOSITY_PRIM(prim)
-    Max_Lambda_v=MAX(Max_Lambda_v,mu*UE(SRHO)*MetricsVisc(:,i,j,k,iElem,FVE))
+    ! Add turbulent viscosity
+    muTilde = U(6,i,j,k,iElem)
+    chi = muTilde/mu
+    muTurb = muTilde*fv1(chi)
+    muEff = MAX(mu,mu+muTurb)  ! Ignore muTurb < 0
+    Max_Lambda_v=MAX(Max_Lambda_v,muEff*UE(SRHO)*MetricsVisc(:,i,j,k,iElem,FVE))
 #endif /* PARABOLIC*/
   END DO; END DO; END DO ! i,j,k
 
