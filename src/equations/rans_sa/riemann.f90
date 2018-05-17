@@ -291,7 +291,7 @@ DO j=0,ZDIM(Nloc); DO i=0,Nloc
   U_LL(SRHO)=1./U_LL(DENS)
   U_LL(ENER)=U_L(5,i,j)
   U_LL(PRES)=UPrim_L(5,i,j)
-  U_LL(MUSA)=UPrim_L(7,i,j)
+  U_LL(MUSA)=U_L(6,i,j)
   ! rotate velocity in normal and tangential direction 
   U_LL(VEL1)=DOT_PRODUCT(UPrim_L(2:4,i,j),nv(:,i,j))
   U_LL(VEL2)=DOT_PRODUCT(UPrim_L(2:4,i,j),t1(:,i,j))
@@ -309,7 +309,7 @@ DO j=0,ZDIM(Nloc); DO i=0,Nloc
   U_RR(SRHO)=1./U_RR(DENS)
   U_RR(ENER)=U_R(5,i,j)
   U_RR(PRES)=UPrim_R(5,i,j)
-  U_RR(MUSA)=UPrim_R(7,i,j)
+  U_RR(MUSA)=U_R(6,i,j)
   ! rotate momentum in normal and tangential direction 
   U_RR(VEL1)=DOT_PRODUCT(UPRIM_R(2:4,i,j),nv(:,i,j))
   U_RR(VEL2)=DOT_PRODUCT(UPRIM_R(2:4,i,j),t1(:,i,j))
