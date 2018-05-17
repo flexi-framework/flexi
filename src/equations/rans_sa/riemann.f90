@@ -291,8 +291,7 @@ DO j=0,ZDIM(Nloc); DO i=0,Nloc
   U_LL(SRHO)=1./U_LL(DENS)
   U_LL(ENER)=U_L(5,i,j)
   U_LL(PRES)=UPrim_L(5,i,j)
-  
-
+  U_LL(MUSA)=UPrim_L(7,i,j)
   ! rotate velocity in normal and tangential direction 
   U_LL(VEL1)=DOT_PRODUCT(UPrim_L(2:4,i,j),nv(:,i,j))
   U_LL(VEL2)=DOT_PRODUCT(UPrim_L(2:4,i,j),t1(:,i,j))
@@ -310,6 +309,7 @@ DO j=0,ZDIM(Nloc); DO i=0,Nloc
   U_RR(SRHO)=1./U_RR(DENS)
   U_RR(ENER)=U_R(5,i,j)
   U_RR(PRES)=UPrim_R(5,i,j)
+  U_RR(MUSA)=UPrim_R(7,i,j)
   ! rotate momentum in normal and tangential direction 
   U_RR(VEL1)=DOT_PRODUCT(UPRIM_R(2:4,i,j),nv(:,i,j))
   U_RR(VEL2)=DOT_PRODUCT(UPRIM_R(2:4,i,j),t1(:,i,j))
@@ -340,6 +340,7 @@ DO j=0,ZDIM(Nloc); DO i=0,Nloc
                   + 0.
 #endif
   Fout(ENER,i,j)=F(ENER)
+  Fout(MUSA,i,j)=F(MUSA)
 END DO; END DO
 
 #ifdef DEBUG
@@ -356,7 +357,7 @@ END SUBROUTINE Riemann
 
 #if PARABOLIC
 !==================================================================================================================================
-!> Computes the viscous NSE diffusion fluxes in all directions to approximate the numerical flux
+!> Computes the viscous RANS SA diffusion fluxes in all directions to approximate the numerical flux
 !> Actually not a Riemann solver, only here for coding reasons
 !==================================================================================================================================
 SUBROUTINE ViscousFlux(Nloc,F,UPrim_L,UPrim_R, &
