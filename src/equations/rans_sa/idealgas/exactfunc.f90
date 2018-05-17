@@ -12,6 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "eos.h"
 
 !==================================================================================================================================
 !> Soubroutines providing exactly evaluated functions used in initialization or boundary conditions.
@@ -636,15 +637,24 @@ END IF
 END SUBROUTINE ExactFunc
 
 !==================================================================================================================================
-!> Compute source terms for some specific testcases and adds it to DG time derivative
+!> Compute source terms for some specific testcases and the SA model and adds it to DG time derivative
 !==================================================================================================================================
 SUBROUTINE CalcSource(Ut,t)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Equation_Vars    ,ONLY: IniExactFunc,doCalcSource
-USE MOD_Eos_Vars         ,ONLY: Kappa,KappaM1
+USE MOD_Equation_Vars    ,ONLY: SAKappa,SAd,cw1,cb1,cb2,sigma
+USE MOD_Equation_Vars    ,ONLY: fv2,fw,STilde,fn
+USE MOD_Eos_Vars         ,ONLY: Kappa,KappaM1,cp
 USE MOD_Exactfunc_Vars   ,ONLY: AdvVel
+USE MOD_DG_Vars          ,ONLY: U
+USE MOD_Lifting_Vars     ,ONLY: gradUx,gradUy
+USE MOD_EOS              ,ONLY: ConsToPrim
+#if PP_dim == 3
+USE MOD_Lifting_Vars     ,ONLY: gradUz
+#endif
+USE MOD_Viscosity
 #if PARABOLIC
 USE MOD_Eos_Vars         ,ONLY: mu0,Pr
 #endif
@@ -669,6 +679,10 @@ REAL                :: C
 #if FV_ENABLED
 REAL                :: Ut_src2(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 #endif
+REAL                :: prim(PP_nVarPrim)
+REAL                :: S,SA_STilde,chi,nuTilde     ! vars for SA source
+REAL                :: SAfw,SAfn
+REAL                :: muS                         ! physical viscosity
 !==================================================================================================================================
 SELECT CASE (IniExactFunc)
 CASE(4) ! exact function
@@ -879,8 +893,63 @@ CASE(43) ! Sinus in z
 #endif
 CASE DEFAULT
   ! No source -> do nothing and set marker to not run again
-  doCalcSource=.FALSE.
+  !doCalcSource=.FALSE.
 END SELECT ! ExactFunction
+
+! Add the source term of the SA model
+DO iElem=1,nElems
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+    CALL ConsToPrim(prim,U(:,i,j,k,iElem))
+    nuTilde = prim(7)
+    muS=VISCOSITY_PRIM(prim)
+    chi = U(6,i,j,k,iElem)/muS
+    ! Calculate and modify the magnitude of the vorticity
+#if PP_dim==2
+    S = ABS(gradUy(2,i,j,k,iElem)-gradUx(3,i,j,k,iElem))
+#else
+    S = SQRT((gradUy(4,i,j,k,iElem)-gradUz(3,i,j,k,iElem))**2 + &
+             (gradUz(2,i,j,k,iElem)-gradUx(4,i,j,k,iElem))**2 + &
+             (gradUx(3,i,j,k,iElem)-gradUy(2,i,j,k,iElem))**2)
+#endif
+    IF (U(6,i,j,k,iElem).LT.0.) THEN
+      ! No modification for the negative version of the model
+      SA_STilde = S
+    ELSE
+      SA_STilde = STilde(nuTilde,SAd(i,j,k,iElem),chi,S)
+    END IF
+    ! Production term
+    Ut_src(6,i,j,k) = cb1*SA_STilde*U(6,i,j,k,iElem)
+    ! Destruction term, depending on wall damping
+    SAfw = fw(nuTilde,SA_STilde,SAd(i,j,k,iElem))
+    Ut_src(6,i,j,k) = Ut_src(6,i,j,k) - prim(1)*cw1*SAfw*(nuTilde/SAd(i,j,k,iElem))**2
+    ! Diffusion
+    IF (U(6,i,j,k,iElem).LT.0.) THEN
+      ! Use additional function fn for negative values
+      SAfn = fn(chi)
+    ELSE
+      SAfn = 1.
+    END IF
+    Ut_src(6,i,j,k) = Ut_src(6,i,j,k) + &
+                             cb2/sigma*prim(1)*(gradUx(7,i,j,k,iElem)**2+gradUy(7,i,j,k,iElem)**2 &
+#if PP_dim==3
+                                               +gradUz(7,i,j,k,iElem)**2 &
+#endif
+                             )-1./sigma*(muS/prim(1)+nuTilde*SAfn) * &
+                             (gradUx(7,i,j,k,iElem)*gradUx(1,i,j,k,iElem)+gradUy(7,i,j,k,iElem)*gradUy(1,i,j,k,iElem) &
+#if PP_dim==3
+                             +gradUz(7,i,j,k,iElem)*gradUz(1,i,j,k,iElem) &
+#endif
+                             )
+
+  END DO; END DO; END DO ! i,j,k
+END DO
+
+DO iElem=1,nElems
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+    Ut(6,i,j,k,iElem) = Ut(6,i,j,k,iElem)+Ut_src(6,i,j,k)/sJ(i,j,k,iElem,0)
+  END DO; END DO; END DO ! i,j,k
+END DO
+
 END SUBROUTINE CalcSource
 
 END MODULE MOD_Exactfunc
