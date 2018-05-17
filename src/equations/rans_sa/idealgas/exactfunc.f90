@@ -942,9 +942,6 @@ DO iElem=1,nElems
                              )
 
   END DO; END DO; END DO ! i,j,k
-END DO
-
-DO iElem=1,nElems
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     Ut(6,i,j,k,iElem) = Ut(6,i,j,k,iElem)+Ut_src(6,i,j,k)/sJ(i,j,k,iElem,0)
   END DO; END DO; END DO ! i,j,k
