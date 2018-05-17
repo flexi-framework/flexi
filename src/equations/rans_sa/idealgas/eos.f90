@@ -210,6 +210,8 @@ prim(4)=0.
 prim(5)=KappaM1*(cons(5)-0.5*SUM(cons(2:4)*prim(2:4)))
 ! temperature
 prim(6) = prim(5)*sRho / R
+! kinematic SA viscosity
+prim(7) = cons(6)*sRho
 END SUBROUTINE ConsToPrim
 
 !==================================================================================================================================
@@ -244,6 +246,8 @@ DO q=0,ZDIM(Nloc); DO p=0,Nloc
   prim(5,p,q)=KappaM1*(cons(5,p,q)-0.5*SUM(cons(2:4,p,q)*prim(2:4,p,q)))
   ! temperature
   prim(6,p,q) = prim(5,p,q)*sRho / R
+  ! kinematic SA viscosity
+  prim(7,p,q) = cons(6,p,q)*sRho
 END DO; END DO
 END SUBROUTINE ConsToPrim_Side
 
@@ -281,6 +285,8 @@ DO iElem=1,nElems
     prim(5,i,j,k,iElem)=KappaM1*(cons(5,i,j,k,iElem)-0.5*SUM(cons(2:4,i,j,k,iElem)*prim(2:4,i,j,k,iElem)))
     ! temperature
     prim(6,i,j,k,iElem) = prim(5,i,j,k,iElem)*sRho / R
+    ! kinematic SA viscosity
+    prim(7,i,j,k,iElem) = cons(6,i,j,k,iElem)*sRho
   END DO; END DO; END DO! i,j,k=0,Nloc
 END DO ! iElem
 END SUBROUTINE ConsToPrim_Volume
@@ -310,6 +316,8 @@ cons(4)=0.
 #endif
 ! energy
 cons(5)=sKappaM1*prim(5)+0.5*SUM(cons(2:4)*prim(2:4))
+! dynamic SA viscosity
+cons(6) = prim(7)*prim(1)
 END SUBROUTINE PrimToCons
 
 !==================================================================================================================================
@@ -340,6 +348,8 @@ DO q=0,ZDIM(Nloc); DO p=0,Nloc
 #endif
   ! energy
   cons(5,p,q)=sKappaM1*prim(5,p,q)+0.5*SUM(cons(2:4,p,q)*prim(2:4,p,q))
+  ! dynamic SA viscosity
+  cons(6,p,q) = prim(7,p,q)*prim(1,p,q)
 END DO; END DO ! p,q=0,Nloc
 END SUBROUTINE PrimToCons_Side
 
@@ -373,6 +383,8 @@ DO iElem=1,nElems
 #endif
     ! energy
     cons(5,p,q,r,iElem)=sKappaM1*prim(5,p,q,r,iElem)+0.5*SUM(cons(2:4,p,q,r,iElem)*prim(2:4,p,q,r,iElem))
+    ! dynamic SA viscosity
+    cons(6,p,q,r,iElem) = prim(7,p,q,r,iElem)*prim(1,p,q,r,iElem)
   END DO; END DO; END DO ! p,q=0,Nloc
 END DO
 END SUBROUTINE PrimToCons_Volume
