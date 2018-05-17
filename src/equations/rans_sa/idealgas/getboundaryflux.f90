@@ -331,6 +331,7 @@ CASE(3,4,9,23,24,25,27)
       UPrim_boundary(6,p,q) = UPrim_master(6,p,q) ! adiabatic => temperature from the inside
       ! set density via ideal gas equation, consistent to pressure and temperature
       UPrim_boundary(1,p,q) = UPrim_boundary(5,p,q) / (UPrim_boundary(6,p,q) * R) 
+      UPrim_boundary(7,p,q) = 0. ! Solid wall -> vanishing SA viscosity
     END DO; END DO ! q,p
   CASE(4) ! Isothermal wall
     ! For isothermal wall, all gradients are from interior
@@ -342,6 +343,7 @@ CASE(3,4,9,23,24,25,27)
       UPrim_boundary(6,p,q) = RefStatePrim(6,BCState) ! temperature from RefState
       ! set density via ideal gas equation, consistent to pressure and temperature
       UPrim_boundary(1,p,q) = UPrim_boundary(5,p,q) / (UPrim_boundary(6,p,q) * R)
+      UPrim_boundary(7,p,q) = 0. ! Solid wall -> vanishing SA viscosity
     END DO; END DO ! q,p
   CASE(9) ! Euler (slip) wall
     ! vel=(0,v_in,w_in)
@@ -575,6 +577,7 @@ ELSE
       Flux(1  ,p,q) = 0.
       Flux(2:4,p,q) = UPrim_boundary(5,p,q)*NormVec(:,p,q)
       Flux(5  ,p,q) = 0.
+      Flux(6  ,p,q) = 0.
     END DO; END DO !p,q
     ! Diffusion
 #if PARABOLIC
@@ -582,8 +585,7 @@ ELSE
     CASE(3,4)
       ! Evaluate 3D Diffusion Flux with interior state and symmetry gradients
       CALL EvalDiffFlux2D(Nloc,Fd_Face_loc,Gd_Face_loc,Hd_Face_loc,UPrim_boundary,&
-          gradUx_master, gradUy_master, gradUz_master &
-      )
+          gradUx_master, gradUy_master, gradUz_master )
       IF (BCType.EQ.3) THEN
         ! Enforce energy flux is exactly zero at adiabatic wall
         Fd_Face_loc(5,:,:)=0.
@@ -751,6 +753,7 @@ ELSE
       Flux(2:4,p,q) = 0.
       Flux(5  ,p,q) = UPrim_Boundary(5,p,q)
       Flux(6  ,p,q) = UPrim_Boundary(6,p,q)
+      Flux(7  ,p,q) = 0.
     END DO; END DO !p,q
   CASE(9)
     ! Euler/(full-)slip wall, symmetry BC
