@@ -60,7 +60,7 @@ PUBLIC::EvalDiffFlux3D,EvalDiffFlux2D!,EvalDiffFlux1D
 CONTAINS
 
 !==================================================================================================================================
-!> Compute Navier-Stokes fluxes using the conservative variables and derivatives for every volume Gauss point.
+!> Compute RANS SA fluxes using the conservative variables and derivatives for every volume Gauss point.
 !==================================================================================================================================
 SUBROUTINE EvalFlux3D(Nloc,U,UPrim,f,g,h)
 ! MODULES
@@ -90,18 +90,21 @@ DO k=0,ZDIM(Nloc);  DO j=0,Nloc; DO i=0,Nloc
   f(3,i,j,k)=U(2,i,j,k)*UPrim(3,i,j,k)                ! rho*u*v
   f(4,i,j,k)=U(2,i,j,k)*UPrim(4,i,j,k)                ! rho*u*w
   f(5,i,j,k)=Ep*UPrim(2,i,j,k)                        ! (rho*e+p)*u
+  f(6,i,j,k)=U(6,i,j,k)*UPrim(2,i,j,k)                ! muTilde*u
   ! Euler fluxes y-direction
   g(1,i,j,k)=U(3,i,j,k)                               ! rho*v
   g(2,i,j,k)=f(3,i,j,k)                               ! rho*u*v
   g(3,i,j,k)=U(3,i,j,k)*UPrim(3,i,j,k)+UPrim(5,i,j,k) ! rho*v²+p
   g(4,i,j,k)=U(3,i,j,k)*UPrim(4,i,j,k)                ! rho*v*w
   g(5,i,j,k)=Ep*UPrim(3,i,j,k)                        ! (rho*e+p)*v
+  g(6,i,j,k)=U(6,i,j,k)*UPrim(3,i,j,k)                ! muTilde*v
   ! Euler fluxes z-direction
   h(1,i,j,k)=U(4,i,j,k)                               ! rho*v
   h(2,i,j,k)=f(4,i,j,k)                               ! rho*u*w
   h(3,i,j,k)=g(4,i,j,k)                               ! rho*v*w
   h(4,i,j,k)=U(4,i,j,k)*UPrim(4,i,j,k)+UPrim(5,i,j,k) ! rho*v²+p
   h(5,i,j,k)=Ep*UPrim(4,i,j,k)                        ! (rho*e+p)*w
+  h(6,i,j,k)=U(6,i,j,k)*UPrim(4,i,j,k)                ! muTilde*w
 #else
 
   ! Euler part
@@ -111,12 +114,14 @@ DO k=0,ZDIM(Nloc);  DO j=0,Nloc; DO i=0,Nloc
   f(3,i,j,k)=U(2,i,j,k)*UPrim(3,i,j,k)                ! rho*u*v
   f(4,i,j,k)=0.
   f(5,i,j,k)=Ep*UPrim(2,i,j,k)                        ! (rho*e+p)*u
+  f(6,i,j,k)=U(6,i,j,k)*UPrim(2,i,j,k)                ! muTilde*u
   ! Euler fluxes y-direction
   g(1,i,j,k)=U(3,i,j,k)                               ! rho*v
   g(2,i,j,k)=f(3,i,j,k)                               ! rho*u*v
   g(3,i,j,k)=U(3,i,j,k)*UPrim(3,i,j,k)+UPrim(5,i,j,k) ! rho*v²+p
   g(4,i,j,k)=0.
   g(5,i,j,k)=Ep*UPrim(3,i,j,k)                        ! (rho*e+p)*v
+  g(6,i,j,k)=U(6,i,j,k)*UPrim(3,i,j,k)                ! muTilde*v
   ! Euler fluxes z-direction
   h(:,i,j,k)=0.
 #endif
@@ -126,12 +131,12 @@ END SUBROUTINE EvalFlux3D
 
 #if PARABOLIC
 !==================================================================================================================================
-!> Compute Navier-Stokes diffusive fluxes using the conservative variables and derivatives for every volume Gauss point.
+!> Compute RANS SA diffusive fluxes using the conservative variables and derivatives for every volume Gauss point.
 !==================================================================================================================================
 SUBROUTINE EvalDiffFlux3D(UPrim,gradUx,gradUy,gradUz,f,g,h,iElem)
 ! MODULES
 USE MOD_PreProc
-USE MOD_Equation_Vars,ONLY: s23,s43
+USE MOD_Equation_Vars,ONLY: s23,s43,PrTurb,fv1,fn,sigma
 USE MOD_EOS_Vars,     ONLY: cp,Pr
 USE MOD_Viscosity
 IMPLICIT NONE
@@ -153,6 +158,7 @@ REAL                :: v3
 REAL                :: tau_zz,tau_xz,tau_yz
 REAL                :: gradT3
 #endif
+REAL                :: chi,muTurb,muEff,muTilde,SAfn
 !==================================================================================================================================
 DO k=0,PP_NZ;  DO j=0,PP_N; DO i=0,PP_N
   prim = UPrim(:,i,j,k)
@@ -162,19 +168,30 @@ DO k=0,PP_NZ;  DO j=0,PP_N; DO i=0,PP_N
   ! ideal gas law
   muS=VISCOSITY_PRIM(prim)
   lambda=THERMAL_CONDUCTIVITY_H(muS)
-  !Add turbulent sub grid scale viscosity to mu
+  ! Add turbulent viscosity
+  muTilde = prim(7)*prim(1)
+  chi = muTilde/muS
+  muTurb = muTilde*fv1(chi)
+  muEff = MAX(muS,muS+muTurb)  ! Ignore muTurb < 0
+  lambda = MAX(lambda,lambda+muTurb*cp/PrTurb)
+  ! Set negative modification if necessary
+  IF (muTilde.LT.0.) THEN
+    SAfn = fn(chi)
+  ELSE
+    SAfn = 1.
+  END IF
 
 #if PP_dim==3
   v3   = UPrim(4,i,j,k)
   ! gradients of primitive variables are directly available gradU = (/ drho, dv1, dv2, dv3, dT /)
 
   ! viscous fluxes in x-direction
-  tau_xx=muS*( s43*gradUx(2,i,j,k)-s23*gradUy(3,i,j,k)-s23*gradUz(4,i,j,k)) ! 4/3*mu*u_x-2/3*mu*v_y -2/3*mu*w*z
-  tau_yy=muS*(-s23*gradUx(2,i,j,k)+s43*gradUy(3,i,j,k)-s23*gradUz(4,i,j,k)) !-2/3*mu*u_x+4/3*mu*v_y -2/3*mu*w*z
-  tau_zz=muS*(-s23*gradUx(2,i,j,k)-s23*gradUy(3,i,j,k)+s43*gradUz(4,i,j,k)) !-2/3*mu*u_x-2/3*mu*v_y +4/3*mu*w*z
-  tau_xy=muS*(gradUy(2,i,j,k)+gradUx(3,i,j,k))                               !mu*(u_y+v_x)
-  tau_xz=muS*(gradUz(2,i,j,k)+gradUx(4,i,j,k))                               !mu*(u_z+w_x)
-  tau_yz=muS*(gradUz(3,i,j,k)+gradUy(4,i,j,k))                               !mu*(y_z+w_y)
+  tau_xx=muEff*( s43*gradUx(2,i,j,k)-s23*gradUy(3,i,j,k)-s23*gradUz(4,i,j,k)) ! 4/3*mu*u_x-2/3*mu*v_y -2/3*mu*w*z
+  tau_yy=muEff*(-s23*gradUx(2,i,j,k)+s43*gradUy(3,i,j,k)-s23*gradUz(4,i,j,k)) !-2/3*mu*u_x+4/3*mu*v_y -2/3*mu*w*z
+  tau_zz=muEff*(-s23*gradUx(2,i,j,k)-s23*gradUy(3,i,j,k)+s43*gradUz(4,i,j,k)) !-2/3*mu*u_x-2/3*mu*v_y +4/3*mu*w*z
+  tau_xy=muEff*(gradUy(2,i,j,k)+gradUx(3,i,j,k))                               !mu*(u_y+v_x)
+  tau_xz=muEff*(gradUz(2,i,j,k)+gradUx(4,i,j,k))                               !mu*(u_z+w_x)
+  tau_yz=muEff*(gradUz(3,i,j,k)+gradUy(4,i,j,k))                               !mu*(y_z+w_y)
 
   gradT1=gradUx(6,i,j,k)
   gradT2=gradUy(6,i,j,k)
@@ -185,25 +202,28 @@ DO k=0,PP_NZ;  DO j=0,PP_N; DO i=0,PP_N
   f(3,i,j,k)=-tau_xy                                       ! F_euler-mu*(u_y+v_x)
   f(4,i,j,k)=-tau_xz                                       ! F_euler-mu*(u_z+w_x)
   f(5,i,j,k)=-tau_xx*v1-tau_xy*v2-tau_xz*v3-lambda*gradT1  ! F_euler-(tau_xx*u+tau_xy*v+tau_xz*w-q_x) q_x=-lambda*T_x
+  f(6,i,j,k)=-1./sigma*(muS+muTilde*SAfn)*gradUx(7,i,j,k)  ! F_euler-1/sigma*(muS+muTilde)*nuTilde_x
   ! viscous fluxes in y-direction
   g(1,i,j,k)=0.
   g(2,i,j,k)=-tau_xy                                       ! F_euler-mu*(u_y+v_x)
   g(3,i,j,k)=-tau_yy                                       ! F_euler-4/3*mu*v_y+2/3*mu*(u_x+w_z)
   g(4,i,j,k)=-tau_yz                                       ! F_euler-mu*(y_z+w_y)
   g(5,i,j,k)=-tau_xy*v1-tau_yy*v2-tau_yz*v3-lambda*gradT2  ! F_euler-(tau_yx*u+tau_yy*v+tau_yz*w-q_y) q_y=-lambda*T_y
+  g(6,i,j,k)=-1./sigma*(muS+muTilde*SAfn)*gradUy(7,i,j,k)  ! F_euler-1/sigma*(muS+muTilde)*nuTilde_y
   ! viscous fluxes in z-direction
   h(1,i,j,k)=0.
   h(2,i,j,k)=-tau_xz                                       ! F_euler-mu*(u_z+w_x)
   h(3,i,j,k)=-tau_yz                                       ! F_euler-mu*(y_z+w_y)
   h(4,i,j,k)=-tau_zz                                       ! F_euler-4/3*mu*w_z+2/3*mu*(u_x+v_y)
   h(5,i,j,k)=-tau_xz*v1-tau_yz*v2-tau_zz*v3-lambda*gradT3  ! F_euler-(tau_zx*u+tau_zy*v+tau_zz*w-q_z) q_z=-lambda*T_z
+  h(6,i,j,k)=-1./sigma*(muS+muTilde*SAfn)*gradUz(7,i,j,k)  ! F_euler-1/sigma*(muS+muTilde)*nuTilde_z
 #else
   ! gradients of primitive variables are directly available gradU = (/ drho, dv1, dv2, dv3, dT /)
 
   ! viscous fluxes in x-direction
-  tau_xx=muS*( s43*gradUx(2,i,j,k)-s23*gradUy(3,i,j,k)) ! 4/3*mu*u_x-2/3*mu*v_y -2/3*mu*w*z
-  tau_yy=muS*(-s23*gradUx(2,i,j,k)+s43*gradUy(3,i,j,k)) !-2/3*mu*u_x+4/3*mu*v_y -2/3*mu*w*z
-  tau_xy=muS*(gradUy(2,i,j,k)+gradUx(3,i,j,k))                               !mu*(u_y+v_x)
+  tau_xx=muEff*( s43*gradUx(2,i,j,k)-s23*gradUy(3,i,j,k)) ! 4/3*mu*u_x-2/3*mu*v_y -2/3*mu*w*z
+  tau_yy=muEff*(-s23*gradUx(2,i,j,k)+s43*gradUy(3,i,j,k)) !-2/3*mu*u_x+4/3*mu*v_y -2/3*mu*w*z
+  tau_xy=muEff*(gradUy(2,i,j,k)+gradUx(3,i,j,k))                               !mu*(u_y+v_x)
 
   gradT1=gradUx(6,i,j,k)
   gradT2=gradUy(6,i,j,k)
@@ -212,13 +232,15 @@ DO k=0,PP_NZ;  DO j=0,PP_N; DO i=0,PP_N
   f(2,i,j,k)=-tau_xx                                       ! F_euler-4/3*mu*u_x+2/3*mu*(v_y+w_z)
   f(3,i,j,k)=-tau_xy                                       ! F_euler-mu*(u_y+v_x)
   f(4,i,j,k)=0.
-  f(5,i,j,k)=-tau_xx*v1-tau_xy*v2-lambda*gradT1  ! F_euler-(tau_xx*u+tau_xy*v+tau_xz*w-q_x) q_x=-lambda*T_x
+  f(5,i,j,k)=-tau_xx*v1-tau_xy*v2-lambda*gradT1            ! F_euler-(tau_xx*u+tau_xy*v+tau_xz*w-q_x) q_x=-lambda*T_x
+  f(6,i,j,k)=-1./sigma*(muS+muTilde*SAfn)*gradUx(7,i,j,k)  ! F_euler-1/sigma*(muS+muTilde)*nuTilde_x
   ! viscous fluxes in y-direction
   g(1,i,j,k)=0.
   g(2,i,j,k)=-tau_xy                                       ! F_euler-mu*(u_y+v_x)
   g(3,i,j,k)=-tau_yy                                       ! F_euler-4/3*mu*v_y+2/3*mu*(u_x+w_z)
   g(4,i,j,k)=0.
-  g(5,i,j,k)=-tau_xy*v1-tau_yy*v2-lambda*gradT2  ! F_euler-(tau_yx*u+tau_yy*v+tau_yz*w-q_y) q_y=-lambda*T_y
+  g(5,i,j,k)=-tau_xy*v1-tau_yy*v2-lambda*gradT2            ! F_euler-(tau_yx*u+tau_yy*v+tau_yz*w-q_y) q_y=-lambda*T_y
+  g(6,i,j,k)=-1./sigma*(muS+muTilde*SAfn)*gradUy(7,i,j,k)  ! F_euler-1/sigma*(muS+muTilde)*nuTilde_y
   ! viscous fluxes in z-direction
   h(:,i,j,k)=0.
 #endif
@@ -269,6 +291,7 @@ F(4)= U(MOM1)*UE(VEL3)            ! rho*u*w
 F(4)=0.
 #endif
 F(5)=(U(ENER)+UE(PRES))*UE(VEL1)  ! (rho*e+p)*u
+F(6)=(U(MUSA)*UE(VEL1))           ! muTilde*u
 END SUBROUTINE EvalEulerFlux1D
 
 !==================================================================================================================================
@@ -294,17 +317,18 @@ F(4)= U(MOM1)*U(VEL3)         ! rho*u*w
 F(4)= 0.
 #endif
 F(5)=(U(ENER)+U(PRES))*U(VEL1)! (rho*e+p)*u
+F(6)=(U(MUSA)*U(VEL1))        ! muTilde*u
 END SUBROUTINE EvalEulerFlux1D_fast
 
 
 #if PARABOLIC
 !==================================================================================================================================
-!> Compute Navier-Stokes diffusive fluxes using the conservative variables and derivatives for every volume Gauss point.
+!> Compute RANS SA diffusive fluxes using the conservative variables and derivatives for every volume Gauss point.
 !==================================================================================================================================
 SUBROUTINE EvalDiffFlux2D(Nloc,f,g,h,UPrim_Face,gradUx_Face,gradUy_Face,gradUz_Face)
 ! MODULES
 USE MOD_PreProc
-USE MOD_Equation_Vars,ONLY: s43,s23
+USE MOD_Equation_Vars,ONLY: s43,s23,fv1,PrTurb,fv1,fn,sigma
 USE MOD_Viscosity
 USE MOD_EOS_Vars,     ONLY: cp,Pr
 IMPLICIT NONE
@@ -330,6 +354,7 @@ REAL    :: v3
 REAL    :: gradT3
 #endif 
 INTEGER :: i,j
+REAL    :: chi,muTurb,muEff,muTilde,SAfn
 !==================================================================================================================================
 DO j=0,ZDIM(Nloc) ; DO i=0,Nloc
   prim = UPrim_Face(:,i,j)
@@ -339,20 +364,31 @@ DO j=0,ZDIM(Nloc) ; DO i=0,Nloc
   ! ideal gas law
   muS=VISCOSITY_PRIM(prim)
   lambda=THERMAL_CONDUCTIVITY_H(muS)
+  ! Add turbulent viscosity
+  muTilde = prim(7)*prim(1)
+  chi = muTilde/muS
+  muTurb = muTilde*fv1(chi)
+  muEff = MAX(muS,muS+muTurb)  ! Ignore muTurb < 0
+  lambda = MAX(lambda,lambda+muTurb*cp/PrTurb)
+  ! Set negative modification if necessary
+  IF (muTilde.LT.0.) THEN
+    SAfn = fn(chi)
+  ELSE
+    SAfn = 1.
+  END IF
   ! auxiliary variables
   ! In previous versions gradients of conservative variables had been used, see Git commit b984f2895121e236ce24c149ad15615180995b00
-  ! gradients of primitive variables are directly available gradU = (/ drho, dv1, dv2, dv3, dp, dT /)
+  ! gradients of primitive variables are directly available gradU = (/ drho, dv1, dv2, dv3, dp, dT, dnuTilde /)
 
 #if PP_dim==3
   v3=UPrim_Face(4,i,j)
-  ! gradients of primitive variables are directly available gradU = (/ drho, dv1, dv2, dv3, dp, dT /)
 
-  tau_xx=muS*( s43*gradUx_Face(2,i,j)-s23*gradUy_Face(3,i,j)-s23*gradUz_Face(4,i,j)) ! 4/3*mu*u_x-2/3*mu*v_y -2/3*mu*w*z
-  tau_yy=muS*(-s23*gradUx_Face(2,i,j)+s43*gradUy_Face(3,i,j)-s23*gradUz_Face(4,i,j)) !-2/3*mu*u_x+4/3*mu*v_y -2/3*mu*w*z
-  tau_zz=muS*(-s23*gradUx_Face(2,i,j)-s23*gradUy_Face(3,i,j)+s43*gradUz_Face(4,i,j)) !-2/3*mu*u_x-2/3*mu*v_y +4/3*mu*w*z
-  tau_xy=muS*(gradUy_Face(2,i,j)+gradUx_Face(3,i,j))                                 !mu*(u_y+v_x)
-  tau_xz=muS*(gradUz_Face(2,i,j)+gradUx_Face(4,i,j))                                 !mu*(u_z+w_x)
-  tau_yz=muS*(gradUz_Face(3,i,j)+gradUy_Face(4,i,j))                                 !mu*(y_z+w_y)
+  tau_xx=muEff*( s43*gradUx_Face(2,i,j)-s23*gradUy_Face(3,i,j)-s23*gradUz_Face(4,i,j)) ! 4/3*mu*u_x-2/3*mu*v_y -2/3*mu*w*z
+  tau_yy=muEff*(-s23*gradUx_Face(2,i,j)+s43*gradUy_Face(3,i,j)-s23*gradUz_Face(4,i,j)) !-2/3*mu*u_x+4/3*mu*v_y -2/3*mu*w*z
+  tau_zz=muEff*(-s23*gradUx_Face(2,i,j)-s23*gradUy_Face(3,i,j)+s43*gradUz_Face(4,i,j)) !-2/3*mu*u_x-2/3*mu*v_y +4/3*mu*w*z
+  tau_xy=muEff*(gradUy_Face(2,i,j)+gradUx_Face(3,i,j))                                 !mu*(u_y+v_x)
+  tau_xz=muEff*(gradUz_Face(2,i,j)+gradUx_Face(4,i,j))                                 !mu*(u_z+w_x)
+  tau_yz=muEff*(gradUz_Face(3,i,j)+gradUy_Face(4,i,j))                                 !mu*(y_z+w_y)
   gradT3=gradUz_Face(6,i,j)
   gradT1=gradUx_Face(6,i,j)
   gradT2=gradUy_Face(6,i,j)
@@ -362,24 +398,26 @@ DO j=0,ZDIM(Nloc) ; DO i=0,Nloc
   f(3,i,j)=-tau_xy                                       ! F_euler-mu*(u_y+v_x)
   f(4,i,j)=-tau_xz                                       ! F_euler-mu*(u_z+w_x)
   f(5,i,j)=-tau_xx*v1-tau_xy*v2-tau_xz*v3-lambda*gradT1  ! F_euler-(tau_xx*u+tau_xy*v+tau_xz*w-q_x) q_x=-lambda*T_x
+  f(6,i,j)=-1./sigma*(muS+muTilde*SAfn)*gradUx_Face(7,i,j) ! F_euler-1/sigma*(muS+muTilde)*nuTilde_x
   ! viscous fluxes in y-direction
   g(1,i,j)=0.
   g(2,i,j)=-tau_xy                                       ! F_euler-mu*(u_y+v_x)
   g(3,i,j)=-tau_yy                                       ! F_euler-4/3*mu*v_y+2/3*mu*(u_x+w_z)
   g(4,i,j)=-tau_yz                                       ! F_euler-mu*(y_z+w_y)
   g(5,i,j)=-tau_xy*v1-tau_yy*v2-tau_yz*v3-lambda*gradT2  ! F_euler-(tau_yx*u+tau_yy*v+tau_yz*w-q_y) q_y=-lambda*T_y
+  g(6,i,j)=-1./sigma*(muS+muTilde*SAfn)*gradUy_Face(7,i,j) ! F_euler-1/sigma*(muS+muTilde)*nuTilde_y
   ! viscous fluxes in z-direction
   h(1,i,j)=0.
   h(2,i,j)=-tau_xz                                       ! F_euler-mu*(u_z+w_x)
   h(3,i,j)=-tau_yz                                       ! F_euler-mu*(y_z+w_y)
   h(4,i,j)=-tau_zz                                       ! F_euler-4/3*mu*w_z+2/3*mu*(u_x+v_y)
   h(5,i,j)=-tau_xz*v1-tau_yz*v2-tau_zz*v3-lambda*gradT3  ! F_euler-(tau_zx*u+tau_zy*v+tau_zz*w-q_z) q_z=-lambda*T_z
+  h(6,i,j)=-1./sigma*(muS+muTilde*SAfn)*gradUz_Face(7,i,j) ! F_euler-1/sigma*(muS+muTilde)*nuTilde_z
 #else
-  ! gradients of primitive variables are directly available gradU = (/ drho, dv1, dv2, dv3, dp, dT /)
 
-  tau_xx=muS*( s43*gradUx_Face(2,i,j)-s23*gradUy_Face(3,i,j)) ! 4/3*mu*u_x-2/3*mu*v_y -2/3*mu*w*z
-  tau_yy=muS*(-s23*gradUx_Face(2,i,j)+s43*gradUy_Face(3,i,j)) !-2/3*mu*u_x+4/3*mu*v_y -2/3*mu*w*z
-  tau_xy=muS*(gradUy_Face(2,i,j)+gradUx_Face(3,i,j))                                 !mu*(u_y+v_x)
+  tau_xx=muEff*( s43*gradUx_Face(2,i,j)-s23*gradUy_Face(3,i,j)) ! 4/3*mu*u_x-2/3*mu*v_y -2/3*mu*w*z
+  tau_yy=muEff*(-s23*gradUx_Face(2,i,j)+s43*gradUy_Face(3,i,j)) !-2/3*mu*u_x+4/3*mu*v_y -2/3*mu*w*z
+  tau_xy=muEff*(gradUy_Face(2,i,j)+gradUx_Face(3,i,j))                                 !mu*(u_y+v_x)
   gradT1=gradUx_Face(6,i,j)
   gradT2=gradUy_Face(6,i,j)
   ! viscous fluxes in x-direction
@@ -388,12 +426,14 @@ DO j=0,ZDIM(Nloc) ; DO i=0,Nloc
   f(3,i,j)=-tau_xy                                       ! F_euler-mu*(u_y+v_x)
   f(4,i,j)=0.   
   f(5,i,j)=-tau_xx*v1-tau_xy*v2-lambda*gradT1  ! F_euler-(tau_xx*u+tau_xy*v+tau_xz*w-q_x) q_x=-lambda*T_x
+  f(6,i,j)=-1./sigma*(muS+muTilde*SAfn)*gradUx_Face(7,i,j) ! F_euler-1/sigma*(muS+muTilde)*nuTilde_x
   ! viscous fluxes in y-direction
   g(1,i,j)=0.
   g(2,i,j)=-tau_xy                                       ! F_euler-mu*(u_y+v_x)
   g(3,i,j)=-tau_yy                                       ! F_euler-4/3*mu*v_y+2/3*mu*(u_x+w_z)
   g(4,i,j)=0.
   g(5,i,j)=-tau_xy*v1-tau_yy*v2-lambda*gradT2  ! F_euler-(tau_yx*u+tau_yy*v+tau_yz*w-q_y) q_y=-lambda*T_y
+  g(6,i,j)=-1./sigma*(muS+muTilde*SAfn)*gradUy_Face(7,i,j) ! F_euler-1/sigma*(muS+muTilde)*nuTilde_y
   ! viscous fluxes in z-direction
   h(:,i,j)=0.
 #endif
