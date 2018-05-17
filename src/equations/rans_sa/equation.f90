@@ -63,6 +63,7 @@ CALL prms%CreateIntOption(      'IniRefState',  "Refstate required for initializ
 CALL prms%CreateRealArrayOption('RefState',     "State(s) in primitive variables (density, velx, vely, velz, pressure).",&
                                                 multiple=.TRUE.)
 CALL prms%CreateStringOption(   'BCStateFile',  "File containing the reference solution on the boundary to be used as BC.")
+CALL prms%CreateRealOption(     'PrTurb',       "Prandtl number", '0.9')
 
 CALL DefineParametersRiemann()
 #ifdef SPLIT_DG
@@ -81,11 +82,12 @@ USE MOD_Equation_Vars
 USE MOD_Eos               ,ONLY: InitEos,PrimToCons
 USE MOD_EOS_Vars          ,ONLY: R
 USE MOD_Exactfunc         ,ONLY: InitExactFunc
-USE MOD_ReadInTools       ,ONLY: CountOption,GETREALARRAY,GETSTR
+USE MOD_ReadInTools       ,ONLY: CountOption,GETREALARRAY,GETSTR,GETREAL
 USE MOD_Testcase          ,ONLY: InitTestcase
 USE MOD_Riemann           ,ONLY: InitRiemann
 USE MOD_GetBoundaryFlux,   ONLY: InitBC
 USE MOD_CalcTimeStep      ,ONLY: InitCalctimestep
+USE MOD_Mesh_Vars         ,ONLY: nElems,Elem_xGP
 #ifdef SPLIT_DG
 USE MOD_SplitFlux         ,ONLY: InitSplitDG
 #endif /*SPLIT_DG*/
@@ -96,6 +98,8 @@ USE MOD_SplitFlux         ,ONLY: InitSplitDG
 ! LOCAL VARIABLES
 INTEGER :: i
 REAL    :: UE(PP_2Var)
+INTEGER :: iElem,j,k
+REAL    :: RefStatePrimTmp(6)
 !==================================================================================================================================
 IF(EquationInitIsDone)THEN
   CALL CollectiveStop(__STAMP__,&
@@ -116,6 +120,21 @@ IniRefState  = 0
 CALL InitExactFunc()
 CALL InitEOS()
 
+! SA-specific parameters
+PrTurb = GETREAL('PrTurb','0.9')
+ALLOCATE(SAd(0:PP_N,0:PP_N,0:PP_NZ,nElems))
+SAd = 0.
+! Wall distance for flat plate testcase
+DO iElem=1,nElems
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+    IF (Elem_xGP(1,i,j,k,iElem).GT.0.) THEN
+      SAd(i,j,k,iElem) = Elem_xGP(2,i,j,k,iElem)
+    ELSE
+      SAd(i,j,k,iElem) = SQRT(Elem_xGP(1,i,j,k,iElem)**2+Elem_xGP(2,i,j,k,iElem)**2)
+    END IF
+  END DO; END DO; END DO! i,j,k=0,PP_N
+END DO ! iElem
+
 ! Read Boundary information / RefStates / perform sanity check
 nRefState=CountOption('RefState')
 IF(IniRefState.GT.nRefState)THEN
@@ -127,17 +146,19 @@ IF(nRefState .GT. 0)THEN
   ALLOCATE(RefStatePrim(PP_nVarPrim,nRefState))
   ALLOCATE(RefStateCons(PP_nVar    ,nRefState))
   DO i=1,nRefState
-    RefStatePrim(1:5,i)  = GETREALARRAY('RefState',5)
+    RefStatePrimTmp = GETREALARRAY('RefState',6)
+    RefStatePrim(1:5,i)  = RefStatePrimTmp(1:5)
 #if PP_dim==2
-  IF(RefStatePrim(4,i).NE.0.) THEN
-    SWRITE(UNIT_StdOut,'(A)')' You are computing in 2D! RefStatePrim(4) will be set to zero!' 
-    RefStatePrim(4,i)=0.
-  END IF
+    IF(RefStatePrim(4,i).NE.0.) THEN
+      SWRITE(UNIT_StdOut,'(A)')' You are computing in 2D! RefStatePrim(4) will be set to zero!' 
+      RefStatePrim(4,i)=0.
+    END IF
 #endif
     ! TODO: ATTENTION only sRho and Pressure of UE filled!!!
     UE(SRHO) = 1./RefStatePrim(1,i)
     UE(PRES) = RefStatePrim(5,i)
     RefStatePrim(6,i) = TEMPERATURE_HE(UE)
+    RefStatePrim(7,i) = RefStatePrimTmp(6)
     CALL PrimToCons(RefStatePrim(:,i),RefStateCons(:,i))
   END DO
 END IF
@@ -283,6 +304,7 @@ CALL FinalizeCalctimestep()
 CALL FinalizeBC()
 SDEALLOCATE(RefStatePrim)
 SDEALLOCATE(RefStateCons)
+SDEALLOCATE(SAd)
 EquationInitIsDone = .FALSE.
 END SUBROUTINE FinalizeEquation
 
