@@ -644,7 +644,7 @@ USE MOD_Viscosity
 USE MOD_Mesh_Vars           ,ONLY: NGeo,Elem_xGP,SideToElem,nBCSides
 USE MOD_Interpolation       ,ONLY: GetVandermonde
 USE MOD_Interpolation_Vars  ,ONLY: NodeType,NodeTypeGL
-USE MOD_ChangeBasis         ,ONLY: ChangeBasis3D
+USE MOD_ChangeBasisByDim    ,ONLY: ChangeBasisVolume
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -655,17 +655,21 @@ INTEGER,INTENT(IN)                                   :: Nloc                    
                                                                                       !< is performed
 INTEGER,INTENT(IN)                                   :: dir                           !< Direction of grid spacing that should
                                                                                       !< be calculated (1,2,3)=(x,y,z)
-REAL,DIMENSION(0:Nloc,0:Nloc,nSides_calc),INTENT(IN) :: WallFrictionMag               !< Magnitude of wall friction on sides
-REAL,DIMENSION(0:Nloc,0:Nloc,nSides_calc),INTENT(IN) :: Density                       !< Density on sides
-REAL,DIMENSION(0:Nloc,0:Nloc,nSides_calc),INTENT(IN) :: Temperature                   !< Temperature on sides (for viscosity)
-REAL,INTENT(OUT)                                     :: wallDistance(0:Nloc,0:Nloc,nSides_calc) !< Returned array
+REAL,DIMENSION(0:Nloc,0:ZDIM(Nloc),nSides_calc),INTENT(IN) :: WallFrictionMag               !< Magnitude of wall friction on sides
+REAL,DIMENSION(0:Nloc,0:ZDIM(Nloc),nSides_calc),INTENT(IN) :: Density                       !< Density on sides
+REAL,DIMENSION(0:Nloc,0:ZDIM(Nloc),nSides_calc),INTENT(IN) :: Temperature                   !< Temperature on sides (for viscosity)
+REAL,INTENT(OUT)                                     :: wallDistance(0:Nloc,0:ZDIM(Nloc),nSides_calc) !< Returned array
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL              :: mu,temp,fricVel
-INTEGER           :: iSide,p,q,iSideVisu,i,ElemID,locSideID
-REAL              :: refVec(3),scalProd,scalProdMax,xVec(3),yVec(3),zVec(3),yloc(3),tVec(3,2)
-REAL              :: NodeCoords(3,0:PP_N,0:PP_N,0:PP_N)
+INTEGER           :: iSide,p,q,iSideVisu,ElemID,locSideID
+REAL              :: xVec(3),yVec(3),yloc(3),tVec(3,2)
+REAL              :: NodeCoords(3,0:PP_N,0:PP_N,0:PP_NZ)
 REAL              :: Vdm_G_GL(0:PP_N,0:PP_N)
+#if PP_dim==3
+INTEGER           :: i
+REAL              :: refVec(3),scalProd,scalProdMax,zVec(3)
+#endif
 !===================================================================================================================================
 ! We need a Vandermonde matrix to get the GP coordinates on GL points, i.e. including the surface of the grid cells
 CALL GetVandermonde(PP_N,NodeType,PP_N,NodeTypeGL,Vdm_G_GL)
@@ -674,11 +678,17 @@ CALL GetVandermonde(PP_N,NodeType,PP_N,NodeTypeGL,Vdm_G_GL)
 DO iSide=1,nBCSides
   iSideVisu = mapBCSideToVisuSides(iSide) ! Index on visualization side
   IF (iSideVisu.GT.0) THEN ! Check if this side should be visualized
+#if PP_dim==2
+    IF (dir.EQ.3) THEN
+      wallDistance(:,:,iSideVisu) = 0.
+      CYCLE
+    END IF
+#endif
     ElemID        = SideToElem(S2E_ELEM_ID,iSide)
     locSideID     = SideToElem(S2E_LOC_SIDE_ID,iSide)
 
     ! Get element coordinates on GL points (they include the edges that we use to calculate the element length)
-    CALL ChangeBasis3D(3,PP_N,PP_N,Vdm_G_GL,Elem_xGP(:,:,:,:,ElemID),NodeCoords)
+    CALL ChangeBasisVolume(3,PP_N,PP_N,Vdm_G_GL,Elem_xGP(:,:,:,:,ElemID),NodeCoords)
 
     ! Depending in the local sideID, get the edge vectors of the element in wall-normal direction (stored in yVec) and for the two
     ! wall-tangential directions (stored in tVec(:,1-2)). These vectors are the connection of the cell vertices, so they do not
@@ -687,17 +697,22 @@ DO iSide=1,nBCSides
     CASE(XI_MINUS,XI_PLUS)
      yVec(:)   = NodeCoords(:,NGeo,0,0)- NodeCoords(:,0,0,0)
      tVec(:,1) = NodeCoords(:,0,NGeo,0)- NodeCoords(:,0,0,0)
+#if PP_dim==3
      tVec(:,2) = NodeCoords(:,0,0,NGeo)- NodeCoords(:,0,0,0)
+#endif
     CASE(ETA_MINUS,ETA_PLUS)
      yVec(:)   = NodeCoords(:,0,NGeo,0)- NodeCoords(:,0,0,0)
      tVec(:,1) = NodeCoords(:,NGeo,0,0)- NodeCoords(:,0,0,0)
+#if PP_dim==3
      tVec(:,2) = NodeCoords(:,0,0,NGeo)- NodeCoords(:,0,0,0)
     CASE(ZETA_MINUS,ZETA_PLUS)
      yVec(:)   = NodeCoords(:,0,0,NGeo)- NodeCoords(:,0,0,0)
      tVec(:,1) = NodeCoords(:,NGeo,0,0)- NodeCoords(:,0,0,0)
      tVec(:,2) = NodeCoords(:,0,NGeo,0)- NodeCoords(:,0,0,0)
+#endif
     END SELECT
 
+#if PP_dim==3
     ! For the two tangential vectors, we try to find out which one is pointing in the physical x-direction
     refVec=(/1.,0.,0./) ! Vector in x-direction
     scalProdMax=0.
@@ -714,23 +729,29 @@ DO iSide=1,nBCSides
        zVec=tVec(:,3-i)
      END IF
     END DO
+#else
+    xVec=tVec(:,1)
+#endif
 
     ! Calculate lengths of the cell = lengths of the edge vectors
     yloc(1)=NORM2(xVec)
     yloc(2)=NORM2(yVec)
+#if PP_dim==3
     yloc(3)=NORM2(zVec)
+#endif
 
     ! Normalize the distances with the number of points per direction per cell
-    yloc=yloc/(PP_N+1)
+    yloc(1:PP_dim)=yloc(1:PP_dim)/(PP_N+1)
 
     ! Non-dimensional wall distance is calculated using  y+ = y * frictionVel / kinematicVisc
     ! where frictionVel = sqrt(WallFriction/rho)
-    DO q=0,Nloc; DO p=0,Nloc
+    DO q=0,ZDIM(Nloc); DO p=0,Nloc
       fricVel=SQRT(WallFrictionMag(p,q,iSideVisu))
       temp = Temperature(p,q,iSideVisu)
       mu   = VISCOSITY_TEMPERATURE(temp)
       wallDistance(p,q,iSideVisu) = yloc(dir)*fricVel*Density(p,q,iSideVisu)/mu
     END DO; END DO ! p,q=0,Nloc
+
 
   END IF ! iSideVisu.GT.0
 END DO ! iSide = 1,nBCSides
