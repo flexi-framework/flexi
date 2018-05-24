@@ -58,7 +58,7 @@ USE MOD_StringTools,        ONLY: INTTOSTR
 USE MOD_Mesh_Vars,          ONLY: nBCSides,Face_xGP,nElems
 USE MOD_ChangeBasisByDim,   ONLY: ChangeBasisSurf
 USE MOD_Interpolation,      ONLY: GetVandermonde,GetDerivativeMatrix
-USE MOD_Interpolation_Vars, ONLY: NodeType,NodeTypeVisu
+USE MOD_Interpolation_Vars, ONLY: NodeType,NodeTypeVisuInner
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
@@ -73,7 +73,7 @@ IF (DebugVisu) NVisu  = GETINT('NVisu', INTTOSTR(2*PP_N))
 
 ! Vandermonde to interpolate the face coordinates to the supersampling points
 ALLOCATE(Vdm_GaussN_EquiNSuper(0:NSuper,0:PP_N))
-CALL GetVandermonde(PP_N,NodeType,NSuper,NodeTypeVisu,Vdm_GaussN_EquiNSuper)
+CALL GetVandermonde(PP_N,NodeType,NSuper,NodeTypeVisuInner,Vdm_GaussN_EquiNSuper)
 
 ! Get supersampling points
 ALLOCATE(xSuper_Face(PP_dim,0:NSuper,0:ZDIM(NSuper),nBCSides))
@@ -182,9 +182,9 @@ DO iElem=1,nElems
       END DO
     END DO; END DO
     ! Start value from coarse search
-    xi_i(1) = 2.*REAL(nearestFace(1,i,j,k,iElem))/REAL(NSuper) -1.
+    xi_i(1) = 1./REAL(NSuper+1)+2.*REAL(nearestFace(1,i,j,k,iElem))/REAL(NSuper+1) -1.
 #if PP_dim == 3
-    xi_i(2) = 2.*REAL(nearestFace(2,i,j,k,iElem))/REAL(NSuper) -1.
+    xi_i(2) = 1./REAL(NSuper+1)+2.*REAL(nearestFace(2,i,j,k,iElem))/REAL(NSuper+1) -1.
 #endif
     iter = 0
     DO WHILE  (iter.LT.maxIter)
