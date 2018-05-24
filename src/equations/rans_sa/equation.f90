@@ -87,7 +87,8 @@ USE MOD_Testcase          ,ONLY: InitTestcase
 USE MOD_Riemann           ,ONLY: InitRiemann
 USE MOD_GetBoundaryFlux,   ONLY: InitBC
 USE MOD_CalcTimeStep      ,ONLY: InitCalctimestep
-USE MOD_Mesh_Vars         ,ONLY: nElems,Elem_xGP
+USE MOD_Mesh_Vars         ,ONLY: nElems,Elem_xGP,offsetElem,MeshFile
+USE MOD_HDF5_Input        ,ONLY: ReadArray,OpenDataFile
 #ifdef SPLIT_DG
 USE MOD_SplitFlux         ,ONLY: InitSplitDG
 #endif /*SPLIT_DG*/
@@ -96,10 +97,11 @@ USE MOD_SplitFlux         ,ONLY: InitSplitDG
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER :: i
-REAL    :: UE(PP_2Var)
-INTEGER :: iElem,j,k
-REAL    :: RefStatePrimTmp(6)
+INTEGER            :: i
+REAL               :: UE(PP_2Var)
+INTEGER            :: iElem,j,k
+REAL               :: RefStatePrimTmp(6)
+CHARACTER(LEN=255) :: FileName
 !==================================================================================================================================
 IF(EquationInitIsDone)THEN
   CALL CollectiveStop(__STAMP__,&
@@ -124,16 +126,12 @@ CALL InitEOS()
 PrTurb = GETREAL('PrTurb','0.9')
 ALLOCATE(SAd(0:PP_N,0:PP_N,0:PP_NZ,nElems))
 SAd = 0.
-! Wall distance for flat plate testcase
-DO iElem=1,nElems
-  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-    IF (Elem_xGP(1,i,j,k,iElem).GT.0.) THEN
-      SAd(i,j,k,iElem) = Elem_xGP(2,i,j,k,iElem)
-    ELSE
-      SAd(i,j,k,iElem) = SQRT(Elem_xGP(1,i,j,k,iElem)**2+Elem_xGP(2,i,j,k,iElem)**2)
-    END IF
-  END DO; END DO; END DO! i,j,k=0,PP_N
-END DO ! iElem
+! Read-in of walldistance
+FileName = MeshFile(1:INDEX(MeshFile,'_mesh.h5')-1)//'_walldistance.h5'
+CALL OpenDataFile(TRIM(FileName),create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+CALL ReadArray('walldistance',4,&
+               (/PP_N+1,PP_N+1,PP_NZ+1,nElems/),&
+               offsetElem,4,RealArray=SAd)
 
 ! Read Boundary information / RefStates / perform sanity check
 nRefState=CountOption('RefState')
