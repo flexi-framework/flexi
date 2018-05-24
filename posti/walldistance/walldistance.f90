@@ -121,7 +121,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER    :: i,j,k,iElem,iSide,p,q,l
-REAL       :: xi_i(1:PP_dim-1),xVol(PP_dim),xCur(PP_dim)
+REAL       :: xi_i(1:PP_dim-1),xi_old(1:PP_dim-1),xVol(PP_dim),xCur(PP_dim)
 REAL       :: dist,best
 REAL       :: Jac(1:PP_dim,1:PP_dim-1)
 REAL       :: dX(1:PP_dim,1:PP_dim-1,0:PP_N,0:PP_NZ)
@@ -142,7 +142,7 @@ REAL                          :: eta
 REAL                          :: LagXi(0:PP_N),LagEta(0:PP_N)
 REAL                          :: percentDone
 !===================================================================================================================================
-! First step: Corase search using the supersampled points
+! First step: Coarse search using the supersampled points
 DO iElem=1,nElems
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     best = HUGE(1.)
@@ -156,7 +156,6 @@ DO iElem=1,nElems
           nearestFace(1,i,j,k,iElem) = p
           nearestFace(2,i,j,k,iElem) = q
           nearestFace(3,i,j,k,iElem) = iSide
-          !distance(i,j,k,iElem) = dist
         END IF
       END DO; END DO ! p,q=0,PP_N
     END DO ! iSide = 1, nBCSides
@@ -182,7 +181,7 @@ DO iElem=1,nElems
 #endif
       END DO
     END DO; END DO
-    ! Start value
+    ! Start value from coarse search
     xi_i(1) = 2.*REAL(nearestFace(1,i,j,k,iElem))/REAL(NSuper) -1.
     xi_i(2) = 2.*REAL(nearestFace(2,i,j,k,iElem))/REAL(NSuper) -1.
     iter = 0
@@ -209,12 +208,16 @@ DO iElem=1,nElems
                (distSquare(xi_i,      xVol,Face_xGP(1:PP_dim,:,:,0,iSide))-alpha*eta*(NORM2(g))**2))
         eta = eta*beta
       END DO
+      ! Save old xi for abort criterion
+      xi_old = xi_i
       ! Perform a gradient descent step
       xi_i = xi_i - eta*g
       ! Restrict the result to [-1,1] (projection onto allowed region)
       xi_i(1)=MIN(1.,MAX(-1.,xi_i(1)))
       xi_i(2)=MIN(1.,MAX(-1.,xi_i(2)))
       iter = iter + 1
+      ! Abort criterion
+      IF (NORM2(xi_old-xi_i).LT.NORM2(xi_old)*1.E-08) EXIT
     END DO ! iter < maxIter
     ! Save result
     CALL LagrangeInterpolationPolys(xi_i(1),PP_N,xGP,wBary,LagXi)
