@@ -87,7 +87,7 @@ WRITE(UNIT_stdOut,'(A)') 'SUPER SAMPLING POINTS CREATED!'
 ALLOCATE(nearestFace(3,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 
 ! Output array of walldistance
-ALLOCATE(distance(0:PP_N,0:PP_N,0:PP_N,nElems))
+ALLOCATE(distance(0:PP_N,0:PP_N,0:PP_NZ,nElems))
 distance = 0.
 
 ! Derivative matrix needed to get gradient
@@ -134,7 +134,7 @@ REAL,POINTER                  :: distance_NVisu_p(:,:,:,:,:)
 REAL                          :: distanceTmp(1,0:PP_N,0:PP_N,0:PP_NZ)
 REAL,ALLOCATABLE              :: Vdm_GaussN_NVisu(:,:)
 REAL,EXTERNAL                 :: distanceFunc
-INTEGER                       :: iter,maxIter=100
+INTEGER                       :: iter,maxIter=1000
 REAL                          :: g(1:PP_dim-1)
 REAL,PARAMETER                :: alpha = 0.1
 REAL,PARAMETER                :: beta   = 0.1
@@ -183,12 +183,18 @@ DO iElem=1,nElems
     END DO; END DO
     ! Start value from coarse search
     xi_i(1) = 2.*REAL(nearestFace(1,i,j,k,iElem))/REAL(NSuper) -1.
+#if PP_dim == 3
     xi_i(2) = 2.*REAL(nearestFace(2,i,j,k,iElem))/REAL(NSuper) -1.
+#endif
     iter = 0
     DO WHILE  (iter.LT.maxIter)
       ! Evaluate physical positions as well as the Jacobian for all the derivatives
       CALL LagrangeInterpolationPolys(xi_i(1),PP_N,xGP,wBary,LagXi)
+#if PP_dim == 3
       CALL LagrangeInterpolationPolys(xi_i(2),PP_N,xGP,wBary,LagEta)
+#else
+      LagEta = 1.
+#endif
       xCur = 0.
       Jac = 0.
       DO q=0,PP_NZ; DO p=0,PP_N
@@ -197,11 +203,15 @@ DO iElem=1,nElems
       END DO; END DO ! p,q=0,PP_N
       ! Compute the derivatives of the square of the distance function
       g(1) = 2.*(xCur(1)-xVol(1))*Jac(1,1) &
-           + 2.*(xCur(2)-xVol(2))*Jac(2,1) &
-           + 2.*(xCur(3)-xVol(3))*Jac(3,1)
+#if PP_dim == 3
+           + 2.*(xCur(3)-xVol(3))*Jac(3,1) &
+#endif
+           + 2.*(xCur(2)-xVol(2))*Jac(2,1)
+#if PP_dim == 3
       g(2) = 2.*(xCur(1)-xVol(1))*Jac(1,2) &
            + 2.*(xCur(2)-xVol(2))*Jac(2,2) &
            + 2.*(xCur(3)-xVol(3))*Jac(3,2)
+#endif
       ! Step-size calculation by heuristic line search approach
       eta = 1.
       DO WHILE (distSquare(xi_i-eta*g,xVol,Face_xGP(1:PP_dim,:,:,0,iSide)).GT.&
@@ -214,19 +224,29 @@ DO iElem=1,nElems
       xi_i = xi_i - eta*g
       ! Restrict the result to [-1,1] (projection onto allowed region)
       xi_i(1)=MIN(1.,MAX(-1.,xi_i(1)))
+#if PP_dim == 3
       xi_i(2)=MIN(1.,MAX(-1.,xi_i(2)))
+#endif
       iter = iter + 1
       ! Abort criterion
       IF (NORM2(xi_old-xi_i).LT.NORM2(xi_old)*1.E-08) EXIT
     END DO ! iter < maxIter
     ! Save result
     CALL LagrangeInterpolationPolys(xi_i(1),PP_N,xGP,wBary,LagXi)
+#if PP_dim == 3
     CALL LagrangeInterpolationPolys(xi_i(2),PP_N,xGP,wBary,LagEta)
+#else
+    LagEta = 1.
+#endif
     xCur = 0.
     DO q=0,PP_NZ; DO p=0,PP_N
       xCur(:) = xCur(:) + LagXi(p)*LagEta(q)*Face_xGP(:,p,q,0,iSide)
     END DO; END DO ! p,q=0,PP_N
+#if PP_dim == 3
     distance(i,j,k,iElem) = SQRT((xVol(1)-xCur(1))**2+(xVol(2)-xCur(2))**2+(xVol(3)-xCur(3))**2)
+#else
+    distance(i,j,k,iElem) = SQRT((xVol(1)-xCur(1))**2+(xVol(2)-xCur(2))**2)
+#endif
   END DO; END DO; END DO! i,j,k=0,PP_N
   WRITE(UNIT_stdOut,'(A,F7.2,A19)',ADVANCE='NO') CHAR(13),REAL(iElem)/REAL(nElems)*100., '% of elements done '
 END DO ! iElem
@@ -299,12 +319,20 @@ REAL    :: LagXi(0:PP_N),LagEta(0:PP_N)
 !===================================================================================================================================
 ! Calculate the current position based on the input xi_i
 CALL LagrangeInterpolationPolys(xi_i(1),PP_N,xGP,wBary,LagXi)
+#if PP_dim == 3
 CALL LagrangeInterpolationPolys(xi_i(2),PP_N,xGP,wBary,LagEta)
+#else
+LagEta = 1.
+#endif
 xCur = 0.
 DO q=0,PP_NZ; DO p=0,PP_N
   xCur(:) = xCur(:) + LagXi(p)*LagEta(q)*Face_xGP(:,p,q)
 END DO; END DO ! p,q=0,PP_N
+#if PP_dim == 3
 distSquare = (xVol(1)-xCur(1))**2+(xVol(2)-xCur(2))**2+(xVol(3)-xCur(3))**2
+#else
+distSquare = (xVol(1)-xCur(1))**2+(xVol(2)-xCur(2))**2
+#endif
 
 END FUNCTION distSquare
 
