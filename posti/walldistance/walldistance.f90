@@ -79,7 +79,9 @@ CALL GetVandermonde(PP_N,NodeType,NSuper,NodeTypeVisu,Vdm_GaussN_EquiNSuper)
 ALLOCATE(xSuper_Face(PP_dim,0:NSuper,0:ZDIM(NSuper),nBCSides))
 DO iSide = 1,nBCSides
   CALL ChangeBasisSurf(PP_dim,PP_N,NSuper,Vdm_GaussN_EquiNSuper,Face_xGP(1:PP_dim,:,:,0,iSide),xSuper_Face(1:PP_dim,:,:,iSide))
+  WRITE(UNIT_stdOut,'(A,F7.2,A35)',ADVANCE='NO') CHAR(13),REAL(iSide)/REAL(nBCSides)*100., '% of super sampling points created '
 END DO
+WRITE(UNIT_stdOut,'(A)') 'SUPER SAMPLING POINTS CREATED!'
 
 ! Array used to store the nearest supersampling point for each volume point
 ALLOCATE(nearestFace(3,0:PP_N,0:PP_N,0:PP_NZ,nElems))
@@ -138,6 +140,7 @@ REAL,PARAMETER                :: alpha = 0.1
 REAL,PARAMETER                :: beta   = 0.1
 REAL                          :: eta
 REAL                          :: LagXi(0:PP_N),LagEta(0:PP_N)
+REAL                          :: percentDone
 !===================================================================================================================================
 ! First step: Corase search using the supersampled points
 DO iElem=1,nElems
@@ -158,7 +161,9 @@ DO iElem=1,nElems
       END DO; END DO ! p,q=0,PP_N
     END DO ! iSide = 1, nBCSides
   END DO; END DO; END DO! i,j,k=0,PP_N
+  WRITE(UNIT_stdOut,'(A,F7.2,A25)',ADVANCE='NO') CHAR(13),REAL(iElem)/REAL(nElems)*100., '% of coarse search done '
 END DO ! iElem
+WRITE(UNIT_stdOut,'(A)') 'COARSE SEARCH DONE!'
 
 ! Second step: fine search on the side that has been found using the coarse search, use a gradient descent with restrictions
 DO iElem=1,nElems
@@ -206,7 +211,7 @@ DO iElem=1,nElems
       END DO
       ! Perform a gradient descent step
       xi_i = xi_i - eta*g
-      ! Restrict the result to [-1,1]
+      ! Restrict the result to [-1,1] (projection onto allowed region)
       xi_i(1)=MIN(1.,MAX(-1.,xi_i(1)))
       xi_i(2)=MIN(1.,MAX(-1.,xi_i(2)))
       iter = iter + 1
@@ -220,7 +225,9 @@ DO iElem=1,nElems
     END DO; END DO ! p,q=0,PP_N
     distance(i,j,k,iElem) = SQRT((xVol(1)-xCur(1))**2+(xVol(2)-xCur(2))**2+(xVol(3)-xCur(3))**2)
   END DO; END DO; END DO! i,j,k=0,PP_N
+  WRITE(UNIT_stdOut,'(A,F7.2,A19)',ADVANCE='NO') CHAR(13),REAL(iElem)/REAL(nElems)*100., '% of elements done '
 END DO ! iElem
+WRITE(UNIT_stdOut,'(A)') 'FINE SEARCH DONE!'
 
 ! Third step: output of the result
 FileName = MeshFile(1:INDEX(MeshFile,'_mesh.h5')-1)//'_walldistance.h5'
