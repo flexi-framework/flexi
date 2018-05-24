@@ -258,6 +258,8 @@ IF (DebugVisu) THEN
 
   DEALLOCATE(distance_NVisu)
   DEALLOCATE(Coords_NVisu)
+  DEALLOCATE(StrVarNames_loc)
+  DEALLOCATE(Vdm_GaussN_NVisu)
 END IF
 
 END SUBROUTINE CalcWalldistance
