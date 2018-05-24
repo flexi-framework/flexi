@@ -26,6 +26,7 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 INTEGER             :: NSuper                    !< Polynomial degree used for supersampling for coarse search
 INTEGER             :: NVisu                     !< Polynomial degree used for visualization
+LOGICAL             :: DebugVisu                 !< Visualization of the result as .vtu
 REAL,ALLOCATABLE    :: xSuper_Face(:,:,:,:)      !< Face coordinates (of BCs) on super sampling points
 REAL,ALLOCATABLE    :: distance(:,:,:,:)         !< wall distance
 INTEGER,ALLOCATABLE :: nearestFace(:,:,:,:,:)    !< Index of nearest supersampling point and side

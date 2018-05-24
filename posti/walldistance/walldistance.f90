@@ -55,7 +55,7 @@ USE MOD_Globals
 USE MOD_Walldistance_Vars
 USE MOD_ReadInTools
 USE MOD_StringTools,        ONLY: INTTOSTR
-USE MOD_Mesh_Vars,          ONLY: nBCSides,Face_xGP,nElems,NodeCoords
+USE MOD_Mesh_Vars,          ONLY: nBCSides,Face_xGP,nElems
 USE MOD_ChangeBasisByDim,   ONLY: ChangeBasisSurf
 USE MOD_Interpolation,      ONLY: GetVandermonde,GetDerivativeMatrix
 USE MOD_Interpolation_Vars, ONLY: NodeType,NodeTypeVisu
@@ -68,7 +68,8 @@ INTEGER    :: iSide
 !===================================================================================================================================
 ! Use NSuper+1 equidistant points for initial supersampling
 NSuper = GETINT('NSuper',INTTOSTR(3*PP_N))
-NVisu  = GETINT('NVisu', INTTOSTR(2*PP_N))
+DebugVisu = GETLOGICAL('DebugVisu','.FALSE.')
+IF (DebugVisu) NVisu  = GETINT('NVisu', INTTOSTR(2*PP_N))
 
 ! Vandermonde to interpolate the face coordinates to the supersampling points
 ALLOCATE(Vdm_GaussN_EquiNSuper(0:NSuper,0:PP_N))
@@ -104,7 +105,7 @@ USE MOD_Globals
 USE MOD_Walldistance_Vars
 USE MOD_Interpolation_Vars
 USE MOD_Mesh_Vars,          ONLY: Elem_xGP,nBCSides,nElems,nGlobalElems,offsetElem,Face_xGP
-USE MOD_Mesh_Vars,          ONLY: BoundaryType,BC
+USE MOD_Mesh_Vars,          ONLY: BoundaryType,BC,MeshFile
 USE MOD_HDF5_Output,        ONLY: WriteArray
 USE MOD_IO_HDF5
 USE MOD_VTK,                ONLY: WriteDataToVTK
@@ -122,7 +123,7 @@ REAL       :: xi_i(1:PP_dim-1),xVol(PP_dim),xCur(PP_dim)
 REAL       :: dist,best
 REAL       :: Jac(1:PP_dim,1:PP_dim-1)
 REAL       :: dX(1:PP_dim,1:PP_dim-1,0:PP_N,0:PP_NZ)
-CHARACTER(LEN=255) :: FileName,FileString_visu
+CHARACTER(LEN=255) :: FileName,FileName_visu
 CHARACTER(LEN=255),ALLOCATABLE:: StrVarNames_loc(:)
 REAL,ALLOCATABLE,TARGET       :: Coords_NVisu(:,:,:,:,:)
 REAL,ALLOCATABLE,TARGET       :: distance_NVisu(:,:,:,:,:)
@@ -222,39 +223,42 @@ DO iElem=1,nElems
 END DO ! iElem
 
 ! Third step: output of the result
-CALL OpenDataFile('test.h5',create=.TRUE.,single=.TRUE.,readOnly=.FALSE.)
+FileName = MeshFile(1:INDEX(MeshFile,'_mesh.h5')-1)//'_walldistance.h5'
+CALL OpenDataFile(TRIM(FileName),create=.TRUE.,single=.TRUE.,readOnly=.FALSE.)
 CALL WriteArray('walldistance',4,&
                 (/PP_N+1,PP_N+1,PP_NZ+1,nGlobalElems/),&
                 (/PP_N+1,PP_N+1,PP_NZ+1,nElems/),&
                 (/0,     0,     0,      offsetElem/),.FALSE.,RealArray=distance)
 
-! VTU visualization
-ALLOCATE(Vdm_GaussN_NVisu(0:NVisu,0:PP_N))
-CALL GetVandermonde(PP_N,NodeType,NVisu,NodeTypeVISU,Vdm_GaussN_NVisu)
+IF (DebugVisu) THEN
+  ! VTU visualization
+  ALLOCATE(Vdm_GaussN_NVisu(0:NVisu,0:PP_N))
+  CALL GetVandermonde(PP_N,NodeType,NVisu,NodeTypeVISU,Vdm_GaussN_NVisu)
 
-ALLOCATE(distance_NVisu(1,0:NVisu,0:NVisu,0:ZDIM(NVisu),1:(nElems)))
-distance_NVisu = 0.
-ALLOCATE(Coords_NVisu(1:3,0:NVisu,0:NVisu,0:ZDIM(NVisu),1:(nElems)))
+  ALLOCATE(distance_NVisu(1,0:NVisu,0:NVisu,0:ZDIM(NVisu),1:(nElems)))
+  distance_NVisu = 0.
+  ALLOCATE(Coords_NVisu(1:3,0:NVisu,0:NVisu,0:ZDIM(NVisu),1:(nElems)))
 
-DO iElem=1,nElems
-  ! Create coordinates of visualization points
-  CALL ChangeBasisVolume(3,PP_N,NVisu,Vdm_GaussN_NVisu,Elem_xGP(1:3,:,:,:,iElem),Coords_NVisu(1:3,:,:,:,iElem))
-  ! Interpolate distance onto visu grid
-  distanceTmp(1,:,:,:) = distance(:,:,:,iElem)
-  CALL ChangeBasisVolume(1,PP_N,NVisu,Vdm_GaussN_NVisu,distanceTmp,distance_NVisu(1:1,:,:,:,iElem))
-END DO !iElem
+  DO iElem=1,nElems
+    ! Create coordinates of visualization points
+    CALL ChangeBasisVolume(3,PP_N,NVisu,Vdm_GaussN_NVisu,Elem_xGP(1:3,:,:,:,iElem),Coords_NVisu(1:3,:,:,:,iElem))
+    ! Interpolate distance onto visu grid
+    distanceTmp(1,:,:,:) = distance(:,:,:,iElem)
+    CALL ChangeBasisVolume(1,PP_N,NVisu,Vdm_GaussN_NVisu,distanceTmp,distance_NVisu(1:1,:,:,:,iElem))
+  END DO !iElem
 
-ALLOCATE(StrVarNames_loc(1))
-StrVarNames_loc(1) = 'Walldistance'
+  ALLOCATE(StrVarNames_loc(1))
+  StrVarNames_loc(1) = 'Walldistance'
 
-! Visualize data
-FileString_visu='test.vtu'
-Coords_NVisu_p => Coords_NVisu
-distance_NVisu_p => distance_NVisu
-CALL WriteDataToVTK(1,NVisu,nElems,StrVarNames_loc,Coords_NVisu_p,distance_NVisu_p,TRIM(FileString_visu),dim=PP_dim,DGFV=0)
+  ! Visualize data
+  FileName_visu = MeshFile(1:INDEX(MeshFile,'_mesh.h5')-1)//'_walldistance.vtu'
+  Coords_NVisu_p => Coords_NVisu
+  distance_NVisu_p => distance_NVisu
+  CALL WriteDataToVTK(1,NVisu,nElems,StrVarNames_loc,Coords_NVisu_p,distance_NVisu_p,TRIM(FileName_visu),dim=PP_dim,DGFV=0)
 
-DEALLOCATE(distance_NVisu)
-DEALLOCATE(Coords_NVisu)
+  DEALLOCATE(distance_NVisu)
+  DEALLOCATE(Coords_NVisu)
+END IF
 
 END SUBROUTINE CalcWalldistance
 
@@ -268,7 +272,7 @@ USE MOD_Globals
 USE MOD_Interpolation_Vars
 USE MOD_Basis,             ONLY: LagrangeInterpolationPolys
 !-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 REAL,INTENT(IN) :: xi_i(  1:PP_dim-1)
 REAL,INTENT(IN) :: xVol(1:PP_dim)
 REAL,INTENT(IN) :: Face_xGP(1:PP_dim,0:PP_N,0:PP_NZ)
