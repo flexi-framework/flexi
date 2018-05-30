@@ -456,7 +456,8 @@ REAL,INTENT(OUT),OPTIONAL     :: lastLine(nVar+1)         !< last written line t
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: stat                         !< File IO status
-INTEGER                        :: ioUnit=0,i                   !< IO Unit
+INTEGER                        :: ioUnit                       !< IO Unit
+INTEGER                        :: i,iMax                       !< Counter for header lines
 REAL                           :: dummytime                    !< Simulation time read from file
 LOGICAL                        :: file_exists                  !< marker if file exists and is valid
 LOGICAL                        :: isOpen                       !< unit is open
@@ -476,6 +477,7 @@ END IF
 file_exists = FILEEXISTS(FileName_loc)
 IF(RestartTime.LT.0.0) file_exists=.FALSE.
 !! File processing starts here open old and extratct information or create new file.
+ioUnit = 0
 
 IF(file_exists)THEN ! File exists and append data
   OPEN(NEWUNIT  = ioUnit             , &
@@ -498,7 +500,9 @@ IF(file_exists)THEN
   WRITE(UNIT_stdOut,'(A)',ADVANCE='NO')'Searching for time stamp...'
 
   REWIND(ioUnit)
-  DO i=1,4
+  ! Loop over header and try to read the first data line. Header size depends on output format.
+  iMax =MERGE(2,4,ASCIIOutputFormat.EQ.ASCIIOUTPUTFORMAT_CSV)
+  DO i=1,iMax
     READ(ioUnit,*,IOSTAT=stat)
     IF(stat.NE.0)THEN
       ! file is broken, rewrite
@@ -529,8 +533,7 @@ IF(file_exists)THEN
     WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')' failed. Appending data to end of file.'
   END IF
 END IF
-INQUIRE(UNIT=ioUnit,OPENED=isOpen)
-IF(isOpen) CLOSE(ioUnit)
+CLOSE(ioUnit)
 
 IF(.NOT.file_exists)THEN ! No restart create new file
   OPEN(NEWUNIT= ioUnit             ,&
