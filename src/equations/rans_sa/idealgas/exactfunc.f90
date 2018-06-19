@@ -683,6 +683,7 @@ REAL                :: prim(PP_nVarPrim)
 REAL                :: S,SA_STilde,chi,nuTilde     ! vars for SA source
 REAL                :: SAfw,SAfn
 REAL                :: muS                         ! physical viscosity
+INTEGER             :: FV_Elem
 !==================================================================================================================================
 SELECT CASE (IniExactFunc)
 CASE(4) ! exact function
@@ -898,6 +899,11 @@ END SELECT ! ExactFunction
 
 ! Add the source term of the SA model
 DO iElem=1,nElems
+#if FV_ENABLED
+  FV_Elem = FV_Elems(iElem)
+#else
+  FV_Elems = 0
+#endif
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     CALL ConsToPrim(prim,U(:,i,j,k,iElem))
     nuTilde = prim(7)
@@ -915,13 +921,13 @@ DO iElem=1,nElems
       ! No modification for the negative version of the model
       SA_STilde = S
     ELSE
-      SA_STilde = STilde(nuTilde,SAd(i,j,k,iElem),chi,S)
+      SA_STilde = STilde(nuTilde,SAd(i,j,k,FV_Elem,iElem),chi,S)
     END IF
     ! Production term
     Ut_src(6,i,j,k) = cb1*SA_STilde*U(6,i,j,k,iElem)
     ! Destruction term, depending on wall damping
-    SAfw = fw(nuTilde,SA_STilde,SAd(i,j,k,iElem))
-    Ut_src(6,i,j,k) = Ut_src(6,i,j,k) - prim(1)*cw1*SAfw*(nuTilde/SAd(i,j,k,iElem))**2
+    SAfw = fw(nuTilde,SA_STilde,SAd(i,j,k,FV_Elem,iElem))
+    Ut_src(6,i,j,k) = Ut_src(6,i,j,k) - prim(1)*cw1*SAfw*(nuTilde/SAd(i,j,k,FV_Elem,iElem))**2
     ! Diffusion
     IF (U(6,i,j,k,iElem).LT.0.) THEN
       ! Use additional function fn for negative values
@@ -943,7 +949,7 @@ DO iElem=1,nElems
 
   END DO; END DO; END DO ! i,j,k
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-    Ut(6,i,j,k,iElem) = Ut(6,i,j,k,iElem)+Ut_src(6,i,j,k)/sJ(i,j,k,iElem,0)
+    Ut(6,i,j,k,iElem) = Ut(6,i,j,k,iElem)+Ut_src(6,i,j,k)/sJ(i,j,k,iElem,FV_Elem)
   END DO; END DO; END DO ! i,j,k
 END DO
 

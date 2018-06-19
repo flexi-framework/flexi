@@ -92,6 +92,10 @@ USE MOD_HDF5_Input        ,ONLY: ReadArray,OpenDataFile
 #ifdef SPLIT_DG
 USE MOD_SplitFlux         ,ONLY: InitSplitDG
 #endif /*SPLIT_DG*/
+#if FV_ENABLED
+USE MOD_ChangeBasisByDim ,ONLY: ChangeBasisVolume
+USE MOD_FV_Vars          ,ONLY: FV_Vdm
+#endif
  IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -124,14 +128,21 @@ CALL InitEOS()
 
 ! SA-specific parameters
 PrTurb = GETREAL('PrTurb','0.9')
-ALLOCATE(SAd(0:PP_N,0:PP_N,0:PP_NZ,nElems))
+ALLOCATE(SAd(0:PP_N,0:PP_N,0:PP_NZ,0:FV_ENABLED,nElems))
 SAd = 0.
 ! Read-in of walldistance
 FileName = MeshFile(1:INDEX(MeshFile,'_mesh.h5')-1)//'_walldistance.h5'
 CALL OpenDataFile(TRIM(FileName),create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL ReadArray('walldistance',4,&
                (/PP_N+1,PP_N+1,PP_NZ+1,nElems/),&
-               offsetElem,4,RealArray=SAd)
+               offsetElem,4,RealArray=SAd(:,:,:,0,:))
+#if FV_ENABLED
+! Calculate wall distance at sub cell nodes. This assumes that the walldistance can be adequately represented as a polynomial!
+! TODO: Replace with seperately calculated wall distance, directly on FV points
+DO iElem=1,nElems
+  CALL ChangeBasisVolume(PP_N,PP_N,FV_Vdm,SAd(:,:,:,0,iElem),SAd(:,:,:,1,iElem))
+END DO ! iElem
+#endif
 
 ! Read Boundary information / RefStates / perform sanity check
 nRefState=CountOption('RefState')

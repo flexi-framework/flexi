@@ -53,7 +53,7 @@ REAL, PARAMETER   :: cw2 = 0.3
 REAL, PARAMETER   :: cw3 = 2.
 REAL, PARAMETER   :: cn1 = 16.
 REAL, PARAMETER   :: rLim = 10.
-REAL, ALLOCATABLE :: SAd(:,:,:,:)      !< Distance from closest wall
+REAL, ALLOCATABLE :: SAd(:,:,:,:,:)    !< Distance from closest wall
 
 
 CHARACTER(LEN=255),DIMENSION(6),PARAMETER :: StrVarNames =&
