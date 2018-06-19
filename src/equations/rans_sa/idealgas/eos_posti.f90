@@ -242,7 +242,7 @@ REAL,DIMENSION(1:PP_nVarPrim,PRODUCT(nVal)),INTENT(IN),OPTIONAL :: gradUx,gradUy
 REAL,DIMENSION(1:3,PRODUCT(nVal)),INTENT(IN),OPTIONAL           :: NormVec,TangVec1,TangVec2
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: i,iMom1,iMom2,iMom3,iDens,iPres,iVel1,iVel2,iVel3,iVelM,iVelS,iEner,iEnst,iTemp
+INTEGER            :: i,iMom1,iMom2,iMom3,iDens,iPres,iVel1,iVel2,iVel3,iVelM,iVelS,iEner,iEnst,iTemp,inuT,imuT
 CHARACTER(LEN=255) :: DepName_low
 REAL               :: UE(PP_2Var)
 INTEGER            :: nElems_loc,Nloc,nDOF,nDims
@@ -273,10 +273,12 @@ iDens = KEYVALUE(DepNames,mapDepToCalc,"density"    )
 iMom1 = KEYVALUE(DepNames,mapDepToCalc,'momentumx')
 iMom2 = KEYVALUE(DepNames,mapDepToCalc,'momentumy')
 iMom3 = KEYVALUE(DepNames,mapDepToCalc,'momentumz')
+imuT  = KEYVALUE(DepNames,mapDepToCalc,'mutilde')
 iVel1 = KEYVALUE(DepNames,mapDepToCalc,"velocityx"  )
 iVel2 = KEYVALUE(DepNames,mapDepToCalc,"velocityy"  )
 iVel3 = KEYVALUE(DepNames,mapDepToCalc,"velocityz"  )
 iPres = KEYVALUE(DepNames,mapDepToCalc,"pressure"   )
+inuT  = KEYVALUE(DepNames,mapDepToCalc,'nutilde')
 iEner = KEYVALUE(DepNames,mapDepToCalc,'energystagnationdensity')
 iVelM = KEYVALUE(DepNames,mapDepToCalc,"velocitymagnitude")
 iTemp = KEYVALUE(DepNames,mapDepToCalc,"temperature")
@@ -302,6 +304,8 @@ SELECT CASE(DepName_low)
     ! TODO: use a function from eos.f90
     UCalc(:,iVarCalc) = sKappaM1*UCalc(:,iPres) + 0.5*UCalc(:,iDens)* &
                         (UCalc(:,iVel1)**2 + UCalc(:,iVel2)**2 + UCalc(:,iVel3)**2)
+  CASE("mutilde")
+    UCalc(:,iVarCalc) = UCalc(:,iDens)*UCalc(:,inuT)
   CASE("velocityx")
     UCalc(:,iVarCalc) = UCalc(:,iMom1) / UCalc(:,iDens)
   CASE("velocityy")
@@ -324,6 +328,8 @@ SELECT CASE(DepName_low)
       UE(PRES) =    UCalc(i,iPres)
       UCalc(i,iVarCalc) = TEMPERATURE_HE(UE)
     END DO
+  CASE("nutilde")
+    UCalc(:,iVarCalc) = UCalc(:,imuT) / UCalc(:,iDens)
   CASE("velocitymagnitude")
     UCalc(:,iVarCalc) = SQRT((UCalc(:,iMom1)/UCalc(:,iDens))**2 &
                            + (UCalc(:,iMom2)/UCalc(:,iDens))**2 &
