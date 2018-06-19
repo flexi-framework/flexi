@@ -140,7 +140,6 @@ REAL,PARAMETER                :: alpha = 0.1
 REAL,PARAMETER                :: beta   = 0.1
 REAL                          :: eta
 REAL                          :: LagXi(0:PP_N),LagEta(0:PP_N)
-REAL                          :: percentDone
 !===================================================================================================================================
 ! First step: Coarse search using the supersampled points
 DO iElem=1,nElems
@@ -198,7 +197,7 @@ DO iElem=1,nElems
       xCur = 0.
       Jac = 0.
       DO q=0,PP_NZ; DO p=0,PP_N
-        xCur(:) = xCur(:) + LagXi(p)*LagEta(q)*Face_xGP(:,p,q,0,iSide)
+        xCur(:) = xCur(:) + LagXi(p)*LagEta(q)*Face_xGP(1:PP_dim,p,q,0,iSide)
         Jac(:,:) = Jac(:,:) + LagXi(p)*LagEta(q)*dX(:,:,p,q)
       END DO; END DO ! p,q=0,PP_N
       ! Compute the derivatives of the square of the distance function
@@ -240,7 +239,7 @@ DO iElem=1,nElems
 #endif
     xCur = 0.
     DO q=0,PP_NZ; DO p=0,PP_N
-      xCur(:) = xCur(:) + LagXi(p)*LagEta(q)*Face_xGP(:,p,q,0,iSide)
+      xCur(:) = xCur(:) + LagXi(p)*LagEta(q)*Face_xGP(1:PP_dim,p,q,0,iSide)
     END DO; END DO ! p,q=0,PP_N
 #if PP_dim == 3
     distance(i,j,k,iElem) = SQRT((xVol(1)-xCur(1))**2+(xVol(2)-xCur(2))**2+(xVol(3)-xCur(3))**2)

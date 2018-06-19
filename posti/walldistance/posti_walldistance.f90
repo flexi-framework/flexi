@@ -40,6 +40,10 @@ USE MOD_MPI,                     ONLY: InitMPIvars,FinalizeMPI
 #endif
 USE MOD_Walldistance,            ONLY: InitWalldistance,FinalizeWalldistance,CalcWalldistance
 USE MOD_Interpolation,           ONLY: DefineParametersInterpolation,FinalizeInterpolation
+#if FV_ENABLED
+USE MOD_FV,                ONLY:DefineParametersFV,InitFV,FinalizeFV
+USE MOD_FV_Basis,          ONLY:InitFV_Basis,FinalizeFV_Basis
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -96,6 +100,9 @@ SWRITE(UNIT_stdOut,'(132("="))')
 ! Initialization
 CALL InitIOHDF5()
 CALL InitInterpolation()
+#if FV_ENABLED
+CALL InitFV_Basis()
+#endif
 #if USE_MPI
 CALL InitMPIvars()
 #endif
@@ -106,6 +113,9 @@ CALL CalcWalldistance()
 
 CALL FinalizeWalldistance()
 CALL FinalizeMesh()
+#if FV_ENABLED
+CALL FinalizeFV_Basis()
+#endif
 #if USE_MPI
 CALL MPI_FINALIZE(iError)
 IF(iError .NE. 0) &
