@@ -902,7 +902,7 @@ DO iElem=1,nElems
 #if FV_ENABLED
   FV_Elem = FV_Elems(iElem)
 #else
-  FV_Elems = 0
+  FV_Elem = 0
 #endif
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     CALL ConsToPrim(prim,U(:,i,j,k,iElem))
