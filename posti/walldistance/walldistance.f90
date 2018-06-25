@@ -147,7 +147,7 @@ DO iElem=1,nElems
     best = HUGE(1.)
     xVol = Elem_xGP(1:PP_dim,i,j,k,iElem)
     DO iSide = 1, nBCSides
-    IF ((BoundaryType(BC(iSide),BC_TYPE).NE.3).AND.(BoundaryType(BC(iSide),BC_TYPE).NE.4)) CYCLE
+      IF ((BoundaryType(BC(iSide),BC_TYPE).NE.3).AND.(BoundaryType(BC(iSide),BC_TYPE).NE.4)) CYCLE
       DO q=0,ZDIM(NSuper); DO p=0,NSuper
         dist = NORM2(xVol-xSuper_Face(1:PP_dim,p,q,iSide))
         IF (dist.LT.best) THEN

@@ -88,7 +88,13 @@ USE MOD_Riemann           ,ONLY: InitRiemann
 USE MOD_GetBoundaryFlux,   ONLY: InitBC
 USE MOD_CalcTimeStep      ,ONLY: InitCalctimestep
 USE MOD_Mesh_Vars         ,ONLY: nElems,Elem_xGP,offsetElem,MeshFile
-USE MOD_HDF5_Input        ,ONLY: ReadArray,OpenDataFile
+USE MOD_HDF5_Input        ,ONLY: ReadArray,OpenDataFile,CloseDataFile,GetDataSize
+USE MOD_IO_HDF5
+#if PP_dim == 3
+USE MOD_2D                ,ONLY: ExpandArrayTo3D
+#else
+USE MOD_2D                ,ONLY: to2D_rank4
+#endif
 #ifdef SPLIT_DG
 USE MOD_SplitFlux         ,ONLY: InitSplitDG
 #endif /*SPLIT_DG*/
@@ -104,8 +110,10 @@ USE MOD_FV_Vars          ,ONLY: FV_Vdm
 INTEGER            :: i
 REAL               :: UE(PP_2Var)
 INTEGER            :: iElem,j,k
+INTEGER            :: HSize_proc(4)
 REAL               :: RefStatePrimTmp(6)
 CHARACTER(LEN=255) :: FileName
+REAL,ALLOCATABLE   :: SAd_local(:,:,:,:)
 !==================================================================================================================================
 IF(EquationInitIsDone)THEN
   CALL CollectiveStop(__STAMP__,&
@@ -133,9 +141,34 @@ SAd = 0.
 ! Read-in of walldistance
 FileName = MeshFile(1:INDEX(MeshFile,'_mesh.h5')-1)//'_walldistance.h5'
 CALL OpenDataFile(TRIM(FileName),create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+CALL GetDataSize(File_ID,'walldistance',nDims,HSize)
+IF (HSize(1)-1.NE.PP_N) CALL Abort(__STAMP__,"Polynomial degree of walldistance file does not match!")
+ALLOCATE(SAd_local(0:HSize(1)-1,0:HSize(2)-1,0:HSize(3)-1,nElems))
+HSize_proc = INT(HSize)
+HSize_proc(4) = nElems
 CALL ReadArray('walldistance',4,&
-               (/PP_N+1,PP_N+1,PP_NZ+1,nElems/),&
-               offsetElem,4,RealArray=SAd(:,:,:,0,:))
+               HSize_proc,&
+               offsetElem,4,RealArray=SAd_local)
+#if PP_dim == 3
+IF (HSize(3).EQ.1) THEN
+  ! Walldistance was created by 2D tool, expand in third dimension
+  CALL ExpandArrayTo3D(4,(/PP_N+1,PP_N+1,1,nElems/),3,PP_N+1,SAd_local,SAd(:,:,:,0,:))
+ELSE
+  ! 3D walldistance tool and 3D Flexi
+  SAd(:,:,:,0,:) = SAd_local
+END IF
+#else
+IF (HSize(3).EQ.1) THEN
+  ! 2D Walldistace tool and 2D Flexi
+  SAd(:,:,:,0,:) = SAd_local
+ELSE
+  ! Walldistance was created by 3D tool => reduce third space dimension
+  CALL to2D_rank4((/0,0,0,1/),(/PP_N,PP_N,PP_N,nElems/),3,SAd_local)
+  SAd(:,:,:,0,:) = SAd_local
+END IF
+#endif
+CALL CloseDataFile()
+DEALLOCATE(SAd_local)
 #if FV_ENABLED
 ! Calculate wall distance at sub cell nodes. This assumes that the walldistance can be adequately represented as a polynomial!
 ! TODO: Replace with seperately calculated wall distance, directly on FV points
