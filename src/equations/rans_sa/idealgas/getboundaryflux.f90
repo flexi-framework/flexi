@@ -465,7 +465,7 @@ CASE(3,4,9,23,24,25,27)
       UPrim_boundary(3,p,q)=SUM(U*nv(1:3)*Tangvec1(1:3,p,q))
       UPrim_boundary(4,p,q)=SUM(U*nv(1:3)*Tangvec2(1:3,p,q))
       UPrim_boundary(6,p,q)=UPrim_boundary(5,p,q)/(R*UPrim_boundary(1,p,q))
-      UPrim_boundary(7,p,q)=RefStatePrim(6,BCState) ! Use SA variable from the outside
+      UPrim_boundary(7,p,q)=RefStatePrim(7,BCState) ! Use SA variable from the outside
     END DO; END DO !p,q
   END SELECT
 
