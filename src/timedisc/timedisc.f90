@@ -255,7 +255,11 @@ dt=CALCTIMESTEP(errType)
 nCalcTimestep=0
 dt_MinOld=-999.
 IF(errType.NE.0) CALL abort(__STAMP__,&
+#if EQNSYSNR == 3
+  'Error: (1) density, (2) convective / (3) viscous timestep / muTilde (4) is NaN. Type/time:',errType,t)
+#else
   'Error: (1) density, (2) convective / (3) viscous timestep is NaN. Type/time:',errType,t)
+#endif
 
 ! Run initial analyze
 SWRITE(UNIT_StdOut,'(132("-"))')

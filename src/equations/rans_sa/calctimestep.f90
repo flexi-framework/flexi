@@ -170,6 +170,10 @@ DO iElem=1,nElems
     mu=VISCOSITY_PRIM(prim)
     ! Add turbulent viscosity
     muTilde = U(6,i,j,k,iElem)
+    IF(IEEE_IS_NAN(muTilde))THEN
+      ERRWRITE(*,'(A,3ES16.7)')'muTilde NaN, Position= ',Elem_xGP(:,i,j,k,iElem)
+      errType=4
+    END IF
     chi = muTilde/mu
     muTurb = muTilde*fv1(chi)
     muEff = MAX(mu,mu+muTurb)  ! Ignore muTurb < 0
