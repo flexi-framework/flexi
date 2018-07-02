@@ -47,6 +47,7 @@ USE MOD_SwapMesh_Vars,     ONLY: equalElem,Vdm_GPNState_GPNNew
 USE MOD_SwapMesh_Vars,     ONLY: NState,NInter,NNew,NodeTypeState,RefState,nVar_State
 USE MOD_SwapMesh_Vars,     ONLY: Vdm_CLNInter_GPNNew
 USE MOD_SwapMesh_Vars,     ONLY: UOld,xiInter,InterToElem,nElemsNew,IPDone
+USE MOD_SwapMesh_Vars,     ONLY: Elem_IJK,ExtrudeTo3D,ExtrudeK
 USE MOD_DG_Vars,           ONLY: U
 USE MOD_ChangeBasis,       ONLY: ChangeBasis3D
 ! IMPLICIT VARIABLE HANDLING
@@ -67,6 +68,7 @@ REAL                          :: L_zeta(0:NState,0:NInter,0:NInter,0:NInter)
 REAL                          :: L_eta_zeta
 REAL                          :: xGP(0:NState),wBaryGP(0:NState)
 REAL                          :: Time
+INTEGER                       :: jElemNew,iElemExtrusion
 !===================================================================================================================================
 ! GPs and Barycentric weights for solution
 CALL GetNodesAndWeights(NState,NodeTypeState,xGP)
@@ -78,6 +80,10 @@ U=0.
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(iElemNew,iElemOld,L_xi,ii,jj,kk,L_eta,L_zeta,L_eta_zeta,Utmp,i,j,k)
 !$OMP DO
 DO iElemNew=1,nElemsNew
+  IF (ExtrudeTo3D) THEN
+    ! Only the choosen layer is interpolated if an extrusion is performed
+    IF (Elem_IJK(3,iElemNew).NE.ExtrudeK) CYCLE
+  END IF
   ! equal elements
   IF(equalElem(iElemNew).GT.0) THEN
     iElemOld=equalElem(iElemNew)
@@ -122,6 +128,26 @@ DO iElemNew=1,nElemsNew
 END DO
 !$OMP END DO
 !$OMP END PARALLEL
+
+! Copy the data from the extrusion layer to all other elements in the z direction
+IF (ExtrudeTo3D) THEN
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(iElemNew,iElemOld,L_xi,ii,jj,kk,L_eta,L_zeta,L_eta_zeta,Utmp,i,j,k)
+!$OMP DO
+  DO iElemNew=1,nElemsNew
+    IF (Elem_IJK(3,iElemNew).EQ.ExtrudeK) CYCLE ! Skip the extrusion layer, already done
+    ! Search for the corresponding element in the extrusion layer
+    DO jElemNew = 1, nElemsNew
+      IF (ALL(Elem_IJK(:,jElemNew).EQ.(/Elem_IJK(1,iElemNew),Elem_IJK(2,iElemNew),ExtrudeK/))) THEN
+        iElemExtrusion = jElemNew
+        EXIT
+      END IF
+    END DO ! jElemNew = 1, nElemsNew
+    ! Copy data
+    U(:,:,:,:,iElemNew) = U(:,:,:,:,iElemExtrusion)
+  END DO
+!$OMP END DO
+!$OMP END PARALLEL
+END IF
 Time=FLEXITIME() -Time
 SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',Time,'s]'
 
