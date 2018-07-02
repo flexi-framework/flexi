@@ -116,8 +116,11 @@ IF (LEN_TRIM(RestartFile).GT.0) THEN
   IF(ResetTime) RestartTime=0.
   CALL CloseDataFile()
 
-  IF ((nVar_Restart.NE.PP_nVar).OR.(nElems_Restart.NE.nGlobalElems)) THEN
-    CALL CollectiveStop(__STAMP__, "Restart File has different number of variables or elements!")
+  IF (nElems_Restart.NE.nGlobalElems) THEN
+    CALL CollectiveStop(__STAMP__, "Restart File has different number of elements!")
+  END IF
+  IF (nVar_Restart.NE.PP_nVar) THEN
+    SWRITE(UNIT_StdOut,'(A)') ' Restart file has more variables than current equation system, will be truncated!'
   END IF
 ELSE
   ! No restart
@@ -191,6 +194,7 @@ LOGICAL,INTENT(IN),OPTIONAL :: doFlushFiles
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL,ALLOCATABLE   :: U_local(:,:,:,:,:)
+REAL,ALLOCATABLE   :: U_localNVar(:,:,:,:,:)
 #if PP_dim == 3 
 REAL,ALLOCATABLE   :: U_local2(:,:,:,:,:)
 #endif
@@ -236,13 +240,22 @@ IF(DoRestart)THEN
 
   CALL GetDataSize(File_ID,'DG_Solution',nDims,HSize)
 ! Sanity check
-  IF ((HSize(1).NE.PP_nVar).OR.(HSize(2).NE.N_Restart+1).OR.(HSize(3).NE.N_Restart+1).OR.(HSize(5).NE.nGlobalElems)) THEN
+  IF ((HSize(1).LT.PP_nVar).OR.(HSize(2).NE.N_Restart+1).OR.(HSize(3).NE.N_Restart+1).OR.(HSize(5).NE.nGlobalElems)) THEN
     CALL Abort(__STAMP__,"Dimensions of restart file do not match!")
   END IF
   HSize_proc = INT(HSize)
   HSize_proc(5) = nElems
-  ALLOCATE(U_local(PP_nVar,0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,nElems))
+  ALLOCATE(U_local(nVar_Restart,0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,nElems))
   CALL ReadArray('DG_Solution',5,HSize_proc,OffsetElem,5,RealArray=U_local)
+  ! Truncate the solution if we read a restart file from a different equation system
+  IF (PP_nVar.NE.nVar_Restart) THEN
+    ALLOCATE(U_localNVar(PP_nVar,0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,nElems))
+    U_localNVar(1:PP_N,:,:,:,:) = U_local(1:PP_N,:,:,:,:)
+    DEALLOCATE(U_local)
+    ALLOCATE(U_local(PP_nVar,0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,nElems))
+    U_local = U_localNVar
+    DEALLOCATE(U_localNVar)
+  END IF
 
   ! Read in state
   IF(.NOT. InterpolateSolution)THEN
