@@ -284,7 +284,7 @@ REAL               :: Vdm_CLNGeo_CLNInter(0:NInter,0:NGeoNew)
 !=================================================================================================================================
 ! Build visu Vandermonde
 ALLOCATE(Vdm_CLNGeo_EquiNSuper(0:NSuper,0:NGeoOld))
-CALL GetVandermonde(NGeoOld,NodeTypeState,NSuper,NodeType,Vdm_CLNGeo_EquiNSuper)
+CALL GetVandermonde(NGeoOld,NodeTypeCL,NSuper,NodeType,Vdm_CLNGeo_EquiNSuper)
 
 ! Vandermonde from interpolation CL to new solution G/GL
 ALLOCATE(Vdm_CLNInter_GPNNew(0:NNew,0:NInter))
