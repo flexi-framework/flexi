@@ -415,25 +415,24 @@ CASE(3,4,9,23,24,25,27)
       UPrim_boundary(5,p,q)   = RefStatePrim(5,BCState) ! always outflow pressure
       UPrim_boundary(6,p,q)   = UPrim_boundary(5,p,q)/(R*UPrim_boundary(1,p,q))
     END DO; END DO !p,q
-  CASE(27) ! Subsonic inflow BC
+  CASE(27) ! Subsonic inflow BC, stagnation T and p and inflow angles are prescribed (typical *internal* inflow BC)
     ! Refstate for this case is special
-    ! State: (/Density,nv1,nv2,nv3,Pressure/)
     ! Compute temperature from density and pressure
     ! Nv specifies inflow direction of inflow:
     ! if ABS(nv)=0  then inflow vel is always in side normal direction
     ! if ABS(nv)!=0 then inflow vel is in global coords with nv specifying the direction
+    ! Prescribe Total Temp, Total Pressure, inflow angle of attack alpha
+    ! and inflow yaw angle beta
+    ! WARNING: REFSTATE is different: Tt,alpha,beta,<empty>,pT (4th entry ignored!!), angles in DEG not RAD
+    ! Tt is computed by 
+    ! BC not from FUN3D Paper by JR Carlson (too many bugs), but from AIAA 2001 3882
+    ! John W. Slater: Verification Assessment of Flow Boundary Conditions for CFD
+    ! The BC State is described, not the outer state: use BC state to compute flux directly
+    Tt=RefStatePrim(1,BCState)
+    nv=RefStatePrim(2:4,BCState)
+    pt=RefStatePrim(5,BCState)
     DO q=0,ZDIM(Nloc); DO p=0,Nloc
-      ! Prescribe Total Temp, Total Pressure, inflow angle of attack alpha
-      ! and inflow yaw angle beta
-      ! WARNING: REFSTATE is different: Tt,alpha,beta,<empty>,pT (4th entry ignored!!), angles in DEG not RAD
-      ! Tt is computed by 
-      ! BC not from FUN3D Paper by JR Carlson (too many bugs), but from AIAA 2001 3882
-      ! John W. Slater: Verification Assessment of Flow Boundary Conditions for CFD
-      ! The BC State is described, not the outer state: use BC state to compute flux directly
 
-      Tt=RefStatePrim(1,BCState)
-      nv=RefStatePrim(2:4,BCState)
-      pt=RefStatePrim(5,BCState)
       ! Term A from paper with normal vector defined into the domain, dependent on p,q
       A=SUM(nv(1:3)*(-1.)*NormVec(1:3,p,q))
       ! sound speed from inner state
