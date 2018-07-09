@@ -250,7 +250,7 @@ IF(DoRestart)THEN
   ! Truncate the solution if we read a restart file from a different equation system
   IF (PP_nVar.NE.nVar_Restart) THEN
     ALLOCATE(U_localNVar(PP_nVar,0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,nElems))
-    U_localNVar(1:PP_N,:,:,:,:) = U_local(1:PP_N,:,:,:,:)
+    U_localNVar(1:PP_nVar,:,:,:,:) = U_local(1:PP_nVar,:,:,:,:)
     DEALLOCATE(U_local)
     ALLOCATE(U_local(PP_nVar,0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,nElems))
     U_local = U_localNVar
