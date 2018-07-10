@@ -34,5 +34,9 @@ REAL,ALLOCATABLE    :: D(:,:)                    !< Derivative matrix
 
 ! Vandermonde matrices
 REAL,ALLOCATABLE    :: Vdm_GaussN_EquiNSuper(:,:)   !< Vandermonde from Gauss mesh points to equdistant mesh points in supersampling
+
+! Trip specifc
+LOGICAL             :: includeTrip               !< Switch to also project a trip point to the surface
+REAL                :: TripX(2)                  !< 2D coordinates of the trip point
 !===================================================================================================================================
 END MODULE MOD_Walldistance_Vars

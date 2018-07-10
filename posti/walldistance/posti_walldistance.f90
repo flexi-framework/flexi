@@ -66,6 +66,8 @@ CALL prms%SetSection("walldistance")
 CALL prms%CreateIntOption("NSuper" , "Polynomial degree used for supersampling on the surface in the coarse search.")
 CALL prms%CreateIntOption("NVisu" ,  "Polynomial degree used for visualization.")
 CALL prms%CreateLogicalOption("DebugVisu" ,  "Visualize the walldistance in .vtu format.")
+CALL prms%CreateLogicalOption("includeTrip" ,"Switch on to project a trip point to the surface.",'.FALSE.')
+CALL prms%CreateRealArrayOption("TripX"     ,"2D coordinates of trip point.")
 
 ! Parse parameters
 ! check for command line argument --help or --markdown

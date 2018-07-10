@@ -93,6 +93,10 @@ distance = 0.
 ! Derivative matrix needed to get gradient
 ALLOCATE(D(0:PP_N,0:PP_N))
 CALL GetDerivativeMatrix(PP_N,NodeType,D)
+
+! Trip
+includeTrip = GETLOGICAL('includeTrip','.FALSE.')
+IF (includeTrip) TripX = GETREALARRAY('TripX',2)
 END SUBROUTINE InitWalldistance
 
 
@@ -107,8 +111,8 @@ USE MOD_Globals
 USE MOD_Walldistance_Vars
 USE MOD_Interpolation_Vars
 USE MOD_Mesh_Vars,          ONLY: Elem_xGP,nBCSides,nElems,nGlobalElems,offsetElem,Face_xGP
-USE MOD_Mesh_Vars,          ONLY: BoundaryType,BC,MeshFile
-USE MOD_HDF5_Output,        ONLY: WriteArray
+USE MOD_Mesh_Vars,          ONLY: BoundaryType,BC,MeshFile,SideToElem
+USE MOD_HDF5_Output,        ONLY: WriteArray,WriteAttribute
 USE MOD_IO_HDF5
 USE MOD_VTK,                ONLY: WriteDataToVTK
 USE MOD_ChangeBasisByDim,   ONLY: ChangeBasisVolume
@@ -140,6 +144,7 @@ REAL,PARAMETER                :: alpha = 0.1
 REAL,PARAMETER                :: beta   = 0.1
 REAL                          :: eta
 REAL                          :: LagXi(0:PP_N),LagEta(0:PP_N)
+INTEGER                       :: nearestSide,qTrip,pTrip
 !===================================================================================================================================
 ! First step: Coarse search using the supersampled points
 DO iElem=1,nElems
@@ -251,6 +256,34 @@ DO iElem=1,nElems
 END DO ! iElem
 WRITE(UNIT_stdOut,'(A)') 'FINE SEARCH DONE!'
 
+IF (includeTrip) THEN
+  WRITE(UNIT_stdOut,'(A)') 'INCLUDE TRIP POINT PROJECTION'
+  ! First step: Coarse search using the supersampled points, identify nearest side
+  xVol = TripX(1:PP_dim)
+  best = HUGE(1.)
+  DO iSide = 1, nBCSides
+    IF ((BoundaryType(BC(iSide),BC_TYPE).NE.3).AND.(BoundaryType(BC(iSide),BC_TYPE).NE.4)) CYCLE
+    DO q=0,ZDIM(NSuper); DO p=0,NSuper
+      dist = NORM2(xVol-xSuper_Face(1:PP_dim,p,q,iSide))
+      IF (dist.LT.best) THEN
+        best = dist
+        nearestSide = iSide
+      END IF
+    END DO; END DO ! p,q=0,PP_N
+  END DO ! iSide = 1, nBCSides
+
+  ! Second step: Search for the closest soluion point
+  best = HUGE(1.)
+  DO q=0,PP_NZ; DO p=0,PP_N
+    dist = NORM2(xVol-Face_xGP(1:PP_dim,p,q,0,nearestSide))
+    IF (dist.LT.best) THEN
+      best = dist
+      pTrip = p
+      qTrip = q
+    END IF
+  END DO; END DO
+END IF
+
 ! Third step: output of the result
 FileName = MeshFile(1:INDEX(MeshFile,'_mesh.h5')-1)//'_walldistance.h5'
 CALL OpenDataFile(TRIM(FileName),create=.TRUE.,single=.TRUE.,readOnly=.FALSE.)
@@ -258,6 +291,12 @@ CALL WriteArray('walldistance',4,&
                 (/PP_N+1,PP_N+1,PP_NZ+1,nGlobalElems/),&
                 (/PP_N+1,PP_N+1,PP_NZ+1,nElems/),&
                 (/0,     0,     0,      offsetElem/),.FALSE.,RealArray=distance)
+IF (includeTrip) THEN
+  CALL WriteAttribute(File_ID,'TripElem',   1,IntScalar=SideToElem(S2E_ELEM_ID,    nearestSide))
+  CALL WriteAttribute(File_ID,'TripLocSide',1,IntScalar=SideToElem(S2E_LOC_SIDE_ID,nearestSide))
+  CALL WriteAttribute(File_ID,'TripPQ',     2,IntArray =(/pTrip,qTrip/))
+  CALL WriteAttribute(File_ID,'TripX',      2,RealArray=Face_xGP(1:2,pTrip,qTrip,0,nearestSide))
+END IF
 
 IF (DebugVisu) THEN
   ! VTU visualization
@@ -290,6 +329,9 @@ IF (DebugVisu) THEN
   DEALLOCATE(StrVarNames_loc)
   DEALLOCATE(Vdm_GaussN_NVisu)
 END IF
+
+CALL CloseDataFile()
+
 
 END SUBROUTINE CalcWalldistance
 
