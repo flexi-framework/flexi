@@ -64,6 +64,7 @@ CALL prms%CreateRealArrayOption('RefState',     "State(s) in primitive variables
                                                 multiple=.TRUE.)
 CALL prms%CreateStringOption(   'BCStateFile',  "File containing the reference solution on the boundary to be used as BC.")
 CALL prms%CreateRealOption(     'PrTurb',       "Prandtl number", '0.9')
+CALL prms%CreateLogicalOption(  'includeTrip',  "Switch on to include a trip term in the SA equations.", '.FALSE.')
 
 CALL DefineParametersRiemann()
 #ifdef SPLIT_DG
@@ -82,7 +83,7 @@ USE MOD_Equation_Vars
 USE MOD_Eos               ,ONLY: InitEos,PrimToCons
 USE MOD_EOS_Vars          ,ONLY: R
 USE MOD_Exactfunc         ,ONLY: InitExactFunc
-USE MOD_ReadInTools       ,ONLY: CountOption,GETREALARRAY,GETSTR,GETREAL
+USE MOD_ReadInTools       ,ONLY: CountOption,GETREALARRAY,GETSTR,GETREAL,GETLOGICAL
 USE MOD_Testcase          ,ONLY: InitTestcase
 USE MOD_Riemann           ,ONLY: InitRiemann
 USE MOD_GetBoundaryFlux,   ONLY: InitBC
@@ -135,6 +136,7 @@ CALL InitExactFunc()
 CALL InitEOS()
 
 ! SA-specific parameters
+includeTrip = GETLOGICAL('includeTrip','.FALSE.')
 PrTurb = GETREAL('PrTurb','0.9')
 ALLOCATE(SAd(0:PP_N,0:PP_N,0:PP_NZ,0:FV_ENABLED,nElems))
 SAd = 0.

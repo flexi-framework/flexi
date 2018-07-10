@@ -645,7 +645,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Equation_Vars    ,ONLY: IniExactFunc,doCalcSource
 USE MOD_Equation_Vars    ,ONLY: SAKappa,SAd,cw1,cb1,cb2,sigma
-USE MOD_Equation_Vars    ,ONLY: fv2,fw,STilde,fn
+USE MOD_Equation_Vars    ,ONLY: fv2,fw,STilde,fn,ct1,ct2,ct3,ct4,includeTrip
 USE MOD_Eos_Vars         ,ONLY: Kappa,KappaM1,cp
 USE MOD_Exactfunc_Vars   ,ONLY: AdvVel
 USE MOD_DG_Vars          ,ONLY: U
@@ -682,6 +682,7 @@ REAL                :: Ut_src2(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 REAL                :: prim(PP_nVarPrim)
 REAL                :: S,SA_STilde,chi,nuTilde     ! vars for SA source
 REAL                :: SAfw,SAfn
+REAL                :: ft2
 REAL                :: muS                         ! physical viscosity
 INTEGER             :: FV_Elem
 !==================================================================================================================================
@@ -924,7 +925,8 @@ DO iElem=1,nElems
       SA_STilde = STilde(nuTilde,SAd(i,j,k,FV_Elem,iElem),chi,S)
     END IF
     ! Production term
-    Ut_src(6,i,j,k) = cb1*SA_STilde*U(6,i,j,k,iElem)
+    ft2 = MERGE(ct3*EXP(-1.*ct4*chi**2),0.,includeTrip)
+    Ut_src(6,i,j,k) = cb1*(1.-ft2)*SA_STilde*U(6,i,j,k,iElem)
     ! Destruction term, depending on wall damping
     SAfw = fw(nuTilde,SA_STilde,SAd(i,j,k,FV_Elem,iElem))
     Ut_src(6,i,j,k) = Ut_src(6,i,j,k) - prim(1)*cw1*SAfw*(nuTilde/SAd(i,j,k,FV_Elem,iElem))**2

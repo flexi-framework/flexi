@@ -55,6 +55,11 @@ REAL, PARAMETER   :: cn1 = 16.
 REAL, PARAMETER   :: rLim = 10.
 REAL, ALLOCATABLE :: SAd(:,:,:,:,:)    !< Distance from closest wall
 
+LOGICAL           :: includeTrip
+REAL, PARAMETER   :: ct1 = 1.0
+REAL, PARAMETER   :: ct2 = 2.0
+REAL, PARAMETER   :: ct3 = 1.2
+REAL, PARAMETER   :: ct4 = 0.5
 
 CHARACTER(LEN=255),DIMENSION(6),PARAMETER :: StrVarNames =&
   (/ CHARACTER(LEN=255) :: 'Density','MomentumX','MomentumY','MomentumZ','EnergyStagnationDensity','muTilde'/) !< conservative variable names
