@@ -69,6 +69,7 @@ CALL prms%CreateRealArrayOption('RefState',     "State(s) in primitive variables
 CALL prms%CreateStringOption(   'BCStateFile',  "File containing the reference solution on the boundary to be used as BC.")
 CALL prms%CreateRealOption(     'PrTurb',       "Prandtl number", '0.9')
 CALL prms%CreateLogicalOption(  'includeTrip',  "Switch on to include a trip term in the SA equations.", '.FALSE.')
+CALL prms%CreateLogicalOption(  'DebugSA',      "Switch on to include debug output for SA equation.", '.FALSE.')
 
 CALL DefineParametersRiemann()
 #ifdef SPLIT_DG
@@ -112,6 +113,7 @@ USE MOD_Mesh_Readin      ,ONLY: ELEMIPROC
 USE MOD_MPI_Vars
 USE MOD_MPI
 #endif
+USE MOD_IO_HDF5          ,ONLY:AddToFieldData,FieldOut
  IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -212,6 +214,12 @@ IF (includeTrip) THEN
 #if USE_MPI
   CALL MPI_BCAST(dXt,1,MPI_DOUBLE_PRECISION,tripRoot,MPI_COMM_WORLD,iError)
 #endif
+END IF
+
+doSADebug = GETLOGICAL('DebugSA','.FALSE.')
+IF (doSADebug) THEN
+  ALLOCATE(SADebug(4,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+  CALL AddToFieldData(FieldOut,(/4,PP_N+1,PP_N+1,PP_NZ+1,nElems/),'SADebug',(/'Prod','Dest','Trip','Diff'/),RealArray=SADebug)
 END IF
 
 #if FV_ENABLED
@@ -422,6 +430,7 @@ SDEALLOCATE(RefStatePrim)
 SDEALLOCATE(RefStateCons)
 SDEALLOCATE(SAd)
 SDEALLOCATE(SAdt)
+SDEALLOCATE(SADebug)
 EquationInitIsDone = .FALSE.
 END SUBROUTINE FinalizeEquation
 

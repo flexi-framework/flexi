@@ -70,6 +70,8 @@ LOGICAL           :: tripOnProc
 #if USE_MPI
 INTEGER           :: tripRoot
 #endif
+REAL,ALLOCATABLE  :: SADebug(:,:,:,:,:)
+LOGICAL           :: doSADebug
 
 
 

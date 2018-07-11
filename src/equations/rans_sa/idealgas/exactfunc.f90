@@ -645,7 +645,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Equation_Vars    ,ONLY: IniExactFunc,doCalcSource
 USE MOD_Equation_Vars    ,ONLY: SAKappa,SAd,cw1,cb1,cb2,sigma
-USE MOD_Equation_Vars    ,ONLY: fv2,fw,STilde,fn,ct1,ct2,ct3,ct4,includeTrip,omegaT,dXt,SAdt
+USE MOD_Equation_Vars    ,ONLY: fv2,fw,STilde,fn,ct1,ct2,ct3,ct4,includeTrip,omegaT,dXt,SAdt,SADebug,doSADebug
 USE MOD_Eos_Vars         ,ONLY: Kappa,KappaM1,cp
 USE MOD_Exactfunc_Vars   ,ONLY: AdvVel
 USE MOD_DG_Vars          ,ONLY: U
@@ -683,6 +683,7 @@ REAL                :: prim(PP_nVarPrim)
 REAL                :: S,SA_STilde,chi,nuTilde     ! vars for SA source
 REAL                :: SAfw,SAfn
 REAL                :: ft2,gt
+REAL                :: Prod,Dest,Trip,Diff
 REAL                :: deltaU
 REAL                :: muS                         ! physical viscosity
 INTEGER             :: FV_Elem
@@ -928,16 +929,18 @@ DO iElem=1,nElems
     ! Production term
     ft2 = MERGE(ct3*EXP(-1.*ct4*chi**2),0.,includeTrip)
     ! Production term
-    Ut_src(6,i,j,k) = cb1*(1.-ft2)*SA_STilde*U(6,i,j,k,iElem)
+    Prod = cb1*(1.-ft2)*SA_STilde*U(6,i,j,k,iElem)
     ! Destruction term, depending on wall damping
     SAfw = fw(nuTilde,SA_STilde,SAd(i,j,k,FV_Elem,iElem))
-    Ut_src(6,i,j,k) = Ut_src(6,i,j,k) - prim(1)*(cw1*SAfw-cb1/SAKappa**2*ft2)*(nuTilde/SAd(i,j,k,FV_Elem,iElem))**2
+    Dest = - prim(1)*(cw1*SAfw-cb1/SAKappa**2*ft2)*(nuTilde/SAd(i,j,k,FV_Elem,iElem))**2
     ! Trip
     IF (includeTrip) THEN
       deltaU = NORM2(prim(2:4))
       gt = MIN(0.1,deltaU/(omegaT*dXt))
-      Ut_src(6,i,j,k) = Ut_src(6,i,j,k) + &
+      Trip = &
       prim(1)*ct1*gt*EXP((-1.*ct2*(omegaT/deltaU)**2)*((Sad(i,j,k,FV_Elem,iElem)**2)+(gt**2)*(SAdt(i,j,k,FV_Elem,iElem)**2)))*(deltaU**2)
+    ELSE
+      Trip = 0.
     END IF
     ! Diffusion
     IF (U(6,i,j,k,iElem).LT.0.) THEN
@@ -946,7 +949,7 @@ DO iElem=1,nElems
     ELSE
       SAfn = 1.
     END IF
-    Ut_src(6,i,j,k) = Ut_src(6,i,j,k) + &
+    Diff = &
                              cb2/sigma*prim(1)*(gradUx(7,i,j,k,iElem)**2+gradUy(7,i,j,k,iElem)**2 &
 #if PP_dim==3
                                                +gradUz(7,i,j,k,iElem)**2 &
@@ -957,7 +960,13 @@ DO iElem=1,nElems
                              +gradUz(7,i,j,k,iElem)*gradUz(1,i,j,k,iElem) &
 #endif
                              )
-
+    IF (doSADebug) THEN
+      SADebug(1,i,j,k,iElem) = Prod
+      SADebug(2,i,j,k,iElem) = Dest
+      SADebug(3,i,j,k,iElem) = Trip
+      SADebug(4,i,j,k,iElem) = Diff
+    END IF
+  Ut_src(6,i,j,k) = Prod + Dest + Trip + Diff
   END DO; END DO; END DO ! i,j,k
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     Ut(6,i,j,k,iElem) = Ut(6,i,j,k,iElem)+Ut_src(6,i,j,k)/sJ(i,j,k,iElem,FV_Elem)
