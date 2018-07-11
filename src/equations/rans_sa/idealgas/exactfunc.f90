@@ -683,6 +683,7 @@ REAL                :: prim(PP_nVarPrim)
 REAL                :: S,SA_STilde,chi,nuTilde     ! vars for SA source
 REAL                :: SAfw,SAfn
 REAL                :: ft2,gt
+REAL                :: deltaU
 REAL                :: muS                         ! physical viscosity
 INTEGER             :: FV_Elem
 !==================================================================================================================================
@@ -926,10 +927,18 @@ DO iElem=1,nElems
     END IF
     ! Production term
     ft2 = MERGE(ct3*EXP(-1.*ct4*chi**2),0.,includeTrip)
+    ! Production term
     Ut_src(6,i,j,k) = cb1*(1.-ft2)*SA_STilde*U(6,i,j,k,iElem)
     ! Destruction term, depending on wall damping
     SAfw = fw(nuTilde,SA_STilde,SAd(i,j,k,FV_Elem,iElem))
-    Ut_src(6,i,j,k) = Ut_src(6,i,j,k) - prim(1)*cw1*SAfw*(nuTilde/SAd(i,j,k,FV_Elem,iElem))**2
+    Ut_src(6,i,j,k) = Ut_src(6,i,j,k) - prim(1)*(cw1*SAfw-cb1/SAKappa**2*ft2)*(nuTilde/SAd(i,j,k,FV_Elem,iElem))**2
+    ! Trip
+    IF (includeTrip) THEN
+      deltaU = NORM2(prim(2:4))
+      gt = MIN(0.1,deltaU/(omegaT*dXt))
+      Ut_src(6,i,j,k) = Ut_src(6,i,j,k) + &
+      prim(1)*ct1*gt*EXP((-1.*ct2*(omegaT/deltaU)**2)*((Sad(i,j,k,FV_Elem,iElem)**2)+(gt**2)*(SAdt(i,j,k,FV_Elem,iElem)**2)))*(deltaU**2)
+    END IF
     ! Diffusion
     IF (U(6,i,j,k,iElem).LT.0.) THEN
       ! Use additional function fn for negative values
@@ -937,10 +946,6 @@ DO iElem=1,nElems
     ELSE
       SAfn = 1.
     END IF
-    ! Trip
-    gt = MIN(0.1,NORM2(prim(2:4))/(omegaT*dXt))
-    Ut_src(6,i,j,k) = Ut_src(6,i,j,k) + &
-    prim(1)*ct1*gt*EXP(-1.*ct2*omegaT/(NORM2(prim(2:4))**2)*(Sad(i,j,k,FV_Elem,iElem)**2+gt**2*SAdt(i,j,k,FV_Elem,iElem)**2))
     Ut_src(6,i,j,k) = Ut_src(6,i,j,k) + &
                              cb2/sigma*prim(1)*(gradUx(7,i,j,k,iElem)**2+gradUy(7,i,j,k,iElem)**2 &
 #if PP_dim==3
