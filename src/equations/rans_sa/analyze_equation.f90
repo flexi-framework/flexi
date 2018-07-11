@@ -64,11 +64,13 @@ CALL prms%CreateLogicalOption('CalcMeanFlux'     , "Set true to compute mean flu
 CALL prms%CreateLogicalOption('CalcWallVelocity' , "Set true to compute velocities at wall boundaries", '.FALSE.')
 CALL prms%CreateLogicalOption('CalcTotalStates'  , "Set true to compute total states (e.g. Tt,pt)"    , '.FALSE.')
 CALL prms%CreateLogicalOption('CalcTimeAverage'  , "Set true to compute time averages"                , '.FALSE.')
+CALL prms%CreateLogicalOption('CalcResiduals'    , "Set true to compute residuals"                    , '.FALSE.')
 CALL prms%CreateLogicalOption('WriteBodyForces'  , "Set true to write bodyforces to file"             , '.TRUE.')
 CALL prms%CreateLogicalOption('WriteBulkState'   , "Set true to write bulk state to file"             , '.TRUE.')
 CALL prms%CreateLogicalOption('WriteMeanFlux'    , "Set true to write mean flux to file"              , '.TRUE.')
 CALL prms%CreateLogicalOption('WriteWallVelocity', "Set true to write wall velolcities file"          , '.TRUE.')
 CALL prms%CreateLogicalOption('WriteTotalStates' , "Set true to write total states to file"           , '.TRUE.')
+CALL prms%CreateLogicalOption('WriteResiduals '  , "Set true to write residuals to file"              , '.TRUE.')
 CALL prms%CreateStringOption( 'VarNameAvg'       , "Names of variables to be time-averaged"           , multiple=.TRUE.)
 CALL prms%CreateStringOption( 'VarNameFluc'      , "Names of variables for which Flucs (time-averaged \n"//&
                                                    "square of the variable) should be computed. \n"//&
@@ -102,11 +104,13 @@ doCalcBulkVelocity  =GETLOGICAL('CalcBulkState'    ,'.FALSE.')
 doCalcMeanFlux      =GETLOGICAL('CalcMeanFlux'     ,'.FALSE.')
 doCalcWallVelocity  =GETLOGICAL('CalcWallVelocity' ,'.FALSE.')
 doCalcTotalStates   =GETLOGICAL('CalcTotalStates'  ,'.FALSE.')
+doCalcResiduals     =GETLOGICAL('CalcResiduals'    ,'.FALSE.')
 doWriteBodyForces   =GETLOGICAL('WriteBodyForces'  ,'.TRUE.')
 doWriteBulkVelocity =GETLOGICAL('WriteBulkState'   ,'.TRUE.')
 doWriteMeanFlux     =GETLOGICAL('WriteMeanFlux'    ,'.TRUE.')
 doWriteWallVelocity =GETLOGICAL('WriteWallVelocity','.TRUE.')
 doWriteTotalStates  =GETLOGICAL('WriteTotalStates' ,'.TRUE.')
+doWriteResiduals    =GETLOGICAL('WriteResiduals'   ,'.TRUE.')
 doCalcTimeAverage   =GETLOGICAL('CalcTimeAverage'  ,'.FALSE.')
 
 ! Generate wallmap
@@ -167,6 +171,10 @@ IF(MPIRoot)THEN
       CALL InitOutputToFile(FileName_MeanFlux(i),TRIM(BoundaryName(i)),PP_nVar,StrVarNames)
     END DO
   END IF
+  IF(doCalcResiduals.AND.doWriteResiduals)THEN
+    FileName_Residuals = TRIM(ProjectName)//'_Residuals'
+    CALL InitOutputToFile(FileName_Residuals,'Residuals',PP_nVar,StrVarNames)
+  END IF
 END IF
 
 IF(doCalcTimeAverage)  CALL InitCalcTimeAverage()
@@ -199,6 +207,7 @@ REAL,DIMENSION(PP_nVar,nBCs)    :: MeanFlux
 REAL,DIMENSION(4,nBCs)          :: meanTotals
 REAL,DIMENSION(nBCs)            :: meanV,maxV,minV
 REAL                            :: BulkPrim(PP_nVarPrim),BulkCons(PP_nVar)
+REAL                            :: Residuals(PP_nVar)
 INTEGER                         :: i
 !==================================================================================================================================
 ! Calculate derived quantities
@@ -207,6 +216,7 @@ IF(doCalcWallVelocity) CALL CalcWallVelocity(maxV,minV,meanV)
 IF(doCalcMeanFlux)     CALL CalcMeanFlux(MeanFlux)
 IF(doCalcBulkVelocity) CALL CalcBulkVelocity(bulkPrim,bulkCons)
 IF(doCalcTotalStates)  CALL CalcKessel(meanTotals)
+IF(doCalcResiduals)    CALL CalcResiduals(Residuals)
 
 
 IF(MPIRoot.AND.doCalcBodyforces)THEN
@@ -260,7 +270,74 @@ IF(MPIRoot.AND.doCalcTotalStates)THEN
     WRITE(UNIT_StdOut,formatStr) ' '//TRIM(BoundaryName(i)),MeanTotals(:,i)
   END DO
 END IF
+
+IF(MPIRoot.AND.doCalcResiduals)THEN
+  IF (doWriteBulkVelocity) &
+    CALL OutputToFile(FileName_Residuals,(/Time/),(/PP_nVar,1/),Residuals)
+  WRITE(formatStr,'(A,I2,A)')'(A14,',PP_nVar,'ES18.9)'
+  WRITE(UNIT_StdOut,formatStr)' Residuals Cons  : ',Residuals
+END IF
+
 END SUBROUTINE AnalyzeEquation
+
+!==================================================================================================================================
+!> Calculates residuals over whole domain
+!==================================================================================================================================
+SUBROUTINE CalcResiduals(Residuals)
+! MODULES
+USE MOD_Globals
+USE MOD_PreProc
+USE MOD_Analyze_Vars,       ONLY: wGPVol,Vol
+USE MOD_Mesh_Vars,          ONLY: sJ,nElems
+USE MOD_DG_Vars,            ONLY: Ut
+#if FV_ENABLED
+USE MOD_FV_Vars,            ONLY: FV_Elems,FV_w
+#endif
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+REAL,INTENT(OUT)                :: Residuals(PP_nVar)                   !> Conservative residuals
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL                            :: IntegrationWeight
+INTEGER                         :: iElem,i,j,k
+#if FV_ENABLED
+REAL                            :: FV_w3
+#endif
+!==================================================================================================================================
+Residuals=0.
+#if FV_ENABLED
+FV_w3 = FV_w**3
+#endif
+DO iElem=1,nElems
+#if FV_ENABLED
+  IF (FV_Elems(iElem).GT.0) THEN ! FV Element
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+      IntegrationWeight=FV_w3/sJ(i,j,k,iElem,1)
+      Residuals = Residuals + Ut(:,i,j,k,iElem)*IntegrationWeight
+    END DO; END DO; END DO !i,j,k
+  ELSE ! DG element
+#endif
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+      IntegrationWeight=wGPVol(i,j,k)/sJ(i,j,k,iElem,0)
+      Residuals = Residuals + Ut(:,i,j,k,iElem)*IntegrationWeight
+    END DO; END DO; END DO !i,j,k
+#if FV_ENABLED
+  END IF
+#endif
+END DO ! iElem
+
+#if USE_MPI
+IF(MPIRoot)THEN
+  CALL MPI_REDUCE(MPI_IN_PLACE,Residuals,PP_nVar,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,iError)
+ELSE
+  CALL MPI_REDUCE(Residuals         ,0  ,PP_nVar,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,iError)
+END IF
+#endif
+
+Residuals=Residuals/Vol
+
+END SUBROUTINE CalcResiduals
 
 
 !==================================================================================================================================

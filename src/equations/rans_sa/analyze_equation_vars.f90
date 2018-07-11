@@ -32,16 +32,19 @@ LOGICAL              :: doCalcBulkVelocity  =.FALSE.      !< marks if bulk veloc
 LOGICAL              :: doCalcMeanFlux      =.FALSE.      !< marks if mean flux shall be computed
 LOGICAL              :: doCalcTotalStates   =.FALSE.      !< marks if total states (pt, Tt) shall be computed
 LOGICAL              :: doCalcWallVelocity  =.FALSE.      !< marks if wall velocity shall be computed
+LOGICAL              :: doCalcResiduals     =.FALSE.      !< marks if residuals shall be computed
 LOGICAL              :: doWriteBodyForces   =.FALSE.      !< marks if body forces at walls shall be written to a file
 LOGICAL              :: doWriteBulkVelocity =.FALSE.      !< marks if bulk velocity shall be written to a file
 LOGICAL              :: doWriteMeanFlux     =.FALSE.      !< marks if mean flux shall be written to a file
 LOGICAL              :: doWriteTotalStates  =.FALSE.      !< marks if total states (pt, Tt) shall be written to a file
 LOGICAL              :: doWriteWallVelocity =.FALSE.      !< marks if wall velocity shall be written to a file
+LOGICAL              :: doWriteResiduals    =.FALSE.      !< marks if residuals shall be written to a file
 CHARACTER(LEN=255),ALLOCATABLE :: Filename_BodyForce(:)   !< output files for bodyforces per BC
 CHARACTER(LEN=255)             :: Filename_Bulk           !< output file  for bulk velocity
 CHARACTER(LEN=255),ALLOCATABLE :: Filename_MeanFlux(:)    !< output files for mean flux per BC
 CHARACTER(LEN=255),ALLOCATABLE :: Filename_TotalStates(:) !< output files for total states per BC
 CHARACTER(LEN=255),ALLOCATABLE :: Filename_WallVel(:)     !< output files for wall velocities per BC
+CHARACTER(LEN=255)             :: Filename_Residuals      !< output file  for residuals
 
 ! Time averaging and fluctuation variables
 
