@@ -187,12 +187,12 @@ IF (includeTrip) THEN
 #else
   tripOnProc = .TRUE.
 #endif
+#if USE_MPI
+  tripRoot = ELEMIPROC(TripElem)
+#endif
   IF (tripOnProc) THEN
     CALL ReadAttribute(File_ID,'TripPQ',2,IntArray=TripPQ)
     CALL ReadAttribute(File_ID,'TripLocSide',1,IntScalar=tripLocSide)
-#if USE_MPI
-    tripRoot = ELEMIPROC(TripElem)
-#endif
     TripElem = TripElem - offsetElem ! From global to local elem index
     tripSideID = ElemToSide(E2S_SIDE_ID,triplocSide,tripElem)
   END IF
