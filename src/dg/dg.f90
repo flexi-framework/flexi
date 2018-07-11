@@ -273,7 +273,10 @@ USE MOD_EddyVisc_Vars       ,ONLY: muSGS,muSGS_master,muSGS_slave
 USE MOD_ProlongToFace       ,ONLY: ProlongToFace
 USE MOD_TimeDisc_Vars       ,ONLY: CurrentStage
 #endif
+#if EQNSYSNR == 3
 USE MOD_Equation            ,ONLY: CalcOmegaTrip
+USE MOD_Equation_Vars       ,ONLY: includeTrip
+#endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -531,7 +534,9 @@ CALL SurfIntCons(PP_N,Flux_master,Flux_slave,Ut,.TRUE.,L_HatMinus,L_HatPlus)
 Ut=-Ut
 
 ! 10. Compute source terms and sponge (in physical space, conversion to reference space inside routines)
-CALL CalcOmegaTrip()
+#if EQNSYSNR == 3
+IF (includeTrip) CALL CalcOmegaTrip()
+#endif
 IF(doCalcSource) CALL CalcSource(Ut,t)
 IF(doSponge)     CALL Sponge(Ut)
 IF(doTCSource)   CALL TestcaseSource(Ut)
