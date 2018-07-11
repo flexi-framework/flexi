@@ -940,7 +940,7 @@ DO iElem=1,nElems
     ! Trip
     gt = MIN(0.1,NORM2(prim(2:4))/(omegaT*dXt))
     Ut_src(6,i,j,k) = Ut_src(6,i,j,k) + &
-    ct1*gt*EXP(-1.*ct2*omegaT/(NORM2(prim(2:4))**2)*(Sad(i,j,k,FV_Elem,iElem)**2+gt**2*SAdt(i,j,k,FV_Elem,iElem)**2))
+    prim(1)*ct1*gt*EXP(-1.*ct2*omegaT/(NORM2(prim(2:4))**2)*(Sad(i,j,k,FV_Elem,iElem)**2+gt**2*SAdt(i,j,k,FV_Elem,iElem)**2))
     Ut_src(6,i,j,k) = Ut_src(6,i,j,k) + &
                              cb2/sigma*prim(1)*(gradUx(7,i,j,k,iElem)**2+gradUy(7,i,j,k,iElem)**2 &
 #if PP_dim==3
