@@ -208,7 +208,7 @@ IF (includeTrip) THEN
       SAdt(i,j,k,0,iElem) = NORM2(Elem_xGP(1:2,i,j,k,iElem)-TripX)
     END DO; END DO; END DO! i,j,k=0,PP_N
   END DO ! iElem
-  dXt = NORM2(Face_xGP(1:2,0,0,0,tripSideID)-Face_xGP(1:2,PP_N,0,0,tripSideID))/(PP_N+1)
+  IF (tripOnProc) dXt = NORM2(Face_xGP(1:2,0,0,0,tripSideID)-Face_xGP(1:2,PP_N,0,0,tripSideID))/(PP_N+1)
 #if USE_MPI
   CALL MPI_BCAST(dXt,1,MPI_DOUBLE_PRECISION,tripRoot,MPI_COMM_WORLD,iError)
 #endif
