@@ -36,12 +36,16 @@ INTERFACE GetConservativeStateSurface
   MODULE PROCEDURE GetConservativeStateSurface
 END INTERFACE
 
+INTERFACE CalcOmegaTrip
+  MODULE PROCEDURE CalcOmegaTrip
+END INTERFACE
+
 INTERFACE FinalizeEquation
   MODULE PROCEDURE FinalizeEquation
 END INTERFACE
 
 PUBLIC:: DefineParametersEquation,InitEquation,FinalizeEquation
-PUBLIC:: GetPrimitiveStateSurface,GetConservativeStateSurface
+PUBLIC:: GetPrimitiveStateSurface,GetConservativeStateSurface,CalcOmegaTrip
 !==================================================================================================================================
 
 CONTAINS
@@ -88,8 +92,8 @@ USE MOD_Testcase          ,ONLY: InitTestcase
 USE MOD_Riemann           ,ONLY: InitRiemann
 USE MOD_GetBoundaryFlux,   ONLY: InitBC
 USE MOD_CalcTimeStep      ,ONLY: InitCalctimestep
-USE MOD_Mesh_Vars         ,ONLY: nElems,Elem_xGP,offsetElem,MeshFile
-USE MOD_HDF5_Input        ,ONLY: ReadArray,OpenDataFile,CloseDataFile,GetDataSize
+USE MOD_Mesh_Vars         ,ONLY: nElems,Elem_xGP,offsetElem,MeshFile,ElemToSide,Face_xGP
+USE MOD_HDF5_Input        ,ONLY: ReadArray,OpenDataFile,CloseDataFile,GetDataSize,ReadAttribute
 USE MOD_IO_HDF5
 #if PP_dim == 3
 USE MOD_2D                ,ONLY: ExpandArrayTo3D
@@ -103,6 +107,11 @@ USE MOD_SplitFlux         ,ONLY: InitSplitDG
 USE MOD_ChangeBasisByDim ,ONLY: ChangeBasisVolume
 USE MOD_FV_Vars          ,ONLY: FV_Vdm
 #endif
+#if USE_MPI
+USE MOD_Mesh_Readin      ,ONLY: ELEMIPROC
+USE MOD_MPI_Vars
+USE MOD_MPI
+#endif
  IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -115,6 +124,7 @@ INTEGER            :: HSize_proc(4)
 REAL               :: RefStatePrimTmp(6)
 CHARACTER(LEN=255) :: FileName
 REAL,ALLOCATABLE   :: SAd_local(:,:,:,:)
+INTEGER            :: tripElem,tripLocSide
 !==================================================================================================================================
 IF(EquationInitIsDone)THEN
   CALL CollectiveStop(__STAMP__,&
@@ -169,8 +179,41 @@ ELSE
   SAd(:,:,:,0,:) = SAd_local
 END IF
 #endif
+IF (includeTrip) THEN
+  CALL ReadAttribute(File_ID,'TripX',2,RealArray=TripX)
+  CALL ReadAttribute(File_ID,'TripElem',1,IntScalar=tripElem)
+#if USE_MPI
+  tripOnProc = ((tripElem.GT.offsetElem+1).AND.(tripElem.LT.(offsetElem+1+nElems)))
+#else
+  tripOnProc = .TRUE.
+#endif
+  IF (tripOnProc) THEN
+    CALL ReadAttribute(File_ID,'TripPQ',2,IntArray=TripPQ)
+    CALL ReadAttribute(File_ID,'TripLocSide',1,IntScalar=tripLocSide)
+#if USE_MPI
+    tripRoot = ELEMIPROC(TripElem)
+#endif
+    TripElem = TripElem - offsetElem ! From global to local elem index
+    tripSideID = ElemToSide(E2S_SIDE_ID,triplocSide,tripElem)
+  END IF
+END IF
+
 CALL CloseDataFile()
 DEALLOCATE(SAd_local)
+
+IF (includeTrip) THEN
+  ALLOCATE(SAdt(0:PP_N,0:PP_N,0:PP_NZ,0:FV_ENABLED,nElems))
+  DO iElem=1,nElems
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+      SAdt(i,j,k,0,iElem) = NORM2(Elem_xGP(1:2,i,j,k,iElem)-TripX)
+    END DO; END DO; END DO! i,j,k=0,PP_N
+  END DO ! iElem
+  dXt = NORM2(Face_xGP(1:2,0,0,0,tripSideID)-Face_xGP(1:2,PP_N,0,0,tripSideID))/(PP_N+1)
+#if USE_MPI
+  CALL MPI_BCAST(dXt,1,MPI_DOUBLE_PRECISION,tripRoot,MPI_COMM_WORLD,iError)
+#endif
+END IF
+
 #if FV_ENABLED
 ! Calculate wall distance at sub cell nodes. This assumes that the walldistance can be adequately represented as a polynomial!
 ! TODO: Replace with seperately calculated wall distance, directly on FV points
@@ -329,6 +372,39 @@ DO SideID=firstInnerSide,lastMPISide_YOUR
 END DO
 END SUBROUTINE
 
+!===================================================================================================================================
+!> description
+!===================================================================================================================================
+SUBROUTINE CalcOmegaTrip()
+! MODULES                                                                                                                          !
+USE MOD_Globals
+USE MOD_Equation_Vars,   ONLY: omegaT,tripSideID,tripPQ,tripOnProc,tripRoot
+USE MOD_Lifting_Vars,    ONLY: gradUx_master,gradUy_master
+#if USE_MPI
+USE MOD_MPI_Vars
+USE MOD_MPI
+#endif
+!----------------------------------------------------------------------------------------------------------------------------------!
+IMPLICIT NONE
+! INPUT / OUTPUT VARIABLES
+! Space-separated list of input and output types. Use: (int|real|logical|...)_(in|out|inout)_dim(n)
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+
+!===================================================================================================================================
+
+IF (tripOnProc) THEN
+  omegaT = ABS(gradUy_master(2,tripPQ(1),tripPQ(2),tripSideID)-gradUx_master(3,tripPQ(1),tripPQ(2),tripSideID))
+END IF
+
+#if USE_MPI
+CALL MPI_BCAST(omegaT,1,MPI_DOUBLE_PRECISION,tripRoot,MPI_COMM_WORLD,iError)
+#endif
+
+END SUBROUTINE CalcOmegaTrip
+
+
+
 
 !==================================================================================================================================
 !> Finalizes equation, calls finalize for testcase and Riemann
@@ -349,6 +425,7 @@ CALL FinalizeBC()
 SDEALLOCATE(RefStatePrim)
 SDEALLOCATE(RefStateCons)
 SDEALLOCATE(SAd)
+SDEALLOCATE(SAdt)
 EquationInitIsDone = .FALSE.
 END SUBROUTINE FinalizeEquation
 

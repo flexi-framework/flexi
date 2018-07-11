@@ -645,7 +645,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Equation_Vars    ,ONLY: IniExactFunc,doCalcSource
 USE MOD_Equation_Vars    ,ONLY: SAKappa,SAd,cw1,cb1,cb2,sigma
-USE MOD_Equation_Vars    ,ONLY: fv2,fw,STilde,fn,ct1,ct2,ct3,ct4,includeTrip
+USE MOD_Equation_Vars    ,ONLY: fv2,fw,STilde,fn,ct1,ct2,ct3,ct4,includeTrip,omegaT,dXt,SAdt
 USE MOD_Eos_Vars         ,ONLY: Kappa,KappaM1,cp
 USE MOD_Exactfunc_Vars   ,ONLY: AdvVel
 USE MOD_DG_Vars          ,ONLY: U
@@ -682,7 +682,7 @@ REAL                :: Ut_src2(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 REAL                :: prim(PP_nVarPrim)
 REAL                :: S,SA_STilde,chi,nuTilde     ! vars for SA source
 REAL                :: SAfw,SAfn
-REAL                :: ft2
+REAL                :: ft2,gt
 REAL                :: muS                         ! physical viscosity
 INTEGER             :: FV_Elem
 !==================================================================================================================================
@@ -937,6 +937,10 @@ DO iElem=1,nElems
     ELSE
       SAfn = 1.
     END IF
+    ! Trip
+    gt = MIN(0.1,NORM2(prim(2:4))/(omegaT*dXt))
+    Ut_src(6,i,j,k) = Ut_src(6,i,j,k) + &
+    ct1*gt*EXP(-1.*ct2*omegaT/(NORM2(prim(2:4))**2)*(Sad(i,j,k,FV_Elem,iElem)**2+gt**2*SAdt(i,j,k,FV_Elem,iElem)**2))
     Ut_src(6,i,j,k) = Ut_src(6,i,j,k) + &
                              cb2/sigma*prim(1)*(gradUx(7,i,j,k,iElem)**2+gradUy(7,i,j,k,iElem)**2 &
 #if PP_dim==3

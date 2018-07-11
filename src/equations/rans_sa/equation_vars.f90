@@ -60,6 +60,19 @@ REAL, PARAMETER   :: ct1 = 1.0
 REAL, PARAMETER   :: ct2 = 2.0
 REAL, PARAMETER   :: ct3 = 1.2
 REAL, PARAMETER   :: ct4 = 0.5
+REAL              :: TripX(2)
+REAL              :: dxT
+REAL              :: omegaT
+REAL, ALLOCATABLE :: SAdt(:,:,:,:,:)    !< Distance from trip point
+INTEGER           :: tripPQ(2)
+INTEGER           :: tripSideId
+LOGICAL           :: tripOnProc
+#if USE_MPI
+INTEGER           :: tripRoot
+#endif
+
+
+
 
 CHARACTER(LEN=255),DIMENSION(6),PARAMETER :: StrVarNames =&
   (/ CHARACTER(LEN=255) :: 'Density','MomentumX','MomentumY','MomentumZ','EnergyStagnationDensity','muTilde'/) !< conservative variable names
