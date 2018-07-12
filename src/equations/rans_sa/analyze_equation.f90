@@ -272,7 +272,7 @@ IF(MPIRoot.AND.doCalcTotalStates)THEN
 END IF
 
 IF(MPIRoot.AND.doCalcResiduals)THEN
-  IF (doWriteBulkVelocity) &
+  IF (doWriteResiduals) &
     CALL OutputToFile(FileName_Residuals,(/Time/),(/PP_nVar,1/),Residuals)
   WRITE(formatStr,'(A,I2,A)')'(A14,',PP_nVar,'ES18.9)'
   WRITE(UNIT_StdOut,formatStr)' Residuals Cons  : ',Residuals
