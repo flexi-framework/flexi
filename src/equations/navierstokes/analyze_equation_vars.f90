@@ -28,12 +28,12 @@ INTEGER              :: maxlen                            !< max length of BCNam
 
 ! Variables for the specific analyze routines
 LOGICAL              :: doCalcBodyForces    =.FALSE.      !< marks if body forces at walls shall be computed
-LOGICAL              :: doCalcBulkVelocity  =.FALSE.      !< marks if bulk velocity shall be computed
+LOGICAL              :: doCalcBulkState     =.FALSE.      !< marks if bulk state shall be computed
 LOGICAL              :: doCalcMeanFlux      =.FALSE.      !< marks if mean flux shall be computed
 LOGICAL              :: doCalcTotalStates   =.FALSE.      !< marks if total states (pt, Tt) shall be computed
 LOGICAL              :: doCalcWallVelocity  =.FALSE.      !< marks if wall velocity shall be computed
 LOGICAL              :: doWriteBodyForces   =.FALSE.      !< marks if body forces at walls shall be written to a file
-LOGICAL              :: doWriteBulkVelocity =.FALSE.      !< marks if bulk velocity shall be written to a file
+LOGICAL              :: doWriteBulkState    =.FALSE.      !< marks if bulk state shall be written to a file
 LOGICAL              :: doWriteMeanFlux     =.FALSE.      !< marks if mean flux shall be written to a file
 LOGICAL              :: doWriteTotalStates  =.FALSE.      !< marks if total states (pt, Tt) shall be written to a file
 LOGICAL              :: doWriteWallVelocity =.FALSE.      !< marks if wall velocity shall be written to a file
