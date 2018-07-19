@@ -55,8 +55,8 @@ IMPLICIT NONE
 #ifdef WITHnVar
 INTEGER,INTENT(IN) :: TP_nVar
 #endif
-REAL,INTENT(INOUT) :: U_in_master(1:TP_nVar,0:PP_N,0:TP_NZ,1:nSides) !< (INOUT) can be U or Grad_Ux/y/z_master
-REAL,INTENT(INOUT) :: U_in_slave( 1:TP_nVar,0:PP_N,0:TP_NZ,1:nSides) !< (INOUT) can be U or Grad_Ux/y/z_master
+REAL,INTENT(INOUT) :: U_in_master(1:TP_nVar,0:PP_N,0:PP_NZ,1:nSides) !< (INOUT) can be U or Grad_Ux/y/z_master
+REAL,INTENT(INOUT) :: U_in_slave( 1:TP_nVar,0:PP_N,0:PP_NZ,1:nSides) !< (INOUT) can be U or Grad_Ux/y/z_master
 LOGICAL,INTENT(IN) :: doMPISides                                 !< flag whether MPI sides are processed
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -64,9 +64,9 @@ INTEGER      :: p,q,l
 INTEGER      :: iMortar,nMortars
 INTEGER      :: firstMortarSideID,lastMortarSideID
 INTEGER      :: MortarSideID,SideID,locSide,flip
-REAL         :: U_tmp( TP_nVar,0:PP_N,0:TP_NZ,1:4)
+REAL         :: U_tmp( TP_nVar,0:PP_N,0:PP_NZ,1:4)
 #if PP_dim == 3
-REAL         :: U_tmp2(TP_nVar,0:PP_N,0:TP_NZ,1:2)
+REAL         :: U_tmp2(TP_nVar,0:PP_N,0:PP_NZ,1:2)
 #endif
 REAL,POINTER :: M1(:,:),M2(:,:)
 !==================================================================================================================================
@@ -142,7 +142,7 @@ DO MortarSideID=firstMortarSideID,lastMortarSideID
 
   CASE(3) !1->2 in xi      NOTE: In 2D only the first space index can be a Mortar (second index is always 0)!!!
 #endif
-    DO q=0,TP_NZ ! for every eta-layer perform Mortar operation in xi-direction
+    DO q=0,PP_NZ ! for every eta-layer perform Mortar operation in xi-direction
       ! The following p- and l-loop are two MATMULs: (ATTENTION M1 and M2 are already transposed in mortar.f90)
       !    U_tmp(iVar,:,q,1)  =  M1 * U_in_master(iVar,:,q,MortarSideID)
       !    U_tmp(iVar,:,q,2)  =  M2 * U_in_master(iVar,:,q,MortarSideID)
@@ -168,7 +168,7 @@ DO MortarSideID=firstMortarSideID,lastMortarSideID
       CASE(0) ! master side
         U_in_master(:,:,:,SideID)=U_tmp(:,:,:,iMortar)
       CASE(1:4) ! slave side
-        DO q=0,TP_NZ; DO p=0,PP_N
+        DO q=0,PP_NZ; DO p=0,PP_N
           U_in_slave(:,p,q,SideID)=U_tmp(:,FS2M(1,p,q,flip), &
                                            FS2M(2,p,q,flip),iMortar)
         END DO; END DO ! q, p
