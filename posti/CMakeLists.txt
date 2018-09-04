@@ -24,7 +24,7 @@ SET(   POSTI_WHICH_EQNSYS "navierstokes" CACHE STRING
 SET(   POSTI_WHICH_EOS    "idealgas" CACHE STRING
                         "Used equation of state (idealgas)")
 
-                     IF(POSTI_BUILD_VISUALIZERECORDPOINTS OR POSTI_BUILD_CHANNEL_FFT OR POSTI_BUILD_INIT_HIT)
+IF(POSTI_BUILD_VISUALIZERECORDPOINTS OR POSTI_BUILD_CHANNEL_FFT OR POSTI_BUILD_INIT_HIT)
   # =========================================================================
   # FFTW (FFT tool)
   # =========================================================================
@@ -63,6 +63,20 @@ SET(   POSTI_WHICH_EOS    "idealgas" CACHE STRING
 
 ENDIF()
 
+IF(POSTI_BUILD_SWAPMESH OR POSTI_BUILD_INIT_HIT)
+  OPTION(ENABLE_OPENMP "Enable OpenMP for POSTI tools" OFF)
+  IF(ENABLE_OPENMP)
+    IF ("${CMAKE_VERSION}" VERSION_LESS 3.1.0)
+      MESSAGE(WARNING "For finding OpenMP Fortran flags at least CMake version 3.1.0 is required. Please specify flags manually or use newer CMake version.")
+    ENDIF()
+    FIND_PACKAGE(OpenMP REQUIRED)
+    SET (CMAKE_Fortran_FLAGS_DEBUG   "${CMAKE_Fortran_FLAGS_DEBUG}   ${OpenMP_Fortran_FLAGS}")
+    SET (CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS_RELEASE} ${OpenMP_Fortran_FLAGS}")
+    SET (CMAKE_CXX_FLAGS_DEBUG       "${CMAKE_CXX_FLAGS_DEBUG}       ${OpenMP_CXX_FLAGS}")
+    SET (CMAKE_CXX_FLAGS_RELEASE     "${CMAKE_CXX_FLAGS_RELEASE}     ${OpenMP_CXX_FLAGS}")
+    SET (CMAKE_EXE_LINKER_FLAGS      "${CMAKE_EXE_LINKER_FLAGS}      ${OpenMP_EXE_LINKER_FLAGS}")
+  ENDIF()
+ENDIF()
 
 IF(POSTI_BUILD_VISU)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/visu/CMakeLists.txt)
