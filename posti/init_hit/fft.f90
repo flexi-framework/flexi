@@ -62,8 +62,7 @@ SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT BASIS...'
 
 ! No Spectral code without pi and 2pi
-Pi     = ACOS(-1.)
-TwoPi  = 2.*Pi
+TwoPi  = 2.*PP_Pi
 II     = cmplx(0.,1.0)
 kmax   = NINT(sqrt(REAL(3*N_FFT**2)))+1
 scalefactor = 1/N_FFT**3

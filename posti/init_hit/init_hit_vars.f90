@@ -15,7 +15,7 @@
 !===================================================================================================================================
 !> Contains global variables provided by the initHIT routines
 !===================================================================================================================================
-MODULE MOD_INIT_HIT_VARS
+MODULE MOD_Init_HIT_Vars
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -36,14 +36,13 @@ COMPLEX,ALLOCATABLE   :: U_k(:,:,:,:)              !<
 COMPLEX,ALLOCATABLE   :: U_FFT(:,:,:,:)            !<
 REAL,ALLOCATABLE      :: LocalXYZ(:,:,:,:)         !<
 REAL,ALLOCATABLE      :: LocalK(:,:,:,:)           !<
-COMPLEX, ALLOCATABLE :: F_vv(:,:,:,:,:)
-COMPLEX, ALLOCATABLE :: fhat(:,:,:,:)
-COMPLEX, ALLOCATABLE :: phat(:,:,:)
+COMPLEX, ALLOCATABLE  :: F_vv(:,:,:,:,:)           !<
+COMPLEX, ALLOCATABLE  :: fhat(:,:,:,:)             !<
+COMPLEX, ALLOCATABLE  :: phat(:,:,:)               !<
 INTEGER               :: kmax                      !< 
-REAL                  :: Pi                        !< 
 REAL                  :: TwoPi                     !< 
 COMPLEX               :: II                        !< 
-REAL                  :: scalefactor
+REAL                  :: scalefactor               !<
 REAL                  :: maxTol                    !< 
 REAL                  :: abortTol                  !< 
 REAL                  :: displacement(3)           !< 
@@ -53,5 +52,5 @@ INTEGER(KIND=8)       :: plan
 
 
 !===================================================================================================================================
-END MODULE MOD_INIT_HIT_VARS
+END MODULE MOD_Init_HIT_Vars
 

@@ -22,7 +22,7 @@ PROGRAM init_hit
 ! MODULES
 USE MOD_Preproc
 USE MOD_Globals
-USE MOD_Init_Hit_Vars
+USE MOD_Init_HIT_Vars
 USE MOD_DG_Vars,                 ONLY: U              
 USE MOD_Interpolation_Vars      ,ONLY: NodeType
 USE MOD_FFT,                     ONLY: InitFFT,Rogallo,FinalizeFFT                     
