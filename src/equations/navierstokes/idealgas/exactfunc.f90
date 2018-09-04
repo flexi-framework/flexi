@@ -149,7 +149,7 @@ END SELECT ! IniExactFunc
 
 #if PP_dim==2
 SELECT CASE (IniExactFunc)
-CASE(43,7) ! synthetic test cases
+CASE(43) ! synthetic test cases
   CALL CollectiveStop(__STAMP__,'The selected exact function is not available in 2D!') 
 CASE(2,3,4,41,42) ! synthetic test cases
   IF(AdvVel(3).NE.0.) THEN
@@ -473,6 +473,9 @@ CASE(7) ! SHU VORTEX,isentropic vortex
   dTemp = -kappaM1/(2.*kappa*RT)*du**2 ! adiabatic
   prim(1)=prim(1)*(1.+dTemp)**(1.*skappaM1) !rho
   prim(2:4)=prim(2:4)+du*cent(:) !v
+#if PP_dim == 2
+  prim(4)=0.
+#endif
   prim(PP_nVar)=prim(PP_nVar)*(1.+dTemp)**(kappa/kappaM1) !p
   prim(6) = prim(5)/(prim(1)*R)
   CALL PrimToCons(prim,resu)
