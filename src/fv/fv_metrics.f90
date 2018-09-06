@@ -68,7 +68,7 @@ USE MOD_MPI_Vars           ,ONLY: nNbProcs
 #endif
 #endif
 USE MOD_2D
-USE MOD_FillMortar1_3D     ,ONLY: U_Mortar1
+USE MOD_FillMortar1        ,ONLY: U_Mortar1
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
