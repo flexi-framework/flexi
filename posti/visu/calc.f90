@@ -85,8 +85,8 @@ INTEGER            :: iElem,iElemDG
 ! calc DG solution
 SWRITE(*,*) "[DG] calc quantities"
 SDEALLOCATE(UCalc_DG)
-ALLOCATE(UCalc_DG(0:NCalc,0:NCalc,0:PP_NCalcZ,nElems_DG,1:nVarCalc))
-nVal=(/NCalc+1,NCalc+1,PP_NCalcZ+1,nElems_DG/)
+ALLOCATE(UCalc_DG(0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems_DG,1:nVarCalc))
+nVal=(/NCalc+1,NCalc+1,ZDIM(NCalc)+1,nElems_DG/)
 
 maskCalc = 1
 ! Copy exisiting variables from solution array and interpolate to NCalc
@@ -96,9 +96,9 @@ IF(TRIM(FileType).EQ.'State')THEN
   IF(withDGOperator.AND.PARABOLIC.EQ.1)THEN
 #if PARABOLIC
     CALL GetVandermonde(PP_N,NodeType,NCalc,NodeType,Vdm_N_NCalc,modal=.FALSE.)
-    ALLOCATE(gradUx_tmp(PP_nVarPrim,0:NCalc,0:NCalc,0:PP_NCalcZ,nElems_DG))
-    ALLOCATE(gradUy_tmp(PP_nVarPrim,0:NCalc,0:NCalc,0:PP_NCalcZ,nElems_DG))
-    ALLOCATE(gradUz_tmp(PP_nVarPrim,0:NCalc,0:NCalc,0:PP_NCalcZ,nElems_DG))
+    ALLOCATE(gradUx_tmp(PP_nVarPrim,0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems_DG))
+    ALLOCATE(gradUy_tmp(PP_nVarPrim,0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems_DG))
+    ALLOCATE(gradUz_tmp(PP_nVarPrim,0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems_DG))
     DO iElemDG = 1, nElems_DG
       iElem = mapDGElemsToAllElems(iElemDG)
       CALL ChangeBasisVolume(PP_nVarPrim,PP_N,NCalc,Vdm_N_NCalc,gradUx(:,:,:,:,iElem),gradUx_tmp(:,:,:,:,iElemDG))
@@ -152,19 +152,19 @@ REAL,ALLOCATABLE   :: TangVec2_loc(:,:,:,:)
 CALL GetVandermonde(PP_N,NodeType,NCalc,NodeType,Vdm_N_NCalc,modal=.FALSE.)
 
 !------ Surface visualization ----------!
-nValSide=(/NCalc+1,PP_NCalcZ+1,nBCSidesVisu_DG/)
+nValSide=(/NCalc+1,ZDIM(NCalc)+1,nBCSidesVisu_DG/)
 
 ! Allocate array that stores the calculated variables on the visualization boundary.
 SDEALLOCATE(USurfCalc_DG)
-ALLOCATE(USurfCalc_DG(0:NCalc,0:PP_NCalcZ,nBCSidesVisu_DG,1:nVarCalc))
+ALLOCATE(USurfCalc_DG(0:NCalc,0:ZDIM(NCalc),nBCSidesVisu_DG,1:nVarCalc))
 #if PARABOLIC
-ALLOCATE(gradUxFace(1:PP_nVarPrim,0:NCalc,0:PP_NCalcZ,nBCSidesVisu_DG))
-ALLOCATE(gradUyFace(1:PP_nVarPrim,0:NCalc,0:PP_NCalcZ,nBCSidesVisu_DG))
-ALLOCATE(gradUzFace(1:PP_nVarPrim,0:NCalc,0:PP_NCalcZ,nBCSidesVisu_DG))
+ALLOCATE(gradUxFace(1:PP_nVarPrim,0:NCalc,0:ZDIM(NCalc),nBCSidesVisu_DG))
+ALLOCATE(gradUyFace(1:PP_nVarPrim,0:NCalc,0:ZDIM(NCalc),nBCSidesVisu_DG))
+ALLOCATE(gradUzFace(1:PP_nVarPrim,0:NCalc,0:ZDIM(NCalc),nBCSidesVisu_DG))
 #endif
-ALLOCATE(NormVec_loc (1:3,0:NCalc,0:PP_NCalcZ,nBCSidesVisu_DG))
-ALLOCATE(TangVec1_loc(1:3,0:NCalc,0:PP_NCalcZ,nBCSidesVisu_DG))
-ALLOCATE(TangVec2_loc(1:3,0:NCalc,0:PP_NCalcZ,nBCSidesVisu_DG))
+ALLOCATE(NormVec_loc (1:3,0:NCalc,0:ZDIM(NCalc),nBCSidesVisu_DG))
+ALLOCATE(TangVec1_loc(1:3,0:NCalc,0:ZDIM(NCalc),nBCSidesVisu_DG))
+ALLOCATE(TangVec2_loc(1:3,0:NCalc,0:ZDIM(NCalc),nBCSidesVisu_DG))
 
 maskCalc=1
 CALL ProlongToFace_independent(nVarCalc,nBCSidesVisu_DG,nElems_DG,maskCalc,UCalc_DG,USurfCalc_DG &
@@ -236,18 +236,18 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)            :: nVar,nSides_calc,nElems_calc
-REAL,INTENT(IN)               :: UIn(0:NCalc,0:NCalc,0:PP_NCalcZ,nElems_calc,1:nVar)
-REAL,INTENT(OUT)              :: UBoundary(  0:NCalc,0:PP_NCalcZ,nSides_calc,1:nVar)
+REAL,INTENT(IN)               :: UIn(0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems_calc,1:nVar)
+REAL,INTENT(OUT)              :: UBoundary(  0:NCalc,0:ZDIM(NCalc),nSides_calc,1:nVar)
 #if PARABOLIC
-REAL,INTENT(OUT)              :: gradUxFace(1:PP_nVarPrim,0:NCalc,0:PP_NCalcZ,nSides_calc)
-REAL,INTENT(OUT)              :: gradUyFace(1:PP_nVarPrim,0:NCalc,0:PP_NCalcZ,nSides_calc)
-REAL,INTENT(OUT)              :: gradUzFace(1:PP_nVarPrim,0:NCalc,0:PP_NCalcZ,nSides_calc)
+REAL,INTENT(OUT)              :: gradUxFace(1:PP_nVarPrim,0:NCalc,0:ZDIM(NCalc),nSides_calc)
+REAL,INTENT(OUT)              :: gradUyFace(1:PP_nVarPrim,0:NCalc,0:ZDIM(NCalc),nSides_calc)
+REAL,INTENT(OUT)              :: gradUzFace(1:PP_nVarPrim,0:NCalc,0:ZDIM(NCalc),nSides_calc)
 #endif
 INTEGER,INTENT(INOUT)         :: maskCalc(nVarDep)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER             :: iVar,iVarIn,iVarOut,iSide,locSide,iElem,p,q,iElem_DG,iSide_DG
-REAL                :: Uface(1,0:NCalc,0:PP_NCalcZ)
+REAL                :: Uface(1,0:NCalc,0:ZDIM(NCalc))
 REAL                :: Vdm_N_NCalc(0:NCalc,0:PP_N)
 #if PARABOLIC
 REAL                :: gradUxFace_tmp( 1:PP_nVarPrim,0:PP_N,0:PP_NZ)
@@ -301,7 +301,7 @@ DO iVarOut=1,nVarDep ! iterate over all out variables
                 CALL EvalElemFace(1,NCalc,UIn(:,:,:,iElem_DG,iVar:iVar),Uface(1:1,:,:),locSide)
               END IF
               ! Rotate into coordinate system of master side
-              DO q=0,PP_NCalcZ; DO p=0,NCalc
+              DO q=0,ZDIM(NCalc); DO p=0,NCalc
                 UBoundary(p,q,iSide_DG,iVar)=Uface(1,S2V2_NCalc(1,p,q,0,locSide),S2V2_NCalc(2,p,q,0,locSide))
               END DO; END DO
             END IF
@@ -419,13 +419,13 @@ REAL,ALLOCATABLE             :: gradUx_calc(:,:,:,:,:),gradUy_calc(:,:,:,:,:),gr
 #if FV_RECONSTRUCT
   ! ================================ WITH RECONSTRUCTION ======================================
 
-  nVal=(/NCalc_FV+1,NCalc_FV+1,PP_NCalcZ_FV+1,nElems_FV/)
+  nVal=(/NCalc_FV+1,NCalc_FV+1,ZDIM(NCalc_FV)+1,nElems_FV/)
   SWRITE (*,*) "[FVRE] nVarCalc_FV", nVarCalc_FV
 
   ! convert primitive quantities to the visu grid, but store them in UCalc_FV, since all dependent calculations based on
   ! reconstructed values are performed on the visu grid.
   SDEALLOCATE(UCalc_FV)
-  ALLOCATE(UCalc_FV(0:NCalc_FV,0:NCalc_FV,0:PP_NCalcZ_FV,nElems_FV,1:nVarCalc_FV))
+  ALLOCATE(UCalc_FV(0:NCalc_FV,0:NCalc_FV,0:ZDIM(NCalc_FV),nElems_FV,1:nVarCalc_FV))
   SWRITE(*,*) "[FVRE] ConvertToVisu_FV_Reconstruct"
 
   ! calculate all remaining quantities on the visu grid.
@@ -434,9 +434,9 @@ REAL,ALLOCATABLE             :: gradUx_calc(:,:,:,:,:),gradUy_calc(:,:,:,:,:),gr
     SWRITE(*,*) "[FVRE] CalcQuantities (nonPrim)"
     IF(withDGOperator.AND.(PARABOLIC.EQ.1))THEN
 #if PARABOLIC
-      ALLOCATE(gradUx_calc(1:PP_nVarPrim,0:NCalc_FV,0:NCalc_FV,0:PP_NCalcZ_FV,nElems_FV))
-      ALLOCATE(gradUy_calc(1:PP_nVarPrim,0:NCalc_FV,0:NCalc_FV,0:PP_NCalcZ_FV,nElems_FV))
-      ALLOCATE(gradUz_calc(1:PP_nVarPrim,0:NCalc_FV,0:NCalc_FV,0:PP_NCalcZ_FV,nElems_FV))
+      ALLOCATE(gradUx_calc(1:PP_nVarPrim,0:NCalc_FV,0:NCalc_FV,0:ZDIM(NCalc_FV),nElems_FV))
+      ALLOCATE(gradUy_calc(1:PP_nVarPrim,0:NCalc_FV,0:NCalc_FV,0:ZDIM(NCalc_FV),nElems_FV))
+      ALLOCATE(gradUz_calc(1:PP_nVarPrim,0:NCalc_FV,0:NCalc_FV,0:ZDIM(NCalc_FV),nElems_FV))
       CALL ConvertToVisu_FV_Reconstruct(gradUx_calc,gradUy_calc,gradUz_calc)
       CALL CalcQuantities(nVarCalc_FV,nVal,mapFVElemsToAllElems,mapDepToCalc_FV,UCalc_FV,maskCalc,gradUx_calc,gradUy_calc,gradUz_calc)
 #endif
@@ -452,14 +452,14 @@ REAL,ALLOCATABLE             :: gradUx_calc(:,:,:,:,:),gradUy_calc(:,:,:,:,:),gr
   ! ================================ WITHOUT RECONSTRUCTION ======================================
   ! Since no reconstruction is involved, we can calculate all dependent quantities from the conservative solution (same
   ! as for DG). Without reconstruction this can be done on the FV cell-centers (PP_N instead of NVisu_FV).
-  nVal=(/NCalc_FV+1,NCalc_FV+1,PP_NCalcZ_FV+1,nElems_FV/)
+  nVal=(/NCalc_FV+1,NCalc_FV+1,ZDIM(NCalc_FV)+1,nElems_FV/)
   SDEALLOCATE(mapDepToCalc_FV)
   ALLOCATE(mapDepToCalc_FV(1:nVarDep))
   mapDepToCalc_FV = mapDepToCalc
   ! calc FV solution
   SWRITE(*,*) "[FV] calc quantities"
   SDEALLOCATE(UCalc_FV)
-  ALLOCATE(UCalc_FV(0:NCalc_FV,0:NCalc_FV,0:PP_NCalcZ_FV,nElems_FV,1:nVarCalc))
+  ALLOCATE(UCalc_FV(0:NCalc_FV,0:NCalc_FV,0:ZDIM(NCalc_FV),nElems_FV,1:nVarCalc))
 
   maskCalc = 1
   ! Copy exisiting variables from solution array
@@ -509,14 +509,14 @@ REAL,ALLOCATABLE   :: TangVec2_loc(:,:,:,:)
 !===================================================================================================================================
 
 
-nValSide=(/NCalc_FV+1,PP_NCalcZ_FV+1,nBCSidesVisu_FV/)
+nValSide=(/NCalc_FV+1,ZDIM(NCalc_FV)+1,nBCSidesVisu_FV/)
 CALL buildMappings(NCalc_FV,S2V=S2V_NVisu)
 SDEALLOCATE(USurfVisu_FV)
-ALLOCATE(USurfVisu_FV(0:NVisu_FV,0:PP_NVisuZ_FV,0:0,nBCSidesVisu_FV,nVarSurfVisuAll))
+ALLOCATE(USurfVisu_FV(0:NVisu_FV,0:ZDIM(NVisu_FV),0:0,nBCSidesVisu_FV,nVarSurfVisuAll))
 ! ===  Surface visualization ================================
 ! copy UCalc_FV to USurfCalc_FV
 SDEALLOCATE(USurfCalc_FV)
-ALLOCATE(USurfCalc_FV(0:NCalc_FV,0:PP_NCalcZ_FV,nBCSidesVisu_FV,1:nVarCalc_FV))
+ALLOCATE(USurfCalc_FV(0:NCalc_FV,0:ZDIM(NCalc_FV),nBCSidesVisu_FV,1:nVarCalc_FV))
 DO iElem_FV = 1,nElems_FV                         ! iterate over all FV visu elements
   iElem = mapFVElemsToAllElems(iElem_FV)          ! get global element index
 #if PP_dim == 3
@@ -528,7 +528,7 @@ DO iElem_FV = 1,nElems_FV                         ! iterate over all FV visu ele
     IF (iSide.LE.nBCSides) THEN                   ! check if BC side
       iSide_FV = mapAllBCSidesToFVVisuBCSides(iSide)  ! get FV visu side index
       IF (iSide_FV.GT.0) THEN
-        DO q=0,PP_NCalcZ_FV; DO p=0,NCalc_FV          ! map volume solution to surface solution
+        DO q=0,ZDIM(NCalc_FV); DO p=0,NCalc_FV          ! map volume solution to surface solution
           ijk = S2V_NVisu(:,0,p,q,0,locSide)
           USurfCalc_FV(p,q,iSide_FV,:) = UCalc_FV(ijk(1),ijk(2),ijk(3),iElem_FV,:)
         END DO; END DO
@@ -537,13 +537,13 @@ DO iElem_FV = 1,nElems_FV                         ! iterate over all FV visu ele
   END DO
 END DO
 
-ALLOCATE(NormVec_loc (1:3,0:NCalc_FV,0:PP_NCalcZ_FV,nBCSidesVisu_FV))
-ALLOCATE(TangVec1_loc(1:3,0:NCalc_FV,0:PP_NCalcZ_FV,nBCSidesVisu_FV))
-ALLOCATE(TangVec2_loc(1:3,0:NCalc_FV,0:PP_NCalcZ_FV,nBCSidesVisu_FV))
+ALLOCATE(NormVec_loc (1:3,0:NCalc_FV,0:ZDIM(NCalc_FV),nBCSidesVisu_FV))
+ALLOCATE(TangVec1_loc(1:3,0:NCalc_FV,0:ZDIM(NCalc_FV),nBCSidesVisu_FV))
+ALLOCATE(TangVec2_loc(1:3,0:NCalc_FV,0:ZDIM(NCalc_FV),nBCSidesVisu_FV))
 #if PARABOLIC
-ALLOCATE(gradUxFace(1:PP_nVarPrim,0:NCalc_FV,0:PP_NCalcZ_FV,nBCSidesVisu_FV))
-ALLOCATE(gradUyFace(1:PP_nVarPrim,0:NCalc_FV,0:PP_NCalcZ_FV,nBCSidesVisu_FV))
-ALLOCATE(gradUzFace(1:PP_nVarPrim,0:NCalc_FV,0:PP_NCalcZ_FV,nBCSidesVisu_FV))
+ALLOCATE(gradUxFace(1:PP_nVarPrim,0:NCalc_FV,0:ZDIM(NCalc_FV),nBCSidesVisu_FV))
+ALLOCATE(gradUyFace(1:PP_nVarPrim,0:NCalc_FV,0:ZDIM(NCalc_FV),nBCSidesVisu_FV))
+ALLOCATE(gradUzFace(1:PP_nVarPrim,0:NCalc_FV,0:ZDIM(NCalc_FV),nBCSidesVisu_FV))
 #endif
 DO iSide=1,nBCSides
   iSide_FV = mapAllBCSidesToFVVisuBCSides(iSide)
@@ -613,8 +613,8 @@ INTEGER,INTENT(IN)    :: NlocOut
 INTEGER,INTENT(IN)    :: nElems
 INTEGER,INTENT(IN)    :: nElems_calc
 INTEGER,INTENT(IN)    :: indices(nElems_calc)
-REAL,INTENT(IN)       :: UIn(nVar,0:NlocIn,0:NlocIn,0:PP_NlocInZ,nElems)
-REAL,INTENT(OUT)      :: UOut(0:NlocOut,0:NlocOut,0:PP_NlocOutZ,nElems_calc,nVarCalc)
+REAL,INTENT(IN)       :: UIn(nVar,0:NlocIn,0:NlocIn,0:ZDIM(NlocIn),nElems)
+REAL,INTENT(OUT)      :: UOut(0:NlocOut,0:NlocOut,0:ZDIM(NlocOut),nElems_calc,nVarCalc)
 INTEGER,INTENT(INOUT) :: maskCalc(nVarDep)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

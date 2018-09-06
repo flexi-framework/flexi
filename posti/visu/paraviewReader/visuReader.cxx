@@ -88,7 +88,7 @@ int visuReader::RequestInformation(vtkInformation *,
       vtkInformationVector *outputVector)
 {
    // We take the first state file and use it to read the varnames
-   SWRITE("RequestInformation: State file: " << FileNames[0]);
+   SWRITE("RequestInformation");
 
    // Set up MPI communicator   
    this->Controller = NULL;
@@ -114,6 +114,14 @@ int visuReader::RequestInformation(vtkInformation *,
    // sets the number of pieces to the number of processsors
    outInfoVolume->Set(CAN_HANDLE_PIECE_REQUEST(), 1);
    outInfoSurface->Set(CAN_HANDLE_PIECE_REQUEST(), 1);
+
+   // RequestInformation may be called before AddFileName, thus the arrays with timesteps and
+   // file names may be empty.  In this case, simply leave the function. It will be called again
+   // and with the files loaded. This does not make any sense...
+   if (Timesteps.empty()) {
+      std::cout << "No Filenames given, skipping...\n";
+      return 1; 
+   }
 
    // if we have more then one file loaded at once (timeseries)
    // we have to set the number and range of the timesteps
@@ -193,7 +201,7 @@ int visuReader::RequestInformation(vtkInformation *,
  * Attention: For multiple files, we assume a timeseries.
  */
 void visuReader::AddFileName(const char* filename_in) {
-   SWRITE("AddFileName");
+   SWRITE("AddFileName "<<filename_in);
    // append the filename to the list of filenames
    this->FileNames.push_back(filename_in);
    this->Modified();
@@ -201,7 +209,7 @@ void visuReader::AddFileName(const char* filename_in) {
    // open the file with HDF5 and read the attribute 'time' to build a timeseries  
    hid_t state = H5Fopen(filename_in, H5F_ACC_RDONLY, H5P_DEFAULT);
    hid_t attr = H5Aopen(state, "Time", H5P_DEFAULT);
-   SWRITE("attribute Time"<<attr);
+   SWRITE("attribute Time "<<attr);
    double time; 
    if (attr > -1){
       hid_t attr_type = H5Aget_type( attr );
@@ -267,8 +275,9 @@ int visuReader::RequestData(
       // get the requested time
       double requestedTimeValue = outInfoVolume->Get(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP());
       timestepToLoad = FindClosestTimeStep(requestedTimeValue);
-      FileToLoad = FileNames[timestepToLoad];
    }
+   FileToLoad = FileNames[timestepToLoad];
+   SWRITE("File to load "<<FileToLoad);
    if (outInfoSurface->Has(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP())) {
       // get the requested time
       double requestedTimeValue = outInfoSurface->Get(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP());

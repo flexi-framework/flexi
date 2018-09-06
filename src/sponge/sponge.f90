@@ -64,7 +64,8 @@ IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Sponge")
 CALL prms%CreateLogicalOption('SpongeLayer',    "Turn on to use sponge regions for reducing reflections at boundaries.",'.FALSE.')
-CALL prms%CreateRealOption(   'damping',        "Damping factor of sponge (0..1).", '0.01')
+CALL prms%CreateRealOption(   'damping',        "Damping factor of sponge. U_t=U_t-damping*(U-U_base) in fully damped "//&
+                                                "regions.", '1.')
 CALL prms%CreateIntFromStringOption( 'SpongeShape',    "Set shape of sponge: (1) ramp : cartesian / vector-aligned, (2) "//&
                                                        " cylindrical", multiple=.TRUE.)
 CALL addStrListEntry('SpongeShape','ramp',       SPONGESHAPE_RAMP)
@@ -86,7 +87,7 @@ CALL addStrListEntry('SpongeBaseFlow','constant',     SPONGEBASEFLOW_CONSTANT)
 CALL addStrListEntry('SpongeBaseFlow','exactfunction',SPONGEBASEFLOW_EXACTFUNC)
 CALL addStrListEntry('SpongeBaseFlow','file',         SPONGEBASEFLOW_FILE)
 CALL addStrListEntry('SpongeBaseFlow','pruett',       SPONGEBASEFLOW_PRUETT)
-CALL prms%CreateIntOption(    'SpongeRefState', "Index of refstate in ini-file (SpongeBaseFlow=cartesian)")
+CALL prms%CreateIntOption(    'SpongeRefState', "Index of refstate in ini-file (SpongeBaseFlow=constant)")
 CALL prms%CreateIntOption(    'SpongeExactFunc',"Index of exactfunction (SpongeBaseFlow=exactfunction)")
 CALL prms%CreateStringOption( 'SpongeBaseFlowFile',"FLEXI solution (e.g. TimeAvg) file from which baseflow is read.")
 CALL prms%CreateRealOption(   'tempFilterWidth',"Temporal filter width used to advance Pruett baseflow in time.)")
@@ -132,7 +133,7 @@ IF(.NOT.doSponge) RETURN
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT SPONGE...'
 
-damping   = GETREAL('damping','0.01')
+damping   = GETREAL('damping','1.')
 IF(damping .LE. 0.)  THEN
   doSponge = .FALSE.
   RETURN
@@ -394,8 +395,8 @@ DEALLOCATE(SpRadius)
 ! Visualize the Sponge Ramp - until now only 3D visualization!
 IF(SpongeViz) THEN
   FileString=TRIM(INTSTAMP(TRIM(ProjectName),myRank))//'_SpongeRamp.vtu'
-  ALLOCATE(Coords_NVisu(1:3, 0:NVisu,0:NVisu,0:PP_NVisuZ,nElems))
-  ALLOCATE(SpongeMat_NVisu(1,0:NVisu,0:NVisu,0:PP_NVisuZ,nElems))
+  ALLOCATE(Coords_NVisu(1:3, 0:NVisu,0:NVisu,0:ZDIM(NVisu),nElems))
+  ALLOCATE(SpongeMat_NVisu(1,0:NVisu,0:NVisu,0:ZDIM(NVisu),nElems))
   ALLOCATE(SpDummy(1,0:PP_N,0:PP_N,0:PP_NZ))
   ! Create coordinates of visualization points
   DO iElem=1,nElems

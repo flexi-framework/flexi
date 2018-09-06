@@ -177,8 +177,17 @@ REAL,ALLOCATABLE            :: buf(:,:,:,:), buf2(:,:,:,:,:)
 INTEGER                     :: DGFV_loc
 LOGICAL                     :: nValAtLastDimension_loc
 !===================================================================================================================================
-DGFV_loc = MERGE(DGFV, 0, PRESENT(DGFV))
-nValAtLastDimension_loc = MERGE(nValAtLastDimension, .FALSE., PRESENT(nValAtLastDimension))
+IF (PRESENT(DGFV)) THEN
+  DGFV_loc = DGFV
+ELSE
+  DGFV_loc = 0
+END IF
+IF (PRESENT(nValAtLastDimension)) THEN
+  nValAtLastDimension_loc = nValAtLastDimension
+ELSE
+  nValAtLastDimension_loc = .FALSE.
+END IF
+
 IF (dim.EQ.3) THEN
   NVisu_k = NVisu
   NVisu_j = NVisu

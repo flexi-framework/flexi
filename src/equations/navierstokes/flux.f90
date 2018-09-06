@@ -69,17 +69,17 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: Nloc
-REAL,DIMENSION(PP_nVar    ,0:Nloc,0:Nloc,0:PP_NlocZ),INTENT(IN)  :: U        !< Conservative solution
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:Nloc,0:PP_NlocZ),INTENT(IN)  :: UPrim    !< Primitive solution
-REAL,DIMENSION(PP_nVar    ,0:Nloc,0:Nloc,0:PP_NlocZ),INTENT(OUT) :: f        !< Cartesian flux in x (iVar,i,j,k)
-REAL,DIMENSION(PP_nVar    ,0:Nloc,0:Nloc,0:PP_NlocZ),INTENT(OUT) :: g        !< Cartesian flux in y (iVar,i,j,k)
-REAL,DIMENSION(PP_nVar    ,0:Nloc,0:Nloc,0:PP_NlocZ),INTENT(OUT) :: h        !< Cartesian flux in z (iVar,i,j,k)
+REAL,DIMENSION(PP_nVar    ,0:Nloc,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U        !< Conservative solution
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim    !< Primitive solution
+REAL,DIMENSION(PP_nVar    ,0:Nloc,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: f        !< Cartesian flux in x (iVar,i,j,k)
+REAL,DIMENSION(PP_nVar    ,0:Nloc,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: g        !< Cartesian flux in y (iVar,i,j,k)
+REAL,DIMENSION(PP_nVar    ,0:Nloc,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: h        !< Cartesian flux in z (iVar,i,j,k)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                :: Ep
 INTEGER             :: i,j,k
 !==================================================================================================================================
-DO k=0,PP_NlocZ;  DO j=0,Nloc; DO i=0,Nloc
+DO k=0,ZDIM(Nloc);  DO j=0,Nloc; DO i=0,Nloc
   ! auxiliary variables
   Ep   = U(5,i,j,k) + UPrim(5,i,j,k)
 #if PP_dim==3
@@ -332,15 +332,15 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: Nloc                                      !< Polynomial degree of input solution
-REAL,INTENT(IN)    :: UPrim_Face( PP_nVarPrim,0:Nloc,0:PP_NlocZ)!< U_Face(iVar,i,j,k)
-REAL,INTENT(IN)    :: gradUx_Face(PP_nVarPrim,0:Nloc,0:PP_NlocZ)!< gradUx_Face(iVar,j,k)
-REAL,INTENT(IN)    :: gradUy_Face(PP_nVarPrim,0:Nloc,0:PP_NlocZ)!< gradUy_Face(iVar,i,k)
-REAL,INTENT(IN)    :: gradUz_Face(PP_nVarPrim,0:Nloc,0:PP_NlocZ)!< gradUz_Face(iVar,i,j)
-REAL,INTENT(OUT)   :: f(PP_nVar,0:Nloc,0:PP_NlocZ)              !< Cartesian fluxes (iVar,i,j)
-REAL,INTENT(OUT)   :: g(PP_nVar,0:Nloc,0:PP_NlocZ)              !< Cartesian fluxes (iVar,i,j)
-REAL,INTENT(OUT)   :: h(PP_nVar,0:Nloc,0:PP_NlocZ)              !< Cartesian fluxes (iVar,i,j)
+REAL,INTENT(IN)    :: UPrim_Face( PP_nVarPrim,0:Nloc,0:ZDIM(Nloc))!< U_Face(iVar,i,j,k)
+REAL,INTENT(IN)    :: gradUx_Face(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc))!< gradUx_Face(iVar,j,k)
+REAL,INTENT(IN)    :: gradUy_Face(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc))!< gradUy_Face(iVar,i,k)
+REAL,INTENT(IN)    :: gradUz_Face(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc))!< gradUz_Face(iVar,i,j)
+REAL,INTENT(OUT)   :: f(PP_nVar,0:Nloc,0:ZDIM(Nloc))              !< Cartesian fluxes (iVar,i,j)
+REAL,INTENT(OUT)   :: g(PP_nVar,0:Nloc,0:ZDIM(Nloc))              !< Cartesian fluxes (iVar,i,j)
+REAL,INTENT(OUT)   :: h(PP_nVar,0:Nloc,0:ZDIM(Nloc))              !< Cartesian fluxes (iVar,i,j)
 #ifdef EDDYVISCOSITY 
-REAL,INTENT(IN)    :: muSGS_Face(1,0:Nloc,0:PP_NlocZ)
+REAL,INTENT(IN)    :: muSGS_Face(1,0:Nloc,0:ZDIM(Nloc))
 #endif 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -355,7 +355,7 @@ REAL    :: gradT3
 #endif 
 INTEGER :: i,j
 !==================================================================================================================================
-DO j=0,PP_NlocZ ; DO i=0,Nloc
+DO j=0,ZDIM(Nloc) ; DO i=0,Nloc
   prim = UPrim_Face(:,i,j)
   v1=UPrim_Face(2,i,j)
   v2=UPrim_Face(3,i,j)

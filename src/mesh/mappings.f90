@@ -93,7 +93,12 @@ INTEGER,ALLOCATABLE :: S2V2_check(:,:,:,:,:)
 LOGICAL             :: correct
 INTEGER             :: Flip_lower,Flip_upper,locSide_lower,locSide_upper,dim_loc
 !==================================================================================================================================
-dim_loc = MERGE(dim, 3, PRESENT(dim))
+IF (PRESENT(dim)) THEN
+  dim_loc = dim
+ELSE
+  dim_loc = 3
+END IF
+
 IF (dim_loc.EQ.2) THEN
   NlocZ = 0
   Flip_lower = 0

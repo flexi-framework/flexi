@@ -12,3 +12,15 @@ add_exec(             posti_${TOOL_NAME} ${TOOL_DIR}/timeavg.f90)
 TARGET_LINK_LIBRARIES(posti_${TOOL_NAME} flexilib userblocklib_dummy ${linkedlibs})
 ADD_DEPENDENCIES(     posti_${TOOL_NAME} flexilib userblocklib_dummy ${linkedlibs})
 
+# =========================================================================
+# CalcFluctuations
+# =========================================================================
+SET(TOOL_NAME "calcfluctuations")
+
+MESSAGE(STATUS "Posti: building ${TOOL_NAME} tool.")
+
+# Standalone Posti executable
+add_exec(             posti_${TOOL_NAME} ${TOOL_DIR}/calcfluc.f90)
+TARGET_LINK_LIBRARIES(posti_${TOOL_NAME} flexilib userblocklib_dummy ${linkedlibs})
+ADD_DEPENDENCIES(     posti_${TOOL_NAME} flexilib userblocklib_dummy ${linkedlibs})
+
