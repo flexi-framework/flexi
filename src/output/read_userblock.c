@@ -6,7 +6,11 @@ extern char userblock_size;
 
 long get_userblock_size_(void) 
 {
-   return (unsigned long)(&userblock_size);
+   //return (unsigned long)(&userblock_size);
+   // Fixes mysterious bug occurring on some systems potentially due to the new GCC 7.3
+   // where userblock_size is wrong though the symbol is correctly defined.
+   // Since userblock_size = userblock_end - userblock_start , we just compute it on the fly.
+   return (unsigned long)(&userblock_end-&userblock_start);
 }
 
 
