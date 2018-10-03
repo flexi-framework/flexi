@@ -81,6 +81,10 @@ INTERFACE InitIOHDF5
   MODULE PROCEDURE InitIOHDF5
 END INTERFACE
 
+INTERFACE InitMPIInfo
+  MODULE PROCEDURE InitMPIInfo
+END INTERFACE
+
 INTERFACE OpenDataFile
   MODULE PROCEDURE OpenDataFile
 END INTERFACE
@@ -103,7 +107,7 @@ END INTERFACE
 
 !==================================================================================================================================
 
-PUBLIC::DefineParametersIO_HDF5,InitIOHDF5,OpenDataFile,CloseDataFile
+PUBLIC::DefineParametersIO_HDF5,InitIOHDF5,InitMPIInfo,OpenDataFile,CloseDataFile
 PUBLIC::AddToElemData,AddToFieldData
 PUBLIC::GetDatasetNamesInGroup
 
@@ -149,6 +153,22 @@ output2D = .FALSE.
 output2D = GETLOGICAL('output2D','.FALSE.')
 #endif
 
+CALL InitMPIInfo()
+END SUBROUTINE InitIOHDF5
+
+!==================================================================================================================================
+!> Initialize MPIInfo variable
+!==================================================================================================================================
+SUBROUTINE InitMPIInfo()
+! MODULES
+USE MOD_Globals
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!==================================================================================================================================
+
 #if USE_MPI
 CALL MPI_Info_Create(MPIInfo, iError)
 
@@ -168,7 +188,7 @@ CALL MPI_Info_set(MPIInfo, "romio_cb_read", "enable", iError)
 CALL MPI_Info_set(MPIInfo, "romio_cb_write","enable", iError)
 #endif
 #endif /*USE_MPI*/
-END SUBROUTINE InitIOHDF5
+END SUBROUTINE InitMPIInfo
 
 
 !==================================================================================================================================
