@@ -3,9 +3,13 @@
 # =========================================================================
 # NOTE: use minimum CMake version required by tools/libs (Paraview, HDF5, FFTW)
 CMAKE_MINIMUM_REQUIRED(VERSION 3.3.0)
-# Policies (see https://cmake.org/cmake/help/v3.8/manual/cmake-policies.7.html)
-cmake_policy (SET CMP0045 OLD)
-cmake_policy (SET CMP0046 OLD)
+# Policies (see https://cmake.org/cmake/help/v3.13/manual/cmake-policies.7.html)
+IF(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.6.0")
+  SET(GITSHALLOW "GIT_SHALLOW ON")
+ENDIF()
+IF(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.12.0")
+  CMAKE_POLICY(SET CMP0074 NEW)
+ENDIF()
 # Folder for custom CMake source files
 LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 SET_PROPERTY(GLOBAL PROPERTY USE_FOLDERS ON)
@@ -33,7 +37,7 @@ ELSE()
   ENDIF()
   SET (HDF5DOWNLOAD https://bitbucket.hdfgroup.org/scm/hdffv/hdf5.git )
 ENDIF()
-SET (HDF5TAG "hdf5-1_10_0-patch1" CACHE STRING "HDF5 version tag")
+SET (HDF5TAG "hdf5_1_10_4" CACHE STRING "HDF5 version tag")
 
 # =========================================================================
 # Detect machine environements
@@ -342,7 +346,6 @@ MARK_AS_ADVANCED(FLEXI_EXTERNAL_LIB_DIR)
 # =========================================================================
 # HDF5 library
 # =========================================================================
-
 IF(NOT FLEXI_BUILD_HDF5)
   FIND_PACKAGE(HDF5 COMPONENTS C Fortran QUIET) #if built with configure script
   IF (HDF5_FOUND)
@@ -374,11 +377,13 @@ ELSE()
     ExternalProject_Add(HDF5
       GIT_REPOSITORY ${HDF5DOWNLOAD}
       GIT_TAG ${HDF5TAG}
+      ${${GITSHALLOW}}
       PREFIX ${FLEXI_HDF5_DIR}
       UPDATE_COMMAND ""
-      CONFIGURE_COMMAND FC=${FLEXI_HDF5FC} CC=${FLEXI_HDF5CC} ${FLEXI_HDF5_DIR}/src/HDF5/configure --prefix=${FLEXI_HDF5_DIR} --with-pic --enable-fortran ${FLEXI_HDF5PARALLEL} --disable-shared --libdir=${FLEXI_HDF5_DIR}/lib
+      CONFIGURE_COMMAND FC=${FLEXI_HDF5FC} CC=${FLEXI_HDF5CC} ${FLEXI_HDF5_DIR}/src/HDF5/configure --prefix=${FLEXI_HDF5_DIR} --with-pic --enable-fortran ${FLEXI_HDF5PARALLEL} --libdir=${FLEXI_HDF5_DIR}/lib
       BUILD_COMMAND ${MAKE}
     )
+    LIST(APPEND SELFBUILTEXTERNALS HDF5)
     # CMake HDF5 is fast but not that reliable
     #ExternalProject_Add(HDF5
     #  GIT_REPOSITORY ${HDF5DOWNLOAD}
@@ -539,7 +544,9 @@ ENDIF()
 ADD_LIBRARY(flexilibF90 OBJECT ${flexiF90})
 SET_TARGET_PROPERTIES(flexilibF90 PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}) 
 ADD_LIBRARY(flexilib STATIC $<TARGET_OBJECTS:flexilibF90>)
-ADD_DEPENDENCIES(flexilibF90 HDF5)
+IF(SELFBUILTEXTERNALS)
+  ADD_DEPENDENCIES(flexilibF90 ${SELFBUILTEXTERNALS})
+ENDIF()
 
 ADD_LIBRARY(userblocklib STATIC ./src/output/read_userblock.c)
 SET_TARGET_PROPERTIES(userblocklib PROPERTIES LINKER_LANGUAGE C)
@@ -550,7 +557,7 @@ SET_TARGET_PROPERTIES(stacksizelib PROPERTIES LINKER_LANGUAGE C)
 SET_TARGET_PROPERTIES(stacksizelib PROPERTIES COMPILE_FLAGS "-fPIC")
 
 add_exec(flexi ./src/flexi.f90)
-ADD_DEPENDENCIES(flexi flexilib userblocklib stacksizelib HDF5)
+ADD_DEPENDENCIES(flexi flexilib userblocklib stacksizelib ${INTERNALLIBS})
 
 # special compiler flags to avoid warnings for empty functions of testcase.f90 and overwrite of intrinsic abort in globals.f90
 IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
@@ -574,7 +581,7 @@ ADD_CUSTOM_TARGET(preproc_defines COMMAND echo ${comp_defs_str})
 # Add FLEXI2VTK tool
 # =========================================================================
 add_exec(flexi2vtk ./src/flexi2vtk.f90)
-ADD_DEPENDENCIES(flexi2vtk flexilib HDF5)
+ADD_DEPENDENCIES(flexi2vtk flexilib)
 
 # =========================================================================
 # Posti
