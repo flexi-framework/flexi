@@ -30,7 +30,11 @@ CHARACTER(LEN=255) :: testcase = "taylorgreenvortex"  !< name of testcase
 !----------------------------------------------------------------------------------------------------------------------------------
 REAL,ALLOCATABLE   :: Time(:)           !< times of log data (nWriteStats)
 REAL,ALLOCATABLE   :: writeBuf(:,:)     !< log data (nTGVVars+1,nWriteStats)
-INTEGER,PARAMETER  :: nTGVvars=12       !< Number of variables to be evaluated for TGV, time not included
+#if PARABOLIC
+INTEGER,PARAMETER  :: nTGVvars=13       !< Number of variables to be evaluated for TGV, time not included
+#else
+INTEGER,PARAMETER  :: nTGVvars=5        !< Number of variables to be evaluated for TGV, time not included
+#endif
 INTEGER            :: ioCounter   =0    !< current number of buffer items
 INTEGER            :: nWriteStats =-999 !< Write testcase statistics to file at every n-th AnalyzeTestcase step
 CHARACTER(LEN=255) :: Filename          !< filename to store testcase log data
