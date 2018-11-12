@@ -439,7 +439,7 @@ IF(MPIRoot)THEN
   Time(ioCounter)                = t
 #if PARABOLIC
   writeBuf(1:nTGVvars,ioCounter) = (/DR_S,DR_Sd+DR_p,Ekin,Ekin_comp,Enstrophy_comp,DR_u,DR_S,DR_Sd,DR_p,&
-                                     max_Vorticity,mean_temperature,uprime/)
+                                     max_Vorticity,mean_temperature,uprime,mean_entropy/)
 #else
   writeBuf(1:nTGVvars,ioCounter) = (/Ekin,Ekin_comp,mean_temperature,uprime,mean_entropy/)
 #endif
