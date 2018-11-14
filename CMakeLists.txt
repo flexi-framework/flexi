@@ -60,7 +60,7 @@ ENDIF()
 # Project definitions and output paths
 # =========================================================================
 PROJECT(Flexi)
-ENABLE_LANGUAGE(Fortran)
+ENABLE_LANGUAGE(Fortran C)
 
 SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin)
 SET(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include)
@@ -347,19 +347,21 @@ MARK_AS_ADVANCED(FLEXI_EXTERNAL_LIB_DIR)
 # =========================================================================
 # HDF5 library
 # =========================================================================
+SET(LIB_TYPE STATIC) # OR SHARED
+STRING(TOLOWER ${LIB_TYPE} SEARCH_TYPE)
+
 IF(NOT FLEXI_BUILD_HDF5)
-  FIND_PACKAGE(HDF5 COMPONENTS C Fortran QUIET) #if built with configure script
+  SET(FLEXI_HDF5_CMAKE TRUE) # try to find the CMake version
+  FIND_PACKAGE(HDF5 NAMES hdf5 COMPONENTS C Fortran ${SEARCH_TYPE} QUIET PATH_SUFFIXES share/cmake )
   IF (HDF5_FOUND)
-    SET(FLEXI_HDF5_CMAKE FALSE)
+    MESSAGE (STATUS "HDF5 C libs:${HDF5_FOUND} static:${HDF5_static_C_FOUND} and shared:${HDF5_shared_C_FOUND}")
+    MESSAGE (STATUS "HDF5 Fortran libs: static:${HDF5_static_Fortran_FOUND} and shared:${HDF5_shared_Fortran_FOUND}")
+    MESSAGE (STATUS "h5diff found:${HDF5_DIFF_EXECUTABLE}")
   ELSE()
-    FIND_PACKAGE(HDF5 COMPONENTS C Fortran static NO_MODULE QUIET PATH_SUFFIXES share/cmake )
-    IF (HDF5_FOUND)
-      SET(FLEXI_HDF5_CMAKE TRUE)
-      MESSAGE (STATUS "HDF5 C libs:${HDF5_FOUND} static:${HDF5_static_C_FOUND} and shared:${HDF5_shared_C_FOUND}")
-      MESSAGE (STATUS "HDF5 Fortran libs: static:${HDF5_static_Fortran_FOUND} and shared:${HDF5_shared_Fortran_FOUND}")
-      MESSAGE (STATUS "h5diff found:${HDF5_DIFF_EXECUTABLE}")
-    ENDIF()
+    SET(FLEXI_HDF5_CMAKE FALSE) # try to find the configure version
+    FIND_PACKAGE(HDF5 COMPONENTS C Fortran)
   ENDIF()
+
 ELSE()
 
   SET(FLEXI_HDF5_DLDIR ${FLEXI_EXTERNAL_LIB_DIR}/HDF5)
@@ -396,6 +398,7 @@ ELSE()
     #)
   ENDIF()
 
+  SET(FLEXI_HDF5_CMAKE FALSE)
   SET(HDF5_hdf5_LIBRARY_RELEASE         ${FLEXI_HDF5_DIR}/lib/libhdf5.a)
   SET(HDF5_hdf5_fortran_LIBRARY_RELEASE ${FLEXI_HDF5_DIR}/lib/libhdf5_fortran.a)
   SET(HDF5_C_INCLUDE_DIR                ${FLEXI_HDF5_DIR}/include)
@@ -412,8 +415,8 @@ ELSE()
 ENDIF()
 
 IF(FLEXI_HDF5_CMAKE)
-  INCLUDE_DIRECTORIES (${HDF5_INCLUDE_DIR_FORTRAN} ${HDF5_INCLUDE_DIR})
-  LIST(APPEND linkedlibs ${HDF5_FORTRAN_STATIC_LIBRARY} ${HDF5_LIBRARIES})
+  INCLUDE_DIRECTORIES(${HDF5_INCLUDE_DIR} ${HDF5_INCLUDE_DIR_FORTRAN})
+  LIST(APPEND linkedlibs ${HDF5_C_${LIB_TYPE}_LIBRARY} ${HDF5_FORTRAN_${LIB_TYPE}_LIBRARY} )
 ELSE()
   INCLUDE_DIRECTORIES (${HDF5_INCLUDE_DIR_FORTRAN} ${HDF5_INCLUDE_DIR})
   MESSAGE(STATUS "Found HDF5 Libs: " ${HDF5_LIBRARIES})
