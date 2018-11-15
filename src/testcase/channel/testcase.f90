@@ -136,7 +136,7 @@ uBulk=uBulk/Re_tau
 
 ! Set the background pressure according to choosen bulk Mach number
 bulkMach = GETREAL('ChannelMach','0.1')
-pressure = (uBulk/0.1)**2*RefStatePrim(1,IniRefState)/kappa
+pressure = (uBulk/bulkMach)**2*RefStatePrim(1,IniRefState)/kappa
 RefStatePrim(5,IniRefState) = pressure
 
 IF(MPIRoot) THEN
