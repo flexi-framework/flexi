@@ -129,8 +129,8 @@ nAnalyzeTestCase = GETINT( 'nAnalyzeTestCase','1000')
 uBulkScale=1.
 Re_tau       = 1/mu0
 c1 = 2.4390244
-uBulk=c1*exp(-Re_tau/3.)*((Re_tau+c1)*exp(Re_tau/3.)*log(Re_tau+c1)+1.3064019*(Re_tau*exp(Re_tau/3)&
-      +29.627395*exp(8./33.*Re_tau)+0.66762137*(Re_tau+3)))  -97.4857927165 
+uBulk=c1 * ((Re_tau+c1)*LOG(Re_tau+c1) + 1.3064019*(Re_tau + 29.627395*EXP(-1./11.*Re_tau) + 0.66762137*(Re_tau+3)*EXP(-Re_tau/3.))) &
+      - 97.4857927165 
 uBulk=uBulk/Re_tau
 
 !prevent wrong pressure in channel testcase
