@@ -2,7 +2,7 @@
 # Flexi CMake configuration
 # =========================================================================
 # NOTE: use minimum CMake version required by tools/libs (Paraview, HDF5, FFTW)
-CMAKE_MINIMUM_REQUIRED(VERSION 3.3.0)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.5.2)
 # Policies (see https://cmake.org/cmake/help/v3.13/manual/cmake-policies.7.html)
 # VERSION_GREATER_EQUAL is incompatible with CMAKE versions < 3.7
 IF(NOT(${CMAKE_VERSION} VERSION_LESS "3.6.0"))
@@ -350,10 +350,19 @@ MARK_AS_ADVANCED(FLEXI_EXTERNAL_LIB_DIR)
 SET(LIB_TYPE STATIC) # OR SHARED
 STRING(TOLOWER ${LIB_TYPE} SEARCH_TYPE)
 
+# We support two methods for finding HDF5:
+# the version built using configure scripts and using CMake
+# Support for CMake-built HDF5 is limited to version >1.10.2
+# which require at CMake >3.10
+# Recommendations: use configure version if possible
+
 IF(NOT FLEXI_BUILD_HDF5)
   SET(FLEXI_HDF5_CMAKE TRUE) # try to find the CMake version
   FIND_PACKAGE(HDF5 NAMES hdf5 COMPONENTS C Fortran ${SEARCH_TYPE} QUIET PATH_SUFFIXES share/cmake )
   IF (HDF5_FOUND)
+    IF(NOT(${CMAKE_VERSION} VERSION_LESS "3.10.0"))
+      MESSAGE (WARNING "HDF5 built with CMake was found! This feature is only supported for CMake 3.10+ and HDF5 1.10.2+ !")
+    ENDIF()
     MESSAGE (STATUS "HDF5 C libs:${HDF5_FOUND} static:${HDF5_static_C_FOUND} and shared:${HDF5_shared_C_FOUND}")
     MESSAGE (STATUS "HDF5 Fortran libs: static:${HDF5_static_Fortran_FOUND} and shared:${HDF5_shared_Fortran_FOUND}")
     MESSAGE (STATUS "h5diff found:${HDF5_DIFF_EXECUTABLE}")
