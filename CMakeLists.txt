@@ -360,7 +360,7 @@ IF(NOT FLEXI_BUILD_HDF5)
   SET(FLEXI_HDF5_CMAKE TRUE) # try to find the CMake version
   FIND_PACKAGE(HDF5 NAMES hdf5 COMPONENTS C Fortran ${SEARCH_TYPE} QUIET PATH_SUFFIXES share/cmake )
   IF (HDF5_FOUND)
-    IF(NOT(${CMAKE_VERSION} VERSION_LESS "3.10.0"))
+    IF(${CMAKE_VERSION} VERSION_LESS "3.10.0")
       MESSAGE (WARNING "HDF5 built with CMake was found! This feature is only supported for CMake 3.10+ and HDF5 1.10.2+ !")
     ENDIF()
     MESSAGE (STATUS "HDF5 C libs:${HDF5_FOUND} static:${HDF5_static_C_FOUND} and shared:${HDF5_shared_C_FOUND}")
