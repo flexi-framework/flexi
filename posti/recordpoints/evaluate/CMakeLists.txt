@@ -10,4 +10,4 @@ INCLUDE_DIRECTORIES( ${TOOL_DIR})
 # Standalone Posti executable
 add_exec(             posti_${TOOL_NAME} ${TOOL_DIR}/evaluaterecordpoints.f90)
 TARGET_LINK_LIBRARIES(posti_${TOOL_NAME} flexilib userblocklib_dummy ${linkedlibs})
-ADD_DEPENDENCIES(     posti_${TOOL_NAME} flexilib userblocklib_dummy ${linkedlibs})
+ADD_DEPENDENCIES(     posti_${TOOL_NAME} flexilib userblocklib_dummy)

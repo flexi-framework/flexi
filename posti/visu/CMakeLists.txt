@@ -26,12 +26,12 @@ FILE(GLOB ${TOOL_NAME}F90 ${TOOL_DIR}/avg2d.f90
 ADD_LIBRARY(${TOOL_NAME}libF90 OBJECT ${${TOOL_NAME}F90})
 SET_TARGET_PROPERTIES(${TOOL_NAME}libF90 PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}) 
 ADD_LIBRARY(${TOOL_NAME}lib STATIC $<TARGET_OBJECTS:${TOOL_NAME}libF90>)
-ADD_DEPENDENCIES(${TOOL_NAME}libF90 flexilibF90 HDF5)
+ADD_DEPENDENCIES(${TOOL_NAME}libF90 flexilibF90)
 
 # Standalone Posti executable
 add_exec(             posti_${TOOL_NAME} ${TOOL_DIR}/posti_visu.f90)
 TARGET_LINK_LIBRARIES(posti_${TOOL_NAME} ${TOOL_NAME}lib flexilib userblocklib_dummy ${linkedlibs})
-ADD_DEPENDENCIES(     posti_${TOOL_NAME} ${TOOL_NAME}lib flexilib userblocklib_dummy ${linkedlibs})
+ADD_DEPENDENCIES(     posti_${TOOL_NAME} ${TOOL_NAME}lib flexilib userblocklib_dummy)
 
 # Posti visu plugin for Paraview
 CMAKE_DEPENDENT_OPTION(POSTI_USE_PARAVIEW "Build the Paraview visualization plugin for Posti." OFF "POSTI_BUILD_VISU" OFF)
@@ -75,6 +75,6 @@ IF (POSTI_USE_PARAVIEW AND ParaView_FOUND)
      ENDFOREACH()
    ENDIF()
 
-   ADD_DEPENDENCIES(     visuReader${POSTI_PV_SUFFIX} ${TOOL_NAME}lib flexilib userblocklib_dummy stacksizelib HDF5)
+   ADD_DEPENDENCIES(     visuReader${POSTI_PV_SUFFIX} ${TOOL_NAME}lib flexilib userblocklib_dummy stacksizelib)
    TARGET_LINK_LIBRARIES(visuReader${POSTI_PV_SUFFIX} PUBLIC ${TOOL_NAME}lib flexilib stacksizelib ${linkedlibs})
 ENDIF()
