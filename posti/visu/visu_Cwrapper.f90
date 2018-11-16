@@ -83,6 +83,7 @@ USE MOD_MPI        ,ONLY: InitMPI
 USE MOD_Visu_Vars  ,ONLY: VarnamesAll,BCNamesAll
 USE MOD_Visu       ,ONLY: visu_getVarNamesAndFileType
 USE MOD_VTK        ,ONLY: CARRAY
+USE MOD_IO_HDF5    ,ONLY: InitMPIInfo
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -103,6 +104,7 @@ CHARACTER(LEN=255),POINTER            :: bcnames_pointer(:)
 statefile = cstrToChar255(statefile_IN, strlen_state)
 meshfile  = cstrToChar255(meshfile_IN , strlen_mesh)
 
+CALL InitMPIInfo()
 CALL InitMPI(mpi_comm_IN) 
 CALL visu_getVarNamesAndFileType(statefile,meshfile,VarnamesAll,BCNamesAll)
 IF (ALLOCATED(VarnamesAll)) THEN
