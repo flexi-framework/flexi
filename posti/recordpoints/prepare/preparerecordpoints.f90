@@ -10,11 +10,12 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Commandline_Arguments
 USE MOD_StringTools,        ONLY:STRICMP,GetFileExtension
-USE MOD_ReadInTools,        ONLY:prms,IgnoredParameters,PrintDefaultParameterFile,FinalizeParameters
+USE MOD_ReadInTools,        ONLY:prms,IgnoredParameters,PrintDefaultParameterFile,FinalizeParameters,GETSTR
 ! Flexilib initialization
 USE MOD_MPI,                ONLY:DefineParametersMPI,InitMPI
 USE MOD_IO_HDF5,            ONLY:DefineParametersIO_HDF5,InitIOHDF5
-USE MOD_Interpolation,      ONLY:DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
+USE MOD_HDF5_Input
+USE MOD_Interpolation,      ONLY:InitInterpolation,FinalizeInterpolation
 USE MOD_Output,             ONLY:DefineParametersOutput,InitOutput,FinalizeOutput
 USE MOD_Output_Vars,        ONLY:ProjectName
 USE MOD_Mesh,               ONLY:DefineParametersMesh,InitMesh,FinalizeMesh
@@ -29,6 +30,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL                            :: success=.TRUE.
+INTEGER                            :: Ntmp
 !===================================================================================================================================
 CALL SetStackSizeUnlimited()
 CALL InitMPI() ! NO PARALLELIZATION, ONLY FOR COMPILING WITH MPI FLAGS ON SOME MACHINES OR USING MPI-DEPENDANT HDF5
@@ -55,7 +57,6 @@ CALL DefineParameters()
 CALL DefineParametersRPSet()
 CALL DefineParametersMPI()
 CALL DefineParametersIO_HDF5()
-CALL DefineParametersInterpolation()
 CALL DefineParametersOutput()
 CALL DefineParametersMesh()
 
@@ -68,10 +69,16 @@ CALL prms%read_options(ParameterFile)
 
 CALL InitParameters()
 CALL InitIOHDF5()
-CALL InitInterpolation()
+! Open mesh and read NGeo. The polynomial basis will be initialized with 2*NGeo.
+MeshFile = GETSTR('MeshFile')
+CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+CALL ReadAttribute(File_ID,'Ngeo',1,IntScalar=Ntmp)
+CALL CloseDataFile()
+Ntmp = Ntmp*2
+CALL InitInterpolation(Ntmp)
 CALL InitMortar()
 CALL InitOutput()
-CALL InitMesh(meshMode=2)
+CALL InitMesh(meshMode=2,MeshFile_IN=MeshFile)
 
 CALL InitRPSet()
 CALL GetRecordPoints()
