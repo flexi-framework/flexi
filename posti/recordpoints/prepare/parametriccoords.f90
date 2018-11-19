@@ -1,7 +1,8 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-!> Module to handle the Recordpoints
+!> Module to search for the reference coordinates of the RPs by inverting the mapping using Newton's method and to sort them
+!> according to the element number for later parallel read-in.
 !===================================================================================================================================
 MODULE MOD_RPParametricCoords
 ! MODULES
@@ -19,7 +20,7 @@ CONTAINS
 
 SUBROUTINE GetRecordPoints()
 !===================================================================================================================================
-! Initialize all necessary information to perform filtering
+! Wrapper routine to call the search and sorting algorithms
 !===================================================================================================================================
 ! MODULES
 USE MOD_Globals
@@ -423,8 +424,6 @@ IF(ANY(.NOT.RPFound)) THEN
         aRP%xF=xWinner
         ! keep the RP in the not found list, find the side with the best angle and minimum distance
         dist2RP(mapRP(iRP))=Winner_Dist2 
-!        SWRITE(UNIT_StdOut,'(A,I4,A,3F8.4,A,3F8.4,A)')' Projected RP ',iRP,' with coordinates ',aRP%x,' to ',ARP%xF,'.'
-!        SWRITE(UNIT_StdOut,'(A,F10.4,A)')' Angle to normal: ',ang*180/pi,' deg.'
       END IF
     END DO! iRP=1,nRP_Global
   END DO! SideID=1,nBCSides 
@@ -492,14 +491,6 @@ DO iElem=1,nElems
     END IF
   END DO !iRP
 END DO !iElem
-
-! DEBUG 
-!DO iElem=1,nElems
-!  WRITE(*,*) 'iElem,offset1,2:', iElem,OffsetRP(1,iElem),OffsetRP(2,iElem)
-!END DO !iElem
-!  DO iRP=1,nRP_global
-!    WRITE(*,*) 'iRP,xF',iRP,RPlist(iRP)%RP%xF
-!  END DO !iRP
 
 END SUBROUTINE SortRP
 

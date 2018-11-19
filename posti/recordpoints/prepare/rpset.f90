@@ -1,7 +1,8 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-!> Module to handle the Recordpoints
+!> Module to handle the creation of the RP set. Will read in the definitions of the groups and calculate the physical coordinates
+!> of the resulting points.
 !===================================================================================================================================
 MODULE MOD_RPSet
 ! MODULES
@@ -22,7 +23,7 @@ PUBLIC :: DefineParametersRPSet,InitRPSet
 CONTAINS
 
 !===================================================================================================================================
-!> Initialize the record point structure by reading the desired types from the parameter file
+!> Define the available parameters for the RP definition.
 !===================================================================================================================================
 SUBROUTINE DefineParametersRPSet()
 ! MODULES
@@ -79,7 +80,8 @@ CALL prms%CreateRealOption(     'BLPlane_height'    ,"Wall-normal extend of the 
 END SUBROUTINE DefineParametersRPSet
 
 !===================================================================================================================================
-!> Initialize the record point structure by reading the desired types from the parameter file
+!> Initialize the record point structure by reading the desired types from the parameter file and calculating the physical 
+!> coordinates of the RPs.
 !===================================================================================================================================
 SUBROUTINE InitRPSet()
 ! MODULES

@@ -1,7 +1,7 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-!> Module to handle the Recordpoints
+!> Module to handle the output of the RPs
 !===================================================================================================================================
 MODULE MOD_HDF5_OutputRP
 ! MODULES
@@ -159,8 +159,5 @@ CALL CloseDataFile()
 
 SWRITE(UNIT_stdOut,'(a)',ADVANCE='YES')'DONE'
 END SUBROUTINE WriteRecordPointstoHDF5
-
-
-
 
 END MODULE MOD_HDF5_OutputRP

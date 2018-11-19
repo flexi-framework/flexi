@@ -1,7 +1,10 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-!> Add comments please!
+!> Tool used to create record points. The points are define in groups that can take different shapes, e.g. simple lines, circles,
+!> planes etc. For all points, the reference coordinates and respective element IDs are found in the mesh and stored as a .h5 file
+!> which can later be read by FLEXI or POSTI tools. 
+!> In this way, we can e.g. produce a time-series of flow variables at the RPs in a very fine time intervall.
 !===================================================================================================================================
 PROGRAM PrepareRecordPoints
 ! MODULES
@@ -49,8 +52,9 @@ IF(success)THEN
 END IF
 IF(.NOT.success.AND.doPrintHelp.LE.0)THEN
   ! Print out error message containing valid syntax
-  CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: preparerec parameter.ini or preparerec --help'// &
-  '[option/section name] to print help for a single parameter, parameter sections or all parameters.')
+  CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: posti_preparerecordpoints parameter.ini or&
+   & posti_preparerecordpoints --help [option/section name] to print help for a single parameter, parameter sections&
+   & or all parameters.')
 END IF
 
 CALL DefineParameters()
