@@ -35,6 +35,9 @@ IMPLICIT NONE
 LOGICAL                            :: success=.TRUE.
 INTEGER                            :: Ntmp
 !===================================================================================================================================
+#if PP_dim ==2
+STOP 'Please compile with 3D to use the recordpoints tool!'
+#endif
 CALL SetStackSizeUnlimited()
 CALL InitMPI() ! NO PARALLELIZATION, ONLY FOR COMPILING WITH MPI FLAGS ON SOME MACHINES OR USING MPI-DEPENDANT HDF5
 IF (nProcessors.GT.1) CALL CollectiveStop(__STAMP__, &
