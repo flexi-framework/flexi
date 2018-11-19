@@ -30,46 +30,52 @@ USE MOD_Parameters
 USE MOD_ReadInTools ,ONLY: prms
 !===================================================================================================================================
 CALL prms%SetSection("Prepare Record Points: RPSet definition")
-CALL prms%CreateStringOption(   'GroupName'         ,"TODO",multiple=.TRUE.)
+CALL prms%CreateStringOption(   'GroupName'         ,"Name of the RP group (one for each group!)",multiple=.TRUE.)
 !Line
-CALL prms%CreateIntOption(      'Line_GroupID'      ,"TODO",multiple=.TRUE.)
-CALL prms%CreateIntOption(      'Line_nRP'          ,"TODO",multiple=.TRUE.)
-CALL prms%CreateRealArrayOption('Line_xstart'       ,"TODO",multiple=.TRUE.)
-CALL prms%CreateRealArrayOption('Line_xend'         ,"TODO",multiple=.TRUE.)
+CALL prms%CreateIntOption(      'Line_GroupID'      ,"ID of a straight line group, defined by start and end coordinates and&
+                                                      & the number of points along that line (must be unique!)",multiple=.TRUE.)
+CALL prms%CreateIntOption(      'Line_nRP'          ,"Number of RPs on line",multiple=.TRUE.)
+CALL prms%CreateRealArrayOption('Line_xstart'       ,"Coordinates of start of line",multiple=.TRUE.)
+CALL prms%CreateRealArrayOption('Line_xend'         ,"Coordinates of end of line",multiple=.TRUE.)
 !Circle
-CALL prms%CreateIntOption(      'Circle_GroupID'    ,"TODO",multiple=.TRUE.)
-CALL prms%CreateIntOption(      'Circle_nRP'        ,"TODO",multiple=.TRUE.)
-CALL prms%CreateRealArrayOption('Circle_Center'     ,"TODO",multiple=.TRUE.)
-CALL prms%CreateRealArrayOption('Circle_Axis'       ,"TODO",multiple=.TRUE.)
-CALL prms%CreateRealArrayOption('Circle_Dir'        ,"TODO",multiple=.TRUE.)
-CALL prms%CreateRealOption(     'Circle_Radius'     ,"TODO",multiple=.TRUE.)
-CALL prms%CreateRealOption(     'Circle_Angle'      ,"TODO",multiple=.TRUE.)
+CALL prms%CreateIntOption(      'Circle_GroupID'    ,"ID of a circular group (must be unique!)",multiple=.TRUE.)
+CALL prms%CreateIntOption(      'Circle_nRP'        ,"Number of RPs along circle",multiple=.TRUE.)
+CALL prms%CreateRealArrayOption('Circle_Center'     ,"Coordinates of circle center",multiple=.TRUE.)
+CALL prms%CreateRealArrayOption('Circle_Axis'       ,"Axis vector of circle",multiple=.TRUE.)
+CALL prms%CreateRealArrayOption('Circle_Dir'        ,"Vector defining the start point on the circle",multiple=.TRUE.)
+CALL prms%CreateRealOption(     'Circle_Radius'     ,"Radius of the circle",multiple=.TRUE.)
+CALL prms%CreateRealOption(     'Circle_Angle'      ,"Angle from the start point, 360° is a full circle",multiple=.TRUE.)
 !Custom lines
-CALL prms%CreateIntOption(      'CustomLine_GroupID',"TODO",multiple=.TRUE.)
-CALL prms%CreateIntOption(      'CustomLine_nRP'    ,"TODO",multiple=.TRUE.)
-CALL prms%CreateRealArrayOption('CustomLine_x'      ,"TODO",multiple=.TRUE.)
+CALL prms%CreateIntOption(      'CustomLine_GroupID',"ID of a custom line, defined by an arbitrary number of RPs&
+                                                      & (must be unique!)",multiple=.TRUE.)
+CALL prms%CreateIntOption(      'CustomLine_nRP'    ,"Number of points on the custom line",multiple=.TRUE.)
+CALL prms%CreateRealArrayOption('CustomLine_x'      ,"Coordinates of the points on the custom line",multiple=.TRUE.)
 !Points
-CALL prms%CreateIntOption(      'Point_GroupID'     ,"TODO",multiple=.TRUE.)
-CALL prms%CreateRealArrayOption('Point_x'           ,"TODO",multiple=.TRUE.)
+CALL prms%CreateIntOption(      'Point_GroupID'     ,"ID of a point group (must be unique!)",multiple=.TRUE.)
+CALL prms%CreateRealArrayOption('Point_x'           ,"Coordinates of the single point",multiple=.TRUE.)
 !Plane
-CALL prms%CreateIntOption(      'Plane_GroupID'     ,"TODO",multiple=.TRUE.)
-CALL prms%CreateIntArrayOption( 'Plane_nRP'         ,"TODO",multiple=.TRUE.)
-CALL prms%CreateRealArrayOption('Plane_CornerX'     ,"TODO",multiple=.TRUE.)
+CALL prms%CreateIntOption(      'Plane_GroupID'     ,"ID of a plane group, defined by the corner points and the number of points in&
+                                                      & both directions (must be unique!)",multiple=.TRUE.)
+CALL prms%CreateIntArrayOption( 'Plane_nRP'         ,"Number of points in the plane",multiple=.TRUE.)
+CALL prms%CreateRealArrayOption('Plane_CornerX'     ,"Coordinates of the 4 corner points (x1,y1,z1,x2,y2,z2,...)",multiple=.TRUE.)
 !Sphere
-CALL prms%CreateIntOption(      'Sphere_GroupID'    ,"TODO",multiple=.TRUE.)
-CALL prms%CreateIntArrayOption( 'Sphere_nRP'        ,"TODO",multiple=.TRUE.)
-CALL prms%CreateRealArrayOption('Sphere_Center'     ,"TODO",multiple=.TRUE.)
-CALL prms%CreateRealArrayOption('Sphere_Axis'       ,"TODO",multiple=.TRUE.)
-CALL prms%CreateRealArrayOption('Sphere_Dir'        ,"TODO",multiple=.TRUE.)
-CALL prms%CreateRealOption(     'Sphere_Radius'     ,"TODO",multiple=.TRUE.)
-CALL prms%CreateRealOption(     'Sphere_Angle'      ,"TODO",multiple=.TRUE.)
+CALL prms%CreateIntOption(      'Sphere_GroupID'    ,"ID of a spherical group, with points on the circumference (must be unique!)",multiple=.TRUE.)
+CALL prms%CreateIntArrayOption( 'Sphere_nRP'        ,"Number of points on the spere in phi and theta direction",multiple=.TRUE.)
+CALL prms%CreateRealArrayOption('Sphere_Center'     ,"Coordinates of sphere center",multiple=.TRUE.)
+CALL prms%CreateRealArrayOption('Sphere_Axis'       ,"Axis vector of sphere",multiple=.TRUE.)
+CALL prms%CreateRealArrayOption('Sphere_Dir'        ,"Vector defining the start point on the sphere",multiple=.TRUE.)
+CALL prms%CreateRealOption(     'Sphere_Radius'     ,"Radius of the sphere",multiple=.TRUE.)
+CALL prms%CreateRealOption(     'Sphere_Angle'      ,"Phi angle of the sphere (360° is a full sphere)",multiple=.TRUE.)
 !Boundary Layer Plane
-CALL prms%CreateIntOption(      'BLPlane_GroupID'   ,"TODO",multiple=.TRUE.)
-CALL prms%CreateIntArrayOption( 'BLPlane_nRP'       ,"TODO",multiple=.TRUE.)
-CALL prms%CreateIntOption(      'BLPlane_nCP'       ,"TODO",multiple=.TRUE.)
-CALL prms%CreateRealArrayOption('BLPlane_CP'        ,"TODO",multiple=.TRUE.)
-CALL prms%CreateRealOption(     'BLPlane_fac'       ,"TODO",multiple=.TRUE.)
-CALL prms%CreateRealOption(     'BLPlane_height'    ,"TODO",multiple=.TRUE.)
+CALL prms%CreateIntOption(      'BLPlane_GroupID'   ,"ID of a boundary layer group - works like a plane group, but the plane is&
+                                                      & created by projecting the points of a spline to the nearest boundary and&
+                                                      & extruding the plane along the normal with a stretching factor&
+                                                      & (must be unique!)",multiple=.TRUE.)
+CALL prms%CreateIntArrayOption( 'BLPlane_nRP'       ,"Number of RPs along and normal to the boundary",multiple=.TRUE.)
+CALL prms%CreateIntOption(      'BLPlane_nCP'       ,"Number of control points defining the spline (at least two)",multiple=.TRUE.)
+CALL prms%CreateRealArrayOption('BLPlane_CP'        ,"Coordinates of the spline control points",multiple=.TRUE.)
+CALL prms%CreateRealOption(     'BLPlane_fac'       ,"Factor of geometrical stretching in wall-normal direction",multiple=.TRUE.)
+CALL prms%CreateRealOption(     'BLPlane_height'    ,"Wall-normal extend of the plane for each control point",multiple=.TRUE.)
 END SUBROUTINE DefineParametersRPSet
 
 !===================================================================================================================================
