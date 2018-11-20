@@ -22,7 +22,7 @@ PROGRAM DMD
 USE MOD_PreProc
 USE MOD_Globals
 USE MOD_DMD_Vars
-USE MOD_DMD,                     ONLY: DefineParametersDMD,InitDMD,performDMD,WriteDmdStateFile!,FinalizeDMD
+USE MOD_DMD,                     ONLY: DefineParametersDMD,InitDMD,performDMD,WriteDmdStateFile,FinalizeDMD
 USE MOD_Interpolation,           ONLY: DefineParametersInterpolation,InitInterpolation
 USE MOD_Mesh,                    ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
 USE MOD_Output,                  ONLY: DefineParametersOutput,InitOutput,FinalizeOutput
@@ -54,7 +54,6 @@ CALL DefineParametersInterpolation()
 CALL DefineParametersMPI()
 CALL DefineParametersIO_HDF5()
 CALL DefineParametersEOS()
-!CALL DefineParametersOutput()
 CALL DefineParametersMesh()
 CALL DefineParametersDMD()
 
@@ -99,10 +98,7 @@ SWRITE(UNIT_stdOut,'(132("="))')
 
 ! Initialization
 CALL InitIOHDF5()
-!CALL InitInterpolation(NNew)
 CALL InitInterpolation()
-!CALL InitOutput()
-!CALL InitMesh(meshMode=0)
 
 CALL InitDMD()
 ! Init interpolation on new polynomial degree, will set PP_N to NNew
@@ -122,17 +118,11 @@ END IF
 #endif
 
 !===================================================================================================================================
-! Main Program
-!===================================================================================================================================
 CALL performDMD()
 CALL WriteDmdStateFile()
-
-
-
-
 !===================================================================================================================================
 
-!CALL FinalizeDMD()
+CALL FinalizeDMD()
 CALL FinalizeMesh()
 #if USE_MPI
 CALL MPI_FINALIZE(iError)

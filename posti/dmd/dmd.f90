@@ -10,6 +10,7 @@
 ! of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License v3.0 for more details.
 !
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
+!=================================================================================================================================
 #include "flexi.h"
 MODULE MOD_DMD
 ! MODULES
@@ -37,7 +38,11 @@ INTERFACE WriteDMDStateFile
   MODULE PROCEDURE WriteDMDStateFile
 END INTERFACE
 
-PUBLIC::InitDMD,DefineParametersDMD,performDMD,WriteDMDStateFile
+INTERFACE FinalizeDMD
+  MODULE PROCEDURE FinalizeDMD
+END INTERFACE
+
+PUBLIC::InitDMD,DefineParametersDMD,performDMD,WriteDMDStateFile,FinalizeDMD
 CONTAINS
 
 SUBROUTINE DefineParametersDMD() 
@@ -70,7 +75,7 @@ USE MOD_PreProc
 USE MOD_Commandline_Arguments
 USE MOD_Readintools             ,ONLY: prms,GETINT,GETREAL,GETLOGICAL,GETSTR,GETREALARRAY,CountOption
 USE MOD_StringTools,             ONLY: STRICMP,GetFileExtension,INTTOSTR
-USE MOD_DMD_Vars,                ONLY: nDmdVars,K,nFiles,nVar_State,N_State,nElems_State,NodeType_State,nDoFs,MeshFile_state
+USE MOD_DMD_Vars,                ONLY: K,nFiles,nVar_State,N_State,nElems_State,NodeType_State,nDoFs,MeshFile_state
 USE MOD_DMD_Vars,                ONLY: dt,nModes,SvdThreshold,VarNameDMD,VarNames_State
 USE MOD_IO_HDF5,                 ONLY: File_ID
 USE MOD_Output_Vars,             ONLY: ProjectName,NOut
@@ -114,11 +119,8 @@ nElems       = nElems_State
 OffsetElem   = 0 ! OffsetElem is 0 since the tool only works on singel
 
 nDoFs = (N_State+1)**3 * nElems_State
-nDmdVars = nVar_State
 
 CALL InitEquationDMD()
-
-
 
 ALLOCATE(K    (nDoFs,nFiles))
 ALLOCATE(Utmp (nVar_State   ,0:N_State,0:N_State,0:N_State,nElems_State))
@@ -148,7 +150,7 @@ DO iFile = 2, nFiles+1
 
   CALL CalcEquationDMD(Utmp,K(:,iFile-1))
 END DO ! iFile = 1,nFiles 
-
+DEALLOCATE(Utmp)
 END SUBROUTINE InitDMD 
 
 SUBROUTINE performDMD() 
@@ -156,7 +158,7 @@ SUBROUTINE performDMD()
 ! description
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! MODULES                                                                                                                          !
-USE MOD_DMD_Vars,                ONLY: K,nDoFs,nFiles,USVD,SigmaSVD,WSVD,STilde,eigSTilde,VL,VR,Phi,lambda,freq,dt
+USE MOD_DMD_Vars,                ONLY: K,nDoFs,nFiles,Phi,lambda,freq,dt,alpha,sigmaSort
 USE MOD_Mathtools,               ONLY: INVERSE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! insert modules here
@@ -173,12 +175,13 @@ EXTERNAL         ZGESV
 INTEGER                          :: i,M,N,LDA,LDU,LDVT,LWMAX,INFO,LWORK
 INTEGER,ALLOCATABLE              :: IWORK(:),IPIV(:)
 DOUBLE PRECISION,ALLOCATABLE     :: WORK(:)
-DOUBLE PRECISION,ALLOCATABLE     :: SigmaInv(:,:),SigmaMat(:,:)               
+DOUBLE PRECISION,ALLOCATABLE     :: SigmaInv(:,:),SigmaMat(:,:),USVD(:,:),WSVD(:,:),SigmaSVD(:)              
 COMPLEX,ALLOCATABLE              :: WORKC(:)
 REAL,ALLOCATABLE                 :: RWORK(:),alphaSort(:,:)
 DOUBLE PRECISION,ALLOCATABLE     :: KTmp(:,:)
-COMPLEX,ALLOCATABLE              :: Vand(:,:),qTmp(:,:),q(:),SigmaSort(:)
-COMPLEX,ALLOCATABLE              :: P(:,:),Ptmp(:,:),alpha(:),PhiTmp(:,:)
+COMPLEX,ALLOCATABLE              :: STilde(:,:),eigSTilde(:),VL(:,:),VR(:,:)                
+COMPLEX,ALLOCATABLE              :: Vand(:,:),qTmp(:,:),q(:)
+COMPLEX,ALLOCATABLE              :: P(:,:),Ptmp(:,:),PhiTmp(:,:),alphaTmp(:)
 REAL                             :: pi = acos(-1.)
 !===================================================================================================================================
 LWMAX = nDoFs+1000
@@ -199,7 +202,9 @@ KTmp = K(:,1:N)
 CALL DGESDD( 'S', M, N, KTmp, LDA, SigmaSVD, USVD, LDU, WSVD, LDVT,WORK, LWORK, IWORK, INFO )
 LWORK = MIN( LWMAX, INT( WORK( 1 ) ) )
 CALL DGESDD( 'S', M, N, KTmp, LDA, SigmaSVD, USVD, LDU, WSVD, LDVT,WORK, LWORK, IWORK,INFO )
-
+DEALLOCATE(WORK)
+DEALLOCATE(KTmp)
+DEALLOCATE(IWORK)
 
 ALLOCATE(SigmaInv(N,N))
 ALLOCATE(SigmaMat(N,N))
@@ -211,8 +216,10 @@ DO i = 1, N
   SigmaInv(i,i)=1./SigmaSVD(i)
   SigmaMat(i,i)=SigmaSVD(i)
 END DO 
+DEALLOCATE(SigmaSVD)
 
 STilde=dcmplx(MATMUL(MATMUL(MATMUL(TRANSPOSE(USVD),K(:,2:N+1)),TRANSPOSE(WSVD)),SigmaInv))
+DEALLOCATE(SigmaInv)
 
 LWMAX = 2*N
 LWORK = -1
@@ -224,15 +231,16 @@ ALLOCATE(RWORK(LWMAX))
 CALL ZGEEV('V','V',N,STilde,N,eigSTilde,VL,N,VR,N,WORKC,LWORK,RWORK,INFO)
 LWORK=MIN( LWMAX, INT( WORKC( 1 ) ) )
 CALL ZGEEV('V','V',N,STilde,N,eigSTilde,VL,N,VR,N,WORKC,LWORK,RWORK,INFO)
-!VR(:,1)=VR(:,1)*(-1)
+DEALLOCATE(VL)              
+DEALLOCATE(STilde)
+DEALLOCATE(WORKC)
+DEALLOCATE(RWORK)
 
 
 ALLOCATE(Vand(N,N))
 ALLOCATE(P(N,N))
 ALLOCATE(qTmp(N,N))
-ALLOCATE(q(N))
 ALLOCATE(alpha(N))
-ALLOCATE(IPIV(N))
 Vand = 0
 DO i = 1, N
   Vand(:,i)=eigSTilde(:)**(i-1)
@@ -240,18 +248,21 @@ END DO ! i = 1, N
 P = MATMUL(CONJG(TRANSPOSE(VR)),VR) * CONJG(MATMUL(VAND,CONJG(TRANSPOSE(VAND))))
 
 qTmp = MATMUL(MATMUL(MATMUL(Vand,dcmplx(TRANSPOSE(WSVD))),dcmplx(SigmaMat)),VR)
+
 DO i = 1, N
-  q(i) = CONJG(qTmp(i,i))
+  alpha(i) = CONJG(qTmp(i,i))
 END DO ! i = 1, N
 
-alpha = q
-!Compute alpha=P/q
-ALLOCATE(Ptmp(N,N))
-Ptmp = P
-CALL ZGESV(N,1,Ptmp,N,IPIV,alpha,N,INFO)
+!Compute alpha=P/alpha
+ALLOCATE(IPIV(N))
+CALL ZGESV(N,1,P,N,IPIV,alpha,N,INFO)
+DEALLOCATE(IPIV)
+DEALLOCATE(SigmaMat)
+DEALLOCATE(Vand)
+DEALLOCATE(qTmp)
 
 ALLOCATE(alphaSort(N,2))
-ALLOCATE(SigmaSort(N))
+ALLOCATE(sigmaSort(N))
 DO i = 1, N
   alphaSort(i,1) = ABS(alpha(i))
   alphaSort(i,2) = i
@@ -259,32 +270,31 @@ END DO ! i = 1, N
 
 CALL quicksort(alphaSort,1,N,1,2)
 
+ALLOCATE(alphaTmp(N))
+alphaTmp = alpha
 DO i = 1, N
-  alpha(N+1-i) = alpha(alphaSort(i,2))
-  SigmaSort(N+1-i) = eigSTilde(alphaSort(i,2))
+  alpha(N+1-i) = alphaTmp(alphaSort(i,2))
+  sigmaSort(N+1-i) = eigSTilde(alphaSort(i,2))
 END DO ! i = 1, N
+DEALLOCATE(alphaTmp)
+
 ALLOCATE(PhiTmp(M,N))
 ALLOCATE(Phi(M,N))
 PhiTmp = MATMUL(USVD,VR)
 DO i = 1, N
   Phi(:,N+1-i) = PhiTmp(:,alphaSort(i,2))
 END DO ! i = 1, N
-
+DEALLOCATE(PhiTmp)
 
 ALLOCATE(lambda(N))
 ALLOCATE(freq(N))
-lambda = log(SigmaSort)/dt
+lambda = log(sigmaSort)/dt
 freq   = aimag(lambda)/(2*PI)
 
-
-
-DEALLOCATE(WORK)
 DEALLOCATE(USVD)
 DEALLOCATE(WSVD)
-DEALLOCATE(SigmaSVD)
-DEALLOCATE(STilde)
-DEALLOCATE(K)
-
+DEALLOCATE(VR)              
+DEALLOCATE(eigSTilde)          
 END SUBROUTINE performDMD
 
 SUBROUTINE WriteDmdStateFile() 
@@ -294,7 +304,7 @@ USE MOD_IO_HDF5
 USE MOD_HDF5_Output,        ONLY: WriteState,WriteTimeAverage,GenerateFileSkeleton,WriteAttribute,WriteArray
 USE MOD_Output,             ONLY: InitOutput
 USE MOD_Output_Vars          
-USE MOD_DMD_Vars,           ONLY: Phi,N_State,nElems_State,nModes,freq
+USE MOD_DMD_Vars,           ONLY: Phi,N_State,nElems_State,nModes,freq,alpha,lambda,sigmaSort
 USE MOD_Mesh_Vars,          ONLY: offsetElem,nElems,MeshFile
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
@@ -305,6 +315,9 @@ CHARACTER(LEN=255)   :: VarName
 INTEGER              :: nVal(4),i,j
 CHARACTER(LEN=255)   :: FileName,iMode,varFreq
 REAL                 :: PhiGlobal(1,0:N_State,0:N_State,0:N_State,nElems_State),Time_State
+INTEGER              :: Fileunit_DMD
+CHARACTER(LEN=255)   :: FileName_DMD
+LOGICAL              :: connected
 !===================================================================================================================================
 Time_State=0.0
 !===================================================================================================================================
@@ -324,7 +337,6 @@ CALL CloseDataFile()
 !================= Actual data output =======================!
 ! Write DMD
 CALL OpenDataFile(FileName,create=.FALSE.,single=.FALSE.,readOnly=.FALSE.)
-nModes = 2
 DO i = 1, nModes
   WRITE(iMode,'(I0.3)')i
   WRITE(varFreq,'(F8.4)')freq(i)
@@ -348,10 +360,62 @@ DO i = 1, nModes
 END DO ! i = 1, nModes
 CALL CloseDataFile()
 
+
+!Write DMD spectrum to file
+FileUnit_DMD=155
+INQUIRE(UNIT=FileUnit_DMD, OPENED=connected)
+IF (Connected) THEN
+  DO
+    FileUnit_DMD=Fileunit_DMD+1
+    INQUIRE(UNIT=FileUnit_DMD, OPENED=connected)
+    IF (.NOT. connected) EXIT
+  END DO
+END IF
+FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_DMD_Spec',Time_State))//'.dat'
+OPEN(FileUnit_DMD,FILE=Filename,STATUS="REPLACE")
+WRITE(FileUnit_DMD,*)'TITLE = "DMD Spectrum"'
+WRITE(FileUnit_DMD,'(a)')'VARIABLES ="realAlpha"'
+WRITE(FileUnit_DMD,'(a)')'"imagAlpha"'
+WRITE(FileUnit_DMD,'(a)')'"realLambda"'
+WRITE(FileUnit_DMD,'(a)')'"imagLambda"'
+WRITE(FileUnit_DMD,'(a)')'"realSigma"'
+WRITE(FileUnit_DMD,'(a)')'"imagSigma"'
+WRITE(FileUnit_DMD,'(a)')'ZONE T="ZONE1"'
+WRITE(FileUnit_DMD,'(a)')' STRANDID=0, SOLUTIONTIME=0'
+WRITE(FileUnit_DMD,*)' I=',nModes,', J=1, K=1, ZONETYPE=Ordered'
+WRITE(FileUnit_DMD,'(a)')' DATAPACKING=POINT'
+WRITE(FileUnit_DMD,'(a)')' DT=(DOUBLE DOUBLE DOUBLE DOUBLE DOUBLE DOUBLE)'
+DO j=1,nModes
+  WRITE(FileUnit_DMD,'(6(E20.12,X))') &
+  real(alpha(j)),aimag(alpha(j)),real(lambda(j)),aimag(lambda(j)),real(sigmaSort(j)),aimag(sigmaSort(j))
+END DO
+CLOSE(FILEUnit_DMD)
+
 SWRITE(UNIT_stdOut,'(a)',ADVANCE='YES')'DONE'
 !!===================================================================================================================================
 
 END SUBROUTINE WriteDmdStateFile
+
+SUBROUTINE FinalizeDMD()
+! MODULES
+USE MOD_Globals
+USE MOD_DMD_Vars
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!===================================================================================================================================
+DEALLOCATE(VarNames_State)
+DEALLOCATE(Phi)             
+DEALLOCATE(freq)
+DEALLOCATE(lambda)            
+DEALLOCATE(alpha)            
+DEALLOCATE(sigmaSort)            
+DEALLOCATE(K)
+
+WRITE(UNIT_stdOut,'(A)') '  DMD FINALIZED'
+END SUBROUTINE FinalizeDMD
 
 RECURSIVE SUBROUTINE quicksort(a, first, last, icolumn, columns) 
 !----------------------------------------------------------------------------------------------------------------------------------!
