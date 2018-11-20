@@ -27,13 +27,13 @@ SAVE
 INTEGER             :: nFiles                    !< Number of input files to perform dmd on
 INTEGER             :: nDmdVars                  !< Number of variables specified in parameter file to perform dmd
 INTEGER             :: nVar_State                !< Number of variables in DG_Solution array
+CHARACTER(LEN=255),ALLOCATABLE  :: VarNames_State(:)           !< List of varnames in state
 INTEGER             :: nElems_State              !< Number of elements in state mesh
 CHARACTER(LEN=255)  :: NodeType_State            !< NodeType of the input state (Gauss/Gauss-Lobatto)
 INTEGER             :: N_State                   !< Polynomial degree of input state
 INTEGER             :: NNew                      !< Polynomial degree of output state
 INTEGER             :: nDoFs                     !< Number of degrees of freedom of input state file
-DOUBLE PRECISION,ALLOCATABLE    :: K(:,:,:)                  !> 
-DOUBLE PRECISION,ALLOCATABLE    :: KCons(:,:,:)              !> 
+DOUBLE PRECISION,ALLOCATABLE    :: K(:,:)                  !> 
 CHARACTER(LEN=255)  :: MeshFile_State            !< Mesh file name of input states
 DOUBLE PRECISION,ALLOCATABLE    :: USVD(:,:)                 !> 
 DOUBLE PRECISION,ALLOCATABLE    :: WSVD(:,:)                 !> 
@@ -43,6 +43,12 @@ COMPLEX ,ALLOCATABLE    :: eigSTilde(:)              !>
 COMPLEX ,ALLOCATABLE    :: VL(:,:)               !> 
 COMPLEX ,ALLOCATABLE    :: VR(:,:)               !> 
 COMPLEX ,ALLOCATABLE    :: Phi(:,:)               !> 
+REAL                    :: dt
+COMPLEX ,ALLOCATABLE    :: lambda(:)               !> 
+REAL,ALLOCATABLE        :: freq(:)
+CHARACTER(LEN=255)      :: VarNameDMD             !< Name of Variable to visulaize
+REAL                    :: SvdThreshold
+INTEGER                 :: nModes                     !< Number of degrees of freedom of input state file
 
 
 !===================================================================================================================================

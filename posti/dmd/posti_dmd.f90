@@ -34,6 +34,7 @@ USE MOD_IO_HDF5,                 ONLY: DefineParametersIO_HDF5,InitIOHDF5
 #if USE_MPI
 USE MOD_MPI,                     ONLY: InitMPIvars,FinalizeMPI
 #endif
+USE MOD_EOS                     ,ONLY:DefineParametersEOS
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -52,6 +53,7 @@ CALL ParseCommandlineArguments()
 CALL DefineParametersInterpolation()
 CALL DefineParametersMPI()
 CALL DefineParametersIO_HDF5()
+CALL DefineParametersEOS()
 !CALL DefineParametersOutput()
 CALL DefineParametersMesh()
 CALL DefineParametersDMD()

@@ -55,6 +55,9 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 !===================================================================================================================================
 CALL prms%SetSection("DMD")
+CALL prms%CreateStringOption( "VarNameDMD"         , "Name of variable to perform DMD.")
+CALL prms%CreateRealOption(   "SvdThreshold"       , "Define relative lower bound of singular values.")
+CALL prms%CreateIntOption(    "nModes"             , "Number of Modes to visualize.")
 
 END SUBROUTINE DefineParametersDMD 
 
@@ -65,13 +68,15 @@ SUBROUTINE InitDMD()
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Commandline_Arguments
-USE MOD_ReadInTools,             ONLY: prms
+USE MOD_Readintools             ,ONLY: prms,GETINT,GETREAL,GETLOGICAL,GETSTR,GETREALARRAY,CountOption
 USE MOD_StringTools,             ONLY: STRICMP,GetFileExtension,INTTOSTR
-USE MOD_DMD_Vars,                ONLY: nDmdVars,K,KCons,nFiles,nVar_State,N_State,nElems_State,NodeType_State,nDoFs,MeshFile_state
+USE MOD_DMD_Vars,                ONLY: nDmdVars,K,nFiles,nVar_State,N_State,nElems_State,NodeType_State,nDoFs,MeshFile_state
+USE MOD_DMD_Vars,                ONLY: dt,nModes,SvdThreshold,VarNameDMD,VarNames_State
 USE MOD_IO_HDF5,                 ONLY: File_ID
 USE MOD_Output_Vars,             ONLY: ProjectName,NOut
 USE MOD_HDF5_Input,              ONLY: OpenDataFile,CloseDataFile,GetDataProps,ReadAttribute,ReadArray
 USE MOD_Mesh_Vars,               ONLY: nElems,OffsetElem,nGlobalElems,MeshFile
+USE MOD_EquationDMD,             ONLY: InitEquationDMD,CalcEquationDMD
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
@@ -79,15 +84,27 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                          :: iFile,iVar,offset
 REAL,ALLOCATABLE                 :: Utmp(:,:,:,:,:)
+REAL                             :: time
 !===================================================================================================================================
 IF(nArgs.LT.3) CALL CollectiveStop(__STAMP__,'At least two files required for dmd!')
 nFiles=nArgs-1
+
+VarNameDMD   = GETSTR ('VarNameDMD'  ,'Density')
+SvdThreshold = GETREAL('SvdThreshold','0.0')
+nModes       = GETINT ('nModes'      ,'9999')
+
+IF (nModes .GT. (nFiles-1)) THEN
+  nModes = nFiles - 1  
+END IF ! nModes .GT. (nFiles-1)
 
 ! Open the first statefile to read necessary attributes
 CALL OpenDataFile(Args(2),create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL ReadAttribute(File_ID,'MeshFile',    1,StrScalar=MeshFile_state)
 CALL ReadAttribute(File_ID,'Project_Name',1,StrScalar=ProjectName)
+CALL ReadAttribute(File_ID,'Time',    1,RealScalar=starttime)
 CALL GetDataProps(nVar_State,N_State,nElems_State,NodeType_State)
+ALLOCATE(VarNames_State(nVar_State))
+CALL ReadAttribute(File_ID,'VarNames',nVar_State,StrArray=VarNames_State)
 CALL CloseDataFile()
 ! Set everything for output
 MeshFile = MeshFile_state
@@ -97,10 +114,13 @@ nElems       = nElems_State
 OffsetElem   = 0 ! OffsetElem is 0 since the tool only works on singel
 
 nDoFs = (N_State+1)**3 * nElems_State
-
 nDmdVars = nVar_State
-ALLOCATE(K    (nDmdVars,nDoFs,nFiles))
-ALLOCATE(KCons(nVar_State   ,nDoFs,nFiles))
+
+CALL InitEquationDMD()
+
+
+
+ALLOCATE(K    (nDoFs,nFiles))
 ALLOCATE(Utmp (nVar_State   ,0:N_State,0:N_State,0:N_State,nElems_State))
 
 DO iFile = 2, nFiles+1
@@ -112,16 +132,21 @@ DO iFile = 2, nFiles+1
   ! Read Statefiles
   CALL OpenDataFile(Args(iFile),create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
   offset=0
+  CALL ReadAttribute(File_ID,'Time',    1,RealScalar=time)
   CALL ReadArray('DG_Solution',5,&
                 (/nVar_State,N_State+1,N_State+1,N_State+1,nElems_State/),0,5,RealArray=Utmp)
   CALL CloseDataFile()
-  DO iVar=1,nVar_State
-    KCons(iVar,:,iFile-1) = RESHAPE( Utmp(iVar,:,:,:,:), (/nDoFs/))
-  END DO ! iElem
-  !WRITE(*,*) KCons(1,:,:) 
-  !DO iVar=1,nDmdVars
-    !! Mapping to desired dmd variables
-  !END DO ! iElem
+
+  IF (iFile .EQ. 3) THEN
+    dt = (time - starttime) / (iFile-2)
+  END IF
+  IF (iFile .GT. 3) THEN
+    IF ( ABS((time - starttime) / (iFile-2) - dt) .GT. 1E-10) THEN
+      CALL CollectiveStop(__STAMP__,'Given file are not an equispaced time series')
+    END IF
+  END IF ! iFile .GT. 2
+
+  CALL CalcEquationDMD(Utmp,K(:,iFile-1))
 END DO ! iFile = 1,nFiles 
 
 END SUBROUTINE InitDMD 
@@ -131,7 +156,7 @@ SUBROUTINE performDMD()
 ! description
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! MODULES                                                                                                                          !
-USE MOD_DMD_Vars,                ONLY: KCons,nDoFs,nFiles,USVD,SigmaSVD,WSVD,STilde,eigSTilde,VL,VR,Phi
+USE MOD_DMD_Vars,                ONLY: K,nDoFs,nFiles,USVD,SigmaSVD,WSVD,STilde,eigSTilde,VL,VR,Phi,lambda,freq,dt
 USE MOD_Mathtools,               ONLY: INVERSE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! insert modules here
@@ -154,6 +179,7 @@ REAL,ALLOCATABLE                 :: RWORK(:),alphaSort(:,:)
 DOUBLE PRECISION,ALLOCATABLE     :: KTmp(:,:)
 COMPLEX,ALLOCATABLE              :: Vand(:,:),qTmp(:,:),q(:),SigmaSort(:)
 COMPLEX,ALLOCATABLE              :: P(:,:),Ptmp(:,:),alpha(:),PhiTmp(:,:)
+REAL                             :: pi = acos(-1.)
 !===================================================================================================================================
 LWMAX = nDoFs+1000
 M = nDoFs
@@ -169,7 +195,7 @@ ALLOCATE(SigmaSVD(min(N,M)))
 
 ALLOCATE(KTmp(nDoFs,nFiles-1))
 ALLOCATE(IWORK(8*N))
-KTmp = KCons(2,:,1:N)
+KTmp = K(:,1:N)
 CALL DGESDD( 'S', M, N, KTmp, LDA, SigmaSVD, USVD, LDU, WSVD, LDVT,WORK, LWORK, IWORK, INFO )
 LWORK = MIN( LWMAX, INT( WORK( 1 ) ) )
 CALL DGESDD( 'S', M, N, KTmp, LDA, SigmaSVD, USVD, LDU, WSVD, LDVT,WORK, LWORK, IWORK,INFO )
@@ -186,7 +212,7 @@ DO i = 1, N
   SigmaMat(i,i)=SigmaSVD(i)
 END DO 
 
-STilde=dcmplx(MATMUL(MATMUL(MATMUL(TRANSPOSE(USVD),KCONS(2,:,2:N+1)),TRANSPOSE(WSVD)),SigmaInv))
+STilde=dcmplx(MATMUL(MATMUL(MATMUL(TRANSPOSE(USVD),K(:,2:N+1)),TRANSPOSE(WSVD)),SigmaInv))
 
 LWMAX = 2*N
 LWORK = -1
@@ -243,13 +269,12 @@ PhiTmp = MATMUL(USVD,VR)
 DO i = 1, N
   Phi(:,N+1-i) = PhiTmp(:,alphaSort(i,2))
 END DO ! i = 1, N
-print*,'U',USVD(1,1)
-print*,'U',USVD(1,2)
-print*,'U',USVD(2,1)
-!print*,'VR',VR(2,1)
 
 
-
+ALLOCATE(lambda(N))
+ALLOCATE(freq(N))
+lambda = log(SigmaSort)/dt
+freq   = aimag(lambda)/(2*PI)
 
 
 
@@ -258,7 +283,7 @@ DEALLOCATE(USVD)
 DEALLOCATE(WSVD)
 DEALLOCATE(SigmaSVD)
 DEALLOCATE(STilde)
-DEALLOCATE(KCons)
+DEALLOCATE(K)
 
 END SUBROUTINE performDMD
 
@@ -269,31 +294,23 @@ USE MOD_IO_HDF5
 USE MOD_HDF5_Output,        ONLY: WriteState,WriteTimeAverage,GenerateFileSkeleton,WriteAttribute,WriteArray
 USE MOD_Output,             ONLY: InitOutput
 USE MOD_Output_Vars          
-USE MOD_DMD_Vars,           ONLY: Phi,N_State,nElems_State
+USE MOD_DMD_Vars,           ONLY: Phi,N_State,nElems_State,nModes,freq
 USE MOD_Mesh_Vars,          ONLY: offsetElem,nElems,MeshFile
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-CHARACTER(LEN=255)   :: VarNames(6)
-INTEGER              :: nVal(4)
-CHARACTER(LEN=255)   :: FileName
+CHARACTER(LEN=255)   :: VarName
+INTEGER              :: nVal(4),i,j
+CHARACTER(LEN=255)   :: FileName,iMode,varFreq
 REAL                 :: PhiGlobal(1,0:N_State,0:N_State,0:N_State,nElems_State),Time_State
 !===================================================================================================================================
 Time_State=0.0
 !===================================================================================================================================
 SWRITE(UNIT_stdOut,'(a,a,a)',ADVANCE='NO')' WRITE DMD MODES TO HDF5 FILE "',TRIM(ProjectName),'" ...'
-VarNames( 1)= 'Mode1'  
 
 PhiGlobal(1,:,:,:,:) = RESHAPE( Phi(:,1), (/N_State+1,N_State+1,N_State+1,nElems_State/))
-print*,'Phi',PhiGlobal(1,:,:,:,1)
-
-!CALL InitOutput()
-!nVal(1)=SIZE(VarNames)
-!nVal(2)=N_State+1
-!nVal(3)=N_State+1
-!nVal(4)=N_State+1
 
 FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_DMD',Time_State))//'.h5'
 
@@ -307,11 +324,28 @@ CALL CloseDataFile()
 !================= Actual data output =======================!
 ! Write DMD
 CALL OpenDataFile(FileName,create=.FALSE.,single=.FALSE.,readOnly=.FALSE.)
-CALL WriteArray(        DataSetName='Mode1', rank=5,&
-                        nValGlobal=(/1,N_State+1,N_State+1,N_State+1,nElems_State/),&
-                        nVal=      (/1,N_State+1,N_State+1,N_State+1,nElems_State/),&
-                        offset=    (/0,      0,     0,     0,     offsetElem/),&
-                        collective=.TRUE.,RealArray=PhiGlobal(1:1,:,:,:,:))
+nModes = 2
+DO i = 1, nModes
+  WRITE(iMode,'(I0.3)')i
+  WRITE(varFreq,'(F8.4)')freq(i)
+  ! Replace spaces with 0's
+  DO j=1,LEN(TRIM(varFreq))
+    IF(varFreq(j:j).EQ.' ') varFreq(j:j)='0'
+  END DO
+  VarName = 'Mode_'//TRIM(iMode)//'_Real_'//TRIM(varFreq)
+  CALL WriteArray(        DataSetName=VarName, rank=5,&
+                          nValGlobal=(/1,N_State+1,N_State+1,N_State+1,nElems_State/),&
+                          nVal=      (/1,N_State+1,N_State+1,N_State+1,nElems_State/),&
+                          offset=    (/0,      0,     0,     0,     offsetElem/),&
+                          collective=.TRUE.,RealArray=PhiGlobal(1:1,:,:,:,:))
+  
+  VarName = 'Mode_'//TRIM(iMode)//'_Img_'//TRIM(varFreq)
+  CALL WriteArray(        DataSetName=VarName, rank=5,&
+                          nValGlobal=(/1,N_State+1,N_State+1,N_State+1,nElems_State/),&
+                          nVal=      (/1,N_State+1,N_State+1,N_State+1,nElems_State/),&
+                          offset=    (/0,      0,     0,     0,     offsetElem/),&
+                          collective=.TRUE.,RealArray=PhiGlobal(1:1,:,:,:,:))
+END DO ! i = 1, nModes
 CALL CloseDataFile()
 
 SWRITE(UNIT_stdOut,'(a)',ADVANCE='YES')'DONE'
