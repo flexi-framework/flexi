@@ -76,7 +76,7 @@ USE MOD_Commandline_Arguments
 USE MOD_Readintools             ,ONLY: prms,GETINT,GETREAL,GETLOGICAL,GETSTR,GETREALARRAY,CountOption
 USE MOD_StringTools,             ONLY: STRICMP,GetFileExtension,INTTOSTR
 USE MOD_DMD_Vars,                ONLY: K,nFiles,nVar_State,N_State,nElems_State,NodeType_State,nDoFs,MeshFile_state
-USE MOD_DMD_Vars,                ONLY: dt,nModes,SvdThreshold,VarNameDMD,VarNames_State
+USE MOD_DMD_Vars,                ONLY: dt,nModes,SvdThreshold,VarNameDMD,VarNames_State,Time_State,TimeEnd_State
 USE MOD_IO_HDF5,                 ONLY: File_ID
 USE MOD_Output_Vars,             ONLY: ProjectName,NOut
 USE MOD_HDF5_Input,              ONLY: OpenDataFile,CloseDataFile,GetDataProps,ReadAttribute,ReadArray
@@ -112,6 +112,7 @@ ALLOCATE(VarNames_State(nVar_State))
 CALL ReadAttribute(File_ID,'VarNames',nVar_State,StrArray=VarNames_State)
 CALL CloseDataFile()
 ! Set everything for output
+Time_State = starttime
 MeshFile = MeshFile_state
 NOut = N_State
 nGlobalElems = nElems_State
@@ -150,6 +151,7 @@ DO iFile = 2, nFiles+1
 
   CALL CalcEquationDMD(Utmp,K(:,iFile-1))
 END DO ! iFile = 1,nFiles 
+TimeEnd_State = time
 DEALLOCATE(Utmp)
 END SUBROUTINE InitDMD 
 
@@ -158,6 +160,7 @@ SUBROUTINE performDMD()
 ! description
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! MODULES                                                                                                                          !
+USE MOD_Globals
 USE MOD_DMD_Vars,                ONLY: K,nDoFs,nFiles,Phi,lambda,freq,dt,alpha,sigmaSort
 USE MOD_Mathtools,               ONLY: INVERSE
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -178,8 +181,8 @@ DOUBLE PRECISION,ALLOCATABLE     :: WORK(:)
 DOUBLE PRECISION,ALLOCATABLE     :: SigmaInv(:,:),SigmaMat(:,:),USVD(:,:),WSVD(:,:),SigmaSVD(:)              
 COMPLEX,ALLOCATABLE              :: WORKC(:)
 REAL,ALLOCATABLE                 :: RWORK(:),alphaSort(:,:)
-DOUBLE PRECISION,ALLOCATABLE     :: KTmp(:,:)
-COMPLEX,ALLOCATABLE              :: STilde(:,:),eigSTilde(:),VL(:,:),VR(:,:)                
+DOUBLE PRECISION,ALLOCATABLE     :: KTmp(:,:),RGlobMat(:,:),Rglob,Rsnap1,Rsnap2
+COMPLEX,ALLOCATABLE              :: STilde(:,:),STildeWork(:,:),eigSTilde(:),VL(:,:),VR(:,:)                
 COMPLEX,ALLOCATABLE              :: Vand(:,:),qTmp(:,:),q(:)
 COMPLEX,ALLOCATABLE              :: P(:,:),Ptmp(:,:),PhiTmp(:,:),alphaTmp(:)
 REAL                             :: pi = acos(-1.)
@@ -216,7 +219,6 @@ DO i = 1, N
   SigmaInv(i,i)=1./SigmaSVD(i)
   SigmaMat(i,i)=SigmaSVD(i)
 END DO 
-DEALLOCATE(SigmaSVD)
 
 STilde=dcmplx(MATMUL(MATMUL(MATMUL(TRANSPOSE(USVD),K(:,2:N+1)),TRANSPOSE(WSVD)),SigmaInv))
 DEALLOCATE(SigmaInv)
@@ -228,11 +230,13 @@ ALLOCATE(VL(N,N))
 ALLOCATE(VR(N,N))
 ALLOCATE(WORKC(LWMAX))
 ALLOCATE(RWORK(LWMAX))
-CALL ZGEEV('V','V',N,STilde,N,eigSTilde,VL,N,VR,N,WORKC,LWORK,RWORK,INFO)
+ALLOCATE(STildeWork(N,N))
+STildeWork = STilde
+CALL ZGEEV('V','V',N,STildeWork,N,eigSTilde,VL,N,VR,N,WORKC,LWORK,RWORK,INFO)
 LWORK=MIN( LWMAX, INT( WORKC( 1 ) ) )
-CALL ZGEEV('V','V',N,STilde,N,eigSTilde,VL,N,VR,N,WORKC,LWORK,RWORK,INFO)
+CALL ZGEEV('V','V',N,STildeWork,N,eigSTilde,VL,N,VR,N,WORKC,LWORK,RWORK,INFO)
 DEALLOCATE(VL)              
-DEALLOCATE(STilde)
+DEALLOCATE(STildeWork)
 DEALLOCATE(WORKC)
 DEALLOCATE(RWORK)
 
@@ -257,7 +261,6 @@ END DO ! i = 1, N
 ALLOCATE(IPIV(N))
 CALL ZGESV(N,1,P,N,IPIV,alpha,N,INFO)
 DEALLOCATE(IPIV)
-DEALLOCATE(SigmaMat)
 DEALLOCATE(Vand)
 DEALLOCATE(qTmp)
 
@@ -291,6 +294,39 @@ ALLOCATE(freq(N))
 lambda = log(sigmaSort)/dt
 freq   = aimag(lambda)/(2*PI)
 
+
+ALLOCATE(RGlobMat(M,N))
+RglobMat = K(:,2:N+1)-MATMUL(MATMUL(MATMUL(USVD,STilde),SigmaMat),WSVD)
+LDA  = M
+LDU  = M 
+LDVT=N
+LWMAX = nDoFs+1000
+ALLOCATE(WORK(LWMAX))
+ALLOCATE(IWORK(8*N))
+LWORK = -1
+!Calculate norm2 of matrix, simalar to matlab matrix norm
+CALL DGESDD( 'S', M, N, RglobMat, LDA, SigmaSVD, USVD, LDU, WSVD, LDVT,WORK, LWORK, IWORK, INFO )
+LWORK = MIN( LWMAX, INT( WORK( 1 ) ) )
+CALL DGESDD( 'S', M, N, RglobMat, LDA, SigmaSVD, USVD, LDU, WSVD, LDVT,WORK, LWORK, IWORK,INFO )
+DEALLOCATE(WORK)
+DEALLOCATE(IWORK)
+DEALLOCATE(RGlobMat)
+
+Rglob = MAXVAL(SigmaSVD)
+
+Rsnap1=norm2(K(:,1)-REAL(MATMUL(Phi,alpha)))/norm2(K(:,1))
+Rsnap2=norm2(K(:,N+1)-REAL(MATMUL(Phi,(alpha*sigmaSort**(N)))))/norm2(K(:,N+1))
+
+WRITE(UNIT_stdOut,'(132("="))')
+WRITE(UNIT_stdOut,'(A,F8.6)') 'Global Residual Norm:    ',RGlob
+WRITE(UNIT_stdOut,'(A,F8.6)') 'Projection error K(1):   ',Rsnap1
+WRITE(UNIT_stdOut,'(A,F8.6)') 'Projection error K(N+1): ',Rsnap2
+WRITE(UNIT_stdOut,'(132("="))')
+
+
+DEALLOCATE(SigmaSVD)
+DEALLOCATE(STilde)
+DEALLOCATE(SigmaMat)
 DEALLOCATE(USVD)
 DEALLOCATE(WSVD)
 DEALLOCATE(VR)              
@@ -304,55 +340,65 @@ USE MOD_IO_HDF5
 USE MOD_HDF5_Output,        ONLY: WriteState,WriteTimeAverage,GenerateFileSkeleton,WriteAttribute,WriteArray
 USE MOD_Output,             ONLY: InitOutput
 USE MOD_Output_Vars          
-USE MOD_DMD_Vars,           ONLY: Phi,N_State,nElems_State,nModes,freq,alpha,lambda,sigmaSort
+USE MOD_DMD_Vars,           ONLY: Phi,N_State,nElems_State,nModes,freq,alpha,lambda,sigmaSort,Time_State,VarNameDMD
+USE MOD_DMD_Vars,           ONLY: dt,TimeEnd_State
 USE MOD_Mesh_Vars,          ONLY: offsetElem,nElems,MeshFile
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-CHARACTER(LEN=255)   :: VarName
-INTEGER              :: nVal(4),i,j
+CHARACTER(LEN=255)   :: DataSetName
+INTEGER              :: nVal(4),i,j,k
 CHARACTER(LEN=255)   :: FileName,iMode,varFreq
-REAL                 :: PhiGlobal(1,0:N_State,0:N_State,0:N_State,nElems_State),Time_State
+REAL                 :: PhiGlobal(1,0:N_State,0:N_State,0:N_State,nElems_State)
 INTEGER              :: Fileunit_DMD
 CHARACTER(LEN=255)   :: FileName_DMD
 LOGICAL              :: connected
 !===================================================================================================================================
-Time_State=0.0
-!===================================================================================================================================
 SWRITE(UNIT_stdOut,'(a,a,a)',ADVANCE='NO')' WRITE DMD MODES TO HDF5 FILE "',TRIM(ProjectName),'" ...'
 
-PhiGlobal(1,:,:,:,:) = RESHAPE( Phi(:,1), (/N_State+1,N_State+1,N_State+1,nElems_State/))
 
-FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_DMD',Time_State))//'.h5'
+FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_DMD_'//TRIM(VarNameDMD),Time_State))//'.h5'
 
 CALL GenerateFileSkeleton(TRIM(FileName),'DMD',1 ,N_State,(/'DUMMY_DO_NOT_VISUALIZE'/),&
      MeshFile,Time_State,Time_State,create=.TRUE.) ! dummy DG_Solution to fix Posti error !!!
 
 CALL OpenDataFile(TRIM(FileName),create=.FALSE.,single=.FALSE.,readOnly=.FALSE.)
-CALL WriteAttribute(File_ID,'DMD Time',1,RealScalar=Time_State)
+CALL WriteAttribute(File_ID,'DMD Start Time',1,RealScalar=Time_State)
+CALL WriteAttribute(File_ID,'DMD END Time',1,RealScalar=TimeEnd_State)
+CALL WriteAttribute(File_ID,'DMD dt',1,RealScalar=dt)
 CALL CloseDataFile()
   
 !================= Actual data output =======================!
 ! Write DMD
 CALL OpenDataFile(FileName,create=.FALSE.,single=.FALSE.,readOnly=.FALSE.)
+k = 0
 DO i = 1, nModes
-  WRITE(iMode,'(I0.3)')i
+  k=k+1
+  IF (freq(i) .LT. 0.) THEN
+    k=k-1
+    CYCLE
+  END IF
+
+  
+  PhiGlobal(1,:,:,:,:) = real(RESHAPE( Phi(:,i), (/N_State+1,N_State+1,N_State+1,nElems_State/)))
+  WRITE(iMode,'(I0.3)')k
   WRITE(varFreq,'(F8.4)')freq(i)
   ! Replace spaces with 0's
   DO j=1,LEN(TRIM(varFreq))
     IF(varFreq(j:j).EQ.' ') varFreq(j:j)='0'
   END DO
-  VarName = 'Mode_'//TRIM(iMode)//'_Real_'//TRIM(varFreq)
-  CALL WriteArray(        DataSetName=VarName, rank=5,&
+  DataSetName = 'Mode_'//TRIM(iMode)//'_Real_'//TRIM(varFreq)
+  CALL WriteArray(        DataSetName=DataSetName, rank=5,&
                           nValGlobal=(/1,N_State+1,N_State+1,N_State+1,nElems_State/),&
                           nVal=      (/1,N_State+1,N_State+1,N_State+1,nElems_State/),&
                           offset=    (/0,      0,     0,     0,     offsetElem/),&
                           collective=.TRUE.,RealArray=PhiGlobal(1:1,:,:,:,:))
   
-  VarName = 'Mode_'//TRIM(iMode)//'_Img_'//TRIM(varFreq)
-  CALL WriteArray(        DataSetName=VarName, rank=5,&
+  PhiGlobal(1,:,:,:,:) = aimag(RESHAPE( Phi(:,i), (/N_State+1,N_State+1,N_State+1,nElems_State/)))
+  DataSetName = 'Mode_'//TRIM(iMode)//'_Img_'//TRIM(varFreq)
+  CALL WriteArray(        DataSetName=DataSetName, rank=5,&
                           nValGlobal=(/1,N_State+1,N_State+1,N_State+1,nElems_State/),&
                           nVal=      (/1,N_State+1,N_State+1,N_State+1,nElems_State/),&
                           offset=    (/0,      0,     0,     0,     offsetElem/),&

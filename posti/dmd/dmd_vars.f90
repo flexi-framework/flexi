@@ -32,6 +32,8 @@ INTEGER             :: nElems_State              !< Number of elements in state 
 INTEGER             :: nDoFs                     !< Number of degrees of freedom of input state file
 CHARACTER(LEN=255)  :: NodeType_State            !< NodeType of the input state (Gauss/Gauss-Lobatto)
 CHARACTER(LEN=255)  :: MeshFile_State            !< Mesh file name of input states
+REAL                :: Time_State
+REAL                :: TimeEnd_State
 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! DMD User Input Vars
