@@ -27,6 +27,7 @@ SAVE
 INTEGER             :: nFiles                    !< Number of input files to perform dmd on
 INTEGER             :: nVar_State                !< Number of variables in DG_Solution array
 CHARACTER(LEN=255),ALLOCATABLE  :: VarNames_State(:)           !< List of varnames in state
+CHARACTER(LEN=255),ALLOCATABLE  :: VarNames_TimeAvg(:) !< List of varnames in TimeAvg-File 
 INTEGER             :: N_State                   !< Polynomial degree of input state
 INTEGER             :: nElems_State              !< Number of elements in state mesh
 INTEGER             :: nDoFs                     !< Number of degrees of freedom of input state file
@@ -41,6 +42,8 @@ REAL                :: TimeEnd_State
 CHARACTER(LEN=255)  :: VarNameDMD                !< Name of Variable to visualize
 REAL                :: SvdThreshold              !< Defines relative lower bound of singular values
 INTEGER             :: nModes                    !< Number of Modes to be visualized
+LOGICAL             :: useBaseFlow               !< Using Basflow or not 
+CHARACTER(LEN=255)  :: BaseFlow                  !< Name of the Baseflow-File
 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! DMD Vars
