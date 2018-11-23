@@ -41,6 +41,9 @@ REAL                :: TimeEnd_State
 CHARACTER(LEN=255)  :: VarNameDMD                !< Name of Variable to visualize
 REAL                :: SvdThreshold              !< Defines relative lower bound of singular values
 INTEGER             :: nModes                    !< Number of Modes to be visualized
+LOGICAL             :: sortFreq                  !< Decide if modes are sorted by frequency or amplitude
+LOGICAL             :: PlotSingleMode            !< Decide if a single mode is plotted
+REAL                :: ModeFreq                  !< Specify the mode frequency.
 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! DMD Vars
