@@ -66,6 +66,9 @@ CALL prms%CreateIntOption(    "nModes"             , "Number of Modes to visuali
 CALL prms%CreateLogicalOption("sortFreq"           , "Sort modes by Frequency.")
 CALL prms%CreateLogicalOption("PlotSingleMode"     , "Decide if a single mode is plotted.")
 CALL prms%CreateRealOption(   "ModeFreq"           , "Specify the mode frequency.")
+CALL prms%CreateLogicalOption("UseBaseflow"        , "Subtract the Baseflow-File from every single Snapshot",'.FALSE.')
+CALL prms%CreateStringOption( "Baseflow"           , "Name of the Baseflow-File")
+
 
 END SUBROUTINE DefineParametersDMD 
 
@@ -79,11 +82,12 @@ USE MOD_Commandline_Arguments
 USE MOD_Readintools             ,ONLY: prms,GETINT,GETREAL,GETLOGICAL,GETSTR,GETREALARRAY,CountOption
 USE MOD_StringTools,             ONLY: STRICMP,GetFileExtension,INTTOSTR
 USE MOD_DMD_Vars,                ONLY: K,nFiles,nVar_State,N_State,nElems_State,NodeType_State,nDoFs,MeshFile_state
+<<<<<<< HEAD
 USE MOD_DMD_Vars,                ONLY: dt,nModes,SvdThreshold,VarNameDMD,VarNames_State,Time_State,TimeEnd_State,sortFreq
-USE MOD_DMD_Vars,                ONLY: ModeFreq,PlotSingleMode
-USE MOD_IO_HDF5,                 ONLY: File_ID
+USE MOD_DMD_Vars,                ONLY: ModeFreq,PlotSingleMode,useBaseflow,Baseflow,VarNames_TimeAvg
+USE MOD_IO_HDF5,                 ONLY: File_ID,HSize
 USE MOD_Output_Vars,             ONLY: ProjectName,NOut
-USE MOD_HDF5_Input,              ONLY: OpenDataFile,CloseDataFile,GetDataProps,ReadAttribute,ReadArray
+USE MOD_HDF5_Input,              ONLY: OpenDataFile,CloseDataFile,GetDataProps,ReadAttribute,ReadArray,GetDataSize
 USE MOD_Mesh_Vars,               ONLY: nElems,OffsetElem,nGlobalElems,MeshFile
 USE MOD_EquationDMD,             ONLY: InitEquationDMD,CalcEquationDMD
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -91,21 +95,24 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                          :: iFile,iVar,offset
+INTEGER                          :: iFile,iVar,offset,nDim,i
 REAL,ALLOCATABLE                 :: Utmp(:,:,:,:,:)
 REAL                             :: time
+DOUBLE PRECISION,ALLOCATABLE     :: Ktmp(:)
+CHARACTER(LEN=255)               :: VarName,FileType
 !===================================================================================================================================
 IF(nArgs.LT.3) CALL CollectiveStop(__STAMP__,'At least two files required for dmd!')
 nFiles=nArgs-1
 
+<<<<<<< HEAD
 VarNameDMD   = GETSTR ('VarNameDMD'  ,'Density')
 SvdThreshold = GETREAL('SvdThreshold','0.0')
 nModes       = GETINT ('nModes'      ,'9999')
 sortFreq     = GETLOGICAL ('sortFreq','False')
 PlotSingleMode = GETLOGICAL ('PlotSingleMode','False')
-IF (PlotSingleMode) THEN
-  ModeFreq = GETREAL('ModeFreq','0.0')
-END IF ! PlotSingleMode
+IF (PlotSingleMode) ModeFreq = GETREAL('ModeFreq','0.0')
+useBaseflow  = GETLOGICAL('UseBaseflow','.FALSE.')
+IF (useBaseflow) Baseflow    = GETSTR    ('Baseflow','none')
 
 IF (nModes .GT. (nFiles-1)) THEN
   nModes = nFiles - 1  
@@ -159,9 +166,59 @@ DO iFile = 2, nFiles+1
   END IF ! iFile .GT. 2
 
   CALL CalcEquationDMD(Utmp,K(:,iFile-1))
+
 END DO ! iFile = 1,nFiles 
 TimeEnd_State = time
+
+IF (useBaseflow) THEN
+  CALL OpenDataFile(Baseflow,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+  CALL ReadAttribute(File_ID,'File_Type',1,StrScalar =FileType)
+  SELECT CASE(TRIM(FileType))
+  CASE('State')
+    ALLOCATE(Ktmp(nDoFs))
+    CALL ReadAttribute(File_ID,'Time',    1,RealScalar=time)
+    CALL ReadArray('DG_Solution',5,&
+                  (/nVar_State,N_State+1,N_State+1,N_State+1,nElems_State/),0,5,RealArray=Utmp)
+    
+    CALL CloseDataFile()
+    
+    CALL CalcEquationDMD(Utmp,Ktmp(:))
+    DO iFile = 2,nFiles+1
+      K(:,iFile-1) = K(:,iFile-1) - Ktmp
+    END DO
+    
+    DEALLOCATE(ktmp)
+  CASE('TimeAvg')
+    CALL GetDataSize(File_ID,'Mean',nDim,HSize)
+    ALLOCATE(VarNames_TimeAvg(INT(HSize(1))))
+    CALL ReadAttribute(File_ID,'VarNames_Mean',INT(HSize(1)),StrArray=VarNames_TimeAvg)
+    DO i=1,INT(HSize(1))
+      IF (TRIM(VarNameDMD) .EQ. TRIM(VarNames_TimeAvg(i))) THEN
+        ALLOCATE(Ktmp(nDoFs))
+        DEALLOCATE(Utmp)
+        ALLOCATE(Utmp (HSize(1),0:N_State,0:N_State,0:N_State,nElems_State))
+    
+        CALL ReadArray('Mean',5,&
+                      (/INT(HSize(1)),N_State+1,N_State+1,N_State+1,nElems_State/),0,5,RealArray=Utmp)
+        CALL CloseDataFile()
+        ktmp(:) = RESHAPE(Utmp(i,:,:,:,:), (/nDoFs/))
+    
+        DO iFile = 2,nFiles+1
+          K(:,iFile-1) = K(:,iFile-1) - Ktmp
+        END DO
+    
+        DEALLOCATE(ktmp)
+        EXIT
+      ELSE IF (i .EQ. INT(HSize(1))) THEN
+        CALL abort(__STAMP__,'VarNameDMD not found in provided Baseflow-File (TimeAvg-File)')
+      END IF
+    END DO 
+  END SELECT
+
+END IF
+
 DEALLOCATE(Utmp)
+
 END SUBROUTINE InitDMD 
 
 SUBROUTINE performDMD() 
