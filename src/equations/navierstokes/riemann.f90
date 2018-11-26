@@ -619,7 +619,9 @@ END SUBROUTINE Riemann_Roe
 
 
 !=================================================================================================================================
-!> Roe's approximate Riemann solver using the Hartman and Hymen II entropy fix
+!> Roe's approximate Riemann solver using the Harten and Hymen II entropy fix, see
+!> Pelanti, Marica & Quartapelle, Luigi & Vigevano, L & Vigevano, Luigi. (2018):
+!>  A review of entropy fixes as applied to Roe's linearization. 
 !=================================================================================================================================
 SUBROUTINE Riemann_RoeEntropyFix(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
