@@ -82,7 +82,6 @@ USE MOD_Commandline_Arguments
 USE MOD_Readintools             ,ONLY: prms,GETINT,GETREAL,GETLOGICAL,GETSTR,GETREALARRAY,CountOption
 USE MOD_StringTools,             ONLY: STRICMP,GetFileExtension,INTTOSTR
 USE MOD_DMD_Vars,                ONLY: K,nFiles,nVar_State,N_State,nElems_State,NodeType_State,nDoFs,MeshFile_state
-<<<<<<< HEAD
 USE MOD_DMD_Vars,                ONLY: dt,nModes,SvdThreshold,VarNameDMD,VarNames_State,Time_State,TimeEnd_State,sortFreq
 USE MOD_DMD_Vars,                ONLY: ModeFreq,PlotSingleMode,useBaseflow,Baseflow,VarNames_TimeAvg
 USE MOD_IO_HDF5,                 ONLY: File_ID,HSize
@@ -90,6 +89,7 @@ USE MOD_Output_Vars,             ONLY: ProjectName,NOut
 USE MOD_HDF5_Input,              ONLY: OpenDataFile,CloseDataFile,GetDataProps,ReadAttribute,ReadArray,GetDataSize
 USE MOD_Mesh_Vars,               ONLY: nElems,OffsetElem,nGlobalElems,MeshFile
 USE MOD_EquationDMD,             ONLY: InitEquationDMD,CalcEquationDMD
+USE MOD_Interpolation_Vars ,     ONLY: NodeType
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
@@ -104,7 +104,6 @@ CHARACTER(LEN=255)               :: VarName,FileType
 IF(nArgs.LT.3) CALL CollectiveStop(__STAMP__,'At least two files required for dmd!')
 nFiles=nArgs-1
 
-<<<<<<< HEAD
 VarNameDMD   = GETSTR ('VarNameDMD'  ,'Density')
 SvdThreshold = GETREAL('SvdThreshold','0.0')
 nModes       = GETINT ('nModes'      ,'9999')
@@ -124,6 +123,9 @@ CALL ReadAttribute(File_ID,'MeshFile',    1,StrScalar=MeshFile_state)
 CALL ReadAttribute(File_ID,'Project_Name',1,StrScalar=ProjectName)
 CALL ReadAttribute(File_ID,'Time',    1,RealScalar=starttime)
 CALL GetDataProps(nVar_State,N_State,nElems_State,NodeType_State)
+IF ( NodeType .NE. NodeType_State  ) THEN
+  CALL CollectiveStop(__STAMP__,'Node Type of given state File is not applicable to compiled version')
+END IF
 ALLOCATE(VarNames_State(nVar_State))
 CALL ReadAttribute(File_ID,'VarNames',nVar_State,StrArray=VarNames_State)
 CALL CloseDataFile()
@@ -227,7 +229,7 @@ SUBROUTINE performDMD()
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! MODULES                                                                                                                          !
 USE MOD_Globals
-USE MOD_DMD_Vars,                ONLY: K,nDoFs,nFiles,Phi,lambda,freq,dt,alpha,sigmaSort,sortFreq
+USE MOD_DMD_Vars,                ONLY: K,nDoFs,nFiles,Phi,lambda,freq,dt,alpha,sigmaSort,sortFreq,SvdThreshold,nModes
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! insert modules here
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -240,10 +242,11 @@ EXTERNAL         DGESDD
 EXTERNAL         ZGEEV
 EXTERNAL         ZGESV
 ! LOCAL VARIABLES
-INTEGER                          :: i,j,M,N,LDA,LDU,LDVT,LWMAX,INFO,LWORK
-INTEGER,ALLOCATABLE              :: IWORK(:),IPIV(:)
+INTEGER                          :: i,j,M,N,LDA,LDU,LDVT,LWMAX,INFO,LWORK,nFilter
+INTEGER,ALLOCATABLE              :: IWORK(:),IPIV(:),filter(:)
 DOUBLE PRECISION,ALLOCATABLE     :: WORK(:)
 DOUBLE PRECISION,ALLOCATABLE     :: SigmaInv(:,:),SigmaMat(:,:),USVD(:,:),WSVD(:,:),SigmaSVD(:)
+DOUBLE PRECISION,ALLOCATABLE     :: USVDTmp(:,:),WSVDTmp(:,:),SigmaSVDTmp(:)
 COMPLEX,ALLOCATABLE              :: WORKC(:)
 REAL,ALLOCATABLE                 :: RWORK(:),SortVar(:,:)
 DOUBLE PRECISION,ALLOCATABLE     :: KTmp(:,:),RGlobMat(:,:),Rglob,Rsnap1,Rsnap2
@@ -274,6 +277,44 @@ CALL DGESDD( 'S', M, N, KTmp, LDA, SigmaSVD, USVD, LDU, WSVD, LDVT,WORK, LWORK, 
 DEALLOCATE(WORK)
 DEALLOCATE(KTmp)
 DEALLOCATE(IWORK)
+IF( SvdThreshold .GT. 0.) THEN
+  nFilter = 0
+  ALLOCATE(filter(N))
+  SvdThreshold=MAXVAL(SigmaSVD(2:N))*SvdThreshold
+  DO i = 1, N
+    IF (SigmaSVD(i) .GT. SvdThreshold) THEN
+      nFilter = nFilter+1
+      filter(nFilter) = i
+    END IF
+  END DO ! i = 1, N
+
+  ALLOCATE(WSVDTmp(nFilter,nFiles-1))
+  ALLOCATE(USVDTmp(M,nFilter))
+  ALLOCATE(SigmaSVDTmp(min(nFilter,M)))
+  DO i = 1, nFilter
+    USVDTmp(:,i)=USVD(:,filter(i))
+    WSVDTmp(i,:)=WSVD(filter(i),:)
+    SigmaSVDTmp(i)=SigmaSVD(filter(i))
+  END DO ! i = 1, nFilter
+  DEALLOCATE(USVD)
+  DEALLOCATE(WSVD)
+  DEALLOCATE(SigmaSVD)
+  ALLOCATE(WSVD(nFilter,N))
+  
+  N=nFilter
+  ALLOCATE(USVD(M,N))
+  ALLOCATE(SigmaSVD(min(N,M)))
+  USVD    = USVDTmp
+  WSVD    = WSVDTmp
+  SigmaSVD= SigmaSVDTmp
+  DEALLOCATE(USVDTmp)
+  DEALLOCATE(WSVDTmp)
+  DEALLOCATE(SigmaSVDTmp)
+  DEALLOCATE(filter)
+  IF (nModes .GT. nFilter) THEN
+    nModes = nFilter  
+  END IF 
+END IF
 
 ALLOCATE(SigmaInv(N,N))
 ALLOCATE(SigmaMat(N,N))
@@ -286,7 +327,7 @@ DO i = 1, N
   SigmaMat(i,i)=SigmaSVD(i)
 END DO 
 
-STilde=dcmplx(MATMUL(MATMUL(MATMUL(TRANSPOSE(USVD),K(:,2:N+1)),TRANSPOSE(WSVD)),SigmaInv))
+STilde=dcmplx(MATMUL(MATMUL(MATMUL(TRANSPOSE(USVD),K(:,2:nFiles)),TRANSPOSE(WSVD)),SigmaInv))
 DEALLOCATE(SigmaInv)
 
 LWMAX = 3*MIN(M,N)*MIN(M,N) + MAX(MAX(M,N),4*MIN(M,N)*MIN(M,N)+4*MIN(M,N))
@@ -307,12 +348,12 @@ DEALLOCATE(WORKC)
 DEALLOCATE(RWORK)
 
 
-ALLOCATE(Vand(N,N))
+ALLOCATE(Vand(N,nFiles-1))
 ALLOCATE(P(N,N))
 ALLOCATE(qTmp(N,N))
 ALLOCATE(alpha(N))
 Vand = 0
-DO i = 1, N
+DO i = 1, nFiles-1
   Vand(:,i)=eigSTilde(:)**(i-1)
 END DO ! i = 1, N
 P = MATMUL(CONJG(TRANSPOSE(VR)),VR) * CONJG(MATMUL(VAND,CONJG(TRANSPOSE(VAND))))
@@ -325,7 +366,6 @@ END DO ! i = 1, N
 
 !Compute alpha=P/alpha
 ALLOCATE(IPIV(N))
-print*,"Eigenvalue3"
 CALL ZGESV(N,1,P,N,IPIV,alpha,N,INFO)
 DEALLOCATE(IPIV)
 DEALLOCATE(Vand)
@@ -369,20 +409,18 @@ lambda = log(sigmaSort)/dt
 freq   = aimag(lambda)/(2*PI)
 
 
-ALLOCATE(RGlobMat(M,N))
-RglobMat = K(:,2:N+1)-MATMUL(MATMUL(MATMUL(USVD,STilde),SigmaMat),WSVD)
+ALLOCATE(RGlobMat(M,nFiles-1))
+RglobMat = K(:,2:nFiles)-MATMUL(MATMUL(MATMUL(USVD,STilde),SigmaMat),WSVD)
 LDA  = M
 LDU  = M 
-LDVT=N
+LDVT = N
 LWMAX = nDoFs*5
 ALLOCATE(WORK(LWMAX))
 ALLOCATE(IWORK(8*N))
 LWORK = -1
 !Calculate norm2 of matrix, simalar to matlab matrix norm
-print*,"SVD3"
 CALL DGESDD( 'S', M, N, RglobMat, LDA, SigmaSVD, USVD, LDU, WSVD, LDVT,WORK, LWORK, IWORK, INFO )
 LWORK = MIN( LWMAX, INT( WORK( 1 ) ) )
-print*,"SVD4"
 CALL DGESDD( 'S', M, N, RglobMat, LDA, SigmaSVD, USVD, LDU, WSVD, LDVT,WORK, LWORK, IWORK,INFO )
 DEALLOCATE(WORK)
 DEALLOCATE(IWORK)
@@ -391,12 +429,12 @@ DEALLOCATE(RGlobMat)
 Rglob = MAXVAL(SigmaSVD)
 
 Rsnap1=norm2(K(:,1)-REAL(MATMUL(Phi,alpha)))/norm2(K(:,1))
-Rsnap2=norm2(K(:,N+1)-REAL(MATMUL(Phi,(alpha*sigmaSort**(N)))))/norm2(K(:,N+1))
+Rsnap2=norm2(K(:,nFiles)-REAL(MATMUL(Phi,(alpha*sigmaSort**(N)))))/norm2(K(:,nFiles))
 
 WRITE(UNIT_stdOut,'(132("="))')
 WRITE(UNIT_stdOut,'(A,F12.6)') 'Global Residual Norm:    ',RGlob
 WRITE(UNIT_stdOut,'(A,F12.6)') 'Projection error K(1):   ',Rsnap1
-WRITE(UNIT_stdOut,'(A,F12.6)') 'Projection error K(N+1): ',Rsnap2
+WRITE(UNIT_stdOut,'(A,F12.6)') 'Projection error K(nFiles): ',Rsnap2
 WRITE(UNIT_stdOut,'(132("="))')
 
 

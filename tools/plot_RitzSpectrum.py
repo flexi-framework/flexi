@@ -29,9 +29,14 @@ lambdaDMD = [[float(i[2]) for i in values],[float(i[3]) for i in values]]
 sigmaDMD  = [[float(i[4]) for i in values],[float(i[5]) for i in values]]
 
 amplog = [np.log10(np.sqrt(alphaDMD[0][i]*alphaDMD[0][i]+alphaDMD[1][i]*alphaDMD[1][i])) for i in range(len(alphaDMD[0]))]
+maxA=max(amplog[2:])
+minA=maxA-3               
+for i in range(len(amplog)):
+    amplog[i]=max(0.,min(1.,(amplog[i]-minA)/(maxA-minA)))
 
 
-fig1 = plt.figure(figsize=(32,16))
+
+# fig1 = plt.figure(figsize=(32,16))
 
 # -------------------------------------------------------------------------------------
 # Plot Eigenvalues
@@ -63,24 +68,63 @@ for i in range(len(lambdaDMD[1])):
         amplogPositiv.append(amplog[i])
 
 plt.scatter([i/(2*np.pi) for i in lambdaDMDimag], lambdaDMDreal, s=[40.*(i+.4) for i in amplogPositiv] , c=[40.*(i+.4) for i in amplogPositiv], marker='o')
-labels = ['Mode{0}'.format(i+1) for i in range(len(lambdaDMDreal))]
+labels = ['Mode%d\n f=%.2f'%(i+1,lambdaDMDimag[i]/(2*np.pi)) for i in range(len(lambdaDMDreal))]
 plt.axhline(y=0.0, color='k', linestyle='--')
+# j=0
 for label, x, y in zip(labels, [i/(2*np.pi) for i in lambdaDMDimag], lambdaDMDreal):
+    # j+=1
+    # i=(j)%2
     plt.annotate(
         label,
-        xy=(x, y), xytext=(-20, 20),
-        textcoords='offset points', ha='right', va='bottom',
-        bbox=dict(boxstyle='round,pad=0.5', fc='yellow', alpha=0.5),
+        xy=(x, y), xytext=(0, -20),
+        textcoords='offset points', ha='center', va='top',
+        bbox=dict(boxstyle='round,pad=0.5', fc='yellow', alpha=0.1),
         arrowprops=dict(arrowstyle = '->', connectionstyle='arc3,rad=0'))
 
 plt.xlabel('$\omega_i/2\pi$',fontsize=18)
 plt.ylabel('$\omega_r$',fontsize=18)
-plt.xlim(1000,6000)
-plt.ylim(-600,100)
+# plt.xlim(0,6000)
+# plt.ylim(-600,100)
 plt.grid()
-plt.show()
+# plt.show()
+
+def computeNRoomFreqs(n,c,geo):
+    freq=[]
+    for i in range(n):
+        for j in range(0,2*n,2):
+            for k in range(n):
+                freqtmp=c/2.*np.sqrt((i/geo.x)**2.+((j+1)/(2*geo.y))**2.+(k/geo.z)**2.)
+                freq.append([freqtmp,i,j+1,k])
+    
+    freq=sorted(freq, key=lambda x : x[0])
+    
+    return freq
+
+# # def computeNRossiterModes(n,c,geo):
+
+    # # return freq
 
 
+# # def computeHelmholtzFreq(c,geo,neck):
+
+    # # return freq
+
+
+
+class room(object):
+  def __init__(self,x,y,z):
+      self.x = x
+      self.y = y
+      self.z = z
+
+cavityGeo = room(0.025,0.05,0.03)
+
+c=343.
+
+freq = computeNRoomFreqs(4,c,cavityGeo)
+
+for i in freq:
+    plt.axvline(x=i[0], color='k', linestyle='--',label='Mode:'+str(i[1])+str(i[2])+str(i[3]))
 
 
 # # plt.xticks(fontsize=14)
@@ -91,4 +135,4 @@ plt.show()
 # plt.title('Cavity Sound Spectrum s',fontsize = 20)
 # plt.legend()
 # plt.grid()
-# plt.show()
+plt.show()
