@@ -78,7 +78,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 !==================================================================================================================================
 CALL prms%SetSection("SplitDG")
-CALL prms%CreateIntFromStringOption('SplitDG',"SplitDG formulation to be used: SD, MO, DU, KG, PI")
+CALL prms%CreateIntFromStringOption('SplitDG',"SplitDG formulation to be used: SD, MO, DU, KG, PI","PI")
 CALL addStrListEntry('SplitDG','sd',           PRM_SPLITDG_SD)
 CALL addStrListEntry('SplitDG','mo',           PRM_SPLITDG_MO)
 CALL addStrListEntry('SplitDG','du',           PRM_SPLITDG_DU)
