@@ -9,7 +9,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Commandline_Arguments
 USE MOD_StringTools                 ,ONLY:STRICMP, GetFileExtension
-USE MOD_ReadInTools                 ,ONLY:prms
+USE MOD_ReadInTools                 ,ONLY:prms,PrintDefaultParameterFile
 USE MOD_ParametersVisu              ,ONLY:equiTimeSpacing,doSpec,doFluctuations,doTurb,doFilter
 #ifdef WITHBLPROPS
 USE MOD_ParametersVisu              ,ONLY:Plane_doBLProps
@@ -50,7 +50,7 @@ IF(success)THEN
   ParameterFile = Args(1)
   IF (.NOT.STRICMP(GetFileExtension(ParameterFile), "ini")) success=.FALSE.
 END IF
-IF(.NOT.success)THEN
+IF(.NOT.success.AND.doPrintHelp.LE.0)THEN
   ! Print out error message containing valid syntax
   CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: postrec parameter.ini RPdatafiles.h5')
 END IF
@@ -60,6 +60,11 @@ CALL DefineParametersMPI()
 CALL DefineParametersIO_HDF5()
 CALL DefineParametersEOS()
 
+! check for command line argument --help or --markdown
+IF (doPrintHelp.GT.0) THEN
+  CALL PrintDefaultParameterFile(doPrintHelp.EQ.2, Args(1))
+  STOP
+END IF
 CALL prms%read_options(ParameterFile)
 
 CALL InitParameters()
