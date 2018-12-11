@@ -94,6 +94,7 @@ USE MOD_ParametersVisu     ,ONLY: OutputFormat,thirdOct,ProjectName
 USE MOD_Tecplot   
 USE MOD_OutputRPVisu_Vars  ,ONLY: RPDataTimeAvg_out
 #endif
+USE MOD_OutputRPVisu_VTK   ,ONLY: WriteDataToVTK
 USE MOD_OutputRPVisu_Vars  ,ONLY: nSamples_out,RPData_out,CoordNames 
 USE MOD_OutputRPVisu_HDF5
 USE MOD_spec_Vars          ,ONLY: nSamples_spec,RPData_freq,RPData_spec
@@ -118,17 +119,15 @@ WRITE(UNIT_StdOut,'(132("-"))')
   FileName=TRIM(FileName)//'_RP'
   IF(doFluctuations) FileName=TRIM(FileName)//'_Fluc'
   SELECT CASE(OutputFormat)
-#ifdef WITHTECPLOT
-    CASE(0) ! Tecplot Binary Output, in one file, mesh+solution
+    CASE(0) ! Paraview VTK output
       strOutputFile=TRIM(FileName)//'.plt'
       WRITE(UNIT_stdOut,'(A,A)')' WRITING TIME SIGNAL TO ',strOutputFile
       IF(nSamples_out.GT.1) THEN
-        CALL WriteDataToTecplotBinary(nSamples_out,nRP_global,nVarVisu,VarNameVisu,RPTime,RPData_out,strOutputFile)
+        CALL WriteDataToVTK(nSamples_out,nRP_global,nVarVisu,VarNameVisu,RPTime,RPData_out,strOutputFile)
       ELSE 
         ! use time avg routine if only one sample is present.
-        CALL WriteTimeAvgDataToTecplotBinary(nRP_global,nVarVisu,VarNameVisu,RPData_out(:,:,1),strOutputFile)
+        !CALL WriteTimeAvgDataToTecplotBinary(nRP_global,nVarVisu,VarNameVisu,RPData_out(:,:,1),strOutputFile)
       END IF
-#endif
 !    CASE(1) ! Tecplot ASCII Output
 !      strOutputFile=TRIM(strOutputFile)//'.dat'
 !      CALL WriteDataToTecplot(nSamples_out,nVarVisu,VarNameVisu,RPData_out,strOutputFile)
