@@ -45,19 +45,21 @@ CONTAINS
 !===================================================================================================================================
 !> Subroutine to write 2D or 3D point data to VTK format
 !===================================================================================================================================
-SUBROUTINE WriteStructuredDataToVTK(ProjectName,nLines,nPlanes,RPPoints,RPLines,RPPlanes,withData)
+SUBROUTINE WriteStructuredDataToVTK(ProjectName,nLines,nPlanes,RPPoints,RPLines,RPPlanes,withData,nVal,VarNames)
 ! MODULES
 USE MOD_Globals
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=*),INTENT(IN)   :: Projectname  !< Output file name
-INTEGER,INTENT(IN)            :: nLines
-INTEGER,INTENT(IN)            :: nPlanes
-TYPE(RPPoint),INTENT(IN)      :: RPPoints
-TYPE(RPLine),INTENT(IN)       :: RPLines(nLines)
-TYPE(RPPlane),INTENT(IN)      :: RPPlanes(nPlanes)
-LOGICAL,INTENT(IN)            :: withData
+CHARACTER(LEN=*),INTENT(IN)          :: Projectname       !< Output file name
+INTEGER,INTENT(IN)                   :: nLines            !< Number of lines to visualize 
+INTEGER,INTENT(IN)                   :: nPlanes           !< Number of planes to visualize
+TYPE(RPPoint),INTENT(IN)             :: RPPoints          !< Type containing data on points
+TYPE(RPLine),INTENT(IN)              :: RPLines(nLines)   !< Type containing data on lines
+TYPE(RPPlane),INTENT(IN)             :: RPPlanes(nPlanes) !< Type containing data on planes
+LOGICAL,INTENT(IN)                   :: withData          !< If set to false, only the coordinates will be visualized
+INTEGER,INTENT(IN)                   :: nVal              !< Number of variables to visualize
+CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: VarNames(nVal)    !< Names of variables to visualize
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                     :: ivtk=44
@@ -68,11 +70,12 @@ CHARACTER(LEN=200)          :: Buffer
 CHARACTER(LEN=200)          :: Buffer2
 CHARACTER(LEN=255)          :: ZoneTitle
 CHARACTER(LEN=255)          :: FileName
-CHARACTER(LEN=255)          :: GroupName
 CHARACTER(LEN=1)            :: lf
-INTEGER                     :: iVar,i,j,iPlane,iLine,nSets,iSet,nPoints
+INTEGER                     :: iVar,iPlane,iLine,nSets,iSet,nPoints
 CHARACTER(LEN=255),ALLOCATABLE :: ZoneNames(:),FileNamesVTS(:)
 !===================================================================================================================================
+! Check if variable names and size has been supplied if data should be written
+IF ((withData).AND.(.NOT.PRESENT(VarNames))) STOP 'Variables have not been specified in the VTK output routine!'
 
 WRITE(UNIT_stdOut,'(A,I1,A)')" WRITE Structured data to VTK ... "
 
@@ -118,12 +121,20 @@ IF(nPoints.GT.0) THEN
   ! Specify point data
   Buffer='      <PointData>'//lf;WRITE(ivtk) TRIM(Buffer)
   Offset=0
-  WRITE(StrOffset,'(I16)')Offset
+  IF (withData) THEN
+    DO iVar = 1,nVal
+      WRITE(StrOffset,'(I16)')Offset
+      Buffer='        <DataArray type="Float32" Name="'//TRIM(VarNames(iVar))//'" NumberOfComponents="1" format="appended" '// &
+                       'offset="'//TRIM(ADJUSTL(StrOffset))//'"/>'//lf;WRITE(ivtk) TRIM(Buffer)
+      Offset = Offset +nPoints*SIZEOF_F(FLOATdummy)
+    END DO
+  END IF
   Buffer='      </PointData>'//lf;WRITE(ivtk) TRIM(Buffer)
   ! Specify cell data
   Buffer='      <CellData> </CellData>'//lf;WRITE(ivtk) TRIM(Buffer)
   ! Specify coordinate data
   Buffer='      <Points>'//lf;WRITE(ivtk) TRIM(Buffer)
+  WRITE(StrOffset,'(I16)')Offset
   Buffer='        <DataArray type="Float32" Name="Coordinates" NumberOfComponents="3" format="appended" '// &
                    'offset="'//TRIM(ADJUSTL(StrOffset))//'"/>'//lf;WRITE(ivtk) TRIM(Buffer)
   Buffer='      </Points>'//lf;WRITE(ivtk) TRIM(Buffer)
@@ -134,8 +145,9 @@ IF(nPoints.GT.0) THEN
   ! Write leading data underscore
   Buffer='_';WRITE(ivtk) TRIM(Buffer)
 
-  nBytes = nPoints*SIZEOF_F(FLOATdummy) * 3
+  nBytes = nPoints*SIZEOF_F(FLOATdummy) * (3+nVal)
   WRITE(ivtk) nBytes
+  IF (withData) WRITE(ivtk) REAL(RPPoints%Val(:,:),4)
   WRITE(ivtk) REAL(RPPoints%Coords(:,:),4)
 
   ! Footer
@@ -144,8 +156,6 @@ IF(nPoints.GT.0) THEN
   Buffer='</VTKFile>'//lf;WRITE(ivtk) TRIM(Buffer)
   CLOSE(ivtk)
 END IF
-
-
 
 ! Lines
 DO iLine=1,nLines
@@ -184,12 +194,20 @@ DO iLine=1,nLines
   ! Specify point data
   Buffer='      <PointData>'//lf;WRITE(ivtk) TRIM(Buffer)
   Offset=0
-  WRITE(StrOffset,'(I16)')Offset
+  IF (withData) THEN
+    DO iVar = 1,nVal
+      WRITE(StrOffset,'(I16)')Offset
+      Buffer='        <DataArray type="Float32" Name="'//TRIM(VarNames(iVar))//'" NumberOfComponents="1" format="appended" '// &
+                       'offset="'//TRIM(ADJUSTL(StrOffset))//'"/>'//lf;WRITE(ivtk) TRIM(Buffer)
+      Offset = Offset + RPLines(iLine)%nRPs*SIZEOF_F(FLOATdummy)
+    END DO
+  END IF
   Buffer='      </PointData>'//lf;WRITE(ivtk) TRIM(Buffer)
   ! Specify cell data
   Buffer='      <CellData> </CellData>'//lf;WRITE(ivtk) TRIM(Buffer)
   ! Specify coordinate data
   Buffer='      <Points>'//lf;WRITE(ivtk) TRIM(Buffer)
+  WRITE(StrOffset,'(I16)')Offset
   Buffer='        <DataArray type="Float32" Name="Coordinates" NumberOfComponents="3" format="appended" '// &
                    'offset="'//TRIM(ADJUSTL(StrOffset))//'"/>'//lf;WRITE(ivtk) TRIM(Buffer)
   Buffer='      </Points>'//lf;WRITE(ivtk) TRIM(Buffer)
@@ -202,6 +220,7 @@ DO iLine=1,nLines
 
   nBytes = RPLines(iLine)%nRPs*SIZEOF_F(FLOATdummy) * 3
   WRITE(ivtk) nBytes
+  IF (withData) WRITE(ivtk) REAL(RPLines(iLine)%Val(:,:),4)
   WRITE(ivtk) REAL(RPLines(iLine)%Coords(:,:),4)
 
   ! Footer
@@ -210,7 +229,6 @@ DO iLine=1,nLines
   Buffer='</VTKFile>'//lf;WRITE(ivtk) TRIM(Buffer)
   CLOSE(ivtk)
 END DO
-
 
 ! Planes
 DO iPlane=1, nPlanes
@@ -249,14 +267,23 @@ DO iPlane=1, nPlanes
   ! Specify point data
   Buffer='      <PointData>'//lf;WRITE(ivtk) TRIM(Buffer)
   Offset=0
-  WRITE(StrOffset,'(I16)')Offset
+  IF (withData) THEN
+    DO iVar = 1,nVal
+      WRITE(StrOffset,'(I16)')Offset
+      Buffer='        <DataArray type="Float32" Name="'//TRIM(VarNames(iVar))//'" NumberOfComponents="1" format="appended" '// &
+                       'offset="'//TRIM(ADJUSTL(StrOffset))//'"/>'//lf;WRITE(ivtk) TRIM(Buffer)
+      Offset = Offset + RPPlanes(iPlane)%nRPs(1)*RPPlanes(iPlane)%nRPs(2)*SIZEOF_F(FLOATdummy)
+    END DO
+  END IF
   Buffer='      </PointData>'//lf;WRITE(ivtk) TRIM(Buffer)
   ! Specify cell data
   Buffer='      <CellData> </CellData>'//lf;WRITE(ivtk) TRIM(Buffer)
   ! Specify coordinate data
   Buffer='      <Points>'//lf;WRITE(ivtk) TRIM(Buffer)
+  WRITE(StrOffset,'(I16)')Offset
   Buffer='        <DataArray type="Float32" Name="Coordinates" NumberOfComponents="3" format="appended" '// &
                    'offset="'//TRIM(ADJUSTL(StrOffset))//'"/>'//lf;WRITE(ivtk) TRIM(Buffer)
+  Offset = Offset + RPPlanes(iPlane)%nRPs(1)*RPPlanes(iPlane)%nRPs(2)*SIZEOF_F(FLOATdummy) * 3
   Buffer='      </Points>'//lf;WRITE(ivtk) TRIM(Buffer)
   Buffer='    </Piece>'//lf;WRITE(ivtk) TRIM(Buffer)
   Buffer='  </StructuredGrid>'//lf;WRITE(ivtk) TRIM(Buffer)
@@ -265,8 +292,9 @@ DO iPlane=1, nPlanes
   ! Write leading data underscore
   Buffer='_';WRITE(ivtk) TRIM(Buffer)
 
-  nBytes = RPPlanes(iPlane)%nRPs(1)*RPPlanes(iPlane)%nRPs(2)*SIZEOF_F(FLOATdummy) * 3
+  nBytes = RPPlanes(iPlane)%nRPs(1)*RPPlanes(iPlane)%nRPs(2)*SIZEOF_F(FLOATdummy) * (3+nVal)
   WRITE(ivtk) nBytes
+  IF (withData) WRITE(ivtk) REAL(RPPlanes(iPlane)%Val(:,:,:),4)
   WRITE(ivtk) REAL(RPPlanes(iPlane)%Coords(:,:,:),4)
 
   ! Footer

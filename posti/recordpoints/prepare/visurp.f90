@@ -79,7 +79,7 @@ IF(doVisuRP) THEN
       END DO ! j
     END DO !iVar  
   END DO
-  CALL WriteStructuredDataToVTK(ProjectName,nLines,nPlanes,RPPoints,RPLines,RPPlanes,withData=.FALSE.)
+  CALL WriteStructuredDataToVTK(ProjectName,nLines,nPlanes,RPPoints,RPLines,RPPlanes,.FALSE.,0)
   WRITE(UNIT_StdOut,'(132("-"))')
 END IF
 END SUBROUTINE VisuRP

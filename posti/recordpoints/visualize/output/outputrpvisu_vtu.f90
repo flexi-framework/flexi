@@ -32,7 +32,7 @@ CONTAINS
 !===================================================================================================================================
 !> Subroutine to write point data to VTK file 
 !===================================================================================================================================
-SUBROUTINE WriteDataToVTK(nSamples,nRP,nVal,VarNames,Time,Value,FileString)
+SUBROUTINE WriteDataToVTK(nSamples,nRP,nVal,VarNames,Time,Value)
 ! MODULES
 USE MOD_Globals
 USE MOD_ParametersVisu      ,ONLY:ProjectName
@@ -44,7 +44,6 @@ USE MOD_RPSetVisuVisu_Vars  ,ONLY:nPoints,Points_IDlist,Points_GroupIDlist
 USE MOD_RPSetVisuVisu_Vars  ,ONLY:nLines,Lines,tLine
 USE MOD_RPSetVisuVisu_Vars  ,ONLY:nPlanes,Planes,tPlane
 USE MOD_RPSetVisuVisu_Vars  ,ONLY:xF_RP
-USE MOD_OutputRPVisu_Vars   ,ONLY:nCoords,CoordNames
 USE MOD_VTKStructuredOutput
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -55,22 +54,16 @@ INTEGER,INTENT(IN)            :: nVal                          !< Number of noda
 CHARACTER(LEN=255),INTENT(IN) :: VarNames(nVal)                !< Names of all variables that will be written out
 REAL,INTENT(IN)               :: Value(1:nVal,nRP,nSamples)    !< Statevector 
 REAL,INTENT(IN)               :: Time(nSamples)                !< Time 
-CHARACTER(LEN=*),INTENT(IN)   :: FileString                    !< Output file name
 !-----------------------------------------------------------------------------------------------------------------------------------
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                   :: iVar,iSample
-INTEGER                   :: nCoords_loc
+INTEGER                   :: iSample
 INTEGER                   :: iPoint,iLine,iPlane,i,j
 INTEGER                   :: GroupID
-INTEGER                   :: size_offsetdim,offsetVar
 CHARACTER(LEN=255)        :: ZoneTitle
 CHARACTER(LEN=255)        :: GroupName
-CHARACTER(LEN=255)        :: CoordNames_loc(nCoords-1)
-REAL                      :: PointData(1:nVal,nSamples)
 TYPE(tLine),POINTER       :: Line
 TYPE(tPlane),POINTER      :: Plane
-REAL,ALLOCATABLE          :: LineData(:,:,:)
 REAL,ALLOCATABLE          :: PlaneData(:,:,:)
 REAL,ALLOCATABLE          :: PlaneCoord(:,:,:) 
 TYPE(RPPoint)             :: RPPoints
@@ -222,7 +215,7 @@ DO iSample=1,nSamples
 
   ! Write to VTK
   ZoneTitle = TIMESTAMP(ProjectName,Time(iSample))
-  CALL WriteStructuredDataToVTK(ZoneTitle,nLinesOutput,nPlanesOutput,RPPoints,RPLines,RPPlanes,withData=.TRUE.)
+  CALL WriteStructuredDataToVTK(ZoneTitle,nLinesOutput,nPlanesOutput,RPPoints,RPLines,RPPlanes,.TRUE.,nVal,VarNames)
 END DO
 
 WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')"DONE"
