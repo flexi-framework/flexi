@@ -21,11 +21,11 @@ INTERFACE EvalEquiError
 END INTERFACE
 
 INTERFACE EvalSpline
-  MODULE PROCEDURE EvalSpline 
+  MODULE PROCEDURE EvalSpline
 END INTERFACE
 
 INTERFACE EvalSplineDeriv
-  MODULE PROCEDURE EvalSplineDeriv 
+  MODULE PROCEDURE EvalSplineDeriv
 END INTERFACE
 
 PUBLIC :: GetSpline,GetEquiPoints,EvalSpline,EvalSplineDeriv,EvalEquiError
@@ -35,7 +35,7 @@ CONTAINS
 
 !===================================================================================================================================
 !> Define a spline in ndim dimensions using nCP controlpoints stored in xCP. Return the coefficients for all nCP-1 segments and
-!> the parameterization variable s_out. 
+!> the parameterization variable s_out.
 !> If s_in is specified, s_out=s_in. If not, the sum of the linear distances between the xCP is used as s.
 !===================================================================================================================================
 SUBROUTINE GetSpline(ndim,nCP,xCP,coeff,s_out,s_in)
@@ -51,7 +51,7 @@ REAL,INTENT(IN),OPTIONAL        :: s_in(nCP)
 REAL,INTENT(OUT)                :: s_out(nCP)
 REAL,INTENT(OUT)                :: coeff(ndim,4,nCp-1)
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 INTEGER                         :: nSp,dim,i
 REAL,DIMENSION(nCP)             :: a,c
 REAL,DIMENSION(nCP-1)           :: b,d,h
@@ -85,7 +85,7 @@ DO dim=1,ndim
     a(i)=xCP(dim,i)
   END DO
   ! LGS matrix
-  
+
   !diagonal
   DO i=1,nSp-1
     b_(i)=2*(h(i)+h(i+1))
@@ -110,7 +110,7 @@ DO dim=1,ndim
   ELSEIF(nSp.EQ.2)THEN
     c(2)=r(1)/b_(1)
   END IF
-   
+
   DO i=1,nSp
     b(i)=1/h(i)*(a(i+1)-a(i)) - h(i)/3*(c(i+1) + 2*c(i))
     d(i)=1/(3*h(i))*(c(i+1)-c(i))
@@ -142,7 +142,7 @@ REAL,INTENT(IN)                 :: xP_in(ndim,nP_in)
 ! OUTPUT VARIABLES
 REAL,INTENT(OUT)                :: xP_out(ndim,nP_out),t_equi(nP_out)
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 INTEGER                         :: i,iP,iSp,nSuper,nSp,iter
 REAL                            :: t_ini(nP_in),t_tmp(1,nP_in),s(nP_in),s_tmp(nP_in)
 REAL                            :: t_loc,s_loc,x_loc(ndim),x_loc_old(ndim)
@@ -152,15 +152,16 @@ REAL                            :: ds_equi,ds(nP_in-1),EquiErr!,ds_measured,s_me
 !===================================================================================================================================
 nSp=nP_in-1
 !iterative procedure acc. to Hindenlang Diss p.83p
+xP_out = xP_in
 DO iter=1,10
   ! 1. get spline through the given points
-  CALL GetSpline(3,nP_in,xP_in,coeff,t_ini)
-  
+  CALL GetSpline(3,nP_in,xP_out,coeff,t_ini)
+
   ! 2. calculate arclength on supersampled points s(t)
   nSuper=10
   s=0.
   ds=0.
-  x_loc=xP_in(:,1)
+  x_loc=xP_out(:,1)
   DO iSp=1,nSp
     DO i=2,nSuper
       t_loc=t_ini(iSP)+REAL(i-1)/REAL(nSuper-1)*(t_ini(iSp+1)-t_ini(iSp))
@@ -177,9 +178,9 @@ DO iter=1,10
   DO iSp=1,nSp
     EquiErr=MAX(EquiErr,ABS(ds(iSp)-ds_equi))
   END DO
-!  WRITE(*,*)'iter, EquiErr= ',iter, EquiErr
+  !WRITE(*,*)'iter, EquiErr= ',iter, EquiErr
   IF(EquiErr.LT.2e-16) RETURN
-  
+
   ! 3. create inverse mapping t(s) as spline
   t_tmp(1,:)=t_ini
   s_tmp = s
@@ -190,7 +191,7 @@ DO iter=1,10
     CALL EvalSpline(1,nP_in,s_loc,s,t_coeff,t_tmp(:,iP)) ! t(s) at the equidistant point
   END DO! i=1,nP_out
   t_equi(:)=t_tmp(1,:)
-  
+
   ! 4. evaluate the mapping at equidistant points x(t(s))
   DO iP=1,nP_out
     t_loc=t_equi(iP)
@@ -217,7 +218,7 @@ REAL,INTENT(IN)                 :: xP_in(ndim,nP_in)
 ! OUTPUT VARIABLES
 REAL,INTENT(OUT)                :: EquiErr
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 INTEGER                         :: i,iSp,nSuper,nSp
 REAL                            :: t_ini(nP_in),s(nP_in)
 REAL                            :: t_loc,x_loc(ndim),x_loc_old(ndim)
@@ -267,7 +268,7 @@ REAL,INTENT(IN)                 :: s_in,s(nCP),coeff(ndim,4,nCp-1)
 ! OUTPUT VARIABLES
 REAL,INTENT(OUT)                :: x_loc(ndim)
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 INTEGER                         :: iSp
 REAL                            :: s_loc
 !===================================================================================================================================
@@ -300,7 +301,7 @@ REAL,INTENT(IN)                 :: s_in,s(nCP),coeff(ndim,4,nCp-1)
 ! OUTPUT VARIABLES
 REAL,INTENT(OUT)                :: dx_loc(ndim)
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 INTEGER                         :: iSp
 REAL                            :: s_loc
 !===================================================================================================================================
@@ -322,7 +323,7 @@ END SUBROUTINE EvalSplineDeriv
 !> | b_1 c_1                              .  |
 !> | a_2 b_2 c_2                          .  |
 !> |  .                                   .  |
-!> |  .                                      | 
+!> |  .                                      |
 !> |  .                                      |
 !> |                a_(m-1) b_(m-1) c_(m-1)  |
 !> |                        a_m     b_m      |
@@ -339,7 +340,7 @@ REAL,INTENT(IN),DIMENSION(m-1)  :: c_
 ! OUTPUT VARIABLES
 REAL,INTENT(OUT)                :: x(m)
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 INTEGER                         :: i
 REAL                            :: q
 !===================================================================================================================================

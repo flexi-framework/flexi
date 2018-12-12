@@ -179,4 +179,3 @@ github:
   script:
     - if [ -z "${DO_DEPLOY}" ]; then exit ; fi
     - git clone --single-branch git@gitlab.iag.uni-stuttgart.de:flexi/flexi.git flexi_github ; cd flexi_github ; git push --mirror git@github.com:flexi-framework/flexi.git ; cd ../
-    - git clone --bare          git@gitlab.iag.uni-stuttgart.de:flexi/HDF5.git  HDF5_github  ; cd HDF5_github  ; git push --mirror git@github.com:flexi-framework/HDF5.git  ; cd ../

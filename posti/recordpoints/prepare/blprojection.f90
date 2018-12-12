@@ -278,7 +278,7 @@ DO SideID=1,nBCSides
         G=G+Gmat(:,i,j)*Lag_NSuper(1,i)*Lag_NSuper(2,j)
       END DO! i=0,NSuper 
     END DO! j=0,NSuper 
-    eps_F=1.E-10
+    eps_F=1.E-10*(SUM(G*G))
     NewtonIter=0
     DO WHILE ((SUM(G*G).GT.eps_F).AND.(NewtonIter.LT.50))
       NewtonIter=NewtonIter+1

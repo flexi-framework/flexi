@@ -37,13 +37,11 @@ USE MOD_Commandline_Arguments
 USE MOD_ReadInTools
 USE MOD_StringTools,             ONLY: STRICMP,GetFileExtension
 USE MOD_MPI,                     ONLY: DefineParametersMPI,InitMPI
-USE MOD_Interpolation,           ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
 USE MOD_IO_HDF5,                 ONLY: DefineParametersIO_HDF5,InitIOHDF5
 #if USE_MPI
 USE MOD_MPI,                     ONLY: InitMPIvars,FinalizeMPI
 #endif
 USE MOD_SwapMesh,                ONLY: InitSwapmesh,ReadOldStateFile,WriteNewStateFile,FinalizeSwapMesh
-USE MOD_Interpolation,           ONLY: DefineParametersInterpolation,FinalizeInterpolation
 USE MOD_InterpolateSolution,     ONLY: InterpolateSolution
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -60,7 +58,6 @@ IF (nProcessors.GT.1) CALL CollectiveStop(__STAMP__, &
 CALL ParseCommandlineArguments()
 
 ! Define parameters needed
-CALL DefineParametersInterpolation()
 CALL DefineParametersMPI()
 CALL DefineParametersIO_HDF5()
 
