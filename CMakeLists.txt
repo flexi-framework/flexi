@@ -91,6 +91,7 @@ SUBDIRLIST(EQNSYSTEMS ${CMAKE_CURRENT_SOURCE_DIR}/src/equations/)
 SUBDIRLIST(LIFTINGS   ${CMAKE_CURRENT_SOURCE_DIR}/src/dg/)
 
 OPTION(FLEXI_BUILDPOSTI "Build POSTI toolset" ON)
+OPTION(FLEXI_BUILDSHARED "Build shared library of Flexi" ON)
 OPTION(FLEXI_MPI "Compile SINGLE or MPI version" ON)
 OPTION(FLEXI_PARABOLIC "Enable parabolic terms of equation-system" ON)
 OPTION(FLEXI_EDDYVISCOSITY "Enable eddy viscosity modells" OFF)
@@ -492,6 +493,16 @@ function(add_exec target)
   ADD_CUSTOM_COMMAND(TARGET ${target} POST_BUILD COMMAND ${CMAKE_COMMAND} -E cmake_echo_color --cyan "SUCCESS: ${TARGETUP} BUILD COMPLETE!")
 endfunction()
 
+function(add_lib target)
+  ADD_LIBRARY(${target} SHARED ${ARGN})
+  TARGET_LINK_LIBRARIES(${target} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/userblock.o flexilib userblocklib stacksizelib ${linkedlibs})
+  SET_TARGET_PROPERTIES(${target} PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}) 
+  SET_TARGET_PROPERTIES(${target} PROPERTIES LINKER_LANGUAGE Fortran)
+  INSTALL(PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${target} DESTINATION bin)
+  STRING(TOUPPER ${target} TARGETUP)
+  ADD_CUSTOM_COMMAND(TARGET ${target} POST_BUILD COMMAND ${CMAKE_COMMAND} -E cmake_echo_color --cyan "SUCCESS: ${TARGETUP} BUILD COMPLETE!")
+endfunction()
+
 # include flexi.h 
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/src) 
 
@@ -571,6 +582,10 @@ SET_TARGET_PROPERTIES(stacksizelib PROPERTIES COMPILE_FLAGS "-fPIC")
 
 add_exec(flexi ./src/flexi.f90)
 ADD_DEPENDENCIES(flexi flexilib userblocklib stacksizelib ${INTERNALLIBS})
+IF(FLEXI_BUILDSHARED)
+  add_lib(flexishared ./src/flexilib.f90)
+  ADD_DEPENDENCIES(flexishared flexilib userblocklib stacksizelib ${INTERNALLIBS})
+ENDIF()
 
 # special compiler flags to avoid warnings for empty functions of testcase.f90 and overwrite of intrinsic abort in globals.f90
 IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")

@@ -33,13 +33,14 @@ CONTAINS
 !==================================================================================================================================
 !> Reads all commandline arguments
 !==================================================================================================================================
-SUBROUTINE ParseCommandlineArguments()
+SUBROUTINE ParseCommandlineArguments(Args_In)
 ! MODULES
 USE MOD_Globals
 USE MOD_StringTools     ,ONLY: STRICMP
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
+CHARACTER(LEN=255),INTENT(IN),OPTIONAL :: Args_In(:)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                 :: iArg,nArgs_tmp
@@ -47,7 +48,7 @@ CHARACTER(LEN=255)      :: tmp
 LOGICAL,ALLOCATABLE     :: alreadyRead(:)
 !==================================================================================================================================
 ! Get number of command line arguments
-nArgs_tmp=COMMAND_ARGUMENT_COUNT()
+nArgs_tmp = MERGE(SIZE(Args_In,1),COMMAND_ARGUMENT_COUNT(),PRESENT(Args_In))
 ALLOCATE(alreadyRead(nArgs_tmp))
 alreadyRead = .FALSE.
 
@@ -56,7 +57,11 @@ doGenerateUnittestReferenceData = .FALSE.
 doPrintHelp = 0
 nArgs = nArgs_tmp
 DO iArg = 1, nArgs_tmp
+  IF(PRESENT(Args_In))THEN
+    tmp=Args_In(iArg)
+  ELSE
   CALL GET_COMMAND_ARGUMENT(iArg,tmp)
+  END IF
   IF (STRICMP(tmp, "--generateUnittestReferenceData")) THEN
     doGenerateUnittestReferenceData = .TRUE.
     alreadyRead(iArg) = .TRUE.
@@ -82,7 +87,11 @@ nArgs = 0
 DO iArg = 1,nArgs_tmp
   IF (.NOT.alreadyRead(iArg)) THEN
     nArgs = nArgs + 1
+    IF(PRESENT(Args_In))THEN
+      Args(nArgs)=TRIM(Args_In(iArg))
+    ELSE
     CALL GET_COMMAND_ARGUMENT(iArg,Args(nArgs))
+    END IF
     alreadyRead(iArg) = .TRUE.
   END IF
 END DO
