@@ -118,7 +118,7 @@ WRITE(UNIT_StdOut,'(132("-"))')
   SELECT CASE(OutputFormat)
     CASE(0) ! Paraview VTK output
       WRITE(UNIT_stdOut,'(A)')' WRITING TIME SIGNAL TO VTK FILE '
-      CALL WriteDataToVTK(nSamples_out,nRP_global,nVarVisu,VarNameVisu,RPTime,RPData_out)
+      CALL WriteDataToVTK(nSamples_out,nRP_global,nVarVisu,VarNameVisu,RPTime,RPData_out,FileName)
     CASE(2) ! structured HDF5 output
       strOutputFile=TRIM(FileName)//'_PP.h5'
       CALL WriteDataToHDF5(nSamples_out,nRP_global,nVarVisu,VarNameVisu,RPTime,RPData_out,strOutputFile)

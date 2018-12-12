@@ -40,7 +40,7 @@ CONTAINS
 !> Those contain links to all the single timestep files and can be openend e.g. in ParaView to have them all together and with
 !> correct time information.
 !===================================================================================================================================
-SUBROUTINE WriteDataToVTK(nSamples,nRP,nVal,VarNames,Time,Value)
+SUBROUTINE WriteDataToVTK(nSamples,nRP,nVal,VarNames,Time,Value,FileName)
 ! MODULES
 USE MOD_Globals
 USE MOD_ParametersVisu      ,ONLY:ProjectName
@@ -62,6 +62,7 @@ INTEGER,INTENT(IN)            :: nVal                          !< Number of noda
 CHARACTER(LEN=255),INTENT(IN) :: VarNames(nVal)                !< Names of all variables that will be written out
 REAL,INTENT(IN)               :: Value(1:nVal,nRP,nSamples)    !< Statevector 
 REAL,INTENT(IN)               :: Time(nSamples)                !< Time 
+CHARACTER(LEN=255),INTENT(IN) :: FileName                      !< First part of the file name
 !-----------------------------------------------------------------------------------------------------------------------------------
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -79,7 +80,7 @@ TYPE(RPLine),ALLOCATABLE  :: RPLines(:)
 TYPE(RPPlane),ALLOCATABLE :: RPPlanes(:)
 INTEGER                   :: nPointsOutput,nLinesOutput,nPlanesOutput
 INTEGER                   :: iPointsOutput,iLinesOutput,iPlanesOutput
-CHARACTER(LEN=255)        :: FileName
+CHARACTER(LEN=255)        :: FileNamePVD
 CHARACTER(LEN=255)        :: TimestepString
 INTEGER                   :: ivtk=44
 CHARACTER(LEN=1)          :: lf
@@ -230,7 +231,7 @@ DO iSample=1,nSamples
   END IF
 
   ! Write to VTK
-  ZoneTitle = 'timeseries/'//TRIM(TIMESTAMP(ProjectName,Time(iSample)))
+  ZoneTitle = 'timeseries/'//TRIM(TIMESTAMP(FileName,Time(iSample)))
   CALL WriteStructuredDataToVTK(ZoneTitle,nLinesOutput,nPlanesOutput,RPPoints,RPLines,RPPlanes,.TRUE.,nVal,VarNames)
 END DO
 
@@ -241,8 +242,8 @@ lf = char(10)
 
 ! Points
 IF (nPointsOutput.GT.0) THEN
-  FileName=TRIM(ProjectName)//'_Points.pvd'
-  OPEN(UNIT=ivtk,FILE=TRIM(FileName),ACCESS='STREAM')
+  FileNamePVD=TRIM(FileName)//'_Points.pvd'
+  OPEN(UNIT=ivtk,FILE=TRIM(FileNamePVD),ACCESS='STREAM')
   ! Write header
   Buffer='<?xml version="1.0"?>'//lf;WRITE(ivtk) TRIM(Buffer)
   Buffer='<VTKFile type="Collection" version="0.1" byte_order="LittleEndian">'//lf;WRITE(ivtk) TRIM(Buffer)
@@ -253,7 +254,7 @@ IF (nPointsOutput.GT.0) THEN
     DO i=1,LEN(TRIM(TimestepString))
       IF(TimestepString(i:i).EQ.' ') TimestepString(i:i)='0'
     END DO
-    ZoneTitle = 'timeseries/'//TRIM(TIMESTAMP(ProjectName,Time(iSample)))
+    ZoneTitle = 'timeseries/'//TRIM(TIMESTAMP(FileName,Time(iSample)))
     Buffer='    <DataSet timestep="'//TRIM(TimestepString)//'" part="0" file="'//TRIM(ZoneTitle)//&
                  '_Points.vts"/>'//lf;WRITE(ivtk) TRIM(Buffer)
   END DO
@@ -270,8 +271,8 @@ IF (nLinesOutput.GT.0) THEN
   Line=>Lines(iLine)
   IF(.NOT.OutputGroup(Line%GroupID)) CYCLE
     iLinesOutput = iLinesOutput + 1
-    FileName=TRIM(ProjectName)//'_'//TRIM(RPLines(iLinesOutput)%name)//'.pvd'
-    OPEN(UNIT=ivtk,FILE=TRIM(FileName),ACCESS='STREAM')
+    FileNamePVD=TRIM(FileName)//'_'//TRIM(RPLines(iLinesOutput)%name)//'.pvd'
+    OPEN(UNIT=ivtk,FILE=TRIM(FileNamePVD),ACCESS='STREAM')
     ! Write header
     Buffer='<?xml version="1.0"?>'//lf;WRITE(ivtk) TRIM(Buffer)
     Buffer='<VTKFile type="Collection" version="0.1" byte_order="LittleEndian">'//lf;WRITE(ivtk) TRIM(Buffer)
@@ -282,7 +283,7 @@ IF (nLinesOutput.GT.0) THEN
       DO i=1,LEN(TRIM(TimestepString))
         IF(TimestepString(i:i).EQ.' ') TimestepString(i:i)='0'
       END DO
-      ZoneTitle = 'timeseries/'//TRIM(TIMESTAMP(ProjectName,Time(iSample)))
+      ZoneTitle = 'timeseries/'//TRIM(TIMESTAMP(FileName,Time(iSample)))
       Buffer='    <DataSet timestep="'//TRIM(TimestepString)//'" part="0" file="'//TRIM(ZoneTitle)//'_'//&
                    TRIM(RPLines(iLinesOutput)%name)//'.vts"/>'//lf;WRITE(ivtk) TRIM(Buffer)
     END DO
@@ -300,8 +301,8 @@ IF (nPlanesOutput.GT.0) THEN
   Plane=>Planes(iPlane)
   IF(.NOT.OutputGroup(Plane%GroupID)) CYCLE
     iPlanesOutput = iPlanesOutput + 1
-    FileName=TRIM(ProjectName)//'_'//TRIM(RPPlanes(iPlanesOutput)%name)//'.pvd'
-    OPEN(UNIT=ivtk,FILE=TRIM(FileName),ACCESS='STREAM')
+    FileNamePVD=TRIM(FileName)//'_'//TRIM(RPPlanes(iPlanesOutput)%name)//'.pvd'
+    OPEN(UNIT=ivtk,FILE=TRIM(FileNamePVD),ACCESS='STREAM')
     ! Write header
     Buffer='<?xml version="1.0"?>'//lf;WRITE(ivtk) TRIM(Buffer)
     Buffer='<VTKFile type="Collection" version="0.1" byte_order="LittleEndian">'//lf;WRITE(ivtk) TRIM(Buffer)
@@ -312,7 +313,7 @@ IF (nPlanesOutput.GT.0) THEN
       DO i=1,LEN(TRIM(TimestepString))
         IF(TimestepString(i:i).EQ.' ') TimestepString(i:i)='0'
       END DO
-      ZoneTitle = 'timeseries/'//TRIM(TIMESTAMP(ProjectName,Time(iSample)))
+      ZoneTitle = 'timeseries/'//TRIM(TIMESTAMP(FileName,Time(iSample)))
       Buffer='    <DataSet timestep="'//TRIM(TimestepString)//'" part="0" file="'//TRIM(ZoneTitle)//'_'//&
                    TRIM(RPPlanes(iPlanesOutput)%name)//'.vts"/>'//lf;WRITE(ivtk) TRIM(Buffer)
     END DO
