@@ -157,41 +157,53 @@ CALL prms%CreateStringOption( 'VarName'            ,"Variable name to visualize"
 CALL prms%CreateStringOption( 'RP_DefFile'         ,"Path to the *RPset.h5 file")
 
 CALL prms%CreateLogicalOption('usePrims'           ,"Set to indicate that the RP file contains the primitive and not the&
-                                                    & conservative Variables",".FALSE.")
-CALL prms%CreateLogicalOption('OutputTimeData'     ,"TODO",".FALSE.")
-CALL prms%CreateLogicalOption('OutputTimeAverage'  ,"TODO",".FALSE.")
-CALL prms%CreateLogicalOption('doFluctuations'     ,"TODO",".FALSE.")
-CALL prms%CreateLogicalOption('doFilter'           ,"TODO",".FALSE.")
+                                                    & conservative variables",".FALSE.")
+
+CALL prms%CreateLogicalOption('OutputTimeData'     ,"Should the time series be written? Not compatible with TimeAvg and FFT&
+                                                     & options!",".FALSE.")
+CALL prms%CreateLogicalOption('OutputTimeAverage'  ,"Should the time average be computed and written?",".FALSE.")
+CALL prms%CreateLogicalOption('doFluctuations'     ,"Should the fluctuations be computed and written?",".FALSE.")
+CALL prms%CreateLogicalOption('equiTimeSpacing'    ,"Set to interpolate the temporal data to equdistant time steps&
+                                                     & (always done for operations requiring FFTs)",".FALSE.")
+
+CALL prms%CreateLogicalOption('OutputPoints'       ,"General option to turn off the output of points",".TRUE.")
+CALL prms%CreateLogicalOption('OutputLines'        ,"General option to turn off the output of lines",".TRUE.")
+CALL prms%CreateLogicalOption('OutputPlanes'       ,"General option to turn off the output of planes",".TRUE.")
+
 CALL prms%CreateLogicalOption('doFFT'              ,"TODO",".FALSE.")
 CALL prms%CreateLogicalOption('doPSD'              ,"TODO",".FALSE.")
-CALL prms%CreateLogicalOption('doTurb'             ,"TODO",".FALSE.")
+CALL prms%CreateIntOption    ('nBlocks'            ,"TODO")
+CALL prms%CreateIntOption    ('BlockSize'          ,"TODO")
+CALL prms%CreateRealOption   ('SamplingFreq'       ,"TODO")
+CALL prms%CreateRealOption   ('CutoffFreq'         ,"TODO")
 CALL prms%CreateLogicalOption('hanning'            ,"TODO",".FALSE.")
 CALL prms%CreateLogicalOption('fourthDeriv'        ,"TODO",".FALSE.")
 CALL prms%CreateLogicalOption('ThirdOct'           ,"TODO",".FALSE.")
-CALL prms%CreateLogicalOption('equiTimeSpacing'    ,"TODO",".FALSE.")
-CALL prms%CreateLogicalOption('Plane_LocalCoords'  ,"TODO",".FALSE.")
-CALL prms%CreateLogicalOption('Plane_LocalVel'     ,"TODO",".FALSE.")
-CALL prms%CreateLogicalOption('Plane_doBLProps'    ,"TODO",".FALSE.")
-CALL prms%CreateLogicalOption('Line_LocalCoords'   ,"TODO",".FALSE.")
-CALL prms%CreateLogicalOption('Line_LocalVel'      ,"TODO",".FALSE.")
-CALL prms%CreateLogicalOption('OutputPoints'       ,"TODO",".FALSE.")
-CALL prms%CreateLogicalOption('OutputLines'        ,"TODO",".FALSE.")
-CALL prms%CreateLogicalOption('OutputPlanes'       ,"TODO",".FALSE.")
-
-CALL prms%CreateRealArrayOption('Line_LocalVel_vec',"TODO")
-CALL prms%CreateRealOption   ('FilterWidth'        ,"TODO")
-CALL prms%CreateRealOption   ('SamplingFreq'       ,"TODO")
-CALL prms%CreateRealOption   ('CutoffFreq'       ,"TODO")
 CALL prms%CreateRealOption   ('u_inf'              ,"TODO")
 CALL prms%CreateRealOption   ('chord'              ,"TODO")
-CALL prms%CreateRealOption   ('mu0'                ,"TODO") 
 
-CALL prms%CreateIntOption    ('FilterMode'         ,"TODO")
-CALL prms%CreateIntOption    ('nBlocks'            ,"TODO")
-CALL prms%CreateIntOption    ('BlockSize'          ,"TODO")
-CALL prms%CreateIntOption    ('Plane_BLvelScaling' ,"TODO")
-CALL prms%CreateIntOption    ('SkipSample'         ,"TODO")
-CALL prms%CreateIntOption    ('OutputFormat'       ,"TODO")
+CALL prms%CreateLogicalOption('doTurb'             ,"Set to compute a temporal FFT for each RP and compute turbulent quantities&
+                                                    & like the kinetic energy over wave number",".FALSE.")
+
+CALL prms%CreateLogicalOption('Plane_doBLProps'    ,"Set to calculate seperate boundary layer quantities for boundary layer&
+                                                     & planes",".FALSE.")
+CALL prms%CreateIntOption    ('Plane_BLvelScaling' ,"Choose scaling for boundary layer quantities. 0: no scaling, 1: laminar&
+                                                     & scaling, 3: turbulent scaling")
+CALL prms%CreateLogicalOption('Plane_LocalCoords'  ,"Set to use local instead of global coordinates along planes",".FALSE.")
+CALL prms%CreateLogicalOption('Plane_LocalVel'     ,"Set to use local instead of global velocities along planes",".FALSE.")
+
+CALL prms%CreateLogicalOption('Line_LocalCoords'   ,"Set to use local instead of global coordinates along lines",".FALSE.")
+CALL prms%CreateLogicalOption('Line_LocalVel'      ,"Set to use local instead of global velocities along lines",".FALSE.")
+CALL prms%CreateRealArrayOption('Line_LocalVel_vec',"Vector used for local velocity computation along line")
+
+CALL prms%CreateLogicalOption('doFilter'           ,"Set to perform temporal filtering for each RP",".FALSE.")
+CALL prms%CreateRealOption   ('FilterWidth'        ,"Width of the temporal filter")
+CALL prms%CreateIntOption    ('FilterMode'         ,"Set to 0 for low pass filter and to 1 for high pass filter")
+
+CALL prms%CreateRealOption   ('mu0'                ,"Kinematic viscosity, needed for turbulent quantities") 
+
+CALL prms%CreateIntOption    ('SkipSample'         ,"Used to skip every n-th RP evaluation")
+CALL prms%CreateIntOption    ('OutputFormat'       ,"Choose the main format for output. 0: ParaView, 2: HDF5")
 END SUBROUTINE DefineParameters
 
 !===================================================================================================================================
