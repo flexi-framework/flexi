@@ -246,6 +246,7 @@ OutputTimeData   =GETLOGICAL('OutputTimeData','.FALSE.')
 OutputTimeAverage=GETLOGICAL('OutputTimeAverage','.FALSE.')
 doFluctuations   =GETLOGICAL('doFluctuations','.FALSE.')
 IF(OutputTimeAverage .OR. doFluctuations) CalcTimeAverage=.TRUE.
+IF(doFluctuations) OutputTimeData = .TRUE.
 
 doFilter=GETLOGICAL('doFilter','.FALSE.')
 IF(doFilter) THEN
