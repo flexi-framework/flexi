@@ -1,7 +1,11 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-!> Add comments please!
+!> Postprocessing tool used to visualize the solution at the record points that has been recorded during a simulation.
+!> The tool takes several of the files and combines them into a single time series. From the conservative variables
+!> that are stored during the simulation, all available derived quantities can be computed.
+!> Additionally, several more advanced postprocessing algorithms are available. This includes calculation of time averages,
+!> FFT and PSD values and specific boundary layer properties.
 !===================================================================================================================================
 PROGRAM postrec
 ! MODULES
@@ -144,14 +148,16 @@ SUBROUTINE DefineParameters()
 USE MOD_ReadInTools ,ONLY: prms
 IMPLICIT NONE
 !===================================================================================================================================
-CALL prms%SetSection('Visualize_Record_Points')
+CALL prms%SetSection('Visualize Record Points')
 
-CALL prms%CreateStringOption( 'ProjectName'        ,"TODO")
-CALL prms%CreateStringOption( 'GroupName'          ,"TODO",multiple=.TRUE.)
-CALL prms%CreateStringOption( 'VarName'            ,"TODO",multiple=.TRUE.)
-CALL prms%CreateStringOption( 'RP_DefFile'         ,"TODO")
+CALL prms%CreateStringOption( 'ProjectName'        ,"Name of the project")
+CALL prms%CreateStringOption( 'GroupName'          ,"Name(s) of the group(s) to visualize, must be equal to the name given in&
+                                                     & preparerecordpoints tool",multiple=.TRUE.)
+CALL prms%CreateStringOption( 'VarName'            ,"Variable name to visualize",multiple=.TRUE.)
+CALL prms%CreateStringOption( 'RP_DefFile'         ,"Path to the *RPset.h5 file")
 
-CALL prms%CreateLogicalOption('usePrims'           ,"TODO",".FALSE.")
+CALL prms%CreateLogicalOption('usePrims'           ,"Set to indicate that the RP file contains the primitive and not the&
+                                                    & conservative Variables",".FALSE.")
 CALL prms%CreateLogicalOption('OutputTimeData'     ,"TODO",".FALSE.")
 CALL prms%CreateLogicalOption('OutputTimeAverage'  ,"TODO",".FALSE.")
 CALL prms%CreateLogicalOption('doFluctuations'     ,"TODO",".FALSE.")
