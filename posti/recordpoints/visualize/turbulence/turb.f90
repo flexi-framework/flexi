@@ -1,6 +1,6 @@
 #include "flexi.h"
 !===================================================================================================================================
-!> Module to handle the Recordpoints
+!> Module containing routines to calculate turbulent quantities using a temporal FFT
 !===================================================================================================================================
 MODULE MOD_Turbulence
 ! MODULES
@@ -17,7 +17,8 @@ PUBLIC :: Turbulence
 CONTAINS
 
 !===================================================================================================================================
-!> Initialize all necessary information to perform interpolation
+!> This routine performs a temporal FFT for all RPs. Using the result, turbulent quantities like the turbulent kinetic energy
+!> will be calculated and a spectrum will be written.
 !===================================================================================================================================
 SUBROUTINE Turbulence()
 ! MODULES
