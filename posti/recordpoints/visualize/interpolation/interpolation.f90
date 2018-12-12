@@ -1,6 +1,6 @@
 #include "flexi.h"
 !===================================================================================================================================
-!> Module to handle the Recordpoints
+!> Module to handle temporal interpolation for the recordpoints.
 !===================================================================================================================================
 MODULE MOD_RPinterpolation
 ! MODULES
@@ -164,16 +164,16 @@ END SUBROUTINE InterpolateEquiTime
 
 
 !===================================================================================================================================
-!> Calculate temporal TimeAvg values using 'raw' data (not interpolated on equi grid)
+!> Calculate temporal TimeAvg values
 !===================================================================================================================================
 SUBROUTINE CalcTimeAvg()
 ! MODULES
 USE MOD_Globals
-USE MOD_RPSetVisuVisu_Vars           ,ONLY: nRP_global
+USE MOD_RPSetVisuVisu_Vars   ,ONLY: nRP_global
 USE MOD_RPData_Vars          ,ONLY: RPTime
 USE MOD_RPInterpolation_Vars
 USE MOD_ParametersVisu       ,ONLY: nVarVisu,EquiTimeSpacing
-USE MOD_OutputRPVisu_Vars          ,ONLY: nSamples_out,RPData_out,RPDataTimeAvg_out
+USE MOD_OutputRPVisu_Vars    ,ONLY: nSamples_out,RPData_out,RPDataTimeAvg_out
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -210,7 +210,7 @@ END SUBROUTINE CalcTimeAvg
 
 
 !===================================================================================================================================
-!> Calculate temporal TimeAvg values using 'raw' data (not interpolated on equi grid)
+!> Calculate temporal fluctuations by substracting the mean from the time-resolved value
 !===================================================================================================================================
 SUBROUTINE CalcFluctuations()
 ! MODULES
@@ -236,7 +236,7 @@ END SUBROUTINE CalcFluctuations
 
 
 !===================================================================================================================================
-!> Deallocate global variable for Recordpoints
+!> Deallocate global variable for temporal interpolatio
 !===================================================================================================================================
 SUBROUTINE FinalizeInterpolation()
 ! MODULES
