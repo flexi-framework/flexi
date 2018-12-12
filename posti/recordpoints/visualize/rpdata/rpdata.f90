@@ -1,6 +1,6 @@
 #include "flexi.h"
 !===================================================================================================================================
-!> Module to handle the Recordpoints
+!> Module to handle the input of the recordpoints
 !===================================================================================================================================
 MODULE MOD_RPData
 ! MODULES
@@ -27,7 +27,7 @@ PUBLIC :: FinalizeRPData
 CONTAINS
 
 !===================================================================================================================================
-!> Initialize all necessary information to perform filtering
+!> Read in the RP data from a single .h5 file
 !===================================================================================================================================
 SUBROUTINE ReadRPData(FileString,firstFile)
 ! MODULES
@@ -168,14 +168,14 @@ END SUBROUTINE ReadRPData
 
 
 !===================================================================================================================================
-!> Initialize all necessary information to perform filtering
+!> Assemble the data from the seperate .h5 recordpoint files into the global RPData array
 !===================================================================================================================================
 SUBROUTINE AssembleRPData()
 ! MODULES
 USE MOD_Globals
-USE MOD_RPData_Vars      ,ONLY: firstset,actualset,nSamples_global, RPData, RPTime,nVar_HDF5
-USE MOD_RPSetVisuVisu_Vars       ,ONLY: nRP_global
-USE MOD_ParametersVisu       ,ONLY: skip
+USE MOD_RPData_Vars        ,ONLY: firstset,actualset,nSamples_global, RPData, RPTime,nVar_HDF5
+USE MOD_RPSetVisuVisu_Vars ,ONLY: nRP_global
+USE MOD_ParametersVisu     ,ONLY: skip
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
