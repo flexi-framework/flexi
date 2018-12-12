@@ -71,6 +71,11 @@ TYPE(RPLine),ALLOCATABLE  :: RPLines(:)
 TYPE(RPPlane),ALLOCATABLE :: RPPlanes(:)
 INTEGER                   :: nPointsOutput,nLinesOutput,nPlanesOutput
 INTEGER                   :: iPointsOutput,iLinesOutput,iPlanesOutput
+CHARACTER(LEN=255)        :: FileName
+CHARACTER(LEN=255)        :: TimestepString
+INTEGER                   :: ivtk=44
+CHARACTER(LEN=1)          :: lf
+CHARACTER(LEN=200)        :: Buffer
 !===================================================================================================================================
 ! Count the number of points, lines and planes for output. Allocate the data types used for the output.
 ! Points
@@ -115,6 +120,9 @@ IF (OutputLines) THEN
 ELSE
   nLinesOutput = 0
 END IF
+
+! Create a subdirectory that contains all the output files - since there are A LOT of them for timeseries
+CALL SYSTEM('mkdir timeseries')
 
 ! Planes
 IF (OutputPlanes) THEN
@@ -214,9 +222,98 @@ DO iSample=1,nSamples
   END IF
 
   ! Write to VTK
-  ZoneTitle = TIMESTAMP(ProjectName,Time(iSample))
+  ZoneTitle = 'timeseries/'//TRIM(TIMESTAMP(ProjectName,Time(iSample)))
   CALL WriteStructuredDataToVTK(ZoneTitle,nLinesOutput,nPlanesOutput,RPPoints,RPLines,RPPlanes,.TRUE.,nVal,VarNames)
 END DO
+
+! Write .pvd collections to easily open the timeseries
+
+! Line feed character
+lf = char(10)
+
+! Points
+IF (nPointsOutput.GT.0) THEN
+  FileName=TRIM(ProjectName)//'_Points.pvd'
+  OPEN(UNIT=ivtk,FILE=TRIM(FileName),ACCESS='STREAM')
+  ! Write header
+  Buffer='<?xml version="1.0"?>'//lf;WRITE(ivtk) TRIM(Buffer)
+  Buffer='<VTKFile type="Collection" version="0.1" byte_order="LittleEndian">'//lf;WRITE(ivtk) TRIM(Buffer)
+  Buffer='  <Collection>'//lf;WRITE(ivtk) TRIM(Buffer)
+  ! Loop and write the single collection entries
+  DO iSample = 1,nSamples
+    WRITE(TimestepString,'(F17.9)') Time(iSample)
+    DO i=1,LEN(TRIM(TimestepString))
+      IF(TimestepString(i:i).EQ.' ') TimestepString(i:i)='0'
+    END DO
+    ZoneTitle = 'timeseries/'//TRIM(TIMESTAMP(ProjectName,Time(iSample)))
+    Buffer='    <DataSet timestep="'//TRIM(TimestepString)//'" part="0" file="'//TRIM(ZoneTitle)//&
+                 '_Points.vts"/>'//lf;WRITE(ivtk) TRIM(Buffer)
+  END DO
+  ! Write Footer
+  Buffer='  </Collection>'//lf;WRITE(ivtk) TRIM(Buffer)
+  Buffer='</VTKFile>'//lf;WRITE(ivtk) TRIM(Buffer)
+  CLOSE(ivtk)
+END IF
+
+! Lines
+IF (nLinesOutput.GT.0) THEN
+  iLinesOutput = 0
+  DO iLine=1,nLines
+  Line=>Lines(iLine)
+  IF(.NOT.OutputGroup(Line%GroupID)) CYCLE
+    iLinesOutput = iLinesOutput + 1
+    FileName=TRIM(ProjectName)//'_'//TRIM(RPLines(iLinesOutput)%name)//'.pvd'
+    OPEN(UNIT=ivtk,FILE=TRIM(FileName),ACCESS='STREAM')
+    ! Write header
+    Buffer='<?xml version="1.0"?>'//lf;WRITE(ivtk) TRIM(Buffer)
+    Buffer='<VTKFile type="Collection" version="0.1" byte_order="LittleEndian">'//lf;WRITE(ivtk) TRIM(Buffer)
+    Buffer='  <Collection>'//lf;WRITE(ivtk) TRIM(Buffer)
+    ! Loop and write the single collection entries
+    DO iSample = 1,nSamples
+      WRITE(TimestepString,'(F17.9)') Time(iSample)
+      DO i=1,LEN(TRIM(TimestepString))
+        IF(TimestepString(i:i).EQ.' ') TimestepString(i:i)='0'
+      END DO
+      ZoneTitle = 'timeseries/'//TRIM(TIMESTAMP(ProjectName,Time(iSample)))
+      Buffer='    <DataSet timestep="'//TRIM(TimestepString)//'" part="0" file="'//TRIM(ZoneTitle)//'_'//&
+                   TRIM(RPLines(iLinesOutput)%name)//'.vts"/>'//lf;WRITE(ivtk) TRIM(Buffer)
+    END DO
+    ! Write Footer
+    Buffer='  </Collection>'//lf;WRITE(ivtk) TRIM(Buffer)
+    Buffer='</VTKFile>'//lf;WRITE(ivtk) TRIM(Buffer)
+    CLOSE(ivtk)
+  END DO
+END IF
+
+! Planes
+IF (nPlanesOutput.GT.0) THEN
+  iPlanesOutput = 0
+  DO iPlane=1,nPlanes
+  Plane=>Planes(iPlane)
+  IF(.NOT.OutputGroup(Plane%GroupID)) CYCLE
+    iPlanesOutput = iPlanesOutput + 1
+    FileName=TRIM(ProjectName)//'_'//TRIM(RPPlanes(iPlanesOutput)%name)//'.pvd'
+    OPEN(UNIT=ivtk,FILE=TRIM(FileName),ACCESS='STREAM')
+    ! Write header
+    Buffer='<?xml version="1.0"?>'//lf;WRITE(ivtk) TRIM(Buffer)
+    Buffer='<VTKFile type="Collection" version="0.1" byte_order="LittleEndian">'//lf;WRITE(ivtk) TRIM(Buffer)
+    Buffer='  <Collection>'//lf;WRITE(ivtk) TRIM(Buffer)
+    ! Loop and write the single collection entries
+    DO iSample = 1,nSamples
+      WRITE(TimestepString,'(F17.9)') Time(iSample)
+      DO i=1,LEN(TRIM(TimestepString))
+        IF(TimestepString(i:i).EQ.' ') TimestepString(i:i)='0'
+      END DO
+      ZoneTitle = 'timeseries/'//TRIM(TIMESTAMP(ProjectName,Time(iSample)))
+      Buffer='    <DataSet timestep="'//TRIM(TimestepString)//'" part="0" file="'//TRIM(ZoneTitle)//'_'//&
+                   TRIM(RPPlanes(iPlanesOutput)%name)//'.vts"/>'//lf;WRITE(ivtk) TRIM(Buffer)
+    END DO
+    ! Write Footer
+    Buffer='  </Collection>'//lf;WRITE(ivtk) TRIM(Buffer)
+    Buffer='</VTKFile>'//lf;WRITE(ivtk) TRIM(Buffer)
+    CLOSE(ivtk)
+  END DO
+END IF
 
 WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')"DONE"
 END SUBROUTINE WriteDataToVTK
@@ -225,7 +322,7 @@ END SUBROUTINE WriteDataToVTK
 !===================================================================================================================================
 !> Subroutine to write point data to VTU file 
 !===================================================================================================================================
-SUBROUTINE WriteBLPropsToVTU(FileString)
+SUBROUTINE WriteBLPropsToVTK(FileString)
 ! MODULES
 USE MOD_Globals
 USE VTU
@@ -303,7 +400,7 @@ END DO ! iPlane
 CALL CloseDataFile()
 
 WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')"DONE"
-END SUBROUTINE WriteBLPropsToVTU
+END SUBROUTINE WriteBLPropsToVTK
 #endif
 
 END MODULE MOD_OutputRPVisu_VTK

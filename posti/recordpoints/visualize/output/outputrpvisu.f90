@@ -120,10 +120,9 @@ WRITE(UNIT_StdOut,'(132("-"))')
   IF(doFluctuations) FileName=TRIM(FileName)//'_Fluc'
   SELECT CASE(OutputFormat)
     CASE(0) ! Paraview VTK output
-      strOutputFile=TRIM(FileName)//'.plt'
-      WRITE(UNIT_stdOut,'(A,A)')' WRITING TIME SIGNAL TO ',strOutputFile
+      WRITE(UNIT_stdOut,'(A)')' WRITING TIME SIGNAL TO VTK FILE '
       IF(nSamples_out.GT.1) THEN
-        CALL WriteDataToVTK(nSamples_out,nRP_global,nVarVisu,VarNameVisu,RPTime,RPData_out,strOutputFile)
+        CALL WriteDataToVTK(nSamples_out,nRP_global,nVarVisu,VarNameVisu,RPTime,RPData_out)
       ELSE 
         ! use time avg routine if only one sample is present.
         !CALL WriteTimeAvgDataToTecplotBinary(nRP_global,nVarVisu,VarNameVisu,RPData_out(:,:,1),strOutputFile)
