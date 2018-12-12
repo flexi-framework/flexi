@@ -90,11 +90,8 @@ SUBROUTINE OutputRP()
 USE MOD_Globals
 USE MOD_RPData_Vars        ,ONLY: RPTime
 USE MOD_ParametersVisu     ,ONLY: OutputFormat,thirdOct,ProjectName
-#ifdef WITHTECPLOT
-USE MOD_Tecplot   
 USE MOD_OutputRPVisu_Vars  ,ONLY: RPDataTimeAvg_out
-#endif
-USE MOD_OutputRPVisu_VTK   ,ONLY: WriteDataToVTK
+USE MOD_OutputRPVisu_VTK   ,ONLY: WriteDataToVTK,WriteTimeAvgDataToVTK
 USE MOD_OutputRPVisu_Vars  ,ONLY: nSamples_out,RPData_out,CoordNames 
 USE MOD_OutputRPVisu_HDF5
 USE MOD_spec_Vars          ,ONLY: nSamples_spec,RPData_freq,RPData_spec
@@ -121,18 +118,10 @@ WRITE(UNIT_StdOut,'(132("-"))')
   SELECT CASE(OutputFormat)
     CASE(0) ! Paraview VTK output
       WRITE(UNIT_stdOut,'(A)')' WRITING TIME SIGNAL TO VTK FILE '
-      IF(nSamples_out.GT.1) THEN
-        CALL WriteDataToVTK(nSamples_out,nRP_global,nVarVisu,VarNameVisu,RPTime,RPData_out)
-      ELSE 
-        ! use time avg routine if only one sample is present.
-        !CALL WriteTimeAvgDataToTecplotBinary(nRP_global,nVarVisu,VarNameVisu,RPData_out(:,:,1),strOutputFile)
-      END IF
-!    CASE(1) ! Tecplot ASCII Output
-!      strOutputFile=TRIM(strOutputFile)//'.dat'
-!      CALL WriteDataToTecplot(nSamples_out,nVarVisu,VarNameVisu,RPData_out,strOutputFile)
-     CASE(2) ! structured HDF5 output
-       strOutputFile=TRIM(FileName)//'_PP.h5'
-       CALL WriteDataToHDF5(nSamples_out,nRP_global,nVarVisu,VarNameVisu,RPTime,RPData_out,strOutputFile)
+      CALL WriteDataToVTK(nSamples_out,nRP_global,nVarVisu,VarNameVisu,RPTime,RPData_out)
+    CASE(2) ! structured HDF5 output
+      strOutputFile=TRIM(FileName)//'_PP.h5'
+      CALL WriteDataToHDF5(nSamples_out,nRP_global,nVarVisu,VarNameVisu,RPTime,RPData_out,strOutputFile)
   END SELECT
 WRITE(UNIT_StdOut,'(132("-"))')
 END IF !output time data
@@ -184,12 +173,9 @@ IF(OutputTimeAverage) THEN
   Filename=TRIM(ProjectName)
   FileName=TRIM(FileName)//'_RP_TimeAvg'
   SELECT CASE(OutputFormat)
-#ifdef WITHTECPLOT
-    CASE(0) ! Tecplot Binary Output, in one file, mesh+solution
-      strOutputFile=TRIM(FileName)//'.plt'
-      WRITE(UNIT_stdOut,'(A,A)')' WRITING TIME AVERAGE TO ',strOutputFile
-      CALL WriteTimeAvgDataToTecplotBinary(nRP_global,nVarVisu,VarNameVisu,RPDataTimeAvg_out,strOutputFile)
-#endif
+    CASE(0) ! ParaView VTK output
+      WRITE(UNIT_stdOut,'(A,A)')' WRITING TIME AVERAGE TO VTK FILE'
+      CALL WriteTimeAvgDataToVTK(nRP_global,nVarVisu,VarNameVisu,RPDataTimeAvg_out)
    CASE(2) ! structured HDF5 output
      strOutputFile=TRIM(FileName)//'_PP.h5'
      CALL WriteDataToHDF5(1,nRP_global,nVarVisu,VarNameVisu,RPTime,RPData_out,strOutputFile)

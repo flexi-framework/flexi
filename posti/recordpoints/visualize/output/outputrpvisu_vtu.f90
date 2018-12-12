@@ -17,6 +17,10 @@ INTERFACE WriteDataToVTK
   MODULE PROCEDURE WriteDataToVTK
 END INTERFACE
 
+INTERFACE WriteTimeAvgDataToVTK
+  MODULE PROCEDURE WriteTimeAvgDataToVTK
+END INTERFACE
+
 #ifdef WITHBLPROPS
 INTERFACE WriteBLPropsToVTK
   MODULE PROCEDURE WriteBLPropsToVTK
@@ -24,13 +28,17 @@ END INTERFACE
 PUBLIC::WriteBLPropsToVTK
 #endif
 
-PUBLIC::WriteDataToVTK
+PUBLIC::WriteDataToVTK,WriteTimeAvgDataToVTK
 !===================================================================================================================================
 
 CONTAINS
 
 !===================================================================================================================================
-!> Subroutine to write point data to VTK file 
+!> Subroutine to write time-accurate data to VTK file. This routine will loop over all points, lines and planes and collect the ones
+!> that should be visualized in the respective data types. Each timestep will be written to .vts files by calling the structured
+!> output routine. The files will be collected in a subdirectory 'timeseries', and .pvd will be written in the main directory.
+!> Those contain links to all the single timestep files and can be openend e.g. in ParaView to have them all together and with
+!> correct time information.
 !===================================================================================================================================
 SUBROUTINE WriteDataToVTK(nSamples,nRP,nVal,VarNames,Time,Value)
 ! MODULES
@@ -317,6 +325,195 @@ END IF
 
 WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')"DONE"
 END SUBROUTINE WriteDataToVTK
+
+!===================================================================================================================================
+!> Subroutine to write time-averaged data to VTK file. This routine will loop over all points, lines and planes and collect the ones
+!> that should be visualized in the respective data types. The average will be written to .vts files by calling the structured
+!> output routine.
+!===================================================================================================================================
+SUBROUTINE WriteTimeAvgDataToVTK(nRP,nVal,VarNames,Value)
+! MODULES
+USE MOD_Globals
+USE MOD_ParametersVisu      ,ONLY:ProjectName
+USE MOD_ParametersVisu      ,ONLY:Line_LocalCoords,Plane_LocalCoords
+USE MOD_ParametersVisu      ,ONLY:OutputPlanes,OutputLines,OutputPoints
+USE MOD_RPSetVisuVisu_Vars  ,ONLY:GroupNames 
+USE MOD_RPSetVisuVisu_Vars  ,ONLY:OutputGroup 
+USE MOD_RPSetVisuVisu_Vars  ,ONLY:nPoints,Points_IDlist,Points_GroupIDlist
+USE MOD_RPSetVisuVisu_Vars  ,ONLY:nLines,Lines,tLine
+USE MOD_RPSetVisuVisu_Vars  ,ONLY:nPlanes,Planes,tPlane
+USE MOD_RPSetVisuVisu_Vars  ,ONLY:xF_RP
+USE MOD_VTKStructuredOutput
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN)            :: nRP                           !< Number of RP to be visualized 
+INTEGER,INTENT(IN)            :: nVal                          !< Number of nodal output variables
+CHARACTER(LEN=255),INTENT(IN) :: VarNames(nVal)                !< Names of all variables that will be written out
+REAL,INTENT(IN)               :: Value(1:nVal,nRP)             !< Statevector 
+!-----------------------------------------------------------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                   :: iPoint,iLine,iPlane,i,j
+INTEGER                   :: GroupID
+CHARACTER(LEN=255)        :: ZoneTitle
+CHARACTER(LEN=255)        :: GroupName
+TYPE(tLine),POINTER       :: Line
+TYPE(tPlane),POINTER      :: Plane
+REAL,ALLOCATABLE          :: PlaneData(:,:,:)
+REAL,ALLOCATABLE          :: PlaneCoord(:,:,:) 
+TYPE(RPPoint)             :: RPPoints
+TYPE(RPLine),ALLOCATABLE  :: RPLines(:)
+TYPE(RPPlane),ALLOCATABLE :: RPPlanes(:)
+INTEGER                   :: nPointsOutput,nLinesOutput,nPlanesOutput
+INTEGER                   :: iPointsOutput,iLinesOutput,iPlanesOutput
+!===================================================================================================================================
+! Count the number of points, lines and planes for output. Allocate the data types used for the output.
+! Points
+IF (OutputPoints) THEN
+  nPointsOutput = 0
+  DO iPoint=1,nPoints
+    GroupID=Points_GroupIDlist(iPoint)
+    IF(.NOT.OutputGroup(GroupID)) CYCLE
+    nPointsOutput = nPointsOutput + 1
+  END DO ! iPoint
+  RPPoints%nRPs = nPointsOutput
+  IF (nPointsOutput.GT.0) THEN
+    ALLOCATE(RPPoints%Coords(3   ,nPointsOutput))
+    ALLOCATE(RPPoints%Val(   nVal,nPointsOutput))
+  END IF
+ELSE
+  RPPoints%nRPs = 0
+END IF
+
+
+! Lines
+IF (OutputLines) THEN
+  nLinesOutput = 0
+  DO iLine=1,nLines
+    Line=>Lines(iLine)
+    IF(.NOT.OutputGroup(Line%GroupID)) CYCLE
+    nLinesOutput = nLinesOutput + 1
+  END DO ! iLine
+  IF (nLinesOutput.GT.0) THEN
+    ALLOCATE(RPLines(nLinesOutput))
+  END IF
+  iLinesOutput = 0
+  DO iLine=1,nLines
+    Line=>Lines(iLine)
+    IF(.NOT.OutputGroup(Line%GroupID)) CYCLE
+    iLinesOutput = iLinesOutput + 1
+    RPLines(iLinesOutput)%nRPs = Line%nRP
+    ALLOCATE(RPLines(iLinesOutput)%Coords(3   ,Line%nRP))
+    ALLOCATE(RPLines(iLinesOutput)%Val(   nVal,Line%nRP))
+    IF (Line_LocalCoords) RPLines(iLinesOutput)%Coords(2:3,:) = 0.
+  END DO ! iLine
+ELSE
+  nLinesOutput = 0
+END IF
+
+! Planes
+IF (OutputPlanes) THEN
+  nPlanesOutput = 0
+  DO iPlane=1,nPlanes
+    Plane=>Planes(iPlane)
+    IF(.NOT.OutputGroup(Plane%GroupID)) CYCLE
+    nPlanesOutput = nPlanesOutput + 1
+  END DO ! iPlane
+  IF (nPlanesOutput.GT.0) THEN
+    ALLOCATE(RPPlanes(nPlanesOutput))
+  END IF
+  iPlanesOutput = 0
+  DO iPlane=1,nPlanes
+    Plane=>Planes(iPlane)
+    IF(.NOT.OutputGroup(Plane%GroupID)) CYCLE
+    iPlanesOutput = iPlanesOutput + 1
+    RPPlanes(iPlanesOutput)%nRPs = Plane%nRP
+    ALLOCATE(RPPlanes(iPlanesOutput)%Coords(3   ,Plane%nRP(1),Plane%nRP(2)))
+    ALLOCATE(RPPlanes(iPlanesOutput)%Val(   nVal,Plane%nRP(1),Plane%nRP(2)))
+    IF (Plane_LocalCoords) RPPlanes(iPlanesOutput)%Coords(3,:,:) = 0.
+  END DO ! iPlane
+ELSE
+  nPlanesOutput = 0
+END IF
+
+! Loop over the time samples and perform the actual output
+! Points
+IF (OutputPoints) THEN
+  iPointsOutput = 0
+  DO iPoint=1,nPoints
+    GroupID=Points_GroupIDlist(iPoint)
+    IF(.NOT.OutputGroup(GroupID)) CYCLE
+    iPointsOutput = iPointsOutput + 1
+    ! coordinates
+    RPPoints%Coords(:,iPointsOutput) = xF_RP(:,Points_IDlist(iPoint))
+    ! values
+    RPPoints%Val(   :,iPointsOutput) = Value(:,Points_IDlist(iPoint))
+  END DO
+END IF
+
+! Lines
+IF (OutputLines) THEN
+  iLinesOutput = 0
+  DO iLine=1,nLines
+    Line=>Lines(iLine)
+    IF(.NOT.OutputGroup(Line%GroupID)) CYCLE
+    iLinesOutput = iLinesOutput + 1
+    ! coordinates
+    IF (Line_LocalCoords) THEN
+      RPLines(iLinesOutput)%Coords(1,:) = Line%LocalCoord(:)
+    ELSE
+      RPLines(iLinesOutput)%Coords(:,:) = xF_RP(:,Line%IDlist(:))
+    END IF
+    ! values
+    RPLines(iLinesOutput)%Val(:,:) = Value(:,Line%IDlist(:))
+    GroupName=GroupNames(Line%GroupID)
+    RPPlanes(iLinesOutput)%name = TRIM(GroupName)//'_'//TRIM(Line%Name)
+  END DO ! iLine
+END IF
+
+! Planes
+IF (OutputPlanes) THEN
+  iPlanesOutput = 0
+  DO iPlane=1,nPlanes
+    Plane=>Planes(iPlane)
+    IF(.NOT.OutputGroup(Plane%GroupID)) CYCLE
+    iPlanesOutput = iPlanesOutput + 1
+    ! coordinates
+    IF (Plane_LocalCoords) THEN
+      RPPlanes(iPlanesOutput)%Coords(1:2,:,:) = Plane%LocalCoord(:,:,:)
+    ELSE
+      ! global xyz coordinates
+      ALLOCATE(PlaneCoord(3,Plane%nRP(1),Plane%nRP(2)))
+      DO j=1,Plane%nRP(2)
+        DO i=1,Plane%nRP(1)
+          PlaneCoord(:,i,j)=xF_RP(:,Plane%IDlist(i,j))
+        END DO ! i
+      END DO ! j
+      RPPlanes(iPlanesOutput)%Coords(:,:,:) = PlaneCoord
+      DEALLOCATE(PlaneCoord)
+    END IF
+    ! values
+    ALLOCATE(PlaneData(1:nVal,Plane%nRP(1),Plane%nRP(2)))
+    DO j=1,Plane%nRP(2)
+      DO i=1,Plane%nRP(1)
+        PlaneData(:,i,j)=Value(:,Plane%IDlist(i,j))
+      END DO ! i
+    END DO ! j
+    RPPlanes(iPlanesOutput)%Val(:,:,:) = PlaneData
+    DEALLOCATE(PlaneData)
+    ! name
+    GroupName=GroupNames(Plane%GroupID)
+    RPPlanes(iPlanesOutput)%name = TRIM(GroupName)//'_'//TRIM(Plane%Name)
+  END DO ! iPlane
+END IF
+
+! Write to VTK
+ZoneTitle = TRIM(ProjectName)//'_RP_TimeAvg'
+CALL WriteStructuredDataToVTK(ZoneTitle,nLinesOutput,nPlanesOutput,RPPoints,RPLines,RPPlanes,.TRUE.,nVal,VarNames)
+
+WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')"DONE"
+END SUBROUTINE WriteTimeAvgDataToVTK
 
 #ifdef WITHBLPROPS
 !===================================================================================================================================
