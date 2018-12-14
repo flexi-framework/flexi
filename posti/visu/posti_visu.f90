@@ -74,7 +74,10 @@ IF(STRICMP(GetFileExtension(Args(1)),'ini')) THEN
   END IF
 ELSE IF(STRICMP(GetFileExtension(Args(1)),'h5')) THEN
   skipArgs = 0 ! do not skip a argument. first argument is a h5 file
-  postifile = ""
+  !create empty dummy prm file
+  postifile = ".posti.ini"
+  OPEN (UNIT=31, FILE=postifile, STATUS="new")
+  CLOSE (UNIT=31)
 ELSE
   CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: posti [posti-prm-file [flexi-prm-file]] statefile [statefiles]')
 END IF
