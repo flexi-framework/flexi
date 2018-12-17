@@ -23,7 +23,6 @@ CONTAINS
 SUBROUTINE Turbulence()
 ! MODULES
 USE MOD_Globals              
-USE MOD_VarnamemappingsRP_vars 
 USE MOD_RPData_Vars            ,ONLY: RPTime,RPData
 USE MOD_RPSetVisuVisu_Vars     ,ONLY: nRP_global
 USE MOD_OutputRPVisu_Vars      ,ONLY: nSamples_out
