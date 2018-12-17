@@ -223,7 +223,7 @@ END SUBROUTINE AssembleRPData
 
 
 !===================================================================================================================================
-!> Deallocate global variable for Recordpoints
+!> Deallocate global variable for Recordpoints data module
 !===================================================================================================================================
 SUBROUTINE FinalizeRPData()
 ! MODULES

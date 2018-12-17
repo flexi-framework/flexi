@@ -1,7 +1,7 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-!> Module to handle the Recordpoints
+!> Module to handle the different sets of recordpoints that should be visualized.
 !===================================================================================================================================
 MODULE MOD_RPSetVisu
 ! MODULES
@@ -28,7 +28,8 @@ PUBLIC :: FinalizeRPSet
 CONTAINS
 
 !===================================================================================================================================
-!> Initialize all necessary information to perform filtering
+!> Initialize the recordpoint sets. Readin of the groups, points, lines and planes and check if they should be visualized.
+!> If this is the case, add them to the global lists.
 !===================================================================================================================================
 SUBROUTINE InitRPSet(RP_DefFile_in)
 ! MODULES

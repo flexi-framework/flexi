@@ -1,9 +1,7 @@
+!===================================================================================================================================
+!> Contains global variables used for/by the RP data module
+!===================================================================================================================================
 MODULE MOD_RPData_Vars
-!===================================================================================================================================
-! Contains global variables used for/by the RPSe
-
-
-!===================================================================================================================================
 ! MODULES
 IMPLICIT NONE
 PUBLIC
@@ -11,21 +9,23 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
-INTEGER                         :: nSamples_global ! complete number of samples (all RP data files)
-INTEGER                         :: nVar_HDF5       ! all Variable names (without time, we assume the 0 index corresponds with time 
-CHARACTER(LEN=255),ALLOCATABLE  :: VarNames_HDF5(:)
-REAL,ALLOCATABLE                :: RPData(:,:,:)
-REAL,ALLOCATABLE                :: RPTime(:)
+INTEGER                         :: nSamples_global !> Total number of samples (all RP data files)
+INTEGER                         :: nVar_HDF5       !> Number of variable in the HDF5 file
+CHARACTER(LEN=255),ALLOCATABLE  :: VarNames_HDF5(:)!> Name of the variables in the HDF5 file
+REAL,ALLOCATABLE                :: RPData(:,:,:)   !> Global array containing the data of all samples
+REAL,ALLOCATABLE                :: RPTime(:)       !> The time value of all samples
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! Output Buffer
 !-----------------------------------------------------------------------------------------------------------------------------------
+!> Type that is used to collect all the record point data from the different files before merging them in the RPData array,
+!> organized in a linked list
 TYPE tRPDataSet
-  REAL,ALLOCATABLE              :: data(:,:,:)
-  INTEGER                       :: nSamples
-  TYPE(tRPDataSet),POINTER      :: nextset
+  REAL,ALLOCATABLE              :: data(:,:,:) !> Actual data array
+  INTEGER                       :: nSamples    !> Number of (local) samples in the current data set
+  TYPE(tRPDataSet),POINTER      :: nextset     !> Pointer to the next set in the linked list
 END TYPE tRPDataSet
 
-TYPE(tRPDataSet),POINTER        :: firstset, actualset
+TYPE(tRPDataSet),POINTER        :: firstset, actualset !> Pointers to first and current data set in the linked list
 
 !===================================================================================================================================
 
@@ -37,10 +37,10 @@ PUBLIC :: getNewRPDataSet
 
 CONTAINS 
 
+!===================================================================================================================================
+!> Routine to create a new entry in the linked list of RPdata
+!===================================================================================================================================
 SUBROUTINE getNewRPDataSet(RPDataSet,nSamples_in)
-!===================================================================================================================================
-! Read RP parameters from ini file and RP definitions from HDF5 
-!===================================================================================================================================
 ! MODULES
 USE MOD_RPSetVisuVisu_Vars            ,ONLY: nRP_global
 IMPLICIT NONE

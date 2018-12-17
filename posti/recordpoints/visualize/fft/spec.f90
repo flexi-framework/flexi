@@ -101,6 +101,7 @@ END SUBROUTINE InitSpec
 SUBROUTINE Spec()
 ! MODULES
 USE MOD_Globals
+USE MOD_PreProc
 USE MOD_RPSetVisuVisu_Vars   ,ONLY: nRP_global
 USE MOD_RPInterpolation_Vars
 USE MOD_OutputRPVisu_Vars    ,ONLY: nSamples_out,RPData_out
@@ -291,6 +292,7 @@ END SUBROUTINE Spec
 !===================================================================================================================================
 SUBROUTINE Hanning(nSamples,RPData)
 ! MODULES
+USE MOD_PreProc
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

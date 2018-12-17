@@ -9,8 +9,9 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
-LOGICAL                         :: CalcTimeAverage
-REAL,ALLOCATABLE                :: dt(:)
-REAL                            :: dt_out,TEnd
+LOGICAL                         :: CalcTimeAverage  !< Logical set if time averages should be calculated
+REAL,ALLOCATABLE                :: dt(:)            !< Time step between each RP sample
+REAL                            :: dt_out           !< Equidistant time step
+REAL                            :: TEnd             !< Time of final RP sample
 !===================================================================================================================================
 END MODULE MOD_RPInterpolation_Vars
