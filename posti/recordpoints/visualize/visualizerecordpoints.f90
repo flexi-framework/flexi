@@ -25,7 +25,7 @@ USE MOD_RPInterpolation
 USE MOD_RPInterpolation_Vars        ,ONLY:CalcTimeAverage
 USE MOD_EquationRP                
 USE MOD_FilterRP                    ,ONLY:FilterRP
-USE MOD_Spec                        ,ONLY:InitSpec,spec,FinalizeSpec
+USE MOD_Spec                        ,ONLY:InitSpec,Spec,FinalizeSpec
 USE MOD_Turbulence
 USE MOD_MPI                         ,ONLY:DefineParametersMPI,InitMPI
 USE MOD_IO_HDF5                     ,ONLY:DefineParametersIO_HDF5,InitIOHDF5
@@ -115,7 +115,7 @@ CALL CalcEquationRP()
 IF(calcTimeAverage)    CALL CalcTimeAvg() 
 IF(doFluctuations)     CALL CalcFluctuations()
 IF(doFilter)           CALL FilterRP()
-IF(doSpec)             CALL spec()
+IF(doSpec)             CALL Spec()
 #ifdef WITHBLPROPS
 IF(Plane_doBLProps)    CALL Plane_BLProps() 
 #endif
@@ -170,14 +170,18 @@ CALL prms%CreateLogicalOption('OutputPoints'       ,"General option to turn off 
 CALL prms%CreateLogicalOption('OutputLines'        ,"General option to turn off the output of lines",".TRUE.")
 CALL prms%CreateLogicalOption('OutputPlanes'       ,"General option to turn off the output of planes",".TRUE.")
 
-CALL prms%CreateLogicalOption('doFFT'              ,"TODO",".FALSE.")
-CALL prms%CreateLogicalOption('doPSD'              ,"TODO",".FALSE.")
-CALL prms%CreateIntOption    ('nBlocks'            ,"TODO")
-CALL prms%CreateIntOption    ('BlockSize'          ,"TODO")
-CALL prms%CreateRealOption   ('SamplingFreq'       ,"TODO")
-CALL prms%CreateRealOption   ('CutoffFreq'         ,"TODO")
-CALL prms%CreateLogicalOption('hanning'            ,"TODO",".FALSE.")
-CALL prms%CreateLogicalOption('fourthDeriv'        ,"TODO",".FALSE.")
+CALL prms%CreateLogicalOption('doFFT'              ,"Calculate a fast Fourier transform of the time signal",".FALSE.")
+CALL prms%CreateLogicalOption('doPSD'              ,"Calculate the power spectral density of the time signal",".FALSE.")
+CALL prms%CreateIntOption    ('nBlocks'            ,"Specify the number of blocks over the time signal used for spectral averaging&
+                                                     & when calculating spectral quantities",'1')
+CALL prms%CreateRealOption   ('SamplingFreq'       ,"Instead of specifying the number of blocks, the sampling frequency in&
+                                                     & combination with the block size can be set - the number of blocks&
+                                                     & will then be calculated.")
+CALL prms%CreateIntOption    ('BlockSize'          ,"Size of the blocks (in samples) if sampling frequency is given")
+CALL prms%CreateRealOption   ('CutoffFreq'         ,"Specify smallest considered frequency in spectral analysis")
+CALL prms%CreateLogicalOption('hanning'            ,"Set to use the Hann window when performing spectral analysis",".FALSE.")
+CALL prms%CreateLogicalOption('fourthDeriv'        ,"Set to calculate the fourth derivative of the time signal (signal will be&
+                                                     & interpolated to a coarse grid since truncation error is large",".FALSE.")
 CALL prms%CreateLogicalOption('ThirdOct'           ,"TODO",".FALSE.")
 CALL prms%CreateRealOption   ('u_inf'              ,"TODO")
 CALL prms%CreateRealOption   ('chord'              ,"TODO")
