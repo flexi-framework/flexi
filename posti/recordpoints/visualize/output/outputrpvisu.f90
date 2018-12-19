@@ -44,14 +44,14 @@ CONTAINS
 SUBROUTINE InitOutput()
 ! MODULES
 USE MOD_Globals
-USE MOD_ParametersVisu      ,ONLY: nVarVisu
-USE MOD_ParametersVisu      ,ONLY: Line_LocalCoords,Plane_LocalCoords,equiTimeSpacing
-USE MOD_RPSetVisuVisu_Vars      ,ONLY: nRP_global
-USE MOD_RPData_Vars     ,ONLY: nSamples_global
-USE MOD_OutputRPVisu_Vars     ,ONLY: nSamples_out
-USE MOD_OutputRPVisu_Vars     ,ONLY: nCoords,CoordNames
-USE MOD_OutputRPVisu_Vars     ,ONLY: RPData_out
-USE MOD_EquationRP_Vars   ,ONLY: EquationRPInitIsDone
+USE MOD_ParametersVisu     ,ONLY: nVarVisu
+USE MOD_ParametersVisu     ,ONLY: Line_LocalCoords,Plane_LocalCoords,equiTimeSpacing
+USE MOD_RPSetVisuVisu_Vars ,ONLY: nRP_global
+USE MOD_RPData_Vars        ,ONLY: nSamples_global
+USE MOD_OutputRPVisu_Vars  ,ONLY: nSamples_out
+USE MOD_OutputRPVisu_Vars  ,ONLY: nCoords,CoordNames
+USE MOD_OutputRPVisu_Vars  ,ONLY: RPData_out
+USE MOD_EquationRP_Vars    ,ONLY: EquationRPInitIsDone
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

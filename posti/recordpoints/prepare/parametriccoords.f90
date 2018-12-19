@@ -18,10 +18,10 @@ PUBLIC :: GetRecordPoints
 
 CONTAINS
 
+!===================================================================================================================================
+!> Wrapper routine to call the search and sorting algorithms
+!===================================================================================================================================
 SUBROUTINE GetRecordPoints()
-!===================================================================================================================================
-! Wrapper routine to call the search and sorting algorithms
-!===================================================================================================================================
 ! MODULES
 USE MOD_Globals
 USE MOD_RPSet_Vars        ,ONLY: RPSetInitIsDone
@@ -53,7 +53,7 @@ END SUBROUTINE GetRecordPoints
 
 
 !===================================================================================================================================
-!> Computes parametric coordinates and element of recordpoints given a physical coordinates iteratively
+!> Computes parametric coordinates and element of recordpoints given the physical coordinates iteratively
 !===================================================================================================================================
 SUBROUTINE GetParametricCoordinates()
 ! MODULES
@@ -450,7 +450,7 @@ END SUBROUTINE GetParametricCoordinates
 
 
 !===================================================================================================================================
-!> sort points according to element numbering and prepare Offset Array
+!> sort points according to element numbering and prepare Offset Array - needed for parallel processing
 !===================================================================================================================================
 SUBROUTINE SortRP()
 ! MODULES

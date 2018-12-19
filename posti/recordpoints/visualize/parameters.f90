@@ -12,7 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 !===================================================================================================================================
-!> Contains global variables provided by the output routines
+!> Contains global variables provided by the visualize recordpoints tool
 !===================================================================================================================================
 MODULE MOD_ParametersVisu
 ! MODULES
@@ -22,59 +22,66 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
-LOGICAL                             :: justVisualizeState
-CHARACTER(len=255)                  :: ProjectName
-CHARACTER(len=255)                  :: RP_DefFile 
-CHARACTER(len=255),ALLOCATABLE      :: GroupNames_visu(:)
-INTEGER                             :: nGroups_visu
-LOGICAL                             :: OutputTimeData
-LOGICAL                             :: doFluctuations
-LOGICAL                             :: equiTimeSpacing
-LOGICAL                             :: OutputTimeAverage
-LOGICAL                             :: OutputLines,OutputPlanes,OutputPoints
-LOGICAL                             :: Line_GlobalCoords
-LOGICAL                             :: Line_LocalCoords
-LOGICAL                             :: Line_LocalVel
-LOGICAL                             :: Plane_LocalCoords
-LOGICAL                             :: Plane_LocalVel
-LOGICAL                             :: Plane_doBLProps
-INTEGER                             :: Plane_BLvelScaling
-LOGICAL                             :: usePrims
-LOGICAL                             :: RP_SET_defined
+LOGICAL                             :: justVisualizeState      !< If no output variables have been specified, visualize everything
+                                                               !< that is found in the HDF5 file
+! General input parameters
+CHARACTER(len=255)                  :: ProjectName             !<  Name of the project
+CHARACTER(len=255)                  :: RP_DefFile              !< Path to the *RPset.h5 file
+CHARACTER(len=255),ALLOCATABLE      :: GroupNames_visu(:)      !< Name(s) of the group(s) to visualize
+INTEGER                             :: nGroups_visu            !< Number of groups to visualize
+LOGICAL                             :: OutputTimeData          !< Should the time series be written?
+LOGICAL                             :: doFluctuations          !< Should the fluctuations be computed and written?
+LOGICAL                             :: equiTimeSpacing         !< Interpolate the temporal data to equidistant time steps (needed for
+                                                               !< FFT)
+LOGICAL                             :: OutputTimeAverage       !< Should the time average be computed and written?
+LOGICAL                             :: OutputLines             !< General option to turn off the output of lines
+LOGICAL                             :: OutputPlanes            !< General option to turn off the output of planes
+LOGICAL                             :: OutputPoints            !< General option to turn off the output of points
+LOGICAL                             :: Line_LocalCoords        !< Set to use local instead of global coordinates along planes
+LOGICAL                             :: Line_LocalVel           !< Set to use local instead of global velocities along planes
+LOGICAL                             :: Plane_LocalCoords       !< Set to use local instead of global coordinates along planes
+LOGICAL                             :: Plane_LocalVel          !< Set to use local instead of global velocities along planes
+LOGICAL                             :: Plane_doBLProps         !< Set to use local instead of global velocities along planes
+INTEGER                             :: Plane_BLvelScaling      !< 0: no scaling, 1: laminar, 2: turbulent
+LOGICAL                             :: usePrims                !< State directly gives the primitive variables
+LOGICAL                             :: RP_SET_defined          !< True if definition file has been specified
 !--------------------------------------------------
 ! Filter
-LOGICAL                             :: doFilter
-INTEGER                             :: FilterMode
-REAL                                :: FilterWidth
+LOGICAL                             :: doFilter                !< Set to perform temporal filtering for each RP
+INTEGER                             :: FilterMode              !<Set to 0 for low pass filter and to 1 for high pass filter
+REAL                                :: FilterWidth             !< Width of the temporal filter
 !--------------------------------------------------
 ! Spectral Analysis, FFT, PSD
-LOGICAL                             :: doSpec
-LOGICAL                             :: doPSD
-LOGICAL                             :: doFFT
-INTEGER                             :: nBlocks 
-INTEGER                             :: BlockSize
-REAL                                :: cutoffFreq,samplingFreq
-LOGICAL                             :: doHanning
-LOGICAL                             :: fourthDeriv,ThirdOct
-REAL                                :: u_infPhys,chordPhys
-REAL                                :: Line_LocalVel_vec(3)
-REAL                                :: Mu0
+LOGICAL                             :: doSpec                  !< Set if any spectral analysis (FFT,PSD) is performed
+LOGICAL                             :: doPSD                   !< Calculate the power spectral density of the time signal
+LOGICAL                             :: doFFT                   !< Calculate a fast Fourier transform of the time signal
+INTEGER                             :: nBlocks                 !< Number of blocks for spectral averaging
+INTEGER                             :: BlockSize               !< Size of blocks in samples
+REAL                                :: cutoffFreq              !< Cutoff frequency of spectral analysis
+REAL                                :: samplingFreq            !< Alternative of specfying number of blocks
+LOGICAL                             :: doHanning               !< Perform windowing using Hann function
+LOGICAL                             :: fourthDeriv             !< Calculate fourth temporal derivative
+LOGICAL                             :: ThirdOct                !<
+REAL                                :: u_infPhys               !<
+REAL                                :: chordPhys               !<
+REAL                                :: Line_LocalVel_vec(3)    !< Vector used in transformation to local velocity on line
 !--------------------------------------------------
 ! Turbulence
-LOGICAL                             :: doTurb
-INTEGER                             :: nVarVisu  
-CHARACTER(len=255),ALLOCATABLE      :: VarNamevisu(:)
-INTEGER                             :: OutputFormat
-INTEGER                             :: Skip ! nur jeder skipte RP sample wird eingelesen
-
-
-
-INTEGER,ALLOCATABLE               :: DepTable(:,:)
-CHARACTER(LEN=255),ALLOCATABLE,TARGET :: VarNamesAll(:)
-INTEGER                           :: nVarDep                 ! 
-INTEGER                           :: nVarCalc
-INTEGER                           :: nVarVisuTotal
-INTEGER,ALLOCATABLE               :: mapCalc(:)
-INTEGER,ALLOCATABLE               :: mapVisu(:)
+LOGICAL                             :: doTurb                  !< Compute temporal FFT and calculate turbulent quantities
+REAL                                :: Mu0                     !< Viscosity (for turbulent quantitites)
+!--------------------------------------------------
+! Output
+INTEGER                             :: OutputFormat            !< 0: ParaView (vts), 2: HDF5
+INTEGER                             :: Skip                    !< Skip every nth recorded time step
+!--------------------------------------------------
+! Variable mappings
+INTEGER,ALLOCATABLE                   :: DepTable(:,:)         !< Array containing all available variables and the dependecies
+CHARACTER(LEN=255),ALLOCATABLE,TARGET :: VarNamesAll(:)        !< Name of all availabe variables
+CHARACTER(len=255),ALLOCATABLE        :: VarNameVisu(:)        !< Name of variables to visualize
+INTEGER                               :: nVarVisu              !< Number of quantities to visualize
+INTEGER                               :: nVarDep               !< Number of dependent variables
+INTEGER                               :: nVarCalc              !< Number of variables that must be calculated
+INTEGER,ALLOCATABLE                   :: mapCalc(:)            !< Mapping from dependent to calculated variables
+INTEGER,ALLOCATABLE                   :: mapVisu(:)            !< Mapping from dependent to visualized variables
 !===================================================================================================================================
 END MODULE MOD_ParametersVisu

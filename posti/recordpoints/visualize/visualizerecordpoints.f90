@@ -376,13 +376,11 @@ CHARACTER(LEN=20)   :: format
 !             if a quantity is not visualized it is zero
 ALLOCATE(mapVisu(1:nVarDep))
 mapVisu = 0
-nVarVisuTotal = 0
 ! Compare varnames that should be visualized with availabe varnames
 DO iVar=1,nVarVisu
   DO iVar2=1,nVarDep
     IF (STRICMP(VarNameVisu(iVar), VarNamesAll(iVar2))) THEN
-      mapVisu(iVar2) = nVarVisuTotal+1
-      nVarVisuTotal = nVarVisuTotal + 1
+      mapVisu(iVar2) = iVar
     END IF
   END DO
 END DO

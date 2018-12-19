@@ -1,6 +1,6 @@
 #include "flexi.h"
 !===================================================================================================================================
-!> Module to handle the Recordpoints
+!> Module to handle temporal filtering of the record point time signal
 !===================================================================================================================================
 MODULE MOD_FilterRP
 ! MODULES
@@ -17,16 +17,17 @@ PUBLIC :: FilterRP
 CONTAINS
 
 !===================================================================================================================================
-!> Initialize all necessary information to perform interpolation
+!> Initialize and perform the temporal filtering of the time signal stored at the record points. Either a high-pass or a
+!> low-pass filter can be used.
 !===================================================================================================================================
 SUBROUTINE FilterRP()
 ! MODULES
 USE MOD_Globals
 USE MOD_RPData_Vars          ,ONLY: RPTime
-USE MOD_RPSetVisuVisu_Vars           ,ONLY: nRP_global
+USE MOD_RPSetVisuVisu_Vars   ,ONLY: nRP_global
 USE MOD_RPInterpolation_Vars
 USE MOD_OutputRPVisu_Vars    ,ONLY: nSamples_out,RPData_out
-USE MOD_ParametersVisu           ,ONLY: FilterWidth,nVarVisu,FilterMode
+USE MOD_ParametersVisu       ,ONLY: FilterWidth,nVarVisu,FilterMode
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

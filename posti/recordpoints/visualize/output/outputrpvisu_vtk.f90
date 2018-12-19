@@ -526,12 +526,12 @@ USE MOD_Globals
 USE VTU
 USE MOD_IO_VTU
 USE MOD_VTU_Output
-USE MOD_Equation_Vars   ,ONLY:nBLProps,VarNames_BLProps
-USE MOD_ParametersVisu      ,ONLY:ProjectName
-USE MOD_RPSetVisuVisu_Vars      ,ONLY:GroupNames 
-USE MOD_RPSetVisuVisu_Vars      ,ONLY:nPlanes,Planes,tPlane
-USE MOD_RPSetVisuVisu_Vars      ,ONLY:xF_RP
-USE MOD_OutputRPVisu_Vars     ,ONLY:nCoords,CoordNames
+USE MOD_Equation_Vars      ,ONLY: nBLProps,VarNames_BLProps
+USE MOD_ParametersVisu     ,ONLY: ProjectName
+USE MOD_RPSetVisuVisu_Vars ,ONLY: GroupNames 
+USE MOD_RPSetVisuVisu_Vars ,ONLY: nPlanes,Planes,tPlane
+USE MOD_RPSetVisuVisu_Vars ,ONLY: xF_RP
+USE MOD_OutputRPVisu_Vars  ,ONLY: nCoords,CoordNames
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

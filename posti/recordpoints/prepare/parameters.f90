@@ -12,7 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 !===================================================================================================================================
-!> Contains global variables for the Posti tool
+!> Contains the global parameters for the prepare recordpoints tool
 !===================================================================================================================================
 MODULE MOD_Parameters
 ! MODULES
@@ -22,12 +22,12 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
-INTEGER                       :: NSuper
-REAL                          :: maxTol                   !< max overshoot in param coords (1+maxTol)
-LOGICAL                       :: doVisuRP
+INTEGER                       :: NSuper                   !< Supersampling polynomial degree, used for initial guess in Newton
+REAL                          :: maxTol                   !< Max overshoot in param coords (1+maxTol)
+LOGICAL                       :: doVisuRP                 !< Set to True to visualize the record point set for paraview
 
-INTEGER                       :: nCoords                  !< number of visualisation points is NVisu+1
-CHARACTER(LEN=255),ALLOCATABLE:: CoordNames(:)            !< including space and time coordinates
+INTEGER                       :: nCoords                  !< Number of coordinates (physical plus local coordinates)
+CHARACTER(LEN=255),ALLOCATABLE:: CoordNames(:)            !< Names of those coordinates
 LOGICAL                       :: OutputInitIsDone=.FALSE.
 !===================================================================================================================================
 END MODULE MOD_Parameters

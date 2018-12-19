@@ -1,9 +1,7 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-!> Module for generic data output in Tecplot format
-!>
-!> WARNING: WriteDataToTecplot works only for POSTPROCESSING
+!> Module for the output of record point data using the HDF5 file format
 !===================================================================================================================================
 MODULE MOD_OutputRPVisu_HDF5
 ! MODULES
@@ -30,7 +28,7 @@ PUBLIC::WriteDataToHDF5
 CONTAINS
 
 !===================================================================================================================================
-!> Subroutine to write point data to HDF5 file 
+!> Subroutine to write record point data to HDF5 file 
 !===================================================================================================================================
 SUBROUTINE WriteDataToHDF5(nSamples,nRP,nVal,VarNames,Time,Value,FileString)
 ! MODULES
@@ -38,16 +36,16 @@ USE MOD_Globals
 USE HDF5
 USE MOD_IO_HDF5
 USE MOD_HDF5_Output
-USE MOD_ParametersVisu      ,ONLY:ProjectName
-USE MOD_ParametersVisu      ,ONLY:Line_LocalCoords,Plane_LocalCoords
-USE MOD_ParametersVisu      ,ONLY:OutputPlanes,OutputLines,OutputPoints
-USE MOD_RPSetVisuVisu_Vars      ,ONLY:GroupNames 
-USE MOD_RPSetVisuVisu_Vars      ,ONLY:OutputGroup 
-USE MOD_RPSetVisuVisu_Vars      ,ONLY:nPoints,Points_IDlist,Points_GroupIDlist
-USE MOD_RPSetVisuVisu_Vars      ,ONLY:nLines,Lines,tLine
-USE MOD_RPSetVisuVisu_Vars      ,ONLY:nPlanes,Planes,tPlane
-USE MOD_RPSetVisuVisu_Vars      ,ONLY:xF_RP
-USE MOD_OutputRPVisu_Vars     ,ONLY:nCoords,CoordNames
+USE MOD_ParametersVisu     ,ONLY: ProjectName
+USE MOD_ParametersVisu     ,ONLY: Line_LocalCoords,Plane_LocalCoords
+USE MOD_ParametersVisu     ,ONLY: OutputPlanes,OutputLines,OutputPoints
+USE MOD_RPSetVisuVisu_Vars ,ONLY: GroupNames 
+USE MOD_RPSetVisuVisu_Vars ,ONLY: OutputGroup 
+USE MOD_RPSetVisuVisu_Vars ,ONLY: nPoints,Points_IDlist,Points_GroupIDlist
+USE MOD_RPSetVisuVisu_Vars ,ONLY: nLines,Lines,tLine
+USE MOD_RPSetVisuVisu_Vars ,ONLY: nPlanes,Planes,tPlane
+USE MOD_RPSetVisuVisu_Vars ,ONLY: xF_RP
+USE MOD_OutputRPVisu_Vars  ,ONLY: nCoords,CoordNames
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -206,7 +204,7 @@ END SUBROUTINE WriteDataToHDF5
 
 #ifdef WITHBLPROPS
 !===================================================================================================================================
-!> Subroutine to write point data to HDF5 file 
+!> Subroutine to write the boundary layer specific data to HDF5 file 
 !===================================================================================================================================
 SUBROUTINE WriteBLPropsToHDF5(FileString)
 ! MODULES
@@ -214,12 +212,12 @@ USE MOD_Globals
 USE HDF5
 USE MOD_IO_HDF5
 USE MOD_HDF5_Output
-USE MOD_Equation_Vars   ,ONLY:nBLProps,VarNames_BLProps
-USE MOD_ParametersVisu      ,ONLY:ProjectName
-USE MOD_RPSetVisuVisu_Vars      ,ONLY:GroupNames 
-USE MOD_RPSetVisuVisu_Vars      ,ONLY:nPlanes,Planes,tPlane
-USE MOD_RPSetVisuVisu_Vars      ,ONLY:xF_RP
-USE MOD_OutputRPVisu_Vars     ,ONLY:nCoords,CoordNames
+USE MOD_Equation_Vars      ,ONLY: nBLProps,VarNames_BLProps
+USE MOD_ParametersVisu     ,ONLY: ProjectName
+USE MOD_RPSetVisuVisu_Vars ,ONLY: GroupNames 
+USE MOD_RPSetVisuVisu_Vars ,ONLY: nPlanes,Planes,tPlane
+USE MOD_RPSetVisuVisu_Vars ,ONLY: xF_RP
+USE MOD_OutputRPVisu_Vars  ,ONLY: nCoords,CoordNames
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

@@ -14,7 +14,7 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-!> Tool used to create record points. The points are define in groups that can take different shapes, e.g. simple lines, circles,
+!> Tool used to create record points. The points are sorted in groups and can take different shapes, e.g. simple lines, circles,
 !> planes etc. For all points, the reference coordinates and respective element IDs are found in the mesh and stored as a .h5 file
 !> which can later be read by FLEXI or POSTI tools. 
 !> In this way, we can e.g. produce a time-series of flow variables at the RPs in a very fine time intervall.
