@@ -553,7 +553,7 @@ TYPE(RPPoint)             :: RPPoints
 INTEGER                   :: nPlanesOutput
 INTEGER                   :: iPlanesOutput
 !===================================================================================================================================
-WRITE(UNIT_stdOut,'(A,A,A)',ADVANCE='NO')" WRITE BOUNDARY LAYER PROPERTY DATA TO VTU FILE '",TRIM(FileString),"'.vtu ..."
+WRITE(UNIT_stdOut,'(A,A,A)')" WRITE BOUNDARY LAYER PROPERTY DATA TO VTU FILE '",TRIM(FileString),"'.vtu ..."
 
 ! Count the number of boundary layer planes
 ! Planes
@@ -602,9 +602,11 @@ DO iPlane=1,nPlanes
 END DO ! iPlane
 
 ! Write to VTK
-CALL WriteStructuredDataToVTK(FileString,0,nPlanesOutput,RPPoints,RPLines,RPPlanes,.TRUE.,nBLProps,VarNames_BLProps)
+RPPoints%nRPs = 0
+ALLOCATE(RPPlanes(0))
+CALL WriteStructuredDataToVTK(FileString,nPlanesOutput,0,RPPoints,RPLines,RPPlanes,.TRUE.,nBLProps,VarNames_BLProps)
 
-WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')"DONE"
+WRITE(UNIT_stdOut,'(A)')"DONE"
 
 END SUBROUTINE WriteBLPropsToVTK
 

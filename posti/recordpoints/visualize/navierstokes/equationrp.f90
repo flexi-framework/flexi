@@ -57,7 +57,7 @@ USE MOD_EquationRP_Vars
 USE MOD_EOS               ,ONLY:InitEOS
 USE MOD_EOS_Posti_Vars    ,ONLY:nVarDepEOS,DepTableEOS,DepNames
 USE MOD_Readintools       ,ONLY:CountOption,GETSTR
-USE MOD_StringTools       ,ONLY: STRICMP
+USE MOD_StringTools       ,ONLY:STRICMP
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
