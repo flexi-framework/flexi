@@ -50,7 +50,7 @@ CONTAINS
 
 !===================================================================================================================================
 !> Initialize FFT. Read in user-defined parameters, allocate arrays for solution and auxilliary FFT variables.
-!> Prepare the Vandermonde to interpolate from the state to the FFT grid. Prepare coordinates of FFT grind.
+!> Prepare the Vandermonde to interpolate from the state to the FFT grid. Prepare coordinates of FFT grid.
 !===================================================================================================================================
 SUBROUTINE InitFFT()
 ! MODULES
@@ -105,7 +105,7 @@ Ex_uu=0.;Ex_vv=0.;Ex_ww=0.;Ex_pp=0.
 Ez_uu=0.;Ez_vv=0.;Ez_ww=0.;Ez_pp=0.
 ALLOCATE(U_FFT(1:5,1:N_FFT(1),1:N_FFT(2),1:N_FFT(3)))
 ALLOCATE(MS_PSD(N_FFT(2),4))
-ALLOCATE(MS_t(N_FFT(2)))
+ALLOCATE(MS_t(N_FFT(2),3))
 ALLOCATE(M_t(N_FFT(2),4))
 MS_t=0.
 MS_PSD=0.
@@ -254,7 +254,9 @@ DO j=1,N_FFT(2)
   M_t(j,3)=M_t(j,3)+SUM(U_FFT(4,1:N_FFT(1),j,1:N_FFT(3)))
   M_t(j,4)=M_t(j,4)+SUM(U_FFT(5,1:N_FFT(1),j,1:N_FFT(3)))
   !  For mean uv
-  MS_t(j)=MS_t(j)+SUM(U_FFT(2,1:N_FFT(1),j,1:N_FFT(3))*U_FFT(3,1:N_FFT(1),j,1:N_FFT(3)))
+  MS_t(j,1)=MS_t(j,1)+SUM(U_FFT(2,1:N_FFT(1),j,1:N_FFT(3))*U_FFT(3,1:N_FFT(1),j,1:N_FFT(3)))
+  MS_t(j,2)=MS_t(j,2)+SUM(U_FFT(2,1:N_FFT(1),j,1:N_FFT(3))*U_FFT(4,1:N_FFT(1),j,1:N_FFT(3)))
+  MS_t(j,3)=MS_t(j,3)+SUM(U_FFT(3,1:N_FFT(1),j,1:N_FFT(3))*U_FFT(4,1:N_FFT(1),j,1:N_FFT(3)))
 END DO
 
 END SUBROUTINE PerformFFT
@@ -330,7 +332,7 @@ DO j=N_FFT(2)/2+1,N_FFT(2)
   Ez_vv(j,:)=(Ez_vv(N_FFT(2)-j+1,:)+Ez_vv(j,:))
   Ez_ww(j,:)=(Ez_ww(N_FFT(2)-j+1,:)+Ez_ww(j,:))
   Ez_pp(j,:)=(Ez_pp(N_FFT(2)-j+1,:)+Ez_pp(j,:))
-  MS_t(j)=(MS_t(N_FFT(2)-j+1)-MS_t(j))
+  MS_t(j,:)=(MS_t(N_FFT(2)-j+1,:)-MS_t(j,:))
   M_t(j,:)=(M_t(N_FFT(2)-j+1,:)+M_t(j,:))
 END DO
 !Mean of u,v,w,p
@@ -340,9 +342,11 @@ MS_PSD(:,1)=Ex_uu(:,1)/((nArgs-1)*N_FFT(3)*2)-(M_t(:,1))**2
 MS_PSD(:,2)=Ex_vv(:,1)/((nArgs-1)*N_FFT(3)*2)-(M_t(:,2))**2
 MS_PSD(:,3)=Ex_ww(:,1)/((nArgs-1)*N_FFT(3)*2)-(M_t(:,3))**2
 MS_PSD(:,4)=Ex_pp(:,1)/((nArgs-1)*N_FFT(3)*2)-(M_t(:,4))**2
-!Mean square of uv in Y-planes, not computed from spectra as
+!Mean square of uv,uw,vw in Y-planes, not computed from spectra as
 !there are non: mathematically equal.
-MS_t(:)=  MS_t(:)  /((nArgs-1)*N_FFT(1)*N_FFT(3)*2)-(M_t(:,1)*M_t(:,2))
+MS_t(:,1)=  MS_t(:,1)  /((nArgs-1)*N_FFT(1)*N_FFT(3)*2)-(M_t(:,1)*M_t(:,2))
+MS_t(:,2)=  MS_t(:,2)  /((nArgs-1)*N_FFT(1)*N_FFT(3)*2)-(M_t(:,1)*M_t(:,3))
+MS_t(:,3)=  MS_t(:,3)  /((nArgs-1)*N_FFT(1)*N_FFT(3)*2)-(M_t(:,2)*M_t(:,3))
 !TWO Times meansquare summed so far over time and z/x => amplitude squares wanted
 !z/x :: NFFT(3/1) ;  time :: nArgs-1 ; 1/2 for correct mean square
 Ex_uu(:,2:nSamples_SpecI)=Ex_uu(:,2:nSamples_SpecI)/(N_FFT(3)*REAL(nArgs-1)*2)
@@ -373,14 +377,19 @@ WRITE(FileUnit_EK,'(a)')'"uu"'
 WRITE(FileUnit_EK,'(a)')'"vv"'
 WRITE(FileUnit_EK,'(a)')'"ww"'
 WRITE(FileUnit_EK,'(a)')'"uv"'
+WRITE(FileUnit_EK,'(a)')'"uw"'
+WRITE(FileUnit_EK,'(a)')'"vw"'
 WRITE(FileUnit_EK,'(a)')'"u_mean"'
+WRITE(FileUnit_EK,'(a)')'"v_mean"'
+WRITE(FileUnit_EK,'(a)')'"w_mean"'
 WRITE(FileUnit_EK,'(a)')'ZONE T="ZONE1"'
 WRITE(FileUnit_EK,'(a)')' STRANDID=0, SOLUTIONTIME=0'
 WRITE(FileUnit_EK,*)' I=',N_FFT(2)/2,', J=1, K=1, ZONETYPE=Ordered'
 WRITE(FileUnit_EK,'(a)')' DATAPACKING=POINT'
-WRITE(FileUnit_EK,'(a)')' DT=(DOUBLE DOUBLE DOUBLE DOUBLE DOUBLE DOUBLE)'
+WRITE(FileUnit_EK,'(a)')' DT=(DOUBLE DOUBLE DOUBLE DOUBLE DOUBLE DOUBLE DOUBLE DOUBLE DOUBLE DOUBLE)'
 DO j=N_FFT(2)/2+1,N_FFT(2)
-  WRITE(FileUnit_EK,'(6(E20.12,X))')(1-(X_FFT(2,1,j,1)))*Re_tau,MS_PSD(j,1),MS_PSD(j,2),MS_PSD(j,3),MS_t(j),m_t(j,1)
+  WRITE(FileUnit_EK,'(10(E20.12,X))')(1-(X_FFT(2,1,j,1)))*Re_tau,MS_PSD(j,1),MS_PSD(j,2),MS_PSD(j,3),MS_t(j,1),MS_t(j,2),&
+                                                                                   MS_t(j,3),M_t(j,1),M_t(j,2),M_t(j,3)
 END DO
 CLOSE(FILEUnit_EK)
 !-------------------------------------------------
