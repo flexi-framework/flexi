@@ -333,7 +333,8 @@ DO j=N_FFT(2)/2+1,N_FFT(2)
   Ez_ww(j,:)=(Ez_ww(N_FFT(2)-j+1,:)+Ez_ww(j,:))
   Ez_pp(j,:)=(Ez_pp(N_FFT(2)-j+1,:)+Ez_pp(j,:))
   MS_t(j,:)=(MS_t(N_FFT(2)-j+1,:)-MS_t(j,:))
-  M_t(j,:)=(M_t(N_FFT(2)-j+1,:)+M_t(j,:))
+  M_t(j,1)=(M_t(N_FFT(2)-j+1,1)+M_t(j,1))
+  M_t(j,2:3)=(M_t(N_FFT(2)-j+1,2:3)-M_t(j,2:3))
 END DO
 !Mean of u,v,w,p
 M_t=M_t/((nArgs-1)*N_FFT(1)*N_FFT(3)*2)
