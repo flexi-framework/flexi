@@ -41,11 +41,9 @@ USE MOD_RPSetVisuVisu_Vars     ,ONLY: nRP_global
 USE MOD_OutputRPVisu_Vars      ,ONLY: nSamples_out
 USE MOD_ParametersVisu         ,ONLY: Mu0,cutoffFreq
 USE FFTW3
-#ifdef WITHTECPLOT
 USE MOD_OutputRPVisu_Vars      ,ONLY: CoordNames
-USE MOD_Tecplot                ,ONLY: WriteDataToTecplotBinary,WriteTimeAvgDataToTecplotBinary
+USE MOD_OutputRPVisu_VTK       ,ONLY: WriteDataToVTK, WriteTimeAvgDataToVTK
 USE MOD_ParametersVisu         ,ONLY: ProjectName
-#endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -60,12 +58,10 @@ REAL , ALLOCATABLE              :: E_kineticSpec(:,:)
 REAL , ALLOCATABLE              :: velAbs(:,:) , velAbs_avg(:) , density_avg(:) , kk(:,:) , disRate(:,:) , epsilonMean(:,:)
 REAL , ALLOCATABLE              :: nu0(:) , eta(:) , etaK(:,:)
 REAL , ALLOCATABLE              :: vel_spec(:,:,:) , velPrim(:,:,:) , RPData_freq(:)
-#ifdef WITHTECPLOT
 INTEGER                         :: nVar_turb
 CHARACTER(LEN=255),ALLOCATABLE  :: VarNameTurb(:)
-CHARACTER(LEN=255)              :: Filename,stroutputfile
+CHARACTER(LEN=255)              :: Filename
 REAL , ALLOCATABLE              :: RPData_turb(:,:,:) , RPData_turb_avg(:,:)
-#endif
 !===================================================================================================================================
 
 
@@ -162,7 +158,6 @@ DO iSample=1,nSamples_spec
 END DO
 
 
-#ifdef WITHTECPLOT
 nVar_turb=5
 ALLOCATE(VarNameTurb(nVar_turb))
 VarNameTurb(1) = 'KineticEnergy'
@@ -183,9 +178,8 @@ CoordNames(1)='Frequency'
 WRITE(UNIT_StdOut,'(132("-"))')
 Filename=TRIM(ProjectName)
 FileName=TRIM(FileName)//'_RP_turb'
-strOutputFile=TRIM(FileName)//'.plt'
-WRITE(UNIT_stdOut,'(A,A)')' WRITING TURBULENCE DATA TO ',strOutputFile
-CALL WriteDataToTecplotBinary(nSamples_spec,nRP_global,nVar_turb,VarNameTurb,RPData_freq,RPData_turb,strOutputFile)
+WRITE(UNIT_stdOut,'(A,A)')' WRITING TURBULENCE DATA TO ',TRIM(FileName)
+CALL WriteDataToVTK(nSamples_spec,nRP_global,nVar_turb,VarNameTurb,RPData_freq,RPData_turb,FileName)
 WRITE(UNIT_stdOut,'(A)')' DONE.'
 WRITE(UNIT_StdOut,'(132("-"))')
 
@@ -204,12 +198,10 @@ RPData_turb_avg(2,:) = epsilonMean(:,nSamples_spec)
 WRITE(UNIT_StdOut,'(132("-"))')
 Filename=TRIM(ProjectName)
 FileName=TRIM(FileName)//'_RP_TurbAvg'
-strOutputFile=TRIM(FileName)//'.plt'
-WRITE(UNIT_stdOut,'(A,A)')' WRITING TURBULENCE AVERAGE DATA TO ',strOutputFile
-CALL WriteTimeAvgDataToTecplotBinary(nRP_global,nVar_turb,VarNameTurb,RPData_turb_avg,strOutputFile)
+WRITE(UNIT_stdOut,'(A,A)')' WRITING TURBULENCE AVERAGE DATA TO ',TRIM(FileName)
+CALL WriteTimeAvgDataToVTK(nRP_global,nVar_turb,VarNameTurb,RPData_turb_avg,FileName)
 WRITE(UNIT_stdOut,'(A)')' DONE.'
 WRITE(UNIT_StdOut,'(132("-"))')
-#endif
 
 
 END SUBROUTINE Turbulence

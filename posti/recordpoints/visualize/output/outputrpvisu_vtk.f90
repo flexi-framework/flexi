@@ -34,14 +34,11 @@ INTERFACE WriteTimeAvgDataToVTK
   MODULE PROCEDURE WriteTimeAvgDataToVTK
 END INTERFACE
 
-#ifdef WITHBLPROPS
 INTERFACE WriteBLPropsToVTK
   MODULE PROCEDURE WriteBLPropsToVTK
 END INTERFACE
-PUBLIC::WriteBLPropsToVTK
-#endif
 
-PUBLIC::WriteDataToVTK,WriteTimeAvgDataToVTK
+PUBLIC::WriteDataToVTK,WriteTimeAvgDataToVTK,WriteBLPropsToVTK
 !===================================================================================================================================
 
 CONTAINS
@@ -56,7 +53,6 @@ CONTAINS
 SUBROUTINE WriteDataToVTK(nSamples,nRP,nVal,VarNames,Time,Value,FileName)
 ! MODULES
 USE MOD_Globals
-USE MOD_ParametersVisu      ,ONLY:ProjectName
 USE MOD_ParametersVisu      ,ONLY:Line_LocalCoords,Plane_LocalCoords
 USE MOD_ParametersVisu      ,ONLY:OutputPlanes,OutputLines,OutputPoints
 USE MOD_RPSetVisuVisu_Vars  ,ONLY:GroupNames 
@@ -345,10 +341,9 @@ END SUBROUTINE WriteDataToVTK
 !> that should be visualized in the respective data types. The average will be written to .vts files by calling the structured
 !> output routine.
 !===================================================================================================================================
-SUBROUTINE WriteTimeAvgDataToVTK(nRP,nVal,VarNames,Value)
+SUBROUTINE WriteTimeAvgDataToVTK(nRP,nVal,VarNames,Value,FileName)
 ! MODULES
 USE MOD_Globals
-USE MOD_ParametersVisu      ,ONLY:ProjectName
 USE MOD_ParametersVisu      ,ONLY:Line_LocalCoords,Plane_LocalCoords
 USE MOD_ParametersVisu      ,ONLY:OutputPlanes,OutputLines,OutputPoints
 USE MOD_RPSetVisuVisu_Vars  ,ONLY:GroupNames 
@@ -365,12 +360,12 @@ INTEGER,INTENT(IN)            :: nRP                           !< Number of RP t
 INTEGER,INTENT(IN)            :: nVal                          !< Number of nodal output variables
 CHARACTER(LEN=255),INTENT(IN) :: VarNames(nVal)                !< Names of all variables that will be written out
 REAL,INTENT(IN)               :: Value(1:nVal,nRP)             !< Statevector 
+CHARACTER(LEN=255),INTENT(IN) :: FileName                      !< First part of the file name
 !-----------------------------------------------------------------------------------------------------------------------------------
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                   :: iPoint,iLine,iPlane,i,j
 INTEGER                   :: GroupID
-CHARACTER(LEN=255)        :: ZoneTitle
 CHARACTER(LEN=255)        :: GroupName
 TYPE(tLine),POINTER       :: Line
 TYPE(tPlane),POINTER      :: Plane
@@ -451,7 +446,7 @@ ELSE
   nPlanesOutput = 0
 END IF
 
-! Loop over the time samples and perform the actual output
+! Collect the coordinates and values
 ! Points
 IF (OutputPoints) THEN
   iPointsOutput = 0
@@ -523,95 +518,94 @@ IF (OutputPlanes) THEN
 END IF
 
 ! Write to VTK
-ZoneTitle = TRIM(ProjectName)//'_RP_TimeAvg'
-CALL WriteStructuredDataToVTK(ZoneTitle,nLinesOutput,nPlanesOutput,RPPoints,RPLines,RPPlanes,.TRUE.,nVal,VarNames)
+CALL WriteStructuredDataToVTK(FileName,nLinesOutput,nPlanesOutput,RPPoints,RPLines,RPPlanes,.TRUE.,nVal,VarNames)
 
 WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')"DONE"
 END SUBROUTINE WriteTimeAvgDataToVTK
 
-#ifdef WITHBLPROPS
 !===================================================================================================================================
-!> Subroutine to write point data to VTU file 
+!> Subroutine to write the boundary layer properties to the VTK format.
+!> The boundary layer properties are calculated for the boundary layer planes, and the output is done on single line - the one
+!> at the wall.
 !===================================================================================================================================
 SUBROUTINE WriteBLPropsToVTK(FileString)
 ! MODULES
 USE MOD_Globals
-USE VTU
-USE MOD_IO_VTU
-USE MOD_VTU_Output
-USE MOD_Equation_Vars      ,ONLY: nBLProps,VarNames_BLProps
-USE MOD_ParametersVisu     ,ONLY: ProjectName
+USE MOD_VTKStructuredOutput
+USE MOD_EquationRP_Vars    ,ONLY: nBLProps,VarNames_BLProps
+USE MOD_ParametersVisu     ,ONLY: Plane_LocalCoords
 USE MOD_RPSetVisuVisu_Vars ,ONLY: GroupNames 
 USE MOD_RPSetVisuVisu_Vars ,ONLY: nPlanes,Planes,tPlane
+USE MOD_RPSetVisuVisu_Vars ,ONLY: OutputGroup 
 USE MOD_RPSetVisuVisu_Vars ,ONLY: xF_RP
-USE MOD_OutputRPVisu_Vars  ,ONLY: nCoords,CoordNames
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)   :: FileString !< Output file name
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER              :: iVar
-INTEGER              :: nCoords_loc
-INTEGER              :: iPoint,iPlane
-INTEGER              :: size_offsetdim,offsetVar
-CHARACTER(LEN=255)   :: ZoneTitle
-CHARACTER(LEN=255)   :: GroupName
-CHARACTER(LEN=255)   :: CoordNames_loc(nCoords-1)
-TYPE(tPlane),POINTER :: Plane
-REAL,ALLOCATABLE     :: LineCoord(:)
+INTEGER                   :: iPlane,i
+CHARACTER(LEN=255)        :: GroupName
+TYPE(tPlane),POINTER      :: Plane
+TYPE(RPPlane),ALLOCATABLE :: RPPlanes(:)
+TYPE(RPLine),ALLOCATABLE  :: RPLines(:)
+TYPE(RPPoint)             :: RPPoints
+INTEGER                   :: nPlanesOutput
+INTEGER                   :: iPlanesOutput
 !===================================================================================================================================
-WRITE(UNIT_stdOut,'(A,A,A)',ADVANCE='NO')" WRITE BOUNDARY LAYER PROPERTY DATA TO VTU FILE '",TRIM(FileString),"'..."
-CALL OpenDataFile(Filestring,create=.TRUE.,single=.FALSE.,readOnly=.FALSE.)
+WRITE(UNIT_stdOut,'(A,A,A)',ADVANCE='NO')" WRITE BOUNDARY LAYER PROPERTY DATA TO VTU FILE '",TRIM(FileString),"'.vtu ..."
 
-! Write dataset attributes
-CALL WriteAttribute(File_ID,'File_Type',1,StrScalar='RP_Output')
-CALL WriteAttribute(File_ID,'ProjectName',1,StrScalar=TRIM(ProjectName))
-CALL WriteAttribute(File_ID,'VarNames',nBLProps,StrArray=VarNames_BLProps)
-nCoords_loc=nCoords-1
-CoordNames_loc=CoordNames(2:nCoords)
-CALL WriteAttribute(File_ID,'CoordNames',nCoords_loc,StrArray=CoordNames_loc)
-
-! local coord always active for BL props
-size_offsetdim=5
-! Planes 
+! Count the number of boundary layer planes
+! Planes
+nPlanesOutput = 0
 DO iPlane=1,nPlanes
   Plane=>Planes(iPlane)
-  IF(Plane%Type.EQ.2) THEN ! BLPlane
-    GroupName=GroupNames(Plane%GroupID)
-  
-    !coordinates
-    ZoneTitle(1:255)=' '
-    WRITE(ZoneTitle,'(A,A,A,A)')TRIM(GroupName),'_',TRIM(Plane%Name),'_BLProps_X'
-    ALLOCATE(LineCoord(Plane%nRP(1)))
-    OffsetVar=0
-    !local coordinates
-    DO iVar=1,2
-      LineCoord(:)=Plane%LocalCoord(iVar,:,1)
-      CALL WriteArray(TRIM(ZoneTitle),size_offsetdim,2,(/1,Plane%nRP(1)/),OffsetVar,1,RealArray=LineCoord(:))
-      OffsetVar=OffsetVar+1
-    END DO !iVar
-    !global coordinates
-    DO iPoint=1,Plane%nRP(1)
-      LineCoord(iPoint)=xF_RP(iVar,Plane%IDlist(iPoint,1))
-    END DO ! iPoint
-    CALL WriteArray(TRIM(ZoneTitle),size_offsetdim,2,(/3,Plane%nRP(1)/),OffsetVar,1,RealArray=LineCoord(:))
-    DEALLOCATE(LineCoord)
-  
-    !values
-    WRITE(ZoneTitle,'(A,A,A,A)')TRIM(GroupName),'_',TRIM(Plane%Name),'_BLProps'
-    size_offsetdim=nBLprops
-    OffsetVar=0
-    CALL WriteArray(TRIM(ZoneTitle),size_offsetdim,2,(/nBLProps,Plane%nRP(1)/),&
-                    OffsetVar,1,RealArray=Plane%BLProps(:,:))
-  END IF!(Plane%Type.EQ.2) THEN ! BLPlane
+  IF((.NOT.OutputGroup(Plane%GroupID)).OR.(Plane%Type.NE.2)) CYCLE
+  nPlanesOutput = nPlanesOutput + 1
+END DO ! iPlane
+! The output of the boundary layer properties is done as a line (the bottom of the plane)
+IF (nPlanesOutput.GT.0) THEN
+  ALLOCATE(RPLines(nPlanesOutput))
+END IF
+iPlanesOutput = 0
+DO iPlane=1,nPlanes
+  Plane=>Planes(iPlane)
+  IF((.NOT.OutputGroup(Plane%GroupID)).OR.(Plane%Type.NE.2)) CYCLE
+  iPlanesOutput = iPlanesOutput + 1
+  RPLines(iPlanesOutput)%nRPs = Plane%nRP(1)
+  ALLOCATE(RPLines(iPlanesOutput)%Coords(3    ,Plane%nRP(1)))
+  ALLOCATE(RPLines(iPlanesOutput)%Val(nBLProps,Plane%nRP(1)))
+  IF (Plane_LocalCoords) RPLines(iPlanesOutput)%Coords(3,:) = 0.
 END DO ! iPlane
 
-! Close the file.
-CALL CloseDataFile()
+! Collect the coordinates and values
+! Planes
+iPlanesOutput = 0
+DO iPlane=1,nPlanes
+  Plane=>Planes(iPlane)
+  IF((.NOT.OutputGroup(Plane%GroupID)).OR.(Plane%Type.NE.2)) CYCLE
+  iPlanesOutput = iPlanesOutput + 1
+  ! coordinates
+  IF (Plane_LocalCoords) THEN
+    RPLines(iPlanesOutput)%Coords(1:2,:) = Plane%LocalCoord(:,:,1)
+  ELSE
+    ! global xyz coordinates
+    DO i=1,Plane%nRP(1)
+      RPLines(iPlanesOutput)%Coords(:,i) = xF_RP(:,Plane%IDlist(i,1))
+    END DO ! i
+  END IF
+  ! values
+  RPLines(iPlanesOutput)%Val(:,:) = Plane%BLProps(:,:)
+  ! name
+  GroupName=GroupNames(Plane%GroupID)
+  RPLines(iPlanesOutput)%name = TRIM(GroupName)//'_'//TRIM(Plane%Name)
+END DO ! iPlane
+
+! Write to VTK
+CALL WriteStructuredDataToVTK(FileString,0,nPlanesOutput,RPPoints,RPLines,RPPlanes,.TRUE.,nBLProps,VarNames_BLProps)
 
 WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')"DONE"
+
 END SUBROUTINE WriteBLPropsToVTK
-#endif
 
 END MODULE MOD_OutputRPVisu_VTK

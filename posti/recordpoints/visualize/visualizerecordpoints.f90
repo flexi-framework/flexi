@@ -28,9 +28,7 @@ USE MOD_Commandline_Arguments
 USE MOD_StringTools                 ,ONLY:STRICMP, GetFileExtension
 USE MOD_ReadInTools                 ,ONLY:prms,PrintDefaultParameterFile
 USE MOD_ParametersVisu              ,ONLY:equiTimeSpacing,doSpec,doFluctuations,doTurb,doFilter
-#ifdef WITHBLPROPS
 USE MOD_ParametersVisu              ,ONLY:Plane_doBLProps
-#endif
 USE MOD_RPSetVisu                   ,ONLY:InitRPSet,FinalizeRPSet
 USE MOD_RPData                      ,ONLY:ReadRPData,AssembleRPData,FinalizeRPData
 USE MOD_OutputRPVisu                      
@@ -129,9 +127,7 @@ IF(calcTimeAverage)    CALL CalcTimeAvg()
 IF(doFluctuations)     CALL CalcFluctuations()
 IF(doFilter)           CALL FilterRP()
 IF(doSpec)             CALL Spec()
-#ifdef WITHBLPROPS
 IF(Plane_doBLProps)    CALL Plane_BLProps() 
-#endif
 CALL OutputRP()
 IF(doTurb)             CALL Turbulence()
 CALL FinalizeInterpolation()

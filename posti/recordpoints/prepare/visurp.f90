@@ -51,7 +51,7 @@ TYPE(RPPlane),ALLOCATABLE    :: RPPlanes(:)
 TYPE(tPlane),POINTER         :: Plane
 TYPE(tLine),POINTER          :: Line
 CHARACTER(LEN=255)           :: GroupName
-INTEGER                      :: iVar,i,j,iPlane,iLine,nSets,iSet
+INTEGER                      :: iVar,i,j,iPlane,iLine
 !===================================================================================================================================
 IF(doVisuRP) THEN
   ! Prepare points structure

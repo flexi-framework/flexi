@@ -28,12 +28,10 @@ INTERFACE WriteDataToHDF5
   MODULE PROCEDURE WriteDataToHDF5
 END INTERFACE
 
-#ifdef WITHBLPROPS
 INTERFACE WriteBLPropsToHDF5
   MODULE PROCEDURE WriteBLPropsToHDF5
 END INTERFACE
 PUBLIC::WriteBLPropsToHDF5
-#endif
 
 PUBLIC::WriteDataToHDF5
 !===================================================================================================================================
@@ -215,7 +213,6 @@ CALL CloseDataFile()
 WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')"DONE"
 END SUBROUTINE WriteDataToHDF5
 
-#ifdef WITHBLPROPS
 !===================================================================================================================================
 !> Subroutine to write the boundary layer specific data to HDF5 file 
 !===================================================================================================================================
@@ -225,7 +222,7 @@ USE MOD_Globals
 USE HDF5
 USE MOD_IO_HDF5
 USE MOD_HDF5_Output
-USE MOD_Equation_Vars      ,ONLY: nBLProps,VarNames_BLProps
+USE MOD_EquationRP_Vars    ,ONLY: nBLProps,VarNames_BLProps
 USE MOD_ParametersVisu     ,ONLY: ProjectName
 USE MOD_RPSetVisuVisu_Vars ,ONLY: GroupNames 
 USE MOD_RPSetVisuVisu_Vars ,ONLY: nPlanes,Planes,tPlane
@@ -237,29 +234,26 @@ IMPLICIT NONE
 CHARACTER(LEN=*),INTENT(IN)   :: FileString !< Output file name
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER              :: iVar
 INTEGER              :: nCoords_loc
 INTEGER              :: iPoint,iPlane
-INTEGER              :: size_offsetdim,offsetVar
 CHARACTER(LEN=255)   :: ZoneTitle
 CHARACTER(LEN=255)   :: GroupName
 CHARACTER(LEN=255)   :: CoordNames_loc(nCoords-1)
 TYPE(tPlane),POINTER :: Plane
-REAL,ALLOCATABLE     :: LineCoord(:)
+REAL,ALLOCATABLE     :: LineCoord(:,:)
 !===================================================================================================================================
 WRITE(UNIT_stdOut,'(A,A,A)',ADVANCE='NO')" WRITE BOUNDARY LAYER PROPERTY DATA TO HDF5 FILE '",TRIM(FileString),"'..."
 CALL OpenDataFile(Filestring,create=.TRUE.,single=.FALSE.,readOnly=.FALSE.)
 
 ! Write dataset attributes
-CALL WriteAttribute(File_ID,'File_Type',1,StrScalar='RP_Output')
-CALL WriteAttribute(File_ID,'ProjectName',1,StrScalar=TRIM(ProjectName))
+CALL WriteAttribute(File_ID,'File_Type',1,StrScalar=(/'RP_Output'/))
+CALL WriteAttribute(File_ID,'ProjectName',1,StrScalar=(/TRIM(ProjectName)/))
 CALL WriteAttribute(File_ID,'VarNames',nBLProps,StrArray=VarNames_BLProps)
 nCoords_loc=nCoords-1
 CoordNames_loc=CoordNames(2:nCoords)
 CALL WriteAttribute(File_ID,'CoordNames',nCoords_loc,StrArray=CoordNames_loc)
 
 ! local coord always active for BL props
-size_offsetdim=5
 ! Planes 
 DO iPlane=1,nPlanes
   Plane=>Planes(iPlane)
@@ -269,27 +263,17 @@ DO iPlane=1,nPlanes
     !coordinates
     ZoneTitle(1:255)=' '
     WRITE(ZoneTitle,'(A,A,A,A)')TRIM(GroupName),'_',TRIM(Plane%Name),'_BLProps_X'
-    ALLOCATE(LineCoord(Plane%nRP(1)))
-    OffsetVar=0
-    !local coordinates
-    DO iVar=1,2
-      LineCoord(:)=Plane%LocalCoord(iVar,:,1)
-      CALL WriteArray(TRIM(ZoneTitle),size_offsetdim,2,(/1,Plane%nRP(1)/),OffsetVar,1,RealArray=LineCoord(:))
-      OffsetVar=OffsetVar+1
-    END DO !iVar
-    !global coordinates
+    ALLOCATE(LineCoord(5,Plane%nRP(1)))
+    LineCoord(1:2,:)=Plane%LocalCoord(1:2,:,1)
     DO iPoint=1,Plane%nRP(1)
-      LineCoord(iPoint)=xF_RP(iVar,Plane%IDlist(iPoint,1))
+      LineCoord(3:5,iPoint)=xF_RP(:,Plane%IDlist(iPoint,1))
     END DO ! iPoint
-    CALL WriteArray(TRIM(ZoneTitle),size_offsetdim,2,(/3,Plane%nRP(1)/),OffsetVar,1,RealArray=LineCoord(:))
+    CALL WriteArray(TRIM(ZoneTitle),2,(/5,Plane%nRP(1)/),(/5,Plane%nRP(1)/),(/0,0/),.FALSE.,RealArray=LineCoord)
     DEALLOCATE(LineCoord)
   
     !values
     WRITE(ZoneTitle,'(A,A,A,A)')TRIM(GroupName),'_',TRIM(Plane%Name),'_BLProps'
-    size_offsetdim=nBLprops
-    OffsetVar=0
-    CALL WriteArray(TRIM(ZoneTitle),size_offsetdim,2,(/nBLProps,Plane%nRP(1)/),&
-                    OffsetVar,1,RealArray=Plane%BLProps(:,:))
+    CALL WriteArray(TRIM(ZoneTitle),2,(/nBLProps,Plane%nRP(1)/),(/nBLProps,Plane%nRP(1)/),(/0,0/),.FALSE.,RealArray=Plane%BLProps)
   END IF!(Plane%Type.EQ.2) THEN ! BLPlane
 END DO ! iPlane
 
@@ -298,6 +282,5 @@ CALL CloseDataFile()
 
 WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')"DONE"
 END SUBROUTINE WriteBLPropsToHDF5
-#endif
 
 END MODULE MOD_OutputRPVisu_HDF5

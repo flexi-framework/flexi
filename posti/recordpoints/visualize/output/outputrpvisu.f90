@@ -14,7 +14,7 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-!>
+!> Module contains the routines that manage the output of te record point data.
 !===================================================================================================================================
 MODULE MOD_OutputRPVisu
 ! MODULES
@@ -96,7 +96,9 @@ END SUBROUTINE InitOutput
 
 
 !===================================================================================================================================
-!> Call of software specific output routines
+!> Call of software specific output routines for the user-specified output type. We can perform output of the time-accurate signal,
+!> of the temporal averages or of spectral data. Will prepare file names etc. and then call the specific routines to perform
+!> the output in the choosen file format.
 !===================================================================================================================================
 SUBROUTINE OutputRP()
 ! MODULES
@@ -104,16 +106,14 @@ USE MOD_Globals
 USE MOD_RPData_Vars        ,ONLY: RPTime
 USE MOD_ParametersVisu     ,ONLY: OutputFormat,thirdOct,ProjectName
 USE MOD_OutputRPVisu_Vars  ,ONLY: RPDataTimeAvg_out
-USE MOD_OutputRPVisu_VTK   ,ONLY: WriteDataToVTK,WriteTimeAvgDataToVTK
+USE MOD_OutputRPVisu_VTK   ,ONLY: WriteDataToVTK,WriteTimeAvgDataToVTK,WriteBLPropsToVTK
 USE MOD_OutputRPVisu_Vars  ,ONLY: nSamples_out,RPData_out,CoordNames 
-USE MOD_OutputRPVisu_HDF5
-USE MOD_spec_Vars          ,ONLY: nSamples_spec,RPData_freq,RPData_spec
-USE MOD_spec_Vars          ,ONLY: nSamples_Oct,RPData_freqOct,RPData_Oct
+USE MOD_OutputRPVisu_HDF5  ,ONLY: WriteDataToHDF5,WriteBLPropsToHDF5
+USE MOD_Spec_Vars          ,ONLY: nSamples_spec,RPData_freq,RPData_spec
+USE MOD_Spec_Vars          ,ONLY: nSamples_Oct,RPData_freqOct,RPData_Oct
 USE MOD_ParametersVisu     ,ONLY: nVarVisu,VarNameVisu
 USE MOD_ParametersVisu     ,ONLY: OutputTimeAverage,OutputTimeData,doSpec,doFluctuations
-#ifdef WITHBLPROPS
 USE MOD_ParametersVisu     ,ONLY: Plane_doBLProps
-#endif
 USE MOD_RPSetVisuVisu_Vars ,ONLY: nRP_global
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -146,12 +146,9 @@ WRITE(UNIT_StdOut,'(132("-"))')
   Filename=TRIM(ProjectName)
   FileName=TRIM(FileName)//'_RP_spec'
   SELECT CASE(OutputFormat)
-#ifdef WITHTECPLOT
-    CASE(0) ! Tecplot Binary Output, in one file, mesh+solution
-      strOutputFile=TRIM(FileName)//'.plt'
-      WRITE(UNIT_stdOut,'(A,A)')' WRITING SPECTRA TO ',strOutputFile
-      CALL WriteDataToTecplotBinary(nSamples_spec,nRP_global,nVarVisu,VarNameVisu,RPData_freq,RPData_spec,strOutputFile)
-#endif
+    CASE(0) ! Paraview VTK output
+      WRITE(UNIT_stdOut,'(A,A)')' WRITING SPECTRA TO VTK FILE '
+      CALL WriteDataToVTK(nSamples_spec,nRP_global,nVarVisu,VarNameVisu,RPData_freq,RPData_spec,FileName)
     CASE(2) ! structured HDF5 output
      strOutputFile=TRIM(FileName)//'_PP.h5'
       WRITE(UNIT_stdOut,'(A,A)')' WRITING SPECTRA TO ',strOutputFile
@@ -166,12 +163,10 @@ WRITE(UNIT_StdOut,'(132("-"))')
   Filename=TRIM(ProjectName)
   FileName=TRIM(FileName)//'_RP_Octspec'
   SELECT CASE(OutputFormat)
-#ifdef WITHTECPLOT
-    CASE(0) ! Tecplot Binary Output, in one file, mesh+solution
+    CASE(0) ! Paraview VTK output
       strOutputFile=TRIM(FileName)//'.plt'
-      WRITE(UNIT_stdOut,'(A,A)')' WRITING THIRD OCTAVE SPECTRA TO ',strOutputFile
-      CALL WriteDataToTecplotBinary(nSamples_Oct,nRP_global,nVarVisu,VarNameVisu,RPData_freqOct,RPData_Oct,strOutputFile)
-#endif
+      WRITE(UNIT_stdOut,'(A,A)')' WRITING THIRD OCTAVE SPECTRA TO VTK '
+      CALL WriteDataToVTK(nSamples_Oct,nRP_global,nVarVisu,VarNameVisu,RPData_freqOct,RPData_Oct,FileName)
     CASE(2) ! structured HDF5 output
      strOutputFile=TRIM(FileName)//'_PP.h5'
       WRITE(UNIT_stdOut,'(A,A)')' WRITING THIRD OCTAVE SPECTRA TO ',strOutputFile
@@ -188,7 +183,7 @@ IF(OutputTimeAverage) THEN
   SELECT CASE(OutputFormat)
     CASE(0) ! ParaView VTK output
       WRITE(UNIT_stdOut,'(A,A)')' WRITING TIME AVERAGE TO VTK FILE'
-      CALL WriteTimeAvgDataToVTK(nRP_global,nVarVisu,VarNameVisu,RPDataTimeAvg_out)
+      CALL WriteTimeAvgDataToVTK(nRP_global,nVarVisu,VarNameVisu,RPDataTimeAvg_out,FileName)
    CASE(2) ! structured HDF5 output
      strOutputFile=TRIM(FileName)//'_PP.h5'
      CALL WriteDataToHDF5(1,nRP_global,nVarVisu,VarNameVisu,RPTime,RPData_out,strOutputFile)
@@ -196,23 +191,18 @@ IF(OutputTimeAverage) THEN
   END SELECT
 END IF
 
-#ifdef WITHBLPROPS
 IF(Plane_doBLProps)THEN !output the BL stuff along lines
   Filename=TRIM(ProjectName)
   FileName=TRIM(FileName)//'_RP_BLProps'
   SELECT CASE(OutputFormat)
-#ifdef WITHTECPLOT
-    CASE(0) ! Tecplot Binary Output, in one file, mesh+solution
-    strOutputFile=TRIM(FileName)//'.plt'
-    WRITE(UNIT_stdOut,'(A,A)')' WRITING BL PROPS TO ',strOutputFile
-    CALL WriteBLPropsToTecplotBinary(strOutputFile)
-#endif
+    CASE(0) ! ParaView VTK output
+    WRITE(UNIT_stdOut,'(A,A)')' WRITING BL PROPS TO VTK'
+    CALL WriteBLPropsToVTK(FileName)
    CASE(2) ! structured HDF5 output
      strOutputFile=TRIM(FileName)//'_PP.h5'
      CALL WriteBLPropsToHDF5(strOutputFile)
    END SELECT
 END IF
-#endif
 
 END SUBROUTINE OutputRP
 
