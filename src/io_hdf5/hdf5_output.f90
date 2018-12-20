@@ -180,7 +180,7 @@ END IF ! (NOut.NE.PP_N)
 
 ! Reopen file and write DG solution
 #if USE_MPI
-CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
+CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
 #endif
 CALL GatheredWriteArray(FileName,create=.FALSE.,&
                         DataSetName='DG_Solution', rank=5,&
@@ -558,7 +558,7 @@ END IF
 
 ! Write DG solution
 #if USE_MPI
-CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
+CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
 #endif
 CALL GatheredWriteArray(FileName,create=.FALSE.,&
                         DataSetName='DG_Solution', rank=5,&
@@ -643,7 +643,7 @@ IF(MPIRoot)THEN
   CALL CloseDataFile()
 END IF
 #if USE_MPI
-CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
+CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
 #endif
 
 ! write dummy FV array

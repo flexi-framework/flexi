@@ -38,6 +38,7 @@ INTEGER           ::iError                                                    !<
 REAL              ::StartTime                                                 !< start time of the simulation
 INTEGER           ::myRank,myLocalRank,myLeaderRank,myWorkerRank
 INTEGER           ::nProcessors,nLocalProcs,nLeaderProcs,nWorkerProcs
+INTEGER           ::MPI_COMM_FLEXI !< Flexi MPI communicator
 INTEGER           ::MPI_COMM_NODE                                             !< local node subgroup
 INTEGER           ::MPI_COMM_LEADERS                                          !< all node masters
 INTEGER           ::MPI_COMM_WORKERS                                          !< all non-master nodes
@@ -207,7 +208,7 @@ CALL FLUSH(UNIT_stdOut)
 #if USE_MPI
 signalout=2 ! MPI_ABORT requires an output error-code /=0
 IF(PRESENT(ErrorCode)) signalout=ErrorCode
-CALL MPI_ABORT(MPI_COMM_WORLD,signalout,errOut)
+CALL MPI_ABORT(MPI_COMM_FLEXI,signalout,errOut)
 #endif  
 ERROR STOP 2
 END SUBROUTINE Abort
@@ -505,7 +506,7 @@ REAL                            :: FlexiTime                                  !<
 IF(PRESENT(Comm))THEN
   CALL MPI_BARRIER(Comm,iError)
 ELSE
-  CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
+  CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
 END IF
 #endif
 GETTIME(FlexiTime)

@@ -662,7 +662,7 @@ ReduceData(9)=nMortarSides
 ReduceData(10)=nMPIPeriodics
 
 #if USE_MPI
-CALL MPI_REDUCE(ReduceData,ReduceData_glob,10,MPI_INTEGER,MPI_SUM,0,MPI_COMM_WORLD,iError)
+CALL MPI_REDUCE(ReduceData,ReduceData_glob,10,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 ReduceData=ReduceData_glob
 #endif /*USE_MPI*/
 

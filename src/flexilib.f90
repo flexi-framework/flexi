@@ -32,7 +32,7 @@ PUBLIC::InitFlexi,FinalizeFlexi
 CONTAINS
 
 !==================================================================================================================================
-!> Control program of the Flexi code. Initialization of the computation
+!> Initialization of the computation
 !==================================================================================================================================
 SUBROUTINE InitFlexi(nArgs_In,Args_In,mpi_comm)
 ! MODULES
@@ -75,9 +75,10 @@ USE MOD_EddyVisc,          ONLY:DefineParametersEddyVisc
 USE MOD_Restart_Vars      ,ONLY:RestartFile
 USE MOD_StringTools       ,ONLY:STRICMP, GetFileExtension
 IMPLICIT NONE
-! LOCAL VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)            :: nArgs_In
-CHARACTER(LEN=255),INTENT(IN) :: Args_In(*)
+CHARACTER(LEN=255),INTENT(IN),OPTIONAL :: Args_In(*)
 INTEGER,INTENT(IN),OPTIONAL   :: mpi_comm
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -90,7 +91,11 @@ IF(PRESENT(mpi_comm))THEN
 ELSE
   CALL InitMPI()
 END IF
-CALL ParseCommandlineArguments(Args_In(1:nArgs_In))
+IF(nArgs_In.EQ.0)THEN
+  CALL ParseCommandlineArguments()
+ELSE
+  CALL ParseCommandlineArguments(Args_In(1:nArgs_In))
+END IF
 ! Check if the number of arguments is correct
 IF (nArgs.GT.2) THEN
   ! Print out error message containing valid syntax
@@ -213,13 +218,12 @@ SWRITE(UNIT_stdOut,'(132("="))')
 END SUBROUTINE InitFlexi
 
 !==================================================================================================================================
-!> Control program of the Flexi code. Initialization of the computation
+!> Finalize the computation.
 !==================================================================================================================================
 SUBROUTINE FinalizeFlexi()
 ! MODULES
+USE MOD_Commandline_Arguments,ONLY:FinalizeCommandlineArguments
 USE MOD_Globals
-USE MOD_PreProc
-USE MOD_Commandline_Arguments
 USE MOD_Restart,           ONLY:FinalizeRestart
 USE MOD_Interpolation,     ONLY:FinalizeInterpolation
 USE MOD_Mesh,              ONLY:FinalizeMesh
@@ -280,8 +284,6 @@ CALL FinalizeParameters()
 CALL FinalizeCommandlineArguments()
 #if USE_MPI
 ! For flexilib MPI init/finalize is controlled by main program
-!CALL MPI_FINALIZE(iError)
-!IF(iError .NE. 0) STOP 'MPI finalize error'
 CALL FinalizeMPI()
 #endif
 SWRITE(UNIT_stdOut,'(132("="))')
