@@ -31,9 +31,8 @@ END INTERFACE
 INTERFACE WriteBLPropsToHDF5
   MODULE PROCEDURE WriteBLPropsToHDF5
 END INTERFACE
-PUBLIC::WriteBLPropsToHDF5
 
-PUBLIC::WriteDataToHDF5
+PUBLIC::WriteDataToHDF5,WriteBLPropsToHDF5
 !===================================================================================================================================
 
 CONTAINS
@@ -243,7 +242,7 @@ TYPE(tPlane),POINTER :: Plane
 REAL,ALLOCATABLE     :: LineCoord(:,:)
 !===================================================================================================================================
 WRITE(UNIT_stdOut,'(A,A,A)',ADVANCE='NO')" WRITE BOUNDARY LAYER PROPERTY DATA TO HDF5 FILE '",TRIM(FileString),"'..."
-CALL OpenDataFile(Filestring,create=.TRUE.,single=.FALSE.,readOnly=.FALSE.)
+CALL OpenDataFile(Filestring,create=.TRUE.,single=.TRUE.,readOnly=.FALSE.)
 
 ! Write dataset attributes
 CALL WriteAttribute(File_ID,'File_Type',1,StrScalar=(/'RP_Output'/))
