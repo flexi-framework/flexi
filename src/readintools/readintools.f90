@@ -1279,15 +1279,18 @@ CALL Abort(__STAMP__,&
 
 END SUBROUTINE addStrListEntry
 
+!===================================================================================================================================
+!> This routing extracts a parameter file from the userblock of a state file
+!===================================================================================================================================
 SUBROUTINE ExtractParameterFile(filename,prmfile,userblockFound) 
 ! MODULES
 USE MOD_StringTools ,ONLY: STRICMP
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=255),INTENT(IN) :: filename !< name of file to be read
-CHARACTER(LEN=*),INTENT(IN)   :: prmfile  !< name of file to be written
-LOGICAL,INTENT(OUT)           :: userblockFound
+CHARACTER(LEN=255),INTENT(IN) :: filename       !< name of file to be read
+CHARACTER(LEN=*),INTENT(IN)   :: prmfile        !< name of file to be written
+LOGICAL,INTENT(OUT)           :: userblockFound !< logical indicating sucessful extraction of parameter file
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
 INTEGER               :: stat,iniUnit,fileUnit

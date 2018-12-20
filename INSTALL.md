@@ -4,7 +4,7 @@
 
 Flexi has been tested for various Linux distributions. This includes Ubuntu 14.04 LTS and 16.04 LTS, OpenSUSE 13.2 and CentOS 7. In addition Paraview or Tecplot can be used for visualization.
 
-The required packages for the Ubuntu Linux distributions are listed in table \ref{tab:installation_prereqs_ubuntu}. Under Ubuntu, they can be obtained using the apt environment:
+The required packages for the Ubuntu Linux distributions are listed in the tables below. Under Ubuntu, they can be obtained using the apt environment:
 
     sudo apt-get install git
     
@@ -77,7 +77,7 @@ Custom configuration of compiler options may be done using
 
         cd temp
 
-* Copy the *cavity* tutorial folder \label{missing:aliases_run_code}
+* Copy the *cavity* tutorial folder
 
         cp -r $FLEXI_TUTORIALS/cavity .
         cd cavity

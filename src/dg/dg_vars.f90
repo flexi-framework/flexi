@@ -58,7 +58,7 @@ REAL,ALLOCATABLE,TARGET               :: U(:,:,:,:,:)           !< Solution vari
 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! DG time derivative or Residual U_t
-REAL,ALLOCATABLE                      :: Ut(:,:,:,:,:)          !< Residual/time derivative, size [1..NVar,0..N,0..N,0..N,nElems]. 
+REAL,ALLOCATABLE                      :: Ut(:,:,:,:,:)          !< Residual/time derivative, size [1..NVar,0..N,0..N,0..NZ,nElems]. 
 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! auxilliary counters: number of entries in U, Ut, gradUx, gradUy, gradUz, used of optimization 
@@ -69,23 +69,23 @@ INTEGER                               :: nDOFElem               !< Degrees of fr
 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! interior face values for all elements
-REAL,ALLOCATABLE                      :: U_master(:,:,:,:)      !< 2D Solution on face nodes for the master sides, 
-                                                                !< size [1..NVar,0..N,0..N,all_master_sides] 
+REAL,ALLOCATABLE                      :: U_master(:,:,:,:)      !< 1D/2D Solution on face nodes for the master sides, 
+                                                                !< size [1..NVar,0..N,0..NZ,all_master_sides] 
 
-REAL,ALLOCATABLE                      :: U_slave(:,:,:,:)       !< 2D Solution on face nodes for the slave sides, 
-                                                                !< size [1..NVar,0..N,0..N,all_slave_sides] 
+REAL,ALLOCATABLE                      :: U_slave(:,:,:,:)       !< 1D/2D Solution on face nodes for the slave sides, 
+                                                                !< size [1..NVar,0..N,0..NZ,all_slave_sides] 
 
-REAL,ALLOCATABLE                      :: Flux_master(:,:,:,:)   !< Fluxes on face, size [1..NVar,0..N,0..N,allsides]. 
-REAL,ALLOCATABLE                      :: Flux_slave (:,:,:,:)   !< Fluxes on face, size [1..NVar,0..N,0..N,allsides]. 
+REAL,ALLOCATABLE                      :: Flux_master(:,:,:,:)   !< Fluxes on face, size [1..NVar,0..N,0..NZ,allsides]. 
+REAL,ALLOCATABLE                      :: Flux_slave (:,:,:,:)   !< Fluxes on face, size [1..NVar,0..N,0..NZ,allsides]. 
 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! Variables in case of primitive lifting
 REAL,ALLOCATABLE                      :: UPrim(:,:,:,:,:)       !< Solution in primitive variables per equation, node and element,
-                                                                !< size [1..NVar,0..N,0..N,0..N,nElems]. 
+                                                                !< size [1..NVar,0..N,0..N,0..NZ,nElems]. 
 REAL,ALLOCATABLE                      :: UPrim_master(:,:,:,:)  !< 2D Solution in Primitive variables on face, master side, 
-                                                                !< size [1..NVar,0..N,0..N,all_master_sides] 
+                                                                !< size [1..NVar,0..N,0..NZ,all_master_sides] 
 REAL,ALLOCATABLE                      :: UPrim_slave(:,:,:,:)   !< 2D Solution in Primitive variables on face, slave side, 
-                                                                !<size [1..NVar,0..N,0..N,all_slave_sides] 
+                                                                !<size [1..NVar,0..N,0..NZ,all_slave_sides] 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! Auxilliary variables
 LOGICAL                               :: DGInitIsDone=.FALSE.   !< Switch to check DGInit status

@@ -271,13 +271,14 @@ USE MOD_Flux         ,ONLY:EvalEulerFlux1D_fast
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)                                        :: Nloc       !< local polynomial degree
+INTEGER,INTENT(IN)                                          :: Nloc       !< local polynomial degree
 REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_L        !< conservative solution at left side of the interface
 REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_R        !< conservative solution at right side of the interface
 REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim_L    !< primitive solution at left side of the interface
 REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim_R    !< primitive solution at right side of the interface
-REAL,DIMENSION(          3,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: nv,t1,t2   !< normal vector and tangential vectors at side
-LOGICAL,INTENT(IN)                                        :: doBC       !< marker whether side is a BC side
+!> normal vector and tangential vectors at side
+REAL,DIMENSION(          3,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: nv,t1,t2  
+LOGICAL,INTENT(IN)                                          :: doBC       !< marker whether side is a BC side
 REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: FOut       !< advective flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

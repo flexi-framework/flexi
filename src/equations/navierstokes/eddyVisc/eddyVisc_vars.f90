@@ -22,6 +22,9 @@ PUBLIC
 SAVE
 
 ABSTRACT INTERFACE
+!===================================================================================================================================
+!> Compute Eddy-Visosity at a given point in the volume with the chosen eddy viscosity model
+!===================================================================================================================================
   SUBROUTINE EddyViscInt(iElem,i,j,k,muSGS)
   INTEGER,INTENT(IN)  :: iElem  !< index of current element
   !> indices of the c
@@ -32,6 +35,9 @@ ABSTRACT INTERFACE
 END INTERFACE
 
 ABSTRACT INTERFACE
+!===================================================================================================================================
+!> Finalizes the parameters needed for the eddy viscosity models
+!===================================================================================================================================
   SUBROUTINE FinalizeEddyViscosityInt()
   END SUBROUTINE
 END INTERFACE
@@ -44,16 +50,16 @@ PROCEDURE(EddyViscInt),POINTER               :: eddyViscosity         !< pointer
 PROCEDURE(FinalizeEddyViscosityInt),POINTER  :: FinalizeEddyViscosity !< pointer tofinalize routine 
 
 !Smagosinsky Standard
-REAL,ALLOCATABLE  :: DeltaS(:)         !< filter width, used by Smagorinsky modell
-REAL,ALLOCATABLE  :: muSGS(:,:,:,:,:)  !< Viscosity for the sub-grid
-REAL,ALLOCATABLE  :: muSGS_master(:,:,:,:) 
-REAL,ALLOCATABLE  :: muSGS_slave (:,:,:,:) 
-REAL,ALLOCATABLE  :: muSGSmax(:)       !< Viscosity for the sub-grid
-REAL              :: CS                !< Smagorinsky constant, LES
-REAL              :: PrSGS             !< Prandtl number for the sub-grid scales
+REAL,ALLOCATABLE  :: DeltaS(:)             !< filter width, used by Smagorinsky modell
+REAL,ALLOCATABLE  :: muSGS(:,:,:,:,:)      !< Viscosity for the sub-grid
+REAL,ALLOCATABLE  :: muSGS_master(:,:,:,:) !< Viscosity for the sub-grid on master sides
+REAL,ALLOCATABLE  :: muSGS_slave (:,:,:,:) !< Viscosity for the sub-grid on slave sides
+REAL,ALLOCATABLE  :: muSGSmax(:)           !< Viscosity for the sub-grid
+REAL              :: CS                    !< Smagorinsky constant, LES
+REAL              :: PrSGS                 !< Prandtl number for the sub-grid scales
 
-LOGICAL           :: VanDriest=.FALSE.
-LOGICAL           :: SmagorinskyInitIsDone=.FALSE.
-LOGICAL           :: SigmaModelInitIsDone=.FALSE.
+LOGICAL           :: VanDriest=.FALSE.     !< Logical indicating if Van Driest damping is activated (only use for channel flow)
+LOGICAL           :: SmagorinskyInitIsDone=.FALSE. !< Logical indicating if smagorinsky model has been initialized
+LOGICAL           :: SigmaModelInitIsDone=.FALSE.  !< Logical indicating if sigma model has been initialized
 
 END MODULE MOD_EddyVisc_Vars
