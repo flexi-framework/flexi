@@ -78,6 +78,7 @@ CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: VarNames(nVal)    !< Names of variables 
 INTEGER                     :: ivtk=44
 INTEGER                     :: nBytes,Offset
 REAL(KIND=4)                :: FLOATdummy
+INTEGER                     :: INTdummy
 CHARACTER(LEN=35)           :: StrOffset,TempStr1,TempStr2
 CHARACTER(LEN=200)          :: Buffer
 CHARACTER(LEN=200)          :: Buffer2
@@ -139,7 +140,7 @@ IF(nPoints.GT.0) THEN
       WRITE(StrOffset,'(I16)')Offset
       Buffer='        <DataArray type="Float32" Name="'//TRIM(VarNames(iVar))//'" NumberOfComponents="1" format="appended" '// &
                        'offset="'//TRIM(ADJUSTL(StrOffset))//'"/>'//lf;WRITE(ivtk) TRIM(Buffer)
-      Offset = Offset +nPoints*SIZEOF_F(FLOATdummy)
+      Offset = Offset + nPoints*SIZEOF_F(FLOATdummy) + SIZEOF_F(INTdummy)
     END DO
   END IF
   Buffer='      </PointData>'//lf;WRITE(ivtk) TRIM(Buffer)
@@ -158,13 +159,16 @@ IF(nPoints.GT.0) THEN
   ! Write leading data underscore
   Buffer='_';WRITE(ivtk) TRIM(Buffer)
 
-  nBytes = nPoints*SIZEOF_F(FLOATdummy) * (3+nVal)
+  nBytes = nPoints*SIZEOF_F(FLOATdummy)
   WRITE(ivtk) nBytes
   IF (withData) THEN
     DO iVar = 1,nVal
+      WRITE(ivtk) nBytes
       WRITE(ivtk) REAL(RPPoints%Val(iVar,:),4)
     END DO
   END IF
+  nBytes = nPoints*SIZEOF_F(FLOATdummy) * 3
+  WRITE(ivtk) nBytes
   WRITE(ivtk) REAL(RPPoints%Coords(:,:),4)
 
   ! Footer
@@ -216,7 +220,7 @@ DO iLine=1,nLines
       WRITE(StrOffset,'(I16)')Offset
       Buffer='        <DataArray type="Float32" Name="'//TRIM(VarNames(iVar))//'" NumberOfComponents="1" format="appended" '// &
                        'offset="'//TRIM(ADJUSTL(StrOffset))//'"/>'//lf;WRITE(ivtk) TRIM(Buffer)
-      Offset = Offset + RPLines(iLine)%nRPs*SIZEOF_F(FLOATdummy)
+      Offset = Offset + RPLines(iLine)%nRPs*SIZEOF_F(FLOATdummy) + SIZEOF_F(INTdummy)
     END DO
   END IF
   Buffer='      </PointData>'//lf;WRITE(ivtk) TRIM(Buffer)
@@ -235,13 +239,15 @@ DO iLine=1,nLines
   ! Write leading data underscore
   Buffer='_';WRITE(ivtk) TRIM(Buffer)
 
-  nBytes = RPLines(iLine)%nRPs*SIZEOF_F(FLOATdummy) * 3
-  WRITE(ivtk) nBytes
+  nBytes = RPLines(iLine)%nRPs*SIZEOF_F(FLOATdummy)
   IF (withData) THEN
     DO iVar = 1,nVal
+      WRITE(ivtk) nBytes
       WRITE(ivtk) REAL(RPLines(iLine)%Val(iVar,:),4)
     END DO
   END IF
+  nBytes = RPLines(iLine)%nRPs*SIZEOF_F(FLOATdummy) * 3
+  WRITE(ivtk) nBytes
   WRITE(ivtk) REAL(RPLines(iLine)%Coords(:,:),4)
 
   ! Footer
@@ -293,7 +299,7 @@ DO iPlane=1, nPlanes
       WRITE(StrOffset,'(I16)')Offset
       Buffer='        <DataArray type="Float32" Name="'//TRIM(VarNames(iVar))//'" NumberOfComponents="1" format="appended" '// &
                        'offset="'//TRIM(ADJUSTL(StrOffset))//'"/>'//lf;WRITE(ivtk) TRIM(Buffer)
-      Offset = Offset + RPPlanes(iPlane)%nRPs(1)*RPPlanes(iPlane)%nRPs(2)*SIZEOF_F(FLOATdummy)
+      Offset = Offset + RPPlanes(iPlane)%nRPs(1)*RPPlanes(iPlane)%nRPs(2)*SIZEOF_F(FLOATdummy) + SIZEOF_F(INTdummy)
     END DO
   END IF
   Buffer='      </PointData>'//lf;WRITE(ivtk) TRIM(Buffer)
@@ -304,7 +310,6 @@ DO iPlane=1, nPlanes
   WRITE(StrOffset,'(I16)')Offset
   Buffer='        <DataArray type="Float32" Name="Coordinates" NumberOfComponents="3" format="appended" '// &
                    'offset="'//TRIM(ADJUSTL(StrOffset))//'"/>'//lf;WRITE(ivtk) TRIM(Buffer)
-  Offset = Offset + RPPlanes(iPlane)%nRPs(1)*RPPlanes(iPlane)%nRPs(2)*SIZEOF_F(FLOATdummy) * 3
   Buffer='      </Points>'//lf;WRITE(ivtk) TRIM(Buffer)
   Buffer='    </Piece>'//lf;WRITE(ivtk) TRIM(Buffer)
   Buffer='  </StructuredGrid>'//lf;WRITE(ivtk) TRIM(Buffer)
@@ -313,13 +318,16 @@ DO iPlane=1, nPlanes
   ! Write leading data underscore
   Buffer='_';WRITE(ivtk) TRIM(Buffer)
 
-  nBytes = RPPlanes(iPlane)%nRPs(1)*RPPlanes(iPlane)%nRPs(2)*SIZEOF_F(FLOATdummy) * (3+nVal)
+  nBytes = RPPlanes(iPlane)%nRPs(1)*RPPlanes(iPlane)%nRPs(2)*SIZEOF_F(FLOATdummy)
   WRITE(ivtk) nBytes
   IF (withData) THEN
     DO iVar = 1,nVal
+      WRITE(ivtk) nBytes
       WRITE(ivtk) REAL(RPPlanes(iPlane)%Val(iVar,:,:),4)
     END DO
   END IF
+  nBytes = RPPlanes(iPlane)%nRPs(1)*RPPlanes(iPlane)%nRPs(2)*SIZEOF_F(FLOATdummy) * 3
+  WRITE(ivtk) nBytes
   WRITE(ivtk) REAL(RPPlanes(iPlane)%Coords(:,:,:),4)
 
   ! Footer
