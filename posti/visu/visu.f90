@@ -635,13 +635,15 @@ USE MOD_Mesh_Vars, ONLY: Elem_xGP
 IMPLICIT NONE
 !===================================================================================================================================
 SWRITE (*,*) "VISU FINALIZE"
-IF(FILEEXISTS(".posti.ini"))THEN
-  OPEN(UNIT=31, FILE=".posti.ini", STATUS='old')
-  CLOSE(31, STATUS='delete')
-END IF
-IF(FILEEXISTS(".flexi.ini"))THEN
-  OPEN(UNIT=31, FILE=".flexi.ini", STATUS='old')
-  CLOSE(31, STATUS='delete')
+IF(MPIRoot)THEN
+  IF(FILEEXISTS(".posti.ini"))THEN
+    OPEN(UNIT=31, FILE=".posti.ini", STATUS='old')
+    CLOSE(31, STATUS='delete')
+  END IF
+  IF(FILEEXISTS(".flexi.ini"))THEN
+    OPEN(UNIT=31, FILE=".flexi.ini", STATUS='old')
+    CLOSE(31, STATUS='delete')
+  END IF
 END IF
 prmfile_old = ""
 statefile_old = ""

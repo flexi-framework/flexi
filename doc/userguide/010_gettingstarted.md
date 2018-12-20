@@ -11,7 +11,7 @@ The suggested packages in this section can of course be replaced by self compile
 The required packages for the Ubuntu Linux distributions are listed in table \ref{tab:installation_prereqs_ubuntu}. Under Ubuntu, they can be obtained using the apt environment:
 
     sudo apt-get install git
-    
+
 
 | Package          | Ubuntu 14.04    | Ubuntu 16.04    |
 |:----------------:|:---------------:|:---------------:|
@@ -33,12 +33,12 @@ The required packages for OpenSUSE and CentOS are listed in table \ref{tab:insta
 
 Under OpenSUSE, packages are installed by the following command.
 
-    sudo zypper install git   
+    sudo zypper install git
 
 The `PATH` variable must be extended by the openmpi path
 
     export PATH=$PATH:/usr/lib64/mpi/gcc/openmpi/bin
-    
+
 Under CentOS, packages are installed by the following command.
 
     sudo yum install git
@@ -49,7 +49,7 @@ Additionally, the `PATH` variable must be extended by the openmpi path
 
 
 
-| Package          | OpenSUSE 42.1 | CentOS 7 | 
+| Package          | OpenSUSE 42.1 | CentOS 7 |
 |:----------------:|:-------------:|:--------:|
 | git              |      x        |    x     |
 | cmake            |      x        |    x     |
@@ -66,9 +66,11 @@ Table: OpenSUSE/CentOS packages.\label{tab:installation_prereqs_redhat}
 x: required, o: optional, -: not available
 
 
-On some systems it may be necessary to increase the size of the stack (part of the memory used to store information about active subroutines) in order to execute FLEXI correctly. This is done using the command
+On some systems it may be necessary to increase the size of the stack (part of the memory used to store information about active subroutines) in order to execute **FLEXI** correctly. This is done using the command
 
-        ulimit -s unlimited
+~~~~~~~
+ulimit -s unlimited
+~~~~~~~
 
 from the command line. For convenience, you can add this line to your `.bashrc`.
 
@@ -97,20 +99,35 @@ Note that cloning FLEXI from GitHub may not be possible on some machines, as e.g
         cmake ../
         make
 
-The executables **flexi** and **flexi2vtk** are contained in your **FLEXI** directory in `build/bin/`. If desired, environment variables and aliases for the executables can be made available by adding the following line to your `.bashrc` \label{missing:doesthisworkwithalllinux}
-
-    . ~/.flexi
-and sourcing your `.bashrc` afterwards in the terminal
-
-    . ~/.bashrc
-    
-Note that this enables the usage of `$FLEXI_TUTORIALS_DIR`.
+The executables **flexi** and **posti_visu** are contained in your **FLEXI** directory in `build/bin/`.
 
 Custom configuration of compiler options may be done using
 
     ccmake ../
-    
+
 For a list of all compiler options see Section \ref{sec:compileroptions}.
+
+#### Directory paths
+
+In the following, the environment variable `$FLEXI_DIR` is used in commands instead of the `build/bin` directory in your FLEXI repository. Furthermore, the environment variable `$FLEXI_TUTORIALS_DIR` replaces the path to the `tutorials` folder and `$HOPR_DIR` the path to the HOPR executables. For Linux beginners, here is some explanation:
+
+You can export an environment variable by adding e.g. the line
+
+      export FLEXI_DIR=[path to FLEXI]/build/bin
+
+to your `~/.bashrc`, where `[path to FLEXI]` is the path to your flexi repository. Source your `~/.bashrc` afterwards with
+
+      . ~/.bashrc
+
+Alternatively, you can add an alias for the path to your executable to your `~/.bashrc` with a command of the form
+
+      alias flexi='[path to flexi]/build/bin/flexi'
+
+**Or** you can add the FLEXI binary directory to your `$PATH` environment variable via
+
+      export PATH=$PATH:[path to FLEXI]/build/bin
+
+The last two options will enable you to simply type `flexi` without providing the whole path.
 
 
 ### Running the code
@@ -118,22 +135,22 @@ For a list of all compiler options see Section \ref{sec:compileroptions}.
 The following examples assume that the **FLEXI** environment variables have been made available (see Section \ref{sec:compilingthecode}).
 
 * Open a terminal
-* Navigate to a directory and copy a case folder 
+* Navigate to a directory and copy a case folder
 
         cd temp
 
 * Copy the *cavity* tutorial folder \label{missing:aliases_run_code}
 
-        cp -r $FLEXI_TUTORIALS_DIR/cavity .
+        cp -r $FLEXI_TUTORIALS_DIR/cavity/Basic_Re100 .
         cd cavity
 
 * Run flexi
 
         $FLEXI_DIR/flexi parameter_flexi.ini
 
-* Converting the output files to the vtu format 
+* Converting the output files to the vtu format
 
-        $FLEXI_DIR/flexi2vtk parameter_flexi.ini cavity_State_0000000.200000000.h5
+        $FLEXI_DIR/posti_visu parameter_flexi.ini cavity_State_0000000.200000000.h5
 
 * Visualize using e.g. ParaView.
 
@@ -147,21 +164,25 @@ For a basic overview of the framework and the single components of the flow solv
 
 A standalone high-order preprocessor HOPR has been developed to generate high-order meshes from input data from external linear mesh generators. Different file formats are supported. HOPR has been recently made open source under the GPLv3 license. It generates a **FLEXI** conform mesh format in HDF5 for efficient parallel initialization. For a complete overview of HOPR, see [https://www.hopr-project.org](https://www.hopr-project.org).
 
-The basic command to run HOPR is
+HOPR can be compiled in the same way as FLEXI (see section \ref{sec:compilingthecode}). The basic command to run HOPR is
 
-    hopr parameter.ini
+~~~~~~~
+$HOPR_DIR/hopr parameter.ini
+~~~~~~~
 
+where `$HOPR_DIR` is again the directory of the HOPR executable.
 
 ### FLEXI {-}
 
 **FLEXI**, a high order DGSEM based CFD solver, is the core module in the tool chain. Generally **FLEXI** requires two main files as input, a mesh file in HDF5 format generated by HOPR and a parameter file where the main settings for the CFD simulation are set. The results files generated by **FLEXI** are also HDF5 files.
 
-The basic command to run **FLEXI** is \label{missing:flexi_variable_notset2}
+The basic command to run **FLEXI** is
 
 ~~~~~~~
-mpirun -np [no. processors] flexi parameter.ini
+mpirun -np [no. processors] $FLEXI_DIR/flexi parameter.ini
 ~~~~~~~
 
+Note: Adding ```mpirun -np [no. processors]``` before the **FLEXI** executable starts **FLEXI** in parallel with the specified number of threads. If it is omitted, **FLEXI** is run on one processor without MPI. This also applies to all other tools mentioned below.
 
 
 ### Parameter file {-}
@@ -174,28 +195,38 @@ The `parameter.ini` file contains the main settings for the CFD simulation. The 
 * boundary conditions
 * Initial and boundary states
 
-A complete list of all runtime options that can be set in the parameter file is supplied in Section \ref{sec:parameterfile}.
-
-### FLEXI2VTK tool {-}
-
-To visualize the results e.g. with ParaView, a converter tool is provided. The FLEXI2VTK tool takes the HDF5 files generated  by **FLEXI**.
-
-The basic command to run the FLEXI2VTK tool is \label{missing:convert_variable_notset2}
+A complete list of all runtime options that can be set in the parameter file can be obtained with the command
 
 ~~~~~~~
-mpirun -np [no. processors] $FLEXI_DIR/flexi2vtk parameter.ini [flexi_outputfile.h5]
+$FLEXI_DIR/flexi --help
 ~~~~~~~
 
-In this case a parameter file is specified in which options like the type and amount of the visualization nodes and mesh options are defined - see Section \ref{sec:convert_tool}
-for all available options. If you want to visualize some files using only standard options (equidistant visualization nodes and allowing for curved meshes), you can directly specify
-the degree of the visualization basis on the command line and don't need to supply a parameter file. The syntax for this command line mode is 
+It is also supplied in Section \ref{sec:parameterfile}. The ```--help``` option also works for most other **FLEXI** tools.
+
+### POSTI_VISU tool {-}
+
+To visualize the results e.g. with ParaView, a converter tool is provided. The POSTI_VISU tool takes the HDF5 files generated  by **FLEXI**.
+
+The basic command to run the POSTI_VISU tool is
 
 ~~~~~~~
-mpirun -np [no. processors] $FLEXI_DIR/flexi2vtk --NVisu=INTEGER [flexi_outputfile.h5]
+mpirun -np [no. processors] $FLEXI_DIR/posti_visu parameter.ini [flexi_outputfile.h5]
 ~~~~~~~
 
-where INTEGER is substituted by the desired degree of the visualization basis. Usually the degree of your visualization basis is chosen higher than in the computation to avoid 
-interpolation errors by supersampling the solution.
+In this case a parameter file is specified in which options like the type and amount of the visualization nodes and mesh options are defined - see Section \ref{sec:convert_tool} for all available options. You can also omit the parameter file argument:
+
+~~~~~~~
+mpirun -np [no. processors] $FLEXI_DIR/posti_visu [flexi_outputfile.h5]
+~~~~~~~
+
+This runs **POSTI_VISU** using only standard options, i.e.
+
+* equidistant visualization nodes
+* amount of visualizaion nodes equals number of collocation points per element
+* allowing for curved meshes
+* visualizing the conservative variables
+
+Note: For high quality visualization, it is usually adviseable to choose the degree of your visualization basis is higher than in the computation to avoid interpolation errors by supersampling the solution. \label{missing:move_this_to_later_section}
 
 ### HDF5 {-}
 
@@ -217,6 +248,7 @@ The currently implemented features of **FLEXI** include \label{missing:featureli
     * standard RK methods
     * low storage RK methods [@Carpenter1994]
     * strong stability preserving RK methods [@niegemann2012efficient]
+* Two- or three-dimensional domains
 * Riemann solvers:
     * local Lax-Friedrichs
     * HLL
@@ -227,7 +259,7 @@ The currently implemented features of **FLEXI** include \label{missing:featureli
 * Shock capturing
     * Employing finite volume subcells
     * Several shock indicators available
-* Boundary conditions 
+* Boundary conditions
     * Various subsonic inflow and outflow conditions [@carlson2011inflow]
     * exact boundaries (Dirichlet)
     * periodic boundaries
@@ -235,6 +267,7 @@ The currently implemented features of **FLEXI** include \label{missing:featureli
     * non-slip walls (Navier-Stokes wall)
         * adiabatic
         * isothermal
+* Splitform discontinuous Galerkin schemes [@Gassner2016]
 * Dealiasing [@gassner2013accuracy]
     * filtering
     * overintegration
