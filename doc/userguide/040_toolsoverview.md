@@ -129,9 +129,58 @@ Further explained in         No tutorials so far
 ## `tools` folder 
 
 The scripts provided in the `tools` folder are generally not part of the tutorials.
-They are breifly described below.
+They are briefly described below.
 
-### animate
+### `animate`
 
-The python tool `animate_paraview.py` creates movies from a series of state files using a paraview 
+The python script **animate_paraview.py** creates movies from a series of state files using `PvBatch`, a GUI-less interface to Paraview. 
+You need ParaView installed on your system (details can be found in the ParaView <!---TODO--> section) and the directory containing the PvBatch executable needs to be a part of your `$PATH$`. Before running this script, you have to visualize your FLEXI state file with paraview and save the current view via `Save State...`, e.g. under the name `pvstate.pvsm`. You also need the mencoder tool installed. The basic command to run the script is 
 
+~~~~~~~
+python2 animate_paraview.py -l [pvstate.pvsm] -r [path_to_posti_paraview_plugin] [statefile1.h5 statefile2.h5 ...]
+~~~~~~~
+
+Apart from the movie file, the script also outputs a `.png`-file for each HDF5 file given as input. 
+Further options can be shown via 
+
+~~~~~~~
+python2 animate_paraview.py -h
+~~~~~~~
+
+There are further tools for image handling in this folder: 
+
+The tool **concatenatepics.py** stitches several pairs of images (e.g. creates a time series of stitched images from two time series of images). A possible command could look like this:
+
+~~~~~~~
+python concatenatepics.py -d e -p left*.png  -a right*.png
+~~~~~~~
+
+Further options can be shown via 
+
+~~~~~~~
+python concatenatepics.py -h
+~~~~~~~
+
+The tool **crop.py** crops several images to the same size. Simply pass all images as arguments: 
+
+~~~~~~~
+python crop.py [image*.png]
+~~~~~~~
+
+The script **pics2movie.py** creates a movie from several images using the `mencoder` tool (which is also done as part of the `animate_paraview.py` script. Basic usage is again 
+
+~~~~~~~
+python pics2movie.py [image*.png]
+~~~~~~~
+
+and further options can again be shown with the `-h` argument. 
+
+### `convergence_test`
+
+
+
+### `userblock`
+
+### `sortfiles.sh`
+
+### `getload.py`
