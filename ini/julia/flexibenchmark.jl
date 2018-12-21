@@ -1,7 +1,7 @@
 using BenchmarkTools
 using MPI
 
-const flexilib  =  "/home/iagbole/Codeentwicklung/flexi/build/lib/libflexi.so"
+const flexilib  =  "$(@__DIR__)/../../build/lib/libflexi.so"
 macro fl(m::String,f::String)
   (String("__"*lowercase(m)*"_MOD_"*lowercase(f)) , flexilib )
 end

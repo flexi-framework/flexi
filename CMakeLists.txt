@@ -91,7 +91,6 @@ SUBDIRLIST(EQNSYSTEMS ${CMAKE_CURRENT_SOURCE_DIR}/src/equations/)
 SUBDIRLIST(LIFTINGS   ${CMAKE_CURRENT_SOURCE_DIR}/src/dg/)
 
 OPTION(FLEXI_BUILDPOSTI "Build POSTI toolset" ON)
-OPTION(FLEXI_BUILDSHARED "Build shared library of Flexi" ON)
 OPTION(FLEXI_MPI "Compile SINGLE or MPI version" ON)
 OPTION(FLEXI_PARABOLIC "Enable parabolic terms of equation-system" ON)
 OPTION(FLEXI_EDDYVISCOSITY "Enable eddy viscosity modells" OFF)
@@ -485,18 +484,18 @@ ENDIF()
 
 FUNCTION(add_exec target)
   ADD_EXECUTABLE(${target} ${ARGN})
-  TARGET_LINK_LIBRARIES(${target} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/userblock.o flexilib userblocklib stacksizelib ${linkedlibs})
+  TARGET_LINK_LIBRARIES(${target} libflexishared)
   SET_TARGET_PROPERTIES(${target} PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}) 
   SET_TARGET_PROPERTIES(${target} PROPERTIES LINKER_LANGUAGE Fortran)
   INSTALL(PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${target} DESTINATION bin)
   STRING(TOUPPER ${target} TARGETUP)
   ADD_CUSTOM_COMMAND(TARGET ${target} POST_BUILD COMMAND ${CMAKE_COMMAND} -E cmake_echo_color --cyan "SUCCESS: ${TARGETUP} BUILD COMPLETE!")
-endfunction()
+ENDFUNCTION()
 
 FUNCTION(add_lib target)
   ADD_LIBRARY(${target} SHARED ${ARGN})
-  SET_TARGET_PROPERTIES(${target} PROPERTIES PREFIX "") 
-  TARGET_LINK_LIBRARIES(${target} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/userblock.o flexilib userblocklib stacksizelib ${linkedlibs})
+  TARGET_LINK_LIBRARIES(${target} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/userblock.o libflexistatic userblocklib stacksizelib ${linkedlibs})
+  SET_TARGET_PROPERTIES(${target} PROPERTIES PREFIX "")
   SET_TARGET_PROPERTIES(${target} PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}) 
   SET_TARGET_PROPERTIES(${target} PROPERTIES LINKER_LANGUAGE Fortran)
   INSTALL(PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${target} DESTINATION bin)
@@ -567,11 +566,13 @@ IF (FLEXI_FV)
 ENDIF()
 
 # define libs
-ADD_LIBRARY(flexilibF90 OBJECT ${flexiF90})
-SET_TARGET_PROPERTIES(flexilibF90 PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}) 
-ADD_LIBRARY(flexilib STATIC $<TARGET_OBJECTS:flexilibF90>)
+ADD_LIBRARY(libflexistaticF90 OBJECT ${flexiF90})
+SET_TARGET_PROPERTIES(libflexistaticF90 PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}) 
+ADD_LIBRARY(libflexistatic STATIC $<TARGET_OBJECTS:libflexistaticF90>)
+SET_TARGET_PROPERTIES(libflexistatic PROPERTIES PREFIX "")
+SET_TARGET_PROPERTIES(libflexistatic PROPERTIES OUTPUT_NAME "libflexi")
 IF(SELFBUILTEXTERNALS)
-  ADD_DEPENDENCIES(flexilibF90 ${SELFBUILTEXTERNALS})
+  ADD_DEPENDENCIES(libflexistaticF90 ${SELFBUILTEXTERNALS})
 ENDIF()
 
 ADD_LIBRARY(userblocklib STATIC ./src/output/read_userblock.c)
@@ -583,11 +584,11 @@ SET_TARGET_PROPERTIES(stacksizelib PROPERTIES LINKER_LANGUAGE C)
 SET_TARGET_PROPERTIES(stacksizelib PROPERTIES COMPILE_FLAGS "-fPIC")
 
 add_exec(flexi ./src/flexi.f90)
-ADD_DEPENDENCIES(flexi flexilib userblocklib stacksizelib ${INTERNALLIBS})
-IF(FLEXI_BUILDSHARED)
-  add_lib(libflexi ./src/flexilib.f90)
-  ADD_DEPENDENCIES(libflexi flexilib userblocklib stacksizelib ${INTERNALLIBS})
-ENDIF()
+ADD_DEPENDENCIES(flexi libflexistatic userblocklib stacksizelib ${INTERNALLIBS})
+# we link the statically built fle
+add_lib(libflexishared ./src/flexilib.f90)
+SET_TARGET_PROPERTIES(libflexishared PROPERTIES OUTPUT_NAME "libflexi")
+ADD_DEPENDENCIES(libflexishared libflexistatic userblocklib stacksizelib ${INTERNALLIBS})
 
 # special compiler flags to avoid warnings for empty functions of testcase.f90 and overwrite of intrinsic abort in globals.f90
 IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
@@ -611,7 +612,7 @@ ADD_CUSTOM_TARGET(preproc_defines COMMAND echo ${comp_defs_str})
 # Add FLEXI2VTK tool
 # =========================================================================
 add_exec(flexi2vtk ./src/flexi2vtk.f90)
-ADD_DEPENDENCIES(flexi2vtk flexilib)
+ADD_DEPENDENCIES(flexi2vtk libflexishared)
 
 # =========================================================================
 # Posti
@@ -640,7 +641,7 @@ ENDIF()
 # =========================================================================
 # Userblock
 # =========================================================================
-ADD_CUSTOM_COMMAND(TARGET flexilib PRE_BUILD COMMAND 
+ADD_CUSTOM_COMMAND(TARGET libflexistatic PRE_BUILD COMMAND 
    sh ${CMAKE_CURRENT_SOURCE_DIR}/tools/userblock/generateuserblock.sh ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} ${CMAKE_CACHEFILE_DIR} "${CMAKE_CACHE_MAJOR_VERSION}.${CMAKE_CACHE_MINOR_VERSION}.${CMAKE_CACHE_PATCH_VERSION}")
 
 # =========================================================================
