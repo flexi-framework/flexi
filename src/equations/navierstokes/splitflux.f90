@@ -175,10 +175,13 @@ USE MOD_PreProc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: URef,U         !< conserved variables
-REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrimRef,UPrim !< primitive variables
-REAL,DIMENSION(1:3        ),INTENT(IN)  :: MRef,M         !< metric terms
-REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: Flux           !< flux in reverence space
+REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: URef          !< conserved variables
+REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: U             !< conserved variables
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrimRef      !< primitive variables
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrim         !< primitive variables
+REAL,DIMENSION(1:3        ),INTENT(IN)  :: MRef          !< metric terms
+REAL,DIMENSION(1:3        ),INTENT(IN)  :: M             !< metric terms
+REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: Flux          !< flux in reverence space
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                    :: EpRef,Ep      ! auxiliary variable for (rho*e+p)
@@ -238,7 +241,8 @@ USE MOD_PreProc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_LL,U_RR !< variables at the left-/right-Surfaces
+REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_LL      !< variables at the left surfaces
+REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_RR      !< variables at the right surfaces
 REAL,DIMENSION(PP_nVar),INTENT(OUT) :: F         !< resulting flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -266,15 +270,18 @@ USE MOD_PreProc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: URef,U         !< conserved variables
-REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrimRef,UPrim !< primitive variables
-REAL,DIMENSION(1:3        ),INTENT(IN)  :: MRef,M         !< metric terms
-REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: Flux           !< flux in reverence space
+REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: URef          !< conserved variables
+REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: U             !< conserved variables
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrimRef      !< primitive variables
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrim         !< primitive variables
+REAL,DIMENSION(1:3        ),INTENT(IN)  :: MRef          !< metric terms
+REAL,DIMENSION(1:3        ),INTENT(IN)  :: M             !< metric terms
+REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: Flux          !< flux in reverence space
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL,DIMENSION(PP_nVar)             :: fTilde,gTilde ! flux in physical space
+REAL,DIMENSION(PP_nVar)             :: fTilde,gTilde     ! flux in physical space
 #if PP_dim == 3
-REAL,DIMENSION(PP_nVar)             :: hTilde        ! flux in physical space
+REAL,DIMENSION(PP_nVar)             :: hTilde            ! flux in physical space
 #endif
 !==================================================================================================================================
 
@@ -325,7 +332,8 @@ USE MOD_PreProc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_LL,U_RR !< variables at the left-/right-Surfaces
+REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_LL      !< variables at the left surfaces
+REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_RR      !< variables at the right surfaces
 REAL,DIMENSION(PP_nVar),INTENT(OUT) :: F         !< resulting flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -352,10 +360,13 @@ USE MOD_PreProc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: URef,U         !< conserved variables
-REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrimRef,UPrim !< primitive variables
-REAL,DIMENSION(1:3        ),INTENT(IN)  :: MRef,M         !< metric terms
-REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: Flux           !< flux in reverence space
+REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: URef          !< conserved variables
+REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: U             !< conserved variables
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrimRef      !< primitive variables
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrim         !< primitive variables
+REAL,DIMENSION(1:3        ),INTENT(IN)  :: MRef          !< metric terms
+REAL,DIMENSION(1:3        ),INTENT(IN)  :: M             !< metric terms
+REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: Flux          !< flux in reverence space
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                    :: e,eRef        ! auxiliary variables for the specific energy
@@ -419,7 +430,8 @@ USE MOD_PreProc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_LL,U_RR !< variables at the left-/right-Surfaces
+REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_LL      !< variables at the left surfaces
+REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_RR      !< variables at the right surfaces
 REAL,DIMENSION(PP_nVar),INTENT(OUT) :: F         !< resulting flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -452,10 +464,13 @@ USE MOD_PreProc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: URef,U         !< conserved variables
-REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrimRef,UPrim !< primitive variables
-REAL,DIMENSION(1:3        ),INTENT(IN)  :: MRef,M         !< metric terms
-REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: Flux           !< flux in reverence space
+REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: URef          !< conserved variables
+REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: U             !< conserved variables
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrimRef      !< primitive variables
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrim         !< primitive variables
+REAL,DIMENSION(1:3        ),INTENT(IN)  :: MRef          !< metric terms
+REAL,DIMENSION(1:3        ),INTENT(IN)  :: M             !< metric terms
+REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: Flux          !< flux in reverence space
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                    :: EpRef,Ep      ! auxiliary variable for inner energy + pressure
@@ -534,8 +549,9 @@ USE MOD_PreProc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_LL,U_RR !< variables at the left-/right-Surfaces
-REAL,DIMENSION(PP_nVar),INTENT(OUT) :: F         !< resulting flux
+REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_LL !< variables at the left surfaces
+REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_RR !< variables at the right surfaces
+REAL,DIMENSION(PP_nVar),INTENT(OUT) :: F    !< resulting flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                :: Ep_LL,Ep_RR
@@ -573,10 +589,13 @@ USE MOD_PreProc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: URef,U         !< conserved variables
-REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrimRef,UPrim !< primitive variables
-REAL,DIMENSION(1:3        ),INTENT(IN)  :: MRef,M         !< metric terms
-REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: Flux           !< flux in reverence space
+REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: URef          !< conserved variables
+REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: U             !< conserved variables
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrimRef      !< primitive variables
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrim         !< primitive variables
+REAL,DIMENSION(1:3        ),INTENT(IN)  :: MRef          !< metric terms
+REAL,DIMENSION(1:3        ),INTENT(IN)  :: M             !< metric terms
+REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: Flux          !< flux in reverence space
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                    :: e,eRef        ! auxiliary variables for the specific enthalpy
@@ -637,7 +656,8 @@ USE MOD_PreProc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_LL,U_RR !< variables at the left-/right-Surfaces
+REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_LL      !< variables at the left surfaces
+REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_RR      !< variables at the right surfaces
 REAL,DIMENSION(PP_nVar),INTENT(OUT) :: F         !< resulting flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -669,10 +689,13 @@ USE MOD_EOS_Vars, ONLY:sKappaM1
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: URef,U         !< conserved variables
-REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrimRef,UPrim !< primitive variables
-REAL,DIMENSION(1:3        ),INTENT(IN)  :: MRef,M         !< metric terms
-REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: Flux           !< flux in reverence space
+REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: URef     !< conserved variables
+REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: U        !< conserved variables
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrimRef !< primitive variables
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrim    !< primitive variables
+REAL,DIMENSION(1:3        ),INTENT(IN)  :: MRef     !< metric terms
+REAL,DIMENSION(1:3        ),INTENT(IN)  :: M        !< metric terms
+REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: Flux     !< flux in reverence space
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                    :: beta,betaRef            ! auxiliary variables for the inverse Temperature
@@ -752,8 +775,9 @@ USE MOD_EOS_Vars, ONLY:sKappaM1
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_LL,U_RR !< variables at the left-/right-Surfaces
-REAL,DIMENSION(PP_nVar),INTENT(OUT) :: F         !< resulting flux
+REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_LL !< variables at the left surfaces
+REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_RR !< variables at the right surfaces
+REAL,DIMENSION(PP_nVar),INTENT(OUT) :: F    !< resulting flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                :: beta_LL,beta_RR        ! auxiliary variables for the inverse Temperature
@@ -796,12 +820,13 @@ PURE SUBROUTINE GetLogMean(U_L,U_R,UMean)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(IN)  :: U_L,U_R ! variables at the left-/right-Surfaces
-REAL,INTENT(OUT) :: UMean ! resulting flux
+REAL,INTENT(IN)  :: U_L   !< variables at the left surfaces
+REAL,INTENT(IN)  :: U_R   !< variables at the right surfaces
+REAL,INTENT(OUT) :: UMean !< resulting flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL,PARAMETER                      :: epsilon = 0.01
-REAL                                :: chi,f,u,N ! auxiliary variables
+REAL,PARAMETER   :: epsilon = 0.01
+REAL             :: chi,f,u,N ! auxiliary variables
 !==================================================================================================================================
 chi = U_L/U_R
 f = (chi-1)/(chi+1)

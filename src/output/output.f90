@@ -200,6 +200,9 @@ SWRITE(UNIT_stdOut,'(A)')' INIT OUTPUT DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitOutput
 
+!==================================================================================================================================
+!> Displays the actual status of the simulation and counts the amount of FV elements
+!==================================================================================================================================
 SUBROUTINE PrintStatusLine(t,dt,tStart,tEnd) 
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! description
@@ -218,7 +221,10 @@ USE MOD_Analyze_Vars, ONLY: totalFV_nElems
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
-REAL,INTENT(IN) :: t,dt,tStart,tEnd
+REAL,INTENT(IN) :: t      !< current simulation time
+REAL,INTENT(IN) :: dt     !< current time step
+REAL,INTENT(IN) :: tStart !< start time of simulation
+REAL,INTENT(IN) :: tEnd   !< end time of simulation
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 #if FV_ENABLED
@@ -295,7 +301,7 @@ USE MOD_Indicator_Vars,   ONLY:IndValue
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)               :: OutputTime               !< simulation time of output
+REAL,INTENT(IN)               :: OutputTime                                !< simulation time of output
 REAL,INTENT(INOUT)            :: U(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< solution vector to be visualized
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -448,19 +454,19 @@ USE MOD_Output_Vars,  ONLY: ProjectName,ASCIIOutputFormat
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=*),INTENT(IN)   :: FileName                 !< file to be written, without data type extension
-CHARACTER(LEN=*),INTENT(IN)   :: ZoneName                 !< name of zone (e.g. names of boundary conditions), used for tecplot
-INTEGER,INTENT(IN)            :: nVar                     !< number of variables
-CHARACTER(LEN=*),INTENT(IN)   :: VarNames(nVar)           !< variable names to be written
-REAL,INTENT(OUT),OPTIONAL     :: lastLine(nVar+1)         !< last written line to search for, when appending to the file 
+CHARACTER(LEN=*),INTENT(IN)   :: FileName         !< file to be written, without data type extension
+CHARACTER(LEN=*),INTENT(IN)   :: ZoneName         !< name of zone (e.g. names of boundary conditions), used for tecplot
+INTEGER,INTENT(IN)            :: nVar             !< number of variables
+CHARACTER(LEN=*),INTENT(IN)   :: VarNames(nVar)   !< variable names to be written
+REAL,INTENT(OUT),OPTIONAL     :: lastLine(nVar+1) !< last written line to search for, when appending to the file 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                        :: stat                         !< File IO status
-INTEGER                        :: ioUnit                       !< IO Unit
-INTEGER                        :: i,iMax                       !< Counter for header lines
-REAL                           :: dummytime                    !< Simulation time read from file
-LOGICAL                        :: file_exists                  !< marker if file exists and is valid
-CHARACTER(LEN=255)             :: FileName_loc                 !< FileName with data type extension
+INTEGER                        :: stat            !< File IO status
+INTEGER                        :: ioUnit          !< IO Unit
+INTEGER                        :: i,iMax          !< Counter for header lines
+REAL                           :: dummytime       !< Simulation time read from file
+LOGICAL                        :: file_exists     !< marker if file exists and is valid
+CHARACTER(LEN=255)             :: FileName_loc    !< FileName with data type extension
 !==================================================================================================================================
 IF(.NOT.MPIRoot) RETURN
 IF(PRESENT(lastLine)) lastLine=-HUGE(1.)

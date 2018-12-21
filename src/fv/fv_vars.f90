@@ -11,10 +11,10 @@
 !
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
+!==================================================================================================================================
+!> Contains global variables used by the FV modules.
+!==================================================================================================================================
 MODULE MOD_FV_Vars
-!==================================================================================================================================
-! Contains global variables used by the FV modules.
-!==================================================================================================================================
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -107,14 +107,14 @@ REAL,ALLOCATABLE       :: FV_SurfElemXi_sw(:,:,:,:)  !< SurfElem for inner FV fa
 REAL,ALLOCATABLE       :: FV_SurfElemEta_sw(:,:,:,:) !< SurfElem for inner FV faces in ETA direction (0:PP_N,1:PP_N,0:PP_N,PP_nElems)
 REAL,ALLOCATABLE       :: FV_SurfElemZeta_sw(:,:,:,:)!< SurfElem for inner FV faces in ZETA direction(0:PP_N,0:PP_N,1:PP_N,PP_nElems)
 REAL,ALLOCATABLE       :: FV_NormVecXi (:,:,:,:,:)   !< Normal vector for inner FV faces in XI directioin 
-REAL,ALLOCATABLE       :: FV_TangVec1Xi(:,:,:,:,:)   ! ... 
-REAL,ALLOCATABLE       :: FV_TangVec2Xi(:,:,:,:,:)   ! 
-REAL,ALLOCATABLE       :: FV_NormVecEta (:,:,:,:,:)  ! 
-REAL,ALLOCATABLE       :: FV_TangVec1Eta(:,:,:,:,:)  !
-REAL,ALLOCATABLE       :: FV_TangVec2Eta(:,:,:,:,:)  !
-REAL,ALLOCATABLE       :: FV_NormVecZeta (:,:,:,:,:) !
-REAL,ALLOCATABLE       :: FV_TangVec1Zeta(:,:,:,:,:) !
-REAL,ALLOCATABLE       :: FV_TangVec2Zeta(:,:,:,:,:) !
+REAL,ALLOCATABLE       :: FV_TangVec1Xi(:,:,:,:,:)   !< Tangent1 vector for inner FV faces in XI directioin
+REAL,ALLOCATABLE       :: FV_TangVec2Xi(:,:,:,:,:)   !< Tangent2 vector for inner FV faces in XI directioin
+REAL,ALLOCATABLE       :: FV_NormVecEta (:,:,:,:,:)  !< Normal vector for inner FV faces in ETA directioin
+REAL,ALLOCATABLE       :: FV_TangVec1Eta(:,:,:,:,:)  !< Tangent1 vector for inner FV faces in ETA directioin
+REAL,ALLOCATABLE       :: FV_TangVec2Eta(:,:,:,:,:)  !< Tangent2 vector for inner FV faces in ETA directioin
+REAL,ALLOCATABLE       :: FV_NormVecZeta (:,:,:,:,:) !< Normal vector for inner FV faces in ZETA directioin
+REAL,ALLOCATABLE       :: FV_TangVec1Zeta(:,:,:,:,:) !< Tangent1 vector for inner FV faces in ZETA directioin
+REAL,ALLOCATABLE       :: FV_TangVec2Zeta(:,:,:,:,:) !< Tangent2 vector for inner FV faces in ZETA directioin
 
 #if PARABOLIC
 REAL,ALLOCATABLE       :: FV_Metrics_fTilde_sJ(:,:,:,:,:) !< Metrics for FV subcells multiplied with sJ

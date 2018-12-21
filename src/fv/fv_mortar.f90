@@ -104,7 +104,7 @@ USE MOD_FillMortarPrim ,ONLY: Flux_MortarPrim
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(INOUT) :: FV_surf_gradU(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) ! slope over interface
+REAL,INTENT(INOUT) :: FV_surf_gradU(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< slope over interface
 LOGICAL,INTENT(IN) :: doMPISides  !< =.TRUE. only MPI sides are filled, =.FALSE. inner sides
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 

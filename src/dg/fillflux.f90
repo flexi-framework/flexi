@@ -79,12 +79,12 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 LOGICAL,INTENT(IN) :: doMPISides  !< = .TRUE. only MINE (where the proc is master)  MPISides are filled, =.FALSE. InnerSides
 REAL,INTENT(IN)    :: t           !< physical time required for BC state evaluation in case of time dependent BCs
-REAL,INTENT(OUT)   :: Flux_master(1:PP_nVar,0:PP_N,0:PP_NZ,1:nSides)  ! sum of advection and diffusion fluxes across the boundary
-REAL,INTENT(OUT)   :: Flux_slave (1:PP_nVar,0:PP_N,0:PP_NZ,1:nSides)  ! sum of advection and diffusion fluxes across the boundary
-REAL,INTENT(INOUT) :: U_master(PP_nVar,0:PP_N, 0:PP_NZ, 1:nSides) !< solution on master sides
-REAL,INTENT(INOUT) :: U_slave( PP_nVar,0:PP_N, 0:PP_NZ, 1:nSides) !< solution on slave sides
-REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N, 0:PP_NZ, 1:nSides) !< solution on master sides
-REAL,INTENT(IN)    :: UPrim_slave( PP_nVarPrim,0:PP_N, 0:PP_NZ, 1:nSides) !< solution on slave sides
+REAL,INTENT(OUT)   :: Flux_master(1:PP_nVar,0:PP_N,0:PP_NZ,1:nSides)  !< sum of advection and diffusion fluxes across the boundary
+REAL,INTENT(OUT)   :: Flux_slave (1:PP_nVar,0:PP_N,0:PP_NZ,1:nSides)  !< sum of advection and diffusion fluxes across the boundary
+REAL,INTENT(INOUT) :: U_master(PP_nVar,0:PP_N, 0:PP_NZ, 1:nSides)         !< solution on master sides
+REAL,INTENT(INOUT) :: U_slave( PP_nVar,0:PP_N, 0:PP_NZ, 1:nSides)         !< solution on slave sides
+REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N, 0:PP_NZ, 1:nSides) !< primitive solution on master sides
+REAL,INTENT(IN)    :: UPrim_slave( PP_nVarPrim,0:PP_N, 0:PP_NZ, 1:nSides) !< primitive solution on slave sides
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER :: SideID,p,q,firstSideID_wo_BC,firstSideID ,lastSideID,FVEM

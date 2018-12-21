@@ -24,7 +24,7 @@ SAVE
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 LOGICAL           :: doCalcSource      !< automatically set by calcsource itself
-INTEGER           :: IniExactFunc
+INTEGER           :: IniExactFunc      !< number identifying the used exact function
 INTEGER           :: IniRefState       !< RefState for initialization (case IniExactFunc=1 only)
 INTEGER           :: nRefState         !< number of refstates defined in parameter file
 REAL,ALLOCATABLE  :: RefStatePrim(:,:) !< refstates in primitive variables (as read from ini file)
@@ -35,9 +35,10 @@ CHARACTER(LEN=255):: BCStateFile       !< file containing the reference solution
 REAL,ALLOCATABLE     :: BCData(:,:,:,:) !< array with precomputed BC values (conservative)
 REAL,ALLOCATABLE     :: BCDataPrim(:,:,:,:) !< array with precomputed BC values (primitive)
 INTEGER,ALLOCATABLE  :: nBCByType(:)   !< number of sides with specific BC type
-INTEGER,ALLOCATABLE  :: BCSideID(:,:)
+INTEGER,ALLOCATABLE  :: BCSideID(:,:)  !< array storing side IDs of sides with different BCs
 
-REAL                 :: s43,s23
+REAL                 :: s43            !< precomputed 4./3.
+REAL                 :: s23            !< precomputed 2./3.
 
 CHARACTER(LEN=255),DIMENSION(5),PARAMETER :: StrVarNames =&
   (/ CHARACTER(LEN=255) :: 'Density','MomentumX','MomentumY','MomentumZ','EnergyStagnationDensity'/) !< conservative variable names

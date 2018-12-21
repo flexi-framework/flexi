@@ -37,7 +37,8 @@ CONTAINS
 END MODULE MOD_ProlongToFace
 
 !==================================================================================================================================
-
+!> Contains routines to interpolate the conservative interior solution to the boundary
+!==================================================================================================================================
 MODULE MOD_ProlongToFaceCons
 IMPLICIT NONE
 PRIVATE
@@ -55,7 +56,8 @@ CONTAINS
 END MODULE MOD_ProlongToFaceCons
 
 !==================================================================================================================================
-
+!> Contains routines to interpolate the primitive interior solution to the boundary
+!==================================================================================================================================
 MODULE MOD_ProlongToFacePrim
 IMPLICIT NONE
 PRIVATE
@@ -73,7 +75,8 @@ CONTAINS
 END MODULE MOD_ProlongToFacePrim
 
 !==================================================================================================================================
-
+!> Contains routines to interpolate a scalar interior solution to the boundary
+!==================================================================================================================================
 MODULE MOD_ProlongToFace1
 ! MODULES
 IMPLICIT NONE

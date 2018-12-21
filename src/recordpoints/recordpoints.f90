@@ -198,7 +198,7 @@ USE MOD_RecordPoints_Vars     ,ONLY:FV_RP_ijk
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=255),INTENT(IN) :: FileString
+CHARACTER(LEN=255),INTENT(IN) :: FileString !< name of hdf5 file for readin of recordpoints
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=255)            :: MeshFile_RPList

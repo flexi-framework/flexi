@@ -88,6 +88,9 @@ CALL addStrListEntry('FV_LimiterType','central',FV_LIMITERTYPE_CENTRAL)
 CALL prms%CreateRealOption('swebyb', "beta parameter for Sweby limiter")
 END SUBROUTINE DefineParametersFV_Limiter
 
+!==================================================================================================================================
+!> Initialize pointer to chosen limiter type and readin of required parameter
+!==================================================================================================================================
 SUBROUTINE InitFV_Limiter() 
 USE MOD_Globals
 USE MOD_ReadInTools
@@ -120,7 +123,7 @@ END SELECT
 END SUBROUTINE InitFV_Limiter  
 
 !==================================================================================================================================
-!> set slope to zero.
+!> Limiter sets slope to zero.
 !==================================================================================================================================
 PURE SUBROUTINE NullLimiter(sL, sR, s)
 ! MODULES

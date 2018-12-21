@@ -83,7 +83,7 @@ USE MOD_Mesh_Vars,          ONLY: nGlobalElems,NGeo
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=255),INTENT(IN),OPTIONAL :: RestartFile_in
+CHARACTER(LEN=255),INTENT(IN),OPTIONAL :: RestartFile_in !< state file to restart from
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL            :: ResetTime,validHDF5
@@ -187,7 +187,7 @@ USE MOD_HDF5_Input,         ONLY: GetDataSize
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-LOGICAL,INTENT(IN),OPTIONAL :: doFlushFiles
+LOGICAL,INTENT(IN),OPTIONAL :: doFlushFiles !< flag to delete old state files
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL,ALLOCATABLE   :: U_local(:,:,:,:,:)

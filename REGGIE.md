@@ -19,12 +19,11 @@ python reggie.py --help
 |         |                                   |          |                         | p_3D                           |  p-convergece                  |  single                                     | L2                               |
 |         |                                   |          |                         | p_3D_mortar                    |  p-convergece                  |  single                                     | L2                               |
 |         |                                   |          | FLEXI_PARABOLIC=OFF     | p_3D_parabolic_off             |  p-convergece                  |  single                                     | L2                               |
-|         |                                   |          |                         |                                |                                |                                             |                                  |
-|         |                                   |          |                         |                                |                                |                                             |                                  |
-|         |                                   |          |                         |                                |                                |                                             |                                  |
 
 
 ## Analyze routines
 
 
-see [the reggie repository](https://gitlab.iag.uni-stuttgart.de/reggie/reggie/blob/master/README.md)
+see [the_reggie_repository][reggie]
+
+[reggie]: https://gitlabext.iag.uni-stuttgart.de/reggie/reggie/blob/master/
