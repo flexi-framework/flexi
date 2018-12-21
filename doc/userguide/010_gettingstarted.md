@@ -149,7 +149,7 @@ The following examples assume that the **FLEXI** environment variables have been
 
 * Converting the output files to the vtu format
 
-        $FLEXI_DIR/posti_visu parameter_flexi.ini cavity_State_0000000.200000000.h5
+        $FLEXI_DIR/posti_visu [[parameter_postiVisu.ini] parameter_flexi.ini] cavity_State_0000000.200000000.h5
 
 * Visualize using e.g. ParaView.
 
