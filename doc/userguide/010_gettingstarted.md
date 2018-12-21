@@ -5,26 +5,25 @@
 ## Installation
 
 ### Prerequisites
-**FLEXI** has been tested for various Linux distributions. This includes Ubuntu 14.04 LTS and 16.04 LTS, OpenSUSE 42.1 and CentOS 7. \label{missing:prerequisites_not_finalized}
-The suggested packages in this section can of course be replaced by self compiled versions or be loaded by a module environment as suggested in \ref{chap:modules}.
+**FLEXI** has been tested for various Linux distributions. This includes Ubuntu 14.04 LTS, 16.04 LTS and 18.04 LTS, OpenSUSE 42.1 and CentOS 7. \label{missing:prerequisites_not_finalized}
+The suggested packages in this section can of course be replaced by self compiled versions.
 
 The required packages for the Ubuntu Linux distributions are listed in table \ref{tab:installation_prereqs_ubuntu}. Under Ubuntu, they can be obtained using the apt environment:
 
     sudo apt-get install git
 
-
-| Package          | Ubuntu 14.04    | Ubuntu 16.04    |
-|:----------------:|:---------------:|:---------------:|
-| git              | x               |      x          |
-| cmake            | x               |      x          |
-| cmake-curses-gui | o               |      o          |
-| liblapack3       | x               |      x          |
-| liblapack-dev    | x               |      x          |
-| gfortran         | x               |      x          |
-| g++              | x               |      x          |
-| mpi-default-dev  | x               |      x          |
-| zlib1g-dev       | -               |      x          |
-| exuberant-ctags  | o               |      o          |
+| Package          | Ubuntu 14.04    | Ubuntu 16.04    | Ubuntu 18.04    |
+|:----------------:|:---------------:|:---------------:|:---------------:|
+| git              | x               |      x          |      x          |
+| cmake            | x               |      x          |      x          |
+| cmake-curses-gui | o               |      o          |      o          |
+| liblapack3       | x               |      x          |      x          |
+| liblapack-dev    | x               |      x          |      x          |
+| gfortran         | x               |      x          |      x          |
+| g++              | x               |      x          |      x          |
+| mpi-default-dev  | x               |      x          |      x          |
+| zlib1g-dev       | -               |      x          |      x          |
+| exuberant-ctags  | o               |      o          |      o          |
 
 Table: Debian/Ubuntu packages.\label{tab:installation_prereqs_ubuntu}
 x: required, o: optional, -: not available
