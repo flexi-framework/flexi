@@ -460,7 +460,6 @@ INTEGER                        :: ioUnit                       !< IO Unit
 INTEGER                        :: i,iMax                       !< Counter for header lines
 REAL                           :: dummytime                    !< Simulation time read from file
 LOGICAL                        :: file_exists                  !< marker if file exists and is valid
-LOGICAL                        :: isOpen                       !< unit is open
 CHARACTER(LEN=255)             :: FileName_loc                 !< FileName with data type extension
 !==================================================================================================================================
 IF(.NOT.MPIRoot) RETURN
