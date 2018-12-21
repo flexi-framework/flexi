@@ -7,7 +7,7 @@ SRC=000_userguide.md 010_gettingstarted.md 020_codeoptions.md 021_parameter.md  
 ifneq ($(BUILDALL),)
   SRC += 040_codedocumentation.md
 endif
-SRC +=  050_tutorials.md tutorials/*/*.md 060_regression_check.md 070_unittest.md 080_installationguidelines.md 081_advanced_installation.md
+SRC +=  050_tutorials.md tutorials/*/*.md 060_regression_check.md 070_unittest.md 080_installationguidelines.md 
 ifneq ($(BUILDALL),)
   SRC += missing.md
 endif
