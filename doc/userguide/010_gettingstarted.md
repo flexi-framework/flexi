@@ -86,7 +86,7 @@ The **FLEXI** repository is available at GitHub. To obtain the most recent versi
         wget https://github.com/flexi-framework/flexi/archive/master.tar.gz
         tar xzf master.tar.gz
 
-Note that cloning FLEXI from GitHub may not be possible on some machines, as e.g. the machines at the HLRS at the University of Stuttgart due to restricted internet access. Please refer to section \ref{sec:cloninghlrs} of this user guide.
+Note that cloning FLEXI from GitHub may not be possible on some machines, as e.g. the HLRS at the University of Stuttgart restricts internet access. Please refer to section \ref{sec:cloninghlrs} of this user guide.
 
 ### Compiling the code \label{sec:compilingthecode}
 
@@ -108,7 +108,7 @@ For a list of all compiler options see Section \ref{sec:compileroptions}.
 
 #### Directory paths
 
-In the following, the environment variable `$FLEXI_DIR` is used in commands instead of the `build/bin` directory in your FLEXI repository. Furthermore, the environment variable `$FLEXI_TUTORIALS_DIR` replaces the path to the `tutorials` folder and `$HOPR_DIR` the path to the HOPR executables. For Linux beginners, here is some explanation:
+In the following, the environment variable `$FLEXI_DIR` is used in commands instead of the `build/bin` directory in your FLEXI repository. Furthermore, the environment variable `$FLEXI_TUTORIALS_DIR` replaces the path to the `tutorials` folder and `$HOPR_DIR` the path to the directory containing the HOPR executables. For Linux beginners, here is some explanation:
 
 You can export an environment variable by adding e.g. the line
 
@@ -134,7 +134,7 @@ The last two options will enable you to simply type `flexi` without providing th
 The following examples assume that the **FLEXI** environment variables have been made available (see Section \ref{sec:compilingthecode}).
 
 * Open a terminal
-* Navigate to a directory and copy a case folder
+* Navigate to a directory, in this case *temp* 
 
         cd temp
 
@@ -188,11 +188,11 @@ Note: Adding ```mpirun -np [no. processors]``` before the **FLEXI** executable s
 
 The `parameter.ini` file contains the main settings for the CFD simulation. The parameter file defines e.g.
 
-* CFL number (Courant-Friedrichs-Lewy)
+* CFL (Courant-Friedrichs-Lewy) number
 * polynomial degree,
 * simulation end time and dump/analyze intervals
 * boundary conditions
-* Initial and boundary states
+* initial and boundary states
 
 A complete list of all runtime options that can be set in the parameter file can be obtained with the command
 

@@ -45,13 +45,10 @@ All other options are set in the parameter file. The most important steps are
          In this variant of the first option, the operator in reference space, e.g. $JU_t$, is first projected to the ``NUnder`` node set before converting it to physical space $U^{Nunder}_t=JU^{Nunder}_t/J^{Nunder}$. This implementation enforces conservation.
     
          To use this variant, specify ``Nunder`` to a value smaller than ``N``.
-        
-    * ``OverintegrationType=3``
-    
-        The third option is to compute the predominantly aliasing-afflicted advective fluxes at a node set of higher polynomial degree ``NOver`` and subsequently project their contribution to the operator to the polynomial space associated with ``N``. The Lifting procedure and the viscous fluxes are still computed at the original nodal set using ``N``. 
-    
-        To use the advective flux over-integration, ``NOver`` must be specified.
 
+    An alternative approach to guaranteeing non-linear stability is to use split form DG methods. This needs to be specified during compile time using the ``FLEXI_SPLIT_DG`` option, and the specific split flux
+    formulation must be set using the parameter ``SplitDG``.
+        
 * **Choose a Riemann solver**
 
     The Riemann solver defines how inter-element coupling is accomplished. The available variants are listed in Section \ref{sec:parameterfile}. Use the ``Riemann`` and the ``RiemannBC`` options to specify which Riemann solver is to be used at internal interfaces and at Dirichlet boundary conditions, respectively. The default Riemann solver is "Roe with entropy fix". 
