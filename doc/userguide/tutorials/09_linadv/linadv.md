@@ -150,7 +150,7 @@ To reduce the possibility that the error introduced by the time discretization w
 CFLscale      = 0.1
 ~~~~~~~~~~~~
 
-Since this is a really small and fast computation, we are also going to use visualization routines during runtime, so we don't need to convert the state files using the ``flexi2vtk`` program. To do this, we set the following parameters in
+Since this is a really small and fast computation, we are also going to use visualization routines during runtime, so we don't need to convert the state files using the ``posti_visu`` tool. To do this, we set the following parameters in
 our parameter file:
 
 ~~~~~~~~~~~~

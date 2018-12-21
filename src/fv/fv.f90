@@ -18,7 +18,7 @@
 !> Module for the Finite Volume sub-cells shock capturing.
 !>
 !> DG elements, that are detected to contain a shock/high gradients/oscillations/..., can be switched to a Finite Volume scheme.
-!> A DG element of polynomial degree N is subdivided into (N+1)^3 sub-cells (to each Gauss Point/DOF one FV sub-cell).
+!> A DG element of polynomial degree N is subdivided into (N+1)^dim sub-cells (to each Gauss Point/DOF one FV sub-cell).
 !> The FV sub-cells of such an element are updated using FV method with 2nd order TVD reconstruction (slope limiters).
 !==================================================================================================================================
 MODULE MOD_FV
@@ -240,8 +240,8 @@ SUBROUTINE FV_Switch(U,U2,U3,AllowToDG)
 ! MODULES
 USE MOD_PreProc
 USE MOD_ChangeBasisByDim,ONLY: ChangeBasisVolume
-USE MOD_Indicator_Vars ,ONLY: IndValue
-USE MOD_Indicator      ,ONLY: IndPersson
+USE MOD_Indicator_Vars  ,ONLY: IndValue
+USE MOD_Indicator       ,ONLY: IndPersson
 USE MOD_FV_Vars
 USE MOD_Analyze
 USE MOD_Mesh_Vars      ,ONLY: nElems
@@ -249,10 +249,10 @@ USE MOD_Mesh_Vars      ,ONLY: nElems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(INOUT)          :: U (PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
-REAL,INTENT(INOUT),OPTIONAL :: U2(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
-REAL,INTENT(INOUT),OPTIONAL :: U3(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
-LOGICAL,INTENT(IN)          :: AllowToDG  ! < if .TRUE. FV element is allowed to switch to DG
+REAL,INTENT(INOUT)          :: U (PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< state vector to be switched
+REAL,INTENT(INOUT),OPTIONAL :: U2(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< optional additional state vector to be switched
+REAL,INTENT(INOUT),OPTIONAL :: U3(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< optional additional state vector to be switched
+LOGICAL,INTENT(IN)          :: AllowToDG                                  !< if .TRUE. FV element is allowed to switch to DG
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL    :: U_DG(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
@@ -446,7 +446,7 @@ USE MOD_Mesh_Vars   ,ONLY: firstInnerSide,lastMPISide_MINE,nSides
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: nVar
+INTEGER,INTENT(IN) :: nVar                                   !< number of solution variables
 REAL,INTENT(INOUT) :: U_master(nVar,0:PP_N,0:PP_NZ,1:nSides) !< Solution on master side
 REAL,INTENT(INOUT) :: U_slave (nVar,0:PP_N,0:PP_NZ,1:nSides) !< Solution on slave side
 !----------------------------------------------------------------------------------------------------------------------------------

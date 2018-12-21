@@ -56,7 +56,7 @@ END IF
 END SUBROUTINE DefaultEddyVisc
 
 !===============================================================================================================================
-!> Deallocate arrays and finalize variables used by Smagorinsky SGS model
+!> Deallocate arrays and finalize variables used by the default eddy viscosity
 !===============================================================================================================================
 SUBROUTINE FinalizeDefaultEddyviscosity()
 ! MODULES

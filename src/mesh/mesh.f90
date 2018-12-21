@@ -382,7 +382,7 @@ USE MOD_FV_Metrics,ONLY:FinalizeFV_Metrics
 #endif
 IMPLICIT NONE
 !============================================================================================================================
-!> Deallocate global variables, needs to go somewhere else later
+! Deallocate global variables, needs to go somewhere else later
 SDEALLOCATE(ElemToSide)
 SDEALLOCATE(SideToElem)
 SDEALLOCATE(BC)
@@ -398,7 +398,7 @@ SDEALLOCATE(BoundaryName)
 SDEALLOCATE(BoundaryType)
 
 
-!> Volume
+! Volume
 SDEALLOCATE(Elem_xGP)
 SDEALLOCATE(Metrics_fTilde)
 SDEALLOCATE(Metrics_gTilde)
@@ -406,7 +406,7 @@ SDEALLOCATE(Metrics_hTilde)
 SDEALLOCATE(sJ)
 SDEALLOCATE(DetJac_Ref)
 
-!> surface
+! surface
 SDEALLOCATE(Face_xGP)
 SDEALLOCATE(NormVec)
 SDEALLOCATE(TangVec1)
@@ -419,7 +419,7 @@ SDEALLOCATE(ElemInfo)
 SDEALLOCATE(SideInfo)
 SDEALLOCATE(SideToGlobalSide)
 
-!> mappings
+! mappings
 CALL FinalizeMappings()
 
 #if FV_ENABLED

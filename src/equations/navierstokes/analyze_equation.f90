@@ -280,8 +280,8 @@ USE MOD_FV_Vars,            ONLY: FV_Elems,FV_w
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(OUT)                :: BulkPrim(PP_nVarPrim)                   !> Primitive bulk quantities
-REAL,INTENT(OUT)                :: BulkCons(PP_nVar)                       !> Conservative bulk quantities
+REAL,INTENT(OUT)                :: BulkPrim(PP_nVarPrim)                   !< Primitive bulk quantities
+REAL,INTENT(OUT)                :: BulkCons(PP_nVar)                       !< Conservative bulk quantities
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                            :: IntegrationWeight

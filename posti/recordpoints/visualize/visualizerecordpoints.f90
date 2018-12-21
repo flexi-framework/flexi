@@ -1,7 +1,24 @@
+!=================================================================================================================================
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
+! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+!
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
+! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+!
+! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+! of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License v3.0 for more details.
+!
+! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
+!=================================================================================================================================
 #include "flexi.h"
 
 !===================================================================================================================================
-!> Add comments please!
+!> Postprocessing tool used to visualize the solution at the record points that has been recorded during a simulation.
+!> The tool takes several of the files and combines them into a single time series. From the conservative variables
+!> that are stored during the simulation, all available derived quantities can be computed.
+!> Additionally, several more advanced postprocessing algorithms are available. This includes calculation of time averages,
+!> FFT and PSD values and specific boundary layer properties.
 !===================================================================================================================================
 PROGRAM postrec
 ! MODULES
@@ -9,11 +26,9 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Commandline_Arguments
 USE MOD_StringTools                 ,ONLY:STRICMP, GetFileExtension
-USE MOD_ReadInTools                 ,ONLY:prms
+USE MOD_ReadInTools                 ,ONLY:prms,PrintDefaultParameterFile
 USE MOD_ParametersVisu              ,ONLY:equiTimeSpacing,doSpec,doFluctuations,doTurb,doFilter
-#ifdef WITHBLPROPS
 USE MOD_ParametersVisu              ,ONLY:Plane_doBLProps
-#endif
 USE MOD_RPSetVisu                   ,ONLY:InitRPSet,FinalizeRPSet
 USE MOD_RPData                      ,ONLY:ReadRPData,AssembleRPData,FinalizeRPData
 USE MOD_OutputRPVisu                      
@@ -21,7 +36,7 @@ USE MOD_RPInterpolation
 USE MOD_RPInterpolation_Vars        ,ONLY:CalcTimeAverage
 USE MOD_EquationRP                
 USE MOD_FilterRP                    ,ONLY:FilterRP
-USE MOD_Spec                        ,ONLY:InitSpec,spec,FinalizeSpec
+USE MOD_Spec                        ,ONLY:InitSpec,Spec,FinalizeSpec
 USE MOD_Turbulence
 USE MOD_MPI                         ,ONLY:DefineParametersMPI,InitMPI
 USE MOD_IO_HDF5                     ,ONLY:DefineParametersIO_HDF5,InitIOHDF5
@@ -50,7 +65,7 @@ IF(success)THEN
   ParameterFile = Args(1)
   IF (.NOT.STRICMP(GetFileExtension(ParameterFile), "ini")) success=.FALSE.
 END IF
-IF(.NOT.success)THEN
+IF(.NOT.success.AND.doPrintHelp.LE.0)THEN
   ! Print out error message containing valid syntax
   CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: postrec parameter.ini RPdatafiles.h5')
 END IF
@@ -60,6 +75,11 @@ CALL DefineParametersMPI()
 CALL DefineParametersIO_HDF5()
 CALL DefineParametersEOS()
 
+! check for command line argument --help or --markdown
+IF (doPrintHelp.GT.0) THEN
+  CALL PrintDefaultParameterFile(doPrintHelp.EQ.2, Args(1))
+  STOP
+END IF
 CALL prms%read_options(ParameterFile)
 
 CALL InitParameters()
@@ -106,10 +126,8 @@ CALL CalcEquationRP()
 IF(calcTimeAverage)    CALL CalcTimeAvg() 
 IF(doFluctuations)     CALL CalcFluctuations()
 IF(doFilter)           CALL FilterRP()
-IF(doSpec)             CALL spec()
-#ifdef WITHBLPROPS
+IF(doSpec)             CALL Spec()
 IF(Plane_doBLProps)    CALL Plane_BLProps() 
-#endif
 CALL OutputRP()
 IF(doTurb)             CALL Turbulence()
 CALL FinalizeInterpolation()
@@ -139,48 +157,66 @@ SUBROUTINE DefineParameters()
 USE MOD_ReadInTools ,ONLY: prms
 IMPLICIT NONE
 !===================================================================================================================================
-CALL prms%SetSection('Visualize_Record_Points')
+CALL prms%SetSection('Visualize Record Points')
 
-CALL prms%CreateStringOption( 'ProjectName'        ,"TODO")
-CALL prms%CreateStringOption( 'GroupName'          ,"TODO",multiple=.TRUE.)
-CALL prms%CreateStringOption( 'VarName'            ,"TODO",multiple=.TRUE.)
-CALL prms%CreateStringOption( 'RP_DefFile'         ,"TODO")
+CALL prms%CreateStringOption( 'ProjectName'        ,"Name of the project")
+CALL prms%CreateStringOption( 'GroupName'          ,"Name(s) of the group(s) to visualize, must be equal to the name given in&
+                                                     & preparerecordpoints tool",multiple=.TRUE.)
+CALL prms%CreateStringOption( 'VarName'            ,"Variable name to visualize",multiple=.TRUE.)
+CALL prms%CreateStringOption( 'RP_DefFile'         ,"Path to the *RPset.h5 file")
 
-CALL prms%CreateLogicalOption('usePrims'           ,"TODO",".FALSE.")
-CALL prms%CreateLogicalOption('OutputTimeData'     ,"TODO",".FALSE.")
-CALL prms%CreateLogicalOption('OutputTimeAverage'  ,"TODO",".FALSE.")
-CALL prms%CreateLogicalOption('doFluctuations'     ,"TODO",".FALSE.")
-CALL prms%CreateLogicalOption('doFilter'           ,"TODO",".FALSE.")
-CALL prms%CreateLogicalOption('doFFT'              ,"TODO",".FALSE.")
-CALL prms%CreateLogicalOption('doPSD'              ,"TODO",".FALSE.")
-CALL prms%CreateLogicalOption('doTurb'             ,"TODO",".FALSE.")
-CALL prms%CreateLogicalOption('hanning'            ,"TODO",".FALSE.")
-CALL prms%CreateLogicalOption('fourthDeriv'        ,"TODO",".FALSE.")
+CALL prms%CreateLogicalOption('usePrims'           ,"Set to indicate that the RP file contains the primitive and not the&
+                                                    & conservative variables",".FALSE.")
+
+CALL prms%CreateLogicalOption('OutputTimeData'     ,"Should the time series be written? Not compatible with TimeAvg and FFT&
+                                                     & options!",".FALSE.")
+CALL prms%CreateLogicalOption('OutputTimeAverage'  ,"Should the time average be computed and written?",".FALSE.")
+CALL prms%CreateLogicalOption('doFluctuations'     ,"Should the fluctuations be computed and written?",".FALSE.")
+CALL prms%CreateLogicalOption('equiTimeSpacing'    ,"Set to interpolate the temporal data to equdistant time steps&
+                                                     & (always done for operations requiring FFTs)",".FALSE.")
+
+CALL prms%CreateLogicalOption('OutputPoints'       ,"General option to turn off the output of points",".TRUE.")
+CALL prms%CreateLogicalOption('OutputLines'        ,"General option to turn off the output of lines",".TRUE.")
+CALL prms%CreateLogicalOption('OutputPlanes'       ,"General option to turn off the output of planes",".TRUE.")
+
+CALL prms%CreateLogicalOption('doFFT'              ,"Calculate a fast Fourier transform of the time signal",".FALSE.")
+CALL prms%CreateLogicalOption('doPSD'              ,"Calculate the power spectral density of the time signal",".FALSE.")
+CALL prms%CreateIntOption    ('nBlocks'            ,"Specify the number of blocks over the time signal used for spectral averaging&
+                                                     & when calculating spectral quantities",'1')
+CALL prms%CreateRealOption   ('SamplingFreq'       ,"Instead of specifying the number of blocks, the sampling frequency in&
+                                                     & combination with the block size can be set - the number of blocks&
+                                                     & will then be calculated.")
+CALL prms%CreateIntOption    ('BlockSize'          ,"Size of the blocks (in samples) if sampling frequency is given")
+CALL prms%CreateRealOption   ('CutoffFreq'         ,"Specify smallest considered frequency in spectral analysis")
+CALL prms%CreateLogicalOption('hanning'            ,"Set to use the Hann window when performing spectral analysis",".FALSE.")
+CALL prms%CreateLogicalOption('fourthDeriv'        ,"Set to calculate the fourth derivative of the time signal (signal will be&
+                                                     & interpolated to a coarse grid since truncation error is large",".FALSE.")
 CALL prms%CreateLogicalOption('ThirdOct'           ,"TODO",".FALSE.")
-CALL prms%CreateLogicalOption('equiTimeSpacing'    ,"TODO",".FALSE.")
-CALL prms%CreateLogicalOption('Plane_LocalCoords'  ,"TODO",".FALSE.")
-CALL prms%CreateLogicalOption('Plane_LocalVel'     ,"TODO",".FALSE.")
-CALL prms%CreateLogicalOption('Plane_doBLProps'    ,"TODO",".FALSE.")
-CALL prms%CreateLogicalOption('Line_LocalCoords'   ,"TODO",".FALSE.")
-CALL prms%CreateLogicalOption('Line_LocalVel'      ,"TODO",".FALSE.")
-CALL prms%CreateLogicalOption('OutputPoints'       ,"TODO",".FALSE.")
-CALL prms%CreateLogicalOption('OutputLines'        ,"TODO",".FALSE.")
-CALL prms%CreateLogicalOption('OutputPlanes'       ,"TODO",".FALSE.")
-
-CALL prms%CreateRealArrayOption('Line_LocalVel_vec',"TODO")
-CALL prms%CreateRealOption   ('FilterWidth'        ,"TODO")
-CALL prms%CreateRealOption   ('SamplingFreq'       ,"TODO")
-CALL prms%CreateRealOption   ('CutoffFreq'       ,"TODO")
 CALL prms%CreateRealOption   ('u_inf'              ,"TODO")
 CALL prms%CreateRealOption   ('chord'              ,"TODO")
-CALL prms%CreateRealOption   ('mu0'                ,"TODO") 
 
-CALL prms%CreateIntOption    ('FilterMode'         ,"TODO")
-CALL prms%CreateIntOption    ('nBlocks'            ,"TODO")
-CALL prms%CreateIntOption    ('BlockSize'          ,"TODO")
-CALL prms%CreateIntOption    ('Plane_BLvelScaling' ,"TODO")
-CALL prms%CreateIntOption    ('SkipSample'         ,"TODO")
-CALL prms%CreateIntOption    ('OutputFormat'       ,"TODO")
+CALL prms%CreateLogicalOption('doTurb'             ,"Set to compute a temporal FFT for each RP and compute turbulent quantities&
+                                                    & like the kinetic energy over wave number",".FALSE.")
+
+CALL prms%CreateLogicalOption('Plane_doBLProps'    ,"Set to calculate seperate boundary layer quantities for boundary layer&
+                                                     & planes",".FALSE.")
+CALL prms%CreateIntOption    ('Plane_BLvelScaling' ,"Choose scaling for boundary layer quantities. 0: no scaling, 1: laminar&
+                                                     & scaling, 3: turbulent scaling")
+CALL prms%CreateLogicalOption('Plane_LocalCoords'  ,"Set to use local instead of global coordinates along planes",".FALSE.")
+CALL prms%CreateLogicalOption('Plane_LocalVel'     ,"Set to use local instead of global velocities along planes",".FALSE.")
+
+CALL prms%CreateLogicalOption('Line_LocalCoords'   ,"Set to use local instead of global coordinates along lines",".FALSE.")
+CALL prms%CreateLogicalOption('Line_LocalVel'      ,"Set to use local instead of global velocities along lines",".FALSE.")
+CALL prms%CreateRealArrayOption('Line_LocalVel_vec',"Vector used for local velocity computation along line")
+
+CALL prms%CreateLogicalOption('doFilter'           ,"Set to perform temporal filtering for each RP",".FALSE.")
+CALL prms%CreateRealOption   ('FilterWidth'        ,"Width of the temporal filter")
+CALL prms%CreateIntOption    ('FilterMode'         ,"Set to 0 for low pass filter and to 1 for high pass filter")
+
+CALL prms%CreateRealOption   ('mu0'                ,"Kinematic viscosity, needed for turbulent quantities") 
+
+CALL prms%CreateIntOption    ('SkipSample'         ,"Used to skip every n-th RP evaluation")
+CALL prms%CreateIntOption    ('OutputFormat'       ,"Choose the main format for output. 0: ParaView, 2: HDF5")
 END SUBROUTINE DefineParameters
 
 !===================================================================================================================================
@@ -223,6 +259,7 @@ OutputTimeData   =GETLOGICAL('OutputTimeData','.FALSE.')
 OutputTimeAverage=GETLOGICAL('OutputTimeAverage','.FALSE.')
 doFluctuations   =GETLOGICAL('doFluctuations','.FALSE.')
 IF(OutputTimeAverage .OR. doFluctuations) CalcTimeAverage=.TRUE.
+IF(doFluctuations) OutputTimeData = .TRUE.
 
 doFilter=GETLOGICAL('doFilter','.FALSE.')
 IF(doFilter) THEN
@@ -335,13 +372,11 @@ CHARACTER(LEN=20)   :: format
 !             if a quantity is not visualized it is zero
 ALLOCATE(mapVisu(1:nVarDep))
 mapVisu = 0
-nVarVisuTotal = 0
 ! Compare varnames that should be visualized with availabe varnames
 DO iVar=1,nVarVisu
   DO iVar2=1,nVarDep
     IF (STRICMP(VarNameVisu(iVar), VarNamesAll(iVar2))) THEN
-      mapVisu(iVar2) = nVarVisuTotal+1
-      nVarVisuTotal = nVarVisuTotal + 1
+      mapVisu(iVar2) = iVar
     END IF
   END DO
 END DO

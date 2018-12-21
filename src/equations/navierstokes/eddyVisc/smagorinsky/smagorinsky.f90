@@ -105,7 +105,6 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)                        :: iElem             !< index of current element
 !> indices of the current volume point
 INTEGER,INTENT(IN)                        :: i,j,k
-!> gradients of the velocities w.r.t. all directions
 REAL,INTENT(INOUT)                        :: muSGS             !< local SGS viscosity
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

@@ -99,7 +99,7 @@ USE MOD_Globals
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN),OPTIONAL      :: mpi_comm_IN
+INTEGER,INTENT(IN),OPTIONAL      :: mpi_comm_IN !< MPI communicator
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 #if USE_MPI
@@ -288,6 +288,8 @@ END SUBROUTINE StartSendMPIData
 
 #if FV_ENABLED
 !==================================================================================================================================
+!> Subroutine that performs the send and receive operations for the FV_elems information at the face
+!> that has to be exchanged between processors.
 !==================================================================================================================================
 SUBROUTINE StartExchange_FV_Elems(FV_Elems,LowerBound,UpperBound,SendRequest,RecRequest,SendID)
 ! MODULES
@@ -298,10 +300,13 @@ USE MOD_MPI_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER, INTENT(IN)    :: SendID
-INTEGER, INTENT(IN)    :: LowerBound,UpperBound
-INTEGER, INTENT(OUT)   :: SendRequest(nNbProcs),RecRequest(nNbProcs)
-INTEGER, INTENT(INOUT) :: FV_Elems(LowerBound:UpperBound)
+INTEGER,INTENT(IN)    :: SendID                          !< defines the send / receive direction -> 1=send MINE/receive YOUR,
+                                                         !< 2=send YOUR / receive MINE 
+INTEGER,INTENT(IN)    :: LowerBound                      !< lower side index for last dimension of FV_Elems
+INTEGER,INTENT(IN)    :: UpperBound                      !< upper side index for last dimension of FV_Elems
+INTEGER,INTENT(OUT)   :: SendRequest(nNbProcs)           !< communicatio handles for send
+INTEGER,INTENT(OUT)   :: RecRequest(nNbProcs)            !< communicatio handles for receive
+INTEGER,INTENT(INOUT) :: FV_Elems(LowerBound:UpperBound) !< information about FV_Elems at faces to be communicated
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                     :: iNBProc

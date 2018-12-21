@@ -42,7 +42,8 @@ CONTAINS
 END MODULE MOD_FillMortar
 
 !==================================================================================================================================
-
+!> Routines that perform the projection operation between nonconforming interfaces of conservative variables
+!==================================================================================================================================
 MODULE MOD_FillMortarCons
 IMPLICIT NONE
 PRIVATE
@@ -65,7 +66,8 @@ CONTAINS
 END MODULE MOD_FillMortarCons
 
 !==================================================================================================================================
-
+!> Routines that perform the projection operation between nonconforming interfaces of primitive variables
+!==================================================================================================================================
 MODULE MOD_FillMortarPrim
 IMPLICIT NONE
 PRIVATE
@@ -88,7 +90,8 @@ CONTAINS
 END MODULE MOD_FillMortarPrim
 
 !==================================================================================================================================
-
+!> Routines that perform the projection operation between nonconforming interfaces of a scalar variable
+!==================================================================================================================================
 MODULE MOD_FillMortar1
 IMPLICIT NONE
 PRIVATE

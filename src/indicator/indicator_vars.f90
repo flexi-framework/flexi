@@ -12,10 +12,10 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 
+!==================================================================================================================================
+!> Contains variables relevant for indicators
+!==================================================================================================================================
 MODULE MOD_Indicator_Vars
-!==================================================================================================================================
-! Contains variables relevant for indicators
-!==================================================================================================================================
 ! MODULES
 IMPLICIT NONE
 PUBLIC
@@ -24,12 +24,12 @@ SAVE
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 LOGICAL                :: IndicatorInitIsDone=.FALSE.
-INTEGER                :: IndicatorType  ! Type of indicator used: 0 = no indicator, 1 = Persson
-INTEGER                :: IndVar         ! variable on which indicator is applied (only cons)
-INTEGER                :: nModes         ! number of modes to check for Persson modal indicator
-REAL,ALLOCATABLE       :: IndValue(:)    ! indicator output
-REAL                   :: IndStartTime
-LOGICAL                :: FVBoundaries = .FALSE.
-INTEGER,ALLOCATABLE    :: FVBoundaryType(:)
+INTEGER                :: IndicatorType               !< Type of indicator used: 0 = no indicator, 1 = Persson
+INTEGER                :: IndVar                      !< variable on which indicator is applied (only cons)
+INTEGER                :: nModes                      !< number of modes to check for Persson modal indicator
+REAL,ALLOCATABLE       :: IndValue(:)                 !< indicator output
+REAL                   :: IndStartTime                !< specify starting time of indicator evaluation
+LOGICAL                :: FVBoundaries = .FALSE.      !< specify if fv element is set at boundaries
+INTEGER,ALLOCATABLE    :: FVBoundaryType(:)           !< select at which kind of BCs FV elements should be used
 !==================================================================================================================================
 END MODULE MOD_Indicator_Vars

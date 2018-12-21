@@ -1,7 +1,20 @@
+!=================================================================================================================================
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
+! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+!
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
+! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+!
+! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+! of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License v3.0 for more details.
+!
+! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
+!=================================================================================================================================
 #include "flexi.h"
 
 !===================================================================================================================================
-!>
+!> Module containing the routines that are used needed to calculate derived quantities from the variables in the RP file.
 !===================================================================================================================================
 MODULE MOD_EquationRP
 ! MODULES
@@ -44,7 +57,7 @@ USE MOD_EquationRP_Vars
 USE MOD_EOS               ,ONLY:InitEOS
 USE MOD_EOS_Posti_Vars    ,ONLY:nVarDepEOS,DepTableEOS,DepNames
 USE MOD_Readintools       ,ONLY:CountOption,GETSTR
-USE MOD_StringTools       ,ONLY: STRICMP
+USE MOD_StringTools       ,ONLY:STRICMP
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -59,7 +72,7 @@ WRITE(UNIT_stdOut,'(A)') ' INIT EquationRP ...'
 
 justVisualizeState=.FALSE.
 
-! In case no output variables specified: take instead the variable names out of the hDF5 file (used for timeavg-files)
+! In case no output variables specified: take instead the variable names out of the HDF5 file (used for timeavg-files)
 nVarVisu=CountOption("VarName")
 IF(nVarVisu .LT. 1) THEN
   justVisualizeState=.TRUE.
@@ -235,14 +248,14 @@ END SUBROUTINE CalcEquationRP
 
 
 !===================================================================================================================================
-!> This routine computes the state on the visualization grid 
+!> This routine transformes velocities to the line-local coordinate system
 !===================================================================================================================================
 SUBROUTINE Line_TransformVel()
 ! MODULES
 USE MOD_Globals
-USE MOD_OutputRPVisu_Vars           ,ONLY:RPData_out,nSamples_out
-USE MOD_RPSetVisuVisu_Vars            ,ONLY:nLines,Lines,tLine
-USE MOD_EquationRP_Vars         ,ONLY:nVecTrans,TransMap
+USE MOD_OutputRPVisu_Vars  ,ONLY: RPData_out,nSamples_out
+USE MOD_RPSetVisuVisu_Vars ,ONLY: nLines,Lines,tLine
+USE MOD_EquationRP_Vars    ,ONLY: nVecTrans,TransMap
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -269,7 +282,7 @@ END SUBROUTINE Line_TransformVel
 
 
 !===================================================================================================================================
-!> 
+!> This routine transformes velocities to the plane-local coordinate system
 !===================================================================================================================================
 SUBROUTINE Plane_TransformVel()
 ! MODULES
@@ -325,7 +338,7 @@ END SUBROUTINE Plane_TransformVel
 
 
 !===================================================================================================================================
-!> 
+!> This routine calculates the boundary layer specific quantities on all boundary layer planes.
 !===================================================================================================================================
 SUBROUTINE Plane_BLProps()
 ! MODULES
@@ -517,7 +530,7 @@ END SUBROUTINE Plane_BLProps
 
 
 !===================================================================================================================================
-!> 
+!> This function returns the index of the variable "VarName" in the array of variables "VarNameList"
 !===================================================================================================================================
 FUNCTION GETMAPBYNAME(VarName,VarNameList,nVarList)
 ! MODULES
@@ -544,7 +557,7 @@ END FUNCTION
 
 
 !===================================================================================================================================
-!>
+!> Deallocate the global variables
 !===================================================================================================================================
 SUBROUTINE FinalizeEquationRP()
 ! MODULES
@@ -556,7 +569,8 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
-DEALLOCATE(TransMap,is2D) 
+SDEALLOCATE(TransMap) 
+SDEALLOCATE(is2D) 
 WRITE(UNIT_stdOut,'(A)') '  EquationRP FINALIZED'
 END SUBROUTINE FinalizeEquationRP
 
