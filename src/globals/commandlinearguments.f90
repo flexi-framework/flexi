@@ -48,7 +48,11 @@ CHARACTER(LEN=255)      :: tmp
 LOGICAL,ALLOCATABLE     :: alreadyRead(:)
 !==================================================================================================================================
 ! Get number of command line arguments
-nArgs_tmp = MERGE(SIZE(Args_In,1),COMMAND_ARGUMENT_COUNT(),PRESENT(Args_In))
+IF(PRESENT(Args_In))THEN
+  nArgs_tmp = SIZE(Args_In,1)
+ELSE
+  nArgs_tmp = COMMAND_ARGUMENT_COUNT()
+END IF
 ALLOCATE(alreadyRead(nArgs_tmp))
 alreadyRead = .FALSE.
 
@@ -60,7 +64,7 @@ DO iArg = 1, nArgs_tmp
   IF(PRESENT(Args_In))THEN
     tmp=Args_In(iArg)
   ELSE
-  CALL GET_COMMAND_ARGUMENT(iArg,tmp)
+    CALL GET_COMMAND_ARGUMENT(iArg,tmp)
   END IF
   IF (STRICMP(tmp, "--generateUnittestReferenceData")) THEN
     doGenerateUnittestReferenceData = .TRUE.
@@ -90,7 +94,7 @@ DO iArg = 1,nArgs_tmp
     IF(PRESENT(Args_In))THEN
       Args(nArgs)=TRIM(Args_In(iArg))
     ELSE
-    CALL GET_COMMAND_ARGUMENT(iArg,Args(nArgs))
+      CALL GET_COMMAND_ARGUMENT(iArg,Args(nArgs))
     END IF
     alreadyRead(iArg) = .TRUE.
   END IF
