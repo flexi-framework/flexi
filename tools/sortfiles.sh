@@ -1,6 +1,6 @@
 #!/bin/bash
 
-PROJECTNAME=Kawamura_Cylinder_x066385_V2
+PROJECTNAME=INSERT_PROJECTNAME_HERE
 
 if [ ! -n "$1" ]; then
   echo You have to specify a directory name!
