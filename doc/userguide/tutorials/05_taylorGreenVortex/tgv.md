@@ -77,16 +77,13 @@ To apply polynomial de-aliasing there are the following options:
     ! ================================================ !
     OverintegrationType=0  ! 0:off 1:cut-off filter 
                            ! 2: conservative cut-off 
-                           ! 3: advective flux only
-    NOver         = 11     ! overintegration for volume 
-                           ! fluxes (NOver>N) for type 3
     NUnder        = 7      ! specifies effective polydeg 
                            ! (modes > NUnder are thrown away)
                            ! for types 1 and 2
 
 ~~~~~~~
 
-FLEXI has three ways of doing polynomial de-aliasing. Mode 0: don't do it. Mode 1: a filter is applied to the time-update $(J*U_t)$. The filter is formulated as a Galerkin projection of degree $N$ to $NUnder$, the effective resolution is thus $NUnder$. Mode 2: in principle identical to Mode 1, but takes into account non-linear metric terms. For the linear mesh of this tutorial the result is identical, while Mode 2 is slightly more computational expensive, so we omit it. Mode 3: applies the projection filter only to the advective part of the discretization, i.e. ignoring the viscous flux. This results in a computationally more efficient scheme. Filtering is here from $NOver$ to $N$, thus the effective resolution is on $N$ in contrast to mode 1 and 2.
+FLEXI has three ways of doing polynomial de-aliasing. Mode 0: don't do it. Mode 1: a filter is applied to the time-update $(J*U_t)$. The filter is formulated as a Galerkin projection of degree $N$ to $NUnder$, the effective resolution is thus $NUnder$. Mode 2: in principle identical to Mode 1, but takes into account non-linear metric terms. For the linear mesh of this tutorial the result is identical, while Mode 2 is slightly more computational expensive, so we omit it.
 
 For FLEXI we can run under-resolved computations without sub grid scale model. The only artifical dissipation is then provided by the Riemann solver used for the inter-cell fluxes. You can change the Riemann solver to see the effect with the following parameters:
 
@@ -142,7 +139,7 @@ First we run FLEXI without overintegration/de-aliasing. We will find that the co
 
 
 #### Part II: Overintegration
-We now use overintegration by changing the respective settings in the parameter_flexi.ini file as described above. You can try and use any of the modes 1 or 3. For ``Overintegration==1`` set $N=11$ and $NUnder=7$. For ``OverintegrationType=3`` set $N=7$ and $NOver=11$. You can compare your result to the plot below.
+We now use overintegration by changing the respective settings in the parameter_flexi.ini file as described above. For ``Overintegration==1`` set $N=11$ and $NUnder=7$. You can compare your result to the plot below.
 ![](tutorials/05_taylorGreenVortex/les_dealiasing.png)
 
 
