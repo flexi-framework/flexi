@@ -686,6 +686,7 @@ CLASS(link), POINTER   :: current
 CLASS(OPTION), POINTER :: currentOpt
 INTEGER                :: maxNameLen
 INTEGER                :: maxValueLen
+INTEGER                :: commentLen
 INTEGER                :: lineLen
 INTEGER                :: spaceNameLen
 INTEGER                :: spaceValueLen
@@ -749,13 +750,14 @@ IF (markdown) THEN
   maxNameLen=MAX(maxNameLen,10)
   maxValueLen=MAX(maxValueLen,11)
 END IF
-lineLen = maxNameLen + maxValueLen + 4 + 50
+commentLen=MERGE(50,80,markdown)
+lineLen = maxNameLen + maxValueLen + 4 + commentLen
 spaceNameLen = maxNameLen - 9
 spaceValueLen = maxValueLen - 10
 WRITE(fmtLineLen,*) lineLen
 WRITE(fmtName,*)    maxNameLen
 WRITE(fmtValue,*)   maxValueLen
-WRITE(fmtComment,*) 50
+WRITE(fmtComment,*) commentLen
 WRITE(fmtNamespace,*) spaceNameLen
 WRITE(fmtValuespace,*) spaceValueLen
 current => prms%firstLink

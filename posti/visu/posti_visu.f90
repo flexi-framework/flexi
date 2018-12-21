@@ -82,6 +82,10 @@ ELSE IF(STRICMP(GetFileExtension(Args(1)),'h5')) THEN
   !create empty dummy prm file
   postifile = ".posti.ini"
   IF(MPIRoot)THEN
+    IF(FILEEXISTS(postifile))THEN
+      OPEN(UNIT=31, FILE=postifile, STATUS="old")
+      CLOSE(31, STATUS="delete")
+    END IF
     OPEN (UNIT=31, FILE=postifile, STATUS="new")
     CLOSE (UNIT=31)
   END IF 
