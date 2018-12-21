@@ -346,7 +346,7 @@ ELSE
       !   - headSpace contains part before space or ==headNewline, if there is no space character in the headNewline anymore
       CALL SPLIT(headNewline, headSpace, " ")
       ! if word in headSpace does not fit into actual line -> insert newline
-      IF (length+LEN_TRIM(headSpace).GT.50) THEN
+      IF (length+LEN_TRIM(headSpace).GT.80) THEN
         SWRITE (UNIT_StdOut,*) ''
         SWRITE(UNIT_StdOut, "(A"//fmtValue//")", ADVANCE='NO') ""
         length = 0 ! reset length of line

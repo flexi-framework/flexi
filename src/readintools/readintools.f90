@@ -745,7 +745,7 @@ DO WHILE (associated(current))
   maxValueLen = MAX(maxValueLen, current%opt%GETVALUELEN())
   current => current%next
 END DO
-lineLen = maxNameLen + maxValueLen + 4 + 50
+lineLen = maxNameLen + maxValueLen + 4 + 80
 spaceNameLen = maxNameLen - 9
 spaceValueLen = maxValueLen - 10
 WRITE(fmtLineLen,*) lineLen
