@@ -745,6 +745,10 @@ DO WHILE (associated(current))
   maxValueLen = MAX(maxValueLen, current%opt%GETVALUELEN())
   current => current%next
 END DO
+IF (markdown) THEN
+  maxNameLen=MAX(maxNameLen,10)
+  maxValueLen=MAX(maxValueLen,11)
+END IF
 lineLen = maxNameLen + maxValueLen + 4 + 50
 spaceNameLen = maxNameLen - 9
 spaceValueLen = maxValueLen - 10

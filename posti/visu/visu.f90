@@ -378,7 +378,7 @@ USE MOD_Posti_Calc          ,ONLY: CalcQuantities_FV,CalcSurfQuantities_FV
 USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_FV,ConvertToSurfVisu_FV
 #endif
 USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_DG,ConvertToSurfVisu_DG,ConvertToVisu_GenericData
-USE MOD_ReadInTools         ,ONLY: prms,FinalizeParameters,ExtractParameterFile
+USE MOD_ReadInTools         ,ONLY: prms,FinalizeParameters,ExtractParameterFile,PrintDefaultParameterFile
 USE MOD_StringTools         ,ONLY: STRICMP
 USE MOD_Posti_VisuMesh      ,ONLY: BuildVisuCoords,BuildSurfVisuCoords
 USE MOD_Posti_Mappings      ,ONLY: Build_mapBCSides
@@ -395,10 +395,6 @@ CHARACTER(LEN=255),INTENT(IN)    :: statefile
 ! LOCAL VARIABLES
 LOGICAL                          :: changedPrmFile
 !===================================================================================================================================
-CALL SetStackSizeUnlimited()
-CALL InitMPI(mpi_comm_IN)
-CALL InitMPIInfo()
-SWRITE (*,*) "READING FROM: ", TRIM(statefile)
 
 !**********************************************************************************************
 ! General workflow / principles of the visu ParaView-plugin
@@ -480,6 +476,10 @@ SWRITE (*,*) "READING FROM: ", TRIM(statefile)
 !
 !**********************************************************************************************
 
+CALL SetStackSizeUnlimited()
+CALL InitMPI(mpi_comm_IN)
+CALL InitMPIInfo()
+
 CALL FinalizeParameters()
 ! Read Varnames to visualize and build calc and visu dependencies
 CALL prms%SetSection("posti")
@@ -494,6 +494,13 @@ CALL prms%CreateLogicalOption("Avg2DHDF5Output" , "Write averaged solution to HD
 CALL prms%CreateStringOption( "NodeTypeVisu"    , "NodeType for visualization. Visu, Gauss,Gauss-Lobatto,Visu_inner"    ,"VISU")
 CALL prms%CreateLogicalOption("DGonly"          , "Visualize FV elements as DG elements."    ,".FALSE.")
 CALL prms%CreateStringOption( "BoundaryName"    , "Names of boundaries for surfaces, which should be visualized.", multiple=.TRUE.)
+
+IF (doPrintHelp.GT.0) THEN
+  CALL PrintDefaultParameterFile(doPrintHelp.EQ.2,statefile) !statefile string conatains --help etc!
+  STOP
+END IF
+
+SWRITE (*,*) "READING FROM: ", TRIM(statefile)
 
 changedStateFile      = .FALSE.
 changedMeshFile       = .FALSE.

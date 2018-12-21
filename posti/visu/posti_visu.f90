@@ -56,8 +56,13 @@ CHARACTER(LEN=255),ALLOCATABLE :: VarNamesSurf_loc(:)
 CALL SetStackSizeUnlimited()
 CALL InitMPI()
 CALL ParseCommandlineArguments()
+IF (doPrintHelp.GT.0) THEN
+  prmfile = ''
+  CALL visu(MPI_COMM_WORLD, prmfile, prmfile, Args(1)) !pass first arg (section etc.) instead of statefile
+END IF
 IF (nArgs.LT.1) THEN
-  CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: posti [posti-prm-file [flexi-prm-file]] statefile [statefiles]')
+  CALL CollectiveStop(__STAMP__,&
+      'ERROR - Invalid syntax. Please use: posti [posti-prm-file [flexi-prm-file]] statefile [statefiles]')
 END IF
 
 prmfile = ''
@@ -81,7 +86,8 @@ ELSE IF(STRICMP(GetFileExtension(Args(1)),'h5')) THEN
     CLOSE (UNIT=31)
   END IF 
 ELSE
-  CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: posti [posti-prm-file [flexi-prm-file]] statefile [statefiles]')
+  CALL CollectiveStop(__STAMP__,&
+        'ERROR - Invalid syntax. Please use: posti [posti-prm-file [flexi-prm-file]] statefile [statefiles]')
 END IF
 
 DO iArg=1+skipArgs,nArgs
