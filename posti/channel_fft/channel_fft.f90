@@ -55,10 +55,6 @@ IF (nProcessors.GT.1) CALL CollectiveStop(__STAMP__, &
      'This tool is designed only for single execution!')
 
 CALL ParseCommandlineArguments()
-! check if parameter file is given
-IF ((nArgs.LT.1).OR.(.NOT.(STRICMP(GetFileExtension(Args(1)),'ini')))) THEN
-  CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: channel_fft [prm-file] statefile [statefiles]')
-END IF
 
 ! Define parameters needed
 CALL DefineParametersInterpolation()
@@ -70,6 +66,15 @@ CALL prms%SetSection("channelFFT")
 CALL prms%CreateIntOption( "NCalc",  "Polynomial degree to perform DFFT on.")
 CALL prms%CreateRealOption("Re_tau", "Reynolds number based on friction velocity and channel half height.")
 
+! check for command line argument --help or --markdown
+IF (doPrintHelp.GT.0) THEN
+  CALL PrintDefaultParameterFile(doPrintHelp.EQ.2, Args(1))
+  STOP
+END IF
+! check if parameter file is given
+IF ((nArgs.LT.1).OR.(.NOT.(STRICMP(GetFileExtension(Args(1)),'ini')))) THEN
+  CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: channel_fft [prm-file] statefile [statefiles]')
+END IF
 ! Parse parameters
 CALL prms%read_options(Args(1))
 
