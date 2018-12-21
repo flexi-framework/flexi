@@ -56,8 +56,9 @@ runs the code and generates 5 state files **sod_State_TIMESTAMP.h5** for $t=0.0,
 To visualize the solution, the *State*-files must be converted into a format suitable for **ParaView**. Execute the command 
 
 ~~~~~~~
-flexi2vtk parameter_flexi.ini sod_State_*.h5
+posti_visu parameter_postiVisu.ini parameter_flexi.ini sod_State_0000000.*
 ~~~~~~~
+
 to generate the corresponding *vtu*- and *vtm*-files, which can then be loaded into **ParaView**. 
 There are two types of *vtu*-files, which contain either the DG or the FV part of the solution. 
 The *vtm*-files combine the DG and FV *vtu*-file of every timestamp. Load the *vtm*-files into **ParaView**.
