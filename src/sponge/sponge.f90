@@ -233,9 +233,9 @@ END SUBROUTINE InitSponge
 !>
 !> First, depending on the shape (linear or cylindrical), the strength  of the shape without the damping factor (x_star) is
 !> calculated on the solution points.
-!> From this, a mapping is build which contains only the elements with x_star > 0 somewhere, which is used to later apply
+!> From this, a mapping is built which contains only the elements with x_star > 0 somewhere, which is used to later apply
 !> the sponge only to regions where it is needed.
-!> In this sponge region, the final strength of the sponge is build by limiting x_star to [0,1] and mutiply it by the damping.
+!> In this sponge region, the final strength of the sponge is built by limiting x_star to [0,1] and mutiply it by the damping.
 !> If set in the parameter file, a visualization of the sponge strength is written as .vtu files.
 !> At the end, the sponge is pre-multiplied by the Jacobian since we need to do this anyway when the sponge is applied.
 !==================================================================================================================================

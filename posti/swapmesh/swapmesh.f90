@@ -50,7 +50,7 @@ CONTAINS
 
 !===================================================================================================================================
 !> Read in user defined parameters and prepare data for swapmesh.
-!> The old and new mesh will be read and stored, the necessary Vandermonde matrizes are build and the parametric coordinates
+!> The old and new mesh will be read and stored, the necessary Vandermonde matrices are built and the parametric coordinates
 !> of the new gauss points in the old mesh are found.
 !===================================================================================================================================
 SUBROUTINE InitSwapmesh()

@@ -166,7 +166,7 @@ END IF
 END SUBROUTINE InitSplitDG
 
 !==================================================================================================================================
-!> Computes the Split-Flux retaining the standart NS-Equations
+!> Computes the Split-Flux retaining the standard NS-Equations
 !> Attention 1: Factor 2 from differentiation matrix is already been considered
 !==================================================================================================================================
 PURE SUBROUTINE SplitVolumeFluxSD(URef,UPrimRef,U,UPrim,MRef,M,Flux)
@@ -233,7 +233,7 @@ Flux(:) = 0.5*(MRef(1)+M(1))*fTilde(:) + &
 END SUBROUTINE SplitVolumeFluxSD
 
 !==================================================================================================================================
-!> Computes the surface flux for the split formulation retaining the standart NS-Equations
+!> Computes the surface flux for the split formulation retaining the standard NS-Equations
 !==================================================================================================================================
 PURE SUBROUTINE SplitSurfaceFluxSD(U_LL,U_RR,F)
 ! MODULES
@@ -798,7 +798,7 @@ beta_RR = 0.5*U_RR(DENS)/U_RR(PRES)
 ! logarithmic mean
 CALL GetLogMean(U_LL(DENS),U_RR(DENS),rhoLogMean)
 CALL GetLogMean(beta_LL,beta_RR,betaLogMean)
-! "standart" average
+! "standard" average
 pMean = 0.5*(U_LL(DENS)+U_RR(DENS))/(beta_LL+beta_RR)
 hMean = 0.5*sKappaM1/betaLogMean + pMean/rhoLogMean + &
        0.5*(U_LL(VEL1)*U_RR(VEL1) + U_LL(VEL2)*U_RR(VEL2) + U_LL(VEL3)*U_RR(VEL3))

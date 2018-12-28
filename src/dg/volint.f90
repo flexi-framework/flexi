@@ -237,7 +237,7 @@ DO iElem=1,nElems
     END DO ! l
 #endif /*PP_dim==3*/
 
-    ! consistency: if both poitns for flux evaluation are the same the standart
+    ! consistency: if both poitns for flux evaluation are the same the standard
     ! euler fluxes are retained
 #if PARABOLIC
     Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + DVolSurf(i,i)*f_c(:,i,j,k) + &

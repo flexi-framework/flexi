@@ -95,7 +95,7 @@ IF(error.GT. 100.*PP_RealTolerance) THEN
   CALL abort(__STAMP__,&
     'problems in building Mortar',999,error)
 ELSE
-  SWRITE(UNIT_StdOut,'(A)')'Mortar operators build successfully.'
+  SWRITE(UNIT_StdOut,'(A)')'Mortar operators built successfully.'
 END IF
 #endif
 
