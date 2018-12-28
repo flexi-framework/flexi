@@ -212,7 +212,7 @@ The basic command to run the POSTI_VISU tool is
 mpirun -np [no. processors] $FLEXI_DIR/posti_visu parameter.ini [flexi_outputfile.h5]
 ~~~~~~~
 
-In this case a parameter file is specified in which options like the type and amount of the visualization nodes and mesh options are defined - see Section \ref{sec:convert_tool} for all available options. You can also omit the parameter file argument:
+In this case a parameter file is specified in which options like the type and amount of the visualization nodes and mesh options are defined - see Section \ref{sec:postiVisu} for all available options. You can also omit the parameter file argument:
 
 ~~~~~~~
 mpirun -np [no. processors] $FLEXI_DIR/posti_visu [flexi_outputfile.h5]

@@ -9,7 +9,7 @@ This section gives an overview over the tools contained in the `FLEXI` repositor
 
 ## POSTI 
 
-`POSTI` tools are mostly documented in the tutorials in section \ref{sec:tutorials}. Here, an overview is given together with references to the respective tutorials. 
+`POSTI` tools are mostly documented in section \ref{sec:postiRecordpoints} and \ref{sec:postiVisu}. Here, an overview is given together with references to the respective tutorials. 
 
 ### Visualization
 
@@ -47,35 +47,35 @@ Further explained in         No tutorials so far
 
 ### Record points
 
----------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------
 **posti_evaluaterecordpoints**
---------------------------- -----------------------------------------------------------------
-Brief description            No description so far 
+--------------------------------- -------------------------------------------------------------
+Brief description                  No description so far 
 
-Basic usage                  `posti_visu [parameter.ini] [statefilde.h5]`
+Basic usage                        `posti_visu [parameter.ini] [statefilde.h5]`
 
-Further explained in         No tutorials so far
----------------------------------------------------------------------------------------------
+Further explained in               No tutorials so far
+-----------------------------------------------------------------------------------------------
                                             
----------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------
 **posti_preparerecordpoints**
---------------------------- -----------------------------------------------------------------
-Brief description            No description so far 
+-------------------------------- -------------------------------------------------------------
+Brief description                 No description so far 
 
-Basic usage                  `posti_visu [parameter.ini] [statefilde.h5]`
+Basic usage                       `posti_visu [parameter.ini] [statefilde.h5]`
 
-Further explained in         No tutorials so far
----------------------------------------------------------------------------------------------
+Further explained in              No tutorials so far
+----------------------------------------------------------------------------------------------
 
----------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------
 **posti_visualizerecordpoints**
---------------------------- -----------------------------------------------------------------
-Brief description            No description so far 
+--------------------------------- ------------------------------------------------------------
+Brief description                  No description so far 
 
-Basic usage                  `posti_visu [parameter.ini] [statefilde.h5]`
+Basic usage                        `posti_visu [parameter.ini] [statefilde.h5]`
 
-Further explained in         No tutorials so far
----------------------------------------------------------------------------------------------
+Further explained in               No tutorials so far
+----------------------------------------------------------------------------------------------
                                             
 
 ### Time averaging

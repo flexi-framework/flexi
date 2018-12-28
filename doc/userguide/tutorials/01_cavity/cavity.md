@@ -350,7 +350,7 @@ A contour plot of the velocity magnitude at the end time is given in figre \ref{
 
 
 ~~~~~~~
-postiVisu parameter_postiVisu.ini parameter_flexi.ini your_Statefiles.h5
+posti_visu parameter_postiVisu.ini parameter_flexi.ini your_Statefiles.h5
 ~~~~~~~
 
 
