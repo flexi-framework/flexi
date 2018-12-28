@@ -261,13 +261,13 @@ Table: Runtime parameters for the POSTI_VISU tool.
 
 Some of these options are duplicates from options for FLEXI. You can use the same parameter file for both executables.
 
-The NodeTypeVisu uses equidistant nodes which include the boundary points of elements.
-The parameter VarName specifies the variables beeing visualized. It can
-be used multible times for each variable. Visualizing of derived quantities e.g.
+The default value for NodeTypeVisu uses equidistant nodes which include the boundary points of elements.
+The parameter VarName specifies the variables being visualized. It can
+be used multiple times for each variable. Visualization of derived quantities such as
 Velocities and Pressure is possible. 
-If none VarName is specified the five conservative Variables are visualized.
+If no VarName is specified, the five conservative variables are visualized.
 
-The following lines can be used as example for the  parameter_postiVisu.ini
+The following lines can be used as an example for the parameter_postiVisu.ini
 file.
 
 ~~~~~

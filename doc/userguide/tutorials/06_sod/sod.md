@@ -1,4 +1,5 @@
 ## SOD Shock tube
+\label{sec:tut_sod}
 
 The Sod shock tube example [@Sod1978] is one of the most basic test cases to investigate the shock capturing capabilities of a CFD code. A initial discontinuity is located in the middle of the one dimensional domain $[0,1]$. The left and right states are given by $\rho=1, v=0, p=1$ and $\rho=0.125, v=0, p=0.1$.
 These states are already set as ``RefState`` in the the *parameter_flexi.ini* file.
@@ -16,6 +17,7 @@ The mesh files used by **FLEXI** are created by supplying an input file *paramet
 This creates the mesh file *SOD_100_mesh.h5* in HDF5 format.
 
 ### Flow Simulation with FLEXI
+\label{sec:tut_sod_simulation}
 
 This example requires the Finite Volume shock capturing and the Euler equations. Therefore set the following options in cmake:
 

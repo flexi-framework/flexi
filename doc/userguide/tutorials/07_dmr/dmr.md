@@ -1,4 +1,5 @@
 ## Double Mach Reflection
+\label{sec:tut_dmr}
 
 The Double Mach Reflection is a classical test case to investigate the abilities of a numerical scheme to represent shock and contact discontinuities. 
 It was invented by Woodward and Colella [@Woodward1984].
@@ -25,6 +26,7 @@ The mesh files used by **FLEXI** are created by supplying an input file *paramet
 This creates the mesh file *DMR_mesh.h5* in HDF5 format.
 
 ### Flow Simulation with FLEXI
+\label{sec:tut_dmr_simulation}
 
 This example requires the Finite Volume shock capturing. Therefore turn the option ``FLEXI_FV`` in the cmake configuration on. Additionally you should switch ``FLEXI_PARABOLIC`` off and recompile the **FLEXI** code.
 The simulation setup is defined in *parameter_flexi.ini* and includes options for the Finite Volume shock capturing.  

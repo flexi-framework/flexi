@@ -1,4 +1,5 @@
 ## Linear Scalar Advection-Diffusion Equation
+\label{sec:tut_linadv}
 
 Besides the Navier-Stokes equations, FLEXI provides another equation system, the three-dimensional linear scalar advection-diffusion (LinAdvDiff for short) equation:
 

@@ -1,4 +1,5 @@
 ## Freestream
+\label{sec:tut_freestream}
 
 The setup considers a freestream scenario with constant pressure $p=101325.0$ Pa, density $\rho=1.225$ kg/$m^3$ and velocity vector $\textbf{U}=(1,1,1)^T$ m/s.
 
@@ -43,6 +44,7 @@ Table: Numerical settings \label{tab:freestream_flow_prop}
 | isentropic coefficient $\kappa$ | kappa         |  1.4        |
 
 ### Numerical settings
+\label{sec:tut_freestream_num_settings}
 
 The DG solution on the mesh is represented by piecewise polynomials and the polynomial degree in this tutorial is chosen as $N=3$.
 

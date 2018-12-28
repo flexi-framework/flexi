@@ -1,4 +1,5 @@
 ## Convergence Test
+\label{sec:tut_convtest}
 
 In this tutorial the order of convergence for **FLEXI** is computed. The procedure is fully scripted, such that in the end a number of runs have been performed on a variation of grids or a variation of polynomial degrees and the order of convergence is computed automatically. A plot of the corresponding L2 error norms is produced and copied into the directory where the convergence test is executed from. Note, the script is written in *Python 2.7*. 
 

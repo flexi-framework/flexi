@@ -1,6 +1,6 @@
 ## Taylor Green Vortex 
+\label{sec:tut_tgv}
 
-\hypertarget{tutorial:tgv}{}
 This tutorial describes how to set up and run the basic test case for turbulent flows, the Taylor-Green-Vortex (TGV) - see e.g. [@gassner2013accuracy]. We will learn how to avoid catastrophic failure of the code due to non-linear instabilities. This is done by using
 polynomial de-aliasing. In a second step we add the sub grid scale model of Smagorinsky. The tutorial assumes that you are familiar with the general FLEXI and HOPR work flow (please finish the previous tutorials first if this sounds strange to you).
 

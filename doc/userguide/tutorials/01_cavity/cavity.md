@@ -1,6 +1,6 @@
 ## Lid-driven Cavity
+\label{sec:tut_cavity}
 
-\hypertarget{tutorial:cavity}{}
 This tutorial describes how to set up and run the first non-trivial flow problem. The lid-driven cavity flow is a standard test case for numerical schemes, and a number of results have been published in literature, see e.g. [@ghia_cavity], [@gao_cavity]. This tutorial assumes that you have completed the previous tutorial, know how to edit files and postprocess the solution with your favorite visualization tool, e.g. ParaView. Also, the later parts of the tutorial assume that you have access to a computer with an MPI-based parallelization with at least 4 computing cores - otherwise, it will just take a lot longer :). 
 
 The tutorial is split into two parts: The basic part will teach you about setting up the code and running the simulations. The advanced part will build on this and give you a glimpse on how to make modification to code to accommodate more complex simulation and add features you might need. If you are just interested in running the code as is, you may skip the advanced part, or just complete parts of it. 
@@ -306,6 +306,7 @@ Now that all the necessary preparations have been made, the simulation can be st
 
 
 #### Running the Simulation and Results
+\label{sec:tut_cavity_running_and_results}
 
 The command
 
