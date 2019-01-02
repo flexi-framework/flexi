@@ -18,7 +18,7 @@
 !> a FFT (using external libraries) to generate spectra as well as mean profiles for fluctuations and the mean velocity.
 !> If several state files are given, an average over all of them is calculated.
 !> The mesh needs to be ijk sorted. 
-!> To perform the FFT, the mesh and the solution will be interpolated to a equidistant FFT grid.
+!> To perform the FFT, the mesh and the solution will be interpolated to an equidistant FFT grid.
 !===================================================================================================================================
 PROGRAM channel_fft
 ! MODULES
@@ -63,6 +63,7 @@ CALL DefineParametersIO_HDF5()
 CALL DefineParametersMesh()
 
 CALL prms%SetSection("channelFFT")
+CALL prms%CreateIntOption( "OutputFormat",  "Choose the main format for output. 0: Tecplot, 2: HDF5")
 CALL prms%CreateIntOption( "NCalc",  "Polynomial degree to perform DFFT on.")
 CALL prms%CreateRealOption("Re_tau", "Reynolds number based on friction velocity and channel half height.")
 
