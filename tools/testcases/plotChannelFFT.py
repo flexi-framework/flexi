@@ -45,7 +45,7 @@ if not args.noSpectra:
         for DatasetName in h5file.keys():
             energySpectra = np.transpose(np.array(h5file[DatasetName]))
             for i,Spec in enumerate(energySpectra[1:]):
-                plt.semilogy(energySpectra[0],Spec,label=VarNames[i+1])
+                plt.loglog(energySpectra[0][1:],Spec[1:],label=VarNames[i+1])
             plt.xlabel('Wavenumber k',fontsize=16)
             plt.ylabel('E_uu_'+dim+',E_vv_'+dim+',E_ww_'+dim+',E_pp_'+dim,fontsize=16)
             plt.legend(fontsize=12)

@@ -117,7 +117,7 @@ Brief description                  Calculates the mean velocity and Reynolds str
 
 Basic usage                        `posti_channel_fft [parameter_channelfft.ini] [statefile1.h5 statefile2.h5 ...]`
 
-Further info / usage example       No tutorials so far
+Further info / usage example       \ref{sec:tut_ptcf}
 ---------------------------------------------------------------------------------------------
 
 <!---
@@ -188,7 +188,6 @@ The script **pics2movie.py** creates a movie from several images using the `menc
 ~~~~~~~
 python pics2movie.py [image*.png]
 ~~~~~~~
-
 
 and further options can again be shown with the `-h` argument.
 
