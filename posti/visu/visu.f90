@@ -382,6 +382,7 @@ USE MOD_Posti_VisuMesh      ,ONLY: BuildVisuCoords,BuildSurfVisuCoords
 USE MOD_Posti_Mappings      ,ONLY: Build_mapBCSides
 USE MOD_Visu_Avg2D          ,ONLY: Average2D,WriteAverageToHDF5
 USE MOD_Interpolation_Vars  ,ONLY: NodeType,NodeTypeVISUFVEqui
+USE MOD_IO_HDF5             ,ONLY: InitMPIInfo
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)               :: mpi_comm_IN
@@ -394,6 +395,7 @@ LOGICAL                          :: changedPrmFile
 !===================================================================================================================================
 CALL SetStackSizeUnlimited()
 CALL InitMPI(mpi_comm_IN)
+CALL InitMPIInfo()
 SWRITE (*,*) "READING FROM: ", TRIM(statefile)
 
 !**********************************************************************************************
@@ -563,7 +565,6 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
       CALL Average2D(nVarCalc,nVarCalc_FV,NCalc,NCalc_FV,nElems_DG,nElems_FV,NodeType,UCalc_DG,UCalc_FV,&
           Vdm_DGToFV,Vdm_FVToDG,Vdm_DGToVisu,Vdm_FVToVisu,1,nVarDep,mapDepToCalc,&
           UVisu_DG,UVisu_FV)
-      IF (Avg2DHDF5Output) CALL WriteAverageToHDF5(nVarVisu,NVisu,NVisu_FV,NodeType,OutputTime,MeshFile_state,UVisu_DG,UVisu_FV)
     ELSE
       CALL ConvertToVisu_DG()
 #if FV_ENABLED
@@ -598,6 +599,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
     END IF
   END IF
 
+  IF (Avg2DHDF5Output) CALL WriteAverageToHDF5(nVarVisu,NVisu,NVisu_FV,NodeType,OutputTime,MeshFile_state,UVisu_DG,UVisu_FV)
 
 END IF
 

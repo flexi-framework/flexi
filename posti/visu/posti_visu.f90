@@ -85,11 +85,16 @@ DO iArg=1+skipArgs,nArgs
   
   CALL visu(MPI_COMM_WORLD, prmfile, postifile, statefile)
 
+  IF (MeshFileMode) THEN
+    FileString_DG=TRIM(MeshFile)//'_visu.vtu'
+  ELSE
 #if FV_ENABLED                            
-  FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_DG',OutputTime))//'.vtu'
+    FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_DG',OutputTime))//'.vtu'
 #else
-  FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))//'.vtu'
+    FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))//'.vtu'
 #endif
+  END IF
+
 
   ALLOCATE(varnames_loc(nVarVisu))
   ALLOCATE(varnamesSurf_loc(nVarSurfVisuAll))
@@ -120,15 +125,17 @@ DO iArg=1+skipArgs,nArgs
     CALL WriteDataToVTK(nVarVisu,NVisu,nElems_DG,VarNames_loc,CoordsVisu_DG,UVisu_DG,FileString_DG,&
         dim=PP_dim,DGFV=0,nValAtLastDimension=.TRUE.)
 #if FV_ENABLED                            
-    FileString_FV=TRIM(TIMESTAMP(TRIM(ProjectName)//'_FV',OutputTime))//'.vtu'
-    CALL WriteDataToVTK(nVarVisu,NVisu_FV,nElems_FV,VarNames_loc,CoordsVisu_FV,UVisu_FV,FileString_FV,&
-        dim=PP_dim,DGFV=1,nValAtLastDimension=.TRUE.)
+    IF (.NOT.MeshFileMode) THEN
+      FileString_FV=TRIM(TIMESTAMP(TRIM(ProjectName)//'_FV',OutputTime))//'.vtu'
+      CALL WriteDataToVTK(nVarVisu,NVisu_FV,nElems_FV,VarNames_loc,CoordsVisu_FV,UVisu_FV,FileString_FV,&
+          dim=PP_dim,DGFV=1,nValAtLastDimension=.TRUE.)
 
-    IF (MPIRoot) THEN                   
-      ! write multiblock file
-      FileString_multiblock=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))//'.vtm'
-      CALL WriteVTKMultiBlockDataSet(FileString_multiblock,FileString_DG,FileString_FV)
-    ENDIF
+      IF (MPIRoot) THEN                   
+        ! write multiblock file
+        FileString_multiblock=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))//'.vtm'
+        CALL WriteVTKMultiBlockDataSet(FileString_multiblock,FileString_DG,FileString_FV)
+      ENDIF
+    END IF
 #endif
 
     IF (doSurfVisu) THEN
