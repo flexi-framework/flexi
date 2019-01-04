@@ -113,11 +113,11 @@ Further info / usage example       No tutorials so far
 ---------------------------------------------------------------------------------------------
 **posti_channel_fft**
 --------------------------------- ------------------------------------------------------------
-Brief description                  No description so far
+Brief description                  Calculates the mean velocity and Reynolds stress profiles of the turbulent channel flow test case by averaging both in the direction parallel to the wall and by averaging the upper and lower half of the channel. Furthermore, kinetic energy spectra dependent on the distance to the wall are computed.  
 
-Basic usage                        `posti_visu [parameter.ini] [statefile.h5]`
+Basic usage                        `posti_channel_fft [parameter_channelfft.ini] [statefile1.h5 statefile2.h5 ...]`
 
-Further info / usage example       No tutorials so far
+Further info / usage example       \ref{sec:tut_ptcf}
 ---------------------------------------------------------------------------------------------
 
 <!---
@@ -253,3 +253,15 @@ This script is specific to runs on HPC systems. It calculates a suitable number 
 * an average number of elements per core which is just below a close integer, such that parallel efficiency is not impaired by a few cores with higher load that the others have to wait for.
 
 No arguments are passed to this script, all input values are hard-coded and have to be adjusted in the script.
+
+<!---
+..................................................................................................................................
+-->
+### `testcases`
+
+The python script **plotChannelFFT.py** creates plots of the mean velocity and the Reynolds stress profiles as well as the turbulent energy spectra based on the posti_channel_fft HDF5 output files. Basic usage is:
+
+~~~~~~~
+python plotChannelFFT.py -p projectname -t time
+~~~~~~~
+Further options can be shown with the `-h` argument.
