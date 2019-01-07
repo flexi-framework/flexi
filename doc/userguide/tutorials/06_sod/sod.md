@@ -12,7 +12,7 @@ Copy the ``sod`` tutorial folder
 
 The mesh files used by **FLEXI** are created by supplying an input file *parameter_hopr.ini* with the appropriate information.
 
-    ./hopr parameter_hopr.ini
+    hopr parameter_hopr.ini
 
 This creates the mesh file *SOD_100_mesh.h5* in HDF5 format.
 

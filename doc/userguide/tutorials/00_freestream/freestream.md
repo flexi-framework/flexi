@@ -3,15 +3,16 @@
 
 The setup considers a freestream scenario with constant pressure $p=101325.0$ Pa, density $\rho=1.225$ kg/$m^3$ and velocity vector $\textbf{U}=(1,1,1)^T$ m/s.
 
-Copy the ``freestream`` tutorial folder \label{missing:aliases_tutorial_freestreem}
+Copy the ``freestream`` tutorial folder
 
         cp -r $FLEXI_TUTORIALS/freestream .
+        cd freestream
 
 ### Mesh Generation with HOPR
 
 The mesh files used by **FLEXI** are created by supplying an input file *parameter_hopr.ini* with the appropriate information.
 
-    ./hopr parameter_hopr.ini
+    hopr parameter_hopr.ini
 
 This creates the mesh file *cartbox_mesh.h5* in HDF5 format. Alternatively, if you do not want to run **hopr**, you can also use the provided mesh.
 

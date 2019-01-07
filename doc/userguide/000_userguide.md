@@ -25,7 +25,7 @@ header-includes:
  * Various Riemann solvers for inter-element coupling
  * Large eddy simulation capabilities through different de-aliasing strategies and subgrid scale models
  * Split form DG formulation with various kinetic energy or entropy preserving flux formulations
- * Matching high order curved mesh generation from external mesh formats (CGNS, GMSH) or simple analytic blocks via the open source preprocessor [HOPR](http://hopr-project.org)
+ * Matching high order curved mesh generation from external mesh formats (CGNS, GMSH) or simple analytic blocks via the open source preprocessor [**HOPR**](http://hopr-project.org)
  * Nonconforming interfaces based on the mortar approach
  * Non-reflecting boundary conditions and damping zones for direct aeroacoustic computations
  * Automatic domain decomposition for parallel simulations based on a space filling curve
@@ -43,8 +43,8 @@ This user guide is organized to both guide the first steps as well as provide a 
 
 * Chapter \ref{chap:workflow} is meant as a complete user guide with a detailed description how to use and apply the features of **FLEXI** from a user's point of view. This includes setting up solver settings, initial and boundary conditions, the mesh interface, parallel execution and the currently available post processing capabilities.
 
-* Simulation tutorials are contained in Chapter \ref{chap:tutorials}.
+* Chapter \ref{chap:toolsoverview} lists all tools contained in the **FLEXI** repository, including **POSTI** post-processing tools. 
 
-* The regression check utility used for automated testing is described in Chapter \ref{chap:regressioncheck}.
+* Simulation tutorials are contained in Chapter \ref{chap:tutorials}.
 
 * The unit test system used to test key routines with CTest is described in Chapter \ref{chap:unittest}.

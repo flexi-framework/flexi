@@ -31,7 +31,11 @@ For all other CMake options you may keep the default values. Compile the code.
 
 #### Mesh Generation with HOPR
 
+<<<<<<< HEAD
 We use a cartesian mesh with 4 cells per direction for the tutorial. The mesh is stretched in the wall-normal direction to accommodate for the straining of the vortexes close to the wall. In case you want to generate other meshes the parameter file for HOPR is included in the tutorial directory (*parameter_hopr.ini*),
+=======
+We use a mesh with 4 cells per direction for the tutorial. In case you want to generate other meshes the parameter file for **HOPR** is included in the tutorial directory (*parameter_hopr.ini*),
+>>>>>>> bc32135... lots of minor changes to user guide: environment variable and path cleanup, allcaps and bold consistent, lstset changes, removed 060_regression_check.md and parameter_flexi_template.ini
 the default mesh is included. Using 4 cells with a polynomial degree of $N=5$, means we use a large eddy simulation setup of $24$ DOFs per direction.
 
 ### Tutorial - Flow at $Re_{\tau}=180$
@@ -44,7 +48,15 @@ Step into the folder. In case you do not want to generate the mesh files yoursel
 
 #### Preparing the Flow Simulation with FLEXI
 
+<<<<<<< HEAD
 The simulation setup is already defined in *parameter_flexi.ini*.
+=======
+The simulation setup is defined in *parameter_flexi.ini*. To get help on any of the parameters listed therein, you can run **FLEXI** from the command line by typing
+
+     flexi --help
+     
+The parameters in the file are grouped thematically, however, this is not mandatory. All lines starting with a "!" are comments. 
+>>>>>>> bc32135... lots of minor changes to user guide: environment variable and path cleanup, allcaps and bold consistent, lstset changes, removed 060_regression_check.md and parameter_flexi_template.ini
 
 ##### Output 
 
@@ -63,7 +75,11 @@ In this tutorial we use the split form DG method to guarantee non-linear stabili
 
 ~~~~~~~
 
+<<<<<<< HEAD
 To switch on Smagorinsky's model set the eddyViscType to $1$ in the *paramerter_flexi.ini* file. In addition, the following parameters have to be set. CS is the Smagorinsky constant usually chosen around $0.11$ for wall bounded turbulent flows and the turbulent Prandtl number is commonly set to $0.6$. To ensure the correct behaviour of the eddy viscosity provided by Smagorinsky's model when approaching a wall, Van Driest type damping has to be switched on.  
+=======
+To switch on Smagorinsky's model set the eddyViscType to $1$ in the *parameter_flexi.ini* file. In addition, the following parameters have to be set. CS is the Smagorinsky constant usually chosen around $0.11$ for wall bounded turbulent flows and the turbulent Prandtl number is commonly set to $0.6$. To guarantee a stable wall-bounded turbulent flow simulation in combination with Smagorinsky's model VanDriest damping has to be switched on to ensure zero eddy viscosity close to the channel walls.  
+>>>>>>> bc32135... lots of minor changes to user guide: environment variable and path cleanup, allcaps and bold consistent, lstset changes, removed 060_regression_check.md and parameter_flexi_template.ini
 
 ~~~~~~~
     ! ================================================ !
@@ -80,30 +96,38 @@ To switch on Smagorinsky's model set the eddyViscType to $1$ in the *paramerter_
 Now run the simulation, either using
 
 ~~~~~~~
+<<<<<<< HEAD
 ./flexi parameter_flexi.ini
+=======
+flexi parameter_flexi.ini > std.out
+>>>>>>> bc32135... lots of minor changes to user guide: environment variable and path cleanup, allcaps and bold consistent, lstset changes, removed 060_regression_check.md and parameter_flexi_template.ini
 ~~~~~~~
 
 or
 
 ~~~~~~~
+<<<<<<< HEAD
 mpirun -np XX ./flexi parameter_flexi.ini
+=======
+mpirun -np XX flexi parameter_flexi.ini > std.out
+>>>>>>> bc32135... lots of minor changes to user guide: environment variable and path cleanup, allcaps and bold consistent, lstset changes, removed 060_regression_check.md and parameter_flexi_template.ini
 ~~~~~~~
 
 when you want to use more than one processor.
 Once the simulation finished state files can be post processed by the ``posti_channel_fft`` tool which was build by the ``POSTI_BUILD_CHANNEL_FFT`` CMake option. To run the postprocessing, the standard command is 
 
 ~~~~~~~
-./posti_channel_fft parameter_channel_fft.ini [State1 State2 ...]
+posti_channel_fft parameter_channel_fft.ini [State1 State2 ...]
 ~~~~~~~
 
 where the *parameter_channel_fft.ini* file is given in the tutorial folder and the amount of statefiles is specified by the user. In this tutorial we use all state files with a timestamp between $t=10.0$ and $t=15.0$. As an output you receive three different files. One containing the mean velocity profiles as well as the Reynolds stress profiles and the other two files contain turbulent erergy spectra. 
 To visualize those files you can run the python script ``plotChannelFFT.py`` in the ``tools/testcases`` folder with the following command in your simulation directory
 
 ~~~~~~~
-python $TOOLDIR/plotChannelFFT.py -p $PROJECTNAME -t $POSTITIME
+python $FLEXIROOT/tools/testcases/plotChannelFFT.py -p $PROJECTNAME -t $POSTITIME
 ~~~~~~~
 
-where ``$TOOLDIR`` specifies the path to the ``tools/testcases`` folder, ``$PROJECTNAME`` the projectname specified in the *parameter_flexi.ini* file and ``$POSTITIME`` the timestamp of your output files from the ``posti_channel_fft`` tool.
+where ``$PROJECTNAME`` specifies the project name specified in the *parameter_flexi.ini* file and ``$POSTITIME`` the timestamp of your output files from the ``posti_channel_fft`` tool.
 
 #### Part I: SplitDG iLES
 First, we run **FLEXI** without Smagorinsky's model which we call an implicit LES (iLES), as no explicit sub-grid scale dissipation model is added. The resulting mean velocity and Reynolds stress profiles as well as turbulent energy spectra close to the centre of the channel are given in Figure \ref{fig:Re180_turbulentChannel}.

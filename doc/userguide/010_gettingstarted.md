@@ -5,7 +5,7 @@
 ## Installation
 
 ### Prerequisites
-**FLEXI** has been tested for various Linux distributions. This includes Ubuntu 14.04 LTS, 16.04 LTS and 18.04 LTS, OpenSUSE 42.1 and CentOS 7. \label{missing:prerequisites_not_finalized}
+**FLEXI** has been tested for various Linux distributions. This includes Ubuntu 14.04 LTS, 16.04 LTS and 18.04 LTS, OpenSUSE 42.1 and CentOS 7.
 The suggested packages in this section can of course be replaced by self compiled versions.
 
 The required packages for the Ubuntu Linux distributions are listed in table \ref{tab:installation_prereqs_ubuntu}. Under Ubuntu, they can be obtained using the apt environment:
@@ -77,7 +77,7 @@ from the command line. For convenience, you can add this line to your `.bashrc`.
 
 The **FLEXI** repository is available at GitHub. To obtain the most recent version you have two possibilities:
 
-* Clone the FLEXI repository from Github
+* Clone the **FLEXI** repository from Github
 
         git clone https://github.com/flexi-framework/flexi.git
 
@@ -86,7 +86,7 @@ The **FLEXI** repository is available at GitHub. To obtain the most recent versi
         wget https://github.com/flexi-framework/flexi/archive/master.tar.gz
         tar xzf master.tar.gz
 
-Note that cloning FLEXI from GitHub may not be possible on some machines, as e.g. the HLRS at the University of Stuttgart restricts internet access. Please refer to section \ref{sec:cloninghlrs} of this user guide.
+Note that cloning **FLEXI** from GitHub may not be possible on some machines, as e.g. the HLRS at the University of Stuttgart restricts internet access. Please refer to section \ref{sec:cloninghlrs} of this user guide.
 
 ### Compiling the code \label{sec:compilingthecode}
 
@@ -108,77 +108,85 @@ For a list of all compiler options see Section \ref{sec:compileroptions}.
 
 #### Directory paths
 
-In the following, the environment variable `$FLEXI_DIR` is used in commands instead of the `build/bin` directory in your FLEXI repository. Furthermore, the environment variable `$FLEXI_TUTORIALS_DIR` replaces the path to the `tutorials` folder and `$HOPR_DIR` the path to the directory containing the HOPR executables. For Linux beginners, here is some explanation:
+In the following, we write `$FLEXIROOT` as a substitute for the path to the **FLEXI** repository. Please replace `$FLEXIROOT` in all following commands with the path to your **FLEXI** repository *or* add an environment variable `$FLEXIROOT`. 
 
-You can export an environment variable by adding e.g. the line
+Furthermore, the path to executables is omitted in the following, so for example, we write `flexi` instead of `$FLEXIROOT/build/bin/flexi`. 
 
-      export FLEXI_DIR=[path to FLEXI]/build/bin
+Here is some explanation for Linux beginners:
 
-to your `~/.bashrc`, where `[path to FLEXI]` is the path to your flexi repository. Source your `~/.bashrc` afterwards with
+In order to execute a file, you have to enter the full path to it in the terminal. There are two different ways to enable typing `flexi` instead of the whole path (do not use both at the same time!)
 
-      . ~/.bashrc
+1. You can add an alias for the path to your executable. Add a command of the form
 
-Alternatively, you can add an alias for the path to your executable to your `~/.bashrc` with a command of the form
+~~~~~~~
+alias flexi='$FLEXIROOT/build/bin/flexi'
+~~~~~~~
 
-      alias flexi='[path to flexi]/build/bin/flexi'
+to the bottom of the file `~/.bashrc`. Source your `~/.bashrc` afterwards with
 
-**Or** you can add the FLEXI binary directory to your `$PATH` environment variable via
+~~~~~~~
+. ~/.bashrc
+~~~~~~~
 
-      export PATH=$PATH:[path to FLEXI]/build/bin
+2. You can add the **FLEXI** binary directory to your `$PATH` environment variable by adding
 
-The last two options will enable you to simply type `flexi` without providing the whole path.
+~~~~~~~
+export PATH=$PATH:$FLEXIROOT/build/bin
+~~~~~~~
+
+to the bottom of the file `~/.bashrc` and sourcing your `~/.bashrc` afterwards.
 
 
 ### Running the code
 
-The following examples assume that the **FLEXI** environment variables have been made available (see Section \ref{sec:compilingthecode}).
+For a first minimal **FLEXI** run, do the following:
 
 * Open a terminal
 * Navigate to a directory, in this case *temp* 
 
         cd temp
 
-* Copy the *cavity* tutorial folder \label{missing:aliases_run_code}
+* Copy the *cavity* tutorial folder
 
-        cp -r $FLEXI_TUTORIALS_DIR/cavity/Basic_Re100 .
-        cd cavity
+        cp -r $FLEXIROOT/tutorials/cavity/Basic_Re100 .
+        cd Basic_Re100
 
 * Run flexi
 
-        $FLEXI_DIR/flexi parameter_flexi.ini
+        flexi parameter_flexi.ini
 
-* Converting the output files to the vtu format
+* Convert the output files to the vtu format
 
-        $FLEXI_DIR/posti_visu [[parameter_postiVisu.ini] parameter_flexi.ini] cavity_State_0000000.200000000.h5
+        posti_visu cavity_State_0000000.200000000.h5
 
 * Visualize using e.g. ParaView.
 
 ## Basic Usage
 
-For a basic overview of the framework and the single components of the flow solver a flowchart is given in Figure \ref{mylabel}.
+For a basic overview of the framework and the single components of the flow solver a flowchart is given in Figure \ref{fig:modules_flowchart}.
 
-![Flowchart: Basic modules and files used by **FLEXI**\label{mylabel}](figures/flowchart.pdf)
+![Flowchart: Basic modules and files used by **FLEXI**\label{fig:modules_flowchart}](figures/flowchart.pdf)
 
 ### HOPR {-}
 
-A standalone high-order preprocessor HOPR has been developed to generate high-order meshes from input data from external linear mesh generators. Different file formats are supported. HOPR has been recently made open source under the GPLv3 license. It generates a **FLEXI** conform mesh format in HDF5 for efficient parallel initialization. For a complete overview of HOPR, see [https://www.hopr-project.org](https://www.hopr-project.org).
+A standalone high-order preprocessor **HOPR** has been developed to generate high-order meshes from input data from external linear mesh generators. Different file formats are supported. HOPR has been recently made open source under the GPLv3 license. It generates a **FLEXI** conform mesh format in HDF5 for efficient parallel initialization. For a complete overview of HOPR, see [https://www.hopr-project.org](https://www.hopr-project.org).
 
-HOPR can be compiled in the same way as FLEXI (see section \ref{sec:compilingthecode}). The basic command to run HOPR is
+**HOPR** can be compiled in the same way as **FLEXI** (see section \ref{sec:compilingthecode}). The basic command to run HOPR is
 
 ~~~~~~~
-$HOPR_DIR/hopr parameter.ini
+hopr parameter.ini
 ~~~~~~~
 
-where `$HOPR_DIR` is again the directory of the HOPR executable.
+Note that the path to the **HOPR** executable is omitted in the command (see \ref{sec:compilingthecode}).
 
 ### FLEXI {-}
 
-**FLEXI**, a high order DGSEM based CFD solver, is the core module in the tool chain. Generally **FLEXI** requires two main files as input, a mesh file in HDF5 format generated by HOPR and a parameter file where the main settings for the CFD simulation are set. The results files generated by **FLEXI** are also HDF5 files.
+**FLEXI**, a high order DGSEM based CFD solver, is the core module in the tool chain. Generally **FLEXI** requires two main files as input, a mesh file in HDF5 format generated by **HOPR** and a parameter file where the main settings for the CFD simulation are set. The results files generated by **FLEXI** are also HDF5 files.
 
 The basic command to run **FLEXI** is
 
 ~~~~~~~
-mpirun -np [no. processors] $FLEXI_DIR/flexi parameter.ini
+mpirun -np [no. processors] flexi parameter.ini
 ~~~~~~~
 
 Note: Adding ```mpirun -np [no. processors]``` before the **FLEXI** executable starts **FLEXI** in parallel with the specified number of threads. If it is omitted, **FLEXI** is run on one processor without MPI. This also applies to all other tools mentioned below.
@@ -197,35 +205,33 @@ The `parameter.ini` file contains the main settings for the CFD simulation. The 
 A complete list of all runtime options that can be set in the parameter file can be obtained with the command
 
 ~~~~~~~
-$FLEXI_DIR/flexi --help
+flexi --help
 ~~~~~~~
 
 It is also supplied in Section \ref{sec:parameterfile}. The ```--help``` option also works for most other **FLEXI** tools.
 
-### POSTI_VISU tool {-}
+### posti_visu tool {-}
 
-To visualize the results e.g. with ParaView, a converter tool is provided. The POSTI_VISU tool takes the HDF5 files generated  by **FLEXI**.
+To visualize the results e.g. with ParaView, a converter tool is provided. The posti_visu tool takes the HDF5 files generated  by **FLEXI**.
 
-The basic command to run the POSTI_VISU tool is
+The basic command to run the posti_visu tool is
 
 ~~~~~~~
-mpirun -np [no. processors] $FLEXI_DIR/posti_visu parameter.ini [flexi_outputfile.h5]
+mpirun -np [no. processors] posti_visu parameter.ini [flexi_outputfile.h5]
 ~~~~~~~
 
 In this case a parameter file is specified in which options like the type and amount of the visualization nodes and mesh options are defined - see Section \ref{sec:postiVisu} for all available options. You can also omit the parameter file argument:
 
 ~~~~~~~
-mpirun -np [no. processors] $FLEXI_DIR/posti_visu [flexi_outputfile.h5]
+mpirun -np [no. processors] posti_visu [flexi_outputfile.h5]
 ~~~~~~~
 
-This runs **POSTI_VISU** using only standard options, i.e.
+This runs posti_visu using only standard options, i.e.
 
 * equidistant visualization nodes
 * amount of visualizaion nodes equals number of collocation points per element
 * allowing for curved meshes
 * visualizing the conservative variables
-
-Note: For high quality visualization, it is usually adviseable to choose the degree of your visualization basis is higher than in the computation to avoid interpolation errors by supersampling the solution. \label{missing:move_this_to_later_section}
 
 ### HDF5 {-}
 
@@ -234,7 +240,7 @@ HDF5 is a data model, library, and file format for storing and managing data. It
 
 ## Feature list
 
-The currently implemented features of **FLEXI** include \label{missing:featurelist_notfinal}
+The currently implemented features of **FLEXI** include
 
 * Equation systems:
     * compressible Euler equations

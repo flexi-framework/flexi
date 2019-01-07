@@ -26,9 +26,10 @@ The source term has to be added accordingly within the time integration loop of 
 
 ### Inviscid Convergence Test
 
-Copy the *convtest* tutorial folder \label{missing:aliases_tutorial_convtest}
+Copy the *convtest* tutorial folder
 
         cp -r $FLEXI_TUTORIALS/convtest .
+        cd convtest
 
 #### Compiler Options
 
@@ -67,7 +68,7 @@ As mesh, a Cartesian box is used with periodic boundaries. The mesh and the corr
 ![](tutorials/04_convtest/convtest_mesh.png)   ![](tutorials/04_convtest/convtest_result.png) 
 Figure: Mesh and flow field solution of the density. View in $x$-$y$-plane.\label{fig:convtest_mesh_and_result}
 
-To investigate the order of convergence of a given polynomial degree $N$, the mesh resolution has to increase. We provide meshes with 1, 2, 4 and 8 elements in each spatial direction. They are provided in the tutorial directory with an according parameter file for the preprocessing tool HOPR.
+To investigate the order of convergence of a given polynomial degree $N$, the mesh resolution has to increase. We provide meshes with 1, 2, 4 and 8 elements in each spatial direction. They are provided in the tutorial directory with an according parameter file for the preprocessing tool **HOPR**.
 
 #### Flow Simulation with FLEXI
 

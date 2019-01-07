@@ -2,7 +2,7 @@
 \label{sec:tut_tgv}
 
 This tutorial describes how to set up and run the basic test case for turbulent flows, the Taylor-Green-Vortex (TGV) - see e.g. [@gassner2013accuracy]. We will learn how to avoid catastrophic failure of the code due to non-linear instabilities. This is done by using
-polynomial de-aliasing. In a second step we add the sub grid scale model of Smagorinsky. The tutorial assumes that you are familiar with the general FLEXI and HOPR work flow (please finish the previous tutorials first if this sounds strange to you).
+polynomial de-aliasing. In a second step we add the sub grid scale model of Smagorinsky. The tutorial assumes that you are familiar with the general **FLEXI** and **HOPR** work flow (please finish the previous tutorials first if this sounds strange to you).
 
 ### Flow description
 
@@ -30,7 +30,7 @@ For others you may keep the default values. Compile the code.
 
 #### Mesh Generation with HOPR
 
-We use a mesh with 4 cells per direction for the tutorial. In case you want to generate other meshes the parameter file for HOPR is included in the tutorial directory (parameter_hopr.ini),
+We use a mesh with 4 cells per direction for the tutorial. In case you want to generate other meshes the parameter file for **HOPR** is included in the tutorial directory (parameter_hopr.ini),
 the default mesh is included. Using 4 cells with a polynomial degree of $N=7$, means we use the typical large eddy setup of $32$ DOF per direction.
 
 ### Tutorial - Flow at $Re=1600$
@@ -46,7 +46,7 @@ Step into the folder. In case you do not want to generate the mesh files yoursel
 
 The simulation setup is defined in *parameter_flexi.ini*. To get help on any of the parameters listed therein, you can run **FLEXI** from the command line by typing
 
-     ./flexi --help
+     flexi --help
      
 
 The parameters in the file are grouped thematically, however, this is not mandatory. All lines starting with a "!" are comments. 
@@ -83,9 +83,9 @@ To apply polynomial de-aliasing there are the following options:
 
 ~~~~~~~
 
-FLEXI has three ways of doing polynomial de-aliasing. Mode 0: don't do it. Mode 1: a filter is applied to the time-update $(J*U_t)$. The filter is formulated as a Galerkin projection of degree $N$ to $NUnder$, the effective resolution is thus $NUnder$. Mode 2: in principle identical to Mode 1, but takes into account non-linear metric terms. For the linear mesh of this tutorial the result is identical, while Mode 2 is slightly more computational expensive, so we omit it.
+**FLEXI** has three ways of doing polynomial de-aliasing. Mode 0: don't do it. Mode 1: a filter is applied to the time-update $(J*U_t)$. The filter is formulated as a Galerkin projection of degree $N$ to $NUnder$, the effective resolution is thus $NUnder$. Mode 2: in principle identical to Mode 1, but takes into account non-linear metric terms. For the linear mesh of this tutorial the result is identical, while Mode 2 is slightly more computational expensive, so we omit it.
 
-For FLEXI we can run under-resolved computations without sub grid scale model. The only artifical dissipation is then provided by the Riemann solver used for the inter-cell fluxes. You can change the Riemann solver to see the effect with the following parameters:
+For **FLEXI** we can run under-resolved computations without sub grid scale model. The only artifical dissipation is then provided by the Riemann solver used for the inter-cell fluxes. You can change the Riemann solver to see the effect with the following parameters:
 
 ~~~~~~~
     ! ================================================ !
@@ -111,17 +111,17 @@ To add Smagorinsky's model set the following parameter to $1$, here CS is the Sm
 The command
 
 ~~~~~~~
-./flexi parameter_flexi.ini > std.out
+flexi parameter_flexi.ini > std.out
 ~~~~~~~
 
 runs the code and dumps all output into the file *std.out*. If you wish to run the code in parallel using MPI, the standard command is
 
 ~~~~~~~
-mpirun -np XX ./flexi parameter_flexi.ini > std.out
+mpirun -np XX flexi parameter_flexi.ini > std.out
 ~~~~~~~
 
 where $XX$ is an integer denoting the number of processes to be used in parallel. Note that **FLEXI** uses an element-based parallelization strategy, so the minimum load per process/core is *one* grid element, i.e. do not use more cores than cells in the grid! 
-Flexi writes a TGV analyze file (PROJECTNAME_TGVAnalysis.csv). You can use yor favorite plotting programm to visualize the ASCII data. Using gnuplot you can create plots with the following syntax:
+**FLEXI** writes a TGV analyze file (PROJECTNAME_TGVAnalysis.csv). You can use yor favorite plotting programm to visualize the ASCII data. Using gnuplot you can create plots with the following syntax:
 
 ~~~~~~
 gnuplot
@@ -133,7 +133,7 @@ Where you replace PROJECTNAME with the projectname you defined in the parameter_
 
 #### Part I: crashing simulation
 
-First we run FLEXI without overintegration/de-aliasing. We will find that the code crashes, once scale production becomes relevant. You can compare your result to the plot in the tutorial folder 
+First we run **FLEXI** without overintegration/de-aliasing. We will find that the code crashes, once scale production becomes relevant. You can compare your result to the plot in the tutorial folder 
 ![](tutorials/05_taylorGreenVortex/crash_no_dealiasing.png)
       
 

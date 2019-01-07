@@ -72,15 +72,15 @@ The following options enable or disable specific features of **FLEXI**. If you w
     
 * ``FLEXI_MKL``:  ON/OFF
     
-    This flag defines, whether Intel's MKL (Math Kernel Library) should be used. This is only meaningful when FLEXI is compiled with Intel compiler.    
+    This flag defines, whether Intel's MKL (Math Kernel Library) should be used. This is only meaningful when **FLEXI** is compiled with Intel compiler.    
     
 * ``FLEXI_MPI``: ON/OFF
 
-    This flag defines, whether FLEXI is compiled with MPI (necessary for parallel execution).
+    This flag defines, whether **FLEXI** is compiled with MPI (necessary for parallel execution).
 
 * ``FLEXI_NODETYPE``:
 
-    FLEXI space discretization is based on a DG method. Here two different basis functions could be used, see [@KoprivaGassner2010] for details.
+    **FLEXI** space discretization is based on a DG method. Here two different basis functions could be used, see [@KoprivaGassner2010] for details.
     
     * GAUSS
     * GAUSS-LOBATTO
@@ -95,7 +95,7 @@ The following options enable or disable specific features of **FLEXI**. If you w
     
 * ``FLEXI_POLYNOMIAL_DEGREE``:
 
-    Since FLEXI is a high order CFD solver based on polynomial basis function, the polynomial degree can already be chosen in the compile process.
+    Since **FLEXI** is a high order CFD solver based on polynomial basis function, the polynomial degree can already be chosen in the compile process.
     If the default value N is chosen, different polynomial degrees can be defined later in the parameter file.
     
     * N
@@ -118,7 +118,7 @@ The following options enable or disable specific features of **FLEXI**. If you w
 
 * ``FLEXI_VISCOSITY``:
 
-    There are different modeling approaches for the viscosity in FLEXI. You can choose
+    There are different modeling approaches for the viscosity in **FLEXI**. You can choose
     * constant
     * sutherland
     * powerlaw

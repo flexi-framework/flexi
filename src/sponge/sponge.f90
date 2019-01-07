@@ -72,7 +72,7 @@ CALL addStrListEntry('SpongeShape','ramp',       SPONGESHAPE_RAMP)
 CALL addStrListEntry('SpongeShape','cylindrical',SPONGESHAPE_CYLINDRICAL)
 CALL prms%CreateRealOption(   'SpongeDistance', "Length of sponge ramp. The sponge will have maximum strength at the end "//&
                                                 "of the ramp and after that point.", multiple=.TRUE.)
-CALL prms%CreateRealArrayOption('xStart',       "Coordinates of start postion of sponge ramp (SpongeShape=ramp) "//&
+CALL prms%CreateRealArrayOption('xStart',       "Coordinates of start position of sponge ramp (SpongeShape=ramp) "//&
                                                 "or center (SpongeShape=cylindrical).", multiple=.TRUE.)
 CALL prms%CreateRealArrayOption('SpongeDir',    "Direction vector of the sponge ramp (SpongeShape=ramp)", multiple=.TRUE.)
 CALL prms%CreateRealOption(   'SpongeRadius',   "Radius of the sponge zone (SpongeShape=cylindrical)", multiple=.TRUE.)
