@@ -1,11 +1,11 @@
 ## Plane Turbulent Channel Flow
 \label{sec:tut_ptcf}
 
-This tutorial describes how to set up and run the Plane-Turbulent-Channel-Flow test case. We will learn how to use the split form DG method to guarantee non-linear stability of the turbulent channel flow. In a second step, we add the sub grid scale model of Smagorinsky combined with vanDriest damping to run stable wall-bounded turbulent flows with explicit small scale dissipation. The tutorial assumes that you are familiar with the general FLEXI and HOPR work flow (please finish the previous tutorials first if this sounds strange to you).
+This tutorial describes how to set up and run the Plane-Turbulent-Channel-Flow test case. We will learn how to use the split form DG method to guarantee non-linear stability of the turbulent channel flow. In a second step, we add the sub grid scale model of Smagorinsky combined with Van Driest type damping to run stable wall-bounded turbulent flows with explicit small scale dissipation. The tutorial assumes that you are familiar with the general **FLEXI** and **HOPR** work flow (please finish the previous tutorials first if this sounds strange to you).
 
 ### Flow description
 
-The initial condition of the channel flow test case is an analytical mean u velocity profile superimposed by a sinus distribution in the u, v and w velocity components. This leads to rapid production of turbulent channel flow structures. To maintain a constant mass flux, a constant pressure source term is superimposed. While the test case is incompressible in principle, we solve it here in a compressible setting. The chosen Mach number with respect to the highest velocity in the field is $Ma=0.1$ according to the Moser channel test case. The Reynolds number of the flow is defined as $Re_{\tau}=1/\nu$. The domain is set up as a Cartesian box with length $2\pi$, height $2$ and span width $\pi$ with periodic boundaries in the x- and z-directions as well as no-slip walls at the top and the bottom of the domain.   
+The flow is calculated in a plane channel with half-height $\delta=1$, streamwise (x coordinate) length $2\pi$ and span (z coordinate) width $\pi$ with periodic boundaries in the x- and z-directions as well as no-slip walls at the top and the bottom of the domain. As initial conditions an analytical mean turbulent velocity profile is used superimposed with sinus perturbations in the u, v and w velocity components and a constant density of $\rho=1$. The superimposed pertubations lead to rapid production of turbulent flow structures. Since the wall friction would slow down the flow over time, a constant pressure source term imposing a pressure gradient $\frac{dp}{dx}=1$ is added as a volume source. While the test case is incompressible in principle, we solve it here in a compressible setting. The chosen Mach number with respect to the bulk velocity in the field is $Ma=0.1$ according to the Moser channel test case. In this setting, the wall friction velocity $\tau$ will always be equal to $1$. We can the define a Reynolds number based on the channel half-height and the wall friction velocity as $Re_{\tau}=1/\nu$.
 
 ### Compiler options
         
@@ -31,7 +31,7 @@ For all other CMake options you may keep the default values. Compile the code.
 
 #### Mesh Generation with HOPR
 
-We use a mesh with 4 cells per direction for the tutorial. In case you want to generate other meshes the parameter file for HOPR is included in the tutorial directory (*parameter_hopr.ini*),
+We use a cartesian mesh with 4 cells per direction for the tutorial. The mesh is stretched in the wall-normal direction to accommodate for the straining of the vortexes close to the wall. In case you want to generate other meshes the parameter file for HOPR is included in the tutorial directory (*parameter_hopr.ini*),
 the default mesh is included. Using 4 cells with a polynomial degree of $N=5$, means we use a large eddy simulation setup of $24$ DOFs per direction.
 
 ### Tutorial - Flow at $Re_{\tau}=180$
@@ -44,11 +44,7 @@ Step into the folder. In case you do not want to generate the mesh files yoursel
 
 #### Preparing the Flow Simulation with FLEXI
 
-The simulation setup is defined in *parameter_flexi.ini*. To get help on any of the parameters listed therein, you can run **FLEXI** from the command line by typing
-
-     ./flexi --help
-     
-The parameters in the file are grouped thematically, however, this is not mandatory. All lines starting with a "!" are comments. 
+The simulation setup is already defined in *parameter_flexi.ini*.
 
 ##### Output 
 
@@ -56,7 +52,7 @@ In this tutorial we don't look at the flow visualization of the instantaneous st
 
 ##### Interpolation / Discretization parameters
 
-In this tutorial we use the split form DG method to guarantee non-linear stability of the turbulent channel flow simulation. As already specified in the CMake options table \ref{tab:ptcf_cmakeoptions}, the ``FLEXI_SPLIT_DG`` option has to be switched ON in combination with the ``FLEXI_NODETYPE`` ``GAUSS-LOBATTO``. **FLEXI** has five split flux formulations implemented. Therefore, a specific split flux formulation has to be set in the *parameter_flexi.ini* file. In this tutorial the pre-defined split flux formulation by Pirozzoli is used, which results in a kinetic energy preserving DG scheme. 
+In this tutorial we use the split form DG method to guarantee non-linear stability of the turbulent channel flow simulation. As already specified in the CMake options table \ref{tab:ptcf_cmakeoptions}, the ``FLEXI_SPLIT_DG`` option has to be switched ON in combination with the ``FLEXI_NODETYPE`` ``GAUSS-LOBATTO``. **FLEXI** has several split flux formulations implemented. Therefore, a specific split flux formulation has to be set in the *parameter_flexi.ini* file. In this tutorial the pre-defined split flux formulation by Pirozzoli is used, which results in a kinetic energy preserving DG scheme. 
 
 ~~~~~~~
 
@@ -67,7 +63,7 @@ In this tutorial we use the split form DG method to guarantee non-linear stabili
 
 ~~~~~~~
 
-To switch on Smagorinsky's model set the eddyViscType to $1$ in the *paramerter_flexi.ini* file. In addition, the following parameters have to be set. CS is the Smagorinsky constant usually chosen around $0.11$ for wall bounded turbulent flows and the turbulent Prandtl number is commonly set to $0.6$. To guarantee a stable wall-bounded turbulent flow simulation in combination with Smagorinsky's model VanDriest damping has to be switched on to ensure zero eddy viscosity close to the channel walls.  
+To switch on Smagorinsky's model set the eddyViscType to $1$ in the *paramerter_flexi.ini* file. In addition, the following parameters have to be set. CS is the Smagorinsky constant usually chosen around $0.11$ for wall bounded turbulent flows and the turbulent Prandtl number is commonly set to $0.6$. To ensure the correct behaviour of the eddy viscosity provided by Smagorinsky's model when approaching a wall, Van Driest type damping has to be switched on.  
 
 ~~~~~~~
     ! ================================================ !
@@ -81,19 +77,19 @@ To switch on Smagorinsky's model set the eddyViscType to $1$ in the *paramerter_
 
 #### Running the Simulation and Results
 
-The command
+Now run the simulation, either using
 
 ~~~~~~~
-./flexi parameter_flexi.ini > std.out
+./flexi parameter_flexi.ini
 ~~~~~~~
 
-runs the code and dumps all output into the file *std.out*. If you wish to run the code in parallel using MPI, the standard command is
+or
 
 ~~~~~~~
-mpirun -np XX ./flexi parameter_flexi.ini > std.out
+mpirun -np XX ./flexi parameter_flexi.ini
 ~~~~~~~
 
-where $XX$ is an integer denoting the number of processes to be used in parallel. Note that **FLEXI** uses an element-based parallelization strategy, so the minimum load per process/core is *one* grid element, i.e. do not use more cores than cells in the grid! 
+when you want to use more than one processor.
 Once the simulation finished state files can be post processed by the ``posti_channel_fft`` tool which was build by the ``POSTI_BUILD_CHANNEL_FFT`` CMake option. To run the postprocessing, the standard command is 
 
 ~~~~~~~
@@ -115,7 +111,7 @@ First, we run **FLEXI** without Smagorinsky's model which we call an implicit LE
 ![Mean velocity and Reynolds stress profiles (left) as well as turbulent energy spectra close to the centre of the channel (right} of an implicit LES at $Re_{\tau}=180$. \label{fig:Re180_turbulentChannel}](tutorials/10_planeTurbulentChannelFlow/Re180_turbulentChannel.png)
 
 #### Part II: SplitDG with explicit LES model 
-In a second step, we run **FLEXI** with Smagorinsky's model and VanDriest damping which needs to be switched on in the parameter file as described above. The resulting mean velocity and Reynolds stress profiles as well as turbulent energy spectra close to the centre of the channel are given in Figure \ref{fig:Re180_turbulentChannel_Smag}. In comparison to the previous simulation you might recognize the effect of the explicit damping on the Reynolds stress profile $\overline{u'u'}$ close to the maximum, most. To further study the influence of Smagorinsky's model play around with the spatial resolution both in terms of grid resolution as well as the polynomial degree N. You can also increase the Reynoldsnumber to $Re_{\tau}=395$ or $Re_{\tau}=590$ and compare the results to DNS results from Moser et al. [@moser1999direct]. 
+In a second step, we run **FLEXI** with Smagorinsky's model and Van Driest damping which needs to be switched on in the parameter file as described above. The resulting mean velocity and Reynolds stress profiles as well as turbulent energy spectra close to the centre of the channel are given in Figure \ref{fig:Re180_turbulentChannel_Smag}. In comparison to the previous simulation you might recognize the effect of the explicit damping on the Reynolds stress profile $\overline{u'u'}$ close to the maximum, most. To further study the influence of Smagorinsky's model play around with the spatial resolution both in terms of grid resolution as well as the polynomial degree N. You can also increase the Reynolds number to $Re_{\tau}=395$ or $Re_{\tau}=590$ and compare the results to DNS results from Moser et al. [@moser1999direct]. 
 
 ![Mean velocity and Reynolds stress profiles (left) as well as turbulent energy spectra close to the centre of the channel (right} of a LES with Smagorinsky's model and vanDriest damping at $Re_{\tau}=180$. \label{fig:Re180_turbulentChannel_Smag}](tutorials/10_planeTurbulentChannelFlow/Re180_turbulentChannel_Smag.png)
 
