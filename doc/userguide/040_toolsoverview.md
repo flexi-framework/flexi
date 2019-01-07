@@ -77,7 +77,7 @@ Further info / usage example       \ref{sec:postiRecordpoints}
 ----------------------------------------------------------------------------------------------
 **posti_evaluaterecordpoints**
 --------------------------------- ------------------------------------------------------------
-Brief description                  Yields similar output as `posti_visualizerecordpoints`, but takes `State` files as input, such that the solution can be plotted over time even without record points enabled in `FLEXI`. The temporal resolution is of course limited to the output time interval. If possible, the use of the other two `posti_recordpoints` tools is recommended instead.
+Brief description                  Evaluate the values at recorpoints a posteri from existing statefiles. Can be used if the recordpoints have not been set during the simulation, but will only give coarse temporal resolution.
 
 Basic usage                        `posti_evaluaterecordpoints [parameter.ini] [statefile.h5]`
 
