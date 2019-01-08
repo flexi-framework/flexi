@@ -244,7 +244,7 @@ USE MOD_Indicator_Vars  ,ONLY: IndValue
 USE MOD_Indicator       ,ONLY: IndPersson
 USE MOD_FV_Vars
 USE MOD_Analyze
-USE MOD_Mesh_Vars      ,ONLY: nElems
+USE MOD_Mesh_Vars       ,ONLY: nElems, SideToElem, nSides
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -258,7 +258,7 @@ LOGICAL,INTENT(IN)          :: AllowToDG                                  !< if 
 REAL    :: U_DG(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 REAL    :: U_FV(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 REAL    :: ind
-INTEGER :: iElem
+INTEGER :: iElem, iSide, ElemID, nbElemID
 !==================================================================================================================================
 DO iElem=1,nElems
   IF (FV_Elems(iElem).EQ.0) THEN ! DG Element
@@ -302,6 +302,16 @@ END DO !iElem
 FV_Elems_counter  = FV_Elems_counter  + FV_Elems
 FV_Switch_counter = FV_Switch_counter + 1
 FV_Elems_Amount   = REAL(FV_Elems_Counter)/FV_Switch_counter
+
+! set information whether elements adjacent to a side are DG or FV elements
+DO iSide = 1,nSides
+  ElemID    = SideToElem(S2E_ELEM_ID   ,iSide)
+  nbElemID  = SideToElem(S2E_NB_ELEM_ID,iSide)
+  !master sides
+  IF(ElemID  .GT.0) FV_Elems_master(iSide) = FV_Elems(ElemID)
+  !slave side (ElemID,locSide and flip =-1 if not existing)
+  IF(nbElemID.GT.0) FV_Elems_slave( iSide) = FV_Elems(nbElemID)
+END DO
 END SUBROUTINE FV_Switch
 
 !==================================================================================================================================

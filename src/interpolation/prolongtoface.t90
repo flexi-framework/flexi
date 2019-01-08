@@ -28,7 +28,7 @@ USE MOD_Mesh_Vars,          ONLY: SideToElem
 USE MOD_Mesh_Vars,          ONLY: firstMPISide_YOUR, lastMPISide_MINE, nSides
 USE MOD_Mesh_Vars,          ONLY: S2V2
 #if FV_ENABLED
-USE MOD_FV_Vars,            ONLY: FV_Elems,FV_Elems_master,FV_Elems_slave
+USE MOD_FV_Vars,            ONLY: FV_Elems
 #endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -82,9 +82,6 @@ DO SideID=firstSideID,lastSideID
     DO q=0,ZDIM(Nloc); DO p=0,Nloc
       Uface_master(:,p,q,SideID)=Uface(:,S2V2(1,p,q,0,locSide),S2V2(2,p,q,0,locSide))
     END DO; END DO
-#if FV_ENABLED
-    FV_Elems_master(SideID) = FV_Elems(ElemID)
-#endif
   END IF
 
   !slave side (ElemID,locSide and flip =-1 if not existing)
@@ -109,9 +106,6 @@ DO SideID=firstSideID,lastSideID
     DO q=0,ZDIM(Nloc); DO p=0,Nloc
       Uface_slave( :,p,q,SideID)=Uface(:,S2V2(1,p,q,flip,nblocSide),S2V2(2,p,q,flip,nblocSide))
     END DO; END DO
-#if FV_ENABLED
-    FV_Elems_slave(SideID) = FV_Elems(nbElemID)
-#endif
   END IF
 END DO
 
