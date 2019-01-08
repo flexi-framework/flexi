@@ -146,7 +146,7 @@ Further info / usage example       No tutorials so far
 ## `tools` folder
 
 The scripts provided in the `tools` folder are generally not part of the tutorials.
-They are briefly described below.
+They are briefly described below. The path to the python files (of the form `$FLEXIROOT/tools/SUBDIR/`) is omitted in the following.
 
 For most python tools, possible arguments and syntax can be shown with the `-h` argument:
 
@@ -157,7 +157,7 @@ python2 [toolname.py] -h
 ### `animate`
 
 The python script **animate_paraview.py** creates movies from a series of state files using `PvBatch`, a GUI-less interface to ParaView.
-You need ParaView installed on your system (details can be found in the ParaView <!---TODO--> section) and the directory containing the PvBatch executable needs to be a part of your `$PATH`. Before running this script, you have to visualize your **FLEXI** state file with ParaView and save the current view via `Save State...`, e.g. under the name `pvstate.pvsm`. You also need the `mencoder` tool installed. The basic command to run the script is
+You need ParaView installed on your system (details can be found in the ParaView <!--- TODO --> section) and the directory containing the PvBatch executable needs to be a part of your `$PATH`. Before running this script, you have to visualize your **FLEXI** state file with ParaView and save the current view via `Save State...`, e.g. under the name `pvstate.pvsm`. You also need the `MEncoder` tool installed. The basic command to run the script is
 
 ~~~~~~~
 python2 animate_paraview.py -l [pvstate.pvsm] -r [path_to_posti_paraview_plugin] [statefile1.h5 statefile2.h5 ...]
