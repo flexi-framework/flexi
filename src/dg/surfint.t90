@@ -16,7 +16,7 @@
 !==================================================================================================================================
 !> In this routine, the surface integral will be computed 
 !==================================================================================================================================
-SUBROUTINE SurfInt(&
+PPURE SUBROUTINE SurfInt(&
 #ifdef WITHnVars
         TP_nVar, &
 #endif        
@@ -144,7 +144,7 @@ END SUBROUTINE SurfInt
 !> Update DG time derivative with corresponding SurfInt contribution
 !> Weak surface integral
 !==================================================================================================================================
-PURE SUBROUTINE SurfInt_FV(&
+PPURE SUBROUTINE SurfInt_FV(&
 #ifdef WITHnVars
         TP_nVar, &
 #endif        
@@ -187,7 +187,7 @@ END SUBROUTINE SurfInt_FV
 !> Takes the time derivative of a single element and the surface flux on a single side as input and performs the surface integral.
 !> The time derivative will be updated. The Flux has to be provided in the volume coordinate system!
 !==================================================================================================================================
-SUBROUTINE DoSurfInt(&
+PPURE SUBROUTINE DoSurfInt(&
 #ifdef WITHnVars
         TP_nVar, &
 #endif        

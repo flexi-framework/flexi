@@ -16,7 +16,7 @@
 !==================================================================================================================================
 !> Convert solution between physical <-> reference space, separate input and output variables
 !==================================================================================================================================
-SUBROUTINE ApplyJacobian(&
+PPURE SUBROUTINE ApplyJacobian(&
 #ifdef WITHnVar
         TP_nVar, &
 #endif        
@@ -58,7 +58,7 @@ END SUBROUTINE ApplyJacobian
 !==================================================================================================================================
 !> Convert solution between physical <-> reference space (DG elements only), input will be overwritten with transformed solution 
 !==================================================================================================================================
-SUBROUTINE ApplyJacobian_Select(&
+PPURE SUBROUTINE ApplyJacobian_Select(&
 #ifdef WITHnVar
         TP_nVar, &
 #endif        
@@ -113,7 +113,7 @@ END SUBROUTINE ApplyJacobian_Select
 !==================================================================================================================================
 !> Convert solution between physical <-> reference space, input will be overwritten with transformed solution 
 !==================================================================================================================================
-SUBROUTINE ApplyJacobian_local(&
+PPURE SUBROUTINE ApplyJacobian_local(&
 #ifdef WITHnVar
         TP_nVar, &
 #endif        

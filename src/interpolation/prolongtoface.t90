@@ -17,7 +17,7 @@
 !> Interpolates the interior volume data (stored at the Gauss or Gauss-Lobatto points) to the surface
 !> integration points, using fast 1D Interpolation and store in global side structure
 !==================================================================================================================================
-SUBROUTINE ProlongToFace(&
+PPURE SUBROUTINE ProlongToFace(&
 #ifdef WITHnVar
     TP_nVar,&
 #endif
@@ -115,7 +115,7 @@ END SUBROUTINE ProlongToFace
 !==================================================================================================================================
 !> Interpolates the element volume data stored at Gauss points
 !==================================================================================================================================
-PURE SUBROUTINE EvalElemFaceG(&
+PPURE SUBROUTINE EvalElemFaceG(&
 #ifdef WITHnVar
     TP_nVar,&
 #endif
@@ -174,7 +174,7 @@ END SUBROUTINE EvalElemFaceG
 !==================================================================================================================================
 !> Interpolates the element volume data stored at Gauss-Lobatto points
 !==================================================================================================================================
-PURE SUBROUTINE EvalElemFaceGL(&
+PPURE SUBROUTINE EvalElemFaceGL(&
 #ifdef WITHnVar
     TP_nVar,&
 #endif
