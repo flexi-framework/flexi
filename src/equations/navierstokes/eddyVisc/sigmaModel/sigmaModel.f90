@@ -94,7 +94,7 @@ END SUBROUTINE InitSigmaModel
 SUBROUTINE SigmaModel(iElem,i,j,k,muSGS)
 ! MODULES
 USE MOD_PreProc
-USE MOD_EddyVisc_Vars,     ONLY:deltaS,CS,muSGSmax
+USE MOD_EddyVisc_Vars,     ONLY:deltaS,CS
 USE MOD_Lifting_Vars,      ONLY:gradUx,gradUy,gradUz
 USE MOD_DG_Vars,           ONLY:U
 IMPLICIT NONE
@@ -110,14 +110,12 @@ REAL,INTENT(INOUT)                        :: muSGS             !< local SGS visc
 EXTERNAL DSYEV
 ! LOCAL VARIABLES
 REAL               :: sigma1,sigma2,sigma3
-REAL               :: pi
 REAL               :: G_mat(3,3)
 REAL               :: lambda(3)
 REAL               :: work(9)  !lapack work array
 INTEGER            :: info
 REAL               :: d_model
 !===================================================================================================================================
-pi=acos(-1.)
 G_Mat(1,1) = gradUx(2,i,j,k,iElem)*gradUx(2,i,j,k,iElem) + gradUx(3,i,j,k,iElem)*gradUx(3,i,j,k,iElem) &
            + gradUx(4,i,j,k,iElem)*gradUx(4,i,j,k,iElem)  
 G_Mat(1,2) = gradUx(2,i,j,k,iElem)*gradUy(2,i,j,k,iElem) + gradUx(3,i,j,k,iElem)*gradUy(3,i,j,k,iElem) &
@@ -133,11 +131,12 @@ G_Mat(3,1) = G_Mat(1,3)
 G_Mat(3,2) = G_Mat(2,3)  
 G_Mat(3,3) = gradUz(2,i,j,k,iElem)*gradUz(2,i,j,k,iElem) + gradUz(3,i,j,k,iElem)*gradUz(3,i,j,k,iElem) &
            + gradUz(4,i,j,k,iElem)*gradUz(4,i,j,k,iElem)  
+
 !LAPACK
 CALL DSYEV('N','U',3,G_Mat,3,lambda,work,9,info)
 IF(info .NE. 0) THEN
   WRITE(*,*)'Eigenvalue Computation failed 3D',info
-  d_model=0.
+  d_model = 0.
 ELSEIF(ANY(lambda.LE.0.))THEN
   sigma1 = SQRT(MAX(0.,lambda(3)))
   sigma2 = SQRT(MAX(0.,lambda(2)))
@@ -150,8 +149,7 @@ ELSE
   d_model = (sigma3*(sigma1-sigma2)*(sigma2-sigma3))/(sigma1**2)
 END IF
 ! SigmaModel model
-muSGS= (CS*deltaS(iElem))**2. * d_model*U(1,i,j,k,iElem)
-muSGSmax(iElem) = MAX(muSGS,muSGSmax(iElem))
+muSGS = (CS*deltaS(iElem))**2. * d_model*U(1,i,j,k,iElem)
 END SUBROUTINE SigmaModel
 
 !===============================================================================================================================

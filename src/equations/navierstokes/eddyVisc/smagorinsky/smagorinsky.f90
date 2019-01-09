@@ -91,10 +91,10 @@ END SUBROUTINE InitSmagorinsky
 !===================================================================================================================================
 !> Compute Smagorinsky Eddy-Visosity at a given point in the volume
 !===================================================================================================================================
-SUBROUTINE Smagorinsky(iElem,i,j,k,muSGS)
+PPURE SUBROUTINE Smagorinsky(iElem,i,j,k,muSGS)
 ! MODULES
 USE MOD_PreProc
-USE MOD_EddyVisc_Vars,     ONLY:deltaS,CS,VanDriest,muSGSmax
+USE MOD_EddyVisc_Vars,     ONLY:deltaS, CS, VanDriest
 USE MOD_EOS_Vars,          ONLY:mu0
 USE MOD_Mesh_Vars,         ONLY:Elem_xGP
 USE MOD_Lifting_Vars,      ONLY:gradUx,gradUy,gradUz
@@ -119,13 +119,12 @@ S_eN = S_eN + ( gradUz(3,i,j,k,iElem) + gradUy(4,i,j,k,iElem) )**2.
 S_eN = SQRT(S_eN)
 ! Smagorinsky model
 IF(.NOT.VanDriest)THEN
-  damp=1.
+  damp = 1.
 ELSE
   yPlus = (1. - ABS(Elem_xGP(2,i,j,k,iElem)))/mu0
   damp = 1. - EXP(-yPlus/26.) ! Van Driest damping factor
 END IF
-muSGS= (damp**2*CS*deltaS(iElem))**2. * S_eN*U(1,i,j,k,iElem)
-muSGSmax(iElem) = MAX(muSGS,muSGSmax(iElem))
+muSGS = (damp**2*CS*deltaS(iElem))**2. * S_eN*U(1,i,j,k,iElem)
 END SUBROUTINE Smagorinsky
 
 !===============================================================================================================================

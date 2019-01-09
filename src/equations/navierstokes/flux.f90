@@ -135,8 +135,7 @@ USE MOD_Equation_Vars,ONLY: s23,s43
 USE MOD_EOS_Vars,     ONLY: cp,Pr
 USE MOD_Viscosity
 #ifdef EDDYVISCOSITY
-USE MOD_EddyVisc_Vars,ONLY: muSGS,muSGSmax,PrSGS,eddyViscosity
-USE MOD_TimeDisc_Vars,ONLY: CurrentStage
+USE MOD_EddyVisc_Vars,ONLY: muSGS,PrSGS,eddyViscosity
 #endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -160,9 +159,6 @@ REAL                :: tau_zz,tau_xz,tau_yz
 REAL                :: gradT3
 #endif
 !==================================================================================================================================
-#if EDDYVISCOSITY
-IF(CurrentStage.EQ.1) muSGSmax(iElem)=0.
-#endif
 DO k=0,PP_NZ;  DO j=0,PP_N; DO i=0,PP_N
   prim = UPrim(:,i,j,k)
   v1   = UPrim(2,i,j,k)
@@ -241,14 +237,6 @@ DO k=0,PP_NZ;  DO j=0,PP_N; DO i=0,PP_N
 
 END DO; END DO; END DO ! i,j,k
 
-#ifdef DEBUG
-! ===============================================================================
-! Following dummy calls do suppress compiler warnings of unused Riemann-functions
-! ===============================================================================
-IF (0.EQ.1) THEN
-  WRITE (*,*) iElem,gradUz
-END IF
-#endif
 END SUBROUTINE EvalDiffFlux3D
 
 #endif /*PARABOLIC*/
@@ -431,14 +419,6 @@ DO j=0,ZDIM(Nloc) ; DO i=0,Nloc
 
 END DO ; END DO !i,j
 
-#ifdef DEBUG
-! ===============================================================================
-! Following dummy calls do suppress compiler warnings of unused Riemann-functions
-! ===============================================================================
-IF (0.EQ.1) THEN
-  WRITE (*,*) gradUz_Face
-END IF
-#endif
 END SUBROUTINE EvalDiffFlux2D
 
 #endif /*PARABOLIC*/

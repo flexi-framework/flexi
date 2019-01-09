@@ -76,8 +76,6 @@ ALLOCATE(muSGS_master(1,0:PP_N,0:PP_NZ,nSides))
 ALLOCATE(muSGS_slave (1,0:PP_N,0:PP_NZ,nSides))
 muSGS_master=0.
 muSGS_slave =0.
-ALLOCATE(muSGSmax(nElems))
-muSGSmax=8.*mu0
 ! Turbulent Prandtl number
 PrSGS  = GETREAL('PrSGS','0.7')
 
@@ -113,7 +111,6 @@ SDEALLOCATE(DeltaS)
 SDEALLOCATE(muSGS)
 SDEALLOCATE(muSGS_master)
 SDEALLOCATE(muSGS_slave)
-SDEALLOCATE(muSGSmax)
 SELECT CASE(eddyViscType)
   CASE(1)
     CALL FinalizeSmagorinsky()

@@ -29,7 +29,6 @@ ABSTRACT INTERFACE
   INTEGER,INTENT(IN)  :: iElem  !< index of current element
   !> indices of the c
   INTEGER,INTENT(IN)  :: i,j,k
-  !> gradients of the directions
   REAL,INTENT(INOUT)  :: muSGS  !< local SGS viscosity
   END SUBROUTINE
 END INTERFACE
