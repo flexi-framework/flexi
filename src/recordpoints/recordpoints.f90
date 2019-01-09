@@ -329,14 +329,6 @@ DO iRP=1,nRP
 #endif
 END DO
 
-#ifdef DEBUG
-! ===============================================================================
-! Following dummy calls do suppress compiler warnings of unused Riemann-functions
-! ===============================================================================
-IF (0.EQ.1) THEN
-  L_zeta_RP = 0.
-END IF
-#endif
 END SUBROUTINE InitRPBasis
 
 

@@ -103,12 +103,6 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                     :: SplitDG
-#ifdef DEBUG
-REAL,DIMENSION(PP_nVar    ) :: U         ! dummy variables, only to suppress compiler warnings
-REAL,DIMENSION(PP_nVarPrim) :: UPrim     ! dummy variables, only to suppress compiler warnings
-REAL,DIMENSION(PP_nVar    ) :: f,g,h     ! dummy variables, only to suppress compiler warnings
-REAL,DIMENSION(PP_2Var    ) :: U_LL,U_RR ! dummy variables, only to suppress compiler warnings
-#endif
 !==================================================================================================================================
 ! check if Gauss-Lobatto-Pointset is beeing used
 #if (PP_NodeType==1)
@@ -140,29 +134,6 @@ CASE DEFAULT
   CALL CollectiveStop(__STAMP__,&
     'SplitDG formulation not defined!')
 END SELECT
-
-#ifdef DEBUG
-! ===============================================================================
-! Following dummy calls do suppress compiler warnings of unused Riemann-functions
-! ===============================================================================
-IF (0.EQ.1) THEN
-  U=1. ;  UPrim=1. ;   U_LL=1. ;   U_RR=1.
-  CALL SplitDGVolume_pointer  (U,UPrim,U,UPrim,f,g,h)
-  CALL SplitDGSurface_pointer (U_LL,U_RR,F)
-  CALL SplitVolumeFluxSD      (U,UPrim,U,UPrim,f,g,h)
-  CALL SplitSurfaceFluxSD     (U_LL,U_RR,F)
-  CALL SplitVolumeFluxMO      (U,UPrim,U,UPrim,f,g,h)
-  CALL SplitSurfaceFluxMO     (U_LL,U_RR,F)
-  CALL SplitVolumeFluxDU      (U,UPrim,U,UPrim,f,g,h)
-  CALL SplitSurfaceFluxDU     (U_LL,U_RR,F)
-  CALL SplitVolumeFluxKG      (U,UPrim,U,UPrim,f,g,h)
-  CALL SplitSurfaceFluxKG     (U_LL,U_RR,F)
-  CALL SplitVolumeFluxPI      (U,UPrim,U,UPrim,f,g,h)
-  CALL SplitSurfaceFluxPI     (U_LL,U_RR,F)
-  CALL SplitVolumeFluxCH      (U,UPrim,U,UPrim,f,g,h)
-  CALL SplitSurfaceFluxCH     (U_LL,U_RR,F)
-END IF
-#endif /*DEBUG*/
 END SUBROUTINE InitSplitDG
 
 !==================================================================================================================================

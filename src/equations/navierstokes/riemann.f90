@@ -140,10 +140,6 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                 :: Riemann
-#ifdef DEBUG
-REAL,DIMENSION(PP_nVar) :: F_L,F_R,F ! dummy variables, only to suppress compiler warnings
-REAL,DIMENSION(PP_2Var) :: U_LL,U_RR ! dummy variables, only to suppress compiler warnings
-#endif
 !==================================================================================================================================
 #ifndef SPLIT_DG
 Riemann = GETINTFROMSTR('Riemann')
@@ -235,29 +231,6 @@ CASE DEFAULT
     'RiemannBC solver not defined!')
 END SELECT
 #endif /*SPLIT_DG*/
-
-#ifdef DEBUG
-! ===============================================================================
-! Following dummy calls do suppress compiler warnings of unused Riemann-functions
-! ===============================================================================
-IF (0.EQ.1) THEN
-  F_L=1. ;  F_R=1. ;   U_LL=1. ;   U_RR=1.
-  CALL Riemann_pointer   (F_L,F_R,U_LL,U_RR,F)
-  CALL RiemannBC_pointer (F_L,F_R,U_LL,U_RR,F)
-  CALL Riemann_LF   (F_L,F_R,U_LL,U_RR,F)
-  CALL Riemann_HLLC (F_L,F_R,U_LL,U_RR,F)
-  CALL Riemann_Roe  (F_L,F_R,U_LL,U_RR,F)
-  CALL Riemann_RoeEntropyFix(F_L,F_R,U_LL,U_RR,F)
-  CALL Riemann_RoeL2(F_L,F_R,U_LL,U_RR,F)
-  CALL Riemann_HLL  (F_L,F_R,U_LL,U_RR,F)
-  CALL Riemann_HLLE (F_L,F_R,U_LL,U_RR,F)
-  CALL Riemann_HLLEM(F_L,F_R,U_LL,U_RR,F)
-#ifdef SPLIT_DG
-  CALL Riemann_CH(F_L,F_R,U_LL,U_RR,F)
-  CALL Riemann_FluxAverage(F_L,F_R,U_LL,U_RR,F)
-#endif
-END IF
-#endif /*DEBUG*/
 END SUBROUTINE InitRiemann
 
 !==================================================================================================================================
@@ -350,15 +323,6 @@ DO j=0,ZDIM(Nloc); DO i=0,Nloc
 #endif
   Fout(ENER,i,j)=F(ENER)
 END DO; END DO
-
-#ifdef DEBUG
-! ===============================================================================
-! Following dummy calls do suppress compiler warnings of unused Riemann-functions
-! ===============================================================================
-IF (0.EQ.1) THEN
-  WRITE (*,*) t2
-END IF
-#endif
 END SUBROUTINE Riemann
 
 
@@ -456,15 +420,6 @@ CALL SplitDGSurface_pointer(U_LL,U_RR,F)
 ! compute surface flux
 F = F - 0.5*LambdaMax*(U_RR(CONS) - U_LL(CONS))
 #endif /*SPLIT_DG*/
-
-#ifdef DEBUG
-! ===============================================================================
-! Following dummy calls do suppress compiler warnings of unused Riemann-functions
-! ===============================================================================
-IF (0.EQ.1) THEN
-  WRITE (*,*) F_L,F_R
-END IF
-#endif /*DEBUG*/
 END SUBROUTINE Riemann_LF
 
 
@@ -615,15 +570,6 @@ F = F - 0.5*(Alpha1*ABS(a(1))*r1 + &
              Alpha4*ABS(a(4))*r4 + &
              Alpha5*ABS(a(5))*r5)
 #endif /*SPLIT_DG*/
-
-#ifdef DEBUG
-! ===============================================================================
-! Following dummy calls do suppress compiler warnings of unused Riemann-functions
-! ===============================================================================
-IF (0.EQ.1) THEN
-  WRITE (*,*) F_L,F_R
-END IF
-#endif /*DEBUG*/
 END SUBROUTINE Riemann_Roe
 
 
@@ -738,15 +684,6 @@ F= F - 0.5*(Alpha(1)*a(1)*r1 + &
             Alpha(4)*a(4)*r4 + &
             Alpha(5)*a(5)*r5)
 #endif /*SPLIT_DG*/
-
-#ifdef DEBUG
-! ===============================================================================
-! Following dummy calls do suppress compiler warnings of unused Riemann-functions
-! ===============================================================================
-IF (0.EQ.1) THEN
-  WRITE (*,*) F_L,F_R
-END IF
-#endif /*DEBUG*/
 END SUBROUTINE Riemann_RoeEntropyFix
 
 !=================================================================================================================================
@@ -829,15 +766,6 @@ F = F - 0.5*(Alpha1*ABS(a(1))*r1 + &
              Alpha4*ABS(a(4))*r4 + &
              Alpha5*ABS(a(5))*r5)
 #endif /*SPLIT_DG*/
-
-#ifdef DEBUG
-! ===============================================================================
-! Following dummy calls do suppress compiler warnings of unused Riemann-functions
-! ===============================================================================
-IF (0.EQ.1) THEN
-  WRITE (*,*) F_L,F_R
-END IF
-#endif /*DEBUG*/
 END SUBROUTINE Riemann_RoeL2
 
 
@@ -1027,15 +955,6 @@ REAL,DIMENSION(PP_nVar),INTENT(OUT):: F         !< resulting Riemann flux
 !==================================================================================================================================
 ! get split flux
 CALL SplitDGSurface_pointer(U_LL,U_RR,F)
-
-#ifdef DEBUG
-! ===============================================================================
-! Following dummy calls do suppress compiler warnings of unused Riemann-functions
-! ===============================================================================
-IF (0.EQ.1) THEN
-  WRITE (*,*) F_L,F_R
-END IF
-#endif /*DEBUG*/
 END SUBROUTINE Riemann_FluxAverage
 
 

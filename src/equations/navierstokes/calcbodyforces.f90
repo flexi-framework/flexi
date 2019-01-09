@@ -185,14 +185,6 @@ END DO; END DO
 
 Fv=-Fv  ! Change direction to get the force acting on the wall
 
-#ifdef DEBUG
-! ===============================================================================
-! Following dummy calls do suppress compiler warnings of unused Riemann-functions
-! ===============================================================================
-IF (0.EQ.1) THEN
-  WRITE (*,*) gradUz_Face
-END IF
-#endif
 END SUBROUTINE CalcViscousForce
 #endif /*PARABOLIC*/
 

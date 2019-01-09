@@ -37,22 +37,13 @@ SUBROUTINE DefaultEddyVisc(iElem,i,j,k,muSGS)
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)                        :: iElem             !< index of current element
+INTEGER,INTENT(IN)                        :: iElem !< index of current element
 !> indices of the current volume point
 INTEGER,INTENT(IN)                        :: i,j,k
-!> gradients of the velocities w.r.t. all directions
-REAL,INTENT(INOUT)                        :: muSGS             !< local SGS viscosity
+REAL,INTENT(INOUT)                        :: muSGS !< local SGS viscosity
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
-#ifdef DEBUG
-! ===============================================================================
-! Following dummy calls do suppress compiler warnings of unused Riemann-functions
-! ===============================================================================
-IF (0.EQ.1) THEN
-  muSGS = i+j+k+iElem 
-END IF
-#endif
 END SUBROUTINE DefaultEddyVisc
 
 !===============================================================================================================================
@@ -60,8 +51,6 @@ END SUBROUTINE DefaultEddyVisc
 !===============================================================================================================================
 SUBROUTINE FinalizeDefaultEddyviscosity()
 ! MODULES
-USE MOD_EddyVisc_Vars
-! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !===============================================================================================================================
 END SUBROUTINE FinalizeDefaultEddyViscosity

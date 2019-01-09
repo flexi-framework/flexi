@@ -165,14 +165,6 @@ CALL MPI_ALLREDUCE(MPI_IN_PLACE,nElems_FV_glob,1,MPI_INTEGER,MPI_MAX,MPI_COMM_WO
 #endif
 hasFV_Elems = (nElems_FV_glob.GT.0)
 
-#ifdef DEBUG
-! ===============================================================================
-! Following dummy statements do suppress compiler warnings of unused Riemann-functions
-! ===============================================================================
-IF (0.EQ.1) THEN
-  WRITE(*,*) statefile
-END IF
-#endif /* DEBUG */
 END SUBROUTINE Build_FV_DG_distribution
 
 !===================================================================================================================================

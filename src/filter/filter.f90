@@ -58,17 +58,6 @@ PUBLIC :: FinalizeFilter
 PUBLIC :: DefineParametersFilter
 !==================================================================================================================================
 
-#ifdef DEBUG
-#if EQNSYSNR==2
-! Add dummy interfaces to unused subroutines to suppress compiler warnings.
-INTERFACE DUMMY_Filter
-  MODULE PROCEDURE Filter
-END INTERFACE
-INTERFACE DUMMY_Filter_LAF
-  MODULE PROCEDURE Filter_LAF
-END INTERFACE
-#endif
-#endif
 CONTAINS
 
 !==================================================================================================================================

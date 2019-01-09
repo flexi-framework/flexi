@@ -251,15 +251,6 @@ DO i=1,nDOFElem
 #endif
 END DO ! i
 
-#ifdef DEBUG
-! ===============================================================================
-! Following dummy calls do suppress compiler warnings of unused Riemann-functions
-! ===============================================================================
-IF (0.EQ.1) THEN
-  WRITE (*,*) Mh
-  UPrim_h = 0.
-END IF
-#endif
 END SUBROUTINE Lifting_Metrics
 
 

@@ -38,14 +38,6 @@ INTERFACE VolInt
 END INTERFACE
 
 PUBLIC::VolInt
-
-#ifdef DEBUG
-! Add dummy interfaces to unused subroutines to suppress compiler warnings.
-INTERFACE DUMMY_VolInt_weakForm
-  MODULE PROCEDURE VolInt_weakForm
-END INTERFACE
-PUBLIC::DUMMY_VolInt_weakForm
-#endif /* DEBUG */
 !==================================================================================================================================
 CONTAINS
 
@@ -311,15 +303,6 @@ DO i=1,nDOFs
            gTilde*Mg(2,i) 
 #endif
 END DO ! i
-
-#ifdef DEBUG
-! ===============================================================================
-! Following dummy calls do suppress compiler warnings of unused Riemann-functions
-! ===============================================================================
-IF (0.EQ.1) THEN
-  WRITE (*,*) Mh,h
-END IF
-#endif
 END SUBROUTINE VolInt_Metrics
 
 

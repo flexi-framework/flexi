@@ -411,17 +411,6 @@ DO iElem=1,nElems
 #endif
 END DO
 
-#ifdef DEBUG
-! ===============================================================================
-! Following dummy calls do suppress compiler warnings of unused Riemann-functions
-! ===============================================================================
-IF (0.EQ.1) THEN
-  gradUzeta = 0.
-#if PARABOLIC
-  gradUzeta_central = 0.
-#endif
-END IF
-#endif
 END SUBROUTINE FV_CalcGradients
 
 !==================================================================================================================================
