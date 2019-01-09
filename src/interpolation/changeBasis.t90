@@ -11,6 +11,7 @@
 !
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
+#include "flexi.h"
 
 !==================================================================================================================================
 !> Interpolate an array of Dim1 1D Lagrange polynomials (defined by X_In) of order NIn to 1D Lagrange polynomials of order NOut

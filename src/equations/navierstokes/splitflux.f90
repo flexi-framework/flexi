@@ -29,7 +29,7 @@ PRIVATE
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ABSTRACT INTERFACE
-  PURE SUBROUTINE VolumeFlux(URef,UPrimRef,U,UPrim,MRef,M,Flux)
+  PPURE SUBROUTINE VolumeFlux(URef,UPrimRef,U,UPrim,MRef,M,Flux)
     REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: URef,U
     REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrimRef,UPrim
     REAL,DIMENSION(1:3        ),INTENT(IN)  :: MRef,M
@@ -38,7 +38,7 @@ ABSTRACT INTERFACE
 END INTERFACE
 
 ABSTRACT INTERFACE
-  PURE SUBROUTINE SurfaceFlux(U_LL,U_RR,F)
+  PPURE SUBROUTINE SurfaceFlux(U_LL,U_RR,F)
     REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_LL,U_RR
     REAL,DIMENSION(PP_nVar),INTENT(OUT) :: F
   END SUBROUTINE
