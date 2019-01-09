@@ -140,7 +140,7 @@ END SUBROUTINE InitSplitDG
 !> Computes the Split-Flux retaining the standard NS-Equations
 !> Attention 1: Factor 2 from differentiation matrix is already been considered
 !==================================================================================================================================
-PURE SUBROUTINE SplitVolumeFluxSD(URef,UPrimRef,U,UPrim,MRef,M,Flux)
+PPURE SUBROUTINE SplitVolumeFluxSD(URef,UPrimRef,U,UPrim,MRef,M,Flux)
 ! MODULES
 USE MOD_PreProc
 IMPLICIT NONE
@@ -206,7 +206,7 @@ END SUBROUTINE SplitVolumeFluxSD
 !==================================================================================================================================
 !> Computes the surface flux for the split formulation retaining the standard NS-Equations
 !==================================================================================================================================
-PURE SUBROUTINE SplitSurfaceFluxSD(U_LL,U_RR,F)
+PPURE SUBROUTINE SplitSurfaceFluxSD(U_LL,U_RR,F)
 ! MODULES
 USE MOD_PreProc
 IMPLICIT NONE
@@ -235,7 +235,7 @@ END SUBROUTINE SplitSurfaceFluxSD
 !> Computes the Split-Flux retaining the formulation of Ducros
 !> Attention 1: Factor 2 from differentiation matrix is already been considered
 !==================================================================================================================================
-PURE SUBROUTINE SplitVolumeFluxDU(URef,UPrimRef,U,UPrim,MRef,M,Flux)
+PPURE SUBROUTINE SplitVolumeFluxDU(URef,UPrimRef,U,UPrim,MRef,M,Flux)
 ! MODULES
 USE MOD_PreProc
 IMPLICIT NONE
@@ -297,7 +297,7 @@ END SUBROUTINE SplitVolumeFluxDU
 !==================================================================================================================================
 !> Computes the surface flux for the split formulation of Ducros
 !==================================================================================================================================
-PURE SUBROUTINE SplitSurfaceFluxDU(U_LL,U_RR,F)
+PPURE SUBROUTINE SplitSurfaceFluxDU(U_LL,U_RR,F)
 ! MODULES
 USE MOD_PreProc
 IMPLICIT NONE
@@ -325,7 +325,7 @@ END SUBROUTINE SplitSurfaceFluxDU
 !> Computes the Split-Flux retaining the formulation of Kennedy and Gruber
 !> Attention 1: Factor 2 from differentiation matrix is already been considered
 !==================================================================================================================================
-PURE SUBROUTINE SplitVolumeFluxKG(URef,UPrimRef,U,UPrim,MRef,M,Flux)
+PPURE SUBROUTINE SplitVolumeFluxKG(URef,UPrimRef,U,UPrim,MRef,M,Flux)
 ! MODULES
 USE MOD_PreProc
 IMPLICIT NONE
@@ -395,7 +395,7 @@ END SUBROUTINE SplitVolumeFluxKG
 !==================================================================================================================================
 !> Computes the surface flux for the split formulation of Kennedy and Gruber
 !==================================================================================================================================
-PURE SUBROUTINE SplitSurfaceFluxKG(U_LL,U_RR,F)
+PPURE SUBROUTINE SplitSurfaceFluxKG(U_LL,U_RR,F)
 ! MODULES
 USE MOD_PreProc
 IMPLICIT NONE
@@ -429,7 +429,7 @@ END SUBROUTINE SplitSurfaceFluxKG
 !> Computes the Split-Flux retaining the formulation of Morinishi
 !> Attention 1: Factor 2 from differentiation matrix is already been considered
 !==================================================================================================================================
-PURE SUBROUTINE SplitVolumeFluxMO(URef,UPrimRef,U,UPrim,MRef,M,Flux)
+PPURE SUBROUTINE SplitVolumeFluxMO(URef,UPrimRef,U,UPrim,MRef,M,Flux)
 ! MODULES
 USE MOD_PreProc
 IMPLICIT NONE
@@ -514,7 +514,7 @@ END SUBROUTINE SplitVolumeFluxMO
 !==================================================================================================================================
 !> Computes the surface flux for the split formulation of Morinishi
 !==================================================================================================================================
-PURE SUBROUTINE SplitSurfaceFluxMO(U_LL,U_RR,F)
+PPURE SUBROUTINE SplitSurfaceFluxMO(U_LL,U_RR,F)
 ! MODULES
 USE MOD_PreProc
 IMPLICIT NONE
@@ -554,7 +554,7 @@ END SUBROUTINE SplitSurfaceFluxMO
 !> Computes the Split-Flux retaining the formulation of Pirozzoli
 !> Attention 1: Factor 2 from differentiation matrix is already been considered
 !==================================================================================================================================
-PURE SUBROUTINE SplitVolumeFluxPI(URef,UPrimRef,U,UPrim,MRef,M,Flux)
+PPURE SUBROUTINE SplitVolumeFluxPI(URef,UPrimRef,U,UPrim,MRef,M,Flux)
 ! MODULES
 USE MOD_PreProc
 IMPLICIT NONE
@@ -621,7 +621,7 @@ END SUBROUTINE SplitVolumeFluxPI
 !==================================================================================================================================
 !> Computes the surface flux for the split formulation of Pirozzoli
 !==================================================================================================================================
-PURE SUBROUTINE SplitSurfaceFluxPI(U_LL,U_RR,F)
+PPURE SUBROUTINE SplitSurfaceFluxPI(U_LL,U_RR,F)
 ! MODULES
 USE MOD_PreProc
 IMPLICIT NONE
@@ -653,7 +653,7 @@ END SUBROUTINE SplitSurfaceFluxPI
 !==================================================================================================================================
 !> Computes the Split-Flux retaining the entropy conserving formulation of Chandrashekar
 !==================================================================================================================================
-PURE SUBROUTINE SplitVolumeFluxCH(URef,UPrimRef,U,UPrim,MRef,M,Flux)
+PPURE SUBROUTINE SplitVolumeFluxCH(URef,UPrimRef,U,UPrim,MRef,M,Flux)
 ! MODULES
 USE MOD_PreProc
 USE MOD_EOS_Vars, ONLY:sKappaM1
@@ -739,7 +739,7 @@ END SUBROUTINE SplitVolumeFluxCH
 !==================================================================================================================================
 !> Computes the surface flux for the entropy conserving formulation of Chandrashekar
 !==================================================================================================================================
-PURE SUBROUTINE SplitSurfaceFluxCH(U_LL,U_RR,F)
+PPURE SUBROUTINE SplitSurfaceFluxCH(U_LL,U_RR,F)
 ! MODULES
 USE MOD_PreProc
 USE MOD_EOS_Vars, ONLY:sKappaM1
@@ -786,7 +786,7 @@ END SUBROUTINE SplitSurfaceFluxCH
 !==================================================================================================================================
 !> auxilary function for calculating the logarithmic mean numerically stable according to Ismail and Roe
 !==================================================================================================================================
-PURE SUBROUTINE GetLogMean(U_L,U_R,UMean)
+ELEMENTAL SUBROUTINE GetLogMean(U_L,U_R,UMean)
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -803,11 +803,11 @@ chi = U_L/U_R
 f = (chi-1)/(chi+1)
 u = f*f
 
-if (u .LT. epsilon) THEN
+IF (u .LT. epsilon) THEN
   N = 1.0+u/3.0+u*u/5.0+u*u*u/7.0
-else
+ELSE
   N = log(chi)/(2.*f)
-endif
+ENDIF
 
 UMean = (U_L+U_R)/(2.*N)
 END SUBROUTINE getLogMean

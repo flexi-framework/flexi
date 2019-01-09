@@ -51,7 +51,7 @@ CONTAINS
 !> \f$ -1 \f$. This means we don't have to flip the sign on the flux for the slave side in strong form as we normally do to
 !> get the flux on the slave side.
 !==================================================================================================================================
-SUBROUTINE Lifting_SurfInt(Nloc,Flux,gradU,doMPISides,L_HatMinus,L_HatPlus,weak)
+PPURE SUBROUTINE Lifting_SurfInt(Nloc,Flux,gradU,doMPISides,L_HatMinus,L_HatPlus,weak)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc

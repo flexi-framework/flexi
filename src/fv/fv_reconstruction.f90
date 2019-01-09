@@ -19,7 +19,6 @@
 !==================================================================================================================================
 MODULE MOD_FV_Reconstruction
 ! MODULES
-! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
 
@@ -49,14 +48,13 @@ CONTAINS
 
 #if FV_RECONSTRUCT  
 
-
 !==================================================================================================================================
 !> Fills FV_multi_master and FV_multi_slave arrays. 
 !> These arrays contain:
 !>  - for DG: solution at the nodes of the first inner layer next to the DG element interface 
 !>  - for FV: slopes in normal direction to the DG element interfaces between first and second layer 
 !==================================================================================================================================
-SUBROUTINE FV_PrepareSurfGradient(UPrim,FV_multi_master,FV_multi_slave,doMPIsides) 
+PPURE SUBROUTINE FV_PrepareSurfGradient(UPrim,FV_multi_master,FV_multi_slave,doMPIsides) 
 ! MODULES                                                                                                                          !
 USE MOD_PreProc
 USE MOD_Globals
@@ -416,7 +414,7 @@ END SUBROUTINE FV_CalcGradients
 !==================================================================================================================================
 !> Copy surface data at the face specified by dir to the volume. 
 !==================================================================================================================================
-PURE SUBROUTINE CopySurfaceToVolume(surface,volume,iElem,dir,l)
+PPURE SUBROUTINE CopySurfaceToVolume(surface,volume,iElem,dir,l)
 ! MODULES
 USE MOD_PreProc        ,ONLY: PP_N
 USE MOD_Mesh_Vars      ,ONLY: S2V2,nSides,ElemToSide

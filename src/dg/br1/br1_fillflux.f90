@@ -96,13 +96,9 @@ ELSE
   firstSideID = firstInnerSide
    lastSideID =  lastInnerSide
 END IF
-! BR1 uses arithmetic mean value of states for the Riemann flux
-IF(doWeakLifting)THEN
-  sig = 1
-ELSE
-  ! for strong form subtract solution from the inside
-  sig = -1
-END IF
+
+! for strong form subtract solution from the inside
+sig = MERGE(1, -1, doWeakLifting)
 
 DO SideID=firstSideID,lastSideID
 #if FV_ENABLED
@@ -124,11 +120,9 @@ DO SideID=firstSideID,lastSideID
 
   ! BR1 uses arithmetic mean value of states for the Riemann flux
   ! Transformation with NormVec is applied in separate routine
-  DO q=0,PP_NZ
-    DO p=0,PP_N
-      Flux(:,p,q,SideID)=0.5*Flux(:,p,q,SideID)*SurfElem(p,q,0,SideID)
-    END DO
-  END DO
+  DO q=0,PP_NZ; DO p=0,PP_N
+    Flux(:,p,q,SideID) = 0.5*Flux(:,p,q,SideID) * SurfElem(p,q,0,SideID)
+  END DO; END DO
 END DO ! SideID
 
 END SUBROUTINE Lifting_FillFlux
@@ -183,12 +177,11 @@ END SUBROUTINE Lifting_FillFlux_BC
 !> The untransformed fluxes is multiplied for each gradient direction by the corresponding normal vector,
 !> which is the second step of the transformation. We end up with the lifting fluxes for X/Y/Z direction.
 !==================================================================================================================================
-SUBROUTINE Lifting_FillFlux_NormVec(Flux,FluxX,FluxY,FluxZ,doMPISides)
+PPURE SUBROUTINE Lifting_FillFlux_NormVec(Flux,FluxX,FluxY,FluxZ,doMPISides)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Mesh_Vars,       ONLY: NormVec,nSides,MortarType
 USE MOD_Mesh_Vars,       ONLY: firstMPISide_YOUR,lastMPISide_MINE,lastMPISide_YOUR
-USE MOD_GetBoundaryFlux, ONLY: Lifting_GetBoundaryFlux
 #if FV_ENABLED  
 USE MOD_FV_Vars,         ONLY: FV_Elems_master,FV_Elems_Sum
 USE MOD_Mesh_Vars,       ONLY: nBCSides

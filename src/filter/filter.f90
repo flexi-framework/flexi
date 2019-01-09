@@ -255,7 +255,7 @@ END SUBROUTINE HestFilter
 !> defined by (N_out+1) interpolation point  positions xi_Out(0:N_Out)
 !>  xi is defined in the 1DrefElem xi=[-1,1]
 !==================================================================================================================================
-PURE SUBROUTINE Filter(U_in,FilterMat)
+PPURE SUBROUTINE Filter(U_in,FilterMat)
 ! MODULES
 USE MOD_PreProc
 USE MOD_ChangeBasisByDim,  ONLY: ChangeBasisVolume

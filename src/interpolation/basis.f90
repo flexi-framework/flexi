@@ -143,7 +143,7 @@ END SUBROUTINE buildLegendreVdm
 !> Build a 1D Vandermonde matrix using the Lagrange basis functions of degree
 !> N_In, evaluated at the interpolation points xi_Out
 !===================================================================================================================================
-PURE SUBROUTINE InitializeVandermonde(N_In,N_Out,wBary_In,xi_In,xi_Out,Vdm)
+PPURE SUBROUTINE InitializeVandermonde(N_In,N_Out,wBary_In,xi_In,xi_Out,Vdm)
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -215,7 +215,8 @@ END SUBROUTINE LegendrePolynomialAndDerivative
 !==================================================================================================================================
 !> Compute Chebychev-Gauss nodes and integration weights (algorithm 27, Kopriva book)
 !==================================================================================================================================
-PURE SUBROUTINE ChebyshevGaussNodesAndWeights(N_in,xGP,wGP)
+PPURE SUBROUTINE ChebyshevGaussNodesAndWeights(N_in,xGP,wGP)
+USE MOD_Preproc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -227,11 +228,11 @@ REAL,INTENT(OUT),OPTIONAL :: wGP(0:N_in)  !< Gauss point integration weights
 INTEGER                   :: iGP
 !==================================================================================================================================
 DO iGP=0,N_in
-  xGP(iGP)=-cos((2*iGP+1)/(2*REAL(N_in)+2)*ACOS(-1.))
+  xGP(iGP)=-cos((2*iGP+1)/(2*REAL(N_in)+2)*PP_PI)
 END DO
 IF(PRESENT(wGP))THEN
   DO iGP=0,N_in
-    wGP(iGP)=ACOS(-1.)/REAL(N_in+1)
+    wGP(iGP)=PP_PI/REAL(N_in+1)
   END DO
 END IF
 END SUBROUTINE ChebyshevGaussNodesAndWeights
@@ -241,7 +242,8 @@ END SUBROUTINE ChebyshevGaussNodesAndWeights
 !==================================================================================================================================
 !> Compute Chebychev-Gauss-Lobatto nodes and integration weights (algorithm 27, Kopriva book)
 !==================================================================================================================================
-PURE SUBROUTINE ChebyGaussLobNodesAndWeights(N_in,xGP,wGP)
+PPURE SUBROUTINE ChebyGaussLobNodesAndWeights(N_in,xGP,wGP)
+USE MOD_Preproc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -253,11 +255,11 @@ REAL,INTENT(OUT),OPTIONAL :: wGP(0:N_in)  !< Gauss point weights
 INTEGER            :: iGP
 !==================================================================================================================================
 DO iGP=0,N_in
-  xGP(iGP)=-COS(iGP/REAL(N_in)*ACOS(-1.))
+  xGP(iGP)=-COS(iGP/REAL(N_in)*PP_PI)
 END DO
 IF(PRESENT(wGP))THEN
   DO iGP=0,N_in
-    wGP(iGP)=ACOS(-1.)/REAL(N_in)
+    wGP(iGP)=PP_PI/REAL(N_in)
   END DO
   wGP(0)=wGP(0)*0.5
   wGP(N_in)=wGP(N_in)*0.5
@@ -268,7 +270,8 @@ END SUBROUTINE ChebyGaussLobNodesAndWeights
 !==================================================================================================================================
 !> Compute Clenshaw-Curtis nodes and integration weights
 !==================================================================================================================================
-PURE SUBROUTINE ClenshawCurtisNodesAndWeights(N_in,xGP,wGP)
+PPURE SUBROUTINE ClenshawCurtisNodesAndWeights(N_in,xGP,wGP)
+USE MOD_Preproc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -285,7 +288,7 @@ IF(N_in.EQ.0)THEN
   wGP(0) = 2.
 ELSE
   DO iGP=0,N_in
-    xGP(iGP) = -COS(iGP*ACOS(-1.)/REAL(N_in))
+    xGP(iGP) = -COS(iGP*PP_PI/REAL(N_in))
   END DO
   xGP(0)   =-1.
   IF(MOD(N_in+1,2).EQ.1)THEN
@@ -295,7 +298,7 @@ ELSE
   IF(PRESENT(wGP))THEN
     wGP=1.
     DO iGP=0,N_in
-      theta = REAL(iGP)*ACOS(-1.)/REAL(N_in)
+      theta = REAL(iGP)*PP_PI/REAL(N_in)
       DO j=1,N_in/2
         b=MERGE(1.,2.,2*j.EQ.N_in)
         wGP(iGP) = wGP(iGP) - b * COS(2.*REAL(j)*theta) / REAL(4*j*j-1)
@@ -499,7 +502,7 @@ END SUBROUTINE LegGaussLobNodesAndWeights
 !==================================================================================================================================
 !> Computes barycentric (interpolation) weights for interpolation polynomial given by set of nodes. (Algorithm 30, Kopriva book)
 !==================================================================================================================================
-PURE SUBROUTINE BarycentricWeights(N_in,xGP,wBary)
+PPURE SUBROUTINE BarycentricWeights(N_in,xGP,wBary)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -525,7 +528,7 @@ END SUBROUTINE BarycentricWeights
 !==================================================================================================================================
 !> Computes polynomial differentiation matrix for interpolation polynomial given by set of nodes. (Algorithm 37, Kopriva book)
 !==================================================================================================================================
-PURE SUBROUTINE PolynomialDerivativeMatrix(N_in,xGP,D)
+PPURE SUBROUTINE PolynomialDerivativeMatrix(N_in,xGP,D)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -581,7 +584,7 @@ END FUNCTION ALMOSTEQUAL
 !> Uses function ALMOSTEQUAL
 !> Algorithm 34, Kopriva book
 !============================================================================================================================
-PURE SUBROUTINE LagrangeInterpolationPolys(x,N_in,xGP,wBary,L)
+PPURE SUBROUTINE LagrangeInterpolationPolys(x,N_in,xGP,wBary,L)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
