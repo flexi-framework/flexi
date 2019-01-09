@@ -58,7 +58,7 @@ CONTAINS
 !> The flux is filled for the master side, the contribution for the slave side (which is different because the inner solution
 !> is equal to \f$ U^+ \f$) is taken into account in the SurfInt routine.
 !==================================================================================================================================
-SUBROUTINE Lifting_FillFlux(UPrimface_master,UPrimface_slave,Flux,doMPISides)
+PPURE SUBROUTINE Lifting_FillFlux(UPrimface_master,UPrimface_slave,Flux,doMPISides)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc

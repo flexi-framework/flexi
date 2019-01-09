@@ -41,7 +41,7 @@ CONTAINS
 !==================================================================================================================================
 !> \brief Surface integral optimized for performance
 !==================================================================================================================================
-SUBROUTINE Lifting_SurfInt(Flux,gradU,gradU_master,gradU_slave,doMPISides)
+PPURE SUBROUTINE Lifting_SurfInt(Flux,gradU,gradU_master,gradU_slave,doMPISides)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc

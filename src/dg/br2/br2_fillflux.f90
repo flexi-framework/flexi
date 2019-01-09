@@ -45,7 +45,7 @@ CONTAINS
 !> In case one of the elements contains a FV solution, the FV integral means from the FV element have to be transformed onto the DG
 !> nodes set.
 !==================================================================================================================================
-SUBROUTINE Lifting_FillFlux(dir,UPrimface_master,UPrimface_slave,Flux,doMPISides)
+PPURE SUBROUTINE Lifting_FillFlux(dir,UPrimface_master,UPrimface_slave,Flux,doMPISides)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Mesh_Vars,       ONLY: NormVec,SurfElem

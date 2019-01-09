@@ -43,7 +43,7 @@ CONTAINS
 !> In the non conservative form of the volume integral in BR1 we first differentiate the flux (which is the solution in BR2) and
 !> then apply the metric terms. This is the fastest implementation of the volume integral and only available in strong form. 
 !==================================================================================================================================
-SUBROUTINE Lifting_VolInt_Nonconservative(UPrim,gradUx,gradUy,gradUz)
+PPURE SUBROUTINE Lifting_VolInt_Nonconservative(UPrim,gradUx,gradUy,gradUz)
 ! MODULES
 USE MOD_PreProc
 USE MOD_DG_Vars            ,ONLY: D_T
@@ -147,7 +147,7 @@ END SUBROUTINE Lifting_VolInt_Nonconservative
 !> In the conservative form, the volume integral is calculated from the transformed solution, i.e. the solution is multiplied by teh
 !> metrics terms.
 !==================================================================================================================================
-SUBROUTINE Lifting_VolInt_Conservative(dir,UPrim,gradU)
+PPURE SUBROUTINE Lifting_VolInt_Conservative(dir,UPrim,gradU)
 ! MODULES
 USE MOD_PreProc
 USE MOD_DG_Vars      ,ONLY: D_T
@@ -225,7 +225,7 @@ END SUBROUTINE Lifting_VolInt_Conservative
 !>
 !> Transform the gradient terms by multiplying them with the metrics terms
 !==================================================================================================================================
-SUBROUTINE Lifting_Metrics(dir,UPrim,Mf,Mg,Mh,UPrim_f,UPrim_g,UPrim_h)
+PPURE SUBROUTINE Lifting_Metrics(dir,UPrim,Mf,Mg,Mh,UPrim_f,UPrim_g,UPrim_h)
 ! MODULES
 USE MOD_DG_Vars,ONLY:nDOFElem
 IMPLICIT NONE
