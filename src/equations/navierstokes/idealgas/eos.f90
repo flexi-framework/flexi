@@ -24,8 +24,6 @@ PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-! Private Part ---------------------------------------------------------------------------------------------------------------------
-! Public Part ----------------------------------------------------------------------------------------------------------------------
 
 INTERFACE InitEOS
   MODULE PROCEDURE InitEOS
@@ -184,7 +182,7 @@ END SUBROUTINE InitEos
 !==================================================================================================================================
 !> Transformation from conservative variables to primitive variables for a single state
 !==================================================================================================================================
-PURE SUBROUTINE ConsToPrim(prim,cons)
+PPURE SUBROUTINE ConsToPrim(prim,cons)
 ! MODULES
 USE MOD_EOS_Vars,ONLY:KappaM1,R
 IMPLICIT NONE
@@ -215,9 +213,8 @@ END SUBROUTINE ConsToPrim
 !==================================================================================================================================
 !> Transformation from conservative variables to primitive variables on a single side
 !==================================================================================================================================
-PURE SUBROUTINE ConsToPrim_Side(Nloc,prim,cons)
+PPURE SUBROUTINE ConsToPrim_Side(Nloc,prim,cons)
 ! MODULES
-USE MOD_Eos_Vars, ONLY:KappaM1,R
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -226,33 +223,18 @@ REAL,INTENT(IN)    :: cons(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)) !< vector of conserv
 REAL,INTENT(OUT)   :: prim(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)) !< vector of primitive variables 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL             :: sRho    ! 1/Rho
-INTEGER          :: p,q
+INTEGER            :: p,q
 !==================================================================================================================================
 DO q=0,ZDIM(Nloc); DO p=0,Nloc
-  sRho=1./cons(1,p,q)
-  ! density
-  prim(1,p,q)=cons(1,p,q)
-  ! velocity
-  prim(2:3,p,q)=cons(2:3,p,q)*sRho
-#if (PP_dim==3)
-  prim(4,p,q)=cons(4,p,q)*sRho
-#else
-  prim(4,p,q)=0.
-#endif
-  ! pressure
-  prim(5,p,q)=KappaM1*(cons(5,p,q)-0.5*SUM(cons(2:4,p,q)*prim(2:4,p,q)))
-  ! temperature
-  prim(6,p,q) = prim(5,p,q)*sRho / R
+  CALL ConsToPrim(prim(:,p,q),cons(:,p,q))
 END DO; END DO
 END SUBROUTINE ConsToPrim_Side
 
 !==================================================================================================================================
 !> Transformation from conservative variables to primitive variables in the whole volume
 !==================================================================================================================================
-PURE SUBROUTINE ConsToPrim_Volume(Nloc,prim,cons)
+PPURE SUBROUTINE ConsToPrim_Volume(Nloc,prim,cons)
 ! MODULES
-USE MOD_Eos_Vars, ONLY:KappaM1,R
 USE MOD_Mesh_Vars,ONLY:nElems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -262,25 +244,11 @@ REAL,INTENT(IN)    :: cons(PP_nVar    ,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems) !< v
 REAL,INTENT(OUT)   :: prim(PP_nVarPrim,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems) !< vector of primitive variables 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL             :: sRho    ! 1/Rho
-INTEGER          :: i,j,k,iElem
+INTEGER            :: i,j,k,iElem
 !==================================================================================================================================
 DO iElem=1,nElems
   DO k=0,ZDIM(Nloc); DO j=0,Nloc; DO i=0,Nloc
-    sRho=1./cons(1,i,j,k,iElem)
-    ! density
-    prim(1,i,j,k,iElem)=cons(1,i,j,k,iElem)
-    ! velocity
-    prim(2:3,i,j,k,iElem)=cons(2:3,i,j,k,iElem)*sRho
-#if (PP_dim==3)
-    prim(4,i,j,k,iElem)=cons(4,i,j,k,iElem)*sRho
-#else
-    prim(4,i,j,k,iElem)=0.
-#endif
-    ! pressure
-    prim(5,i,j,k,iElem)=KappaM1*(cons(5,i,j,k,iElem)-0.5*SUM(cons(2:4,i,j,k,iElem)*prim(2:4,i,j,k,iElem)))
-    ! temperature
-    prim(6,i,j,k,iElem) = prim(5,i,j,k,iElem)*sRho / R
+    CALL ConsToPrim(prim(:,i,j,k,iElem),cons(:,i,j,k,iElem))
   END DO; END DO; END DO! i,j,k=0,Nloc
 END DO ! iElem
 END SUBROUTINE ConsToPrim_Volume
@@ -288,9 +256,9 @@ END SUBROUTINE ConsToPrim_Volume
 !==================================================================================================================================
 !> Transformation from primitive to conservative variables for a single state
 !==================================================================================================================================
-PURE SUBROUTINE PrimToCons(prim,cons)
+PPURE SUBROUTINE PrimToCons(prim,cons)
 ! MODULES
-USE MOD_Eos_Vars,ONLY:sKappaM1
+USE MOD_EOS_Vars,ONLY:sKappaM1
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -315,9 +283,8 @@ END SUBROUTINE PrimToCons
 !==================================================================================================================================
 !> Transformation from primitive to conservative variables on a single side
 !==================================================================================================================================
-PURE SUBROUTINE PrimToCons_Side(Nloc,prim,cons)
+PPURE SUBROUTINE PrimToCons_Side(Nloc,prim,cons)
 ! MODULES
-USE MOD_Eos_Vars,ONLY:sKappaM1
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -329,26 +296,15 @@ REAL,INTENT(OUT)  :: cons(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)) !< vector of conserva
 INTEGER           :: p,q
 !==================================================================================================================================
 DO q=0,ZDIM(Nloc); DO p=0,Nloc
-  ! density
-  cons(1,p,q)=prim(1,p,q)
-  ! momentum
-  cons(2:3,p,q)=prim(2:3,p,q)*prim(1,p,q)
-#if (PP_dim==3)
-  cons(4,p,q)=prim(4,p,q)*prim(1,p,q)
-#else
-  cons(4,p,q)=0.
-#endif
-  ! energy
-  cons(5,p,q)=sKappaM1*prim(5,p,q)+0.5*SUM(cons(2:4,p,q)*prim(2:4,p,q))
+  CALL PrimToCons(prim(:,p,q),cons(:,p,q))
 END DO; END DO ! p,q=0,Nloc
 END SUBROUTINE PrimToCons_Side
 
 !==================================================================================================================================
 !> Transformation from primitive to conservative variables in the whole volume
 !==================================================================================================================================
-PURE SUBROUTINE PrimToCons_Volume(Nloc,prim,cons)
+PPURE SUBROUTINE PrimToCons_Volume(Nloc,prim,cons)
 ! MODULES
-USE MOD_Eos_Vars,ONLY:sKappaM1
 USE MOD_Mesh_Vars,ONLY:nElems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -358,32 +314,22 @@ REAL,INTENT(IN)   :: prim(PP_nVarPrim,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems) !< ve
 REAL,INTENT(OUT)  :: cons(PP_nVar    ,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems) !< vector of conservative variables
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER           :: p,q,r,iElem
+INTEGER           :: i,j,k,iElem
 !==================================================================================================================================
 DO iElem=1,nElems
-  DO r=0,ZDIM(Nloc); DO q=0,Nloc; DO p=0,Nloc
-    ! density
-    cons(1,p,q,r,iElem)=prim(1,p,q,r,iElem)
-    ! momentum
-    cons(2:3,p,q,r,iElem)=prim(2:3,p,q,r,iElem)*prim(1,p,q,r,iElem)
-#if (PP_dim==3)
-    cons(4,p,q,r,iElem)=prim(4,p,q,r,iElem)*prim(1,p,q,r,iElem)
-#else
-    cons(4,p,q,r,iElem)=0.
-#endif
-    ! energy
-    cons(5,p,q,r,iElem)=sKappaM1*prim(5,p,q,r,iElem)+0.5*SUM(cons(2:4,p,q,r,iElem)*prim(2:4,p,q,r,iElem))
-  END DO; END DO; END DO ! p,q=0,Nloc
+  DO k=0,ZDIM(Nloc); DO j=0,Nloc; DO i=0,Nloc
+    CALL PrimToCons(prim(:,i,j,k,iElem),cons(:,i,j,k,iElem))
+  END DO; END DO; END DO
 END DO
 END SUBROUTINE PrimToCons_Volume
 
 !==================================================================================================================================
 !> Riemann solver function to get pressure at BCs
 !==================================================================================================================================
-PURE FUNCTION PRESSURE_RIEMANN(U_Prim)
+PPURE FUNCTION PRESSURE_RIEMANN(U_Prim)
 !==================================================================================================================================
 ! MODULES
-USE MOD_Eos_Vars      ,ONLY: Kappa,KappaM1,sKappaM1,sKappaP1
+USE MOD_EOS_Vars      ,ONLY: Kappa,KappaM1,sKappaM1,sKappaP1
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE 
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -392,7 +338,7 @@ REAL,INTENT(IN) :: U_Prim(PP_nVarPrim) !< vector of primitive variables
 REAL            :: PRESSURE_RIEMANN    !< pressure as the return value of the Riemann problem
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
-REAL     :: kappaFac,ar,br,P_RP
+REAL            :: kappaFac,ar,br,P_RP
 !==================================================================================================================================
 kappaFac=2.*Kappa*sKappaM1
 IF(U_Prim(2) .LE. 0.)THEN ! rarefaction
