@@ -269,7 +269,7 @@ USE MOD_FV_Reconstruction   ,ONLY: FV_PrepareSurfGradient,FV_SurfCalcGradients,F
 #endif /* FV_RECONSTRUCT */
 #endif /* FV_ENABLED */
 #if EDDYVISCOSITY
-USE MOD_EddyVisc_Vars       ,ONLY: muSGS,muSGS_master,muSGS_slave
+USE MOD_EddyVisc_Vars       ,ONLY: ComputeEddyViscosity, muSGS, muSGS_master, muSGS_slave
 USE MOD_ProlongToFace       ,ONLY: ProlongToFace
 USE MOD_TimeDisc_Vars       ,ONLY: CurrentStage
 #endif
@@ -443,33 +443,42 @@ CALL FV_CalcGradients(UPrim,FV_surf_gradU,gradUxi,gradUeta,gradUzeta &
 ! Compute the gradients using Lifting (BR1 scheme,BR2 scheme ...)
 ! The communication of the gradients is initialized within the lifting routines
 CALL Lifting(UPrim,UPrim_master,UPrim_slave,t)
-#endif /*PARABOLIC*/
 
-! 7. Compute volume integral contribution and add to Ut
-CALL VolInt(Ut)
-
-#if FV_ENABLED
-! [ 8. Volume integral (advective and viscous) for all FV elements ]
-CALL FV_VolInt(UPrim,Ut)
-#endif
-
-#if EDDYVISCOSITY && PARABOLIC
-! 9.  Prolong muSGS to face and send from slave to master
+#if EDDYVISCOSITY
+! 7. [ After the lifting we can now compute the eddy viscosity, which then has to be evaluated at the boundary. ]
+! 7.1) - [ Open receive channel ]
+! 7.2) - Compute SGS viscosity
+! 7.3).  Prolong muSGS to face and send from slave to master, first MPI sides then inner sides
+! 7.4) - After step 6. receive SGS data
 IF(CurrentStage.EQ.1) THEN
 #if USE_MPI
   CALL StartReceiveMPIData(muSGS_slave,DataSizeSideSGS,1,nSides,MPIRequest_SGS(:,RECV),SendID=2)
+#endif
+  CALL ComputeEddyViscosity()
+#if USE_MPI
   CALL ProlongToFace(1,PP_N,muSGS,muSGS_master,muSGS_slave,L_Minus,L_Plus,.TRUE.)
   CALL StartSendMPIData   (muSGS_slave,DataSizeSideSGS,1,nSides,MPIRequest_SGS(:,SEND),SendID=2)
 #endif
-  ! Prolong to face for BCSides, InnerSides and MPI sides - receive direction
   CALL ProlongToFace(1,PP_N,muSGS,muSGS_master,muSGS_slave,L_Minus,L_Plus,.FALSE.)
-#if USE_MPI  
-  CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_SGS)  ! muSGS_slave: slave -> master 
-#endif
 END IF
-#endif /* EDDYVISCOSITY && PARABOLIC */
+#endif /* EDDYVISCOSITY */
+
+#endif /*PARABOLIC*/
+
+! 8. Compute volume integral contribution and add to Ut
+CALL VolInt(Ut)
+
+#if FV_ENABLED
+! [ 9. Volume integral (advective and viscous) for all FV elements ]
+CALL FV_VolInt(UPrim,Ut)
+#endif
 
 #if PARABOLIC && USE_MPI
+#if EDDYVISCOSITY
+IF(CurrentStage.EQ.1) THEN
+  CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_SGS)  ! muSGS_slave: slave -> master 
+END IF
+#endif /* EDDYVISCOSITY */
 ! Complete send / receive for gradUx, gradUy, gradUz, started in the lifting routines
 CALL FinishExchangeMPIData(6*nNbProcs,MPIRequest_gradU) ! gradUx,y,z: slave -> master
 #endif /*PARABOLIC && USE_MPI*/

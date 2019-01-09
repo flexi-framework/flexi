@@ -82,15 +82,15 @@ PrSGS  = GETREAL('PrSGS','0.7')
 SELECT CASE(eddyViscType)
   CASE(0) ! No eddy viscosity model, set function pointers to dummy subroutines which do nothing
     ! Nothing to init
-    eddyViscosity         => DefaultEddyVisc
+    ComputeEddyViscosity  => DefaultEddyVisc
     FinalizeEddyViscosity => FinalizeDefaultEddyViscosity
   CASE(1) !Smagorinsky with optional Van Driest damping for channel flow
     CALL InitSmagorinsky()
-    eddyViscosity         => Smagorinsky
+    ComputeEddyViscosity  => Smagorinsky_Volume
     FinalizeEddyViscosity => Finalizesmagorinsky
   CASE(4) !sigma Model 2015
     CALL InitSigmaModel()
-    eddyViscosity         => SigmaModel
+    ComputeEddyViscosity  => SigmaModel_Volume
     FinalizeEddyViscosity => FinalizeSigmaModel
   CASE DEFAULT
     CALL CollectiveStop(__STAMP__,&
@@ -105,16 +105,12 @@ END SUBROUTINE
 SUBROUTINE FinalizeEddyVisc()
 ! MODULES
 USE MOD_EddyVisc_Vars
-USE MOD_Smagorinsky   ,ONLY: FinalizeSmagorinsky
 !===================================================================================================================================
 SDEALLOCATE(DeltaS)
 SDEALLOCATE(muSGS)
 SDEALLOCATE(muSGS_master)
 SDEALLOCATE(muSGS_slave)
-SELECT CASE(eddyViscType)
-  CASE(1)
-    CALL FinalizeSmagorinsky()
-END SELECT
+CALL FinalizeEddyViscosity()
 END SUBROUTINE
 
 END MODULE MOD_EddyVisc

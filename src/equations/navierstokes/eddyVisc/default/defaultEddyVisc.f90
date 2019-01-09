@@ -32,17 +32,9 @@ CONTAINS
 !> Dummy for default eddy viscosity (meaning no eddy viscosity), do nothing since the muSGS arrays will be passed here and they
 !> are zero all the time.
 !===================================================================================================================================
-SUBROUTINE DefaultEddyVisc(iElem,i,j,k,muSGS)
+SUBROUTINE DefaultEddyVisc()
 ! MODULES
 IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)                        :: iElem !< index of current element
-!> indices of the current volume point
-INTEGER,INTENT(IN)                        :: i,j,k
-REAL,INTENT(INOUT)                        :: muSGS !< local SGS viscosity
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
 !===================================================================================================================================
 END SUBROUTINE DefaultEddyVisc
 

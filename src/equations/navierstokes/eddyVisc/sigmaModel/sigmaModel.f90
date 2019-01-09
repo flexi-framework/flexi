@@ -25,11 +25,16 @@ INTERFACE InitSigmaModel
    MODULE PROCEDURE InitSigmaModel
 END INTERFACE
 
+INTERFACE SigmaModel
+   MODULE PROCEDURE SigmaModel_Scalar
+   MODULE PROCEDURE SigmaModel_Volume
+END INTERFACE
+
 INTERFACE FinalizeSigmaModel
    MODULE PROCEDURE FinalizeSigmaModel
 END INTERFACE
 
-PUBLIC::InitSigmaModel,SigmaModel,FinalizeSigmaModel
+PUBLIC::InitSigmaModel,SigmaModel_Volume,FinalizeSigmaModel
 !===================================================================================================================================
 
 CONTAINS
@@ -64,13 +69,10 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT SigmaModel...'
 ! Read the variables used for LES model
 ! SigmaModel model
 CS     = GETREAL('CS')
-IF(testcase.EQ."channel") THEN
-  ! Do Van Driest style damping or not
-  VanDriest = GETLOGICAL('VanDriest','.FALSE.')
-END IF
+! Do Van Driest style damping or not
+VanDriest = GETLOGICAL('VanDriest','.FALSE.')
 
 ! Calculate the filter width deltaS: deltaS=( Cell volume )^(1/3) / ( PP_N+1 )
-
 DO iElem=1,nElems                                        
   CellVol = 0.
   DO i=0,PP_N
@@ -91,66 +93,70 @@ END SUBROUTINE InitSigmaModel
 !===================================================================================================================================
 !> Compute SigmaModel Eddy-Visosity at a given point in the volume
 !===================================================================================================================================
-SUBROUTINE SigmaModel(iElem,i,j,k,muSGS)
+SUBROUTINE SigmaModel_scalar(gradUx,gradUy,gradUz,dens,deltaS,muSGS)
 ! MODULES
-USE MOD_PreProc
-USE MOD_EddyVisc_Vars,     ONLY:deltaS,CS
-USE MOD_Lifting_Vars,      ONLY:gradUx,gradUy,gradUz
-USE MOD_DG_Vars,           ONLY:U
+USE MOD_EddyVisc_Vars,     ONLY:CS
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)                        :: iElem             !< index of current element
-!> indices of the current volume point
-INTEGER,INTENT(IN)                        :: i,j,k
-!> gradients of the velocities w.r.t. all directions
-REAL,INTENT(INOUT)                        :: muSGS             !< local SGS viscosity
+!> Gradients in x,y,z directions
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: gradUx, gradUy, gradUz
+REAL                       ,INTENT(IN)  :: dens, deltaS
+REAL                       ,INTENT(OUT) :: muSGS
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! External procedures defined in LAPACK
 EXTERNAL DSYEV
 ! LOCAL VARIABLES
-REAL               :: sigma1,sigma2,sigma3
+REAL               :: sigma(3), lambda(3)
 REAL               :: G_mat(3,3)
-REAL               :: lambda(3)
 REAL               :: work(9)  !lapack work array
 INTEGER            :: info
 REAL               :: d_model
 !===================================================================================================================================
-G_Mat(1,1) = gradUx(2,i,j,k,iElem)*gradUx(2,i,j,k,iElem) + gradUx(3,i,j,k,iElem)*gradUx(3,i,j,k,iElem) &
-           + gradUx(4,i,j,k,iElem)*gradUx(4,i,j,k,iElem)  
-G_Mat(1,2) = gradUx(2,i,j,k,iElem)*gradUy(2,i,j,k,iElem) + gradUx(3,i,j,k,iElem)*gradUy(3,i,j,k,iElem) &
-           + gradUx(4,i,j,k,iElem)*gradUy(4,i,j,k,iElem)  
-G_Mat(1,3) = gradUx(2,i,j,k,iElem)*gradUz(2,i,j,k,iElem) + gradUx(3,i,j,k,iElem)*gradUz(3,i,j,k,iElem) &
-           + gradUx(4,i,j,k,iElem)*gradUz(4,i,j,k,iElem)  
-G_Mat(2,1) = G_Mat(1,2)  
-G_Mat(2,2) = gradUy(2,i,j,k,iElem)*gradUy(2,i,j,k,iElem) + gradUy(3,i,j,k,iElem)*gradUy(3,i,j,k,iElem) &
-           + gradUy(4,i,j,k,iElem)*gradUy(4,i,j,k,iElem)  
-G_Mat(2,3) = gradUy(2,i,j,k,iElem)*gradUz(2,i,j,k,iElem) + gradUy(3,i,j,k,iElem)*gradUz(3,i,j,k,iElem) &
-           + gradUy(4,i,j,k,iElem)*gradUz(4,i,j,k,iElem)  
-G_Mat(3,1) = G_Mat(1,3)  
-G_Mat(3,2) = G_Mat(2,3)  
-G_Mat(3,3) = gradUz(2,i,j,k,iElem)*gradUz(2,i,j,k,iElem) + gradUz(3,i,j,k,iElem)*gradUz(3,i,j,k,iElem) &
-           + gradUz(4,i,j,k,iElem)*gradUz(4,i,j,k,iElem)  
+G_Mat(1,1) = gradUx(2)*gradUx(2) + gradUx(3)*gradUx(3) + gradUx(4)*gradUx(4)  
+G_Mat(1,2) = gradUx(2)*gradUy(2) + gradUx(3)*gradUy(3) + gradUx(4)*gradUy(4)  
+G_Mat(1,3) = gradUx(2)*gradUz(2) + gradUx(3)*gradUz(3) + gradUx(4)*gradUz(4)  
+G_Mat(2,1) = G_Mat(1,2)
+G_Mat(2,2) = gradUy(2)*gradUy(2) + gradUy(3)*gradUy(3) + gradUy(4)*gradUy(4)  
+G_Mat(2,3) = gradUy(2)*gradUz(2) + gradUy(3)*gradUz(3) + gradUy(4)*gradUz(4)  
+G_Mat(3,1) = G_Mat(1,3)
+G_Mat(3,2) = G_Mat(2,3)
+G_Mat(3,3) = gradUz(2)*gradUz(2) + gradUz(3)*gradUz(3) + gradUz(4)*gradUz(4)  
 
-!LAPACK
+! LAPACK
 CALL DSYEV('N','U',3,G_Mat,3,lambda,work,9,info)
 IF(info .NE. 0) THEN
   WRITE(*,*)'Eigenvalue Computation failed 3D',info
   d_model = 0.
-ELSEIF(ANY(lambda.LE.0.))THEN
-  sigma1 = SQRT(MAX(0.,lambda(3)))
-  sigma2 = SQRT(MAX(0.,lambda(2)))
-  sigma3 = SQRT(MAX(0.,lambda(1)))
-  d_model = (sigma3*(sigma1-sigma2)*(sigma2-sigma3))/(sigma1**2)
 ELSE 
-  sigma1 = SQRT(lambda(3))
-  sigma2 = SQRT(lambda(2))
-  sigma3 = SQRT(lambda(1))
-  d_model = (sigma3*(sigma1-sigma2)*(sigma2-sigma3))/(sigma1**2)
+  sigma = SQRT(MAX(0.,lambda)) ! ensure were not negative
+  d_model = (sigma(3)*(sigma(1)-sigma(2))*(sigma(2)-sigma(3)))/(sigma(1)**2)
 END IF
 ! SigmaModel model
-muSGS = (CS*deltaS(iElem))**2. * d_model*U(1,i,j,k,iElem)
-END SUBROUTINE SigmaModel
+muSGS = (CS*deltaS)**2. * d_model * dens
+END SUBROUTINE SigmaModel_Scalar
+
+SUBROUTINE SigmaModel_Volume()
+! MODULES
+USE MOD_PreProc
+USE MOD_Mesh_Vars,         ONLY: nElems
+USE MOD_EddyVisc_Vars,     ONLY: muSGS, deltaS
+USE MOD_Lifting_Vars,      ONLY: gradUx, gradUy, gradUz
+USE MOD_DG_Vars,           ONLY: U
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER             :: i,j,k,iElem
+!===================================================================================================================================
+DO iElem = 1,nElems
+  DO k = 0,PP_NZ; DO j = 0,PP_N; DO i = 0,PP_N
+    CALL SigmaModel_scalar(gradUx(:,i,j,k,iElem), gradUy(:,i,j,k,iElem), gradUz(:,i,j,k,iElem), &
+                                 U(1,i,j,k,iElem),        deltaS(iElem),  muSGS(1,i,j,k,iElem))
+  END DO; END DO; END DO ! i,j,k
+END DO
+END SUBROUTINE SigmaModel_Volume
 
 !===============================================================================================================================
 !> Deallocate arrays and finalize variables used by SigmaModel SGS model

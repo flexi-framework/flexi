@@ -22,14 +22,7 @@ PUBLIC
 SAVE
 
 ABSTRACT INTERFACE
-!===================================================================================================================================
-!> Compute Eddy-Visosity at a given point in the volume with the chosen eddy viscosity model
-!===================================================================================================================================
-  SUBROUTINE EddyViscInt(iElem,i,j,k,muSGS)
-  INTEGER,INTENT(IN)  :: iElem  !< index of current element
-  !> indices of the c
-  INTEGER,INTENT(IN)  :: i,j,k
-  REAL,INTENT(INOUT)  :: muSGS  !< local SGS viscosity
+  SUBROUTINE EddyViscInt()
   END SUBROUTINE
 END INTERFACE
 
@@ -45,10 +38,11 @@ END INTERFACE
 ! GLOBAL VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
 INTEGER                                      :: eddyViscType          !< type of eddy viscosity
-PROCEDURE(EddyViscInt),POINTER               :: eddyViscosity         !< pointer to routine for computing volume eddy viscosity
+PROCEDURE(EddyViscInt),POINTER               :: ComputeEddyViscosity  !< pointer to routine for computing volume eddy viscosity
 PROCEDURE(FinalizeEddyViscosityInt),POINTER  :: FinalizeEddyViscosity !< pointer tofinalize routine 
 
 !Smagosinsky Standard
+REAL,ALLOCATABLE  :: Damp(:,:,:,:,:)       !< damping factor
 REAL,ALLOCATABLE  :: DeltaS(:)             !< filter width, used by Smagorinsky modell
 REAL,ALLOCATABLE  :: muSGS(:,:,:,:,:)      !< Viscosity for the sub-grid
 REAL,ALLOCATABLE  :: muSGS_master(:,:,:,:) !< Viscosity for the sub-grid on master sides
