@@ -504,7 +504,7 @@ USE MOD_Flux         ,ONLY: EvalDiffFlux3D
 USE MOD_Riemann      ,ONLY: ViscousFlux
 #endif
 USE MOD_Riemann      ,ONLY: Riemann
-#ifdef EDDYVISCOSITY
+#if EDDYVISCOSITY
 USE MOD_EddyVisc_Vars,ONLY: muSGS_master
 #endif
 USE MOD_Testcase     ,ONLY: GetBoundaryFluxTestcase
@@ -571,7 +571,7 @@ ELSE
          gradUx_master,gradUy_master,gradUz_master,&
          gradUx_master,gradUy_master,gradUz_master,&
          NormVec&
-#ifdef EDDYVISCOSITY
+#if EDDYVISCOSITY
         ,muSGS_master(:,:,:,SideID),muSGS_master(:,:,:,SideID)&
 #endif
     )
@@ -579,7 +579,7 @@ ELSE
 #endif /*PARABOLIC*/
 
   CASE(3,4,9,91) ! Walls
-#ifdef EDDYVISCOSITY
+#if EDDYVISCOSITY
     muSGS_master(:,:,:,SideID)=0.
 #endif
     DO q=0,ZDIM(Nloc); DO p=0,Nloc
@@ -597,7 +597,7 @@ ELSE
       CALL EvalDiffFlux3D(Nloc,UPrim_boundary,&
                           gradUx_master, gradUy_master, gradUz_master, &
                           Fd_Face_loc,   Gd_Face_loc,   Hd_Face_loc    &
-#ifdef EDDYVISCOSITY
+#if EDDYVISCOSITY
                          ,muSGS_master(:,:,:,SideID) &
 #endif
                          )
@@ -650,7 +650,7 @@ ELSE
       CALL EvalDiffFlux3D(Nloc, UPrim_boundary,                              &
                           gradUx_Face_loc, gradUy_Face_loc, gradUz_Face_loc, &
                           Fd_Face_loc, Gd_Face_loc, Hd_Face_loc              &
-#ifdef EDDYVISCOSITY
+#if EDDYVISCOSITY
                          ,muSGS_master(:,:,:,SideID)                         &
 #endif
       )

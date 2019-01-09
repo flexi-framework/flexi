@@ -29,7 +29,7 @@ INTEGER,ALLOCATABLE :: MPIRequest_Flux(:,:)     !< communication handle for the 
 INTEGER,ALLOCATABLE :: MPIRequest_FV_Elems(:,:) !< communication handle for the FV_Elems array
 INTEGER,ALLOCATABLE :: MPIRequest_FV_gradU(:,:) !< communication handle for the slopes of the FV reconstruction
 #endif
-#ifdef EDDYVISCOSITY
+#if EDDYVISCOSITY
 INTEGER,ALLOCATABLE :: MPIRequest_SGS(:,:)      !< communication handle for the SGS Model Indicator
 #endif
 #if PARABOLIC
