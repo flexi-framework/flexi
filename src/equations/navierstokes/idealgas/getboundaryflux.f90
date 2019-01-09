@@ -500,7 +500,7 @@ USE MOD_Mesh_Vars    ,ONLY: BoundaryType,BC
 USE MOD_EOS          ,ONLY: PrimToCons,ConsToPrim
 USE MOD_ExactFunc    ,ONLY: ExactFunc
 #if PARABOLIC
-USE MOD_Flux         ,ONLY: EvalDiffFlux2D
+USE MOD_Flux         ,ONLY: EvalDiffFlux3D
 USE MOD_Riemann      ,ONLY: ViscousFlux
 #endif
 USE MOD_Riemann      ,ONLY: Riemann
@@ -594,12 +594,13 @@ ELSE
     SELECT CASE(BCType)
     CASE(3,4)
       ! Evaluate 3D Diffusion Flux with interior state and symmetry gradients
-      CALL EvalDiffFlux2D(Nloc,Fd_Face_loc,Gd_Face_loc,Hd_Face_loc,UPrim_boundary,&
-          gradUx_master, gradUy_master, gradUz_master &
+      CALL EvalDiffFlux3D(Nloc,UPrim_boundary,&
+                          gradUx_master, gradUy_master, gradUz_master, &
+                          Fd_Face_loc,   Gd_Face_loc,   Hd_Face_loc    &
 #ifdef EDDYVISCOSITY
-          ,muSGS_master(:,:,:,SideID) &
+                         ,muSGS_master(:,:,:,SideID) &
 #endif
-      )
+                         )
       IF (BCType.EQ.3) THEN
         ! Enforce energy flux is exactly zero at adiabatic wall
         Fd_Face_loc(5,:,:)=0.
@@ -646,10 +647,11 @@ ELSE
 
       ! Evaluate 3D Diffusion Flux with interior state (with normalvel=0) and symmetry gradients
       ! Only velocities will be used from state (=inner velocities, except normal vel=0)
-      CALL EvalDiffFlux2D(Nloc,Fd_Face_loc,Gd_Face_loc,Hd_Face_loc,UPrim_boundary,&
-          gradUx_Face_loc,gradUy_Face_loc,gradUz_Face_loc                         &
+      CALL EvalDiffFlux3D(Nloc, UPrim_boundary,                              &
+                          gradUx_Face_loc, gradUy_Face_loc, gradUz_Face_loc, &
+                          Fd_Face_loc, Gd_Face_loc, Hd_Face_loc              &
 #ifdef EDDYVISCOSITY
-          ,muSGS_master(:,:,:,SideID)&
+                         ,muSGS_master(:,:,:,SideID)                         &
 #endif
       )
     CASE(91)

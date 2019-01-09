@@ -334,12 +334,12 @@ END SUBROUTINE Riemann
 !==================================================================================================================================
 SUBROUTINE ViscousFlux(Nloc,F,UPrim_L,UPrim_R, &
                        gradUx_L,gradUy_L,gradUz_L,gradUx_R,gradUy_R,gradUz_R,nv&
-#ifdef EDDYVISCOSITY
+#if EDDYVISCOSITY
                       ,muSGS_L,muSGS_R&
 #endif
                       )
 ! MODULES
-USE MOD_Flux,ONLY: EvalDiffFlux2D
+USE MOD_Flux,ONLY: EvalDiffFlux3D
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -350,7 +350,7 @@ REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)   :: UPrim_L,UPrim_R
 REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)   :: gradUx_L,gradUx_R,gradUy_L,gradUy_R,gradUz_L,gradUz_R
 REAL,INTENT(IN)                                            :: nv(3,0:Nloc,0:ZDIM(Nloc)) !< normal vector
 REAL,INTENT(OUT)                                           :: F(PP_nVar,0:Nloc,0:ZDIM(Nloc)) !< viscous flux
-#ifdef EDDYVISCOSITY
+#if EDDYVISCOSITY
                                                            !> eddy viscosity left/right of the interface
 REAL,DIMENSION(1,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)             :: muSGS_L,muSGS_R
 #endif
@@ -364,14 +364,16 @@ REAL,DIMENSION(PP_nVar,0:Nloc,0:ZDIM(Nloc))            :: diffFluxX_R,diffFluxY_
 !==================================================================================================================================
 ! Don't forget the diffusion contribution, my young padawan
 ! Compute NSE Diffusion flux
-  CALL EvalDiffFlux2D(Nloc,diffFluxX_L,diffFluxY_L,diffFluxZ_L,UPrim_L,gradUx_L,gradUy_L,gradUz_L &
-#ifdef EDDYVISCOSITY
-                    ,muSGS_L&
+  CALL EvalDiffFlux3D(Nloc,UPrim_L,gradUx_L,   gradUy_L,   gradUz_L, &
+                                diffFluxX_L,diffFluxY_L,diffFluxZ_L  &
+#if EDDYVISCOSITY
+                     ,muSGS_L&
 #endif
       )
-  CALL EvalDiffFlux2D(Nloc,diffFluxX_R,diffFluxY_R,diffFluxZ_R,UPrim_R,gradUx_R,gradUy_R,gradUz_R & 
-#ifdef EDDYVISCOSITY
-                    ,muSGS_R&
+  CALL EvalDiffFlux3D(Nloc,UPrim_R,gradUx_R,   gradUy_R,   gradUz_R, &
+                                diffFluxX_R,diffFluxY_R,diffFluxZ_R  & 
+#if EDDYVISCOSITY
+                     ,muSGS_R&
 #endif
       )
 ! BR1 uses arithmetic mean of the fluxes
