@@ -65,7 +65,7 @@ USE MOD_Mesh_Vars,       ONLY: nBCSides
 USE MOD_Riemann,         ONLY: ViscousFlux
 USE MOD_Lifting_Vars,    ONLY: gradUx_master ,gradUy_master ,gradUz_master ,gradUx_slave,gradUy_slave,gradUz_slave
 #endif /*PARABOLIC*/
-#ifdef EDDYVISCOSITY
+#if EDDYVISCOSITY
 USE MOD_EddyVisc_Vars,   ONLY: muSGS_master,muSGS_slave
 #endif
 #if FV_ENABLED
@@ -140,7 +140,7 @@ DO SideID=firstSideID_wo_BC,lastSideID
       gradUx_master(:,:,:,SideID),gradUy_master(:,:,:,SideID), gradUz_master(:,:,:,SideID),&
       gradUx_slave (:,:,:,SideID),gradUy_slave (:,:,:,SideID), gradUz_slave (:,:,:,SideID),&
       NormVec(:,:,:,FV_Elems_Max(SideID),SideID)&
-#ifdef EDDYVISCOSITY
+#if EDDYVISCOSITY
       ,muSGS_master(:,:,:,SideID),muSGS_slave(:,:,:,SideID)&
 #endif
   )

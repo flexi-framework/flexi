@@ -167,9 +167,7 @@ MPIRequest_FV_Elems = MPI_REQUEST_NULL
 MPIRequest_FV_gradU = MPI_REQUEST_NULL
 #endif
 #if EDDYVISCOSITY
-ALLOCATE(MPIRequest_DeltaS(nNbProcs,2) )
 ALLOCATE(MPIRequest_SGS(nNbProcs,2) )
-MPIRequest_DeltaS  = MPI_REQUEST_NULL
 MPIRequest_SGS     = MPI_REQUEST_NULL
 #endif
 
@@ -371,8 +369,8 @@ SDEALLOCATE(MPIRequest_Flux)
 SDEALLOCATE(MPIRequest_FV_Elems)
 SDEALLOCATE(MPIRequest_FV_gradU)
 #endif
-#ifdef EDDYVISCOSITY
-SDEALLOCATE(MPIRequest_DeltaS)
+#if EDDYVISCOSITY
+SDEALLOCATE(MPIRequest_SGS)
 #endif
 #if PARABOLIC
 SDEALLOCATE(MPIRequest_gradU)

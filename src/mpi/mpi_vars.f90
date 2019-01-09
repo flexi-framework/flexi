@@ -30,7 +30,6 @@ INTEGER,ALLOCATABLE :: MPIRequest_FV_Elems(:,:) !< communication handle for the 
 INTEGER,ALLOCATABLE :: MPIRequest_FV_gradU(:,:) !< communication handle for the slopes of the FV reconstruction
 #endif
 #ifdef EDDYVISCOSITY
-INTEGER,ALLOCATABLE :: MPIRequest_DeltaS(:,:)   !< communication handle for the surface flux used for overintegration
 INTEGER,ALLOCATABLE :: MPIRequest_SGS(:,:)      !< communication handle for the SGS Model Indicator
 #endif
 #if PARABOLIC

@@ -65,6 +65,11 @@ CALL prms%CreateRealArrayOption('RefState',     "State(s) in primitive variables
 CALL prms%CreateStringOption(   'BCStateFile',  "File containing the reference solution on the boundary to be used as BC.")
 
 CALL DefineParametersRiemann()
+#if EDDYVISCOSITY
+CALL prms%CreateIntFromStringOption(   'eddyViscType', "(0) none: No eddy viscosity, (1) Smagorinsky",'none')
+CALL addStrListEntry('eddyViscType','none',0)
+CALL addStrListEntry('eddyViscType','smagorinsky',1)
+#endif
 #ifdef SPLIT_DG
 CALL DefineParametersSplitDG()
 #endif /*SPLIT_DG*/
@@ -86,7 +91,7 @@ USE MOD_Testcase          ,ONLY: InitTestcase
 USE MOD_Riemann           ,ONLY: InitRiemann
 USE MOD_GetBoundaryFlux,   ONLY: InitBC
 USE MOD_CalcTimeStep      ,ONLY: InitCalctimestep
-#ifdef EDDYVISCOSITY
+#if EDDYVISCOSITY
 USE MOD_EddyVisc          ,ONLY: InitEddyVisc
 #endif
 #ifdef SPLIT_DG
@@ -154,7 +159,7 @@ CALL InitRiemann()
 ! Initialize timestep calculation
 CALL InitCalctimestep()
 
-#ifdef EDDYVISCOSITY 
+#if EDDYVISCOSITY 
 ! Initialize eddyViscosity
 CALL InitEddyVisc()
 #endif
@@ -287,7 +292,7 @@ USE MOD_Equation_Vars
 USE MOD_Testcase        ,ONLY: FinalizeTestcase
 USE MOD_Riemann         ,ONLY: FinalizeRiemann
 USE MOD_CalcTimeStep    ,ONLY: FinalizeCalctimestep
-#ifdef EDDYVISCOSITY
+#if EDDYVISCOSITY
 USE MOD_EddyVisc        ,ONLY: FinalizeEddyVisc
 #endif /*EDDYVISCOSITY*/
 USE MOD_GetBoundaryFlux, ONLY: FinalizeBC
@@ -296,7 +301,7 @@ IMPLICIT NONE
 CALL FinalizeTestcase()
 CALL FinalizeRiemann()
 CALL FinalizeCalctimestep()
-#ifdef EDDYVISCOSITY
+#if EDDYVISCOSITY
 CALL FinalizeEddyVisc()
 #endif /*EDDYVISCOSITY*/
 CALL FinalizeBC()

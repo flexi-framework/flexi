@@ -114,7 +114,7 @@ USE MOD_TimeDisc_Vars,ONLY:CFLScale,ViscousTimeStep,dtElem
 #if FV_ENABLED
 USE MOD_FV_Vars      ,ONLY: FV_Elems
 #endif
-#ifdef EDDYVISCOSITY
+#if EDDYVISCOSITY
 USE MOD_EddyVisc_Vars, ONLY: muSGS
 #endif
 IMPLICIT NONE
@@ -143,8 +143,8 @@ DO iElem=1,nElems
 #if PARABOLIC
   Max_Lambda_v=0.
 #endif /*PARABOLIC*/
-#ifdef EDDYVISCOSITY
-  muSGSMax = MAXVAL(1,:,:,:,iElem)
+#if EDDYVISCOSITY
+  muSGSMax = MAXVAL(muSGS(1,:,:,:,iElem))
 #endif
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     ! TODO: ATTENTION: Temperature of UE not filled!!!
@@ -172,7 +172,7 @@ DO iElem=1,nElems
     ! Viscous Eigenvalues
     prim = UE(PRIM)
     mu=VISCOSITY_PRIM(prim)
-#ifdef EDDYVISCOSITY
+#if EDDYVISCOSITY
     mu = mu+muSGSMax
 #endif
     Max_Lambda_v=MAX(Max_Lambda_v,mu*UE(SRHO)*MetricsVisc(:,i,j,k,iElem,FVE))
