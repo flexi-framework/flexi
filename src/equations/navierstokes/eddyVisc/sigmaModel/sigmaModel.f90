@@ -26,7 +26,7 @@ INTERFACE InitSigmaModel
 END INTERFACE
 
 INTERFACE SigmaModel
-   MODULE PROCEDURE SigmaModel_Scalar
+   MODULE PROCEDURE SigmaModel_Point
    MODULE PROCEDURE SigmaModel_Volume
 END INTERFACE
 
@@ -91,9 +91,9 @@ SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitSigmaModel
 
 !===================================================================================================================================
-!> Compute SigmaModel Eddy-Visosity at a given point in the volume
+!> Compute SigmaModel Eddy-Visosity
 !===================================================================================================================================
-SUBROUTINE SigmaModel_scalar(gradUx,gradUy,gradUz,dens,deltaS,muSGS)
+SUBROUTINE SigmaModel_Point(gradUx,gradUy,gradUz,dens,deltaS,muSGS)
 ! MODULES
 USE MOD_EddyVisc_Vars,     ONLY:CS
 IMPLICIT NONE
@@ -134,8 +134,11 @@ ELSE
 END IF
 ! SigmaModel model
 muSGS = (CS*deltaS)**2. * d_model * dens
-END SUBROUTINE SigmaModel_Scalar
+END SUBROUTINE SigmaModel_Point
 
+!===================================================================================================================================
+!> Compute SigmaModel Eddy-Visosity for the volume
+!===================================================================================================================================
 SUBROUTINE SigmaModel_Volume()
 ! MODULES
 USE MOD_PreProc
@@ -152,7 +155,7 @@ INTEGER             :: i,j,k,iElem
 !===================================================================================================================================
 DO iElem = 1,nElems
   DO k = 0,PP_NZ; DO j = 0,PP_N; DO i = 0,PP_N
-    CALL SigmaModel_scalar(gradUx(:,i,j,k,iElem), gradUy(:,i,j,k,iElem), gradUz(:,i,j,k,iElem), &
+    CALL SigmaModel_Point(gradUx(:,i,j,k,iElem), gradUy(:,i,j,k,iElem), gradUz(:,i,j,k,iElem), &
                                  U(1,i,j,k,iElem),        deltaS(iElem),  muSGS(1,i,j,k,iElem))
   END DO; END DO; END DO ! i,j,k
 END DO

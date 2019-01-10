@@ -27,27 +27,27 @@ PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 
 INTERFACE EvalFlux3D
-  MODULE PROCEDURE EvalFlux3D_scalar
-  MODULE PROCEDURE EvalFlux3D_3
+  MODULE PROCEDURE EvalFlux3D_Point
+  MODULE PROCEDURE EvalFlux3D_Volume
 END INTERFACE
 
 INTERFACE EvalEulerFlux1D
   MODULE PROCEDURE EvalEulerFlux1D
 END INTERFACE
+
 INTERFACE EvalEulerFlux1D_fast
   MODULE PROCEDURE EvalEulerFlux1D_fast
 END INTERFACE
 
 #if PARABOLIC
 INTERFACE EvalDiffFlux3D
-  MODULE PROCEDURE EvalDiffFlux3D_scalar
-  MODULE PROCEDURE EvalDiffFlux3D_2
-  MODULE PROCEDURE EvalDiffFlux3D_3
+  MODULE PROCEDURE EvalDiffFlux3D_Point
+  MODULE PROCEDURE EvalDiffFlux3D_Surface
+  MODULE PROCEDURE EvalDiffFlux3D_Volume
 END INTERFACE
-
 #endif /*PARABOLIC*/
 
-PUBLIC::EvalFlux3D,EvalEulerFlux1D,EvalEulerFlux1D_fast
+PUBLIC::EvalFlux3D, EvalEulerFlux1D, EvalEulerFlux1D_fast
 #if PARABOLIC
 PUBLIC::EvalDiffFlux3D
 #endif /*PARABOLIC*/
@@ -58,7 +58,7 @@ CONTAINS
 !==================================================================================================================================
 !> Compute Navier-Stokes fluxes using the conservative variables and derivatives
 !==================================================================================================================================
-PPURE SUBROUTINE EvalFlux3D_scalar(U,UPrim,f,g,h)
+PPURE SUBROUTINE EvalFlux3D_Point(U,UPrim,f,g,h)
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -112,15 +112,15 @@ g(5)= Ep*UPrim(3)                 ! (rho*e+p)*v
 ! Euler fluxes z-direction
 h   = 0.
 #endif
-END SUBROUTINE EvalFlux3D_scalar
+END SUBROUTINE EvalFlux3D_Point
 
-PPURE SUBROUTINE EvalFlux3D_3(Nloc,U,UPrim,f,g,h)
+PPURE SUBROUTINE EvalFlux3D_Volume(Nloc,U,UPrim,f,g,h)
 ! MODULES
 USE MOD_PreProc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER                                               ,INTENT(IN)  :: Nloc
+INTEGER                                               ,INTENT(IN)  :: Nloc     !< Polynomial degree
 REAL,DIMENSION(PP_nVar    ,0:Nloc,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U        !< Conservative solution
 REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim    !< Primitive solution
 !> Physical fluxes in x,y,z directions
@@ -130,16 +130,16 @@ REAL,DIMENSION(PP_nVar    ,0:Nloc,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: f,g,h
 INTEGER             :: i,j,k
 !==================================================================================================================================
 DO k=0,ZDIM(Nloc);  DO j=0,Nloc; DO i=0,Nloc
-  CALL EvalFlux3D_scalar(U(:,i,j,k),UPrim(:,i,j,k),f(:,i,j,k),g(:,i,j,k),h(:,i,j,k))
+  CALL EvalFlux3D_Point(U(:,i,j,k),UPrim(:,i,j,k),f(:,i,j,k),g(:,i,j,k),h(:,i,j,k))
 END DO; END DO; END DO ! i,j,k
-END SUBROUTINE EvalFlux3D_3
+END SUBROUTINE EvalFlux3D_Volume
 
 
 #if PARABOLIC
 !==================================================================================================================================
-!> Compute Navier-Stokes diffusive fluxes using the conservative variables and derivatives for every volume Gauss point.
+!> Compute Navier-Stokes diffusive flux using the conservative variables and derivatives.
 !==================================================================================================================================
-PPURE SUBROUTINE EvalDiffFlux3D_scalar(UPrim,gradUx,gradUy,gradUz,f,g,h &
+PPURE SUBROUTINE EvalDiffFlux3D_Point(UPrim,gradUx,gradUy,gradUz,f,g,h &
 #if EDDYVISCOSITY
                                       ,muSGS &
 #endif
@@ -160,7 +160,7 @@ REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: gradUx,gradUy,gradUz
 !> Physical fluxes in x,y,z directions
 REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: f,g,h
 #if EDDYVISCOSITY
-REAL                       ,INTENT(IN)  :: muSGS
+REAL                       ,INTENT(IN)  :: muSGS                !< SGS viscosity
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -233,9 +233,12 @@ g(5) = -tau_xy*v1-tau_yy*v2-lambda*gradT2  ! F_euler-(tau_yx*u+tau_yy*v+tau_yz*w
 h    = 0.
 #endif
 END ASSOCIATE
-END SUBROUTINE EvalDiffFlux3D_scalar
+END SUBROUTINE EvalDiffFlux3D_Point
 
-SUBROUTINE EvalDiffFlux3D_3(UPrim,gradUx,gradUy,gradUz,f,g,h,iElem)
+!==================================================================================================================================
+!> Compute Navier-Stokes diffusive flux for the volume
+!==================================================================================================================================
+SUBROUTINE EvalDiffFlux3D_Volume(UPrim,gradUx,gradUy,gradUz,f,g,h,iElem)
 ! MODULES
 USE MOD_PreProc
 #if EDDYVISCOSITY
@@ -255,16 +258,19 @@ INTEGER, INTENT(IN)                                           :: iElem          
 INTEGER             :: i,j,k
 !==================================================================================================================================
 DO k=0,PP_NZ;  DO j=0,PP_N; DO i=0,PP_N
-  CALL EvalDiffFlux3D_scalar(Uprim(:,i,j,k),gradUx(:,i,j,k),gradUy(:,i,j,k),gradUz(:,i,j,k), &
+  CALL EvalDiffFlux3D_Point(Uprim(:,i,j,k),gradUx(:,i,j,k),gradUy(:,i,j,k),gradUz(:,i,j,k), &
                                                  f(:,i,j,k),     g(:,i,j,k),     h(:,i,j,k)  &
 #if EDDYVISCOSITY
                             ,muSGS(1,i,j,k,iElem)&
 #endif
                             )
 END DO; END DO; END DO ! i,j,k
-END SUBROUTINE EvalDiffFlux3D_3
+END SUBROUTINE EvalDiffFlux3D_Volume
 
-PPURE SUBROUTINE EvalDiffFlux3D_2(Nloc,UPrim,gradUx,gradUy,gradUz,f,g,h &
+!==================================================================================================================================
+!> Compute Navier-Stokes diffusive flux for the surface
+!==================================================================================================================================
+PPURE SUBROUTINE EvalDiffFlux3D_Surface(Nloc,UPrim,gradUx,gradUy,gradUz,f,g,h &
 #if EDDYVISCOSITY
                                  ,muSGS &
 #endif
@@ -276,24 +282,26 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 INTEGER                                        ,INTENT(IN)  :: Nloc                 !< Polynomial degree of input solution
 REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim                !< Solution vector
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: gradUx,gradUy,gradUz !< Gradients in x,y,z directions
-REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: f,g,h                !< Cartesian fluxes (iVar,i,j,k)
+!> Gradients in x,y,z directions
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: gradUx,gradUy,gradUz
+!> Physical fluxes in x,y,z directions
+REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: f,g,h
 #if EDDYVISCOSITY
-REAL,DIMENSION(1          ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: muSGS
+REAL,DIMENSION(1          ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: muSGS                !< SGS viscosity
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER             :: i,j
 !==================================================================================================================================
 DO j=0,ZDIM(Nloc); DO i=0,PP_N
-  CALL EvalDiffFlux3D_scalar(Uprim(:,i,j),gradUx(:,i,j),gradUy(:,i,j),gradUz(:,i,j), &
+  CALL EvalDiffFlux3D_Point(Uprim(:,i,j),gradUx(:,i,j),gradUy(:,i,j),gradUz(:,i,j), &
                                                f(:,i,j),     g(:,i,j),     h(:,i,j)  &
 #if EDDYVISCOSITY
                             ,muSGS(1,i,j) &
 #endif
                             )
 END DO; END DO ! i,j
-END SUBROUTINE EvalDiffFlux3D_2
+END SUBROUTINE EvalDiffFlux3D_Surface
 #endif /*PARABOLIC*/
 
 

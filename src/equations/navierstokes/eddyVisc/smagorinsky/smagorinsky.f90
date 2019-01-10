@@ -26,7 +26,7 @@ INTERFACE InitSmagorinsky
 END INTERFACE
 
 INTERFACE Smagorinsky
-   MODULE PROCEDURE Smagorinsky_Scalar
+   MODULE PROCEDURE Smagorinsky_Point
    MODULE PROCEDURE Smagorinsky_Volume
 END INTERFACE
 
@@ -100,9 +100,9 @@ SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitSmagorinsky
 
 !===================================================================================================================================
-!> Compute Smagorinsky Eddy-Visosity at a given point in the volume
+!> Compute Smagorinsky Eddy-Visosity
 !===================================================================================================================================
-PPURE SUBROUTINE Smagorinsky_Scalar(gradUx,gradUy,gradUz,dens,damp,muSGS)
+PPURE SUBROUTINE Smagorinsky_Point(gradUx,gradUy,gradUz,dens,damp,muSGS)
 ! MODULES
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -124,8 +124,11 @@ S_eN = SQRT ( 2.*(gradUx(2)**2. + gradUy(3)**2. + gradUz(4)**2.) &
 ! Smago: (damp**2 * CS * deltaS)**2. * S_eN * rho
 ! we store the first constant term in damp
 muSGS = damp * S_eN * dens
-END SUBROUTINE Smagorinsky_Scalar
+END SUBROUTINE Smagorinsky_Point
 
+!===================================================================================================================================
+!> Compute Smagorinsky Eddy-Visosity for the volume
+!===================================================================================================================================
 SUBROUTINE Smagorinsky_Volume()
 ! MODULES
 USE MOD_PreProc
@@ -142,7 +145,7 @@ INTEGER             :: i,j,k,iElem
 !===================================================================================================================================
 DO iElem = 1,nElems
   DO k = 0,PP_NZ; DO j = 0,PP_N; DO i = 0,PP_N
-    CALL Smagorinsky_scalar(gradUx(:,i,j,k,iElem), gradUy(:,i,j,k,iElem), gradUz(:,i,j,k,iElem), &
+    CALL Smagorinsky_Point(gradUx(:,i,j,k,iElem), gradUy(:,i,j,k,iElem), gradUz(:,i,j,k,iElem), &
                                  U(1,i,j,k,iElem),   damp(1,i,j,k,iElem),  muSGS(1,i,j,k,iElem))
   END DO; END DO; END DO ! i,j,k
 END DO
