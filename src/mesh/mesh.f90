@@ -73,6 +73,8 @@ CALL prms%CreateStringOption(  'BoundaryName',        "Names of boundary conditi
 CALL prms%CreateIntArrayOption('BoundaryType',        "Type of boundary conditions to be set. Format: (BC_TYPE,BC_STATE)",&
                                                       multiple=.TRUE.)
 CALL prms%CreateLogicalOption( 'writePartitionInfo',  "Write information about MPI partitions into a file.",'.FALSE.')
+CALL prms%CreateIntOption(     'NGeoOverride',        "Override switch for NGeo. Interpolate mesh to different NGeo." //&
+                                                      "<1: off, >0: Interpolate",'-1')
 END SUBROUTINE DefineParametersMesh
 
 
@@ -91,7 +93,9 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Mesh_Vars
 USE MOD_HDF5_Input
-USE MOD_Interpolation_Vars, ONLY:InterpolationInitIsDone,NodeType
+USE MOD_ChangeBasisByDim   ,ONLY:ChangeBasisVolume
+USE MOD_Interpolation      ,ONLY:GetVandermonde
+USE MOD_Interpolation_Vars, ONLY:InterpolationInitIsDone,NodeType,NodeTypeVISU
 USE MOD_Mesh_ReadIn,        ONLY:readMesh
 USE MOD_Prepare_Mesh,       ONLY:setLocalSideIDs,fillMeshInfo
 USE MOD_ReadInTools,        ONLY:GETLOGICAL,GETSTR,GETREAL,GETINT
@@ -117,7 +121,7 @@ CHARACTER(LEN=255),INTENT(IN),OPTIONAL :: MeshFile_IN !< file name of mesh to be
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL              :: x(3),meshScale
-REAL,POINTER      :: coords(:,:,:,:,:)
+REAL,POINTER      :: coords(:,:,:,:,:),coordsTmp(:,:,:,:,:),Vdm_EQNGeo_EQNGeoOverride(:,:)
 INTEGER           :: iElem,i,j,k,nElemsLoc
 LOGICAL           :: validMesh
 INTEGER           :: firstMasterSide     ! lower side ID of array U_master/gradUx_master...
@@ -125,6 +129,7 @@ INTEGER           :: lastMasterSide      ! upper side ID of array U_master/gradU
 INTEGER           :: firstSlaveSide      ! lower side ID of array U_slave/gradUx_slave...
 INTEGER           :: lastSlaveSide       ! upper side ID of array U_slave/gradUx_slave...
 INTEGER           :: iSide,LocSideID,SideID
+INTEGER           :: NGeoOverride
 !==================================================================================================================================
 IF((.NOT.InterpolationInitIsDone).OR.MeshInitIsDone) THEN
   CALL CollectiveStop(__STAMP__,&
@@ -179,6 +184,30 @@ ELSE
   coords=>NodeCoords
   nElemsLoc=nElems
 ENDIF
+
+NGeoOverride=GETINT('NGeoOverride','-1')
+IF(NGeoOverride.GT.0)THEN
+  ALLOCATE(CoordsTmp(3,0:NGeoOverride,0:NGeoOverride,0:NGeoOverride,nElemsLoc))
+  ALLOCATE(Vdm_EQNGeo_EQNGeoOverride(0:NGeoOverride,0:NGeo))
+  CALL GetVandermonde(Ngeo, NodeTypeVISU, NgeoOverride, NodeTypeVISU, Vdm_EQNgeo_EQNgeoOverride, modal=.FALSE.)
+  DO iElem=1,nElemsLoc
+    CALL ChangeBasisVolume(3,Ngeo,NgeoOverride,Vdm_EQNGeo_EQNGeoOverride,coords(:,:,:,:,iElem),coordsTmp(:,:,:,:,iElem))
+  END DO
+  ! cleanup
+  IF(interpolateFromTree)THEN
+    DEALLOCATE(TreeCoords)
+    ALLOCATE(TreeCoords(3,0:NGeoOverride,0:NGeoOverride,0:NGeoOverride,nElemsLoc))
+    coords=>TreeCoords
+  ELSE
+    DEALLOCATE(NodeCoords)
+    ALLOCATE(NodeCoords(3,0:NGeoOverride,0:NGeoOverride,0:NGeoOverride,nElemsLoc))
+    coords=>NodeCoords
+  END IF
+  Coords = CoordsTmp
+  NGeo = NGeoOverride
+  DEALLOCATE(CoordsTmp, Vdm_EQNGeo_EQNGeoOverride)
+END IF
+
 SWRITE(UNIT_StdOut,'(a3,a30,a3,i0)')' | ','Ngeo',' | ', Ngeo
 
 ! scale and deform mesh if desired (warning: no mesh output!)
