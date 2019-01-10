@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -55,7 +55,7 @@ CONTAINS
 !> The additional variables are stored in the datasets 'ElemData' (elementwise data) and 'FieldData' (pointwise data).
 !> Also a list of all available boundary names is created for surface visualization.
 !===================================================================================================================================
-SUBROUTINE visu_getVarNamesAndFileType(statefile,meshfile,varnames_loc, bcnames_loc) 
+SUBROUTINE visu_getVarNamesAndFileType(statefile,meshfile,varnames_loc, bcnames_loc)
 USE MOD_Globals
 USE MOD_Visu_Vars      ,ONLY: FileType,VarNamesHDF5,nBCNamesAll
 USE MOD_HDF5_Input     ,ONLY: OpenDataFile,CloseDataFile,GetDataSize,GetVarNames,ISVALIDMESHFILE,ISVALIDHDF5FILE,ReadAttribute
@@ -64,7 +64,7 @@ USE MOD_IO_HDF5        ,ONLY: GetDatasetNamesInGroup,File_ID
 USE MOD_StringTools    ,ONLY: STRICMP
 USE MOD_EOS_Posti_Vars ,ONLY: DepNames,nVarDepEOS
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=255),INTENT(IN)                       :: statefile
 CHARACTER(LEN=*)  ,INTENT(IN)                       :: meshfile
 CHARACTER(LEN=255),INTENT(INOUT),ALLOCATABLE,TARGET :: varnames_loc(:)
@@ -99,10 +99,10 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! other file
         DO i=1,SIZE(VarNamesHDF5)
           sameVars = sameVars.AND.(STRICMP(VarNamesHDF5(i), DepNames(i)))
         END DO
-      ELSE 
+      ELSE
         sameVars=.FALSE.
       END IF
-    ELSE 
+    ELSE
       sameVars=.FALSE.
     END IF
 
@@ -147,8 +147,8 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! other file
       END IF
     END IF
     IF (.NOT.VarNamesExist) CYCLE
-    
-    ! increase array 'varnames_loc'  
+
+    ! increase array 'varnames_loc'
     IF (nVar.GT.0) THEN
       ALLOCATE(tmp(nVar))
       tmp = varnames_loc
@@ -158,8 +158,8 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! other file
     IF (nVar.GT.0) varnames_loc(1:nVar) = tmp(1:nVar)
     SDEALLOCATE(tmp)
 
-    ! copy new varnames from varnames_tmp to varnames_loc 
-    DO j=1,SIZE(varnames_tmp) 
+    ! copy new varnames from varnames_tmp to varnames_loc
+    DO j=1,SIZE(varnames_tmp)
       varnames_loc(nVar+j) = TRIM(datasetNames(i))//":"//TRIM(varnames_tmp(j))
     END DO
     nVar = nVar + SIZE(varnames_tmp)
@@ -193,10 +193,10 @@ END IF
 END SUBROUTINE visu_getVarNamesAndFileType
 
 !===================================================================================================================================
-!> This routine is used to prepare everything we need to visualize data from a statefile. 
+!> This routine is used to prepare everything we need to visualize data from a statefile.
 !> This includes:
 !> * Get the mesh file
-!> * Read the desired visualization polynomial degree, the visualization dimennsion, the node type we want to visualize on and the 
+!> * Read the desired visualization polynomial degree, the visualization dimennsion, the node type we want to visualize on and the
 !>   Dg only option
 !> * Decide whether the state file, the mesh file, the visualization polynomial degree or the dg only option changed. This is
 !>   needed to decide what parts of the visualization routines should be called.
@@ -215,10 +215,11 @@ USE MOD_HDF5_Input         ,ONLY: ISVALIDMESHFILE,ISVALIDHDF5FILE,GetArrayAndNam
 USE MOD_HDF5_Input         ,ONLY: ReadAttribute,File_ID,OpenDataFile,GetDataProps,CloseDataFile,ReadArray,DatasetExists
 USE MOD_Interpolation_Vars ,ONLY: NodeType
 USE MOD_Output_Vars        ,ONLY: ProjectName
-USE MOD_StringTools        ,ONLY: STRICMP
+USE MOD_StringTools        ,ONLY: STRICMP,INTTOSTR
 USE MOD_ReadInTools        ,ONLY: prms,GETINT,GETLOGICAL,addStrListEntry,GETSTR,CountOption,FinalizeParameters
 USE MOD_Posti_Mappings     ,ONLY: Build_FV_DG_distribution,Build_mapDepToCalc_mapAllVarsToVisuVars
 USE MOD_Visu_Avg2D         ,ONLY: InitAverage2D,BuildVandermonds_Avg2D
+USE MOD_StringTools        ,ONLY: INTTOSTR
 IMPLICIT NONE
 CHARACTER(LEN=255),INTENT(IN)    :: statefile
 CHARACTER(LEN=255),INTENT(INOUT) :: postifile
@@ -237,13 +238,15 @@ CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 
 ! read the meshfile attribute from statefile
 CALL ReadAttribute(File_ID,'MeshFile',    1,StrScalar =MeshFile_state)
+! get properties
+CALL GetDataProps(nVar_State,PP_N,nElems_State,NodeType_State)
 
 ! read options from posti parameter file
 CALL prms%read_options(postifile)
-NVisu             = GETINT("NVisu")
-! again read MeshFile from posti prm file (this overwrites the MeshFile read from the state file)
+NVisu             = GETINT("NVisu",INTTOSTR(PP_N))
 
-Meshfile          =  GETSTR("MeshFile",MeshFile_state) 
+! again read MeshFile from posti prm file (this overwrites the MeshFile read from the state file)
+Meshfile          =  GETSTR("MeshFile",MeshFile_state)
 IF (.NOT.FILEEXISTS(MeshFile)) THEN
   !!!!!!
   ! WARNING: GETCWD is a GNU extension to the Fortran standard and will probably not work on other compilers
@@ -269,7 +272,7 @@ CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 ! HDF5 Output for avg2D
 IF (Avg2D) Avg2DHDF5Output = GETLOGICAL("Avg2DHDF5Output")
 
-! check if state, mesh, NVisu, DGonly or Avg2D changed 
+! check if state, mesh, NVisu, DGonly or Avg2D changed
 changedStateFile = .NOT.STRICMP(statefile,statefile_old)
 changedMeshFile  = .NOT.(STRICMP(MeshFile,MeshFile_old))
 changedDGonly    = (DGonly.NEQV.DGonly_old)
@@ -280,16 +283,22 @@ SWRITE(*,*) " mesh file old -> new: ", TRIM(MeshFile_old) , " -> ",TRIM(MeshFile
 
 ! if Mesh or State changed readin some more attributes/parameters
 IF (changedStateFile.OR.changedMeshFile) THEN
-  CALL GetDataProps(nVar_State,PP_N,nElems_State,NodeType_State)
   IF (.NOT.STRICMP(NodeType_State, NodeType)) THEN
     CALL CollectiveStop(__STAMP__, &
         "NodeType of state does not match with NodeType the visu-posti is compiled with!")
   END IF
   CALL ReadAttribute(File_ID,'Project_Name',1,StrScalar =ProjectName)
   CALL ReadAttribute(File_ID,'Time',        1,RealScalar=OutputTime)
+  ! If the polynomial degree is changing, we could need new mesh mappings.
+  IF (NState_old.NE.PP_N) changedMeshFile = .TRUE.
 END IF
 
 CALL CloseDataFile()
+
+! Polynomial degree for calculations
+NCalc             = GETINT("NCalc",INTTOSTR(PP_N))
+IF (NCalc.LE.0) NCalc = PP_N
+changedNCalc      = NCalc.NE.NCalc_old
 
 ! Output of averaged data is only available for NVisu = PP_N and NodeTypeVisuPosti=NodeType_State
 ! These settings are enforced here!
@@ -300,7 +309,7 @@ END IF
 ! Check for changed visualization basis here to take change done for average output into account
 changedNVisu     = ((NVisu.NE.NVisu_old) .OR. (NodeTypeVisuPosti.NE.NodeTypeVisuPosti_old))
 
-! set number of dependent and raw variables 
+! set number of dependent and raw variables
 SDEALLOCATE(DepTable)
 SDEALLOCATE(DepSurfaceOnly)
 SDEALLOCATE(DepVolumeOnly)
@@ -314,7 +323,7 @@ IF (STRICMP(FileType,'State')) THEN
   DepTable = DepTableEOS
   DepSurfaceOnly = DepSurfaceOnlyEOS
   DepVolumeOnly  = DepVolumeOnlyEOS
-ELSE 
+ELSE
   StateFileMode = .FALSE.
   nVarDep = 0
   ALLOCATE(DepTable(nVarDep,0:nVarDep))
@@ -327,8 +336,8 @@ END IF
 
 ! build distribution of FV and DG elements, which is stored in FV_Elems_loc
 IF (changedStateFile.OR.changedMeshFile.OR.changedDGonly) THEN
-  CALL Build_FV_DG_distribution(statefile) 
-END IF 
+  CALL Build_FV_DG_distribution(statefile)
+END IF
 
 ! reset withDGOperator flag and check if it is needed due to existing FV elements
 withDGOperator = .FALSE.
@@ -345,7 +354,7 @@ CALL Build_mapDepToCalc_mapAllVarsToVisuVars()
 
 IF (Avg2D) THEN
   CALL InitAverage2D()
-  CALL BuildVandermonds_Avg2D(PP_N,NCalc_FV)
+  CALL BuildVandermonds_Avg2D(NCalc,NCalc_FV)
 END IF
 
 changedWithDGOperator = (withDGOperator.NEQV.withDGOperator_old)
@@ -369,15 +378,16 @@ USE MOD_Posti_Calc          ,ONLY: CalcQuantities_FV,CalcSurfQuantities_FV
 USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_FV,ConvertToSurfVisu_FV
 #endif
 USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_DG,ConvertToSurfVisu_DG,ConvertToVisu_GenericData
-USE MOD_ReadInTools         ,ONLY: prms,FinalizeParameters,ExtractParameterFile
+USE MOD_ReadInTools         ,ONLY: prms,FinalizeParameters,ExtractParameterFile,PrintDefaultParameterFile
 USE MOD_StringTools         ,ONLY: STRICMP
 USE MOD_Posti_VisuMesh      ,ONLY: BuildVisuCoords,BuildSurfVisuCoords
 USE MOD_Posti_Mappings      ,ONLY: Build_mapBCSides
 USE MOD_Visu_Avg2D          ,ONLY: Average2D,WriteAverageToHDF5
 USE MOD_Interpolation_Vars  ,ONLY: NodeType,NodeTypeVISUFVEqui
+USE MOD_IO_HDF5             ,ONLY: InitMPIInfo
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)               :: mpi_comm_IN    
+INTEGER,INTENT(IN)               :: mpi_comm_IN
 CHARACTER(LEN=255),INTENT(INOUT) :: prmfile
 CHARACTER(LEN=255),INTENT(INOUT) :: postifile
 CHARACTER(LEN=255),INTENT(IN)    :: statefile
@@ -385,9 +395,6 @@ CHARACTER(LEN=255),INTENT(IN)    :: statefile
 ! LOCAL VARIABLES
 LOGICAL                          :: changedPrmFile
 !===================================================================================================================================
-CALL SetStackSizeUnlimited()
-CALL InitMPI(mpi_comm_IN) 
-SWRITE (*,*) "READING FROM: ", TRIM(statefile)
 
 !**********************************************************************************************
 ! General workflow / principles of the visu ParaView-plugin
@@ -398,7 +405,7 @@ SWRITE (*,*) "READING FROM: ", TRIM(statefile)
 !   mesh file only change if the mesh, NVisu or the distribution of DG/FV elements changes.
 !
 ! VISUALIZE MESH: Call 'VisualizeMesh' routine, which reads the mesh, interpolates it to
-!   the visu grid and writes it to VTK 3D arrays. 
+!   the visu grid and writes it to VTK 3D arrays.
 !
 ! VISUALIZE STATE:
 ! * There are two different modes:
@@ -407,34 +414,35 @@ SWRITE (*,*) "READING FROM: ", TRIM(statefile)
 !                        If FV_RECONSTRUCT is enabled and there are FV elements present in
 !                        the state, then this mode is not available.
 !                        U is read from the state file directly and the EOS is initialized to
-!                        perform ConsToPrim conversions based only on the conservative state U. 
-!                        
+!                        perform ConsToPrim conversions based only on the conservative state U.
+!
 !   - with gradiens: There are quantities that require the computation of gradients or there
 !                    are FV elements with FV_RECONSTRUCT enabled. In this case the DG operator
 !                    'DGTimeDerivative_weakForm' is called once to fill the gradients and the
 !                    reconstruction of the FV subcell method.
-!                    This requires the initialization of several modules of the FLEXI.  
+!                    This requires the initialization of several modules of the FLEXI.
 !                    U is read via a call of 'Restart'. In the DGTimeDerivative_weakForm the
-!                    primitive quantities U_Prim and gradUx/y/z as well as gradUxi/eta/zet are
+!                    primitive quantities U_Prim and gradUx/y/z as well as gradUxi/eta/zeta are
 !                    filled. These are used to calculate the visu-quantities.
-!                    
-! * The whole calculation of derived quantities is performed on PP_N and afterwards 
-!   interpolated to NVisu. This is not the case for FV elements with FV_RECONSTRUCT enabled.
+!
+! * The calculation of derived quantities is performed on a arbitrary polynomial degree
+!   NCalc and afterwards interpolated to NVisu. Default is PP_N.
+!   This is not the case for FV elements with FV_RECONSTRUCT enabled.
 !   These require to reconstruct the solution first to the visu grid and afterwards can
 !   calculate the derived quantities on the NVisu_FV grid.
-! 
+!
 ! * The dependencies of the visu-quantities on the state-quantities is stored in a dependency
 !   integer table 'DepTable' and it corresponding row/col names 'DepNames' (see eos_vars.f90).
 !   The string vector 'DepNames' contains all available quantities available for visualization
 !   and the 'DepTable' contains in a row the dependencies of a quantity on other quantities.
-!   
+!
 ! * The calculation of the visu-quantities is done in two steps:
 !   1. calculate all quantities needed for the visu-quantities (stored in UCalc)
 !   2. pick the visu-quantities from UCalc and interpolate them to NVisu (stored in UVisu)
-!                    
+!
 ! * Therefore two mappings from all available quantities to the calc-quantities and the
 !   visu-quantities exist:
-!   - 'mapAllVarsToVisuVars' is a integer array of size (1:nVarAll), where nVarAll is the total amount 
+!   - 'mapAllVarsToVisuVars' is a integer array of size (1:nVarAll), where nVarAll is the total amount
 !     of available quantities. This map contains a zero for all not-to-visu-quantities and for
 !     all quantities the index where it is stored in 'UVisu'.
 !     This mapping is filled from the 'VarName' entries in the parameter file.
@@ -442,16 +450,17 @@ SWRITE (*,*) "READING FROM: ", TRIM(statefile)
 !     This mapping is filled from the DepTable.
 !
 ! CHANGED system:
-! * There are different logical changedXXX variables, which indicated if XXX changed during 
+! * There are different logical changedXXX variables, which indicated if XXX changed during
 !   successive calls of the visu. These variables control the general workflow of the visu.
-!   - changedStateFile:     new state file 
+!   - changedStateFile:     new state file
 !   - changedMeshFile:      new mesh file (only possible if changedStateFile==TRUE)
 !   - changedVarNames:      new set of variables to visualize
 !   - changedNVisu:         new NVisu, new Nodetype
 !   - changedFV_Elems:      new distribution of FV/DG elements (only if changedStateFile==TRUE)
 !   - changedWithDGOperator: different mode, with/without gradients
 !   - changedDGonly:        the visualization of FV elements as DG elements was set or unset
-!   
+!   - changedNCalc:         the polynomial degree used for calculations changed
+!
 ! WORKFLOW:
 ! * The main steps are:
 !   1. call InitFile for FV/DG distribution and mappings
@@ -459,29 +468,44 @@ SWRITE (*,*) "READING FROM: ", TRIM(statefile)
 !   3. build mapping for BC sides that should be visualized (done after read solution since some
 !      mesh infos are needed)
 !   4. read Mesh              (if changedMeshFile)
-!   5. compute UCalc          (if changedStateFile or changedVarNames or changedDGonly) 
-!   6. convert to UVisu       (if changedStateFile or changedVarNames or changedNVisu or changedDGonly)
+!   5. compute UCalc          (if changedStateFile or changedVarNames or changedDGonly or changedNCalc)
+!   6. convert to UVisu       (if changedStateFile or changedVarNames or changedNVisu or changedDGonly or changedNCalc)
 !   7. build visu mesh        (if changedMeshFile  or changedNVisu or changedFV_Elems or changedDGonly)
 !   5. - 7. are done seperately for surface variables if surface visualization is turned on
-!   8. write VTK arrays       (always!) 
+!   8. write VTK arrays       (always!)
 !
 !**********************************************************************************************
+
+CALL SetStackSizeUnlimited()
+CALL InitMPI(mpi_comm_IN)
+CALL InitMPIInfo()
 
 CALL FinalizeParameters()
 ! Read Varnames to visualize and build calc and visu dependencies
 CALL prms%SetSection("posti")
 CALL prms%CreateStringOption( "MeshFile"        , "Custom mesh file ")
 CALL prms%CreateStringOption( "VarName"         , "Names of variables, which should be visualized.", multiple=.TRUE.)
+CALL prms%CreateLogicalOption("noVisuVars"      , "If no VarNames are given, this flags supresses visu of standard variables",&
+                                                  ".FALSE.")
 CALL prms%CreateIntOption(    "NVisu"           , "Polynomial degree at which solution is sampled for visualization.")
+CALL prms%CreateIntOption(    "NCalc"           , "Polynomial degree at which calculations are done.")
 CALL prms%CreateLogicalOption("Avg2D"           , "Average solution in z-direction",".FALSE.")
 CALL prms%CreateLogicalOption("Avg2DHDF5Output" , "Write averaged solution to HDF5 file",".FALSE.")
 CALL prms%CreateStringOption( "NodeTypeVisu"    , "NodeType for visualization. Visu, Gauss,Gauss-Lobatto,Visu_inner"    ,"VISU")
 CALL prms%CreateLogicalOption("DGonly"          , "Visualize FV elements as DG elements."    ,".FALSE.")
 CALL prms%CreateStringOption( "BoundaryName"    , "Names of boundaries for surfaces, which should be visualized.", multiple=.TRUE.)
 
+IF (doPrintHelp.GT.0) THEN
+  CALL PrintDefaultParameterFile(doPrintHelp.EQ.2,statefile) !statefile string conatains --help etc!
+  STOP
+END IF
+
+SWRITE (*,*) "READING FROM: ", TRIM(statefile)
+
 changedStateFile      = .FALSE.
 changedMeshFile       = .FALSE.
 changedNVisu          = .FALSE.
+changedNCalc          = .FALSE.
 changedVarNames       = .FALSE.
 changedFV_Elems       = .FALSE.
 changedWithDGOperator = .FALSE.
@@ -504,13 +528,14 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   IF (LEN_TRIM(prmfile).EQ.0) THEN
     changedPrmFile = .NOT.STRICMP(prmfile_old, ".flexi.ini")
   ELSE
-    changedPrmFile = (prmfile .NE. prmfile_old)  
+    changedPrmFile = (prmfile .NE. prmfile_old)
   END IF
-  SWRITE (*,*) "changedStateFile     ", changedStateFile     
-  SWRITE (*,*) "changedMeshFile      ", changedMeshFile      
-  SWRITE (*,*) "changedNVisu         ", changedNVisu         
-  SWRITE (*,*) "changedVarNames      ", changedVarNames      
-  SWRITE (*,*) "changedFV_Elems      ", changedFV_Elems      
+  SWRITE (*,*) "changedStateFile     ", changedStateFile
+  SWRITE (*,*) "changedMeshFile      ", changedMeshFile
+  SWRITE (*,*) "changedNVisu         ", changedNVisu
+  SWRITE (*,*) "changedNCalc         ", changedNCalc
+  SWRITE (*,*) "changedVarNames      ", changedVarNames
+  SWRITE (*,*) "changedFV_Elems      ", changedFV_Elems
   SWRITE (*,*) "changedWithDGOperator", changedWithDGOperator
   SWRITE (*,*) "changedDGonly        ", changedDGonly
   SWRITE (*,*) "changedAvg2D         ", changedAvg2D
@@ -524,15 +549,15 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   CALL Build_mapBCSides()
 
   ! ===== calc solution =====
-  IF (changedStateFile.OR.changedVarNames.OR.changedDGonly) THEN
+  IF (changedStateFile.OR.changedVarNames.OR.changedDGonly.OR.changedNCalc) THEN
     CALL CalcQuantities_DG()
 #if FV_ENABLED
     CALL CalcQuantities_FV()
 #endif
   END IF
   IF (doSurfVisu) THEN
-    ! calc surface solution 
-    IF (changedStateFile.OR.changedVarNames.OR.changedDGonly.OR.changedBCnames) THEN
+    ! calc surface solution
+    IF (changedStateFile.OR.changedVarNames.OR.changedDGonly.OR.changedNCalc.OR.changedBCnames) THEN
       CALL CalcSurfQuantities_DG()
 #if FV_ENABLED
       CALL CalcSurfQuantities_FV()
@@ -541,18 +566,17 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   END IF
 
   ! ===== convert solution to visu grid =====
-  IF (changedStateFile.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedAvg2D) THEN
+  IF (changedStateFile.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedNCalc.OR.changedAvg2D) THEN
     ! ===== Avg2d =====
     IF (Avg2d) THEN
       SDEALLOCATE(UVisu_DG)
       SDEALLOCATE(UVisu_FV)
       ALLOCATE(UVisu_DG(0:NVisu   ,0:NVisu   ,0:0,nElemsAvg2D_DG,nVarVisu))
       ALLOCATE(UVisu_FV(0:NVisu_FV,0:NVisu_FV,0:0,nElemsAvg2D_FV,nVarVisu))
-      CALL Average2D(nVarCalc,nVarCalc_FV,PP_N,NCalc_FV,nElems_DG,nElems_FV,NodeType,UCalc_DG,UCalc_FV,&
+      CALL Average2D(nVarCalc,nVarCalc_FV,NCalc,NCalc_FV,nElems_DG,nElems_FV,NodeType,UCalc_DG,UCalc_FV,&
           Vdm_DGToFV,Vdm_FVToDG,Vdm_DGToVisu,Vdm_FVToVisu,1,nVarDep,mapDepToCalc,&
           UVisu_DG,UVisu_FV)
-      IF (Avg2DHDF5Output) CALL WriteAverageToHDF5(nVarVisu,NVisu,NVisu_FV,NodeType,OutputTime,MeshFile_state,UVisu_DG,UVisu_FV)
-    ELSE 
+    ELSE
       CALL ConvertToVisu_DG()
 #if FV_ENABLED
       CALL ConvertToVisu_FV()
@@ -561,7 +585,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   END IF
   IF (doSurfVisu) THEN
     ! convert Surface DG solution to visu grid
-    IF (changedStateFile.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedBCnames) THEN
+    IF (changedStateFile.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedNCalc.OR.changedBCnames) THEN
       CALL ConvertToSurfVisu_DG()
 #if FV_ENABLED
       CALL ConvertToSurfVisu_FV()
@@ -586,6 +610,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
     END IF
   END IF
 
+  IF (Avg2DHDF5Output) CALL WriteAverageToHDF5(nVarVisu,NVisu,NVisu_FV,NodeType,OutputTime,MeshFile_state,UVisu_DG,UVisu_FV)
 
 END IF
 
@@ -593,11 +618,13 @@ MeshFile_old          = MeshFile
 prmfile_old           = prmfile
 statefile_old         = statefile
 NVisu_old             = NVisu
+NCalc_old             = NCalc
 nVar_State_old        = nVar_State
 withDGOperator_old    = withDGOperator
 DGonly_old            = DGonly
 Avg2D_old             = Avg2D
 NodeTypeVisuPosti_old = NodeTypeVisuPosti
+NState_old            = PP_N
 
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(*,*) "Visu finished for state file: ", TRIM(statefile)
@@ -615,6 +642,16 @@ USE MOD_Mesh_Vars, ONLY: Elem_xGP
 IMPLICIT NONE
 !===================================================================================================================================
 SWRITE (*,*) "VISU FINALIZE"
+IF(MPIRoot)THEN
+  IF(FILEEXISTS(".posti.ini"))THEN
+    OPEN(UNIT=31, FILE=".posti.ini", STATUS='old')
+    CLOSE(31, STATUS='delete')
+  END IF
+  IF(FILEEXISTS(".flexi.ini"))THEN
+    OPEN(UNIT=31, FILE=".flexi.ini", STATUS='old')
+    CLOSE(31, STATUS='delete')
+  END IF
+END IF
 prmfile_old = ""
 statefile_old = ""
 MeshFile = ""
@@ -624,6 +661,7 @@ NodeTypeVisuPosti_old = ""
 NVisu     = -1
 NVisu_old = -1
 nVar_State_old = -1
+NState_old = -1
 withDGOperator_old = .FALSE.
 hasFV_Elems = .FALSE.
 

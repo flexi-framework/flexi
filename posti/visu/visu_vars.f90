@@ -24,23 +24,26 @@ SAVE
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 !==================================================================================================================================
-CHARACTER(LEN=255)                :: fileType = ""               !< possible values: 
+CHARACTER(LEN=255)                :: fileType = ''               !< possible values: 
                                                                  !< * 'State' for FLEXI state files matching the compiled EOS
                                                                  !< * 'Generic'  
                                                                  !< * 'Mesh' 
-CHARACTER(LEN=255)                :: prmfile_old = ""            !< saves the filename of the previous FLEXI parameter file 
-CHARACTER(LEN=255)                :: statefile_old = ""          !< saves the filename of the previous state (*.h5)
-CHARACTER(LEN=255)                :: MeshFile = ""               !< acutal filename of the mesh used for visualization
-CHARACTER(LEN=255)                :: MeshFile_state = ""         !< filename of the mesh given in the state file
-CHARACTER(LEN=255)                :: MeshFile_old = ""           !< saves  previous MeshFile
+CHARACTER(LEN=255)                :: prmfile_old = ''            !< saves the filename of the previous FLEXI parameter file 
+CHARACTER(LEN=255)                :: statefile_old = ''          !< saves the filename of the previous state (*.h5)
+CHARACTER(LEN=255)                :: MeshFile = ''               !< acutal filename of the mesh used for visualization
+CHARACTER(LEN=255)                :: MeshFile_state = ''         !< filename of the mesh given in the state file
+CHARACTER(LEN=255)                :: MeshFile_old = ''           !< saves  previous MeshFile
 CHARACTER(LEN=255)                :: NodeTypeVisuPosti = "VISU"  !< NodeType used for visualization output
-CHARACTER(LEN=255)                :: NodeTypeVisuPosti_old = ""  !< saves previous NodeType
+CHARACTER(LEN=255)                :: NodeTypeVisuPosti_old = ''  !< saves previous NodeType
 INTEGER                           :: NVisu                       !< polynomial degree of the visualization
 INTEGER                           :: NVisu_old = -1              !< saves previous NVisu
 INTEGER                           :: NVisu_FV                    !< number of output points for FV elements (always == 2*(PP_N+1))
 INTEGER                           :: NCalc_FV                    !< number of calculation points for FV elements (NVisu_FV or PP_N)
+INTEGER                           :: NCalc                       !< Different polynomial degree to do calculations on
+INTEGER                           :: NCalc_old                   !< Different polynomial degree to do calculations on
 INTEGER                           :: nVar_State                  !< number of variables in the state file 
-INTEGER                           :: nVar_State_old = -1         !< saves previous nVar_State_old
+INTEGER                           :: nVar_State_old = -1         !< saves previous nVar_State
+INTEGER                           :: nState_old = -1             !< saves previous PP_N
 INTEGER                           :: nElems_DG                   !< number of DG elements in state
 INTEGER                           :: nElems_FV                   !< number of FV elements in state
 LOGICAL                           :: withDGOperator              !< flag indicating if call of 'DGTimeDerivative' is required
@@ -70,6 +73,7 @@ LOGICAL                           :: Avg2DHDF5Output             !< Flag indicat
 LOGICAL                           :: changedStateFile            !< .h5 state file to visualize changed
 LOGICAL                           :: changedMeshFile             !< Mesh file changed
 LOGICAL                           :: changedNVisu                !< Polyomial degree for visualization changed
+LOGICAL                           :: changedNCalc                !< Polyomial degree for calculation changed
 LOGICAL                           :: changedVarNames             !< variables selected for visualization changed (ParaView plugin) 
 LOGICAL                           :: changedFV_Elems             !< different distribution of DG and FV elements 
 LOGICAL                           :: changedWithDGOperator       !< If the DG operator should be called or not changed

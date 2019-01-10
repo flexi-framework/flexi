@@ -64,7 +64,7 @@ IF(debugMesh.LE.0) RETURN
 
 SWRITE(UNIT_stdOut,'(A)')' WRITE DEBUGMESH...'
 ! WRITE Debugmesh.vtu
-ALLOCATE(X_NVisu(3,0:NVisu,0:NVisu,0:PP_NVisuZ,nElems))
+ALLOCATE(X_NVisu(3,0:NVisu,0:NVisu,0:ZDIM(NVisu),nElems))
 
 DO iElem=1,nElems
   CALL ChangeBasisVolume(3,PP_N,NVisu,Vdm_GaussN_Nvisu,Elem_xGP(:,:,:,:,iElem),X_NVisu(:,:,:,:,iElem))
@@ -76,7 +76,7 @@ VarNames(3)='FLIP'
 VarNames(4)='iLocSide'
 VarNames(5)='BCIndex'
 VarNames(6)='Rank'
-ALLOCATE(debugVisu(6,0:NVisu,0:NVisu,0:PP_NVisuZ,nElems))
+ALLOCATE(debugVisu(6,0:NVisu,0:NVisu,0:ZDIM(NVisu),nElems))
 debugVisu=-1.
 DO iElem=1,nElems
   debugVisu(1,:,:,:,iElem)=REAL(iElem)

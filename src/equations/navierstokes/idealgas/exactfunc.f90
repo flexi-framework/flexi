@@ -149,7 +149,7 @@ END SELECT ! IniExactFunc
 
 #if PP_dim==2
 SELECT CASE (IniExactFunc)
-CASE(43,7) ! synthetic test cases
+CASE(43) ! synthetic test cases
   CALL CollectiveStop(__STAMP__,'The selected exact function is not available in 2D!') 
 CASE(2,3,4,41,42) ! synthetic test cases
   IF(AdvVel(3).NE.0.) THEN
@@ -217,7 +217,11 @@ REAL                            :: x_eff(3),x_offset(3)
 #endif
 !==================================================================================================================================
 tEval=MERGE(t,tIn,fullBoundaryOrder) ! prevent temporal order degradation, works only for RK3 time integration
-RefState=MERGE(RefStateOpt,IniRefState,PRESENT(RefStateOpt))
+IF (PRESENT(RefStateOpt)) THEN
+  RefState = RefStateOpt
+ELSE
+  RefState = IniRefState
+END IF
 
 Resu   =0.
 Resu_t =0.
@@ -469,6 +473,9 @@ CASE(7) ! SHU VORTEX,isentropic vortex
   dTemp = -kappaM1/(2.*kappa*RT)*du**2 ! adiabatic
   prim(1)=prim(1)*(1.+dTemp)**(1.*skappaM1) !rho
   prim(2:4)=prim(2:4)+du*cent(:) !v
+#if PP_dim == 2
+  prim(4)=0.
+#endif
   prim(PP_nVar)=prim(PP_nVar)*(1.+dTemp)**(kappa/kappaM1) !p
   prim(6) = prim(5)/(prim(1)*R)
   CALL PrimToCons(prim,resu)
@@ -595,7 +602,7 @@ CASE(1338) ! blasius
     prim(3)=0.5*(mu0*prim(2)/prim(1)/x_eff(1))**0.5*(fp*eta-f)
     prim(2)=RefStatePrim(2,RefState)*fp
   ELSE
-    IF(x_eff(2).LT.0) THEN
+    IF(x_eff(2).LE.0) THEN
       prim(2)=0.
     END IF 
   END IF

@@ -1,6 +1,7 @@
 ## Linear Scalar Advection-Diffusion Equation
+\label{sec:tut_linadv}
 
-Besides the Navier-Stokes equations, FLEXI provides another equation system, the three-dimensional linear scalar advection-diffusion (LinAdvDiff for short) equation:
+Besides the Navier-Stokes equations, **FLEXI** provides another equation system, the three-dimensional linear scalar advection-diffusion (LinAdvDiff for short) equation:
 
 $$  \frac{\partial \Phi}{\partial t} + \nabla \cdot (\mathbf{u}\Phi)=d \nabla^2 \Phi, $$
 
@@ -53,10 +54,10 @@ We will now try to show these properties by conducting some numerical experiment
 
 ### Compiling FLEXI with LinAdvDiff
 
-If you want to use the LinAdvDiff equations, you need to specify the equation system during the configuration. We are going to create a second ``build``-folder to keep any existing FLEXI binaries that might have been compiled using the Navier-Stokes equation system.
+If you want to use the LinAdvDiff equations, you need to specify the equation system during the configuration. We are going to create a second ``build``-folder to keep any existing **FLEXI** binaries that might have been compiled using the Navier-Stokes equation system.
 
 ~~~~~~~~~~~~
-cd $FLEXI_DIR
+cd $FLEXIROOT
 mkdir buildLinAdv && cd buildLinAdv 
 cmake -DFLEXI_EQNSYSNAME=linearscalaradvection ../
 make
@@ -77,6 +78,7 @@ Of course you can also use ``ccmake ../`` and set the parameters in the interfac
 | FLEXI_EQYNSYSNAME               | linearscalaradvection  |              |
 | FLEXI_PARABOLIC                 | OFF                    | optional     |
 
+Note: The path to the flexi binaries is now different than before. We therefore type it out in all commands in this tutorial. You can, of course, set a different alias for the path to this executable in your `~/.bashrc`. 
 
 ### Setup
 
@@ -96,18 +98,18 @@ In our case we are creating a cartesian grid with $x \in [-61,61]$ and 61 cells 
  we choose periodic boundary conditions in $y-$ and $z-$direction. The boundary conditions in the $x$-direction will not matter, so we simply use Dirichlet-type BCs (BC type 2) with the analytical wave function 
 as the boundary state. We specify this by setting the BC state to zero, which means that the initialization function will be used instead of a seperate function.
 
-We provide a parameter file for HOPR to generate this mesh. It is located in the subdirectory ``mesh`` within the directory that belongs to this tutorial. Either run ``hopr`` with this parameter file
+We provide a parameter file for **HOPR** to generate this mesh. It is located in the subdirectory ``mesh`` within the directory that belongs to this tutorial. Either run ``hopr`` with this parameter file
 
 ~~~~~~~~~~~~
-cd $FLEXI_TUTORIALS_DIR/linadv/mesh
+cd $FLEXIROOT/tutorials/linadv/mesh
 hopr parameter_hopr.ini
 ~~~~~~~~~~~~
 
 or use the mesh file ``CART_1D_mesh.h5`` which is provided in this directory.
 
-#### Flexi parameters
+#### FLEXI parameters
 
-A ``parameter_flexi.ini`` is provided in the directory ``$FLEXI_TUTORIALS_DIR/linadv/``. We are going to discuss the parameters that are specific to the LinAdvDiff equation system and the ones needed for this tutorial. 
+A ``parameter_flexi.ini`` is provided in the directory ``$FLEXIROOT/tutorials/linadv/``. We are going to discuss the parameters that are specific to the LinAdvDiff equation system and the ones needed for this tutorial. 
 In the section ``EQUATION`` in the parameter file you will find the options that directly influence the behaviour of the equation:
 
 ~~~~~~~~~~~~
@@ -150,7 +152,7 @@ To reduce the possibility that the error introduced by the time discretization w
 CFLscale      = 0.1
 ~~~~~~~~~~~~
 
-Since this is a really small and fast computation, we are also going to use visualization routines during runtime, so we don't need to convert the state files using the ``flexi2vtk`` program. To do this, we set the following parameters in
+Since this is a really small and fast computation, we are also going to use visualization routines during runtime, so we don't need to convert the state files using the ``posti_visu`` tool. To do this, we set the following parameters in
 our parameter file:
 
 ~~~~~~~~~~~~
@@ -187,8 +189,8 @@ OmegaRef      = 1.96349540849
 All other options are already set correctly. The simulation will be performed up to a time of $t=5$. We can now run the simulation using
 
 ~~~~~~~~~~~~
-cd $FLEXI_TUTORIALS_DIR/linadv
-$FLEXI_DIR/buildLinAdv/bin/flexi parameter_flexi.ini
+cd $FLEXIROOT/tutorials/linadv
+$FLEXIROOT/buildLinAdv/bin/flexi parameter_flexi.ini
 ~~~~~~~~~~~~
 
 Even on a single processor this calculation should only take a few seconds. 

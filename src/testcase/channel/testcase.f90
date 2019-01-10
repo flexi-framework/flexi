@@ -91,6 +91,7 @@ USE MOD_ReadInTools ,ONLY: prms
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Testcase")
+CALL prms%CreateRealOption('ChannelMach', "Bulk mach number used in the channel testcase.", '0.1')
 CALL prms%CreateIntOption('nWriteStats', "Write testcase statistics to file at every n-th AnalyzeTestcase step.", '100')
 CALL prms%CreateIntOption('nAnalyzeTestCase', "Call testcase specific analysis routines every n-th timestep. "//&
                                               "(Note: always called at global analyze level)", '1000')
@@ -103,7 +104,7 @@ SUBROUTINE InitTestcase()
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_ReadInTools,        ONLY: GETINT
+USE MOD_ReadInTools,        ONLY: GETINT,GETREAL
 USE MOD_Output_Vars,        ONLY: ProjectName
 USE MOD_Equation_Vars,      ONLY: RefStatePrim,IniRefState
 USE MOD_EOS_Vars,           ONLY: kappa,mu0
@@ -114,6 +115,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                  :: ioUnit,openStat
 REAL                     :: c1
+REAL                     :: bulkMach,pressure
 !==================================================================================================================================
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT TESTCASE CHANNEL...'
@@ -125,22 +127,21 @@ CALL CollectiveStop(__STAMP__, &
 
 nWriteStats  = GETINT('nWriteStats','100')
 nAnalyzeTestCase = GETINT( 'nAnalyzeTestCase','1000')
-!uBulkScale=0.98
 uBulkScale=1.
 Re_tau       = 1/mu0
 c1 = 2.4390244
-uBulk=c1*exp(-Re_tau/3.)*((Re_tau+c1)*exp(Re_tau/3.)*log(Re_tau+c1)+1.3064019*(Re_tau*exp(Re_tau/3)&
-      +29.627395*exp(8./33.*Re_tau)+0.66762137*(Re_tau+3)))  -97.4857927165 
+uBulk=c1 * ((Re_tau+c1)*LOG(Re_tau+c1) + 1.3064019*(Re_tau + 29.627395*EXP(-1./11.*Re_tau) + 0.66762137*(Re_tau+3)*EXP(-Re_tau/3.))) &
+      - 97.4857927165 
 uBulk=uBulk/Re_tau
 
-!prevent wrong pressure in channel testcase
+! Set the background pressure according to choosen bulk Mach number
+bulkMach = GETREAL('ChannelMach','0.1')
+pressure = (uBulk/bulkMach)**2*RefStatePrim(1,IniRefState)/kappa
+RefStatePrim(5,IniRefState) = pressure
+
 IF(MPIRoot) THEN
   WRITE(*,*) 'Bulk velocity based on initial velocity Profile =',uBulk
-  WRITE(*,*) 'Associated Pressure for Mach = 0.1 is', (uBulk/0.1)**2*RefStatePrim(1,IniRefState)/kappa
-  IF (ABS(RefStatePrim(5,IniRefState)- (uBulk/0.1)**2*RefStatePrim(1,IniRefState)/kappa)/(uBulk/0.1)**2&
-    *RefStatePrim(1,IniRefState)/kappa .GT. 0.01) THEN
-    CALL abort(__STAMP__,'RefState incorrect, correct pressure in parameter file')
-  END IF
+  WRITE(*,*) 'Associated Pressure for Mach = ',bulkMach,' is', pressure
 END IF
 
 dpdx = -1. ! Re_tau^2*rho*nu^2/delta^3

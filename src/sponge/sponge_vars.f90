@@ -12,7 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 !==================================================================================================================================
-!> Contains global variables used by the DG modules.
+!> Contains global variables used by the sponge modules.
 !==================================================================================================================================
 MODULE MOD_Sponge_Vars
 ! MODULES

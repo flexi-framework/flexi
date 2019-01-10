@@ -23,13 +23,15 @@ SAVE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-INTEGER                :: NFilter
+INTEGER                :: NFilter               !< Cut-off mode for cut-off or LAF filter
 INTEGER                :: FilterType            !< filter to be applied 0: no filter, 1: cut-off filter, 2 :Hesthaven filter
 REAL                   :: HestFilterParam(3)    !< filter parameters for modal Hesthaven style filter
 REAL,ALLOCATABLE       :: FilterMat(:,:)        !< 1D nodal filter matrix
 LOGICAL                :: FilterInitIsDone = .FALSE. !< filter routines have been initialized
 #if EQNSYSNR==2
-REAL,ALLOCATABLE       :: lim(:),eRatio(:),r(:) !< Analysis data for LAF model
+REAL,ALLOCATABLE       :: lim(:)                !< Analysis data for LAF model
+REAL,ALLOCATABLE       :: eRatio(:)             !< Analysis data for LAF model
+REAL,ALLOCATABLE       :: r(:)                  !< Analysis data for LAF model
 REAL,ALLOCATABLE       :: ekin_avg_old(:)       !< cell integral value for ekin avg (LAF)
 REAL,ALLOCATABLE       :: ekin_fluc_avg_old(:)  !< cell integral value for ekin fluc avg (LAF))
 REAL,ALLOCATABLE       :: Vol(:)                !< cell volume for averaging (LAF) 

@@ -20,8 +20,8 @@ MODULE MOD_Commandline_Arguments
 IMPLICIT NONE
 
 ! Global variables for command line argument parsing
-INTEGER                              :: nArgs              ! number of command line argumens
-CHARACTER(LEN=255),ALLOCATABLE       :: Args(:)
+INTEGER                              :: nArgs              !< number of command line argumens
+CHARACTER(LEN=255),ALLOCATABLE       :: Args(:)            !< command line arguments
 
 INTERFACE ParseCommandlineArguments
   MODULE PROCEDURE ParseCommandlineArguments
@@ -90,6 +90,9 @@ END DO
 DEALLOCATE(alreadyRead)
 END SUBROUTINE ParseCommandlineArguments
 
+!==================================================================================================================================
+!> Finalizes commandline arguments
+!==================================================================================================================================
 SUBROUTINE FinalizeCommandlineArguments() 
 IMPLICIT NONE
 !===================================================================================================================================

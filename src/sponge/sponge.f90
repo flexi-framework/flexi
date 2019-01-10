@@ -64,14 +64,15 @@ IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Sponge")
 CALL prms%CreateLogicalOption('SpongeLayer',    "Turn on to use sponge regions for reducing reflections at boundaries.",'.FALSE.')
-CALL prms%CreateRealOption(   'damping',        "Damping factor of sponge (0..1).", '0.01')
+CALL prms%CreateRealOption(   'damping',        "Damping factor of sponge. U_t=U_t-damping*(U-U_base) in fully damped "//&
+                                                "regions.", '1.')
 CALL prms%CreateIntFromStringOption( 'SpongeShape',    "Set shape of sponge: (1) ramp : cartesian / vector-aligned, (2) "//&
                                                        " cylindrical", multiple=.TRUE.)
 CALL addStrListEntry('SpongeShape','ramp',       SPONGESHAPE_RAMP)
 CALL addStrListEntry('SpongeShape','cylindrical',SPONGESHAPE_CYLINDRICAL)
 CALL prms%CreateRealOption(   'SpongeDistance', "Length of sponge ramp. The sponge will have maximum strength at the end "//&
                                                 "of the ramp and after that point.", multiple=.TRUE.)
-CALL prms%CreateRealArrayOption('xStart',       "Coordinates of start postion of sponge ramp (SpongeShape=ramp) "//&
+CALL prms%CreateRealArrayOption('xStart',       "Coordinates of start position of sponge ramp (SpongeShape=ramp) "//&
                                                 "or center (SpongeShape=cylindrical).", multiple=.TRUE.)
 CALL prms%CreateRealArrayOption('SpongeDir',    "Direction vector of the sponge ramp (SpongeShape=ramp)", multiple=.TRUE.)
 CALL prms%CreateRealOption(   'SpongeRadius',   "Radius of the sponge zone (SpongeShape=cylindrical)", multiple=.TRUE.)
@@ -86,7 +87,7 @@ CALL addStrListEntry('SpongeBaseFlow','constant',     SPONGEBASEFLOW_CONSTANT)
 CALL addStrListEntry('SpongeBaseFlow','exactfunction',SPONGEBASEFLOW_EXACTFUNC)
 CALL addStrListEntry('SpongeBaseFlow','file',         SPONGEBASEFLOW_FILE)
 CALL addStrListEntry('SpongeBaseFlow','pruett',       SPONGEBASEFLOW_PRUETT)
-CALL prms%CreateIntOption(    'SpongeRefState', "Index of refstate in ini-file (SpongeBaseFlow=cartesian)")
+CALL prms%CreateIntOption(    'SpongeRefState', "Index of refstate in ini-file (SpongeBaseFlow=constant)")
 CALL prms%CreateIntOption(    'SpongeExactFunc',"Index of exactfunction (SpongeBaseFlow=exactfunction)")
 CALL prms%CreateStringOption( 'SpongeBaseFlowFile',"FLEXI solution (e.g. TimeAvg) file from which baseflow is read.")
 CALL prms%CreateRealOption(   'tempFilterWidth',"Temporal filter width used to advance Pruett baseflow in time.)")
@@ -132,7 +133,7 @@ IF(.NOT.doSponge) RETURN
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT SPONGE...'
 
-damping   = GETREAL('damping','0.01')
+damping   = GETREAL('damping','1.')
 IF(damping .LE. 0.)  THEN
   doSponge = .FALSE.
   RETURN
@@ -232,9 +233,9 @@ END SUBROUTINE InitSponge
 !>
 !> First, depending on the shape (linear or cylindrical), the strength  of the shape without the damping factor (x_star) is
 !> calculated on the solution points.
-!> From this, a mapping is build which contains only the elements with x_star > 0 somewhere, which is used to later apply
+!> From this, a mapping is built which contains only the elements with x_star > 0 somewhere, which is used to later apply
 !> the sponge only to regions where it is needed.
-!> In this sponge region, the final strength of the sponge is build by limiting x_star to [0,1] and mutiply it by the damping.
+!> In this sponge region, the final strength of the sponge is built by limiting x_star to [0,1] and mutiply it by the damping.
 !> If set in the parameter file, a visualization of the sponge strength is written as .vtu files.
 !> At the end, the sponge is pre-multiplied by the Jacobian since we need to do this anyway when the sponge is applied.
 !==================================================================================================================================
@@ -394,8 +395,8 @@ DEALLOCATE(SpRadius)
 ! Visualize the Sponge Ramp - until now only 3D visualization!
 IF(SpongeViz) THEN
   FileString=TRIM(INTSTAMP(TRIM(ProjectName),myRank))//'_SpongeRamp.vtu'
-  ALLOCATE(Coords_NVisu(1:3, 0:NVisu,0:NVisu,0:PP_NVisuZ,nElems))
-  ALLOCATE(SpongeMat_NVisu(1,0:NVisu,0:NVisu,0:PP_NVisuZ,nElems))
+  ALLOCATE(Coords_NVisu(1:3, 0:NVisu,0:NVisu,0:ZDIM(NVisu),nElems))
+  ALLOCATE(SpongeMat_NVisu(1,0:NVisu,0:NVisu,0:ZDIM(NVisu),nElems))
   ALLOCATE(SpDummy(1,0:PP_N,0:PP_N,0:PP_NZ))
   ! Create coordinates of visualization points
   DO iElem=1,nElems

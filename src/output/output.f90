@@ -200,6 +200,9 @@ SWRITE(UNIT_stdOut,'(A)')' INIT OUTPUT DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitOutput
 
+!==================================================================================================================================
+!> Displays the actual status of the simulation and counts the amount of FV elements
+!==================================================================================================================================
 SUBROUTINE PrintStatusLine(t,dt,tStart,tEnd) 
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! description
@@ -218,7 +221,10 @@ USE MOD_Analyze_Vars, ONLY: totalFV_nElems
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
-REAL,INTENT(IN) :: t,dt,tStart,tEnd
+REAL,INTENT(IN) :: t      !< current simulation time
+REAL,INTENT(IN) :: dt     !< current time step
+REAL,INTENT(IN) :: tStart !< start time of simulation
+REAL,INTENT(IN) :: tEnd   !< end time of simulation
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 #if FV_ENABLED
@@ -295,7 +301,7 @@ USE MOD_Indicator_Vars,   ONLY:IndValue
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)               :: OutputTime               !< simulation time of output
+REAL,INTENT(IN)               :: OutputTime                                !< simulation time of output
 REAL,INTENT(INOUT)            :: U(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< solution vector to be visualized
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -336,14 +342,14 @@ DO iElem=1,nElems
   IF (FV_Elems(iElem).GT.0) nFV_Elems = nFV_Elems + 1 
 END DO
 NVisu_FV = (PP_N+1)*2-1
-ALLOCATE(FV_U_NVisu(PP_nVar_loc,0:NVisu_FV,0:NVisu_FV,0:PP_NVisuZ_FV,1:nFV_Elems))
-ALLOCATE(FV_Coords_NVisu(1:3,0:NVisu_FV,0:NVisu_FV,0:PP_NVisuZ_FV,1:nFV_Elems))
+ALLOCATE(FV_U_NVisu(PP_nVar_loc,0:NVisu_FV,0:NVisu_FV,0:ZDIM(NVisu_FV),1:nFV_Elems))
+ALLOCATE(FV_Coords_NVisu(1:3,0:NVisu_FV,0:NVisu_FV,0:ZDIM(NVisu_FV),1:nFV_Elems))
 ALLOCATE(Vdm_GaussN_NVisu_FV(0:NVisu_FV,0:PP_N))
 CALL FV_Build_VisuVdm(PP_N,Vdm_GaussN_NVisu_FV)
 #endif
-ALLOCATE(U_NVisu(PP_nVar_loc,0:NVisu,0:NVisu,0:PP_NVisuZ,1:(nElems-nFV_Elems)))
+ALLOCATE(U_NVisu(PP_nVar_loc,0:NVisu,0:NVisu,0:ZDIM(NVisu),1:(nElems-nFV_Elems)))
 U_NVisu = 0.
-ALLOCATE(Coords_NVisu(1:3,0:NVisu,0:NVisu,0:PP_NVisuZ,1:(nElems-nFV_Elems)))
+ALLOCATE(Coords_NVisu(1:3,0:NVisu,0:NVisu,0:ZDIM(NVisu),1:(nElems-nFV_Elems)))
 
 DG_iElem=0; FV_iElem=0
 DO iElem=1,nElems
@@ -448,19 +454,19 @@ USE MOD_Output_Vars,  ONLY: ProjectName,ASCIIOutputFormat
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=*),INTENT(IN)   :: FileName                 !< file to be written, without data type extension
-CHARACTER(LEN=*),INTENT(IN)   :: ZoneName                 !< name of zone (e.g. names of boundary conditions), used for tecplot
-INTEGER,INTENT(IN)            :: nVar                     !< number of variables
-CHARACTER(LEN=*),INTENT(IN)   :: VarNames(nVar)           !< variable names to be written
-REAL,INTENT(OUT),OPTIONAL     :: lastLine(nVar+1)         !< last written line to search for, when appending to the file 
+CHARACTER(LEN=*),INTENT(IN)   :: FileName         !< file to be written, without data type extension
+CHARACTER(LEN=*),INTENT(IN)   :: ZoneName         !< name of zone (e.g. names of boundary conditions), used for tecplot
+INTEGER,INTENT(IN)            :: nVar             !< number of variables
+CHARACTER(LEN=*),INTENT(IN)   :: VarNames(nVar)   !< variable names to be written
+REAL,INTENT(OUT),OPTIONAL     :: lastLine(nVar+1) !< last written line to search for, when appending to the file 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                        :: stat                         !< File IO status
-INTEGER                        :: ioUnit=0,i                   !< IO Unit
-REAL                           :: dummytime                    !< Simulation time read from file
-LOGICAL                        :: file_exists                  !< marker if file exists and is valid
-LOGICAL                        :: isOpen                       !< unit is open
-CHARACTER(LEN=255)             :: FileName_loc                 !< FileName with data type extension
+INTEGER                        :: stat            !< File IO status
+INTEGER                        :: ioUnit          !< IO Unit
+INTEGER                        :: i,iMax          !< Counter for header lines
+REAL                           :: dummytime       !< Simulation time read from file
+LOGICAL                        :: file_exists     !< marker if file exists and is valid
+CHARACTER(LEN=255)             :: FileName_loc    !< FileName with data type extension
 !==================================================================================================================================
 IF(.NOT.MPIRoot) RETURN
 IF(PRESENT(lastLine)) lastLine=-HUGE(1.)
@@ -476,6 +482,7 @@ END IF
 file_exists = FILEEXISTS(FileName_loc)
 IF(RestartTime.LT.0.0) file_exists=.FALSE.
 !! File processing starts here open old and extratct information or create new file.
+ioUnit = 0
 
 IF(file_exists)THEN ! File exists and append data
   OPEN(NEWUNIT  = ioUnit             , &
@@ -498,7 +505,9 @@ IF(file_exists)THEN
   WRITE(UNIT_stdOut,'(A)',ADVANCE='NO')'Searching for time stamp...'
 
   REWIND(ioUnit)
-  DO i=1,4
+  ! Loop over header and try to read the first data line. Header size depends on output format.
+  iMax =MERGE(2,4,ASCIIOutputFormat.EQ.ASCIIOUTPUTFORMAT_CSV)
+  DO i=1,iMax
     READ(ioUnit,*,IOSTAT=stat)
     IF(stat.NE.0)THEN
       ! file is broken, rewrite
@@ -529,8 +538,7 @@ IF(file_exists)THEN
     WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')' failed. Appending data to end of file.'
   END IF
 END IF
-INQUIRE(UNIT=ioUnit,OPENED=isOpen)
-IF(isOpen) CLOSE(ioUnit)
+CLOSE(ioUnit)
 
 IF(.NOT.file_exists)THEN ! No restart create new file
   OPEN(NEWUNIT= ioUnit             ,&

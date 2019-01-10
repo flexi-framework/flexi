@@ -22,6 +22,7 @@ PUBLIC
 SAVE
 
 ! User-defined parameters
+INTEGER                 :: OutputFormat      !< Choose the main format for output. 0: Tecplot, 2: HDF5
 INTEGER                 :: NCalc             !< Polynomial degree to perform DFFT on
 REAL                    :: Re_tau            !< Reynolds number based on friction velocity and channel half height
 
@@ -31,10 +32,13 @@ CHARACTER(LEN=255)      :: ProjectName       !< Name of project, read from state
 REAL                    :: Time              !< Timestamp of project, read from first state file
 
 ! FFT variables
-INTEGER(KIND=8)         :: plan
+INTEGER(KIND=8)         :: planI
+INTEGER(KIND=8)         :: planK
 INTEGER                 :: N_FFT(3)
-INTEGER                 :: nSamples
-INTEGER                 :: nSamples_spec
+INTEGER                 :: nSamplesI
+INTEGER                 :: nSamples_specI
+INTEGER                 :: nSamplesK
+INTEGER                 :: nSamples_specK
 REAL,ALLOCATABLE        :: U_FFT(:,:,:,:)
 REAL,ALLOCATABLE        :: X_FFT(:,:,:,:)
 REAL,ALLOCATABLE        :: Ex_uu(:,:)
@@ -45,9 +49,11 @@ REAL,ALLOCATABLE        :: Ez_uu(:,:)
 REAL,ALLOCATABLE        :: Ez_vv(:,:)
 REAL,ALLOCATABLE        :: Ez_ww(:,:)
 REAL,ALLOCATABLE        :: Ez_pp(:,:)
-COMPLEX,ALLOCATABLE     :: in(:)
-COMPLEX,ALLOCATABLE     :: out(:)
-REAL,ALLOCATABLE        :: MS_t(:)
+COMPLEX,ALLOCATABLE     :: inI(:)
+COMPLEX,ALLOCATABLE     :: outI(:)
+COMPLEX,ALLOCATABLE     :: inK(:)
+COMPLEX,ALLOCATABLE     :: outK(:)
+REAL,ALLOCATABLE        :: MS_t(:,:)
 REAL,ALLOCATABLE        :: MS_PSD(:,:)
 REAL,ALLOCATABLE        :: M_t(:,:)
 END MODULE MOD_FFT_Vars

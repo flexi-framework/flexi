@@ -36,14 +36,17 @@ CONTAINS
 !===================================================================================================================================
 SUBROUTINE DefineParametersEddyVisc()
 ! MODULES
-USE MOD_ReadInTools,        ONLY: prms
+USE MOD_ReadInTools,        ONLY: prms,addStrListEntry
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("EddyViscParameters")
 ! Smagorinksy model parameters
-CALL prms%CreateRealOption(   'CS',       "EddyViscParameters constant")
-CALL prms%CreateRealOption(   'PrSGS',    "Turbulent Prandtl number",'0.7')
-CALL prms%CreateLogicalOption('VanDriest',"Van Driest damping, only for channel flow!", '.FALSE.')
+CALL prms%CreateIntFromStringOption('eddyViscType', "(0) none: No eddy viscosity, (1) Smagorinsky",'none')
+CALL addStrListEntry(               'eddyViscType','none',0)
+CALL addStrListEntry(               'eddyViscType','smagorinsky',1)
+CALL prms%CreateRealOption(         'CS',          "EddyViscParameters constant")
+CALL prms%CreateRealOption(         'PrSGS',       "Turbulent Prandtl number",'0.7')
+CALL prms%CreateLogicalOption(      'VanDriest',   "Van Driest damping, only for channel flow!", '.FALSE.')
 END SUBROUTINE DefineParametersEddyVisc
 
 !===================================================================================================================================

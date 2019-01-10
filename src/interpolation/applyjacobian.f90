@@ -14,7 +14,11 @@
 #include "flexi.h"
 
 !==================================================================================================================================
-!> TODO
+!> \brief Module containing routines that changes scalar solution representation between physical and reference coordinates
+!> Depending on interface parameters it distinguishes between:
+!> - Conversion with separate input and output variables
+!> - Conversion where input will be overwritten by the transformed output
+!> - Selective conversion only of DG elements where the input will be overwritten by the transformed output
 !==================================================================================================================================
 MODULE MOD_ApplyJacobian
 IMPLICIT NONE
@@ -35,7 +39,12 @@ CONTAINS
 END MODULE MOD_ApplyJacobian
 
 !==================================================================================================================================
-
+!> \brief Module containing routines that changes conservative solution representation between physical and reference coordinates
+!> Depending on interface parameters it distinguishes between:
+!> - Conversion with separate input and output variables
+!> - Conversion where input will be overwritten by the transformed output
+!> - Selective conversion only of DG elements where the input will be overwritten by the transformed output
+!==================================================================================================================================
 MODULE MOD_ApplyJacobianCons
 IMPLICIT NONE
 PRIVATE
@@ -56,7 +65,12 @@ CONTAINS
 END MODULE MOD_ApplyJacobianCons
 
 !==================================================================================================================================
-
+!> \brief Module containing routines that change primitive solution representation between physical and reference coordinates
+!> Depending on interface parameters it distinguishes between:
+!> - Conversion with separate input and output variables
+!> - Conversion where input will be overwritten by the transformed output
+!> - Selective conversion only of DG elements where the input will be overwritten by the transformed output
+!==================================================================================================================================
 MODULE MOD_ApplyJacobianPrim
 IMPLICIT NONE
 PRIVATE

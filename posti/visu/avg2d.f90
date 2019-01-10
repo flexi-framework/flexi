@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -59,7 +59,7 @@ CONTAINS
 
 !===================================================================================================================================
 !> Initialization of the average routines. The IJK sorting of the elements (which is necessary for averaging) is read from the
-!> mehs file and from that a mapping is build. This mapping will lead from the i and j indizes of the elements to the element
+!> mesh file and from that a mapping is built. This mapping will lead from the i and j indizes of the elements to the element
 !> index in the averaged output arrays. Also amount of FV cells in the average direction for each 2D cell will be
 !> calculated and stored.
 !===================================================================================================================================
@@ -71,7 +71,7 @@ USE MOD_HDF5_Input         ,ONLY: ISVALIDMESHFILE,ISVALIDHDF5FILE,GetArrayAndNam
 USE MOD_HDF5_Input         ,ONLY: ReadAttribute,File_ID,OpenDataFile,GetDataProps,CloseDataFile,ReadArray,DatasetExists
 USE MOD_Mesh_Vars          ,ONLY: nElems,offsetElem
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL                          :: exists
@@ -85,7 +85,7 @@ ALLOCATE(Elem_IJK(3,nElems))
 IF (exists) THEN
   CALL ReadArray('nElems_IJK',1,(/3/),0,1,IntArray=nElems_IJK)
   CALL ReadArray('Elem_IJK',2,(/3,nElems/),offsetElem,2,IntArray=Elem_IJK)
-ELSE 
+ELSE
   nElems_IJK(1) = 1
   nElems_IJK(2) = nElems
   nElems_IJK(3) = 1
@@ -139,7 +139,7 @@ END SUBROUTINE InitAverage2D
 !> * Vdm_DGToVisu: Conversion from calc to visu for DG
 !> * Vdm_FVToVisu: Conversion from calc to visu for FV
 !===================================================================================================================================
-SUBROUTINE BuildVandermonds_Avg2D(NCalc_DG,NCalc_FV) 
+SUBROUTINE BuildVandermonds_Avg2D(NCalc_DG,NCalc_FV)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Visu_Vars          ,ONLY: Vdm_DGToFV,Vdm_FVToDG,Vdm_DGToVisu,Vdm_FVToVisu,NodeTypeVisuPosti
@@ -150,7 +150,7 @@ USE MOD_Interpolation_Vars ,ONLY: NodeType
 USE MOD_FV_Basis           ,ONLY: FV_GetVandermonde
 #endif
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: NCalc_DG,NCalc_FV
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -172,7 +172,7 @@ ALLOCATE(Vdm_FVToVisu(0:NVisu_FV,0:NCalc_FV))
 ALLOCATE(FVdouble(0:NVisu_FV,0:PP_N))
 FVdouble = 0.
 DO i = 0, PP_N
-  FVdouble(i*2  ,i) = 1. 
+  FVdouble(i*2  ,i) = 1.
   FVdouble(i*2+1,i) = 1.
 END DO ! i = 0, PP_N
 
@@ -221,7 +221,7 @@ SUBROUTINE Average2D(nVarCalc_DG,nVarCalc_FV,NCalc_DG,NCalc_FV,nElems_DG,nElems_
     NodeTypeCalc_DG,UCalc_DG,UCalc_FV,&
     Vdm_DGToFV,Vdm_FVToDG,Vdm_DGToVisu,Vdm_FVToVisu, &
     startIndexMapVarCalc,endIndexMapVarCalc,mapVarCalc, &
-    UVisu_DG,UVisu_FV) 
+    UVisu_DG,UVisu_FV)
 USE MOD_PreProc
 USE MOD_Globals
 USE MOD_Visu_Vars          ,ONLY: Elem_IJK,FVAmountAvg2D
@@ -233,7 +233,7 @@ USE MOD_Interpolation_Vars ,ONLY: NodeTypeVISUFVEqui,xGP
 USE MOD_ChangeBasis        ,ONLY: ChangeBasis2D
 USE MOD_Mesh_Vars          ,ONLY: Elem_xGP
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)            :: nVarCalc_DG,nVarCalc_FV,NCalc_DG,NCalc_FV,nElems_DG,nElems_FV
 CHARACTER(LEN=255),INTENT(IN) :: NodeTypeCalc_DG
 REAL,INTENT(IN)               :: Vdm_DGToFV(0:NCalc_FV,0:NCalc_DG)
@@ -250,7 +250,7 @@ REAL,INTENT(INOUT)            :: UVisu_FV(0:NVisu_FV,0:NVisu_FV,0:0,1:nElemsAvg2
 
 REAL,ALLOCATABLE :: Utmp(:,:),Utmp2(:,:)
 INTEGER          :: iElem, iElem_DG, iElem_FV, iElemAvg, ii,jj,k,iVar,iVarCalc,iVarVisu
-REAL             :: xGP_loc(0:NCalc_DG),wGP(0:NCalc_DG)
+REAL             :: xGP_loc(0:NCalc_DG),wGP_loc(0:NCalc_DG)
 REAL,ALLOCATABLE :: UAvg_DG(:,:,:,:)
 REAL,ALLOCATABLE :: UAvg_FV(:,:,:,:)
 REAL             :: dx
@@ -262,7 +262,7 @@ UAvg_DG = 0.
 UAvg_FV = 0.
 dxSum_DG = 0.
 dxSum_FV = 0.
-CALL GetNodesAndWeights(NCalc_DG,NodeTypeCalc_DG,xGP_loc,wGP)
+CALL GetNodesAndWeights(NCalc_DG,NodeTypeCalc_DG,xGP_loc,wGP_loc)
 
 ! average all DG elements first
 SWRITE(*,*) " [Avg2D] Average DG elements"
@@ -283,7 +283,7 @@ DO iElem_DG = 1,nElems_DG                ! iterate over all DG elements
       IF (iVarVisu.GT.0) THEN
         iVarCalc = mapVarCalc(iVar)
         DO k=0,NCalc_DG
-          UAvg_DG(:,:,iElemAvg,iVarVisu) = UAvg_DG(:,:,iElemAvg,iVarVisu) + wGP(k)/2.*dx * UCalc_DG(:,:,k,iElem_DG,iVarCalc)
+          UAvg_DG(:,:,iElemAvg,iVarVisu) = UAvg_DG(:,:,iElemAvg,iVarVisu) + wGP_loc(k)/2.*dx * UCalc_DG(:,:,k,iElem_DG,iVarCalc)
         END DO
       END IF
     END DO
@@ -297,7 +297,7 @@ DO iElem_DG = 1,nElems_DG                ! iterate over all DG elements
         iVarCalc = mapVarCalc(iVar)
         Utmp = 0.
         DO k=0,NCalc_DG
-          Utmp(:,:) = Utmp(:,:) + wGP(k)/2.*dx * UCalc_DG(:,:,k,iElem_DG,iVarCalc)
+          Utmp(:,:) = Utmp(:,:) + wGP_loc(k)/2.*dx * UCalc_DG(:,:,k,iElem_DG,iVarCalc)
         END DO
         CALL ChangeBasis2D(NCalc_DG,NCalc_FV,Vdm_DGToFV,Utmp,Utmp2)
         UAvg_FV(:,:,iElemAvg,iVarVisu) = UAvg_FV(:,:,iElemAvg,iVarVisu) + Utmp2
@@ -319,7 +319,7 @@ DO iElem_FV = 1,nElems_FV                ! iterate over all FV elements
   ii = Elem_IJK(1,iElem)
   jj = Elem_IJK(2,iElem)
   dx = (Elem_xGP(3,0,0,PP_N,iElem) - Elem_xGP(3,0,0,0,iElem))*2.0/(xGP(PP_N)-xGP(0))
-  IF (FVAmountAvg2D(ii,jj).GT.0.5) THEN  ! the averaged ii,jj-th element is rather a FV element and this 
+  IF (FVAmountAvg2D(ii,jj).GT.0.5) THEN  ! the averaged ii,jj-th element is rather a FV element and this
                                          ! element is a FV element => just average this element and add to UAvg_FV
     iElemAvg = mapElemIJToFVElemAvg2D(ii,jj)
     dxSum_FV(iElemAvg) = dxSum_FV(iElemAvg) + dx
@@ -342,7 +342,7 @@ DO iElem_FV = 1,nElems_FV                ! iterate over all FV elements
         iVarCalc = mapVarCalc(iVar)
         Utmp = 0.
         DO k=0,NCalc_FV
-          Utmp(:,:) = Utmp(:,:) +  1./(NCalc_FV+1)*dx * UCalc_FV(:,:,k,iElem_FV,iVarCalc) 
+          Utmp(:,:) = Utmp(:,:) +  1./(NCalc_FV+1)*dx * UCalc_FV(:,:,k,iElem_FV,iVarCalc)
         END DO
         CALL ChangeBasis2D(NCalc_FV,NCalc_DG,Vdm_FVToDG,Utmp,Utmp2)
         UAvg_DG(:,:,iElemAvg,iVarVisu) = UAvg_DG(:,:,iElemAvg,iVarVisu) + Utmp2
@@ -358,6 +358,7 @@ DO iElem_FV = 1,nElemsAvg2D_FV
   UAvg_FV(:,:,iElem_FV,:) = UAvg_FV(:,:,iElem_FV,:) / dxSum_FV(iElem_FV)
 END DO
 
+! Convert the averaged data to the visu grid
 DO iVar=startIndexMapVarCalc,endIndexMapVarCalc
   iVarVisu = mapAllVarsToVisuVars(iVar)
   IF (iVarVisu.GT.0) THEN
@@ -383,11 +384,11 @@ DEALLOCATE(UAvg_FV)
 END SUBROUTINE Average2D
 
 !===================================================================================================================================
-!> HDF5 output routine for 2D averaged data. The very simple idea is to use the 3D mesh (since creating a new 2D mesh would be 
+!> HDF5 output routine for 2D averaged data. The very simple idea is to use the 3D mesh (since creating a new 2D mesh would be
 !> very complicated) and copy the averaged solution to the third dimension.
 !> The output must be done on PP_N and on the calculation NodeType, this is enforced in the InitFile routine.
 !===================================================================================================================================
-SUBROUTINE WriteAverageToHDF5(nVar,NVisu,NVisu_FV,NodeType,OutputTime,MeshFileName,UVisu_DG,UVisu_FV) 
+SUBROUTINE WriteAverageToHDF5(nVar,NVisu,NVisu_FV,NodeType,OutputTime,MeshFileName,UVisu_DG,UVisu_FV)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
@@ -409,7 +410,7 @@ USE MOD_IO_HDF5,        ONLY: ElementOut
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)             :: nVar,NVisu,NVisu_FV
 CHARACTER(LEN=255)             :: NodeType
 REAL,INTENT(IN)                :: OutputTime

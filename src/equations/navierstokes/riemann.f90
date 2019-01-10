@@ -47,6 +47,7 @@ INTEGER,PARAMETER      :: PRM_RIEMANN_HLL           = 4
 INTEGER,PARAMETER      :: PRM_RIEMANN_HLLE          = 5
 INTEGER,PARAMETER      :: PRM_RIEMANN_HLLEM         = 6
 #ifdef SPLIT_DG
+INTEGER,PARAMETER      :: PRM_RIEMANN_CH            = 7
 INTEGER,PARAMETER      :: PRM_RIEMANN_Average       = 0
 #endif
 
@@ -105,6 +106,7 @@ CALL addStrListEntry('Riemann','hll',          PRM_RIEMANN_HLL)
 CALL addStrListEntry('Riemann','hlle',         PRM_RIEMANN_HLLE)
 CALL addStrListEntry('Riemann','hllem',        PRM_RIEMANN_HLLEM)
 #ifdef SPLIT_DG
+CALL addStrListEntry('Riemann','ch',           PRM_RIEMANN_CH)
 CALL addStrListEntry('Riemann','avg',          PRM_RIEMANN_Average)
 #endif
 CALL prms%CreateIntFromStringOption('RiemannBC', "Riemann solver used for boundary conditions: Same, LF, Roe, RoeEntropyFix, "//&
@@ -119,6 +121,7 @@ CALL addStrListEntry('RiemannBC','hll',          PRM_RIEMANN_HLL)
 CALL addStrListEntry('RiemannBC','hlle',         PRM_RIEMANN_HLLE)
 CALL addStrListEntry('RiemannBC','hllem',        PRM_RIEMANN_HLLEM)
 #ifdef SPLIT_DG
+CALL addStrListEntry('RiemannBC','ch',           PRM_RIEMANN_CH)
 CALL addStrListEntry('RiemannBC','avg',          PRM_RIEMANN_Average)
 #endif
 CALL addStrListEntry('RiemannBC','same',         PRM_RIEMANN_SAME)
@@ -202,6 +205,8 @@ CASE(PRM_RIEMANN_ROEENTROPYFIX)
   Riemann_pointer => Riemann_RoeEntropyFix
 CASE(PRM_RIEMANN_ROEL2)
   Riemann_pointer => Riemann_RoeL2
+CASE(PRM_RIEMANN_CH)
+  Riemann_pointer => Riemann_CH
 CASE(PRM_RIEMANN_Average)
   Riemann_pointer => Riemann_FluxAverage
 CASE DEFAULT
@@ -221,6 +226,8 @@ CASE(PRM_RIEMANN_ROEENTROPYFIX)
   RiemannBC_pointer => Riemann_RoeEntropyFix
 CASE(PRM_RIEMANN_ROEL2)
   RiemannBC_pointer => Riemann_RoeL2
+CASE(PRM_RIEMANN_CH)
+  Riemann_pointer => Riemann_CH
 CASE(PRM_RIEMANN_Average)
   RiemannBC_pointer => Riemann_FluxAverage
 CASE DEFAULT
@@ -246,6 +253,7 @@ IF (0.EQ.1) THEN
   CALL Riemann_HLLE (F_L,F_R,U_LL,U_RR,F)
   CALL Riemann_HLLEM(F_L,F_R,U_LL,U_RR,F)
 #ifdef SPLIT_DG
+  CALL Riemann_CH(F_L,F_R,U_LL,U_RR,F)
   CALL Riemann_FluxAverage(F_L,F_R,U_LL,U_RR,F)
 #endif
 END IF
@@ -263,14 +271,15 @@ USE MOD_Flux         ,ONLY:EvalEulerFlux1D_fast
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)                                        :: Nloc       !< local polynomial degree
-REAL,DIMENSION(PP_nVar    ,0:Nloc,0:PP_NlocZ),INTENT(IN)  :: U_L        !< conservative solution at left side of the interface
-REAL,DIMENSION(PP_nVar    ,0:Nloc,0:PP_NlocZ),INTENT(IN)  :: U_R        !< conservative solution at right side of the interface
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:PP_NlocZ),INTENT(IN)  :: UPrim_L    !< primitive solution at left side of the interface
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:PP_NlocZ),INTENT(IN)  :: UPrim_R    !< primitive solution at right side of the interface
-REAL,DIMENSION(          3,0:Nloc,0:PP_NlocZ),INTENT(IN)  :: nv,t1,t2   !< normal vector and tangential vectors at side
-LOGICAL,INTENT(IN)                                        :: doBC       !< marker whether side is a BC side
-REAL,DIMENSION(PP_nVar    ,0:Nloc,0:PP_NlocZ),INTENT(OUT) :: FOut       !< advective flux
+INTEGER,INTENT(IN)                                          :: Nloc       !< local polynomial degree
+REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_L        !< conservative solution at left side of the interface
+REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_R        !< conservative solution at right side of the interface
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim_L    !< primitive solution at left side of the interface
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim_R    !< primitive solution at right side of the interface
+!> normal vector and tangential vectors at side
+REAL,DIMENSION(          3,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: nv,t1,t2  
+LOGICAL,INTENT(IN)                                          :: doBC       !< marker whether side is a BC side
+REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: FOut       !< advective flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                 :: i,j
@@ -285,7 +294,7 @@ ELSE
 END IF
 
 ! Momentum has to be rotatet using the normal system individual for each
-DO j=0,PP_NlocZ; DO i=0,Nloc
+DO j=0,ZDIM(Nloc); DO i=0,Nloc
   ! left state: U_L
   U_LL(DENS)=U_L(DENS,i,j)
   U_LL(SRHO)=1./U_LL(DENS)
@@ -372,22 +381,22 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)                                         :: Nloc     !< local polynomial degree
                                                            !> solution in primitive variables at left/right side of the interface 
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:PP_NlocZ),INTENT(IN)   :: UPrim_L,UPrim_R
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)   :: UPrim_L,UPrim_R
                                                            !> solution gradients in x/y/z-direction left/right of the interface 
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:PP_NlocZ),INTENT(IN)   :: gradUx_L,gradUx_R,gradUy_L,gradUy_R,gradUz_L,gradUz_R
-REAL,INTENT(IN)                                            :: nv(3,0:Nloc,0:PP_NlocZ) !< normal vector
-REAL,INTENT(OUT)                                           :: F(PP_nVar,0:Nloc,0:PP_NlocZ) !< viscous flux
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)   :: gradUx_L,gradUx_R,gradUy_L,gradUy_R,gradUz_L,gradUz_R
+REAL,INTENT(IN)                                            :: nv(3,0:Nloc,0:ZDIM(Nloc)) !< normal vector
+REAL,INTENT(OUT)                                           :: F(PP_nVar,0:Nloc,0:ZDIM(Nloc)) !< viscous flux
 #ifdef EDDYVISCOSITY
                                                            !> eddy viscosity left/right of the interface
-REAL,DIMENSION(1,0:Nloc,0:PP_NlocZ),INTENT(IN)             :: muSGS_L,muSGS_R
+REAL,DIMENSION(1,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)             :: muSGS_L,muSGS_R
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                                              :: p,q
-REAL,DIMENSION(PP_nVar,0:Nloc,0:PP_NlocZ)            :: diffFluxX_L,diffFluxY_L,diffFluxZ_L
-REAL,DIMENSION(PP_nVar,0:Nloc,0:PP_NlocZ)            :: diffFluxX_R,diffFluxY_R,diffFluxZ_R
+REAL,DIMENSION(PP_nVar,0:Nloc,0:ZDIM(Nloc))            :: diffFluxX_L,diffFluxY_L,diffFluxZ_L
+REAL,DIMENSION(PP_nVar,0:Nloc,0:ZDIM(Nloc))            :: diffFluxX_R,diffFluxY_R,diffFluxZ_R
 !==================================================================================================================================
 ! Don't forget the diffusion contribution, my young padawan
 ! Compute NSE Diffusion flux
@@ -402,7 +411,7 @@ REAL,DIMENSION(PP_nVar,0:Nloc,0:PP_NlocZ)            :: diffFluxX_R,diffFluxY_R,
 #endif
       )
 ! BR1 uses arithmetic mean of the fluxes
-DO q=0,PP_NlocZ; DO p=0,Nloc
+DO q=0,ZDIM(Nloc); DO p=0,Nloc
   F(:,p,q)=0.5*(nv(1,p,q)*(diffFluxX_L(1:5,p,q)+diffFluxX_R(1:5,p,q)) &
                +nv(2,p,q)*(diffFluxY_L(1:5,p,q)+diffFluxY_R(1:5,p,q)) &
                +nv(3,p,q)*(diffFluxZ_L(1:5,p,q)+diffFluxZ_R(1:5,p,q)))
@@ -619,7 +628,9 @@ END SUBROUTINE Riemann_Roe
 
 
 !=================================================================================================================================
-!> Roe's approximate Riemann solver using the Hartman and Hymen II entropy fix
+!> Roe's approximate Riemann solver using the Harten and Hymen II entropy fix, see
+!> Pelanti, Marica & Quartapelle, Luigi & Vigevano, L & Vigevano, Luigi. (2018):
+!>  A review of entropy fixes as applied to Roe's linearization. 
 !=================================================================================================================================
 SUBROUTINE Riemann_RoeEntropyFix(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
@@ -1026,6 +1037,60 @@ IF (0.EQ.1) THEN
 END IF
 #endif /*DEBUG*/
 END SUBROUTINE Riemann_FluxAverage
+
+
+!==================================================================================================================================
+!> kinetic energy preserving and entropy consistent flux according to Chandrashekar (2012)
+!==================================================================================================================================
+SUBROUTINE Riemann_CH(F_L,F_R,U_LL,U_RR,F)
+! MODULES
+USE MOD_EOS_Vars      ,ONLY: Kappa,sKappaM1
+USE MOD_SplitFlux     ,ONLY: SplitDGSurface_pointer,GetLogMean
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+                                                !> extended solution vector on the left/right side of the interface
+REAL,DIMENSION(PP_2Var),INTENT(IN) :: U_LL,U_RR
+                                                !> advection fluxes on the left/right side of the interface
+REAL,DIMENSION(PP_nVar),INTENT(IN) :: F_L,F_R
+REAL,DIMENSION(PP_nVar),INTENT(OUT):: F         !< resulting Riemann flux
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL                               :: LambdaMax
+REAL                               :: beta_LL,beta_RR   ! auxiliary variables for the inverse Temperature
+REAL                               :: rhoMean           ! auxiliary variable for the mean density
+REAL                               :: uMean,vMean,wMean ! auxiliary variable for the average velocities
+REAL                               :: betaLogMean       ! auxiliary variable for the logarithmic mean inverse temperature
+!==================================================================================================================================
+! Lax-Friedrichs
+LambdaMax = MAX( ABS(U_RR(VEL1)),ABS(U_LL(VEL1)) ) + MAX( SPEEDOFSOUND_HE(U_LL),SPEEDOFSOUND_HE(U_RR) )
+
+! average quantities
+rhoMean = 0.5*(U_LL(DENS) + U_RR(DENS))
+uMean   = 0.5*(U_LL(VEL1) + U_RR(VEL1))
+vMean   = 0.5*(U_LL(VEL2) + U_RR(VEL2))
+wMean   = 0.5*(U_LL(VEL3) + U_RR(VEL3))
+
+! inverse temperature
+beta_LL = 0.5*U_LL(DENS)/U_LL(PRES)
+beta_RR = 0.5*U_RR(DENS)/U_RR(PRES)
+
+! logarithmic mean
+CALL GetLogMean(beta_LL,beta_RR,betaLogMean)
+
+! get split flux
+CALL SplitDGSurface_pointer(U_LL,U_RR,F)
+
+!compute flux
+F(1:4) = F(1:4) - 0.5*LambdaMax*(U_RR(1:4)-U_LL(1:4))
+F(5)   = F(5)   - 0.5*LambdaMax*( &
+         (U_RR(DENS)-U_LL(DENS))*(0.5*sKappaM1/betaLogMean +0.5*(U_RR(VEL1)*U_LL(VEL1)+U_RR(VEL2)*U_LL(VEL2)+U_RR(VEL3)*U_LL(VEL3))) &
+         +rhoMean*uMean*(U_RR(VEL1)-U_LL(VEL1)) + rhoMean*vMean*(U_RR(VEL2)-U_LL(VEL2)) + rhoMean*wMean*(U_RR(VEL3)-U_LL(VEL3)) &
+         +0.5*rhoMean*sKappaM1*(1./beta_RR - 1./beta_LL))
+
+END SUBROUTINE Riemann_CH
 #endif /*SPLIT_DG*/
 
 !==================================================================================================================================

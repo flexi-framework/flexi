@@ -1,4 +1,5 @@
 ## SOD Shock tube
+\label{sec:tut_sod}
 
 The Sod shock tube example [@Sod1978] is one of the most basic test cases to investigate the shock capturing capabilities of a CFD code. A initial discontinuity is located in the middle of the one dimensional domain $[0,1]$. The left and right states are given by $\rho=1, v=0, p=1$ and $\rho=0.125, v=0, p=0.1$.
 These states are already set as ``RefState`` in the the *parameter_flexi.ini* file.
@@ -11,11 +12,12 @@ Copy the ``sod`` tutorial folder
 
 The mesh files used by **FLEXI** are created by supplying an input file *parameter_hopr.ini* with the appropriate information.
 
-    ./hopr parameter_hopr.ini
+    hopr parameter_hopr.ini
 
 This creates the mesh file *SOD_100_mesh.h5* in HDF5 format.
 
 ### Flow Simulation with FLEXI
+\label{sec:tut_sod_simulation}
 
 This example requires the Finite Volume shock capturing and the Euler equations. Therefore set the following options in cmake:
 
@@ -56,8 +58,9 @@ runs the code and generates 5 state files **sod_State_TIMESTAMP.h5** for $t=0.0,
 To visualize the solution, the *State*-files must be converted into a format suitable for **ParaView**. Execute the command 
 
 ~~~~~~~
-flexi2vtk parameter_flexi.ini sod_State_*.h5
+posti_visu parameter_postiVisu.ini parameter_flexi.ini sod_State_0000000.*
 ~~~~~~~
+
 to generate the corresponding *vtu*- and *vtm*-files, which can then be loaded into **ParaView**. 
 There are two types of *vtu*-files, which contain either the DG or the FV part of the solution. 
 The *vtm*-files combine the DG and FV *vtu*-file of every timestamp. Load the *vtm*-files into **ParaView**.

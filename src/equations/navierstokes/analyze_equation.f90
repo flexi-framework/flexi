@@ -70,9 +70,9 @@ CALL prms%CreateLogicalOption('WriteMeanFlux'    , "Set true to write mean flux 
 CALL prms%CreateLogicalOption('WriteWallVelocity', "Set true to write wall velolcities file"          , '.TRUE.')
 CALL prms%CreateLogicalOption('WriteTotalStates' , "Set true to write total states to file"           , '.TRUE.')
 CALL prms%CreateStringOption( 'VarNameAvg'       , "Names of variables to be time-averaged"           , multiple=.TRUE.)
-CALL prms%CreateStringOption( 'VarNameFluc'      , "Names of variables for which Flucs (time-averaged \n"//&
-                                                   "square of the variable) should be computed. \n"//&
-                                                   "Required for computing actual fluctuations."      , multiple=.TRUE.)
+CALL prms%CreateStringOption( 'VarNameFluc'      , "Names of variables for which Flucs (time-averaged&
+                                                   & square of the variable) should be computed.&
+                                                   & Required for computing actual fluctuations."      , multiple=.TRUE.)
 END SUBROUTINE DefineParametersAnalyzeEquation
 
 
@@ -98,12 +98,12 @@ INTEGER          :: i
 !==================================================================================================================================
 ! Get the various analysis/output variables
 doCalcBodyForces    =GETLOGICAL('CalcBodyForces'   ,'.FALSE.')
-doCalcBulkVelocity  =GETLOGICAL('CalcBulkState'    ,'.FALSE.')
+doCalcBulkState     =GETLOGICAL('CalcBulkState'    ,'.FALSE.')
 doCalcMeanFlux      =GETLOGICAL('CalcMeanFlux'     ,'.FALSE.')
 doCalcWallVelocity  =GETLOGICAL('CalcWallVelocity' ,'.FALSE.')
 doCalcTotalStates   =GETLOGICAL('CalcTotalStates'  ,'.FALSE.')
 doWriteBodyForces   =GETLOGICAL('WriteBodyForces'  ,'.TRUE.')
-doWriteBulkVelocity =GETLOGICAL('WriteBulkState'   ,'.TRUE.')
+doWriteBulkState    =GETLOGICAL('WriteBulkState'   ,'.TRUE.')
 doWriteMeanFlux     =GETLOGICAL('WriteMeanFlux'    ,'.TRUE.')
 doWriteWallVelocity =GETLOGICAL('WriteWallVelocity','.TRUE.')
 doWriteTotalStates  =GETLOGICAL('WriteTotalStates' ,'.TRUE.')
@@ -155,7 +155,7 @@ IF(MPIRoot)THEN
            [CHARACTER(4) :: "pt","p","Tt","Mach"])
     END DO
   END IF
-  IF(doCalcBulkVelocity.AND.doWriteBulkVelocity)THEN
+  IF(doCalcBulkState.AND.doWriteBulkState)THEN
     FileName_Bulk  = TRIM(ProjectName)//'_Bulk'
     CALL InitOutputToFile(FileName_Bulk,'Bulk',2*PP_nVar-1,[StrVarNamesPrim,StrVarNames(2:PP_nVar)])
   END IF
@@ -205,7 +205,7 @@ INTEGER                         :: i
 IF(doCalcBodyforces)   CALL CalcBodyforces(Bodyforce,Fp,Fv)
 IF(doCalcWallVelocity) CALL CalcWallVelocity(maxV,minV,meanV)
 IF(doCalcMeanFlux)     CALL CalcMeanFlux(MeanFlux)
-IF(doCalcBulkVelocity) CALL CalcBulkVelocity(bulkPrim,bulkCons)
+IF(doCalcBulkState)    CALL CalcBulkState(bulkPrim,bulkCons)
 IF(doCalcTotalStates)  CALL CalcKessel(meanTotals)
 
 
@@ -241,8 +241,8 @@ IF(MPIRoot.AND.doCalcMeanFlux)THEN
   END DO
 END IF  !(doCalcBodyforces)
 
-IF(MPIRoot.AND.doCalcBulkVelocity)THEN
-  IF (doWriteBulkVelocity) &
+IF(MPIRoot.AND.doCalcBulkState)THEN
+  IF (doWriteBulkState) &
     CALL OutputToFile(FileName_Bulk,(/Time/),(/PP_nVarPrim+PP_nVar-1,1/),(/BulkPrim,BulkCons(2:PP_nVar)/))
   WRITE(formatStr,'(A,I2,A)')'(A14,',PP_nVarPrim,'ES18.9)'
   WRITE(UNIT_StdOut,formatStr)' Bulk Prims : ',bulkPrim
@@ -264,9 +264,9 @@ END SUBROUTINE AnalyzeEquation
 
 
 !==================================================================================================================================
-!> Calculates bulk velocities over whole domain
+!> Calculates bulk quantities over whole domain
 !==================================================================================================================================
-SUBROUTINE CalcBulkVelocity(BulkPrim,BulkCons)
+SUBROUTINE CalcBulkState(BulkPrim,BulkCons)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
@@ -280,8 +280,8 @@ USE MOD_FV_Vars,            ONLY: FV_Elems,FV_w
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(OUT)                :: BulkPrim(PP_nVarPrim)                   !> Primitive bulk quantities
-REAL,INTENT(OUT)                :: BulkCons(PP_nVar)                       !> Conservative bulk quantities
+REAL,INTENT(OUT)                :: BulkPrim(PP_nVarPrim)                   !< Primitive bulk quantities
+REAL,INTENT(OUT)                :: BulkCons(PP_nVar)                       !< Conservative bulk quantities
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                            :: IntegrationWeight
@@ -301,14 +301,14 @@ FV_w3 = FV_w**3
 DO iElem=1,nElems
 #if FV_ENABLED
   IF (FV_Elems(iElem).GT.0) THEN ! FV Element
-    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       IntegrationWeight=FV_w3/sJ(i,j,k,iElem,1)
       BulkCons         =BulkCons+U(:,i,j,k,iElem)*IntegrationWeight
       BulkPrim         =BulkPrim+UPrim(:,i,j,k,iElem)*IntegrationWeight
     END DO; END DO; END DO !i,j,k
   ELSE ! DG element
 #endif
-    DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+    DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       IntegrationWeight=wGPVol(i,j,k)/sJ(i,j,k,iElem,0)
       BulkCons         =BulkCons+U(:,i,j,k,iElem)*IntegrationWeight
       BulkPrim         =BulkPrim+UPrim(:,i,j,k,iElem)*IntegrationWeight
@@ -331,7 +331,7 @@ END IF
 BulkPrim=BulkPrim/Vol
 BulkCons=BulkCons/Vol
 
-END SUBROUTINE CalcBulkVelocity
+END SUBROUTINE CalcBulkState
 
 
 !===================================================================================================================================
@@ -550,7 +550,7 @@ DO iSide=1,nSides-nMPISides_YOUR
   IF(iSurf.EQ.0) CYCLE
 #if FV_ENABLED
   IF (FV_Elems_master(iSide).EQ.1) THEN ! FV element
-    DO j=0,PP_N; DO i=0,PP_N
+    DO j=0,PP_NZ; DO i=0,PP_N
       ! Don't multiply with Surfelem, its already contained in the fluxes
       MeanFlux(:,iSurf)=MeanFlux(:,iSurf)+Flux_master(:,i,j,iSide)*FV_w_surf
     END DO; END DO

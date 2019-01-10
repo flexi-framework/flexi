@@ -1,16 +1,18 @@
 ## Freestream
+\label{sec:tut_freestream}
 
 The setup considers a freestream scenario with constant pressure $p=101325.0$ Pa, density $\rho=1.225$ kg/$m^3$ and velocity vector $\textbf{U}=(1,1,1)^T$ m/s.
 
-Copy the ``freestream`` tutorial folder \label{missing:aliases_tutorial_freestreem}
+Copy the ``freestream`` tutorial folder
 
         cp -r $FLEXI_TUTORIALS/freestream .
+        cd freestream
 
 ### Mesh Generation with HOPR
 
 The mesh files used by **FLEXI** are created by supplying an input file *parameter_hopr.ini* with the appropriate information.
 
-    ./hopr parameter_hopr.ini
+    hopr parameter_hopr.ini
 
 This creates the mesh file *cartbox_mesh.h5* in HDF5 format. Alternatively, if you do not want to run **hopr**, you can also use the provided mesh.
 
@@ -43,6 +45,7 @@ Table: Numerical settings \label{tab:freestream_flow_prop}
 | isentropic coefficient $\kappa$ | kappa         |  1.4        |
 
 ### Numerical settings
+\label{sec:tut_freestream_num_settings}
 
 The DG solution on the mesh is represented by piecewise polynomials and the polynomial degree in this tutorial is chosen as $N=3$.
 
@@ -81,6 +84,6 @@ After a successful completion, the last lines in this files should look like in 
 To visualize the solution, the *State*-files must be converted into a format suitable for **ParaView**. Issue the command 
 
 ~~~~~~~
-flexi2vtk parameter_flexi.ini cartbox_State_000000*.h5
+posti_visu parameter_postiVisu.ini parameter_flexi.ini cartbox_State_0000000.00000*
 ~~~~~~~
 to generate the corresponding *vtu*-files, which can then be loaded into **ParaView**. 

@@ -72,7 +72,7 @@ END INTERFACE
 CONTAINS
 
 !==================================================================================================================================
-!> Define parameters 
+!> Define parameters needed for filtering
 !==================================================================================================================================
 SUBROUTINE DefineParametersFilter()
 ! MODULES
@@ -278,7 +278,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 REAL,INTENT(INOUT)  :: U_in(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< solution vector to be filtered
-REAL,INTENT(IN)     :: FilterMat(0:PP_N,0:PP_N)                  !< filter matrix to be used
+REAL,INTENT(IN)     :: FilterMat(0:PP_N,0:PP_N)                   !< filter matrix to be used
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER             :: iElem
@@ -310,7 +310,7 @@ USE MOD_FV_Vars,    ONLY: FV_Elems
 IMPLICIT NONE
 !-------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-REAL,INTENT(IN)     :: FilterMat(0:PP_N,0:PP_N)                  !< filter matrix to be used
+REAL,INTENT(IN)     :: FilterMat(0:PP_N,0:PP_N)                   !< filter matrix to be used
 !-------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 REAL,INTENT(INOUT)  :: U_in(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< solution vector to be filtered
@@ -456,7 +456,9 @@ END SUBROUTINE Filter_LAF
 #endif /*EQNSYSNR==2*/
 
 
-
+!===============================================================================================================================
+!> This subroutine filters the solution in selected spatial directions
+!===============================================================================================================================
 SUBROUTINE Filter_Selective(NVar,FilterMat,U_in,filter_ind)
 ! MODULES
 USE MOD_PreProc
@@ -464,10 +466,10 @@ USE MOD_Globals
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(INOUT)  :: U_in(NVar,0:PP_N,0:PP_N,0:PP_N) ! < solution vector to be filtered
-REAL,INTENT(IN)     :: FilterMat(0:PP_N,0:PP_N)        ! < filter matrix to be used
-INTEGER,INTENT(IN)  :: NVar
-LOGICAL, INTENT(IN) :: filter_ind(:)
+REAL,INTENT(INOUT)  :: U_in(NVar,0:PP_N,0:PP_N,0:PP_N) !< solution vector to be filtered
+REAL,INTENT(IN)     :: FilterMat(0:PP_N,0:PP_N)        !< filter matrix to be used
+INTEGER,INTENT(IN)  :: NVar                            !< number of variables to be filtered
+LOGICAL,INTENT(IN)  :: filter_ind(:)                   !< indicator to apply filtering only in selected direction(s)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                                   :: i,j,k,l

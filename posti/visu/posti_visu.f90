@@ -56,11 +56,16 @@ CHARACTER(LEN=255),ALLOCATABLE :: VarNamesSurf_loc(:)
 CALL SetStackSizeUnlimited()
 CALL InitMPI()
 CALL ParseCommandlineArguments()
+IF (doPrintHelp.GT.0) THEN
+  prmfile = ''
+  CALL visu(MPI_COMM_WORLD, prmfile, prmfile, Args(1)) !pass first arg (section etc.) instead of statefile
+END IF
 IF (nArgs.LT.1) THEN
-  CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: posti [posti-prm-file [flexi-prm-file]] statefile [statefiles]')
+  CALL CollectiveStop(__STAMP__,&
+      'ERROR - Invalid syntax. Please use: posti [posti-prm-file [flexi-prm-file]] statefile [statefiles]')
 END IF
 
-prmfile = ""
+prmfile = ''
 ! check if parameter file is given
 IF(STRICMP(GetFileExtension(Args(1)),'ini')) THEN
   skipArgs = 1 ! first argument is the parameter file
@@ -73,10 +78,20 @@ IF(STRICMP(GetFileExtension(Args(1)),'ini')) THEN
     END IF
   END IF
 ELSE IF(STRICMP(GetFileExtension(Args(1)),'h5')) THEN
-  skipArgs = 0 ! do not skip a argument. first argument is a h5 file
-  postifile = ""
+  skipArgs = 0 ! do not skip arguments. first argument is a h5 file
+  !create empty dummy prm file
+  postifile = ".posti.ini"
+  IF(MPIRoot)THEN
+    IF(FILEEXISTS(postifile))THEN
+      OPEN(UNIT=31, FILE=postifile, STATUS="old")
+      CLOSE(31, STATUS="delete")
+    END IF
+    OPEN (UNIT=31, FILE=postifile, STATUS="new")
+    CLOSE (UNIT=31)
+  END IF 
 ELSE
-  CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: posti [posti-prm-file [flexi-prm-file]] statefile [statefiles]')
+  CALL CollectiveStop(__STAMP__,&
+        'ERROR - Invalid syntax. Please use: posti [posti-prm-file [flexi-prm-file]] statefile [statefiles]')
 END IF
 
 DO iArg=1+skipArgs,nArgs
@@ -85,11 +100,16 @@ DO iArg=1+skipArgs,nArgs
   
   CALL visu(MPI_COMM_WORLD, prmfile, postifile, statefile)
 
+  IF (MeshFileMode) THEN
+    FileString_DG=TRIM(MeshFile)//'_visu.vtu'
+  ELSE
 #if FV_ENABLED                            
-  FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_DG',OutputTime))//'.vtu'
+    FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_DG',OutputTime))//'.vtu'
 #else
-  FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))//'.vtu'
+    FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))//'.vtu'
 #endif
+  END IF
+
 
   ALLOCATE(varnames_loc(nVarVisu))
   ALLOCATE(varnamesSurf_loc(nVarSurfVisuAll))
@@ -120,15 +140,17 @@ DO iArg=1+skipArgs,nArgs
     CALL WriteDataToVTK(nVarVisu,NVisu,nElems_DG,VarNames_loc,CoordsVisu_DG,UVisu_DG,FileString_DG,&
         dim=PP_dim,DGFV=0,nValAtLastDimension=.TRUE.)
 #if FV_ENABLED                            
-    FileString_FV=TRIM(TIMESTAMP(TRIM(ProjectName)//'_FV',OutputTime))//'.vtu'
-    CALL WriteDataToVTK(nVarVisu,NVisu_FV,nElems_FV,VarNames_loc,CoordsVisu_FV,UVisu_FV,FileString_FV,&
-        dim=PP_dim,DGFV=1,nValAtLastDimension=.TRUE.)
+    IF (.NOT.MeshFileMode) THEN
+      FileString_FV=TRIM(TIMESTAMP(TRIM(ProjectName)//'_FV',OutputTime))//'.vtu'
+      CALL WriteDataToVTK(nVarVisu,NVisu_FV,nElems_FV,VarNames_loc,CoordsVisu_FV,UVisu_FV,FileString_FV,&
+          dim=PP_dim,DGFV=1,nValAtLastDimension=.TRUE.)
 
-    IF (MPIRoot) THEN                   
-      ! write multiblock file
-      FileString_multiblock=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))//'.vtm'
-      CALL WriteVTKMultiBlockDataSet(FileString_multiblock,FileString_DG,FileString_FV)
-    ENDIF
+      IF (MPIRoot) THEN                   
+        ! write multiblock file
+        FileString_multiblock=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))//'.vtm'
+        CALL WriteVTKMultiBlockDataSet(FileString_multiblock,FileString_DG,FileString_FV)
+      ENDIF
+    END IF
 #endif
 
     IF (doSurfVisu) THEN

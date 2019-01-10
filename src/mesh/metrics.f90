@@ -80,7 +80,7 @@ CONTAINS
 !==================================================================================================================================
 !> This routine takes the equidistant node coordinats of the mesh (on NGeo+1 points) and uses them to build the coordinates
 !> of solution/interpolation points of type NodeType on polynomial degree Nloc (Nloc+1 points per direction).
-!> The coordinates (for a non-conforming mesh) can also be build from an octree if the mesh is based on a conforming baseline mesh.
+!> The coordinates (for a non-conforming mesh) can also be built from an octree if the mesh is based on a conforming baseline mesh.
 !==================================================================================================================================
 SUBROUTINE BuildCoords(NodeCoords,NodeType,Nloc,VolumeCoords,TreeCoords)
 ! MODULES
@@ -101,10 +101,10 @@ USE MOD_Basis              ,ONLY: LagrangeInterpolationPolys
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(INOUT)            :: NodeCoords(3,0:NGeo,0:NGeo,0:PP_NGeoZ,nElems)         !< Equidistant mesh coordinates
+REAL,INTENT(INOUT)            :: NodeCoords(3,0:NGeo,0:NGeo,0:ZDIM(NGeo),nElems)         !< Equidistant mesh coordinates
 CHARACTER(LEN=255),INTENT(IN) :: NodeType                                              !< Type of node that should be converted to
 INTEGER,INTENT(IN)            :: Nloc                                                  !< Convert to Nloc+1 points per direction
-REAL,INTENT(OUT)              :: VolumeCoords(3,0:Nloc,0:Nloc,0:PP_NlocZ,nElems)       !< OUT: Coordinates of solution/interpolation
+REAL,INTENT(OUT)              :: VolumeCoords(3,0:Nloc,0:Nloc,0:ZDIM(Nloc),nElems)       !< OUT: Coordinates of solution/interpolation
                                                                                        !< points
 REAL,INTENT(INOUT),OPTIONAL   :: TreeCoords(3,0:NGeoTree,0:NGeoTree,0:NGeoTree,nTrees) !< coordinates of nodes of tree-elements
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -208,14 +208,14 @@ INTEGER :: q
 INTEGER :: ll
 ! Jacobian on CL N and NGeoRef
 REAL    :: DetJac_N( 1,0:PP_N,   0:PP_N,   0:PP_NZ)
-REAL    :: tmp(      1,0:NgeoRef,0:NgeoRef,0:PP_NGeoRefZ)
+REAL    :: tmp(      1,0:NgeoRef,0:NgeoRef,0:ZDIM(NGeoRef))
 !REAL    :: tmp2(     1,0:Ngeo,0:Ngeo,0:Ngeo)
 ! interpolation points and derivatives on CL N
 REAL    :: XCL_N(      3,  0:PP_N,0:PP_N,0:PP_NZ)          ! mapping X(xi) P\in N
-REAL    :: XCL_Ngeo(   3,  0:Ngeo,0:Ngeo,0:PP_NGeoZ)          ! mapping X(xi) P\in Ngeo
+REAL    :: XCL_Ngeo(   3,  0:Ngeo,0:Ngeo,0:ZDIM(NGeo))          ! mapping X(xi) P\in Ngeo
 REAL    :: XCL_N_quad( 3,  0:PP_N,0:PP_N,0:PP_NZ)          ! mapping X(xi) P\in N
-REAL    :: dXCL_Ngeo(  3,3,0:Ngeo,0:Ngeo,0:PP_NGeoZ)          ! jacobi matrix on CL Ngeo
-REAL    :: dX_NgeoRef( 3,3,0:NgeoRef,0:NgeoRef,0:PP_NGeoRefZ) ! jacobi matrix on SOL NgeoRef
+REAL    :: dXCL_Ngeo(  3,3,0:Ngeo,0:Ngeo,0:ZDIM(NGeo))          ! jacobi matrix on CL Ngeo
+REAL    :: dX_NgeoRef( 3,3,0:NgeoRef,0:NgeoRef,0:ZDIM(NGeoRef)) ! jacobi matrix on SOL NgeoRef
 
 #if PP_dim == 3
 REAL    :: R_CL_N(     3,3,0:PP_N,0:PP_N,0:PP_NZ)    ! buffer for metric terms, uses XCL_N,dXCL_N
@@ -298,7 +298,7 @@ DO iElem=1,nElems
 
   !1.b) Jacobi Matrix of d/dxi_dd(X_nn): dXCL_NGeo(dd,nn,i,j,k))
   dXCL_NGeo=0.
-  DO k=0,PP_NGeoZ; DO j=0,Ngeo; DO i=0,Ngeo
+  DO k=0,ZDIM(NGeo); DO j=0,Ngeo; DO i=0,Ngeo
     ! Matrix-vector multiplication
     DO ll=0,Ngeo
       dXCL_Ngeo(1,1:PP_dim,i,j,k)=dXCL_Ngeo(1,1:PP_dim,i,j,k) + DCL_Ngeo(i,ll)*XCL_Ngeo(1:PP_dim,ll,j,k)
@@ -317,7 +317,7 @@ DO iElem=1,nElems
 #if (PP_dim == 3)
   CALL ChangeBasisVolume(3,Ngeo,NgeoRef,Vdm_CLNGeo_NgeoRef,dXCL_NGeo(:,3,:,:,:),dX_NgeoRef(:,3,:,:,:))
 #endif
-  DO k=0,PP_NGeoRefZ  ; DO j=0,NgeoRef; DO i=0,NgeoRef
+  DO k=0,ZDIM(NGeoRef)  ; DO j=0,NgeoRef; DO i=0,NgeoRef
 #if (PP_dim == 3)
     detJac_Ref(1,i,j,k,iElem)=detJac_Ref(1,i,j,k,iElem) &
       + dX_NgeoRef(1,1,i,j,k)*(dX_NgeoRef(2,2,i,j,k)*dX_NgeoRef(3,3,i,j,k) - dX_NgeoRef(3,2,i,j,k)*dX_NgeoRef(2,3,i,j,k))  &
@@ -572,15 +572,15 @@ IMPLICIT NONE
 INTEGER,INTENT(IN) :: Nloc                                !< (IN) polynomial degree
 INTEGER,INTENT(IN) :: FVE                                 !< (IN) Finite Volume enabled
 INTEGER,INTENT(IN) :: iElem                               !< (IN) element index
-REAL,INTENT(IN)    :: JaCL_N(  3,3,0:Nloc,0:Nloc,0:PP_NlocZ)  !< (IN) volume metrics of element
-REAL,INTENT(IN)    :: XCL_N(     3,0:Nloc,0:Nloc,0:PP_NlocZ)  !< (IN) element geo. interpolation points (CL)
+REAL,INTENT(IN)    :: JaCL_N(  3,3,0:Nloc,0:Nloc,0:ZDIM(Nloc))  !< (IN) volume metrics of element
+REAL,INTENT(IN)    :: XCL_N(     3,0:Nloc,0:Nloc,0:ZDIM(Nloc))  !< (IN) element geo. interpolation points (CL)
 REAL,INTENT(IN)    :: Vdm_CLN_N(   0:Nloc,0:Nloc)         !< (IN) Vandermonde matrix from Cheby-Lob on N to final nodeset on N
-REAL,INTENT(OUT)   ::    NormVec(3,0:Nloc,0:PP_NlocZ,0:FVE,1:nSides) !< (OUT) element face normal vectors
-REAL,INTENT(OUT)   ::   TangVec1(3,0:Nloc,0:PP_NlocZ,0:FVE,1:nSides) !< (OUT) element face tangential vectors
-REAL,INTENT(OUT)   ::   TangVec2(3,0:Nloc,0:PP_NlocZ,0:FVE,1:nSides) !< (OUT) element face tangential vectors
-REAL,INTENT(OUT)   ::   SurfElem(  0:Nloc,0:PP_NlocZ,0:FVE,1:nSides) !< (OUT) element face surface area
-REAL,INTENT(OUT)   ::   Face_xGP(3,0:Nloc,0:PP_NlocZ,0:FVE,1:nSides) !< (OUT) element face interpolation points
-REAL,INTENT(OUT),OPTIONAL :: Ja_Face(3,3,0:Nloc,0:PP_NlocZ,1:nSides) !< (OUT) surface metrics
+REAL,INTENT(OUT)   ::    NormVec(3,0:Nloc,0:ZDIM(Nloc),0:FVE,1:nSides) !< (OUT) element face normal vectors
+REAL,INTENT(OUT)   ::   TangVec1(3,0:Nloc,0:ZDIM(Nloc),0:FVE,1:nSides) !< (OUT) element face tangential vectors
+REAL,INTENT(OUT)   ::   TangVec2(3,0:Nloc,0:ZDIM(Nloc),0:FVE,1:nSides) !< (OUT) element face tangential vectors
+REAL,INTENT(OUT)   ::   SurfElem(  0:Nloc,0:ZDIM(Nloc),0:FVE,1:nSides) !< (OUT) element face surface area
+REAL,INTENT(OUT)   ::   Face_xGP(3,0:Nloc,0:ZDIM(Nloc),0:FVE,1:nSides) !< (OUT) element face interpolation points
+REAL,INTENT(OUT),OPTIONAL :: Ja_Face(3,3,0:Nloc,0:ZDIM(Nloc),1:nSides) !< (OUT) surface metrics
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: p,q,pq(2),dd,iLocSide,SideID,SideID2,iMortar,nbSideIDs(4),flip
@@ -589,11 +589,11 @@ INTEGER            :: nMortars,tmp_MI(1:2),SideID_Mortar
 #endif
 INTEGER            :: NormalDir,TangDir
 REAL               :: NormalSign
-REAL               :: Ja_Face_l(3,3,0:Nloc,0:PP_NlocZ)
-REAL               :: Mortar_Ja(3,3,0:Nloc,0:PP_NlocZ,4)
-REAL               :: Mortar_xGP( 3,0:Nloc,0:PP_NlocZ,4)
-REAL               :: tmp(        3,0:Nloc,0:PP_NlocZ)
-REAL               :: tmp2(       3,0:Nloc,0:PP_NlocZ)
+REAL               :: Ja_Face_l(3,3,0:Nloc,0:ZDIM(Nloc))
+REAL               :: Mortar_Ja(3,3,0:Nloc,0:ZDIM(Nloc),4)
+REAL               :: Mortar_xGP( 3,0:Nloc,0:ZDIM(Nloc),4)
+REAL               :: tmp(        3,0:Nloc,0:ZDIM(Nloc))
+REAL               :: tmp2(       3,0:Nloc,0:ZDIM(Nloc))
 !==================================================================================================================================
 
 #if PP_dim == 3
@@ -621,7 +621,7 @@ DO iLocSide=2,5
   END SELECT
   CALL ChangeBasisSurf(3,Nloc,Nloc,Vdm_CLN_N,tmp,tmp2)
   ! turn into right hand system of side
-  DO q=0,PP_NlocZ; DO p=0,Nloc
+  DO q=0,ZDIM(Nloc); DO p=0,Nloc
     pq=SideToVol2(Nloc,p,q,0,iLocSide,PP_dim)
     ! Compute Face_xGP for sides
     Face_xGP(1:3,p,q,0,sideID)=tmp2(:,pq(1),pq(2))
@@ -645,7 +645,7 @@ DO iLocSide=2,5
     END SELECT
     CALL ChangeBasisSurf(3,Nloc,Nloc,Vdm_CLN_N,tmp,tmp2)
     ! turn into right hand system of side
-    DO q=0,PP_NlocZ; DO p=0,Nloc
+    DO q=0,ZDIM(Nloc); DO p=0,Nloc
       pq=SideToVol2(Nloc,p,q,0,iLocSide,PP_dim)
       Ja_Face_l(dd,1:3,p,q)=tmp2(:,pq(1),pq(2))
     END DO; END DO ! p,q
@@ -704,16 +704,16 @@ INTEGER,INTENT(IN) :: Nloc                       !< polynomial degree
 INTEGER,INTENT(IN) :: NormalDir                  !< direction of normal vector
 INTEGER,INTENT(IN) :: TangDir                    !< direction of 1. tangential vector
 REAL,INTENT(IN)    :: NormalSign                 !< sign of normal vector
-REAL,INTENT(IN)    :: Ja_Face(3,3,0:Nloc,0:PP_NlocZ) !< face metrics
-REAL,INTENT(OUT)   ::   NormVec(3,0:Nloc,0:PP_NlocZ) !< element face normal vectors
-REAL,INTENT(OUT)   ::  TangVec1(3,0:Nloc,0:PP_NlocZ) !< element face tangential vectors
-REAL,INTENT(OUT)   ::  TangVec2(3,0:Nloc,0:PP_NlocZ) !< element face tangential vectors
-REAL,INTENT(OUT)   ::  SurfElem(  0:Nloc,0:PP_NlocZ) !< element face surface area
+REAL,INTENT(IN)    :: Ja_Face(3,3,0:Nloc,0:ZDIM(Nloc)) !< face metrics
+REAL,INTENT(OUT)   ::   NormVec(3,0:Nloc,0:ZDIM(Nloc)) !< element face normal vectors
+REAL,INTENT(OUT)   ::  TangVec1(3,0:Nloc,0:ZDIM(Nloc)) !< element face tangential vectors
+REAL,INTENT(OUT)   ::  TangVec2(3,0:Nloc,0:ZDIM(Nloc)) !< element face tangential vectors
+REAL,INTENT(OUT)   ::  SurfElem(  0:Nloc,0:ZDIM(Nloc)) !< element face surface area
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: p,q
 !==================================================================================================================================
-DO q=0,PP_NlocZ; DO p=0,Nloc
+DO q=0,ZDIM(Nloc); DO p=0,Nloc
   SurfElem(  p,q) = SQRT(SUM(Ja_Face(NormalDir,1:PP_dim,p,q)**2))
   NormVec( :,p,q) = NormalSign*Ja_Face(NormalDir,:,p,q)/SurfElem(p,q)
   ! For two-dimensional computations, the normal direction will be 1 or 2. For the tangential direction

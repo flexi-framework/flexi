@@ -66,6 +66,11 @@ CONTAINS
 #undef _ADD_DIM
 END MODULE MOD_ChangeBasis
 
+!==================================================================================================================================
+!> Changes surface or volume data present as polynomial with Lagrange Basis of degree NIn to 
+!> a representation of polynomial of a Lagrange Basis NOut, using two
+!> arbitrary point distributions xi_In(0:NIn) and xi_Out(0:NOut) and a series of 1D operations.
+!==================================================================================================================================
 MODULE MOD_ChangeBasisByDim
 ! MODULES
 IMPLICIT NONE

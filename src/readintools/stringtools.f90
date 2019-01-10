@@ -188,7 +188,8 @@ FUNCTION STRICMP(a, b)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=*),INTENT(IN) :: a,b !< strings to compare with each other
+!> strings to compare with each other
+CHARACTER(LEN=*),INTENT(IN) :: a,b 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
 LOGICAL            :: STRICMP
@@ -233,8 +234,11 @@ END SUBROUTINE
 !> Converts integer to string
 !==================================================================================================================================
 PURE FUNCTION INTTOSTR(value) 
-INTEGER,INTENT(IN)  :: value
+INTEGER,INTENT(IN)  :: value !< input integer
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
 CHARACTER(LEN=255)  :: INTTOSTR
+!==================================================================================================================================
 WRITE(INTTOSTR,"(I20)") value
 END FUNCTION INTTOSTR
 
@@ -242,7 +246,7 @@ END FUNCTION INTTOSTR
 !> Checks if a string is an integer
 !==================================================================================================================================
 PURE FUNCTION ISINT(value) 
-CHARACTER(LEN=255),INTENT(IN)  :: value
+CHARACTER(LEN=255),INTENT(IN)  :: value !< input string
 LOGICAL                        :: ISINT
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -414,7 +418,7 @@ END SUBROUTINE clear_formatting
 FUNCTION GetFileExtension(filename) 
 ! INPUT / OUTPUT VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
-CHARACTER(LEN=*),INTENT(IN)  :: filename
+CHARACTER(LEN=*),INTENT(IN)  :: filename         !< file to extract its file extension
 CHARACTER(LEN=:),ALLOCATABLE :: GetFileExtension
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -431,10 +435,10 @@ END FUNCTION GetFileExtension
 !==================================================================================================================================
 FUNCTION KEYVALUE(keys,values,key)
 ! INPUT / OUTPUT VARIABLES
-CHARACTER(LEN=255),INTENT(IN) :: keys(:)
-CHARACTER(LEN=*),INTENT(IN)   :: key
-INTEGER,INTENT(IN)            :: values(:)
-INTEGER                       :: KEYVALUE
+CHARACTER(LEN=255),INTENT(IN) :: keys(:)   !< array containing keys of key-value pairs
+CHARACTER(LEN=*),INTENT(IN)   :: key       !< key to search for in key-value pairs
+INTEGER,INTENT(IN)            :: values(:) !< array containing values of key-value pairs
+INTEGER                       :: KEYVALUE  !< return value for searched key
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER :: i

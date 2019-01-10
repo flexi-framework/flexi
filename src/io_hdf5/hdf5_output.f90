@@ -107,7 +107,7 @@ REAL,POINTER                   :: UOut(:,:,:,:,:)
 REAL,ALLOCATABLE               :: UOutTmp(:,:,:,:,:)
 #endif
 REAL                           :: Utmp(5,0:PP_N,0:PP_N,0:PP_NZ)
-REAL                           :: JN(1,0:PP_N,0:PP_N,0:PP_NZ),JOut(1,0:NOut,0:NOut,0:PP_NOutZ)
+REAL                           :: JN(1,0:PP_N,0:PP_N,0:PP_NZ),JOut(1,0:NOut,0:NOut,0:ZDIM(NOut))
 INTEGER                        :: iElem,i,j,k
 INTEGER                        :: nVal(5)
 !==================================================================================================================================
@@ -124,7 +124,7 @@ IF(MPIRoot) CALL GenerateFileSkeleton(TRIM(FileName),'State',PP_nVar,NOut,StrVar
                                       MeshFileName,OutputTime,FutureTime,withUserblock=.TRUE.)
 
 ! Set size of output 
-nVal=(/PP_nVar,NOut+1,NOut+1,PP_NOutZ+1,nElems/)
+nVal=(/PP_nVar,NOut+1,NOut+1,ZDIM(NOut)+1,nElems/)
 
 ! build output data
 IF(NOut.NE.PP_N)THEN
@@ -133,7 +133,7 @@ IF(NOut.NE.PP_N)THEN
       "NOut not working for FV!")
 #endif
   ! Project JU and J to NOut, compute U on Nout
-  ALLOCATE(UOut(PP_nVar,0:NOut,0:NOut,0:PP_NOutZ,nElems))
+  ALLOCATE(UOut(PP_nVar,0:NOut,0:NOut,0:ZDIM(NOut),nElems))
   DO iElem=1,nElems
     JN(1,:,:,:)=1./sJ(:,:,:,iElem,0)
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
@@ -143,14 +143,14 @@ IF(NOut.NE.PP_N)THEN
                            Utmp,UOut(1:PP_nVar,:,:,:,iElem))
     ! Jacobian
     CALL ChangeBasisVolume(1,PP_N,NOut,Vdm_N_NOut,JN,JOut)
-    DO k=0,PP_NOutZ; DO j=0,NOut; DO i=0,NOut
+    DO k=0,ZDIM(NOut); DO j=0,NOut; DO i=0,NOut
       UOut(:,i,j,k,iElem)=UOut(:,i,j,k,iElem)/JOut(1,i,j,k)
     END DO; END DO; END DO
   END DO
 #if PP_dim == 2
   ! If the output should be done with a full third dimension in a two dimensional computation, we need to expand the solution
   IF (.NOT.output2D) THEN 
-    ALLOCATE(UOutTmp(PP_nVar,0:NOut,0:NOut,0:PP_NOutZ,nElems))
+    ALLOCATE(UOutTmp(PP_nVar,0:NOut,0:NOut,0:ZDIM(NOut),nElems))
     UOutTmp = UOut
     DEALLOCATE(UOut)
     ALLOCATE(UOut(PP_nVar,0:NOut,0:NOut,0:NOut,nElems))
@@ -168,7 +168,7 @@ ELSE ! write state on same polynomial degree as the solution
   IF (.NOT.output2D) THEN
     ! If the output should be done with a full third dimension in a two dimensional computation, we need to expand the solution
     ALLOCATE(UOut(PP_nVar,0:NOut,0:NOut,0:NOut,nElems))
-    CALL ExpandArrayTo3D(5,(/PP_nVar,NOut+1,NOut+1,PP_NOutZ+1,nElems/),4,NOut+1,U,UOut)
+    CALL ExpandArrayTo3D(5,(/PP_nVar,NOut+1,NOut+1,ZDIM(NOut)+1,nElems/),4,NOut+1,U,UOut)
     ! Correct size of the output array
     nVal=(/PP_nVar,NOut+1,NOut+1,NOut+1,nElems/)
   ELSE

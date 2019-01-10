@@ -25,7 +25,6 @@ MODULE MOD_FillMortar
 IMPLICIT NONE
 PRIVATE
 
-#define TP_NZ PP_NZ
 #define WITHnVar 1
 
 INTERFACE U_Mortar
@@ -43,13 +42,12 @@ CONTAINS
 END MODULE MOD_FillMortar
 
 !==================================================================================================================================
-
+!> Routines that perform the projection operation between nonconforming interfaces of conservative variables
+!==================================================================================================================================
 MODULE MOD_FillMortarCons
 IMPLICIT NONE
 PRIVATE
 
-#undef TP_NZ
-#define TP_NZ PP_NZ
 #undef WITHnVar
 INTEGER,PARAMETER :: TP_nVar = PP_nVar
 
@@ -68,13 +66,12 @@ CONTAINS
 END MODULE MOD_FillMortarCons
 
 !==================================================================================================================================
-
+!> Routines that perform the projection operation between nonconforming interfaces of primitive variables
+!==================================================================================================================================
 MODULE MOD_FillMortarPrim
 IMPLICIT NONE
 PRIVATE
 
-#undef TP_NZ
-#define TP_NZ PP_NZ
 #undef WITHnVar
 INTEGER,PARAMETER :: TP_nVar = PP_nVarPrim
 
@@ -93,13 +90,12 @@ CONTAINS
 END MODULE MOD_FillMortarPrim
 
 !==================================================================================================================================
-
+!> Routines that perform the projection operation between nonconforming interfaces of a scalar variable
+!==================================================================================================================================
 MODULE MOD_FillMortar1
 IMPLICIT NONE
 PRIVATE
 
-#undef TP_NZ
-#define TP_NZ PP_NZ
 INTEGER,PARAMETER :: TP_nVar = 1
 
 INTERFACE U_Mortar1
@@ -115,28 +111,3 @@ PUBLIC::U_Mortar1,Flux_Mortar1
 CONTAINS
 #include "fillmortar.t90"
 END MODULE MOD_FillMortar1
-
-!==================================================================================================================================
-
-MODULE MOD_FillMortar1_3D
-IMPLICIT NONE
-PRIVATE
-
-#undef TP_NZ
-#define TP_NZ PP_NZ
-INTEGER,PARAMETER :: TP_nVar = 1
-
-INTERFACE U_Mortar1
-  MODULE PROCEDURE U_Mortar
-END INTERFACE
-
-INTERFACE Flux_Mortar1
-  MODULE PROCEDURE Flux_Mortar
-END INTERFACE
-
-PUBLIC::U_Mortar1,Flux_Mortar1
-
-CONTAINS
-#include "fillmortar.t90"
-END MODULE MOD_FillMortar1_3D
-

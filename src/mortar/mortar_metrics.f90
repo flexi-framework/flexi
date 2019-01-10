@@ -69,10 +69,10 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: SideID                         !< SideID of mortar master side
 INTEGER,INTENT(IN) :: Nloc                           !< polynomial degree
-REAL,INTENT(IN)    :: Face_Ja(  3,3,0:Nloc,0:PP_NlocZ)   !< surface metrics of side
-REAL,INTENT(IN)    :: Face_xGP(   3,0:Nloc,0:PP_NlocZ)   !< face xGP
-REAL,INTENT(OUT)   :: Mortar_Ja(3,3,0:Nloc,0:PP_NlocZ,4) !< mortarized surface metrics of side
-REAL,INTENT(OUT)   :: Mortar_xGP( 3,0:Nloc,0:PP_NlocZ,4) !< mortarized face xGP
+REAL,INTENT(IN)    :: Face_Ja(  3,3,0:Nloc,0:ZDIM(Nloc))   !< surface metrics of side
+REAL,INTENT(IN)    :: Face_xGP(   3,0:Nloc,0:ZDIM(Nloc))   !< face xGP
+REAL,INTENT(OUT)   :: Mortar_Ja(3,3,0:Nloc,0:ZDIM(Nloc),4) !< mortarized surface metrics of side
+REAL,INTENT(OUT)   :: Mortar_xGP( 3,0:Nloc,0:ZDIM(Nloc),4) !< mortarized face xGP
 INTEGER,INTENT(OUT):: nbSideID(4)                    !< index of neighbour sideIDs
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -151,7 +151,7 @@ CASE(3) !1->2 in xi
     IF(MortarInfo(MI_FLIP,iNb,SideIDMortar).GT.0) CYCLE !no slave sides (MPI)
     nbSideID(iNb)=MortarInfo(MI_SIDEID,iNb,SideIDMortar)
 
-    DO q=0,PP_NlocZ
+    DO q=0,ZDIM(Nloc)
       DO dir1=1,3
         DO dir2=1,3
           Mortar_Ja(dir1,dir2,:,q,iNb)=MATMUL(M_0_12_h(:,:,iNb),Face_Ja(dir1,dir2,:,q))

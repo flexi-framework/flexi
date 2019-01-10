@@ -50,7 +50,7 @@ CONTAINS
 
 !===================================================================================================================================
 !> Read in user defined parameters and prepare data for swapmesh.
-!> The old and new mesh will be read and stored, the necessary Vandermonde matrizes are build and the parametric coordinates
+!> The old and new mesh will be read and stored, the necessary Vandermonde matrices are built and the parametric coordinates
 !> of the new gauss points in the old mesh are found.
 !===================================================================================================================================
 SUBROUTINE InitSwapmesh()
@@ -269,7 +269,7 @@ USE MOD_Swapmesh_Vars,       ONLY: NodeTypeState,nElemsNew,xCLInter
 USE MOD_Swapmesh_Vars,       ONLY: Vdm_CLNGeo_EquiNSuper,Vdm_CLNInter_GPNNew,Vdm_GPNState_GPNNew
 USE MOD_Swapmesh_Vars,       ONLY: xCLNew
 USE MOD_Interpolation,       ONLY: GetVandermonde
-USE MOD_Interpolation_Vars,  ONLY: NodeType,NodeTypeCL
+USE MOD_Interpolation_Vars,  ONLY: NodeType,NodeTypeCL,NodeTypeVISU
 USE MOD_ChangeBasis,         ONLY: ChangeBasis3D
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -284,7 +284,7 @@ REAL               :: Vdm_CLNGeo_CLNInter(0:NInter,0:NGeoNew)
 !=================================================================================================================================
 ! Build visu Vandermonde
 ALLOCATE(Vdm_CLNGeo_EquiNSuper(0:NSuper,0:NGeoOld))
-CALL GetVandermonde(NGeoOld,NodeTypeState,NSuper,NodeType,Vdm_CLNGeo_EquiNSuper)
+CALL GetVandermonde(NGeoOld,NodeTypeCL,NSuper,NodeTypeVISU,Vdm_CLNGeo_EquiNSuper)
 
 ! Vandermonde from interpolation CL to new solution G/GL
 ALLOCATE(Vdm_CLNInter_GPNNew(0:NNew,0:NInter))

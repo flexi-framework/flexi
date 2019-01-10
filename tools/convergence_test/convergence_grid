@@ -22,7 +22,7 @@ def copy2temporary(tmp_dir, f) :
 
 
 parser = argparse.ArgumentParser(description='Tool to calculate the convergence rate')
-parser.add_argument('--N', type=int, default=3, help='polynomial degree N')
+parser.add_argument('--N', type=int, help='polynomial degree N')
 parser.add_argument('-m','--mortar', action='store_true', help='use non-conforming meshes')
 parser.add_argument('-d','--dim', type=int, default=3, help='number of spatial dimensions (1/2/3)')
 parser.add_argument('-p','--procs', type=int, default=1, help='number of processors used to run Flexi')
@@ -34,7 +34,7 @@ parser.add_argument('prm',   help='path to parameter file')
 args = parser.parse_args()
 
 if not os.path.exists(args.prm) :
-    print "parameter-file '%s' not found" % args.prm 
+    print "parameter-file '%s' not found" % args.prm
     sys.exit(1)
 
 
@@ -48,12 +48,17 @@ if args.printprmfile :
     for line in open(args.prm, 'r').readlines() :
         print line,
 
-# get ProjectName and theoretical order of convergence
+# get ProjectName
 projectname = read_prm(args.prm,'ProjectName')
-EOC = int(read_prm(args.prm,'N'))+1
 
 # modify polynomial degree
-modify_prm(args.prm, {'N' : args.N})
+if args.N:
+    modify_prm(args.prm, {'N' : args.N})
+else:
+    args.N=int(read_prm(args.prm,'N'))
+
+# get theoretical order of convergence
+EOC = args.N + 1
 
 # open file to print order of convergence
 convfile = open(projectname+'_hconvfile_N'+str(args.N)+'.csv','wb')
@@ -104,7 +109,7 @@ for grid in grids :
         exit(1)
     end_time = time.time()
 
-    if i == 1: 
+    if i == 1:
         # output header of output-table
         print_header(['grid '] + len(L2)*['L2 err   EOC     '] + len(Linf)*['Linf err  EOC    '])
 
@@ -146,7 +151,7 @@ for grid in grids :
             vals.append(convLinf[j])
         print_values(vals, ["%03d  "] + (len(L2)+len(Linf)) * ["%8.2e","%8.4f"])
         csvwriter.writerow([x_array[i-1]]+L2+Linf+convL2+convLinf)
-    
+
     if len(L2) < 5:
       index = 0
     else:
@@ -179,5 +184,5 @@ if args.gnuplot :
         g.plot(gnuplot_data,'exact(x)')
     except ImportError:
         print "No 'python-gnuplot' package found!"
- 
+
 shutil.rmtree(tmp_dir)
