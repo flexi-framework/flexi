@@ -206,7 +206,7 @@ LOGICAL,INTENT(IN)           :: single          !< single=T : only one processor
 LOGICAL,INTENT(IN)           :: readOnly        !< T : file is opened in read only mode, so file system timestamp remains unchanged
                                                 !< F: file is open read/write mode
 INTEGER,INTENT(IN),OPTIONAL  :: communicatorOpt !< only MPI and single=F: optional communicator to be used for collective access
-                                                !< default: MPI_COMM_WORLD
+                                                !< default: MPI_COMM_FLEXI
 INTEGER,INTENT(IN),OPTIONAL  :: userblockSize   !< size of the file to be prepended to HDF5 file
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -233,7 +233,7 @@ END IF
 IF (PRESENT(communicatorOpt)) THEN
   comm = communicatorOpt
 ELSE
-  comm = MPI_COMM_WORLD
+  comm = MPI_COMM_FLEXI
 END IF
 IF(.NOT.single)  CALL H5PSET_FAPL_MPIO_F(Plist_File_ID, comm, MPIInfo, iError)
 #endif /*USE_MPI*/

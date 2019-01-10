@@ -241,7 +241,7 @@ totalFV_nElems = totalFV_nElems + FVcounter ! counter for output of FV amount du
 IF(.NOT.doPrintStatusLine) RETURN
 
 #if FV_ENABLED && USE_MPI
-CALL MPI_ALLREDUCE(MPI_IN_PLACE,FVcounter,1,MPI_INTEGER,MPI_SUM,MPI_COMM_WORLD,iError)
+CALL MPI_ALLREDUCE(MPI_IN_PLACE,FVcounter,1,MPI_INTEGER,MPI_SUM,MPI_COMM_FLEXI,iError)
 #endif
 
 IF(MPIroot)THEN

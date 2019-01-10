@@ -280,7 +280,7 @@ END DO
 
 #if USE_MPI
 box(1) = massFlowGlobal; box(2) = massFlowPeriodic; box(3) = BulkVel
-CALL MPI_ALLREDUCE(MPI_IN_PLACE,box,3,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,iError)
+CALL MPI_ALLREDUCE(MPI_IN_PLACE,box,3,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)
 massFlowGlobal = box(1); massFlowPeriodic = box(2); BulkVel = box(3)
 #endif
 

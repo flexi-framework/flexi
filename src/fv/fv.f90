@@ -322,10 +322,10 @@ INTEGER(KIND=8),INTENT(IN) :: iter !< number of iterations
 !==================================================================================================================================
 #if USE_MPI
 IF(MPIRoot)THEN
-  CALL MPI_REDUCE(MPI_IN_PLACE,totalFV_nElems,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_WORLD,iError)
+  CALL MPI_REDUCE(MPI_IN_PLACE,totalFV_nElems,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
   ! totalFV_nElems is counted in PrintStatusLine
 ELSE
-  CALL MPI_REDUCE(totalFV_nElems,0           ,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_WORLD,iError)
+  CALL MPI_REDUCE(totalFV_nElems,0           ,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 END IF
 #endif
 SWRITE(UNIT_stdOut,'(A,F8.3,A)')' FV amount %: ', totalFV_nElems / REAL(nGlobalElems) / iter*100 

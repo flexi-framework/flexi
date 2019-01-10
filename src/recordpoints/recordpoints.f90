@@ -156,22 +156,22 @@ IF(MPIRoot) THEN
     noRPrank=0
   END IF
   DO iProc=1,nProcessors-1
-    CALL MPI_RECV(hasRP,1,MPI_LOGICAL,iProc,0,MPI_COMM_WORLD,MPIstatus,iError)
+    CALL MPI_RECV(hasRP,1,MPI_LOGICAL,iProc,0,MPI_COMM_FLEXI,MPIstatus,iError)
     IF(hasRP) THEN
       RPrank=RPrank+1
-      CALL MPI_SEND(RPrank,1,MPI_INTEGER,iProc,0,MPI_COMM_WORLD,iError)
+      CALL MPI_SEND(RPrank,1,MPI_INTEGER,iProc,0,MPI_COMM_FLEXI,iError)
     ELSE
       noRPrank=noRPrank+1
-      CALL MPI_SEND(noRPrank,1,MPI_INTEGER,iProc,0,MPI_COMM_WORLD,iError)
+      CALL MPI_SEND(noRPrank,1,MPI_INTEGER,iProc,0,MPI_COMM_FLEXI,iError)
     END IF
   END DO
 ELSE
-    CALL MPI_SEND(RP_onProc,1,MPI_LOGICAL,0,0,MPI_COMM_WORLD,iError)
-    CALL MPI_RECV(myRPrank,1,MPI_INTEGER,0,0,MPI_COMM_WORLD,MPIstatus,iError)
+    CALL MPI_SEND(RP_onProc,1,MPI_LOGICAL,0,0,MPI_COMM_FLEXI,iError)
+    CALL MPI_RECV(myRPrank,1,MPI_INTEGER,0,0,MPI_COMM_FLEXI,MPIstatus,iError)
 END IF
 
 ! create new RP communicator for RP output
-CALL MPI_COMM_SPLIT(MPI_COMM_WORLD, color, myRPrank, RP_COMM,iError)
+CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI, color, myRPrank, RP_COMM,iError)
 IF(RP_onProc) CALL MPI_COMM_SIZE(RP_COMM, nRP_Procs,iError)
 IF(myRPrank.EQ.0 .AND. RP_onProc) WRITE(*,*) 'RP COMM:',nRP_Procs,'procs'
 

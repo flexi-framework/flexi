@@ -100,7 +100,7 @@ CALL H5OPEN_F(iError)
 CALL H5PCREATE_F(H5P_FILE_ACCESS_F, Plist_ID, iError)
 #if USE_MPI
 ! Setup file access property list with parallel I/O access (MPI)
-CALL H5PSET_FAPL_MPIO_F(Plist_ID,MPI_COMM_WORLD, MPIInfo, iError)
+CALL H5PSET_FAPL_MPIO_F(Plist_ID,MPI_COMM_FLEXI, MPIInfo, iError)
 #endif /*USE_MPI*/
 
 ! Check if file exists
@@ -182,7 +182,7 @@ CALL H5OPEN_F(iError)
 CALL H5PCREATE_F(H5P_FILE_ACCESS_F, Plist_ID, iError)
 #if USE_MPI
 ! Setup file access property list with parallel I/O access (MPI)
-CALL H5PSET_FAPL_MPIO_F(Plist_ID,MPI_COMM_WORLD, MPIInfo, iError)
+CALL H5PSET_FAPL_MPIO_F(Plist_ID,MPI_COMM_FLEXI, MPIInfo, iError)
 #endif /*USE_MPI*/
 
 ! Check if file exists
@@ -622,7 +622,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)    :: FileName                !< filename to check
-LOGICAL,INTENT(IN)             :: single                  !< switch whether file is being accessed in parallel my MPI_COMM_WORLD
+LOGICAL,INTENT(IN)             :: single                  !< switch whether file is being accessed in parallel my MPI_COMM_FLEXI
 CHARACTER(LEN=255),INTENT(OUT) :: NextFileName_HDF5       !< output: follow up file according to checked file opened
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -641,7 +641,7 @@ CALL H5PCREATE_F(H5P_FILE_ACCESS_F, Plist_ID, iError)
 #if USE_MPI
 IF(.NOT.single)THEN
   ! Set property list to MPI IO
-  CALL H5PSET_FAPL_MPIO_F(Plist_ID, MPI_COMM_WORLD, MPI_INFO_NULL, iError)
+  CALL H5PSET_FAPL_MPIO_F(Plist_ID, MPI_COMM_FLEXI, MPI_INFO_NULL, iError)
 END IF
 #endif /*USE_MPI*/
 ! Open file
