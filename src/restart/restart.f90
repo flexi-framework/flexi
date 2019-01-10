@@ -127,12 +127,12 @@ END IF
 
 ! Check if we need to interpolate the restart file to our current polynomial degree and node type
 IF(DoRestart .AND. ((N_Restart.NE.PP_N) .OR. (TRIM(NodeType_Restart).NE.TRIM(NodeType))))THEN
+#if FV_ENABLED
+    CALL CollectiveStop(__STAMP__,'ERROR: The restart to a different polynomial degree or node type is not available for FV.')
+#endif
   InterpolateSolution=.TRUE.
   IF(MIN(N_Restart,PP_N).LT.NGeo) &
     CALL PrintWarning('The geometry is or was underresolved and will potentially change on restart!')
-#if FV_ENABLED
-  CALL CollectiveStop(__STAMP__,'ERROR: The restart to a different polynomial degree is not available for FV.') 
-#endif
 ELSE
   InterpolateSolution=.FALSE.
 END IF
