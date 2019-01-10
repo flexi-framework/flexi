@@ -1,7 +1,20 @@
+!=================================================================================================================================
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
+! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+!
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
+! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+!
+! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+! of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License v3.0 for more details.
+!
+! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
+!=================================================================================================================================
 #include "flexi.h"
 
 !===================================================================================================================================
-!> Module to handle the Recordpoints
+!> Module to handle the operations with splines - those are needed e.g. for the definition of boundary layer planes
 !===================================================================================================================================
 MODULE MOD_Spline
 ! MODULES
@@ -43,13 +56,14 @@ SUBROUTINE GetSpline(ndim,nCP,xCP,coeff,s_out,s_in)
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER,INTENT(IN)              :: ndim,nCP
-REAL,INTENT(IN)                 :: xCP(ndim,nCP)
-REAL,INTENT(IN),OPTIONAL        :: s_in(nCP)
+INTEGER,INTENT(IN)              :: ndim            !< Dimensions the spline is defined in
+INTEGER,INTENT(IN)              :: nCP             !< Number of control points the spline is made of
+REAL,INTENT(IN)                 :: xCP(ndim,nCP)   !< Coordinates of control points
+REAL,INTENT(IN),OPTIONAL        :: s_in(nCP)       !< OPTIONAL: Local coordinates along the spline for the control points
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(OUT)                :: s_out(nCP)
-REAL,INTENT(OUT)                :: coeff(ndim,4,nCp-1)
+REAL,INTENT(OUT)                :: s_out(nCP)          !< If not specified by s_in: Calculated local coordinates along the spline
+REAL,INTENT(OUT)                :: coeff(ndim,4,nCp-1) !< Spline coefficients
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                         :: nSp,dim,i
@@ -105,8 +119,8 @@ DO dim=1,ndim
         a_(i)=h(i-1)
     END DO
     !solve
-    !thomas alg.
-    CALL thomas( nSp-1,a_,b_,c_,r,c(2:nSP) )
+    !Thomas alg.
+    CALL Thomas( nSp-1,a_,b_,c_,r,c(2:nSP) )
   ELSEIF(nSp.EQ.2)THEN
     c(2)=r(1)/b_(1)
   END IF
@@ -136,11 +150,14 @@ USE MOD_Globals
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER,INTENT(IN)              :: ndim,nP_in,nP_out
-REAL,INTENT(IN)                 :: xP_in(ndim,nP_in)
+INTEGER,INTENT(IN)              :: ndim                !< Dimension in which spline is defined
+INTEGER,INTENT(IN)              :: nP_in               !< Initial number of control points
+INTEGER,INTENT(IN)              :: nP_out              !< New number of control points
+REAL,INTENT(IN)                 :: xP_in(ndim,nP_in)   !< Physical coordinates of initial spline
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(OUT)                :: xP_out(ndim,nP_out),t_equi(nP_out)
+REAL,INTENT(OUT)                :: xP_out(ndim,nP_out) !< Physical coordinates of equidistant spline
+REAL,INTENT(OUT)                :: t_equi(nP_out)      !< Parametric coordinates of equidistand spline
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                         :: i,iP,iSp,nSuper,nSp,iter
@@ -212,11 +229,13 @@ SUBROUTINE EvalEquiError(ndim,nP_in,xP_in,EquiErr)
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER,INTENT(IN)              :: ndim,nP_in
-REAL,INTENT(IN)                 :: xP_in(ndim,nP_in)
+INTEGER,INTENT(IN)              :: ndim              !< Dimensions the spline is defined in
+INTEGER,INTENT(IN)              :: nP_in             !< Number of control points
+REAL,INTENT(IN)                 :: xP_in(ndim,nP_in) !< Coordinates of control points
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(OUT)                :: EquiErr
+REAL,INTENT(OUT)                :: EquiErr           !< Error of current control point distribution compared with equidistant
+                                                     !< distribution
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                         :: i,iSp,nSuper,nSp
@@ -262,11 +281,14 @@ SUBROUTINE EvalSpline(ndim,nCP,s_in,s,coeff,x_loc)
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER,INTENT(IN)              :: ndim,nCP
-REAL,INTENT(IN)                 :: s_in,s(nCP),coeff(ndim,4,nCp-1)
+INTEGER,INTENT(IN)              :: ndim                 !< Dimensions the spline is defined in
+INTEGER,INTENT(IN)              :: nCP                  !< Number of control points
+REAL,INTENT(IN)                 :: s_in                 !< Parametric coordinate where the spline should be evaluated
+REAL,INTENT(IN)                 :: s(nCP)               !< Parametric coordinates of the control points
+REAL,INTENT(IN)                 :: coeff(ndim,4,nCp-1)  !< Spline coefficients (calculated by GetSpline)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(OUT)                :: x_loc(ndim)
+REAL,INTENT(OUT)                :: x_loc(ndim)          !< Value of spline at s_in
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                         :: iSp
@@ -295,11 +317,14 @@ SUBROUTINE EvalSplineDeriv(ndim,nCP,s_in,s,coeff,dx_loc)
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER,INTENT(IN)              :: ndim,nCP
-REAL,INTENT(IN)                 :: s_in,s(nCP),coeff(ndim,4,nCp-1)
+INTEGER,INTENT(IN)              :: ndim                 !< Dimensions the spline is defined in
+INTEGER,INTENT(IN)              :: nCP                  !< Number of control points
+REAL,INTENT(IN)                 :: s_in                 !< Parametric coordinate where the derivative should be evaluated
+REAL,INTENT(IN)                 :: s(nCP)               !< Parametric coordinates of the control points
+REAL,INTENT(IN)                 :: coeff(ndim,4,nCp-1)  !< Spline coefficients (calculated by GetSpline)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(OUT)                :: dx_loc(ndim)
+REAL,INTENT(OUT)                :: dx_loc(ndim)         !< Derivative of spline at s_in
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                         :: iSp
@@ -320,25 +345,28 @@ END SUBROUTINE EvalSplineDeriv
 
 !===================================================================================================================================
 !> Solve the tridiagonal equation system of the form
-!> | b_1 c_1                              .  |
-!> | a_2 b_2 c_2                          .  |
-!> |  .                                   .  |
-!> |  .                                      |
-!> |  .                                      |
-!> |                a_(m-1) b_(m-1) c_(m-1)  |
-!> |                        a_m     b_m      |
+!> | b_1 c_1                              .  |   |   x_1   |   |   r_1   |
+!> | a_2 b_2 c_2                          .  |   |   x_2   |   |   r_2   |
+!> |  .                                   .  |   |   ...   |   |   ...   |
+!> |  .                                      | * |   ...   | = |   ...   |
+!> |  .                                      |   |   ...   |   |   ...   |
+!> |                a_(m-1) b_(m-1) c_(m-1)  |   | x_(m-1) |   | r_(m-1) |
+!> |                        a_m     b_m      |   |   x_m   |   |   r_m   |
+!> using the Thomas algorithm
 !===================================================================================================================================
-SUBROUTINE thomas( m,a_,b_,c_,r,x )
+SUBROUTINE Thomas( m,a_,b_,c_,r,x )
 ! MODULES
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER,INTENT(IN)              :: m
-REAL,INTENT(INOUT),DIMENSION(m) :: a_,b_,r
-REAL,INTENT(IN),DIMENSION(m-1)  :: c_
+INTEGER,INTENT(IN)              :: m         !< Dimension of the matrix
+REAL,INTENT(INOUT),DIMENSION(m) :: a_        !< Vector containing lower diagonal
+REAL,INTENT(INOUT),DIMENSION(m) :: b_        !< Vector containing main diagonal
+REAL,INTENT(IN),DIMENSION(m-1)  :: c_        !< Vector containing upper diagonal
+REAL,INTENT(INOUT),DIMENSION(m) :: r         !< Vector containing right hand side
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(OUT)                :: x(m)
+REAL,INTENT(OUT)                :: x(m)      !< Solution vector
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                         :: i
@@ -353,6 +381,6 @@ x(m)=r(m)/b_(m)
 DO i=m-1,1,-1
   x(i)=(r(i)-c_(i)*x(i+1))/b_(i)
 END DO
-END SUBROUTINE thomas
+END SUBROUTINE Thomas
 
 END MODULE MOD_Spline

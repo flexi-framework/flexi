@@ -335,12 +335,18 @@ int visuReader::RequestData(
    }
 
    // write selected state varnames to the parameter file
+   // if no varnames are selected, write flag to suppress standard vars to be visualized
+   int noVisuVars = true;
    for (int i = 0; i< nVars; ++i)
    {
       if (VarNames_selected[i]) {
+         noVisuVars = false;
          const char* name = VarDataArraySelection->GetArrayName(i);
          dprintf(posti_unit, "VarName = %s\n", name) ;
       }
+   }
+   if (noVisuVars) {
+      dprintf(posti_unit, "noVisuVars = T") ;
    }
    for (int i = 0; i< nBCs; ++i)
    {

@@ -2,10 +2,10 @@
 
 # Code options \label{chap:codeoptions}
 ## Compiler options \label{sec:compileroptions}
-This section describes the main configuration options which can be set when building FLEXI. The options should 
-work on all supported systems, see section installation. The first set of options specify the components of 
-the FLEXI toolkit to compile. Some options are dependent on others being enabled, so the available options may change. 
-Components of the FLEXI package can be selected using the following options: \label{missing:compileroptions_not_finalized}
+This section describes the main configuration options which can be set when building **FLEXI** using CMake. 
+Some options are dependent on others being enabled (or disabled), so the available ones may change. 
+
+The first set of options describe general CMake behaviour:
 
 * ``CMAKE_BUILD_TYPE``:
 
@@ -30,17 +30,25 @@ Components of the FLEXI package can be selected using the following options: \la
 
     If “make install” is invoked or INSTALL is built, this directory is prepended onto all install directories. This variable defaults to /usr/local on UNIX.
 
+For some external libraries and programs that **FLEXI** uses, the following options apply:
+
 * ``CTAGS_PATH``:
 
-    This variable specifies the CTAGS install directory.
+    This variable specifies the Ctags install directory, an optional program used to jump between tags in the source file.
+
+* ``FLEXI_BUILD_HDF5``: ON/OFF
+
+    This will be set to ON if no prebuilt HDF5 installation was found on your machine. In this case a HDF5 version will be build and used instead.
+
+* ``HDF5_DIR``:
+
+    If you want to use a prebuilt HDF5 library that has been build using the CMake system, this directory should contain the CMake configuration file for HDF5 (optional).
+
+The following options enable or disable specific features of **FLEXI**. If you want to use a certain feature, make sure to enable it during the build process!
 
 * ``FLEXI_2D``: ON/OFF
 
     If set to ON the code will run in two-dimensional mode. You have to provide a mesh that consists of only one layer of elements in the third dimension.
-
-* ``FLEXI_BUILD_HDF5``: ON/OFF
-
-    This will be set to ON if no rebuilt HDF5 installation was found on your machine. In this case a HDF5 version will be build and used instead.
 
 * ``FLEXI_EQNSYSNAME``:
     
@@ -64,15 +72,15 @@ Components of the FLEXI package can be selected using the following options: \la
     
 * ``FLEXI_MKL``:  ON/OFF
     
-    This flag defines, whether Intel's MKL (Math Kernel Library) should be used. This is only meaningful when FLEXI is compiled with Intel compiler.    
+    This flag defines, whether Intel's MKL (Math Kernel Library) should be used. This is only meaningful when **FLEXI** is compiled with Intel compiler.    
     
 * ``FLEXI_MPI``: ON/OFF
 
-    This flag defines, whether FLEXI is compiled with MPI (necessary for parallel execution).
+    This flag defines, whether **FLEXI** is compiled with MPI (necessary for parallel execution).
 
 * ``FLEXI_NODETYPE``:
 
-    FLEXI space discretization is based on a DG method. Here two different basis functions could be used, see [@KoprivaGassner2010] for details.
+    **FLEXI** space discretization is based on a DG method. Here two different basis functions could be used, see [@KoprivaGassner2010] for details.
     
     * GAUSS
     * GAUSS-LOBATTO
@@ -87,37 +95,46 @@ Components of the FLEXI package can be selected using the following options: \la
     
 * ``FLEXI_POLYNOMIAL_DEGREE``:
 
-    Since FLEXI is a high order CFD solver based on polynomial basis function, the polynomial degree can already be chosen in the compile process.
+    Since **FLEXI** is a high order CFD solver based on polynomial basis function, the polynomial degree can already be chosen in the compile process.
     If the default value N is chosen, different polynomial degrees can be defined later in the parameter file.
     
     * N
     * \#
     
+* ``FLEXI_SPLIT_DG``:  ON/OFF
+
+    Enable to use the split form of the discontinuous Galerkin operator. Allows to use kinetic energy or entropy stable flux functions. Only available for Gauss-Lobatto nodes.
+    
 * ``FLEXI_TESTCASE``:
 
-    Each different CFD simulation needs specific settings, e.g. initialization, source terms, analyze routines, etc. ... . If a new test case is defined in the test case directory, you can find this test case by toggling through this variable. There are some predefined test cases and a default test case, which could be used for code development
+    Some specific (and often used) simulation setups are encapsulated in test cases. These include e.g. case-specific initialization, analyze routines, boundary conditions etc. The default test case does not include any additions.
     * default
     * taylorgreenvortex
     * phill
     * channel
+    * riemann2d
     
     See section \ref{sec:testcases} for details.
-   
-* ``FLEXI_TUTORIALS``
-
-    If this variable is set ON, a tutorial folder with different test case will be generated.
-
-* ``FLEXI_USE_PRIMITIVE_GRADIENTS``:  ON/OFF
-
-    FLEXI has two strategies to calculate gradients for the parabolic operator. If FLEXI_USE_PRIMITIVE_GRADIENTS is turned ON, the gradient are calculated based on the primitive variable set, e.g. $(\rho,u,v,w,p)^T$, otherwise they are calculated by the conservative variables $(\rho,\rho u,\rho v,\rho w,\rho E)^T$. Only applicable to the *Navier-Stokes* equations set.
 
 * ``FLEXI_VISCOSITY``:
 
-    There are different modeling approaches for the viscosity in FLEXI. You can choose
+    There are different modeling approaches for the viscosity in **FLEXI**. You can choose
     * constant
     * sutherland
     * powerlaw
-* ``HDF5_DIR``:
 
-    If you want to use a rebuilt HDF5 library that has been build using the CMake system, this directory should contain the CMake configuration file for HDF5 (optional).
+The remaining part of the options deal with the post-processing framework **POSTI**. 
+    
+* ``FLEXI_BUILDPOSTI``:  ON/OFF
+
+    Enable to also build the post-processing tools next to the actual simulation software. When this general option is enabled, you will need to enable the specific options for the tools that should be build.
+    
+    
+* ``POSTI_BUILD_*``:  ON/OFF
+
+    Each of the **POSTI** tools has it's own build option. Enable to build this specific tool.
+    
+* ``POSTI_USE_PARAVIEW*``:  ON/OFF
+
+    Enable to build the ParaView plugin for visualization of **FLEXI** simulation data. The ParaView libraries etc. must be available on the system and the environment variable $ParaView_DIR set accordingly.
 

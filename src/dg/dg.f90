@@ -153,16 +153,16 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)                             :: N_in                   !< Polynomial degree
 REAL,DIMENSION(0:N_in),INTENT(IN)              :: xGP                    !< Gauss/Gauss-Lobatto Nodes 
 REAL,DIMENSION(0:N_in),INTENT(IN)              :: wGP                    !< Gauss/Gauss-Lobatto Weights
-REAL,DIMENSION(0:N_in),INTENT(IN)              :: L_Minus                !< Values of lagrange polynomials at \f$ xi = -1 \f$  
-REAL,DIMENSION(0:N_in),INTENT(IN)              :: L_Plus                 !< Values of lagrange polynomials at \f$ xi = +1 \f$
+REAL,DIMENSION(0:N_in),INTENT(IN)              :: L_Minus                !< Values of lagrange polynomials at \f$ \xi = -1 \f$  
+REAL,DIMENSION(0:N_in),INTENT(IN)              :: L_Plus                 !< Values of lagrange polynomials at \f$ \xi = +1 \f$
 REAL,ALLOCATABLE,DIMENSION(:,:),INTENT(OUT)    :: D                      !< Differentation matrix
 REAL,ALLOCATABLE,DIMENSION(:,:),INTENT(OUT)    :: D_T                    !< Transpose of differentation matrix
 REAL,ALLOCATABLE,DIMENSION(:,:),INTENT(OUT)    :: D_Hat                  !< Differentiation matrix premultiplied by mass matrix,
                                                                          !< \f$ \hat{D} = M^{-1} D^T M \f$
-REAL,ALLOCATABLE,DIMENSION(:,:),INTENT(OUT)    :: D_Hat_T                !< Transpose of D_Hat matrix
-REAL,ALLOCATABLE,DIMENSION(:)  ,INTENT(OUT)    :: L_HatMinus             !< Values of lagrange polynomials at \f$ xi = -1 \f$
+REAL,ALLOCATABLE,DIMENSION(:,:),INTENT(OUT)    :: D_Hat_T                !< Transpose of D_Hat matrix \f$ \hat{D}^T \f$
+REAL,ALLOCATABLE,DIMENSION(:)  ,INTENT(OUT)    :: L_HatMinus             !< Values of lagrange polynomials at \f$ \xi = -1 \f$
                                                                          !< premultiplied with mass matrix
-REAL,ALLOCATABLE,DIMENSION(:)  ,INTENT(OUT)    :: L_HatPlus              !< Values of lagrange polynomials at \f$ xi = +1 \f$
+REAL,ALLOCATABLE,DIMENSION(:)  ,INTENT(OUT)    :: L_HatPlus              !< Values of lagrange polynomials at \f$ \xi = +1 \f$
                                                                          !< premultiplied with mass matrix
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -284,18 +284,19 @@ REAL,INTENT(IN)                 :: t                      !< Current time
 ! -----------------------------------------------------------------------------
 ! MAIN STEPS        []=FV only
 ! -----------------------------------------------------------------------------
-! 0.  Convert volume solution to primitive 
-! 1.  Prolong to face (fill U_master/slave)
-! 2.  ConsToPrim of face data (U_master/slave)
-![3.] Second order reconstruction for FV 
-! 4.  Lifting
-! 5.  Volume integral (DG only)
-![6.] FV volume integral
-! 7.  IF EDDYVISCOSITY: Prolong muSGS to face and send from slave to master
-! 8.  Fill flux (Riemann solver) + surface integral
-! 9.  Ut = -Ut
-! 10. Sponge and source terms
-! 11. Perform overintegration and apply Jacobian
+! 1.  Filter solution vector
+! 2.  Convert volume solution to primitive 
+! 3.  Prolong to face (fill U_master/slave)
+! 4.  ConsToPrim of face data (U_master/slave)
+![5.] Second order reconstruction for FV 
+! 6.  Lifting
+! 7.  Volume integral (DG only)
+![8.] FV volume integral
+! 9.  IF EDDYVISCOSITY: Prolong muSGS to face and send from slave to master
+! 10. Fill flux (Riemann solver) + surface integral
+! 11. Ut = -Ut
+! 12. Sponge and source terms
+! 13. Perform overintegration and apply Jacobian
 ! -----------------------------------------------------------------------------
 
 ! Nullify arrays
@@ -304,44 +305,44 @@ REAL,INTENT(IN)                 :: t                      !< Current time
 !       ARRAYS DO NOT NEED TO BE NULLIFIED, OTHERWISE THEY HAVE TO!
 CALL VNullify(nTotalU,Ut)
 
-! Filter the solution vector if applicable, filter_pointer points to cut-off filter or LAF filter (see filter.f90)
+! 1. Filter the solution vector if applicable, filter_pointer points to cut-off filter or LAF filter (see filter.f90)
 IF(FilterType.GT.0) CALL Filter_Pointer(U,FilterMat) 
 
-! 0. Convert Volume solution to primitive 
+! 2. Convert Volume solution to primitive 
 CALL ConsToPrim(PP_N,UPrim,U)
 
-! 1. Prolong the solution to the face integration points for flux computation (and do overlapping communication)
+! 3. Prolong the solution to the face integration points for flux computation (and do overlapping communication)
 ! -----------------------------------------------------------------------------------------------------------
 ! General idea: The slave sends its surface data to the master, where the flux is computed and sent back to the slaves.
 ! Steps:
 ! * (these steps are done for all slave MPI sides first and then for all remaining sides): 
-! 1.1)  Prolong solution to faces and store in U_master/slave. Use them to build mortar data (split into 2/4 smaller sides).
+! 3.1)  Prolong solution to faces and store in U_master/slave. Use them to build mortar data (split into 2/4 smaller sides).
 !       Then U_slave can be communicated from the slave to master MPI side.
-![1.2)] The information which element is a DG or FV subcells element is stored in FV_Elems per element. To know which of the
+![3.2)] The information which element is a DG or FV subcells element is stored in FV_Elems per element. To know which of the
 !       data inside the face-arrays U_master/slave is DG or FV the FV_Elems is 'prolongated' (copied) to FV_Elems_master/slave.
 !       These directly correspond to U_master/slave and must be handled in the same way as U_master/slave. Therefore they are 
 !       'mortarized' and then FV_Elems_slave is transmitted like U_slave.
-![1.3)] The reconstruction of slopes over element interfaces requires, besides U_slave and FV_Elems_slave, some more 
+![3.3)] The reconstruction of slopes over element interfaces requires, besides U_slave and FV_Elems_slave, some more 
 !       information that has to be transmitted from the slave to the master MPI side (same direction as U_slave and 
 !       FV_Elems_slave), which does the whole flux computation.
 !       This additional data is different for the two the element types (DG or FV) and is stored in the multipurpose array
 !       FV_multi_master/slave. 
-! 1.4)  Finish all started MPI communications (after step 2. due to latency hiding) 
+! 3.4)  Finish all started MPI communications (after step 2. due to latency hiding) 
 
 #if USE_MPI
-! Step 1 for all slave MPI sides
-! 1.1)
+! Step 3 for all slave MPI sides
+! 3.1)
 CALL StartReceiveMPIData(U_slave,DataSizeSide,1,nSides,MPIRequest_U(:,SEND),SendID=2) ! Receive MINE / U_slave: slave -> master
 CALL ProlongToFaceCons(PP_N,U,U_master,U_slave,L_Minus,L_Plus,doMPISides=.TRUE.)
 CALL U_MortarCons(U_master,U_slave,doMPISides=.TRUE.)
 CALL StartSendMPIData(   U_slave,DataSizeSide,1,nSides,MPIRequest_U(:,RECV),SendID=2) ! SEND YOUR / U_slave: slave -> master
 #if FV_ENABLED
-! 1.2)
+! 3.2)
 CALL FV_Elems_Mortar(FV_Elems_master,FV_Elems_slave,doMPISides=.TRUE.) 
 CALL StartExchange_FV_Elems(FV_Elems_slave,1,nSides,MPIRequest_FV_Elems(:,SEND),MPIRequest_FV_Elems(:,RECV),SendID=2) 
                                                                  ! Receive MINE, Send YOUR / FV_Elems_slave: slave -> master 
 #if FV_RECONSTRUCT
-! 1.3)
+! 3.3)
 CALL StartReceiveMPIData(FV_multi_slave,DataSizeSidePrim,1,nSides,MPIRequest_FV_gradU(:,SEND),SendID=2) 
                                                                  ! Receive MINE / FV_multi_slave: slave -> master
 CALL FV_PrepareSurfGradient(UPrim,FV_multi_master,FV_multi_slave,doMPiSides=.TRUE.)
@@ -352,22 +353,22 @@ CALL StartSendMPIData(   FV_multi_slave,DataSizeSidePrim,1,nSides,MPIRequest_FV_
 #endif /* FV_ENABLED */
 #endif /*USE_MPI*/
 
-! Step 1 for all remaining sides
-! 1.1)
+! Step 3 for all remaining sides
+! 3.1)
 CALL ProlongToFaceCons(PP_N,U,U_master,U_slave,L_Minus,L_Plus,doMPISides=.FALSE.)
 CALL U_MortarCons(U_master,U_slave,doMPISides=.FALSE.)
 #if FV_ENABLED
-! 1.2)
+! 3.2)
 CALL FV_Elems_Mortar(FV_Elems_master,FV_Elems_slave,doMPISides=.FALSE.)
 #if FV_RECONSTRUCT
-! 1.3)
+! 3.3)
 CALL FV_PrepareSurfGradient(UPrim,FV_multi_master,FV_multi_slave,doMPiSides=.FALSE.)
 CALL U_MortarPrim(FV_multi_master,FV_multi_slave,doMPiSides=.FALSE.)
 #endif
 #endif
 
 #if USE_MPI
-! 1.4) complete send / receive of side data from step 1.
+! 3.4) complete send / receive of side data from step 3.
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_U)        ! U_slave: slave -> master 
 #if FV_ENABLED
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_FV_Elems) ! FV_Elems_slave: slave -> master 
@@ -377,7 +378,7 @@ CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_FV_gradU) ! FV_multi_slave: sla
 #endif
 #endif
 
-! 2. Convert face data from conservative to primitive variables 
+! 4. Convert face data from conservative to primitive variables 
 !    Attention: For FV with 2nd order reconstruction U_master/slave and therewith UPrim_master/slave are still only 1st order
 ! TODO: Linadv?
 CALL GetPrimitiveStateSurface(U_master,U_slave,UPrim_master,UPrim_slave)
@@ -387,49 +388,49 @@ FV_Elems_Sum = FV_Elems_master + 2*FV_Elems_slave
 #endif
 
 #if FV_ENABLED && FV_RECONSTRUCT
-! [ 3. Second order reconstruction (computation of slopes) ]
+! [ 5. Second order reconstruction (computation of slopes) ]
 !-------------------------------------------------------
-! General idea at the faces: With the slave data from step 1.) reconstruct the slope over the interface on the master side
+! General idea at the faces: With the slave data from step 3.) reconstruct the slope over the interface on the master side
 !    and send it back to the slave
 ! Steps:
-! * (steps 3.2 and 3.4 are done for all master MPI sides first and then for all remaining sides)
-! 3.1) Convert FV_multi_master/slave (only the DG parts of it) from DG nodes to FV nodes (equidistant)
-! 3.2) Reconstruct the slope over the interface (and send it from master to slave)
-! 3.3) On the slave side combine the slopes from the 2/4 small mortar sides to the big mortar side (when communication finished)
-! 3.4) Calculate slopes at boundary conditions 
-! 3.5) Use the slope to prolongate the solution to UPrim_master/slave (ATTENTION: U_master/slave are only 1st order!)
-! 3.6) Calculate the inner (volume) slopes
+! * (steps 5.2 and 5.4 are done for all master MPI sides first and then for all remaining sides)
+! 5.1) Convert FV_multi_master/slave (only the DG parts of it) from DG nodes to FV nodes (equidistant)
+! 5.2) Reconstruct the slope over the interface (and send it from master to slave)
+! 5.3) On the slave side combine the slopes from the 2/4 small mortar sides to the big mortar side (when communication finished)
+! 5.4) Calculate slopes at boundary conditions 
+! 5.5) Use the slope to prolongate the solution to UPrim_master/slave (ATTENTION: U_master/slave are only 1st order!)
+! 5.6) Calculate the inner (volume) slopes
 
-! 3.1)
+! 5.1)
 CALL FV_DGtoFV(PP_nVarPrim,FV_multi_master,FV_multi_slave)
 
 #if USE_MPI
-! 3.2)
+! 5.2)
 CALL StartReceiveMPIData(FV_surf_gradU,DataSizeSidePrim,1,nSides,MPIRequest_Flux(:,SEND),SendID=1)
                                                          ! Receive YOUR / FV_surf_gradU: master -> slave
 CALL FV_SurfCalcGradients(UPrim_master,UPrim_slave,FV_multi_master,FV_multi_slave,&
     FV_surf_gradU,doMPISides=.TRUE.)
 CALL StartSendMPIData(   FV_surf_gradU,DataSizeSidePrim,1,nSides,MPIRequest_Flux(:,RECV),SendID=1)
                                                          ! Send MINE  /   FV_surf_gradU: master -> slave
-! 3.4)
+! 5.4)
 CALL FV_ProlongToDGFace(UPrim_master,UPrim_slave,FV_multi_master,FV_multi_slave,FV_surf_gradU,doMPISides=.TRUE.) 
 #endif /*USE_MPI*/
 
 ! Calculate FV-Gradients over inner Sides
-! 3.2)
+! 5.2)
 CALL FV_SurfCalcGradients(UPrim_master,UPrim_slave,FV_multi_master,FV_multi_slave,&
     FV_surf_gradU,doMPISides=.FALSE.)
-! 3.3) 
+! 5.3) 
 CALL FV_gradU_mortar(FV_surf_gradU,doMPISides=.FALSE.)
 #if USE_MPI
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Flux)   ! FV_surf_gradU: master -> slave
 CALL FV_gradU_mortar(FV_surf_gradU,doMPISides=.TRUE.)
 #endif
-! 3.4)
+! 5.4)
 CALL FV_SurfCalcGradients_BC(UPrim_master,FV_surf_gradU,t)
-! 3.5) 
+! 5.5) 
 CALL FV_ProlongToDGFace(UPrim_master,UPrim_slave,FV_multi_master,FV_multi_slave,FV_surf_gradU,doMPISides=.FALSE.)
-! 3.6) 
+! 5.6) 
 CALL FV_CalcGradients(UPrim,FV_surf_gradU,gradUxi,gradUeta,gradUzeta &
 #if PARABOLIC    
     ,gradUxi_central,gradUeta_central,gradUzeta_central &
@@ -438,22 +439,22 @@ CALL FV_CalcGradients(UPrim,FV_surf_gradU,gradUxi,gradUeta,gradUzeta &
 #endif /* FV_ENABLED && FV_RECONSTRUCT */
 
 #if PARABOLIC
-! 4. Lifting 
+! 6. Lifting 
 ! Compute the gradients using Lifting (BR1 scheme,BR2 scheme ...)
 ! The communication of the gradients is initialized within the lifting routines
 CALL Lifting(UPrim,UPrim_master,UPrim_slave,t)
 #endif /*PARABOLIC*/
 
-! 5. Compute volume integral contribution and add to Ut
+! 7. Compute volume integral contribution and add to Ut
 CALL VolInt(Ut)
 
 #if FV_ENABLED
-! [ 6. Volume integral (advective and viscous) for all FV elements ]
+! [ 8. Volume integral (advective and viscous) for all FV elements ]
 CALL FV_VolInt(UPrim,Ut)
 #endif
 
 #if EDDYVISCOSITY && PARABOLIC
-! 7.  Prolong muSGS to face and send from slave to master
+! 9.  Prolong muSGS to face and send from slave to master
 IF(CurrentStage.EQ.1) THEN
 #if USE_MPI
   CALL StartReceiveMPIData(muSGS_slave,DataSizeSideSGS,1,nSides,MPIRequest_SGS(:,RECV),SendID=2)
@@ -474,7 +475,7 @@ CALL FinishExchangeMPIData(6*nNbProcs,MPIRequest_gradU) ! gradUx,y,z: slave -> m
 #endif /*PARABOLIC && USE_MPI*/
 
 
-! 8. Fill flux and Surface integral
+! 10. Fill flux and Surface integral
 ! General idea: U_master/slave and gradUx,y,z_master/slave are filled and can be used to compute the Riemann solver
 !               and viscous flux at the faces. This is done for the MPI master sides first, to start communication early
 !               and then for all other sides.
@@ -482,15 +483,15 @@ CALL FinishExchangeMPIData(6*nNbProcs,MPIRequest_gradU) ! gradUx,y,z: slave -> m
 !               at mixed interfaces must be converted from DG to FV representation.
 !               After communication from master to slave the flux can be integrated over the faces.
 ! Steps:
-! * (step 8.2 is done for all MPI master sides first and then for all remaining sides)
-! * (step 8.3 and 8.4 are done for all other sides first and then for the MPI master sides) 
-![8.1)] Change basis of DG solution and gradients at mixed FV/DG interfaces to the FV grid
-![8.2)] Convert primitive face solution to conservative at FV faces
-! 8.3)  Fill flux (Riemann solver + viscous flux)
-! 8.4)  Combine fluxes from the 2/4 small mortar sides to the flux on the big mortar side (when communication finished)
-! 8.5)  Compute surface integral 
+! * (step 10.2 is done for all MPI master sides first and then for all remaining sides)
+! * (step 10.3 and 10.4 are done for all other sides first and then for the MPI master sides) 
+![10.1)] Change basis of DG solution and gradients at mixed FV/DG interfaces to the FV grid
+![10.2)] Convert primitive face solution to conservative at FV faces
+! 10.3)  Fill flux (Riemann solver + viscous flux)
+! 10.4)  Combine fluxes from the 2/4 small mortar sides to the flux on the big mortar side (when communication finished)
+! 10.5)  Compute surface integral 
 #if FV_ENABLED
-! 8.1) 
+! 10.1) 
 #if PARABOLIC
 CALL FV_DGtoFV(PP_nVarPrim,gradUx_master,gradUx_slave)
 CALL FV_DGtoFV(PP_nVarPrim,gradUy_master,gradUy_slave)
@@ -498,12 +499,12 @@ CALL FV_DGtoFV(PP_nVarPrim,gradUz_master,gradUz_slave)
 #endif
 CALL FV_DGtoFV(PP_nVar    ,U_master     ,U_slave     )
 CALL FV_DGtoFV(PP_nVarPrim,UPrim_master ,UPrim_slave )
-! 8.2) 
+! 10.2) 
 CALL GetConservativeStateSurface(UPrim_master, UPrim_slave, U_master, U_slave, FV_Elems_master, FV_Elems_slave, 1)
 #endif
 
 #if USE_MPI
-! 8.3)
+! 10.3)
 CALL StartReceiveMPIData(Flux_slave, DataSizeSide, 1,nSides,MPIRequest_Flux( :,SEND),SendID=1)
                                                                               ! Receive YOUR / Flux_slave: master -> slave
 CALL FillFlux(t,Flux_master,Flux_slave,U_master,U_slave,UPrim_master,UPrim_slave,doMPISides=.TRUE.)
@@ -511,30 +512,30 @@ CALL StartSendMPIData(   Flux_slave, DataSizeSide, 1,nSides,MPIRequest_Flux( :,R
                                                                               ! Send MINE  /   Flux_slave: master -> slave
 #endif /*USE_MPI*/
 
-! 8.3)
+! 10.3)
 CALL FillFlux(t,Flux_master,Flux_slave,U_master,U_slave,UPrim_master,UPrim_slave,doMPISides=.FALSE.)
-! 8.4)
+! 10.4)
 CALL Flux_MortarCons(Flux_master,Flux_slave,doMPISides=.FALSE.,weak=.TRUE.)
-! 8.5)
+! 10.5)
 CALL SurfIntCons(PP_N,Flux_master,Flux_slave,Ut,.FALSE.,L_HatMinus,L_hatPlus)
 
 #if USE_MPI
-! 8.4)
-CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Flux )                                        ! Flux_slave: master -> slave 
+! 10.4)
+CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Flux )                       ! Flux_slave: master -> slave 
 CALL Flux_MortarCons(Flux_master,Flux_slave,doMPISides=.TRUE.,weak=.TRUE.)
-! 8.5)
+! 10.5)
 CALL SurfIntCons(PP_N,Flux_master,Flux_slave,Ut,.TRUE.,L_HatMinus,L_HatPlus)
 #endif /*USE_MPI*/
 
-! 9. Swap to right sign :) 
+! 11. Swap to right sign :) 
 Ut=-Ut
 
-! 10. Compute source terms and sponge (in physical space, conversion to reference space inside routines)
+! 12. Compute source terms and sponge (in physical space, conversion to reference space inside routines)
 IF(doCalcSource) CALL CalcSource(Ut,t)
 IF(doSponge)     CALL Sponge(Ut)
 IF(doTCSource)   CALL TestcaseSource(Ut)
 
-! 11. Perform overintegration and apply Jacobian 
+! 13. Perform overintegration and apply Jacobian 
 ! Perform overintegration (projection filtering type overintegration)
 IF(OverintegrationType.GT.0) THEN
   CALL Overintegration(Ut)

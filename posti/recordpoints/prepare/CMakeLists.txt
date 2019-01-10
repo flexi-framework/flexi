@@ -14,6 +14,7 @@ FILE(GLOB ${TOOL_NAME}F90 ${TOOL_DIR}/parameters.f90
                           ${TOOL_DIR}/blprojection.f90
                           ${TOOL_DIR}/spline.f90
                           ${TOOL_DIR}/hdf5_outputrp.f90
+                          ${TOOL_DIR}/../../common/vtkOutput/vtkStructuredOutput.f90
                           ${TOOL_DIR}/visurp.f90 )
 
 ADD_LIBRARY(${TOOL_NAME}libF90 OBJECT ${${TOOL_NAME}F90})

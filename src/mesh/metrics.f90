@@ -80,7 +80,7 @@ CONTAINS
 !==================================================================================================================================
 !> This routine takes the equidistant node coordinats of the mesh (on NGeo+1 points) and uses them to build the coordinates
 !> of solution/interpolation points of type NodeType on polynomial degree Nloc (Nloc+1 points per direction).
-!> The coordinates (for a non-conforming mesh) can also be build from an octree if the mesh is based on a conforming baseline mesh.
+!> The coordinates (for a non-conforming mesh) can also be built from an octree if the mesh is based on a conforming baseline mesh.
 !==================================================================================================================================
 SUBROUTINE BuildCoords(NodeCoords,NodeType,Nloc,VolumeCoords,TreeCoords)
 ! MODULES

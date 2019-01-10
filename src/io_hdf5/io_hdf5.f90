@@ -42,7 +42,7 @@ LOGICAL                  :: output2D            !< Flag whether to use true 2D i
 INTEGER(HID_T)           :: File_ID             !< file which is currently opened
 INTEGER(HID_T)           :: Plist_File_ID       !< property list of file which is currently opened
 INTEGER(HSIZE_T),POINTER :: HSize(:)            !< HDF5 array size (temporary variable)
-INTEGER                  :: nDims               !< 
+INTEGER                  :: nDims               !< data size dimensions
 INTEGER                  :: MPIInfo             !< hardware / storage specific / file system MPI parameters to pass to HDF5
                                                 !< for optimized performance on specific systems
 
@@ -425,11 +425,14 @@ IF(nOpts.NE.1) CALL Abort(__STAMP__,&
   'More then one optional argument passed to AddToFieldData.')
 END SUBROUTINE AddToFieldData
 
+!==================================================================================================================================
+!> Takes a group and reads the names of the datasets
+!==================================================================================================================================
 SUBROUTINE GetDatasetNamesInGroup(group,names)
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
-CHARACTER(LEN=*)               :: group
-CHARACTER(LEN=255),ALLOCATABLE :: names(:)
+CHARACTER(LEN=*)               :: group    !< name of group
+CHARACTER(LEN=255),ALLOCATABLE :: names(:) !< names of datasets
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: nMembers,i,type

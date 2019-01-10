@@ -128,10 +128,10 @@ USE MOD_Mathtools     ,ONLY: INVERSE
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)            :: N_in                    ! Number of 1D input points / output points
-CHARACTER(LEN=255),INTENT(IN) :: NodeType_in             ! Type of 1D input points
-REAL,INTENT(OUT)              :: FV_Vdm(0:N_in,0:N_in)   ! Vandermonde matrix for converstion from DG to FV
-REAL,INTENT(OUT),OPTIONAL     :: FV_sVdm(0:N_in,0:N_in)  ! Vandermonde matrix for converstion from FV to DG
+INTEGER,INTENT(IN)            :: N_in                    !< Number of 1D input points / output points
+CHARACTER(LEN=255),INTENT(IN) :: NodeType_in             !< Type of 1D input points
+REAL,INTENT(OUT)              :: FV_Vdm(0:N_in,0:N_in)   !< Vandermonde matrix for converstion from DG to FV
+REAL,INTENT(OUT),OPTIONAL     :: FV_sVdm(0:N_in,0:N_in)  !< Vandermonde matrix for converstion from FV to DG
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                   :: FV_X(0:N_in),FV_w,FV_BdryX(0:N_In+1)

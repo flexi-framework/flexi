@@ -17,44 +17,45 @@ from numpy import *
 nElems=86712
 N=7
 nDOFTarget=6000.0
+dim=3
 
 
-nCoresMax=9999999
+nCoresMax=5000.0
 nCoresPerNode=24
-tol=0.05
 
-nDOF=nElems*(N+1)**3
+nDOF=nElems*(N+1)**dim
 
 print "============================================="
 print "Number of DOF " + str(nDOF)
 
-
 nCores=min(nCoresMax,nDOF/nDOFTarget)
-nNodesTmp=floor(nCores/nCoresPerNode)
-diff=ceil(nElems / nCores) - (nElems / nCores)
-while diff>tol:
-    nNodesTmp=nNodesTmp-1
-    nCores=nNodesTmp*nCoresPerNode
-    diff=ceil(nElems / nCores) - (nElems / nCores)
+nElemsPerCoreIdeal=ceil(nElems / nCores)
+nElemsPerNodeIdeal=nElemsPerCoreIdeal*nCoresPerNode
+nNodes=ceil(nElems/(nElemsPerNodeIdeal))
+nCores=nNodes*nCoresPerNode
+nElemsPerCore = nElems / nCores
+Imbalance=(nElemsPerCoreIdeal - nElemsPerCore) / nElemsPerCoreIdeal
 
 print "============================================="
 print "Approaching from bottom:"
-print "Suggested number of nodes " + str(nNodesTmp)
+print "Suggested number of nodes " + str(int(nNodes)) + " (" + str(int(nCores)) + " cores)"
 print "results in " + str(nElems / nCores) + " elements "
-print "and " + str(nElems / nCores *(N+1)**3) + " DOF per core "
+print "and " + str(nElems / nCores *(N+1)**dim) + " DOF per core "
+print "Efficiency loss: " + str(100*Imbalance) + " %"
 print "============================================="
 
 nCores=min(nCoresMax,nDOF/nDOFTarget)
-nNodesTmp=floor(nCores/nCoresPerNode)
-diff=ceil(nElems / nCores) - (nElems / nCores)
-while diff>tol:
-    nNodesTmp=nNodesTmp+1
-    nCores=nNodesTmp*nCoresPerNode
-    diff=ceil(nElems / nCores) - (nElems / nCores)
+nElemsPerCoreIdeal=floor(nElems / nCores)
+nElemsPerNodeIdeal=nElemsPerCoreIdeal*nCoresPerNode
+nNodes=ceil(nElems/(nElemsPerNodeIdeal))
+nCores=nNodes*nCoresPerNode
+nElemsPerCore = nElems / nCores
+Imbalance=(nElemsPerCoreIdeal - nElemsPerCore) / nElemsPerCoreIdeal
 
 print "Approaching from top:"
-print "Suggested number of nodes " + str(nNodesTmp)
+print "Suggested number of nodes " + str(int(nNodes)) + " (" + str(int(nCores)) + " cores)"
 print "results in " + str(nElems / nCores) + " elements "
-print "and " + str(nElems / nCores *(N+1)**3) + " DOF per core."
+print "and " + str(nElems / nCores *(N+1)**dim) + " DOF per core "
+print "Efficiency loss: " + str(100*Imbalance) + " %"
 print "============================================="
 

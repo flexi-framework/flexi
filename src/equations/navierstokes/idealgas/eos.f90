@@ -221,7 +221,7 @@ USE MOD_Eos_Vars, ONLY:KappaM1,R
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: Nloc
+INTEGER,INTENT(IN) :: Nloc                                  !< local polynomial degree of solution representation
 REAL,INTENT(IN)    :: cons(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)) !< vector of conservative variables
 REAL,INTENT(OUT)   :: prim(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)) !< vector of primitive variables 
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -257,7 +257,7 @@ USE MOD_Mesh_Vars,ONLY:nElems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: Nloc
+INTEGER,INTENT(IN) :: Nloc                                                  !< local polynomial degree of solution representation
 REAL,INTENT(IN)    :: cons(PP_nVar    ,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems) !< vector of conservative variables
 REAL,INTENT(OUT)   :: prim(PP_nVarPrim,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems) !< vector of primitive variables 
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -286,7 +286,7 @@ END DO ! iElem
 END SUBROUTINE ConsToPrim_Volume
 
 !==================================================================================================================================
-!> Transformation from primitive to conservative variables
+!> Transformation from primitive to conservative variables for a single state
 !==================================================================================================================================
 PURE SUBROUTINE PrimToCons(prim,cons)
 ! MODULES
@@ -321,9 +321,9 @@ USE MOD_Eos_Vars,ONLY:sKappaM1
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN):: Nloc
+INTEGER,INTENT(IN):: Nloc                                  !< local polynomial degree of solution representation
 REAL,INTENT(IN)   :: prim(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)) !< vector of primitive variables
-REAL,INTENT(OUT)  :: cons(PP_nVar    ,0:Nloc,0:ZDIM(Nloc))     !< vector of conservative variables
+REAL,INTENT(OUT)  :: cons(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)) !< vector of conservative variables
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER           :: p,q
@@ -353,9 +353,9 @@ USE MOD_Mesh_Vars,ONLY:nElems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN):: Nloc
-REAL,INTENT(IN)   :: prim(PP_nVarPrim,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems)     !< vector of primitive variables
-REAL,INTENT(OUT)  :: cons(PP_nVar    ,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems)     !< vector of conservative variables
+INTEGER,INTENT(IN):: Nloc                                                  !< local polynomial degree of solution representation
+REAL,INTENT(IN)   :: prim(PP_nVarPrim,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems) !< vector of primitive variables
+REAL,INTENT(OUT)  :: cons(PP_nVar    ,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems) !< vector of conservative variables
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER           :: p,q,r,iElem
@@ -388,8 +388,8 @@ USE MOD_Eos_Vars      ,ONLY: Kappa,KappaM1,sKappaM1,sKappaP1
 IMPLICIT NONE 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(IN) :: U_Prim(PP_nVarPrim)
-REAL            :: PRESSURE_RIEMANN
+REAL,INTENT(IN) :: U_Prim(PP_nVarPrim) !< vector of primitive variables
+REAL            :: PRESSURE_RIEMANN    !< pressure as the return value of the Riemann problem
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
 REAL     :: kappaFac,ar,br,P_RP

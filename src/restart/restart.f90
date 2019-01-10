@@ -83,7 +83,7 @@ USE MOD_Mesh_Vars,          ONLY: nGlobalElems,NGeo
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=255),INTENT(IN),OPTIONAL :: RestartFile_in
+CHARACTER(LEN=255),INTENT(IN),OPTIONAL :: RestartFile_in !< state file to restart from
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL            :: ResetTime,validHDF5
@@ -152,7 +152,7 @@ END SUBROUTINE InitRestart
 !> - We need to interpolate the restart solution. If the polynomial degree of our computation is lower than in the restart file,
 !>   a simple change basis is used to get the current solution U. If the polynomial degree is higher than in the restart file,
 !>   special care is taken to ensure a conservative projection of the restart solution. To do this, the restart solution is
-!>   transformed to reference space using the Jacobian build on a polynomial degree of 3*NGeo (so it can be represented exactly),
+!>   transformed to reference space using the Jacobian built on a polynomial degree of 3*NGeo (so it can be represented exactly),
 !>   then the change basis is applied. The resulting solution U is then transformed back to physical space.
 !>
 !> All state files that would be re-written by the simulation (with the same project name and a time stamp after the restart time
@@ -187,7 +187,7 @@ USE MOD_HDF5_Input,         ONLY: GetDataSize
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-LOGICAL,INTENT(IN),OPTIONAL :: doFlushFiles
+LOGICAL,INTENT(IN),OPTIONAL :: doFlushFiles !< flag to delete old state files
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL,ALLOCATABLE   :: U_local(:,:,:,:,:)

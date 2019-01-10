@@ -1,6 +1,19 @@
+!=================================================================================================================================
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
+! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+!
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
+! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+!
+! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+! of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License v3.0 for more details.
+!
+! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
+!=================================================================================================================================
 #include "flexi.h"
 !===================================================================================================================================
-!> Module to handle the Recordpoints
+!> Module containing routines to calculate turbulent quantities using a temporal FFT
 !===================================================================================================================================
 MODULE MOD_Turbulence
 ! MODULES
@@ -17,22 +30,20 @@ PUBLIC :: Turbulence
 CONTAINS
 
 !===================================================================================================================================
-!> Initialize all necessary information to perform interpolation
+!> This routine performs a temporal FFT for all RPs. Using the result, turbulent quantities like the turbulent kinetic energy
+!> will be calculated and a spectrum will be written.
 !===================================================================================================================================
 SUBROUTINE Turbulence()
 ! MODULES
 USE MOD_Globals              
-USE MOD_VarnamemappingsRP_vars 
 USE MOD_RPData_Vars            ,ONLY: RPTime,RPData
 USE MOD_RPSetVisuVisu_Vars     ,ONLY: nRP_global
 USE MOD_OutputRPVisu_Vars      ,ONLY: nSamples_out
 USE MOD_ParametersVisu         ,ONLY: Mu0,cutoffFreq
 USE FFTW3
-#ifdef WITHTECPLOT
 USE MOD_OutputRPVisu_Vars      ,ONLY: CoordNames
-USE MOD_Tecplot                ,ONLY: WriteDataToTecplotBinary,WriteTimeAvgDataToTecplotBinary
+USE MOD_OutputRPVisu_VTK       ,ONLY: WriteDataToVTK, WriteTimeAvgDataToVTK
 USE MOD_ParametersVisu         ,ONLY: ProjectName
-#endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -47,12 +58,10 @@ REAL , ALLOCATABLE              :: E_kineticSpec(:,:)
 REAL , ALLOCATABLE              :: velAbs(:,:) , velAbs_avg(:) , density_avg(:) , kk(:,:) , disRate(:,:) , epsilonMean(:,:)
 REAL , ALLOCATABLE              :: nu0(:) , eta(:) , etaK(:,:)
 REAL , ALLOCATABLE              :: vel_spec(:,:,:) , velPrim(:,:,:) , RPData_freq(:)
-#ifdef WITHTECPLOT
 INTEGER                         :: nVar_turb
 CHARACTER(LEN=255),ALLOCATABLE  :: VarNameTurb(:)
-CHARACTER(LEN=255)              :: Filename,stroutputfile
+CHARACTER(LEN=255)              :: Filename
 REAL , ALLOCATABLE              :: RPData_turb(:,:,:) , RPData_turb_avg(:,:)
-#endif
 !===================================================================================================================================
 
 
@@ -149,7 +158,6 @@ DO iSample=1,nSamples_spec
 END DO
 
 
-#ifdef WITHTECPLOT
 nVar_turb=5
 ALLOCATE(VarNameTurb(nVar_turb))
 VarNameTurb(1) = 'KineticEnergy'
@@ -170,9 +178,8 @@ CoordNames(1)='Frequency'
 WRITE(UNIT_StdOut,'(132("-"))')
 Filename=TRIM(ProjectName)
 FileName=TRIM(FileName)//'_RP_turb'
-strOutputFile=TRIM(FileName)//'.plt'
-WRITE(UNIT_stdOut,'(A,A)')' WRITING TURBULENCE DATA TO ',strOutputFile
-CALL WriteDataToTecplotBinary(nSamples_spec,nRP_global,nVar_turb,VarNameTurb,RPData_freq,RPData_turb,strOutputFile)
+WRITE(UNIT_stdOut,'(A,A)')' WRITING TURBULENCE DATA TO ',TRIM(FileName)
+CALL WriteDataToVTK(nSamples_spec,nRP_global,nVar_turb,VarNameTurb,RPData_freq,RPData_turb,FileName)
 WRITE(UNIT_stdOut,'(A)')' DONE.'
 WRITE(UNIT_StdOut,'(132("-"))')
 
@@ -191,12 +198,10 @@ RPData_turb_avg(2,:) = epsilonMean(:,nSamples_spec)
 WRITE(UNIT_StdOut,'(132("-"))')
 Filename=TRIM(ProjectName)
 FileName=TRIM(FileName)//'_RP_TurbAvg'
-strOutputFile=TRIM(FileName)//'.plt'
-WRITE(UNIT_stdOut,'(A,A)')' WRITING TURBULENCE AVERAGE DATA TO ',strOutputFile
-CALL WriteTimeAvgDataToTecplotBinary(nRP_global,nVar_turb,VarNameTurb,RPData_turb_avg,strOutputFile)
+WRITE(UNIT_stdOut,'(A,A)')' WRITING TURBULENCE AVERAGE DATA TO ',TRIM(FileName)
+CALL WriteTimeAvgDataToVTK(nRP_global,nVar_turb,VarNameTurb,RPData_turb_avg,FileName)
 WRITE(UNIT_stdOut,'(A)')' DONE.'
 WRITE(UNIT_StdOut,'(132("-"))')
-#endif
 
 
 END SUBROUTINE Turbulence

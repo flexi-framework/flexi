@@ -30,6 +30,14 @@ trap deletesrc EXIT
 rm -rf doxygen
 cp -r ../../src .
 cp -r ../../README.md .
+cp -r ../../CONTRIBUTORS.md .
+cp -r ../../INSTALL.md .
+cp -r ../../LICENSE.md .
+cp -r ../../REFERENCE.md .
+cp -r ../../REGGIE.md .
+
+# delete images of build status and gpl
+sed -i '3,4d' README.md
 
 # comment INTERFACE/END INTERFACE lines and MODULE PROCEDURE lines so doxygen will create call graphs
 FILELIST=`find . -name '*.f90'`

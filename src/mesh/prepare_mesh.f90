@@ -108,7 +108,7 @@ LastElemInd = offsetElem+nElems
 ! Build a map 'PeriodicBCMap' that holds the connections of periodic slave BCs to the corresponding master BCs.
 ! For a periodic connection two boundary conditions are stored in the list of all boundary conditions.
 ! One BC with a negative BC_ALPHA for the slave and one BC with a positive BC_ALPHA (of same absolute value) for
-! the master sides. To connect the two periodic boundary conditions the map 'PeriodicBCMap' is build, which stores
+! the master sides. To connect the two periodic boundary conditions the map 'PeriodicBCMap' is built, which stores
 ! for all BC indices an integer with following meaning:
 !   -2 : initial value (if map contains any -2, after building the map, then there are unconnected periodic BCs!)
 !   -1 : BC is not periodic (wall, inflow, ...) OR it is the master side of a periodic BC

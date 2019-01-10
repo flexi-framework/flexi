@@ -686,6 +686,7 @@ CLASS(link), POINTER   :: current
 CLASS(OPTION), POINTER :: currentOpt
 INTEGER                :: maxNameLen
 INTEGER                :: maxValueLen
+INTEGER                :: commentLen
 INTEGER                :: lineLen
 INTEGER                :: spaceNameLen
 INTEGER                :: spaceValueLen
@@ -745,13 +746,18 @@ DO WHILE (associated(current))
   maxValueLen = MAX(maxValueLen, current%opt%GETVALUELEN())
   current => current%next
 END DO
-lineLen = maxNameLen + maxValueLen + 4 + 50
+IF (markdown) THEN
+  maxNameLen=MAX(maxNameLen,10)
+  maxValueLen=MAX(maxValueLen,11)
+END IF
+commentLen=MERGE(50,80,markdown)
+lineLen = maxNameLen + maxValueLen + 4 + commentLen
 spaceNameLen = maxNameLen - 9
 spaceValueLen = maxValueLen - 10
 WRITE(fmtLineLen,*) lineLen
 WRITE(fmtName,*)    maxNameLen
 WRITE(fmtValue,*)   maxValueLen
-WRITE(fmtComment,*) 50
+WRITE(fmtComment,*) commentLen
 WRITE(fmtNamespace,*) spaceNameLen
 WRITE(fmtValuespace,*) spaceValueLen
 current => prms%firstLink
@@ -1279,15 +1285,18 @@ CALL Abort(__STAMP__,&
 
 END SUBROUTINE addStrListEntry
 
+!===================================================================================================================================
+!> This routing extracts a parameter file from the userblock of a state file
+!===================================================================================================================================
 SUBROUTINE ExtractParameterFile(filename,prmfile,userblockFound) 
 ! MODULES
 USE MOD_StringTools ,ONLY: STRICMP
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=255),INTENT(IN) :: filename !< name of file to be read
-CHARACTER(LEN=*),INTENT(IN)   :: prmfile  !< name of file to be written
-LOGICAL,INTENT(OUT)           :: userblockFound
+CHARACTER(LEN=255),INTENT(IN) :: filename       !< name of file to be read
+CHARACTER(LEN=*),INTENT(IN)   :: prmfile        !< name of file to be written
+LOGICAL,INTENT(OUT)           :: userblockFound !< logical indicating sucessful extraction of parameter file
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
 INTEGER               :: stat,iniUnit,fileUnit

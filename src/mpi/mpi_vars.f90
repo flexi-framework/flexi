@@ -36,8 +36,8 @@ INTEGER,ALLOCATABLE :: MPIRequest_SGS(:,:)      !< communication handle for the 
 #if PARABOLIC
 INTEGER,ALLOCATABLE :: MPIRequest_gradU(:,:,:)  !< communication handle for the surface gradients
 #endif /*PARABOLIC*/
-INTEGER             :: nSendVal
-INTEGER             :: nRecVal
+INTEGER             :: nSendVal                 !< number of values to be sent
+INTEGER             :: nRecVal                  !< number of values to be received
 INTEGER             :: DataSizeSide             !< datasize of one face, =PP_nVar*(PP_N+1)**2
 INTEGER             :: DataSizeSidePrim         !< datasize of one face for (primitive) gradients, =PP_nVarPrim*(PP_N+1)**2
 INTEGER             :: DataSizeSideSGS          !< datasize of one face for one value, =1*(PP_N+1)**2
