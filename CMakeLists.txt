@@ -276,14 +276,12 @@ IF (NOT CMAKE_BUILD_TYPE)
   SET_PROPERTY(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Debug Release Profile)
 ENDIF (NOT CMAKE_BUILD_TYPE)
 
-SET(USEIPO FALSE)
 IF (CMAKE_BUILD_TYPE MATCHES "Debug")
   ADD_DEFINITIONS("-DDEBUG")
 ELSE()
   IF (HASIPO)
     # enable IPO globally (IPO branding: Intel => IPO, GNU => LTO, PGI => IPA)
-    SET(USEIPO TRUE)
-    #SET(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)  # enable IPO globally
+    SET(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)  # enable IPO globally
   ENDIF()
 ENDIF()
 
@@ -581,9 +579,6 @@ ENDIF()
 
 # define libs
 ADD_LIBRARY(libflexistaticF90 OBJECT ${flexiF90})
-  IF (USEIPO)
-    SET_TARGET_PROPERTIES(${target} PROPERTIES INTERPROCEDURAL_OPTIMIZATION TRUE)
-  ENDIF()
 SET_TARGET_PROPERTIES(libflexistaticF90 PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}) 
 ADD_LIBRARY(libflexistatic STATIC $<TARGET_OBJECTS:libflexistaticF90>)
 SET_TARGET_PROPERTIES(libflexistatic PROPERTIES PREFIX ""
@@ -603,10 +598,6 @@ ADD_DEPENDENCIES(flexi libflexistatic userblocklib stacksizelib ${INTERNALLIBS})
 add_lib(libflexishared ./src/flexilib.f90)
 SET_TARGET_PROPERTIES(libflexishared PROPERTIES OUTPUT_NAME "libflexi")
 ADD_DEPENDENCIES(libflexishared libflexistatic userblocklib stacksizelib ${INTERNALLIBS})
-
-IF (USEIPO)
-  SET_TARGET_PROPERTIES(libflexistaticF90 libflexistatic libflexishared PROPERTIES INTERPROCEDURAL_OPTIMIZATION TRUE)
-ENDIF()
 
 # special compiler flags to avoid warnings for empty functions of testcase.f90 and overwrite of intrinsic abort in globals.f90
 IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
