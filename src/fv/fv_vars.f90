@@ -106,15 +106,15 @@ REAL,ALLOCATABLE       :: gradUzeta_central(:,:,:,:,:)!< FD in ZETA direction (c
 REAL,ALLOCATABLE       :: FV_SurfElemXi_sw(:,:,:,:)  !< SurfElem for inner FV faces in XI direction  (1:PP_N,0:PP_N,0:PP_N,PP_nElems)
 REAL,ALLOCATABLE       :: FV_SurfElemEta_sw(:,:,:,:) !< SurfElem for inner FV faces in ETA direction (0:PP_N,1:PP_N,0:PP_N,PP_nElems)
 REAL,ALLOCATABLE       :: FV_SurfElemZeta_sw(:,:,:,:)!< SurfElem for inner FV faces in ZETA direction(0:PP_N,0:PP_N,1:PP_N,PP_nElems)
-REAL,ALLOCATABLE       :: FV_NormVecXi (:,:,:,:,:)   !< Normal vector for inner FV faces in XI directioin 
-REAL,ALLOCATABLE       :: FV_TangVec1Xi(:,:,:,:,:)   !< Tangent1 vector for inner FV faces in XI directioin
-REAL,ALLOCATABLE       :: FV_TangVec2Xi(:,:,:,:,:)   !< Tangent2 vector for inner FV faces in XI directioin
-REAL,ALLOCATABLE       :: FV_NormVecEta (:,:,:,:,:)  !< Normal vector for inner FV faces in ETA directioin
-REAL,ALLOCATABLE       :: FV_TangVec1Eta(:,:,:,:,:)  !< Tangent1 vector for inner FV faces in ETA directioin
-REAL,ALLOCATABLE       :: FV_TangVec2Eta(:,:,:,:,:)  !< Tangent2 vector for inner FV faces in ETA directioin
-REAL,ALLOCATABLE       :: FV_NormVecZeta (:,:,:,:,:) !< Normal vector for inner FV faces in ZETA directioin
-REAL,ALLOCATABLE       :: FV_TangVec1Zeta(:,:,:,:,:) !< Tangent1 vector for inner FV faces in ZETA directioin
-REAL,ALLOCATABLE       :: FV_TangVec2Zeta(:,:,:,:,:) !< Tangent2 vector for inner FV faces in ZETA directioin
+REAL,ALLOCATABLE       :: FV_NormVecXi (:,:,:,:,:)   !< Normal vector for inner FV faces in XI direction
+REAL,ALLOCATABLE       :: FV_TangVec1Xi(:,:,:,:,:)   !< Tangent1 vector for inner FV faces in XI direction
+REAL,ALLOCATABLE       :: FV_TangVec2Xi(:,:,:,:,:)   !< Tangent2 vector for inner FV faces in XI direction
+REAL,ALLOCATABLE       :: FV_NormVecEta (:,:,:,:,:)  !< Normal vector for inner FV faces in ETA direction
+REAL,ALLOCATABLE       :: FV_TangVec1Eta(:,:,:,:,:)  !< Tangent1 vector for inner FV faces in ETA direction
+REAL,ALLOCATABLE       :: FV_TangVec2Eta(:,:,:,:,:)  !< Tangent2 vector for inner FV faces in ETA direction
+REAL,ALLOCATABLE       :: FV_NormVecZeta (:,:,:,:,:) !< Normal vector for inner FV faces in ZETA direction
+REAL,ALLOCATABLE       :: FV_TangVec1Zeta(:,:,:,:,:) !< Tangent1 vector for inner FV faces in ZETA direction
+REAL,ALLOCATABLE       :: FV_TangVec2Zeta(:,:,:,:,:) !< Tangent2 vector for inner FV faces in ZETA direction
 
 #if PARABOLIC
 REAL,ALLOCATABLE       :: FV_Metrics_fTilde_sJ(:,:,:,:,:) !< Metrics for FV subcells multiplied with sJ
