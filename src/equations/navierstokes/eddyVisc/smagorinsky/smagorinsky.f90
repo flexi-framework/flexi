@@ -75,7 +75,7 @@ VanDriest = GETLOGICAL('VanDriest','.FALSE.')
 ALLOCATE(damp(1,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 damp = 1.
 
-! Smago: (damp**2*CS*deltaS)**2. * S_eN * dens
+! Smago: (damp*CS*deltaS)**2 * S_eN * dens
 ! Precompute first term and store in damp
 ! Calculate the filter width deltaS: deltaS=( Cell volume )^(1/3) / ( PP_N+1 )
 DO iElem=1,nElems                                        
@@ -90,7 +90,7 @@ DO iElem=1,nElems
   DeltaS(iElem) = ( CellVol)**(1./3.)  / (REAL(PP_N)+1.)
 
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-    damp(1,i,j,k,iElem) = (damp(1,i,j,k,iElem)**2. * CS * deltaS(iElem))**2.
+    damp(1,i,j,k,iElem) = (damp(1,i,j,k,iElem) * CS * deltaS(iElem))**2
   END DO; END DO; END DO
 END DO
 
@@ -116,12 +116,12 @@ REAL                       ,INTENT(OUT) :: muSGS
 REAL                                    :: S_eN
 !===================================================================================================================================
 ! Already take the square root of 2 into account here
-S_eN = SQRT ( 2.*(gradUx(2)**2. + gradUy(3)**2. + gradUz(4)**2.) &
-              + ( gradUy(2) + gradUx(3) )**2.                    &
-              + ( gradUz(2) + gradUx(4) )**2.                    &
-              + ( gradUz(3) + gradUy(4) )**2. )
+S_eN = SQRT ( 2.*(gradUx(2)**2 + gradUy(3)**2 + gradUz(4)**2) &
+              + ( gradUy(2) + gradUx(3) )**2                    &
+              + ( gradUz(2) + gradUx(4) )**2                    &
+              + ( gradUz(3) + gradUy(4) )**2 )
 ! Smagorinsky model
-! Smago: (damp**2 * CS * deltaS)**2. * S_eN * rho
+! Smago: (damp * CS * deltaS)**2 * S_eN * rho
 ! we store the first constant term in damp
 muSGS = damp * S_eN * dens
 END SUBROUTINE Smagorinsky_Point
