@@ -62,21 +62,23 @@ CALL DefineParametersMPI()
 CALL DefineParametersIO_HDF5()
 
 CALL prms%SetSection("swapMesh")
-CALL prms%CreateStringOption(   "MeshFileOld"        , "Old mesh file (different than the one found in the state file)")
+CALL prms%CreateStringOption(   "MeshFileOld"        , "Old mesh file (if different than the one found in the state file)")
 CALL prms%CreateStringOption(   "MeshFileNew"        , "New mesh file")
 CALL prms%CreateLogicalOption(  "useCurvedsOld"      , "Controls usage of high-order information in old mesh. Turn off to discard "//&
-                                                      "high-order data and treat curved meshes as linear meshes.", '.TRUE.')
+                                                       "high-order data and treat curved meshes as linear meshes.", '.TRUE.')
 CALL prms%CreateLogicalOption(  "useCurvedsNew"      , "Controls usage of high-order information in new mesh. Turn off to discard "//&
-                                                      "high-order data and treat curved meshes as linear meshes.", '.TRUE.')
+                                                       "high-order data and treat curved meshes as linear meshes.", '.TRUE.')
 CALL prms%CreateIntOption(      "NInter"             , "Polynomial degree used for interpolation on new mesh (should be equal or  "//&
-                                                       "higher than N)" )
+                                                       "higher than NNew) - the state will be interpolated to this degree and then "//& 
+                                                       "projected down to NNew")
 CALL prms%CreateIntOption(      "NNew"               , "Polynomial degree used in new state files")
-CALL prms%CreateIntOption(      "NSuper"             , "Polynomial degree used for supersampling on the old mesh")
+CALL prms%CreateIntOption(      "NSuper"             , "Polynomial degree used for supersampling on the old mesh, used to get an "//&
+                                                       "initial guess for Newton's method - should be higher than NGeo of old mesh")
 CALL prms%CreateRealOption(     "maxTolerance"       , "Tolerance used to mark points as invalid if outside of reference element "//&
                                                        "more than maxTolerance",'5.e-2')
 CALL prms%CreateLogicalOption(  "printTroublemakers" , "Turn output of not-found points on or off",'.TRUE.')
 CALL prms%CreateRealArrayOption("RefState"           , "If a RefState is defined, this state will be used at points that are "// &
-                                                        "not found - without a RefState, the program will abort in this case")
+                                                        "marked as invalid - without a RefState, the program will abort in this case")
 CALL prms%CreateRealOption(     "abortTolerance"     , "Tolerance used to decide if the program should abort if no "// &
                                                        "RefState is given")
 
