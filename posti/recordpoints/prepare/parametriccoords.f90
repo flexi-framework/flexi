@@ -1,7 +1,21 @@
+!=================================================================================================================================
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
+! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+!
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
+! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+!
+! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+! of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License v3.0 for more details.
+!
+! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
+!=================================================================================================================================
 #include "flexi.h"
 
 !===================================================================================================================================
-!> Module to handle the Recordpoints
+!> Module to search for the reference coordinates of the RPs by inverting the mapping using Newton's method and to sort them
+!> according to the element number for later parallel read-in.
 !===================================================================================================================================
 MODULE MOD_RPParametricCoords
 ! MODULES
@@ -17,10 +31,10 @@ PUBLIC :: GetRecordPoints
 
 CONTAINS
 
+!===================================================================================================================================
+!> Wrapper routine to call the search and sorting algorithms
+!===================================================================================================================================
 SUBROUTINE GetRecordPoints()
-!===================================================================================================================================
-! Initialize all necessary information to perform filtering
-!===================================================================================================================================
 ! MODULES
 USE MOD_Globals
 USE MOD_RPSet_Vars        ,ONLY: RPSetInitIsDone
@@ -52,7 +66,7 @@ END SUBROUTINE GetRecordPoints
 
 
 !===================================================================================================================================
-!> Computes parametric coordinates and element of recordpoints given a physical coordinates iteratively
+!> Computes parametric coordinates and element of recordpoints given the physical coordinates iteratively
 !===================================================================================================================================
 SUBROUTINE GetParametricCoordinates()
 ! MODULES
@@ -423,8 +437,6 @@ IF(ANY(.NOT.RPFound)) THEN
         aRP%xF=xWinner
         ! keep the RP in the not found list, find the side with the best angle and minimum distance
         dist2RP(mapRP(iRP))=Winner_Dist2 
-!        SWRITE(UNIT_StdOut,'(A,I4,A,3F8.4,A,3F8.4,A)')' Projected RP ',iRP,' with coordinates ',aRP%x,' to ',ARP%xF,'.'
-!        SWRITE(UNIT_StdOut,'(A,F10.4,A)')' Angle to normal: ',ang*180/pi,' deg.'
       END IF
     END DO! iRP=1,nRP_Global
   END DO! SideID=1,nBCSides 
@@ -451,7 +463,7 @@ END SUBROUTINE GetParametricCoordinates
 
 
 !===================================================================================================================================
-!> sort points according to element numbering and prepare Offset Array
+!> sort points according to element numbering and prepare Offset Array - needed for parallel processing
 !===================================================================================================================================
 SUBROUTINE SortRP()
 ! MODULES
@@ -492,14 +504,6 @@ DO iElem=1,nElems
     END IF
   END DO !iRP
 END DO !iElem
-
-! DEBUG 
-!DO iElem=1,nElems
-!  WRITE(*,*) 'iElem,offset1,2:', iElem,OffsetRP(1,iElem),OffsetRP(2,iElem)
-!END DO !iElem
-!  DO iRP=1,nRP_global
-!    WRITE(*,*) 'iRP,xF',iRP,RPlist(iRP)%RP%xF
-!  END DO !iRP
 
 END SUBROUTINE SortRP
 

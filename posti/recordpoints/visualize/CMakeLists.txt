@@ -14,10 +14,10 @@ FILE(GLOB ${TOOL_NAME}F90 ${TOOL_DIR}/parameters.f90
                           ${TOOL_DIR}/rpset/*.f90
                           ${TOOL_DIR}/interpolation/*.f90
                           ${TOOL_DIR}/turbulence/*.f90
-                          ${TOOL_DIR}/varnamemappings/*.f90
                           ${TOOL_DIR}/output/*.f90
                           ${TOOL_DIR}/../prepare/spline.f90
                           ${TOOL_DIR}/../../common/fftw/fftw.f90
+                          ${TOOL_DIR}/../../common/vtkOutput/vtkStructuredOutput.f90
                           ${TOOL_DIR}/${POSTI_WHICH_EQNSYS}/*.f90 )
 
 ADD_LIBRARY(${TOOL_NAME}libF90 OBJECT ${${TOOL_NAME}F90})

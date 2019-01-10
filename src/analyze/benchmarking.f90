@@ -13,10 +13,10 @@
 !=================================================================================================================================
 #include "flexi.h"
 
+!==================================================================================================================================
+!> Contains benchmarking routines measuring the amount of flops
+!==================================================================================================================================
 MODULE MOD_Benchmarking
-!==================================================================================================================================
-! Contains analyze routines
-!==================================================================================================================================
 ! MODULES
 IMPLICIT NONE
 PRIVATE
@@ -49,7 +49,7 @@ CONTAINS
 
 SUBROUTINE InitBenchmarking()
 !==================================================================================================================================
-! Initializes variables necessary for analyse subroutines
+!> Initializes variables necessary for benchmarking subroutines
 !==================================================================================================================================
 ! MODULES
 USE MOD_ReadInTools,        ONLY: GETLOGICAL
@@ -65,7 +65,7 @@ END SUBROUTINE InitBenchmarking
 
 SUBROUTINE Benchmarking()
 !==================================================================================================================================
-! Initializes variables necessary for analyse subroutines
+!> Calls routine to measure amount of flops
 !==================================================================================================================================
 ! MODULES
 IMPLICIT NONE
@@ -81,7 +81,7 @@ END SUBROUTINE Benchmarking
 #ifdef PAPI
 SUBROUTINE MeasureFlops()
 !==================================================================================================================================
-! Initializes variables necessary for analyse subroutines
+!> Caclulates and summarizes amount of flops
 !==================================================================================================================================
 ! MODULES
 USE,INTRINSIC :: ISO_C_BINDING
@@ -111,7 +111,7 @@ END SUBROUTINE MeasureFlops
 
 SUBROUTINE FinalizeBenchmarking()
 !==================================================================================================================================
-! Finalizes variables necessary for analyse subroutines
+!> Finalizes variables necessary for benchmarking subroutines
 !==================================================================================================================================
 ! MODULES
 IMPLICIT NONE

@@ -591,12 +591,6 @@ ENDFOREACH()
 ADD_CUSTOM_TARGET(preproc_defines COMMAND echo ${comp_defs_str})
 
 # =========================================================================
-# Add FLEXI2VTK tool
-# =========================================================================
-add_exec(flexi2vtk ./src/flexi2vtk.f90)
-ADD_DEPENDENCIES(flexi2vtk flexilib)
-
-# =========================================================================
 # Posti
 # =========================================================================
 IF(FLEXI_BUILDPOSTI)

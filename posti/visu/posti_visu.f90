@@ -56,8 +56,13 @@ CHARACTER(LEN=255),ALLOCATABLE :: VarNamesSurf_loc(:)
 CALL SetStackSizeUnlimited()
 CALL InitMPI()
 CALL ParseCommandlineArguments()
+IF (doPrintHelp.GT.0) THEN
+  prmfile = ''
+  CALL visu(MPI_COMM_WORLD, prmfile, prmfile, Args(1)) !pass first arg (section etc.) instead of statefile
+END IF
 IF (nArgs.LT.1) THEN
-  CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: posti [posti-prm-file [flexi-prm-file]] statefile [statefiles]')
+  CALL CollectiveStop(__STAMP__,&
+      'ERROR - Invalid syntax. Please use: posti [posti-prm-file [flexi-prm-file]] statefile [statefiles]')
 END IF
 
 prmfile = ''
@@ -73,10 +78,20 @@ IF(STRICMP(GetFileExtension(Args(1)),'ini')) THEN
     END IF
   END IF
 ELSE IF(STRICMP(GetFileExtension(Args(1)),'h5')) THEN
-  skipArgs = 0 ! do not skip a argument. first argument is a h5 file
-  postifile = ""
+  skipArgs = 0 ! do not skip arguments. first argument is a h5 file
+  !create empty dummy prm file
+  postifile = ".posti.ini"
+  IF(MPIRoot)THEN
+    IF(FILEEXISTS(postifile))THEN
+      OPEN(UNIT=31, FILE=postifile, STATUS="old")
+      CLOSE(31, STATUS="delete")
+    END IF
+    OPEN (UNIT=31, FILE=postifile, STATUS="new")
+    CLOSE (UNIT=31)
+  END IF 
 ELSE
-  CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: posti [posti-prm-file [flexi-prm-file]] statefile [statefiles]')
+  CALL CollectiveStop(__STAMP__,&
+        'ERROR - Invalid syntax. Please use: posti [posti-prm-file [flexi-prm-file]] statefile [statefiles]')
 END IF
 
 DO iArg=1+skipArgs,nArgs

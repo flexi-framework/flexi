@@ -244,8 +244,8 @@ END SUBROUTINE InitBC
 !> Computes the boundary state for the different boundary conditions.
 !==================================================================================================================================
 SUBROUTINE GetBoundaryState(SideID,t,Nloc,UPrim_boundary,UPrim_master,NormVec,TangVec1,TangVec2,Face_xGP)
-!----------------------------------------------------------------------------------------------------------------------------------!
-! MODULES                                                                                                                          !
+!----------------------------------------------------------------------------------------------------------------------------------
+! MODULES                                                                                                                          
 USE MOD_PreProc
 USE MOD_Globals      ,ONLY: Abort
 USE MOD_Mesh_Vars    ,ONLY: BoundaryType,BC
@@ -254,14 +254,14 @@ USE MOD_EOS          ,ONLY: PRESSURE_RIEMANN
 USE MOD_EOS_Vars     ,ONLY: sKappaM1,Kappa,KappaM1,R
 USE MOD_ExactFunc    ,ONLY: ExactFunc
 USE MOD_Equation_Vars,ONLY: IniExactFunc,BCDataPrim,RefStatePrim,nRefState
-!----------------------------------------------------------------------------------------------------------------------------------!
+!----------------------------------------------------------------------------------------------------------------------------------
 ! insert modules here
-!----------------------------------------------------------------------------------------------------------------------------------!
+!----------------------------------------------------------------------------------------------------------------------------------
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)      :: SideID
-REAL,INTENT(IN)         :: t       !< current time (provided by time integration scheme)
-INTEGER,INTENT(IN)      :: Nloc    !< polynomial degree
+INTEGER,INTENT(IN)      :: SideID                                          !< ID of current side
+REAL,INTENT(IN)         :: t                                               !< current time (provided by time integration scheme)
+INTEGER,INTENT(IN)      :: Nloc                                            !< polynomial degree
 REAL,INTENT(IN)         :: UPrim_master(  PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)) !< inner surface solution
 REAL,INTENT(IN)         :: NormVec(                 3,0:Nloc,0:ZDIM(Nloc)) !< normal surface vectors
 REAL,INTENT(IN)         :: TangVec1(                3,0:Nloc,0:ZDIM(Nloc)) !< tangent surface vectors 1
@@ -509,22 +509,20 @@ USE MOD_EddyVisc_Vars,ONLY: muSGS_master
 USE MOD_Testcase     ,ONLY: GetBoundaryFluxTestcase
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)   :: SideID  
-REAL,INTENT(IN)      :: t       !< current time (provided by time integration scheme)
-INTEGER,INTENT(IN)   :: Nloc    !< polynomial degree
+INTEGER,INTENT(IN)   :: SideID                                         !< ID of current side
+REAL,INTENT(IN)      :: t                                              !< current time (provided by time integration scheme)
+INTEGER,INTENT(IN)   :: Nloc                                           !< polynomial degree
 REAL,INTENT(IN)      :: UPrim_master( PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)) !< inner surface solution
 #if PARABOLIC
-                                                           !> inner surface solution gradients in x/y/z-direction
-REAL,INTENT(IN)      :: gradUx_master(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc))
-REAL,INTENT(IN)      :: gradUy_master(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc))
-REAL,INTENT(IN)      :: gradUz_master(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc))
+REAL,INTENT(IN)      :: gradUx_master(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)) !< inner surface solution gradients in x-direction
+REAL,INTENT(IN)      :: gradUy_master(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)) !< inner surface solution gradients in y-direction
+REAL,INTENT(IN)      :: gradUz_master(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)) !< inner surface solution gradients in z-direction
 #endif /*PARABOLIC*/
-                                                           !> normal and tangential vectors on surfaces
-REAL,INTENT(IN)      :: NormVec (3,0:Nloc,0:ZDIM(Nloc))
-REAL,INTENT(IN)      :: TangVec1(3,0:Nloc,0:ZDIM(Nloc))
-REAL,INTENT(IN)      :: TangVec2(3,0:Nloc,0:ZDIM(Nloc))
-REAL,INTENT(IN)      :: Face_xGP(3,0:Nloc,0:ZDIM(Nloc)) !< positions of surface flux points
-REAL,INTENT(OUT)     :: Flux(PP_nVar,0:Nloc,0:ZDIM(Nloc))   !< resulting boundary fluxes
+REAL,INTENT(IN)      :: NormVec (3,0:Nloc,0:ZDIM(Nloc))                !< normal vector on surfaces
+REAL,INTENT(IN)      :: TangVec1(3,0:Nloc,0:ZDIM(Nloc))                !< tangential1 vector on surfaces
+REAL,INTENT(IN)      :: TangVec2(3,0:Nloc,0:ZDIM(Nloc))                !< tangential2 vector on surfaces
+REAL,INTENT(IN)      :: Face_xGP(3,0:Nloc,0:ZDIM(Nloc))                !< positions of surface flux points
+REAL,INTENT(OUT)     :: Flux(PP_nVar,0:Nloc,0:ZDIM(Nloc))              !< resulting boundary fluxes
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                              :: p,q
@@ -680,15 +678,15 @@ USE MOD_Testcase      ,ONLY: GetBoundaryFVgradientTestcase
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN):: SideID  
-REAL,INTENT(IN)   :: t
-REAL,INTENT(IN)   :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ)
-REAL,INTENT(OUT)  :: gradU       (PP_nVarPrim,0:PP_N,0:PP_NZ)
-REAL,INTENT(IN)   :: NormVec (              3,0:PP_N,0:PP_NZ)
-REAL,INTENT(IN)   :: TangVec1(              3,0:PP_N,0:PP_NZ)
-REAL,INTENT(IN)   :: TangVec2(              3,0:PP_N,0:PP_NZ)
-REAL,INTENT(IN)   :: Face_xGP(              3,0:PP_N,0:PP_NZ)
-REAL,INTENT(IN)   :: sdx_Face(                0:PP_N,0:PP_NZ,3)
+INTEGER,INTENT(IN):: SideID                                      !< ID of current side
+REAL,INTENT(IN)   :: t                                           !< current time (provided by time integration scheme)  
+REAL,INTENT(IN)   :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ)    !< primitive solution from the inside
+REAL,INTENT(OUT)  :: gradU       (PP_nVarPrim,0:PP_N,0:PP_NZ)    !< gradient at boundary for FV subcells
+REAL,INTENT(IN)   :: NormVec (              3,0:PP_N,0:PP_NZ)    !< normal vector on surfaces
+REAL,INTENT(IN)   :: TangVec1(              3,0:PP_N,0:PP_NZ)    !< tangential1 vector on surfaces
+REAL,INTENT(IN)   :: TangVec2(              3,0:PP_N,0:PP_NZ)    !< tangential2 vector on surfaces
+REAL,INTENT(IN)   :: Face_xGP(              3,0:PP_N,0:PP_NZ)    !< positions of surface flux points
+REAL,INTENT(IN)   :: sdx_Face(                0:PP_N,0:PP_NZ,3)  !< distance between center of FV-cell and boundary
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL              :: UPrim_boundary(1:PP_nVarPrim,0:PP_N,0:PP_NZ)
@@ -733,15 +731,15 @@ USE MOD_Testcase     ,ONLY: Lifting_GetBoundaryFluxTestcase
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN):: SideID  
-REAL,INTENT(IN)   :: t                                       !< current time (provided by time integration scheme)
+INTEGER,INTENT(IN):: SideID                                   !< ID of current side
+REAL,INTENT(IN)   :: t                                        !< current time (provided by time integration scheme)
 REAL,INTENT(IN)   :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ) !< primitive solution from the inside
 REAL,INTENT(OUT)  :: Flux(        PP_nVarPrim,0:PP_N,0:PP_NZ) !< lifting boundary flux
-REAL,INTENT(IN)   :: NormVec (              3,0:PP_N,0:PP_NZ)
-REAL,INTENT(IN)   :: TangVec1(              3,0:PP_N,0:PP_NZ)
-REAL,INTENT(IN)   :: TangVec2(              3,0:PP_N,0:PP_NZ)
-REAL,INTENT(IN)   :: Face_xGP(              3,0:PP_N,0:PP_NZ)
-REAL,INTENT(IN)   :: SurfElem(                0:PP_N,0:PP_NZ)
+REAL,INTENT(IN)   :: NormVec (              3,0:PP_N,0:PP_NZ) !< normal vector on surfaces
+REAL,INTENT(IN)   :: TangVec1(              3,0:PP_N,0:PP_NZ) !< tangential1 vector on surfaces
+REAL,INTENT(IN)   :: TangVec2(              3,0:PP_N,0:PP_NZ) !< tangential2 vector on surfaces
+REAL,INTENT(IN)   :: Face_xGP(              3,0:PP_N,0:PP_NZ) !< positions of surface flux points
+REAL,INTENT(IN)   :: SurfElem(                0:PP_N,0:PP_NZ) !< surface element to multiply with flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER           :: p,q

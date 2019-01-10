@@ -51,7 +51,7 @@ CONTAINS
 !==================================================================================================================================
 SUBROUTINE DefineParametersEquation()
 ! MODULES
-USE MOD_ReadInTools,ONLY: prms,addStrListEntry
+USE MOD_ReadInTools,ONLY: prms
 USE MOD_Riemann    ,ONLY: DefineParametersRiemann
 #ifdef SPLIT_DG
 USE MOD_SplitFlux  ,ONLY: DefineParametersSplitDG
@@ -65,11 +65,6 @@ CALL prms%CreateRealArrayOption('RefState',     "State(s) in primitive variables
 CALL prms%CreateStringOption(   'BCStateFile',  "File containing the reference solution on the boundary to be used as BC.")
 
 CALL DefineParametersRiemann()
-#ifdef EDDYVISCOSITY
-CALL prms%CreateIntFromStringOption(   'eddyViscType', "(0) none: No eddy viscosity, (1) Smagorinsky",'none')
-CALL addStrListEntry('eddyViscType','none',0)
-CALL addStrListEntry('eddyViscType','smagorinsky',1)
-#endif
 #ifdef SPLIT_DG
 CALL DefineParametersSplitDG()
 #endif /*SPLIT_DG*/
@@ -186,12 +181,14 @@ END SUBROUTINE InitEquation
 !> Two possibilities for sides if using non-Lobatto node sets:
 !> 1. Convert U_master/slave to prims (used):
 !>    prims consistent to cons, but inconsistent to prim volume
-!>    cheap and simple, no communication and mortars required
+!>    cheap and simple, no communication and mortars required.
+!>    Using this version the primitive solution is no longer a polynomial.
 !> 2. Compute UPrim_master/slave from volume UPrim
 !>    UPrim_master/slave consistent to UPrim, but inconsistent to U_master/slave
-!>    more expensive, communication and mortars required
+!>    more expensive, communication and mortars required.
+!>    This version gives thermodynamically inconsistant states at sides.
 !> 
-!> TODO: Provide switch for these two versions.
+!> TODO: Provide switch for these two versions. 
 !==================================================================================================================================
 SUBROUTINE GetPrimitiveStateSurface(U_master,U_slave,UPrim_master,UPrim_slave)
 ! MODULES
@@ -240,6 +237,10 @@ END DO
 !#endif /*USE_MPI*/
 END SUBROUTINE GetPrimitiveStateSurface
 
+!==================================================================================================================================
+!> Converts primitive variables to conservative solution vector at surfaces.
+!> Routine requires mask so that conversion is only done on masked sides.
+!==================================================================================================================================
 SUBROUTINE GetConservativeStateSurface(UPrim_master,UPrim_slave,U_master,U_slave, mask_master, mask_slave, mask_ref)
 ! MODULES
 USE MOD_Preproc

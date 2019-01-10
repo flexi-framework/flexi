@@ -16,3 +16,4 @@ build*
 !builds.ini
 ctags.txt
 reggie_run/
+doc/userguide/userguide.pdf

@@ -70,9 +70,9 @@ CALL prms%CreateLogicalOption('WriteMeanFlux'    , "Set true to write mean flux 
 CALL prms%CreateLogicalOption('WriteWallVelocity', "Set true to write wall velolcities file"          , '.TRUE.')
 CALL prms%CreateLogicalOption('WriteTotalStates' , "Set true to write total states to file"           , '.TRUE.')
 CALL prms%CreateStringOption( 'VarNameAvg'       , "Names of variables to be time-averaged"           , multiple=.TRUE.)
-CALL prms%CreateStringOption( 'VarNameFluc'      , "Names of variables for which Flucs (time-averaged \n"//&
-                                                   "square of the variable) should be computed. \n"//&
-                                                   "Required for computing actual fluctuations."      , multiple=.TRUE.)
+CALL prms%CreateStringOption( 'VarNameFluc'      , "Names of variables for which Flucs (time-averaged&
+                                                   & square of the variable) should be computed.&
+                                                   & Required for computing actual fluctuations."      , multiple=.TRUE.)
 END SUBROUTINE DefineParametersAnalyzeEquation
 
 
@@ -280,8 +280,8 @@ USE MOD_FV_Vars,            ONLY: FV_Elems,FV_w
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(OUT)                :: BulkPrim(PP_nVarPrim)                   !> Primitive bulk quantities
-REAL,INTENT(OUT)                :: BulkCons(PP_nVar)                       !> Conservative bulk quantities
+REAL,INTENT(OUT)                :: BulkPrim(PP_nVarPrim)                   !< Primitive bulk quantities
+REAL,INTENT(OUT)                :: BulkCons(PP_nVar)                       !< Conservative bulk quantities
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                            :: IntegrationWeight

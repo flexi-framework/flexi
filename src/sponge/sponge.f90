@@ -72,7 +72,7 @@ CALL addStrListEntry('SpongeShape','ramp',       SPONGESHAPE_RAMP)
 CALL addStrListEntry('SpongeShape','cylindrical',SPONGESHAPE_CYLINDRICAL)
 CALL prms%CreateRealOption(   'SpongeDistance', "Length of sponge ramp. The sponge will have maximum strength at the end "//&
                                                 "of the ramp and after that point.", multiple=.TRUE.)
-CALL prms%CreateRealArrayOption('xStart',       "Coordinates of start postion of sponge ramp (SpongeShape=ramp) "//&
+CALL prms%CreateRealArrayOption('xStart',       "Coordinates of start position of sponge ramp (SpongeShape=ramp) "//&
                                                 "or center (SpongeShape=cylindrical).", multiple=.TRUE.)
 CALL prms%CreateRealArrayOption('SpongeDir',    "Direction vector of the sponge ramp (SpongeShape=ramp)", multiple=.TRUE.)
 CALL prms%CreateRealOption(   'SpongeRadius',   "Radius of the sponge zone (SpongeShape=cylindrical)", multiple=.TRUE.)
@@ -233,9 +233,9 @@ END SUBROUTINE InitSponge
 !>
 !> First, depending on the shape (linear or cylindrical), the strength  of the shape without the damping factor (x_star) is
 !> calculated on the solution points.
-!> From this, a mapping is build which contains only the elements with x_star > 0 somewhere, which is used to later apply
+!> From this, a mapping is built which contains only the elements with x_star > 0 somewhere, which is used to later apply
 !> the sponge only to regions where it is needed.
-!> In this sponge region, the final strength of the sponge is build by limiting x_star to [0,1] and mutiply it by the damping.
+!> In this sponge region, the final strength of the sponge is built by limiting x_star to [0,1] and mutiply it by the damping.
 !> If set in the parameter file, a visualization of the sponge strength is written as .vtu files.
 !> At the end, the sponge is pre-multiplied by the Jacobian since we need to do this anyway when the sponge is applied.
 !==================================================================================================================================

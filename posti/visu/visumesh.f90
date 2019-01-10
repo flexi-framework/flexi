@@ -257,7 +257,7 @@ IF (LEN_TRIM(postifile).GT.0) THEN
   CALL prms%SetSection("posti")
   CALL prms%CreateIntOption('NVisu', "Number of points at which solution is sampled for visualization.")
   CALL prms%read_options(postifile)
-  NVisu = GETINT('NVisu') ! Degree of visualization basis
+  NVisu = GETINT('NVisu','1') ! Degree of visualization basis
 ELSE
   NVisu = 2*NGeo ! TODO: correct?
 END IF

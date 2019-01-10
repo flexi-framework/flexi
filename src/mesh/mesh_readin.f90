@@ -479,7 +479,7 @@ END DO
 !   Nevertheless the mesh format allows to store additional information of the tree-elements (coordinates)
 !   and the position of the regular elements inside the trees.
 !
-! If a mesh is build by refining a conform baseline mesh the refining octree can be
+! If a mesh is built by refining a conform baseline mesh the refining octree can be
 ! stored in the mesh file in the following attibutes and arrays:
 !   'isMortarMesh' : if present and ==1 indicates a non-conforming Mortar mesh
 !   'NgeoTree'     : polynomial degree of the tree-elements

@@ -376,7 +376,7 @@ END SUBROUTINE ConvertToVisu_FV_Reconstruct
 !> These variables include the additional data from the ElemData and FieldData datasetes as well as other datasets that are
 !> present in the HDF5 file. The variables will be named DATASETNAME:VARIABLENAME if a attribute VarNames_DATASETNAME exist
 !> where we can read the variable names from. If this  attribute does not exist, the name will be a generic DATASETNAME:1,2... .
-!> For each dataset a new Vandermonde matrix is build to convert from the specific polynomial degree to the visu grid,
+!> For each dataset a new Vandermonde matrix is built to convert from the specific polynomial degree to the visu grid,
 !> so the datasets are not limited to one polynomial degree. Either elementwise (2 dimensions) or pointwise (5 dimensions) datasets
 !> are allowed.
 !> The addtional variables will always be sorted AFTER the conservative or derived quantities.

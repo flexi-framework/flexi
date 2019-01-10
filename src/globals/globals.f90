@@ -219,7 +219,7 @@ END SUBROUTINE Abort
 SUBROUTINE PrintWarning(msg) 
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
-CHARACTER(LEN=*) :: msg
+CHARACTER(LEN=*) :: msg  !< output message
 !===================================================================================================================================
 IF (myRank.EQ.0) THEN 
   WRITE(UNIT_stdOut,*) '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
@@ -233,20 +233,16 @@ END SUBROUTINE PrintWarning
 !> Convert a String to an Integer
 !==================================================================================================================================
 SUBROUTINE str2int(str,int_number,stat)
-!===================================================================================================================================
-!===================================================================================================================================
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
+! INPUT/OUTPUT VARIABLES
+CHARACTER(len=*),INTENT(IN) :: str        !< input string
+INTEGER,INTENT(OUT)         :: int_number !< output integer
+INTEGER,INTENT(OUT)         :: stat       !< status
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-CHARACTER(len=*),INTENT(IN) :: str
-INTEGER,INTENT(OUT)         :: int_number
-INTEGER,INTENT(OUT)         :: stat
 !===================================================================================================================================
 READ(str,*,IOSTAT=stat)  int_number
 END SUBROUTINE str2int
@@ -256,20 +252,16 @@ END SUBROUTINE str2int
 !> Convert a String to a REAL
 !==================================================================================================================================
 SUBROUTINE str2real(str,real_number,stat)
-!===================================================================================================================================
-!===================================================================================================================================
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
+! INPUT/OUTPUT VARIABLES
+CHARACTER(len=*),INTENT(IN) :: str         !< input string
+REAL,INTENT(OUT)            :: real_number !< output real
+INTEGER,INTENT(OUT)         :: stat        !< status
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-CHARACTER(len=*),INTENT(IN) :: str
-REAL,INTENT(OUT)            :: real_number
-INTEGER,INTENT(OUT)         :: stat
 !===================================================================================================================================
 READ(str,*,IOSTAT=stat)  real_number
 END SUBROUTINE str2real
@@ -279,20 +271,16 @@ END SUBROUTINE str2real
 !> Convert a String to a LOGICAL
 !==================================================================================================================================
 SUBROUTINE str2logical(str,logical_number,stat)
-!===================================================================================================================================
-!===================================================================================================================================
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
+! INPUT/OUTPUT VARIABLES
+CHARACTER(len=*),INTENT(IN) :: str            !< input string
+LOGICAL,INTENT(OUT)         :: logical_number !< output logical
+INTEGER,INTENT(OUT)         :: stat           !< status
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-CHARACTER(len=*),INTENT(IN) :: str
-LOGICAL,INTENT(OUT)         :: logical_number
-INTEGER,INTENT(OUT)         :: stat
 !===================================================================================================================================
 READ(str,*,IOSTAT=stat)  logical_number
 END SUBROUTINE str2logical
@@ -300,7 +288,7 @@ END SUBROUTINE str2logical
 
 !==================================================================================================================================
 !> read compile flags from a specified file
-!> example line in "configuration.cmake": SET(BOLTZPLATZ_EQNSYSNAME "maxwell" CACHE STRING "Used equation system")
+!> example line in "CMakeLists.txt": SET(FLEXI_EQNSYSNAME "navierstokes" CACHE STRING "Used equation system")
 !> ParameterName: timestep
 !> output: 0.1
 !> Type of Msg: [G]et[P]arameter[F]rom[File] -> GPFF: not ordinary read-in tool
@@ -311,13 +299,13 @@ SUBROUTINE GetParameterFromFile(FileName,ParameterName,output,DelimiterSymbolIN,
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=*),INTENT(IN)          :: FileName          !> e.g. './../laser.inp'
-CHARACTER(LEN=*),INTENT(IN)          :: ParameterName     !> e.g. 'timestep'
-CHARACTER(LEN=*),OPTIONAL,INTENT(IN) :: DelimiterSymbolIN !> e.g. '=' (default is '=')
-CHARACTER(LEN=*),OPTIONAL,INTENT(IN) :: CommentSymbolIN   !> e.g. '#' (default is '!')
-CHARACTER(LEN=*),INTENT(INOUT)       :: output            !> e.g. '0.1'
-LOGICAL,OPTIONAL,INTENT(IN)          :: DoDisplayInfo     !> default is: TRUE
-                                                          !> display DefMsg or errors if the parameter or the file is not found 
+CHARACTER(LEN=*),INTENT(IN)          :: FileName          !< e.g. './../myfile'
+CHARACTER(LEN=*),INTENT(IN)          :: ParameterName     !< e.g. 'timestep'
+CHARACTER(LEN=*),OPTIONAL,INTENT(IN) :: DelimiterSymbolIN !< e.g. '=' (default is '=')
+CHARACTER(LEN=*),OPTIONAL,INTENT(IN) :: CommentSymbolIN   !< e.g. '#' (default is '!')
+CHARACTER(LEN=*),INTENT(INOUT)       :: output            !< e.g. '0.1'
+LOGICAL,OPTIONAL,INTENT(IN)          :: DoDisplayInfo     !< default is: TRUE
+                                                          !< display DefMsg or errors if the parameter or the file is not found 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL                              :: ExistFile         !> file exists=.true., file does not exist=.false.
@@ -429,8 +417,8 @@ FUNCTION FILEEXISTS(filename)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=*),INTENT(IN) :: filename 
-LOGICAL                     :: FILEEXISTS
+CHARACTER(LEN=*),INTENT(IN) :: filename   !< current filename
+LOGICAL                     :: FILEEXISTS !< logical indicating if file with current filename exists
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================

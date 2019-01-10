@@ -15,6 +15,7 @@
 #include "eos.h"
 
 !==================================================================================================================================
+!> This module contains the dependency tables for the quantities to be visualized by the posti routines
 !==================================================================================================================================
 MODULE MOD_EOS_Posti_Vars
 ! MODULES

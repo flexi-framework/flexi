@@ -18,7 +18,7 @@
 !> a FFT (using external libraries) to generate spectra as well as mean profiles for fluctuations and the mean velocity.
 !> If several state files are given, an average over all of them is calculated.
 !> The mesh needs to be ijk sorted. 
-!> To perform the FFT, the mesh and the solution will be interpolated to a equidistant FFT grid.
+!> To perform the FFT, the mesh and the solution will be interpolated to an equidistant FFT grid.
 !===================================================================================================================================
 PROGRAM channel_fft
 ! MODULES
@@ -55,10 +55,6 @@ IF (nProcessors.GT.1) CALL CollectiveStop(__STAMP__, &
      'This tool is designed only for single execution!')
 
 CALL ParseCommandlineArguments()
-! check if parameter file is given
-IF ((nArgs.LT.1).OR.(.NOT.(STRICMP(GetFileExtension(Args(1)),'ini')))) THEN
-  CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: channel_fft [prm-file] statefile [statefiles]')
-END IF
 
 ! Define parameters needed
 CALL DefineParametersInterpolation()
@@ -67,9 +63,19 @@ CALL DefineParametersIO_HDF5()
 CALL DefineParametersMesh()
 
 CALL prms%SetSection("channelFFT")
+CALL prms%CreateIntOption( "OutputFormat",  "Choose the main format for output. 0: Tecplot, 2: HDF5")
 CALL prms%CreateIntOption( "NCalc",  "Polynomial degree to perform DFFT on.")
 CALL prms%CreateRealOption("Re_tau", "Reynolds number based on friction velocity and channel half height.")
 
+! check for command line argument --help or --markdown
+IF (doPrintHelp.GT.0) THEN
+  CALL PrintDefaultParameterFile(doPrintHelp.EQ.2, Args(1))
+  STOP
+END IF
+! check if parameter file is given
+IF ((nArgs.LT.1).OR.(.NOT.(STRICMP(GetFileExtension(Args(1)),'ini')))) THEN
+  CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: channel_fft [prm-file] statefile [statefiles]')
+END IF
 ! Parse parameters
 CALL prms%read_options(Args(1))
 
