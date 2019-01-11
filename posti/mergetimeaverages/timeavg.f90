@@ -1,7 +1,7 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-!> This tool will take pre-averaged files (TimeAvg, Flucs) or simple state files 
+!> This tool will take pre-averaged files (TimeAvg, Flucs) or simple state files
 !> and perform global temporal averaging
 !===================================================================================================================================
 PROGRAM TimeAvg
@@ -12,6 +12,10 @@ USE MOD_StringTools,ONLY:STRICMP
 USE MOD_IO_HDF5
 USE MOD_HDF5_Input, ONLY:ReadAttribute,ReadArray,GetDataSize
 USE MOD_MPI,        ONLY:InitMPI
+#if USE_MPI
+USE MOD_MPI,        ONLY:FinalizeMPI
+#endif
+USE MOD_IO_HDF5,    ONLY: InitMPIInfo
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! TYPE AND PARAMETER DEFINITIONS
@@ -43,16 +47,20 @@ REAL                                 :: dt
 INTEGER(KIND=8)                      :: startind,endind,offset
 INTEGER                              :: locsize(16),i,n
 INTEGER                              :: nSkipped
+INTEGER                              :: offsetMPI,nElems
+INTEGER                              :: nElemsGlob
+CHARACTER(LEN=255),ALLOCATABLE       :: tmpDatasetNames(:)
 !===================================================================================================================================
 CALL SetStackSizeUnlimited()
 CALL InitMPI()
+CALL InitMPIInfo()
 CALL ParseCommandlineArguments()
 
 ! Check if the number of arguments is correct
 IF (nArgs.LT.2) THEN
   ! Print out error message containing valid syntax
-  WRITE(UNIT_stdOut,*) "Please use: timeavg --start=<starttime> --end=<endtime> --coarsen=<factor> FILE1 FILE2 .. FILEN"
-  WRITE(UNIT_stdOut,*) "At least two files are required for merging."
+  SWRITE(UNIT_stdOut,*) "Please use: timeavg --start=<starttime> --end=<endtime> --coarsen=<factor> FILE1 FILE2 .. FILEN"
+  SWRITE(UNIT_stdOut,*) "At least two files are required for merging."
   STOP
 END IF
 
@@ -69,20 +77,20 @@ DO iArg=1,MIN(nArgs,3)
     StartArgs=StartArgs+1
     tmp=TRIM(arg(9:LEN(arg)))
     READ(tmp,*) AvgStarttime
-    WRITE(UNIT_stdOut,'(132("="))')
-    WRITE(UNIT_stdOut,'(A28,F16.6)') ' Start time for Averaging is ',AvgStarttime
+    SWRITE(UNIT_stdOut,'(132("="))')
+    SWRITE(UNIT_stdOut,'(A28,F16.6)') ' Start time for Averaging is ',AvgStarttime
   ELSEIF (STRICMP(arg(1:6), "--end=")) THEN
     StartArgs=StartArgs+1
     tmp=TRIM(arg(7:LEN(arg)))
     READ(tmp,*) AvgEndtime
-    WRITE(UNIT_stdOut,'(132("="))')
-    WRITE(UNIT_stdOut,'(A28,F16.6)') ' End time for Averaging is ',AvgEndtime
+    SWRITE(UNIT_stdOut,'(132("="))')
+    SWRITE(UNIT_stdOut,'(A28,F16.6)') ' End time for Averaging is ',AvgEndtime
   ELSEIF (STRICMP(arg(1:10), "--coarsen=")) THEN
     StartArgs=StartArgs+1
     tmp=TRIM(arg(11:LEN(arg)))
     READ(tmp,*) coarsenFac
-    WRITE(UNIT_stdOut,'(132("="))')
-    WRITE(UNIT_stdOut,'(A28,F16.6)') ' Coarsening factor is ',coarsenFac
+    SWRITE(UNIT_stdOut,'(132("="))')
+    SWRITE(UNIT_stdOut,'(A28,F16.6)') ' Coarsening factor is ',coarsenFac
   END IF
 
 END DO
@@ -92,9 +100,30 @@ nFiles=nArgs-StartArgs+1
 IF(nFiles.LT.2) CALL CollectiveStop(__STAMP__,'At least two files required for averaging!')
 
 InputFile=Args(StartArgs+1)
+! Partitioning - we partition along the last dimension of the arrays and assume that this
+! dimension has the same extend for all data sets
+CALL OpenDataFile(InputFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+CALL GetDatasetNamesInGroup("/",tmpDatasetNames)
+CALL GetDataSize(File_ID,TRIM(tmpDatasetNames(1)),nDims,HSize)
+nElemsGlob = INT(HSIZE(nDims))
+DEALLOCATE(HSize)
+#if USE_MPI
+nElems = INT(nElemsGlob/nProcessors)
+offsetMPI = myRank*nElems
+IF (myRank.EQ.nProcessors-1) THEN
+  ! This is the last proc, may have other number of elements
+  nElems = nElems + MOD(nElemsGlob,nProcessors)
+END IF
+#else
+offsetMPI = 0
+nElems = nElemsGlob
+#endif
+CALL CloseDataFile()
+DEALLOCATE(tmpDatasetNames)
+! Read in reference values for data size etc.
 CALL GetParams(InputFile,ref)
 
-! Check whether the file is a normal state file or already contains time averaged data 
+! Check whether the file is a normal state file or already contains time averaged data
 SELECT CASE(TRIM(ref%FileType))
 CASE('State')
   isTimeAvg=.FALSE.
@@ -113,7 +142,7 @@ ALLOCATE(UAvg(ref%totalsize))
 ALLOCATE(Uloc(ref%totalsize))
 
 ! Start the averaging
-WRITE(UNIT_stdOut,'(132("="))')
+SWRITE(UNIT_stdOut,'(132("="))')
 TotalAvgTime=0.
 TotalAvgTimeGlobal=0.
 iCoarse=0
@@ -122,7 +151,7 @@ nSkipped=0
 timestart=-999.
 DO iFile=1,nFiles
   InputFile=Args(iFile+StartArgs-1)
-  ! check local time 
+  ! check local time
   dt=-Time
 
   CALL GetParams(InputFile,loc)
@@ -140,12 +169,12 @@ DO iFile=1,nFiles
   Time=loc%time
   dt=dt+Time
   ! If the time in the current file is below the starttime, then cycle
-  IF ((Time-AvgStartTime.LT.-tol).OR.(Time-AvgEndTime.GT.tol)) THEN 
-    WRITE(UNIT_stdOut,'(A,A)') ' SKIPPING FILE ',TRIM(InputFile)
+  IF ((Time-AvgStartTime.LT.-tol).OR.(Time-AvgEndTime.GT.tol)) THEN
+    SWRITE(UNIT_stdOut,'(A,A)') ' SKIPPING FILE ',TRIM(InputFile)
     nSkipped=nSkipped+1
     IF (nFiles-nSkipped.LE.1) THEN
-      WRITE(UNIT_stdOut,*) "WARNING: All files have been skipped, no output is performed."
-      WRITE(UNIT_stdOut,*) "         Please check start and end time."
+      SWRITE(UNIT_stdOut,*) "WARNING: All files have been skipped, no output is performed."
+      SWRITE(UNIT_stdOut,*) "         Please check start and end time."
       STOP
     END IF
     CYCLE
@@ -153,28 +182,29 @@ DO iFile=1,nFiles
 
   IF(iCoarse.EQ.0) TimeStart=Time
 
-  WRITE(UNIT_stdOut,'(132("="))')
-  WRITE(UNIT_stdOut,'(A,I5,A,I5,A)') ' PROCESSING FILE ',iFile,' of ',nFiles,' FILES.'
-  WRITE(UNIT_stdOut,'(A,A,A)') ' ( "',TRIM(InputFile),'" )'
-  WRITE(UNIT_stdOut,'(132("="))')
+  SWRITE(UNIT_stdOut,'(132("="))')
+  SWRITE(UNIT_stdOut,'(A,I5,A,I5,A)') ' PROCESSING FILE ',iFile,' of ',nFiles,' FILES.'
+  SWRITE(UNIT_stdOut,'(A,A,A)') ' ( "',TRIM(InputFile),'" )'
+  SWRITE(UNIT_stdOut,'(132("="))')
 
   ! Read AvgTime and Data
   avgTime=1.
   CALL OpenDataFile(InputFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
   IF(isTimeAvg)THEN
     CALL ReadAttribute(File_ID,'AvgTime',1,TRIM(DataSet),RealScalar=avgTime)
-    WRITE(UNIT_stdOut,'(A,F10.5)') ' Time averaged file, averaging time is: ',avgTime 
+    SWRITE(UNIT_stdOut,'(A,F10.5)') ' Time averaged file, averaging time is: ',avgTime
   ELSE
-    WRITE(UNIT_stdOut,'(A,A)')     ' Normal state file, each file will be weighted identically.'
+    SWRITE(UNIT_stdOut,'(A,A)')     ' Normal state file, each file will be weighted identically.'
   END IF
 
   offset=0
   DO i=1,ref%nDataSets
     n=ref%nDims(i)
     locsize(1:n)=ref%nVal(1:n,i)
+    locsize(n) = nElems
     startind=offset+1
     endind  =offset+PRODUCT(locsize(1:n))
-    CALL ReadArray(TRIM(ref%DatasetNames(i)),n,locsize(1:n),0,n,&
+    CALL ReadArray(TRIM(ref%DatasetNames(i)),n,locsize(1:n),offsetMPI,n,&
                    RealArray=Uloc(startInd:endInd))
     offset=endInd
   END DO
@@ -199,7 +229,7 @@ DO iFile=1,nFiles
     TotalAvgTime=0.
   END IF
 END DO
- 
+
 SWRITE(UNIT_stdOut,'(132("="))')
 SWRITE(UNIT_stdOut,'(A,I5,A,I5,A,F10.5)') "Merging DONE: ",nFiles-nSkipped," of ",nFiles, &
                                " files merged over total averaging timespan ",TotalAvgTimeGlobal
@@ -207,6 +237,12 @@ SWRITE(UNIT_stdOut,'(132("="))')
 
 SDEALLOCATE(UAvg)
 SDEALLOCATE(Uloc)
+
+#if USE_MPI
+CALL MPI_FINALIZE(iError)
+IF(iError .NE. 0) STOP 'MPI finalize error'
+CALL FinalizeMPI()
+#endif
 
 CONTAINS
 
@@ -235,7 +271,7 @@ DO i=1,f%nDataSets
   CHECKSAFEINT(MINVAL(HSize),4)
   f%nVal(1:f%nDims(i),i)=INT(HSize)
   DEALLOCATE(HSize)
-  f%totalsize=f%totalsize+PRODUCT(f%nVal(1:f%nDims(i),i))
+  f%totalsize=f%totalsize+PRODUCT(f%nVal(1:f%nDims(i)-1,i))*nElems
 END DO
 ! Get default parameters
 CALL ReadAttribute(File_ID,'File_Type',1,StrScalar =f%FileType)
@@ -266,21 +302,31 @@ REAL,INTENT(IN)             :: UAvg(f%totalsize) !< merged data (1D array with d
 REAL,INTENT(IN)             :: avgTime      !< averaged time
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER :: offset2(maxDim) = 0
+INTEGER             :: globsize(1:maxDim)
+INTEGER,ALLOCATABLE :: offset2(:)
 !===================================================================================================================================
-CALL EXECUTE_COMMAND_LINE("cp -f "//TRIM(filename_in)//" "//TRIM(filename_out))
+#if USE_MPI
+IF (MPIRoot) CALL EXECUTE_COMMAND_LINE("cp -f "//TRIM(filename_in)//" "//TRIM(filename_out))
+CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
+#endif
 
 CALL OpenDataFile(filename_out,create=.FALSE.,single=.FALSE.,readOnly=.FALSE.)
 offset=0
 DO i=1,f%nDataSets
   n=f%nDims(i)
   locsize(1:n)=f%nVal(1:n,i)
+  globsize = locsize
+  locsize(n) = nElems
   startind=offset+1
   endind  =offset+PRODUCT(locsize(1:n))
-  CALL WriteArray(TRIM(f%DataSetNames(i)),n,locsize(1:n),locsize(1:n),offset2(1:n),&
+  ALLOCATE(offset2(n))
+  offset2     = 0
+  offset2(n)  = offsetMPI
+  CALL WriteArray(TRIM(f%DataSetNames(i)),n,globsize(1:n),locsize(1:n),offset2,&
                           collective=.TRUE.,&
                           RealArray=UAvg(startInd:endInd))
   offset=endInd
+  DEALLOCATE(offset2)
 END DO
 CALL WriteAttribute(File_ID,'AvgTime',1,RealScalar=avgTime)
 CALL WriteAttribute(File_ID,'File_Type',1,StrScalar=(/filetype_out/))
