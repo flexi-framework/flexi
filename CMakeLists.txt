@@ -283,7 +283,7 @@ IF (BUILD_TYPE_LC MATCHES "debug")
 ELSE()
   IF (HASIPO)
     # enable IPO globally (IPO branding: Intel => IPO, GNU => LTO, PGI => IPA)
-    #SET(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)  # enable IPO globally
+    SET(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)  # enable IPO globally
   ENDIF()
 ENDIF()
 
