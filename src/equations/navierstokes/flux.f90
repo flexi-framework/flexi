@@ -15,8 +15,17 @@
 #include "eos.h"
 
 !==================================================================================================================================
-!> Contains the routine EvalFlux3D which computes the complete NSE flux f,g,h for all DOFs in one Element: used in volume integral
-!> Contains the routine EvalFlux1D_Adv which computes the Euler flux f for all DOFs of one Element side: used in Riemann_Adv
+!> \brief Contains the definitions of the physical fluxes of the equation system.
+!>
+!> The routine EvalFlux3D will compute the advection (Euler) part only, and can be called either for a single point or for
+!> a volume cell. The fluxes are computed in three spatial dimension - for 2D computations, the fluxes in the third dimension
+!> will always be set to 0.
+!> EvalDiffFlux3D will do the same thing, but compute only the diffusive part of the fluxes. Additionally, a routine to compute
+!> the fluxes on a single side is provided (used in the riemann routines).
+!> The EvalEulerFlux1D routines are used in the Riemann solver, where only a flux in one spatial dimension is needed.
+!>
+!> The flux definitions are only done once in the single point routines, all other (side, volume) routines will simply wrap
+!> to this definition.
 !==================================================================================================================================
 MODULE MOD_Flux
 ! MODULES
@@ -56,7 +65,7 @@ PUBLIC::EvalDiffFlux3D
 CONTAINS
 
 !==================================================================================================================================
-!> Compute Navier-Stokes fluxes using the conservative variables and derivatives
+!> Compute advection part of the Navier-Stokes fluxes in all space dimensions using the conservative and primitive variables
 !==================================================================================================================================
 PPURE SUBROUTINE EvalFlux3D_Point(U,UPrim,f,g,h)
 ! MODULES
@@ -114,6 +123,9 @@ h   = 0.
 #endif
 END SUBROUTINE EvalFlux3D_Point
 
+!==================================================================================================================================
+!> Wrapper routine to compute the advection part of the Navier-Stokes fluxes for a single volume cell
+!==================================================================================================================================
 PPURE SUBROUTINE EvalFlux3D_Volume(Nloc,U,UPrim,f,g,h)
 ! MODULES
 USE MOD_PreProc
@@ -134,10 +146,9 @@ DO k=0,ZDIM(Nloc);  DO j=0,Nloc; DO i=0,Nloc
 END DO; END DO; END DO ! i,j,k
 END SUBROUTINE EvalFlux3D_Volume
 
-
 #if PARABOLIC
 !==================================================================================================================================
-!> Compute Navier-Stokes diffusive flux using the conservative variables and derivatives.
+!> Compute Navier-Stokes diffusive flux using the primitive variables and derivatives.
 !==================================================================================================================================
 PPURE SUBROUTINE EvalDiffFlux3D_Point(UPrim,gradUx,gradUy,gradUz,f,g,h &
 #if EDDYVISCOSITY
@@ -236,7 +247,7 @@ END ASSOCIATE
 END SUBROUTINE EvalDiffFlux3D_Point
 
 !==================================================================================================================================
-!> Compute Navier-Stokes diffusive flux for the volume
+!> Wrapper routine to compute the diffusive part of the Navier-Stokes fluxes for a single volume cell
 !==================================================================================================================================
 SUBROUTINE EvalDiffFlux3D_Volume(UPrim,gradUx,gradUy,gradUz,f,g,h,iElem)
 ! MODULES
@@ -268,7 +279,7 @@ END DO; END DO; END DO ! i,j,k
 END SUBROUTINE EvalDiffFlux3D_Volume
 
 !==================================================================================================================================
-!> Compute Navier-Stokes diffusive flux for the surface
+!> Wrapper routine to compute the diffusive part of the Navier-Stokes fluxes for a single side
 !==================================================================================================================================
 PPURE SUBROUTINE EvalDiffFlux3D_Surface(Nloc,UPrim,gradUx,gradUy,gradUz,f,g,h &
 #if EDDYVISCOSITY
@@ -304,7 +315,6 @@ END DO; END DO ! i,j
 END SUBROUTINE EvalDiffFlux3D_Surface
 #endif /*PARABOLIC*/
 
-
 !==================================================================================================================================
 !> Computes 1D Euler flux using the conservative variables.
 !==================================================================================================================================
@@ -337,7 +347,6 @@ F(4)=0.
 #endif
 F(5)=(U(ENER)+UE(PRES))*UE(VEL1)  ! (rho*e+p)*u
 END SUBROUTINE EvalEulerFlux1D
-
 
 !==================================================================================================================================
 !> Computes 1D Euler flux using the conservative and primitive variables (for better performance)
