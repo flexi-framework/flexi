@@ -754,10 +754,10 @@ DO iElem=1,nElems
   DO LocSideID=2,5
 #endif
     aSide=>aElem%Side(LocSideID)%sp
-    ! Set type of mortar:  
+    ! Set type of mortar:
     !    -1: Small side belonging to big mortar
     !     0: No mortar
-    ! 1,2,3: Type of big mortar 
+    ! 1,2,3: Type of big mortar
     MortarType(1,aSide%SideID)=aSide%MortarType
     IF(aSide%nMortars.GT.0)THEN ! mortar side
       ! compute index of big mortar in MortarInfo = [1:nMortarSides]

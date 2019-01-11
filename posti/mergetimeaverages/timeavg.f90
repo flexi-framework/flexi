@@ -1,7 +1,7 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-!> This tool will take pre-averaged files (TimeAvg, Flucs) or simple state files 
+!> This tool will take pre-averaged files (TimeAvg, Flucs) or simple state files
 !> and perform global temporal averaging
 !===================================================================================================================================
 PROGRAM TimeAvg
@@ -16,7 +16,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! TYPE AND PARAMETER DEFINITIONS
 REAL,PARAMETER                       :: tol=1.E-7
-INTEGER,PARAMETER                    :: maxDim=16  !< maximum number of permitted array dimension 
+INTEGER,PARAMETER                    :: maxDim=16  !< maximum number of permitted array dimension
 TYPE tFileSet
   INTEGER                            :: nDataSets  !< number of datasets
   INTEGER(KIND=8)                    :: totalsize  !< 1D size of all arrays
@@ -94,7 +94,7 @@ IF(nFiles.LT.2) CALL CollectiveStop(__STAMP__,'At least two files required for a
 InputFile=Args(StartArgs+1)
 CALL GetParams(InputFile,ref)
 
-! Check whether the file is a normal state file or already contains time averaged data 
+! Check whether the file is a normal state file or already contains time averaged data
 SELECT CASE(TRIM(ref%FileType))
 CASE('State')
   isTimeAvg=.FALSE.
@@ -122,7 +122,7 @@ nSkipped=0
 timestart=-999.
 DO iFile=1,nFiles
   InputFile=Args(iFile+StartArgs-1)
-  ! check local time 
+  ! check local time
   dt=-Time
 
   CALL GetParams(InputFile,loc)
@@ -140,7 +140,7 @@ DO iFile=1,nFiles
   Time=loc%time
   dt=dt+Time
   ! If the time in the current file is below the starttime, then cycle
-  IF ((Time-AvgStartTime.LT.-tol).OR.(Time-AvgEndTime.GT.tol)) THEN 
+  IF ((Time-AvgStartTime.LT.-tol).OR.(Time-AvgEndTime.GT.tol)) THEN
     WRITE(UNIT_stdOut,'(A,A)') ' SKIPPING FILE ',TRIM(InputFile)
     nSkipped=nSkipped+1
     IF (nFiles-nSkipped.LE.1) THEN
@@ -163,7 +163,7 @@ DO iFile=1,nFiles
   CALL OpenDataFile(InputFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
   IF(isTimeAvg)THEN
     CALL ReadAttribute(File_ID,'AvgTime',1,TRIM(DataSet),RealScalar=avgTime)
-    WRITE(UNIT_stdOut,'(A,F10.5)') ' Time averaged file, averaging time is: ',avgTime 
+    WRITE(UNIT_stdOut,'(A,F10.5)') ' Time averaged file, averaging time is: ',avgTime
   ELSE
     WRITE(UNIT_stdOut,'(A,A)')     ' Normal state file, each file will be weighted identically.'
   END IF
@@ -199,7 +199,7 @@ DO iFile=1,nFiles
     TotalAvgTime=0.
   END IF
 END DO
- 
+
 SWRITE(UNIT_stdOut,'(132("="))')
 SWRITE(UNIT_stdOut,'(A,I5,A,I5,A,F10.5)') "Merging DONE: ",nFiles-nSkipped," of ",nFiles, &
                                " files merged over total averaging timespan ",TotalAvgTimeGlobal

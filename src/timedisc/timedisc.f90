@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -41,7 +41,7 @@ PUBLIC :: DefineParametersTimeDisc
 CONTAINS
 
 !==================================================================================================================================
-!> Define parameters 
+!> Define parameters
 !==================================================================================================================================
 SUBROUTINE DefineParametersTimeDisc()
 ! MODULES
@@ -111,7 +111,7 @@ CFLScale = GETREAL('CFLScale')
 DFLScale = GETREAL('DFLScale')
 #endif /*PARABOLIC*/
 NEff=MIN(PP_N,NFilter,NUnder)
-IF(FilterType.GT.2) NEff=PP_N!LAF,HESTHAVEN no timestep effect 
+IF(FilterType.GT.2) NEff=PP_N!LAF,HESTHAVEN no timestep effect
 CALL fillCFL_DFL(NEff,PP_N)
 ! Set timestep to a large number
 dt=HUGE(1.)
@@ -212,7 +212,7 @@ IF(doCalcIndicator) CALL CalcIndicator(U,t)
 
 #if FV_ENABLED
 ! initial switch to FV sub-cells (must be called after DGTimeDerivative_weakForm, since indicator may require gradients)
-IF(.NOT.DoRestart)THEN 
+IF(.NOT.DoRestart)THEN
   CALL FV_FillIni()
 END IF
 #endif
@@ -249,7 +249,7 @@ IF(errType.NE.0) CALL abort(__STAMP__,&
 
 ! Run initial analyze
 SWRITE(UNIT_StdOut,'(132("-"))')
-SWRITE(UNIT_StdOut,*) 'Errors of initial solution:' 
+SWRITE(UNIT_StdOut,*) 'Errors of initial solution:'
 CALL Analyze(t,iter)
 ! fill recordpoints buffer (initialization/restart)
 IF(RP_onProc) CALL RecordPoints(iter,t,.TRUE.)

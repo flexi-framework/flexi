@@ -20,7 +20,7 @@ IMPLICIT NONE
 PUBLIC
 SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES 
+! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 LOGICAL                         :: RPSetInitIsDone=.FALSE.
 INTEGER                         :: nRP_global                     !< Total number of record points
@@ -76,7 +76,7 @@ END TYPE tRPlist
 
 TYPE tRP_Ptr                                                        !< Data structure for pointers to record points
   TYPE(tRP),POINTER                :: RP           !< node pointer
-END TYPE tRP_Ptr 
+END TYPE tRP_Ptr
 
 
 

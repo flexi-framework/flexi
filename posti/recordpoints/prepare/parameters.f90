@@ -20,7 +20,7 @@ IMPLICIT NONE
 PUBLIC
 SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES 
+! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 INTEGER                       :: NSuper                   !< Supersampling polynomial degree, used for initial guess in Newton
 REAL                          :: maxTol                   !< Max overshoot in param coords (1+maxTol)

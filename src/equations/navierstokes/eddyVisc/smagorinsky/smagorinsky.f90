@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -45,8 +45,8 @@ CONTAINS
 SUBROUTINE InitSmagorinsky()
 ! MODULES
 USE MOD_Globals
-USE MOD_PreProc                
-USE MOD_EddyVisc_Vars              
+USE MOD_PreProc
+USE MOD_EddyVisc_Vars
 USE MOD_ReadInTools        ,ONLY: GETREAL,GETLOGICAL
 USE MOD_Interpolation_Vars ,ONLY: InterpolationInitIsDone,wGP
 USE MOD_Mesh_Vars          ,ONLY: MeshInitIsDone,nElems,sJ,Elem_xGP
@@ -78,7 +78,7 @@ damp = 1.
 ! Smago: (damp*CS*deltaS)**2 * S_eN * dens
 ! Precompute first term and store in damp
 ! Calculate the filter width deltaS: deltaS=( Cell volume )^(1/3) / ( PP_N+1 )
-DO iElem=1,nElems                                        
+DO iElem=1,nElems
   CellVol = 0.
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     CellVol = CellVol +wGP(i)*wGP(j)*wGP(k)/sJ(i,j,k,iElem,0)

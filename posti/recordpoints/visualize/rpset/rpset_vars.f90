@@ -20,7 +20,7 @@ IMPLICIT NONE
 PUBLIC
 SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES 
+! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 INTEGER                         :: nRP_global              !< Global number of record points
 INTEGER                         :: nRP_HDF5                !< Number of record points in the HDF5 file
@@ -49,7 +49,7 @@ TYPE tPlane !< Type used to organize a plane set
   CHARACTER(LEN=255)            :: Name                    !< Name of the line
   INTEGER                       :: GroupID                 !< ID of the group the line belongs to
   INTEGER                       :: Type=0                  !< 0 - standard, 1 - sphere, 2 - BLPlane
-  INTEGER                       :: nRP(2)                  !< Number of RPs in the two plane directions 
+  INTEGER                       :: nRP(2)                  !< Number of RPs in the two plane directions
   INTEGER,ALLOCATABLE           :: IDlist(:,:)             !< List of IDs of the RPs that make up the line
   REAL,ALLOCATABLE              :: NormVec(:,:)            !< Normal vector
   REAL,ALLOCATABLE              :: TangVec(:,:)            !< Tangential vector

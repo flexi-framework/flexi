@@ -23,7 +23,7 @@ MODULE MOD_OutputRPVisu_VTK
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES 
+! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 
 INTERFACE WriteDataToVTK
@@ -55,8 +55,8 @@ SUBROUTINE WriteDataToVTK(nSamples,nRP,nVal,VarNames,Time,Value,FileName)
 USE MOD_Globals
 USE MOD_ParametersVisu      ,ONLY:Line_LocalCoords,Plane_LocalCoords
 USE MOD_ParametersVisu      ,ONLY:OutputPlanes,OutputLines,OutputPoints
-USE MOD_RPSetVisuVisu_Vars  ,ONLY:GroupNames 
-USE MOD_RPSetVisuVisu_Vars  ,ONLY:OutputGroup 
+USE MOD_RPSetVisuVisu_Vars  ,ONLY:GroupNames
+USE MOD_RPSetVisuVisu_Vars  ,ONLY:OutputGroup
 USE MOD_RPSetVisuVisu_Vars  ,ONLY:nPoints,Points_IDlist,Points_GroupIDlist
 USE MOD_RPSetVisuVisu_Vars  ,ONLY:nLines,Lines,tLine
 USE MOD_RPSetVisuVisu_Vars  ,ONLY:nPlanes,Planes,tPlane
@@ -65,12 +65,12 @@ USE MOD_VTKStructuredOutput
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)            :: nSamples                      !< Number of Samples 
-INTEGER,INTENT(IN)            :: nRP                           !< Number of RP to be visualized 
+INTEGER,INTENT(IN)            :: nSamples                      !< Number of Samples
+INTEGER,INTENT(IN)            :: nRP                           !< Number of RP to be visualized
 INTEGER,INTENT(IN)            :: nVal                          !< Number of nodal output variables
 CHARACTER(LEN=255),INTENT(IN) :: VarNames(nVal)                !< Names of all variables that will be written out
-REAL,INTENT(IN)               :: Value(1:nVal,nRP,nSamples)    !< Statevector 
-REAL,INTENT(IN)               :: Time(nSamples)                !< Time 
+REAL,INTENT(IN)               :: Value(1:nVal,nRP,nSamples)    !< Statevector
+REAL,INTENT(IN)               :: Time(nSamples)                !< Time
 CHARACTER(LEN=255),INTENT(IN) :: FileName                      !< First part of the file name
 !-----------------------------------------------------------------------------------------------------------------------------------
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -83,7 +83,7 @@ CHARACTER(LEN=255)        :: GroupName
 TYPE(tLine),POINTER       :: Line
 TYPE(tPlane),POINTER      :: Plane
 REAL,ALLOCATABLE          :: PlaneData(:,:,:)
-REAL,ALLOCATABLE          :: PlaneCoord(:,:,:) 
+REAL,ALLOCATABLE          :: PlaneCoord(:,:,:)
 TYPE(RPPoint)             :: RPPoints
 TYPE(RPLine),ALLOCATABLE  :: RPLines(:)
 TYPE(RPPlane),ALLOCATABLE :: RPPlanes(:)
@@ -182,7 +182,7 @@ DO iSample=1,nSamples
       RPPoints%Val(   :,iPointsOutput) = Value(:,Points_IDlist(iPoint),iSample)
     END DO
   END IF
-  
+
   ! Lines
   IF (OutputLines) THEN
     iLinesOutput = 0
@@ -202,7 +202,7 @@ DO iSample=1,nSamples
       RPPlanes(iLinesOutput)%name = TRIM(GroupName)//'_'//TRIM(Line%Name)
     END DO ! iLine
   END IF
-  
+
   ! Planes
   IF (OutputPlanes) THEN
     iPlanesOutput = 0
@@ -346,8 +346,8 @@ SUBROUTINE WriteTimeAvgDataToVTK(nRP,nVal,VarNames,Value,FileName)
 USE MOD_Globals
 USE MOD_ParametersVisu      ,ONLY:Line_LocalCoords,Plane_LocalCoords
 USE MOD_ParametersVisu      ,ONLY:OutputPlanes,OutputLines,OutputPoints
-USE MOD_RPSetVisuVisu_Vars  ,ONLY:GroupNames 
-USE MOD_RPSetVisuVisu_Vars  ,ONLY:OutputGroup 
+USE MOD_RPSetVisuVisu_Vars  ,ONLY:GroupNames
+USE MOD_RPSetVisuVisu_Vars  ,ONLY:OutputGroup
 USE MOD_RPSetVisuVisu_Vars  ,ONLY:nPoints,Points_IDlist,Points_GroupIDlist
 USE MOD_RPSetVisuVisu_Vars  ,ONLY:nLines,Lines,tLine
 USE MOD_RPSetVisuVisu_Vars  ,ONLY:nPlanes,Planes,tPlane
@@ -356,10 +356,10 @@ USE MOD_VTKStructuredOutput
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)            :: nRP                           !< Number of RP to be visualized 
+INTEGER,INTENT(IN)            :: nRP                           !< Number of RP to be visualized
 INTEGER,INTENT(IN)            :: nVal                          !< Number of nodal output variables
 CHARACTER(LEN=255),INTENT(IN) :: VarNames(nVal)                !< Names of all variables that will be written out
-REAL,INTENT(IN)               :: Value(1:nVal,nRP)             !< Statevector 
+REAL,INTENT(IN)               :: Value(1:nVal,nRP)             !< Statevector
 CHARACTER(LEN=255),INTENT(IN) :: FileName                      !< First part of the file name
 !-----------------------------------------------------------------------------------------------------------------------------------
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -370,7 +370,7 @@ CHARACTER(LEN=255)        :: GroupName
 TYPE(tLine),POINTER       :: Line
 TYPE(tPlane),POINTER      :: Plane
 REAL,ALLOCATABLE          :: PlaneData(:,:,:)
-REAL,ALLOCATABLE          :: PlaneCoord(:,:,:) 
+REAL,ALLOCATABLE          :: PlaneCoord(:,:,:)
 TYPE(RPPoint)             :: RPPoints
 TYPE(RPLine),ALLOCATABLE  :: RPLines(:)
 TYPE(RPPlane),ALLOCATABLE :: RPPlanes(:)
@@ -534,9 +534,9 @@ USE MOD_Globals
 USE MOD_VTKStructuredOutput
 USE MOD_EquationRP_Vars    ,ONLY: nBLProps,VarNames_BLProps
 USE MOD_ParametersVisu     ,ONLY: Plane_LocalCoords
-USE MOD_RPSetVisuVisu_Vars ,ONLY: GroupNames 
+USE MOD_RPSetVisuVisu_Vars ,ONLY: GroupNames
 USE MOD_RPSetVisuVisu_Vars ,ONLY: nPlanes,Planes,tPlane
-USE MOD_RPSetVisuVisu_Vars ,ONLY: OutputGroup 
+USE MOD_RPSetVisuVisu_Vars ,ONLY: OutputGroup
 USE MOD_RPSetVisuVisu_Vars ,ONLY: xF_RP
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------

@@ -20,7 +20,7 @@ IMPLICIT NONE
 PUBLIC
 SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES 
+! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 LOGICAL                         :: CalcTimeAverage  !< Logical set if time averages should be calculated
 REAL,ALLOCATABLE                :: dt(:)            !< Time step between each RP sample

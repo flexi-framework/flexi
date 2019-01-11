@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -47,14 +47,14 @@ CONTAINS
 !> surfelem contribution is considered as well.
 !>
 !> Fills the untransformed interior surface fluxes for the BR1 scheme. The numerical flux in the
-!> BR1 lifting is simply taken as the arithmetic mean of the solution. 
+!> BR1 lifting is simply taken as the arithmetic mean of the solution.
 !> The physical flux will be multiplied by the surface element contribution and in a later routine by the normal vector to
 !> transform into reference space,
 !> see e.g. "Explicit discontinuous Galerkin methods for unsteady problems" (Hindenlang et al. 2012) for details.
 !> For the strong form, in the surface integral the inner solution is substracted form the numerical flux. Since the numerical
 !> flux is \f$ \frac{1}{2} (U^+ + U^-) \f$ and the inner solution is simply \f$ U^- \f$ for the master side
 !> , the surface flux will become \f$ \frac{1}{2} (U^+ + U^-) - U^- = \frac{1}{2} (U^+ - U^-) \f$ for the strong form.
-!> 
+!>
 !> The flux is filled for the master side, the contribution for the slave side (which is different because the inner solution
 !> is equal to \f$ U^+ \f$) is taken into account in the SurfInt routine.
 !==================================================================================================================================
@@ -82,7 +82,7 @@ REAL,INTENT(INOUT) :: Flux(            PP_nVarPrim,0:PP_N,0:PP_NZ,nSides) !< Unt
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: SideID,p,q,firstSideID,lastSideID,sig
-#if FV_ENABLED  
+#if FV_ENABLED
 REAL               :: UPrim_glob(1:PP_nVarPrim,0:PP_N,0:PP_NZ)
 #endif
 !==================================================================================================================================
@@ -131,15 +131,15 @@ END SUBROUTINE Lifting_FillFlux
 
 !==================================================================================================================================
 !> \brief Computes the BR1 surface fluxes for boundary conditions, surfelem contribution is considered as well.
-!> 
+!>
 !> Fills the Untransformed boundary surface fluxes for the BR1 scheme. The numerical flux in the
-!> BR1 lifting is simply taken as the arithmetic mean of the solution. 
+!> BR1 lifting is simply taken as the arithmetic mean of the solution.
 !> This routine calls the equation system dependant routine Lifting_GetBoundaryFlux which will fill the flux depending on the
 !> boundary condition that has to be applied. The Lifting_GetBoundaryFlux routine will also differentiate between weak and
 !> strong form and already multiply the flux by the surface element.
-!> 
+!>
 !> The multiplication by the normal vector is done in a separate routine.
-!> 
+!>
 !> The flux is filled for the master side, the contribution for the slave side (which is different because the inner solution
 !> is equal to \f$ U^+ \f$) is taken into account in the SurfInt routine.
 !==================================================================================================================================
@@ -148,7 +148,7 @@ SUBROUTINE Lifting_FillFlux_BC(t,UPrim_master,Flux)
 USE MOD_PreProc
 USE MOD_Mesh_Vars,       ONLY: NormVec,TangVec1,TangVec2,Face_xGP,SurfElem,nSides,nBCSides
 USE MOD_GetBoundaryFlux, ONLY: Lifting_GetBoundaryFlux
-#if FV_ENABLED  
+#if FV_ENABLED
 USE MOD_FV_Vars         ,ONLY: FV_Elems_master
 #endif
 IMPLICIT NONE
@@ -173,7 +173,7 @@ END SUBROUTINE Lifting_FillFlux_BC
 !==================================================================================================================================
 !> \brief Multiplies the untransformed flux (already weighted by the surface element) by the normal vector to complete the
 !>        transformation into reference space.
-!> 
+!>
 !> The untransformed fluxes is multiplied for each gradient direction by the corresponding normal vector,
 !> which is the second step of the transformation. We end up with the lifting fluxes for X/Y/Z direction.
 !==================================================================================================================================
@@ -182,7 +182,7 @@ PPURE SUBROUTINE Lifting_FillFlux_NormVec(Flux,FluxX,FluxY,FluxZ,doMPISides)
 USE MOD_PreProc
 USE MOD_Mesh_Vars,       ONLY: NormVec,nSides,MortarType
 USE MOD_Mesh_Vars,       ONLY: firstMPISide_YOUR,lastMPISide_MINE,lastMPISide_YOUR
-#if FV_ENABLED  
+#if FV_ENABLED
 USE MOD_FV_Vars,         ONLY: FV_Elems_master,FV_Elems_Sum
 USE MOD_Mesh_Vars,       ONLY: nBCSides
 #endif

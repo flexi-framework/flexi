@@ -1,12 +1,12 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2017 Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2017 Prof. Claus-Dieter Munz
 ! Copyright (c) 2016-2017 Gregor Gassner (github.com/project-fluxo/fluxo)
 ! Copyright (c) 2016-2017 Florian Hindenlang (github.com/project-fluxo/fluxo)
-! Copyright (c) 2016-2017 Andrew Winters (github.com/project-fluxo/fluxo) 
+! Copyright (c) 2016-2017 Andrew Winters (github.com/project-fluxo/fluxo)
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -81,7 +81,7 @@ CONTAINS
 
 
 !==================================================================================================================================
-!> Define parameters 
+!> Define parameters
 !==================================================================================================================================
 SUBROUTINE DefineParametersRiemann()
 ! MODULES
@@ -92,7 +92,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 !==================================================================================================================================
 CALL prms%SetSection("Riemann")
 CALL prms%CreateIntFromStringOption('Riemann',   "Riemann solver to be used: LF, HLLC, Roe, RoeEntropyFix, HLL, HLLE, HLLEM", &
@@ -250,7 +250,7 @@ REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_R        !< con
 REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim_L    !< primitive solution at left side of the interface
 REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim_R    !< primitive solution at right side of the interface
 !> normal vector and tangential vectors at side
-REAL,DIMENSION(          3,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: nv,t1,t2  
+REAL,DIMENSION(          3,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: nv,t1,t2
 LOGICAL,INTENT(IN)                                          :: doBC       !< marker whether side is a BC side
 REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: FOut       !< advective flux
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -273,9 +273,9 @@ DO j=0,ZDIM(Nloc); DO i=0,Nloc
   U_LL(SRHO)=1./U_LL(DENS)
   U_LL(ENER)=U_L(5,i,j)
   U_LL(PRES)=UPrim_L(5,i,j)
-  
 
-  ! rotate velocity in normal and tangential direction 
+
+  ! rotate velocity in normal and tangential direction
   U_LL(VEL1)=DOT_PRODUCT(UPrim_L(2:4,i,j),nv(:,i,j))
   U_LL(VEL2)=DOT_PRODUCT(UPrim_L(2:4,i,j),t1(:,i,j))
   U_LL(MOM1)=U_LL(DENS)*U_LL(VEL1)
@@ -292,7 +292,7 @@ DO j=0,ZDIM(Nloc); DO i=0,Nloc
   U_RR(SRHO)=1./U_RR(DENS)
   U_RR(ENER)=U_R(5,i,j)
   U_RR(PRES)=UPrim_R(5,i,j)
-  ! rotate momentum in normal and tangential direction 
+  ! rotate momentum in normal and tangential direction
   U_RR(VEL1)=DOT_PRODUCT(UPRIM_R(2:4,i,j),nv(:,i,j))
   U_RR(VEL2)=DOT_PRODUCT(UPRIM_R(2:4,i,j),t1(:,i,j))
   U_RR(MOM1)=U_RR(DENS)*U_RR(VEL1)
@@ -317,7 +317,7 @@ DO j=0,ZDIM(Nloc); DO i=0,Nloc
   Fout(MOMV,i,j)=nv(:,i,j)*F(MOM1)     &
                   + t1(:,i,j)*F(MOM2)  &
 #if PP_dim==3
-                  + t2(:,i,j)*F(MOM3) 
+                  + t2(:,i,j)*F(MOM3)
 #else
                   + 0.
 #endif
@@ -344,9 +344,9 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)                                         :: Nloc     !< local polynomial degree
-                                                           !> solution in primitive variables at left/right side of the interface 
+                                                           !> solution in primitive variables at left/right side of the interface
 REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)   :: UPrim_L,UPrim_R
-                                                           !> solution gradients in x/y/z-direction left/right of the interface 
+                                                           !> solution gradients in x/y/z-direction left/right of the interface
 REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)   :: gradUx_L,gradUx_R,gradUy_L,gradUy_R,gradUz_L,gradUz_R
 REAL,INTENT(IN)                                            :: nv(3,0:Nloc,0:ZDIM(Nloc)) !< normal vector
 REAL,INTENT(OUT)                                           :: F(PP_nVar,0:Nloc,0:ZDIM(Nloc)) !< viscous flux
@@ -371,7 +371,7 @@ REAL,DIMENSION(PP_nVar,0:Nloc,0:ZDIM(Nloc))            :: diffFluxX_R,diffFluxY_
 #endif
       )
   CALL EvalDiffFlux3D(Nloc,UPrim_R,gradUx_R,   gradUy_R,   gradUz_R, &
-                                diffFluxX_R,diffFluxY_R,diffFluxZ_R  & 
+                                diffFluxX_R,diffFluxY_R,diffFluxZ_R  &
 #if EDDYVISCOSITY
                      ,muSGS_R&
 #endif
@@ -456,8 +456,8 @@ REAL    :: sMu_L,sMu_R
 !Ssr = U_RR(VEL1) + SPEEDOFSOUND_HE(U_RR)
 
 ! Version B: Basic Davis estimate for wave speed
-!c_L = SPEEDOFSOUND_HE(U_LL) 
-!c_R = SPEEDOFSOUND_HE(U_RR) 
+!c_L = SPEEDOFSOUND_HE(U_LL)
+!c_R = SPEEDOFSOUND_HE(U_RR)
 !Ssl = MIN(U_LL(VEL1) - c_L,U_RR(VEL1) - c_R)
 !Ssr = MAX(U_LL(VEL1) + c_L,U_RR(VEL1) + c_R)
 
@@ -578,7 +578,7 @@ END SUBROUTINE Riemann_Roe
 !=================================================================================================================================
 !> Roe's approximate Riemann solver using the Harten and Hymen II entropy fix, see
 !> Pelanti, Marica & Quartapelle, Luigi & Vigevano, L & Vigevano, Luigi. (2018):
-!>  A review of entropy fixes as applied to Roe's linearization. 
+!>  A review of entropy fixes as applied to Roe's linearization.
 !=================================================================================================================================
 SUBROUTINE Riemann_RoeEntropyFix(F_L,F_R,U_LL,U_RR,F)
 ! MODULES

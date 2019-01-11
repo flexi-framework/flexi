@@ -211,7 +211,7 @@ nVarVisu = 0
 nVarSurfVisuAll = 0
 ! Get number of variables to be visualized
 nVarIni=CountOption("VarName")
-! If no variable names are given in prm file, take the variables given in the HDF5 "VarNames" attribute (if present) or all found 
+! If no variable names are given in prm file, take the variables given in the HDF5 "VarNames" attribute (if present) or all found
 ! variables (else). This default can be suppressed via the "noVisuVars" flag (used e.g. in paraview plugin prm files)
 IF((nVarIni.EQ.0).AND..NOT.GETLOGICAL("noVisuVars")) THEN
   IF(ALLOCATED(VarNamesHDF5)) THEN

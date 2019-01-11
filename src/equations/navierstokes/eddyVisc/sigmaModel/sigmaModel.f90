@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -45,8 +45,8 @@ CONTAINS
 SUBROUTINE InitSigmaModel()
 ! MODULES
 USE MOD_Globals
-USE MOD_PreProc                
-USE MOD_EddyVisc_Vars              
+USE MOD_PreProc
+USE MOD_EddyVisc_Vars
 USE MOD_ReadInTools        ,ONLY: GETREAL,GETLOGICAL
 USE MOD_Interpolation_Vars ,ONLY: InterpolationInitIsDone,wGP
 USE MOD_Mesh_Vars          ,ONLY: MeshInitIsDone,nElems,sJ
@@ -73,7 +73,7 @@ CS     = GETREAL('CS')
 VanDriest = GETLOGICAL('VanDriest','.FALSE.')
 
 ! Calculate the filter width deltaS: deltaS=( Cell volume )^(1/3) / ( PP_N+1 )
-DO iElem=1,nElems                                        
+DO iElem=1,nElems
   CellVol = 0.
   DO i=0,PP_N
     DO j=0,PP_N
@@ -113,22 +113,22 @@ REAL               :: work(9)  !lapack work array
 INTEGER            :: info
 REAL               :: d_model
 !===================================================================================================================================
-G_Mat(1,1) = gradUx(2)*gradUx(2) + gradUx(3)*gradUx(3) + gradUx(4)*gradUx(4)  
-G_Mat(1,2) = gradUx(2)*gradUy(2) + gradUx(3)*gradUy(3) + gradUx(4)*gradUy(4)  
-G_Mat(1,3) = gradUx(2)*gradUz(2) + gradUx(3)*gradUz(3) + gradUx(4)*gradUz(4)  
+G_Mat(1,1) = gradUx(2)*gradUx(2) + gradUx(3)*gradUx(3) + gradUx(4)*gradUx(4)
+G_Mat(1,2) = gradUx(2)*gradUy(2) + gradUx(3)*gradUy(3) + gradUx(4)*gradUy(4)
+G_Mat(1,3) = gradUx(2)*gradUz(2) + gradUx(3)*gradUz(3) + gradUx(4)*gradUz(4)
 G_Mat(2,1) = G_Mat(1,2)
-G_Mat(2,2) = gradUy(2)*gradUy(2) + gradUy(3)*gradUy(3) + gradUy(4)*gradUy(4)  
-G_Mat(2,3) = gradUy(2)*gradUz(2) + gradUy(3)*gradUz(3) + gradUy(4)*gradUz(4)  
+G_Mat(2,2) = gradUy(2)*gradUy(2) + gradUy(3)*gradUy(3) + gradUy(4)*gradUy(4)
+G_Mat(2,3) = gradUy(2)*gradUz(2) + gradUy(3)*gradUz(3) + gradUy(4)*gradUz(4)
 G_Mat(3,1) = G_Mat(1,3)
 G_Mat(3,2) = G_Mat(2,3)
-G_Mat(3,3) = gradUz(2)*gradUz(2) + gradUz(3)*gradUz(3) + gradUz(4)*gradUz(4)  
+G_Mat(3,3) = gradUz(2)*gradUz(2) + gradUz(3)*gradUz(3) + gradUz(4)*gradUz(4)
 
 ! LAPACK
 CALL DSYEV('N','U',3,G_Mat,3,lambda,work,9,info)
 IF(info .NE. 0) THEN
   WRITE(*,*)'Eigenvalue Computation failed 3D',info
   d_model = 0.
-ELSE 
+ELSE
   sigma = SQRT(MAX(0.,lambda)) ! ensure were not negative
   d_model = (sigma(3)*(sigma(1)-sigma(2))*(sigma(2)-sigma(3)))/(sigma(1)**2)
 END IF

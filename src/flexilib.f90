@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -50,7 +50,7 @@ USE MOD_Testcase,          ONLY:DefineParametersTestcase
 USE MOD_DG,                ONLY:InitDG
 #if PARABOLIC
 USE MOD_Lifting,           ONLY:DefineParametersLifting,InitLifting
-#ifdef EDDYVISCOSITY
+#if EDDYVISCOSITY
 USE MOD_EddyVisc,          ONLY:DefineParametersEddyVisc
 #endif
 #endif /*PARABOLIC*/
@@ -106,7 +106,7 @@ ParameterFile = Args(1)
 IF (nArgs.GT.1) THEN
   RestartFile = Args(2)
 ELSE IF (STRICMP(GetFileExtension(ParameterFile), "h5")) THEN
-  ParameterFile = ".flexi.ini" 
+  ParameterFile = ".flexi.ini"
   CALL ExtractParameterFile(Args(1), ParameterFile, userblockFound)
   IF (.NOT.userblockFound) THEN
     CALL CollectiveStop(__STAMP__, "No userblock found in state file '"//TRIM(Args(1))//"'")
@@ -131,7 +131,7 @@ CALL DefineParametersFV()
 #endif
 #if PARABOLIC
 CALL DefineParametersLifting ()
-#ifdef EDDYVISCOSITY
+#if EDDYVISCOSITY
 CALL DefineParametersEddyVisc()
 #endif /*EDDYVISCOSITY*/
 #endif /*PARABOLIC*/

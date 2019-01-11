@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -60,7 +60,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 !==================================================================================================================================
 CALL prms%SetSection("Overintegration")
 CALL prms%CreateIntFromStringOption('OverintegrationType', "Type of overintegration. None, CutOff, ConsCutOff","none")
@@ -73,7 +73,7 @@ END SUBROUTINE DefineParametersOverintegration
 
 
 !==================================================================================================================================
-!> Initialize all necessary information to perform overintegration 
+!> Initialize all necessary information to perform overintegration
 !==================================================================================================================================
 SUBROUTINE InitOverintegration()
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -91,9 +91,9 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER             :: iDeg,iElem,i,j,k                             !< Loop counters 
-REAL,ALLOCATABLE    :: DetJac_NUnder(:,:,:,:)                       !< Determinant of the Jacobian on Nunder, 
-                                                                    !< size [1,0..Nunder,0..Nunder,0..Nunder]  
+INTEGER             :: iDeg,iElem,i,j,k                             !< Loop counters
+REAL,ALLOCATABLE    :: DetJac_NUnder(:,:,:,:)                       !< Determinant of the Jacobian on Nunder,
+                                                                    !< size [1,0..Nunder,0..Nunder,0..Nunder]
 REAL,ALLOCATABLE    :: Vdm_NGeoRef_NUnder(:,:)
 !==================================================================================================================================
 ! Check if the necessary prerequisites are met
@@ -119,15 +119,15 @@ CASE (OVERINTEGRATIONTYPE_CUTOFF) ! modal cut-off filter on Ju_t
   DO iDeg=0,NUnder
     OverintegrationMat(iDeg,iDeg) = 1.
   END DO
-  ! Assemble filter matrix in nodal space: transform nodal solution to modal (Legendre) polynomials, apply filter matrix and 
+  ! Assemble filter matrix in nodal space: transform nodal solution to modal (Legendre) polynomials, apply filter matrix and
   ! transfer back to nodal (Lagrange) basis. Combine these operations into single ready-to-use matrix
   OverintegrationMat=MATMUL(MATMUL(Vdm_Leg,OverintegrationMat),sVdm_Leg)
   SWRITE(UNIT_stdOut,'(A)') ' Method of overintegration: cut-off filter'
 
-CASE (OVERINTEGRATIONTYPE_CONSCUTOFF) ! conservative modal cut-off filter: Here, Ju_t is projection filtered from N to Nunder, 
+CASE (OVERINTEGRATIONTYPE_CONSCUTOFF) ! conservative modal cut-off filter: Here, Ju_t is projection filtered from N to Nunder,
                         ! then sJ is applied on Nunder u_t is then interpolated back onto N grid: ensures that the modal content
-                        ! of u_t between NUnder and N is zero. Here, the sJ on Nunder is prepared for later use from projection 
-                        ! of J from N to Under and inverting. 
+                        ! of u_t between NUnder and N is zero. Here, the sJ on Nunder is prepared for later use from projection
+                        ! of J from N to Under and inverting.
   NUnder = GETINT('NUnder')
   IF(NUnder.LT.PP_N)THEN
     !global
@@ -236,7 +236,7 @@ REAL                :: U_loc(   PP_nVar,0:NUnder,0:NUnder,0:NUnder) ! U_t / JU_t
 ! The following 5 lines are original lines of code for the conservative filtering.
 ! The below code does the same, but optimized for performance. For 2D, we use the non-optimized code.
 ! TODO: Use optimized code for 2D!
-! === BEGIN ORIGINAL CODE === 
+! === BEGIN ORIGINAL CODE ===
 DO iElem=1,nElems
 #if FV_ENABLED
   IF (FV_Elems(iElem).GT.0) CYCLE ! Do only, when DG element
@@ -247,7 +247,7 @@ DO iElem=1,nElems
   END DO; END DO
   CALL ChangeBasisVolume(PP_nVar,NUnder,PP_N,Vdm_NUnder_N,U_loc,U_in(:,:,:,:,iElem))
 END DO
-! === END ORIGINAL CODE === 
+! === END ORIGINAL CODE ===
 #else
 nDOF_N     =PP_nVar*(PP_N+1  )**3
 nDOF_NUnder=PP_nVar*(NUnder+1)**3

@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -78,7 +78,7 @@ END SUBROUTINE DefineParametersFV_Limiter
 !==================================================================================================================================
 !> Initialize pointer to chosen limiter type and readin of required parameter
 !==================================================================================================================================
-SUBROUTINE InitFV_Limiter() 
+SUBROUTINE InitFV_Limiter()
 USE MOD_Globals
 USE MOD_ReadInTools
 USE MOD_FV_Vars     ,ONLY: FV_sweby_beta
@@ -103,11 +103,11 @@ CASE (FV_LIMITERTYPE_SWEBY) ! Sweby
 CASE (FV_LIMITERTYPE_CENTRAL) ! Central
   FV_Limiter => CentralLimiter
   SWRITE(UNIT_stdOut,'(A,F8.6)') '  Using "Central" limiter.'
-CASE DEFAULT 
+CASE DEFAULT
   CALL CollectiveStop(__STAMP__,&
     'FV Limiter-Type unknown.')
 END SELECT
-END SUBROUTINE InitFV_Limiter  
+END SUBROUTINE InitFV_Limiter
 
 !==================================================================================================================================
 !> Limiter sets slope to zero.
@@ -160,7 +160,7 @@ REAL,INTENT(IN)  :: sL(PP_nVarPrim) !< left slope
 REAL,INTENT(IN)  :: sR(PP_nVarPrim) !< right slope
 REAL,INTENT(OUT) :: s(PP_nVarPrim)  !< limited slope
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 REAL :: sa(PP_nVarPrim),sb(PP_nVarPrim)
 !==================================================================================================================================
 CALL MinMod(sL*FV_sweby_beta,sR,sa)
@@ -180,7 +180,7 @@ REAL,INTENT(IN)  :: sL(PP_nVarPrim) !< left slope
 REAL,INTENT(IN)  :: sR(PP_nVarPrim) !< right slope
 REAL,INTENT(OUT) :: s(PP_nVarPrim)  !< limited slope
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 !==================================================================================================================================
 s = (sL+sR)/2.0
 END SUBROUTINE CentralLimiter
