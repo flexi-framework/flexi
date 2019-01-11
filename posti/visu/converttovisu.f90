@@ -475,7 +475,7 @@ DO iVar=nVarDep+1,nVarAll
         SDEALLOCATE(DataSetVarNames)
         CALL GetVarNames("VarNames_"//TRIM(DatasetName),DatasetVarNames,varnamesExist)
       END IF
-      WRITE (*,*) "varnamesExist", varnamesExist
+      SWRITE (*,*) "varnamesExist", varnamesExist
 
       iVarDataset = 0
       ! loop over all varnames
