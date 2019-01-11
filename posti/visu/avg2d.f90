@@ -508,7 +508,7 @@ CALL H5SCLOSE_F(FileSpace, iError)
 ! Write dataset properties "N","Time","MeshFile","NodeType","VarNames","NComputation"
 CALL WriteAttribute(File_ID,'N',1,IntScalar=NVisu)
 CALL WriteAttribute(File_ID,'Time',1,RealScalar=OutputTime)
-CALL WriteAttribute(File_ID,'MeshFile',1,StrScalar=(/TRIM(MeshFileName)/))
+CALL WriteAttribute(File_ID,'MeshFile',1,StrScalar=(/MeshFileName/))
 CALL WriteAttribute(File_ID,'NodeType',1,StrScalar=(/NodeType/))
 CALL WriteAttribute(File_ID,'VarNames',nVar,StrArray=StrVarNames)
 CALL WriteAttribute(File_ID,'NComputation',1,IntScalar=PP_N)

@@ -776,7 +776,7 @@ IF(create_loc)THEN
   CALL WriteAttribute(File_ID,'N',1,IntScalar=PP_N)
   CALL WriteAttribute(File_ID,'Dimension',1,IntScalar=PP_dim)
   CALL WriteAttribute(File_ID,'Time',1,RealScalar=OutputTime)
-  CALL WriteAttribute(File_ID,'MeshFile',1,StrScalar=(/TRIM(MeshFileName)/))
+  CALL WriteAttribute(File_ID,'MeshFile',1,StrScalar=(/MeshFileName/))
   IF(PRESENT(FutureTime))THEN
     MeshFile255=TRIM(TIMESTAMP(TRIM(ProjectName)//'_'//TRIM(TypeString),FutureTime))//'.h5'
     CALL WriteAttribute(File_ID,'NextFile',1,StrScalar=(/MeshFile255/))
@@ -896,12 +896,16 @@ CHARACTER(LEN=*),INTENT(IN)              :: FileType_in   !< Type of file (e.g. 
 INTEGER(HID_T),INTENT(IN)                :: File_ID       !< HDF5 file id
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+CHARACTER(LEN=123) :: test
+CHARACTER(LEN=16) :: test2(1)
 !==================================================================================================================================
+test = "asdasd                 "
+test2 = (/TRIM(test)/)
 ! Write a small file header to identify a Flexi HDF5 files
 ! Attributes are program name, file type identifier, project name and version number
-CALL WriteAttribute(File_ID,'Program'     ,1,StrScalar=(/TRIM(ProgramName)/))
-CALL WriteAttribute(File_ID,'File_Type'   ,1,StrScalar=(/TRIM(FileType_in)/))
-CALL WriteAttribute(File_ID,'Project_Name',1,StrScalar=(/TRIM(ProjectName)/))
+CALL WriteAttribute(File_ID,'Program'     ,1,StrScalar=(/ProgramName/))
+CALL WriteAttribute(File_ID,'File_Type'   ,1,StrScalar=(/FileType_in/))
+CALL WriteAttribute(File_ID,'Project_Name',1,StrScalar=(/ProjectName/))
 CALL WriteAttribute(File_ID,'File_Version',1,RealScalar=FileVersion)
 END SUBROUTINE WriteHeader
 
@@ -1083,7 +1087,7 @@ END IF
 ! Create character string datatype for the attribute.
 ! For a attribute character, we have to build our own type with corresponding attribute length
 IF(PRESENT(StrScalar))THEN
-  AttrLen=LEN(StrScalar(1))
+  AttrLen=LEN(TRIM(StrScalar(1)))
   CALL H5TCOPY_F(H5T_NATIVE_CHARACTER, Type_ID, iError)
   CALL H5TSET_SIZE_F(Type_ID, AttrLen, iError)
 END IF

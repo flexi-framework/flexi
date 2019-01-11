@@ -276,7 +276,9 @@ IF (NOT CMAKE_BUILD_TYPE)
   SET_PROPERTY(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Debug Release Profile)
 ENDIF (NOT CMAKE_BUILD_TYPE)
 
-IF (CMAKE_BUILD_TYPE MATCHES "Debug")
+
+STRING(TOLOWER ${CMAKE_BUILD_TYPE} BUILD_TYPE_LC)
+IF (BUILD_TYPE_LC MATCHES "debug")
   ADD_DEFINITIONS("-DDEBUG")
 ELSE()
   IF (HASIPO)
@@ -594,7 +596,7 @@ SET_TARGET_PROPERTIES(stacksizelib userblocklib PROPERTIES LINKER_LANGUAGE C
 
 add_exec(flexi ./src/flexi.f90)
 ADD_DEPENDENCIES(flexi libflexistatic userblocklib stacksizelib ${INTERNALLIBS})
-# we link the statically built fle
+# we link the statically built libs
 add_lib(libflexishared ./src/flexilib.f90)
 SET_TARGET_PROPERTIES(libflexishared PROPERTIES OUTPUT_NAME "libflexi")
 ADD_DEPENDENCIES(libflexishared libflexistatic userblocklib stacksizelib ${INTERNALLIBS})
