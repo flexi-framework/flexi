@@ -89,7 +89,7 @@ CALL OpenDataFile(Filestring,create=.TRUE.,single=.TRUE.,readOnly=.FALSE.)
 
 ! Write dataset attributes
 CALL WriteAttribute(File_ID,'File_Type'   ,1,StrScalar=(/'RP_Output'/))
-CALL WriteAttribute(File_ID,'ProjectName' ,1,StrScalar=(/TRIM(ProjectName)/))
+CALL WriteAttribute(File_ID,'ProjectName' ,1,StrScalar=(/ProjectName/))
 CALL WriteAttribute(File_ID,'Time'        ,1,RealScalar=Time(nSamples))
 CALL WriteAttribute(File_ID,'VarNames'    ,nVal,StrArray=VarNames)
 nCoords_loc=nCoords-1
@@ -246,7 +246,7 @@ CALL OpenDataFile(Filestring,create=.TRUE.,single=.TRUE.,readOnly=.FALSE.)
 
 ! Write dataset attributes
 CALL WriteAttribute(File_ID,'File_Type',1,StrScalar=(/'RP_Output'/))
-CALL WriteAttribute(File_ID,'ProjectName',1,StrScalar=(/TRIM(ProjectName)/))
+CALL WriteAttribute(File_ID,'ProjectName',1,StrScalar=(/ProjectName/))
 CALL WriteAttribute(File_ID,'VarNames',nBLProps,StrArray=VarNames_BLProps)
 nCoords_loc=nCoords-1
 CoordNames_loc=CoordNames(2:nCoords)
