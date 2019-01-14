@@ -576,17 +576,6 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
       CALL Average2D(nVarCalc,nVarCalc_FV,NCalc,NCalc_FV,nElems_DG,nElems_FV,NodeType,UCalc_DG,UCalc_FV,&
           Vdm_DGToFV,Vdm_FVToDG,Vdm_DGToVisu,Vdm_FVToVisu,1,nVarDep,mapDepToCalc,&
           UVisu_DG,UVisu_FV)
-#if USE_MPI
-      IF (.NOT.MPIRoot) THEN
-        ! For parallel averaging, all data is gathered on the root. Disable output for other procs.
-        nElemsAvg2D_DG = 0
-        nElemsAvg2D_FV = 0
-        SDEALLOCATE(UVisu_DG)
-        SDEALLOCATE(UVisu_FV)
-        ALLOCATE(UVisu_DG(0:NVisu   ,0:NVisu   ,0:0,nElemsAvg2D_DG,nVarVisu))
-        ALLOCATE(UVisu_FV(0:NVisu_FV,0:NVisu_FV,0:0,nElemsAvg2D_FV,nVarVisu))
-      END IF
-#endif
     ELSE
       CALL ConvertToVisu_DG()
 #if FV_ENABLED
@@ -608,6 +597,18 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   IF (changedStateFile.OR.changedVarNames.OR.changedNVisu.OR.changedDGonly.OR.changedBCnames.OR.changedAvg2D) THEN
     CALL ConvertToVisu_GenericData(statefile)
   END IF
+
+#if USE_MPI
+   IF ((.NOT.MPIRoot).AND.(Avg2d)) THEN
+     ! For parallel averaging, all data is gathered on the root. Disable output for other procs.
+     nElemsAvg2D_DG = 0
+     nElemsAvg2D_FV = 0
+     SDEALLOCATE(UVisu_DG)
+     SDEALLOCATE(UVisu_FV)
+     ALLOCATE(UVisu_DG(0:NVisu   ,0:NVisu   ,0:0,nElemsAvg2D_DG,nVarVisu))
+     ALLOCATE(UVisu_FV(0:NVisu_FV,0:NVisu_FV,0:0,nElemsAvg2D_FV,nVarVisu))
+   END IF
+#endif
 
 
   ! Convert coordinates to visu grid
