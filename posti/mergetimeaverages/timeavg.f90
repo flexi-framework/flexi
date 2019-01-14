@@ -274,11 +274,11 @@ DO i=1,f%nDataSets
   f%totalsize=f%totalsize+PRODUCT(f%nVal(1:f%nDims(i)-1,i))*nElems
 END DO
 ! Get default parameters
-CALL ReadAttribute(File_ID,'File_Type',1,StrScalar =f%FileType)
-CALL ReadAttribute(File_ID,'MeshFile',1,StrScalar =f%MeshFile)
-CALL ReadAttribute(File_ID,'NodeType',1,StrScalar =f%NodeType)
+CALL ReadAttribute(File_ID,'File_Type',   1,StrScalar =f%FileType)
+CALL ReadAttribute(File_ID,'MeshFile',    1,StrScalar =f%MeshFile)
+CALL ReadAttribute(File_ID,'NodeType',    1,StrScalar =f%NodeType)
 CALL ReadAttribute(File_ID,'Project_Name',1,StrScalar =f%ProjectName)
-CALL ReadAttribute(File_ID,'Time'    ,1,RealScalar=f%Time)
+CALL ReadAttribute(File_ID,'Time'        ,1,RealScalar=f%Time)
 CALL CloseDataFile()
 END SUBROUTINE
 
@@ -305,8 +305,8 @@ REAL,INTENT(IN)             :: avgTime      !< averaged time
 INTEGER             :: globsize(1:maxDim)
 INTEGER,ALLOCATABLE :: offset2(:)
 !===================================================================================================================================
-#if USE_MPI
 IF (MPIRoot) CALL EXECUTE_COMMAND_LINE("cp -f "//TRIM(filename_in)//" "//TRIM(filename_out))
+#if USE_MPI
 CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
 #endif
 
