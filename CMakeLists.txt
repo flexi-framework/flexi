@@ -3,7 +3,6 @@
 # =========================================================================
 # NOTE: use minimum CMake version required by tools/libs (Paraview, HDF5, FFTW)
 CMAKE_MINIMUM_REQUIRED(VERSION 3.5.1)
-ENABLE_LANGUAGE(Fortran C)
 # Policies (see https://cmake.org/cmake/help/v3.13/manual/cmake-policies.7.html)
 # VERSION_GREATER_EQUAL is incompatible with CMAKE versions < 3.7
 IF(NOT(${CMAKE_VERSION} VERSION_LESS "3.6.0"))
@@ -11,13 +10,6 @@ IF(NOT(${CMAKE_VERSION} VERSION_LESS "3.6.0"))
 ENDIF()
 IF(NOT(${CMAKE_VERSION} VERSION_LESS "3.12.0"))
   CMAKE_POLICY(SET CMP0074 NEW)
-ENDIF()
-IF(NOT(${CMAKE_VERSION} VERSION_LESS "3.9.0"))
-  CMAKE_POLICY(SET CMP0069 NEW)
-  INCLUDE(CheckIPOSupported)
-  check_ipo_supported(RESULT HASIPO OUTPUT error)
-ELSE()
-  SET(HASIPO FALSE)
 ENDIF()
 # Folder for custom CMake source files
 LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
@@ -68,6 +60,17 @@ ENDIF()
 # Project definitions and output paths
 # =========================================================================
 PROJECT(Flexi)
+ENABLE_LANGUAGE(Fortran C)
+
+# Check IPO support:
+# we need to have languages enabled and compilers defined for this
+IF(NOT(${CMAKE_VERSION} VERSION_LESS "3.9.0"))
+  CMAKE_POLICY(SET CMP0069 NEW)
+  INCLUDE(CheckIPOSupported)
+  check_ipo_supported(RESULT HASIPO OUTPUT error)
+ELSE()
+  SET(HASIPO FALSE)
+ENDIF()
 
 SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin)
 SET(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include)
@@ -584,7 +587,7 @@ ADD_LIBRARY(libflexistaticF90 OBJECT ${flexiF90})
 SET_TARGET_PROPERTIES(libflexistaticF90 PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}) 
 ADD_LIBRARY(libflexistatic STATIC $<TARGET_OBJECTS:libflexistaticF90>)
 SET_TARGET_PROPERTIES(libflexistatic PROPERTIES PREFIX ""
-                                     OUTPUT_NAME "libflexi")
+                                     OUTPUT_NAME "libflexif90")
 IF(SELFBUILTEXTERNALS)
   ADD_DEPENDENCIES(libflexistaticF90 ${SELFBUILTEXTERNALS})
 ENDIF()
@@ -594,12 +597,12 @@ ADD_LIBRARY(stacksizelib STATIC ./src/globals/stacksize.c)
 SET_TARGET_PROPERTIES(stacksizelib userblocklib PROPERTIES LINKER_LANGUAGE C
                                                            COMPILE_FLAGS "-fPIC")
 
-add_exec(flexi ./src/flexi.f90)
-ADD_DEPENDENCIES(flexi libflexistatic userblocklib stacksizelib ${INTERNALLIBS})
 # we link the statically built libs
 add_lib(libflexishared ./src/flexilib.f90)
 SET_TARGET_PROPERTIES(libflexishared PROPERTIES OUTPUT_NAME "libflexi")
 ADD_DEPENDENCIES(libflexishared libflexistatic userblocklib stacksizelib ${INTERNALLIBS})
+add_exec(flexi ./src/flexi.f90)
+ADD_DEPENDENCIES(flexi libflexistatic userblocklib stacksizelib ${INTERNALLIBS})
 
 # special compiler flags to avoid warnings for empty functions of testcase.f90 and overwrite of intrinsic abort in globals.f90
 IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")

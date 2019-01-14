@@ -34,7 +34,7 @@ CONTAINS
 !==================================================================================================================================
 !> Initialization of the computation
 !==================================================================================================================================
-SUBROUTINE InitFlexi(nArgs_In,Args_In,mpi_comm)
+SUBROUTINE InitFlexi(nArgs_In,Args_In,mpi_comm_loc)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
@@ -79,15 +79,15 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)            :: nArgs_In
 CHARACTER(LEN=255),INTENT(IN),OPTIONAL :: Args_In(*)
-INTEGER,INTENT(IN),OPTIONAL   :: mpi_comm
+INTEGER,INTENT(IN),OPTIONAL   :: mpi_comm_loc
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                    :: Time                              !< Used to measure simulation time
 LOGICAL                 :: userblockFound
 !==================================================================================================================================
 CALL SetStackSizeUnlimited()
-IF(PRESENT(mpi_comm))THEN
-  CALL InitMPI(mpi_comm)
+IF(PRESENT(mpi_comm_loc))THEN
+  CALL InitMPI(mpi_comm_loc)
 ELSE
   CALL InitMPI()
 END IF
