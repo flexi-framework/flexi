@@ -33,7 +33,9 @@ CALL TimeDisc()
 
 ! Finalize
 CALL FinalizeFlexi()
+#if USE_MPI
 ! we also have to finalize MPI itself here
 CALL MPI_FINALIZE(iError)
 IF(iError .NE. 0) STOP 'MPI finalize error'
+#endif
 END PROGRAM Flexi
