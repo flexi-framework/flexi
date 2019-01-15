@@ -65,11 +65,6 @@ CALL prms%CreateRealArrayOption('RefState',     "State(s) in primitive variables
 CALL prms%CreateStringOption(   'BCStateFile',  "File containing the reference solution on the boundary to be used as BC.")
 
 CALL DefineParametersRiemann()
-#if EDDYVISCOSITY
-CALL prms%CreateIntFromStringOption(   'eddyViscType', "(0) none: No eddy viscosity, (1) Smagorinsky",'none')
-CALL addStrListEntry('eddyViscType','none',0)
-CALL addStrListEntry('eddyViscType','smagorinsky',1)
-#endif
 #ifdef SPLIT_DG
 CALL DefineParametersSplitDG()
 #endif /*SPLIT_DG*/
