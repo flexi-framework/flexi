@@ -37,9 +37,9 @@ INTERFACE InitFV_Limiter
 END INTERFACE
 
 ABSTRACT INTERFACE
-  PURE SUBROUTINE LimiterInt(sL, sR, s)
-  REAL,INTENT(IN)  :: sL(PP_nVarPrim),sR(PP_nVarPrim)
-  REAL,INTENT(OUT) :: s(PP_nVarPrim)
+  PPURE SUBROUTINE LimiterInt(sL, sR, s)
+    REAL,INTENT(IN)  :: sL(PP_nVarPrim),sR(PP_nVarPrim)
+    REAL,INTENT(OUT) :: s(PP_nVarPrim)
   END SUBROUTINE
 END INTERFACE
 
