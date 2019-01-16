@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -37,9 +37,9 @@ INTERFACE InitFV_Limiter
 END INTERFACE
 
 ABSTRACT INTERFACE
-  PURE SUBROUTINE LimiterInt(sL, sR, s)
-  REAL,INTENT(IN)  :: sL(PP_nVarPrim),sR(PP_nVarPrim)
-  REAL,INTENT(OUT) :: s(PP_nVarPrim)
+  PPURE SUBROUTINE LimiterInt(sL, sR, s)
+    REAL,INTENT(IN)  :: sL(PP_nVarPrim),sR(PP_nVarPrim)
+    REAL,INTENT(OUT) :: s(PP_nVarPrim)
   END SUBROUTINE
 END INTERFACE
 
@@ -48,19 +48,6 @@ PROCEDURE(LimiterInt),POINTER :: FV_Limiter !< limiting function (see: fv_limite
 PUBLIC::DefineParametersFV_Limiter
 PUBLIC::InitFV_Limiter
 PUBLIC::FV_Limiter
-
-#ifdef DEBUG
-! Add dummy interfaces to unused subroutines to suppress compiler warnings.
-INTERFACE DUMMY_CentralLimiter
-  MODULE PROCEDURE CentralLimiter
-END INTERFACE
-INTERFACE DUMMY_Sweby
-  MODULE PROCEDURE Sweby
-END INTERFACE
-INTERFACE DUMMY_NullLimiter
-  MODULE PROCEDURE NullLimiter
-END INTERFACE
-#endif /* DEBUG */
 !==================================================================================================================================
 
 #endif /* FV_RECONSTRUCT */
@@ -91,7 +78,7 @@ END SUBROUTINE DefineParametersFV_Limiter
 !==================================================================================================================================
 !> Initialize pointer to chosen limiter type and readin of required parameter
 !==================================================================================================================================
-SUBROUTINE InitFV_Limiter() 
+SUBROUTINE InitFV_Limiter()
 USE MOD_Globals
 USE MOD_ReadInTools
 USE MOD_FV_Vars     ,ONLY: FV_sweby_beta
@@ -116,16 +103,16 @@ CASE (FV_LIMITERTYPE_SWEBY) ! Sweby
 CASE (FV_LIMITERTYPE_CENTRAL) ! Central
   FV_Limiter => CentralLimiter
   SWRITE(UNIT_stdOut,'(A,F8.6)') '  Using "Central" limiter.'
-CASE DEFAULT 
+CASE DEFAULT
   CALL CollectiveStop(__STAMP__,&
     'FV Limiter-Type unknown.')
 END SELECT
-END SUBROUTINE InitFV_Limiter  
+END SUBROUTINE InitFV_Limiter
 
 !==================================================================================================================================
 !> Limiter sets slope to zero.
 !==================================================================================================================================
-PURE SUBROUTINE NullLimiter(sL, sR, s)
+PPURE SUBROUTINE NullLimiter(sL, sR, s)
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -134,11 +121,6 @@ REAL,INTENT(IN)  :: sL(PP_nVarPrim) !< left slope
 REAL,INTENT(IN)  :: sR(PP_nVarPrim) !< right slope
 REAL,INTENT(OUT) :: s(PP_nVarPrim)  !< limited slope
 !==================================================================================================================================
-#ifdef DEBUG
-! Dummy access to remove compiler warnings
-s = sL
-s = sR
-#endif
 ! NullLimiter
 s = 0.
 END SUBROUTINE NullLimiter
@@ -146,7 +128,7 @@ END SUBROUTINE NullLimiter
 !==================================================================================================================================
 !> MinMod slope limiter.
 !==================================================================================================================================
-PURE SUBROUTINE MinMod(sL, sR, s)
+PPURE SUBROUTINE MinMod(sL, sR, s)
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -168,7 +150,7 @@ END SUBROUTINE MinMod
 !==================================================================================================================================
 !> Sweby slope limiter.
 !==================================================================================================================================
-PURE SUBROUTINE Sweby(sL, sR, s)
+PPURE SUBROUTINE Sweby(sL, sR, s)
 ! MODULES
 USE MOD_FV_Vars ,ONLY: FV_sweby_beta
 IMPLICIT NONE
@@ -178,7 +160,7 @@ REAL,INTENT(IN)  :: sL(PP_nVarPrim) !< left slope
 REAL,INTENT(IN)  :: sR(PP_nVarPrim) !< right slope
 REAL,INTENT(OUT) :: s(PP_nVarPrim)  !< limited slope
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 REAL :: sa(PP_nVarPrim),sb(PP_nVarPrim)
 !==================================================================================================================================
 CALL MinMod(sL*FV_sweby_beta,sR,sa)
@@ -189,7 +171,7 @@ END SUBROUTINE Sweby
 !==================================================================================================================================
 !> central limiter s = (sL + sR)/2  (ATTENTION: unstable and not TVD)
 !==================================================================================================================================
-PURE SUBROUTINE CentralLimiter(sL, sR, s)
+PPURE SUBROUTINE CentralLimiter(sL, sR, s)
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -198,7 +180,7 @@ REAL,INTENT(IN)  :: sL(PP_nVarPrim) !< left slope
 REAL,INTENT(IN)  :: sR(PP_nVarPrim) !< right slope
 REAL,INTENT(OUT) :: s(PP_nVarPrim)  !< limited slope
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 !==================================================================================================================================
 s = (sL+sR)/2.0
 END SUBROUTINE CentralLimiter

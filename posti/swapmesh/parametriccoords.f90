@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -65,7 +65,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 INTEGER            :: i,j,k     ! CL,NSuper
 INTEGER            :: ii,jj,kk  ! IP
 INTEGER            :: iElemNew,iElemOld
@@ -100,7 +100,7 @@ DO i=0,NSuper
   Xi_NSuper(i) = 2./REAL(NSuper) * REAL(i) - 1.
 END DO
 
-! Compute centroids and radii for the old mesh on CL points and the interpolation mesh (new mesh on NInter) 
+! Compute centroids and radii for the old mesh on CL points and the interpolation mesh (new mesh on NInter)
 DO iElemOld=1,nElemsOld
  CALL getCentroidAndRadius(xCLOld(:,:,:,:,iElemOld),NGeoOld,xCOld(:,iElemOld),radOld(iElemOld))
 END DO
@@ -124,7 +124,7 @@ StartTime=FLEXITIME()
 ElemCounter=0
 nEqualElems=0
 equalElem=-999
-! look for identical elements and mark them 
+! look for identical elements and mark them
 ! only for same Ngeo so far
 IF(NgeoOld.EQ.NGeoNew) THEN
   maxDist=1e-9
@@ -151,12 +151,12 @@ IF(NgeoOld.EQ.NGeoNew) THEN
         END IF
       END DO; END DO; END DO
       IF(equal) THEN
-!$OMP CRITICAL 
+!$OMP CRITICAL
         equalElem(iElemNew)=iElemOld
         ElemDone(iElemNew)=.TRUE.
         ElemDoneOld(iElemOld)=.TRUE.
         nEqualElems=nEqualElems+1
-!$OMP END CRITICAL 
+!$OMP END CRITICAL
       END IF ! equal
     END DO! iElemNew=1,nElemsNew
   END DO! iElemOld=1,nElemsOld
@@ -241,7 +241,7 @@ DO iElemOld=1,nElemsOld
 
         ! Iterate Xi using Newton step
         Xi = Xi - MATMUL(sJac,F)
-        ! if Newton gets outside reference space range [-1,1], exit. 
+        ! if Newton gets outside reference space range [-1,1], exit.
         ! But allow for some oscillation in the first couple of iterations, as we may discard the correct point/element!!
         IF((iter.GT.3).AND.(ANY(ABS(Xi).GT.1.2))) EXIT
 
@@ -258,23 +258,23 @@ DO iElemOld=1,nElemsOld
       END DO !newton
 
       ! check if result is better than previous result
-!$OMP CRITICAL 
+!$OMP CRITICAL
       IF(MAXVAL(ABS(Xi)).LT.MAXVAL(ABS(xiInter(:,ii,jj,kk,iElemNew)))) THEN
         IF(MAXVAL(ABS(Xi)).LE.1.) IPDone(ii,jj,kk,iElemNew) = .TRUE. ! if point is inside element, stop searching
         xiInter(:,ii,jj,kk,iElemNew)=Xi
         InterToElem(ii,jj,kk,iElemNew) = iElemOld
       END IF
-!$OMP END CRITICAL 
+!$OMP END CRITICAL
     END DO; END DO; END DO ! ii,jj,kk (IP loop)
     IF(ALL(IPDone(:,:,:,iElemNew))) ElemDone(iElemNew)=.TRUE.
   END DO ! iElem
-!$OMP CRITICAL 
+!$OMP CRITICAL
   ElemCounter=ElemCounter+1
   IF(MOD(ElemCounter,1000).EQ.0)THEN
     WRITE(*,*) ElemCounter,'elements of',nElemsOld-nEqualElems,' processed. Time= ', FLEXITIME()-StartTime
     StartTime=FLEXITIME()
   END IF
-!$OMP END CRITICAL 
+!$OMP END CRITICAL
 END DO ! iElemOld
 !$OMP END DO
 !$OMP END PARALLEL

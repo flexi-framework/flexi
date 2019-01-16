@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -31,7 +31,7 @@ INTERFACE GetBoundaryFlux
   MODULE PROCEDURE GetBoundaryFlux
 END INTERFACE
 
-#if FV_ENABLED 
+#if FV_ENABLED
 #if FV_RECONSTRUCT
 INTERFACE GetBoundaryFVgradient
   MODULE PROCEDURE GetBoundaryFVgradient
@@ -150,7 +150,7 @@ USE MOD_Equation_Vars,ONLY: IniExactFunc
 USE MOD_Riemann      ,ONLY: GetFlux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)                   :: SideID  
+INTEGER,INTENT(IN)                   :: SideID
 REAL,INTENT(IN)                      :: t       !< current time (provided by time integration scheme)
 INTEGER,INTENT(IN)                   :: Nloc    !< polynomial degree
 REAL,INTENT(IN)                      :: UPrim_master( PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)) !< inner surface solution
@@ -207,7 +207,7 @@ USE MOD_Equation_Vars ,ONLY: IniExactFunc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN):: SideID  
+INTEGER,INTENT(IN):: SideID
 REAL,INTENT(IN)   :: t
 REAL,INTENT(IN)   :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ)
 REAL,INTENT(OUT)  :: gradU       (PP_nVarPrim,0:PP_N,0:PP_NZ)
@@ -227,7 +227,7 @@ BCState = Boundarytype(BC(SideID),BC_STATE)
 
 IF (BCType.LT.0) THEN ! testcase boundary condition
   CALL GetBoundaryFVgradientTestcase(SideID,t,gradU,UPrim_master)
-ELSE 
+ELSE
   SELECT CASE(BCType)
   CASE(2) ! exact BC = Dirichlet BC !!
     ! Determine the exact BC state
@@ -235,7 +235,7 @@ ELSE
       CALL ExactFunc(IniExactFunc,t,Face_xGP(:,p,q),UPrim_boundary)
       gradU(:,p,q) = (UPrim_master(:,p,q) - UPrim_boundary) * sdx_Face(p,q,3)
     END DO ; END DO
-    
+
   CASE(1) !Periodic already filled!
   CASE DEFAULT ! unknown BCType
     CALL abort(__STAMP__,&
@@ -263,7 +263,7 @@ USE MOD_Equation_Vars,ONLY: IniExactFunc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN):: SideID  
+INTEGER,INTENT(IN):: SideID
 REAL,INTENT(IN)   :: t                                       !< current time (provided by time integration scheme)
 REAL,INTENT(IN)   :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ) !< primitive solution from the inside
 REAL,INTENT(OUT)  :: Flux(        PP_nVarPrim,0:PP_N,0:PP_NZ) !< lifting boundary flux
@@ -298,7 +298,7 @@ ELSE
 
   !in case lifting is done in strong form
   IF(.NOT.doWeakLifting) Flux=Flux-UPrim_master
-  
+
   DO q=0,PP_NZ; DO p=0,PP_N
     Flux(:,p,q)=Flux(:,p,q)*SurfElem(p,q)
   END DO; END DO

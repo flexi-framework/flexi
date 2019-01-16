@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -123,7 +123,7 @@ FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_'//TRIM(FileType),OutputTime))//'.h
 IF(MPIRoot) CALL GenerateFileSkeleton(TRIM(FileName),'State',PP_nVar,NOut,StrVarNames,&
                                       MeshFileName,OutputTime,FutureTime,withUserblock=.TRUE.)
 
-! Set size of output 
+! Set size of output
 nVal=(/PP_nVar,NOut+1,NOut+1,ZDIM(NOut)+1,nElems/)
 
 ! build output data
@@ -149,7 +149,7 @@ IF(NOut.NE.PP_N)THEN
   END DO
 #if PP_dim == 2
   ! If the output should be done with a full third dimension in a two dimensional computation, we need to expand the solution
-  IF (.NOT.output2D) THEN 
+  IF (.NOT.output2D) THEN
     ALLOCATE(UOutTmp(PP_nVar,0:NOut,0:NOut,0:ZDIM(NOut),nElems))
     UOutTmp = UOut
     DEALLOCATE(UOut)
@@ -305,11 +305,11 @@ END SUBROUTINE GatheredWriteArray
 !> to functions to generate the data, along with the respective varnames.
 !>
 !> Two options are available:
-!>    1. WriteAdditionalElemData: 
+!>    1. WriteAdditionalElemData:
 !>       Element-wise scalar data, e.g. the timestep or indicators.
 !>       The data is collected in a single array and written out in one step.
 !>       DO NOT MISUSE NODAL DATA FOR THIS! IT WILL DRASTICALLY INCREASE FILE SIZE AND SLOW DOWN IO!
-!>    2. WriteAdditionalFieldData: 
+!>    2. WriteAdditionalFieldData:
 !>       Nodal data, e.g. coordinates or sgs viscosities.
 !>       Each list entry is written into a separate array.
 !>
@@ -404,7 +404,7 @@ TYPE(tFieldOut),POINTER        :: f
 ! TODO: Perform one write for each dataset.
 IF(.NOT. ASSOCIATED(FieldList)) RETURN
 
-! Count fixed size and total number of entries 
+! Count fixed size and total number of entries
 nVar=0
 nVarTotal=0
 f=>FieldList
@@ -554,7 +554,7 @@ ELSE
   UOut => SpBaseFlow
   NZ_loc=0
 END IF
-#endif  
+#endif
 
 ! Write DG solution
 #if USE_MPI
@@ -673,7 +673,7 @@ DO i=1,2
   END IF
 #endif
   nVal_glob=  (/nVal_loc(1:4),nGlobalElems/)
-  
+
   ! Reopen file and write DG solution
   CALL GatheredWriteArray(FileName,create=.FALSE.,&
                           DataSetName=TRIM(DataSet), rank=5,&
@@ -771,7 +771,7 @@ IF(create_loc)THEN
 
   ! Write file header
   CALL WriteHeader(TRIM(TypeString),File_ID)
-  
+
   ! Write dataset properties "Time","MeshFile","NextFile","NodeType","VarNames"
   CALL WriteAttribute(File_ID,'N',1,IntScalar=PP_N)
   CALL WriteAttribute(File_ID,'Dimension',1,IntScalar=PP_dim)
@@ -788,7 +788,7 @@ IF(create_loc)THEN
   FV_w_array(:)= FV_w
   CALL WriteAttribute(File_ID,'FV_w',PP_N+1,RealArray=FV_w_array)
 #endif
-  
+
   CALL WriteAttribute(File_ID,'NComputation',1,IntScalar=PP_N)
 END IF
 

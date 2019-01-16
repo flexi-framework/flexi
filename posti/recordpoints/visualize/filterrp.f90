@@ -70,7 +70,7 @@ pi=acos(-1.)
 !    RPData_out(:,:,iSample) = cos(10.*pi*2.*REAL(iSample-1)/REAL(nSamples_out-1)) &
 !                             +0.05*cos(100.*pi*2.*REAL(iSample-1)/REAL(nSamples_out-1)+.1)
 !END DO
-DO iRP=1,nRP_global 
+DO iRP=1,nRP_global
   RPData_tmp=RPData_out(:,iRP,:)
   ! Average around each Sample
   DO iSample=1,nSamples_out
@@ -83,14 +83,14 @@ DO iRP=1,nRP_global
     END DO ! iSample2
     snSamples_block=1/(REAL(MAX(iSample_right-iSample_left+1,1)))
     ! low pass filtered signal
-    RPData_tmp(:,iSample)=RPData_f*snSamples_block 
+    RPData_tmp(:,iSample)=RPData_f*snSamples_block
   END DO ! iSample
   IF(FilterMode.EQ.1) THEN
     RPData_out(:,iRP,:)=RPData_out(:,iRP,:)-RPData_tmp(:,:)
   ELSE
     RPData_out(:,iRP,:)=RPData_tmp(:,:)
   END IF
-END DO ! iRP=1,nRP 
+END DO ! iRP=1,nRP
 WRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE FilterRP
 

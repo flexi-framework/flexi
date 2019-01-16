@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -80,7 +80,7 @@ PUBLIC::DefineParametersOutput
 CONTAINS
 
 !==================================================================================================================================
-!> Define parameters 
+!> Define parameters
 !==================================================================================================================================
 SUBROUTINE DefineParametersOutput()
 ! MODULES
@@ -104,7 +104,7 @@ CALL prms%CreateIntFromStringOption('ASCIIOutputFormat',"File format for ASCII f
 CALL addStrListEntry('ASCIIOutputFormat','csv',    ASCIIOUTPUTFORMAT_CSV)
 CALL addStrListEntry('ASCIIOutputFormat','tecplot',ASCIIOUTPUTFORMAT_TECPLOT)
 CALL prms%CreateLogicalOption(      'doPrintStatusLine','Print: percentage of time, ...', '.FALSE.')
-CALL prms%CreateLogicalOption(      'WriteStateFiles','Write HDF5 state files. Disable this only for debugging issues. \n'// & 
+CALL prms%CreateLogicalOption(      'WriteStateFiles','Write HDF5 state files. Disable this only for debugging issues. \n'// &
                                                       'NO SOLUTION WILL BE WRITTEN!', '.TRUE.')
 END SUBROUTINE DefineParametersOutput
 
@@ -203,7 +203,7 @@ END SUBROUTINE InitOutput
 !==================================================================================================================================
 !> Displays the actual status of the simulation and counts the amount of FV elements
 !==================================================================================================================================
-SUBROUTINE PrintStatusLine(t,dt,tStart,tEnd) 
+SUBROUTINE PrintStatusLine(t,dt,tStart,tEnd)
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! description
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -220,7 +220,7 @@ USE MOD_Analyze_Vars, ONLY: totalFV_nElems
 ! insert modules here
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 REAL,INTENT(IN) :: t      !< current simulation time
 REAL,INTENT(IN) :: dt     !< current time step
 REAL,INTENT(IN) :: tStart !< start time of simulation
@@ -248,7 +248,7 @@ IF(MPIroot)THEN
 #ifdef INTEL
   OPEN(UNIT_stdOut,CARRIAGECONTROL='fortran')
 #endif
-  percent = (t-tStart) / (tend-tStart) 
+  percent = (t-tStart) / (tend-tStart)
   CALL CPU_TIME(time_remaining)
   IF (percent.GT.0.0) time_remaining = time_remaining/percent - time_remaining
   percent = percent*100.
@@ -289,7 +289,7 @@ USE MOD_FV_Vars,          ONLY:FV_Elems
 #if FV_RECONSTRUCT
 USE MOD_FV_Vars,          ONLY:FV_dx_XI_L,FV_dx_XI_R,FV_dx_ETA_L,FV_dx_ETA_R
 USE MOD_FV_Vars,          ONLY:gradUxi,gradUeta
-#if PP_dim == 3        
+#if PP_dim == 3
 USE MOD_FV_Vars,          ONLY:FV_dx_ZETA_L,FV_dx_ZETA_R
 USE MOD_FV_Vars,          ONLY:gradUzeta
 #endif
@@ -306,9 +306,9 @@ REAL,INTENT(INOUT)            :: U(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< so
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                       :: iElem,FV_iElem,DG_iElem,PP_nVar_loc,nFV_Elems,iVar
-REAL,ALLOCATABLE,TARGET       :: Coords_NVisu(:,:,:,:,:) 
+REAL,ALLOCATABLE,TARGET       :: Coords_NVisu(:,:,:,:,:)
 REAL,ALLOCATABLE,TARGET       :: U_NVisu(:,:,:,:,:)
-REAL,POINTER                  :: Coords_NVisu_p(:,:,:,:,:) 
+REAL,POINTER                  :: Coords_NVisu_p(:,:,:,:,:)
 REAL,POINTER                  :: U_NVisu_p(:,:,:,:,:)
 CHARACTER(LEN=255)            :: FileString_DG
 #if FV_ENABLED
@@ -324,9 +324,9 @@ REAL,POINTER                  :: FV_U_NVisu_p(:,:,:,:,:)
 REAL,ALLOCATABLE              :: Vdm_GaussN_NVisu_FV(:,:)
 #endif
 CHARACTER(LEN=255),ALLOCATABLE:: StrVarNames_loc(:)
-#if FV_ENABLED && FV_RECONSTRUCT            
+#if FV_ENABLED && FV_RECONSTRUCT
 REAL                          :: dx,dy
-#if PP_dim == 3        
+#if PP_dim == 3
 REAL                          :: dz
 #endif
 #endif
@@ -339,7 +339,7 @@ PP_nVar_loc=PP_nVar
 #if FV_ENABLED
 PP_nVar_loc=PP_nVar+2
 DO iElem=1,nElems
-  IF (FV_Elems(iElem).GT.0) nFV_Elems = nFV_Elems + 1 
+  IF (FV_Elems(iElem).GT.0) nFV_Elems = nFV_Elems + 1
 END DO
 NVisu_FV = (PP_N+1)*2-1
 ALLOCATE(FV_U_NVisu(PP_nVar_loc,0:NVisu_FV,0:NVisu_FV,0:ZDIM(NVisu_FV),1:nFV_Elems))
@@ -364,7 +364,7 @@ DO iElem=1,nElems
 #if FV_ENABLED
     U_NVisu(PP_nVar_loc-1,:,:,:,DG_iElem) = IndValue(iElem)
     U_NVisu(PP_nVar_loc,:,:,:,DG_iElem) = FV_Elems(iElem)
-  ELSE 
+  ELSE
     FV_iElem = FV_iElem+1
 
     CALL ChangeBasisVolume(3,PP_N,NVisu_FV,Vdm_GaussN_NVisu_FV,Elem_xGP(1:3,:,:,:,iElem),FV_Coords_NVisu(1:3,:,:,:,FV_iElem))
@@ -372,17 +372,17 @@ DO iElem=1,nElems
       CALL ConsToPrim(UPrim ,U(:,i,j,k,iElem))
       DO kk=0,PP_dim-2; DO jj=0,1; DO ii=0,1
         kkk=k*2+kk; jjj=j*2+jj; iii=i*2+ii
-#if FV_RECONSTRUCT            
+#if FV_RECONSTRUCT
         dx = MERGE(  -FV_dx_XI_L(j,k,i,iElem),  FV_dx_XI_R(j,k,i,iElem),ii.EQ.0)
         dy = MERGE( -FV_dx_ETA_L(i,k,j,iElem), FV_dx_ETA_R(i,k,j,iElem),jj.EQ.0)
-        UPrim2 = UPrim + gradUxi(:,j,k,i,iElem) * dx + gradUeta(:,i,k,j,iElem) * dy 
-#if PP_dim == 3        
+        UPrim2 = UPrim + gradUxi(:,j,k,i,iElem) * dx + gradUeta(:,i,k,j,iElem) * dy
+#if PP_dim == 3
         dz = MERGE(-FV_dx_ZETA_L(i,j,k,iElem),FV_dx_ZETA_R(i,j,k,iElem),kk.EQ.0)
         UPrim2 = UPrim2 + gradUzeta(:,i,j,k,iElem) * dz
-#endif        
+#endif
 #else
         UPrim2 = UPrim
-#endif                                                                  
+#endif
         CALL PrimToCons(UPrim2(1:PP_nVarPrim), FV_U_NVisu(:,iii,jjj,kkk,FV_iElem))
       END DO; END DO; END DO
     END DO; END DO; END DO
@@ -394,7 +394,7 @@ END DO !iElem
 
 ALLOCATE(StrVarNames_loc(PP_nVar_loc))
 DO iVar=1,PP_nVar
-  StrVarNames_loc(iVar) = StrVarNames(iVar) 
+  StrVarNames_loc(iVar) = StrVarNames(iVar)
 END DO ! iVar=1,PP_nVar
 #if FV_ENABLED
   StrVarNames_loc(PP_nVar_loc-1) = "IndValue"
@@ -408,7 +408,7 @@ CASE(OUTPUTFORMAT_TECPLOT)
 CASE(OUTPUTFORMAT_TECPLOTASCII)
   STOP 'Tecplot output removed due to license issues (possible GPL incompatibility).'
 CASE(OUTPUTFORMAT_PARAVIEW)
-#if FV_ENABLED                            
+#if FV_ENABLED
   FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_DG',OutputTime))//'.vtu'
 #else
   FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))//'.vtu'
@@ -416,13 +416,13 @@ CASE(OUTPUTFORMAT_PARAVIEW)
   Coords_NVisu_p => Coords_NVisu
   U_NVisu_p => U_NVisu
   CALL WriteDataToVTK(PP_nVar_loc,NVisu,nElems-nFV_Elems,StrVarNames_loc,Coords_NVisu_p,U_NVisu_p,TRIM(FileString_DG),dim=PP_dim,DGFV=0)
-#if FV_ENABLED                            
+#if FV_ENABLED
   FileString_FV=TRIM(TIMESTAMP(TRIM(ProjectName)//'_FV',OutputTime))//'.vtu'
   FV_Coords_NVisu_p => FV_Coords_NVisu
   FV_U_NVisu_p => FV_U_NVisu
   CALL WriteDataToVTK(PP_nVar_loc,NVisu_FV,nFV_Elems,StrVarNames_loc,FV_Coords_NVisu_p,FV_U_NVisu_p,TRIM(FileString_FV),dim=PP_dim,DGFV=1)
 
-  IF (MPIRoot) THEN                   
+  IF (MPIRoot) THEN
     ! write multiblock file
     FileString_multiblock=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))//'.vtm'
     CALL WriteVTKMultiBlockDataSet(FileString_multiblock,FileString_DG,FileString_FV)
@@ -458,7 +458,7 @@ CHARACTER(LEN=*),INTENT(IN)   :: FileName         !< file to be written, without
 CHARACTER(LEN=*),INTENT(IN)   :: ZoneName         !< name of zone (e.g. names of boundary conditions), used for tecplot
 INTEGER,INTENT(IN)            :: nVar             !< number of variables
 CHARACTER(LEN=*),INTENT(IN)   :: VarNames(nVar)   !< variable names to be written
-REAL,INTENT(OUT),OPTIONAL     :: lastLine(nVar+1) !< last written line to search for, when appending to the file 
+REAL,INTENT(OUT),OPTIONAL     :: lastLine(nVar+1) !< last written line to search for, when appending to the file
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: stat            !< File IO status

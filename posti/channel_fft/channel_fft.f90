@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -14,10 +14,10 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-!> This tool will read in state files (single or multiple at once) from channel flow simulations and will perform 
+!> This tool will read in state files (single or multiple at once) from channel flow simulations and will perform
 !> a FFT (using external libraries) to generate spectra as well as mean profiles for fluctuations and the mean velocity.
 !> If several state files are given, an average over all of them is calculated.
-!> The mesh needs to be ijk sorted. 
+!> The mesh needs to be ijk sorted.
 !> To perform the FFT, the mesh and the solution will be interpolated to an equidistant FFT grid.
 !===================================================================================================================================
 PROGRAM channel_fft
@@ -142,7 +142,7 @@ END DO
 ! Do output of results
 CALL FFTOutput()
 
-! Finalize 
+! Finalize
 CALL FinalizeFFT()
 CALL FinalizeMesh()
 #if USE_MPI

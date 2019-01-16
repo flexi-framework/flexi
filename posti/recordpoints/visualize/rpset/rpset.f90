@@ -66,9 +66,9 @@ INTEGER                   :: nRP_output
 INTEGER                   :: nLines_tmp,nPlanes_tmp,nPoints_tmp
 LOGICAL                   :: DSexists
 LOGICAL                   :: found(nGroups_visu)
-LOGICAL                   :: LinesInFile=.FALSE.,PlanesInFile=.FALSE.,PointsInFile=.FALSE.  
+LOGICAL                   :: LinesInFile=.FALSE.,PlanesInFile=.FALSE.,PointsInFile=.FALSE.
 REAL,ALLOCATABLE          :: xF_tmp(:,:)
-INTEGER,ALLOCATABLE       :: Points_IDlist_tmp(:),Points_GroupIDlist_tmp(:) 
+INTEGER,ALLOCATABLE       :: Points_IDlist_tmp(:),Points_GroupIDlist_tmp(:)
 CHARACTER(LEN=255)        :: tmp255,PlaneType
 !===================================================================================================================================
 IF(RPSetInitIsDone)THEN
@@ -82,15 +82,15 @@ END IF
 WRITE(UNIT_StdOut,'(132("-"))')
 WRITE(UNIT_stdOut,'(A)') ' INIT RECORDPOINT SET...'
 WRITE(UNIT_stdOut,'(A)')' Read recordpoint definitions from data file "'//TRIM(RP_DefFile_in)//'" ...'
- 
+
 ! Open data file
 CALL OpenDataFile(RP_DefFile_in,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 
-! Readin Groups   
+! Readin Groups
 CALL GetDataSize(File_ID,'GroupNames',nDims,HSize)
 nGroups=INT(HSize(1)) !number of groups
 DEALLOCATE(HSize)
-ALLOCATE(GroupNames(1:nGroups)) 
+ALLOCATE(GroupNames(1:nGroups))
 CALL ReadArray(TRIM('GroupNames'),1,(/nGroups/),0,1,StrArray=GroupNames)
 
 
@@ -119,10 +119,10 @@ nRP_output=0
 CALL GetDataSize(File_ID,'xF_RP',nDims,HSize)
 nRP_HDF5=INT(HSize(2)) !global number of RecordPoints
 DEALLOCATE(HSize)
-ALLOCATE(xF_RP(3,nRP_HDF5)) 
+ALLOCATE(xF_RP(3,nRP_HDF5))
 CALL ReadArray('xF_RP',2,(/3,nRP_HDF5/),0,2,RealArray=xF_RP)
 
-! Readin Lines   
+! Readin Lines
 CALL DatasetExists(File_ID,'LineNames',DSexists)
 nLines_tmp=0
 nLines=0
@@ -131,7 +131,7 @@ IF(DSexists) THEN
   CALL GetDataSize(File_ID,'LineNames',nDims,HSize)
   nLines_tmp=INT(HSize(1)) !number of lines
   DEALLOCATE(HSize)
-  ALLOCATE(Lines_tmp(1:nLines_tmp)) 
+  ALLOCATE(Lines_tmp(1:nLines_tmp))
   CALL ReadArray('LineNames',1,(/nLines_tmp/),0,1,StrArray=Lines_tmp(:)%Name)
   DO iLine=1,nLines_tmp
     aLine=>Lines_tmp(iLine)
@@ -149,7 +149,7 @@ IF(DSexists) THEN
     END IF
   END DO
   ! now build the line list with only those lines which are in an output group
-  ALLOCATE(Lines(1:nLines)) 
+  ALLOCATE(Lines(1:nLines))
   iLine2=0
   DO iLine=1,nLines_tmp
     aLine=>Lines_tmp(iLine)
@@ -195,11 +195,11 @@ IF(DSexists) THEN
       Points_GroupIDlist(iPoint)=Points_GroupIDlist_tmp(iRP)
     END IF
   END DO !iRP
-  
+
   nRP_output=nRP_output + nPoints
 END IF!DSexists
 
-! Readin Planes   
+! Readin Planes
 CALL DatasetExists(File_ID,'PlaneNames',DSexists)
 nPlanes=0
 IF(DSexists) THEN
@@ -207,9 +207,9 @@ IF(DSexists) THEN
   CALL GetDataSize(File_ID,'PlaneNames',nDims,HSize)
   nPlanes_tmp=INT(HSize(1)) !number of Planes
   DEALLOCATE(HSize)
-  ALLOCATE(Planes_tmp(1:nPlanes_tmp)) 
+  ALLOCATE(Planes_tmp(1:nPlanes_tmp))
   CALL ReadArray('PlaneNames',1,(/nPlanes_tmp/),0,1,StrArray=Planes_tmp(:)%Name)
-  DO iPlane=1,nPlanes_tmp 
+  DO iPlane=1,nPlanes_tmp
     Plane=>Planes_tmp(iPlane)
     CALL ReadAttribute(File_ID,'GroupID',1,DatasetName=TRIM(Plane%Name),IntScalar=Plane%GroupID)
     !check if group is for output
@@ -228,17 +228,17 @@ IF(DSexists) THEN
         Plane%Type=1
       ELSEIF(PlaneType.EQ.TRIM("BLPla")) THEN
         Plane%Type=2
-        ALLOCATE(Plane%NormVec(3,Plane%nRP(1))) 
+        ALLOCATE(Plane%NormVec(3,Plane%nRP(1)))
         WRITE(tmp255,'(A,A)')TRIM(Plane%Name),'_NormVec'
         CALL ReadArray(tmp255,2,(/3,Plane%nRP(1)/),0,2,RealArray=Plane%NormVec)
-        ALLOCATE(Plane%TangVec(3,Plane%nRP(1))) 
+        ALLOCATE(Plane%TangVec(3,Plane%nRP(1)))
         WRITE(tmp255,'(A,A)')TRIM(Plane%Name),'_TangVec'
         CALL ReadArray(tmp255,2,(/3,Plane%nRP(1)/),0,2,RealArray=Plane%TangVec)
       END IF
     END IF
   END DO
   ! now build the plane list for those planes in an output group
-  ALLOCATE(Planes(1:nPlanes)) 
+  ALLOCATE(Planes(1:nPlanes))
   iPlane2=0
   DO iPlane=1,nPlanes_tmp
     Plane=>Planes_tmp(iPlane)
@@ -281,8 +281,8 @@ END IF
 IF(PlanesInFile) THEN
   DO iPlane=1,nPlanes
     Plane=>Planes(iPlane)
-    DO j=1,Plane%nRP(2)  
-      DO i=1,Plane%nRP(1)  
+    DO j=1,Plane%nRP(2)
+      DO i=1,Plane%nRP(1)
         RPOutMap(iRP+1)=Plane%IDlist(i,j)
         ! redefine plane mapping to newly generated global RP list
         Plane%IDlist(i,j)=iRP+1
@@ -292,14 +292,14 @@ IF(PlanesInFile) THEN
   END DO
 END IF
 
-ALLOCATE(xF_tmp(3,nRP_HDF5)) 
+ALLOCATE(xF_tmp(3,nRP_HDF5))
 xF_tmp=xF_RP
 DEALLOCATE(xF_RP)
-ALLOCATE(xF_RP(3,nRP_output)) 
+ALLOCATE(xF_RP(3,nRP_output))
 xF_RP(1:3,:)=xF_tmp(1:3,RPOutMap(:))
 nRP_global=nRP_output
 WRITE(UNIT_stdOut,*)' ',nRP_global,' recordpoints to process..'
-CALL CloseDataFile() 
+CALL CloseDataFile()
 
 RPSetInitIsDone = .TRUE.
 WRITE(UNIT_stdOut,'(A)')' INIT RECORDPOINTS SET DONE!'
@@ -334,7 +334,7 @@ END IF
 WRITE(UNIT_StdOut,'(132("-"))')
 WRITE(UNIT_stdOut,'(A)') ' CHANGING RECORDPOINT SET...'
 WRITE(UNIT_stdOut,'(A)')' Read recordpoint definitions from data file "'//TRIM(RP_DefFile_in)//'" ...'
- 
+
 ! Open data file
 CALL OpenDataFile(RP_DefFile_in,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 
@@ -342,7 +342,7 @@ CALL OpenDataFile(RP_DefFile_in,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL GetDataSize(File_ID,'xF_RP',nDims,HSize)
 nRP_HDF5=INT(HSize(2)) !global number of RecordPoints
 DEALLOCATE(HSize)
-ALLOCATE(xF_newset(3,nRP_HDF5)) 
+ALLOCATE(xF_newset(3,nRP_HDF5))
 CALL ReadArray('xF_RP',2,(/3,nRP_HDF5/),0,2,RealArray=xF_newset)
 CALL CloseDataFile()
 
@@ -363,12 +363,12 @@ DEALLOCATE(xF_newset)
 dist=0.
 DO iRP2=1,nRP_global
   dist=MAX(distRP(iRP2),dist)
-  IF(distRP(iRP2).GT.1e-9) THEN 
+  IF(distRP(iRP2).GT.1e-9) THEN
     CALL abort(__STAMP__, &
          'Not all RPs can be found in the new RP set!!')
   END IF
 END DO! iRP2=1,nRP_global
-WRITE(UNIT_stdOut,*)' All RPs found. Max. deviation in RP coordinates is ',dist 
+WRITE(UNIT_stdOut,*)' All RPs found. Max. deviation in RP coordinates is ',dist
 
 WRITE(UNIT_stdOut,'(A)')' CHANGE RECORDPOINTS SET DONE!'
 WRITE(UNIT_StdOut,'(132("-"))')
@@ -388,7 +388,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 CHARACTER(len=5)    :: LineType
 INTEGER             :: iLine,iPoint
 REAL                :: NormLineVec(3),LocalVec(3)
@@ -407,7 +407,7 @@ DO iLine=1,nLines
     DO iPoint=2,aLine%nRP
       LocalVec=xF_RP(:,aLine%IDlist(iPoint)) - xF_RP(:,aLine%IDlist(1))
       aLine%LocalCoord(iPoint) = SUM(LocalVec(1:3)*NormLineVec(1:3))
-    END DO !iPoint  
+    END DO !iPoint
   ELSEIF(LineType.EQ.TRIM("Circl")) THEN  ! circle
     ! get circle center
     circCenter(1)=SUM(xF_RP(1,aLine%IDlist(:)))
@@ -435,7 +435,7 @@ DO iLine=1,nLines
     DO iPoint=2,aLine%nRP
       aLine%LocalCoord(iPoint)= aLine%LocalCoord(iPoint-1) &
                                +NORM2(xF_RP(:,aLine%IDlist(iPoint)) - xF_RP(:,aLine%IDlist(iPoint-1)))
-    END DO !iPoint  
+    END DO !iPoint
   ELSE
     WRITE(UNIT_StdOut,'(A,A,A)')' The type of Line "',LineType,'" is not known!'; STOP
   END IF
@@ -456,7 +456,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 INTEGER             :: iLine
 REAL                :: NormLineVec(3)
 TYPE(tLine),POINTER :: aLine
@@ -467,9 +467,9 @@ DO iLine=1,nLines
   NormLineVec = xF_RP(:,aLine%IDlist(aLine%nRP)) - xF_RP(:,aLine%IDlist(1))
   NormLineVec = NormLineVec/SQRT(SUM(NormLineVec(1:3)*NormLineVec(1:3)))
 ! T1= orthogonalized main velocity vector
-  aLine%Tmat(1,1:3) = Line_localVel_vec-SUM(Line_localVel_vec(1:3)*NormLineVec(1:3))*NormLineVec 
+  aLine%Tmat(1,1:3) = Line_localVel_vec-SUM(Line_localVel_vec(1:3)*NormLineVec(1:3))*NormLineVec
 ! T2= normalized Line Vector
-  aLine%Tmat(2,1:3) = NormLineVec      
+  aLine%Tmat(2,1:3) = NormLineVec
 ! T3= crossprod to guarantee right hand system
   aLine%Tmat(3,1:3) = CROSS(aLine%Tmat(1,1:3),aLine%Tmat(2,1:3))
 END DO !iLine
@@ -489,7 +489,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 INTEGER              :: iPlane,i,j,iS
 INTEGER              :: Nx,Ny,nSuper
 REAL                 :: x_loc(3),x_loc_old(3),t_loc
@@ -553,7 +553,7 @@ SUBROUTINE FinalizeRPSet()
 USE MOD_RPSetVisuVisu_Vars
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 INTEGER :: iLine,iPlane
 !===================================================================================================================================
 SDEALLOCATE(GroupNames)
@@ -567,7 +567,7 @@ SDEALLOCATE(OutputGroup)
 IF(nLines.GT.1)THEN
   DO iLine=1,nLines
     SDEALLOCATE(Lines(iLine)%IDlist)
-    SDEALLOCATE(Lines(iLine)%LocalCoord)  
+    SDEALLOCATE(Lines(iLine)%LocalCoord)
     SDEALLOCATE(Lines(iLine)%Tmat)
   END DO! iLine=1,nLines
   DEALLOCATE(Lines)

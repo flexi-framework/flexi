@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -22,15 +22,7 @@ PUBLIC
 SAVE
 
 ABSTRACT INTERFACE
-!===================================================================================================================================
-!> Compute Eddy-Visosity at a given point in the volume with the chosen eddy viscosity model
-!===================================================================================================================================
-  SUBROUTINE EddyViscInt(iElem,i,j,k,muSGS)
-  INTEGER,INTENT(IN)  :: iElem  !< index of current element
-  !> indices of the c
-  INTEGER,INTENT(IN)  :: i,j,k
-  !> gradients of the directions
-  REAL,INTENT(INOUT)  :: muSGS  !< local SGS viscosity
+  SUBROUTINE EddyViscInt()
   END SUBROUTINE
 END INTERFACE
 
@@ -43,13 +35,14 @@ ABSTRACT INTERFACE
 END INTERFACE
 
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES 
+! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 INTEGER                                      :: eddyViscType          !< type of eddy viscosity
-PROCEDURE(EddyViscInt),POINTER               :: eddyViscosity         !< pointer to routine for computing volume eddy viscosity
-PROCEDURE(FinalizeEddyViscosityInt),POINTER  :: FinalizeEddyViscosity !< pointer tofinalize routine 
+PROCEDURE(EddyViscInt),POINTER               :: ComputeEddyViscosity  !< pointer to routine for computing volume eddy viscosity
+PROCEDURE(FinalizeEddyViscosityInt),POINTER  :: FinalizeEddyViscosity !< pointer tofinalize routine
 
 !Smagosinsky Standard
+REAL,ALLOCATABLE  :: Damp(:,:,:,:,:)       !< damping factor
 REAL,ALLOCATABLE  :: DeltaS(:)             !< filter width, used by Smagorinsky modell
 REAL,ALLOCATABLE  :: muSGS(:,:,:,:,:)      !< Viscosity for the sub-grid
 REAL,ALLOCATABLE  :: muSGS_master(:,:,:,:) !< Viscosity for the sub-grid on master sides

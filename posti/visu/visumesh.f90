@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -45,7 +45,7 @@ CONTAINS
 !> Converts the coordinates of the mesh to the visu-mesh.
 !=================================================================================================================================
 SUBROUTINE BuildVisuCoords()
-! MODULES                                                                   
+! MODULES
 USE ISO_C_BINDING
 USE MOD_Globals
 USE MOD_PreProc
@@ -68,7 +68,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: iElem, iElem_DG
-REAL,ALLOCATABLE   :: Vdm_N_NVisu(:,:)    
+REAL,ALLOCATABLE   :: Vdm_N_NVisu(:,:)
 #if FV_ENABLED
 INTEGER            :: iElem_FV
 REAL,ALLOCATABLE   :: Vdm_N_NVisu_FV(:,:)
@@ -96,12 +96,12 @@ IF (Avg2D) THEN
     jj = Elem_IJK(2,iElem)
     kk = Elem_IJK(3,iElem)
     IF (kk.EQ.1) THEN
-#if FV_ENABLED    
+#if FV_ENABLED
       IF (FVAmountAvg2D(ii,jj).LE.0.5) THEN ! DG
 #endif
         iElemAvg = mapElemIJToDGElemAvg2D(ii,jj)
         CALL ChangeBasis2D(3,PP_N,NVisu,Vdm_N_NVisu,Elem_xGP(:,:,:,0,iElem),CoordsVisu_DG(:,:,:,0,iElemAvg))
-#if FV_ENABLED    
+#if FV_ENABLED
       ELSE ! FV
         iElemAvg = mapElemIJToFVElemAvg2D(ii,jj)
         CALL ChangeBasis2D(3,PP_N,NVisu_FV,Vdm_N_NVisu_FV,Elem_xGP(:,:,:,0,iElem),CoordsVisu_FV(:,:,:,0,iElemAvg))
@@ -121,7 +121,7 @@ ELSE
   IF (hasFV_Elems) THEN
     SWRITE (*,*) "[MESH] Convert coordinates to visu grid (FV)"
     ! only NVisu changed, but NVisu_FV is independent of NVisu
-    IF ((.NOT.changedMeshFile).AND.(.NOT.changedFV_Elems).AND.(.NOT.changedAvg2D)) RETURN 
+    IF ((.NOT.changedMeshFile).AND.(.NOT.changedFV_Elems).AND.(.NOT.changedAvg2D)) RETURN
     !ALLOCATE(Vdm_N_NVisu_FV(0:NVisu_FV,0:PP_N))
     !CALL GetVandermonde(PP_N,NodeType,NVisu_FV,NodeTypeVISUFVEqui,Vdm_N_NVisu_FV,modal=.FALSE.)
     ! convert coords of FV elements
@@ -144,7 +144,7 @@ END SUBROUTINE BuildVisuCoords
 !> Converts the coordinates of the surface mesh to the surface visu-mesh.
 !=================================================================================================================================
 SUBROUTINE BuildSurfVisuCoords()
-! MODULES                                                                   
+! MODULES
 USE ISO_C_BINDING
 USE MOD_Globals
 USE MOD_PreProc
@@ -164,7 +164,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: iSide,iSideVisu
-REAL,ALLOCATABLE   :: Vdm_N_NVisu(:,:)    
+REAL,ALLOCATABLE   :: Vdm_N_NVisu(:,:)
 #if FV_ENABLED
 REAL,ALLOCATABLE   :: Vdm_N_NVisu_FV(:,:)
 #endif
@@ -192,7 +192,7 @@ SDEALLOCATE(Vdm_N_NVisu)
 #if FV_ENABLED
 IF (hasFV_Elems) THEN
   SWRITE (*,*) "[MESH] Convert coordinates to surface visu grid (FV)"
-  IF ((.NOT.changedMeshFile).AND.(.NOT.changedFV_Elems).AND.(.NOT.changedBCnames)) RETURN 
+  IF ((.NOT.changedMeshFile).AND.(.NOT.changedFV_Elems).AND.(.NOT.changedBCnames)) RETURN
   ALLOCATE(Vdm_N_NVisu_FV(0:NVisu_FV,0:Nloc))
   CALL GetVandermonde(Nloc,NodeType_loc,NVisu_FV,NodeTypeVISUFVEqui,Vdm_N_NVisu_FV,modal=.FALSE.)
   ! convert coords of FV elements
@@ -213,13 +213,13 @@ END SUBROUTINE BuildSurfVisuCoords
 
 !=================================================================================================================================
 !> Visualize mesh only
-!> 1. read mesh 
+!> 1. read mesh
 !> 2. BuildVisuCoords
 !> 3. write mesh to VTK array
 !> 4. set length of all other output arrays to zero
 !=================================================================================================================================
 SUBROUTINE VisualizeMesh(postifile,meshfile_in)
-! MODULES                                                                   
+! MODULES
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Visu_Vars
@@ -234,7 +234,7 @@ USE MOD_Mesh          ,ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
 USE MOD_VTK           ,ONLY: WriteCoordsToVTK_array
 USE MOD_HDF5_Input    ,ONLY: ReadAttribute,File_ID,OpenDataFile,CloseDataFile
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=255),INTENT(IN):: postifile
 CHARACTER(LEN=255),INTENT(IN):: meshfile_in
 ! LOCAL VARIABLES

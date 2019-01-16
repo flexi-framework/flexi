@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -22,7 +22,7 @@ MODULE MOD_FV_Mortar
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES 
+! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! Private Part --------------------------------------------------------------------------------------------------------------------
 ! Public Part ---------------------------------------------------------------------------------------------------------------------
@@ -58,16 +58,16 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(INOUT) :: FV_Elems_master(1:nSides) !< master side FV_elems
 INTEGER,INTENT(INOUT) :: FV_Elems_slave( 1:nSides) !< slave  side FV_elems
-LOGICAL,INTENT(IN)    :: doMPISides                !< =.TRUE. only MPI sides are filled, =.FALSE. inner sides 
+LOGICAL,INTENT(IN)    :: doMPISides                !< =.TRUE. only MPI sides are filled, =.FALSE. inner sides
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 INTEGER :: iMortar,nMortars
 INTEGER :: firstMortarSideID,lastMortarSideID
 INTEGER :: MortarSideID,SideID,locSide
 !==================================================================================================================================
 !                         doMPISides==True   doMPISides==False
-firstMortarSideID = MERGE(firstMortarMPISide,firstMortarInnerSide,doMPISides) 
- lastMortarSideID = MERGE( lastMortarMPISide, lastMortarInnerSide,doMPISides) 
+firstMortarSideID = MERGE(firstMortarMPISide,firstMortarInnerSide,doMPISides)
+ lastMortarSideID = MERGE( lastMortarMPISide, lastMortarInnerSide,doMPISides)
 
 DO MortarSideID=firstMortarSideID,lastMortarSideID
   nMortars=MERGE(4,2,MortarType(1,MortarSideID).EQ.1)
@@ -80,7 +80,7 @@ DO MortarSideID=firstMortarSideID,lastMortarSideID
       CASE(1:4) ! slave side
         FV_Elems_slave( SideID) = FV_Elems_master(MortarSideID)
     END SELECT !flip(iMortar)
-  END DO !iMortar 
+  END DO !iMortar
 END DO !MortarSideID
 END SUBROUTINE FV_Elems_Mortar
 
@@ -107,17 +107,17 @@ IMPLICIT NONE
 REAL,INTENT(INOUT) :: FV_surf_gradU(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< slope over interface
 LOGICAL,INTENT(IN) :: doMPISides  !< =.TRUE. only MPI sides are filled, =.FALSE. inner sides
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 INTEGER :: firstMortarSideID,lastMortarSideID
 INTEGER :: MortarSideID
 !==================================================================================================================================
-! Attention: we only have one Flux_surf_gradU (no master/slave) 
+! Attention: we only have one Flux_surf_gradU (no master/slave)
 !            => input it to Flux_Mortar for both fluxes (master/slave)
 CALL Flux_MortarPrim(FV_surf_gradU,FV_surf_gradU,doMPISides,weak=.FALSE.,onlyFV=.TRUE.)
 
 !                         doMPISides==True   doMPISides==False
-firstMortarSideID = MERGE(firstMortarMPISide,firstMortarInnerSide,doMPISides) 
- lastMortarSideID = MERGE( lastMortarMPISide, lastMortarInnerSide,doMPISides) 
+firstMortarSideID = MERGE(firstMortarMPISide,firstMortarInnerSide,doMPISides)
+ lastMortarSideID = MERGE( lastMortarMPISide, lastMortarInnerSide,doMPISides)
 
 DO MortarSideID=firstMortarSideID,lastMortarSideID
   IF(FV_Elems_master(MortarSideID).EQ.0) CYCLE ! DG

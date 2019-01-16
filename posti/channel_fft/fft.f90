@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -222,7 +222,7 @@ USE FFTW3
 USE MOD_FFT_Vars
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER           :: j,k
@@ -265,7 +265,7 @@ END SUBROUTINE PerformFFT
 !===================================================================================================================================
 !> Low-level wrapper routine to DFFTW call.
 !> Does single sided FFT spectrum of input U_in
-!> Computes square of amplitude spectrum and adds it to output variable u_hat 
+!> Computes square of amplitude spectrum and adds it to output variable u_hat
 !===================================================================================================================================
 SUBROUTINE FFT(plan,in,out,nSamples,nSamples_spec,U_in,U_hat)
 ! MODULES
@@ -291,15 +291,15 @@ in=U_in
 CALL DFFTW_EXECUTE_DFT(plan, in, out)
 !for square of single sided spectrum we need "2*amplitude**2"
 out(2:nSamples_spec-1)=2*(1./REAL(nSamples)*ABS(out(2:nSamples_spec-1)))**2
-out(1)=ABS(out(1)/REAL(nSamples))**2 !mean value, not two sided (unique) 
+out(1)=ABS(out(1)/REAL(nSamples))**2 !mean value, not two sided (unique)
 IF(MOD(nSamples,2).EQ.0.)THEN
   !Even number of samples,single nyquist stored in one index
   out(nSamples_spec)=ABS(out(nSamples_spec)/REAL(nSamples))**2
 ELSE
-  !Odd number of samples, nyquist stored two sided (just as any feq) 
+  !Odd number of samples, nyquist stored two sided (just as any feq)
   out(nSamples_spec)=2.*(ABS(out(nSamples_spec))/REAL(nSamples))**2
 END IF
-!add squared amplitude 
+!add squared amplitude
 U_hat(2:nSamples_spec)=REAL(U_hat(2:nSamples_spec)+out(2:nSamples_spec))
 !sum of mean square into first index
 U_hat(1)=REAL(U_hat(1)+SUM(out(1:nSamples_spec)))
@@ -318,7 +318,7 @@ USE MOD_IO_HDF5
 USE MOD_HDF5_Output
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: i,j,k,Fileunit_EK,offsetVar,iVar,nVal,nSamples
@@ -326,7 +326,7 @@ CHARACTER(LEN=255) :: FileName_EK
 CHARACTER(LEN=255) :: ZoneTitle
 LOGICAL            :: connected
 REAL,ALLOCATABLE   :: PointData(:,:)
-CHARACTER(LEN=255),ALLOCATABLE :: VarNamesFFT(:) 
+CHARACTER(LEN=255),ALLOCATABLE :: VarNamesFFT(:)
 !===================================================================================================================================
 !Sum up the lower and upper channel halfes
 DO j=N_FFT(2)/2+1,N_FFT(2)
@@ -579,7 +579,7 @@ USE MOD_FFT_Vars
 USE MOD_DG_Vars,     ONLY: U
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================

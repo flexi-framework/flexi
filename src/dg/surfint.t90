@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -14,12 +14,12 @@
 #include "flexi.h"
 
 !==================================================================================================================================
-!> In this routine, the surface integral will be computed 
+!> In this routine, the surface integral will be computed
 !==================================================================================================================================
-SUBROUTINE SurfInt(&
+PPURE SUBROUTINE SurfInt(&
 #ifdef WITHnVars
         TP_nVar, &
-#endif        
+#endif
         Nloc,Flux_master,Flux_slave,Ut,doMPISides,L_HatMinus,L_HatPlus)
 ! MODULES
 USE MOD_Globals
@@ -35,7 +35,7 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 #ifdef WITHnVars
 INTEGER,INTENT(IN) :: TP_nVar     !< number of variables
-#endif        
+#endif
 INTEGER,INTENT(IN) :: Nloc        !< (IN) Polynomial degree
 LOGICAL,INTENT(IN) :: doMPISides  !<= .TRUE. only MPISides_YOUR+MPIMortar are filled
                                   !<=.FALSE. BCSides+(Mortar-)InnerSides+MPISides_MINE
@@ -81,13 +81,13 @@ DO SideID=firstSideID,lastSideID
       CALL DoSurfInt(&
 #ifdef WITHnVars
           TP_nVar, &
-#endif          
+#endif
           Nloc,FluxTmp,L_HatMinus,   L_HatPlus,      locSideID,Ut(:,:,:,:,ElemID))
 #elif (PP_NodeType==2)
       CALL DoSurfInt(&
 #ifdef WITHnVars
           TP_nVar, &
-#endif          
+#endif
           Nloc,FluxTmp,L_HatMinus(0),L_HatPlus(Nloc),locSideID,Ut(:,:,:,:,ElemID))
 #endif
 #if FV_ENABLED
@@ -95,7 +95,7 @@ DO SideID=firstSideID,lastSideID
       CALL SurfInt_FV(&
 #ifdef WITHnVars
           TP_nVar, &
-#endif          
+#endif
       Nloc,FluxTmp,FV_w_inv,locSideID,Ut(:,:,:,:,ElemID))
     END IF
 #endif /* FV_ENABLED */
@@ -117,13 +117,13 @@ DO SideID=firstSideID,lastSideID
       CALL DoSurfInt(&
 #ifdef WITHnVars
           TP_nVar, &
-#endif          
+#endif
           Nloc,FluxTmp,L_HatMinus,   L_HatPlus,      nblocSideID,Ut(:,:,:,:,nbElemID))
 #elif (PP_NodeType==2)
       CALL DoSurfInt(&
 #ifdef WITHnVars
           TP_nVar, &
-#endif          
+#endif
           Nloc,FluxTmp,L_HatMinus(0),L_HatPlus(Nloc),nblocSideID,Ut(:,:,:,:,nbElemID))
 #endif
 #if FV_ENABLED
@@ -131,7 +131,7 @@ DO SideID=firstSideID,lastSideID
       CALL SurfInt_FV(&
 #ifdef WITHnVars
           TP_nVar, &
-#endif          
+#endif
           Nloc,FluxTmp,FV_w_inv,nblocSideID,Ut(:,:,:,:,nbElemID))
     END IF
 #endif /* FV_ENABLED */
@@ -144,10 +144,10 @@ END SUBROUTINE SurfInt
 !> Update DG time derivative with corresponding SurfInt contribution
 !> Weak surface integral
 !==================================================================================================================================
-PURE SUBROUTINE SurfInt_FV(&
+PPURE SUBROUTINE SurfInt_FV(&
 #ifdef WITHnVars
         TP_nVar, &
-#endif        
+#endif
         Nloc,Flux,FV_w_inv,locSideID,Ut)
 !MODULES
 IMPLICIT NONE
@@ -155,7 +155,7 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 #ifdef WITHnVars
 INTEGER,INTENT(IN) :: TP_nVar
-#endif        
+#endif
 INTEGER,INTENT(IN) :: Nloc
 REAL,INTENT(IN)    :: Flux(TP_nVar,0:Nloc,0:ZDIM(Nloc))
 REAL,INTENT(IN)    :: FV_w_inv
@@ -187,10 +187,10 @@ END SUBROUTINE SurfInt_FV
 !> Takes the time derivative of a single element and the surface flux on a single side as input and performs the surface integral.
 !> The time derivative will be updated. The Flux has to be provided in the volume coordinate system!
 !==================================================================================================================================
-SUBROUTINE DoSurfInt(&
+PPURE SUBROUTINE DoSurfInt(&
 #ifdef WITHnVars
         TP_nVar, &
-#endif        
+#endif
         Nloc,Flux,L_HatMinus,L_HatPlus,locSideID,Ut)
 !MODULES
 IMPLICIT NONE

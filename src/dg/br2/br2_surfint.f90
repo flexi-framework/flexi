@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -41,7 +41,7 @@ CONTAINS
 !==================================================================================================================================
 !> \brief Surface integral optimized for performance
 !==================================================================================================================================
-SUBROUTINE Lifting_SurfInt(Flux,gradU,gradU_master,gradU_slave,doMPISides)
+PPURE SUBROUTINE Lifting_SurfInt(Flux,gradU,gradU_master,gradU_slave,doMPISides)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
@@ -100,7 +100,7 @@ DO SideID=firstSideID,lastSideID
       flip        = SideToElem(S2E_FLIP,SideID)
       DO q=0,PP_NZ; DO p=0,PP_N
 #if (PP_NodeType==1)
-        DO l=0,PP_N 
+        DO l=0,PP_N
 #elif (PP_NodeType==2)
         DO l=0,0 ! special mapping, returns 0 or PP_N dep. on locSideID and flip
 #endif
@@ -144,7 +144,7 @@ DO SideID=firstSideID,lastSideID
       flip      = 0
       DO q=0,PP_NZ; DO p=0,PP_N
 #if (PP_NodeType==1)
-        DO l=0,PP_N 
+        DO l=0,PP_N
 #elif (PP_NodeType==2)
         DO l=0,0 ! special mapping, returns 0 or PP_N dep. on locSideID and flip
 #endif

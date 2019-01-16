@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -13,7 +13,7 @@
 !=================================================================================================================================
 !
 ! ATTENTION:
-! The routines 'clear_formatting', 'set_formatting', 'get_escape_sequence' and 'split_string' are copied from the fortran output 
+! The routines 'clear_formatting', 'set_formatting', 'get_escape_sequence' and 'split_string' are copied from the fortran output
 ! library (foul).
 ! Copyright and license see below.
 ! Full version of the foul-library can be found here:
@@ -53,7 +53,7 @@
 
 !==================================================================================================================================
 !> Routines for performing operations on strings, which are not covered by ISO_VARYING_STRING.
-!> The routines 'clear_formatting', 'set_formatting', 'get_escape_sequence' and 'split_string' are copied from the fortran output 
+!> The routines 'clear_formatting', 'set_formatting', 'get_escape_sequence' and 'split_string' are copied from the fortran output
 !> library (foul).
 !> Full version of the foul-library can be found here:
 !>   http://foul.sourceforge.net
@@ -117,9 +117,9 @@ PUBLIC :: GetFileExtension
 PUBLIC :: KEYVALUE
 PUBLIC::  split_string
 
-LOGICAL :: use_escape_codes = .TRUE.  !< If set to .FALSE., output will consist only of standard text, allowing the 
+LOGICAL :: use_escape_codes = .TRUE.  !< If set to .FALSE., output will consist only of standard text, allowing the
                                       !< escape characters to be switched off in environments which don't support them.
-PUBLIC :: use_escape_codes                                      
+PUBLIC :: use_escape_codes
 !==================================================================================================================================
 
 CONTAINS
@@ -134,7 +134,7 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(INOUT) :: Str1  !< Input/output string
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 INTEGER                    :: iLen,nLen,Upper
 CHARACTER(LEN=*),PARAMETER :: lc='abcdefghijklmnopqrstuvwxyz'
 CHARACTER(LEN=*),PARAMETER :: UC='ABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -148,7 +148,7 @@ DO iLen=1,nLen
   Upper=INDEX(UC,Str1(iLen:iLen))
   IF ((Upper > 0).AND. .NOT. HasEq) THEN
     Str1(iLen:iLen) = lc(Upper:Upper)
-  END IF  
+  END IF
 END DO
 END SUBROUTINE LowCase_overwrite
 
@@ -163,7 +163,7 @@ IMPLICIT NONE
 CHARACTER(LEN=*),INTENT(IN)  :: Str1  !< Input string
 CHARACTER(LEN=*),INTENT(OUT) :: Str2  !< Output string, lower case letters only
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 INTEGER                    :: iLen,nLen,Upper
 CHARACTER(LEN=*),PARAMETER :: lc='abcdefghijklmnopqrstuvwxyz'
 CHARACTER(LEN=*),PARAMETER :: UC='ABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -181,7 +181,7 @@ END DO
 END SUBROUTINE LowCase
 
 !==================================================================================================================================
-!> Case insensitive string comparison 
+!> Case insensitive string comparison
 !==================================================================================================================================
 FUNCTION STRICMP(a, b)
 ! MODULES
@@ -189,9 +189,9 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !> strings to compare with each other
-CHARACTER(LEN=*),INTENT(IN) :: a,b 
+CHARACTER(LEN=*),INTENT(IN) :: a,b
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 LOGICAL            :: STRICMP
 CHARACTER(LEN=255) :: alow
 CHARACTER(LEN=255) :: blow
@@ -207,11 +207,11 @@ END FUNCTION STRICMP
 SUBROUTINE StripSpaces(string)
 ! MODULES
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(INOUT) :: string  !< input string
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER :: stringLen 
+INTEGER :: stringLen
 INTEGER :: last, actual
 !==================================================================================================================================
 stringLen = LEN(string)
@@ -233,7 +233,7 @@ END SUBROUTINE
 !==================================================================================================================================
 !> Converts integer to string
 !==================================================================================================================================
-PURE FUNCTION INTTOSTR(value) 
+PURE FUNCTION INTTOSTR(value)
 INTEGER,INTENT(IN)  :: value !< input integer
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -245,7 +245,7 @@ END FUNCTION INTTOSTR
 !==================================================================================================================================
 !> Checks if a string is an integer
 !==================================================================================================================================
-PURE FUNCTION ISINT(value) 
+PURE FUNCTION ISINT(value)
 CHARACTER(LEN=255),INTENT(IN)  :: value !< input string
 LOGICAL                        :: ISINT
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -264,7 +264,7 @@ END FUNCTION ISINT
 SUBROUTINE split_string(string, delimiter, substrings, substring_count)
 ! MODULES
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 CHARACTER (LEN = *), INTENT(IN)  :: string          !< Variable-length character string that is to be split
 CHARACTER,           INTENT(IN)  :: delimiter       !< Character along which to split
 CHARACTER (LEN = *), INTENT(OUT) :: substrings(*)   !< Array of substrings generated by split operation
@@ -298,7 +298,7 @@ END SUBROUTINE split_string
 SUBROUTINE get_escape_sequence(style_string, escape_sequence)
 ! MODULES
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)   :: style_string    !< String describing which styles to set (separated by space)
                                                  !< see source code for supported styles
 CHARACTER(LEN=16),INTENT(OUT) :: escape_sequence !< escape_sequence: ANSI escape sequence generated from the specified styles
@@ -376,7 +376,7 @@ END SUBROUTINE get_escape_sequence
 SUBROUTINE set_formatting(style_string)
 ! MODULES
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 CHARACTER (LEN = *), INTENT(IN) :: style_string !< String describing which styles to set (separated by space).
                                                 !< See get_escape_sequence for supported styles.
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -415,8 +415,8 @@ END SUBROUTINE clear_formatting
 !==================================================================================================================================
 !> Returns the file extension (everything behind last .)
 !==================================================================================================================================
-FUNCTION GetFileExtension(filename) 
-! INPUT / OUTPUT VARIABLES 
+FUNCTION GetFileExtension(filename)
+! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 CHARACTER(LEN=*),INTENT(IN)  :: filename         !< file to extract its file extension
 CHARACTER(LEN=:),ALLOCATABLE :: GetFileExtension
