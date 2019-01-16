@@ -20,7 +20,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! TYPE AND PARAMETER DEFINITIONS
 REAL,PARAMETER                       :: tol=1.E-7
-INTEGER,PARAMETER                    :: maxDim=16  !< maximum number of permitted array dimension 
+INTEGER,PARAMETER                    :: maxDim=16  !< maximum number of permitted array dimension
 TYPE tFileSet
   INTEGER                            :: nDataSets  !< number of datasets
   INTEGER(KIND=8)                    :: totalsize  !< 1D size of all arrays

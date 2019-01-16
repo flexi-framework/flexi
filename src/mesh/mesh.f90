@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -40,7 +40,7 @@ PUBLIC::DefineParametersMesh
 CONTAINS
 
 !==================================================================================================================================
-!> Define parameters 
+!> Define parameters
 !==================================================================================================================================
 SUBROUTINE DefineParametersMesh()
 ! MODULES
@@ -326,7 +326,7 @@ IF (meshMode.GT.0) THEN
   MortarInfo(MI_FLIP,:,:)  = MIN(1,MortarInfo(MI_FLIP,:,:))
 #endif
 
-  ! Build necessary mappings 
+  ! Build necessary mappings
   CALL buildMappings(PP_N,V2S=V2S,S2V=S2V,S2V2=S2V2,FS2M=FS2M,dim=PP_dim)
 END IF
 
@@ -374,9 +374,9 @@ IF (meshMode.GT.0) THEN
   DO iElem=1,nElems
 #if PP_dim == 3
     DO LocSideID=1,6
-#else    
+#else
     DO LocSideID=2,5
-#endif    
+#endif
       SideID = ElemToSide(E2S_SIDE_ID,LocSideID,iElem)
       iSide = ElemInfo(3,iElem+offsetElem) + LocSideID
       SideToGlobalSide(SideID) = ABS(SideInfo(2,iSide))

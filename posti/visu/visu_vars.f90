@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -12,7 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 !==================================================================================================================================
-!> Contains global variables provided by the visu routines 
+!> Contains global variables provided by the visu routines
 !==================================================================================================================================
 MODULE MOD_Visu_Vars
 USE ISO_C_BINDING
@@ -24,11 +24,11 @@ SAVE
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 !==================================================================================================================================
-CHARACTER(LEN=255)                :: fileType = ''               !< possible values: 
+CHARACTER(LEN=255)                :: fileType = ''               !< possible values:
                                                                  !< * 'State' for FLEXI state files matching the compiled EOS
-                                                                 !< * 'Generic'  
-                                                                 !< * 'Mesh' 
-CHARACTER(LEN=255)                :: prmfile_old = ''            !< saves the filename of the previous FLEXI parameter file 
+                                                                 !< * 'Generic'
+                                                                 !< * 'Mesh'
+CHARACTER(LEN=255)                :: prmfile_old = ''            !< saves the filename of the previous FLEXI parameter file
 CHARACTER(LEN=255)                :: statefile_old = ''          !< saves the filename of the previous state (*.h5)
 CHARACTER(LEN=255)                :: MeshFile = ''               !< acutal filename of the mesh used for visualization
 CHARACTER(LEN=255)                :: MeshFile_state = ''         !< filename of the mesh given in the state file
@@ -41,14 +41,14 @@ INTEGER                           :: NVisu_FV                    !< number of ou
 INTEGER                           :: NCalc_FV                    !< number of calculation points for FV elements (NVisu_FV or PP_N)
 INTEGER                           :: NCalc                       !< Different polynomial degree to do calculations on
 INTEGER                           :: NCalc_old                   !< Different polynomial degree to do calculations on
-INTEGER                           :: nVar_State                  !< number of variables in the state file 
+INTEGER                           :: nVar_State                  !< number of variables in the state file
 INTEGER                           :: nVar_State_old = -1         !< saves previous nVar_State
 INTEGER                           :: nState_old = -1             !< saves previous PP_N
 INTEGER                           :: nElems_DG                   !< number of DG elements in state
 INTEGER                           :: nElems_FV                   !< number of FV elements in state
 LOGICAL                           :: withDGOperator              !< flag indicating if call of 'DGTimeDerivative' is required
 LOGICAL                           :: withDGOperator_old = .FALSE.!< saves previous withDGOperator
-REAL                              :: OutputTime                  !< simulation time of actual state file 
+REAL                              :: OutputTime                  !< simulation time of actual state file
 LOGICAL                           :: hasFV_Elems = .FALSE.       !< flag indicating if state file contains any FV elements
 LOGICAL                           :: DGonly = .FALSE.            !< flag to force visualization of FV elements as DG elements
 LOGICAL                           :: DGonly_old = .TRUE.         !< saves previous DGonly
@@ -67,28 +67,28 @@ LOGICAL                           :: Avg2D_old = .FALSE.         !< Previus stat
 LOGICAL                           :: Avg2DHDF5Output             !< Flag indicating if the averaged solution should be written to a
                                                                  !< .h5 file
 
-                
+
 ! The following flags indicate if during successive visualizations of (different) state files the respective properties
 ! changed. For example the mesh file of different state files in a timeseries is the same ...
 LOGICAL                           :: changedStateFile            !< .h5 state file to visualize changed
 LOGICAL                           :: changedMeshFile             !< Mesh file changed
 LOGICAL                           :: changedNVisu                !< Polyomial degree for visualization changed
 LOGICAL                           :: changedNCalc                !< Polyomial degree for calculation changed
-LOGICAL                           :: changedVarNames             !< variables selected for visualization changed (ParaView plugin) 
-LOGICAL                           :: changedFV_Elems             !< different distribution of DG and FV elements 
+LOGICAL                           :: changedVarNames             !< variables selected for visualization changed (ParaView plugin)
+LOGICAL                           :: changedFV_Elems             !< different distribution of DG and FV elements
 LOGICAL                           :: changedWithDGOperator       !< If the DG operator should be called or not changed
 LOGICAL                           :: changedDGonly               !< Visualize FV cells as DG changed
 LOGICAL                           :: changedBCnames              !< BCnames selected for visualization changed (ParaView plugin)
 LOGICAL                           :: changedAvg2D                !< mode changed between average solution and not
 
-CHARACTER(LEN=255),ALLOCATABLE,TARGET :: VarNamesHDF5(:)         !< varnames in state file (DG_Solution, not including generic 
+CHARACTER(LEN=255),ALLOCATABLE,TARGET :: VarNamesHDF5(:)         !< varnames in state file (DG_Solution, not including generic
                                                                  !< element- or pointwise)
 CHARACTER(LEN=255),ALLOCATABLE,TARGET :: VarnamesAll(:)          !< all available varnames (state file + dependent vars + generic)
 INTEGER                               :: nVarAll                 !< number of all available visu variables
 INTEGER                               :: nVarDep                 !< number of dependent variables, that EOS can calculate
 INTEGER                               :: nVarVisu                !< number of variables selected for visualization
 INTEGER,ALLOCATABLE                   :: mapAllVarsToVisuVars(:) !< maps all available variable index to visu variable index
-INTEGER,ALLOCATABLE                   :: DepTable(:,:)           !< table holding the EOS dependencies required to calculate 
+INTEGER,ALLOCATABLE                   :: DepTable(:,:)           !< table holding the EOS dependencies required to calculate
                                                                  !< variables, that depend on other variables (e.g. primitive ...)
                                                                  !< The i-th line of this table holds the dependency informations of
                                                                  !< the i-th quantity on the previous quantities. The j-th column
@@ -102,7 +102,7 @@ REAL,ALLOCATABLE,TARGET               :: UCalc_DG(:,:,:,:,:)     !< dependet var
 REAL,ALLOCATABLE,TARGET               :: UCalc_FV(:,:,:,:,:)
 INTEGER                               :: nVarCalc                !< number of (intermediate) variables that must be calculated
 INTEGER,ALLOCATABLE                   :: mapDepToCalc(:)         !< maps all dependend variable index to calc variable index
-INTEGER                               :: nVarCalc_FV             !< since FV reconstruction is done in primitive quantities, the 
+INTEGER                               :: nVarCalc_FV             !< since FV reconstruction is done in primitive quantities, the
 INTEGER,ALLOCATABLE                   :: mapDepToCalc_FV(:)      !< dependencies are different to the DG case, where everything is
                                                                  !< based on conservative quantities
 
@@ -117,16 +117,16 @@ INTEGER,ALLOCATABLE,TARGET            :: nodeids_FV(:)           !< nodeIDs for 
 ! ==============================================================================================================================
 ! Surface visualization
 ! ==============================================================================================================================
-INTEGER,ALLOCATABLE                   :: DepSurfaceOnly(:)       !< Mask for quantities that 
+INTEGER,ALLOCATABLE                   :: DepSurfaceOnly(:)       !< Mask for quantities that
                                                                  !< are exclusively available on BCs
-INTEGER,ALLOCATABLE                   :: DepVolumeOnly(:)        !< Mask for quantities that 
+INTEGER,ALLOCATABLE                   :: DepVolumeOnly(:)        !< Mask for quantities that
                                                                  !< are exclusively available in the volume
 
 INTEGER                               :: nBCNamesAll                  !< number of all BC names in mesh file
-CHARACTER(LEN=255),ALLOCATABLE,TARGET :: BCNamesAll(:)                !< all BC names in mesh file 
+CHARACTER(LEN=255),ALLOCATABLE,TARGET :: BCNamesAll(:)                !< all BC names in mesh file
 INTEGER                               :: nBCNamesVisu                 !< number of BC names selected for visualization
 INTEGER,ALLOCATABLE                   :: mapAllBCNamesToVisuBCNames(:)!< maps global BCName index to visu BCName index
-INTEGER,ALLOCATABLE                   :: mapAllBCNamesToVisuBCNames_old(:) 
+INTEGER,ALLOCATABLE                   :: mapAllBCNamesToVisuBCNames_old(:)
 
 INTEGER                               :: nVarSurfVisuAll                 !< number of all avail. vars that are visualized on surf.
 INTEGER,ALLOCATABLE                   :: mapAllVarsToSurfVisuVars(:)     !< maps all avail. var index to surf. visu. var index
@@ -143,8 +143,8 @@ REAL,ALLOCATABLE                      :: USurfCalc_FV(:,:,:,:)        !< array o
 
 REAL(C_DOUBLE),ALLOCATABLE,TARGET     :: USurfVisu_DG(     :,:,:,:,:) !< surf. DG solution written to VTK or send to ParaView
 REAL(C_DOUBLE),ALLOCATABLE,TARGET     :: USurfVisu_FV(     :,:,:,:,:) !< surf. FV solution written to VTK or send to ParaView
-REAL(C_DOUBLE),ALLOCATABLE,TARGET     :: CoordsSurfVisu_DG(:,:,:,:,:) !< coordinates of DG surface solution 
-REAL(C_DOUBLE),ALLOCATABLE,TARGET     :: CoordsSurfVisu_FV(:,:,:,:,:) !< coordinates of FV surface solution 
+REAL(C_DOUBLE),ALLOCATABLE,TARGET     :: CoordsSurfVisu_DG(:,:,:,:,:) !< coordinates of DG surface solution
+REAL(C_DOUBLE),ALLOCATABLE,TARGET     :: CoordsSurfVisu_FV(:,:,:,:,:) !< coordinates of FV surface solution
 INTEGER,ALLOCATABLE,TARGET            :: nodeidsSurf_DG(:)            !< nodeIDs for DG surface coordinates
 INTEGER,ALLOCATABLE,TARGET            :: nodeidsSurf_FV(:)            !< nodeIDs for FV surface coordinates
 

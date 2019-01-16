@@ -96,7 +96,7 @@ CALL prms%CreateRealOption(     'BLPlane_height'    ,"Wall-normal extend of the 
 END SUBROUTINE DefineParametersRPSet
 
 !===================================================================================================================================
-!> Initialize the record point structure by reading the desired types from the parameter file and calculating the physical 
+!> Initialize the record point structure by reading the desired types from the parameter file and calculating the physical
 !> coordinates of the RPs.
 !===================================================================================================================================
 SUBROUTINE InitRPSet()
@@ -131,7 +131,7 @@ IF(RPSetInitIsDone)THEN
 END IF
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT RECORDPOINT SET...'
- 
+
 SWRITE(UNIT_stdOut,'(A)')' Read recordpoint definitions from parameter file...'
 
 pi=ACOS(-1.)
@@ -158,14 +158,14 @@ IF(nLines.GT.0) THEN
   anythingThere=.TRUE.
   ALLOCATE(Lines(1:nLines))
 ! linear lines
-  DO iLine=1,nlinLines 
+  DO iLine=1,nlinLines
     aLine=>Lines(iLine)
     aLine%GroupID=GETINT('Line_GroupID')
     WRITE(aLine%Name,'(A5,I6.6)')'Line_',iLine
     aLine%nRP   =GETINT('Line_nRP')
     ALLOCATE(aLine%RP_ptr(1:aLine%nRP))
-    aLine%xStart=GETREALARRAY('Line_xstart',3) 
-    aLine%xEnd  =GETREALARRAY('Line_xend',3) 
+    aLine%xStart=GETREALARRAY('Line_xstart',3)
+    aLine%xEnd  =GETREALARRAY('Line_xend',3)
     DO iP=1,aLine%nRP
       x=aLine%xStart + (aLine%xEnd-aLine%xStart)*(iP-1)/(aLine%nRP-1)
       CALL GetNewRP(aLine%RP_ptr(iP)%RP,aLine%GroupID,x)
@@ -178,7 +178,7 @@ IF(nLines.GT.0) THEN
     WRITE(aLine%Name,'(A7,I6.6)')'Circle_',iLine
     aLine%nRP   =GETINT('Circle_nRP')
     ALLOCATE(aLine%RP_ptr(1:aLine%nRP))
-    Circle_Center = GETREALARRAY('Circle_Center',3) 
+    Circle_Center = GETREALARRAY('Circle_Center',3)
     Circle_Radius = GETREAL('Circle_Radius')
     ! angle in degrees. 360 is full circle
     Circle_Angle  = GETREAL('Circle_Angle')
@@ -186,7 +186,7 @@ IF(nLines.GT.0) THEN
     Circle_Axis   = GETREALARRAY('Circle_Axis',3)
     Circle_Axis   = Circle_Axis/NORM2(Circle_Axis)
     ! 0 vector to define circumferential coordinate phi=0, i.e. first point
-    Circle_dir    = GETREALARRAY('Circle_dir',3)    
+    Circle_dir    = GETREALARRAY('Circle_dir',3)
     Circle_dir    = Circle_dir - SUM(Circle_dir*Circle_Axis)*Circle_Axis ! ensure orthogonality between dir and axis
     IF(NORM2(Circle_dir).LT.1e-9) THEN
       SWRITE(UNIT_stdOut,'(A)') 'Check definitions: Circle_dir seems to be parallel to Circle_Axis!!!'; STOP
@@ -209,7 +209,7 @@ IF(nLines.GT.0) THEN
       CALL GetNewRP(aLine%RP_ptr(iP)%RP,aLine%GroupID,x)
     END DO ! iP
   END DO ! iLine
-! custom Lines 
+! custom Lines
   DO iLine=nlinLines+nCircles+1,nLines
     aLine=>Lines(iLine)
     aLine%GroupID=GETINT('CustomLine_GroupID')
@@ -222,7 +222,7 @@ IF(nLines.GT.0) THEN
     END DO ! iP
   END DO ! iLine
 END IF
-  
+
 ! ----------------------------------------------------------------------------------------------------
 ! Points
 ! ----------------------------------------------------------------------------------------------------
@@ -230,11 +230,11 @@ nPoints =CountOption('Point_GroupID')
 IF(nPoints.GT.0) THEN
   anythingThere=.TRUE.
   ALLOCATE(Points(1:nPoints))
-  DO iP=1,nPoints 
+  DO iP=1,nPoints
     Points(iP)%GroupID=GETINT('Point_GroupID')
-    x     =GETREALARRAY('Point_x',3) 
+    x     =GETREALARRAY('Point_x',3)
     CALL GetNewRP(Points(iP)%RP,Points(iP)%GroupID,x)
-  END DO ! iP  
+  END DO ! iP
 END IF
 
 ! ----------------------------------------------------------------------------------------------------
@@ -256,7 +256,7 @@ IF(nPlanes.GT.0) THEN
     DO iP=1,4
       Plane%x(1:3,iP)=x_dummy(1+3*(iP-1):3+3*(iP-1))
     END DO ! iPoint
-    Plane%nRP(1:2)   =GETINTARRAY('Plane_nRP',2) 
+    Plane%nRP(1:2)   =GETINTARRAY('Plane_nRP',2)
     ALLOCATE(Plane%RP_ptr(1:Plane%nRP(1),1:Plane%nRP(2)))
     DO j=1,Plane%nRP(2)
       DO i=1,Plane%nRP(1)
@@ -265,8 +265,8 @@ IF(nPlanes.GT.0) THEN
         eta= REAL(j-1)/REAL(Plane%nRP(2)-1)
         x(1:3)=   Plane%x(1:3,1) * (1.-xi) * (1.-eta) &
                +  Plane%x(1:3,2) * (   xi) * (1.-eta) &
-               +  Plane%x(1:3,3) * (   xi) * (   eta) & 
-               +  Plane%x(1:3,4) * (1.-xi) * (   eta) 
+               +  Plane%x(1:3,3) * (   xi) * (   eta) &
+               +  Plane%x(1:3,4) * (1.-xi) * (   eta)
         CALL GetNewRP(Plane%RP_ptr(i,j)%RP,Plane%GroupID,x)
       END DO ! i
     END DO ! j
@@ -285,7 +285,7 @@ IF(nPlanes.GT.0) THEN
     Sphere_Axis   = GETREALARRAY('Sphere_Axis',3)
     Sphere_Axis   = Sphere_Axis/NORM2(Sphere_Axis)
     ! 0 vector to define circumferential coordinate phi=0, i.e. first point
-    Sphere_dir    = GETREALARRAY('Sphere_dir',3)    
+    Sphere_dir    = GETREALARRAY('Sphere_dir',3)
     Sphere_dir    = Sphere_dir - SUM(Sphere_dir*Sphere_Axis)*Sphere_Axis ! ensure orthogonality between dir and axis
     IF(NORM2(Sphere_dir).LT.1e-9) THEN
       SWRITE(UNIT_stdOut,'(A)') 'Check definitions: Sphere_dir seems to be parallel to Sphere_Axis!!!'; STOP
@@ -294,14 +294,14 @@ IF(nPlanes.GT.0) THEN
     RotMat(:,1)=Sphere_dir(:)
     RotMat(:,2)=CROSS(Sphere_Axis,Sphere_dir)                  ! right hand system
     RotMat(:,3)=Sphere_Axis(:)
-    Plane%nRP(1:2)   =GETINTARRAY('Sphere_nRP',2) 
+    Plane%nRP(1:2)   =GETINTARRAY('Sphere_nRP',2)
     IF(Sphere_Angle.EQ.360.) THEN
       dphi=2.*pi/REAL(Plane%nRP(1))
     ELSE
       dphi=Sphere_Angle*pi/180./REAL(Plane%nRP(1)-1)
     END IF
     dtheta=0.5*pi/REAL(Plane%nRP(2)+1)     ! we dont have the points in the singularities,
-                                           ! but for proper parametrization we have to count them in 
+                                           ! but for proper parametrization we have to count them in
     ALLOCATE(Plane%RP_ptr(1:Plane%nRP(1),1:Plane%nRP(2)))
     DO j=1,Plane%nRP(2)
       DO i=1,Plane%nRP(1)
@@ -320,7 +320,7 @@ IF(nPlanes.GT.0) THEN
     Plane=>Planes(iPlane)
     Plane%GroupID=GETINT('BLPlane_GroupID')
     WRITE(Plane%Name,'(A5,I6.6)')'BLPlane_',iPlane
-    Plane%nRP(1:2)   =GETINTARRAY('BLPlane_nRP',2) 
+    Plane%nRP(1:2)   =GETINTARRAY('BLPlane_nRP',2)
     ALLOCATE(Plane%RP_ptr(1:Plane%nRP(1),1:Plane%nRP(2)))
     nCP   =GETINT('BLPlane_nCP') ! points to define spline, at least two
     fac              =GETREAL('BLPlane_fac','1.')  ! growth factor of the BL mesh
@@ -331,7 +331,7 @@ IF(nPlanes.GT.0) THEN
        height(iCP)=GETREAL('BLPlane_height') ! height of the BL mesh
     END DO! iCP=1,nCP
     ! get coordinates of the rps and allocate pointers
-    CALL GetBLPlane(Plane,nCP,height,fac,xCP) 
+    CALL GetBLPlane(Plane,nCP,height,fac,xCP)
     DEALLOCATE(xCP,height)
   END DO! iPlane
 END IF
@@ -339,7 +339,7 @@ END IF
 IF(.NOT.anythingThere) THEN
   SWRITE(UNIT_StdOut,*) 'No RP infos specified in parameter file, exiting...'
   CALL abort(__STAMP__,'Code stopped!')
-END IF 
+END IF
 
 ! Create global RP array
 ALLOCATE(RPlist(nRP_global))
@@ -357,7 +357,7 @@ IF(nPlanes.GT.0) THEN
   END DO !iPlane
 END IF
 
-! fill line 
+! fill line
 IF(nLines.GT.0) THEN
   DO iLine=1,nLines
     DO iP=1,Lines(iLine)%nRP
@@ -384,7 +384,7 @@ DO iGr=1,nGroups
       iRP_gr=iRP_gr+1
       Groups(iGr)%RP_ptr(iRP_gr)%RP=>aRP
     END IF
-  END DO !iRP  
+  END DO !iRP
 END DO !iGr
 RPSetInitIsDone = .TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT RECORDPOINTS SET DONE!'

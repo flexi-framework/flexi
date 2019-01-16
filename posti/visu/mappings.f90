@@ -165,14 +165,6 @@ CALL MPI_ALLREDUCE(MPI_IN_PLACE,nElems_FV_glob,1,MPI_INTEGER,MPI_MAX,MPI_COMM_WO
 #endif
 hasFV_Elems = (nElems_FV_glob.GT.0)
 
-#ifdef DEBUG
-! ===============================================================================
-! Following dummy statements do suppress compiler warnings of unused Riemann-functions
-! ===============================================================================
-IF (0.EQ.1) THEN
-  WRITE(*,*) statefile
-END IF
-#endif /* DEBUG */
 END SUBROUTINE Build_FV_DG_distribution
 
 !===================================================================================================================================
@@ -219,7 +211,7 @@ nVarVisu = 0
 nVarSurfVisuAll = 0
 ! Get number of variables to be visualized
 nVarIni=CountOption("VarName")
-! If no variable names are given in prm file, take the variables given in the HDF5 "VarNames" attribute (if present) or all found 
+! If no variable names are given in prm file, take the variables given in the HDF5 "VarNames" attribute (if present) or all found
 ! variables (else). This default can be suppressed via the "noVisuVars" flag (used e.g. in paraview plugin prm files)
 IF((nVarIni.EQ.0).AND..NOT.GETLOGICAL("noVisuVars")) THEN
   IF(ALLOCATED(VarNamesHDF5)) THEN

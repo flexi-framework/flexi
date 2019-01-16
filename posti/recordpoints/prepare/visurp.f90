@@ -19,7 +19,7 @@
 MODULE MOD_VisuRP
 ! MODULES
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES 
+! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 
 INTERFACE VisuRP
@@ -61,7 +61,7 @@ IF(doVisuRP) THEN
     DO i=1,nPoints
       RPPoints%Coords(iVar,i)=Points(i)%RP%xF(iVar)
     END DO ! i
-  END DO !iVar  
+  END DO !iVar
   ! Prepare lines structure
   ALLOCATE(RPLines(nLines))
   DO iLine=1,nLines
@@ -72,9 +72,9 @@ IF(doVisuRP) THEN
     ALLOCATE(RPLines(iLine)%Coords(3,Line%nRP))
     DO iVar=1,3
       DO i=1,Line%nRP
-        RPLines(iLine)%Coords(iVar,i)=Line%RP_ptr(i)%RP%xF(iVar) 
+        RPLines(iLine)%Coords(iVar,i)=Line%RP_ptr(i)%RP%xF(iVar)
       END DO ! i
-    END DO !iVar  
+    END DO !iVar
   END DO
   ! Prepare plane structure
   ALLOCATE(RPPlanes(nPlanes))
@@ -87,10 +87,10 @@ IF(doVisuRP) THEN
     DO iVar=1,3
       DO j=1,Plane%nRP(2)
         DO i=1,Plane%nRP(1)
-          RPPlanes(iPlane)%Coords(iVar,i,j)=Plane%RP_ptr(i,j)%RP%xF(iVar) 
+          RPPlanes(iPlane)%Coords(iVar,i,j)=Plane%RP_ptr(i,j)%RP%xF(iVar)
         END DO ! i
       END DO ! j
-    END DO !iVar  
+    END DO !iVar
   END DO
   CALL WriteStructuredDataToVTK(ProjectName,nLines,nPlanes,RPPoints,RPLines,RPPlanes,.FALSE.,0)
   WRITE(UNIT_StdOut,'(132("-"))')

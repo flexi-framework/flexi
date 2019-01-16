@@ -1,9 +1,9 @@
 !==================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -16,10 +16,10 @@
 !==================================================================================================================================
 !> Convert solution between physical <-> reference space, separate input and output variables
 !==================================================================================================================================
-SUBROUTINE ApplyJacobian(&
+PPURE SUBROUTINE ApplyJacobian(&
 #ifdef WITHnVar
         TP_nVar, &
-#endif        
+#endif
         U_in,U_out,toPhysical)
 ! MODULES
 USE MOD_PreProc
@@ -32,7 +32,7 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 #ifdef WITHnVar
 INTEGER,INTENT(IN)  :: TP_nVar
-#endif        
+#endif
 REAL,INTENT(IN)     :: U_in( TP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< Input: Solution to be transformed
 REAL,INTENT(OUT)    :: U_out(TP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< Output: transformed solution
 LOGICAL,INTENT(IN)  :: toPhysical                                 !< Switch for physical<-->reference transformation
@@ -56,12 +56,12 @@ END IF
 END SUBROUTINE ApplyJacobian
 
 !==================================================================================================================================
-!> Convert solution between physical <-> reference space (DG elements only), input will be overwritten with transformed solution 
+!> Convert solution between physical <-> reference space (DG elements only), input will be overwritten with transformed solution
 !==================================================================================================================================
-SUBROUTINE ApplyJacobian_Select(&
+PPURE SUBROUTINE ApplyJacobian_Select(&
 #ifdef WITHnVar
         TP_nVar, &
-#endif        
+#endif
         U,toPhysical,FVE)
 ! MODULES
 USE MOD_PreProc
@@ -75,7 +75,7 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 #ifdef WITHnVar
 INTEGER,INTENT(IN) :: TP_nVar
-#endif        
+#endif
 REAL,INTENT(INOUT) :: U(TP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems)
 LOGICAL,INTENT(IN) :: toPhysical
 INTEGER,INTENT(IN) :: FVE
@@ -111,12 +111,12 @@ END IF
 END SUBROUTINE ApplyJacobian_Select
 
 !==================================================================================================================================
-!> Convert solution between physical <-> reference space, input will be overwritten with transformed solution 
+!> Convert solution between physical <-> reference space, input will be overwritten with transformed solution
 !==================================================================================================================================
-SUBROUTINE ApplyJacobian_local(&
+PPURE SUBROUTINE ApplyJacobian_local(&
 #ifdef WITHnVar
         TP_nVar, &
-#endif        
+#endif
         U,toPhysical)
 ! MODULES
 USE MOD_PreProc
@@ -129,8 +129,8 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 #ifdef WITHnVar
 INTEGER,INTENT(IN) :: TP_nVar
-#endif        
-REAL,INTENT(INOUT) :: U(TP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems)     !< Input/Output: Solution to be transformed 
+#endif
+REAL,INTENT(INOUT) :: U(TP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems)     !< Input/Output: Solution to be transformed
 LOGICAL,INTENT(IN) :: toPhysical                                 !< Switch for physical<-->reference transformation
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

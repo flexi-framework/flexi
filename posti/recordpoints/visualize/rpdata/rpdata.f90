@@ -71,7 +71,7 @@ REAL                          :: nTotal,limit
 #endif
 !===================================================================================================================================
 WRITE(UNIT_stdOut,'(A)')' Read recordpoint data from data file "'//TRIM(FileString)//'" ...'
- 
+
 IF(PRESENT(firstFile).AND.firstFile.EQV..TRUE.) THEN
  firstFile_loc=.TRUE.
 ELSE
@@ -89,7 +89,7 @@ IF(TRIM(FileType) .NE. 'RecordPoints_Data') THEN
 END IF
 ! Check the RP definition file path in the dataset file
 CALL ReadAttribute(File_ID,'RPDefFile',1,StrScalar=RP_DefFile_loc)
-CALL CloseDataFile() 
+CALL CloseDataFile()
 IF(firstFile_loc) THEN
   IF(.NOT.RP_SET_defined) THEN
     RP_DefFile=RP_DefFile_loc
@@ -122,7 +122,7 @@ IF(firstFile_loc.EQV..TRUE.) THEN
   nVar_HDF5 = INT(HSize(1) -1)
   ALLOCATE(VarNames_HDF5(nVar_HDF5))
   CALL ReadAttribute(File_ID,'VarNames',nVar_HDF5,StrArray=VarNames_HDF5)
-  nSamples_global=1 
+  nSamples_global=1
   IF(MOD(nSamples_loc,skip).EQ.0) THEN
     nSamples_skip=nSamples_loc/skip
   ELSE
@@ -173,7 +173,7 @@ DEALLOCATE(temparray)
 nSamples_global=nSamples_global+nSamples_skip-1
 
 
-CALL CloseDataFile() 
+CALL CloseDataFile()
 
 WRITE(UNIT_stdOut,'(A)')'done.'
 
@@ -216,7 +216,7 @@ IF(skip.EQ.1) THEN
       RPTime(iStart:iEnd)=actualset%data(0,1,1:nSamples_loc)  ! each RP has same time...
       iStart=iEnd
       actualset=>actualset%nextset
-    ELSE 
+    ELSE
       CALL Abort(__STAMP__,'ERROR - Time History of RP Data Files does not match!')
     END IF
   END DO

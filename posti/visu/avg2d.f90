@@ -206,14 +206,6 @@ ALLOCATE(Vdm_FVToVisu(0:NVisu_FV,0:0       ))
 #endif
 CALL GetVandermonde(NCalc_DG,NodeType,NVisu,NodeTypeVisuPosti,Vdm_DGToVisu,modal=.FALSE.)
 
-#ifdef DEBUG
-! ===============================================================================
-! Following dummy statements do suppress compiler warnings of unused Riemann-functions
-! ===============================================================================
-IF (0.EQ.1) THEN
-  WRITE(*,*) NCalc_FV
-END IF
-#endif /* DEBUG */
 END SUBROUTINE BuildVandermonds_Avg2D
 
 !===================================================================================================================================
@@ -546,14 +538,6 @@ CALL GatheredWriteArray(TRIM(FileName),create=.FALSE.,&
 CALL WriteAdditionalElemData(FileName,ElementOut)
 #endif
 
-#ifdef DEBUG
-! ===============================================================================
-! Following dummy statements do suppress compiler warnings of unused Riemann-functions
-! ===============================================================================
-IF (0.EQ.1) THEN
-  UVisu3D(1,0,0,0,1) = UVisu_FV(0,0,0,1,1)
-END IF
-#endif
 END SUBROUTINE WriteAverageToHDF5
 
 END MODULE MOD_Visu_Avg2D

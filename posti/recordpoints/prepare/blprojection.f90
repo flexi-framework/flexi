@@ -35,12 +35,12 @@ CONTAINS
 
 !===================================================================================================================================
 !> Define a spline from control points, create equidistant parametrization along that spline, project it on
-!> the closest boundary and create a plane along the boundary normals 
+!> the closest boundary and create a plane along the boundary normals
 !===================================================================================================================================
 SUBROUTINE GetBLPlane(Plane,nCP,height,fac,xCP)
 ! MODULES
 USE MOD_Globals
-USE MOD_RPSet_Vars,ONLY:tPlane,tRPlist 
+USE MOD_RPSet_Vars,ONLY:tPlane,tRPlist
 USE MOD_RPSet_Vars,ONLY:GetNewRP
 USE MOD_Spline    ,ONLY:GetSpline,GetEquiPoints,EvalSpline,EvalSplineDeriv,EvalEquiError
 IMPLICIT NONE
@@ -53,7 +53,7 @@ REAL,INTENT(IN)                 :: xCP(3,nCP)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 INTEGER                         :: nRP(2),i,j,iCP,iter
 REAL                            :: x_loc(3),s_loc,dx_loc(3)
 TYPE(tRPlist),POINTER           :: RPlist_tmp(:)
@@ -80,7 +80,7 @@ DO i=1,nRP(1)
   RPlist_tmp(i)%RP=>Plane%RP_ptr(i,1)%RP
 END DO
 
-! projection of the supersampled points on the closest boundary 
+! projection of the supersampled points on the closest boundary
 CALL ProjectRPtoBC(nRP(1),RPlist_tmp,NormVecRP)
 DO i=1,nRP(1)
   RPlist_tmp(i)%RP%x=RPlist_tmp(i)%RP%xF
@@ -117,7 +117,7 @@ CALL GetSpline(3,nRP(1),xRP,coeff,s_mod) ! get the spline through the projected 
 DO i=1,nRP(1)
   !derivative of the spline
   CALL EvalSplineDeriv(3,nRP(1),s_mod(i),s_mod,coeff,dx_loc)
-  !project it on the local surface 
+  !project it on the local surface
   tangVecRP(:,i)=dx_loc - SUM(dx_loc(1:3)*NormVecRP(1:3,i))*NormVecRP(:,i)
   tangVecRP(:,i)=tangVecRP(:,i)/NORM2(tangVecRP(:,i))
 END DO
@@ -169,7 +169,7 @@ USE MOD_Globals
 USE MOD_Parameters        ,ONLY: NSuper,maxTol
 USE MOD_Interpolation     ,ONLY: GetVandermonde
 USE MOD_Interpolation_Vars,ONLY: NodeType
-USE MOD_RPSet_Vars        ,ONLY: tRP,tRPlist 
+USE MOD_RPSet_Vars        ,ONLY: tRP,tRPlist
 USE MOD_Mesh_Vars,         ONLY: SideToElem,nBCSides,Face_xGP,NormVec,NGeo
 USE MOD_Basis,             ONLY: LagrangeInterpolationPolys,ChebyGaussLobNodesAndWeights,BarycentricWeights
 USE MOD_Basis,             ONLY: PolynomialDerivativeMatrix
@@ -183,7 +183,7 @@ TYPE(tRPlist)                   :: RPlist_in(nRP)
 ! OUTPUT VARIABLES
 REAL,INTENT(OUT)                :: NormVecRP(3,nRP)
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 REAL                  :: Winner_Dist2,Dist2
 REAL                  :: Xi_NSuper(0:NSuper)
 REAL                  :: xRP(3)
@@ -198,7 +198,7 @@ REAL                  :: NormVec_NSuper(3,0:NSuper,0:NSuper)
 REAL                  :: wBary_NSuper(0:NSuper), D_NSuper(0:NSuper,0:NSuper), Lag_NSuper(1:2,0:NSuper)
 REAL                  :: dxBC_NSuper(3,2,0:NSuper,0:NSuper)
 REAL                  :: Gmat(2,0:NSuper,0:NSuper),dGmat(2,2,0:NSuper,0:NSuper)
-REAL                  :: G(2),Xi2(2),Jac2(2,2),sJac2(2,2),xWinner(3),NormVecWinner(3) 
+REAL                  :: G(2),Xi2(2),Jac2(2,2),sJac2(2,2),xWinner(3),NormVecWinner(3)
 REAL                  :: F(1:3),eps_F
 
 !===================================================================================================================================
@@ -211,14 +211,14 @@ IF(NSuper.LT.Ngeo*2) &
   WRITE(*,*)'Warning: NSuper<2Ngeo, derivative may be wrong.'
 
 DO i=0,NSuper
-  Xi_NSuper(i) = 2./REAL(NSuper) * REAL(i) - 1. 
+  Xi_NSuper(i) = 2./REAL(NSuper) * REAL(i) - 1.
 END DO
 CALL BarycentricWeights(NSuper,Xi_NSuper,wBary_NSuper)
 CALL GetVandermonde(PP_N,NodeType,NSuper,'VISU',Vdm_GP_EquiNSuper)
 CALL PolynomialDerivativeMatrix(NSuper,Xi_NSuper,D_NSuper)
 nNodes=(NSuper+1)**2
 
-DO SideID=1,nBCSides 
+DO SideID=1,nBCSides
   calcJacobianDone=.FALSE.
   ! Supersampling of the side to equidistant grid for search
   CALL ChangeBasis2D(3,PP_N,NSuper,Vdm_GP_EquiNSuper,Face_xGP(:,:,:,0,SideID),xBC_NSuper)
@@ -233,7 +233,7 @@ DO SideID=1,nBCSides
     DO i=0,NSuper; DO j=0,NSuper
       Dist2=SUM((xRP-xBC_NSuper(:,i,j))*(xRP-xBC_NSuper(:,i,j)))
       IF (Dist2.LT.Winner_Dist2) THEN
-        Winner_Dist2=Dist2 
+        Winner_Dist2=Dist2
         iWinner=i
         jWinner=j
       END IF
@@ -244,8 +244,8 @@ DO SideID=1,nBCSides
     F=xRP-xWinner
     NormVecWinner=NormVecWinner/NORM2(NormVecWinner)
     F=(xRP-xWinner)/NORM2(xRP-xWinner)
- 
-    
+
+
     ! Newton to find the minimum distance
     ! Calculate the surface jacobian
     IF(.NOT.calcJacobianDone)THEN
@@ -265,39 +265,39 @@ DO SideID=1,nBCSides
     ! for Newton we first need the function Gmat(:,i,j) and its gradient in parameter space
     ! G= d/dXi((xBC-xRP)²)=0, degree of G 2NGeo
     Gmat=0.
-    DO j=0,NSuper 
-      DO i=0,NSuper 
+    DO j=0,NSuper
+      DO i=0,NSuper
         Gmat(:,i,j)=Gmat(:,i,j)+dxBC_nSuper(1,:,i,j)*2*(xBC_NSuper(1,i,j)-xRP(1)) &
                                +dxBC_nSuper(2,:,i,j)*2*(xBC_NSuper(2,i,j)-xRP(2)) &
-                               +dxBC_nSuper(3,:,i,j)*2*(xBC_NSuper(3,i,j)-xRP(3)) 
-      END DO! i=0,NSuper 
-    END DO! j=0,NSuper 
+                               +dxBC_nSuper(3,:,i,j)*2*(xBC_NSuper(3,i,j)-xRP(3))
+      END DO! i=0,NSuper
+    END DO! j=0,NSuper
 
     dGmat=0.
-    DO j=0,NSuper 
-      DO i=0,NSuper 
+    DO j=0,NSuper
+      DO i=0,NSuper
         ! Matrix-vector multiplication
         DO l=0,NSuper
           dGmat(:,1,i,j)=dGmat(:,1,i,j) + D_NSuper(i,l)*Gmat(:,l,j)
           dGmat(:,2,i,j)=dGmat(:,2,i,j) + D_NSuper(j,l)*Gmat(:,i,l)
         END DO !l=0,NSuper
-      END DO! i=0,NSuper 
-    END DO! j=0,NSuper 
+      END DO! i=0,NSuper
+    END DO! j=0,NSuper
     ! get initial value of the functional G
     CALL LagrangeInterpolationPolys(Xi2(1),NSuper,Xi_NSuper,wBary_NSuper,Lag_NSuper(1,:))
     CALL LagrangeInterpolationPolys(Xi2(2),NSuper,Xi_NSuper,wBary_NSuper,Lag_NSuper(2,:))
     G=0.
-    DO j=0,NSuper 
-      DO i=0,NSuper 
+    DO j=0,NSuper
+      DO i=0,NSuper
         G=G+Gmat(:,i,j)*Lag_NSuper(1,i)*Lag_NSuper(2,j)
-      END DO! i=0,NSuper 
-    END DO! j=0,NSuper 
+      END DO! i=0,NSuper
+    END DO! j=0,NSuper
     eps_F=1.E-10*(SUM(G*G))
     NewtonIter=0
     DO WHILE ((SUM(G*G).GT.eps_F).AND.(NewtonIter.LT.50))
       NewtonIter=NewtonIter+1
       ! Compute G Jacobian dG/dXi
-   
+
       Jac2=0.
       DO j=0,NSuper
         DO i=0,NSuper
@@ -310,7 +310,7 @@ DO SideID=1,nBCSides
 
       ! Iterate Xi using Newton step
       Xi2 = Xi2 - MATMUL(sJac2,G)
-      ! if Newton gets outside reference space range [-1,1], exit. 
+      ! if Newton gets outside reference space range [-1,1], exit.
       ! But allow for some oscillation in the first couple of iterations, as we may discard the correct point/element!!
       IF((NewtonIter.GT.4).AND.(ANY(ABS(Xi2).GT.1.2))) EXIT
 
@@ -318,27 +318,27 @@ DO SideID=1,nBCSides
       CALL LagrangeInterpolationPolys(Xi2(1),NSuper,Xi_NSuper,wBary_NSuper,Lag_NSuper(1,:))
       CALL LagrangeInterpolationPolys(Xi2(2),NSuper,Xi_NSuper,wBary_NSuper,Lag_NSuper(2,:))
       G=0.
-      DO j=0,NSuper 
-       DO i=0,NSuper 
+      DO j=0,NSuper
+       DO i=0,NSuper
          G=G+Gmat(:,i,j)*Lag_NSuper(1,i)*Lag_NSuper(2,j)
-       END DO! i=0,NSuper 
-     END DO! j=0,NSuper 
+       END DO! i=0,NSuper
+     END DO! j=0,NSuper
     END DO !newton
-    ! use Newton result if minimum is within parameter range, else see if supersampled 
+    ! use Newton result if minimum is within parameter range, else see if supersampled
     ! initial guess is better than previous result
     IF(MAXVAL(ABS(Xi2)).LE.maxTol) THEN ! use newton result
       ! calculate new distance and normal vector
       xWinner=0.
       NormVecWinner=0.
-      DO j=0,NSuper 
-        DO i=0,NSuper 
+      DO j=0,NSuper
+        DO i=0,NSuper
           xWinner(:)=xWinner(:)+xBC_NSuper(:,i,j)*Lag_NSuper(1,i)*Lag_NSuper(2,j)
           NormVecWinner(:)=NormVecWinner(:)+NormVec_NSuper(:,i,j)*Lag_NSuper(1,i)*Lag_NSuper(2,j)
-        END DO! i=0,NSuper 
-      END DO! j=0,NSuper 
+        END DO! i=0,NSuper
+      END DO! j=0,NSuper
       Winner_Dist2=SUM((xWinner-xRP)*(xWinner-xRP))
-    END IF 
-     
+    END IF
+
     !! Check the angle, should approach the normal of the face
     !NormVecWinner=NormVecWinner/NORM2(NormVecWinner)
     !F=(xRP-xWinner)/NORM2(xRP-xWinner)
@@ -364,12 +364,12 @@ DO SideID=1,nBCSides
       aRP%ElemID = iElem
       aRP%xF=xWinner
       ! find the side with minimum distance
-      dist2RP(iRP)=Winner_Dist2 
+      dist2RP(iRP)=Winner_Dist2
       NormVecRP(:,iRP)=-NormVecWinner
 !       SWRITE(UNIT_StdOut,'(A,I4,A,3F8.4,A,3F8.4,A)')' Projected RP ',iRP,' with coordinates ',aRP%x,' to ',ARP%xF,'.'
     END IF
   END DO! iRP=1,nRP
-END DO! SideID=1,nBCSides 
+END DO! SideID=1,nBCSides
 
 SWRITE(UNIT_StdOut,'(A)')' done.'
 SWRITE(UNIT_StdOut,'(A,F15.8)')'  Max. distance: ',SQRT(MAXVAL(dist2RP))
@@ -398,6 +398,6 @@ getInv2(1,1) = (  Mat(2,2) ) * sdet
 getInv2(1,2) = (- Mat(1,2) ) * sdet
 getInv2(2,1) = (- Mat(2,1) ) * sdet
 getInv2(2,2) = (  Mat(1,1) ) * sdet
-END FUNCTION getInv2 
+END FUNCTION getInv2
 
 END MODULE MOD_BLProjection

@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -16,7 +16,7 @@
 !===================================================================================================================================
 !> This module contains all the routines that provide the interfaces between the FORTRAN visu tool and the C ParaView plugin.
 !> These routines include:
-!> * RequestInformation: Called by ParaView when a new state is loaded into the pipeline. Will return the available variable and 
+!> * RequestInformation: Called by ParaView when a new state is loaded into the pipeline. Will return the available variable and
 !>   boundary names to display them in ParaView for the user to choose from.
 !> * visuCwrapper: Called by ParaView when data is requested after he apply button has been pressed. In this routine, the actual
 !>   visu main routine is called with the parameter file created by the ParaView reader (based on the settings in ParaView choosen
@@ -55,10 +55,10 @@ CONTAINS
 !===================================================================================================================================
 !> Function to convert a C string with length strlen to a FORTRAN character array with length 255.
 !===================================================================================================================================
-FUNCTION cstrToChar255(cstr, strlen) 
+FUNCTION cstrToChar255(cstr, strlen)
 ! MODULES
 USE ISO_C_BINDING
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 TYPE(C_PTR),TARGET,INTENT(IN)  :: cstr
 INTEGER,INTENT(IN)             :: strlen
@@ -69,7 +69,7 @@ CHARACTER(KIND=C_CHAR),POINTER :: tmp(:)
 !===================================================================================================================================
 CALL C_F_POINTER(C_LOC(cstr), tmp, [strlen])
 cstrToChar255 = TRANSFER(tmp(1:strlen), cstrToChar255)
-cstrToChar255(strlen+1:255) = ' ' 
+cstrToChar255(strlen+1:255) = ' '
 END FUNCTION cstrToChar255
 
 !===================================================================================================================================
@@ -87,7 +87,7 @@ USE MOD_IO_HDF5    ,ONLY: InitMPIInfo
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-INTEGER,INTENT(IN)                    :: mpi_comm_IN    
+INTEGER,INTENT(IN)                    :: mpi_comm_IN
 INTEGER,INTENT(IN)                    :: strlen_state
 TYPE(C_PTR),TARGET,INTENT(IN)         :: statefile_IN
 INTEGER,INTENT(IN)                    :: strlen_mesh
@@ -105,11 +105,11 @@ statefile = cstrToChar255(statefile_IN, strlen_state)
 meshfile  = cstrToChar255(meshfile_IN , strlen_mesh)
 
 CALL InitMPIInfo()
-CALL InitMPI(mpi_comm_IN) 
+CALL InitMPI(mpi_comm_IN)
 CALL visu_getVarNamesAndFileType(statefile,meshfile,VarnamesAll,BCNamesAll)
 IF (ALLOCATED(VarnamesAll)) THEN
   varnames_pointer => VarnamesAll
-  varnames%len  = SIZE(varnames_pointer)*255 
+  varnames%len  = SIZE(varnames_pointer)*255
   varnames%data = C_LOC(varnames_pointer(1))
 ELSE
   varnames%len  = 0
@@ -117,7 +117,7 @@ ELSE
 END IF
 IF (ALLOCATED(BCNamesAll)) THEN
   bcnames_pointer => BCNamesAll
-  bcnames%len  = SIZE(bcnames_pointer)*255 
+  bcnames%len  = SIZE(bcnames_pointer)*255
   bcnames%data = C_LOC(bcnames_pointer(1))
 ELSE
   bcnames%len  = 0
@@ -145,10 +145,10 @@ USE MOD_VTK         ,ONLY: WriteCoordsToVTK_array,WriteDataToVTK_array,WriteVarn
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-INTEGER,INTENT(IN)            :: mpi_comm_IN    
-INTEGER,INTENT(IN)            :: strlen_prm    
-INTEGER,INTENT(IN)            :: strlen_posti    
-INTEGER,INTENT(IN)            :: strlen_state    
+INTEGER,INTENT(IN)            :: mpi_comm_IN
+INTEGER,INTENT(IN)            :: strlen_prm
+INTEGER,INTENT(IN)            :: strlen_posti
+INTEGER,INTENT(IN)            :: strlen_state
 TYPE(C_PTR),TARGET,INTENT(IN) :: prmfile_IN
 TYPE(C_PTR),TARGET,INTENT(IN) :: postifile_IN
 TYPE(C_PTR),TARGET,INTENT(IN) :: statefile_IN
@@ -234,11 +234,11 @@ END SUBROUTINE visu_CWrapper
 !===================================================================================================================================
 !> Deallocate the different NodeID arrays.
 !===================================================================================================================================
-SUBROUTINE visu_dealloc_nodeids() 
+SUBROUTINE visu_dealloc_nodeids()
 USE MOD_Visu_Vars
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================

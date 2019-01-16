@@ -1,12 +1,12 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2017 Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2017 Prof. Claus-Dieter Munz
 ! Copyright (c) 2016-2017 Gregor Gassner (github.com/project-fluxo/fluxo)
 ! Copyright (c) 2016-2017 Florian Hindenlang (github.com/project-fluxo/fluxo)
-! Copyright (c) 2016-2017 Andrew Winters (github.com/project-fluxo/fluxo) 
+! Copyright (c) 2016-2017 Andrew Winters (github.com/project-fluxo/fluxo)
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -18,7 +18,7 @@
 
 !==================================================================================================================================
 !>\brief Computes the DGSEM volume integral
-!> The volume integral is computed via the weak form of the DG method 
+!> The volume integral is computed via the weak form of the DG method
 !> Computes the volume integral contribution based on U and updates Ut
 !> Volume integral is split into integral of advection and diffusion part
 !==================================================================================================================================
@@ -38,14 +38,6 @@ INTERFACE VolInt
 END INTERFACE
 
 PUBLIC::VolInt
-
-#ifdef DEBUG
-! Add dummy interfaces to unused subroutines to suppress compiler warnings.
-INTERFACE DUMMY_VolInt_weakForm
-  MODULE PROCEDURE VolInt_weakForm
-END INTERFACE
-PUBLIC::DUMMY_VolInt_weakForm
-#endif /* DEBUG */
 !==================================================================================================================================
 CONTAINS
 
@@ -114,7 +106,7 @@ DO iElem=1,nElems
 #if PP_dim==3
                                               D_Hat_T(l,k)*h(:,i,j,l) + &
 #endif
-                                              D_Hat_T(l,j)*g(:,i,l,k) 
+                                              D_Hat_T(l,j)*g(:,i,l,k)
     END DO ! l
   END DO; END DO; END DO !i,j,k
 END DO ! iElem
@@ -268,10 +260,9 @@ END SUBROUTINE VolInt_splitForm
 !==================================================================================================================================
 !> Compute the tranformed states for all conservative variables using the metric terms
 !==================================================================================================================================
-SUBROUTINE VolInt_Metrics(nDOFs,f,g,h,Mf,Mg,Mh)
+PPURE SUBROUTINE VolInt_Metrics(nDOFs,f,g,h,Mf,Mg,Mh)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! MODULES
-USE MOD_PreProc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -284,14 +275,14 @@ REAL,DIMENSION(PP_nVar,nDOFs),INTENT(INOUT) :: f,g,h
 ! LOCAL VARIABLES
 INTEGER                                     :: i
 REAL,DIMENSION(PP_nVar)                     :: fTilde,gTilde !< Auxiliary variables needed to store the fluxes at one GP
-#if PP_dim==3       
+#if PP_dim==3
 REAL,DIMENSION(PP_nVar)                     :: hTilde !< Auxiliary variables needed to store the fluxes at one GP
 #endif
 !==================================================================================================================================
 DO i=1,nDOFs
   fTilde=f(:,i)
   gTilde=g(:,i)
-#if PP_dim==3       
+#if PP_dim==3
   hTilde=h(:,i)
 
   ! Compute the transformed fluxes with the metric terms
@@ -307,20 +298,11 @@ DO i=1,nDOFs
            hTilde*Mh(3,i)
 #else
   f(:,i) = fTilde*Mf(1,i) + &
-           gTilde*Mf(2,i) 
+           gTilde*Mf(2,i)
   g(:,i) = fTilde*Mg(1,i) + &
-           gTilde*Mg(2,i) 
+           gTilde*Mg(2,i)
 #endif
 END DO ! i
-
-#ifdef DEBUG
-! ===============================================================================
-! Following dummy calls do suppress compiler warnings of unused Riemann-functions
-! ===============================================================================
-IF (0.EQ.1) THEN
-  WRITE (*,*) Mh,h
-END IF
-#endif
 END SUBROUTINE VolInt_Metrics
 
 

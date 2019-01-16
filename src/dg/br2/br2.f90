@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -16,7 +16,7 @@
 
 !==================================================================================================================================
 !> \brief Contains the BR2 lifting procedure (initialization and lifting operator) for computing the lifted solution gradients
-!> according to Bassi, Rebay et al., "A high-order accurate discontinuous Finite Element method for inviscid an viscous 
+!> according to Bassi, Rebay et al., "A high-order accurate discontinuous Finite Element method for inviscid an viscous
 !> turbomachinery flows", 1997. The lifted gradients are required for the viscous fluxes.
 !>
 !> The BR1 scheme has been found to be unstable for purely elliptic equations. Consequently, the BR2 scheme provides a stable method
@@ -24,7 +24,7 @@
 !> surface gradients are lifted with an additional penalty term \f$ \eta_{BR2} \f$. Stability was shown for \f$ \eta_{BR2} > \f$
 !> number of element faces.
 !> Similar to the BR1 scheme, both, conservative and non-conservative volume integrals are available.
-!> 
+!>
 !> NB: The lifting procedure is only necessary for a DG solution. If the element contains a FV solution, the lifting procedure is
 !> skipped and instead central gradients are calculated for the comuptation of viscous fluxes
 !==================================================================================================================================
@@ -55,7 +55,7 @@ PUBLIC::DefineParametersLifting,InitLifting,Lifting,FinalizeLifting
 CONTAINS
 
 !==================================================================================================================================
-!> Define parameters 
+!> Define parameters
 !==================================================================================================================================
 SUBROUTINE DefineParametersLifting()
 ! MODULES
@@ -64,7 +64,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 !==================================================================================================================================
 CALL prms%SetSection("Lifting")
 CALL prms%CreateLogicalOption('doConservativeLifting', "Set true to compute the volume contribution to the gradients in "//&

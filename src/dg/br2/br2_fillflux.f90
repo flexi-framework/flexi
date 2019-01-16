@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -38,14 +38,14 @@ PUBLIC::Lifting_FillFlux,Lifting_FillFlux_BC
 CONTAINS
 
 !==================================================================================================================================
-!> \brief Computes the BR2 Surface Fluxes in direction "dir" 
+!> \brief Computes the BR2 Surface Fluxes in direction "dir"
 !>
 !> The routine fills the flux arrays for the sides ranging from firstSideID to lastSideID using the BR2 approximation of surface
 !> fluxes, Surfelem contribution is considered as well
 !> In case one of the elements contains a FV solution, the FV integral means from the FV element have to be transformed onto the DG
 !> nodes set.
 !==================================================================================================================================
-SUBROUTINE Lifting_FillFlux(dir,UPrimface_master,UPrimface_slave,Flux,doMPISides)
+PPURE SUBROUTINE Lifting_FillFlux(dir,UPrimface_master,UPrimface_slave,Flux,doMPISides)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Mesh_Vars,       ONLY: NormVec,SurfElem
@@ -67,7 +67,7 @@ REAL,INTENT(OUT)   :: Flux(1:PP_nVarPrim,0:PP_N,0:PP_NZ,nSides)             !< s
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            ::SideID,p,q,firstSideID,lastSideID
-#if FV_ENABLED  
+#if FV_ENABLED
 REAL               :: UPrim_glob(1:PP_nVarPrim,0:PP_N,0:PP_NZ)
 #endif
 !==================================================================================================================================
@@ -118,7 +118,7 @@ END SUBROUTINE Lifting_FillFlux
 !> \brief Computes the BR2 Surface Fluxes for Boundary Conditions in all three spatial directions.
 !> Surfelem contribution is considered as well
 !>
-!> The routine fills the flux arrays for the BC sides using the BR2 approximation of surface fluxes, Surfelem contribution is 
+!> The routine fills the flux arrays for the BC sides using the BR2 approximation of surface fluxes, Surfelem contribution is
 !> considered as well. In case one of the elements contains a FV solution, the FV integral means from the FV element have to be
 !> transformed onto the DG nodes set.
 !==================================================================================================================================
@@ -127,7 +127,7 @@ SUBROUTINE Lifting_FillFlux_BC(t,UPrim_master,FluxX,FluxY,FluxZ)
 USE MOD_PreProc
 USE MOD_Mesh_Vars,       ONLY: NormVec,TangVec1,TangVec2,Face_xGP,SurfElem,nSides,nBCSides
 USE MOD_GetBoundaryFlux, ONLY: Lifting_GetBoundaryFlux
-#if FV_ENABLED  
+#if FV_ENABLED
 USE MOD_FV_Vars         ,ONLY: FV_Elems_master
 #endif
 IMPLICIT NONE

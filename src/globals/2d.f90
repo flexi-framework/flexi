@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -43,9 +43,9 @@ CONTAINS
 !==================================================================================================================================
 !> Reduce the size of a single dimension of a rank 4 array to 1.
 !==================================================================================================================================
-SUBROUTINE to2D_rank4(lbound_in,ubound_in,index3D,array) 
+SUBROUTINE to2D_rank4(lbound_in,ubound_in,index3D,array)
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)             :: lbound_in(4)    !< Lower bounds of array
 INTEGER,INTENT(IN)             :: ubound_in(4)    !< Upper bounds of array
 INTEGER,INTENT(IN)             :: index3D         !< Dimension that will get reduced
@@ -61,11 +61,11 @@ ALLOCATE(array_loc(lbound_in(1):ubound_loc(1),&
                    lbound_in(2):ubound_loc(2),&
                    lbound_in(3):ubound_loc(3),&
                    lbound_in(4):ubound_loc(4)))
-array_loc = array( lbound_in(1):ubound_loc(1),&             
+array_loc = array( lbound_in(1):ubound_loc(1),&
                    lbound_in(2):ubound_loc(2),&
                    lbound_in(3):ubound_loc(3),&
                    lbound_in(4):ubound_loc(4))
-DEALLOCATE(array)               
+DEALLOCATE(array)
 ALLOCATE(array    (lbound_in(1):ubound_loc(1),&
                    lbound_in(2):ubound_loc(2),&
                    lbound_in(3):ubound_loc(3),&
@@ -78,9 +78,9 @@ END SUBROUTINE to2D_rank4
 !==================================================================================================================================
 !> Reduce the size of a single dimension of a rank 5 array to 1.
 !==================================================================================================================================
-SUBROUTINE to2D_rank5(lbound_in,ubound_in,index3D,array) 
+SUBROUTINE to2D_rank5(lbound_in,ubound_in,index3D,array)
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)             :: lbound_in(5)      !< Lower bounds of array
 INTEGER,INTENT(IN)             :: ubound_in(5)      !< Upper bounds of array
 INTEGER,INTENT(IN)             :: index3D           !< Dimension that will get reduced
@@ -97,12 +97,12 @@ ALLOCATE(array_loc(lbound_in(1):ubound_loc(1),&
                    lbound_in(3):ubound_loc(3),&
                    lbound_in(4):ubound_loc(4),&
                    lbound_in(5):ubound_loc(5)))
-array_loc = array( lbound_in(1):ubound_loc(1),&             
+array_loc = array( lbound_in(1):ubound_loc(1),&
                    lbound_in(2):ubound_loc(2),&
                    lbound_in(3):ubound_loc(3),&
                    lbound_in(4):ubound_loc(4),&
                    lbound_in(5):ubound_loc(5))
-DEALLOCATE(array)               
+DEALLOCATE(array)
 ALLOCATE(array    (lbound_in(1):ubound_loc(1),&
                    lbound_in(2):ubound_loc(2),&
                    lbound_in(3):ubound_loc(3),&
@@ -116,9 +116,9 @@ END SUBROUTINE to2D_rank5
 !==================================================================================================================================
 !> Reduce the size of a single dimension of a rank 6 array to 1.
 !==================================================================================================================================
-SUBROUTINE to2D_rank6(lbound_in,ubound_in,index3D,array) 
+SUBROUTINE to2D_rank6(lbound_in,ubound_in,index3D,array)
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)             :: lbound_in(6)        !< Lower bounds of array
 INTEGER,INTENT(IN)             :: ubound_in(6)        !< Upper bounds of array
 INTEGER,INTENT(IN)             :: index3D             !< Dimension that will get reduced
@@ -136,13 +136,13 @@ ALLOCATE(array_loc(lbound_in(1):ubound_loc(1),&
                    lbound_in(4):ubound_loc(4),&
                    lbound_in(5):ubound_loc(5),&
                    lbound_in(6):ubound_loc(6)))
-array_loc = array( lbound_in(1):ubound_loc(1),&             
+array_loc = array( lbound_in(1):ubound_loc(1),&
                    lbound_in(2):ubound_loc(2),&
                    lbound_in(3):ubound_loc(3),&
                    lbound_in(4):ubound_loc(4),&
                    lbound_in(5):ubound_loc(5),&
                    lbound_in(6):ubound_loc(6))
-DEALLOCATE(array)               
+DEALLOCATE(array)
 ALLOCATE(array    (lbound_in(1):ubound_loc(1),&
                    lbound_in(2):ubound_loc(2),&
                    lbound_in(3):ubound_loc(3),&
@@ -159,16 +159,16 @@ END SUBROUTINE to2D_rank6
 !> The size of the array in the dimension to be expanded must be one!
 !> The arrays will be used like a vector with a single dimension.
 !==================================================================================================================================
-SUBROUTINE ExpandArrayTo3D(rank,nVal,index3D,size3D,arrayIn,arrayOut) 
+SUBROUTINE ExpandArrayTo3D(rank,nVal,index3D,size3D,arrayIn,arrayOut)
 ! MODULES                                                                                                                          !
 USE MOD_Globals
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)             :: rank                           !< number of dimensions of the arrays
 INTEGER,INTENT(IN)             :: nVal(rank)                     !< number of entries per dimension
 INTEGER,INTENT(IN)             :: index3D                        !< index of te dimension that should be expanded
-INTEGER,INTENT(IN)             :: size3D                         !< expanded size of the 3D dimension 
+INTEGER,INTENT(IN)             :: size3D                         !< expanded size of the 3D dimension
 REAL,INTENT(IN)                :: arrayIn(PRODUCT(nVal))         !< Input array with a flat dimension
 REAL,INTENT(OUT)               :: arrayOut(PRODUCT(nVal)*size3D) !< Output array with a expanded dimension
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -184,7 +184,7 @@ size2 = PRODUCT(nVal(index3D+1:rank)) ! number of entries in array after dimensi
 
 ! Iterate over the number of entries that come after the 3D dimension
 DO i=1,size2
-  ! Calculate the indizes of the chunk of entries that come before the 3D dimension in this current iteration 
+  ! Calculate the indizes of the chunk of entries that come before the 3D dimension in this current iteration
   ! for the flat array
   indexArrayIn_lower = (i-1)*size1+1
   indexArrayIn_upper = indexArrayIn_lower + size1 -1
