@@ -127,9 +127,6 @@ END IF
 
 ! Check if we need to interpolate the restart file to our current polynomial degree and node type
 IF(DoRestart .AND. ((N_Restart.NE.PP_N) .OR. (TRIM(NodeType_Restart).NE.TRIM(NodeType))))THEN
-#if FV_ENABLED
-    CALL CollectiveStop(__STAMP__,'ERROR: The restart to a different polynomial degree or node type is not available for FV.')
-#endif
   InterpolateSolution=.TRUE.
   IF(MIN(N_Restart,PP_N).LT.NGeo) &
     CALL PrintWarning('The geometry is or was underresolved and will potentially change on restart!')
@@ -204,6 +201,9 @@ LOGICAL            :: doFlushFiles_loc
 INTEGER             :: nVal(15),iVar
 REAL,ALLOCATABLE    :: ElemData(:,:),tmp(:)
 CHARACTER(LEN=255),ALLOCATABLE :: VarNamesElemData(:)
+REAL                :: deltaXiFVRestart,deltaXi,deltaXiSuper,xiSuper
+REAL                :: U_mean(PP_nVar)
+INTEGER             :: iOld,jOld,kOld,iSuper,jSuper,kSuper
 #endif
 !==================================================================================================================================
 IF (PRESENT(doFlushFiles)) THEN
@@ -306,20 +306,66 @@ IF(DoRestart)THEN
           CALL ChangeBasisVolume(PP_nVar,N_Restart,PP_N,Vdm_NRestart_N,U_local(:,:,:,:,iElem),U(:,:,:,:,iElem))
 #if FV_ENABLED
         ELSE ! FV element
-          STOP 'Not implemented yet'
+          ! FV restart strategy: Supersample the old FV solution (with (N_Restart+1)**dim superampling points in each new 
+          ! sub cell), then take the mean value
+          deltaXiFVRestart = 2.0/(REAL(N_Restart)+1.) ! Length (in reference space) of a FV element in the restart file
+          deltaXi          = 2.0/(REAL(PP_N)+1.) ! Length (in reference space) of a FV element in the new simulation
+          deltaXiSuper     = deltaXi/(REAL(N_Restart)+1.) ! Spacing (in reference space) between supersampling points
+          DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+            U_mean = 0.
+            DO kSuper=0,ZDIM(N_Restart); DO jSuper=0,N_Restart; DO iSuper=0,N_Restart
+              ! Calculate the index that the current super sampling point has in the old restart solution
+              xiSuper = (REAL(i)*deltaXi) + (REAL(iSuper)+0.5)*deltaXiSuper
+              iOld = INT(xiSuper/deltaXiFVRestart)
+              xiSuper = (REAL(j)*deltaXi) + (REAL(jSuper)+0.5)*deltaXiSuper
+              jOld = INT(xiSuper/deltaXiFVRestart)
+#if PP_dim == 3
+              xiSuper = (REAL(k)*deltaXi) + (REAL(kSuper)+0.5)*deltaXiSuper
+              kOld = INT(xiSuper/deltaXiFVRestart)
+#else
+              kOld = 0
+#endif
+              ! Calculate sum for mean value
+              U_mean(:) = U_mean(:)+U_local(:,iOld,jOld,kOld,iElem)
+            END DO; END DO; END DO! iSuper,jSuper,kSuper=0,N_Restart
+            U(:,i,j,k,iElem) = U_mean(:)/REAL((N_Restart+1)**PP_dim)
+          END DO; END DO; END DO! i,j,k=0,PP_N
 #endif
         END IF
       END DO
       DEALLOCATE(JNR)
       ! Transform back
-      CALL ApplyJacobianCons(U,toPhysical=.TRUE.)
+      CALL ApplyJacobianCons(U,toPhysical=.TRUE.,FVE=0)
     ELSE
       DO iElem=1,nElems
         IF (FV_Elems(iElem).EQ.0) THEN ! DG element
           CALL ChangeBasisVolume(PP_nVar,N_Restart,PP_N,Vdm_NRestart_N,U_local(:,:,:,:,iElem),U(:,:,:,:,iElem))
 #if FV_ENABLED
         ELSE ! FV element
-          STOP 'Not implemented yet'
+          ! FV restart strategy: Supersample the old FV solution (with (PP_N+1)**dim superampling points in each new 
+          ! sub cell), then take the mean value
+          deltaXiFVRestart = 2.0/(REAL(N_Restart)+1.) ! Length (in reference space) of a FV element in the restart file
+          deltaXi          = 2.0/(REAL(PP_N)+1.) ! Length (in reference space) of a FV element in the new simulation
+          deltaXiSuper     = deltaXi/(REAL(PP_N)+1.) ! Spacing (in reference space) between supersampling points
+          DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+            U_mean = 0.
+            DO kSuper=0,PP_NZ; DO jSuper=0,PP_N; DO iSuper=0,PP_N
+              ! Calculate the index that the current super sampling point has in the old restart solution
+              xiSuper = (REAL(i)*deltaXi) + (REAL(iSuper)+0.5)*deltaXiSuper
+              iOld = INT(xiSuper/deltaXiFVRestart)
+              xiSuper = (REAL(j)*deltaXi) + (REAL(jSuper)+0.5)*deltaXiSuper
+              jOld = INT(xiSuper/deltaXiFVRestart)
+#if PP_dim == 3
+              xiSuper = (REAL(k)*deltaXi) + (REAL(kSuper)+0.5)*deltaXiSuper
+              kOld = INT(xiSuper/deltaXiFVRestart)
+#else
+              kOld = 0
+#endif
+              ! Calculate sum for mean value
+              U_mean(:) = U_mean(:)+U_local(:,iOld,jOld,kOld,iElem)
+            END DO; END DO; END DO! iSuper,jSuper,kSuper=0,PP_N
+            U(:,i,j,k,iElem) = U_mean(:)/REAL((PP_N+1)**PP_dim)
+          END DO; END DO; END DO! i,j,k=0,PP_N
 #endif
         END IF
       END DO
