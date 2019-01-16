@@ -20,7 +20,7 @@ IMPLICIT NONE
 PUBLIC
 SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES 
+! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 INTEGER                       :: nSamples_spec               !> Number of RP samples used for spectral analysis
 REAL,ALLOCATABLE              :: RPData_spec(:,:,:)          !> Spectral data

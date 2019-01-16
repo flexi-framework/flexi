@@ -172,10 +172,10 @@ DO iVar=1,nVarDep
   iVarVisu = mapAllVarsToVisuVars(iVar)
   IF (iVarVisu.GT.0) THEN
     SWRITE(*,*) "    ", TRIM(VarnamesAll(iVar))
-    iVarCalc = mapDepToCalc_FV(iVar) 
+    iVarCalc = mapDepToCalc_FV(iVar)
 #if FV_RECONSTRUCT
     UVisu_FV(:,:,:,:,iVarVisu) = UCalc_FV(:,:,:,:,iVarCalc)
-#else      
+#else
     DO iElem = 1,nElems_FV
       DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
         UVisu_FV(i*2:i*2+1, j*2:j*2+1, k*2:k*2+1*(PP_dim-2),iElem,iVarVisu) = UCalc_FV(i,j,k,iElem,iVarCalc)
@@ -215,7 +215,7 @@ DO iVar=1,nVarDep
     SWRITE(*,*) "    ", TRIM(VarnamesAll(iVar))
 #if FV_RECONSTRUCT
     USurfVisu_FV(:,:,0,:,iVarVisu) = USurfCalc_FV(:,:,:,mapDepToCalc_FV(iVar))
-#else      
+#else
     ! No reconstruction: Calculations are done directly on the subcells (PP_N+1), visualization is done on 2*(PP_N+1)-1 points
     DO iSide = 1,nBCSidesVisu_FV
       DO q=0,PP_NZ; DO p=0,PP_N
@@ -475,7 +475,7 @@ DO iVar=nVarDep+1,nVarAll
         SDEALLOCATE(DataSetVarNames)
         CALL GetVarNames("VarNames_"//TRIM(DatasetName),DatasetVarNames,varnamesExist)
       END IF
-      WRITE (*,*) "varnamesExist", varnamesExist
+      SWRITE (*,*) "varnamesExist", varnamesExist
 
       iVarDataset = 0
       ! loop over all varnames

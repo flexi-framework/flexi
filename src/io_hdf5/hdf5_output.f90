@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -123,7 +123,7 @@ FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_'//TRIM(FileType),OutputTime))//'.h
 IF(MPIRoot) CALL GenerateFileSkeleton(TRIM(FileName),'State',PP_nVar,NOut,StrVarNames,&
                                       MeshFileName,OutputTime,FutureTime,withUserblock=.TRUE.)
 
-! Set size of output 
+! Set size of output
 nVal=(/PP_nVar,NOut+1,NOut+1,ZDIM(NOut)+1,nElems/)
 
 ! build output data
@@ -149,7 +149,7 @@ IF(NOut.NE.PP_N)THEN
   END DO
 #if PP_dim == 2
   ! If the output should be done with a full third dimension in a two dimensional computation, we need to expand the solution
-  IF (.NOT.output2D) THEN 
+  IF (.NOT.output2D) THEN
     ALLOCATE(UOutTmp(PP_nVar,0:NOut,0:NOut,0:ZDIM(NOut),nElems))
     UOutTmp = UOut
     DEALLOCATE(UOut)
@@ -180,7 +180,7 @@ END IF ! (NOut.NE.PP_N)
 
 ! Reopen file and write DG solution
 #if USE_MPI
-CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
+CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
 #endif
 CALL GatheredWriteArray(FileName,create=.FALSE.,&
                         DataSetName='DG_Solution', rank=5,&
@@ -305,11 +305,11 @@ END SUBROUTINE GatheredWriteArray
 !> to functions to generate the data, along with the respective varnames.
 !>
 !> Two options are available:
-!>    1. WriteAdditionalElemData: 
+!>    1. WriteAdditionalElemData:
 !>       Element-wise scalar data, e.g. the timestep or indicators.
 !>       The data is collected in a single array and written out in one step.
 !>       DO NOT MISUSE NODAL DATA FOR THIS! IT WILL DRASTICALLY INCREASE FILE SIZE AND SLOW DOWN IO!
-!>    2. WriteAdditionalFieldData: 
+!>    2. WriteAdditionalFieldData:
 !>       Nodal data, e.g. coordinates or sgs viscosities.
 !>       Each list entry is written into a separate array.
 !>
@@ -404,7 +404,7 @@ TYPE(tFieldOut),POINTER        :: f
 ! TODO: Perform one write for each dataset.
 IF(.NOT. ASSOCIATED(FieldList)) RETURN
 
-! Count fixed size and total number of entries 
+! Count fixed size and total number of entries
 nVar=0
 nVarTotal=0
 f=>FieldList
@@ -554,11 +554,11 @@ ELSE
   UOut => SpBaseFlow
   NZ_loc=0
 END IF
-#endif  
+#endif
 
 ! Write DG solution
 #if USE_MPI
-CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
+CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
 #endif
 CALL GatheredWriteArray(FileName,create=.FALSE.,&
                         DataSetName='DG_Solution', rank=5,&
@@ -643,7 +643,7 @@ IF(MPIRoot)THEN
   CALL CloseDataFile()
 END IF
 #if USE_MPI
-CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
+CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
 #endif
 
 ! write dummy FV array
@@ -673,7 +673,7 @@ DO i=1,2
   END IF
 #endif
   nVal_glob=  (/nVal_loc(1:4),nGlobalElems/)
-  
+
   ! Reopen file and write DG solution
   CALL GatheredWriteArray(FileName,create=.FALSE.,&
                           DataSetName=TRIM(DataSet), rank=5,&
@@ -771,12 +771,12 @@ IF(create_loc)THEN
 
   ! Write file header
   CALL WriteHeader(TRIM(TypeString),File_ID)
-  
+
   ! Write dataset properties "Time","MeshFile","NextFile","NodeType","VarNames"
   CALL WriteAttribute(File_ID,'N',1,IntScalar=PP_N)
   CALL WriteAttribute(File_ID,'Dimension',1,IntScalar=PP_dim)
   CALL WriteAttribute(File_ID,'Time',1,RealScalar=OutputTime)
-  CALL WriteAttribute(File_ID,'MeshFile',1,StrScalar=(/TRIM(MeshFileName)/))
+  CALL WriteAttribute(File_ID,'MeshFile',1,StrScalar=(/MeshFileName/))
   IF(PRESENT(FutureTime))THEN
     MeshFile255=TRIM(TIMESTAMP(TRIM(ProjectName)//'_'//TRIM(TypeString),FutureTime))//'.h5'
     CALL WriteAttribute(File_ID,'NextFile',1,StrScalar=(/MeshFile255/))
@@ -788,7 +788,7 @@ IF(create_loc)THEN
   FV_w_array(:)= FV_w
   CALL WriteAttribute(File_ID,'FV_w',PP_N+1,RealArray=FV_w_array)
 #endif
-  
+
   CALL WriteAttribute(File_ID,'NComputation',1,IntScalar=PP_N)
 END IF
 
@@ -896,12 +896,16 @@ CHARACTER(LEN=*),INTENT(IN)              :: FileType_in   !< Type of file (e.g. 
 INTEGER(HID_T),INTENT(IN)                :: File_ID       !< HDF5 file id
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+CHARACTER(LEN=123) :: test
+CHARACTER(LEN=16) :: test2(1)
 !==================================================================================================================================
+test = "asdasd                 "
+test2 = (/TRIM(test)/)
 ! Write a small file header to identify a Flexi HDF5 files
 ! Attributes are program name, file type identifier, project name and version number
-CALL WriteAttribute(File_ID,'Program'     ,1,StrScalar=(/TRIM(ProgramName)/))
-CALL WriteAttribute(File_ID,'File_Type'   ,1,StrScalar=(/TRIM(FileType_in)/))
-CALL WriteAttribute(File_ID,'Project_Name',1,StrScalar=(/TRIM(ProjectName)/))
+CALL WriteAttribute(File_ID,'Program'     ,1,StrScalar=(/ProgramName/))
+CALL WriteAttribute(File_ID,'File_Type'   ,1,StrScalar=(/FileType_in/))
+CALL WriteAttribute(File_ID,'Project_Name',1,StrScalar=(/ProjectName/))
 CALL WriteAttribute(File_ID,'File_Version',1,RealScalar=FileVersion)
 END SUBROUTINE WriteHeader
 
@@ -1083,7 +1087,7 @@ END IF
 ! Create character string datatype for the attribute.
 ! For a attribute character, we have to build our own type with corresponding attribute length
 IF(PRESENT(StrScalar))THEN
-  AttrLen=LEN(StrScalar(1))
+  AttrLen=LEN(TRIM(StrScalar(1)))
   CALL H5TCOPY_F(H5T_NATIVE_CHARACTER, Type_ID, iError)
   CALL H5TSET_SIZE_F(Type_ID, AttrLen, iError)
 END IF

@@ -20,7 +20,7 @@ IMPLICIT NONE
 PUBLIC
 SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES 
+! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 INTEGER                         :: nSamples_global !> Total number of samples (all RP data files)
 INTEGER                         :: nVar_HDF5       !> Number of variable in the HDF5 file
@@ -44,11 +44,11 @@ TYPE(tRPDataSet),POINTER        :: firstset, actualset !> Pointers to first and 
 
 INTERFACE getNewRPDataSet
   MODULE PROCEDURE getNewRPDataSet
-END INTERFACE 
+END INTERFACE
 
 PUBLIC :: getNewRPDataSet
 
-CONTAINS 
+CONTAINS
 
 !===================================================================================================================================
 !> Routine to create a new entry in the linked list of RPdata

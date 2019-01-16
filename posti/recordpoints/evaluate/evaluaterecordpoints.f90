@@ -14,7 +14,7 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-!> Tool to extract recordpoint type signals which are normally generated during the simulation, from state files 
+!> Tool to extract recordpoint type signals which are normally generated during the simulation, from state files
 !===================================================================================================================================
 PROGRAM evalrec
 ! MODULES
@@ -57,8 +57,8 @@ LOGICAL                            :: isValid,userblockFound
 CALL SetStackSizeUnlimited()
 CALL InitMPI()
 CALL ParseCommandlineArguments()
-SWRITE(UNIT_stdOut,'(A)') " ||=============================||" 
-SWRITE(UNIT_stdOut,'(A)') " || Recordpoints Evaluation Tool||" 
+SWRITE(UNIT_stdOut,'(A)') " ||=============================||"
+SWRITE(UNIT_stdOut,'(A)') " || Recordpoints Evaluation Tool||"
 SWRITE(UNIT_stdOut,'(A)') " ||=============================||"
 
 
@@ -77,14 +77,14 @@ IF(doPrintHelp.LE.0)THEN
     CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: evalrec [parameter.ini] RPDefFile.h5 statefile1.h5...statefileN.h5 or evalrec --help'// &
     '[option/section name] to print help for a single parameter, parameter sections or all parameters.')
   END IF
-  
+
   iArg=1
   ParameterFile='NOT SET'
   IF(STRICMP(GetFileExtension(Args(iArg)), "ini"))THEN
     ParameterFile = Args(iArg)
     iArg=iArg+1
   END IF
-  
+
   RPFile=Args(iArg)
   isValid = ISVALIDHDF5FILE(RPFile,FileType=FileType)
   IF(isValid.AND.STRICMP(FileType,'RecordPoints'))THEN
@@ -92,12 +92,12 @@ IF(doPrintHelp.LE.0)THEN
   ELSE
     CALL CollectiveStop(__STAMP__,'ERROR: No record point definition file provided.')
   END IF
-  
+
   isValid = ISVALIDHDF5FILE(Args(iArg),FileType=FileType)
   IF(isValid.AND.STRICMP(FileType,'State'))THEN
     RestartFile=Args(iArg)
     IF(STRICMP(ParameterFile,'NOT SET'))THEN
-      ParameterFile = ".flexi.ini" 
+      ParameterFile = ".flexi.ini"
       CALL ExtractParameterFile(Args(iArg), ParameterFile, userblockFound)
       IF (.NOT.userblockFound)&
         CALL CollectiveStop(__STAMP__, "No userblock provided either by user or state file "//TRIM(RestartFile))

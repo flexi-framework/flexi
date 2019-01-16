@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -18,7 +18,7 @@
 !> \brief Contains the BR1 lifting procedures (initialization and lifting operator) for computing the lifted solution gradients
 !> according to Bassi & Rebay 1997. The lifted gradients are required for the viscous fluxes.
 !>
-!> Local gradients of the DG polynomial are not well suited to compute the viscous fluxes due to their discontinuous nature. 
+!> Local gradients of the DG polynomial are not well suited to compute the viscous fluxes due to their discontinuous nature.
 !> Instead, modified gradients \f$ Q \approx \nabla_x U \f$ are introduced and this equation is discretized using the DG method.
 !> The equation for the gradients can be discretized in the weak or the strong form, which implies integration by parts
 !> once (weak) or twice (strong), see "On the Quadrature and Weak Form Choices in Collocation Type Discontinuous Galerkin Spectral
@@ -55,7 +55,7 @@ PUBLIC::DefineParametersLifting,InitLifting,Lifting,FinalizeLifting
 CONTAINS
 
 !==================================================================================================================================
-!> Define parameters 
+!> Define parameters
 !==================================================================================================================================
 SUBROUTINE DefineParametersLifting()
 ! MODULES
@@ -153,15 +153,15 @@ END SUBROUTINE InitLifting
 !> This routine will be called after the current solution U has been prolonged to the element faces.
 !> To compute the lifted gradients of the solution the following steps are taken:
 !> - Compute and communicate the surface fluxes on the mpi interface, do this first to use latency hiding. The fluxes will be
-!>   temporarily stored in the gradUxyz_master arrays. Surface fluxes are different if strong or weak form is used.   
+!>   temporarily stored in the gradUxyz_master arrays. Surface fluxes are different if strong or weak form is used.
 !> - Compute the volume integral. The gradients will also get nullified in this routine.
-!>   There are different versions of the VolInt routine depending on the usage of the conservative (weak or strong) 
-!>   or non conservative (strong only) form. 
-!> - The surface fluxes for all remaining sides (boundaries and inner) will be computed. 
+!>   There are different versions of the VolInt routine depending on the usage of the conservative (weak or strong)
+!>   or non conservative (strong only) form.
+!> - The surface fluxes for all remaining sides (boundaries and inner) will be computed.
 !> - The surface integral is performed, first for all inner and boundary sides. Then the communication of the fluxes is finished
 !>   and the surface integral of the remaining sides is performed.
 !>   In the surface integral there is a distinction between weak and strong formulation. The fluxes for the strong form are
-!>   different on the slave or master sides since we substract the inner solution, this is accounted for in the SurfInt routine. 
+!>   different on the slave or master sides since we substract the inner solution, this is accounted for in the SurfInt routine.
 !> - The gradients are transformed back to physical space to be used by the DG routines.
 !> - The computed volume gradients are prolonged to the surfaces at the end of the routine.
 !==================================================================================================================================
@@ -223,7 +223,7 @@ CALL Lifting_FillFlux(     UPrim_master,UPrim_slave,      gradUz_slave,doMPISide
 ! at this point BC, inner and MPI MINE are filled
 CALL Lifting_FillFlux_NormVec(gradUz_slave,gradUx_master,gradUy_master,gradUz_master,doMPISides=.FALSE.)
 
-! Attention: we only have one Flux (gradUx/y/z_master) for the Lifting 
+! Attention: we only have one Flux (gradUx/y/z_master) for the Lifting
 !            => input it to Flux_Mortar for both fluxes (master/slave)
 CALL Flux_MortarPrim(gradUx_master,gradUx_master,doMPISides=.FALSE.,weak=doWeakLifting)
 CALL Flux_MortarPrim(gradUy_master,gradUy_master,doMPISides=.FALSE.,weak=doWeakLifting)
@@ -242,7 +242,7 @@ CALL Lifting_SurfInt(PP_N,gradUz_master,gradUz,.FALSE.,L_hatMinus,L_hatPlus,weak
 ! Complete send / receive
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Flux)
 CALL Lifting_FillFlux_NormVec(gradUz_slave,gradUx_master,gradUy_master,gradUz_master,doMPISides=.TRUE.)
-! Attention: we only have one Flux (gradUx/y/z_master) for the Lifting 
+! Attention: we only have one Flux (gradUx/y/z_master) for the Lifting
 !            => input it to Flux_Mortar for both fluxes (master/slave)
 CALL Flux_MortarPrim(gradUx_master,gradUx_master,doMPISides=.TRUE.,weak=doWeakLifting)
 CALL Flux_MortarPrim(gradUy_master,gradUy_master,doMPISides=.TRUE.,weak=doWeakLifting)

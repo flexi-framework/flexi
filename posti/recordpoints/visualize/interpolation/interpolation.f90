@@ -42,8 +42,8 @@ END INTERFACE
 
 PUBLIC :: InitInterpolation
 PUBLIC :: InterpolateEquiTime
-PUBLIC :: CalcTimeAvg             
-PUBLIC :: CalcFluctuations        
+PUBLIC :: CalcTimeAvg
+PUBLIC :: CalcFluctuations
 PUBLIC :: FinalizeInterpolation
 !===================================================================================================================================
 
@@ -93,7 +93,7 @@ IF(equiTimeSpacing) THEN
   nSamples_out=nSamples_min
   dt_out = (RPTime(nSamples_global)-RPTime(1))/REAL(nSamples_out-1)
   TEnd=RPTime(nSamples_global)
- 
+
   IF(dt_out.LE.dtMin) THEN
     WRITE(UNIT_StdOut,'(A)')'WARNING: Equidistant sampling time step is lower than or equal to the input time step!!!'
   END IF
@@ -113,7 +113,7 @@ END SUBROUTINE InitInterpolation
 
 
 !===================================================================================================================================
-!> Interpolate the RP data on equidistant time grid            
+!> Interpolate the RP data on equidistant time grid
 !===================================================================================================================================
 SUBROUTINE InterpolateEquiTime()
 ! MODULES
@@ -164,7 +164,7 @@ DO iSample=2,nSamples_out
     IF(Time_left .LE. Time) EXIT
     iSample_left=iSample_left -1
   END DO
-  ! linear interpolation 
+  ! linear interpolation
   RPData_right(:,:)=RPData_tmp(:,:,iSample_right)
   RPData_left(:,:)=RPData_tmp(:,:,iSample_left)
   RPData(:,:,iSample) = RPData_left+(RPData_right-RPData_left)*(Time-Time_left)/(Time_right-Time_left)

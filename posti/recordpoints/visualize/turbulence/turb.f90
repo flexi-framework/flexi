@@ -35,7 +35,7 @@ CONTAINS
 !===================================================================================================================================
 SUBROUTINE Turbulence()
 ! MODULES
-USE MOD_Globals              
+USE MOD_Globals
 USE MOD_RPData_Vars            ,ONLY: RPTime,RPData
 USE MOD_RPSetVisuVisu_Vars     ,ONLY: nRP_global
 USE MOD_OutputRPVisu_Vars      ,ONLY: nSamples_out
@@ -51,9 +51,9 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                         :: iSample , iVar,iRP
 INTEGER                         :: nSamples_spec
-INTEGER(KIND=8)                 :: plan  
-COMPLEX                         :: in(nSamples_out),out(nSamples_out) 
-REAL                            :: dt_equi , PI , df 
+INTEGER(KIND=8)                 :: plan
+COMPLEX                         :: in(nSamples_out),out(nSamples_out)
+REAL                            :: dt_equi , PI , df
 REAL , ALLOCATABLE              :: E_kineticSpec(:,:)
 REAL , ALLOCATABLE              :: velAbs(:,:) , velAbs_avg(:) , density_avg(:) , kk(:,:) , disRate(:,:) , epsilonMean(:,:)
 REAL , ALLOCATABLE              :: nu0(:) , eta(:) , etaK(:,:)
@@ -83,7 +83,7 @@ nSamples_spec=INT((nSamples_out-1)/2)+1
 IF(cutoffFreq.NE.-999)THEN
   WRITE(UNIT_stdOut,'(A,F16.7)') '  User defined Cutoff Frequency:',cutoffFreq
   nSamples_spec=NINT(cutoffFreq/dF)
-END IF  
+END IF
 WRITE(UNIT_stdOut,'(A,I8)') '    No. spectrum output samples FFT:',nSamples_spec
 ALLOCATE(vel_spec(1:3,nRP_global,nSamples_spec))
 ALLOCATE(RPData_freq(nSamples_spec))
@@ -115,21 +115,21 @@ ALLOCATE(velAbs_avg(nRP_global))
 ALLOCATE(density_avg(nRP_global))
 ALLOCATE(nu0(nRP_global))
 ALLOCATE(eta(nRP_global))
- 
+
 E_kineticSpec = 0.5*(vel_spec(1,:,:)**2 + vel_spec(2,:,:)**2 + vel_spec(3,:,:)**2 )
 !write(*,*)'E_kin',E_kineticSpec
 !RPData_spec(Prim%IndGlobal(13),:,:)=E_kineticSpec(:,:)
 !uAvg=(RPDataTimeAvg_out(Prim%IndGlobal(1))**2+RPDataTimeAvg_out(Prim%IndGlobal(2))+RPDataTimeAvg_out(Prim%IndGlobal(3)))
 
 !Calculate mean transport velocity, density
-dt_equi = (RPTime(nSamples_out)-RPTime(1))/nSamples_out 
-velAbs=SQRT(velPrim(1,:,:)**2+velPrim(2,:,:)**2+velPrim(3,:,:)**2)  
+dt_equi = (RPTime(nSamples_out)-RPTime(1))/nSamples_out
+velAbs=SQRT(velPrim(1,:,:)**2+velPrim(2,:,:)**2+velPrim(3,:,:)**2)
 velAbs_Avg=0.
 density_avg = 0.
 DO iSample=2,nSamples_out
   velAbs_avg  = velAbs_avg  + 0.5*dt_equi*(velAbs(:,iSample)+velAbs(:,iSample-1))
-  density_avg = density_avg + 0.5*dt_equi*(RPData(1,:,iSample)+RPData(1,:,iSample-1))                                
-END DO 
+  density_avg = density_avg + 0.5*dt_equi*(RPData(1,:,iSample)+RPData(1,:,iSample-1))
+END DO
 velAbs_Avg  = velAbs_Avg /(RPTime(nSamples_out)-RPTime(1))
 density_Avg = density_Avg/(RPTime(nSamples_out)-RPTime(1))
 
@@ -144,7 +144,7 @@ nu0=Mu0/density_avg
 
 DO iSample=1,nSamples_spec
   disRate(:,iSample) = E_kineticSpec(:,iSample)*kk(:,iSample)**2*2*nu0(:)
-END DO 
+END DO
 
 epsilonMean=0.
 DO iSample=2,nSamples_spec
@@ -167,7 +167,7 @@ VarNameTurb(4) = 'Eta_K'
 VarNameTurb(5) = 'Wavenumber K'
 
 ALLOCATE(RPData_turb(1:nVar_turb,nRP_global,nSamples_spec))
-RPData_turb(1,:,:) = E_kineticSpec(:,:) 
+RPData_turb(1,:,:) = E_kineticSpec(:,:)
 RPData_turb(2,:,:) = disRate(:,:)
 RPData_turb(3,:,:) = epsilonMean(:,:)
 RPData_turb(4,:,:) = etaK(:,:)
@@ -192,7 +192,7 @@ VarNameTurb(2) = 'MeanDissipation'
 
 ALLOCATE(RPData_turb_avg(1:nVar_turb,nRP_global))
 RPData_turb_avg(1,:) = eta
-RPData_turb_avg(2,:) = epsilonMean(:,nSamples_spec) 
+RPData_turb_avg(2,:) = epsilonMean(:,nSamples_spec)
 
 ! Output Time Average
 WRITE(UNIT_StdOut,'(132("-"))')

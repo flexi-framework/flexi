@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -38,7 +38,7 @@ CONTAINS
 !> 1D interpolation operators M_0_1,M_0_2 are built locally per polynomial degree.
 !>
 !> Already existing surface metrics are overwritten, metrics for small sides are built from
-!> big (master) side, i.e. all small sides belonging to a mortar interface are slave sides 
+!> big (master) side, i.e. all small sides belonging to a mortar interface are slave sides
 !> (with inward pointing normal vector). NOTE THAT THIS IS NOT THE CASE FOR MPI_YOUR MORTAR SIDES!
 !> In an MPI setting if the big sides are not present on a CPU and this CPU has small master sides
 !> they are not rebuilt and fluxes need to be rotated at the big mortar.
@@ -146,7 +146,7 @@ CASE(2) !1->2 in eta
   END DO !jNb
 
 CASE(3) !1->2 in xi
-#endif /* PP_dim == 3 */  
+#endif /* PP_dim == 3 */
   DO iNb=1,2
     IF(MortarInfo(MI_FLIP,iNb,SideIDMortar).GT.0) CYCLE !no slave sides (MPI)
     nbSideID(iNb)=MortarInfo(MI_SIDEID,iNb,SideIDMortar)

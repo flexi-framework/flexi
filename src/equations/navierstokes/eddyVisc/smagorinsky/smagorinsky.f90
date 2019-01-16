@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -25,11 +25,16 @@ INTERFACE InitSmagorinsky
    MODULE PROCEDURE InitSmagorinsky
 END INTERFACE
 
+INTERFACE Smagorinsky
+   MODULE PROCEDURE Smagorinsky_Point
+   MODULE PROCEDURE Smagorinsky_Volume
+END INTERFACE
+
 INTERFACE FinalizeSmagorinsky
    MODULE PROCEDURE FinalizeSmagorinsky
 END INTERFACE
 
-PUBLIC::InitSmagorinsky,Smagorinsky,FinalizeSmagorinsky
+PUBLIC::InitSmagorinsky, Smagorinsky_Volume, FinalizeSmagorinsky
 !===================================================================================================================================
 
 CONTAINS
@@ -40,19 +45,19 @@ CONTAINS
 SUBROUTINE InitSmagorinsky()
 ! MODULES
 USE MOD_Globals
-USE MOD_PreProc                
-USE MOD_EddyVisc_Vars              
+USE MOD_PreProc
+USE MOD_EddyVisc_Vars
 USE MOD_ReadInTools        ,ONLY: GETREAL,GETLOGICAL
 USE MOD_Interpolation_Vars ,ONLY: InterpolationInitIsDone,wGP
-USE MOD_Mesh_Vars          ,ONLY: MeshInitIsDone,nElems,sJ
-USE MOD_Testcase_Vars      ,ONLY: testcase
+USE MOD_Mesh_Vars          ,ONLY: MeshInitIsDone,nElems,sJ,Elem_xGP
+USE MOD_EOS_Vars           ,ONLY: mu0
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER :: i,iElem,j,k
-REAL    :: CellVol
+REAL    :: CellVol, yPlus
 !===================================================================================================================================
 IF(((.NOT.InterpolationInitIsDone).AND.(.NOT.MeshInitIsDone)).OR.SmagorinskyInitIsDone)THEN
   CALL CollectiveStop(__STAMP__,&
@@ -63,24 +68,30 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT SMAGORINSKY...'
 
 ! Read the variables used for LES model
 ! Smagorinsky model
-CS     = GETREAL('CS')
-IF(testcase.EQ."channel") THEN
-  ! Do Van Driest style damping or not
-  VanDriest = GETLOGICAL('VanDriest','.FALSE.')
-END IF
+CS        = GETREAL('CS')
+! Do Van Driest style damping or not (only for channel!)
+VanDriest = GETLOGICAL('VanDriest','.FALSE.')
 
+ALLOCATE(damp(1,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+damp = 1.
+
+! Smago: (damp*CS*deltaS)**2 * S_eN * dens
+! Precompute first term and store in damp
 ! Calculate the filter width deltaS: deltaS=( Cell volume )^(1/3) / ( PP_N+1 )
-
-DO iElem=1,nElems                                        
+DO iElem=1,nElems
   CellVol = 0.
-  DO i=0,PP_N
-    DO j=0,PP_N
-      DO k=0,PP_N
-        CellVol = CellVol +wGP(i)*wGP(j)*wGP(k)/sJ(i,j,k,iElem,0)
-      END DO
-    END DO
-  END DO
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+    CellVol = CellVol +wGP(i)*wGP(j)*wGP(k)/sJ(i,j,k,iElem,0)
+    IF (VanDriest)THEN
+      yPlus = (1. - ABS(Elem_xGP(2,i,j,k,iElem))) / mu0   ! y-dir
+      damp(1,i,j,k,iElem) = 1. - EXP(-yPlus/26.) ! Van Driest damping factor
+    END IF
+  END DO; END DO; END DO
   DeltaS(iElem) = ( CellVol)**(1./3.)  / (REAL(PP_N)+1.)
+
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+    damp(1,i,j,k,iElem) = (damp(1,i,j,k,iElem) * CS * deltaS(iElem))**2
+  END DO; END DO; END DO
 END DO
 
 SmagorinskyInitIsDone=.TRUE.
@@ -89,44 +100,56 @@ SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitSmagorinsky
 
 !===================================================================================================================================
-!> Compute Smagorinsky Eddy-Visosity at a given point in the volume
+!> Compute Smagorinsky Eddy-Visosity
 !===================================================================================================================================
-SUBROUTINE Smagorinsky(iElem,i,j,k,muSGS)
+PPURE SUBROUTINE Smagorinsky_Point(gradUx,gradUy,gradUz,dens,damp,muSGS)
 ! MODULES
-USE MOD_PreProc
-USE MOD_EddyVisc_Vars,     ONLY:deltaS,CS,VanDriest,muSGSmax
-USE MOD_EOS_Vars,          ONLY:mu0
-USE MOD_Mesh_Vars,         ONLY:Elem_xGP
-USE MOD_Lifting_Vars,      ONLY:gradUx,gradUy,gradUz
-USE MOD_DG_Vars,           ONLY:U
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)                        :: iElem             !< index of current element
-!> indices of the current volume point
-INTEGER,INTENT(IN)                        :: i,j,k
-REAL,INTENT(INOUT)                        :: muSGS             !< local SGS viscosity
+!> Gradients in x,y,z directions
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: gradUx, gradUy, gradUz
+REAL                       ,INTENT(IN)  :: dens, damp
+REAL                       ,INTENT(OUT) :: muSGS
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                :: S_eN
-REAL                :: yPlus,damp
+REAL                                    :: S_eN
 !===================================================================================================================================
 ! Already take the square root of 2 into account here
-S_eN = 2*(gradUx(2,i,j,k,iElem)**2. + gradUy(3,i,j,k,iElem)**2. + gradUz(4,i,j,k,iElem)**2.)
-S_eN = S_eN + ( gradUy(2,i,j,k,iElem) + gradUx(3,i,j,k,iElem) )**2.
-S_eN = S_eN + ( gradUz(2,i,j,k,iElem) + gradUx(4,i,j,k,iElem) )**2.
-S_eN = S_eN + ( gradUz(3,i,j,k,iElem) + gradUy(4,i,j,k,iElem) )**2.
-S_eN = SQRT(S_eN)
+S_eN = SQRT ( 2.*(gradUx(2)**2 + gradUy(3)**2 + gradUz(4)**2) &
+              + ( gradUy(2) + gradUx(3) )**2                    &
+              + ( gradUz(2) + gradUx(4) )**2                    &
+              + ( gradUz(3) + gradUy(4) )**2 )
 ! Smagorinsky model
-IF(.NOT.VanDriest)THEN
-  damp=1.
-ELSE
-  yPlus = (1. - ABS(Elem_xGP(2,i,j,k,iElem)))/mu0
-  damp = 1. - EXP(-yPlus/26.) ! Van Driest damping factor
-END IF
-muSGS= (damp**2*CS*deltaS(iElem))**2. * S_eN*U(1,i,j,k,iElem)
-muSGSmax(iElem) = MAX(muSGS,muSGSmax(iElem))
-END SUBROUTINE Smagorinsky
+! Smago: (damp * CS * deltaS)**2 * S_eN * rho
+! we store the first constant term in damp
+muSGS = damp * S_eN * dens
+END SUBROUTINE Smagorinsky_Point
+
+!===================================================================================================================================
+!> Compute Smagorinsky Eddy-Visosity for the volume
+!===================================================================================================================================
+SUBROUTINE Smagorinsky_Volume()
+! MODULES
+USE MOD_PreProc
+USE MOD_Mesh_Vars,         ONLY: nElems
+USE MOD_EddyVisc_Vars,     ONLY: damp, muSGS
+USE MOD_Lifting_Vars,      ONLY: gradUx, gradUy, gradUz
+USE MOD_DG_Vars,           ONLY: U
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER             :: i,j,k,iElem
+!===================================================================================================================================
+DO iElem = 1,nElems
+  DO k = 0,PP_NZ; DO j = 0,PP_N; DO i = 0,PP_N
+    CALL Smagorinsky_Point(gradUx(:,i,j,k,iElem), gradUy(:,i,j,k,iElem), gradUz(:,i,j,k,iElem), &
+                                 U(1,i,j,k,iElem),   damp(1,i,j,k,iElem),  muSGS(1,i,j,k,iElem))
+  END DO; END DO; END DO ! i,j,k
+END DO
+END SUBROUTINE Smagorinsky_Volume
 
 !===============================================================================================================================
 !> Deallocate arrays and finalize variables used by Smagorinsky SGS model

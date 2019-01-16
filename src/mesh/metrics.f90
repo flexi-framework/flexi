@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -20,13 +20,13 @@
 !>     Metrics_fTilde(n=1:3,i,j,k,iElem)=Ja_n^1
 !>     Metrics_gTilde(n=1:3,i,j,k,iElem)=Ja_n^2
 !>     Metrics_hTilde(n=1:3,i,j,k,iElem)=Ja_n^3
-!> 
+!>
 !>   Per Element we do:
 !>   1.) a.) Preparation: the geometry (equidistant nodal basis, NGeo+1 points/dir) is interpolated to a high precision
 !>           mapping X_n(xi_i) using a Chebyshev-Lobatto basis and stored in XCL_NGeo(1:3,i,j,k,iElem) i,j,k=[0:NGeo]
 !>       b.) Computing the gradients: compute the derivative of the mapping XCL_NGeo in \f$ (xi_1,xi_2,xi_3) \f$ direction,
 !>           using a polynomial derivative Matrix at degree NGeo.
-!>       c.) Computing the Jacobian: compute Jacobian JRef at a degree of NGeoRef=3*NGeo (exact). 
+!>       c.) Computing the Jacobian: compute Jacobian JRef at a degree of NGeoRef=3*NGeo (exact).
 !>                                   For this gradients have to be interpolated to NGeoRef first.
 !>                                   Then project JRef down to degree N. Finally check for negative Jacobians.
 !>       d.) For computing Ja the gradients at degree N are required: if N>=NGeo directly interpolate dXCL_NGeo to dXCL_N,
@@ -42,7 +42,7 @@
 !>       e.) store Ja_n in the Metrics arrays
 !>
 !>   3.) Compute the surface metrics (normal/tangential vectors, surface area) from volume metrics for each side.
-!> 
+!>
 !>  Special case if non-conforming meshes with octree mappings are used. Then compute ALL volume quantities on tree (macro element)
 !>  level and interpolate down to small actual elements. This will ensure watertight meshes and free-stream preservation.
 !==================================================================================================================================
@@ -249,7 +249,7 @@ REAL    :: xi0(3),dxi(3),length(3)
 #if USE_MPI
 INTEGER           :: MPIRequest_Geo(nNbProcs,2)
 REAL,ALLOCATABLE  :: Geo(:,:,:,:,:)
-#endif 
+#endif
 !==================================================================================================================================
 ! Prerequisites
 Metrics_fTilde=0.
@@ -435,7 +435,7 @@ DO iElem=1,nElems
     END DO; END DO; END DO !i,j,k=0,N
     ! Metrics are the curl of R:  Ja(:)^nn = -(curl R_CL(:,nn))
     ! JaCL_N(dd,nn)= -[d/dxi_(dd+1) RCL(dd+2,nn) - d/dxi_(dd+2) RCL(dd+1,nn) ]
-    !              =   d/dxi_(dd+2) RCL(dd+1,nn) - d/dxi_(dd+1) RCL(dd+2,nn) 
+    !              =   d/dxi_(dd+2) RCL(dd+1,nn) - d/dxi_(dd+1) RCL(dd+2,nn)
     DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
       ASSOCIATE(JaCL => JaCL_N(:,:,i,j,k))
       DO q=0,PP_N
@@ -536,7 +536,7 @@ Geo(8:10,:,:,:,:)=TangVec2(:,:,0:PP_NZ,:,firstMPISide_MINE:nSides)
 MPIRequest_Geo=MPI_REQUEST_NULL
 CALL StartReceiveMPIData(Geo,10*(PP_N+1)**(PP_dim-1)*(FV_ENABLED+1),firstMPISide_MINE,nSides,MPIRequest_Geo(:,RECV),SendID=1) ! Receive YOUR / Geo: master -> slave
 CALL StartSendMPIData(   Geo,10*(PP_N+1)**(PP_dim-1)*(FV_ENABLED+1),firstMPISide_MINE,nSides,MPIRequest_Geo(:,SEND),SendID=1) ! SEND MINE / Geo: master -> slave
-CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Geo) 
+CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Geo)
 SurfElem  (:,0:PP_NZ,:,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(1   ,:,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
 NormVec (:,:,0:PP_NZ,:,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(2:4 ,:,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
 TangVec1(:,:,0:PP_NZ,:,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(5:7 ,:,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
@@ -551,7 +551,7 @@ END SUBROUTINE CalcMetrics
 !==================================================================================================================================
 !> Prepares computation of the faces' normal, tangential vectors, surface area and Gauss points from volume metrics.
 !> Input is JaCL_N, the 3D element metrics on Cebychev-Lobatto points.
-!> For each side the volume metrics are interpolated to the surface and rotated into the side reference frame. 
+!> For each side the volume metrics are interpolated to the surface and rotated into the side reference frame.
 !==================================================================================================================================
 SUBROUTINE CalcSurfMetrics(Nloc,FVE,JaCL_N,XCL_N,Vdm_CLN_N,iElem,NormVec,TangVec1,TangVec2,SurfElem,Face_xGP,Ja_Face)
 ! MODULES
@@ -598,9 +598,9 @@ REAL               :: tmp2(       3,0:Nloc,0:ZDIM(Nloc))
 
 #if PP_dim == 3
 DO iLocSide=1,6
-#else    
+#else
 DO iLocSide=2,5
-#endif    
+#endif
   flip = ElemToSide(E2S_FLIP,iLocSide,iElem)
   IF(flip.NE.0) CYCLE ! only master sides with flip=0
   SideID=ElemToSide(E2S_SIDE_ID,iLocSide,iElem)
@@ -658,7 +658,7 @@ DO iLocSide=2,5
                          NormVec(:,:,:,0,SideID),TangVec1(:,:,:,0,SideID),&
                          TangVec2(:,:,:,0,SideID),SurfElem(:,:,0,SideID))
 
-                     
+
 #if PP_dim == 2
   IF (iLocSide.EQ.XI_MINUS) THEN
     nMortars=MERGE(2,0,MortarType(1,sideID).EQ.2 .OR. MortarType(1,sideID).EQ.3)
@@ -717,7 +717,7 @@ DO q=0,ZDIM(Nloc); DO p=0,Nloc
   SurfElem(  p,q) = SQRT(SUM(Ja_Face(NormalDir,1:PP_dim,p,q)**2))
   NormVec( :,p,q) = NormalSign*Ja_Face(NormalDir,:,p,q)/SurfElem(p,q)
   ! For two-dimensional computations, the normal direction will be 1 or 2. For the tangential direction
-  ! we then set 2 or 1 accordingly. 
+  ! we then set 2 or 1 accordingly.
   TangVec1(:,p,q) = Ja_Face(TangDir,:,p,q) - SUM(Ja_Face(TangDir,:,p,q)*NormVec(:,p,q)) &
                     *NormVec(:,p,q)
   TangVec1(:,p,q) = TangVec1(:,p,q)/SQRT(SUM(TangVec1(:,p,q)**2))

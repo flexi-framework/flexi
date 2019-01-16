@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -61,11 +61,11 @@ PUBLIC::CARRAY
 
 CONTAINS
 
-SUBROUTINE CreateConnectivity(NVisu,nElems,nodeids,dim,DGFV) 
+SUBROUTINE CreateConnectivity(NVisu,nElems,nodeids,dim,DGFV)
 USE ISO_C_BINDING
 USE MOD_Globals
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)                       :: NVisu
 INTEGER,INTENT(IN)                       :: nElems
 INTEGER,ALLOCATABLE,TARGET,INTENT(INOUT) :: nodeids(:)        !< stores the connectivity
@@ -94,7 +94,7 @@ END IF
 
 NVisu_elem = (NVisu+1)**dim
 NVisu_p1_2 = (NVisu+1)**2
-  
+
 nVTKCells  = ((NVisu+DGFV)/(1+DGFV))**dim*nElems
 SDEALLOCATE(nodeids)
 ALLOCATE(nodeids((2**dim)*nVTKCells))
@@ -209,7 +209,7 @@ SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='NO')"   WRITE ",dim,"D DATA TO VTX XML BI
 
 ! get total number of elements on all processors
 #if USE_MPI
-CALL MPI_GATHER(nElems,1,MPI_INTEGER,nElems_glob,1,MPI_INTEGER,0,MPI_COMM_WORLD,iError)
+CALL MPI_GATHER(nElems,1,MPI_INTEGER,nElems_glob,1,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
 #else
 nElems_glob(0) = nElems
 #endif
@@ -303,16 +303,16 @@ DO iVal=1,nVal
     DO iProc=1,nProcessors-1
       nElems_proc=nElems_glob(iProc)
       IF (nElems_proc.GT.0) THEN
-        CALL MPI_RECV(buf(:,:,:,1:nElems_proc),nElems_proc*NVisu_elem,MPI_DOUBLE_PRECISION,iProc,0,MPI_COMM_WORLD,MPIstatus,iError)
+        CALL MPI_RECV(buf(:,:,:,1:nElems_proc),nElems_proc*NVisu_elem,MPI_DOUBLE_PRECISION,iProc,0,MPI_COMM_FLEXI,MPIstatus,iError)
         WRITE(ivtk) REAL(buf(:,:,:,1:nElems_proc),4)
       END IF
     END DO !iProc
   ELSE
     IF (nElems.GT.0) THEN
       IF (nValAtLastDimension_loc) THEN
-        CALL MPI_SEND(Value(:,:,:,:,iVal),nElems*NVisu_elem,MPI_DOUBLE_PRECISION, 0,0,MPI_COMM_WORLD,iError)
+        CALL MPI_SEND(Value(:,:,:,:,iVal),nElems*NVisu_elem,MPI_DOUBLE_PRECISION, 0,0,MPI_COMM_FLEXI,iError)
       ELSE
-        CALL MPI_SEND(Value(iVal,:,:,:,:),nElems*NVisu_elem,MPI_DOUBLE_PRECISION, 0,0,MPI_COMM_WORLD,iError)
+        CALL MPI_SEND(Value(iVal,:,:,:,:),nElems*NVisu_elem,MPI_DOUBLE_PRECISION, 0,0,MPI_COMM_FLEXI,iError)
       END IF
     END IF
 #endif /*USE_MPI*/
@@ -335,13 +335,13 @@ IF(MPIRoot)THEN
   DO iProc=1,nProcessors-1
     nElems_proc=nElems_glob(iProc)
     IF (nElems_proc.GT.0) THEN
-      CALL MPI_RECV(buf2(:,:,:,:,1:nElems_proc),nElems_proc*NVisu_elem*3,MPI_DOUBLE_PRECISION,iProc,0,MPI_COMM_WORLD,MPIstatus,iError)
+      CALL MPI_RECV(buf2(:,:,:,:,1:nElems_proc),nElems_proc*NVisu_elem*3,MPI_DOUBLE_PRECISION,iProc,0,MPI_COMM_FLEXI,MPIstatus,iError)
       WRITE(ivtk) REAL(buf2(:,:,:,:,1:nElems_proc),4)
     END IF
   END DO !iProc
 ELSE
   IF (nElems.GT.0) THEN
-    CALL MPI_SEND(Coord(:,:,:,:,:),nElems*NVisu_elem*3,MPI_DOUBLE_PRECISION, 0,0,MPI_COMM_WORLD,iError)
+    CALL MPI_SEND(Coord(:,:,:,:,:),nElems*NVisu_elem*3,MPI_DOUBLE_PRECISION, 0,0,MPI_COMM_FLEXI,iError)
   END IF
 #endif /*USE_MPI*/
 END IF !MPIroot
@@ -370,7 +370,7 @@ IF(MPIROOT)THEN
     ElemType = 9  ! VTK_QUAD
   ELSE IF (dim.EQ.1) THEN
     ElemType = 3  ! VTK_LINE
-  END IF  
+  END IF
   WRITE(ivtk) nBytes
   WRITE(ivtk) (ElemType,iElem=1,nVTKCells)
 
@@ -395,15 +395,15 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN) :: FileString     !< Output file name
-CHARACTER(LEN=*),INTENT(IN) :: FileString_DG  !< Filename of DG VTU file 
-CHARACTER(LEN=*),INTENT(IN) :: FileString_FV  !< Filename of FV VTU file 
+CHARACTER(LEN=*),INTENT(IN) :: FileString_DG  !< Filename of DG VTU file
+CHARACTER(LEN=*),INTENT(IN) :: FileString_FV  !< Filename of FV VTU file
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: ivtk
 CHARACTER(LEN=200) :: Buffer
 CHARACTER(LEN=1)   :: lf
 !===================================================================================================================================
-IF (MPIRoot) THEN                   
+IF (MPIRoot) THEN
   ! write multiblock file
   OPEN(NEWUNIT=ivtk,FILE=TRIM(FileString),ACCESS='STREAM')
   ! Line feed character
@@ -453,7 +453,7 @@ IF (nElems.EQ.0) THEN
   RETURN
 END IF
 SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='NO')"   WRITE ",dim,"D COORDS TO VTX XML BINARY (VTU) ARRAY..."
-! values and coords are already in the correct structure of VTK/Paraview 
+! values and coords are already in the correct structure of VTK/Paraview
 
 ! create connectivity
 CALL CreateConnectivity(NVisu,nElems,nodeids,dim,DGFV)
@@ -499,7 +499,7 @@ IF (nElems.EQ.0) THEN
 END IF
 SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='NO')"   WRITE ",dim,"D DATA TO VTX XML BINARY (VTU) ARRAY..."
 
-! values and coords are already in the correct structure of VTK/Paraview 
+! values and coords are already in the correct structure of VTK/Paraview
 ! set the sizes of the arrays
 values_out%len = nVal*(NVisu+1)**dim*nElems
 
@@ -538,7 +538,7 @@ ALLOCATE(VarNames_loc(255,nVarVisu))
 varnames_out%len  = nVarVisu*255
 IF (nVarVisu.GT.0) THEN
   varnames_out%data = C_LOC(VarNames_loc(1,1))
-  
+
   DO iVar=1,nVarTotal
     IF (mapVisu(iVar).GT.0) THEN
       DO i=1,255

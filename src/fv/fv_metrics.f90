@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -38,7 +38,7 @@ PUBLIC::FinalizeFV_Metrics
 CONTAINS
 
 !==================================================================================================================================
-!> Compute the remaining metric terms for FV subcells, that are not computed in metrics.f90. 
+!> Compute the remaining metric terms for FV subcells, that are not computed in metrics.f90.
 !> Normal, tangential vectors, SurfElems, ... for FV subcells.
 !==================================================================================================================================
 SUBROUTINE InitFV_Metrics()
@@ -73,7 +73,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 INTEGER                                :: i,j,k,l,iSide,iElem,iLocSide
 INTEGER                                :: dd,NormalDir,TangDir
 REAL                                   :: NormalSign
@@ -110,8 +110,8 @@ SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') '  Build Metrics ...'
 ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
 ! ---------------------------------
-! |       |       |       |       | 
-! |<->.   |<->.   |<->.   |<->.   |    FV_dx_XI_L: left distance between Face and center of FV subcell 
+! |       |       |       |       |
+! |<->.   |<->.   |<->.   |<->.   |    FV_dx_XI_L: left distance between Face and center of FV subcell
 ! |       |       |       |       |                (see Attention to storage order below!)
 ! ---------------------------------
 ! |       |       |       |       |
@@ -119,20 +119,20 @@ SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') '  Build Metrics ...'
 ! |       |       |       |       |                (see Attention to storage order below!)
 ! ---------------------------------
 ! |       |       |       |       |
-! |   .<----->.<----->.<----->.   |    FV_dx_XI: distance between centers of FV subcells 
+! |   .<----->.<----->.<----->.   |    FV_dx_XI: distance between centers of FV subcells
 ! |       |       |       |       |              computed as FV_dx_XI_R(i-1) + FV_dx_XI_L(i)
 ! ---------------------------------
-! |       |       |       |       |    DG_dx_master/slave: distance from DG interface to first Gauss point  
-! |<->.   |   .   |   .   |   .<->|    FV_dx_master/slave: distance from DG interface to first center of FV subell 
+! |       |       |       |       |    DG_dx_master/slave: distance from DG interface to first Gauss point
+! |<->.   |   .   |   .   |   .<->|    FV_dx_master/slave: distance from DG interface to first center of FV subell
 ! |       |       |       |       |                        stored in Face-based coordinates
 ! ---------------------------------
 ! |       |       |       |       |
 ! |   .   |   .   |   .   |   .<------>.  FV_dx_Face: -both FV:        FV_dx_master + FV_dx_slave
-! |       |       |       |       |                   -mixed DG/FV:    FV_dx_master + DG_dx_slave 
+! |       |       |       |       |                   -mixed DG/FV:    FV_dx_master + DG_dx_slave
 ! ---------------------------------                                 or DG_dx_master + FV_dx_slave
 ! |       ^       ^       ^       |
 ! |   .   |   .   |   .   |   .   |    FV_SurfElemXi_sw: SurfElem of !inner! subcell faces (see Attention to storage order below!)
-! |       v       v       v       | 
+! |       v       v       v       |
 ! ---------------------------------
 ! |       |       |       |       |
 ! |   .   x   .   x   .   x   .   |    FV_NormVecXi/TangVec.Xi: normal/tangent vectors at !inner! subcell faces (positions x)
@@ -240,7 +240,7 @@ DO iElem=1,nElems
     CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_Gauss_FVboundary,Metrics_hTilde(:,:,j,k,iElem,0),JaVol(3,:,:,j,k))
   END DO; END DO ! j,k=0,PP_N
   DO l=1,PP_N
-    ! at every inner interface/slice between FV subcells in XI direction: 
+    ! at every inner interface/slice between FV subcells in XI direction:
     ! convert metrics in the other directions from DG to FV subcells
     DO dd=1,3
       CALL ChangeBasisSurf(3,PP_N,PP_N,FV_Vdm,JaVol(dd,1:3,l,0:PP_N,0:PP_NZ),FV_Ja_Face(dd,:,:,:))
@@ -264,7 +264,7 @@ DO iElem=1,nElems
     CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_Gauss_FVboundary,Metrics_hTilde(:,i,:,k,iElem,0),JaVol(3,:,i,:,k))
   END DO; END DO ! i,k=0,PP_N
   DO l=1,PP_N
-    ! at every inner interface/slice between FV subcells in ETA direction: 
+    ! at every inner interface/slice between FV subcells in ETA direction:
     ! convert metrics in the other directions from DG to FV subcells
     DO dd=1,3
       CALL ChangeBasisSurf(3,PP_N,PP_N,FV_Vdm,JaVol(dd,1:3,0:PP_N,l,0:PP_NZ),FV_Ja_Face(dd,:,:,:))
@@ -289,7 +289,7 @@ DO iElem=1,nElems
     CALL ChangeBasis1D(3,PP_N,PP_N+1,Vdm_Gauss_FVboundary,Metrics_hTilde(:,i,j,:,iElem,0),JaVol(3,:,i,j,:))
   END DO; END DO ! i,j=0,PP_N
   DO l=1,PP_N
-    ! at every inner interface/slice between FV subcells in ZETA direction: 
+    ! at every inner interface/slice between FV subcells in ZETA direction:
     ! convert metrics in the other directions from DG to FV subcells
     DO dd=1,3
       CALL ChangeBasisSurf(3,PP_N,PP_N,FV_Vdm,JaVol(dd,1:3,0:PP_N,0:PP_N,l),FV_Ja_Face(dd,:,:,:))
@@ -308,7 +308,7 @@ DO iElem=1,nElems
   !==================================================================
   ! Compute FV NormVec,TangVec,.. at inner cell boundaries...DONE
   !==================================================================
-END DO 
+END DO
 
 
 #if FV_RECONSTRUCT
@@ -323,19 +323,19 @@ DO iElem=1,nElems
   DO l=0,PP_N
     CALL ChangeBasisSurf(3,PP_N,PP_N,Vdm_CLN_FV, dXCL_N(1,:,l,:,:,iElem), FV_Path_XI  (:,l,:,:))
     CALL ChangeBasisSurf(3,PP_N,PP_N,Vdm_CLN_FV, dXCL_N(2,:,:,l,:,iElem), FV_Path_ETA (:,l,:,:))
-#if (PP_dim == 3)    
+#if (PP_dim == 3)
     CALL ChangeBasisSurf(3,PP_N,PP_N,Vdm_CLN_FV, dXCL_N(3,:,:,:,l,iElem), FV_Path_ZETA(:,l,:,:))
-#endif    
+#endif
   END DO ! i=0,PP_N
   DO q=0,PP_NZ; DO p=0,PP_N
     tmp2 = FV_Path_XI(:,:,p,q)
     CALL ChangeBasis1D(3,PP_N,PP_N,Vdm_CLN_GaussN, tmp2, FV_Path_XI(:,:,p,q))
     tmp2 = FV_Path_ETA(:,:,p,q)
     CALL ChangeBasis1D(3,PP_N,PP_N,Vdm_CLN_GaussN, tmp2, FV_Path_ETA(:,:,p,q))
-#if (PP_dim == 3)    
+#if (PP_dim == 3)
     tmp2 = FV_Path_ZETA(:,:,p,q)
     CALL ChangeBasis1D(3,PP_N,PP_N,Vdm_CLN_GaussN, tmp2, FV_Path_ZETA(:,:,p,q))
-#endif    
+#endif
   END DO; END DO! p,q=0,PP_N
 
   ! Calculate distances between FV subcells
@@ -347,8 +347,8 @@ DO iElem=1,nElems
     CALL Integrate_Path(PP_N,PP_N, xGP,wGP,wBary, x0,xN, FV_Path_ETA , FV_dx_ETA_L (:,:,l,iElem))
 #if (PP_dim == 3)
     CALL Integrate_Path(PP_N,PP_N, xGP,wGP,wBary, x0,xN, FV_Path_ZETA, FV_dx_ZETA_L(:,:,l,iElem))
-#endif    
-    
+#endif
+
     ! right
     xN = FV_BdryX(l+1)
     x0 = xN - (FV_BdryX(l+1) - FV_BdryX(l)) * 0.5
@@ -362,16 +362,16 @@ DO iElem=1,nElems
   ! build inverse distances (volumes)
   FV_sdx_XI  (:,:,:,iElem) = 1. / (FV_dx_XI_R  (:,:,0:PP_N-1,iElem) +  FV_dx_XI_L  (:,:,1:PP_N,iElem)) ! 1 / FV_dx_XI
   FV_sdx_ETA (:,:,:,iElem) = 1. / (FV_dx_ETA_R (:,:,0:PP_N-1,iElem) +  FV_dx_ETA_L (:,:,1:PP_N,iElem)) ! 1 / FV_dx_ETA
-#if PP_dim == 3  
+#if PP_dim == 3
   FV_sdx_ZETA(:,:,:,iElem) = 1. / (FV_dx_ZETA_R(:,:,0:PP_N-1,iElem) +  FV_dx_ZETA_L(:,:,1:PP_N,iElem)) ! 1 / FV_dx_ZETA
 #endif
 
   ! Calculate distance between first GaussPoint and interface
-#if PP_dim == 3  
+#if PP_dim == 3
   DO locSideID=1,6
-#else    
+#else
   DO locSideID=2,5
-#endif    
+#endif
     length=0.
     SideID = ElemToSide(E2S_SIDE_ID,locSideID,iElem)
     flip   = ElemToSide(E2S_FLIP,   locSideID,iElem)
@@ -418,7 +418,7 @@ END DO
 FV_Elems_master = 1 ! Force use of FV mortar matrices in U_Mortar routine
 #if USE_MPI
 MPIRequest=0
-! distances at MPI slave sides must be transmitted to master sides 
+! distances at MPI slave sides must be transmitted to master sides
 CALL U_Mortar1(FV_dx_master,FV_dx_slave,doMPISides=.TRUE.)
 CALL StartReceiveMPIData(FV_dx_slave, (PP_N+1)*(PP_NZ+1), 1,nSides,MPIRequest(:,SEND),SendID=2)
 CALL StartSendMPIData(   FV_dx_slave, (PP_N+1)*(PP_NZ+1), 1,nSides,MPIRequest(:,RECV),SendID=2)
@@ -444,11 +444,11 @@ END DO
 
 ! calculate distances of inner and MPI_MINE sides
 DO SideID=firstInnerSide,lastMPISide_MINE
-  ! master=FV, slave=DG 
+  ! master=FV, slave=DG
   FV_dx_Face(:,:,1) = DG_dx_slave(1,:,:,SideID) + FV_dx_master(1,:,:,SideID)
-  ! master=DG, slave=FV                                                                                
+  ! master=DG, slave=FV
   FV_dx_Face(:,:,2) = FV_dx_slave(1,:,:,SideID) + DG_dx_master(1,:,:,SideID)
-  ! master=FV, slave=FV                                                                                
+  ! master=FV, slave=FV
   FV_dx_Face(:,:,3) = FV_dx_slave(1,:,:,SideID) + FV_dx_master(1,:,:,SideID)
   ! precompute inverse
   FV_sdx_Face(:,:,:,SideID) = 1. / FV_dx_Face
@@ -468,7 +468,7 @@ DO iElem=1,nElems
     END DO ! j=0,PP_N
     FV_Metrics_fTilde_sJ(d,:,:,:,iElem)=FV_Metrics_fTilde_sJ(d,:,:,:,iElem)*sJ(:,:,:,iElem,1)
     FV_Metrics_gTilde_sJ(d,:,:,:,iElem)=FV_Metrics_gTilde_sJ(d,:,:,:,iElem)*sJ(:,:,:,iElem,1)
-#if (PP_dim == 3)    
+#if (PP_dim == 3)
     FV_Metrics_hTilde_sJ(d,:,:,:,iElem)=FV_w_inv*Metrics_hTilde(d,:,:,:,iElem,1)*&
         (FV_dx_ZETA_L(:,:,:,iElem)+FV_dx_ZETA_R(:,:,:,iElem))
     FV_Metrics_hTilde_sJ(d,:,:,:,iElem)=FV_Metrics_hTilde_sJ(d,:,:,:,iElem)*sJ(:,:,:,iElem,1)
@@ -493,7 +493,7 @@ SUBROUTINE Integrate_Path(Nloc2,Nloc,xGP,wGP,wBary,x0,xN,FV_Path_1D,FV_Length)
 USE MOD_Basis       ,ONLY: InitializeVandermonde
 USE MOD_ChangeBasis ,ONLY: ChangeBasis1D
 !----------------------------------------------------------------------------------------------------------------------------------
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: Nloc2                                     !< degree of path polynomial
 INTEGER,INTENT(IN) :: Nloc                                      !< number of points to compute (Nloc+1)**2
 REAL,INTENT(IN)    :: xGP(  0:Nloc2)                            !< parametric coords
@@ -520,7 +520,7 @@ DO q=0,ZDIM(Nloc); DO p=0,Nloc
   ! integrate path
   DO l=0,Nloc2
     FV_Length(p,q) = FV_Length(p,q) + NORM2(FV_Path_Cut(:,l)) * wGP(l)
-  END DO      
+  END DO
 END DO; END DO! p,q=0,Nloc
 FV_Length=FV_Length*0.5*(xN-x0) ! *0.5 since reference element has width=2
 END SUBROUTINE Integrate_Path
@@ -574,7 +574,7 @@ SDEALLOCATE(FV_Metrics_gTilde_sJ)
 SDEALLOCATE(FV_Metrics_hTilde_sJ)
 #endif
 
-SDEALLOCATE(FV_Elems_master) 
+SDEALLOCATE(FV_Elems_master)
 END SUBROUTINE FinalizeFV_Metrics
 
 

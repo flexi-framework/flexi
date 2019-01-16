@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -16,7 +16,7 @@
 !==================================================================================================================================
 !> Changes a 2D or 3D tensor product polynomial with Lagrange Basis of degree NIn to
 !> 2D or 3D tensor product polynomial of a Lagrange Basis NOut, using two
-!> arbitrary point distributions xi_In(0:NIn) and xi_Out(0:NOut) and a series of 1D operations 
+!> arbitrary point distributions xi_In(0:NIn) and xi_Out(0:NOut) and a series of 1D operations
 !> \f[ \tilde{u}_{:,j} = \mathcal{V}_{1D,(Nout+1)x(Nin+1)}^{-1} \hat{u}_{:,j} \f]
 !> \f[ \hat{p}_{i,:} = \mathcal{V}_{1D,(Nout+1)x(Nin+1)}^{-1} \tilde{u}_{i,:} \f]
 !==================================================================================================================================
@@ -67,7 +67,7 @@ CONTAINS
 END MODULE MOD_ChangeBasis
 
 !==================================================================================================================================
-!> Changes surface or volume data present as polynomial with Lagrange Basis of degree NIn to 
+!> Changes surface or volume data present as polynomial with Lagrange Basis of degree NIn to
 !> a representation of polynomial of a Lagrange Basis NOut, using two
 !> arbitrary point distributions xi_In(0:NIn) and xi_Out(0:NOut) and a series of 1D operations.
 !==================================================================================================================================
@@ -83,13 +83,13 @@ INTERFACE ChangeBasisVolume
   MODULE PROCEDURE ChangeBasis3D
   MODULE PROCEDURE ChangeBasis3D_singleVar
 END INTERFACE
-#endif  
+#endif
 
 #if PP_dim == 3
 INTERFACE ChangeBasisSurf
-#else  
+#else
 INTERFACE ChangeBasisVolume
-#endif  
+#endif
   MODULE PROCEDURE ChangeBasis2D
   MODULE PROCEDURE ChangeBasis2D_singleVar
 END INTERFACE
@@ -103,19 +103,6 @@ END INTERFACE
 
 PUBLIC :: ChangeBasisVolume
 PUBLIC :: ChangeBasisSurf
-
-#ifdef DEBUG
-! Add dummy interfaces to unused subroutines to suppress compiler warnings.
-INTERFACE DUMMY_ChangeBasis
-  MODULE PROCEDURE ChangeBasis3D_XYZ
-  MODULE PROCEDURE ChangeBasis2D_XYZ
-  MODULE PROCEDURE ChangeBasis3D
-  MODULE PROCEDURE ChangeBasis3D_singleVar
-  MODULE PROCEDURE ChangeBasis1D
-  MODULE PROCEDURE ChangeBasis1D_singleVar
-END INTERFACE
-PUBLIC :: DUMMY_ChangeBasis
-#endif /* DEBUG */
 !==================================================================================================================================
 CONTAINS
 
