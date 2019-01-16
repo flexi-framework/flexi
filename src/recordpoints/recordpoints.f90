@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -47,7 +47,7 @@ CONTAINS
 
 
 !==================================================================================================================================
-!> Define parameters 
+!> Define parameters
 !==================================================================================================================================
 SUBROUTINE DefineParametersRecordPoints()
 ! MODULES
@@ -156,22 +156,22 @@ IF(MPIRoot) THEN
     noRPrank=0
   END IF
   DO iProc=1,nProcessors-1
-    CALL MPI_RECV(hasRP,1,MPI_LOGICAL,iProc,0,MPI_COMM_WORLD,MPIstatus,iError)
+    CALL MPI_RECV(hasRP,1,MPI_LOGICAL,iProc,0,MPI_COMM_FLEXI,MPIstatus,iError)
     IF(hasRP) THEN
       RPrank=RPrank+1
-      CALL MPI_SEND(RPrank,1,MPI_INTEGER,iProc,0,MPI_COMM_WORLD,iError)
+      CALL MPI_SEND(RPrank,1,MPI_INTEGER,iProc,0,MPI_COMM_FLEXI,iError)
     ELSE
       noRPrank=noRPrank+1
-      CALL MPI_SEND(noRPrank,1,MPI_INTEGER,iProc,0,MPI_COMM_WORLD,iError)
+      CALL MPI_SEND(noRPrank,1,MPI_INTEGER,iProc,0,MPI_COMM_FLEXI,iError)
     END IF
   END DO
 ELSE
-    CALL MPI_SEND(RP_onProc,1,MPI_LOGICAL,0,0,MPI_COMM_WORLD,iError)
-    CALL MPI_RECV(myRPrank,1,MPI_INTEGER,0,0,MPI_COMM_WORLD,MPIstatus,iError)
+    CALL MPI_SEND(RP_onProc,1,MPI_LOGICAL,0,0,MPI_COMM_FLEXI,iError)
+    CALL MPI_RECV(myRPrank,1,MPI_INTEGER,0,0,MPI_COMM_FLEXI,MPIstatus,iError)
 END IF
 
 ! create new RP communicator for RP output
-CALL MPI_COMM_SPLIT(MPI_COMM_WORLD, color, myRPrank, RP_COMM,iError)
+CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI, color, myRPrank, RP_COMM,iError)
 IF(RP_onProc) CALL MPI_COMM_SIZE(RP_COMM, nRP_Procs,iError)
 IF(myRPrank.EQ.0 .AND. RP_onProc) WRITE(*,*) 'RP COMM:',nRP_Procs,'procs'
 
@@ -329,14 +329,6 @@ DO iRP=1,nRP
 #endif
 END DO
 
-#ifdef DEBUG
-! ===============================================================================
-! Following dummy calls do suppress compiler warnings of unused Riemann-functions
-! ===============================================================================
-IF (0.EQ.1) THEN
-  L_zeta_RP = 0.
-END IF
-#endif
 END SUBROUTINE InitRPBasis
 
 
@@ -455,10 +447,10 @@ IF(myRPrank.EQ.0)THEN
   CALL OpenDataFile(Filestring,create=.NOT.RP_fileExists,single=.TRUE.,readOnly=.FALSE.)
   IF(.NOT.RP_fileExists)THEN
     ! Create dataset attributes
-    CALL WriteAttribute(File_ID,'File_Type'  ,1,StrScalar=(/TRIM('RecordPoints_Data')/))
-    CALL WriteAttribute(File_ID,'MeshFile'   ,1,StrScalar=(/TRIM(MeshFile)/))
-    CALL WriteAttribute(File_ID,'ProjectName',1,StrScalar=(/TRIM(ProjectName)/))
-    CALL WriteAttribute(File_ID,'RPDefFile'  ,1,StrScalar=(/TRIM(RPDefFile)/))
+    CALL WriteAttribute(File_ID,'File_Type'  ,1,StrScalar=(/'RecordPoints_Data'/))
+    CALL WriteAttribute(File_ID,'MeshFile'   ,1,StrScalar=(/MeshFile/))
+    CALL WriteAttribute(File_ID,'ProjectName',1,StrScalar=(/ProjectName/))
+    CALL WriteAttribute(File_ID,'RPDefFile'  ,1,StrScalar=(/RPDefFile/))
     CALL WriteAttribute(File_ID,'VarNames'   ,PP_nVar,StrArray=StrVarNames)
     CALL WriteAttribute(File_ID,'Time'       ,1,RealScalar=OutputTime)
   END IF

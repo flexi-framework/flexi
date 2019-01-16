@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -19,7 +19,7 @@
 #endif
 
 !==================================================================================================================================
-!> Riemann2D testcase 
+!> Riemann2D testcase
 !==================================================================================================================================
 MODULE MOD_Testcase
 ! MODULES
@@ -116,21 +116,21 @@ IF (MPIRoot) THEN
   WRITE(*,*) " Calculate states, shock, discontinuity and expansion speeds for all 4 sides"
   WRITE(*,"(A,I3)") "  Configuration",-IniExactFunc
   WRITE(*,'(31(" "),A13," speed=",2F8.4)') WAVENAMES(RiemannBC_WaveType(1)), RiemannBC_speeds(1,:)
-  WRITE(*,'(14(" "),"|",21("-"),"|",21("-")"|")') 
-  WRITE(*,'(14(" "),"|",21(" "),"|",21(" ")"|")') 
+  WRITE(*,'(14(" "),"|",21("-"),"|",21("-")"|")')
+  WRITE(*,'(14(" "),"|",21(" "),"|",21(" ")"|")')
   WRITE(*,'(14(" "),"| p=",F7.4," r=",F7.4," | p=",F7.4," r=",F7.4," |")')  RefStatePrim(5,2), RefStatePrim(1,2),&
-      RefStatePrim(5,1), RefStatePrim(1,1) 
+      RefStatePrim(5,1), RefStatePrim(1,1)
   WRITE(*,'(14(" "),"| u=",F7.4," v=",F7.4," | u=",F7.4," v=",F7.4," |")')  RefStatePrim(2,2), RefStatePrim(3,2),&
-      RefStatePrim(2,1), RefStatePrim(3,1) 
-  WRITE(*,'(14(" "),"|",21(" "),"|",21(" ")"|")') 
+      RefStatePrim(2,1), RefStatePrim(3,1)
+  WRITE(*,'(14(" "),"|",21(" "),"|",21(" ")"|")')
   WRITE(*,'(A13," |",21("-"),"|",21("-")"| ",A13)') ADJUSTR(TRIM(WAVENAMES(RiemannBC_WaveType(2)))), WAVENAMES(RiemannBC_WaveType(4))
-  WRITE(*,'("speed=",8(" "),"|",21(" "),"|",21(" ")"| speed=")') 
+  WRITE(*,'("speed=",8(" "),"|",21(" "),"|",21(" ")"| speed=")')
   WRITE(*,'(F13.4," | p=",F7.4," r=",F7.4," | p=",F7.4," r=",F7.4," | ",F7.4)') RiemannBC_speeds(2,1), &
       RefStatePrim(5,3), RefStatePrim(1,3), RefStatePrim(5,4), RefStatePrim(1,4), RiemannBC_speeds(4,1)
   WRITE(*,'(F13.4," | u=",F7.4," v=",F7.4," | u=",F7.4," v=",F7.4," | ",F7.4)') RiemannBC_speeds(2,2), &
       RefStatePrim(2,3), RefStatePrim(3,3), RefStatePrim(2,4), RefStatePrim(3,4), RiemannBC_speeds(4,2)
-  WRITE(*,'(14(" "),"|",21(" "),"|",21(" ")"|")') 
-  WRITE(*,'(14(" "),"|",21("-"),"|",21("-")"|")') 
+  WRITE(*,'(14(" "),"|",21(" "),"|",21(" ")"|")')
+  WRITE(*,'(14(" "),"|",21("-"),"|",21("-")"|")')
   WRITE(*,'(31(" "),A13," speed=",2F8.4)') WAVENAMES(RiemannBC_WaveType(3)), RiemannBC_speeds(3,:)
 ENDIF
 
@@ -138,19 +138,19 @@ SWRITE(UNIT_stdOut,'(A)')' INIT TESTCASE Riemann2D DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitTestcase
 
-FUNCTION GetPHI(rhoL, rhoR, pL, pR) 
+FUNCTION GetPHI(rhoL, rhoR, pL, pR)
 USE MOD_EOS_Vars      ,ONLY: Kappa, KappaM1
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 REAL,INTENT(IN) :: rhoL, rhoR, pL, pR
 REAL            :: GetPHI
 !===================================================================================================================================
   GetPHI =  2.*SQRT(Kappa)/KappaM1 * (SQRT(pL/rhoL) - SQRT(pR/rhoR))
 END FUNCTION GetPHI
 
-FUNCTION GetPSI(rhoL,rhoR,pL,pR) 
+FUNCTION GetPSI(rhoL,rhoR,pL,pR)
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 REAL,INTENT(IN) :: rhoL, rhoR, pL, pR
 REAL            :: GetPSI
 !===================================================================================================================================
@@ -158,10 +158,10 @@ REAL            :: GetPSI
       (rhoL*rhoR) )
 END FUNCTION GetPSI
 
-FUNCTION GetPI(pL, pR) 
+FUNCTION GetPI(pL, pR)
 USE MOD_EOS_Vars      ,ONLY: KappaM1, KappaP1
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 REAL,INTENT(IN) :: pL, pR
 REAL            :: GetPI
 !===================================================================================================================================
@@ -170,40 +170,40 @@ REAL            :: GetPI
 END FUNCTION GetPI
 
 
-FUNCTION GetRho_RankineHugoniot(rhoL, pL, pR) 
+FUNCTION GetRho_RankineHugoniot(rhoL, pL, pR)
 USE MOD_EOS_Vars      ,ONLY: KappaM1, KappaP1
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 REAL,INTENT(IN) :: rhoL, pL, pR
 REAL            :: GetRho_RankineHugoniot
 !===================================================================================================================================
   GetRho_RankineHugoniot = rhoL * (pL*KappaM1 + pR*KappaP1) / (pL*KappaP1 + pR*KappaM1)
 END FUNCTION GetRho_RankineHugoniot
 
-FUNCTION GetRho_Rarefaction(rhoL, pL, pR) 
+FUNCTION GetRho_Rarefaction(rhoL, pL, pR)
 USE MOD_EOS_Vars      ,ONLY: Kappa
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 REAL,INTENT(IN) :: rhoL, pL, pR
 REAL            :: GetRho_Rarefaction
 !===================================================================================================================================
   GetRho_Rarefaction = (pr/pL)**(1./Kappa) * rhoL
 END FUNCTION GetRho_Rarefaction
 
-FUNCTION GetP_Rarefaction(rhoL, rhoR, pL) 
+FUNCTION GetP_Rarefaction(rhoL, rhoR, pL)
 USE MOD_EOS_Vars      ,ONLY: Kappa
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 REAL,INTENT(IN) :: rhoL, rhoR, pL
 REAL            :: GetP_Rarefaction
 !===================================================================================================================================
   GetP_Rarefaction = (rhoR/rhoL)**Kappa * pL
 END FUNCTION GetP_Rarefaction
 
-FUNCTION GetP_RankineHugoniot(rhoL, rhoR, pL) 
+FUNCTION GetP_RankineHugoniot(rhoL, rhoR, pL)
 USE MOD_EOS_Vars      ,ONLY: KappaM1, KappaP1
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 REAL,INTENT(IN) :: rhoL, rhoR, pL
 REAL            :: GetP_RankineHugoniot
 !===================================================================================================================================
@@ -211,10 +211,10 @@ REAL            :: GetP_RankineHugoniot
 END FUNCTION GetP_RankineHugoniot
 
 
-SUBROUTINE Calc_p_rho_RankineHugoniot(rhoL, vL, vR, pL, rhoR, pR) 
+SUBROUTINE Calc_p_rho_RankineHugoniot(rhoL, vL, vR, pL, rhoR, pR)
 USE MOD_EOS_Vars      ,ONLY: Kappa,KappaP1
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 REAL,INTENT(IN)  :: rhoL
 REAL,INTENT(IN)  :: vL
 REAL,INTENT(IN)  :: vR
@@ -240,9 +240,9 @@ REAL :: z1,z2,z3
 
 END SUBROUTINE Calc_p_rho_RankineHugoniot
 
-SUBROUTINE Calc_v_RankineHugoniot(rhoL, rhoR,  vL, pL, pR, vR) 
+SUBROUTINE Calc_v_RankineHugoniot(rhoL, rhoR,  vL, pL, pR, vR)
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 REAL,INTENT(IN)  :: rhoL
 REAL,INTENT(IN)  :: rhoR
 REAL,INTENT(IN)  :: vL
@@ -257,7 +257,7 @@ REAL,INTENT(OUT) :: vR(2)
 END SUBROUTINE Calc_v_RankineHugoniot
 
 
-SUBROUTINE CalcIniStates() 
+SUBROUTINE CalcIniStates()
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Testcase_Vars
@@ -266,7 +266,7 @@ USE MOD_Equation_Vars ,ONLY: RefStatePrim,RefStateCons, nRefState
 USE MOD_EOS_Vars      ,ONLY: Kappa,R
 USE MOD_EOS           ,ONLY: PrimToCons
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL    :: p(4)
@@ -359,9 +359,9 @@ CASE(6) ! not case 6 of Kurganov!!! Schulz-Rinne: Cfg 6
   v(2) = v(1)
 
   u(2) = GetPHI(rho(2), rho(1), p(2), p(1)) + u(1)
-  u(3) = u(2) 
+  u(3) = u(2)
   v(4) = GetPSI(rho(4), rho(1), p(4), p(1)) + v(1)
-  v(3) = v(4) 
+  v(3) = v(4)
 
 CASE(11) ! Schulz-Rinne: Cfg E
   RiemannBC_WaveType(1) = SHOCK
@@ -378,7 +378,7 @@ CASE(11) ! Schulz-Rinne: Cfg E
   rho(2) = GetRho_RankineHugoniot(rho(1), p(1), p(2))
   u(2) = GetPSI(rho(2), rho(1), p(2), p(1)) + u(1)
   v(2) = v(1)
-  
+
   p(4) = p(2)
   rho(4) = GetRho_RankineHugoniot(rho(1), p(1), p(4))
   u(4) = u(1)
@@ -404,7 +404,7 @@ CASE(12) ! Schulz-Rinne: Cfg F
 
   u(2) = GetPSI(rho(2), rho(1), p(2), p(1)) + u(1)
   v(2) = v(1)
-  
+
   p(4) = p(2)
   rho(4) = GetRho_RankineHugoniot(rho(1), p(1), p(4))
   u(4) = u(1)
@@ -486,11 +486,11 @@ CASE(15) ! Schulz-Rinne: Cfg G
   rho(2) = GetRho_Rarefaction(rho(1), p(1), p(2))
   u(2)=GetPHI(rho(2), rho(1), p(2), p(1)) + u(1)
   v(2) = v(1)
- 
+
   p(3) = p(2)
   u(3) = u(1)
   v(3) = v(1)
- 
+
 CASE(16) ! Schulz-Rinne: Cfg H
   RiemannBC_WaveType(1) = RAREFACTION
   RiemannBC_WaveType(2) = DISCONTINUITY
@@ -567,7 +567,7 @@ CASE(18) ! Schulz-Rinne: Cfg K (but with different v(1) = 0.3)
   u(4) = u(1)
   v(4) = GetPHI(rho(4),rho(1),p(4),p(1)) + v(1)
 
-CASE(19) ! Schulz-Rinne: Cfg K 
+CASE(19) ! Schulz-Rinne: Cfg K
   RiemannBC_WaveType(1) = DISCONTINUITY
   RiemannBC_WaveType(2) = SHOCK
   RiemannBC_WaveType(3) = DISCONTINUITY
@@ -591,7 +591,7 @@ CASE(19) ! Schulz-Rinne: Cfg K
   rho(4) = GetRho_Rarefaction(rho(1), p(1), p(4))
   u(4) = u(1)
   v(4) = GetPHI(rho(4),rho(1),p(4),p(1)) + v(1)
-CASE  DEFAULT 
+CASE  DEFAULT
   CALL Abort(__STAMP__, &
       "Riemann2D problem for this IniExactFunc not implemented.")
 END SELECT
@@ -613,7 +613,7 @@ DO i=1,4
   UE(PRES) = RefStatePrim(5,i)
   RefStatePrim(6,i) = TEMPERATURE_HE(UE)
   CALL PrimToCons(RefStatePrim(:,i), RefStateCons(:,i))
-END DO 
+END DO
 END SUBROUTINE CalcIniStates
 
 !==================================================================================================================================
@@ -666,7 +666,7 @@ USE MOD_EOS           ,ONLY: PrimToCons
 USE MOD_Equation_Vars ,ONLY: RefStatePrim,RefStateCons
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)   :: SideID  
+INTEGER,INTENT(IN)   :: SideID
 REAL,INTENT(IN)      :: t       !< current time (provided by time integration scheme)
 INTEGER,INTENT(IN)   :: Nloc    !< polynomial degree
 REAL,INTENT(IN)      :: UPrim_master( PP_nVarPrim,0:Nloc,0:Nloc) !< inner surface solution
@@ -692,13 +692,13 @@ REAL              :: UCons_master  (PP_nVar    ,0:Nloc,0:Nloc)
 !==================================================================================================================================
 ! convert primitive inner state to conservative
 DO q=0,Nloc; DO p=0,Nloc
-  CALL PrimToCons(UPrim_master(:,p,q), UCons_master(:,p,q)) 
+  CALL PrimToCons(UPrim_master(:,p,q), UCons_master(:,p,q))
 END DO; END DO ! p,q=0,PP_N
 
 BCType  = Boundarytype(BC(SideID),BC_TYPE)
 BCState = Boundarytype(BC(SideID),BC_STATE)
 IF (BCType.EQ.-101) THEN
-  pos = RiemannBC_Speeds(BCState,:) * t 
+  pos = RiemannBC_Speeds(BCState,:) * t
   dir = MOD(BCState+1,2)+1
   iL = SideToQuads(1,BCState)
   iR = SideToQuads(2,BCState)
@@ -709,7 +709,7 @@ IF (BCType.EQ.-101) THEN
       IF (x.LT.pos(1)) THEN
         UCons_boundary(:,p,q)=RefStateCons(:,iL)
         UPrim_boundary(:,p,q)=RefStatePrim(:,iL)
-      ELSE 
+      ELSE
         UCons_boundary(:,p,q)=RefStateCons(:,iR)
         UPrim_boundary(:,p,q)=RefStatePrim(:,iR)
       END IF
@@ -722,7 +722,7 @@ IF (BCType.EQ.-101) THEN
         rel = (x-pos(1))/(pos(2)-pos(1))
         UPrim_boundary(:,p,q)= (1-rel)*RefStatePrim(:,iL) + rel*RefStatePrim(:,iR)
       END IF
-      CALL PrimToCons(UPrim_boundary(:,p,q), UCons_boundary(:,p,q)) 
+      CALL PrimToCons(UPrim_boundary(:,p,q), UCons_boundary(:,p,q))
     END SELECT
   END DO; END DO
 ELSE IF(BCType.EQ.-102) THEN
@@ -779,7 +779,7 @@ REAL,DIMENSION(1:2),INTENT(OUT)    :: speeds
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !---------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 REAL                                  :: r1,r2,r3,r4
 REAL                                  :: p1,p2,p3,p4
 REAL                                  :: u1,u2,u3,u4
@@ -787,7 +787,7 @@ REAL                                  :: a1,a3,a4
 REAL                                  :: t2t1,r2r1,p2p1,wsp
 !=================================================================================================================================
 
-IF (wavetype == DISCONTINUITY) THEN 
+IF (wavetype == DISCONTINUITY) THEN
   speeds = (prim_L(1)*prim_L(dir+1) - prim_R(1)*prim_R(dir+1))/(prim_L(1)-prim_R(1))
   RETURN
 END IF
@@ -795,14 +795,14 @@ END IF
 IF (prim_L(5).LT.prim_R(5)) THEN
   r1 =  prim_L(1)
   u1 = -prim_L(dir+1)
-  p1 =  prim_L(5) 
+  p1 =  prim_L(5)
   r4 =  prim_R(1)
   u4 = -prim_R(dir+1)
   p4 =  prim_R(5)
-ELSE 
+ELSE
   r1 =  prim_R(1)
   u1 =  prim_R(dir+1)
-  p1 =  prim_R(5) 
+  p1 =  prim_R(5)
   r4 =  prim_L(1)
   u4 =  prim_L(dir+1)
   p4 =  prim_L(5)
@@ -980,7 +980,7 @@ REAL                                  :: G(1:9),f,fd,p,rhok,pk,ck,prat,ak,qrt,bk
 !-------------------------------------------------------
 INTENT(IN)                                          :: p,rhok,pk,ck
 INTENT(OUT)                                         :: f,fd
-!-------------------------------------------------------    
+!-------------------------------------------------------
 IF (p.LE.pk) THEN
   prat = p/pk
   f    = G(4)*ck*(prat**G(1) - 1.0)
@@ -1004,7 +1004,7 @@ REAL                                  :: G(1:9),s,p,u,rho,rhol,rhor,ul,ur,um,pl,
 !-------------------------------------------------------
 INTENT(IN)                                          :: G,s,rhol,rhor,ul,ur,um,pl,pr,pm,al,ar
 INTENT(OUT)                                         :: p,u,rho
-!-------------------------------------------------------    
+!-------------------------------------------------------
 IF(s.LE.um) THEN
   IF(pm.LE.pl) THEN
     shl=ul-al

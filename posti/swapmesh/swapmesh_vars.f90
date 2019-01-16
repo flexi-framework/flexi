@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -22,13 +22,13 @@ IMPLICIT NONE
 PUBLIC
 SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES 
+! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 INTEGER             :: NSuper                    !< Polynomial degree used for supersampling of old mesh coordinates
 REAL                :: maxTol                    !< max overshoot in param coords (1+maxTol), used for search and warnings
 REAL                :: abortTol                  !< max tol before code aborts (=inf, if refstate specified)
 REAL                :: displacement(3)           !< optional displacement vector for the old mesh
-LOGICAL             :: printTroublemakers=.TRUE. !< print warnings for troublemakers 
+LOGICAL             :: printTroublemakers=.TRUE. !< print warnings for troublemakers
                                                  !< (very time consuming for many new points outisde the old mesh)
 
 CHARACTER(LEN=255)  :: MeshFileOld               !< Old mesh file (optional, only to overwrite mesh from old state)
@@ -54,7 +54,7 @@ REAL,ALLOCATABLE    :: Vdm_CLNInter_GPNNew(:,:)   !< Vandermonde from interpolat
 REAL,ALLOCATABLE    :: Vdm_GPNState_GPNNew(:,:)   !< Vandermonde from old solution to new solution (used for equal elements)
 
 REAL,ALLOCATABLE    :: xCLInter(:,:,:,:,:)  !> Mesh coordinates of new mesh represented as CL points on polynoial degree NInter for
-                                            !> interpolation 
+                                            !> interpolation
 REAL,ALLOCATABLE    :: xCLOld(:,:,:,:,:)    !> CL points of old mesh on NgeoOld
 REAL,ALLOCATABLE    :: xCLNew(:,:,:,:,:)    !> CL points of new mesh on NgeoNew
 

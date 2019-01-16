@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -44,7 +44,7 @@ PUBLIC::DefineParametersAnalyzeEquation
 CONTAINS
 
 !==================================================================================================================================
-!> Define parameters 
+!> Define parameters
 !==================================================================================================================================
 SUBROUTINE DefineParametersAnalyzeEquation()
 ! MODULES
@@ -55,7 +55,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 !==================================================================================================================================
 CALL prms%SetSection("AnalyzeEquation")
 CALL prms%CreateLogicalOption('CalcBodyForces'   , "Set true to compute body forces at walls"         , '.FALSE.')
@@ -321,10 +321,10 @@ END DO ! iElem
 #if USE_MPI
 Box(1:PP_nVarPrim)=BulkPrim; Box(PP_nVarPrim+1:PP_nVarPrim+PP_nVar)=BulkCons
 IF(MPIRoot)THEN
-  CALL MPI_REDUCE(MPI_IN_PLACE,box,PP_nVar+PP_nVarPrim,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,iError)
+  CALL MPI_REDUCE(MPI_IN_PLACE,box,PP_nVar+PP_nVarPrim,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
   BulkPrim=Box(1:PP_nVarPrim); BulkCons=Box(PP_nVarPrim+1:PP_nVarPrim+PP_nVar)
 ELSE
-  CALL MPI_REDUCE(Box         ,0  ,PP_nVar+PP_nVarPrim,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,iError)
+  CALL MPI_REDUCE(Box         ,0  ,PP_nVar+PP_nVarPrim,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 END IF
 #endif
 
@@ -377,7 +377,7 @@ DO SideID=1,nBCSides
     UE(SRHO)=1./UE(DENS)
     UE(VELV)=VELOCITY_HE(UE)
     UE(PRES)=PRESSURE_HE(UE)
-    
+
     PrimVar(1:3)=UE(VELV)
 
     ! VelocityMagnitude
@@ -396,11 +396,11 @@ DO SideID=1,nBCSides
     PrimVar(10)=PrimVar(9)+PrimVar(5)*UE(SRHO)
     ! Entropy
     PrimVar(11)= ENTROPY_H(UE,PrimVar(8))
-    ! Potential Temperature 
+    ! Potential Temperature
 !    PrimVar(12)=PrimVar(8)/(PrimVar(5)/P0)**(1.-sKappa)
     c=PrimVar(6)
     Mach=PrimVar(7)
-    ! Total Temperature 
+    ! Total Temperature
     PrimVar(13)=TOTAL_TEMPERATURE_H(PrimVar(8),Mach)
     ! Total Pressure
     PrimVar(14)=TOTAL_PRESSURE_H(PrimVar(5),Mach)
@@ -426,9 +426,9 @@ END DO
 
 #if USE_MPI
 IF(MPIRoot)THEN
-  CALL MPI_REDUCE(MPI_IN_PLACE,meanTotals,4*nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,iError)
+  CALL MPI_REDUCE(MPI_IN_PLACE,meanTotals,4*nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 ELSE
-  CALL MPI_REDUCE(meanTotals  ,0         ,4*nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,iError)
+  CALL MPI_REDUCE(meanTotals  ,0         ,4*nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 END IF
 #endif
 
@@ -500,13 +500,13 @@ END DO
 
 #if USE_MPI
 IF(MPIRoot)THEN
-  CALL MPI_REDUCE(MPI_IN_PLACE,maxV ,nBCs,MPI_DOUBLE_PRECISION,MPI_MAX,0,MPI_COMM_WORLD,iError)
-  CALL MPI_REDUCE(MPI_IN_PLACE,minV ,nBCs,MPI_DOUBLE_PRECISION,MPI_MIN,0,MPI_COMM_WORLD,iError)
-  CALL MPI_REDUCE(MPI_IN_PLACE,meanV,nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,iError)
+  CALL MPI_REDUCE(MPI_IN_PLACE,maxV ,nBCs,MPI_DOUBLE_PRECISION,MPI_MAX,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(MPI_IN_PLACE,minV ,nBCs,MPI_DOUBLE_PRECISION,MPI_MIN,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(MPI_IN_PLACE,meanV,nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 ELSE
-  CALL MPI_REDUCE(maxV        ,0    ,nBCs,MPI_DOUBLE_PRECISION,MPI_MAX,0,MPI_COMM_WORLD,iError)
-  CALL MPI_REDUCE(minV        ,0    ,nBCs,MPI_DOUBLE_PRECISION,MPI_MIN,0,MPI_COMM_WORLD,iError)
-  CALL MPI_REDUCE(meanV       ,0    ,nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,iError)
+  CALL MPI_REDUCE(maxV        ,0    ,nBCs,MPI_DOUBLE_PRECISION,MPI_MAX,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(minV        ,0    ,nBCs,MPI_DOUBLE_PRECISION,MPI_MIN,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(meanV       ,0    ,nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 END IF
 #endif
 DO iBC=1,nBCs
@@ -568,9 +568,9 @@ END DO
 #if USE_MPI
 i=PP_nVar*nBCs
 IF(MPIRoot)THEN
-  CALL MPI_REDUCE(MPI_IN_PLACE,MeanFlux,i,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,iError)
+  CALL MPI_REDUCE(MPI_IN_PLACE,MeanFlux,i,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 ELSE
-  CALL MPI_REDUCE(MeanFlux    ,0       ,i,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,iError)
+  CALL MPI_REDUCE(MeanFlux    ,0       ,i,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 END IF
 #endif
 

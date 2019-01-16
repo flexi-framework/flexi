@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -15,7 +15,7 @@
 
 !==================================================================================================================================
 !> \brief Routines that handle restart capabilities.
-!> 
+!>
 !> With this feature a simulation can be resumed from a state file that has been created during a previous
 !> simulation (restart file). The restart file is passed to FLEXI as a second command line argument.
 !> The restart can also be performed from a file with a different polynomial degree or node type than the current simulation.
@@ -127,12 +127,12 @@ END IF
 
 ! Check if we need to interpolate the restart file to our current polynomial degree and node type
 IF(DoRestart .AND. ((N_Restart.NE.PP_N) .OR. (TRIM(NodeType_Restart).NE.TRIM(NodeType))))THEN
+#if FV_ENABLED
+    CALL CollectiveStop(__STAMP__,'ERROR: The restart to a different polynomial degree or node type is not available for FV.')
+#endif
   InterpolateSolution=.TRUE.
   IF(MIN(N_Restart,PP_N).LT.NGeo) &
     CALL PrintWarning('The geometry is or was underresolved and will potentially change on restart!')
-#if FV_ENABLED
-  CALL CollectiveStop(__STAMP__,'ERROR: The restart to a different polynomial degree is not available for FV.') 
-#endif
 ELSE
   InterpolateSolution=.FALSE.
 END IF
@@ -191,7 +191,7 @@ LOGICAL,INTENT(IN),OPTIONAL :: doFlushFiles !< flag to delete old state files
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL,ALLOCATABLE   :: U_local(:,:,:,:,:)
-#if PP_dim == 3 
+#if PP_dim == 3
 REAL,ALLOCATABLE   :: U_local2(:,:,:,:,:)
 #endif
 INTEGER            :: iElem,i,j,k
@@ -214,7 +214,7 @@ END IF
 
 IF(DoRestart)THEN
   CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
-#if FV_ENABLED  
+#if FV_ENABLED
   ! Read FV element distribution and indicator values from elem data array if possible
   CALL GetArrayAndName('ElemData','VarNamesAdd',nVal,tmp,VarNamesElemData)
   ALLOCATE(ElemData(nVal(1),nVal(2)))
@@ -250,22 +250,22 @@ IF(DoRestart)THEN
 #if PP_dim == 3
     IF (HSize(4).EQ.1) THEN
       ! FLEXI compiled 3D, but data is 2D => expand third space dimension
-      CALL ExpandArrayTo3D(5,(/PP_nVar,PP_N+1,PP_N+1,1,nElems/),4,PP_N+1,U_local,U) 
+      CALL ExpandArrayTo3D(5,(/PP_nVar,PP_N+1,PP_N+1,1,nElems/),4,PP_N+1,U_local,U)
     ELSE
-      ! FLEXI compiled 3D + data 3D 
+      ! FLEXI compiled 3D + data 3D
       U = U_local
     END IF
 #else
     IF (HSize(4).EQ.1) THEN
-      ! FLEXI compiled 2D + data 2D 
+      ! FLEXI compiled 2D + data 2D
       U = U_local
     ELSE
-      ! FLEXI compiled 2D, but data is 3D => reduce third space dimension 
+      ! FLEXI compiled 2D, but data is 3D => reduce third space dimension
       CALL to2D_rank5((/1,0,0,0,1/),(/PP_nVar,PP_N,PP_N,PP_N,nElems/),4,U_local)
       U = U_local
     END IF
 #endif
-  ELSE ! InterpolateSolution 
+  ELSE ! InterpolateSolution
     ! We need to interpolate the solution to the new computational grid
     SWRITE(UNIT_stdOut,*)'Interpolating solution from restart grid with N=',N_restart,' to computational grid with N=',PP_N
 
@@ -279,7 +279,7 @@ IF(DoRestart)THEN
       ! FLEXI compiled 3D, but data is 2D => expand third space dimension
       ! use temporary array 'U_local2' to store 3D data
       ALLOCATE(U_local2(PP_nVar,0:N_Restart,0:N_Restart,0:N_Restart,nElems))
-      CALL ExpandArrayTo3D(5,HSize_proc,4,N_Restart,U_local,U_local2) 
+      CALL ExpandArrayTo3D(5,HSize_proc,4,N_Restart,U_local,U_local2)
       ! Reallocate 'U_local' to 3D and mv data from U_local2 to U_local
       DEALLOCATE(U_local)
       ALLOCATE(U_local(PP_nVar,0:N_Restart,0:N_Restart,0:N_Restart,nElems))
@@ -288,7 +288,7 @@ IF(DoRestart)THEN
     END IF
 #else
     IF (HSize(4).NE.1) THEN
-      ! FLEXI compiled 2D, but data is 3D => reduce third space dimension 
+      ! FLEXI compiled 2D, but data is 3D => reduce third space dimension
       CALL to2D_rank5((/1,0,0,0,1/),(/PP_nVar,N_Restart,N_Restart,N_Restart,nElems/),4,U_local)
     END IF
 #endif
@@ -304,7 +304,7 @@ IF(DoRestart)THEN
             U_local(:,i,j,k,iElem)=U_local(:,i,j,k,iElem)*JNR(1,i,j,k)
           END DO; END DO; END DO
           CALL ChangeBasisVolume(PP_nVar,N_Restart,PP_N,Vdm_NRestart_N,U_local(:,:,:,:,iElem),U(:,:,:,:,iElem))
-#if FV_ENABLED          
+#if FV_ENABLED
         ELSE ! FV element
           STOP 'Not implemented yet'
 #endif
@@ -317,7 +317,7 @@ IF(DoRestart)THEN
       DO iElem=1,nElems
         IF (FV_Elems(iElem).EQ.0) THEN ! DG element
           CALL ChangeBasisVolume(PP_nVar,N_Restart,PP_N,Vdm_NRestart_N,U_local(:,:,:,:,iElem),U(:,:,:,:,iElem))
-#if FV_ENABLED          
+#if FV_ENABLED
         ELSE ! FV element
           STOP 'Not implemented yet'
 #endif

@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -58,17 +58,6 @@ PUBLIC :: FinalizeFilter
 PUBLIC :: DefineParametersFilter
 !==================================================================================================================================
 
-#ifdef DEBUG
-#if EQNSYSNR==2
-! Add dummy interfaces to unused subroutines to suppress compiler warnings.
-INTERFACE DUMMY_Filter
-  MODULE PROCEDURE Filter
-END INTERFACE
-INTERFACE DUMMY_Filter_LAF
-  MODULE PROCEDURE Filter_LAF
-END INTERFACE
-#endif
-#endif
 CONTAINS
 
 !==================================================================================================================================
@@ -81,7 +70,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 !==================================================================================================================================
 CALL prms%SetSection("Filter")
 CALL prms%CreateIntFromStringOption(   'FilterType',        "Type of filter to be applied. None, CutOff, Modal, LAF",&
@@ -141,7 +130,7 @@ IF(FilterType.GT.0) THEN
   ALLOCATE(FilterMat(0:PP_N,0:PP_N))
   FilterMat = 0.
   SELECT CASE (FilterType)
-  CASE (FILTERTYPE_CUTOFF) ! Modal Filter cut-off 
+  CASE (FILTERTYPE_CUTOFF) ! Modal Filter cut-off
     NFilter = GETINT('NFilter')
     DO iDeg=0,NFilter
       FilterMat(iDeg,iDeg) = 1.
@@ -188,7 +177,7 @@ IF(FilterType.GT.0) THEN
     END DO !iElem
     DEALLOCATE(J_N)
 
-  ! Compute normalization for LAF 
+  ! Compute normalization for LAF
     normMod=((REAL(NFilter)+1)**(-2./3.)-2.**(-2./3.))/(REAL(PP_N+1)**(-2./3.)-REAL(NFilter+1)**(-2./3.))
     lim=1E-8
     eRatio=0.
@@ -197,7 +186,7 @@ IF(FilterType.GT.0) THEN
     ekin_fluc_avg_old=1.E-16
 #endif /*EQNSYSNR==2*/
 
-  CASE DEFAULT 
+  CASE DEFAULT
     CALL CollectiveStop(__STAMP__,&
                         "FilterType unknown!")
   END SELECT
@@ -266,7 +255,7 @@ END SUBROUTINE HestFilter
 !> defined by (N_out+1) interpolation point  positions xi_Out(0:N_Out)
 !>  xi is defined in the 1DrefElem xi=[-1,1]
 !==================================================================================================================================
-PURE SUBROUTINE Filter(U_in,FilterMat)
+PPURE SUBROUTINE Filter(U_in,FilterMat)
 ! MODULES
 USE MOD_PreProc
 USE MOD_ChangeBasisByDim,  ONLY: ChangeBasisVolume
@@ -315,7 +304,7 @@ REAL,INTENT(IN)     :: FilterMat(0:PP_N,0:PP_N)                   !< filter matr
 ! OUTPUT VARIABLES
 REAL,INTENT(INOUT)  :: U_in(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< solution vector to be filtered
 !-------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 INTEGER                                      :: i,j,k,l,iElem
 REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ):: U_Xi, U_filtered
 #if PP_dim == 3
@@ -335,7 +324,7 @@ DO iElem=1,nElems
       DO i=0,PP_N
         DO l=0,PP_N
           U_Xi(:,i,j,k)       = U_Xi(:,i,j,k)       + FilterMat(i,l)*U_in(:,l,j,k,iElem)
-        END DO 
+        END DO
       END DO !i
     END DO !j
   END DO !k
@@ -345,7 +334,7 @@ DO iElem=1,nElems
     DO j=0,PP_N
       DO i=0,PP_N
         DO l=0,PP_N
-          U_filtered(:,i,j,k)      = U_filtered(:,i,j,k)      + FilterMat(j,l)*U_Xi(:,i,l,k) 
+          U_filtered(:,i,j,k)      = U_filtered(:,i,j,k)      + FilterMat(j,l)*U_Xi(:,i,l,k)
         END DO !l
       END DO !i
     END DO !j
@@ -356,7 +345,7 @@ DO iElem=1,nElems
     DO j=0,PP_N
       DO i=0,PP_N
         DO l=0,PP_N
-          U_Eta(:,i,j,k)      = U_Eta(:,i,j,k)      + FilterMat(j,l)*U_Xi(:,i,l,k) 
+          U_Eta(:,i,j,k)      = U_Eta(:,i,j,k)      + FilterMat(j,l)*U_Xi(:,i,l,k)
         END DO !l
       END DO !i
     END DO !j
@@ -373,7 +362,7 @@ DO iElem=1,nElems
     END DO !j
   END DO !k
 #endif
-  
+
   ! Compute the small scale contribution: u_small=u_full - u_large
   DO k=0,PP_NZ
     DO j=0,PP_N
@@ -387,7 +376,7 @@ DO iElem=1,nElems
     END DO !j
   END DO !k
 
-  ! Compute the average velocities 
+  ! Compute the average velocities
   U_Avg=0.
   DO k=0,PP_NZ
     DO j=0,PP_N
@@ -407,13 +396,13 @@ DO iElem=1,nElems
   DO k=0,PP_NZ
     DO j=0,PP_N
       DO i=0,PP_N
-        ekin_fluc_avg = ekin_fluc_avg + (u_fluc(1,i,j,k)*u_fluc(1,i,j,k)/U_in(1,i,j,k,iElem)**2+& 
+        ekin_fluc_avg = ekin_fluc_avg + (u_fluc(1,i,j,k)*u_fluc(1,i,j,k)/U_in(1,i,j,k,iElem)**2+&
 #if PP_dim==3
                                          u_fluc(3,i,j,k)*u_fluc(3,i,j,k)/U_in(1,i,j,k,iElem)**2+&
 #endif
                                          u_fluc(2,i,j,k)*u_fluc(2,i,j,k)/U_in(1,i,j,k,iElem)**2)*IntegrationWeight(i,j,k,iElem)
-        ekin_avg=ekin_avg + ((U_filtered(2,i,j,k)-U_Avg(2))*(U_filtered(2,i,j,k)-U_Avg(2))/U_in(1,i,j,k,iElem)**2 & 
-                            +(U_filtered(3,i,j,k)-U_Avg(3))*(U_filtered(3,i,j,k)-U_Avg(3))/U_in(1,i,j,k,iElem)**2 & 
+        ekin_avg=ekin_avg + ((U_filtered(2,i,j,k)-U_Avg(2))*(U_filtered(2,i,j,k)-U_Avg(2))/U_in(1,i,j,k,iElem)**2 &
+                            +(U_filtered(3,i,j,k)-U_Avg(3))*(U_filtered(3,i,j,k)-U_Avg(3))/U_in(1,i,j,k,iElem)**2 &
 #if PP_dim==3
                             +(U_filtered(4,i,j,k)-U_Avg(4))*(U_filtered(4,i,j,k)-U_Avg(4))/U_in(1,i,j,k,iElem)**2 &
 #endif
@@ -421,7 +410,7 @@ DO iElem=1,nElems
           END DO ! i
         END DO ! j
       END DO ! k
-      !Calculated normalized kinetic energy ratio 
+      !Calculated normalized kinetic energy ratio
       eRatio(iElem) = (ekin_fluc_avg/ekin_avg)*normMod
       !define threshhold value for eRatio by linear weighting over low mode energy change (low mode trigger LMT)
 !      lim(iElem) = lim(iElem)*ekin_avg_old(iElem)/ekin_avg
@@ -440,13 +429,13 @@ DO iElem=1,nElems
 !      ! Cases with energy loss in fluctuations need not be considered --> limit LE Eratio
       ELSEIF ((ekin_fluc_avg - ekin_fluc_avg_old(iElem)).LT.0.) THEN
         lim(iElem) = eRatio(iElem)
-!        ! energy drain in high modes is not dangerous 
-      ELSEIF ((eRatio(iElem) .GT. lim(iElem)*LAF_alpha)) THEN 
-!      IF ((eRatio(iElem) .GT. 1.0)) THEN ! For LAF_Fixed 
-!      IF (MOD(r(iElem)+1,10000.).EQ.0) THEN ! For LAF_Clocked 
+!        ! energy drain in high modes is not dangerous
+      ELSEIF ((eRatio(iElem) .GT. lim(iElem)*LAF_alpha)) THEN
+!      IF ((eRatio(iElem) .GT. 1.0)) THEN ! For LAF_Fixed
+!      IF (MOD(r(iElem)+1,10000.).EQ.0) THEN ! For LAF_Clocked
         ! Filter to NUnder whenever eRatio is to high, we allow for a small margin --> less margin > more filtering
         U_in(:,:,:,:,iElem) = U_filtered(:,:,:,:)
-        r(iElem) = r(iElem)+1. 
+        r(iElem) = r(iElem)+1.
 
       END IF
       ekin_avg_old(iElem)=ekin_avg

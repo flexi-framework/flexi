@@ -68,7 +68,7 @@ FileString=TRIM(FileName)//'.h5'
 CALL OpenDataFile(TRIM(Filestring),create=.TRUE.,single=.TRUE.,readOnly=.FALSE.)
 
 CALL WriteAttribute(File_ID,'File_Type',1,StrScalar=(/'RecordPoints'/))
-CALL WriteAttribute(File_ID,'MeshFile',1,StrScalar=(/TRIM(MeshFileName)/))
+CALL WriteAttribute(File_ID,'MeshFile',1,StrScalar=(/MeshFileName/))
 CALL WriteAttribute(File_ID,'NGeo',1,IntScalar=NGeo)
 CALL WriteAttribute(File_ID,'NodeType',1,StrScalar=(/NodeType/))
 
@@ -129,7 +129,7 @@ IF(nPlanes.GT.0) THEN
       DO i=1,Plane%nRP(1)
         RPset2D(i,j)=Plane%RP_ptr(i,j)%RP%ID
       END DO !i
-    END DO !j 
+    END DO !j
     CALL WriteArray(TRIM(Plane%Name),2,Plane%nRP,Plane%nRP,(/0,0/),.FALSE.,IntArray=RPset2D)
     DEALLOCATE(RPset2D)
     ! groupID

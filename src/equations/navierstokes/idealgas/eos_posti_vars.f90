@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -26,7 +26,7 @@ SAVE
 #if PARABOLIC
 #define CUT(x)
 INTEGER,PARAMETER :: nVarDepEOS=36
-#else 
+#else
 #define CUT(x) x!
 INTEGER,PARAMETER :: nVarDepEOS=19
 #endif
@@ -35,7 +35,7 @@ INTEGER,PARAMETER :: nVarDepEOS=19
 !           E
 !           n
 !           e                                                               W
-!           r                                                               a 
+!           r                                                               a
 !           g                                                               l
 !           y                    E                        V N               l
 !           S            V       n       P                o o               F
@@ -76,7 +76,7 @@ INTEGER,DIMENSION(1:nVarDepEOS,0:nVarDepEOS),PARAMETER :: DepTableEOS = TRANSPOS
   0,0,0,0,0,0,0,0,0,0,1, 1,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !17 TotalTemperature
   0,1,0,0,0,0,0,0,0,1,0, 1,0,0,0,0,0,0,0,0, CUT(&)  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !18 TotalPressure
   1,1,1,1,1,1,0,0,0,0,0, 0,0,0,0,0,0,0,0,0  CUT(&) ,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !19 PressureTimeDeriv
-#if PARABOLIC                                                                        
+#if PARABOLIC
   1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0         ,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !20 VorticityX
   1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0         ,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !21 VorticityY
   1,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0         ,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 ,& !22 VorticityZ
@@ -100,12 +100,12 @@ INTEGER,DIMENSION(1:nVarDepEOS,0:nVarDepEOS),PARAMETER :: DepTableEOS = TRANSPOS
 ! Mark all quantities that can be calculated exclusively on the surface
 INTEGER,DIMENSION(1:nVarDepEOS),PARAMETER :: DepSurfaceOnlyEOS = &
 (/  0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0  CUT(&) ,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1 &
-/) 
+/)
 
 ! Mark all quantities that can be calculated exclusively in the volume and must be prolonged to the surface from the volume
 INTEGER,DIMENSION(1:nVarDepEOS),PARAMETER :: DepVolumeOnlyEOS = &
 (/  0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,1  CUT(&) ,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 &
-/) 
+/)
 
 #if FV_ENABLED && FV_RECONSTRUCT
 !           E

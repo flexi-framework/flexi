@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -13,23 +13,23 @@
 !=================================================================================================================================
 #include "flexi.h"
 !==================================================================================================================================
-!> Module providing routines for reading Flexi parameter files. 
-!> 
+!> Module providing routines for reading Flexi parameter files.
+!>
 !> The whole structure to read options from the parameter file is as follows:
-!> 
+!>
 !> All the options are stored in a linked list, which is defined as a class and has a single global instance'prms'.
-!> 
-!> The options are appended to this list via the DefineParametersXXX() routines, which exist for all the modules that 
+!>
+!> The options are appended to this list via the DefineParametersXXX() routines, which exist for all the modules that
 !> have an option, which can be specified in the parameter file. This is done at the beginning of the execution. After calling
 !> all DefineParametersXXX() routines the prms list contains all possible options (with name, description, default value (optional)).
-!> 
+!>
 !> After that the prms\%read_options() routine is called, which actually reads the options from the parameter file. Therefore the
 !> parameter file is read line by line and each line is parsed for an option.
 !> By this the values of the options, that are already in the linked list 'prms' are set.
-!> 
-!> Now all the options are filled with the data from the parameter file and can be accessed via the functions GETINT(ARRAY), 
+!>
+!> Now all the options are filled with the data from the parameter file and can be accessed via the functions GETINT(ARRAY),
 !> GETREAL(ARRAY), ...
-!> A call of these functions then removes the specific option from the linked list, such that 
+!> A call of these functions then removes the specific option from the linked list, such that
 !> every option can only be read once. This is necessary for options with the same name, that occure multiple times in the parameter
 !> file.
 !==================================================================================================================================
@@ -44,7 +44,7 @@ IMPLICIT NONE
 PRIVATE
 
 !================================================
-!> Link for linked List 
+!> Link for linked List
 !================================================
 TYPE,PUBLIC :: LINK
   CLASS(OPTION), POINTER :: opt => null()
@@ -62,20 +62,20 @@ TYPE,PUBLIC :: Parameters
   INTEGER              :: maxValueLen         !< maximal string length of the value of an option in the list
   CHARACTER(LEN=255)   :: actualSection = ""  !< actual section, to set section of an option, when inserted into list
   LOGICAL              :: removeAfterRead=.TRUE. !< specifies whether options shall be marked as removed after being read
-CONTAINS 
+CONTAINS
   PROCEDURE :: SetSection                 !< routine to set 'actualSection'
   PROCEDURE :: CreateOption               !< general routine to create a option and insert it into the linked list
   PROCEDURE :: CreateIntOption            !< routine to generate an integer option
   PROCEDURE :: CreateIntFromStringOption  !< routine to generate an integer option with a optional string representation
-  PROCEDURE :: CreateLogicalOption        !< routine to generate an logical option 
+  PROCEDURE :: CreateLogicalOption        !< routine to generate an logical option
   PROCEDURE :: CreateRealOption           !< routine to generate an real option
   PROCEDURE :: CreateStringOption         !< routine to generate an string option
   PROCEDURE :: CreateIntArrayOption       !< routine to generate an integer array option
-  PROCEDURE :: CreateLogicalArrayOption   !< routine to generate an logical array option 
+  PROCEDURE :: CreateLogicalArrayOption   !< routine to generate an logical array option
   PROCEDURE :: CreateRealArrayOption      !< routine to generate an real array option
   !PROCEDURE :: CreateStringArrayOption    !< routine to generate an string array option
   PROCEDURE :: CountOption_               !< function to count the number of options of a given name
-  PROCEDURE :: read_options               !< routine that loops over the lines of a parameter files 
+  PROCEDURE :: read_options               !< routine that loops over the lines of a parameter files
                                           !< and calls read_option for every option. Outputs all unknow options
   PROCEDURE :: read_option                !< routine that parses a single line from the parameter file.
 END TYPE Parameters
@@ -184,15 +184,15 @@ IMPLICIT NONE
 CLASS(Parameters),INTENT(INOUT) :: this                   !< CLASS(Parameters)
 CHARACTER(LEN=*),INTENT(IN)     :: section                !< section to set
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 !==================================================================================================================================
 this%actualSection = section
 END SUBROUTINE SetSection
 
 !==================================================================================================================================
-!> General routine to create an option. 
-!> Fills all fields of the option. Since the prms\%parse function is used to set the value, this routine can be abstract for all 
-!> types of options. 
+!> General routine to create an option.
+!> Fills all fields of the option. Since the prms\%parse function is used to set the value, this routine can be abstract for all
+!> types of options.
 !==================================================================================================================================
 SUBROUTINE CreateOption(this, opt, name, description, value, multiple)
 ! INPUT/OUTPUT VARIABLES
@@ -237,7 +237,7 @@ END SUBROUTINE CreateOption
 !==================================================================================================================================
 !> Create a new integer option. Only calls the general prms\%createoption routine.
 !==================================================================================================================================
-SUBROUTINE CreateIntOption(this, name, description, value, multiple) 
+SUBROUTINE CreateIntOption(this, name, description, value, multiple)
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
 CHARACTER(LEN=*),INTENT(IN)          :: name           !< option name
@@ -245,7 +245,7 @@ CHARACTER(LEN=*),INTENT(IN)          :: description    !< option description
 CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: value          !< option value
 LOGICAL,INTENT(IN),OPTIONAL          :: multiple       !< marker if multiple option
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 CLASS(IntOption),ALLOCATABLE,TARGET :: intopt
 !==================================================================================================================================
 ALLOCATE(intopt)
@@ -255,7 +255,7 @@ END SUBROUTINE CreateIntOption
 !==================================================================================================================================
 !> Create a new integer option with a optional string representation. Only calls the general prms\%createoption routine.
 !==================================================================================================================================
-SUBROUTINE CreateIntFromStringOption(this, name, description, value, multiple) 
+SUBROUTINE CreateIntFromStringOption(this, name, description, value, multiple)
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
 CHARACTER(LEN=*),INTENT(IN)          :: name           !< option name
@@ -263,7 +263,7 @@ CHARACTER(LEN=*),INTENT(IN)          :: description    !< option description
 CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: value          !< option value
 LOGICAL,INTENT(IN),OPTIONAL          :: multiple       !< marker if multiple option
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 CLASS(IntFromStringOption),ALLOCATABLE,TARGET :: intfromstropt
 !==================================================================================================================================
 ALLOCATE(intfromstropt)
@@ -273,7 +273,7 @@ END SUBROUTINE CreateIntFromStringOption
 !==================================================================================================================================
 !> Create a new logical option. Only calls the general prms\%createoption routine.
 !==================================================================================================================================
-SUBROUTINE CreateLogicalOption(this, name, description, value, multiple) 
+SUBROUTINE CreateLogicalOption(this, name, description, value, multiple)
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
 CHARACTER(LEN=*),INTENT(IN)          :: name           !< option name
@@ -281,7 +281,7 @@ CHARACTER(LEN=*),INTENT(IN)          :: description    !< option description
 CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: value          !< option value
 LOGICAL,INTENT(IN),OPTIONAL          :: multiple       !< marker if multiple option
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 CLASS(LogicalOption),ALLOCATABLE,TARGET :: logicalopt
 !==================================================================================================================================
 ALLOCATE(logicalopt)
@@ -291,7 +291,7 @@ END SUBROUTINE CreateLogicalOption
 !==================================================================================================================================
 !> Create a new real option. Only calls the general prms\%createoption routine.
 !==================================================================================================================================
-SUBROUTINE CreateRealOption(this, name, description, value, multiple) 
+SUBROUTINE CreateRealOption(this, name, description, value, multiple)
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
 CHARACTER(LEN=*),INTENT(IN)          :: name           !< option name
@@ -299,7 +299,7 @@ CHARACTER(LEN=*),INTENT(IN)          :: description    !< option description
 CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: value          !< option value
 LOGICAL,INTENT(IN),OPTIONAL          :: multiple       !< marker if multiple option
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 CLASS(RealOption),ALLOCATABLE,TARGET :: realopt
 !==================================================================================================================================
 ALLOCATE(realopt)
@@ -309,7 +309,7 @@ END SUBROUTINE CreateRealOption
 !==================================================================================================================================
 !> Create a new string option. Only calls the general prms\%createoption routine.
 !==================================================================================================================================
-SUBROUTINE CreateStringOption(this, name, description, value, multiple) 
+SUBROUTINE CreateStringOption(this, name, description, value, multiple)
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
 CHARACTER(LEN=*),INTENT(IN)          :: name           !< option name
@@ -317,7 +317,7 @@ CHARACTER(LEN=*),INTENT(IN)          :: description    !< option description
 CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: value          !< option value
 LOGICAL,INTENT(IN),OPTIONAL          :: multiple       !< marker if multiple option
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 CLASS(StringOption),ALLOCATABLE,TARGET :: stringopt
 !==================================================================================================================================
 ALLOCATE(stringopt)
@@ -327,7 +327,7 @@ END SUBROUTINE CreateStringOption
 !==================================================================================================================================
 !> Create a new integer array option. Only calls the general prms\%createoption routine.
 !==================================================================================================================================
-SUBROUTINE CreateIntArrayOption(this, name, description, value, multiple) 
+SUBROUTINE CreateIntArrayOption(this, name, description, value, multiple)
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
 CHARACTER(LEN=*),INTENT(IN)          :: name           !< option name
@@ -335,7 +335,7 @@ CHARACTER(LEN=*),INTENT(IN)          :: description    !< option description
 CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: value          !< option value
 LOGICAL,INTENT(IN),OPTIONAL          :: multiple       !< marker if multiple option
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 CLASS(IntArrayOption),ALLOCATABLE,TARGET :: intopt
 !==================================================================================================================================
 ALLOCATE(intopt)
@@ -345,7 +345,7 @@ END SUBROUTINE CreateIntArrayOption
 !==================================================================================================================================
 !> Create a new logical array option. Only calls the general prms\%createoption routine.
 !==================================================================================================================================
-SUBROUTINE CreateLogicalArrayOption(this, name, description, value, multiple) 
+SUBROUTINE CreateLogicalArrayOption(this, name, description, value, multiple)
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
 CHARACTER(LEN=*),INTENT(IN)          :: name           !< option name
@@ -353,7 +353,7 @@ CHARACTER(LEN=*),INTENT(IN)          :: description    !< option description
 CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: value          !< option value
 LOGICAL,INTENT(IN),OPTIONAL          :: multiple       !< marker if multiple option
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 CLASS(LogicalArrayOption),ALLOCATABLE,TARGET :: logicalopt
 !==================================================================================================================================
 ALLOCATE(logicalopt)
@@ -363,7 +363,7 @@ END SUBROUTINE CreateLogicalArrayOption
 !==================================================================================================================================
 !> Create a new real array option. Only calls the general prms\%createoption routine.
 !==================================================================================================================================
-SUBROUTINE CreateRealArrayOption(this, name, description, value, multiple) 
+SUBROUTINE CreateRealArrayOption(this, name, description, value, multiple)
 ! INPUT/OUTPUT VARIABLES
 CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
 CHARACTER(LEN=*),INTENT(IN)          :: name           !< option name
@@ -371,7 +371,7 @@ CHARACTER(LEN=*),INTENT(IN)          :: description    !< option description
 CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: value          !< option value
 LOGICAL,INTENT(IN),OPTIONAL          :: multiple       !< marker if multiple option
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 CLASS(RealArrayOption),ALLOCATABLE,TARGET :: realopt
 !==================================================================================================================================
 ALLOCATE(realopt)
@@ -381,7 +381,7 @@ END SUBROUTINE CreateRealArrayOption
 !==================================================================================================================================
 !> Create a new string array option. Only calls the general prms\%createoption routine.
 !==================================================================================================================================
-!SUBROUTINE CreateStringArrayOption(this, name, description, value, multiple) 
+!SUBROUTINE CreateStringArrayOption(this, name, description, value, multiple)
 !! INPUT/OUTPUT VARIABLES
 !CLASS(Parameters),INTENT(INOUT)      :: this           !< CLASS(Parameters)
 !CHARACTER(LEN=*),INTENT(IN)          :: name           !< option name
@@ -389,7 +389,7 @@ END SUBROUTINE CreateRealArrayOption
 !CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: value          !< option value
 !LOGICAL,INTENT(IN),OPTIONAL          :: multiple       !< marker if multiple option
 !!----------------------------------------------------------------------------------------------------------------------------------
-!! LOCAL VARIABLES 
+!! LOCAL VARIABLES
 !CLASS(StringArrayOption),ALLOCATABLE,TARGET :: stringopt
 !!==================================================================================================================================
 !ALLOCATE(stringopt)
@@ -408,7 +408,7 @@ CLASS(Parameters),INTENT(INOUT) :: this  !< CLASS(Parameters)
 CHARACTER(LEN=*),INTENT(IN)     :: name  !< Search for this keyword in ini file
 INTEGER                         :: count !< number of found occurences of keyword
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 CLASS(link),POINTER :: current
 !==================================================================================================================================
 count = 0
@@ -423,7 +423,7 @@ END DO
 END FUNCTION  CountOption_
 
 !==================================================================================================================================
-!> Insert a option in front of option with same name in the 'prms' linked list. 
+!> Insert a option in front of option with same name in the 'prms' linked list.
 !==================================================================================================================================
 SUBROUTINE insertOption(first, opt)
 ! MODULES
@@ -433,7 +433,7 @@ IMPLICIT NONE
 CLASS(link),POINTER,INTENT(IN) :: first !< first item in linked list
 CLASS(OPTION),INTENT(IN)       :: opt   !< option to be inserted
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 CLASS(link),POINTER :: newLink
 CLASS(link),POINTER :: current
 !==================================================================================================================================
@@ -446,15 +446,15 @@ DO WHILE (associated(current%next))
 END DO
 newLink => constructor_Link(opt, current%next)
 current%next => newLink
-END SUBROUTINE insertOption    
+END SUBROUTINE insertOption
 
 !==================================================================================================================================
-!> Read options from parameter file. 
+!> Read options from parameter file.
 !>
-!> Therefore the file is read line by line. After removing comments and all white spaces each line is parsed in the 
+!> Therefore the file is read line by line. After removing comments and all white spaces each line is parsed in the
 !> prms\%read_option() routine. Outputs all unknown options.
 !==================================================================================================================================
-SUBROUTINE read_options(this, filename) 
+SUBROUTINE read_options(this, filename)
 ! MODULES
 USE MOD_StringTools ,ONLY: STRICMP,GetFileExtension
 IMPLICIT NONE
@@ -463,7 +463,7 @@ IMPLICIT NONE
 CLASS(Parameters),INTENT(INOUT) :: this     !< CLASS(Parameters)
 CHARACTER(LEN=255),INTENT(IN)   :: filename !< name of file to be read
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 CLASS(link), POINTER  :: current
 INTEGER               :: stat,iniUnit,nLines,i
 TYPE(Varying_String)  :: aStr,bStr
@@ -481,7 +481,7 @@ IF(MPIROOT)THEN
     CALL Abort(__STAMP__,&
         "Ini file does not exist.")
   END IF
-  ! Check if first argument is the ini-file 
+  ! Check if first argument is the ini-file
   IF(.NOT.(STRICMP(GetFileExtension(filename),'ini'))) THEN
     SWRITE(*,*) "Usage: flexi parameter.ini [restart.h5] [keyword arguments]"
     SWRITE(*,*) "   or: flexi restart.h5 [keyword arguments]"
@@ -512,7 +512,7 @@ END IF
 
 !broadcast number of lines, read and broadcast file content
 #if USE_MPI
-CALL MPI_BCAST(nLines,1,MPI_INTEGER,0,MPI_COMM_WORLD,iError)
+CALL MPI_BCAST(nLines,1,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
 #endif
 ALLOCATE(FileContent(nLines))
 
@@ -523,7 +523,7 @@ IF ((MPIROOT).AND.(nLines.GT.0)) THEN
 END IF
 IF (MPIROOT) CLOSE(iniUnit)
 #if USE_MPI
-CALL MPI_BCAST(FileContent,LEN(FileContent)*nLines,MPI_CHARACTER,0,MPI_COMM_WORLD,iError)
+CALL MPI_BCAST(FileContent,LEN(FileContent)*nLines,MPI_CHARACTER,0,MPI_COMM_FLEXI,iError)
 #endif
 
 ! infinte loop. Exit at EOF
@@ -536,7 +536,7 @@ DO i=1,nLines
   CALL Split(aStr,bStr,"!")
   ! Remove comments with "#"
   CALL Split(bStr,aStr,"#")
-  ! aStr may hold an option 
+  ! aStr may hold an option
 
   ! Remove blanks
   aStr=Replace(aStr," ","",Every=.true.)
@@ -573,7 +573,7 @@ DO WHILE (associated(current))
   current => current%next
 END DO
 
-! check for colored output 
+! check for colored output
 use_escape_codes = GETLOGICAL("ColoredOutput")
 END SUBROUTINE read_options
 
@@ -590,7 +590,7 @@ CLASS(Parameters),INTENT(IN) :: this  !< CLASS(Parameters)
 CHARACTER(LEN=*),INTENT(IN)  :: line  !< line to be parsed
 LOGICAL                      :: found !< marker if option found
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 CHARACTER(LEN=255)           :: name
 CHARACTER(LEN=255)           :: rest
 CLASS(link), POINTER         :: current
@@ -613,7 +613,7 @@ DO WHILE (associated(current))
     found = .TRUE.
     IF (current%opt%isSet) THEN
       IF (.NOT.(current%opt%multiple)) THEN
-        ! option already set, but is not a multiple option 
+        ! option already set, but is not a multiple option
         SWRITE(UNIT_StdOut,*) 'Option "', TRIM(name), '" is already set, but is not a multiple option!'
         STOP
       ELSE
@@ -642,15 +642,15 @@ END DO
 END FUNCTION read_option
 
 !==================================================================================================================================
-!> Output all parameters, which are defined but NOT set in the parameter file. 
+!> Output all parameters, which are defined but NOT set in the parameter file.
 !==================================================================================================================================
-SUBROUTINE IgnoredParameters() 
+SUBROUTINE IgnoredParameters()
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 CLASS(link), POINTER :: current
 !==================================================================================================================================
 current => prms%firstLink
@@ -665,7 +665,7 @@ DO WHILE (associated(current))
 END DO
 SWRITE(UNIT_StdOut,'(100("!"))')
 CALL clear_formatting()
-END SUBROUTINE IgnoredParameters 
+END SUBROUTINE IgnoredParameters
 
 !==================================================================================================================================
 !> Print a default parameter file. The command line argument --help prints it in the format, that is used for reading the parameter
@@ -681,7 +681,7 @@ IMPLICIT NONE
 LOGICAL,INTENT(IN)   :: markdown  !< marker whether markdown format is used for output
 CHARACTER(LEN=255)   :: name      !< for this parameter help is printed. If empty print all.
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 CLASS(link), POINTER   :: current
 CLASS(OPTION), POINTER :: currentOpt
 INTEGER                :: maxNameLen
@@ -728,7 +728,7 @@ END DO
 IF ((.NOT.markdown).AND.(LEN_TRIM(name).EQ.0)) THEN
   SWRITE(UNIT_StdOut,'(A80)')  "!==============================================================================="
   SWRITE(UNIT_StdOut,'(A)')    "! Default Parameter File generated using 'flexi --help' "
-  SWRITE(UNIT_StdOut,'(4A)')   "!   compiled at : ", __DATE__," ", __TIME__ 
+  SWRITE(UNIT_StdOut,'(4A)')   "!   compiled at : ", __DATE__," ", __TIME__
   SWRITE(UNIT_StdOut,'(A80)')  "!==============================================================================="
 END IF
 
@@ -772,9 +772,9 @@ DO WHILE (associated(current))
         SWRITE(UNIT_StdOut,'('//fmtValue//'("-")A1)', ADVANCE='NO')     " "
         SWRITE(UNIT_StdOut,'('//fmtComment//'("-"))')
         SWRITE(UNIT_StdOut,'(A)', ADVANCE='NO')                         "**Variable**"
-        SWRITE(UNIT_StdOut,'('//fmtNamespace//'(" "))', ADVANCE='NO') 
+        SWRITE(UNIT_StdOut,'('//fmtNamespace//'(" "))', ADVANCE='NO')
         SWRITE(UNIT_StdOut,'(A)', ADVANCE='NO')                         "**Default**"
-        SWRITE(UNIT_StdOut,'('//fmtValuespace//'(" "))', ADVANCE='NO') 
+        SWRITE(UNIT_StdOut,'('//fmtValuespace//'(" "))', ADVANCE='NO')
         SWRITE(UNIT_StdOut,'(A)')                                       "**Description**"
         SWRITE(UNIT_StdOut,'(A80)')                                     ""
       ELSE
@@ -803,12 +803,12 @@ DO WHILE (associated(current))
         END DO
       END SELECT
     END IF
- 
+
     ! print ------ line at the end of a section in markdown mode
-    IF (associated(current%next).AND.markdown) THEN 
+    IF (associated(current%next).AND.markdown) THEN
       IF (.NOT.STRICMP(section,current%next%opt%section)) THEN
         SWRITE(UNIT_StdOut,'('//fmtLineLen//'("-"))')
-        SWRITE(UNIT_StdOut,*) ''    
+        SWRITE(UNIT_StdOut,*) ''
       END IF
     END IF
   END IF
@@ -828,7 +828,7 @@ CLASS(link),POINTER            :: constructor_Link  !< new link
 CLASS(OPTION),INTENT(IN)       :: opt               !< option to be linked
 CLASS(link),INTENT(IN),POINTER :: next              !< next link
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 !==================================================================================================================================
 ALLOCATE(constructor_Link)
 constructor_Link%next => next
@@ -843,7 +843,7 @@ FUNCTION CountOption(name) result(no)
 ! MODULES
 USE MOD_Options
 !----------------------------------------------------------------------------------------------------------------------------------
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN) :: name  !< parameter name
 INTEGER                     :: no    !< number of parameters
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -854,15 +854,15 @@ END FUNCTION CountOption
 
 !==================================================================================================================================
 !> General routine to get an option. This routine is called from GETINT,GETREAL,GETLOGICAL,GETSTR to get the value a non-array
-!> option. 
+!> option.
 !==================================================================================================================================
 SUBROUTINE GetGeneralOption(value, name, proposal)
 USE MOD_Options
 !----------------------------------------------------------------------------------------------------------------------------------
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)          :: name     !< parameter name
 CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: proposal !< reference value
-CLASS(*)                             :: value    !< parameter value 
+CLASS(*)                             :: value    !< parameter value
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CLASS(link),POINTER   :: current
@@ -916,14 +916,14 @@ DO WHILE (associated(current))
     ! remove the option from the linked list of all parameters
     IF(prms%removeAfterRead) current%opt%isRemoved = .TRUE.
     RETURN
-  END IF 
+  END IF
   current => current%next
 END DO
 CALL ABORT(__STAMP__, &
     'Option "'//TRIM(name)//'" is not defined in any DefineParameters... routine '//&
     'or already read (use GET... routine only for multiple options more than once).')
 END SUBROUTINE GetGeneralOption
-    
+
 !==================================================================================================================================
 !> General routine to get an array option. This routine is called from GETINTARRAY,GETREALARRAY,GETLOGICALARRAY,GETSTRARRAY to get
 !> the value an array option.
@@ -931,11 +931,11 @@ END SUBROUTINE GetGeneralOption
 SUBROUTINE GetGeneralArrayOption(value, name, no, proposal)
 USE MOD_Options
 !----------------------------------------------------------------------------------------------------------------------------------
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)          :: name      !< parameter name
 INTEGER,INTENT(IN)                   :: no        !< size of array
 CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: proposal  !< reference value
-CLASS(*)                             :: value(no) !< parameter value 
+CLASS(*)                             :: value(no) !< parameter value
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CLASS(link),POINTER   :: current
@@ -996,7 +996,7 @@ DO WHILE (associated(current))
     ! remove the option from the linked list of all parameters
     IF(prms%removeAfterRead) current%opt%isRemoved = .TRUE.
     RETURN
-  END IF 
+  END IF
   current => current%next
 END DO
 CALL ABORT(__STAMP__, &
@@ -1005,50 +1005,50 @@ CALL ABORT(__STAMP__, &
 END SUBROUTINE GetGeneralArrayOption
 
 !==================================================================================================================================
-!> Get integer, where proposal is used as default value, if the option was not set in parameter file 
+!> Get integer, where proposal is used as default value, if the option was not set in parameter file
 !==================================================================================================================================
 FUNCTION GETINT(name, proposal) result(value)
 !----------------------------------------------------------------------------------------------------------------------------------
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN) :: name              !< parameter name
-CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: proposal !< reference value 
-INTEGER                     :: value             !< parameter value 
+CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: proposal !< reference value
+INTEGER                     :: value             !< parameter value
 !==================================================================================================================================
 value = -1
 CALL GetGeneralOption(value, name, proposal)
 END FUNCTION GETINT
 
 !==================================================================================================================================
-!> Get logical, where proposal is used as default value, if the option was not set in parameter file 
+!> Get logical, where proposal is used as default value, if the option was not set in parameter file
 !==================================================================================================================================
 FUNCTION GETLOGICAL(name, proposal) result(value)
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN) :: name              !< parameter name
-CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: proposal !< reference value 
-LOGICAL                     :: value             !< parameter value 
+CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: proposal !< reference value
+LOGICAL                     :: value             !< parameter value
 !==================================================================================================================================
 value = .FALSE.
 CALL GetGeneralOption(value, name, proposal)
 END FUNCTION GETLOGICAL
 
 !==================================================================================================================================
-!> Get real, where proposal is used as default value, if the option was not set in parameter file 
+!> Get real, where proposal is used as default value, if the option was not set in parameter file
 !==================================================================================================================================
 FUNCTION GETREAL(name, proposal) result(value)
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)          :: name     !< parameter name
-CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: proposal !< reference value 
-REAL                                 :: value    !< parameter value 
+CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: proposal !< reference value
+REAL                                 :: value    !< parameter value
 !==================================================================================================================================
 value = -1.0
 CALL GetGeneralOption(value, name, proposal)
 END FUNCTION GETREAL
 
 !==================================================================================================================================
-!> Get string, where proposal is used as default value, if the option was not set in parameter file 
+!> Get string, where proposal is used as default value, if the option was not set in parameter file
 !==================================================================================================================================
 FUNCTION GETSTR(name, proposal) result(value)
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)          :: name     !< parameter name
 CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: proposal !< reference value
 CHARACTER(LEN=255)                   :: value    !< parameter value
@@ -1060,13 +1060,13 @@ value = tmp%chars
 END FUNCTION GETSTR
 
 !==================================================================================================================================
-!> Get integer array, where proposal is used as default value, if the option was not set in parameter file 
+!> Get integer array, where proposal is used as default value, if the option was not set in parameter file
 !==================================================================================================================================
 FUNCTION GETINTARRAY(name, no, proposal) result(value)
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)          :: name      !< parameter name
 INTEGER,INTENT(IN)                   :: no        !< size of array
-CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: proposal  !< reference value 
+CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: proposal  !< reference value
 INTEGER                              :: value(no) !< array of integers
 !==================================================================================================================================
 value = -1
@@ -1074,13 +1074,13 @@ CALL GetGeneralArrayOption(value, name, no, proposal)
 END FUNCTION GETINTARRAY
 
 !==================================================================================================================================
-!> Get logical array, where proposal is used as default value, if the option was not set in parameter file 
+!> Get logical array, where proposal is used as default value, if the option was not set in parameter file
 !==================================================================================================================================
 FUNCTION GETLOGICALARRAY(name, no, proposal) result(value)
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)          :: name      !< parameter name
 INTEGER,INTENT(IN)                   :: no        !< size of array
-CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: proposal  !< reference value 
+CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: proposal  !< reference value
 LOGICAL                              :: value(no) !< array of logicals
 !==================================================================================================================================
 value = .FALSE.
@@ -1088,13 +1088,13 @@ CALL GetGeneralArrayOption(value, name, no, proposal)
 END FUNCTION GETLOGICALARRAY
 
 !==================================================================================================================================
-!> Get real array, where proposal is used as default value, if the option was not set in parameter file 
+!> Get real array, where proposal is used as default value, if the option was not set in parameter file
 !==================================================================================================================================
 FUNCTION GETREALARRAY(name, no, proposal) RESULT(value)
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)          :: name      !< parameter name
 INTEGER,INTENT(IN)                   :: no        !< size of array
-CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: proposal  !< reference value 
+CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: proposal  !< reference value
 REAL                                 :: value(no) !< array of reals
 !==================================================================================================================================
 value = -1.
@@ -1102,13 +1102,13 @@ CALL GetGeneralArrayOption(value, name, no, proposal)
 END FUNCTION GETREALARRAY
 
 !==================================================================================================================================
-!> Get string array, where proposal is used as default value, if the option was not set in parameter file 
+!> Get string array, where proposal is used as default value, if the option was not set in parameter file
 !==================================================================================================================================
 FUNCTION GETSTRARRAY(name, no, proposal) result(value)
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)          :: name      !< parameter name
 INTEGER,INTENT(IN)                   :: no        !< size of array
-CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: proposal  !< reference value 
+CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: proposal  !< reference value
 CHARACTER(LEN=255)                   :: value(no) !< array of strings
 ! LOCAL VARIABLES
 TYPE(STR255) :: tmp(no) ! compiler bug workaround (gfortran 4.8.4)
@@ -1121,10 +1121,10 @@ END DO ! i = 1, no
 END FUNCTION GETSTRARRAY
 
 !==================================================================================================================================
-!> Get string array, where proposal is used as default value, if the option was not set in parameter file 
+!> Get string array, where proposal is used as default value, if the option was not set in parameter file
 !==================================================================================================================================
 FUNCTION GETDESCRIPTION(name) result(description)
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)          :: name        !< parameter name
 CHARACTER(LEN=1000)                  :: description !< description
 ! LOCAL VARIABLES
@@ -1141,13 +1141,13 @@ END DO
 END FUNCTION GETDESCRIPTION
 
 !==================================================================================================================================
-!> GETINT for options with string values. Requires a map that provides the link between the 
-!> possible integer values and the corresponding named values. This map is set using the addStrListEntry routine during 
+!> GETINT for options with string values. Requires a map that provides the link between the
+!> possible integer values and the corresponding named values. This map is set using the addStrListEntry routine during
 !> parameter definition. If there is no named value to an option passed as int a warning is returned.
 !==================================================================================================================================
 FUNCTION GETINTFROMSTR(name) result(value)
 USE MOD_StringTools ,ONLY: ISINT, STRICMP
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)   :: name        !< parameter name
 INTEGER                       :: value       !< return value
 ! LOCAL VARIABLES
@@ -1167,7 +1167,7 @@ DO WHILE (associated(current))
       ! Set flag indicating the given option has an entry in the mapping
       opt%foundInList = .TRUE.
       ! Size of list with string-integer pairs
-      listSize = SIZE(opt%strList) 
+      listSize = SIZE(opt%strList)
       ! Check if an integer has been specfied directly
       IF (ISINT(opt%value)) THEN
         READ(opt%value,*) value
@@ -1215,10 +1215,10 @@ END FUNCTION GETINTFROMSTR
 !===================================================================================================================================
 !> Add an entry to the mapping of string and integer values for the StringToInt option.
 !===================================================================================================================================
-SUBROUTINE addStrListEntry(name,string_in,int_in) 
+SUBROUTINE addStrListEntry(name,string_in,int_in)
 USE MOD_Globals,     ONLY: abort
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)    :: name      !< parameter name
 CHARACTER(LEN=*),INTENT(IN)    :: string_in !< (IN) string used for the option value
 INTEGER         ,INTENT(IN)    :: int_in    !< (IN) integer used internally for the option value
@@ -1288,7 +1288,7 @@ END SUBROUTINE addStrListEntry
 !===================================================================================================================================
 !> This routing extracts a parameter file from the userblock of a state file
 !===================================================================================================================================
-SUBROUTINE ExtractParameterFile(filename,prmfile,userblockFound) 
+SUBROUTINE ExtractParameterFile(filename,prmfile,userblockFound)
 ! MODULES
 USE MOD_StringTools ,ONLY: STRICMP
 IMPLICIT NONE
@@ -1298,7 +1298,7 @@ CHARACTER(LEN=255),INTENT(IN) :: filename       !< name of file to be read
 CHARACTER(LEN=*),INTENT(IN)   :: prmfile        !< name of file to be written
 LOGICAL,INTENT(OUT)           :: userblockFound !< logical indicating sucessful extraction of parameter file
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 INTEGER               :: stat,iniUnit,fileUnit
 TYPE(Varying_String)  :: aStr
 CHARACTER(LEN=3)      :: tmp
@@ -1333,7 +1333,7 @@ IF (MPIRoot) THEN
     ! read a line into 'aStr'
     CALL Get(fileUnit,aStr,iostat=stat)
     ! exit loop if EOF
-    IF(IS_IOSTAT_END(stat)) EXIT 
+    IF(IS_IOSTAT_END(stat)) EXIT
     IF(.NOT.IS_IOSTAT_EOR(stat)) THEN
       CALL Abort(__STAMP__,&
           'Error during ini file read')
@@ -1371,7 +1371,7 @@ IF (MPIRoot) THEN
   CLOSE(iniUnit)
 END IF
 #if USE_MPI
-CALL MPI_BCAST(userblockFound,1,MPI_LOGICAL,0,MPI_COMM_WORLD,iError)
+CALL MPI_BCAST(userblockFound,1,MPI_LOGICAL,0,MPI_COMM_FLEXI,iError)
 #endif /*USE_MPI*/
 
 END SUBROUTINE ExtractParameterFile
@@ -1379,7 +1379,7 @@ END SUBROUTINE ExtractParameterFile
 !===================================================================================================================================
 !> Clear parameters list 'prms'.
 !===================================================================================================================================
-SUBROUTINE FinalizeParameters() 
+SUBROUTINE FinalizeParameters()
 IMPLICIT NONE
 ! LOCAL VARIABLES
 CLASS(link), POINTER         :: current, tmp

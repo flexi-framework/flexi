@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -68,13 +68,13 @@ REAL,DIMENSION(PP_nVar    ,0:PP_N,0:PP_NZ)    :: UCons_L,UCons_R
 REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_NZ,0:PP_N) :: diffFlux_x,diffFlux_y,diffFlux_z
 REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_NZ)        :: Fvisc_FV
 REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: f,g,h      !< viscous volume fluxes at GP
-#endif  
+#endif
 REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_NZ)        :: F_FV
 !==================================================================================================================================
 
 ! This routine works as follows:
-! The tensor product stucture is used to evaluate the fluxes first for all interfaces/slices in xi-direction, then in eta- and 
-! at last in zeta-direction. 
+! The tensor product stucture is used to evaluate the fluxes first for all interfaces/slices in xi-direction, then in eta- and
+! at last in zeta-direction.
 !   0. The viscous fluxes in all sub-cells are calculated.
 ! For each direction the following steps are performed.
 !   1. copy viscous flux
@@ -96,9 +96,9 @@ DO iElem=1,nElems
 #if PARABOLIC
   ! 1. copy viscous fluxes to temporary array (for performance)
   DO i=0,PP_N
-    diffFlux_x(:,:,:,i) = f(:,i,:,:) 
-    diffFlux_y(:,:,:,i) = g(:,i,:,:) 
-    diffFlux_z(:,:,:,i) = h(:,i,:,:) 
+    diffFlux_x(:,:,:,i) = f(:,i,:,:)
+    diffFlux_y(:,:,:,i) = g(:,i,:,:)
+    diffFlux_z(:,:,:,i) = h(:,i,:,:)
   END DO ! i=0,PP_N
 #endif
 
@@ -106,11 +106,11 @@ DO iElem=1,nElems
   DO i=1,PP_N
     DO q=0,PP_NZ; DO p=0,PP_N
       ! 2. reconstruct solution at left and right side of the interface/slice
-#if FV_RECONSTRUCT      
-      UPrim_L(:,p,q) = UPrim(:,i-1,p,q,iElem) + gradUxi(:,p,q,i-1,iElem) * FV_dx_XI_R(p,q,i-1,iElem) 
+#if FV_RECONSTRUCT
+      UPrim_L(:,p,q) = UPrim(:,i-1,p,q,iElem) + gradUxi(:,p,q,i-1,iElem) * FV_dx_XI_R(p,q,i-1,iElem)
       UPrim_R(:,p,q) = UPrim(:,i  ,p,q,iElem) - gradUxi(:,p,q,i  ,iElem) * FV_dx_XI_L(p,q,i  ,iElem)
-#else 
-      UPrim_L(:,p,q) = UPrim(:,i-1,p,q,iElem) 
+#else
+      UPrim_L(:,p,q) = UPrim(:,i-1,p,q,iElem)
       UPrim_R(:,p,q) = UPrim(:,i  ,p,q,iElem)
 #endif
     END DO; END DO ! p,q=0,PP_N
@@ -153,10 +153,10 @@ DO iElem=1,nElems
   DO j=1,PP_N
     DO q=0,PP_NZ; DO p=0,PP_N
       ! 2. reconstruct solution at left and right side of the interface/slice
-#if FV_RECONSTRUCT      
+#if FV_RECONSTRUCT
       UPrim_L(:,p,q) = UPrim(:,p,j-1,q,iElem) + gradUeta(:,p,q,j-1,iElem) * FV_dx_ETA_R(p,q,j-1,iElem)
       UPrim_R(:,p,q) = UPrim(:,p,j  ,q,iElem) - gradUeta(:,p,q,j  ,iElem) * FV_dx_ETA_L(p,q,j  ,iElem)
-#else  
+#else
       UPrim_L(:,p,q) = UPrim(:,p,j-1,q,iElem)
       UPrim_R(:,p,q) = UPrim(:,p,j  ,q,iElem)
 #endif
@@ -185,7 +185,7 @@ DO iElem=1,nElems
     END DO; END DO
   END DO ! j
 
-#if PP_dim == 3  
+#if PP_dim == 3
   ! === Zeta-Direction ============
   ! 1. no copy of viscous fluxes to diffFlux_x/y/z required, since f,g,h already have the correct memory layout
 
@@ -193,10 +193,10 @@ DO iElem=1,nElems
   DO k=1,PP_N
     DO q=0,PP_N; DO p=0,PP_N
       ! 2. reconstruct solution at left and right side of the interface/slice
-#if FV_RECONSTRUCT      
+#if FV_RECONSTRUCT
       UPrim_L(:,p,q) = UPrim(:,p,q,k-1,iElem) + gradUzeta(:,p,q,k-1,iElem) * FV_dx_ZETA_R(p,q,k-1,iElem)
       UPrim_R(:,p,q) = UPrim(:,p,q,k  ,iElem) - gradUzeta(:,p,q,k  ,iElem) * FV_dx_ZETA_L(p,q,k  ,iElem)
-#else 
+#else
       UPrim_L(:,p,q) = UPrim(:,p,q,k-1,iElem)
       UPrim_R(:,p,q) = UPrim(:,p,q,k  ,iElem)
 #endif
@@ -224,7 +224,7 @@ DO iElem=1,nElems
       Ut_FV(:,i,j,k  ,iElem) = Ut_FV(:,i,j,k  ,iElem) - F_FV(:,i,j) * FV_SurfElemZeta_sw(i,j,k,iElem)
     END DO; END DO
   END DO ! k
-#endif /* PP_dim == 3 */ 
+#endif /* PP_dim == 3 */
 
 END DO ! iElem
 END SUBROUTINE FV_VolInt

@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -14,7 +14,7 @@
 #include "flexi.h"
 
 !==================================================================================================================================
-!> Contains all the routines to calculate the (equation system and EOS dependent) conservative/primitive/derived quantities. 
+!> Contains all the routines to calculate the (equation system and EOS dependent) conservative/primitive/derived quantities.
 !> Dependency table will be filled in here.
 !==================================================================================================================================
 MODULE MOD_EOS_Posti
@@ -54,13 +54,13 @@ CONTAINS
 
 
 #if FV_ENABLED && FV_RECONSTRUCT
-SUBROUTINE AppendNeededPrims(mapDepToCalc,mapDepToCalc_FV,nVarCalc) 
+SUBROUTINE AppendNeededPrims(mapDepToCalc,mapDepToCalc_FV,nVarCalc)
 !==================================================================================================================================
 ! MODULES
 USE MOD_EOS_Posti_Vars
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)      :: mapDepToCalc(nVarDepEOS)
 INTEGER,INTENT(OUT)     :: mapDepToCalc_FV(nVarDepEOS)
 INTEGER,INTENT(OUT)     :: nVarCalc
@@ -81,7 +81,7 @@ END DO
 END SUBROUTINE AppendNeededPrims
 #endif
 
-FUNCTION GetMaskCons() 
+FUNCTION GetMaskCons()
 !==================================================================================================================================
 ! MODULES
 USE MOD_EOS_Posti_Vars
@@ -89,7 +89,7 @@ USE MOD_Equation_Vars ,ONLY: StrVarNames
 USE MOD_StringTools   ,ONLY: STRICMP
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 INTEGER :: GetMaskCons(nVarDepEOS)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -106,13 +106,13 @@ END DO
 END FUNCTION GetMaskCons
 
 
-FUNCTION GetMaskPrim() 
+FUNCTION GetMaskPrim()
 !==================================================================================================================================
 ! MODULES
 USE MOD_EOS_Posti_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 INTEGER :: GetMaskPrim(nVarDepEOS)
 !===================================================================================================================================
 GetMaskPrim = 0
@@ -159,7 +159,7 @@ SUBROUTINE CalcDerivedQuantity(iVarCalc,DepName,nVarCalc,nVal,iElems,mapDepToCal
 USE MOD_EOS_Posti_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)            :: iVarCalc
 CHARACTER(LEN=255),INTENT(IN) :: DepName
 INTEGER,INTENT(IN)            :: nVarCalc

@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -60,13 +60,13 @@ CONTAINS
 !==================================================================================================================================
 !> Initialize sub-cells width/points/distances/... Vandermondes to switch between DG and FV ...
 !==================================================================================================================================
-SUBROUTINE InitFV_Basis() 
+SUBROUTINE InitFV_Basis()
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_FV_Vars
 USE MOD_Interpolation_Vars ,ONLY: InterpolationInitIsDone,NodeType
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
@@ -112,7 +112,7 @@ FV_w_inv = 1.0 / FV_w
 FVInitBasisIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT FV DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
-END SUBROUTINE InitFV_Basis  
+END SUBROUTINE InitFV_Basis
 
 
 !==================================================================================================================================
@@ -149,14 +149,14 @@ CALL GetNodesAndWeights(N_in,NodeType_in,xGP,wGP,wBary)
 !                     x = xGP in Subcell
 !
 !  xFV_i(k) = k-th Gauss point in i-th Subcell
-! 
+!
 ! We have to integrate the solution U in each Subcell (loop over i) and compute with this the integral mean value, which
 ! then ist the Finite-Volume solution U_FV of this Subcell.
 ! Therefore we must compute the solution in each Gauss point xFV_i of the Subcell, which is done by evaluating all Lagrange
-! polynomials l_j in all Gauss points xFV_i => stored in the matrix VDM_i = [ l_j(xFV_i(k)) ]_kj 
+! polynomials l_j in all Gauss points xFV_i => stored in the matrix VDM_i = [ l_j(xFV_i(k)) ]_kj
 ! Multiplying this Vandermonde with the DG-solution U gives us the solution in the Gauss points xFV_i of the i-th Subcell:
 !    u_i = VDM_i . U         meaning u_i(k) = U(xFV_i(k))
-! The integration over the Subcell is done by Gauss-Quadrature: 
+! The integration over the Subcell is done by Gauss-Quadrature:
 !    \int_{Subcell(i)} U dx = [ \sum_{k=0..N} u_i(k) . wGP(k) ] * a       with a = (width of Subcell(i)) / 2
 ! ( The /2 comes from the width of the reference element. )
 ! We get the integral mean value and therewith the Finite-Volume solution of the i-th Subcell  by dividing this integral by
@@ -181,24 +181,24 @@ DO i=0,N_in
   ! 3. Multiply wGP^T with VDM and store it in the i-th row of the matrix FV_Vdm
   DO j=0,N_in
     DO k=0,N_in
-      FV_Vdm(i,j) = FV_Vdm(i,j) + wGP(k) * VDM(k,j) 
+      FV_Vdm(i,j) = FV_Vdm(i,j) + wGP(k) * VDM(k,j)
     END DO
   END DO
 END DO
 ! 4. don't forget the 1/2
 FV_Vdm = FV_Vdm * 0.5
 
-! Compute the inverse of FV_Vdm 
+! Compute the inverse of FV_Vdm
 IF (PRESENT(FV_sVdm)) THEN
   FV_sVdm = INVERSE(FV_Vdm)
 END IF
 END SUBROUTINE FV_GetVandermonde
 
 !==================================================================================================================================
-!> Build positions FV_X, widths, and boundary positions 
+!> Build positions FV_X, widths, and boundary positions
 !==================================================================================================================================
 ! MODULES
-SUBROUTINE FV_Build_X_w_BdryX(N, FV_X, FV_w, FV_BdryX) 
+SUBROUTINE FV_Build_X_w_BdryX(N, FV_X, FV_w, FV_BdryX)
 USE MOD_Basis
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -207,7 +207,7 @@ IMPLICIT NONE
 INTEGER,INTENT(IN) :: N               !< polynomial degree of DG elements / number of sub-cells per direction (N+1)
 REAL,INTENT(OUT)   :: FV_X(0:N)       !< cell-centers of the sub-cells in reference space
 REAL,INTENT(OUT)   :: FV_w            !< width of the sub-cells in reference space
-REAL,INTENT(OUT)   :: FV_BdryX(0:N+1) !< positions of the boundaries of the sub-cells in reference space 
+REAL,INTENT(OUT)   :: FV_BdryX(0:N+1) !< positions of the boundaries of the sub-cells in reference space
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER :: i
@@ -223,7 +223,7 @@ END DO
 END SUBROUTINE FV_Build_X_w_BdryX
 
 !==================================================================================================================================
-!> Build Vandermonde to convert solution from Gauss points (poly degree N) to left and right face of each subcells 
+!> Build Vandermonde to convert solution from Gauss points (poly degree N) to left and right face of each subcells
 !> (inner element faces are doubled).
 !==================================================================================================================================
 SUBROUTINE FV_Build_VisuVdm(N, Vdm)
@@ -234,9 +234,9 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: N                    !< polynomial degree of DG elements / number of sub-cells per direction (N+1)
-REAL,INTENT(OUT)   :: Vdm(0:(N+1)*2-1,0:N) !< Vandermonde matrix 
+REAL,INTENT(OUT)   :: Vdm(0:(N+1)*2-1,0:N) !< Vandermonde matrix
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 REAL,DIMENSION(0:PP_N) :: FV_X,xGP,wBary
 REAL                   :: X  (0:(N+1)*2-1)
 REAL                   :: FV_BdryX(0:N+1),FV_w
@@ -246,7 +246,7 @@ INTEGER                :: i,l,k
   CALL LegendreGaussNodesAndWeights(N, xGP, wBary)
 #elif (PP_NodeType == 2)
   CALL LegGaussLobNodesAndWeights(N, xGP, wBary)
-#endif  
+#endif
 CALL BarycentricWeights(N, xGP, wBary)
 
 CALL FV_Build_X_w_BdryX(N, FV_X, FV_w, FV_BdryX)
@@ -274,7 +274,7 @@ IMPLICIT NONE
 INTEGER,INTENT(IN) :: N              !< polynomial degree of DG elements / number of sub-cells per direction (N+1)
 REAL,INTENT(OUT)   :: Vdm(0:N+1,0:N) !< Vandermonde matrix
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 REAL,DIMENSION(0:PP_N) :: FV_X,xGP,wBary
 REAL                   :: FV_BdryX(0:N+1),FV_w
 !==================================================================================================================================
@@ -282,7 +282,7 @@ REAL                   :: FV_BdryX(0:N+1),FV_w
   CALL LegendreGaussNodesAndWeights(N, xGP, wBary)
 #elif (PP_NodeType == 2)
   CALL LegGaussLobNodesAndWeights(N, xGP, wBary)
-#endif  
+#endif
 CALL BarycentricWeights(N, xGP, wBary)
 CALL FV_Build_X_w_BdryX(N, FV_X, FV_w, FV_BdryX)
 CALL InitializeVandermonde(N,N+1,wBary,xGP,FV_BdryX,Vdm)
@@ -292,7 +292,7 @@ END SUBROUTINE FV_Build_Vdm_Gauss_FVboundary
 !> Finalizes global variables of the module.
 !> Deallocate allocatable arrays, nullify pointers, set *InitIsDone = .FALSE.
 !==================================================================================================================================
-SUBROUTINE FinalizeFV_Basis() 
+SUBROUTINE FinalizeFV_Basis()
 USE MOD_FV_Vars
 IMPLICIT NONE
 !==================================================================================================================================
