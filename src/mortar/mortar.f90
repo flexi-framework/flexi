@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -95,7 +95,7 @@ IF(error.GT. 100.*PP_RealTolerance) THEN
   CALL abort(__STAMP__,&
     'problems in building Mortar',999,error)
 ELSE
-  SWRITE(UNIT_StdOut,'(A)')'Mortar operators build successfully.'
+  SWRITE(UNIT_StdOut,'(A)')'Mortar operators built successfully.'
 END IF
 #endif
 
@@ -148,7 +148,7 @@ ELSE ! FV Element
   DO i=0,N_In-1
     Mgrad(i,i)   = -1. / (2./(N_In+1))
     Mgrad(i,i+1) =  1. / (2./(N_In+1))
-  END DO 
+  END DO
 
   Mmean = 0.
   Mmean(0,0) = 1.
@@ -168,8 +168,8 @@ ELSE ! FV Element
 
   !build interpolation operators M 0->1,M 0->2
   DO q=0,N_In; DO p=0,N_In
-    IF (p/2 .EQ. q)          M_0_1(p,q) = 1. 
-    IF ((p+N_In+1)/2 .EQ. q) M_0_2(p,q) = 1. 
+    IF (p/2 .EQ. q)          M_0_1(p,q) = 1.
+    IF ((p+N_In+1)/2 .EQ. q) M_0_2(p,q) = 1.
   END DO; END DO ! p,q=0,N_In
   DO q=0,N_In; DO p=0,N_In
     M_0_1(p,q) = M_0_1(p,q) + M(p,q)
@@ -245,7 +245,7 @@ ELSE ! FV element
   M_2_0 = 0.
   !build projection operators M 1->0,M 2->0
   DO j=0,N_In; DO i=0,N_In
-    IF (j/2 .EQ. i)          M_1_0(i,j) = 1.0 
+    IF (j/2 .EQ. i)          M_1_0(i,j) = 1.0
     IF ((j+N_In+1)/2 .EQ. i) M_2_0(i,j) = 1.0
   END DO; END DO ! p,q=0,N_In
 #endif

@@ -59,7 +59,7 @@ CONTAINS
 
 !===================================================================================================================================
 !> Initialization of the average routines. The IJK sorting of the elements (which is necessary for averaging) is read from the
-!> mehs file and from that a mapping is build. This mapping will lead from the i and j indizes of the elements to the element
+!> mesh file and from that a mapping is built. This mapping will lead from the i and j indizes of the elements to the element
 !> index in the averaged output arrays. Also amount of FV cells in the average direction for each 2D cell will be
 !> calculated and stored.
 !===================================================================================================================================
@@ -204,14 +204,6 @@ ALLOCATE(Vdm_FVToVisu(0:NVisu_FV,0:0       ))
 #endif
 CALL GetVandermonde(NCalc_DG,NodeType,NVisu,NodeTypeVisuPosti,Vdm_DGToVisu,modal=.FALSE.)
 
-#ifdef DEBUG
-! ===============================================================================
-! Following dummy statements do suppress compiler warnings of unused Riemann-functions
-! ===============================================================================
-IF (0.EQ.1) THEN
-  WRITE(*,*) NCalc_FV
-END IF
-#endif /* DEBUG */
 END SUBROUTINE BuildVandermonds_Avg2D
 
 !===================================================================================================================================
@@ -508,7 +500,7 @@ CALL H5SCLOSE_F(FileSpace, iError)
 ! Write dataset properties "N","Time","MeshFile","NodeType","VarNames","NComputation"
 CALL WriteAttribute(File_ID,'N',1,IntScalar=NVisu)
 CALL WriteAttribute(File_ID,'Time',1,RealScalar=OutputTime)
-CALL WriteAttribute(File_ID,'MeshFile',1,StrScalar=(/TRIM(MeshFileName)/))
+CALL WriteAttribute(File_ID,'MeshFile',1,StrScalar=(/MeshFileName/))
 CALL WriteAttribute(File_ID,'NodeType',1,StrScalar=(/NodeType/))
 CALL WriteAttribute(File_ID,'VarNames',nVar,StrArray=StrVarNames)
 CALL WriteAttribute(File_ID,'NComputation',1,IntScalar=PP_N)
@@ -529,14 +521,6 @@ CALL GatheredWriteArray(TRIM(FileName),create=.FALSE.,&
 CALL WriteAdditionalElemData(FileName,ElementOut)
 #endif
 
-#ifdef DEBUG
-! ===============================================================================
-! Following dummy statements do suppress compiler warnings of unused Riemann-functions
-! ===============================================================================
-IF (0.EQ.1) THEN
-  UVisu3D(1,0,0,0,1) = UVisu_FV(0,0,0,1,1)
-END IF
-#endif
 END SUBROUTINE WriteAverageToHDF5
 
 END MODULE MOD_Visu_Avg2D

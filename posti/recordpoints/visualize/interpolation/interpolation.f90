@@ -1,6 +1,19 @@
+!=================================================================================================================================
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
+! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+!
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
+! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+!
+! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+! of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License v3.0 for more details.
+!
+! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
+!=================================================================================================================================
 #include "flexi.h"
 !===================================================================================================================================
-!> Module to handle the Recordpoints
+!> Module to handle temporal interpolation for the recordpoints.
 !===================================================================================================================================
 MODULE MOD_RPinterpolation
 ! MODULES
@@ -29,8 +42,8 @@ END INTERFACE
 
 PUBLIC :: InitInterpolation
 PUBLIC :: InterpolateEquiTime
-PUBLIC :: CalcTimeAvg             
-PUBLIC :: CalcFluctuations        
+PUBLIC :: CalcTimeAvg
+PUBLIC :: CalcFluctuations
 PUBLIC :: FinalizeInterpolation
 !===================================================================================================================================
 
@@ -80,7 +93,7 @@ IF(equiTimeSpacing) THEN
   nSamples_out=nSamples_min
   dt_out = (RPTime(nSamples_global)-RPTime(1))/REAL(nSamples_out-1)
   TEnd=RPTime(nSamples_global)
- 
+
   IF(dt_out.LE.dtMin) THEN
     WRITE(UNIT_StdOut,'(A)')'WARNING: Equidistant sampling time step is lower than or equal to the input time step!!!'
   END IF
@@ -100,7 +113,7 @@ END SUBROUTINE InitInterpolation
 
 
 !===================================================================================================================================
-!> Interpolate the RP data on equidistant time grid            
+!> Interpolate the RP data on equidistant time grid
 !===================================================================================================================================
 SUBROUTINE InterpolateEquiTime()
 ! MODULES
@@ -151,7 +164,7 @@ DO iSample=2,nSamples_out
     IF(Time_left .LE. Time) EXIT
     iSample_left=iSample_left -1
   END DO
-  ! linear interpolation 
+  ! linear interpolation
   RPData_right(:,:)=RPData_tmp(:,:,iSample_right)
   RPData_left(:,:)=RPData_tmp(:,:,iSample_left)
   RPData(:,:,iSample) = RPData_left+(RPData_right-RPData_left)*(Time-Time_left)/(Time_right-Time_left)
@@ -164,16 +177,16 @@ END SUBROUTINE InterpolateEquiTime
 
 
 !===================================================================================================================================
-!> Calculate temporal TimeAvg values using 'raw' data (not interpolated on equi grid)
+!> Calculate temporal TimeAvg values
 !===================================================================================================================================
 SUBROUTINE CalcTimeAvg()
 ! MODULES
 USE MOD_Globals
-USE MOD_RPSetVisuVisu_Vars           ,ONLY: nRP_global
+USE MOD_RPSetVisuVisu_Vars   ,ONLY: nRP_global
 USE MOD_RPData_Vars          ,ONLY: RPTime
 USE MOD_RPInterpolation_Vars
 USE MOD_ParametersVisu       ,ONLY: nVarVisu,EquiTimeSpacing
-USE MOD_OutputRPVisu_Vars          ,ONLY: nSamples_out,RPData_out,RPDataTimeAvg_out
+USE MOD_OutputRPVisu_Vars    ,ONLY: nSamples_out,RPData_out,RPDataTimeAvg_out
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -210,7 +223,7 @@ END SUBROUTINE CalcTimeAvg
 
 
 !===================================================================================================================================
-!> Calculate temporal TimeAvg values using 'raw' data (not interpolated on equi grid)
+!> Calculate temporal fluctuations by substracting the mean from the time-resolved value
 !===================================================================================================================================
 SUBROUTINE CalcFluctuations()
 ! MODULES
@@ -236,7 +249,7 @@ END SUBROUTINE CalcFluctuations
 
 
 !===================================================================================================================================
-!> Deallocate global variable for Recordpoints
+!> Deallocate global variable for temporal interpolatio
 !===================================================================================================================================
 SUBROUTINE FinalizeInterpolation()
 ! MODULES

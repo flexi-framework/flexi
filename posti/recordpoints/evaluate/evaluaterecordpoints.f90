@@ -1,7 +1,20 @@
+!=================================================================================================================================
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
+! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+!
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
+! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+!
+! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+! of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License v3.0 for more details.
+!
+! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
+!=================================================================================================================================
 #include "flexi.h"
 
 !===================================================================================================================================
-!> Tool to extract recordpoint type signals which are normally generated during the simulation, from state files 
+!> Tool to extract recordpoint type signals which are normally generated during the simulation, from state files
 !===================================================================================================================================
 PROGRAM evalrec
 ! MODULES
@@ -44,8 +57,8 @@ LOGICAL                            :: isValid,userblockFound
 CALL SetStackSizeUnlimited()
 CALL InitMPI()
 CALL ParseCommandlineArguments()
-SWRITE(UNIT_stdOut,'(A)') " ||=============================||" 
-SWRITE(UNIT_stdOut,'(A)') " || Recordpoints Evaluation Tool||" 
+SWRITE(UNIT_stdOut,'(A)') " ||=============================||"
+SWRITE(UNIT_stdOut,'(A)') " || Recordpoints Evaluation Tool||"
 SWRITE(UNIT_stdOut,'(A)') " ||=============================||"
 
 
@@ -64,14 +77,14 @@ IF(doPrintHelp.LE.0)THEN
     CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: evalrec [parameter.ini] RPDefFile.h5 statefile1.h5...statefileN.h5 or evalrec --help'// &
     '[option/section name] to print help for a single parameter, parameter sections or all parameters.')
   END IF
-  
+
   iArg=1
   ParameterFile='NOT SET'
   IF(STRICMP(GetFileExtension(Args(iArg)), "ini"))THEN
     ParameterFile = Args(iArg)
     iArg=iArg+1
   END IF
-  
+
   RPFile=Args(iArg)
   isValid = ISVALIDHDF5FILE(RPFile,FileType=FileType)
   IF(isValid.AND.STRICMP(FileType,'RecordPoints'))THEN
@@ -79,12 +92,12 @@ IF(doPrintHelp.LE.0)THEN
   ELSE
     CALL CollectiveStop(__STAMP__,'ERROR: No record point definition file provided.')
   END IF
-  
+
   isValid = ISVALIDHDF5FILE(Args(iArg),FileType=FileType)
   IF(isValid.AND.STRICMP(FileType,'State'))THEN
     RestartFile=Args(iArg)
     IF(STRICMP(ParameterFile,'NOT SET'))THEN
-      ParameterFile = ".flexi.ini" 
+      ParameterFile = ".flexi.ini"
       CALL ExtractParameterFile(Args(iArg), ParameterFile, userblockFound)
       IF (.NOT.userblockFound)&
         CALL CollectiveStop(__STAMP__, "No userblock provided either by user or state file "//TRIM(RestartFile))

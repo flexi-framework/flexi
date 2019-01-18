@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -41,11 +41,11 @@ CONTAINS
 
 !==================================================================================================================================
 !> \brief Computes the volume integral of the BR1 scheme in the non conservative way for all directions in strong form.
-!> 
+!>
 !> In the non conservative form of the volume integral in BR1 we first differentiate the flux (which is the solution in BR1) and
-!> then apply the metric terms. This is the fastest implementation of the volume integral and only available in strong form. 
+!> then apply the metric terms. This is the fastest implementation of the volume integral and only available in strong form.
 !==================================================================================================================================
-SUBROUTINE Lifting_VolInt_Nonconservative(UPrim,gradUx,gradUy,gradUz)
+PPURE SUBROUTINE Lifting_VolInt_Nonconservative(UPrim,gradUx,gradUy,gradUz)
 ! MODULES
 USE MOD_PreProc
 USE MOD_DG_Vars      ,ONLY: D_T
@@ -108,9 +108,9 @@ DO iElem=1,nElems
                           + Metrics_hTilde(3,i,j,k,iElem,0)*gradUzeta
 #else
     gradUx(:,i,j,k,iElem) = Metrics_fTilde(1,i,j,k,iElem,0)*gradUxi   &
-                          + Metrics_gTilde(1,i,j,k,iElem,0)*gradUeta  
+                          + Metrics_gTilde(1,i,j,k,iElem,0)*gradUeta
     gradUy(:,i,j,k,iElem) = Metrics_fTilde(2,i,j,k,iElem,0)*gradUxi   &
-                          + Metrics_gTilde(2,i,j,k,iElem,0)*gradUeta  
+                          + Metrics_gTilde(2,i,j,k,iElem,0)*gradUeta
 #endif /*PP_dim==3*/
    END DO; END DO; END DO ! i,j,k
 #if FV_ENABLED
@@ -128,42 +128,34 @@ DO iElem=1,nElems
                             + FV_Metrics_hTilde_sJ(3,i,j,k,iElem)*gradUzeta_central(:,i,j,k,iElem)
 #else
       gradUx(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ(1,i,j,k,iElem)*gradUxi_central  (:,i,j,k,iElem) &
-                            + FV_Metrics_gTilde_sJ(1,i,j,k,iElem)*gradUeta_central (:,i,j,k,iElem) 
+                            + FV_Metrics_gTilde_sJ(1,i,j,k,iElem)*gradUeta_central (:,i,j,k,iElem)
       gradUy(:,i,j,k,iElem) = FV_Metrics_fTilde_sJ(2,i,j,k,iElem)*gradUxi_central  (:,i,j,k,iElem) &
-                            + FV_Metrics_gTilde_sJ(2,i,j,k,iElem)*gradUeta_central (:,i,j,k,iElem) 
+                            + FV_Metrics_gTilde_sJ(2,i,j,k,iElem)*gradUeta_central (:,i,j,k,iElem)
 #endif
    END DO; END DO; END DO! i,j,k=0,PP_N
   END IF
 #endif /*FV_ENABLED*/
 END DO ! iElem=1,nElems
 
-#ifdef DEBUG
-! ===============================================================================
-! Following dummy calls do suppress compiler warnings of unused Riemann-functions
-! ===============================================================================
-IF (0.EQ.1) THEN
-  gradUz = 0.
-END IF
-#endif
 END SUBROUTINE Lifting_VolInt_Nonconservative
 
 
 !==================================================================================================================================
 !> \brief Computes the volume integral of the BR1 scheme in the conservative way for one direction at a time (x,y,z) in weak or
 !> strong form.
-!> 
+!>
 !> In the conservative form of the volume integral in BR1 we calculate the transformed solution using the Lifting_Metrics routine
 !> and then integrate over the derivative of this transformed solution. A weak or strong form volume integral can be performed.
 !> - Weak form: We integrate over the transformed flux times the derivative of the trial functions, which is implemented
 !>   using the D_hat_T matrix. This is the transpose of the D_hat matrix which is defined as
 !>   \f$ \hat{D}_{ij}=-\frac{\omega_i}{\omega_j} D_{ij} \f$ where \f$ D_{ij} \f$ is the standard polynomial derivative matrix.
-!> - Strong form: We integrate over the derivative of the transformed flux times the trial function. The derivative of the 
+!> - Strong form: We integrate over the derivative of the transformed flux times the trial function. The derivative of the
 !>   flux is calculated using the transpose of the polynomial derivative matrix D_T.
 !>
 !> For the implementation this means we only have to decide between using the D_hat_T or D_T matrix in the volume integral at the
 !> the beginning of the routine to choose between weak or strong form.
 !==================================================================================================================================
-SUBROUTINE Lifting_VolInt_Conservative(dir,UPrim,gradU)
+PPURE SUBROUTINE Lifting_VolInt_Conservative(dir,UPrim,gradU)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Lifting_Vars       ,ONLY: doWeakLifting
@@ -229,7 +221,7 @@ DO iElem=1,nElems
 #if (PP_dim==3)
                            + FV_Metrics_hTilde_sJ(dir,i,j,k,iElem)*gradUzeta_central(:,i,j,k,iElem) &
 #endif
-                           + FV_Metrics_gTilde_sJ(dir,i,j,k,iElem)*gradUeta_central (:,i,j,k,iElem) 
+                           + FV_Metrics_gTilde_sJ(dir,i,j,k,iElem)*gradUeta_central (:,i,j,k,iElem)
     END DO; END DO; END DO! i,j,k=0,PP_N
   END IF
 #endif /*FV_ENABLED*/
@@ -243,7 +235,7 @@ END SUBROUTINE Lifting_VolInt_Conservative
 !>
 !> For the direction \f$ d \f$ the transformed gradient flux is \f$ \sum_{n=1}^3 Ja^d_n U \f$.
 !==================================================================================================================================
-SUBROUTINE Lifting_Metrics(dir,UPrim,Mf,Mg,Mh,UPrim_f,UPrim_g,UPrim_h)
+PPURE SUBROUTINE Lifting_Metrics(dir,UPrim,Mf,Mg,Mh,UPrim_f,UPrim_g,UPrim_h)
 ! MODULES
 USE MOD_DG_Vars,ONLY:nDOFElem
 IMPLICIT NONE
@@ -268,16 +260,6 @@ DO i=1,nDOFElem
   UPrim_h(:,i) = Mh(dir,i)*UPrim(:,i)
 #endif
 END DO ! i
-
-#ifdef DEBUG
-! ===============================================================================
-! Following dummy calls do suppress compiler warnings of unused Riemann-functions
-! ===============================================================================
-IF (0.EQ.1) THEN
-  WRITE (*,*) Mh
-  UPrim_h = 0.
-END IF
-#endif
 END SUBROUTINE Lifting_Metrics
 
 

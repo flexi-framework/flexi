@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -100,7 +100,7 @@ CALL H5OPEN_F(iError)
 CALL H5PCREATE_F(H5P_FILE_ACCESS_F, Plist_ID, iError)
 #if USE_MPI
 ! Setup file access property list with parallel I/O access (MPI)
-CALL H5PSET_FAPL_MPIO_F(Plist_ID,MPI_COMM_WORLD, MPIInfo, iError)
+CALL H5PSET_FAPL_MPIO_F(Plist_ID,MPI_COMM_FLEXI, MPIInfo, iError)
 #endif /*USE_MPI*/
 
 ! Check if file exists
@@ -182,7 +182,7 @@ CALL H5OPEN_F(iError)
 CALL H5PCREATE_F(H5P_FILE_ACCESS_F, Plist_ID, iError)
 #if USE_MPI
 ! Setup file access property list with parallel I/O access (MPI)
-CALL H5PSET_FAPL_MPIO_F(Plist_ID,MPI_COMM_WORLD, MPIInfo, iError)
+CALL H5PSET_FAPL_MPIO_F(Plist_ID,MPI_COMM_FLEXI, MPIInfo, iError)
 #endif /*USE_MPI*/
 
 ! Check if file exists
@@ -293,7 +293,7 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 CHARACTER(LEN=*)                     :: DSetName !< name if dataset to be checked
 INTEGER(HID_T),INTENT(IN)            :: Loc_ID   !< ID of dataset
-LOGICAL,INTENT(IN),OPTIONAL          :: attrib   !< check dataset or attribute 
+LOGICAL,INTENT(IN),OPTIONAL          :: attrib   !< check dataset or attribute
 LOGICAL,INTENT(OUT)                  :: Exists   !< result: dataset exists
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -380,9 +380,9 @@ SWRITE(UNIT_stdOut,'(A)')' DONE!'
 SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE GetDataProps
 
-SUBROUTINE GetVarnames(AttribName,VarNames,AttribExists) 
+SUBROUTINE GetVarnames(AttribName,VarNames,AttribExists)
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)                :: AttribName
 CHARACTER(LEN=255),ALLOCATABLE,INTENT(OUT) :: VarNames(:)
 LOGICAL,INTENT(OUT)                        :: AttribExists
@@ -622,7 +622,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)    :: FileName                !< filename to check
-LOGICAL,INTENT(IN)             :: single                  !< switch whether file is being accessed in parallel my MPI_COMM_WORLD
+LOGICAL,INTENT(IN)             :: single                  !< switch whether file is being accessed in parallel my MPI_COMM_FLEXI
 CHARACTER(LEN=255),INTENT(OUT) :: NextFileName_HDF5       !< output: follow up file according to checked file opened
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -641,7 +641,7 @@ CALL H5PCREATE_F(H5P_FILE_ACCESS_F, Plist_ID, iError)
 #if USE_MPI
 IF(.NOT.single)THEN
   ! Set property list to MPI IO
-  CALL H5PSET_FAPL_MPIO_F(Plist_ID, MPI_COMM_WORLD, MPI_INFO_NULL, iError)
+  CALL H5PSET_FAPL_MPIO_F(Plist_ID, MPI_COMM_FLEXI, MPI_INFO_NULL, iError)
 END IF
 #endif /*USE_MPI*/
 ! Open file

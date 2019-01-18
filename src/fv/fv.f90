@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -18,7 +18,7 @@
 !> Module for the Finite Volume sub-cells shock capturing.
 !>
 !> DG elements, that are detected to contain a shock/high gradients/oscillations/..., can be switched to a Finite Volume scheme.
-!> A DG element of polynomial degree N is subdivided into (N+1)^3 sub-cells (to each Gauss Point/DOF one FV sub-cell).
+!> A DG element of polynomial degree N is subdivided into (N+1)^dim sub-cells (to each Gauss Point/DOF one FV sub-cell).
 !> The FV sub-cells of such an element are updated using FV method with 2nd order TVD reconstruction (slope limiters).
 !==================================================================================================================================
 MODULE MOD_FV
@@ -82,7 +82,7 @@ IMPLICIT NONE
 CALL prms%SetSection('FV')
 CALL prms%CreateRealOption(   'FV_IndUpperThreshold',"Upper threshold: Element is switched from DG to FV if indicator \n"//&
                                                      "rises above this value" )
-CALL prms%CreateRealOption(   'FV_IndLowerThreshold',"Lower threshold: Element is switched from FV to DG if indicator \n"//& 
+CALL prms%CreateRealOption(   'FV_IndLowerThreshold',"Lower threshold: Element is switched from FV to DG if indicator \n"//&
                                                      "falls below this value")
 CALL prms%CreateLogicalOption('FV_toDG_indicator'   ,"Apply additional Persson indicator to check if DG solution after switch \n"//&
                                                      "from FV to DG is valid.", '.FALSE.')
@@ -120,7 +120,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 !==================================================================================================================================
 IF(.NOT.FVInitBasisIsDone)THEN
    CALL CollectiveStop(__STAMP__,&
@@ -130,14 +130,14 @@ SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT FV...'
 
 ! The indicator value is used to decide where FV sub-cells are needed
-doCalcIndicator=.TRUE. 
+doCalcIndicator=.TRUE.
 
 ! Read minimal and maximal threshold for the indicator
 FV_IndLowerThreshold = GETREAL('FV_IndLowerThreshold','-99.')
 FV_IndUpperThreshold = GETREAL('FV_IndUpperThreshold', '99.')
 
 ! Read flag indicating, if an additional Persson indicator should check if a FV sub-cells element really contains no oscillations
-! anymore. 
+! anymore.
 FV_toDG_indicator = GETLOGICAL('FV_toDG_indicator')
 IF (FV_toDG_indicator) FV_toDG_limit = GETREAL('FV_toDG_limit')
 
@@ -178,15 +178,15 @@ FV_Elems_Amount = 0
 CALL AddToElemData(ElementOut,'FV_Elems_Amount',RealArray=FV_Elems_Amount)
 
 #if FV_RECONSTRUCT
-! Allocate array for multi purposes: 
+! Allocate array for multi purposes:
 ! - For FV elements it stores the slope between the nodes next and second next to the interface.
 !    |  x    x    x    x  |                          | = face, x = node
-!                  <-->   ^ to this interface   
-!                    ^ the slope between those nodes   
+!                  <-->   ^ to this interface
+!                    ^ the slope between those nodes
 ! - For DG elements it stores the solution at the nodes next to the interface.
 !    |  x    x    x    x  |                          | = face, x = node
-!                         ^ to this interface   
-!                      ^ the solution at this node   
+!                         ^ to this interface
+!                      ^ the solution at this node
 ALLOCATE(FV_multi_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides))
 ALLOCATE(FV_multi_slave (PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides))
 FV_multi_slave = 0.0
@@ -195,10 +195,10 @@ FV_multi_master = 0.0
 ! Allocate array for FD-gradient over faces
 !    | x  x  x  x | x  x  x  x |                     | = face, x = node
 !               <--->
-!                  ^ the slope over the face 
+!                  ^ the slope over the face
 ALLOCATE(FV_surf_gradU(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides))
 
-! The gradients of the primitive variables are stored at each volume integration point and 
+! The gradients of the primitive variables are stored at each volume integration point and
 ! are computed by limiting the slopes to the two adjacent points in the respective direction.
 ! These are physical gradients, but they are labeled ...xi/eta/zeta, since they are the slopes
 ! along the xi-/eta-/zeta-lines in physical space. These slopes are required to reconstruct
@@ -211,7 +211,7 @@ gradUeta=0.
 gradUzeta=0.
 #if PARABOLIC
 ! Same as gradUxi/eta/zeta, but instead of a TVD-limiter the mean value of the slopes to the
-! adjacent points is used. These slopes are used to calculate the physical gradients in 
+! adjacent points is used. These slopes are used to calculate the physical gradients in
 ! x-/y-/z-direction, which are required for the parabolic/viscous flux.
 ! The gradients in x-/y-/z-direction are stored in the gradUx/y/z arrays of the lifting.
 ALLOCATE(gradUxi_central  (PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,nElems))
@@ -240,25 +240,25 @@ SUBROUTINE FV_Switch(U,U2,U3,AllowToDG)
 ! MODULES
 USE MOD_PreProc
 USE MOD_ChangeBasisByDim,ONLY: ChangeBasisVolume
-USE MOD_Indicator_Vars ,ONLY: IndValue
-USE MOD_Indicator      ,ONLY: IndPersson
+USE MOD_Indicator_Vars  ,ONLY: IndValue
+USE MOD_Indicator       ,ONLY: IndPersson
 USE MOD_FV_Vars
 USE MOD_Analyze
-USE MOD_Mesh_Vars      ,ONLY: nElems
+USE MOD_Mesh_Vars       ,ONLY: nElems, SideToElem, nSides
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(INOUT)          :: U (PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
-REAL,INTENT(INOUT),OPTIONAL :: U2(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
-REAL,INTENT(INOUT),OPTIONAL :: U3(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
-LOGICAL,INTENT(IN)          :: AllowToDG  ! < if .TRUE. FV element is allowed to switch to DG
+REAL,INTENT(INOUT)          :: U (PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< state vector to be switched
+REAL,INTENT(INOUT),OPTIONAL :: U2(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< optional additional state vector to be switched
+REAL,INTENT(INOUT),OPTIONAL :: U3(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< optional additional state vector to be switched
+LOGICAL,INTENT(IN)          :: AllowToDG                                  !< if .TRUE. FV element is allowed to switch to DG
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL    :: U_DG(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 REAL    :: U_FV(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 REAL    :: ind
-INTEGER :: iElem
+INTEGER :: iElem, iSide, ElemID, nbElemID
 !==================================================================================================================================
 DO iElem=1,nElems
   IF (FV_Elems(iElem).EQ.0) THEN ! DG Element
@@ -302,6 +302,16 @@ END DO !iElem
 FV_Elems_counter  = FV_Elems_counter  + FV_Elems
 FV_Switch_counter = FV_Switch_counter + 1
 FV_Elems_Amount   = REAL(FV_Elems_Counter)/FV_Switch_counter
+
+! set information whether elements adjacent to a side are DG or FV elements
+DO iSide = 1,nSides
+  ElemID    = SideToElem(S2E_ELEM_ID   ,iSide)
+  nbElemID  = SideToElem(S2E_NB_ELEM_ID,iSide)
+  !master sides
+  IF(ElemID  .GT.0) FV_Elems_master(iSide) = FV_Elems(ElemID)
+  !slave side (ElemID,locSide and flip =-1 if not existing)
+  IF(nbElemID.GT.0) FV_Elems_slave( iSide) = FV_Elems(nbElemID)
+END DO
 END SUBROUTINE FV_Switch
 
 !==================================================================================================================================
@@ -322,19 +332,19 @@ INTEGER(KIND=8),INTENT(IN) :: iter !< number of iterations
 !==================================================================================================================================
 #if USE_MPI
 IF(MPIRoot)THEN
-  CALL MPI_REDUCE(MPI_IN_PLACE,totalFV_nElems,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_WORLD,iError)
+  CALL MPI_REDUCE(MPI_IN_PLACE,totalFV_nElems,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
   ! totalFV_nElems is counted in PrintStatusLine
 ELSE
-  CALL MPI_REDUCE(totalFV_nElems,0           ,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_WORLD,iError)
+  CALL MPI_REDUCE(totalFV_nElems,0           ,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 END IF
 #endif
-SWRITE(UNIT_stdOut,'(A,F8.3,A)')' FV amount %: ', totalFV_nElems / REAL(nGlobalElems) / iter*100 
+SWRITE(UNIT_stdOut,'(A,F8.3,A)')' FV amount %: ', totalFV_nElems / REAL(nGlobalElems) / iter*100
 totalFV_nElems = 0
 END SUBROUTINE FV_Info
 
 
 !==================================================================================================================================
-!> Initialize all FV elements and overwrite data of DG FillIni. Each subcell is supersampled with PP_N points in each space 
+!> Initialize all FV elements and overwrite data of DG FillIni. Each subcell is supersampled with PP_N points in each space
 !> dimension and the mean value is taken as value for this subcell.
 !==================================================================================================================================
 SUBROUTINE FV_FillIni()
@@ -376,7 +386,7 @@ IF (.NOT.FV_IniSharp) THEN
   ! may lead to non valid solutions inside a sub-cell.!
   !!! THIS IS EXPENSIVE !!!
   IF (FV_IniSupersample) THEN
-    
+
     CALL GetNodesAndWeights(PP_N,NodeType,xGP,wGP,wBary)
     CALL FV_Build_X_w_BdryX(PP_N,FV_X,FV_w,FV_BdryX)
     DO i=0,PP_N
@@ -387,8 +397,8 @@ IF (.NOT.FV_IniSharp) THEN
       ! build Vandermonde for mapping the whole interval [-1,1] to the i-th FV subcell
       CALL InitializeVandermonde(PP_N,PP_N,wBary,xGP,SubxGP,VDM(:,:,i))
     END DO
-  
-  
+
+
     ALLOCATE(xx(1:3,0:PP_N,0:PP_N,0:PP_NZ)) ! coordinates supersampled to FV subcell
     DO iElem=1,nElems
       IF (FV_Elems(iElem).EQ.0) CYCLE ! DG element
@@ -398,14 +408,14 @@ IF (.NOT.FV_IniSharp) THEN
             ! supersample coordinates to i,j,k-th subcells
 #if PP_dim == 3
             CALL ChangeBasis3D_XYZ(3,PP_N,PP_N,Vdm(:,:,i),Vdm(:,:,j),Vdm(:,:,k),Elem_xGP(1:3,:,:,:,iElem),xx)
-#else          
+#else
             CALL ChangeBasis2D_XYZ(3,PP_N,PP_N,Vdm(:,:,i),Vdm(:,:,j),Elem_xGP(1:3,:,:,0,iElem),xx(:,:,:,0))
 #endif
             ! evaluate ExactFunc for all supersampled points of subcell (i,j,k)
             DO kk=0,PP_NZ; DO jj=0,PP_N; DO ii=0,PP_N
               CALL ExactFunc(IniExactFunc,0.,xx(1:3,ii,jj,kk),tmp(:,ii,jj,kk))
             END DO; END DO; END DO
-            ! mean value 
+            ! mean value
             DO iVar=1,PP_nVar
               U(iVar,i,j,k,iElem) = SUM(tmp(iVar,:,:,:)) / ((PP_N+1)**2*(PP_NZ+1))
             END DO
@@ -446,7 +456,7 @@ USE MOD_Mesh_Vars   ,ONLY: firstInnerSide,lastMPISide_MINE,nSides
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: nVar
+INTEGER,INTENT(IN) :: nVar                                   !< number of solution variables
 REAL,INTENT(INOUT) :: U_master(nVar,0:PP_N,0:PP_NZ,1:nSides) !< Solution on master side
 REAL,INTENT(INOUT) :: U_slave (nVar,0:PP_N,0:PP_NZ,1:nSides) !< Solution on slave side
 !----------------------------------------------------------------------------------------------------------------------------------

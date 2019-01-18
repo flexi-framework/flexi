@@ -1,8 +1,23 @@
+!=================================================================================================================================
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
+! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+!
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
+! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+!
+! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+! of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License v3.0 for more details.
+!
+! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
+!=================================================================================================================================
 #include "flexi.h"
 !===================================================================================================================================
-!> Module to handle the Recordpoints
+!> Module containing evaluation routines regarding spectral analysis. This includes the central routine that calculates the fast
+!> Fourier transform or the power density spectra. Also included are the routines to apply windowing or calculate a
+!> fourt derivative.
 !===================================================================================================================================
-MODULE MOD_spec
+MODULE MOD_Spec
 ! MODULES
 IMPLICIT NONE
 PRIVATE
@@ -12,14 +27,14 @@ INTERFACE InitSpec
   MODULE PROCEDURE InitSpec
 END INTERFACE
 
-INTERFACE spec
-  MODULE PROCEDURE spec
+INTERFACE Spec
+  MODULE PROCEDURE Spec
 END INTERFACE
 
 INTERFACE FinalizeSpec
   MODULE PROCEDURE FinalizeSpec
 END INTERFACE
-PUBLIC :: InitSpec,spec,FinalizeSpec
+PUBLIC :: InitSpec,Spec,FinalizeSpec
 !===================================================================================================================================
 
 CONTAINS
@@ -34,7 +49,7 @@ USE MOD_RPData_Vars          ,ONLY: nSamples_global,RPTime
 USE MOD_OutputRPVisu_Vars    ,ONLY: nSamples_out
 USE MOD_RPInterpolation_Vars ,ONLY: dt_out,TEnd
 USE MOD_ParametersVisu       ,ONLY: nBlocks,samplingFreq,BlockSize,fourthDeriv
-USE MOD_spec_Vars
+USE MOD_Spec_Vars
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -44,7 +59,7 @@ REAL         :: block_fac
 !===================================================================================================================================
 WRITE(UNIT_stdOut,'(132("-"))')
 WRITE(UNIT_stdOut,'(A)')' INIT SPECTRAL ANALYSIS...'
-! fourth derivative truncation error allows only relatively large dt's.
+! fourth Derivative truncation error allows only relatively large dt's.
 ! interpolate to equidistant time grid with dt~0.001
 IF (fourthDeriv) THEN
   dt_out = (RPTime(nSamples_global)-RPTime(1))/REAL(nSamples_out-1)
@@ -52,14 +67,14 @@ IF (fourthDeriv) THEN
    nSamples_out = INT(nSamples_out * dt_out/1E-3)
   END IF
 END IF
-    
+
 ! Make BlockSize even
 IF(MOD(Blocksize,2).NE.0) THEN
   WRITE(UNIT_StdOut,'(A)')'   WARNING: Blocksize should be even!!! Equalizing...'
   BlockSize=BlockSize+1
 END IF
-   
-! if sampling frequency is prescribed, we calculate the number of blocks and 
+
+! if sampling frequency is prescribed, we calculate the number of blocks and
 ! cut off the signal to fit the number of blocks
 IF(samplingFreq.GT.0) THEN
   dt_out=1./samplingFreq
@@ -75,7 +90,7 @@ ELSE
   ! Create nSamples such as to be multiple of block_fac
   block_fac = (nBlocks+1)/2.
   nSamples_out = NINT(nSamples_out/(nBlocks+1.))*(nBlocks+1)+1
-  TEnd =RPTime(nSamples_global) 
+  TEnd =RPTime(nSamples_global)
 END IF
 dt_out = (TEnd-RPTime(1))/REAL(nSamples_out-1)
 
@@ -90,21 +105,23 @@ WRITE(UNIT_stdOut,'(A)')' DONE.'
 WRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitSpec
 
-
-
 !===================================================================================================================================
-!> Initialize all necessary information to perform interpolation
+!> Main routine used in spectral analysis. Will perform the fast Fourier transform using the FFTW library in blocks that will then
+!> be averaged.
+!> Additional calculations include the application of a window function, a conversion to PSD values or the calculation of
+!> the 1/3 octave spectrum. The fourth derivatives may also be calculated.
 !===================================================================================================================================
-SUBROUTINE spec()
+SUBROUTINE Spec()
 ! MODULES
 USE MOD_Globals
+USE MOD_PreProc
 USE MOD_RPSetVisuVisu_Vars   ,ONLY: nRP_global
 USE MOD_RPInterpolation_Vars
 USE MOD_OutputRPVisu_Vars    ,ONLY: nSamples_out,RPData_out
 USE MOD_ParametersVisu       ,ONLY: doPSD,doFFT,nVarVisu,nBlocks,cutoffFreq,doHanning,fourthDeriv,thirdOct
-USE MOD_ParametersVisu       ,ONLY: u_infPhys,chordPhys 
+USE MOD_ParametersVisu       ,ONLY: u_infPhys,chordPhys
 USE FFTW3
-USE MOD_spec_Vars
+USE MOD_Spec_Vars
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -117,7 +134,6 @@ INTEGER(KIND=8)                 :: plan
 REAL                            :: Time
 REAL                            :: Time_Block
 REAL,ALLOCATABLE                :: RPData_tmp(:)
-REAL                            :: pi
 REAL                            :: M_t,RMS_t,RMS_PSD
 INTEGER                         :: nSamples_block,iBlock
 !1/3 Oct Stuff
@@ -156,20 +172,10 @@ WRITE(UNIT_stdOut,'(A,F16.7)')'             Frequency resolution:',df
 IF(cutoffFreq.NE.-999)THEN
   WRITE(UNIT_stdOut,'(A,F16.7)')'    User defined Cutoff Frequency:',cutoffFreq
   nSamples_spec=MIN(NINT(cutoffFreq/dF)+1,nSamples_spec)
-END IF  
+END IF
 WRITE(UNIT_stdOut,'(A,I8)')   '  No. spectrum output samples FFT:',nSamples_spec
 WRITE(UNIT_stdOut,'(A,F16.7)')'                Nyquist frequency:',0.5*df*REAL(nSamples_block-1)
 WRITE(UNIT_stdOut,'(A,F16.7)')'          Max. resolved frequency:',RPData_freq(nSamples_spec)
-
-pi=acos(-1.)
-
-!4th deriv difference according to ulli
-!Test Beispiel
-!DO iSample=1,nSamples_out
-!!  RPData_out(:,:,iSample) = cos(10.*pi*2.*REAL(iSample-1)/REAL(nSamples_out-1))+cos(2*pi*100*RPTime(iSample))*1E-10
-!!  RPData_out(:,:,iSample) = cos(10.*pi*2.*REAL(iSample-1)/REAL(nSamples_block))
-!END DO
-
 
 CALL DFFTW_PLAN_DFT_1D(plan,nSamples_block,in,out,FFTW_FORWARD,FFTW_ESTIMATE)
 GETTIME(StartTime)
@@ -183,7 +189,7 @@ IF(doPSD .OR. doFFT) THEN
     END IF
     DO iVar=1,nVarVisu
       RPData_tmp=RPData_out(iVar,iRP,:)
-      IF(fourthDeriv) CALL deriv(RPData_tmp)
+      IF(fourthDeriv) CALL Deriv(RPData_tmp)
       DO iBlock=1,nBlocks
         iStart=INT(0.5*REAL((iBlock-1)*nSamples_block))+1
         iEnd  =INT(REAL(0.5*(iBlock+1)*nSamples_block))
@@ -194,7 +200,7 @@ IF(doPSD .OR. doFFT) THEN
         IF(doHanning) CALL hanning(nSamples_block,in)
         CALL DFFTW_EXECUTE_DFT(plan, in, out)
         out(1:nSamples_spec)=2./REAL(nSamples_block)*ABS(out(1:nSamples_spec))
-        out(1)=0.5*out(1) !mean value 
+        out(1)=0.5*out(1) !mean value
         IF (doPSD) THEN
           RPData_spec(iVar,iRP,:)=REAL(RPData_spec(iVar,iRP,:)+out(1:nSamples_spec)**2)
         ELSE
@@ -204,7 +210,7 @@ IF(doPSD .OR. doFFT) THEN
       IF (doPSD) THEN
         RPData_spec(iVar,iRP,2:nSamples_spec)=0.5*RPData_spec(iVar,iRP,2:nSamples_spec)/nBlocks/df
         IF (fourthDeriv) THEN
-          RPData_spec(iVar,iRP,:)= RPData_spec(iVar,iRP,:)/(RPData_freq(:)*2*pi)**8 
+          RPData_spec(iVar,iRP,:)= RPData_spec(iVar,iRP,:)/(RPData_freq(:)*2*PP_Pi)**8
         END IF
         ! MS value on the first index
         RPData_spec(iVar,iRP,1)=SQRT(SUM(RPData_spec(iVar,iRP,2:nSamples_spec))*df)
@@ -212,7 +218,7 @@ IF(doPSD .OR. doFFT) THEN
       ELSE
         RPData_spec(iVar,iRP,:)=RPData_spec(iVar,iRP,:)/nBlocks
         IF (fourthDeriv) THEN
-          RPData_spec(iVar,iRP,:)= RPData_spec(iVar,iRP,:)/(RPData_freq(:)*2*pi)**4 
+          RPData_spec(iVar,iRP,:)= RPData_spec(iVar,iRP,:)/(RPData_freq(:)*2*PP_Pi)**4
         END IF
         ! MS value on the first index
       !  RPData_spec(iVar,iRP,1)=SUM(RPData_spec(iVar,iRP,2:nSamples_spec))**2/nSamples_spec
@@ -287,17 +293,19 @@ IF(ThirdOct) THEN
   END DO   ! iRP
 END IF!1/3 Oct
 DEALLOCATE(in,out,RPData_tmp)
-CALL DFFTW_DESTROY_PLAN(plan)        
+CALL DFFTW_DESTROY_PLAN(plan)
 WRITE(UNIT_stdOut,'(132("-"))')
-END SUBROUTINE spec
-
-
+END SUBROUTINE Spec
 
 !===================================================================================================================================
-!> window function for spectra. normalized such that SUM(windowCoeff)=1. For power spectra SUM(windowCoeff)²=1. 
+!> Apply a window function for spectra. Uses the window function named after Julius von Hann, often referred to as Henning function.
+!> Normalized such that SUM(windowCoeff)=1. For power spectra SUM(windowCoeff)²=1.
+!> For details, see e.g. Harris, F. J. (1978). "On the use of windows for harmonic analysis with the discrete Fourier transform",
+!> Proceedings of the IEEE. doi:10.1109/PROC.1978.10837.
 !===================================================================================================================================
-SUBROUTINE hanning(nSamples,RPData)
+SUBROUTINE Hanning(nSamples,RPData)
 ! MODULES
+USE MOD_PreProc
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -307,25 +315,22 @@ COMPLEX,INTENT(INOUT)       :: RPData(nSamples)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: iSample
-REAL               :: pi,windowCoeff,windowNorm
+REAL               :: windowCoeff,windowNorm
 !===================================================================================================================================
-pi=ACOS(-1.)
 windowNorm=0.
 DO iSample=1,nSamples
-  windowCoeff=0.5*(1.-COS(2.*pi*(iSample)/(nSamples)))
+  windowCoeff=0.5*(1.-COS(2.*PP_Pi*(iSample)/(nSamples)))
   RPData(iSample)= RPData(iSample)*windowCoeff
   windowCoeff=windowCoeff**2
   windowNorm=windowNorm+windowCoeff
 END DO
 RPData(:)=RPData(:)/SQRT(windowNorm/nSamples)
-END SUBROUTINE hanning
-
-
+END SUBROUTINE Hanning
 
 !===================================================================================================================================
-!>
+!> Compute the fourth derivative w.r.t time of the RP signal using a central difference of second order accuray.
 !===================================================================================================================================
-SUBROUTINE deriv(RPData)
+SUBROUTINE Deriv(RPData)
 ! MODULES
 USE MOD_OutputRPVisu_Vars    ,ONLY: nSamples_out
 USE MOD_RPInterpolation_Vars ,ONLY: dt_out
@@ -350,9 +355,7 @@ DO iSample=4,nSamples_out-3
   RPData_out(iSample)= dh*(km2-4*km1+6*k0-4*k1+k2)
 END DO
 RPData=RPData_out
-END SUBROUTINE deriv
-
-
+END SUBROUTINE Deriv
 
 !===================================================================================================================================
 !> Deallocate global variables
@@ -367,11 +370,9 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
-WRITE(UNIT_stdOut,'(A)') '  SPECTRAL ANALYSIS FINALIZED'
 SDEALLOCATE(RPData_spec)
 SDEALLOCATE(RPData_freq)
+WRITE(UNIT_stdOut,'(A)') '  SPECTRAL ANALYSIS FINALIZED'
 END SUBROUTINE FinalizeSpec
 
-
-END MODULE MOD_spec
-
+END MODULE MOD_Spec

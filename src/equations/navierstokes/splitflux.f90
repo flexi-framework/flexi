@@ -1,12 +1,12 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2017 Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2017 Prof. Claus-Dieter Munz
 ! Copyright (c) 2016-2017 Gregor Gassner (github.com/project-fluxo/fluxo)
 ! Copyright (c) 2016-2017 Florian Hindenlang (github.com/project-fluxo/fluxo)
-! Copyright (c) 2016-2017 Andrew Winters (github.com/project-fluxo/fluxo) 
+! Copyright (c) 2016-2017 Andrew Winters (github.com/project-fluxo/fluxo)
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -29,7 +29,7 @@ PRIVATE
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ABSTRACT INTERFACE
-  PURE SUBROUTINE VolumeFlux(URef,UPrimRef,U,UPrim,MRef,M,Flux)
+  PPURE SUBROUTINE VolumeFlux(URef,UPrimRef,U,UPrim,MRef,M,Flux)
     REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: URef,U
     REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrimRef,UPrim
     REAL,DIMENSION(1:3        ),INTENT(IN)  :: MRef,M
@@ -38,7 +38,7 @@ ABSTRACT INTERFACE
 END INTERFACE
 
 ABSTRACT INTERFACE
-  PURE SUBROUTINE SurfaceFlux(U_LL,U_RR,F)
+  PPURE SUBROUTINE SurfaceFlux(U_LL,U_RR,F)
     REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_LL,U_RR
     REAL,DIMENSION(PP_nVar),INTENT(OUT) :: F
   END SUBROUTINE
@@ -80,7 +80,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 !==================================================================================================================================
 CALL prms%SetSection("SplitDG")
-CALL prms%CreateIntFromStringOption('SplitDG',"SplitDG formulation to be used: SD, MO, DU, KG, PI","PI")
+CALL prms%CreateIntFromStringOption('SplitDG',"SplitDG formulation to be used: SD, MO, DU, KG, PI","CH")
 CALL addStrListEntry('SplitDG','sd',           PRM_SPLITDG_SD)
 CALL addStrListEntry('SplitDG','mo',           PRM_SPLITDG_MO)
 CALL addStrListEntry('SplitDG','du',           PRM_SPLITDG_DU)
@@ -91,7 +91,7 @@ CALL addStrListEntry('SplitDG','ch',           PRM_SPLITDG_CH)
 END SUBROUTINE DefineParametersSplitDG
 
 !==================================================================================================================================!
-!> Initialize function pointers for the specific split version in use 
+!> Initialize function pointers for the specific split version in use
 !==================================================================================================================================!
 SUBROUTINE InitSplitDG()
 ! MODULES
@@ -103,12 +103,6 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                     :: SplitDG
-#ifdef DEBUG
-REAL,DIMENSION(PP_nVar    ) :: U         ! dummy variables, only to suppress compiler warnings
-REAL,DIMENSION(PP_nVarPrim) :: UPrim     ! dummy variables, only to suppress compiler warnings
-REAL,DIMENSION(PP_nVar    ) :: f,g,h     ! dummy variables, only to suppress compiler warnings
-REAL,DIMENSION(PP_2Var    ) :: U_LL,U_RR ! dummy variables, only to suppress compiler warnings
-#endif
 !==================================================================================================================================
 ! check if Gauss-Lobatto-Pointset is beeing used
 #if (PP_NodeType==1)
@@ -140,45 +134,25 @@ CASE DEFAULT
   CALL CollectiveStop(__STAMP__,&
     'SplitDG formulation not defined!')
 END SELECT
-
-#ifdef DEBUG
-! ===============================================================================
-! Following dummy calls do suppress compiler warnings of unused Riemann-functions
-! ===============================================================================
-IF (0.EQ.1) THEN
-  U=1. ;  UPrim=1. ;   U_LL=1. ;   U_RR=1.
-  CALL SplitDGVolume_pointer  (U,UPrim,U,UPrim,f,g,h)
-  CALL SplitDGSurface_pointer (U_LL,U_RR,F)
-  CALL SplitVolumeFluxSD      (U,UPrim,U,UPrim,f,g,h)
-  CALL SplitSurfaceFluxSD     (U_LL,U_RR,F)
-  CALL SplitVolumeFluxMO      (U,UPrim,U,UPrim,f,g,h)
-  CALL SplitSurfaceFluxMO     (U_LL,U_RR,F)
-  CALL SplitVolumeFluxDU      (U,UPrim,U,UPrim,f,g,h)
-  CALL SplitSurfaceFluxDU     (U_LL,U_RR,F)
-  CALL SplitVolumeFluxKG      (U,UPrim,U,UPrim,f,g,h)
-  CALL SplitSurfaceFluxKG     (U_LL,U_RR,F)
-  CALL SplitVolumeFluxPI      (U,UPrim,U,UPrim,f,g,h)
-  CALL SplitSurfaceFluxPI     (U_LL,U_RR,F)
-  CALL SplitVolumeFluxCH      (U,UPrim,U,UPrim,f,g,h)
-  CALL SplitSurfaceFluxCH     (U_LL,U_RR,F)
-END IF
-#endif /*DEBUG*/
 END SUBROUTINE InitSplitDG
 
 !==================================================================================================================================
-!> Computes the Split-Flux retaining the standart NS-Equations
+!> Computes the Split-Flux retaining the standard NS-Equations
 !> Attention 1: Factor 2 from differentiation matrix is already been considered
 !==================================================================================================================================
-PURE SUBROUTINE SplitVolumeFluxSD(URef,UPrimRef,U,UPrim,MRef,M,Flux)
+PPURE SUBROUTINE SplitVolumeFluxSD(URef,UPrimRef,U,UPrim,MRef,M,Flux)
 ! MODULES
 USE MOD_PreProc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: URef,U         !< conserved variables
-REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrimRef,UPrim !< primitive variables
-REAL,DIMENSION(1:3        ),INTENT(IN)  :: MRef,M         !< metric terms
-REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: Flux           !< flux in reverence space
+REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: URef          !< conserved variables
+REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: U             !< conserved variables
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrimRef      !< primitive variables
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrim         !< primitive variables
+REAL,DIMENSION(1:3        ),INTENT(IN)  :: MRef          !< metric terms
+REAL,DIMENSION(1:3        ),INTENT(IN)  :: M             !< metric terms
+REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: Flux          !< flux in reverence space
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                    :: EpRef,Ep      ! auxiliary variable for (rho*e+p)
@@ -230,15 +204,16 @@ Flux(:) = 0.5*(MRef(1)+M(1))*fTilde(:) + &
 END SUBROUTINE SplitVolumeFluxSD
 
 !==================================================================================================================================
-!> Computes the surface flux for the split formulation retaining the standart NS-Equations
+!> Computes the surface flux for the split formulation retaining the standard NS-Equations
 !==================================================================================================================================
-PURE SUBROUTINE SplitSurfaceFluxSD(U_LL,U_RR,F)
+PPURE SUBROUTINE SplitSurfaceFluxSD(U_LL,U_RR,F)
 ! MODULES
 USE MOD_PreProc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_LL,U_RR !< variables at the left-/right-Surfaces
+REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_LL      !< variables at the left surfaces
+REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_RR      !< variables at the right surfaces
 REAL,DIMENSION(PP_nVar),INTENT(OUT) :: F         !< resulting flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -260,21 +235,24 @@ END SUBROUTINE SplitSurfaceFluxSD
 !> Computes the Split-Flux retaining the formulation of Ducros
 !> Attention 1: Factor 2 from differentiation matrix is already been considered
 !==================================================================================================================================
-PURE SUBROUTINE SplitVolumeFluxDU(URef,UPrimRef,U,UPrim,MRef,M,Flux)
+PPURE SUBROUTINE SplitVolumeFluxDU(URef,UPrimRef,U,UPrim,MRef,M,Flux)
 ! MODULES
 USE MOD_PreProc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: URef,U         !< conserved variables
-REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrimRef,UPrim !< primitive variables
-REAL,DIMENSION(1:3        ),INTENT(IN)  :: MRef,M         !< metric terms
-REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: Flux           !< flux in reverence space
+REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: URef          !< conserved variables
+REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: U             !< conserved variables
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrimRef      !< primitive variables
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrim         !< primitive variables
+REAL,DIMENSION(1:3        ),INTENT(IN)  :: MRef          !< metric terms
+REAL,DIMENSION(1:3        ),INTENT(IN)  :: M             !< metric terms
+REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: Flux          !< flux in reverence space
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL,DIMENSION(PP_nVar)             :: fTilde,gTilde ! flux in physical space
+REAL,DIMENSION(PP_nVar)             :: fTilde,gTilde     ! flux in physical space
 #if PP_dim == 3
-REAL,DIMENSION(PP_nVar)             :: hTilde        ! flux in physical space
+REAL,DIMENSION(PP_nVar)             :: hTilde            ! flux in physical space
 #endif
 !==================================================================================================================================
 
@@ -319,13 +297,14 @@ END SUBROUTINE SplitVolumeFluxDU
 !==================================================================================================================================
 !> Computes the surface flux for the split formulation of Ducros
 !==================================================================================================================================
-PURE SUBROUTINE SplitSurfaceFluxDU(U_LL,U_RR,F)
+PPURE SUBROUTINE SplitSurfaceFluxDU(U_LL,U_RR,F)
 ! MODULES
 USE MOD_PreProc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_LL,U_RR !< variables at the left-/right-Surfaces
+REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_LL      !< variables at the left surfaces
+REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_RR      !< variables at the right surfaces
 REAL,DIMENSION(PP_nVar),INTENT(OUT) :: F         !< resulting flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -346,16 +325,19 @@ END SUBROUTINE SplitSurfaceFluxDU
 !> Computes the Split-Flux retaining the formulation of Kennedy and Gruber
 !> Attention 1: Factor 2 from differentiation matrix is already been considered
 !==================================================================================================================================
-PURE SUBROUTINE SplitVolumeFluxKG(URef,UPrimRef,U,UPrim,MRef,M,Flux)
+PPURE SUBROUTINE SplitVolumeFluxKG(URef,UPrimRef,U,UPrim,MRef,M,Flux)
 ! MODULES
 USE MOD_PreProc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: URef,U         !< conserved variables
-REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrimRef,UPrim !< primitive variables
-REAL,DIMENSION(1:3        ),INTENT(IN)  :: MRef,M         !< metric terms
-REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: Flux           !< flux in reverence space
+REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: URef          !< conserved variables
+REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: U             !< conserved variables
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrimRef      !< primitive variables
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrim         !< primitive variables
+REAL,DIMENSION(1:3        ),INTENT(IN)  :: MRef          !< metric terms
+REAL,DIMENSION(1:3        ),INTENT(IN)  :: M             !< metric terms
+REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: Flux          !< flux in reverence space
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                    :: e,eRef        ! auxiliary variables for the specific energy
@@ -413,13 +395,14 @@ END SUBROUTINE SplitVolumeFluxKG
 !==================================================================================================================================
 !> Computes the surface flux for the split formulation of Kennedy and Gruber
 !==================================================================================================================================
-PURE SUBROUTINE SplitSurfaceFluxKG(U_LL,U_RR,F)
+PPURE SUBROUTINE SplitSurfaceFluxKG(U_LL,U_RR,F)
 ! MODULES
 USE MOD_PreProc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_LL,U_RR !< variables at the left-/right-Surfaces
+REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_LL      !< variables at the left surfaces
+REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_RR      !< variables at the right surfaces
 REAL,DIMENSION(PP_nVar),INTENT(OUT) :: F         !< resulting flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -446,16 +429,19 @@ END SUBROUTINE SplitSurfaceFluxKG
 !> Computes the Split-Flux retaining the formulation of Morinishi
 !> Attention 1: Factor 2 from differentiation matrix is already been considered
 !==================================================================================================================================
-PURE SUBROUTINE SplitVolumeFluxMO(URef,UPrimRef,U,UPrim,MRef,M,Flux)
+PPURE SUBROUTINE SplitVolumeFluxMO(URef,UPrimRef,U,UPrim,MRef,M,Flux)
 ! MODULES
 USE MOD_PreProc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: URef,U         !< conserved variables
-REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrimRef,UPrim !< primitive variables
-REAL,DIMENSION(1:3        ),INTENT(IN)  :: MRef,M         !< metric terms
-REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: Flux           !< flux in reverence space
+REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: URef          !< conserved variables
+REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: U             !< conserved variables
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrimRef      !< primitive variables
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrim         !< primitive variables
+REAL,DIMENSION(1:3        ),INTENT(IN)  :: MRef          !< metric terms
+REAL,DIMENSION(1:3        ),INTENT(IN)  :: M             !< metric terms
+REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: Flux          !< flux in reverence space
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                    :: EpRef,Ep      ! auxiliary variable for inner energy + pressure
@@ -528,14 +514,15 @@ END SUBROUTINE SplitVolumeFluxMO
 !==================================================================================================================================
 !> Computes the surface flux for the split formulation of Morinishi
 !==================================================================================================================================
-PURE SUBROUTINE SplitSurfaceFluxMO(U_LL,U_RR,F)
+PPURE SUBROUTINE SplitSurfaceFluxMO(U_LL,U_RR,F)
 ! MODULES
 USE MOD_PreProc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_LL,U_RR !< variables at the left-/right-Surfaces
-REAL,DIMENSION(PP_nVar),INTENT(OUT) :: F         !< resulting flux
+REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_LL !< variables at the left surfaces
+REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_RR !< variables at the right surfaces
+REAL,DIMENSION(PP_nVar),INTENT(OUT) :: F    !< resulting flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                :: Ep_LL,Ep_RR
@@ -567,16 +554,19 @@ END SUBROUTINE SplitSurfaceFluxMO
 !> Computes the Split-Flux retaining the formulation of Pirozzoli
 !> Attention 1: Factor 2 from differentiation matrix is already been considered
 !==================================================================================================================================
-PURE SUBROUTINE SplitVolumeFluxPI(URef,UPrimRef,U,UPrim,MRef,M,Flux)
+PPURE SUBROUTINE SplitVolumeFluxPI(URef,UPrimRef,U,UPrim,MRef,M,Flux)
 ! MODULES
 USE MOD_PreProc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: URef,U         !< conserved variables
-REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrimRef,UPrim !< primitive variables
-REAL,DIMENSION(1:3        ),INTENT(IN)  :: MRef,M         !< metric terms
-REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: Flux           !< flux in reverence space
+REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: URef          !< conserved variables
+REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: U             !< conserved variables
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrimRef      !< primitive variables
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrim         !< primitive variables
+REAL,DIMENSION(1:3        ),INTENT(IN)  :: MRef          !< metric terms
+REAL,DIMENSION(1:3        ),INTENT(IN)  :: M             !< metric terms
+REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: Flux          !< flux in reverence space
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                    :: e,eRef        ! auxiliary variables for the specific enthalpy
@@ -631,13 +621,14 @@ END SUBROUTINE SplitVolumeFluxPI
 !==================================================================================================================================
 !> Computes the surface flux for the split formulation of Pirozzoli
 !==================================================================================================================================
-PURE SUBROUTINE SplitSurfaceFluxPI(U_LL,U_RR,F)
+PPURE SUBROUTINE SplitSurfaceFluxPI(U_LL,U_RR,F)
 ! MODULES
 USE MOD_PreProc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_LL,U_RR !< variables at the left-/right-Surfaces
+REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_LL      !< variables at the left surfaces
+REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_RR      !< variables at the right surfaces
 REAL,DIMENSION(PP_nVar),INTENT(OUT) :: F         !< resulting flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -662,17 +653,20 @@ END SUBROUTINE SplitSurfaceFluxPI
 !==================================================================================================================================
 !> Computes the Split-Flux retaining the entropy conserving formulation of Chandrashekar
 !==================================================================================================================================
-PURE SUBROUTINE SplitVolumeFluxCH(URef,UPrimRef,U,UPrim,MRef,M,Flux)
+PPURE SUBROUTINE SplitVolumeFluxCH(URef,UPrimRef,U,UPrim,MRef,M,Flux)
 ! MODULES
 USE MOD_PreProc
 USE MOD_EOS_Vars, ONLY:sKappaM1
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: URef,U         !< conserved variables
-REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrimRef,UPrim !< primitive variables
-REAL,DIMENSION(1:3        ),INTENT(IN)  :: MRef,M         !< metric terms
-REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: Flux           !< flux in reverence space
+REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: URef     !< conserved variables
+REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: U        !< conserved variables
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrimRef !< primitive variables
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrim    !< primitive variables
+REAL,DIMENSION(1:3        ),INTENT(IN)  :: MRef     !< metric terms
+REAL,DIMENSION(1:3        ),INTENT(IN)  :: M        !< metric terms
+REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: Flux     !< flux in reverence space
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                    :: beta,betaRef            ! auxiliary variables for the inverse Temperature
@@ -745,15 +739,16 @@ END SUBROUTINE SplitVolumeFluxCH
 !==================================================================================================================================
 !> Computes the surface flux for the entropy conserving formulation of Chandrashekar
 !==================================================================================================================================
-PURE SUBROUTINE SplitSurfaceFluxCH(U_LL,U_RR,F)
+PPURE SUBROUTINE SplitSurfaceFluxCH(U_LL,U_RR,F)
 ! MODULES
 USE MOD_PreProc
 USE MOD_EOS_Vars, ONLY:sKappaM1
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_LL,U_RR !< variables at the left-/right-Surfaces
-REAL,DIMENSION(PP_nVar),INTENT(OUT) :: F         !< resulting flux
+REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_LL !< variables at the left surfaces
+REAL,DIMENSION(PP_2Var),INTENT(IN)  :: U_RR !< variables at the right surfaces
+REAL,DIMENSION(PP_nVar),INTENT(OUT) :: F    !< resulting flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                :: beta_LL,beta_RR        ! auxiliary variables for the inverse Temperature
@@ -774,7 +769,7 @@ beta_RR = 0.5*U_RR(DENS)/U_RR(PRES)
 ! logarithmic mean
 CALL GetLogMean(U_LL(DENS),U_RR(DENS),rhoLogMean)
 CALL GetLogMean(beta_LL,beta_RR,betaLogMean)
-! "standart" average
+! "standard" average
 pMean = 0.5*(U_LL(DENS)+U_RR(DENS))/(beta_LL+beta_RR)
 hMean = 0.5*sKappaM1/betaLogMean + pMean/rhoLogMean + &
        0.5*(U_LL(VEL1)*U_RR(VEL1) + U_LL(VEL2)*U_RR(VEL2) + U_LL(VEL3)*U_RR(VEL3))
@@ -791,27 +786,28 @@ END SUBROUTINE SplitSurfaceFluxCH
 !==================================================================================================================================
 !> auxilary function for calculating the logarithmic mean numerically stable according to Ismail and Roe
 !==================================================================================================================================
-PURE SUBROUTINE GetLogMean(U_L,U_R,UMean)
+ELEMENTAL SUBROUTINE GetLogMean(U_L,U_R,UMean)
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(IN)  :: U_L,U_R ! variables at the left-/right-Surfaces
-REAL,INTENT(OUT) :: UMean ! resulting flux
+REAL,INTENT(IN)  :: U_L   !< variables at the left surfaces
+REAL,INTENT(IN)  :: U_R   !< variables at the right surfaces
+REAL,INTENT(OUT) :: UMean !< resulting flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL,PARAMETER                      :: epsilon = 0.01
-REAL                                :: chi,f,u,N ! auxiliary variables
+REAL,PARAMETER   :: epsilon = 0.01
+REAL             :: chi,f,u,N ! auxiliary variables
 !==================================================================================================================================
 chi = U_L/U_R
 f = (chi-1)/(chi+1)
 u = f*f
 
-if (u .LT. epsilon) THEN
+IF (u .LT. epsilon) THEN
   N = 1.0+u/3.0+u*u/5.0+u*u*u/7.0
-else
+ELSE
   N = log(chi)/(2.*f)
-endif
+ENDIF
 
 UMean = (U_L+U_R)/(2.*N)
 END SUBROUTINE getLogMean

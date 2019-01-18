@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -15,7 +15,7 @@
 
 !==================================================================================================================================
 !> \brief Prepares the integrand for the flux integrals, i.e. computes the common inteface fluxes.
-!> This module prepares the computation of the fluxes over the sides by filling the two parts (advective and viscous) 
+!> This module prepares the computation of the fluxes over the sides by filling the two parts (advective and viscous)
 !> of the common interface flux by calling the associated numerical flux functions.
 !> We distinguish between inner sides, sides with boundary conditions and mpi sides.
 !==================================================================================================================================
@@ -65,7 +65,7 @@ USE MOD_Mesh_Vars,       ONLY: nBCSides
 USE MOD_Riemann,         ONLY: ViscousFlux
 USE MOD_Lifting_Vars,    ONLY: gradUx_master ,gradUy_master ,gradUz_master ,gradUx_slave,gradUy_slave,gradUz_slave
 #endif /*PARABOLIC*/
-#ifdef EDDYVISCOSITY
+#if EDDYVISCOSITY
 USE MOD_EddyVisc_Vars,   ONLY: muSGS_master,muSGS_slave
 #endif
 #if FV_ENABLED
@@ -79,12 +79,12 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 LOGICAL,INTENT(IN) :: doMPISides  !< = .TRUE. only MINE (where the proc is master)  MPISides are filled, =.FALSE. InnerSides
 REAL,INTENT(IN)    :: t           !< physical time required for BC state evaluation in case of time dependent BCs
-REAL,INTENT(OUT)   :: Flux_master(1:PP_nVar,0:PP_N,0:PP_NZ,1:nSides)  ! sum of advection and diffusion fluxes across the boundary
-REAL,INTENT(OUT)   :: Flux_slave (1:PP_nVar,0:PP_N,0:PP_NZ,1:nSides)  ! sum of advection and diffusion fluxes across the boundary
-REAL,INTENT(INOUT) :: U_master(PP_nVar,0:PP_N, 0:PP_NZ, 1:nSides) !< solution on master sides
-REAL,INTENT(INOUT) :: U_slave( PP_nVar,0:PP_N, 0:PP_NZ, 1:nSides) !< solution on slave sides
-REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N, 0:PP_NZ, 1:nSides) !< solution on master sides
-REAL,INTENT(IN)    :: UPrim_slave( PP_nVarPrim,0:PP_N, 0:PP_NZ, 1:nSides) !< solution on slave sides
+REAL,INTENT(OUT)   :: Flux_master(1:PP_nVar,0:PP_N,0:PP_NZ,1:nSides)  !< sum of advection and diffusion fluxes across the boundary
+REAL,INTENT(OUT)   :: Flux_slave (1:PP_nVar,0:PP_N,0:PP_NZ,1:nSides)  !< sum of advection and diffusion fluxes across the boundary
+REAL,INTENT(INOUT) :: U_master(PP_nVar,0:PP_N, 0:PP_NZ, 1:nSides)         !< solution on master sides
+REAL,INTENT(INOUT) :: U_slave( PP_nVar,0:PP_N, 0:PP_NZ, 1:nSides)         !< solution on slave sides
+REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N, 0:PP_NZ, 1:nSides) !< primitive solution on master sides
+REAL,INTENT(IN)    :: UPrim_slave( PP_nVarPrim,0:PP_N, 0:PP_NZ, 1:nSides) !< primitive solution on slave sides
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER :: SideID,p,q,firstSideID_wo_BC,firstSideID ,lastSideID,FVEM
@@ -94,9 +94,9 @@ REAL    :: FluxV_loc(PP_nVar,0:PP_N, 0:PP_NZ)
 INTEGER :: FV_Elems_Max(1:nSides) ! 0 if both sides DG, 1 else
 !==================================================================================================================================
 ! fill flux for sides ranging between firstSideID and lastSideID using Riemann solver for advection and viscous terms
-! Set the side range according to MPI or no MPI 
+! Set the side range according to MPI or no MPI
 IF(doMPISides)THEN
-  ! fill only flux for MINE MPISides (where the local proc is master) 
+  ! fill only flux for MINE MPISides (where the local proc is master)
   firstSideID_wo_BC = firstMPISide_MINE
   firstSideID = firstMPISide_MINE
    lastSideID =  lastMPISide_MINE
@@ -117,9 +117,9 @@ END DO
 !  1.  compute flux for non-BC sides
 !  1.1) advective flux
 !  1.2) viscous flux
-!  1.3) add up viscous flux to Flux_master 
+!  1.3) add up viscous flux to Flux_master
 !  2.  compute flux for BC sides
-!  3.  multiply by SurfElem 
+!  3.  multiply by SurfElem
 !  4.  copy flux from Flux_master to Flux_slave
 !  5.  convert FV flux to DG flux at mixed interfaces
 !==============================
@@ -140,7 +140,7 @@ DO SideID=firstSideID_wo_BC,lastSideID
       gradUx_master(:,:,:,SideID),gradUy_master(:,:,:,SideID), gradUz_master(:,:,:,SideID),&
       gradUx_slave (:,:,:,SideID),gradUy_slave (:,:,:,SideID), gradUz_slave (:,:,:,SideID),&
       NormVec(:,:,:,FV_Elems_Max(SideID),SideID)&
-#ifdef EDDYVISCOSITY
+#if EDDYVISCOSITY
       ,muSGS_master(:,:,:,SideID),muSGS_slave(:,:,:,SideID)&
 #endif
   )

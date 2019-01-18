@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -49,7 +49,7 @@ PUBLIC::DefineParametersEquation
 CONTAINS
 
 !==================================================================================================================================
-!> Define parameters 
+!> Define parameters
 !==================================================================================================================================
 SUBROUTINE DefineParametersEquation()
 ! MODULES
@@ -90,7 +90,7 @@ AdvVel = GETREALARRAY('AdvVel',3)
 ! Make sure advection velocity is 0 in third dimension for two-dimensional computations,
 ! computing wave speeds etc. will get easier.
 IF(AdvVel(3).NE.0.) THEN
-  SWRITE(UNIT_StdOut,'(A)')' You are computing in 2D! AdvVel(3) will be set to zero!' 
+  SWRITE(UNIT_StdOut,'(A)')' You are computing in 2D! AdvVel(3) will be set to zero!'
   AdvVel(3) = 0.
 END IF
 #endif
@@ -147,15 +147,15 @@ REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< primi
 REAL,INTENT(IN)    :: UPrim_slave( PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< primitive solution on slave sides
 REAL,INTENT(OUT)   :: U_master(        PP_nVar,0:PP_N,0:PP_NZ,1:nSides) !< conservative solution on master sides
 REAL,INTENT(OUT)   :: U_slave(         PP_nVar,0:PP_N,0:PP_NZ,1:nSides) !< conservative solution on slave sides
-INTEGER,INTENT(IN) :: mask_master(1:nSides)                             !< mask: only convert solution if mask(SideID) == mask_ref 
-INTEGER,INTENT(IN) :: mask_slave (1:nSides)                             !< mask: only convert solution if mask(SideID) == mask_ref 
+INTEGER,INTENT(IN) :: mask_master(1:nSides)                             !< mask: only convert solution if mask(SideID) == mask_ref
+INTEGER,INTENT(IN) :: mask_slave (1:nSides)                             !< mask: only convert solution if mask(SideID) == mask_ref
 INTEGER,INTENT(IN) :: mask_ref                                          !< reference value for mask comparison
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
 ! Copy the coservative state to the primitive arrays
 U_master = UPrim_master
-U_slave  = UPrim_slave 
+U_slave  = UPrim_slave
 END SUBROUTINE GetConservativeStateSurface
 
 !==================================================================================================================================

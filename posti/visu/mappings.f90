@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -76,7 +76,7 @@ CHARACTER(LEN=255),ALLOCATABLE :: VarNamesElemData_loc(:)
 !===================================================================================================================================
 ! Build partition to get nElems
 CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
-CALL BuildPartition() 
+CALL BuildPartition()
 CALL CloseDataFile()
 
 SDEALLOCATE(FV_Elems_loc)
@@ -88,7 +88,7 @@ IF (.NOT.DGonly) THEN
   NCalc_FV = NVisu_FV
 #else
   NCalc_FV = PP_N
-#endif  
+#endif
 
   CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
   CALL GetArrayAndName('ElemData','VarNamesAdd',nVal,tmp,VarNamesElemData_loc)
@@ -96,7 +96,7 @@ IF (.NOT.DGonly) THEN
   IF (ALLOCATED(VarNamesElemData_loc)) THEN
     ALLOCATE(ElemData_loc(nVal(1),nVal(2)))
     ElemData_loc = RESHAPE(tmp,(/nVal(1),nVal(2)/))
-    ! search for FV_Elems 
+    ! search for FV_Elems
     FV_Elems_loc = 0
     DO iVar=1,nVal(1)
       IF (STRICMP(VarNamesElemData_loc(iVar),"FV_Elems")) THEN
@@ -152,7 +152,7 @@ END IF
 ! check if the distribution of DG/FV elements has changed
 changedFV_Elems=.TRUE.
 IF (ALLOCATED(FV_Elems_old).AND.(SIZE(FV_Elems_loc).EQ.SIZE(FV_Elems_old))) THEN
-  changedFV_Elems = .NOT.ALL(FV_Elems_loc.EQ.FV_Elems_old) 
+  changedFV_Elems = .NOT.ALL(FV_Elems_loc.EQ.FV_Elems_old)
 END IF
 SDEALLOCATE(FV_Elems_old)
 ALLOCATE(FV_Elems_old(1:nElems))
@@ -165,14 +165,6 @@ CALL MPI_ALLREDUCE(MPI_IN_PLACE,nElems_FV_glob,1,MPI_INTEGER,MPI_MAX,MPI_COMM_WO
 #endif
 hasFV_Elems = (nElems_FV_glob.GT.0)
 
-#ifdef DEBUG
-! ===============================================================================
-! Following dummy statements do suppress compiler warnings of unused Riemann-functions
-! ===============================================================================
-IF (0.EQ.1) THEN
-  WRITE(*,*) statefile 
-END IF
-#endif /* DEBUG */
 END SUBROUTINE Build_FV_DG_distribution
 
 !===================================================================================================================================
@@ -180,7 +172,7 @@ END SUBROUTINE Build_FV_DG_distribution
 !> and visualization variables.
 !>  1. Read 'VarName' options from the parameter file. This are the quantities that will be visualized.
 !>  2. Initialize the dependecy table
-!>  3. check wether gradients are needed for any quantity. If this is the case, remove the conservative quantities from the 
+!>  3. check wether gradients are needed for any quantity. If this is the case, remove the conservative quantities from the
 !>     dependecies of the primitive quantities (the primitive quantities are available directly, since the DGTimeDerivative_weakForm
 !>     will be executed.
 !>  4. build the 'mapDepToCalc' that holds for each quantity that will be calculated the index in 'UCalc' array (0 if not calculated)
@@ -190,7 +182,7 @@ END SUBROUTINE Build_FV_DG_distribution
 SUBROUTINE Build_mapDepToCalc_mapAllVarsToVisuVars()
 USE MOD_Globals
 USE MOD_Visu_Vars
-USE MOD_ReadInTools     ,ONLY: GETSTR,CountOption
+USE MOD_ReadInTools     ,ONLY: GETSTR,GETLOGICAL,CountOption
 USE MOD_StringTools     ,ONLY: STRICMP
 #if FV_RECONSTRUCT
 USE MOD_EOS_Posti       ,ONLY: AppendNeededPrims
@@ -200,10 +192,11 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER             :: iVar,iVar2
+INTEGER             :: iVar,iVar2,nVarIni
 CHARACTER(LEN=255)  :: VarName
 CHARACTER(LEN=255)  :: BoundaryName
 CHARACTER(LEN=20)   :: format
+LOGICAL             :: UseVarNamesHDF5=.FALSE.,UseVarNamesAll=.FALSE.
 !===================================================================================================================================
 ! Read Varnames from parameter file and fill
 !   mapAllVarsToVisuVars = map, which stores at position x the position/index of the x.th quantity in the UVisu array
@@ -216,9 +209,31 @@ mapAllVarsToVisuVars = 0
 mapAllVarsToSurfVisuVars = 0
 nVarVisu = 0
 nVarSurfVisuAll = 0
+! Get number of variables to be visualized
+nVarIni=CountOption("VarName")
+! If no variable names are given in prm file, take the variables given in the HDF5 "VarNames" attribute (if present) or all found
+! variables (else). This default can be suppressed via the "noVisuVars" flag (used e.g. in paraview plugin prm files)
+IF((nVarIni.EQ.0).AND..NOT.GETLOGICAL("noVisuVars")) THEN
+  IF(ALLOCATED(VarNamesHDF5)) THEN
+    nVarIni=SIZE(VarNamesHDF5)
+    UseVarNamesHDF5=.TRUE.
+  ELSE
+    nVarIni=nVarAll
+    UseVarNamesAll=.TRUE.
+  END IF
+END IF
+
 ! Compare varnames that should be visualized with available varnames
-DO iVar=1,CountOption("VarName")
-  VarName = GETSTR("VarName")
+DO iVar=1,nVarIni
+  ! get var name from prm file or resort to the default vars
+  IF(UseVarNamesHDF5) THEN
+    VarName=VarNamesHDF5(iVar)
+  ELSEIF(UseVarNamesAll)THEN
+    VarName=VarNamesAll(iVar)
+    IF(TRIM(VarName).EQ."DG_Solution:DUMMY_DO_NOT_VISUALIZE") CYCLE
+  ELSE
+    VarName = GETSTR("VarName")
+  END IF
   DO iVar2=1,nVarAll
     IF (STRICMP(VarName, VarnamesAll(iVar2))) THEN
       nVarSurfVisuAll = nVarSurfVisuAll + 1
@@ -279,7 +294,7 @@ END DO
 ! check if any varnames changed
 changedVarNames = .TRUE.
 IF (ALLOCATED(mapAllVarsToSurfVisuVars_old).AND.(SIZE(mapAllVarsToSurfVisuVars).EQ.SIZE(mapAllVarsToSurfVisuVars_old))) THEN
-  changedVarNames = .NOT.ALL(mapAllVarsToSurfVisuVars.EQ.mapAllVarsToSurfVisuVars_old) 
+  changedVarNames = .NOT.ALL(mapAllVarsToSurfVisuVars.EQ.mapAllVarsToSurfVisuVars_old)
 END IF
 SDEALLOCATE(mapAllVarsToSurfVisuVars_old)
 ALLOCATE(mapAllVarsToSurfVisuVars_old(1:nVarAll))
@@ -292,9 +307,9 @@ mapDepToCalc_FV = mapDepToCalc
 nVarCalc_FV = nVarCalc
 #if FV_RECONSTRUCT
 ! generate a new mapDepToCalc_FV, which is a copy of the original mapDepToCalc but is extended in the following way.
-! Since the reconstruction is performed in primitive quantities, the calculation of conservative quantities from them 
+! Since the reconstruction is performed in primitive quantities, the calculation of conservative quantities from them
 ! introduce for the conservatives dependcies from the primitive ones. Therefore all primitive quantities that
-! are needed to build the requested conservatives must be added to the mapDepToCalc_FV. 
+! are needed to build the requested conservatives must be added to the mapDepToCalc_FV.
 IF (StateFileMode) CALL AppendNeededPrims(mapDepToCalc,mapDepToCalc_FV,nVarCalc_FV)
 #endif
 
@@ -333,7 +348,7 @@ SWRITE (*,*) 'doSurfVisu: ',doSurfVisu
 ! check if any boundary changed
 changedBCnames = .TRUE.
 IF (ALLOCATED(mapAllBCNamesToVisuBCNames_old).AND.(SIZE(mapAllBCNamesToVisuBCNames).EQ.SIZE(mapAllBCNamesToVisuBCNames_old))) THEN
-  changedBCnames = .NOT.ALL(mapAllBCNamesToVisuBCNames.EQ.mapAllBCNamesToVisuBCNames_old) 
+  changedBCnames = .NOT.ALL(mapAllBCNamesToVisuBCNames.EQ.mapAllBCNamesToVisuBCNames_old)
 END IF
 SDEALLOCATE(mapAllBCNamesToVisuBCNames_old)
 ALLOCATE(mapAllBCNamesToVisuBCNames_old(1:nBCNamesAll))
@@ -348,18 +363,18 @@ END SUBROUTINE Build_mapDepToCalc_mapAllVarsToVisuVars
 !> This routine builds mappings that give for each BC side the index of the visualization side, seperate by FV and DG.
 !> We also store the number of visualization sides per BC name.
 !===================================================================================================================================
-SUBROUTINE Build_mapBCSides() 
+SUBROUTINE Build_mapBCSides()
 USE MOD_Visu_Vars
 USE MOD_Mesh_Vars   ,ONLY: nBCSides,BC,SideToElem,BoundaryName
 USE MOD_StringTools ,ONLY: STRICMP
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER           :: iBC,iElem,iSide
 !===================================================================================================================================
 
-! Build surface visualization mappings. 
+! Build surface visualization mappings.
 ! mapAllBCSidesToDGVisuBCSides/FV(iBCSide) contains the ascending index of the visualization boundary sides. They are sorted after the boundary name.
 ! 0 means no visualization of this boundary side.
 ! nSidesPerBCNameVisu_DG/FV(iBCNamesVisu) contains how many boundary sides belong to each boundary that should be visualized.
@@ -379,8 +394,8 @@ nBCSidesVisu_DG = 0
 nBCSidesVisu_FV = 0
 IF (doSurfVisu) THEN
   DO iBC=1,nBCNamesAll    ! iterate over all bc names
-    IF (mapAllBCNamesToVisuBCNames(iBC).GT.0) THEN 
-      DO iSide=1,nBCSides   ! iterate over all bc sides 
+    IF (mapAllBCNamesToVisuBCNames(iBC).GT.0) THEN
+      DO iSide=1,nBCSides   ! iterate over all bc sides
         IF (STRICMP(BoundaryName(BC(iSide)),BCNamesAll(iBC))) THEN ! check if side is of specific boundary name
           iElem = SideToElem(S2E_ELEM_ID,iSide)
           IF (FV_Elems_loc(iElem).EQ.0)  THEN ! DG element

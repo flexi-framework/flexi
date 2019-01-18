@@ -1,6 +1,19 @@
+!=================================================================================================================================
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
+! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+!
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
+! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+!
+! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+! of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License v3.0 for more details.
+!
+! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
+!=================================================================================================================================
 #include "flexi.h"
 !===================================================================================================================================
-!> Module to handle the Recordpoints
+!> Module to handle the input of the recordpoints
 !===================================================================================================================================
 MODULE MOD_RPData
 ! MODULES
@@ -27,17 +40,17 @@ PUBLIC :: FinalizeRPData
 CONTAINS
 
 !===================================================================================================================================
-!> Initialize all necessary information to perform filtering
+!> Read in the RP data from a single .h5 file
 !===================================================================================================================================
 SUBROUTINE ReadRPData(FileString,firstFile)
 ! MODULES
 USE MOD_Globals
 USE MOD_HDF5_Input
 USE MOD_RPData_Vars
-USE MOD_RPSetVisu            ,ONLY: InitRPSet,ChangeRPSet
-USE MOD_RPSetVisuVisu_Vars       ,ONLY: nRP_HDF5,RPOutMap
-USE MOD_ParametersVisu       ,ONLY: ProjectName
-USE MOD_ParametersVisu       ,ONLY: skip,RP_DefFile,RP_SET_defined
+USE MOD_RPSetVisu          ,ONLY: InitRPSet,ChangeRPSet
+USE MOD_RPSetVisuVisu_Vars ,ONLY: nRP_HDF5,RPOutMap
+USE MOD_ParametersVisu     ,ONLY: ProjectName
+USE MOD_ParametersVisu     ,ONLY: skip,RP_DefFile,RP_SET_defined
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -58,7 +71,7 @@ REAL                          :: nTotal,limit
 #endif
 !===================================================================================================================================
 WRITE(UNIT_stdOut,'(A)')' Read recordpoint data from data file "'//TRIM(FileString)//'" ...'
- 
+
 IF(PRESENT(firstFile).AND.firstFile.EQV..TRUE.) THEN
  firstFile_loc=.TRUE.
 ELSE
@@ -76,7 +89,7 @@ IF(TRIM(FileType) .NE. 'RecordPoints_Data') THEN
 END IF
 ! Check the RP definition file path in the dataset file
 CALL ReadAttribute(File_ID,'RPDefFile',1,StrScalar=RP_DefFile_loc)
-CALL CloseDataFile() 
+CALL CloseDataFile()
 IF(firstFile_loc) THEN
   IF(.NOT.RP_SET_defined) THEN
     RP_DefFile=RP_DefFile_loc
@@ -109,7 +122,7 @@ IF(firstFile_loc.EQV..TRUE.) THEN
   nVar_HDF5 = INT(HSize(1) -1)
   ALLOCATE(VarNames_HDF5(nVar_HDF5))
   CALL ReadAttribute(File_ID,'VarNames',nVar_HDF5,StrArray=VarNames_HDF5)
-  nSamples_global=1 
+  nSamples_global=1
   IF(MOD(nSamples_loc,skip).EQ.0) THEN
     nSamples_skip=nSamples_loc/skip
   ELSE
@@ -160,7 +173,7 @@ DEALLOCATE(temparray)
 nSamples_global=nSamples_global+nSamples_skip-1
 
 
-CALL CloseDataFile() 
+CALL CloseDataFile()
 
 WRITE(UNIT_stdOut,'(A)')'done.'
 
@@ -168,14 +181,14 @@ END SUBROUTINE ReadRPData
 
 
 !===================================================================================================================================
-!> Initialize all necessary information to perform filtering
+!> Assemble the data from the seperate .h5 recordpoint files into the global RPData array
 !===================================================================================================================================
 SUBROUTINE AssembleRPData()
 ! MODULES
 USE MOD_Globals
-USE MOD_RPData_Vars      ,ONLY: firstset,actualset,nSamples_global, RPData, RPTime,nVar_HDF5
-USE MOD_RPSetVisuVisu_Vars       ,ONLY: nRP_global
-USE MOD_ParametersVisu       ,ONLY: skip
+USE MOD_RPData_Vars        ,ONLY: firstset,actualset,nSamples_global, RPData, RPTime,nVar_HDF5
+USE MOD_RPSetVisuVisu_Vars ,ONLY: nRP_global
+USE MOD_ParametersVisu     ,ONLY: skip
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -203,7 +216,7 @@ IF(skip.EQ.1) THEN
       RPTime(iStart:iEnd)=actualset%data(0,1,1:nSamples_loc)  ! each RP has same time...
       iStart=iEnd
       actualset=>actualset%nextset
-    ELSE 
+    ELSE
       CALL Abort(__STAMP__,'ERROR - Time History of RP Data Files does not match!')
     END IF
   END DO
@@ -223,7 +236,7 @@ END SUBROUTINE AssembleRPData
 
 
 !===================================================================================================================================
-!> Deallocate global variable for Recordpoints
+!> Deallocate global variable for Recordpoints data module
 !===================================================================================================================================
 SUBROUTINE FinalizeRPData()
 ! MODULES

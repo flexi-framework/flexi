@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -40,7 +40,7 @@ PUBLIC::DefineParametersMesh
 CONTAINS
 
 !==================================================================================================================================
-!> Define parameters 
+!> Define parameters
 !==================================================================================================================================
 SUBROUTINE DefineParametersMesh()
 ! MODULES
@@ -73,6 +73,8 @@ CALL prms%CreateStringOption(  'BoundaryName',        "Names of boundary conditi
 CALL prms%CreateIntArrayOption('BoundaryType',        "Type of boundary conditions to be set. Format: (BC_TYPE,BC_STATE)",&
                                                       multiple=.TRUE.)
 CALL prms%CreateLogicalOption( 'writePartitionInfo',  "Write information about MPI partitions into a file.",'.FALSE.')
+CALL prms%CreateIntOption(     'NGeoOverride',        "Override switch for NGeo. Interpolate mesh to different NGeo." //&
+                                                      "<1: off, >0: Interpolate",'-1')
 END SUBROUTINE DefineParametersMesh
 
 
@@ -91,7 +93,9 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Mesh_Vars
 USE MOD_HDF5_Input
-USE MOD_Interpolation_Vars, ONLY:InterpolationInitIsDone,NodeType
+USE MOD_ChangeBasisByDim   ,ONLY:ChangeBasisVolume
+USE MOD_Interpolation      ,ONLY:GetVandermonde
+USE MOD_Interpolation_Vars, ONLY:InterpolationInitIsDone,NodeType,NodeTypeVISU
 USE MOD_Mesh_ReadIn,        ONLY:readMesh
 USE MOD_Prepare_Mesh,       ONLY:setLocalSideIDs,fillMeshInfo
 USE MOD_ReadInTools,        ONLY:GETLOGICAL,GETSTR,GETREAL,GETINT
@@ -117,7 +121,7 @@ CHARACTER(LEN=255),INTENT(IN),OPTIONAL :: MeshFile_IN !< file name of mesh to be
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL              :: x(3),meshScale
-REAL,POINTER      :: coords(:,:,:,:,:)
+REAL,POINTER      :: coords(:,:,:,:,:),coordsTmp(:,:,:,:,:),Vdm_EQNGeo_EQNGeoOverride(:,:)
 INTEGER           :: iElem,i,j,k,nElemsLoc
 LOGICAL           :: validMesh
 INTEGER           :: firstMasterSide     ! lower side ID of array U_master/gradUx_master...
@@ -125,6 +129,7 @@ INTEGER           :: lastMasterSide      ! upper side ID of array U_master/gradU
 INTEGER           :: firstSlaveSide      ! lower side ID of array U_slave/gradUx_slave...
 INTEGER           :: lastSlaveSide       ! upper side ID of array U_slave/gradUx_slave...
 INTEGER           :: iSide,LocSideID,SideID
+INTEGER           :: NGeoOverride
 !==================================================================================================================================
 IF((.NOT.InterpolationInitIsDone).OR.MeshInitIsDone) THEN
   CALL CollectiveStop(__STAMP__,&
@@ -179,6 +184,30 @@ ELSE
   coords=>NodeCoords
   nElemsLoc=nElems
 ENDIF
+
+NGeoOverride=GETINT('NGeoOverride','-1')
+IF(NGeoOverride.GT.0)THEN
+  ALLOCATE(CoordsTmp(3,0:NGeoOverride,0:NGeoOverride,0:NGeoOverride,nElemsLoc))
+  ALLOCATE(Vdm_EQNGeo_EQNGeoOverride(0:NGeoOverride,0:NGeo))
+  CALL GetVandermonde(Ngeo, NodeTypeVISU, NgeoOverride, NodeTypeVISU, Vdm_EQNgeo_EQNgeoOverride, modal=.FALSE.)
+  DO iElem=1,nElemsLoc
+    CALL ChangeBasisVolume(3,Ngeo,NgeoOverride,Vdm_EQNGeo_EQNGeoOverride,coords(:,:,:,:,iElem),coordsTmp(:,:,:,:,iElem))
+  END DO
+  ! cleanup
+  IF(interpolateFromTree)THEN
+    DEALLOCATE(TreeCoords)
+    ALLOCATE(TreeCoords(3,0:NGeoOverride,0:NGeoOverride,0:NGeoOverride,nElemsLoc))
+    coords=>TreeCoords
+  ELSE
+    DEALLOCATE(NodeCoords)
+    ALLOCATE(NodeCoords(3,0:NGeoOverride,0:NGeoOverride,0:NGeoOverride,nElemsLoc))
+    coords=>NodeCoords
+  END IF
+  Coords = CoordsTmp
+  NGeo = NGeoOverride
+  DEALLOCATE(CoordsTmp, Vdm_EQNGeo_EQNGeoOverride)
+END IF
+
 SWRITE(UNIT_StdOut,'(a3,a30,a3,i0)')' | ','Ngeo',' | ', Ngeo
 
 ! scale and deform mesh if desired (warning: no mesh output!)
@@ -297,7 +326,7 @@ IF (meshMode.GT.0) THEN
   MortarInfo(MI_FLIP,:,:)  = MIN(1,MortarInfo(MI_FLIP,:,:))
 #endif
 
-  ! Build necessary mappings 
+  ! Build necessary mappings
   CALL buildMappings(PP_N,V2S=V2S,S2V=S2V,S2V2=S2V2,FS2M=FS2M,dim=PP_dim)
 END IF
 
@@ -345,9 +374,9 @@ IF (meshMode.GT.0) THEN
   DO iElem=1,nElems
 #if PP_dim == 3
     DO LocSideID=1,6
-#else    
+#else
     DO LocSideID=2,5
-#endif    
+#endif
       SideID = ElemToSide(E2S_SIDE_ID,LocSideID,iElem)
       iSide = ElemInfo(3,iElem+offsetElem) + LocSideID
       SideToGlobalSide(SideID) = ABS(SideInfo(2,iSide))
@@ -382,7 +411,7 @@ USE MOD_FV_Metrics,ONLY:FinalizeFV_Metrics
 #endif
 IMPLICIT NONE
 !============================================================================================================================
-!> Deallocate global variables, needs to go somewhere else later
+! Deallocate global variables, needs to go somewhere else later
 SDEALLOCATE(ElemToSide)
 SDEALLOCATE(SideToElem)
 SDEALLOCATE(BC)
@@ -398,7 +427,7 @@ SDEALLOCATE(BoundaryName)
 SDEALLOCATE(BoundaryType)
 
 
-!> Volume
+! Volume
 SDEALLOCATE(Elem_xGP)
 SDEALLOCATE(Metrics_fTilde)
 SDEALLOCATE(Metrics_gTilde)
@@ -406,7 +435,7 @@ SDEALLOCATE(Metrics_hTilde)
 SDEALLOCATE(sJ)
 SDEALLOCATE(DetJac_Ref)
 
-!> surface
+! surface
 SDEALLOCATE(Face_xGP)
 SDEALLOCATE(NormVec)
 SDEALLOCATE(TangVec1)
@@ -419,7 +448,7 @@ SDEALLOCATE(ElemInfo)
 SDEALLOCATE(SideInfo)
 SDEALLOCATE(SideToGlobalSide)
 
-!> mappings
+! mappings
 CALL FinalizeMappings()
 
 #if FV_ENABLED

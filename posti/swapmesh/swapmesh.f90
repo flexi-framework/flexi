@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -50,7 +50,7 @@ CONTAINS
 
 !===================================================================================================================================
 !> Read in user defined parameters and prepare data for swapmesh.
-!> The old and new mesh will be read and stored, the necessary Vandermonde matrizes are build and the parametric coordinates
+!> The old and new mesh will be read and stored, the necessary Vandermonde matrices are built and the parametric coordinates
 !> of the new gauss points in the old mesh are found.
 !===================================================================================================================================
 SUBROUTINE InitSwapmesh()
@@ -73,7 +73,7 @@ USE MOD_Output_Vars,             ONLY: NOut,ProjectName
 USE MOD_Mesh_Vars,               ONLY: nElems,OffsetElem,nGlobalElems
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER             :: i
@@ -194,7 +194,7 @@ USE MOD_IO_HDF5,               ONLY: File_ID
 USE MOD_ChangeBasis,           ONLY: ChangeBasis3D
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=255),INTENT(IN)  :: MeshFile       !< Mesh file to be read
 LOGICAL,INTENT(IN)             :: useCurveds     !< Switch curved interpretation of mesh on or off
 REAL,ALLOCATABLE,INTENT(OUT)   :: XCL(:,:,:,:,:) !< Mesh coordinates on CL points
@@ -321,7 +321,7 @@ USE MOD_Output,        ONLY: insert_userblock
 USE ISO_C_BINDING,     ONLY: C_NULL_CHAR
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=255),INTENT(IN)      :: StateFile !< State file to be read
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -335,7 +335,7 @@ CALL OpenDataFile(StateFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL ReadArray('DG_Solution',5,&
                (/nVar_State,NState+1,NState+1,NState+1,nElemsOld/),0,5,RealArray=UOld)
 
-! Read the current time 
+! Read the current time
 CALL ReadAttribute(File_ID,'Time',1,RealScalar=Time_State)
 
 ! Extract parameter file from userblock (if found)
@@ -357,7 +357,7 @@ USE MOD_HDF5_Output,        ONLY: WriteState
 USE MOD_Swapmesh_Vars,      ONLY: Time_State,MeshFileNew
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
@@ -372,7 +372,7 @@ SUBROUTINE FinalizeSwapmesh()
 USE MOD_Swapmesh_Vars
 USE MOD_DG_Vars,         ONLY: U
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================

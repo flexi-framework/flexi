@@ -2,11 +2,6 @@
 # POSTI
 # =========================================================================
 
-# use dummy userblock, as userblocks are often not required for Posti tools
-ADD_LIBRARY(userblocklib_dummy STATIC ./src/output/read_userblock_dummy.c)
-SET_TARGET_PROPERTIES(userblocklib_dummy PROPERTIES LINKER_LANGUAGE C)
-SET_TARGET_PROPERTIES(userblocklib_dummy PROPERTIES COMPILE_FLAGS "-fPIC")
-
 CMAKE_DEPENDENT_OPTION(POSTI_BUILD_VISU                  "Build the visu tool"                        ON  "FLEXI_BUILDPOSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_BUILD_MERGETIMEAVERAGES     "Build the time-averaging tool"              ON  "FLEXI_BUILDPOSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_BUILD_DMD                   "Build the DMD tool"                         ON  "FLEXI_BUILDPOSTI" OFF)

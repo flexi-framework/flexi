@@ -1,14 +1,27 @@
+!=================================================================================================================================
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
+! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+!
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
+! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+!
+! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+! of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License v3.0 for more details.
+!
+! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
+!=================================================================================================================================
 #include "flexi.h"
 
 !===================================================================================================================================
-!>
+!> Module containing the routines that are used needed to calculate derived quantities from the variables in the RP file.
 !===================================================================================================================================
 MODULE MOD_EquationRP
 ! MODULES
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES 
+! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 INTERFACE InitEquationRP
   MODULE PROCEDURE InitEquationRP
@@ -39,12 +52,12 @@ SUBROUTINE InitEquationRP()
 ! MODULES
 USE MOD_Globals
 USE MOD_RPData_Vars       ,ONLY:VarNames_HDF5,nVar_HDF5
-USE MOD_ParametersVisu        
+USE MOD_ParametersVisu
 USE MOD_EquationRP_Vars
 USE MOD_EOS               ,ONLY:InitEOS
 USE MOD_EOS_Posti_Vars    ,ONLY:nVarDepEOS,DepTableEOS,DepNames
 USE MOD_Readintools       ,ONLY:CountOption,GETSTR
-USE MOD_StringTools       ,ONLY: STRICMP
+USE MOD_StringTools       ,ONLY:STRICMP
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -59,7 +72,7 @@ WRITE(UNIT_stdOut,'(A)') ' INIT EquationRP ...'
 
 justVisualizeState=.FALSE.
 
-! In case no output variables specified: take instead the variable names out of the hDF5 file (used for timeavg-files)
+! In case no output variables specified: take instead the variable names out of the HDF5 file (used for timeavg-files)
 nVarVisu=CountOption("VarName")
 IF(nVarVisu .LT. 1) THEN
   justVisualizeState=.TRUE.
@@ -119,9 +132,9 @@ DO iVar=1,nVarVisu
   strlen=LEN(TRIM(ADJUSTL(tmp255)))
   IF(tmp255(strlen:strlen).EQ.TRIM('X')) THEN
     WRITE(tmp255_2,'(A)')TRIM(tmp255(1:strlen-1))//'Y'
-    mapCand(2)=GETMAPBYNAME(TRIM(tmp255_2),VarNameVisu,nVarVisu) 
+    mapCand(2)=GETMAPBYNAME(TRIM(tmp255_2),VarNameVisu,nVarVisu)
     WRITE(tmp255_2,'(A)')TRIM(tmp255(1:strlen-1))//'Z'
-    mapCand(3)=GETMAPBYNAME(TRIM(tmp255_2),VarNameVisu,nVarVisu) 
+    mapCand(3)=GETMAPBYNAME(TRIM(tmp255_2),VarNameVisu,nVarVisu)
     mapCand(1)=iVar
     IF(.NOT.ANY(mapCand.LE.0)) THEN
       nVecTrans=nVecTrans+1
@@ -163,18 +176,18 @@ END SUBROUTINE InitEquationRP
 
 
 !===================================================================================================================================
-!> This routine computes the state on the visualization grid 
+!> This routine computes the state on the visualization grid
 !===================================================================================================================================
 SUBROUTINE CalcEquationRP()
 ! MODULES
 USE MOD_Globals
-USE MOD_RPData_Vars        ,ONLY: RPData       
+USE MOD_RPData_Vars        ,ONLY: RPData
 USE MOD_RPData_Vars        ,ONLY: nVar_HDF5,VarNames_HDF5
-USE MOD_RPSetVisuVisu_Vars ,ONLY: nRP_global        
+USE MOD_RPSetVisuVisu_Vars ,ONLY: nRP_global
 USE MOD_OutputRPVisu_Vars  ,ONLY: nSamples_out
 USE MOD_ParametersVisu     ,ONLY: nVarDep,nVarCalc,mapCalc,mapVisu,VarNamesAll,justVisualizeState
 USE MOD_ParametersVisu     ,ONLY: Line_LocalVel,Plane_LocalVel
-USE MOD_OutputRPVisu_Vars  ,ONLY: RPData_out 
+USE MOD_OutputRPVisu_Vars  ,ONLY: RPData_out
 USE MOD_EOS_Posti          ,ONLY: CalcQuantities
 USE MOD_StringTools        ,ONLY: STRICMP
 IMPLICIT NONE
@@ -198,7 +211,7 @@ ELSE
   ! Copy existing variables from solution array
   ! Attention: nVarCalc must be last dimension (needed for CalcQuantities from flexilib!)
   ALLOCATE(UCalc(nRP_global,nSamples_out,nVarCalc))
-  
+
   DO iVarOut=1,nVarDep ! iterate over all out variables
     IF (mapCalc(iVarOut).LT.1) CYCLE ! check if variable must be calculated
     DO iVarIn=1,nVar_HDF5 ! iterate over all in variables
@@ -208,18 +221,18 @@ ELSE
       END IF
     END DO
   END DO
-  
+
   ! calculate all quantities
   CALL CalcQuantities(nVarCalc,nVal,(/1/),mapCalc,UCalc,maskCalc)
-  
+
   ! fill output array
   DO iVar=1,nVarDep
     IF (mapVisu(iVar).GT.0) THEN
-      iVarCalc = mapCalc(iVar) 
-      iVarVisu = mapVisu(iVar) 
+      iVarCalc = mapCalc(iVar)
+      iVarVisu = mapVisu(iVar)
       RPData_out(iVarVisu,:,:)=UCalc(:,:,iVarCalc)
     END IF
-  END DO 
+  END DO
   DEALLOCATE(UCalc)
 END IF
 
@@ -235,14 +248,14 @@ END SUBROUTINE CalcEquationRP
 
 
 !===================================================================================================================================
-!> This routine computes the state on the visualization grid 
+!> This routine transformes velocities to the line-local coordinate system
 !===================================================================================================================================
 SUBROUTINE Line_TransformVel()
 ! MODULES
 USE MOD_Globals
-USE MOD_OutputRPVisu_Vars           ,ONLY:RPData_out,nSamples_out
-USE MOD_RPSetVisuVisu_Vars            ,ONLY:nLines,Lines,tLine
-USE MOD_EquationRP_Vars         ,ONLY:nVecTrans,TransMap
+USE MOD_OutputRPVisu_Vars  ,ONLY: RPData_out,nSamples_out
+USE MOD_RPSetVisuVisu_Vars ,ONLY: nLines,Lines,tLine
+USE MOD_EquationRP_Vars    ,ONLY: nVecTrans,TransMap
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -269,7 +282,7 @@ END SUBROUTINE Line_TransformVel
 
 
 !===================================================================================================================================
-!> 
+!> This routine transformes velocities to the plane-local coordinate system
 !===================================================================================================================================
 SUBROUTINE Plane_TransformVel()
 ! MODULES
@@ -305,14 +318,14 @@ DO iPlane=1,nPlanes
           DO j=1,Plane%nRP(2)
             DO iSample=1,nSamples_out
               RPData_out(TransMap(1:3,iVec),Plane%IDlist(i,j),iSample)=&
-                 MATMUL(Tmat,RPData_out(TransMap(1:3,iVec),Plane%IDlist(i,j),iSample)) 
+                 MATMUL(Tmat,RPData_out(TransMap(1:3,iVec),Plane%IDlist(i,j),iSample))
             END DO !iSample
           END DO !j
         ELSE ! 2D case
           DO j=1,Plane%nRP(2)
             DO iSample=1,nSamples_out
               RPData_out(TransMap(1:2,iVec),Plane%IDlist(i,j),iSample)=&
-                 MATMUL(Tmat(1:2,1:2),RPData_out(TransMap(1:2,iVec),Plane%IDlist(i,j),iSample)) 
+                 MATMUL(Tmat(1:2,1:2),RPData_out(TransMap(1:2,iVec),Plane%IDlist(i,j),iSample))
             END DO !iSample
           END DO !j
         END IF !.NOT.is2D
@@ -325,7 +338,7 @@ END SUBROUTINE Plane_TransformVel
 
 
 !===================================================================================================================================
-!> 
+!> This routine calculates the boundary layer specific quantities on all boundary layer planes.
 !===================================================================================================================================
 SUBROUTINE Plane_BLProps()
 ! MODULES
@@ -374,7 +387,7 @@ DO iPlane=1,nPlanes
       dudy=(u2-u1)/dy- (dy*(u3-u2)-dy2*(u2-u1))/((dy+dy2)*dy2)
       tau_W = mu0*dudy
       ! get delta99
-      ! Kloker method: integrate vorticity to get u_star. 
+      ! Kloker method: integrate vorticity to get u_star.
       jj=Plane%nRP(2)
       u_star(1)=0.
       DO j=2,jj-1
@@ -401,14 +414,14 @@ DO iPlane=1,nPlanes
           rho1=RPDataTimeAvg_out(1,Plane%IDlist(i,j))
           rho2=RPDataTimeAvg_out(1,Plane%IDlist(i,j-1))
           diffu2=(u_max-u_star(j-1))/u_max
-          ! interpolate linearly between two closest points around u/u_int=0.99 to get 
+          ! interpolate linearly between two closest points around u/u_int=0.99 to get
           ! delta99 and u_delta
           delta99=y1+(y2-y1)/(diffu2-diffu1)*(0.01-diffu1)   ! delta99
           u_delta=u_max
           rho_delta=rho1+(rho2-rho1)/(diffu2-diffu1)*(0.01-diffu1)   ! rho_delta
           j_max=j
           y_max=y1
-          EXIT 
+          EXIT
         END IF
       END DO !j=1,Plane%nRP(2)
 !      jj=Plane%nRP(2)
@@ -442,15 +455,15 @@ DO iPlane=1,nPlanes
 !          rho1=RPDataTimeAvg_out(1,Plane%IDlist(i,j))
 !          rho2=RPDataTimeAvg_out(1,Plane%IDlist(i,j-1))
 !          diffu2=(u_int-RPDataTimeAvg_out(TransMap(1,1),Plane%IDlist(i,j-1)))/u_max
-!          ! interpolate linearly between two closest points around u/u_int=0.99 to get 
+!          ! interpolate linearly between two closest points around u/u_int=0.99 to get
 !          ! delta99 and u_delta
 !          delta99=y1+(y2-y1)/(diffu2-diffu1)*(0.01-diffu1)   ! delta99
 !!          u_delta=u1+(u2-u1)/(diffu2-diffu1)*(0.01-diffu1)   ! u_delta
 !          u_delta=u_max
 !          rho_delta=rho1+(rho2-rho1)/(diffu2-diffu1)*(0.01-diffu1)   ! rho_delta
-!!          u_delta(i)=RPDataTimeAvg_out(TransMap(1,1),Plane%IDlist(i,j))  
+!!          u_delta(i)=RPDataTimeAvg_out(TransMap(1,1),Plane%IDlist(i,j))
 !!          delta99(i)=Plane%LocalCoord(2,i,j)
-!          EXIT 
+!          EXIT
 !        END IF
 !      END DO !j=1,Plane%nRP(2)
       ! scale the velocity with the local u_delta,wall distance with delta99
@@ -458,7 +471,7 @@ DO iPlane=1,nPlanes
         u_loc(j)= &
                 RPDataTimeAvg_out(TransMap(1,1),Plane%IDlist(i,j))/u_delta
         y_loc(j)=Plane%LocalCoord(2,i,j)/delta99
-      END DO! j=1,jj 
+      END DO! j=1,jj
       ! calculate integral BL properties (trapezoidal rule)
       delta1=0.
       theta=0.
@@ -477,7 +490,7 @@ DO iPlane=1,nPlanes
       ! write to solution array
       Plane%BLProps(1,i)=delta99
       Plane%BLProps(2,i)=u_delta
-      Plane%BLProps(3,i)=delta1 
+      Plane%BLProps(3,i)=delta1
       Plane%BLProps(4,i)=theta
       Plane%BLProps(5,i)=delta1/theta  !H12
       Plane%BLProps(6,i)=rho_delta*u_delta*delta1/Mu0                  !Re_delta
@@ -517,7 +530,7 @@ END SUBROUTINE Plane_BLProps
 
 
 !===================================================================================================================================
-!> 
+!> This function returns the index of the variable "VarName" in the array of variables "VarNameList"
 !===================================================================================================================================
 FUNCTION GETMAPBYNAME(VarName,VarNameList,nVarList)
 ! MODULES
@@ -544,7 +557,7 @@ END FUNCTION
 
 
 !===================================================================================================================================
-!>
+!> Deallocate the global variables
 !===================================================================================================================================
 SUBROUTINE FinalizeEquationRP()
 ! MODULES
@@ -556,7 +569,8 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
-DEALLOCATE(TransMap,is2D) 
+SDEALLOCATE(TransMap)
+SDEALLOCATE(is2D)
 WRITE(UNIT_stdOut,'(A)') '  EquationRP FINALIZED'
 END SUBROUTINE FinalizeEquationRP
 

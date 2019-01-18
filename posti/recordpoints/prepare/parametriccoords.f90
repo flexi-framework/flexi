@@ -1,7 +1,21 @@
+!=================================================================================================================================
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
+! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+!
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
+! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+!
+! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+! of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License v3.0 for more details.
+!
+! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
+!=================================================================================================================================
 #include "flexi.h"
 
 !===================================================================================================================================
-!> Module to handle the Recordpoints
+!> Module to search for the reference coordinates of the RPs by inverting the mapping using Newton's method and to sort them
+!> according to the element number for later parallel read-in.
 !===================================================================================================================================
 MODULE MOD_RPParametricCoords
 ! MODULES
@@ -17,10 +31,10 @@ PUBLIC :: GetRecordPoints
 
 CONTAINS
 
+!===================================================================================================================================
+!> Wrapper routine to call the search and sorting algorithms
+!===================================================================================================================================
 SUBROUTINE GetRecordPoints()
-!===================================================================================================================================
-! Initialize all necessary information to perform filtering
-!===================================================================================================================================
 ! MODULES
 USE MOD_Globals
 USE MOD_RPSet_Vars        ,ONLY: RPSetInitIsDone
@@ -52,7 +66,7 @@ END SUBROUTINE GetRecordPoints
 
 
 !===================================================================================================================================
-!> Computes parametric coordinates and element of recordpoints given a physical coordinates iteratively
+!> Computes parametric coordinates and element of recordpoints given the physical coordinates iteratively
 !===================================================================================================================================
 SUBROUTINE GetParametricCoordinates()
 ! MODULES
@@ -100,20 +114,20 @@ REAL                  :: NormVec_NSuper(3,0:NSuper,0:NSuper)
 REAL                  :: wBary_NSuper(0:NSuper), D_NSuper(0:NSuper,0:NSuper), Lag_NSuper(1:2,0:NSuper)
 REAL                  :: dxBC_NSuper(3,2,0:NSuper,0:NSuper)
 REAL                  :: Gmat(2,0:NSuper,0:NSuper),dGmat(2,2,0:NSuper,0:NSuper)
-REAL                  :: G(2),Xi2(2),Jac2(2,2),sJac2(2,2),xWinner(3),NormVecWinner(3) 
+REAL                  :: G(2),Xi2(2),Jac2(2,2),sJac2(2,2),xWinner(3),NormVecWinner(3)
 !===================================================================================================================================
 ! Prepare CL basis evaluation
 CALL GetNodesAndWeights( NGeo, NodeTypeCL, Xi_CLNGeo,wIPBary=wBary_CLNGeo)
 CALL GetDerivativeMatrix(Ngeo, NodeTypeCL, DCL_Ngeo)
 
 DO i=0,NSuper
-  Xi_NSuper(i) = 2./REAL(NSuper) * REAL(i) - 1. 
+  Xi_NSuper(i) = 2./REAL(NSuper) * REAL(i) - 1.
 END DO
 
 NodeType_Super='VISU'
 CALL GetVanderMonde(PP_N,NodeType  ,NGeo  ,NodeTypeCL    ,Vdm_N_CLNGeo)
 CALL GetVanderMonde(NGeo,NodeTypeCL,NSuper,NodeType_Super,Vdm_CLNGeo_EquiNSuper)
-! Define maximum mesh size (square) hmax2 
+! Define maximum mesh size (square) hmax2
 nNodes=(NGeo+1)**3
 RPFound=.FALSE.
 
@@ -160,7 +174,7 @@ DO iElem=1,nElems
     DO i=0,NSuper; DO j=0,NSuper; DO k=0,NSuper
       Dist2=SUM((xRP-X_NSuper(:,i,j,k))*(xRP-X_NSuper(:,i,j,k)))
       IF (Dist2.LT.Winner_Dist2) THEN
-        Winner_Dist2=Dist2 
+        Winner_Dist2=Dist2
         Xi=(/Xi_NSuper(i),Xi_NSuper(j),Xi_NSuper(k)/)
       END IF
     END DO; END DO; END DO
@@ -197,16 +211,16 @@ DO iElem=1,nElems
       DO k=0,NGeo; DO j=0,NGeo; DO i=0,NGeo
         Jac=Jac+dXCL_NGeo(:,:,i,j,k)*Lag(1,i)*Lag(2,j)*Lag(3,k)
       END DO; END DO; END DO
-      
+
       ! Compute inverse of Jacobian
       sJac=INVERSE(Jac)
-      
+
       ! Iterate Xi using Newton step
       Xi = Xi - MATMUL(sJac,F)
-      !  if Newton gets outside reference space range [-1,1], exit. 
+      !  if Newton gets outside reference space range [-1,1], exit.
       ! But allow for some oscillation in the first couple of iterations, as we may discard the correct point/element!!
       IF((NewtonIter.GT.4).AND.(ANY(ABS(Xi).GT.1.2))) EXIT
-  
+
       ! Compute function value
       CALL LagrangeInterpolationPolys(Xi(1),NGeo,Xi_CLNGeo,wBary_CLNGeo,Lag(1,:))
       CALL LagrangeInterpolationPolys(Xi(2),NGeo,Xi_CLNGeo,wBary_CLNGeo,Lag(2,:))
@@ -263,7 +277,7 @@ IF(ANY(.NOT.RPFound)) THEN
   CALL GetVandermonde(PP_N,NodeType,NSuper,NodeType_Super,Vdm_N_EquiNSuper)
   CALL PolynomialDerivativeMatrix(NSuper,Xi_NSuper,D_NSuper)
   nNodes=(NSuper+1)**2
-  DO SideID=1,nBCSides 
+  DO SideID=1,nBCSides
     calcJacobianDone=.FALSE.
     ! Supersampling of the side to equidistant grid for search
     CALL ChangeBasis2D(3,PP_N,NSuper,Vdm_N_EquiNSuper,Face_xGP(:,:,:,0,SideID),xBC_NSuper)
@@ -278,7 +292,7 @@ IF(ANY(.NOT.RPFound)) THEN
       DO i=0,NSuper
         hmax2=MAX(hmax2,SUM((xBC_NSuper(:,i,j)-xC)*(xBC_NSuper(:,i,j)-xC)))
       END DO
-    END DO 
+    END DO
     hmax2=hmax2*1.20 ! 20% tolerance
     DO iRP=1,nRP_Global
       IF(RPFound(iRP)) CYCLE
@@ -295,7 +309,7 @@ IF(ANY(.NOT.RPFound)) THEN
       DO i=0,NSuper; DO j=0,NSuper
         Dist2=SUM((xRP-xBC_NSuper(:,i,j))*(xRP-xBC_NSuper(:,i,j)))
         IF (Dist2.LT.Winner_Dist2) THEN
-          Winner_Dist2=Dist2 
+          Winner_Dist2=Dist2
           iWinner=i
           jWinner=j
         END IF
@@ -324,39 +338,39 @@ IF(ANY(.NOT.RPFound)) THEN
       ! for Newton we first need the function Gmat(:,i,j) and its gradient in parameter space
       ! G= d/dXi((xBC-xRP)²)=0, degree of G 2NGeo
       Gmat=0.
-      DO j=0,NSuper 
-        DO i=0,NSuper 
+      DO j=0,NSuper
+        DO i=0,NSuper
           Gmat(:,i,j)=Gmat(:,i,j)+dxBC_nSuper(1,:,i,j)*2*(xBC_NSuper(1,i,j)-xRP(1)) &
                                  +dxBC_nSuper(2,:,i,j)*2*(xBC_NSuper(2,i,j)-xRP(2)) &
-                                 +dxBC_nSuper(3,:,i,j)*2*(xBC_NSuper(3,i,j)-xRP(3)) 
-        END DO! i=0,NSuper 
-      END DO! j=0,NSuper 
+                                 +dxBC_nSuper(3,:,i,j)*2*(xBC_NSuper(3,i,j)-xRP(3))
+        END DO! i=0,NSuper
+      END DO! j=0,NSuper
 
       dGmat=0.
-      DO j=0,NSuper 
-        DO i=0,NSuper 
+      DO j=0,NSuper
+        DO i=0,NSuper
           ! Matrix-vector multiplication
           DO l=0,NSuper
             dGmat(:,1,i,j)=dGmat(:,1,i,j) + D_NSuper(i,l)*Gmat(:,l,j)
             dGmat(:,2,i,j)=dGmat(:,2,i,j) + D_NSuper(j,l)*Gmat(:,i,l)
           END DO !l=0,NSuper
-        END DO! i=0,NSuper 
-      END DO! j=0,NSuper 
+        END DO! i=0,NSuper
+      END DO! j=0,NSuper
       ! get initial value of the functional G
       CALL LagrangeInterpolationPolys(Xi2(1),NSuper,Xi_NSuper,wBary_NSuper,Lag_NSuper(1,:))
       CALL LagrangeInterpolationPolys(Xi2(2),NSuper,Xi_NSuper,wBary_NSuper,Lag_NSuper(2,:))
       G=0.
-      DO j=0,NSuper 
-        DO i=0,NSuper 
+      DO j=0,NSuper
+        DO i=0,NSuper
           G=G+Gmat(:,i,j)*Lag_NSuper(1,i)*Lag_NSuper(2,j)
-        END DO! i=0,NSuper 
-      END DO! j=0,NSuper 
+        END DO! i=0,NSuper
+      END DO! j=0,NSuper
       eps_F=1.E-10
       NewtonIter=0
       DO WHILE ((SUM(G*G).GT.eps_F).AND.(NewtonIter.LT.50))
         NewtonIter=NewtonIter+1
         ! Compute G Jacobian dG/dXi
-     
+
         Jac2=0.
         DO j=0,NSuper
           DO i=0,NSuper
@@ -369,7 +383,7 @@ IF(ANY(.NOT.RPFound)) THEN
 
         ! Iterate Xi using Newton step
         Xi2 = Xi2 - MATMUL(sJac2,G)
-        ! if Newton gets outside reference space range [-1,1], exit. 
+        ! if Newton gets outside reference space range [-1,1], exit.
         ! But allow for some oscillation in the first couple of iterations, as we may discard the correct point/element!!
         IF((NewtonIter.GT.4).AND.(ANY(ABS(Xi2).GT.1.2))) EXIT
 
@@ -377,28 +391,28 @@ IF(ANY(.NOT.RPFound)) THEN
         CALL LagrangeInterpolationPolys(Xi2(1),NSuper,Xi_NSuper,wBary_NSuper,Lag_NSuper(1,:))
         CALL LagrangeInterpolationPolys(Xi2(2),NSuper,Xi_NSuper,wBary_NSuper,Lag_NSuper(2,:))
         G=0.
-        DO j=0,NSuper 
-         DO i=0,NSuper 
+        DO j=0,NSuper
+         DO i=0,NSuper
            G=G+Gmat(:,i,j)*Lag_NSuper(1,i)*Lag_NSuper(2,j)
-         END DO! i=0,NSuper 
-       END DO! j=0,NSuper 
+         END DO! i=0,NSuper
+       END DO! j=0,NSuper
       END DO !newton
 
-      ! use Newton result if minimum is within parameter range, else see if supersampled 
+      ! use Newton result if minimum is within parameter range, else see if supersampled
       ! initial guess is better than previous result
       IF(MAXVAL(ABS(Xi2)).LE.1.) THEN ! use newton result
         ! calculate new distance
         xWinner=0.
         NormVecWinner=0.
-        DO j=0,NSuper 
-          DO i=0,NSuper 
+        DO j=0,NSuper
+          DO i=0,NSuper
             xWinner=xWinner+xBC_NSuper(:,i,j)*Lag_NSuper(1,i)*Lag_NSuper(2,j)
             NormVecWinner=NormVecWinner+NormVec_NSuper(:,i,j)*Lag_NSuper(1,i)*Lag_NSuper(2,j)
-          END DO! i=0,NSuper 
-        END DO! j=0,NSuper 
+          END DO! i=0,NSuper
+        END DO! j=0,NSuper
         Winner_Dist2=SUM((xWinner-xRP)*(xWinner-xRP))
-      END IF 
-       
+      END IF
+
       NormVecWinner=NormVecWinner/NORM2(NormVecWinner)
       F=(xRP-xWinner)/NORM2(xRP-xWinner)
       IF((Winner_Dist2.LE.dist2RP(mapRP(iRP))))THEN
@@ -422,18 +436,16 @@ IF(ANY(.NOT.RPFound)) THEN
         aRP%ElemID = iElem
         aRP%xF=xWinner
         ! keep the RP in the not found list, find the side with the best angle and minimum distance
-        dist2RP(mapRP(iRP))=Winner_Dist2 
-!        SWRITE(UNIT_StdOut,'(A,I4,A,3F8.4,A,3F8.4,A)')' Projected RP ',iRP,' with coordinates ',aRP%x,' to ',ARP%xF,'.'
-!        SWRITE(UNIT_StdOut,'(A,F10.4,A)')' Angle to normal: ',ang*180/pi,' deg.'
+        dist2RP(mapRP(iRP))=Winner_Dist2
       END IF
     END DO! iRP=1,nRP_Global
-  END DO! SideID=1,nBCSides 
+  END DO! SideID=1,nBCSides
   SWRITE(UNIT_StdOut,'(A)')' done.'
   SWRITE(UNIT_StdOut,'(A,F15.8)')'  Max. distance: ',SQRT(MAXVAL(dist2RP))
 
   DEALLOCATE(mapRP,dist2RP)
 END IF!(.NOT.ANY(RPFound)
-  
+
 DO iRP=1,nRP_Global
   IF(.NOT.RPFound(iRP))THEN
     aRP=>RPlist(iRP)%RP
@@ -451,17 +463,17 @@ END SUBROUTINE GetParametricCoordinates
 
 
 !===================================================================================================================================
-!> sort points according to element numbering and prepare Offset Array
+!> sort points according to element numbering and prepare Offset Array - needed for parallel processing
 !===================================================================================================================================
 SUBROUTINE SortRP()
 ! MODULES
 USE MOD_Globals
 USE MOD_Mesh_Vars         ,ONLY: nElems
 USE MOD_RPSet_Vars        ,ONLY: RPlist,nRP_global,tRP,tRPlist
-USE MOD_RPSet_Vars        ,ONLY: OffsetRP 
+USE MOD_RPSet_Vars        ,ONLY: OffsetRP
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 INTEGER               :: iElem
 INTEGER               :: iRP,iRP_new
 TYPE(tRP),POINTER     :: aRP
@@ -478,7 +490,7 @@ END DO !iRP
 
 iRP_new=0
 DO iElem=1,nElems
-  IF(iElem .GT. 1) THEN 
+  IF(iElem .GT. 1) THEN
     OffsetRP(1,iElem)=OffsetRP(2,iElem-1)
     OffsetRP(2,iElem)=OffsetRP(2,iElem-1)
   END IF
@@ -492,14 +504,6 @@ DO iElem=1,nElems
     END IF
   END DO !iRP
 END DO !iElem
-
-! DEBUG 
-!DO iElem=1,nElems
-!  WRITE(*,*) 'iElem,offset1,2:', iElem,OffsetRP(1,iElem),OffsetRP(2,iElem)
-!END DO !iElem
-!  DO iRP=1,nRP_global
-!    WRITE(*,*) 'iRP,xF',iRP,RPlist(iRP)%RP%xF
-!  END DO !iRP
 
 END SUBROUTINE SortRP
 

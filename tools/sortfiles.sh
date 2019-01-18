@@ -1,6 +1,6 @@
 #!/bin/bash
 
-PROJECTNAME=Kawamura_Cylinder_x066385_V2
+PROJECTNAME=INSERT_PROJECTNAME_HERE
 
 if [ ! -n "$1" ]; then
   echo You have to specify a directory name!
@@ -16,9 +16,6 @@ if [ ! -d "$DIR/state/" ]; then
 fi
 if [ ! -d "$DIR/timeavg/" ]; then
   mkdir $DIR/timeavg
-fi
-if [ ! -d "$DIR/fluc/" ]; then
-  mkdir $DIR/fluc
 fi
 if [ ! -d "$DIR/baseflow/" ]; then
   mkdir $DIR/baseflow
@@ -39,19 +36,16 @@ rm -f "$PROJECTNAME".err
    STATE=$(ls "$PROJECTNAME"_State_[0-9]*.[0-9]*.h5    | sort -nr | tail -n +2)
 BASEFLOW=$(ls "$PROJECTNAME"_BaseFlow_[0-9]*.[0-9]*.h5 | sort -nr | tail -n +2)
  TIMEAVG=$(ls "$PROJECTNAME"_TimeAvg_[0-9]*.[0-9]*.h5  | sort -nr | tail -n +2)
-    FLUC=$(ls "$PROJECTNAME"_Fluc_[0-9]*.[0-9]*.h5     | sort -nr | tail -n +2)
       RP=$(ls "$PROJECTNAME"_RP_[0-9]*.[0-9]*.h5       | sort -nr | tail -n +2)
 # move all but last
 for file in $STATE;    do mv --backup=simple $file $DIR/state/.    ; done
 for file in $BASEFLOW; do mv --backup=simple $file $DIR/baseflow/.    ; done
 for file in $TIMEAVG;  do mv --backup=simple $file $DIR/timeavg/. ; done
-for file in $FLUC;     do mv --backup=simple $file $DIR/fluc/.     ; done
 for file in $RP;       do mv --backup=simple $file $DIR/rp/.  ; done
 # copy last file to keep last set
 cp --backup=simple "$PROJECTNAME"_State_[0-9]*.[0-9]*.h5    $DIR/state/.   
 cp --backup=simple "$PROJECTNAME"_BaseFlow_[0-9]*.[0-9]*.h5 $DIR/baseflow/.   
 cp --backup=simple "$PROJECTNAME"_TimeAvg_[0-9]*.[0-9]*.h5  $DIR/timeavg/.
-cp --backup=simple "$PROJECTNAME"_Fluc_[0-9]*.[0-9]*.h5     $DIR/fluc/.    
 cp --backup=simple "$PROJECTNAME"_RP_[0-9]*.[0-9]*.h5       $DIR/rp/. 
 
 

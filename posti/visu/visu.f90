@@ -219,6 +219,7 @@ USE MOD_StringTools        ,ONLY: STRICMP,INTTOSTR
 USE MOD_ReadInTools        ,ONLY: prms,GETINT,GETLOGICAL,addStrListEntry,GETSTR,CountOption,FinalizeParameters
 USE MOD_Posti_Mappings     ,ONLY: Build_FV_DG_distribution,Build_mapDepToCalc_mapAllVarsToVisuVars
 USE MOD_Visu_Avg2D         ,ONLY: InitAverage2D,BuildVandermonds_Avg2D
+USE MOD_StringTools        ,ONLY: INTTOSTR
 IMPLICIT NONE
 CHARACTER(LEN=255),INTENT(IN)    :: statefile
 CHARACTER(LEN=255),INTENT(INOUT) :: postifile
@@ -237,12 +238,14 @@ CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 
 ! read the meshfile attribute from statefile
 CALL ReadAttribute(File_ID,'MeshFile',    1,StrScalar =MeshFile_state)
+! get properties
+CALL GetDataProps(nVar_State,PP_N,nElems_State,NodeType_State)
 
 ! read options from posti parameter file
 CALL prms%read_options(postifile)
-NVisu             = GETINT("NVisu")
-! again read MeshFile from posti prm file (this overwrites the MeshFile read from the state file)
+NVisu             = GETINT("NVisu",INTTOSTR(PP_N))
 
+! again read MeshFile from posti prm file (this overwrites the MeshFile read from the state file)
 Meshfile          =  GETSTR("MeshFile",MeshFile_state)
 IF (.NOT.FILEEXISTS(MeshFile)) THEN
   !!!!!!
@@ -280,14 +283,13 @@ SWRITE(*,*) " mesh file old -> new: ", TRIM(MeshFile_old) , " -> ",TRIM(MeshFile
 
 ! if Mesh or State changed readin some more attributes/parameters
 IF (changedStateFile.OR.changedMeshFile) THEN
-  CALL GetDataProps(nVar_State,PP_N,nElems_State,NodeType_State)
   IF (.NOT.STRICMP(NodeType_State, NodeType)) THEN
     CALL CollectiveStop(__STAMP__, &
         "NodeType of state does not match with NodeType the visu-posti is compiled with!")
   END IF
   CALL ReadAttribute(File_ID,'Project_Name',1,StrScalar =ProjectName)
   CALL ReadAttribute(File_ID,'Time',        1,RealScalar=OutputTime)
-  ! If the polynomial degree is changing, we could need new mesh mappings. 
+  ! If the polynomial degree is changing, we could need new mesh mappings.
   IF (NState_old.NE.PP_N) changedMeshFile = .TRUE.
 END IF
 
@@ -376,7 +378,7 @@ USE MOD_Posti_Calc          ,ONLY: CalcQuantities_FV,CalcSurfQuantities_FV
 USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_FV,ConvertToSurfVisu_FV
 #endif
 USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_DG,ConvertToSurfVisu_DG,ConvertToVisu_GenericData
-USE MOD_ReadInTools         ,ONLY: prms,FinalizeParameters,ExtractParameterFile
+USE MOD_ReadInTools         ,ONLY: prms,FinalizeParameters,ExtractParameterFile,PrintDefaultParameterFile
 USE MOD_StringTools         ,ONLY: STRICMP
 USE MOD_Posti_VisuMesh      ,ONLY: BuildVisuCoords,BuildSurfVisuCoords
 USE MOD_Posti_Mappings      ,ONLY: Build_mapBCSides
@@ -393,10 +395,6 @@ CHARACTER(LEN=255),INTENT(IN)    :: statefile
 ! LOCAL VARIABLES
 LOGICAL                          :: changedPrmFile
 !===================================================================================================================================
-CALL SetStackSizeUnlimited()
-CALL InitMPI(mpi_comm_IN)
-CALL InitMPIInfo()
-SWRITE (*,*) "READING FROM: ", TRIM(statefile)
 
 !**********************************************************************************************
 ! General workflow / principles of the visu ParaView-plugin
@@ -427,7 +425,7 @@ SWRITE (*,*) "READING FROM: ", TRIM(statefile)
 !                    primitive quantities U_Prim and gradUx/y/z as well as gradUxi/eta/zeta are
 !                    filled. These are used to calculate the visu-quantities.
 !
-! * The calculation of derived quantities is performed on a arbitrary polynomial degree 
+! * The calculation of derived quantities is performed on a arbitrary polynomial degree
 !   NCalc and afterwards interpolated to NVisu. Default is PP_N.
 !   This is not the case for FV elements with FV_RECONSTRUCT enabled.
 !   These require to reconstruct the solution first to the visu grid and afterwards can
@@ -478,11 +476,17 @@ SWRITE (*,*) "READING FROM: ", TRIM(statefile)
 !
 !**********************************************************************************************
 
+CALL SetStackSizeUnlimited()
+CALL InitMPI(mpi_comm_IN)
+CALL InitMPIInfo()
+
 CALL FinalizeParameters()
 ! Read Varnames to visualize and build calc and visu dependencies
 CALL prms%SetSection("posti")
 CALL prms%CreateStringOption( "MeshFile"        , "Custom mesh file ")
 CALL prms%CreateStringOption( "VarName"         , "Names of variables, which should be visualized.", multiple=.TRUE.)
+CALL prms%CreateLogicalOption("noVisuVars"      , "If no VarNames are given, this flags supresses visu of standard variables",&
+                                                  ".FALSE.")
 CALL prms%CreateIntOption(    "NVisu"           , "Polynomial degree at which solution is sampled for visualization.")
 CALL prms%CreateIntOption(    "NCalc"           , "Polynomial degree at which calculations are done.")
 CALL prms%CreateLogicalOption("Avg2D"           , "Average solution in z-direction",".FALSE.")
@@ -490,6 +494,13 @@ CALL prms%CreateLogicalOption("Avg2DHDF5Output" , "Write averaged solution to HD
 CALL prms%CreateStringOption( "NodeTypeVisu"    , "NodeType for visualization. Visu, Gauss,Gauss-Lobatto,Visu_inner"    ,"VISU")
 CALL prms%CreateLogicalOption("DGonly"          , "Visualize FV elements as DG elements."    ,".FALSE.")
 CALL prms%CreateStringOption( "BoundaryName"    , "Names of boundaries for surfaces, which should be visualized.", multiple=.TRUE.)
+
+IF (doPrintHelp.GT.0) THEN
+  CALL PrintDefaultParameterFile(doPrintHelp.EQ.2,statefile) !statefile string conatains --help etc!
+  STOP
+END IF
+
+SWRITE (*,*) "READING FROM: ", TRIM(statefile)
 
 changedStateFile      = .FALSE.
 changedMeshFile       = .FALSE.
@@ -631,6 +642,16 @@ USE MOD_Mesh_Vars, ONLY: Elem_xGP
 IMPLICIT NONE
 !===================================================================================================================================
 SWRITE (*,*) "VISU FINALIZE"
+IF(MPIRoot)THEN
+  IF(FILEEXISTS(".posti.ini"))THEN
+    OPEN(UNIT=31, FILE=".posti.ini", STATUS='old')
+    CLOSE(31, STATUS='delete')
+  END IF
+  IF(FILEEXISTS(".flexi.ini"))THEN
+    OPEN(UNIT=31, FILE=".flexi.ini", STATUS='old')
+    CLOSE(31, STATUS='delete')
+  END IF
+END IF
 prmfile_old = ""
 statefile_old = ""
 MeshFile = ""

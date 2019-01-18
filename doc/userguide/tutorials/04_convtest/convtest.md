@@ -1,4 +1,5 @@
 ## Convergence Test
+\label{sec:tut_convtest}
 
 In this tutorial the order of convergence for **FLEXI** is computed. The procedure is fully scripted, such that in the end a number of runs have been performed on a variation of grids or a variation of polynomial degrees and the order of convergence is computed automatically. A plot of the corresponding L2 error norms is produced and copied into the directory where the convergence test is executed from. Note, the script is written in *Python 2.7*. 
 
@@ -25,9 +26,10 @@ The source term has to be added accordingly within the time integration loop of 
 
 ### Inviscid Convergence Test
 
-Copy the *convtest* tutorial folder \label{missing:aliases_tutorial_convtest}
+Copy the *convtest* tutorial folder
 
         cp -r $FLEXI_TUTORIALS/convtest .
+        cd convtest
 
 #### Compiler Options
 
@@ -66,7 +68,7 @@ As mesh, a Cartesian box is used with periodic boundaries. The mesh and the corr
 ![](tutorials/04_convtest/convtest_mesh.png)   ![](tutorials/04_convtest/convtest_result.png) 
 Figure: Mesh and flow field solution of the density. View in $x$-$y$-plane.\label{fig:convtest_mesh_and_result}
 
-To investigate the order of convergence of a given polynomial degree $N$, the mesh resolution has to increase. We provide meshes with 1, 2, 4 and 8 elements in each spatial direction. They are provided in the tutorial directory with an according parameter file for the preprocessing tool HOPR.
+To investigate the order of convergence of a given polynomial degree $N$, the mesh resolution has to increase. We provide meshes with 1, 2, 4 and 8 elements in each spatial direction. They are provided in the tutorial directory with an according parameter file for the preprocessing tool **HOPR**.
 
 #### Flow Simulation with FLEXI
 

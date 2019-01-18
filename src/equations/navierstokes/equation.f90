@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -47,11 +47,11 @@ PUBLIC:: GetPrimitiveStateSurface,GetConservativeStateSurface
 CONTAINS
 
 !==================================================================================================================================
-!> Define parameters 
+!> Define parameters
 !==================================================================================================================================
 SUBROUTINE DefineParametersEquation()
 ! MODULES
-USE MOD_ReadInTools,ONLY: prms,addStrListEntry
+USE MOD_ReadInTools,ONLY: prms
 USE MOD_Riemann    ,ONLY: DefineParametersRiemann
 #ifdef SPLIT_DG
 USE MOD_SplitFlux  ,ONLY: DefineParametersSplitDG
@@ -65,11 +65,6 @@ CALL prms%CreateRealArrayOption('RefState',     "State(s) in primitive variables
 CALL prms%CreateStringOption(   'BCStateFile',  "File containing the reference solution on the boundary to be used as BC.")
 
 CALL DefineParametersRiemann()
-#ifdef EDDYVISCOSITY
-CALL prms%CreateIntFromStringOption(   'eddyViscType', "(0) none: No eddy viscosity, (1) Smagorinsky",'none')
-CALL addStrListEntry('eddyViscType','none',0)
-CALL addStrListEntry('eddyViscType','smagorinsky',1)
-#endif
 #ifdef SPLIT_DG
 CALL DefineParametersSplitDG()
 #endif /*SPLIT_DG*/
@@ -91,7 +86,7 @@ USE MOD_Testcase          ,ONLY: InitTestcase
 USE MOD_Riemann           ,ONLY: InitRiemann
 USE MOD_GetBoundaryFlux,   ONLY: InitBC
 USE MOD_CalcTimeStep      ,ONLY: InitCalctimestep
-#ifdef EDDYVISCOSITY
+#if EDDYVISCOSITY
 USE MOD_EddyVisc          ,ONLY: InitEddyVisc
 #endif
 #ifdef SPLIT_DG
@@ -138,7 +133,7 @@ IF(nRefState .GT. 0)THEN
     RefStatePrim(1:5,i)  = GETREALARRAY('RefState',5)
 #if PP_dim==2
   IF(RefStatePrim(4,i).NE.0.) THEN
-    SWRITE(UNIT_StdOut,'(A)')' You are computing in 2D! RefStatePrim(4) will be set to zero!' 
+    SWRITE(UNIT_StdOut,'(A)')' You are computing in 2D! RefStatePrim(4) will be set to zero!'
     RefStatePrim(4,i)=0.
   END IF
 #endif
@@ -159,7 +154,7 @@ CALL InitRiemann()
 ! Initialize timestep calculation
 CALL InitCalctimestep()
 
-#ifdef EDDYVISCOSITY 
+#if EDDYVISCOSITY
 ! Initialize eddyViscosity
 CALL InitEddyVisc()
 #endif
@@ -182,15 +177,17 @@ END SUBROUTINE InitEquation
 
 !==================================================================================================================================
 !> Converts conservative solution vector to primitive variables
-!> 
+!>
 !> Two possibilities for sides if using non-Lobatto node sets:
 !> 1. Convert U_master/slave to prims (used):
 !>    prims consistent to cons, but inconsistent to prim volume
-!>    cheap and simple, no communication and mortars required
+!>    cheap and simple, no communication and mortars required.
+!>    Using this version the primitive solution is no longer a polynomial.
 !> 2. Compute UPrim_master/slave from volume UPrim
 !>    UPrim_master/slave consistent to UPrim, but inconsistent to U_master/slave
-!>    more expensive, communication and mortars required
-!> 
+!>    more expensive, communication and mortars required.
+!>    This version gives thermodynamically inconsistant states at sides.
+!>
 !> TODO: Provide switch for these two versions.
 !==================================================================================================================================
 SUBROUTINE GetPrimitiveStateSurface(U_master,U_slave,UPrim_master,UPrim_slave)
@@ -240,6 +237,10 @@ END DO
 !#endif /*USE_MPI*/
 END SUBROUTINE GetPrimitiveStateSurface
 
+!==================================================================================================================================
+!> Converts primitive variables to conservative solution vector at surfaces.
+!> Routine requires mask so that conversion is only done on masked sides.
+!==================================================================================================================================
 SUBROUTINE GetConservativeStateSurface(UPrim_master,UPrim_slave,U_master,U_slave, mask_master, mask_slave, mask_ref)
 ! MODULES
 USE MOD_Preproc
@@ -252,8 +253,8 @@ REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< primi
 REAL,INTENT(IN)    :: UPrim_slave( PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< primitive solution on slave sides
 REAL,INTENT(OUT)   :: U_master(        PP_nVar,0:PP_N,0:PP_NZ,1:nSides) !< conservative solution on master sides
 REAL,INTENT(OUT)   :: U_slave(         PP_nVar,0:PP_N,0:PP_NZ,1:nSides) !< conservative solution on slave sides
-INTEGER,INTENT(IN) :: mask_master(1:nSides)                            !< mask: only convert solution if mask(SideID) == mask_ref 
-INTEGER,INTENT(IN) :: mask_slave (1:nSides)                            !< mask: only convert solution if mask(SideID) == mask_ref 
+INTEGER,INTENT(IN) :: mask_master(1:nSides)                            !< mask: only convert solution if mask(SideID) == mask_ref
+INTEGER,INTENT(IN) :: mask_slave (1:nSides)                            !< mask: only convert solution if mask(SideID) == mask_ref
 INTEGER,INTENT(IN) :: mask_ref                                         !< reference value for mask comparison
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -286,7 +287,7 @@ USE MOD_Equation_Vars
 USE MOD_Testcase        ,ONLY: FinalizeTestcase
 USE MOD_Riemann         ,ONLY: FinalizeRiemann
 USE MOD_CalcTimeStep    ,ONLY: FinalizeCalctimestep
-#ifdef EDDYVISCOSITY
+#if EDDYVISCOSITY
 USE MOD_EddyVisc        ,ONLY: FinalizeEddyVisc
 #endif /*EDDYVISCOSITY*/
 USE MOD_GetBoundaryFlux, ONLY: FinalizeBC
@@ -295,7 +296,7 @@ IMPLICIT NONE
 CALL FinalizeTestcase()
 CALL FinalizeRiemann()
 CALL FinalizeCalctimestep()
-#ifdef EDDYVISCOSITY
+#if EDDYVISCOSITY
 CALL FinalizeEddyVisc()
 #endif /*EDDYVISCOSITY*/
 CALL FinalizeBC()

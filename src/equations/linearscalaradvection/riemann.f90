@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -110,7 +110,7 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)                                        :: Nloc                         !< Polynomial degree
 REAL,DIMENSION(PP_nVar,    0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_L                          !< Left state
 REAL,DIMENSION(PP_nVar,    0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_R                          !< Right state
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: dummy_L                      !< primitive state (useless here) 
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: dummy_L                      !< primitive state (useless here)
 REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: dummy_R                      !< primitive state (useless here)
 REAL,INTENT(IN)                                           :: nv(3,0:Nloc,0:ZDIM(Nloc))      !< Normal vector
 REAL,INTENT(IN)                                           :: t1(3,0:Nloc,0:ZDIM(Nloc))      !< First tangential vector

@@ -47,9 +47,9 @@ IF (nArgs.LT.1) THEN
 END IF
 
 DO iArg=1,nArgs
-  WRITE(UNIT_stdOut,"(A,I0,A,I0,A)") "Processing File ", iArg, " of ", nArgs, "..." 
+  WRITE(UNIT_stdOut,"(A,I0,A,I0,A)") "Processing File ", iArg, " of ", nArgs, "..."
   WRITE(UNIT_stdOut,'(132("-"))')
-  
+
   InputFile=Args(iArg)
 
   CALL Readin()
@@ -72,7 +72,7 @@ DO iArg=1,nArgs
         nVarFluc=nVarFluc+1
         MStoM(iMS)=iM
         EXIT
-      END IF 
+      END IF
     END DO
     !MS index mapping for Reynolds stresses
     IF(STRICMP(TRIM(VarNamesMeanSquare(iMS)),'VelocityX')) velIndexMS(1)=iMS
@@ -97,9 +97,9 @@ DO iArg=1,nArgs
   IF((VelIndexMS(6).GT.0).AND.(VelIndexM(2).GT.0).AND.(VelIndexM(3).GT.0)) nVarFluc=nVarFluc+1
   IF(((VelIndexMS(7).GT.0).OR.(MINVAL(velIndexMS(1:3)).GT.0)) .AND. (MINVAL(VelIndexM).GT.0)) nVarFluc=nVarFluc+1
 
-  WRITE(UNIT_stdOut,'(A)') " DONE!" 
+  WRITE(UNIT_stdOut,'(A)') " DONE!"
   WRITE(UNIT_stdOut,'(132("-"))')
-  WRITE(UNIT_stdOut,'(A)') "Perform fluctuation calculations. Calculated variables:" 
+  WRITE(UNIT_stdOut,'(A)') "Perform fluctuation calculations. Calculated variables:"
 
   ALLOCATE(UFluc(nVarFluc,nDOF))
   ALLOCATE(VarNamesFluc(nVarFluc))
@@ -122,7 +122,7 @@ DO iArg=1,nArgs
       UFluc(iVarFluc,:) = UMeanSquare(velIndexMS(4),:) - UMean(velIndexM(1),:) * UMean(velIndexM(2),:)
       VarNamesFluc(iVarFluc)='uv'
       WRITE(UNIT_stdOut,*) "  "//TRIM(VarNamesFluc(iVarFluc))
-  END IF 
+  END IF
 
   ! (u'w')_avg = ((u -U)*(w-W))_avg = (uw)_avg - (uW)_avg - (Uw)_avg + (UW)_ag = (uw)_avg - UW
   IF((VelIndexMS(5).GT.0).AND.(VelIndexM(1).GT.0).AND.(VelIndexM(3).GT.0)) THEN
@@ -130,7 +130,7 @@ DO iArg=1,nArgs
       UFluc(iVarFluc,:) = UMeanSquare(velIndexMS(5),:) - UMean(velIndexM(1),:) * UMean(velIndexM(3),:)
       VarNamesFluc(iVarFluc)='uw'
       WRITE(UNIT_stdOut,*) "  "//TRIM(VarNamesFluc(iVarFluc))
-  END IF 
+  END IF
 
   ! (v'w')_avg = ((v -V)*(w-W))_avg = (vw)_avg - (vW)_avg - (Vw)_avg + (VW)_avg = (vw)_avg - VW
   IF((VelIndexMS(6).GT.0).AND.(VelIndexM(2).GT.0).AND.(VelIndexM(3).GT.0)) THEN
@@ -138,14 +138,14 @@ DO iArg=1,nArgs
       UFluc(iVarFluc,:) = UMeanSquare(velIndexMS(6),:) - UMean(velIndexM(2),:) * UMean(velIndexM(3),:)
       VarNamesFluc(iVarFluc)='vw'
       WRITE(UNIT_stdOut,*) "  "//TRIM(VarNamesFluc(iVarFluc))
-  END IF 
+  END IF
 
   ! TKE can be calculated from MeanSquared variable TKE or from uu+vv+ww
   IF((VelIndexMS(7).GT.0) .AND. (MINVAL(VelIndexM).GT.0)) THEN
       iVarFluc=iVarFluc+1
       UFluc(iVarFluc,:) = UMeanSquare(velIndexMS(7),:) - UMean(velIndexM(1),:) * UMean(velIndexM(1),:) &
                                                        - UMean(velIndexM(2),:) * UMean(velIndexM(2),:) &
-                                                       - UMean(velIndexM(3),:) * UMean(velIndexM(3),:) 
+                                                       - UMean(velIndexM(3),:) * UMean(velIndexM(3),:)
       VarNamesFluc(iVarFluc)='TKE'
       WRITE(UNIT_stdOut,*) "  "//TRIM(VarNamesFluc(iVarFluc))
   ELSEIF((MINVAL(velIndexMS(1:3)).GT.0) .AND. (MINVAL(VelIndexM).GT.0)) THEN
@@ -153,10 +153,10 @@ DO iArg=1,nArgs
       UFluc(iVarFluc,:) = UMeanSquare(velIndexMS(1),:) + UMeanSquare(velIndexMS(2),:) + UMeanSquare(velIndexMS(3),:) &
                                                        - UMean(velIndexM(1),:) * UMean(velIndexM(1),:)               &
                                                        - UMean(velIndexM(2),:) * UMean(velIndexM(2),:)               &
-                                                       - UMean(velIndexM(3),:) * UMean(velIndexM(3),:) 
+                                                       - UMean(velIndexM(3),:) * UMean(velIndexM(3),:)
       VarNamesFluc(iVarFluc)='TKE'
       WRITE(UNIT_stdOut,*) "  "//TRIM(VarNamesFluc(iVarFluc))
-  END IF 
+  END IF
 
   WRITE(UNIT_stdOut,'(A)') "Perform calculations DONE!"
   WRITE(UNIT_stdOut,'(132("-"))')
@@ -171,7 +171,7 @@ DO iArg=1,nArgs
   CALL WriteAttribute(File_ID,'VarNames_Fluc',nVarFluc,StrArray=VarNamesFluc)
   CALL CloseDataFile()
 
-  WRITE(UNIT_stdOut,'(A)') " DONE!" 
+  WRITE(UNIT_stdOut,'(A)') " DONE!"
 
   SDEALLOCATE(VarNamesMean)
   SDEALLOCATE(VarNamesMeanSquare)
@@ -185,7 +185,7 @@ DO iArg=1,nArgs
 END DO !iArg
 
 SDEALLOCATE(Args)
-  
+
 WRITE(UNIT_stdOut,'(A)') "==============================================   CALCULATE  FLUCTUATIONS  FINISHED!   "//&
                           "=============================================="
 WRITE(UNIT_stdOut,'(132("="))')

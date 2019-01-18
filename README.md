@@ -17,11 +17,11 @@ and Gasdynamics at the University of Stuttgart, Germany.
 
 This is a scientific project. If you use FLEXI for publications or
 presentations in science, please support the project by citing
-our publications given in [REFERENCE.md](REFERENCE.md).
+our publications given in [references](REFERENCE.md).
 
 ## Installation / Documentation
 
-For installation instruction see [Install.md](INSTALL.md).
+For installation instruction see [install](INSTALL.md).
 
 See the full documentation including usage instructions and
 turorial for FLEXI [here][flexi].
@@ -35,11 +35,11 @@ You can also subscribe to the mailing list [here][list].
 FLEXI is Copyright (C) 2016, Prof. Claus-Dieter Munz and is 
 released under the terms of the
 GNU General Public License v3.0. For the full license terms see
-the included license file [LICENSE.md](LICENSE).
+the included license file [license](LICENSE.md).
 
 ## List of Contributors
 Numerous people have worked on and with FLEXI over the last years.
-We would like to thank all these [CONTRIBUTORS.md](contributors)
+We would like to thank all these [contributors](CONTRIBUTORS.md)
 for their efforts they spent on building FLEXI.
 
 ## Used libraries
@@ -59,4 +59,4 @@ FLEXI uses several external libraries as well as auxilliary functions from open 
 
 ## Regressioncheck
 
-For informations about the regressioncheck see [REGGIE.md](REGGIE.md).
+For informations about the regressioncheck see [reggie](REGGIE.md).

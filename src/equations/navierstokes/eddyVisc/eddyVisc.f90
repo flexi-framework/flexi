@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -36,14 +36,17 @@ CONTAINS
 !===================================================================================================================================
 SUBROUTINE DefineParametersEddyVisc()
 ! MODULES
-USE MOD_ReadInTools,        ONLY: prms
+USE MOD_ReadInTools,        ONLY: prms,addStrListEntry
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("EddyViscParameters")
 ! Smagorinksy model parameters
-CALL prms%CreateRealOption(   'CS',       "EddyViscParameters constant")
-CALL prms%CreateRealOption(   'PrSGS',    "Turbulent Prandtl number",'0.7')
-CALL prms%CreateLogicalOption('VanDriest',"Van Driest damping, only for channel flow!", '.FALSE.')
+CALL prms%CreateIntFromStringOption('eddyViscType', "(0) none: No eddy viscosity, (1) Smagorinsky",'none')
+CALL addStrListEntry(               'eddyViscType','none',0)
+CALL addStrListEntry(               'eddyViscType','smagorinsky',1)
+CALL prms%CreateRealOption(         'CS',          "EddyViscParameters constant")
+CALL prms%CreateRealOption(         'PrSGS',       "Turbulent Prandtl number",'0.7')
+CALL prms%CreateLogicalOption(      'VanDriest',   "Van Driest damping, only for channel flow!", '.FALSE.')
 END SUBROUTINE DefineParametersEddyVisc
 
 !===================================================================================================================================
@@ -73,23 +76,21 @@ ALLOCATE(muSGS_master(1,0:PP_N,0:PP_NZ,nSides))
 ALLOCATE(muSGS_slave (1,0:PP_N,0:PP_NZ,nSides))
 muSGS_master=0.
 muSGS_slave =0.
-ALLOCATE(muSGSmax(nElems))
-muSGSmax=8.*mu0
 ! Turbulent Prandtl number
 PrSGS  = GETREAL('PrSGS','0.7')
 
 SELECT CASE(eddyViscType)
   CASE(0) ! No eddy viscosity model, set function pointers to dummy subroutines which do nothing
     ! Nothing to init
-    eddyViscosity         => DefaultEddyVisc
+    ComputeEddyViscosity  => DefaultEddyVisc
     FinalizeEddyViscosity => FinalizeDefaultEddyViscosity
   CASE(1) !Smagorinsky with optional Van Driest damping for channel flow
     CALL InitSmagorinsky()
-    eddyViscosity         => Smagorinsky
+    ComputeEddyViscosity  => Smagorinsky_Volume
     FinalizeEddyViscosity => Finalizesmagorinsky
   CASE(4) !sigma Model 2015
     CALL InitSigmaModel()
-    eddyViscosity         => SigmaModel
+    ComputeEddyViscosity  => SigmaModel_Volume
     FinalizeEddyViscosity => FinalizeSigmaModel
   CASE DEFAULT
     CALL CollectiveStop(__STAMP__,&
@@ -104,17 +105,12 @@ END SUBROUTINE
 SUBROUTINE FinalizeEddyVisc()
 ! MODULES
 USE MOD_EddyVisc_Vars
-USE MOD_Smagorinsky   ,ONLY: FinalizeSmagorinsky
 !===================================================================================================================================
 SDEALLOCATE(DeltaS)
 SDEALLOCATE(muSGS)
 SDEALLOCATE(muSGS_master)
 SDEALLOCATE(muSGS_slave)
-SDEALLOCATE(muSGSmax)
-SELECT CASE(eddyViscType)
-  CASE(1)
-    CALL FinalizeSmagorinsky()
-END SELECT
+CALL FinalizeEddyViscosity()
 END SUBROUTINE
 
 END MODULE MOD_EddyVisc

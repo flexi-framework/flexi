@@ -172,10 +172,10 @@ DO iVar=1,nVarDep
   iVarVisu = mapAllVarsToVisuVars(iVar)
   IF (iVarVisu.GT.0) THEN
     SWRITE(*,*) "    ", TRIM(VarnamesAll(iVar))
-    iVarCalc = mapDepToCalc_FV(iVar) 
+    iVarCalc = mapDepToCalc_FV(iVar)
 #if FV_RECONSTRUCT
     UVisu_FV(:,:,:,:,iVarVisu) = UCalc_FV(:,:,:,:,iVarCalc)
-#else      
+#else
     DO iElem = 1,nElems_FV
       DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
         UVisu_FV(i*2:i*2+1, j*2:j*2+1, k*2:k*2+1*(PP_dim-2),iElem,iVarVisu) = UCalc_FV(i,j,k,iElem,iVarCalc)
@@ -215,7 +215,7 @@ DO iVar=1,nVarDep
     SWRITE(*,*) "    ", TRIM(VarnamesAll(iVar))
 #if FV_RECONSTRUCT
     USurfVisu_FV(:,:,0,:,iVarVisu) = USurfCalc_FV(:,:,:,mapDepToCalc_FV(iVar))
-#else      
+#else
     ! No reconstruction: Calculations are done directly on the subcells (PP_N+1), visualization is done on 2*(PP_N+1)-1 points
     DO iSide = 1,nBCSidesVisu_FV
       DO q=0,PP_NZ; DO p=0,PP_N
@@ -376,7 +376,7 @@ END SUBROUTINE ConvertToVisu_FV_Reconstruct
 !> These variables include the additional data from the ElemData and FieldData datasetes as well as other datasets that are
 !> present in the HDF5 file. The variables will be named DATASETNAME:VARIABLENAME if a attribute VarNames_DATASETNAME exist
 !> where we can read the variable names from. If this  attribute does not exist, the name will be a generic DATASETNAME:1,2... .
-!> For each dataset a new Vandermonde matrix is build to convert from the specific polynomial degree to the visu grid,
+!> For each dataset a new Vandermonde matrix is built to convert from the specific polynomial degree to the visu grid,
 !> so the datasets are not limited to one polynomial degree. Either elementwise (2 dimensions) or pointwise (5 dimensions) datasets
 !> are allowed.
 !> The addtional variables will always be sorted AFTER the conservative or derived quantities.
@@ -475,7 +475,7 @@ DO iVar=nVarDep+1,nVarAll
         SDEALLOCATE(DataSetVarNames)
         CALL GetVarNames("VarNames_"//TRIM(DatasetName),DatasetVarNames,varnamesExist)
       END IF
-      WRITE (*,*) "varnamesExist", varnamesExist
+      SWRITE (*,*) "varnamesExist", varnamesExist
 
       iVarDataset = 0
       ! loop over all varnames
