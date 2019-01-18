@@ -44,9 +44,7 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                               :: iVar,iVar2,strlen,countCons
-INTEGER                               :: mapCand(3)
-CHARACTER(LEN=255)                    :: tmp255,tmp255_2
+INTEGER                               :: iVar,countCons
 !===================================================================================================================================
 WRITE(UNIT_StdOut,'(132("-"))')
 WRITE(UNIT_stdOut,'(A)') ' INIT EquationDMD ...'
@@ -102,7 +100,7 @@ REAL,INTENT(OUT)   :: DMDData_out(nDoFs*nVarDMD)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: maskCalc(nVarDep),nVal(4)
-INTEGER            :: iVarOut,iVarIn,iVar,iVarCalc,iVarVisu
+INTEGER            :: iVarOut,iVarIn,iVar
 REAL,ALLOCATABLE   :: UCalc(:,:,:,:,:)
 REAL,ALLOCATABLE   :: DMDData_tmp(:,:,:,:,:)
 REAL,ALLOCATABLE   :: DMDData_tmp2(:,:)
@@ -142,40 +140,16 @@ eND DO
 CALL CalcQuantities(nVarCalc,nVal,(/1/),mapCalc,UCalc,maskCalc)
 
 ! fill output array
-!DO iVar=1,nVarDep
-!  IF (mapVisu(iVar).GT.0) THEN
-!    iVarCalc = mapCalc(iVar)
-!   print*,'@@@@@ iVarCalc: ',iVarCalc 
-!    !iVarVisu = mapVisu(iVar) 
-!    DMDData_out(:)=RESHAPE(UCalc(:,:,:,:,iVarCalc), (/nDoFs*nVarDMD/))
-!    DMDData_out(:)=RESHAPE(UCalc(:,:,:,:,1:2), (/nDoFs*nVarDMD/))
-    DMDData_tmp2=RESHAPE(UCalc,(/nDofs,nVarCalc/))
+DMDData_tmp2=RESHAPE(UCalc,(/nDofs,nVarCalc/))
 
-    DO iVar=1,nVarDep
-      IF (mapVisu(iVar) .GT. 0 ) THEN
-!        OutputVarsIndex(mapVisu(iVar))=mapCalc(ivar)
-        DMDData_tmp3(:,mapVisu(ivar))=DMDData_tmp2(:,mapCalc(iVar))
-      END IF
-    END Do
-!    print*,'@@@@@@@@@@@@@ OutputVars: ',OutputVarsIndex
-!    DMDData_tmp3(:,:)=DMDData_tmp2(:,OutputVarsIndex)
-!    DMDData_tmp3(:,2)=DMDData_tmp2(:,6)
+DO iVar=1,nVarDep
+  IF (mapVisu(iVar) .GT. 0 ) THEN
+    DMDData_tmp3(:,mapVisu(ivar))=DMDData_tmp2(:,mapCalc(iVar))
+  END IF
+END Do
 
-    DMDData_out(:)=RESHAPE(TRANSPOSE(DMDData_tmp3(:,:)), (/nDoFs*nVarDMD/))
+DMDData_out(:)=RESHAPE(TRANSPOSE(DMDData_tmp3(:,:)), (/nDoFs*nVarDMD/))
 
-!!!!!    print*,'##### :',DMDData_out
-!!!!!
-!!!!!    print*,nVarCalc,N_State+1,N_State+1,N_State+1,nElems_State
-!!!!!    DMDData_tmp(:,:,:,:,:)=RESHAPE(UCalc,(/nVarCalc,N_State+1,N_State+1,N_State+1,nElems_State/),ORDER = (/5, 3, 2, 1, 4/))
-!!!!!    print*,UCalc(1,1,1,1,1),UCalc(1,1,1,1,:)
-!!!!!    print*,DMDData_tmp(1,1,1,1,1),DMDData_tmp(:,1,1,1,1)
-!!!!!    DMDData_out(:)=RESHAPE(DMDData_tmp(1:2,:,:,:,:), (/nDoFs*nVarDMD/))
-!!!!!
-!!!!!    print*,'@@@@@ DMDData_out: ', DMDData_out
-!!!!!    print*,'@@@@@ SHAPE(DMDData_tmp): ',SHAPE(DMDData_tmp)
-!    print*,'@@@@@ DMDDate_out: ',DMDData_out(:)
-!  END IF
-!END DO 
 DEALLOCATE(UCalc)
 DEALLOCATE(DMDData_tmp)
 
