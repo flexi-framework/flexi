@@ -60,7 +60,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 !===================================================================================================================================
 CALL prms%SetSection("DMD")
-CALL prms%CreateStringOption( "VarNameDMD"         , "Name of variable to perform DMD.")
+CALL prms%CreateStringOption( "VarNameDMD"         , "Name of variable to perform DMD.", multiple=.TRUE.)
 CALL prms%CreateRealOption(   "SvdThreshold"       , "Define relative lower bound of singular values.")
 CALL prms%CreateIntOption(    "nModes"             , "Number of Modes to visualize.")
 CALL prms%CreateLogicalOption("sortFreq"           , "Sort modes by Frequency.")
@@ -68,7 +68,8 @@ CALL prms%CreateLogicalOption("PlotSingleMode"     , "Decide if a single mode is
 CALL prms%CreateRealOption(   "ModeFreq"           , "Specify the mode frequency.")
 CALL prms%CreateLogicalOption("UseBaseflow"        , "Subtract the Baseflow-File from every single Snapshot",'.FALSE.')
 CALL prms%CreateStringOption( "Baseflow"           , "Name of the Baseflow-File")
-
+CALL prms%CreateLogicalOption("use2D"              , "Calculate DMD on 2D-Data",'.FALSE.')
+CALL prms%CreateLogicalOption('output2D'           , "Set true to activate hdf5 data output with flat third dimension.",'.FALSE.')
 
 END SUBROUTINE DefineParametersDMD 
 
@@ -79,15 +80,15 @@ SUBROUTINE InitDMD()
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Commandline_Arguments
-USE MOD_Readintools             ,ONLY: prms,GETINT,GETREAL,GETLOGICAL,GETSTR,GETREALARRAY,CountOption
+USE MOD_Readintools             ,ONLY: GETINT,GETREAL,GETLOGICAL,GETSTR,GETREALARRAY,CountOption
 USE MOD_StringTools,             ONLY: STRICMP,GetFileExtension,INTTOSTR
 USE MOD_DMD_Vars,                ONLY: K,nFiles,nVar_State,N_State,nElems_State,NodeType_State,nDoFs,MeshFile_state
 USE MOD_DMD_Vars,                ONLY: dt,nModes,SvdThreshold,VarNameDMD,VarNames_State,Time_State,TimeEnd_State,sortFreq
-USE MOD_DMD_Vars,                ONLY: ModeFreq,PlotSingleMode,useBaseflow,Baseflow,VarNames_TimeAvg
-USE MOD_IO_HDF5,                 ONLY: File_ID,HSize
+USE MOD_DMD_Vars,                ONLY: ModeFreq,PlotSingleMode,useBaseflow,Baseflow,VarNames_TimeAvg,nVarDMD,use2D,N_StateZ
+USE MOD_IO_HDF5,                 ONLY: File_ID,HSize,output2D
 USE MOD_Output_Vars,             ONLY: ProjectName,NOut
 USE MOD_HDF5_Input,              ONLY: OpenDataFile,CloseDataFile,GetDataProps,ReadAttribute,ReadArray,GetDataSize
-USE MOD_Mesh_Vars,               ONLY: nElems,OffsetElem,nGlobalElems,MeshFile
+USE MOD_Mesh_Vars,               ONLY: OffsetElem,nGlobalElems,MeshFile
 USE MOD_EquationDMD,             ONLY: InitEquationDMD,CalcEquationDMD
 USE MOD_Interpolation_Vars ,     ONLY: NodeType
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -95,16 +96,21 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                          :: iFile,iVar,offset,nDim,i
+INTEGER                          :: iFile,iVar,offset,nDim,i,j
 REAL,ALLOCATABLE                 :: Utmp(:,:,:,:,:)
 REAL                             :: time
 DOUBLE PRECISION,ALLOCATABLE     :: Ktmp(:)
-CHARACTER(LEN=255)               :: VarName,FileType
+CHARACTER(LEN=255)               :: FileType
+INTEGER,ALLOCATABLE              :: VarSortTimeAvg(:)
 !===================================================================================================================================
 IF(nArgs.LT.3) CALL CollectiveStop(__STAMP__,'At least two files required for dmd!')
 nFiles=nArgs-1
 
-VarNameDMD   = GETSTR ('VarNameDMD'  ,'Density')
+nVarDMD=CountOption("VarNameDMD")
+ALLOCATE(VarNameDMD(nVarDMD))
+DO iVar=1,nVarDMD
+  VarNameDMD(iVAr)   = GETSTR ('VarNameDMD'  ,'Density')
+END DO
 SvdThreshold = GETREAL('SvdThreshold','0.0')
 nModes       = GETINT ('nModes'      ,'9999')
 sortFreq     = GETLOGICAL ('sortFreq','False')
@@ -112,6 +118,8 @@ PlotSingleMode = GETLOGICAL ('PlotSingleMode','False')
 IF (PlotSingleMode) ModeFreq = GETREAL('ModeFreq','0.0')
 useBaseflow  = GETLOGICAL('UseBaseflow','.FALSE.')
 IF (useBaseflow) Baseflow    = GETSTR    ('Baseflow','none')
+use2D        = GETLOGICAL('use2D','.FALSE.')
+output2D     = GETLOGICAL('output2D','.FALSE.')
 
 IF (nModes .GT. (nFiles-1)) THEN
   nModes = nFiles - 1  
@@ -126,23 +134,39 @@ CALL GetDataProps(nVar_State,N_State,nElems_State,NodeType_State)
 IF ( NodeType .NE. NodeType_State  ) THEN
   CALL CollectiveStop(__STAMP__,'Node Type of given state File is not applicable to compiled version')
 END IF
+IF (.NOT. use2D) THEN
+  N_StateZ = N_State
+ELSE
+  N_StateZ = 0
+END IF
 ALLOCATE(VarNames_State(nVar_State))
 CALL ReadAttribute(File_ID,'VarNames',nVar_State,StrArray=VarNames_State)
+CALL GetDataSize(File_ID,'DG_Solution',nDim,HSize)
+IF (HSize(4) .EQ. 1) THEN
+  use2D=.TRUE.
+  N_StateZ=0
+  WRITE(UNIT_stdOut,'(A)') 'Provided states contain 2D-data, continue with two dimensional DMD'
+END IF
 CALL CloseDataFile()
 ! Set everything for output
 Time_State = starttime
 MeshFile = MeshFile_state
 NOut = N_State
 nGlobalElems = nElems_State
-nElems       = nElems_State
 OffsetElem   = 0 ! OffsetElem is 0 since the tool only works on singel
 
-nDoFs = (N_State+1)**3 * nElems_State
+IF (.NOT. use2D) THEN
+  nDoFs = (N_State+1)**3 * nElems_State
+ELSE
+  nDoFs = (N_State+1)**2 * nElems_State
+END IF
+
 
 CALL InitEquationDMD()
 
-ALLOCATE(K    (nDoFs,nFiles))
-ALLOCATE(Utmp (nVar_State   ,0:N_State,0:N_State,0:N_State,nElems_State))
+ALLOCATE(K    (nDoFs*nVarDMD,nFiles))
+ALLOCATE(Utmp (nVar_State   ,0:N_State,0:N_State,0:N_StateZ,nElems_State))
+
 
 DO iFile = 2, nFiles+1
   WRITE(UNIT_stdOut,'(132("="))')
@@ -155,7 +179,9 @@ DO iFile = 2, nFiles+1
   offset=0
   CALL ReadAttribute(File_ID,'Time',    1,RealScalar=time)
   CALL ReadArray('DG_Solution',5,&
-                (/nVar_State,N_State+1,N_State+1,N_State+1,nElems_State/),0,5,RealArray=Utmp)
+                (/nVar_State,N_State+1,N_State+1,N_StateZ+1,nElems_State/),0,5,RealArray=Utmp)
+
+
   CALL CloseDataFile()
 
   IF (iFile .EQ. 3) THEN
@@ -177,10 +203,10 @@ IF (useBaseflow) THEN
   CALL ReadAttribute(File_ID,'File_Type',1,StrScalar =FileType)
   SELECT CASE(TRIM(FileType))
   CASE('State')
-    ALLOCATE(Ktmp(nDoFs))
+    ALLOCATE(Ktmp(nDoFs*nVarDMD))
     CALL ReadAttribute(File_ID,'Time',    1,RealScalar=time)
     CALL ReadArray('DG_Solution',5,&
-                  (/nVar_State,N_State+1,N_State+1,N_State+1,nElems_State/),0,5,RealArray=Utmp)
+                  (/nVar_State,N_State+1,N_State+1,N_StateZ+1,nElems_State/),0,5,RealArray=Utmp)
     
     CALL CloseDataFile()
     
@@ -188,33 +214,38 @@ IF (useBaseflow) THEN
     DO iFile = 2,nFiles+1
       K(:,iFile-1) = K(:,iFile-1) - Ktmp
     END DO
-    
     DEALLOCATE(ktmp)
   CASE('TimeAvg')
+    ALLOCATE(VarSortTimeAvg(nVarDMD))
     CALL GetDataSize(File_ID,'Mean',nDim,HSize)
     ALLOCATE(VarNames_TimeAvg(INT(HSize(1))))
     CALL ReadAttribute(File_ID,'VarNames_Mean',INT(HSize(1)),StrArray=VarNames_TimeAvg)
-    DO i=1,INT(HSize(1))
-      IF (TRIM(VarNameDMD) .EQ. TRIM(VarNames_TimeAvg(i))) THEN
-        ALLOCATE(Ktmp(nDoFs))
-        DEALLOCATE(Utmp)
-        ALLOCATE(Utmp (HSize(1),0:N_State,0:N_State,0:N_State,nElems_State))
+    DO j=1,nVarDMD
+      DO i=1,INT(HSize(1))
+        IF (TRIM(VarNameDMD(j)) .EQ. TRIM(VarNames_TimeAvg(i))) THEN
+          VarSortTimeAvg(i)=j
+          EXIT
+        ELSE IF(i .EQ. INT(HSize(1))) THEN 
+          CALL abort(__STAMP__,'Required DMD-Var not provided by TimeAvg-File')
+        END IF 
+      END DO
+    END DO
+
+    ALLOCATE(Ktmp(nDoFs*nVarDMD))
+    DEALLOCATE(Utmp)
+    ALLOCATE(Utmp (HSize(1),0:N_State,0:N_State,0:N_StateZ,nElems_State))
     
-        CALL ReadArray('Mean',5,&
-                      (/INT(HSize(1)),N_State+1,N_State+1,N_State+1,nElems_State/),0,5,RealArray=Utmp)
-        CALL CloseDataFile()
-        ktmp(:) = RESHAPE(Utmp(i,:,:,:,:), (/nDoFs/))
+    CALL ReadArray('Mean',5,&
+                  (/INT(HSize(1)),N_State+1,N_State+1,N_StateZ+1,nElems_State/),0,5,RealArray=Utmp)
+    CALL CloseDataFile()
+
+    ktmp(:) = RESHAPE(Utmp(VarSortTimeAvg,:,:,:,:), (/nDoFs*nVarDMD/))
     
-        DO iFile = 2,nFiles+1
-          K(:,iFile-1) = K(:,iFile-1) - Ktmp
-        END DO
-    
-        DEALLOCATE(ktmp)
-        EXIT
-      ELSE IF (i .EQ. INT(HSize(1))) THEN
-        CALL abort(__STAMP__,'VarNameDMD not found in provided Baseflow-File (TimeAvg-File)')
-      END IF
-    END DO 
+    DO iFile = 2,nFiles+1
+      K(:,iFile-1) = K(:,iFile-1) - Ktmp
+    END DO
+      
+    DEALLOCATE(ktmp)
   END SELECT
 
 END IF
@@ -229,7 +260,7 @@ SUBROUTINE performDMD()
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! MODULES                                                                                                                          !
 USE MOD_Globals
-USE MOD_DMD_Vars,                ONLY: K,nDoFs,nFiles,Phi,lambda,freq,dt,alpha,sigmaSort,sortFreq,SvdThreshold,nModes
+USE MOD_DMD_Vars,                ONLY: K,nDoFs,nFiles,Phi,lambda,freq,dt,alpha,sigmaSort,sortFreq,SvdThreshold,nModes,nVarDMD
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! insert modules here
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -242,7 +273,7 @@ EXTERNAL         DGESDD
 EXTERNAL         ZGEEV
 EXTERNAL         ZGESV
 ! LOCAL VARIABLES
-INTEGER                          :: i,j,M,N,LDA,LDU,LDVT,LWMAX,INFO,LWORK,nFilter
+INTEGER                          :: i,M,N,LDA,LDU,LDVT,LWMAX,INFO,LWORK,nFilter
 INTEGER,ALLOCATABLE              :: IWORK(:),IPIV(:),filter(:)
 DOUBLE PRECISION,ALLOCATABLE     :: WORK(:)
 DOUBLE PRECISION,ALLOCATABLE     :: SigmaInv(:,:),SigmaMat(:,:),USVD(:,:),WSVD(:,:),SigmaSVD(:)
@@ -251,11 +282,11 @@ COMPLEX,ALLOCATABLE              :: WORKC(:)
 REAL,ALLOCATABLE                 :: RWORK(:),SortVar(:,:)
 DOUBLE PRECISION,ALLOCATABLE     :: KTmp(:,:),RGlobMat(:,:),Rglob,Rsnap1,Rsnap2
 COMPLEX,ALLOCATABLE              :: STilde(:,:),STildeWork(:,:),eigSTilde(:),VL(:,:),VR(:,:)                
-COMPLEX,ALLOCATABLE              :: Vand(:,:),qTmp(:,:),q(:)
-COMPLEX,ALLOCATABLE              :: P(:,:),Ptmp(:,:),PhiTmp(:,:),alphaTmp(:)
+COMPLEX,ALLOCATABLE              :: Vand(:,:),qTmp(:,:)
+COMPLEX,ALLOCATABLE              :: P(:,:),PhiTmp(:,:),alphaTmp(:)
 REAL                             :: pi = acos(-1.)
 !===================================================================================================================================
-M = nDoFs
+M = nDoFs*nVarDMD
 N = nFiles-1
 LDA  = M
 LDU  = M 
@@ -267,7 +298,7 @@ ALLOCATE(USVD(M,N))
 ALLOCATE(WSVD(N,N))
 ALLOCATE(SigmaSVD(min(N,M)))
 
-ALLOCATE(KTmp(nDoFs,nFiles-1))
+ALLOCATE(KTmp(nDoFs*nVarDMD,nFiles-1))
 ALLOCATE(IWORK(8*N))
 KTmp = K(:,1:N)
 CALL DGESDD( 'S', M, N, KTmp, LDA, SigmaSVD, USVD, LDU, WSVD, LDVT,WORK, LWORK, IWORK, INFO )
@@ -391,8 +422,8 @@ CALL quicksort(SortVar,1,N,1,2)
 ALLOCATE(alphaTmp(N))
 alphaTmp = alpha
 DO i = 1, N
-  alpha(N+1-i) = alphaTmp(SortVar(i,2))
-  sigmaSort(N+1-i) = eigSTilde(SortVar(i,2))
+  alpha(N+1-i) = alphaTmp(INT(SortVar(i,2)))
+  sigmaSort(N+1-i) = eigSTilde(INT(SortVar(i,2)))
 END DO ! i = 1, N
 DEALLOCATE(alphaTmp)
 
@@ -400,7 +431,7 @@ ALLOCATE(PhiTmp(M,N))
 ALLOCATE(Phi(M,N))
 PhiTmp = MATMUL(USVD,VR)
 DO i = 1, N
-  Phi(:,N+1-i) = PhiTmp(:,SortVar(i,2))
+  Phi(:,N+1-i) = PhiTmp(:,INT(SortVar(i,2)))
 END DO ! i = 1, N
 DEALLOCATE(PhiTmp)
 
@@ -410,11 +441,11 @@ freq   = aimag(lambda)/(2*PI)
 
 
 ALLOCATE(RGlobMat(M,nFiles-1))
-RglobMat = K(:,2:nFiles)-MATMUL(MATMUL(MATMUL(USVD,STilde),SigmaMat),WSVD)
+RglobMat = K(:,2:nFiles)-DBLE(MATMUL(MATMUL(MATMUL(USVD,STilde),SigmaMat),WSVD))
 LDA  = M
 LDU  = M 
 LDVT = N
-LWMAX = nDoFs*5
+LWMAX = nDoFs*nVarDMD*5
 ALLOCATE(WORK(LWMAX))
 ALLOCATE(IWORK(8*N))
 LWORK = -1
@@ -454,26 +485,29 @@ USE MOD_IO_HDF5
 USE MOD_HDF5_Output,        ONLY: WriteState,WriteTimeAverage,GenerateFileSkeleton,WriteAttribute,WriteArray
 USE MOD_Output,             ONLY: InitOutput
 USE MOD_Output_Vars          
-USE MOD_DMD_Vars,           ONLY: Phi,N_State,nElems_State,nModes,freq,alpha,lambda,sigmaSort,Time_State,VarNameDMD
-USE MOD_DMD_Vars,           ONLY: dt,TimeEnd_State,ModeFreq,PlotSingleMode
-USE MOD_Mesh_Vars,          ONLY: offsetElem,nElems,MeshFile
+USE MOD_DMD_Vars,           ONLY: Phi,N_State,N_StateZ,nElems_State,nModes,freq,alpha,lambda,sigmaSort,Time_State,VarNameDMD
+USE MOD_DMD_Vars,           ONLY: dt,TimeEnd_State,ModeFreq,PlotSingleMode,nVarDMD,nDofs
+USE MOD_Mesh_Vars,          ONLY: offsetElem,MeshFile
+USE MOD_2D                 ,ONLY: ExpandArrayTo3D
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=255)   :: DataSetName
-INTEGER              :: nVal(4),i,j,k
+INTEGER              :: i,j,k
 CHARACTER(LEN=255)   :: FileName,iMode,varFreq
-REAL                 :: PhiGlobal(1,0:N_State,0:N_State,0:N_State,nElems_State)
+REAL,TARGET          :: PhiGlobal(nVarDMD,0:N_State,0:N_State,0:N_StateZ,nElems_State)
+REAL,TARGET          :: PhiGlobal_expand3D(nVarDMD,0:N_State,0:N_State,0:N_State,nElems_State)
+REAL,POINTER         :: PhiGlobal_out(:,:,:,:,:)
 INTEGER              :: Fileunit_DMD
-CHARACTER(LEN=255)   :: FileName_DMD
 LOGICAL              :: connected
+COMPLEX              :: Phi_out(nDofs,nVarDMD,nModes)
 !===================================================================================================================================
 SWRITE(UNIT_stdOut,'(a,a,a)',ADVANCE='NO')' WRITE DMD MODES TO HDF5 FILE "',TRIM(ProjectName),'" ...'
 
 
-FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_DMD_'//TRIM(VarNameDMD),Time_State))//'.h5'
+FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_DMD',Time_State))//'.h5'
 
 CALL GenerateFileSkeleton(TRIM(FileName),'DMD',1 ,N_State,(/'DUMMY_DO_NOT_VISUALIZE'/),&
      MeshFile,Time_State,Time_State,create=.TRUE.) ! dummy DG_Solution to fix Posti error !!!
@@ -483,7 +517,11 @@ CALL WriteAttribute(File_ID,'DMD Start Time',1,RealScalar=Time_State)
 CALL WriteAttribute(File_ID,'DMD END Time',1,RealScalar=TimeEnd_State)
 CALL WriteAttribute(File_ID,'DMD dt',1,RealScalar=dt)
 CALL CloseDataFile()
-  
+
+DO i=1,nModes
+  Phi_out(:,:,i)=TRANSPOSE(RESHAPE(Phi(:,i), (/nVarDMD,nDofs/)))
+END DO
+
 !================= Actual data output =======================!
 ! Write DMD
 CALL OpenDataFile(FileName,create=.FALSE.,single=.FALSE.,readOnly=.FALSE.)
@@ -494,27 +532,41 @@ IF (PlotSingleMode) THEN
       k=i
     END IF
   END DO
-  PhiGlobal(1,:,:,:,:) = real(RESHAPE( Phi(:,k), (/N_State+1,N_State+1,N_State+1,nElems_State/)))
   WRITE(iMode,'(I0.3)')1
   WRITE(varFreq,'(F12.5)')freq(k)
   ! Replace spaces with 0's
   DO j=1,LEN(TRIM(varFreq))
     IF(varFreq(j:j).EQ.' ') varFreq(j:j)='0'
   END DO
-  DataSetName = 'Mode_'//TRIM(iMode)//'_Real'
-  CALL WriteArray(        DataSetName=DataSetName, rank=5,&
-                          nValGlobal=(/1,N_State+1,N_State+1,N_State+1,nElems_State/),&
-                          nVal=      (/1,N_State+1,N_State+1,N_State+1,nElems_State/),&
-                          offset=    (/0,      0,     0,     0,     offsetElem/),&
-                          collective=.TRUE.,RealArray=PhiGlobal(1:1,:,:,:,:))
-  
-  PhiGlobal(1,:,:,:,:) = aimag(RESHAPE( Phi(:,k), (/N_State+1,N_State+1,N_State+1,nElems_State/)))
-  DataSetName = 'Mode_'//TRIM(iMode)//'_Img'
-  CALL WriteArray(        DataSetName=DataSetName, rank=5,&
-                          nValGlobal=(/1,N_State+1,N_State+1,N_State+1,nElems_State/),&
-                          nVal=      (/1,N_State+1,N_State+1,N_State+1,nElems_State/),&
-                          offset=    (/0,      0,     0,     0,     offsetElem/),&
-                          collective=.TRUE.,RealArray=PhiGlobal(1:1,:,:,:,:))
+  DO i=1,nVarDMD
+    PhiGlobal(i,:,:,:,:) = real(RESHAPE( Phi_out(:,i,k), (/N_State+1,N_State+1,N_StateZ+1,nElems_State/)))
+    DataSetName = 'Mode_'//TRIM(iMode)//'_'//TRIM(varNameDMD(i))//'_Real'
+    IF(.NOT. output2D) THEN
+      PhiGlobal_out=>PhiGlobal
+    ELSE
+      CALL ExpandArrayTo3D(5,nVal=(/1,N_State+1,N_State+1,N_StateZ+1,nElems_State/),index3D=4,size3D=N_State+1,arrayIn=PhiGlobal(j,:,:,:,:),arrayOut=PhiGlobal_expand3D(j,:,:,:,:))
+      PhiGlobal_out=>PhiGlobal_expand3D
+    END IF
+    CALL WriteArray(        DataSetName=DataSetName, rank=5,&
+                            nValGlobal=(/1,N_State+1,N_State+1,N_StateZ+1,nElems_State/),&
+                            nVal=      (/1,N_State+1,N_State+1,N_StateZ+1,nElems_State/),&
+                            offset=    (/0,      0,     0,     0,     offsetElem/),&
+                            collective=.TRUE.,RealArray=PhiGlobal_out(i,:,:,:,:))
+
+    PhiGlobal(i,:,:,:,:) = aimag(RESHAPE( Phi_out(:,i,k), (/N_State+1,N_State+1,N_StateZ+1,nElems_State/)))
+    DataSetName = 'Mode_'//TRIM(iMode)//'_'//TRIM(varNameDMD(i))//'_Img'
+    IF(.NOT. output2D) THEN
+      PhiGlobal_out=>PhiGlobal
+    ELSE
+      CALL ExpandArrayTo3D(5,nVal=(/1,N_State+1,N_State+1,N_StateZ+1,nElems_State/),index3D=4,size3D=N_State+1,arrayIn=PhiGlobal(j,:,:,:,:),arrayOut=PhiGlobal_expand3D(j,:,:,:,:))
+      PhiGlobal_out=>PhiGlobal_expand3D
+    END IF
+    CALL WriteArray(        DataSetName=DataSetName, rank=5,&
+                            nValGlobal=(/1,N_State+1,N_State+1,N_StateZ+1,nElems_State/),&
+                            nVal=      (/1,N_State+1,N_State+1,N_StateZ+1,nElems_State/),&
+                            offset=    (/0,      0,     0,     0,     offsetElem/),&
+                            collective=.TRUE.,RealArray=PhiGlobal_out(i,:,:,:,:))
+  END DO
 ELSE
   k = 0
   DO i = 1, nModes
@@ -525,27 +577,41 @@ ELSE
     END IF
   
     
-    PhiGlobal(1,:,:,:,:) = real(RESHAPE( Phi(:,i), (/N_State+1,N_State+1,N_State+1,nElems_State/)))
     WRITE(iMode,'(I0.3)')k
     WRITE(varFreq,'(F12.5)')freq(i)
     ! Replace spaces with 0's
     DO j=1,LEN(TRIM(varFreq))
       IF(varFreq(j:j).EQ.' ') varFreq(j:j)='0'
     END DO
-    DataSetName = 'Mode_'//TRIM(iMode)//'_Real'
-    CALL WriteArray(        DataSetName=DataSetName, rank=5,&
-                            nValGlobal=(/1,N_State+1,N_State+1,N_State+1,nElems_State/),&
-                            nVal=      (/1,N_State+1,N_State+1,N_State+1,nElems_State/),&
-                            offset=    (/0,      0,     0,     0,     offsetElem/),&
-                            collective=.TRUE.,RealArray=PhiGlobal(1:1,:,:,:,:))
+    DO j=1,nVarDMD
+      PhiGlobal(j,:,:,:,:) = real(RESHAPE( Phi_out(:,j,i), (/N_State+1,N_State+1,N_StateZ+1,nElems_State/)))
+      DataSetName = 'Mode_'//TRIM(iMode)//'_'//TRIM(varNameDMD(j))//'_Real'
+      IF(.NOT. output2D) THEN
+        PhiGlobal_out=>PhiGlobal
+      ELSE
+        CALL ExpandArrayTo3D(5,nVal=(/1,N_State+1,N_State+1,N_StateZ+1,nElems_State/),index3D=4,size3D=N_State+1,arrayIn=PhiGlobal(j,:,:,:,:),arrayOut=PhiGlobal_expand3D(j,:,:,:,:))
+        PhiGlobal_out=>PhiGlobal_expand3D
+      END IF
+      CALL WriteArray(        DataSetName=DataSetName, rank=5,&
+                              nValGlobal=(/1,N_State+1,N_State+1,N_StateZ+1,nElems_State/),&
+                              nVal=      (/1,N_State+1,N_State+1,N_StateZ+1,nElems_State/),&
+                              offset=    (/0,      0,     0,     0,     offsetElem/),&
+                              collective=.TRUE.,RealArray=PhiGlobal_out(1,:,:,:,:))
     
-    PhiGlobal(1,:,:,:,:) = aimag(RESHAPE( Phi(:,i), (/N_State+1,N_State+1,N_State+1,nElems_State/)))
-    DataSetName = 'Mode_'//TRIM(iMode)//'_Img'
-    CALL WriteArray(        DataSetName=DataSetName, rank=5,&
-                            nValGlobal=(/1,N_State+1,N_State+1,N_State+1,nElems_State/),&
-                            nVal=      (/1,N_State+1,N_State+1,N_State+1,nElems_State/),&
+      PhiGlobal(j,:,:,:,:) = aimag(RESHAPE( Phi_out(:,j,i), (/N_State+1,N_State+1,N_StateZ+1,nElems_State/)))
+      IF(.NOT. output2D) THEN
+        PhiGlobal_out=>PhiGlobal
+      ELSE
+        CALL ExpandArrayTo3D(5,nVal=(/1,N_State+1,N_State+1,N_StateZ+1,nElems_State/),index3D=4,size3D=N_State+1,arrayIn=PhiGlobal(j,:,:,:,:),arrayOut=PhiGlobal_expand3D(j,:,:,:,:))
+        PhiGlobal_out=>PhiGlobal_expand3D
+      END IF
+      DataSetName = 'Mode_'//TRIM(iMode)//'_'//TRIM(varNameDMD(j))//'_Img'
+      CALL WriteArray(        DataSetName=DataSetName, rank=5,&
+                            nValGlobal=(/1,N_State+1,N_State+1,N_StateZ+1,nElems_State/),&
+                            nVal=      (/1,N_State+1,N_State+1,N_StateZ+1,nElems_State/),&
                             offset=    (/0,      0,     0,     0,     offsetElem/),&
-                            collective=.TRUE.,RealArray=PhiGlobal(1:1,:,:,:,:))
+                            collective=.TRUE.,RealArray=PhiGlobal_out(1,:,:,:,:))
+    END DO
   END DO ! i = 1, nModes
 END IF ! PlotSingleMode
 CALL CloseDataFile()
@@ -603,7 +669,7 @@ DEALLOCATE(lambda)
 DEALLOCATE(alpha)            
 DEALLOCATE(sigmaSort)            
 DEALLOCATE(K)
-
+DEALLOCATE(VarNameDMD)
 WRITE(UNIT_stdOut,'(A)') '  DMD FINALIZED'
 END SUBROUTINE FinalizeDMD
 

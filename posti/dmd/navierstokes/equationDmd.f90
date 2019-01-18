@@ -89,7 +89,7 @@ END SUBROUTINE InitEquationDMD
 SUBROUTINE CalcEquationDMD(DMDData,DMDData_out)
 ! MODULES
 USE MOD_Globals
-USE MOD_DMD_Vars            ,ONLY: nVar_State,VarNames_State,N_State,nDoFs,nElems_State
+USE MOD_DMD_Vars            ,ONLY: nVar_State,VarNames_State,N_State,N_StateZ,nDoFs,nElems_State,nVarDMD,use2D
 USE MOD_EquationDMD_Vars
 USE MOD_EOS_Posti           ,ONLY: CalcQuantities
 USE MOD_StringTools         ,ONLY: STRICMP
@@ -97,22 +97,36 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-REAL,INTENT(IN)    :: DMDData(nVar_State,N_State+1,N_State+1,N_State+1,nElems_State)
-REAL,INTENT(OUT)   :: DMDData_out(nDoFs)
+REAL,INTENT(IN)    :: DMDData(nVar_State,N_State+1,N_State+1,N_StateZ+1,nElems_State)
+REAL,INTENT(OUT)   :: DMDData_out(nDoFs*nVarDMD)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: maskCalc(nVarDep),nVal(4)
 INTEGER            :: iVarOut,iVarIn,iVar,iVarCalc,iVarVisu
 REAL,ALLOCATABLE   :: UCalc(:,:,:,:,:)
+REAL,ALLOCATABLE   :: DMDData_tmp(:,:,:,:,:)
+REAL,ALLOCATABLE   :: DMDData_tmp2(:,:)
+REAL,ALLOCATABLE   :: DMDData_tmp3(:,:)
+!INTEGER            :: OutputVarsIndex(MAXVAL(mapVisu))
 !===================================================================================================================================
 WRITE(UNIT_StdOut,'(132("-"))')
 WRITE(UNIT_stdOut,'(A)')" CONVERT DERIVED QUANTITIES..."
 ! CALCULATE DERIVED QUATITIES -----------------------------------------------------------------------------------------------------!
 maskCalc=1
-nVal=(/N_State+1,N_State+1,N_State+1,nElems_State/)
+nVal=(/N_State+1,N_State+1,N_StateZ+1,nElems_State/)
 ! Copy existing variables from solution array
 ! Attention: nVarCalc must be last dimension (needed for CalcQuantities from flexilib!)
-ALLOCATE(UCalc(N_State+1,N_State+1,N_State+1,nElems_State,nVarCalc))
+IF(.NOT. use2D) THEN
+  ALLOCATE(UCalc(N_State+1,N_State+1,N_State+1,nElems_State,nVarCalc))
+  ALLOCATE(DMDData_tmp(nVarCalc,N_State+1,N_State+1,N_State+1,nElems_State))
+  ALLOCATE(DMDData_tmp2(nElems_State*(N_State+1)**3,nVarCalc))
+  ALLOCATE(DMDData_tmp3(nElems_State*(N_State+1)**3,nVarVisuTotal))
+ELSE
+  ALLOCATE(UCalc(N_State+1,N_State+1,1        ,nElems_State,nVarCalc))
+  ALLOCATE(DMDData_tmp(nVarCalc,N_State+1,N_State+1,1,nElems_State))
+  ALLOCATE(DMDData_tmp2(nElems_State*(N_State+1)**2,nVarCalc))
+  ALLOCATE(DMDData_tmp3(nElems_State*(N_State+1)**2,nVarVisuTotal))
+END IF
 
 DO iVarOut=1,nVarDep ! iterate over all out variables
   IF (mapCalc(iVarOut).LT.1) CYCLE ! check if variable must be calculated
@@ -122,20 +136,48 @@ DO iVarOut=1,nVarDep ! iterate over all out variables
       maskCalc(iVarOut)=0 ! remove variable from maskCalc, since they now got copied and must not be calculated.
     END IF
   END DO
-END DO
+eND DO
 
 ! calculate all quantities
 CALL CalcQuantities(nVarCalc,nVal,(/1/),mapCalc,UCalc,maskCalc)
 
 ! fill output array
-DO iVar=1,nVarDep
-  IF (mapVisu(iVar).GT.0) THEN
-    iVarCalc = mapCalc(iVar) 
-    !iVarVisu = mapVisu(iVar) 
-    DMDData_out(:)=RESHAPE(UCalc(:,:,:,:,iVarCalc), (/nDoFs/))
-  END IF
-END DO 
+!DO iVar=1,nVarDep
+!  IF (mapVisu(iVar).GT.0) THEN
+!    iVarCalc = mapCalc(iVar)
+!   print*,'@@@@@ iVarCalc: ',iVarCalc 
+!    !iVarVisu = mapVisu(iVar) 
+!    DMDData_out(:)=RESHAPE(UCalc(:,:,:,:,iVarCalc), (/nDoFs*nVarDMD/))
+!    DMDData_out(:)=RESHAPE(UCalc(:,:,:,:,1:2), (/nDoFs*nVarDMD/))
+    DMDData_tmp2=RESHAPE(UCalc,(/nDofs,nVarCalc/))
+
+    DO iVar=1,nVarDep
+      IF (mapVisu(iVar) .GT. 0 ) THEN
+!        OutputVarsIndex(mapVisu(iVar))=mapCalc(ivar)
+        DMDData_tmp3(:,mapVisu(ivar))=DMDData_tmp2(:,mapCalc(iVar))
+      END IF
+    END Do
+!    print*,'@@@@@@@@@@@@@ OutputVars: ',OutputVarsIndex
+!    DMDData_tmp3(:,:)=DMDData_tmp2(:,OutputVarsIndex)
+!    DMDData_tmp3(:,2)=DMDData_tmp2(:,6)
+
+    DMDData_out(:)=RESHAPE(TRANSPOSE(DMDData_tmp3(:,:)), (/nDoFs*nVarDMD/))
+
+!!!!!    print*,'##### :',DMDData_out
+!!!!!
+!!!!!    print*,nVarCalc,N_State+1,N_State+1,N_State+1,nElems_State
+!!!!!    DMDData_tmp(:,:,:,:,:)=RESHAPE(UCalc,(/nVarCalc,N_State+1,N_State+1,N_State+1,nElems_State/),ORDER = (/5, 3, 2, 1, 4/))
+!!!!!    print*,UCalc(1,1,1,1,1),UCalc(1,1,1,1,:)
+!!!!!    print*,DMDData_tmp(1,1,1,1,1),DMDData_tmp(:,1,1,1,1)
+!!!!!    DMDData_out(:)=RESHAPE(DMDData_tmp(1:2,:,:,:,:), (/nDoFs*nVarDMD/))
+!!!!!
+!!!!!    print*,'@@@@@ DMDData_out: ', DMDData_out
+!!!!!    print*,'@@@@@ SHAPE(DMDData_tmp): ',SHAPE(DMDData_tmp)
+!    print*,'@@@@@ DMDDate_out: ',DMDData_out(:)
+!  END IF
+!END DO 
 DEALLOCATE(UCalc)
+DEALLOCATE(DMDData_tmp)
 
 WRITE(UNIT_stdOut,'(A)')" CONVERT DERIVED QUANTITIES DONE!"
 END SUBROUTINE CalcEquationDMD
@@ -172,7 +214,7 @@ END MODULE MOD_EquationDMD
 !>  5. build the 'mapVisu' that holds for each quantity that will be visualized the index in 'UVisu' array (0 if not visualized)
 !===================================================================================================================================
 SUBROUTINE Build_mapCalc_mapVisu()
-USE MOD_DMD_Vars        ,ONLY: VarNameDMD
+USE MOD_DMD_Vars        ,ONLY: VarNameDMD,nVarDMD
 USE MOD_EquationDMD_Vars
 USE MOD_ReadInTools     ,ONLY: GETSTR,CountOption
 USE MOD_StringTools     ,ONLY: STRICMP
@@ -190,11 +232,13 @@ ALLOCATE(mapVisu(1:nVarDep))
 mapVisu = 0
 nVarVisuTotal = 0
 ! Compare varnames that should be visualized with availabe varnames
-DO iVar2=1,nVarDep
-  IF (STRICMP(VarNameDMD, VarNamesAll(iVar2))) THEN
-    mapVisu(iVar2) = nVarVisuTotal+1
-    nVarVisuTotal = nVarVisuTotal + 1
-  END IF
+DO iVar=1,nVarDMD
+  DO iVar2=1,nVarDep
+    IF (STRICMP(VarNameDMD(iVar), VarNamesAll(iVar2))) THEN
+      mapVisu(iVar2) = nVarVisuTotal+1
+      nVarVisuTotal = nVarVisuTotal + 1
+    END IF
+  END DO
 END DO
 
 ! Calculate all dependencies:

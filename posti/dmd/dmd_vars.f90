@@ -26,6 +26,7 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 INTEGER             :: nFiles                    !< Number of input files to perform dmd on
 INTEGER             :: nVar_State                !< Number of variables in DG_Solution array
+INTEGER             :: N_StateZ                  !< Polynomial degree of input state, is set to 0 for 2D-Computation
 CHARACTER(LEN=255),ALLOCATABLE  :: VarNames_State(:)           !< List of varnames in state
 CHARACTER(LEN=255),ALLOCATABLE  :: VarNames_TimeAvg(:) !< List of varnames in TimeAvg-File 
 INTEGER             :: N_State                   !< Polynomial degree of input state
@@ -33,31 +34,33 @@ INTEGER             :: nElems_State              !< Number of elements in state 
 INTEGER             :: nDoFs                     !< Number of degrees of freedom of input state file
 CHARACTER(LEN=255)  :: NodeType_State            !< NodeType of the input state (Gauss/Gauss-Lobatto)
 CHARACTER(LEN=255)  :: MeshFile_State            !< Mesh file name of input states
-REAL                :: Time_State
-REAL                :: TimeEnd_State
+REAL                :: Time_State                !< Time of the first State
+REAL                :: TimeEnd_State             !< Time of the last State
 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! DMD User Input Vars
 !-----------------------------------------------------------------------------------------------------------------------------------
-CHARACTER(LEN=255)  :: VarNameDMD                !< Name of Variable to visualize
-REAL                :: SvdThreshold              !< Defines relative lower bound of singular values
-INTEGER             :: nModes                    !< Number of Modes to be visualized
-LOGICAL             :: sortFreq                  !< Decide if modes are sorted by frequency or amplitude
-LOGICAL             :: PlotSingleMode            !< Decide if a single mode is plotted
-REAL                :: ModeFreq                  !< Specify the mode frequency.
-LOGICAL             :: useBaseFlow               !< Using Basflow or not 
-CHARACTER(LEN=255)  :: BaseFlow                  !< Name of the Baseflow-File
+CHARACTER(LEN=255), ALLOCATABLE  :: VarNameDMD(:)             !< Name of Variable to visualize
+INTEGER                          :: nVarDMD                   !< Name of Variable to visualize
+REAL                             :: SvdThreshold              !< Defines relative lower bound of singular values
+INTEGER                          :: nModes                    !< Number of Modes to be visualized
+LOGICAL                          :: sortFreq                  !< Decide if modes are sorted by frequency or amplitude
+LOGICAL                          :: PlotSingleMode            !< Decide if a single mode is plotted
+REAL                             :: ModeFreq                  !< Specify the mode frequency.
+LOGICAL                          :: useBaseFlow               !< Using Basflow or not 
+CHARACTER(LEN=255)               :: BaseFlow                  !< Name of the Baseflow-File
+LOGICAL                          :: use2D                     !< Set T to compute the DMD on 2D data
 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! DMD Vars
 !-----------------------------------------------------------------------------------------------------------------------------------
-REAL                    :: dt                    !>
-REAL,ALLOCATABLE        :: freq(:)               !> 
-COMPLEX ,ALLOCATABLE    :: Phi(:,:)              !> 
-COMPLEX ,ALLOCATABLE    :: lambda(:)             !> 
-COMPLEX ,ALLOCATABLE    :: sigmaSort(:)        !> 
-COMPLEX ,ALLOCATABLE    :: alpha(:)        !>
-DOUBLE PRECISION,ALLOCATABLE    :: K(:,:)        !> 
+REAL                             :: dt                        !> Equidistant time interval 
+REAL,ALLOCATABLE                 :: freq(:)                   !> Frequency of the DMD-Modes
+COMPLEX ,ALLOCATABLE             :: Phi(:,:)                  !> State of the DMD-Modes
+COMPLEX ,ALLOCATABLE             :: lambda(:)                 !> Logarithmic mapping of the eigenvales 
+COMPLEX ,ALLOCATABLE             :: sigmaSort(:)              !> Eigenvalues of the DMD-Modes
+COMPLEX ,ALLOCATABLE             :: alpha(:)                  !> Coefficients of the linearcombination of the data sequence
+DOUBLE PRECISION,ALLOCATABLE     :: K(:,:)                    !> Snapshot-Matrix
 
 
 !===================================================================================================================================
