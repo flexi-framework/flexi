@@ -85,6 +85,7 @@ USE MOD_StringTools,             ONLY: STRICMP,GetFileExtension,INTTOSTR
 USE MOD_DMD_Vars,                ONLY: K,nFiles,nVar_State,N_State,nElems_State,NodeType_State,nDoFs,MeshFile_state
 USE MOD_DMD_Vars,                ONLY: dt,nModes,SvdThreshold,VarNameDMD,VarNames_State,Time_State,TimeEnd_State,sortFreq
 USE MOD_DMD_Vars,                ONLY: ModeFreq,PlotSingleMode,useBaseflow,Baseflow,VarNames_TimeAvg,nVarDMD,use2D,N_StateZ
+USE MOD_DMD_Vars,                ONLY: N_StateZ,N_StateZ_out
 USE MOD_IO_HDF5,                 ONLY: File_ID,HSize,output2D
 USE MOD_Output_Vars,             ONLY: ProjectName,NOut
 USE MOD_HDF5_Input,              ONLY: OpenDataFile,CloseDataFile,GetDataProps,ReadAttribute,ReadArray,GetDataSize
@@ -135,10 +136,17 @@ IF ( NodeType .NE. NodeType_State  ) THEN
   CALL CollectiveStop(__STAMP__,'Node Type of given state File is not applicable to compiled version')
 END IF
 IF (.NOT. use2D) THEN
-  N_StateZ = N_State
+  N_StateZ     = N_State
 ELSE
-  N_StateZ = 0
+  N_StateZ     = 0
 END IF
+
+IF (output2D) THEN
+  N_StateZ_out = 0
+ELSE
+  N_StateZ_out = N_State
+END IF
+
 ALLOCATE(VarNames_State(nVar_State))
 CALL ReadAttribute(File_ID,'VarNames',nVar_State,StrArray=VarNames_State)
 CALL GetDataSize(File_ID,'DG_Solution',nDim,HSize)
@@ -486,7 +494,7 @@ USE MOD_HDF5_Output,        ONLY: WriteState,WriteTimeAverage,GenerateFileSkelet
 USE MOD_Output,             ONLY: InitOutput
 USE MOD_Output_Vars          
 USE MOD_DMD_Vars,           ONLY: Phi,N_State,N_StateZ,nElems_State,nModes,freq,alpha,lambda,sigmaSort,Time_State,VarNameDMD
-USE MOD_DMD_Vars,           ONLY: dt,TimeEnd_State,ModeFreq,PlotSingleMode,nVarDMD,nDofs
+USE MOD_DMD_Vars,           ONLY: dt,TimeEnd_State,ModeFreq,PlotSingleMode,nVarDMD,nDofs,N_StateZ_out
 USE MOD_Mesh_Vars,          ONLY: offsetElem,MeshFile
 USE MOD_2D                 ,ONLY: ExpandArrayTo3D
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -541,29 +549,29 @@ IF (PlotSingleMode) THEN
   DO i=1,nVarDMD
     PhiGlobal(i,:,:,:,:) = real(RESHAPE( Phi_out(:,i,k), (/N_State+1,N_State+1,N_StateZ+1,nElems_State/)))
     DataSetName = 'Mode_'//TRIM(iMode)//'_'//TRIM(varNameDMD(i))//'_Real'
-    IF(.NOT. output2D) THEN
+    IF(output2D) THEN
       PhiGlobal_out=>PhiGlobal
     ELSE
       CALL ExpandArrayTo3D(5,nVal=(/1,N_State+1,N_State+1,N_StateZ+1,nElems_State/),index3D=4,size3D=N_State+1,arrayIn=PhiGlobal(j,:,:,:,:),arrayOut=PhiGlobal_expand3D(j,:,:,:,:))
       PhiGlobal_out=>PhiGlobal_expand3D
     END IF
     CALL WriteArray(        DataSetName=DataSetName, rank=5,&
-                            nValGlobal=(/1,N_State+1,N_State+1,N_StateZ+1,nElems_State/),&
-                            nVal=      (/1,N_State+1,N_State+1,N_StateZ+1,nElems_State/),&
+                            nValGlobal=(/1,N_State+1,N_State+1,N_StateZ_out+1,nElems_State/),&
+                            nVal=      (/1,N_State+1,N_State+1,N_StateZ_out+1,nElems_State/),&
                             offset=    (/0,      0,     0,     0,     offsetElem/),&
                             collective=.TRUE.,RealArray=PhiGlobal_out(i,:,:,:,:))
 
     PhiGlobal(i,:,:,:,:) = aimag(RESHAPE( Phi_out(:,i,k), (/N_State+1,N_State+1,N_StateZ+1,nElems_State/)))
     DataSetName = 'Mode_'//TRIM(iMode)//'_'//TRIM(varNameDMD(i))//'_Img'
-    IF(.NOT. output2D) THEN
+    IF(output2D) THEN
       PhiGlobal_out=>PhiGlobal
     ELSE
       CALL ExpandArrayTo3D(5,nVal=(/1,N_State+1,N_State+1,N_StateZ+1,nElems_State/),index3D=4,size3D=N_State+1,arrayIn=PhiGlobal(j,:,:,:,:),arrayOut=PhiGlobal_expand3D(j,:,:,:,:))
       PhiGlobal_out=>PhiGlobal_expand3D
     END IF
     CALL WriteArray(        DataSetName=DataSetName, rank=5,&
-                            nValGlobal=(/1,N_State+1,N_State+1,N_StateZ+1,nElems_State/),&
-                            nVal=      (/1,N_State+1,N_State+1,N_StateZ+1,nElems_State/),&
+                            nValGlobal=(/1,N_State+1,N_State+1,N_StateZ_out+1,nElems_State/),&
+                            nVal=      (/1,N_State+1,N_State+1,N_StateZ_out+1,nElems_State/),&
                             offset=    (/0,      0,     0,     0,     offsetElem/),&
                             collective=.TRUE.,RealArray=PhiGlobal_out(i,:,:,:,:))
   END DO
@@ -586,20 +594,20 @@ ELSE
     DO j=1,nVarDMD
       PhiGlobal(j,:,:,:,:) = real(RESHAPE( Phi_out(:,j,i), (/N_State+1,N_State+1,N_StateZ+1,nElems_State/)))
       DataSetName = 'Mode_'//TRIM(iMode)//'_'//TRIM(varNameDMD(j))//'_Real'
-      IF(.NOT. output2D) THEN
+      IF(output2D) THEN
         PhiGlobal_out=>PhiGlobal
       ELSE
         CALL ExpandArrayTo3D(5,nVal=(/1,N_State+1,N_State+1,N_StateZ+1,nElems_State/),index3D=4,size3D=N_State+1,arrayIn=PhiGlobal(j,:,:,:,:),arrayOut=PhiGlobal_expand3D(j,:,:,:,:))
         PhiGlobal_out=>PhiGlobal_expand3D
       END IF
       CALL WriteArray(        DataSetName=DataSetName, rank=5,&
-                              nValGlobal=(/1,N_State+1,N_State+1,N_StateZ+1,nElems_State/),&
-                              nVal=      (/1,N_State+1,N_State+1,N_StateZ+1,nElems_State/),&
+                              nValGlobal=(/1,N_State+1,N_State+1,N_StateZ_out+1,nElems_State/),&
+                              nVal=      (/1,N_State+1,N_State+1,N_StateZ_out+1,nElems_State/),&
                               offset=    (/0,      0,     0,     0,     offsetElem/),&
                               collective=.TRUE.,RealArray=PhiGlobal_out(1,:,:,:,:))
     
       PhiGlobal(j,:,:,:,:) = aimag(RESHAPE( Phi_out(:,j,i), (/N_State+1,N_State+1,N_StateZ+1,nElems_State/)))
-      IF(.NOT. output2D) THEN
+      IF(output2D) THEN
         PhiGlobal_out=>PhiGlobal
       ELSE
         CALL ExpandArrayTo3D(5,nVal=(/1,N_State+1,N_State+1,N_StateZ+1,nElems_State/),index3D=4,size3D=N_State+1,arrayIn=PhiGlobal(j,:,:,:,:),arrayOut=PhiGlobal_expand3D(j,:,:,:,:))
@@ -607,8 +615,8 @@ ELSE
       END IF
       DataSetName = 'Mode_'//TRIM(iMode)//'_'//TRIM(varNameDMD(j))//'_Img'
       CALL WriteArray(        DataSetName=DataSetName, rank=5,&
-                            nValGlobal=(/1,N_State+1,N_State+1,N_StateZ+1,nElems_State/),&
-                            nVal=      (/1,N_State+1,N_State+1,N_StateZ+1,nElems_State/),&
+                            nValGlobal=(/1,N_State+1,N_State+1,N_StateZ_out+1,nElems_State/),&
+                            nVal=      (/1,N_State+1,N_State+1,N_StateZ_out+1,nElems_State/),&
                             offset=    (/0,      0,     0,     0,     offsetElem/),&
                             collective=.TRUE.,RealArray=PhiGlobal_out(1,:,:,:,:))
     END DO

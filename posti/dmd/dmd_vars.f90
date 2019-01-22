@@ -26,7 +26,8 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 INTEGER             :: nFiles                    !< Number of input files to perform dmd on
 INTEGER             :: nVar_State                !< Number of variables in DG_Solution array
-INTEGER             :: N_StateZ                  !< Polynomial degree of input state, is set to 0 for 2D-Computation
+INTEGER             :: N_StateZ                  !< Polynomial degree of input state in 3rd Dimension, is set to 0 for 2D-Computation
+INTEGER             :: N_StateZ_Out              !< Polynomial degree of output state in 3rd Dimension, is set to 0 for 2D-Output
 CHARACTER(LEN=255),ALLOCATABLE  :: VarNames_State(:)           !< List of varnames in state
 CHARACTER(LEN=255),ALLOCATABLE  :: VarNames_TimeAvg(:) !< List of varnames in TimeAvg-File 
 INTEGER             :: N_State                   !< Polynomial degree of input state
