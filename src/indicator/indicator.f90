@@ -164,6 +164,10 @@ CASE(INDTYPE_DUCROS)
       "Ducros indicator only works with Navier-Stokes equations.")
 #endif /* EQNSYSNR != 2 */
 CASE(INDTYPE_DUCROSTIMESJST)
+#if !(FV_ENABLED)
+  CALL Abort(__STAMP__, &
+      "Ducros*JST indicator only works with FV_ENABLED.")
+#endif
 #if !(PARABOLIC)
   CALL Abort(__STAMP__, &
       "Ducros*JST indicator not available without PARABOLIC!")
@@ -263,9 +267,11 @@ CASE(INDTYPE_JAMESON)
 #if PARABOLIC
 CASE(INDTYPE_DUCROS)
   IndValue = DucrosIndicator(gradUx,gradUy,gradUz)
+#if FV_ENABLED
 CASE(INDTYPE_DUCROSTIMESJST)
   IndValue = JamesonIndicator(U) * DucrosIndicator(gradUx,gradUy,gradUz)
-#endif
+#endif /*FV_ENABLED*/
+#endif /*PARABOLIC*/
 #endif /* NAVIER-STOKES */
 CASE(INDTYPE_HALFHALF)  ! half/half
   DO iElem=1,nElems
