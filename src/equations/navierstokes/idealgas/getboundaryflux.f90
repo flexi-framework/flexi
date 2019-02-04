@@ -532,16 +532,20 @@ REAL                                 :: UPrim_boundary(PP_nVarPrim,0:Nloc,0:ZDIM
 REAL                                 :: UCons_boundary(PP_nVar    ,0:Nloc,0:ZDIM(Nloc))
 REAL                                 :: UCons_master  (PP_nVar    ,0:Nloc,0:ZDIM(Nloc))
 #if PARABOLIC
-INTEGER                              :: ivar
+INTEGER                              :: iVar
 REAL                                 :: nv(3),tv1(3),tv2(3)
 REAL                                 :: BCGradMat(1:PP_dim,1:PP_dim)
-REAL,DIMENSION(PP_nVar,    0:Nloc,0:ZDIM(Nloc)):: Fd_Face_loc,    Gd_Face_loc,    Hd_Face_loc
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)):: gradUx_Face_loc,gradUy_Face_loc,gradUz_Face_loc
-REAL :: gradUx_vNormal,gradUx_vTang1,gradUy_vNormal,gradUy_vTang1
-REAL :: gradUn_vNormal,gradUn_vTang1,gradUt1_vNormal,gradUt1_vTang1
+REAL                                 :: Fd_Face_loc(PP_nVar,    0:Nloc,0:ZDIM(Nloc))
+REAL                                 :: Gd_Face_loc(PP_nVar,    0:Nloc,0:ZDIM(Nloc))
+REAL                                 :: Hd_Face_loc(PP_nVar,    0:Nloc,0:ZDIM(Nloc))
+REAL                                 :: gradUx_Face_loc(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc))
+REAL                                 :: gradUy_Face_loc(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc))
+REAL                                 :: gradUz_Face_loc(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc))
+REAL                                 :: gradUx_vNormal,gradUx_vTang1,gradUy_vNormal,gradUy_vTang1
+REAL                                 :: gradUn_vNormal,gradUn_vTang1,gradUt1_vNormal,gradUt1_vTang1
 #if PP_dim == 3
-REAL :: gradUx_vTang2,gradUy_vTang2,gradUz_vNormal,gradUz_vTang1,gradUz_vTang2
-REAL :: gradUn_vTang2,gradUt1_vTang2,gradUt2_vNormal,gradUt2_vTang1,gradUt2_vTang2
+REAL                                 :: gradUx_vTang2,gradUy_vTang2,gradUz_vNormal,gradUz_vTang1,gradUz_vTang2
+REAL                                 :: gradUn_vTang2,gradUt1_vTang2,gradUt2_vNormal,gradUt2_vTang1,gradUt2_vTang2
 #endif
 #endif /*PARABOLIC*/
 !==================================================================================================================================
@@ -789,7 +793,7 @@ ELSE
         NormVec(1,:,:)*Fd_Face_loc(iVar,:,:) + &
         NormVec(2,:,:)*Gd_Face_loc(iVar,:,:) + &
         NormVec(3,:,:)*Hd_Face_loc(iVar,:,:)
-    END DO ! ivar
+    END DO ! iVar
 #endif /*PARABOLIC*/
 
   CASE(1) !Periodic already filled!
