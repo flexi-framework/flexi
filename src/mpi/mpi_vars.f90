@@ -54,7 +54,7 @@ INTEGER,ALLOCATABLE :: offsetMPISides_MINE(:)   !< gives position of send/recv b
                                                 !< set in setLocalSideIDs (prepare_mesh.f90)
 INTEGER,ALLOCATABLE :: offsetMPISides_YOUR(:)   !< gives position of send/recv block in *_YOUR arrays,allocated from 0:nNbProcs,
                                                 !< is set in setLocalSideIDs (prepare_mesh.f90)
-INTEGER,ALLOCATABLE :: offsetElemMPI(:)         !< gives offsetposotion of elements of all procs, allocated from 1:nProcessors set
+INTEGER,ALLOCATABLE :: offsetElemMPI(:)         !< gives offsetposotion of elements of all procs, allocated from 0:nProcessors set
                                                 !< in ReadMesh
 INTEGER,ALLOCATABLE :: nMPISides_send(:,:)      !< number of sides to send, (1:nNbProcs,1:2), last index: 1: SEND MINE, 2: SEND YOUR
 INTEGER,ALLOCATABLE :: nMPISides_rec(:,:)       !< number of sides to receive, (1:nNbProcs,1:2), last index: 1: RECEIVE YOUR,

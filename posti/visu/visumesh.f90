@@ -53,7 +53,7 @@ USE MOD_Visu_Vars          ,ONLY: CoordsVisu_DG
 USE MOD_Visu_Vars          ,ONLY: NodeTypeVisuPosti
 USE MOD_Visu_Vars          ,ONLY: NVisu,nElems_DG,mapDGElemsToAllElems
 USE MOD_Visu_Vars          ,ONLY: nElemsAvg2D_DG,Avg2D
-USE MOD_Visu_Vars          ,ONLY: Elem_IJK,mapElemIJToDGElemAvg2D
+USE MOD_Visu_Vars          ,ONLY: Elem_IJK,Elem_IJK_glob,mapElemIJToDGElemAvg2D
 #if FV_ENABLED
 USE MOD_Visu_Vars          ,ONLY: FVAmountAvg2D,mapElemIJToFVElemAvg2D,nElemsAvg2D_FV
 USE MOD_Visu_Vars          ,ONLY: NVisu_FV,nElems_FV,mapFVElemsToAllElems,hasFV_Elems
@@ -63,7 +63,10 @@ USE MOD_Interpolation_Vars ,ONLY: NodeTypeVisu,NodeTypeVISUFVEqui,NodeType
 USE MOD_Interpolation      ,ONLY: GetVandermonde
 USE MOD_ChangeBasis        ,ONLY: ChangeBasis2D
 USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisVolume
-USE MOD_Mesh_Vars          ,ONLY: nElems,Elem_xGP
+USE MOD_Mesh_Vars          ,ONLY: Elem_xGP,nGlobalElems
+#if USE_MPI
+USE MOD_MPI_Vars           ,ONLY: offsetElemMPI
+#endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -74,6 +77,11 @@ INTEGER            :: iElem_FV
 REAL,ALLOCATABLE   :: Vdm_N_NVisu_FV(:,:)
 #endif
 INTEGER            :: iElemAvg,ii,jj,kk
+REAL,ALLOCATABLE   :: Elem_xGP_glob(:,:,:,:,:)
+#if USE_MPI
+INTEGER            :: nDOFPerProc(0:nProcessors-1),offsetDOF(0:nProcessors-1)
+INTEGER            :: iProc
+#endif
 !===================================================================================================================================
 ! Convert coordinates to visu grid
 SWRITE (*,*) "[MESH] Convert coordinates to visu grid (DG)"
@@ -85,30 +93,59 @@ CALL GetVandermonde(PP_N,NodeType,NVisu_FV,NodeTypeVISUFVEqui,Vdm_N_NVisu_FV,mod
 #endif
 ! convert coords of DG elements
 IF (Avg2D) THEN
-  SDEALLOCATE(CoordsVisu_DG)
-  ALLOCATE(CoordsVisu_DG(3,0:NVisu,0:NVisu,0:0,nElemsAvg2D_DG))
-#if FV_ENABLED
-  SDEALLOCATE(CoordsVisu_FV)
-  ALLOCATE(CoordsVisu_FV(3,0:NVisu_FV,0:NVisu_FV,0:0,nElemsAvg2D_FV))
+#if USE_MPI
+  ! For parallel averaging, the root will gather the whole mesh and convert the first layer to the
+  ! visu grid.
+  ! For the gather operation, we need to know the number of DOFs per processor
+  DO iProc = 0, nProcessors-1
+    nDOFPerProc(iProc) = (offsetElemMPI(iProc+1) - offsetElemMPI(iProc)) * 3*(PP_N+1)**(PP_dim)
+  END DO ! iProc = 1, nProcessors
+  IF (MPIRoot) THEN
+    ! On the root, we need the recieve array and the offset for each proc
+    ALLOCATE(Elem_xGP_glob(1:3,0:PP_N,0:PP_N,0:PP_NZ,nGlobalElems))
+    DO iProc = 0, nProcessors-1
+      offsetDOF(iProc) = offsetElemMPI(iProc) * 3*(PP_N+1)**(PP_dim)
+    END DO ! iProc = 1, nProcessors
+  END IF
+  CALL MPI_GATHERV(Elem_xGP,nDOFPerProc(myRank),MPI_DOUBLE_PRECISION,&
+                   Elem_xGP_glob,nDOFPerProc,offsetDOF,MPI_DOUBLE_PRECISION,0,MPI_COMM_FLEXI,iError)
 #endif
-  DO iElem = 1,nElems
-    ii = Elem_IJK(1,iElem)
-    jj = Elem_IJK(2,iElem)
-    kk = Elem_IJK(3,iElem)
-    IF (kk.EQ.1) THEN
+
+  IF (MPIRoot) THEN
+    SDEALLOCATE(CoordsVisu_DG)
+    ALLOCATE(CoordsVisu_DG(3,0:NVisu,0:NVisu,0:0,nElemsAvg2D_DG))
 #if FV_ENABLED
-      IF (FVAmountAvg2D(ii,jj).LE.0.5) THEN ! DG
+    SDEALLOCATE(CoordsVisu_FV)
+    ALLOCATE(CoordsVisu_FV(3,0:NVisu_FV,0:NVisu_FV,0:0,nElemsAvg2D_FV))
 #endif
-        iElemAvg = mapElemIJToDGElemAvg2D(ii,jj)
-        CALL ChangeBasis2D(3,PP_N,NVisu,Vdm_N_NVisu,Elem_xGP(:,:,:,0,iElem),CoordsVisu_DG(:,:,:,0,iElemAvg))
-#if FV_ENABLED
-      ELSE ! FV
-        iElemAvg = mapElemIJToFVElemAvg2D(ii,jj)
-        CALL ChangeBasis2D(3,PP_N,NVisu_FV,Vdm_N_NVisu_FV,Elem_xGP(:,:,:,0,iElem),CoordsVisu_FV(:,:,:,0,iElemAvg))
+    DO iElem = 1,nGlobalElems
+      ii = Elem_IJK_glob(1,iElem)
+      jj = Elem_IJK_glob(2,iElem)
+      kk = Elem_IJK_glob(3,iElem)
+      IF (kk.EQ.1) THEN
+#if FV_ENABLED    
+        IF (FVAmountAvg2D(ii,jj).LE.0.5) THEN ! DG
+#endif
+          iElemAvg = mapElemIJToDGElemAvg2D(ii,jj)
+          CALL ChangeBasis2D(3,PP_N,NVisu,Vdm_N_NVisu,Elem_xGP_glob(:,:,:,0,iElem),CoordsVisu_DG(:,:,:,0,iElemAvg))
+#if FV_ENABLED    
+        ELSE ! FV
+          iElemAvg = mapElemIJToFVElemAvg2D(ii,jj)
+          CALL ChangeBasis2D(3,PP_N,NVisu_FV,Vdm_N_NVisu_FV,Elem_xGP_glob(:,:,:,0,iElem),CoordsVisu_FV(:,:,:,0,iElemAvg))
+        END IF
+#endif
       END IF
+    END DO
+    DEALLOCATE(Elem_xGP_glob)
+  ELSE ! MPIRoot
+    ! All other procs will have 0 average elements
+    SDEALLOCATE(CoordsVisu_DG)
+    ALLOCATE(CoordsVisu_DG(3,0:NVisu,0:NVisu,0:0,nElemsAvg2D_DG))
+#if FV_ENABLED
+    SDEALLOCATE(CoordsVisu_FV)
+    ALLOCATE(CoordsVisu_FV(3,0:NVisu_FV,0:NVisu_FV,0:0,nElemsAvg2D_FV))
 #endif
-    END IF
-  END DO
+  END IF ! MPIRoot
 ELSE
   SDEALLOCATE(CoordsVisu_DG)
   ALLOCATE(CoordsVisu_DG(3,0:NVisu,0:NVisu,0:ZDIM(NVisu),nElems_DG))

@@ -152,14 +152,16 @@ INTEGER,ALLOCATABLE,TARGET            :: nodeidsSurf_FV(:)            !< nodeIDs
 ! ==============================================================================================================================
 ! Avg2D
 ! ==============================================================================================================================
-INTEGER,ALLOCATABLE               :: Elem_IJK(:,:)
-INTEGER                           :: nElems_IJK(3)
-REAL,ALLOCATABLE                  :: FVAmountAvg2D(:,:)          ! averaged FV_elems in z-direction at i,j-th element
-INTEGER                           :: nElemsAvg2D_DG
-INTEGER                           :: nElemsAvg2D_FV
-INTEGER,ALLOCATABLE               :: mapElemIJToDGElemAvg2D(:,:) ! maps i,j element index to Avg2D DG element index
-INTEGER,ALLOCATABLE               :: mapElemIJToFVElemAvg2D(:,:) ! maps i,j element index to Avg2D FV element index
+INTEGER,ALLOCATABLE               :: Elem_IJK(:,:)               !< IJK sorting of elements
+INTEGER,ALLOCATABLE               :: Elem_IJK_glob(:,:)          !< IJK sorting of global elements for parallel avgerage
+INTEGER                           :: nElems_IJK(3)               !< Number of elements in structured direction
+REAL,ALLOCATABLE                  :: FVAmountAvg2D(:,:)          !< averaged FV_elems in z-direction at i,j-th element
+INTEGER                           :: nElemsAvg2D_DG              !< number of cells averaged as DG cells
+INTEGER                           :: nElemsAvg2D_FV              !< number of cells averaged as FV cells
+INTEGER,ALLOCATABLE               :: mapElemIJToDGElemAvg2D(:,:) !< maps i,j element index to Avg2D DG element index
+INTEGER,ALLOCATABLE               :: mapElemIJToFVElemAvg2D(:,:) !< maps i,j element index to Avg2D FV element index
 
+!> Vandermonde matrixes to interpolate between DG <--> FV  and solution <--> visu grid
 REAL,ALLOCATABLE                  :: Vdm_DGToFV  (:,:)
 REAL,ALLOCATABLE                  :: Vdm_FVToDG  (:,:)
 REAL,ALLOCATABLE                  :: Vdm_DGToVisu(:,:)
