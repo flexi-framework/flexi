@@ -362,12 +362,12 @@ DO
       ! Write state file
       ! NOTE: this should be last in the series, so we know all previous data
       ! has been written correctly when the state file is present
+      tWriteData=MIN(tAnalyze+WriteData_dt,tEnd)
       CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,&
                             FutureTime=tWriteData,isErrorFile=.FALSE.)
       ! Visualize data
       CALL Visualize(t,U)
       writeCounter=0
-      tWriteData=MIN(tAnalyze+WriteData_dt,tEnd)
     END IF
 
     ! do analysis
