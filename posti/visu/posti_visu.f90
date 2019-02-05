@@ -35,7 +35,7 @@ USE MOD_StringTools           ,ONLY: STRICMP,GetFileExtension
 #if USE_MPI
 USE MOD_MPI                   ,ONLY:FinalizeMPI
 #endif
-impliCIT NONE
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: iArg, iVar
