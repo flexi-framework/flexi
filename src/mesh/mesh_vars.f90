@@ -83,6 +83,7 @@ INTEGER,ALLOCATABLE :: SideToElem(:,:)         !< Array containing per-side conn
                                                !< NB_ElemID   = SideToElem(S2E_NB_ELEM_ID,SideID)
                                                !< locSideID   = SideToElem(S2E_LOC_SIDE_ID,SideID)
                                                !< nblocSideID = SideToElem(S2E_NB_LOC_SIDE_ID,SideID)
+                                               !< flip        = SideToElem(S2E_Flip,SideID)
 
 INTEGER,ALLOCATABLE :: BC(:)                   !< BCIndex   = BC(SideID), 1:nBCSides
 
