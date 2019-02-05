@@ -598,6 +598,18 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
     CALL ConvertToVisu_GenericData(statefile)
   END IF
 
+#if USE_MPI
+   IF ((.NOT.MPIRoot).AND.(Avg2d)) THEN
+     ! For parallel averaging, all data is gathered on the root. Disable output for other procs.
+     nElemsAvg2D_DG = 0
+     nElemsAvg2D_FV = 0
+     SDEALLOCATE(UVisu_DG)
+     SDEALLOCATE(UVisu_FV)
+     ALLOCATE(UVisu_DG(0:NVisu   ,0:NVisu   ,0:0,nElemsAvg2D_DG,nVarVisu))
+     ALLOCATE(UVisu_FV(0:NVisu_FV,0:NVisu_FV,0:0,nElemsAvg2D_FV,nVarVisu))
+   END IF
+#endif
+
 
   ! Convert coordinates to visu grid
   IF (changedMeshFile.OR.changedNVisu.OR.changedFV_Elems.OR.changedDGonly.OR.changedAvg2D) THEN
