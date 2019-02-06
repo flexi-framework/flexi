@@ -1,18 +1,18 @@
 ## Flow around a cylinder
 
 In this tutorial, the simulation around a two-dimensional circular cylinder at $Re_D=200$ and
-$Ma=0.2$ is considered. Aim of this tutorial is to introduce the usage of a new
+$Ma=0.2$ is considered. The goal of this tutorial is to introduce the usage of a new
 functionality of the **posti_visualizerecordpoints** tool and the new tool **posti_dmd**.
 
 ### Compiler options
         
-Make sure that **FLEXI** is compiled with the cmake options listed in the following table.
+Make sure that **FLEXI** is compiled with the CMake options listed in the following table.
 
 
 | Option                             | Value         | Comment      |
 | -----------------------------------|:-------------:| ------------:|
 | CMAKE_BUILD_TYPE                   | Release       |              |
-| FLEXI_2D                           | OFF/ON        |              |
+| FLEXI_2D                           | ON            |              |
 | FLEXI_EQYNSYSNAME                  | navierstokes  |              |
 | FLEXI_PARABOLIC                    | ON            |              |
 | FLEXI_MPI                          | ON            |  optional    |
@@ -21,7 +21,7 @@ Make sure that **FLEXI** is compiled with the cmake options listed in the follow
 
 Table: Cmake options for the cylinder simulation. \label{tab:cylinder_cmakeoptions}
 
-To check whether they are set, change to your ``build`` folder and open the cmake GUI 
+To check whether they are set, change to your ``build`` folder and open the CMake GUI 
 
 ~~~~~~~~~~~
 ccmake [flexi root directory]
@@ -54,7 +54,7 @@ $$Ma=1/\sqrt{\kappa p/\rho}=0.2$$
 
 Note that in this non-dimensional setup the mesh is scaled such that the reference length is unity, i.e. $D=1$. Then to arrive at $Re=\rho u D / \mu = 200$, the viscosity is set to
 
-$$ \mu = \rho u C / Re = 1/Re = 0.005 $$
+$$ \mu = \rho u D / Re = 1/Re = 0.005 $$
 
 
 | Property                        | Variable      | Value       |
@@ -70,7 +70,7 @@ Table: Material properties set in the parameter file \label{tab:cylinder_materia
 
 The DG solution on the mesh is represented by piecewise polynomials and the polynomial degree in this tutorial is chosen as $N=4$.
 
-The main code settings are displayed in table \ref{tab:cylinder_num_set}. 
+The main code settings are shown in table \ref{tab:cylinder_num_set}. 
 
 
 | Variable        | Description                            | Value         |
@@ -87,14 +87,12 @@ Table: Numerical settings \label{tab:cylinder_num_set}
 
 ### Boundary conditions
 
-The boundary conditions were already set in the mesh file by **HOPR**. Thus, the simulation runs without specifying the boundary conditions in the **FLEXI** parameter file. The freestream boundaries of the mesh are Dirichlet boundaries using the same state as the initialization, the wall is modeled as adiabatic wall. The boundary conditions in $z$ direction are not relevant for this 2D example and are realized as periodic boundaries. All boundary conditions used are listed below.  
+The boundary conditions were already set in the mesh file by **HOPR**. Thus, the simulation runs without specifying the boundary conditions in the **FLEXI** parameter file. The freestream boundaries of the mesh are Dirichlet boundaries using the same state as the initialization, the wall is modeled as an adiabatic wall. The boundary conditions in $z$ direction are not relevant for this 2D example, but would be realized as periodic boundaries for a 3D simulation. All boundary conditions used are listed below.  
 
 ~~~~~~~
          Name      Type     State     Alpha
    BC_cylinder         3         0         0
    BC_farfield         2         0         0
- BC_periodicZ-         1         0         1
- BC_periodicZ+         1         0        -1
 ~~~~~~~
 
 
@@ -110,7 +108,7 @@ shedding, thus the simulation can take up to one to two hours.
 
 ### Evaluation of Strouhal number
 
-The Strouhal number is estimated using the forces acting on the cylinder induced by the vortex shedding. The forces are calculated on the fly during runtime. The associated flags in the parameter file are
+The Strouhal number (which is a non-dimensional frequency, $Sr=\frac{f \cdot D}{u}$, describing the oscillatory motion of the flow) is estimated using the forces acting on the cylinder induced by the vortex shedding. The forces are calculated on the fly during runtime. The associated flags in the parameter file are
 
 ~~~~~~~~~~~~
 CalcBodyForces=T
@@ -143,9 +141,9 @@ posti_visualizerecordpoints parameter_visualizeRecordpoints.ini Cylinder_Re200_R
 After executing the tool, you will get a file named
 **Cylinder_RP_BLProps_upperSide_BLPla000001.vts**
 which can be visualized with
-paraview. The Data we want to visualize is one dimensional, so you won't be able
-to see the datae in the render view. To visualize it you need the applay the
-plot over time filter. Paraview should automatically apply the correct range to
+ParaView. The Data we want to visualize is one dimensional, so you won't be able
+to see the data in the render view. To visualize it you need the apply the
+plot over time filter. ParaView should automatically apply the correct range to
 plot on. By plotting  **tau_w** over the circumference you can estimate the separation
 angle to $113~deg$ (the intersection with the $y=0$ line).
 
