@@ -67,8 +67,12 @@ INTERFACE
   END SUBROUTINE copy_userblock
 END INTERFACE
 
+INTERFACE GenerateFileSkeleton
+  MODULE PROCEDURE GenerateFileSkeleton
+END INTERFACE
 
-PUBLIC :: WriteState,FlushFiles,WriteHeader,WriteTimeAverage,WriteBaseflow
+
+PUBLIC :: WriteState,FlushFiles,WriteHeader,WriteTimeAverage,WriteBaseflow,GenerateFileSkeleton
 PUBLIC :: WriteArray,WriteAttribute,GatheredWriteArray,WriteAdditionalElemData,MarkWriteSuccessfull
 !==================================================================================================================================
 
