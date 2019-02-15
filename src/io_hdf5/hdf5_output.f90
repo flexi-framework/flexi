@@ -205,6 +205,12 @@ IF(MPIRoot)THEN
   GETTIME(EndT)
   WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',EndT-StartT,'s]'
 END IF
+
+#if USE_MPI
+! Since we are going to abort directly after this wenn an error state is written, make sure that all processors are finished
+! with everything or we might end up with a non-valid error state file
+IF (isErrorFile) CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
+#endif
 END SUBROUTINE WriteState
 
 
