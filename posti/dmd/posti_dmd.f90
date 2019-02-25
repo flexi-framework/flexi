@@ -106,7 +106,7 @@ CALL InitDMD()
 CALL InitMPIvars()
 #endif
 
-#ifdef MPI
+#if USE_MPI
 nTotalNew=REAL(nVar_HDF5*(N+1)**3*nElems)
 !limit=(2**31-1)/8.
 limit=2**28-1/8. ! max. 32 bit integer / 8
