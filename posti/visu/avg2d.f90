@@ -500,9 +500,6 @@ DO iVar=1,nVarAll
     StrVarNames(iVarVisu) = VarnamesAll(iVar)
   END IF
 END DO ! iVar=1,nVarAll
-#if USE_MPI
-CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
-#endif
 
 
 !================= Create and prepare HDF5 file =======================!
@@ -537,9 +534,6 @@ IF (MPIRoot) THEN
 END IF
 
 !================= Actual data output =======================!
-#if USE_MPI
-CALL MPI_BARRIER(MPI_COMM_FLEXI,iError)
-#endif
 CALL GatheredWriteArray(TRIM(FileName),create=.FALSE.,&
                         DataSetName='DG_Solution', rank=5,&
                         nValGlobal=(/nVar,NVisu+1,NVisu+1,NVisu+1,nGlobalElems/),&
