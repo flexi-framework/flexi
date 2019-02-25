@@ -117,7 +117,7 @@ CALL InitSwapmesh()
 CALL InitMPIvars()
 #endif
 
-#ifdef MPI
+#if USE_MPI
 nTotalNew=REAL(nVar_HDF5*(NNew+1)**3*nElemsNew)
 nTotalOld=REAL(nVar_HDF5*(NOld+1)**3*nElemsOld)
 !limit=(2**31-1)/8.
