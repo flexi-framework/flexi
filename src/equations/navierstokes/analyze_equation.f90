@@ -214,6 +214,7 @@ IF(MPIRoot.AND.doCalcBodyforces)THEN
   WRITE(formatStr,'(A,I2,A)')'(A',maxlen,',6ES18.9)'
   DO i=1,nBCs
     IF(.NOT.isWall(i)) CYCLE
+    IF(.NOT.hasAnalyzeSides(i)) CYCLE
     IF (doWriteBodyForces) &
       CALL OutputToFile(FileName_BodyForce(i),(/Time/),(/9,1/),(/BodyForce(:,i),Fp(:,i),Fv(:,i)/))
     WRITE(UNIT_StdOut,formatStr) ' '//TRIM(BoundaryName(i)),Fp(:,i),Fv(:,i)
@@ -224,6 +225,7 @@ IF(MPIRoot.AND.doCalcWallVelocity)THEN
   WRITE(formatStr,'(A,I2,A)')'(A',maxlen,',3ES18.9)'
   DO i=1,nBCs
     IF(.NOT.isWall(i)) CYCLE
+    IF(.NOT.hasAnalyzeSides(i)) CYCLE
     IF (doWriteWallVelocity) &
       CALL OutputToFile(FileName_WallVel(i),(/Time/),(/3,1/),(/meanV(i),minV(i),maxV(i)/))
     WRITE(UNIT_StdOut,formatStr) ' '//TRIM(BoundaryName(i)),meanV(i),minV(i),maxV(i)
@@ -235,6 +237,7 @@ IF(MPIRoot.AND.doCalcMeanFlux)THEN
   WRITE(UNIT_StdOut,*)'MeanFlux through boundaries     : '
   DO i=1,nBCs
     IF((BoundaryType(i,BC_TYPE).EQ.1).AND.(BoundaryType(i,BC_ALPHA).LE.0)) CYCLE
+    IF(.NOT.hasAnalyzeSides(i)) CYCLE
     IF (doWriteMeanFlux) &
       CALL OutputToFile(FileName_MeanFlux(i),(/Time/),(/PP_nVar,1/),MeanFlux(:,i))
     WRITE(UNIT_StdOut,formatStr) ' '//TRIM(BoundaryName(i)),MeanFlux(:,i)
@@ -255,6 +258,7 @@ IF(MPIRoot.AND.doCalcTotalStates)THEN
   WRITE(formatStr,'(A,I2,A)')'(A',maxlen,',4ES18.9)'
   DO i=1,nBCs
     IF(BoundaryType(i,BC_TYPE).EQ.1) CYCLE
+    IF(.NOT.hasAnalyzeSides(i)) CYCLE
     IF (doWriteTotalStates) &
       CALL OutputToFile(FileName_TotalStates(i),(/Time/),(/4,1/),meanTotals(:,i) )
     WRITE(UNIT_StdOut,formatStr) ' '//TRIM(BoundaryName(i)),MeanTotals(:,i)
@@ -344,7 +348,7 @@ USE MOD_Globals
 USE MOD_DG_Vars,           ONLY: U_master
 USE MOD_Mesh_Vars,         ONLY: SurfElem
 USE MOD_Mesh_Vars,         ONLY: nBCSides,BC,BoundaryType,nBCs
-USE MOD_Analyze_Vars,      ONLY: wGPSurf,Surf
+USE MOD_Analyze_Vars,      ONLY: wGPSurf,Surf,hasAnalyzeSides
 USE MOD_EOS_Vars,          ONLY: Kappa,R,sKappaM1,KappaM1
 #if FV_ENABLED
 USE MOD_FV_Vars,           ONLY: FV_Elems_master,FV_w
@@ -436,6 +440,7 @@ IF(.NOT.MPIRoot) RETURN
 
 DO iBC=1,nBCs
   IF(Boundarytype(iBC,BC_TYPE) .EQ. 1) CYCLE
+  IF(.NOT.hasAnalyzeSides(iBC)) CYCLE
   MeanTotals(:,iBC)=MeanTotals(:,iBC)/Surf(iBC)
 END DO
 END SUBROUTINE CalcKessel
@@ -451,7 +456,7 @@ USE MOD_Globals
 USE MOD_DG_Vars,              ONLY: UPrim_master
 USE MOD_Mesh_Vars,            ONLY: SurfElem
 USE MOD_Mesh_Vars,            ONLY: nBCSides,BC,nBCs
-USE MOD_Analyze_Vars,         ONLY: wGPSurf,Surf
+USE MOD_Analyze_Vars,         ONLY: wGPSurf,Surf,hasAnalyzeSides
 USE MOD_AnalyzeEquation_Vars, ONLY: isWall
 #if FV_ENABLED
 USE MOD_FV_Vars,              ONLY: FV_Elems_master,FV_w
@@ -511,7 +516,8 @@ END IF
 #endif
 DO iBC=1,nBCs
   IF(.NOT.isWall(iBC)) CYCLE
-    MeanV(iBC)=MeanV(iBC)/Surf(iBC)
+  IF(.NOT.hasAnalyzeSides(iBC)) CYCLE
+  MeanV(iBC)=MeanV(iBC)/Surf(iBC)
 END DO
 
 END SUBROUTINE CalcWallVelocity
@@ -525,7 +531,7 @@ SUBROUTINE CalcMeanFlux(MeanFlux)
 USE MOD_Preproc
 USE MOD_Globals
 USE MOD_DG_Vars,           ONLY: Flux_master
-USE MOD_Analyze_Vars,      ONLY: wGPSurf,Surf
+USE MOD_Analyze_Vars,      ONLY: wGPSurf,Surf,hasAnalyzeSides
 USE MOD_Mesh_Vars,         ONLY: nSides,nMPISides_YOUR,AnalyzeSide,nBCs,BoundaryType
 #if FV_ENABLED
 USE MOD_FV_Vars,           ONLY: FV_Elems_master,FV_w
@@ -576,6 +582,7 @@ END IF
 
 DO i=1,nBCs
   IF((BoundaryType(i,BC_TYPE).EQ.1).AND.(BoundaryType(i,BC_ALPHA).LT.0)) CYCLE
+  IF(.NOT.hasAnalyzeSides(i)) CYCLE
   MeanFlux(:,i)=MeanFlux(:,i)/Surf(i)
 END DO
 

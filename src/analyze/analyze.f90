@@ -162,9 +162,12 @@ Vol=SUM(ElemVol)
 ! compute surface of each boundary
 ALLOCATE(Surf(nBCs))
 Surf=0.
+ALLOCATE(hasAnalyzeSides(nBCs))
+hasAnalyzeSides=.FALSE.
 DO iSide=1,nSides
   iSurf=AnalyzeSide(iSide)
   IF(iSurf.EQ.0) CYCLE
+  hasAnalyzeSides(iSurf)=.TRUE.
   DO j=0,PP_NZ; DO i=0,PP_N
     Surf(iSurf)=Surf(iSurf)+wGPSurf(i,j)*SurfElem(i,j,0,iSide)
   END DO; END DO
