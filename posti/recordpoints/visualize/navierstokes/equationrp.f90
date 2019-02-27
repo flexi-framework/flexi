@@ -35,12 +35,19 @@ INTERFACE Plane_BLProps
   MODULE PROCEDURE Plane_BLProps
 END INTERFACE
 
+INTERFACE Line_TransformVel
+  MODULE PROCEDURE Line_TransformVel
+END INTERFACE
+
+INTERFACE Plane_TransformVel
+  MODULE PROCEDURE Plane_TransformVel
+END INTERFACE
 
 INTERFACE FinalizeEquationRP
   MODULE PROCEDURE FinalizeEquationRP
 END INTERFACE
 
-PUBLIC::InitEquationRP,CalcEquationRP,Plane_BLProps,FinalizeEquationRP
+PUBLIC::InitEquationRP,CalcEquationRP,Plane_BLProps,Line_TransformVel,Plane_TransformVel,FinalizeEquationRP
 !===================================================================================================================================
 
 CONTAINS
@@ -238,9 +245,9 @@ END IF
 
 ! Coordinate Transform
 IF(Line_LocalVel) &
-  CALL Line_TransformVel()
+  CALL Line_TransformVel(RPData_out,nSamples_out)
 IF(Plane_LocalVel) &
-  CALL Plane_TransformVel()
+  CALL Plane_TransformVel(RPData_out,nSamples_out)
 
 WRITE(UNIT_stdOut,'(A)')" CONVERT DERIVED QUANTITIES DONE!"
 END SUBROUTINE CalcEquationRP
@@ -250,16 +257,18 @@ END SUBROUTINE CalcEquationRP
 !===================================================================================================================================
 !> This routine transformes velocities to the line-local coordinate system
 !===================================================================================================================================
-SUBROUTINE Line_TransformVel()
+SUBROUTINE Line_TransformVel(RPData,nSamples)
 ! MODULES
 USE MOD_Globals
-USE MOD_OutputRPVisu_Vars  ,ONLY: RPData_out,nSamples_out
-USE MOD_RPSetVisuVisu_Vars ,ONLY: nLines,Lines,tLine
+USE MOD_ParametersVisu     ,ONLY: nVarVisu
+USE MOD_RPSetVisuVisu_Vars ,ONLY: nLines,Lines,tLine,nRP_global
 USE MOD_EquationRP_Vars    ,ONLY: nVecTrans,TransMap
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
+REAL,   INTENT(INOUT)      :: RPData(nVarVisu,nRP_global,nSamples)
+INTEGER,INTENT(IN)         :: nSamples
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER             :: iLine,iRP,iSample,iVec
@@ -269,10 +278,10 @@ WRITE(UNIT_stdOut,'(A)')" coordinate transform of velocity along lines.."
 DO iLine=1,nLines
   aLine=>Lines(iLine)
   DO iRP=1,aLine%nRP
-    DO iSample=1,nSamples_out
+    DO iSample=1,nSamples
       DO iVec=1,nVecTrans
-        RPData_out(TransMap(1:3,iVec),aLine%IDlist(iRP),iSample)=&
-           MATMUL(aLine%Tmat,RPData_out(TransMap(1:3,iVec),aLine%IDlist(iRP),iSample))
+        RPData(TransMap(1:3,iVec),aLine%IDlist(iRP),iSample)=&
+           MATMUL(aLine%Tmat,RPData(TransMap(1:3,iVec),aLine%IDlist(iRP),iSample))
       END DO
     END DO !iSample
   END DO !iRP
@@ -284,17 +293,19 @@ END SUBROUTINE Line_TransformVel
 !===================================================================================================================================
 !> This routine transformes velocities to the plane-local coordinate system
 !===================================================================================================================================
-SUBROUTINE Plane_TransformVel()
+SUBROUTINE Plane_TransformVel(RPData,nSamples)
 ! MODULES
 USE MOD_Globals
 USE MOD_Mathtools          ,ONLY:CROSS
-USE MOD_OutputRPVisu_Vars  ,ONLY:nSamples_out,RPData_out
-USE MOD_RPSetVisuVisu_Vars ,ONLY:nPlanes,Planes,tPlane
+USE MOD_ParametersVisu     ,ONLY:nVarVisu
+USE MOD_RPSetVisuVisu_Vars ,ONLY:nPlanes,Planes,tPlane,nRP_global
 USE MOD_EquationRP_Vars    ,ONLY:nVecTrans,TransMap,is2D
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
+REAL,   INTENT(INOUT)      :: RPData(nVarVisu,nRP_global,nSamples)
+INTEGER,INTENT(IN)         :: nSamples
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER              :: iPlane,i,j,iSample,iVec
@@ -316,16 +327,16 @@ DO iPlane=1,nPlanes
       DO iVec=1,nVecTrans
         IF(.NOT.is2D(iVec))THEN
           DO j=1,Plane%nRP(2)
-            DO iSample=1,nSamples_out
-              RPData_out(TransMap(1:3,iVec),Plane%IDlist(i,j),iSample)=&
-                 MATMUL(Tmat,RPData_out(TransMap(1:3,iVec),Plane%IDlist(i,j),iSample))
+            DO iSample=1,nSamples
+              RPData(TransMap(1:3,iVec),Plane%IDlist(i,j),iSample)=&
+                 MATMUL(Tmat,RPData(TransMap(1:3,iVec),Plane%IDlist(i,j),iSample))
             END DO !iSample
           END DO !j
         ELSE ! 2D case
           DO j=1,Plane%nRP(2)
-            DO iSample=1,nSamples_out
-              RPData_out(TransMap(1:2,iVec),Plane%IDlist(i,j),iSample)=&
-                 MATMUL(Tmat(1:2,1:2),RPData_out(TransMap(1:2,iVec),Plane%IDlist(i,j),iSample))
+            DO iSample=1,nSamples
+              RPData(TransMap(1:2,iVec),Plane%IDlist(i,j),iSample)=&
+                 MATMUL(Tmat(1:2,1:2),RPData(TransMap(1:2,iVec),Plane%IDlist(i,j),iSample))
             END DO !iSample
           END DO !j
         END IF !.NOT.is2D

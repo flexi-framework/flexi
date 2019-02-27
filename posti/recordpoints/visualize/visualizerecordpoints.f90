@@ -29,7 +29,7 @@ USE MOD_StringTools                 ,ONLY:STRICMP, GetFileExtension
 USE MOD_ReadInTools                 ,ONLY:prms,PrintDefaultParameterFile
 USE MOD_ParametersVisu              ,ONLY:equiTimeSpacing,doSpec,doFluctuations,doTurb,doFilter
 USE MOD_ParametersVisu              ,ONLY:Plane_doBLProps
-USE MOD_RPSetVisu                   ,ONLY:InitRPSet,FinalizeRPSet
+USE MOD_RPSetVisu                   ,ONLY:FinalizeRPSet
 USE MOD_RPData                      ,ONLY:ReadRPData,AssembleRPData,FinalizeRPData
 USE MOD_OutputRPVisu
 USE MOD_RPInterpolation
@@ -214,6 +214,8 @@ CALL prms%CreateRealOption   ('FilterWidth'        ,"Width of the temporal filte
 CALL prms%CreateIntOption    ('FilterMode'         ,"Set to 0 for low pass filter and to 1 for high pass filter")
 
 CALL prms%CreateRealOption   ('mu0'                ,"Kinematic viscosity, needed for turbulent quantities")
+
+CALL prms%CreateStringOption( 'TimeAvgFile'        ,"Optional file that contains the temporal averages that should be used")
 
 CALL prms%CreateIntOption    ('SkipSample'         ,"Used to skip every n-th RP evaluation")
 CALL prms%CreateIntOption    ('OutputFormat'       ,"Choose the main format for output. 0: ParaView, 2: HDF5")
