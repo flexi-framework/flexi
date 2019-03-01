@@ -118,8 +118,8 @@ CALL InitMPIvars()
 #endif
 
 #if USE_MPI
-nTotalNew=REAL(nVar_HDF5*(NNew+1)**3*nElemsNew)
-nTotalOld=REAL(nVar_HDF5*(NOld+1)**3*nElemsOld)
+nTotalNew=REAL(nVar_State*(NNew+1)**3*nElemsNew)
+nTotalOld=REAL(nVar_State*(NState+1)**3*nElemsOld)
 !limit=(2**31-1)/8.
 limit=2**28-1/8. ! max. 32 bit integer / 8
 IF((nTotalNew.GT.limit).OR.(nTotalNew.GT.limit))THEN
