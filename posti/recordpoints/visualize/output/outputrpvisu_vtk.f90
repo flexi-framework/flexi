@@ -364,19 +364,36 @@ CHARACTER(LEN=255),INTENT(IN) :: FileName                      !< First part of 
 !-----------------------------------------------------------------------------------------------------------------------------------
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                   :: iPoint,iLine,iPlane,i,j
-INTEGER                   :: GroupID
-CHARACTER(LEN=255)        :: GroupName
-TYPE(tLine),POINTER       :: Line
-TYPE(tPlane),POINTER      :: Plane
-REAL,ALLOCATABLE          :: PlaneData(:,:,:)
-REAL,ALLOCATABLE          :: PlaneCoord(:,:,:)
-TYPE(RPPoint)             :: RPPoints
-TYPE(RPLine),ALLOCATABLE  :: RPLines(:)
-TYPE(RPPlane),ALLOCATABLE :: RPPlanes(:)
-INTEGER                   :: nPointsOutput,nLinesOutput,nPlanesOutput
-INTEGER                   :: iPointsOutput,iLinesOutput,iPlanesOutput
+INTEGER                        :: iPoint,iLine,iPlane,i,j
+INTEGER                        :: GroupID
+CHARACTER(LEN=255)             :: GroupName
+TYPE(tLine),POINTER            :: Line
+TYPE(tPlane),POINTER           :: Plane
+REAL,ALLOCATABLE               :: PlaneData(:,:,:)
+REAL,ALLOCATABLE               :: PlaneCoord(:,:,:)
+TYPE(RPPoint)                  :: RPPoints
+TYPE(RPLine),ALLOCATABLE       :: RPLines(:)
+TYPE(RPPlane),ALLOCATABLE      :: RPPlanes(:)
+INTEGER                        :: nPointsOutput,nLinesOutput,nPlanesOutput
+INTEGER                        :: iPointsOutput,iLinesOutput,iPlanesOutput
+INTEGER                        :: nValLoc
+CHARACTER(LEN=255),ALLOCATABLE :: VarNamesLoc(:)
 !===================================================================================================================================
+! In case line or plane local coordinates are used, we add the physical coordinates to the output variables
+IF (Line_LocalCoords.OR.Plane_LocalCoords) THEN
+  nValLoc = nVal + 3
+  ALLOCATE(VarNamesLoc(nValLoc))
+  VarNamesLoc(1:nVal) = VarNames
+  VarNamesLoc(nVal+1) = 'GlobalCoordinateX'
+  VarNamesLoc(nVal+2) = 'GlobalCoordinateY'
+  VarNamesLoc(nVal+3) = 'GlobalCoordinateZ'
+ELSE
+  nValLoc = nVal
+  ALLOCATE(VarNamesLoc(nValLoc))
+  VarNamesLoc(1:nVal) = VarNames
+END IF
+
+
 ! Count the number of points, lines and planes for output. Allocate the data types used for the output.
 ! Points
 IF (OutputPoints) THEN
@@ -389,7 +406,7 @@ IF (OutputPoints) THEN
   RPPoints%nRPs = nPointsOutput
   IF (nPointsOutput.GT.0) THEN
     ALLOCATE(RPPoints%Coords(3   ,nPointsOutput))
-    ALLOCATE(RPPoints%Val(   nVal,nPointsOutput))
+    ALLOCATE(RPPoints%Val(nValLoc,nPointsOutput))
   END IF
 ELSE
   RPPoints%nRPs = 0
@@ -414,7 +431,7 @@ IF (OutputLines) THEN
     iLinesOutput = iLinesOutput + 1
     RPLines(iLinesOutput)%nRPs = Line%nRP
     ALLOCATE(RPLines(iLinesOutput)%Coords(3   ,Line%nRP))
-    ALLOCATE(RPLines(iLinesOutput)%Val(   nVal,Line%nRP))
+    ALLOCATE(RPLines(iLinesOutput)%Val(nValLoc,Line%nRP))
     IF (Line_LocalCoords) RPLines(iLinesOutput)%Coords(2:3,:) = 0.
   END DO ! iLine
 ELSE
@@ -439,7 +456,7 @@ IF (OutputPlanes) THEN
     iPlanesOutput = iPlanesOutput + 1
     RPPlanes(iPlanesOutput)%nRPs = Plane%nRP
     ALLOCATE(RPPlanes(iPlanesOutput)%Coords(3   ,Plane%nRP(1),Plane%nRP(2)))
-    ALLOCATE(RPPlanes(iPlanesOutput)%Val(   nVal,Plane%nRP(1),Plane%nRP(2)))
+    ALLOCATE(RPPlanes(iPlanesOutput)%Val(nValLoc,Plane%nRP(1),Plane%nRP(2)))
     IF (Plane_LocalCoords) RPPlanes(iPlanesOutput)%Coords(3,:,:) = 0.
   END DO ! iPlane
 ELSE
@@ -455,9 +472,10 @@ IF (OutputPoints) THEN
     IF(.NOT.OutputGroup(GroupID)) CYCLE
     iPointsOutput = iPointsOutput + 1
     ! coordinates
-    RPPoints%Coords(:,iPointsOutput) = xF_RP(:,Points_IDlist(iPoint))
+    RPPoints%Coords(:  ,iPointsOutput) = xF_RP(:,Points_IDlist(iPoint))
     ! values
-    RPPoints%Val(   :,iPointsOutput) = Value(:,Points_IDlist(iPoint))
+    RPPoints%Val(1:nVal,iPointsOutput) = Value(:,Points_IDlist(iPoint))
+    IF (Line_LocalCoords.OR.Plane_LocalCoords) RPPoints%Val(nVal+1:nVal+3,iPointsOutput) = 0.
   END DO
 END IF
 
@@ -470,12 +488,14 @@ IF (OutputLines) THEN
     iLinesOutput = iLinesOutput + 1
     ! coordinates
     IF (Line_LocalCoords) THEN
-      RPLines(iLinesOutput)%Coords(1,:) = Line%LocalCoord(:)
+      RPLines(iLinesOutput)%Coords(1,:)          = Line%LocalCoord(:)
+      RPLines(iLinesOutput)%Val(nVal+1:nVal+3,:) = xF_RP(:,Line%IDlist(:))
     ELSE
-      RPLines(iLinesOutput)%Coords(:,:) = xF_RP(:,Line%IDlist(:))
+      RPLines(iLinesOutput)%Coords(:,:)           = xF_RP(:,Line%IDlist(:))
+      RPLines(iLinesOutput)%Val(nVal+1:nValLoc,:) = 0.
     END IF
     ! values
-    RPLines(iLinesOutput)%Val(:,:) = Value(:,Line%IDlist(:))
+    RPLines(iLinesOutput)%Val(1:nVal,:) = Value(:,Line%IDlist(:))
     GroupName=GroupNames(Line%GroupID)
     RPPlanes(iLinesOutput)%name = TRIM(GroupName)//'_'//TRIM(Line%Name)
   END DO ! iLine
@@ -488,19 +508,19 @@ IF (OutputPlanes) THEN
     Plane=>Planes(iPlane)
     IF(.NOT.OutputGroup(Plane%GroupID)) CYCLE
     iPlanesOutput = iPlanesOutput + 1
-    ! coordinates
+    ! global xyz coordinates
+    ALLOCATE(PlaneCoord(3,Plane%nRP(1),Plane%nRP(2)))
+    DO j=1,Plane%nRP(2)
+      DO i=1,Plane%nRP(1)
+        PlaneCoord(:,i,j)=xF_RP(:,Plane%IDlist(i,j))
+      END DO ! i
+    END DO ! j
     IF (Plane_LocalCoords) THEN
-      RPPlanes(iPlanesOutput)%Coords(1:2,:,:) = Plane%LocalCoord(:,:,:)
+      RPPlanes(iPlanesOutput)%Coords(1:2,:,:)        = Plane%LocalCoord(:,:,:)
+      RPPlanes(iPlanesOutput)%Val(nVal+1:nVal+3,:,:) = PlaneCoord
     ELSE
-      ! global xyz coordinates
-      ALLOCATE(PlaneCoord(3,Plane%nRP(1),Plane%nRP(2)))
-      DO j=1,Plane%nRP(2)
-        DO i=1,Plane%nRP(1)
-          PlaneCoord(:,i,j)=xF_RP(:,Plane%IDlist(i,j))
-        END DO ! i
-      END DO ! j
-      RPPlanes(iPlanesOutput)%Coords(:,:,:) = PlaneCoord
-      DEALLOCATE(PlaneCoord)
+      RPPlanes(iPlanesOutput)%Coords(:,:,:)           = PlaneCoord
+      RPPlanes(iPlanesOutput)%Val(nVal+1:nValLoc,:,:) = 0.
     END IF
     ! values
     ALLOCATE(PlaneData(1:nVal,Plane%nRP(1),Plane%nRP(2)))
@@ -509,8 +529,9 @@ IF (OutputPlanes) THEN
         PlaneData(:,i,j)=Value(:,Plane%IDlist(i,j))
       END DO ! i
     END DO ! j
-    RPPlanes(iPlanesOutput)%Val(:,:,:) = PlaneData
+    RPPlanes(iPlanesOutput)%Val(1:nVal,:,:) = PlaneData
     DEALLOCATE(PlaneData)
+    DEALLOCATE(PlaneCoord)
     ! name
     GroupName=GroupNames(Plane%GroupID)
     RPPlanes(iPlanesOutput)%name = TRIM(GroupName)//'_'//TRIM(Plane%Name)
@@ -518,7 +539,7 @@ IF (OutputPlanes) THEN
 END IF
 
 ! Write to VTK
-CALL WriteStructuredDataToVTK(FileName,nLinesOutput,nPlanesOutput,RPPoints,RPLines,RPPlanes,.TRUE.,nVal,VarNames)
+CALL WriteStructuredDataToVTK(FileName,nLinesOutput,nPlanesOutput,RPPoints,RPLines,RPPlanes,.TRUE.,nValLoc,VarNamesLoc)
 
 WRITE(UNIT_stdOut,'(A)',ADVANCE='YES')"DONE"
 END SUBROUTINE WriteTimeAvgDataToVTK
@@ -533,7 +554,6 @@ SUBROUTINE WriteBLPropsToVTK(FileString)
 USE MOD_Globals
 USE MOD_VTKStructuredOutput
 USE MOD_EquationRP_Vars    ,ONLY: nBLProps,VarNames_BLProps
-USE MOD_ParametersVisu     ,ONLY: Plane_LocalCoords
 USE MOD_RPSetVisuVisu_Vars ,ONLY: GroupNames
 USE MOD_RPSetVisuVisu_Vars ,ONLY: nPlanes,Planes,tPlane
 USE MOD_RPSetVisuVisu_Vars ,ONLY: OutputGroup
@@ -552,8 +572,14 @@ TYPE(RPLine),ALLOCATABLE  :: RPLines(:)
 TYPE(RPPoint)             :: RPPoints
 INTEGER                   :: nPlanesOutput
 INTEGER                   :: iPlanesOutput
+CHARACTER(LEN=255)        :: VarNamesLoc(nBLProps+3)
 !===================================================================================================================================
 WRITE(UNIT_stdOut,'(A,A,A)')" WRITE BOUNDARY LAYER PROPERTY DATA TO VTU FILE '",TRIM(FileString),"'.vtu ..."
+
+VarNamesLoc(1:nBLProps) = VarNames_BLProps
+VarNamesLoc(nBLProps+1) = 'GlobalCoordinateX'
+VarNamesLoc(nBLProps+2) = 'GlobalCoordinateY'
+VarNamesLoc(nBLProps+3) = 'GlobalCoordinateZ'
 
 ! Count the number of boundary layer planes
 ! Planes
@@ -573,9 +599,9 @@ DO iPlane=1,nPlanes
   IF((.NOT.OutputGroup(Plane%GroupID)).OR.(Plane%Type.NE.2)) CYCLE
   iPlanesOutput = iPlanesOutput + 1
   RPLines(iPlanesOutput)%nRPs = Plane%nRP(1)
-  ALLOCATE(RPLines(iPlanesOutput)%Coords(3    ,Plane%nRP(1)))
-  ALLOCATE(RPLines(iPlanesOutput)%Val(nBLProps,Plane%nRP(1)))
-  IF (Plane_LocalCoords) RPLines(iPlanesOutput)%Coords(3,:) = 0.
+  ALLOCATE(RPLines(iPlanesOutput)%Coords(3      ,Plane%nRP(1)))
+  ALLOCATE(RPLines(iPlanesOutput)%Val(nBLProps+3,Plane%nRP(1)))
+  RPLines(iPlanesOutput)%Coords(3,:) = 0.
 END DO ! iPlane
 
 ! Collect the coordinates and values
@@ -586,16 +612,13 @@ DO iPlane=1,nPlanes
   IF((.NOT.OutputGroup(Plane%GroupID)).OR.(Plane%Type.NE.2)) CYCLE
   iPlanesOutput = iPlanesOutput + 1
   ! coordinates
-  IF (Plane_LocalCoords) THEN
-    RPLines(iPlanesOutput)%Coords(1:2,:) = Plane%LocalCoord(:,:,1)
-  ELSE
-    ! global xyz coordinates
-    DO i=1,Plane%nRP(1)
-      RPLines(iPlanesOutput)%Coords(:,i) = xF_RP(:,Plane%IDlist(i,1))
-    END DO ! i
-  END IF
+  RPLines(iPlanesOutput)%Coords(1:2,:) = Plane%LocalCoord(:,:,1)
+  ! global xyz coordinates
+  DO i=1,Plane%nRP(1)
+    RPLines(iPlanesOutput)%Val(nBLProps+1:nBLProps+3,i) = xF_RP(:,Plane%IDlist(i,1))
+  END DO ! i
   ! values
-  RPLines(iPlanesOutput)%Val(:,:) = Plane%BLProps(:,:)
+  RPLines(iPlanesOutput)%Val(1:nBLProps,:) = Plane%BLProps(:,:)
   ! name
   GroupName=GroupNames(Plane%GroupID)
   RPLines(iPlanesOutput)%name = TRIM(GroupName)//'_'//TRIM(Plane%Name)
@@ -604,7 +627,7 @@ END DO ! iPlane
 ! Write to VTK
 RPPoints%nRPs = 0
 ALLOCATE(RPPlanes(0))
-CALL WriteStructuredDataToVTK(FileString,nPlanesOutput,0,RPPoints,RPLines,RPPlanes,.TRUE.,nBLProps,VarNames_BLProps)
+CALL WriteStructuredDataToVTK(FileString,nPlanesOutput,0,RPPoints,RPLines,RPPlanes,.TRUE.,nBLProps+3,VarNamesLoc)
 
 WRITE(UNIT_stdOut,'(A)')"DONE"
 
