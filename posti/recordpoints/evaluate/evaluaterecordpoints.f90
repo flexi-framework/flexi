@@ -140,9 +140,7 @@ ELSE
   HSize_proc = INT(HSize)
   ! Try to get the names of the variables from the attributes of the file
   IF (STRICMP(TRIM(DataSetName),'DG_Solution')) THEN
-    WRITE(*,*) 'Hallo'
     CALL GetVarNames("VarNames",StrVarNames_loc,VarNamesExist)
-    WRITE(*,*) VarNamesExist
   ELSE
     CALL DatasetExists(File_ID,"VarNames_"//TRIM(DataSetName),varnames_found,attrib=.TRUE.)
     IF (varnames_found) THEN
