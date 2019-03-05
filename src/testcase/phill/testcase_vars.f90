@@ -23,7 +23,7 @@ SAVE
 ! REQUIRED VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 INTEGER :: nAnalyzeTestCase=9999999 !< call AnalyzeTestCase every *th time step. May be adjusted in parameter file
-LOGICAL :: doTCSource=.FALSE.       !< compute source terms for testcase
+LOGICAL :: doTCSource=.TRUE.        !< compute source terms for testcase
 CHARACTER(LEN=255) :: testcase = "phill"  !< name of testcase
 !----------------------------------------------------------------------------------------------------------------------------------
 ! TESTCASE VARIABLES
