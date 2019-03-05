@@ -108,6 +108,7 @@ USE MOD_ReadInTools,        ONLY: GETINT,GETREAL
 USE MOD_Output_Vars,        ONLY: ProjectName
 USE MOD_Equation_Vars,      ONLY: RefStatePrim,IniRefState
 USE MOD_EOS_Vars,           ONLY: kappa,mu0
+USE MOD_Output,             ONLY: InitOutputToFile
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -116,6 +117,7 @@ IMPLICIT NONE
 INTEGER                  :: ioUnit,openStat
 REAL                     :: c1
 REAL                     :: bulkMach,pressure
+CHARACTER(LEN=7)         :: varnames(2)
 !==================================================================================================================================
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT TESTCASE CHANNEL...'
@@ -149,22 +151,10 @@ dpdx = -1. ! Re_tau^2*rho*nu^2/delta^3
 IF(.NOT.MPIRoot) RETURN
 
 ALLOCATE(writeBuf(3,nWriteStats))
-Filename = TRIM(ProjectName)//'_Stats.dat'
-IF(.NOT.FILEEXISTS(Filename))THEN ! File exists and append data
-  OPEN(NEWUNIT= ioUnit       ,&
-       FILE   = Filename     ,&
-       STATUS = 'Unknown'    ,&
-       ACCESS = 'SEQUENTIAL' ,&
-       IOSTAT = openStat                 )
-  IF (openStat.NE.0) THEN
-    CALL abort(__STAMP__, &
-      'ERROR: cannot open '//TRIM(Filename))
-  END IF
-  WRITE(ioUnit,'(A)')'TITLE="Statistics,'//TRIM(ProjectName)//'"'
-  WRITE(ioUnit,'(A)')'VARIABLES = "t_sim" "dpdx" "bulkVel"'
-  WRITE(ioUnit,'(A)')'ZONE T="Statistics,'//TRIM(ProjectName)//'"'
-  CLOSE(ioUnit)
-END IF
+Filename = TRIM(ProjectName)//'_Stats'
+varnames(1) = 'dpdx'
+varnames(2) = 'bulkVel'
+CALL InitOutputToFile(Filename,'Statistics',2,varnames)
 
 SWRITE(UNIT_stdOut,'(A)')' INIT TESTCASE CHANNEL DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
@@ -300,6 +290,7 @@ SUBROUTINE WriteStats()
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
+USE MOD_Output,       ONLY:OutputToFile
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -307,21 +298,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                  :: ioUnit,openStat,i
 !==================================================================================================================================
-OPEN(NEWUNIT  = ioUnit     , &
-     FILE     = Filename   , &
-     FORM     = 'FORMATTED', &
-     STATUS   = 'OLD'      , &
-     POSITION = 'APPEND'   , &
-     RECL     = 50000      , &
-     IOSTAT = openStat       )
-IF(openStat.NE.0) THEN
-  CALL abort(__STAMP__, &
-    'ERROR: cannot open '//TRIM(Filename))
-END IF
-DO i=1,ioCounter
-  WRITE(ioUnit,'(3E23.14)') writeBuf(:,i)
-END DO
-CLOSE(ioUnit)
+CALL OutputToFile(FileName,writeBuf(1,1:ioCounter),(/2,ioCounter/),RESHAPE(writeBuf(2:3,1:ioCounter),(/2*ioCounter/)))
 ioCounter=0
 
 END SUBROUTINE WriteStats
