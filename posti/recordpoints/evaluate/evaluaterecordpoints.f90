@@ -179,7 +179,7 @@ CALL FinalizeOutput()
 CALL FinalizeParameters()
 CALL FinalizeCommandlineArguments()
 
-#ifdef MPI
+#if USE_MPI
 CALL MPI_FINALIZE(iError)
 IF(iError .NE. 0) &
   CALL abort(__STAMP__,'MPI finalize error',iError)
