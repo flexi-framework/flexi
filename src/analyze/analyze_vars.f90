@@ -34,7 +34,6 @@ INTEGER              :: totalFV_nElems
 REAL,ALLOCATABLE     :: wGPSurf(:,:)                      !< wGPSurf(i,j)=wGP(i)*wGP(j)
 REAL,ALLOCATABLE     :: wGPVol(:,:,:)                     !< wGPVol(i,j,k)=wGP(i)*wGP(j)*wGP(k)
 REAL,ALLOCATABLE     :: Surf(:)                           !< surface of each analyze set (e.g. of each boundary condition)
-LOGICAL,ALLOCATABLE  :: hasAnalyzeSides(:)                !< prevents division by Surf=0 for BCs with no sides (e.g. in 2D case)
 REAL,ALLOCATABLE     :: ElemVol(:)                        !< volume of each element
 REAL                 :: Vol                               !< volume of the domain
 ! Analyze features
