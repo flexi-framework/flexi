@@ -199,7 +199,7 @@ DO iSample=1,nSamples
       ! values
       RPLines(iLinesOutput)%Val(:,:) = Value(:,Line%IDlist(:),iSample)
       GroupName=GroupNames(Line%GroupID)
-      RPPlanes(iLinesOutput)%name = TRIM(GroupName)//'_'//TRIM(Line%Name)
+      RPLines(iLinesOutput)%name = TRIM(GroupName)//'_'//TRIM(Line%Name)
     END DO ! iLine
   END IF
 
@@ -477,7 +477,7 @@ IF (OutputLines) THEN
     ! values
     RPLines(iLinesOutput)%Val(:,:) = Value(:,Line%IDlist(:))
     GroupName=GroupNames(Line%GroupID)
-    RPPlanes(iLinesOutput)%name = TRIM(GroupName)//'_'//TRIM(Line%Name)
+    RPLines(iLinesOutput)%name = TRIM(GroupName)//'_'//TRIM(Line%Name)
   END DO ! iLine
 END IF
 
