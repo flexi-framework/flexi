@@ -56,6 +56,7 @@ LOGICAL                            :: isValid,userblockFound
 !===================================================================================================================================
 CALL SetStackSizeUnlimited()
 CALL InitMPI()
+CALL InitMPIInfo()
 CALL ParseCommandlineArguments()
 SWRITE(UNIT_stdOut,'(A)') " ||=============================||"
 SWRITE(UNIT_stdOut,'(A)') " || Recordpoints Evaluation Tool||"
