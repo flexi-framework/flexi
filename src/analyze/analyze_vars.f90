@@ -29,7 +29,7 @@ REAL                 :: WriteData_dt                      !< time intervall at w
 REAL                 :: tWriteData                        !< actual time at which next solution IO will be performed
 ! precomputed variables
 #if FV_ENABLED
-INTEGER              :: totalFV_nElems
+INTEGER              :: totalFV_nElems=0
 #endif
 REAL,ALLOCATABLE     :: wGPSurf(:,:)                      !< wGPSurf(i,j)=wGP(i)*wGP(j)
 REAL,ALLOCATABLE     :: wGPVol(:,:,:)                     !< wGPVol(i,j,k)=wGP(i)*wGP(j)*wGP(k)
