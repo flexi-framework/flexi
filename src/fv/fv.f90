@@ -80,18 +80,20 @@ USE MOD_FV_Limiter  ,ONLY: DefineParametersFV_Limiter
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection('FV')
-CALL prms%CreateRealOption(   'FV_IndUpperThreshold',"Upper threshold: Element is switched from DG to FV if indicator \n"//&
-                                                     "rises above this value" )
-CALL prms%CreateRealOption(   'FV_IndLowerThreshold',"Lower threshold: Element is switched from FV to DG if indicator \n"//&
-                                                     "falls below this value")
-CALL prms%CreateLogicalOption('FV_toDG_indicator'   ,"Apply additional Persson indicator to check if DG solution after switch \n"//&
-                                                     "from FV to DG is valid.", '.FALSE.')
-CALL prms%CreateRealOption   ('FV_toDG_limit'       ,"Threshold for FV_toDG_indicator")
-CALL prms%CreateLogicalOption('FV_toDGinRK'         ,"Allow switching of FV elements to DG during Runge Kutta stages. \n"//&
-                                                     "This may violated the DG timestep restriction of the element.", '.FALSE.')
-CALL prms%CreateLogicalOption('FV_IniSupersample'   ,"Supersample initial solution inside each sub-cell and take mean value \n"// &
-                                                     "as average sub-cell value.", '.TRUE.')
-CALL prms%CreateLogicalOption('FV_IniSharp'         ,"Maintain a sharp interface in the initial solution in the FV region", '.FALSE.')
+CALL prms%CreateRealOption(   'FV_IndUpperThreshold' ,"Upper threshold: Element is switched from DG to FV if indicator \n"//&
+                                                      "rises above this value" )
+CALL prms%CreateRealOption(   'FV_IndLowerThreshold' ,"Lower threshold: Element is switched from FV to DG if indicator \n"//&
+                                                      "falls below this value")
+CALL prms%CreateLogicalOption('FV_toDG_indicator'    ,"Apply additional Persson indicator to check if DG solution after switch \n&
+                                                      & from FV to DG is valid.", '.FALSE.')
+CALL prms%CreateRealOption   ('FV_toDG_limit'        ,"Threshold for FV_toDG_indicator")
+CALL prms%CreateLogicalOption('FV_toDGinRK'          ,"Allow switching of FV elements to DG during Runge Kutta stages. \n"//&
+                                                      "This may violated the DG timestep restriction of the element.", '.FALSE.')
+CALL prms%CreateLogicalOption('FV_IniSupersample'    ,"Supersample initial solution inside each sub-cell and take mean value \n&
+                                                      & as average sub-cell value.", '.TRUE.')
+CALL prms%CreateLogicalOption('FV_IniSharp'          ,"Maintain a sharp interface in the initial solution in the FV region",&
+                                                      '.FALSE.')
+CALL prms%CreateLogicalOption('FV_SwitchConservative',"Perform FV/DG switch in reference element", '.TRUE.')
 #if FV_RECONSTRUCT
 CALL DefineParametersFV_Limiter()
 #endif
@@ -144,6 +146,9 @@ IF (FV_toDG_indicator) FV_toDG_limit = GETREAL('FV_toDG_limit')
 ! Read flag, which allows switching from FV to DG between the stages of a Runge-Kutta time step
 ! (this might lead to instabilities, since the time step for a DG element is smaller)
 FV_toDGinRK = GETLOGICAL("FV_toDGinRK")
+
+! Read flag, which allows to perform the switching from FV to DG in the reference element
+switchConservative = GETLOGICAL("FV_SwitchConservative")
 
 #if FV_RECONSTRUCT
 CALL InitFV_Limiter()
@@ -234,7 +239,8 @@ SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitFV
 
 !==================================================================================================================================
-!> Performe switching between DG element and FV sub-cells element (and vise versa) depending on the indicator value
+!> Performe switching between DG element and FV sub-cells element (and vise versa) depending on the indicator value.
+!> Optionally, the switching process can be done in the reference element to guarantee conservation on non-cartesian elements.
 !==================================================================================================================================
 SUBROUTINE FV_Switch(U,U2,U3,AllowToDG)
 ! MODULES
@@ -244,7 +250,7 @@ USE MOD_Indicator_Vars  ,ONLY: IndValue
 USE MOD_Indicator       ,ONLY: IndPersson
 USE MOD_FV_Vars
 USE MOD_Analyze
-USE MOD_Mesh_Vars       ,ONLY: nElems, SideToElem, nSides
+USE MOD_Mesh_Vars       ,ONLY: nElems, SideToElem, nSides, sJ
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -257,8 +263,11 @@ LOGICAL,INTENT(IN)          :: AllowToDG                                  !< if 
 ! LOCAL VARIABLES
 REAL    :: U_DG(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 REAL    :: U_FV(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
+REAL    :: JU_DG(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
+REAL    :: JU_FV(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 REAL    :: ind
 INTEGER :: iElem, iSide, ElemID, nbElemID
+INTEGER :: i,j,k
 !==================================================================================================================================
 DO iElem=1,nElems
   IF (FV_Elems(iElem).EQ.0) THEN ! DG Element
@@ -266,21 +275,65 @@ DO iElem=1,nElems
     IF (IndValue(iElem).GT.FV_IndUpperThreshold) THEN
       ! switch Element to FV
       FV_Elems(iElem) = 1
-      CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,U(:,:,:,:,iElem),U_FV)
+      IF (switchConservative) THEN
+        ! Transform the DG solution into the reference element, perform the switch to FV, then transform back to physical space
+        DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+          JU_DG(:,i,j,k)=U(:,i,j,k,iElem)/sJ(i,j,k,iElem,0)
+        END DO; END DO; END DO
+        CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,JU_DG,JU_FV)
+        DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+          U_FV(:,i,j,k)=JU_FV(:,i,j,k)*sJ(i,j,k,iElem,1)
+        END DO; END DO; END DO
+      ELSE
+        CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,U(:,:,:,:,iElem),U_FV)
+      END IF
       U(:,:,:,:,iElem) = U_FV
       IF (PRESENT(U2)) THEN
-        CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,U2(:,:,:,:,iElem),U_FV)
+        IF (switchConservative) THEN
+          ! Transform the DG solution into the reference element, perform the swith to FV, then transform back to physical space
+          DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+            JU_DG(:,i,j,k)=U2(:,i,j,k,iElem)/sJ(i,j,k,iElem,0)
+          END DO; END DO; END DO
+          CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,JU_DG,JU_FV)
+          DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+            U_FV(:,i,j,k)=JU_FV(:,i,j,k)*sJ(i,j,k,iElem,1)
+          END DO; END DO; END DO
+        ELSE
+          CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,U2(:,:,:,:,iElem),U_FV)
+        END IF
         U2(:,:,:,:,iElem) = U_FV
       END IF
       IF (PRESENT(U3)) THEN
-        CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,U3(:,:,:,:,iElem),U_FV)
+        IF (switchConservative) THEN
+          ! Transform the DG solution into the reference element, perform the swith to FV, then transform back to physical space
+          DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+            JU_DG(:,i,j,k)=U3(:,i,j,k,iElem)/sJ(i,j,k,iElem,0)
+          END DO; END DO; END DO
+          CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,JU_DG,JU_FV)
+          DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+            U_FV(:,i,j,k)=JU_FV(:,i,j,k)*sJ(i,j,k,iElem,1)
+          END DO; END DO; END DO
+        ELSE
+          CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,U3(:,:,:,:,iElem),U_FV)
+        END IF
         U3(:,:,:,:,iElem) = U_FV
       END IF
     END IF
   ELSE ! FV Element
     ! Switch FV to DG Element, if Indicator is lower then IndMax
     IF ((IndValue(iElem).LT.FV_IndLowerThreshold).AND.AllowToDG) THEN
-      CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_sVdm,U(:,:,:,:,iElem),U_DG)
+      IF (switchConservative) THEN
+        ! Transform the FV solution into the reference element, perform the switch to DG, then transform back to physical space
+        DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+          JU_FV(:,i,j,k)=U(:,i,j,k,iElem)/sJ(i,j,k,iElem,1)
+        END DO; END DO; END DO
+        CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_sVdm,JU_FV,JU_DG)
+        DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+          U_DG(:,i,j,k)=JU_DG(:,i,j,k)*sJ(i,j,k,iElem,0)
+        END DO; END DO; END DO
+      ELSE
+        CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_sVdm,U(:,:,:,:,iElem),U_DG)
+      END IF
       IF (FV_toDG_indicator) THEN
         ind = IndPersson(U_DG(:,:,:,:))
         IF (ind.GT.FV_toDG_limit) CYCLE
@@ -288,11 +341,33 @@ DO iElem=1,nElems
       U(:,:,:,:,iElem) = U_DG
       FV_Elems(iElem) = 0  ! switch Elemnent to DG
       IF (PRESENT(U2)) THEN
-        CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_sVdm,U2(:,:,:,:,iElem),U_DG)
+        IF (switchConservative) THEN
+          ! Transform the FV solution into the reference element, perform the switch to DG, then transform back to physical space
+          DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+            JU_FV(:,i,j,k)=U2(:,i,j,k,iElem)/sJ(i,j,k,iElem,1)
+          END DO; END DO; END DO
+          CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_sVdm,JU_FV,JU_DG)
+          DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+            U_DG(:,i,j,k)=JU_DG(:,i,j,k)*sJ(i,j,k,iElem,0)
+          END DO; END DO; END DO
+        ELSE
+          CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_sVdm,U2(:,:,:,:,iElem),U_DG)
+        END IF
         U2(:,:,:,:,iElem) = U_DG
       END IF
       IF (PRESENT(U3)) THEN
-        CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_sVdm,U3(:,:,:,:,iElem),U_DG)
+        IF (switchConservative) THEN
+          ! Transform the FV solution into the reference element, perform the switch to DG, then transform back to physical space
+          DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+            JU_FV(:,i,j,k)=U3(:,i,j,k,iElem)/sJ(i,j,k,iElem,1)
+          END DO; END DO; END DO
+          CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_sVdm,JU_FV,JU_DG)
+          DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+            U_DG(:,i,j,k)=JU_DG(:,i,j,k)*sJ(i,j,k,iElem,0)
+          END DO; END DO; END DO
+        ELSE
+          CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_sVdm,U3(:,:,:,:,iElem),U_DG)
+        END IF
         U3(:,:,:,:,iElem) = U_DG
       END IF
     END IF
