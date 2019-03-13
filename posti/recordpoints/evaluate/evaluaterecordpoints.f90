@@ -29,7 +29,7 @@ USE MOD_MPI,               ONLY:DefineParametersMPI,InitMPI
 #if USE_MPI
 USE MOD_MPI,               ONLY:InitMPIvars,FinalizeMPI
 #endif
-USE MOD_IO_HDF5,           ONLY:DefineParametersIO_HDF5,InitIOHDF5
+USE MOD_IO_HDF5,           ONLY:DefineParametersIO_HDF5,InitIOHDF5,InitMPIInfo
 USE MOD_Output,            ONLY:DefineParametersOutput,InitOutput,FinalizeOutput
 USE MOD_Mesh,              ONLY:DefineParametersMesh,InitMesh,FinalizeMesh
 USE MOD_Mesh_Vars,         ONLY:nElems,nGlobalElems
