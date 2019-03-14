@@ -39,6 +39,10 @@ INTERFACE FV_Switch
   MODULE PROCEDURE FV_Switch
 END INTERFACE
 
+INTERFACE FV_ProlongFVElemsToFace
+  MODULE PROCEDURE FV_ProlongFVElemsToFace
+END INTERFACE
+
 INTERFACE FV_Info
   MODULE PROCEDURE FV_Info
 END INTERFACE
@@ -58,6 +62,7 @@ END INTERFACE
 PUBLIC::DefineParametersFV
 PUBLIC::InitFV
 PUBLIC::FV_Switch
+PUBLIC::FV_ProlongFVElemsToFace
 PUBLIC::FV_Info
 PUBLIC::FV_FillIni
 PUBLIC::FV_DGtoFV
@@ -244,7 +249,7 @@ USE MOD_Indicator_Vars  ,ONLY: IndValue
 USE MOD_Indicator       ,ONLY: IndPersson
 USE MOD_FV_Vars
 USE MOD_Analyze
-USE MOD_Mesh_Vars       ,ONLY: nElems, SideToElem, nSides
+USE MOD_Mesh_Vars       ,ONLY: nElems
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -258,7 +263,7 @@ LOGICAL,INTENT(IN)          :: AllowToDG                                  !< if 
 REAL    :: U_DG(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 REAL    :: U_FV(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 REAL    :: ind
-INTEGER :: iElem, iSide, ElemID, nbElemID
+INTEGER :: iElem
 !==================================================================================================================================
 DO iElem=1,nElems
   IF (FV_Elems(iElem).EQ.0) THEN ! DG Element
@@ -303,6 +308,24 @@ FV_Elems_counter  = FV_Elems_counter  + FV_Elems
 FV_Switch_counter = FV_Switch_counter + 1
 FV_Elems_Amount   = REAL(FV_Elems_Counter)/FV_Switch_counter
 
+CALL FV_ProlongFVElemsToFace()
+END SUBROUTINE FV_Switch
+
+!==================================================================================================================================
+!> Set FV_Elems_slave and FV_Elems_master information
+!==================================================================================================================================
+SUBROUTINE FV_ProlongFVElemsToFace()
+! MODULES
+USE MOD_FV_Vars         ,ONLY: FV_Elems,FV_Elems_master,FV_Elems_slave
+USE MOD_Mesh_Vars       ,ONLY: SideToElem,nSides
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER :: iSide,ElemID,nbElemID
+!==================================================================================================================================
 ! set information whether elements adjacent to a side are DG or FV elements
 DO iSide = 1,nSides
   ElemID    = SideToElem(S2E_ELEM_ID   ,iSide)
@@ -312,7 +335,7 @@ DO iSide = 1,nSides
   !slave side (ElemID,locSide and flip =-1 if not existing)
   IF(nbElemID.GT.0) FV_Elems_slave( iSide) = FV_Elems(nbElemID)
 END DO
-END SUBROUTINE FV_Switch
+END SUBROUTINE FV_ProlongFVElemsToFace
 
 !==================================================================================================================================
 !> Print information on the amount of FV subcells
