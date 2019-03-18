@@ -7,7 +7,7 @@
 !> We can then make usage of the following equality to calculate fluctuations (=mean of the square of the fluctuations):
 !> _____   _____________   _____   ______   ____         ___
 !> (U*U) = (u+u')*(u+u') = (u*u) + 2*u*u' + u'u' = u*u + u'u'                                                      ___       _
-!> where we split the total value of a variable U in the mean u and the fluctuating part u'. Thus, with the storef U*U and u=U we 
+!> where we split the total value of a variable U in the mean u and the fluctuating part u'. Thus, with the stored U*U and u=U we 
 !> then calculate the fluctuations in here as:
 !> ____   ___  
 !> u'u' = U*U - u*u
@@ -30,7 +30,7 @@ IMPLICIT NONE
 ! TYPE AND PARAMETER DEFINITIONS
 INTEGER                        :: iArg
 CHARACTER(LEN=255)             :: InputFile
-INTEGER                        :: nVarMean,nVarMeanSquare,nVar_State,NState
+INTEGER                        :: nVarMean,nVarMeanSquare
 INTEGER                        :: nDOF
 INTEGER                        :: iM,iMS
 INTEGER                        :: iVarFluc,nVarFluc
@@ -41,7 +41,6 @@ INTEGER                        :: nValMean_glob(15)
 REAL,ALLOCATABLE               :: UMean(:,:,:),UMeanSquare(:,:,:),UFluc(:,:,:)
 REAL,ALLOCATABLE               :: UMeanTmp(:),UMeanSquareTmp(:)
 CHARACTER(LEN=255),ALLOCATABLE :: VarNamesMean(:),VarNamesMeanSquare(:),VarNamesFluc(:)
-CHARACTER(LEN=255),ALLOCATABLE :: tmpDatasetNames(:)
 !===================================================================================================================================
 CALL SetStackSizeUnlimited()
 CALL InitMPI()
@@ -55,11 +54,9 @@ SWRITE(UNIT_stdOut,'(132("="))')
 CALL ParseCommandlineArguments()
 
 InputFile=Args(1)
-! Partitioning - we partition along the last dimension of the arrays and assume that this
-! dimension has the same extend for all data sets
+! Partitioning - we partition along the last dimension of the arrays
 CALL OpenDataFile(InputFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
-CALL GetDatasetNamesInGroup("/",tmpDatasetNames)
-CALL GetDataSize(File_ID,TRIM(tmpDatasetNames(1)),nDims,HSize)
+CALL GetDataSize(File_ID,'VarNames_Mean',nDims,HSize)
 nGlobalElems = INT(HSIZE(nDims))
 DEALLOCATE(HSize)
 #if USE_MPI
@@ -74,7 +71,6 @@ OffsetElem = 0
 nElems = nGlobalElems
 #endif
 CALL CloseDataFile()
-DEALLOCATE(tmpDatasetNames)
 
 ! Check if the number of arguments is correct
 IF (nArgs.LT.1) THEN
@@ -246,6 +242,9 @@ IMPLICIT NONE
 SWRITE(UNIT_stdOut,'(A,A,A)') "Read from HDF5 file ", TRIM(InputFile), "..."
 
 CALL OpenDataFile(InputFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+! Safety check if the number of elements did not change
+CALL GetDataSize(File_ID,'VarNames_Mean',nDims,HSize)
+IF (INT(HSIZE(nDims)).NE.nGlobalElems)  STOP 'Number of elements in HDF5 file changed during computation!'
 CALL GetArrayAndName('Mean'      ,'VarNames_Mean'      ,nValMean      ,UMeanTmp      ,VarNamesMean)
 CALL GetArrayAndName('MeanSquare','VarNames_MeanSquare',nValMeanSquare,UMeanSquareTmp,VarNamesMeanSquare)
 nVarMean       = nValMean(1)
