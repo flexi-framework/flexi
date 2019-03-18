@@ -60,10 +60,11 @@ CHARACTER(LEN=255)                 :: FileType
 LOGICAL                            :: isValid,userblockFound
 LOGICAL                            :: stateFileMode
 CHARACTER(LEN=255)                 :: DataSetName
-INTEGER                            :: HSize_proc(5),nVar
+INTEGER                            :: HSize_proc(5),nVar,HSize_tmp(5)
 CHARACTER(LEN=255),ALLOCATABLE     :: StrVarNames_loc(:)
 LOGICAL                            :: VarNamesExist,varnames_found
 INTEGER                            :: j
+CHARACTER(LEN=255)                 :: NodeType_HDF5
 !===================================================================================================================================
 CALL SetStackSizeUnlimited()
 CALL InitMPI()
@@ -222,8 +223,17 @@ DO iArg=start,nArgs
 
     CALL Restart(doFlushFiles=.FALSE.)
   ELSE
-    ! TODO: Missing safety checks for changed properties and if the node type is the correct one
     CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+    ! Safety check if the data size stays the same
+    CALL GetDataSize(File_ID,TRIM(DataSetName),nDims,HSize)
+    HSize_tmp = INT(HSize)
+    HSize_tmp(5) = nElems
+    IF (.NOT.ALL(HSize_proc.EQ.HSize_tmp)) &
+      CALL Abort(__STAMP__,'The size of the data array changed!')
+    ! Safety check if the node type is the correct one
+    CALL ReadAttribute(File_ID,'NodeType',1,StrScalar=NodeType_HDF5)
+    IF (TRIM(NodeType_HDF5).NE.TRIM(NodeType)) &
+      CALL Abort(__STAMP__,'Wrong node type!')
     CALL ReadArray(TRIM(DataSetName),5,HSize_proc,OffsetElem,5,RealArray=U)
     ! Try to get the time stamp from the file
     CALL DatasetExists(File_ID,"Time",varnames_found,attrib=.TRUE.)
