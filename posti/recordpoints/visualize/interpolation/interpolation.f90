@@ -178,6 +178,7 @@ END SUBROUTINE InterpolateEquiTime
 
 !===================================================================================================================================
 !> Calculate temporal TimeAvg values
+!> An additonal file may also be specified that contains the temporal average, e.g. from a 2D averaged solution
 !===================================================================================================================================
 SUBROUTINE CalcTimeAvg()
 ! MODULES
@@ -233,9 +234,17 @@ ELSE
   ! Read in the average from the specified file
   ALLOCATE(temparray(0:nVar_HDF5,1:nRP_HDF5,1)) ! storing complete sample set
   CALL OpenDataFile(TimeAvgFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+  ! Safety check for the size of the array
+  CALL GetDataSize(File_ID,'RP_Data',nDims,HSize)
+  IF(nRP_HDF5 .NE. HSize(2)) THEN
+    CALL Abort(__STAMP__,'ERROR - Number of RPs in TimeAvg file does not match RP definition file!')
+  END IF
+  IF(nVar_HDF5 .NE. INT(HSize(1) -1)) THEN
+    CALL Abort(__STAMP__,'ERROR - Wrong number of variables in TimeAvg file!')
+  END IF
+  DEALLOCATE(HSize)
   CALL ReadArray('RP_Data',3,(/nVar_HDF5+1,nRP_HDF5,1/),0,3,RealArray=temparray)
   CALL CloseDataFile()
-  ! TODO: Safety check for size, maybe check available variables
   ! Coordinate Transform
   ALLOCATE(temparray2(nVarVisu,nRP_global,1))
   temparray2(:,:,1)=temparray(1:nVarVisu,RPOutMap(:),1) !RPOutMap filters out RPs which are to be visualized
