@@ -127,7 +127,10 @@ INTEGER,INTENT(OUT)          :: errType
 INTEGER                      :: i,j,k,iElem
 REAL,DIMENSION(PP_2Var)      :: UE
 REAL                         :: TimeStepConv, TimeStepVisc, TimeStep(3)
-REAL                         :: Max_Lambda(3),c,vsJ(3),muSGSmax
+REAL                         :: Max_Lambda(3),c,vsJ(3)
+#if EDDYVISCOSITY
+REAL                         :: muSGSmax
+#endif
 #if PARABOLIC
 REAL                         :: Max_Lambda_v(3),mu,prim(PP_nVarPrim)
 #endif /*PARABOLIC*/

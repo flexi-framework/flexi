@@ -32,7 +32,10 @@ USE MOD_MPI                   ,ONLY: InitMPI
 USE MOD_VTK                   ,ONLY: WriteDataToVTK,WriteVTKMultiBlockDataSet
 USE MOD_Output_Vars           ,ONLY: ProjectName
 USE MOD_StringTools           ,ONLY: STRICMP,GetFileExtension
-impliCIT NONE
+#if USE_MPI
+USE MOD_MPI                   ,ONLY:FinalizeMPI
+#endif
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: iArg, iVar
@@ -123,6 +126,7 @@ DO iArg=1+skipArgs,nArgs
   END DO
 
   IF (Avg2D) THEN
+
     CALL WriteDataToVTK(nVarVisu,NVisu,nElemsAvg2D_DG,VarNames_loc,CoordsVisu_DG,UVisu_DG,FileString_DG,&
         dim=2,DGFV=0,nValAtLastDimension=.TRUE.)
 #if FV_ENABLED
@@ -206,5 +210,11 @@ DO iArg=1+skipArgs,nArgs
 END DO
 
 CALL FinalizeVisu()
-END PROGRAM
+#if USE_MPI
+! For flexilib MPI init/finalize is controlled by main program
+CALL FinalizeMPI()
+CALL MPI_FINALIZE(iError)
+IF(iError .NE. 0) STOP 'MPI finalize error'
+#endif
+END PROGRAM 
 

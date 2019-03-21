@@ -75,7 +75,7 @@ IF(RPSetInitIsDone)THEN
    CALL CollectiveStop(__STAMP__, &
         'InitRPSet not ready to be called or already called.')
 END IF
-#ifdef MPI
+#if USE_MPI
  IF (nProcessors.GT.1) CALL CollectiveStop(__STAMP__, &
       'This tool is designed only for single execution!',nProcessors)
 #endif /*MPI*/

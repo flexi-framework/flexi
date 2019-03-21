@@ -33,13 +33,14 @@ PRIVATE
 
 LOGICAL :: doCalcIndicator=.FALSE. !< switch whether to compute indicator
 
-INTEGER,PARAMETER :: INDTYPE_DG           = 0
-INTEGER,PARAMETER :: INDTYPE_FV           = 1
-INTEGER,PARAMETER :: INDTYPE_PERSSON      = 2
-INTEGER,PARAMETER :: INDTYPE_JAMESON      = 8
-INTEGER,PARAMETER :: INDTYPE_DUCROS       = 9
-INTEGER,PARAMETER :: INDTYPE_HALFHALF     = 3
-INTEGER,PARAMETER :: INDTYPE_CHECKERBOARD = 33
+INTEGER,PARAMETER :: INDTYPE_DG             = 0
+INTEGER,PARAMETER :: INDTYPE_FV             = 1
+INTEGER,PARAMETER :: INDTYPE_PERSSON        = 2
+INTEGER,PARAMETER :: INDTYPE_JAMESON        = 8
+INTEGER,PARAMETER :: INDTYPE_DUCROS         = 9
+INTEGER,PARAMETER :: INDTYPE_DUCROSTIMESJST = 10
+INTEGER,PARAMETER :: INDTYPE_HALFHALF       = 3
+INTEGER,PARAMETER :: INDTYPE_CHECKERBOARD   = 33
 
 INTERFACE InitIndicator
   MODULE PROCEDURE InitIndicator
@@ -92,15 +93,16 @@ IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Indicator")
 CALL prms%CreateIntFromStringOption('IndicatorType',"Specify type of indicator to be used: DG, FV, Persson,"//&
-                                             "Ducros, halfhalf, checkerboard",&
+                                             "Ducros, DucrosTimesJST, halfhalf, checkerboard",&
                                              'DG')
-CALL addStrListEntry('IndicatorType','dg',          INDTYPE_DG)
-CALL addStrListEntry('IndicatorType','fv',          INDTYPE_FV)
-CALL addStrListEntry('IndicatorType','persson',     INDTYPE_PERSSON)
-CALL addStrListEntry('IndicatorType','halfhalf',    INDTYPE_HALFHALF)
-CALL addStrListEntry('IndicatorType','checkerboard',INDTYPE_CHECKERBOARD)
-CALL addStrListEntry('IndicatorType','jameson',     INDTYPE_JAMESON)
-CALL addStrListEntry('IndicatorType','ducros',      INDTYPE_DUCROS)
+CALL addStrListEntry('IndicatorType','dg',            INDTYPE_DG)
+CALL addStrListEntry('IndicatorType','fv',            INDTYPE_FV)
+CALL addStrListEntry('IndicatorType','persson',       INDTYPE_PERSSON)
+CALL addStrListEntry('IndicatorType','halfhalf',      INDTYPE_HALFHALF)
+CALL addStrListEntry('IndicatorType','checkerboard',  INDTYPE_CHECKERBOARD)
+CALL addStrListEntry('IndicatorType','jameson',       INDTYPE_JAMESON)
+CALL addStrListEntry('IndicatorType','ducros',        INDTYPE_DUCROS)
+CALL addStrListEntry('IndicatorType','ducrostimesjst',INDTYPE_DUCROSTIMESJST)
 CALL prms%CreateIntOption('IndVar',        "Specify variable upon which indicator is applied, for general indicators.",&
                                            '1')
 CALL prms%CreateRealOption('IndStartTime', "Specify physical time when indicator evalution starts. Before this time"//&
@@ -160,6 +162,19 @@ CASE(INDTYPE_DUCROS)
 #if EQNSYSNR != 2 /* NOT NAVIER-STOKES */
   CALL Abort(__STAMP__, &
       "Ducros indicator only works with Navier-Stokes equations.")
+#endif /* EQNSYSNR != 2 */
+CASE(INDTYPE_DUCROSTIMESJST)
+#if !(FV_ENABLED)
+  CALL Abort(__STAMP__, &
+      "Ducros*JST indicator only works with FV_ENABLED.")
+#endif
+#if !(PARABOLIC)
+  CALL Abort(__STAMP__, &
+      "Ducros*JST indicator not available without PARABOLIC!")
+#endif
+#if EQNSYSNR != 2 /* NOT NAVIER-STOKES */
+  CALL Abort(__STAMP__, &
+      "Ducros*JST indicator only works with Navier-Stokes equations.")
 #endif /* EQNSYSNR != 2 */
 CASE(INDTYPE_PERSSON)
   ! number of modes to be checked by Persson indicator
@@ -252,7 +267,11 @@ CASE(INDTYPE_JAMESON)
 #if PARABOLIC
 CASE(INDTYPE_DUCROS)
   IndValue = DucrosIndicator(gradUx,gradUy,gradUz)
-#endif
+#if FV_ENABLED
+CASE(INDTYPE_DUCROSTIMESJST)
+  IndValue = JamesonIndicator(U) * DucrosIndicator(gradUx,gradUy,gradUz)
+#endif /*FV_ENABLED*/
+#endif /*PARABOLIC*/
 #endif /* NAVIER-STOKES */
 CASE(INDTYPE_HALFHALF)  ! half/half
   DO iElem=1,nElems

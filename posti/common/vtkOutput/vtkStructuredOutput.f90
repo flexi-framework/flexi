@@ -167,7 +167,7 @@ IF(nPoints.GT.0) THEN
       WRITE(ivtk) REAL(RPPoints%Val(iVar,:),4)
     END DO
   END IF
-  nBytes = nPoints*SIZEOF_F(FLOATdummy) * 3
+  nBytes = nBytes * 3
   WRITE(ivtk) nBytes
   WRITE(ivtk) REAL(RPPoints%Coords(:,:),4)
 
@@ -246,7 +246,7 @@ DO iLine=1,nLines
       WRITE(ivtk) REAL(RPLines(iLine)%Val(iVar,:),4)
     END DO
   END IF
-  nBytes = RPLines(iLine)%nRPs*SIZEOF_F(FLOATdummy) * 3
+  nBytes = nBytes * 3
   WRITE(ivtk) nBytes
   WRITE(ivtk) REAL(RPLines(iLine)%Coords(:,:),4)
 
@@ -319,14 +319,13 @@ DO iPlane=1, nPlanes
   Buffer='_';WRITE(ivtk) TRIM(Buffer)
 
   nBytes = RPPlanes(iPlane)%nRPs(1)*RPPlanes(iPlane)%nRPs(2)*SIZEOF_F(FLOATdummy)
-  WRITE(ivtk) nBytes
   IF (withData) THEN
     DO iVar = 1,nVal
       WRITE(ivtk) nBytes
       WRITE(ivtk) REAL(RPPlanes(iPlane)%Val(iVar,:,:),4)
     END DO
   END IF
-  nBytes = RPPlanes(iPlane)%nRPs(1)*RPPlanes(iPlane)%nRPs(2)*SIZEOF_F(FLOATdummy) * 3
+  nBytes = nBytes * 3
   WRITE(ivtk) nBytes
   WRITE(ivtk) REAL(RPPlanes(iPlane)%Coords(:,:,:),4)
 

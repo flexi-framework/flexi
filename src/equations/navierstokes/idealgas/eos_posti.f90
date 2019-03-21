@@ -498,6 +498,7 @@ REAL,DIMENSION(PP_nVarPrim,PRODUCT(nVal)),INTENT(IN) :: gradUx,gradUy,gradUz
 REAL               :: Lambda2(PRODUCT(nVal))
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+EXTERNAL              DSYEV
 INTEGER            :: i
 REAL               :: gradUmat(3,3)
 INTEGER            :: INFO

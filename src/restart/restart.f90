@@ -54,6 +54,10 @@ IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Restart")
 CALL prms%CreateLogicalOption('ResetTime', "Override solution time to t=0 on restart.", '.FALSE.')
+#if FV_ENABLED
+CALL prms%CreateIntOption(    'NFVRestartSuper', "Polynomial degree for equidistant supersampling of FV subcells when restarting&
+                                                  &on a different polynomial degree. Default 2*MAX(N,NRestart).")
+#endif
 END SUBROUTINE DefineParametersRestart
 
 !==================================================================================================================================
@@ -75,6 +79,10 @@ SUBROUTINE InitRestart(RestartFile_in)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Restart_Vars
+#if FV_ENABLED
+USE MOD_StringTools,        ONLY: INTTOSTR
+USE MOD_ReadInTools,        ONLY: GETINT
+#endif
 USE MOD_HDF5_Input,         ONLY: ISVALIDHDF5FILE
 USE MOD_Interpolation_Vars, ONLY: InterpolationInitIsDone,NodeType
 USE MOD_HDF5_Input,         ONLY: OpenDataFile,CloseDataFile,GetDataProps,ReadAttribute,File_ID
@@ -127,12 +135,12 @@ END IF
 
 ! Check if we need to interpolate the restart file to our current polynomial degree and node type
 IF(DoRestart .AND. ((N_Restart.NE.PP_N) .OR. (TRIM(NodeType_Restart).NE.TRIM(NodeType))))THEN
-#if FV_ENABLED
-    CALL CollectiveStop(__STAMP__,'ERROR: The restart to a different polynomial degree or node type is not available for FV.')
-#endif
   InterpolateSolution=.TRUE.
   IF(MIN(N_Restart,PP_N).LT.NGeo) &
     CALL PrintWarning('The geometry is or was underresolved and will potentially change on restart!')
+#if FV_ENABLED
+  NFVRestartSuper = GETINT('NFVRestartSuper',INTTOSTR(2*MAX(PP_N,N_Restart)))
+#endif
 ELSE
   InterpolateSolution=.FALSE.
 END IF
@@ -306,20 +314,20 @@ IF(DoRestart)THEN
           CALL ChangeBasisVolume(PP_nVar,N_Restart,PP_N,Vdm_NRestart_N,U_local(:,:,:,:,iElem),U(:,:,:,:,iElem))
 #if FV_ENABLED
         ELSE ! FV element
-          STOP 'Not implemented yet'
+          CALL SupersampleFVCell(U_local(:,:,:,:,iElem),U(:,:,:,:,iElem),N_Restart,PP_N,NFVRestartSuper)
 #endif
         END IF
       END DO
       DEALLOCATE(JNR)
       ! Transform back
-      CALL ApplyJacobianCons(U,toPhysical=.TRUE.)
+      CALL ApplyJacobianCons(U,toPhysical=.TRUE.,FVE=0)
     ELSE
       DO iElem=1,nElems
         IF (FV_Elems(iElem).EQ.0) THEN ! DG element
           CALL ChangeBasisVolume(PP_nVar,N_Restart,PP_N,Vdm_NRestart_N,U_local(:,:,:,:,iElem),U(:,:,:,:,iElem))
 #if FV_ENABLED
         ELSE ! FV element
-          STOP 'Not implemented yet'
+          CALL SupersampleFVCell(U_local(:,:,:,:,iElem),U(:,:,:,:,iElem),N_Restart,PP_N,NFVRestartSuper)
 #endif
         END IF
       END DO
@@ -337,6 +345,59 @@ ELSE
 END IF
 END SUBROUTINE Restart
 
+
+#if FV_ENABLED
+!==================================================================================================================================
+!> This routine will take a FV element with a certain number of subcells and convert it to a different number of subcells.
+!> Is used during the restart from one polynomial degree to another.
+!> The procedure is as follows: The old solution will be supersampled with an adjustable number of equidistant points.
+!> The new solution is then simply calculated by taking the mean value of the supersampling points inside of the new subcell.
+!> Attention: This procedure is not conservative! We do not take the Jacobian into account.
+!==================================================================================================================================
+SUBROUTINE SupersampleFVCell(UOld,UNew,NOld,NNew,NSuper)
+! MODULES
+USE MOD_PreProc
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+REAL,INTENT(IN)    :: UOld(1:PP_nVar,0:NOld,0:NOld,0:ZDIM(NOld)) !< One FV element on NOld
+REAL,INTENT(OUT)   :: UNew(1:PP_nVar,0:NNew,0:NNew,0:ZDIM(NNew)) !< FV Element on NNew
+INTEGER,INTENT(IN) :: NOld                                       !< Old polynomial degree
+INTEGER,INTENT(IN) :: NNew                                       !< New polynomial degree
+INTEGER,INTENT(IN) :: NSuper                                     !< Polynomial degree for supersampling
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL                :: deltaXiOld,deltaXi,deltaXiSuper,xiSuper
+REAL                :: U_mean(PP_nVar)
+INTEGER             :: iOld,jOld,kOld,iSuper,jSuper,kSuper
+INTEGER             :: i,j,k
+!==================================================================================================================================
+! Supersample the old FV solution (with (NSuper+1)**dim superampling points in each new 
+! sub cell), then take the mean value
+deltaXiOld = 2.0/(REAL(NOld)+1.)       ! Length (in reference space) of a FV element in the old element
+deltaXi          = 2.0/(REAL(NNew)+1.)       ! Length (in reference space) of a FV element in the new element
+deltaXiSuper     = deltaXi/(REAL(NSuper)+1.) ! Spacing (in reference space) between supersampling points
+DO k=0,ZDIM(NNew); DO j=0,NNew; DO i=0,NNew
+  U_mean = 0.
+  DO kSuper=0,ZDIM(NSuper); DO jSuper=0,NSuper; DO iSuper=0,NSuper
+    ! Calculate the index that the current super sampling point has in the old solution
+    xiSuper = (REAL(i)*deltaXi) + (REAL(iSuper)+0.5)*deltaXiSuper
+    iOld = INT(xiSuper/deltaXiOld)
+    xiSuper = (REAL(j)*deltaXi) + (REAL(jSuper)+0.5)*deltaXiSuper
+    jOld = INT(xiSuper/deltaXiOld)
+#if PP_dim == 3
+    xiSuper = (REAL(k)*deltaXi) + (REAL(kSuper)+0.5)*deltaXiSuper
+    kOld = INT(xiSuper/deltaXiOld)
+#else
+    kOld = 0
+#endif
+    ! Calculate sum for mean value
+    U_mean(:) = U_mean(:)+UOld(:,iOld,jOld,kOld)
+  END DO; END DO; END DO! iSuper,jSuper,kSuper=0,NOld
+  UNew(:,i,j,k) = U_mean(:)/REAL((NSuper+1)**PP_dim)
+END DO; END DO; END DO! i,j,k=0,NNew
+END SUBROUTINE SupersampleFVCell
+#endif
 
 !==================================================================================================================================
 !> Finalizes variables necessary for restart subroutines

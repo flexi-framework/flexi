@@ -65,7 +65,7 @@ CHARACTER(LEN=255)            :: RP_DefFile_loc
 INTEGER                       :: nSamples_loc,nSamples_skip
 INTEGER                       :: iSample
 REAL,ALLOCATABLE              :: temparray(:,:,:)
-#ifdef MPI
+#if USE_MPI
 INTEGER                       :: nChunks,iChunk,nSamples_chunk,offset
 REAL                          :: nTotal,limit
 #endif
@@ -144,7 +144,7 @@ END IF
 DEALLOCATE(HSize)
 
 ALLOCATE(temparray(0:nVar_HDF5,1:nRP_HDF5,1:nSamples_loc)) ! storing complete sample set
-#ifdef MPI
+#if USE_MPI
 ! check array data size.
 nTotal=REAL((nVar_HDF5+1)*nRP_HDF5*nSamples_loc)
 !limit=(2**31-1)/8.
@@ -163,7 +163,7 @@ IF(nTotal.GT.limit)THEN
 ELSE
 #endif
 CALL ReadArray('RP_Data',3,(/nVar_HDF5+1,nRP_HDF5,nSamples_loc/),0,3,RealArray=temparray)
-#ifdef MPI
+#if USE_MPI
 END IF
 #endif
 DO iSample=1,nSamples_skip
