@@ -202,6 +202,7 @@ CALL prms%CreateLogicalOption('Plane_doBLProps'    ,"Set to calculate seperate b
                                                      & planes",".FALSE.")
 CALL prms%CreateIntOption    ('Plane_BLvelScaling' ,"Choose scaling for boundary layer quantities. 0: no scaling, 1: laminar&
                                                      & scaling, 3: turbulent scaling")
+CALL prms%CreateRealOption   ('pInf'               ,"Reference pressure to calculate c_p")
 CALL prms%CreateLogicalOption('Plane_LocalCoords'  ,"Set to use local instead of global coordinates along planes",".FALSE.")
 CALL prms%CreateLogicalOption('Plane_LocalVel'     ,"Set to use local instead of global velocities along planes",".FALSE.")
 
@@ -230,6 +231,7 @@ USE MOD_Globals
 USE MOD_Readintools         ,ONLY:GETINT,GETREAL,GETLOGICAL,GETSTR,GETREALARRAY,CountOption
 USE MOD_ParametersVisu
 USE MOD_RPInterpolation_Vars,ONLY:calcTimeAverage
+USE MOD_EquationRP_Vars     ,ONLY:pInf
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -319,6 +321,7 @@ IF(Plane_doBLProps) THEN ! for BL properties we need local coords and velocities
   Plane_BLvelScaling  =GETINT('Plane_BLvelScaling','0') ! 0 - no scaling.
   ! 1 - "laminar scaling": scale velocity with u_delta and PlaneY with delta99
   ! 2 - "turbulent scaling:" calculate u+ and y+
+  pInf = GETREAL('pInf')
 END IF
 ! =============================================================================== !
 ! LINE OPTIONS
