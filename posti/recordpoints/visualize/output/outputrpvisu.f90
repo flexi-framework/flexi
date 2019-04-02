@@ -121,6 +121,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 CHARACTER(LEN=255)            :: FileName
 CHARACTER(LEN=255)            :: strOutputFile
+REAL,ALLOCATABLE              :: TimeAvg_tmp(:,:,:)
 !===================================================================================================================================
 ! Output Time Signal
 IF(OutputTimeData) THEN
@@ -186,7 +187,10 @@ IF(OutputTimeAverage) THEN
       CALL WriteTimeAvgDataToVTK(nRP_global,nVarVisu,VarNameVisu,RPDataTimeAvg_out,FileName)
    CASE(2) ! structured HDF5 output
      strOutputFile=TRIM(FileName)//'_PP.h5'
-     CALL WriteDataToHDF5(1,nRP_global,nVarVisu,VarNameVisu,RPTime,RPData_out,strOutputFile)
+     ALLOCATE(TimeAvg_tmp(1,nVarVisu,nRP_global))
+     ! To use the WriteHDF5 routine, we need to create a temporary array since it expect 3 dimensions
+     TimeAvg_tmp(1,:,:) = RPDataTimeAvg_out
+     CALL WriteDataToHDF5(1,nRP_global,nVarVisu,VarNameVisu,RPTime,TimeAvg_tmp,strOutputFile)
   WRITE(UNIT_StdOut,'(132("-"))')
   END SELECT
 END IF
