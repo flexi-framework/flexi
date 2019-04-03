@@ -191,6 +191,7 @@ IF(OutputTimeAverage) THEN
      ! To use the WriteHDF5 routine, we need to create a temporary array since it expect 3 dimensions
      TimeAvg_tmp(1,:,:) = RPDataTimeAvg_out
      CALL WriteDataToHDF5(1,nRP_global,nVarVisu,VarNameVisu,RPTime,TimeAvg_tmp,strOutputFile)
+     DEALLOCATE(TimeAvg_tmp)
   WRITE(UNIT_StdOut,'(132("-"))')
   END SELECT
 END IF
