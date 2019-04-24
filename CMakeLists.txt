@@ -38,7 +38,7 @@ ELSE()
   ENDIF()
   SET (HDF5DOWNLOAD https://bitbucket.hdfgroup.org/scm/hdffv/hdf5.git )
 ENDIF()
-SET (HDF5TAG "hdf5_1_10_4" CACHE STRING "HDF5 version tag")
+SET (HDF5TAG "hdf5-1_10_4" CACHE STRING "HDF5 version tag")
 
 # =========================================================================
 # Detect machine environements
