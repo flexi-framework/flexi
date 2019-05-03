@@ -112,14 +112,17 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_FV_Vars
 USE MOD_FV_Basis
-USE MOD_Basis       ,ONLY: InitializeVandermonde
-USE MOD_Indicator   ,ONLY: doCalcIndicator
-USE MOD_Mesh_Vars   ,ONLY: nElems,nSides
+USE MOD_Basis               ,ONLY: InitializeVandermonde
+USE MOD_Indicator           ,ONLY: doCalcIndicator
+USE MOD_Indicator_Vars      ,ONLY: nModes,IndicatorType
+USE MOD_Mesh_Vars           ,ONLY: nElems,nSides
 #if FV_RECONSTRUCT
 USE MOD_FV_Limiter
 #endif
 USE MOD_ReadInTools
-USE MOD_IO_HDF5     ,ONLY: AddToElemData,ElementOut
+USE MOD_IO_HDF5             ,ONLY: AddToElemData,ElementOut
+USE MOD_Overintegration_Vars,ONLY: NUnder
+USE MOD_Filter_Vars         ,ONLY: NFilter
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -145,6 +148,12 @@ FV_IndUpperThreshold = GETREAL('FV_IndUpperThreshold', '99.')
 ! anymore.
 FV_toDG_indicator = GETLOGICAL('FV_toDG_indicator')
 IF (FV_toDG_indicator) FV_toDG_limit = GETREAL('FV_toDG_limit')
+! If the main indicator is not already the persson indicator, then we need to read in the parameters
+IF (IndicatorType.NE.2) THEN
+  nModes = GETINT('nModes','2')
+  nModes = MAX(1,nModes+PP_N-MIN(NUnder,NFilter))-1 ! increase by number of empty modes in case of overintegration
+END IF
+
 
 ! Read flag, which allows switching from FV to DG between the stages of a Runge-Kutta time step
 ! (this might lead to instabilities, since the time step for a DG element is smaller)
