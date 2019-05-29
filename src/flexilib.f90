@@ -50,9 +50,6 @@ USE MOD_Testcase,          ONLY:DefineParametersTestcase
 USE MOD_DG,                ONLY:InitDG
 #if PARABOLIC
 USE MOD_Lifting,           ONLY:DefineParametersLifting,InitLifting
-#if EDDYVISCOSITY
-USE MOD_EddyVisc,          ONLY:DefineParametersEddyVisc
-#endif
 #endif /*PARABOLIC*/
 USE MOD_Filter,            ONLY:DefineParametersFilter,InitFilter
 USE MOD_Overintegration,   ONLY:DefineParametersOverintegration,InitOverintegration
@@ -131,9 +128,6 @@ CALL DefineParametersFV()
 #endif
 #if PARABOLIC
 CALL DefineParametersLifting ()
-#if EDDYVISCOSITY
-CALL DefineParametersEddyVisc()
-#endif /*EDDYVISCOSITY*/
 #endif /*PARABOLIC*/
 CALL DefineParametersSponge()
 CALL DefineParametersTimedisc()
