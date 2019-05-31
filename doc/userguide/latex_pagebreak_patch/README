@@ -1,0 +1,12 @@
+A bug in the LaTeX longtable environment in some cases causes text to run out of the page. 
+This causes some parts of the userguide to be not shown at all.
+The problem is described here: 
+
+https://www.latex-project.org/cgi-bin/ltxbugs2html.new?pr=tools/3512
+
+The longtable.sty file in this directory is a version where the bug is patched. 
+You can find the original file e.g. with the command 
+
+find /usr/share -name 'longtable.sty'
+
+and replace it with the patched one, then 'make' again.

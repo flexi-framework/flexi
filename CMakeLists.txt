@@ -2,10 +2,15 @@
 # Flexi CMake configuration
 # =========================================================================
 # NOTE: use minimum CMake version required by tools/libs (Paraview, HDF5, FFTW)
-CMAKE_MINIMUM_REQUIRED(VERSION 3.3.0)
-# Policies (see https://cmake.org/cmake/help/v3.8/manual/cmake-policies.7.html)
-cmake_policy (SET CMP0045 OLD)
-cmake_policy (SET CMP0046 OLD)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.5.1)
+# Policies (see https://cmake.org/cmake/help/v3.13/manual/cmake-policies.7.html)
+# VERSION_GREATER_EQUAL is incompatible with CMAKE versions < 3.7
+IF(NOT(${CMAKE_VERSION} VERSION_LESS "3.6.0"))
+  SET(GITSHALLOW "GIT_SHALLOW ON")
+ENDIF()
+IF(NOT(${CMAKE_VERSION} VERSION_LESS "3.12.0"))
+  CMAKE_POLICY(SET CMP0074 NEW)
+ENDIF()
 # Folder for custom CMake source files
 LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 SET_PROPERTY(GLOBAL PROPERTY USE_FOLDERS ON)
@@ -33,7 +38,7 @@ ELSE()
   ENDIF()
   SET (HDF5DOWNLOAD https://bitbucket.hdfgroup.org/scm/hdffv/hdf5.git )
 ENDIF()
-SET (HDF5TAG "hdf5-1_10_0-patch1" CACHE STRING "HDF5 version tag")
+SET (HDF5TAG "hdf5-1_10_4" CACHE STRING "HDF5 version tag")
 
 # =========================================================================
 # Detect machine environements
@@ -55,7 +60,17 @@ ENDIF()
 # Project definitions and output paths
 # =========================================================================
 PROJECT(Flexi)
-ENABLE_LANGUAGE(Fortran)
+ENABLE_LANGUAGE(Fortran C)
+
+# Check IPO support:
+# we need to have languages enabled and compilers defined for this
+IF(NOT(${CMAKE_VERSION} VERSION_LESS "3.9.0"))
+  CMAKE_POLICY(SET CMP0069 NEW)
+  INCLUDE(CheckIPOSupported)
+  check_ipo_supported(RESULT HASIPO OUTPUT error)
+ELSE()
+  SET(HASIPO FALSE)
+ENDIF()
 
 SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin)
 SET(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include)
@@ -88,7 +103,8 @@ SUBDIRLIST(LIFTINGS   ${CMAKE_CURRENT_SOURCE_DIR}/src/dg/)
 OPTION(FLEXI_BUILDPOSTI "Build POSTI toolset" ON)
 OPTION(FLEXI_MPI "Compile SINGLE or MPI version" ON)
 OPTION(FLEXI_PARABOLIC "Enable parabolic terms of equation-system" ON)
-OPTION(FLEXI_EDDYVISCOSITY "Enable eddy viscosity modells" OFF)
+CMAKE_DEPENDENT_OPTION(FLEXI_EDDYVISCOSITY "Enable eddy viscosity modells" OFF
+                                           "FLEXI_PARABOLIC" OFF)
 OPTION(FLEXI_MKL "Use MKL libraries instead of BLAS/LAPACK" OFF)
 OPTION(FLEXI_PAPI "Use PAPI library to perform performance measurements (e.g. flop counts)." OFF)
 OPTION(FLEXI_FV "Enable Finite Volume subcell shock capturing" OFF)
@@ -186,17 +202,18 @@ IF (FLEXI_PARABOLIC)
       MESSAGE(SEND_ERROR "No such VISCOSITY known.")
     ENDIF()
     IF (FLEXI_EDDYVISCOSITY)
-      ADD_DEFINITIONS(-DEDDYVISCOSITY)
-        IF(FLEXI_2D)
-          MESSAGE(SEND_ERROR " FLEXI_EDDYVISCOSITY is enabled, please disable FLEXI_2D")
-        ENDIF()
+      IF(FLEXI_2D)
+        MESSAGE(SEND_ERROR " FLEXI_EDDYVISCOSITY is enabled, please disable FLEXI_2D")
+      ENDIF()
     ENDIF()
   ENDIF()
 ELSE()
   ADD_DEFINITIONS(-DPARABOLIC=0)
-  IF (FLEXI_EDDYVISCOSITY)
-    MESSAGE(SEND_ERROR " FLEXI_EDDYVISCOSITY is enabled, please enable PARABOLIC or disable FLEXI_EDDYVISCOSITY")
-  ENDIF()
+ENDIF()
+IF (FLEXI_EDDYVISCOSITY)
+  ADD_DEFINITIONS(-DEDDYVISCOSITY=1)
+ELSE()
+  ADD_DEFINITIONS(-DEDDYVISCOSITY=0)
 ENDIF()
 
 # =========================================================================
@@ -267,8 +284,15 @@ IF (NOT CMAKE_BUILD_TYPE)
   SET_PROPERTY(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Debug Release Profile)
 ENDIF (NOT CMAKE_BUILD_TYPE)
 
-IF (CMAKE_BUILD_TYPE MATCHES "Debug")
+
+STRING(TOLOWER ${CMAKE_BUILD_TYPE} BUILD_TYPE_LC)
+IF (BUILD_TYPE_LC MATCHES "debug")
   ADD_DEFINITIONS("-DDEBUG")
+ELSE()
+  IF (HASIPO)
+    # enable IPO globally (IPO branding: Intel => IPO, GNU => LTO, PGI => IPA)
+    SET(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)  # enable IPO globally
+  ENDIF()
 ENDIF()
 
 # =========================================================================
@@ -295,8 +319,8 @@ IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
   ELSE()
     SET(FLEXI_INSTRUCTION "-march=native")
   ENDIF()
-  # set Flags
-  SET (CMAKE_Fortran_FLAGS         "${CMAKE_Fortran_FLAGS} -fdefault-real-8 -fdefault-double-8 -fbackslash -ffree-line-length-0 -DGNU")
+  # set Flags (disable lto type warnings due to false positives with MATMUL, which is a known bug)
+  SET (CMAKE_Fortran_FLAGS         "${CMAKE_Fortran_FLAGS} -fdefault-real-8 -fdefault-double-8 -fbackslash -ffree-line-length-0 -Wno-lto-type-mismatch -DGNU")
   SET (CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS}     -O3 ${FLEXI_INSTRUCTION} -finline-functions -fstack-arrays")
   SET (CMAKE_Fortran_FLAGS_PROFILE "${CMAKE_Fortran_FLAGS} -pg -O3 ${FLEXI_INSTRUCTION} -finline-functions -fstack-arrays")
   SET (CMAKE_Fortran_FLAGS_DEBUG   "${CMAKE_Fortran_FLAGS} -g -O0 -ggdb3 -ffpe-trap=invalid -fbounds-check -finit-real=snan -fbacktrace  -Wall")
@@ -345,20 +369,30 @@ MARK_AS_ADVANCED(FLEXI_EXTERNAL_LIB_DIR)
 # =========================================================================
 # HDF5 library
 # =========================================================================
+SET(LIB_TYPE STATIC) # OR SHARED
+STRING(TOLOWER ${LIB_TYPE} SEARCH_TYPE)
+
+# We support two methods for finding HDF5:
+# the version built using configure scripts and using CMake
+# Support for CMake-built HDF5 is limited to version >1.10.2
+# which require at CMake >3.10
+# Recommendations: use configure version if possible
 
 IF(NOT FLEXI_BUILD_HDF5)
-  FIND_PACKAGE(HDF5 COMPONENTS C Fortran QUIET) #if built with configure script
+  SET(FLEXI_HDF5_CMAKE TRUE) # try to find the CMake version
+  FIND_PACKAGE(HDF5 NAMES hdf5 COMPONENTS C Fortran ${SEARCH_TYPE} QUIET PATH_SUFFIXES share/cmake )
   IF (HDF5_FOUND)
-    SET(FLEXI_HDF5_CMAKE FALSE)
-  ELSE()
-    FIND_PACKAGE(HDF5 COMPONENTS C Fortran static NO_MODULE QUIET PATH_SUFFIXES share/cmake )
-    IF (HDF5_FOUND)
-      SET(FLEXI_HDF5_CMAKE TRUE)
-      MESSAGE (STATUS "HDF5 C libs:${HDF5_FOUND} static:${HDF5_static_C_FOUND} and shared:${HDF5_shared_C_FOUND}")
-      MESSAGE (STATUS "HDF5 Fortran libs: static:${HDF5_static_Fortran_FOUND} and shared:${HDF5_shared_Fortran_FOUND}")
-      MESSAGE (STATUS "h5diff found:${HDF5_DIFF_EXECUTABLE}")
+    IF(${CMAKE_VERSION} VERSION_LESS "3.10.0")
+      MESSAGE (WARNING "HDF5 built with CMake was found! This feature is only supported for CMake 3.10+ and HDF5 1.10.2+ !")
     ENDIF()
+    MESSAGE (STATUS "HDF5 C libs:${HDF5_FOUND} static:${HDF5_static_C_FOUND} and shared:${HDF5_shared_C_FOUND}")
+    MESSAGE (STATUS "HDF5 Fortran libs: static:${HDF5_static_Fortran_FOUND} and shared:${HDF5_shared_Fortran_FOUND}")
+    MESSAGE (STATUS "h5diff found:${HDF5_DIFF_EXECUTABLE}")
+  ELSE()
+    SET(FLEXI_HDF5_CMAKE FALSE) # try to find the configure version
+    FIND_PACKAGE(HDF5 COMPONENTS C Fortran)
   ENDIF()
+
 ELSE()
 
   SET(FLEXI_HDF5_DLDIR ${FLEXI_EXTERNAL_LIB_DIR}/HDF5)
@@ -377,11 +411,13 @@ ELSE()
     ExternalProject_Add(HDF5
       GIT_REPOSITORY ${HDF5DOWNLOAD}
       GIT_TAG ${HDF5TAG}
+      ${${GITSHALLOW}}
       PREFIX ${FLEXI_HDF5_DIR}
       UPDATE_COMMAND ""
-      CONFIGURE_COMMAND FC=${FLEXI_HDF5FC} CC=${FLEXI_HDF5CC} ${FLEXI_HDF5_DIR}/src/HDF5/configure --prefix=${FLEXI_HDF5_DIR} --with-pic --enable-fortran ${FLEXI_HDF5PARALLEL} --disable-shared --libdir=${FLEXI_HDF5_DIR}/lib
+      CONFIGURE_COMMAND FC=${FLEXI_HDF5FC} CC=${FLEXI_HDF5CC} ${FLEXI_HDF5_DIR}/src/HDF5/configure --prefix=${FLEXI_HDF5_DIR} --with-pic --enable-fortran ${FLEXI_HDF5PARALLEL} --libdir=${FLEXI_HDF5_DIR}/lib
       BUILD_COMMAND ${MAKE}
     )
+    LIST(APPEND SELFBUILTEXTERNALS HDF5)
     # CMake HDF5 is fast but not that reliable
     #ExternalProject_Add(HDF5
     #  GIT_REPOSITORY ${HDF5DOWNLOAD}
@@ -393,6 +429,7 @@ ELSE()
     #)
   ENDIF()
 
+  SET(FLEXI_HDF5_CMAKE FALSE)
   SET(HDF5_hdf5_LIBRARY_RELEASE         ${FLEXI_HDF5_DIR}/lib/libhdf5.a)
   SET(HDF5_hdf5_fortran_LIBRARY_RELEASE ${FLEXI_HDF5_DIR}/lib/libhdf5_fortran.a)
   SET(HDF5_C_INCLUDE_DIR                ${FLEXI_HDF5_DIR}/include)
@@ -409,8 +446,8 @@ ELSE()
 ENDIF()
 
 IF(FLEXI_HDF5_CMAKE)
-  INCLUDE_DIRECTORIES (${HDF5_INCLUDE_DIR_FORTRAN} ${HDF5_INCLUDE_DIR})
-  LIST(APPEND linkedlibs ${HDF5_FORTRAN_STATIC_LIBRARY} ${HDF5_LIBRARIES})
+  INCLUDE_DIRECTORIES(${HDF5_INCLUDE_DIR} ${HDF5_INCLUDE_DIR_FORTRAN})
+  LIST(APPEND linkedlibs ${HDF5_C_${LIB_TYPE}_LIBRARY} ${HDF5_FORTRAN_${LIB_TYPE}_LIBRARY} )
 ELSE()
   INCLUDE_DIRECTORIES (${HDF5_INCLUDE_DIR_FORTRAN} ${HDF5_INCLUDE_DIR})
   MESSAGE(STATUS "Found HDF5 Libs: " ${HDF5_LIBRARIES})
@@ -467,15 +504,26 @@ ENDIF()
 # Flexi sources & targets
 # =========================================================================
 
-function(add_exec target)
+FUNCTION(add_exec target)
   ADD_EXECUTABLE(${target} ${ARGN})
-  TARGET_LINK_LIBRARIES(${target} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/userblock.o flexilib userblocklib stacksizelib ${linkedlibs})
-  SET_TARGET_PROPERTIES(${target} PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}) 
-  SET_TARGET_PROPERTIES(${target} PROPERTIES LINKER_LANGUAGE Fortran)
+  TARGET_LINK_LIBRARIES(${target} libflexishared)
+  SET_TARGET_PROPERTIES(${target} PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}
+                                             LINKER_LANGUAGE Fortran)
   INSTALL(PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${target} DESTINATION bin)
   STRING(TOUPPER ${target} TARGETUP)
   ADD_CUSTOM_COMMAND(TARGET ${target} POST_BUILD COMMAND ${CMAKE_COMMAND} -E cmake_echo_color --cyan "SUCCESS: ${TARGETUP} BUILD COMPLETE!")
-endfunction()
+ENDFUNCTION()
+
+FUNCTION(add_lib target)
+  ADD_LIBRARY(${target} SHARED ${ARGN})
+  TARGET_LINK_LIBRARIES(${target} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/userblock.o libflexistatic userblocklib stacksizelib ${linkedlibs})
+  SET_TARGET_PROPERTIES(${target} PROPERTIES PREFIX ""
+                                             COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}
+                                             LINKER_LANGUAGE Fortran)
+  INSTALL(PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${target} DESTINATION bin)
+  STRING(TOUPPER ${target} TARGETUP)
+  ADD_CUSTOM_COMMAND(TARGET ${target} POST_BUILD COMMAND ${CMAKE_COMMAND} -E cmake_echo_color --cyan "SUCCESS: ${TARGETUP} BUILD COMPLETE!")
+ENDFUNCTION()
 
 # include flexi.h 
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/src) 
@@ -497,6 +545,7 @@ FILE(GLOB_RECURSE flexiF90 ./src/interpolation/*.f90
                            ./src/io_hdf5/*.f90
                            ./src/timedisc/*.f90
                            ./src/testcase/${FLEXI_TESTCASE}/*.f90
+                           ./src/flexilib.f90
                            ./unitTests/unittest.f90
                            ./unitTests/unittest_vars.f90)
 # 
@@ -539,21 +588,26 @@ IF (FLEXI_FV)
 ENDIF()
 
 # define libs
-ADD_LIBRARY(flexilibF90 OBJECT ${flexiF90})
-SET_TARGET_PROPERTIES(flexilibF90 PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}) 
-ADD_LIBRARY(flexilib STATIC $<TARGET_OBJECTS:flexilibF90>)
-ADD_DEPENDENCIES(flexilibF90 HDF5)
+ADD_LIBRARY(libflexistaticF90 OBJECT ${flexiF90})
+SET_TARGET_PROPERTIES(libflexistaticF90 PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}) 
+ADD_LIBRARY(libflexistatic STATIC $<TARGET_OBJECTS:libflexistaticF90>)
+SET_TARGET_PROPERTIES(libflexistatic PROPERTIES PREFIX ""
+                                     OUTPUT_NAME "libflexif90")
+IF(SELFBUILTEXTERNALS)
+  ADD_DEPENDENCIES(libflexistaticF90 ${SELFBUILTEXTERNALS})
+ENDIF()
 
 ADD_LIBRARY(userblocklib STATIC ./src/output/read_userblock.c)
-SET_TARGET_PROPERTIES(userblocklib PROPERTIES LINKER_LANGUAGE C)
-SET_TARGET_PROPERTIES(userblocklib PROPERTIES COMPILE_FLAGS "-fPIC")
-
 ADD_LIBRARY(stacksizelib STATIC ./src/globals/stacksize.c)
-SET_TARGET_PROPERTIES(stacksizelib PROPERTIES LINKER_LANGUAGE C)
-SET_TARGET_PROPERTIES(stacksizelib PROPERTIES COMPILE_FLAGS "-fPIC")
+SET_TARGET_PROPERTIES(stacksizelib userblocklib PROPERTIES LINKER_LANGUAGE C
+                                                           COMPILE_FLAGS "-fPIC")
 
+# we link the statically built libs
+add_lib(libflexishared ./src/flexilib.f90)
+SET_TARGET_PROPERTIES(libflexishared PROPERTIES OUTPUT_NAME "libflexi")
+ADD_DEPENDENCIES(libflexishared libflexistatic userblocklib stacksizelib ${INTERNALLIBS})
 add_exec(flexi ./src/flexi.f90)
-ADD_DEPENDENCIES(flexi flexilib userblocklib stacksizelib HDF5)
+ADD_DEPENDENCIES(flexi libflexistatic userblocklib stacksizelib ${INTERNALLIBS})
 
 # special compiler flags to avoid warnings for empty functions of testcase.f90 and overwrite of intrinsic abort in globals.f90
 IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
@@ -572,12 +626,6 @@ FOREACH (def ${comp_defs})
    SET(comp_defs_str "${comp_defs_str} -D${def}")
 ENDFOREACH()
 ADD_CUSTOM_TARGET(preproc_defines COMMAND echo ${comp_defs_str})
-
-# =========================================================================
-# Add FLEXI2VTK tool
-# =========================================================================
-add_exec(flexi2vtk ./src/flexi2vtk.f90)
-ADD_DEPENDENCIES(flexi2vtk flexilib HDF5)
 
 # =========================================================================
 # Posti
@@ -606,7 +654,7 @@ ENDIF()
 # =========================================================================
 # Userblock
 # =========================================================================
-ADD_CUSTOM_COMMAND(TARGET flexilib PRE_BUILD COMMAND 
+ADD_CUSTOM_COMMAND(TARGET libflexistatic PRE_BUILD COMMAND 
    sh ${CMAKE_CURRENT_SOURCE_DIR}/tools/userblock/generateuserblock.sh ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} ${CMAKE_CACHEFILE_DIR} "${CMAKE_CACHE_MAJOR_VERSION}.${CMAKE_CACHE_MINOR_VERSION}.${CMAKE_CACHE_PATCH_VERSION}")
 
 # =========================================================================

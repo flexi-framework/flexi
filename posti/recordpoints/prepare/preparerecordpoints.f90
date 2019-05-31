@@ -1,7 +1,23 @@
+!=================================================================================================================================
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
+! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+!
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
+! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+!
+! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+! of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License v3.0 for more details.
+!
+! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
+!=================================================================================================================================
 #include "flexi.h"
 
 !===================================================================================================================================
-!> Add comments please!
+!> Tool used to create record points. The points are sorted in groups and can take different shapes, e.g. simple lines, circles,
+!> planes etc. For all points, the reference coordinates and respective element IDs are found in the mesh and stored as a .h5 file
+!> which can later be read by FLEXI or POSTI tools.
+!> In this way, we can e.g. produce a time-series of flow variables at the RPs in a very fine time intervall.
 !===================================================================================================================================
 PROGRAM PrepareRecordPoints
 ! MODULES
@@ -10,11 +26,12 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Commandline_Arguments
 USE MOD_StringTools,        ONLY:STRICMP,GetFileExtension
-USE MOD_ReadInTools,        ONLY:prms,IgnoredParameters,PrintDefaultParameterFile,FinalizeParameters
+USE MOD_ReadInTools,        ONLY:prms,IgnoredParameters,PrintDefaultParameterFile,FinalizeParameters,GETSTR
 ! Flexilib initialization
 USE MOD_MPI,                ONLY:DefineParametersMPI,InitMPI
 USE MOD_IO_HDF5,            ONLY:DefineParametersIO_HDF5,InitIOHDF5
-USE MOD_Interpolation,      ONLY:DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
+USE MOD_HDF5_Input
+USE MOD_Interpolation,      ONLY:InitInterpolation,FinalizeInterpolation
 USE MOD_Output,             ONLY:DefineParametersOutput,InitOutput,FinalizeOutput
 USE MOD_Output_Vars,        ONLY:ProjectName
 USE MOD_Mesh,               ONLY:DefineParametersMesh,InitMesh,FinalizeMesh
@@ -29,12 +46,16 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL                            :: success=.TRUE.
+INTEGER                            :: Ntmp
 !===================================================================================================================================
+#if PP_dim ==2
+STOP 'Please compile with 3D to use the recordpoints tool!'
+#endif
 CALL SetStackSizeUnlimited()
 CALL InitMPI() ! NO PARALLELIZATION, ONLY FOR COMPILING WITH MPI FLAGS ON SOME MACHINES OR USING MPI-DEPENDANT HDF5
 IF (nProcessors.GT.1) CALL CollectiveStop(__STAMP__, &
   'This tool is designed for single execution only!')
-WRITE(UNIT_stdOut,'(A)') " ||=================================||" 
+WRITE(UNIT_stdOut,'(A)') " ||=================================||"
 WRITE(UNIT_stdOut,'(A)') " || Prepare record points for Flexi ||"
 WRITE(UNIT_stdOut,'(A)') " ||=================================||"
 
@@ -47,15 +68,15 @@ IF(success)THEN
 END IF
 IF(.NOT.success.AND.doPrintHelp.LE.0)THEN
   ! Print out error message containing valid syntax
-  CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: preparerec parameter.ini or preparerec --help'// &
-  '[option/section name] to print help for a single parameter, parameter sections or all parameters.')
+  CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: posti_preparerecordpoints parameter.ini or&
+   & posti_preparerecordpoints --help [option/section name] to print help for a single parameter, parameter sections&
+   & or all parameters.')
 END IF
 
 CALL DefineParameters()
 CALL DefineParametersRPSet()
 CALL DefineParametersMPI()
 CALL DefineParametersIO_HDF5()
-CALL DefineParametersInterpolation()
 CALL DefineParametersOutput()
 CALL DefineParametersMesh()
 
@@ -68,10 +89,16 @@ CALL prms%read_options(ParameterFile)
 
 CALL InitParameters()
 CALL InitIOHDF5()
-CALL InitInterpolation()
+! Open mesh and read NGeo. The polynomial basis will be initialized with 2*NGeo.
+MeshFile = GETSTR('MeshFile')
+CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+CALL ReadAttribute(File_ID,'Ngeo',1,IntScalar=Ntmp)
+CALL CloseDataFile()
+Ntmp = Ntmp*2
+CALL InitInterpolation(Ntmp)
 CALL InitMortar()
 CALL InitOutput()
-CALL InitMesh(meshMode=2)
+CALL InitMesh(meshMode=2,MeshFile_IN=MeshFile)
 
 CALL InitRPSet()
 CALL GetRecordPoints()

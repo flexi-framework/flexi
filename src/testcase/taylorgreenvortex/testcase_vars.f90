@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -30,7 +30,11 @@ CHARACTER(LEN=255) :: testcase = "taylorgreenvortex"  !< name of testcase
 !----------------------------------------------------------------------------------------------------------------------------------
 REAL,ALLOCATABLE   :: Time(:)           !< times of log data (nWriteStats)
 REAL,ALLOCATABLE   :: writeBuf(:,:)     !< log data (nTGVVars+1,nWriteStats)
-INTEGER,PARAMETER  :: nTGVvars=12       !< Number of variables to be evaluated for TGV, time not included
+#if PARABOLIC
+INTEGER,PARAMETER  :: nTGVvars=13       !< Number of variables to be evaluated for TGV, time not included
+#else
+INTEGER,PARAMETER  :: nTGVvars=5        !< Number of variables to be evaluated for TGV, time not included
+#endif
 INTEGER            :: ioCounter   =0    !< current number of buffer items
 INTEGER            :: nWriteStats =-999 !< Write testcase statistics to file at every n-th AnalyzeTestcase step
 CHARACTER(LEN=255) :: Filename          !< filename to store testcase log data

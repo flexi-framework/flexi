@@ -483,9 +483,9 @@ END FUNCTION FillVorticity
 !==================================================================================================================================
 !> Calculate the lambda 2 criterion, see Jeong, Jinhee, and Fazle Hussain. "On the identification of a vortex." Journal of fluid
 !> mechanics 285 (1995): 69-94.
-!> This criterion is the second eigenvalue of the symmetric tensor ${\bm {\cal S}}^2 + {\bm \Omega}^2$;
-!> here ${\bm {\cal S}}$ and ${\bm \Omega}$ are respectively the symmetric and antisymmetric parts of
-!> the velocity gradient tensor ${\bm \Delta}{\bm u}$.
+!> This criterion is the second eigenvalue of the symmetric tensor \f[  {\cal S}^2 + {\Omega}^2 \f];
+!> here \f[ {\cal S} \f] and \f[ \Omega \f] are respectively the symmetric and antisymmetric parts of
+!> the velocity gradient tensor \f[ \Delta u \f].
 !> Calculation of the eigenvalues is done using LAPACK.
 !==================================================================================================================================
 FUNCTION FillLambda2(nVal,gradUx,gradUy,gradUz) RESULT(Lambda2)
@@ -498,6 +498,7 @@ REAL,DIMENSION(PP_nVarPrim,PRODUCT(nVal)),INTENT(IN) :: gradUx,gradUy,gradUz
 REAL               :: Lambda2(PRODUCT(nVal))
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+EXTERNAL              DSYEV
 INTEGER            :: i
 REAL               :: gradUmat(3,3)
 INTEGER            :: INFO

@@ -1,6 +1,6 @@
 ## Lid-driven Cavity
+\label{sec:tut_cavity}
 
-\hypertarget{tutorial:cavity}{}
 This tutorial describes how to set up and run the first non-trivial flow problem. The lid-driven cavity flow is a standard test case for numerical schemes, and a number of results have been published in literature, see e.g. [@ghia_cavity], [@gao_cavity]. This tutorial assumes that you have completed the previous tutorial, know how to edit files and postprocess the solution with your favorite visualization tool, e.g. ParaView. Also, the later parts of the tutorial assume that you have access to a computer with an MPI-based parallelization with at least 4 computing cores - otherwise, it will just take a lot longer :). 
 
 The tutorial is split into two parts: The basic part will teach you about setting up the code and running the simulations. The advanced part will build on this and give you a glimpse on how to make modification to code to accommodate more complex simulation and add features you might need. If you are just interested in running the code as is, you may skip the advanced part, or just complete parts of it. 
@@ -41,7 +41,7 @@ make
 
 ### Part I: Basic Tutorial - Flow at $Re=100$
 
-Copy the ``cavity`` tutorial folder \label{missing:aliases_tutorial_cavity1}
+Copy the ``cavity`` tutorial folder
 
         cp -r $FLEXI_TUTORIALS/cavity .
         
@@ -57,20 +57,20 @@ The domain of interest consists of a square 2D geometry. Although the flow field
 
 Like before, the mesh files used by **FLEXI** are created by supplying an input file *parameter_hopr.ini* with the appropriate information to **HOPR**.
 
-    ./hopr parameter_hopr.ini
+    hopr parameter_hopr.ini
 
 A full tutorial on how to run **HOPR** is available at the project site [HOPR-project](http://hopr-project.org), so we will just review the basics here. In *parameter_hopr.ini*, the following lines create a cubical domain from $[0,0,0]\rightarrow[1,1,1]$, discretized by $4\times 4$ elements in the $x-y$ plane and $1$ element in the $z-$direction. 
 
 ~~~~~~~
-    Corner =(/0.,0.,0. ,,1.,0.,0. ,,1.,1.,0. ,,  0.,1.,0.,, 0.,0.,1. ,,1.,0.,1. ,,1.,1.,1. ,,  0.,1.,1. /)
-    ! Corner node positions: (/ x_1,y_1,z_1, x_2,y_2,z_2,..... , x_8,y_8,z_8/)
-    nElems =(/4,4,1/)              ! number of elements in each direction
+Corner =(/0.,0.,0. ,,1.,0.,0. ,,1.,1.,0. ,,  0.,1.,0.,, 0.,0.,1. ,,1.,0.,1. ,,1.,1.,1. ,,  0.,1.,1. /)
+! Corner node positions: (/ x_1,y_1,z_1, x_2,y_2,z_2,..... , x_8,y_8,z_8/)
+nElems =(/4,4,1/)              ! number of elements in each direction
 ~~~~~~~
 
 The next line maps the 6 faces of the cube to the boundary conditions following the CGNS notation, i.e. it indicates which of the boundary conditions defined below belong to which face. 
 
 ~~~~~~~
-      BCIndex      =(/1,3,6,4,5,2/)        ! Indices of Boundary Conditions for  six Boundary Faces (z-,y-,x+,y+,x-,z+)
+BCIndex      =(/1,3,6,4,5,2/)        ! Indices of Boundary Conditions for  six Boundary Faces (z-,y-,x+,y+,x-,z+)
 ~~~~~~~
 
 For example, the first boundary condition defined will be applied to the $z-$ face of the cube, while the third one will be applied to the $y-$ face and so on. The order $(z-,y-,x+,y+,x-,z+)$ is given by the CGNS standard and thus fixed, so if you keep this line as it is, the boundary conditions below can be defined in the (less confusing) order of  $(z-,z+,y-,y+,x-,x+)$.
@@ -82,22 +82,21 @@ Figure: BC Indices for the cube, front and back view. \label{fig:cavity_bcindex}
 The boundary conditions are now assigned to faces in the following lines: 
 
 ~~~~~~~
-    BoundaryName=BC_zminus             ! BC index 1 
-    BoundaryType=(/1,0,0,1/)           ! (/ Type, curveIndex, State, alpha /)
-    BoundaryName=BC_zplus              ! BC index 2
-    BoundaryType=(/1,0,0,-1/)          ! 
-    vv=(/0.,0.,1./)                    ! 
+BoundaryName=BC_zminus             ! BC index 1 
+BoundaryType=(/1,0,0,1/)           ! (/ Type, curveIndex, State, alpha /)
+BoundaryName=BC_zplus              ! BC index 2
+BoundaryType=(/1,0,0,-1/)          ! 
+vv=(/0.,0.,1./)                    ! 
 
-    BoundaryName=BC_wall_lower         ! BC index 3
-    BoundaryType=(/4,0,1,0/)
-    BoundaryName=BC_free               ! BC index 4
-    BoundaryType=(/2,0,0,0/)
+BoundaryName=BC_wall_lower         ! BC index 3
+BoundaryType=(/4,0,1,0/)
+BoundaryName=BC_free               ! BC index 4
+BoundaryType=(/2,0,0,0/)
 
-    BoundaryName=BC_wall_left          ! BC index 5
-    BoundaryType=(/4,0,1,0/)
-    BoundaryName=BC_wall_right         ! BC index 6
-    BoundaryType=(/4,0,1,0/)
-
+BoundaryName=BC_wall_left          ! BC index 5
+BoundaryType=(/4,0,1,0/)
+BoundaryName=BC_wall_right         ! BC index 6
+BoundaryType=(/4,0,1,0/)
 ~~~~~~~
 
 The identifier *BoundaryName* can be chosen freely, it is good practice to start it with *BC_*. The identifier *BoundaryType* specifies what kind of boundary is to be applied to the face. For the $z-$oriented faces, periodic boundary conditions are chosen, which are denoted by type $1$, the first index in the array. The second index indicates if the face is *curved* (not for this test case), and the third indicates which *reference state* will be used at the boundary. This will be discussed in more detail later, it is important to note that the state can be set here when generating the grid, but can also be overwritten in *parameter_flexi.ini* later. The fourth entry is used to match periodic boundary condition sides, i.e. these need to form a pair of the form $[a,-a]$, where $a$ is a unique integer for each periodic pair and the sign specifies the orientation. In this example, the $z-$ and $z+$ sides are connected and the associated connection vector *vv* is in the $z-$direction. In summary, to specify a periodic side pair, the first index in *BoundaryType* must be $1$, the fourth index must be a matching pair of integers and the connection vector must be specified. 
@@ -119,11 +118,15 @@ For this basic tutorial, the simple meshes shown in picture (figure \ref{fig:cav
 
 The simulation setup is defined in *parameter_flexi.ini*. To get help on any of the parameters listed therein, you can run **FLEXI** from the command line by typing
 
-     ./flexi --help
-     or
-     ./flexi --help SECTION
-     or
-     ./flexi --help PARAMETER
+     flexi --help
+
+or
+
+     flexi --help SECTION
+
+or
+
+     flexi --help PARAMETER
      
 The first command lists all parameters grouped thematically, however, this is not mandatory.
 The second command lists all parameters of a certain section and the last command only gives help about a specific option. 
@@ -132,27 +135,23 @@ All lines starting with a "!" are comments.
 ##### Output parameters
 
 ~~~~~~~
-
-    ! ================================================ !
-    ! OUTPUT 
-    ! ================================================ !
-    ProjectName   = Tutorial_Cavity_Re100
-    outputFormat  = 0  
-
+! ================================================ !
+! OUTPUT 
+! ================================================ !
+ProjectName   = Tutorial_Cavity_Re100
+outputFormat  = 0  
 ~~~~~~~
 
-The parameter *ProjectName* is used to name all the files generated by the simulation, e.g. the state at time $0.3$ (the solution vector of conserved variables at each node)  is written to the file *Tutorial_Cavity_Re100_State_0000000.300000000.h5* and so on. The parameter *outputFormat* is set to $0$ here, indicating that the output is *off*.  Turning it on will result in an on-the-fly **visualization** output of the solution states, but this is *not* recommended as good practice - it will slow down the code considerably, in particular in parallel mode. State-files in the HDF5-format are written always independent of this parameter. The recommended way is to use the *flexi2vtk* tool after the simulation to generate Paraview-readable files. Note that currently, the only output format available is *vtk* (by setting outputFormat  = 3), since Tecplot output is not available due to GPL licensing issues. 
+The parameter *ProjectName* is used to name all the files generated by the simulation, e.g. the state at time $0.3$ (the solution vector of conserved variables at each node)  is written to the file *Tutorial_Cavity_Re100_State_0000000.300000000.h5* and so on. The parameter *outputFormat* is set to $0$ here, indicating that the output is *off*.  Turning it on will result in an on-the-fly **visualization** output of the solution states, but this is *not* recommended as good practice - it will slow down the code considerably, in particular in parallel mode. State-files in the HDF5-format are written always independent of this parameter. The recommended way is to use the *posti_visu* tool after the simulation to generate Paraview-readable files. Note that currently, the only output format available is *vtk* (by setting outputFormat  = 3), since Tecplot output is not available due to GPL licensing issues. 
 
 ##### Interpolation / Discretization parameters
 
 ~~~~~~~
-
-    ! ================================================ !
-    ! INTERPOLATION
-    ! ================================================ !
-    N             = 3  
-    NAnalyze      = 10 
-
+! ================================================ !
+! INTERPOLATION
+! ================================================ !
+N             = 3  
+NAnalyze      = 10 
 ~~~~~~~
 
 The parameter *N* sets the degree of the solution polynomial, e.g. in this example, the solution is approximated by a polynomial of degree $3$ in each spatial direction. This results in $(N+1)^3$ degrees of freedom for each (3D) element. In general, *N* can be chosen to be any integer greater or equal to $1$, however, the discretization and the timestep calculation has not extensively been tested beyond $N\approx 23$. Usually, for a good compromise of performance and accuracy is found for $N\in[3,..,9]$.
@@ -162,22 +161,20 @@ The parameter *N* sets the degree of the solution polynomial, e.g. in this examp
 ##### Mesh parameters
 
 ~~~~~~~
+! ================================================ !
+! MESH  
+! ================================================ !
+MeshFile      = cavity2x2_mesh.h5 
+useCurveds    = F
 
-    ! ================================================ !
-    ! MESH  
-    ! ================================================ !
-    MeshFile      = cavity2x2_mesh.h5 
-    useCurveds    = F
-
-    !BoundaryName=BC_wall_lower             
-    !BoundaryType=(/4,1/)           
-    BoundaryName=BC_wall_left         
-    BoundaryType=(/4,1/)                
-    BoundaryName=BC_wall_right       
-    BoundaryType=(/4,1/) 
-    BoundaryName=BC_free
-    BoundaryType=(/2,1/)
-
+!BoundaryName=BC_wall_lower             
+!BoundaryType=(/4,1/)           
+BoundaryName=BC_wall_left         
+BoundaryType=(/4,1/)                
+BoundaryName=BC_wall_right       
+BoundaryType=(/4,1/) 
+BoundaryName=BC_free
+BoundaryType=(/2,1/)
 ~~~~~~~
 
 The parameter *MeshFile* contains the name of the **HOPR** mesh file in HDF5 format (and/or the full path to it). *UseCurveds* indicates whether the mesh is considered to be curved, i.e. if high-order mesh information should be used. Setting this to *F* can be used to discard high order information in the mesh file and treat it as a linear mesh. For the current tutorial, the meshes are linear by design. 
@@ -185,10 +182,8 @@ The parameter *MeshFile* contains the name of the **HOPR** mesh file in HDF5 for
 The boundary conditions are set via the *BoundaryName* identifier, which specifies a name that must be present in the mesh file (see section on mesh generation above). Each line containing the boundary name must be followed by a line containing the *BoundaryType*. A list of types available for the Navier-Stokes equations can be found in table \ref{tab:boundaryconditions}. For types that require additional information (like Dirichlet boundaries), the second index in *BoundaryType* refers to the *RefState* (short for reference state) which is used to determine the unknowns / quantities from the outside for this boundary condition. For example, for a Dirichlet boundary (Type 2), the full reference state is set at the boundary, so the lines 
 
 ~~~~~~~
-
-    BoundaryName=BC_free
-    BoundaryType=(/2,1/)
-
+BoundaryName=BC_free
+BoundaryType=(/2,1/)
 ~~~~~~~
 
 indicate that the *first* reference state vector listed below is set at this boundary (the lid part of the cavity). Note that the reference vectors are always in primitive variables, i.e. $(\rho, u, v, w, p)^T$ *unless* specified otherwise. Also, for the boundaries *BC_wall_left* and *BC_wall_right*, the same reference state is chosen. These boundaries are isothermal walls, so a wall temperature needs to be specified - this is computed from the primitive variables in the associated reference state. 
@@ -196,32 +191,31 @@ indicate that the *first* reference state vector listed below is set at this bou
 Note that the lines for the lower wall boundary are commented out. As has been mentioned above, the boundary conditions can be set in **HOPR** directly, and then be overwritten here. This is just an example to show how both approaches work. Later, when running **FLEXI** with these settings, it is good practice to inspect the boundary condition information as understood by **FLEXI**. In this case, the output of **FLEXI** to the console will look like this:
 
 ~~~~~~~
-    ----------------------------------------------------------------
-    |          BoundaryName |     BC_wall_left | *CUSTOM | 
-    |          BoundaryType |       (/ 4, 1 /) | *CUSTOM | 
-    |          BoundaryName |    BC_wall_right | *CUSTOM | 
-    |          BoundaryType |       (/ 4, 1 /) | *CUSTOM | 
-    |          BoundaryName |          BC_free | *CUSTOM | 
-    |          BoundaryType |       (/ 2, 1 /) | *CUSTOM | 
-    |     Boundary in HDF file found |  BC_free
-    |                            was |  2 0
-    |                      is set to |  2 1
-    |     Boundary in HDF file found |  BC_wall_left
-    |                            was |  4 1
-    |                      is set to |  4 1
-    |     Boundary in HDF file found |  BC_wall_right
-    |                            was |  4 1
-    |                      is set to |  4 1
-    .............................................................
-    BOUNDARY CONDITIONS|           Name   Type  State     Alpha
-    |                  |      BC_zminus      1      0         1
-    |                  |       BC_zplus      1      0        -1
-    |                  |  BC_wall_lower      4      1         0
-    |                  |        BC_free      2      1         0
-    |                  |   BC_wall_left      4      1         0
-    |                  |  BC_wall_right      4      1         0
-    .............................................................
-
+  ----------------------------------------------------------------
+  |          BoundaryName |     BC_wall_left | *CUSTOM | 
+  |          BoundaryType |       (/ 4, 1 /) | *CUSTOM | 
+  |          BoundaryName |    BC_wall_right | *CUSTOM | 
+  |          BoundaryType |       (/ 4, 1 /) | *CUSTOM | 
+  |          BoundaryName |          BC_free | *CUSTOM | 
+  |          BoundaryType |       (/ 2, 1 /) | *CUSTOM | 
+  |     Boundary in HDF file found |  BC_free
+  |                            was |  2 0
+  |                      is set to |  2 1
+  |     Boundary in HDF file found |  BC_wall_left
+  |                            was |  4 1
+  |                      is set to |  4 1
+  |     Boundary in HDF file found |  BC_wall_right
+  |                            was |  4 1
+  |                      is set to |  4 1
+  .............................................................
+  BOUNDARY CONDITIONS|           Name   Type  State     Alpha
+  |                  |      BC_zminus      1      0         1
+  |                  |       BC_zplus      1      0        -1
+  |                  |  BC_wall_lower      4      1         0
+  |                  |        BC_free      2      1         0
+  |                  |   BC_wall_left      4      1         0
+  |                  |  BC_wall_right      4      1         0
+  .............................................................
 ~~~~~~~
 
 
@@ -234,17 +228,17 @@ In this section of the parameter file, the settings associated with the equation
 
 
 ~~~~~~~
-    ! ============================================== !
-    ! EQUATION
-    ! ============================================== !
-    IniExactFunc  = 1
-    IniRefState   = 2
-    RefState      = (/1.0,1.,0.,0.,71.4285714286/)
-    RefState      = (/1.0,0.,0.,0.,71.4285714286/)
-    mu0           = 0.01
-    R             = 1
-    Pr            = 0.72
-    kappa         = 1.4
+! ============================================== !
+! EQUATION
+! ============================================== !
+IniExactFunc  = 1
+IniRefState   = 2
+RefState      = (/1.0,1.,0.,0.,71.4285714286/)
+RefState      = (/1.0,0.,0.,0.,71.4285714286/)
+mu0           = 0.01
+R             = 1
+Pr            = 0.72
+kappa         = 1.4
 ~~~~~~~
 
 As described above, the RefStates are given in primitive variables. The second one describes a fluid at rest and is used to initialize a resting fluid in the cavity. The first state is used to determine the driving flow at the top of the cavity (and to compute the wall temperatures for the boundaries). Constant flow properties like the gas constant are given in table \ref{tab:cavity_flow_prop} 
@@ -272,15 +266,14 @@ Since we are comparing against an incompressible reference solution, setting the
 
 #### Temporal discretization parameters
 ~~~~~~~
-	! ================================================ !
-	! TIMEDISC
-	! ================================================ !
-	tend          = 5.0
-	Analyze_dt    = 0.1
-	nWriteData    = 1
-	CFLscale      = 0.9
-	DFLscale      = 0.4
-
+! ================================================ !
+! TIMEDISC
+! ================================================ !
+tend          = 5.0
+Analyze_dt    = 0.1
+nWriteData    = 1
+CFLscale      = 0.9
+DFLscale      = 0.4
 ~~~~~~~
 
 The parameter *tend* determines the end time of the solution, *Analyze_dt* the interval at which the analysis routines (like error computation, checking of wall velocities etc. see below) are called. The multiplier *nWriteData* determines the interval at which the solution state files are written to the file system, e.g. in this case *nWriteData* $\times$ *Analyze_dt* = 0.1 is the interval for writing to disc. The CFL and DFL numbers determine the explicit time step restriction for the advective and viscous parts. Note that these values should always be chosen to be $<1$, but since the determination of the timestep includes some heuristics, both values should be chosen conservatively. 
@@ -289,14 +282,13 @@ The parameter *tend* determines the end time of the solution, *Analyze_dt* the i
 #### Analysis parameters
 
 ~~~~~~~
-	! ============================================================== !
-	! ANALYZE
-	! ============================================================== !
-	CalcErrorNorms=   T   ! Calculate error norms
-	CalcBodyForces=   T   ! Calculate body forces
-	CalcWallVelocity= T   ! Calculate wall velocities
-	CalcMeanFlux=     T   ! Calculate mean flux through boundaries
-
+! ============================================================== !
+! ANALYZE
+! ============================================================== !
+CalcErrorNorms=   T   ! Calculate error norms
+CalcBodyForces=   T   ! Calculate body forces
+CalcWallVelocity= T   ! Calculate wall velocities
+CalcMeanFlux=     T   ! Calculate mean flux through boundaries
 ~~~~~~~
 
 These switches trigger the output of analysis files. 
@@ -306,17 +298,18 @@ Now that all the necessary preparations have been made, the simulation can be st
 
 
 #### Running the Simulation and Results
+\label{sec:tut_cavity_running_and_results}
 
 The command
 
 ~~~~~~~
-./flexi parameter_flexi.ini > std.out
+flexi parameter_flexi.ini > std.out
 ~~~~~~~
 
 runs the code and dumps all output into the file *std.out*. If you wish to run the code in parallel using MPI, the standard command is
 
 ~~~~~~~
-mpirun -np XX ./flexi parameter_flexi.ini > std.out
+mpirun -np XX flexi parameter_flexi.ini > std.out
 ~~~~~~~
 
 where $XX$ is an integer denoting the number of processes to be used in parallel. Note that **FLEXI** uses an element-based parallelization strategy, so the minimum load per process/core is *one* grid element, i.e. do not use more cores than cells in the grid! 
@@ -343,11 +336,14 @@ Table: $Re=100$ lid driven cavity: Simulations \label{tab:cavity_sims}
 
 ![Contours of velocity magnitude for the $Re=100$ lid-driven cavity case. \label{fig:cavity_re100_velcontours}](tutorials/01_cavity/re100_velcontours.png)
 
+
+\pagebreak 
+
 A contour plot of the velocity magnitude at the end time is given in figre \ref{fig:cavity_re100_velcontours}. To generate this plot, convert the *State* files to a Paraview format by invoking
 
 
 ~~~~~~~
-flexi2vtk parameter_flexi2vtk.ini your_Statefiles.h5
+posti_visu parameter_postiVisu.ini parameter_flexi.ini your_Statefiles.h5
 ~~~~~~~
 
 
@@ -361,7 +357,7 @@ For simulation 1, the agreement with literature results is fair. This is due to 
 
 In this part of the tutorial, we will expand upon what has been learned in the basic section above. The general setup of the computation remains the same, but the Reynolds number is increased, which will be accounted for by a new mesh and a higher resolution. Also, we will give a first glimpse at how to make your own changes to the code and show how to add a new function to be used as a custom initial or boundary condition. It is recommend that you have completed the basic tutorial, have access to at least 4 cores for the computation (or just have the patience to wait longer) and are familiar with **FORTRAN** syntax. 
 
-If not done so already,copy the ``cavity`` tutorial folder \label{missing:aliases_tutorial_cavity1}
+If not done so already, copy the ``cavity`` tutorial folder
 
         cp -r $FLEXI_TUTORIALS/cavity .
         
@@ -376,9 +372,7 @@ To account for the increased Reynolds number, the number of elements in the $x-y
 
 
 ~~~~~~~
-
-	factor       =(/1.0,-1.2,1./)                ! element stretching a constant growth factor (+/- changes direction)
-
+factor       =(/1.0,-1.2,1./)                ! element stretching a constant growth factor (+/- changes direction)
 ~~~~~~~
 
 You can generate your own mesh or re-use the provided one, labeled *cavity12x12_stretch_mesh.h5*.
@@ -422,14 +416,13 @@ Note that in the sample code, we do not specify the full primitive state vector 
 To setup the simulation, you can either modify the *parameter_flexi.ini* files from the basic tutorial or use the provided ones. We will conduct 2 simulations: one with the constant driving flow boundary conditions as before, and one with the new custom equation specified as equation *CASE 9*. Two parameter files for these cases are provided, the one with the custom boundary condition named *parameter_flexi_custombc.ini*. For both cases, the changes in the parameterfile are:
 
 ~~~~~~~
-		MeshFile      = cavity12x12_stretch_mesh.h5
-		...
+MeshFile      = cavity12x12_stretch_mesh.h5
+...
 
-		mu0           = 0.0025
+mu0           = 0.0025
                 ...
 
-		tend          = 100.0
-
+tend          = 100.0
 ~~~~~~~
 
 
@@ -438,8 +431,8 @@ The mesh file needs to be adjusted as well as the viscosity to set the Reynolds 
 For the custom boundary condition case, the parameter file needs to be adjusted to address the new boundary settings. According to table \ref{tab:boundaryconditions}, Dirichlet boundary conditions with a specified reference equation (instead of a reference _state_) are of type $22$. The second index in the entry refers thus to the equation (*CASE 9*) we have programmed above. 
 
 ~~~~~~~
-	BoundaryName=BC_free
-	BoundaryType=(/22,9/)
+BoundaryName=BC_free
+BoundaryType=(/22,9/)
 ~~~~~~~
 
 Now we are ready to run both simulations and compare the results. 
@@ -450,23 +443,18 @@ Now we are ready to run both simulations and compare the results.
 The command
 
 ~~~~~~~
-./flexi parameter_flexi.ini > std.out
+flexi parameter_flexi.ini > std.out
 ~~~~~~~
 
 runs the code and dumps all output into the file *std.out*. If you wish to run the code in parallel using MPI, the standard command is
 
 ~~~~~~~
-mpirun -np XX ./flexi parameter_flexi.ini > std.out
+mpirun -np XX flexi parameter_flexi.ini > std.out
 ~~~~~~~
 
 ![Evolution of wall velocities at the lower wall for $Re=400$ lid driven cavity simulations. \label{fig:cavity_re400_wallvel}](tutorials/01_cavity/re400_wallvel.png)
 
 Change the parameter file to *parameter_flexi_custombc.ini* for the second run. Note that you can adust the end time if you wish. From figure \ref{fig:cavity_re400_wallvel}, which shows the evolution of the mean velocity at the lower wall, the flow reaches steady state after about $t=35$. The following figures show the flow field and comparison of the centerline velocities with published results.
-
-
-
-
-
 
 ![](tutorials/01_cavity/re400_velmag_const.png)     ![](tutorials/01_cavity/re400_velmag_custom.png)
 

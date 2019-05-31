@@ -1,7 +1,20 @@
+!=================================================================================================================================
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
+! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+!
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
+! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+!
+! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+! of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License v3.0 for more details.
+!
+! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
+!=================================================================================================================================
 #include "flexi.h"
 
 !===================================================================================================================================
-!> Module to handle the Recordpoints
+!> Module to handle the output of the RPs
 !===================================================================================================================================
 MODULE MOD_HDF5_OutputRP
 ! MODULES
@@ -55,7 +68,7 @@ FileString=TRIM(FileName)//'.h5'
 CALL OpenDataFile(TRIM(Filestring),create=.TRUE.,single=.TRUE.,readOnly=.FALSE.)
 
 CALL WriteAttribute(File_ID,'File_Type',1,StrScalar=(/'RecordPoints'/))
-CALL WriteAttribute(File_ID,'MeshFile',1,StrScalar=(/TRIM(MeshFileName)/))
+CALL WriteAttribute(File_ID,'MeshFile',1,StrScalar=(/MeshFileName/))
 CALL WriteAttribute(File_ID,'NGeo',1,IntScalar=NGeo)
 CALL WriteAttribute(File_ID,'NodeType',1,StrScalar=(/NodeType/))
 
@@ -116,7 +129,7 @@ IF(nPlanes.GT.0) THEN
       DO i=1,Plane%nRP(1)
         RPset2D(i,j)=Plane%RP_ptr(i,j)%RP%ID
       END DO !i
-    END DO !j 
+    END DO !j
     CALL WriteArray(TRIM(Plane%Name),2,Plane%nRP,Plane%nRP,(/0,0/),.FALSE.,IntArray=RPset2D)
     DEALLOCATE(RPset2D)
     ! groupID
@@ -159,8 +172,5 @@ CALL CloseDataFile()
 
 SWRITE(UNIT_stdOut,'(a)',ADVANCE='YES')'DONE'
 END SUBROUTINE WriteRecordPointstoHDF5
-
-
-
 
 END MODULE MOD_HDF5_OutputRP

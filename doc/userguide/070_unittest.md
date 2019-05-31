@@ -80,7 +80,7 @@ Have a look at the source code of one of the already implemented unit tests if y
 Some of the unit tests require parts of the mesh data structure to be able to call the funtions to be tested. For this purpose, a curved single element is created and all the mesh data stored as a binary file called ``UnittestElementData.bin``. This binary file can then be read during runtime
 by the unit test programs. 
 
-To generate the curved single element mesh, run **HOPR** with the parameter file provided in the ``unitTest`` subdirectory of **FLEXI**. To generate the binary file run flexi with the following command line argument and the parameter file 
+To generate the curved single element mesh, run **HOPR** with the parameter file provided in the ``unitTest`` subdirectory of **FLEXI**. To generate the binary file, run **FLEXI** with the following command line argument and the parameter file 
 provided in the ``unitTest`` subdirectory:
 
 

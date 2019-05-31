@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -45,7 +45,7 @@ CONTAINS
 !> Converts the coordinates of the mesh to the visu-mesh.
 !=================================================================================================================================
 SUBROUTINE BuildVisuCoords()
-! MODULES                                                                   
+! MODULES
 USE ISO_C_BINDING
 USE MOD_Globals
 USE MOD_PreProc
@@ -53,7 +53,7 @@ USE MOD_Visu_Vars          ,ONLY: CoordsVisu_DG
 USE MOD_Visu_Vars          ,ONLY: NodeTypeVisuPosti
 USE MOD_Visu_Vars          ,ONLY: NVisu,nElems_DG,mapDGElemsToAllElems
 USE MOD_Visu_Vars          ,ONLY: nElemsAvg2D_DG,Avg2D
-USE MOD_Visu_Vars          ,ONLY: Elem_IJK,mapElemIJToDGElemAvg2D
+USE MOD_Visu_Vars          ,ONLY: Elem_IJK,Elem_IJK_glob,mapElemIJToDGElemAvg2D
 #if FV_ENABLED
 USE MOD_Visu_Vars          ,ONLY: FVAmountAvg2D,mapElemIJToFVElemAvg2D,nElemsAvg2D_FV
 USE MOD_Visu_Vars          ,ONLY: NVisu_FV,nElems_FV,mapFVElemsToAllElems,hasFV_Elems
@@ -63,17 +63,25 @@ USE MOD_Interpolation_Vars ,ONLY: NodeTypeVisu,NodeTypeVISUFVEqui,NodeType
 USE MOD_Interpolation      ,ONLY: GetVandermonde
 USE MOD_ChangeBasis        ,ONLY: ChangeBasis2D
 USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisVolume
-USE MOD_Mesh_Vars          ,ONLY: nElems,Elem_xGP
+USE MOD_Mesh_Vars          ,ONLY: Elem_xGP,nGlobalElems
+#if USE_MPI
+USE MOD_MPI_Vars           ,ONLY: offsetElemMPI
+#endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: iElem, iElem_DG
-REAL,ALLOCATABLE   :: Vdm_N_NVisu(:,:)    
+REAL,ALLOCATABLE   :: Vdm_N_NVisu(:,:)
 #if FV_ENABLED
 INTEGER            :: iElem_FV
 REAL,ALLOCATABLE   :: Vdm_N_NVisu_FV(:,:)
 #endif
 INTEGER            :: iElemAvg,ii,jj,kk
+REAL,ALLOCATABLE   :: Elem_xGP_glob(:,:,:,:,:)
+#if USE_MPI
+INTEGER            :: nDOFPerProc(0:nProcessors-1),offsetDOF(0:nProcessors-1)
+INTEGER            :: iProc
+#endif
 !===================================================================================================================================
 ! Convert coordinates to visu grid
 SWRITE (*,*) "[MESH] Convert coordinates to visu grid (DG)"
@@ -85,30 +93,59 @@ CALL GetVandermonde(PP_N,NodeType,NVisu_FV,NodeTypeVISUFVEqui,Vdm_N_NVisu_FV,mod
 #endif
 ! convert coords of DG elements
 IF (Avg2D) THEN
-  SDEALLOCATE(CoordsVisu_DG)
-  ALLOCATE(CoordsVisu_DG(3,0:NVisu,0:NVisu,0:0,nElemsAvg2D_DG))
+#if USE_MPI
+  ! For parallel averaging, the root will gather the whole mesh and convert the first layer to the
+  ! visu grid.
+  ! For the gather operation, we need to know the number of DOFs per processor
+  DO iProc = 0, nProcessors-1
+    nDOFPerProc(iProc) = (offsetElemMPI(iProc+1) - offsetElemMPI(iProc)) * 3*(PP_N+1)**(PP_dim)
+  END DO ! iProc = 1, nProcessors
+  IF (MPIRoot) THEN
+    ! On the root, we need the recieve array and the offset for each proc
+    ALLOCATE(Elem_xGP_glob(1:3,0:PP_N,0:PP_N,0:PP_NZ,nGlobalElems))
+    DO iProc = 0, nProcessors-1
+      offsetDOF(iProc) = offsetElemMPI(iProc) * 3*(PP_N+1)**(PP_dim)
+    END DO ! iProc = 1, nProcessors
+  END IF
+  CALL MPI_GATHERV(Elem_xGP,nDOFPerProc(myRank),MPI_DOUBLE_PRECISION,&
+                   Elem_xGP_glob,nDOFPerProc,offsetDOF,MPI_DOUBLE_PRECISION,0,MPI_COMM_FLEXI,iError)
+#endif
+
+  IF (MPIRoot) THEN
+    SDEALLOCATE(CoordsVisu_DG)
+    ALLOCATE(CoordsVisu_DG(3,0:NVisu,0:NVisu,0:0,nElemsAvg2D_DG))
 #if FV_ENABLED
-  SDEALLOCATE(CoordsVisu_FV)
-  ALLOCATE(CoordsVisu_FV(3,0:NVisu_FV,0:NVisu_FV,0:0,nElemsAvg2D_FV))
+    SDEALLOCATE(CoordsVisu_FV)
+    ALLOCATE(CoordsVisu_FV(3,0:NVisu_FV,0:NVisu_FV,0:0,nElemsAvg2D_FV))
 #endif
-  DO iElem = 1,nElems
-    ii = Elem_IJK(1,iElem)
-    jj = Elem_IJK(2,iElem)
-    kk = Elem_IJK(3,iElem)
-    IF (kk.EQ.1) THEN
+    DO iElem = 1,nGlobalElems
+      ii = Elem_IJK_glob(1,iElem)
+      jj = Elem_IJK_glob(2,iElem)
+      kk = Elem_IJK_glob(3,iElem)
+      IF (kk.EQ.1) THEN
 #if FV_ENABLED    
-      IF (FVAmountAvg2D(ii,jj).LE.0.5) THEN ! DG
+        IF (FVAmountAvg2D(ii,jj).LE.0.5) THEN ! DG
 #endif
-        iElemAvg = mapElemIJToDGElemAvg2D(ii,jj)
-        CALL ChangeBasis2D(3,PP_N,NVisu,Vdm_N_NVisu,Elem_xGP(:,:,:,0,iElem),CoordsVisu_DG(:,:,:,0,iElemAvg))
+          iElemAvg = mapElemIJToDGElemAvg2D(ii,jj)
+          CALL ChangeBasis2D(3,PP_N,NVisu,Vdm_N_NVisu,Elem_xGP_glob(:,:,:,0,iElem),CoordsVisu_DG(:,:,:,0,iElemAvg))
 #if FV_ENABLED    
-      ELSE ! FV
-        iElemAvg = mapElemIJToFVElemAvg2D(ii,jj)
-        CALL ChangeBasis2D(3,PP_N,NVisu_FV,Vdm_N_NVisu_FV,Elem_xGP(:,:,:,0,iElem),CoordsVisu_FV(:,:,:,0,iElemAvg))
+        ELSE ! FV
+          iElemAvg = mapElemIJToFVElemAvg2D(ii,jj)
+          CALL ChangeBasis2D(3,PP_N,NVisu_FV,Vdm_N_NVisu_FV,Elem_xGP_glob(:,:,:,0,iElem),CoordsVisu_FV(:,:,:,0,iElemAvg))
+        END IF
+#endif
       END IF
+    END DO
+    DEALLOCATE(Elem_xGP_glob)
+  ELSE ! MPIRoot
+    ! All other procs will have 0 average elements
+    SDEALLOCATE(CoordsVisu_DG)
+    ALLOCATE(CoordsVisu_DG(3,0:NVisu,0:NVisu,0:0,nElemsAvg2D_DG))
+#if FV_ENABLED
+    SDEALLOCATE(CoordsVisu_FV)
+    ALLOCATE(CoordsVisu_FV(3,0:NVisu_FV,0:NVisu_FV,0:0,nElemsAvg2D_FV))
 #endif
-    END IF
-  END DO
+  END IF ! MPIRoot
 ELSE
   SDEALLOCATE(CoordsVisu_DG)
   ALLOCATE(CoordsVisu_DG(3,0:NVisu,0:NVisu,0:ZDIM(NVisu),nElems_DG))
@@ -121,7 +158,7 @@ ELSE
   IF (hasFV_Elems) THEN
     SWRITE (*,*) "[MESH] Convert coordinates to visu grid (FV)"
     ! only NVisu changed, but NVisu_FV is independent of NVisu
-    IF ((.NOT.changedMeshFile).AND.(.NOT.changedFV_Elems).AND.(.NOT.changedAvg2D)) RETURN 
+    IF ((.NOT.changedMeshFile).AND.(.NOT.changedFV_Elems).AND.(.NOT.changedAvg2D)) RETURN
     !ALLOCATE(Vdm_N_NVisu_FV(0:NVisu_FV,0:PP_N))
     !CALL GetVandermonde(PP_N,NodeType,NVisu_FV,NodeTypeVISUFVEqui,Vdm_N_NVisu_FV,modal=.FALSE.)
     ! convert coords of FV elements
@@ -144,7 +181,7 @@ END SUBROUTINE BuildVisuCoords
 !> Converts the coordinates of the surface mesh to the surface visu-mesh.
 !=================================================================================================================================
 SUBROUTINE BuildSurfVisuCoords()
-! MODULES                                                                   
+! MODULES
 USE ISO_C_BINDING
 USE MOD_Globals
 USE MOD_PreProc
@@ -164,7 +201,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: iSide,iSideVisu
-REAL,ALLOCATABLE   :: Vdm_N_NVisu(:,:)    
+REAL,ALLOCATABLE   :: Vdm_N_NVisu(:,:)
 #if FV_ENABLED
 REAL,ALLOCATABLE   :: Vdm_N_NVisu_FV(:,:)
 #endif
@@ -192,7 +229,7 @@ SDEALLOCATE(Vdm_N_NVisu)
 #if FV_ENABLED
 IF (hasFV_Elems) THEN
   SWRITE (*,*) "[MESH] Convert coordinates to surface visu grid (FV)"
-  IF ((.NOT.changedMeshFile).AND.(.NOT.changedFV_Elems).AND.(.NOT.changedBCnames)) RETURN 
+  IF ((.NOT.changedMeshFile).AND.(.NOT.changedFV_Elems).AND.(.NOT.changedBCnames)) RETURN
   ALLOCATE(Vdm_N_NVisu_FV(0:NVisu_FV,0:Nloc))
   CALL GetVandermonde(Nloc,NodeType_loc,NVisu_FV,NodeTypeVISUFVEqui,Vdm_N_NVisu_FV,modal=.FALSE.)
   ! convert coords of FV elements
@@ -213,13 +250,13 @@ END SUBROUTINE BuildSurfVisuCoords
 
 !=================================================================================================================================
 !> Visualize mesh only
-!> 1. read mesh 
+!> 1. read mesh
 !> 2. BuildVisuCoords
 !> 3. write mesh to VTK array
 !> 4. set length of all other output arrays to zero
 !=================================================================================================================================
 SUBROUTINE VisualizeMesh(postifile,meshfile_in)
-! MODULES                                                                   
+! MODULES
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Visu_Vars
@@ -234,7 +271,7 @@ USE MOD_Mesh          ,ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
 USE MOD_VTK           ,ONLY: WriteCoordsToVTK_array
 USE MOD_HDF5_Input    ,ONLY: ReadAttribute,File_ID,OpenDataFile,CloseDataFile
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=255),INTENT(IN):: postifile
 CHARACTER(LEN=255),INTENT(IN):: meshfile_in
 ! LOCAL VARIABLES
@@ -257,7 +294,7 @@ IF (LEN_TRIM(postifile).GT.0) THEN
   CALL prms%SetSection("posti")
   CALL prms%CreateIntOption('NVisu', "Number of points at which solution is sampled for visualization.")
   CALL prms%read_options(postifile)
-  NVisu = GETINT('NVisu') ! Degree of visualization basis
+  NVisu = GETINT('NVisu','1') ! Degree of visualization basis
 ELSE
   NVisu = 2*NGeo ! TODO: correct?
 END IF

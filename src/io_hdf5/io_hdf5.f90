@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -42,7 +42,7 @@ LOGICAL                  :: output2D            !< Flag whether to use true 2D i
 INTEGER(HID_T)           :: File_ID             !< file which is currently opened
 INTEGER(HID_T)           :: Plist_File_ID       !< property list of file which is currently opened
 INTEGER(HSIZE_T),POINTER :: HSize(:)            !< HDF5 array size (temporary variable)
-INTEGER                  :: nDims               !< 
+INTEGER                  :: nDims               !< data size dimensions
 INTEGER                  :: MPIInfo             !< hardware / storage specific / file system MPI parameters to pass to HDF5
                                                 !< for optimized performance on specific systems
 
@@ -81,6 +81,10 @@ INTERFACE InitIOHDF5
   MODULE PROCEDURE InitIOHDF5
 END INTERFACE
 
+INTERFACE InitMPIInfo
+  MODULE PROCEDURE InitMPIInfo
+END INTERFACE
+
 INTERFACE OpenDataFile
   MODULE PROCEDURE OpenDataFile
 END INTERFACE
@@ -103,7 +107,7 @@ END INTERFACE
 
 !==================================================================================================================================
 
-PUBLIC::DefineParametersIO_HDF5,InitIOHDF5,OpenDataFile,CloseDataFile
+PUBLIC::DefineParametersIO_HDF5,InitIOHDF5,InitMPIInfo,OpenDataFile,CloseDataFile
 PUBLIC::AddToElemData,AddToFieldData
 PUBLIC::GetDatasetNamesInGroup
 
@@ -111,7 +115,7 @@ CONTAINS
 
 
 !==================================================================================================================================
-!> Define parameters 
+!> Define parameters
 !==================================================================================================================================
 SUBROUTINE DefineParametersIO_HDF5()
 ! MODULES
@@ -149,6 +153,22 @@ output2D = .FALSE.
 output2D = GETLOGICAL('output2D','.FALSE.')
 #endif
 
+CALL InitMPIInfo()
+END SUBROUTINE InitIOHDF5
+
+!==================================================================================================================================
+!> Initialize MPIInfo variable
+!==================================================================================================================================
+SUBROUTINE InitMPIInfo()
+! MODULES
+USE MOD_Globals
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!==================================================================================================================================
+
 #if USE_MPI
 CALL MPI_Info_Create(MPIInfo, iError)
 
@@ -168,7 +188,7 @@ CALL MPI_Info_set(MPIInfo, "romio_cb_read", "enable", iError)
 CALL MPI_Info_set(MPIInfo, "romio_cb_write","enable", iError)
 #endif
 #endif /*USE_MPI*/
-END SUBROUTINE InitIOHDF5
+END SUBROUTINE InitMPIInfo
 
 
 !==================================================================================================================================
@@ -186,7 +206,7 @@ LOGICAL,INTENT(IN)           :: single          !< single=T : only one processor
 LOGICAL,INTENT(IN)           :: readOnly        !< T : file is opened in read only mode, so file system timestamp remains unchanged
                                                 !< F: file is open read/write mode
 INTEGER,INTENT(IN),OPTIONAL  :: communicatorOpt !< only MPI and single=F: optional communicator to be used for collective access
-                                                !< default: MPI_COMM_WORLD
+                                                !< default: MPI_COMM_FLEXI
 INTEGER,INTENT(IN),OPTIONAL  :: userblockSize   !< size of the file to be prepended to HDF5 file
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -213,7 +233,7 @@ END IF
 IF (PRESENT(communicatorOpt)) THEN
   comm = communicatorOpt
 ELSE
-  comm = MPI_COMM_WORLD
+  comm = MPI_COMM_FLEXI
 END IF
 IF(.NOT.single)  CALL H5PSET_FAPL_MPIO_F(Plist_File_ID, comm, MPIInfo, iError)
 #endif /*USE_MPI*/
@@ -232,7 +252,7 @@ ELSE
     'ERROR: Specified file '//TRIM(FileString)//' does not exist.')
   IF (readOnly) THEN
     CALL H5FOPEN_F(  TRIM(FileString), H5F_ACC_RDONLY_F,  File_ID, iError, access_prp = Plist_File_ID)
-  ELSE 
+  ELSE
     CALL H5FOPEN_F(  TRIM(FileString), H5F_ACC_RDWR_F,  File_ID, iError, access_prp = Plist_File_ID)
   END IF
 END IF
@@ -279,7 +299,7 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 TYPE(tElementOut),POINTER,INTENT(INOUT) :: ElementOut_In     !< Pointer list of element-wise data that is written to the state file
 CHARACTER(LEN=*),INTENT(IN)             :: VarName           !< Name of the current array/scalar
-REAL,INTENT(IN),TARGET,OPTIONAL         :: RealArray(nElems) !< Data is an array containing reals 
+REAL,INTENT(IN),TARGET,OPTIONAL         :: RealArray(nElems) !< Data is an array containing reals
 REAL,INTENT(IN),TARGET,OPTIONAL         :: RealScalar        !< Data is a real scalar
 INTEGER,INTENT(IN),TARGET,OPTIONAL      :: IntArray(nElems)  !< Data is an array containing integers
 INTEGER,INTENT(IN),TARGET,OPTIONAL      :: IntScalar         !< Data is a integer scalar
@@ -335,7 +355,7 @@ END SUBROUTINE AddToElemData
 
 !==================================================================================================================================
 !> Set pointers to node-wise arrays for output. Only real arrays or a function pointer are supported as input data.
-!> Optionally, arrays can always be written to a separate dataset (even if the size is equal to the DG solution) using the 
+!> Optionally, arrays can always be written to a separate dataset (even if the size is equal to the DG solution) using the
 !> doSeparateOutput flag.
 !==================================================================================================================================
 SUBROUTINE AddToFieldData(FieldOut_In,nVal,DataSetName,VarNames,RealArray,Eval,doSeparateOutput)
@@ -405,11 +425,14 @@ IF(nOpts.NE.1) CALL Abort(__STAMP__,&
   'More then one optional argument passed to AddToFieldData.')
 END SUBROUTINE AddToFieldData
 
+!==================================================================================================================================
+!> Takes a group and reads the names of the datasets
+!==================================================================================================================================
 SUBROUTINE GetDatasetNamesInGroup(group,names)
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
-CHARACTER(LEN=*)               :: group
-CHARACTER(LEN=255),ALLOCATABLE :: names(:)
+! INPUT / OUTPUT VARIABLES
+CHARACTER(LEN=*)               :: group    !< name of group
+CHARACTER(LEN=255),ALLOCATABLE :: names(:) !< names of datasets
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: nMembers,i,type

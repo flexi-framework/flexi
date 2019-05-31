@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -15,7 +15,7 @@
 
 !==================================================================================================================================
 !> \brief Routines that handle restart capabilities.
-!> 
+!>
 !> With this feature a simulation can be resumed from a state file that has been created during a previous
 !> simulation (restart file). The restart file is passed to FLEXI as a second command line argument.
 !> The restart can also be performed from a file with a different polynomial degree or node type than the current simulation.
@@ -54,6 +54,10 @@ IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Restart")
 CALL prms%CreateLogicalOption('ResetTime', "Override solution time to t=0 on restart.", '.FALSE.')
+#if FV_ENABLED
+CALL prms%CreateIntOption(    'NFVRestartSuper', "Polynomial degree for equidistant supersampling of FV subcells when restarting&
+                                                  &on a different polynomial degree. Default 2*MAX(N,NRestart).")
+#endif
 END SUBROUTINE DefineParametersRestart
 
 !==================================================================================================================================
@@ -75,6 +79,10 @@ SUBROUTINE InitRestart(RestartFile_in)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Restart_Vars
+#if FV_ENABLED
+USE MOD_StringTools,        ONLY: INTTOSTR
+USE MOD_ReadInTools,        ONLY: GETINT
+#endif
 USE MOD_HDF5_Input,         ONLY: ISVALIDHDF5FILE
 USE MOD_Interpolation_Vars, ONLY: InterpolationInitIsDone,NodeType
 USE MOD_HDF5_Input,         ONLY: OpenDataFile,CloseDataFile,GetDataProps,ReadAttribute,File_ID
@@ -83,7 +91,7 @@ USE MOD_Mesh_Vars,          ONLY: nGlobalElems,NGeo
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=255),INTENT(IN),OPTIONAL :: RestartFile_in
+CHARACTER(LEN=255),INTENT(IN),OPTIONAL :: RestartFile_in !< state file to restart from
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL            :: ResetTime,validHDF5
@@ -134,7 +142,7 @@ IF(DoRestart .AND. ((N_Restart.NE.PP_N) .OR. (TRIM(NodeType_Restart).NE.TRIM(Nod
   IF(MIN(N_Restart,PP_N).LT.NGeo) &
     CALL PrintWarning('The geometry is or was underresolved and will potentially change on restart!')
 #if FV_ENABLED
-  CALL CollectiveStop(__STAMP__,'ERROR: The restart to a different polynomial degree is not available for FV.') 
+  NFVRestartSuper = GETINT('NFVRestartSuper',INTTOSTR(2*MAX(PP_N,N_Restart)))
 #endif
 ELSE
   InterpolateSolution=.FALSE.
@@ -155,7 +163,7 @@ END SUBROUTINE InitRestart
 !> - We need to interpolate the restart solution. If the polynomial degree of our computation is lower than in the restart file,
 !>   a simple change basis is used to get the current solution U. If the polynomial degree is higher than in the restart file,
 !>   special care is taken to ensure a conservative projection of the restart solution. To do this, the restart solution is
-!>   transformed to reference space using the Jacobian build on a polynomial degree of 3*NGeo (so it can be represented exactly),
+!>   transformed to reference space using the Jacobian built on a polynomial degree of 3*NGeo (so it can be represented exactly),
 !>   then the change basis is applied. The resulting solution U is then transformed back to physical space.
 !>
 !> All state files that would be re-written by the simulation (with the same project name and a time stamp after the restart time
@@ -176,6 +184,7 @@ USE MOD_Interpolation,      ONLY: GetVandermonde
 USE MOD_ApplyJacobianCons,  ONLY: ApplyJacobianCons
 USE MOD_Interpolation_Vars, ONLY: NodeType
 #if FV_ENABLED
+USE MOD_FV,                 ONLY: FV_ProlongFVElemsToFace
 USE MOD_FV_Vars,            ONLY: FV_Elems
 USE MOD_Indicator_Vars,     ONLY: IndValue
 USE MOD_StringTools,        ONLY: STRICMP
@@ -190,7 +199,7 @@ USE MOD_HDF5_Input,         ONLY: GetDataSize
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-LOGICAL,INTENT(IN),OPTIONAL :: doFlushFiles
+LOGICAL,INTENT(IN),OPTIONAL :: doFlushFiles !< flag to delete old state files
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL,ALLOCATABLE   :: U_local(:,:,:,:,:)
@@ -218,7 +227,7 @@ END IF
 
 IF(DoRestart)THEN
   CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
-#if FV_ENABLED  
+#if FV_ENABLED
   ! Read FV element distribution and indicator values from elem data array if possible
   CALL GetArrayAndName('ElemData','VarNamesAdd',nVal,tmp,VarNamesElemData)
   ALLOCATE(ElemData(nVal(1),nVal(2)))
@@ -235,6 +244,7 @@ IF(DoRestart)THEN
     END IF
   END DO
   DEALLOCATE(ElemData,VarNamesElemData,tmp)
+  CALL FV_ProlongFVElemsToFace()
 #endif
 
 
@@ -263,22 +273,22 @@ IF(DoRestart)THEN
 #if PP_dim == 3
     IF (HSize(4).EQ.1) THEN
       ! FLEXI compiled 3D, but data is 2D => expand third space dimension
-      CALL ExpandArrayTo3D(5,(/PP_nVar,PP_N+1,PP_N+1,1,nElems/),4,PP_N+1,U_local,U) 
+      CALL ExpandArrayTo3D(5,(/PP_nVar,PP_N+1,PP_N+1,1,nElems/),4,PP_N+1,U_local,U)
     ELSE
-      ! FLEXI compiled 3D + data 3D 
+      ! FLEXI compiled 3D + data 3D
       U = U_local
     END IF
 #else
     IF (HSize(4).EQ.1) THEN
-      ! FLEXI compiled 2D + data 2D 
+      ! FLEXI compiled 2D + data 2D
       U = U_local
     ELSE
-      ! FLEXI compiled 2D, but data is 3D => reduce third space dimension 
+      ! FLEXI compiled 2D, but data is 3D => reduce third space dimension
       CALL to2D_rank5((/1,0,0,0,1/),(/PP_nVar,PP_N,PP_N,PP_N,nElems/),4,U_local)
       U = U_local
     END IF
 #endif
-  ELSE ! InterpolateSolution 
+  ELSE ! InterpolateSolution
     ! We need to interpolate the solution to the new computational grid
     SWRITE(UNIT_stdOut,*)'Interpolating solution from restart grid with N=',N_restart,' to computational grid with N=',PP_N
 
@@ -292,7 +302,7 @@ IF(DoRestart)THEN
       ! FLEXI compiled 3D, but data is 2D => expand third space dimension
       ! use temporary array 'U_local2' to store 3D data
       ALLOCATE(U_local2(PP_nVar,0:N_Restart,0:N_Restart,0:N_Restart,nElems))
-      CALL ExpandArrayTo3D(5,HSize_proc,4,N_Restart,U_local,U_local2) 
+      CALL ExpandArrayTo3D(5,HSize_proc,4,N_Restart,U_local,U_local2)
       ! Reallocate 'U_local' to 3D and mv data from U_local2 to U_local
       DEALLOCATE(U_local)
       ALLOCATE(U_local(PP_nVar,0:N_Restart,0:N_Restart,0:N_Restart,nElems))
@@ -301,7 +311,7 @@ IF(DoRestart)THEN
     END IF
 #else
     IF (HSize(4).NE.1) THEN
-      ! FLEXI compiled 2D, but data is 3D => reduce third space dimension 
+      ! FLEXI compiled 2D, but data is 3D => reduce third space dimension
       CALL to2D_rank5((/1,0,0,0,1/),(/PP_nVar,N_Restart,N_Restart,N_Restart,nElems/),4,U_local)
     END IF
 #endif
@@ -317,22 +327,22 @@ IF(DoRestart)THEN
             U_local(:,i,j,k,iElem)=U_local(:,i,j,k,iElem)*JNR(1,i,j,k)
           END DO; END DO; END DO
           CALL ChangeBasisVolume(PP_nVar,N_Restart,PP_N,Vdm_NRestart_N,U_local(:,:,:,:,iElem),U(:,:,:,:,iElem))
-#if FV_ENABLED          
+#if FV_ENABLED
         ELSE ! FV element
-          STOP 'Not implemented yet'
+          CALL SupersampleFVCell(U_local(:,:,:,:,iElem),U(:,:,:,:,iElem),N_Restart,PP_N,NFVRestartSuper)
 #endif
         END IF
       END DO
       DEALLOCATE(JNR)
       ! Transform back
-      CALL ApplyJacobianCons(U,toPhysical=.TRUE.)
+      CALL ApplyJacobianCons(U,toPhysical=.TRUE.,FVE=0)
     ELSE
       DO iElem=1,nElems
         IF (FV_Elems(iElem).EQ.0) THEN ! DG element
           CALL ChangeBasisVolume(PP_nVar,N_Restart,PP_N,Vdm_NRestart_N,U_local(:,:,:,:,iElem),U(:,:,:,:,iElem))
-#if FV_ENABLED          
+#if FV_ENABLED
         ELSE ! FV element
-          STOP 'Not implemented yet'
+          CALL SupersampleFVCell(U_local(:,:,:,:,iElem),U(:,:,:,:,iElem),N_Restart,PP_N,NFVRestartSuper)
 #endif
         END IF
       END DO
@@ -350,6 +360,59 @@ ELSE
 END IF
 END SUBROUTINE Restart
 
+
+#if FV_ENABLED
+!==================================================================================================================================
+!> This routine will take a FV element with a certain number of subcells and convert it to a different number of subcells.
+!> Is used during the restart from one polynomial degree to another.
+!> The procedure is as follows: The old solution will be supersampled with an adjustable number of equidistant points.
+!> The new solution is then simply calculated by taking the mean value of the supersampling points inside of the new subcell.
+!> Attention: This procedure is not conservative! We do not take the Jacobian into account.
+!==================================================================================================================================
+SUBROUTINE SupersampleFVCell(UOld,UNew,NOld,NNew,NSuper)
+! MODULES
+USE MOD_PreProc
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+REAL,INTENT(IN)    :: UOld(1:PP_nVar,0:NOld,0:NOld,0:ZDIM(NOld)) !< One FV element on NOld
+REAL,INTENT(OUT)   :: UNew(1:PP_nVar,0:NNew,0:NNew,0:ZDIM(NNew)) !< FV Element on NNew
+INTEGER,INTENT(IN) :: NOld                                       !< Old polynomial degree
+INTEGER,INTENT(IN) :: NNew                                       !< New polynomial degree
+INTEGER,INTENT(IN) :: NSuper                                     !< Polynomial degree for supersampling
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL                :: deltaXiOld,deltaXi,deltaXiSuper,xiSuper
+REAL                :: U_mean(PP_nVar)
+INTEGER             :: iOld,jOld,kOld,iSuper,jSuper,kSuper
+INTEGER             :: i,j,k
+!==================================================================================================================================
+! Supersample the old FV solution (with (NSuper+1)**dim superampling points in each new 
+! sub cell), then take the mean value
+deltaXiOld = 2.0/(REAL(NOld)+1.)       ! Length (in reference space) of a FV element in the old element
+deltaXi          = 2.0/(REAL(NNew)+1.)       ! Length (in reference space) of a FV element in the new element
+deltaXiSuper     = deltaXi/(REAL(NSuper)+1.) ! Spacing (in reference space) between supersampling points
+DO k=0,ZDIM(NNew); DO j=0,NNew; DO i=0,NNew
+  U_mean = 0.
+  DO kSuper=0,ZDIM(NSuper); DO jSuper=0,NSuper; DO iSuper=0,NSuper
+    ! Calculate the index that the current super sampling point has in the old solution
+    xiSuper = (REAL(i)*deltaXi) + (REAL(iSuper)+0.5)*deltaXiSuper
+    iOld = INT(xiSuper/deltaXiOld)
+    xiSuper = (REAL(j)*deltaXi) + (REAL(jSuper)+0.5)*deltaXiSuper
+    jOld = INT(xiSuper/deltaXiOld)
+#if PP_dim == 3
+    xiSuper = (REAL(k)*deltaXi) + (REAL(kSuper)+0.5)*deltaXiSuper
+    kOld = INT(xiSuper/deltaXiOld)
+#else
+    kOld = 0
+#endif
+    ! Calculate sum for mean value
+    U_mean(:) = U_mean(:)+UOld(:,iOld,jOld,kOld)
+  END DO; END DO; END DO! iSuper,jSuper,kSuper=0,NOld
+  UNew(:,i,j,k) = U_mean(:)/REAL((NSuper+1)**PP_dim)
+END DO; END DO; END DO! i,j,k=0,NNew
+END SUBROUTINE SupersampleFVCell
+#endif
 
 !==================================================================================================================================
 !> Finalizes variables necessary for restart subroutines

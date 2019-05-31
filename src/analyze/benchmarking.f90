@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -13,10 +13,10 @@
 !=================================================================================================================================
 #include "flexi.h"
 
+!==================================================================================================================================
+!> Contains benchmarking routines measuring the amount of flops
+!==================================================================================================================================
 MODULE MOD_Benchmarking
-!==================================================================================================================================
-! Contains analyze routines
-!==================================================================================================================================
 ! MODULES
 IMPLICIT NONE
 PRIVATE
@@ -49,7 +49,7 @@ CONTAINS
 
 SUBROUTINE InitBenchmarking()
 !==================================================================================================================================
-! Initializes variables necessary for analyse subroutines
+!> Initializes variables necessary for benchmarking subroutines
 !==================================================================================================================================
 ! MODULES
 USE MOD_ReadInTools,        ONLY: GETLOGICAL
@@ -65,7 +65,7 @@ END SUBROUTINE InitBenchmarking
 
 SUBROUTINE Benchmarking()
 !==================================================================================================================================
-! Initializes variables necessary for analyse subroutines
+!> Calls routine to measure amount of flops
 !==================================================================================================================================
 ! MODULES
 IMPLICIT NONE
@@ -81,7 +81,7 @@ END SUBROUTINE Benchmarking
 #ifdef PAPI
 SUBROUTINE MeasureFlops()
 !==================================================================================================================================
-! Initializes variables necessary for analyse subroutines
+!> Caclulates and summarizes amount of flops
 !==================================================================================================================================
 ! MODULES
 USE,INTRINSIC :: ISO_C_BINDING
@@ -99,10 +99,10 @@ INTEGER(C_LONG_LONG) :: flpops
 CALL PAPIF_FLOPS(realtime,proctime,flpops,mflops,err)
 #if USE_MPI
 IF(MPIRoot)THEN
-  CALL MPI_REDUCE(MPI_IN_PLACE,mflops,1,MPI_FLOAT,MPI_SUM,0,MPI_COMM_WORLD,iError)
+  CALL MPI_REDUCE(MPI_IN_PLACE,mflops,1,MPI_FLOAT,MPI_SUM,0,MPI_COMM_FLEXI,iError)
   WRITE(UNIT_StdOut,'(A14,ES18.9)')' Sim-MFLOPS : ',mflops
 ELSE
-  CALL MPI_REDUCE(mflops,0           ,1,MPI_FLOAT,MPI_SUM,0,MPI_COMM_WORLD,iError)
+  CALL MPI_REDUCE(mflops,0           ,1,MPI_FLOAT,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 END IF
 #endif
 END SUBROUTINE MeasureFlops
@@ -111,7 +111,7 @@ END SUBROUTINE MeasureFlops
 
 SUBROUTINE FinalizeBenchmarking()
 !==================================================================================================================================
-! Finalizes variables necessary for analyse subroutines
+!> Finalizes variables necessary for benchmarking subroutines
 !==================================================================================================================================
 ! MODULES
 IMPLICIT NONE

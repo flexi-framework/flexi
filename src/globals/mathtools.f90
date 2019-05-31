@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -102,23 +102,23 @@ END IF
 END FUNCTION INVERSE
 
 
-!===================================================================================================================================
-!> Bruce Dawson quote:
-!> "There is no silver bullet. You have to choose wisely."
-!>    * "If you are comparing against zero, then relative epsilons and ULPs based comparisons are usually meaningless. 
-!>      You’ll need to use an absolute epsilon, whose value might be some small multiple of FLT_EPSILON and the inputs 
-!>      to your calculation. Maybe."
-!>    * "If you are comparing against a non-zero number then relative epsilons or ULPs based comparisons are probably what you want.
-!>      You’ll probably want some small multiple of FLT_EPSILON for your relative epsilon, or some small number of ULPs. 
-!>      An absolute epsilon could be used if you knew exactly what number you were comparing against."
-!>    * "If you are comparing two arbitrary numbers that could be zero or non-zero then you need the kitchen sink. 
-!>      Good luck and God speed."
-!>
-!>      NOTE: The functions below are implemented as preprocessor macros, which are by definition
-!>            inlined and are thus beneficial in terms of performance and accuracy as they do not
-!>            depend on the data type.
-!>
-!===================================================================================================================================
+!!===================================================================================================================================
+!!> Bruce Dawson quote:
+!!> "There is no silver bullet. You have to choose wisely."
+!!>    * "If you are comparing against zero, then relative epsilons and ULPs based comparisons are usually meaningless.
+!!>      You’ll need to use an absolute epsilon, whose value might be some small multiple of FLT_EPSILON and the inputs
+!!>      to your calculation. Maybe."
+!!>    * "If you are comparing against a non-zero number then relative epsilons or ULPs based comparisons are probably what you want.
+!!>      You’ll probably want some small multiple of FLT_EPSILON for your relative epsilon, or some small number of ULPs.
+!!>      An absolute epsilon could be used if you knew exactly what number you were comparing against."
+!!>    * "If you are comparing two arbitrary numbers that could be zero or non-zero then you need the kitchen sink.
+!!>      Good luck and God speed."
+!!>
+!!>      NOTE: The functions below are implemented as preprocessor macros, which are by definition
+!!>            inlined and are thus beneficial in terms of performance and accuracy as they do not
+!!>            depend on the data type.
+!!>
+!!===================================================================================================================================
 !PURE FUNCTION ALMOSTEQUALRELATIVE(x,y,tol)
 !! MODULES
 !IMPLICIT NONE
@@ -141,14 +141,14 @@ END FUNCTION INVERSE
 !REAL,INTENT(IN) :: tol              !< (IN) relative epsilon value as input
 !LOGICAL         :: ALMOSTEQUALABSOLUTE
 !!==================================================================================================================================
-!ALMOSTEQUALRELATIVE=(ABS(x-y).LE.tol) 
+!ALMOSTEQUALRELATIVE=(ABS(x-y).LE.tol)
 !END FUNCTION ALMOSTEQUALABSOLUTE
 
 
 !==================================================================================================================================
 !> computes the cross product of to 3 dimensional vectpors: cross=v1 x v2
 !==================================================================================================================================
-PURE FUNCTION CROSS(v1,v2)
+PPURE FUNCTION CROSS(v1,v2)
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------

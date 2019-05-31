@@ -1,7 +1,21 @@
+!=================================================================================================================================
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
+! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+!
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
+! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+!
+! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+! of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License v3.0 for more details.
+!
+! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
+!=================================================================================================================================
 #include "flexi.h"
 
 !===================================================================================================================================
-!> Module to handle the Recordpoints
+!> Module to handle the creation of the RP set. Will read in the definitions of the groups and calculate the physical coordinates
+!> of the resulting points.
 !===================================================================================================================================
 MODULE MOD_RPSet
 ! MODULES
@@ -22,7 +36,7 @@ PUBLIC :: DefineParametersRPSet,InitRPSet
 CONTAINS
 
 !===================================================================================================================================
-!> Initialize the record point structure by reading the desired types from the parameter file
+!> Define the available parameters for the RP definition.
 !===================================================================================================================================
 SUBROUTINE DefineParametersRPSet()
 ! MODULES
@@ -30,50 +44,60 @@ USE MOD_Parameters
 USE MOD_ReadInTools ,ONLY: prms
 !===================================================================================================================================
 CALL prms%SetSection("Prepare Record Points: RPSet definition")
-CALL prms%CreateStringOption(   'GroupName'         ,"TODO",multiple=.TRUE.)
+CALL prms%CreateStringOption(   'GroupName'         ,"Name of the RP group (one for each group!)",multiple=.TRUE.)
 !Line
-CALL prms%CreateIntOption(      'Line_GroupID'      ,"TODO",multiple=.TRUE.)
-CALL prms%CreateIntOption(      'Line_nRP'          ,"TODO",multiple=.TRUE.)
-CALL prms%CreateRealArrayOption('Line_xstart'       ,"TODO",multiple=.TRUE.)
-CALL prms%CreateRealArrayOption('Line_xend'         ,"TODO",multiple=.TRUE.)
+CALL prms%CreateIntOption(      'Line_GroupID'      ,"ID of a straight line group, defined by start and end coordinates and&
+                                                      & the number of points along that line, used to allocate the definition to a&
+                                                      & specific group",multiple=.TRUE.)
+CALL prms%CreateIntOption(      'Line_nRP'          ,"Number of RPs on line",multiple=.TRUE.)
+CALL prms%CreateRealArrayOption('Line_xstart'       ,"Coordinates of start of line",multiple=.TRUE.)
+CALL prms%CreateRealArrayOption('Line_xend'         ,"Coordinates of end of line",multiple=.TRUE.)
 !Circle
-CALL prms%CreateIntOption(      'Circle_GroupID'    ,"TODO",multiple=.TRUE.)
-CALL prms%CreateIntOption(      'Circle_nRP'        ,"TODO",multiple=.TRUE.)
-CALL prms%CreateRealArrayOption('Circle_Center'     ,"TODO",multiple=.TRUE.)
-CALL prms%CreateRealArrayOption('Circle_Axis'       ,"TODO",multiple=.TRUE.)
-CALL prms%CreateRealArrayOption('Circle_Dir'        ,"TODO",multiple=.TRUE.)
-CALL prms%CreateRealOption(     'Circle_Radius'     ,"TODO",multiple=.TRUE.)
-CALL prms%CreateRealOption(     'Circle_Angle'      ,"TODO",multiple=.TRUE.)
+CALL prms%CreateIntOption(      'Circle_GroupID'    ,"ID of a circular group, used to allocate the definition to a specific group",&
+                                                      multiple=.TRUE.)
+CALL prms%CreateIntOption(      'Circle_nRP'        ,"Number of RPs along circle",multiple=.TRUE.)
+CALL prms%CreateRealArrayOption('Circle_Center'     ,"Coordinates of circle center",multiple=.TRUE.)
+CALL prms%CreateRealArrayOption('Circle_Axis'       ,"Axis vector of circle",multiple=.TRUE.)
+CALL prms%CreateRealArrayOption('Circle_Dir'        ,"Vector defining the start point on the circle",multiple=.TRUE.)
+CALL prms%CreateRealOption(     'Circle_Radius'     ,"Radius of the circle",multiple=.TRUE.)
+CALL prms%CreateRealOption(     'Circle_Angle'      ,"Angle from the start point, 360° is a full circle",multiple=.TRUE.)
 !Custom lines
-CALL prms%CreateIntOption(      'CustomLine_GroupID',"TODO",multiple=.TRUE.)
-CALL prms%CreateIntOption(      'CustomLine_nRP'    ,"TODO",multiple=.TRUE.)
-CALL prms%CreateRealArrayOption('CustomLine_x'      ,"TODO",multiple=.TRUE.)
+CALL prms%CreateIntOption(      'CustomLine_GroupID',"ID of a custom line, defined by an arbitrary number of RPs&
+                                                      &, used to allocate the definition to a specific group",multiple=.TRUE.)
+CALL prms%CreateIntOption(      'CustomLine_nRP'    ,"Number of points on the custom line",multiple=.TRUE.)
+CALL prms%CreateRealArrayOption('CustomLine_x'      ,"Coordinates of the points on the custom line",multiple=.TRUE.)
 !Points
-CALL prms%CreateIntOption(      'Point_GroupID'     ,"TODO",multiple=.TRUE.)
-CALL prms%CreateRealArrayOption('Point_x'           ,"TODO",multiple=.TRUE.)
+CALL prms%CreateIntOption(      'Point_GroupID'     ,"ID of a point group, used to allocate the definition to a specific group",multiple=.TRUE.)
+CALL prms%CreateRealArrayOption('Point_x'           ,"Coordinates of the single point",multiple=.TRUE.)
 !Plane
-CALL prms%CreateIntOption(      'Plane_GroupID'     ,"TODO",multiple=.TRUE.)
-CALL prms%CreateIntArrayOption( 'Plane_nRP'         ,"TODO",multiple=.TRUE.)
-CALL prms%CreateRealArrayOption('Plane_CornerX'     ,"TODO",multiple=.TRUE.)
+CALL prms%CreateIntOption(      'Plane_GroupID'     ,"ID of a plane group, defined by the corner points and the number of points in&
+                                                      & both directions, used to allocate the definition to a specific group",multiple=.TRUE.)
+CALL prms%CreateIntArrayOption( 'Plane_nRP'         ,"Number of points in the plane",multiple=.TRUE.)
+CALL prms%CreateRealArrayOption('Plane_CornerX'     ,"Coordinates of the 4 corner points (x1,y1,z1,x2,y2,z2,...)",multiple=.TRUE.)
 !Sphere
-CALL prms%CreateIntOption(      'Sphere_GroupID'    ,"TODO",multiple=.TRUE.)
-CALL prms%CreateIntArrayOption( 'Sphere_nRP'        ,"TODO",multiple=.TRUE.)
-CALL prms%CreateRealArrayOption('Sphere_Center'     ,"TODO",multiple=.TRUE.)
-CALL prms%CreateRealArrayOption('Sphere_Axis'       ,"TODO",multiple=.TRUE.)
-CALL prms%CreateRealArrayOption('Sphere_Dir'        ,"TODO",multiple=.TRUE.)
-CALL prms%CreateRealOption(     'Sphere_Radius'     ,"TODO",multiple=.TRUE.)
-CALL prms%CreateRealOption(     'Sphere_Angle'      ,"TODO",multiple=.TRUE.)
+CALL prms%CreateIntOption(      'Sphere_GroupID'    ,"ID of a spherical group, with points on the circumference, used to allocate&
+                                                     & the definition to a specific group",multiple=.TRUE.)
+CALL prms%CreateIntArrayOption( 'Sphere_nRP'        ,"Number of points on the spere in phi and theta direction",multiple=.TRUE.)
+CALL prms%CreateRealArrayOption('Sphere_Center'     ,"Coordinates of sphere center",multiple=.TRUE.)
+CALL prms%CreateRealArrayOption('Sphere_Axis'       ,"Axis vector of sphere",multiple=.TRUE.)
+CALL prms%CreateRealArrayOption('Sphere_Dir'        ,"Vector defining the start point on the sphere",multiple=.TRUE.)
+CALL prms%CreateRealOption(     'Sphere_Radius'     ,"Radius of the sphere",multiple=.TRUE.)
+CALL prms%CreateRealOption(     'Sphere_Angle'      ,"Phi angle of the sphere (360° is a full sphere)",multiple=.TRUE.)
 !Boundary Layer Plane
-CALL prms%CreateIntOption(      'BLPlane_GroupID'   ,"TODO",multiple=.TRUE.)
-CALL prms%CreateIntArrayOption( 'BLPlane_nRP'       ,"TODO",multiple=.TRUE.)
-CALL prms%CreateIntOption(      'BLPlane_nCP'       ,"TODO",multiple=.TRUE.)
-CALL prms%CreateRealArrayOption('BLPlane_CP'        ,"TODO",multiple=.TRUE.)
-CALL prms%CreateRealOption(     'BLPlane_fac'       ,"TODO",multiple=.TRUE.)
-CALL prms%CreateRealOption(     'BLPlane_height'    ,"TODO",multiple=.TRUE.)
+CALL prms%CreateIntOption(      'BLPlane_GroupID'   ,"ID of a boundary layer group - works like a plane group, but the plane is&
+                                                      & created by projecting the points of a spline to the nearest boundary and&
+                                                      & extruding the plane along the normal with a stretching factor&
+                                                      &, used to allocate the definition to a specific group",multiple=.TRUE.)
+CALL prms%CreateIntArrayOption( 'BLPlane_nRP'       ,"Number of RPs along and normal to the boundary",multiple=.TRUE.)
+CALL prms%CreateIntOption(      'BLPlane_nCP'       ,"Number of control points defining the spline (at least two)",multiple=.TRUE.)
+CALL prms%CreateRealArrayOption('BLPlane_CP'        ,"Coordinates of the spline control points",multiple=.TRUE.)
+CALL prms%CreateRealOption(     'BLPlane_fac'       ,"Factor of geometrical stretching in wall-normal direction",multiple=.TRUE.)
+CALL prms%CreateRealOption(     'BLPlane_height'    ,"Wall-normal extend of the plane for each control point",multiple=.TRUE.)
 END SUBROUTINE DefineParametersRPSet
 
 !===================================================================================================================================
-!> Initialize the record point structure by reading the desired types from the parameter file
+!> Initialize the record point structure by reading the desired types from the parameter file and calculating the physical
+!> coordinates of the RPs.
 !===================================================================================================================================
 SUBROUTINE InitRPSet()
 ! MODULES
@@ -107,7 +131,7 @@ IF(RPSetInitIsDone)THEN
 END IF
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT RECORDPOINT SET...'
- 
+
 SWRITE(UNIT_stdOut,'(A)')' Read recordpoint definitions from parameter file...'
 
 pi=ACOS(-1.)
@@ -134,14 +158,14 @@ IF(nLines.GT.0) THEN
   anythingThere=.TRUE.
   ALLOCATE(Lines(1:nLines))
 ! linear lines
-  DO iLine=1,nlinLines 
+  DO iLine=1,nlinLines
     aLine=>Lines(iLine)
     aLine%GroupID=GETINT('Line_GroupID')
     WRITE(aLine%Name,'(A5,I6.6)')'Line_',iLine
     aLine%nRP   =GETINT('Line_nRP')
     ALLOCATE(aLine%RP_ptr(1:aLine%nRP))
-    aLine%xStart=GETREALARRAY('Line_xstart',3) 
-    aLine%xEnd  =GETREALARRAY('Line_xend',3) 
+    aLine%xStart=GETREALARRAY('Line_xstart',3)
+    aLine%xEnd  =GETREALARRAY('Line_xend',3)
     DO iP=1,aLine%nRP
       x=aLine%xStart + (aLine%xEnd-aLine%xStart)*(iP-1)/(aLine%nRP-1)
       CALL GetNewRP(aLine%RP_ptr(iP)%RP,aLine%GroupID,x)
@@ -154,7 +178,7 @@ IF(nLines.GT.0) THEN
     WRITE(aLine%Name,'(A7,I6.6)')'Circle_',iLine
     aLine%nRP   =GETINT('Circle_nRP')
     ALLOCATE(aLine%RP_ptr(1:aLine%nRP))
-    Circle_Center = GETREALARRAY('Circle_Center',3) 
+    Circle_Center = GETREALARRAY('Circle_Center',3)
     Circle_Radius = GETREAL('Circle_Radius')
     ! angle in degrees. 360 is full circle
     Circle_Angle  = GETREAL('Circle_Angle')
@@ -162,7 +186,7 @@ IF(nLines.GT.0) THEN
     Circle_Axis   = GETREALARRAY('Circle_Axis',3)
     Circle_Axis   = Circle_Axis/NORM2(Circle_Axis)
     ! 0 vector to define circumferential coordinate phi=0, i.e. first point
-    Circle_dir    = GETREALARRAY('Circle_dir',3)    
+    Circle_dir    = GETREALARRAY('Circle_dir',3)
     Circle_dir    = Circle_dir - SUM(Circle_dir*Circle_Axis)*Circle_Axis ! ensure orthogonality between dir and axis
     IF(NORM2(Circle_dir).LT.1e-9) THEN
       SWRITE(UNIT_stdOut,'(A)') 'Check definitions: Circle_dir seems to be parallel to Circle_Axis!!!'; STOP
@@ -185,7 +209,7 @@ IF(nLines.GT.0) THEN
       CALL GetNewRP(aLine%RP_ptr(iP)%RP,aLine%GroupID,x)
     END DO ! iP
   END DO ! iLine
-! custom Lines 
+! custom Lines
   DO iLine=nlinLines+nCircles+1,nLines
     aLine=>Lines(iLine)
     aLine%GroupID=GETINT('CustomLine_GroupID')
@@ -198,7 +222,7 @@ IF(nLines.GT.0) THEN
     END DO ! iP
   END DO ! iLine
 END IF
-  
+
 ! ----------------------------------------------------------------------------------------------------
 ! Points
 ! ----------------------------------------------------------------------------------------------------
@@ -206,11 +230,11 @@ nPoints =CountOption('Point_GroupID')
 IF(nPoints.GT.0) THEN
   anythingThere=.TRUE.
   ALLOCATE(Points(1:nPoints))
-  DO iP=1,nPoints 
+  DO iP=1,nPoints
     Points(iP)%GroupID=GETINT('Point_GroupID')
-    x     =GETREALARRAY('Point_x',3) 
+    x     =GETREALARRAY('Point_x',3)
     CALL GetNewRP(Points(iP)%RP,Points(iP)%GroupID,x)
-  END DO ! iP  
+  END DO ! iP
 END IF
 
 ! ----------------------------------------------------------------------------------------------------
@@ -232,7 +256,7 @@ IF(nPlanes.GT.0) THEN
     DO iP=1,4
       Plane%x(1:3,iP)=x_dummy(1+3*(iP-1):3+3*(iP-1))
     END DO ! iPoint
-    Plane%nRP(1:2)   =GETINTARRAY('Plane_nRP',2) 
+    Plane%nRP(1:2)   =GETINTARRAY('Plane_nRP',2)
     ALLOCATE(Plane%RP_ptr(1:Plane%nRP(1),1:Plane%nRP(2)))
     DO j=1,Plane%nRP(2)
       DO i=1,Plane%nRP(1)
@@ -241,8 +265,8 @@ IF(nPlanes.GT.0) THEN
         eta= REAL(j-1)/REAL(Plane%nRP(2)-1)
         x(1:3)=   Plane%x(1:3,1) * (1.-xi) * (1.-eta) &
                +  Plane%x(1:3,2) * (   xi) * (1.-eta) &
-               +  Plane%x(1:3,3) * (   xi) * (   eta) & 
-               +  Plane%x(1:3,4) * (1.-xi) * (   eta) 
+               +  Plane%x(1:3,3) * (   xi) * (   eta) &
+               +  Plane%x(1:3,4) * (1.-xi) * (   eta)
         CALL GetNewRP(Plane%RP_ptr(i,j)%RP,Plane%GroupID,x)
       END DO ! i
     END DO ! j
@@ -261,7 +285,7 @@ IF(nPlanes.GT.0) THEN
     Sphere_Axis   = GETREALARRAY('Sphere_Axis',3)
     Sphere_Axis   = Sphere_Axis/NORM2(Sphere_Axis)
     ! 0 vector to define circumferential coordinate phi=0, i.e. first point
-    Sphere_dir    = GETREALARRAY('Sphere_dir',3)    
+    Sphere_dir    = GETREALARRAY('Sphere_dir',3)
     Sphere_dir    = Sphere_dir - SUM(Sphere_dir*Sphere_Axis)*Sphere_Axis ! ensure orthogonality between dir and axis
     IF(NORM2(Sphere_dir).LT.1e-9) THEN
       SWRITE(UNIT_stdOut,'(A)') 'Check definitions: Sphere_dir seems to be parallel to Sphere_Axis!!!'; STOP
@@ -270,14 +294,14 @@ IF(nPlanes.GT.0) THEN
     RotMat(:,1)=Sphere_dir(:)
     RotMat(:,2)=CROSS(Sphere_Axis,Sphere_dir)                  ! right hand system
     RotMat(:,3)=Sphere_Axis(:)
-    Plane%nRP(1:2)   =GETINTARRAY('Sphere_nRP',2) 
+    Plane%nRP(1:2)   =GETINTARRAY('Sphere_nRP',2)
     IF(Sphere_Angle.EQ.360.) THEN
       dphi=2.*pi/REAL(Plane%nRP(1))
     ELSE
       dphi=Sphere_Angle*pi/180./REAL(Plane%nRP(1)-1)
     END IF
     dtheta=0.5*pi/REAL(Plane%nRP(2)+1)     ! we dont have the points in the singularities,
-                                           ! but for proper parametrization we have to count them in 
+                                           ! but for proper parametrization we have to count them in
     ALLOCATE(Plane%RP_ptr(1:Plane%nRP(1),1:Plane%nRP(2)))
     DO j=1,Plane%nRP(2)
       DO i=1,Plane%nRP(1)
@@ -296,7 +320,7 @@ IF(nPlanes.GT.0) THEN
     Plane=>Planes(iPlane)
     Plane%GroupID=GETINT('BLPlane_GroupID')
     WRITE(Plane%Name,'(A5,I6.6)')'BLPlane_',iPlane
-    Plane%nRP(1:2)   =GETINTARRAY('BLPlane_nRP',2) 
+    Plane%nRP(1:2)   =GETINTARRAY('BLPlane_nRP',2)
     ALLOCATE(Plane%RP_ptr(1:Plane%nRP(1),1:Plane%nRP(2)))
     nCP   =GETINT('BLPlane_nCP') ! points to define spline, at least two
     fac              =GETREAL('BLPlane_fac','1.')  ! growth factor of the BL mesh
@@ -307,7 +331,7 @@ IF(nPlanes.GT.0) THEN
        height(iCP)=GETREAL('BLPlane_height') ! height of the BL mesh
     END DO! iCP=1,nCP
     ! get coordinates of the rps and allocate pointers
-    CALL GetBLPlane(Plane,nCP,height,fac,xCP) 
+    CALL GetBLPlane(Plane,nCP,height,fac,xCP)
     DEALLOCATE(xCP,height)
   END DO! iPlane
 END IF
@@ -315,7 +339,7 @@ END IF
 IF(.NOT.anythingThere) THEN
   SWRITE(UNIT_StdOut,*) 'No RP infos specified in parameter file, exiting...'
   CALL abort(__STAMP__,'Code stopped!')
-END IF 
+END IF
 
 ! Create global RP array
 ALLOCATE(RPlist(nRP_global))
@@ -333,7 +357,7 @@ IF(nPlanes.GT.0) THEN
   END DO !iPlane
 END IF
 
-! fill line 
+! fill line
 IF(nLines.GT.0) THEN
   DO iLine=1,nLines
     DO iP=1,Lines(iLine)%nRP
@@ -360,7 +384,7 @@ DO iGr=1,nGroups
       iRP_gr=iRP_gr+1
       Groups(iGr)%RP_ptr(iRP_gr)%RP=>aRP
     END IF
-  END DO !iRP  
+  END DO !iRP
 END DO !iGr
 RPSetInitIsDone = .TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT RECORDPOINTS SET DONE!'

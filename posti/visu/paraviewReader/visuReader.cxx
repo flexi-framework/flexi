@@ -53,6 +53,7 @@ visuReader::visuReader()
    SWRITE("visuReader");
    this->FileName = NULL;
    this->NVisu = 0;
+   this->NCalc = 0;
    this->NodeTypeVisu = NULL;
    this->Avg2d = 0;
    this->DGonly = 0;
@@ -325,6 +326,7 @@ int visuReader::RequestData(
 
    // write settings to Posti parameter file
    dprintf(posti_unit, "NVisu = %d\n", NVisu); // insert NVisu
+   dprintf(posti_unit, "NCalc = %d\n", NCalc); // insert NCalc
    dprintf(posti_unit, "NodeTypeVisu = %s\n", NodeTypeVisu); // insert NodeType
    dprintf(posti_unit, "Avg2D = %s\n", (this->Avg2d ? "T" : "F"));
    dprintf(posti_unit, "DGonly = %s\n", (this->DGonly ? "T" : "F"));
@@ -333,12 +335,18 @@ int visuReader::RequestData(
    }
 
    // write selected state varnames to the parameter file
+   // if no varnames are selected, write flag to suppress standard vars to be visualized
+   int noVisuVars = true;
    for (int i = 0; i< nVars; ++i)
    {
       if (VarNames_selected[i]) {
+         noVisuVars = false;
          const char* name = VarDataArraySelection->GetArrayName(i);
          dprintf(posti_unit, "VarName = %s\n", name) ;
       }
+   }
+   if (noVisuVars) {
+      dprintf(posti_unit, "noVisuVars = T") ;
    }
    for (int i = 0; i< nBCs; ++i)
    {

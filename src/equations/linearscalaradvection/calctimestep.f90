@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -41,7 +41,7 @@ USE MOD_Globals
 USE, INTRINSIC :: IEEE_ARITHMETIC,ONLY:IEEE_IS_NAN
 #endif
 USE MOD_Mesh_Vars,          ONLY:sJ,Metrics_fTilde,Metrics_gTilde
-#if PP_dim==3       
+#if PP_dim==3
 USE MOD_Mesh_Vars,          ONLY:Metrics_hTilde
 #endif
 USE MOD_Equation_Vars,      ONLY:AdvVel
@@ -64,7 +64,7 @@ INTEGER,INTENT(OUT)          :: errType       !< Error code
 ! LOCAL VARIABLES
 INTEGER                      :: i,j,k,iElem,FVE
 REAL                         :: Lambda1,Lambda2,maxLambda
-#if PP_dim==3       
+#if PP_dim==3
 REAL                         :: Lambda3
 #endif
 REAL                         :: TimeStep(2)
@@ -89,7 +89,7 @@ DO iElem=1,nElems
       DO i=0,PP_N
         Lambda1=ABS(SUM(Metrics_fTilde(:,i,j,k,iElem,FVE)*AdvVel))
         Lambda2=ABS(SUM(Metrics_gTilde(:,i,j,k,iElem,FVE)*AdvVel))
-#if PP_dim==3       
+#if PP_dim==3
         Lambda3=ABS(SUM(Metrics_hTilde(:,i,j,k,iElem,FVE)*AdvVel))
         maxLambda=MAX(maxLambda,sJ(i,j,k,iElem,FVE)*(Lambda1+Lambda2+Lambda3))
 #else
@@ -98,7 +98,7 @@ DO iElem=1,nElems
 #if PARABOLIC
         Lambda_v1=MAX(Lambda_v1,DiffC*(SUM((Metrics_fTilde(:,i,j,k,iElem,FVE)*sJ(i,j,k,iElem,FVE))**2)))
         Lambda_v2=MAX(Lambda_v2,DiffC*(SUM((Metrics_gTilde(:,i,j,k,iElem,FVE)*sJ(i,j,k,iElem,FVE))**2)))
-#if PP_dim==3       
+#if PP_dim==3
         Lambda_v3=MAX(Lambda_v3,DiffC*(SUM((Metrics_hTilde(:,i,j,k,iElem,FVE)*sJ(i,j,k,iElem,FVE))**2)))
         maxLambda_v=MAX(maxLambda_v,(Lambda_v1+Lambda_v2+Lambda_v3))
 #else
@@ -114,7 +114,7 @@ TimeStep(1)=MIN(TimeStep(1),CFLScale(FVE)*2./maxLambda)
 TimeStep(2)=MIN(TimeStep(2),DFLScale(FVE)*4./maxLambda_v)
 #endif /* PARABOLIC*/
 #if USE_MPI
-CALL MPI_ALLREDUCE(MPI_IN_PLACE,TimeStep,2,MPI_DOUBLE_PRECISION,MPI_MIN,MPI_COMM_WORLD,iError)
+CALL MPI_ALLREDUCE(MPI_IN_PLACE,TimeStep,2,MPI_DOUBLE_PRECISION,MPI_MIN,MPI_COMM_FLEXI,iError)
 #endif
 ViscousTimeStep=(TimeStep(2) .LT. TimeStep(1))
 CalcTimeStep=MINVAL(TimeStep)

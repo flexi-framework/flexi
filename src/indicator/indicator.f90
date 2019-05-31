@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -12,7 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
-#if EQNSYSNR == 2 /* NAVIER-STOKES */ 
+#if EQNSYSNR == 2 /* NAVIER-STOKES */
 #include "eos.h"
 #endif
 
@@ -33,13 +33,14 @@ PRIVATE
 
 LOGICAL :: doCalcIndicator=.FALSE. !< switch whether to compute indicator
 
-INTEGER,PARAMETER :: INDTYPE_DG           = 0
-INTEGER,PARAMETER :: INDTYPE_FV           = 1
-INTEGER,PARAMETER :: INDTYPE_PERSSON      = 2
-INTEGER,PARAMETER :: INDTYPE_JAMESON      = 8
-INTEGER,PARAMETER :: INDTYPE_DUCROS       = 9
-INTEGER,PARAMETER :: INDTYPE_HALFHALF     = 3
-INTEGER,PARAMETER :: INDTYPE_CHECKERBOARD = 33
+INTEGER,PARAMETER :: INDTYPE_DG             = 0
+INTEGER,PARAMETER :: INDTYPE_FV             = 1
+INTEGER,PARAMETER :: INDTYPE_PERSSON        = 2
+INTEGER,PARAMETER :: INDTYPE_JAMESON        = 8
+INTEGER,PARAMETER :: INDTYPE_DUCROS         = 9
+INTEGER,PARAMETER :: INDTYPE_DUCROSTIMESJST = 10
+INTEGER,PARAMETER :: INDTYPE_HALFHALF       = 3
+INTEGER,PARAMETER :: INDTYPE_CHECKERBOARD   = 33
 
 INTERFACE InitIndicator
   MODULE PROCEDURE InitIndicator
@@ -53,7 +54,7 @@ INTERFACE IndPersson
   MODULE PROCEDURE IndPersson
 END INTERFACE
 
-#if EQNSYSNR == 2 /* NAVIER-STOKES */ 
+#if EQNSYSNR == 2 /* NAVIER-STOKES */
 #if PARABOLIC
 INTERFACE DucrosIndicator
   MODULE PROCEDURE DucrosIndicator
@@ -83,7 +84,7 @@ PUBLIC::DefineParametersIndicator
 CONTAINS
 
 !==================================================================================================================================
-!> Define parameters 
+!> Define parameters
 !==================================================================================================================================
 SUBROUTINE DefineParametersIndicator()
 ! MODULES
@@ -92,15 +93,16 @@ IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Indicator")
 CALL prms%CreateIntFromStringOption('IndicatorType',"Specify type of indicator to be used: DG, FV, Persson,"//&
-                                             "Ducros, halfhalf, checkerboard",&
+                                             "Ducros, DucrosTimesJST, halfhalf, checkerboard",&
                                              'DG')
-CALL addStrListEntry('IndicatorType','dg',          INDTYPE_DG)
-CALL addStrListEntry('IndicatorType','fv',          INDTYPE_FV)
-CALL addStrListEntry('IndicatorType','persson',     INDTYPE_PERSSON)
-CALL addStrListEntry('IndicatorType','halfhalf',    INDTYPE_HALFHALF)
-CALL addStrListEntry('IndicatorType','checkerboard',INDTYPE_CHECKERBOARD)
-CALL addStrListEntry('IndicatorType','jameson',     INDTYPE_JAMESON)
-CALL addStrListEntry('IndicatorType','ducros',      INDTYPE_DUCROS)
+CALL addStrListEntry('IndicatorType','dg',            INDTYPE_DG)
+CALL addStrListEntry('IndicatorType','fv',            INDTYPE_FV)
+CALL addStrListEntry('IndicatorType','persson',       INDTYPE_PERSSON)
+CALL addStrListEntry('IndicatorType','halfhalf',      INDTYPE_HALFHALF)
+CALL addStrListEntry('IndicatorType','checkerboard',  INDTYPE_CHECKERBOARD)
+CALL addStrListEntry('IndicatorType','jameson',       INDTYPE_JAMESON)
+CALL addStrListEntry('IndicatorType','ducros',        INDTYPE_DUCROS)
+CALL addStrListEntry('IndicatorType','ducrostimesjst',INDTYPE_DUCROSTIMESJST)
 CALL prms%CreateIntOption('IndVar',        "Specify variable upon which indicator is applied, for general indicators.",&
                                            '1')
 CALL prms%CreateRealOption('IndStartTime', "Specify physical time when indicator evalution starts. Before this time"//&
@@ -148,7 +150,7 @@ CASE(INDTYPE_JAMESON)
   CALL Abort(__STAMP__, &
       "Jameson indicator only works with FV_ENABLED.")
 #endif
-#if EQNSYSNR != 2 /* NOT NAVIER-STOKES */ 
+#if EQNSYSNR != 2 /* NOT NAVIER-STOKES */
   CALL Abort(__STAMP__, &
       "Jameson indicator only works with Navier-Stokes equations.")
 #endif /* EQNSYSNR != 2 */
@@ -157,9 +159,22 @@ CASE(INDTYPE_DUCROS)
   CALL Abort(__STAMP__, &
       "Ducros indicator not available without PARABOLIC!")
 #endif
-#if EQNSYSNR != 2 /* NOT NAVIER-STOKES */ 
+#if EQNSYSNR != 2 /* NOT NAVIER-STOKES */
   CALL Abort(__STAMP__, &
       "Ducros indicator only works with Navier-Stokes equations.")
+#endif /* EQNSYSNR != 2 */
+CASE(INDTYPE_DUCROSTIMESJST)
+#if !(FV_ENABLED)
+  CALL Abort(__STAMP__, &
+      "Ducros*JST indicator only works with FV_ENABLED.")
+#endif
+#if !(PARABOLIC)
+  CALL Abort(__STAMP__, &
+      "Ducros*JST indicator not available without PARABOLIC!")
+#endif
+#if EQNSYSNR != 2 /* NOT NAVIER-STOKES */
+  CALL Abort(__STAMP__, &
+      "Ducros*JST indicator only works with Navier-Stokes equations.")
 #endif /* EQNSYSNR != 2 */
 CASE(INDTYPE_PERSSON)
   ! number of modes to be checked by Persson indicator
@@ -233,8 +248,8 @@ CASE(INDTYPE_FV) ! indicator everywhere
 CASE(INDTYPE_PERSSON) ! Modal Persson indicator
   DO iElem=1,nElems
 #if FV_ENABLED
-    IF (FV_Elems(iElem).EQ.0) THEN ! DG Element 
-#endif      
+    IF (FV_Elems(iElem).EQ.0) THEN ! DG Element
+#endif
       U_P(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) => U(:,:,:,:,iElem)
 #if FV_ENABLED
     ELSE
@@ -244,15 +259,19 @@ CASE(INDTYPE_PERSSON) ! Modal Persson indicator
 #endif
     IndValue(iElem) = IndPersson(U_P)
   END DO ! iElem
-#if EQNSYSNR == 2 /* NAVIER-STOKES */ 
+#if EQNSYSNR == 2 /* NAVIER-STOKES */
 #if FV_ENABLED
-CASE(INDTYPE_JAMESON) 
+CASE(INDTYPE_JAMESON)
   IndValue = JamesonIndicator(U)
 #endif
 #if PARABOLIC
-CASE(INDTYPE_DUCROS) 
+CASE(INDTYPE_DUCROS)
   IndValue = DucrosIndicator(gradUx,gradUy,gradUz)
-#endif
+#if FV_ENABLED
+CASE(INDTYPE_DUCROSTIMESJST)
+  IndValue = JamesonIndicator(U) * DucrosIndicator(gradUx,gradUy,gradUz)
+#endif /*FV_ENABLED*/
+#endif /*PARABOLIC*/
 #endif /* NAVIER-STOKES */
 CASE(INDTYPE_HALFHALF)  ! half/half
   DO iElem=1,nElems
@@ -265,7 +284,7 @@ CASE(INDTYPE_HALFHALF)  ! half/half
 
 CASE(INDTYPE_CHECKERBOARD) ! every second element (checkerboard like)
    DO iElem = 1, nElems
-    IF (MOD(iElem+offsetElem,2).EQ.0) THEN 
+    IF (MOD(iElem+offsetElem,2).EQ.0) THEN
       IndValue(iElem) = -100
     ELSE
       IndValue(iElem) =  100
@@ -291,7 +310,7 @@ FUNCTION IndPersson(U) RESULT(IndValue)
 USE MOD_PreProc
 USE MOD_Indicator_Vars,ONLY:nModes,IndVar
 USE MOD_Interpolation_Vars, ONLY:sVdm_Leg
-#if EQNSYSNR == 2 /* NAVIER-STOKES */ 
+#if EQNSYSNR == 2 /* NAVIER-STOKES */
 USE MOD_EOS_Vars
 #endif /* NAVIER-STOKES */
 IMPLICIT NONE
@@ -302,7 +321,7 @@ REAL               :: IndValue                                  !< Value of the 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                              :: iDeg,i,j,k,l
-#if EQNSYSNR == 2 /* NAVIER-STOKES */ 
+#if EQNSYSNR == 2 /* NAVIER-STOKES */
 REAL                                 :: UE(1:PP_2Var)
 #endif /* NAVIER-STOKES */
 REAL,DIMENSION(0:PP_N,0:PP_N,0:PP_NZ) :: U_loc
@@ -313,7 +332,7 @@ REAL,DIMENSION(0:PP_N,0:PP_N,0:PP_NZ) :: U_Modal
 SELECT CASE (IndVar)
 CASE(1:PP_nVar)
   U_loc = U(IndVar,:,:,:)
-#if EQNSYSNR == 2 /* NAVIER-STOKES */ 
+#if EQNSYSNR == 2 /* NAVIER-STOKES */
 CASE(6)
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     UE(CONS)=U(:,i,j,k)
@@ -330,18 +349,18 @@ U_Eta  = 0.
 U_Modal= 0.
 DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N; DO l=0,PP_N
   U_Xi(i,j,k)    = U_Xi(i,j,k)    + sVdm_Leg(i,l)*U_loc(l,j,k)
-END DO ; END DO ; END DO ; END DO 
+END DO ; END DO ; END DO ; END DO
 #if PP_dim == 2
 DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N; DO l=0,PP_N
-  U_Modal(i,j,k) = U_Modal(i,j,k) + sVdm_Leg(j,l)*U_Xi(i,l,k) 
-END DO ; END DO ; END DO ; END DO 
+  U_Modal(i,j,k) = U_Modal(i,j,k) + sVdm_Leg(j,l)*U_Xi(i,l,k)
+END DO ; END DO ; END DO ; END DO
 #else
 DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N; DO l=0,PP_N
-  U_Eta(i,j,k)   = U_Eta(i,j,k)   + sVdm_Leg(j,l)*U_Xi(i,l,k) 
-END DO ; END DO ; END DO ; END DO 
+  U_Eta(i,j,k)   = U_Eta(i,j,k)   + sVdm_Leg(j,l)*U_Xi(i,l,k)
+END DO ; END DO ; END DO ; END DO
 DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N; DO l=0,PP_N
-  U_Modal(i,j,k) = U_Modal(i,j,k) + sVdm_Leg(k,l)*U_Eta(i,j,l) 
-END DO ; END DO ; END DO ; END DO 
+  U_Modal(i,j,k) = U_Modal(i,j,k) + sVdm_Leg(k,l)*U_Eta(i,j,l)
+END DO ; END DO ; END DO ; END DO
 #endif
 
 ! Adapted Persson indicator
@@ -365,12 +384,12 @@ IndValue=LOG10(IndValue)
 
 END FUNCTION IndPersson
 
-#if EQNSYSNR == 2 /* NAVIER-STOKES */ 
+#if EQNSYSNR == 2 /* NAVIER-STOKES */
 #if PARABOLIC
 !==================================================================================================================================
 !> Indicator by Ducros.
 !==================================================================================================================================
-FUNCTION DucrosIndicator(gradUx, gradUy, gradUz) RESULT(IndValue) 
+FUNCTION DucrosIndicator(gradUx, gradUy, gradUz) RESULT(IndValue)
 USE MOD_PreProc
 USE MOD_Mesh_Vars          ,ONLY: nElems,sJ
 USE MOD_Analyze_Vars       ,ONLY: wGPVol
@@ -379,7 +398,7 @@ USE MOD_FV_Vars            ,ONLY: FV_Elems
 #endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 REAL,INTENT(IN)    :: gradUx(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)   !< Gradients in x-direction
 REAL,INTENT(IN)    :: gradUy(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)   !< Gradients in x-direction
 REAL,INTENT(IN)    :: gradUz(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)   !< Gradients in x-direction
@@ -402,7 +421,7 @@ DO iElem=1,nElems
 #endif
       VorticityLoc(3)=gradUx(3,i,j,k,iElem)-gradUy(2,i,j,k,iElem)  ! dv/dx-du/dy
       Vorticity2=SUM(VorticityLoc(:)**2)
-      
+
 #if PP_dim==3
       divV2 = (gradUx(2,i,j,k,iElem) + gradUy(3,i,j,k,iElem) + gradUz(4,i,j,k,iElem))**2
 #else
@@ -419,14 +438,6 @@ DO iElem=1,nElems
   !IndValue = (EXP(IndValue/ElemVol)-EXP(0.))/(EXP(1.)-EXP(0.))
 END DO ! iElem
 
-#ifdef DEBUG
-! ===============================================================================
-! Following dummy calls do suppress compiler warnings of unused Riemann-functions
-! ===============================================================================
-IF (0.EQ.1) THEN
-  WRITE (*,*) gradUz
-END IF
-#endif
 END FUNCTION DucrosIndicator
 #endif /* PARABOLIC */
 
@@ -456,7 +467,7 @@ USE MOD_FillMortar1        ,ONLY: U_Mortar1,Flux_Mortar1
 USE MOD_FV_Vars            ,ONLY: FV_Elems,FV_Elems_master,FV_Elems_slave
 !----------------------------------------------------------------------------------------------------------------------------------
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 REAL,INTENT(IN)           :: U(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems)              !< Solution
 REAL                      :: IndValue(1:nElems)                                  !< Value of the indicator (Return Value)
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -495,7 +506,7 @@ CASE(6)
   END DO ! iElem
 END SELECT
 
-! dummy parameters to store FV_Elems,FV_Elems_master/slave before overwriting them 
+! dummy parameters to store FV_Elems,FV_Elems_master/slave before overwriting them
 ! to force ProlongToFace to use FV version everywhere
 TMP        = FV_Elems
 TMP_master = FV_Elems_master
@@ -504,7 +515,7 @@ FV_Elems        = 1
 FV_Elems_master = 1
 FV_Elems_slave  = 1
 
-! prolongate UJameson to the faces (FV everywhere) 
+! prolongate UJameson to the faces (FV everywhere)
 ! and bring it from the big to the small mortar faces
 #if USE_MPI
 CALL ProlongToFace1(PP_N,UJameson,UJameson_master,UJameson_slave,L_Minus,L_Plus,doMPiSides=.TRUE.)
@@ -512,9 +523,9 @@ CALL ProlongToFace1(PP_N,UJameson,UJameson_master,UJameson_slave,L_Minus,L_Plus,
 CALL ProlongToFace1(PP_N,UJameson,UJameson_master,UJameson_slave,L_Minus,L_Plus,doMPiSides=.FALSE.)
 #if USE_MPI
 ! revert the temporal forcing to use FV everywhere in the ProlongToFace
-FV_Elems        = TMP       
+FV_Elems        = TMP
 FV_Elems_master = TMP_master
-FV_Elems_slave  = TMP_slave 
+FV_Elems_slave  = TMP_slave
 CALL U_Mortar1(UJameson_master,UJameson_slave,doMPiSides=.TRUE.)
 #endif
 CALL U_Mortar1(UJameson_master,UJameson_slave,doMPiSides=.FALSE.)
@@ -527,7 +538,7 @@ CALL StartReceiveMPIData(UJameson_slave ,DataSizeSide_loc,1,nSides,MPIRequest_U(
 CALL StartSendMPIData(   UJameson_slave ,DataSizeSide_loc,1,nSides,MPIRequest_U(   :,RECV),SendID=2) !  U_slave: slave -> master
 CALL StartReceiveMPIData(UJameson_master,DataSizeSide_loc,1,nSides,MPIRequest_Flux(:,SEND),SendID=1) !  U_master: master -> slave
 CALL StartSendMPIData(   UJameson_master,DataSizeSide_loc,1,nSides,MPIRequest_Flux(:,RECV),SendID=1) !  U_master: master -> slave
-CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_U)   
+CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_U)
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Flux)
 #endif
 
@@ -536,8 +547,8 @@ DO tf=0,1
   ! ATTENTION: call Flux_Mortar1 with swapped slave/master arguments, since we use it to bring the small
   !            side UJameson to the big Mortar UJameson!
   CALL Flux_Mortar1(UJameson_slave,UJameson_master,doMPISides=(tf.EQ.0),weak=.FALSE.)
-  firstMortarSideID = MERGE(firstMortarMPISide,firstMortarInnerSide,tf.EQ.0) 
-   lastMortarSideID = MERGE( lastMortarMPISide, lastMortarInnerSide,tf.EQ.0) 
+  firstMortarSideID = MERGE(firstMortarMPISide,firstMortarInnerSide,tf.EQ.0)
+   lastMortarSideID = MERGE( lastMortarMPISide, lastMortarInnerSide,tf.EQ.0)
   DO MortarSideID=firstMortarSideID,lastMortarSideID
     SELECT CASE(MortarType(1,MortarSideID))
     CASE(1) !1->4
@@ -562,7 +573,7 @@ DO iElem=1,nElems
     Flip   = ElemToSide(E2S_FLIP,   iSide,iElem)
     SideID = ElemToSide(E2S_SIDE_ID,iSide,iElem)
     IF ((firstBCSide.LE.SideID.AND.SideID.LE.lastBCSide)) THEN ! BC side
-      ! if we are at a BC side, then we have to use the local data, which is prolongated into UJameson_master 
+      ! if we are at a BC side, then we have to use the local data, which is prolongated into UJameson_master
       DO q=0,PP_NZ; DO p=0,PP_N
         ijk = SideToVol(PP_N,-1,p,q,Flip,iSide,PP_dim)
         v(ijk(1),ijk(2),ijk(3)) = UJameson_master(1,p,q,SideID)
@@ -575,7 +586,7 @@ DO iElem=1,nElems
           v(ijk(1),ijk(2),ijk(3)) = UJameson_slave(1,p,q,SideID)
         END DO; END DO ! p,q=0,PP_N
       ELSE
-        ! Slave side => use data from master side 
+        ! Slave side => use data from master side
         DO q=0,PP_NZ; DO p=0,PP_N
           ijk = SideToVol(PP_N,-1,p,q,Flip,iSide,PP_dim)
           v(ijk(1),ijk(2),ijk(3)) = UJameson_master(1,p,q,SideID)
@@ -611,7 +622,7 @@ END FUNCTION JamesonIndicator
 
 !==================================================================================================================================
 !> Calculate IndValue for domain boundaries. There are two options:
-!> 1.) All boundaries are treated by FV, i.e. FVBoundaryType=0. In this case, all elements that have a side that is a BCSide 
+!> 1.) All boundaries are treated by FV, i.e. FVBoundaryType=0. In this case, all elements that have a side that is a BCSide
 !>     will permanently be  FV elements
 !> 2.) FVBoundaryType=BC_TYPE, i.e. only elements that contain a BCSide of BC_TYPE will be FV elements
 !==================================================================================================================================

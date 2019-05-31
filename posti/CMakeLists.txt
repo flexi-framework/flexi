@@ -2,13 +2,9 @@
 # POSTI
 # =========================================================================
 
-# use dummy userblock, as userblocks are often not required for Posti tools
-ADD_LIBRARY(userblocklib_dummy STATIC ./src/output/read_userblock_dummy.c)
-SET_TARGET_PROPERTIES(userblocklib_dummy PROPERTIES LINKER_LANGUAGE C)
-SET_TARGET_PROPERTIES(userblocklib_dummy PROPERTIES COMPILE_FLAGS "-fPIC")
-
 CMAKE_DEPENDENT_OPTION(POSTI_BUILD_VISU                  "Build the visu tool"                        ON  "FLEXI_BUILDPOSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_BUILD_MERGETIMEAVERAGES     "Build the time-averaging tool"              ON  "FLEXI_BUILDPOSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_BUILD_DMD                   "Build the DMD tool"                         ON  "FLEXI_BUILDPOSTI" OFF)
 #CMAKE_DEPENDENT_OPTION(POSTI_BUILD_FLUCTUATIONS          "Build the fluctuations tool"                ON  "FLEXI_BUILDPOSTI" OFF)
 #CMAKE_DEPENDENT_OPTION(POSTI_BUILD_WALLDISTANCE          "Build the walldistance tool"                OFF "FLEXI_BUILDPOSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_BUILD_PREPARERECORDPOINTS   "Build the Record point preprocessing tool"          ON  "FLEXI_BUILDPOSTI" OFF)
@@ -47,6 +43,7 @@ IF(POSTI_BUILD_VISUALIZERECORDPOINTS OR POSTI_BUILD_CHANNEL_FFT)
       ExternalProject_Add(fftw
         GIT_REPOSITORY ${FFTWDOWNLOAD}
         GIT_TAG ${POSTI_FFTWTAG}
+        ${${GITSHALLOW}}
         PREFIX  ${POSTI_FFTWDIR}
 	UPDATE_COMMAND ""
         CONFIGURE_COMMAND tar xzf ${POSTI_FFTWTAG}.tar.gz && FC=${CMAKE_Fortran_COMPILER} CC=${CMAKE_C_COMPILER} F77=${CMAKE_F77_COMPILER} ${POSTI_FFTWDIR}/src/fftw/${POSTI_FFTWTAG}/configure --prefix=${POSTI_FFTWDIR}/build
@@ -56,6 +53,7 @@ IF(POSTI_BUILD_VISUALIZERECORDPOINTS OR POSTI_BUILD_CHANNEL_FFT)
     SET(FFTW_LIBRARY     ${POSTI_FFTWDIR}/build/lib/libfftw3.a)
     SET(FFTW_LIBRARIES   ${POSTI_FFTWDIR}/build/lib/libfftw3.a)
     SET_PROPERTY(DIRECTORY PROPERTY CLEAN_NO_CUSTOM 1)
+    LIST(APPEND SELFBUILTEXTERNALS fftw)
   ELSE()
     MESSAGE(STATUS "FFTW includes found: " ${FFTW_INCLUDES})
     SET(FFTW_INCLUDE_DIR ${FFTW_INCLUDES})
@@ -71,6 +69,10 @@ ENDIF()
 
 IF(POSTI_BUILD_MERGETIMEAVERAGES)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/mergetimeaverages/CMakeLists.txt)
+ENDIF()
+
+IF(POSTI_BUILD_DMD)
+  INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/dmd/CMakeLists.txt)
 ENDIF()
 
 IF(POSTI_BUILD_PREPARERECORDPOINTS)

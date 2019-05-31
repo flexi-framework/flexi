@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -14,14 +14,14 @@
 #include "flexi.h"
 
 !=================================================================================================================================
-!> Module to handle commandline arguments 
+!> Module to handle commandline arguments
 !=================================================================================================================================
 MODULE MOD_Commandline_Arguments
 IMPLICIT NONE
 
 ! Global variables for command line argument parsing
-INTEGER                              :: nArgs              ! number of command line argumens
-CHARACTER(LEN=255),ALLOCATABLE       :: Args(:)
+INTEGER                              :: nArgs              !< number of command line argumens
+CHARACTER(LEN=255),ALLOCATABLE       :: Args(:)            !< command line arguments
 
 INTERFACE ParseCommandlineArguments
   MODULE PROCEDURE ParseCommandlineArguments
@@ -33,13 +33,14 @@ CONTAINS
 !==================================================================================================================================
 !> Reads all commandline arguments
 !==================================================================================================================================
-SUBROUTINE ParseCommandlineArguments()
+SUBROUTINE ParseCommandlineArguments(Args_In)
 ! MODULES
 USE MOD_Globals
 USE MOD_StringTools     ,ONLY: STRICMP
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
+CHARACTER(LEN=255),INTENT(IN),OPTIONAL :: Args_In(:)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                 :: iArg,nArgs_tmp
@@ -47,7 +48,11 @@ CHARACTER(LEN=255)      :: tmp
 LOGICAL,ALLOCATABLE     :: alreadyRead(:)
 !==================================================================================================================================
 ! Get number of command line arguments
-nArgs_tmp=COMMAND_ARGUMENT_COUNT()
+IF(PRESENT(Args_In))THEN
+  nArgs_tmp = SIZE(Args_In,1)
+ELSE
+  nArgs_tmp = COMMAND_ARGUMENT_COUNT()
+END IF
 ALLOCATE(alreadyRead(nArgs_tmp))
 alreadyRead = .FALSE.
 
@@ -56,7 +61,11 @@ doGenerateUnittestReferenceData = .FALSE.
 doPrintHelp = 0
 nArgs = nArgs_tmp
 DO iArg = 1, nArgs_tmp
-  CALL GET_COMMAND_ARGUMENT(iArg,tmp)
+  IF(PRESENT(Args_In))THEN
+    tmp=Args_In(iArg)
+  ELSE
+    CALL GET_COMMAND_ARGUMENT(iArg,tmp)
+  END IF
   IF (STRICMP(tmp, "--generateUnittestReferenceData")) THEN
     doGenerateUnittestReferenceData = .TRUE.
     alreadyRead(iArg) = .TRUE.
@@ -82,7 +91,11 @@ nArgs = 0
 DO iArg = 1,nArgs_tmp
   IF (.NOT.alreadyRead(iArg)) THEN
     nArgs = nArgs + 1
-    CALL GET_COMMAND_ARGUMENT(iArg,Args(nArgs))
+    IF(PRESENT(Args_In))THEN
+      Args(nArgs)=TRIM(Args_In(iArg))
+    ELSE
+      CALL GET_COMMAND_ARGUMENT(iArg,Args(nArgs))
+    END IF
     alreadyRead(iArg) = .TRUE.
   END IF
 END DO
@@ -90,7 +103,10 @@ END DO
 DEALLOCATE(alreadyRead)
 END SUBROUTINE ParseCommandlineArguments
 
-SUBROUTINE FinalizeCommandlineArguments() 
+!==================================================================================================================================
+!> Finalizes commandline arguments
+!==================================================================================================================================
+SUBROUTINE FinalizeCommandlineArguments()
 IMPLICIT NONE
 !===================================================================================================================================
 SDEALLOCATE(Args)

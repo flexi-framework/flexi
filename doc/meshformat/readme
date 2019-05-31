@@ -1,0 +1,4 @@
+The cgns_cube.pdf explains how the sides of the surface terms are oriented/rotated relative to the volume nodes. 
+Print it ouut, cut it out and make an actual cube out of it! 
+
+For further documentation regarding mesh format, refer to the HOPR documentation. 

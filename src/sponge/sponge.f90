@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -55,7 +55,7 @@ PUBLIC::DefineParametersSponge
 CONTAINS
 
 !==================================================================================================================================
-!> Define parameters 
+!> Define parameters
 !==================================================================================================================================
 SUBROUTINE DefineParametersSponge()
 ! MODULES
@@ -72,7 +72,7 @@ CALL addStrListEntry('SpongeShape','ramp',       SPONGESHAPE_RAMP)
 CALL addStrListEntry('SpongeShape','cylindrical',SPONGESHAPE_CYLINDRICAL)
 CALL prms%CreateRealOption(   'SpongeDistance', "Length of sponge ramp. The sponge will have maximum strength at the end "//&
                                                 "of the ramp and after that point.", multiple=.TRUE.)
-CALL prms%CreateRealArrayOption('xStart',       "Coordinates of start postion of sponge ramp (SpongeShape=ramp) "//&
+CALL prms%CreateRealArrayOption('xStart',       "Coordinates of start position of sponge ramp (SpongeShape=ramp) "//&
                                                 "or center (SpongeShape=cylindrical).", multiple=.TRUE.)
 CALL prms%CreateRealArrayOption('SpongeDir',    "Direction vector of the sponge ramp (SpongeShape=ramp)", multiple=.TRUE.)
 CALL prms%CreateRealOption(   'SpongeRadius',   "Radius of the sponge zone (SpongeShape=cylindrical)", multiple=.TRUE.)
@@ -181,7 +181,7 @@ CASE(SPONGEBASEFLOW_PRUETT) ! Pruett
   END IF
 CASE DEFAULT
   CALL CollectiveStop(__STAMP__,&
-    "Undefined SpongeBaseFlow!")   
+    "Undefined SpongeBaseFlow!")
 END SELECT
 
 ! Preparation of the baseflow on each Gauss Point
@@ -233,9 +233,9 @@ END SUBROUTINE InitSponge
 !>
 !> First, depending on the shape (linear or cylindrical), the strength  of the shape without the damping factor (x_star) is
 !> calculated on the solution points.
-!> From this, a mapping is build which contains only the elements with x_star > 0 somewhere, which is used to later apply
+!> From this, a mapping is built which contains only the elements with x_star > 0 somewhere, which is used to later apply
 !> the sponge only to regions where it is needed.
-!> In this sponge region, the final strength of the sponge is build by limiting x_star to [0,1] and mutiply it by the damping.
+!> In this sponge region, the final strength of the sponge is built by limiting x_star to [0,1] and mutiply it by the damping.
 !> If set in the parameter file, a visualization of the sponge strength is written as .vtu files.
 !> At the end, the sponge is pre-multiplied by the Jacobian since we need to do this anyway when the sponge is applied.
 !==================================================================================================================================
@@ -269,7 +269,7 @@ REAL,ALLOCATABLE,TARGET                 :: Coords_NVisu(:,:,:,:,:)
 REAL,POINTER                            :: SpongeMat_NVisu_p(:,:,:,:,:)
 REAL,POINTER                            :: Coords_NVisu_p(:,:,:,:,:)
 INTEGER                                 :: nSpongeRamps
-INTEGER,ALLOCATABLE                     :: SpongeShape(:)  
+INTEGER,ALLOCATABLE                     :: SpongeShape(:)
 REAL,ALLOCATABLE                        :: xStart(:,:)                 ! Starting Point for Sponge Ramp
 REAL,ALLOCATABLE                        :: SpVec(:,:)                  ! Vector defining the ramp direction
 REAL,ALLOCATABLE                        :: SpDistance(:)               ! Distance of the sponge layer
@@ -295,13 +295,13 @@ ALLOCATE(SpAxis(3,nSpongeRamps))
 DO iRamp=1,nSpongeRamps
   ! readin geometrical parameters of the sponge ramp
   SpongeShape(iRamp)=GETINTFROMSTR('SpongeShape')
-  ! Readin of the sponge Ramp thickness  
+  ! Readin of the sponge Ramp thickness
   SpDistance(iRamp) = GETREAL('SpongeDistance')
-  ! start Sponge Ramp at xStart 
+  ! start Sponge Ramp at xStart
   xStart(:,iRamp)= GETREALARRAY('xStart',3,'(/0.,0.,0./)')
 #if PP_dim==2
     IF(xStart(3,iRamp).NE.0) THEN
-      CALL CollectiveStop(__STAMP__,'You are computing in 2D! Please set xStart(3) = 0!') 
+      CALL CollectiveStop(__STAMP__,'You are computing in 2D! Please set xStart(3) = 0!')
     END IF
 #endif
   ! Readin of geometrical parameters for different sponge shapes
@@ -310,17 +310,17 @@ DO iRamp=1,nSpongeRamps
     SpVec(:,iRamp)= GETREALARRAY('SpongeDir',3,'(/1.,0.,0./)')
 #if PP_dim==2
     IF(SpVec(3,iRamp).NE.0) THEN
-      CALL CollectiveStop(__STAMP__,'You are computing in 2D! Please set SpVec(3) = 0!') 
+      CALL CollectiveStop(__STAMP__,'You are computing in 2D! Please set SpVec(3) = 0!')
     END IF
 #endif
     SpVec(:,iRamp)=SpVec(:,iRamp)/NORM2(SpVec(:,iRamp)) ! Normalize SpVec
-  CASE(SPONGESHAPE_CYLINDRICAL) ! circular sponge 
+  CASE(SPONGESHAPE_CYLINDRICAL) ! circular sponge
     SpRadius(iRamp)=GETREAL('SpongeRadius')
 !    SpRadius(iRamp)=0
 #if PP_dim==3
     SpAxis(:,iRamp)=GETREALARRAY('SpongeAxis',3,'(/0.,0.,1./)')
 #endif
-  END SELECT 
+  END SELECT
 END DO!iRamp
 
 applySponge=.FALSE.
@@ -431,7 +431,7 @@ END SUBROUTINE CalcSpongeRamp
 
 !==================================================================================================================================
 !> \brief Read sponge baseflow from HDF5 file
-!> 
+!>
 !> This routine reads the base flow for the sponge from a .h5 file. This is used for the pruett damping or for the base
 !> flow type three. It is checked if the base flow is using the same polynomial degree and node type as the current solution.
 !> If not, a interpolation is performed first.
@@ -492,7 +492,7 @@ END SUBROUTINE ReadBaseFlow
 !==================================================================================================================================
 !> \brief Apply the sponge to the solution vector (compute contribution to Ut).
 !>
-!> This routine adds the contribution of the sponge to the time derivatve Ut. 
+!> This routine adds the contribution of the sponge to the time derivatve Ut.
 !> \f$ U_t = U_t - \sigma(x)*(U-U_B) \f$, where \f$ \sigma(x) \f$ is the sponge strength and \f$ U_B \f$ is the base flow.
 !> The operation will be performed in the sponge region only using the sponge mapping. The sponge is already pre-multiplied
 !> by the Jacobian since we are working in the reference space at this point (at the end of DGTimeDerivative_weakForm).
@@ -516,7 +516,7 @@ REAL,INTENT(INOUT)  :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< DG solution t
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER             :: iElem,iSpongeElem,i,j,k
-#if FV_ENABLED    
+#if FV_ENABLED
 REAL                :: SpongeMatTmp(1,0:PP_N,0:PP_N,0:PP_NZ)
 REAL                :: SpongeMat_FV(1,0:PP_N,0:PP_N,0:PP_NZ)
 REAL                :: SpBaseFlow_FV(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
@@ -525,7 +525,7 @@ REAL                :: SpBaseFlow_FV(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 DO iSpongeElem=1,nSpongeElems
   iElem=spongeMap(iSpongeElem)
 #if FV_ENABLED
-  IF (FV_Elems(iElem).GT.0) THEN ! FV elem     
+  IF (FV_Elems(iElem).GT.0) THEN ! FV elem
     ! Remove DG Jacobi from SpongeMat
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       SpongeMatTmp(1,i,j,k) = sJ(i,j,k,iElem,0)*SpongeMat(i,j,k,iSpongeElem)

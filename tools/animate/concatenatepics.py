@@ -9,9 +9,12 @@ import tempfile
 import shutil
 
 parser = argparse.ArgumentParser(description='Concatenate pictures')
-parser.add_argument('-d','--direction', choices=['n','e','s','w'], default='e', help='Direction where to append picture (north, east, south, west)')
-parser.add_argument('-p','--pics', nargs='+', help='Base pictures (to each of this pictures, the corresponding of "--appends" will be appended)')
-parser.add_argument('-a','--appends', nargs='+', help='Append pictures')
+optional = parser._action_groups.pop()
+required = parser.add_argument_group('required arguments')
+optional.add_argument('-d','--direction', choices=['n','e','s','w'], default='e', help='Direction where to append picture (north, east, south, west)')
+required.add_argument('-p','--pics', nargs='+', help='Base pictures (to each of this pictures, the corresponding of "--appends" will be appended)',required=True)
+required.add_argument('-a','--appends', nargs='+', help='Append pictures',required=True)
+parser._action_groups.append(optional)
 
 args = parser.parse_args()
 
@@ -44,10 +47,10 @@ for a,b in zip(sorted(args.pics), sorted(args.appends)) :
    else :
       cmd.append('+append')
 
-   if args.direction in 'es' : 
+   if args.direction in 'es' :
       cmd.append(a)
       cmd.append(b)
-   else : 
+   else :
       cmd.append(b)
       cmd.append(a)
 

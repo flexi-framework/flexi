@@ -121,11 +121,20 @@
 #define CUTOFF 1
 #define CUTOFFCONS 2
 
+! PURE debug switch
+#if DEBUG
+#define PPURE
+#else
+#define PPURE PURE
+#endif
+
 !2d functionality
 #if (PP_dim==2)
 #define ZDIM(a) 0
-#define PP_NZ 0
+#define PP_NZ   0
+#define DIMV    1:2
 #else
 #define ZDIM(a) a
-#define PP_NZ PP_N
+#define PP_NZ   PP_N
+#define DIMV    1:3
 #endif

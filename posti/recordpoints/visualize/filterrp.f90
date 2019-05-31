@@ -1,6 +1,19 @@
+!=================================================================================================================================
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
+! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+!
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
+! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+!
+! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+! of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License v3.0 for more details.
+!
+! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
+!=================================================================================================================================
 #include "flexi.h"
 !===================================================================================================================================
-!> Module to handle the Recordpoints
+!> Module to handle temporal filtering of the record point time signal
 !===================================================================================================================================
 MODULE MOD_FilterRP
 ! MODULES
@@ -17,16 +30,17 @@ PUBLIC :: FilterRP
 CONTAINS
 
 !===================================================================================================================================
-!> Initialize all necessary information to perform interpolation
+!> Initialize and perform the temporal filtering of the time signal stored at the record points. Either a high-pass or a
+!> low-pass filter can be used.
 !===================================================================================================================================
 SUBROUTINE FilterRP()
 ! MODULES
 USE MOD_Globals
 USE MOD_RPData_Vars          ,ONLY: RPTime
-USE MOD_RPSetVisuVisu_Vars           ,ONLY: nRP_global
+USE MOD_RPSetVisuVisu_Vars   ,ONLY: nRP_global
 USE MOD_RPInterpolation_Vars
 USE MOD_OutputRPVisu_Vars    ,ONLY: nSamples_out,RPData_out
-USE MOD_ParametersVisu           ,ONLY: FilterWidth,nVarVisu,FilterMode
+USE MOD_ParametersVisu       ,ONLY: FilterWidth,nVarVisu,FilterMode
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -56,7 +70,7 @@ pi=acos(-1.)
 !    RPData_out(:,:,iSample) = cos(10.*pi*2.*REAL(iSample-1)/REAL(nSamples_out-1)) &
 !                             +0.05*cos(100.*pi*2.*REAL(iSample-1)/REAL(nSamples_out-1)+.1)
 !END DO
-DO iRP=1,nRP_global 
+DO iRP=1,nRP_global
   RPData_tmp=RPData_out(:,iRP,:)
   ! Average around each Sample
   DO iSample=1,nSamples_out
@@ -69,14 +83,14 @@ DO iRP=1,nRP_global
     END DO ! iSample2
     snSamples_block=1/(REAL(MAX(iSample_right-iSample_left+1,1)))
     ! low pass filtered signal
-    RPData_tmp(:,iSample)=RPData_f*snSamples_block 
+    RPData_tmp(:,iSample)=RPData_f*snSamples_block
   END DO ! iSample
   IF(FilterMode.EQ.1) THEN
     RPData_out(:,iRP,:)=RPData_out(:,iRP,:)-RPData_tmp(:,:)
   ELSE
     RPData_out(:,iRP,:)=RPData_tmp(:,:)
   END IF
-END DO ! iRP=1,nRP 
+END DO ! iRP=1,nRP
 WRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE FilterRP
 
