@@ -988,11 +988,12 @@ END SUBROUTINE CalcSource
 SUBROUTINE CalcOmegaTrip()
 ! MODULES                                                                                                                          !
 USE MOD_Globals
-USE MOD_Equation_Vars,   ONLY: omegaT,tripSideID,tripPQ,tripOnProc,tripRoot
+USE MOD_Equation_Vars,   ONLY: omegaT,tripSideID,tripPQ,tripOnProc
 USE MOD_Lifting_Vars,    ONLY: gradUx_master,gradUy_master
 #if USE_MPI
 USE MOD_MPI_Vars
 USE MOD_MPI
+USE MOD_Equation_Vars,   ONLY: tripRoot
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
