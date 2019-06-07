@@ -72,9 +72,9 @@ CALL prms%CreateLogicalOption('WriteWallVelocity', "Set true to write wall velol
 CALL prms%CreateLogicalOption('WriteTotalStates' , "Set true to write total states to file"           , '.TRUE.')
 CALL prms%CreateLogicalOption('WriteResiduals '  , "Set true to write residuals to file"              , '.TRUE.')
 CALL prms%CreateStringOption( 'VarNameAvg'       , "Names of variables to be time-averaged"           , multiple=.TRUE.)
-CALL prms%CreateStringOption( 'VarNameFluc'      , "Names of variables for which Flucs (time-averaged \n"//&
-                                                   "square of the variable) should be computed. \n"//&
-                                                   "Required for computing actual fluctuations."      , multiple=.TRUE.)
+CALL prms%CreateStringOption( 'VarNameFluc'      , "Names of variables for which Flucs (time-averaged&
+                                                   & square of the variable) should be computed.&
+                                                   & Required for computing actual fluctuations."      , multiple=.TRUE.)
 END SUBROUTINE DefineParametersAnalyzeEquation
 
 
@@ -357,8 +357,8 @@ USE MOD_FV_Vars,            ONLY: FV_Elems,FV_w
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(OUT)                :: BulkPrim(PP_nVarPrim)                   !> Primitive bulk quantities
-REAL,INTENT(OUT)                :: BulkCons(PP_nVar)                       !> Conservative bulk quantities
+REAL,INTENT(OUT)                :: BulkPrim(PP_nVarPrim)                   !< Primitive bulk quantities
+REAL,INTENT(OUT)                :: BulkCons(PP_nVar)                       !< Conservative bulk quantities
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                            :: IntegrationWeight
@@ -398,10 +398,10 @@ END DO ! iElem
 #if USE_MPI
 Box(1:PP_nVarPrim)=BulkPrim; Box(PP_nVarPrim+1:PP_nVarPrim+PP_nVar)=BulkCons
 IF(MPIRoot)THEN
-  CALL MPI_REDUCE(MPI_IN_PLACE,box,PP_nVar+PP_nVarPrim,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,iError)
+  CALL MPI_REDUCE(MPI_IN_PLACE,box,PP_nVar+PP_nVarPrim,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
   BulkPrim=Box(1:PP_nVarPrim); BulkCons=Box(PP_nVarPrim+1:PP_nVarPrim+PP_nVar)
 ELSE
-  CALL MPI_REDUCE(Box         ,0  ,PP_nVar+PP_nVarPrim,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,iError)
+  CALL MPI_REDUCE(Box         ,0  ,PP_nVar+PP_nVarPrim,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 END IF
 #endif
 
@@ -503,9 +503,9 @@ END DO
 
 #if USE_MPI
 IF(MPIRoot)THEN
-  CALL MPI_REDUCE(MPI_IN_PLACE,meanTotals,4*nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,iError)
+  CALL MPI_REDUCE(MPI_IN_PLACE,meanTotals,4*nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 ELSE
-  CALL MPI_REDUCE(meanTotals  ,0         ,4*nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,iError)
+  CALL MPI_REDUCE(meanTotals  ,0         ,4*nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 END IF
 #endif
 
@@ -577,13 +577,13 @@ END DO
 
 #if USE_MPI
 IF(MPIRoot)THEN
-  CALL MPI_REDUCE(MPI_IN_PLACE,maxV ,nBCs,MPI_DOUBLE_PRECISION,MPI_MAX,0,MPI_COMM_WORLD,iError)
-  CALL MPI_REDUCE(MPI_IN_PLACE,minV ,nBCs,MPI_DOUBLE_PRECISION,MPI_MIN,0,MPI_COMM_WORLD,iError)
-  CALL MPI_REDUCE(MPI_IN_PLACE,meanV,nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,iError)
+  CALL MPI_REDUCE(MPI_IN_PLACE,maxV ,nBCs,MPI_DOUBLE_PRECISION,MPI_MAX,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(MPI_IN_PLACE,minV ,nBCs,MPI_DOUBLE_PRECISION,MPI_MIN,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(MPI_IN_PLACE,meanV,nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 ELSE
-  CALL MPI_REDUCE(maxV        ,0    ,nBCs,MPI_DOUBLE_PRECISION,MPI_MAX,0,MPI_COMM_WORLD,iError)
-  CALL MPI_REDUCE(minV        ,0    ,nBCs,MPI_DOUBLE_PRECISION,MPI_MIN,0,MPI_COMM_WORLD,iError)
-  CALL MPI_REDUCE(meanV       ,0    ,nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,iError)
+  CALL MPI_REDUCE(maxV        ,0    ,nBCs,MPI_DOUBLE_PRECISION,MPI_MAX,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(minV        ,0    ,nBCs,MPI_DOUBLE_PRECISION,MPI_MIN,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(meanV       ,0    ,nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 END IF
 #endif
 DO iBC=1,nBCs
@@ -645,9 +645,9 @@ END DO
 #if USE_MPI
 i=PP_nVar*nBCs
 IF(MPIRoot)THEN
-  CALL MPI_REDUCE(MPI_IN_PLACE,MeanFlux,i,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,iError)
+  CALL MPI_REDUCE(MPI_IN_PLACE,MeanFlux,i,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 ELSE
-  CALL MPI_REDUCE(MeanFlux    ,0       ,i,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,iError)
+  CALL MPI_REDUCE(MeanFlux    ,0       ,i,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 END IF
 #endif
 

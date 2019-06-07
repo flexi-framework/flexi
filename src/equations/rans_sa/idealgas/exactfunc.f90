@@ -474,6 +474,9 @@ CASE(7) ! SHU VORTEX,isentropic vortex
   dTemp = -kappaM1/(2.*kappa*RT)*du**2 ! adiabatic
   prim(1)=prim(1)*(1.+dTemp)**(1.*skappaM1) !rho
   prim(2:4)=prim(2:4)+du*cent(:) !v
+#if PP_dim == 2
+  prim(4)=0.
+#endif
   prim(PP_nVar)=prim(PP_nVar)*(1.+dTemp)**(kappa/kappaM1) !p
   prim(6) = prim(5)/(prim(1)*R)
   CALL PrimToCons(prim,resu)

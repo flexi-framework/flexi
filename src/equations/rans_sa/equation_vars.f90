@@ -11,6 +11,7 @@
 !
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
+#include "flexi.h"
 
 !==================================================================================================================================
 !> Contains the (physical) parameters needed for the RANS SA calculation
@@ -24,7 +25,7 @@ SAVE
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 LOGICAL           :: doCalcSource      !< automatically set by calcsource itself
-INTEGER           :: IniExactFunc
+INTEGER           :: IniExactFunc      !< number identifying the used exact function
 INTEGER           :: IniRefState       !< RefState for initialization (case IniExactFunc=1 only)
 INTEGER           :: nRefState         !< number of refstates defined in parameter file
 REAL,ALLOCATABLE  :: RefStatePrim(:,:) !< refstates in primitive variables (as read from ini file)
@@ -35,9 +36,10 @@ CHARACTER(LEN=255):: BCStateFile       !< file containing the reference solution
 REAL,ALLOCATABLE     :: BCData(:,:,:,:) !< array with precomputed BC values (conservative)
 REAL,ALLOCATABLE     :: BCDataPrim(:,:,:,:) !< array with precomputed BC values (primitive)
 INTEGER,ALLOCATABLE  :: nBCByType(:)   !< number of sides with specific BC type
-INTEGER,ALLOCATABLE  :: BCSideID(:,:)
+INTEGER,ALLOCATABLE  :: BCSideID(:,:)  !< array storing side IDs of sides with different BCs
 
-REAL                 :: s43,s23
+REAL                 :: s43            !< precomputed 4./3.
+REAL                 :: s23            !< precomputed 2./3.
 
 ! SA-specific variables and parameters
 REAL              :: PrTurb            !< Turbulent Prandtl number
@@ -100,7 +102,7 @@ END INTERFACE
 
 CONTAINS
 
-FUNCTION fv1(chi)
+PPURE FUNCTION fv1(chi)
 !===================================================================================================================================
 !> Function fv1 of the Spalart-Allmaras Turbulence model 
 !===================================================================================================================================
@@ -126,7 +128,7 @@ END IF
 
 END FUNCTION fv1
 
-FUNCTION fv2(chi)
+PPURE FUNCTION fv2(chi)
 !===================================================================================================================================
 !> Function fv2 of the Spalart-Allmaras Turbulence model 
 !===================================================================================================================================
@@ -149,7 +151,7 @@ fv2 = 1. - (chi/(1.+chi*fv1_loc))
 
 END FUNCTION fv2
 
-FUNCTION fw(nuTilde, STilde, d)
+PPURE FUNCTION fw(nuTilde, STilde, d)
 !===================================================================================================================================
 !> Function fw of the negative Spalart-Allmaras Turbulence model 
 !> See "Modifications and Clarifications for the Implementation of the Spalart-Allmaras Tubulence Model"
@@ -182,7 +184,7 @@ END IF
 
 END FUNCTION fw
 
-FUNCTION fn(chi)
+PPURE FUNCTION fn(chi)
 !===================================================================================================================================
 !> Function fn of the negative Spalart-Allmaras Turbulence model 
 !> See "Modifications and Clarifications for the Implementation of the Spalart-Allmaras Tubulence Model"
@@ -204,7 +206,7 @@ fn = (cn1+(chi**3))/(cn1-(chi**3))
 
 END FUNCTION fn
 
-FUNCTION STilde(nuTilde, d, chi, S)
+PPURE FUNCTION STilde(nuTilde, d, chi, S)
 !===================================================================================================================================
 ! Modified vorticity of the modifed Spalart-Allmaras Turbulence model
 ! See "Modifications and Clarifications for the Implementation of the Spalart-Allmaras Tubulence Model" 

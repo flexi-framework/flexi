@@ -209,7 +209,7 @@ TimeStep(1)=TimeStepConv
 TimeStep(2)=TimeStepVisc
 #if USE_MPI
 TimeStep(3)=-errType ! reduce with timestep, minus due to MPI_MIN
-CALL MPI_ALLREDUCE(MPI_IN_PLACE,TimeStep,3,MPI_DOUBLE_PRECISION,MPI_MIN,MPI_COMM_WORLD,iError)
+CALL MPI_ALLREDUCE(MPI_IN_PLACE,TimeStep,3,MPI_DOUBLE_PRECISION,MPI_MIN,MPI_COMM_FLEXI,iError)
 errType=INT(-TimeStep(3))
 #endif /*USE_MPI*/
 ViscousTimeStep=(TimeStep(2) .LT. TimeStep(1))

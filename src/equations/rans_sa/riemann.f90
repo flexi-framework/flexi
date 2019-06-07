@@ -137,10 +137,6 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                 :: Riemann
-#ifdef DEBUG
-REAL,DIMENSION(PP_nVar) :: F_L,F_R,F ! dummy variables, only to suppress compiler warnings
-REAL,DIMENSION(PP_2Var) :: U_LL,U_RR ! dummy variables, only to suppress compiler warnings
-#endif
 !==================================================================================================================================
 #ifndef SPLIT_DG
 Riemann = GETINTFROMSTR('Riemann')
@@ -229,27 +225,6 @@ CASE DEFAULT
 END SELECT
 #endif /*SPLIT_DG*/
 
-#ifdef DEBUG
-! ===============================================================================
-! Following dummy calls do suppress compiler warnings of unused Riemann-functions
-! ===============================================================================
-IF (0.EQ.1) THEN
-  F_L=1. ;  F_R=1. ;   U_LL=1. ;   U_RR=1.
-  CALL Riemann_pointer   (F_L,F_R,U_LL,U_RR,F)
-  CALL RiemannBC_pointer (F_L,F_R,U_LL,U_RR,F)
-  CALL Riemann_LF   (F_L,F_R,U_LL,U_RR,F)
-  CALL Riemann_HLLC (F_L,F_R,U_LL,U_RR,F)
-  CALL Riemann_Roe  (F_L,F_R,U_LL,U_RR,F)
-  CALL Riemann_RoeEntropyFix(F_L,F_R,U_LL,U_RR,F)
-  CALL Riemann_RoeL2(F_L,F_R,U_LL,U_RR,F)
-  CALL Riemann_HLL  (F_L,F_R,U_LL,U_RR,F)
-  CALL Riemann_HLLE (F_L,F_R,U_LL,U_RR,F)
-  CALL Riemann_HLLEM(F_L,F_R,U_LL,U_RR,F)
-#ifdef SPLIT_DG
-  CALL Riemann_FluxAverage(F_L,F_R,U_LL,U_RR,F)
-#endif
-END IF
-#endif /*DEBUG*/
 END SUBROUTINE InitRiemann
 
 !==================================================================================================================================
@@ -268,7 +243,8 @@ REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_L        !< con
 REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_R        !< conservative solution at right side of the interface
 REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim_L    !< primitive solution at left side of the interface
 REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim_R    !< primitive solution at right side of the interface
-REAL,DIMENSION(          3,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: nv,t1,t2   !< normal vector and tangential vectors at side
+!> normal vector and tangential vectors at side
+REAL,DIMENSION(          3,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: nv,t1,t2
 LOGICAL,INTENT(IN)                                        :: doBC       !< marker whether side is a BC side
 REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: FOut       !< advective flux
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -343,14 +319,6 @@ DO j=0,ZDIM(Nloc); DO i=0,Nloc
   Fout(MUSA,i,j)=F(MUSA)
 END DO; END DO
 
-#ifdef DEBUG
-! ===============================================================================
-! Following dummy calls do suppress compiler warnings of unused Riemann-functions
-! ===============================================================================
-IF (0.EQ.1) THEN
-  WRITE (*,*) t2
-END IF
-#endif
 END SUBROUTINE Riemann
 
 
@@ -363,7 +331,7 @@ END SUBROUTINE Riemann
 SUBROUTINE ViscousFlux(Nloc,F,UPrim_L,UPrim_R, &
                        gradUx_L,gradUy_L,gradUz_L,gradUx_R,gradUy_R,gradUz_R,nv)
 ! MODULES
-USE MOD_Flux,ONLY: EvalDiffFlux2D
+USE MOD_Flux,ONLY: EvalDiffFlux3D
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -384,8 +352,10 @@ REAL,DIMENSION(PP_nVar,0:Nloc,0:ZDIM(Nloc))            :: diffFluxX_R,diffFluxY_
 !==================================================================================================================================
 ! Don't forget the diffusion contribution, my young padawan
 ! Compute NSE Diffusion flux
-  CALL EvalDiffFlux2D(Nloc,diffFluxX_L,diffFluxY_L,diffFluxZ_L,UPrim_L,gradUx_L,gradUy_L,gradUz_L)
-  CALL EvalDiffFlux2D(Nloc,diffFluxX_R,diffFluxY_R,diffFluxZ_R,UPrim_R,gradUx_R,gradUy_R,gradUz_R)
+  CALL EvalDiffFlux3D(Nloc,UPrim_L,gradUx_L,   gradUy_L,   gradUz_L, &
+                                diffFluxX_L,diffFluxY_L,diffFluxZ_L)
+  CALL EvalDiffFlux3D(Nloc,UPrim_R,gradUx_R,   gradUy_R,   gradUz_R, &
+                                diffFluxX_R,diffFluxY_R,diffFluxZ_R)
 ! BR1 uses arithmetic mean of the fluxes
 DO q=0,ZDIM(Nloc); DO p=0,Nloc
   F(:,p,q)=0.5*(nv(1,p,q)*(diffFluxX_L(:,p,q)+diffFluxX_R(:,p,q)) &
@@ -433,21 +403,13 @@ CALL SplitDGSurface_pointer(U_LL,U_RR,F)
 F = F - 0.5*LambdaMax*(U_RR(CONS) - U_LL(CONS))
 #endif /*SPLIT_DG*/
 
-#ifdef DEBUG
-! ===============================================================================
-! Following dummy calls do suppress compiler warnings of unused Riemann-functions
-! ===============================================================================
-IF (0.EQ.1) THEN
-  WRITE (*,*) F_L,F_R
-END IF
-#endif /*DEBUG*/
 END SUBROUTINE Riemann_LF
 
 
 !=================================================================================================================================
 !> Harten-Lax-Van-Leer Riemann solver resolving contact discontinuity
 !=================================================================================================================================
-PURE SUBROUTINE Riemann_HLLC(F_L,F_R,U_LL,U_RR,F)
+PPURE SUBROUTINE Riemann_HLLC(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
 USE MOD_EOS_Vars      ,ONLY: KappaM1
 IMPLICIT NONE
@@ -592,19 +554,13 @@ F(1:5) = F(1:5) - 0.5*(Alpha1*ABS(a(1))*r1 + &
                        Alpha5*ABS(a(5))*r5)
 #endif /*SPLIT_DG*/
 
-#ifdef DEBUG
-! ===============================================================================
-! Following dummy calls do suppress compiler warnings of unused Riemann-functions
-! ===============================================================================
-IF (0.EQ.1) THEN
-  WRITE (*,*) F_L,F_R
-END IF
-#endif /*DEBUG*/
 END SUBROUTINE Riemann_Roe
 
 
 !=================================================================================================================================
-!> Roe's approximate Riemann solver using the Hartman and Hymen II entropy fix
+!> Roe's approximate Riemann solver using the Harten and Hymen II entropy fix, see
+!> Pelanti, Marica & Quartapelle, Luigi & Vigevano, L & Vigevano, Luigi. (2018):
+!>  A review of entropy fixes as applied to Roe's linearization.
 !=================================================================================================================================
 SUBROUTINE Riemann_RoeEntropyFix(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
@@ -713,14 +669,6 @@ F(1:5)= F(1:5) - 0.5*(Alpha(1)*a(1)*r1 + &
                       Alpha(5)*a(5)*r5)
 #endif /*SPLIT_DG*/
 
-#ifdef DEBUG
-! ===============================================================================
-! Following dummy calls do suppress compiler warnings of unused Riemann-functions
-! ===============================================================================
-IF (0.EQ.1) THEN
-  WRITE (*,*) F_L,F_R
-END IF
-#endif /*DEBUG*/
 END SUBROUTINE Riemann_RoeEntropyFix
 
 !=================================================================================================================================
@@ -804,14 +752,6 @@ F(1:5) = F(1:5) - 0.5*(Alpha1*ABS(a(1))*r1 + &
                        Alpha5*ABS(a(5))*r5)
 #endif /*SPLIT_DG*/
 
-#ifdef DEBUG
-! ===============================================================================
-! Following dummy calls do suppress compiler warnings of unused Riemann-functions
-! ===============================================================================
-IF (0.EQ.1) THEN
-  WRITE (*,*) F_L,F_R
-END IF
-#endif /*DEBUG*/
 END SUBROUTINE Riemann_RoeL2
 
 
@@ -869,7 +809,7 @@ END SUBROUTINE Riemann_HLL
 !=================================================================================================================================
 !> Harten-Lax-Van-Leer-Einfeldt Riemann solver
 !=================================================================================================================================
-PURE SUBROUTINE Riemann_HLLE(F_L,F_R,U_LL,U_RR,F)
+PPURE SUBROUTINE Riemann_HLLE(F_L,F_R,U_LL,U_RR,F)
 !=================================================================================================================================
 ! MODULES
 USE MOD_EOS_Vars      ,ONLY: Kappa,KappaM1
@@ -919,7 +859,7 @@ END SUBROUTINE Riemann_HLLE
 !=================================================================================================================================
 !> Harten-Lax-Van-Leer-Einfeldt-Munz Riemann solver
 !=================================================================================================================================
-PURE SUBROUTINE Riemann_HLLEM(F_L,F_R,U_LL,U_RR,F)
+PPURE SUBROUTINE Riemann_HLLEM(F_L,F_R,U_LL,U_RR,F)
 !=================================================================================================================================
 ! MODULES
 USE MOD_EOS_Vars      ,ONLY: Kappa,KappaM1
@@ -1001,16 +941,8 @@ REAL,DIMENSION(PP_nVar),INTENT(OUT):: F         !< resulting Riemann flux
 !==================================================================================================================================
 ! get split flux
 CALL SplitDGSurface_pointer(U_LL,U_RR,F)
-
-#ifdef DEBUG
-! ===============================================================================
-! Following dummy calls do suppress compiler warnings of unused Riemann-functions
-! ===============================================================================
-IF (0.EQ.1) THEN
-  WRITE (*,*) F_L,F_R
-END IF
-#endif /*DEBUG*/
 END SUBROUTINE Riemann_FluxAverage
+
 #endif /*SPLIT_DG*/
 
 !==================================================================================================================================
@@ -1018,8 +950,8 @@ END SUBROUTINE Riemann_FluxAverage
 !==================================================================================================================================
 SUBROUTINE FinalizeRiemann()
 ! MODULES
-!----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

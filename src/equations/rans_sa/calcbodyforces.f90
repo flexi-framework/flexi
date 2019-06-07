@@ -89,11 +89,11 @@ END DO
 #if USE_MPI
 Box(1:3,1:nBCs)=Fv; Box(4:6,1:nBCs)=Fp
 IF(MPIRoot)THEN
-  CALL MPI_REDUCE(MPI_IN_PLACE,Box,6*nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,iError)
+  CALL MPI_REDUCE(MPI_IN_PLACE,Box,6*nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
   Fv=Box(1:3,1:nBCs); Fp=Box(4:6,1:nBCs)
   BodyForce=Fv+Fp
 ELSE
-  CALL MPI_REDUCE(Box         ,0  ,6*nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,iError)
+  CALL MPI_REDUCE(Box         ,0  ,6*nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 END IF
 #endif
 
@@ -185,14 +185,6 @@ END DO; END DO
 
 Fv=-Fv  ! Change direction to get the force acting on the wall
 
-#ifdef DEBUG
-! ===============================================================================
-! Following dummy calls do suppress compiler warnings of unused Riemann-functions
-! ===============================================================================
-IF (0.EQ.1) THEN
-  WRITE (*,*) gradUz_Face
-END IF
-#endif
 END SUBROUTINE CalcViscousForce
 #endif /*PARABOLIC*/
 

@@ -15,8 +15,17 @@
 #include "eos.h"
 
 !==================================================================================================================================
-!> Contains the routine EvalFlux3D which computes the complete NSE flux f,g,h for all DOFs in one Element: used in volume integral
-!> Contains the routine EvalFlux1D_Adv which computes the Euler flux f for all DOFs of one Element side: used in Riemann_Adv
+!> \brief Contains the definitions of the physical fluxes of the equation system.
+!>
+!> The routine EvalFlux3D will compute the advection (Euler) part only, and can be called either for a single point or for
+!> a volume cell. The fluxes are computed in three spatial dimension - for 2D computations, the fluxes in the third dimension
+!> will always be set to 0.
+!> EvalDiffFlux3D will do the same thing, but compute only the diffusive part of the fluxes. Additionally, a routine to compute
+!> the fluxes on a single side is provided (used in the riemann routines).
+!> The EvalEulerFlux1D routines are used in the Riemann solver, where only a flux in one spatial dimension is needed.
+!>
+!> The flux definitions are only done once in the single point routines, all other (side, volume) routines will simply wrap
+!> to this definition.
 !==================================================================================================================================
 MODULE MOD_Flux
 ! MODULES
@@ -27,7 +36,8 @@ PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
 
 INTERFACE EvalFlux3D
-  MODULE PROCEDURE EvalFlux3D
+  MODULE PROCEDURE EvalFlux3D_Point
+  MODULE PROCEDURE EvalFlux3D_Volume
 END INTERFACE
 
 INTERFACE EvalEulerFlux1D
@@ -39,223 +49,271 @@ END INTERFACE
 
 #if PARABOLIC
 INTERFACE EvalDiffFlux3D
-  MODULE PROCEDURE EvalDiffFlux3D
+  MODULE PROCEDURE EvalDiffFlux3D_Point
+  MODULE PROCEDURE EvalDiffFlux3D_Surface
+  MODULE PROCEDURE EvalDiffFlux3D_Volume
 END INTERFACE
 
-INTERFACE EvalDiffFlux2D
-  MODULE PROCEDURE EvalDiffFlux2D
-END INTERFACE
-
-!INTERFACE EvalDiffFlux1D !only for testing
-!  MODULE PROCEDURE EvalDiffFlux1D
-!END INTERFACE
 #endif /*PARABOLIC*/
 
 PUBLIC::EvalFlux3D,EvalEulerFlux1D,EvalEulerFlux1D_fast
 #if PARABOLIC
-PUBLIC::EvalDiffFlux3D,EvalDiffFlux2D!,EvalDiffFlux1D
+PUBLIC::EvalDiffFlux3D
 #endif /*PARABOLIC*/
 !==================================================================================================================================
 
 CONTAINS
 
 !==================================================================================================================================
-!> Compute RANS SA fluxes using the conservative variables and derivatives for every volume Gauss point.
+!> Compute RANS SA fluxes in all space dimensions using the conservative and primitive variables
 !==================================================================================================================================
-SUBROUTINE EvalFlux3D(Nloc,U,UPrim,f,g,h)
+PPURE SUBROUTINE EvalFlux3D_Point(U,UPrim,f,g,h)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: U        !< Conservative solution
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrim    !< Primitive solution
+!> Physical fluxes in x/y/z direction
+REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: f,g,h
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL                :: Ep
+!==================================================================================================================================
+! auxiliary variables
+Ep   = U(5) + UPrim(5)
+#if PP_dim==3
+! Euler part
+! Euler fluxes x-direction
+f(1) = U(2)                       ! rho*u
+f(2) = U(2) * UPrim(2) + UPrim(5) ! rho*u²+p
+f(3) = U(2) * UPrim(3)            ! rho*u*v
+f(4) = U(2) * UPrim(4)            ! rho*u*w
+f(5) = Ep * UPrim(2)              ! (rho*e+p)*u
+f(6) = U(6) * UPrim(2)            ! muTilde*u
+! Euler fluxes y-direction
+g(1) = U(3)                       ! rho*v
+g(2) = f(3)                       ! rho*u*v
+g(3) = U(3) * UPrim(3) + UPrim(5) ! rho*v²+p
+g(4) = U(3) * UPrim(4)            ! rho*v*w
+g(5) = Ep * UPrim(3)              ! (rho*e+p)*v
+g(6) = U(6) * UPrim(3)            ! muTilde*v
+! Euler fluxes z-direction
+h(1) = U(4)                       ! rho*v
+h(2) = f(4)                       ! rho*u*w
+h(3) = g(4)                       ! rho*v*w
+h(4) = U(4) * UPrim(4) + UPrim(5) ! rho*v²+p
+h(5) = Ep * UPrim(4)              ! (rho*e+p)*w
+h(6) = U(6) * UPrim(4)            ! muTilde*w
+#else
+
+! Euler part
+! Euler fluxes x-direction
+f(1) = U(2)                       ! rho*u
+f(2) = U(2)*UPrim(2)+UPrim(5)     ! rho*u²+p
+f(3) = U(2)*UPrim(3)              ! rho*u*v
+f(4) = 0.
+f(5) = Ep*UPrim(2)                ! (rho*e+p)*u
+f(6) = U(6) * UPrim(2)            ! muTilde*u
+! Euler fluxes y-direction
+g(1)= U(3)                        ! rho*v
+g(2)= f(3)                        ! rho*u*v
+g(3)= U(3)*UPrim(3)+UPrim(5)      ! rho*v²+p
+g(4)= 0.
+g(5)= Ep*UPrim(3)                 ! (rho*e+p)*v
+g(6) = U(6) * UPrim(3)            ! muTilde*v
+! Euler fluxes z-direction
+h   = 0.
+#endif
+END SUBROUTINE EvalFlux3D_Point
+
+!==================================================================================================================================
+!> Wrapper routine to compute the advection part of the RANS SA fluxes for a single volume cell
+!==================================================================================================================================
+PPURE SUBROUTINE EvalFlux3D_Volume(Nloc,U,UPrim,f,g,h)
 ! MODULES
 USE MOD_PreProc
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: Nloc
+INTEGER                                               ,INTENT(IN)  :: Nloc     !< Polynomial degree
 REAL,DIMENSION(PP_nVar    ,0:Nloc,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U        !< Conservative solution
 REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim    !< Primitive solution
-REAL,DIMENSION(PP_nVar    ,0:Nloc,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: f        !< Cartesian flux in x (iVar,i,j,k)
-REAL,DIMENSION(PP_nVar    ,0:Nloc,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: g        !< Cartesian flux in y (iVar,i,j,k)
-REAL,DIMENSION(PP_nVar    ,0:Nloc,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: h        !< Cartesian flux in z (iVar,i,j,k)
+!> Physical fluxes in x,y,z directions
+REAL,DIMENSION(PP_nVar    ,0:Nloc,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: f,g,h
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                :: Ep
 INTEGER             :: i,j,k
 !==================================================================================================================================
 DO k=0,ZDIM(Nloc);  DO j=0,Nloc; DO i=0,Nloc
-  ! auxiliary variables
-  Ep   = U(5,i,j,k) + UPrim(5,i,j,k)
-#if PP_dim==3
-  ! Euler part
-  ! Euler fluxes x-direction
-  f(1,i,j,k)=U(2,i,j,k)                               ! rho*u
-  f(2,i,j,k)=U(2,i,j,k)*UPrim(2,i,j,k)+UPrim(5,i,j,k) ! rho*u²+p
-  f(3,i,j,k)=U(2,i,j,k)*UPrim(3,i,j,k)                ! rho*u*v
-  f(4,i,j,k)=U(2,i,j,k)*UPrim(4,i,j,k)                ! rho*u*w
-  f(5,i,j,k)=Ep*UPrim(2,i,j,k)                        ! (rho*e+p)*u
-  f(6,i,j,k)=U(6,i,j,k)*UPrim(2,i,j,k)                ! muTilde*u
-  ! Euler fluxes y-direction
-  g(1,i,j,k)=U(3,i,j,k)                               ! rho*v
-  g(2,i,j,k)=f(3,i,j,k)                               ! rho*u*v
-  g(3,i,j,k)=U(3,i,j,k)*UPrim(3,i,j,k)+UPrim(5,i,j,k) ! rho*v²+p
-  g(4,i,j,k)=U(3,i,j,k)*UPrim(4,i,j,k)                ! rho*v*w
-  g(5,i,j,k)=Ep*UPrim(3,i,j,k)                        ! (rho*e+p)*v
-  g(6,i,j,k)=U(6,i,j,k)*UPrim(3,i,j,k)                ! muTilde*v
-  ! Euler fluxes z-direction
-  h(1,i,j,k)=U(4,i,j,k)                               ! rho*v
-  h(2,i,j,k)=f(4,i,j,k)                               ! rho*u*w
-  h(3,i,j,k)=g(4,i,j,k)                               ! rho*v*w
-  h(4,i,j,k)=U(4,i,j,k)*UPrim(4,i,j,k)+UPrim(5,i,j,k) ! rho*v²+p
-  h(5,i,j,k)=Ep*UPrim(4,i,j,k)                        ! (rho*e+p)*w
-  h(6,i,j,k)=U(6,i,j,k)*UPrim(4,i,j,k)                ! muTilde*w
-#else
-
-  ! Euler part
-  ! Euler fluxes x-direction
-  f(1,i,j,k)=U(2,i,j,k)                               ! rho*u
-  f(2,i,j,k)=U(2,i,j,k)*UPrim(2,i,j,k)+UPrim(5,i,j,k) ! rho*u²+p
-  f(3,i,j,k)=U(2,i,j,k)*UPrim(3,i,j,k)                ! rho*u*v
-  f(4,i,j,k)=0.
-  f(5,i,j,k)=Ep*UPrim(2,i,j,k)                        ! (rho*e+p)*u
-  f(6,i,j,k)=U(6,i,j,k)*UPrim(2,i,j,k)                ! muTilde*u
-  ! Euler fluxes y-direction
-  g(1,i,j,k)=U(3,i,j,k)                               ! rho*v
-  g(2,i,j,k)=f(3,i,j,k)                               ! rho*u*v
-  g(3,i,j,k)=U(3,i,j,k)*UPrim(3,i,j,k)+UPrim(5,i,j,k) ! rho*v²+p
-  g(4,i,j,k)=0.
-  g(5,i,j,k)=Ep*UPrim(3,i,j,k)                        ! (rho*e+p)*v
-  g(6,i,j,k)=U(6,i,j,k)*UPrim(3,i,j,k)                ! muTilde*v
-  ! Euler fluxes z-direction
-  h(:,i,j,k)=0.
-#endif
+  CALL EvalFlux3D_Point(U(:,i,j,k),UPrim(:,i,j,k),f(:,i,j,k),g(:,i,j,k),h(:,i,j,k))
 END DO; END DO; END DO ! i,j,k
-END SUBROUTINE EvalFlux3D
+END SUBROUTINE EvalFlux3D_Volume
 
 
 #if PARABOLIC
 !==================================================================================================================================
-!> Compute RANS SA diffusive fluxes using the conservative variables and derivatives for every volume Gauss point.
+!> Compute RANS SA diffusive flux using the primitive variables and derivatives.
 !==================================================================================================================================
-SUBROUTINE EvalDiffFlux3D(UPrim,gradUx,gradUy,gradUz,f,g,h,iElem)
+PPURE SUBROUTINE EvalDiffFlux3D_Point(UPrim,gradUx,gradUy,gradUz,f,g,h)
 ! MODULES
-USE MOD_PreProc
 USE MOD_Equation_Vars,ONLY: s23,s43,PrTurb,fv1,fn,sigma
 USE MOD_EOS_Vars,     ONLY: cp,Pr
 USE MOD_Viscosity
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ),INTENT(IN)  :: UPrim                !< Solution vector
-REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ),INTENT(IN)  :: gradUx,gradUy,gradUz !< Gradients in x,y,z directions
-REAL,DIMENSION(PP_nVar    ,0:PP_N,0:PP_N,0:PP_NZ),INTENT(OUT) :: f,g,h                !< Cartesian fluxes (iVar,i,j,k)
-INTEGER, INTENT(IN)                                           :: iELem                !< element index in global array
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrim                !< Solution vector
+!> Gradients in x,y,z directions
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: gradUx,gradUy,gradUz
+!> Physical fluxes in x,y,z directions
+REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: f,g,h
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                :: muS
-REAL                :: v1,v2
+REAL                :: muS,lambda
 REAL                :: tau_xx,tau_yy,tau_xy
-REAL                :: gradT1,gradT2,lambda,prim(PP_nVarPrim)
-INTEGER             :: i,j,k
 #if PP_dim==3
-REAL                :: v3
 REAL                :: tau_zz,tau_xz,tau_yz
-REAL                :: gradT3
 #endif
-REAL                :: chi,muTurb,muEff,muTilde,SAfn
+REAL                :: chi,muTurb,muTilde,SAfn,muEff
+!==================================================================================================================================
+! Viscous part
+! ideal gas law
+muS=VISCOSITY_PRIM(prim)
+lambda=THERMAL_CONDUCTIVITY_H(muS)
+! Add turbulent viscosity
+muTilde = UPrim(7)*UPrim(1)
+chi = muTilde/muS
+muTurb = muTilde*fv1(chi)
+muEff = MAX(muS,muS+muTurb)  ! Ignore muTurb < 0
+lambda = MAX(lambda,lambda+muTurb*cp/PrTurb)
+! Set negative modification if necessary
+IF (muTilde.LT.0.) THEN
+  SAfn = fn(chi)
+ELSE
+  SAfn = 1.
+END IF
+
+ASSOCIATE( v1     => UPrim(2),  v2     => UPrim(3),  v3     => UPrim(4), &
+           gradT1 => GradUx(6), gradT2 => GradUy(6), gradT3 => GradUz(6) )
+#if PP_dim==3
+! gradients of primitive variables are directly available gradU = (/ drho, dv1, dv2, dv3, dT /)
+
+! viscous fluxes in x-direction
+tau_xx = muEff * ( s43 * gradUx(2) - s23 * gradUy(3) - s23 * gradUz(4)) ! 4/3*mu*u_x-2/3*mu*v_y -2/3*mu*w*z
+tau_yy = muEff * (-s23 * gradUx(2) + s43 * gradUy(3) - s23 * gradUz(4)) !-2/3*mu*u_x+4/3*mu*v_y -2/3*mu*w*z
+tau_zz = muEff * (-s23 * gradUx(2) - s23 * gradUy(3) + s43 * gradUz(4)) !-2/3*mu*u_x-2/3*mu*v_y +4/3*mu*w*z
+tau_xy = muEff * (gradUy(2) + gradUx(3))               !mu*(u_y+v_x)
+tau_xz = muEff * (gradUz(2) + gradUx(4))               !mu*(u_z+w_x)
+tau_yz = muEff * (gradUz(3) + gradUy(4))               !mu*(y_z+w_y)
+
+f(1) = 0.
+f(2) = -tau_xx                                       ! F_euler-4/3*mu*u_x+2/3*mu*(v_y+w_z)
+f(3) = -tau_xy                                       ! F_euler-mu*(u_y+v_x)
+f(4) = -tau_xz                                       ! F_euler-mu*(u_z+w_x)
+f(5) = -tau_xx*v1-tau_xy*v2-tau_xz*v3-lambda*gradT1  ! F_euler-(tau_xx*u+tau_xy*v+tau_xz*w-q_x) q_x=-lambda*T_x
+f(6) = -1./sigma*(muS+muTilde*SAfn)*gradUx(7)        ! F_euler-1/sigma*(muS+muTilde)*nuTilde_x
+! viscous fluxes in y-direction
+g(1) = 0.
+g(2) = -tau_xy                                       ! F_euler-mu*(u_y+v_x)
+g(3) = -tau_yy                                       ! F_euler-4/3*mu*v_y+2/3*mu*(u_x+w_z)
+g(4) = -tau_yz                                       ! F_euler-mu*(y_z+w_y)
+g(5) = -tau_xy*v1-tau_yy*v2-tau_yz*v3-lambda*gradT2  ! F_euler-(tau_yx*u+tau_yy*v+tau_yz*w-q_y) q_y=-lambda*T_y
+g(6) = -1./sigma*(muS+muTilde*SAfn)*gradUy(7)        ! F_euler-1/sigma*(muS+muTilde)*nuTilde_y
+! viscous fluxes in z-direction
+h(1) = 0.
+h(2) = -tau_xz                                       ! F_euler-mu*(u_z+w_x)
+h(3) = -tau_yz                                       ! F_euler-mu*(y_z+w_y)
+h(4) = -tau_zz                                       ! F_euler-4/3*mu*w_z+2/3*mu*(u_x+v_y)
+h(5) = -tau_xz*v1-tau_yz*v2-tau_zz*v3-lambda*gradT3  ! F_euler-(tau_zx*u+tau_zy*v+tau_zz*w-q_z) q_z=-lambda*T_z
+h(6) = -1./sigma*(muS+muTilde*SAfn)*gradUz(7)        ! F_euler-1/sigma*(muS+muTilde)*nuTilde_z
+#else
+! gradients of primitive variables are directly available gradU = (/ drho, dv1, dv2, dv3, dT /)
+
+! viscous fluxes in x-direction
+tau_xx = muEff * ( s43 * gradUx(2) - s23 * gradUy(3))  ! 4/3*mu*u_x-2/3*mu*v_y -2/3*mu*w*z
+tau_yy = muEff * (-s23 * gradUx(2) + s43 * gradUy(3))  !-2/3*mu*u_x+4/3*mu*v_y -2/3*mu*w*z
+tau_xy = muEff * (gradUy(2) + gradUx(3))               !mu*(u_y+v_x)
+
+f(1) = 0.
+f(2) = -tau_xx                                       ! F_euler-4/3*mu*u_x+2/3*mu*(v_y+w_z)
+f(3) = -tau_xy                                       ! F_euler-mu*(u_y+v_x)
+f(4) = 0.
+f(5) = -tau_xx*v1-tau_xy*v2-lambda*gradT1            ! F_euler-(tau_xx*u+tau_xy*v+tau_xz*w-q_x) q_x=-lambda*T_x
+f(6) = -1./sigma*(muS+muTilde*SAfn)*gradUx(7)        ! F_euler-1/sigma*(muS+muTilde)*nuTilde_x
+! viscous fluxes in y-direction
+g(1) = 0.
+g(2) = -tau_xy                                       ! F_euler-mu*(u_y+v_x)
+g(3) = -tau_yy                                       ! F_euler-4/3*mu*v_y+2/3*mu*(u_x+w_z)
+g(4) = 0.
+g(5) = -tau_xy*v1-tau_yy*v2-lambda*gradT2  ! F_euler-(tau_yx*u+tau_yy*v+tau_yz*w-q_y) q_y=-lambda*T_y
+g(6) = -1./sigma*(muS+muTilde*SAfn)*gradUy(7)        ! F_euler-1/sigma*(muS+muTilde)*nuTilde_y
+! viscous fluxes in z-direction
+h    = 0.
+#endif
+END ASSOCIATE
+END SUBROUTINE EvalDiffFlux3D_Point
+
+
+!==================================================================================================================================
+!> Wrapper routine to compute the diffusive part of the RANS SA fluxes for a single volume cell
+!==================================================================================================================================
+SUBROUTINE EvalDiffFlux3D_Volume(UPrim,gradUx,gradUy,gradUz,f,g,h,iElem)
+! MODULES
+USE MOD_PreProc
+#if EDDYVISCOSITY
+USE MOD_EddyVisc_Vars,ONLY: muSGS
+#endif
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ),INTENT(IN)  :: UPrim                !< Solution vector
+!> Gradients in x,y,z directions
+REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ),INTENT(IN)  :: gradUx,gradUy,gradUz
+!> Physical fluxes in x,y,z directions
+REAL,DIMENSION(PP_nVar    ,0:PP_N,0:PP_N,0:PP_NZ),INTENT(OUT) :: f,g,h
+INTEGER, INTENT(IN)                                           :: iElem                !< element index in global array
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER             :: i,j,k
 !==================================================================================================================================
 DO k=0,PP_NZ;  DO j=0,PP_N; DO i=0,PP_N
-  prim = UPrim(:,i,j,k)
-  v1   = UPrim(2,i,j,k)
-  v2   = UPrim(3,i,j,k)
-  ! Viscous part
-  ! ideal gas law
-  muS=VISCOSITY_PRIM(prim)
-  lambda=THERMAL_CONDUCTIVITY_H(muS)
-  ! Add turbulent viscosity
-  muTilde = prim(7)*prim(1)
-  chi = muTilde/muS
-  muTurb = muTilde*fv1(chi)
-  muEff = MAX(muS,muS+muTurb)  ! Ignore muTurb < 0
-  lambda = MAX(lambda,lambda+muTurb*cp/PrTurb)
-  ! Set negative modification if necessary
-  IF (muTilde.LT.0.) THEN
-    SAfn = fn(chi)
-  ELSE
-    SAfn = 1.
-  END IF
-
-#if PP_dim==3
-  v3   = UPrim(4,i,j,k)
-  ! gradients of primitive variables are directly available gradU = (/ drho, dv1, dv2, dv3, dT /)
-
-  ! viscous fluxes in x-direction
-  tau_xx=muEff*( s43*gradUx(2,i,j,k)-s23*gradUy(3,i,j,k)-s23*gradUz(4,i,j,k)) ! 4/3*mu*u_x-2/3*mu*v_y -2/3*mu*w*z
-  tau_yy=muEff*(-s23*gradUx(2,i,j,k)+s43*gradUy(3,i,j,k)-s23*gradUz(4,i,j,k)) !-2/3*mu*u_x+4/3*mu*v_y -2/3*mu*w*z
-  tau_zz=muEff*(-s23*gradUx(2,i,j,k)-s23*gradUy(3,i,j,k)+s43*gradUz(4,i,j,k)) !-2/3*mu*u_x-2/3*mu*v_y +4/3*mu*w*z
-  tau_xy=muEff*(gradUy(2,i,j,k)+gradUx(3,i,j,k))                               !mu*(u_y+v_x)
-  tau_xz=muEff*(gradUz(2,i,j,k)+gradUx(4,i,j,k))                               !mu*(u_z+w_x)
-  tau_yz=muEff*(gradUz(3,i,j,k)+gradUy(4,i,j,k))                               !mu*(y_z+w_y)
-
-  gradT1=gradUx(6,i,j,k)
-  gradT2=gradUy(6,i,j,k)
-  gradT3=gradUz(6,i,j,k)
-
-  f(1,i,j,k)=0.
-  f(2,i,j,k)=-tau_xx                                       ! F_euler-4/3*mu*u_x+2/3*mu*(v_y+w_z)
-  f(3,i,j,k)=-tau_xy                                       ! F_euler-mu*(u_y+v_x)
-  f(4,i,j,k)=-tau_xz                                       ! F_euler-mu*(u_z+w_x)
-  f(5,i,j,k)=-tau_xx*v1-tau_xy*v2-tau_xz*v3-lambda*gradT1  ! F_euler-(tau_xx*u+tau_xy*v+tau_xz*w-q_x) q_x=-lambda*T_x
-  f(6,i,j,k)=-1./sigma*(muS+muTilde*SAfn)*gradUx(7,i,j,k)  ! F_euler-1/sigma*(muS+muTilde)*nuTilde_x
-  ! viscous fluxes in y-direction
-  g(1,i,j,k)=0.
-  g(2,i,j,k)=-tau_xy                                       ! F_euler-mu*(u_y+v_x)
-  g(3,i,j,k)=-tau_yy                                       ! F_euler-4/3*mu*v_y+2/3*mu*(u_x+w_z)
-  g(4,i,j,k)=-tau_yz                                       ! F_euler-mu*(y_z+w_y)
-  g(5,i,j,k)=-tau_xy*v1-tau_yy*v2-tau_yz*v3-lambda*gradT2  ! F_euler-(tau_yx*u+tau_yy*v+tau_yz*w-q_y) q_y=-lambda*T_y
-  g(6,i,j,k)=-1./sigma*(muS+muTilde*SAfn)*gradUy(7,i,j,k)  ! F_euler-1/sigma*(muS+muTilde)*nuTilde_y
-  ! viscous fluxes in z-direction
-  h(1,i,j,k)=0.
-  h(2,i,j,k)=-tau_xz                                       ! F_euler-mu*(u_z+w_x)
-  h(3,i,j,k)=-tau_yz                                       ! F_euler-mu*(y_z+w_y)
-  h(4,i,j,k)=-tau_zz                                       ! F_euler-4/3*mu*w_z+2/3*mu*(u_x+v_y)
-  h(5,i,j,k)=-tau_xz*v1-tau_yz*v2-tau_zz*v3-lambda*gradT3  ! F_euler-(tau_zx*u+tau_zy*v+tau_zz*w-q_z) q_z=-lambda*T_z
-  h(6,i,j,k)=-1./sigma*(muS+muTilde*SAfn)*gradUz(7,i,j,k)  ! F_euler-1/sigma*(muS+muTilde)*nuTilde_z
-#else
-  ! gradients of primitive variables are directly available gradU = (/ drho, dv1, dv2, dv3, dT /)
-
-  ! viscous fluxes in x-direction
-  tau_xx=muEff*( s43*gradUx(2,i,j,k)-s23*gradUy(3,i,j,k)) ! 4/3*mu*u_x-2/3*mu*v_y -2/3*mu*w*z
-  tau_yy=muEff*(-s23*gradUx(2,i,j,k)+s43*gradUy(3,i,j,k)) !-2/3*mu*u_x+4/3*mu*v_y -2/3*mu*w*z
-  tau_xy=muEff*(gradUy(2,i,j,k)+gradUx(3,i,j,k))                               !mu*(u_y+v_x)
-
-  gradT1=gradUx(6,i,j,k)
-  gradT2=gradUy(6,i,j,k)
-
-  f(1,i,j,k)=0.
-  f(2,i,j,k)=-tau_xx                                       ! F_euler-4/3*mu*u_x+2/3*mu*(v_y+w_z)
-  f(3,i,j,k)=-tau_xy                                       ! F_euler-mu*(u_y+v_x)
-  f(4,i,j,k)=0.
-  f(5,i,j,k)=-tau_xx*v1-tau_xy*v2-lambda*gradT1            ! F_euler-(tau_xx*u+tau_xy*v+tau_xz*w-q_x) q_x=-lambda*T_x
-  f(6,i,j,k)=-1./sigma*(muS+muTilde*SAfn)*gradUx(7,i,j,k)  ! F_euler-1/sigma*(muS+muTilde)*nuTilde_x
-  ! viscous fluxes in y-direction
-  g(1,i,j,k)=0.
-  g(2,i,j,k)=-tau_xy                                       ! F_euler-mu*(u_y+v_x)
-  g(3,i,j,k)=-tau_yy                                       ! F_euler-4/3*mu*v_y+2/3*mu*(u_x+w_z)
-  g(4,i,j,k)=0.
-  g(5,i,j,k)=-tau_xy*v1-tau_yy*v2-lambda*gradT2            ! F_euler-(tau_yx*u+tau_yy*v+tau_yz*w-q_y) q_y=-lambda*T_y
-  g(6,i,j,k)=-1./sigma*(muS+muTilde*SAfn)*gradUy(7,i,j,k)  ! F_euler-1/sigma*(muS+muTilde)*nuTilde_y
-  ! viscous fluxes in z-direction
-  h(:,i,j,k)=0.
-#endif
-
+  CALL EvalDiffFlux3D_Point(Uprim(:,i,j,k),gradUx(:,i,j,k),gradUy(:,i,j,k),gradUz(:,i,j,k), &
+                                                 f(:,i,j,k),     g(:,i,j,k),     h(:,i,j,k))
 END DO; END DO; END DO ! i,j,k
+END SUBROUTINE EvalDiffFlux3D_Volume
 
-#ifdef DEBUG
-! ===============================================================================
-! Following dummy calls do suppress compiler warnings of unused Riemann-functions
-! ===============================================================================
-IF (0.EQ.1) THEN
-  WRITE (*,*) iElem,gradUz
-END IF
+!==================================================================================================================================
+!> Wrapper routine to compute the diffusive part of the Navier-Stokes fluxes for a single side
+!==================================================================================================================================
+PPURE SUBROUTINE EvalDiffFlux3D_Surface(Nloc,UPrim,gradUx,gradUy,gradUz,f,g,h)
+! MODULES
+USE MOD_PreProc
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+INTEGER                                        ,INTENT(IN)  :: Nloc                 !< Polynomial degree of input solution
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim                !< Solution vector
+!> Gradients in x,y,z directions
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: gradUx,gradUy,gradUz
+!> Physical fluxes in x,y,z directions
+REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: f,g,h
+#if EDDYVISCOSITY
+REAL,DIMENSION(1          ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: muSGS                !< SGS viscosity
 #endif
-END SUBROUTINE EvalDiffFlux3D
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER             :: i,j
+!==================================================================================================================================
+DO j=0,ZDIM(Nloc); DO i=0,PP_N
+  CALL EvalDiffFlux3D_Point(Uprim(:,i,j),gradUx(:,i,j),gradUy(:,i,j),gradUz(:,i,j), &
+                                               f(:,i,j),     g(:,i,j),     h(:,i,j)  &
+#if EDDYVISCOSITY
+                            ,muSGS(1,i,j) &
+#endif
+                            )
+END DO; END DO ! i,j
+END SUBROUTINE EvalDiffFlux3D_Surface
 
 #endif /*PARABOLIC*/
 
@@ -263,7 +321,7 @@ END SUBROUTINE EvalDiffFlux3D
 !==================================================================================================================================
 !> Computes 1D Euler flux using the conservative variables.
 !==================================================================================================================================
-PURE SUBROUTINE EvalEulerFlux1D(U,F)
+PPURE SUBROUTINE EvalEulerFlux1D(U,F)
 ! MODULES
 USE MOD_EOS_Vars ,ONLY:KappaM1
 IMPLICIT NONE
@@ -297,7 +355,7 @@ END SUBROUTINE EvalEulerFlux1D
 !==================================================================================================================================
 !> Computes 1D Euler flux using the conservative and primitive variables (for better performance)
 !==================================================================================================================================
-PURE SUBROUTINE EvalEulerFlux1D_fast(U,F)
+PPURE SUBROUTINE EvalEulerFlux1D_fast(U,F)
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -321,136 +379,5 @@ F(6)=(U(MUSA)*U(VEL1))        ! muTilde*u
 END SUBROUTINE EvalEulerFlux1D_fast
 
 
-#if PARABOLIC
-!==================================================================================================================================
-!> Compute RANS SA diffusive fluxes using the conservative variables and derivatives for every volume Gauss point.
-!==================================================================================================================================
-SUBROUTINE EvalDiffFlux2D(Nloc,f,g,h,UPrim_Face,gradUx_Face,gradUy_Face,gradUz_Face)
-! MODULES
-USE MOD_PreProc
-USE MOD_Equation_Vars,ONLY: s43,s23,fv1,PrTurb,fv1,fn,sigma
-USE MOD_Viscosity
-USE MOD_EOS_Vars,     ONLY: cp,Pr
-IMPLICIT NONE
-!----------------------------------------------------------------------------------------------------------------------------------
-! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: Nloc                                      !< Polynomial degree of input solution
-REAL,INTENT(IN)    :: UPrim_Face( PP_nVarPrim,0:Nloc,0:ZDIM(Nloc))!< U_Face(iVar,i,j,k)
-REAL,INTENT(IN)    :: gradUx_Face(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc))!< gradUx_Face(iVar,j,k)
-REAL,INTENT(IN)    :: gradUy_Face(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc))!< gradUy_Face(iVar,i,k)
-REAL,INTENT(IN)    :: gradUz_Face(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc))!< gradUz_Face(iVar,i,j)
-REAL,INTENT(OUT)   :: f(PP_nVar,0:Nloc,0:ZDIM(Nloc))              !< Cartesian fluxes (iVar,i,j)
-REAL,INTENT(OUT)   :: g(PP_nVar,0:Nloc,0:ZDIM(Nloc))              !< Cartesian fluxes (iVar,i,j)
-REAL,INTENT(OUT)   :: h(PP_nVar,0:Nloc,0:ZDIM(Nloc))              !< Cartesian fluxes (iVar,i,j)
-!----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-REAL    :: muS
-REAL    :: v1,v2
-REAL    :: tau_xx,tau_yy,tau_xy
-REAL    :: gradT1,gradT2,lambda,prim(PP_nVarPrim)
-#if PP_dim==3
-REAL    :: tau_zz,tau_xz,tau_yz
-REAL    :: v3
-REAL    :: gradT3
-#endif 
-INTEGER :: i,j
-REAL    :: chi,muTurb,muEff,muTilde,SAfn
-!==================================================================================================================================
-DO j=0,ZDIM(Nloc) ; DO i=0,Nloc
-  prim = UPrim_Face(:,i,j)
-  v1=UPrim_Face(2,i,j)
-  v2=UPrim_Face(3,i,j)
-  ! Viscous part
-  ! ideal gas law
-  muS=VISCOSITY_PRIM(prim)
-  lambda=THERMAL_CONDUCTIVITY_H(muS)
-  ! Add turbulent viscosity
-  muTilde = prim(7)*prim(1)
-  chi = muTilde/muS
-  muTurb = muTilde*fv1(chi)
-  muEff = MAX(muS,muS+muTurb)  ! Ignore muTurb < 0
-  lambda = MAX(lambda,lambda+muTurb*cp/PrTurb)
-  ! Set negative modification if necessary
-  IF (muTilde.LT.0.) THEN
-    SAfn = fn(chi)
-  ELSE
-    SAfn = 1.
-  END IF
-  ! auxiliary variables
-  ! In previous versions gradients of conservative variables had been used, see Git commit b984f2895121e236ce24c149ad15615180995b00
-  ! gradients of primitive variables are directly available gradU = (/ drho, dv1, dv2, dv3, dp, dT, dnuTilde /)
-
-#if PP_dim==3
-  v3=UPrim_Face(4,i,j)
-
-  tau_xx=muEff*( s43*gradUx_Face(2,i,j)-s23*gradUy_Face(3,i,j)-s23*gradUz_Face(4,i,j)) ! 4/3*mu*u_x-2/3*mu*v_y -2/3*mu*w*z
-  tau_yy=muEff*(-s23*gradUx_Face(2,i,j)+s43*gradUy_Face(3,i,j)-s23*gradUz_Face(4,i,j)) !-2/3*mu*u_x+4/3*mu*v_y -2/3*mu*w*z
-  tau_zz=muEff*(-s23*gradUx_Face(2,i,j)-s23*gradUy_Face(3,i,j)+s43*gradUz_Face(4,i,j)) !-2/3*mu*u_x-2/3*mu*v_y +4/3*mu*w*z
-  tau_xy=muEff*(gradUy_Face(2,i,j)+gradUx_Face(3,i,j))                                 !mu*(u_y+v_x)
-  tau_xz=muEff*(gradUz_Face(2,i,j)+gradUx_Face(4,i,j))                                 !mu*(u_z+w_x)
-  tau_yz=muEff*(gradUz_Face(3,i,j)+gradUy_Face(4,i,j))                                 !mu*(y_z+w_y)
-  gradT3=gradUz_Face(6,i,j)
-  gradT1=gradUx_Face(6,i,j)
-  gradT2=gradUy_Face(6,i,j)
-  ! viscous fluxes in x-direction
-  f(1,i,j)=0.
-  f(2,i,j)=-tau_xx                                       ! F_euler-4/3*mu*u_x+2/3*mu*(v_y+w_z)
-  f(3,i,j)=-tau_xy                                       ! F_euler-mu*(u_y+v_x)
-  f(4,i,j)=-tau_xz                                       ! F_euler-mu*(u_z+w_x)
-  f(5,i,j)=-tau_xx*v1-tau_xy*v2-tau_xz*v3-lambda*gradT1  ! F_euler-(tau_xx*u+tau_xy*v+tau_xz*w-q_x) q_x=-lambda*T_x
-  f(6,i,j)=-1./sigma*(muS+muTilde*SAfn)*gradUx_Face(7,i,j) ! F_euler-1/sigma*(muS+muTilde)*nuTilde_x
-  ! viscous fluxes in y-direction
-  g(1,i,j)=0.
-  g(2,i,j)=-tau_xy                                       ! F_euler-mu*(u_y+v_x)
-  g(3,i,j)=-tau_yy                                       ! F_euler-4/3*mu*v_y+2/3*mu*(u_x+w_z)
-  g(4,i,j)=-tau_yz                                       ! F_euler-mu*(y_z+w_y)
-  g(5,i,j)=-tau_xy*v1-tau_yy*v2-tau_yz*v3-lambda*gradT2  ! F_euler-(tau_yx*u+tau_yy*v+tau_yz*w-q_y) q_y=-lambda*T_y
-  g(6,i,j)=-1./sigma*(muS+muTilde*SAfn)*gradUy_Face(7,i,j) ! F_euler-1/sigma*(muS+muTilde)*nuTilde_y
-  ! viscous fluxes in z-direction
-  h(1,i,j)=0.
-  h(2,i,j)=-tau_xz                                       ! F_euler-mu*(u_z+w_x)
-  h(3,i,j)=-tau_yz                                       ! F_euler-mu*(y_z+w_y)
-  h(4,i,j)=-tau_zz                                       ! F_euler-4/3*mu*w_z+2/3*mu*(u_x+v_y)
-  h(5,i,j)=-tau_xz*v1-tau_yz*v2-tau_zz*v3-lambda*gradT3  ! F_euler-(tau_zx*u+tau_zy*v+tau_zz*w-q_z) q_z=-lambda*T_z
-  h(6,i,j)=-1./sigma*(muS+muTilde*SAfn)*gradUz_Face(7,i,j) ! F_euler-1/sigma*(muS+muTilde)*nuTilde_z
-#else
-
-  tau_xx=muEff*( s43*gradUx_Face(2,i,j)-s23*gradUy_Face(3,i,j)) ! 4/3*mu*u_x-2/3*mu*v_y -2/3*mu*w*z
-  tau_yy=muEff*(-s23*gradUx_Face(2,i,j)+s43*gradUy_Face(3,i,j)) !-2/3*mu*u_x+4/3*mu*v_y -2/3*mu*w*z
-  tau_xy=muEff*(gradUy_Face(2,i,j)+gradUx_Face(3,i,j))                                 !mu*(u_y+v_x)
-  gradT1=gradUx_Face(6,i,j)
-  gradT2=gradUy_Face(6,i,j)
-  ! viscous fluxes in x-direction
-  f(1,i,j)=0.
-  f(2,i,j)=-tau_xx                                       ! F_euler-4/3*mu*u_x+2/3*mu*(v_y+w_z)
-  f(3,i,j)=-tau_xy                                       ! F_euler-mu*(u_y+v_x)
-  f(4,i,j)=0.   
-  f(5,i,j)=-tau_xx*v1-tau_xy*v2-lambda*gradT1  ! F_euler-(tau_xx*u+tau_xy*v+tau_xz*w-q_x) q_x=-lambda*T_x
-  f(6,i,j)=-1./sigma*(muS+muTilde*SAfn)*gradUx_Face(7,i,j) ! F_euler-1/sigma*(muS+muTilde)*nuTilde_x
-  ! viscous fluxes in y-direction
-  g(1,i,j)=0.
-  g(2,i,j)=-tau_xy                                       ! F_euler-mu*(u_y+v_x)
-  g(3,i,j)=-tau_yy                                       ! F_euler-4/3*mu*v_y+2/3*mu*(u_x+w_z)
-  g(4,i,j)=0.
-  g(5,i,j)=-tau_xy*v1-tau_yy*v2-lambda*gradT2  ! F_euler-(tau_yx*u+tau_yy*v+tau_yz*w-q_y) q_y=-lambda*T_y
-  g(6,i,j)=-1./sigma*(muS+muTilde*SAfn)*gradUy_Face(7,i,j) ! F_euler-1/sigma*(muS+muTilde)*nuTilde_y
-  ! viscous fluxes in z-direction
-  h(:,i,j)=0.
-#endif
-
-
-END DO ; END DO !i,j
-
-#ifdef DEBUG
-! ===============================================================================
-! Following dummy calls do suppress compiler warnings of unused Riemann-functions
-! ===============================================================================
-IF (0.EQ.1) THEN
-  WRITE (*,*) gradUz_Face
-END IF
-#endif
-END SUBROUTINE EvalDiffFlux2D
-
-#endif /*PARABOLIC*/
 
 END MODULE MOD_Flux

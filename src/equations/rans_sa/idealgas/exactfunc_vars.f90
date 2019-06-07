@@ -12,10 +12,10 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 
+!==================================================================================================================================
+!> Contains the parameters needed for the different initializations of the SA RANS equations
+!==================================================================================================================================
 MODULE MOD_Exactfunc_Vars
-!==================================================================================================================================
-! Contains the parameters needed for the Navier Stokes calculation
-!==================================================================================================================================
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -24,7 +24,7 @@ SAVE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES 
 !----------------------------------------------------------------------------------------------------------------------------------
-REAL              :: MachShock         !< Shoch Mach speed for ExactFunction = 6 (shock)
+REAL              :: MachShock         !< Shock Mach speed for ExactFunction = 6 (shock)
 REAL              :: PreShockDens      !< Pre-shock density for ExactFunction = 6 (shock)
 REAL              :: AdvVel(3)         !< Advection Velocity for the test cases
 REAL              :: IniCenter(3)      !< parameter used for Shu vortex
