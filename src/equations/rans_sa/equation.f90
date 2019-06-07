@@ -208,7 +208,7 @@ IF (includeTrip) THEN
   END DO ! iElem
   IF (tripOnProc) dXt = NORM2(Face_xGP(1:2,0,0,0,tripSideID)-Face_xGP(1:2,PP_N,0,0,tripSideID))/(PP_N+1)
 #if USE_MPI
-  CALL MPI_BCAST(dXt,1,MPI_DOUBLE_PRECISION,tripRoot,MPI_COMM_WORLD,iError)
+  CALL MPI_BCAST(dXt,1,MPI_DOUBLE_PRECISION,tripRoot,MPI_COMM_FLEXI,iError)
 #endif
 END IF
 
