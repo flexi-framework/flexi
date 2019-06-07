@@ -110,7 +110,7 @@ SDEALLOCATE(DeltaS)
 SDEALLOCATE(muSGS)
 SDEALLOCATE(muSGS_master)
 SDEALLOCATE(muSGS_slave)
-CALL FinalizeEddyViscosity()
+IF (ASSOCIATED(FinalizeEddyViscosity)) CALL FinalizeEddyViscosity()
 END SUBROUTINE
 
 END MODULE MOD_EddyVisc
