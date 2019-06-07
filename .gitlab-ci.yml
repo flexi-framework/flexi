@@ -120,6 +120,12 @@ gnu_convtest:
   script:
     - if [ -n "${DO_NIGHTLY}" ]; then module load env/gnu ; cd build_gnu ;  python ./reggie/reggie.py ../regressioncheck/checks/convtest ; fi 
 
+gnu_channelRANS:
+  <<: *defaults_gnu
+  stage: reggie_nightly
+  script:
+    - if [ -n "${DO_NIGHTLY}" ]; then module load env/gnu ; cd build_gnu ;  python ./reggie/reggie.py ../regressioncheck/checks/channelRANS ; fi 
+
 
       #intel_build_all:
       #  <<: *defaults_intel
