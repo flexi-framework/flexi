@@ -901,6 +901,10 @@ CASE DEFAULT
 END SELECT ! ExactFunction
 
 ! Add the source term of the SA model
+
+! First, calculate the vorticity magnitude at the trip if needed
+IF (includeTrip) CALL CalcOmegaTrip()
+
 DO iElem=1,nElems
 #if FV_ENABLED
   FV_Elem = FV_Elems(iElem)
@@ -974,5 +978,34 @@ DO iElem=1,nElems
 END DO
 
 END SUBROUTINE CalcSource
+
+!===================================================================================================================================
+!> Calculate and communicate the vorticity magnitude at the trip point, needed for the SA trip terms
+!===================================================================================================================================
+SUBROUTINE CalcOmegaTrip()
+! MODULES                                                                                                                          !
+USE MOD_Globals
+USE MOD_Equation_Vars,   ONLY: omegaT,tripSideID,tripPQ,tripOnProc,tripRoot
+USE MOD_Lifting_Vars,    ONLY: gradUx_master,gradUy_master
+#if USE_MPI
+USE MOD_MPI_Vars
+USE MOD_MPI
+#endif
+!----------------------------------------------------------------------------------------------------------------------------------!
+IMPLICIT NONE
+! INPUT / OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!===================================================================================================================================
+
+IF (tripOnProc) THEN
+  omegaT = ABS(gradUy_master(2,tripPQ(1),tripPQ(2),tripSideID)-gradUx_master(3,tripPQ(1),tripPQ(2),tripSideID))
+END IF
+
+#if USE_MPI
+CALL MPI_BCAST(omegaT,1,MPI_DOUBLE_PRECISION,tripRoot,MPI_COMM_WORLD,iError)
+#endif
+
+END SUBROUTINE CalcOmegaTrip
 
 END MODULE MOD_Exactfunc

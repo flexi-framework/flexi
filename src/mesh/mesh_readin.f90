@@ -61,18 +61,10 @@ INTERFACE ReadIJKSorting
   MODULE PROCEDURE ReadIJKSorting
 END INTERFACE
 
-#if USE_MPI
-INTERFACE ELEMIPROC
-  MODULE PROCEDURE ELEMIPROC
-END INTERFACE
-#endif
 
 PUBLIC::ReadMesh
 PUBLIC::BuildPartition
 PUBLIC::ReadIJKSorting
-#if USE_MPI
-PUBLIC::ELEMIPROC
-#endif
 !==================================================================================================================================
 
 CONTAINS

@@ -41,37 +41,37 @@ REAL                 :: s43,s23
 
 ! SA-specific variables and parameters
 REAL              :: PrTurb            !< Turbulent Prandtl number
-REAL, PARAMETER   :: sigma = 2./3.
-REAL, PARAMETER   :: SAKappa = 0.41
-REAL, PARAMETER   :: cv1 = 7.1
-REAL, PARAMETER   :: cv2 = 0.7
-REAL, PARAMETER   :: cv3 = 0.9
-REAL, PARAMETER   :: cb1 = 0.1355
-REAL, PARAMETER   :: cb2 = 0.622
-REAL, PARAMETER   :: cw1 = (cb1/(SAKappa**2)) + ((1+cb2)/sigma)
-REAL, PARAMETER   :: cw2 = 0.3
-REAL, PARAMETER   :: cw3 = 2.
-REAL, PARAMETER   :: cn1 = 16.
-REAL, PARAMETER   :: rLim = 10.
+REAL, PARAMETER   :: sigma = 2./3.     !< Constant in SA equation
+REAL, PARAMETER   :: SAKappa = 0.41    !< Constant in SA equation
+REAL, PARAMETER   :: cv1 = 7.1         !< Constant in SA equation
+REAL, PARAMETER   :: cv2 = 0.7         !< Constant in SA equation
+REAL, PARAMETER   :: cv3 = 0.9         !< Constant in SA equation
+REAL, PARAMETER   :: cb1 = 0.1355      !< Constant in SA equation
+REAL, PARAMETER   :: cb2 = 0.622       !< Constant in SA equation
+REAL, PARAMETER   :: cw1 = (cb1/(SAKappa**2)) + ((1+cb2)/sigma) !< Constant in SA equation
+REAL, PARAMETER   :: cw2 = 0.3         !< Constant in SA equation
+REAL, PARAMETER   :: cw3 = 2.          !< Constant in SA equation
+REAL, PARAMETER   :: cn1 = 16.         !< Constant in SA equation
+REAL, PARAMETER   :: rLim = 10.        !< Constant in SA equation
 REAL, ALLOCATABLE :: SAd(:,:,:,:,:)    !< Distance from closest wall
 
-LOGICAL           :: includeTrip
-REAL, PARAMETER   :: ct1 = 1.0
-REAL, PARAMETER   :: ct2 = 2.0
-REAL, PARAMETER   :: ct3 = 1.2
-REAL, PARAMETER   :: ct4 = 0.5
-REAL              :: TripX(2)
-REAL              :: dxT
-REAL              :: omegaT
-REAL, ALLOCATABLE :: SAdt(:,:,:,:,:)    !< Distance from trip point
-INTEGER           :: tripPQ(2)
-INTEGER           :: tripSideId
-LOGICAL           :: tripOnProc
+LOGICAL           :: includeTrip       !< Swith to include trip terms in SA equation
+REAL, PARAMETER   :: ct1 = 1.0         !< Constant in SA equation, specifically for trip
+REAL, PARAMETER   :: ct2 = 2.0         !< Constant in SA equation, specifically for trip
+REAL, PARAMETER   :: ct3 = 1.2         !< Constant in SA equation, specifically for trip
+REAL, PARAMETER   :: ct4 = 0.5         !< Constant in SA equation, specifically for trip
+REAL              :: TripX(2)          !< 2D (x,y) location of trip
+REAL              :: dxT               !< Mesh width at trip location
+REAL              :: omegaT            !< Vorticity at trip
+REAL, ALLOCATABLE :: SAdt(:,:,:,:,:)   !< Distance from trip point
+INTEGER           :: tripPQ(2)         !< (p,q) index of trip boundary point
+INTEGER           :: tripSideId        !< SideID of trip boundary point
+LOGICAL           :: tripOnProc        !< Is the trip located on this proc?
 #if USE_MPI
-INTEGER           :: tripRoot
+INTEGER           :: tripRoot          !< process ID of proc that holds the trip
 #endif
-REAL,ALLOCATABLE  :: SADebug(:,:,:,:,:)
-LOGICAL           :: doSADebug
+REAL,ALLOCATABLE  :: SADebug(:,:,:,:,:) !< Array used for debug output, include Prduction, Destruction, Trip and Diffusion terms
+LOGICAL           :: doSADebug          !< Turn debug output on or off (default: off)
 
 
 

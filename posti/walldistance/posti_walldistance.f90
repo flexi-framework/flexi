@@ -14,7 +14,7 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-!> Tool used to pre-calcualte the distance to the closest solid wall for each volume gauss point when needed e.g. for the 
+!> Tool used to pre-calculate the distance to the closest solid wall for each volume gauss point when needed e.g. for the 
 !> RANS SA turbulence model.
 !> General process is as follows:
 !>   * Read in of mesh (global, only single execution)

@@ -15,7 +15,7 @@
 #include "eos.h"
 
 !==================================================================================================================================
-!> Soubroutines necessary for calculating Navier-Stokes equations
+!> General routines for RANS equations with Spalart-Allmaras turbulence model
 !==================================================================================================================================
 MODULE MOD_Equation
 ! MODULES
@@ -36,16 +36,12 @@ INTERFACE GetConservativeStateSurface
   MODULE PROCEDURE GetConservativeStateSurface
 END INTERFACE
 
-INTERFACE CalcOmegaTrip
-  MODULE PROCEDURE CalcOmegaTrip
-END INTERFACE
-
 INTERFACE FinalizeEquation
   MODULE PROCEDURE FinalizeEquation
 END INTERFACE
 
 PUBLIC:: DefineParametersEquation,InitEquation,FinalizeEquation
-PUBLIC:: GetPrimitiveStateSurface,GetConservativeStateSurface,CalcOmegaTrip
+PUBLIC:: GetPrimitiveStateSurface,GetConservativeStateSurface
 !==================================================================================================================================
 
 CONTAINS
@@ -379,36 +375,6 @@ DO SideID=firstInnerSide,lastMPISide_YOUR
   END IF
 END DO
 END SUBROUTINE
-
-!===================================================================================================================================
-!> Calculate and communicate the vorticity magnitude at the rip point, needed for the SA trip terms
-!===================================================================================================================================
-SUBROUTINE CalcOmegaTrip()
-! MODULES                                                                                                                          !
-USE MOD_Globals
-USE MOD_Equation_Vars,   ONLY: omegaT,tripSideID,tripPQ,tripOnProc,tripRoot
-USE MOD_Lifting_Vars,    ONLY: gradUx_master,gradUy_master
-#if USE_MPI
-USE MOD_MPI_Vars
-USE MOD_MPI
-#endif
-!----------------------------------------------------------------------------------------------------------------------------------!
-IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-!===================================================================================================================================
-
-IF (tripOnProc) THEN
-  omegaT = ABS(gradUy_master(2,tripPQ(1),tripPQ(2),tripSideID)-gradUx_master(3,tripPQ(1),tripPQ(2),tripSideID))
-END IF
-
-#if USE_MPI
-CALL MPI_BCAST(omegaT,1,MPI_DOUBLE_PRECISION,tripRoot,MPI_COMM_WORLD,iError)
-#endif
-
-END SUBROUTINE CalcOmegaTrip
-
 
 !==================================================================================================================================
 !> Finalizes equation, calls finalize for testcase and Riemann
