@@ -2,6 +2,7 @@ stages:
   - build
   - reggie_checkin
   - reggie_nightly
+  - reggie_weekly
   - deploy
 
 
@@ -144,6 +145,17 @@ gnu_channelRANS:
       #  stage: reggie_nightly
       #  script:
       #    - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel ;  python ./reggie/reggie.py ../regressioncheck/checks/convtest ; fi 
+      #
+# ----------------------------------------------------------------------------------------------------------------------------------------------------
+# Stage "reggie_weekly": Build and run
+#                         - more extensive tests, basically full simlations that check consistency in many features and complex scenarios
+#                      examples on weekly
+# ----------------------------------------------------------------------------------------------------------------------------------------------------
+gnu_channelRANS:
+  <<: *defaults_gnu
+  stage: reggie_weekly
+  script:
+    - if [ -n "${DO_WEEKLY}" ]; then module load env/gnu ; cd build_gnu ;  python ./reggie/reggie.py ../regressioncheck/checks/channelRANS ; fi 
  
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "deploy": 1. Creates doxygen documentation & compiles the documentation creating the *.pdf
