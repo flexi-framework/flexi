@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -108,6 +108,7 @@ USE MOD_TestCase_Vars
 USE MOD_ReadInTools,    ONLY: GETREAL,GETSTR,GETINT
 USE MOD_Mesh_Vars,      ONLY: nBCs,BoundaryName
 USE MOD_Output_Vars,    ONLY: ProjectName
+USE MOD_Output,         ONLY: InitOutputToFile
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -116,6 +117,7 @@ IMPLICIT NONE
 CHARACTER(LEN=255)       :: massFlowBCName
 INTEGER                  :: ioUnit,openStat,i
 REAL                     :: maxMemory
+CHARACTER(LEN=20)        :: varnames(4)
 !==================================================================================================================================
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT TESTCASE PERIODIC HILL...'
@@ -139,22 +141,12 @@ IF(massFlowBC.EQ.-1) CALL abort(__STAMP__,'No inflow BC found.')
 
 IF(.NOT.MPIRoot) RETURN
 
-Filename = TRIM(ProjectName)//'_Stats.dat'
-IF(.NOT.FILEEXISTS(Filename))THEN ! File exists and append data
-  OPEN(NEWUNIT= ioUnit       ,&
-       FILE   = Filename     ,&
-       STATUS = 'Unknown'    ,&
-       ACCESS = 'SEQUENTIAL' ,&
-       IOSTAT = openStat                 )
-  IF (openStat.NE.0) THEN
-    CALL abort(__STAMP__, &
-      'ERROR: cannot open '//TRIM(Filename))
-  END IF
-  WRITE(ioUnit,'(A)')'TITLE="Statistics,'//TRIM(ProjectName)//'"'
-  WRITE(ioUnit,'(A)')'VARIABLES = "t_sim" "dpdx" "bulkVel" "massFlowRateGlobal" "massFlowRatePeriodic"'
-  WRITE(ioUnit,'(A)')'ZONE T="Statistics,'//TRIM(ProjectName)//'"'
-  CLOSE(ioUnit)
-END IF
+Filename = TRIM(ProjectName)//'_Stats'
+varnames(1) = 'dpdx'
+varnames(2) = 'bulkVel'
+varnames(3) = 'massFlowRateGlobal'
+varnames(4) = 'massFlowRatePeriodic'
+CALL InitOutputToFile(Filename,'Statistics',4,varnames)
 
 SWRITE(UNIT_stdOut,'(A)')' INIT TESTCASE PERIODIC HILL DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
@@ -280,7 +272,7 @@ END DO
 
 #if USE_MPI
 box(1) = massFlowGlobal; box(2) = massFlowPeriodic; box(3) = BulkVel
-CALL MPI_ALLREDUCE(MPI_IN_PLACE,box,3,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,iError)
+CALL MPI_ALLREDUCE(MPI_IN_PLACE,box,3,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)
 massFlowGlobal = box(1); massFlowPeriodic = box(2); BulkVel = box(3)
 #endif
 
@@ -358,6 +350,7 @@ SUBROUTINE WriteStats()
 ! MODULES
 USE MOD_Globals      ,ONLY:Abort
 USE MOD_TestCase_Vars,ONLY:writeBuf,FileName,ioCounter
+USE MOD_Output,       ONLY:OutputToFile
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -365,21 +358,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                  :: ioUnit,openStat,i
 !==================================================================================================================================
-OPEN(NEWUNIT  = ioUnit     , &
-     FILE     = Filename   , &
-     FORM     = 'FORMATTED', &
-     STATUS   = 'OLD'      , &
-     POSITION = 'APPEND'   , &
-     RECL     = 50000      , &
-     IOSTAT = openStat           )
-IF(openStat.NE.0) THEN
-  CALL Abort(__STAMP__, &
-    'ERROR: cannot open '//TRIM(Filename))
-END IF
-DO i=1,ioCounter
-  WRITE(ioUnit,'(5E23.14)') writeBuf(:,i)
-END DO
-CLOSE(ioUnit)
+CALL OutputToFile(FileName,writeBuf(1,1:ioCounter),(/4,ioCounter/),RESHAPE(writeBuf(2:5,1:ioCounter),(/4*ioCounter/)))
 ioCounter=0
 
 END SUBROUTINE WriteStats
@@ -412,7 +391,7 @@ SUBROUTINE GetBoundaryFluxTestcase(SideID,t,Nloc,Flux,UPrim_master,             
 ! MODULES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)   :: SideID  
+INTEGER,INTENT(IN)   :: SideID
 REAL,INTENT(IN)      :: t       !< current time (provided by time integration scheme)
 INTEGER,INTENT(IN)   :: Nloc    !< polynomial degree
 REAL,INTENT(IN)      :: UPrim_master( PP_nVarPrim,0:Nloc,0:Nloc) !< inner surface solution

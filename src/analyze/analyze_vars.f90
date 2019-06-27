@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -22,14 +22,14 @@ SAVE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-INTEGER              :: NWriteData=1                      !< data output (writing/visualizeing the solution, timeaverages etc.) 
+INTEGER              :: NWriteData=1                      !< data output (writing/visualizeing the solution, timeaverages etc.)
                                                           !< is performed every multiple of Analyze_dt
 REAL                 :: Analyze_dt                        !< time intervall at which analysis routines are called
 REAL                 :: WriteData_dt                      !< time intervall at which solution data is written
 REAL                 :: tWriteData                        !< actual time at which next solution IO will be performed
 ! precomputed variables
 #if FV_ENABLED
-INTEGER              :: totalFV_nElems
+INTEGER              :: totalFV_nElems=0
 #endif
 REAL,ALLOCATABLE     :: wGPSurf(:,:)                      !< wGPSurf(i,j)=wGP(i)*wGP(j)
 REAL,ALLOCATABLE     :: wGPVol(:,:,:)                     !< wGPVol(i,j,k)=wGP(i)*wGP(j)*wGP(k)
@@ -50,7 +50,7 @@ REAL                 :: calcTimeRestart=0.                !< contains simulation
 ! ErrorNorms
 INTEGER              :: NAnalyze                          !< polynomial degree analysis is performed at (e.g. computation of L2
                                                           !< norms). Number of points: NAnalyze+1
-INTEGER              :: NAnalyzeZ  
+INTEGER              :: NAnalyzeZ
 INTEGER              :: AnalyzeExactFunc                  !< Exact function used for analyze routines
 INTEGER              :: AnalyzeRefState                   !< State used for analyze routines
 REAL,ALLOCATABLE     :: wGPVolAnalyze(:,:,:)              !< product of GL integration weights used for analyze routines

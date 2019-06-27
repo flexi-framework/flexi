@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -11,13 +11,14 @@
 !
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
+#include "flexi.h"
 
 !==================================================================================================================================
 !> Interpolate an array of Dim1 1D Lagrange polynomials (defined by X_In) of order NIn to 1D Lagrange polynomials of order NOut
 !> using the Vandermonde matrix Vdm.
 !> If X_Out is present, the output will be written to X_Out, otherwise X_In will be overwritten.
 !==================================================================================================================================
-SUBROUTINE ChangeBasis1D(Dim1,NIn,NOut,Vdm,X_In,X_Out)
+PPURE SUBROUTINE ChangeBasis1D(Dim1,NIn,NOut,Vdm,X_In,X_Out)
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -30,8 +31,8 @@ REAL,INTENT(OUT),OPTIONAL :: X_Out(1:Dim1,0:NOut _ADD_DIM)     !< Output field, 
 REAL,INTENT(IN)           :: Vdm(0:NOut,0:NIn)                 !< 1D Vandermonde In -> Out
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER             :: iI,iO
-REAL                :: X_Buf(1:Dim1,0:NOut _ADD_DIM)           ! Buffer
+INTEGER                   :: iI,iO
+REAL                      :: X_Buf(1:Dim1,0:NOut _ADD_DIM)     ! Buffer
 !==================================================================================================================================
 IF (PRESENT(X_Out)) THEN
   X_Out=0.
@@ -58,7 +59,7 @@ END SUBROUTINE ChangeBasis1D
 !> using the Vandermonde matrix Vdm.
 !> If X_Out is present, the output will be written to X_Out, otherwise X_In will be overwritten.
 !==================================================================================================================================
-SUBROUTINE ChangeBasis1D_SingleVar(NIn,NOut,Vdm,X_In,X_Out)
+PPURE SUBROUTINE ChangeBasis1D_SingleVar(NIn,NOut,Vdm,X_In,X_Out)
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -70,8 +71,8 @@ REAL,INTENT(OUT),OPTIONAL :: X_Out(0:NOut _ADD_DIM)       !< Output field, dimen
 REAL,INTENT(IN)           :: Vdm(0:NOut,0:NIn)            !< 1D Vandermonde In -> Out
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER             :: iI,iO
-REAL                :: X_Buf(0:NOut _ADD_DIM)             ! Buffer
+INTEGER                   :: iI,iO
+REAL                      :: X_Buf(0:NOut _ADD_DIM)       ! Buffer
 !==================================================================================================================================
 IF (PRESENT(X_Out)) THEN
   X_Out=0.
@@ -98,7 +99,7 @@ END SUBROUTINE ChangeBasis1D_SingleVar
 !> of order NOut using the 1D Vandermonde matrix Vdm.
 !> If X_Out is present, the output will be written to X_Out, otherwise X_In will be overwritten.
 !==================================================================================================================================
-PURE SUBROUTINE ChangeBasis2D(Dim1,NIn,NOut,Vdm,X_In,X_Out)
+PPURE SUBROUTINE ChangeBasis2D(Dim1,NIn,NOut,Vdm,X_In,X_Out)
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -111,8 +112,8 @@ REAL,INTENT(OUT),OPTIONAL :: X_Out(1:Dim1,0:NOut,0:NOut _ADD_DIM)    !< Output f
 REAL,INTENT(IN)           :: Vdm(0:NOut,0:NIn)                       !< 1D Vandermonde In -> Out
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER             :: iI,jI,iO,jO
-REAL                :: X_Buf1(1:Dim1,0:NOut,0:NIn)       ! first intermediate results from 1D interpolations
+INTEGER                   :: iI,jI,iO,jO
+REAL                      :: X_Buf1(1:Dim1,0:NOut,0:NIn)             ! first intermediate results from 1D interpolations
 !==================================================================================================================================
 X_buf1=0.
 ! first direction iI
@@ -144,7 +145,7 @@ END SUBROUTINE ChangeBasis2D
 !> Interpolate single 2D tensor product Lagrange polynomial (defined by X_In) of order NIn to 2D Lagrange polynomial
 !> of order NOut using the 1D Vandermonde matrix Vdm.
 !==================================================================================================================================
-SUBROUTINE ChangeBasis2D_SingleVar(NIn,NOut,Vdm,X2D_In,X2D_Out)
+PPURE SUBROUTINE ChangeBasis2D_SingleVar(NIn,NOut,Vdm,X2D_In,X2D_Out)
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -183,7 +184,7 @@ END SUBROUTINE ChangeBasis2D_SingleVar
 !> Interpolate an array of Dim1 2D tensor product Lagrange polynomials (defined by X_In) of order NIn to 2D Lagrange polynomials
 !> of order NOut using a seperate 1D Vandermonde matrix per reference direction.
 !==================================================================================================================================
-PURE SUBROUTINE ChangeBasis2D_XYZ(Dim1,NIn,NOut,Vdm_xi,Vdm_eta,X2D_In,X2D_Out)
+PPURE SUBROUTINE ChangeBasis2D_XYZ(Dim1,NIn,NOut,Vdm_xi,Vdm_eta,X2D_In,X2D_Out)
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -198,8 +199,8 @@ REAL,INTENT(IN)    :: Vdm_eta(0:NOut,0:NIn)         ! < 1D Vandermonde In -> Out
 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER             :: iI,jI,iO,jO
-REAL                :: X2D_Buf1(1:Dim1,0:NOut,0:NIn)  ! intermediate results from 1D interpolations
+INTEGER            :: iI,jI,iO,jO
+REAL               :: X2D_Buf1(1:Dim1,0:NOut,0:NIn) ! intermediate results from 1D interpolations
 !==================================================================================================================================
 X2D_buf1=0.
 ! first direction iI
@@ -226,7 +227,7 @@ END SUBROUTINE ChangeBasis2D_XYZ
 !> of order NOut using the 1D Vandermonde matrix Vdm.
 !> If X_Out is present, the output will be written to X_Out, otherwise X_In will be overwritten.
 !==================================================================================================================================
-PURE SUBROUTINE ChangeBasis3D(Dim1,NIn,NOut,Vdm,X_In,X_Out)
+PPURE SUBROUTINE ChangeBasis3D(Dim1,NIn,NOut,Vdm,X_In,X_Out)
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -239,9 +240,9 @@ REAL,INTENT(OUT),OPTIONAL :: X_Out(1:Dim1,0:NOut,0:NOut,0:NOut)      !< Output f
 REAL,INTENT(IN)           :: Vdm(0:NOut,0:NIn)                       !< 1D Vandermonde In -> Out
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER             :: iI,jI,kI,iO,jO,kO
-REAL                :: X_Buf1(1:Dim1,0:NOut,0:NIn,0:NIn)       ! first intermediate results from 1D interpolations
-REAL                :: X_Buf2(1:Dim1,0:NOut,0:NOut,0:NIn)      ! second intermediate results from 1D interpolations
+INTEGER                   :: iI,jI,kI,iO,jO,kO
+REAL                      :: X_Buf1(1:Dim1,0:NOut,0:NIn,0:NIn)       ! first intermediate results from 1D interpolations
+REAL                      :: X_Buf2(1:Dim1,0:NOut,0:NOut,0:NIn)      ! second intermediate results from 1D interpolations
 !==================================================================================================================================
 X_buf1=0.
 ! first direction iI
@@ -293,9 +294,9 @@ REAL,INTENT(OUT)   :: X3D_Out(0:NOut,0:NOut,0:NOut)    !< Output field, dimensio
 REAL,INTENT(IN)    :: Vdm(0:NOut,0:NIn)                !< 1D Vandermonde In -> Out
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER             :: iNIn,jNIn,kNIn,iN_Out,jN_Out,kN_Out
-REAL                :: X3D_Buf1(0:NOut,0:NIn,0:NIn)     ! first intermediate results from 1D interpolations
-REAL                :: X3D_Buf2(0:NOut,0:NOut,0:NIn)    ! second intermediate results from 1D interpolations
+INTEGER            :: iNIn,jNIn,kNIn,iN_Out,jN_Out,kN_Out
+REAL               :: X3D_Buf1(0:NOut,0:NIn,0:NIn)     ! first intermediate results from 1D interpolations
+REAL               :: X3D_Buf2(0:NOut,0:NOut,0:NIn)    ! second intermediate results from 1D interpolations
 !==================================================================================================================================
 X3D_buf1=0.
 ! first direction iNIn
@@ -336,7 +337,7 @@ END SUBROUTINE ChangeBasis3D_SingleVar
 !> Interpolate an array of Dim1 3D tensor product Lagrange polynomials (defined by X_In) of order NIn to 3D Lagrange polynomials
 !> of order NOut using a seperate 1D Vandermonde matrix per reference direction.
 !==================================================================================================================================
-PURE SUBROUTINE ChangeBasis3D_XYZ(Dim1,NIn,NOut,Vdm_xi,Vdm_eta,Vdm_zeta,X3D_In,X3D_Out)
+PPURE SUBROUTINE ChangeBasis3D_XYZ(Dim1,NIn,NOut,Vdm_xi,Vdm_eta,Vdm_zeta,X3D_In,X3D_Out)
 ! MODULES
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------

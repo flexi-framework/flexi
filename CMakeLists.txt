@@ -38,7 +38,7 @@ ELSE()
   ENDIF()
   SET (HDF5DOWNLOAD https://bitbucket.hdfgroup.org/scm/hdffv/hdf5.git )
 ENDIF()
-SET (HDF5TAG "hdf5_1_10_4" CACHE STRING "HDF5 version tag")
+SET (HDF5TAG "hdf5-1_10_4" CACHE STRING "HDF5 version tag")
 
 # =========================================================================
 # Detect machine environements
@@ -61,6 +61,16 @@ ENDIF()
 # =========================================================================
 PROJECT(Flexi)
 ENABLE_LANGUAGE(Fortran C)
+
+# Check IPO support:
+# we need to have languages enabled and compilers defined for this
+IF(NOT(${CMAKE_VERSION} VERSION_LESS "3.9.0"))
+  CMAKE_POLICY(SET CMP0069 NEW)
+  INCLUDE(CheckIPOSupported)
+  check_ipo_supported(RESULT HASIPO OUTPUT error)
+ELSE()
+  SET(HASIPO FALSE)
+ENDIF()
 
 SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin)
 SET(CMAKE_Fortran_MODULE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include)
@@ -93,7 +103,8 @@ SUBDIRLIST(LIFTINGS   ${CMAKE_CURRENT_SOURCE_DIR}/src/dg/)
 OPTION(FLEXI_BUILDPOSTI "Build POSTI toolset" ON)
 OPTION(FLEXI_MPI "Compile SINGLE or MPI version" ON)
 OPTION(FLEXI_PARABOLIC "Enable parabolic terms of equation-system" ON)
-OPTION(FLEXI_EDDYVISCOSITY "Enable eddy viscosity modells" OFF)
+CMAKE_DEPENDENT_OPTION(FLEXI_EDDYVISCOSITY "Enable eddy viscosity modells" OFF
+                                           "FLEXI_PARABOLIC" OFF)
 OPTION(FLEXI_MKL "Use MKL libraries instead of BLAS/LAPACK" OFF)
 OPTION(FLEXI_PAPI "Use PAPI library to perform performance measurements (e.g. flop counts)." OFF)
 OPTION(FLEXI_FV "Enable Finite Volume subcell shock capturing" OFF)
@@ -188,17 +199,18 @@ IF (FLEXI_PARABOLIC)
       MESSAGE(SEND_ERROR "No such VISCOSITY known.")
     ENDIF()
     IF (FLEXI_EDDYVISCOSITY)
-      ADD_DEFINITIONS(-DEDDYVISCOSITY)
-        IF(FLEXI_2D)
-          MESSAGE(SEND_ERROR " FLEXI_EDDYVISCOSITY is enabled, please disable FLEXI_2D")
-        ENDIF()
+      IF(FLEXI_2D)
+        MESSAGE(SEND_ERROR " FLEXI_EDDYVISCOSITY is enabled, please disable FLEXI_2D")
+      ENDIF()
     ENDIF()
   ENDIF()
 ELSE()
   ADD_DEFINITIONS(-DPARABOLIC=0)
-  IF (FLEXI_EDDYVISCOSITY)
-    MESSAGE(SEND_ERROR " FLEXI_EDDYVISCOSITY is enabled, please enable PARABOLIC or disable FLEXI_EDDYVISCOSITY")
-  ENDIF()
+ENDIF()
+IF (FLEXI_EDDYVISCOSITY)
+  ADD_DEFINITIONS(-DEDDYVISCOSITY=1)
+ELSE()
+  ADD_DEFINITIONS(-DEDDYVISCOSITY=0)
 ENDIF()
 
 # =========================================================================
@@ -269,8 +281,15 @@ IF (NOT CMAKE_BUILD_TYPE)
   SET_PROPERTY(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Debug Release Profile)
 ENDIF (NOT CMAKE_BUILD_TYPE)
 
-IF (CMAKE_BUILD_TYPE MATCHES "Debug")
+
+STRING(TOLOWER ${CMAKE_BUILD_TYPE} BUILD_TYPE_LC)
+IF (BUILD_TYPE_LC MATCHES "debug")
   ADD_DEFINITIONS("-DDEBUG")
+ELSE()
+  IF (HASIPO)
+    # enable IPO globally (IPO branding: Intel => IPO, GNU => LTO, PGI => IPA)
+    SET(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)  # enable IPO globally
+  ENDIF()
 ENDIF()
 
 # =========================================================================
@@ -297,8 +316,8 @@ IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
   ELSE()
     SET(FLEXI_INSTRUCTION "-march=native")
   ENDIF()
-  # set Flags
-  SET (CMAKE_Fortran_FLAGS         "${CMAKE_Fortran_FLAGS} -fdefault-real-8 -fdefault-double-8 -fbackslash -ffree-line-length-0 -DGNU")
+  # set Flags (disable lto type warnings due to false positives with MATMUL, which is a known bug)
+  SET (CMAKE_Fortran_FLAGS         "${CMAKE_Fortran_FLAGS} -fdefault-real-8 -fdefault-double-8 -fbackslash -ffree-line-length-0 -Wno-lto-type-mismatch -DGNU")
   SET (CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS}     -O3 ${FLEXI_INSTRUCTION} -finline-functions -fstack-arrays")
   SET (CMAKE_Fortran_FLAGS_PROFILE "${CMAKE_Fortran_FLAGS} -pg -O3 ${FLEXI_INSTRUCTION} -finline-functions -fstack-arrays")
   SET (CMAKE_Fortran_FLAGS_DEBUG   "${CMAKE_Fortran_FLAGS} -g -O0 -ggdb3 -ffpe-trap=invalid -fbounds-check -finit-real=snan -fbacktrace  -Wall")
@@ -482,15 +501,26 @@ ENDIF()
 # Flexi sources & targets
 # =========================================================================
 
-function(add_exec target)
+FUNCTION(add_exec target)
   ADD_EXECUTABLE(${target} ${ARGN})
-  TARGET_LINK_LIBRARIES(${target} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/userblock.o flexilib userblocklib stacksizelib ${linkedlibs})
-  SET_TARGET_PROPERTIES(${target} PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}) 
-  SET_TARGET_PROPERTIES(${target} PROPERTIES LINKER_LANGUAGE Fortran)
+  TARGET_LINK_LIBRARIES(${target} libflexishared)
+  SET_TARGET_PROPERTIES(${target} PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}
+                                             LINKER_LANGUAGE Fortran)
   INSTALL(PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${target} DESTINATION bin)
   STRING(TOUPPER ${target} TARGETUP)
   ADD_CUSTOM_COMMAND(TARGET ${target} POST_BUILD COMMAND ${CMAKE_COMMAND} -E cmake_echo_color --cyan "SUCCESS: ${TARGETUP} BUILD COMPLETE!")
-endfunction()
+ENDFUNCTION()
+
+FUNCTION(add_lib target)
+  ADD_LIBRARY(${target} SHARED ${ARGN})
+  TARGET_LINK_LIBRARIES(${target} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/userblock.o libflexistatic userblocklib stacksizelib ${linkedlibs})
+  SET_TARGET_PROPERTIES(${target} PROPERTIES PREFIX ""
+                                             COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}
+                                             LINKER_LANGUAGE Fortran)
+  INSTALL(PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${target} DESTINATION bin)
+  STRING(TOUPPER ${target} TARGETUP)
+  ADD_CUSTOM_COMMAND(TARGET ${target} POST_BUILD COMMAND ${CMAKE_COMMAND} -E cmake_echo_color --cyan "SUCCESS: ${TARGETUP} BUILD COMPLETE!")
+ENDFUNCTION()
 
 # include flexi.h 
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/src) 
@@ -512,6 +542,7 @@ FILE(GLOB_RECURSE flexiF90 ./src/interpolation/*.f90
                            ./src/io_hdf5/*.f90
                            ./src/timedisc/*.f90
                            ./src/testcase/${FLEXI_TESTCASE}/*.f90
+                           ./src/flexilib.f90
                            ./unitTests/unittest.f90
                            ./unitTests/unittest_vars.f90)
 # 
@@ -554,23 +585,26 @@ IF (FLEXI_FV)
 ENDIF()
 
 # define libs
-ADD_LIBRARY(flexilibF90 OBJECT ${flexiF90})
-SET_TARGET_PROPERTIES(flexilibF90 PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}) 
-ADD_LIBRARY(flexilib STATIC $<TARGET_OBJECTS:flexilibF90>)
+ADD_LIBRARY(libflexistaticF90 OBJECT ${flexiF90})
+SET_TARGET_PROPERTIES(libflexistaticF90 PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}) 
+ADD_LIBRARY(libflexistatic STATIC $<TARGET_OBJECTS:libflexistaticF90>)
+SET_TARGET_PROPERTIES(libflexistatic PROPERTIES PREFIX ""
+                                     OUTPUT_NAME "libflexif90")
 IF(SELFBUILTEXTERNALS)
-  ADD_DEPENDENCIES(flexilibF90 ${SELFBUILTEXTERNALS})
+  ADD_DEPENDENCIES(libflexistaticF90 ${SELFBUILTEXTERNALS})
 ENDIF()
 
 ADD_LIBRARY(userblocklib STATIC ./src/output/read_userblock.c)
-SET_TARGET_PROPERTIES(userblocklib PROPERTIES LINKER_LANGUAGE C)
-SET_TARGET_PROPERTIES(userblocklib PROPERTIES COMPILE_FLAGS "-fPIC")
-
 ADD_LIBRARY(stacksizelib STATIC ./src/globals/stacksize.c)
-SET_TARGET_PROPERTIES(stacksizelib PROPERTIES LINKER_LANGUAGE C)
-SET_TARGET_PROPERTIES(stacksizelib PROPERTIES COMPILE_FLAGS "-fPIC")
+SET_TARGET_PROPERTIES(stacksizelib userblocklib PROPERTIES LINKER_LANGUAGE C
+                                                           COMPILE_FLAGS "-fPIC")
 
+# we link the statically built libs
+add_lib(libflexishared ./src/flexilib.f90)
+SET_TARGET_PROPERTIES(libflexishared PROPERTIES OUTPUT_NAME "libflexi")
+ADD_DEPENDENCIES(libflexishared libflexistatic userblocklib stacksizelib ${INTERNALLIBS})
 add_exec(flexi ./src/flexi.f90)
-ADD_DEPENDENCIES(flexi flexilib userblocklib stacksizelib ${INTERNALLIBS})
+ADD_DEPENDENCIES(flexi libflexistatic userblocklib stacksizelib ${INTERNALLIBS})
 
 # special compiler flags to avoid warnings for empty functions of testcase.f90 and overwrite of intrinsic abort in globals.f90
 IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
@@ -617,7 +651,7 @@ ENDIF()
 # =========================================================================
 # Userblock
 # =========================================================================
-ADD_CUSTOM_COMMAND(TARGET flexilib PRE_BUILD COMMAND 
+ADD_CUSTOM_COMMAND(TARGET libflexistatic PRE_BUILD COMMAND 
    sh ${CMAKE_CURRENT_SOURCE_DIR}/tools/userblock/generateuserblock.sh ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} ${CMAKE_CACHEFILE_DIR} "${CMAKE_CACHE_MAJOR_VERSION}.${CMAKE_CACHE_MINOR_VERSION}.${CMAKE_CACHE_PATCH_VERSION}")
 
 # =========================================================================

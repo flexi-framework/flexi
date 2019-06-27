@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -36,22 +36,12 @@ END INTERFACE
 PUBLIC :: InitTimeDisc,FinalizeTimeDisc
 PUBLIC :: TimeDisc
 PUBLIC :: DefineParametersTimeDisc
-
-#ifdef DEBUG
-! Add dummy interfaces to unused subroutines to suppress compiler warnings.
-INTERFACE DUMMY_TimstepStepByLSERKW2
-  MODULE PROCEDURE TimeStepByLSERKW2
-END INTERFACE
-INTERFACE DUMMY_TimstepStepByLSERKK3
-  MODULE PROCEDURE TimeStepByLSERKK3
-END INTERFACE
-#endif /* DEBUG */
 !==================================================================================================================================
 
 CONTAINS
 
 !==================================================================================================================================
-!> Define parameters 
+!> Define parameters
 !==================================================================================================================================
 SUBROUTINE DefineParametersTimeDisc()
 ! MODULES
@@ -121,7 +111,7 @@ CFLScale = GETREAL('CFLScale')
 DFLScale = GETREAL('DFLScale')
 #endif /*PARABOLIC*/
 NEff=MIN(PP_N,NFilter,NUnder)
-IF(FilterType.GT.2) NEff=PP_N!LAF,HESTHAVEN no timestep effect 
+IF(FilterType.GT.2) NEff=PP_N!LAF,HESTHAVEN no timestep effect
 CALL fillCFL_DFL(NEff,PP_N)
 ! Set timestep to a large number
 dt=HUGE(1.)
@@ -222,7 +212,7 @@ IF(doCalcIndicator) CALL CalcIndicator(U,t)
 
 #if FV_ENABLED
 ! initial switch to FV sub-cells (must be called after DGTimeDerivative_weakForm, since indicator may require gradients)
-IF(.NOT.DoRestart)THEN 
+IF(.NOT.DoRestart)THEN
   CALL FV_FillIni()
 END IF
 #endif
@@ -259,7 +249,7 @@ IF(errType.NE.0) CALL abort(__STAMP__,&
 
 ! Run initial analyze
 SWRITE(UNIT_StdOut,'(132("-"))')
-SWRITE(UNIT_StdOut,*) 'Errors of initial solution:' 
+SWRITE(UNIT_StdOut,*) 'Errors of initial solution:'
 CALL Analyze(t,iter)
 ! fill recordpoints buffer (initialization/restart)
 IF(RP_onProc) CALL RecordPoints(iter,t,.TRUE.)
@@ -281,11 +271,11 @@ SWRITE(UNIT_StdOut,*)'CALCULATION RUNNING...'
 CalcTimeStart=FLEXITIME()
 DO
   CurrentStage=1
-  CALL DGTimeDerivative_weakForm(t)
   IF(doCalcIndicator) CALL CalcIndicator(U,t)
 #if FV_ENABLED
   CALL FV_Switch(U,AllowToDG=(nCalcTimestep.LT.1))
 #endif
+  CALL DGTimeDerivative_weakForm(t)
   IF(nCalcTimestep.LT.1)THEN
     dt_Min=CALCTIMESTEP(errType)
     nCalcTimestep=MIN(FLOOR(ABS(LOG10(ABS(dt_MinOld/dt_Min-1.)**2.*100.+EPSILON(0.)))),nCalcTimeStepMax)
@@ -372,12 +362,12 @@ DO
       ! Write state file
       ! NOTE: this should be last in the series, so we know all previous data
       ! has been written correctly when the state file is present
+      tWriteData=MIN(tAnalyze+WriteData_dt,tEnd)
       CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,&
                             FutureTime=tWriteData,isErrorFile=.FALSE.)
       ! Visualize data
       CALL Visualize(t,U)
       writeCounter=0
-      tWriteData=MIN(tAnalyze+WriteData_dt,tEnd)
     END IF
 
     ! do analysis

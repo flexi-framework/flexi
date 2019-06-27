@@ -19,7 +19,7 @@
 MODULE MOD_OutputRPVisu
 ! MODULES
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES 
+! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 INTERFACE InitOutput
   MODULE PROCEDURE InitOutput
@@ -74,7 +74,7 @@ RPData_out(:,:,:) = 0.
 nCoords=4
 IF(Line_LocalCoords) nCoords=nCoords+1
 IF(Plane_LocalCoords) nCoords=nCoords+2
-ALLOCATE(CoordNames(nCoords)) 
+ALLOCATE(CoordNames(nCoords))
 CoordNames(1)='Time'
 offset=1
 IF(Line_LocalCoords) THEN
@@ -107,7 +107,7 @@ USE MOD_RPData_Vars        ,ONLY: RPTime
 USE MOD_ParametersVisu     ,ONLY: OutputFormat,thirdOct,ProjectName
 USE MOD_OutputRPVisu_Vars  ,ONLY: RPDataTimeAvg_out
 USE MOD_OutputRPVisu_VTK   ,ONLY: WriteDataToVTK,WriteTimeAvgDataToVTK,WriteBLPropsToVTK
-USE MOD_OutputRPVisu_Vars  ,ONLY: nSamples_out,RPData_out,CoordNames 
+USE MOD_OutputRPVisu_Vars  ,ONLY: nSamples_out,RPData_out,CoordNames
 USE MOD_OutputRPVisu_HDF5  ,ONLY: WriteDataToHDF5,WriteBLPropsToHDF5
 USE MOD_Spec_Vars          ,ONLY: nSamples_spec,RPData_freq,RPData_spec
 USE MOD_Spec_Vars          ,ONLY: nSamples_Oct,RPData_freqOct,RPData_Oct

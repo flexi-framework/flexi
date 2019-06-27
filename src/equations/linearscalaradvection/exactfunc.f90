@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -50,7 +50,7 @@ PUBLIC::CalcSource
 CONTAINS
 
 !==================================================================================================================================
-!> Define parameters 
+!> Define parameters
 !==================================================================================================================================
 SUBROUTINE DefineParametersExactFunc()
 ! MODULES
@@ -80,7 +80,7 @@ SUBROUTINE InitExactFunc()
 USE MOD_PreProc
 USE MOD_Globals
 USE MOD_ReadInTools,   ONLY: GETINTFROMSTR,GETREAL,GETINT
-USE MOD_ExactFunc_Vars 
+USE MOD_ExactFunc_Vars
 USE MOD_Equation_Vars, ONLY: AdvVel,IniExactFunc,IniRefState
 #if PARABOLIC
 USE MOD_Equation_Vars, ONLY: DiffC
@@ -131,7 +131,7 @@ USE MOD_Equation_Vars, ONLY: DiffC
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)                 :: tIn                    !< input time (either time at RK stage or time at the beginning of 
+REAL,INTENT(IN)                 :: tIn                    !< input time (either time at RK stage or time at the beginning of
                                                           !< timestep if full boundary order is used (only with RK3)
 REAL,INTENT(IN)                 :: x(3)                   !< coordinates to evaluate exact function
 INTEGER,INTENT(IN)              :: ExactFunction          !< specifies the exact function to be used
@@ -195,7 +195,7 @@ CASE(41) ! sinus in x direction
     Resu_t =-Amplitude*COS(Omega*Cent(1))*Omega*AdvVel(1)
     Resu_tt=-Amplitude*SIN(Omega*Cent(1))*Omega*AdvVel(1)*Omega*AdvVel(1)
   END IF
-CASE(31) 
+CASE(31)
   !Resu=Cent(1)
   Resu=SIN(Pi*(x(1)-AdvVel(1)/2.*t))
 CASE(4) ! quadratic
@@ -217,7 +217,7 @@ CASE(5) ! Kopriva page 200, advection-diffusion, but for 3D with 1/( (4t+1)^(3/2
          + Resu*( 24./(4.*t+1.)**2 &
                   -8./(DiffC*(4.*t+1.)**2)*SUM(AdvVel(:)*(x(:)-AdvVel(:)*t-x0(:))) &
                   -2./(DiffC*(4.*t+1.))*SUM(AdvVel(:)*AdvVel(:))    &
-                 -32./(DiffC*(4.*t+1.)**3)*SUM((x(:)-AdvVel(:)*t-x0(:))**2)   & 
+                 -32./(DiffC*(4.*t+1.)**3)*SUM((x(:)-AdvVel(:)*t-x0(:))**2)   &
                   -8./(DiffC*(4.*t+1.)**2)*SUM(AdvVel(:)*(x(:)-AdvVel(:)*t-x0(:))))
 #endif
 CASE(6) ! One-dimensional cosine wave with amplitude 1 and angular frequency specified by user.

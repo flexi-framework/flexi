@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -71,7 +71,7 @@ PUBLIC::DefineParametersMPI
 CONTAINS
 
 !==================================================================================================================================
-!> Define parameters 
+!> Define parameters
 !==================================================================================================================================
 SUBROUTINE DefineParametersMPI()
 ! MODULES
@@ -80,7 +80,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 !==================================================================================================================================
 CALL prms%SetSection("MPI")
 CALL prms%CreateIntOption('GroupSize', "Define size of MPI subgroups, used to e.g. perform grouped IO, where group master\n"//&
@@ -90,7 +90,7 @@ END SUBROUTINE DefineParametersMPI
 
 
 !==================================================================================================================================
-!> Basic mpi initialization. Calls initialization routine of the mpi library and sets myRank, nProcessors and MPIRoot. If the code 
+!> Basic mpi initialization. Calls initialization routine of the mpi library and sets myRank, nProcessors and MPIRoot. If the code
 !> is not compiled with mpi, InitMPI sets standard values for these variables.
 !==================================================================================================================================
 SUBROUTINE InitMPI(mpi_comm_IN)
@@ -103,19 +103,21 @@ INTEGER,INTENT(IN),OPTIONAL      :: mpi_comm_IN !< MPI communicator
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 #if USE_MPI
-INTEGER :: mpi_com_loc
+LOGICAL :: initDone
 !==================================================================================================================================
 IF (PRESENT(mpi_comm_IN)) THEN
-  mpi_com_loc = mpi_comm_IN
+  MPI_COMM_FLEXI = mpi_comm_IN
 ELSE
   CALL MPI_INIT(iError)
-  mpi_com_loc = MPI_COMM_WORLD
+  CALL MPI_INITIALIZED(initDone,iError)
+  IF(.NOT.initDone) CALL MPI_INIT(iError)
   IF(iError .NE. 0) &
     CALL Abort(__STAMP__,'Error in MPI_INIT',iError)
-END IF 
+  MPI_COMM_FLEXI = MPI_COMM_WORLD
+END IF
 
-CALL MPI_COMM_RANK(mpi_com_loc, myRank     , iError)
-CALL MPI_COMM_SIZE(mpi_com_loc, nProcessors, iError)
+CALL MPI_COMM_RANK(MPI_COMM_FLEXI, myRank     , iError)
+CALL MPI_COMM_SIZE(MPI_COMM_FLEXI, nProcessors, iError)
 IF(iError .NE. 0) &
   CALL Abort(__STAMP__,'Could not get rank and number of processors',iError)
 MPIRoot=(myRank .EQ. 0)
@@ -127,7 +129,7 @@ MPIRoot     =.TRUE.
 MPILocalRoot=.TRUE.
 #endif  /*USE_MPI*/
 
-! At this point the initialization is not completed. We first have to create a new MPI communicator. 
+! At this point the initialization is not completed. We first have to create a new MPI communicator.
 END SUBROUTINE InitMPI
 
 
@@ -165,9 +167,7 @@ MPIRequest_FV_Elems = MPI_REQUEST_NULL
 MPIRequest_FV_gradU = MPI_REQUEST_NULL
 #endif
 #if EDDYVISCOSITY
-ALLOCATE(MPIRequest_DeltaS(nNbProcs,2) )
 ALLOCATE(MPIRequest_SGS(nNbProcs,2) )
-MPIRequest_DeltaS  = MPI_REQUEST_NULL
 MPIRequest_SGS     = MPI_REQUEST_NULL
 #endif
 
@@ -185,10 +185,10 @@ DataSizeSidePrim  =PP_nVarPrim*(PP_N+1)*(PP_NZ+1)
 ! split communicator into smaller groups (e.g. for local nodes)
 GroupSize=GETINT('GroupSize','0')
 IF(GroupSize.LT.1)THEN ! group procs by node
-  CALL MPI_COMM_SPLIT(MPI_COMM_WORLD,myRank,myRank,MPI_COMM_NODE,iError)
+  CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI,myRank,myRank,MPI_COMM_NODE,iError)
 ELSE ! use groupsize
   color=myRank/GroupSize
-  CALL MPI_COMM_SPLIT(MPI_COMM_WORLD,color,myRank,MPI_COMM_NODE,iError)
+  CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI,color,myRank,MPI_COMM_NODE,iError)
 END IF
 CALL MPI_COMM_RANK(MPI_COMM_NODE,myLocalRank,iError)
 CALL MPI_COMM_SIZE(MPI_COMM_NODE,nLocalProcs,iError)
@@ -200,12 +200,12 @@ MPI_COMM_WORKERS=MPI_COMM_NULL
 myLeaderRank=-1
 myWorkerRank=-1
 IF(myLocalRank.EQ.0)THEN
-  CALL MPI_COMM_SPLIT(MPI_COMM_WORLD,0,myRank,MPI_COMM_LEADERS,iError)
+  CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI,0,myRank,MPI_COMM_LEADERS,iError)
   CALL MPI_COMM_RANK( MPI_COMM_LEADERS,myLeaderRank,iError)
   CALL MPI_COMM_SIZE( MPI_COMM_LEADERS,nLeaderProcs,iError)
   nWorkerProcs=nProcessors-nLeaderProcs
 ELSE
-  CALL MPI_COMM_SPLIT(MPI_COMM_WORLD,1,myRank,MPI_COMM_WORKERS,iError)
+  CALL MPI_COMM_SPLIT(MPI_COMM_FLEXI,1,myRank,MPI_COMM_WORKERS,iError)
   CALL MPI_COMM_RANK( MPI_COMM_WORKERS,myWorkerRank,iError)
   CALL MPI_COMM_SIZE( MPI_COMM_WORKERS,nWorkerProcs,iError)
   nLeaderProcs=nProcessors-nWorkerProcs
@@ -224,9 +224,9 @@ USE MOD_MPI_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)          :: SendID                                   !< defines the send / receive direction -> 1=send MINE 
-                                                                        !< / receive YOUR, 2=send YOUR / receive MINE 
-INTEGER,INTENT(IN)          :: DataSize                                 !< size of one entry in array (e.g. one side: 
+INTEGER,INTENT(IN)          :: SendID                                   !< defines the send / receive direction -> 1=send MINE
+                                                                        !< / receive YOUR, 2=send YOUR / receive MINE
+INTEGER,INTENT(IN)          :: DataSize                                 !< size of one entry in array (e.g. one side:
                                                                         !< nVar*(N+1)**2
 INTEGER,INTENT(IN)          :: LowerBound                               !< lower side index for last dimension of FaceData
 INTEGER,INTENT(IN)          :: UpperBound                               !< upper side index for last dimension of FaceData
@@ -242,7 +242,7 @@ DO iNbProc=1,nNbProcs
     SideID_start=OffsetMPISides_rec(iNbProc-1,SendID)+1
     SideID_end  =OffsetMPISides_rec(iNbProc,SendID)
     CALL MPI_IRECV(FaceData(:,SideID_start:SideID_end),nRecVal,MPI_DOUBLE_PRECISION,  &
-                    nbProc(iNbProc),0,MPI_COMM_WORLD,MPIRequest(iNbProc),iError)
+                    nbProc(iNbProc),0,MPI_COMM_FLEXI,MPIRequest(iNbProc),iError)
   ELSE
     MPIRequest(iNbProc)=MPI_REQUEST_NULL
   END IF
@@ -261,8 +261,8 @@ USE MOD_MPI_Vars
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)          :: SendID                                   !< defines the send / receive direction -> 1=send MINE 
-                                                                        !< / receive YOUR, 2=send YOUR / receive MINE 
+INTEGER,INTENT(IN)          :: SendID                                   !< defines the send / receive direction -> 1=send MINE
+                                                                        !< / receive YOUR, 2=send YOUR / receive MINE
 INTEGER,INTENT(IN)          :: DataSize                                 !< size of one entry in array (e.g. one side:
                                                                         !< nVar*(N+1)*(N+1))
 INTEGER,INTENT(IN)          :: LowerBound                               !< lower side index for last dimension of FaceData
@@ -279,7 +279,7 @@ DO iNbProc=1,nNbProcs
     SideID_start=OffsetMPISides_send(iNbProc-1,SendID)+1
     SideID_end  =OffsetMPISides_send(iNbProc,SendID)
     CALL MPI_ISEND(FaceData(:,SideID_start:SideID_end),nSendVal,MPI_DOUBLE_PRECISION,  &
-                    nbProc(iNbProc),0,MPI_COMM_WORLD,MPIRequest(iNbProc),iError)
+                    nbProc(iNbProc),0,MPI_COMM_FLEXI,MPIRequest(iNbProc),iError)
   ELSE
     MPIRequest(iNbProc)=MPI_REQUEST_NULL
   END IF
@@ -301,7 +301,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)    :: SendID                          !< defines the send / receive direction -> 1=send MINE/receive YOUR,
-                                                         !< 2=send YOUR / receive MINE 
+                                                         !< 2=send YOUR / receive MINE
 INTEGER,INTENT(IN)    :: LowerBound                      !< lower side index for last dimension of FV_Elems
 INTEGER,INTENT(IN)    :: UpperBound                      !< upper side index for last dimension of FV_Elems
 INTEGER,INTENT(OUT)   :: SendRequest(nNbProcs)           !< communicatio handles for send
@@ -318,7 +318,7 @@ DO iNbProc=1,nNbProcs
     SideID_start=OffsetMPISides_send(iNbProc-1,SendID)+1
     SideID_end  =OffsetMPISides_send(iNbProc,SendID)
     CALL MPI_ISEND(FV_Elems(SideID_start:SideID_end),nSendVal,MPI_INTEGER,  &
-                    nbProc(iNbProc),0,MPI_COMM_WORLD,SendRequest(iNbProc),iError)
+                    nbProc(iNbProc),0,MPI_COMM_FLEXI,SendRequest(iNbProc),iError)
   ELSE
     SendRequest(iNbProc)=MPI_REQUEST_NULL
   END IF
@@ -328,7 +328,7 @@ DO iNbProc=1,nNbProcs
     SideID_start=OffsetMPISides_rec(iNbProc-1,SendID)+1
     SideID_end  =OffsetMPISides_rec(iNbProc,SendID)
     CALL MPI_IRECV(FV_Elems(SideID_start:SideID_end),nRecVal,MPI_INTEGER,  &
-                    nbProc(iNbProc),0,MPI_COMM_WORLD,RecRequest(iNbProc),iError)
+                    nbProc(iNbProc),0,MPI_COMM_FLEXI,RecRequest(iNbProc),iError)
   ELSE
     RecRequest(iNbProc)=MPI_REQUEST_NULL
   END IF
@@ -347,7 +347,7 @@ USE MOD_Globals
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)          :: nRequests             !< size of the handles 
+INTEGER,INTENT(IN)          :: nRequests             !< size of the handles
 INTEGER,INTENT(INOUT)       :: MPIRequest(nRequests) !< communication handles
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -369,8 +369,8 @@ SDEALLOCATE(MPIRequest_Flux)
 SDEALLOCATE(MPIRequest_FV_Elems)
 SDEALLOCATE(MPIRequest_FV_gradU)
 #endif
-#ifdef EDDYVISCOSITY
-SDEALLOCATE(MPIRequest_DeltaS)
+#if EDDYVISCOSITY
+SDEALLOCATE(MPIRequest_SGS)
 #endif
 #if PARABOLIC
 SDEALLOCATE(MPIRequest_gradU)

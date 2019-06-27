@@ -7,7 +7,7 @@
 function(add_unit_test target)
     # Add executable and libraries
     ADD_EXECUTABLE(${target} ${ARGN})
-    TARGET_LINK_LIBRARIES(${target} flexilib ${linkedlibs})
+    TARGET_LINK_LIBRARIES(${target} libflexishared)
     # Set properties of target
     SET_TARGET_PROPERTIES(${target} PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}) 
     SET_TARGET_PROPERTIES(${target} PROPERTIES LINKER_LANGUAGE Fortran)

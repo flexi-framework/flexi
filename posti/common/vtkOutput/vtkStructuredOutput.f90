@@ -14,7 +14,7 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-!> \brief Module containing routines to write structured data (points, lines and planes) to the vtk data format. 
+!> \brief Module containing routines to write structured data (points, lines and planes) to the vtk data format.
 !>
 !> The structure is as follows: All points will be written to a common .vts file, named ProjectName_points.vts. All lines
 !> and all planes will be written to a seperate .vts file, which will be named after the name of the line or plane.
@@ -23,7 +23,7 @@
 MODULE MOD_VTKStructuredOutput
 ! MODULES
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES 
+! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 TYPE RPPlane
   CHARACTER(LEN=255)      :: name
@@ -65,7 +65,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)          :: Projectname       !< Output file name
-INTEGER,INTENT(IN)                   :: nLines            !< Number of lines to visualize 
+INTEGER,INTENT(IN)                   :: nLines            !< Number of lines to visualize
 INTEGER,INTENT(IN)                   :: nPlanes           !< Number of planes to visualize
 TYPE(RPPoint),INTENT(IN)             :: RPPoints          !< Type containing data on points
 TYPE(RPLine),INTENT(IN)              :: RPLines(nLines)   !< Type containing data on lines
@@ -121,12 +121,12 @@ IF(nPoints.GT.0) THEN
   Buffer2='    <Piece Extent="'
   WRITE(TempStr1,'(I16)') 0
   WRITE(TempStr2,'(I16)') nPoints-1
-  Buffer =TRIM(Buffer)  // ' ' // TRIM(ADJUSTL(TempStr1)) // ' ' // TRIM(ADJUSTL(TempStr2)) 
-  Buffer2=TRIM(Buffer2) // ' ' // TRIM(ADJUSTL(TempStr1)) // ' ' // TRIM(ADJUSTL(TempStr2)) 
+  Buffer =TRIM(Buffer)  // ' ' // TRIM(ADJUSTL(TempStr1)) // ' ' // TRIM(ADJUSTL(TempStr2))
+  Buffer2=TRIM(Buffer2) // ' ' // TRIM(ADJUSTL(TempStr1)) // ' ' // TRIM(ADJUSTL(TempStr2))
   WRITE(TempStr1,'(I16)') 0
-  WRITE(TempStr2,'(I16)') 0 
-  Buffer =TRIM(Buffer)  // ' ' // TRIM(ADJUSTL(TempStr1)) // ' ' // TRIM(ADJUSTL(TempStr2)) 
-  Buffer2=TRIM(Buffer2) // ' ' // TRIM(ADJUSTL(TempStr1)) // ' ' // TRIM(ADJUSTL(TempStr2)) 
+  WRITE(TempStr2,'(I16)') 0
+  Buffer =TRIM(Buffer)  // ' ' // TRIM(ADJUSTL(TempStr1)) // ' ' // TRIM(ADJUSTL(TempStr2))
+  Buffer2=TRIM(Buffer2) // ' ' // TRIM(ADJUSTL(TempStr1)) // ' ' // TRIM(ADJUSTL(TempStr2))
   WRITE(TempStr1,'(I16)') 0
   WRITE(TempStr2,'(I16)') 0
   Buffer =TRIM(Buffer)  // ' ' // TRIM(ADJUSTL(TempStr1)) // ' ' // TRIM(ADJUSTL(TempStr2)) // '">'//lf;WRITE(ivtk) TRIM(Buffer)
@@ -167,7 +167,7 @@ IF(nPoints.GT.0) THEN
       WRITE(ivtk) REAL(RPPoints%Val(iVar,:),4)
     END DO
   END IF
-  nBytes = nPoints*SIZEOF_F(FLOATdummy) * 3
+  nBytes = nBytes * 3
   WRITE(ivtk) nBytes
   WRITE(ivtk) REAL(RPPoints%Coords(:,:),4)
 
@@ -201,12 +201,12 @@ DO iLine=1,nLines
   Buffer2='    <Piece Extent="'
   WRITE(TempStr1,'(I16)') 0
   WRITE(TempStr2,'(I16)') RPLines(iLine)%nRPs-1
-  Buffer =TRIM(Buffer)  // ' ' // TRIM(ADJUSTL(TempStr1)) // ' ' // TRIM(ADJUSTL(TempStr2)) 
-  Buffer2=TRIM(Buffer2) // ' ' // TRIM(ADJUSTL(TempStr1)) // ' ' // TRIM(ADJUSTL(TempStr2)) 
+  Buffer =TRIM(Buffer)  // ' ' // TRIM(ADJUSTL(TempStr1)) // ' ' // TRIM(ADJUSTL(TempStr2))
+  Buffer2=TRIM(Buffer2) // ' ' // TRIM(ADJUSTL(TempStr1)) // ' ' // TRIM(ADJUSTL(TempStr2))
   WRITE(TempStr1,'(I16)') 0
-  WRITE(TempStr2,'(I16)') 0 
-  Buffer =TRIM(Buffer)  // ' ' // TRIM(ADJUSTL(TempStr1)) // ' ' // TRIM(ADJUSTL(TempStr2)) 
-  Buffer2=TRIM(Buffer2) // ' ' // TRIM(ADJUSTL(TempStr1)) // ' ' // TRIM(ADJUSTL(TempStr2)) 
+  WRITE(TempStr2,'(I16)') 0
+  Buffer =TRIM(Buffer)  // ' ' // TRIM(ADJUSTL(TempStr1)) // ' ' // TRIM(ADJUSTL(TempStr2))
+  Buffer2=TRIM(Buffer2) // ' ' // TRIM(ADJUSTL(TempStr1)) // ' ' // TRIM(ADJUSTL(TempStr2))
   WRITE(TempStr1,'(I16)') 0
   WRITE(TempStr2,'(I16)') 0
   Buffer =TRIM(Buffer)  // ' ' // TRIM(ADJUSTL(TempStr1)) // ' ' // TRIM(ADJUSTL(TempStr2)) // '">'//lf;WRITE(ivtk) TRIM(Buffer)
@@ -246,7 +246,7 @@ DO iLine=1,nLines
       WRITE(ivtk) REAL(RPLines(iLine)%Val(iVar,:),4)
     END DO
   END IF
-  nBytes = RPLines(iLine)%nRPs*SIZEOF_F(FLOATdummy) * 3
+  nBytes = nBytes * 3
   WRITE(ivtk) nBytes
   WRITE(ivtk) REAL(RPLines(iLine)%Coords(:,:),4)
 
@@ -280,12 +280,12 @@ DO iPlane=1, nPlanes
   Buffer2='    <Piece Extent="'
   WRITE(TempStr1,'(I16)') 0
   WRITE(TempStr2,'(I16)') RPPlanes(iPlane)%nRPs(1)-1
-  Buffer =TRIM(Buffer)  // ' ' // TRIM(ADJUSTL(TempStr1)) // ' ' // TRIM(ADJUSTL(TempStr2)) 
-  Buffer2=TRIM(Buffer2) // ' ' // TRIM(ADJUSTL(TempStr1)) // ' ' // TRIM(ADJUSTL(TempStr2)) 
+  Buffer =TRIM(Buffer)  // ' ' // TRIM(ADJUSTL(TempStr1)) // ' ' // TRIM(ADJUSTL(TempStr2))
+  Buffer2=TRIM(Buffer2) // ' ' // TRIM(ADJUSTL(TempStr1)) // ' ' // TRIM(ADJUSTL(TempStr2))
   WRITE(TempStr1,'(I16)') 0
   WRITE(TempStr2,'(I16)') RPPlanes(iPlane)%nRPs(2)-1
-  Buffer =TRIM(Buffer)  // ' ' // TRIM(ADJUSTL(TempStr1)) // ' ' // TRIM(ADJUSTL(TempStr2)) 
-  Buffer2=TRIM(Buffer2) // ' ' // TRIM(ADJUSTL(TempStr1)) // ' ' // TRIM(ADJUSTL(TempStr2)) 
+  Buffer =TRIM(Buffer)  // ' ' // TRIM(ADJUSTL(TempStr1)) // ' ' // TRIM(ADJUSTL(TempStr2))
+  Buffer2=TRIM(Buffer2) // ' ' // TRIM(ADJUSTL(TempStr1)) // ' ' // TRIM(ADJUSTL(TempStr2))
   WRITE(TempStr1,'(I16)') 0
   WRITE(TempStr2,'(I16)') 0
   Buffer =TRIM(Buffer)  // ' ' // TRIM(ADJUSTL(TempStr1)) // ' ' // TRIM(ADJUSTL(TempStr2)) // '">'//lf;WRITE(ivtk) TRIM(Buffer)
@@ -319,14 +319,13 @@ DO iPlane=1, nPlanes
   Buffer='_';WRITE(ivtk) TRIM(Buffer)
 
   nBytes = RPPlanes(iPlane)%nRPs(1)*RPPlanes(iPlane)%nRPs(2)*SIZEOF_F(FLOATdummy)
-  WRITE(ivtk) nBytes
   IF (withData) THEN
     DO iVar = 1,nVal
       WRITE(ivtk) nBytes
       WRITE(ivtk) REAL(RPPlanes(iPlane)%Val(iVar,:,:),4)
     END DO
   END IF
-  nBytes = RPPlanes(iPlane)%nRPs(1)*RPPlanes(iPlane)%nRPs(2)*SIZEOF_F(FLOATdummy) * 3
+  nBytes = nBytes * 3
   WRITE(ivtk) nBytes
   WRITE(ivtk) REAL(RPPlanes(iPlane)%Coords(:,:,:),4)
 
@@ -356,8 +355,8 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN) :: ProjectName          !< Projectname
 INTEGER, INTENT(IN)         :: nSets                !< Number of VTS files to link
-CHARACTER(LEN=*),INTENT(IN) :: FileNamesVTS(nSets)  !< Filenames of structured datasets 
-CHARACTER(LEN=*),INTENT(IN) :: ZoneNames(nSets)     !< Zone names of structured datasets 
+CHARACTER(LEN=*),INTENT(IN) :: FileNamesVTS(nSets)  !< Filenames of structured datasets
+CHARACTER(LEN=*),INTENT(IN) :: ZoneNames(nSets)     !< Zone names of structured datasets
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: ivtk=44
@@ -365,7 +364,7 @@ INTEGER            :: iSet
 CHARACTER(LEN=200) :: Buffer
 CHARACTER(LEN=1)   :: lf
 CHARACTER(LEN=35)  :: TempStr1
-CHARACTER(LEN=255) :: FileStringOut 
+CHARACTER(LEN=255) :: FileStringOut
 !===================================================================================================================================
 FileStringOut=TRIM(ProjectName)//'_RPVisu.vtm'
 ! write multiblock file

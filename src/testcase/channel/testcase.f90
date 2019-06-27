@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -12,6 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "eos.h"
 
 #if FV_ENABLED
 #error "This testcase is not tested with FV"
@@ -82,7 +83,7 @@ PUBLIC:: Lifting_GetBoundaryFluxTestcase
 CONTAINS
 
 !==================================================================================================================================
-!> Define parameters 
+!> Define parameters
 !==================================================================================================================================
 SUBROUTINE DefineParametersTestcase()
 ! MODULES
@@ -106,8 +107,10 @@ USE MOD_PreProc
 USE MOD_Globals
 USE MOD_ReadInTools,        ONLY: GETINT,GETREAL
 USE MOD_Output_Vars,        ONLY: ProjectName
-USE MOD_Equation_Vars,      ONLY: RefStatePrim,IniRefState
-USE MOD_EOS_Vars,           ONLY: kappa,mu0
+USE MOD_Equation_Vars,      ONLY: RefStatePrim,IniRefState,RefStateCons
+USE MOD_EOS_Vars,           ONLY: kappa,mu0,R
+USE MOD_Output,             ONLY: InitOutputToFile
+USE MOD_Eos,                ONLY: PrimToCons
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -116,6 +119,8 @@ IMPLICIT NONE
 INTEGER                  :: ioUnit,openStat
 REAL                     :: c1
 REAL                     :: bulkMach,pressure
+CHARACTER(LEN=7)         :: varnames(2)
+REAL                     :: UE(PP_2Var)
 !==================================================================================================================================
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT TESTCASE CHANNEL...'
@@ -131,13 +136,18 @@ uBulkScale=1.
 Re_tau       = 1/mu0
 c1 = 2.4390244
 uBulk=c1 * ((Re_tau+c1)*LOG(Re_tau+c1) + 1.3064019*(Re_tau + 29.627395*EXP(-1./11.*Re_tau) + 0.66762137*(Re_tau+3)*EXP(-Re_tau/3.))) &
-      - 97.4857927165 
+      - 97.4857927165
 uBulk=uBulk/Re_tau
 
 ! Set the background pressure according to choosen bulk Mach number
 bulkMach = GETREAL('ChannelMach','0.1')
 pressure = (uBulk/bulkMach)**2*RefStatePrim(1,IniRefState)/kappa
 RefStatePrim(5,IniRefState) = pressure
+! TODO: ATTENTION only sRho and Pressure of UE filled!!!
+UE(SRHO) = 1./RefStatePrim(1,IniRefState)
+UE(PRES) = RefStatePrim(5,IniRefState)
+RefStatePrim(6,IniRefState) = TEMPERATURE_HE(UE)
+CALL PrimToCons(RefStatePrim(:,IniRefState),RefStateCons(:,IniRefState))
 
 IF(MPIRoot) THEN
   WRITE(*,*) 'Bulk velocity based on initial velocity Profile =',uBulk
@@ -149,22 +159,10 @@ dpdx = -1. ! Re_tau^2*rho*nu^2/delta^3
 IF(.NOT.MPIRoot) RETURN
 
 ALLOCATE(writeBuf(3,nWriteStats))
-Filename = TRIM(ProjectName)//'_Stats.dat'
-IF(.NOT.FILEEXISTS(Filename))THEN ! File exists and append data
-  OPEN(NEWUNIT= ioUnit       ,&
-       FILE   = Filename     ,&
-       STATUS = 'Unknown'    ,&
-       ACCESS = 'SEQUENTIAL' ,&
-       IOSTAT = openStat                 )
-  IF (openStat.NE.0) THEN
-    CALL abort(__STAMP__, &
-      'ERROR: cannot open '//TRIM(Filename))
-  END IF
-  WRITE(ioUnit,'(A)')'TITLE="Statistics,'//TRIM(ProjectName)//'"'
-  WRITE(ioUnit,'(A)')'VARIABLES = "t_sim" "dpdx" "bulkVel"'
-  WRITE(ioUnit,'(A)')'ZONE T="Statistics,'//TRIM(ProjectName)//'"'
-  CLOSE(ioUnit)
-END IF
+Filename = TRIM(ProjectName)//'_Stats'
+varnames(1) = 'dpdx'
+varnames(2) = 'bulkVel'
+CALL InitOutputToFile(Filename,'Statistics',2,varnames)
 
 SWRITE(UNIT_stdOut,'(A)')' INIT TESTCASE CHANNEL DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
@@ -261,7 +259,7 @@ DO iElem=1,nElems
 END DO
 
 #if USE_MPI
-CALL MPI_ALLREDUCE(MPI_IN_PLACE,BulkVel,1,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,iError)
+CALL MPI_ALLREDUCE(MPI_IN_PLACE,BulkVel,1,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)
 #endif
 BulkVel = BulkVel/Vol
 END SUBROUTINE CalcForcing
@@ -300,6 +298,7 @@ SUBROUTINE WriteStats()
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
+USE MOD_Output,       ONLY:OutputToFile
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -307,21 +306,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                  :: ioUnit,openStat,i
 !==================================================================================================================================
-OPEN(NEWUNIT  = ioUnit     , &
-     FILE     = Filename   , &
-     FORM     = 'FORMATTED', &
-     STATUS   = 'OLD'      , &
-     POSITION = 'APPEND'   , &
-     RECL     = 50000      , &
-     IOSTAT = openStat       )
-IF(openStat.NE.0) THEN
-  CALL abort(__STAMP__, &
-    'ERROR: cannot open '//TRIM(Filename))
-END IF
-DO i=1,ioCounter
-  WRITE(ioUnit,'(3E23.14)') writeBuf(:,i)
-END DO
-CLOSE(ioUnit)
+CALL OutputToFile(FileName,writeBuf(1,1:ioCounter),(/2,ioCounter/),RESHAPE(writeBuf(2:3,1:ioCounter),(/2*ioCounter/)))
 ioCounter=0
 
 END SUBROUTINE WriteStats
@@ -370,7 +355,7 @@ SUBROUTINE GetBoundaryFluxTestcase(SideID,t,Nloc,Flux,UPrim_master,             
 ! MODULES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)   :: SideID  
+INTEGER,INTENT(IN)   :: SideID
 REAL,INTENT(IN)      :: t       !< current time (provided by time integration scheme)
 INTEGER,INTENT(IN)   :: Nloc    !< polynomial degree
 REAL,INTENT(IN)      :: UPrim_master( PP_nVarPrim,0:Nloc,0:Nloc) !< inner surface solution

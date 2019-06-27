@@ -69,7 +69,7 @@ USE MOD_Globals
 USE MOD_Visu_Vars
 USE MOD_HDF5_Input         ,ONLY: ISVALIDMESHFILE,ISVALIDHDF5FILE,GetArrayAndName
 USE MOD_HDF5_Input         ,ONLY: ReadAttribute,File_ID,OpenDataFile,GetDataProps,CloseDataFile,ReadArray,DatasetExists
-USE MOD_Mesh_Vars          ,ONLY: nElems,offsetElem
+USE MOD_Mesh_Vars          ,ONLY: nElems,nGlobalElems,offsetElem
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -81,10 +81,13 @@ INTEGER                          :: ii,jj,iElem
 CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL DatasetExists(File_ID,'nElems_IJK',exists)
 SDEALLOCATE(Elem_IJK)
+SDEALLOCATE(Elem_IJK_glob)
 ALLOCATE(Elem_IJK(3,nElems))
+ALLOCATE(Elem_IJK_glob(3,nGlobalElems))
 IF (exists) THEN
   CALL ReadArray('nElems_IJK',1,(/3/),0,1,IntArray=nElems_IJK)
   CALL ReadArray('Elem_IJK',2,(/3,nElems/),offsetElem,2,IntArray=Elem_IJK)
+  CALL ReadArray('Elem_IJK',2,(/3,nGlobalElems/),0,2,IntArray=Elem_IJK_glob)
 ELSE
   nElems_IJK(1) = 1
   nElems_IJK(2) = nElems
@@ -106,6 +109,9 @@ DO iElem=1,nElems
   jj = Elem_IJK(2,iElem)
   FVAmountAvg2D(ii,jj) = FVAmountAvg2D(ii,jj) + FV_Elems_loc(iElem)
 END DO
+#if USE_MPI
+CALL MPI_ALLREDUCE(MPI_IN_PLACE,FVAmountAvg2D,nElems_IJK(1)*nElems_IJK(2),MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)
+#endif
 FVAmountAvg2D = FVAmountAvg2D / REAL(nElems_IJK(3))
 
 ! Create a mapping from the IJ indizes of each cell to the 2D visu elements, for DG and FV seperately
@@ -117,19 +123,15 @@ ALLOCATE(mapElemIJToDGElemAvg2D(nElems_IJK(1),nElems_IJK(2)))
 ALLOCATE(mapElemIJToFVElemAvg2D(nElems_IJK(1),nElems_IJK(2)))
 mapElemIJToDGElemAvg2D = 0
 mapElemIJToDGElemAvg2D = 0
-DO iElem=1,nElems
-  IF (Elem_IJK(3,iElem).EQ.1) THEN
-    ii = Elem_IJK(1,iElem)
-    jj = Elem_IJK(2,iElem)
-    IF (FVAmountAvg2D(ii,jj).LE.0.5) THEN
-      nElemsAvg2D_DG = nElemsAvg2D_DG + 1
-      mapElemIJToDGElemAvg2D(ii,jj) = nElemsAvg2D_DG
-    ELSE
-      nElemsAvg2D_FV = nElemsAvg2D_FV + 1
-      mapElemIJToFVElemAvg2D(ii,jj) = nElemsAvg2D_FV
-    END IF
+DO jj=1,nElems_IJK(2); DO ii=1,nElems_IJK(1)
+  IF (FVAmountAvg2D(ii,jj).LE.0.5) THEN
+    nElemsAvg2D_DG = nElemsAvg2D_DG + 1
+    mapElemIJToDGElemAvg2D(ii,jj) = nElemsAvg2D_DG
+  ELSE
+    nElemsAvg2D_FV = nElemsAvg2D_FV + 1
+    mapElemIJToFVElemAvg2D(ii,jj) = nElemsAvg2D_FV
   END IF
-END DO
+END DO; END DO ! ii,jj=1,nElems_IJK
 END SUBROUTINE InitAverage2D
 
 !===================================================================================================================================
@@ -204,14 +206,6 @@ ALLOCATE(Vdm_FVToVisu(0:NVisu_FV,0:0       ))
 #endif
 CALL GetVandermonde(NCalc_DG,NodeType,NVisu,NodeTypeVisuPosti,Vdm_DGToVisu,modal=.FALSE.)
 
-#ifdef DEBUG
-! ===============================================================================
-! Following dummy statements do suppress compiler warnings of unused Riemann-functions
-! ===============================================================================
-IF (0.EQ.1) THEN
-  WRITE(*,*) NCalc_FV
-END IF
-#endif /* DEBUG */
 END SUBROUTINE BuildVandermonds_Avg2D
 
 !===================================================================================================================================
@@ -224,7 +218,7 @@ SUBROUTINE Average2D(nVarCalc_DG,nVarCalc_FV,NCalc_DG,NCalc_FV,nElems_DG,nElems_
     UVisu_DG,UVisu_FV)
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_Visu_Vars          ,ONLY: Elem_IJK,FVAmountAvg2D
+USE MOD_Visu_Vars          ,ONLY: Elem_IJK,FVAmountAvg2D,Avg2DHDF5Output
 USE MOD_Visu_Vars          ,ONLY: mapDGElemsToAllElems,mapFVElemsToAllElems
 USE MOD_Visu_Vars          ,ONLY: mapElemIJToDGElemAvg2D,mapElemIJToFVElemAvg2D,mapAllVarsToVisuVars
 USE MOD_Visu_Vars          ,ONLY: nVarVisu,NVisu,NVisu_FV,nElemsAvg2D_FV,nElemsAvg2D_DG
@@ -351,29 +345,54 @@ DO iElem_FV = 1,nElems_FV                ! iterate over all FV elements
   END IF
 END DO
 
-DO iElem_DG = 1,nElemsAvg2D_DG
-  UAvg_DG(:,:,iElem_DG,:) = UAvg_DG(:,:,iElem_DG,:) / dxSum_DG(iElem_DG)
-END DO
-DO iElem_FV = 1,nElemsAvg2D_FV
-  UAvg_FV(:,:,iElem_FV,:) = UAvg_FV(:,:,iElem_FV,:) / dxSum_FV(iElem_FV)
-END DO
+#if USE_MPI
+IF(MPIRoot)THEN
+  CALL MPI_REDUCE(MPI_IN_PLACE,UAvg_DG,nElemsAvg2D_DG*(NCalc_DG+1)**2*nVarVisu,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(MPI_IN_PLACE,UAvg_FV,nElemsAvg2D_FV*(NCalc_FV+1)**2*nVarVisu,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(MPI_IN_PLACE,dxSum_DG,nElemsAvg2D_DG,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(MPI_IN_PLACE,dxSum_FV,nElemsAvg2D_FV,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+ELSE
+  CALL MPI_REDUCE(UAvg_DG      ,0     ,nElemsAvg2D_DG*(NCalc_DG+1)**2*nVarVisu,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(UAvg_FV      ,0     ,nElemsAvg2D_FV*(NCalc_FV+1)**2*nVarVisu,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(dxSum_DG     ,0     ,nElemsAvg2D_DG,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_REDUCE(dxSum_FV     ,0     ,nElemsAvg2D_FV,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+END IF
+#endif
+IF (MPIRoot) THEN
+  DO iElem_DG = 1,nElemsAvg2D_DG
+    UAvg_DG(:,:,iElem_DG,:) = UAvg_DG(:,:,iElem_DG,:) / dxSum_DG(iElem_DG)
+  END DO
+  DO iElem_FV = 1,nElemsAvg2D_FV
+    UAvg_FV(:,:,iElem_FV,:) = UAvg_FV(:,:,iElem_FV,:) / dxSum_FV(iElem_FV)
+  END DO
+END IF
 
-! Convert the averaged data to the visu grid
-DO iVar=startIndexMapVarCalc,endIndexMapVarCalc
-  iVarVisu = mapAllVarsToVisuVars(iVar)
-  IF (iVarVisu.GT.0) THEN
-    DO iElemAvg=1,nElemsAvg2D_DG
-      CALL ChangeBasis2D(NCalc_DG,NVisu   ,Vdm_DGToVisu  ,UAvg_DG(:,:,iElemAvg,iVarVisu),UVisu_DG(:,:,0,iElemAvg,iVarVisu))
-    END DO
-    IF (NCalc_FV.EQ.NVisu_FV) THEN
-      UVisu_FV(:,:,0,:,iVarVisu) = UAvg_FV(:,:,:,iVarVisu)
-    ELSE
-      DO iElemAvg=1,nElemsAvg2D_FV
-        CALL ChangeBasis2D(NCalc_FV,NVisu_FV,Vdm_FVToVisu,UAvg_FV(:,:,iElemAvg,iVarVisu),UVisu_FV(:,:,0,iElemAvg,iVarVisu))
+#if USE_MPI
+IF (Avg2DHDF5Output) THEN
+  ! Distribute the averaged data back
+  CALL MPI_BCAST(UAvg_DG,nElemsAvg2D_DG*(NCalc_DG+1)**2*nVarVisu,MPI_DOUBLE_PRECISION,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_BCAST(UAvg_FV,nElemsAvg2D_FV*(NCalc_FV+1)**2*nVarVisu,MPI_DOUBLE_PRECISION,0,MPI_COMM_FLEXI,iError)
+END IF
+#endif
+
+IF ((MPIRoot).OR.(Avg2DHDF5Output)) THEN
+  ! Convert the averaged data to the visu grid
+  DO iVar=startIndexMapVarCalc,endIndexMapVarCalc
+    iVarVisu = mapAllVarsToVisuVars(iVar)
+    IF (iVarVisu.GT.0) THEN
+      DO iElemAvg=1,nElemsAvg2D_DG
+        CALL ChangeBasis2D(NCalc_DG,NVisu   ,Vdm_DGToVisu  ,UAvg_DG(:,:,iElemAvg,iVarVisu),UVisu_DG(:,:,0,iElemAvg,iVarVisu))
       END DO
+      IF (NCalc_FV.EQ.NVisu_FV) THEN
+        UVisu_FV(:,:,0,:,iVarVisu) = UAvg_FV(:,:,:,iVarVisu)
+      ELSE
+        DO iElemAvg=1,nElemsAvg2D_FV
+          CALL ChangeBasis2D(NCalc_FV,NVisu_FV,Vdm_FVToVisu,UAvg_FV(:,:,iElemAvg,iVarVisu),UVisu_FV(:,:,0,iElemAvg,iVarVisu))
+        END DO
+      END IF
     END IF
-  END IF
-END DO
+  END DO
+END IF
 
 
 ! clear local variables
@@ -439,8 +458,6 @@ DO i=0,PP_N
 END DO ! i=0,PP_N
 #endif
 
-
-
 !================== Prepare output data =============================!
 
 ! Create full three dimensional array to write to the 3D mesh file.
@@ -486,37 +503,37 @@ END DO ! iVar=1,nVarAll
 
 
 !================= Create and prepare HDF5 file =======================!
-
-! Create file
 FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_avg2D',OutputTime))//'.h5'
-CALL OpenDataFile(TRIM(FileName),create=.TRUE.,single=.TRUE.,readOnly=.FALSE.)
+IF (MPIRoot) THEN
+  ! Create file
+  CALL OpenDataFile(TRIM(FileName),create=.TRUE.,single=.TRUE.,readOnly=.FALSE.)
 
-! Write file header with file type 'Avg2D'
-CALL WriteHeader('Avg2D',File_ID)
+  ! Write file header with file type 'Avg2D'
+  CALL WriteHeader('Avg2D',File_ID)
 
-! Preallocate the data space for the dataset.
-Dimsf=(/nVar,NVisu+1,NVisu+1,NVisu+1,nGlobalElems/)
+  ! Preallocate the data space for the dataset.
+  Dimsf=(/nVar,NVisu+1,NVisu+1,NVisu+1,nGlobalElems/)
 
-CALL H5SCREATE_SIMPLE_F(5, Dimsf, FileSpace, iError)
-! Create the dataset with default properties.
-HDF5DataType=H5T_NATIVE_DOUBLE
-CALL H5DCREATE_F(File_ID,'DG_Solution', HDF5DataType, FileSpace, DSet_ID, iError)
-! Close the filespace and the dataset
-CALL H5DCLOSE_F(Dset_id, iError)
-CALL H5SCLOSE_F(FileSpace, iError)
+  CALL H5SCREATE_SIMPLE_F(5, Dimsf, FileSpace, iError)
+  ! Create the dataset with default properties.
+  HDF5DataType=H5T_NATIVE_DOUBLE
+  CALL H5DCREATE_F(File_ID,'DG_Solution', HDF5DataType, FileSpace, DSet_ID, iError)
+  ! Close the filespace and the dataset
+  CALL H5DCLOSE_F(Dset_id, iError)
+  CALL H5SCLOSE_F(FileSpace, iError)
 
-! Write dataset properties "N","Time","MeshFile","NodeType","VarNames","NComputation"
-CALL WriteAttribute(File_ID,'N',1,IntScalar=NVisu)
-CALL WriteAttribute(File_ID,'Time',1,RealScalar=OutputTime)
-CALL WriteAttribute(File_ID,'MeshFile',1,StrScalar=(/TRIM(MeshFileName)/))
-CALL WriteAttribute(File_ID,'NodeType',1,StrScalar=(/NodeType/))
-CALL WriteAttribute(File_ID,'VarNames',nVar,StrArray=StrVarNames)
-CALL WriteAttribute(File_ID,'NComputation',1,IntScalar=PP_N)
+  ! Write dataset properties "N","Time","MeshFile","NodeType","VarNames","NComputation"
+  CALL WriteAttribute(File_ID,'N',1,IntScalar=NVisu)
+  CALL WriteAttribute(File_ID,'Time',1,RealScalar=OutputTime)
+  CALL WriteAttribute(File_ID,'MeshFile',1,StrScalar=(/MeshFileName/))
+  CALL WriteAttribute(File_ID,'NodeType',1,StrScalar=(/NodeType/))
+  CALL WriteAttribute(File_ID,'VarNames',nVar,StrArray=StrVarNames)
+  CALL WriteAttribute(File_ID,'NComputation',1,IntScalar=PP_N)
 
-CALL CloseDataFile()
+  CALL CloseDataFile()
+END IF
 
 !================= Actual data output =======================!
-
 CALL GatheredWriteArray(TRIM(FileName),create=.FALSE.,&
                         DataSetName='DG_Solution', rank=5,&
                         nValGlobal=(/nVar,NVisu+1,NVisu+1,NVisu+1,nGlobalElems/),&
@@ -529,14 +546,6 @@ CALL GatheredWriteArray(TRIM(FileName),create=.FALSE.,&
 CALL WriteAdditionalElemData(FileName,ElementOut)
 #endif
 
-#ifdef DEBUG
-! ===============================================================================
-! Following dummy statements do suppress compiler warnings of unused Riemann-functions
-! ===============================================================================
-IF (0.EQ.1) THEN
-  UVisu3D(1,0,0,0,1) = UVisu_FV(0,0,0,1,1)
-END IF
-#endif
 END SUBROUTINE WriteAverageToHDF5
 
 END MODULE MOD_Visu_Avg2D

@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -156,7 +156,7 @@ DO iSide=1,nBCSides
 END DO
 MaxBCStateGLobal=MaxBCState
 #if USE_MPI
-CALL MPI_ALLREDUCE(MPI_IN_PLACE,MaxBCStateGlobal,1,MPI_INTEGER,MPI_MAX,MPI_COMM_WORLD,iError)
+CALL MPI_ALLREDUCE(MPI_IN_PLACE,MaxBCStateGlobal,1,MPI_INTEGER,MPI_MAX,MPI_COMM_FLEXI,iError)
 #endif /*USE_MPI*/
 
 ! Sanity check for BCs
@@ -195,12 +195,12 @@ DO i=1,nBCs
   SELECT CASE (locType)
   CASE(12) ! State File Boundary condition
     IF(.NOT.readBCdone) CALL ReadBCFlow(BCStateFile)
-    readBCdone=.TRUE. 
-  CASE(27) ! Subsonic inflow 
+    readBCdone=.TRUE.
+  CASE(27) ! Subsonic inflow
     talpha=TAN(ACOS(-1.)/180.*RefStatePrim(2,locState))
     tbeta =TAN(ACOS(-1.)/180.*RefStatePrim(3,locState))
     ! Compute vector a(1:3) from paper, the projection of the direction normal to the face normal
-    ! Multiplication of velocity magnitude by NORM2(a) gives contribution in face normal dir         
+    ! Multiplication of velocity magnitude by NORM2(a) gives contribution in face normal dir
     RefStatePrim(2,locState)=1.    /SQRT((1.+talpha**2+tbeta**2))
     RefStatePrim(3,locState)=talpha/SQRT((1.+talpha**2+tbeta**2))
     RefStatePrim(4,locState)=tbeta /SQRT((1.+talpha**2+tbeta**2))
@@ -246,7 +246,7 @@ END SUBROUTINE InitBC
 !==================================================================================================================================
 SUBROUTINE GetBoundaryState(SideID,t,Nloc,UPrim_boundary,UPrim_master,NormVec,TangVec1,TangVec2,Face_xGP)
 !----------------------------------------------------------------------------------------------------------------------------------
-! MODULES                                                                                                                          
+! MODULES
 USE MOD_PreProc
 USE MOD_Globals      ,ONLY: Abort
 USE MOD_Mesh_Vars    ,ONLY: BoundaryType,BC
@@ -270,7 +270,7 @@ REAL,INTENT(IN)         :: TangVec2(                3,0:Nloc,0:ZDIM(Nloc)) !< ta
 REAL,INTENT(IN)         :: Face_xGP(                3,0:Nloc,0:ZDIM(Nloc)) !< positions of surface flux points
 REAL,INTENT(OUT)        :: UPrim_boundary(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)) !< resulting boundary state
 
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                 :: p,q
@@ -331,7 +331,7 @@ CASE(3,4,9,91,23,24,25,27)
       UPrim_boundary(2:4,p,q)= 0. ! no slip
       UPrim_boundary(6,p,q) = UPrim_master(6,p,q) ! adiabatic => temperature from the inside
       ! set density via ideal gas equation, consistent to pressure and temperature
-      UPrim_boundary(1,p,q) = UPrim_boundary(5,p,q) / (UPrim_boundary(6,p,q) * R) 
+      UPrim_boundary(1,p,q) = UPrim_boundary(5,p,q) / (UPrim_boundary(6,p,q) * R)
     END DO; END DO ! q,p
   CASE(4) ! Isothermal wall
     ! For isothermal wall, all gradients are from interior
@@ -425,7 +425,7 @@ CASE(3,4,9,91,23,24,25,27)
     ! Prescribe Total Temp, Total Pressure, inflow angle of attack alpha
     ! and inflow yaw angle beta
     ! WARNING: REFSTATE is different: Tt,alpha,beta,<empty>,pT (4th entry ignored!!), angles in DEG not RAD
-    ! Tt is computed by 
+    ! Tt is computed by
     ! BC not from FUN3D Paper by JR Carlson (too many bugs), but from AIAA 2001 3882
     ! John W. Slater: Verification Assessment of Flow Boundary Conditions for CFD
     ! The BC State is described, not the outer state: use BC state to compute flux directly
@@ -446,14 +446,14 @@ CASE(3,4,9,91,23,24,25,27)
       tmp1=(A**2*KappaM1+2.)/(Kappa*R*A**2*KappaM1)   !a
       tmp2=2*Rminus/(Kappa*R*A**2)                    !b
       tmp3=KappaM1*Rminus*Rminus/(2.*Kappa*R*A**2)-Tt !c
-      cb=(-tmp2+SQRT(tmp2**2-4*tmp1*tmp3))/(2*tmp1)   ! 
+      cb=(-tmp2+SQRT(tmp2**2-4*tmp1*tmp3))/(2*tmp1)   !
       c=(-tmp2-SQRT(tmp2**2-4*tmp1*tmp3))/(2*tmp1)    ! dummy
       cb=MAX(cb,c)                                    ! Following the FUN3D Paper, the max. of the two
       ! is the physical one...not 100% clear why
       ! compute static T  at bc from c
       Tb=cb**2/(Kappa*R)
-      Ma=SQRT(2./KappaM1*(Tt/Tb-1.))       
-      pb=pt*(1.+0.5*KappaM1*Ma**2)**(-kappa/kappam1) 
+      Ma=SQRT(2./KappaM1*(Tt/Tb-1.))
+      pb=pt*(1.+0.5*KappaM1*Ma**2)**(-kappa/kappam1)
       U=Ma*SQRT(Kappa*R*Tb)
       UPrim_boundary(1,p,q) = pb/(R*Tb)
       UPrim_boundary(5,p,q) = pb
@@ -500,11 +500,11 @@ USE MOD_Mesh_Vars    ,ONLY: BoundaryType,BC
 USE MOD_EOS          ,ONLY: PrimToCons,ConsToPrim
 USE MOD_ExactFunc    ,ONLY: ExactFunc
 #if PARABOLIC
-USE MOD_Flux         ,ONLY: EvalDiffFlux2D
+USE MOD_Flux         ,ONLY: EvalDiffFlux3D
 USE MOD_Riemann      ,ONLY: ViscousFlux
 #endif
 USE MOD_Riemann      ,ONLY: Riemann
-#ifdef EDDYVISCOSITY
+#if EDDYVISCOSITY
 USE MOD_EddyVisc_Vars,ONLY: muSGS_master
 #endif
 USE MOD_Testcase     ,ONLY: GetBoundaryFluxTestcase
@@ -532,16 +532,20 @@ REAL                                 :: UPrim_boundary(PP_nVarPrim,0:Nloc,0:ZDIM
 REAL                                 :: UCons_boundary(PP_nVar    ,0:Nloc,0:ZDIM(Nloc))
 REAL                                 :: UCons_master  (PP_nVar    ,0:Nloc,0:ZDIM(Nloc))
 #if PARABOLIC
-INTEGER                              :: ivar
+INTEGER                              :: iVar
 REAL                                 :: nv(3),tv1(3),tv2(3)
 REAL                                 :: BCGradMat(1:PP_dim,1:PP_dim)
-REAL,DIMENSION(PP_nVar,    0:Nloc,0:ZDIM(Nloc)):: Fd_Face_loc,    Gd_Face_loc,    Hd_Face_loc
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)):: gradUx_Face_loc,gradUy_Face_loc,gradUz_Face_loc
-REAL :: gradUx_vNormal,gradUx_vTang1,gradUy_vNormal,gradUy_vTang1
-REAL :: gradUn_vNormal,gradUn_vTang1,gradUt1_vNormal,gradUt1_vTang1
+REAL                                 :: Fd_Face_loc(PP_nVar,    0:Nloc,0:ZDIM(Nloc))
+REAL                                 :: Gd_Face_loc(PP_nVar,    0:Nloc,0:ZDIM(Nloc))
+REAL                                 :: Hd_Face_loc(PP_nVar,    0:Nloc,0:ZDIM(Nloc))
+REAL                                 :: gradUx_Face_loc(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc))
+REAL                                 :: gradUy_Face_loc(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc))
+REAL                                 :: gradUz_Face_loc(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc))
+REAL                                 :: gradUx_vNormal,gradUx_vTang1,gradUy_vNormal,gradUy_vTang1
+REAL                                 :: gradUn_vNormal,gradUn_vTang1,gradUt1_vNormal,gradUt1_vTang1
 #if PP_dim == 3
-REAL :: gradUx_vTang2,gradUy_vTang2,gradUz_vNormal,gradUz_vTang1,gradUz_vTang2
-REAL :: gradUn_vTang2,gradUt1_vTang2,gradUt2_vNormal,gradUt2_vTang1,gradUt2_vTang2
+REAL                                 :: gradUx_vTang2,gradUy_vTang2,gradUz_vNormal,gradUz_vTang1,gradUz_vTang2
+REAL                                 :: gradUn_vTang2,gradUt1_vTang2,gradUt2_vNormal,gradUt2_vTang1,gradUt2_vTang2
 #endif
 #endif /*PARABOLIC*/
 !==================================================================================================================================
@@ -554,12 +558,12 @@ IF (BCType.LT.0) THEN ! testcase boundary condition
                                gradUx_master,gradUy_master,gradUz_master,&
 #endif
                                NormVec,TangVec1,TangVec2,Face_xGP)
-ELSE                       
+ELSE
   CALL GetBoundaryState(SideID,t,Nloc,UPrim_boundary,UPrim_master,&
       NormVec,TangVec1,TangVec2,Face_xGP)
 
   SELECT CASE(BCType)
-  CASE(2,12,121,22,23,24,25,27) ! Riemann-Type BCs 
+  CASE(2,12,121,22,23,24,25,27) ! Riemann-Type BCs
     DO q=0,ZDIM(Nloc); DO p=0,Nloc
       CALL PrimToCons(UPrim_master(:,p,q), UCons_master(:,p,q))
       CALL PrimToCons(UPrim_boundary(:,p,q),      UCons_boundary(:,p,q))
@@ -571,7 +575,7 @@ ELSE
          gradUx_master,gradUy_master,gradUz_master,&
          gradUx_master,gradUy_master,gradUz_master,&
          NormVec&
-#ifdef EDDYVISCOSITY
+#if EDDYVISCOSITY
         ,muSGS_master(:,:,:,SideID),muSGS_master(:,:,:,SideID)&
 #endif
     )
@@ -579,7 +583,7 @@ ELSE
 #endif /*PARABOLIC*/
 
   CASE(3,4,9,91) ! Walls
-#ifdef EDDYVISCOSITY
+#if EDDYVISCOSITY
     muSGS_master(:,:,:,SideID)=0.
 #endif
     DO q=0,ZDIM(Nloc); DO p=0,Nloc
@@ -594,12 +598,13 @@ ELSE
     SELECT CASE(BCType)
     CASE(3,4)
       ! Evaluate 3D Diffusion Flux with interior state and symmetry gradients
-      CALL EvalDiffFlux2D(Nloc,Fd_Face_loc,Gd_Face_loc,Hd_Face_loc,UPrim_boundary,&
-          gradUx_master, gradUy_master, gradUz_master &
-#ifdef EDDYVISCOSITY
-          ,muSGS_master(:,:,:,SideID) &
+      CALL EvalDiffFlux3D(Nloc,UPrim_boundary,&
+                          gradUx_master, gradUy_master, gradUz_master, &
+                          Fd_Face_loc,   Gd_Face_loc,   Hd_Face_loc    &
+#if EDDYVISCOSITY
+                         ,muSGS_master(:,:,:,SideID) &
 #endif
-      )
+                         )
       IF (BCType.EQ.3) THEN
         ! Enforce energy flux is exactly zero at adiabatic wall
         Fd_Face_loc(5,:,:)=0.
@@ -646,10 +651,11 @@ ELSE
 
       ! Evaluate 3D Diffusion Flux with interior state (with normalvel=0) and symmetry gradients
       ! Only velocities will be used from state (=inner velocities, except normal vel=0)
-      CALL EvalDiffFlux2D(Nloc,Fd_Face_loc,Gd_Face_loc,Hd_Face_loc,UPrim_boundary,&
-          gradUx_Face_loc,gradUy_Face_loc,gradUz_Face_loc                         &
-#ifdef EDDYVISCOSITY
-          ,muSGS_master(:,:,:,SideID)&
+      CALL EvalDiffFlux3D(Nloc, UPrim_boundary,                              &
+                          gradUx_Face_loc, gradUy_Face_loc, gradUz_Face_loc, &
+                          Fd_Face_loc, Gd_Face_loc, Hd_Face_loc              &
+#if EDDYVISCOSITY
+                         ,muSGS_master(:,:,:,SideID)                         &
 #endif
       )
     CASE(91)
@@ -772,10 +778,11 @@ ELSE
 
       ! Evaluate 3D Diffusion Flux with interior state (with normalvel=0) and symmetry gradients
       ! Only velocities will be used from state (=inner velocities, except normal vel=0)
-      CALL EvalDiffFlux2D(Nloc,Fd_Face_loc,Gd_Face_loc,Hd_Face_loc,UPrim_boundary,&
-          gradUx_Face_loc,gradUy_Face_loc,gradUz_Face_loc                         &
-#ifdef EDDYVISCOSITY
-          ,muSGS_master(:,:,:,SideID)&
+      CALL EvalDiffFlux3D(Nloc,UPrim_boundary,                            &
+                          Fd_Face_loc,Gd_Face_loc,Hd_Face_loc,            &
+                          gradUx_Face_loc,gradUy_Face_loc,gradUz_Face_loc &
+#if EDDYVISCOSITY
+                         ,muSGS_master(:,:,:,SideID)&
 #endif
       )
     END SELECT
@@ -786,7 +793,7 @@ ELSE
         NormVec(1,:,:)*Fd_Face_loc(iVar,:,:) + &
         NormVec(2,:,:)*Gd_Face_loc(iVar,:,:) + &
         NormVec(3,:,:)*Hd_Face_loc(iVar,:,:)
-    END DO ! ivar
+    END DO ! iVar
 #endif /*PARABOLIC*/
 
   CASE(1) !Periodic already filled!
@@ -812,7 +819,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN):: SideID                                      !< ID of current side
-REAL,INTENT(IN)   :: t                                           !< current time (provided by time integration scheme)  
+REAL,INTENT(IN)   :: t                                           !< current time (provided by time integration scheme)
 REAL,INTENT(IN)   :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ)    !< primitive solution from the inside
 REAL,INTENT(OUT)  :: gradU       (PP_nVarPrim,0:PP_N,0:PP_NZ)    !< gradient at boundary for FV subcells
 REAL,INTENT(IN)   :: NormVec (              3,0:PP_N,0:PP_NZ)    !< normal vector on surfaces
@@ -831,7 +838,7 @@ BCState = Boundarytype(BC(SideID),BC_STATE)
 
 IF (BCType.LT.0) THEN ! testcase boundary condition
   CALL GetBoundaryFVgradientTestcase(SideID,t,gradU,UPrim_master)
-ELSE 
+ELSE
   CALL GetBoundaryState(SideID,t,PP_N,UPrim_boundary,UPrim_master,&
       NormVec,TangVec1,TangVec2,Face_xGP)
   SELECT CASE(BCType)
@@ -892,7 +899,7 @@ ELSE
       Flux=0.5*(UPrim_master+UPrim_boundary)
   CASE(3,4) ! No-slip wall BCs
     DO q=0,PP_NZ; DO p=0,PP_N
-      Flux(1  ,p,q) = UPrim_Boundary(1,p,q) 
+      Flux(1  ,p,q) = UPrim_Boundary(1,p,q)
       Flux(2:4,p,q) = 0.
       Flux(5  ,p,q) = UPrim_Boundary(5,p,q)
       Flux(6  ,p,q) = UPrim_Boundary(6,p,q)

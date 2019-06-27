@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -36,7 +36,7 @@ CONTAINS
 
 !==================================================================================================================================
 !> Prolongate solution of FV subcells to the DG element boundary using the slopes of the 2nd order reconstruction.
-!> Before the call of this function the arrays UPrim_master and UPrim_slave only contain the cell average of the FV subcells 
+!> Before the call of this function the arrays UPrim_master and UPrim_slave only contain the cell average of the FV subcells
 !> (1st order data copied from volume to face data in the prolongtoface.f90, but without reconstruction)
 !> When this routine is called the slopes over DG element interfaces are computed but not limited. Therefore first these
 !> slopes are limited and then used to calculate the reconstructed solutions UPrim_master/slave at the DG element interfaces.
@@ -55,19 +55,19 @@ USE MOD_Mesh_Vars ,ONLY: firstInnerSide,lastInnerSide,nSides,firstBCSide
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-LOGICAL,INTENT(IN) :: doMPISides  !< =.TRUE. only MPI sides are filled, =.FALSE. inner sides 
+LOGICAL,INTENT(IN) :: doMPISides  !< =.TRUE. only MPI sides are filled, =.FALSE. inner sides
 REAL,INTENT(INOUT) :: UPrim_master   (PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< primitive master solution (without reconstruction)
 REAL,INTENT(INOUT) :: UPrim_slave    (PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< primitive slave solution (without reconstruction)
 REAL,INTENT(INOUT) :: FV_multi_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< first inner slope of the master element
 REAL,INTENT(INOUT) :: FV_multi_slave (PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< first inner slope of the slave element
-REAL,INTENT(IN)    :: FV_surf_gradU  (PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< slope over the interface 
+REAL,INTENT(IN)    :: FV_surf_gradU  (PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< slope over the interface
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 INTEGER :: SideID,firstSideID,lastSideID
 INTEGER :: p,q
 REAL    :: gradU(PP_nVarPrim,0:PP_N,0:PP_NZ)
 !==================================================================================================================================
-! reconstruct UPrim_master/slave for sides ranging between firstSideID and lastSideID 
+! reconstruct UPrim_master/slave for sides ranging between firstSideID and lastSideID
 IF(doMPISides)THEN
   ! fill only flux for MINE MPISides
   firstSideID = firstMPISide_MINE

@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -89,11 +89,11 @@ END DO
 #if USE_MPI
 Box(1:3,1:nBCs)=Fv; Box(4:6,1:nBCs)=Fp
 IF(MPIRoot)THEN
-  CALL MPI_REDUCE(MPI_IN_PLACE,Box,6*nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,iError)
+  CALL MPI_REDUCE(MPI_IN_PLACE,Box,6*nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
   Fv=Box(1:3,1:nBCs); Fp=Box(4:6,1:nBCs)
   BodyForce=Fv+Fp
 ELSE
-  CALL MPI_REDUCE(Box         ,0  ,6*nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,iError)
+  CALL MPI_REDUCE(Box         ,0  ,6*nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 END IF
 #endif
 
@@ -166,7 +166,7 @@ DO j=0,PP_NZ; DO i=0,PP_N
   GradV(:,2)=gradUy_Face(2:4,i,j)
 #if PP_dim==3
   GradV(:,3)=gradUz_Face(2:4,i,j)
-#else 
+#else
   GradV(:,3)=0.
 #endif
 
@@ -185,14 +185,6 @@ END DO; END DO
 
 Fv=-Fv  ! Change direction to get the force acting on the wall
 
-#ifdef DEBUG
-! ===============================================================================
-! Following dummy calls do suppress compiler warnings of unused Riemann-functions
-! ===============================================================================
-IF (0.EQ.1) THEN
-  WRITE (*,*) gradUz_Face
-END IF
-#endif
 END SUBROUTINE CalcViscousForce
 #endif /*PARABOLIC*/
 

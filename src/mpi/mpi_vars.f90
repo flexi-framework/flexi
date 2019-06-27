@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -29,8 +29,7 @@ INTEGER,ALLOCATABLE :: MPIRequest_Flux(:,:)     !< communication handle for the 
 INTEGER,ALLOCATABLE :: MPIRequest_FV_Elems(:,:) !< communication handle for the FV_Elems array
 INTEGER,ALLOCATABLE :: MPIRequest_FV_gradU(:,:) !< communication handle for the slopes of the FV reconstruction
 #endif
-#ifdef EDDYVISCOSITY
-INTEGER,ALLOCATABLE :: MPIRequest_DeltaS(:,:)   !< communication handle for the surface flux used for overintegration
+#if EDDYVISCOSITY
 INTEGER,ALLOCATABLE :: MPIRequest_SGS(:,:)      !< communication handle for the SGS Model Indicator
 #endif
 #if PARABOLIC
@@ -55,7 +54,7 @@ INTEGER,ALLOCATABLE :: offsetMPISides_MINE(:)   !< gives position of send/recv b
                                                 !< set in setLocalSideIDs (prepare_mesh.f90)
 INTEGER,ALLOCATABLE :: offsetMPISides_YOUR(:)   !< gives position of send/recv block in *_YOUR arrays,allocated from 0:nNbProcs,
                                                 !< is set in setLocalSideIDs (prepare_mesh.f90)
-INTEGER,ALLOCATABLE :: offsetElemMPI(:)         !< gives offsetposotion of elements of all procs, allocated from 1:nProcessors set
+INTEGER,ALLOCATABLE :: offsetElemMPI(:)         !< gives offsetposotion of elements of all procs, allocated from 0:nProcessors set
                                                 !< in ReadMesh
 INTEGER,ALLOCATABLE :: nMPISides_send(:,:)      !< number of sides to send, (1:nNbProcs,1:2), last index: 1: SEND MINE, 2: SEND YOUR
 INTEGER,ALLOCATABLE :: nMPISides_rec(:,:)       !< number of sides to receive, (1:nNbProcs,1:2), last index: 1: RECEIVE YOUR,

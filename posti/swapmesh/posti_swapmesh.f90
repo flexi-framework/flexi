@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -25,7 +25,7 @@
 !>     The found reference coordinates are marked as invalid if the reference coordinates are outside of [-1,1] more than
 !>     maxTol and the code will abort if they are outside more than abortTol.
 !>   * The old state files will then be interpolated to the new interpolation nodes and transformed to the new polynomial degree
-!>     NNew. If some points are marked as invalid and a reference solution has been specified, this reference solution will be 
+!>     NNew. If some points are marked as invalid and a reference solution has been specified, this reference solution will be
 !>     used at those points.
 !===================================================================================================================================
 PROGRAM swapMesh
@@ -117,9 +117,9 @@ CALL InitSwapmesh()
 CALL InitMPIvars()
 #endif
 
-#ifdef MPI
-nTotalNew=REAL(nVar_HDF5*(NNew+1)**3*nElemsNew)
-nTotalOld=REAL(nVar_HDF5*(NOld+1)**3*nElemsOld)
+#if USE_MPI
+nTotalNew=REAL(nVar_State*(NNew+1)**3*nElemsNew)
+nTotalOld=REAL(nVar_State*(NState+1)**3*nElemsOld)
 !limit=(2**31-1)/8.
 limit=2**28-1/8. ! max. 32 bit integer / 8
 IF((nTotalNew.GT.limit).OR.(nTotalNew.GT.limit))THEN

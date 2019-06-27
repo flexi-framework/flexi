@@ -31,10 +31,10 @@ USE MOD_ParametersVisu              ,ONLY:equiTimeSpacing,doSpec,doFluctuations,
 USE MOD_ParametersVisu              ,ONLY:Plane_doBLProps
 USE MOD_RPSetVisu                   ,ONLY:InitRPSet,FinalizeRPSet
 USE MOD_RPData                      ,ONLY:ReadRPData,AssembleRPData,FinalizeRPData
-USE MOD_OutputRPVisu                      
+USE MOD_OutputRPVisu
 USE MOD_RPInterpolation
 USE MOD_RPInterpolation_Vars        ,ONLY:CalcTimeAverage
-USE MOD_EquationRP                
+USE MOD_EquationRP
 USE MOD_FilterRP                    ,ONLY:FilterRP
 USE MOD_Spec                        ,ONLY:InitSpec,Spec,FinalizeSpec
 USE MOD_Turbulence
@@ -109,7 +109,7 @@ DO iArg=1,nDataFiles
   WRITE(UNIT_stdOUT,*) "READING DATA FROM RP FILE """,TRIM(InputDataFile), """"
   IF(iArg.EQ.1) THEN
     CALL ReadRPData(InputDataFile,firstFile=.TRUE.)
-  ELSE 
+  ELSE
     CALL ReadRPData(InputDataFile)
   END IF
 END DO
@@ -123,11 +123,11 @@ IF(doSpec)             CALL InitSpec()
 CALL InitOutput()
 IF(equiTimeSpacing)    CALL InterpolateEquiTime()
 CALL CalcEquationRP()
-IF(calcTimeAverage)    CALL CalcTimeAvg() 
+IF(calcTimeAverage)    CALL CalcTimeAvg()
 IF(doFluctuations)     CALL CalcFluctuations()
 IF(doFilter)           CALL FilterRP()
 IF(doSpec)             CALL Spec()
-IF(Plane_doBLProps)    CALL Plane_BLProps() 
+IF(Plane_doBLProps)    CALL Plane_BLProps()
 CALL OutputRP()
 IF(doTurb)             CALL Turbulence()
 CALL FinalizeInterpolation()
@@ -213,7 +213,7 @@ CALL prms%CreateLogicalOption('doFilter'           ,"Set to perform temporal fil
 CALL prms%CreateRealOption   ('FilterWidth'        ,"Width of the temporal filter")
 CALL prms%CreateIntOption    ('FilterMode'         ,"Set to 0 for low pass filter and to 1 for high pass filter")
 
-CALL prms%CreateRealOption   ('mu0'                ,"Kinematic viscosity, needed for turbulent quantities") 
+CALL prms%CreateRealOption   ('mu0'                ,"Kinematic viscosity, needed for turbulent quantities")
 
 CALL prms%CreateIntOption    ('SkipSample'         ,"Used to skip every n-th RP evaluation")
 CALL prms%CreateIntOption    ('OutputFormat'       ,"Choose the main format for output. 0: ParaView, 2: HDF5")
@@ -279,7 +279,7 @@ IF(doSpec) THEN
   ! 2. Prescription of Sampling Frequency and Blocksize
   samplingFreq=GETREAL('SamplingFreq','-999')
   IF(samplingFreq.GT.0.) THEN
-    BlockSize=GETINT('BlockSize') 
+    BlockSize=GETINT('BlockSize')
   END IF
   doHanning=GETLOGICAL('hanning','.FALSE.')
   fourthDeriv=GETLOGICAL('fourthDeriv','.FALSE.')
@@ -300,7 +300,7 @@ IF(OutputTimeData) equiTimeSpacing=GETLOGICAL('equiTimeSpacing','.FALSE.')
 IF(doTurb.OR.doSpec) equiTimeSpacing=.TRUE.
 
 ! =============================================================================== !
-! PLANE OPTIONS 
+! PLANE OPTIONS
 ! =============================================================================== !
 OutputPlanes      =GETLOGICAL('OutputPlanes','.TRUE.')
 Plane_LocalCoords =GETLOGICAL('Plane_LocalCoords','.FALSE.')
@@ -314,23 +314,23 @@ IF(Plane_doBLProps) THEN ! for BL properties we need local coords and velocities
   OutputTimeAverage=.TRUE.
   Plane_LocalCoords=.TRUE.
   Plane_LocalVel   =.TRUE.
-  Plane_BLvelScaling  =GETINT('Plane_BLvelScaling','0') ! 0 - no scaling. 
+  Plane_BLvelScaling  =GETINT('Plane_BLvelScaling','0') ! 0 - no scaling.
   ! 1 - "laminar scaling": scale velocity with u_delta and PlaneY with delta99
   ! 2 - "turbulent scaling:" calculate u+ and y+
 END IF
 ! =============================================================================== !
-! LINE OPTIONS 
+! LINE OPTIONS
 ! =============================================================================== !
 OutputLines      =GETLOGICAL('OutputLines',     '.TRUE.')
 Line_LocalCoords =GETLOGICAL('Line_LocalCoords','.FALSE.')
 Line_LocalVel    =GETLOGICAL('Line_LocalVel',   '.FALSE.')
-IF(Line_LocalVel) THEN 
+IF(Line_LocalVel) THEN
   Line_LocalVel_vec=GETREALARRAY('Line_LocalVel_vec',3)
   ! normalize the vector
   Line_LocalVel_vec = Line_LocalVel_vec/NORM2(Line_LocalVel_vec)
 END IF
 ! =============================================================================== !
-! POINT OPTIONS 
+! POINT OPTIONS
 ! =============================================================================== !
 OutputPoints     =GETLOGICAL('OutputPoints','.TRUE.')
 
@@ -350,7 +350,7 @@ END SUBROUTINE InitParameters
 !> and visualization variables.
 !>  1. Read 'VarName' options from the parameter file. This are the quantities that will be visualized.
 !>  2. Initialize the dependecy table
-!>  3. check wether gradients are needed for any quantity. If this is the case, remove the conservative quantities from the 
+!>  3. check wether gradients are needed for any quantity. If this is the case, remove the conservative quantities from the
 !>     dependecies of the primitive quantities (the primitive quantities are available directly, since the DGTimeDerivative_weakForm
 !>     will be executed.
 !>  4. build the 'mapCalc' that holds for each quantity that will be calculated the index in 'UCalc' array (0 if not calculated)

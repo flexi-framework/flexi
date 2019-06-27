@@ -67,14 +67,14 @@ IF (fourthDeriv) THEN
    nSamples_out = INT(nSamples_out * dt_out/1E-3)
   END IF
 END IF
-    
+
 ! Make BlockSize even
 IF(MOD(Blocksize,2).NE.0) THEN
   WRITE(UNIT_StdOut,'(A)')'   WARNING: Blocksize should be even!!! Equalizing...'
   BlockSize=BlockSize+1
 END IF
-   
-! if sampling frequency is prescribed, we calculate the number of blocks and 
+
+! if sampling frequency is prescribed, we calculate the number of blocks and
 ! cut off the signal to fit the number of blocks
 IF(samplingFreq.GT.0) THEN
   dt_out=1./samplingFreq
@@ -90,7 +90,7 @@ ELSE
   ! Create nSamples such as to be multiple of block_fac
   block_fac = (nBlocks+1)/2.
   nSamples_out = NINT(nSamples_out/(nBlocks+1.))*(nBlocks+1)+1
-  TEnd =RPTime(nSamples_global) 
+  TEnd =RPTime(nSamples_global)
 END IF
 dt_out = (TEnd-RPTime(1))/REAL(nSamples_out-1)
 
@@ -119,7 +119,7 @@ USE MOD_RPSetVisuVisu_Vars   ,ONLY: nRP_global
 USE MOD_RPInterpolation_Vars
 USE MOD_OutputRPVisu_Vars    ,ONLY: nSamples_out,RPData_out
 USE MOD_ParametersVisu       ,ONLY: doPSD,doFFT,nVarVisu,nBlocks,cutoffFreq,doHanning,fourthDeriv,thirdOct
-USE MOD_ParametersVisu       ,ONLY: u_infPhys,chordPhys 
+USE MOD_ParametersVisu       ,ONLY: u_infPhys,chordPhys
 USE FFTW3
 USE MOD_Spec_Vars
 IMPLICIT NONE
@@ -172,7 +172,7 @@ WRITE(UNIT_stdOut,'(A,F16.7)')'             Frequency resolution:',df
 IF(cutoffFreq.NE.-999)THEN
   WRITE(UNIT_stdOut,'(A,F16.7)')'    User defined Cutoff Frequency:',cutoffFreq
   nSamples_spec=MIN(NINT(cutoffFreq/dF)+1,nSamples_spec)
-END IF  
+END IF
 WRITE(UNIT_stdOut,'(A,I8)')   '  No. spectrum output samples FFT:',nSamples_spec
 WRITE(UNIT_stdOut,'(A,F16.7)')'                Nyquist frequency:',0.5*df*REAL(nSamples_block-1)
 WRITE(UNIT_stdOut,'(A,F16.7)')'          Max. resolved frequency:',RPData_freq(nSamples_spec)
@@ -200,7 +200,7 @@ IF(doPSD .OR. doFFT) THEN
         IF(doHanning) CALL hanning(nSamples_block,in)
         CALL DFFTW_EXECUTE_DFT(plan, in, out)
         out(1:nSamples_spec)=2./REAL(nSamples_block)*ABS(out(1:nSamples_spec))
-        out(1)=0.5*out(1) !mean value 
+        out(1)=0.5*out(1) !mean value
         IF (doPSD) THEN
           RPData_spec(iVar,iRP,:)=REAL(RPData_spec(iVar,iRP,:)+out(1:nSamples_spec)**2)
         ELSE
@@ -210,7 +210,7 @@ IF(doPSD .OR. doFFT) THEN
       IF (doPSD) THEN
         RPData_spec(iVar,iRP,2:nSamples_spec)=0.5*RPData_spec(iVar,iRP,2:nSamples_spec)/nBlocks/df
         IF (fourthDeriv) THEN
-          RPData_spec(iVar,iRP,:)= RPData_spec(iVar,iRP,:)/(RPData_freq(:)*2*PP_Pi)**8 
+          RPData_spec(iVar,iRP,:)= RPData_spec(iVar,iRP,:)/(RPData_freq(:)*2*PP_Pi)**8
         END IF
         ! MS value on the first index
         RPData_spec(iVar,iRP,1)=SQRT(SUM(RPData_spec(iVar,iRP,2:nSamples_spec))*df)
@@ -218,7 +218,7 @@ IF(doPSD .OR. doFFT) THEN
       ELSE
         RPData_spec(iVar,iRP,:)=RPData_spec(iVar,iRP,:)/nBlocks
         IF (fourthDeriv) THEN
-          RPData_spec(iVar,iRP,:)= RPData_spec(iVar,iRP,:)/(RPData_freq(:)*2*PP_Pi)**4 
+          RPData_spec(iVar,iRP,:)= RPData_spec(iVar,iRP,:)/(RPData_freq(:)*2*PP_Pi)**4
         END IF
         ! MS value on the first index
       !  RPData_spec(iVar,iRP,1)=SUM(RPData_spec(iVar,iRP,2:nSamples_spec))**2/nSamples_spec
@@ -293,7 +293,7 @@ IF(ThirdOct) THEN
   END DO   ! iRP
 END IF!1/3 Oct
 DEALLOCATE(in,out,RPData_tmp)
-CALL DFFTW_DESTROY_PLAN(plan)        
+CALL DFFTW_DESTROY_PLAN(plan)
 WRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE Spec
 

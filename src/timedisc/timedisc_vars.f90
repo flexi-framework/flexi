@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -390,7 +390,7 @@ CASE('toulorgerk4-8f')
   ELSE
     CFLScaleAlpha(1:15) = &
     (/ 7.9706, 5.5346, 4.6486, 4.1376, 3.7686, 3.4726, 3.2246, 3.0116, 2.8276, 2.6676, 2.5266, 2.4026, 2.2866, 2.1776, 2.0806 /)
-  ENDIF 
+  ENDIF
 #endif /*PP_NodeType*/
 #if FV_ENABLED
   CFLScaleFV = 3.5856
