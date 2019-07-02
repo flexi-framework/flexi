@@ -30,6 +30,8 @@ stages:
       - build_gnu
     policy: pull
 
+
+
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "build": Build with intel/gnu on check-in
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
@@ -61,7 +63,7 @@ gnu:
   stage: reggie_checkin
   script:
     - cd build_gnu
-    - python ./reggie2.0/reggie.py ../regressioncheck/checks/run_basic/freestream_3D -e ./bin/flexi
+    - python ./reggie2.0/reggie.py ../regressioncheck/checks/run_basic/freestream_3D -j 6 -e ./bin/flexi
 
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
@@ -74,19 +76,19 @@ gnu_build_all:
   <<: *defaults_gnu
   stage: reggie_nightly
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then  cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/run_basic ; fi
+    - if [ -n "${DO_NIGHTLY}" ]; then  cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/run_basic -j 6; fi
 
 gnu_timediscs:
   <<: *defaults_gnu
   stage: reggie_nightly
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then  cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/timedisc ; fi
+    - if [ -n "${DO_NIGHTLY}" ]; then  cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/timedisc -j 6; fi
 
 gnu_convtest:
   <<: *defaults_gnu
   stage: reggie_nightly
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/convtest ; fi 
+    - if [ -n "${DO_NIGHTLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/convtest -j 6; fi 
 
  
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
