@@ -24,7 +24,7 @@ SAVE
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 LOGICAL                :: IndicatorInitIsDone=.FALSE.
-INTEGER                :: IndicatorType               !< Type of indicator used: 0 = no indicator, 1 = Persson
+INTEGER                :: IndicatorType               !< Type of indicator used
 INTEGER                :: IndVar                      !< variable on which indicator is applied (only cons)
 INTEGER                :: nModes                      !< number of modes to check for Persson modal indicator
 REAL,ALLOCATABLE       :: IndValue(:)                 !< indicator output

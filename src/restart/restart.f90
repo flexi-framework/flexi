@@ -181,6 +181,7 @@ USE MOD_Interpolation,      ONLY: GetVandermonde
 USE MOD_ApplyJacobianCons,  ONLY: ApplyJacobianCons
 USE MOD_Interpolation_Vars, ONLY: NodeType
 #if FV_ENABLED
+USE MOD_FV,                 ONLY: FV_ProlongFVElemsToFace
 USE MOD_FV_Vars,            ONLY: FV_Elems
 USE MOD_Indicator_Vars,     ONLY: IndValue
 USE MOD_StringTools,        ONLY: STRICMP
@@ -239,6 +240,7 @@ IF(DoRestart)THEN
     END IF
   END DO
   DEALLOCATE(ElemData,VarNamesElemData,tmp)
+  CALL FV_ProlongFVElemsToFace()
 #endif
 
 
