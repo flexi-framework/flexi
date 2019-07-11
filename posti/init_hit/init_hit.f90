@@ -192,7 +192,6 @@ END DO !iElem
 
 ! Write State-File to initialize HIT
 Time=0.
-write(ProjectName,'(A,I5.5)')'FileTest',iter
 CALL WriteState(TRIM(MeshFile),Time,Time,.FALSE.)
 end DO
 
