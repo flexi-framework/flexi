@@ -1,3 +1,13 @@
+before_script:
+  - export PATH=/opt/openmpi/3.1.3/bin:$PATH
+  - export LD_LIBRARY_PATH=/opt/openmpi/3.1.3/lib/:$LD_LIBRARY_PATH
+  - export CMAKE_PREFIX_PATH=/opt/openmpi/3.1.3/share/cmake:$CMAKE_PREFIX_PATH
+  - export CMAKE_LIBRARY_PATH=/opt/openmpi/3.1.3/lib:$CMAKE_LIBRARY_PATH
+  - export HDF5_DIR=/opt/hdf5/1.10.5/share/cmake/
+  - export LD_LIBRARY_PATH=/opt/hdf5/1.10.5/lib/:$LD_LIBRARY_PATH
+  - export CMAKE_PREFIX_PATH=/opt/hdf5/1.10.5/:$CMAKE_PREFIX_PATH
+  - export CMAKE_LIBRARY_PATH=/opt/hdf5/1.10.5/lib:$CMAKE_LIBRARY_PATH
+
 stages:
   - build
   - reggie_checkin
@@ -7,7 +17,7 @@ stages:
 
 .template: &defaults_gnu
   tags:
-    - withmodules-concurrent
+    - flexitag
   artifacts:
     name: "${CI_PIPELINE_ID}-${CI_COMMIT_REF_NAME}-${CI_JOB_NAME}"
     expire_in: 1 day
@@ -20,20 +30,6 @@ stages:
       - build_gnu
     policy: pull
 
-.template: &defaults_intel
-  tags:
-    - withmodules-concurrent
-  artifacts:
-    name: "${CI_PIPELINE_ID}-${CI_COMMIT_REF_NAME}-${CI_JOB_NAME}"
-    expire_in: 1 day
-    when: on_failure
-    paths:
-      - build_intel
-  cache:
-    key: "${CI_COMMIT_REF_SLUG}-INTEL"
-    paths:
-      - build_intel
-    policy: pull
 
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
@@ -41,7 +37,7 @@ stages:
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 build_gnu:
   tags:
-    - withmodules-concurrent
+    - flexitag
   artifacts:
     name: "${CI_PIPELINE_ID}-${CI_COMMIT_REF_NAME}-${CI_JOB_NAME}"
     expire_in: 1 day
@@ -55,29 +51,9 @@ build_gnu:
     policy: push
   stage: build
   script:
-    - module load env/gnu; mkdir -p build_gnu ; cd build_gnu
-    - git clone git@gitlab.iag.uni-stuttgart.de:reggie/reggie.git
-    - cmake .. -DFLEXI_BUILD_HDF5=OFF ; make -j all
-
-      #build_intel:
-      #  tags:
-      #    - withmodules-concurrent
-      #  artifacts:
-      #    name: "${CI_PIPELINE_ID}-${CI_COMMIT_REF_NAME}-${CI_JOB_NAME}"
-      #    expire_in: 1 day
-      #    when: on_failure
-      #    paths:
-      #      - build_intel
-      #  cache:
-      #    key: "${CI_COMMIT_REF_SLUG}-INTEL"
-      #    paths:
-      #      - build_intel
-      #    policy: push
-      #  stage: build
-      #  script:
-      #    - module load env/intel; mkdir -p build_intel ; cd build_intel
-      #    - git clone git@gitlab.iag.uni-stuttgart.de:reggie/reggie.git
-      #    - cmake .. -DFLEXI_BUILD_HDF5=OFF ; make -j all
+    - mkdir -p build_gnu ; cd build_gnu
+    - git clone git@gitlab.com:reggie2.0/reggie2.0.git
+    - cmake .. -DFLEXI_BUILD_HDF5=OFF ; make -j 6
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "reggie_checkin": Run most simple reggie with previous builds on check-in
@@ -86,15 +62,9 @@ gnu:
   <<: *defaults_gnu
   stage: reggie_checkin
   script:
-    - module load env/gnu ; cd build_gnu
-    - python ./reggie/reggie.py ../regressioncheck/checks/run_basic/freestream_3D -e ./bin/flexi
+    - cd build_gnu
+    - python ./reggie2.0/reggie.py ../regressioncheck/checks/run_basic/freestream_3D -j 6 -e ./bin/flexi
 
-      #intel:
-      #  <<: *defaults_intel
-      #  stage: reggie_checkin
-      #  script:
-      #    - module load env/intel ; cd build_intel
-      #    - python ./reggie/reggie.py ../regressioncheck/checks/run_basic/freestream_3D -e ./bin/flexi
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "reggie_nightly": Build and run
@@ -106,38 +76,20 @@ gnu_build_all:
   <<: *defaults_gnu
   stage: reggie_nightly
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then  module load env/gnu ; cd build_gnu ;  python ./reggie/reggie.py ../regressioncheck/checks/run_basic ; fi
+    - if [ -n "${DO_NIGHTLY}" ]; then  cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/run_basic -j 6; fi
 
 gnu_timediscs:
   <<: *defaults_gnu
   stage: reggie_nightly
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then  module load env/gnu ; cd build_gnu ;  python ./reggie/reggie.py ../regressioncheck/checks/timedisc ; fi
+    - if [ -n "${DO_NIGHTLY}" ]; then  cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/timedisc -j 6; fi
 
 gnu_convtest:
   <<: *defaults_gnu
   stage: reggie_nightly
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then module load env/gnu ; cd build_gnu ;  python ./reggie/reggie.py ../regressioncheck/checks/convtest ; fi 
+    - if [ -n "${DO_NIGHTLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/convtest -j 6; fi 
 
-
-      #intel_build_all:
-      #  <<: *defaults_intel
-      #  stage: reggie_nightly
-      #  script:
-      #    - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel ;  python ./reggie/reggie.py ../regressioncheck/checks/run_basic ; fi
-      #
-      #intel_timediscs:
-      #  <<: *defaults_intel
-      #  stage: reggie_nightly
-      #  script:
-      #    - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel ;  python ./reggie/reggie.py ../regressioncheck/checks/timedisc ; fi
-      #
-      #intel_convtest:
-      #  <<: *defaults_intel
-      #  stage: reggie_nightly
-      #  script:
-      #    - if [ -n "${DO_NIGHTLY}" ]; then module load env/intel ; cd build_intel ;  python ./reggie/reggie.py ../regressioncheck/checks/convtest ; fi 
  
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "deploy": 1. Creates doxygen documentation & compiles the documentation creating the *.pdf
@@ -146,7 +98,7 @@ gnu_convtest:
 documentation:
   stage: deploy
   tags:
-    - withmodules-concurrent
+    - flexitag
   script:
     - cd doc/doxygen ; ./builddoxy.sh
     - if [ -n "${DO_DEPLOY}" ]; then ssh flexi@euler rm -rf homepage/doxygen ; scp -r doxygen flexi@euler:~/homepage/. ; fi
@@ -161,7 +113,7 @@ documentation:
 userguide:
   stage: deploy
   tags:
-    - withmodules-concurrent
+    - flexitag
   script:
     - cd doc/userguide ; make; cd ..
     - if [ -n "${DO_DEPLOY}" ]; then scp -r userguide flexi@euler:~/homepage/. ; fi
@@ -175,7 +127,7 @@ userguide:
 github:
   stage: deploy
   tags:
-    - withmodules-concurrent
+    - flexitag
   script:
     - if [ -z "${DO_DEPLOY}" ]; then exit ; fi
     - git clone --single-branch git@gitlab.iag.uni-stuttgart.de:flexi/flexi.git flexi_github ; cd flexi_github ; git push --mirror git@github.com:flexi-framework/flexi.git ; cd ../
