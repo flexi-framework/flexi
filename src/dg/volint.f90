@@ -117,6 +117,10 @@ END SUBROUTINE VolInt_weakForm
 !> Computes the advection and viscous part volume integral in SplitDG formulation
 !> Attention 1: 1/J(i,j,k) is not yet accounted for
 !> Attention 2: input Ut is overwritten with the volume flux derivatives
+!> Attention 3: the factor of 2 in front of the derivative matrix entries is incorporated into the split fluxes!
+!> For details on the derivation see Gassner, Gregor J., Andrew R. Winters, and David A. Kopriva.
+!> "Split form nodal discontinuous Galerkin schemes with summation-by-parts property for the compressible Euler equations."
+!> Journal of Computational Physics 327 (2016): 39-66.
 !==================================================================================================================================
 SUBROUTINE VolInt_splitForm(Ut)
 !----------------------------------------------------------------------------------------------------------------------------------
