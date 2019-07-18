@@ -100,6 +100,7 @@ USE MOD_ReadinTools,         ONLY: GETLOGICAL
 #if USE_MPI
 USE MOD_MPI_Vars
 #endif
+USE MOD_IO_HDF5,             ONLY: AddToFieldData,FieldOut
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -138,6 +139,12 @@ ALLOCATE(gradUz(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 gradUx=0.
 gradUy=0.
 gradUz=0.
+
+
+! Get fluxes
+CALL AddToFieldData(FieldOut_In=FieldOut,nVal=(/6,PP_N+1,PP_N+1,PP_NZ+1,nElems/),DataSetName='GradUxDebug',&
+                             VarNames=(/'DensitydX','VelocityX','VelocityY','VelocityZ','PressureX','Temperatu'/),RealArray=GradUx,&
+                             doSeparateOutput=.TRUE.)
 
 
 LiftingInitIsDone=.TRUE.
