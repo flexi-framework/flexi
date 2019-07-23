@@ -165,6 +165,17 @@ IF(NgeoOld.EQ.NGeoNew) THEN
   WRITE(UNIT_StdOut,*)nEqualElems,' equal elements, ',nElemsOld-nEqualElems,' remaining.'
 END IF ! (NgeoOld.EQ.NGeoNew)
 
+
+! If extrusion is done, only elements with k=1 are checked here. All others are marked as already done
+IF (ExtrudeTo3D) THEN
+  DO iElemNew=1,nElemsNew
+    IF (Elem_IJK(3,iElemNew).NE.ExtrudeK) THEN
+      ElemDone(iElemNew) =.TRUE.
+      IPDone(:,:,:,iElemNew) = .TRUE.
+    END IF
+  END DO
+END IF
+
 !$OMP PARALLEL DEFAULT(SHARED)
 !$OMP DO PRIVATE(iElemOld,iElemNew,X_NSuper,dXCL_NGeo,IPOverlaps), &
 !$OMP& PRIVATE(ii,jj,kk,xInter,best,i,j,k,l,dist,xi,LagXi,LagEta,LagZeta,LagVol,F,iter,Jac,sJac,maxDist,eps_F) SCHEDULE(DYNAMIC,100)

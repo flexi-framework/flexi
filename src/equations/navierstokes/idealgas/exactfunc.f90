@@ -191,20 +191,20 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)              :: ExactFunction          !< determines the exact function
 REAL,INTENT(IN)                 :: x(3)                   !< physical coordinates
 REAL,INTENT(IN)                 :: tIn                    !< solution time (Runge-Kutta stage)
-REAL,INTENT(OUT)                :: Resu(5)                !< state in conservative variables
+REAL,INTENT(OUT)                :: Resu(PP_nVar)          !< state in conservative variables
 INTEGER,INTENT(IN),OPTIONAL     :: RefStateOpt            !< refstate to be used for exact func
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                         :: RefState
 REAL                            :: tEval
-REAL                            :: Resu_t(5),Resu_tt(5),ov ! state in conservative variables
+REAL                            :: Resu_t(PP_nVar),Resu_tt(PP_nVar),ov ! state in conservative variables
 REAL                            :: Frequency,Amplitude
 REAL                            :: Omega
 REAL                            :: Vel(3),Cent(3),a
 REAL                            :: Prim(PP_nVarPrim)
 REAL                            :: r_len
 REAL                            :: Ms,xs
-REAL                            :: Resul(5),Resur(5)
+REAL                            :: Resul(PP_nVar),Resur(PP_nVar)
 REAL                            :: random
 REAL                            :: du, dTemp, RT, r2       ! aux var for SHU VORTEX,isentropic vortex case 12
 REAL                            :: pi_loc,phi,radius       ! needed for cylinder potential flow
@@ -664,13 +664,13 @@ REAL,INTENT(INOUT)  :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< DG time deriv
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER             :: i,j,k,iElem
-REAL                :: Ut_src(5,0:PP_N,0:PP_N,0:PP_NZ)
+REAL                :: Ut_src(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 REAL                :: Frequency,Amplitude,Omega,a
 REAL                :: sinXGP,sinXGP2,cosXGP,at
 REAL                :: tmp(6)
 REAL                :: C
 #if FV_ENABLED
-REAL                :: Ut_src2(5,0:PP_N,0:PP_N,0:PP_NZ)
+REAL                :: Ut_src2(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 #endif
 !==================================================================================================================================
 SELECT CASE (IniExactFunc)

@@ -125,7 +125,11 @@ gnu_fv:
   script:
     - if [ -n "${DO_WEEKLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/fv -j 6; fi 
 
- 
+gnu_channelRANS:
+  <<: *defaults_gnu
+  stage: reggie_weekly
+  script:
+    - if [ -n "${DO_WEEKLY}" ]; then module load env/gnu ; cd build_gnu ;  python ./reggie/reggie.py ../regressioncheck/checks/channelRANS ; fi 
  
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "deploy": 1. Creates doxygen documentation & compiles the documentation creating the *.pdf

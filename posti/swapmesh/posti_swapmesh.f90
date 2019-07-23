@@ -81,6 +81,8 @@ CALL prms%CreateRealArrayOption("RefState"           , "If a RefState is defined
                                                         "marked as invalid - without a RefState, the program will abort in this case")
 CALL prms%CreateRealOption(     "abortTolerance"     , "Tolerance used to decide if the program should abort if no "// &
                                                        "RefState is given")
+CALL prms%CreateLogicalOption(  "ExtrudeTo3D"        , "Perform an extrusion of a one-layer mesh to the 3D version",'.FALSE.')
+CALL prms%CreateIntOption(      "ExtrudeK"           , "Layer which is used in extrusion")
 
 ! Parse parameters
 ! check for command line argument --help or --markdown
