@@ -299,11 +299,10 @@ REAL,INTENT(IN)                 :: t                      !< Current time
 ! 13. Perform overintegration and apply Jacobian
 ! -----------------------------------------------------------------------------
 
-! Nullify arrays
-! TODO fix!!!
+! (0. Nullify arrays)
 ! NOTE: UT and U are nullified in DGInit, and Ut is set directly in the volume integral, so in this implementation,
 !       ARRAYS DO NOT NEED TO BE NULLIFIED, OTHERWISE THEY HAVE TO!
-CALL VNullify(nTotalU,Ut)
+! CALL VNullify(nTotalU,Ut)
 
 ! 1. Filter the solution vector if applicable, filter_pointer points to cut-off filter or LAF filter (see filter.f90)
 IF(FilterType.GT.0) CALL Filter_Pointer(U,FilterMat)

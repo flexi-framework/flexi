@@ -100,7 +100,13 @@ DO iElem=1,nElems
                                      Metrics_hTilde(:,:,:,:,iElem,0))
 
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-    DO l=0,PP_N
+      ! Update the time derivative with the spatial derivatives of the transformed fluxes
+      Ut(:,i,j,k,iElem) =                     D_Hat_T(0,i)*f(:,0,j,k) + &
+#if PP_dim==3
+                                              D_Hat_T(0,k)*h(:,i,j,0) + &
+#endif
+                                              D_Hat_T(0,j)*g(:,i,0,k)
+    DO l=1,PP_N
       ! Update the time derivative with the spatial derivatives of the transformed fluxes
       Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + D_Hat_T(l,i)*f(:,l,j,k) + &
 #if PP_dim==3
@@ -117,6 +123,10 @@ END SUBROUTINE VolInt_weakForm
 !> Computes the advection and viscous part volume integral in SplitDG formulation
 !> Attention 1: 1/J(i,j,k) is not yet accounted for
 !> Attention 2: input Ut is overwritten with the volume flux derivatives
+!> Attention 3: the factor of 2 in front of the derivative matrix entries is incorporated into the split fluxes!
+!> For details on the derivation see Gassner, Gregor J., Andrew R. Winters, and David A. Kopriva.
+!> "Split form nodal discontinuous Galerkin schemes with summation-by-parts property for the compressible Euler equations."
+!> Journal of Computational Physics 327 (2016): 39-66.
 !==================================================================================================================================
 SUBROUTINE VolInt_splitForm(Ut)
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -172,6 +182,29 @@ DO iElem=1,nElems
 #endif
 
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+    ! consistency: if both points for flux evaluation are the same the standard
+    ! euler fluxes are retained.
+#if PARABOLIC
+    Ut(:,i,j,k,iElem) = DVolSurf(i,i)*f_c(:,i,j,k) + &
+                        DVolSurf(j,j)*g_c(:,i,j,k) + &
+#if PP_dim==3
+                        DVolSurf(k,k)*h_c(:,i,j,k) + &
+#endif /*PP_dim==3*/
+                        D_Hat_T(i,i)*fv(:,i,j,k)   + &
+                        D_Hat_T(j,j)*gv(:,i,j,k)   + &
+#if PP_dim==3
+                        D_Hat_T(k,k)*hv(:,i,j,k)
+#else
+                        0.
+#endif /*PP_dim==3*/
+#else
+    Ut(:,i,j,k,iElem) = DVolSurf(i,i)*f_c(:,i,j,k) + &
+#if PP_dim==3
+                        DVolSurf(j,j)*h_c(:,i,j,k) + &
+#endif /*PP_dim==3*/
+                        DVolSurf(k,k)*g_c(:,i,j,k)
+#endif /*PARABOLIC*/
+
 
     DO l=i+1,PP_N
        ! compute split flux in x-direction
@@ -228,29 +261,6 @@ DO iElem=1,nElems
 #endif /*PARABOLIC*/
     END DO ! l
 #endif /*PP_dim==3*/
-
-    ! consistency: if both poitns for flux evaluation are the same the standard
-    ! euler fluxes are retained
-#if PARABOLIC
-    Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + DVolSurf(i,i)*f_c(:,i,j,k) + &
-                                            DVolSurf(j,j)*g_c(:,i,j,k) + &
-#if PP_dim==3
-                                            DVolSurf(k,k)*h_c(:,i,j,k) + &
-#endif /*PP_dim==3*/
-                                            D_Hat_T(i,i)*fv(:,i,j,k)   + &
-                                            D_Hat_T(j,j)*gv(:,i,j,k)   + &
-#if PP_dim==3
-                                            D_Hat_T(k,k)*hv(:,i,j,k)
-#else
-                                            0.
-#endif /*PP_dim==3*/
-#else
-    Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem) + DVolSurf(i,i)*f_c(:,i,j,k) + &
-#if PP_dim==3
-                                            DVolSurf(j,j)*h_c(:,i,j,k) + &
-#endif /*PP_dim==3*/
-                                            DVolSurf(k,k)*g_c(:,i,j,k)
-#endif /*PARABOLIC*/
 
   END DO; END DO; END DO !i,j,k
 END DO ! iElem
