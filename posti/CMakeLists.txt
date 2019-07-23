@@ -2,11 +2,9 @@
 # POSTI
 # =========================================================================
 
-CMAKE_DEPENDENT_OPTION(POSTI_BUILD_VISU                  "Build the visu tool"                        ON  "FLEXI_BUILDPOSTI" OFF)
-CMAKE_DEPENDENT_OPTION(POSTI_BUILD_MERGETIMEAVERAGES     "Build the time-averaging tool"              ON  "FLEXI_BUILDPOSTI" OFF)
-CMAKE_DEPENDENT_OPTION(POSTI_BUILD_DMD                   "Build the DMD tool"                         ON  "FLEXI_BUILDPOSTI" OFF)
-#CMAKE_DEPENDENT_OPTION(POSTI_BUILD_FLUCTUATIONS          "Build the fluctuations tool"                ON  "FLEXI_BUILDPOSTI" OFF)
-#CMAKE_DEPENDENT_OPTION(POSTI_BUILD_WALLDISTANCE          "Build the walldistance tool"                OFF "FLEXI_BUILDPOSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_BUILD_VISU                  "Build the visu tool"                                ON  "FLEXI_BUILDPOSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_BUILD_MERGETIMEAVERAGES     "Build the time-averaging tool"                      ON  "FLEXI_BUILDPOSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_BUILD_DMD                   "Build the DMD tool"                                 OFF "FLEXI_BUILDPOSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_BUILD_PREPARERECORDPOINTS   "Build the Record point preprocessing tool"          ON  "FLEXI_BUILDPOSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_BUILD_VISUALIZERECORDPOINTS "Build the Record Point visualization tool"          OFF "FLEXI_BUILDPOSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_BUILD_EVALUATERECORDPOINTS  "Build the Record Point aposteriori evaluation tool" ON  "FLEXI_BUILDPOSTI" OFF)
