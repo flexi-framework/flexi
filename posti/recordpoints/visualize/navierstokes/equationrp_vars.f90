@@ -30,6 +30,7 @@ LOGICAL,ALLOCATABLE                :: is2D(:)                      !< Indicating
 ! BOUNDARY LAYER PROPERTIES --------------------------------------------------------------------------------------------------------
 INTEGER                            :: nBLProps                     !< Number of avariables for boundary layer properties
 CHARACTER(LEN=255),ALLOCATABLE     :: VarNames_BLProps(:)          !< Variable names of boundary layer properties
+REAL                               :: pInf                         !< Pressure used to calculate c_p
 
 LOGICAL                            :: EquationRPInitIsDone=.FALSE. !< Switch to signal that init is done
 !===================================================================================================================================

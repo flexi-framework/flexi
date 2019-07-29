@@ -53,7 +53,7 @@ USE MOD_Visu_Vars          ,ONLY: CoordsVisu_DG
 USE MOD_Visu_Vars          ,ONLY: NodeTypeVisuPosti
 USE MOD_Visu_Vars          ,ONLY: NVisu,nElems_DG,mapDGElemsToAllElems
 USE MOD_Visu_Vars          ,ONLY: nElemsAvg2D_DG,Avg2D
-USE MOD_Visu_Vars          ,ONLY: Elem_IJK,Elem_IJK_glob,mapElemIJToDGElemAvg2D
+USE MOD_Visu_Vars          ,ONLY: Elem_IJK_glob,mapElemIJToDGElemAvg2D
 #if FV_ENABLED
 USE MOD_Visu_Vars          ,ONLY: FVAmountAvg2D,mapElemIJToFVElemAvg2D,nElemsAvg2D_FV
 USE MOD_Visu_Vars          ,ONLY: NVisu_FV,nElems_FV,mapFVElemsToAllElems,hasFV_Elems

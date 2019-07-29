@@ -69,7 +69,7 @@ END SUBROUTINE DefineParametersRecordPoints
 !==================================================================================================================================
 !> Read RP parameters from ini file and RP definitions from HDF5
 !==================================================================================================================================
-SUBROUTINE InitRecordPoints(RPDefFileOpt)
+SUBROUTINE InitRecordPoints(nVar)
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
@@ -79,14 +79,15 @@ USE MOD_RecordPoints_Vars
  IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=255),INTENT(IN),OPTIONAL :: RPDefFileOpt
+INTEGER,INTENT(IN),OPTIONAL :: nVar
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER               :: RP_maxMemory
 INTEGER               :: maxRP
+INTEGER               :: nVar_loc
 !==================================================================================================================================
 ! check if recordpoints are activated
-RP_inUse=(GETLOGICAL('RP_inUse','.FALSE.') .OR. PRESENT(RPDefFileOpt))
+RP_inUse=GETLOGICAL('RP_inUse','.FALSE.')
 IF(.NOT.RP_inUse) RETURN
 
 IF((.NOT.InterpolationInitIsDone) .OR. RecordPointsInitIsDone)THEN
@@ -96,16 +97,18 @@ END IF
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT RECORDPOINTS...'
 
-IF(PRESENT(RPDefFileOpt))THEN
-  RPDefFile=RPDefFileOpt
-ELSE
-  RPDefFile=GETSTR('RP_DefFile')                        ! Filename with RP coords
-END IF
+RPDefFile=GETSTR('RP_DefFile')                        ! Filename with RP coords
 CALL ReadRPList(RPDefFile) ! RP_inUse is set to FALSE by ReadRPList if no RP is on proc.
 maxRP=nGlobalRP
 #if USE_MPI
 CALL InitRPCommunicator()
 #endif /*USE_MPI*/
+
+IF (PRESENT(nVar)) THEN
+  nVar_loc = nVar
+ELSE
+  nVar_loc = PP_nVar
+END IF
 
 IF(RP_onProc)THEN
   RP_maxMemory=GETINT('RP_MaxMemory','100')           ! Max buffer (100MB)
@@ -114,8 +117,8 @@ IF(RP_onProc)THEN
 #if USE_MPI
   CALL MPI_ALLREDUCE(nRP,maxRP,1,MPI_INTEGER,MPI_MAX,RP_COMM,iError)
 #endif /*USE_MPI*/
-  RP_MaxBufferSize = RP_MaxMemory*131072/(maxRP*(PP_nVar+1)) != size in bytes/(real*maxRP*nVar)
-  ALLOCATE(lastSample(0:PP_nVar,nRP))
+  RP_MaxBufferSize = RP_MaxMemory*131072/(maxRP*(nVar_loc+1)) != size in bytes/(real*maxRP*nVar)
+  ALLOCATE(lastSample(0:nVar_loc,nRP))
   lastSample=0.
 END IF
 
@@ -335,7 +338,7 @@ END SUBROUTINE InitRPBasis
 !==================================================================================================================================
 !> Evaluate solution at current time t at recordpoint positions and fill output buffer
 !==================================================================================================================================
-SUBROUTINE RecordPoints(iter,t,forceSampling)
+SUBROUTINE RecordPoints(nVar,StrVarNames,iter,t,forceSampling)
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
@@ -355,13 +358,15 @@ USE MOD_FV_Vars          ,ONLY: FV_Elems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN)             :: nVar                    !< Number of variables in U array
+CHARACTER(LEN=255),INTENT(IN)  :: StrVarNames(nVar)     !< String with the names of the variables
 INTEGER(KIND=8),INTENT(IN)     :: iter                    !< current number of timesteps
 REAL,INTENT(IN)                :: t                       !< current time t
 LOGICAL,INTENT(IN)             :: forceSampling           !< force sampling (e.g. at first/last timestep of computation)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                 :: i,j,k,iRP
-REAL                    :: u_RP(PP_nVar,nRP)
+REAL                    :: u_RP(nVar,nRP)
 REAL                    :: l_eta_zeta_RP
 !----------------------------------------------------------------------------------------------------------------------------------
 IF(MOD(iter,RP_SamplingOffset).NE.0 .AND. .NOT. forceSampling) RETURN
@@ -369,7 +374,7 @@ IF(.NOT.ALLOCATED(RP_Data))THEN
   ! Compute required buffersize from timestep and add 20% tolerance
   ! +1 is added to ensure a minimum buffersize of 2
   RP_Buffersize = MIN(CEILING((1.2*WriteData_dt)/(dt*RP_SamplingOffset))+1,RP_MaxBuffersize)
-  ALLOCATE(RP_Data(0:PP_nVar,nRP,RP_Buffersize))
+  ALLOCATE(RP_Data(0:nVar,nRP,RP_Buffersize))
 END IF
 
 ! evaluate state at RP
@@ -398,24 +403,23 @@ DO iRP=1,nRP
   END IF
 #endif
 END DO ! iRP
-RP_Data(1:PP_nVar,:,iSample)=U_RP
-RP_Data(0,        :,iSample)=t
+RP_Data(1:nVar,:,iSample)=U_RP
+RP_Data(0,     :,iSample)=t
 
 ! dataset is full, write data and reset
-IF(iSample.EQ.RP_Buffersize) CALL WriteRP(tWriteData,.FALSE.)
+IF(iSample.EQ.RP_Buffersize) CALL WriteRP(nVar,StrVarNames,tWriteData,.FALSE.)
 END SUBROUTINE RecordPoints
 
 
 !==================================================================================================================================
 !> Writes the time history of the solution at the recordpoints to an HDF5 file
 !==================================================================================================================================
-SUBROUTINE WriteRP(OutputTime,resetCounters)
+SUBROUTINE WriteRP(nVar,StrVarNames,OutputTime,resetCounters)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
 USE HDF5
 USE MOD_IO_HDF5           ,ONLY: File_ID,OpenDataFile,CloseDataFile
-USE MOD_Equation_Vars     ,ONLY: StrVarNames
 USE MOD_HDF5_Output       ,ONLY: WriteAttribute,WriteArray,MarkWriteSuccessfull
 USE MOD_Output_Vars       ,ONLY: ProjectName
 USE MOD_Mesh_Vars         ,ONLY: MeshFile
@@ -428,6 +432,8 @@ USE MOD_Recordpoints_Vars ,ONLY: offsetRP,nRP,nGlobalRP
 USE MOD_Recordpoints_Vars ,ONLY: RP_Buffersize,RP_Maxbuffersize,RP_fileExists,chunkSamples
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN)             :: nVar                  !< Number of variables to write
+CHARACTER(LEN=255),INTENT(IN)  :: StrVarNames(nVar)     !< String with the names of the variables
 REAL,   INTENT(IN)             :: OutputTime            !< time
 LOGICAL,INTENT(IN)             :: resetCounters         !< flag to reset sample counters and reallocate buffers, once file is done
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -451,7 +457,7 @@ IF(myRPrank.EQ.0)THEN
     CALL WriteAttribute(File_ID,'MeshFile'   ,1,StrScalar=(/MeshFile/))
     CALL WriteAttribute(File_ID,'ProjectName',1,StrScalar=(/ProjectName/))
     CALL WriteAttribute(File_ID,'RPDefFile'  ,1,StrScalar=(/RPDefFile/))
-    CALL WriteAttribute(File_ID,'VarNames'   ,PP_nVar,StrArray=StrVarNames)
+    CALL WriteAttribute(File_ID,'VarNames'   ,nVar,StrArray=StrVarNames)
     CALL WriteAttribute(File_ID,'Time'       ,1,RealScalar=OutputTime)
   END IF
   CALL CloseDataFile()
@@ -469,11 +475,11 @@ IF(iSample.GT.0)THEN
   ! write buffer into file, we need two offset dimensions (one buffer, one processor)
   nSamples=nSamples+iSample
   CALL WriteArray(DataSetName='RP_Data', rank=3,&
-                        nValGlobal=(/PP_nVar+1,nGlobalRP,nSamples/),&
-                        nVal=      (/PP_nVar+1,nRP      ,iSample/),&
-                        offset=    (/0        ,offsetRP ,nSamples-iSample/),&
-                        resizeDim= (/.FALSE.  ,.FALSE.  ,.TRUE./),&
-                        chunkSize= (/PP_nVar+1,nGlobalRP,chunkSamples/),&
+                        nValGlobal=(/nVar+1 ,nGlobalRP,nSamples/),&
+                        nVal=      (/nVar+1 ,nRP      ,iSample/),&
+                        offset=    (/0      ,offsetRP ,nSamples-iSample/),&
+                        resizeDim= (/.FALSE.,.FALSE.  ,.TRUE./),&
+                        chunkSize= (/nVar+1 ,nGlobalRP,chunkSamples/),&
                         RealArray=RP_Data(:,:,1:iSample),&
                         collective=.TRUE.)
   lastSample=RP_Data(:,:,iSample)
@@ -488,7 +494,7 @@ IF(resetCounters)THEN
   IF((nSamples.GE.RP_Buffersize).AND.(RP_Buffersize.LT.RP_Maxbuffersize))THEN
     RP_Buffersize=MIN(CEILING(1.1*nSamples)+1,RP_MaxBuffersize)
     DEALLOCATE(RP_Data)
-    ALLOCATE(RP_Data(0:PP_nVar,nRP,RP_Buffersize))
+    ALLOCATE(RP_Data(0:nVar,nRP,RP_Buffersize))
   END IF
   RP_fileExists=.FALSE.
   iSample=1
