@@ -199,10 +199,8 @@ DO j=0,ZDIM(Nloc); DO i=0,Nloc
   U_RR(MOM3)=0.
 #endif
 
-# ifndef SPLIT_DG
   CALL EvalEulerFlux1D_fast(U_LL,F_L)
   CALL EvalEulerFlux1D_fast(U_RR,F_R)
-#endif /*SPLIT_DG*/
 
   CALL Riemann_loc(F_L,F_R,U_LL,U_RR,F)
 
@@ -275,9 +273,6 @@ END SUBROUTINE ViscousFlux
 SUBROUTINE Riemann_LF(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
 USE MOD_EOS_Vars      ,ONLY: Kappa
-#ifdef SPLIT_DG
-USE MOD_SplitFlux     ,ONLY: SplitDGSurface_pointer
-#endif /*SPLIT_DG*/
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -294,14 +289,7 @@ REAL    :: LambdaMax
 !==================================================================================================================================
 ! Lax-Friedrichs
 LambdaMax = MAX( ABS(U_RR(VEL1)),ABS(U_LL(VEL1)) ) + MAX( SPEEDOFSOUND_HE(U_LL),SPEEDOFSOUND_HE(U_RR) )
-#ifndef SPLIT_DG
 F = 0.5*((F_L+F_R) - LambdaMax*(U_RR(CONS) - U_LL(CONS)))
-#else
-! get split flux
-CALL SplitDGSurface_pointer(U_LL,U_RR,F)
-! compute surface flux
-F = F - 0.5*LambdaMax*(U_RR(CONS) - U_LL(CONS))
-#endif /*SPLIT_DG*/
 
 END SUBROUTINE Riemann_LF
 
