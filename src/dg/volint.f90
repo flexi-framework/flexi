@@ -204,8 +204,10 @@ DO iElem=1,nElems
 #endif /*PP_dim==3*/
                         DVolSurf(k,k)*g_c(:,i,j,k)
 #endif /*PARABOLIC*/
+  END DO; END DO; END DO !i,j,k
 
 
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     DO l=i+1,PP_N
        ! compute split flux in x-direction
        CALL SplitDGVolume_pointer(U(:,i,j,k,iElem),UPrim(:,i,j,k,iElem), &
