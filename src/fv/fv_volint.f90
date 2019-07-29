@@ -101,7 +101,9 @@ DO iElem=1,nElems
     diffFlux_z(:,:,:,i) = h(:,i,:,:)
   END DO ! i=0,PP_N
 #endif
-
+  ! This is the only nullification we have to do, the rest will be overwritten accordingly. Nullify here to catch only the FV
+  ! elements. Might be smarter to do this in a single, long operation?
+  Ut_FV(:,0,:,:,iElem) = 0.
   ! iterate over all inner slices in xi-direction
   DO i=1,PP_N
     DO q=0,PP_NZ; DO p=0,PP_N
@@ -116,7 +118,7 @@ DO iElem=1,nElems
     END DO; END DO ! p,q=0,PP_N
     ! 3. convert primitve solution to conservative
     CALL PrimToCons(PP_N,UPrim_L, UCons_L)
-    CALL PrimToCons(PP_N,UPrim_R,  UCons_R)
+    CALL PrimToCons(PP_N,UPrim_R, UCons_R)
 
     ! 4. calculate advective part of the flux
     CALL Riemann(PP_N,F_FV,UCons_L,UCons_R,UPrim_L,UPrim_R,          &
@@ -135,7 +137,8 @@ DO iElem=1,nElems
     ! 6. apply flux to the sub-cells at the left and right side of the interface/slice
     DO k=0,PP_NZ; DO j=0,PP_N
       Ut_FV(:,i-1,j,k,iElem) = Ut_FV(:,i-1,j,k,iElem) + F_FV(:,j,k) * FV_SurfElemXi_sw(j,k,i,iElem)
-      Ut_FV(:,i  ,j,k,iElem) = Ut_FV(:,i  ,j,k,iElem) - F_FV(:,j,k) * FV_SurfElemXi_sw(j,k,i,iElem)
+      ! During our first sweep, the DOF here has never been touched and can thus be overwritten
+      Ut_FV(:,i  ,j,k,iElem) =                     -1.* F_FV(:,j,k) * FV_SurfElemXi_sw(j,k,i,iElem)
     END DO; END DO
   END DO ! i
 

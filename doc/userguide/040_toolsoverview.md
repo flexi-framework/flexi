@@ -49,7 +49,7 @@ Brief description                  Interpolates state file data from one mesh to
 
 Basic usage                        `posti_swapmesh [parameter.ini] [statefile.h5]`
 
-Further info / usage example       No tutorials so far
+Further info / usage example       `ini/swapmesh` folder
 ---------------------------------------------------------------------------------------------
 
 ### Record points

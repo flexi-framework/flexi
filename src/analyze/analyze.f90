@@ -96,9 +96,10 @@ USE MOD_Timedisc_Vars,      ONLY: TEnd
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                             :: lastLine(0:2*PP_nVar+5)
+REAL                                       :: lastLine(0:2*PP_nVar+5)
 CHARACTER(MAXVAL(LEN_TRIM(StrVarNames))+5) :: VarNames(2*PP_nVar+5)
-INTEGER                          :: i,j,k,iSurf,iElem,iSide
+INTEGER                                    :: i,j,k,iSurf,iElem,iSide
+LOGICAL                                    :: hasAnalyzeSides(nBCs)
 !==================================================================================================================================
 IF ((.NOT.InterpolationInitIsDone).OR.AnalyzeInitIsDone) THEN
   CALL CollectiveStop(__STAMP__,'InitAnalyse not ready to be called or already called.')
@@ -162,12 +163,18 @@ Vol=SUM(ElemVol)
 ! compute surface of each boundary
 ALLOCATE(Surf(nBCs))
 Surf=0.
+hasAnalyzeSides=.FALSE.
 DO iSide=1,nSides
   iSurf=AnalyzeSide(iSide)
   IF(iSurf.EQ.0) CYCLE
+  hasAnalyzeSides(iSurf)=.TRUE.
   DO j=0,PP_NZ; DO i=0,PP_N
     Surf(iSurf)=Surf(iSurf)+wGPSurf(i,j)*SurfElem(i,j,0,iSide)
   END DO; END DO
+END DO
+! Prevent division by 0 if a BC has no sides associated with it (e.g. periodic)
+DO iSurf=1,nBCs
+  IF (.NOT.hasAnalyzeSides(iSurf)) Surf(iSurf) = HUGE(1.)
 END DO
 #if USE_MPI
 CALL MPI_ALLREDUCE(MPI_IN_PLACE,Vol ,1   ,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)

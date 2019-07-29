@@ -142,6 +142,7 @@ USE MOD_TimeDisc_Vars       ,ONLY: TEnd,t,dt,tAnalyze,ViscousTimeStep,maxIter,Ti
 USE MOD_Analyze_Vars        ,ONLY: Analyze_dt,WriteData_dt,tWriteData,nWriteData
 USE MOD_AnalyzeEquation_Vars,ONLY: doCalcTimeAverage
 USE MOD_Analyze             ,ONLY: Analyze
+USE MOD_Equation_Vars       ,ONLY: StrVarNames
 USE MOD_TestCase            ,ONLY: AnalyzeTestCase,CalcForcing
 USE MOD_TestCase_Vars       ,ONLY: nAnalyzeTestCase,doTCSource
 USE MOD_TimeAverage         ,ONLY: CalcTimeAverage
@@ -245,14 +246,18 @@ dt=CALCTIMESTEP(errType)
 nCalcTimestep=0
 dt_MinOld=-999.
 IF(errType.NE.0) CALL abort(__STAMP__,&
+#if EQNSYSNR == 3
+  'Error: (1) density, (2) convective / (3) viscous timestep / muTilde (4) is NaN. Type/time:',errType,t)
+#else
   'Error: (1) density, (2) convective / (3) viscous timestep is NaN. Type/time:',errType,t)
+#endif
 
 ! Run initial analyze
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_StdOut,*) 'Errors of initial solution:'
 CALL Analyze(t,iter)
 ! fill recordpoints buffer (initialization/restart)
-IF(RP_onProc) CALL RecordPoints(iter,t,.TRUE.)
+IF(RP_onProc) CALL RecordPoints(PP_nVar,StrVarNames,iter,t,.TRUE.)
 
 CALL PrintStatusLine(t,dt,tStart,tEnd)
 
@@ -329,7 +334,7 @@ DO
   ! Call your Analysis Routine for your Testcase here.
   IF((MOD(iter,nAnalyzeTestCase).EQ.0).OR.doAnalyze) CALL AnalyzeTestCase(t)
   ! evaluate recordpoints
-  IF(RP_onProc) CALL RecordPoints(iter,t,doAnalyze)
+  IF(RP_onProc) CALL RecordPoints(PP_nVar,StrVarNames,iter,t,doAnalyze)
 
   ! Analyze and output now
   IF(doAnalyze) THEN
@@ -357,7 +362,7 @@ DO
     IF((writeCounter.EQ.nWriteData).OR.doFinalize)THEN
       ! Write various derived data
       IF(doCalcTimeAverage) CALL CalcTimeAverage(.TRUE.,dt,t)
-      IF(RP_onProc)         CALL WriteRP(t,.TRUE.)
+      IF(RP_onProc)         CALL WriteRP(PP_nVar,StrVarNames,t,.TRUE.)
       IF(CalcPruettDamping) CALL WriteBaseflow(TRIM(MeshFile),t)
       ! Write state file
       ! NOTE: this should be last in the series, so we know all previous data

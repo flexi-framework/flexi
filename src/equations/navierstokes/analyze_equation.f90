@@ -511,7 +511,7 @@ END IF
 #endif
 DO iBC=1,nBCs
   IF(.NOT.isWall(iBC)) CYCLE
-    MeanV(iBC)=MeanV(iBC)/Surf(iBC)
+  MeanV(iBC)=MeanV(iBC)/Surf(iBC)
 END DO
 
 END SUBROUTINE CalcWallVelocity

@@ -39,8 +39,7 @@ USE MOD_EOS                     ,ONLY:DefineParametersEOS
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                            :: iArg
-INTEGER                            :: limit,nTotalNew
+REAL                               :: limit,nTotalNew
 !===================================================================================================================================
 CALL SetStackSizeUnlimited()
 CALL InitMPI()
@@ -109,8 +108,8 @@ CALL InitMPIvars()
 #if USE_MPI
 nTotalNew=REAL(nVar_State*(N+1)**3*nElems_State)
 !limit=(2**31-1)/8.
-limit=2**28-1/8. ! max. 32 bit integer / 8
-IF((nTotalNew.GT.limit).OR.(nTotalNew.GT.limit))THEN
+limit=(2**28-1)/8. ! max. 32 bit integer / 8
+IF((nTotalNew.GT.limit))THEN
   WRITE(UNIT_StdOut,'(A,F13.0,A)')' Resulting file size is too big! Total array size may not exceed', limit, ' entries!'
   WRITE(UNIT_StdOut,'(A)')' Compile dmd without MPI'
   STOP

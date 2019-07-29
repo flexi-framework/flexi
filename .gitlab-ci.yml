@@ -12,6 +12,7 @@ stages:
   - build
   - reggie_checkin
   - reggie_nightly
+  - reggie_weekly
   - deploy
 
 
@@ -70,7 +71,8 @@ gnu:
 # Stage "reggie_nightly": Build and run
 #                         - build all specified compile options in "run_basic" with BUILD_HDF5=ON
 #                         - h-p-convtests
-#                      examples on nightly
+#                         - parabolic testcases
+#                         - riemann solver tests
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 gnu_build_all:
   <<: *defaults_gnu
@@ -90,6 +92,44 @@ gnu_convtest:
   script:
     - if [ -n "${DO_NIGHTLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/convtest -j 6; fi 
 
+gnu_parabolic:
+  <<: *defaults_gnu
+  stage: reggie_nightly
+  script:
+    - if [ -n "${DO_NIGHTLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/parabolic -j 6; fi 
+
+gnu_riemann:
+  <<: *defaults_gnu
+  stage: reggie_nightly
+  script:
+    - if [ -n "${DO_NIGHTLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/riemann -j 6; fi
+
+# ----------------------------------------------------------------------------------------------------------------------------------------------------
+# Stage "reggie_weekly": Build and run more complex tests, basically complete simulatons
+# ----------------------------------------------------------------------------------------------------------------------------------------------------
+gnu_tgv:
+  <<: *defaults_gnu
+  stage: reggie_weekly
+  script:
+    - if [ -n "${DO_WEEKLY}" ]; then  cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/tgv -j 6; fi
+
+gnu_naca:
+  <<: *defaults_gnu
+  stage: reggie_weekly
+  script:
+    - if [ -n "${DO_WEEKLY}" ]; then  cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/naca -j 6; fi
+
+gnu_fv:
+  <<: *defaults_gnu
+  stage: reggie_weekly
+  script:
+    - if [ -n "${DO_WEEKLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/fv -j 6; fi 
+
+gnu_channelRANS:
+  <<: *defaults_gnu
+  stage: reggie_weekly
+  script:
+    - if [ -n "${DO_WEEKLY}" ]; then module load env/gnu ; cd build_gnu ;  python ./reggie/reggie.py ../regressioncheck/checks/channelRANS ; fi 
  
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "deploy": 1. Creates doxygen documentation & compiles the documentation creating the *.pdf
