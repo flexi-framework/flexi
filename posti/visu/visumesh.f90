@@ -252,8 +252,9 @@ END SUBROUTINE BuildSurfVisuCoords
 !> Visualize mesh only
 !> 1. read mesh
 !> 2. BuildVisuCoords
-!> 3. write mesh to VTK array
-!> 4. set length of all other output arrays to zero
+!> 3. Convert scaled jacobian
+!> 4. write mesh to VTK array
+!> 5. set length of all other output arrays to zero
 !=================================================================================================================================
 SUBROUTINE VisualizeMesh(postifile,meshfile_in)
 ! MODULES
@@ -266,10 +267,11 @@ USE MOD_ReadInTools   ,ONLY: FinalizeParameters
 USE MOD_MPI           ,ONLY: FinalizeMPI
 #endif
 USE MOD_Interpolation ,ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
-USE MOD_Mesh_Vars     ,ONLY: nElems,Ngeo
+USE MOD_Mesh_Vars     ,ONLY: nElems,Ngeo,scaledJac
 USE MOD_Mesh          ,ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
 USE MOD_VTK           ,ONLY: WriteCoordsToVTK_array
 USE MOD_HDF5_Input    ,ONLY: ReadAttribute,File_ID,OpenDataFile,CloseDataFile
+USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_DG
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=255),INTENT(IN):: postifile
@@ -302,7 +304,7 @@ NVisu_FV = 1
 
 ! read mesh
 CALL InitInterpolation(Ngeo)
-CALL InitMesh(meshMode=0, MeshFile_IN=meshfile_in)
+CALL InitMesh(meshMode=3, MeshFile_IN=meshfile_in)
 
 ! convert to visu grid
 nElems_DG = nElems
@@ -314,6 +316,28 @@ DO iElem=1,nElems
 END DO
 CALL BuildVisuCoords()
 DEALLOCATE(mapDGElemsToAllElems)
+
+! Visualize the scaled Jacobian
+NCalc = PP_N
+nVarVisu = 2
+nVarDep = 2
+nVarAll = 2
+SDEALLOCATE(mapDepToCalc)
+ALLOCATE(mapDepToCalc(2))
+mapDepToCalc(1) = 1
+mapDepToCalc(2) = 2
+SDEALLOCATE(mapAllVarsToVisuVars)
+ALLOCATE(mapAllVarsToVisuVars(2))
+mapAllVarsToVisuVars(1) = 1
+mapAllVarsToVisuVars(2) = 2
+SDEALLOCATE(UCalc_DG)
+ALLOCATE(UCalc_DG(0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems_DG,nVarVisu))
+UCalc_DG(:,:,:,:,1) = scaledJac
+DO iElem=1,nElems
+  UCalc_DG(:,:,:,iElem,2) = MINVAL(UCalc_DG(:,:,:,iElem,1))
+END DO ! iElem
+
+CALL ConvertToVisu_DG()
 
 CALL FinalizeInterpolation()
 CALL FinalizeParameters()

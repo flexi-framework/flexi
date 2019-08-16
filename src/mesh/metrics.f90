@@ -182,6 +182,7 @@ USE MOD_Mesh_Vars          ,ONLY: NodeCoords,TreeCoords,Elem_xGP
 USE MOD_Mesh_Vars          ,ONLY: ElemToTree,xiMinMax,interpolateFromTree
 USE MOD_Mesh_Vars          ,ONLY: NormVec,TangVec1,TangVec2,SurfElem,Face_xGP
 USE MOD_Mesh_Vars          ,ONLY: firstMPISide_MINE,firstMPISide_YOUR,lastMPISide_YOUR,nSides
+USE MOD_Mesh_Vars          ,ONLY: scaledJac
 USE MOD_Interpolation_Vars
 USE MOD_Interpolation      ,ONLY: GetVandermonde,GetNodesAndWeights,GetDerivativeMatrix
 #if (PP_dim == 3)
@@ -222,7 +223,6 @@ REAL    :: R_CL_N(     3,3,0:PP_N,0:PP_N,0:PP_NZ)    ! buffer for metric terms, 
 #endif
 REAL    :: JaCL_N(     3,3,0:PP_N,0:PP_N,0:PP_NZ)    ! metric terms P\in N
 REAL    :: JaCL_N_quad(3,3,0:PP_N,0:PP_N,0:PP_NZ)    ! metric terms P\in N
-REAL    :: scaledJac(2)
 
 ! Polynomial derivativion matrices
 REAL    :: DCL_NGeo(0:Ngeo,0:Ngeo)
@@ -360,14 +360,14 @@ DO iElem=1,nElems
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     IF(detJac_N(1,i,j,k).LE.0.)&
       WRITE(Unit_StdOut,*) 'Negative Jacobian found on Gauss point. Coords:', Elem_xGP(:,i,j,k,iElem)
+    ! check scaled Jacobians
+    scaledJac(i,j,k,iElem)=detJac_N(1,i,j,k)/MAXVAL(detJac_N(1,:,:,:))
+    IF(scaledJac(i,j,k,iElem).LT.0.01) THEN
+      WRITE(Unit_StdOut,*) 'Too small scaled Jacobians found (CL/Gauss):', scaledJac(i,j,k,iElem)
+      CALL abort(__STAMP__,&
+        'Scaled Jacobian lower then tolerance in global element:',iElem+offsetElem)
+    END IF
   END DO; END DO; END DO !i,j,k=0,N
-  ! check scaled Jacobians
-  scaledJac(2)=MINVAL(detJac_N(1,:,:,:))/MAXVAL(detJac_N(1,:,:,:))
-  IF(scaledJac(2).LT.0.01) THEN
-    WRITE(Unit_StdOut,*) 'Too small scaled Jacobians found (CL/Gauss):', scaledJac
-    CALL abort(__STAMP__,&
-      'Scaled Jacobian lower then tolerance in global element:',iElem+offsetElem)
-  END IF
 
   !2.a) Jacobi Matrix of d/dxi_dd(X_nn): dXCL_N(dd,nn,i,j,k))
   ! N>=Ngeo: interpolate from dXCL_Ngeo (default)

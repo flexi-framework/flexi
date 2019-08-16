@@ -82,6 +82,9 @@ INTEGER                                             :: Offset=0 ! Every process 
 
 IF (ISVALIDMESHFILE(statefile)) THEN      ! MESH
   SDEALLOCATE(varnames_loc)
+  ALLOCATE(varnames_loc(2))
+  varnames_loc(1) = 'ScaledJacobian'
+  varnames_loc(2) = 'ScaledJacobianElem'
   FileType='Mesh'
 ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! other file
   SDEALLOCATE(varnames_loc)
