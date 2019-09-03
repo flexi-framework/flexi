@@ -174,7 +174,7 @@ DO iSide=1,nSides
 END DO
 #if USE_MPI
 ! Communicate whether any processor has a surface at the respective boundary
-!CALL MPI_ALLREDUCE(MPI_IN_PLACE,hasAnalyzeSides,nBCs,MPI_LOGICAL,MPI_LOR,MPI_COMM_FLEXI,iError)
+CALL MPI_ALLREDUCE(MPI_IN_PLACE,hasAnalyzeSides,nBCs,MPI_LOGICAL,MPI_LOR,MPI_COMM_FLEXI,iError)
 #endif /*USE_MPI*/
 
 ! Prevent division by 0 if a BC has no sides associated with it (e.g. periodic)
