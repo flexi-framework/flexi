@@ -172,6 +172,11 @@ DO iSide=1,nSides
     Surf(iSurf)=Surf(iSurf)+wGPSurf(i,j)*SurfElem(i,j,0,iSide)
   END DO; END DO
 END DO
+#if USE_MPI
+! Communicate whether any processor has a surface at the respective boundary
+!CALL MPI_ALLREDUCE(MPI_IN_PLACE,hasAnalyzeSides,nBCs,MPI_LOGICAL,MPI_LOR,MPI_COMM_FLEXI,iError)
+#endif /*USE_MPI*/
+
 ! Prevent division by 0 if a BC has no sides associated with it (e.g. periodic)
 DO iSurf=1,nBCs
   IF (.NOT.hasAnalyzeSides(iSurf)) Surf(iSurf) = HUGE(1.)
