@@ -48,6 +48,8 @@ REAL             :: DFLScale(0:FV_ENABLED)    !< Viscous CFL number (only if PAR
 REAL,ALLOCATABLE :: dtElem(:)                 !< Timestep for each element
 INTEGER          :: CurrentStage=1            !< Current Runge-Kutta stage within timestep
 INTEGER          :: nCalcTimeStepMax          !< Compute dt at least after every Nth timestep
+INTEGER          :: iter                      !< Indicate actual number of timestep
+INTEGER(KIND=8)  :: PrecondIter               !< Defines how often preconditioner is built
 INTEGER(KIND=8)  :: maxIter                   !< Maximum permitted number of timesteps
 LOGICAL          :: fullBoundaryOrder=.FALSE. !< temporal order degradation, occuring for
                                               !< time-dependant BCs, can easily be fixed when
@@ -80,6 +82,8 @@ REAL,PARAMETER      :: DFLScaleAlpha(1:10) = &
 #endif /*PP_NodeType*/
 REAL                :: RelativeDFL          !< scaling factor for DFL defined by scheme
 #endif /*PARABOLIC*/
+REAL                :: safety
+REAL,ALLOCATABLE    :: RKA_implicit(:,:),RKc_implicit(:),RKb_implicit(:),RKb_embedded(:),RKb_denseout(:,:)
 
 
 CONTAINS
@@ -107,6 +111,8 @@ CASE('standardrk3-3','carpenterrk4-5','niegemannrk4-14',&
   TimeDiscType='LSERKW2'
 CASE('ketchesonrk4-20','ketchesonrk4-18')
   TimeDiscType='LSERKK3'
+CASE('eulerimplicit','cranknicolson2-2','esdirk2-3','esdirk3-4','esdirk4-6')
+  TimeDiscType='ESDIRK'
 CASE DEFAULT
   CALL CollectiveStop(__STAMP__,&
                       'Unknown method of time discretization: '//TRIM(TimeDiscMethod))
@@ -734,6 +740,227 @@ CASE('ketchesonrk4-18')
               -7.3071238125137772e-1,&
                8.3936016960374532e-2,&
                0.0000000000000000e+0 /)
+
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+! Euler Implicit
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+CASE('eulerimplicit')
+  !Butcher filled in with zeros, so that the standard subroutine TimeStepByESDIRK is useable 
+  !   0 | 0 0 
+  !   1 | 0 1
+  !     -----
+  !       0 1
+  TimeDiscName = 'Euler Implicit'
+  nRKStages=2
+! Use the carpenter4-5 CFL and DFL Scales
+#if (PP_NodeType==1)
+  CFLScaleAlpha(1:15) = &
+  (/ 2.0351, 1.7595, 1.5401, 1.3702, 1.2375, 1.1318, 1.0440, 0.9709, 0.9079, 0.8539, 0.8066, 0.7650, 0.7290, 0.6952, 0.6660 /)
+#elif (PP_NodeType==2)
+  IF (OverintegrationType.GT.0) THEN
+    ! Overintegration with Gauss-Lobatto nodes results in a projection DG formulation, i.e. we have to use the Gauss nodes timestep
+    CFLScaleAlpha(1:15) = &
+    (/ 2.0351, 1.7595, 1.5401, 1.3702, 1.2375, 1.1318, 1.0440, 0.9709, 0.9079, 0.8539, 0.8066, 0.7650, 0.7290, 0.6952, 0.6660 /)
+  ELSE
+    CFLScaleAlpha(1:15) = &
+    (/ 4.7497, 3.4144, 2.8451, 2.4739, 2.2027, 1.9912, 1.8225, 1.6830, 1.5682, 1.4692, 1.3849, 1.3106, 1.2454, 1.1880, 1.1362 /)
+  END IF
+#endif /*PP_NodeType*/
+#if PARABOLIC
+  RelativeDFL=1.853
+#endif
+  ESDIRK_gamma  = 1. !DIAGONAL OF ESDIRK_a 
+  ALLOCATE(ESDIRK_c(2:nRKStages),ESDIRK_a(1:nRKStages-1,2:nRKStages))
+  ESDIRK_c(2:nRKStages)              = 1.
+  ESDIRK_a(1:nRKStages-1,2:nRKStages)= 0.  !lower triangle
+
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+! SDIRK2, 2 stages, order 2, stiffly accurate, L stable
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+CASE('sdirk2-2')
+  !Butcher filled in with zeros, so that the standard subroutine TimeStepBySDIRK is useable 
+  !   a | a   0 
+  !   1 | 1-a a
+  !     -----
+  !       1-a a
+  TimeDiscName = 'SDIRK2-2'
+  nRKStages=2
+! Use the carpenter4-5 CFL and DFL Scales
+#if (PP_NodeType==1)
+  CFLScaleAlpha(1:15) = &
+  (/ 2.0351, 1.7595, 1.5401, 1.3702, 1.2375, 1.1318, 1.0440, 0.9709, 0.9079, 0.8539, 0.8066, 0.7650, 0.7290, 0.6952, 0.6660 /)
+#elif (PP_NodeType==2)
+  IF (OverintegrationType.GT.0) THEN
+    ! Overintegration with Gauss-Lobatto nodes results in a projection DG formulation, i.e. we have to use the Gauss nodes timestep
+    CFLScaleAlpha(1:15) = &
+    (/ 2.0351, 1.7595, 1.5401, 1.3702, 1.2375, 1.1318, 1.0440, 0.9709, 0.9079, 0.8539, 0.8066, 0.7650, 0.7290, 0.6952, 0.6660 /)
+  ELSE
+    CFLScaleAlpha(1:15) = &
+    (/ 4.7497, 3.4144, 2.8451, 2.4739, 2.2027, 1.9912, 1.8225, 1.6830, 1.5682, 1.4692, 1.3849, 1.3106, 1.2454, 1.1880, 1.1362 /)
+  END IF
+#endif /*PP_NodeType*/
+#if PARABOLIC
+  RelativeDFL=1.853
+#endif
+  SDIRK_gamma  = 1.- sqrt(2.)/2. !DIAGONAL OF SDIRK_a 
+  ALLOCATE(SDIRK_c(1:nRKStages),SDIRK_a(1:nRKStages-1,2:nRKStages))
+  SDIRK_c(1:nRKStages)              = (/SDIRK_gamma,1./)
+  SDIRK_a(1:nRKStages-1,2:nRKStages)= 1.-SDIRK_gamma
+
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+! ESDIRK2, 3 stages, order 2, stiffly accurate, L stable
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+CASE('esdirk2-3')
+  TimeDiscName = 'ESDIRK2-3'
+  nRKStages=3
+! Use the carpenter4-5 CFL and DFL Scales
+#if (PP_NodeType==1)
+  CFLScaleAlpha(1:15) = &
+  (/ 2.0351, 1.7595, 1.5401, 1.3702, 1.2375, 1.1318, 1.0440, 0.9709, 0.9079, 0.8539, 0.8066, 0.7650, 0.7290, 0.6952, 0.6660 /)
+#elif (PP_NodeType==2)
+  IF (OverintegrationType.GT.0) THEN
+    ! Overintegration with Gauss-Lobatto nodes results in a projection DG formulation, i.e. we have to use the Gauss nodes timestep
+    CFLScaleAlpha(1:15) = &
+    (/ 2.0351, 1.7595, 1.5401, 1.3702, 1.2375, 1.1318, 1.0440, 0.9709, 0.9079, 0.8539, 0.8066, 0.7650, 0.7290, 0.6952, 0.6660 /)
+  ELSE
+    CFLScaleAlpha(1:15) = &
+    (/ 4.7497, 3.4144, 2.8451, 2.4739, 2.2027, 1.9912, 1.8225, 1.6830, 1.5682, 1.4692, 1.3849, 1.3106, 1.2454, 1.1880, 1.1362 /)
+  END IF
+#endif /*PP_NodeType*/
+#if PARABOLIC
+  RelativeDFL=1.853
+#endif
+  !Safety factor for the adaptive Newton tolerance
+  safety=3.
+  ESDIRK_gamma  = 1.- sqrt(2.)/2. !DIAGONAL OF ESDIRK_a
+  b2=(1-2.*ESDIRK_gamma)/(4.*ESDIRK_gamma)
+  ALLOCATE(ESDIRK_c(1:nRKStages),ESDIRK_a(1:nRKStages-1,2:nRKStages))
+  ESDIRK_c(2:nRKStages)              = (/2.*ESDIRK_gamma,1./)
+  ESDIRK_a(1:nRKStages-1,2:nRKStages)= RESHAPE ( & !lower triangle
+                           (/ ESDIRK_gamma, ESDIRK_gamma, & !s=2
+                              1.-b2-ESDIRK_gamma, b2 & !s=3
+                               /),(/2,2/))
+  ALLOCATE(ESDIRK_bhat(1:nRKStages),ESDIRK_b(1:nRKStages))
+  ESDIRK_b(1:nRKStages) = (/  1.-b2-ESDIRK_gamma, b2, ESDIRK_gamma/)
+  b2hat=ESDIRK_gamma*(-2.+7.*ESDIRK_gamma-5.*ESDIRK_gamma**2+4.*ESDIRK_gamma**3)/(2*(2.*ESDIRK_gamma-1))
+  b3hat=-2.*ESDIRK_gamma**2*(1-ESDIRK_gamma+ESDIRK_gamma**2)/(2.*ESDIRK_gamma-1)
+  ESDIRK_bhat(1:nRKStages) =(/1-b2hat-b3hat, b2hat, b3hat/)
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+! Crank Nicolson 2 stages, 2 order, A stable
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+CASE('cranknicolson2-2')
+  TimeDiscName = 'CrankNicolson2-2'
+  !fill the implicit butcher tableau with 0 to the same stage as the explicit scheme
+  nRKStages=2
+! Use the carpenter4-5 CFL and DFL Scales
+#if (PP_NodeType==1)
+  CFLScaleAlpha(1:15) = &
+  (/ 2.0351, 1.7595, 1.5401, 1.3702, 1.2375, 1.1318, 1.0440, 0.9709, 0.9079, 0.8539, 0.8066, 0.7650, 0.7290, 0.6952, 0.6660 /)
+#elif (PP_NodeType==2)
+  IF (OverintegrationType.GT.0) THEN
+    ! Overintegration with Gauss-Lobatto nodes results in a projection DG formulation, i.e. we have to use the Gauss nodes timestep
+    CFLScaleAlpha(1:15) = &
+    (/ 2.0351, 1.7595, 1.5401, 1.3702, 1.2375, 1.1318, 1.0440, 0.9709, 0.9079, 0.8539, 0.8066, 0.7650, 0.7290, 0.6952, 0.6660 /)
+  ELSE
+    CFLScaleAlpha(1:15) = &
+    (/ 4.7497, 3.4144, 2.8451, 2.4739, 2.2027, 1.9912, 1.8225, 1.6830, 1.5682, 1.4692, 1.3849, 1.3106, 1.2454, 1.1880, 1.1362 /)
+  END IF
+#endif /*PP_NodeType*/
+#if PARABOLIC
+  RelativeDFL=1.853
+#endif
+
+  ESDIRK_gamma  = 0.5 !DIAGONAL OF ESDIRK_a 
+  ALLOCATE(ESDIRK_c(2:nRKStages),ESDIRK_a(1:nRKStages-1,2:nRKStages))
+  ESDIRK_c(2:nRKStages)=1.
+  ESDIRK_a(1:nRKStages-1,2:nRKStages)= 0.5
+
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+! Explicit step singly diagonally implicit Runge-Kutta (ESDIRK) order 3, 4 stages
+! Kennedy, Carpenter 2001
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+CASE('esdirk3-4')
+  TimeDiscName = 'ESDIRK3-4'
+  nRKStages=4
+  
+! Use the carpenter4-5 CFL and DFL Scales
+#if (PP_NodeType==1)
+  CFLScaleAlpha(1:15) = &
+  (/ 2.0351, 1.7595, 1.5401, 1.3702, 1.2375, 1.1318, 1.0440, 0.9709, 0.9079, 0.8539, 0.8066, 0.7650, 0.7290, 0.6952, 0.6660 /)
+#elif (PP_NodeType==2)
+  IF (OverintegrationType.GT.0) THEN
+    ! Overintegration with Gauss-Lobatto nodes results in a projection DG formulation, i.e. we have to use the Gauss nodes timestep
+    CFLScaleAlpha(1:15) = &
+    (/ 2.0351, 1.7595, 1.5401, 1.3702, 1.2375, 1.1318, 1.0440, 0.9709, 0.9079, 0.8539, 0.8066, 0.7650, 0.7290, 0.6952, 0.6660 /)
+  ELSE
+    CFLScaleAlpha(1:15) = &
+    (/ 4.7497, 3.4144, 2.8451, 2.4739, 2.2027, 1.9912, 1.8225, 1.6830, 1.5682, 1.4692, 1.3849, 1.3106, 1.2454, 1.1880, 1.1362 /)
+  END IF
+#endif /*PP_NodeType*/
+#if PARABOLIC
+  RelativeDFL=1.853
+#endif
+
+  !Safety factor for the adaptive Newton tolerance
+  safety=3.
+
+  ESDIRK_gamma  = 1767732205903./4055673282236. !DIAGONAL OF ESDIRK_a 
+  ALLOCATE(ESDIRK_c(2:nRKStages),ESDIRK_a(1:nRKStages-1,2:nRKStages))
+  ESDIRK_c(2:nRKStages)=(/1767732205903./2027836641118., 3./5., 1. /)
+  ESDIRK_a(1:nRKStages-1,2:nRKStages)= RESHAPE ( &  !lower triangle
+                    (/ 1767732205903./4055673282236.,                            0.,                             0., &!s=2
+                      2746238789719./10658868560708., -640167445237./6845629431997.,                             0., &!s=3
+                       1471266399579./7840856788654.,-4482444167858./7529755066697.,11266239266428./11593286722821.  &!s=4
+                               /),(/3,3/))
+  ALLOCATE(ESDIRK_bhat(1:nRKStages),ESDIRK_b(1:nRKStages))
+  ESDIRK_b(1:nRKStages) = (/  1471266399579./7840856788654.,-4482444167858./7529755066697.,11266239266428./11593286722821., &
+  1767732205903./4055673282236./)
+  ESDIRK_bhat(1:nRKStages) =(/2756255671327./12835298489170., -10771552573575./22201958757719., 9247589265047./10645013368117., &
+  2193209047091./5459859503100./)
+
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+! Explicit step singly diagonally implicit Runge-Kutta (ESDIRK) order 4, 6 stages
+! Kennedy, Carpenter 2001
+!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+CASE('esdirk4-6')
+  TimeDiscName = 'ESDIRK4-6'
+  nRKStages=6
+! Use the carpenter4-5 CFL and DFL Scales
+#if (PP_NodeType==1)
+  CFLScaleAlpha(1:15) = &
+  (/ 2.0351, 1.7595, 1.5401, 1.3702, 1.2375, 1.1318, 1.0440, 0.9709, 0.9079, 0.8539, 0.8066, 0.7650, 0.7290, 0.6952, 0.6660 /)
+#elif (PP_NodeType==2)
+  IF (OverintegrationType.GT.0) THEN
+    ! Overintegration with Gauss-Lobatto nodes results in a projection DG formulation, i.e. we have to use the Gauss nodes timestep
+    CFLScaleAlpha(1:15) = &
+    (/ 2.0351, 1.7595, 1.5401, 1.3702, 1.2375, 1.1318, 1.0440, 0.9709, 0.9079, 0.8539, 0.8066, 0.7650, 0.7290, 0.6952, 0.6660 /)
+  ELSE
+    CFLScaleAlpha(1:15) = &
+    (/ 4.7497, 3.4144, 2.8451, 2.4739, 2.2027, 1.9912, 1.8225, 1.6830, 1.5682, 1.4692, 1.3849, 1.3106, 1.2454, 1.1880, 1.1362 /)
+  END IF
+#endif /*PP_NodeType*/
+#if PARABOLIC
+  RelativeDFL=1.853
+#endif
+  !Safety factor for the adaptive Newton tolerance
+  safety=2.
+#if FV_ENABLED
+  CFLScaleFV = 1.2285
+#endif /*FV*/
+  ESDIRK_gamma  = 1./4. !DIAGONAL OF ESDIRK_a
+  ALLOCATE(ESDIRK_c(2:nRKStages),ESDIRK_a(1:nRKStages-1,2:nRKStages))
+  ESDIRK_c(2:nRKStages)=(/ 1./2., 83./250., 31./50., 17./20. , 1. /)
+  ESDIRK_a(1:nRKStages-1,2:nRKStages)= RESHAPE ( &   !lower triangle
+                    (/                     1./4.,               0.    ,                   0.,               0.,          0., &!s=2
+                                    8611./62500.,        -1743./31250.,                   0.,               0.,          0., &!s=3
+                              5012029./34652500.,    -654441./2922500.,      174375./388108.,               0.,          0., &!s=4
+                      15267082809./155376265600.,-71443401./120774400.,730878875./902184768.,2285395./8070912.,          0., &!s=5
+                                 82889./524892. ,                   0.,        15625./83664.,   69875./102672.,-2260./8211.  &!s=6
+                               /),(/nRKStages-1,nRKStages-1/))
+  ALLOCATE(ESDIRK_bhat(1:nRKStages),ESDIRK_b(1:nRKStages))
+  ESDIRK_b(1:nRKStages) = (/ 82889./524892. ,                   0.,        15625./83664.,   69875./102672.,-2260./8211, 1./4./)
+  ESDIRK_bhat(1:nRKStages) =(/4586570599./29645900160., 0., 178811875./945068544., 814220225./1159782912., -3700637./11593932., &
+  61727./225920./)
 
 CASE DEFAULT
   CALL CollectiveStop(__STAMP__,&

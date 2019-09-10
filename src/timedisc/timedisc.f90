@@ -93,6 +93,8 @@ CASE('LSERKW2')
   TimeStep=>TimeStepByLSERKW2
 CASE('LSERKK3')
   TimeStep=>TimeStepByLSERKK3
+CASE('ESDIRK')
+  TimeStep=>TimeStepByESDIRK
 END SELECT
 
 IF(TimeDiscInitIsDone)THEN
@@ -138,7 +140,7 @@ SUBROUTINE TimeDisc()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_TimeDisc_Vars       ,ONLY: TEnd,t,dt,tAnalyze,ViscousTimeStep,maxIter,Timestep,nRKStages,nCalcTimeStepMax,CurrentStage
+USE MOD_TimeDisc_Vars       ,ONLY: TEnd,t,dt,tAnalyze,ViscousTimeStep,maxIter,Timestep,nRKStages,nCalcTimeStepMax,CurrentStage,iter
 USE MOD_Analyze_Vars        ,ONLY: Analyze_dt,WriteData_dt,tWriteData,nWriteData
 USE MOD_AnalyzeEquation_Vars,ONLY: doCalcTimeAverage
 USE MOD_Analyze             ,ONLY: Analyze
@@ -170,7 +172,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                         :: dt_Min,dt_MinOld,dtAnalyze,dtEnd,tStart
-INTEGER(KIND=8)              :: iter,iter_loc
+INTEGER(KIND=8)              :: iter_loc
 REAL                         :: CalcTimeStart,CalcTimeEnd
 INTEGER                      :: TimeArray(8)              !< Array for system time
 INTEGER                      :: errType,nCalcTimestep,writeCounter
@@ -515,6 +517,79 @@ CurrentStage=1
 
 END SUBROUTINE TimeStepByLSERKK3
 
+!===================================================================================================================================
+!> This procedure takes the current time t, the time step dt and the solution at
+!> the current time U(t) and returns the solution at the next time level.
+!> ESDIRK time integrator with RKA/b/c from Butcher tableau:
+!>
+!> Un=U
+!> Calculation of the explicit terms for every stage i=1,...,s of the ESDIRK
+!> RHS_(i-1) = Un + dt * sum(j=1,i-1) a_ij  Ut(t^n + c_j delta t^n, U_j)
+!> Call Newton for searching the roots of the function
+!> F(U) = U - RHS(i-1) - a_ii * delta t * Ut(t^n + c_i * delta t^n, U) = 0
+!===================================================================================================================================
+SUBROUTINE TimeStepByESDIRK(t)
+! MODULES
+USE MOD_PreProc
+USE MOD_Vector
+USE MOD_DG                , ONLY: DGTimeDerivative_weakForm
+USE MOD_DG_Vars           , ONLY: U,Ut
+USE MOD_TimeDisc_Vars     , ONLY: dt,nRKStages,RKA_implicit,RKc_implicit,iter
+USE MOD_TimeDisc_Vars     , ONLY: RKb_implicit,RKb_embedded,PrecondIter
+USE MOD_Mesh_Vars         , ONLY: nElems
+USE MOD_Newton            , ONLY: Newton
+!USE MOD_Predictor         , ONLY: Predictor,StorePredictor
+USE MOD_LinearSolver_Vars , ONLY: LinSolverRHS
+!USE MOD_Precond           , ONLY: BuildPrecond
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+REAL,INTENT(IN) :: t   !< current simulation time
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL    :: Ut_implicit(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems,1:nRKStages)   ! temporal variable for Ut_implicit
+REAL    :: Un(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
+REAL    :: alpha
+INTEGER :: iStage,iCounter
+!===================================================================================================================================
+!CALL DGTimeDerivative_weakForm(t)! has to be called before preconditioner to fill U_master/slave ! already called in timedisc
+!IF ((iter==0).OR.(MOD(iter,PrecondIter)==0)) CALL BuildPrecond(t,RKA_implicit(nRKStages,nRKStages),dt) !todo: implement
+
+Un=U
+Ut_implicit(:,:,:,:,:,1)=Ut
+DO iStage=2,nRKStages
+  ! time of current stage
+  t = t + RKc_implicit(iStage)*dt
+  ! store predictor
+  !CALL StorePredictor(t) !todo: implement
+  ! compute RHS for linear solver
+  LinSolverRHS=Un
+  DO iCounter=1,iStage-1
+    LinSolverRHS = LinSolverRHS + dt*(RKA_implicit(iStage,iCounter)*Ut_implicit(:,:,:,:,:,iCounter))
+  END DO
+  ! get predictor of u^s+1
+  !CALL Predictor(t) !todo: implement
+  alpha = RKA_implicit(iStage,iStage)*dt
+  ! solve to new stage 
+  CALL Newton(t,alpha)
+  ! store old values for use in next stages
+  !CALL DGTimeDerivative_weakForm(t) ! already set in last Newton iteration
+  Ut_implicit(:,:,:,:,:,iStage)=Ut
+END DO
+
+! Adaptive Newton tolerance, see: Kennedy,Carpenter: Additive Runge-Kutta Schemes for Convection-Diffusion-Reaction Equations
+IF(adaptepsNewton)THEN
+  delta_embedded = 0.
+  DO iStage=1,nRKStages
+    delta_embedded = delta_embedded + (RKb_implicit(iStage)-RKb_embedded(iStage)) * Ut_implicit(:,:,:,:,:,iStage)
+  END DO
+  CALL VectorDotProduct(delta_embedded,delta_embedded,eps2Newton)
+  eps2Newton = (MIN(dt*SQRT(eps2Newton)/safety,1E-3))**2
+#if DEBUG
+  SWRITE(*,*) 'epsNewton = ',SQRT(eps2Newton)
+#endif
+END IF
+END SUBROUTINE TimeStepByESDIRK
 
 !===================================================================================================================================
 !> Scaling of the CFL number, from paper GASSNER, KOPRIVA, "A comparision of the Gauss and Gauss-Lobatto
