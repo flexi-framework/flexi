@@ -531,15 +531,15 @@ END SUBROUTINE TimeStepByLSERKK3
 SUBROUTINE TimeStepByESDIRK(t)
 ! MODULES
 USE MOD_PreProc
-USE MOD_Vector
+USE MOD_Globals
 USE MOD_DG                , ONLY: DGTimeDerivative_weakForm
 USE MOD_DG_Vars           , ONLY: U,Ut
 USE MOD_TimeDisc_Vars     , ONLY: dt,nRKStages,RKA_implicit,RKc_implicit,iter
-USE MOD_TimeDisc_Vars     , ONLY: RKb_implicit,RKb_embedded,PrecondIter
+USE MOD_TimeDisc_Vars     , ONLY: RKb_implicit,RKb_embedded,PrecondIter,safety
 USE MOD_Mesh_Vars         , ONLY: nElems
-USE MOD_Newton            , ONLY: Newton
+USE MOD_Implicit          , ONLY: Newton,VectorDotProduct
+USE MOD_Implicit_Vars     , ONLY: LinSolverRHS,adaptepsNewton,eps2Newton
 !USE MOD_Predictor         , ONLY: Predictor,StorePredictor
-USE MOD_LinearSolver_Vars , ONLY: LinSolverRHS
 !USE MOD_Precond           , ONLY: BuildPrecond
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -549,31 +549,31 @@ REAL,INTENT(IN) :: t   !< current simulation time
 ! LOCAL VARIABLES
 REAL    :: Ut_implicit(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems,1:nRKStages)   ! temporal variable for Ut_implicit
 REAL    :: Un(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
-REAL    :: alpha
 INTEGER :: iStage,iCounter
+REAL    :: tStage
+REAL    :: delta_embedded(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)                  ! difference between solution obtained with 
 !===================================================================================================================================
 !CALL DGTimeDerivative_weakForm(t)! has to be called before preconditioner to fill U_master/slave ! already called in timedisc
 !IF ((iter==0).OR.(MOD(iter,PrecondIter)==0)) CALL BuildPrecond(t,RKA_implicit(nRKStages,nRKStages),dt) !todo: implement
-
-Un=U
+tStage = t
+Un = U
 Ut_implicit(:,:,:,:,:,1)=Ut
 DO iStage=2,nRKStages
   ! time of current stage
-  t = t + RKc_implicit(iStage)*dt
+  tStage = tStage + RKc_implicit(iStage)*dt
   ! store predictor
-  !CALL StorePredictor(t) !todo: implement
+  !CALL StorePredictor(tStage) !todo: implement
   ! compute RHS for linear solver
   LinSolverRHS=Un
   DO iCounter=1,iStage-1
     LinSolverRHS = LinSolverRHS + dt*(RKA_implicit(iStage,iCounter)*Ut_implicit(:,:,:,:,:,iCounter))
   END DO
   ! get predictor of u^s+1
-  !CALL Predictor(t) !todo: implement
-  alpha = RKA_implicit(iStage,iStage)*dt
+  !CALL Predictor(tStage) !todo: implement
   ! solve to new stage 
-  CALL Newton(t,alpha)
+  CALL Newton(tStage,RKA_implicit(iStage,iStage))
   ! store old values for use in next stages
-  !CALL DGTimeDerivative_weakForm(t) ! already set in last Newton iteration
+  !CALL DGTimeDerivative_weakForm(tStage) ! already set in last Newton iteration
   Ut_implicit(:,:,:,:,:,iStage)=Ut
 END DO
 

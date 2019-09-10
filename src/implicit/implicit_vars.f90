@@ -15,18 +15,18 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 REAL,ALLOCATABLE                      :: timeStage                  ! timeStage=t+beta*dt
 ! DG solution type
-REAL,ALLOCATABLE                      :: Q(:,:,:,:,:)               ! Q is the sum of the Residuals until the actual time 
+REAL,ALLOCATABLE                      :: LinSolverRHS(:,:,:,:,:)    ! right hand side of linear solver
+REAL,ALLOCATABLE                      :: R_xk(:,:,:,:,:)
 REAL,ALLOCATABLE                      :: Xk(:,:,:,:,:)
 REAL,ALLOCATABLE                      :: mass(:,:,:,:,:)
 ! Predictor
-REAL,ALLOCATABLE                      :: U_stage_old(:,:,:,:,:,:)     ! stores U at the old stages
+REAL,ALLOCATABLE                      :: U_stage_old(:,:,:,:,:,:)   ! stores U at the old stages
 INTEGER                               :: PredictorType              ! linear interpolation or Lagrange Interpolation
 INTEGER                               :: PredictorCounter=1         ! auxilliary counter for lagrange predictor
 INTEGER                               :: PredictorOrder             ! Order of the Lagrange polynomial
-REAL,ALLOCATABLE                      :: t_old(:)                      ! times at the old stages 
-! DG time derivative type
-REAL,ALLOCATABLE                      :: R_Xk(:,:,:,:,:)
-REAL,ALLOCATABLE                      :: U_BDF_Old(:,:,:,:,:,:)
+REAL,ALLOCATABLE                      :: Upast(:,:,:,:,:)           ! history of upast, required for predictor
+REAL,ALLOCATABLE                      :: UPredict(:,:,:,:,:)        ! buffer needed for predictor
+REAL,ALLOCATABLE                      :: t_old(:)                   ! times at the old stages 
 ! number of DOF
 INTEGER                               :: nDOFVar1D,nDOFVarElem      ! nVar*(N+1), nVar*(N+1)^3
 INTEGER                               :: nDOFGlobal                 ! nDOFVarElem*nElems
@@ -45,16 +45,15 @@ INTEGER                               :: nInnerGMRES                ! max GMRES 
 ! epsilons
 REAL                                  :: rEps0,srEps0               ! SQRT(EPSILON(0.0))
 REAL                                  :: scaleps                    ! scaleps*SQRT(EPSILON(0.0)), used for EpsFD
-REAL                                  :: EpsNewton                 ! newton relative epsilon
-LOGICAL                               :: adapteps                  ! adaptive eps Newton calculated by the embedded RK
-LOGICAL                               :: adaptref                  ! using the epsNewton from parameterfile but computing Iterations from iter=1
-REAL                                  :: Eps2Newton                !  square of newton relative epsilon
+REAL                                  :: EpsNewton                  ! newton relative epsilon
+LOGICAL                               :: adaptepsNewton             ! adaptive eps Newton calculated by the embedded RK
+REAL                                  :: Eps2Newton                 !  square of newton relative epsilon
 REAL                                  :: EpsGMRES
 REAL                                  :: gammaEW                    ! gamma parameter for Eisenstat Walker
 ! Time counting
 REAL                                  :: ApplyPrecondTime           ! Time for applying the Preconditioner 
 REAL                                  :: MatrixVectorTime           ! Time for the matrix vector multiplication of the full 
-                                                                    !    jacoian an an vector
+                                                                    ! jacoian an an vector
 REAL                                  :: GMREStime 
 ! 
 LOGICAL                               :: EisenstatWalker=.FALSE.
