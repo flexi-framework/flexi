@@ -90,7 +90,7 @@ USE MOD_Interpolation_Vars,ONLY:InterpolationInitIsDone
 USE MOD_ReadInTools,       ONLY:GETINT,GETREAL,GETLOGICAL
 USE MOD_DG_Vars,           ONLY:nDOFElem
 USE MOD_Analyze_Vars,      ONLY:wGPVol
-USE MOD_TimeDisc_Vars,     ONLY:TimeDiscType
+USE MOD_TimeDisc_Vars,     ONLY:TimeDiscType,RKb_embedded
 !USE MOD_Precond,           ONLY:InitPrecond
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -106,30 +106,28 @@ INTEGER                   :: i,j,k
 IF((.NOT.InterpolationInitIsDone).OR.(.NOT.MeshInitIsDone).OR.ImplicitInitIsDone)THEN
    CALL abort(__STAMP__,'InitImplicit not ready to be called or already called.')
 END IF
-SWRITE(UNIT_StdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' INIT Implicit...'
-
-nDOFVar1D=PP_nVar*(PP_N+1)
-nDOFVarElem=PP_nVar*nDOFElem
-nDOFGlobal=nDOFVarElem*nElems
-nDOFVarGlobal=nDOFElem*nGlobalElems
-
-!Abort for 2D periodic meshes, when compiling in 3D. Preconditioner is not working in that case
-#if PP_dim==3
 IF(TimeDiscType.EQ.'ESDIRK') THEN
+  SWRITE(UNIT_StdOut,'(132("-"))')
+  SWRITE(UNIT_stdOut,'(A)') ' INIT Implicit...'
+
+  nDOFVar1D=PP_nVar*(PP_N+1)
+  nDOFVarElem=PP_nVar*nDOFElem
+  nDOFGlobal=nDOFVarElem*nElems
+  nDOFVarGlobal=nDOFElem*nGlobalElems
+
+  !Abort for 2D periodic meshes, when compiling in 3D. Preconditioner is not working in that case
+#if PP_dim==3
   DO i=firstInnerSide,lastInnerSide
     IF(SideToElem(S2E_ELEM_ID,i).EQ.SideToElem(S2E_NB_ELEM_ID,i)) THEN
       CALL CollectiveStop(__STAMP__,'ERROR - This is a 2D mesh.')
     ENDIF
   END DO
-END IF !TimeDiscMode
 #endif
 
-!========================================================================================
-! Variables using for Newton
-! Root function: F_Xk = Xk - Q- alpha * dt* R_Xk(t+beta*dt,Xk) = 0!
-!========================================================================================
-IF(TimeDiscType.EQ.'ESDIRK') THEN
+  !========================================================================================
+  ! Variables using for Newton
+  ! Root function: F_Xk = Xk - Q- alpha * dt* R_Xk(t+beta*dt,Xk) = 0!
+  !========================================================================================
   ! the constant vector part of non-linear system
   ALLOCATE(LinSolverRHS(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
   ! Xk is the root of the Newton method
@@ -137,61 +135,64 @@ IF(TimeDiscType.EQ.'ESDIRK') THEN
   ! R_Xk is the DG Operator depending on the solution of the current time (implicit)
   ! In Newton: DG Operator depending on the actual Newton iteration value "xk"
   ALLOCATE(R_Xk(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+  LinSolverRHS = 0.
+  Xk           = 0.
+  R_Xk         = 0.
+
+  EpsNewton      = GETREAL('EpsNewton','0.001')
+  adaptepsNewton = GETLOGICAL('adaptepsNewton','.FALSE.')
+  IF((.NOT.ALLOCATED(RKb_embedded)).AND.(adaptepsNewton.EQV..TRUE.))THEN
+    SWRITE(UNIT_stdOut,'(A)') ' Attention, Newton abort criterium is not adaptive!'
+    adaptepsNewton = .FALSE.
+  END IF
+  scaleps        = GETREAL('scaleps','1.')
+  nNewtonIter    = GETINT('nNewtonIter','50')
+
+  ! Newton takes the quadratic norm into account
+  Eps2Newton=EpsNewton**2
+  rEps0            =scaleps*SQRT(EPSILON(0.0))
+  srEps0           =1./rEps0
+  nInnerNewton     =0
+  nNewtonIterGlobal=0
+  nGMRESGlobal     =0
+
+  !========================================================================================
+  ! Variables using for GMRES 
+  ! GMRES solving the LES: A * y = b
+  ! Matrix          A = I - alpha*dt * dR/dx
+  ! Solution        y = dx
+  ! Right Hand Side b = -F_Xk
+  !========================================================================================
+  nRestarts       =GETINT    ('nRestarts','1')
+  nKDim           =GETINT    ('nKDim','10')
+  EpsGMRES        =GETREAL   ('EpsGMRES','0.0001')
+  EisenstatWalker =GETLOGICAL('EisenstatWalker','.FALSE.')
+  gammaEW         =GETREAL   ('gammaEW','0.9')
+
+
+  nGMRESIterGlobal=0
+  nGMRESIterdt=0
+
+  !If CG solver is used, we have to take Mass into account
+  ALLOCATE(Mass(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+  IF(.NOT.GETLOGICAL('withmass','F'))THEN
+    mass=1.
+  ELSE
+    DO k=0,PP_NZ
+      DO j=0,PP_N
+        DO i=0,PP_N
+          Mass(1:PP_nVar,i,j,k,:)=wGPVol(i,j,k)
+        END DO ! i
+      END DO ! j
+    END DO !k
+  END IF
+
+  !CALL InitPrecond() !todo: implement!
+
+  ImplicitInitIsDone=.TRUE.
+  SWRITE(UNIT_stdOut,'(A)')' INIT Implicit DONE!'
+  SWRITE(UNIT_StdOut,'(132("-"))')
 END IF
-
-LinSolverRHS = 0.
-Xk           = 0.
-R_Xk         = 0.
-
-EpsNewton      = GETREAL('EpsNewton','0.001')
-adaptepsNewton = GETLOGICAL('adaptepsNewton','.FALSE.')
-scaleps        = GETREAL('scaleps','1.')
-nNewtonIter    = GETINT('nNewtonIter','50')
-
-! Newton takes the quadratic norm into account
-Eps2Newton=EpsNewton**2
-rEps0            =scaleps*SQRT(EPSILON(0.0))
-srEps0           =1./rEps0
-nInnerNewton     =0
-nNewtonIterGlobal=0
-nGMRESGlobal     =0
-
-!========================================================================================
-! Variables using for GMRES 
-! GMRES solving the LES: A * y = b
-! Matrix          A = I - alpha*dt * dR/dx
-! Solution        y = dx
-! Right Hand Side b = -F_Xk
-!========================================================================================
-nRestarts       =GETINT    ('nRestarts','1')
-nKDim           =GETINT    ('nKDim','10')
-EpsGMRES        =GETREAL   ('EpsGMRES','0.0001')
-EisenstatWalker =GETLOGICAL('EisenstatWalker','.FALSE.')
-gammaEW         =GETREAL   ('gammaEW','0.9')
-
-
-nGMRESIterGlobal=0
-nGMRESIterdt=0
-
-!If CG solver is used, we have to take Mass into account
-IF(TimeDiscType.EQ.'ESDIRK') ALLOCATE(Mass(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
-IF(.NOT.GETLOGICAL('withmass','F'))THEN
-  mass=1.
-ELSE
-  DO k=0,PP_NZ
-    DO j=0,PP_N
-      DO i=0,PP_N
-        Mass(1:PP_nVar,i,j,k,:)=wGPVol(i,j,k)
-      END DO ! i
-    END DO ! j
-  END DO !k
-END IF
-
-!CALL InitPrecond() !todo: implement!
-
-ImplicitInitIsDone=.TRUE.
-SWRITE(UNIT_stdOut,'(A)')' INIT Implicit DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitImplicit
 
 !===================================================================================================================================

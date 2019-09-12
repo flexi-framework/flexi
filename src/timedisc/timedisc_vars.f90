@@ -770,6 +770,9 @@ CASE('eulerimplicit')
 #if PARABOLIC
   RelativeDFL=1.853
 #endif
+#if FV_ENABLED
+  CFLScaleFV = 1.2285
+#endif /*FV*/
   ESDIRK_gamma  = 1. !DIAGONAL OF RKA_implicit 
   ALLOCATE(RKc_implicit(2:nRKStages),RKA_implicit(1:nRKStages,1:nRKStages))
   RKc_implicit(2:nRKStages)             = (/ 1. /)
@@ -798,21 +801,9 @@ CASE('esdirk2-3')
 #if PARABOLIC
   RelativeDFL=1.853
 #endif
-  !Safety factor for the adaptive Newton tolerance
-  !safety=3.
-  !ESDIRK_gamma  = 1.- sqrt(2.)/2. !DIAGONAL OF RKA_implicit
-  !b2=(1-2.*ESDIRK_gamma)/(4.*ESDIRK_gamma)
-  !ALLOCATE(RKc_implicit(1:nRKStages),RKA_implicit(1:nRKStages-1,2:nRKStages))
-  !RKc_implicit(2:nRKStages)              = (/2.*ESDIRK_gamma,1./)
-  !RKA_implicit(1:nRKStages-1,2:nRKStages)= RESHAPE ( & !lower triangle
-                           !(/ ESDIRK_gamma, ESDIRK_gamma, & !s=2
-                              !1.-b2-ESDIRK_gamma, b2 & !s=3
-                               !/),(/2,2/))
-  !ALLOCATE(RKb_embedded(1:nRKStages),RKb_implicit(1:nRKStages))
-  !RKb_implicit(1:nRKStages) = (/  1.-b2-ESDIRK_gamma, b2, ESDIRK_gamma/)
-  !b2hat=ESDIRK_gamma*(-2.+7.*ESDIRK_gamma-5.*ESDIRK_gamma**2+4.*ESDIRK_gamma**3)/(2*(2.*ESDIRK_gamma-1))
-  !b3hat=-2.*ESDIRK_gamma**2*(1-ESDIRK_gamma+ESDIRK_gamma**2)/(2.*ESDIRK_gamma-1)
-  !RKb_embedded(1:nRKStages) =(/1-b2hat-b3hat, b2hat, b3hat/)
+#if FV_ENABLED
+  CFLScaleFV = 1.2285
+#endif /*FV*/
   safety=3.
   ESDIRK_gamma  = 0.5*(2.- SQRT(2.)) !DIAGONAL OF RKA_implicit
   b2=(1.-ESDIRK_gamma)/(2.)
@@ -851,6 +842,9 @@ CASE('cranknicolson2-2')
 #if PARABOLIC
   RelativeDFL=1.853
 #endif
+#if FV_ENABLED
+  CFLScaleFV = 1.2285
+#endif /*FV*/
 
   ESDIRK_gamma  = 0.5 !DIAGONAL OF RKA_implicit 
   ALLOCATE(RKc_implicit(2:nRKStages),RKA_implicit(1:nRKStages,1:nRKStages))
@@ -882,6 +876,9 @@ CASE('esdirk3-4')
 #if PARABOLIC
   RelativeDFL=1.853
 #endif
+#if FV_ENABLED
+  CFLScaleFV = 1.2285
+#endif /*FV*/
 
   !Safety factor for the adaptive Newton tolerance
   safety=3.
