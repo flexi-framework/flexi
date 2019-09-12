@@ -53,7 +53,9 @@ CALL prms%CreateStringOption('TimeDiscMethod', "Specifies the type of time-discr
                                                & a specific Runge-Kutta scheme. Possible values:\n"//&
                                                "  * standardrk3-3\n  * carpenterrk4-5\n  * niegemannrk4-14\n"//&
                                                "  * toulorgerk4-8c\n  * toulorgerk3-7c\n  * toulorgerk4-8f\n"//&
-                                               "  * ketchesonrk4-20\n  * ketchesonrk4-18", value='CarpenterRK4-5')
+                                               "  * ketchesonrk4-20\n  * ketchesonrk4-18\n * impliciteuler\n"//&
+                                               "  * cranknicolson2-2\n * esdirk2-3\n * esdirk3-4\n"//&
+                                               " * esdirk4-6" , value='CarpenterRK4-5')
 CALL prms%CreateRealOption(  'TEnd',           "End time of the simulation (mandatory).")
 CALL prms%CreateRealOption(  'CFLScale',       "Scaling factor for the theoretical CFL number, typical range 0.1..1.0 (mandatory)")
 CALL prms%CreateRealOption(  'DFLScale',       "Scaling factor for the theoretical DFL number, typical range 0.1..1.0 (mandatory)")
@@ -75,6 +77,7 @@ USE MOD_Overintegration_Vars,ONLY:NUnder
 USE MOD_Filter_Vars         ,ONLY:NFilter,FilterType
 USE MOD_Mesh_Vars           ,ONLY:nElems
 USE MOD_IO_HDF5             ,ONLY:AddToElemData,ElementOut
+USE MOD_Predictor           ,ONLY:InitPredictor
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -95,6 +98,8 @@ CASE('LSERKK3')
   TimeStep=>TimeStepByLSERKK3
 CASE('ESDIRK')
   TimeStep=>TimeStepByESDIRK
+  !Predictor for Newton
+  CALL InitPredictor(TimeDiscMethod)
 END SELECT
 
 IF(TimeDiscInitIsDone)THEN
@@ -141,6 +146,7 @@ SUBROUTINE TimeDisc()
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_TimeDisc_Vars       ,ONLY: TEnd,t,dt,tAnalyze,ViscousTimeStep,maxIter,Timestep,nRKStages,nCalcTimeStepMax,CurrentStage,iter
+USE MOD_TimeDisc_Vars       ,ONLY: dt_old,TimeDiscType
 USE MOD_Analyze_Vars        ,ONLY: Analyze_dt,WriteData_dt,tWriteData,nWriteData
 USE MOD_AnalyzeEquation_Vars,ONLY: doCalcTimeAverage
 USE MOD_Analyze             ,ONLY: Analyze
@@ -162,6 +168,8 @@ USE MOD_RecordPoints        ,ONLY: RecordPoints,WriteRP
 USE MOD_RecordPoints_Vars   ,ONLY: RP_onProc
 USE MOD_Sponge_Vars         ,ONLY: CalcPruettDamping
 USE MOD_Indicator           ,ONLY: doCalcIndicator,CalcIndicator
+USE MOD_Predictor           ,ONLY: FillInitPredictor
+USE MOD_Implicit_Vars       ,ONLY: nGMRESIterGlobal
 #if FV_ENABLED
 USE MOD_FV
 #endif
@@ -273,10 +281,12 @@ CALL FV_Info(1_8)
 #endif
 SWRITE(UNIT_StdOut,*)'CALCULATION RUNNING...'
 
+IF(TimeDiscType.EQ.'ESDIRK') CALL FillInitPredictor(t)
 
 ! Run computation
 CalcTimeStart=FLEXITIME()
 DO
+  dt_old = dt
   CurrentStage=1
   IF(doCalcIndicator) CALL CalcIndicator(U,t)
 #if FV_ENABLED
@@ -354,6 +364,7 @@ DO
       WRITE(UNIT_StdOut,'(A,ES16.7)')' Timestep   : ',dt_Min
       IF(ViscousTimeStep) WRITE(UNIT_StdOut,'(A)')' Viscous timestep dominates! '
       WRITE(UNIT_stdOut,'(A,ES16.7)')'#Timesteps  : ',REAL(iter)
+      IF(TimeDiscType.EQ.'ESDIRK') WRITE(UNIT_stdOut,'(A,ES16.7)')'#GMRES iter : ',REAL(nGMRESIterGlobal)
     END IF !MPIroot
 #if FV_ENABLED
     CALL FV_Info(iter_loc)
@@ -534,12 +545,12 @@ USE MOD_PreProc
 USE MOD_Globals
 USE MOD_DG                , ONLY: DGTimeDerivative_weakForm
 USE MOD_DG_Vars           , ONLY: U,Ut
-USE MOD_TimeDisc_Vars     , ONLY: dt,nRKStages,RKA_implicit,RKc_implicit,iter
-USE MOD_TimeDisc_Vars     , ONLY: RKb_implicit,RKb_embedded,PrecondIter,safety
+USE MOD_TimeDisc_Vars     , ONLY: dt,nRKStages,RKA_implicit,RKc_implicit!,iter
+USE MOD_TimeDisc_Vars     , ONLY: RKb_implicit,RKb_embedded,safety!,PrecondIter
 USE MOD_Mesh_Vars         , ONLY: nElems
 USE MOD_Implicit          , ONLY: Newton,VectorDotProduct
 USE MOD_Implicit_Vars     , ONLY: LinSolverRHS,adaptepsNewton,eps2Newton
-!USE MOD_Predictor         , ONLY: Predictor,StorePredictor
+USE MOD_Predictor         , ONLY: Predictor,StorePredictor
 !USE MOD_Precond           , ONLY: BuildPrecond
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -561,20 +572,20 @@ Ut_implicit(:,:,:,:,:,1)=Ut
 DO iStage=2,nRKStages
   ! time of current stage
   tStage = tStage + RKc_implicit(iStage)*dt
-  ! store predictor
-  !CALL StorePredictor(tStage) !todo: implement
   ! compute RHS for linear solver
   LinSolverRHS=Un
   DO iCounter=1,iStage-1
     LinSolverRHS = LinSolverRHS + dt*(RKA_implicit(iStage,iCounter)*Ut_implicit(:,:,:,:,:,iCounter))
   END DO
   ! get predictor of u^s+1
-  !CALL Predictor(tStage) !todo: implement
+  CALL Predictor(tStage,iStage)
   ! solve to new stage 
   CALL Newton(tStage,RKA_implicit(iStage,iStage))
   ! store old values for use in next stages
   !CALL DGTimeDerivative_weakForm(tStage) ! already set in last Newton iteration
   Ut_implicit(:,:,:,:,:,iStage)=Ut
+  ! store predictor
+  CALL StorePredictor(Ut_implicit,Un,tStage,iStage)
 END DO
 
 ! Adaptive Newton tolerance, see: Kennedy,Carpenter: Additive Runge-Kutta Schemes for Convection-Diffusion-Reaction Equations

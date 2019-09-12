@@ -1,3 +1,16 @@
+!=================================================================================================================================
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
+! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+!
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
+! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+!
+! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+! of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License v3.0 for more details.
+!
+! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
+!=================================================================================================================================
 #include "flexi.h"
 
 !===================================================================================================================================
@@ -48,7 +61,7 @@ IMPLICIT NONE
 CALL prms%SetSection("Implicit")
 CALL prms%CreateRealOption(  'EpsNewton',      "Newton tolerance", value='1.E-6')
 CALL prms%CreateIntOption(   'nNewtonIter',    "Amounts of Newton iterations", value='50')
-CALL prms%CreateLogicalOption('adapteps',      "adaptive Newton eps", value='.FALSE.')
+CALL prms%CreateLogicalOption('adaptepsNewton',      "adaptive Newton eps", value='.FALSE.')
 CALL prms%CreateLogicalOption('EisenstatWalker',    "", value='.FALSE.')
 CALL prms%CreateRealOption(  'gammaEW',        "", value='0.9')
 CALL prms%CreateRealOption(  'EpsGMRES',       "GMRES Tolerance", value='1.E-4')
@@ -59,10 +72,7 @@ CALL prms%CreateLogicalOption('withmass',    "", value='.FALSE.')
 CALL prms%CreateIntOption( 'PredictorType',  "Type of predictor to be used",value='0')
 CALL prms%CreateIntOption( 'PredictorOrder', "Order of predictor to be used",value='0')
 
-
 END SUBROUTINE DefineParametersImplicit
-
-
 
 !===================================================================================================================================
 !> Allocate global variable 
@@ -72,13 +82,15 @@ SUBROUTINE InitImplicit()
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Implicit_Vars
-USE MOD_Mesh_Vars,         ONLY:MeshInitIsDone,nElems,nGlobalElems,firstInnerSide,lastInnerSide,SideToElem
+USE MOD_Mesh_Vars,         ONLY:MeshInitIsDone,nElems,nGlobalElems
+#if PP_dim==3
+USE MOD_Mesh_Vars,         ONLY:firstInnerSide,lastInnerSide,SideToElem
+#endif
 USE MOD_Interpolation_Vars,ONLY:InterpolationInitIsDone
 USE MOD_ReadInTools,       ONLY:GETINT,GETREAL,GETLOGICAL
 USE MOD_DG_Vars,           ONLY:nDOFElem
 USE MOD_Analyze_Vars,      ONLY:wGPVol
 USE MOD_TimeDisc_Vars,     ONLY:TimeDiscType
-!USE MOD_Predictor,         ONLY:InitPredictor
 !USE MOD_Precond,           ONLY:InitPrecond
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -160,9 +172,6 @@ gammaEW         =GETREAL   ('gammaEW','0.9')
 
 nGMRESIterGlobal=0
 nGMRESIterdt=0
-ApplyPrecondTime=0.
-MatrixVectorTime=0.
-GMREStime=0.
 
 !If CG solver is used, we have to take Mass into account
 IF(TimeDiscType.EQ.'ESDIRK') ALLOCATE(Mass(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
@@ -178,8 +187,6 @@ ELSE
   END DO !k
 END IF
 
-!Predictor for Newton
-!CALL InitPredictor() !todo: implement!
 !CALL InitPrecond() !todo: implement!
 
 ImplicitInitIsDone=.TRUE.
@@ -194,7 +201,6 @@ END SUBROUTINE InitImplicit
 !> dF/dX|Xk * DeltaX = F_Xk
 !> X_K+1 = X_k + DeltaX
 !> Attention: we use actual U as X0
-!>            Q (explicit) is determined outside of Newton by time discretization method
 !===================================================================================================================================
 SUBROUTINE Newton(t,Alpha)
 ! MODULES
@@ -202,10 +208,10 @@ USE MOD_DG_Vars       ,ONLY: U,Ut
 USE MOD_PreProc
 USE MOD_Mesh_Vars     ,ONLY: nElems
 USE MOD_DG            ,ONLY: DGTimeDerivative_weakForm
-USE MOD_Implicit_Vars ,ONLY: timeStage,EpsNewton,Eps2Newton,Xk,R_Xk,nNewtonIter,nNewtonIterGlobal,nInnerNewton,nDOFVarGlobal
-USE MOD_Implicit_Vars ,ONLY: gammaEW,GMRESTime,EpsGMRES,EisenstatWalker,U_stage_old,LinSolverRHS
+USE MOD_Implicit_Vars ,ONLY: EpsNewton,Xk,R_Xk,nNewtonIter,nNewtonIterGlobal,nInnerNewton,nDOFVarGlobal!,Eps2Newton
+USE MOD_Implicit_Vars ,ONLY: gammaEW,EpsGMRES,EisenstatWalker,LinSolverRHS,U_predictor
 USE MOD_TimeDisc_Vars ,ONLY: dt
-USE MOD_Implicit_Vars ,ONLY: Mass,PredictorType,nGMRESIterGlobal
+USE MOD_Implicit_Vars ,ONLY: Mass,PredictorType
 USE MOD_Globals
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -215,14 +221,12 @@ REAL,INTENT(IN)      :: t
 REAL,INTENT(IN)      :: Alpha
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL             :: AbortCritNewton,EpsNewtonloc
-REAL             :: U_store(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
+REAL             :: AbortCritNewton
 REAL             :: F_X0(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
 REAL             :: F_Xk(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
 REAL             :: Norm_F_X0,Norm2_F_X0,Norm2_F_Xk,Norm2_F_Xk_old,Norm_F_Xk
 REAL             :: DeltaX(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
-REAL             :: eta_k,etaA,etaB,etaMax,eta_k_old
-REAL             :: timestart,timeend,Time
+REAL             :: eta_k,etaA,etaB,etaMax
 INTEGER          :: i,j,k,iElem,iVar
 !===================================================================================================================================
 !Initialization for the Newton iterations
@@ -240,7 +244,7 @@ DO iElem=1,nElems
   END DO
 END DO
 IF(PredictorType.NE.0)THEN ! U is not already U_predictor
-  !U = U_predictor !todo: implement
+  U = U_predictor
   CALL DGTimeDerivative_weakForm(t)
 END IF
 DO iElem=1,nElems
@@ -260,7 +264,7 @@ END DO
 ! Preparation for the Abort Criteria of Newton
 ! |F_Xk| < epsNewton * |F_Xk|
 CALL VectorDotProduct(F_X0,F_X0,Norm2_F_X0)
-Norm_F_X0=sqrt(Norm2_F_X0)
+Norm_F_X0=SQRT(Norm2_F_X0)
 IF (Norm_F_X0.LE.1.E-13*nDOFVarGlobal) THEN ! do not iterate, as U is already the implicit solution
   Norm_F_Xk=0.
 ELSE ! we need iterations
@@ -269,7 +273,7 @@ ELSE ! we need iterations
   ELSE
     Norm2_F_Xk=Norm2_F_X0
   END IF 
-  Norm_F_Xk=sqrt(Norm2_F_Xk)
+  Norm_F_Xk=SQRT(Norm2_F_Xk)
 END IF
 
 !Eisenstat and Walker controls the Abort Criteria for GMRES
@@ -364,10 +368,8 @@ REAL              :: R0(nDOFGlobal)
 REAL              :: Gam(1:nKDim+1),C(1:nKDim),S(1:nKDim),H(1:nKDim+1,1:nKDim+1),Alp(1:nKDim)
 REAL              :: Norm_R0,Resu,Temp,Bet
 INTEGER           :: Restart
-REAL              :: timestart,timeend,TotalTime1,TotalTime2
-INTEGER           :: m,nn,o,i
+INTEGER           :: m,nn,o
 REAL              :: tol
-REAL              :: deltaz(nDOFGlobal),deltau(nDOFGlobal)
 !===================================================================================================================================
 !Initializations
 R0         =B
@@ -375,8 +377,6 @@ Norm_R0    =Norm_B
 DeltaX     =0.
 Restart    =0
 nInnerGMRES=0
-TotalTime1 =0.
-!TotalTime2 =0.
 
 ! |dF/dU|U_k *delta U + F(U_K) | < eta_k * |F(U_K)|
 ! eta_k = AbortCrit forcing terms
@@ -529,7 +529,7 @@ SUBROUTINE FinalizeImplicit()
 ! MODULES
 USE MOD_Implicit_Vars,ONLY:LinSolverRHS,Xk,mass,R_Xk
 USE MOD_Implicit_Vars,ONLY:ImplicitInitIsDone
-!USE MOD_Predictor,    ONLY:FinalizePredictor
+USE MOD_Predictor,    ONLY:FinalizePredictor
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -543,7 +543,7 @@ SDEALLOCATE(LinSolverRHS)
 SDEALLOCATE(R_Xk)
 SDEALLOCATE(Xk)
 SDEALLOCATE(mass)
-!CALL FinalizePredictor !todo: implement
+CALL FinalizePredictor
 ImplicitInitIsDone = .FALSE.
 END SUBROUTINE FinalizeImplicit
 

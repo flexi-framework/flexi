@@ -13,20 +13,20 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-REAL,ALLOCATABLE                      :: timeStage                  ! timeStage=t+beta*dt
 ! DG solution type
 REAL,ALLOCATABLE                      :: LinSolverRHS(:,:,:,:,:)    ! right hand side of linear solver
 REAL,ALLOCATABLE                      :: R_xk(:,:,:,:,:)
 REAL,ALLOCATABLE                      :: Xk(:,:,:,:,:)
 REAL,ALLOCATABLE                      :: mass(:,:,:,:,:)
 ! Predictor
-REAL,ALLOCATABLE                      :: U_stage_old(:,:,:,:,:,:)   ! stores U at the old stages
 INTEGER                               :: PredictorType              ! linear interpolation or Lagrange Interpolation
 INTEGER                               :: PredictorCounter=1         ! auxilliary counter for lagrange predictor
 INTEGER                               :: PredictorOrder             ! Order of the Lagrange polynomial
-REAL,ALLOCATABLE                      :: Upast(:,:,:,:,:)           ! history of upast, required for predictor
-REAL,ALLOCATABLE                      :: UPredict(:,:,:,:,:)        ! buffer needed for predictor
-REAL,ALLOCATABLE                      :: t_old(:)                   ! times at the old stages 
+REAL,ALLOCATABLE                      :: Upast(:,:,:,:,:,:,:)       ! history of upast, required for predictor
+REAL,ALLOCATABLE                      :: U_Predictor(:,:,:,:,:)     ! buffer needed for predictor
+REAL,ALLOCATABLE                      :: Un_old(:,:,:,:,:)          ! solution at old time instance
+REAL,ALLOCATABLE                      :: Ut_old(:,:,:,:,:,:)        ! time increment at old stages
+REAL,ALLOCATABLE                      :: t_old(:,:)                 ! times at the old stages 
 ! number of DOF
 INTEGER                               :: nDOFVar1D,nDOFVarElem      ! nVar*(N+1), nVar*(N+1)^3
 INTEGER                               :: nDOFGlobal                 ! nDOFVarElem*nElems
@@ -50,12 +50,6 @@ LOGICAL                               :: adaptepsNewton             ! adaptive e
 REAL                                  :: Eps2Newton                 !  square of newton relative epsilon
 REAL                                  :: EpsGMRES
 REAL                                  :: gammaEW                    ! gamma parameter for Eisenstat Walker
-! Time counting
-REAL                                  :: ApplyPrecondTime           ! Time for applying the Preconditioner 
-REAL                                  :: MatrixVectorTime           ! Time for the matrix vector multiplication of the full 
-                                                                    ! jacoian an an vector
-REAL                                  :: GMREStime 
-! 
 LOGICAL                               :: EisenstatWalker=.FALSE.
 LOGICAL                               :: ImplicitInitIsDone=.FALSE.
 !===================================================================================================================================

@@ -38,6 +38,7 @@ END INTERFACE
 !----------------------------------------------------------------------------------------------------------------------------------
 REAL             :: t=0.                      !< current physical time
 REAL             :: dt                        !< current timestep
+REAL             :: dt_old                    !< last timestep
 REAL             :: TEnd                      !< End time of simulation
 REAL             :: TAnalyze                  !< Analyze time intervall
 REAL             :: CFLScale(0:FV_ENABLED)    !< Convective CFL number
@@ -770,9 +771,9 @@ CASE('eulerimplicit')
   RelativeDFL=1.853
 #endif
   ESDIRK_gamma  = 1. !DIAGONAL OF RKA_implicit 
-  ALLOCATE(RKc_implicit(2:nRKStages),RKA_implicit(1:nRKStages-1,2:nRKStages))
-  RKc_implicit(2:nRKStages)              = 1.
-  RKA_implicit(1:nRKStages-1,2:nRKStages)= 0.  !lower triangle
+  ALLOCATE(RKc_implicit(2:nRKStages),RKA_implicit(1:nRKStages,1:nRKStages))
+  RKc_implicit(2:nRKStages)             = (/ 1. /)
+  RKa_implicit(1:nRKStages,1:nRKStages) = RESHAPE((/0.,0.,0.,1./),(/2,2/),ORDER=(/2,1/))
 
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ! ESDIRK2, 3 stages, order 2, stiffly accurate, L stable
@@ -798,19 +799,33 @@ CASE('esdirk2-3')
   RelativeDFL=1.853
 #endif
   !Safety factor for the adaptive Newton tolerance
+  !safety=3.
+  !ESDIRK_gamma  = 1.- sqrt(2.)/2. !DIAGONAL OF RKA_implicit
+  !b2=(1-2.*ESDIRK_gamma)/(4.*ESDIRK_gamma)
+  !ALLOCATE(RKc_implicit(1:nRKStages),RKA_implicit(1:nRKStages-1,2:nRKStages))
+  !RKc_implicit(2:nRKStages)              = (/2.*ESDIRK_gamma,1./)
+  !RKA_implicit(1:nRKStages-1,2:nRKStages)= RESHAPE ( & !lower triangle
+                           !(/ ESDIRK_gamma, ESDIRK_gamma, & !s=2
+                              !1.-b2-ESDIRK_gamma, b2 & !s=3
+                               !/),(/2,2/))
+  !ALLOCATE(RKb_embedded(1:nRKStages),RKb_implicit(1:nRKStages))
+  !RKb_implicit(1:nRKStages) = (/  1.-b2-ESDIRK_gamma, b2, ESDIRK_gamma/)
+  !b2hat=ESDIRK_gamma*(-2.+7.*ESDIRK_gamma-5.*ESDIRK_gamma**2+4.*ESDIRK_gamma**3)/(2*(2.*ESDIRK_gamma-1))
+  !b3hat=-2.*ESDIRK_gamma**2*(1-ESDIRK_gamma+ESDIRK_gamma**2)/(2.*ESDIRK_gamma-1)
+  !RKb_embedded(1:nRKStages) =(/1-b2hat-b3hat, b2hat, b3hat/)
   safety=3.
-  ESDIRK_gamma  = 1.- sqrt(2.)/2. !DIAGONAL OF RKA_implicit
-  b2=(1-2.*ESDIRK_gamma)/(4.*ESDIRK_gamma)
-  ALLOCATE(RKc_implicit(1:nRKStages),RKA_implicit(1:nRKStages-1,2:nRKStages))
+  ESDIRK_gamma  = 0.5*(2.- SQRT(2.)) !DIAGONAL OF RKA_implicit
+  b2=(1.-ESDIRK_gamma)/(2.)
+  ALLOCATE(RKc_implicit(2:nRKStages),RKA_implicit(1:nRKStages,1:nRKStages))
   RKc_implicit(2:nRKStages)              = (/2.*ESDIRK_gamma,1./)
-  RKA_implicit(1:nRKStages-1,2:nRKStages)= RESHAPE ( & !lower triangle
-                           (/ ESDIRK_gamma, ESDIRK_gamma, & !s=2
-                              1.-b2-ESDIRK_gamma, b2 & !s=3
-                               /),(/2,2/))
+  RKA_implicit(1:nRKStages,1:nRKStages)= RESHAPE((/0.          ,0.          ,0.            , & !s=1
+                                                   ESDIRK_gamma,ESDIRK_gamma,0.            , & !s=2
+                                                   b2          ,b2          ,ESDIRK_gamma/), & !s=3
+                                                   (/3,3/),ORDER=(/2,1/))
   ALLOCATE(RKb_embedded(1:nRKStages),RKb_implicit(1:nRKStages))
-  RKb_implicit(1:nRKStages) = (/  1.-b2-ESDIRK_gamma, b2, ESDIRK_gamma/)
-  b2hat=ESDIRK_gamma*(-2.+7.*ESDIRK_gamma-5.*ESDIRK_gamma**2+4.*ESDIRK_gamma**3)/(2*(2.*ESDIRK_gamma-1))
-  b3hat=-2.*ESDIRK_gamma**2*(1-ESDIRK_gamma+ESDIRK_gamma**2)/(2.*ESDIRK_gamma-1)
+  RKb_implicit(1:nRKStages) = (/  b2, b2, ESDIRK_gamma/)
+  b2hat=1./(12.*ESDIRK_gamma*(1.-2.*ESDIRK_gamma))
+  b3hat=(1.-3.*ESDIRK_gamma)/(3.*(1.-2.*ESDIRK_gamma))
   RKb_embedded(1:nRKStages) =(/1-b2hat-b3hat, b2hat, b3hat/)
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ! Crank Nicolson 2 stages, 2 order, A stable
@@ -838,9 +853,9 @@ CASE('cranknicolson2-2')
 #endif
 
   ESDIRK_gamma  = 0.5 !DIAGONAL OF RKA_implicit 
-  ALLOCATE(RKc_implicit(2:nRKStages),RKA_implicit(1:nRKStages-1,2:nRKStages))
+  ALLOCATE(RKc_implicit(2:nRKStages),RKA_implicit(1:nRKStages,1:nRKStages))
   RKc_implicit(2:nRKStages)=1.
-  RKA_implicit(1:nRKStages-1,2:nRKStages)= 0.5
+  RKa_implicit(1:nRKStages,1:nRKStages) = RESHAPE((/0.,0.,0.5,0.5/),(/2,2/),ORDER=(/2,1/))
 
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ! Explicit step singly diagonally implicit Runge-Kutta (ESDIRK) order 3, 4 stages
@@ -872,18 +887,27 @@ CASE('esdirk3-4')
   safety=3.
 
   ESDIRK_gamma  = 1767732205903./4055673282236. !DIAGONAL OF RKA_implicit 
-  ALLOCATE(RKc_implicit(2:nRKStages),RKA_implicit(1:nRKStages-1,2:nRKStages))
+  ALLOCATE(RKc_implicit(2:nRKStages),RKA_implicit(1:nRKStages,1:nRKStages))
   RKc_implicit(2:nRKStages)=(/1767732205903./2027836641118., 3./5., 1. /)
-  RKA_implicit(1:nRKStages-1,2:nRKStages)= RESHAPE ( &  !lower triangle
-                    (/ 1767732205903./4055673282236.,                            0.,                             0., &!s=2
-                      2746238789719./10658868560708., -640167445237./6845629431997.,                             0., &!s=3
-                       1471266399579./7840856788654.,-4482444167858./7529755066697.,11266239266428./11593286722821.  &!s=4
-                               /),(/3,3/))
+  RKA_implicit(1:nRKStages,1:nRKStages) = RESHAPE((/0.                            ,0.                           ,0.          ,0., &
+                                                    ESDIRK_gamma                  ,ESDIRK_gamma                 ,0.          ,0., &
+                                                    2746238789719./10658868560708.,-640167445237./6845629431997.,ESDIRK_gamma,0., &
+                                                    1471266399579./7840856788654.,-4482444167858./7529755066697.,                 &
+                                                    11266239266428./11593286722821.,ESDIRK_gamma/),                               &
+                                                    (/4,4/),ORDER=(/2,1/))
   ALLOCATE(RKb_embedded(1:nRKStages),RKb_implicit(1:nRKStages))
-  RKb_implicit(1:nRKStages) = (/  1471266399579./7840856788654.,-4482444167858./7529755066697.,11266239266428./11593286722821., &
-  1767732205903./4055673282236./)
-  RKb_embedded(1:nRKStages) =(/2756255671327./12835298489170., -10771552573575./22201958757719., 9247589265047./10645013368117., &
+  RKb_implicit(1:nRKStages) = (/1471266399579./7840856788654.,-4482444167858./7529755066697.,11266239266428./11593286722821.,     &
+  ESDIRK_gamma/)
+  RKb_embedded(1:nRKStages) =(/2756255671327./12835298489170., -10771552573575./22201958757719., 9247589265047./10645013368117.,  &
   2193209047091./5459859503100./)
+  !SELECT CASE(PredictorOrder)
+  !CASE(2)
+    ALLOCATE(RKb_denseout(1:2,1:nRKStages))
+    RKb_denseout(1,:) = (/4655552711362./22874653954995.,-18682724506714./9892148508045.,34259539580243./13192909600954.,  &
+                          584795268549./6622622206610./)
+    RKb_denseout(2,:) = (/-215264564351./13552729205753.,17870216137069./13817060693119.,-28141676662227./17317692491321., &
+                          2508943948391./7218656332882./)
+  !END SELECT
 
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ! Explicit step singly diagonally implicit Runge-Kutta (ESDIRK) order 4, 6 stages
@@ -915,20 +939,35 @@ CASE('esdirk4-6')
   CFLScaleFV = 1.2285
 #endif /*FV*/
   ESDIRK_gamma  = 1./4. !DIAGONAL OF RKA_implicit
-  ALLOCATE(RKc_implicit(2:nRKStages),RKA_implicit(1:nRKStages-1,2:nRKStages))
+  ALLOCATE(RKc_implicit(2:nRKStages),RKA_implicit(1:nRKStages,1:nRKStages))
   RKc_implicit(2:nRKStages)=(/ 1./2., 83./250., 31./50., 17./20. , 1. /)
-  RKA_implicit(1:nRKStages-1,2:nRKStages)= RESHAPE ( &   !lower triangle
-                    (/                     1./4.,               0.    ,                   0.,               0.,          0., &!s=2
-                                    8611./62500.,        -1743./31250.,                   0.,               0.,          0., &!s=3
-                              5012029./34652500.,    -654441./2922500.,      174375./388108.,               0.,          0., &!s=4
-                      15267082809./155376265600.,-71443401./120774400.,730878875./902184768.,2285395./8070912.,          0., &!s=5
-                                 82889./524892. ,                   0.,        15625./83664.,   69875./102672.,-2260./8211.  &!s=6
-                               /),(/nRKStages-1,nRKStages-1/))
+  RKA_implicit(1:nRKStages,1:nRKStages) = RESHAPE((/0.,0.,0.,0.,0.,0.,                                                   &
+                                                    1./4.,1./4.,0.,0.,0.,0.,                                             &
+                                                    8611./62500.,-1743./31250.,1./4.,0.,0.,0.,                           &
+                                                    5012029./34652500.,-654441./2922500.,174375./388108.,1./4.,0.,0.,    &
+                                                    15267082809./155376265600.,-71443401./120774400.,                    &
+                                                    730878875./902184768.,2285395./8070912.,1./4.,0.,                    &
+                                                    82889./524892.,0.,15625./83664.,69875./102672.,-2260./8211.,1./4./), &
+                                                    (/6,6/),ORDER=(/2,1/))
   ALLOCATE(RKb_embedded(1:nRKStages),RKb_implicit(1:nRKStages))
-  RKb_implicit(1:nRKStages) = (/ 82889./524892. ,                   0.,        15625./83664.,   69875./102672.,-2260./8211, 1./4./)
-  RKb_embedded(1:nRKStages) =(/4586570599./29645900160., 0., 178811875./945068544., 814220225./1159782912., -3700637./11593932., &
-  61727./225920./)
+  RKb_implicit = (/82889./524892.,0.,15625./83664.,69875./102672.,-2260./8211.,1./4./)
+  RKb_embedded = (/4586570599./29645900160.,0.,178811875./945068544.,814220225./1159782912.,-3700637./11593932.,61727./225920./)
 
+  !SELECT CASE(PredictorOrder)
+  !CASE(2)
+    !ALLOCATE(RKb_denseout(1:2,1:nRKStages))
+    !RKb_denseout(1,:) = (/5701579834848./6164663940925.,0.,13131138058924./17779730471019.,-28096677048929./11161768239540., &
+                          !42062433452849./11720557422164.,-25841894007917./14894670528776./)
+    !RKb_denseout(2,:) = (/-7364557999481./9602213853517.,0.,-6355522249597./11518083130066.,29755736407445./9305094404071.,  &
+                          !-38886896333129./10063858340160.,22142945955077./11155272088250./)
+  !CASE(3)
+    ALLOCATE(RKb_denseout(1:3,1:nRKStages))
+    RKb_denseout(1,:) = (/6943876665148./7220017795957.,0.,7640104374378./9702883013639.,-20649996744609./7521556579894.,    &
+                          8854892464581./2390941311638.,-11397109935349./6675773540249./)
+    RKb_denseout(2,:) = (/-54480133./30881146.,0.,-11436875./14766696.,174696575./18121608.,-12120380./966161.,3843./706./)
+    RKb_denseout(3,:) = (/6818779379841./7100303317025.,0.,2173542590792./12501825683035.,-31592104683404./5083833661969.,   &
+                          61146701046299./7138195549469.,-17219254887155./4939391667607./)
+  !END SELECT
 CASE DEFAULT
   CALL CollectiveStop(__STAMP__,&
                       'Unknown method of time discretization: '//TRIM(TimeDiscMethod))
