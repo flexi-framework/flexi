@@ -50,7 +50,6 @@ REAL,ALLOCATABLE :: dtElem(:)                 !< Timestep for each element
 INTEGER          :: CurrentStage=1            !< Current Runge-Kutta stage within timestep
 INTEGER          :: nCalcTimeStepMax          !< Compute dt at least after every Nth timestep
 INTEGER(KIND=8)  :: iter                      !< Indicate actual number of timestep
-INTEGER(KIND=8)  :: PrecondIter               !< Defines how often preconditioner is built
 INTEGER(KIND=8)  :: maxIter                   !< Maximum permitted number of timesteps
 LOGICAL          :: fullBoundaryOrder=.FALSE. !< temporal order degradation, occuring for
                                               !< time-dependant BCs, can easily be fixed when

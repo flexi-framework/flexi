@@ -543,15 +543,16 @@ SUBROUTINE TimeStepByESDIRK(t)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_DG                , ONLY: DGTimeDerivative_weakForm
-USE MOD_DG_Vars           , ONLY: U,Ut
-USE MOD_TimeDisc_Vars     , ONLY: dt,nRKStages,RKA_implicit,RKc_implicit!,iter
-USE MOD_TimeDisc_Vars     , ONLY: RKb_implicit,RKb_embedded,safety!,PrecondIter
-USE MOD_Mesh_Vars         , ONLY: nElems
-USE MOD_Implicit          , ONLY: Newton,VectorDotProduct
-USE MOD_Implicit_Vars     , ONLY: LinSolverRHS,adaptepsNewton,eps2Newton
-USE MOD_Predictor         , ONLY: Predictor,StorePredictor
-!USE MOD_Precond           , ONLY: BuildPrecond
+USE MOD_DG                ,ONLY: DGTimeDerivative_weakForm
+USE MOD_DG_Vars           ,ONLY: U,Ut
+USE MOD_TimeDisc_Vars     ,ONLY: dt,nRKStages,RKA_implicit,RKc_implicit,iter
+USE MOD_TimeDisc_Vars     ,ONLY: RKb_implicit,RKb_embedded,safety,ESDIRK_gamma
+USE MOD_Mesh_Vars         ,ONLY: nElems
+USE MOD_Implicit          ,ONLY: Newton,VectorDotProduct
+USE MOD_Implicit_Vars     ,ONLY: LinSolverRHS,adaptepsNewton,eps2Newton
+USE MOD_Predictor         ,ONLY: Predictor,StorePredictor
+USE MOD_Precond           ,ONLY: BuildPrecond
+USE MOD_Precond_Vars      ,ONLY: PrecondIter
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -565,7 +566,7 @@ REAL    :: tStage
 REAL    :: delta_embedded(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)                  ! difference between solution obtained with 
 !===================================================================================================================================
 !CALL DGTimeDerivative_weakForm(t)! has to be called before preconditioner to fill U_master/slave ! already called in timedisc
-!IF ((iter==0).OR.(MOD(iter,PrecondIter)==0)) CALL BuildPrecond(t,RKA_implicit(nRKStages,nRKStages),dt) !todo: implement
+IF ((iter==0).OR.(MOD(iter,PrecondIter)==0)) CALL BuildPrecond(t,ESDIRK_gamma,dt) !todo: implement
 tStage = t
 Un = U
 Ut_implicit(:,:,:,:,:,1)=Ut

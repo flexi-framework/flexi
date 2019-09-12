@@ -91,7 +91,7 @@ USE MOD_ReadInTools,       ONLY:GETINT,GETREAL,GETLOGICAL
 USE MOD_DG_Vars,           ONLY:nDOFElem
 USE MOD_Analyze_Vars,      ONLY:wGPVol
 USE MOD_TimeDisc_Vars,     ONLY:TimeDiscType,RKb_embedded
-!USE MOD_Precond,           ONLY:InitPrecond
+USE MOD_Precond,           ONLY:InitPrecond
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -187,7 +187,7 @@ IF(TimeDiscType.EQ.'ESDIRK') THEN
     END DO !k
   END IF
 
-  !CALL InitPrecond() !todo: implement!
+  CALL InitPrecond()
 
   ImplicitInitIsDone=.TRUE.
   SWRITE(UNIT_stdOut,'(A)')' INIT Implicit DONE!'
@@ -349,8 +349,8 @@ USE MOD_PreProc
 USE MOD_Globals
 USE MOD_Implicit_Vars ,ONLY:nKDim,nRestarts,nGMRESIterGlobal,nGMRESGlobal,nInnerGMRES,nGMRESIterdt
 USE MOD_Implicit_Vars ,ONLY:nDOFGlobal
-!USE MOD_Precond       ,ONLY:ApplyPrecond
-!USE MOD_Precond_Vars  ,ONLY:PrecondType
+USE MOD_Precond       ,ONLY:ApplyPrecond
+USE MOD_Precond_Vars  ,ONLY:PrecondType
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -391,11 +391,11 @@ DO WHILE (Restart<nRestarts)
   DO m=1,nKDim
     nInnerGMRES=nInnerGMRES+1
     ! Preconditioner
-    !IF(PrecondType.NE.0) THEN !todo: implement
-      !CALL ApplyPrecond(V(:,m),Z(:,m))  
-    !ELSE
+    IF(PrecondType.NE.0) THEN
+      CALL ApplyPrecond(V(:,m),Z(:,m))  
+    ELSE
       Z(:,m)=V(:,m)
-    !END IF
+    END IF
     ! matrix vector
     CALL MatrixVector(t,Alpha,Z(:,m),W)
     ! modified Gram-Schmidt
@@ -528,9 +528,10 @@ END SUBROUTINE VectorDotProduct
 !===================================================================================================================================
 SUBROUTINE FinalizeImplicit()
 ! MODULES
-USE MOD_Implicit_Vars,ONLY:LinSolverRHS,Xk,mass,R_Xk
-USE MOD_Implicit_Vars,ONLY:ImplicitInitIsDone
-USE MOD_Predictor,    ONLY:FinalizePredictor
+USE MOD_Implicit_Vars, ONLY:LinSolverRHS,Xk,mass,R_Xk
+USE MOD_Implicit_Vars, ONLY:ImplicitInitIsDone
+USE MOD_Predictor,     ONLY:FinalizePredictor
+USE MOD_Precond,       ONLY:FinalizePrecond
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -544,7 +545,8 @@ SDEALLOCATE(LinSolverRHS)
 SDEALLOCATE(R_Xk)
 SDEALLOCATE(Xk)
 SDEALLOCATE(mass)
-CALL FinalizePredictor
+CALL FinalizePredictor()
+CALL FinalizePrecond()
 ImplicitInitIsDone = .FALSE.
 END SUBROUTINE FinalizeImplicit
 

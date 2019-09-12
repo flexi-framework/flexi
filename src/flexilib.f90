@@ -59,6 +59,7 @@ USE MOD_Analyze,           ONLY:DefineParametersAnalyze,InitAnalyze
 USE MOD_RecordPoints,      ONLY:DefineParametersRecordPoints,InitRecordPoints
 USE MOD_TimeDisc,          ONLY:DefineParametersTimedisc,InitTimeDisc,TimeDisc
 USE MOD_Implicit,          ONLY:DefineParametersImplicit,InitImplicit
+USE MOD_Precond,           ONLY:DefineParametersPrecond
 USE MOD_MPI,               ONLY:DefineParametersMPI,InitMPI
 #if USE_MPI
 USE MOD_MPI,               ONLY:InitMPIvars
@@ -133,6 +134,7 @@ CALL DefineParametersLifting ()
 CALL DefineParametersSponge()
 CALL DefineParametersTimedisc()
 CALL DefineParametersImplicit()
+CALL DefineParametersPrecond()
 CALL DefineParametersAnalyze()
 CALL DefineParametersRecordPoints()
 

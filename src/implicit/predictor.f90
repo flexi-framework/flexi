@@ -45,7 +45,7 @@ USE MOD_PreProc
 USE MOD_ReadInTools,          ONLY: GETINT
 USE MOD_Implicit_Vars,        ONLY: Upast,PredictorType,PredictorOrder,t_old,U_predictor,Ut_old,Un_old
 USE MOD_Mesh_Vars,            ONLY: nElems
-USE MOD_TimeDisc_Vars,        ONLY: nRKStages
+USE MOD_TimeDisc_Vars,        ONLY: nRKStages,TimeDiscType
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -56,33 +56,34 @@ CHARACTER(LEN=*),INTENT(IN) :: TimeDiscMethod !< name of time discretization to 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
 !===================================================================================================================================
-PredictorType=GETINT('PredictorType','0')
+IF(TimeDiscType.EQ.'ESDIRK')THEN
+  PredictorType=GETINT('PredictorType','0')
 
-SELECT CASE(PredictorType)
-CASE(0) ! nothing to do
-CASE(1) ! linear predictor
-  ALLOCATE(U_predictor(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
-CASE(2) ! Lagrange polynomial predictor
-  PredictorOrder=GETINT('PredictorOrder','1')
-  ALLOCATE(t_old(0:PredictorOrder,2:nRKStages))
-  ALLOCATE(Upast(      1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems,0:PredictorOrder,2:nRKStages))
-  ALLOCATE(U_predictor(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
-CASE(3) ! predictor using dense output polynomial for extrapolation
-  SELECT CASE (TRIM(TimeDiscMethod))
-  CASE('esdirk3-4')
-    PredictorOrder = 2
-  CASE('esdirk4-6')
-    PredictorOrder = 3
+  SELECT CASE(PredictorType)
+  CASE(0) ! nothing to do
+  CASE(1) ! use right hand side as predictor
+    ALLOCATE(U_predictor(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
+  CASE(2) ! Lagrange polynomial predictor
+    PredictorOrder=GETINT('PredictorOrder','1')
+    ALLOCATE(t_old(0:PredictorOrder,2:nRKStages))
+    ALLOCATE(Upast(      1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems,0:PredictorOrder,2:nRKStages))
+    ALLOCATE(U_predictor(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
+  CASE(3) ! predictor using dense output polynomial for extrapolation
+    SELECT CASE (TRIM(TimeDiscMethod))
+    CASE('esdirk3-4')
+      PredictorOrder = 2
+    CASE('esdirk4-6')
+      PredictorOrder = 3
+    CASE DEFAULT
+      CALL abort(__STAMP__,'No dense output extrapolation available for chosen time discretization!',PredictorType,999.)
+    END SELECT
+    ALLOCATE(Ut_old(     1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems,1:nRKStages))
+    ALLOCATE(Un_old(     1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
+    ALLOCATE(U_predictor(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
   CASE DEFAULT
-    CALL abort(__STAMP__,'No dense output extrapolation available for chosen time discretization!',PredictorType,999.)
+    CALL abort(__STAMP__,'PredictorType not implemented!',PredictorType,999.)
   END SELECT
-  ALLOCATE(Ut_old(     1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems,1:nRKStages))
-  ALLOCATE(Un_old(     1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
-  ALLOCATE(U_predictor(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
-CASE DEFAULT
-  CALL abort(__STAMP__,'PredictorType not implemented!',PredictorType,999.)
-END SELECT
-
+END IF
 END SUBROUTINE InitPredictor
 
 !===================================================================================================================================
