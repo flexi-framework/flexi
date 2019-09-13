@@ -75,9 +75,9 @@ USE MOD_PreProc
 USE MOD_Precond_Vars
 USE MOD_SparseILU     ,ONLY:InitSparseILU
 USE MOD_Mesh_Vars     ,ONLY:nElems
-USE MOD_Implicit_Vars, ONLY:nDOFVarElem
-!USE MOD_Jac_ex,        ONLY:InitJac_ex
-USE MOD_ReadInTools,   ONLY:GETINT,GETLOGICAL
+USE MOD_Implicit_Vars ,ONLY:nDOFVarElem
+USE MOD_Jac_ex        ,ONLY:InitJac_ex
+USE MOD_ReadInTools   ,ONLY:GETINT,GETLOGICAL
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -105,7 +105,7 @@ DoDisplayPrecond = GETLOGICAL('DoDisplayPrecond','.FALSE.')
 !Initialization of the different Preconditioner Types
 SELECT CASE(PrecondType) 
 CASE(1,3)
-  !CALL InitJac_Ex() !todo: implement
+  CALL InitJac_Ex()
 END SELECT
 
 ! Method how to solve the precontitioned linear system
@@ -138,7 +138,7 @@ USE MOD_Implicit_Vars ,ONLY:nDOFVarElem
 !USE MOD_Implicit_Vars, ONLY:Mass
 USE MOD_SparseILU     ,ONLY:BuildILU0
 USE MOD_Precond_Vars  ,ONLY:invP,DebugMatrix,PrecondType,SolveSystem,DoDisplayPrecond
-!USE MOD_Jac_ex        ,ONLY:Jac_ex !todo: implement
+USE MOD_Jac_ex        ,ONLY:Jac_ex
 USE MOD_Jac_FD        ,ONLY:Jac_FD
 USE MOD_DG            ,ONLY:DGTimeDerivative_WeakForm
 #if USE_MPI
@@ -212,13 +212,13 @@ CALL FinishExchangeMPIData(6*nNbProcs,MPIRequest_gradU) ! gradUx,y,z: master -> 
 ALLOCATE(Ploc(1:nDOFVarElem,1:nDOFVarElem))
 IF(PrecondType.EQ.3) ALLOCATE(Ploc1(1:nDOFVarElem,1:nDOFVarElem))
 
-IF(DoDisplayPrecond)  TimeStart=FLEXITIME(MPI_COMM_FLEXI)
+IF(DoDisplayPrecond) TimeStart=FLEXITIME(MPI_COMM_FLEXI)
 DO iElem=1,nElems
   Ploc=0.
   !compute derivative of DG residual, dRdU  
   SELECT CASE(PrecondType)
   CASE(1) ! analytic block Jacobian
-    !CALL Jac_ex(iElem,Ploc,.TRUE.,.TRUE.)
+    CALL Jac_ex(t,iElem,Ploc,.TRUE.,.TRUE.)
   CASE(2) ! finite difference block Jacobian: use only for debugging
     CALL Jac_FD(t,iElem,Ploc)
   CASE(3) ! debug: difference between analytic and fd preconditioner
@@ -228,7 +228,7 @@ DO iElem=1,nElems
     !clean-up
     CALL DGTimeDerivative_WeakForm(t)
     Ploc1=0.
-    !CALL Jac_ex(iElem,Ploc1,.TRUE.,.TRUE.)
+    CALL Jac_ex(t,iElem,Ploc1,.TRUE.,.TRUE.)
     WRITE(*,*) 'FD= ', SUM(ABS(Ploc))
     WRITE(*,*) 'AD= ', SUM(ABS(Ploc1))
     Ploc1=Ploc1-Ploc 
@@ -250,7 +250,7 @@ DO iElem=1,nElems
   !DO s=0,nDOFVarElem-1,PP_nVar
     !r=0
     !DO k=0,PP_NZ
-      !DO j=0,PP_N
+      !dO j=0,PP_N
         !DO i=0,PP_N
           !Ploc(r+1:r+PP_nVar,s+1:s+PP_nVar) = Ploc(r+1:r+PP_nVar,s+1:s+PP_nVar)*Mass(1,i,j,k,iElem)
           !r=r+PP_nVar
@@ -451,7 +451,7 @@ SUBROUTINE FinalizePrecond()
 !===================================================================================================================================
 ! MODULES
 USE MOD_Precond_Vars
-!USE MOD_Jac_Ex,         ONLY:FinalizeJac_Ex
+USE MOD_Jac_Ex,         ONLY:FinalizeJac_Ex
 USE MOD_SparseILU,      ONLY:FinalizeSparseILU
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -460,7 +460,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
-!CALL FinalizeJac_Ex() !todo: implement
+CALL FinalizeJac_Ex()
 SDEALLOCATE(invP)
 IF(SolveSystem.EQ.4) CALL FinalizeSparseILU()
 PrecondInitIsDone = .FALSE.
