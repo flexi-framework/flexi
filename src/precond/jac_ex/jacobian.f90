@@ -29,11 +29,23 @@ SAVE
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! Public Part ----------------------------------------------------------------------------------------------------------------------
+
+#if FV_ENABLED && FV_RECONSTRUCT
+INTERFACE dConsdPrim
+  MODULE PROCEDURE dConsdPrim
+END INTERFACE
+
+INTERFACE dPrimdCons
+  MODULE PROCEDURE dPrimdCons
+END INTERFACE
+#endif
+
 PUBLIC::EvalAdvFluxJacobian
-#if EQNSYSNR==2
-#if PARABOLIC
+#if EQNSYSNR==2 && PARABOLIC
 PUBLIC::EvalDiffFluxJacobian
 #endif
+#if FV_ENABLED && FV_RECONSTRUCT
+PUBLIC::dConsdPrim,dPrimdCons
 #endif
 !===================================================================================================================================
 
@@ -369,5 +381,127 @@ END DO !i
 END SUBROUTINE EvalDiffFluxJacobian
 #endif /*parabolic*/
 #endif /*EQNSYS*/
+
+#if FV_ENABLED && FV_RECONSTRUCT
+#if EQNSYSNR == 2
+!===================================================================================================================================
+!> The Jacobian of the transformation from conservative to primitive variables
+!===================================================================================================================================
+SUBROUTINE dConsdPrim(UPrim,Jac)
+! MODULES
+USE MOD_PreProc
+USE MOD_EOS_Vars                 ,ONLY: KappaM1
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL,DIMENSION(PP_nVarPrim)        ,INTENT(IN)  :: UPrim    !< primitive state vector
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL,DIMENSION(PP_nVar,PP_nVar),INTENT(OUT)     :: Jac      !< cons to prim Jacobian
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL                                            :: UE(PP_2Var),dpdrho,dedrho
+!===================================================================================================================================
+UE(PRIM) = UPrim
+UE(DENS) = UPrim(1)
+UE(SRHO) = 1./UE(DENS)
+
+
+dpdrho = KappaM1*0.5*SUM(UE(VELV)*UE(VELV))
+#if PP_dim == 3
+dedrho = (UE(VEL1)**2+UE(VEL2)**2+UE(VEL3)**2) - dpdrho / KappaM1
+#else
+dedrho = (UE(VEL1)**2+UE(VEL2)**2            ) - dpdrho / KappaM1
+#endif
+
+Jac(1,1:5)= (/      1.,                0.,                0.,                0.,         0. /)
+Jac(2,1:5)= (/UE(VEL1),          UE(DENS),                0.,                0.,         0. /)
+Jac(3,1:5)= (/UE(VEL2),                0.,          UE(DENS),                0.,         0. /)
+#if PP_dim == 3
+Jac(4,1:5)= (/UE(VEL3),                0.,                0.,          UE(DENS),         0. /)
+Jac(5,1:5)= (/  dedrho, UE(DENS)*UE(VEL1), UE(DENS)*UE(VEL2), UE(DENS)*UE(VEL3), 1./KappaM1 /)
+#else
+Jac(4,1:5)= 0.
+Jac(5,1:5)= (/  dedrho, UE(DENS)*UE(VEL1), UE(DENS)*UE(VEL2),                0., 1./KappaM1 /)
+#endif
+
+END SUBROUTINE dConsdPrim
+
+!===================================================================================================================================
+!> The Jacobian of the transformation from conservative to primitive variables
+!===================================================================================================================================
+SUBROUTINE dPrimdCons(UPrim,Jac)
+! MODULES
+USE MOD_PreProc
+USE MOD_EOS_Vars                 ,ONLY:KappaM1
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL,DIMENSION(PP_nVarPrim)        ,INTENT(IN)  :: UPrim    !< primitive state vector
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL,DIMENSION(PP_nVar,PP_nVar),INTENT(OUT)     :: Jac      !< prim to cons Jacobian
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL                                            :: UE(PP_2Var)
+!===================================================================================================================================
+UE(PRIM) = UPrim
+UE(SRHO) = 1./UPrim(1)
+
+Jac(1,1:5)= (/                                1.,                0.,                0.,                0.,      0. /)
+Jac(2,1:5)= (/                -UE(VEL1)*UE(SRHO),          UE(SRHO),                0.,                0.,      0. /)
+Jac(3,1:5)= (/                -UE(VEL2)*UE(SRHO),                0.,          UE(SRHO),                0.,      0. /)
+#if PP_dim == 3
+Jac(4,1:5)= (/                -UE(VEL3)*UE(SRHO),                0.,                0.,          UE(SRHO),      0. /)
+Jac(5,1:5)= (/KappaM1*0.5*SUM(UE(VELV)*UE(VELV)), -UE(VEL1)*KappaM1, -UE(VEL2)*KappaM1, -UE(VEL3)*KappaM1, KappaM1 /)
+#else
+Jac(4,1:5)= 0.
+Jac(5,1:5)= (/KappaM1*0.5*SUM(UE(VELV)*UE(VELV)), -UE(VEL1)*KappaM1, -UE(VEL2)*KappaM1,                0., KappaM1 /)
+#endif
+END SUBROUTINE dPrimdCons
+#endif /*EQNSYSNR == 2*/
+
+#if EQNSYSNR == 1
+!===================================================================================================================================
+!> The Jacobian of the transformation from conservative to primitive variables
+!===================================================================================================================================
+SUBROUTINE dConsdPrim(UPrim,Jac)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL,DIMENSION(PP_nVarPrim)        ,INTENT(IN)  :: UPrim    !< primitive state vector
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL,DIMENSION(PP_nVar,PP_nVar),INTENT(OUT)     :: Jac      !< cons to prim Jacobian
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!===================================================================================================================================
+Jac = 1.
+END SUBROUTINE dConsdPrim
+
+!===================================================================================================================================
+!> The Jacobian of the transformation from conservative to primitive variables
+!===================================================================================================================================
+SUBROUTINE dPrimdCons(UPrim,Jac)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL,DIMENSION(PP_nVarPrim)        ,INTENT(IN)  :: UPrim    !< primitive state vector
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL,DIMENSION(PP_nVar,PP_nVar),INTENT(OUT)     :: Jac      !< prim to cons Jacobian
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!===================================================================================================================================
+Jac = 1.
+END SUBROUTINE dPrimdCons
+#endif /*EQNSYSNR == 1*/
+#endif /*FV*/
 
 END MODULE MOD_Jacobian

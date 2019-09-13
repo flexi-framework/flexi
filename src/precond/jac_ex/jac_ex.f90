@@ -60,7 +60,10 @@ USE MOD_Interpolation_Vars ,ONLY: L_minus,L_plus
 USE MOD_DG_Vars            ,ONLY: L_Hatminus,L_Hatplus
 USE MOD_Mesh_Vars          ,ONLY: nElems
 #if PARABOLIC
-USE MOD_Precond_Vars       ,ONLy: EulerPrecond
+USE MOD_Precond_Vars       ,ONLY: EulerPrecond
+#endif
+#if FV_ENABLED && FV_RECONSTRUCT
+USE MOD_Mesh_Vars          ,ONLY: nElems
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -77,6 +80,16 @@ ALLOCATE(LL_minus(0:PP_N,0:PP_N), LL_plus(0:PP_N,0:PP_N))
 ALLOCATE(l_mp(0:PP_N,6))
 ALLOCATE(LL_mp(0:PP_N,6))
 !ALLOCATE(PrimConsJac(1:PP_nVarPrim,1:PP_nVar,0:PP_N,0:PP_N,0:PP_N))
+#if FV_ENABLED && FV_RECONSTRUCT
+ALLOCATE(FV_sdx_XI_extended  (0:PP_N,0:PP_NZ,0:PP_N+1,nElems))          ! 1. / FV_dx_XI   Attention: storage order is (j,k,i,iElem)
+ALLOCATE(FV_sdx_ETA_extended (0:PP_N,0:PP_NZ,0:PP_N+1,nElems))          ! 1. / FV_dx_ETA  Attention: storage order is (i,k,j,iElem)
+#if PP_dim == 3
+ALLOCATE(FV_sdx_ZETA_extended(0:PP_N,0:PP_N ,0:PP_N+1,nElems))          ! 1. / FV_dx_ZETA Attention: storage order is (i,j,k,iElem)
+ALLOCATE(UPrim_extended(PP_nVarPrim,-1:PP_N+1,-1:PP_N+1,-1:PP_N+1,1:nElems))! extended primitive solution vector
+#else
+ALLOCATE(UPrim_extended(PP_nVarPrim,-1:PP_N+1,-1:PP_N+1, 0:PP_NZ ,1:nElems))! extended primitive solution vector
+#endif
+#endif
 
 DO j=0,PP_N
   DO i=0,PP_N
@@ -188,6 +201,9 @@ USE MOD_JacSurfInt                ,ONLY:DGJacSurfInt
 #if PARABOLIC
 USE MOD_Precond_Vars              ,ONLY:EulerPrecond
 #endif
+#if FV_ENABLED
+USE MOD_FV_Vars                   ,ONLY:FV_Elems
+#endif
 !USE MOD_Jac_Ex_Vars               ,ONLY:PrimConsJac
 !USE MOD_DG_Vars                   ,ONLY:U,UPrim
 ! IMPLICIT VARIABLE HANDLING
@@ -202,8 +218,14 @@ LOGICAL,INTENT(IN) :: dovol, dosurf                             !< logicals indi
 REAL,INTENT(OUT) :: BJ(1:nDOFVarElem,1:nDOFVarElem)             !< block-Jacobian of current element
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
+INTEGER            :: FVEM
 !INTEGER            :: i,j,k
 !===================================================================================================================================
+#if FV_ENABLED
+FVEM = FV_Elems(iElem)
+#else
+FVEM = 0
+#endif
 !copy local U
 #if PARABOLIC
 IF(EulerPrecond.EQV..FALSE.) THEN !Euler Precond = False
@@ -214,7 +236,13 @@ END IF
   !CALL ConsToPrimJac(U(:,i,j,k,iElem),UPrim(:,i,j,k,iElem),PrimConsJac(:,:,i,j,k))
 !END DO; END DO; END DO
 IF(doVol)THEN
-  CALL DGVolIntJac(BJ,iElem) !without sJ!      !d(F^a+F^v)/dU partial
+  IF(FVEM.EQ.0)THEN
+    CALL DGVolIntJac(BJ,iElem) !without sJ!      !d(F^a+F^v)/dU partial
+#if FV_ENABLED
+  ELSE
+    CALL FVVolIntJac(BJ,iElem)
+#endif
+  END IF
 #if PARABOLIC
   IF(EulerPrecond.EQV..FALSE.) THEN !Euler Precond = False
     CALL DGVolIntGradJac(BJ,iElem)               !d(F^v)/dQ
@@ -1278,6 +1306,467 @@ CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_RMinus)
 END SUBROUTINE Build_BR2_SurfTerms
 #endif /*PARABOLIC*/
 
+#if FV_ENABLED
+!===================================================================================================================================
+!> Volume integral Jacobian of the convective flux for FV elements.
+!> Each finite volume subcell requires the solution of a Riemann problem. Hence, the derivation is done using a finite difference
+!> for the derivation of the Riemann problem (same is always done for the surface fluxes). It also takes into account the additional
+!> dependencies caused by the 2nd order reconstruction procedure. Here, a primitive reconstruction is assumed resulting in a back
+!> and forth transformation from conservative to primitive. The additional dependencies are stored in dUdUvol_minus/plus and then
+!> multiplied with the finite difference of the Reiemann flux. Finally the derivatives are assembled at the right position of
+!> the block-Jacobian. Note that the derivation of the volume integral has to be done directionwise.
+!===================================================================================================================================
+SUBROUTINE  FVVolIntJac(BJ,iElem)
+! MODULES
+USE MOD_PreProc
+USE MOD_DG_Vars             ,ONLY: nDOFElem
+#if PP_dim == 3
+USE MOD_FV_Vars             ,ONLY: FV_NormVecZeta,FV_TangVec1Zeta,FV_TangVec2Zeta
+USE MOD_FV_Vars             ,ONLY: FV_SurfElemZeta_sw
+#endif
+USE MOD_FV_Vars             ,ONLY: FV_NormVecXi,FV_TangVec1Xi,FV_TangVec2Xi
+USE MOD_FV_Vars             ,ONLY: FV_NormVecEta,FV_TangVec1Eta,FV_TangVec2Eta
+USE MOD_FV_Vars             ,ONLY: FV_SurfElemXi_sw,FV_SurfElemEta_sw
+USE MOD_Implicit_Vars       ,ONLY: rEps0
+USE MOD_Riemann             ,ONLY: Riemann
+USE MOD_EOS                 ,ONLY: ConsToPrim,PrimToCons
+#if FV_RECONSTRUCT
+USE MOD_Mesh_Vars           ,ONLY: ElemToSide
+USE MOD_Jac_Ex_Vars         ,ONLY: UPrim_extended,FV_sdx_XI_extended,FV_sdx_ETA_extended
+USE MOD_Jac_Reconstruction  ,ONLY: FV_Reconstruction_Derivative
+USE MOD_FV_Vars             ,ONLY: gradUxi,gradUeta,FV_dx_XI_L,FV_dx_XI_R,FV_dx_ETA_L,FV_dx_ETA_R
+#if PP_dim == 3
+USE MOD_Jac_Ex_Vars         ,ONLY: FV_sdx_ZETA_extended
+USE MOD_FV_Vars             ,ONLY: gradUzeta,FV_dx_ZETA_L,FV_dx_ZETA_R
+#endif
+#else
+USE MOD_DG_Vars             ,ONLY: U,UPrim
+#endif
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+INTEGER,INTENT(IN)    :: iElem                                     !< current element index
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL,INTENT(INOUT)    :: BJ(1:nDOFElem*PP_nVar,1:nDOFElem*PP_nVar) !< block-Jacobian of current element
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES 
+REAL,DIMENSION(1:PP_nVar,1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ):: dFdU_plus,dFdU_minus
+INTEGER                                                  :: i,j,p,q,iVar,jVar
+INTEGER                                                  :: s,r,vn1,vn2
+REAL,DIMENSION(PP_nVar    ,0:PP_N,0:PP_N,0:PP_NZ)        :: F,F_Tilde
+REAL,DIMENSION(PP_nVar    ,0:PP_N)                       :: FV_U_plus_Tilde,FV_U_minus_Tilde
+REAL,DIMENSION(PP_nVarPrim,0:PP_N)                       :: FV_UPrim_plus_Tilde,FV_UPrim_minus_Tilde
+REAL,DIMENSION(PP_nVar    ,0:PP_N)                       :: FV_U_Ximinus_loc,FV_U_Xiplus_loc,FV_U_Etaminus_loc,FV_U_Etaplus_loc
+REAL,DIMENSION(PP_nVarPrim,0:PP_N)                       :: FV_UPrim_Ximinus_loc,FV_UPrim_Xiplus_loc
+REAL,DIMENSION(PP_nVarPrim,0:PP_N)                       :: FV_UPrim_Etaminus_loc,FV_UPrim_Etaplus_loc
+#if PP_dim==3
+REAL,DIMENSION(PP_nVar    ,0:PP_N)                       :: FV_U_Zetaminus_loc,FV_U_Zetaplus_loc
+REAL,DIMENSION(PP_nVarPrim,0:PP_N)                       :: FV_UPrim_Zetaminus_loc,FV_UPrim_Zetaplus_loc
+INTEGER                                                  :: k
+#endif
+REAL                                                     :: reps0_L,sreps0_L,reps0_R,sreps0_R
+#ifdef LEVELSET
+REAL                                                     :: LS_L,LS_R
+REAL                                                     :: curv 
+REAL                                                     :: curv_L,curv_R 
+REAL                                                     :: U_dummy1(PP_nVar),U_dummy2(PP_nVar),vel_dummy(3) 
+REAL,DIMENSION(3)                                        :: NormVec_L,NormVec_R,NormVec_LS,TangVec1_LS,TangVec2_LS
+#endif
+#if FV_RECONSTRUCT
+REAL,DIMENSION(1:PP_nVar,1:PP_nVar,0:PP_N,1:3)           :: dUdUvol_plus,dUdUvol_minus
+INTEGER                                                  :: m,l
+INTEGER                                                  :: SideID_minus,SideID_plus
+#endif
+REAL,DIMENSION(PP_nVar,PP_nVar)                          :: matrix !< has to be used due to intel compiler error with matmul
+REAL,DIMENSION(PP_nVar,PP_nVar)                          :: vector !< has to be used due to intel compiler error with matmul
+!===================================================================================================================================
+vn1 = PP_nVar*(PP_N+1)
+vn2 = vn1*(PP_N+1)
+dfDU_plus  = 0
+dFdU_minus = 0
+
+
+! === Xi-Direction ================================================================================================================
+#if FV_RECONSTRUCT
+SideID_minus         = ElemToSide(E2S_SIDE_ID,XI_MINUS,iElem)
+SideID_plus          = ElemToSide(E2S_SIDE_ID,XI_PLUS ,iElem)
+#endif
+
+DO p=0,PP_N
+  DO q=0,PP_NZ
+    DO i=0,PP_N
+#if FV_RECONSTRUCT
+      FV_UPrim_Xiplus_loc( :,i) = UPrim(:,i,p,q,iElem) + gradUxi(:,p,q,i,iElem) * FV_dx_XI_R(p,q,i,iElem)
+      FV_UPrim_Ximinus_loc(:,i) = UPrim(:,i,p,q,iElem) - gradUxi(:,p,q,i,iElem) * FV_dx_XI_L(p,q,i,iElem)
+#else
+      FV_UPrim_Xiplus_loc( :,i) = UPrim(:,i,p,q,iElem)
+      FV_UPrim_Ximinus_loc(:,i) = UPrim(:,i,p,q,iElem)
+#endif
+      CALL PrimToCons(FV_UPrim_Ximinus_loc(:,i),FV_U_Ximinus_loc(:,i))
+      CALL PrimToCons(FV_UPrim_Xiplus_loc( :,i),FV_U_Xiplus_loc( :,i))
+    END DO
+    FV_UPrim_plus_Tilde  = FV_UPrim_Xiplus_loc( :,:)
+    FV_UPrim_minus_Tilde = FV_UPrim_Ximinus_loc(:,:)
+    FV_U_plus_Tilde      = FV_U_Xiplus_loc(     :,:)
+    FV_U_minus_Tilde     = FV_U_Ximinus_loc(    :,:)
+#if FV_RECONSTRUCT
+    CALL FV_Reconstruction_Derivative(FV_sdx_XI_extended(p,q,:,iElem),FV_dx_XI_L(p,q,:,iElem),FV_dx_XI_R(p,q,:,iElem), &
+                                      FV_UPrim_Xiplus_loc(:,:),FV_UPrim_Ximinus_loc(:,:),                              &
+                                      UPrim_extended(:,:,p,q,iElem),dUdUvol_plus(:,:,:,:),dUdUvol_minus(:,:,:,:))
+#endif
+    DO i=1,PP_N
+      CALL Riemann(PP_N,F(:,i-1,p,q),                              &
+                   FV_U_Xiplus_loc(     :,i-1),                    &
+                   FV_U_Ximinus_loc(    :,i  ),                    &
+                   FV_UPrim_Xiplus_loc( :,i-1),                    &
+                   FV_UPrim_Ximinus_loc(:,i  ),                    &
+                   FV_NormVecXi(        :,p  ,q,i,iElem),          &
+                   FV_TangVec1Xi(       :,p  ,q,i,iElem),          &
+                   FV_TangVec2Xi(       :,p  ,q,i,iElem),.FALSE.)
+      DO jVar=1,PP_nVar
+        ! modify U_plus at i-1
+        reps0_L  = reps0*(1.+ABS(FV_U_plus_Tilde(jVar,i-1)))
+        sreps0_L = 1./reps0_L
+        FV_U_plus_Tilde(jVar,i-1) = FV_U_plus_Tilde(jVar,i-1) + reps0_L
+        CALL ConsToPrim(FV_UPrim_plus_Tilde(:,i-1),FV_U_plus_Tilde(:,i-1))
+        ! modify U_minus at i
+        reps0_R  = reps0*(1.+ABS(FV_U_minus_Tilde(jVar,i)))
+        sreps0_R = 1./reps0_R
+        FV_U_minus_Tilde(jVar,i) = FV_U_minus_Tilde(jVar,i) + reps0_R
+        CALL ConsToPrim(FV_UPrim_minus_Tilde(:,i),FV_U_minus_Tilde(:,i))
+ 
+        CALL Riemann(PP_N,F_Tilde(:,i-1,p,q),                         &
+                     FV_U_plus_Tilde(     :,i-1),                     &
+                     FV_U_Ximinus_loc(    :,i  ),                     &
+                     FV_UPrim_plus_Tilde( :,i-1),                     &
+                     FV_UPrim_Ximinus_loc(:,i  ),                     &
+                     FV_NormVecXi(        :,p  ,q,i,iElem),           &
+                     FV_TangVec1Xi(       :,p  ,q,i,iElem),           &
+                     FV_TangVec2Xi(       :,p  ,q,i,iElem),.FALSE.)
+        CALL Riemann(PP_N,F_Tilde(:,i,p,q),                           &
+                     FV_U_Xiplus_loc(     :,i-1),                     &
+                     FV_U_minus_Tilde(    :,i  ),                     &
+                     FV_UPrim_Xiplus_loc( :,i-1),                     &
+                     FV_UPrim_minus_Tilde(:,i  ),                     &
+                     FV_NormVecXi(        :,p  ,q,i,iElem),           &
+                     FV_TangVec1Xi(       :,p  ,q,i,iElem),           &
+                     FV_TangVec2Xi(       :,p  ,q,i,iElem),.FALSE.)
+        DO iVar=1,PP_nVar
+          dFdU_plus( iVar,jVar,i-1,p,q) =  FV_SurfElemXi_sw(p,q,i,iElem)*(F_Tilde(iVar,i-1,p,q) - F(iVar,i-1,p,q))*sreps0_L
+          dFdU_plus( iVar,jVar,i  ,p,q) = -FV_SurfElemXi_sw(p,q,i,iElem)*(F_Tilde(iVar,i-1,p,q) - F(iVar,i-1,p,q))*sreps0_L
+          dFdU_minus(iVar,jVar,i-1,p,q) =  FV_SurfElemXi_sw(p,q,i,iElem)*(F_Tilde(iVar,i  ,p,q) - F(iVar,i-1,p,q))*sreps0_R
+          dFdU_minus(iVar,jVar,i  ,p,q) = -FV_SurfElemXi_sw(p,q,i,iElem)*(F_Tilde(iVar,i  ,p,q) - F(iVar,i-1,p,q))*sreps0_R
+        END DO !iVar
+        ! reset U_plus
+        FV_U_plus_Tilde(jVar,i-1) = FV_U_Xiplus_loc(jVar,i-1)
+        ! reset U_minus
+        FV_U_minus_Tilde(jVar,i) = FV_U_Ximinus_loc(jVar,i)
+      END DO !jVar
+      ! assemble preconditioner
+      r = vn1*p + vn2*q + PP_nVar*(i-1)
+      s = vn1*p + vn2*q + PP_nVar*i
+#if FV_RECONSTRUCT
+      m = vn1*p + vn2*q + PP_nVar*(i-2)
+      l = vn1*p + vn2*q + PP_nVar*(i+1)
+      ! derivatives with respect to i-2
+      IF(i.GT.1)THEN ! i-2 is not at neighboring element
+        matrix=dFdU_plus( :,:,i-1,p,q); vector=dUdUvol_plus( :,:,i-1,1)
+        BJ(r+1:r+PP_nVar,m+1:m+PP_nVar) = BJ(r+1:r+PP_nVar,m+1:m+PP_nVar) + MATMUL(matrix,vector)
+        matrix=dFdU_plus( :,:,i  ,p,q); vector=dUdUvol_plus( :,:,i-1,1)
+        BJ(s+1:s+PP_nVar,m+1:m+PP_nVar) = BJ(s+1:s+PP_nVar,m+1:m+PP_nVar) + MATMUL(matrix,vector)
+      END IF
+      ! derivatives with respect to i-1
+      matrix=dFdU_plus( :,:,i-1,p,q); vector=dUdUvol_plus( :,:,i-1,2)
+      BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + MATMUL(matrix,vector)
+      matrix=dFdU_plus( :,:,i  ,p,q); vector=dUdUvol_plus( :,:,i-1,2)
+      BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) + MATMUL(matrix,vector)
+      matrix=dFdU_minus(:,:,i-1,p,q); vector=dUdUvol_minus(:,:,i  ,1)
+      BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + MATMUL(matrix,vector)
+      matrix=dFdU_minus(:,:,i  ,p,q); vector=dUdUvol_minus(:,:,i  ,1)
+      BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) + MATMUL(matrix,vector)
+      ! derivatives with respect to i
+      matrix=dFdU_minus(:,:,i-1,p,q); vector=dUdUvol_minus(:,:,i  ,2)
+      BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + MATMUL(matrix,vector)
+      matrix=dFdU_minus(:,:,i  ,p,q); vector=dUdUvol_minus(:,:,i  ,2)
+      BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) + MATMUL(matrix,vector)
+      matrix=dFdU_plus( :,:,i-1,p,q); vector=dUdUvol_plus( :,:,i-1,3)
+      BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + MATMUL(matrix,vector)
+      matrix=dFdU_plus( :,:,i  ,p,q); vector=dUdUvol_plus( :,:,i-1,3)
+      BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) + MATMUL(matrix,vector)
+      ! derivatives with respect to i+1
+      IF(i.LT.PP_N)THEN ! i+1 is not at neighboring element
+      matrix=dFdU_minus(:,:,i-1,p,q); vector=dUdUvol_minus(:,:,i  ,3)
+        BJ(r+1:r+PP_nVar,l+1:l+PP_nVar) = BJ(r+1:r+PP_nVar,l+1:l+PP_nVar) + MATMUL(matrix,vector)
+        matrix=dFdU_minus(:,:,i  ,p,q); vector=dUdUvol_minus(:,:,i  ,3)
+        BJ(s+1:s+PP_nVar,l+1:l+PP_nVar) = BJ(s+1:s+PP_nVar,l+1:l+PP_nVar) + MATMUL(matrix,vector)
+      END IF
+#else
+      BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + dFdU_plus( :,:,i-1,p,q)
+      BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + dFdU_minus(:,:,i-1,p,q)
+      BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) + dFdU_minus(:,:,i  ,p,q)
+      BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) + dFdU_plus( :,:,i  ,p,q)
+#endif
+    END DO !i
+  END DO !p
+END DO !q
+
+! === Eta-Direction ===============================================================================================================
+#if FV_RECONSTRUCT
+SideID_minus         = ElemToSide(E2S_SIDE_ID,ETA_MINUS,iElem)
+SideID_plus          = ElemToSide(E2S_SIDE_ID,ETA_PLUS ,iElem)
+#endif
+
+DO p=0,PP_N
+  DO q=0,PP_NZ
+    DO j=0,PP_N
+#if FV_RECONSTRUCT
+      FV_UPrim_Etaplus_loc( :,j) = UPrim(:,p,j,q,iElem) + gradUeta(:,p,q,j,iElem) * FV_dx_ETA_R(p,q,j,iElem)
+      FV_UPrim_Etaminus_loc(:,j) = UPrim(:,p,j,q,iElem) - gradUeta(:,p,q,j,iElem) * FV_dx_ETA_L(p,q,j,iElem)
+#else
+      FV_UPrim_Etaplus_loc( :,j) = UPrim(:,p,j,q,iElem)
+      FV_UPrim_Etaminus_loc(:,j) = UPrim(:,p,j,q,iElem)
+#endif
+      CALL PrimToCons(FV_UPrim_Etaminus_loc(:,j),FV_U_Etaminus_loc(:,j))
+      CALL PrimToCons(FV_UPrim_Etaplus_loc( :,j),FV_U_Etaplus_loc( :,j))
+    END DO
+    FV_UPrim_plus_Tilde  = FV_UPrim_Etaplus_loc( :,:)
+    FV_UPrim_minus_Tilde = FV_UPrim_Etaminus_loc(:,:)
+    FV_U_plus_Tilde      = FV_U_Etaplus_loc(     :,:)
+    FV_U_minus_Tilde     = FV_U_Etaminus_loc(    :,:)
+#if FV_RECONSTRUCT
+    CALL FV_Reconstruction_Derivative(FV_sdx_ETA_extended(p,q,:,iElem),FV_dx_ETA_L(p,q,:,iElem),FV_dx_ETA_R(p,q,:,iElem), &
+                                      FV_UPrim_Etaplus_loc(:,:),FV_UPrim_Etaminus_loc(:,:),                               &
+                                      UPrim_extended(:,p,:,q,iElem),dUdUvol_plus(:,:,:,:),dUdUvol_minus(:,:,:,:))
+#endif
+    DO j=1,PP_N
+      CALL Riemann(PP_N,F(:,p,j-1,q),                               &
+                   FV_U_Etaplus_loc(     :,j-1),                    &
+                   FV_U_Etaminus_loc(    :,j  ),                    &
+                   FV_UPrim_Etaplus_loc( :,j-1),                    &
+                   FV_UPrim_Etaminus_loc(:,j  ),                    &
+                   FV_NormVecEta(        :,p,q  ,j,iElem),          &
+                   FV_TangVec1Eta(       :,p,q  ,j,iElem),          &
+                   FV_TangVec2Eta(       :,p,q  ,j,iElem),.FALSE.)
+ 
+      DO jVar=1,PP_nVar
+        ! modify U_plus at j-1
+        reps0_L  = reps0*(1.+ABS(FV_U_plus_Tilde(jVar,j-1)))
+        sreps0_L = 1./reps0_L
+        FV_U_plus_Tilde(jVar,j-1) = FV_U_plus_Tilde(jVar,j-1) + reps0_L
+        CALL ConsToPrim(FV_UPrim_plus_Tilde(:,j-1),FV_U_plus_Tilde(:,j-1))
+        ! modify U_minus at j
+        reps0_R  = reps0*(1.+ABS(FV_U_minus_Tilde(jVar,j)))
+        sreps0_R = 1./reps0_R
+        FV_U_minus_Tilde(jVar,j) = FV_U_minus_Tilde(jVar,j) + reps0_R
+        CALL ConsToPrim(FV_UPrim_minus_Tilde(:,j),FV_U_minus_Tilde(:,j))
+        CALL Riemann(PP_N,F_Tilde(:,p,j-1,q),                          &
+                     FV_U_plus_Tilde(      :,j-1),                     &
+                     FV_U_Etaminus_loc(    :,j  ),                     &
+                     FV_UPrim_plus_Tilde(  :,j-1),                     &
+                     FV_UPrim_Etaminus_loc(:,j  ),                     &
+                     FV_NormVecEta(        :,p,q  ,j,iElem),           &
+                     FV_TangVec1Eta(       :,p,q  ,j,iElem),           &
+                     FV_TangVec2Eta(       :,p,q  ,j,iElem),.FALSE.)
+        CALL Riemann(PP_N,F_Tilde(:,p,j,q),                            &
+                     FV_U_Etaplus_loc(    :,j-1),                      &
+                     FV_U_minus_Tilde(    :,j  ),                      &
+                     FV_UPrim_Etaplus_loc(:,j-1),                      &
+                     FV_UPrim_minus_Tilde(:,j  ),                      &
+                     FV_NormVecEta(       :,p,q  ,j,iElem),            &
+                     FV_TangVec1Eta(      :,p,q  ,j,iElem),            &
+                     FV_TangVec2Eta(      :,p,q  ,j,iElem),.FALSE.)
+        DO iVar=1,PP_nVar
+          dFdU_plus( iVar,jVar,p,j-1,q) =  FV_SurfElemEta_sw(p,q,j,iElem)*(F_Tilde(iVar,p,j-1,q) - F(iVar,p,j-1,q))*sreps0_L
+          dFdU_plus( iVar,jVar,p,j  ,q) = -FV_SurfElemEta_sw(p,q,j,iElem)*(F_Tilde(iVar,p,j-1,q) - F(iVar,p,j-1,q))*sreps0_L
+          dFdU_minus(iVar,jVar,p,j-1,q) =  FV_SurfElemEta_sw(p,q,j,iElem)*(F_Tilde(iVar,p,j  ,q) - F(iVar,p,j-1,q))*sreps0_R
+          dFdU_minus(iVar,jVar,p,j  ,q) = -FV_SurfElemEta_sw(p,q,j,iElem)*(F_Tilde(iVar,p,j  ,q) - F(iVar,p,j-1,q))*sreps0_R
+        END DO !iVar
+        ! reset U_plus
+        FV_U_plus_Tilde(jVar,j-1) = FV_U_Etaplus_loc(jVar,j-1)
+        ! reset U_minus
+        FV_U_minus_Tilde(jVar,j) = FV_U_Etaminus_loc(jVar,j)
+      END DO !jVar
+      ! assemble preconditioner
+      r = vn1*(j-1) + vn2*q + PP_nVar*p
+      s = vn1*j     + vn2*q + PP_nVar*p
+#if FV_RECONSTRUCT
+      m = vn1*(j-2) + vn2*q + PP_nVar*p
+      l = vn1*(j+1) + vn2*q + PP_nVar*p
+      ! derivatives with respect to j-2
+      IF(j.GT.1)THEN
+        matrix=dFdU_plus( :,:,p,j-1,q); vector=dUdUvol_plus( :,:,j-1,1)
+        BJ(r+1:r+PP_nVar,m+1:m+PP_nVar) = BJ(r+1:r+PP_nVar,m+1:m+PP_nVar) + MATMUL(matrix,vector)
+        matrix=dFdU_plus( :,:,p,j  ,q); vector=dUdUvol_plus( :,:,j-1,1)
+        BJ(s+1:s+PP_nVar,m+1:m+PP_nVar) = BJ(s+1:s+PP_nVar,m+1:m+PP_nVar) + MATMUL(matrix,vector)
+      END IF
+      ! derivatives with respect to j-1
+      matrix=dFdU_plus( :,:,p,j-1,q); vector=dUdUvol_plus( :,:,j-1,2)
+      BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + MATMUL(matrix,vector)
+      matrix=dFdU_plus( :,:,p,j  ,q); vector=dUdUvol_plus( :,:,j-1,2)
+      BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) + MATMUL(matrix,vector)
+      matrix=dFdU_minus(:,:,p,j-1,q); vector=dUdUvol_minus(:,:,j  ,1)
+      BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + MATMUL(matrix,vector)
+      matrix=dFdU_minus(:,:,p,j  ,q); vector=dUdUvol_minus(:,:,j  ,1)
+      BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) + MATMUL(matrix,vector)
+      ! derivatives with respect to j
+      matrix=dFdU_minus(:,:,p,j-1,q); vector=dUdUvol_minus(:,:,j  ,2)
+      BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + MATMUL(matrix,vector)
+      matrix=dFdU_minus(:,:,p,j  ,q); vector=dUdUvol_minus(:,:,j  ,2)
+      BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) + MATMUL(matrix,vector)
+      matrix=dFdU_plus( :,:,p,j-1,q); vector=dUdUvol_plus( :,:,j-1,3)
+      BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + MATMUL(matrix,vector)
+      matrix=dFdU_plus( :,:,p,j  ,q); vector=dUdUvol_plus( :,:,j-1,3)
+      BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) + MATMUL(matrix,vector)
+      ! derivatives with respect to j+1
+      IF(j.LT.PP_N)THEN
+        matrix=dFdU_minus(:,:,p,j-1,q); vector=dUdUvol_minus(:,:,j  ,3)
+        BJ(r+1:r+PP_nVar,l+1:l+PP_nVar) = BJ(r+1:r+PP_nVar,l+1:l+PP_nVar) + MATMUL(matrix,vector)
+        matrix=dFdU_minus(:,:,p,j  ,q); vector=dUdUvol_minus(:,:,j  ,3)
+        BJ(s+1:s+PP_nVar,l+1:l+PP_nVar) = BJ(s+1:s+PP_nVar,l+1:l+PP_nVar) + MATMUL(matrix,vector)
+      END IF
+#else
+      BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + dFdU_plus( :,:,p,j-1,q)
+      BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + dFdU_minus(:,:,p,j-1,q)
+      BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) + dFdU_minus(:,:,p,j  ,q)
+      BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) + dFdU_plus( :,:,p,j  ,q)
+#endif
+    END DO !j
+  END DO !p
+END DO !q
+
+#if PP_dim == 3
+! === Zeta-Direction ==============================================================================================================
+#if FV_RECONSTRUCT
+SideID_minus         = ElemToSide(E2S_SIDE_ID,ZETA_MINUS,iElem)
+SideID_plus          = ElemToSide(E2S_SIDE_ID,ZETA_PLUS ,iElem)
+#endif
+
+DO p=0,PP_N
+  DO q=0,PP_N
+    DO k=0,PP_N
+#if FV_RECONSTRUCT
+      FV_UPrim_Zetaplus_loc( :,k) = UPrim(:,p,q,k,iElem) + gradUzeta(:,p,q,k,iElem) * FV_dx_ZETA_R(p,q,k,iElem)
+      FV_UPrim_Zetaminus_loc(:,k) = UPrim(:,p,q,k,iElem) - gradUzeta(:,p,q,k,iElem) * FV_dx_ZETA_L(p,q,k,iElem)
+#else
+      FV_UPrim_Zetaplus_loc( :,k) = UPrim(:,p,q,k,iElem)
+      FV_UPrim_Zetaminus_loc(:,k) = UPrim(:,p,q,k,iElem)
+#endif
+      CALL PrimToCons(FV_UPrim_Zetaminus_loc(:,k),FV_U_Zetaminus_loc(:,k))
+      CALL PrimToCons(FV_UPrim_Zetaplus_loc( :,k),FV_U_Zetaplus_loc( :,k))
+    END DO
+    FV_UPrim_plus_Tilde  = FV_UPrim_Zetaplus_loc( :,:)
+    FV_UPrim_minus_Tilde = FV_UPrim_Zetaminus_loc(:,:)
+    FV_U_plus_Tilde      = FV_U_Zetaplus_loc(     :,:)
+    FV_U_minus_Tilde     = FV_U_Zetaminus_loc(    :,:)
+#if FV_RECONSTRUCT
+    CALL FV_Reconstruction_Derivative(FV_sdx_ZETA_extended(p,q,:,iElem),FV_dx_ZETA_L(p,q,:,iElem),FV_dx_ZETA_R(p,q,:,iElem), &
+                                      FV_UPrim_Zetaplus_loc(:,:),FV_UPrim_Zetaminus_loc(:,:),                                &
+                                      UPrim_extended(:,p,q,:,iElem),dUdUvol_plus(:,:,:,:),dUdUvol_minus(:,:,:,:))
+#endif
+    DO k=1,PP_N
+      CALL Riemann(PP_N,F(:,p,q,k-1),                                &
+                   FV_U_Zetaplus_loc(     :,k-1),                    &
+                   FV_U_Zetaminus_loc(    :,k  ),                    &
+                   FV_UPrim_Zetaplus_loc( :,k-1),                    &
+                   FV_UPrim_Zetaminus_loc(:,k  ),                    &
+                   FV_NormVecZeta(        :,p,q,k  ,iElem),          &
+                   FV_TangVec1Zeta(       :,p,q,k  ,iElem),          &
+                   FV_TangVec2Zeta(       :,p,q,k  ,iElem),.FALSE.)
+ 
+      DO jVar=1,PP_nVar
+        ! modify U_plus at k-1
+        reps0_L  = reps0*(1.+ABS(FV_U_plus_Tilde(jVar,k-1)))
+        sreps0_L = 1./reps0_L
+        FV_U_plus_Tilde(jVar,k-1) = FV_U_plus_Tilde(jVar,k-1) + reps0_L
+        CALL ConsToPrim(FV_UPrim_plus_Tilde(:,k-1),FV_U_plus_Tilde(:,k-1))
+        ! modify U_minus at k
+        reps0_R  = reps0*(1.+ABS(FV_U_minus_Tilde(jVar,k)))
+        sreps0_R = 1./reps0_R
+        FV_U_minus_Tilde(jVar,k) = FV_U_minus_Tilde(jVar,k) + reps0_R
+        CALL ConsToPrim(FV_UPrim_minus_Tilde(:,k),FV_U_minus_Tilde(:,k))
+ 
+        CALL Riemann(PP_N,F_Tilde(:,p,q,k-1),                           &
+                     FV_U_plus_Tilde(       :,k-1),                     &
+                     FV_U_Zetaminus_loc(    :,k),                       &
+                     FV_UPrim_plus_Tilde(   :,k-1),                     &
+                     FV_UPrim_Zetaminus_loc(:,k),                       &
+                     FV_NormVecZeta(        :,p,q,k  ,iElem),           &
+                     FV_TangVec1Zeta(       :,p,q,k  ,iElem),           &
+                     FV_TangVec2Zeta(       :,p,q,k  ,iElem),.FALSE.)
+        CALL Riemann(PP_N,F_Tilde(:,p,q,k),                             &
+                     FV_U_Zetaplus_loc(    :,k-1),                      &
+                     FV_U_minus_Tilde(     :,k),                        &
+                     FV_UPrim_Zetaplus_loc(:,k-1),                      &
+                     FV_UPrim_minus_Tilde( :,k),                        &
+                     FV_NormVecZeta(       :,p,q,k  ,iElem),            &
+                     FV_TangVec1Zeta(      :,p,q,k  ,iElem),            &
+                     FV_TangVec2Zeta(      :,p,q,k  ,iElem),.FALSE.)
+        DO iVar=1,PP_nVar
+          dFdU_plus( iVar,jVar,p,q,k-1) =  FV_SurfElemZeta_sw(p,q,k,iElem)*(F_Tilde(iVar,p,q,k-1) - F(iVar,p,q,k-1))*sreps0_L
+          dFdU_plus( iVar,jVar,p,q,k  ) = -FV_SurfElemZeta_sw(p,q,k,iElem)*(F_Tilde(iVar,p,q,k-1) - F(iVar,p,q,k-1))*sreps0_L
+          dFdU_minus(iVar,jVar,p,q,k-1) =  FV_SurfElemZeta_sw(p,q,k,iElem)*(F_Tilde(iVar,p,q,k  ) - F(iVar,p,q,k-1))*sreps0_R
+          dFdU_minus(iVar,jVar,p,q,k  ) = -FV_SurfElemZeta_sw(p,q,k,iElem)*(F_Tilde(iVar,p,q,k  ) - F(iVar,p,q,k-1))*sreps0_R
+        END DO !iVar
+        ! reset U_plus
+        FV_U_plus_Tilde(jVar,k-1) = FV_U_Zetaplus_loc(jVar,k-1)
+        ! reset U_minus
+        FV_U_minus_Tilde(jVar,k) = FV_U_Zetaminus_loc(jVar,k)
+      END DO !jVar
+      ! assemble preconditioner
+      r = vn1*q + vn2*(k-1) + PP_nVar*p
+      s = vn1*q + vn2*k     + PP_nVar*p
+#if FV_RECONSTRUCT
+      m = vn1*q + vn2*(k-2) + PP_nVar*p
+      l = vn1*q + vn2*(k+1) + PP_nVar*p
+      ! derivatives with respect to k-2
+      IF(k.GT.1)THEN
+        matrix=dFdU_plus( :,:,p,q,k-1); vector=dUdUvol_plus( :,:,k-1,1)
+        BJ(r+1:r+PP_nVar,m+1:m+PP_nVar) = BJ(r+1:r+PP_nVar,m+1:m+PP_nVar) + MATMUL(matrix,vector)
+        matrix=dFdU_plus( :,:,p,q,k  ); vector=dUdUvol_plus( :,:,k-1,1)
+        BJ(s+1:s+PP_nVar,m+1:m+PP_nVar) = BJ(s+1:s+PP_nVar,m+1:m+PP_nVar) + MATMUL(matrix,vector)
+      END IF
+      ! derivatives with respect to k-1
+      matrix=dFdU_plus( :,:,p,q,k-1); vector=dUdUvol_plus( :,:,k-1,2)
+      BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + MATMUL(matrix,vector)
+      matrix=dFdU_plus( :,:,p,q,k  ); vector=dUdUvol_plus( :,:,k-1,2)
+      BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) + MATMUL(matrix,vector)
+      matrix=dFdU_minus(:,:,p,q,k-1); vector=dUdUvol_minus(:,:,k  ,1)
+      BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + MATMUL(matrix,vector)
+      matrix=dFdU_minus(:,:,p,q,k  ); vector=dUdUvol_minus(:,:,k  ,1)
+      BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) + MATMUL(matrix,vector)
+      ! derivatives with respect to k
+      matrix=dFdU_minus(:,:,p,q,k-1); vector=dUdUvol_minus(:,:,k  ,2)
+      BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + MATMUL(matrix,vector)
+      matrix=dFdU_minus(:,:,p,q,k  ); vector=dUdUvol_minus(:,:,k  ,2)
+      BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) + MATMUL(matrix,vector)
+      matrix=dFdU_plus( :,:,p,q,k-1); vector=dUdUvol_plus( :,:,k-1,3)
+      BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + MATMUL(matrix,vector)
+      matrix=dFdU_plus( :,:,p,q,k  ); vector=dUdUvol_plus( :,:,k-1,3)
+      BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) + MATMUL(matrix,vector)
+      ! derivatives with respect to k+1
+      IF(k.LT.PP_N)THEN
+        matrix=dFdU_minus(:,:,p,q,k-1); vector=dUdUvol_minus(:,:,k  ,3)
+        BJ(r+1:r+PP_nVar,l+1:l+PP_nVar) = BJ(r+1:r+PP_nVar,l+1:l+PP_nVar) + MATMUL(matrix,vector)
+        matrix=dFdU_minus(:,:,p,q,k  ); vector=dUdUvol_minus(:,:,k  ,3)
+        BJ(s+1:s+PP_nVar,l+1:l+PP_nVar) = BJ(s+1:s+PP_nVar,l+1:l+PP_nVar) + MATMUL(matrix,vector)
+      END IF
+#else
+      BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + dFdU_plus( :,:,p,q,k-1)
+      BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + dFdU_minus(:,:,p,q,k-1)
+      BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) + dFdU_minus(:,:,p,q,k  )
+      BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) + dFdU_plus( :,:,p,q,k  )
+#endif
+    END DO !k
+  END DO !p
+END DO !q
+#endif
+
+END SUBROUTINE FVVolIntJac
+#endif /* FV_ENABLED */
+
+
 SUBROUTINE FinalizeJac_Ex()
 !===================================================================================================================================
 ! Deallocate global variables
@@ -1304,7 +1793,14 @@ SDEALLOCATE(R_Minus)
 SDEALLOCATE(R_Plus)
 SDEALLOCATE(JacLiftingFlux)
 #endif /*PARABOLIC*/
-
+#if FV_ENABLED && FV_RECONSTRUCT
+SDEALLOCATE(UPrim_extended)
+SDEALLOCATE(FV_sdx_XI_extended)
+SDEALLOCATE(FV_sdx_ETA_extended)
+#if PP_dim == 3
+SDEALLOCATE(FV_sdx_ZETA_extended)
+#endif
+#endif
 END SUBROUTINE FinalizeJac_Ex
 
 END MODULE MOD_Jac_Ex

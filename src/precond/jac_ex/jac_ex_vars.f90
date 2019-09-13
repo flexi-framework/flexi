@@ -23,5 +23,12 @@ REAL,ALLOCATABLE                      :: R_plus(:,:,:,:)    ! BR2 lifting surfac
 REAL,ALLOCATABLE                      :: JacLiftingFlux(:,:,:,:,:)
 !REAL,ALLOCATABLE                      :: PrimConsJac(:,:,:,:,:)  ! Derivative of U_Prim with respect to U_cons
 #endif /*PARABOLIC*/
+#if FV_ENABLED && FV_RECONSTRUCT
+REAL,ALLOCATABLE                      :: UPrim_extended(:,:,:,:,:) !< extended primitive solution array containing additional
+                                                                   !< first layers of neighbouring elements
+REAL,ALLOCATABLE                      :: FV_sdx_XI_extended(:,:,:,:)   !< extended inverse of distance between neighboring dofs in x
+REAL,ALLOCATABLE                      :: FV_sdx_ETA_extended(:,:,:,:)  !< extended inverse of distance between neighboring dofs in y
+REAL,ALLOCATABLE                      :: FV_sdx_ZETA_extended(:,:,:,:) !< extended inverse of distance between neighboring dofs in z
+#endif
 !===================================================================================================================================
 END MODULE MOD_Jac_Ex_Vars

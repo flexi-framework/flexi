@@ -165,6 +165,12 @@ ALLOCATE(MPIRequest_FV_Elems(nNbProcs,2) )
 ALLOCATE(MPIRequest_FV_gradU(nNbProcs,2) )
 MPIRequest_FV_Elems = MPI_REQUEST_NULL
 MPIRequest_FV_gradU = MPI_REQUEST_NULL
+#if FV_RECONSTRUCT
+ALLOCATE(MPIRequest_Rec_MS(nNbProcs,2))
+ALLOCATE(MPIRequest_Rec_SM(nNbProcs,2))
+MPIRequest_Rec_MS = MPI_REQUEST_NULL
+MPIRequest_Rec_SM = MPI_REQUEST_NULL
+#endif
 #endif
 #if EDDYVISCOSITY
 ALLOCATE(MPIRequest_SGS(nNbProcs,2) )
@@ -368,6 +374,10 @@ SDEALLOCATE(MPIRequest_Flux)
 #if FV_ENABLED
 SDEALLOCATE(MPIRequest_FV_Elems)
 SDEALLOCATE(MPIRequest_FV_gradU)
+#if FV_RECONSTRUCT
+SDEALLOCATE(MPIRequest_Rec_MS)
+SDEALLOCATE(MPIRequest_Rec_SM)
+#endif
 #endif
 #if EDDYVISCOSITY
 SDEALLOCATE(MPIRequest_SGS)

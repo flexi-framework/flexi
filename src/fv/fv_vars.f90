@@ -41,6 +41,7 @@ LOGICAL                :: FV_IniSharp            !< Maintain a sharp interface i
 LOGICAL                :: FV_IniSupersample      !< Supersample initial solution inside each sub-cell
 
 ! Limiting
+INTEGER                :: LimiterType            !< Readin variable for type of used fv limiter
 REAL                   :: FV_sweby_beta          !< parameter for Sweby limiter
 
 ! FV/DG

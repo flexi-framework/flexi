@@ -113,7 +113,7 @@ IF(PrecondType.NE.0)THEN
   SELECT CASE(SolveSystem)
   CASE(0)
     ALLOCATE(invP(1:nDOFVarElem,1:nDOFVarElem,nElems))
-  CASE(4)
+  CASE(1)
     CALL InitSparseILU()
     NoFillIN = .TRUE.
   END SELECT
@@ -143,15 +143,31 @@ USE MOD_Jac_FD        ,ONLY:Jac_FD
 USE MOD_DG            ,ONLY:DGTimeDerivative_WeakForm
 #if USE_MPI
 USE MOD_MPI_Vars
-USE MOD_MPI           ,ONLY: StartReceiveMPIData,StartSendMPIData,FinishExchangeMPIData
-#endif
+USE MOD_MPI           ,ONLY:StartReceiveMPIData,StartSendMPIData,FinishExchangeMPIData
 USE MOD_DG_Vars       ,ONLY:U_master,UPrim_master
 #if PARABOLIC
 USE MOD_Lifting_Vars  ,ONLY:gradUx_master,gradUy_master
 #if PP_dim==3
 USE MOD_Lifting_Vars  ,ONLY:gradUz_master
-#endif
+#endif /*PP_dim*/
 #endif /*PARABOLIC*/
+#if FV_ENABLED
+USE MOD_MPI           ,ONLY:StartExchange_FV_Elems
+USE MOD_FV_Vars       ,ONLY:FV_Elems_Sum,FV_Elems_master,FV_Elems_slave
+#if FV_RECONSTRUCT
+USE MOD_DG_Vars       ,ONLY:U_slave,UPrim_slave
+USE MOD_FV_Vars       ,ONLY:FV_dx_master
+#endif /*FV_ENABLED*/
+#endif /*FV_RECONSTRUCT*/
+#endif /*MPI*/
+#if FV_ENABLED && FV_RECONSTRUCT
+USE MOD_DG_Vars       ,ONLY:UPrim
+USE MOD_Jac_Reconstruction,ONLY:Fill_ExtendedState
+USE MOD_Jac_Ex_Vars   ,ONLY:UPrim_extended,FV_sdx_XI_extended,FV_sdx_ETA_extended
+#if PP_dim == 3
+USE MOD_Jac_Ex_Vars   ,ONLY:FV_sdx_ZETA_extended
+#endif /*PP_dim*/
+#endif /*FV_ENABLED && FV_RECONSTRUCT*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -194,20 +210,49 @@ CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_U)        ! UPrim_master: maste
 ! gradU_slave was already sent in DG_TimeDerivative_WeakForm
 ! Send MINE - receive YOUR
 MPIRequest_gradU=MPI_REQUEST_NULL
-CALL StartReceiveMPIData(gradUx_master,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,1,RECV),SendID=1)! Receive YOUR / U_master: master -> slave
-CALL StartReceiveMPIData(gradUy_master,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,2,RECV),SendID=1)! Receive YOUR / U_master: master -> slave
+CALL StartReceiveMPIData(gradUx_master,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,1,RECV),SendID=1) ! Receive YOUR / gradUx_master
+CALL StartReceiveMPIData(gradUy_master,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,2,RECV),SendID=1) ! Receive YOUR / gradUy_master
 #if PP_dim==3
-CALL StartReceiveMPIData(gradUz_master,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,3,RECV),SendID=1)! Receive YOUR / U_master: master -> slave
+CALL StartReceiveMPIData(gradUz_master,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,3,RECV),SendID=1) ! Receive YOUR / gradUz_master
 #endif
 
-CALL StartSendMPIData(gradUx_master,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,1,SEND),SendID=1) ! SEND MINE / U_master: master -> slave
-CALL StartSendMPIData(gradUy_master,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,2,SEND),SendID=1) ! SEND MINE / U_master: master -> slave
+CALL StartSendMPIData(   gradUx_master,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,1,SEND),SendID=1) ! SEND MINE    / gradUx_master
+CALL StartSendMPIData(   gradUy_master,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,2,SEND),SendID=1) ! SEND MINE    / gradUy_master
 #if PP_dim==3
-CALL StartSendMPIData(gradUz_master,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,3,SEND),SendID=1) ! SEND MINE / U_master: master -> slave
+CALL StartSendMPIData(   gradUz_master,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,3,SEND),SendID=1) ! SEND MINE    / gradUz_master
 #endif
-CALL FinishExchangeMPIData(6*nNbProcs,MPIRequest_gradU) ! gradUx,y,z: master -> slave
-#endif /*&&PARABOLIC*/
+CALL FinishExchangeMPIData(6*nNbProcs,MPIRequest_gradU)    ! gradU(x,y,z)_master: master -> slave
+#endif /*PARABOLIC*/
+
+#if FV_ENABLED
+CALL StartExchange_FV_Elems(FV_Elems_master,1,nSides,MPIRequest_FV_Elems(:,SEND),MPIRequest_FV_Elems(:,RECV),SendID=1) 
+CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_FV_Elems) ! FV_Elems_master: master -> slave
+! Build FV_Elems_Sum on sides (FV_Elems_slave has already been sent to master)
+FV_Elems_Sum = FV_Elems_master + 2 * FV_Elems_slave
+#if FV_RECONSTRUCT
+CALL StartReceiveMPIData(FV_dx_master, (PP_N+1)*(PP_NZ+1), 1,nSides,MPIRequest_Rec_MS(:,SEND),SendID=1)
+CALL StartSendMPIData(   FV_dx_master, (PP_N+1)*(PP_NZ+1), 1,nSides,MPIRequest_Rec_MS(:,RECV),SendID=1)
+CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Rec_MS) ! FV_dx_master: master -> slave
+! slave states have to be communicated again as they are overwritten (MY Sides) by fv reconstruction with reconstructed values
+CALL StartReceiveMPIData(U_slave,    DataSizeSide,    1,nSides,MPIRequest_U(:,SEND),SendID=1) !Send MINE    / U_slave 
+CALL StartSendMPIData(   U_slave,    DataSizeSide,    1,nSides,MPIRequest_U(:,RECV),SendID=1) !Receive YOUR / U_slave
+CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_U)                   ! U_slave: master -> slave
+CALL StartReceiveMPIData(UPrim_slave,DataSizeSidePrim,1,nSides,MPIRequest_U(:,SEND),SendID=1) !Send MINE    / UPrim_slave 
+CALL StartSendMPIData(   UPrim_slave,DataSizeSidePrim,1,nSides,MPIRequest_U(:,RECV),SendID=1) !Receive YOUR / UPrim_slave
+CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_U)                   ! UPrim_slave: master -> slave
+#endif
+#endif
 #endif /*USE_MPI*/
+
+#if FV_ENABLED && FV_RECONSTRUCT
+IF((PrecondType.EQ.1).OR.(PrecondType.EQ.3))THEN
+  CALL Fill_ExtendedState(t,UPrim,UPrim_extended,FV_sdx_XI_extended,FV_sdx_ETA_extended &
+#if PP_dim == 3
+                          ,FV_sdx_ZETA_extended &
+#endif
+                           )
+END IF
+#endif
 
 ALLOCATE(Ploc(1:nDOFVarElem,1:nDOFVarElem))
 IF(PrecondType.EQ.3) ALLOCATE(Ploc1(1:nDOFVarElem,1:nDOFVarElem))
@@ -262,7 +307,7 @@ DO iElem=1,nElems
   CASE(0)
     ! Block inverse with Lapack LU factorization
     invP(:,:,iElem)=Inverse(Ploc)
-  CASE(4)
+  CASE(1)
     CALL BuildILU0(Ploc,iElem)
   CASE DEFAULT
     CALL abort(__STAMP__,'No valid linear solver for inverting preconditioner chosen!')
@@ -321,7 +366,7 @@ CASE(0)
   DO iElem=1,nElems
     z(:,iElem)=MATMUL(invP(:,:,iElem),v(:,iElem))
   END DO !iElem
-CASE(4)
+CASE(1)
   CALL ApplyILU(v,z)
 END SELECT
 END SUBROUTINE  ApplyPrecond
@@ -462,7 +507,7 @@ IMPLICIT NONE
 !===================================================================================================================================
 CALL FinalizeJac_Ex()
 SDEALLOCATE(invP)
-IF(SolveSystem.EQ.4) CALL FinalizeSparseILU()
+IF(SolveSystem.EQ.1) CALL FinalizeSparseILU()
 PrecondInitIsDone = .FALSE.
 END SUBROUTINE FinalizePrecond
 
