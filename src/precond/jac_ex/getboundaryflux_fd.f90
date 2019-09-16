@@ -89,7 +89,7 @@ REAL,INTENT(IN)              :: gradUz_Face_prim(PP_nVarPrim,0:PP_N,0:PP_NZ)
 #endif /*PARABOLIC*/
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(OUT)             :: DfDU(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ)
+REAL,INTENT(OUT)             :: DfDU(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ,2)
 #if PARABOLIC
 REAL,INTENT(OUT),DIMENSION(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ) :: Df_DQxInner
 REAL,INTENT(OUT),DIMENSION(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ) :: Df_DQyInner
@@ -141,12 +141,16 @@ DO jVar=1,PP_nVar
   DO iVar=1,PP_nVar
     DO q=0,PP_NZ
       DO p=0,PP_N
-        dFdU(iVar,jVar,jk(1,p,q),jk(2,p,q)) = surfElem(p,q)*(F_Face_Tilde(iVar,p,q)-F_Face(iVar,p,q))*sreps0
+        dFdU(iVar,jVar,jk(1,p,q),jk(2,p,q),1) = surfElem(p,q)*(F_Face_Tilde(iVar,p,q)-F_Face(iVar,p,q))*sreps0
       END DO !p
     END DO !q
   END DO ! iVar
   U_master_Tilde(jVar,:,:) = U_master(jVar,:,:) 
 END DO !jVar
+
+#if FV_ENABLED && FV_RECONSTRUCT
+dFdU(:,:,:,:,2) = 0. ! only valid for Dirichlet Type BCs
+#endif
 
 
 #if PARABOLIC

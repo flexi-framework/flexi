@@ -39,13 +39,17 @@ CONTAINS
 !===================================================================================================================================
 !> Contains the computation of directional derivative with finite difference of the numerical flux f*_adv+f*_diff
 !===================================================================================================================================
-SUBROUTINE Riemann_FD(DFDU,U_L,U_R,UPrim_L,UPrim_R,normal,tangent1,tangent2,surf_loc,jk)
+SUBROUTINE Riemann_FD(DFDU,U_L,U_R,UPrim_L,UPrim_R,normal,tangent1,tangent2,surf_loc,jk,FV_Elems_Sum,FVElem,FVSide)
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
 USE MOD_Implicit_Vars           ,ONLY: reps0,sreps0
 USE MOD_Riemann                 ,ONLY: Riemann
 USE MOD_EOS                     ,ONLY: ConsToPrim
+#if FV_ENABLED
+USE MOD_ChangeBasisByDim        ,ONLY: ChangeBasisSurf
+USE MOD_FV_Vars                 ,ONLY: FV_sVdm,FV_Vdm
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -59,9 +63,12 @@ REAL, INTENT(IN)                :: tangent1(1:3       ,0:PP_N,0:PP_NZ)
 REAL, INTENT(IN)                :: tangent2(1:3       ,0:PP_N,0:PP_NZ)
 REAL, INTENT(IN)                :: surf_loc(           0:PP_N,0:PP_NZ)
 INTEGER, INTENT(IN)             :: jk(      2         ,0:PP_N,0:PP_NZ)
+INTEGER,INTENT(IN)              :: FV_Elems_Sum
+INTEGER, INTENT(IN)             :: FVElem
+INTEGER, INTENT(IN)             :: FVSide
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(OUT)                :: DFDU(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ)
+REAL,INTENT(OUT)                :: DFDU(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ,2)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                            :: U_L_Tilde    (    1:PP_nVar,0:PP_N,0:PP_NZ)
@@ -69,26 +76,74 @@ REAL                            :: UPrim_L_Tilde(1:PP_nVarPrim,0:PP_N,0:PP_NZ)
 REAL                            :: F            (    1:PP_nVar,0:PP_N,0:PP_NZ)
 REAL                            :: F_Tilde_UL   (    1:PP_nVar,0:PP_N,0:PP_NZ)
 INTEGER                         :: iVar,jVar
-INTEGER                         :: p, q
+INTEGER                         :: p,q
+#if FV_ENABLED && FV_RECONSTRUCT
+REAL                            :: U_R_Tilde    (    1:PP_nVar,0:PP_N,0:PP_NZ)
+REAL                            :: UPrim_R_Tilde(1:PP_nVarPrim,0:PP_N,0:PP_NZ)
+#endif
 !-----------------------------------------------------------------------------------------------------------------------------------
 !Derivation only in U_L
 CALL Riemann(PP_N,F,U_L,U_R,UPrim_L,UPrim_R,normal,tangent1,tangent2,doBC=.FALSE.)
+#if FV_ENABLED
+! convert flux on FV points to DG points at mixed interface if current element is a DG element
+IF((FVSide.EQ.1).AND.(FVElem.EQ.0)) CALL ChangeBasisSurf(PP_nVar,PP_N,PP_N,FV_sVdm,F)
+#endif
 
 U_L_Tilde = U_L
+
 DO jVar=1,PP_nVar
+#if FV_ENABLED
+! transform values at side to DG points and modify slightly with reps0
+  IF((FVSide.EQ.1).AND.(FVElem.EQ.0))THEN
+    CALL ChangeBasisSurf(PP_nVar,PP_N,PP_N,FV_sVdm,U_L_Tilde)
+  END IF
+#endif
   U_L_Tilde(jVar,:,:) = U_L_Tilde(jVar,:,:) + reps0
+#if FV_ENABLED
+  ! transform modified values back to FV points, where the Riemann problem is evaluated
+  IF((FVSide.EQ.1).AND.(FVElem.EQ.0))THEN
+    CALL ChangeBasisSurf(PP_nVar,PP_N,PP_N,FV_Vdm,U_L_Tilde)
+  END IF
+#endif
   CALL ConsToPrim(PP_N,UPrim_L_Tilde,U_L_Tilde)
   CALL Riemann(PP_N,F_Tilde_UL,U_L_Tilde,U_R,UPrim_L_Tilde,UPrim_R,normal,tangent1,tangent2,doBC=.FALSE.)
+#if FV_ENABLED
+  ! convert flux on FV points to DG points at mixed interface if current element is a DG element 
+  ! as the surface integral is evaluated on DG nodes
+  IF((FVSide.EQ.1).AND.(FVElem.EQ.0)) CALL ChangeBasisSurf(PP_nVar,PP_N,PP_N,FV_sVdm,F_Tilde_UL)
+#endif
   DO q=0,PP_NZ
     DO p=0,PP_N
       DO iVar=1,PP_nVar
-        dFdU(iVar,jVar,jk(1,p,q),jk(2,p,q)) = surf_loc(p,q)*(F_Tilde_UL(iVar,p,q)-F(iVar,p,q))*sreps0
+        dFdU(iVar,jVar,jk(1,p,q),jk(2,p,q),1) = surf_loc(p,q)*(F_Tilde_UL(iVar,p,q)-F(iVar,p,q))*sreps0
       END DO ! iVar
     END DO !q
   END DO !p
-  U_L_Tilde(jVar,:,:) = U_L(jVar,:,:)
+  U_L_Tilde(:,:,:) = U_L(:,:,:)
 END DO !jVar
 
+!----------------------------------------------------------------------------------------------------------------------------------
+#if FV_ENABLED && FV_RECONSTRUCT
+IF((FVElem.EQ.1).AND.(FV_Elems_Sum.EQ.3))THEN ! do only if current and neighbouring element are fv elements (FV-FV interface)
+  ! do the same derivative as above only with respect to U_R instead of U_L
+  U_R_Tilde = U_R
+  DO jVar=1,PP_nVar
+    U_R_Tilde(jVar,:,:) = U_R_Tilde(jVar,:,:) + reps0
+    CALL ConsToPrim(PP_N,UPrim_R_Tilde,U_R_Tilde)
+    CALL Riemann(PP_N,F_Tilde_UL,U_L,U_R_Tilde,UPrim_L,UPrim_R_Tilde,normal,tangent1,tangent2,doBC=.FALSE.)
+    DO iVar=1,PP_nVar
+      DO q=0,PP_NZ
+        DO p=0,PP_N
+          dFDU(iVar,jVar,jk(1,p,q),jk(2,p,q),2) = surf_loc(p,q)*(F_Tilde_UL(iVar,p,q)-F(iVar,p,q))*sreps0
+        END DO !p
+      END DO !q
+    END DO ! iVar
+    U_R_Tilde(:,:,:) = U_R(:,:,:)
+  END DO !jVar
+ELSE
+  dFDU(:,:,:,:,2) = 0.
+END IF
+#endif
 END SUBROUTINE Riemann_FD
 
 END MODULE MOD_Riemann_Deriv

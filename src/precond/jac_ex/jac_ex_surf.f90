@@ -69,6 +69,20 @@ USE MOD_Jacobian                  ,ONLY: EvalDiffFluxJacobian
 USE MOD_GradJacobian              ,ONLY: EvalFluxGradJacobian
 !USE MOD_Jac_Ex_Vars               ,ONLY: PrimConsJac
 #endif /*PARABOLIC*/
+#if FV_ENABLED
+USE MOD_FV_Vars                   ,ONLY: FV_Elems_Sum
+USE MOD_FV_Vars                   ,ONLY: FV_Elems_master,FV_Elems_slave,FV_Elems
+#if FV_RECONSTRUCT
+USE MOD_Mesh_Vars                 ,ONLY: firstInnerSide
+USE MOD_Jac_Ex_Vars               ,ONLY: UPrim_extended,FV_sdx_XI_extended,FV_sdx_ETA_extended
+USE MOD_Jac_Reconstruction        ,ONLY: FV_Reconstruction_Derivative_Surf
+USE MOD_FV_Vars                   ,ONLY: FV_dx_master,FV_dx_slave
+USE MOD_GetBoundaryFlux           ,ONLY: GetBoundaryState
+#if PP_dim == 3
+USE MOD_Jac_Ex_Vars               ,ONLY: FV_sdx_ZETA_extended
+#endif
+#endif
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -81,8 +95,12 @@ REAL,INTENT(INOUT)                 :: BJ(nDOFVarElem,nDOFVarElem)               
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                                                 :: i,j,mm,nn,oo,r,s,vn1,vn2
-INTEGER                                                 :: iLocSide,SideID,Flip
-REAL                                                    :: df_DUinner(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ,6)
+INTEGER                                                 :: iLocSide,SideID,Flip,FVElem,FVSide,FVSum
+#if PP_dim == 3
+REAL                                                    :: df_DUinner(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ,2,6)
+#else
+REAL                                                    :: df_DUinner(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ,2,2:5)
+#endif
 #if PARABOLIC
 INTEGER                                                 :: jk(2),k,l,p,q
 REAL                                                    :: Df_dQ_minus(1:PP_nVar,1:PP_nVar)
@@ -111,9 +129,21 @@ REAL                                                    ::dQyOuter_dUvol(0:PP_N,
 REAL,DIMENSION(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ)          ::fJacQx,fJacQz,fJacQy,gJacQx,gJacQy,gJacQz,hJacQx,hJacQy,hJacQz
 REAL,DIMENSION(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ)          ::fJac,gJac,hJac
 #endif /*PARABOLIC*/
+#if FV_ENABLED && FV_RECONSTRUCT
+REAL,DIMENSION(PP_nVarPrim)                             :: UPrim_plus,UPrim_minus,UPrim_plus_nb,UPrim_minus_nb
+REAL                                                    :: dUdUvol_plus( PP_nVar,PP_nVar,PP_N:PP_N+1,1:2)
+REAL                                                    :: dUdUvol_minus(PP_nVar,PP_nVar,-1:0,2:3)
+INTEGER                                                 :: pq(2)
+REAL                                                    :: FV_dx_L,FV_dx_R,FV_dx_L_nb,FV_dx_R_nb
+#endif
 !===================================================================================================================================
 vn1 = PP_nVar * (PP_N + 1)
 vn2 = vn1 * (PP_N +1)
+#if FV_ENABLED
+FVElem = FV_Elems(iElem)
+#else
+FVElem = 0
+#endif
 
 #if PP_dim == 3
 DO iLocSide=1,6
@@ -122,14 +152,21 @@ DO iLocSide=2,5
 #endif    
   SideID=ElemToSide(E2S_SIDE_ID,ilocSide,iElem)
   Flip=ElemToSide(E2S_FLIP,iLocSide,iElem)
+#if FV_ENABLED
+  FVSide = MAX(FV_Elems_master(SideID),FV_Elems_slave(SideID))
+  FVSum  = FV_Elems_Sum(SideID)
+#else
+  FVSide = 0
+  FVSum  = 0
+#endif
 
   IF (SideID.GT.nBCSides) THEN !InnerSide
     IF(Flip==0) THEN !Master
       ! d(f*_ad+f*_diff)_jk/dU_master_jk
-      CALL Riemann_FD(df_DUinner(:,:,:,:,iLocSide),U_master(:,:,:,SideID),U_slave(:,:,:,SideID), &
-                                 UPrim_master(:,:,:,SideID),UPrim_slave(:,:,:,SideID),&
-                                 NormVec(:,:,:,0,SideID),tangVec1(:,:,:,0,SideID),tangVec2(:,:,:,0,SideID), &
-                                 SurfElem(:,:,0,SideID),S2V2(:,:,:,Flip,iLocSide))
+      CALL Riemann_FD(df_DUinner(:,:,:,:,:,iLocSide),U_master(:,:,:,SideID),U_slave(:,:,:,SideID),                         &
+                                 UPrim_master(:,:,:,SideID),UPrim_slave(:,:,:,SideID),                                     &
+                                 NormVec(:,:,:,FVSide,SideID),tangVec1(:,:,:,FVSide,SideID),tangVec2(:,:,:,FVSide,SideID), &
+                                 SurfElem(:,:,FVSide,SideID),S2V2(:,:,:,Flip,iLocSide),FVSum,FVElem,FVSide)
 #if PARABOLIC
       IF(EulerPrecond.EQV..FALSE.) THEN !Euler Precond = False
         ! analytic viscous flux derivative: BR2 Flux is 1/2*(Fvisc(U^L,Q^L)+Fvisc(U^R,Q^R) )* (+nvec ), (master)
@@ -209,10 +246,10 @@ DO iLocSide=2,5
 #endif /*PARABOLIC*/
     ELSE !Slave
       ! d(f*_ad+f*_diff)_jk/dU_slave_jk
-      CALL Riemann_FD(df_DUinner(:,:,:,:,iLocSide),U_slave(:,:,:,SideID),U_master(:,:,:,SideID), &
-                      UPrim_slave(:,:,:,SideID),UPrim_master(:,:,:,SideID),&
-                      -NormVec(:,:,:,0,SideID),-tangVec1(:,:,:,0,SideID),tangVec2(:,:,:,0,SideID), &
-                       SurfElem(:,:,0,SideID),S2V2(:,:,:,Flip,iLocSide))
+      CALL Riemann_FD(df_DUinner(:,:,:,:,:,iLocSide),U_slave(:,:,:,SideID),U_master(:,:,:,SideID),                &
+                      UPrim_slave(:,:,:,SideID),UPrim_master(:,:,:,SideID),                                       &
+                      -NormVec(:,:,:,FVSide,SideID),-tangVec1(:,:,:,FVSide,SideID),tangVec2(:,:,:,FVSide,SideID), &
+                       SurfElem(:,:,FVSide,SideID),S2V2(:,:,:,Flip,iLocSide),FVSum,FVElem,FVSide)
 #if PARABOLIC
       IF(EulerPrecond.EQV..FALSE.) THEN !Euler Precond = False
 #if EQNSYSNR==2
@@ -291,7 +328,9 @@ DO iLocSide=2,5
 
     END IF !Flip
   ELSE !Boundary
-      
+#if FV_ENABLED
+    FVSide = FV_Elems_master(SideID)
+#endif
 #if PARABOLIC
     Df_DQxOuter(:,:,:,:,iLocSide)=0.
     Df_DQyOuter(:,:,:,:,iLocSide)=0.
@@ -301,7 +340,7 @@ DO iLocSide=2,5
 #endif /*parabolic*/
     !df*_Boundary_jk/dU_jk*surfElem
     !df*_Boundary_jk/dQ_jk*surfElem
-    CALL GetBoundaryFlux_FD(SideID,t,df_DUinner(:,:,:,:,iLocSide),U_master(:,:,:,SideID),UPrim_master(:,:,:,SideID),            &
+    CALL GetBoundaryFlux_FD(SideID,t,df_DUinner(:,:,:,:,:,iLocSide),U_master(:,:,:,SideID),UPrim_master(:,:,:,SideID),          &
 #if PARABOLIC
                             gradUx_master_cons(:,:,:,SideID),gradUy_master_cons(:,:,:,SideID),gradUz_master_cons(:,:,:,SideID), &
                             gradUx_master_prim(:,:,:,SideID),gradUy_master_prim(:,:,:,SideID),gradUz_master_prim(:,:,:,SideID), &
@@ -311,14 +350,24 @@ DO iLocSide=2,5
                             Df_DQzInner(:,:,:,:,iLocSide),                                                                      &
 #endif
 #endif /*PARABOLIC*/
-                            SurfElem(:,:,0,SideID),Face_xGP(:,:,:,0,SideID),                                                    &
-                            NormVec(:,:,:,0,SideID),TangVec1(:,:,:,0,SideID),TangVec2(:,:,:,0,SideID),S2V2(:,:,:,Flip,iLocSide))
+                            SurfElem(:,:,FVSide,SideID),Face_xGP(:,:,:,FVSide,SideID),                                          &
+                            NormVec(:,:,:,FVSide,SideID),TangVec1(:,:,:,FVSide,SideID),TangVec2(:,:,:,FVSide,SideID),           &
+                            S2V2(:,:,:,Flip,iLocSide))
+#if FV_ENABLED && FV_RECONSTRUCT
+    ! Set UPrim_slave at boundaries
+    CALL GetBoundaryState(SideID,t,PP_N,UPrim_slave(:,:,:,SideID),UPrim_master(:,:,:,SideID),                        &
+                          NormVec(:,:,:,FVSide,SideID),TangVec1(:,:,:,FVSide,SideID),TangVec2(:,:,:,FVSide,SideID),  &
+                          Face_xGP(:,:,:,FVSide,SideID))
+#endif
   END IF!SideID
 END DO !iLocSide
 
 
 !Assembling of the preconditioner
 !BJ=d(f*_adv+f*_diff)_jk/dU_mno
+#if FV_ENABLED
+IF(FVElem.EQ.0)THEN ! DG Element (Assembling and multiply with derivative of interpolation)
+#endif
   DO oo = 0,PP_NZ
     DO nn = 0,PP_N
       DO mm = 0,PP_N
@@ -326,26 +375,251 @@ END DO !iLocSide
         DO i = 0,PP_N
           r = PP_nVar*i + vn1*nn + vn2*oo
           BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) &
-                                            + LL_Minus(i,mm)*df_DUinner(:,:,nn,oo,XI_MINUS  )  &
-                                            + LL_Plus (i,mm)*df_DUinner(:,:,nn,oo,XI_PLUS   )
+                                            + LL_Minus(i,mm)*df_DUinner(:,:,nn,oo,1,XI_MINUS  )  &
+                                            + LL_Plus (i,mm)*df_DUinner(:,:,nn,oo,1,XI_PLUS   )
         END DO ! i
         DO j = 0,PP_N
           r = PP_nVar*mm + vn1*j + vn2*oo
           BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) &
-                                            + LL_Minus(j,nn)*df_DUinner(:,:,mm,oo,ETA_MINUS )  &
-                                            + LL_Plus (j,nn)*df_DUinner(:,:,mm,oo,ETA_PLUS  )
+                                            + LL_Minus(j,nn)*df_DUinner(:,:,mm,oo,1,ETA_MINUS )  &
+                                            + LL_Plus (j,nn)*df_DUinner(:,:,mm,oo,1,ETA_PLUS  )
         END DO ! j
 #if PP_dim==3
         DO k = 0,PP_N
           r = PP_nVar*mm + vn1*nn + vn2*k
           BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) &
-                                            + LL_Minus(k,oo)*df_DUinner(:,:,mm,nn,ZETA_MINUS)  &
-                                            + LL_Plus (k,oo)*df_DUinner(:,:,mm,nn,ZETA_PLUS )
+                                            + LL_Minus(k,oo)*df_DUinner(:,:,mm,nn,1,ZETA_MINUS)  &
+                                            + LL_Plus (k,oo)*df_DUinner(:,:,mm,nn,1,ZETA_PLUS )
         END DO ! k
 #endif
       END DO ! nn
     END DO ! mm 
   END DO ! oo
+#if FV_ENABLED
+ELSE ! FV Element (Assembling and multiplication with derivative of reconstruction)
+  ! XI-direction-------------------------------------------------------------------------------------------------------------------
+  DO oo = 0,PP_NZ
+    DO nn = 0,PP_N
+#if FV_RECONSTRUCT
+      SideID=ElemToSide(E2S_SIDE_ID,XI_MINUS,iElem)
+      Flip=ElemToSide(  E2S_FLIP   ,XI_MINUS,iElem)
+      pq=S2V2(:,nn,oo,flip         ,XI_MINUS)
+      IF(Flip.EQ.0)THEN
+        UPrim_minus    = UPrim_master(:,pq(1),pq(2),SideID)
+        UPrim_minus_nb = UPrim_slave( :,pq(1),pq(2),SideID)
+        FV_dx_L        = FV_dx_master(1,pq(1),pq(2),SideID)
+        IF(SideID.GE.firstInnerSide)THEN
+          FV_dx_R_nb     = FV_dx_slave( 1,pq(1),pq(2),SideID)
+        ELSE ! BC
+          FV_dx_R_nb     = FV_dx_master(1,pq(1),pq(2),SideID)
+        END IF
+      ELSE
+        UPrim_minus    = UPrim_slave( :,pq(1),pq(2),SideID)
+        UPrim_minus_nb = UPrim_master(:,pq(1),pq(2),SideID)
+        FV_dx_L        = FV_dx_slave( 1,pq(1),pq(2),SideID)
+        FV_dx_R_nb     = FV_dx_master(1,pq(1),pq(2),SideID)
+      END IF
+      SideID=ElemToSide(E2S_SIDE_ID,XI_PLUS,iElem)
+      Flip=ElemToSide(  E2S_FLIP   ,XI_PLUS,iElem)
+      pq=S2V2(:,nn,oo,flip         ,XI_PLUS)
+      IF(Flip.EQ.0)THEN
+        UPrim_plus    = UPrim_master(:,pq(1),pq(2),SideID)
+        UPrim_plus_nb = UPrim_slave( :,pq(1),pq(2),SideID)
+        FV_dx_R       = FV_dx_master(1,pq(1),pq(2),SideID)
+        IF(SideID.GE.firstInnerSide)THEN
+          FV_dx_L_nb    = FV_dx_slave( 1,pq(1),pq(2),SideID)
+        ELSE ! BC
+          FV_dx_L_nb    = FV_dx_master(1,pq(1),pq(2),SideID)
+        END IF
+      ELSE
+        UPrim_plus    = UPrim_slave( :,pq(1),pq(2),SideID)
+        UPrim_plus_nb = UPrim_master(:,pq(1),pq(2),SideID)
+        FV_dx_R       = FV_dx_slave( 1,pq(1),pq(2),SideID)
+        FV_dx_L_nb    = FV_dx_master(1,pq(1),pq(2),SideID)
+      END IF
+      CALL FV_Reconstruction_Derivative_Surf(FV_sdx_XI_extended(nn,oo,:,iElem),FV_dx_L,FV_dx_R,              & 
+                                             FV_dx_L_nb,FV_dx_R_nb,UPrim_plus,UPrim_minus,                   &
+                                             UPrim_plus_nb,UPrim_minus_nb,                                   &
+                                             UPrim_extended(:,:,nn,oo,iElem),dUdUvol_plus(:,:,:,:),dUdUvol_minus(:,:,:,:))
+      !-------------------Derivatives at MINUS side with respect to volume dofs----------------------------------------------------
+      s = vn2*oo + vn1*nn
+      ! direct dependency of prolongated value (of current element, minus) to volume dofs next to interface
+      BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
+                                        + 0.5*(PP_N+1)*MATMUL(df_DUinner(:,:,nn,oo,1,XI_MINUS),dUdUvol_minus(:,:,0,2)) 
+      ! dependency of prolongated value (of neighbouring element, plus) to volume dofs next to interface
+      BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
+                                        + 0.5*(PP_N+1)*MATMUL(df_DUinner(:,:,nn,oo,2,XI_MINUS),dUdUvol_minus(:,:,-1,3)) 
+      ! dependency of prolongated value (of current element, minus) to volume dofs neighbouring the dofs next to interface
+      r = vn2*oo + vn1*nn + PP_nVar
+      BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) &
+                                        + 0.5*(PP_N+1)*MATMUL(df_DUinner(:,:,nn,oo,1,XI_MINUS),dUdUvol_minus(:,:,0,3)) 
+      !-------------------Derivatives at PLUS side with respect to volume dofs-----------------------------------------------------
+      s = vn2*oo + vn1*nn + PP_nVar*PP_N
+      ! direct dependency of prolongated value (of current element, plus) to volume dofs next to interface
+      BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
+                                        + 0.5*(PP_N+1)*MATMUL(df_DUinner(:,:,nn,oo,1,XI_PLUS),dUdUvol_plus(:,:,PP_N,2))
+      ! dependency of prolongated value (of neighbouring element, minus) to volume dofs next to interface
+      BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
+                                        + 0.5*(PP_N+1)*MATMUL(df_DUinner(:,:,nn,oo,2,XI_PLUS),dUdUvol_plus(:,:,PP_N+1,1))
+      ! dependency of prolongated value (of current element, plus) to volume dofs neighbouring the dofs next to interface
+      r = vn2*oo + vn1*nn + PP_nVar*(PP_N-1)
+      BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) &
+                                        + 0.5*(PP_N+1)*MATMUL(df_DUinner(:,:,nn,oo,1,XI_PLUS),dUdUvol_plus(:,:,PP_N,1))
+#else
+      !--------------------only direct dependencies of prolongated (copied) values to volume dofs next to interface----------------
+      s = vn2*oo + vn1*nn
+      BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
+                                        + 0.5*(PP_N+1)*df_DUinner(:,:,nn,oo,1,XI_MINUS) 
+      s = vn2*oo + vn1*nn + PP_nVar*PP_N
+      BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
+                                        + 0.5*(PP_N+1)*df_DUinner(:,:,nn,oo,1,XI_PLUS)
+#endif
+    END DO
+  END DO
+ ! ETA-direction-------------------------------------------------------------------------------------------------------------------
+  DO oo = 0,PP_NZ
+    DO mm = 0,PP_N
+#if FV_RECONSTRUCT
+      SideID=ElemToSide(E2S_SIDE_ID,ETA_MINUS,iElem)
+      Flip=ElemToSide(  E2S_FLIP   ,ETA_MINUS,iElem)
+      pq=S2V2(:,mm,oo,flip         ,ETA_MINUS)
+      IF(Flip.EQ.0)THEN
+        UPrim_minus    = UPrim_master(:,pq(1),pq(2),SideID)
+        UPrim_minus_nb = UPrim_slave( :,pq(1),pq(2),SideID)
+        FV_dx_L        = FV_dx_master(1,pq(1),pq(2),SideID)
+        IF(SideID.GE.firstInnerSide)THEN
+          FV_dx_R_nb     = FV_dx_slave( 1,pq(1),pq(2),SideID)
+        ELSE !BC
+          FV_dx_R_nb     = FV_dx_master(1,pq(1),pq(2),SideID)
+        END IF
+      ELSE
+        UPrim_minus    = UPrim_slave( :,pq(1),pq(2),SideID)
+        UPrim_minus_nb = UPrim_master(:,pq(1),pq(2),SideID)
+        FV_dx_L        = FV_dx_slave( 1,pq(1),pq(2),SideID)
+        FV_dx_R_nb     = FV_dx_master(1,pq(1),pq(2),SideID)
+      END IF
+      SideID=ElemToSide(E2S_SIDE_ID,ETA_PLUS,iElem)
+      Flip=ElemToSide(  E2S_FLIP   ,ETA_PLUS,iElem)
+      pq=S2V2(:,mm,oo,flip         ,ETA_PLUS)
+      IF(Flip.EQ.0)THEN
+        UPrim_plus    = UPrim_master(:,pq(1),pq(2),SideID)
+        UPrim_plus_nb = UPrim_slave( :,pq(1),pq(2),SideID)
+        FV_dx_R       = FV_dx_master(1,pq(1),pq(2),SideID)
+        IF(SideID.GE.firstInnerSide)THEN
+          FV_dx_L_nb    = FV_dx_slave( 1,pq(1),pq(2),SideID)
+        ELSE !BC
+          FV_dx_L_nb    = FV_dx_master(1,pq(1),pq(2),SideID)
+        END IF
+      ELSE
+        UPrim_plus    = UPrim_slave( :,pq(1),pq(2),SideID)
+        UPrim_plus_nb = UPrim_master(:,pq(1),pq(2),SideID)
+        FV_dx_R       = FV_dx_slave( 1,pq(1),pq(2),SideID)
+        FV_dx_L_nb    = FV_dx_master(1,pq(1),pq(2),SideID)
+      END IF
+      CALL FV_Reconstruction_Derivative_Surf(FV_sdx_ETA_extended(mm,oo,:,iElem),FV_dx_L,FV_dx_R,             & 
+                                             FV_dx_L_nb,FV_dx_R_nb,UPrim_plus,UPrim_minus,                   &
+                                             UPrim_plus_nb,UPrim_minus_nb,                                   &
+                                             UPrim_extended(:,mm,:,oo,iElem),dUdUvol_plus(:,:,:,:),dUdUvol_minus(:,:,:,:))
+      s = vn2*oo + PP_nVar*mm
+      BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
+                                        + 0.5*(PP_N+1)*MATMUL(df_DUinner(:,:,mm,oo,1,ETA_MINUS),dUdUvol_minus(:,:,0,2))
+      BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
+                                        + 0.5*(PP_N+1)*MATMUL(df_DUinner(:,:,mm,oo,2,ETA_MINUS),dUdUvol_minus(:,:,-1,3))
+      r = vn2*oo + PP_nVar*mm + vn1*1
+      BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) &
+                                        + 0.5*(PP_N+1)*MATMUL(df_DUinner(:,:,mm,oo,1,ETA_MINUS),dUdUvol_minus(:,:,0,3))
+      s = vn2*oo + PP_nVar*mm + vn1*PP_N 
+      BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
+                                        + 0.5*(PP_N+1)*MATMUL(df_DUinner(:,:,mm,oo,1,ETA_PLUS),dUdUvol_plus(:,:,PP_N,2))
+      BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
+                                        + 0.5*(PP_N+1)*MATMUL(df_DUinner(:,:,mm,oo,2,ETA_PLUS),dUdUvol_plus(:,:,PP_N+1,1))
+      r = vn2*oo + PP_nVar*mm + vn1*(PP_N-1) 
+      BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) &
+                                        + 0.5*(PP_N+1)*MATMUL(df_DUinner(:,:,mm,oo,1,ETA_PLUS),dUdUvol_plus(:,:,PP_N,1))
+#else
+      s = vn2*oo + PP_nVar*mm
+      BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
+                                        + 0.5*(PP_N+1)*df_DUinner(:,:,mm,oo,1,ETA_MINUS) 
+      s = vn2*oo + PP_nVar*mm + vn1*PP_N 
+      BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
+                                        + 0.5*(PP_N+1)*df_DUinner(:,:,mm,oo,1,ETA_PLUS)
+#endif
+    END DO
+  END DO
+#if PP_dim==3
+ ! ZETA-direction------------------------------------------------------------------------------------------------------------------
+  DO nn = 0,PP_N
+    DO mm = 0,PP_N
+#if FV_RECONSTRUCT
+      SideID=ElemToSide(E2S_SIDE_ID,ZETA_MINUS,iElem)
+      Flip=ElemToSide(  E2S_FLIP   ,ZETA_MINUS,iElem)
+      pq=S2V2(:,mm,nn,flip         ,ZETA_MINUS)
+      IF(Flip.EQ.0)THEN
+        UPrim_minus    = UPrim_master(:,pq(1),pq(2),SideID)
+        UPrim_minus_nb = UPrim_slave( :,pq(1),pq(2),SideID)
+        FV_dx_L        = FV_dx_master(1,pq(1),pq(2),SideID)
+        IF(SideID.GE.firstInnerSide)THEN
+          FV_dx_R_nb     = FV_dx_slave( 1,pq(1),pq(2),SideID)
+        ELSE
+          FV_dx_R_nb     = FV_dx_master(1,pq(1),pq(2),SideID)
+        END IF
+      ELSE
+        UPrim_minus    = UPrim_slave( :,pq(1),pq(2),SideID)
+        UPrim_minus_nb = UPrim_master(:,pq(1),pq(2),SideID)
+        FV_dx_L        = FV_dx_slave( 1,pq(1),pq(2),SideID)
+        FV_dx_R_nb     = FV_dx_master(1,pq(1),pq(2),SideID)
+      END IF
+      SideID=ElemToSide(E2S_SIDE_ID,ZETA_PLUS,iElem)
+      Flip=ElemToSide(  E2S_FLIP   ,ZETA_PLUS,iElem)
+      pq=S2V2(:,mm,nn,flip         ,ZETA_PLUS)
+      IF(Flip.EQ.0)THEN
+        UPrim_plus    = UPrim_master(:,pq(1),pq(2),SideID)
+        UPrim_plus_nb = UPrim_slave( :,pq(1),pq(2),SideID)
+        FV_dx_R       = FV_dx_master(1,pq(1),pq(2),SideID)
+        IF(SideID.GE.firstInnerSide)THEN
+          FV_dx_L_nb    = FV_dx_slave( 1,pq(1),pq(2),SideID)
+        ELSE
+          FV_dx_L_nb    = FV_dx_master(1,pq(1),pq(2),SideID)
+        END IF
+      ELSE
+        UPrim_plus    = UPrim_slave( :,pq(1),pq(2),SideID)
+        UPrim_plus_nb = UPrim_master(:,pq(1),pq(2),SideID)
+        FV_dx_R       = FV_dx_slave( 1,pq(1),pq(2),SideID)
+        FV_dx_L_nb    = FV_dx_master(1,pq(1),pq(2),SideID)
+      END IF
+      CALL FV_Reconstruction_Derivative_Surf(FV_sdx_ZETA_extended(mm,nn,:,iElem),FV_dx_L,FV_dx_R,            & 
+                                             FV_dx_L_nb,FV_dx_R_nb,UPrim_plus,UPrim_minus,                   &
+                                             UPrim_plus_nb,UPrim_minus_nb,                                   &
+                                             UPrim_extended(:,mm,nn,:,iElem),dUdUvol_plus(:,:,:,:),dUdUvol_minus(:,:,:,:))
+      s = vn1*nn + PP_nVar*mm
+      BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
+                                        + 0.5*(PP_N+1)*MATMUL(df_DUinner(:,:,mm,nn,1,ZETA_MINUS),dUdUvol_minus(:,:,0,2))
+      BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
+                                        + 0.5*(PP_N+1)*MATMUL(df_DUinner(:,:,mm,nn,2,ZETA_MINUS),dUdUvol_minus(:,:,-1,3))
+      r = vn1*nn + PP_nVar*mm + vn2*1
+      BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) &
+                                        + 0.5*(PP_N+1)*MATMUL(df_DUinner(:,:,mm,nn,1,ZETA_MINUS),dUdUvol_minus(:,:,0,3))
+      s = vn1*nn + PP_nVar*mm + vn2*PP_NZ
+      BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
+                                        + 0.5*(PP_N+1)*MATMUL(df_DUinner(:,:,mm,nn,1,ZETA_PLUS),dUdUvol_plus(:,:,PP_N,2))
+      BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
+                                        + 0.5*(PP_N+1)*MATMUL(df_DUinner(:,:,mm,nn,2,ZETA_PLUS),dUdUvol_plus(:,:,PP_N+1,1))
+      r = vn1*nn + PP_nVar*mm + vn2*(PP_NZ-1)
+      BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) &
+                                        + 0.5*(PP_N+1)*MATMUL(df_DUinner(:,:,mm,nn,1,ZETA_PLUS),dUdUvol_plus(:,:,PP_N,1))
+#else
+      s = vn1*nn + PP_nVar*mm
+      BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
+                                        + 0.5*(PP_N+1)*df_DUinner(:,:,mm,nn,1,ZETA_MINUS) 
+      s = vn1*nn + PP_nVar*mm + vn2*PP_NZ
+      BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
+                                        + 0.5*(PP_N+1)*df_DUinner(:,:,mm,nn,1,ZETA_PLUS)
+#endif
+    END DO
+  END DO
+#endif
+END IF
+#endif
 
 #if PARABOLIC
 IF(EulerPrecond.EQV..FALSE.) THEN !Euler Precond = False

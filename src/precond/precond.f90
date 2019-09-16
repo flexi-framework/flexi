@@ -193,6 +193,7 @@ IF(DoDisplayPrecond)THEN
   END IF
 END IF
 
+CALL DGTimeDerivative_WeakForm(t)
 #if USE_MPI
 ! For all side U_master,UPrim_master,U_slave,Uprim_slave,gradU_master,gradU_slave are needed
 ! Sending U_master and computing then UPrim_master
@@ -273,6 +274,15 @@ DO iElem=1,nElems
     !clean-up
     CALL DGTimeDerivative_WeakForm(t)
     Ploc1=0.
+#if FV_ENABLED && FV_RECONSTRUCT && USE_MPI
+    ! slave states have to be communicated again as they are overwritten (MY Sides) by fv reconstruction
+    CALL StartReceiveMPIData(U_slave,    DataSizeSide,    1,nSides,MPIRequest_U(:,SEND),SendID=1) !Send MINE    / U_slave 
+    CALL StartSendMPIData(   U_slave,    DataSizeSide,    1,nSides,MPIRequest_U(:,RECV),SendID=1) !Receive YOUR / U_slave
+    CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_U)                   ! U_slave: master -> slave
+    CALL StartReceiveMPIData(UPrim_slave,DataSizeSidePrim,1,nSides,MPIRequest_U(:,SEND),SendID=1) !Send MINE    / UPrim_slave 
+    CALL StartSendMPIData(   UPrim_slave,DataSizeSidePrim,1,nSides,MPIRequest_U(:,RECV),SendID=1) !Receive YOUR / UPrim_slave
+    CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_U)                   ! UPrim_slave: master -> slave
+#endif
     CALL Jac_ex(t,iElem,Ploc1,.TRUE.,.TRUE.)
     WRITE(*,*) 'FD= ', SUM(ABS(Ploc))
     WRITE(*,*) 'AD= ', SUM(ABS(Ploc1))

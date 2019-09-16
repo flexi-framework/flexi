@@ -1328,8 +1328,9 @@ USE MOD_FV_Vars             ,ONLY: FV_NormVecXi,FV_TangVec1Xi,FV_TangVec2Xi
 USE MOD_FV_Vars             ,ONLY: FV_NormVecEta,FV_TangVec1Eta,FV_TangVec2Eta
 USE MOD_FV_Vars             ,ONLY: FV_SurfElemXi_sw,FV_SurfElemEta_sw
 USE MOD_Implicit_Vars       ,ONLY: rEps0
-USE MOD_Riemann             ,ONLY: Riemann
+USE MOD_Riemann             ,ONLY: Riemann_Point
 USE MOD_EOS                 ,ONLY: ConsToPrim,PrimToCons
+USE MOD_DG_Vars             ,ONLY: UPrim
 #if FV_RECONSTRUCT
 USE MOD_Mesh_Vars           ,ONLY: ElemToSide
 USE MOD_Jac_Ex_Vars         ,ONLY: UPrim_extended,FV_sdx_XI_extended,FV_sdx_ETA_extended
@@ -1339,8 +1340,6 @@ USE MOD_FV_Vars             ,ONLY: gradUxi,gradUeta,FV_dx_XI_L,FV_dx_XI_R,FV_dx_
 USE MOD_Jac_Ex_Vars         ,ONLY: FV_sdx_ZETA_extended
 USE MOD_FV_Vars             ,ONLY: gradUzeta,FV_dx_ZETA_L,FV_dx_ZETA_R
 #endif
-#else
-USE MOD_DG_Vars             ,ONLY: U,UPrim
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -1417,7 +1416,7 @@ DO p=0,PP_N
                                       UPrim_extended(:,:,p,q,iElem),dUdUvol_plus(:,:,:,:),dUdUvol_minus(:,:,:,:))
 #endif
     DO i=1,PP_N
-      CALL Riemann(PP_N,F(:,i-1,p,q),                              &
+      CALL Riemann_Point(F(:,i-1,p,q),                             &
                    FV_U_Xiplus_loc(     :,i-1),                    &
                    FV_U_Ximinus_loc(    :,i  ),                    &
                    FV_UPrim_Xiplus_loc( :,i-1),                    &
@@ -1437,7 +1436,7 @@ DO p=0,PP_N
         FV_U_minus_Tilde(jVar,i) = FV_U_minus_Tilde(jVar,i) + reps0_R
         CALL ConsToPrim(FV_UPrim_minus_Tilde(:,i),FV_U_minus_Tilde(:,i))
  
-        CALL Riemann(PP_N,F_Tilde(:,i-1,p,q),                         &
+        CALL Riemann_Point(F_Tilde(:,i-1,p,q),                        &
                      FV_U_plus_Tilde(     :,i-1),                     &
                      FV_U_Ximinus_loc(    :,i  ),                     &
                      FV_UPrim_plus_Tilde( :,i-1),                     &
@@ -1445,7 +1444,7 @@ DO p=0,PP_N
                      FV_NormVecXi(        :,p  ,q,i,iElem),           &
                      FV_TangVec1Xi(       :,p  ,q,i,iElem),           &
                      FV_TangVec2Xi(       :,p  ,q,i,iElem),.FALSE.)
-        CALL Riemann(PP_N,F_Tilde(:,i,p,q),                           &
+        CALL Riemann_Point(F_Tilde(:,i,p,q),                          &
                      FV_U_Xiplus_loc(     :,i-1),                     &
                      FV_U_minus_Tilde(    :,i  ),                     &
                      FV_UPrim_Xiplus_loc( :,i-1),                     &
@@ -1541,7 +1540,7 @@ DO p=0,PP_N
                                       UPrim_extended(:,p,:,q,iElem),dUdUvol_plus(:,:,:,:),dUdUvol_minus(:,:,:,:))
 #endif
     DO j=1,PP_N
-      CALL Riemann(PP_N,F(:,p,j-1,q),                               &
+      CALL Riemann_Point(F(:,p,j-1,q),                              &
                    FV_U_Etaplus_loc(     :,j-1),                    &
                    FV_U_Etaminus_loc(    :,j  ),                    &
                    FV_UPrim_Etaplus_loc( :,j-1),                    &
@@ -1561,7 +1560,7 @@ DO p=0,PP_N
         sreps0_R = 1./reps0_R
         FV_U_minus_Tilde(jVar,j) = FV_U_minus_Tilde(jVar,j) + reps0_R
         CALL ConsToPrim(FV_UPrim_minus_Tilde(:,j),FV_U_minus_Tilde(:,j))
-        CALL Riemann(PP_N,F_Tilde(:,p,j-1,q),                          &
+        CALL Riemann_Point(F_Tilde(:,p,j-1,q),                         &
                      FV_U_plus_Tilde(      :,j-1),                     &
                      FV_U_Etaminus_loc(    :,j  ),                     &
                      FV_UPrim_plus_Tilde(  :,j-1),                     &
@@ -1569,7 +1568,7 @@ DO p=0,PP_N
                      FV_NormVecEta(        :,p,q  ,j,iElem),           &
                      FV_TangVec1Eta(       :,p,q  ,j,iElem),           &
                      FV_TangVec2Eta(       :,p,q  ,j,iElem),.FALSE.)
-        CALL Riemann(PP_N,F_Tilde(:,p,j,q),                            &
+        CALL Riemann_Point(F_Tilde(:,p,j,q),                           &
                      FV_U_Etaplus_loc(    :,j-1),                      &
                      FV_U_minus_Tilde(    :,j  ),                      &
                      FV_UPrim_Etaplus_loc(:,j-1),                      &
@@ -1666,7 +1665,7 @@ DO p=0,PP_N
                                       UPrim_extended(:,p,q,:,iElem),dUdUvol_plus(:,:,:,:),dUdUvol_minus(:,:,:,:))
 #endif
     DO k=1,PP_N
-      CALL Riemann(PP_N,F(:,p,q,k-1),                                &
+      CALL Riemann_Point(F(:,p,q,k-1),                               &
                    FV_U_Zetaplus_loc(     :,k-1),                    &
                    FV_U_Zetaminus_loc(    :,k  ),                    &
                    FV_UPrim_Zetaplus_loc( :,k-1),                    &
@@ -1687,7 +1686,7 @@ DO p=0,PP_N
         FV_U_minus_Tilde(jVar,k) = FV_U_minus_Tilde(jVar,k) + reps0_R
         CALL ConsToPrim(FV_UPrim_minus_Tilde(:,k),FV_U_minus_Tilde(:,k))
  
-        CALL Riemann(PP_N,F_Tilde(:,p,q,k-1),                           &
+        CALL Riemann_Point(F_Tilde(:,p,q,k-1),                          &
                      FV_U_plus_Tilde(       :,k-1),                     &
                      FV_U_Zetaminus_loc(    :,k),                       &
                      FV_UPrim_plus_Tilde(   :,k-1),                     &
@@ -1695,7 +1694,7 @@ DO p=0,PP_N
                      FV_NormVecZeta(        :,p,q,k  ,iElem),           &
                      FV_TangVec1Zeta(       :,p,q,k  ,iElem),           &
                      FV_TangVec2Zeta(       :,p,q,k  ,iElem),.FALSE.)
-        CALL Riemann(PP_N,F_Tilde(:,p,q,k),                             &
+        CALL Riemann_Point(F_Tilde(:,p,q,k),                            &
                      FV_U_Zetaplus_loc(    :,k-1),                      &
                      FV_U_minus_Tilde(     :,k),                        &
                      FV_UPrim_Zetaplus_loc(:,k-1),                      &
