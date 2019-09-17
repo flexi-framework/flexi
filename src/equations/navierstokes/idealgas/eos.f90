@@ -201,11 +201,13 @@ prim(1)=cons(1)
 prim(2:3)=cons(2:3)*sRho
 #if (PP_dim==3)
 prim(4)=cons(4)*sRho
-#else
-prim(4)=0.
-#endif
 ! pressure
 prim(5)=KappaM1*(cons(5)-0.5*SUM(cons(2:4)*prim(2:4)))
+#else
+prim(4)=0.
+! pressure
+prim(5)=KappaM1*(cons(5)-0.5*SUM(cons(2:3)*prim(2:3)))
+#endif
 ! temperature
 prim(6) = prim(5)*sRho / R
 END SUBROUTINE ConsToPrim
@@ -273,11 +275,13 @@ cons(1)=prim(1)
 cons(2:3)=prim(2:3)*prim(1)
 #if (PP_dim==3)
 cons(4)=prim(4)*prim(1)
-#else
-cons(4)=0.
-#endif
 ! energy
 cons(5)=sKappaM1*prim(5)+0.5*SUM(cons(2:4)*prim(2:4))
+#else
+cons(4)=0.
+! energy
+cons(5)=sKappaM1*prim(5)+0.5*SUM(cons(2:3)*prim(2:3))
+#endif
 END SUBROUTINE PrimToCons
 
 !==================================================================================================================================

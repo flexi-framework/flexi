@@ -62,10 +62,11 @@ USE MOD_Mesh_Vars          ,ONLY: firstBCSide,lastBCSide,firstInnerSide,lastMPIS
 USE MOD_Mesh_Vars          ,ONLY: S2V2,ElemToSide,dXCL_N
 USE MOD_Interpolation      ,ONLY: GetNodesAndWeights
 USE MOD_Interpolation_Vars ,ONLY: NodeTypeCL,xGP,wGP,wBary
+#endif
 #if USE_MPI
 USE MOD_MPI                ,ONLY: StartReceiveMPIData,StartSendMPIData,FinishExchangeMPIData
 USE MOD_MPI_Vars           ,ONLY: nNbProcs
-#endif
+USE MOD_Mesh_Vars          ,ONLY: firstMPISide_MINE
 #endif
 USE MOD_2D
 USE MOD_FillMortar1        ,ONLY: U_Mortar1
@@ -99,6 +100,10 @@ INTEGER                                :: MPIRequest(nNbProcs,2)
 #if PARABOLIC
 INTEGER                                :: d
 #endif
+#endif
+#if USE_MPI
+INTEGER                                :: MPIRequest_Geo(nNbProcs,2)
+REAL,ALLOCATABLE                       :: Geo(:,:,:,:)
 #endif
 !==================================================================================================================================
 SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO') '  Build Metrics ...'
@@ -216,6 +221,25 @@ DO iSide=1,nSides
                            TangVec2(:,:,:,1,SideID),SurfElem(  :,:,1,SideID))
   END DO
 END DO
+
+#if USE_MPI
+! Send surface geomtry informations from mpi master to mpi slave
+ALLOCATE(Geo(10,0:PP_N,0:PP_NZ,firstMPISide_MINE:nSides))
+Geo=0.
+Geo(1,:,:,:)   =SurfElem(  :,0:PP_NZ,1,firstMPISide_MINE:nSides)
+Geo(2:4,:,:,:) =NormVec (:,:,0:PP_NZ,1,firstMPISide_MINE:nSides)
+Geo(5:7,:,:,:) =TangVec1(:,:,0:PP_NZ,1,firstMPISide_MINE:nSides)
+Geo(8:10,:,:,:)=TangVec2(:,:,0:PP_NZ,1,firstMPISide_MINE:nSides)
+MPIRequest_Geo=MPI_REQUEST_NULL
+CALL StartReceiveMPIData(Geo,10*(PP_N+1)**(PP_dim-1),firstMPISide_MINE,nSides,MPIRequest_Geo(:,RECV),SendID=1) ! Receive YOUR / Geo: master -> slave
+CALL StartSendMPIData(   Geo,10*(PP_N+1)**(PP_dim-1),firstMPISide_MINE,nSides,MPIRequest_Geo(:,SEND),SendID=1) ! SEND MINE / Geo: master -> slave
+CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Geo) 
+SurfElem  (:,0:PP_NZ,1,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(1   ,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
+NormVec (:,:,0:PP_NZ,1,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(2:4 ,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
+TangVec1(:,:,0:PP_NZ,1,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(5:7 ,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
+TangVec2(:,:,0:PP_NZ,1,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(8:10,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
+DEALLOCATE(Geo)
+#endif /*MPI*/
 
 CALL FV_Build_Vdm_Gauss_FVboundary(PP_N, Vdm_Gauss_FVboundary)
 CALL GetVandermonde(NgeoRef, NodeType, PP_N, NodeType, Vdm_NgeoRef_N, modal=.TRUE.)

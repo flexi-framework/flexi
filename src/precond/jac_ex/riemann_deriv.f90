@@ -99,13 +99,14 @@ DO jVar=1,PP_nVar
   END IF
 #endif
   U_L_Tilde(jVar,:,:) = U_L_Tilde(jVar,:,:) + reps0
+  CALL ConsToPrim(PP_N,UPrim_L_Tilde,U_L_Tilde)
 #if FV_ENABLED
   ! transform modified values back to FV points, where the Riemann problem is evaluated
   IF((FVSide.EQ.1).AND.(FVElem.EQ.0))THEN
-    CALL ChangeBasisSurf(PP_nVar,PP_N,PP_N,FV_Vdm,U_L_Tilde)
+    CALL ChangeBasisSurf(PP_nVar    ,PP_N,PP_N,FV_Vdm,U_L_Tilde)
+    CALL ChangeBasisSurf(PP_nVarPrim,PP_N,PP_N,FV_Vdm,UPrim_L_Tilde)
   END IF
 #endif
-  CALL ConsToPrim(PP_N,UPrim_L_Tilde,U_L_Tilde)
   CALL Riemann(PP_N,F_Tilde_UL,U_L_Tilde,U_R,UPrim_L_Tilde,UPrim_R,normal,tangent1,tangent2,doBC=.FALSE.)
 #if FV_ENABLED
   ! convert flux on FV points to DG points at mixed interface if current element is a DG element 

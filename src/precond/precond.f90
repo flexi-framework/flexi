@@ -180,6 +180,9 @@ REAL,ALLOCATABLE   :: Ploc(:,:)
 REAL,ALLOCATABLE   :: Ploc1(:,:)
 REAL               :: TimeStart,TimeEnd,TotalTime
 INTEGER            :: ind(2)
+#if USE_MPI
+REAL               :: TotalTimeMPI
+#endif /*MPI*/
 !INTEGER            :: i,j,k 
 !===================================================================================================================================
 IF(PrecondType.EQ.0) RETURN !NO PRECONDITIONER
@@ -271,8 +274,6 @@ DO iElem=1,nElems
     !test for LU preconditioner, since the other preconditioners use NoFillIn
     SolveSystem=0
     CALL Jac_FD(t,iElem,Ploc)
-    !clean-up
-    CALL DGTimeDerivative_WeakForm(t)
     Ploc1=0.
 #if FV_ENABLED && FV_RECONSTRUCT && USE_MPI
     ! slave states have to be communicated again as they are overwritten (MY Sides) by fv reconstruction
@@ -331,7 +332,10 @@ IF(DoDisplayPrecond)THEN
   TimeEnd=FLEXITIME(MPI_COMM_FLEXI)
   TotalTime=TotalTime+(TimeEnd-TimeStart)
 #if USE_MPI
-  CALL MPI_REDUCE(MPI_IN_PLACE,TotalTime,1,MPI_DOUBLE_PRECISION,MPI_MAX,0,MPI_COMM_FLEXI,IERROR)
+  CALL MPI_REDUCE(TotalTime,TotalTimeMPI ,1,MPI_DOUBLE_PRECISION,MPI_MAX,0,MPI_COMM_FLEXI,IERROR)
+  IF(MPIRoot) THEN
+    TotalTime=TotalTimeMPI
+  END IF
 #endif /*MPI*/
   IF(MPIRoot)THEN
     WRITE(UNIT_stdOut,'(A,F11.3,A)')' TOTAL DERIVATING & INVERTING TIME =[',TotalTime,' ]'
@@ -438,14 +442,13 @@ IF(DebugMatrix.GT.0)THEN
     CLOSE(103)
     sparsity= REAL(counter)/(nDOFVarElem**2)
     !WRITE(*,*) 'sparsity= ', sparsity 
-    WRITE(*,*) 'density= ', 1.-sparsity
+    !WRITE(*,*) 'density= ', 1.-sparsity
     ! WRITE(UNIT_stdOut,*)'Debug Block Jacobian to:',TRIM(Filename)
     !OPEN (UNIT=103,FILE=TRIM(Filename),STATUS='REPLACE')
     !DO r=1,nDOFVarElem
       !WRITE(103,strfmt)Ploc_loc(r,:)
     !END DO
     !CLOSE(103)
-  stop
   END IF
 END IF !DebugMatrix >0
 
