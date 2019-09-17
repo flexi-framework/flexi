@@ -462,7 +462,6 @@ CASE(1) ! MinMod
     ELSE
       CALL Abort(__STAMP__,'Slopes do not match with minmod in preconditioner!')
     END IF
-    WRITE (*,*) ABS(UPrim_minus(iVar)-URec_extended(iVar,0)+s_lim_minus(iVar)*FV_dx_L)
     ! derivatives of plus value at minus interface, if reconstruction has been done with s_L_minus
     IF(ABS(UPrim_minus_nb(iVar)-(URec_extended(iVar,-1)+s_L_minus(iVar)*FV_dx_R_nb)).LE.1E-12)THEN 
       dUdUvol_minus(iVar,iVar,-1,3) = 0. + FV_dx_R_nb * ( FV_sdx(0))

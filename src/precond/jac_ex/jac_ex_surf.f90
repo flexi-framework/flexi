@@ -94,7 +94,7 @@ INTEGER,INTENT(IN)                 :: iElem                                     
 REAL,INTENT(INOUT)                 :: BJ(nDOFVarElem,nDOFVarElem)               !< block-Jacobian of current element
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                                                 :: i,j,mm,nn,oo,r,s,vn1,vn2
+INTEGER                                                 :: i,j,k,mm,nn,oo,r,s,vn1,vn2
 INTEGER                                                 :: iLocSide,SideID,Flip,FVElem,FVSide,FVSum
 #if PP_dim == 3
 REAL                                                    :: df_DUinner(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ,2,6)
@@ -102,7 +102,7 @@ REAL                                                    :: df_DUinner(PP_nVar,PP
 REAL                                                    :: df_DUinner(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ,2,2:5)
 #endif
 #if PARABOLIC
-INTEGER                                                 :: jk(2),k,l,p,q
+INTEGER                                                 :: jk(2),l,p,q
 REAL                                                    :: Df_dQ_minus(1:PP_nVar,1:PP_nVar)
 REAL                                                    :: Df_dQ_plus(1:PP_nVar,1:PP_nVar)
 !REAL                                                    :: Df_dQ_minus_Tilde(1:PP_nVar,1:PP_nVar)
