@@ -124,6 +124,9 @@ END SUBROUTINE VolInt_weakForm
 !> Attention 1: 1/J(i,j,k) is not yet accounted for
 !> Attention 2: input Ut is overwritten with the volume flux derivatives
 !> Attention 3: the factor of 2 in front of the derivative matrix entries is incorporated into the split fluxes!
+!> Attention 4: This is the strong form of the DGSEM! Substracting the inner flux is incorporated into the used D matrix, which
+!> saves performance but only works for Gauss-Lobatto points. So no changes in the surface integral or fill flux routines are
+!> necessary.
 !> For details on the derivation see Gassner, Gregor J., Andrew R. Winters, and David A. Kopriva.
 !> "Split form nodal discontinuous Galerkin schemes with summation-by-parts property for the compressible Euler equations."
 !> Journal of Computational Physics 327 (2016): 39-66.
