@@ -203,9 +203,9 @@ DO iElem=1,nElems
 #else
     Ut(:,i,j,k,iElem) = DVolSurf(i,i)*f_c(:,i,j,k) + &
 #if PP_dim==3
-                        DVolSurf(j,j)*h_c(:,i,j,k) + &
+                        DVolSurf(k,k)*h_c(:,i,j,k) + &
 #endif /*PP_dim==3*/
-                        DVolSurf(k,k)*g_c(:,i,j,k)
+                        DVolSurf(j,j)*g_c(:,i,j,k)
 #endif /*PARABOLIC*/
   END DO; END DO; END DO !i,j,k
 
