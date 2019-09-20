@@ -160,7 +160,6 @@ REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: f_c,g_c,h_c  !< Euler fluxes at
 REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: fv,gv,hv     !< Parabolic fluxes at GP
 #endif /*PARABOLIC*/
 !==================================================================================================================================
-! Diffusive part
 DO iElem=1,nElems
 #if FV_ENABLED
   IF (FV_Elems(iElem).EQ.1) CYCLE ! FV Elem
@@ -173,6 +172,7 @@ DO iElem=1,nElems
                                            Metrics_gTilde(:,:,:,:,iElem,0),&
                                            Metrics_hTilde(:,:,:,:,iElem,0))
 #if PARABOLIC
+  ! Diffusive fluxes, those will be treated just as in the non-split case
   CALL EvalDiffFlux3D( UPrim(:,:,:,:,iElem),&
                       gradUx(:,:,:,:,iElem),&
                       gradUy(:,:,:,:,iElem),&
