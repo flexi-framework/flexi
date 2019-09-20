@@ -281,19 +281,11 @@ USE MOD_Mesh_Vars     ,ONLY: Metrics_hTilde
 #endif
 USE MOD_Implicit_Vars ,ONLY: nDOFVarElem
 #ifdef SPLIT_DG
-USE MOD_DG_Vars       ,ONLY: D
+USE MOD_DG_Vars       ,ONLY: DVolSurf
 USE MOD_Jac_Split     ,ONLY: Jac_Split
-USE MOD_Interpolation_Vars,ONLY: wGP
 #else
 USE MOD_DG_Vars       ,ONLY: D_hat,U,UPrim
 #endif
-!USE MOD_Jac_Ex_Vars   ,ONLY: PrimConsJac
-!USE MOD_Implicit_Vars ,ONLY: reps0,sreps0
-USE MOD_EOS           ,ONLY: ConsToPrim
-USE MOD_Implicit_Vars, ONLY: Xk,sreps0,reps0
-USE MOD_VolInt       , ONLY: VolInt
-USE MOD_Mesh_Vars    , ONLY: nElems
-USE MOD_DG_Vars,       ONLY: Ut
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -304,33 +296,32 @@ INTEGER,INTENT(IN) :: iElem
 REAL,INTENT(INOUT)    :: BJ(1:nDOFVarElem,1:nDOFVarElem)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
-!REAL,DIMENSION(PP_nVar) :: f,g,h,u1,u1_tilde,gx,gy,gz
-!REAL,DIMENSION(PP_nVarPrim) :: up,up_tilde,gpx,gpy,gpz
-!REAL,DIMENSION(PP_nVar) :: f_Tilde,g_Tilde,h_Tilde
-!REAL,DIMENSION(PP_nVar,PP_nVar)   :: dfdu,dgdu,dhdu
-INTEGER                                                 :: iVar,jVar,i,j,k,r,tt,r11,r22
 INTEGER                                                 :: mm,nn,oo
-INTEGER                                                 :: s,r1,r2,ll,vn1,vn2
+INTEGER                                                 :: s,r1,r2,ll,vn1,vn2,tt
+#ifdef SPLIT_DG
 REAL,DIMENSION(PP_nVar,PP_nVar)                         :: fJacTilde,gJacTilde
-REAL,DIMENSION(PP_nVar,PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)   :: fJac,gJac,hJac
 #if PP_dim==3
 REAL,DIMENSION(PP_nVar,PP_nVar)                         :: hJacTilde
+#endif
+#else
+REAL,DIMENSION(PP_nVar,PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)   :: fJac,gJac
+#if PP_dim==3
+REAL,DIMENSION(PP_nVar,PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)   :: hJac
+#endif
+#endif
+#if PP_dim==3
 INTEGER                                                 :: r3
 #endif
 #if PARABOLIC
 REAL,DIMENSION(PP_nVar,PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)   :: fJac_loc,gJac_loc,hJac_loc
 #endif
-#ifdef SPLIT_DG
-REAL                                                    :: DVolSurf_loc(0:PP_N,0:PP_N)
-REAL                                                    :: DVolSurf_diag(0:PP_N,0:PP_N)
-#endif
-REAL                                                    :: Ut_tilde(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
-REAL    :: dRdU(1:nDOFVarElem,1:nDOFVarElem)
 !===================================================================================================================================
 vn1=PP_nVar*(PP_N+1)
 vn2=vn1*(PP_N+1)
+#ifndef SPLIT_DG
 CALL EvalAdvFluxJacobian(U(:,:,:,:,iElem),UPrim(:,:,:,:,iElem),fJac,gJac,hJac)
 !No CALL of EvalDiffFlux Jacobian for EQNSYSNR==1, since the diffusive flux is not depending on U
+#endif
 
 #if EQNSYSNR==2                                         
 #if PARABOLIC
@@ -349,186 +340,58 @@ END IF !EulerPrecond
 #endif /*PARABOLIC*/          
 #endif /*EQNSYSNR*/
 
-#ifdef SPLIT_DG
-DVolSurf_loc = D
-!DVolSurf_loc(0,0) = DVolSurf_loc(0,0) + 1.0/(wGP(0))
-!DVolSurf_loc(PP_N,PP_N) = DVolSurf_loc(PP_N,PP_N) - 1.0/(wGP(PP_N))
-DVolSurf_diag = D
-!DVolSurf_diag(0,0) = DVolSurf_diag(0,0) + 1.0/(wGP(0))
-!DVolSurf_diag(PP_N,PP_N) = DVolSurf_diag(PP_N,PP_N) - 1.0/(wGP(PP_N))
-#endif /*SPLIT_DG*/
-
 s=0
 DO oo=0,PP_NZ
   DO nn=0,PP_N
     DO mm=0,PP_N
 #ifdef SPLIT_DG
-      ! strong form
+      ! strong split form (modified surface terms!)
       r1=           vn1*nn+vn2*oo
       r2=mm*PP_nVar       +vn2*oo
 #if PP_dim==3
       r3=mm*PP_nVar+vn1*nn
 #endif
+      ! Case i!=m (i is the loop variable, similar to weak form)
       DO ll=0,PP_N
-        !CALL Jac_Split(U(:,ll,nn,oo,iElem),UPrim(:,ll,nn,oo,iElem),U(:,mm,nn,oo,iElem),UPrim(:,mm,nn,oo,iElem), &
-                       !Metrics_fTilde(:,ll,nn,oo,iElem,0),Metrics_fTilde(:,mm,nn,oo,iElem,0),fJacTilde(:,:))
-        !BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) = BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) + DVolSurf_loc(ll,mm)*fJacTilde(:,:) 
-
-        !!CALL Jac_Split(U(:,mm,nn,oo,iElem),UPrim(:,mm,nn,oo,iElem),U(:,ll,nn,oo,iElem),UPrim(:,ll,nn,oo,iElem), &
-                       !!Metrics_fTilde(:,mm,nn,oo,iElem,0),Metrics_fTilde(:,ll,nn,oo,iElem,0),fJacTilde(:,:))
-        !IF(ll.EQ.mm)THEN
-          !BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) + DVolSurf_loc(ll,ll)*fJacTilde(:,:) 
-        !END IF
-
-
-        !CALL Jac_Split(U(:,mm,ll,oo,iElem),UPrim(:,mm,ll,oo,iElem),U(:,mm,nn,oo,iElem),UPrim(:,mm,nn,oo,iElem), &
-                       !Metrics_gTilde(:,mm,ll,oo,iElem,0),Metrics_gTilde(:,mm,nn,oo,iElem,0),gJacTilde(:,:))
-        !BJ(r2+1:r2+PP_nVar,s+1:s+PP_nVar) = BJ(r2+1:r2+PP_nVar,s+1:s+PP_nVar) + DVolSurf_loc(ll,nn)*gJacTilde(:,:) 
-
-        !!CALL Jac_Split(U(:,mm,nn,oo,iElem),UPrim(:,mm,nn,oo,iElem),U(:,mm,ll,oo,iElem),UPrim(:,mm,ll,oo,iElem), &
-                       !!Metrics_gTilde(:,mm,nn,oo,iElem,0),Metrics_gTilde(:,mm,ll,oo,iElem,0),gJacTilde(:,:))
-        !IF(ll.EQ.nn)THEN
-          !BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) + DVolSurf_loc(ll,ll)*gJacTilde(:,:) 
-        !END IF
-
-
-
-
-
-        !IF(r1.EQ.s)THEN
-          !fJacTilde(:,:) = ( fJac(:,:,mm,nn,oo)*Metrics_fTilde(1,mm,nn,oo,iElem,0)  &
-                           !+ gJac(:,:,mm,nn,oo)*Metrics_fTilde(2,mm,nn,oo,iElem,0)  &
-!#if PP_dim==3
-                           !+ hJac(:,:,mm,nn,oo)*Metrics_fTilde(3,mm,nn,oo,iElem,0)  &
-!#endif
-                           !)
-
-          !BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) = BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) + DVolSurf_diag(ll,mm)*fJacTilde(:,:) 
-
-          !CALL Jac_Split(U(:,ll,nn,oo,iElem),UPrim(:,ll,nn,oo,iElem),U(:,mm,nn,oo,iElem),UPrim(:,mm,nn,oo,iElem), &
-                         !Metrics_fTilde(:,ll,nn,oo,iElem,0),Metrics_fTilde(:,mm,nn,oo,iElem,0),fJacTilde(:,:))
-          !BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) = BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) + DVolSurf_diag(ll,mm)*fJacTilde(:,:) 
-        !ELSE
-          !CALL Jac_Split(U(:,mm,nn,oo,iElem),UPrim(:,mm,nn,oo,iElem),U(:,ll,nn,oo,iElem),UPrim(:,ll,nn,oo,iElem), &
-                         !Metrics_fTilde(:,mm,nn,oo,iElem,0),Metrics_fTilde(:,ll,nn,oo,iElem,0),fJacTilde(:,:))
-          !BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) = BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) + DVolSurf_loc(ll,mm)*fJacTilde(:,:) 
-        !END IF
-        !IF(r2.EQ.s)THEN
-          !gJacTilde(:,:) = (fJac(:,:,mm,nn,oo)*Metrics_gTilde(1,mm,nn,oo,iElem,0)  &
-                           !+gJac(:,:,mm,nn,oo)*Metrics_gTilde(2,mm,nn,oo,iElem,0)  &
-!#if PP_dim==3
-                           !+hJac(:,:,mm,nn,oo)*Metrics_gTilde(3,mm,nn,oo,iElem,0)  &
-!#endif
-                           !)
-          !BJ(r2+1:r2+PP_nVar,s+1:s+PP_nVar) = BJ(r2+1:r2+PP_nVar,s+1:s+PP_nVar) + DVolSurf_diag(ll,nn)*gJacTilde(:,:) 
-        !ELSE
-          !CALL Jac_Split(U(:,mm,nn,oo,iElem),UPrim(:,mm,nn,oo,iElem),U(:,mm,ll,oo,iElem),UPrim(:,mm,ll,oo,iElem), &
-                         !Metrics_gTilde(:,mm,nn,oo,iElem,0),Metrics_gTilde(:,mm,ll,oo,iElem,0),gJacTilde(:,:))
-          !BJ(r2+1:r2+PP_nVar,s+1:s+PP_nVar) = BJ(r2+1:r2+PP_nVar,s+1:s+PP_nVar) + DVolSurf_loc(ll,nn)*gJacTilde(:,:) 
-        !END IF
-        !IF((mm.EQ.ll).AND.(nn.EQ.ll).AND.(oo.EQ.ll))THEN
-        !ELSE
-          !CALL Jac_Split(U(:,mm,nn,oo,iElem),UPrim(:,mm,nn,oo,iElem),U(:,ll,nn,oo,iElem),UPrim(:,ll,nn,oo,iElem), &
-                         !Metrics_fTilde(:,mm,nn,oo,iElem,0),Metrics_fTilde(:,ll,nn,oo,iElem,0),fJacTilde(:,:))
-          !BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) = BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) + DVolSurf_loc(ll,mm)*fJacTilde(:,:) 
-          !CALL Jac_Split(U(:,mm,nn,oo,iElem),UPrim(:,mm,nn,oo,iElem),U(:,mm,ll,oo,iElem),UPrim(:,mm,ll,oo,iElem), &
-                         !Metrics_gTilde(:,mm,nn,oo,iElem,0),Metrics_gTilde(:,mm,ll,oo,iElem,0),gJacTilde(:,:))
-          !BJ(r2+1:r2+PP_nVar,s+1:s+PP_nVar) = BJ(r2+1:r2+PP_nVar,s+1:s+PP_nVar) + DVolSurf_loc(ll,nn)*gJacTilde(:,:) 
-        !END IF
-
-        !IF(mm.EQ.ll)THEN ! main diagonal
-          !fJacTilde(:,:) = ( fJac(:,:,mm,nn,oo)*Metrics_fTilde(1,mm,nn,oo,iElem,0)  &
-                           !+ gJac(:,:,mm,nn,oo)*Metrics_fTilde(2,mm,nn,oo,iElem,0)  &
-!#if PP_dim==3
-                           !+ hJac(:,:,mm,nn,oo)*Metrics_fTilde(3,mm,nn,oo,iElem,0)  &
-!#endif
-                           !)
-
-          !BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) = BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) + DVolSurf_diag(ll,mm)*fJacTilde(:,:) 
-        !ELSE
-        IF(ll.NE.mm)THEN
           CALL Jac_Split(U(:,mm,nn,oo,iElem),UPrim(:,mm,nn,oo,iElem),U(:,ll,nn,oo,iElem),UPrim(:,ll,nn,oo,iElem), &
                          Metrics_fTilde(:,mm,nn,oo,iElem,0),Metrics_fTilde(:,ll,nn,oo,iElem,0),fJacTilde(:,:))
-          BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) = BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) + DVolSurf_loc(ll,mm)*fJacTilde(:,:) 
-        ELSE
-          fJacTilde(:,:) = ( fJac(:,:,mm,nn,oo)*Metrics_fTilde(1,mm,nn,oo,iElem,0)  &
-                           + gJac(:,:,mm,nn,oo)*Metrics_fTilde(2,mm,nn,oo,iElem,0)  &
+          BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) = BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) + DVolSurf(mm,ll)*fJacTilde(:,:) 
+
+          CALL Jac_Split(U(:,mm,nn,oo,iElem),UPrim(:,mm,nn,oo,iElem),U(:,mm,ll,oo,iElem),UPrim(:,mm,ll,oo,iElem), &
+                         Metrics_gTilde(:,mm,nn,oo,iElem,0),Metrics_gTilde(:,mm,ll,oo,iElem,0),gJacTilde(:,:))
+          BJ(r2+1:r2+PP_nVar,s+1:s+PP_nVar) = BJ(r2+1:r2+PP_nVar,s+1:s+PP_nVar) + DVolSurf(nn,ll)*gJacTilde(:,:) 
+
 #if PP_dim==3
-                           + hJac(:,:,mm,nn,oo)*Metrics_fTilde(3,mm,nn,oo,iElem,0)  &
+          CALL Jac_Split(U(:,mm,nn,oo,iElem),UPrim(:,mm,nn,oo,iElem),U(:,mm,nn,ll,iElem),UPrim(:,mm,nn,ll,iElem), &
+                         Metrics_hTilde(:,mm,nn,oo,iElem,0),Metrics_hTilde(:,mm,nn,ll,iElem,0),hJacTilde(:,:))
+          BJ(r3+1:r3+PP_nVar,s+1:s+PP_nVar) = BJ(r3+1:r3+PP_nVar,s+1:s+PP_nVar) + DVolSurf(oo,ll)*hJacTilde(:,:) 
 #endif
-                           )
 
-          BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) = BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) + DVolSurf_loc(ll,mm)*fJacTilde(:,:) 
-        END IF
-
-          !CALL Jac_Split(U(:,mm,nn,oo,iElem),UPrim(:,mm,nn,oo,iElem),U(:,ll,nn,oo,iElem),UPrim(:,ll,nn,oo,iElem), &
-                         !Metrics_fTilde(:,mm,nn,oo,iElem,0),Metrics_fTilde(:,ll,nn,oo,iElem,0),fJacTilde(:,:))
-          !BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) = BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) + DVolSurf_loc(mm,ll)*fJacTilde(:,:) 
-        !END IF
-        
-
-        !IF(nn.EQ.ll)THEN
-          !gJacTilde(:,:) = (fJac(:,:,mm,nn,oo)*Metrics_gTilde(1,mm,nn,oo,iElem,0)  &
-                           !+gJac(:,:,mm,nn,oo)*Metrics_gTilde(2,mm,nn,oo,iElem,0)  &
-!#if PP_dim==3
-                           !+hJac(:,:,mm,nn,oo)*Metrics_gTilde(3,mm,nn,oo,iElem,0)  &
-!#endif
-                           !)
-          !BJ(r2+1:r2+PP_nVar,s+1:s+PP_nVar) = BJ(r2+1:r2+PP_nVar,s+1:s+PP_nVar) + DVolSurf_diag(ll,nn)*gJacTilde(:,:) 
-        !ELSE
-!=====================================================
-        !IF(ll.NE.nn)THEN
-          !CALL Jac_Split(U(:,mm,nn,oo,iElem),UPrim(:,mm,nn,oo,iElem),U(:,mm,ll,oo,iElem),UPrim(:,mm,ll,oo,iElem), &
-                         !Metrics_gTilde(:,mm,nn,oo,iElem,0),Metrics_gTilde(:,mm,ll,oo,iElem,0),gJacTilde(:,:))
-          !BJ(r2+1:r2+PP_nVar,s+1:s+PP_nVar) = BJ(r2+1:r2+PP_nVar,s+1:s+PP_nVar) + DVolSurf_loc(ll,nn)*gJacTilde(:,:) 
-        !ELSE
-          !gJacTilde(:,:) = (fJac(:,:,mm,nn,oo)*Metrics_gTilde(1,mm,nn,oo,iElem,0)  &
-                           !+gJac(:,:,mm,nn,oo)*Metrics_gTilde(2,mm,nn,oo,iElem,0)  &
-!#if PP_dim==3
-                           !+hJac(:,:,mm,nn,oo)*Metrics_gTilde(3,mm,nn,oo,iElem,0)  &
-!#endif
-                           !)
-          !BJ(r2+1:r2+PP_nVar,s+1:s+PP_nVar) = BJ(r2+1:r2+PP_nVar,s+1:s+PP_nVar) + DVolSurf_loc(ll,nn)*gJacTilde(:,:) 
-        !END IF
-!=====================================================
-
-          !CALL Jac_Split(U(:,mm,nn,oo,iElem),UPrim(:,mm,nn,oo,iElem),U(:,mm,ll,oo,iElem),UPrim(:,mm,ll,oo,iElem), &
-                         !Metrics_gTilde(:,mm,nn,oo,iElem,0),Metrics_gTilde(:,mm,ll,oo,iElem,0),gJacTilde(:,:))
-          !BJ(r2+1:r2+PP_nVar,s+1:s+PP_nVar) = BJ(r2+1:r2+PP_nVar,s+1:s+PP_nVar) + DVolSurf_loc(nn,ll)*gJacTilde(:,:) 
-        !END IF
-
-!#if PP_dim==3
-        !IF(oo.EQ.ll)THEN
-          !hJacTilde(:,:) = ( fJac(:,:,mm,nn,oo)*Metrics_hTilde(1,mm,nn,oo,iElem,0)  &
-                            !+gJac(:,:,mm,nn,oo)*Metrics_hTilde(2,mm,nn,oo,iElem,0)  &
-                            !+hJac(:,:,mm,nn,oo)*Metrics_hTilde(3,mm,nn,oo,iElem,0)) 
-        !ELSE
-          !CALL Jac_Split(U(:,mm,nn,oo,iElem),UPrim(:,mm,nn,oo,iElem),U(:,mm,nn,ll,iElem),UPrim(:,mm,nn,ll,iElem), &
-                         !Metrics_hTilde(:,mm,nn,oo,iElem,0),Metrics_hTilde(:,mm,nn,ll,iElem,0),hJacTilde(:,:))
-        !END IF
-        !BJ(r3+1:r3+PP_nVar,s+1:s+PP_nVar) = BJ(r3+1:r3+PP_nVar,s+1:s+PP_nVar) + DVolSurf_loc(ll,oo)*hJacTilde(:,:) 
-!#endif
-        r1=r1+PP_nVar
-        r2=r2+vn1
+          r1=r1+PP_nVar
+          r2=r2+vn1
 #if PP_dim==3
-        r3=r3+vn2
+          r3=r3+vn2
 #endif
       END DO !ll
+      ! Case i=m (influence on main diagonal of block jacobian), additional entries from split formulation
       DO tt=0,PP_N
-        IF(tt.NE.mm)THEN
           CALL Jac_Split(U(:,mm,nn,oo,iElem),UPrim(:,mm,nn,oo,iElem),U(:,tt,nn,oo,iElem),UPrim(:,tt,nn,oo,iElem), &
-              Metrics_fTilde(:,mm,nn,oo,iElem,0),Metrics_fTilde(:,tt,nn,oo,iElem,0),fJacTilde(:,:))
-          BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) + DVolSurf_loc(mm,tt)*fJacTilde(:,:)
-        END IF
-!=====================================================
-        !IF(tt.NE.nn)THEN
-          !CALL Jac_Split(U(:,mm,nn,oo,iElem),UPrim(:,mm,nn,oo,iElem),U(:,mm,tt,oo,iElem),UPrim(:,mm,tt,oo,iElem), &
-              !Metrics_gTilde(:,mm,nn,oo,iElem,0),Metrics_gTilde(:,mm,tt,oo,iElem,0),gJacTilde(:,:))
-          !BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) + DVolSurf_loc(nn,tt)*gJacTilde(:,:) 
-        !END IF
-!=====================================================
+                         Metrics_fTilde(:,mm,nn,oo,iElem,0),Metrics_fTilde(:,tt,nn,oo,iElem,0),fJacTilde(:,:))
+          BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) + DVolSurf(tt,mm)*fJacTilde(:,:)
+
+          CALL Jac_Split(U(:,mm,nn,oo,iElem),UPrim(:,mm,nn,oo,iElem),U(:,mm,tt,oo,iElem),UPrim(:,mm,tt,oo,iElem), &
+                         Metrics_gTilde(:,mm,nn,oo,iElem,0),Metrics_gTilde(:,mm,tt,oo,iElem,0),gJacTilde(:,:))
+          BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) + DVolSurf(tt,nn)*gJacTilde(:,:)
+
+#if PP_dim==3
+          CALL Jac_Split(U(:,mm,nn,oo,iElem),UPrim(:,mm,nn,oo,iElem),U(:,mm,nn,tt,iElem),UPrim(:,mm,nn,tt,iElem), &
+                         Metrics_hTilde(:,mm,nn,oo,iElem,0),Metrics_hTilde(:,mm,nn,tt,iElem,0),hJacTilde(:,:))
+          BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) + DVolSurf(tt,oo)*hJacTilde(:,:)
+#endif
       END DO
-#else
+#else /*SPLIT_DG*/
+
+      ! weak formulation
       fJacTilde(:,:) = ( fJac(:,:,mm,nn,oo)*Metrics_fTilde(1,mm,nn,oo,iElem,0)  &
                        + gJac(:,:,mm,nn,oo)*Metrics_fTilde(2,mm,nn,oo,iElem,0)  &
 #if PP_dim==3
@@ -553,17 +416,11 @@ DO oo=0,PP_NZ
 #if PP_dim==3
       r3=mm*PP_nVar+vn1*nn
 #endif
-      ! weak formulation
       DO ll=0,PP_N
         BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) = BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) + D_hat(ll,mm)*fJacTilde(:,:) 
         BJ(r2+1:r2+PP_nVar,s+1:s+PP_nVar) = BJ(r2+1:r2+PP_nVar,s+1:s+PP_nVar) + D_hat(ll,nn)*gJacTilde(:,:) 
 #if PP_dim==3
         BJ(r3+1:r3+PP_nVar,s+1:s+PP_nVar) = BJ(r3+1:r3+PP_nVar,s+1:s+PP_nVar) + D_hat(ll,oo)*hJacTilde(:,:) 
-#endif
-        !BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) = BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) + DVolSurf_loc(ll,mm)*fJacTilde(:,:) 
-        !BJ(r2+1:r2+PP_nVar,s+1:s+PP_nVar) = BJ(r2+1:r2+PP_nVar,s+1:s+PP_nVar) + DVolSurf_loc(ll,nn)*gJacTilde(:,:) 
-#if PP_dim==3
-        !BJ(r3+1:r3+PP_nVar,s+1:s+PP_nVar) = BJ(r3+1:r3+PP_nVar,s+1:s+PP_nVar) + DVolSurf_loc(ll,oo)*hJacTilde(:,:) 
 #endif
         r1=r1+PP_nVar
         r2=r2+vn1
@@ -571,41 +428,12 @@ DO oo=0,PP_NZ
         r3=r3+vn2
 #endif
       END DO !ll
-#endif
+#endif /*SPLIT_DG*/
       s=s+PP_nVar
     END DO !mm
   END DO !nn
 END DO !oo 
 
-!dRdU=0.
-!s=1
-!CALL VolInt(Ut)
-!DO k=0,PP_NZ
-  !DO j=0,PP_N
-    !DO i=0,PP_N
-      !DO jVar=1,PP_nVar
-        !U(jVar,i,j,k,iElem) = Xk(jVar,i,j,k,iElem) + reps0
-        !CALL ConsToPrim(PP_N,UPrim,U)
-        !CALL VolInt(Ut_tilde)
-        !U(jVar,i,j,k,iElem) = Xk(jVar,i,j,k,iElem) 
-        !r=1
-        !DO oo=0,PP_NZ
-          !DO nn=0,PP_N
-            !DO mm=0,PP_N
-              !DO iVar=1,PP_nVar
-                !dRdU(r,s) = dRdU(r,s)+(Ut_tilde(iVar,mm,nn,oo,iElem)-Ut(iVar,mm,nn,oo,iElem))*sreps0
-                !r=r+1
-              !END DO !iVar
-            !END DO !mm
-          !END DO !nn
-        !END DO !oo
-        !s=s+1
-      !END DO !PP_nVar
-    !END DO !i
-  !END DO !j
-!END DO !k
-!WRITE (*,*) MAXVAL(ABS(dRdU-BJ))
-!!BJ = dRdU
 END SUBROUTINE DGVolIntJac
 
 !===================================================================================================================================

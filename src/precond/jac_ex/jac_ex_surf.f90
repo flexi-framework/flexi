@@ -94,10 +94,11 @@ INTEGER,INTENT(IN)                 :: iElem                                     
 REAL,INTENT(INOUT)                 :: BJ(nDOFVarElem,nDOFVarElem)               !< block-Jacobian of current element
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                                                 :: i,j,k,mm,nn,oo,r,s,vn1,vn2
+INTEGER                                                 :: i,j,mm,nn,oo,r,s,vn1,vn2
 INTEGER                                                 :: iLocSide,SideID,Flip,FVElem,FVSide,FVSum
 #if PP_dim == 3
 REAL                                                    :: df_DUinner(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ,2,6)
+INTEGER                                                 :: k
 #else
 REAL                                                    :: df_DUinner(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ,2,2:5)
 #endif

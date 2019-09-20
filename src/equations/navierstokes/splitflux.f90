@@ -102,12 +102,12 @@ SUBROUTINE InitSplitDG()
 ! MODULES
 USE MOD_Globals
 USE MOD_ReadInTools ,ONLY: GETINTFROMSTR
+USE MOD_DG_Vars     ,ONLY: SplitDG
 !----------------------------------------------------------------------------------------------------------------------------------
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                     :: SplitDG
 !==================================================================================================================================
 ! check if Gauss-Lobatto-Pointset is beeing used
 #if (PP_NodeType==1)
@@ -696,7 +696,6 @@ REAL                                    :: beta,betaRef            ! auxiliary v
 REAL                                    :: pHatMean,HMean          ! auxiliary variable for the mean pressure and specific enthalpy
 REAL                                    :: uMean,vMean,wMean       ! auxiliary variable for the average velocities
 REAL                                    :: rhoLogMean,betaLogMean  ! auxiliary variable for the logarithmic means
-REAL                                    :: rhoMean                 ! auxiliary variable for the mean density
 REAL,DIMENSION(PP_nVar)                 :: fTilde,gTilde           ! flux in physical space
 #if PP_dim == 3
 REAL,DIMENSION(PP_nVar)                 :: hTilde                  ! flux in physical space
