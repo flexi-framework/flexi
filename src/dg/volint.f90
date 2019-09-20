@@ -227,7 +227,7 @@ DO iElem=1,nElems
        !symmetry
        Ut(:,l,j,k,iElem) = Ut(:,l,j,k,iElem) + DVolSurf(i,l)*Flux(:)
 #endif /*PARABOLIC*/
-    END DO ! m
+    END DO ! l
 
     DO l=j+1,PP_N
        ! compute split flux in y-direction
@@ -245,7 +245,7 @@ DO iElem=1,nElems
        !symmetry
        Ut(:,i,l,k,iElem) = Ut(:,i,l,k,iElem) + DVolSurf(j,l)*Flux(:)
 #endif /*PARABOLIC*/
-    END DO ! m
+    END DO ! l
 
 #if PP_dim==3
     DO l=k+1,PP_N
