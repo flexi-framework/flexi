@@ -188,8 +188,12 @@ D_Hat  = -MATMUL(Minv,MATMUL(TRANSPOSE(D),M))
 D_Hat_T= TRANSPOSE(D_hat)
 
 #ifdef SPLIT_DG
+! Use a modified D matrix for the strong form volume integral, that incorporates the inner fluxes that are subtracted from the
+! surfaces
 ALLOCATE(DVolSurf(0:N_in,0:N_in))
 DVolSurf = D_T
+! Modify the D matrix here, the integral over the inner fluxes at the boundaries will then be automatically done in the volume
+! integral. The factor 1/2 is needed since we incorporate a factor of 2 in the split fluxes themselves!
 DVolSurf(0,0) = DVolSurf(0,0) + 1.0/(2.0 * wGP(0))
 DVolSurf(N_in,N_in) = DVolSurf(N_in,N_in) - 1.0/(2.0 * wGP(N_in))
 #endif /*SPLIT_DG*/
