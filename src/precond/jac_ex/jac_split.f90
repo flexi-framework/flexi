@@ -15,7 +15,8 @@
 #include "eos.h"
 
 !===================================================================================================================================
-!>
+!> This module contains the routine used to calculate the point-wise flux jacobian for the split flux formulations. They are either
+!> implemented analytically, or a finite difference approach is used to get an approximate jacobian.
 !===================================================================================================================================
 MODULE MOD_Jac_Split
 ! MODULES
@@ -38,7 +39,7 @@ PUBLIC::Jac_Split
 CONTAINS
 
 !===================================================================================================================================
-!> Calculate jacobian of split flux (PI flux)
+!> Calculate jacobian of split flux 
 !===================================================================================================================================
 PPURE SUBROUTINE Jac_Split(U,UPrim,URef,UPrimRef,Metric,MetricRef,dfdu)
 ! MODULES
@@ -67,13 +68,13 @@ CASE(0)
 CASE(4)
   CALL Jac_Split_PI(U,UPrim,URef,UPrimRef,Metric,MetricRef,dfdu)
 CASE DEFAULT
-   CALL abort(__STAMP__,'Jacobian of chosen split flux not implemented')
+  CALL Jac_Split_FD(U,UPrim,URef,UPrimRef,Metric,MetricRef,dfdu)
 END SELECT
 
 END SUBROUTINE Jac_Split
 
 !===================================================================================================================================
-!> Calculate jacobian of split flux (SD flux)
+!> Calculate analytical jacobian of split flux (SD flux)
 !===================================================================================================================================
 PPURE SUBROUTINE Jac_Split_SD(U,UPrim,URef,UPrimRef,Metric,MetricRef,dfdu)
 ! MODULES
@@ -163,16 +164,14 @@ dfdu = 0.5*(MetricRef(1)+Metric(1))*fJac(:,:) + &
 END SUBROUTINE Jac_Split_SD
 
 !===================================================================================================================================
-!> Calculate jacobian of split flux (PI flux)
+!> Calculate analytical jacobian of split flux (PI flux)
 !===================================================================================================================================
 PPURE SUBROUTINE Jac_Split_PI(U,UPrim,URef,UPrimRef,Metric,MetricRef,dfdu)
 ! MODULES
 USE MOD_Preproc
 USE MOD_Globals
-USE MOD_EOS_Vars, ONLY:KappaM1
-USE MOD_SplitFlux, ONLY: SplitDGVolume_pointer
-USE MOD_Implicit_Vars           ,ONLY: reps0,sreps0
-USE MOD_EOS, ONLY: ConsToPrim
+USE MOD_EOS_Vars  ,ONLY: KappaM1
+USE MOD_SplitFlux ,ONLY: SplitDGVolume_pointer
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -194,8 +193,6 @@ REAL                                    :: dh1dU(5),h1
 REAL,DIMENSION(PP_nVar,PP_nVar)         :: hJac
 #endif
 REAL,DIMENSION(PP_nVar,PP_nVar)         :: fJac,gJac
-REAL                                    :: FluxTilde(PP_nVar),UTilde(PP_nVar),UPrimTilde(PP_nVarPrim),dFdU_fd(PP_nVar,PP_nVar),Flux(PP_nVar)
-INTEGER                                 :: iVar, jVar
 !===================================================================================================================================
 #if PP_dim==3
 absu2=UPrim(2)**2+UPrim(3)**2+UPrim(4)**2
@@ -203,9 +200,9 @@ absu2=UPrim(2)**2+UPrim(3)**2+UPrim(4)**2
 absu2=UPrim(2)**2+UPrim(3)**2
 #endif
 Hmean     = 0.5*((URef(5)+UPrimRef(5))/URef(1)+(U(5)+UPrim(5))/U(1))
-dpdU(1)   = KappaM1*0.5*absu2
+dpdU(1)   =  KappaM1*0.5*absu2
 dpdU(2:4) = -KappaM1*UPrim(2:4)
-dpdU(5)   = KappaM1
+dpdU(5)   =  KappaM1
 
 f1 = 0.5 *(URef(1)+U(1))*(UPrimRef(2)+UPrim(2))    ! {rho}*{u}
 
@@ -214,6 +211,7 @@ df1dU(2)   = 0.5*(1.+URef(1)/U(1))
 df1dU(3:5) = 0.
 
 fJac(1,1:5)= (/ df1dU(1), df1dU(2), df1dU(3),  df1dU(4), df1dU(5)/)
+
 fJac(2,1)= df1dU(1)*0.5*(UPrimRef(2)+UPrim(2)) - 0.5*f1*UPrim(2)/U(1)+dpdU(1)
 fJac(2,2)= df1dU(2)*0.5*(UPrimRef(2)+UPrim(2)) + 0.5*f1/U(1)         +dpdU(2)
 fJac(2,3)= df1dU(3)*0.5*(UPrimRef(2)+UPrim(2))                       +dpdU(3)
@@ -259,6 +257,7 @@ dg1dU(3)   = 0.5*(1.+URef(1)/U(1))
 dg1dU(4:5) = 0.
 
 gJac(1,1:5)= (/ dg1dU(1), dg1dU(2), dg1dU(3),  dg1dU(4), dg1dU(5)/)
+
 gJac(2,1)= dg1dU(1)*0.5*(UPrimRef(2)+UPrim(2)) - 0.5*g1*UPrim(2)/U(1)
 gJac(2,2)= dg1dU(2)*0.5*(UPrimRef(2)+UPrim(2)) + 0.5*g1/U(1)
 gJac(2,3)= dg1dU(3)*0.5*(UPrimRef(2)+UPrim(2))
@@ -305,6 +304,7 @@ dh1dU(4)   = 0.5*(1.+URef(1)/U(1))
 dh1dU(5)   = 0.
 
 hJac(1,1:5)= (/ dh1dU(1), dh1dU(2), dh1dU(3),  dh1dU(4), dh1dU(5)/)
+
 hJac(2,1)= dh1dU(1)*0.5*(UPrimRef(2)+UPrim(2)) - 0.5*h1*UPrim(2)/U(1)
 hJac(2,2)= dh1dU(2)*0.5*(UPrimRef(2)+UPrim(2)) + 0.5*h1/U(1)
 hJac(2,3)= dh1dU(3)*0.5*(UPrimRef(2)+UPrim(2))
@@ -330,14 +330,42 @@ hJac(5,4)= dh1dU(4)*Hmean + 0.5*h1*                            dpdU(4)/U(1)
 hJac(5,5)= dh1dU(5)*Hmean + 0.5*h1*(                   1./U(1)+dpdU(5)/U(1))
 #endif
 
- 
 dfdu = 0.5*(MetricRef(1)+Metric(1))*fJac(:,:) + &
 #if PP_dim == 3
        0.5*(MetricRef(3)+Metric(3))*hJac(:,:) + &
 #endif
        0.5*(MetricRef(2)+Metric(2))*gJac(:,:)
 
+END SUBROUTINE Jac_Split_PI
 
+!===================================================================================================================================
+!> Calculate jacobian of an arbitrary split flux using the finite difference approach (EXPENSIVE BUT FOR ALL FLUXES)
+!===================================================================================================================================
+PPURE SUBROUTINE Jac_Split_FD(U,UPrim,URef,UPrimRef,Metric,MetricRef,dfdu)
+! MODULES
+USE MOD_Preproc
+USE MOD_Globals
+USE MOD_SplitFlux     ,ONLY: SplitDGVolume_pointer
+USE MOD_Implicit_Vars ,ONLY: reps0,sreps0
+USE MOD_EOS           ,ONLY: ConsToPrim
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: U             !< conserved variables
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrim         !< primitive variables
+REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: URef          !< conserved variables
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrimRef      !< primitive variables
+REAL,DIMENSION(1:3        ),INTENT(IN)  :: Metric        !< metric terms
+REAL,DIMENSION(1:3        ),INTENT(IN)  :: MetricRef     !< metric terms
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL,DIMENSION(PP_nVar,PP_nVar),INTENT(OUT) :: dfdu      !< dof local jacobian of volume split flux
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL                                    :: FluxTilde(PP_nVar),UTilde(PP_nVar),UPrimTilde(PP_nVarPrim),Flux(PP_nVar)
+INTEGER                                 :: iVar, jVar
+!===================================================================================================================================
 
 CALL SplitDGVolume_pointer(Uref,UPrimRef,U,UPrim,MetricRef,Metric,Flux)
 UTilde = U
@@ -346,10 +374,10 @@ DO jVar=1,PP_nVar
   CALL ConsToPrim(UPrimTilde,UTilde)
   CALL SplitDGVolume_pointer(Uref,UPrimRef,UTilde,UPrimTilde,MetricRef,Metric,FluxTilde)
   DO iVar=1,PP_nVar
-    dFdU_fd(iVar,jVar) = (FluxTilde(iVar)-Flux(iVar))*sreps0
+    dfdu(iVar,jVar) = (FluxTilde(iVar)-Flux(iVar))*sreps0
   END DO ! iVar
   UTilde = U
 END DO
+END SUBROUTINE
 
-END SUBROUTINE Jac_Split_PI
 END MODULE MOD_Jac_Split
