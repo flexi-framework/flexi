@@ -1,14 +1,26 @@
+!=================================================================================================================================
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
+! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+!
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
+! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+!
+! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+! of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License v3.0 for more details.
+!
+! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
+!=================================================================================================================================
 #include "flexi.h"
 #if EQNSYSNR==2
 #include "eos.h"
 #endif
 
+!===================================================================================================================================
+!> Contains the routines to calculate the analytical derivatives of the viscous flux with respect to the gradients
+!===================================================================================================================================
 MODULE MOD_GradJacobian
 #if PARABOLIC   
-!===================================================================================================================================
-! Contains the initialization of the DG global variables
-! Computes the different DG spatial operators/residuals(Ut) using U 
-!===================================================================================================================================
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -18,9 +30,9 @@ SAVE
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! Public Part ----------------------------------------------------------------------------------------------------------------------
-!INTERFACE EvalFluxGradJacobian
-!  MODULE PROCEDURE EvalFluxGradJacobian
-!END INTERFACE
+INTERFACE EvalFluxGradJacobian
+  MODULE PROCEDURE EvalFluxGradJacobian
+END INTERFACE
 
 
 PUBLIC::EvalFluxGradJacobian
@@ -30,10 +42,10 @@ CONTAINS
 
 
 #if EQNSYSNR==1
+!===================================================================================================================================
+!> Computes the volume derivative of the analytical diffusive flux with respect to the gradient of U: d(F^v)/dQ, Q=grad U
+!===================================================================================================================================
 SUBROUTINE EvalFluxGradJacobian(Nloc,U,UPrim,fJacQx,fJacQy,fJacQz,gJacQx,gJacQy,gJacQz,hJacQx,hJacQy,hJacQz)
-!===================================================================================================================================
-! Computes the volume derivative of the analytical diffusive flux with respect to the gradient of U: d(F^v)/dQ, Q=grad U
-!===================================================================================================================================
 ! MODULES
 USE MOD_PreProc
 USE MOD_Equation_Vars,ONLY:DiffC
@@ -68,10 +80,10 @@ END SUBROUTINE EvalFluxGradJacobian
 #endif /*linearscalaradvection*/
 
 #if EQNSYSNR==2
+!===================================================================================================================================
+!> Computes the volume derivative of the analytical diffusive flux with respect to the gradient of U: d(F^v)/dQ, Q=grad U
+!===================================================================================================================================
 SUBROUTINE EvalFluxGradJacobian(Nloc,U,UPrim,fJacQx,fJacQy,fJacQz,gJacQx,gJacQy,gJacQz,hJacQx,hJacQy,hJacQz)
-!===================================================================================================================================
-! Computes the volume derivative of the analytical diffusive flux with respect to the gradient of U: d(F^v)/dQ, Q=grad U
-!===================================================================================================================================
 ! MODULES
 USE MOD_PreProc
 USE MOD_Equation_Vars,ONLY:s43,s23
