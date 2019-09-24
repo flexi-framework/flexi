@@ -132,7 +132,7 @@ Surf=0.
 #if PARABOLIC
 CALL BuildnVecTangSurf()
 IF(EulerPrecond.EQV..FALSE.) THEN
-  ALLOCATE(JacLiftingFlux(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ,6))
+  ALLOCATE(JacLiftingFlux(PP_nVarPrim,PP_nVarPrim,0:PP_N,0:PP_NZ,6))
   CALL Build_BR2_SurfTerms()
 END IF
 #endif /*PARABOLIC*/
@@ -151,6 +151,7 @@ USE MOD_Implicit_Vars             ,ONLY:nDOFVarElem
 USE MOD_JacSurfInt                ,ONLY:DGJacSurfInt
 #if PARABOLIC
 USE MOD_Precond_Vars              ,ONLY:EulerPrecond
+USE MOD_Jac_br2                   ,ONLY:FillJacLiftingFlux
 #endif
 #if FV_ENABLED
 USE MOD_FV_Vars                   ,ONLY:FV_Elems
@@ -181,7 +182,7 @@ FVEM = 0
 BJ = 0.
 #if PARABOLIC
 IF(EulerPrecond.EQV..FALSE.) THEN !Euler Precond = False
-  CALL FillJacLiftingFlux(iElem)
+  CALL FillJacLiftingFlux(t,iElem)
 END IF
 #endif /*PARABOLIC*/
 !DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
@@ -248,21 +249,19 @@ REAL,INTENT(INOUT)    :: BJ(1:nDOFVarElem,1:nDOFVarElem)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
 INTEGER                                                 :: mm,nn,oo
-INTEGER                                                 :: s,r1,r2,ll,vn1,vn2,tt
+INTEGER                                                 :: s,r1,r2,ll,vn1,vn2
 REAL,DIMENSION(PP_nVar,PP_nVar)                         :: fJacTilde,gJacTilde
 #if PP_dim==3
 REAL,DIMENSION(PP_nVar,PP_nVar)                         :: hJacTilde
 #endif
 #ifdef SPLIT_DG
+INTEGER                                                 :: tt
 REAL,DIMENSION(PP_nVar,PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)   :: fJacVisc,gJacVisc
 #if PP_dim==3
 REAL,DIMENSION(PP_nVar,PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)   :: hJacVisc
 #endif
 #else
-REAL,DIMENSION(PP_nVar,PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)   :: fJac,gJac
-#if PP_dim==3
-REAL,DIMENSION(PP_nVar,PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)   :: hJac
-#endif
+REAL,DIMENSION(PP_nVar,PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)   :: fJac,gJac,hJac
 #endif
 #if PP_dim==3
 INTEGER                                                 :: r3
@@ -284,7 +283,7 @@ IF(EulerPrecond.EQV..FALSE.) THEN !Euler Precond = False
                             ,gradUx(:,:,:,:,iElem) &
                             ,gradUy(:,:,:,:,iElem) &
                             ,gradUz(:,:,:,:,iElem) &
-                            ,fJac_loc,gJac_loc,hJac_loc
+                            ,fJac_loc,gJac_loc,hJac_loc &
 #if EDDYVISCOSITY
                             ,muSGS(:,:,:,:,iElem)  &
 #endif
@@ -479,27 +478,26 @@ END SUBROUTINE Apply_sJ
 #if PARABOLIC
 !===================================================================================================================================
 !> volume integral: the total derivative of the viscous flux with resprect to U:
-!>                    dF^v/Du = dF^v/dQ* DQ/DU, with the gradient Q=Grad U
+!>                    dF^v/DU_cons = dF^v/dQ_prim* DQ_prim/DU_prim* DU_prim/DU_cons
 !===================================================================================================================================
 SUBROUTINE  DGVolIntGradJac(BJ,iElem)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
+USE MOD_Jac_br2       ,ONLY: JacLifting_VolInt
 USE MOD_Precond_Vars  ,ONLY: NoFillIn
 USE MOD_DG_Vars       ,ONLY: D_hat
-USE MOD_DG_Vars       ,ONLY: U,UPrim,nDOFElem
+USE MOD_DG_Vars       ,ONLY: U,UPrim
 USE MOD_Mesh_Vars     ,ONLY: Metrics_fTilde,Metrics_gTilde
 #if PP_dim==3
 USE MOD_Mesh_Vars     ,ONLY: Metrics_hTilde
 #endif
 USE MOD_Implicit_Vars ,ONLY: nDOFVarElem
 USE MOD_GradJacobian  ,ONLY: EvalFluxGradJacobian
-!USE MOD_Implicit_Vars ,ONLY: reps0,sreps0
-!USE MOD_EOS           ,ONLY: ConsToPrim
-!USE MOD_EOS           ,ONLY: ConsToPrimLifting_loc
-!USE MOD_Lifting_Vars ,ONLY: gradUx,gradUy,gradUz
-!USE MOD_Lifting_Vars ,ONLY: gradUx_cons,gradUy_cons,gradUz_cons
-!USE MOD_Jac_Ex_Vars   ,ONLY: PrimConsJac 
+#if EDDYVISCOSITY
+USE MOD_EddyVisc_Vars,ONLY: muSGS
+#endif /*EDDYVISCOSITY*/
+USE MOD_Jacobian     ,ONLY: dPrimTempdCons
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -510,34 +508,33 @@ INTEGER,INTENT(IN) :: iElem
 REAL,INTENT(INOUT)    :: BJ(1:nDOFVarElem,1:nDOFVarElem)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
-
-!REAL,DIMENSION(PP_nVar) :: f,g,h,u1,u1_tilde,gx,gy,gz,gy_tilde
-!REAL,DIMENSION(PP_nVarPrim) :: up,up_tilde,gpx,gpy,gpz
-!REAL,DIMENSION(PP_nVar) :: f_Tilde,g_Tilde,h_Tilde
-!REAL,DIMENSION(PP_nVar,PP_nVar)   :: dfdu,dgdu,dhdu
-INTEGER                                                 :: i,j,k,l,mm,nn,oo
-!INTEGER                                                 :: iVar,jVar
-INTEGER                                                 :: r,s,vn1,vn2
-REAL,DIMENSION(PP_nVar,PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)   :: fJacQx,gJacQx,hJacQx
-REAL,DIMENSION(PP_nVar,PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)   :: fJacQy,gJacQy,hJacQy
-REAL,DIMENSION(PP_nVar,PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)   :: fJacQz,gJacQz,hJacQz
-REAL,DIMENSION(PP_nVar,PP_nVar)                         :: fJacTilde,gJacTilde
-REAL,DIMENSION(PP_nVar,PP_nVar)                         :: fJac,gJac
+INTEGER                                                                    :: i,j,k,l,mm,nn,oo
+INTEGER                                                                    :: r,s,vn1,vn2
+REAL,DIMENSION(PP_nVarPrim,PP_nVar)                                        :: PrimConsJac
+REAL,DIMENSION(PP_nVar    ,PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ)              :: fJacQx,gJacQx,hJacQx
+REAL,DIMENSION(PP_nVar    ,PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ)              :: fJacQy,gJacQy,hJacQy
+REAL,DIMENSION(PP_nVar    ,PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ)              :: fJacQz,gJacQz,hJacQz
+REAL,DIMENSION(PP_nVar    ,PP_nVarPrim)                                    :: fJacTilde,gJacTilde
+REAL,DIMENSION(PP_nVar    ,PP_nVar)                                        :: fJac,gJac
 #if PP_dim==3
-REAL,DIMENSION(PP_nVar,PP_nVar)                         :: hJac
-REAL,DIMENSION(PP_nVar,PP_nVar)                         :: hJacTilde
-REAL,DIMENSION(PP_nVar,PP_nVar,0:PP_N,0:PP_N,0:PP_N,0:PP_N,3):: JacLifting_Z
+REAL,DIMENSION(PP_nVar    ,PP_nVar)                                        :: hJac
+REAL,DIMENSION(PP_nVar    ,PP_nVarPrim)                                    :: hJacTilde
+REAL,DIMENSION(PP_nVarPrim,PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,0:PP_N,3)      :: JacLifting_Z
 #endif
-REAL,DIMENSION(PP_nVar,PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,0:PP_N,PP_dim):: JacLifting_X,JacLifting_Y
+REAL,DIMENSION(PP_nVarPrim,PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,0:PP_N,PP_dim):: JacLifting_X,JacLifting_Y
 !===================================================================================================================================
 vn1=PP_nVar*(PP_N+1)
 vn2=vn1*(PP_N+1)
-! Calculation of the derivative of the diffion flux with respect to gradU
+! Calculation of the derivative of the diffusive flux with respect to gradU
 ! dF/dQ
-CALL EvalFluxGradJacobian(nDOFElem,U(:,:,:,:,iElem),UPrim(:,:,:,:,iElem) &
+CALL EvalFluxGradJacobian(U(:,:,:,:,iElem),UPrim(:,:,:,:,iElem) &
                           ,fJacQx,fJacQy,fJacQz &
                           ,gJacQx,gJacQy,gJacQz &
-                          ,hJacQx,hJacQy,hJacQz ) 
+                          ,hJacQx,hJacQy,hJacQz &
+#if EDDYVISCOSITY
+                          ,muSGS(:,:,:,:,iElem) &
+#endif
+                         )
 
 DO k=0,PP_NZ
   DO j=0,PP_N
@@ -620,106 +617,105 @@ DO oo=0,PP_NZ
   DO nn=0,PP_N
     DO mm=0,PP_N
       IF(NoFillIn.EQV..FALSE.) THEN !NoFillIn has the same sparsity as the EulerPrecond
-      DO j=0,PP_N
-        fJac(:,:)= ( MATMUL(fJacQx(:,:,mm,j,oo) , JacLifting_X(:,:,mm,j,oo,nn,2) )  &
-                   +MATMUL(fJacQy(:,:,mm,j,oo) , JacLifting_Y(:,:,mm,j,oo,nn,2) )  &
-#if PP_dim==3
-                   +MATMUL(fJacQz(:,:,mm,j,oo) , JacLifting_Z(:,:,mm,j,oo,nn,2) )  &
-#endif
-                   )
-        !fJac(:,:) = MATMUL(fJacTilde(:,:),PrimConsJac(:,:,mm,nn,oo))
-        DO i=0,PP_N
-          r=PP_nVar*i+vn1*j+vn2*oo
-          BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + D_hat(i,mm)*fJac(:,:)
-        END DO !i
-      END DO !j
-      DO i=0,PP_N
-        gJac(:,:)= ( MATMUL(gJacQx(:,:,i,nn,oo) , JacLifting_X(:,:,i,nn,oo,mm,1) )  &
-                   + MATMUL(gJacQy(:,:,i,nn,oo) , JacLifting_Y(:,:,i,nn,oo,mm,1) )  &
-#if PP_dim==3
-                   + MATMUL(gJacQz(:,:,i,nn,oo) , JacLifting_Z(:,:,i,nn,oo,mm,1) )  &
-#endif
-                   )
-        !gJac(:,:) = MATMUL(gJacTilde(:,:),PrimConsJac(:,:,mm,nn,oo))
+        CALL dPrimTempdCons(UPrim(:,mm,nn,oo,iElem),PrimConsJac(:,:))
         DO j=0,PP_N
-          r=PP_nVar*i+vn1*j+vn2*oo
-          BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + D_hat(j,nn)*gJac(:,:)
-        END DO !j
-      END DO !i
+          fJacTilde(:,:)= ( MATMUL(fJacQx(:,:,mm,j,oo) , JacLifting_X(:,:,mm,j,oo,nn,2) )  &
+                          + MATMUL(fJacQy(:,:,mm,j,oo) , JacLifting_Y(:,:,mm,j,oo,nn,2) )  &
 #if PP_dim==3
-      DO k=0,PP_N
-        fJac(:,:)= ( MATMUL(fJacQx(:,:,mm,nn,k) , JacLifting_X(:,:,mm,nn,k,oo,3) )  &
-                   +MATMUL(fJacQy(:,:,mm,nn,k) , JacLifting_Y(:,:,mm,nn,k,oo,3) )  &
-                   +MATMUL(fJacQz(:,:,mm,nn,k) , JacLifting_Z(:,:,mm,nn,k,oo,3) ) &
-                   )
-        !fJac(:,:) = MATMUL(fJacTilde(:,:),PrimConsJac(:,:,mm,nn,oo))
+                          + MATMUL(fJacQz(:,:,mm,j,oo) , JacLifting_Z(:,:,mm,j,oo,nn,2) )  &
+#endif
+                          )
+          fJac(:,:) = MATMUL(fJacTilde(:,:),PrimConsJac(:,:))
+          DO i=0,PP_N
+            r=PP_nVar*i+vn1*j+vn2*oo
+            BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + D_hat(i,mm)*fJac(:,:)
+          END DO !i
+        END DO !j
         DO i=0,PP_N
-          r=PP_nVar*i+vn1*nn+vn2*k
-          BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + D_hat(i,mm)*fJac(:,:)
+          gJacTilde(:,:)= ( MATMUL(gJacQx(:,:,i,nn,oo) , JacLifting_X(:,:,i,nn,oo,mm,1) )  &
+                          + MATMUL(gJacQy(:,:,i,nn,oo) , JacLifting_Y(:,:,i,nn,oo,mm,1) )  &
+#if PP_dim==3
+                          + MATMUL(gJacQz(:,:,i,nn,oo) , JacLifting_Z(:,:,i,nn,oo,mm,1) )  &
+#endif
+                          )
+          gJac(:,:) = MATMUL(gJacTilde(:,:),PrimConsJac(:,:))
+          DO j=0,PP_N
+            r=PP_nVar*i+vn1*j+vn2*oo
+            BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + D_hat(j,nn)*gJac(:,:)
+          END DO !j
         END DO !i
-      END DO !k 
-      DO i=0,PP_N
-        hJac(:,:)=  MATMUL(hJacQx(:,:,i,nn,oo) , JacLifting_X(:,:,i,nn,oo,mm,1) )  &
-                   +MATMUL(hJacQy(:,:,i,nn,oo) , JacLifting_Y(:,:,i,nn,oo,mm,1) )  &
-                   +MATMUL(hJacQz(:,:,i,nn,oo) , JacLifting_Z(:,:,i,nn,oo,mm,1) ) 
-        !hJac(:,:) = MATMUL(hJacTilde(:,:),PrimConsJac(:,:,mm,nn,oo))
+#if PP_dim==3
         DO k=0,PP_N
-          r=PP_nVar*i+vn1*nn+vn2*k
-          BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + D_hat(k,oo)*hJac(:,:)
-        END DO !k
-      END DO !i 
-      DO k=0,PP_NZ
-        gJac(:,:)= ( MATMUL(gJacQx(:,:,mm,nn,k) , JacLifting_X(:,:,mm,nn,k,oo,3) )  &
-                   +MATMUL(gJacQy(:,:,mm,nn,k) , JacLifting_Y(:,:,mm,nn,k,oo,3) )  &
-                   +MATMUL(gJacQz(:,:,mm,nn,k) , JacLifting_Z(:,:,mm,nn,k,oo,3) )  &
-                   )
-        !gJac(:,:) = MATMUL(gJacTilde(:,:),PrimConsJac(:,:,mm,nn,oo))
-        DO j=0,PP_N
-          r=PP_nVar*mm+vn1*j+vn2*k
-          BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + D_hat(j,nn)*gJac(:,:)
-        END DO !j
-      END DO !k 
-      DO j=0,PP_N
-        hJac(:,:)=  MATMUL(hJacQx(:,:,mm,j,oo) , JacLifting_X(:,:,mm,j,oo,nn,2) )  &
-                   +MATMUL(hJacQy(:,:,mm,j,oo) , JacLifting_Y(:,:,mm,j,oo,nn,2) )  &
-                   +MATMUL(hJacQz(:,:,mm,j,oo) , JacLifting_Z(:,:,mm,j,oo,nn,2) )
-        !hJac(:,:) = MATMUL(hJacTilde(:,:),PrimConsJac(:,:,mm,nn,oo))
+          fJacTilde(:,:)= ( MATMUL(fJacQx(:,:,mm,nn,k) , JacLifting_X(:,:,mm,nn,k,oo,3) )  &
+                          + MATMUL(fJacQy(:,:,mm,nn,k) , JacLifting_Y(:,:,mm,nn,k,oo,3) )  &
+                          + MATMUL(fJacQz(:,:,mm,nn,k) , JacLifting_Z(:,:,mm,nn,k,oo,3) ))
+          fJac(:,:) = MATMUL(fJacTilde(:,:),PrimConsJac(:,:))
+          DO i=0,PP_N
+            r=PP_nVar*i+vn1*nn+vn2*k
+            BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + D_hat(i,mm)*fJac(:,:)
+          END DO !i
+        END DO !k 
+        DO i=0,PP_N
+          hJacTilde(:,:)= ( MATMUL(hJacQx(:,:,i,nn,oo) , JacLifting_X(:,:,i,nn,oo,mm,1) )  &
+                          + MATMUL(hJacQy(:,:,i,nn,oo) , JacLifting_Y(:,:,i,nn,oo,mm,1) )  &
+                          + MATMUL(hJacQz(:,:,i,nn,oo) , JacLifting_Z(:,:,i,nn,oo,mm,1) )) 
+          hJac(:,:) = MATMUL(hJacTilde(:,:),PrimConsJac(:,:))
+          DO k=0,PP_N
+            r=PP_nVar*i+vn1*nn+vn2*k
+            BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + D_hat(k,oo)*hJac(:,:)
+          END DO !k
+        END DO !i 
         DO k=0,PP_NZ
-          r=PP_nVar*mm+vn1*j+vn2*k
-          BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + D_hat(k,oo)*hJac(:,:)
-        END DO !k
-      END DO !j 
+          gJacTilde(:,:)= ( MATMUL(gJacQx(:,:,mm,nn,k) , JacLifting_X(:,:,mm,nn,k,oo,3) )  &
+                           +MATMUL(gJacQy(:,:,mm,nn,k) , JacLifting_Y(:,:,mm,nn,k,oo,3) )  &
+                           +MATMUL(gJacQz(:,:,mm,nn,k) , JacLifting_Z(:,:,mm,nn,k,oo,3) ))
+          gJac(:,:) = MATMUL(gJacTilde(:,:),PrimConsJac(:,:))
+          DO j=0,PP_N
+            r=PP_nVar*mm+vn1*j+vn2*k
+            BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + D_hat(j,nn)*gJac(:,:)
+          END DO !j
+        END DO !k 
+        DO j=0,PP_N
+          hJacTilde(:,:)= ( MATMUL(hJacQx(:,:,mm,j,oo) , JacLifting_X(:,:,mm,j,oo,nn,2) )  &
+                          + MATMUL(hJacQy(:,:,mm,j,oo) , JacLifting_Y(:,:,mm,j,oo,nn,2) )  &
+                          + MATMUL(hJacQz(:,:,mm,j,oo) , JacLifting_Z(:,:,mm,j,oo,nn,2) ))
+          hJac(:,:) = MATMUL(hJacTilde(:,:),PrimConsJac(:,:))
+          DO k=0,PP_NZ
+            r=PP_nVar*mm+vn1*j+vn2*k
+            BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + D_hat(k,oo)*hJac(:,:)
+          END DO !k
+        END DO !j 
 #endif
-    END IF !NoFillIn
+      END IF !NoFillIn
+      !TODO:Besser umschreiben, Summe ueber l ausserhalb, so dass nur einmal mit ConToPrimJac multipliziert werden muss
       DO l=0,PP_N
-        fJac(:,:)= ( MATMUL(fJacQx(:,:,l,nn,oo) , JacLifting_X(:,:,l,nn,oo,mm,1) )  &
-                   +MATMUL(fJacQy(:,:,l,nn,oo) , JacLifting_Y(:,:,l,nn,oo,mm,1) )  &
+        fJacTilde(:,:)= ( MATMUL(fJacQx(:,:,l,nn,oo) , JacLifting_X(:,:,l,nn,oo,mm,1) )  &
+                        + MATMUL(fJacQy(:,:,l,nn,oo) , JacLifting_Y(:,:,l,nn,oo,mm,1) )  &
 #if PP_dim==3
-                   +MATMUL(fJacQz(:,:,l,nn,oo) , JacLifting_Z(:,:,l,nn,oo,mm,1) )  &
+                        + MATMUL(fJacQz(:,:,l,nn,oo) , JacLifting_Z(:,:,l,nn,oo,mm,1) )  &
 #endif
-                   )
-        !TODO:Besser umschreiben, Summe ueber l ausserhalb, so dass nur einmal mit ConToPrimJac multipliziert werden muss
-        !fJac(:,:) = MATMUL(fJacTilde(:,:),PrimConsJac(:,:,mm,nn,oo))
+                        )
+        fJac(:,:) = MATMUL(fJacTilde(:,:),PrimConsJac(:,:))
         DO i=0,PP_N
           r=PP_nVar*i+vn1*nn+vn2*oo
           BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + D_hat(i,l)*fJac(:,:)
         END DO !i
-        gJac(:,:)= ( MATMUL(gJacQx(:,:,mm,l,oo) , JacLifting_X(:,:,mm,l,oo,nn,2) )  &
-                   +MATMUL(gJacQy(:,:,mm,l,oo) , JacLifting_Y(:,:,mm,l,oo,nn,2) )  &
+        gJacTilde(:,:)= ( MATMUL(gJacQx(:,:,mm,l,oo) , JacLifting_X(:,:,mm,l,oo,nn,2) )  &
+                        + MATMUL(gJacQy(:,:,mm,l,oo) , JacLifting_Y(:,:,mm,l,oo,nn,2) )  &
 #if PP_dim==3
-                   +MATMUL(gJacQz(:,:,mm,l,oo) , JacLifting_Z(:,:,mm,l,oo,nn,2) )  &
+                        + MATMUL(gJacQz(:,:,mm,l,oo) , JacLifting_Z(:,:,mm,l,oo,nn,2) )  &
 #endif
-                  )
-        !gJac(:,:) = MATMUL(gJacTilde(:,:),PrimConsJac(:,:,mm,nn,oo))
+                       )
+        gJac(:,:) = MATMUL(gJacTilde(:,:),PrimConsJac(:,:))
         DO j=0,PP_N
           r=PP_nVar*mm+vn1*j+vn2*oo
           BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + D_hat(j,l)*gJac(:,:)
         END DO !j
 #if PP_dim==3
-        hJac(:,:)=  MATMUL(hJacQx(:,:,mm,nn,l) , JacLifting_X(:,:,mm,nn,l,oo,3) )  &
-                   +MATMUL(hJacQy(:,:,mm,nn,l) , JacLifting_Y(:,:,mm,nn,l,oo,3) )  &
-                   +MATMUL(hJacQz(:,:,mm,nn,l) , JacLifting_Z(:,:,mm,nn,l,oo,3) )
-        !hJac(:,:) = MATMUL(hJacTilde(:,:),PrimConsJac(:,:,mm,nn,oo))
+        hJacTilde(:,:)= ( MATMUL(hJacQx(:,:,mm,nn,l) , JacLifting_X(:,:,mm,nn,l,oo,3) )  &
+                        + MATMUL(hJacQy(:,:,mm,nn,l) , JacLifting_Y(:,:,mm,nn,l,oo,3) )  &
+                        + MATMUL(hJacQz(:,:,mm,nn,l) , JacLifting_Z(:,:,mm,nn,l,oo,3) ))
+        hJac(:,:) = MATMUL(hJacTilde(:,:),PrimConsJac(:,:))
         DO k=0,PP_N
           r=PP_nVar*mm+vn1*nn+vn2*k
           BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + D_hat(k,l)*hJac(:,:)
@@ -731,49 +727,6 @@ DO oo=0,PP_NZ
   END DO !nn
 END DO !oo 
 
-
-! Debugging test for derivatives of advective flux (fd and exact)
-!U1=U(:,1,1,0,iElem)
-!UP=UPrim(:,1,1,0,iElem)
-!gx=gradux_cons(:,1,1,0,iElem)
-!gy=graduy_cons(:,1,1,0,iElem)
-!gz=graduz_cons(:,1,1,0,iElem)
-!gpx=gradux(:,1,1,0,iElem)
-!gpy=graduy(:,1,1,0,iElem)
-!gpz=graduz(:,1,1,0,iElem)
-
-!dfdu=0.
-!dgdu=0.
-!dhdu=0.
-!CALL EvalDiffFlux3D(UP,gpx,gpy,gpz,f,g,h)
-!!CALL EvalDiffFlux3D(UP,gx,gy,gz,f,g,h)
-!gy_tilde=gy
-!DO jVar=1,PP_nVar
-  !IF(jVar==4) CYCLE
-  !gy_tilde(jVar) = gy(jVar) + reps0
-  !CALL ConsToPrimLifting_loc(gx,gy_Tilde,gz,UP,gpx,gpy,gpz)
-  !CALL EvalDiffFlux3D(UP,gpx,gpy,gpz,f_tilde,g_tilde,h_tilde)
-  !!CALL EvalDiffFlux3D(UP,gx_Tilde,gy,gz,f_tilde,g_tilde,h_tilde)
-  !gy_tilde(jVar)=gy(jVar)
-      !DO iVar=1,PP_nVar
-        !dFdU(iVar,jVar) = (f_tilde(iVar)-f(iVar))*sreps0
-        !dgdU(iVar,jVar) = (g_tilde(iVar)-g(iVar))*sreps0
-        !dhdU(iVar,jVar) = (h_tilde(iVar)-h(iVar))*sreps0
-      !END DO ! iVar
-!END DO
-!DO jVar=1,PP_nVar
-  !WRITE(*,*) jVar
-!WRITE(*,*) dfdu(:,jVar)
-!WRITE(*,*)fJacQy(:,jVar,1,1,0)
-!WRITE(*,*) '--------------------------------------------'
-!WRITE(*,*) dgdu(:,jVar)
-!WRITE(*,*)gJacQy(:,jVar,1,1,0)
-!WRITE(*,*) '--------------------------------------------'
-!WRITE(*,*) dhdu(:,jVar)
-!WRITE(*,*)hJacQy(:,jVar,1,1,0)
-!WRITE(*,*) '--------------------------------------------'
-!eND DO
-!stop
 END SUBROUTINE DGVolIntGradJac
 #endif
 

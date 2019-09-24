@@ -19,6 +19,7 @@
 !> implemented analytically, or a finite difference approach is used to get an approximate jacobian.
 !===================================================================================================================================
 MODULE MOD_Jac_Split
+#ifdef SPLIT_DG
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -380,4 +381,5 @@ DO jVar=1,PP_nVar
 END DO
 END SUBROUTINE
 
+#endif /*SPLIT_DG*/
 END MODULE MOD_Jac_Split

@@ -86,10 +86,8 @@ REAL,ALLOCATABLE                      :: UPrim_master(:,:,:,:)  !< 2D Solution i
                                                                 !< size [1..NVar,0..N,0..NZ,all_master_sides]
 REAL,ALLOCATABLE                      :: UPrim_slave(:,:,:,:)   !< 2D Solution in Primitive variables on face, slave side,
                                                                 !<size [1..NVar,0..N,0..NZ,all_slave_sides]
-#ifdef SPLIT_DG
 !----------------------------------------------------------------------------------------------------------------------------------
 INTEGER                               :: SplitDG                !< Shows which split formulation is used
-#endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! Auxilliary variables
 LOGICAL                               :: DGInitIsDone=.FALSE.   !< Switch to check DGInit status

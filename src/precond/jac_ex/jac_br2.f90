@@ -48,20 +48,20 @@ CONTAINS
 !> => h*-U_xi=-0.5*U_xi + 0.5*U_neighbour_(-xi)
 !> => d(h*-U_xi)_jk(prim)/dU_jk(prim) = -0.5
 !===================================================================================================================================
-SUBROUTINE FillJacLiftingFlux(iElem)
+SUBROUTINE FillJacLiftingFlux(t,iElem)
 ! MODULES
 USE MOD_Globals
 USE MOD_Jac_ex_Vars               ,ONLY:JacLiftingFlux,Surf
 USE MOD_GetBoundaryFlux_fd        ,ONLY:Lifting_GetBoundaryFlux_FD
 USE MOD_Mesh_Vars                 ,ONLY:nBCSides,ElemToSide,S2V2
 USE MOD_Mesh_Vars                 ,ONLY:NormVec,TangVec1,TangVec2,SurfElem
-USE MOD_Precond_Vars              ,ONLY:tPrecond
-USE MOD_DG_Vars                   ,ONLY:U_master
+USE MOD_DG_Vars                   ,ONLY:UPrim_master
 USE MOD_Mesh_Vars                 ,ONLY:Face_xGP
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
+REAL   ,INTENT(IN) :: t
 INTEGER,INTENT(IN) :: iElem
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
@@ -76,11 +76,11 @@ DO iLocSide=2,5
 #endif 
   SideID=ElemToSide(E2S_SIDE_ID,ilocSide,iElem)
   IF (SideID.LE.nBCSides) THEN !BCSides
-    CALL Lifting_GetBoundaryFlux_FD(SideID,tPrecond,JacLiftingFlux(:,:,:,:,iLocSide),U_master, &
+    CALL Lifting_GetBoundaryFlux_FD(SideID,t,JacLiftingFlux(:,:,:,:,iLocSide),UPrim_master, &
                                     SurfElem,Face_xGP,NormVec,TangVec1,TangVec2,S2V2(:,:,:,0,iLocSide)) !flip=0 for BCSide
   ELSE
     JacLiftingFlux(:,:,:,:,iLocSide)=0.
-    DO iVar=1,PP_nVar
+    DO iVar=1,PP_nVarPrim
       JacLiftingFlux(iVar,iVar,:,:,iLocSide)=-0.5*Surf(:,:,iLocSide,iElem)
     END DO !iVar
   END IF !SideID
@@ -109,15 +109,15 @@ INTEGER,INTENT(IN)                           :: iElem
 INTEGER,INTENT(IN)                           :: dir
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(OUT)                             :: JacLifting(PP_nVar,PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,0:PP_N,PP_dim)
+REAL,INTENT(OUT)                             :: JacLifting(PP_nVarPrim,PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,0:PP_N,PP_dim)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                                      :: i,j,k,ll
 INTEGER                                      :: iVar
-REAL                                         :: delta(1:PP_nVar,1:PP_nVar) 
+REAL                                         :: delta(1:PP_nVarPrim,1:PP_nVarPrim) 
 !===================================================================================================================================
 delta=0.
-DO iVar=1,PP_nVar
+DO iVar=1,PP_nVarPrim
   delta(iVar,iVar)=1.
 END DO
 
@@ -673,5 +673,5 @@ END SUBROUTINE Build_BR2_SurfTerms
 
 !END SUBROUTINE ConsToPrimJac 
 
-END MODULE MOD_Jac_Ex
+END MODULE MOD_Jac_br2
 #endif /*PARABOLIC*/
