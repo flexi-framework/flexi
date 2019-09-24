@@ -60,6 +60,7 @@ USE MOD_Interpolation_Vars ,ONLY: L_minus,L_plus
 USE MOD_DG_Vars            ,ONLY: L_Hatminus,L_Hatplus
 USE MOD_Mesh_Vars          ,ONLY: nElems
 #if PARABOLIC
+USE MOD_Jac_br2            ,ONLY: BuildnVecTangSurf,Build_BR2_SurfTerms
 USE MOD_Precond_Vars       ,ONLY: EulerPrecond
 #endif
 #if FV_ENABLED && FV_RECONSTRUCT
@@ -139,56 +140,6 @@ END IF
 SWRITE(UNIT_stdOut,'(A)')' INIT EXACT BLOCK JACOBIAN DONE!'
 END SUBROUTINE InitJac_Ex
 
-!SUBROUTINE ConsToPrimJac(U,UPrim,PrimConsJac)
-!!===================================================================================================================================
-!! Calculates the derivative of the primitive Variables UPrim with respect to the conservative Variables U 
-!! in the volume coordinates (i,j,k)
-!! dUPrim(i,j,k)/DU(i,j,k)
-!!===================================================================================================================================
-!! MODULES
-!USE MOD_PreProc
-!USE MOD_EOS_Vars      ,ONLY:KappaM1,R
-!! IMPLICIT VARIABLE HANDLING
-!IMPLICIT NONE
-!!-----------------------------------------------------------------------------------------------------------------------------------
-!! INPUT / OUTPUT VARIABLES
-!REAL,DIMENSION(PP_nVar),INTENT(IN)              :: U
-!REAL,DIMENSION(PP_nVarPrim),INTENT(IN)          :: UPrim
-!REAL,DIMENSION(PP_nVarPrim,PP_nVar),INTENT(OUT) :: PrimConsJac  ! Derivative of The Primitive Variables in (i,j,k)
-!!-----------------------------------------------------------------------------------------------------------------------------------
-!! LOCAL VARIABLES 
-!!===================================================================================================================================
-!REAL             :: sRho,vv,p_rho,KappaM1sRhoR 
-!!==================================================================================================================================
-!#if EQNSYSNR==1
-!PrimConsJac=1.
-!#endif
-!#if EQNSYSNR==2
-!sRho=1./UPrim(1)
-!vv=SUM(UPrim(2:4)*UPrim(2:4))
-!!derivative of p=UPrim(5)
-!p_rho=KappaM1*0.5*vv
-!KappaM1sRhoR=KappaM1*sRho/R
-!!rho
-!!prim(1)=cons(1)
-!PrimConsJac(1,1:5) = (/               1.,   0., 0., 0., 0. /)
-!!velocity
-!!prim(2:4)=cons(2:4)*sRho
-!PrimConsJac(2,1:5) = (/ -UPrim(2)*sRho, sRho, 0., 0., 0. /)
-!PrimConsJac(3,1:5) = (/ -UPrim(3)*sRho, 0., sRho, 0., 0. /)
-!PrimConsJac(4,1:5) = (/ -UPrim(4)*sRho, 0., 0., sRho, 0. /)
-!!pressure
-!!prim(5)=KappaM1*(cons(5)-0.5*SUM(cons(2:4)*prim(2:4)))
-!PrimConsJac(5,1:5) = (/ p_rho, -KappaM1*UPrim(2), -KappaM1*UPrim(3), -KappaM1*UPrim(4), KappaM1 /)
-!!temperature
-!!prim(6) = prim(5)*sRho / R
-!!This row is not needed, since the fluxes are independent on $T$
-!PrimConsJac(6,1:5) =(/ KappaM1sRhoR*(vv-U(5)*sRho) , -KappaM1sRhoR*UPrim(2), -KappaM1sRhoR*UPrim(3), &
-                                                                                  !-KappaM1sRhoR*UPrim(4), KappaM1sRhoR /)
-!#endif
-
-!END SUBROUTINE ConsToPrimJac 
-
 SUBROUTINE Jac_Ex(t,iElem,BJ,doVol,doSurf)
 !===================================================================================================================================
 ! 
@@ -267,14 +218,14 @@ USE MOD_PreProc
 USE MOD_Globals
 USE MOD_DG_Vars       ,ONLY: U,UPrim
 USE MOD_Jacobian      ,ONLY: EvalAdvFluxJacobian
-#if PARABOLIC
-USE MOD_DG_Vars       ,ONLY: nDOFElem
+#if EQNSYSNR==2 && PARABOLIC
 USE MOD_Precond_Vars  ,ONLy: EulerPrecond
 USE MOD_Lifting_Vars  ,ONLY: gradUx,gradUy,gradUz
-#if EQNSYSNR==2                                         
 USE MOD_Jacobian      ,ONLY: EvalDiffFluxJacobian 
-#endif /*EQNSYSNR*/
-#endif /*PARABOLIC*/
+#if EDDYVISCOSITY
+USE MOD_EddyVisc_Vars,ONLY: muSGS
+#endif /*EDDYVISCOSITY*/
+#endif /*EQNSYSNR && PARABOLIC*/
 USE MOD_Mesh_Vars     ,ONLY: Metrics_fTilde,Metrics_gTilde
 #if PP_dim==3
 USE MOD_Mesh_Vars     ,ONLY: Metrics_hTilde
@@ -298,10 +249,14 @@ REAL,INTENT(INOUT)    :: BJ(1:nDOFVarElem,1:nDOFVarElem)
 ! LOCAL VARIABLES 
 INTEGER                                                 :: mm,nn,oo
 INTEGER                                                 :: s,r1,r2,ll,vn1,vn2,tt
-#ifdef SPLIT_DG
 REAL,DIMENSION(PP_nVar,PP_nVar)                         :: fJacTilde,gJacTilde
 #if PP_dim==3
 REAL,DIMENSION(PP_nVar,PP_nVar)                         :: hJacTilde
+#endif
+#ifdef SPLIT_DG
+REAL,DIMENSION(PP_nVar,PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)   :: fJacVisc,gJacVisc
+#if PP_dim==3
+REAL,DIMENSION(PP_nVar,PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)   :: hJacVisc
 #endif
 #else
 REAL,DIMENSION(PP_nVar,PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)   :: fJac,gJac
@@ -312,39 +267,70 @@ REAL,DIMENSION(PP_nVar,PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)   :: hJac
 #if PP_dim==3
 INTEGER                                                 :: r3
 #endif
-#if PARABOLIC
+#if EQNSYSNR==2 && PARABOLIC
 REAL,DIMENSION(PP_nVar,PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)   :: fJac_loc,gJac_loc,hJac_loc
-#endif
+#endif /*EQNSYSNR && PARABOLIC*/
 !===================================================================================================================================
 vn1=PP_nVar*(PP_N+1)
 vn2=vn1*(PP_N+1)
 #ifndef SPLIT_DG
 CALL EvalAdvFluxJacobian(U(:,:,:,:,iElem),UPrim(:,:,:,:,iElem),fJac,gJac,hJac)
-!No CALL of EvalDiffFlux Jacobian for EQNSYSNR==1, since the diffusive flux is not depending on U
 #endif
 
-#if EQNSYSNR==2                                         
-#if PARABOLIC
+#if EQNSYSNR==2 && PARABOLIC
+!No CALL of EvalDiffFlux Jacobian for EQNSYSNR==1, since the diffusive flux is not depending on U
 IF(EulerPrecond.EQV..FALSE.) THEN !Euler Precond = False
-  CALL EvalDiffFluxJacobian(nDOFElem,U(:,:,:,:,iElem),UPrim(:,:,:,:,iElem) &
+  CALL EvalDiffFluxJacobian(U(:,:,:,:,iElem),UPrim(:,:,:,:,iElem) &
                             ,gradUx(:,:,:,:,iElem) &
                             ,gradUy(:,:,:,:,iElem) &
                             ,gradUz(:,:,:,:,iElem) &
-                            ,fJac_loc,gJac_loc,hJac_loc)
+                            ,fJac_loc,gJac_loc,hJac_loc
+#if EDDYVISCOSITY
+                            ,muSGS(:,:,:,:,iElem)  &
+#endif
+                            )
+#ifndef SPLIT_DG
   fJac=fJac+fJac_loc                                         
   gJac=gJac+gJac_loc                                         
 #if PP_dim==3
   hJac=hJac+hJac_loc                                         
 #endif/*PP_dim*/
+#endif /*SPLIT_DG*/
 END IF !EulerPrecond
-#endif /*PARABOLIC*/          
-#endif /*EQNSYSNR*/
+#endif /*EQNSYSNR && PARABOLIC*/
 
 s=0
 DO oo=0,PP_NZ
   DO nn=0,PP_N
     DO mm=0,PP_N
 #ifdef SPLIT_DG
+
+#if EQNSYSNR==2 && PARABOLIC
+      IF(EulerPrecond.EQV..FALSE.) THEN !Euler Precond = False
+        ! weak formulation for parabolic terms
+        fJacVisc(:,:) = (fJac_loc(:,:,mm,nn,oo)*Metrics_fTilde(1,mm,nn,oo,iElem,0)  &
+                        +gJac_loc(:,:,mm,nn,oo)*Metrics_fTilde(2,mm,nn,oo,iElem,0)  &
+#if PP_dim==3
+                        +hJac_loc(:,:,mm,nn,oo)*Metrics_fTilde(3,mm,nn,oo,iElem,0)  &
+#endif
+                         )
+
+        gJacVisc(:,:) = (fJac_loc(:,:,mm,nn,oo)*Metrics_gTilde(1,mm,nn,oo,iElem,0)  &
+                        +gJac_loc(:,:,mm,nn,oo)*Metrics_gTilde(2,mm,nn,oo,iElem,0)  &
+#if PP_dim==3
+                        +hJac_loc(:,:,mm,nn,oo)*Metrics_gTilde(3,mm,nn,oo,iElem,0)  &
+#endif
+                         )
+
+#if PP_dim==3
+        hJacVisc(:,:) =  fJac_loc(:,:,mm,nn,oo)*Metrics_hTilde(1,mm,nn,oo,iElem,0)   &
+                        +gJac_loc(:,:,mm,nn,oo)*Metrics_hTilde(2,mm,nn,oo,iElem,0)  &
+                        +hJac_loc(:,:,mm,nn,oo)*Metrics_hTilde(3,mm,nn,oo,iElem,0) 
+#endif
+      END IF
+#endif /*EQNSYSNR && PARABOLIC*/
+
+
       ! strong split form (modified surface terms!)
       r1=           vn1*nn+vn2*oo
       r2=mm*PP_nVar       +vn2*oo
@@ -353,61 +339,72 @@ DO oo=0,PP_NZ
 #endif
       ! Case i!=m (i is the loop variable, similar to weak form)
       DO ll=0,PP_N
-          CALL Jac_Split(U(:,mm,nn,oo,iElem),UPrim(:,mm,nn,oo,iElem),U(:,ll,nn,oo,iElem),UPrim(:,ll,nn,oo,iElem), &
-                         Metrics_fTilde(:,mm,nn,oo,iElem,0),Metrics_fTilde(:,ll,nn,oo,iElem,0),fJacTilde(:,:))
-          BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) = BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) + DVolSurf(mm,ll)*fJacTilde(:,:) 
+        
+#if EQNSYSNR==2 && PARABOLIC
+        IF(EulerPrecond.EQV..FALSE.) THEN !Euler Precond = False
+          BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) = BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) + D_hat(ll,mm)*fJacVisc(:,:) 
+          BJ(r2+1:r2+PP_nVar,s+1:s+PP_nVar) = BJ(r2+1:r2+PP_nVar,s+1:s+PP_nVar) + D_hat(ll,nn)*gJacVisc(:,:) 
+#if PP_dim==3
+          BJ(r3+1:r3+PP_nVar,s+1:s+PP_nVar) = BJ(r3+1:r3+PP_nVar,s+1:s+PP_nVar) + D_hat(ll,oo)*hJacVisc(:,:) 
+#endif
+        END IF
+#endif /*EQNSYSNR && PARABOLIC*/
 
-          CALL Jac_Split(U(:,mm,nn,oo,iElem),UPrim(:,mm,nn,oo,iElem),U(:,mm,ll,oo,iElem),UPrim(:,mm,ll,oo,iElem), &
-                         Metrics_gTilde(:,mm,nn,oo,iElem,0),Metrics_gTilde(:,mm,ll,oo,iElem,0),gJacTilde(:,:))
-          BJ(r2+1:r2+PP_nVar,s+1:s+PP_nVar) = BJ(r2+1:r2+PP_nVar,s+1:s+PP_nVar) + DVolSurf(nn,ll)*gJacTilde(:,:) 
+        CALL Jac_Split(U(:,mm,nn,oo,iElem),UPrim(:,mm,nn,oo,iElem),U(:,ll,nn,oo,iElem),UPrim(:,ll,nn,oo,iElem), &
+                       Metrics_fTilde(:,mm,nn,oo,iElem,0),Metrics_fTilde(:,ll,nn,oo,iElem,0),fJacTilde(:,:))
+        BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) = BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) + DVolSurf(mm,ll)*fJacTilde(:,:) 
+
+        CALL Jac_Split(U(:,mm,nn,oo,iElem),UPrim(:,mm,nn,oo,iElem),U(:,mm,ll,oo,iElem),UPrim(:,mm,ll,oo,iElem), &
+                       Metrics_gTilde(:,mm,nn,oo,iElem,0),Metrics_gTilde(:,mm,ll,oo,iElem,0),gJacTilde(:,:))
+        BJ(r2+1:r2+PP_nVar,s+1:s+PP_nVar) = BJ(r2+1:r2+PP_nVar,s+1:s+PP_nVar) + DVolSurf(nn,ll)*gJacTilde(:,:) 
 
 #if PP_dim==3
-          CALL Jac_Split(U(:,mm,nn,oo,iElem),UPrim(:,mm,nn,oo,iElem),U(:,mm,nn,ll,iElem),UPrim(:,mm,nn,ll,iElem), &
-                         Metrics_hTilde(:,mm,nn,oo,iElem,0),Metrics_hTilde(:,mm,nn,ll,iElem,0),hJacTilde(:,:))
-          BJ(r3+1:r3+PP_nVar,s+1:s+PP_nVar) = BJ(r3+1:r3+PP_nVar,s+1:s+PP_nVar) + DVolSurf(oo,ll)*hJacTilde(:,:) 
+        CALL Jac_Split(U(:,mm,nn,oo,iElem),UPrim(:,mm,nn,oo,iElem),U(:,mm,nn,ll,iElem),UPrim(:,mm,nn,ll,iElem), &
+                       Metrics_hTilde(:,mm,nn,oo,iElem,0),Metrics_hTilde(:,mm,nn,ll,iElem,0),hJacTilde(:,:))
+        BJ(r3+1:r3+PP_nVar,s+1:s+PP_nVar) = BJ(r3+1:r3+PP_nVar,s+1:s+PP_nVar) + DVolSurf(oo,ll)*hJacTilde(:,:) 
 #endif
 
-          r1=r1+PP_nVar
-          r2=r2+vn1
+        r1=r1+PP_nVar
+        r2=r2+vn1
 #if PP_dim==3
-          r3=r3+vn2
+        r3=r3+vn2
 #endif
       END DO !ll
       ! Case i=m (influence on main diagonal of block jacobian), additional entries from split formulation
       DO tt=0,PP_N
-          CALL Jac_Split(U(:,mm,nn,oo,iElem),UPrim(:,mm,nn,oo,iElem),U(:,tt,nn,oo,iElem),UPrim(:,tt,nn,oo,iElem), &
-                         Metrics_fTilde(:,mm,nn,oo,iElem,0),Metrics_fTilde(:,tt,nn,oo,iElem,0),fJacTilde(:,:))
-          BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) + DVolSurf(tt,mm)*fJacTilde(:,:)
+        CALL Jac_Split(U(:,mm,nn,oo,iElem),UPrim(:,mm,nn,oo,iElem),U(:,tt,nn,oo,iElem),UPrim(:,tt,nn,oo,iElem), &
+                       Metrics_fTilde(:,mm,nn,oo,iElem,0),Metrics_fTilde(:,tt,nn,oo,iElem,0),fJacTilde(:,:))
+        BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) + DVolSurf(tt,mm)*fJacTilde(:,:)
 
-          CALL Jac_Split(U(:,mm,nn,oo,iElem),UPrim(:,mm,nn,oo,iElem),U(:,mm,tt,oo,iElem),UPrim(:,mm,tt,oo,iElem), &
-                         Metrics_gTilde(:,mm,nn,oo,iElem,0),Metrics_gTilde(:,mm,tt,oo,iElem,0),gJacTilde(:,:))
-          BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) + DVolSurf(tt,nn)*gJacTilde(:,:)
+        CALL Jac_Split(U(:,mm,nn,oo,iElem),UPrim(:,mm,nn,oo,iElem),U(:,mm,tt,oo,iElem),UPrim(:,mm,tt,oo,iElem), &
+                       Metrics_gTilde(:,mm,nn,oo,iElem,0),Metrics_gTilde(:,mm,tt,oo,iElem,0),gJacTilde(:,:))
+        BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) + DVolSurf(tt,nn)*gJacTilde(:,:)
 
 #if PP_dim==3
-          CALL Jac_Split(U(:,mm,nn,oo,iElem),UPrim(:,mm,nn,oo,iElem),U(:,mm,nn,tt,iElem),UPrim(:,mm,nn,tt,iElem), &
-                         Metrics_hTilde(:,mm,nn,oo,iElem,0),Metrics_hTilde(:,mm,nn,tt,iElem,0),hJacTilde(:,:))
-          BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) + DVolSurf(tt,oo)*hJacTilde(:,:)
+        CALL Jac_Split(U(:,mm,nn,oo,iElem),UPrim(:,mm,nn,oo,iElem),U(:,mm,nn,tt,iElem),UPrim(:,mm,nn,tt,iElem), &
+                       Metrics_hTilde(:,mm,nn,oo,iElem,0),Metrics_hTilde(:,mm,nn,tt,iElem,0),hJacTilde(:,:))
+        BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) + DVolSurf(tt,oo)*hJacTilde(:,:)
 #endif
       END DO
 #else /*SPLIT_DG*/
 
       ! weak formulation
-      fJacTilde(:,:) = ( fJac(:,:,mm,nn,oo)*Metrics_fTilde(1,mm,nn,oo,iElem,0)  &
-                       + gJac(:,:,mm,nn,oo)*Metrics_fTilde(2,mm,nn,oo,iElem,0)  &
+      fJacTilde(:,:) = (fJac(:,:,mm,nn,oo)*Metrics_fTilde(1,mm,nn,oo,iElem,0)  &
+                       +gJac(:,:,mm,nn,oo)*Metrics_fTilde(2,mm,nn,oo,iElem,0)  &
 #if PP_dim==3
-                       + hJac(:,:,mm,nn,oo)*Metrics_fTilde(3,mm,nn,oo,iElem,0) &
+                       +hJac(:,:,mm,nn,oo)*Metrics_fTilde(3,mm,nn,oo,iElem,0)  &
 #endif
                        )
 
       gJacTilde(:,:) = (fJac(:,:,mm,nn,oo)*Metrics_gTilde(1,mm,nn,oo,iElem,0)  &
                        +gJac(:,:,mm,nn,oo)*Metrics_gTilde(2,mm,nn,oo,iElem,0)  &
 #if PP_dim==3
-                       +hJac(:,:,mm,nn,oo)*Metrics_gTilde(3,mm,nn,oo,iElem,0) &
+                       +hJac(:,:,mm,nn,oo)*Metrics_gTilde(3,mm,nn,oo,iElem,0)  &
 #endif
                        )
 
 #if PP_dim==3
-      hJacTilde(:,:) = fJac(:,:,mm,nn,oo)*Metrics_hTilde(1,mm,nn,oo,iElem,0)  &
+      hJacTilde(:,:) = fJac(:,:,mm,nn,oo)*Metrics_hTilde(1,mm,nn,oo,iElem,0)   &
                        +gJac(:,:,mm,nn,oo)*Metrics_hTilde(2,mm,nn,oo,iElem,0)  &
                        +hJac(:,:,mm,nn,oo)*Metrics_hTilde(3,mm,nn,oo,iElem,0) 
 #endif
@@ -481,154 +478,10 @@ END SUBROUTINE Apply_sJ
 
 #if PARABOLIC
 !===================================================================================================================================
-! Derivative of the numerical flux h* of the gradient system with respect to U_jk
-! h*= 0.5*(U_xi + U_neighbour_(-xi)) (mean value of the face values)
-! => h*-U_xi=-0.5*U_xi + 0.5*U_neighbour_(-xi)
-! => d(h*-U_xi)_jk(prim)/dU_jk(prim) = -0.5
+!> volume integral: the total derivative of the viscous flux with resprect to U:
+!>                    dF^v/Du = dF^v/dQ* DQ/DU, with the gradient Q=Grad U
 !===================================================================================================================================
-SUBROUTINE FillJacLiftingFlux(iElem)
-! MODULES
-USE MOD_Globals
-USE MOD_Jac_ex_Vars               ,ONLY:JacLiftingFlux,Surf
-USE MOD_GetBoundaryFlux_fd        ,ONLY:Lifting_GetBoundaryFlux_FD
-USE MOD_Mesh_Vars                 ,ONLY:nBCSides,ElemToSide,S2V2
-USE MOD_Mesh_Vars                 ,ONLY:NormVec,TangVec1,TangVec2,SurfElem
-USE MOD_Precond_Vars              ,ONLY:tPrecond
-USE MOD_DG_Vars                   ,ONLY:U_master
-USE MOD_Mesh_Vars                 ,ONLY:Face_xGP
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-INTEGER,INTENT(IN) :: iElem
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
-INTEGER            :: iVar,iLocSide,SideID
-!===================================================================================================================================
-#if PP_dim==3
-DO iLocSide=1,6
-#else
-DO iLocSide=2,5
-#endif 
-  SideID=ElemToSide(E2S_SIDE_ID,ilocSide,iElem)
-  IF (SideID.LE.nBCSides) THEN !BCSides
-    CALL Lifting_GetBoundaryFlux_FD(SideID,tPrecond,JacLiftingFlux(:,:,:,:,iLocSide),U_master, &
-                                    SurfElem,Face_xGP,NormVec,TangVec1,TangVec2,S2V2(:,:,:,0,iLocSide)) !flip=0 for BCSide
-  ELSE
-    JacLiftingFlux(:,:,:,:,iLocSide)=0.
-    DO iVar=1,PP_nVar
-      JacLiftingFlux(iVar,iVar,:,:,iLocSide)=-0.5*Surf(:,:,iLocSide,iElem)
-    END DO !iVar
-  END IF !SideID
-END DO!iLocSide
-END SUBROUTINE FillJacLiftingFlux
-
-SUBROUTINE JacLifting_VolInt(dir,iElem,JacLifting)
-!===================================================================================================================================
-! Computes the Volume gradient Jacobian of the BR2 scheme dQprim/dUprim (Q= Grad U)
-! Normal vectors are supposed to point outwards!
-!===================================================================================================================================
-! MODULES
-USE MOD_Jac_Ex_Vars        ,ONLY: LL_minus,LL_plus,nVec 
-USE MOD_Jac_Ex_Vars        ,ONLY: JacLiftingFlux 
-USE MOD_DG_Vars            ,ONLY: D
-USE MOD_Mesh_Vars          ,ONLY: Metrics_fTilde,Metrics_gTilde,sJ   ! metrics
-#if PP_dim==3
-USE MOD_Mesh_Vars          ,ONLY: Metrics_hTilde
-#endif
-USE MOD_PreProc
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-INTEGER,INTENT(IN)                           :: iElem
-INTEGER,INTENT(IN)                           :: dir
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-REAL,INTENT(OUT)                             :: JacLifting(PP_nVar,PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,0:PP_N,PP_dim)
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-INTEGER                                      :: i,j,k,ll
-INTEGER                                      :: iVar
-REAL                                         :: delta(1:PP_nVar,1:PP_nVar) 
-!===================================================================================================================================
-delta=0.
-DO iVar=1,PP_nVar
-  delta(iVar,iVar)=1.
-END DO
-
-JacLifting=0.
-DO ll=0,PP_N
-  DO k=0,PP_NZ
-    DO j=0,PP_N
-      DO i=0,PP_N
-        JacLifting(:,:,i,j,k,ll,1) = JacLifting(:,:,i,j,k,ll,1) +                                                  &
-                                    sJ(i,j,k,iElem,0)*( D(i,ll)*Metrics_fTilde(dir,ll,j,k,iElem,0)*delta(:,:)      &
-                                                     + nVec(dir,j,k,   XI_PLUS,iElem)*LL_plus(i,ll)                &
-                                                       *JacLiftingFlux(:,:,j,k,XI_PLUS)                            &
-                                                     + nVec(dir,j,k,  XI_MINUS,iElem)*LL_minus(i,ll)               &
-                                                       *JacLiftingFlux(:,:,j,k,XI_MINUS) )
-        JacLifting(:,:,i,j,k,ll,2) = JacLifting(:,:,i,j,k,ll,2) +                                                  &
-                                    sJ(i,j,k,iElem,0)*( D(j,ll)*Metrics_gTilde(dir,i,ll,k,iElem,0)*delta(:,:)      &
-                                                     + nVec(dir,i,k,  ETA_PLUS,iElem)*LL_plus(j,ll)                &
-                                                       *JacLiftingFlux(:,:,i,k,ETA_PLUS)                           &
-                                                     + nVec(dir,i,k, ETA_MINUS,iElem)*LL_minus(j,ll)               &
-                                                       *JacLiftingFlux(:,:,i,k,ETA_MINUS) )
-#if PP_dim==3
-        JacLifting(:,:,i,j,k,ll,3) = JacLifting(:,:,i,j,k,ll,3) +                                                  &
-                                    sJ(i,j,k,iElem,0)*( D(k,ll)*Metrics_hTilde(dir,i,j,ll,iElem,0)*delta(:,:)      &
-                                                     + nVec(dir,i,j, ZETA_PLUS,iElem)*LL_plus(k,ll)                &
-                                                       *JacLiftingFlux(:,:,i,k,ZETA_PLUS)                          &
-                                                     + nVec(dir,i,j,ZETA_MINUS,iElem)*LL_minus(k,ll)               &
-                                                       *JacLiftingFlux(:,:,i,j,ZETA_MINUS) )
-#endif
-      END DO !i
-    END DO !j
-  END DO !k
-END DO !ll
-
-    !DO ll=0,PP_N
-      !DO k=0,PP_NZ
-        !DO j=0,PP_N
-          !DO i=0,PP_N
-            !temp1 = D(i,ll)*Metrics_fTilde(dir,ll,j,k,iElem,0)
-            !temp2 = D(j,ll)*Metrics_gTilde(dir,i,ll,k,iElem,0)
-!#if PP_dim==3
-            !temp3 = D(k,ll)*Metrics_hTilde(dir,i,j,ll,iElem,0)
-!#endif
-            !DO s=1,PP_nVar
-              !!Compute only diagonal elements, since JacLiftingFlux is diagonal for all lifting_geboundaryflux cases
-              !JacLifting(s,s,i,j,k,ll,1) = sJ(i,j,k,iElem,0)*(temp1 &
-                                                         !+ nVec(dir,j,k,   XI_PLUS,iElem)*LL_plus(i,ll)                &
-                                                           !*JacLiftingFlux(s,s,j,k,XI_PLUS)                            &
-                                                         !+ nVec(dir,j,k,  XI_MINUS,iElem)*LL_minus(i,ll)               &
-                                                           !*JacLiftingFlux(s,s,j,k,XI_MINUS) )
-              !JacLifting(s,s,i,j,k,ll,2) = sJ(i,j,k,iElem,0)*( temp2 &
-                                                         !+ nVec(dir,i,k,  ETA_PLUS,iElem)*LL_plus(j,ll)                &
-                                                           !*JacLiftingFlux(s,s,i,k,ETA_PLUS)                           &
-                                                         !+ nVec(dir,i,k, ETA_MINUS,iElem)*LL_minus(j,ll)               &
-                                                           !*JacLiftingFlux(s,s,i,k,ETA_MINUS) )
-!#if PP_dim==3
-              !JacLifting(s,s,i,j,k,ll,3) = sJ(i,j,k,iElem,0)*( temp3 &
-                                                     !+ nVec(dir,i,j, ZETA_PLUS,iElem)*LL_plus(k,ll)                &
-                                                       !*JacLiftingFlux(s,s,i,k,ZETA_PLUS)                          &
-                                                     !+ nVec(dir,i,j,ZETA_MINUS,iElem)*LL_minus(k,ll)               &
-                                                       !*JacLiftingFlux(s,s,i,j,ZETA_MINUS) )
-!#endif
-            !END DO !s
-          !END DO !i
-        !END DO !j
-      !END DO !k
-    !END DO !ll
-END SUBROUTINE JacLifting_VolInt
-
 SUBROUTINE  DGVolIntGradJac(BJ,iElem)
-!===================================================================================================================================
-! volume integral: the total derivative of the viscous flux with resprect to U:
-!                    dF^v/Du = dF^v/dQ* DQ/DU, with the gradient Q=Grad U
-!===================================================================================================================================
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
@@ -643,11 +496,9 @@ USE MOD_Implicit_Vars ,ONLY: nDOFVarElem
 USE MOD_GradJacobian  ,ONLY: EvalFluxGradJacobian
 !USE MOD_Implicit_Vars ,ONLY: reps0,sreps0
 !USE MOD_EOS           ,ONLY: ConsToPrim
-!#if PARABOLIC
 !USE MOD_EOS           ,ONLY: ConsToPrimLifting_loc
 !USE MOD_Lifting_Vars ,ONLY: gradUx,gradUy,gradUz
 !USE MOD_Lifting_Vars ,ONLY: gradUx_cons,gradUy_cons,gradUz_cons
-!#endif
 !USE MOD_Jac_Ex_Vars   ,ONLY: PrimConsJac 
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -923,446 +774,8 @@ END DO !oo
 !WRITE(*,*) '--------------------------------------------'
 !eND DO
 !stop
-
 END SUBROUTINE DGVolIntGradJac
-
-SUBROUTINE BuildnVecTangSurf()
-!===================================================================================================================================
-! used for BR2: normal vectors, outward pointing and sorted in ijk element fashion!!! 
-! The usual NormVec is only outward poiting for the master Sides.
-! nVec are also outward pointing for the slave Sides
-!===================================================================================================================================
-! MODULES
-USE MOD_PreProc
-USE MOD_Mesh_Vars          ,ONLY: Normvec,SurfElem,ElemToSide,nElems 
-USE MOD_Jac_ex_Vars        ,ONLY: nVec,Surf
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-INTEGER                                      :: iElem
-INTEGER                                      :: p,q,SideID,Flip
-!===================================================================================================================================
-DO iElem=1,nElems
-  SideID=ElemToSide(E2S_SIDE_ID,XI_MINUS,iElem)
-  Flip  =ElemToSide(E2S_FLIP,XI_MINUS,iElem)
-  SELECT CASE(flip)
-  CASE(0) !master
-    DO q=0,PP_NZ; DO p=0,PP_N
-#if PP_dim==3
-      nVec( :,q,p,XI_MINUS,iElem)          =  NormVec( :,p,q,0,SideID)
-      Surf(   q,p,XI_MINUS,iElem)          =  SurfElem(  p,q,0,SideID)
-#else
-      nVec (:,PP_N-p,q,XI_MINUS,iElem)          =  NormVec (:,p,q,0,SideID)
-      Surf (  PP_N-p,q,XI_MINUS,iElem)          =  SurfElem(  p,q,0,SideID)
 #endif
-    END DO; END DO 
-  CASE(1) !slave, flip normal!!
-    DO q=0,PP_NZ; DO p=0,PP_N
-#if PP_dim==3
-      nVec( :,p,q,XI_MINUS,iElem)           = -NormVec( :,p,q,0,SideID)
-      Surf(   p,q,XI_MINUS,iElem)           =  SurfElem(  p,q,0,SideID)
-#else
-      nVec (:,p,q,XI_MINUS,iElem)      = -NormVec (:,p,q,0,SideID)
-      Surf (  p,q,XI_MINUS,iElem)      =  SurfElem(  p,q,0,SideID)
-#endif
-    END DO; END DO 
-#if PP_dim==3
-  CASE(2) !slave, flip normal!!
-    DO q=0,PP_N; DO p=0,PP_N
-      !nVecSurf(:,PP_N-q,p,XI_MINUS,iElem)      = -NormVec(:,p,q,SideID)*surfElem(p,q,SideID)
-      ! INTERCHANGED WITH FLIP 4!
-      nVec( :,q,PP_N-p,XI_MINUS,iElem)      = -NormVec( :,p,q,0,SideID)
-      Surf(   q,PP_N-p,XI_MINUS,iElem)      =  SurfElem(  p,q,0,SideID)
-    END DO; END DO 
-  CASE(3) !slave, flip normal!!
-    DO q=0,PP_N; DO p=0,PP_N
-      nVec( :,PP_N-p,PP_N-q,XI_MINUS,iElem) = -NormVec( :,p,q,0,SideID)
-      Surf(   PP_N-p,PP_N-q,XI_MINUS,iElem) =  SurfElem(  p,q,0,SideID)
-    END DO; END DO 
-  CASE(4) !slave, flip normal!!
-    DO q=0,PP_N; DO p=0,PP_N
-      !nVecSurf(:,q,PP_N-p,XI_MINUS,iElem)      = -NormVec(:,p,q,SideID)*surfElem(p,q,SideID)
-      ! INTERCHANGED WITH FLIP 2!
-      nVec( :,PP_N-q,p,XI_MINUS,iElem)      = -NormVec( :,p,q,0,SideID)
-      Surf(   PP_N-q,p,XI_MINUS,iElem)      =  SurfElem(  p,q,0,SideID)
-    END DO; END DO 
-#endif
-  END SELECT
-
-  
-  SideID=ElemToSide(E2S_SIDE_ID,XI_PLUS,iElem)
-  Flip  =ElemToSide(E2S_FLIP,XI_PLUS,iElem)
-  SELECT CASE(flip)
-  CASE(0) !master
-    DO q=0,PP_NZ; DO p=0,PP_N
-#if PP_dim==3
-      nVec( :,p,q,XI_PLUS,iElem)           =  NormVec( :,p,q,0,SideID)
-      Surf(   p,q,XI_PLUS,iElem)           =  SurfElem(  p,q,0,SideID)
-#else
-      nVec (:,p,q,XI_PLUS,iElem)          =  NormVec (:,p,q,0,SideID)
-      Surf (  p,q,XI_PLUS,iElem)          =  SurfElem(  p,q,0,SideID)
-#endif
-    END DO; END DO 
-  CASE(1) !slave, flip normal!!
-    DO q=0,PP_NZ; DO p=0,PP_N
-#if PP_dim==3
-      nVec( :,q,p,XI_PLUS,iElem)           = -NormVec( :,p,q,0,SideID)
-      Surf(   q,p,XI_PLUS,iElem)           =  SurfElem(  p,q,0,SideID)
-#else
-      nVec (:,PP_N-p,q,XI_PLUS,iElem)          = -NormVec (:,p,q,0,SideID)
-      Surf (  PP_N-p,q,XI_PLUS,iElem)          =  SurfElem(  p,q,0,SideID)
-#endif
-    END DO; END DO 
-#if PP_dim==3
-  CASE(2) !slave, flip normal!!
-    DO q=0,PP_N; DO p=0,PP_N
-      nVec( :,PP_N-p,q,XI_PLUS,iElem)      = -NormVec( :,p,q,0,SideID)
-      Surf(   PP_N-p,q,XI_PLUS,iElem)      =  SurfElem(  p,q,0,SideID)
-    END DO; END DO 
-  CASE(3) !slave, flip normal!!
-    DO q=0,PP_N; DO p=0,PP_N
-      nVec( :,PP_N-q,PP_N-p,XI_PLUS,iElem) = -NormVec( :,p,q,0,SideID)
-      Surf(   PP_N-q,PP_N-p,XI_PLUS,iElem) =  SurfElem(  p,q,0,SideID)
-    END DO; END DO 
-  CASE(4) !slave, flip normal!!
-    DO q=0,PP_N; DO p=0,PP_N
-      nVec( :,p,PP_N-q,XI_PLUS,iElem)      = -NormVec( :,p,q,0,SideID)
-      Surf(   p,PP_N-q,XI_PLUS,iElem)      =  SurfElem(  p,q,0,SideID)
-    END DO; END DO 
-#endif
-  END SELECT
-  SideID=ElemToSide(E2S_SIDE_ID,ETA_MINUS,iElem)
-  Flip  =ElemToSide(E2S_FLIP,ETA_MINUS,iElem)
-  SELECT CASE(flip)
-  CASE(0) !master
-    DO q=0,PP_NZ; DO p=0,PP_N
-#if PP_dim==3
-      nVec( :,p,q,ETA_MINUS,iElem)           =  NormVec( :,p,q,0,SideID)
-      Surf(   p,q,ETA_MINUS,iElem)           =  SurfElem(  p,q,0,SideID)
-#else
-      nVec (:,p,q,ETA_MINUS,iElem)          =  NormVec (:,p,q,0,SideID)
-      Surf (  p,q,ETA_MINUS,iElem)          =  SurfElem(  p,q,0,SideID)
-#endif
-    END DO; END DO 
-  CASE(1) !slave, flip normal!!
-    DO q=0,PP_NZ; DO p=0,PP_N
-#if PP_dim==3
-      nVec( :,q,p,ETA_MINUS,iElem)           = -NormVec( :,p,q,0,SideID)
-      Surf(   q,p,ETA_MINUS,iElem)           =  SurfElem(  p,q,0,SideID)
-#else
-      nVec (:,PP_N-p,q,ETA_MINUS,iElem)      = -NormVec (:,p,q,0,SideID)
-      Surf (  PP_N-p,q,ETA_MINUS,iElem)      =  SurfElem(  p,q,0,SideID)
-#endif
-    END DO; END DO 
-#if PP_dim==3
-  CASE(2) !slave, flip normal!!
-    DO q=0,PP_N; DO p=0,PP_N
-      nVec( :,PP_N-p,q,ETA_MINUS,iElem)      = -NormVec( :,p,q,0,SideID)
-      Surf(   PP_N-p,q,ETA_MINUS,iElem)      =  SurfElem(  p,q,0,SideID)
-    END DO; END DO 
-  CASE(3) !slave, flip normal!!
-    DO q=0,PP_N; DO p=0,PP_N
-      nVec( :,PP_N-q,PP_N-p,ETA_MINUS,iElem) = -NormVec( :,p,q,0,SideID)
-      Surf(   PP_N-q,PP_N-p,ETA_MINUS,iElem) =  SurfElem(  p,q,0,SideID)
-    END DO; END DO 
-  CASE(4) !slave, flip normal!!
-    DO q=0,PP_N; DO p=0,PP_N
-      nVec( :,p,PP_N-q,ETA_MINUS,iElem)      = -NormVec( :,p,q,0,SideID)
-      Surf(   p,PP_N-q,ETA_MINUS,iElem)      =  SurfElem(  p,q,0,SideID)
-    END DO; END DO 
-#endif
-  END SELECT
-
-  SideID=ElemToSide(E2S_SIDE_ID,ETA_PLUS,iElem)
-  Flip  =ElemToSide(E2S_FLIP,ETA_PLUS,iElem)
-  SELECT CASE(flip)
-  CASE(0) !master
-    DO q=0,PP_NZ; DO p=0,PP_N
-#if PP_dim==3
-      nVec( :,PP_N-p,q,ETA_PLUS,iElem)           = NormVec( :,p,q,0,SideID)
-      Surf(   PP_N-p,q,ETA_PLUS,iElem)           = SurfElem(  p,q,0,SideID)
-#else
-      nVec (:,PP_N-p,q,ETA_PLUS,iElem)          =  NormVec (:,p,q,0,SideID)
-      Surf (  PP_N-p,q,ETA_PLUS,iElem)          =  SurfElem(  p,q,0,SideID)
-#endif
-    END DO; END DO 
-  CASE(1) !slave, flip normal!!
-    DO q=0,PP_NZ; DO p=0,PP_N
-      !nVecSurf(:,q,PP_N-p,ETA_PLUS,iElem)           = -NormVec(:,p,q,SideID)*surfElem(p,q,SideID)
-      ! INTERCHANGED WITH FLIP 3!
-#if PP_dim==3
-      nVec( :,PP_N-q,p,ETA_PLUS,iElem)           = -NormVec( :,p,q,0,SideID)
-      Surf(   PP_N-q,p,ETA_PLUS,iElem)           =  SurfElem(  p,q,0,SideID)
-#else
-      nVec (:,p,q,ETA_PLUS,iElem)      = -NormVec (:,p,q,0,SideID)
-      Surf (  p,q,ETA_PLUS,iElem)      =  SurfElem(  p,q,0,SideID)
-#endif
-    END DO; END DO 
-#if PP_dim==3
-  CASE(2) !slave, flip normal!!
-    DO q=0,PP_N; DO p=0,PP_N
-      nVec( :,p,q,ETA_PLUS,iElem)                = -NormVec (:,p,q,0,SideID)
-      Surf(   p,q,ETA_PLUS,iElem)                =  SurfElem  (p,q,0,SideID)
-    END DO; END DO 
-  CASE(3) !slave, flip normal!!
-    DO q=0,PP_N; DO p=0,PP_N
-      !nVecSurf(:,PP_N-q,p,ETA_PLUS,iElem)           = -NormVec(:,p,q,SideID)*surfElem(p,q,SideID)
-      ! INTERCHANGED WITH FLIP 1!
-      nVec( :,q,PP_N-p,ETA_PLUS,iElem)           = -NormVec( :,p,q,0,SideID)
-      Surf(   q,PP_N-p,ETA_PLUS,iElem)           =  SurfElem(  p,q,0,SideID)
-    END DO; END DO 
-  CASE(4) !slave, flip normal!!
-    DO q=0,PP_N; DO p=0,PP_N
-      nVec( :,PP_N-p,PP_N-q,ETA_PLUS,iElem)      = -NormVec( :,p,q,0,SideID)
-      Surf(   PP_N-p,PP_N-q,ETA_PLUS,iElem)      =  SurfElem(  p,q,0,SideID)
-    END DO; END DO 
-#endif
-  END SELECT
-#if PP_dim==3
-  SideID=ElemToSide(E2S_SIDE_ID,ZETA_MINUS,iElem)
-  Flip  =ElemToSide(E2S_FLIP,ZETA_MINUS,iElem)
-  SELECT CASE(flip)
-  CASE(0) !master
-    DO q=0,PP_N; DO p=0,PP_N
-      nVec( :,q,p,ZETA_MINUS,iElem)           = NormVec( :,p,q,0,SideID)
-      Surf(   q,p,ZETA_MINUS,iElem)           = SurfElem(  p,q,0,SideID)
-    END DO; END DO 
-  CASE(1) !slave, flip normal!!
-    DO q=0,PP_N; DO p=0,PP_N
-      nVec( :,p,q,ZETA_MINUS,iElem)           = -NormVec( :,p,q,0,SideID)
-      Surf(   p,q,ZETA_MINUS,iElem)           =  SurfElem(  p,q,0,SideID)
-    END DO; END DO 
-  CASE(2) !slave, flip normal!!
-    DO q=0,PP_N; DO p=0,PP_N
-      !nVecSurf(:,PP_N-q,p,ZETA_MINUS,iElem)      = -NormVec(:,p,q,SideID)*surfElem(p,q,SideID)
-      ! INTERCHANGED WITH FLIP 4!
-      nVec( :,q,PP_N-p,ZETA_MINUS,iElem)      = -NormVec( :,p,q,0,SideID)
-      Surf(   q,PP_N-p,ZETA_MINUS,iElem)      =  SurfElem(  p,q,0,SideID)
-    END DO; END DO 
-  CASE(3) !slave, flip normal!!
-    DO q=0,PP_N; DO p=0,PP_N
-      nVec( :,PP_N-p,PP_N-q,ZETA_MINUS,iElem) = -NormVec( :,p,q,0,SideID)
-      Surf(   PP_N-p,PP_N-q,ZETA_MINUS,iElem) =  SurfElem(  p,q,0,SideID)
-    END DO; END DO 
-  CASE(4) !slave, flip normal!!
-    DO q=0,PP_N; DO p=0,PP_N
-      !nVecSurf(:,q,PP_N-p,ZETA_MINUS,iElem)      = -NormVec(:,p,q,SideID)*surfElem(p,q,SideID)
-      ! INTERCHANGED WITH FLIP 2!
-      nVec( :,PP_N-q,p,ZETA_MINUS,iElem)      = -NormVec( :,p,q,0,SideID)
-      Surf(   PP_N-q,p,ZETA_MINUS,iElem)      =  SurfElem(  p,q,0,SideID)
-    END DO; END DO 
-  END SELECT
-  SideID=ElemToSide(E2S_SIDE_ID,ZETA_PLUS,iElem)
-  Flip  =ElemToSide(E2S_FLIP,ZETA_PLUS,iElem)
-  SELECT CASE(flip)
-  CASE(0) !master
-    DO q=0,PP_N; DO p=0,PP_N
-      nVec( :,p,q,ZETA_PLUS,iElem)           = NormVec( :,p,q,0,SideID)
-      Surf(   p,q,ZETA_PLUS,iElem)           = SurfElem(  p,q,0,SideID)
-    END DO; END DO 
-  CASE(1) !slave, flip normal!!
-    DO q=0,PP_N; DO p=0,PP_N
-      nVec( :,q,p,ZETA_PLUS,iElem)           = -NormVec( :,p,q,0,SideID)
-      Surf(   q,p,ZETA_PLUS,iElem)           =  SurfElem(  p,q,0,SideID)
-    END DO; END DO 
-  CASE(2) !slave, flip normal!!
-    DO q=0,PP_N; DO p=0,PP_N
-      nVec( :,PP_N-p,q,ZETA_PLUS,iElem)      = -NormVec( :,p,q,0,SideID)
-      Surf(   PP_N-p,q,ZETA_PLUS,iElem)      =  SurfElem(  p,q,0,SideID)
-    END DO; END DO 
-  CASE(3) !slave, flip normal!!
-    DO q=0,PP_N; DO p=0,PP_N
-      nVec( :,PP_N-q,PP_N-p,ZETA_PLUS,iElem) = -NormVec( :,p,q,0,SideID)
-      Surf(   PP_N-q,PP_N-p,ZETA_PLUS,iElem) =  SurfElem(  p,q,0,SideID)
-    END DO; END DO 
-  CASE(4) !slave, flip normal!!
-    DO q=0,PP_N; DO p=0,PP_N
-      nVec( :,p,PP_N-q,ZETA_PLUS,iElem)      = -NormVec( :,p,q,0,SideID)
-      Surf(   p,PP_N-q,ZETA_PLUS,iElem)      =  SurfElem(  p,q,0,SideID)
-    END DO; END DO 
-  END SELECT
-#endif
-END DO !iElem
-
-END SUBROUTINE BuildnVecTangSurf
-
-SUBROUTINE Build_BR2_SurfTerms()
-!===================================================================================================================================
-!used for BR2: normal vectors, outward pointing and sorted in ijk element fashion!!! 
-!===================================================================================================================================
-! MODULES
-USE MOD_PreProc
-USE MOD_Mesh_Vars          ,ONLY: sJ,ElemToSide,nElems
-USE MOD_Mesh_Vars          ,ONLY: nSides,NormVec
-USE MOD_Jac_ex_Vars        ,ONLY: R_Minus,R_Plus,LL_Minus,LL_plus
-#if USE_MPI
-USE MOD_MPI_Vars           ,ONLY:nNbProcs
-USE MOD_MPI                ,ONLY:StartSendMPIData,StartReceiveMPIData,FinishExchangeMPIData
-#endif
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-INTEGER                                      :: iElem,p,q,l,iLocSide,SideID,Flip
-REAL                                         :: RFace(0:PP_N,0:PP_NZ)
-#if USE_MPI
-!INTEGER :: MPIRequest_R(nNbProcs,2,2)
-INTEGER :: MPIRequest_RPlus(nNbProcs,2)
-INTEGER :: MPIRequest_RMinus(nNbProcs,2)
-#endif 
-!===================================================================================================================================
-
-ALLOCATE(R_Minus(3,0:PP_N,0:PP_NZ,1:nSides))
-ALLOCATE(R_Plus(3,0:PP_N,0:PP_NZ,1:nSides))
-R_Minus=0.
-R_Plus =0.
-DO iElem=1,nElems
-#if PP_dim==3
-  DO iLocSide=1,6
-#else
-  DO iLocSide=2,5
-#endif 
-    RFace=0.
-    SideID=ElemToSide(E2S_SIDE_ID,iLocSide,iElem)
-    Flip  =ElemToSide(E2S_FLIP,iLocSide,iElem)
-    SELECT CASE(ilocSide)
-    CASE(XI_MINUS)
-      DO q=0,PP_NZ
-        DO p=0,PP_N
-          DO l=0,PP_N
-            ! switch to right hand system
-#if PP_dim==3
-            RFace(q,p)=RFace(q,p)+sJ(l,p,q,iElem,0)*LL_Minus(l,l)
-#else
-            RFace(PP_N-p,0)=RFace(PP_N-p,0)+sJ(l,p,q,iElem,0)*LL_Minus(l,l)
-#endif
-          END DO ! l
-        END DO ! p
-      END DO ! q
-    CASE(ETA_MINUS)
-      DO q=0,PP_NZ
-        DO p=0,PP_N
-          DO l=0,PP_N
-#if PP_dim==3
-            RFace(p,q)=RFace(p,q)+sJ(p,l,q,iElem,0)*LL_Minus(l,l)
-#else
-            RFace(p,0)=RFace(p,0)+sJ(p,l,q,iElem,0)*LL_Minus(l,l)
-#endif
-          END DO ! l
-        END DO ! p
-      END DO ! q
-#if PP_dim==3
-    CASE(ZETA_MINUS)
-      DO q=0,PP_N
-        DO p=0,PP_N
-          DO l=0,PP_N
-            ! switch to right hand system
-            RFace(q,p)=RFace(q,p)+sJ(p,q,l,iElem,0)*LL_Minus(l,l)
-          END DO ! l
-        END DO ! p
-      END DO ! q
-#endif
-    CASE(XI_PLUS)
-      DO q=0,PP_NZ
-        DO p=0,PP_N
-          DO l=0,PP_N
-#if PP_dim==3
-            RFace(p,q)=RFace(p,q)+sJ(l,p,q,iElem,0)*LL_Plus(l,l)
-#else
-            RFace(p,0)=RFace(p,0)+sJ(l,p,q,iElem,0)*LL_Plus(l,l)
-#endif
-          END DO ! l
-        END DO ! p
-      END DO ! q
-    CASE(ETA_PLUS)
-      DO q=0,PP_NZ
-        DO p=0,PP_N
-          DO l=0,PP_N
-            ! switch to right hand system
-#if PP_dim==3
-            RFace(PP_N-p,q)=RFace(PP_N-p,q)+sJ(p,l,q,iElem,0)*LL_Plus(l,l)
-#else
-            RFace(PP_N-p,0)=RFace(PP_N-p,0)+sJ(p,l,q,iElem,0)*LL_Plus(l,l)
-#endif
-          END DO ! l
-        END DO ! p
-      END DO ! q
-#if PP_dim==3
-    CASE(ZETA_PLUS)
-      DO q=0,PP_N
-        DO p=0,PP_N
-          DO l=0,PP_N
-            RFace(p,q)=RFace(p,q)+sJ(p,q,l,iElem,0)*LL_Plus(l,l)
-          END DO ! l
-        END DO ! p
-      END DO ! q
-#endif
-    END SELECT
-    SELECT CASE(Flip)
-      CASE(0) ! master side
-        DO q=0,PP_NZ
-          DO p=0,PP_N
-            R_Minus(:,p,q,SideID)=RFace(p,q)*NormVec(:,p,q,0,SideID)
-          END DO ! p
-        END DO ! q
-      CASE(1) ! slave side, SideID=q,jSide=p
-        DO q=0,PP_NZ
-          DO p=0,PP_N
-#if PP_dim==3
-            R_Plus(:,p,q,SideID)=-RFace(q,p)*NormVec(:,p,q,0,SideID)
-#else
-            R_Plus(:,p,q,SideID)=-RFace(PP_N-p,0)*NormVec(:,p,q,0,SideID)
-#endif
-          END DO ! p
-        END DO ! q
-#if PP_dim==3
-      CASE(2) ! slave side, SideID=N-p,jSide=q
-        DO q=0,PP_N
-          DO p=0,PP_N
-            R_Plus(:,p,q,SideID)=-RFace(PP_N-p,q)*NormVec(:,p,q,0,SideID)
-          END DO ! p
-        END DO ! q
-      CASE(3) ! slave side, SideID=N-q,jSide=N-p
-        DO q=0,PP_N
-          DO p=0,PP_N
-            R_Plus(:,p,q,SideID)=-RFace(PP_N-q,PP_N-p)*NormVec(:,p,q,0,SideID)
-          END DO ! p
-        END DO ! q
-      CASE(4) ! slave side, SideID=p,jSide=N-q
-        DO q=0,PP_N
-          DO p=0,PP_N
-            R_Plus(:,p,q,SideID)=-RFace(p,PP_N-q)*NormVec(:,p,q,0,SideID)
-          END DO ! p
-        END DO ! q
-#endif
-    END SELECT
-  END DO !iLocSide
-END DO !iElem
-
-#if USE_MPI
-!EXCHANGE R_Minus and R_Plus vice versa !!!!!
-MPIRequest_RPlus=0
-MPIRequest_RMinus=0
-CALL StartReceiveMPIData(R_Plus,3*(PP_N+1)**(PP_dim-1),1,nSides,MPIRequest_RPlus(:,RECV),SendID=2) ! Receive MINE / Geo: slave -> master
-CALL StartSendMPIData(   R_Plus,3*(PP_N+1)**(PP_dim-1),1,nSides,MPIRequest_RPlus(:,SEND),SendID=2) ! SEND YOUR / Geo: slave -> master
-CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_RPlus) 
-
-CALL StartReceiveMPIData(R_Minus,3*(PP_N+1)**(PP_dim-1),1,nSides,MPIRequest_RMinus(:,RECV),SendID=1) ! Receive YOUR / Geo: master -> slave
-CALL StartSendMPIData(R_Minus,3*(PP_N+1)**(PP_dim-1),1,nSides,MPIRequest_RMinus(:,SEND),SendID=1) ! SEND MINE / Geo: master -> slave
-CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_RMinus) 
-#endif
-
-END SUBROUTINE Build_BR2_SurfTerms
-#endif /*PARABOLIC*/
 
 #if FV_ENABLED
 !===================================================================================================================================
@@ -1823,7 +1236,6 @@ END DO !q
 END SUBROUTINE FVVolIntJac
 #endif /* FV_ENABLED */
 
-
 SUBROUTINE FinalizeJac_Ex()
 !===================================================================================================================================
 ! Deallocate global variables
@@ -1843,9 +1255,9 @@ SDEALLOCATE(LL_minus)
 SDEALLOCATE(LL_plus)
 SDEALLOCATE(l_mp)
 SDEALLOCATE(LL_mp)
+#if PARABOLIC
 SDEALLOCATE(nVec)
 SDEALLOCATE(Surf)
-#if PARABOLIC
 SDEALLOCATE(R_Minus)
 SDEALLOCATE(R_Plus)
 SDEALLOCATE(JacLiftingFlux)
