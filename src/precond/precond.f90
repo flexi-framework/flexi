@@ -150,6 +150,9 @@ USE MOD_Lifting_Vars  ,ONLY:gradUx_master,gradUy_master
 #if PP_dim==3
 USE MOD_Lifting_Vars  ,ONLY:gradUz_master
 #endif /*PP_dim*/
+#if EDDYVISCOSITY
+USE MOD_EddyVisc_Vars ,ONLY:muSGS_master
+#endif /*EDDYVISCOSITY*/
 #endif /*PARABOLIC*/
 #if FV_ENABLED
 USE MOD_MPI           ,ONLY:StartExchange_FV_Elems
@@ -226,6 +229,11 @@ CALL StartSendMPIData(   gradUy_master,DataSizeSidePrim,1,nSides,MPIRequest_grad
 CALL StartSendMPIData(   gradUz_master,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,3,SEND),SendID=1) ! SEND MINE    / gradUz_master
 #endif
 CALL FinishExchangeMPIData(6*nNbProcs,MPIRequest_gradU)    ! gradU(x,y,z)_master: master -> slave
+#if EDDYVISCOSITY
+CALL StartReceiveMPIData(muSGS_master,DataSizeSideSGS,1,nSides,MPIRequest_SGS(:,RECV),SendID=1)
+CALL StartSendMPIData   (muSGS_master,DataSizeSideSGS,1,nSides,MPIRequest_SGS(:,SEND),SendID=1)
+CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_SGS)  ! muSGS_slave: slave -> master
+#endif
 #endif /*PARABOLIC*/
 
 #if FV_ENABLED

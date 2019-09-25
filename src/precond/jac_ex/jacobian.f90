@@ -176,14 +176,13 @@ END SUBROUTINE EvalAdvFluxJacobian
 !===================================================================================================================================
 !> The Jacobian of the diffusion flux with respect to the conservative variables U
 !===================================================================================================================================
-SUBROUTINE EvalDiffFluxJacobian(U,UPrim,gradUx,gradUy,gradUz,fJac,gJac,hJac &
+SUBROUTINE EvalDiffFluxJacobian(nDOF_loc,U,UPrim,gradUx,gradUy,gradUz,fJac,gJac,hJac &
 #if EDDYVISCOSITY
                                 ,muSGS &
 #endif
                                 )
 ! MODULES
 USE MOD_PreProc
-USE MOD_DG_Vars           ,ONLY: nDOFElem
 USE MOD_Equation_Vars     ,ONLY:s23,s43
 USE MOD_Viscosity
 IMPLICIT NONE
@@ -191,12 +190,13 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------  
 !----------------------------------------------------------------------------------------------------------------------------------  
-REAL,DIMENSION(PP_nVar        ,nDOFElem),INTENT(IN)  :: U                    !< solution in conservative variables
-REAL,DIMENSION(PP_nVarPrim    ,nDOFElem),INTENT(IN)  :: UPrim                !< solution in primitive variables
-REAL,DIMENSION(PP_nVarPrim    ,nDOFElem),INTENT(IN)  :: gradUx,gradUy,gradUz !< primitive gradients
-REAL,DIMENSION(PP_nVar,PP_nVar,nDOFElem),INTENT(OUT) :: fJac,gJac,hJac       !< Derivative of the Cartesian fluxes (iVar,i,j,k)
+INTEGER,INTENT(IN)                                   :: nDOF_loc             !< number of degrees of freedom
+REAL,DIMENSION(PP_nVar        ,nDOF_loc),INTENT(IN)  :: U                    !< solution in conservative variables
+REAL,DIMENSION(PP_nVarPrim    ,nDOF_loc),INTENT(IN)  :: UPrim                !< solution in primitive variables
+REAL,DIMENSION(PP_nVarPrim    ,nDOF_loc),INTENT(IN)  :: gradUx,gradUy,gradUz !< primitive gradients
+REAL,DIMENSION(PP_nVar,PP_nVar,nDOF_loc),INTENT(OUT) :: fJac,gJac,hJac       !< Derivative of the Cartesian fluxes (iVar,i,j,k)
 #if EDDYVISCOSITY
-REAL,DIMENSION(1              ,nDOFElem),INTENT(IN)  :: muSGS                !< solution in primitive variables
+REAL,DIMENSION(1              ,nDOF_loc),INTENT(IN)  :: muSGS                !< solution in primitive variables
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -210,11 +210,9 @@ REAL                :: tau(2,2)
 !===================================================================================================================================
 fJac = 0.
 gJac = 0.
-#if PP_dim==3
 hJac = 0.
-#endif
 
-DO i=1,nDOFElem
+DO i=1,nDOF_loc
   muS = VISCOSITY_PRIM(UPrim(:,i))
 #if EDDYVISCOSITY
   muS = muS    + muSGS(1,i)

@@ -223,6 +223,7 @@ USE MOD_Jacobian      ,ONLY: EvalAdvFluxJacobian
 USE MOD_Precond_Vars  ,ONLy: EulerPrecond
 USE MOD_Lifting_Vars  ,ONLY: gradUx,gradUy,gradUz
 USE MOD_Jacobian      ,ONLY: EvalDiffFluxJacobian 
+USE MOD_DG_Vars       ,ONLY: nDOFElem
 #if EDDYVISCOSITY
 USE MOD_EddyVisc_Vars,ONLY: muSGS
 #endif /*EDDYVISCOSITY*/
@@ -235,6 +236,9 @@ USE MOD_Implicit_Vars ,ONLY: nDOFVarElem
 #ifdef SPLIT_DG
 USE MOD_DG_Vars       ,ONLY: DVolSurf
 USE MOD_Jac_Split     ,ONLY: Jac_Split
+#if EQNSYSNR==2 && PARABOLIC
+USE MOD_DG_Vars       ,ONLY: D_hat
+#endif
 #else
 USE MOD_DG_Vars       ,ONLY: D_hat,U,UPrim
 #endif
@@ -256,9 +260,9 @@ REAL,DIMENSION(PP_nVar,PP_nVar)                         :: hJacTilde
 #endif
 #ifdef SPLIT_DG
 INTEGER                                                 :: tt
-REAL,DIMENSION(PP_nVar,PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)   :: fJacVisc,gJacVisc
+REAL,DIMENSION(PP_nVar,PP_nVar)                         :: fJacVisc,gJacVisc
 #if PP_dim==3
-REAL,DIMENSION(PP_nVar,PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)   :: hJacVisc
+REAL,DIMENSION(PP_nVar,PP_nVar)                         :: hJacVisc
 #endif
 #else
 REAL,DIMENSION(PP_nVar,PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)   :: fJac,gJac,hJac
@@ -279,7 +283,7 @@ CALL EvalAdvFluxJacobian(U(:,:,:,:,iElem),UPrim(:,:,:,:,iElem),fJac,gJac,hJac)
 #if EQNSYSNR==2 && PARABOLIC
 !No CALL of EvalDiffFlux Jacobian for EQNSYSNR==1, since the diffusive flux is not depending on U
 IF(EulerPrecond.EQV..FALSE.) THEN !Euler Precond = False
-  CALL EvalDiffFluxJacobian(U(:,:,:,:,iElem),UPrim(:,:,:,:,iElem) &
+  CALL EvalDiffFluxJacobian(nDOFElem,U(:,:,:,:,iElem),UPrim(:,:,:,:,iElem) &
                             ,gradUx(:,:,:,:,iElem) &
                             ,gradUy(:,:,:,:,iElem) &
                             ,gradUz(:,:,:,:,iElem) &
@@ -486,8 +490,7 @@ USE MOD_PreProc
 USE MOD_Globals
 USE MOD_Jac_br2       ,ONLY: JacLifting_VolInt
 USE MOD_Precond_Vars  ,ONLY: NoFillIn
-USE MOD_DG_Vars       ,ONLY: D_hat
-USE MOD_DG_Vars       ,ONLY: U,UPrim
+USE MOD_DG_Vars       ,ONLY: D_hat,U,UPrim,nDOFElem
 USE MOD_Mesh_Vars     ,ONLY: Metrics_fTilde,Metrics_gTilde
 #if PP_dim==3
 USE MOD_Mesh_Vars     ,ONLY: Metrics_hTilde
@@ -495,9 +498,9 @@ USE MOD_Mesh_Vars     ,ONLY: Metrics_hTilde
 USE MOD_Implicit_Vars ,ONLY: nDOFVarElem
 USE MOD_GradJacobian  ,ONLY: EvalFluxGradJacobian
 #if EDDYVISCOSITY
-USE MOD_EddyVisc_Vars,ONLY: muSGS
+USE MOD_EddyVisc_Vars ,ONLY: muSGS
 #endif /*EDDYVISCOSITY*/
-USE MOD_Jacobian     ,ONLY: dPrimTempdCons
+USE MOD_Jacobian      ,ONLY: dPrimTempdCons
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -527,7 +530,7 @@ vn1=PP_nVar*(PP_N+1)
 vn2=vn1*(PP_N+1)
 ! Calculation of the derivative of the diffusive flux with respect to gradU
 ! dF/dQ
-CALL EvalFluxGradJacobian(U(:,:,:,:,iElem),UPrim(:,:,:,:,iElem) &
+CALL EvalFluxGradJacobian(nDOFElem,U(:,:,:,:,iElem),UPrim(:,:,:,:,iElem) &
                           ,fJacQx,fJacQy,fJacQz &
                           ,gJacQx,gJacQy,gJacQz &
                           ,hJacQx,hJacQy,hJacQz &

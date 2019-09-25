@@ -37,7 +37,15 @@ INTERFACE JacLifting_VolInt
   MODULE PROCEDURE JacLifting_VolInt
 END INTERFACE
 
-PUBLIC::FillJacLiftingFlux,JacLifting_VolInt,BuildnVecTangSurf,Build_BR2_SurfTerms
+INTERFACE dQOuter
+  MODULE PROCEDURE dQOuter
+END INTERFACE
+
+INTERFACE dQInner
+  MODULE PROCEDURE dQInner
+END INTERFACE
+
+PUBLIC::FillJacLiftingFlux,JacLifting_VolInt,BuildnVecTangSurf,Build_BR2_SurfTerms,dQOuter,dQInner
 !===================================================================================================================================
 
 CONTAINS
@@ -622,6 +630,231 @@ CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_RMinus)
 #endif
 
 END SUBROUTINE Build_BR2_SurfTerms
+
+!===================================================================================================================================
+!> Contains the dervative of the BR2 scheme in U_vol: dQ_dUVol
+!> ONLY THE DERIVATIVE OF Q_INNER !!!!!
+!> computation is done for one element!
+!===================================================================================================================================
+SUBROUTINE dQInner(dir,iElem,dQ_dUVolInner,dQVol_dU)
+! MODULES
+USE MOD_Globals
+USE MOD_PreProc
+USE MOD_Mesh_Vars                 ,ONLY: ElemToSide,S2V2
+USE MOD_Jac_Ex_Vars               ,ONLY: l_mp
+USE MOD_Jac_Ex_Vars               ,ONLY: R_Minus,R_Plus
+USE MOD_Jac_Ex_Vars               ,ONLY: JacLiftingFlux 
+USE MOD_Mesh_Vars                 ,ONLY: Metrics_fTilde,Metrics_gTilde,sJ   ! metrics
+#if PP_dim==3
+USE MOD_Mesh_Vars                 ,ONLY: Metrics_hTilde   ! metrics
+#endif
+USE MOD_DG_Vars                   ,ONLY: D
+USE MOD_Lifting_Vars              ,ONLY: etaBR2
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+INTEGER,INTENT(IN)                                  :: dir
+INTEGER,INTENT(IN)                                  :: iElem
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+#if PP_dim == 3
+REAL,INTENT(OUT)                                    :: dQ_dUVolInner(PP_nVarPrim,PP_nVarPrim,0:PP_N,0:PP_NZ,6,0:PP_N)
+#else
+REAL,INTENT(OUT)                                    :: dQ_dUVolInner(PP_nVarPrim,PP_nVarPrim,0:PP_N,0:PP_NZ,2:5,0:PP_N)
+#endif
+REAL,INTENT(OUT)                                    :: dQVol_dU(0:PP_N,0:PP_N,0:PP_NZ,0:PP_N,PP_dim)
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                                             :: iLocSide,p,q,i,j,k,mm,nn,ll
+#if PP_dim == 3
+INTEGER                                             :: oo
+#endif
+INTEGER                                             :: SideID,Flip,jk(2)
+REAL                                                :: r (0:PP_N,0:PP_NZ)
+REAL                                                :: dQ_dUVolInner_loc(0:PP_N,0:PP_NZ,0:PP_N)
+!===================================================================================================================================
+
+
+dQ_dUVolInner=0.
+
+DO ll=0,PP_N
+  DO k=0,PP_NZ
+    DO j=0,PP_N
+      DO i=0,PP_N
+        dQVol_dU(i,j,k,ll,1) =  sJ(i,j,k,iElem,0)  *  D(i,ll)*Metrics_fTilde(dir,ll,j,k,iElem,0)
+        dQVol_dU(i,j,k,ll,2) =  sJ(i,j,k,iElem,0)  *  D(j,ll)*Metrics_gTilde(dir,i,ll,k,iElem,0)
+#if PP_dim==3
+        dQVol_dU(i,j,k,ll,3) =  sJ(i,j,k,iElem,0)  *  D(k,ll)*Metrics_hTilde(dir,i,j,ll,iElem,0)
+#endif
+      END DO !i
+    END DO !j
+  END DO !k
+END DO !ll
+
+!Computation of the dQ_Side/dU_Vol (inner part)
+#if PP_dim == 3
+DO iLocSide=1,6
+#else    
+DO iLocSide=2,5
+#endif    
+  SideID=ElemToSide(E2S_SIDE_ID,iLocSide,iElem)
+  Flip  =ElemToSide(E2S_FLIP,iLocSide,iElem)
+  IF(Flip.EQ.0)THEN !master
+    DO q=0,PP_NZ
+      DO p=0,PP_N
+        jk(:)=S2V2(:,p,q,Flip,iLocSide)
+        r(jk(1),jk(2))=R_Minus(dir,p,q,SideID)
+      END DO !p
+    END DO !q
+  ELSE !slave
+    DO q=0,PP_NZ
+      DO p=0,PP_N
+        jk(:)=S2V2(:,p,q,Flip,iLocSide)
+        r(jk(1),jk(2))=R_Plus(dir,p,q,SideID)
+      END DO !p
+    END DO !q
+  END IF !Flip=0
+
+  dQ_dUVolInner_loc=0.
+  SELECT CASE(iLocSide)
+
+  CASE(XI_MINUS,XI_PLUS)
+    DO mm=0,PP_N
+      DO k=0,PP_NZ
+        DO j=0,PP_N
+          dQ_dUVolInner_loc(j,k,mm)   = dQ_dUVolInner_loc(j,k,mm) + etaBR2 * r(j,k) * l_mp(mm,iLocSide)
+        END DO !j
+      END DO !k
+    END DO !mm
+  CASE(ETA_MINUS,ETA_PLUS)
+    DO nn=0,PP_N
+      DO k=0,PP_NZ
+        DO i=0,PP_N
+          dQ_dUVolInner_loc(i,k,nn) = dQ_dUVolInner_loc(i,k,nn) + etaBR2 * r(i,k) * l_mp(nn,iLocSide)
+        END DO !i
+      END DO !k
+    END DO !nn
+#if PP_dim==3
+  CASE(ZETA_MINUS,ZETA_PLUS)
+    DO oo=0,PP_N
+      DO j=0,PP_N
+        DO i=0,PP_N
+          dQ_dUVolInner_loc(i,j,oo) = dQ_dUVolInner_loc(i,j,oo) + etaBR2 * r(i,j) * l_mp(oo,iLocSide)
+        END DO !i
+      END DO !j
+    END DO !oo
+#endif
+  END SELECT
+  DO k=0,PP_NZ
+    DO j=0,PP_N
+      DO mm=0,PP_N
+          dQ_dUVolInner(:,:,j,k,iLocSide,mm)=JacLiftingFlux(:,:,j,k,iLocSide)*dq_dUVolinner_loc(j,k,mm)
+      END DO
+    END DO !p
+  END DO !q
+END DO !iLocSide
+
+END SUBROUTINE dQInner
+
+!===================================================================================================================================
+!> Contains the dervative of the BR2 scheme in U_vol: dQ_dUVol
+!> ONLY THE DERIVATIVE OF Q_OUTER !!!!!
+!> computation is done for one element!
+!===================================================================================================================================
+SUBROUTINE dQOuter(dir,iElem,dQ_dUVolOuter)
+! MODULES
+USE MOD_Globals
+USE MOD_PreProc
+USE MOD_Mesh_Vars                 ,ONLY: ElemToSide,S2V2,nBCSides
+USE MOD_Jac_Ex_Vars               ,ONLY: Surf,l_mp
+USE MOD_Jac_Ex_Vars               ,ONLY: R_Minus,R_Plus
+USE MOD_Lifting_Vars              ,ONLY: etaBR2
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+INTEGER,INTENT(IN)                                  :: dir
+INTEGER,INTENT(IN)                                  :: iElem
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+#if PP_dim == 3
+REAL,INTENT(OUT)                                    :: dQ_dUVolOuter(0:PP_N,0:PP_NZ,6,0:PP_N)
+#else
+REAL,INTENT(OUT)                                    :: dQ_dUVolOuter(0:PP_N,0:PP_NZ,2:5,0:PP_N)
+#endif
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                                             :: iLocSide,p,q,i,j,k,mm,nn
+#if PP_dim == 3
+INTEGER                                             :: oo
+#endif
+INTEGER                                             :: SideID,Flip,jk(2)
+REAL                                                :: r(0:PP_N,0:PP_NZ)
+!===================================================================================================================================
+dQ_dUVolOuter=0.
+
+!Computation of the dQ_Side/dU_Vol (outer part)
+#if PP_dim == 3
+DO iLocSide=1,6
+#else    
+DO iLocSide=2,5
+#endif    
+  SideID=ElemToSide(E2S_SIDE_ID,iLocSide,iElem)
+  IF(SideID.LE.nBCSides) CYCLE  !for boundary conditions, dQ_dUVol=0.
+  Flip  =ElemToSide(E2S_FLIP,iLocSide,iElem)
+  IF(Flip.EQ.0)THEN
+    DO q=0,PP_NZ
+      DO p=0,PP_N
+        jk(:)=S2V2(:,p,q,Flip,iLocSide)
+        r(jk(1),jk(2))=R_Plus(dir,p,q,SideID)
+      END DO !p
+    END DO !q
+  ELSE
+    DO q=0,PP_NZ
+      DO p=0,PP_N
+        jk(:)=S2V2(:,p,q,Flip,iLocSide)
+        r(jk(1),jk(2))=R_Minus(dir,p,q,SideID)
+      END DO !p
+    END DO !q
+  END IF !Flip=0
+
+  SELECT CASE(iLocSide)
+  CASE(XI_MINUS,XI_PLUS)
+    DO mm=0,PP_N
+      DO k=0,PP_NZ
+        DO j=0,PP_N
+          dQ_dUVolOuter(j,k,iLocSide,mm) = dQ_dUVolOuter(j,k,iLocSide,mm) + 0.5*etaBR2 * r(j,k) * &
+                                           l_mp(mm,iLocSide)*Surf(j,k,iLocSide,iElem)
+        END DO !j
+      END DO !k
+    END DO !mm
+  CASE(ETA_MINUS,ETA_PLUS)
+    DO nn=0,PP_N
+      DO k=0,PP_NZ
+        DO i=0,PP_N
+          dQ_dUVolOuter(i,k,iLocSide,nn) = dQ_dUVolOuter(i,k,iLocSide,nn) + 0.5*etaBR2 * r(i,k) * &
+                                           l_mp(nn,iLocSide)*Surf(i,k,iLocSide,iElem)
+
+        END DO !i
+      END DO !k
+    END DO !nn
+#if PP_dim==3
+  CASE(ZETA_MINUS,ZETA_PLUS)
+    DO oo=0,PP_N
+      DO j=0,PP_N
+        DO i=0,PP_N
+          dQ_dUVolOuter(i,j,iLocSide,oo) = dQ_dUVolOuter(i,j,iLocSide,oo) + 0.5*etaBR2 * r(i,j) * &
+                                           l_mp(oo,iLocSide)*Surf(i,j,iLocSide,iElem)
+
+        END DO !i
+      END DO !j
+    END DO !oo
+#endif
+  END SELECT
+END DO !iLocSide
+
+END SUBROUTINE dQOuter
 
 !SUBROUTINE ConsToPrimJac(U,UPrim,PrimConsJac)
 !!===================================================================================================================================

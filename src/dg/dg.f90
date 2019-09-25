@@ -121,6 +121,7 @@ Flux_master=0.
 Flux_slave=0.
 
 ! variables for performance tricks
+nDOFFace=(PP_N+1)**(PP_dim-1)
 nDOFElem=(PP_N+1)**PP_dim
 nTotalU=PP_nVar*nDOFElem*nElems
 

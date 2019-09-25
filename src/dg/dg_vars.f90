@@ -63,7 +63,8 @@ REAL,ALLOCATABLE                      :: Ut(:,:,:,:,:)          !< Residual/time
 !----------------------------------------------------------------------------------------------------------------------------------
 ! auxilliary counters: number of entries in U, Ut, gradUx, gradUy, gradUz, used of optimization
 INTEGER                               :: nTotalU                !< Total number of entries in U / size of U.
-
+INTEGER                               :: nDOFFace               !< Degrees of freedom on single face(per equation)
+                                                                !< $ nDOFace=(N+1)^2 $.
 INTEGER                               :: nDOFElem               !< Degrees of freedom in single element(per equation)
                                                                 !< $ nDOFElem=(N+1)^3 $.
 

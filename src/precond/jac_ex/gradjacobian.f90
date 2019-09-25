@@ -41,28 +41,28 @@ CONTAINS
 !===================================================================================================================================
 !> Computes the volume derivative of the analytical diffusive flux with respect to the gradient of U: d(F^v)/dQ, Q=grad U
 !===================================================================================================================================
-SUBROUTINE EvalFluxGradJacobian(U,UPrim,fJacQx,fJacQy,fJacQz,gJacQx,gJacQy,gJacQz,hJacQx,hJacQy,hJacQz &
+SUBROUTINE EvalFluxGradJacobian(nDOF_loc,U,UPrim,fJacQx,fJacQy,fJacQz,gJacQx,gJacQy,gJacQz,hJacQx,hJacQy,hJacQz &
 #if EDDYVISCOSITY
                                ,muSGS &
 #endif
                                )
 ! MODULES
 USE MOD_PreProc
-USE MOD_DG_Vars,      ONLY:nDOFElem
 USE MOD_Equation_Vars,ONLY:DiffC
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-REAL,DIMENSION(PP_nVar    ,nDOFElem),INTENT(IN) :: U
-REAL,DIMENSION(PP_nVarPrim,nDOFElem),INTENT(IN) :: UPrim
+INTEGER,INTENT(IN)                              :: nDOF_loc
+REAL,DIMENSION(PP_nVar    ,nDOF_loc),INTENT(IN) :: U
+REAL,DIMENSION(PP_nVarPrim,nDOF_loc),INTENT(IN) :: UPrim
 #if EDDYVISCOSITY
-REAL,DIMENSION(1          ,nDOFElem),INTENT(IN) :: muSGS
+REAL,DIMENSION(1          ,nDOF_loc),INTENT(IN) :: muSGS
 #endif
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
                                                         ! Gradient of the diffusive Cartesian fluxes (iVar,i,j,k)
-REAL,DIMENSION(PP_nVar,PP_nVar,Nloc),INTENT(OUT) :: fJacQx,fJacQy,fJacQz,gJacQx,gJacQy,gJacQz,hJacQx,hJacQy,hJacQz
+REAL,DIMENSION(PP_nVar,PP_nVar,nDOF_loc),INTENT(OUT) :: fJacQx,fJacQy,fJacQz,gJacQx,gJacQy,gJacQz,hJacQx,hJacQy,hJacQz
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
@@ -86,7 +86,7 @@ END SUBROUTINE EvalFluxGradJacobian
 !===================================================================================================================================
 !> Computes the volume derivative of the analytical diffusive flux with respect to the gradient of U: d(F^v)/dQ, Q=grad U
 !===================================================================================================================================
-SUBROUTINE EvalFluxGradJacobian(U,UPrim,fJacQx,fJacQy,fJacQz,gJacQx,gJacQy,gJacQz,hJacQx,hJacQy,hJacQz &
+SUBROUTINE EvalFluxGradJacobian(nDOF_loc,U,UPrim,fJacQx,fJacQy,fJacQz,gJacQx,gJacQy,gJacQz,hJacQx,hJacQy,hJacQz &
 #if EDDYVISCOSITY
                                ,muSGS &
 #endif
@@ -94,7 +94,6 @@ SUBROUTINE EvalFluxGradJacobian(U,UPrim,fJacQx,fJacQy,fJacQz,gJacQx,gJacQy,gJacQ
 ! MODULES
 USE MOD_PreProc
 USE MOD_Viscosity
-USE MOD_DG_Vars,      ONLY:nDOFElem
 USE MOD_Equation_Vars,ONLY:s43,s23
 USE MOD_EOS_Vars,     ONLY:cp,Pr
 #if EDDYVISCOSITY
@@ -104,21 +103,22 @@ USE MOD_EddyVisc_Vars,ONLY: PrSGS
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-REAL,DIMENSION(PP_nVar    ,nDOFElem),INTENT(IN)          :: U
-REAL,DIMENSION(PP_nVarPrim,nDOFElem),INTENT(IN)          :: UPrim
+INTEGER,INTENT(IN)                                       :: nDOF_loc
+REAL,DIMENSION(PP_nVar    ,nDOF_loc),INTENT(IN)          :: U
+REAL,DIMENSION(PP_nVarPrim,nDOF_loc),INTENT(IN)          :: UPrim
 #if EDDYVISCOSITY
-REAL,DIMENSION(1          ,nDOFElem),INTENT(IN)          :: muSGS
+REAL,DIMENSION(1          ,nDOF_loc),INTENT(IN)          :: muSGS
 #endif
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
                                                         ! Gradient of the diffusive Cartesian fluxes (iVar,i,j,k)
-REAL,DIMENSION(PP_nVar,PP_nVarPrim,nDOFElem),INTENT(OUT) :: fJacQx,fJacQy,fJacQz,gJacQx,gJacQy,gJacQz,hJacQx,hJacQy,hJacQz
+REAL,DIMENSION(PP_nVar,PP_nVarPrim,nDOF_loc),INTENT(OUT) :: fJacQx,fJacQy,fJacQz,gJacQx,gJacQy,gJacQz,hJacQx,hJacQy,hJacQz
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER             :: i
 REAL                :: muS,lambda
 !===================================================================================================================================
-DO i=1,nDOFElem
+DO i=1,nDOF_loc
   muS    = VISCOSITY_PRIM(UPrim(:,i))
   lambda = THERMAL_CONDUCTIVITY_H(muS)
   !Add turbulent sub grid scale viscosity to mu

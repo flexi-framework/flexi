@@ -61,9 +61,6 @@ USE MOD_PreProc
 USE MOD_Implicit_Vars           ,ONLY: reps0,sreps0
 USE MOD_GetBoundaryFlux         ,ONLY: GetBoundaryFlux
 USE MOD_EOS                     ,ONLY: ConsToPrim
-#if PARABOLIC
-!USE MOD_EOS                     ,ONLY: ConsToPrimLifting_loc
-#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -87,10 +84,10 @@ REAL,INTENT(IN)              :: gradUz_Face(PP_nVarPrim,0:PP_N,0:PP_NZ)
 ! OUTPUT VARIABLES
 REAL,INTENT(OUT)             :: DfDU(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ,2)
 #if PARABOLIC
-REAL,INTENT(OUT),DIMENSION(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ) :: Df_DQxInner
-REAL,INTENT(OUT),DIMENSION(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ) :: Df_DQyInner
-#if PP_dim==3
-REAL,INTENT(OUT),DIMENSION(PP_nVar,PP_nVar,0:PP_N,0:PP_N) :: Df_DQzInner
+REAL,INTENT(OUT),DIMENSION(PP_nVar,PP_nVarPrim,0:PP_N,0:PP_NZ) :: Df_DQxInner
+REAL,INTENT(OUT),DIMENSION(PP_nVar,PP_nVarPrim,0:PP_N,0:PP_NZ) :: Df_DQyInner
+#if PP_dim==3                                 
+REAL,INTENT(OUT),DIMENSION(PP_nVar,PP_nVarPrim,0:PP_N,0:PP_N)  :: Df_DQzInner
 #endif
 #endif /*PARABOLIC*/
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -100,33 +97,31 @@ INTEGER                      :: p,q
 #if PARABOLIC
 REAL                         :: gradUx_Face_Tilde(PP_nVarPrim,0:PP_N,0:PP_NZ)
 REAL                         :: gradUy_Face_Tilde(PP_nVarPrim,0:PP_N,0:PP_NZ)
+REAL                         :: F_Face_TildeQx   (PP_nVar    ,0:PP_N,0:PP_NZ)
+REAL                         :: F_Face_TildeQy   (PP_nVar    ,0:PP_N,0:PP_NZ)
+#if PP_dim==3
 REAL                         :: gradUz_Face_Tilde(PP_nVarPrim,0:PP_N,0:PP_N)
+REAL                         :: F_Face_TildeQz   (PP_nVar    ,0:PP_N,0:PP_NZ)
+#endif
 #endif /*PARABOLCIC*/
 REAL                         :: UPrim_master_Tilde(PP_nVarPrim,0:PP_N,0:PP_NZ)
-REAL                         :: U_master_Tilde    (PP_nVar,0:PP_N,0:PP_NZ)
-REAL                         :: F_Face_Tilde      (PP_nVar,0:PP_N,0:PP_NZ)
-REAL                         :: F_Face            (PP_nVar,0:PP_N,0:PP_NZ)
+REAL                         :: U_master_Tilde    (PP_nVar    ,0:PP_N,0:PP_NZ)
+REAL                         :: F_Face_Tilde      (PP_nVar    ,0:PP_N,0:PP_NZ)
+REAL                         :: F_Face            (PP_nVar    ,0:PP_N,0:PP_NZ)
 
 !===================================================================================================================================
-CALL GetBoundaryFlux(SideID,t,PP_N,F_Face,UPrim_master, &
+CALL GetBoundaryFlux(SideID,t,PP_N,F_Face,UPrim_master,   &
 #if PARABOLIC
-                           gradUx_Face,gradUy_Face,gradUz_Face, &
+                     gradUx_Face,gradUy_Face,gradUz_Face, &
 #endif /*PARABOLIC*/
-                           normal,tangent1,tangent2,xGP_Face)
+                     normal,tangent1,tangent2,xGP_Face)
 U_master_Tilde = U_master
 DO jVar=1,PP_nVar
   U_master_Tilde(jVar,:,:) = U_master_Tilde(jVar,:,:) + reps0
   CALL ConsToPrim(PP_N,UPrim_master_Tilde,U_master_Tilde) 
-!#if PARABOLIC
-  !DO q=0,PP_NZ; DO p=0,PP_N
-    !CALL ConsToPrimLifting_loc(gradUx_Face_cons(:,p,q),gradUy_Face_cons(:,p,q),gradUz_Face_cons(:,p,q),UPrim_master_Tilde(:,p,q),&
-        !gradUx_Face_Tilde_prim(:,p,q),gradUy_Face_Tilde_prim(:,p,q),gradUz_Face_Tilde_prim(:,p,q))
-  !END DO; END DO! p,q
-!#endif /*PARABOLIC*/
-
   CALL GetBoundaryFlux(SideID,t,PP_N,F_Face_Tilde,UPrim_master_Tilde, &
 #if PARABOLIC
-                       gradUx_Face_Tilde,gradUy_Face_Tilde,gradUz_Face_Tilde, &
+                       gradUx_Face,gradUy_Face,gradUz_Face,           &
 #endif /*PARABOLIC*/
                        normal,tangent1,tangent2,xGP_Face)
   DO iVar=1,PP_nVar
@@ -143,80 +138,42 @@ END DO !jVar
 dFdU(:,:,:,:,2) = 0. ! only valid for Dirichlet Type BCs
 #endif
 
-
-!#if PARABOLIC
-!! dF_dQxInner
-!gradUx_Face_Tilde_cons = gradUx_Face_cons
-!DO jVar=1,PP_nVar
-  !gradUx_Face_Tilde_cons(jVar,:,:) = gradUx_Face_Tilde_cons(jVar,:,:) + reps0
-  !DO q=0,PP_NZ; DO p=0,PP_N
-    !CALL ConsToPrimLifting_loc(gradUx_Face_Tilde_cons(:,p,q),gradUy_Face_cons(:,p,q),gradUz_Face_cons(:,p,q),UPrim_master(:,p,q),&
-        !gradUx_Face_Tilde_prim(:,p,q),gradUy_Face_Tilde_prim(:,p,q),gradUz_Face_Tilde_prim(:,p,q))
-  !END DO; END DO! p,q
-  !CALL GetBoundaryFlux(SideID,t,PP_N,F_Face_Tilde,UPrim_master, &
-                       !gradUx_Face_Tilde_prim,&
-                       !gradUy_Face_Tilde_prim,&
-                       !gradUz_Face_Tilde_prim,&
-                       !normal,tangent1,tangent2,xGP_Face)
-  !DO iVar=1,PP_nVar
-    !DO q=0,PP_NZ
-      !DO p=0,PP_N
-        !dF_dQxInner(iVar,jVar,jk(1,p,q),jk(2,p,q)) = surfElem(p,q)*(F_Face_Tilde(iVar,p,q)-F_Face(iVar,p,q))*sreps0
-      !END DO !p
-    !END DO !q
-  !END DO ! iVar
-  !gradUx_Face_Tilde_cons(jVar,:,:) = gradUx_Face_cons(jVar,:,:) 
-!END DO !jVar
-
-!! dF_dQyInner
-!gradUy_Face_Tilde_cons = gradUy_Face_cons
-!DO jVar=1,PP_nVar
-  !gradUy_Face_Tilde_cons(jVar,:,:) = gradUy_Face_Tilde_cons(jVar,:,:) + reps0
-  !DO q=0,PP_NZ; DO p=0,PP_N
-    !CALL ConsToPrimLifting_loc(gradUx_Face_cons(:,p,q),gradUy_Face_Tilde_cons(:,p,q),gradUz_Face_cons(:,p,q),UPrim_master(:,p,q),&
-        !gradUx_Face_Tilde_prim(:,p,q),gradUy_Face_Tilde_prim(:,p,q),gradUz_Face_Tilde_prim(:,p,q))
-  !END DO; END DO! p,q
-  !CALL GetBoundaryFlux(SideID,t,PP_N,F_Face_Tilde,UPrim_master, &
-                       !gradUx_Face_Tilde_prim,&
-                       !gradUy_Face_Tilde_prim,&
-                       !gradUz_Face_Tilde_prim,&
-                       !normal,tangent1,tangent2,xGP_Face)
-  !DO iVar=1,PP_nVar
-    !DO q=0,PP_NZ
-      !DO p=0,PP_N
-        !dF_dQyInner(iVar,jVar,jk(1,p,q),jk(2,p,q)) = surfElem(p,q)*(F_Face_Tilde(iVar,p,q)-F_Face(iVar,p,q))*sreps0
-      !END DO !p
-    !END DO !q
-  !END DO ! iVar
-  !gradUy_Face_Tilde_cons(jVar,:,:) = gradUy_Face_cons(jVar,:,:) 
-!END DO !jVar
-
-!#if PP_dim==3
-!! dF_dQzInner
-!gradUz_Face_Tilde_cons = gradUz_Face_cons
-!DO jVar=1,PP_nVar
-  !gradUz_Face_Tilde_cons(jVar,:,:) = gradUz_Face_Tilde_cons(jVar,:,:) + reps0
-  !DO q=0,PP_NZ; DO p=0,PP_N
-    !CALL ConsToPrimLifting_loc(gradUx_Face_cons(:,p,q),gradUy_Face_cons(:,p,q),gradUz_Face_Tilde_cons(:,p,q),UPrim_master(:,p,q),&
-        !gradUx_Face_Tilde_prim(:,p,q),gradUy_Face_Tilde_prim(:,p,q),gradUz_Face_Tilde_prim(:,p,q))
-  !END DO; END DO! p,q
-  !CALL GetBoundaryFlux(SideID,t,PP_N,F_Face_Tilde,UPrim_master, &
-                       !gradUx_Face_Tilde_prim,&
-                       !gradUy_Face_Tilde_prim,&
-                       !gradUz_Face_Tilde_prim,&
-                       !normal,tangent1,tangent2,xGP_Face)
-  !DO iVar=1,PP_nVar
-    !DO q=0,PP_N
-      !DO p=0,PP_N
-        !dF_dQzInner(iVar,jVar,jk(1,p,q),jk(2,p,q)) = surfElem(p,q)*(F_Face_Tilde(iVar,p,q)-F_Face(iVar,p,q))*sreps0
-        !!dF_dQzInner(iVar,jVar,jk(1,p,q),jk(2,p,q)) = (F_Face_Tilde(iVar,p,q)-F_Face(iVar,p,q))
-      !END DO !p
-    !END DO !q
-  !END DO ! iVar
-  !gradUz_Face_Tilde_cons(jVar,:,:) = gradUz_Face_cons(jVar,:,:) 
-!END DO !jVar
-!#endif
-!#endif /*PARABOLIC*/
+#if PARABOLIC
+! dF_dQxyzInner
+gradUx_Face_Tilde = gradUx_Face
+DO jVar=1,PP_nVarPrim
+  gradUx_Face_Tilde(jVar,:,:) = gradUx_Face_Tilde(jVar,:,:) + reps0
+  gradUy_Face_Tilde(jVar,:,:) = gradUy_Face_Tilde(jVar,:,:) + reps0
+  CALL GetBoundaryFlux(SideID,t,PP_N,F_Face_TildeQx,UPrim_master,   &
+                       gradUx_Face_Tilde,gradUy_Face,gradUz_Face, &
+                       normal,tangent1,tangent2,xGP_Face)
+  CALL GetBoundaryFlux(SideID,t,PP_N,F_Face_TildeQy,UPrim_master,   &
+                       gradUx_Face,gradUy_Face_Tilde,gradUz_Face, &
+                       normal,tangent1,tangent2,xGP_Face)
+#if PP_dim==3
+  gradUz_Face_Tilde(jVar,:,:) = gradUz_Face_Tilde(jVar,:,:) + reps0
+  CALL GetBoundaryFlux(SideID,t,PP_N,F_Face_TildeQz,UPrim_master,   &
+                       gradUx_Face,gradUy_Face,gradUz_Face_Tilde, &
+                       normal,tangent1,tangent2,xGP_Face)
+#endif
+  DO iVar=1,PP_nVar
+    DO q=0,PP_NZ
+      DO p=0,PP_N
+        dF_dQxInner(iVar,jVar,jk(1,p,q),jk(2,p,q)) = surfElem(p,q)*(F_Face_TildeQx(iVar,p,q)-F_Face(iVar,p,q))*sreps0
+        dF_dQyInner(iVar,jVar,jk(1,p,q),jk(2,p,q)) = surfElem(p,q)*(F_Face_TildeQy(iVar,p,q)-F_Face(iVar,p,q))*sreps0
+#if PP_dim==3
+        dF_dQzInner(iVar,jVar,jk(1,p,q),jk(2,p,q)) = surfElem(p,q)*(F_Face_TildeQz(iVar,p,q)-F_Face(iVar,p,q))*sreps0
+#endif
+      END DO !p
+    END DO !q
+  END DO ! iVar
+  gradUx_Face_Tilde(jVar,:,:) = gradUx_Face(jVar,:,:) 
+  gradUy_Face_Tilde(jVar,:,:) = gradUy_Face(jVar,:,:) 
+#if PP_dim==3
+  gradUz_Face_Tilde(jVar,:,:) = gradUz_Face(jVar,:,:) 
+#endif
+END DO !jVar
+#endif /*PARABOLIC*/
 
 END SUBROUTINE GetBoundaryFlux_FD
 
