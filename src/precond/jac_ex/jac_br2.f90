@@ -158,40 +158,6 @@ DO ll=0,PP_N
     END DO !j
   END DO !k
 END DO !ll
-
-    !DO ll=0,PP_N
-      !DO k=0,PP_NZ
-        !DO j=0,PP_N
-          !DO i=0,PP_N
-            !temp1 = D(i,ll)*Metrics_fTilde(dir,ll,j,k,iElem,0)
-            !temp2 = D(j,ll)*Metrics_gTilde(dir,i,ll,k,iElem,0)
-!#if PP_dim==3
-            !temp3 = D(k,ll)*Metrics_hTilde(dir,i,j,ll,iElem,0)
-!#endif
-            !DO s=1,PP_nVar
-              !!Compute only diagonal elements, since JacLiftingFlux is diagonal for all lifting_geboundaryflux cases
-              !JacLifting(s,s,i,j,k,ll,1) = sJ(i,j,k,iElem,0)*(temp1 &
-                                                         !+ nVec(dir,j,k,   XI_PLUS,iElem)*LL_plus(i,ll)                &
-                                                           !*JacLiftingFlux(s,s,j,k,XI_PLUS)                            &
-                                                         !+ nVec(dir,j,k,  XI_MINUS,iElem)*LL_minus(i,ll)               &
-                                                           !*JacLiftingFlux(s,s,j,k,XI_MINUS) )
-              !JacLifting(s,s,i,j,k,ll,2) = sJ(i,j,k,iElem,0)*( temp2 &
-                                                         !+ nVec(dir,i,k,  ETA_PLUS,iElem)*LL_plus(j,ll)                &
-                                                           !*JacLiftingFlux(s,s,i,k,ETA_PLUS)                           &
-                                                         !+ nVec(dir,i,k, ETA_MINUS,iElem)*LL_minus(j,ll)               &
-                                                           !*JacLiftingFlux(s,s,i,k,ETA_MINUS) )
-!#if PP_dim==3
-              !JacLifting(s,s,i,j,k,ll,3) = sJ(i,j,k,iElem,0)*( temp3 &
-                                                     !+ nVec(dir,i,j, ZETA_PLUS,iElem)*LL_plus(k,ll)                &
-                                                       !*JacLiftingFlux(s,s,i,k,ZETA_PLUS)                          &
-                                                     !+ nVec(dir,i,j,ZETA_MINUS,iElem)*LL_minus(k,ll)               &
-                                                       !*JacLiftingFlux(s,s,i,j,ZETA_MINUS) )
-!#endif
-            !END DO !s
-          !END DO !i
-        !END DO !j
-      !END DO !k
-    !END DO !ll
 END SUBROUTINE JacLifting_VolInt
 
 !===================================================================================================================================
@@ -480,15 +446,13 @@ IMPLICIT NONE
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                                      :: iElem,p,q,l,iLocSide,SideID,Flip
-REAL                                         :: RFace(0:PP_N,0:PP_NZ)
+INTEGER :: iElem,p,q,l,iLocSide,SideID,Flip
+REAL    :: RFace(0:PP_N,0:PP_NZ)
 #if USE_MPI
-!INTEGER :: MPIRequest_R(nNbProcs,2,2)
 INTEGER :: MPIRequest_RPlus(nNbProcs,2)
 INTEGER :: MPIRequest_RMinus(nNbProcs,2)
 #endif 
 !===================================================================================================================================
-
 ALLOCATE(R_Minus(3,0:PP_N,0:PP_NZ,1:nSides))
 ALLOCATE(R_Plus(3,0:PP_N,0:PP_NZ,1:nSides))
 R_Minus=0.
@@ -674,8 +638,6 @@ INTEGER                                             :: SideID,Flip,jk(2)
 REAL                                                :: r (0:PP_N,0:PP_NZ)
 REAL                                                :: dQ_dUVolInner_loc(0:PP_N,0:PP_NZ,0:PP_N)
 !===================================================================================================================================
-
-
 dQ_dUVolInner=0.
 
 DO ll=0,PP_N
@@ -855,56 +817,5 @@ DO iLocSide=2,5
 END DO !iLocSide
 
 END SUBROUTINE dQOuter
-
-!SUBROUTINE ConsToPrimJac(U,UPrim,PrimConsJac)
-!!===================================================================================================================================
-!! Calculates the derivative of the primitive Variables UPrim with respect to the conservative Variables U 
-!! in the volume coordinates (i,j,k)
-!! dUPrim(i,j,k)/DU(i,j,k)
-!!===================================================================================================================================
-!! MODULES
-!USE MOD_PreProc
-!USE MOD_EOS_Vars      ,ONLY:KappaM1,R
-!! IMPLICIT VARIABLE HANDLING
-!IMPLICIT NONE
-!!-----------------------------------------------------------------------------------------------------------------------------------
-!! INPUT / OUTPUT VARIABLES
-!REAL,DIMENSION(PP_nVar),INTENT(IN)              :: U
-!REAL,DIMENSION(PP_nVarPrim),INTENT(IN)          :: UPrim
-!REAL,DIMENSION(PP_nVarPrim,PP_nVar),INTENT(OUT) :: PrimConsJac  ! Derivative of The Primitive Variables in (i,j,k)
-!!-----------------------------------------------------------------------------------------------------------------------------------
-!! LOCAL VARIABLES 
-!!===================================================================================================================================
-!REAL             :: sRho,vv,p_rho,KappaM1sRhoR 
-!!==================================================================================================================================
-!#if EQNSYSNR==1
-!PrimConsJac=1.
-!#endif
-!#if EQNSYSNR==2
-!sRho=1./UPrim(1)
-!vv=SUM(UPrim(2:4)*UPrim(2:4))
-!!derivative of p=UPrim(5)
-!p_rho=KappaM1*0.5*vv
-!KappaM1sRhoR=KappaM1*sRho/R
-!!rho
-!!prim(1)=cons(1)
-!PrimConsJac(1,1:5) = (/               1.,   0., 0., 0., 0. /)
-!!velocity
-!!prim(2:4)=cons(2:4)*sRho
-!PrimConsJac(2,1:5) = (/ -UPrim(2)*sRho, sRho, 0., 0., 0. /)
-!PrimConsJac(3,1:5) = (/ -UPrim(3)*sRho, 0., sRho, 0., 0. /)
-!PrimConsJac(4,1:5) = (/ -UPrim(4)*sRho, 0., 0., sRho, 0. /)
-!!pressure
-!!prim(5)=KappaM1*(cons(5)-0.5*SUM(cons(2:4)*prim(2:4)))
-!PrimConsJac(5,1:5) = (/ p_rho, -KappaM1*UPrim(2), -KappaM1*UPrim(3), -KappaM1*UPrim(4), KappaM1 /)
-!!temperature
-!!prim(6) = prim(5)*sRho / R
-!!This row is not needed, since the fluxes are independent on $T$
-!PrimConsJac(6,1:5) =(/ KappaM1sRhoR*(vv-U(5)*sRho) , -KappaM1sRhoR*UPrim(2), -KappaM1sRhoR*UPrim(3), &
-                                                                                  !-KappaM1sRhoR*UPrim(4), KappaM1sRhoR /)
-!#endif
-
-!END SUBROUTINE ConsToPrimJac 
-
 END MODULE MOD_Jac_br2
 #endif /*PARABOLIC*/
