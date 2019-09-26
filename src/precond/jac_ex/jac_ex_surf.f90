@@ -278,11 +278,11 @@ DO iLocSide=2,5
 #endif /*navierstokes*/
         ! analytic viscous flux derivative: BR2 Flux is 1/2*(Fvisc(U^L,Q^L)+Fvisc(U^R,Q^R) )* (-nvec ), (slave)
         CALL  EvalFluxGradJacobian(nDOFFace,U_slave(:,:,:,SideID),UPrim_slave(:,:,:,SideID), &
-                                   fJacQx,fJacQy,fJacQz,    &
-                                   gJacQx,gJacQy,gJacQz,    &
-                                   hJacQx,hJacQy,hJacQz     &
+                                   fJacQx,fJacQy,fJacQz,     &
+                                   gJacQx,gJacQy,gJacQz,     &
+                                   hJacQx,hJacQy,hJacQz      &
 #if EDDYVISCOSITY
-                                 ,muSGS_slave(:,:,:,SideID) &
+                                  ,muSGS_slave(:,:,:,SideID) &
 #endif
                                   )
         DO q=0,PP_NZ

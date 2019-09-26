@@ -38,6 +38,10 @@ INTERFACE dPrimdCons
   MODULE PROCEDURE dPrimdCons
 END INTERFACE
 
+INTERFACE dConsdPrimTemp
+  MODULE PROCEDURE dConsdPrimTemp
+END INTERFACE
+
 INTERFACE dPrimTempdCons
   MODULE PROCEDURE dPrimTempdCons
 END INTERFACE
@@ -46,7 +50,7 @@ PUBLIC::EvalAdvFluxJacobian
 #if EQNSYSNR==2 && PARABOLIC
 PUBLIC::EvalDiffFluxJacobian
 #endif
-PUBLIC::dConsdPrim,dPrimdCons,dPrimTempdCons
+PUBLIC::dConsdPrim,dPrimdCons,dConsdPrimTemp,dPrimTempdCons
 !===================================================================================================================================
 
 CONTAINS
@@ -314,6 +318,28 @@ Jac(5,1:5)= (/  dedrho, UE(DENS)*UE(VEL1), UE(DENS)*UE(VEL2),                0.,
 END SUBROUTINE dConsdPrim
 
 !===================================================================================================================================
+!> The Jacobian of the transformation from primitive (including temperature) to conservative variables
+!===================================================================================================================================
+SUBROUTINE dConsdPrimTemp(UPrim,Jac)
+! MODULES
+USE MOD_PreProc
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL,DIMENSION(PP_nVarPrim)        ,INTENT(IN)  :: UPrim    !< primitive state vector
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL,DIMENSION(PP_nVar,PP_nVarPrim),INTENT(OUT) :: Jac      !< cons to prim Jacobian
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!===================================================================================================================================
+! fill jacobian without temperature
+CALL dConsdPrim(UPrim,Jac(1:5,1:5))
+Jac(1:5,6) = 0.
+END SUBROUTINE dConsdPrimTemp
+
+!===================================================================================================================================
 !> The Jacobian of the transformation from conservative to primitive variables
 !===================================================================================================================================
 SUBROUTINE dPrimdCons(UPrim,Jac)
@@ -382,7 +408,6 @@ sRhoR     =  1./(R*UPrim(1))
 Jac(6,1)   = dpdU(1  )*sRhoR-UPrim(5)*sRhoR/UPrim(1)
 Jac(6,2:4) = dpdU(2:4)*sRhoR
 Jac(6,5)   = dpdU(5  )*sRhoR
-
 
 END SUBROUTINE dPrimTempdCons
 #endif /*EQNSYSNR == 2*/

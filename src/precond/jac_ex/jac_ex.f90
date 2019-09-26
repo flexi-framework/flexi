@@ -277,12 +277,14 @@ REAL,DIMENSION(PP_nVar,PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)   :: fJac_loc,gJac_loc,hJa
 vn1=PP_nVar*(PP_N+1)
 vn2=vn1*(PP_N+1)
 #ifndef SPLIT_DG
+! dF^hyp/DU
 CALL EvalAdvFluxJacobian(U(:,:,:,:,iElem),UPrim(:,:,:,:,iElem),fJac,gJac,hJac)
 #endif
 
 #if EQNSYSNR==2 && PARABOLIC
 !No CALL of EvalDiffFlux Jacobian for EQNSYSNR==1, since the diffusive flux is not depending on U
 IF(EulerPrecond.EQV..FALSE.) THEN !Euler Precond = False
+  ! dF^visc/DU
   CALL EvalDiffFluxJacobian(nDOFElem,U(:,:,:,:,iElem),UPrim(:,:,:,:,iElem) &
                             ,gradUx(:,:,:,:,iElem) &
                             ,gradUy(:,:,:,:,iElem) &
@@ -482,7 +484,9 @@ END SUBROUTINE Apply_sJ
 #if PARABOLIC
 !===================================================================================================================================
 !> volume integral: the total derivative of the viscous flux with resprect to U:
-!>                    dF^v/DU_cons = dF^v/dQ_prim* DQ_prim/DU_prim* DU_prim/DU_cons
+!>                  dF^v/DU_cons = dF^v/dQ_prim* DQ_prim/DU_prim* DU_prim/DU_cons + dF^v/DU_cons
+!>                                       |              |                |              |
+!>                              FluxGradJacobian     Lifting      dPrimTempdCons  (already done in DGVolIntJac) 
 !===================================================================================================================================
 SUBROUTINE  DGVolIntGradJac(BJ,iElem)
 ! MODULES
@@ -550,9 +554,9 @@ DO k=0,PP_NZ
       ! Compute the transformed fluxes with the metric terms
       ! Attention 1: we store the transformed fluxes in f,g,h again
       fJacQx(:,:,i,j,k) = (fJacTilde(:,:)*Metrics_fTilde(1,i,j,k,iElem,0) &
-                          + gJacTilde(:,:)*Metrics_fTilde(2,i,j,k,iElem,0) &
+                          +gJacTilde(:,:)*Metrics_fTilde(2,i,j,k,iElem,0) &
 #if PP_dim==3
-                          + hJacTilde(:,:)*Metrics_fTilde(3,i,j,k,iElem,0) &
+                          +hJacTilde(:,:)*Metrics_fTilde(3,i,j,k,iElem,0) &
 #endif
                           )
       gJacQx(:,:,i,j,k) = (fJacTilde(:,:)*Metrics_gTilde(1,i,j,k,iElem,0) &
@@ -562,7 +566,7 @@ DO k=0,PP_NZ
 #endif
                           )
 #if PP_dim==3
-      hJacQx(:,:,i,j,k) = (fJacTilde(:,:)*Metrics_hTilde(1,i,j,k,iElem,0)  &
+      hJacQx(:,:,i,j,k) = (fJacTilde(:,:)*Metrics_hTilde(1,i,j,k,iElem,0) &
                           +gJacTilde(:,:)*Metrics_hTilde(2,i,j,k,iElem,0) &
                           +hJacTilde(:,:)*Metrics_hTilde(3,i,j,k,iElem,0) &
                           )
@@ -585,9 +589,10 @@ DO k=0,PP_NZ
 #endif
                           )
 #if PP_dim==3
-      hJacQy(:,:,i,j,k) = fJacTilde(:,:)*Metrics_hTilde(1,i,j,k,iElem,0) + &
-                          gJacTilde(:,:)*Metrics_hTilde(2,i,j,k,iElem,0) + &
-                          hJacTilde(:,:)*Metrics_hTilde(3,i,j,k,iElem,0)
+      hJacQy(:,:,i,j,k) = (fJacTilde(:,:)*Metrics_hTilde(1,i,j,k,iElem,0) &
+                          +gJacTilde(:,:)*Metrics_hTilde(2,i,j,k,iElem,0) &
+                          +hJacTilde(:,:)*Metrics_hTilde(3,i,j,k,iElem,0) &
+                          ) 
       hJacTilde=hJacQz(:,:,i,j,k)
       fJacTilde=fJacQz(:,:,i,j,k)
       gJacTilde=gJacQz(:,:,i,j,k)
@@ -601,26 +606,27 @@ DO k=0,PP_NZ
                           +gJacTilde(:,:)*Metrics_gTilde(2,i,j,k,iElem,0) &
                           +hJacTilde(:,:)*Metrics_gTilde(3,i,j,k,iElem,0) &
                           )
-      hJacQz(:,:,i,j,k) = fJacTilde(:,:)*Metrics_hTilde(1,i,j,k,iElem,0) &
+      hJacQz(:,:,i,j,k) = (fJacTilde(:,:)*Metrics_hTilde(1,i,j,k,iElem,0) &
                           +gJacTilde(:,:)*Metrics_hTilde(2,i,j,k,iElem,0) &
-                          +hJacTilde(:,:)*Metrics_hTilde(3,i,j,k,iElem,0) 
+                          +hJacTilde(:,:)*Metrics_hTilde(3,i,j,k,iElem,0) &
+                          )
 #endif
     END DO ! i
   END DO ! j
 END DO ! k
 
-CALL JacLifting_VolInt(1,iElem,JacLifting_X) !d(Q^1)/dU(1:3) (3 sums)
-CALL JacLifting_VolInt(2,iElem,JacLifting_Y) !d(Q^2)/dU(1:3)
+CALL JacLifting_VolInt(1,iElem,UPrim(:,:,:,:,iElem),JacLifting_X) !d(Q^1)/dU(1:3) (3 sums)
+CALL JacLifting_VolInt(2,iElem,UPrim(:,:,:,:,iElem),JacLifting_Y) !d(Q^2)/dU(1:3)
 #if PP_dim==3
-CALL JacLifting_VolInt(3,iElem,JacLifting_Z) !d(Q^3)/dU(1:3)
+CALL JacLifting_VolInt(3,iElem,UPrim(:,:,:,:,iElem),JacLifting_Z) !d(Q^3)/dU(1:3)
 #endif
 
 s=0
 DO oo=0,PP_NZ
   DO nn=0,PP_N
     DO mm=0,PP_N
+      CALL dPrimTempdCons(UPrim(:,mm,nn,oo,iElem),PrimConsJac(:,:))
       IF(NoFillIn.EQV..FALSE.) THEN !NoFillIn has the same sparsity as the EulerPrecond
-        CALL dPrimTempdCons(UPrim(:,mm,nn,oo,iElem),PrimConsJac(:,:))
         DO j=0,PP_N
           fJacTilde(:,:)= ( MATMUL(fJacQx(:,:,mm,j,oo) , JacLifting_X(:,:,mm,j,oo,nn,2) )  &
                           + MATMUL(fJacQy(:,:,mm,j,oo) , JacLifting_Y(:,:,mm,j,oo,nn,2) )  &
@@ -690,7 +696,6 @@ DO oo=0,PP_NZ
         END DO !j 
 #endif
       END IF !NoFillIn
-      !TODO:Besser umschreiben, Summe ueber l ausserhalb, so dass nur einmal mit ConToPrimJac multipliziert werden muss
       DO l=0,PP_N
         fJacTilde(:,:)= ( MATMUL(fJacQx(:,:,l,nn,oo) , JacLifting_X(:,:,l,nn,oo,mm,1) )  &
                         + MATMUL(fJacQy(:,:,l,nn,oo) , JacLifting_Y(:,:,l,nn,oo,mm,1) )  &
