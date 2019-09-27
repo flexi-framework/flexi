@@ -65,6 +65,7 @@ USE MOD_Mesh_Vars                 ,ONLY:nBCSides,ElemToSide,S2V2
 USE MOD_Mesh_Vars                 ,ONLY:NormVec,TangVec1,TangVec2,SurfElem
 USE MOD_DG_Vars                   ,ONLY:UPrim_master
 USE MOD_Mesh_Vars                 ,ONLY:Face_xGP
+USE MOD_Lifting_Vars              ,ONLY:doWeakLifting
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -90,11 +91,19 @@ DO iLocSide=2,5
                                     SurfElem,Face_xGP,NormVec,TangVec1,TangVec2,S2V2(:,:,:,0,iLocSide)) !flip=0 for BCSide
   ELSE
     JacLiftingFlux(:,:,:,:,iLocSide)=0.
+#if PP_Lifting==1
+    IF(doWeakLifting)THEN
+      mp = -1.
+    ELSE
+      mp = 1.
+    END IF
+#elif PP_Lifting==2
     IF(flip.EQ.0)THEN
       mp = -1.
     ELSE
       mp = 1.
     END IF
+#endif
     DO iVar=1,PP_nVarPrim
       JacLiftingFlux(iVar,iVar,:,:,iLocSide) = mp*0.5*Surf(:,:,iLocSide,iElem)
     END DO !iVar
@@ -136,7 +145,6 @@ REAL,DIMENSION(1:PP_nVarPrim,1:PP_nVarPrim)  :: delta,SurfVol_PrimJac_plus,SurfV
 REAL,DIMENSION(1:PP_nVar    ,1:PP_nVarPrim)  :: ConsPrimJac
 REAL,DIMENSION(1:PP_nVarPrim,1:PP_nVar    )  :: PrimConsJac
 INTEGER :: pq_p(2),pq_m(2),SideID_p,SideID_m,flip
-REAL    :: mp_plus,mp_minus
 !===================================================================================================================================
 ! fill volume jacobian of lifting flux (flux is primitive state vector -> identiy matrix)
 delta=0.
@@ -156,10 +164,8 @@ DO ll=0,PP_N
         flip=ElemToSide(    E2S_FLIP   ,XI_MINUS,iElem)
         pq_m=S2V2(:,j,k,flip           ,XI_MINUS)
         IF(flip.EQ.0)THEN
-          mp_minus = -1.
           CALL dPrimTempdCons(UPrim_master(:,pq_m(1),pq_m(2),SideID_m),PrimConsJac)
         ELSE
-          mp_minus = 1.
           CALL dPrimTempdCons(UPrim_slave(:,pq_m(1),pq_m(2),SideID_m),PrimConsJac)
         END IF
         SurfVol_PrimJac_minus = MATMUL(PrimConsJac,ConsPrimJac)
@@ -168,10 +174,8 @@ DO ll=0,PP_N
         flip=ElemToSide(     E2S_FLIP   ,XI_PLUS ,iElem)
         pq_p=S2V2(:,j,k,flip            ,XI_PLUS)
         IF(flip.EQ.0)THEN
-          mp_plus = -1.
           CALL dPrimTempdCons(UPrim_master(:,pq_p(1),pq_p(2),SideID_p),PrimConsJac)
         ELSE
-          mp_plus = 1.
           CALL dPrimTempdCons(UPrim_slave(:,pq_p(1),pq_p(2),SideID_p),PrimConsJac)
         END IF
         SurfVol_PrimJac_plus = MATMUL(PrimConsJac,ConsPrimJac)
@@ -188,10 +192,8 @@ DO ll=0,PP_N
         flip=ElemToSide(    E2S_FLIP   ,ETA_MINUS,iElem)
         pq_m=S2V2(:,i,k,flip           ,ETA_MINUS)
         IF(flip.EQ.0)THEN
-          mp_minus = -1.
           CALL dPrimTempdCons(UPrim_master(:,pq_m(1),pq_m(2),SideID_m),PrimConsJac)
         ELSE
-          mp_minus = 1.
           CALL dPrimTempdCons(UPrim_slave(:,pq_m(1),pq_m(2),SideID_m),PrimConsJac)
         END IF
         SurfVol_PrimJac_minus = MATMUL(PrimConsJac,ConsPrimJac)
@@ -200,10 +202,8 @@ DO ll=0,PP_N
         flip=ElemToSide(     E2S_FLIP   ,ETA_PLUS ,iElem)
         pq_p=S2V2(:,i,k,flip            ,ETA_PLUS)
         IF(flip.EQ.0)THEN
-          mp_plus = -1.
           CALL dPrimTempdCons(UPrim_master(:,pq_p(1),pq_p(2),SideID_p),PrimConsJac)
         ELSE
-          mp_plus = 1.
           CALL dPrimTempdCons(UPrim_slave(:,pq_p(1),pq_p(2),SideID_p),PrimConsJac)
         END IF
         SurfVol_PrimJac_plus = MATMUL(PrimConsJac,ConsPrimJac)
@@ -221,10 +221,8 @@ DO ll=0,PP_N
         flip=ElemToSide(    E2S_FLIP   ,ZETA_MINUS,iElem)
         pq_m=S2V2(:,i,j,flip           ,ZETA_MINUS)
         IF(flip.EQ.0)THEN
-          mp_minus = -1.
           CALL dPrimTempdCons(UPrim_master(:,pq_m(1),pq_m(2),SideID_m),PrimConsJac)
         ELSE
-          mp_minus = 1.
           CALL dPrimTempdCons(UPrim_slave(:,pq_m(1),pq_m(2),SideID_m),PrimConsJac)
         END IF
         SurfVol_PrimJac_minus = MATMUL(PrimConsJac,ConsPrimJac)
@@ -233,10 +231,8 @@ DO ll=0,PP_N
         flip=ElemToSide(     E2S_FLIP   ,ZETA_PLUS ,iElem)
         pq_p=S2V2(:,i,j,flip            ,ZETA_PLUS)
         IF(flip.EQ.0)THEN
-          mp_plus = -1.
           CALL dPrimTempdCons(UPrim_master(:,pq_p(1),pq_p(2),SideID_p),PrimConsJac)
         ELSE
-          mp_plus = 1.
           CALL dPrimTempdCons(UPrim_slave(:,pq_p(1),pq_p(2),SideID_p),PrimConsJac)
         END IF
         SurfVol_PrimJac_plus = MATMUL(PrimConsJac,ConsPrimJac)
@@ -725,7 +721,9 @@ USE MOD_Mesh_Vars                 ,ONLY: Metrics_fTilde,Metrics_gTilde,sJ   ! me
 USE MOD_Mesh_Vars                 ,ONLY: Metrics_hTilde   ! metrics
 #endif
 USE MOD_DG_Vars                   ,ONLY: D,UPrim,UPrim_master,UPrim_slave
+#if PP_Lifting==2
 USE MOD_Lifting_Vars              ,ONLY: etaBR2
+#endif
 USE MOD_Jacobian                  ,ONLY: dConsdPrimTemp,dPrimTempdCons
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -754,6 +752,9 @@ REAL                                                :: dQ_dUVolInner_loc(0:PP_N,
 REAL                                                :: ConsPrimJac(    1:PP_nVar    ,1:PP_nVarPrim)
 REAL                                                :: PrimConsJac(    1:PP_nVarPrim,1:PP_nVar    )
 REAL                                                :: SurfVol_PrimJac(1:PP_nVarPrim,1:PP_nVarPrim,0:PP_N,0:PP_NZ,0:PP_N)
+#if PP_Lifting==1
+REAL,PARAMETER                                      :: etaBR2=1.
+#endif
 !===================================================================================================================================
 dQ_dUVolInner=0.
 
@@ -862,7 +863,9 @@ USE MOD_PreProc
 USE MOD_Mesh_Vars                 ,ONLY: ElemToSide,S2V2,nBCSides
 USE MOD_Jac_Ex_Vars               ,ONLY: Surf,l_mp
 USE MOD_Jac_Ex_Vars               ,ONLY: R_Minus,R_Plus
+#if PP_Lifting==2
 USE MOD_Lifting_Vars              ,ONLY: etaBR2
+#endif
 USE MOD_DG_Vars                   ,ONLY: UPrim,UPrim_master,UPrim_slave
 USE MOD_Jacobian                  ,ONLY: dConsdPrimTemp,dPrimTempdCons
 ! IMPLICIT VARIABLE HANDLING
@@ -890,6 +893,9 @@ REAL                                                :: UPrim_face(PP_nVarPrim,0:
 REAL                                                :: ConsPrimJac(    1:PP_nVar    ,1:PP_nVarPrim)
 REAL                                                :: PrimConsJac(    1:PP_nVarPrim,1:PP_nVar    )
 REAL                                                :: SurfVol_PrimJac(1:PP_nVarPrim,1:PP_nVarPrim)
+#if PP_Lifting==1
+REAL,PARAMETER                                      :: etaBR2=1.
+#endif
 !===================================================================================================================================
 dQ_dUVolOuter=0.
 
