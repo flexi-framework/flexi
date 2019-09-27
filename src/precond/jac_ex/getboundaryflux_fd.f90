@@ -183,7 +183,6 @@ END SUBROUTINE GetBoundaryFlux_FD
 !> BCType: 1...periodic, 2...exact BC
 !> Attention 1: this is only a tensor of local values U_Face and has to be stored into the right U_Left or U_Right in
 !>              SUBROUTINE CalcSurfInt
-!> Attention 2: U_FacePeriodic is only needed in the case of periodic boundary conditions
 !===================================================================================================================================
 SUBROUTINE Lifting_GetBoundaryFlux_FD(SideID,t,dFdU,UPrim_master,surfElem,xGP_Face,normal,tangent1,tangent2,jk)
 ! MODULES
