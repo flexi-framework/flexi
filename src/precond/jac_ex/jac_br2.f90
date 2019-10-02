@@ -322,13 +322,10 @@ ELSE ! FV Element
 #endif
         ! Contribution by lifting volume integral
         DO ll=0,PP_N
-          JacLifting(:,:,i,j,k,ll,1) = JacLifting(:,:,i,j,k,ll,1) + &
-                                       Jac_reconstruct(i,j,k,ll,1)*FV_Metrics_fTilde_sJ(dir,ll,j,k,iElem)*delta(:,:)
-          JacLifting(:,:,i,j,k,ll,2) = JacLifting(:,:,i,j,k,ll,2) + &
-                                       Jac_reconstruct(i,j,k,ll,2)*FV_Metrics_gTilde_sJ(dir,i,ll,k,iElem)*delta(:,:)
+          JacLifting(:,:,i,j,k,ll,1) = Jac_reconstruct(i,j,k,ll,1)*FV_Metrics_fTilde_sJ(dir,ll,j,k,iElem)*delta(:,:)
+          JacLifting(:,:,i,j,k,ll,2) = Jac_reconstruct(i,j,k,ll,2)*FV_Metrics_gTilde_sJ(dir,i,ll,k,iElem)*delta(:,:)
 #if PP_dim==3
-          JacLifting(:,:,i,j,k,ll,3) = JacLifting(:,:,i,j,k,ll,3) + &
-                                       Jac_reconstruct(i,j,k,ll,3)*FV_Metrics_hTilde_sJ(dir,i,j,ll,iElem)*delta(:,:)
+          JacLifting(:,:,i,j,k,ll,3) = Jac_reconstruct(i,j,k,ll,3)*FV_Metrics_hTilde_sJ(dir,i,j,ll,iElem)*delta(:,:)
 #endif
         END DO ! ll
       END DO !i

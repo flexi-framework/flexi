@@ -137,7 +137,7 @@ SUBROUTINE VolInt_splitForm(Ut)
 USE MOD_PreProc
 USE MOD_DG_Vars      ,ONLY: DVolSurf,UPrim,U
 USE MOD_Mesh_Vars    ,ONLY: Metrics_fTilde,Metrics_gTilde,nElems
-#if PP_dim==3
+#if PP_dim==3 || PARABOLIC
 USE MOD_Mesh_Vars    ,ONLY: Metrics_hTilde
 #endif
 #if PARABOLIC

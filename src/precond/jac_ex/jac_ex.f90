@@ -1306,6 +1306,7 @@ REAL,INTENT(INOUT)    :: BJ(1:nDOFVarElem,1:nDOFVarElem)
 INTEGER                                                                    :: p,q,i,j,k
 INTEGER                                                                    :: vn1,vn2,r,s,m,l,rr,ss,rrr,sss
 REAL,DIMENSION(PP_nVarPrim,PP_nVar    ,0:PP_N,0:PP_N,0:PP_NZ)              :: PrimConsJac
+REAL,DIMENSION(PP_nVarPrim,PP_nVar    ,2,2)                                :: PrimConsJacDiag
 REAL,DIMENSION(PP_nVar    ,PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ)              :: fJacQx,gJacQx,hJacQx
 REAL,DIMENSION(PP_nVar    ,PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ)              :: fJacQy,gJacQy,hJacQy
 REAL,DIMENSION(PP_nVar    ,PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ)              :: fJacQz,gJacQz,hJacQz
@@ -1318,8 +1319,6 @@ REAL,DIMENSION(PP_nVar    ,PP_nVarPrim)                                    :: hJ
 REAL,DIMENSION(PP_nVarPrim,PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,0:PP_N,3)      :: JacLifting_Z
 #endif
 REAL,DIMENSION(PP_nVarPrim,PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,0:PP_N,PP_dim):: JacLifting_X,JacLifting_Y
-REAL,DIMENSION(PP_nVar    ,PP_nVarPrim)                                    :: JacTilde
-REAL,DIMENSION(PP_nVar    ,PP_nVar)                                        :: Jac
 !===================================================================================================================================
 vn1=PP_nVar*(PP_N+1)
 vn2=vn1*(PP_N+1)
@@ -1340,7 +1339,6 @@ CALL EvalFluxGradJacobian(nDOFElem,U(:,:,:,:,iElem),UPrim(:,:,:,:,iElem) &
                           ,muSGS(:,:,:,:,iElem) &
 #endif
                          )
-
 ! Calculation of the derivative of UPrim_vol with respect to UCons_vol
 DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
   CALL dPrimTempdCons(UPrim(:,i,j,k,iElem),PrimConsJac(:,:,i,j,k))
@@ -1364,7 +1362,7 @@ DO p=0,PP_N
                          +hJacTilde_plus( :,:)*FV_NormVecXi(3,p,q,i,iElem) &
 #endif
                          )*FV_SurfElemXi_sw(p,q,i,iElem)
-      JacQx_minus = 0.5*(fJacTilde_minus(:,:)*FV_NormVecXi(1,p,q,i,iElem) &
+      JacQx_minus = 0.5*( fJacTilde_minus(:,:)*FV_NormVecXi(1,p,q,i,iElem) &
                          +gJacTilde_minus(:,:)*FV_NormVecXi(2,p,q,i,iElem) &
 #if PP_dim==3
                          +hJacTilde_minus(:,:)*FV_NormVecXi(3,p,q,i,iElem) &
@@ -1384,7 +1382,7 @@ DO p=0,PP_N
                          +hJacTilde_plus( :,:)*FV_NormVecXi(3,p,q,i,iElem) &
 #endif
                          )*FV_SurfElemXi_sw(p,q,i,iElem)
-      JacQy_minus = 0.5*(fJacTilde_minus(:,:)*FV_NormVecXi(1,p,q,i,iElem) &
+      JacQy_minus = 0.5*( fJacTilde_minus(:,:)*FV_NormVecXi(1,p,q,i,iElem) &
                          +gJacTilde_minus(:,:)*FV_NormVecXi(2,p,q,i,iElem) &
 #if PP_dim==3
                          +hJacTilde_minus(:,:)*FV_NormVecXi(3,p,q,i,iElem) &
@@ -1401,7 +1399,7 @@ DO p=0,PP_N
                          +gJacTilde_plus( :,:)*FV_NormVecXi(2,p,q,i,iElem) &
                          +hJacTilde_plus( :,:)*FV_NormVecXi(3,p,q,i,iElem) &
                          )*FV_SurfElemXi_sw(p,q,i,iElem)
-      JacQz_minus = 0.5*(fJacTilde_minus(:,:)*FV_NormVecXi(1,p,q,i,iElem) &
+      JacQz_minus = 0.5*( fJacTilde_minus(:,:)*FV_NormVecXi(1,p,q,i,iElem) &
                          +gJacTilde_minus(:,:)*FV_NormVecXi(2,p,q,i,iElem) &
                          +hJacTilde_minus(:,:)*FV_NormVecXi(3,p,q,i,iElem) &
                          )*FV_SurfElemXi_sw(p,q,i,iElem)
@@ -1412,87 +1410,47 @@ DO p=0,PP_N
       m = vn1*p + vn2*q + PP_nVar*(i-2)
       l = vn1*p + vn2*q + PP_nVar*(i+1)
       IF(NoFillIn.EQV..FALSE.) THEN !NoFillIn has the same sparsity as the EulerPrecond
-        CALL Assemble_FVVolIntGradJac(i,r,s,m,l,PrimConsJac(:,:,:,p,q),JacQx_plus,JacQy_plus,JacQx_minus,JacQy_minus, &
-                                      JacLifting_X(:,:,:,p,q,:,2),JacLifting_Y(:,:,:,p,q,:,2),                        &
-#if PP_dim==3
-                                      fJacQz_plus,fJacQy_minus,JacLifting_Z(:,:,:,p,q,:,2),                           &
-#endif
-                                      BJ,.FALSE.)
         rr  = vn1*(p-1) + vn2*q + PP_nVar*(i-1)
         rrr = vn1*(p+1) + vn2*q + PP_nVar*(i-1)
         ss  = vn1*(p-1) + vn2*q + PP_nVar*i
         sss = vn1*(p+1) + vn2*q + PP_nVar*i
-        IF(i.GE.1)THEN
-          IF(p.GE.1)THEN ! fill dependency on lower left dof
-            ! (i-1) Flux w.r.t (i-1,p-1) State
-            JacTilde(:,:)= ( MATMUL(JacQx_plus , JacLifting_X(:,:,i-1,p,q,i-1,2) )  &
-                           + MATMUL(JacQy_plus , JacLifting_Y(:,:,i-1,p,q,i-1,2) )  &
+        PrimConsJacDiag = 0.
+        IF(p.GE.1)    PrimConsJacDiag(:,:,1,1) = PrimConsJac(:,:,i-1,p-1,q)
+        IF(p.LT.PP_N) PrimConsJacDiag(:,:,1,2) = PrimConsJac(:,:,i-1,p+1,q)
+        IF(p.GE.1)    PrimConsJacDiag(:,:,2,1) = PrimConsJac(:,:,i  ,p-1,q)
+        IF(p.LT.PP_N) PrimConsJacDiag(:,:,2,2) = PrimConsJac(:,:,i  ,p+1,q)
+        CALL Assemble_FVVolIntGradJacDiag(i,r,s,p,rr,rrr,ss,sss,PrimConsJacDiag,PrimConsJac(:,:,:,p,q),                     &
+                                          JacQx_plus,JacQy_plus,JacQx_minus,JacQy_minus,                                    &
+                                          JacLifting_X(:,:,i-1,:,q,:,2),JacLifting_X(:,:,i,:,q,:,2),                        &
+                                          JacLifting_Y(:,:,i-1,:,q,:,2),JacLifting_Y(:,:,i,:,q,:,2),                        &
 #if PP_dim==3
-                           + MATMUL(JacQz_plus , JacLifting_Z(:,:,i-1,p,q,i-1,2) )  &
+                                          JacQz_plus,JacQz_minus,JacLifting_Z(:,:,i-1,:,q,:,2),JacLifting_Z(:,:,i,:,q,:,2), &
 #endif
-                           )
-            Jac(:,:) = MATMUL(JacTilde(:,:),PrimConsJac(:,:,i-1,p-1,q))
-            BJ(r+1:r+PP_nVar,rr+1:rr+PP_nVar) = BJ(r+1:r+PP_nVar,rr+1:rr+PP_nVar) + Jac
-            ! (i) Flux w.r.t (i-1,p-1) State
-            BJ(s+1:s+PP_nVar,rr+1:rr+PP_nVar) = BJ(s+1:s+PP_nVar,rr+1:rr+PP_nVar) - Jac
-          END IF
-          IF(p.LT.PP_N)THEN ! fill dependency on upper left dof
-            ! (i-1) Flux w.r.t (i-1,p+1) State
-            JacTilde(:,:)= ( MATMUL(JacQx_plus , JacLifting_X(:,:,i-1,p,q,i+1,2) )  &
-                           + MATMUL(JacQy_plus , JacLifting_Y(:,:,i-1,p,q,i+1,2) )  &
+                                          BJ)
 #if PP_dim==3
-                           + MATMUL(JacQz_plus , JacLifting_Z(:,:,i-1,p,q,i+1,2) )  &
-#endif
-                           )
-            Jac(:,:) = MATMUL(JacTilde(:,:),PrimConsJac(:,:,i-1,p+1,q))
-            BJ(r+1:r+PP_nVar,rrr+1:rrr+PP_nVar) = BJ(r+1:r+PP_nVar,rrr+1:rrr+PP_nVar) + Jac
-            ! (i) Flux w.r.t (i-1,p+1) State
-            BJ(s+1:s+PP_nVar,rrr+1:rrr+PP_nVar) = BJ(s+1:s+PP_nVar,rrr+1:rrr+PP_nVar) - Jac
-          END IF
-        END IF
-        IF(p.GE.1)THEN ! fill dependency on lower right dof
-          ! (i-1) Flux w.r.t (i,p-1) State
-          JacTilde(:,:)= ( MATMUL(JacQx_minus, JacLifting_X(:,:,i  ,p,q,i-1,2) )  &
-                         + MATMUL(JacQy_minus, JacLifting_Y(:,:,i  ,p,q,i-1,2) )  &
-#if PP_dim==3
-                         + MATMUL(JacQz_minus, JacLifting_Z(:,:,i  ,p,q,i-1,2) )  &
-#endif
-                         )
-          Jac(:,:) = MATMUL(JacTilde(:,:),PrimConsJac(:,:,i,p-1,q))
-          BJ(r+1:r+PP_nVar,ss+1:ss+PP_nVar) = BJ(r+1:r+PP_nVar,ss+1:ss+PP_nVar) + Jac
-          ! (i) Flux w.r.t (i,p-1) State
-          BJ(s+1:s+PP_nVar,ss+1:ss+PP_nVar) = BJ(s+1:s+PP_nVar,ss+1:ss+PP_nVar) - Jac
-        END IF
-        IF(p.LT.PP_N)THEN ! fill dependency on upper right dof
-          ! (i-1) Flux w.r.t (i,p+1) State
-          JacTilde(:,:)= ( MATMUL(JacQx_minus, JacLifting_X(:,:,i  ,p,q,i+1,2) )  &
-                         + MATMUL(JacQy_minus, JacLifting_Y(:,:,i  ,p,q,i+1,2) )  &
-#if PP_dim==3
-                         + MATMUL(JacQz_minus, JacLifting_Z(:,:,i  ,p,q,i+1,2) )  &
-#endif
-                         )
-          Jac(:,:) = MATMUL(JacTilde(:,:),PrimConsJac(:,:,i,p+1,q))
-          BJ(r+1:r+PP_nVar,sss+1:sss+PP_nVar) = BJ(r+1:r+PP_nVar,sss+1:sss+PP_nVar) + Jac
-          ! (i) Flux w.r.t (i,p+1) State
-          BJ(s+1:s+PP_nVar,sss+1:sss+PP_nVar) = BJ(s+1:s+PP_nVar,sss+1:sss+PP_nVar) - Jac
-        END IF
-#if PP_dim==3
-        !rrr = vn1*p + vn2*(q+1) + PP_nVar*(i-1)
-        !sss = vn1*p + vn2*(q+1) + PP_nVar*i
-        !rr  = vn1*p + vn2*(q-1) + PP_nVar*(i-1)
-        !ss  = vn1*p + vn2*(q-1) + PP_nVar*i
-        CALL Assemble_FVVolIntGradJac(i,r,s,m,l,PrimConsJac(:,:,:,p,q),JacQx_plus,JacQy_plus,JacQx_minus,JacQy_minus, &
-                                      JacLifting_X(:,:,:,p,q,:,3),JacLifting_Y(:,:,:,p,q,:,3),                        &
-                                      fJacQz_plus,fJacQy_minus,JacLifting_Z(:,:,:,p,q,:,3),                           &
-                                      BJ,.FALSE.)
+        rr  = vn1*p + vn2*(q-1) + PP_nVar*(i-1)
+        rrr = vn1*p + vn2*(q+1) + PP_nVar*(i-1)
+        ss  = vn1*p + vn2*(q-1) + PP_nVar*i
+        sss = vn1*p + vn2*(q+1) + PP_nVar*i
+        PrimConsJacDiag = 0.
+        IF(q.GE.1)    PrimConsJacDiag(:,:,1,1) = PrimConsJac(:,:,i-1,p,q-1)
+        IF(q.LT.PP_N) PrimConsJacDiag(:,:,1,2) = PrimConsJac(:,:,i-1,p,q+1)
+        IF(q.GE.1)    PrimConsJacDiag(:,:,2,1) = PrimConsJac(:,:,i  ,p,q-1)
+        IF(q.LT.PP_N) PrimConsJacDiag(:,:,2,2) = PrimConsJac(:,:,i  ,p,q+1)
+        CALL Assemble_FVVolIntGradJacDiag(i,r,s,q,rr,rrr,ss,sss,PrimConsJacDiag,PrimConsJac(:,:,:,p,q),                     &
+                                          JacQx_plus,JacQy_plus,JacQx_minus,JacQy_minus,                                    &
+                                          JacLifting_X(:,:,i-1,p,:,:,3),JacLifting_X(:,:,i,p,:,:,3),                        &
+                                          JacLifting_Y(:,:,i-1,p,:,:,3),JacLifting_Y(:,:,i,p,:,:,3),                        &
+                                          JacQz_plus,JacQz_minus,JacLifting_Z(:,:,i-1,p,:,:,3),JacLifting_Z(:,:,i,p,:,:,3), &
+                                          BJ)
 #endif
       END IF
       CALL Assemble_FVVolIntGradJac(i,r,s,m,l,PrimConsJac(:,:,:,p,q),JacQx_plus,JacQy_plus,JacQx_minus,JacQy_minus, &
                                     JacLifting_X(:,:,:,p,q,:,1),JacLifting_Y(:,:,:,p,q,:,1),                        &
 #if PP_dim==3
-                                    fJacQz_plus,fJacQy_minus,JacLifting_Z(:,:,:,p,q,:,1),                           &
+                                    JacQz_plus,JacQz_minus,JacLifting_Z(:,:,:,p,q,:,1),                             &
 #endif
-                                    BJ,.TRUE.)
+                                    BJ)
     END DO !i
   END DO !q
 END DO !p
@@ -1514,7 +1472,7 @@ DO p=0,PP_N
                          +hJacTilde_plus( :,:)*FV_NormVecEta(3,p,q,j,iElem) &
 #endif
                          )*FV_SurfElemEta_sw(p,q,j,iElem)
-      JacQx_minus = 0.5*(fJacTilde_minus(:,:)*FV_NormVecEta(1,p,q,j,iElem) &
+      JacQx_minus = 0.5*( fJacTilde_minus(:,:)*FV_NormVecEta(1,p,q,j,iElem) &
                          +gJacTilde_minus(:,:)*FV_NormVecEta(2,p,q,j,iElem) &
 #if PP_dim==3
                          +hJacTilde_minus(:,:)*FV_NormVecEta(3,p,q,j,iElem) &
@@ -1534,7 +1492,7 @@ DO p=0,PP_N
                          +hJacTilde_plus( :,:)*FV_NormVecEta(3,p,q,j,iElem) &
 #endif
                          )*FV_SurfElemEta_sw(p,q,j,iElem)
-      JacQy_minus = 0.5*(fJacTilde_minus(:,:)*FV_NormVecEta(1,p,q,j,iElem) &
+      JacQy_minus = 0.5*( fJacTilde_minus(:,:)*FV_NormVecEta(1,p,q,j,iElem) &
                          +gJacTilde_minus(:,:)*FV_NormVecEta(2,p,q,j,iElem) &
 #if PP_dim==3
                          +hJacTilde_minus(:,:)*FV_NormVecEta(3,p,q,j,iElem) &
@@ -1551,7 +1509,7 @@ DO p=0,PP_N
                          +gJacTilde_plus( :,:)*FV_NormVecEta(2,p,q,j,iElem) &
                          +hJacTilde_plus( :,:)*FV_NormVecEta(3,p,q,j,iElem) &
                          )*FV_SurfElemEta_sw(p,q,j,iElem)
-      JacQz_minus = 0.5*(fJacTilde_minus(:,:)*FV_NormVecEta(1,p,q,j,iElem) &
+      JacQz_minus = 0.5*( fJacTilde_minus(:,:)*FV_NormVecEta(1,p,q,j,iElem) &
                          +gJacTilde_minus(:,:)*FV_NormVecEta(2,p,q,j,iElem) &
                          +hJacTilde_minus(:,:)*FV_NormVecEta(3,p,q,j,iElem) &
                          )*FV_SurfElemEta_sw(p,q,j,iElem)
@@ -1562,25 +1520,47 @@ DO p=0,PP_N
       m = vn1*(j-2) + vn2*q + PP_nVar*p
       l = vn1*(j+1) + vn2*q + PP_nVar*p
       IF(NoFillIn.EQV..FALSE.) THEN !NoFillIn has the same sparsity as the EulerPrecond
-        CALL Assemble_FVVolIntGradJac(j,r,s,m,l,PrimConsJac(:,:,p,:,q),JacQx_plus,JacQy_plus,JacQx_minus,JacQy_minus, &
-                                      JacLifting_X(:,:,p,:,q,:,1),JacLifting_Y(:,:,p,:,q,:,1),                        &
+        rr  = vn1*(j-1) + vn2*q + PP_nVar*(p-1)
+        rrr = vn1*(j-1) + vn2*q + PP_nVar*(p+1)
+        ss  = vn1*j     + vn2*q + PP_nVar*(p-1)
+        sss = vn1*j     + vn2*q + PP_nVar*(p+1)
+        PrimConsJacDiag = 0.
+        IF(p.GE.1)    PrimConsJacDiag(:,:,1,1) = PrimConsJac(:,:,p-1,j-1,q)
+        IF(p.LT.PP_N) PrimConsJacDiag(:,:,1,2) = PrimConsJac(:,:,p+1,j-1,q)
+        IF(p.GE.1)    PrimConsJacDiag(:,:,2,1) = PrimConsJac(:,:,p-1,j  ,q)
+        IF(p.LT.PP_N) PrimConsJacDiag(:,:,2,2) = PrimConsJac(:,:,p+1,j  ,q)
+        CALL Assemble_FVVolIntGradJacDiag(j,r,s,p,rr,rrr,ss,sss,PrimConsJacDiag,PrimConsJac(:,:,p,:,q),                     &
+                                          JacQx_plus,JacQy_plus,JacQx_minus,JacQy_minus,                                    &
+                                          JacLifting_X(:,:,:,j-1,q,:,1),JacLifting_X(:,:,:,j,q,:,1),                        &
+                                          JacLifting_Y(:,:,:,j-1,q,:,1),JacLifting_Y(:,:,:,j,q,:,1),                        &
 #if PP_dim==3
-                                      fJacQz_plus,fJacQy_minus,JacLifting_Z(:,:,p,:,q,:,1),                           &
+                                          JacQz_plus,JacQz_minus,JacLifting_Z(:,:,:,j-1,q,:,1),JacLifting_Z(:,:,:,j,q,:,1), &
 #endif
-                                      BJ,.FALSE.)
+                                          BJ)
 #if PP_dim==3
-        CALL Assemble_FVVolIntGradJac(j,r,s,m,l,PrimConsJac(:,:,p,:,q),JacQx_plus,JacQy_plus,JacQx_minus,JacQy_minus, &
-                                      JacLifting_X(:,:,p,:,q,:,3),JacLifting_Y(:,:,p,:,q,:,3),                        &
-                                      fJacQz_plus,fJacQy_minus,JacLifting_Z(:,:,p,:,q,:,3),                           &
-                                      BJ,.FALSE.)
+        rr  = vn1*(j-1) + vn2*(q-1) + PP_nVar*p
+        rrr = vn1*(j-1) + vn2*(q+1) + PP_nVar*p
+        ss  = vn1*j     + vn2*(q-1) + PP_nVar*p
+        sss = vn1*j     + vn2*(q+1) + PP_nVar*p
+        PrimConsJacDiag = 0.
+        IF(q.GE.1)    PrimConsJacDiag(:,:,1,1) = PrimConsJac(:,:,p,j-1,q-1)
+        IF(q.LT.PP_N) PrimConsJacDiag(:,:,1,2) = PrimConsJac(:,:,p,j-1,q+1)
+        IF(q.GE.1)    PrimConsJacDiag(:,:,2,1) = PrimConsJac(:,:,p,j  ,q-1)
+        IF(q.LT.PP_N) PrimConsJacDiag(:,:,2,2) = PrimConsJac(:,:,p,j  ,q+1)
+        CALL Assemble_FVVolIntGradJacDiag(j,r,s,q,rr,rrr,ss,sss,PrimConsJacDiag,PrimConsJac(:,:,p,:,q),                     &
+                                          JacQx_plus,JacQy_plus,JacQx_minus,JacQy_minus,                                    &
+                                          JacLifting_X(:,:,p,j-1,:,:,3),JacLifting_X(:,:,p,j,:,:,3),                        &
+                                          JacLifting_Y(:,:,p,j-1,:,:,3),JacLifting_Y(:,:,p,j,:,:,3),                        &
+                                          JacQz_plus,JacQz_minus,JacLifting_Z(:,:,p,j-1,:,:,3),JacLifting_Z(:,:,p,j,:,:,3), &
+                                          BJ)
 #endif
       END IF
       CALL Assemble_FVVolIntGradJac(j,r,s,m,l,PrimConsJac(:,:,p,:,q),JacQx_plus,JacQy_plus,JacQx_minus,JacQy_minus, &
                                     JacLifting_X(:,:,p,:,q,:,2),JacLifting_Y(:,:,p,:,q,:,2),                        &
 #if PP_dim==3
-                                    fJacQz_plus,fJacQy_minus,JacLifting_Z(:,:,p,:,q,:,2),                           &
+                                    JacQz_plus,JacQz_minus,JacLifting_Z(:,:,p,:,q,:,2),                             &
 #endif
-                                    BJ,.TRUE.)
+                                    BJ)
     END DO !j
   END DO !q
 END DO !p
@@ -1595,11 +1575,11 @@ DO p=0,PP_N
       gJacTilde_minus=gJacQx(:,:,p,q,k  )
       hJacTilde_plus =hJacQx(:,:,p,q,k-1)
       hJacTilde_minus=hJacQx(:,:,p,q,k  )
-      JacQx_plus  =  0.5*(fJacTilde_plus( :,:)*FV_NormVecZeta(1,p,q,k,iElem) &
+      JacQx_plus  = 0.5*( fJacTilde_plus( :,:)*FV_NormVecZeta(1,p,q,k,iElem) &
                          +gJacTilde_plus( :,:)*FV_NormVecZeta(2,p,q,k,iElem) &
                          +hJacTilde_plus( :,:)*FV_NormVecZeta(3,p,q,k,iElem) &
                          )*FV_SurfElemZeta_sw(p,q,k,iElem)
-      JacQx_minus = 0.5*(fJacTilde_minus(:,:)*FV_NormVecZeta(1,p,q,k,iElem) &
+      JacQx_minus = 0.5*( fJacTilde_minus(:,:)*FV_NormVecZeta(1,p,q,k,iElem) &
                          +gJacTilde_minus(:,:)*FV_NormVecZeta(2,p,q,k,iElem) &
                          +hJacTilde_minus(:,:)*FV_NormVecZeta(3,p,q,k,iElem) &
                          )*FV_SurfElemZeta_sw(p,q,k,iElem)
@@ -1613,7 +1593,7 @@ DO p=0,PP_N
                          +gJacTilde_plus( :,:)*FV_NormVecZeta(2,p,q,k,iElem) &
                          +hJacTilde_plus( :,:)*FV_NormVecZeta(3,p,q,k,iElem) &
                          )*FV_SurfElemZeta_sw(p,q,k,iElem)
-      JacQy_minus = 0.5*(fJacTilde_minus(:,:)*FV_NormVecZeta(1,p,q,k,iElem) &
+      JacQy_minus = 0.5*( fJacTilde_minus(:,:)*FV_NormVecZeta(1,p,q,k,iElem) &
                          +gJacTilde_minus(:,:)*FV_NormVecZeta(2,p,q,k,iElem) &
                          +hJacTilde_minus(:,:)*FV_NormVecZeta(3,p,q,k,iElem) &
                          )*FV_SurfElemZeta_sw(p,q,k,iElem)
@@ -1627,7 +1607,7 @@ DO p=0,PP_N
                          +gJacTilde_plus( :,:)*FV_NormVecZeta(2,p,q,k,iElem) &
                          +hJacTilde_plus( :,:)*FV_NormVecZeta(3,p,q,k,iElem) &
                          )*FV_SurfElemZeta_sw(p,q,k,iElem)
-      JacQz_minus = 0.5*(fJacTilde_minus(:,:)*FV_NormVecZeta(1,p,q,k,iElem) &
+      JacQz_minus = 0.5*( fJacTilde_minus(:,:)*FV_NormVecZeta(1,p,q,k,iElem) &
                          +gJacTilde_minus(:,:)*FV_NormVecZeta(2,p,q,k,iElem) &
                          +hJacTilde_minus(:,:)*FV_NormVecZeta(3,p,q,k,iElem) &
                          )*FV_SurfElemZeta_sw(p,q,k,iElem)
@@ -1637,19 +1617,41 @@ DO p=0,PP_N
       m = vn1*q + vn2*(k-2) + PP_nVar*p
       l = vn1*q + vn2*(k+1) + PP_nVar*p
       IF(NoFillIn.EQV..FALSE.) THEN !NoFillIn has the same sparsity as the EulerPrecond
-        CALL Assemble_FVVolIntGradJac(k,r,s,m,l,PrimConsJac(:,:,p,q,:),JacQx_plus,JacQy_plus,JacQx_minus,JacQy_minus, &
-                                      JacLifting_X(:,:,:,:,p,q,1),JacLifting_Y(:,:,:,:,p,q,1),                        &
-                                      fJacQz_plus,fJacQy_minus,JacLifting_Z(:,:,:,:,p,q,1),                           &
-                                      BJ,.FALSE.)
-        CALL Assemble_FVVolIntGradJac(k,r,s,m,l,PrimConsJac(:,:,p,q,:),JacQx_plus,JacQy_plus,JacQx_minus,JacQy_minus, &
-                                      JacLifting_X(:,:,:,:,p,q,2),JacLifting_Y(:,:,:,:,p,q,2),                        &
-                                      fJacQz_plus,fJacQy_minus,JacLifting_Z(:,:,:,:,p,q,2),                           &
-                                      BJ,.FALSE.)
+        rr  = vn1*q + vn2*(k-1) + PP_nVar*(p-1)
+        rrr = vn1*q + vn2*(k-1) + PP_nVar*(p+1)
+        ss  = vn1*q + vn2*k     + PP_nVar*(p-1)
+        sss = vn1*q + vn2*k     + PP_nVar*(p+1)
+        PrimConsJacDiag = 0.
+        IF(p.GE.1)    PrimConsJacDiag(:,:,1,1) = PrimConsJac(:,:,p-1,q,k-1)
+        IF(p.LT.PP_N) PrimConsJacDiag(:,:,1,2) = PrimConsJac(:,:,p+1,q,k-1)
+        IF(p.GE.1)    PrimConsJacDiag(:,:,2,1) = PrimConsJac(:,:,p-1,q,k  )
+        IF(p.LT.PP_N) PrimConsJacDiag(:,:,2,2) = PrimConsJac(:,:,p+1,q,k  )
+        CALL Assemble_FVVolIntGradJacDiag(k,r,s,p,rr,rrr,ss,sss,PrimConsJacDiag,PrimConsJac(:,:,p,q,:),                     &
+                                          JacQx_plus,JacQy_plus,JacQx_minus,JacQy_minus,                                    &
+                                          JacLifting_X(:,:,:,q,k-1,:,1),JacLifting_X(:,:,:,q,k,:,1),                        &
+                                          JacLifting_Y(:,:,:,q,k-1,:,1),JacLifting_Y(:,:,:,q,k,:,1),                        &
+                                          JacQz_plus,JacQz_minus,JacLifting_Z(:,:,:,p,k-1,:,1),JacLifting_Z(:,:,:,p,k,:,1), &
+                                          BJ)
+        rr  = vn1*(q-1) + vn2*(k-1) + PP_nVar*p
+        rrr = vn1*(q+1) + vn2*(k-1) + PP_nVar*p
+        ss  = vn1*(q-1) + vn2*k     + PP_nVar*p
+        sss = vn1*(q+1) + vn2*k     + PP_nVar*p
+        PrimConsJacDiag = 0.
+        IF(q.GE.1)    PrimConsJacDiag(:,:,1,1) = PrimConsJac(:,:,p,q-1,k-1)
+        IF(q.LT.PP_N) PrimConsJacDiag(:,:,1,2) = PrimConsJac(:,:,p,q+1,k-1)
+        IF(q.GE.1)    PrimConsJacDiag(:,:,2,1) = PrimConsJac(:,:,p,q-1,k  )
+        IF(q.LT.PP_N) PrimConsJacDiag(:,:,2,2) = PrimConsJac(:,:,p,q+1,k  )
+        CALL Assemble_FVVolIntGradJacDiag(k,r,s,q,rr,rrr,ss,sss,PrimConsJacDiag,PrimConsJac(:,:,p,q,:),                     &
+                                          JacQx_plus,JacQy_plus,JacQx_minus,JacQy_minus,                                    &
+                                          JacLifting_X(:,:,p,:,k-1,:,2),JacLifting_X(:,:,p,:,k,:,2),                        &
+                                          JacLifting_Y(:,:,p,:,k-1,:,2),JacLifting_Y(:,:,p,:,k,:,2),                        &
+                                          JacQz_plus,JacQz_minus,JacLifting_Z(:,:,p,:,k-1,:,2),JacLifting_Z(:,:,p,:,k,:,2), &
+                                          BJ)
       END IF                          
       CALL Assemble_FVVolIntGradJac(k,r,s,m,l,PrimConsJac(:,:,p,q,:),JacQx_plus,JacQy_plus,JacQx_minus,JacQy_minus, &
-                                    JacLifting_X(:,:,:,:,p,q,3),JacLifting_Y(:,:,:,:,p,q,3),                        &
-                                    fJacQz_plus,fJacQy_minus,JacLifting_Z(:,:,:,:,p,q,3),                           &
-                                    BJ,.TRUE.)
+                                    JacLifting_X(:,:,p,q,:,:,3),JacLifting_Y(:,:,p,q,:,:,3),                        &
+                                    JacQz_plus,JacQz_minus,JacLifting_Z(:,:,p,q,:,:,3),                             &
+                                    BJ)
     END DO !k
   END DO !q
 END DO !p
@@ -1659,11 +1661,12 @@ END SUBROUTINE FVVolIntGradJac
 !===================================================================================================================================
 !>
 !===================================================================================================================================
-SUBROUTINE Assemble_FVVolIntGradJac(i,r,s,m,l,PrimConsJac,JacQx_plus,JacQy_plus,JacQx_minus,JacQy_minus,JacLifting_X,JacLifting_Y, &
+SUBROUTINE Assemble_FVVolIntGradJac(i,r,s,m,l, &
+                                    PrimConsJac,JacQx_plus,JacQy_plus,JacQx_minus,JacQy_minus,JacLifting_X,JacLifting_Y, &
 #if PP_dim==3
                                     JacQz_plus,JacQz_minus,JacLifting_Z, &
 #endif
-                                    BJ,isAligned)
+                                    BJ)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
@@ -1679,12 +1682,8 @@ REAL,DIMENSION(PP_nVar    ,PP_nVarPrim)              ,INTENT(IN) :: JacQx_plus,J
 REAL,DIMENSION(PP_nVarPrim,PP_nVarPrim,0:PP_N,0:PP_N),INTENT(IN) :: JacLifting_X,JacLifting_Y
 #if PP_dim==3
 REAL,DIMENSION(PP_nVar    ,PP_nVarPrim)              ,INTENT(IN) :: JacQz_plus,JacQz_minus
-REAL,DIMENSION(PP_nVarPrim,PP_nVarPrim,0:PP_N,0:PP_N),INTENT(IN) :: JacLifting_X,JacLifting_Y
+REAL,DIMENSION(PP_nVarPrim,PP_nVarPrim,0:PP_N,0:PP_N),INTENT(IN) :: JacLifting_Z
 #endif
-LOGICAL,INTENT(IN)                                               :: isAligned !< .TRUE. if e.g. flux over XI-sides w.r.t. gradients
-                                                                              !> in x-direction are considered. This leads to a
-                                                                              !> five point stencil in one dimension (4 points for
-                                                                              !> the considered flux over a specific sub-cell side)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 REAL,INTENT(INOUT)    :: BJ(1:nDOFVarElem,1:nDOFVarElem)
@@ -1694,7 +1693,7 @@ REAL,DIMENSION(PP_nVar    ,PP_nVarPrim)                          :: JacTilde
 REAL,DIMENSION(PP_nVar    ,PP_nVar)                              :: Jac
 !===================================================================================================================================
 !----------- derivatives w.r.t. (i-2) -------------!
-IF((i.GT.1).AND.isAligned)THEN
+IF(i.GT.1)THEN
   ! (i-1) Flux w.r.t (i-2) State
   JacTilde(:,:)= ( MATMUL(JacQx_plus , JacLifting_X(:,:,i-1,i-2) )  &
                  + MATMUL(JacQy_plus , JacLifting_Y(:,:,i-1,i-2) )  &
@@ -1726,6 +1725,9 @@ JacTilde(:,:)= ( MATMUL(JacQx_plus , JacLifting_X(:,:,i-1,i-1) )  &
                )
 Jac(:,:) = MATMUL(JacTilde(:,:),PrimConsJac(:,:,i-1))
 BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + Jac
+! (i) Flux w.r.t (i-1) State
+BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) - Jac
+! (i-1) Flux w.r.t (i-1) State
 JacTilde(:,:)= ( MATMUL(JacQx_minus, JacLifting_X(:,:,i  ,i-1) )  &
                + MATMUL(JacQy_minus, JacLifting_Y(:,:,i  ,i-1) )  &
 #if PP_dim==3
@@ -1735,21 +1737,6 @@ JacTilde(:,:)= ( MATMUL(JacQx_minus, JacLifting_X(:,:,i  ,i-1) )  &
 Jac(:,:) = MATMUL(JacTilde(:,:),PrimConsJac(:,:,i-1))
 BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + Jac
 ! (i) Flux w.r.t (i-1) State
-JacTilde(:,:)= ( MATMUL(JacQx_minus, JacLifting_X(:,:,i  ,i-1) )  &
-               + MATMUL(JacQy_minus, JacLifting_Y(:,:,i  ,i-1) )  &
-#if PP_dim==3
-               + MATMUL(JacQz_minus, JacLifting_Z(:,:,i  ,i-1) )  &
-#endif
-               )
-Jac(:,:) = MATMUL(JacTilde(:,:),PrimConsJac(:,:,i-1))
-BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) - Jac
-JacTilde(:,:)= ( MATMUL(JacQx_plus , JacLifting_X(:,:,i-1,i-1) )  &
-               + MATMUL(JacQy_plus , JacLifting_Y(:,:,i-1,i-1) )  &
-#if PP_dim==3
-               + MATMUL(JacQz_plus , JacLifting_Z(:,:,i-1,i-1) )  &
-#endif
-               )
-Jac(:,:) = MATMUL(JacTilde(:,:),PrimConsJac(:,:,i-1))
 BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) - Jac
 !----------- derivatives w.r.t. (i) -------------!
 ! (i-1) Flux w.r.t (i) State
@@ -1761,6 +1748,9 @@ JacTilde(:,:)= ( MATMUL(JacQx_plus , JacLifting_X(:,:,i-1,i) )  &
                )
 Jac(:,:) = MATMUL(JacTilde(:,:),PrimConsJac(:,:,i))
 BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + Jac
+! (i) Flux w.r.t (i) State
+BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) - Jac
+! (i-1) Flux w.r.t (i) State
 JacTilde(:,:)= ( MATMUL(JacQx_minus, JacLifting_X(:,:,i  ,i) )  &
                + MATMUL(JacQy_minus, JacLifting_Y(:,:,i  ,i) )  &
 #if PP_dim==3
@@ -1770,24 +1760,9 @@ JacTilde(:,:)= ( MATMUL(JacQx_minus, JacLifting_X(:,:,i  ,i) )  &
 Jac(:,:) = MATMUL(JacTilde(:,:),PrimConsJac(:,:,i))
 BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + Jac
 ! (i) Flux w.r.t (i) State
-JacTilde(:,:)= ( MATMUL(JacQx_minus, JacLifting_X(:,:,i  ,i) )  &
-               + MATMUL(JacQy_minus, JacLifting_Y(:,:,i  ,i) )  &
-#if PP_dim==3
-               + MATMUL(JacQz_minus, JacLifting_Z(:,:,i  ,i) )  &
-#endif
-               )
-Jac(:,:) = MATMUL(JacTilde(:,:),PrimConsJac(:,:,i))
 BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) - Jac
-JacTilde(:,:)= ( MATMUL(JacQx_plus , JacLifting_X(:,:,i-1,i) )  &
-               + MATMUL(JacQy_plus , JacLifting_Y(:,:,i-1,i) )  &
-#if PP_dim==3
-               + MATMUL(JacQz_plus , JacLifting_Z(:,:,i-1,i) )  &
-#endif
-               )
-Jac(:,:) = MATMUL(JacTilde(:,:),PrimConsJac(:,:,i))
-BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) - Jac
-!----------- derivatives w.r.t. (i+1,p,q) -------------!
-IF((i.LT.PP_N).AND.isAligned)THEN
+!----------- derivatives w.r.t. (i+1) -------------!
+IF(i.LT.PP_N)THEN
   IF(NoFillIn.EQV..FALSE.) THEN !NoFillIn has the same sparsity as the EulerPrecond
     ! (i-1) Flux w.r.t (i+1) State
     JacTilde(:,:)= ( MATMUL(JacQx_minus, JacLifting_X(:,:,i  ,i+1) )  &
@@ -1811,6 +1786,122 @@ IF((i.LT.PP_N).AND.isAligned)THEN
 END IF
 
 END SUBROUTINE Assemble_FVVolIntGradJac
+
+!===================================================================================================================================
+!> use if e.g. flux over XI-sides w.r.t. gradients in y-direction are considered.
+!> fill diagonal dependencies
+!===================================================================================================================================
+SUBROUTINE Assemble_FVVolIntGradJacDiag(i,r,s,p,rr,rrr,ss,sss,PrimConsJacDiag, &
+                                       PrimConsJac,JacQx_plus,JacQy_plus,JacQx_minus,JacQy_minus, &
+                                       JacLifting_X_plus,JacLifting_X_minus,JacLifting_Y_plus,JacLifting_Y_minus, &
+#if PP_dim==3
+                                       JacQz_plus,JacQz_minus,JacLifting_Z_plus,JacLifting_Z_minus, &
+#endif
+                                       BJ)
+! MODULES
+USE MOD_PreProc
+USE MOD_Globals
+USE MOD_Implicit_Vars ,ONLY: nDOFVarElem
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+INTEGER,INTENT(IN)                                               :: i,r,s,p,rr,rrr,ss,sss
+REAL,DIMENSION(PP_nVarPrim,PP_nVar    ,2,2)          ,INTENT(IN) :: PrimConsJacDiag
+REAL,DIMENSION(PP_nVarPrim,PP_nVar    ,0:PP_N)       ,INTENT(IN) :: PrimConsJac
+REAL,DIMENSION(PP_nVar    ,PP_nVarPrim)              ,INTENT(IN) :: JacQx_plus,JacQy_plus,JacQx_minus,JacQy_minus
+REAL,DIMENSION(PP_nVarPrim,PP_nVarPrim,0:PP_N,0:PP_N),INTENT(IN) :: JacLifting_X_plus,JacLifting_X_minus
+REAL,DIMENSION(PP_nVarPrim,PP_nVarPrim,0:PP_N,0:PP_N),INTENT(IN) :: JacLifting_Y_plus,JacLifting_Y_minus
+#if PP_dim==3
+REAL,DIMENSION(PP_nVar    ,PP_nVarPrim)              ,INTENT(IN) :: JacQz_plus,JacQz_minus
+REAL,DIMENSION(PP_nVarPrim,PP_nVarPrim,0:PP_N,0:PP_N),INTENT(IN) :: JacLifting_Z_plus,JacLifting_Z_minus
+#endif
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL,INTENT(INOUT)    :: BJ(1:nDOFVarElem,1:nDOFVarElem)
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES 
+REAL,DIMENSION(PP_nVar    ,PP_nVarPrim)                          :: JacTilde
+REAL,DIMENSION(PP_nVar    ,PP_nVar)                              :: Jac
+!===================================================================================================================================
+!----------- derivatives w.r.t. (i) -------------!
+! (i-1) Flux w.r.t (i-1) State
+JacTilde(:,:)= ( MATMUL(JacQx_plus , JacLifting_X_plus(:,:,p  ,p  ) )  &
+               + MATMUL(JacQy_plus , JacLifting_Y_plus(:,:,p  ,p  ) )  &
+#if PP_dim==3
+               + MATMUL(JacQz_plus , JacLifting_Z_plus(:,:,p  ,p  ) )  &
+#endif
+               )
+Jac(:,:) = MATMUL(JacTilde(:,:),PrimConsJac(:,:,i-1))
+BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + Jac
+! (i) Flux w.r.t (i-1) State
+BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) - Jac
+! (i-1) Flux w.r.t (i) State
+JacTilde(:,:)= ( MATMUL(JacQx_minus, JacLifting_X_minus(:,:,p  ,p) )  &
+               + MATMUL(JacQy_minus, JacLifting_Y_minus(:,:,p  ,p) )  &
+#if PP_dim==3
+               + MATMUL(JacQz_minus, JacLifting_Z_minus(:,:,p  ,p) )  &
+#endif
+               )
+Jac(:,:) = MATMUL(JacTilde(:,:),PrimConsJac(:,:,i))
+BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + Jac
+! (i) Flux w.r.t (i) State
+BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) - Jac
+
+IF(p.GE.1)THEN ! fill dependency on lower left dof
+  ! (i-1) Flux w.r.t (i-1,p-1) State
+  JacTilde(:,:)= ( MATMUL(JacQx_plus , JacLifting_X_plus(:,:,p  ,p-1) )  &
+                 + MATMUL(JacQy_plus , JacLifting_Y_plus(:,:,p  ,p-1) )  &
+#if PP_dim==3
+                 + MATMUL(JacQz_plus , JacLifting_Z_plus(:,:,p  ,p-1) )  &
+#endif
+                 )
+  Jac(:,:) = MATMUL(JacTilde(:,:),PrimConsJacDiag(:,:,1,1))
+  BJ(r+1:r+PP_nVar,rr+1:rr+PP_nVar) = BJ(r+1:r+PP_nVar,rr+1:rr+PP_nVar) + Jac
+  ! (i) Flux w.r.t (i-1,p-1) State
+  BJ(s+1:s+PP_nVar,rr+1:rr+PP_nVar) = BJ(s+1:s+PP_nVar,rr+1:rr+PP_nVar) - Jac
+END IF
+IF(p.LT.PP_N)THEN ! fill dependency on upper left dof
+  ! (i-1) Flux w.r.t (i-1,p+1) State
+  JacTilde(:,:)= ( MATMUL(JacQx_plus, JacLifting_X_plus(:,:,p  ,p+1) )  &
+                 + MATMUL(JacQy_plus, JacLifting_Y_plus(:,:,p  ,p+1) )  &
+#if PP_dim==3
+                 + MATMUL(JacQz_plus, JacLifting_Z_plus(:,:,p  ,p+1) )  &
+#endif
+                 )
+  Jac(:,:) = MATMUL(JacTilde(:,:),PrimConsJacDiag(:,:,1,2))
+  BJ(r+1:r+PP_nVar,rrr+1:rrr+PP_nVar) = BJ(r+1:r+PP_nVar,rrr+1:rrr+PP_nVar) + Jac
+  ! (i) Flux w.r.t (i,p+1) State
+  BJ(s+1:s+PP_nVar,rrr+1:rrr+PP_nVar) = BJ(s+1:s+PP_nVar,rrr+1:rrr+PP_nVar) - Jac
+END IF
+IF(p.GE.1)THEN ! fill dependency on lower right dof
+  ! (i-1) Flux w.r.t (i,p-1) State
+  JacTilde(:,:)= ( MATMUL(JacQx_minus, JacLifting_X_minus(:,:,p  ,p-1) )  &
+                 + MATMUL(JacQy_minus, JacLifting_Y_minus(:,:,p  ,p-1) )  &
+#if PP_dim==3                                              
+                 + MATMUL(JacQz_minus, JacLifting_Z_minus(:,:,p  ,p-1) )  &
+#endif
+                 )
+  Jac(:,:) = MATMUL(JacTilde(:,:),PrimConsJacDiag(:,:,2,1))
+  BJ(r+1:r+PP_nVar,ss+1:ss+PP_nVar) = BJ(r+1:r+PP_nVar,ss+1:ss+PP_nVar) + Jac
+  ! (i) Flux w.r.t (i,p-1) State
+  BJ(s+1:s+PP_nVar,ss+1:ss+PP_nVar) = BJ(s+1:s+PP_nVar,ss+1:ss+PP_nVar) - Jac
+END IF
+IF(p.LT.PP_N)THEN ! fill dependency on upper right dof
+  ! (i-1) Flux w.r.t (i,p+1) State
+  JacTilde(:,:)= ( MATMUL(JacQx_minus, JacLifting_X_minus(:,:,p  ,p+1) )  &
+                 + MATMUL(JacQy_minus, JacLifting_Y_minus(:,:,p  ,p+1) )  &
+#if PP_dim==3                                              
+                 + MATMUL(JacQz_minus, JacLifting_Z_minus(:,:,p  ,p+1) )  &
+#endif
+                 )
+  Jac(:,:) = MATMUL(JacTilde(:,:),PrimConsJacDiag(:,:,2,2))
+  BJ(r+1:r+PP_nVar,sss+1:sss+PP_nVar) = BJ(r+1:r+PP_nVar,sss+1:sss+PP_nVar) + Jac
+  ! (i) Flux w.r.t (i,p+1) State
+  BJ(s+1:s+PP_nVar,sss+1:sss+PP_nVar) = BJ(s+1:s+PP_nVar,sss+1:sss+PP_nVar) - Jac
+END IF
+
+END SUBROUTINE Assemble_FVVolIntGradJacDiag
 #endif /*PARABOLIC*/
 #endif /* FV_ENABLED */
 
