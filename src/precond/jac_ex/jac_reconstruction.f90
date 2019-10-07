@@ -409,8 +409,8 @@ INTEGER                                            :: iVar,ind,i
 REAL,DIMENSION(PP_nVarPrim)                        :: s_L_minus,s_R_minus,s_L_plus,s_R_plus,s_lim_minus,s_lim_plus
 REAL,DIMENSION(PP_nVar,PP_nVar,PP_N:PP_N+1)        :: Jac_ConsPrim_plus
 REAL,DIMENSION(PP_nVar,PP_nVar,-1:0)               :: Jac_ConsPrim_minus
-REAL,DIMENSION(PP_nVar,PP_nVar,-1:1)               :: Jac_PrimCons_minus
-REAL,DIMENSION(PP_nVar,PP_nVar,PP_N-1:PP_N+1)      :: Jac_PrimCons_plus
+REAL,DIMENSION(PP_nVar,PP_nVar, 0:1)               :: Jac_PrimCons_minus
+REAL,DIMENSION(PP_nVar,PP_nVar,PP_N-1:PP_N)        :: Jac_PrimCons_plus
 REAL,DIMENSION(PP_nVar,PP_nVar)                    :: matrix !< has to be used due to intel compiler error with matmul
 REAL,DIMENSION(PP_nVar,PP_nVar)                    :: vector !< has to be used due to intel compiler error with matmul
 !==================================================================================================================================
@@ -426,10 +426,10 @@ CALL dConsdPrim(UPrim_plus    ,Jac_ConsPrim_plus( :,:,PP_N  ))
 CALL dConsdPrim(UPrim_plus_nb ,Jac_ConsPrim_plus( :,:,PP_N+1))
 
 ! 2. Do derivative of interface and neighbouring volume data from prim to cons 
-DO i=-1,1
+DO i=0,1
   CALL dPrimdCons(URec_extended(:,i),Jac_PrimCons_minus(:,:,i))
 END DO
-DO i=PP_N-1,PP_N+1
+DO i=PP_N-1,PP_N
   CALL dPrimdCons(URec_extended(:,i),Jac_PrimCons_plus( :,:,i))
 END DO
 
@@ -518,9 +518,10 @@ matrix=dUdUvol_plus(:,:,PP_N,1);   vector=Jac_PrimCons_plus(:,:,PP_N-1)
 dUdUvol_plus( :,:,PP_N,1)   = MATMUL(matrix,vector)
 matrix=dUdUvol_plus(:,:,PP_N,2);   vector=Jac_PrimCons_plus(:,:,PP_N) 
 dUdUvol_plus( :,:,PP_N,2)   = MATMUL(matrix,vector)
-matrix=dUdUvol_plus(:,:,PP_N+1,1); vector=Jac_PrimCons_plus(:,:,PP_N+1)
+matrix=dUdUvol_plus(:,:,PP_N+1,1); vector=Jac_PrimCons_plus(:,:,PP_N)
 dUdUvol_plus( :,:,PP_N+1,1) = MATMUL(matrix,vector)
-matrix=dUdUvol_minus(:,:,-1,3); vector=Jac_PrimCons_minus(:,:,-1)
+
+matrix=dUdUvol_minus(:,:,-1,3); vector=Jac_PrimCons_minus(:,:,0)
 dUdUvol_minus(:,:,-1,3) = MATMUL(matrix,vector)
 matrix=dUdUvol_minus(:,:,0,2);  vector=Jac_PrimCons_minus(:,:, 0)
 dUdUvol_minus(:,:,0,2)  = MATMUL(matrix,vector)
