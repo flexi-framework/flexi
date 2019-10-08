@@ -795,6 +795,14 @@ USE MOD_DG_Vars                   ,ONLY: UPrim,UPrim_master,UPrim_slave
 USE MOD_Lifting_Vars              ,ONLY: etaBR2
 #endif
 USE MOD_Jacobian                  ,ONLY: dConsdPrimTemp,dPrimTempdCons
+#if FV_ENABLED
+USE MOD_FV_Vars                   ,ONLY: FV_Elems,FV_Metrics_fTilde_sJ,FV_Metrics_gTilde_sJ
+USE MOD_Jac_Ex_Vars               ,ONLY: FV_sdx_XI_extended,FV_sdx_ETA_extended
+#if PP_dim == 3     
+USE MOD_FV_Vars                   ,ONLY: FV_Metrics_hTilde_sJ
+USE MOD_Jac_Ex_Vars               ,ONLY: FV_sdx_ZETA_extended
+#endif
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -830,6 +838,9 @@ REAL                                                :: SurfVol_PrimJac(1:PP_nVar
 #if PP_Lifting==1
 REAL,PARAMETER                                      :: etaBR2=1.
 #endif
+#if FV_ENABLED
+REAL                                                :: Jac_reconstruct(0:PP_N,0:PP_N,0:PP_NZ,0:PP_N,PP_dim)
+#endif
 !===================================================================================================================================
 #if (PP_NodeType==2)
 delta=0.
@@ -839,20 +850,70 @@ END DO
 #endif
 dQ_dUVolInner=0.
 
-DO ll=0,PP_N
+#if FV_ENABLED
+IF(FV_Elems(iElem).EQ.0)THEN ! DG Element
+#endif
+  DO ll=0,PP_N
+    DO k=0,PP_NZ
+      DO j=0,PP_N
+        DO i=0,PP_N
+          dQVol_dU(i,j,k,ll,1) =  sJ(i,j,k,iElem,0) * D(i,ll)*Metrics_fTilde(dir,ll,j,k,iElem,0)
+          dQVol_dU(i,j,k,ll,2) =  sJ(i,j,k,iElem,0) * D(j,ll)*Metrics_gTilde(dir,i,ll,k,iElem,0)
+#if PP_dim==3
+          dQVol_dU(i,j,k,ll,3) =  sJ(i,j,k,iElem,0) * D(k,ll)*Metrics_hTilde(dir,i,j,ll,iElem,0)
+#endif
+        END DO !i
+      END DO !j
+    END DO !k
+  END DO !ll
+#if FV_ENABLED
+ELSE ! FV Element
+  dQVol_dU = 0.
+  Jac_reconstruct = 0.
   DO k=0,PP_NZ
     DO j=0,PP_N
       DO i=0,PP_N
-        dQVol_dU(i,j,k,ll,1) =  sJ(i,j,k,iElem,0)  *  D(i,ll)*Metrics_fTilde(dir,ll,j,k,iElem,0)
-        dQVol_dU(i,j,k,ll,2) =  sJ(i,j,k,iElem,0)  *  D(j,ll)*Metrics_gTilde(dir,i,ll,k,iElem,0)
+        ! Contribution by gradient reconstruction procedure with central gradient (i,j,k) -> gradient, (ll) -> state 
+        IF(i.GT.0)THEN
+          Jac_reconstruct(i,j,k,i-1,1) = 0.5*(-FV_sdx_XI_extended(j,k,i,iElem))
+        END IF                     
+        Jac_reconstruct(  i,j,k,i  ,1) = 0.5*FV_sdx_XI_extended(j,k,i,iElem) - 0.5*FV_sdx_XI_extended(j,k,i+1,iElem)
+        IF(i.LT.PP_N)THEN          
+          Jac_reconstruct(i,j,k,i+1,1) = 0.5*( FV_sdx_XI_extended(j,k,i+1,iElem))
+        END IF
+        IF(j.GT.0)THEN
+          Jac_reconstruct(i,j,k,j-1,2) = 0.5*(-FV_sdx_ETA_extended(i,k,j,iElem))
+        END IF                     
+        Jac_reconstruct(  i,j,k,j  ,2) = 0.5*FV_sdx_ETA_extended(i,k,j,iElem) - 0.5*FV_sdx_ETA_extended(i,k,j+1,iElem)
+        IF(j.LT.PP_N)THEN          
+          Jac_reconstruct(i,j,k,j+1,2) = 0.5*( FV_sdx_ETA_extended(i,k,j+1,iElem))
+        END IF
 #if PP_dim==3
-        dQVol_dU(i,j,k,ll,3) =  sJ(i,j,k,iElem,0)  *  D(k,ll)*Metrics_hTilde(dir,i,j,ll,iElem,0)
+        IF(k.GT.0)THEN
+          Jac_reconstruct(i,j,k,k-1,3) = 0.5*(-FV_sdx_ZETA_extended(i,j,k,iElem))
+        END IF                     
+        Jac_reconstruct(  i,j,k,k  ,3) = 0.5*FV_sdx_ZETA_extended(i,j,k,iElem) - 0.5*FV_sdx_ZETA_extended(i,j,k+1,iElem)
+        IF(k.LT.PP_N)THEN          
+          Jac_reconstruct(i,j,k,k+1,3) = 0.5*( FV_sdx_ZETA_extended(i,j,k+1,iElem))
+        END IF
 #endif
+        ! Contribution by lifting volume integral
+        DO ll=0,PP_N
+          dQVol_dU(i,j,k,ll,1) = Jac_reconstruct(i,j,k,ll,1)*FV_Metrics_fTilde_sJ(dir,ll,j,k,iElem)
+          dQVol_dU(i,j,k,ll,2) = Jac_reconstruct(i,j,k,ll,2)*FV_Metrics_gTilde_sJ(dir,i,ll,k,iElem)
+#if PP_dim==3
+          dQVol_dU(i,j,k,ll,3) = Jac_reconstruct(i,j,k,ll,3)*FV_Metrics_hTilde_sJ(dir,i,j,ll,iElem)
+#endif
+        END DO ! ll
       END DO !i
     END DO !j
   END DO !k
-END DO !ll
+END IF
+#endif
 
+#if FV_ENABLED
+IF(FV_Elems(iElem).NE.0)THEN ! DG Element
+#endif
 !Computation of the dQ_Side/dU_Vol (inner part)
 #if PP_dim == 3
 DO iLocSide=1,6
@@ -945,6 +1006,9 @@ DO iLocSide=2,5
     END DO !p
   END DO !q
 END DO !iLocSide
+#if FV_ENABLED
+END IF
+#endif
 
 END SUBROUTINE dQInner
 
@@ -967,6 +1031,9 @@ USE MOD_Lifting_Vars              ,ONLY: etaBR2
 USE MOD_DG_Vars                   ,ONLY: UPrim,UPrim_master,UPrim_slave
 #endif
 USE MOD_Jacobian                  ,ONLY: dConsdPrimTemp,dPrimTempdCons
+#if FV_ENABLED
+USE MOD_FV_Vars                   ,ONLY: FV_Elems
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -1001,6 +1068,9 @@ REAL                                                :: SurfVol_PrimJac(1:PP_nVar
 REAL,PARAMETER                                      :: etaBR2=1.
 #endif
 !===================================================================================================================================
+#if FV_ENABLED
+IF(FV_Elems(iElem).EQ.1) RETURN ! FV-Element
+#endif
 #if (PP_NodeType==2)
 delta=0.
 DO iVar=1,PP_nVarPrim

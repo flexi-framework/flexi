@@ -67,7 +67,7 @@ USE MOD_EddyVisc_Vars             ,ONLY: muSGS_master,muSGS_slave
 #endif /*EDDYVISCOSITY*/
 #endif /*PARABOLIC*/
 #if FV_ENABLED
-USE MOD_FV_Vars                   ,ONLY: FV_Elems_Sum
+USE MOD_FV_Vars                   ,ONLY: FV_Elems_Sum,FV_w_inv
 USE MOD_FV_Vars                   ,ONLY: FV_Elems_master,FV_Elems_slave,FV_Elems
 #if FV_RECONSTRUCT
 USE MOD_Mesh_Vars                 ,ONLY: firstInnerSide
@@ -75,8 +75,10 @@ USE MOD_Jac_Ex_Vars               ,ONLY: UPrim_extended,FV_sdx_XI_extended,FV_sd
 USE MOD_Jac_Reconstruction        ,ONLY: FV_Reconstruction_Derivative_Surf
 USE MOD_FV_Vars                   ,ONLY: FV_dx_master,FV_dx_slave
 USE MOD_GetBoundaryFlux           ,ONLY: GetBoundaryState
+USE MOD_FV_Vars                   ,ONLY: FV_Metrics_fTilde_sJ,FV_Metrics_gTilde_sJ
 #if PP_dim == 3
 USE MOD_Jac_Ex_Vars               ,ONLY: FV_sdx_ZETA_extended
+USE MOD_FV_Vars                   ,ONLY: FV_Metrics_hTilde_sJ
 #endif
 #endif
 #endif
@@ -126,7 +128,7 @@ REAL                                                    :: dQxOuter_dUvol(PP_nVa
 REAL                                                    :: dQyOuter_dUvol(PP_nVarPrim,PP_nVarPrim,0:PP_N,0:PP_NZ,2:5,0:PP_N)
 #endif /*PP_dim*/
 REAL,DIMENSION(PP_nVar,PP_nVarPrim,0:PP_N,0:PP_NZ)      :: fJacQx,fJacQz,fJacQy,gJacQx,gJacQy,gJacQz,hJacQx,hJacQy,hJacQz
-REAL,DIMENSION(PP_nVar,PP_nVar    ,0:PP_N,0:PP_NZ)      :: fJac,gJac,hJac
+REAL,DIMENSION(PP_nVar,PP_nVar    ,0:PP_N,0:PP_NZ,2)    :: fJac,gJac,hJac
 #endif /*PARABOLIC*/
 #if FV_ENABLED && FV_RECONSTRUCT
 REAL,DIMENSION(PP_nVarPrim)                             :: UPrim_plus,UPrim_minus,UPrim_plus_nb,UPrim_minus_nb
@@ -134,6 +136,9 @@ REAL                                                    :: dUdUvol_plus( PP_nVar
 REAL                                                    :: dUdUvol_minus(PP_nVar,PP_nVar,-1:0,2:3)
 INTEGER                                                 :: pq(2)
 REAL                                                    :: FV_dx_L,FV_dx_R,FV_dx_L_nb,FV_dx_R_nb
+#if PARABOLIC
+INTEGER                                                 :: ss(2)
+#endif
 #endif
 !===================================================================================================================================
 vn1 = PP_nVar * (PP_N + 1)
@@ -176,50 +181,62 @@ DO iLocSide=2,5
                                   gradUx_master(:,:,:,SideID), &
                                   gradUy_master(:,:,:,SideID), &
                                   gradUz_master(:,:,:,SideID), &
-                                  fJac,gJac,hJac               &
+                                  fJac(:,:,:,:,1),gJac(:,:,:,:,1),hJac(:,:,:,:,1)             &
 #if EDDYVISCOSITY
                                  ,muSGS_master(:,:,:,SideID)   &
+#endif
+                                  )
+        !Derivative of the diffusive Riemann Flux with respect to U_R
+        CALL EvalDiffFluxJacobian(nDOFFace,U_slave(:,:,:,SideID),UPrim_slave(:,:,:,SideID),   &
+                                  gradUx_slave(:,:,:,SideID), &
+                                  gradUy_slave(:,:,:,SideID), &
+                                  gradUz_slave(:,:,:,SideID), &
+                                  fJac(:,:,:,:,2),gJac(:,:,:,:,2),hJac(:,:,:,:,2)             &
+#if EDDYVISCOSITY
+                                 ,muSGS_slave(:,:,:,SideID)   &
 #endif
                                   )
 #endif /*navierstokes*/
         !Derivative of the diffusive Riemann Flux with respect to gradU_L
         CALL EvalFluxGradJacobian(nDOFFace,U_master(:,:,:,SideID),UPrim_Master(:,:,:,SideID), &
-                                   fJacQx,fJacQy,fJacQz,                                      &
-                                   gJacQx,gJacQy,gJacQz,                                      &
-                                   hJacQx,hJacQy,hJacQz                                       &
+                                  fJacQx,fJacQy,fJacQz,                                       &
+                                  gJacQx,gJacQy,gJacQz,                                       &
+                                  hJacQx,hJacQy,hJacQz                                        &
 #if EDDYVISCOSITY
-                                  ,muSGS_master(:,:,:,SideID)                                 &
+                                 ,muSGS_master(:,:,:,SideID)                                  &
 #endif
-                                   )
+                                  )
         DO q=0,PP_NZ
           DO p=0,PP_N
             ! Df_dQxInner = d(f,g,h)_diff/dQ_x * NormVec
             jk(:)=S2V2(:,p,q,Flip,iLocSide)
 #if EQNSYSNR==2
-            Df_dUinner(:,:,jk(1),jk(2),1,iLocSide)= Df_dUinner(:,:,jk(1),jk(2),1,iLocSide) + &
-                                                  0.5*(fJac(:,:,p,q)*NormVec(1,p,q,0,SideID) &
-                                                      +gJac(:,:,p,q)*NormVec(2,p,q,0,SideID) &
+            DO i=1,2
+              Df_dUinner(:,:,jk(1),jk(2),i,iLocSide)= Df_dUinner(:,:,jk(1),jk(2),i,iLocSide) + &
+                                                      0.5*( fJac(:,:,p,q,i)*NormVec(1,p,q,FVSide,SideID) &
+                                                           +gJac(:,:,p,q,i)*NormVec(2,p,q,FVSide,SideID) &
 #if PP_dim==3
-                                                      +hJac(:,:,p,q)*NormVec(3,p,q,0,SideID) &
+                                                           +hJac(:,:,p,q,i)*NormVec(3,p,q,FVSide,SideID) &
 #endif
-                                                      )*SurfElem(p,q,0,SideID)
+                                                           )*SurfElem(p,q,FVSide,SideID)
+            END DO
 #endif /*navierstokes*/
-            Df_dQxInner(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQx(:,:,p,q)*NormVec(1,p,q,0,SideID) &
-                                                         +gJacQx(:,:,p,q)*NormVec(2,p,q,0,SideID) &
+            Df_dQxInner(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQx(:,:,p,q)*NormVec(1,p,q,FVSide,SideID) &
+                                                         +gJacQx(:,:,p,q)*NormVec(2,p,q,FVSide,SideID) &
 #if PP_dim==3
-                                                         +hJacQx(:,:,p,q)*NormVec(3,p,q,0,SideID) &
+                                                         +hJacQx(:,:,p,q)*NormVec(3,p,q,FVSide,SideID) &
 #endif
-                                                        )*SurfElem(p,q,0,SideID)
-            Df_dQyInner(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQy(:,:,p,q)*NormVec(1,p,q,0,SideID) &
-                                                         +gJacQy(:,:,p,q)*NormVec(2,p,q,0,SideID) &
+                                                        )*SurfElem(p,q,FVSide,SideID)
+            Df_dQyInner(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQy(:,:,p,q)*NormVec(1,p,q,FVSide,SideID) &
+                                                         +gJacQy(:,:,p,q)*NormVec(2,p,q,FVSide,SideID) &
 #if PP_dim==3
-                                                         +hJacQy(:,:,p,q)*NormVec(3,p,q,0,SideID) &
+                                                         +hJacQy(:,:,p,q)*NormVec(3,p,q,FVSide,SideID) &
 #endif
-                                                        )*SurfElem(p,q,0,SideID)
+                                                        )*SurfElem(p,q,FVSide,SideID)
 #if PP_dim==3
-            Df_dQzInner(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQz(:,:,p,q)*NormVec(1,p,q,0,SideID) &
-                                                         +gJacQz(:,:,p,q)*NormVec(2,p,q,0,SideID) &
-                                                         +hJacQz(:,:,p,q)*NormVec(3,p,q,0,SideID) )*SurfElem(p,q,0,SideID)
+            Df_dQzInner(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQz(:,:,p,q)*NormVec(1,p,q,FVSide,SideID) &
+                                                         +gJacQz(:,:,p,q)*NormVec(2,p,q,FVSide,SideID) &
+                                                         +hJacQz(:,:,p,q)*NormVec(3,p,q,FVSide,SideID) )*SurfElem(p,q,FVSide,SideID)
 #endif
           END DO !p
         END DO !q
@@ -234,22 +251,22 @@ DO iLocSide=2,5
         DO q=0,PP_NZ
           DO p=0,PP_N
             jk(:)=S2V2(:,p,q,Flip,iLocSide)
-            Df_dQxOuter(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQx(:,:,p,q)*NormVec(1,p,q,0,SideID) &
-                                                         +gJacQx(:,:,p,q)*NormVec(2,p,q,0,SideID) &
+            Df_dQxOuter(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQx(:,:,p,q)*NormVec(1,p,q,FVSide,SideID) &
+                                                         +gJacQx(:,:,p,q)*NormVec(2,p,q,FVSide,SideID) &
 #if PP_dim==3
-                                                         +hJacQx(:,:,p,q)*NormVec(3,p,q,0,SideID) &
+                                                         +hJacQx(:,:,p,q)*NormVec(3,p,q,FVSide,SideID) &
 #endif
-                                                        )*SurfElem(p,q,0,SideID)
-            Df_dQyOuter(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQy(:,:,p,q)*NormVec(1,p,q,0,SideID) &
-                                                         +gJacQy(:,:,p,q)*NormVec(2,p,q,0,SideID) &
+                                                        )*SurfElem(p,q,FVSide,SideID)
+            Df_dQyOuter(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQy(:,:,p,q)*NormVec(1,p,q,FVSide,SideID) &
+                                                         +gJacQy(:,:,p,q)*NormVec(2,p,q,FVSide,SideID) &
 #if PP_dim==3
-                                                         +hJacQy(:,:,p,q)*NormVec(3,p,q,0,SideID) &
+                                                         +hJacQy(:,:,p,q)*NormVec(3,p,q,FVSide,SideID) &
 #endif
-                                                        )*SurfElem(p,q,0,SideID)
+                                                        )*SurfElem(p,q,FVSide,SideID)
 #if PP_dim==3
-            Df_dQzOuter(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQz(:,:,p,q)*NormVec(1,p,q,0,SideID) &
-                                                         +gJacQz(:,:,p,q)*NormVec(2,p,q,0,SideID) &
-                                                         +hJacQz(:,:,p,q)*NormVec(3,p,q,0,SideID) )*SurfElem(p,q,0,SideID)
+            Df_dQzOuter(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQz(:,:,p,q)*NormVec(1,p,q,FVSide,SideID) &
+                                                         +gJacQz(:,:,p,q)*NormVec(2,p,q,FVSide,SideID) &
+                                                         +hJacQz(:,:,p,q)*NormVec(3,p,q,FVSide,SideID) )*SurfElem(p,q,FVSide,SideID)
 #endif
           END DO !p
         END DO !q
@@ -265,13 +282,23 @@ DO iLocSide=2,5
       IF(EulerPrecond.EQV..FALSE.) THEN !Euler Precond = False
 #if EQNSYSNR==2
         !Derivative of the diffusive Riemann Flux with respect to U_L
-        CALL EvalDiffFluxJacobian(nDOFFace,U_slave(:,:,:,SideID),UPrim_slave(:,:,:,SideID), &
+        CALL EvalDiffFluxJacobian(nDOFFace,U_slave(:,:,:,SideID),UPrim_slave(:,:,:,SideID),   &
                                   gradUx_slave(:,:,:,SideID), &
                                   gradUy_slave(:,:,:,SideID), &
                                   gradUz_slave(:,:,:,SideID), &
-                                  fJac,gJac,hJac              &
+                                  fJac(:,:,:,:,1),gJac(:,:,:,:,1),hJac(:,:,:,:,1)             &
 #if EDDYVISCOSITY
                                  ,muSGS_slave(:,:,:,SideID)   &
+#endif
+                                  )
+        !Derivative of the diffusive Riemann Flux with respect to U_R
+        CALL EvalDiffFluxJacobian(nDOFFace,U_master(:,:,:,SideID),UPrim_master(:,:,:,SideID), &
+                                  gradUx_master(:,:,:,SideID), &
+                                  gradUy_master(:,:,:,SideID), &
+                                  gradUz_master(:,:,:,SideID), &
+                                  fJac(:,:,:,:,2),gJac(:,:,:,:,2),hJac(:,:,:,:,2)             &
+#if EDDYVISCOSITY
+                                 ,muSGS_master(:,:,:,SideID)   &
 #endif
                                   )
         !Derivative of the diffusive Riemann Flux with respect to gradU_L
@@ -289,30 +316,32 @@ DO iLocSide=2,5
           DO p=0,PP_N
             jk(:)=S2V2(:,p,q,Flip,iLocSide)
 #if EQNSYSNR==2
-            Df_dUinner(:,:,jk(1),jk(2),1,iLocSide)= Df_dUinner(:,:,jk(1),jk(2),1,iLocSide) &
-                                                  -0.5*(fJac(:,:,p,q)*NormVec(1,p,q,0,SideID) &
-                                                        +gJac(:,:,p,q)*NormVec(2,p,q,0,SideID) &
+            DO i=1,2
+              Df_dUinner(:,:,jk(1),jk(2),i,iLocSide)= Df_dUinner(:,:,jk(1),jk(2),i,iLocSide) &
+                                                      -0.5*( fJac(:,:,p,q,i)*NormVec(1,p,q,FVSide,SideID) &
+                                                            +gJac(:,:,p,q,i)*NormVec(2,p,q,FVSide,SideID) &
 #if PP_dim==3
-                                                        +hJac(:,:,p,q)*NormVec(3,p,q,0,SideID) &
+                                                            +hJac(:,:,p,q,i)*NormVec(3,p,q,FVSide,SideID) &
 #endif
-                                                        )*SurfElem(p,q,0,SideID)
+                                                            )*SurfElem(p,q,FVSide,SideID)
+            END DO
 #endif /*navierstokes*/
-            Df_dQxInner(:,:,jk(1),jk(2),iLocSide)= -0.5*( fJacQx(:,:,p,q)*NormVec(1,p,q,0,SideID) &
-                                                         +gJacQx(:,:,p,q)*NormVec(2,p,q,0,SideID) &
+            Df_dQxInner(:,:,jk(1),jk(2),iLocSide)= -0.5*( fJacQx(:,:,p,q)*NormVec(1,p,q,FVSide,SideID) &
+                                                         +gJacQx(:,:,p,q)*NormVec(2,p,q,FVSide,SideID) &
 #if PP_dim==3
-                                                         +hJacQx(:,:,p,q)*NormVec(3,p,q,0,SideID) &
+                                                         +hJacQx(:,:,p,q)*NormVec(3,p,q,FVSide,SideID) &
 #endif
-                                                        )*SurfElem(p,q,0,SideID)
-            Df_dQyInner(:,:,jk(1),jk(2),iLocSide)= -0.5*( fJacQy(:,:,p,q)*NormVec(1,p,q,0,SideID) &
-                                                         +gJacQy(:,:,p,q)*NormVec(2,p,q,0,SideID) &
+                                                        )*SurfElem(p,q,FVSide,SideID)
+            Df_dQyInner(:,:,jk(1),jk(2),iLocSide)= -0.5*( fJacQy(:,:,p,q)*NormVec(1,p,q,FVSide,SideID) &
+                                                         +gJacQy(:,:,p,q)*NormVec(2,p,q,FVSide,SideID) &
 #if PP_dim==3
-                                                         +hJacQy(:,:,p,q)*NormVec(3,p,q,0,SideID) &
+                                                         +hJacQy(:,:,p,q)*NormVec(3,p,q,FVSide,SideID) &
 #endif
-                                                        )*SurfElem(p,q,0,SideID)
+                                                        )*SurfElem(p,q,FVSide,SideID)
 #if PP_dim==3
-            Df_dQzInner(:,:,jk(1),jk(2),iLocSide)= -0.5*( fJacQz(:,:,p,q)*NormVec(1,p,q,0,SideID) &
-                                                         +gJacQz(:,:,p,q)*NormVec(2,p,q,0,SideID) &
-                                                         +hJacQz(:,:,p,q)*NormVec(3,p,q,0,SideID) )*SurfElem(p,q,0,SideID)
+            Df_dQzInner(:,:,jk(1),jk(2),iLocSide)= -0.5*( fJacQz(:,:,p,q)*NormVec(1,p,q,FVSide,SideID) &
+                                                         +gJacQz(:,:,p,q)*NormVec(2,p,q,FVSide,SideID) &
+                                                         +hJacQz(:,:,p,q)*NormVec(3,p,q,FVSide,SideID) )*SurfElem(p,q,FVSide,SideID)
 #endif
           END DO !p
         END DO !q
@@ -327,22 +356,22 @@ DO iLocSide=2,5
         DO q=0,PP_NZ
           DO p=0,PP_N
             jk(:)=S2V2(:,p,q,Flip,iLocSide)
-            Df_dQxOuter(:,:,jk(1),jk(2),iLocSide)= -0.5*( fJacQx(:,:,p,q)*NormVec(1,p,q,0,SideID) &
-                                                         +gJacQx(:,:,p,q)*NormVec(2,p,q,0,SideID) &
+            Df_dQxOuter(:,:,jk(1),jk(2),iLocSide)= -0.5*( fJacQx(:,:,p,q)*NormVec(1,p,q,FVSide,SideID) &
+                                                         +gJacQx(:,:,p,q)*NormVec(2,p,q,FVSide,SideID) &
 #if PP_dim==3
-                                                         +hJacQx(:,:,p,q)*NormVec(3,p,q,0,SideID) &
+                                                         +hJacQx(:,:,p,q)*NormVec(3,p,q,FVSide,SideID) &
 #endif
-                                                        )*SurfElem(p,q,0,SideID)
-            Df_dQyOuter(:,:,jk(1),jk(2),iLocSide)= -0.5*( fJacQy(:,:,p,q)*NormVec(1,p,q,0,SideID) &
-                                                         +gJacQy(:,:,p,q)*NormVec(2,p,q,0,SideID) &
+                                                        )*SurfElem(p,q,FVSide,SideID)
+            Df_dQyOuter(:,:,jk(1),jk(2),iLocSide)= -0.5*( fJacQy(:,:,p,q)*NormVec(1,p,q,FVSide,SideID) &
+                                                         +gJacQy(:,:,p,q)*NormVec(2,p,q,FVSide,SideID) &
 #if PP_dim==3
-                                                         +hJacQy(:,:,p,q)*NormVec(3,p,q,0,SideID) &
+                                                         +hJacQy(:,:,p,q)*NormVec(3,p,q,FVSide,SideID) &
 #endif
-                                                        )*SurfElem(p,q,0,SideID)
+                                                        )*SurfElem(p,q,FVSide,SideID)
 #if PP_dim==3
-            Df_dQzOuter(:,:,jk(1),jk(2),iLocSide)= -0.5*( fJacQz(:,:,p,q)*NormVec(1,p,q,0,SideID) &
-                                                         +gJacQz(:,:,p,q)*NormVec(2,p,q,0,SideID) &
-                                                         +hJacQz(:,:,p,q)*NormVec(3,p,q,0,SideID) )*SurfElem(p,q,0,SideID)
+            Df_dQzOuter(:,:,jk(1),jk(2),iLocSide)= -0.5*( fJacQz(:,:,p,q)*NormVec(1,p,q,FVSide,SideID) &
+                                                         +gJacQz(:,:,p,q)*NormVec(2,p,q,FVSide,SideID) &
+                                                         +hJacQz(:,:,p,q)*NormVec(3,p,q,FVSide,SideID) )*SurfElem(p,q,FVSide,SideID)
 #endif
           END DO !p
         END DO !q
@@ -467,34 +496,34 @@ ELSE ! FV Element (Assembling and multiplication with derivative of reconstructi
       s = vn2*oo + vn1*nn
       ! direct dependency of prolongated value (of current element, minus) to volume dofs next to interface
       BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                        + 0.5*(PP_N+1)*MATMUL(df_DUinner(:,:,nn,oo,1,XI_MINUS),dUdUvol_minus(:,:,0,2)) 
+                                        + FV_w_inv*MATMUL(df_DUinner(:,:,nn,oo,1,XI_MINUS),dUdUvol_minus(:,:,0,2)) 
       ! dependency of prolongated value (of neighbouring element, plus) to volume dofs next to interface
       BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                        + 0.5*(PP_N+1)*MATMUL(df_DUinner(:,:,nn,oo,2,XI_MINUS),dUdUvol_minus(:,:,-1,3)) 
+                                        + FV_w_inv*MATMUL(df_DUinner(:,:,nn,oo,2,XI_MINUS),dUdUvol_minus(:,:,-1,3)) 
       ! dependency of prolongated value (of current element, minus) to volume dofs neighbouring the dofs next to interface
       r = vn2*oo + vn1*nn + PP_nVar
       BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) &
-                                        + 0.5*(PP_N+1)*MATMUL(df_DUinner(:,:,nn,oo,1,XI_MINUS),dUdUvol_minus(:,:,0,3)) 
+                                        + FV_w_inv*MATMUL(df_DUinner(:,:,nn,oo,1,XI_MINUS),dUdUvol_minus(:,:,0,3)) 
       !-------------------Derivatives at PLUS side with respect to volume dofs-----------------------------------------------------
       s = vn2*oo + vn1*nn + PP_nVar*PP_N
       ! direct dependency of prolongated value (of current element, plus) to volume dofs next to interface
       BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                        + 0.5*(PP_N+1)*MATMUL(df_DUinner(:,:,nn,oo,1,XI_PLUS),dUdUvol_plus(:,:,PP_N,2))
+                                        + FV_w_inv*MATMUL(df_DUinner(:,:,nn,oo,1,XI_PLUS),dUdUvol_plus(:,:,PP_N,2))
       ! dependency of prolongated value (of neighbouring element, minus) to volume dofs next to interface
       BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                        + 0.5*(PP_N+1)*MATMUL(df_DUinner(:,:,nn,oo,2,XI_PLUS),dUdUvol_plus(:,:,PP_N+1,1))
+                                        + FV_w_inv*MATMUL(df_DUinner(:,:,nn,oo,2,XI_PLUS),dUdUvol_plus(:,:,PP_N+1,1))
       ! dependency of prolongated value (of current element, plus) to volume dofs neighbouring the dofs next to interface
       r = vn2*oo + vn1*nn + PP_nVar*(PP_N-1)
       BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) &
-                                        + 0.5*(PP_N+1)*MATMUL(df_DUinner(:,:,nn,oo,1,XI_PLUS),dUdUvol_plus(:,:,PP_N,1))
+                                        + FV_w_inv*MATMUL(df_DUinner(:,:,nn,oo,1,XI_PLUS),dUdUvol_plus(:,:,PP_N,1))
 #else
       !--------------------only direct dependencies of prolongated (copied) values to volume dofs next to interface----------------
       s = vn2*oo + vn1*nn
       BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                        + 0.5*(PP_N+1)*df_DUinner(:,:,nn,oo,1,XI_MINUS) 
+                                        + FV_w_inv*df_DUinner(:,:,nn,oo,1,XI_MINUS) 
       s = vn2*oo + vn1*nn + PP_nVar*PP_N
       BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                        + 0.5*(PP_N+1)*df_DUinner(:,:,nn,oo,1,XI_PLUS)
+                                        + FV_w_inv*df_DUinner(:,:,nn,oo,1,XI_PLUS)
 #endif
     END DO
   END DO
@@ -544,27 +573,27 @@ ELSE ! FV Element (Assembling and multiplication with derivative of reconstructi
                                              UPrim_extended(:,mm,:,oo,iElem),dUdUvol_plus(:,:,:,:),dUdUvol_minus(:,:,:,:))
       s = vn2*oo + PP_nVar*mm
       BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                        + 0.5*(PP_N+1)*MATMUL(df_DUinner(:,:,mm,oo,1,ETA_MINUS),dUdUvol_minus(:,:,0,2))
+                                        + FV_w_inv*MATMUL(df_DUinner(:,:,mm,oo,1,ETA_MINUS),dUdUvol_minus(:,:,0,2))
       BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                        + 0.5*(PP_N+1)*MATMUL(df_DUinner(:,:,mm,oo,2,ETA_MINUS),dUdUvol_minus(:,:,-1,3))
+                                        + FV_w_inv*MATMUL(df_DUinner(:,:,mm,oo,2,ETA_MINUS),dUdUvol_minus(:,:,-1,3))
       r = vn2*oo + PP_nVar*mm + vn1*1
       BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) &
-                                        + 0.5*(PP_N+1)*MATMUL(df_DUinner(:,:,mm,oo,1,ETA_MINUS),dUdUvol_minus(:,:,0,3))
+                                        + FV_w_inv*MATMUL(df_DUinner(:,:,mm,oo,1,ETA_MINUS),dUdUvol_minus(:,:,0,3))
       s = vn2*oo + PP_nVar*mm + vn1*PP_N 
       BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                        + 0.5*(PP_N+1)*MATMUL(df_DUinner(:,:,mm,oo,1,ETA_PLUS),dUdUvol_plus(:,:,PP_N,2))
+                                        + FV_w_inv*MATMUL(df_DUinner(:,:,mm,oo,1,ETA_PLUS),dUdUvol_plus(:,:,PP_N,2))
       BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                        + 0.5*(PP_N+1)*MATMUL(df_DUinner(:,:,mm,oo,2,ETA_PLUS),dUdUvol_plus(:,:,PP_N+1,1))
+                                        + FV_w_inv*MATMUL(df_DUinner(:,:,mm,oo,2,ETA_PLUS),dUdUvol_plus(:,:,PP_N+1,1))
       r = vn2*oo + PP_nVar*mm + vn1*(PP_N-1) 
       BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) &
-                                        + 0.5*(PP_N+1)*MATMUL(df_DUinner(:,:,mm,oo,1,ETA_PLUS),dUdUvol_plus(:,:,PP_N,1))
+                                        + FV_w_inv*MATMUL(df_DUinner(:,:,mm,oo,1,ETA_PLUS),dUdUvol_plus(:,:,PP_N,1))
 #else
       s = vn2*oo + PP_nVar*mm
       BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                        + 0.5*(PP_N+1)*df_DUinner(:,:,mm,oo,1,ETA_MINUS) 
+                                        + FV_w_inv*df_DUinner(:,:,mm,oo,1,ETA_MINUS) 
       s = vn2*oo + PP_nVar*mm + vn1*PP_N 
       BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                        + 0.5*(PP_N+1)*df_DUinner(:,:,mm,oo,1,ETA_PLUS)
+                                        + FV_w_inv*df_DUinner(:,:,mm,oo,1,ETA_PLUS)
 #endif
     END DO
   END DO
@@ -615,27 +644,27 @@ ELSE ! FV Element (Assembling and multiplication with derivative of reconstructi
                                              UPrim_extended(:,mm,nn,:,iElem),dUdUvol_plus(:,:,:,:),dUdUvol_minus(:,:,:,:))
       s = vn1*nn + PP_nVar*mm
       BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                        + 0.5*(PP_N+1)*MATMUL(df_DUinner(:,:,mm,nn,1,ZETA_MINUS),dUdUvol_minus(:,:,0,2))
+                                        + FV_w_inv*MATMUL(df_DUinner(:,:,mm,nn,1,ZETA_MINUS),dUdUvol_minus(:,:,0,2))
       BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                        + 0.5*(PP_N+1)*MATMUL(df_DUinner(:,:,mm,nn,2,ZETA_MINUS),dUdUvol_minus(:,:,-1,3))
+                                        + FV_w_inv*MATMUL(df_DUinner(:,:,mm,nn,2,ZETA_MINUS),dUdUvol_minus(:,:,-1,3))
       r = vn1*nn + PP_nVar*mm + vn2*1
       BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) &
-                                        + 0.5*(PP_N+1)*MATMUL(df_DUinner(:,:,mm,nn,1,ZETA_MINUS),dUdUvol_minus(:,:,0,3))
+                                        + FV_w_inv*MATMUL(df_DUinner(:,:,mm,nn,1,ZETA_MINUS),dUdUvol_minus(:,:,0,3))
       s = vn1*nn + PP_nVar*mm + vn2*PP_NZ
       BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                        + 0.5*(PP_N+1)*MATMUL(df_DUinner(:,:,mm,nn,1,ZETA_PLUS),dUdUvol_plus(:,:,PP_N,2))
+                                        + FV_w_inv*MATMUL(df_DUinner(:,:,mm,nn,1,ZETA_PLUS),dUdUvol_plus(:,:,PP_N,2))
       BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                        + 0.5*(PP_N+1)*MATMUL(df_DUinner(:,:,mm,nn,2,ZETA_PLUS),dUdUvol_plus(:,:,PP_N+1,1))
+                                        + FV_w_inv*MATMUL(df_DUinner(:,:,mm,nn,2,ZETA_PLUS),dUdUvol_plus(:,:,PP_N+1,1))
       r = vn1*nn + PP_nVar*mm + vn2*(PP_NZ-1)
       BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) &
-                                        + 0.5*(PP_N+1)*MATMUL(df_DUinner(:,:,mm,nn,1,ZETA_PLUS),dUdUvol_plus(:,:,PP_N,1))
+                                        + FV_w_inv*MATMUL(df_DUinner(:,:,mm,nn,1,ZETA_PLUS),dUdUvol_plus(:,:,PP_N,1))
 #else
       s = vn1*nn + PP_nVar*mm
       BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                        + 0.5*(PP_N+1)*df_DUinner(:,:,mm,nn,1,ZETA_MINUS) 
+                                        + FV_w_inv*df_DUinner(:,:,mm,nn,1,ZETA_MINUS) 
       s = vn1*nn + PP_nVar*mm + vn2*PP_NZ
       BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                        + 0.5*(PP_N+1)*df_DUinner(:,:,mm,nn,1,ZETA_PLUS)
+                                        + FV_w_inv*df_DUinner(:,:,mm,nn,1,ZETA_PLUS)
 #endif
     END DO
   END DO
@@ -645,313 +674,660 @@ END IF
 
 #if PARABOLIC
 IF(EulerPrecond.EQV..FALSE.) THEN !Euler Precond = False
-! Analytical derivation of DQInner/dUvol
-CALL dQInner(1,iElem,dQxInner_dUvol,dQxVol_dU)
-CALL dQInner(2,iElem,dQyInner_dUvol,dQyVol_dU)
-CALL dQOuter(1,iElem,dQxOuter_dUvol)
-CALL dQOuter(2,iElem,dQyOuter_dUvol)
+  ! Analytical derivation of DQInner/dUvol
+  CALL dQInner(1,iElem,dQxInner_dUvol,dQxVol_dU)
+  CALL dQInner(2,iElem,dQyInner_dUvol,dQyVol_dU)
+  CALL dQOuter(1,iElem,dQxOuter_dUvol)
+  CALL dQOuter(2,iElem,dQyOuter_dUvol)
 #if PP_dim==3
-CALL dQInner(3,iElem,dQzInner_dUvol,dQzVol_dU)
-CALL dQOuter(3,iElem,dQzOuter_dUvol)
+  CALL dQInner(3,iElem,dQzInner_dUvol,dQzVol_dU)
+  CALL dQOuter(3,iElem,dQzOuter_dUvol)
+#endif
+
+
+#if FV_ENABLED
+  IF(FVElem.EQ.1)THEN ! FV-Element
+    ! === XI-Direction =============================================================================================================
+    DO p=0,PP_N
+      DO q=0,PP_NZ
+        ! XI_MINUS
+        r = vn1*p + vn2*q ! index of flux
+        CALL dPrimTempdCons(UPrim(:,0,p,q,iElem),PrimConsJac(:,:,0,p,q))
+        Df_dQ_minus_Tilde(:,:)= (Df_dQxInner(:,:,p,q,XI_MINUS) * dQxVol_dU(0,p,q,0,1) &
+                                +Df_dQxOuter(:,:,p,q,XI_MINUS) * 0.5*FV_sdx_XI_extended(p,q,0,iElem)*FV_Metrics_fTilde_sJ(1,0,p,q,iElem) &
+                                +Df_dQyInner(:,:,p,q,XI_MINUS) * dQyVol_dU(0,p,q,0,1) &
+                                +Df_dQyOuter(:,:,p,q,XI_MINUS) * 0.5*FV_sdx_XI_extended(p,q,0,iElem)*FV_Metrics_fTilde_sJ(2,0,p,q,iElem) &
+#if PP_dim==3
+                                +Df_dQzInner(:,:,p,q,XI_MINUS) * dQzVol_dU(0,p,q,0,1) &
+                                +Df_dQzOuter(:,:,p,q,XI_MINUS) * 0.5*FV_sdx_XI_extended(p,q,0,iElem)*FV_Metrics_fTilde_sJ(3,0,p,q,iElem) &
+#endif
+                                )
+        df_dQ_minus(:,:) = MATMUL(df_dQ_minus_Tilde(:,:),PrimConsJac(:,:,0,p,q))
+        BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + FV_w_inv*df_dQ_minus
+
+        s = vn1*p + vn2*q + PP_nVar*1 ! index of point right of flux
+        CALL dPrimTempdCons(UPrim(:,1,p,q,iElem),PrimConsJac(:,:,1,p,q))
+        Df_dQ_minus_Tilde(:,:)= (Df_dQxInner(:,:,p,q,XI_MINUS) * dQxVol_dU(0,p,q,1,1) &
+                                +Df_dQyInner(:,:,p,q,XI_MINUS) * dQyVol_dU(0,p,q,1,1) & 
+#if PP_dim==3
+                                +Df_dQzInner(:,:,p,q,XI_MINUS) * dQzVol_dU(0,p,q,1,1) &
+#endif
+                                )
+        df_dQ_minus(:,:) = MATMUL(df_dQ_minus_Tilde(:,:),PrimConsJac(:,:,1,p,q))
+        BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + FV_w_inv*df_dQ_minus
+
+        IF(NoFillIn.EQV..FALSE.)THEN 
+          ! dependency on gradient in eta-direction
+          ss(1) = vn1*(p-1) + vn2*q ! index of point lower of flux (ETA)
+          ss(2) = vn1*(p+1) + vn2*q ! index of point upper of flux (ETA)
+          CALL Assemble_FVSurfIntGradJac(p,r,ss,UPrim(:,0,:,q,iElem),Df_dQxInner(:,:,p,q,XI_MINUS),Df_dQyInner(:,:,p,q,XI_MINUS), &
+                                         dQxVol_dU(0,p,q,:,2),dQyVol_dU(0,p,q,:,2),                                               &
+#if PP_dim==3
+                                         Df_dQzInner(:,:,p,q,XI_MINUS),dQzVol_dU(0,p,q,:,2),                                      &
+#endif
+                                         BJ)
+#if PP_dim==3
+          ! dependency on gradient in zeta-direction
+          ss(1) = vn1*p + vn2*(q-1) ! index of point lower of flux (ZETA)
+          ss(2) = vn1*p + vn2*(q+1) ! index of point upper of flux (ZETA)
+          CALL Assemble_FVSurfIntGradJac(q,r,ss,UPrim(:,0,p,:,iElem),Df_dQxInner(:,:,p,q,XI_MINUS),Df_dQyInner(:,:,p,q,XI_MINUS), &
+                                         dQxVol_dU(0,p,q,:,3),dQyVol_dU(0,p,q,:,3),                                               &
+                                         Df_dQzInner(:,:,p,q,XI_MINUS),dQzVol_dU(0,p,q,:,3),                                      &
+                                         BJ)
+#endif
+        END IF
+
+        ! XI_PLUS
+        r = vn1*p + vn2*q +PP_nVar*PP_N ! index of flux
+        CALL dPrimTempdCons(UPrim(:,PP_N,p,q,iElem),PrimConsJac(:,:,PP_N,p,q))
+        Df_dQ_plus_Tilde(:,:)= (Df_dQxInner(:,:,p,q,XI_PLUS) * dQxVol_dU(PP_N,p,q,PP_N,1) &
+                               -Df_dQxOuter(:,:,p,q,XI_PLUS) * 0.5*FV_sdx_XI_extended(p,q,PP_N+1,iElem)*FV_Metrics_fTilde_sJ(1,PP_N,p,q,iElem) &
+                               +Df_dQyInner(:,:,p,q,XI_PLUS) * dQyVol_dU(PP_N,p,q,PP_N,1) &
+                               -Df_dQyOuter(:,:,p,q,XI_PLUS) * 0.5*FV_sdx_XI_extended(p,q,PP_N+1,iElem)*FV_Metrics_fTilde_sJ(2,PP_N,p,q,iElem) &
+#if PP_dim==3
+                               +Df_dQzInner(:,:,p,q,XI_PLUS) * dQzVol_dU(PP_N,p,q,PP_N,1) &
+                               -Df_dQzOuter(:,:,p,q,XI_PLUS) * 0.5*FV_sdx_XI_extended(p,q,PP_N+1,iElem)*FV_Metrics_fTilde_sJ(3,PP_N,p,q,iElem) &
+#endif
+                               )
+        df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,PP_N,p,q))
+        BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + FV_w_inv*df_dQ_plus
+
+        s = vn1*p + vn2*q + PP_nVar*(PP_N-1) ! index of point left of flux
+        CALL dPrimTempdCons(UPrim(:,PP_N-1,p,q,iElem),PrimConsJac(:,:,PP_N-1,p,q))
+        Df_dQ_plus_Tilde(:,:)= (Df_dQxInner(:,:,p,q,XI_PLUS) * dQxVol_dU(PP_N,p,q,PP_N-1,1) &
+                               +Df_dQyInner(:,:,p,q,XI_PLUS) * dQyVol_dU(PP_N,p,q,PP_N-1,1) & 
+#if PP_dim==3
+                               +Df_dQzInner(:,:,p,q,XI_PLUS) * dQzVol_dU(PP_N,p,q,PP_N-1,1) &
+#endif
+                               )
+        df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,PP_N-1,p,q))
+        BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + FV_w_inv*df_dQ_plus
+
+        IF(NoFillIn.EQV..FALSE.)THEN
+          ! dependency on gradient in eta-direction
+          ss(1) = vn1*(p-1) + vn2*q + PP_nVar*PP_N ! index of point lower of flux (ETA)
+          ss(2) = vn1*(p+1) + vn2*q + PP_nVar*PP_N ! index of point upper of flux (ETA)
+          CALL Assemble_FVSurfIntGradJac(p,r,ss,UPrim(:,PP_N,:,q,iElem),Df_dQxInner(:,:,p,q,XI_PLUS),Df_dQyInner(:,:,p,q,XI_PLUS), &
+                                         dQxVol_dU(PP_N,p,q,:,2),dQyVol_dU(PP_N,p,q,:,2),                                          &
+#if PP_dim==3
+                                         Df_dQzInner(:,:,p,q,XI_PLUS),dQzVol_dU(PP_N,p,q,:,2),                                     &
+#endif
+                                         BJ)
+#if PP_dim==3
+          ! dependency on gradient in zeta-direction
+          ss(1) = vn1*p + vn2*(q-1) + PP_nVar*PP_N ! index of point lower of flux (ZETA)
+          ss(2) = vn1*p + vn2*(q+1) + PP_nVar*PP_N ! index of point upper of flux (ZETA)
+          CALL Assemble_FVSurfIntGradJac(q,r,ss,UPrim(:,PP_N,p,:,iElem),Df_dQxInner(:,:,p,q,XI_PLUS),Df_dQyInner(:,:,p,q,XI_PLUS), &
+                                         dQxVol_dU(PP_N,p,q,:,3),dQyVol_dU(PP_N,p,q,:,3),                                          &
+                                         Df_dQzInner(:,:,p,q,XI_PLUS),dQzVol_dU(PP_N,p,q,:,3),                                     &
+                                         BJ)
+#endif
+        END IF
+      END DO !q
+    END DO !p
+    ! === ETA-Direction ============================================================================================================
+    DO p=0,PP_N
+      DO q=0,PP_NZ
+        ! ETA_MINUS
+        r = PP_nVar * p + vn2 * q  ! index of flux
+        CALL dPrimTempdCons(UPrim(:,p,0,q,iElem),PrimConsJac(:,:,p,0,q))
+        Df_dQ_minus_Tilde(:,:)= (Df_dQxInner(:,:,p,q,ETA_MINUS) * dQxVol_dU(p,0,q,0,2) &
+                                +Df_dQxOuter(:,:,p,q,ETA_MINUS) * 0.5*FV_sdx_ETA_extended(p,q,0,iElem)*FV_Metrics_gTilde_sJ(1,p,0,q,iElem) &
+                                +Df_dQyInner(:,:,p,q,ETA_MINUS) * dQyVol_dU(p,0,q,0,2) &
+                                +Df_dQyOuter(:,:,p,q,ETA_MINUS) * 0.5*FV_sdx_ETA_extended(p,q,0,iElem)*FV_Metrics_gTilde_sJ(2,p,0,q,iElem) &
+#if PP_dim==3                                                                                                       
+                                +Df_dQzInner(:,:,p,q,ETA_MINUS) * dQzVol_dU(p,0,q,0,2) &
+                                +Df_dQzOuter(:,:,p,q,ETA_MINUS) * 0.5*FV_sdx_ETA_extended(p,q,0,iElem)*FV_Metrics_gTilde_sJ(3,p,0,q,iElem) &
+#endif
+                                )
+        df_dQ_minus(:,:) = MATMUL(df_dQ_minus_Tilde(:,:),PrimConsJac(:,:,p,0,q))
+        BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + FV_w_inv*df_dQ_minus
+
+        s = vn1*1 + vn2*q + PP_nVar*p ! index of point right of flux
+        CALL dPrimTempdCons(UPrim(:,p,1,q,iElem),PrimConsJac(:,:,p,1,q))
+        Df_dQ_minus_Tilde(:,:)= (Df_dQxInner(:,:,p,q,ETA_MINUS) * dQxVol_dU(p,0,q,1,2) &
+                                +Df_dQyInner(:,:,p,q,ETA_MINUS) * dQyVol_dU(p,0,q,1,2) & 
+#if PP_dim==3                                                                     
+                                +Df_dQzInner(:,:,p,q,ETA_MINUS) * dQzVol_dU(p,0,q,1,2) &
+#endif
+                                )
+        df_dQ_minus(:,:) = MATMUL(df_dQ_minus_Tilde(:,:),PrimConsJac(:,:,p,1,q))
+        BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + FV_w_inv*df_dQ_minus
+
+        IF(NoFillIn.EQV..FALSE.)THEN
+          ! dependency on gradient in xi-direction
+          ss(1) = PP_nVar * (p-1) + vn2 * q ! index of point lower of flux (XI)
+          ss(2) = PP_nVar * (p+1) + vn2 * q ! index of point upper of flux (XI)
+          CALL Assemble_FVSurfIntGradJac(p,r,ss,UPrim(:,:,0,q,iElem),Df_dQxInner(:,:,p,q,ETA_MINUS),Df_dQyInner(:,:,p,q,ETA_MINUS), &
+                                         dQxVol_dU(p,0,q,:,1),dQyVol_dU(p,0,q,:,1),                                                 &
+#if PP_dim==3
+                                         Df_dQzInner(:,:,p,q,ETA_MINUS),dQzVol_dU(p,0,q,:,1),                                       &
+#endif
+                                         BJ)
+#if PP_dim==3
+          ! dependency on gradient in zeta-direction
+          ss(1) = PP_nVar * p + vn2 * (q-1) ! index of point lower of flux (ZETA)
+          ss(2) = PP_nVar * p + vn2 * (q+1) ! index of point upper of flux (ZETA)
+          CALL Assemble_FVSurfIntGradJac(q,r,ss,UPrim(:,p,0,:,iElem),Df_dQxInner(:,:,p,q,ETA_MINUS),Df_dQyInner(:,:,p,q,ETA_MINUS), &
+                                         dQxVol_dU(p,0,q,:,3),dQyVol_dU(p,0,q,:,3),                                                 &
+                                         Df_dQzInner(:,:,p,q,ETA_MINUS),dQzVol_dU(p,0,q,:,3),                                       &
+                                         BJ)
+#endif
+        END IF
+
+        ! ETA_PLUS
+        r = PP_nVar * p + vn1 * PP_N + vn2 * q ! index of flux
+        CALL dPrimTempdCons(UPrim(:,p,PP_N,q,iElem),PrimConsJac(:,:,p,PP_N,q))
+        Df_dQ_plus_Tilde(:,:)= (Df_dQxInner(:,:,p,q,ETA_PLUS) * dQxVol_dU(p,PP_N,q,PP_N,2) &
+                               -Df_dQxOuter(:,:,p,q,ETA_PLUS) * 0.5*FV_sdx_ETA_extended(p,q,PP_N+1,iElem)*FV_Metrics_gTilde_sJ(1,p,PP_N,q,iElem) &
+                               +Df_dQyInner(:,:,p,q,ETA_PLUS) * dQyVol_dU(p,PP_N,q,PP_N,2) &
+                               -Df_dQyOuter(:,:,p,q,ETA_PLUS) * 0.5*FV_sdx_ETA_extended(p,q,PP_N+1,iElem)*FV_Metrics_gTilde_sJ(2,p,PP_N,q,iElem) &
+#if PP_dim==3
+                               +Df_dQzInner(:,:,p,q,ETA_PLUS) * dQzVol_dU(p,PP_N,q,PP_N,2) &
+                               -Df_dQzOuter(:,:,p,q,ETA_PLUS) * 0.5*FV_sdx_ETA_extended(p,q,PP_N+1,iElem)*FV_Metrics_gTilde_sJ(3,p,PP_N,q,iElem) &
+#endif
+                               )
+        df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,p,PP_N,q))
+        BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + FV_w_inv*df_dQ_plus
+
+        s = vn1*(PP_N-1) + vn2*q + PP_nVar*p ! index of point left of flux
+        CALL dPrimTempdCons(UPrim(:,p,PP_N-1,q,iElem),PrimConsJac(:,:,p,PP_N-1,q))
+        Df_dQ_plus_Tilde(:,:)= (Df_dQxInner(:,:,p,q,ETA_PLUS) * dQxVol_dU(p,PP_N,q,PP_N-1,2) &
+                               +Df_dQyInner(:,:,p,q,ETA_PLUS) * dQyVol_dU(p,PP_N,q,PP_N-1,2) & 
+#if PP_dim==3                                                                      
+                               +Df_dQzInner(:,:,p,q,ETA_PLUS) * dQzVol_dU(p,PP_N,q,PP_N-1,2) &
+#endif
+                               )
+        df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,p,PP_N-1,q))
+        BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + FV_w_inv*df_dQ_plus
+
+        IF(NoFillIn.EQV..FALSE.)THEN
+          ! dependency on gradient in xi-direction
+          ss(1) = PP_nVar * (p-1) + vn2 * q + vn1 * PP_N ! index of point lower of flux (XI)
+          ss(2) = PP_nVar * (p+1) + vn2 * q + vn1 * PP_N ! index of point upper of flux (XI)
+          CALL Assemble_FVSurfIntGradJac(p,r,ss,UPrim(:,:,PP_N,q,iElem),Df_dQxInner(:,:,p,q,ETA_PLUS),Df_dQyInner(:,:,p,q,ETA_PLUS), &
+                                         dQxVol_dU(p,PP_N,q,:,1),dQyVol_dU(p,PP_N,q,:,1),                                            &
+#if PP_dim==3
+                                         Df_dQzInner(:,:,p,q,ETA_PLUS),dQzVol_dU(p,PP_N,q,:,1),                                      &
+#endif
+                                         BJ)
+#if PP_dim==3
+          ! dependency on gradient in zeta-direction
+          ss(1) = PP_nVar * p + vn2 * (q-1) + vn1 * PP_N ! index of point lower of flux (ZETA)
+          ss(2) = PP_nVar * p + vn2 * (q+1) + vn1 * PP_N ! index of point upper of flux (ZETA)
+          CALL Assemble_FVSurfIntGradJac(q,r,ss,UPrim(:,p,PP_N,:,iElem),Df_dQxInner(:,:,p,q,ETA_PLUS),Df_dQyInner(:,:,p,q,ETA_PLUS), &
+                                         dQxVol_dU(p,PP_N,q,:,3),dQyVol_dU(p,PP_N,q,:,3),                                            &
+                                         Df_dQzInner(:,:,p,q,ETA_PLUS),dQzVol_dU(p,PP_N,q,:,3),                                      &
+                                         BJ)
+#endif
+        END IF
+      END DO !q
+    END DO !p
+#if PP_dim==3
+    ! === ZETA-Direction ===========================================================================================================
+    DO p=0,PP_N
+      DO q=0,PP_N
+        ! ZETA_MINUS
+        r = PP_nVar * p + vn1 * q  ! index of flux
+        CALL dPrimTempdCons(UPrim(:,p,q,0,iElem),PrimConsJac(:,:,p,q,0))
+        Df_dQ_minus_Tilde(:,:)= (Df_dQxInner(:,:,p,q,ZETA_MINUS) * dQxVol_dU(p,q,0,0,3) &
+                                +Df_dQxOuter(:,:,p,q,ZETA_MINUS) * 0.5*FV_sdx_ZETA_extended(p,q,0,iElem)*FV_Metrics_hTilde_sJ(1,p,q,0,iElem) &
+                                +Df_dQyInner(:,:,p,q,ZETA_MINUS) * dQyVol_dU(p,q,0,0,3) &
+                                +Df_dQyOuter(:,:,p,q,ZETA_MINUS) * 0.5*FV_sdx_ZETA_extended(p,q,0,iElem)*FV_Metrics_hTilde_sJ(2,p,q,0,iElem) &
+                                +Df_dQzInner(:,:,p,q,ZETA_MINUS) * dQzVol_dU(p,q,0,0,3) &
+                                +Df_dQzOuter(:,:,p,q,ZETA_MINUS) * 0.5*FV_sdx_ZETA_extended(p,q,0,iElem)*FV_Metrics_hTilde_sJ(3,p,q,0,iElem) &
+                                )
+        df_dQ_minus(:,:) = MATMUL(df_dQ_minus_Tilde(:,:),PrimConsJac(:,:,p,q,0))
+        BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + FV_w_inv*df_dQ_minus
+
+        s = vn2*1 + vn1*q + PP_nVar*p ! index of point right of flux
+        CALL dPrimTempdCons(UPrim(:,p,q,1,iElem),PrimConsJac(:,:,p,q,1))
+        Df_dQ_minus_Tilde(:,:)= (Df_dQxInner(:,:,p,q,ZETA_MINUS) * dQxVol_dU(p,q,0,1,3) &
+                                +Df_dQyInner(:,:,p,q,ZETA_MINUS) * dQyVol_dU(p,q,0,1,3) & 
+                                +Df_dQzInner(:,:,p,q,ZETA_MINUS) * dQzVol_dU(p,q,0,1,3) &
+                                )
+        df_dQ_minus(:,:) = MATMUL(df_dQ_minus_Tilde(:,:),PrimConsJac(:,:,p,q,1))
+        BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + FV_w_inv*df_dQ_minus
+
+        IF(NoFillIn.EQV..FALSE.)THEN
+          ! dependency on gradient in xi-direction
+          ss(1) = PP_nVar * (p-1) + vn1 * q ! index of point lower of flux (XI)
+          ss(2) = PP_nVar * (p+1) + vn1 * q ! index of point upper of flux (XI)
+          CALL Assemble_FVSurfIntGradJac(p,r,ss,UPrim(:,:,q,0,iElem),Df_dQxInner(:,:,p,q,ZETA_MINUS),Df_dQyInner(:,:,p,q,ZETA_MINUS), &
+                                         dQxVol_dU(p,q,0,:,1),dQyVol_dU(p,q,0,:,1),                                                   &
+                                         Df_dQzInner(:,:,p,q,ZETA_MINUS),dQzVol_dU(p,q,0,:,1),                                        &
+                                         BJ)
+          ! dependency on gradient in eta-direction
+          ss(1) = PP_nVar * p + vn1 * (q-1) ! index of point lower of flux (ETA)
+          ss(2) = PP_nVar * p + vn1 * (q+1) ! index of point upper of flux (ETA)
+          CALL Assemble_FVSurfIntGradJac(q,r,ss,UPrim(:,p,:,0,iElem),Df_dQxInner(:,:,p,q,ZETA_MINUS),Df_dQyInner(:,:,p,q,ZETA_MINUS), &
+                                         dQxVol_dU(p,q,0,:,2),dQyVol_dU(p,q,0,:,2),                                                   &
+                                         Df_dQzInner(:,:,p,q,ZETA_MINUS),dQzVol_dU(p,q,0,:,2),                                        &
+                                         BJ)
+        END IF
+
+        ! ZETA_PLUS
+        r = PP_nVar * p + vn2 * PP_N + vn1 * q ! index of flux
+        CALL dPrimTempdCons(UPrim(:,p,q,PP_N,iElem),PrimConsJac(:,:,p,q,PP_N))
+        Df_dQ_plus_Tilde(:,:)= (Df_dQxInner(:,:,p,q,ZETA_PLUS) * dQxVol_dU(p,q,PP_N,PP_N,3) &
+                               -Df_dQxOuter(:,:,p,q,ZETA_PLUS) * 0.5*FV_sdx_ZETA_extended(p,q,PP_N+1,iElem)*FV_Metrics_hTilde_sJ(1,p,q,PP_N,iElem) &
+                               +Df_dQyInner(:,:,p,q,ZETA_PLUS) * dQyVol_dU(p,q,PP_N,PP_N,3) &
+                               -Df_dQyOuter(:,:,p,q,ZETA_PLUS) * 0.5*FV_sdx_ZETA_extended(p,q,PP_N+1,iElem)*FV_Metrics_hTilde_sJ(2,p,q,PP_N,iElem) &
+                               +Df_dQzInner(:,:,p,q,ZETA_PLUS) * dQzVol_dU(p,q,PP_N,PP_N,3) &
+                               -Df_dQzOuter(:,:,p,q,ZETA_PLUS) * 0.5*FV_sdx_ZETA_extended(p,q,PP_N+1,iElem)*FV_Metrics_hTilde_sJ(3,p,q,PP_N,iElem) &
+                               )
+        df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,p,q,PP_N))
+        BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + FV_w_inv*df_dQ_plus
+
+        s = vn2*(PP_N-1) + vn1*q + PP_nVar*p ! index of point left of flux
+        CALL dPrimTempdCons(UPrim(:,p,q,PP_N-1,iElem),PrimConsJac(:,:,p,q,PP_N-1))
+        Df_dQ_plus_Tilde(:,:)= (Df_dQxInner(:,:,p,q,ZETA_PLUS) * dQxVol_dU(p,q,PP_N,PP_N-1,3) &
+                               +Df_dQyInner(:,:,p,q,ZETA_PLUS) * dQyVol_dU(p,q,PP_N,PP_N-1,3) & 
+                               +Df_dQzInner(:,:,p,q,ZETA_PLUS) * dQzVol_dU(p,q,PP_N,PP_N-1,3) &
+                               )
+        df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,p,q,PP_N-1))
+        BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + FV_w_inv*df_dQ_plus
+
+        IF(NoFillIn.EQV..FALSE.)THEN
+          ! dependency on gradient in xi-direction
+          ss(1) = PP_nVar * (p-1) + vn1 * q + vn2 * PP_N ! index of point lower of flux (XI)
+          ss(2) = PP_nVar * (p+1) + vn1 * q + vn2 * PP_N ! index of point upper of flux (XI)
+          CALL Assemble_FVSurfIntGradJac(p,r,ss,UPrim(:,:,q,PP_N,iElem),Df_dQxInner(:,:,p,q,ZETA_PLUS),Df_dQyInner(:,:,p,q,ZETA_PLUS), &
+                                         dQxVol_dU(p,q,PP_N,:,1),dQyVol_dU(p,q,PP_N,:,1),                                              &
+                                         Df_dQzInner(:,:,p,q,ZETA_PLUS),dQzVol_dU(p,q,PP_N,:,1),                                       &
+                                         BJ)
+          ! dependency on gradient in eta-direction
+          ss(1) = PP_nVar * p + vn1 * (q-1) + vn2 * PP_N ! index of point lower of flux (ETA)
+          ss(2) = PP_nVar * p + vn1 * (q+1) + vn2 * PP_N ! index of point upper of flux (ETA)
+          CALL Assemble_FVSurfIntGradJac(q,r,ss,UPrim(:,p,:,PP_N,iElem),Df_dQxInner(:,:,p,q,ZETA_PLUS),Df_dQyInner(:,:,p,q,ZETA_PLUS), &
+                                         dQxVol_dU(p,q,PP_N,:,2),dQyVol_dU(p,q,PP_N,:,2),                                              &
+                                         Df_dQzInner(:,:,p,q,ZETA_PLUS),dQzVol_dU(p,q,PP_N,:,2),                                       &
+                                         BJ)
+        END IF
+      END DO !q
+    END DO !p
+#endif
+  ELSE ! DG_Element
 #endif
 
 ! DF_DU = Df_dQInner ( DQVol_DU + DQinner_DU)  + (dF_dQOuter * DQouter_DU)
 ! First:  Df_dQInner * DQVol_DU 
 !       = Df_DQInner(XI_Minus) * (DQVol_dU_1 + DQVol_DU_2 +DQVol_DU3) 
-  DO oo = 0,PP_NZ
-    DO nn = 0,PP_N
-      DO mm = 0,PP_N
-        ! XI-direction--------------------------------------------------------------------------------------------------------------
-        CALL dPrimTempdCons(UPrim(:,mm,nn,oo,iElem),PrimConsJac(:,:,mm,nn,oo))
-        s = vn2 * oo + vn1 * nn + PP_nVar * mm
-        DO l=0,PP_N
-          Df_dQ_minus_Tilde(:,:)= (Df_dQxInner(:,:,nn,oo,XI_MINUS  ) * dQxVol_dU(l,nn,oo,mm,1) &
-                                  +Df_dQyInner(:,:,nn,oo,XI_MINUS  ) * dQyVol_dU(l,nn,oo,mm,1) & 
+    DO oo = 0,PP_NZ
+      DO nn = 0,PP_N
+        DO mm = 0,PP_N
+          ! XI-direction--------------------------------------------------------------------------------------------------------------
+          CALL dPrimTempdCons(UPrim(:,mm,nn,oo,iElem),PrimConsJac(:,:,mm,nn,oo))
+          s = vn2 * oo + vn1 * nn + PP_nVar * mm
+          DO l=0,PP_N
+            Df_dQ_minus_Tilde(:,:)= (Df_dQxInner(:,:,nn,oo,XI_MINUS  ) * dQxVol_dU(l,nn,oo,mm,1) &
+                                    +Df_dQyInner(:,:,nn,oo,XI_MINUS  ) * dQyVol_dU(l,nn,oo,mm,1) & 
 #if PP_dim==3
-                                  +Df_dQzInner(:,:,nn,oo,XI_MINUS  ) * dQzVol_dU(l,nn,oo,mm,1) &
+                                    +Df_dQzInner(:,:,nn,oo,XI_MINUS  ) * dQzVol_dU(l,nn,oo,mm,1) &
 #endif
-                                  )
-          df_dQ_minus(:,:) = MATMUL(df_dQ_minus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
-          Df_dQ_plus_Tilde(:,:) = (Df_dQxInner(:,:,nn,oo,XI_PLUS   ) * dQxvol_dU(l,nn,oo,mm,1) &
-                                  +Df_dQyInner(:,:,nn,oo,XI_PLUS   ) * dQyvol_dU(l,nn,oo,mm,1) & 
+                                    )
+            df_dQ_minus(:,:) = MATMUL(df_dQ_minus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
+            Df_dQ_plus_Tilde(:,:) = (Df_dQxInner(:,:,nn,oo,XI_PLUS   ) * dQxvol_dU(l,nn,oo,mm,1) &
+                                    +Df_dQyInner(:,:,nn,oo,XI_PLUS   ) * dQyvol_dU(l,nn,oo,mm,1) & 
 #if PP_dim==3
-                                  +Df_dQzInner(:,:,nn,oo,XI_PLUS   ) * dQzvol_dU(l,nn,oo,mm,1) &
+                                    +Df_dQzInner(:,:,nn,oo,XI_PLUS   ) * dQzvol_dU(l,nn,oo,mm,1) &
 #endif
-                                  )        
-          df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
-          DO i = 0,PP_N
-            r = PP_nVar * i + vn1 * nn+ vn2 * oo 
-            BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) &
-                                            + LL_Minus(i,l)* df_dQ_minus(:,:) &
-                                            + LL_Plus(i,l) * df_dQ_plus(:,:)
-          END DO !i
-        END DO ! l
-      IF(NoFillIn.EQV..FALSE.) THEN !NoFillIn has the same sparsity as the EulerPrecond
-        DO j = 0,PP_N
-          Df_dQ_minus_Tilde(:,:)= (Df_dQxInner(:,:,j,oo,XI_MINUS  ) * dQxVol_dU(mm,j,oo,nn,2) &
-                                  +Df_dQyInner(:,:,j,oo,XI_MINUS  ) * dQyVol_dU(mm,j,oo,nn,2) & 
-#if PP_dim==3
-                                  +Df_dQzInner(:,:,j,oo,XI_MINUS  ) * dQzVol_dU(mm,j,oo,nn,2) &
-#endif
-                                  )
-          df_dQ_minus(:,:)= MATMUL(df_dQ_minus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
-          df_dQ_plus_Tilde(:,:) = (Df_dQxInner(:,:,j,oo,XI_PLUS   ) * dQxvol_dU(mm,j,oo,nn,2) &
-                                  +Df_dQyInner(:,:,j,oo,XI_PLUS   ) * dQyvol_dU(mm,j,oo,nn,2) &
-#if PP_dim==3
-                                  +Df_dQzInner(:,:,j,oo,XI_PLUS   ) * dQzvol_dU(mm,j,oo,nn,2) &
-#endif
-                                  )
-          df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
-          DO i = 0,PP_N
-            r = PP_nVar * i + vn1 * j+ vn2 * oo 
-            BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) &
-                                            + LL_Minus(i,mm)*df_dQ_minus(:,:) & 
-                                            + LL_Plus(i,mm) * df_dQ_plus(:,:) 
-          END DO ! i
-        END DO ! j
-#if PP_dim==3
-        DO k = 0,PP_NZ
-          Df_dQ_minus_Tilde(:,:)= (Df_dQxInner(:,:,nn,k,XI_MINUS  ) * dQxVol_dU(mm,nn,k,oo,3) &
-                                  +Df_dQyInner(:,:,nn,k,XI_MINUS  ) * dQyVol_dU(mm,nn,k,oo,3) &
-                                  +Df_dQzInner(:,:,nn,k,XI_MINUS  ) * dQzVol_dU(mm,nn,k,oo,3) &
-                                  )
-          df_dQ_minus(:,:)= MATMUL(Df_dQ_minus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
-          df_dQ_plus_Tilde(:,:) = (Df_dQxInner(:,:,nn,k,XI_PLUS   ) * dQxvol_dU(mm,nn,k,oo,3) &
-                                  +Df_dQyInner(:,:,nn,k,XI_PLUS   ) * dQyvol_dU(mm,nn,k,oo,3) &
-                                  +Df_dQzInner(:,:,nn,k,XI_PLUS   ) * dQzvol_dU(mm,nn,k,oo,3) &
-                                  )
-          df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
-          DO i = 0,PP_N
-            r = PP_nVar * i + vn1 * nn+ vn2 * k 
-            BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) &
-                                            + LL_Minus(i,mm)*df_dQ_minus(:,:) &
-                                            + LL_Plus(i,mm) * df_dQ_plus(:,:)
-          END DO ! i
-        END DO ! k
-#endif
-        ! ETA-direction-------------------------------------------------------------------------------------------------------------
-        DO i = 0,PP_N
-          Df_dQ_minus_Tilde(:,:)= ( Df_dQxInner(:,:,i,oo,ETA_MINUS ) * dQxvol_dU(i,nn,oo,mm,1) &
-                                   +Df_dQyInner(:,:,i,oo,ETA_MINUS ) * dQyvol_dU(i,nn,oo,mm,1) &
-#if PP_dim==3
-                                   +Df_dQzInner(:,:,i,oo,ETA_MINUS ) * dQzvol_dU(i,nn,oo,mm,1) &
-#endif
-                                  )
-          df_dQ_minus(:,:)= MATMUL(df_dQ_minus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
-          df_dQ_plus_Tilde(:,:) = ( Df_dQxInner(:,:,i,oo,ETA_PLUS  ) * dQxvol_dU(i,nn,oo,mm,1) &
-                                   +Df_dQyInner(:,:,i,oo,ETA_PLUS  ) * dQyvol_dU(i,nn,oo,mm,1) &
-#if PP_dim==3
-                                   +Df_dQzInner(:,:,i,oo,ETA_PLUS  ) * dQzvol_dU(i,nn,oo,mm,1) &
-#endif
-                                  )
-          df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
+                                    )        
+            df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
+            DO i = 0,PP_N
+              r = PP_nVar * i + vn1 * nn+ vn2 * oo 
+              BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) &
+                                              + LL_Minus(i,l)* df_dQ_minus(:,:) &
+                                              + LL_Plus(i,l) * df_dQ_plus(:,:)
+            END DO !i
+          END DO ! l
+        IF(NoFillIn.EQV..FALSE.) THEN !NoFillIn has the same sparsity as the EulerPrecond
           DO j = 0,PP_N
-            r = PP_nVar * i + vn1 * j+ vn2 * oo 
-            BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) &
-                                            + LL_Minus(j,nn)*df_dQ_minus(:,:) & 
-                                            + LL_Plus(j,nn) * df_dQ_plus(:,:)
+            Df_dQ_minus_Tilde(:,:)= (Df_dQxInner(:,:,j,oo,XI_MINUS  ) * dQxVol_dU(mm,j,oo,nn,2) &
+                                    +Df_dQyInner(:,:,j,oo,XI_MINUS  ) * dQyVol_dU(mm,j,oo,nn,2) & 
+#if PP_dim==3
+                                    +Df_dQzInner(:,:,j,oo,XI_MINUS  ) * dQzVol_dU(mm,j,oo,nn,2) &
+#endif
+                                    )
+            df_dQ_minus(:,:)= MATMUL(df_dQ_minus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
+            df_dQ_plus_Tilde(:,:) = (Df_dQxInner(:,:,j,oo,XI_PLUS   ) * dQxvol_dU(mm,j,oo,nn,2) &
+                                    +Df_dQyInner(:,:,j,oo,XI_PLUS   ) * dQyvol_dU(mm,j,oo,nn,2) &
+#if PP_dim==3
+                                    +Df_dQzInner(:,:,j,oo,XI_PLUS   ) * dQzvol_dU(mm,j,oo,nn,2) &
+#endif
+                                    )
+            df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
+            DO i = 0,PP_N
+              r = PP_nVar * i + vn1 * j+ vn2 * oo 
+              BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) &
+                                              + LL_Minus(i,mm)*df_dQ_minus(:,:) & 
+                                              + LL_Plus(i,mm) * df_dQ_plus(:,:) 
+            END DO ! i
           END DO ! j
-        END DO ! i
-      END IF !NoFillIn
-        DO l = 0,PP_N
-          df_dQ_minus_Tilde(:,:)= ( Df_dQxInner(:,:,mm,oo,ETA_MINUS ) * dQxvol_dU(mm,l,oo,nn,2) &
-                                   +Df_dQyInner(:,:,mm,oo,ETA_MINUS ) * dQyvol_dU(mm,l,oo,nn,2) &
 #if PP_dim==3
-                                   +Df_dQzInner(:,:,mm,oo,ETA_MINUS ) * dQzvol_dU(mm,l,oo,nn,2) &
+          DO k = 0,PP_NZ
+            Df_dQ_minus_Tilde(:,:)= (Df_dQxInner(:,:,nn,k,XI_MINUS  ) * dQxVol_dU(mm,nn,k,oo,3) &
+                                    +Df_dQyInner(:,:,nn,k,XI_MINUS  ) * dQyVol_dU(mm,nn,k,oo,3) &
+                                    +Df_dQzInner(:,:,nn,k,XI_MINUS  ) * dQzVol_dU(mm,nn,k,oo,3) &
+                                    )
+            df_dQ_minus(:,:)= MATMUL(Df_dQ_minus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
+            df_dQ_plus_Tilde(:,:) = (Df_dQxInner(:,:,nn,k,XI_PLUS   ) * dQxvol_dU(mm,nn,k,oo,3) &
+                                    +Df_dQyInner(:,:,nn,k,XI_PLUS   ) * dQyvol_dU(mm,nn,k,oo,3) &
+                                    +Df_dQzInner(:,:,nn,k,XI_PLUS   ) * dQzvol_dU(mm,nn,k,oo,3) &
+                                    )
+            df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
+            DO i = 0,PP_N
+              r = PP_nVar * i + vn1 * nn+ vn2 * k 
+              BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) &
+                                              + LL_Minus(i,mm)*df_dQ_minus(:,:) &
+                                              + LL_Plus(i,mm) * df_dQ_plus(:,:)
+            END DO ! i
+          END DO ! k
 #endif
-                                  )
-          df_dQ_minus(:,:)= MATMUL(df_dQ_minus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
-          df_dQ_plus_Tilde(:,:)= ( Df_dQxInner(:,:,mm,oo,ETA_PLUS  ) * dQxvol_dU(mm,l,oo,nn,2) &
-                                  +Df_dQyInner(:,:,mm,oo,ETA_PLUS  ) * dQyvol_dU(mm,l,oo,nn,2) & 
+          ! ETA-direction-------------------------------------------------------------------------------------------------------------
+          DO i = 0,PP_N
+            Df_dQ_minus_Tilde(:,:)= ( Df_dQxInner(:,:,i,oo,ETA_MINUS ) * dQxvol_dU(i,nn,oo,mm,1) &
+                                     +Df_dQyInner(:,:,i,oo,ETA_MINUS ) * dQyvol_dU(i,nn,oo,mm,1) &
 #if PP_dim==3
-                                  +Df_dQzInner(:,:,mm,oo,ETA_PLUS  ) * dQzvol_dU(mm,l,oo,nn,2) &
+                                     +Df_dQzInner(:,:,i,oo,ETA_MINUS ) * dQzvol_dU(i,nn,oo,mm,1) &
 #endif
-                                 )
-          df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
-          DO j=0,PP_N
-            r = PP_nVar * mm + vn1 * j+ vn2 * oo
-            BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) &
-                                            + LL_Minus(j,l) *df_dQ_minus(:,:) &
-                                            + LL_Plus(j,l)  * df_dQ_plus(:,:) 
-          END DO !j
-        END DO ! l
+                                    )
+            df_dQ_minus(:,:)= MATMUL(df_dQ_minus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
+            df_dQ_plus_Tilde(:,:) = ( Df_dQxInner(:,:,i,oo,ETA_PLUS  ) * dQxvol_dU(i,nn,oo,mm,1) &
+                                     +Df_dQyInner(:,:,i,oo,ETA_PLUS  ) * dQyvol_dU(i,nn,oo,mm,1) &
 #if PP_dim==3
-      IF(NoFillIn.EQV..FALSE.) THEN !NoFillIn has the same sparsity as the EulerPrecond
-        DO k = 0,PP_NZ
-          df_dQ_minus_Tilde(:,:)=  (Df_dQxInner(:,:,mm,k,ETA_MINUS ) * dQxvol_dU(mm,nn,k,oo,3) &
-                                   +Df_dQyInner(:,:,mm,k,ETA_MINUS ) * dQyvol_dU(mm,nn,k,oo,3) & 
-                                   +Df_dQzInner(:,:,mm,k,ETA_MINUS ) * dQzvol_dU(mm,nn,k,oo,3) &
+                                     +Df_dQzInner(:,:,i,oo,ETA_PLUS  ) * dQzvol_dU(i,nn,oo,mm,1) &
+#endif
+                                    )
+            df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
+            DO j = 0,PP_N
+              r = PP_nVar * i + vn1 * j+ vn2 * oo 
+              BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) &
+                                              + LL_Minus(j,nn)*df_dQ_minus(:,:) & 
+                                              + LL_Plus(j,nn) * df_dQ_plus(:,:)
+            END DO ! j
+          END DO ! i
+        END IF !NoFillIn
+          DO l = 0,PP_N
+            df_dQ_minus_Tilde(:,:)= ( Df_dQxInner(:,:,mm,oo,ETA_MINUS ) * dQxvol_dU(mm,l,oo,nn,2) &
+                                     +Df_dQyInner(:,:,mm,oo,ETA_MINUS ) * dQyvol_dU(mm,l,oo,nn,2) &
+#if PP_dim==3
+                                     +Df_dQzInner(:,:,mm,oo,ETA_MINUS ) * dQzvol_dU(mm,l,oo,nn,2) &
+#endif
+                                    )
+            df_dQ_minus(:,:)= MATMUL(df_dQ_minus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
+            df_dQ_plus_Tilde(:,:)= ( Df_dQxInner(:,:,mm,oo,ETA_PLUS  ) * dQxvol_dU(mm,l,oo,nn,2) &
+                                    +Df_dQyInner(:,:,mm,oo,ETA_PLUS  ) * dQyvol_dU(mm,l,oo,nn,2) & 
+#if PP_dim==3
+                                    +Df_dQzInner(:,:,mm,oo,ETA_PLUS  ) * dQzvol_dU(mm,l,oo,nn,2) &
+#endif
                                    )
-          df_dQ_minus(:,:)= MATMUL(df_dQ_minus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
-          df_dQ_plus_Tilde(:,:)= ( Df_dQxInner(:,:,mm,k,ETA_PLUS  ) * dQxvol_dU(mm,nn,k,oo,3) &
-                                  +Df_dQyInner(:,:,mm,k,ETA_PLUS  ) * dQyvol_dU(mm,nn,k,oo,3) &
-                                  +Df_dQzInner(:,:,mm,k,ETA_PLUS  ) * dQzvol_dU(mm,nn,k,oo,3) &
-                                 )
-          df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
+            df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
+            DO j=0,PP_N
+              r = PP_nVar * mm + vn1 * j+ vn2 * oo
+              BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) &
+                                              + LL_Minus(j,l) *df_dQ_minus(:,:) &
+                                              + LL_Plus(j,l)  * df_dQ_plus(:,:) 
+            END DO !j
+          END DO ! l
+#if PP_dim==3
+        IF(NoFillIn.EQV..FALSE.) THEN !NoFillIn has the same sparsity as the EulerPrecond
+          DO k = 0,PP_NZ
+            df_dQ_minus_Tilde(:,:)=  (Df_dQxInner(:,:,mm,k,ETA_MINUS ) * dQxvol_dU(mm,nn,k,oo,3) &
+                                     +Df_dQyInner(:,:,mm,k,ETA_MINUS ) * dQyvol_dU(mm,nn,k,oo,3) & 
+                                     +Df_dQzInner(:,:,mm,k,ETA_MINUS ) * dQzvol_dU(mm,nn,k,oo,3) &
+                                     )
+            df_dQ_minus(:,:)= MATMUL(df_dQ_minus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
+            df_dQ_plus_Tilde(:,:)= ( Df_dQxInner(:,:,mm,k,ETA_PLUS  ) * dQxvol_dU(mm,nn,k,oo,3) &
+                                    +Df_dQyInner(:,:,mm,k,ETA_PLUS  ) * dQyvol_dU(mm,nn,k,oo,3) &
+                                    +Df_dQzInner(:,:,mm,k,ETA_PLUS  ) * dQzvol_dU(mm,nn,k,oo,3) &
+                                   )
+            df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
+            DO j = 0,PP_N
+              r = PP_nVar * mm + vn1 * j+ vn2 * k 
+              BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) &
+                                              + LL_Minus(j,nn)*df_dQ_minus(:,:) &
+                                              + LL_Plus(j,nn) * df_dQ_plus(:,:) 
+            END DO ! j
+          END DO ! k
+          ! ZETA-direction------------------------------------------------------------------------------------------------------------
+          DO i = 0,PP_N
+            df_dQ_minus_Tilde(:,:)=  (Df_dQxInner(:,:,i,nn,ZETA_MINUS) * dQxvol_dU(i,nn,oo,mm,1) &
+                                     +Df_dQyInner(:,:,i,nn,ZETA_MINUS) * dQyvol_dU(i,nn,oo,mm,1) &
+                                     +Df_dQzInner(:,:,i,nn,ZETA_MINUS) * dQzvol_dU(i,nn,oo,mm,1) &
+                                     )
+            df_dQ_minus(:,:)= MATMUL(df_dQ_minus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
+            
+            df_dQ_plus_Tilde(:,:) =  (Df_dQxInner(:,:,i,nn,ZETA_PLUS ) * dQxvol_dU(i,nn,oo,mm,1) &
+                                     +Df_dQyInner(:,:,i,nn,ZETA_PLUS ) * dQyvol_dU(i,nn,oo,mm,1) &
+                                     +Df_dQzInner(:,:,i,nn,ZETA_PLUS ) * dQzvol_dU(i,nn,oo,mm,1) &
+                                     )
+            df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
+            DO k = 0,PP_NZ
+              r = PP_nVar * i + vn1 * nn+ vn2 * k 
+              BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) &
+                                              + LL_Minus(k,oo)*df_dQ_minus(:,:) & 
+                                              + LL_Plus(k,oo) * df_dQ_plus(:,:) 
+            END DO ! k
+          END DO ! i
           DO j = 0,PP_N
-            r = PP_nVar * mm + vn1 * j+ vn2 * k 
-            BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) &
-                                            + LL_Minus(j,nn)*df_dQ_minus(:,:) &
-                                            + LL_Plus(j,nn) * df_dQ_plus(:,:) 
+            df_dQ_minus_Tilde(:,:)=  (Df_dQxInner(:,:,mm,j,ZETA_MINUS) * dQxvol_dU(mm,j,oo,nn,2) &
+                                     +Df_dQyInner(:,:,mm,j,ZETA_MINUS) * dQyvol_dU(mm,j,oo,nn,2) &
+                                     +Df_dQzInner(:,:,mm,j,ZETA_MINUS) * dQzvol_dU(mm,j,oo,nn,2) &
+                                     )
+            df_dQ_minus(:,:)= MATMUL(df_dQ_minus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
+            df_dQ_plus_Tilde(:,:) =  (Df_dQxInner(:,:,mm,j,ZETA_PLUS ) * dQxvol_dU(mm,j,oo,nn,2) &
+                                     +Df_dQyInner(:,:,mm,j,ZETA_PLUS ) * dQyvol_dU(mm,j,oo,nn,2) &
+                                     +Df_dQzInner(:,:,mm,j,ZETA_PLUS ) * dQzvol_dU(mm,j,oo,nn,2) &
+                                     )
+            df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
+            DO k = 0,PP_NZ
+              r = PP_nVar * mm + vn1 * j+ vn2 * k 
+              BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) &
+                                              + LL_Minus(k,oo)*df_dQ_minus(:,:) &
+                                              + LL_Plus(k,oo) * df_dQ_plus(:,:)
+            END DO ! k
           END DO ! j
-        END DO ! k
-        ! ZETA-direction------------------------------------------------------------------------------------------------------------
-        DO i = 0,PP_N
-          df_dQ_minus_Tilde(:,:)=  (Df_dQxInner(:,:,i,nn,ZETA_MINUS) * dQxvol_dU(i,nn,oo,mm,1) &
-                                   +Df_dQyInner(:,:,i,nn,ZETA_MINUS) * dQyvol_dU(i,nn,oo,mm,1) &
-                                   +Df_dQzInner(:,:,i,nn,ZETA_MINUS) * dQzvol_dU(i,nn,oo,mm,1) &
-                                   )
+        END IF !NoFillIn
+          DO l = 0,PP_N
+            df_dQ_minus_Tilde(:,:)=  (Df_dQxInner(:,:,mm,nn,ZETA_MINUS) * dQxvol_dU(mm,nn,l,oo,3) &
+                                     +Df_dQyInner(:,:,mm,nn,ZETA_MINUS) * dQyvol_dU(mm,nn,l,oo,3) &
+                                     +Df_dQzInner(:,:,mm,nn,ZETA_MINUS) * dQzvol_dU(mm,nn,l,oo,3) &
+                                     )
+            df_dQ_minus(:,:)= MATMUL(df_dQ_minus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
+            df_dQ_plus_Tilde(:,:)=  (Df_dQxInner(:,:,mm,nn,ZETA_PLUS ) * dQxvol_dU(mm,nn,l,oo,3) &
+                                    +Df_dQyInner(:,:,mm,nn,ZETA_PLUS ) * dQyvol_dU(mm,nn,l,oo,3) &
+                                    +Df_dQzInner(:,:,mm,nn,ZETA_PLUS ) * dQzvol_dU(mm,nn,l,oo,3) &
+                                    )
+            df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
+            DO k=0,PP_NZ
+              r = PP_nVar * mm + vn1 * nn+ vn2 * k 
+              BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar)  &
+                                              + LL_Minus(k,l) * df_dQ_minus(:,:) & 
+                                              + LL_Plus(k,l)  * df_dQ_plus(:,:) 
+            END DO !k
+          END DO ! l
+#endif
+        END DO ! nn
+      END DO ! mm 
+    END DO ! oo
+
+    ! Second :( Df_dQInner *  DQinner_DU + dF_dQOuter * DQouter_DU) * PrimConsJac 
+    DO oo = 0,PP_NZ
+      DO nn = 0,PP_N
+        DO mm = 0,PP_N
+          s = vn2 * oo + vn1 * nn + PP_nVar * mm
+          df_dQ_minus_Tilde(:,:)= (MATMUL(Df_dQxinner(:,:,nn,oo,XI_MINUS  ) ,dQxinner_dUvol(:,:,nn,oo,XI_MINUS  ,mm) ) &
+                                  +MATMUL(Df_dQyinner(:,:,nn,oo,XI_MINUS  ) ,dQyinner_dUvol(:,:,nn,oo,XI_MINUS  ,mm) ) &
+#if PP_dim==3
+                                  +MATMUL(Df_dQzinner(:,:,nn,oo,XI_MINUS  ) ,dQzinner_dUvol(:,:,nn,oo,XI_MINUS  ,mm) ) &
+#endif
+                                  +MATMUL(Df_dQxOuter(:,:,nn,oo,XI_MINUS  ) ,dQxOuter_dUvol(:,:,nn,oo,XI_MINUS  ,mm) ) &
+                                  +MATMUL(Df_dQyOuter(:,:,nn,oo,XI_MINUS  ) ,dQyOuter_dUvol(:,:,nn,oo,XI_MINUS  ,mm) ) & 
+#if PP_dim==3
+                                  +MATMUL(Df_dQzOuter(:,:,nn,oo,XI_MINUS  ) ,dQzOuter_dUvol(:,:,nn,oo,XI_MINUS  ,mm) ) &
+#endif
+                                  )
           df_dQ_minus(:,:)= MATMUL(df_dQ_minus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
-          
-          df_dQ_plus_Tilde(:,:) =  (Df_dQxInner(:,:,i,nn,ZETA_PLUS ) * dQxvol_dU(i,nn,oo,mm,1) &
-                                   +Df_dQyInner(:,:,i,nn,ZETA_PLUS ) * dQyvol_dU(i,nn,oo,mm,1) &
-                                   +Df_dQzInner(:,:,i,nn,ZETA_PLUS ) * dQzvol_dU(i,nn,oo,mm,1) &
-                                   )
-          df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
-          DO k = 0,PP_NZ
-            r = PP_nVar * i + vn1 * nn+ vn2 * k 
-            BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) &
-                                            + LL_Minus(k,oo)*df_dQ_minus(:,:) & 
-                                            + LL_Plus(k,oo) * df_dQ_plus(:,:) 
-          END DO ! k
-        END DO ! i
-        DO j = 0,PP_N
-          df_dQ_minus_Tilde(:,:)=  (Df_dQxInner(:,:,mm,j,ZETA_MINUS) * dQxvol_dU(mm,j,oo,nn,2) &
-                                   +Df_dQyInner(:,:,mm,j,ZETA_MINUS) * dQyvol_dU(mm,j,oo,nn,2) &
-                                   +Df_dQzInner(:,:,mm,j,ZETA_MINUS) * dQzvol_dU(mm,j,oo,nn,2) &
-                                   )
-          df_dQ_minus(:,:)= MATMUL(df_dQ_minus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
-          df_dQ_plus_Tilde(:,:) =  (Df_dQxInner(:,:,mm,j,ZETA_PLUS ) * dQxvol_dU(mm,j,oo,nn,2) &
-                                   +Df_dQyInner(:,:,mm,j,ZETA_PLUS ) * dQyvol_dU(mm,j,oo,nn,2) &
-                                   +Df_dQzInner(:,:,mm,j,ZETA_PLUS ) * dQzvol_dU(mm,j,oo,nn,2) &
-                                   )
-          df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
-          DO k = 0,PP_NZ
-            r = PP_nVar * mm + vn1 * j+ vn2 * k 
-            BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) &
-                                            + LL_Minus(k,oo)*df_dQ_minus(:,:) &
-                                            + LL_Plus(k,oo) * df_dQ_plus(:,:)
-          END DO ! k
-        END DO ! j
-      END IF !NoFillIn
-        DO l = 0,PP_N
-          df_dQ_minus_Tilde(:,:)=  (Df_dQxInner(:,:,mm,nn,ZETA_MINUS) * dQxvol_dU(mm,nn,l,oo,3) &
-                                   +Df_dQyInner(:,:,mm,nn,ZETA_MINUS) * dQyvol_dU(mm,nn,l,oo,3) &
-                                   +Df_dQzInner(:,:,mm,nn,ZETA_MINUS) * dQzvol_dU(mm,nn,l,oo,3) &
-                                   )
-          df_dQ_minus(:,:)= MATMUL(df_dQ_minus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
-          df_dQ_plus_Tilde(:,:)=  (Df_dQxInner(:,:,mm,nn,ZETA_PLUS ) * dQxvol_dU(mm,nn,l,oo,3) &
-                                  +Df_dQyInner(:,:,mm,nn,ZETA_PLUS ) * dQyvol_dU(mm,nn,l,oo,3) &
-                                  +Df_dQzInner(:,:,mm,nn,ZETA_PLUS ) * dQzvol_dU(mm,nn,l,oo,3) &
+          df_dQ_plus_Tilde(:,:) = (MATMUL(Df_dQxinner(:,:,nn,oo,XI_PLUS   ) , dQxinner_dUvol(:,:,nn,oo,XI_PLUS   ,mm) ) &
+                                  +MATMUL(Df_dQyinner(:,:,nn,oo,XI_PLUS   ) , dQyinner_dUvol(:,:,nn,oo,XI_PLUS   ,mm) ) &
+#if PP_dim==3
+                                  +MATMUL(Df_dQzinner(:,:,nn,oo,XI_PLUS   ) , dQzinner_dUvol(:,:,nn,oo,XI_PLUS   ,mm) ) &
+#endif
+                                  +MATMUL(Df_dQxOuter(:,:,nn,oo,XI_PLUS   ) , dQxOuter_dUvol(:,:,nn,oo,XI_PLUS   ,mm) ) &
+                                  +MATMUL(Df_dQyOuter(:,:,nn,oo,XI_PLUS   ) , dQyOuter_dUvol(:,:,nn,oo,XI_PLUS   ,mm) ) &
+#if PP_dim==3
+                                  +MATMUL(Df_dQzOuter(:,:,nn,oo,XI_PLUS   ) , dQzOuter_dUvol(:,:,nn,oo,XI_PLUS   ,mm) ) &
+#endif
                                   )
           df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
-          DO k=0,PP_NZ
-            r = PP_nVar * mm + vn1 * nn+ vn2 * k 
+          DO l = 0,PP_N
+            r = PP_nVar * l + vn1 * nn+ vn2 * oo 
             BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar)  &
-                                            + LL_Minus(k,l) * df_dQ_minus(:,:) & 
-                                            + LL_Plus(k,l)  * df_dQ_plus(:,:) 
-          END DO !k
-        END DO ! l
-#endif
-      END DO ! nn
-    END DO ! mm 
-  END DO ! oo
-
-! Second :( Df_dQInner *  DQinner_DU + dF_dQOuter * DQouter_DU) * PrimConsJac 
-  DO oo = 0,PP_NZ
-    DO nn = 0,PP_N
-      DO mm = 0,PP_N
-        s = vn2 * oo + vn1 * nn + PP_nVar * mm
-        df_dQ_minus_Tilde(:,:)= (MATMUL(Df_dQxinner(:,:,nn,oo,XI_MINUS  ) ,dQxinner_dUvol(:,:,nn,oo,XI_MINUS  ,mm) ) &
-                                +MATMUL(Df_dQyinner(:,:,nn,oo,XI_MINUS  ) ,dQyinner_dUvol(:,:,nn,oo,XI_MINUS  ,mm) ) &
+                                            + L_HatMinus(l) * df_dQ_minus(:,:) &
+                                            + L_HatPlus(l)  * df_dQ_plus(:,:) 
+          END DO ! l
+          df_dQ_minus_Tilde(:,:)= (MATMUL(Df_dQxinner(:,:,mm,oo,ETA_MINUS ) , dQxinner_dUvol(:,:,mm,oo,ETA_MINUS ,nn) ) &
+                                  +MATMUL(Df_dQyinner(:,:,mm,oo,ETA_MINUS ) , dQyinner_dUvol(:,:,mm,oo,ETA_MINUS ,nn) ) & 
 #if PP_dim==3
-                                +MATMUL(Df_dQzinner(:,:,nn,oo,XI_MINUS  ) ,dQzinner_dUvol(:,:,nn,oo,XI_MINUS  ,mm) ) &
+                                  +MATMUL(Df_dQzinner(:,:,mm,oo,ETA_MINUS ) , dQzinner_dUvol(:,:,mm,oo,ETA_MINUS ,nn) ) &
 #endif
-                                +MATMUL(Df_dQxOuter(:,:,nn,oo,XI_MINUS  ) ,dQxOuter_dUvol(:,:,nn,oo,XI_MINUS  ,mm) ) &
-                                +MATMUL(Df_dQyOuter(:,:,nn,oo,XI_MINUS  ) ,dQyOuter_dUvol(:,:,nn,oo,XI_MINUS  ,mm) ) & 
+                                  +MATMUL(Df_dQxOuter(:,:,mm,oo,ETA_MINUS ) , dQxOuter_dUvol(:,:,mm,oo,ETA_MINUS ,nn) ) &
+                                  +MATMUL(Df_dQyOuter(:,:,mm,oo,ETA_MINUS ) , dQyOuter_dUvol(:,:,mm,oo,ETA_MINUS ,nn) ) &
 #if PP_dim==3
-                                +MATMUL(Df_dQzOuter(:,:,nn,oo,XI_MINUS  ) ,dQzOuter_dUvol(:,:,nn,oo,XI_MINUS  ,mm) ) &
+                                  +MATMUL(Df_dQzOuter(:,:,mm,oo,ETA_MINUS ) , dQzOuter_dUvol(:,:,mm,oo,ETA_MINUS ,nn) ) &
 #endif
-                                )
-        df_dQ_minus(:,:)= MATMUL(df_dQ_minus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
-        df_dQ_plus_Tilde(:,:) = (MATMUL(Df_dQxinner(:,:,nn,oo,XI_PLUS   ) , dQxinner_dUvol(:,:,nn,oo,XI_PLUS   ,mm) ) &
-                                +MATMUL(Df_dQyinner(:,:,nn,oo,XI_PLUS   ) , dQyinner_dUvol(:,:,nn,oo,XI_PLUS   ,mm) ) &
+                                  )
+          df_dQ_minus(:,:)= MATMUL(df_dQ_minus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
+          df_dQ_plus_Tilde(:,:) = (MATMUL(Df_dQxinner(:,:,mm,oo,ETA_PLUS  ) , dQxinner_dUvol(:,:,mm,oo,ETA_PLUS  ,nn) ) &
+                                  +MATMUL(Df_dQyinner(:,:,mm,oo,ETA_PLUS  ) , dQyinner_dUvol(:,:,mm,oo,ETA_PLUS  ,nn) ) & 
 #if PP_dim==3
-                                +MATMUL(Df_dQzinner(:,:,nn,oo,XI_PLUS   ) , dQzinner_dUvol(:,:,nn,oo,XI_PLUS   ,mm) ) &
+                                  +MATMUL(Df_dQzinner(:,:,mm,oo,ETA_PLUS  ) , dQzinner_dUvol(:,:,mm,oo,ETA_PLUS  ,nn) ) &
 #endif
-                                +MATMUL(Df_dQxOuter(:,:,nn,oo,XI_PLUS   ) , dQxOuter_dUvol(:,:,nn,oo,XI_PLUS   ,mm) ) &
-                                +MATMUL(Df_dQyOuter(:,:,nn,oo,XI_PLUS   ) , dQyOuter_dUvol(:,:,nn,oo,XI_PLUS   ,mm) ) &
-#if PP_dim==3
-                                +MATMUL(Df_dQzOuter(:,:,nn,oo,XI_PLUS   ) , dQzOuter_dUvol(:,:,nn,oo,XI_PLUS   ,mm) ) &
-#endif
-                                )
-        df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
-        DO l = 0,PP_N
-          r = PP_nVar * l + vn1 * nn+ vn2 * oo 
-          BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar)  &
-                                          + L_HatMinus(l) * df_dQ_minus(:,:) &
-                                          + L_HatPlus(l)  * df_dQ_plus(:,:) 
-        END DO ! l
-        df_dQ_minus_Tilde(:,:)= (MATMUL(Df_dQxinner(:,:,mm,oo,ETA_MINUS ) , dQxinner_dUvol(:,:,mm,oo,ETA_MINUS ,nn) ) &
-                                +MATMUL(Df_dQyinner(:,:,mm,oo,ETA_MINUS ) , dQyinner_dUvol(:,:,mm,oo,ETA_MINUS ,nn) ) & 
-#if PP_dim==3
-                                +MATMUL(Df_dQzinner(:,:,mm,oo,ETA_MINUS ) , dQzinner_dUvol(:,:,mm,oo,ETA_MINUS ,nn) ) &
-#endif
-                                +MATMUL(Df_dQxOuter(:,:,mm,oo,ETA_MINUS ) , dQxOuter_dUvol(:,:,mm,oo,ETA_MINUS ,nn) ) &
-                                +MATMUL(Df_dQyOuter(:,:,mm,oo,ETA_MINUS ) , dQyOuter_dUvol(:,:,mm,oo,ETA_MINUS ,nn) ) &
-#if PP_dim==3
-                                +MATMUL(Df_dQzOuter(:,:,mm,oo,ETA_MINUS ) , dQzOuter_dUvol(:,:,mm,oo,ETA_MINUS ,nn) ) &
-#endif
-                                )
-        df_dQ_minus(:,:)= MATMUL(df_dQ_minus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
-        df_dQ_plus_Tilde(:,:) = (MATMUL(Df_dQxinner(:,:,mm,oo,ETA_PLUS  ) , dQxinner_dUvol(:,:,mm,oo,ETA_PLUS  ,nn) ) &
-                                +MATMUL(Df_dQyinner(:,:,mm,oo,ETA_PLUS  ) , dQyinner_dUvol(:,:,mm,oo,ETA_PLUS  ,nn) ) & 
-#if PP_dim==3
-                                +MATMUL(Df_dQzinner(:,:,mm,oo,ETA_PLUS  ) , dQzinner_dUvol(:,:,mm,oo,ETA_PLUS  ,nn) ) &
-#endif
-                                +MATMUL(Df_dQxOuter(:,:,mm,oo,ETA_PLUS  ) , dQxOuter_dUvol(:,:,mm,oo,ETA_PLUS  ,nn) ) &
-                                +MATMUL(Df_dQyOuter(:,:,mm,oo,ETA_PLUS  ) , dQyOuter_dUvol(:,:,mm,oo,ETA_PLUS  ,nn) ) &
+                                  +MATMUL(Df_dQxOuter(:,:,mm,oo,ETA_PLUS  ) , dQxOuter_dUvol(:,:,mm,oo,ETA_PLUS  ,nn) ) &
+                                  +MATMUL(Df_dQyOuter(:,:,mm,oo,ETA_PLUS  ) , dQyOuter_dUvol(:,:,mm,oo,ETA_PLUS  ,nn) ) &
 #if PP_dim==3                                                                                 
-                                +MATMUL(Df_dQzOuter(:,:,mm,oo,ETA_PLUS  ) , dQzOuter_dUvol(:,:,mm,oo,ETA_PLUS  ,nn) ) &
+                                  +MATMUL(Df_dQzOuter(:,:,mm,oo,ETA_PLUS  ) , dQzOuter_dUvol(:,:,mm,oo,ETA_PLUS  ,nn) ) &
 #endif
-                                )
-        df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
-        DO l = 0,PP_N
-          r = PP_nVar * mm + vn1 * l+ vn2 * oo 
-          BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar)  &
-                                          + L_HatMinus(l) * df_dQ_minus(:,:) &
-                                          + L_HatPlus(l)  * df_dQ_plus(:,:)
-        END DO ! l
+                                  )
+          df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
+          DO l = 0,PP_N
+            r = PP_nVar * mm + vn1 * l+ vn2 * oo 
+            BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar)  &
+                                            + L_HatMinus(l) * df_dQ_minus(:,:) &
+                                            + L_HatPlus(l)  * df_dQ_plus(:,:)
+          END DO ! l
 #if PP_dim==3
-        df_dQ_minus_Tilde(:,:)= (MATMUL(Df_dQxinner(:,:,mm,nn,ZETA_MINUS) , dQxinner_dUvol(:,:,mm,nn,ZETA_MINUS,oo) ) &
-                                +MATMUL(Df_dQyinner(:,:,mm,nn,ZETA_MINUS) , dQyinner_dUvol(:,:,mm,nn,ZETA_MINUS,oo) ) &
-                                +MATMUL(Df_dQzinner(:,:,mm,nn,ZETA_MINUS) , dQzinner_dUvol(:,:,mm,nn,ZETA_MINUS,oo) ) &
-                                +MATMUL(Df_dQxOuter(:,:,mm,nn,ZETA_MINUS) , dQxOuter_dUvol(:,:,mm,nn,ZETA_MINUS,oo) ) &
-                                +MATMUL(Df_dQyOuter(:,:,mm,nn,ZETA_MINUS) , dQyOuter_dUvol(:,:,mm,nn,ZETA_MINUS,oo) ) &
-                                +MATMUL(Df_dQzOuter(:,:,mm,nn,ZETA_MINUS) , dQzOuter_dUvol(:,:,mm,nn,ZETA_MINUS,oo) ) &
-                                )
-        df_dQ_minus(:,:)= MATMUL(df_dQ_minus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
-        df_dQ_plus_Tilde(:,:)= (MATMUL(Df_dQxinner(:,:,mm,nn,ZETA_PLUS ) , dQxinner_dUvol(:,:,mm,nn,ZETA_PLUS ,oo) ) &
-                               +MATMUL(Df_dQyinner(:,:,mm,nn,ZETA_PLUS ) , dQyinner_dUvol(:,:,mm,nn,ZETA_PLUS ,oo) ) &
-                               +MATMUL(Df_dQzinner(:,:,mm,nn,ZETA_PLUS ) , dQzinner_dUvol(:,:,mm,nn,ZETA_PLUS ,oo) ) &
-                               +MATMUL(Df_dQxOuter(:,:,mm,nn,ZETA_PLUS ) , dQxOuter_dUvol(:,:,mm,nn,ZETA_PLUS ,oo) ) &
-                               +MATMUL(Df_dQyOuter(:,:,mm,nn,ZETA_PLUS ) , dQyOuter_dUvol(:,:,mm,nn,ZETA_PLUS ,oo) ) &
-                               +MATMUL(Df_dQzOuter(:,:,mm,nn,ZETA_PLUS ) , dQzOuter_dUvol(:,:,mm,nn,ZETA_PLUS ,oo) ) &
-                               )
-        df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
-        DO l = 0,PP_N
-          r = PP_nVar * mm + vn1 * nn+ vn2 * l 
-          BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar)  &
-                                          + L_HatMinus(l) * df_dQ_minus(:,:) &
-                                          + L_HatPlus(l)  * df_dQ_plus(:,:) 
-        END DO ! l
+          df_dQ_minus_Tilde(:,:)= (MATMUL(Df_dQxinner(:,:,mm,nn,ZETA_MINUS) , dQxinner_dUvol(:,:,mm,nn,ZETA_MINUS,oo) ) &
+                                  +MATMUL(Df_dQyinner(:,:,mm,nn,ZETA_MINUS) , dQyinner_dUvol(:,:,mm,nn,ZETA_MINUS,oo) ) &
+                                  +MATMUL(Df_dQzinner(:,:,mm,nn,ZETA_MINUS) , dQzinner_dUvol(:,:,mm,nn,ZETA_MINUS,oo) ) &
+                                  +MATMUL(Df_dQxOuter(:,:,mm,nn,ZETA_MINUS) , dQxOuter_dUvol(:,:,mm,nn,ZETA_MINUS,oo) ) &
+                                  +MATMUL(Df_dQyOuter(:,:,mm,nn,ZETA_MINUS) , dQyOuter_dUvol(:,:,mm,nn,ZETA_MINUS,oo) ) &
+                                  +MATMUL(Df_dQzOuter(:,:,mm,nn,ZETA_MINUS) , dQzOuter_dUvol(:,:,mm,nn,ZETA_MINUS,oo) ) &
+                                  )
+          df_dQ_minus(:,:)= MATMUL(df_dQ_minus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
+          df_dQ_plus_Tilde(:,:)= (MATMUL(Df_dQxinner(:,:,mm,nn,ZETA_PLUS ) , dQxinner_dUvol(:,:,mm,nn,ZETA_PLUS ,oo) ) &
+                                 +MATMUL(Df_dQyinner(:,:,mm,nn,ZETA_PLUS ) , dQyinner_dUvol(:,:,mm,nn,ZETA_PLUS ,oo) ) &
+                                 +MATMUL(Df_dQzinner(:,:,mm,nn,ZETA_PLUS ) , dQzinner_dUvol(:,:,mm,nn,ZETA_PLUS ,oo) ) &
+                                 +MATMUL(Df_dQxOuter(:,:,mm,nn,ZETA_PLUS ) , dQxOuter_dUvol(:,:,mm,nn,ZETA_PLUS ,oo) ) &
+                                 +MATMUL(Df_dQyOuter(:,:,mm,nn,ZETA_PLUS ) , dQyOuter_dUvol(:,:,mm,nn,ZETA_PLUS ,oo) ) &
+                                 +MATMUL(Df_dQzOuter(:,:,mm,nn,ZETA_PLUS ) , dQzOuter_dUvol(:,:,mm,nn,ZETA_PLUS ,oo) ) &
+                                 )
+          df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
+          DO l = 0,PP_N
+            r = PP_nVar * mm + vn1 * nn+ vn2 * l 
+            BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar)  &
+                                            + L_HatMinus(l) * df_dQ_minus(:,:) &
+                                            + L_HatPlus(l)  * df_dQ_plus(:,:) 
+          END DO ! l
 #endif
-      END DO ! nn
-    END DO ! mm 
-  END DO ! oo
-
+        END DO ! nn
+      END DO ! mm 
+    END DO ! oo
+#if FV_ENABLED
+  END IF
+#endif
 END IF !EulerPrecond
 #endif /*PARABOLIC*/
 END SUBROUTINE DGJacSurfInt
+
+
+#if PARABOLIC && FV_ENABLED
+!===================================================================================================================================
+!>
+!===================================================================================================================================
+SUBROUTINE Assemble_FVSurfIntGradJac(i,r,ss,UPrim,df_dQx,df_dQy,JacQx,JacQy, &
+#if PP_dim==3
+                                    df_dQz,JacQz, &
+#endif
+                                    BJ)
+! MODULES
+USE MOD_PreProc
+USE MOD_Globals
+USE MOD_Implicit_Vars ,ONLY: nDOFVarElem
+USE MOD_Jacobian      ,ONLY: dPrimTempdCons
+USE MOD_FV_Vars       ,ONLY: FV_w_inv
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+INTEGER,INTENT(IN)                                 :: i,r,ss(2)
+REAL,DIMENSION(PP_nVarPrim,0:PP_N)     ,INTENT(IN) :: UPrim
+REAL,DIMENSION(PP_nVar    ,PP_nVarPrim),INTENT(IN) :: df_dQx,df_dQy
+REAL,DIMENSION(0:PP_N)                             :: JacQx,JacQy
+#if PP_dim==3
+REAL,DIMENSION(PP_nVar    ,PP_nVarPrim),INTENT(IN) :: df_dQz
+REAL,DIMENSION(0:PP_N)                             :: JacQz
+#endif
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL,INTENT(INOUT)                                 :: BJ(1:nDOFVarElem,1:nDOFVarElem)
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES 
+INTEGER                                            :: ii,j
+REAL,DIMENSION(PP_nVar    ,PP_nVarPrim)            :: JacTilde
+REAL,DIMENSION(PP_nVar    ,PP_nVar)                :: Jac
+REAL,DIMENSION(PP_nVarPrim,PP_nVar)                :: PrimConsJac
+!===================================================================================================================================
+j = 1
+DO ii=i-1,i+1,2
+  IF(ii.LT.0)THEN
+    j = j+1
+    CYCLE
+  END IF
+  IF(ii.GT.PP_N) CYCLE
+  CALL dPrimTempdCons(UPrim(:,ii),PrimConsJac)
+  JacTilde(:,:) = (Df_dQx * JacQx(ii) &
+                  +Df_dQy * JacQy(ii) & 
+#if PP_dim==3
+                  +Df_dQz * JacQz(ii) &
+#endif
+                  )
+  Jac = MATMUL(JacTilde(:,:),PrimConsJac)
+  BJ(r+1:r+PP_nVar,ss(j)+1:ss(j)+PP_nVar) = BJ(r+1:r+PP_nVar,ss(j)+1:ss(j)+PP_nVar) + FV_w_inv*Jac
+  j = j+1
+END DO
+END SUBROUTINE Assemble_FVSurfIntGradJac
+#endif
 
 END MODULE MOD_JacSurfInt

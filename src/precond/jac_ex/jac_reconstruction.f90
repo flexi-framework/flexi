@@ -523,9 +523,9 @@ dUdUvol_plus( :,:,PP_N+1,1) = MATMUL(matrix,vector)
 
 matrix=dUdUvol_minus(:,:,-1,3); vector=Jac_PrimCons_minus(:,:,0)
 dUdUvol_minus(:,:,-1,3) = MATMUL(matrix,vector)
-matrix=dUdUvol_minus(:,:,0,2);  vector=Jac_PrimCons_minus(:,:, 0)
+matrix=dUdUvol_minus(:,:,0,2);  vector=Jac_PrimCons_minus(:,:,0)
 dUdUvol_minus(:,:,0,2)  = MATMUL(matrix,vector)
-matrix=dUdUvol_minus(:,:,0,3);  vector=Jac_PrimCons_minus(:,:, 1)
+matrix=dUdUvol_minus(:,:,0,3);  vector=Jac_PrimCons_minus(:,:,1)
 dUdUvol_minus(:,:,0,3)  = MATMUL(matrix,vector)
 
 END SUBROUTINE FV_Reconstruction_Derivative_Surf

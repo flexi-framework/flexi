@@ -141,6 +141,10 @@ dFdU(:,:,:,:,2) = 0. ! only valid for Dirichlet Type BCs
 #if PARABOLIC
 ! dF_dQxyzInner
 gradUx_Face_Tilde = gradUx_Face
+gradUy_Face_Tilde = gradUy_Face
+#if PP_dim==3
+gradUz_Face_Tilde = gradUz_Face
+#endif
 DO jVar=1,PP_nVarPrim
   gradUx_Face_Tilde(jVar,:,:) = gradUx_Face_Tilde(jVar,:,:) + reps0
   gradUy_Face_Tilde(jVar,:,:) = gradUy_Face_Tilde(jVar,:,:) + reps0
