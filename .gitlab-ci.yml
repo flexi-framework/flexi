@@ -130,7 +130,7 @@ gnu_channelRANS:
   <<: *defaults_gnu
   stage: reggie_weekly
   script:
-    - if [ -n "${DO_WEEKLY}" ]; then module load env/gnu ; cd build_gnu ;  python ./reggie/reggie.py ../regressioncheck/checks/channelRANS ; fi 
+    - if [ -n "${DO_WEEKLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/channelRANS -j 6 ; fi 
  
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "deploy": 1. Creates doxygen documentation & compiles the documentation creating the *.pdf
