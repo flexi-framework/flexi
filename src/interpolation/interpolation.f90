@@ -165,8 +165,8 @@ REAL,ALLOCATABLE,DIMENSION(:),  INTENT(OUT):: wGP                !< Integration 
 REAL,ALLOCATABLE,DIMENSION(:),  INTENT(OUT):: wBary              !< Barycentric weights
 REAL,ALLOCATABLE,DIMENSION(:),  INTENT(OUT):: L_Minus            !< Lagrange polynomials at -1
 REAL,ALLOCATABLE,DIMENSION(:),  INTENT(OUT):: L_Plus             !< Lagrange polynomials at +1
-REAL,ALLOCATABLE,DIMENSION(:,:),INTENT(OUT):: Vdm_Leg            !< Vandermonde Nodal->Modal
-REAL,ALLOCATABLE,DIMENSION(:,:),INTENT(OUT):: sVdm_Leg           !< Vandermonde Modal->Nodal
+REAL,ALLOCATABLE,DIMENSION(:,:),INTENT(OUT):: Vdm_Leg            !< Vandermonde Modal->Nodal
+REAL,ALLOCATABLE,DIMENSION(:,:),INTENT(OUT):: sVdm_Leg           !< Vandermonde Nodal->Modal
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================

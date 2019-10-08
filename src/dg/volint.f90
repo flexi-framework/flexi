@@ -124,6 +124,9 @@ END SUBROUTINE VolInt_weakForm
 !> Attention 1: 1/J(i,j,k) is not yet accounted for
 !> Attention 2: input Ut is overwritten with the volume flux derivatives
 !> Attention 3: the factor of 2 in front of the derivative matrix entries is incorporated into the split fluxes!
+!> Attention 4: This is the strong form of the DGSEM! Substracting the inner flux is incorporated into the used D matrix, which
+!> saves performance but only works for Gauss-Lobatto points. So no changes in the surface integral or fill flux routines are
+!> necessary.
 !> For details on the derivation see Gassner, Gregor J., Andrew R. Winters, and David A. Kopriva.
 !> "Split form nodal discontinuous Galerkin schemes with summation-by-parts property for the compressible Euler equations."
 !> Journal of Computational Physics 327 (2016): 39-66.
@@ -134,7 +137,6 @@ SUBROUTINE VolInt_splitForm(Ut)
 USE MOD_PreProc
 USE MOD_DG_Vars      ,ONLY: DVolSurf,nDOFElem,UPrim,U
 USE MOD_Mesh_Vars    ,ONLY: Metrics_fTilde,Metrics_gTilde,Metrics_hTilde,nElems
-USE MOD_Flux         ,ONLY: EvalFlux3D      ! computes volume fluxes in local coordinates
 #if PARABOLIC
 USE MOD_DG_Vars      ,ONLY: D_Hat_T
 USE MOD_Flux         ,ONLY: EvalDiffFlux3D  ! computes volume fluxes in local coordinates
@@ -152,24 +154,16 @@ REAL,INTENT(OUT)   :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< Time derivat
 ! LOCAL VARIABLES
 INTEGER            :: i,j,k,l,iElem
 REAL,DIMENSION(PP_nVar                     )  :: Flux         !< temp variable for split flux
-REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: f_c,g_c,h_c  !< Euler fluxes at GP
 #if PARABOLIC
 REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: fv,gv,hv     !< Parabolic fluxes at GP
 #endif /*PARABOLIC*/
 !==================================================================================================================================
-! Diffusive part
 DO iElem=1,nElems
 #if FV_ENABLED
   IF (FV_Elems(iElem).EQ.1) CYCLE ! FV Elem
 #endif
-  ! Cut out the local DG solution for a grid cell iElem and all Gauss points from the global field
-  ! Compute for all Gauss point values the Cartesian flux components
-  CALL EvalFlux3D(PP_N,U(:,:,:,:,iElem),UPrim(:,:,:,:,iElem),f_c,g_c,h_c)
-  ! Add metric terms to fluxes
-  CALL VolInt_Metrics(nDOFElem,f_c,g_c,h_c,Metrics_fTilde(:,:,:,:,iElem,0),&
-                                           Metrics_gTilde(:,:,:,:,iElem,0),&
-                                           Metrics_hTilde(:,:,:,:,iElem,0))
 #if PARABOLIC
+  ! Diffusive fluxes, those will be treated just as in the non-split case
   CALL EvalDiffFlux3D( UPrim(:,:,:,:,iElem),&
                       gradUx(:,:,:,:,iElem),&
                       gradUy(:,:,:,:,iElem),&
@@ -181,30 +175,24 @@ DO iElem=1,nElems
                                         Metrics_hTilde(:,:,:,:,iElem,0))
 #endif
 
-  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-    ! consistency: if both points for flux evaluation are the same the standard
-    ! euler fluxes are retained.
+! For split DG, the matrix DVolSurf will always be equal to 0 on the main diagonal. Thus, the (consistent) fluxes will always be
+! multiplied by zero and we don't have to take them into account at all.
 #if PARABOLIC
-    Ut(:,i,j,k,iElem) = DVolSurf(i,i)*f_c(:,i,j,k) + &
-                        DVolSurf(j,j)*g_c(:,i,j,k) + &
-#if PP_dim==3
-                        DVolSurf(k,k)*h_c(:,i,j,k) + &
-#endif /*PP_dim==3*/
-                        D_Hat_T(i,i)*fv(:,i,j,k)   + &
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+    ! Add the parabolic fluxes.
+    ! Use those fluxes to avoid nullification of Ut.
+    Ut(:,i,j,k,iElem) = D_Hat_T(i,i)*fv(:,i,j,k)   + &
                         D_Hat_T(j,j)*gv(:,i,j,k)   + &
 #if PP_dim==3
                         D_Hat_T(k,k)*hv(:,i,j,k)
 #else
                         0.
 #endif /*PP_dim==3*/
-#else
-    Ut(:,i,j,k,iElem) = DVolSurf(i,i)*f_c(:,i,j,k) + &
-#if PP_dim==3
-                        DVolSurf(j,j)*h_c(:,i,j,k) + &
-#endif /*PP_dim==3*/
-                        DVolSurf(k,k)*g_c(:,i,j,k)
-#endif /*PARABOLIC*/
   END DO; END DO; END DO !i,j,k
+#else /*PARABOLIC*/
+  ! We need to nullify the Ut array
+  Ut(:,:,:,:,iElem) = 0.
+#endif /*PARABOLIC*/
 
 
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
@@ -224,7 +212,7 @@ DO iElem=1,nElems
        !symmetry
        Ut(:,l,j,k,iElem) = Ut(:,l,j,k,iElem) + DVolSurf(i,l)*Flux(:)
 #endif /*PARABOLIC*/
-    END DO ! m
+    END DO ! l
 
     DO l=j+1,PP_N
        ! compute split flux in y-direction
@@ -242,7 +230,7 @@ DO iElem=1,nElems
        !symmetry
        Ut(:,i,l,k,iElem) = Ut(:,i,l,k,iElem) + DVolSurf(j,l)*Flux(:)
 #endif /*PARABOLIC*/
-    END DO ! m
+    END DO ! l
 
 #if PP_dim==3
     DO l=k+1,PP_N
