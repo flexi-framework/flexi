@@ -480,6 +480,7 @@ LOGICAL                          :: changedPrmFile
 !**********************************************************************************************
 
 CALL SetStackSizeUnlimited()
+postiMode = .TRUE. ! Flag used in FLEXI routines to do things only for POSTI usage
 CALL InitMPI(mpi_comm_IN)
 CALL InitMPIInfo()
 
