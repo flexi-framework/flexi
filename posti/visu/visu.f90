@@ -219,7 +219,7 @@ USE MOD_HDF5_Input         ,ONLY: ReadAttribute,File_ID,OpenDataFile,GetDataProp
 USE MOD_Interpolation_Vars ,ONLY: NodeType
 USE MOD_Output_Vars        ,ONLY: ProjectName
 USE MOD_StringTools        ,ONLY: STRICMP,INTTOSTR
-USE MOD_ReadInTools        ,ONLY: prms,GETINT,GETLOGICAL,addStrListEntry,GETSTR,CountOption,FinalizeParameters
+USE MOD_ReadInTools        ,ONLY: prms,GETINT,GETLOGICAL,addStrListEntry,GETSTR,FinalizeParameters
 USE MOD_Posti_Mappings     ,ONLY: Build_FV_DG_distribution,Build_mapDepToCalc_mapAllVarsToVisuVars
 USE MOD_Visu_Avg2D         ,ONLY: InitAverage2D,BuildVandermonds_Avg2D
 USE MOD_StringTools        ,ONLY: INTTOSTR

@@ -261,8 +261,9 @@ SUBROUTINE VisualizeMesh(postifile,meshfile_in)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Visu_Vars
-USE MOD_ReadInTools   ,ONLY: prms,GETINT
+USE MOD_ReadInTools   ,ONLY: prms,GETINT,GETSTR,CountOption
 USE MOD_ReadInTools   ,ONLY: FinalizeParameters
+USE MOD_StringTools   ,ONLY: STRICMP
 #if USE_MPI
 USE MOD_MPI           ,ONLY: FinalizeMPI
 #endif
@@ -277,7 +278,8 @@ IMPLICIT NONE
 CHARACTER(LEN=255),INTENT(IN):: postifile
 CHARACTER(LEN=255),INTENT(IN):: meshfile_in
 ! LOCAL VARIABLES
-INTEGER             :: iElem
+INTEGER             :: iElem,nVarIni,iVar,jVar,iVarVisu,meshModeLoc
+CHARACTER(LEN=255)  :: VarName
 !===================================================================================================================================
 #if USE_MPI
 CALL FinalizeMPI()
@@ -302,9 +304,12 @@ ELSE
 END IF
 NVisu_FV = 1
 
-! read mesh
+! read mesh, depending if we should visualize the Jacobian or not different mesh modes are needed (calculate metrics or not)
+nVarIni=CountOption("VarName")
+meshModeLoc = 0
+IF (nVarIni.GT.0) meshModeLoc=2
 CALL InitInterpolation(Ngeo)
-CALL InitMesh(meshMode=3, MeshFile_IN=meshfile_in)
+CALL InitMesh(meshMode=meshModeLoc, MeshFile_IN=meshfile_in)
 
 ! convert to visu grid
 nElems_DG = nElems
@@ -317,27 +322,41 @@ END DO
 CALL BuildVisuCoords()
 DEALLOCATE(mapDGElemsToAllElems)
 
-! Visualize the scaled Jacobian
-NCalc = PP_N
-nVarVisu = 2
-nVarDep = 2
-nVarAll = 2
-SDEALLOCATE(mapDepToCalc)
-ALLOCATE(mapDepToCalc(2))
-mapDepToCalc(1) = 1
-mapDepToCalc(2) = 2
-SDEALLOCATE(mapAllVarsToVisuVars)
-ALLOCATE(mapAllVarsToVisuVars(2))
-mapAllVarsToVisuVars(1) = 1
-mapAllVarsToVisuVars(2) = 2
-SDEALLOCATE(UCalc_DG)
-ALLOCATE(UCalc_DG(0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems_DG,nVarVisu))
-UCalc_DG(:,:,:,:,1) = scaledJac
-DO iElem=1,nElems
-  UCalc_DG(:,:,:,iElem,2) = MINVAL(UCalc_DG(:,:,:,iElem,1))
-END DO ! iElem
+! Do we need to visualize the scaled Jacobian, or the max scaled Jacobian?
+IF (nVarIni.GT.0) THEN
+  ! A very simple mapping is build: There are two depending variables, either one or both of them can be visualized
+  NCalc = PP_N
+  nVarVisu = nVarIni
+  nVarDep = 2
+  nVarAll = 2
+  SDEALLOCATE(mapDepToCalc)
+  SDEALLOCATE(mapAllVarsToVisuVars)
+  ALLOCATE(mapDepToCalc(nVarDep))
+  mapDepToCalc(1) = 1
+  mapDepToCalc(2) = 2
+  ALLOCATE(mapAllVarsToVisuVars(nVarAll))
+  mapAllVarsToVisuVars = 0
+  iVarVisu = 1
+  DO iVar = 1, nVarIni
+    VarName = GETSTR("VarName")
+    DO jVar = 1, nVarAll
+      IF (STRICMP(VarNamesAll(jVar),VarName)) THEN
+        mapAllVarsToVisuVars(jVar) = iVarVisu
+        iVarVisu = iVarVisu + 1
+      END IF
+    END DO ! jVar = 1, nVarAll
+  END DO ! iVar = 1, nVarIni
+  SDEALLOCATE(UCalc_DG)
+  ALLOCATE(UCalc_DG(0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems_DG,nVarDep))
+  UCalc_DG(:,:,:,:,1) = scaledJac
+  DO iElem=1,nElems
+    UCalc_DG(:,:,:,iElem,2) = MINVAL(UCalc_DG(:,:,:,iElem,1))
+  END DO ! iElem
 
-CALL ConvertToVisu_DG()
+  CALL ConvertToVisu_DG()
+ELSE
+  nVarVisu = 0
+END IF
 
 CALL FinalizeInterpolation()
 CALL FinalizeParameters()

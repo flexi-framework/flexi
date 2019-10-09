@@ -181,9 +181,15 @@ CALL visu(mpi_comm_IN, prmfile, postifile, statefile)
 IF (MeshFileMode) THEN
   ! Write only the DG coordinates to the VTK file
   CALL WriteCoordsToVTK_array(NVisu   ,nElems_DG,coordsDG_out,nodeidsDG_out,CoordsVisu_DG,nodeids_DG,dim=PP_dim,DGFV=0)
-  ! We visualize one entry for debug purposes: The scaled Jacobian
-  CALL WriteDataToVTK_array(nVarVisu,NVisu   ,nElems_DG,valuesDG_out,UVisu_DG,PP_dim)
-  CALL WriteVarnamesToVTK_array(nVarAll,mapAllVarsToVisuVars,varnames_out,VarnamesAll,nVarVisu)
+  ! We may visualize the scaled Jacobian for debug purposes
+  IF (nVarVisu.GT.0) THEN
+    CALL WriteDataToVTK_array(nVarVisu,NVisu   ,nElems_DG,valuesDG_out,UVisu_DG,PP_dim)
+    CALL WriteVarnamesToVTK_array(nVarAll,mapAllVarsToVisuVars,varnames_out,VarnamesAll,nVarVisu)
+  ELSE
+    ! Otherwise, no output of data
+    valuesDG_out%len      = 0
+    varnames_out%len      = 0
+  END IF
 
   ! set length of all other output arrays to zero so they are not used in the reader
   coordsFV_out%dim      = 3
