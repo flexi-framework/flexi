@@ -55,7 +55,7 @@ USE MOD_ReadInTools ,ONLY: prms
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Preconditioner")
-CALL prms%CreateIntOption(    'PrecondType',    "Preconditioner Type", value='0')
+CALL prms%CreateIntOption(    'PrecondType',    "Preconditioner Type", value='1')
 CALL prms%CreateIntOption(    'PrecondIter',    "Defines how often preconditioner is built", value='1')
 CALL prms%CreateIntOption(    'SolveSystem',    "Solver of the preconditioned system", value='0')
 CALL prms%CreateIntOption(    'DebugMatrix',    "Debug Matrix", value='0')
@@ -94,7 +94,7 @@ END IF
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT PRECONDITIONER...'
 
-PrecondType  = GETINT(    'PrecondType','0' )
+PrecondType  = GETINT(    'PrecondType','1' )
 PrecondIter  = GETINT(    'PrecondIter','1' )
 SolveSystem  = GETINT(    'SolveSystem','0' )
 DebugMatrix  = GETINT(    'DebugMatrix','0' )
@@ -186,7 +186,6 @@ INTEGER            :: ind(2)
 #if USE_MPI
 REAL               :: TotalTimeMPI
 #endif /*MPI*/
-!INTEGER            :: i,j,k 
 !===================================================================================================================================
 IF(PrecondType.EQ.0) RETURN !NO PRECONDITIONER
 IF(DoDisplayPrecond)THEN
@@ -311,17 +310,6 @@ DO iElem=1,nElems
     END DO !r
     Ploc(s,s)=Ploc(s,s)+1.
   END DO !s
-  !DO s=0,nDOFVarElem-1,PP_nVar
-    !r=0
-    !DO k=0,PP_NZ
-      !dO j=0,PP_N
-        !DO i=0,PP_N
-          !Ploc(r+1:r+PP_nVar,s+1:s+PP_nVar) = Ploc(r+1:r+PP_nVar,s+1:s+PP_nVar)*Mass(1,i,j,k,iElem)
-          !r=r+PP_nVar
-        !END DO !i
-      !END DO !j
-    !END DO !k
-  !END DO ! s
   SELECT CASE(SolveSystem)
   CASE(0)
     ! Block inverse with Lapack LU factorization

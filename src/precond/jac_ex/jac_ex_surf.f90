@@ -75,10 +75,8 @@ USE MOD_Jac_Ex_Vars               ,ONLY: UPrim_extended,FV_sdx_XI_extended,FV_sd
 USE MOD_Jac_Reconstruction        ,ONLY: FV_Reconstruction_Derivative_Surf
 USE MOD_FV_Vars                   ,ONLY: FV_dx_master,FV_dx_slave
 USE MOD_GetBoundaryFlux           ,ONLY: GetBoundaryState
-USE MOD_FV_Vars                   ,ONLY: FV_Metrics_fTilde_sJ,FV_Metrics_gTilde_sJ
 #if PP_dim == 3
 USE MOD_Jac_Ex_Vars               ,ONLY: FV_sdx_ZETA_extended
-USE MOD_FV_Vars                   ,ONLY: FV_Metrics_hTilde_sJ
 #endif
 #endif
 #endif
@@ -186,6 +184,7 @@ DO iLocSide=2,5
                                  ,muSGS_master(:,:,:,SideID)   &
 #endif
                                   )
+#if FV_ENABLED
         !Derivative of the diffusive Riemann Flux with respect to U_R
         CALL EvalDiffFluxJacobian(nDOFFace,U_slave(:,:,:,SideID),UPrim_slave(:,:,:,SideID),   &
                                   gradUx_slave(:,:,:,SideID), &
@@ -195,7 +194,9 @@ DO iLocSide=2,5
 #if EDDYVISCOSITY
                                  ,muSGS_slave(:,:,:,SideID)   &
 #endif
-                                  )
+      
+                                 )
+#endif
 #endif /*navierstokes*/
         !Derivative of the diffusive Riemann Flux with respect to gradU_L
         CALL EvalFluxGradJacobian(nDOFFace,U_master(:,:,:,SideID),UPrim_Master(:,:,:,SideID), &
@@ -211,7 +212,7 @@ DO iLocSide=2,5
             ! Df_dQxInner = d(f,g,h)_diff/dQ_x * NormVec
             jk(:)=S2V2(:,p,q,Flip,iLocSide)
 #if EQNSYSNR==2
-            DO i=1,2
+            DO i=1,FVElem+1
               Df_dUinner(:,:,jk(1),jk(2),i,iLocSide)= Df_dUinner(:,:,jk(1),jk(2),i,iLocSide) + &
                                                       0.5*( fJac(:,:,p,q,i)*NormVec(1,p,q,FVSide,SideID) &
                                                            +gJac(:,:,p,q,i)*NormVec(2,p,q,FVSide,SideID) &
@@ -248,28 +249,36 @@ DO iLocSide=2,5
                                   ,muSGS_slave(:,:,:,SideID)                                 &
 #endif
                                    )
-        DO q=0,PP_NZ
-          DO p=0,PP_N
-            jk(:)=S2V2(:,p,q,Flip,iLocSide)
-            Df_dQxOuter(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQx(:,:,p,q)*NormVec(1,p,q,FVSide,SideID) &
-                                                         +gJacQx(:,:,p,q)*NormVec(2,p,q,FVSide,SideID) &
+        IF((FVSum.EQ.1).OR.(FVSum.EQ.2))THEN
+          Df_DQxOuter(:,:,:,:,iLocSide)=0.
+          Df_DQyOuter(:,:,:,:,iLocSide)=0.
 #if PP_dim==3
-                                                         +hJacQx(:,:,p,q)*NormVec(3,p,q,FVSide,SideID) &
-#endif
-                                                        )*SurfElem(p,q,FVSide,SideID)
-            Df_dQyOuter(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQy(:,:,p,q)*NormVec(1,p,q,FVSide,SideID) &
-                                                         +gJacQy(:,:,p,q)*NormVec(2,p,q,FVSide,SideID) &
+          Df_DQzOuter(:,:,:,:,iLocSide)=0.
+#endif /*PP_dim*/
+        ELSE
+          DO q=0,PP_NZ
+            DO p=0,PP_N
+              jk(:)=S2V2(:,p,q,Flip,iLocSide)
+              Df_dQxOuter(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQx(:,:,p,q)*NormVec(1,p,q,FVSide,SideID) &
+                                                           +gJacQx(:,:,p,q)*NormVec(2,p,q,FVSide,SideID) &
 #if PP_dim==3
-                                                         +hJacQy(:,:,p,q)*NormVec(3,p,q,FVSide,SideID) &
+                                                           +hJacQx(:,:,p,q)*NormVec(3,p,q,FVSide,SideID) &
 #endif
-                                                        )*SurfElem(p,q,FVSide,SideID)
+                                                          )*SurfElem(p,q,FVSide,SideID)
+              Df_dQyOuter(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQy(:,:,p,q)*NormVec(1,p,q,FVSide,SideID) &
+                                                           +gJacQy(:,:,p,q)*NormVec(2,p,q,FVSide,SideID) &
 #if PP_dim==3
-            Df_dQzOuter(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQz(:,:,p,q)*NormVec(1,p,q,FVSide,SideID) &
-                                                         +gJacQz(:,:,p,q)*NormVec(2,p,q,FVSide,SideID) &
-                                                         +hJacQz(:,:,p,q)*NormVec(3,p,q,FVSide,SideID) )*SurfElem(p,q,FVSide,SideID)
+                                                           +hJacQy(:,:,p,q)*NormVec(3,p,q,FVSide,SideID) &
 #endif
-          END DO !p
-        END DO !q
+                                                          )*SurfElem(p,q,FVSide,SideID)
+#if PP_dim==3
+              Df_dQzOuter(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQz(:,:,p,q)*NormVec(1,p,q,FVSide,SideID) &
+                                                           +gJacQz(:,:,p,q)*NormVec(2,p,q,FVSide,SideID) &
+                                                           +hJacQz(:,:,p,q)*NormVec(3,p,q,FVSide,SideID) )*SurfElem(p,q,FVSide,SideID)
+#endif
+            END DO !p
+          END DO !q
+        END IF !FVSum
       END IF ! EulerPrecond==False
 #endif /*PARABOLIC*/
     ELSE !Slave
@@ -291,6 +300,7 @@ DO iLocSide=2,5
                                  ,muSGS_slave(:,:,:,SideID)   &
 #endif
                                   )
+#if FV_ENABLED
         !Derivative of the diffusive Riemann Flux with respect to U_R
         CALL EvalDiffFluxJacobian(nDOFFace,U_master(:,:,:,SideID),UPrim_master(:,:,:,SideID), &
                                   gradUx_master(:,:,:,SideID), &
@@ -301,6 +311,7 @@ DO iLocSide=2,5
                                  ,muSGS_master(:,:,:,SideID)   &
 #endif
                                   )
+#endif
         !Derivative of the diffusive Riemann Flux with respect to gradU_L
 #endif /*navierstokes*/
         ! analytic viscous flux derivative: BR2 Flux is 1/2*(Fvisc(U^L,Q^L)+Fvisc(U^R,Q^R) )* (-nvec ), (slave)
@@ -316,7 +327,7 @@ DO iLocSide=2,5
           DO p=0,PP_N
             jk(:)=S2V2(:,p,q,Flip,iLocSide)
 #if EQNSYSNR==2
-            DO i=1,2
+            DO i=1,FVElem+1
               Df_dUinner(:,:,jk(1),jk(2),i,iLocSide)= Df_dUinner(:,:,jk(1),jk(2),i,iLocSide) &
                                                       -0.5*( fJac(:,:,p,q,i)*NormVec(1,p,q,FVSide,SideID) &
                                                             +gJac(:,:,p,q,i)*NormVec(2,p,q,FVSide,SideID) &
@@ -353,28 +364,36 @@ DO iLocSide=2,5
                                   ,muSGS_master(:,:,:,SideID) &
 #endif
                                    )
-        DO q=0,PP_NZ
-          DO p=0,PP_N
-            jk(:)=S2V2(:,p,q,Flip,iLocSide)
-            Df_dQxOuter(:,:,jk(1),jk(2),iLocSide)= -0.5*( fJacQx(:,:,p,q)*NormVec(1,p,q,FVSide,SideID) &
-                                                         +gJacQx(:,:,p,q)*NormVec(2,p,q,FVSide,SideID) &
+        IF((FVSum.EQ.1).OR.(FVSum.EQ.2))THEN
+          Df_DQxOuter(:,:,:,:,iLocSide)=0.
+          Df_DQyOuter(:,:,:,:,iLocSide)=0.
 #if PP_dim==3
-                                                         +hJacQx(:,:,p,q)*NormVec(3,p,q,FVSide,SideID) &
-#endif
-                                                        )*SurfElem(p,q,FVSide,SideID)
-            Df_dQyOuter(:,:,jk(1),jk(2),iLocSide)= -0.5*( fJacQy(:,:,p,q)*NormVec(1,p,q,FVSide,SideID) &
-                                                         +gJacQy(:,:,p,q)*NormVec(2,p,q,FVSide,SideID) &
+          Df_DQzOuter(:,:,:,:,iLocSide)=0.
+#endif /*PP_dim*/
+        ELSE
+          DO q=0,PP_NZ
+            DO p=0,PP_N
+              jk(:)=S2V2(:,p,q,Flip,iLocSide)
+              Df_dQxOuter(:,:,jk(1),jk(2),iLocSide)= -0.5*( fJacQx(:,:,p,q)*NormVec(1,p,q,FVSide,SideID) &
+                                                           +gJacQx(:,:,p,q)*NormVec(2,p,q,FVSide,SideID) &
 #if PP_dim==3
-                                                         +hJacQy(:,:,p,q)*NormVec(3,p,q,FVSide,SideID) &
+                                                           +hJacQx(:,:,p,q)*NormVec(3,p,q,FVSide,SideID) &
 #endif
-                                                        )*SurfElem(p,q,FVSide,SideID)
+                                                          )*SurfElem(p,q,FVSide,SideID)
+              Df_dQyOuter(:,:,jk(1),jk(2),iLocSide)= -0.5*( fJacQy(:,:,p,q)*NormVec(1,p,q,FVSide,SideID) &
+                                                           +gJacQy(:,:,p,q)*NormVec(2,p,q,FVSide,SideID) &
 #if PP_dim==3
-            Df_dQzOuter(:,:,jk(1),jk(2),iLocSide)= -0.5*( fJacQz(:,:,p,q)*NormVec(1,p,q,FVSide,SideID) &
-                                                         +gJacQz(:,:,p,q)*NormVec(2,p,q,FVSide,SideID) &
-                                                         +hJacQz(:,:,p,q)*NormVec(3,p,q,FVSide,SideID) )*SurfElem(p,q,FVSide,SideID)
+                                                           +hJacQy(:,:,p,q)*NormVec(3,p,q,FVSide,SideID) &
 #endif
-          END DO !p
-        END DO !q
+                                                          )*SurfElem(p,q,FVSide,SideID)
+#if PP_dim==3
+              Df_dQzOuter(:,:,jk(1),jk(2),iLocSide)= -0.5*( fJacQz(:,:,p,q)*NormVec(1,p,q,FVSide,SideID) &
+                                                           +gJacQz(:,:,p,q)*NormVec(2,p,q,FVSide,SideID) &
+                                                           +hJacQz(:,:,p,q)*NormVec(3,p,q,FVSide,SideID) )*SurfElem(p,q,FVSide,SideID)
+#endif
+            END DO !p
+          END DO !q
+        END IF
       END IF ! EulerPrecond==False
 #endif /*PARABOLIC*/
 
@@ -412,7 +431,6 @@ DO iLocSide=2,5
 #endif
   END IF!SideID
 END DO !iLocSide
-
 
 !Assembling of the preconditioner
 !BJ=d(f*_adv+f*_diff)_jk/dU_mno
@@ -694,12 +712,12 @@ IF(EulerPrecond.EQV..FALSE.) THEN !Euler Precond = False
         r = vn1*p + vn2*q ! index of flux
         CALL dPrimTempdCons(UPrim(:,0,p,q,iElem),PrimConsJac(:,:,0,p,q))
         Df_dQ_minus_Tilde(:,:)= (Df_dQxInner(:,:,p,q,XI_MINUS) * dQxVol_dU(0,p,q,0,1) &
-                                +Df_dQxOuter(:,:,p,q,XI_MINUS) * 0.5*FV_sdx_XI_extended(p,q,0,iElem)*FV_Metrics_fTilde_sJ(1,0,p,q,iElem) &
+                                +MATMUL(Df_dQxOuter(:,:,p,q,XI_MINUS),dQxOuter_dUvol(:,:,p,q,XI_MINUS,0)) &
                                 +Df_dQyInner(:,:,p,q,XI_MINUS) * dQyVol_dU(0,p,q,0,1) &
-                                +Df_dQyOuter(:,:,p,q,XI_MINUS) * 0.5*FV_sdx_XI_extended(p,q,0,iElem)*FV_Metrics_fTilde_sJ(2,0,p,q,iElem) &
+                                +MATMUL(Df_dQyOuter(:,:,p,q,XI_MINUS),dQyOuter_dUvol(:,:,p,q,XI_MINUS,0)) &
 #if PP_dim==3
                                 +Df_dQzInner(:,:,p,q,XI_MINUS) * dQzVol_dU(0,p,q,0,1) &
-                                +Df_dQzOuter(:,:,p,q,XI_MINUS) * 0.5*FV_sdx_XI_extended(p,q,0,iElem)*FV_Metrics_fTilde_sJ(3,0,p,q,iElem) &
+                                +MATMUL(Df_dQzOuter(:,:,p,q,XI_MINUS),dQzOuter_dUvol(:,:,p,q,XI_MINUS,0)) &
 #endif
                                 )
         df_dQ_minus(:,:) = MATMUL(df_dQ_minus_Tilde(:,:),PrimConsJac(:,:,0,p,q))
@@ -741,12 +759,12 @@ IF(EulerPrecond.EQV..FALSE.) THEN !Euler Precond = False
         r = vn1*p + vn2*q +PP_nVar*PP_N ! index of flux
         CALL dPrimTempdCons(UPrim(:,PP_N,p,q,iElem),PrimConsJac(:,:,PP_N,p,q))
         Df_dQ_plus_Tilde(:,:)= (Df_dQxInner(:,:,p,q,XI_PLUS) * dQxVol_dU(PP_N,p,q,PP_N,1) &
-                               -Df_dQxOuter(:,:,p,q,XI_PLUS) * 0.5*FV_sdx_XI_extended(p,q,PP_N+1,iElem)*FV_Metrics_fTilde_sJ(1,PP_N,p,q,iElem) &
+                               -MATMUL(Df_dQxOuter(:,:,p,q,XI_PLUS),dQxOuter_dUvol(:,:,p,q,XI_PLUS,PP_N)) &
                                +Df_dQyInner(:,:,p,q,XI_PLUS) * dQyVol_dU(PP_N,p,q,PP_N,1) &
-                               -Df_dQyOuter(:,:,p,q,XI_PLUS) * 0.5*FV_sdx_XI_extended(p,q,PP_N+1,iElem)*FV_Metrics_fTilde_sJ(2,PP_N,p,q,iElem) &
+                               -MATMUL(Df_dQyOuter(:,:,p,q,XI_PLUS),dQyOuter_dUvol(:,:,p,q,XI_PLUS,PP_N)) &
 #if PP_dim==3
                                +Df_dQzInner(:,:,p,q,XI_PLUS) * dQzVol_dU(PP_N,p,q,PP_N,1) &
-                               -Df_dQzOuter(:,:,p,q,XI_PLUS) * 0.5*FV_sdx_XI_extended(p,q,PP_N+1,iElem)*FV_Metrics_fTilde_sJ(3,PP_N,p,q,iElem) &
+                               -MATMUL(Df_dQzOuter(:,:,p,q,XI_PLUS),dQzOuter_dUvol(:,:,p,q,XI_PLUS,PP_N)) &
 #endif
                                )
         df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,PP_N,p,q))
@@ -792,12 +810,12 @@ IF(EulerPrecond.EQV..FALSE.) THEN !Euler Precond = False
         r = PP_nVar * p + vn2 * q  ! index of flux
         CALL dPrimTempdCons(UPrim(:,p,0,q,iElem),PrimConsJac(:,:,p,0,q))
         Df_dQ_minus_Tilde(:,:)= (Df_dQxInner(:,:,p,q,ETA_MINUS) * dQxVol_dU(p,0,q,0,2) &
-                                +Df_dQxOuter(:,:,p,q,ETA_MINUS) * 0.5*FV_sdx_ETA_extended(p,q,0,iElem)*FV_Metrics_gTilde_sJ(1,p,0,q,iElem) &
+                                +MATMUL(Df_dQxOuter(:,:,p,q,ETA_MINUS),dQxOuter_dUvol(:,:,p,q,ETA_MINUS,0)) &
                                 +Df_dQyInner(:,:,p,q,ETA_MINUS) * dQyVol_dU(p,0,q,0,2) &
-                                +Df_dQyOuter(:,:,p,q,ETA_MINUS) * 0.5*FV_sdx_ETA_extended(p,q,0,iElem)*FV_Metrics_gTilde_sJ(2,p,0,q,iElem) &
+                                +MATMUL(Df_dQyOuter(:,:,p,q,ETA_MINUS),dQyOuter_dUvol(:,:,p,q,ETA_MINUS,0)) &
 #if PP_dim==3                                                                                                       
                                 +Df_dQzInner(:,:,p,q,ETA_MINUS) * dQzVol_dU(p,0,q,0,2) &
-                                +Df_dQzOuter(:,:,p,q,ETA_MINUS) * 0.5*FV_sdx_ETA_extended(p,q,0,iElem)*FV_Metrics_gTilde_sJ(3,p,0,q,iElem) &
+                                +MATMUL(Df_dQzOuter(:,:,p,q,ETA_MINUS),dQzOuter_dUvol(:,:,p,q,ETA_MINUS,0)) &
 #endif
                                 )
         df_dQ_minus(:,:) = MATMUL(df_dQ_minus_Tilde(:,:),PrimConsJac(:,:,p,0,q))
@@ -839,12 +857,12 @@ IF(EulerPrecond.EQV..FALSE.) THEN !Euler Precond = False
         r = PP_nVar * p + vn1 * PP_N + vn2 * q ! index of flux
         CALL dPrimTempdCons(UPrim(:,p,PP_N,q,iElem),PrimConsJac(:,:,p,PP_N,q))
         Df_dQ_plus_Tilde(:,:)= (Df_dQxInner(:,:,p,q,ETA_PLUS) * dQxVol_dU(p,PP_N,q,PP_N,2) &
-                               -Df_dQxOuter(:,:,p,q,ETA_PLUS) * 0.5*FV_sdx_ETA_extended(p,q,PP_N+1,iElem)*FV_Metrics_gTilde_sJ(1,p,PP_N,q,iElem) &
+                               -MATMUL(Df_dQxOuter(:,:,p,q,ETA_PLUS),dQxOuter_dUvol(:,:,p,q,ETA_PLUS,PP_N)) &
                                +Df_dQyInner(:,:,p,q,ETA_PLUS) * dQyVol_dU(p,PP_N,q,PP_N,2) &
-                               -Df_dQyOuter(:,:,p,q,ETA_PLUS) * 0.5*FV_sdx_ETA_extended(p,q,PP_N+1,iElem)*FV_Metrics_gTilde_sJ(2,p,PP_N,q,iElem) &
+                               -MATMUL(Df_dQyOuter(:,:,p,q,ETA_PLUS),dQyOuter_dUvol(:,:,p,q,ETA_PLUS,PP_N)) &
 #if PP_dim==3
                                +Df_dQzInner(:,:,p,q,ETA_PLUS) * dQzVol_dU(p,PP_N,q,PP_N,2) &
-                               -Df_dQzOuter(:,:,p,q,ETA_PLUS) * 0.5*FV_sdx_ETA_extended(p,q,PP_N+1,iElem)*FV_Metrics_gTilde_sJ(3,p,PP_N,q,iElem) &
+                               -MATMUL(Df_dQzOuter(:,:,p,q,ETA_PLUS),dQzOuter_dUvol(:,:,p,q,ETA_PLUS,PP_N)) &
 #endif
                                )
         df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,p,PP_N,q))
@@ -891,11 +909,11 @@ IF(EulerPrecond.EQV..FALSE.) THEN !Euler Precond = False
         r = PP_nVar * p + vn1 * q  ! index of flux
         CALL dPrimTempdCons(UPrim(:,p,q,0,iElem),PrimConsJac(:,:,p,q,0))
         Df_dQ_minus_Tilde(:,:)= (Df_dQxInner(:,:,p,q,ZETA_MINUS) * dQxVol_dU(p,q,0,0,3) &
-                                +Df_dQxOuter(:,:,p,q,ZETA_MINUS) * 0.5*FV_sdx_ZETA_extended(p,q,0,iElem)*FV_Metrics_hTilde_sJ(1,p,q,0,iElem) &
+                                +MATMUL(Df_dQxOuter(:,:,p,q,ZETA_MINUS),dQxOuter_dUvol(:,:,p,q,ZETA_MINUS,0)) &
                                 +Df_dQyInner(:,:,p,q,ZETA_MINUS) * dQyVol_dU(p,q,0,0,3) &
-                                +Df_dQyOuter(:,:,p,q,ZETA_MINUS) * 0.5*FV_sdx_ZETA_extended(p,q,0,iElem)*FV_Metrics_hTilde_sJ(2,p,q,0,iElem) &
+                                +MATMUL(Df_dQyOuter(:,:,p,q,ZETA_MINUS),dQyOuter_dUvol(:,:,p,q,ZETA_MINUS,0)) &
                                 +Df_dQzInner(:,:,p,q,ZETA_MINUS) * dQzVol_dU(p,q,0,0,3) &
-                                +Df_dQzOuter(:,:,p,q,ZETA_MINUS) * 0.5*FV_sdx_ZETA_extended(p,q,0,iElem)*FV_Metrics_hTilde_sJ(3,p,q,0,iElem) &
+                                +MATMUL(Df_dQzOuter(:,:,p,q,ZETA_MINUS),dQzOuter_dUvol(:,:,p,q,ZETA_MINUS,0)) &
                                 )
         df_dQ_minus(:,:) = MATMUL(df_dQ_minus_Tilde(:,:),PrimConsJac(:,:,p,q,0))
         BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + FV_w_inv*df_dQ_minus
@@ -930,11 +948,11 @@ IF(EulerPrecond.EQV..FALSE.) THEN !Euler Precond = False
         r = PP_nVar * p + vn2 * PP_N + vn1 * q ! index of flux
         CALL dPrimTempdCons(UPrim(:,p,q,PP_N,iElem),PrimConsJac(:,:,p,q,PP_N))
         Df_dQ_plus_Tilde(:,:)= (Df_dQxInner(:,:,p,q,ZETA_PLUS) * dQxVol_dU(p,q,PP_N,PP_N,3) &
-                               -Df_dQxOuter(:,:,p,q,ZETA_PLUS) * 0.5*FV_sdx_ZETA_extended(p,q,PP_N+1,iElem)*FV_Metrics_hTilde_sJ(1,p,q,PP_N,iElem) &
+                               -MATMUL(Df_dQxOuter(:,:,p,q,ZETA_PLUS),dQxOuter_dUvol(:,:,p,q,ZETA_PLUS,PP_N)) &
                                +Df_dQyInner(:,:,p,q,ZETA_PLUS) * dQyVol_dU(p,q,PP_N,PP_N,3) &
-                               -Df_dQyOuter(:,:,p,q,ZETA_PLUS) * 0.5*FV_sdx_ZETA_extended(p,q,PP_N+1,iElem)*FV_Metrics_hTilde_sJ(2,p,q,PP_N,iElem) &
+                               -MATMUL(Df_dQyOuter(:,:,p,q,ZETA_PLUS),dQyOuter_dUvol(:,:,p,q,ZETA_PLUS,PP_N)) &
                                +Df_dQzInner(:,:,p,q,ZETA_PLUS) * dQzVol_dU(p,q,PP_N,PP_N,3) &
-                               -Df_dQzOuter(:,:,p,q,ZETA_PLUS) * 0.5*FV_sdx_ZETA_extended(p,q,PP_N+1,iElem)*FV_Metrics_hTilde_sJ(3,p,q,PP_N,iElem) &
+                               -MATMUL(Df_dQzOuter(:,:,p,q,ZETA_PLUS),dQzOuter_dUvol(:,:,p,q,ZETA_PLUS,PP_N)) &
                                )
         df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,p,q,PP_N))
         BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + FV_w_inv*df_dQ_plus

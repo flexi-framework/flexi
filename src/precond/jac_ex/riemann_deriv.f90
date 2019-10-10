@@ -142,7 +142,9 @@ IF((FVElem.EQ.1).AND.(FV_Elems_Sum.EQ.3))THEN ! do only if current and neighbour
     U_R_Tilde(:,:,:) = U_R(:,:,:)
   END DO !jVar
 ELSE
+#endif
   dFDU(:,:,:,:,2) = 0.
+#if FV_ENABLED && FV_RECONSTRUCT
 END IF
 #endif
 END SUBROUTINE Riemann_FD
