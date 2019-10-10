@@ -43,7 +43,7 @@ SUBROUTINE Riemann_FD(DFDU,U_L,U_R,UPrim_L,UPrim_R,normal,tangent1,tangent2,surf
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_Implicit_Vars           ,ONLY: reps0,sreps0
+USE MOD_Implicit_Vars           ,ONLY: reps0
 USE MOD_Riemann                 ,ONLY: Riemann
 USE MOD_EOS                     ,ONLY: ConsToPrim
 #if FV_ENABLED
@@ -77,6 +77,7 @@ REAL                            :: F            (    1:PP_nVar,0:PP_N,0:PP_NZ)
 REAL                            :: F_Tilde_UL   (    1:PP_nVar,0:PP_N,0:PP_NZ)
 INTEGER                         :: iVar,jVar
 INTEGER                         :: p,q
+REAL                            :: reps0_loc,sreps0_loc
 #if FV_ENABLED && FV_RECONSTRUCT
 REAL                            :: U_R_Tilde    (    1:PP_nVar,0:PP_N,0:PP_NZ)
 REAL                            :: UPrim_R_Tilde(1:PP_nVarPrim,0:PP_N,0:PP_NZ)
@@ -98,7 +99,9 @@ DO jVar=1,PP_nVar
     CALL ChangeBasisSurf(PP_nVar,PP_N,PP_N,FV_sVdm,U_L_Tilde)
   END IF
 #endif
-  U_L_Tilde(jVar,:,:) = U_L_Tilde(jVar,:,:) + reps0
+  reps0_loc  = reps0*(1.+SQRT(NORM2(U_L_Tilde(jVar,:,:))))
+  sreps0_loc = 1./reps0_loc
+  U_L_Tilde(jVar,:,:) = U_L_Tilde(jVar,:,:) + reps0_loc
   CALL ConsToPrim(PP_N,UPrim_L_Tilde,U_L_Tilde)
 #if FV_ENABLED
   ! transform modified values back to FV points, where the Riemann problem is evaluated
@@ -116,7 +119,7 @@ DO jVar=1,PP_nVar
   DO q=0,PP_NZ
     DO p=0,PP_N
       DO iVar=1,PP_nVar
-        dFdU(iVar,jVar,jk(1,p,q),jk(2,p,q),1) = surf_loc(p,q)*(F_Tilde_UL(iVar,p,q)-F(iVar,p,q))*sreps0
+        dFdU(iVar,jVar,jk(1,p,q),jk(2,p,q),1) = surf_loc(p,q)*(F_Tilde_UL(iVar,p,q)-F(iVar,p,q))*sreps0_loc
       END DO ! iVar
     END DO !q
   END DO !p
@@ -129,13 +132,15 @@ IF((FVElem.EQ.1).AND.(FV_Elems_Sum.EQ.3))THEN ! do only if current and neighbour
   ! do the same derivative as above only with respect to U_R instead of U_L
   U_R_Tilde = U_R
   DO jVar=1,PP_nVar
-    U_R_Tilde(jVar,:,:) = U_R_Tilde(jVar,:,:) + reps0
+    reps0_loc  = reps0*(1.+SQRT(NORM2(U_R_Tilde(jVar,:,:))))
+    sreps0_loc = 1./reps0_loc
+    U_R_Tilde(jVar,:,:) = U_R_Tilde(jVar,:,:) + reps0_loc
     CALL ConsToPrim(PP_N,UPrim_R_Tilde,U_R_Tilde)
     CALL Riemann(PP_N,F_Tilde_UL,U_L,U_R_Tilde,UPrim_L,UPrim_R_Tilde,normal,tangent1,tangent2,doBC=.FALSE.)
     DO iVar=1,PP_nVar
       DO q=0,PP_NZ
         DO p=0,PP_N
-          dFDU(iVar,jVar,jk(1,p,q),jk(2,p,q),2) = surf_loc(p,q)*(F_Tilde_UL(iVar,p,q)-F(iVar,p,q))*sreps0
+          dFDU(iVar,jVar,jk(1,p,q),jk(2,p,q),2) = surf_loc(p,q)*(F_Tilde_UL(iVar,p,q)-F(iVar,p,q))*sreps0_loc
         END DO !p
       END DO !q
     END DO ! iVar

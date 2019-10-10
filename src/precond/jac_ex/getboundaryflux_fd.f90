@@ -108,7 +108,7 @@ REAL                         :: UPrim_master_Tilde(PP_nVarPrim,0:PP_N,0:PP_NZ)
 REAL                         :: U_master_Tilde    (PP_nVar    ,0:PP_N,0:PP_NZ)
 REAL                         :: F_Face_Tilde      (PP_nVar    ,0:PP_N,0:PP_NZ)
 REAL                         :: F_Face            (PP_nVar    ,0:PP_N,0:PP_NZ)
-
+REAL                         :: reps0_loc,sreps0_loc
 !===================================================================================================================================
 CALL GetBoundaryFlux(SideID,t,PP_N,F_Face,UPrim_master,   &
 #if PARABOLIC
@@ -117,7 +117,9 @@ CALL GetBoundaryFlux(SideID,t,PP_N,F_Face,UPrim_master,   &
                      normal,tangent1,tangent2,xGP_Face)
 U_master_Tilde = U_master
 DO jVar=1,PP_nVar
-  U_master_Tilde(jVar,:,:) = U_master_Tilde(jVar,:,:) + reps0
+  reps0_loc  = reps0*(1.+SQRT(NORM2(U_master_Tilde(jVar,:,:))))
+  sreps0_loc = 1./reps0_loc
+  U_master_Tilde(jVar,:,:) = U_master_Tilde(jVar,:,:) + reps0_loc
   CALL ConsToPrim(PP_N,UPrim_master_Tilde,U_master_Tilde) 
   CALL GetBoundaryFlux(SideID,t,PP_N,F_Face_Tilde,UPrim_master_Tilde, &
 #if PARABOLIC
@@ -127,7 +129,7 @@ DO jVar=1,PP_nVar
   DO iVar=1,PP_nVar
     DO q=0,PP_NZ
       DO p=0,PP_N
-        dFdU(iVar,jVar,jk(1,p,q),jk(2,p,q),1) = surfElem(p,q)*(F_Face_Tilde(iVar,p,q)-F_Face(iVar,p,q))*sreps0
+        dFdU(iVar,jVar,jk(1,p,q),jk(2,p,q),1) = surfElem(p,q)*(F_Face_Tilde(iVar,p,q)-F_Face(iVar,p,q))*sreps0_loc
       END DO !p
     END DO !q
   END DO ! iVar

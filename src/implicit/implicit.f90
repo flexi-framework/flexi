@@ -68,6 +68,7 @@ CALL prms%CreateRealOption(  'EpsGMRES',       "GMRES Tolerance", value='1.E-4')
 CALL prms%CreateIntOption(   'nRestarts',      "GMRES Restarts", value='1')
 CALL prms%CreateIntOption(   'nKDim',          "Number of Krylov subspaces K^m for GMRES", value='10')
 CALL prms%CreateRealOption(  'scaleps',        "scale of eps", value='1.')
+CALL prms%CreateIntOption(   'Eps_Method',     "how eps of finite difference is calulated", value='2')
 CALL prms%CreateLogicalOption('withmass',    "", value='.FALSE.')
 CALL prms%CreateIntOption( 'PredictorType',  "Type of predictor to be used",value='0')
 CALL prms%CreateIntOption( 'PredictorOrder', "Order of predictor to be used",value='0')
@@ -146,6 +147,12 @@ IF(TimeDiscType.EQ.'ESDIRK') THEN
     adaptepsNewton = .FALSE.
   END IF
   scaleps        = GETREAL('scaleps','1.')
+  ! Choose method how eps is calculated:
+  ! 1: According to Qin,Ludlow,Shaw: A matrix-free preconditioned Newton/GMRES method for unsteady Navier-Stokes solutions (Eq. 13),
+  !                                  Int.J.Numer.Meth.Fluids 33 (2000) 223-248
+  ! 2: According to Knoll,Keyes: Jacobian-free Newton-Krylov methods: A survey of approaches and applications (Eq. (14)),
+  !                              JCP 193 (2004) 357-397
+  Eps_Method     = GETINT('Eps_Method','2')
   nNewtonIter    = GETINT('nNewtonIter','50')
 
   ! Newton takes the quadratic norm into account
@@ -212,7 +219,7 @@ USE MOD_DG            ,ONLY: DGTimeDerivative_weakForm
 USE MOD_Implicit_Vars ,ONLY: EpsNewton,Xk,R_Xk,nNewtonIter,nNewtonIterGlobal,nInnerNewton,nDOFVarGlobal!,Eps2Newton
 USE MOD_Implicit_Vars ,ONLY: gammaEW,EpsGMRES,EisenstatWalker,LinSolverRHS,U_predictor
 USE MOD_TimeDisc_Vars ,ONLY: dt
-USE MOD_Implicit_Vars ,ONLY: Mass,PredictorType
+USE MOD_Implicit_Vars ,ONLY: Mass,PredictorType,Eps_Method,Norm_Xk
 USE MOD_Globals
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -262,6 +269,10 @@ DO iElem=1,nElems
   END DO
 END DO
 
+IF(Eps_Method.EQ.2)THEN
+  CALL VectorDotProduct(Xk,Xk,Norm_Xk)
+  Norm_Xk = SQRT(Norm_Xk)
+END IF
 ! Preparation for the Abort Criteria of Newton
 ! |F_Xk| < epsNewton * |F_Xk|
 CALL VectorDotProduct(F_X0,F_X0,Norm2_F_X0)
@@ -465,7 +476,7 @@ USE MOD_Globals
 USE MOD_DG_Vars       ,ONLY:U,Ut
 USE MOD_Mesh_Vars     ,ONLY:nElems
 USE MOD_DG            ,ONLY:DGTimeDerivative_weakForm
-USE MOD_Implicit_Vars ,ONLY:Xk,R_Xk,rEps0
+USE MOD_Implicit_Vars ,ONLY:Xk,R_Xk,rEps0,Eps_Method,Norm_Xk
 USE MOD_Implicit_Vars ,ONLY:mass
 USE MOD_TimeDisc_Vars ,ONLY:dt
 ! IMPLICIT VARIABLE HANDLING
@@ -483,8 +494,12 @@ REAL             :: V_abs,EpsFD
 ! needed for FD matrix vector approximation
 CALL VectorDotProduct(V,V,V_abs)
 
-!EpsFD= sqrt(Machine accuracy) / |Delta x|
-EpsFD= rEps0/SQRT(V_abs)
+SELECT CASE(Eps_Method)
+CASE(1) ! Qin, Ludlow, Shaw
+  EpsFD = rEps0/SQRT(V_abs) !EpsFD= sqrt(Machine accuracy) / |Delta x|
+CASE(2) ! Knoll, Keyes (Eq. (14))
+  EpsFD = rEps0/SQRT(V_abs)*SQRT(1.+Norm_Xk)
+END SELECT
 U = Xk + EpsFD*V
 CALL DGTimeDerivative_weakForm(t)
 Resu = mass*(V - (Alpha*dt/EpsFD)*(Ut - R_Xk))

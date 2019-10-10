@@ -45,6 +45,8 @@ INTEGER                               :: nInnerGMRES                ! max GMRES 
 ! epsilons
 REAL                                  :: rEps0,srEps0               ! SQRT(EPSILON(0.0))
 REAL                                  :: scaleps                    ! scaleps*SQRT(EPSILON(0.0)), used for EpsFD
+INTEGER                               :: Eps_Method                 ! Chose method how rEps0 is formed
+REAL                                  :: Norm_Xk                    ! Norm required for eps_method=2
 REAL                                  :: EpsNewton                  ! newton relative epsilon
 LOGICAL                               :: adaptepsNewton             ! adaptive eps Newton calculated by the embedded RK
 REAL                                  :: Eps2Newton                 !  square of newton relative epsilon
