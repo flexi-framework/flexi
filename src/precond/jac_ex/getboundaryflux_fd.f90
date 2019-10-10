@@ -58,7 +58,7 @@ SUBROUTINE GetBoundaryFlux_FD(SideID,t,DfDU,U_master,UPrim_master,    &
 ! MODULES
 USE MOD_Globals      
 USE MOD_PreProc
-USE MOD_Implicit_Vars           ,ONLY: reps0,sreps0
+USE MOD_Implicit_Vars           ,ONLY: reps0_O1,sreps0_O1
 USE MOD_GetBoundaryFlux         ,ONLY: GetBoundaryFlux
 USE MOD_EOS                     ,ONLY: ConsToPrim
 ! IMPLICIT VARIABLE HANDLING
@@ -117,7 +117,7 @@ CALL GetBoundaryFlux(SideID,t,PP_N,F_Face,UPrim_master,   &
                      normal,tangent1,tangent2,xGP_Face)
 U_master_Tilde = U_master
 DO jVar=1,PP_nVar
-  reps0_loc  = reps0*(1.+SQRT(NORM2(U_master_Tilde(jVar,:,:))))
+  reps0_loc  = reps0_O1*(1.+SQRT(NORM2(U_master_Tilde(jVar,:,:))))
   sreps0_loc = 1./reps0_loc
   U_master_Tilde(jVar,:,:) = U_master_Tilde(jVar,:,:) + reps0_loc
   CALL ConsToPrim(PP_N,UPrim_master_Tilde,U_master_Tilde) 
@@ -148,8 +148,8 @@ gradUy_Face_Tilde = gradUy_Face
 gradUz_Face_Tilde = gradUz_Face
 #endif
 DO jVar=1,PP_nVarPrim
-  gradUx_Face_Tilde(jVar,:,:) = gradUx_Face_Tilde(jVar,:,:) + reps0
-  gradUy_Face_Tilde(jVar,:,:) = gradUy_Face_Tilde(jVar,:,:) + reps0
+  gradUx_Face_Tilde(jVar,:,:) = gradUx_Face_Tilde(jVar,:,:) + reps0_O1
+  gradUy_Face_Tilde(jVar,:,:) = gradUy_Face_Tilde(jVar,:,:) + reps0_O1
   CALL GetBoundaryFlux(SideID,t,PP_N,F_Face_TildeQx,UPrim_master,   &
                        gradUx_Face_Tilde,gradUy_Face,gradUz_Face, &
                        normal,tangent1,tangent2,xGP_Face)
@@ -157,7 +157,7 @@ DO jVar=1,PP_nVarPrim
                        gradUx_Face,gradUy_Face_Tilde,gradUz_Face, &
                        normal,tangent1,tangent2,xGP_Face)
 #if PP_dim==3
-  gradUz_Face_Tilde(jVar,:,:) = gradUz_Face_Tilde(jVar,:,:) + reps0
+  gradUz_Face_Tilde(jVar,:,:) = gradUz_Face_Tilde(jVar,:,:) + reps0_O1
   CALL GetBoundaryFlux(SideID,t,PP_N,F_Face_TildeQz,UPrim_master,   &
                        gradUx_Face,gradUy_Face,gradUz_Face_Tilde, &
                        normal,tangent1,tangent2,xGP_Face)
@@ -165,10 +165,10 @@ DO jVar=1,PP_nVarPrim
   DO iVar=1,PP_nVar
     DO q=0,PP_NZ
       DO p=0,PP_N
-        dF_dQxInner(iVar,jVar,jk(1,p,q),jk(2,p,q)) = surfElem(p,q)*(F_Face_TildeQx(iVar,p,q)-F_Face(iVar,p,q))*sreps0
-        dF_dQyInner(iVar,jVar,jk(1,p,q),jk(2,p,q)) = surfElem(p,q)*(F_Face_TildeQy(iVar,p,q)-F_Face(iVar,p,q))*sreps0
+        dF_dQxInner(iVar,jVar,jk(1,p,q),jk(2,p,q)) = surfElem(p,q)*(F_Face_TildeQx(iVar,p,q)-F_Face(iVar,p,q))*sreps0_O1
+        dF_dQyInner(iVar,jVar,jk(1,p,q),jk(2,p,q)) = surfElem(p,q)*(F_Face_TildeQy(iVar,p,q)-F_Face(iVar,p,q))*sreps0_O1
 #if PP_dim==3
-        dF_dQzInner(iVar,jVar,jk(1,p,q),jk(2,p,q)) = surfElem(p,q)*(F_Face_TildeQz(iVar,p,q)-F_Face(iVar,p,q))*sreps0
+        dF_dQzInner(iVar,jVar,jk(1,p,q),jk(2,p,q)) = surfElem(p,q)*(F_Face_TildeQz(iVar,p,q)-F_Face(iVar,p,q))*sreps0_O1
 #endif
       END DO !p
     END DO !q
@@ -195,7 +195,7 @@ SUBROUTINE Lifting_GetBoundaryFlux_FD(SideID,t,dFdU,UPrim_master,surfElem,xGP_Fa
 USE MOD_Globals,ONLY:Abort
 USE MOD_PreProc
 USE MOD_GetBoundaryFlux         ,ONLY: Lifting_GetBoundaryFlux
-USE MOD_Implicit_Vars           ,ONLY: reps0,sreps0
+USE MOD_Implicit_Vars           ,ONLY: reps0_O1,sreps0_O1
 USE MOD_Mesh_Vars               ,ONLY: nSides
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -225,14 +225,14 @@ CALL Lifting_GetBoundaryFlux(SideID,t,UPrim_master(:,:,:,SideID),F_Face(:,:,:,Si
                              xGP_Face(:,:,:,0,SideID),surfElem(:,:,0,SideID))
 UPrim_master_Tilde = UPrim_master
 DO jVar=1,PP_nVarPrim
-  UPrim_master_Tilde(jVar,:,:,SideID) = UPrim_master_Tilde(jVar,:,:,SideID) + reps0
+  UPrim_master_Tilde(jVar,:,:,SideID) = UPrim_master_Tilde(jVar,:,:,SideID) + reps0_O1
   CALL Lifting_GetBoundaryFlux(SideID,t,UPrim_master_Tilde(:,:,:,SideID),F_Face_Tilde(:,:,:,SideID),&
                                normal(:,:,:,0,SideID),tangent1(:,:,:,0,SideID),tangent2(:,:,:,0,SideID),&
                                xGP_Face(:,:,:,0,SideID),surfElem(:,:,0,SideID))
   DO q=0,PP_NZ
     DO p=0,PP_N
       DO iVar=1,PP_nVarPrim
-        dFdU(iVar,jVar,jk(1,p,q),jk(2,p,q)) = (F_Face_Tilde(iVar,p,q,SideID)-F_Face(iVar,p,q,SideID))*sreps0
+        dFdU(iVar,jVar,jk(1,p,q),jk(2,p,q)) = (F_Face_Tilde(iVar,p,q,SideID)-F_Face(iVar,p,q,SideID))*sreps0_O1
       END DO ! iVar
     END DO !p
   END DO !q

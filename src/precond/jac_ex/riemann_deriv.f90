@@ -43,7 +43,7 @@ SUBROUTINE Riemann_FD(DFDU,U_L,U_R,UPrim_L,UPrim_R,normal,tangent1,tangent2,surf
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
-USE MOD_Implicit_Vars           ,ONLY: reps0
+USE MOD_Implicit_Vars           ,ONLY: reps0_O1
 USE MOD_Riemann                 ,ONLY: Riemann
 USE MOD_EOS                     ,ONLY: ConsToPrim
 #if FV_ENABLED
@@ -99,7 +99,7 @@ DO jVar=1,PP_nVar
     CALL ChangeBasisSurf(PP_nVar,PP_N,PP_N,FV_sVdm,U_L_Tilde)
   END IF
 #endif
-  reps0_loc  = reps0*(1.+SQRT(NORM2(U_L_Tilde(jVar,:,:))))
+  reps0_loc  = reps0_O1*(1.+SQRT(NORM2(U_L_Tilde(jVar,:,:))))
   sreps0_loc = 1./reps0_loc
   U_L_Tilde(jVar,:,:) = U_L_Tilde(jVar,:,:) + reps0_loc
   CALL ConsToPrim(PP_N,UPrim_L_Tilde,U_L_Tilde)
@@ -132,7 +132,7 @@ IF((FVElem.EQ.1).AND.(FV_Elems_Sum.EQ.3))THEN ! do only if current and neighbour
   ! do the same derivative as above only with respect to U_R instead of U_L
   U_R_Tilde = U_R
   DO jVar=1,PP_nVar
-    reps0_loc  = reps0*(1.+SQRT(NORM2(U_R_Tilde(jVar,:,:))))
+    reps0_loc  = reps0_O1*(1.+SQRT(NORM2(U_R_Tilde(jVar,:,:))))
     sreps0_loc = 1./reps0_loc
     U_R_Tilde(jVar,:,:) = U_R_Tilde(jVar,:,:) + reps0_loc
     CALL ConsToPrim(PP_N,UPrim_R_Tilde,U_R_Tilde)

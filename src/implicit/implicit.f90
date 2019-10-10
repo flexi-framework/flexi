@@ -69,6 +69,7 @@ CALL prms%CreateIntOption(   'nRestarts',      "GMRES Restarts", value='1')
 CALL prms%CreateIntOption(   'nKDim',          "Number of Krylov subspaces K^m for GMRES", value='10')
 CALL prms%CreateRealOption(  'scaleps',        "scale of eps", value='1.')
 CALL prms%CreateIntOption(   'Eps_Method',     "how eps of finite difference is calulated", value='2')
+CALL prms%CreateIntOption(   'FD_Order',       "order of finite difference of matrix free approximation", value='1')
 CALL prms%CreateLogicalOption('withmass',    "", value='.FALSE.')
 CALL prms%CreateIntOption( 'PredictorType',  "Type of predictor to be used",value='0')
 CALL prms%CreateIntOption( 'PredictorOrder', "Order of predictor to be used",value='0')
@@ -153,12 +154,24 @@ IF(TimeDiscType.EQ.'ESDIRK') THEN
   ! 2: According to Knoll,Keyes: Jacobian-free Newton-Krylov methods: A survey of approaches and applications (Eq. (14)),
   !                              JCP 193 (2004) 357-397
   Eps_Method     = GETINT('Eps_Method','2')
+  ! Choose order of finite difference
+  FD_Order       = GETINT('FD_Order','1')
   nNewtonIter    = GETINT('nNewtonIter','50')
 
   ! Newton takes the quadratic norm into account
   Eps2Newton=EpsNewton**2
-  rEps0            =scaleps*SQRT(EPSILON(0.0))
+  ! Adapt machine epsilon to order of finite difference according to: An, Weng, Feng: On finite difference approximation of a 
+  ! matrix-vector product in the Jacobian-free Newton-Krylov method (Eqs. (11)-(13)), J.Comp.Appl.Math. 263 (2011) 1399-1409
+  SELECT CASE(FD_Order)
+  CASE(1)
+    rEps0        = scaleps*SQRT(EPSILON(0.0))
+    rEps0_O1     = rEps0
+  CASE(2) 
+    rEps0        = (scaleps**2*0.5*EPSILON(0.0))**(1./3.)
+    rEps0_O1     = scaleps*SQRT(EPSILON(0.0))
+  END SELECT
   srEps0           =1./rEps0
+  srEps0_O1        =1./rEps0_O1
   nInnerNewton     =0
   nNewtonIterGlobal=0
   nGMRESGlobal     =0
@@ -476,7 +489,7 @@ USE MOD_Globals
 USE MOD_DG_Vars       ,ONLY:U,Ut
 USE MOD_Mesh_Vars     ,ONLY:nElems
 USE MOD_DG            ,ONLY:DGTimeDerivative_weakForm
-USE MOD_Implicit_Vars ,ONLY:Xk,R_Xk,rEps0,Eps_Method,Norm_Xk
+USE MOD_Implicit_Vars ,ONLY:Xk,R_Xk,rEps0,Eps_Method,Norm_Xk,FD_Order
 USE MOD_Implicit_Vars ,ONLY:mass
 USE MOD_TimeDisc_Vars ,ONLY:dt
 ! IMPLICIT VARIABLE HANDLING
@@ -490,6 +503,7 @@ REAL,INTENT(OUT)  :: Resu(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL             :: V_abs,EpsFD
+REAL             :: Ut_plus(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
 !===================================================================================================================================
 ! needed for FD matrix vector approximation
 CALL VectorDotProduct(V,V,V_abs)
@@ -502,7 +516,16 @@ CASE(2) ! Knoll, Keyes (Eq. (14))
 END SELECT
 U = Xk + EpsFD*V
 CALL DGTimeDerivative_weakForm(t)
-Resu = mass*(V - (Alpha*dt/EpsFD)*(Ut - R_Xk))
+
+SELECT CASE(FD_Order)
+CASE(1) ! first order FD for approximation of Jacobian
+  Resu = mass*(V - (Alpha*dt/EpsFD)*(Ut - R_Xk))
+CASE(2) ! second order FD for approximation of Jacobian
+  Ut_plus = Ut
+  U = Xk - EpsFD*V
+  CALL DGTimeDerivative_weakForm(t)
+  Resu = mass*(V - (Alpha*dt/(2.*EpsFD))*(Ut_plus - Ut))
+END SELECT
 END SUBROUTINE MatrixVector
 
 !===================================================================================================================================
