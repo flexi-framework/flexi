@@ -33,6 +33,7 @@ END INTERFACE CROSS
 
 PUBLIC::INVERSE
 PUBLIC::CROSS
+PUBLIC::GlobalVectorDotProduct
 !==================================================================================================================================
 
 CONTAINS
@@ -161,5 +162,38 @@ REAL            :: CROSS(3) !< cross product of vectors
 !==================================================================================================================================
 CROSS=(/v1(2)*v2(3)-v1(3)*v2(2),v1(3)*v2(1)-v1(1)*v2(3),v1(1)*v2(2)-v1(2)*v2(1)/)
 END FUNCTION CROSS
+
+!===================================================================================================================================
+!> Computes the global dot Product for vectors a and b: resu=a.b. Each processor computes the local dot product, then an allreduce
+!> is called.
+!===================================================================================================================================
+SUBROUTINE GlobalVectorDotProduct(A,B,nDOFProc,Resu)
+! MODULES
+USE MOD_Globals
+USE MOD_PreProc
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+REAL,INTENT(IN)    :: A(nDOFProc)
+REAL,INTENT(IN)    :: B(nDOFProc)
+INTEGER,INTENT(IN) :: nDOFProc
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL,INTENT(OUT)  :: Resu
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER           :: i
+!===================================================================================================================================
+Resu=0.
+DO i=1,nDOFProc
+  Resu=Resu + A(i)*B(i)
+END DO
+
+#if USE_MPI
+CALL MPI_ALLREDUCE(MPI_IN_PLACE,Resu,1,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)
+#endif
+
+END SUBROUTINE GlobalVectorDotProduct
 
 END MODULE MOD_Mathtools

@@ -14,7 +14,12 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-!> Contains routines to predict the solution at the new stage
+!> Contains routines to predict the solution at the new stage. 
+!> Four different approaches are implemented:
+!>  * Simply use the current solution (no predictor)
+!>  * Use the right hand side as a predictor
+!>  * Use a polynomial extrapolation of varying order. The extrapolation is build from values of the same stage from old time steps
+!>  * Use the dense output polynomial for extrapolation, only available for certain time integration schemes
 !===================================================================================================================================
 MODULE MOD_Predictor
 ! MODULES
@@ -26,17 +31,33 @@ IMPLICIT NONE
 ! Private Part ---------------------------------------------------------------------------------------------------------------------
 ! Public Part ----------------------------------------------------------------------------------------------------------------------
 
+INTERFACE InitPredictor
+  MODULE PROCEDURE InitPredictor
+END INTERFACE
+
+INTERFACE FillInitPredictor
+  MODULE PROCEDURE FillInitPredictor
+END INTERFACE
+
 INTERFACE Predictor
   MODULE PROCEDURE Predictor
 END INTERFACE
 
-PUBLIC:: InitPredictor,FillInitPredictor,Predictor,StorePredictor,FinalizePredictor
+INTERFACE PredictorStoreValues
+  MODULE PROCEDURE PredictorStoreValues
+END INTERFACE
+
+INTERFACE FinalizePredictor
+  MODULE PROCEDURE FinalizePredictor
+END INTERFACE
+
+PUBLIC:: InitPredictor,FillInitPredictor,Predictor,PredictorStoreValues,FinalizePredictor
 !===================================================================================================================================
 
 CONTAINS
 
 !===================================================================================================================================
-!> Allocate global variables required for predictor
+!> Allocate global variables and read in parameters required for predictor
 !===================================================================================================================================
 SUBROUTINE InitPredictor(TimeDiscMethod)
 ! MODULES
@@ -65,23 +86,28 @@ IF(TimeDiscType.EQ.'ESDIRK')THEN
     ALLOCATE(U_predictor(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
   CASE(2) ! Lagrange polynomial predictor
     PredictorOrder=GETINT('PredictorOrder','1')
+    ! For the extrapolation, we need values from old time steps. The extrapolaton will be done for each stage separately, so we need
+    ! to store the solution and time instance at each stage. How many time steps we need to store depends on the polynomial order.
     ALLOCATE(t_old(0:PredictorOrder,2:nRKStages))
     ALLOCATE(Upast(      1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems,0:PredictorOrder,2:nRKStages))
     ALLOCATE(U_predictor(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
   CASE(3) ! predictor using dense output polynomial for extrapolation
+    ! The dense output can be used to calculate the solution at an arbitrary time instance inside of a time step. We use this to get
+    ! an extrapolated value. Needs specific coefficients for each scheme, only some are available.
     SELECT CASE (TRIM(TimeDiscMethod))
     CASE('esdirk3-4')
       PredictorOrder = 2
     CASE('esdirk4-6')
       PredictorOrder = 3
     CASE DEFAULT
-      CALL abort(__STAMP__,'No dense output extrapolation available for chosen time discretization!',PredictorType,999.)
+      CALL CollectiveStop(__STAMP__,'No dense output extrapolation available for chosen time discretization!',PredictorType,999.)
     END SELECT
+    ! For the extrapolation we need the old solution Un and the old Uts from all stages of the last time step.
     ALLOCATE(Ut_old(     1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems,1:nRKStages))
     ALLOCATE(Un_old(     1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
     ALLOCATE(U_predictor(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
   CASE DEFAULT
-    CALL abort(__STAMP__,'PredictorType not implemented!',PredictorType,999.)
+    CALL CollectiveStop(__STAMP__,'PredictorType not implemented!',PredictorType,999.)
   END SELECT
 END IF
 END SUBROUTINE InitPredictor
@@ -93,9 +119,9 @@ SUBROUTINE FillInitPredictor(t)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Implicit_Vars,  ONLY: t_old,Upast,PredictorType,PredictorOrder,PredictorCounter,Un_old,Ut_old
+USE MOD_Implicit_Vars,  ONLY: t_old,Upast,PredictorType,PredictorOrder,Un_old,Ut_old
 USE MOD_DG_Vars,        ONLY: U
-USE MOD_TimeDisc_Vars,  ONLY: nRKStages,RKb_denseout
+USE MOD_TimeDisc_Vars,  ONLY: nRKStages
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -115,21 +141,15 @@ CASE(2)
       Upast(:,:,:,:,:,i,iStage) = U
     END DO
   END DO
-  PredictorCounter = -1
 CASE(3)
-  IF(ALLOCATED(RKb_denseout))THEN
-    Ut_old = 0.
-    Un_old = U
-  ELSE
-    CALL abort(__STAMP__, &
-        'Predictor Type 3 (extrapolation via dense output formula) not available for chosen Runge-Kutta method or predictor order')
-  END IF
+  Ut_old = 0.
+  Un_old = U
 END SELECT
 
 END SUBROUTINE FillInitPredictor
 
 !===================================================================================================================================
-!> predicts the new Stage-value to decrease computational time
+!> Predicts the new stage-value to decrease computational time
 !===================================================================================================================================
 SUBROUTINE Predictor(tStage,iStage)
 ! MODULES
@@ -137,8 +157,8 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_DG_Vars,          ONLY: U
 USE MOD_Mesh_Vars,        ONLY: nElems
-USE MOD_Implicit_Vars,    ONLY: Upast,t_old,PredictorType,PredictorOrder,PredictorCounter,U_predictor,Un_old,Ut_old,LinSolverRHS
-USE MOD_TimeDisc_Vars,    ONLY: dt,dt_old,RKb_denseout,RKc_implicit,nRKStages
+USE MOD_Implicit_Vars,    ONLY: Upast,t_old,PredictorType,PredictorOrder,U_predictor,Un_old,Ut_old,LinSolverRHS
+USE MOD_TimeDisc_Vars,    ONLY: dt,dt_old,RKb_denseout,RKc_implicit,nRKStages,iter
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -159,9 +179,9 @@ CASE(0)
 CASE(1) ! use RHS as Predictor
   U_predictor=LinSolverRHS
 CASE(2)
-  IF(PredictorCounter.GT.PredictorOrder)THEN ! do not build predictor if not a sufficient amount of states are present
-    ! extrapolate chimera boundary conditions from old values (Lagrange polynomial)
+  IF((iter-1).GT.PredictorOrder)THEN ! do not build predictor if not a sufficient amount of states are present
     ! build Lagrange polynomial with degree PredictorOrder
+    ! the nodes are equal to the old stage times
     Lagrange(:)=1.
     DO j=0,PredictorOrder
       DO i=0,PredictorOrder
@@ -180,10 +200,11 @@ CASE(2)
       END DO; END DO; END DO! i,j,k=0,PP_N
     END DO ! iElem
   ELSE
+    ! If not enough values are stored yet, simply use the current solution
     U_predictor = U
-  END IF ! PredictorCounter
+  END IF ! Enough stored values
 CASE(3) ! predictor using dense output polynomial for extrapolation
-  ! Kennedey, Carpenter: Additive Runge-Kutta Schemes for Convection-Diffusion-Reaction Equtions
+  ! Kennedey, Carpenter: Additive Runge-Kutta Schemes for Convection-Diffusion-Reaction Equations
   DO iElem=1,nElems
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       U_predictor(:,i,j,k,iElem) = Un_old(:,i,j,k,iElem)
@@ -191,8 +212,8 @@ CASE(3) ! predictor using dense output polynomial for extrapolation
         DO jj=1,PredictorOrder
           U_predictor(:,i,j,k,iElem) = U_predictor(:,i,j,k,iElem) + dt_old * &
                                        Ut_old(:,i,j,k,iElem,ii)*RKb_denseout(jj,ii)*(1.+RKc_implicit(iStage)*dt/dt_old)**jj
-        END DO
-      END DO
+        END DO ! jj=1,PredictorOrder
+      END DO ! ii=1,nRKStages
     END DO; END DO; END DO! i,j,k=0,PP_N
   END DO ! iElem
 END SELECT
@@ -200,57 +221,56 @@ END SELECT
 END SUBROUTINE Predictor
 
 !===================================================================================================================================
-!> Stores information of old stages required for extrapolation
+!> Stores information of old stages required for extrapolation, get's called after a stage is finished.
 !===================================================================================================================================
-SUBROUTINE StorePredictor(Ut_implicit,Un,tStage,iStage)
+SUBROUTINE PredictorStoreValues(Ut,Un,tStage,iStage)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Mesh_Vars,        ONLY: nElems
 USE MOD_DG_Vars,          ONLY: U
-USE MOD_Implicit_Vars,    ONLY: PredictorType,t_old,Upast,PredictorOrder,Ut_old,Un_old,PredictorCounter
+USE MOD_Implicit_Vars,    ONLY: PredictorType,t_old,Upast,PredictorOrder,Ut_old,Un_old
 USE MOD_TimeDisc_Vars,    ONLY: nRKStages
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-REAL,INTENT(IN)              :: Ut_implicit(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems,1:nRKStages) 
-REAL,INTENT(IN)              :: Un(         1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) 
-REAL,INTENT(IN)              :: tStage
-INTEGER,INTENT(IN)           :: iStage
+REAL,INTENT(IN)              :: Ut(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems,1:nRKStages)  !< Time derivative, not all stages may be
+                                                                                          !< filled!
+REAL,INTENT(IN)              :: Un(         1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)     !< Current solution at begin of time step
+REAL,INTENT(IN)              :: tStage                                                    !< Stage time
+INTEGER,INTENT(IN)           :: iStage                                                    !< Current RK stage
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
 INTEGER                      :: j
 !===================================================================================================================================
-! 1 - old stage, 0 - actual stage
 SELECT CASE(PredictorType)
 CASE(2)
-  IF(nRKStages.EQ.iStage) PredictorCounter = PredictorCounter + 1
   ! shift old values one time level
   DO j=PredictorOrder,1,-1
     t_old(j,iStage) = t_old(j-1,iStage)
     Upast(:,:,:,:,:,j,iStage) = Upast(:,:,:,:,:,j-1,iStage)
   END DO
-  !fill new predictor time level
+  ! fill new predictor time level
   t_old(0,iStage) = tStage
   Upast(:,:,:,:,:,0,iStage)=U
 CASE(3)
   IF(iStage.EQ.nRKStages)THEN
-    Ut_old = Ut_implicit
+    Ut_old = Ut
     Un_old = Un
   END IF
 END SELECT
 
-END SUBROUTINE StorePredictor
+END SUBROUTINE PredictorStoreValues
 
 !===================================================================================================================================
 !> Deallocate global variables required for predictor
 !===================================================================================================================================
 SUBROUTINE FinalizePredictor()
 ! MODULES
-USE MOD_Implicit_vars,    ONLY:Upast,t_old,U_predictor,Ut_old,Un_old
+USE MOD_Implicit_Vars
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------

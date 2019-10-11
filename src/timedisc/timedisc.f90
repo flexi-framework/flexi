@@ -55,7 +55,7 @@ CALL prms%CreateStringOption('TimeDiscMethod', "Specifies the type of time-discr
                                                "  * toulorgerk4-8c\n  * toulorgerk3-7c\n  * toulorgerk4-8f\n"//&
                                                "  * ketchesonrk4-20\n  * ketchesonrk4-18\n * impliciteuler\n"//&
                                                "  * cranknicolson2-2\n * esdirk2-3\n * esdirk3-4\n"//&
-                                               " * esdirk4-6" , value='CarpenterRK4-5')
+                                               "  * esdirk4-6" , value='CarpenterRK4-5')
 CALL prms%CreateRealOption(  'TEnd',           "End time of the simulation (mandatory).")
 CALL prms%CreateRealOption(  'CFLScale',       "Scaling factor for the theoretical CFL number, typical range 0.1..1.0 (mandatory)")
 CALL prms%CreateRealOption(  'DFLScale',       "Scaling factor for the theoretical DFL number, typical range 0.1..1.0 (mandatory)")
@@ -97,8 +97,9 @@ CASE('LSERKW2')
 CASE('LSERKK3')
   TimeStep=>TimeStepByLSERKK3
 CASE('ESDIRK')
+  ! Implicit time integration
   TimeStep=>TimeStepByESDIRK
-  !Predictor for Newton
+  ! Predictor for Newton
   CALL InitPredictor(TimeDiscMethod)
 END SELECT
 
@@ -169,7 +170,7 @@ USE MOD_RecordPoints_Vars   ,ONLY: RP_onProc
 USE MOD_Sponge_Vars         ,ONLY: CalcPruettDamping
 USE MOD_Indicator           ,ONLY: doCalcIndicator,CalcIndicator
 USE MOD_Predictor           ,ONLY: FillInitPredictor
-USE MOD_Implicit_Vars       ,ONLY: nGMRESIterGlobal
+USE MOD_Implicit_Vars       ,ONLY: nGMRESIterGlobal,nNewtonIterGlobal
 #if FV_ENABLED
 USE MOD_FV
 #endif
@@ -364,7 +365,12 @@ DO
       WRITE(UNIT_StdOut,'(A,ES16.7)')' Timestep   : ',dt_Min
       IF(ViscousTimeStep) WRITE(UNIT_StdOut,'(A)')' Viscous timestep dominates! '
       WRITE(UNIT_stdOut,'(A,ES16.7)')'#Timesteps  : ',REAL(iter)
-      IF(TimeDiscType.EQ.'ESDIRK') WRITE(UNIT_stdOut,'(A,ES16.7)')'#GMRES iter : ',REAL(nGMRESIterGlobal)
+      IF(TimeDiscType.EQ.'ESDIRK') THEN 
+        WRITE(UNIT_stdOut,'(A,ES16.7)')'#GMRES iter  : ',REAL(nGMRESIterGlobal)
+        WRITE(UNIT_stdOut,'(A,ES16.7)')'#Newton iter : ',REAL(nNewtonIterGlobal)
+        nGMRESIterGlobal  = 0
+        nNewtonIterGlobal = 0
+      END IF
     END IF !MPIroot
 #if FV_ENABLED
     CALL FV_Info(iter_loc)
@@ -543,14 +549,15 @@ SUBROUTINE TimeStepByESDIRK(t)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
+USE MOD_Mathtools         ,ONLY: GlobalVectorDotProduct
 USE MOD_DG                ,ONLY: DGTimeDerivative_weakForm
 USE MOD_DG_Vars           ,ONLY: U,Ut
 USE MOD_TimeDisc_Vars     ,ONLY: dt,nRKStages,RKA_implicit,RKc_implicit,iter
 USE MOD_TimeDisc_Vars     ,ONLY: RKb_implicit,RKb_embedded,safety,ESDIRK_gamma
 USE MOD_Mesh_Vars         ,ONLY: nElems
-USE MOD_Implicit          ,ONLY: Newton,VectorDotProduct
-USE MOD_Implicit_Vars     ,ONLY: LinSolverRHS,adaptepsNewton,eps2Newton
-USE MOD_Predictor         ,ONLY: Predictor,StorePredictor
+USE MOD_Implicit          ,ONLY: Newton
+USE MOD_Implicit_Vars     ,ONLY: LinSolverRHS,adaptepsNewton,epsNewton,nDOFVarProc,nGMRESIterdt
+USE MOD_Predictor         ,ONLY: Predictor,PredictorStoreValues
 USE MOD_Precond           ,ONLY: BuildPrecond
 USE MOD_Precond_Vars      ,ONLY: PrecondIter
 IMPLICIT NONE
@@ -559,34 +566,34 @@ IMPLICIT NONE
 REAL,INTENT(IN) :: t   !< current simulation time
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL    :: Ut_implicit(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems,1:nRKStages)   ! temporal variable for Ut_implicit
+REAL    :: Ut_implicit(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems,1:nRKStages) ! temporal variable for Ut_implicit
 REAL    :: Un(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
 INTEGER :: iStage,iCounter
 REAL    :: tStage
-REAL    :: delta_embedded(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)                  ! difference between solution obtained with 
+REAL    :: delta_embedded(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)          ! difference between solution obtained with 
 !===================================================================================================================================
 !CALL DGTimeDerivative_weakForm(t)! has to be called before preconditioner to fill U_master/slave ! already called in timedisc
 IF ((iter==0).OR.(MOD(iter,PrecondIter)==0)) CALL BuildPrecond(t,ESDIRK_gamma,dt)
-tStage = t
-Un = U
-Ut_implicit(:,:,:,:,:,1)=Ut
+tStage                   = t
+Un                       = U
+Ut_implicit(:,:,:,:,:,1) = Ut
 DO iStage=2,nRKStages
-  ! time of current stage
+  ! Time of current stage
   tStage = tStage + RKc_implicit(iStage)*dt
-  ! compute RHS for linear solver
+  ! Compute RHS for linear solver
   LinSolverRHS=Un
   DO iCounter=1,iStage-1
     LinSolverRHS = LinSolverRHS + dt*(RKA_implicit(iStage,iCounter)*Ut_implicit(:,:,:,:,:,iCounter))
   END DO
-  ! get predictor of u^s+1
+  ! Get predictor of u^s+1
   CALL Predictor(tStage,iStage)
-  ! solve to new stage 
+  ! Solve to new stage 
   CALL Newton(tStage,RKA_implicit(iStage,iStage))
-  ! store old values for use in next stages
+  ! Store old values for use in next stages
   !CALL DGTimeDerivative_weakForm(tStage) ! already set in last Newton iteration
   Ut_implicit(:,:,:,:,:,iStage)=Ut
-  ! store predictor
-  CALL StorePredictor(Ut_implicit,Un,tStage,iStage)
+  ! Store predictor
+  CALL PredictorStoreValues(Ut_implicit,Un,tStage,iStage)
 END DO
 
 ! Adaptive Newton tolerance, see: Kennedy,Carpenter: Additive Runge-Kutta Schemes for Convection-Diffusion-Reaction Equations
@@ -595,12 +602,14 @@ IF(adaptepsNewton)THEN
   DO iStage=1,nRKStages
     delta_embedded = delta_embedded + (RKb_implicit(iStage)-RKb_embedded(iStage)) * Ut_implicit(:,:,:,:,:,iStage)
   END DO
-  CALL VectorDotProduct(delta_embedded,delta_embedded,eps2Newton)
-  eps2Newton = (MIN(dt*SQRT(eps2Newton)/safety,1E-3))**2
+  CALL GlobalVectorDotProduct(delta_embedded,delta_embedded,nDOFVarProc,epsNewton)
+  epsNewton = (MIN(dt*SQRT(epsNewton)/safety,1E-3))
 #if DEBUG
-  SWRITE(*,*) 'epsNewton = ',SQRT(eps2Newton)
+  SWRITE(*,*) 'epsNewton = ',SQRT(epsNewton)
 #endif
 END IF
+
+nGMRESIterdt = 0
 END SUBROUTINE TimeStepByESDIRK
 
 !===================================================================================================================================

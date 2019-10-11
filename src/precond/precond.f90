@@ -135,7 +135,6 @@ USE MOD_PreProc
 USE MOD_Mathtools     ,ONLY:Inverse
 USE MOD_Mesh_Vars     ,ONLY:nElems,nSides
 USE MOD_Implicit_Vars ,ONLY:nDOFVarElem
-!USE MOD_Implicit_Vars, ONLY:Mass
 USE MOD_SparseILU     ,ONLY:BuildILU0
 USE MOD_Precond_Vars  ,ONLY:invP,DebugMatrix,PrecondType,SolveSystem,DoDisplayPrecond
 USE MOD_Jac_ex        ,ONLY:Jac_ex
