@@ -14,10 +14,11 @@
 #include "flexi.h"
 #include "eos.h"
 
+!===================================================================================================================================
+!> Contains the computation of the jacobian of the numerical flux function. Since we don't want to derive every single one of them, 
+!> we employ a finite difference approximation that works for all flux functions.
+!===================================================================================================================================
 MODULE MOD_Riemann_Deriv
-!===================================================================================================================================
-!   ! Contains the computation of the local jacobian numerical flux
-!===================================================================================================================================
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -36,8 +37,10 @@ PUBLIC::Riemann_FD
 !===================================================================================================================================
 
 CONTAINS
+
 !===================================================================================================================================
-!> Contains the computation of directional derivative with finite difference of the numerical flux f*_adv+f*_diff
+!> Contains the computation of directional derivative with finite difference of the hyperbolic numerical flux f*_adv. Also takes the
+!> surface integral into account, by multiplying with SurfElem.
 !===================================================================================================================================
 SUBROUTINE Riemann_FD(DFDU,U_L,U_R,UPrim_L,UPrim_R,normal,tangent1,tangent2,surf_loc,jk,FV_Elems_Sum,FVElem,FVSide)
 ! MODULES
@@ -54,21 +57,21 @@ USE MOD_FV_Vars                 ,ONLY: FV_sVdm,FV_Vdm
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-REAL, INTENT(IN)                :: U_L(    PP_nVar    ,0:PP_N,0:PP_NZ)
-REAL, INTENT(IN)                :: U_R(    PP_nVar    ,0:PP_N,0:PP_NZ)
-REAL, INTENT(IN)                :: UPrim_L(PP_nVarPrim,0:PP_N,0:PP_NZ)
-REAL, INTENT(IN)                :: UPrim_R(PP_nVarPrim,0:PP_N,0:PP_NZ)
-REAL, INTENT(IN)                :: normal(  1:3       ,0:PP_N,0:PP_NZ)
-REAL, INTENT(IN)                :: tangent1(1:3       ,0:PP_N,0:PP_NZ)
-REAL, INTENT(IN)                :: tangent2(1:3       ,0:PP_N,0:PP_NZ)
-REAL, INTENT(IN)                :: surf_loc(           0:PP_N,0:PP_NZ)
-INTEGER, INTENT(IN)             :: jk(      2         ,0:PP_N,0:PP_NZ)
-INTEGER,INTENT(IN)              :: FV_Elems_Sum
-INTEGER, INTENT(IN)             :: FVElem
-INTEGER, INTENT(IN)             :: FVSide
+REAL, INTENT(IN)                :: U_L(    PP_nVar    ,0:PP_N,0:PP_NZ) !< Conservative solution at left interface
+REAL, INTENT(IN)                :: U_R(    PP_nVar    ,0:PP_N,0:PP_NZ) !< Conservative solution at right interface
+REAL, INTENT(IN)                :: UPrim_L(PP_nVarPrim,0:PP_N,0:PP_NZ) !< Primitive solution at left interface
+REAL, INTENT(IN)                :: UPrim_R(PP_nVarPrim,0:PP_N,0:PP_NZ) !< Primitive solution at right interface
+REAL, INTENT(IN)                :: normal(  1:3       ,0:PP_N,0:PP_NZ) !< normal vector
+REAL, INTENT(IN)                :: tangent1(1:3       ,0:PP_N,0:PP_NZ) !< first tangential vector
+REAL, INTENT(IN)                :: tangent2(1:3       ,0:PP_N,0:PP_NZ) !< second tangential vector
+REAL, INTENT(IN)                :: surf_loc(           0:PP_N,0:PP_NZ) !< surface elements
+INTEGER, INTENT(IN)             :: jk(      2         ,0:PP_N,0:PP_NZ) !< side to volume mapping
+INTEGER,INTENT(IN)              :: FV_Elems_Sum                        !< Indicating if an interface is DG/DG or FV/FV etc.
+INTEGER, INTENT(IN)             :: FVElem                              !< Is the element FV or DG?
+INTEGER, INTENT(IN)             :: FVSide                              !< 0: DG/DG 1: other cases
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(OUT)                :: DFDU(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ,2)
+REAL,INTENT(OUT)                :: DFDU(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ,2) !< jacobian of the numerical flux w.r.t. conservative sol.
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                            :: U_L_Tilde    (    1:PP_nVar,0:PP_N,0:PP_NZ)
@@ -82,29 +85,33 @@ REAL                            :: reps0_loc,sreps0_loc
 REAL                            :: U_R_Tilde    (    1:PP_nVar,0:PP_N,0:PP_NZ)
 REAL                            :: UPrim_R_Tilde(1:PP_nVarPrim,0:PP_N,0:PP_NZ)
 #endif
-!-----------------------------------------------------------------------------------------------------------------------------------
-!Derivation only in U_L
+!===================================================================================================================================
+! For pure DG, we only need the derivation w.r.t. U_L (which is the DOF that belongs to my element).
+
+! Finite difference approach: Store the unpertubated solution, than pertubate each variable for each side DOF and use a first order
+! finite difference to approximate the derivative
 CALL Riemann(PP_N,F,U_L,U_R,UPrim_L,UPrim_R,normal,tangent1,tangent2,doBC=.FALSE.)
 #if FV_ENABLED
-! convert flux on FV points to DG points at mixed interface if current element is a DG element
+! I'm a DG element, but the side is at a mixed interface: The Riemann problem is solved at the FV points. Take additional steps:
+! Step 1: Convert flux on FV points to DG points at mixed interface
 IF((FVSide.EQ.1).AND.(FVElem.EQ.0)) CALL ChangeBasisSurf(PP_nVar,PP_N,PP_N,FV_sVdm,F)
 #endif
-
 U_L_Tilde = U_L
 
 DO jVar=1,PP_nVar
 #if FV_ENABLED
-! transform values at side to DG points and modify slightly with reps0
   IF((FVSide.EQ.1).AND.(FVElem.EQ.0))THEN
+    ! Step 2: Convert solution on FV points to DG points at mixed interface
     CALL ChangeBasisSurf(PP_nVar,PP_N,PP_N,FV_sVdm,U_L_Tilde)
   END IF
 #endif
+  ! Adaptive step size for FD, depending on norm of U
   reps0_loc  = reps0_O1*(1.+SQRT(NORM2(U_L_Tilde(jVar,:,:))))
   sreps0_loc = 1./reps0_loc
   U_L_Tilde(jVar,:,:) = U_L_Tilde(jVar,:,:) + reps0_loc
   CALL ConsToPrim(PP_N,UPrim_L_Tilde,U_L_Tilde)
 #if FV_ENABLED
-  ! transform modified values back to FV points, where the Riemann problem is evaluated
+  ! Step 3: Convert pertubated solution on DG points back to FV points at mixed interface
   IF((FVSide.EQ.1).AND.(FVElem.EQ.0))THEN
     CALL ChangeBasisSurf(PP_nVar    ,PP_N,PP_N,FV_Vdm,U_L_Tilde)
     CALL ChangeBasisSurf(PP_nVarPrim,PP_N,PP_N,FV_Vdm,UPrim_L_Tilde)
@@ -112,7 +119,7 @@ DO jVar=1,PP_nVar
 #endif
   CALL Riemann(PP_N,F_Tilde_UL,U_L_Tilde,U_R,UPrim_L_Tilde,UPrim_R,normal,tangent1,tangent2,doBC=.FALSE.)
 #if FV_ENABLED
-  ! convert flux on FV points to DG points at mixed interface if current element is a DG element 
+  ! Step 4: Convert flux on FV points to DG points at mixed interface
   ! as the surface integral is evaluated on DG nodes
   IF((FVSide.EQ.1).AND.(FVElem.EQ.0)) CALL ChangeBasisSurf(PP_nVar,PP_N,PP_N,FV_sVdm,F_Tilde_UL)
 #endif
@@ -128,7 +135,7 @@ END DO !jVar
 
 !----------------------------------------------------------------------------------------------------------------------------------
 #if FV_ENABLED && FV_RECONSTRUCT
-IF((FVElem.EQ.1).AND.(FV_Elems_Sum.EQ.3))THEN ! do only if current and neighbouring element are fv elements (FV-FV interface)
+IF((FVElem.EQ.1).AND.(FV_Elems_Sum.EQ.3))THEN ! do only if current and neighbouring element are FV elements (FV-FV interface)
   ! do the same derivative as above only with respect to U_R instead of U_L
   U_R_Tilde = U_R
   DO jVar=1,PP_nVar

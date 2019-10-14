@@ -12,12 +12,10 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
-#if EQNSYSNR==2
 #include "eos.h"
-#endif
 
 !===================================================================================================================================
-!> Contains the routines for the calculation of the analytical flux jacobians of the different equation systems
+!> Contains the routines for the calculation of the analytical flux jacobians of the Navier-Stokes equations
 !===================================================================================================================================
 MODULE MOD_Jacobian
 ! MODULES
@@ -46,8 +44,12 @@ INTERFACE dPrimTempdCons
   MODULE PROCEDURE dPrimTempdCons
 END INTERFACE
 
-PUBLIC::EvalAdvFluxJacobian
-#if EQNSYSNR==2 && PARABOLIC
+INTERFACE EvalAdvFluxJacobianPoint
+  MODULE PROCEDURE EvalAdvFluxJacobianPoint
+END INTERFACE
+
+PUBLIC::EvalAdvFluxJacobian,EvalAdvFluxJacobianPoint
+#if PARABOLIC
 PUBLIC::EvalDiffFluxJacobian
 #endif
 PUBLIC::dConsdPrim,dPrimdCons,dConsdPrimTemp,dPrimTempdCons
@@ -55,60 +57,48 @@ PUBLIC::dConsdPrim,dPrimdCons,dConsdPrimTemp,dPrimTempdCons
 
 CONTAINS
 
-#if EQNSYSNR==1
 !===================================================================================================================================
-!> Linear Scalar Advection Difussion:
-!> The Jacobian of the analytical advective Flux with respect to the Variable U
+!> Navier-Stokes-Problem:
+!> The Jacobian of the advective Flux with respect to the conservative variables U
 !===================================================================================================================================
 SUBROUTINE EvalAdvFluxJacobian(U,UPrim,fJac,gJac,hJac)
 ! MODULES
 USE MOD_PreProc
-USE MOD_Globals
-USE MOD_Equation_Vars     ,ONLY:AdvVel
-USE MOD_DG_Vars           ,ONLY:nDOFElem,imex
-USE MOD_TimeDisc_Vars     ,ONLY:TimeDiscMode
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-REAL,DIMENSION(PP_nVar,nDOFElem),INTENT(IN)              :: U
-REAL,DIMENSION(PP_nVarPrim,nDOFElem),INTENT(IN)          :: UPrim
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-REAL,DIMENSION(PP_nVar,PP_nVar,nDOFElem),INTENT(OUT) :: fJac,gJac,hJac             ! Cartesian fluxes (iVar,i,j,k)
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-!===================================================================================================================================
-fJac = AdvVel(1)
-gJac = AdvVel(2)
-#if PP_dim==3
-hJac = AdvVel(3)
-#endif
-END SUBROUTINE EvalAdvFluxJacobian
-#endif
-
-#if EQNSYSNR==2
-SUBROUTINE EvalAdvFluxJacobian(U,UPrim,fJac,gJac,hJac)
-!===================================================================================================================================
-! Navier-Stokes-Problem:
-! The Jacobian of the advective Flux with respect to the primitive Variable U
-!===================================================================================================================================
-! MODULES
-USE MOD_PreProc
-USE MOD_EOS_Vars          ,ONLY:Kappa,KappaM1
 USE MOD_DG_Vars           ,ONLY:nDOFElem
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------  
-REAL,DIMENSION(PP_nVar,nDOFElem),INTENT(IN)              :: U
-REAL,DIMENSION(PP_nVarPrim,nDOFElem),INTENT(IN)          :: UPrim
-REAL,DIMENSION(PP_nVar,PP_nVar,nDOFElem),INTENT(OUT)     :: fJac,gJac,hJac  ! Derivative of theCartesian fluxes (iVar,i,j,k)
+REAL,DIMENSION(PP_nVar,nDOFElem),INTENT(IN)              :: U               !< Conservative solution
+REAL,DIMENSION(PP_nVarPrim,nDOFElem),INTENT(IN)          :: UPrim           !< Primitive solution
+REAL,DIMENSION(PP_nVar,PP_nVar,nDOFElem),INTENT(OUT)     :: fJac,gJac,hJac  !< Derivative of the physical fluxes (iVar,i,j,k)
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER :: i
+!===================================================================================================================================
+DO i=1,nDOFElem
+  CALL EvalAdvFluxJacobianPoint(U(:,i),UPrim(:,i),fJac(:,:,i),gJac(:,:,i),hJac(:,:,i))
+END DO !i
+END SUBROUTINE EvalAdvFluxJacobian
+
+!===================================================================================================================================
+!> Navier-Stokes-Problem:
+!> The Jacobian of the advective Flux with respect to the conservative variables U
+!===================================================================================================================================
+PPURE SUBROUTINE EvalAdvFluxJacobianPoint(U,UPrim,fJac,gJac,hJac)
+! MODULES
+USE MOD_EOS_Vars          ,ONLY:Kappa,KappaM1
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------  
+REAL,DIMENSION(PP_nVar),INTENT(IN)              :: U               !< Conservative solution
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)          :: UPrim           !< Primitive solution
+REAL,DIMENSION(PP_nVar,PP_nVar),INTENT(OUT)     :: fJac,gJac,hJac  !< Derivative of the physical fluxes (iVar,i,j,k)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL    :: KappaM2
 REAL    :: uv,uu,vv,absu,v1,v2,srho
-INTEGER :: i
 REAL    :: a1,phi
 #if PP_dim==3
 REAL    :: uw,vw,ww,v3
@@ -116,65 +106,63 @@ REAL    :: uw,vw,ww,v3
 !===================================================================================================================================
 KappaM2   = Kappa-2.
 
-DO i=1,nDOFElem
-  srho = 1./UPrim(1,i)
-  v1=UPrim(2,i)
-  v2=UPrim(3,i)
-  uv=UPrim(2,i)*UPrim(3,i)
-  uu=UPrim(2,i)*UPrim(2,i)
-  vv=UPrim(3,i)*UPrim(3,i)
+srho = 1./UPrim(1)
+v1=UPrim(2)
+v2=UPrim(3)
+uv=UPrim(2)*UPrim(3)
+uu=UPrim(2)*UPrim(2)
+vv=UPrim(3)*UPrim(3)
 #if PP_dim==3
-  v3=UPrim(4,i)
-  uw=UPrim(2,i)*UPrim(4,i)
-  vw=UPrim(3,i)*UPrim(4,i)
-  ww=UPrim(4,i)*UPrim(4,i)
-  absu=uu+vv+ww
-  phi  = kappaM1*0.5*absu
-  a1   = kappa * U(5,i)*sRho - phi
+v3=UPrim(4)
+uw=UPrim(2)*UPrim(4)
+vw=UPrim(3)*UPrim(4)
+ww=UPrim(4)*UPrim(4)
+absu=uu+vv+ww
+phi  = kappaM1*0.5*absu
+a1   = kappa * U(5)*sRho - phi
 
 
-  fJac(1,1:5,i)= (/          0.,             1.,          0.,           0.,        0. /)
-  fJac(2,1:5,i)= (/      phi-uu, (1-kappaM2)*v1, -kappaM1*v2,  -kappaM1*v3,   kappaM1 /)
-  fJac(3,1:5,i)= (/         -uv,             v2,          v1,           0.,        0. /)
-  fJac(4,1:5,i)= (/         -uw,             v3,          0.,           v1,        0. /)
-  fJac(5,1:5,i)= (/ v1*(phi-a1),  a1-kappaM1*uu, -kappaM1*uv,  -kappaM1*uw,  kappa*v1 /)
+fJac(1,1:5)= (/          0.,             1.,          0.,           0.,        0. /)
+fJac(2,1:5)= (/      phi-uu, (1-kappaM2)*v1, -kappaM1*v2,  -kappaM1*v3,   kappaM1 /)
+fJac(3,1:5)= (/         -uv,             v2,          v1,           0.,        0. /)
+fJac(4,1:5)= (/         -uw,             v3,          0.,           v1,        0. /)
+fJac(5,1:5)= (/ v1*(phi-a1),  a1-kappaM1*uu, -kappaM1*uv,  -kappaM1*uw,  kappa*v1 /)
 
 
-  gJac(1,1:5,i)= (/          0.,           0.,              1.,          0.,       0. /)
-  gJac(2,1:5,i)= (/         -uv,           v2,              v1,          0.,       0. /)
-  gJac(3,1:5,i)= (/      phi-vv,  -kappaM1*v1, (1.-kappaM2)*v2, -kappaM1*v3,  kappaM1 /)
-  gJac(4,1:5,i)= (/         -vw,           0.,              v3,          v2,       0. /)
-  gJac(5,1:5,i)= (/ v2*(phi-a1),  -kappaM1*uv,   a1-kappaM1*vv, -kappaM1*vw, kappa*v2 /)
+gJac(1,1:5)= (/          0.,           0.,              1.,          0.,       0. /)
+gJac(2,1:5)= (/         -uv,           v2,              v1,          0.,       0. /)
+gJac(3,1:5)= (/      phi-vv,  -kappaM1*v1, (1.-kappaM2)*v2, -kappaM1*v3,  kappaM1 /)
+gJac(4,1:5)= (/         -vw,           0.,              v3,          v2,       0. /)
+gJac(5,1:5)= (/ v2*(phi-a1),  -kappaM1*uv,   a1-kappaM1*vv, -kappaM1*vw, kappa*v2 /)
 
 
-  hJac(1,1:5,i)= (/          0.,          0.,           0.,              1.,       0. /)
-  hJac(2,1:5,i)= (/         -uw,          v3,           0.,              v1,       0. /)
-  hJac(3,1:5,i)= (/         -vw,          0.,           v3,              v2,       0. /)
-  hJac(4,1:5,i)= (/      phi-ww, -kappaM1*v1,  -kappaM1*v2, (1.-kappaM2)*v3,  kappaM1 /)
-  hJac(5,1:5,i)= (/ v3*(phi-a1), -kappaM1*uw,  -kappaM1*vw,   a1-kappaM1*ww, kappa*v3 /)
+hJac(1,1:5)= (/          0.,          0.,           0.,              1.,       0. /)
+hJac(2,1:5)= (/         -uw,          v3,           0.,              v1,       0. /)
+hJac(3,1:5)= (/         -vw,          0.,           v3,              v2,       0. /)
+hJac(4,1:5)= (/      phi-ww, -kappaM1*v1,  -kappaM1*v2, (1.-kappaM2)*v3,  kappaM1 /)
+hJac(5,1:5)= (/ v3*(phi-a1), -kappaM1*uw,  -kappaM1*vw,   a1-kappaM1*ww, kappa*v3 /)
 #else
-  absu=uu+vv
-  phi  = kappaM1*0.5*absu
-  a1   = kappa * U(5,i)*sRho - phi
+absu=uu+vv
+phi  = kappaM1*0.5*absu
+a1   = kappa * U(5)*sRho - phi
 
 
-  fJac(1,1:5,i)= (/          0.,             1.,          0.,    0.,        0. /)
-  fJac(2,1:5,i)= (/      phi-uu, (1-kappaM2)*v1, -kappaM1*v2,    0.,   kappaM1 /)
-  fJac(3,1:5,i)= (/         -uv,             v2,          v1,    0.,        0. /)
-  fJac(4,1:5,i)= (/          0.,             0.,          0.,    0.,        0. /)
-  fJac(5,1:5,i)= (/ v1*(phi-a1),  a1-kappaM1*uu, -kappaM1*uv,    0.,  kappa*v1 /)
+fJac(1,1:5)= (/          0.,             1.,          0.,    0.,        0. /)
+fJac(2,1:5)= (/      phi-uu, (1-kappaM2)*v1, -kappaM1*v2,    0.,   kappaM1 /)
+fJac(3,1:5)= (/         -uv,             v2,          v1,    0.,        0. /)
+fJac(4,1:5)= (/          0.,             0.,          0.,    0.,        0. /)
+fJac(5,1:5)= (/ v1*(phi-a1),  a1-kappaM1*uu, -kappaM1*uv,    0.,  kappa*v1 /)
 
 
-  gJac(1,1:5,i)= (/          0.,          0.,              1.,   0.,        0. /)
-  gJac(2,1:5,i)= (/         -uv,          v2,              v1,   0.,        0. /)
-  gJac(3,1:5,i)= (/      phi-vv, -kappaM1*v1, (1.-kappaM2)*v2,   0.,   kappaM1 /)
-  gJac(4,1:5,i)= (/          0.,          0.,              0.,   0.,        0. /)
-  gJac(5,1:5,i)= (/ v2*(phi-a1), -kappaM1*uv,   a1-kappaM1*vv,   0.,  kappa*v2 /)
+gJac(1,1:5)= (/          0.,          0.,              1.,   0.,        0. /)
+gJac(2,1:5)= (/         -uv,          v2,              v1,   0.,        0. /)
+gJac(3,1:5)= (/      phi-vv, -kappaM1*v1, (1.-kappaM2)*v2,   0.,   kappaM1 /)
+gJac(4,1:5)= (/          0.,          0.,              0.,   0.,        0. /)
+gJac(5,1:5)= (/ v2*(phi-a1), -kappaM1*uv,   a1-kappaM1*vv,   0.,  kappa*v2 /)
 
-  hJac(:,:,i)=0.
+hJac(:,:)=0.
 #endif
-END DO !i
-END SUBROUTINE EvalAdvFluxJacobian
+END SUBROUTINE EvalAdvFluxJacobianPoint
 
 #if PARABOLIC
 !===================================================================================================================================
@@ -198,9 +186,9 @@ INTEGER,INTENT(IN)                                   :: nDOF_loc             !< 
 REAL,DIMENSION(PP_nVar        ,nDOF_loc),INTENT(IN)  :: U                    !< solution in conservative variables
 REAL,DIMENSION(PP_nVarPrim    ,nDOF_loc),INTENT(IN)  :: UPrim                !< solution in primitive variables
 REAL,DIMENSION(PP_nVarPrim    ,nDOF_loc),INTENT(IN)  :: gradUx,gradUy,gradUz !< primitive gradients
-REAL,DIMENSION(PP_nVar,PP_nVar,nDOF_loc),INTENT(OUT) :: fJac,gJac,hJac       !< Derivative of the Cartesian fluxes (iVar,i,j,k)
+REAL,DIMENSION(PP_nVar,PP_nVar,nDOF_loc),INTENT(OUT) :: fJac,gJac,hJac       !< Derivative of the physical diffusive fluxes
 #if EDDYVISCOSITY
-REAL,DIMENSION(1              ,nDOF_loc),INTENT(IN)  :: muSGS                !< solution in primitive variables
+REAL,DIMENSION(1              ,nDOF_loc),INTENT(IN)  :: muSGS                !< eddy viscosity
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -239,34 +227,52 @@ DO i=1,nDOF_loc
   tau(2,1) = tau(1,2)
 #endif
 
+  ! dF^d(1:4)/dU(:) = 0, only the energy equation is directly depending on the conservative solution!
+  ! dF^d(5)/dU(1) = (u*tau_(1,1) + v*tau_(1,2) + w*tau_(1,3))/rho
+  ! dF^d(5)/dU(2) = tau_(1,1)/rho
+  ! dF^d(5)/dU(3) = tau_(1,2)/rho
+  ! dF^d(5)/dU(4) = tau_(1,3)/rho
+  ! dF^d(5)/dU(5) = 0.
   DO dir=1,PP_dim
     fJac(5,1,i) = fJac(5,1,i) + tau(1,dir)*UPrim(1+dir,i)
   END DO
   fJac(5,1,i) = fJac(5,1,i)/ U(1,i)
-  fJac(5,2,i) = -tau(1,1)   / U(1,i)
-  fJac(5,3,i) = -tau(1,2)   / U(1,i)
+  fJac(5,2,i) = -tau(1,1)  / U(1,i)
+  fJac(5,3,i) = -tau(1,2)  / U(1,i)
 #if PP_dim==3
-  fJac(5,4,i) = -tau(1,3)   / U(1,i)
+  fJac(5,4,i) = -tau(1,3)  / U(1,i)
 #endif
 
+  ! dG^d(1:4)/dU(:) = 0, only the energy equation is directly depending on the conservative solution!
+  ! dG^d(5)/dU(1) = (u*tau_(2,1) + v*tau_(2,2) + w*tau_(2,3))/rho
+  ! dG^d(5)/dU(2) = tau_(2,1)/rho
+  ! dG^d(5)/dU(3) = tau_(2,2)/rho
+  ! dG^d(5)/dU(4) = tau_(2,3)/rho
+  ! dG^d(5)/dU(5) = 0.
   DO dir=1,PP_dim
     gJac(5,1,i) = gJac(5,1,i) + tau(2,dir)*UPrim(1+dir,i)
   END DO
   gJac(5,1,i) = gJac(5,1,i)/ U(1,i)
-  gJac(5,2,i) = -tau(2,1)   / U(1,i)
-  gJac(5,3,i) = -tau(2,2)   / U(1,i)
+  gJac(5,2,i) = -tau(2,1)  / U(1,i)
+  gJac(5,3,i) = -tau(2,2)  / U(1,i)
 #if PP_dim==3
-  gJac(5,4,i) = -tau(2,3)   / U(1,i)
+  gJac(5,4,i) = -tau(2,3)  / U(1,i)
 #endif
 
 #if PP_dim==3
+  ! dH^d(1:4)/dU(:) = 0, only the energy equation is directly depending on the conservative solution!
+  ! dH^d(5)/dU(1) = (u*tau_(3,1) + v*tau_(3,2) + w*tau_(3,3))/rho
+  ! dH^d(5)/dU(2) = tau_(3,1)/rho
+  ! dH^d(5)/dU(3) = tau_(3,2)/rho
+  ! dH^d(5)/dU(4) = tau_(3,3)/rho
+  ! dH^d(5)/dU(5) = 0.
   DO dir=1,PP_dim
     hJac(5,1,i) = hJac(5,1,i) + tau(3,dir)*UPrim(1+dir,i)
   END DO
   hJac(5,1,i) = hJac(5,1,i)/ U(1,i)
-  hJac(5,2,i) = -tau(3,1)   / U(1,i)
-  hJac(5,3,i) = -tau(3,2)   / U(1,i)
-  hJac(5,4,i) = -tau(3,3)   / U(1,i)
+  hJac(5,2,i) = -tau(3,1)  / U(1,i)
+  hJac(5,3,i) = -tau(3,2)  / U(1,i)
+  hJac(5,4,i) = -tau(3,3)  / U(1,i)
 #endif
 END DO
 
@@ -410,46 +416,5 @@ Jac(6,2:4) = dpdU(2:4)*sRhoR
 Jac(6,5)   = dpdU(5  )*sRhoR
 
 END SUBROUTINE dPrimTempdCons
-#endif /*EQNSYSNR == 2*/
-
-#if EQNSYSNR == 1
-!===================================================================================================================================
-!> The Jacobian of the transformation from conservative to primitive variables
-!===================================================================================================================================
-SUBROUTINE dConsdPrim(UPrim,Jac)
-! MODULES
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-REAL,DIMENSION(PP_nVarPrim)        ,INTENT(IN)  :: UPrim    !< primitive state vector
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-REAL,DIMENSION(PP_nVar,PP_nVar),INTENT(OUT)     :: Jac      !< cons to prim Jacobian
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-!===================================================================================================================================
-Jac = 1.
-END SUBROUTINE dConsdPrim
-
-!===================================================================================================================================
-!> The Jacobian of the transformation from conservative to primitive variables
-!===================================================================================================================================
-SUBROUTINE dPrimdCons(UPrim,Jac)
-! MODULES
-! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-REAL,DIMENSION(PP_nVarPrim)        ,INTENT(IN)  :: UPrim    !< primitive state vector
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-REAL,DIMENSION(PP_nVar,PP_nVar),INTENT(OUT)     :: Jac      !< prim to cons Jacobian
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-!===================================================================================================================================
-Jac = 1.
-END SUBROUTINE dPrimdCons
-#endif /*EQNSYSNR == 1*/
 
 END MODULE MOD_Jacobian

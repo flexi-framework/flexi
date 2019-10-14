@@ -36,8 +36,8 @@ PUBLIC::DGJacSurfInt
 CONTAINS
 
 !===================================================================================================================================
-!> Contains the computation of the local jacobian of the surface integral
-!> computation is done for one element!
+!> Contains the computation of the local jacobian of the surface integral.
+!> Computation is done for one element!
 !===================================================================================================================================
 SUBROUTINE DGJacSurfInt(t,BJ,iElem)
 ! MODULES
@@ -94,10 +94,10 @@ REAL,INTENT(INOUT)                 :: BJ(nDOFVarElem,nDOFVarElem)               
 INTEGER                                                 :: i,j,mm,nn,oo,r,s,vn1,vn2
 INTEGER                                                 :: iLocSide,SideID,Flip,FVElem,FVSide,FVSum
 #if PP_dim == 3
-REAL                                                    :: df_DUinner(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ,2,6)
+REAL                                                    :: Df_DUinner(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ,2,6)
 INTEGER                                                 :: k
 #else
-REAL                                                    :: df_DUinner(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ,2,2:5)
+REAL                                                    :: Df_DUinner(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ,2,2:5)
 #endif
 #if PARABOLIC
 INTEGER                                                 :: jk(2),l,p,q
@@ -138,7 +138,12 @@ REAL                                                    :: FV_dx_L,FV_dx_R,FV_dx
 INTEGER                                                 :: ss(2)
 #endif
 #endif
+REAL                                                    :: signum
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_NZ)                  :: USideL,USideR
+REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_NZ)              :: UPrimSideL,gradUxSideL,gradUySideL,gradUzSideL
+REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_NZ)              :: UPrimSideR,gradUxSideR,gradUySideR,gradUzSideR
 !===================================================================================================================================
+! Helper variables to quickly build the one-dimensional mapping: ind = iVar+PP_nVar*i+vn1*j+vn2*k for DOF(iVar,i,j,k)
 vn1 = PP_nVar * (PP_N + 1)
 vn2 = vn1 * (PP_N +1)
 #if FV_ENABLED
@@ -163,241 +168,129 @@ DO iLocSide=2,5
 #endif
 
   IF (SideID.GT.nBCSides) THEN !InnerSide
-    IF(Flip==0) THEN !Master
-      ! d(f*_ad+f*_diff)_jk/dU_master_jk
-      CALL Riemann_FD(df_DUinner(:,:,:,:,:,iLocSide),U_master(:,:,:,SideID),U_slave(:,:,:,SideID),                         &
-                                 UPrim_master(:,:,:,SideID),UPrim_slave(:,:,:,SideID),                                     &
-                                 NormVec(:,:,:,FVSide,SideID),tangVec1(:,:,:,FVSide,SideID),tangVec2(:,:,:,FVSide,SideID), &
-                                 SurfElem(:,:,FVSide,SideID),S2V2(:,:,:,Flip,iLocSide),FVSum,FVElem,FVSide)
+    ! We always want to take the derivative w.r.t. the DOF on our own side. Depending on whether we are master or slave, this means
+    ! we need to input different arrays into our routines that calculate the derivative always w.r.t. U_L!
+    IF (Flip.EQ.0) THEN
+      UPrimSideL = UPrim_master(:,:,:,SideID);USideL = U_master(:,:,:,SideID);gradUxSideL = gradUx_master(:,:,:,SideID)
+      gradUySideL = gradUy_master(:,:,:,SideID);gradUzSideL = gradUz_master(:,:,:,SideID)
+      UPrimSideR = UPrim_slave(:,:,:,SideID);USideR = U_slave(:,:,:,SideID);gradUxSideR = gradUx_slave(:,:,:,SideID)
+      gradUySideR = gradUy_slave(:,:,:,SideID);gradUzSideR = gradUz_slave(:,:,:,SideID)
+      signum = 1
+    ELSE
+      UPrimSideL = UPrim_slave(:,:,:,SideID);USideL = U_slave(:,:,:,SideID);gradUxSideL = gradUx_slave(:,:,:,SideID)
+      gradUySideL = gradUy_slave(:,:,:,SideID);gradUzSideL = gradUz_slave(:,:,:,SideID)
+      UPrimSideR = UPrim_master(:,:,:,SideID);USideR = U_master(:,:,:,SideID);gradUxSideR = gradUx_master(:,:,:,SideID)
+      gradUySideR = gradUy_master(:,:,:,SideID);gradUzSideR = gradUz_master(:,:,:,SideID)
+      signum = -1
+    END IF
+    ! d(f*_ad)_jk/dU_master_jk, with SurfaceIntegral already considered!
+    CALL Riemann_FD(Df_DUinner(:,:,:,:,:,iLocSide),USideL,USideR,UPrimSideL,UPrimSideR,                                                &
+                               signum*NormVec(:,:,:,FVSide,SideID),signum*tangVec1(:,:,:,FVSide,SideID),tangVec2(:,:,:,FVSide,SideID), &
+                               SurfElem(:,:,FVSide,SideID),S2V2(:,:,:,Flip,iLocSide),FVSum,FVElem,FVSide)
 #if PARABOLIC
-      IF(HyperbolicPrecond.EQV..FALSE.) THEN !Euler Precond = False
-        ! analytic viscous flux derivative: BR2 Flux is 1/2*(Fvisc(U^L,Q^L)+Fvisc(U^R,Q^R) )* (+nvec ), (master)
-        ! Derivative with respect to the primitive gradients
-#if EQNSYSNR==2
-        !Derivative of the diffusive Riemann Flux with respect to U_L
-        CALL EvalDiffFluxJacobian(nDOFFace,U_master(:,:,:,SideID),UPrim_master(:,:,:,SideID), &
-                                  gradUx_master(:,:,:,SideID), &
-                                  gradUy_master(:,:,:,SideID), &
-                                  gradUz_master(:,:,:,SideID), &
-                                  fJac(:,:,:,:,1),gJac(:,:,:,:,1),hJac(:,:,:,:,1)             &
+    IF (.NOT.(HyperbolicPrecond)) THEN 
+      ! Call the analytical jacobian (viscous flux w.r.t. conservative variables)
+      ! d(f_diff)_jk/dU_master_jk
+      CALL EvalDiffFluxJacobian(nDOFFace,USideL,UPrimSideL,gradUxSideL,gradUySideL,gradUzSideL, &
+                                fJac(:,:,:,:,1),gJac(:,:,:,:,1),hJac(:,:,:,:,1)     &
 #if EDDYVISCOSITY
-                                 ,muSGS_master(:,:,:,SideID)   &
+                               ,muSGS_master(:,:,:,SideID)   &
 #endif
-                                  )
+                                )
 #if FV_ENABLED
-        !Derivative of the diffusive Riemann Flux with respect to U_R
-        CALL EvalDiffFluxJacobian(nDOFFace,U_slave(:,:,:,SideID),UPrim_slave(:,:,:,SideID),   &
-                                  gradUx_slave(:,:,:,SideID), &
-                                  gradUy_slave(:,:,:,SideID), &
-                                  gradUz_slave(:,:,:,SideID), &
-                                  fJac(:,:,:,:,2),gJac(:,:,:,:,2),hJac(:,:,:,:,2)             &
+      ! Call the analytical jacobian (viscous flux w.r.t. conservative variables), but for the neighbouring DOF
+      CALL EvalDiffFluxJacobian(nDOFFace,USideR,UPrimSideR,gradUxSideR,gradUySideR,gradUzSideR, &
+                                fJac(:,:,:,:,2),gJac(:,:,:,:,2),hJac(:,:,:,:,2)                 &
 #if EDDYVISCOSITY
-                                 ,muSGS_slave(:,:,:,SideID)   &
+                               ,muSGS_slave(:,:,:,SideID)   &
 #endif
       
+                               )
+#endif
+      ! Derivative of the diffusive flux with respect to gradU_L
+      CALL EvalFluxGradJacobian(nDOFFace,USideL,UPrimSideL, &
+                                fJacQx,fJacQy,fJacQz,       &
+                                gJacQx,gJacQy,gJacQz,       &
+                                hJacQx,hJacQy,hJacQz        &
+#if EDDYVISCOSITY
+                               ,muSGS_master(:,:,:,SideID)  &
+#endif
+                                )
+      DO q=0,PP_NZ
+        DO p=0,PP_N
+          ! Df_dQxInner = d(f,g,h)_diff/dQ_x * NormVec
+          jk(:)=S2V2(:,p,q,Flip,iLocSide)
+          ! Direct dependency of the viscous flux from the solution variables on the side.
+          ! BR1/2 use central fluxes for the viscous flux, so f*_diff = 0.5*(f_diff^L+f_diff^R).
+          ! For the viscous surface flux, we also perform the SurfInt here (already done for hyperbolic part in Riemann_FD)
+          DO i=1,FVElem+1
+            Df_dUinner(:,:,jk(1),jk(2),i,iLocSide)= Df_dUinner(:,:,jk(1),jk(2),i,iLocSide) +                  &
+                                                    0.5*( fJac(:,:,p,q,i)*signum*NormVec(1,p,q,FVSide,SideID) &
+                                                         +gJac(:,:,p,q,i)*signum*NormVec(2,p,q,FVSide,SideID) &
+#if PP_dim==3
+                                                         +hJac(:,:,p,q,i)*signum*NormVec(3,p,q,FVSide,SideID) &
+#endif
+                                                         )*SurfElem(p,q,FVSide,SideID)
+          END DO
+          Df_dQxInner(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQx(:,:,p,q)*signum*NormVec(1,p,q,FVSide,SideID) &
+                                                       +gJacQx(:,:,p,q)*signum*NormVec(2,p,q,FVSide,SideID) &
+#if PP_dim==3
+                                                       +hJacQx(:,:,p,q)*signum*NormVec(3,p,q,FVSide,SideID) &
+#endif
+                                                      )*SurfElem(p,q,FVSide,SideID)
+          Df_dQyInner(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQy(:,:,p,q)*signum*NormVec(1,p,q,FVSide,SideID) &
+                                                       +gJacQy(:,:,p,q)*signum*NormVec(2,p,q,FVSide,SideID) &
+#if PP_dim==3
+                                                       +hJacQy(:,:,p,q)*signum*NormVec(3,p,q,FVSide,SideID) &
+#endif
+                                                      )*SurfElem(p,q,FVSide,SideID)
+#if PP_dim==3
+          Df_dQzInner(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQz(:,:,p,q)*signum*NormVec(1,p,q,FVSide,SideID) &
+                                                       +gJacQz(:,:,p,q)*signum*NormVec(2,p,q,FVSide,SideID) &
+                                                       +hJacQz(:,:,p,q)*signum*NormVec(3,p,q,FVSide,SideID) )*SurfElem(p,q,FVSide,SideID)
+#endif
+        END DO !p
+      END DO !q
+      CALL  EvalFluxGradJacobian(nDOFFace,USideR,UPrimSideR, &
+                                 fJacQx,fJacQy,fJacQz,       &
+                                 gJacQx,gJacQy,gJacQz,       &
+                                 hJacQx,hJacQy,hJacQz        &
+#if EDDYVISCOSITY
+                                ,muSGS_slave(:,:,:,SideID)   &
+#endif
                                  )
-#endif
-#endif /*navierstokes*/
-        !Derivative of the diffusive Riemann Flux with respect to gradU_L
-        CALL EvalFluxGradJacobian(nDOFFace,U_master(:,:,:,SideID),UPrim_Master(:,:,:,SideID), &
-                                  fJacQx,fJacQy,fJacQz,                                       &
-                                  gJacQx,gJacQy,gJacQz,                                       &
-                                  hJacQx,hJacQy,hJacQz                                        &
-#if EDDYVISCOSITY
-                                 ,muSGS_master(:,:,:,SideID)                                  &
-#endif
-                                  )
-        DO q=0,PP_NZ
-          DO p=0,PP_N
-            ! Df_dQxInner = d(f,g,h)_diff/dQ_x * NormVec
-            jk(:)=S2V2(:,p,q,Flip,iLocSide)
-#if EQNSYSNR==2
-            DO i=1,FVElem+1
-              Df_dUinner(:,:,jk(1),jk(2),i,iLocSide)= Df_dUinner(:,:,jk(1),jk(2),i,iLocSide) + &
-                                                      0.5*( fJac(:,:,p,q,i)*NormVec(1,p,q,FVSide,SideID) &
-                                                           +gJac(:,:,p,q,i)*NormVec(2,p,q,FVSide,SideID) &
+      IF((FVSum.EQ.1).OR.(FVSum.EQ.2))THEN
+        Df_DQxOuter(:,:,:,:,iLocSide)=0.
+        Df_DQyOuter(:,:,:,:,iLocSide)=0.
 #if PP_dim==3
-                                                           +hJac(:,:,p,q,i)*NormVec(3,p,q,FVSide,SideID) &
-#endif
-                                                           )*SurfElem(p,q,FVSide,SideID)
-            END DO
-#endif /*navierstokes*/
-            Df_dQxInner(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQx(:,:,p,q)*NormVec(1,p,q,FVSide,SideID) &
-                                                         +gJacQx(:,:,p,q)*NormVec(2,p,q,FVSide,SideID) &
-#if PP_dim==3
-                                                         +hJacQx(:,:,p,q)*NormVec(3,p,q,FVSide,SideID) &
-#endif
-                                                        )*SurfElem(p,q,FVSide,SideID)
-            Df_dQyInner(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQy(:,:,p,q)*NormVec(1,p,q,FVSide,SideID) &
-                                                         +gJacQy(:,:,p,q)*NormVec(2,p,q,FVSide,SideID) &
-#if PP_dim==3
-                                                         +hJacQy(:,:,p,q)*NormVec(3,p,q,FVSide,SideID) &
-#endif
-                                                        )*SurfElem(p,q,FVSide,SideID)
-#if PP_dim==3
-            Df_dQzInner(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQz(:,:,p,q)*NormVec(1,p,q,FVSide,SideID) &
-                                                         +gJacQz(:,:,p,q)*NormVec(2,p,q,FVSide,SideID) &
-                                                         +hJacQz(:,:,p,q)*NormVec(3,p,q,FVSide,SideID) )*SurfElem(p,q,FVSide,SideID)
-#endif
-          END DO !p
-        END DO !q
-        CALL  EvalFluxGradJacobian(nDOFFace,U_slave(:,:,:,SideID),UPrim_slave(:,:,:,SideID), &
-                                   fJacQx,fJacQy,fJacQz, &
-                                   gJacQx,gJacQy,gJacQz, &
-                                   hJacQx,hJacQy,hJacQz                                      &
-#if EDDYVISCOSITY
-                                  ,muSGS_slave(:,:,:,SideID)                                 &
-#endif
-                                   )
-        IF((FVSum.EQ.1).OR.(FVSum.EQ.2))THEN
-          Df_DQxOuter(:,:,:,:,iLocSide)=0.
-          Df_DQyOuter(:,:,:,:,iLocSide)=0.
-#if PP_dim==3
-          Df_DQzOuter(:,:,:,:,iLocSide)=0.
+        Df_DQzOuter(:,:,:,:,iLocSide)=0.
 #endif /*PP_dim*/
-        ELSE
-          DO q=0,PP_NZ
-            DO p=0,PP_N
-              jk(:)=S2V2(:,p,q,Flip,iLocSide)
-              Df_dQxOuter(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQx(:,:,p,q)*NormVec(1,p,q,FVSide,SideID) &
-                                                           +gJacQx(:,:,p,q)*NormVec(2,p,q,FVSide,SideID) &
-#if PP_dim==3
-                                                           +hJacQx(:,:,p,q)*NormVec(3,p,q,FVSide,SideID) &
-#endif
-                                                          )*SurfElem(p,q,FVSide,SideID)
-              Df_dQyOuter(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQy(:,:,p,q)*NormVec(1,p,q,FVSide,SideID) &
-                                                           +gJacQy(:,:,p,q)*NormVec(2,p,q,FVSide,SideID) &
-#if PP_dim==3
-                                                           +hJacQy(:,:,p,q)*NormVec(3,p,q,FVSide,SideID) &
-#endif
-                                                          )*SurfElem(p,q,FVSide,SideID)
-#if PP_dim==3
-              Df_dQzOuter(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQz(:,:,p,q)*NormVec(1,p,q,FVSide,SideID) &
-                                                           +gJacQz(:,:,p,q)*NormVec(2,p,q,FVSide,SideID) &
-                                                           +hJacQz(:,:,p,q)*NormVec(3,p,q,FVSide,SideID) )*SurfElem(p,q,FVSide,SideID)
-#endif
-            END DO !p
-          END DO !q
-        END IF !FVSum
-      END IF ! HyperbolicPrecond==False
-#endif /*PARABOLIC*/
-    ELSE !Slave
-      ! d(f*_ad+f*_diff)_jk/dU_slave_jk
-      CALL Riemann_FD(df_DUinner(:,:,:,:,:,iLocSide),U_slave(:,:,:,SideID),U_master(:,:,:,SideID),                &
-                      UPrim_slave(:,:,:,SideID),UPrim_master(:,:,:,SideID),                                       &
-                      -NormVec(:,:,:,FVSide,SideID),-tangVec1(:,:,:,FVSide,SideID),tangVec2(:,:,:,FVSide,SideID), &
-                       SurfElem(:,:,FVSide,SideID),S2V2(:,:,:,Flip,iLocSide),FVSum,FVElem,FVSide)
-#if PARABOLIC
-      IF(HyperbolicPrecond.EQV..FALSE.) THEN !Euler Precond = False
-#if EQNSYSNR==2
-        !Derivative of the diffusive Riemann Flux with respect to U_L
-        CALL EvalDiffFluxJacobian(nDOFFace,U_slave(:,:,:,SideID),UPrim_slave(:,:,:,SideID),   &
-                                  gradUx_slave(:,:,:,SideID), &
-                                  gradUy_slave(:,:,:,SideID), &
-                                  gradUz_slave(:,:,:,SideID), &
-                                  fJac(:,:,:,:,1),gJac(:,:,:,:,1),hJac(:,:,:,:,1)             &
-#if EDDYVISCOSITY
-                                 ,muSGS_slave(:,:,:,SideID)   &
-#endif
-                                  )
-#if FV_ENABLED
-        !Derivative of the diffusive Riemann Flux with respect to U_R
-        CALL EvalDiffFluxJacobian(nDOFFace,U_master(:,:,:,SideID),UPrim_master(:,:,:,SideID), &
-                                  gradUx_master(:,:,:,SideID), &
-                                  gradUy_master(:,:,:,SideID), &
-                                  gradUz_master(:,:,:,SideID), &
-                                  fJac(:,:,:,:,2),gJac(:,:,:,:,2),hJac(:,:,:,:,2)             &
-#if EDDYVISCOSITY
-                                 ,muSGS_master(:,:,:,SideID)   &
-#endif
-                                  )
-#endif
-        !Derivative of the diffusive Riemann Flux with respect to gradU_L
-#endif /*navierstokes*/
-        ! analytic viscous flux derivative: BR2 Flux is 1/2*(Fvisc(U^L,Q^L)+Fvisc(U^R,Q^R) )* (-nvec ), (slave)
-        CALL  EvalFluxGradJacobian(nDOFFace,U_slave(:,:,:,SideID),UPrim_slave(:,:,:,SideID), &
-                                   fJacQx,fJacQy,fJacQz,     &
-                                   gJacQx,gJacQy,gJacQz,     &
-                                   hJacQx,hJacQy,hJacQz      &
-#if EDDYVISCOSITY
-                                  ,muSGS_slave(:,:,:,SideID) &
-#endif
-                                  )
+      ELSE
         DO q=0,PP_NZ
           DO p=0,PP_N
             jk(:)=S2V2(:,p,q,Flip,iLocSide)
-#if EQNSYSNR==2
-            DO i=1,FVElem+1
-              Df_dUinner(:,:,jk(1),jk(2),i,iLocSide)= Df_dUinner(:,:,jk(1),jk(2),i,iLocSide) &
-                                                      -0.5*( fJac(:,:,p,q,i)*NormVec(1,p,q,FVSide,SideID) &
-                                                            +gJac(:,:,p,q,i)*NormVec(2,p,q,FVSide,SideID) &
+            Df_dQxOuter(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQx(:,:,p,q)*signum*NormVec(1,p,q,FVSide,SideID) &
+                                                         +gJacQx(:,:,p,q)*signum*NormVec(2,p,q,FVSide,SideID) &
 #if PP_dim==3
-                                                            +hJac(:,:,p,q,i)*NormVec(3,p,q,FVSide,SideID) &
-#endif
-                                                            )*SurfElem(p,q,FVSide,SideID)
-            END DO
-#endif /*navierstokes*/
-            Df_dQxInner(:,:,jk(1),jk(2),iLocSide)= -0.5*( fJacQx(:,:,p,q)*NormVec(1,p,q,FVSide,SideID) &
-                                                         +gJacQx(:,:,p,q)*NormVec(2,p,q,FVSide,SideID) &
-#if PP_dim==3
-                                                         +hJacQx(:,:,p,q)*NormVec(3,p,q,FVSide,SideID) &
+                                                         +hJacQx(:,:,p,q)*signum*NormVec(3,p,q,FVSide,SideID) &
 #endif
                                                         )*SurfElem(p,q,FVSide,SideID)
-            Df_dQyInner(:,:,jk(1),jk(2),iLocSide)= -0.5*( fJacQy(:,:,p,q)*NormVec(1,p,q,FVSide,SideID) &
-                                                         +gJacQy(:,:,p,q)*NormVec(2,p,q,FVSide,SideID) &
+            Df_dQyOuter(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQy(:,:,p,q)*signum*NormVec(1,p,q,FVSide,SideID) &
+                                                         +gJacQy(:,:,p,q)*signum*NormVec(2,p,q,FVSide,SideID) &
 #if PP_dim==3
-                                                         +hJacQy(:,:,p,q)*NormVec(3,p,q,FVSide,SideID) &
+                                                         +hJacQy(:,:,p,q)*signum*NormVec(3,p,q,FVSide,SideID) &
 #endif
                                                         )*SurfElem(p,q,FVSide,SideID)
 #if PP_dim==3
-            Df_dQzInner(:,:,jk(1),jk(2),iLocSide)= -0.5*( fJacQz(:,:,p,q)*NormVec(1,p,q,FVSide,SideID) &
-                                                         +gJacQz(:,:,p,q)*NormVec(2,p,q,FVSide,SideID) &
-                                                         +hJacQz(:,:,p,q)*NormVec(3,p,q,FVSide,SideID) )*SurfElem(p,q,FVSide,SideID)
+            Df_dQzOuter(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQz(:,:,p,q)*signum*NormVec(1,p,q,FVSide,SideID) &
+                                                         +gJacQz(:,:,p,q)*signum*NormVec(2,p,q,FVSide,SideID) &
+                                                         +hJacQz(:,:,p,q)*signum*NormVec(3,p,q,FVSide,SideID) )*SurfElem(p,q,FVSide,SideID)
 #endif
           END DO !p
         END DO !q
-        CALL  EvalFluxGradJacobian(nDOFFace,U_master(:,:,:,SideID),UPrim_master(:,:,:,SideID), &
-                                   fJacQx,fJacQy,fJacQz,      &
-                                   gJacQx,gJacQy,gJacQz,      &
-                                   hJacQx,hJacQy,hJacQz       &
-#if EDDYVISCOSITY
-                                  ,muSGS_master(:,:,:,SideID) &
-#endif
-                                   )
-        IF((FVSum.EQ.1).OR.(FVSum.EQ.2))THEN
-          Df_DQxOuter(:,:,:,:,iLocSide)=0.
-          Df_DQyOuter(:,:,:,:,iLocSide)=0.
-#if PP_dim==3
-          Df_DQzOuter(:,:,:,:,iLocSide)=0.
-#endif /*PP_dim*/
-        ELSE
-          DO q=0,PP_NZ
-            DO p=0,PP_N
-              jk(:)=S2V2(:,p,q,Flip,iLocSide)
-              Df_dQxOuter(:,:,jk(1),jk(2),iLocSide)= -0.5*( fJacQx(:,:,p,q)*NormVec(1,p,q,FVSide,SideID) &
-                                                           +gJacQx(:,:,p,q)*NormVec(2,p,q,FVSide,SideID) &
-#if PP_dim==3
-                                                           +hJacQx(:,:,p,q)*NormVec(3,p,q,FVSide,SideID) &
-#endif
-                                                          )*SurfElem(p,q,FVSide,SideID)
-              Df_dQyOuter(:,:,jk(1),jk(2),iLocSide)= -0.5*( fJacQy(:,:,p,q)*NormVec(1,p,q,FVSide,SideID) &
-                                                           +gJacQy(:,:,p,q)*NormVec(2,p,q,FVSide,SideID) &
-#if PP_dim==3
-                                                           +hJacQy(:,:,p,q)*NormVec(3,p,q,FVSide,SideID) &
-#endif
-                                                          )*SurfElem(p,q,FVSide,SideID)
-#if PP_dim==3
-              Df_dQzOuter(:,:,jk(1),jk(2),iLocSide)= -0.5*( fJacQz(:,:,p,q)*NormVec(1,p,q,FVSide,SideID) &
-                                                           +gJacQz(:,:,p,q)*NormVec(2,p,q,FVSide,SideID) &
-                                                           +hJacQz(:,:,p,q)*NormVec(3,p,q,FVSide,SideID) )*SurfElem(p,q,FVSide,SideID)
-#endif
-            END DO !p
-          END DO !q
-        END IF
-      END IF ! HyperbolicPrecond==False
+      END IF !FVSum
+    END IF ! HyperbolicPrecond==False
 #endif /*PARABOLIC*/
-
-    END IF !Flip
   ELSE !Boundary
 #if FV_ENABLED
     FVSide = FV_Elems_master(SideID)
@@ -411,7 +304,7 @@ DO iLocSide=2,5
 #endif /*parabolic*/
     !df*_Boundary_jk/dU_jk*surfElem
     !df*_Boundary_jk/dQ_jk*surfElem
-    CALL GetBoundaryFlux_FD(SideID,t,df_DUinner(:,:,:,:,:,iLocSide),U_master(:,:,:,SideID),UPrim_master(:,:,:,SideID),          &
+    CALL GetBoundaryFlux_FD(SideID,t,Df_DUinner(:,:,:,:,:,iLocSide),U_master(:,:,:,SideID),UPrim_master(:,:,:,SideID),          &
 #if PARABOLIC
                             gradUx_master(:,:,:,SideID),gradUy_master(:,:,:,SideID),gradUz_master(:,:,:,SideID),                &
                             Df_DQxInner(:,:,:,:,iLocSide),                                                                      &
@@ -444,21 +337,21 @@ IF(FVElem.EQ.0)THEN ! DG Element (Assembling and multiply with derivative of int
         DO i = 0,PP_N
           r = PP_nVar*i + vn1*nn + vn2*oo
           BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) &
-                                            + LL_Minus(i,mm)*df_DUinner(:,:,nn,oo,1,XI_MINUS  )  &
-                                            + LL_Plus (i,mm)*df_DUinner(:,:,nn,oo,1,XI_PLUS   )
+                                            + LL_Minus(i,mm)*Df_DUinner(:,:,nn,oo,1,XI_MINUS  )  &
+                                            + LL_Plus (i,mm)*Df_DUinner(:,:,nn,oo,1,XI_PLUS   )
         END DO ! i
         DO j = 0,PP_N
           r = PP_nVar*mm + vn1*j + vn2*oo
           BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) &
-                                            + LL_Minus(j,nn)*df_DUinner(:,:,mm,oo,1,ETA_MINUS )  &
-                                            + LL_Plus (j,nn)*df_DUinner(:,:,mm,oo,1,ETA_PLUS  )
+                                            + LL_Minus(j,nn)*Df_DUinner(:,:,mm,oo,1,ETA_MINUS )  &
+                                            + LL_Plus (j,nn)*Df_DUinner(:,:,mm,oo,1,ETA_PLUS  )
         END DO ! j
 #if PP_dim==3
         DO k = 0,PP_N
           r = PP_nVar*mm + vn1*nn + vn2*k
           BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) &
-                                            + LL_Minus(k,oo)*df_DUinner(:,:,mm,nn,1,ZETA_MINUS)  &
-                                            + LL_Plus (k,oo)*df_DUinner(:,:,mm,nn,1,ZETA_PLUS )
+                                            + LL_Minus(k,oo)*Df_DUinner(:,:,mm,nn,1,ZETA_MINUS)  &
+                                            + LL_Plus (k,oo)*Df_DUinner(:,:,mm,nn,1,ZETA_PLUS )
         END DO ! k
 #endif
       END DO ! nn
@@ -514,34 +407,34 @@ ELSE ! FV Element (Assembling and multiplication with derivative of reconstructi
       s = vn2*oo + vn1*nn
       ! direct dependency of prolongated value (of current element, minus) to volume dofs next to interface
       BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                        + FV_w_inv*MATMUL(df_DUinner(:,:,nn,oo,1,XI_MINUS),dUdUvol_minus(:,:,0,2)) 
+                                        + FV_w_inv*MATMUL(Df_DUinner(:,:,nn,oo,1,XI_MINUS),dUdUvol_minus(:,:,0,2)) 
       ! dependency of prolongated value (of neighbouring element, plus) to volume dofs next to interface
       BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                        + FV_w_inv*MATMUL(df_DUinner(:,:,nn,oo,2,XI_MINUS),dUdUvol_minus(:,:,-1,3)) 
+                                        + FV_w_inv*MATMUL(Df_DUinner(:,:,nn,oo,2,XI_MINUS),dUdUvol_minus(:,:,-1,3)) 
       ! dependency of prolongated value (of current element, minus) to volume dofs neighbouring the dofs next to interface
       r = vn2*oo + vn1*nn + PP_nVar
       BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) &
-                                        + FV_w_inv*MATMUL(df_DUinner(:,:,nn,oo,1,XI_MINUS),dUdUvol_minus(:,:,0,3)) 
+                                        + FV_w_inv*MATMUL(Df_DUinner(:,:,nn,oo,1,XI_MINUS),dUdUvol_minus(:,:,0,3)) 
       !-------------------Derivatives at PLUS side with respect to volume dofs-----------------------------------------------------
       s = vn2*oo + vn1*nn + PP_nVar*PP_N
       ! direct dependency of prolongated value (of current element, plus) to volume dofs next to interface
       BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                        + FV_w_inv*MATMUL(df_DUinner(:,:,nn,oo,1,XI_PLUS),dUdUvol_plus(:,:,PP_N,2))
+                                        + FV_w_inv*MATMUL(Df_DUinner(:,:,nn,oo,1,XI_PLUS),dUdUvol_plus(:,:,PP_N,2))
       ! dependency of prolongated value (of neighbouring element, minus) to volume dofs next to interface
       BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                        + FV_w_inv*MATMUL(df_DUinner(:,:,nn,oo,2,XI_PLUS),dUdUvol_plus(:,:,PP_N+1,1))
+                                        + FV_w_inv*MATMUL(Df_DUinner(:,:,nn,oo,2,XI_PLUS),dUdUvol_plus(:,:,PP_N+1,1))
       ! dependency of prolongated value (of current element, plus) to volume dofs neighbouring the dofs next to interface
       r = vn2*oo + vn1*nn + PP_nVar*(PP_N-1)
       BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) &
-                                        + FV_w_inv*MATMUL(df_DUinner(:,:,nn,oo,1,XI_PLUS),dUdUvol_plus(:,:,PP_N,1))
+                                        + FV_w_inv*MATMUL(Df_DUinner(:,:,nn,oo,1,XI_PLUS),dUdUvol_plus(:,:,PP_N,1))
 #else
       !--------------------only direct dependencies of prolongated (copied) values to volume dofs next to interface----------------
       s = vn2*oo + vn1*nn
       BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                        + FV_w_inv*df_DUinner(:,:,nn,oo,1,XI_MINUS) 
+                                        + FV_w_inv*Df_DUinner(:,:,nn,oo,1,XI_MINUS) 
       s = vn2*oo + vn1*nn + PP_nVar*PP_N
       BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                        + FV_w_inv*df_DUinner(:,:,nn,oo,1,XI_PLUS)
+                                        + FV_w_inv*Df_DUinner(:,:,nn,oo,1,XI_PLUS)
 #endif
     END DO
   END DO
@@ -591,27 +484,27 @@ ELSE ! FV Element (Assembling and multiplication with derivative of reconstructi
                                              UPrim_extended(:,mm,:,oo,iElem),dUdUvol_plus(:,:,:,:),dUdUvol_minus(:,:,:,:))
       s = vn2*oo + PP_nVar*mm
       BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                        + FV_w_inv*MATMUL(df_DUinner(:,:,mm,oo,1,ETA_MINUS),dUdUvol_minus(:,:,0,2))
+                                        + FV_w_inv*MATMUL(Df_DUinner(:,:,mm,oo,1,ETA_MINUS),dUdUvol_minus(:,:,0,2))
       BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                        + FV_w_inv*MATMUL(df_DUinner(:,:,mm,oo,2,ETA_MINUS),dUdUvol_minus(:,:,-1,3))
+                                        + FV_w_inv*MATMUL(Df_DUinner(:,:,mm,oo,2,ETA_MINUS),dUdUvol_minus(:,:,-1,3))
       r = vn2*oo + PP_nVar*mm + vn1*1
       BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) &
-                                        + FV_w_inv*MATMUL(df_DUinner(:,:,mm,oo,1,ETA_MINUS),dUdUvol_minus(:,:,0,3))
+                                        + FV_w_inv*MATMUL(Df_DUinner(:,:,mm,oo,1,ETA_MINUS),dUdUvol_minus(:,:,0,3))
       s = vn2*oo + PP_nVar*mm + vn1*PP_N 
       BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                        + FV_w_inv*MATMUL(df_DUinner(:,:,mm,oo,1,ETA_PLUS),dUdUvol_plus(:,:,PP_N,2))
+                                        + FV_w_inv*MATMUL(Df_DUinner(:,:,mm,oo,1,ETA_PLUS),dUdUvol_plus(:,:,PP_N,2))
       BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                        + FV_w_inv*MATMUL(df_DUinner(:,:,mm,oo,2,ETA_PLUS),dUdUvol_plus(:,:,PP_N+1,1))
+                                        + FV_w_inv*MATMUL(Df_DUinner(:,:,mm,oo,2,ETA_PLUS),dUdUvol_plus(:,:,PP_N+1,1))
       r = vn2*oo + PP_nVar*mm + vn1*(PP_N-1) 
       BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) &
-                                        + FV_w_inv*MATMUL(df_DUinner(:,:,mm,oo,1,ETA_PLUS),dUdUvol_plus(:,:,PP_N,1))
+                                        + FV_w_inv*MATMUL(Df_DUinner(:,:,mm,oo,1,ETA_PLUS),dUdUvol_plus(:,:,PP_N,1))
 #else
       s = vn2*oo + PP_nVar*mm
       BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                        + FV_w_inv*df_DUinner(:,:,mm,oo,1,ETA_MINUS) 
+                                        + FV_w_inv*Df_DUinner(:,:,mm,oo,1,ETA_MINUS) 
       s = vn2*oo + PP_nVar*mm + vn1*PP_N 
       BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                        + FV_w_inv*df_DUinner(:,:,mm,oo,1,ETA_PLUS)
+                                        + FV_w_inv*Df_DUinner(:,:,mm,oo,1,ETA_PLUS)
 #endif
     END DO
   END DO
@@ -662,27 +555,27 @@ ELSE ! FV Element (Assembling and multiplication with derivative of reconstructi
                                              UPrim_extended(:,mm,nn,:,iElem),dUdUvol_plus(:,:,:,:),dUdUvol_minus(:,:,:,:))
       s = vn1*nn + PP_nVar*mm
       BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                        + FV_w_inv*MATMUL(df_DUinner(:,:,mm,nn,1,ZETA_MINUS),dUdUvol_minus(:,:,0,2))
+                                        + FV_w_inv*MATMUL(Df_DUinner(:,:,mm,nn,1,ZETA_MINUS),dUdUvol_minus(:,:,0,2))
       BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                        + FV_w_inv*MATMUL(df_DUinner(:,:,mm,nn,2,ZETA_MINUS),dUdUvol_minus(:,:,-1,3))
+                                        + FV_w_inv*MATMUL(Df_DUinner(:,:,mm,nn,2,ZETA_MINUS),dUdUvol_minus(:,:,-1,3))
       r = vn1*nn + PP_nVar*mm + vn2*1
       BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) &
-                                        + FV_w_inv*MATMUL(df_DUinner(:,:,mm,nn,1,ZETA_MINUS),dUdUvol_minus(:,:,0,3))
+                                        + FV_w_inv*MATMUL(Df_DUinner(:,:,mm,nn,1,ZETA_MINUS),dUdUvol_minus(:,:,0,3))
       s = vn1*nn + PP_nVar*mm + vn2*PP_NZ
       BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                        + FV_w_inv*MATMUL(df_DUinner(:,:,mm,nn,1,ZETA_PLUS),dUdUvol_plus(:,:,PP_N,2))
+                                        + FV_w_inv*MATMUL(Df_DUinner(:,:,mm,nn,1,ZETA_PLUS),dUdUvol_plus(:,:,PP_N,2))
       BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                        + FV_w_inv*MATMUL(df_DUinner(:,:,mm,nn,2,ZETA_PLUS),dUdUvol_plus(:,:,PP_N+1,1))
+                                        + FV_w_inv*MATMUL(Df_DUinner(:,:,mm,nn,2,ZETA_PLUS),dUdUvol_plus(:,:,PP_N+1,1))
       r = vn1*nn + PP_nVar*mm + vn2*(PP_NZ-1)
       BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) &
-                                        + FV_w_inv*MATMUL(df_DUinner(:,:,mm,nn,1,ZETA_PLUS),dUdUvol_plus(:,:,PP_N,1))
+                                        + FV_w_inv*MATMUL(Df_DUinner(:,:,mm,nn,1,ZETA_PLUS),dUdUvol_plus(:,:,PP_N,1))
 #else
       s = vn1*nn + PP_nVar*mm
       BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                        + FV_w_inv*df_DUinner(:,:,mm,nn,1,ZETA_MINUS) 
+                                        + FV_w_inv*Df_DUinner(:,:,mm,nn,1,ZETA_MINUS) 
       s = vn1*nn + PP_nVar*mm + vn2*PP_NZ
       BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
-                                        + FV_w_inv*df_DUinner(:,:,mm,nn,1,ZETA_PLUS)
+                                        + FV_w_inv*Df_DUinner(:,:,mm,nn,1,ZETA_PLUS)
 #endif
     END DO
   END DO

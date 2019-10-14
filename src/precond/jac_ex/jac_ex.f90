@@ -58,7 +58,6 @@ USE MOD_Jac_Ex_Vars
 USE MOD_ReadInTools        ,ONLY: GETLOGICAL
 USE MOD_Interpolation_Vars ,ONLY: L_minus,L_plus
 USE MOD_DG_Vars            ,ONLY: L_Hatminus,L_Hatplus
-USE MOD_Mesh_Vars          ,ONLY: nElems
 #if PARABOLIC
 USE MOD_Jac_br2            ,ONLY: Build_BR2_SurfTerms
 USE MOD_Precond_Vars       ,ONLY: HyperbolicPrecond
@@ -133,6 +132,10 @@ END SUBROUTINE InitJac_Ex
 !===================================================================================================================================
 !> Main routine to compute the analytical Jacobi. Calls the corresponding volume and surface routines and applies the Jacobian of
 !> the mapping at the end. 
+!>
+!> The Jacobian stores the derivative of the DG operator at each point of an element w.r.t. each DOF in that element 
+!> => size[PP_nVar*(N+1)^dim,PP_nVar*(N+1)^dim]. So we need to map the volume indizes to one-dimensional indizes for storage.
+!> The map is as follows: ind = iVar+(PP_nVar*i)+(PP_nVar*(N+1)*j)+(PP_nVar*(N+1)**2*k) for DOF(iVar,i,j,k).
 !===================================================================================================================================
 SUBROUTINE Jac_Ex(t,iElem,BJ,doVol,doSurf)
 ! MODULES

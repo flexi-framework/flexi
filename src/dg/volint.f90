@@ -47,6 +47,7 @@ CONTAINS
 !> Attention 1: 1/J(i,j,k) is not yet accounted for
 !> Attention 2: input Ut is overwritten with the volume flux derivatives
 !==================================================================================================================================
+#ifndef SPLIT_DG
 SUBROUTINE VolInt_weakForm(Ut)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! MODULES
@@ -117,6 +118,7 @@ DO iElem=1,nElems
   END DO; END DO; END DO !i,j,k
 END DO ! iElem
 END SUBROUTINE VolInt_weakForm
+#endif
 
 #ifdef SPLIT_DG
 !==================================================================================================================================

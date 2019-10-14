@@ -65,23 +65,26 @@ REAL,DIMENSION(PP_nVar,PP_nVar),INTENT(OUT) :: dfdu      !< dof local jacobian o
 !===================================================================================================================================
 SELECT CASE(SplitDG)
 CASE(0)
+  ! SD flux, retains normal DG formulation for debugging
   CALL Jac_Split_SD(U,UPrim,URef,UPrimRef,Metric,MetricRef,dfdu)
 CASE(4)
+  ! KEP flux after Pirozzoli
   CALL Jac_Split_PI(U,UPrim,URef,UPrimRef,Metric,MetricRef,dfdu)
 CASE DEFAULT
+  ! If no analytical derivative is implemented, use a FD approach
   CALL Jac_Split_FD(U,UPrim,URef,UPrimRef,Metric,MetricRef,dfdu)
 END SELECT
 
 END SUBROUTINE Jac_Split
 
 !===================================================================================================================================
-!> Calculate analytical jacobian of split flux (SD flux)
+!> Calculate analytical jacobian of split flux (SD flux), which corresponds to the normal flux Jacobi
 !===================================================================================================================================
 PPURE SUBROUTINE Jac_Split_SD(U,UPrim,URef,UPrimRef,Metric,MetricRef,dfdu)
 ! MODULES
 USE MOD_Preproc
 USE MOD_Globals
-USE MOD_EOS_Vars, ONLY:KappaM1,Kappa
+USE MOD_Jacobian,   ONLY: EvalAdvFluxJacobianPoint
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -97,64 +100,9 @@ REAL,DIMENSION(1:3        ),INTENT(IN)  :: MetricRef     !< metric terms
 REAL,DIMENSION(PP_nVar,PP_nVar),INTENT(OUT) :: dfdu      !< dof local jacobian of volume split flux
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                                    :: KappaM2,uv,uu,vv,absu2,v1,v2,srho,a1,phi
-#if PP_dim==3
-REAL                                    :: uw,vw,ww,v3
-REAL,DIMENSION(PP_nVar,PP_nVar)         :: hJac
-#endif
-REAL,DIMENSION(PP_nVar,PP_nVar)         :: fJac,gJac
+REAL,DIMENSION(PP_nVar,PP_nVar)         :: fJac,gJac,hJac
 !===================================================================================================================================
-KappaM2   = Kappa-2.
-
-srho = 1./UPrim(1)
-v1=UPrim(2)
-v2=UPrim(3)
-uv=UPrim(2)*UPrim(3)
-uu=UPrim(2)*UPrim(2)
-vv=UPrim(3)*UPrim(3)
-#if PP_dim==3
-v3=UPrim(4)
-uw=UPrim(2)*UPrim(4)
-vw=UPrim(3)*UPrim(4)
-ww=UPrim(4)*UPrim(4)
-absu2=uu+vv+ww
-phi  = kappaM1*0.5*absu2
-a1   = kappa * U(5)*sRho - phi
-
-fJac(1,1:5)= (/          0.,             1.,          0.,           0.,        0. /)
-fJac(2,1:5)= (/      phi-uu, (1-kappaM2)*v1, -kappaM1*v2,  -kappaM1*v3,   kappaM1 /)
-fJac(3,1:5)= (/         -uv,             v2,          v1,           0.,        0. /)
-fJac(4,1:5)= (/         -uw,             v3,          0.,           v1,        0. /)
-fJac(5,1:5)= (/ v1*(phi-a1),  a1-kappaM1*uu, -kappaM1*uv,  -kappaM1*uw,  kappa*v1 /)
-
-gJac(1,1:5)= (/          0.,           0.,              1.,          0.,       0. /)
-gJac(2,1:5)= (/         -uv,           v2,              v1,          0.,       0. /)
-gJac(3,1:5)= (/      phi-vv,  -kappaM1*v1, (1.-kappaM2)*v2, -kappaM1*v3,  kappaM1 /)
-gJac(4,1:5)= (/         -vw,           0.,              v3,          v2,       0. /)
-gJac(5,1:5)= (/ v2*(phi-a1),  -kappaM1*uv,   a1-kappaM1*vv, -kappaM1*vw, kappa*v2 /)
-
-hJac(1,1:5)= (/          0.,          0.,           0.,              1.,       0. /)
-hJac(2,1:5)= (/         -uw,          v3,           0.,              v1,       0. /)
-hJac(3,1:5)= (/         -vw,          0.,           v3,              v2,       0. /)
-hJac(4,1:5)= (/      phi-ww, -kappaM1*v1,  -kappaM1*v2, (1.-kappaM2)*v3,  kappaM1 /)
-hJac(5,1:5)= (/ v3*(phi-a1), -kappaM1*uw,  -kappaM1*vw,   a1-kappaM1*ww, kappa*v3 /)
-#else
-absu2=uu+vv
-phi  = kappaM1*0.5*absu2
-a1   = kappa * U(5)*sRho - phi
-
-fJac(1,1:5)= (/          0.,             1.,          0.,    0.,        0. /)
-fJac(2,1:5)= (/      phi-uu, (1-kappaM2)*v1, -kappaM1*v2,    0.,   kappaM1 /)
-fJac(3,1:5)= (/         -uv,             v2,          v1,    0.,        0. /)
-fJac(4,1:5)= (/          0.,             0.,          0.,    0.,        0. /)
-fJac(5,1:5)= (/ v1*(phi-a1),  a1-kappaM1*uu, -kappaM1*uv,    0.,  kappa*v1 /)
-
-gJac(1,1:5)= (/          0.,          0.,              1.,   0.,        0. /)
-gJac(2,1:5)= (/         -uv,          v2,              v1,   0.,        0. /)
-gJac(3,1:5)= (/      phi-vv, -kappaM1*v1, (1.-kappaM2)*v2,   0.,   kappaM1 /)
-gJac(4,1:5)= (/          0.,          0.,              0.,   0.,        0. /)
-gJac(5,1:5)= (/ v2*(phi-a1), -kappaM1*uv,   a1-kappaM1*vv,   0.,  kappa*v2 /)
-#endif
+CALL EvalAdvFluxJacobianPoint(U,UPrim,fJac,gJac,hJac)
 
 dfdu = 0.5*(MetricRef(1)+Metric(1))*fJac(:,:) + &
 #if PP_dim == 3
@@ -347,7 +295,7 @@ PPURE SUBROUTINE Jac_Split_FD(U,UPrim,URef,UPrimRef,Metric,MetricRef,dfdu)
 USE MOD_Preproc
 USE MOD_Globals
 USE MOD_SplitFlux     ,ONLY: SplitDGVolume_pointer
-USE MOD_Implicit_Vars ,ONLY: reps0,sreps0
+USE MOD_Implicit_Vars ,ONLY: reps0_O1,sreps0_O1
 USE MOD_EOS           ,ONLY: ConsToPrim
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -370,12 +318,13 @@ INTEGER                                 :: iVar, jVar
 
 CALL SplitDGVolume_pointer(Uref,UPrimRef,U,UPrim,MetricRef,Metric,Flux)
 UTilde = U
+! Pertubate each variable and use FD (first order) to approximate the derivative
 DO jVar=1,PP_nVar
-  UTilde(jVar) = UTilde(jVar) + reps0
+  UTilde(jVar) = UTilde(jVar) + reps0_O1
   CALL ConsToPrim(UPrimTilde,UTilde)
   CALL SplitDGVolume_pointer(Uref,UPrimRef,UTilde,UPrimTilde,MetricRef,Metric,FluxTilde)
   DO iVar=1,PP_nVar
-    dfdu(iVar,jVar) = (FluxTilde(iVar)-Flux(iVar))*sreps0
+    dfdu(iVar,jVar) = (FluxTilde(iVar)-Flux(iVar))*sreps0_O1
   END DO ! iVar
   UTilde = U
 END DO

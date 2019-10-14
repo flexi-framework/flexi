@@ -39,8 +39,8 @@ INTERFACE FillJacLiftingFlux
   MODULE PROCEDURE FillJacLiftingFlux
 END INTERFACE
 
-INTERFACE JacLifting_VolInt
-  MODULE PROCEDURE JacLifting_VolInt
+INTERFACE JacLifting_VolGrad
+  MODULE PROCEDURE JacLifting_VolGrad
 END INTERFACE
 
 INTERFACE dQOuter
@@ -51,7 +51,7 @@ INTERFACE dQInner
   MODULE PROCEDURE dQInner
 END INTERFACE
 
-PUBLIC::FillJacLiftingFlux,JacLifting_VolInt,Build_BR2_SurfTerms,dQOuter,dQInner
+PUBLIC::FillJacLiftingFlux,JacLifting_VolGrad,Build_BR2_SurfTerms,dQOuter,dQInner
 !===================================================================================================================================
 
 CONTAINS
@@ -113,10 +113,18 @@ END DO!iLocSide
 END SUBROUTINE FillJacLiftingFlux
 
 !===================================================================================================================================
-!> Computes the Volume gradient Jacobian of the BR2 scheme dQprim/dUprim (Q= Grad U)
-!> Normal vectors are supposed to point outwards!
+!> Computes the Volume gradient Jacobian of the BR2 scheme dQprim/dUprim (Q= Grad U). This consists of the volume and surface
+!> integral of the lifting procedure. This get's complicated since we interpolate the volume CONSERVATIVE variables onto the
+!> surface, then do a ConsToPrim and then compute the surface flux in the lifting equation. Thus, this dependency needs to be taken
+!> into account.
+!> dQprim^vol(Uprim^vol,Uprim^surf)/dUprim^vol = dQprim^vol/dUprim^vol +  dQprim^vol/dUprim^surf * dUprim^surf/dUprim^vol
+!>                                                   LiftingVolInt            LiftingSurfint
+!> Taking the prolongation into account:
+!> dUprim^surf/dUprim^vol = dUprim^surf/dUcons^surf * dUcons^surf/dUcons^vol * dUcons^vol/dUprim^vol
+!>                            ConsToPrimSurf             ProlongToFace             PrimToConsVol
+!> For FV, the reconstruction for
 !===================================================================================================================================
-SUBROUTINE JacLifting_VolInt(dir,iElem,JacLifting)
+SUBROUTINE JacLifting_VolGrad(dir,iElem,JacLifting)
 ! MODULES
 USE MOD_Jac_Ex_Vars        ,ONLY: LL_minus,LL_plus
 USE MOD_Jac_Ex_Vars        ,ONLY: JacLiftingFlux 
@@ -144,11 +152,12 @@ USE MOD_Jac_Ex_Vars        ,ONLY: FV_sdx_ZETA_extended
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER,INTENT(IN)                           :: iElem
-INTEGER,INTENT(IN)                           :: dir
+INTEGER,INTENT(IN)                           :: iElem   !< current element index
+INTEGER,INTENT(IN)                           :: dir     !< current physical direction
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 REAL,INTENT(OUT)                             :: JacLifting(PP_nVarPrim,PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,0:PP_N,PP_dim)
+                                                !< Jacobian of volume gradients in direction dir w.r.t. primitive volume solution
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                                      :: i,j,k,ll
@@ -162,134 +171,101 @@ INTEGER                                      :: pq_p(2),pq_m(2),SideID_p,SideID_
 #if FV_ENABLED
 REAL                                         :: Jac_reconstruct(0:PP_N,0:PP_N,0:PP_NZ,0:PP_N,PP_dim)
 #endif
+INTEGER                                      :: sideIDs(2,3),sideIDPlus,sideIDMinus,refDir
 !===================================================================================================================================
-! fill volume jacobian of lifting flux (flux is primitive state vector -> identiy matrix)
+! fill volume jacobian of lifting flux (flux is primitive state vector -> identity matrix)
 delta=0.
 DO iVar=1,PP_nVarPrim
   delta(iVar,iVar)=1.
 END DO
 
+! Array that tells us which sides to work with for each direction
+sideIDs = RESHAPE((/XI_MINUS,XI_PLUS,ETA_MINUS,ETA_PLUS,ZETA_MINUS,ZETA_PLUS/),(/2,3/))
+
 JacLifting=0.
 #if FV_ENABLED
 IF(FV_Elems(iElem).EQ.0)THEN ! DG Element
 #endif
+  ! ll index: Loop variable along the (two or) three one-dimensional lines (XI, ETA, ZETA). We derive w.r.t. the DOFs along those
+  ! lines.
   DO ll=0,PP_N
+    ! i,j,k index: The DOF of the volume gradient we are deriving
     DO k=0,PP_NZ
       DO j=0,PP_N
         DO i=0,PP_N
-          ! XI sides
+          ! Loop over XI,ETA,ZETA direction
+          DO refDir=1,PP_dim
+            sideIDMinus = sideIDs(1,refDir)
+            sideIDPlus  = sideIDs(2,refDir)
 #if (PP_NodeType==1)
-          CALL dConsdPrimTemp(UPrim(:,ll,j,k,iElem),ConsPrimJac)
+            ! dUcons^vol/dUprim^vol
+            SELECT CASE(refDir)
+            CASE(1)
+              CALL dConsdPrimTemp(UPrim(:,ll,j,k,iElem),ConsPrimJac)
+            CASE(2)
+              CALL dConsdPrimTemp(UPrim(:,i,ll,k,iElem),ConsPrimJac)
+            CASE(3)
+              CALL dConsdPrimTemp(UPrim(:,i,j,ll,iElem),ConsPrimJac)
+            END SELECT
 #endif
-          SideID_m=ElemToSide(E2S_SIDE_ID,XI_MINUS,iElem)
-          flip=ElemToSide(    E2S_FLIP   ,XI_MINUS,iElem)
-          pq_m=S2V2(:,j,k,flip           ,XI_MINUS)
+            !!!!!!! Minux side !!!!!!
+            SideID_m=ElemToSide(E2S_SIDE_ID,sideIDMinus,iElem)
+            flip=ElemToSide(    E2S_FLIP   ,sideIDMinus,iElem)
+            pq_m=S2V2(:,j,k,flip           ,sideIDMinus)
 #if (PP_NodeType==1)
-          IF(flip.EQ.0)THEN
-            CALL dPrimTempdCons(UPrim_master(:,pq_m(1),pq_m(2),SideID_m),PrimConsJac)
-          ELSE
-            CALL dPrimTempdCons(UPrim_slave(:,pq_m(1),pq_m(2),SideID_m),PrimConsJac)
-          END IF
-          SurfVol_PrimJac_minus = MATMUL(PrimConsJac,ConsPrimJac)
+            ! dUprim^surf/dUcons^surf
+            IF(flip.EQ.0)THEN
+              CALL dPrimTempdCons(UPrim_master(:,pq_m(1),pq_m(2),SideID_m),PrimConsJac)
+            ELSE
+              CALL dPrimTempdCons(UPrim_slave( :,pq_m(1),pq_m(2),SideID_m),PrimConsJac)
+            END IF
+            ! Since the ProlongToFace is independant of iVar, we can combine the two EOS calls into one
+            SurfVol_PrimJac_minus = MATMUL(PrimConsJac,ConsPrimJac)
 #elif (PP_NodeType==2)
-          SurfVol_PrimJac_minus = delta
+            ! For GL, since the surface points are directly volume points, the dependency reduces to the identity matrix
+            SurfVol_PrimJac_minus = delta
 #endif
-          SideID_p =ElemToSide(E2S_SIDE_ID,XI_PLUS ,iElem)
-          flip=ElemToSide(     E2S_FLIP   ,XI_PLUS ,iElem)
-          pq_p=S2V2(:,j,k,flip            ,XI_PLUS)
+            !!!!!!! Plus side !!!!!!
+            SideID_p =ElemToSide(E2S_SIDE_ID,sideIDPlus ,iElem)
+            flip=ElemToSide(     E2S_FLIP   ,sideIDPlus ,iElem)
+            pq_p=S2V2(:,j,k,flip            ,sideIDPlus)
 #if (PP_NodeType==1)
-          IF(flip.EQ.0)THEN
-            CALL dPrimTempdCons(UPrim_master(:,pq_p(1),pq_p(2),SideID_p),PrimConsJac)
-          ELSE
-            CALL dPrimTempdCons(UPrim_slave(:,pq_p(1),pq_p(2),SideID_p),PrimConsJac)
-          END IF
-          SurfVol_PrimJac_plus = MATMUL(PrimConsJac,ConsPrimJac)
+            ! dUprim^surf/dUcons^surf
+            IF(flip.EQ.0)THEN
+              CALL dPrimTempdCons(UPrim_master(:,pq_p(1),pq_p(2),SideID_p),PrimConsJac)
+            ELSE
+              CALL dPrimTempdCons(UPrim_slave( :,pq_p(1),pq_p(2),SideID_p),PrimConsJac)
+            END IF
+            ! Since the ProlongToFace is independant of iVar, we can combine the two EOS calls into one
+            SurfVol_PrimJac_plus = MATMUL(PrimConsJac,ConsPrimJac)
 #elif (PP_NodeType==2)
-          SurfVol_PrimJac_plus = delta
+            ! For GL, since the surface points are directly volume points, the dependency reduces to the identity matrix
+            SurfVol_PrimJac_plus = delta
 #endif
-
-          JacLifting(:,:,i,j,k,ll,1) = JacLifting(:,:,i,j,k,ll,1) + sJ(i,j,k,iElem,0)*                       &
-                                       ( D(i,ll)*Metrics_fTilde(dir,ll,j,k,iElem,0)*delta(:,:)               &
-                                        +LL_plus( i,ll)*NormVec(dir,pq_p(1),pq_p(2),0,SideID_p)*             &
-                                         MATMUL(JacLiftingFlux(:,:,j,k,XI_PLUS),SurfVol_PrimJac_plus(:,:))   &
-                                        +LL_minus(i,ll)*NormVec(dir,pq_m(1),pq_m(2),0,SideID_m)*             &
-                                         MATMUL(JacLiftingFlux(:,:,j,k,XI_MINUS),SurfVol_PrimJac_minus(:,:)))
-          ! ETA sides
-#if (PP_NodeType==1)
-          CALL dConsdPrimTemp(UPrim(:,i,ll,k,iElem),ConsPrimJac)
-#endif
-          SideID_m=ElemToSide(E2S_SIDE_ID,ETA_MINUS,iElem)
-          flip=ElemToSide(    E2S_FLIP   ,ETA_MINUS,iElem)
-          pq_m=S2V2(:,i,k,flip           ,ETA_MINUS)
-#if (PP_NodeType==1)
-          IF(flip.EQ.0)THEN
-            CALL dPrimTempdCons(UPrim_master(:,pq_m(1),pq_m(2),SideID_m),PrimConsJac)
-          ELSE
-            CALL dPrimTempdCons(UPrim_slave(:,pq_m(1),pq_m(2),SideID_m),PrimConsJac)
-          END IF
-          SurfVol_PrimJac_minus = MATMUL(PrimConsJac,ConsPrimJac)
-#elif (PP_NodeType==2)
-          SurfVol_PrimJac_minus = delta
-#endif
-          SideID_p =ElemToSide(E2S_SIDE_ID,ETA_PLUS ,iElem)
-          flip=ElemToSide(     E2S_FLIP   ,ETA_PLUS ,iElem)
-          pq_p=S2V2(:,i,k,flip            ,ETA_PLUS)
-#if (PP_NodeType==1)
-          IF(flip.EQ.0)THEN
-            CALL dPrimTempdCons(UPrim_master(:,pq_p(1),pq_p(2),SideID_p),PrimConsJac)
-          ELSE
-            CALL dPrimTempdCons(UPrim_slave(:,pq_p(1),pq_p(2),SideID_p),PrimConsJac)
-          END IF
-          SurfVol_PrimJac_plus = MATMUL(PrimConsJac,ConsPrimJac)
-#elif (PP_NodeType==2)
-          SurfVol_PrimJac_plus = delta
-#endif
-
-          JacLifting(:,:,i,j,k,ll,2) = JacLifting(:,:,i,j,k,ll,2) + sJ(i,j,k,iElem,0)*                        &
-                                       ( D(j,ll)*Metrics_gTilde(dir,i,ll,k,iElem,0)*delta(:,:)                &
-                                        +LL_plus( j,ll)*NormVec(dir,pq_p(1),pq_p(2),0,SideID_p)*              &
-                                         MATMUL(JacLiftingFlux(:,:,i,k,ETA_PLUS),SurfVol_PrimJac_plus(:,:))   &
-                                        +LL_minus(j,ll)*NormVec(dir,pq_m(1),pq_m(2),0,SideID_m)*              &
-                                         MATMUL(JacLiftingFlux(:,:,i,k,ETA_MINUS),SurfVol_PrimJac_minus(:,:)))
+            ! Assemble lifting jacobian with surface and volume contribution
+            SELECT CASE(refDir)
+            CASE(1)
+              JacLifting(:,:,i,j,k,ll,1) = sJ(i,j,k,iElem,0)*(D(i,ll)*Metrics_fTilde(dir,ll,j,k,iElem,0)*delta(:,:)& !LiftingVolInt
+                                            +LL_plus( i,ll)*NormVec(dir,pq_p(1),pq_p(2),0,SideID_p)*               & !LiftingSurfInt
+                                             MATMUL(JacLiftingFlux(:,:,j,k,XI_PLUS),SurfVol_PrimJac_plus(:,:))     & !Prolongation
+                                            +LL_minus(i,ll)*NormVec(dir,pq_m(1),pq_m(2),0,SideID_m)*               & !LiftingSurfInt
+                                             MATMUL(JacLiftingFlux(:,:,j,k,XI_MINUS),SurfVol_PrimJac_minus(:,:)))    !Prolongation
+            CASE(2)
+              JacLifting(:,:,i,j,k,ll,2) = sJ(i,j,k,iElem,0)*(D(j,ll)*Metrics_gTilde(dir,i,ll,k,iElem,0)*delta(:,:)&
+                                            +LL_plus( j,ll)*NormVec(dir,pq_p(1),pq_p(2),0,SideID_p)*               &
+                                             MATMUL(JacLiftingFlux(:,:,i,k,ETA_PLUS),SurfVol_PrimJac_plus(:,:))    &
+                                            +LL_minus(j,ll)*NormVec(dir,pq_m(1),pq_m(2),0,SideID_m)*               &
+                                             MATMUL(JacLiftingFlux(:,:,i,k,ETA_MINUS),SurfVol_PrimJac_minus(:,:)))
 #if PP_dim==3
-          ! ZETA sides
-#if (PP_NodeType==1)
-          CALL dConsdPrimTemp(UPrim(:,i,j,ll,iElem),ConsPrimJac)
+            CASE(3)
+              JacLifting(:,:,i,j,k,ll,3) = sJ(i,j,k,iElem,0)*(D(k,ll)*Metrics_hTilde(dir,i,j,ll,iElem,0)*delta(:,:)&
+                                            +LL_plus( k,ll)*NormVec(dir,pq_p(1),pq_p(2),0,SideID_p)*               &
+                                             MATMUL(JacLiftingFlux(:,:,i,j,ZETA_PLUS),SurfVol_PrimJac_plus(:,:))   &
+                                            +LL_minus(k,ll)*NormVec(dir,pq_m(1),pq_m(2),0,SideID_m)*               &
+                                             MATMUL(JacLiftingFlux(:,:,i,j,ZETA_MINUS),SurfVol_PrimJac_minus(:,:)))
 #endif
-          SideID_m=ElemToSide(E2S_SIDE_ID,ZETA_MINUS,iElem)
-          flip=ElemToSide(    E2S_FLIP   ,ZETA_MINUS,iElem)
-          pq_m=S2V2(:,i,j,flip           ,ZETA_MINUS)
-#if (PP_NodeType==1)
-          IF(flip.EQ.0)THEN
-            CALL dPrimTempdCons(UPrim_master(:,pq_m(1),pq_m(2),SideID_m),PrimConsJac)
-          ELSE
-            CALL dPrimTempdCons(UPrim_slave(:,pq_m(1),pq_m(2),SideID_m),PrimConsJac)
-          END IF
-          SurfVol_PrimJac_minus = MATMUL(PrimConsJac,ConsPrimJac)
-#elif (PP_NodeType==2)
-          SurfVol_PrimJac_minus = delta
-#endif
-          SideID_p =ElemToSide(E2S_SIDE_ID,ZETA_PLUS ,iElem)
-          flip=ElemToSide(     E2S_FLIP   ,ZETA_PLUS ,iElem)
-          pq_p=S2V2(:,i,j,flip            ,ZETA_PLUS)
-#if (PP_NodeType==1)
-          IF(flip.EQ.0)THEN
-            CALL dPrimTempdCons(UPrim_master(:,pq_p(1),pq_p(2),SideID_p),PrimConsJac)
-          ELSE
-            CALL dPrimTempdCons(UPrim_slave(:,pq_p(1),pq_p(2),SideID_p),PrimConsJac)
-          END IF
-          SurfVol_PrimJac_plus = MATMUL(PrimConsJac,ConsPrimJac)
-#elif (PP_NodeType==2)
-          SurfVol_PrimJac_plus = delta
-#endif
-
-          JacLifting(:,:,i,j,k,ll,3) = JacLifting(:,:,i,j,k,ll,3) + sJ(i,j,k,iElem,0)*                         &
-                                       ( D(k,ll)*Metrics_hTilde(dir,i,j,ll,iElem,0)*delta(:,:)                 &
-                                        +LL_plus( k,ll)*NormVec(dir,pq_p(1),pq_p(2),0,SideID_p)*               &
-                                         MATMUL(JacLiftingFlux(:,:,i,j,ZETA_PLUS),SurfVol_PrimJac_plus(:,:))   &
-                                        +LL_minus(k,ll)*NormVec(dir,pq_m(1),pq_m(2),0,SideID_m)*               &
-                                         MATMUL(JacLiftingFlux(:,:,i,j,ZETA_MINUS),SurfVol_PrimJac_minus(:,:)))
-#endif
+            END SELECT
+          END DO ! refDir=1,PP_dim
         END DO !i
       END DO !j
     END DO !k
@@ -337,7 +313,7 @@ ELSE ! FV Element
   END DO !k
 END IF
 #endif
-END SUBROUTINE JacLifting_VolInt
+END SUBROUTINE JacLifting_VolGrad
 
 
 !===================================================================================================================================
