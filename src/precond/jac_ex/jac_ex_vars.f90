@@ -11,13 +11,10 @@ SAVE
 ! GLOBAL VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
 LOGICAL                               :: Jac_Ex_InitIsDone=.FALSE.
-REAL,ALLOCATABLE                      :: LL_plus(:,:)
-REAL,ALLOCATABLE                      :: LL_minus(:,:)
-REAL,ALLOCATABLE                      :: LL_mp(:,:)         !LL_mp(i,iLocSide)=LL_minus/plus(i,i)
-REAL,ALLOCATABLE                      :: l_mp(:,:)          !l_mp(i,iLocSide)=l_minus/plus(i) 
-REAL,ALLOCATABLE                      :: nVec(:,:,:,:,:)    !local normal vectors sorted in the ijk System
-REAL,ALLOCATABLE                      :: Surf(:,:,:,:)      !surf element sorted in the ijk system
+REAL,ALLOCATABLE                      :: LL_plus(:,:)              !< LL_plus(i,j) = L^hat_plus(i)*L_plus(j)
+REAL,ALLOCATABLE                      :: LL_minus(:,:)             !< LL_minus(i,j) = L^hat_minus(i)*L_minus(j)
 #if PARABOLIC
+REAL,ALLOCATABLE                      :: L_mp(:,:)                 !< L_mp(i,iLocSide)=either L_minus(i) or L_plus(i) 
 REAL,ALLOCATABLE                      :: R_minus(:,:,:,:)   ! BR2 lifting surface term
 REAL,ALLOCATABLE                      :: R_plus(:,:,:,:)    ! BR2 lifting surface term
 REAL,ALLOCATABLE                      :: JacLiftingFlux(:,:,:,:,:)
