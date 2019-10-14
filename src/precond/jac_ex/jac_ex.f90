@@ -61,7 +61,7 @@ USE MOD_DG_Vars            ,ONLY: L_Hatminus,L_Hatplus
 USE MOD_Mesh_Vars          ,ONLY: nElems
 #if PARABOLIC
 USE MOD_Jac_br2            ,ONLY: BuildnVecTangSurf,Build_BR2_SurfTerms
-USE MOD_Precond_Vars       ,ONLY: EulerPrecond
+USE MOD_Precond_Vars       ,ONLY: HyperbolicPrecond
 #endif
 #if FV_ENABLED && FV_RECONSTRUCT
 USE MOD_Mesh_Vars          ,ONLY: nElems
@@ -131,7 +131,7 @@ Surf=0.
 
 #if PARABOLIC
 CALL BuildnVecTangSurf()
-IF(EulerPrecond.EQV..FALSE.) THEN
+IF(HyperbolicPrecond.EQV..FALSE.) THEN
   ALLOCATE(JacLiftingFlux(PP_nVarPrim,PP_nVarPrim,0:PP_N,0:PP_NZ,6))
   CALL Build_BR2_SurfTerms()
 END IF
@@ -150,7 +150,7 @@ USE MOD_PreProc
 USE MOD_Implicit_Vars             ,ONLY:nDOFVarElem
 USE MOD_JacSurfInt                ,ONLY:DGJacSurfInt
 #if PARABOLIC
-USE MOD_Precond_Vars              ,ONLY:EulerPrecond
+USE MOD_Precond_Vars              ,ONLY:HyperbolicPrecond
 USE MOD_Jac_br2                   ,ONLY:FillJacLiftingFlux
 #endif
 #if FV_ENABLED
@@ -178,7 +178,7 @@ FVEM = 0
 ! Nullify BJ
 BJ = 0.
 #if PARABOLIC
-IF(EulerPrecond.EQV..FALSE.) THEN !Euler Precond = False
+IF(HyperbolicPrecond.EQV..FALSE.) THEN !Euler Precond = False
   CALL FillJacLiftingFlux(t,iElem)
 END IF
 #endif /*PARABOLIC*/
@@ -191,7 +191,7 @@ IF(doVol)THEN
 #endif
   END IF
 #if PARABOLIC
-  IF(EulerPrecond.EQV..FALSE.) THEN !Euler Precond = False
+  IF(HyperbolicPrecond.EQV..FALSE.) THEN !Euler Precond = False
     IF(FVEM.EQ.0)THEN
       CALL DGVolIntGradJac(BJ,iElem)               !d(F^v)/dQ
 #if FV_ENABLED
@@ -220,7 +220,7 @@ USE MOD_Globals
 USE MOD_DG_Vars       ,ONLY: U,UPrim
 USE MOD_Jacobian      ,ONLY: EvalAdvFluxJacobian
 #if EQNSYSNR==2 && PARABOLIC
-USE MOD_Precond_Vars  ,ONLy: EulerPrecond
+USE MOD_Precond_Vars  ,ONLy: HyperbolicPrecond
 USE MOD_Lifting_Vars  ,ONLY: gradUx,gradUy,gradUz
 USE MOD_Jacobian      ,ONLY: EvalDiffFluxJacobian 
 USE MOD_DG_Vars       ,ONLY: nDOFElem
@@ -283,7 +283,7 @@ CALL EvalAdvFluxJacobian(U(:,:,:,:,iElem),UPrim(:,:,:,:,iElem),fJac,gJac,hJac)
 
 #if EQNSYSNR==2 && PARABOLIC
 !No CALL of EvalDiffFlux Jacobian for EQNSYSNR==1, since the diffusive flux is not depending on U
-IF(EulerPrecond.EQV..FALSE.) THEN !Euler Precond = False
+IF(HyperbolicPrecond.EQV..FALSE.) THEN !Euler Precond = False
   ! dF^visc/DU
   CALL EvalDiffFluxJacobian(nDOFElem,U(:,:,:,:,iElem),UPrim(:,:,:,:,iElem) &
                             ,gradUx(:,:,:,:,iElem) &
@@ -301,7 +301,7 @@ IF(EulerPrecond.EQV..FALSE.) THEN !Euler Precond = False
   hJac=hJac+hJac_loc                                         
 #endif/*PP_dim*/
 #endif /*SPLIT_DG*/
-END IF !EulerPrecond
+END IF !HyperbolicPrecond
 #endif /*EQNSYSNR && PARABOLIC*/
 
 s=0
@@ -311,7 +311,7 @@ DO oo=0,PP_NZ
 #ifdef SPLIT_DG
 
 #if EQNSYSNR==2 && PARABOLIC
-      IF(EulerPrecond.EQV..FALSE.) THEN !Euler Precond = False
+      IF(HyperbolicPrecond.EQV..FALSE.) THEN !Euler Precond = False
         ! weak formulation for parabolic terms
         fJacVisc(:,:) = (fJac_loc(:,:,mm,nn,oo)*Metrics_fTilde(1,mm,nn,oo,iElem,0)  &
                         +gJac_loc(:,:,mm,nn,oo)*Metrics_fTilde(2,mm,nn,oo,iElem,0)  &
@@ -346,7 +346,7 @@ DO oo=0,PP_NZ
       DO ll=0,PP_N
         
 #if EQNSYSNR==2 && PARABOLIC
-        IF(EulerPrecond.EQV..FALSE.) THEN !Euler Precond = False
+        IF(HyperbolicPrecond.EQV..FALSE.) THEN !Euler Precond = False
           BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) = BJ(r1+1:r1+PP_nVar,s+1:s+PP_nVar) + D_hat(ll,mm)*fJacVisc(:,:) 
           BJ(r2+1:r2+PP_nVar,s+1:s+PP_nVar) = BJ(r2+1:r2+PP_nVar,s+1:s+PP_nVar) + D_hat(ll,nn)*gJacVisc(:,:) 
 #if PP_dim==3
@@ -626,7 +626,7 @@ DO oo=0,PP_NZ
   DO nn=0,PP_N
     DO mm=0,PP_N
       CALL dPrimTempdCons(UPrim(:,mm,nn,oo,iElem),PrimConsJac(:,:))
-      IF(NoFillIn.EQV..FALSE.) THEN !NoFillIn has the same sparsity as the EulerPrecond
+      IF(NoFillIn.EQV..FALSE.) THEN !NoFillIn has the same sparsity as the HyperbolicPrecond
         DO j=0,PP_N
           fJacTilde(:,:)= ( MATMUL(fJacQx(:,:,mm,j,oo) , JacLifting_X(:,:,mm,j,oo,nn,2) )  &
                           + MATMUL(fJacQy(:,:,mm,j,oo) , JacLifting_Y(:,:,mm,j,oo,nn,2) )  &
@@ -774,7 +774,7 @@ USE MOD_FV_Vars             ,ONLY: gradUzeta,FV_dx_ZETA_L,FV_dx_ZETA_R
 #endif
 #endif
 #if EQNSYSNR==2 && PARABOLIC
-USE MOD_Precond_Vars        ,ONLy: EulerPrecond
+USE MOD_Precond_Vars        ,ONLy: HyperbolicPrecond
 USE MOD_Lifting_Vars        ,ONLY: gradUx,gradUy,gradUz
 USE MOD_Jacobian            ,ONLY: EvalDiffFluxJacobian 
 USE MOD_DG_Vars             ,ONLY: U,nDOFElem
@@ -833,7 +833,7 @@ dFdU_minus = 0
 
 #if EQNSYSNR==2 && PARABOLIC
 !No CALL of EvalDiffFlux Jacobian for EQNSYSNR==1, since the diffusive flux is not depending on U
-IF(EulerPrecond.EQV..FALSE.) THEN !Euler Precond = False
+IF(HyperbolicPrecond.EQV..FALSE.) THEN !Euler Precond = False
   ! dF^visc/DU
   CALL EvalDiffFluxJacobian(nDOFElem,U(:,:,:,:,iElem),UPrim(:,:,:,:,iElem) &
                             ,gradUx(:,:,:,:,iElem) &
@@ -844,7 +844,7 @@ IF(EulerPrecond.EQV..FALSE.) THEN !Euler Precond = False
                             ,muSGS(:,:,:,:,iElem)  &
 #endif
                             )
-END IF !EulerPrecond
+END IF !HyperbolicPrecond
 #endif /*EQNSYSNR && PARABOLIC*/
 
 ! === Xi-Direction ================================================================================================================
@@ -968,7 +968,7 @@ DO p=0,PP_N
       BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) + dFdU_plus( :,:,i  ,p,q)
 #endif
 #if EQNSYSNR==2 && PARABOLIC
-      IF(EulerPrecond.EQV..FALSE.) THEN
+      IF(HyperbolicPrecond.EQV..FALSE.) THEN
         Jac_Visc_plus  = 0.5*(FV_NormVecXi(1,p,q,i,iElem)*fJac_visc(:,:,i-1,p,q) + &
                               FV_NormVecXi(2,p,q,i,iElem)*gJac_visc(:,:,i-1,p,q) + &
                               FV_NormVecXi(3,p,q,i,iElem)*hJac_visc(:,:,i-1,p,q))
@@ -1107,7 +1107,7 @@ DO p=0,PP_N
       BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) + dFdU_plus( :,:,p,j  ,q)
 #endif
 #if EQNSYSNR==2 && PARABOLIC
-      IF(EulerPrecond.EQV..FALSE.) THEN
+      IF(HyperbolicPrecond.EQV..FALSE.) THEN
         Jac_Visc_plus  = 0.5*(FV_NormVecEta(1,p,q,j,iElem)*fJac_visc(:,:,p,j-1,q) + &
                               FV_NormVecEta(2,p,q,j,iElem)*gJac_visc(:,:,p,j-1,q) + &
                               FV_NormVecEta(3,p,q,j,iElem)*hJac_visc(:,:,p,j-1,q))
@@ -1248,7 +1248,7 @@ DO p=0,PP_N
       BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) + dFdU_plus( :,:,p,q,k  )
 #endif
 #if EQNSYSNR==2 && PARABOLIC
-      IF(EulerPrecond.EQV..FALSE.) THEN
+      IF(HyperbolicPrecond.EQV..FALSE.) THEN
         Jac_Visc_plus  = 0.5*(FV_NormVecZeta(1,p,q,k,iElem)*fJac_visc(:,:,p,q,k-1) + &
                               FV_NormVecZeta(2,p,q,k,iElem)*gJac_visc(:,:,p,q,k-1) + &
                               FV_NormVecZeta(3,p,q,k,iElem)*hJac_visc(:,:,p,q,k-1))
@@ -1409,7 +1409,7 @@ DO p=0,PP_N
       s = vn1*p + vn2*q + PP_nVar*i
       m = vn1*p + vn2*q + PP_nVar*(i-2)
       l = vn1*p + vn2*q + PP_nVar*(i+1)
-      IF(NoFillIn.EQV..FALSE.) THEN !NoFillIn has the same sparsity as the EulerPrecond
+      IF(NoFillIn.EQV..FALSE.) THEN !NoFillIn has the same sparsity as the HyperbolicPrecond
         rr  = vn1*(p-1) + vn2*q + PP_nVar*(i-1)
         rrr = vn1*(p+1) + vn2*q + PP_nVar*(i-1)
         ss  = vn1*(p-1) + vn2*q + PP_nVar*i
@@ -1519,7 +1519,7 @@ DO p=0,PP_N
       s = vn1*j     + vn2*q + PP_nVar*p
       m = vn1*(j-2) + vn2*q + PP_nVar*p
       l = vn1*(j+1) + vn2*q + PP_nVar*p
-      IF(NoFillIn.EQV..FALSE.) THEN !NoFillIn has the same sparsity as the EulerPrecond
+      IF(NoFillIn.EQV..FALSE.) THEN !NoFillIn has the same sparsity as the HyperbolicPrecond
         rr  = vn1*(j-1) + vn2*q + PP_nVar*(p-1)
         rrr = vn1*(j-1) + vn2*q + PP_nVar*(p+1)
         ss  = vn1*j     + vn2*q + PP_nVar*(p-1)
@@ -1616,7 +1616,7 @@ DO p=0,PP_N
       s = vn1*q + vn2*k     + PP_nVar*p
       m = vn1*q + vn2*(k-2) + PP_nVar*p
       l = vn1*q + vn2*(k+1) + PP_nVar*p
-      IF(NoFillIn.EQV..FALSE.) THEN !NoFillIn has the same sparsity as the EulerPrecond
+      IF(NoFillIn.EQV..FALSE.) THEN !NoFillIn has the same sparsity as the HyperbolicPrecond
         rr  = vn1*q + vn2*(k-1) + PP_nVar*(p-1)
         rrr = vn1*q + vn2*(k-1) + PP_nVar*(p+1)
         ss  = vn1*q + vn2*k     + PP_nVar*(p-1)
@@ -1703,7 +1703,7 @@ IF(i.GT.1)THEN
                  )
   Jac(:,:) = MATMUL(JacTilde(:,:),PrimConsJac(:,:,i-2))
   BJ(r+1:r+PP_nVar,m+1:m+PP_nVar) = BJ(r+1:r+PP_nVar,m+1:m+PP_nVar) + Jac
-  IF(NoFillIn.EQV..FALSE.) THEN !NoFillIn has the same sparsity as the EulerPrecond
+  IF(NoFillIn.EQV..FALSE.) THEN !NoFillIn has the same sparsity as the HyperbolicPrecond
     ! (i) Flux w.r.t. (i-2) State
     JacTilde(:,:)= ( MATMUL(JacQx_plus , JacLifting_X(:,:,i-1,i-2) )  &
                    + MATMUL(JacQy_plus , JacLifting_Y(:,:,i-1,i-2) )  &
@@ -1763,7 +1763,7 @@ BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + Jac
 BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) - Jac
 !----------- derivatives w.r.t. (i+1) -------------!
 IF(i.LT.PP_N)THEN
-  IF(NoFillIn.EQV..FALSE.) THEN !NoFillIn has the same sparsity as the EulerPrecond
+  IF(NoFillIn.EQV..FALSE.) THEN !NoFillIn has the same sparsity as the HyperbolicPrecond
     ! (i-1) Flux w.r.t (i+1) State
     JacTilde(:,:)= ( MATMUL(JacQx_minus, JacLifting_X(:,:,i  ,i+1) )  &
                    + MATMUL(JacQy_minus, JacLifting_Y(:,:,i  ,i+1) )  &

@@ -13,10 +13,10 @@
 !=================================================================================================================================
 #include "flexi.h"
 
+!===================================================================================================================================
+!> Module containing the routines needed for the inexact sparse ILU(0) inversion of the preconditioner.
+!===================================================================================================================================
 MODULE MOD_SparseILU
-!===================================================================================================================================
-! Module containing matrix vector operations
-!===================================================================================================================================
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -134,7 +134,7 @@ DO ii=2,nDOFVarElem
   END DO ! ii
 END DO ! kk
 
-! Dioganal entires
+! Diagonal entries
 ! It is not possible to store them before the ILU decomposition because they will be changed
 DO ii=1,nDOFVarElem
   Dinv(ii,iElem)=1./ILU0(ii,ii)

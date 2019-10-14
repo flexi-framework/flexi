@@ -56,7 +56,7 @@ USE MOD_Jac_br2                   ,ONLY: dQOuter,dQInner
 USE MOD_Jacobian                  ,ONLY: dPrimTempdCons
 USE MOD_Precond_Vars              ,ONLY: NoFillIn
 USE MOD_DG_Vars                   ,ONLY: L_Hatminus,L_Hatplus,nDOFFace,UPrim
-USE MOD_Precond_Vars              ,ONLY: EulerPrecond
+USE MOD_Precond_Vars              ,ONLY: HyperbolicPrecond
 USE MOD_Lifting_Vars              ,ONLY: gradUx_master,gradUx_slave
 USE MOD_Lifting_Vars              ,ONLY: gradUy_master,gradUy_slave
 USE MOD_Lifting_Vars              ,ONLY: gradUz_master,gradUz_slave
@@ -170,7 +170,7 @@ DO iLocSide=2,5
                                  NormVec(:,:,:,FVSide,SideID),tangVec1(:,:,:,FVSide,SideID),tangVec2(:,:,:,FVSide,SideID), &
                                  SurfElem(:,:,FVSide,SideID),S2V2(:,:,:,Flip,iLocSide),FVSum,FVElem,FVSide)
 #if PARABOLIC
-      IF(EulerPrecond.EQV..FALSE.) THEN !Euler Precond = False
+      IF(HyperbolicPrecond.EQV..FALSE.) THEN !Euler Precond = False
         ! analytic viscous flux derivative: BR2 Flux is 1/2*(Fvisc(U^L,Q^L)+Fvisc(U^R,Q^R) )* (+nvec ), (master)
         ! Derivative with respect to the primitive gradients
 #if EQNSYSNR==2
@@ -279,7 +279,7 @@ DO iLocSide=2,5
             END DO !p
           END DO !q
         END IF !FVSum
-      END IF ! EulerPrecond==False
+      END IF ! HyperbolicPrecond==False
 #endif /*PARABOLIC*/
     ELSE !Slave
       ! d(f*_ad+f*_diff)_jk/dU_slave_jk
@@ -288,7 +288,7 @@ DO iLocSide=2,5
                       -NormVec(:,:,:,FVSide,SideID),-tangVec1(:,:,:,FVSide,SideID),tangVec2(:,:,:,FVSide,SideID), &
                        SurfElem(:,:,FVSide,SideID),S2V2(:,:,:,Flip,iLocSide),FVSum,FVElem,FVSide)
 #if PARABOLIC
-      IF(EulerPrecond.EQV..FALSE.) THEN !Euler Precond = False
+      IF(HyperbolicPrecond.EQV..FALSE.) THEN !Euler Precond = False
 #if EQNSYSNR==2
         !Derivative of the diffusive Riemann Flux with respect to U_L
         CALL EvalDiffFluxJacobian(nDOFFace,U_slave(:,:,:,SideID),UPrim_slave(:,:,:,SideID),   &
@@ -394,7 +394,7 @@ DO iLocSide=2,5
             END DO !p
           END DO !q
         END IF
-      END IF ! EulerPrecond==False
+      END IF ! HyperbolicPrecond==False
 #endif /*PARABOLIC*/
 
     END IF !Flip
@@ -691,7 +691,7 @@ END IF
 #endif
 
 #if PARABOLIC
-IF(EulerPrecond.EQV..FALSE.) THEN !Euler Precond = False
+IF(HyperbolicPrecond.EQV..FALSE.) THEN !Euler Precond = False
   ! Analytical derivation of DQInner/dUvol
   CALL dQInner(1,iElem,dQxInner_dUvol,dQxVol_dU)
   CALL dQInner(2,iElem,dQyInner_dUvol,dQyVol_dU)
@@ -1019,7 +1019,7 @@ IF(EulerPrecond.EQV..FALSE.) THEN !Euler Precond = False
                                               + LL_Plus(i,l) * df_dQ_plus(:,:)
             END DO !i
           END DO ! l
-        IF(NoFillIn.EQV..FALSE.) THEN !NoFillIn has the same sparsity as the EulerPrecond
+        IF(NoFillIn.EQV..FALSE.) THEN !NoFillIn has the same sparsity as the HyperbolicPrecond
           DO j = 0,PP_N
             Df_dQ_minus_Tilde(:,:)= (Df_dQxInner(:,:,j,oo,XI_MINUS  ) * dQxVol_dU(mm,j,oo,nn,2) &
                                     +Df_dQyInner(:,:,j,oo,XI_MINUS  ) * dQyVol_dU(mm,j,oo,nn,2) & 
@@ -1109,7 +1109,7 @@ IF(EulerPrecond.EQV..FALSE.) THEN !Euler Precond = False
             END DO !j
           END DO ! l
 #if PP_dim==3
-        IF(NoFillIn.EQV..FALSE.) THEN !NoFillIn has the same sparsity as the EulerPrecond
+        IF(NoFillIn.EQV..FALSE.) THEN !NoFillIn has the same sparsity as the HyperbolicPrecond
           DO k = 0,PP_NZ
             df_dQ_minus_Tilde(:,:)=  (Df_dQxInner(:,:,mm,k,ETA_MINUS ) * dQxvol_dU(mm,nn,k,oo,3) &
                                      +Df_dQyInner(:,:,mm,k,ETA_MINUS ) * dQyvol_dU(mm,nn,k,oo,3) & 
@@ -1285,7 +1285,7 @@ IF(EulerPrecond.EQV..FALSE.) THEN !Euler Precond = False
 #if FV_ENABLED
   END IF
 #endif
-END IF !EulerPrecond
+END IF !HyperbolicPrecond
 #endif /*PARABOLIC*/
 END SUBROUTINE DGJacSurfInt
 
