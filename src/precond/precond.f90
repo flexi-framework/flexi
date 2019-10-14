@@ -295,9 +295,10 @@ DO iElem=1,nElems
     WRITE(*,*) 'AD= ', SUM(ABS(Ploc1))
     Ploc1=Ploc1-Ploc 
     ind = MAXLOC(ABS(Ploc1))
-    IPWRITE(*,*)'Differenz:',MAXVAL(ABS(Ploc1)), &
-                'Absolutwert:',ABS(Ploc(ind(1),ind(2))),'Abweichung rel.:', MAXVAL(ABS(Ploc1))/MAX(ABS(Ploc(ind(1),ind(2))),1.E-16)
-    IF(MAXVAL(ABS(Ploc1)).GT.1.0E-3) STOP
+    IPWRITE(*,*)'difference:',MAXVAL(ABS(Ploc1)), &
+                'absolute value:',ABS(Ploc(ind(1),ind(2))), &
+                'relative difference:', MAXVAL(ABS(Ploc1))/MAX(ABS(Ploc(ind(1),ind(2))),1.E-16)
+    IF(MAXVAL(ABS(Ploc1)).GT.1.0E-4) STOP
   CASE DEFAULT
     CALL abort(__STAMP__,'No valid preconditioner chosen!')
   END SELECT
