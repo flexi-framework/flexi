@@ -140,8 +140,13 @@ INTEGER                                                 :: ss(2)
 #endif
 REAL                                                    :: signum
 REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_NZ)                  :: USideL,USideR
-REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_NZ)              :: UPrimSideL,gradUxSideL,gradUySideL,gradUzSideL
-REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_NZ)              :: UPrimSideR,gradUxSideR,gradUySideR,gradUzSideR
+REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_NZ)              :: UPrimSideL,UPrimSideR
+#if PARABOLIC
+REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_NZ)              :: gradUxSideL,gradUySideL,gradUzSideL,gradUxSideR,gradUySideR,gradUzSideR
+#if EDDYVISCOSITY
+REAL,DIMENSION(1,0:PP_N,0:PP_NZ)                        :: muSGSL,muSGSR
+#endif
+#endif
 !===================================================================================================================================
 ! Helper variables to quickly build the one-dimensional mapping: ind = iVar+PP_nVar*i+vn1*j+vn2*k for DOF(iVar,i,j,k)
 vn1 = PP_nVar * (PP_N + 1)
@@ -171,17 +176,29 @@ DO iLocSide=2,5
     ! We always want to take the derivative w.r.t. the DOF on our own side. Depending on whether we are master or slave, this means
     ! we need to input different arrays into our routines that calculate the derivative always w.r.t. U_L!
     IF (Flip.EQ.0) THEN
-      UPrimSideL = UPrim_master(:,:,:,SideID);USideL = U_master(:,:,:,SideID);gradUxSideL = gradUx_master(:,:,:,SideID)
-      gradUySideL = gradUy_master(:,:,:,SideID);gradUzSideL = gradUz_master(:,:,:,SideID)
-      UPrimSideR = UPrim_slave(:,:,:,SideID);USideR = U_slave(:,:,:,SideID);gradUxSideR = gradUx_slave(:,:,:,SideID)
-      gradUySideR = gradUy_slave(:,:,:,SideID);gradUzSideR = gradUz_slave(:,:,:,SideID)
-      signum = 1
+      UPrimSideL = UPrim_master(:,:,:,SideID);USideL = U_master(:,:,:,SideID)
+      UPrimSideR = UPrim_slave( :,:,:,SideID);USideR = U_slave( :,:,:,SideID)
+#if PARABOLIC
+      gradUxSideL = gradUx_master(:,:,:,SideID);gradUxSideR = gradUx_slave(:,:,:,SideID)
+      gradUySideL = gradUy_master(:,:,:,SideID);gradUySideR = gradUy_slave(:,:,:,SideID)
+      gradUzSideL = gradUz_master(:,:,:,SideID);gradUzSideR = gradUz_slave(:,:,:,SideID)
+#if EDDYVISCOSITY
+      muSGSL = muSGS_master(:,:,:,SideID),muSGSR = muSGS_slave(:,:,:,SideID)
+#endif
+#endif
+      signum = 1.
     ELSE
-      UPrimSideL = UPrim_slave(:,:,:,SideID);USideL = U_slave(:,:,:,SideID);gradUxSideL = gradUx_slave(:,:,:,SideID)
-      gradUySideL = gradUy_slave(:,:,:,SideID);gradUzSideL = gradUz_slave(:,:,:,SideID)
-      UPrimSideR = UPrim_master(:,:,:,SideID);USideR = U_master(:,:,:,SideID);gradUxSideR = gradUx_master(:,:,:,SideID)
-      gradUySideR = gradUy_master(:,:,:,SideID);gradUzSideR = gradUz_master(:,:,:,SideID)
-      signum = -1
+      UPrimSideL = UPrim_slave( :,:,:,SideID);USideL = U_slave( :,:,:,SideID)
+      UPrimSideR = UPrim_master(:,:,:,SideID);USideR = U_master(:,:,:,SideID)
+#if PARABOLIC
+      gradUxSideL = gradUx_slave(:,:,:,SideID);gradUxSideR = gradUx_master(:,:,:,SideID)
+      gradUySideL = gradUy_slave(:,:,:,SideID);gradUySideR = gradUy_master(:,:,:,SideID)
+      gradUzSideL = gradUz_slave(:,:,:,SideID);gradUzSideR = gradUz_master(:,:,:,SideID)
+#if EDDYVISCOSITY
+      muSGSL = muSGS_slave(:,:,:,SideID),muSGSR = muSGS_master(:,:,:,SideID)
+#endif
+#endif
+      signum = -1.
     END IF
     ! d(f*_ad)_jk/dU_master_jk, with SurfaceIntegral already considered!
     CALL Riemann_FD(Df_DUinner(:,:,:,:,:,iLocSide),USideL,USideR,UPrimSideL,UPrimSideR,                                                &
@@ -192,9 +209,9 @@ DO iLocSide=2,5
       ! Call the analytical jacobian (viscous flux w.r.t. conservative variables)
       ! d(f_diff)_jk/dU_master_jk
       CALL EvalDiffFluxJacobian(nDOFFace,USideL,UPrimSideL,gradUxSideL,gradUySideL,gradUzSideL, &
-                                fJac(:,:,:,:,1),gJac(:,:,:,:,1),hJac(:,:,:,:,1)     &
+                                fJac(:,:,:,:,1),gJac(:,:,:,:,1),hJac(:,:,:,:,1)                 &
 #if EDDYVISCOSITY
-                               ,muSGS_master(:,:,:,SideID)   &
+                               ,muSGSL                                                          &
 #endif
                                 )
 #if FV_ENABLED
@@ -202,7 +219,7 @@ DO iLocSide=2,5
       CALL EvalDiffFluxJacobian(nDOFFace,USideR,UPrimSideR,gradUxSideR,gradUySideR,gradUzSideR, &
                                 fJac(:,:,:,:,2),gJac(:,:,:,:,2),hJac(:,:,:,:,2)                 &
 #if EDDYVISCOSITY
-                               ,muSGS_slave(:,:,:,SideID)   &
+                               ,muSGSR                                                          &
 #endif
       
                                )
@@ -213,7 +230,7 @@ DO iLocSide=2,5
                                 gJacQx,gJacQy,gJacQz,       &
                                 hJacQx,hJacQy,hJacQz        &
 #if EDDYVISCOSITY
-                               ,muSGS_master(:,:,:,SideID)  &
+                               ,muSGSL                      &
 #endif
                                 )
       DO q=0,PP_NZ
@@ -256,7 +273,7 @@ DO iLocSide=2,5
                                  gJacQx,gJacQy,gJacQz,       &
                                  hJacQx,hJacQy,hJacQz        &
 #if EDDYVISCOSITY
-                                ,muSGS_slave(:,:,:,SideID)   &
+                                ,muSGSR                      &
 #endif
                                  )
       IF((FVSum.EQ.1).OR.(FVSum.EQ.2))THEN
@@ -304,17 +321,17 @@ DO iLocSide=2,5
 #endif /*parabolic*/
     !df*_Boundary_jk/dU_jk*surfElem
     !df*_Boundary_jk/dQ_jk*surfElem
-    CALL GetBoundaryFlux_FD(SideID,t,Df_DUinner(:,:,:,:,:,iLocSide),U_master(:,:,:,SideID),UPrim_master(:,:,:,SideID),          &
+    CALL GetBoundaryFlux_FD(SideID,t,Df_DUinner(:,:,:,:,:,iLocSide),U_master(:,:,:,SideID),UPrim_master(:,:,:,SideID), &
 #if PARABOLIC
-                            gradUx_master(:,:,:,SideID),gradUy_master(:,:,:,SideID),gradUz_master(:,:,:,SideID),                &
-                            Df_DQxInner(:,:,:,:,iLocSide),                                                                      &
-                            Df_DQyInner(:,:,:,:,iLocSide),                                                                      &
+                            gradUx_master(:,:,:,SideID),gradUy_master(:,:,:,SideID),gradUz_master(:,:,:,SideID),       &
+                            Df_DQxInner(:,:,:,:,iLocSide),                                                             &
+                            Df_DQyInner(:,:,:,:,iLocSide),                                                             &
 #if PP_dim==3
-                            Df_DQzInner(:,:,:,:,iLocSide),                                                                      &
+                            Df_DQzInner(:,:,:,:,iLocSide),                                                             &
 #endif
 #endif /*PARABOLIC*/
-                            SurfElem(:,:,FVSide,SideID),Face_xGP(:,:,:,FVSide,SideID),                                          &
-                            NormVec(:,:,:,FVSide,SideID),TangVec1(:,:,:,FVSide,SideID),TangVec2(:,:,:,FVSide,SideID),           &
+                            SurfElem(:,:,FVSide,SideID),Face_xGP(:,:,:,FVSide,SideID),                                 &
+                            NormVec(:,:,:,FVSide,SideID),TangVec1(:,:,:,FVSide,SideID),TangVec2(:,:,:,FVSide,SideID),  &
                             S2V2(:,:,:,Flip,iLocSide))
 #if FV_ENABLED && FV_RECONSTRUCT
     ! Set UPrim_slave at boundaries

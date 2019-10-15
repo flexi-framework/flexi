@@ -333,10 +333,7 @@ USE MOD_Globals
 USE MOD_Jac_br2       ,ONLY: JacLifting_VolGrad
 USE MOD_Precond_Vars  ,ONLY: NoFillIn
 USE MOD_DG_Vars       ,ONLY: D_hat,U,UPrim,nDOFElem
-USE MOD_Mesh_Vars     ,ONLY: Metrics_fTilde,Metrics_gTilde
-#if PP_dim==3
-USE MOD_Mesh_Vars     ,ONLY: Metrics_hTilde
-#endif
+USE MOD_Mesh_Vars     ,ONLY: Metrics_fTilde,Metrics_gTilde,Metrics_hTilde
 USE MOD_Implicit_Vars ,ONLY: nDOFVarElem
 USE MOD_GradJacobian  ,ONLY: EvalFluxGradJacobian
 #if EDDYVISCOSITY
@@ -359,11 +356,10 @@ REAL,DIMENSION(PP_nVarPrim,PP_nVar)                                        :: Pr
 REAL,DIMENSION(PP_nVar    ,PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ)              :: fJacQx,gJacQx,hJacQx
 REAL,DIMENSION(PP_nVar    ,PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ)              :: fJacQy,gJacQy,hJacQy
 REAL,DIMENSION(PP_nVar    ,PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ)              :: fJacQz,gJacQz,hJacQz
-REAL,DIMENSION(PP_nVar    ,PP_nVarPrim)                                    :: fJacTilde,gJacTilde
+REAL,DIMENSION(PP_nVar    ,PP_nVarPrim)                                    :: fJacTilde,gJacTilde,hJacTilde
 REAL,DIMENSION(PP_nVar    ,PP_nVar)                                        :: fJac,gJac
 #if PP_dim==3
 REAL,DIMENSION(PP_nVar    ,PP_nVar)                                        :: hJac
-REAL,DIMENSION(PP_nVar    ,PP_nVarPrim)                                    :: hJacTilde
 REAL,DIMENSION(PP_nVarPrim,PP_nVarPrim,0:PP_N,0:PP_N,0:PP_N,0:PP_N,3)      :: JacLifting_Z
 #endif
 REAL,DIMENSION(PP_nVarPrim,PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,0:PP_N,PP_dim):: JacLifting_X,JacLifting_Y

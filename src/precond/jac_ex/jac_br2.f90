@@ -11,7 +11,6 @@
 !
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
-#if PARABOLIC
 #include "flexi.h"
 #include "eos.h"
 
@@ -25,6 +24,7 @@
 !> cornes as here the dependency of the dof on multiple surfaces is done seperately.
 !===================================================================================================================================
 MODULE MOD_Jac_br2
+#if PARABOLIC
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -211,7 +211,14 @@ IF(FV_Elems(iElem).EQ.0)THEN ! DG Element
             !!!!!!! Minux side !!!!!!
             SideID_m=ElemToSide(E2S_SIDE_ID,sideIDMinus,iElem)
             flip=ElemToSide(    E2S_FLIP   ,sideIDMinus,iElem)
-            pq_m=S2V2(:,j,k,flip           ,sideIDMinus)
+            SELECT CASE(refDir)
+            CASE(1)
+              pq_m=S2V2(:,j,k,flip         ,sideIDMinus)
+            CASE(2)
+              pq_m=S2V2(:,i,k,flip         ,sideIDMinus)
+            CASE(3)
+              pq_m=S2V2(:,i,j,flip         ,sideIDMinus)
+            END SELECT
 #if (PP_NodeType==1)
             ! dUprim^surf/dUcons^surf
             IF(flip.EQ.0)THEN
@@ -228,7 +235,14 @@ IF(FV_Elems(iElem).EQ.0)THEN ! DG Element
             !!!!!!! Plus side !!!!!!
             SideID_p =ElemToSide(E2S_SIDE_ID,sideIDPlus ,iElem)
             flip=ElemToSide(     E2S_FLIP   ,sideIDPlus ,iElem)
-            pq_p=S2V2(:,j,k,flip            ,sideIDPlus)
+            SELECT CASE(refDir)
+            CASE(1)
+              pq_p=S2V2(:,j,k,flip          ,sideIDPlus)
+            CASE(2)
+              pq_p=S2V2(:,i,k,flip          ,sideIDPlus)
+            CASE(3)
+              pq_p=S2V2(:,i,j,flip          ,sideIDPlus)
+            END SELECT
 #if (PP_NodeType==1)
             ! dUprim^surf/dUcons^surf
             IF(flip.EQ.0)THEN
@@ -949,5 +963,5 @@ DO iLocSide=2,5
 END DO !iLocSide
 
 END SUBROUTINE dQOuter
-END MODULE MOD_Jac_br2
 #endif /*PARABOLIC*/
+END MODULE MOD_Jac_br2

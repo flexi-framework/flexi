@@ -268,8 +268,8 @@ IMPLICIT NONE
 !===================================================================================================================================
 SDEALLOCATE(LL_minus)
 SDEALLOCATE(LL_plus)
-SDEALLOCATE(l_mp)
 #if PARABOLIC
+SDEALLOCATE(L_mp)
 SDEALLOCATE(R_Minus)
 SDEALLOCATE(R_Plus)
 SDEALLOCATE(JacLiftingFlux)
