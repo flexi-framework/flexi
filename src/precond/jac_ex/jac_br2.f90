@@ -538,47 +538,36 @@ USE MOD_Jac_Ex_Vars               ,ONLY: FV_sdx_ZETA_extended
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER,INTENT(IN)                                  :: dir   !< considered direction (1,2,3)
-INTEGER,INTENT(IN)                                  :: iElem !< considered element ID
+INTEGER,INTENT(IN) :: dir   !< considered direction (1,2,3)
+INTEGER,INTENT(IN) :: iElem !< considered element ID
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 #if PP_dim == 3
-REAL,INTENT(OUT)                                    :: dQ_dUVolInner(PP_nVarPrim,PP_nVarPrim,0:PP_N,0:PP_NZ,6,0:PP_N)
+REAL,INTENT(OUT) :: dQ_dUVolInner(PP_nVarPrim,PP_nVar,0:PP_N,0:PP_NZ,6,0:PP_N) !< Jacobian of surface integral of the lifting w.r.t.
+                                                                               !< conservative solution, only from my element!
 #else
-REAL,INTENT(OUT)                                    :: dQ_dUVolInner(PP_nVarPrim,PP_nVarPrim,0:PP_N,0:PP_NZ,2:5,0:PP_N)
+REAL,INTENT(OUT) :: dQ_dUVolInner(PP_nVarPrim,PP_nVar,0:PP_N,0:PP_NZ,2:5,0:PP_N)
 #endif
-REAL,INTENT(OUT)                                    :: dQVol_dU(0:PP_N,0:PP_N,0:PP_NZ,0:PP_N,PP_dim)
+REAL,INTENT(OUT) :: dQVol_dU(0:PP_N,0:PP_N,0:PP_NZ,0:PP_N,PP_dim)              !< Jacobian of volume integral of the lifting w.r.t.
+                                                                               !< conservative solution
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                                             :: iLocSide,p,q,i,j,k,mm,nn,ll
+INTEGER           :: iLocSide,p,q,i,j,k,mm,nn,ll
 #if PP_dim == 3
-INTEGER                                             :: oo
+INTEGER           :: oo
 #endif
-INTEGER                                             :: SideID,Flip,jk(2)
-REAL                                                :: r (0:PP_N,0:PP_NZ),mp
-REAL                                                :: dQ_dUVolInner_loc(0:PP_N,0:PP_NZ,0:PP_N)
-#if (PP_NodeType==1)
-REAL                                                :: UPrim_face(PP_nVarPrim,0:PP_N,0:PP_NZ)
-REAL                                                :: ConsPrimJac(    1:PP_nVar    ,1:PP_nVarPrim)
-REAL                                                :: PrimConsJac(    1:PP_nVarPrim,1:PP_nVar    )
-#elif (PP_NodeType==2)
-REAL                                                :: delta(1:PP_nVarPrim,1:PP_nVarPrim)
-INTEGER                                             :: iVar
-#endif
-REAL                                                :: SurfVol_PrimJac(1:PP_nVarPrim,1:PP_nVarPrim,0:PP_N,0:PP_NZ,0:PP_N)
+INTEGER           :: SideID,Flip,jk(2)
+REAL              :: r(0:PP_N,0:PP_NZ),mp
+REAL              :: dQ_dUVolInner_loc(0:PP_N,0:PP_NZ,0:PP_N)
+REAL              :: UPrim_face(PP_nVarPrim,0:PP_N,0:PP_NZ)
+REAL              :: PrimConsJac(PP_nVarPrim,1:PP_nVar,0:PP_N,0:PP_NZ)
 #if PP_Lifting==1
-REAL,PARAMETER                                      :: etaBR2=1.
+REAL,PARAMETER    :: etaBR2=1.
 #endif
 #if FV_ENABLED
-REAL                                                :: Jac_reconstruct(0:PP_N,0:PP_N,0:PP_NZ,0:PP_N,PP_dim)
+REAL              :: Jac_reconstruct(0:PP_N,0:PP_N,0:PP_NZ,0:PP_N,PP_dim)
 #endif
 !===================================================================================================================================
-#if (PP_NodeType==2)
-delta=0.
-DO iVar=1,PP_nVarPrim
-  delta(iVar,iVar)=1.
-END DO
-#endif
 dQ_dUVolInner=0.
 
 #if FV_ENABLED
@@ -662,9 +651,7 @@ DO iLocSide=2,5
       DO p=0,PP_N
         jk(:)=S2V2(:,p,q,Flip,iLocSide)
         r(jk(1),jk(2))=R_Minus(dir,p,q,SideID)
-#if (PP_NodeType==1)
         UPrim_face(:,jk(1),jk(2)) = UPrim_master(:,p,q,SideID)
-#endif
       END DO !p
     END DO !q
     mp = 1.
@@ -673,9 +660,7 @@ DO iLocSide=2,5
       DO p=0,PP_N
         jk(:)=S2V2(:,p,q,Flip,iLocSide)
         r(jk(1),jk(2))=R_Plus(dir,p,q,SideID)
-#if (PP_NodeType==1)
         UPrim_face(:,jk(1),jk(2)) = UPrim_slave(:,p,q,SideID)
-#endif
       END DO !p
     END DO !q
     mp = -1.
@@ -685,19 +670,13 @@ DO iLocSide=2,5
   SELECT CASE(iLocSide)
 
   ! Now compute the derivatives for the sides. We additionaly take the derivative of the prolongation into account by using the
-  ! array l_mp
+  ! array l_mp, and the dependency of the primitive surface variables from the conservative ones
   CASE(XI_MINUS,XI_PLUS)
     DO mm=0,PP_N
       DO k=0,PP_NZ
         DO j=0,PP_N
           dQ_dUVolInner_loc(j,k,mm)   = dQ_dUVolInner_loc(j,k,mm) + etaBR2 * r(j,k) * l_mp(mm,iLocSide)
-#if (PP_NodeType==1)
-          CALL dConsdPrimTemp(UPrim(:,mm,j,k,iElem),ConsPrimJac)
-          CALL dPrimTempdCons(UPrim_face(:,j,k),PrimConsJac)
-          SurfVol_PrimJac(:,:,j,k,mm) = MATMUL(PrimConsJac,ConsPrimJac)
-#elif (PP_NodeType==2)
-          SurfVol_PrimJac(:,:,j,k,mm) = delta
-#endif
+          CALL dPrimTempdCons(UPrim_face(:,j,k),PrimConsJac(:,:,j,k))
         END DO !j
       END DO !k
     END DO !mm
@@ -706,13 +685,7 @@ DO iLocSide=2,5
       DO k=0,PP_NZ
         DO i=0,PP_N
           dQ_dUVolInner_loc(i,k,nn) = dQ_dUVolInner_loc(i,k,nn) + etaBR2 * r(i,k) * l_mp(nn,iLocSide)
-#if (PP_NodeType==1)
-          CALL dConsdPrimTemp(UPrim(:,i,nn,k,iElem),ConsPrimJac)
-          CALL dPrimTempdCons(UPrim_face(:,i,k),PrimConsJac)
-          SurfVol_PrimJac(:,:,i,k,nn) = MATMUL(PrimConsJac,ConsPrimJac)
-#elif (PP_NodeType==2)
-          SurfVol_PrimJac(:,:,i,k,nn) = delta
-#endif
+          CALL dPrimTempdCons(UPrim_face(:,i,k),PrimConsJac(:,:,i,k))
         END DO !i
       END DO !k
     END DO !nn
@@ -722,13 +695,7 @@ DO iLocSide=2,5
       DO j=0,PP_N
         DO i=0,PP_N
           dQ_dUVolInner_loc(i,j,oo) = dQ_dUVolInner_loc(i,j,oo) + etaBR2 * r(i,j) * l_mp(oo,iLocSide)
-#if (PP_NodeType==1)
-          CALL dConsdPrimTemp(UPrim(:,i,j,oo,iElem),ConsPrimJac)
-          CALL dPrimTempdCons(UPrim_face(:,i,j),PrimConsJac)
-          SurfVol_PrimJac(:,:,i,j,oo) = MATMUL(PrimConsJac,ConsPrimJac)
-#elif (PP_NodeType==2)
-          SurfVol_PrimJac(:,:,i,j,oo) = delta
-#endif
+          CALL dPrimTempdCons(UPrim_face(:,i,j),PrimConsJac(:,:,i,j))
         END DO !i
       END DO !j
     END DO !oo
@@ -737,7 +704,7 @@ DO iLocSide=2,5
   DO k=0,PP_NZ
     DO j=0,PP_N
       DO mm=0,PP_N
-        dQ_dUVolInner(:,:,j,k,iLocSide,mm)=mp*MATMUL(SurfVol_PrimJac(:,:,j,k,mm),JacLiftingFlux(:,:,j,k,iLocSide))* &
+        dQ_dUVolInner(:,:,j,k,iLocSide,mm)=mp*MATMUL(JacLiftingFlux(:,:,j,k,iLocSide),PrimConsJac(:,:,j,k))* &
                                            dq_dUVolinner_loc(j,k,mm)
       END DO
     END DO !p
@@ -750,7 +717,7 @@ END IF
 END SUBROUTINE dQInner
 
 !===================================================================================================================================
-!> Contains the dervative of the BR2 scheme in U_vol: dQ_dUVol
+!> Contains the required derivatives of the BR2 scheme for the neighbouring element: only the surface integral part of the lifting.
 !> ONLY THE DERIVATIVE OF Q_OUTER !!!!!
 !> computation is done for one element!
 !===================================================================================================================================
@@ -781,41 +748,38 @@ USE MOD_FV_Vars                   ,ONLY: FV_Metrics_hTilde_sJ
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER,INTENT(IN)                                  :: dir
-INTEGER,INTENT(IN)                                  :: iElem
+INTEGER,INTENT(IN) :: dir   !< considered direction (1,2,3)
+INTEGER,INTENT(IN) :: iElem !< considered element ID
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 #if PP_dim == 3
-REAL,INTENT(OUT)                                    :: dQ_dUVolOuter(PP_nVarPrim,PP_nVarPrim,0:PP_N,0:PP_NZ,6,0:PP_N)
+REAL,INTENT(OUT) :: dQ_dUVolOuter(PP_nVarPrim,PP_nVar,0:PP_N,0:PP_NZ,6,0:PP_N)!< Jacobian of surface integral of the lifting w.r.t.
+                                                                              !< conservative solution, only from neigbour element!
 #else
-REAL,INTENT(OUT)                                    :: dQ_dUVolOuter(PP_nVarPrim,PP_nVarPrim,0:PP_N,0:PP_NZ,2:5,0:PP_N)
+REAL,INTENT(OUT) :: dQ_dUVolOuter(PP_nVarPrim,PP_nVar,0:PP_N,0:PP_NZ,2:5,0:PP_N)
 #endif
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                                             :: iLocSide,p,q,i,j,k,mm,nn
+INTEGER           :: iLocSide,p,q,i,j,k,mm,nn
 #if PP_dim == 3
-INTEGER                                             :: oo
+INTEGER           :: oo
 #endif
-INTEGER                                             :: SideID,Flip,jk(2)
-REAL                                                :: r(0:PP_N,0:PP_NZ)
-#if (PP_NodeType==1)
-REAL                                                :: UPrim_face(PP_nVarPrim,0:PP_N,0:PP_NZ)
-REAL                                                :: ConsPrimJac(    1:PP_nVar    ,1:PP_nVarPrim)
-REAL                                                :: PrimConsJac(    1:PP_nVarPrim,1:PP_nVar    )
-#endif
-REAL                                                :: SurfVol_PrimJac(1:PP_nVarPrim,1:PP_nVarPrim)
+INTEGER           :: SideID,Flip,jk(2)
+REAL              :: r(0:PP_N,0:PP_NZ)
+REAL              :: UPrim_face(PP_nVarPrim,0:PP_N,0:PP_NZ)
+REAL              :: PrimConsJac(    1:PP_nVarPrim,1:PP_nVar)
 #if PP_Lifting==1
-REAL,PARAMETER                                      :: etaBR2=1.
+REAL,PARAMETER    :: etaBR2=1.
 #endif
 #if FV_ENABLED
-INTEGER                                             :: FVSide
+INTEGER           :: FVSide
 #endif
-# if(PP_NodeType==2) || FV_ENABLED
-INTEGER                                             :: iVar
-REAL                                                :: delta(1:PP_nVarPrim,1:PP_nVarPrim)
+# if FV_ENABLED
+INTEGER           :: iVar
+REAL              :: delta(1:PP_nVarPrim,1:PP_nVarPrim)
 #endif
 !===================================================================================================================================
-#if (PP_NodeType==2) || FV_ENABLED
+#if FV_ENABLED
 delta=0.
 DO iVar=1,PP_nVarPrim
   delta(iVar,iVar)=1.
@@ -823,7 +787,7 @@ END DO
 #endif
 dQ_dUVolOuter=0.
 
-!Computation of the dQ_Side/dU_Vol (outer part)
+! Computation of the derivative of the surface integral part
 #if PP_dim == 3
 DO iLocSide=1,6
 #else    
@@ -831,15 +795,15 @@ DO iLocSide=2,5
 #endif    
   SideID=ElemToSide(E2S_SIDE_ID,iLocSide,iElem)
   IF(SideID.LE.nBCSides) CYCLE  !for boundary conditions, dQ_dUVol=0.
+  ! Flip either slave or master solution into my own volume system
+  ! r considers the metric terms on the surface and the integration => this gives us the actual surface integral.
   Flip  =ElemToSide(E2S_FLIP,iLocSide,iElem)
   IF(Flip.EQ.0)THEN
     DO q=0,PP_NZ
       DO p=0,PP_N
         jk(:)=S2V2(:,p,q,Flip,iLocSide)
         r(jk(1),jk(2))=R_Plus(dir,p,q,SideID)
-#if (PP_NodeType==1)
         UPrim_face(:,jk(1),jk(2)) = UPrim_master(:,p,q,SideID)
-#endif
       END DO !p
     END DO !q
 #if FV_ENABLED
@@ -850,9 +814,7 @@ DO iLocSide=2,5
       DO p=0,PP_N
         jk(:)=S2V2(:,p,q,Flip,iLocSide)
         r(jk(1),jk(2))=R_Minus(dir,p,q,SideID)
-#if (PP_NodeType==1)
         UPrim_face(:,jk(1),jk(2)) = UPrim_slave(:,p,q,SideID)
-#endif
       END DO !p
     END DO !q
 #if FV_ENABLED
@@ -860,6 +822,8 @@ DO iLocSide=2,5
 #endif
   END IF !Flip=0
 
+  ! Now compute the derivatives for the sides. We additionaly take the derivative of the prolongation into account by using the
+  ! array l_mp, and the dependency of the primitive surface variables from the conservative ones
   SELECT CASE(iLocSide)
   CASE(XI_MINUS,XI_PLUS)
 #if FV_ENABLED
@@ -869,14 +833,8 @@ DO iLocSide=2,5
         DO k=0,PP_NZ
           DO j=0,PP_N
             jk(:)=S2V2(:,j,k,Flip,iLocSide)
-#if (PP_NodeType==1)
-            CALL dConsdPrimTemp(UPrim(:,mm,j,k,iElem),ConsPrimJac)
             CALL dPrimTempdCons(UPrim_face(:,j,k),PrimConsJac)
-            SurfVol_PrimJac = MATMUL(PrimConsJac,ConsPrimJac)
-#elif (PP_NodeType==2)
-            SurfVol_PrimJac = delta
-#endif
-            dQ_dUVolOuter(:,:,j,k,iLocSide,mm) = 0.5*etaBR2 * r(j,k) * l_mp(mm,iLocSide)*SurfElem(jk(1),jk(2),0,SideID)*SurfVol_PrimJac
+            dQ_dUVolOuter(:,:,j,k,iLocSide,mm) = 0.5*etaBR2 * r(j,k) * l_mp(mm,iLocSide)*SurfElem(jk(1),jk(2),0,SideID)*PrimConsJac
           END DO !j
         END DO !k
       END DO !mm
@@ -885,11 +843,11 @@ DO iLocSide=2,5
       DO k=0,PP_NZ
         DO j=0,PP_N
           IF(iLocSide.EQ.XI_MINUS)THEN
-            dQ_dUVolOuter(:,:,j,k,XI_MINUS,   0) = 0.5*FV_sdx_XI_extended(j,k,     0,iElem)* &
-                                                   FV_Metrics_fTilde_sJ(dir,   0,j,k,iElem)*delta
+            dQ_dUVolOuter(1,1,j,k,XI_MINUS,   0) = 0.5*FV_sdx_XI_extended(j,k,     0,iElem)* &
+                                                   FV_Metrics_fTilde_sJ(dir,   0,j,k,iElem)
           ELSE
-            dQ_dUVolOuter(:,:,j,k,XI_PLUS ,PP_N) = 0.5*FV_sdx_XI_extended(j,k,PP_N+1,iElem)* &
-                                                   FV_Metrics_fTilde_sJ(dir,PP_N,j,k,iElem)*delta
+            dQ_dUVolOuter(1,1,j,k,XI_PLUS ,PP_N) = 0.5*FV_sdx_XI_extended(j,k,PP_N+1,iElem)* &
+                                                   FV_Metrics_fTilde_sJ(dir,PP_N,j,k,iElem)
           END IF
         END DO !j
       END DO !k
@@ -903,14 +861,8 @@ DO iLocSide=2,5
         DO k=0,PP_NZ
           DO i=0,PP_N
             jk(:)=S2V2(:,i,k,Flip,iLocSide)
-#if (PP_NodeType==1)
-            CALL dConsdPrimTemp(UPrim(:,i,nn,k,iElem),ConsPrimJac)
             CALL dPrimTempdCons(UPrim_face(:,i,k),PrimConsJac)
-            SurfVol_PrimJac = MATMUL(PrimConsJac,ConsPrimJac)
-#elif (PP_NodeType==2)
-            SurfVol_PrimJac = delta
-#endif
-            dQ_dUVolOuter(:,:,i,k,iLocSide,nn) = 0.5*etaBR2 * r(i,k) * l_mp(nn,iLocSide)*SurfElem(jk(1),jk(2),0,SideID)*SurfVol_PrimJac
+            dQ_dUVolOuter(:,:,i,k,iLocSide,nn) = 0.5*etaBR2 * r(i,k) * l_mp(nn,iLocSide)*SurfElem(jk(1),jk(2),0,SideID)*PrimConsJac
           END DO !i
         END DO !k
       END DO !nn
@@ -919,11 +871,11 @@ DO iLocSide=2,5
       DO k=0,PP_NZ
         DO i=0,PP_N
           IF(iLocSide.EQ.ETA_MINUS)THEN
-            dQ_dUVolOuter(:,:,i,k,ETA_MINUS,   0) = 0.5*FV_sdx_ETA_extended(i,k,     0,iElem)* &
-                                                    FV_Metrics_gTilde_sJ(dir,i,    0,k,iElem)*delta
+            dQ_dUVolOuter(1,1,i,k,ETA_MINUS,   0) = 0.5*FV_sdx_ETA_extended(i,k,     0,iElem)* &
+                                                    FV_Metrics_gTilde_sJ(dir,i,    0,k,iElem)
           ELSE
-            dQ_dUVolOuter(:,:,i,k,ETA_PLUS ,PP_N) = 0.5*FV_sdx_ETA_extended(i,k,PP_N+1,iElem)* &
-                                                    FV_Metrics_gTilde_sJ( dir,i,PP_N,k,iElem)*delta
+            dQ_dUVolOuter(1,1,i,k,ETA_PLUS ,PP_N) = 0.5*FV_sdx_ETA_extended(i,k,PP_N+1,iElem)* &
+                                                    FV_Metrics_gTilde_sJ( dir,i,PP_N,k,iElem)
           END IF
         END DO !i
       END DO !k
@@ -938,15 +890,8 @@ DO iLocSide=2,5
         DO j=0,PP_N
           DO i=0,PP_N
             jk(:)=S2V2(:,i,j,Flip,iLocSide)
-#if (PP_NodeType==1)
-            CALL dConsdPrimTemp(UPrim(:,i,j,oo,iElem),ConsPrimJac)
             CALL dPrimTempdCons(UPrim_face(:,i,j),PrimConsJac)
-            SurfVol_PrimJac = MATMUL(PrimConsJac,ConsPrimJac)
-#elif (PP_NodeType==2)
-            SurfVol_PrimJac = delta
-#endif
-            dQ_dUVolOuter(:,:,i,j,iLocSide,oo) = 0.5*etaBR2 * r(i,j) * l_mp(oo,iLocSide)*SurfElem(jk(1),jk(2),0,SideID)*SurfVol_PrimJac
-
+            dQ_dUVolOuter(:,:,i,j,iLocSide,oo) = 0.5*etaBR2 * r(i,j) * l_mp(oo,iLocSide)*SurfElem(jk(1),jk(2),0,SideID)*PrimConsJac
           END DO !i
         END DO !j
       END DO !oo
@@ -955,11 +900,11 @@ DO iLocSide=2,5
       DO j=0,PP_N
         DO i=0,PP_N
           IF(iLocSide.EQ.ZETA_MINUS)THEN
-            dQ_dUVolOuter(:,:,i,j,ZETA_MINUS,   0) = 0.5*FV_sdx_ZETA_extended(i,j,     0,iElem)* &
-                                                     FV_Metrics_hTilde_sJ(dir,i,j,     0,iElem)*delta
+            dQ_dUVolOuter(1,1,i,j,ZETA_MINUS,   0) = 0.5*FV_sdx_ZETA_extended(i,j,     0,iElem)* &
+                                                     FV_Metrics_hTilde_sJ(dir,i,j,     0,iElem)
           ELSE
-            dQ_dUVolOuter(:,:,i,j,ZETA_PLUS ,PP_N) = 0.5*FV_sdx_ZETA_extended(i,j,PP_N+1,iElem)* &
-                                                     FV_Metrics_hTilde_sJ(dir,i,j,PP_N  ,iElem)*delta
+            dQ_dUVolOuter(1,1,i,j,ZETA_PLUS ,PP_N) = 0.5*FV_sdx_ZETA_extended(i,j,PP_N+1,iElem)* &
+                                                     FV_Metrics_hTilde_sJ(dir,i,j,PP_N  ,iElem)
           END IF
         END DO !i
       END DO !j
