@@ -38,6 +38,53 @@ CONTAINS
 !===================================================================================================================================
 !> Contains the computation of the local jacobian of the surface integral.
 !> Computation is done for one element!
+!>
+!> Dependency of the surface integral:
+!>---------------------------------------------------------------------------------------------------- 
+!> DF(F^v,F^h)/DU |_surfInt = DF^h/DU |_surfInt + DF^v/DU |_surfInt
+!> 
+!> DF^h/DU |_surfInt = DF^h/DF^h_surf * DF^h_surf/DU
+!> DF^h/DU |_surfInt = DF^h/DF^h_surf * DF^h_surf/DU_surf * DU_surf/DU
+!>                                       => Df_DUinner
+!> 
+!> DF^v/DU |_surfInt = DF^v/DF^v_surf * DF^v_surf/DU
+!> DF^v/DU |_surfInt = DF^v/DF^v_surf * DF^v(U,Q(U))_surf/DU
+!> DF^v/DU |_surfInt = DF^v/DF^v_surf * (DF^v(U,Q(U))_surf/DU + DF^v(U,Q(U))_surf/DQ * DQ/DU)
+!> DF^v/DU |_surfInt = DF^v/DF^v_surf * (DF^v(U,Q(U))_surf/DU_surf * DU_surf/DU + DF^v(U,Q(U))_surf/DQ_surf * DQ_surf/DU)
+!> 
+!> Derivatives of diffusive numerical flux function w.r.t. solution and gradients:
+!> DF^v(U,Q(U))_surf/DU_surf = D(0.5*(F^v_L+ F^v_R)/DU_surf = 0.5*D((F^v_L)/DU_surf
+!>                                                                 => Df_DUInner
+!> DF^v(U,Q(U))_surf/DQ_surf = D(0.5*(F^v_L+ F^v_R)/DQ_surf = 0.5*(D(F^v_L)/DQ_surf_L + D(F^v_R)/DQ_surf_R)
+!>                                                                   =>Df_dQxInner        =>Df_DQxOuter
+!> 
+!> Derivative of lifting procedure:
+!> DQ_surf_L/DU = DQ_surf_L|_VolInt/DU + DQ_surf_L|_SurfInt/DU
+!> DQ_surf_L/DU = DQ_surf_L|_VolInt/DU_prim * DU_prim/DU + DQ_surf_L|_SurfInt/DU
+!> DQ_surf_L/DU = DQ_surf_L|_VolInt/DU_prim * DU_prim/DU + DQ_surf_L|_SurfInt/DU_Lprim * DU_Lprim/DU_Lcons * DU_Lcons/DU
+!>                       => dQxvol_dU        =>PrimConsJac       => dQxInner              => PrimConsJac     => Prolongation
+!> 
+!> DQ_surf_R/DU = DQ_surf_R|_VolInt/DU + DQ_surf_R|_SurfInt/DU
+!> 
+!> DQ_surf_R/DU = DQ_surf_R|_VolInt/DU + DQ_surf_R|_SurfInt/DU_Lprim * DU_Lprim/DU_Lcons * DU_Lcons/DU
+!>                          =0                => dQxOuter              =>PrimConsJac       => Prolongation
+!>---------------------------------------------------------------------------------------------------- 
+!>
+!> The surface integral depends both on the hyperbolic and the viscous fluxes.
+!> For the hyperbolic part we need:
+!>  * Derivative of the Riemann solver (computed using FD approach) w.r.t. the surface solution, computed in normal system and
+!>    pre-multiplied with SurfElem
+!>  * Application of surface integral over those fluxes, and dependency of surface solution w.r.t. volume DOFs => both considered in
+!>    LL_plus and LL_minus arrays
+!> For the diffusive part we need:
+!>  * Analytical derivation of surface flux w.r.t. surface solution
+!>  * Analytical derivation of surface flux w.r.t. surface gradients
+!>  * Transform those into the normal system and pre-multiply with SurfElem
+!>  * Add dependency on solution to hyperbolic part
+!>  * Now for the dependeny on the surface gradients:
+!>    * dependency of the lifting volume integral w.r.t. volume DOFs
+!>    * dependency of the inner surface gradients w.r.t. primitive volume DOFs
+!>    * dependency of the outer surface gradients w.r.t. primitive volume DOFs
 !===================================================================================================================================
 SUBROUTINE DGJacSurfInt(t,BJ,iElem)
 ! MODULES
@@ -91,7 +138,7 @@ INTEGER,INTENT(IN)                 :: iElem                                     
 REAL,INTENT(INOUT)                 :: BJ(nDOFVarElem,nDOFVarElem)               !< block-Jacobian of current element
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                                                 :: i,j,mm,nn,oo,r,s,vn1,vn2
+INTEGER                                                 :: i,j,mm,nn,oo,r,s,vn1,vn2,ll
 INTEGER                                                 :: iLocSide,SideID,Flip,FVElem,FVSide,FVSum
 #if PP_dim == 3
 REAL                                                    :: Df_DUinner(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ,2,6)
@@ -235,13 +282,13 @@ DO iLocSide=2,5
                                 )
       DO q=0,PP_NZ
         DO p=0,PP_N
-          ! Df_dQxInner = d(f,g,h)_diff/dQ_x * NormVec
           jk(:)=S2V2(:,p,q,Flip,iLocSide)
-          ! Direct dependency of the viscous flux from the solution variables on the side.
           ! BR1/2 use central fluxes for the viscous flux, so f*_diff = 0.5*(f_diff^L+f_diff^R).
-          ! For the viscous surface flux, we also perform the SurfInt here (already done for hyperbolic part in Riemann_FD)
+          ! Transform the diffusive flux jacobians into the normal system for the suface integral, and pre-multiply with 
+          ! the SurfElem here (already done in Riemann_FD for the hyperbolic parts).
           DO i=1,FVElem+1
-            Df_dUinner(:,:,jk(1),jk(2),i,iLocSide)= Df_dUinner(:,:,jk(1),jk(2),i,iLocSide) +                  &
+            ! Direct dependency of the viscous flux from the solution variables on the side.
+            Df_DUinner(:,:,jk(1),jk(2),i,iLocSide)= Df_DUinner(:,:,jk(1),jk(2),i,iLocSide) +                  &
                                                     0.5*( fJac(:,:,p,q,i)*signum*NormVec(1,p,q,FVSide,SideID) &
                                                          +gJac(:,:,p,q,i)*signum*NormVec(2,p,q,FVSide,SideID) &
 #if PP_dim==3
@@ -249,6 +296,8 @@ DO iLocSide=2,5
 #endif
                                                          )*SurfElem(p,q,FVSide,SideID)
           END DO
+          ! Df_dQxInner = d(f,g,h)_diff/dQ_x * NormVec
+          ! Dependencies of the surface flux w.r.t. the inner surface gradients in each direction
           Df_dQxInner(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQx(:,:,p,q)*signum*NormVec(1,p,q,FVSide,SideID) &
                                                        +gJacQx(:,:,p,q)*signum*NormVec(2,p,q,FVSide,SideID) &
 #if PP_dim==3
@@ -268,6 +317,7 @@ DO iLocSide=2,5
 #endif
         END DO !p
       END DO !q
+      ! Evaluate jacobians of diffusive fluxes w.r.t. the outer gradients
       CALL  EvalFluxGradJacobian(nDOFFace,USideR,UPrimSideR, &
                                  fJacQx,fJacQy,fJacQz,       &
                                  gJacQx,gJacQy,gJacQz,       &
@@ -277,6 +327,7 @@ DO iLocSide=2,5
 #endif
                                  )
       IF((FVSum.EQ.1).OR.(FVSum.EQ.2))THEN
+        ! For mixed interfaces, we ignore the contribution from the outer gradients
         Df_DQxOuter(:,:,:,:,iLocSide)=0.
         Df_DQyOuter(:,:,:,:,iLocSide)=0.
 #if PP_dim==3
@@ -285,7 +336,10 @@ DO iLocSide=2,5
       ELSE
         DO q=0,PP_NZ
           DO p=0,PP_N
+            ! Again, transform into normal system and pre-multiply with the SurfElem
             jk(:)=S2V2(:,p,q,Flip,iLocSide)
+            ! Df_dQxOuter = d(f,g,h)_diff/dQ_x * NormVec
+            ! Dependencies of the surface flux w.r.t. the outer surface gradients in each direction
             Df_dQxOuter(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQx(:,:,p,q)*signum*NormVec(1,p,q,FVSide,SideID) &
                                                          +gJacQx(:,:,p,q)*signum*NormVec(2,p,q,FVSide,SideID) &
 #if PP_dim==3
@@ -345,32 +399,39 @@ END DO !iLocSide
 !Assembling of the preconditioner
 !BJ=d(f*_adv+f*_diff)_jk/dU_mno
 #if FV_ENABLED
-IF(FVElem.EQ.0)THEN ! DG Element (Assembling and multiply with derivative of interpolation)
+IF(FVElem.EQ.0)THEN ! DG Element
 #endif
+  ! The jacobians of the surface fluxes have already been multiplied by the surface element. Df_DUinner considers both the
+  ! dependency of the diffusive and the hyperbolic flux w.r.t. the inner solution.
+  ! The matrix LL_plus/minus now takes into account how the surface solution is depending on the considered volume DOF and the
+  ! derivative of the surface integral itself (consists of prolongation L and integration L_hat).
+
+  ! Loop over all volume DOFs
   DO oo = 0,PP_NZ
     DO nn = 0,PP_N
       DO mm = 0,PP_N
+        ! One-dimensional index for the DOF (mm,nn,oo)
         s = vn2 * oo + vn1 * nn + PP_nVar * mm
-        DO i = 0,PP_N
-          r = PP_nVar*i + vn1*nn + vn2*oo
+        ! Loop over XI,ETA and ZETA lines
+        DO ll = 0,PP_N
+          ! Dependency of flux on XI line with index ll on volume DOF mm,nn,oo
+          r = PP_nVar*ll + vn1*nn + vn2*oo
           BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) &
-                                            + LL_Minus(i,mm)*Df_DUinner(:,:,nn,oo,1,XI_MINUS  )  &
-                                            + LL_Plus (i,mm)*Df_DUinner(:,:,nn,oo,1,XI_PLUS   )
-        END DO ! i
-        DO j = 0,PP_N
-          r = PP_nVar*mm + vn1*j + vn2*oo
+                                            + LL_Minus(ll,mm)*Df_DUinner(:,:,nn,oo,1,XI_MINUS  )  &
+                                            + LL_Plus (ll,mm)*Df_DUinner(:,:,nn,oo,1,XI_PLUS   )
+          ! Dependency of flux on ETA line with index ll on volume DOF mm,nn,oo
+          r = PP_nVar*mm + vn1*ll + vn2*oo
           BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) &
-                                            + LL_Minus(j,nn)*Df_DUinner(:,:,mm,oo,1,ETA_MINUS )  &
-                                            + LL_Plus (j,nn)*Df_DUinner(:,:,mm,oo,1,ETA_PLUS  )
-        END DO ! j
+                                            + LL_Minus(ll,nn)*Df_DUinner(:,:,mm,oo,1,ETA_MINUS )  &
+                                            + LL_Plus (ll,nn)*Df_DUinner(:,:,mm,oo,1,ETA_PLUS  )
 #if PP_dim==3
-        DO k = 0,PP_N
-          r = PP_nVar*mm + vn1*nn + vn2*k
+          ! Dependency of flux on ZETA line with index ll on volume DOF mm,nn,oo
+          r = PP_nVar*mm + vn1*nn + vn2*ll
           BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) &
-                                            + LL_Minus(k,oo)*Df_DUinner(:,:,mm,nn,1,ZETA_MINUS)  &
-                                            + LL_Plus (k,oo)*Df_DUinner(:,:,mm,nn,1,ZETA_PLUS )
-        END DO ! k
+                                            + LL_Minus(ll,oo)*Df_DUinner(:,:,mm,nn,1,ZETA_MINUS)  &
+                                            + LL_Plus (ll,oo)*Df_DUinner(:,:,mm,nn,1,ZETA_PLUS )
 #endif
+        END DO ! ll
       END DO ! nn
     END DO ! mm 
   END DO ! oo
@@ -601,8 +662,11 @@ END IF
 #endif
 
 #if PARABOLIC
-IF(HyperbolicPrecond.EQV..FALSE.) THEN !Euler Precond = False
-  ! Analytical derivation of DQInner/dUvol
+IF (.NOT.HyperbolicPrecond) THEN
+  ! Compute the following derivatives (depending on the lifting scheme): 
+  !  * dependency of inner surface gradients w.r.t. primitive volume DOFs dQInner_dUvol
+  !  * dependency of the lifting volume integral w.r.t. the volume DOFs dQVol_dUvol
+  !  * dependency of the outer surface gradients w.r.t. the volume DOFs dQOuter_dUvol
   CALL dQInner(1,iElem,dQxInner_dUvol,dQxVol_dU)
   CALL dQInner(2,iElem,dQyInner_dUvol,dQyVol_dU)
   CALL dQOuter(1,iElem,dQxOuter_dUvol)
@@ -898,15 +962,22 @@ IF(HyperbolicPrecond.EQV..FALSE.) THEN !Euler Precond = False
   ELSE ! DG_Element
 #endif
 
-! DF_DU = Df_dQInner ( DQVol_DU + DQinner_DU)  + (dF_dQOuter * DQouter_DU)
-! First:  Df_dQInner * DQVol_DU 
-!       = Df_DQInner(XI_Minus) * (DQVol_dU_1 + DQVol_DU_2 +DQVol_DU3) 
+! What is left now:
+!   DF^v/DF^v_surf * DF^v(U,Q(U))_surf/DQ_surf * DQ_surf/DU
+! = DF^v/DF^v_surf * 0.5*(D(F^v_L)/DQ_surf_L * DQ_surf_L/DU + D(F^v_R)/DQ_surf_R * DQ_surf_R/DU)
+! We split DQ_surf_L/DU:
+! DQ_surf_L/DU = DQ_surf_L|_VolInt/DU_prim * DU_prim/DU + DQ_surf_L|_SurfInt/DU_Lprim * DU_Lprim/DU_Lcons * DU_Lcons/DU
+! We first compute the term:
+! 0.5*(D(F^v_L)/DQ_surf_L * DQ_surf_L|_VolInt/DU_prim * DU_prim/DU
+!  => Df_dQxInner              => dQxVol_dU             => PrimConsJac
+! How is the viscous flux in the volume depending on the volume DOFs via the volume integral of the lifting?
     DO oo = 0,PP_NZ
       DO nn = 0,PP_N
         DO mm = 0,PP_N
           ! XI-direction--------------------------------------------------------------------------------------------------------------
           CALL dPrimTempdCons(UPrim(:,mm,nn,oo,iElem),PrimConsJac(:,:,mm,nn,oo))
           s = vn2 * oo + vn1 * nn + PP_nVar * mm
+          ! Dependeny of all viscous XI-fluxes along the XI line w.r.t. my DOFs
           DO l=0,PP_N
             Df_dQ_minus_Tilde(:,:)= (Df_dQxInner(:,:,nn,oo,XI_MINUS  ) * dQxVol_dU(l,nn,oo,mm,1) &
                                     +Df_dQyInner(:,:,nn,oo,XI_MINUS  ) * dQyVol_dU(l,nn,oo,mm,1) & 
@@ -922,6 +993,7 @@ IF(HyperbolicPrecond.EQV..FALSE.) THEN !Euler Precond = False
 #endif
                                     )        
             df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
+            ! Surface integral and prolongation
             DO i = 0,PP_N
               r = PP_nVar * i + vn1 * nn+ vn2 * oo 
               BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) &
@@ -929,7 +1001,8 @@ IF(HyperbolicPrecond.EQV..FALSE.) THEN !Euler Precond = False
                                               + LL_Plus(i,l) * df_dQ_plus(:,:)
             END DO !i
           END DO ! l
-        IF(NoFillIn.EQV..FALSE.) THEN !NoFillIn has the same sparsity as the HyperbolicPrecond
+        IF(.NOT.NoFillIn) THEN
+          ! Dependeny of all viscous XI-fluxes along the ETA line w.r.t. my DOFs
           DO j = 0,PP_N
             Df_dQ_minus_Tilde(:,:)= (Df_dQxInner(:,:,j,oo,XI_MINUS  ) * dQxVol_dU(mm,j,oo,nn,2) &
                                     +Df_dQyInner(:,:,j,oo,XI_MINUS  ) * dQyVol_dU(mm,j,oo,nn,2) & 
@@ -945,6 +1018,7 @@ IF(HyperbolicPrecond.EQV..FALSE.) THEN !Euler Precond = False
 #endif
                                     )
             df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
+            ! Surface integral and prolongation
             DO i = 0,PP_N
               r = PP_nVar * i + vn1 * j+ vn2 * oo 
               BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) &
@@ -953,6 +1027,7 @@ IF(HyperbolicPrecond.EQV..FALSE.) THEN !Euler Precond = False
             END DO ! i
           END DO ! j
 #if PP_dim==3
+          ! Dependeny of all viscous XI-fluxes along the ZETA line w.r.t. my DOFs
           DO k = 0,PP_NZ
             Df_dQ_minus_Tilde(:,:)= (Df_dQxInner(:,:,nn,k,XI_MINUS  ) * dQxVol_dU(mm,nn,k,oo,3) &
                                     +Df_dQyInner(:,:,nn,k,XI_MINUS  ) * dQyVol_dU(mm,nn,k,oo,3) &
@@ -964,6 +1039,7 @@ IF(HyperbolicPrecond.EQV..FALSE.) THEN !Euler Precond = False
                                     +Df_dQzInner(:,:,nn,k,XI_PLUS   ) * dQzvol_dU(mm,nn,k,oo,3) &
                                     )
             df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
+            ! Surface integral and prolongation
             DO i = 0,PP_N
               r = PP_nVar * i + vn1 * nn+ vn2 * k 
               BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) &
@@ -973,6 +1049,7 @@ IF(HyperbolicPrecond.EQV..FALSE.) THEN !Euler Precond = False
           END DO ! k
 #endif
           ! ETA-direction-------------------------------------------------------------------------------------------------------------
+          ! Dependeny of all viscous ETA-fluxes along the XI line w.r.t. my DOFs
           DO i = 0,PP_N
             Df_dQ_minus_Tilde(:,:)= ( Df_dQxInner(:,:,i,oo,ETA_MINUS ) * dQxvol_dU(i,nn,oo,mm,1) &
                                      +Df_dQyInner(:,:,i,oo,ETA_MINUS ) * dQyvol_dU(i,nn,oo,mm,1) &
@@ -996,30 +1073,32 @@ IF(HyperbolicPrecond.EQV..FALSE.) THEN !Euler Precond = False
             END DO ! j
           END DO ! i
         END IF !NoFillIn
-          DO l = 0,PP_N
-            df_dQ_minus_Tilde(:,:)= ( Df_dQxInner(:,:,mm,oo,ETA_MINUS ) * dQxvol_dU(mm,l,oo,nn,2) &
-                                     +Df_dQyInner(:,:,mm,oo,ETA_MINUS ) * dQyvol_dU(mm,l,oo,nn,2) &
+        ! Dependeny of all viscous ETA-fluxes along the ETA line w.r.t. my DOFs
+        DO l = 0,PP_N
+          df_dQ_minus_Tilde(:,:)= ( Df_dQxInner(:,:,mm,oo,ETA_MINUS ) * dQxvol_dU(mm,l,oo,nn,2) &
+                                   +Df_dQyInner(:,:,mm,oo,ETA_MINUS ) * dQyvol_dU(mm,l,oo,nn,2) &
 #if PP_dim==3
-                                     +Df_dQzInner(:,:,mm,oo,ETA_MINUS ) * dQzvol_dU(mm,l,oo,nn,2) &
+                                   +Df_dQzInner(:,:,mm,oo,ETA_MINUS ) * dQzvol_dU(mm,l,oo,nn,2) &
 #endif
-                                    )
-            df_dQ_minus(:,:)= MATMUL(df_dQ_minus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
-            df_dQ_plus_Tilde(:,:)= ( Df_dQxInner(:,:,mm,oo,ETA_PLUS  ) * dQxvol_dU(mm,l,oo,nn,2) &
-                                    +Df_dQyInner(:,:,mm,oo,ETA_PLUS  ) * dQyvol_dU(mm,l,oo,nn,2) & 
+                                  )
+          df_dQ_minus(:,:)= MATMUL(df_dQ_minus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
+          df_dQ_plus_Tilde(:,:)= ( Df_dQxInner(:,:,mm,oo,ETA_PLUS  ) * dQxvol_dU(mm,l,oo,nn,2) &
+                                  +Df_dQyInner(:,:,mm,oo,ETA_PLUS  ) * dQyvol_dU(mm,l,oo,nn,2) & 
 #if PP_dim==3
-                                    +Df_dQzInner(:,:,mm,oo,ETA_PLUS  ) * dQzvol_dU(mm,l,oo,nn,2) &
+                                  +Df_dQzInner(:,:,mm,oo,ETA_PLUS  ) * dQzvol_dU(mm,l,oo,nn,2) &
 #endif
-                                   )
-            df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
-            DO j=0,PP_N
-              r = PP_nVar * mm + vn1 * j+ vn2 * oo
-              BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) &
-                                              + LL_Minus(j,l) *df_dQ_minus(:,:) &
-                                              + LL_Plus(j,l)  * df_dQ_plus(:,:) 
-            END DO !j
-          END DO ! l
+                                 )
+          df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
+          DO j=0,PP_N
+            r = PP_nVar * mm + vn1 * j+ vn2 * oo
+            BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) &
+                                            + LL_Minus(j,l) *df_dQ_minus(:,:) &
+                                            + LL_Plus(j,l)  * df_dQ_plus(:,:) 
+          END DO !j
+        END DO ! l
 #if PP_dim==3
-        IF(NoFillIn.EQV..FALSE.) THEN !NoFillIn has the same sparsity as the HyperbolicPrecond
+        IF(.NOT.NoFillIn) THEN
+          ! Dependeny of all viscous ETA-fluxes along the ZETA line w.r.t. my DOFs
           DO k = 0,PP_NZ
             df_dQ_minus_Tilde(:,:)=  (Df_dQxInner(:,:,mm,k,ETA_MINUS ) * dQxvol_dU(mm,nn,k,oo,3) &
                                      +Df_dQyInner(:,:,mm,k,ETA_MINUS ) * dQyvol_dU(mm,nn,k,oo,3) & 
@@ -1039,6 +1118,7 @@ IF(HyperbolicPrecond.EQV..FALSE.) THEN !Euler Precond = False
             END DO ! j
           END DO ! k
           ! ZETA-direction------------------------------------------------------------------------------------------------------------
+          ! Dependeny of all viscous ZETA-fluxes along the XI line w.r.t. my DOFs
           DO i = 0,PP_N
             df_dQ_minus_Tilde(:,:)=  (Df_dQxInner(:,:,i,nn,ZETA_MINUS) * dQxvol_dU(i,nn,oo,mm,1) &
                                      +Df_dQyInner(:,:,i,nn,ZETA_MINUS) * dQyvol_dU(i,nn,oo,mm,1) &
@@ -1058,6 +1138,7 @@ IF(HyperbolicPrecond.EQV..FALSE.) THEN !Euler Precond = False
                                               + LL_Plus(k,oo) * df_dQ_plus(:,:) 
             END DO ! k
           END DO ! i
+          ! Dependeny of all viscous ZETA-fluxes along the ETA line w.r.t. my DOFs
           DO j = 0,PP_N
             df_dQ_minus_Tilde(:,:)=  (Df_dQxInner(:,:,mm,j,ZETA_MINUS) * dQxvol_dU(mm,j,oo,nn,2) &
                                      +Df_dQyInner(:,:,mm,j,ZETA_MINUS) * dQyvol_dU(mm,j,oo,nn,2) &
@@ -1077,30 +1158,45 @@ IF(HyperbolicPrecond.EQV..FALSE.) THEN !Euler Precond = False
             END DO ! k
           END DO ! j
         END IF !NoFillIn
-          DO l = 0,PP_N
-            df_dQ_minus_Tilde(:,:)=  (Df_dQxInner(:,:,mm,nn,ZETA_MINUS) * dQxvol_dU(mm,nn,l,oo,3) &
-                                     +Df_dQyInner(:,:,mm,nn,ZETA_MINUS) * dQyvol_dU(mm,nn,l,oo,3) &
-                                     +Df_dQzInner(:,:,mm,nn,ZETA_MINUS) * dQzvol_dU(mm,nn,l,oo,3) &
-                                     )
-            df_dQ_minus(:,:)= MATMUL(df_dQ_minus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
-            df_dQ_plus_Tilde(:,:)=  (Df_dQxInner(:,:,mm,nn,ZETA_PLUS ) * dQxvol_dU(mm,nn,l,oo,3) &
-                                    +Df_dQyInner(:,:,mm,nn,ZETA_PLUS ) * dQyvol_dU(mm,nn,l,oo,3) &
-                                    +Df_dQzInner(:,:,mm,nn,ZETA_PLUS ) * dQzvol_dU(mm,nn,l,oo,3) &
-                                    )
-            df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
-            DO k=0,PP_NZ
-              r = PP_nVar * mm + vn1 * nn+ vn2 * k 
-              BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar)  &
-                                              + LL_Minus(k,l) * df_dQ_minus(:,:) & 
-                                              + LL_Plus(k,l)  * df_dQ_plus(:,:) 
-            END DO !k
-          END DO ! l
+        ! Dependeny of all viscous ZETA-fluxes along the ZETA line w.r.t. my DOFs
+        DO l = 0,PP_N
+          df_dQ_minus_Tilde(:,:)=  (Df_dQxInner(:,:,mm,nn,ZETA_MINUS) * dQxvol_dU(mm,nn,l,oo,3) &
+                                   +Df_dQyInner(:,:,mm,nn,ZETA_MINUS) * dQyvol_dU(mm,nn,l,oo,3) &
+                                   +Df_dQzInner(:,:,mm,nn,ZETA_MINUS) * dQzvol_dU(mm,nn,l,oo,3) &
+                                   )
+          df_dQ_minus(:,:)= MATMUL(df_dQ_minus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
+          df_dQ_plus_Tilde(:,:)=  (Df_dQxInner(:,:,mm,nn,ZETA_PLUS ) * dQxvol_dU(mm,nn,l,oo,3) &
+                                  +Df_dQyInner(:,:,mm,nn,ZETA_PLUS ) * dQyvol_dU(mm,nn,l,oo,3) &
+                                  +Df_dQzInner(:,:,mm,nn,ZETA_PLUS ) * dQzvol_dU(mm,nn,l,oo,3) &
+                                  )
+          df_dQ_plus(:,:) = MATMUL(df_dQ_plus_Tilde(:,:),PrimConsJac(:,:,mm,nn,oo))
+          DO k=0,PP_NZ
+            r = PP_nVar * mm + vn1 * nn+ vn2 * k 
+            BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar)  &
+                                            + LL_Minus(k,l) * df_dQ_minus(:,:) & 
+                                            + LL_Plus(k,l)  * df_dQ_plus(:,:) 
+          END DO !k
+        END DO ! l
 #endif
         END DO ! nn
       END DO ! mm 
     END DO ! oo
 
-    ! Second :( Df_dQInner *  DQinner_DU + dF_dQOuter * DQouter_DU) * PrimConsJac 
+! What is left now:
+! DF^v/DF^v_surf * 0.5*(D(F^v_L)/DQ_surf_L * DQ_surf_L|_SurfInt/DU_Lprim * DU_Lprim/DU_Lcons * DU_Lcons/DU 
+!                     + D(F^v_R)/DQ_surf_R * DQ_surf_R/DU)
+! Since: 
+! DQ_surf_R/DU = DQ_surf_R|_VolInt/DU + DQ_surf_R|_SurfInt/DU_Lprim * DU_Lprim/DU_Lcons * DU_Lcons/DU
+!                         = 0
+!   DF^v/DF^v_surf * 0.5*(D(F^v_L)/DQ_surf_L * DQ_surf_L|_SurfInt/DU_Lprim * DU_Lprim/DU_Lcons * DU_Lcons/DU 
+!                       + D(F^v_R)/DQ_surf_R * DQ_surf_R/DU)
+! = DF^v/DF^v_surf * 0.5*(D(F^v_L)/DQ_surf_L * DQ_surf_L|_SurfInt/DU_Lprim * DU_Lprim/DU_Lcons * DU_Lcons/DU 
+!                           => Df_dQxInner          => dQxInner_dUVol         => PrimConsJac
+!                       + D(F^v_R)/DQ_surf_R * DQ_surf_R|_SurfInt/DU_Lprim * DU_Lprim/DU_Lcons * DU_Lcons/DU)
+!                           => Df_dQxOuter          => dQxOuter_dUVol         => PrimConsJac
+! The DQxInner/Outer_DUvol already consider the prolongation DU_Lcons/DU!
+! How is the viscous flux in the volume depending on the volume DOFs via the surface integral of the lifting for both 
+! my element and my neighbouring element?
     DO oo = 0,PP_NZ
       DO nn = 0,PP_N
         DO mm = 0,PP_N

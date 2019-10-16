@@ -501,9 +501,10 @@ CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_RMinus)
 END SUBROUTINE Build_BR2_SurfTerms
 
 !===================================================================================================================================
-!> Contains the dervative of the BR2 scheme in U_vol: dQ_dUVol
+!> Contains the required derivatives of the BR2 scheme for my own element of both the volume and the surface integral part of the
+!> lifting.
 !> ONLY THE DERIVATIVE OF Q_INNER !!!!!
-!> computation is done for one element!
+!> Computation is done for one element!
 !===================================================================================================================================
 SUBROUTINE dQInner(dir,iElem,dQ_dUVolInner,dQVol_dU)
 ! MODULES
@@ -513,9 +514,9 @@ USE MOD_Mesh_Vars                 ,ONLY: ElemToSide,S2V2
 USE MOD_Jac_Ex_Vars               ,ONLY: l_mp
 USE MOD_Jac_Ex_Vars               ,ONLY: R_Minus,R_Plus
 USE MOD_Jac_Ex_Vars               ,ONLY: JacLiftingFlux 
-USE MOD_Mesh_Vars                 ,ONLY: Metrics_fTilde,Metrics_gTilde,sJ   ! metrics
+USE MOD_Mesh_Vars                 ,ONLY: Metrics_fTilde,Metrics_gTilde,sJ
 #if PP_dim==3
-USE MOD_Mesh_Vars                 ,ONLY: Metrics_hTilde   ! metrics
+USE MOD_Mesh_Vars                 ,ONLY: Metrics_hTilde
 #endif
 USE MOD_DG_Vars                   ,ONLY: D
 #if (PP_NodeType==1)
@@ -537,8 +538,8 @@ USE MOD_Jac_Ex_Vars               ,ONLY: FV_sdx_ZETA_extended
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER,INTENT(IN)                                  :: dir
-INTEGER,INTENT(IN)                                  :: iElem
+INTEGER,INTENT(IN)                                  :: dir   !< considered direction (1,2,3)
+INTEGER,INTENT(IN)                                  :: iElem !< considered element ID
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 #if PP_dim == 3
@@ -583,6 +584,8 @@ dQ_dUVolInner=0.
 #if FV_ENABLED
 IF(FV_Elems(iElem).EQ.0)THEN ! DG Element
 #endif
+  ! Derivative of the volume integral of the lifting procedure w.r.t. the lifting variables - since this consists of only the local
+  ! gradients for BR2, this reduced to the D matrix including the metrics.
   DO ll=0,PP_N
     DO k=0,PP_NZ
       DO j=0,PP_N
@@ -644,12 +647,14 @@ END IF
 #if FV_ENABLED
 IF(FV_Elems(iElem).EQ.0)THEN ! DG Element
 #endif
-!Computation of the dQ_Side/dU_Vol (inner part)
+! Computation of the derivative of the surface integral part
 #if PP_dim == 3
 DO iLocSide=1,6
 #else    
 DO iLocSide=2,5
 #endif    
+  ! Flip either slave or master solution into my own volume system, mp considers that master and slave fluxes have opposing signs
+  ! r considers the metric terms on the surface and the integration => this gives us the actual surface integral.
   SideID=ElemToSide(E2S_SIDE_ID,iLocSide,iElem)
   Flip  =ElemToSide(E2S_FLIP,iLocSide,iElem)
   IF(Flip.EQ.0)THEN !master
@@ -679,6 +684,8 @@ DO iLocSide=2,5
   dQ_dUVolInner_loc=0.
   SELECT CASE(iLocSide)
 
+  ! Now compute the derivatives for the sides. We additionaly take the derivative of the prolongation into account by using the
+  ! array l_mp
   CASE(XI_MINUS,XI_PLUS)
     DO mm=0,PP_N
       DO k=0,PP_NZ

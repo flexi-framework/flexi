@@ -39,8 +39,8 @@ PUBLIC::Riemann_FD
 CONTAINS
 
 !===================================================================================================================================
-!> Contains the computation of directional derivative with finite difference of the hyperbolic numerical flux f*_adv. Also takes the
-!> surface integral into account, by multiplying with SurfElem.
+!> Contains the computation of directional derivative with finite difference of the hyperbolic numerical flux f*_adv. 
+!> We already pre-multiply with SurfElem.
 !===================================================================================================================================
 SUBROUTINE Riemann_FD(DFDU,U_L,U_R,UPrim_L,UPrim_R,normal,tangent1,tangent2,surf_loc,jk,FV_Elems_Sum,FVElem,FVSide)
 ! MODULES

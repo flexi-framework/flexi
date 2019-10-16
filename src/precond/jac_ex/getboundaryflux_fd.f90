@@ -40,10 +40,10 @@ PUBLIC::Lifting_GetBoundaryFlux_FD
 CONTAINS
 
 !===================================================================================================================================
-!> Computes the boundary values for a given Cartesian mesh face (defined by FaceID)
-!> BCType: 1...periodic, 2...exact BC
-!> Attention 1: this is only a tensor of local values U_Face and has to be stored into the right U_Left or U_Right in
-!>              SUBROUTINE CalcSurfInt
+!> Computes the jacobian of the boundary flux for a given face (defined by SideID). Uses the finite difference approach to be able
+!> to compute the derivatives for all the different BC types.
+!> We compute both the jacobian of the flux w.r.t. the conservative solution, and the jacobians  w.r.t. the gradients in each 
+!> direction. We always pre-multiply the jacobians with the surface element.
 !===================================================================================================================================
 SUBROUTINE GetBoundaryFlux_FD(SideID,t,DfDU,U_master,UPrim_master,    &
 #if PARABOLIC
@@ -65,29 +65,29 @@ USE MOD_EOS                     ,ONLY: ConsToPrim
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER,INTENT(IN)           :: SideID  
-REAL,INTENT(IN)              :: t       !< current time (provided by time integration scheme)
-REAL,INTENT(IN)              :: xGP_Face(3,0:PP_N,0:PP_NZ)
-REAL,INTENT(IN)              :: normal  (3,0:PP_N,0:PP_NZ)
-REAL,INTENT(IN)              :: tangent1(3,0:PP_N,0:PP_NZ)
-REAL,INTENT(IN)              :: tangent2(3,0:PP_N,0:PP_NZ)
-REAL,INTENT(IN)              :: surfElem(0:PP_N,0:PP_NZ)
-REAL, INTENT(IN)             :: U_master(PP_nVar,0:PP_N,0:PP_NZ)
-REAL, INTENT(IN)             :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ)
-INTEGER, INTENT(IN)          :: jk(2,0:PP_N,0:PP_NZ)
+INTEGER,INTENT(IN)   :: SideID                                   !< ID of current side
+REAL,INTENT(IN)      :: t                                        !< current time (provided by time integration scheme)
+REAL,INTENT(IN)      :: xGP_Face(3,0:PP_N,0:PP_NZ)               !< physical coordinates of side GPs
+REAL,INTENT(IN)      :: normal  (3,0:PP_N,0:PP_NZ)               !< normal vector
+REAL,INTENT(IN)      :: tangent1(3,0:PP_N,0:PP_NZ)               !< first tangential vector
+REAL,INTENT(IN)      :: tangent2(3,0:PP_N,0:PP_NZ)               !< second tangential vector
+REAL,INTENT(IN)      :: surfElem(0:PP_N,0:PP_NZ)                 !< surface integration element
+REAL, INTENT(IN)     :: U_master(PP_nVar,0:PP_N,0:PP_NZ)         !< conservative inner solution 
+REAL, INTENT(IN)     :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ) !< primitive inner solution
+INTEGER, INTENT(IN)  :: jk(2,0:PP_N,0:PP_NZ)                     !< S2V2 mapping
 #if PARABOLIC
-REAL,INTENT(IN)              :: gradUx_Face(PP_nVarPrim,0:PP_N,0:PP_NZ)
-REAL,INTENT(IN)              :: gradUy_Face(PP_nVarPrim,0:PP_N,0:PP_NZ)
-REAL,INTENT(IN)              :: gradUz_Face(PP_nVarPrim,0:PP_N,0:PP_NZ)
+REAL,INTENT(IN)      :: gradUx_Face(PP_nVarPrim,0:PP_N,0:PP_NZ)  !< inner gradients in x direction
+REAL,INTENT(IN)      :: gradUy_Face(PP_nVarPrim,0:PP_N,0:PP_NZ)  !< inner gradients in y direction
+REAL,INTENT(IN)      :: gradUz_Face(PP_nVarPrim,0:PP_N,0:PP_NZ)  !< inner gradients in z direction
 #endif /*PARABOLIC*/
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(OUT)             :: DfDU(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ,2)
+REAL,INTENT(OUT),DIMENSION(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ,2)   :: DfDU         !< jacobian of the boundary flux w.r.t. U inc SurfInt
 #if PARABOLIC
-REAL,INTENT(OUT),DIMENSION(PP_nVar,PP_nVarPrim,0:PP_N,0:PP_NZ) :: Df_DQxInner
-REAL,INTENT(OUT),DIMENSION(PP_nVar,PP_nVarPrim,0:PP_N,0:PP_NZ) :: Df_DQyInner
+REAL,INTENT(OUT),DIMENSION(PP_nVar,PP_nVarPrim,0:PP_N,0:PP_NZ) :: Df_DQxInner  !< jacobian w.r.t. x gradients inc SurfInt
+REAL,INTENT(OUT),DIMENSION(PP_nVar,PP_nVarPrim,0:PP_N,0:PP_NZ) :: Df_DQyInner  !< jacobian w.r.t. y gradients inc SurfInt
 #if PP_dim==3                                 
-REAL,INTENT(OUT),DIMENSION(PP_nVar,PP_nVarPrim,0:PP_N,0:PP_N)  :: Df_DQzInner
+REAL,INTENT(OUT),DIMENSION(PP_nVar,PP_nVarPrim,0:PP_N,0:PP_N)  :: Df_DQzInner  !< jacobian w.r.t. z gradients inc SurfInt
 #endif
 #endif /*PARABOLIC*/
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -110,6 +110,8 @@ REAL                         :: F_Face_Tilde      (PP_nVar    ,0:PP_N,0:PP_NZ)
 REAL                         :: F_Face            (PP_nVar    ,0:PP_N,0:PP_NZ)
 REAL                         :: reps0_loc,sreps0_loc
 !===================================================================================================================================
+! Compute jacobian w.r.t. conservative solution: Store the original state and flux, then pertubate every single DOF, compute
+! pertubated flux and use FD approach to approximate the derivative.
 CALL GetBoundaryFlux(SideID,t,PP_N,F_Face,UPrim_master,   &
 #if PARABOLIC
                      gradUx_Face,gradUy_Face,gradUz_Face, &
@@ -120,6 +122,7 @@ DO jVar=1,PP_nVar
   reps0_loc  = reps0_O1*(1.+SQRT(NORM2(U_master_Tilde(jVar,:,:))))
   sreps0_loc = 1./reps0_loc
   U_master_Tilde(jVar,:,:) = U_master_Tilde(jVar,:,:) + reps0_loc
+  ! We pertubate the conservative state, but boundary flux takes the primitive state: Call ConsToPrim
   CALL ConsToPrim(PP_N,UPrim_master_Tilde,U_master_Tilde) 
   CALL GetBoundaryFlux(SideID,t,PP_N,F_Face_Tilde,UPrim_master_Tilde, &
 #if PARABOLIC
@@ -141,6 +144,7 @@ dFdU(:,:,:,:,2) = 0. ! only valid for Dirichlet Type BCs
 #endif
 
 #if PARABOLIC
+! Compute jacobian of the boundary flux w.r.t. the inner gradients for each direction. Again, use the FD approach.
 ! dF_dQxyzInner
 gradUx_Face_Tilde = gradUx_Face
 gradUy_Face_Tilde = gradUy_Face
