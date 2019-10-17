@@ -34,7 +34,20 @@ INTERFACE FV_Reconstruction_Derivative_Surf
   MODULE PROCEDURE FV_Reconstruction_Derivative_Surf
 END INTERFACE
 
+#if PARABOLIC
+INTERFACE JacFVGradients_Vol
+  MODULE PROCEDURE JacFVGradients_Vol
+END INTERFACE
+
+INTERFACE JacFVGradients_nb
+  MODULE PROCEDURE JacFVGradients_nb
+END INTERFACE
+#endif
+
 PUBLIC::Fill_ExtendedState,FV_Reconstruction_Derivative,FV_Reconstruction_Derivative_Surf
+#if PARABOLIC
+PUBLIC::JacFVGradients_Vol,JacFVGradients_nb
+#endif
 !==================================================================================================================================
 
 CONTAINS
@@ -529,5 +542,168 @@ matrix=dUdUvol_minus(:,:,0,3);  vector=Jac_PrimCons_minus(:,:,1)
 dUdUvol_minus(:,:,0,3)  = MATMUL(matrix,vector)
 
 END SUBROUTINE FV_Reconstruction_Derivative_Surf
+
+#if PARABOLIC
+!===================================================================================================================================
+!> Computes the Volume gradient Jacobian of the reconstruction procedure dQprim/dUprim (Q= Grad U) only w.r.t. the volume DOFs of
+!> the current element.
+!> As the reconstruction procedure is the same for all primitive variables and is done independently for each variable the Jacobian
+!> has diagonal shape with the same coefficient on the diagonal. Therefore, we calculate only this scalar value and give it back.
+!> The reconstruction procedure for the gradients takes the central limiter. Therefore the gradient at a DOF (i,j,k) is depending on
+!> the left and right neighbour and the DOF itself.
+!===================================================================================================================================
+SUBROUTINE JacFVGradients_Vol(dir,iElem,Jac_reconstruct)
+! MODULES
+USE MOD_PreProc
+USE MOD_FV_Vars            ,ONLY: FV_sdx_XI,FV_sdx_ETA,FV_Metrics_fTilde_sJ,FV_Metrics_gTilde_sJ
+USE MOD_Jac_Ex_Vars        ,ONLY: FV_sdx_XI_extended,FV_sdx_ETA_extended
+#if PP_dim == 3     
+USE MOD_FV_Vars            ,ONLY: FV_sdx_ZETA,FV_Metrics_hTilde_sJ
+USE MOD_Jac_Ex_Vars        ,ONLY: FV_sdx_ZETA_extended
 #endif
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+INTEGER,INTENT(IN)                           :: iElem   !< current element index
+INTEGER,INTENT(IN)                           :: dir     !< current physical direction
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL,INTENT(OUT)                             :: Jac_reconstruct(0:PP_N,0:PP_N,0:PP_NZ,0:PP_N,PP_dim)
+                                                !< Jacobian of volume gradients in direction dir w.r.t. primitive volume solution
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                                      :: i,j,k,ll
+!===================================================================================================================================
+Jac_reconstruct = 0.
+DO k=0,PP_NZ
+  DO j=0,PP_N
+    DO i=0,PP_N
+      ! Contribution by gradient reconstruction procedure with central gradient (i,j,k) -> gradient, (ll) -> state 
+      IF(i.GT.0)THEN
+        Jac_reconstruct(i,j,k,i-1,1) = 0.5*(-FV_sdx_XI(j,k,i,iElem))
+      END IF                     
+      Jac_reconstruct(  i,j,k,i  ,1) = 0.5*FV_sdx_XI_extended(j,k,i,iElem) - 0.5*FV_sdx_XI_extended(j,k,i+1,iElem)
+      IF(i.LT.PP_N)THEN          
+        Jac_reconstruct(i,j,k,i+1,1) = 0.5*( FV_sdx_XI(j,k,i+1,iElem))
+      END IF
+      IF(j.GT.0)THEN
+        Jac_reconstruct(i,j,k,j-1,2) = 0.5*(-FV_sdx_ETA(i,k,j,iElem))
+      END IF                     
+      Jac_reconstruct(  i,j,k,j  ,2) = 0.5*FV_sdx_ETA_extended(i,k,j,iElem) - 0.5*FV_sdx_ETA_extended(i,k,j+1,iElem)
+      IF(j.LT.PP_N)THEN          
+        Jac_reconstruct(i,j,k,j+1,2) = 0.5*( FV_sdx_ETA(i,k,j+1,iElem))
+      END IF
+#if PP_dim==3
+      IF(k.GT.0)THEN
+        Jac_reconstruct(i,j,k,k-1,3) = 0.5*(-FV_sdx_ZETA(i,j,k,iElem))
+      END IF                     
+      Jac_reconstruct(  i,j,k,k  ,3) = 0.5*FV_sdx_ZETA_extended(i,j,k,iElem) - 0.5*FV_sdx_ZETA_extended(i,j,k+1,iElem)
+      IF(k.LT.PP_N)THEN          
+        Jac_reconstruct(i,j,k,k+1,3) = 0.5*( FV_sdx_ZETA(i,j,k+1,iElem))
+      END IF
+#endif
+      ! Contribution by lifting volume integral
+      DO ll=0,PP_N
+        Jac_reconstruct(i,j,k,ll,1) = Jac_reconstruct(i,j,k,ll,1)*FV_Metrics_fTilde_sJ(dir,ll,j,k,iElem)
+        Jac_reconstruct(i,j,k,ll,2) = Jac_reconstruct(i,j,k,ll,2)*FV_Metrics_gTilde_sJ(dir,i,ll,k,iElem)
+#if PP_dim==3
+        Jac_reconstruct(i,j,k,ll,3) = Jac_reconstruct(i,j,k,ll,3)*FV_Metrics_hTilde_sJ(dir,i,j,ll,iElem)
+#endif
+      END DO ! ll
+    END DO !i
+  END DO !j
+END DO !k
+END SUBROUTINE JacFVGradients_Vol
+
+!===================================================================================================================================
+!> Computes the dependency of FV gradient of neighbouring element at the interface on the volume DOFs of the considered element.
+!> Again, as the reconstruction of the gradients is independent of the variable (iVar) itself, the output of this routine is a
+!> scalar.
+!> For the second order reconstruction with central limiter the gradient of the neighbouring element only depends on the outer layer
+!> of the current element.
+!> |...:...:...: g | x :...:...: x | g :...:...:...| => gradients g only depent on the outer layer DOF g of the current element
+!> |...:...:...:...|...:...:...:...|...:...:...:...|
+!>    nbElem_minus       iElem        nbElem_plus
+!===================================================================================================================================
+SUBROUTINE JacFVGradients_nb(dir,iElem,dQ_dUVolOuter)
+! MODULES
+USE MOD_Globals
+USE MOD_PreProc
+USE MOD_Mesh_Vars                 ,ONLY: ElemToSide,nBCSides
+#if FV_ENABLED
+USE MOD_Jac_Ex_Vars               ,ONLY: FV_sdx_XI_extended,FV_sdx_ETA_extended
+USE MOD_FV_Vars                   ,ONLY: FV_Metrics_fTilde_sJ,FV_Metrics_gTilde_sJ
+#if PP_dim == 3
+USE MOD_Jac_Ex_Vars               ,ONLY: FV_sdx_ZETA_extended
+USE MOD_FV_Vars                   ,ONLY: FV_Metrics_hTilde_sJ
+#endif
+#endif
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+INTEGER,INTENT(IN) :: dir   !< considered direction (1,2,3)
+INTEGER,INTENT(IN) :: iElem !< considered element ID
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+#if PP_dim == 3
+REAL,INTENT(OUT) :: dQ_dUVolOuter(0:PP_N,0:PP_NZ,6,0:PP_N)!< Jacobian of surface gradients of the neighbour element w.r.t. primitive
+                                                          !< solution of current element
+#else
+REAL,INTENT(OUT) :: dQ_dUVolOuter(0:PP_N,0:PP_NZ,2:5,0:PP_N)
+#endif
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER           :: iLocSide,SideID,i,j,k
+!===================================================================================================================================
+dQ_dUVolOuter=0.
+
+#if PP_dim == 3
+DO iLocSide=1,6
+#else    
+DO iLocSide=2,5
+#endif    
+  SideID=ElemToSide(E2S_SIDE_ID,iLocSide,iElem)
+  IF(SideID.LE.nBCSides) CYCLE  !for boundary conditions, dQ_dUVolOuter=0.
+
+  SELECT CASE(iLocSide)
+  CASE(XI_MINUS,XI_PLUS)
+    DO k=0,PP_NZ
+      DO j=0,PP_N
+        IF(iLocSide.EQ.XI_MINUS)THEN
+          dQ_dUVolOuter(j,k,XI_MINUS,   0) = 0.5*FV_sdx_XI_extended(j,k,     0,iElem) * FV_Metrics_fTilde_sJ(dir,   0,j,k,iElem)
+        ELSE
+          dQ_dUVolOuter(j,k,XI_PLUS ,PP_N) = 0.5*FV_sdx_XI_extended(j,k,PP_N+1,iElem) * FV_Metrics_fTilde_sJ(dir,PP_N,j,k,iElem)
+        END IF
+      END DO !j
+    END DO !k
+  CASE(ETA_MINUS,ETA_PLUS)
+    DO k=0,PP_NZ
+      DO i=0,PP_N
+        IF(iLocSide.EQ.ETA_MINUS)THEN
+          dQ_dUVolOuter(i,k,ETA_MINUS,   0) = 0.5*FV_sdx_ETA_extended(i,k,     0,iElem) * FV_Metrics_gTilde_sJ(dir,i,   0,k,iElem)
+        ELSE
+          dQ_dUVolOuter(i,k,ETA_PLUS ,PP_N) = 0.5*FV_sdx_ETA_extended(i,k,PP_N+1,iElem) * FV_Metrics_gTilde_sJ(dir,i,PP_N,k,iElem)
+        END IF
+      END DO !i
+    END DO !k
+#if PP_dim==3
+  CASE(ZETA_MINUS,ZETA_PLUS)
+    DO j=0,PP_N
+      DO i=0,PP_N
+        IF(iLocSide.EQ.ZETA_MINUS)THEN
+          dQ_dUVolOuter(i,j,ZETA_MINUS,   0) = 0.5*FV_sdx_ZETA_extended(i,j,     0,iElem) * FV_Metrics_hTilde_sJ(dir,i,j,   0,iElem)
+        ELSE
+          dQ_dUVolOuter(i,j,ZETA_PLUS ,PP_N) = 0.5*FV_sdx_ZETA_extended(i,j,PP_N+1,iElem) * FV_Metrics_hTilde_sJ(dir,i,j,PP_N,iElem)
+        END IF
+      END DO !i
+    END DO !j
+#endif
+  END SELECT
+END DO !iLocSide
+END SUBROUTINE JacFVGradients_nb
+#endif /*PARABOLIC*/
+#endif /*FV_ENABLED && FV_RECONSTRUCT*/
+
 END MODULE MOD_Jac_Reconstruction

@@ -58,7 +58,10 @@ SUBROUTINE GetBoundaryFlux_FD(SideID,t,DfDU,U_master,UPrim_master,    &
 ! MODULES
 USE MOD_Globals      
 USE MOD_PreProc
-USE MOD_Implicit_Vars           ,ONLY: reps0_O1,sreps0_O1
+USE MOD_Implicit_Vars           ,ONLY: reps0_O1
+#if PARABOLIC
+USE MOD_Implicit_Vars           ,ONLY: sreps0_O1
+#endif
 USE MOD_GetBoundaryFlux         ,ONLY: GetBoundaryFlux
 USE MOD_EOS                     ,ONLY: ConsToPrim
 ! IMPLICIT VARIABLE HANDLING

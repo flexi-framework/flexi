@@ -106,7 +106,9 @@ IMPLICIT NONE
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
+#if PP_dim==3
 INTEGER                   :: i
+#endif
 !===================================================================================================================================
 IF((.NOT.InterpolationInitIsDone).OR.(.NOT.MeshInitIsDone).OR.ImplicitInitIsDone)THEN
    CALL abort(__STAMP__,'InitImplicit not ready to be called or already called.')

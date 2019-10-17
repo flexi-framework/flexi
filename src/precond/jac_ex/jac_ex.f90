@@ -73,7 +73,10 @@ IMPLICIT NONE
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
-INTEGER                                      :: i,j,iLocSide
+INTEGER :: i,j
+#if PARABOLIC
+INTEGER :: iLocSide
+#endif
 !===================================================================================================================================
 SWRITE(UNIT_stdOut,'(A)') ' INIT ANALYTICAL BLOCK JACOBIAN...'
 
@@ -142,7 +145,7 @@ SUBROUTINE Jac_Ex(t,iElem,BJ,doVol,doSurf)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Implicit_Vars             ,ONLY:nDOFVarElem
-USE MOD_JacSurfInt                ,ONLY:DGJacSurfInt
+USE MOD_JacSurfInt                ,ONLY:JacSurfInt
 #if PARABOLIC
 USE MOD_Precond_Vars              ,ONLY:HyperbolicPrecond
 USE MOD_Jac_br2                   ,ONLY:FillJacLiftingFlux
@@ -201,7 +204,7 @@ IF(doVol)THEN
 #endif /*PARABOLIC*/
 END IF!doVol
 IF(doSurf) THEN
-  CALL DGJacSurfInt(t,BJ,iElem) 
+  CALL JacSurfInt(t,BJ,iElem) 
 END IF
 CALL Apply_sJ(BJ,iElem)
 
