@@ -101,10 +101,10 @@ USE MOD_DG_Vars       ,ONLY: D_hat,U,UPrim
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER,INTENT(IN) :: iElem
+INTEGER,INTENT(IN)    :: iElem                                     !< current element index
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(INOUT)    :: BJ(1:nDOFVarElem,1:nDOFVarElem)
+REAL,INTENT(INOUT)    :: BJ(1:nDOFVarElem,1:nDOFVarElem)           !< block-Jacobian of current element
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
 INTEGER                                                 :: mm,nn,oo
@@ -344,10 +344,10 @@ USE MOD_Jacobian      ,ONLY: dPrimTempdCons
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER,INTENT(IN) :: iElem
+INTEGER,INTENT(IN)    :: iElem                                     !< current element index
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(INOUT)    :: BJ(1:nDOFVarElem,1:nDOFVarElem)
+REAL,INTENT(INOUT)    :: BJ(1:nDOFVarElem,1:nDOFVarElem)           !< block-Jacobian of current element
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
 INTEGER                                                                    :: i,j,k,l,mm,nn,oo
@@ -596,10 +596,8 @@ hJacQ(:,:) = (fJacTilde(:,:)*Metrics_hTilde(1) &
              +hJacTilde(:,:)*Metrics_hTilde(3) &
              )
 #endif
-
 END SUBROUTINE GradJac_metrics
-
-#endif
+#endif /*PARABOLIC*/
 
 #if FV_ENABLED
 !===================================================================================================================================
@@ -622,7 +620,7 @@ USE MOD_FV_Vars             ,ONLY: FV_SurfElemZeta_sw
 USE MOD_FV_Vars             ,ONLY: FV_NormVecXi,FV_TangVec1Xi,FV_TangVec2Xi
 USE MOD_FV_Vars             ,ONLY: FV_NormVecEta,FV_TangVec1Eta,FV_TangVec2Eta
 USE MOD_FV_Vars             ,ONLY: FV_SurfElemXi_sw,FV_SurfElemEta_sw
-USE MOD_Implicit_Vars       ,ONLY: rEps0
+USE MOD_Implicit_Vars       ,ONLY: rEps0,nDOFVarElem
 USE MOD_Riemann             ,ONLY: Riemann_Point
 USE MOD_EOS                 ,ONLY: ConsToPrim,PrimToCons
 USE MOD_DG_Vars             ,ONLY: UPrim
@@ -636,7 +634,7 @@ USE MOD_Jac_Ex_Vars         ,ONLY: FV_sdx_ZETA_extended
 USE MOD_FV_Vars             ,ONLY: gradUzeta,FV_dx_ZETA_L,FV_dx_ZETA_R
 #endif
 #endif
-#if EQNSYSNR==2 && PARABOLIC
+#if PARABOLIC
 USE MOD_Precond_Vars        ,ONLy: HyperbolicPrecond
 USE MOD_Lifting_Vars        ,ONLY: gradUx,gradUy,gradUz
 USE MOD_Jacobian            ,ONLY: EvalDiffFluxJacobian 
@@ -644,7 +642,7 @@ USE MOD_DG_Vars             ,ONLY: U,nDOFElem
 #if EDDYVISCOSITY
 USE MOD_EddyVisc_Vars       ,ONLY: muSGS
 #endif /*EDDYVISCOSITY*/
-#endif /*EQNSYSNR && PARABOLIC*/
+#endif /*PARABOLIC*/
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -652,7 +650,7 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)    :: iElem                                     !< current element index
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(INOUT)    :: BJ(1:nDOFElem*PP_nVar,1:nDOFElem*PP_nVar) !< block-Jacobian of current element
+REAL,INTENT(INOUT)    :: BJ(1:nDOFVarElem,1:nDOFVarElem)           !< block-Jacobian of current element
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
 REAL,DIMENSION(1:PP_nVar,1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ):: dFdU_plus,dFdU_minus
@@ -694,9 +692,8 @@ vn2 = vn1*(PP_N+1)
 dfDU_plus  = 0
 dFdU_minus = 0
 
-#if EQNSYSNR==2 && PARABOLIC
-!No CALL of EvalDiffFlux Jacobian for EQNSYSNR==1, since the diffusive flux is not depending on U
-IF(HyperbolicPrecond.EQV..FALSE.) THEN !Euler Precond = False
+#if PARABOLIC
+IF (.NOT.(HyperbolicPrecond)) THEN
   ! dF^visc/DU
   CALL EvalDiffFluxJacobian(nDOFElem,U(:,:,:,:,iElem),UPrim(:,:,:,:,iElem) &
                             ,gradUx(:,:,:,:,iElem) &
@@ -708,7 +705,7 @@ IF(HyperbolicPrecond.EQV..FALSE.) THEN !Euler Precond = False
 #endif
                             )
 END IF !HyperbolicPrecond
-#endif /*EQNSYSNR && PARABOLIC*/
+#endif /*PARABOLIC*/
 
 ! === Xi-Direction ================================================================================================================
 #if FV_RECONSTRUCT
@@ -719,6 +716,7 @@ SideID_plus          = ElemToSide(E2S_SIDE_ID,XI_PLUS ,iElem)
 DO p=0,PP_N
   DO q=0,PP_NZ
     DO i=0,PP_N
+      ! calculate the values at the interface
 #if FV_RECONSTRUCT
       FV_UPrim_Xiplus_loc( :,i) = UPrim(:,i,p,q,iElem) + gradUxi(:,p,q,i,iElem) * FV_dx_XI_R(p,q,i,iElem)
       FV_UPrim_Ximinus_loc(:,i) = UPrim(:,i,p,q,iElem) - gradUxi(:,p,q,i,iElem) * FV_dx_XI_L(p,q,i,iElem)
@@ -734,10 +732,12 @@ DO p=0,PP_N
     FV_U_plus_Tilde      = FV_U_Xiplus_loc(     :,:)
     FV_U_minus_Tilde     = FV_U_Ximinus_loc(    :,:)
 #if FV_RECONSTRUCT
+    ! calculate the jacobian of the reconstruction procedure: conservative surface solution w.r.t. conservative volume solution
     CALL FV_Reconstruction_Derivative(FV_sdx_XI_extended(p,q,:,iElem),FV_dx_XI_L(p,q,:,iElem),FV_dx_XI_R(p,q,:,iElem), &
                                       FV_UPrim_Xiplus_loc(:,:),FV_UPrim_Ximinus_loc(:,:),                              &
                                       UPrim_extended(:,:,p,q,iElem),dUdUvol_plus(:,:,:,:),dUdUvol_minus(:,:,:,:))
 #endif
+    ! for the calculation of the flux jacobian a finite difference approach is used so that all Riemann solvers can be plugged in
     DO i=1,PP_N
       CALL Riemann_Point(F(:,i-1,p,q),                             &
                    FV_U_Xiplus_loc(     :,i-1),                    &
@@ -775,6 +775,9 @@ DO p=0,PP_N
                      FV_NormVecXi(        :,p  ,q,i,iElem),           &
                      FV_TangVec1Xi(       :,p  ,q,i,iElem),           &
                      FV_TangVec2Xi(       :,p  ,q,i,iElem),.FALSE.)
+        ! dFdU_plus gives derivative of numerical flux w.r.t. left (i-1) solution
+        ! dFdU_minus gives derivative of numerical flux w.r.t. right (i) solution
+        ! flux has positive sign for left cell (i-1) and negative sign for right cell (i)
         DO iVar=1,PP_nVar
           dFdU_plus( iVar,jVar,i-1,p,q) =  FV_SurfElemXi_sw(p,q,i,iElem)*(F_Tilde(iVar,i-1,p,q) - F(iVar,i-1,p,q))*sreps0_L
           dFdU_plus( iVar,jVar,i  ,p,q) = -FV_SurfElemXi_sw(p,q,i,iElem)*(F_Tilde(iVar,i-1,p,q) - F(iVar,i-1,p,q))*sreps0_L
@@ -787,13 +790,20 @@ DO p=0,PP_N
         FV_U_minus_Tilde(jVar,i) = FV_U_Ximinus_loc(jVar,i)
       END DO !jVar
       ! assemble preconditioner
+      ! indices give neighbors of considered DOFs; dependency on m,l is due to reconstruction procedure:
+      !   m   r   s   l
+      ! |---|---|---|---|
+      !         ^
+      !         |
+      !        F*
+      !      F+   F-
       r = vn1*p + vn2*q + PP_nVar*(i-1)
       s = vn1*p + vn2*q + PP_nVar*i
 #if FV_RECONSTRUCT
       m = vn1*p + vn2*q + PP_nVar*(i-2)
       l = vn1*p + vn2*q + PP_nVar*(i+1)
       ! derivatives with respect to i-2
-      IF(i.GT.1)THEN ! i-2 is not at neighboring element
+      IF(i.GT.1)THEN ! i-2 is not at neighboring element (is not part of considered element)
         matrix=dFdU_plus( :,:,i-1,p,q); vector=dUdUvol_plus( :,:,i-1,1)
         BJ(r+1:r+PP_nVar,m+1:m+PP_nVar) = BJ(r+1:r+PP_nVar,m+1:m+PP_nVar) + MATMUL(matrix,vector)
         matrix=dFdU_plus( :,:,i  ,p,q); vector=dUdUvol_plus( :,:,i-1,1)
@@ -825,13 +835,17 @@ DO p=0,PP_N
         BJ(s+1:s+PP_nVar,l+1:l+PP_nVar) = BJ(s+1:s+PP_nVar,l+1:l+PP_nVar) + MATMUL(matrix,vector)
       END IF
 #else
+      ! without reconstruction the F* is only depending on direct neighbours: r,s
       BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) = BJ(r+1:r+PP_nVar,r+1:r+PP_nVar) + dFdU_plus( :,:,i-1,p,q)
       BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + dFdU_minus(:,:,i-1,p,q)
       BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) + dFdU_minus(:,:,i  ,p,q)
       BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) + dFdU_plus( :,:,i  ,p,q)
 #endif
-#if EQNSYSNR==2 && PARABOLIC
-      IF(HyperbolicPrecond.EQV..FALSE.) THEN
+#if PARABOLIC
+      IF (.NOT.(HyperbolicPrecond)) THEN
+        ! add Jacobian of viscous flux w.r.t solution (with constant gradients): DF^v/DU|_grad=const.
+        ! use mean of left and right flux=> F^v* is only depending on direct neighbours: r,s
+        ! transform the fluxes into normal direction and multiply with surface element to do "surface" integral
         Jac_Visc_plus  = 0.5*(FV_NormVecXi(1,p,q,i,iElem)*fJac_visc(:,:,i-1,p,q) + &
                               FV_NormVecXi(2,p,q,i,iElem)*gJac_visc(:,:,i-1,p,q) + &
                               FV_NormVecXi(3,p,q,i,iElem)*hJac_visc(:,:,i-1,p,q))
@@ -844,7 +858,7 @@ DO p=0,PP_N
         BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) - FV_SurfElemXi_sw(p,q,i,iElem) * Jac_Visc_minus
         BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) - FV_SurfElemXi_sw(p,q,i,iElem) * Jac_Visc_plus
       END IF
-#endif /*EQNSYSNR && PARABOLIC*/
+#endif /*PARABOLIC*/
     END DO !i
   END DO !p
 END DO !q
@@ -969,8 +983,8 @@ DO p=0,PP_N
       BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) + dFdU_minus(:,:,p,j  ,q)
       BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) + dFdU_plus( :,:,p,j  ,q)
 #endif
-#if EQNSYSNR==2 && PARABOLIC
-      IF(HyperbolicPrecond.EQV..FALSE.) THEN
+#if PARABOLIC
+      IF (.NOT.(HyperbolicPrecond)) THEN
         Jac_Visc_plus  = 0.5*(FV_NormVecEta(1,p,q,j,iElem)*fJac_visc(:,:,p,j-1,q) + &
                               FV_NormVecEta(2,p,q,j,iElem)*gJac_visc(:,:,p,j-1,q) + &
                               FV_NormVecEta(3,p,q,j,iElem)*hJac_visc(:,:,p,j-1,q))
@@ -983,7 +997,7 @@ DO p=0,PP_N
         BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) - FV_SurfElemEta_sw(p,q,j,iElem) * Jac_Visc_minus
         BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) - FV_SurfElemEta_sw(p,q,j,iElem) * Jac_Visc_plus
       END IF
-#endif /*EQNSYSNR && PARABOLIC*/
+#endif /*PARABOLIC*/
     END DO !j
   END DO !p
 END DO !q
@@ -1110,8 +1124,8 @@ DO p=0,PP_N
       BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) + dFdU_minus(:,:,p,q,k  )
       BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) + dFdU_plus( :,:,p,q,k  )
 #endif
-#if EQNSYSNR==2 && PARABOLIC
-      IF(HyperbolicPrecond.EQV..FALSE.) THEN
+#if PARABOLIC
+      IF (.NOT.(HyperbolicPrecond)) THEN
         Jac_Visc_plus  = 0.5*(FV_NormVecZeta(1,p,q,k,iElem)*fJac_visc(:,:,p,q,k-1) + &
                               FV_NormVecZeta(2,p,q,k,iElem)*gJac_visc(:,:,p,q,k-1) + &
                               FV_NormVecZeta(3,p,q,k,iElem)*hJac_visc(:,:,p,q,k-1))
@@ -1124,7 +1138,7 @@ DO p=0,PP_N
         BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) - FV_SurfElemZeta_sw(p,q,k,iElem) * Jac_Visc_minus
         BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) = BJ(s+1:s+PP_nVar,r+1:r+PP_nVar) - FV_SurfElemZeta_sw(p,q,k,iElem) * Jac_Visc_plus
       END IF
-#endif /*EQNSYSNR && PARABOLIC*/
+#endif /*PARABOLIC*/
     END DO !k
   END DO !p
 END DO !q
@@ -1160,40 +1174,39 @@ USE MOD_FV_Vars            ,ONLY: FV_NormVecZeta,FV_SurfElemZeta_sw
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER,INTENT(IN) :: iElem
+INTEGER,INTENT(IN)    :: iElem                                     !< current element index
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(INOUT)    :: BJ(1:nDOFVarElem,1:nDOFVarElem)
+REAL,INTENT(INOUT)    :: BJ(1:nDOFVarElem,1:nDOFVarElem)           !< block-Jacobian of current element
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
-INTEGER                                                                    :: p,q,i,j,k
-INTEGER                                                                    :: vn1,vn2,r,s,m,l,rr,ss,rrr,sss
-REAL,DIMENSION(PP_nVarPrim,PP_nVar    ,0:PP_N,0:PP_N,0:PP_NZ)              :: PrimConsJac
-REAL,DIMENSION(PP_nVarPrim,PP_nVar    ,2,2)                                :: PrimConsJacDiag
-REAL,DIMENSION(PP_nVar    ,PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ)              :: fJacQx,gJacQx,hJacQx
-REAL,DIMENSION(PP_nVar    ,PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ)              :: fJacQy,gJacQy,hJacQy
-REAL,DIMENSION(PP_nVar    ,PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ)              :: fJacQz,gJacQz,hJacQz
-REAL,DIMENSION(PP_nVar    ,PP_nVarPrim)                                    :: JacQx_plus,JacQx_minus,JacQy_plus,JacQy_minus
-REAL,DIMENSION(PP_nVar    ,PP_nVarPrim)                                    :: fJacTilde_plus,gJacTilde_plus
-REAL,DIMENSION(PP_nVar    ,PP_nVarPrim)                                    :: fJacTilde_minus,gJacTilde_minus
+INTEGER                                                       :: p,q,i,j,k
+INTEGER                                                       :: vn1,vn2,r,s,m,l,rr,ss,rrr,sss
+REAL,DIMENSION(PP_nVarPrim,PP_nVar    ,0:PP_N,0:PP_N,0:PP_NZ) :: PrimConsJac
+REAL,DIMENSION(PP_nVarPrim,PP_nVar    ,2,2)                   :: PrimConsJacDiag
+REAL,DIMENSION(PP_nVar    ,PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ) :: fJacQx,gJacQx,hJacQx
+REAL,DIMENSION(PP_nVar    ,PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ) :: fJacQy,gJacQy,hJacQy
+REAL,DIMENSION(PP_nVar    ,PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ) :: fJacQz,gJacQz,hJacQz
+REAL,DIMENSION(PP_nVar    ,PP_nVarPrim)                       :: JacQx_plus,JacQx_minus,JacQy_plus,JacQy_minus
+REAL,DIMENSION(PP_nVar    ,PP_nVarPrim)                       :: fJacTilde_plus,gJacTilde_plus
+REAL,DIMENSION(PP_nVar    ,PP_nVarPrim)                       :: fJacTilde_minus,gJacTilde_minus
 #if PP_dim==3
-REAL,DIMENSION(PP_nVar    ,PP_nVarPrim)                                    :: JacQz_plus,JacQz_minus
-REAL,DIMENSION(PP_nVar    ,PP_nVarPrim)                                    :: hJacTilde_minus,hJacTilde_plus
-REAL,DIMENSION(0:PP_N,0:PP_N,0:PP_N,0:PP_N,3)                              :: JacReconstruct_Z
+REAL,DIMENSION(PP_nVar    ,PP_nVarPrim)                       :: JacQz_plus,JacQz_minus
+REAL,DIMENSION(PP_nVar    ,PP_nVarPrim)                       :: hJacTilde_minus,hJacTilde_plus
+REAL,DIMENSION(0:PP_N,0:PP_N,0:PP_N,0:PP_N,3)                 :: JacReconstruct_Z
 #endif
-REAL,DIMENSION(0:PP_N,0:PP_N,0:PP_NZ,0:PP_N,PP_dim)                        :: JacReconstruct_X,JacReconstruct_Y
+REAL,DIMENSION(0:PP_N,0:PP_N,0:PP_NZ,0:PP_N,PP_dim)           :: JacReconstruct_X,JacReconstruct_Y
 !===================================================================================================================================
 vn1=PP_nVar*(PP_N+1)
 vn2=vn1*(PP_N+1)
-! Calculation of derivative of gradUPrim with respect to UPrim_vol
+! Calculation of derivative of gradUPrim with respect to UPrim_vol: DQ_prim/DU_prim
 CALL JacFVGradients_Vol(1,iElem,JacReconstruct_X) !d(Q^1)/dU(1:3) (3 sums)
 CALL JacFVGradients_Vol(2,iElem,JacReconstruct_Y) !d(Q^2)/dU(1:3)
 #if PP_dim==3
 CALL JacFVGradients_Vol(3,iElem,JacReconstruct_Z) !d(Q^3)/dU(1:3)
 #endif
 
-! Calculation of the derivative of the diffusive flux with respect to gradUPrim
-! dF/dQ
+! Calculation of the derivative of the diffusive flux with respect to gradUPrim: dF^v/dQ_prim
 CALL EvalFluxGradJacobian(nDOFElem,U(:,:,:,:,iElem),UPrim(:,:,:,:,iElem) &
                           ,fJacQx,fJacQy,fJacQz &
                           ,gJacQx,gJacQy,gJacQz &
@@ -1202,15 +1215,17 @@ CALL EvalFluxGradJacobian(nDOFElem,U(:,:,:,:,iElem),UPrim(:,:,:,:,iElem) &
                           ,muSGS(:,:,:,:,iElem) &
 #endif
                          )
-! Calculation of the derivative of UPrim_vol with respect to UCons_vol
+! Calculation of the derivative of UPrim_vol with respect to UCons_vol: DU_prim/DU_cons
 DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
   CALL dPrimTempdCons(UPrim(:,i,j,k,iElem),PrimConsJac(:,:,i,j,k))
 END DO; END DO; END DO! i,j,k=0,PP_N
 
+! Assembling of preconditioner
 ! === Xi-Direction ================================================================================================================
 DO p=0,PP_N
   DO q=0,PP_NZ
     DO i=1,PP_N
+      ! x-gradient
       fJacTilde_plus =fJacQx(:,:,i-1,p,q)
       gJacTilde_plus =gJacQx(:,:,i-1,p,q)
       fJacTilde_minus=fJacQx(:,:,i  ,p,q)
@@ -1219,6 +1234,8 @@ DO p=0,PP_N
       hJacTilde_plus =hJacQx(:,:,i-1,p,q)
       hJacTilde_minus=hJacQx(:,:,i  ,p,q)
 #endif
+      ! transform the fluxes into normal direction and multiply with surface element to do "surface" integral
+      ! factor "0.5" is due to the use of the mean value in the viscous numerical flux function
       JacQx_plus  =  0.5*(fJacTilde_plus( :,:)*FV_NormVecXi(1,p,q,i,iElem) &
                          +gJacTilde_plus( :,:)*FV_NormVecXi(2,p,q,i,iElem) &
 #if PP_dim==3
@@ -1231,6 +1248,7 @@ DO p=0,PP_N
                          +hJacTilde_minus(:,:)*FV_NormVecXi(3,p,q,i,iElem) &
 #endif
                          )*FV_SurfElemXi_sw(p,q,i,iElem)
+      ! y-gradient
       fJacTilde_plus =fJacQy(:,:,i-1,p,q)
       gJacTilde_plus =gJacQy(:,:,i-1,p,q)
       fJacTilde_minus=fJacQy(:,:,i  ,p,q)
@@ -1252,6 +1270,7 @@ DO p=0,PP_N
 #endif
                          )*FV_SurfElemXi_sw(p,q,i,iElem)
 #if PP_dim==3
+      ! z-gradient
       fJacTilde_plus =fJacQz(:,:,i-1,p,q)
       gJacTilde_plus =gJacQz(:,:,i-1,p,q)
       fJacTilde_minus=fJacQz(:,:,i  ,p,q)
@@ -1268,20 +1287,41 @@ DO p=0,PP_N
                          )*FV_SurfElemXi_sw(p,q,i,iElem)
 #endif
       ! assemble preconditioner
+      ! indices give neighbors of considered DOFs; dependency on m,l is due to reconstruction procedure:
+      !   m   r   s   l
+      ! |---|---|---|---|
+      !         ^
+      !         |
+      !        F*
+      !      F+   F-
       r = vn1*p + vn2*q + PP_nVar*(i-1)
       s = vn1*p + vn2*q + PP_nVar*i
       m = vn1*p + vn2*q + PP_nVar*(i-2)
       l = vn1*p + vn2*q + PP_nVar*(i+1)
-      IF(NoFillIn.EQV..FALSE.) THEN !NoFillIn has the same sparsity as the HyperbolicPrecond
+      IF (.NOT.(NoFillIn)) THEN
+        ! indices give neighbors of considered DOFs in ETA direction
+        !      ETA
+        !  _____^_____
+        !  |    |    | 
+        !  |rrr |sss | 
+        !  |____|____|
+        !  |    F*   | 
+        !  | r  =  s |->XI
+        !  |____|____|
+        !  |    |    | 
+        !  | rr | ss | 
+        !  |____|____|
         rr  = vn1*(p-1) + vn2*q + PP_nVar*(i-1)
         rrr = vn1*(p+1) + vn2*q + PP_nVar*(i-1)
         ss  = vn1*(p-1) + vn2*q + PP_nVar*i
         sss = vn1*(p+1) + vn2*q + PP_nVar*i
         PrimConsJacDiag = 0.
+        ! only consider dependency if the DOF is in the currently considered element
         IF(p.GE.1)    PrimConsJacDiag(:,:,1,1) = PrimConsJac(:,:,i-1,p-1,q)
         IF(p.LT.PP_N) PrimConsJacDiag(:,:,1,2) = PrimConsJac(:,:,i-1,p+1,q)
         IF(p.GE.1)    PrimConsJacDiag(:,:,2,1) = PrimConsJac(:,:,i  ,p-1,q)
         IF(p.LT.PP_N) PrimConsJacDiag(:,:,2,2) = PrimConsJac(:,:,i  ,p+1,q)
+        ! assemble the preconditioner for the dependencies of XI-flux w.r.t. ETA-gradients
         CALL Assemble_FVVolIntGradJacDiag(i,r,s,p,rr,rrr,ss,sss,PrimConsJacDiag,PrimConsJac(:,:,:,p,q),                     &
                                           JacQx_plus,JacQy_plus,JacQx_minus,JacQy_minus,                                    &
                                           JacReconstruct_X(i-1,:,q,:,2),JacReconstruct_X(i,:,q,:,2),                        &
@@ -1291,15 +1331,18 @@ DO p=0,PP_N
 #endif
                                           BJ)
 #if PP_dim==3
+        ! indices give neighbors of considered DOFs in ZETA direction
         rr  = vn1*p + vn2*(q-1) + PP_nVar*(i-1)
         rrr = vn1*p + vn2*(q+1) + PP_nVar*(i-1)
         ss  = vn1*p + vn2*(q-1) + PP_nVar*i
         sss = vn1*p + vn2*(q+1) + PP_nVar*i
         PrimConsJacDiag = 0.
+        ! only consider dependency if the DOF is in the currently considered element
         IF(q.GE.1)    PrimConsJacDiag(:,:,1,1) = PrimConsJac(:,:,i-1,p,q-1)
         IF(q.LT.PP_N) PrimConsJacDiag(:,:,1,2) = PrimConsJac(:,:,i-1,p,q+1)
         IF(q.GE.1)    PrimConsJacDiag(:,:,2,1) = PrimConsJac(:,:,i  ,p,q-1)
         IF(q.LT.PP_N) PrimConsJacDiag(:,:,2,2) = PrimConsJac(:,:,i  ,p,q+1)
+        ! assemble the preconditioner for the dependencies of XI-flux w.r.t. ZETA-gradients
         CALL Assemble_FVVolIntGradJacDiag(i,r,s,q,rr,rrr,ss,sss,PrimConsJacDiag,PrimConsJac(:,:,:,p,q),                     &
                                           JacQx_plus,JacQy_plus,JacQx_minus,JacQy_minus,                                    &
                                           JacReconstruct_X(i-1,p,:,:,3),JacReconstruct_X(i,p,:,:,3),                        &
@@ -1308,6 +1351,7 @@ DO p=0,PP_N
                                           BJ)
 #endif
       END IF
+      ! assemble the preconditioner for the dependencies of XI-flux w.r.t. XI-gradients
       CALL Assemble_FVVolIntGradJac(i,r,s,m,l,PrimConsJac(:,:,:,p,q),JacQx_plus,JacQy_plus,JacQx_minus,JacQy_minus, &
                                     JacReconstruct_X(:,p,q,:,1),JacReconstruct_Y(:,p,q,:,1),                        &
 #if PP_dim==3
@@ -1382,7 +1426,7 @@ DO p=0,PP_N
       s = vn1*j     + vn2*q + PP_nVar*p
       m = vn1*(j-2) + vn2*q + PP_nVar*p
       l = vn1*(j+1) + vn2*q + PP_nVar*p
-      IF(NoFillIn.EQV..FALSE.) THEN !NoFillIn has the same sparsity as the HyperbolicPrecond
+      IF (.NOT.(NoFillIn)) THEN
         rr  = vn1*(j-1) + vn2*q + PP_nVar*(p-1)
         rrr = vn1*(j-1) + vn2*q + PP_nVar*(p+1)
         ss  = vn1*j     + vn2*q + PP_nVar*(p-1)
@@ -1479,7 +1523,7 @@ DO p=0,PP_N
       s = vn1*q + vn2*k     + PP_nVar*p
       m = vn1*q + vn2*(k-2) + PP_nVar*p
       l = vn1*q + vn2*(k+1) + PP_nVar*p
-      IF(NoFillIn.EQV..FALSE.) THEN !NoFillIn has the same sparsity as the HyperbolicPrecond
+      IF (.NOT.(NoFillIn)) THEN
         rr  = vn1*q + vn2*(k-1) + PP_nVar*(p-1)
         rrr = vn1*q + vn2*(k-1) + PP_nVar*(p+1)
         ss  = vn1*q + vn2*k     + PP_nVar*(p-1)
@@ -1522,7 +1566,11 @@ END DO !p
 END SUBROUTINE FVVolIntGradJac
 
 !===================================================================================================================================
-!>
+!> This routine does the assembling of the dependencys of the viscous flux on the solution via the gradients:
+!> dF^v/dQ_prim* DQ_prim/DU_prim* DU_prim/DU_cons
+!> It does the multiplication of the three terms and assembles them into the preconditioner.
+!> This is done here for e.g. flux over XI-sides w.r.t. gradients in XI-direction (flux and gradients aligned).
+!> Only take dependencies if the DOF is inside of the current element.
 !===================================================================================================================================
 SUBROUTINE Assemble_FVVolIntGradJac(i,r,s,m,l, &
                                     PrimConsJac,JacQx_plus,JacQy_plus,JacQx_minus,JacQy_minus,JacReconstruct_X,JacReconstruct_Y, &
@@ -1539,21 +1587,30 @@ USE MOD_Precond_Vars  ,ONLY: NoFillIn
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER,INTENT(IN)                                        :: i,r,s,m,l
-REAL,DIMENSION(PP_nVarPrim,PP_nVar    ,0:PP_N),INTENT(IN) :: PrimConsJac
-REAL,DIMENSION(PP_nVar    ,PP_nVarPrim)       ,INTENT(IN) :: JacQx_plus,JacQy_plus,JacQx_minus,JacQy_minus
-REAL,DIMENSION(0:PP_N,0:PP_N)                 ,INTENT(IN) :: JacReconstruct_X,JacReconstruct_Y
+INTEGER,INTENT(IN)                                        :: i                !< index of current DOF of considered flux direction
+INTEGER,INTENT(IN)                                        :: r                !< one dimensional index of index left of flux
+INTEGER,INTENT(IN)                                        :: s                !< one dimensional index of index right of flux
+INTEGER,INTENT(IN)                                        :: m                !< one dimensional index of index left-left of flux
+INTEGER,INTENT(IN)                                        :: l                !< one dimensional index of index right-right of flux
+REAL,DIMENSION(PP_nVarPrim,PP_nVar    ,0:PP_N),INTENT(IN) :: PrimConsJac      !< DU_prim/DU_cons along considered flux direction
+REAL,DIMENSION(PP_nVar    ,PP_nVarPrim)       ,INTENT(IN) :: JacQx_plus       !< dF^v/dQx_prim in considered flux direction
+REAL,DIMENSION(PP_nVar    ,PP_nVarPrim)       ,INTENT(IN) :: JacQy_plus       !< dF^v/dQy_prim in considered flux direction
+REAL,DIMENSION(PP_nVar    ,PP_nVarPrim)       ,INTENT(IN) :: JacQx_minus      !< dF^v/dQx_prim in considered flux direction
+REAL,DIMENSION(PP_nVar    ,PP_nVarPrim)       ,INTENT(IN) :: JacQy_minus      !< dF^v/dQy_prim in considered flux direction
+REAL,DIMENSION(0:PP_N,0:PP_N)                 ,INTENT(IN) :: JacReconstruct_X !< DQx_prim/DU_prim in considered flux direction
+REAL,DIMENSION(0:PP_N,0:PP_N)                 ,INTENT(IN) :: JacReconstruct_Y !< DQy_prim/DU_prim in considered flux direction
 #if PP_dim==3
-REAL,DIMENSION(PP_nVar    ,PP_nVarPrim)       ,INTENT(IN) :: JacQz_plus,JacQz_minus
-REAL,DIMENSION(0:PP_N,0:PP_N)                 ,INTENT(IN) :: JacReconstruct_Z
+REAL,DIMENSION(PP_nVar    ,PP_nVarPrim)       ,INTENT(IN) :: JacQz_plus       !< dF^v/dQz_prim in considered flux direction
+REAL,DIMENSION(PP_nVar    ,PP_nVarPrim)       ,INTENT(IN) :: JacQz_minus      !< dF^v/dQz_prim in considered flux direction
+REAL,DIMENSION(0:PP_N,0:PP_N)                 ,INTENT(IN) :: JacReconstruct_Z !< DQz_prim/DU_prim in considered flux direction
 #endif
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(INOUT)    :: BJ(1:nDOFVarElem,1:nDOFVarElem)
+REAL,INTENT(INOUT)    :: BJ(1:nDOFVarElem,1:nDOFVarElem)                      !< block-Jacobian of current element
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
-REAL,DIMENSION(PP_nVar    ,PP_nVarPrim)                          :: JacTilde
-REAL,DIMENSION(PP_nVar    ,PP_nVar)                              :: Jac
+REAL,DIMENSION(PP_nVar,PP_nVarPrim) :: JacTilde
+REAL,DIMENSION(PP_nVar,PP_nVar)     :: Jac
 !===================================================================================================================================
 !----------- derivatives w.r.t. (i-2) -------------!
 IF(i.GT.1)THEN
@@ -1566,7 +1623,8 @@ IF(i.GT.1)THEN
                  )
   Jac(:,:) = MATMUL(JacTilde(:,:),PrimConsJac(:,:,i-2))
   BJ(r+1:r+PP_nVar,m+1:m+PP_nVar) = BJ(r+1:r+PP_nVar,m+1:m+PP_nVar) + Jac
-  IF(NoFillIn.EQV..FALSE.) THEN !NoFillIn has the same sparsity as the HyperbolicPrecond
+  !todo: take this dependency? not present for hyperbolic FV preconditioner but always present for hyperbolic DG preconditioner
+  IF (.NOT.(NoFillIn)) THEN
     ! (i) Flux w.r.t. (i-2) State
     JacTilde(:,:)= ( JacQx_plus * JacReconstruct_X(i-1,i-2) &
                    + JacQy_plus * JacReconstruct_Y(i-1,i-2) &
@@ -1626,7 +1684,8 @@ BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + Jac
 BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) - Jac
 !----------- derivatives w.r.t. (i+1) -------------!
 IF(i.LT.PP_N)THEN
-  IF(NoFillIn.EQV..FALSE.) THEN !NoFillIn has the same sparsity as the HyperbolicPrecond
+  !todo: take this dependency? not present for hyperbolic FV preconditioner but always present for hyperbolic DG preconditioner
+  IF (.NOT.(NoFillIn)) THEN
     ! (i-1) Flux w.r.t (i+1) State
     JacTilde(:,:)= ( JacQx_minus* JacReconstruct_X(i  ,i+1) &
                    + JacQy_minus* JacReconstruct_Y(i  ,i+1) &
@@ -1651,8 +1710,11 @@ END IF
 END SUBROUTINE Assemble_FVVolIntGradJac
 
 !===================================================================================================================================
-!> use if e.g. flux over XI-sides w.r.t. gradients in y-direction are considered.
-!> fill diagonal dependencies
+!> This routine does the assembling of the dependencys of the viscous flux on the solution via the gradients:
+!> dF^v/dQ_prim* DQ_prim/DU_prim* DU_prim/DU_cons
+!> It does the multiplication of the three terms and assembles them into the preconditioner.
+!> This is done here for e.g. flux over XI-sides w.r.t. gradients in ETA-direction (flux and gradients NOT aligned).
+!> Only take dependencies if the DOF is inside of the current element.
 !===================================================================================================================================
 SUBROUTINE Assemble_FVVolIntGradJacDiag(i,r,s,p,rr,rrr,ss,sss,PrimConsJacDiag, &
                                        PrimConsJac,JacQx_plus,JacQy_plus,JacQx_minus,JacQy_minus, &
@@ -1669,24 +1731,45 @@ USE MOD_Implicit_Vars ,ONLY: nDOFVarElem
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER,INTENT(IN)                                        :: i,r,s,p,rr,rrr,ss,sss
-REAL,DIMENSION(PP_nVarPrim,PP_nVar    ,2,2)   ,INTENT(IN) :: PrimConsJacDiag
-REAL,DIMENSION(PP_nVarPrim,PP_nVar    ,0:PP_N),INTENT(IN) :: PrimConsJac
-REAL,DIMENSION(PP_nVar    ,PP_nVarPrim)       ,INTENT(IN) :: JacQx_plus,JacQy_plus,JacQx_minus,JacQy_minus
-REAL,DIMENSION(0:PP_N,0:PP_N)                 ,INTENT(IN) :: JacReconstruct_X_plus,JacReconstruct_X_minus
-REAL,DIMENSION(0:PP_N,0:PP_N)                 ,INTENT(IN) :: JacReconstruct_Y_plus,JacReconstruct_Y_minus
+INTEGER,INTENT(IN)                                    :: i                      !< index of current DOF of considered flux direction
+INTEGER,INTENT(IN)                                    :: p                      !< index of current DOF of considered gradient dir
+INTEGER,INTENT(IN)                                    :: r,s,rr,rrr,ss,sss      !< 1D-index of neighboring DOFs
+REAL,DIMENSION(PP_nVarPrim,PP_nVar,2,2)   ,INTENT(IN) :: PrimConsJacDiag        !< DU_prim/DU_cons for rr,rrr,ss,sss DOFs
+REAL,DIMENSION(PP_nVarPrim,PP_nVar,0:PP_N),INTENT(IN) :: PrimConsJac            !< DU_prim/DU_cons along considered flux direction
+REAL,DIMENSION(PP_nVar    ,PP_nVarPrim)   ,INTENT(IN) :: JacQx_plus             !< dF^v/dQx_prim in considered flux direction
+REAL,DIMENSION(PP_nVar    ,PP_nVarPrim)   ,INTENT(IN) :: JacQy_plus             !< dF^v/dQy_prim in considered flux direction
+REAL,DIMENSION(PP_nVar    ,PP_nVarPrim)   ,INTENT(IN) :: JacQx_minus            !< dF^v/dQx_prim in considered flux direction
+REAL,DIMENSION(PP_nVar    ,PP_nVarPrim)   ,INTENT(IN) :: JacQy_minus            !< dF^v/dQy_prim in considered flux direction
+REAL,DIMENSION(0:PP_N,0:PP_N)             ,INTENT(IN) :: JacReconstruct_X_plus  !< DQx_prim/DU_prim in considered gradient direction
+REAL,DIMENSION(0:PP_N,0:PP_N)             ,INTENT(IN) :: JacReconstruct_X_minus !< DQx_prim/DU_prim in considered gradient direction
+REAL,DIMENSION(0:PP_N,0:PP_N)             ,INTENT(IN) :: JacReconstruct_Y_plus  !< DQy_prim/DU_prim in considered gradient direction
+REAL,DIMENSION(0:PP_N,0:PP_N)             ,INTENT(IN) :: JacReconstruct_Y_minus !< DQy_prim/DU_prim in considered gradient direction
 #if PP_dim==3
-REAL,DIMENSION(PP_nVar    ,PP_nVarPrim)       ,INTENT(IN) :: JacQz_plus,JacQz_minus
-REAL,DIMENSION(0:PP_N,0:PP_N)                 ,INTENT(IN) :: JacReconstruct_Z_plus,JacReconstruct_Z_minus
+REAL,DIMENSION(PP_nVar    ,PP_nVarPrim)   ,INTENT(IN) :: JacQz_plus,JacQz_minus !< dF^v/dQz_prim in considered flux direction
+REAL,DIMENSION(0:PP_N,0:PP_N)             ,INTENT(IN) :: JacReconstruct_Z_plus  !< DQz_prim/DU_prim in considered gradient direction
+REAL,DIMENSION(0:PP_N,0:PP_N)             ,INTENT(IN) :: JacReconstruct_Z_minus !< DQz_prim/DU_prim in considered gradient direction
 #endif
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(INOUT)    :: BJ(1:nDOFVarElem,1:nDOFVarElem)
+REAL,INTENT(INOUT)    :: BJ(1:nDOFVarElem,1:nDOFVarElem)                        !< block-Jacobian of current element
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
-REAL,DIMENSION(PP_nVar    ,PP_nVarPrim)                          :: JacTilde
-REAL,DIMENSION(PP_nVar    ,PP_nVar)                              :: Jac
+REAL,DIMENSION(PP_nVar,PP_nVarPrim) :: JacTilde
+REAL,DIMENSION(PP_nVar,PP_nVar)     :: Jac
 !===================================================================================================================================
+! Note on index nomenclature e.g. flux over XI-side, gradients in ETA-direction:
+! i gives index along XI-direction (flux dir), p gives index along ETA-direction (gradient dir)
+!      ETA
+!  _____^_____
+!  |    |    | 
+!  |rrr |sss | 
+!  |____|____|
+!  |    F*   | 
+!  | r  = s, |->XI
+!  |____|_i,p|
+!  |    |    | 
+!  | rr | ss | 
+!  |____|____|
 !----------- derivatives w.r.t. (i) -------------!
 ! (i-1) Flux w.r.t (i-1) State
 JacTilde(:,:)= ( JacQx_plus * JacReconstruct_X_plus(p  ,p  ) &

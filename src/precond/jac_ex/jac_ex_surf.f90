@@ -517,15 +517,15 @@ IF (.NOT.HyperbolicPrecond) THEN
   CALL dQOuter(3,iElem,dQzOuter_dUvol)
 #endif
 
-! What is left now:
-!   DF^v/DF^v_surf * DF^v(U,Q(U))_surf/DQ_surf * DQ_surf/DU
-! = DF^v/DF^v_surf * 0.5*(D(F^v_L)/DQ_surf_L * DQ_surf_L/DU + D(F^v_R)/DQ_surf_R * DQ_surf_R/DU)
-! We split DQ_surf_L/DU:
-! DQ_surf_L/DU = DQ_surf_L|_VolInt/DU_prim * DU_prim/DU + DQ_surf_L|_SurfInt/DU_Lprim * DU_Lprim/DU_Lcons * DU_Lcons/DU
-! We first compute the term:
-! 0.5*(D(F^v_L)/DQ_surf_L * DQ_surf_L|_VolInt/DU_prim * DU_prim/DU
-!  => Df_dQxInner              => dQxVol_dU             => PrimConsJac
-! How is the viscous flux in the volume depending on the volume DOFs via the volume integral of the lifting?
+  ! What is left now:
+  !   DF^v/DF^v_surf * DF^v(U,Q(U))_surf/DQ_surf * DQ_surf/DU
+  ! = DF^v/DF^v_surf * 0.5*(D(F^v_L)/DQ_surf_L * DQ_surf_L/DU + D(F^v_R)/DQ_surf_R * DQ_surf_R/DU)
+  ! We split DQ_surf_L/DU:
+  ! DQ_surf_L/DU = DQ_surf_L|_VolInt/DU_prim * DU_prim/DU + DQ_surf_L|_SurfInt/DU_Lprim * DU_Lprim/DU_Lcons * DU_Lcons/DU
+  ! We first compute the term:
+  ! 0.5*(D(F^v_L)/DQ_surf_L * DQ_surf_L|_VolInt/DU_prim * DU_prim/DU
+  !  => Df_dQxInner              => dQxVol_dU             => PrimConsJac
+  ! How is the viscous flux in the volume depending on the volume DOFs via the volume integral of the lifting?
   DO oo = 0,PP_NZ
     DO nn = 0,PP_N
       DO mm = 0,PP_N
@@ -940,6 +940,10 @@ vn2 = vn1 * (PP_N +1)
 !Assembling of the preconditioner
 !BJ=d(f*_adv+f*_diff)_jk/dU_mno
 
+! The jacobians of the surface fluxes have already been multiplied by the surface element. Df_DUinner considers both the
+! dependency of the diffusive and the hyperbolic flux w.r.t. the inner solution.
+! The first part calculates DF/DF_surf * DF_surf/DU_surf * DU_surf/DU for the XI/ETA/ZETA direction
+!                           =>FV_w_inv   => Df_DUinner     =>dUdUvol_minus/plus (derivative of reconstruction)
 ! XI-direction-------------------------------------------------------------------------------------------------------------------
 DO oo = 0,PP_NZ
   DO nn = 0,PP_N
@@ -1167,7 +1171,8 @@ IF (.NOT.HyperbolicPrecond) THEN
   ! Compute the following derivatives (depending on the FV gradient reconstruction): 
   !  * dependency of the volume gradients w.r.t. the volume DOFs dQVol_dUvol
   !  * dependency of the outer surface gradients w.r.t. the volume DOFs dQOuter_dUvol
-  ! Note that dQInner_dUvol is not required as surface gradients are the same as the volume gradients of the outer layer.
+  ! Note that dQInner_dUvol is not required as surface gradients are the same as the volume gradients of the outer layer. Hence,
+  ! DQ_surf_L|_SurfInt/DU_Lprim is zero and only DQ_surf_L|_VolInt/DU_prim is present.
   CALL JacFVGradients_Vol(1,iElem,dQxVol_dU) !d(Q^1)/dU(1:3) (3 sums)
   CALL JacFVGradients_Vol(2,iElem,dQyVol_dU) !d(Q^1)/dU(1:3) (3 sums)
   CALL JacFVGradients_nb( 1,iElem,dQxOuter_dUvol)
@@ -1177,7 +1182,20 @@ IF (.NOT.HyperbolicPrecond) THEN
   CALL JacFVGradients_nb( 3,iElem,dQzOuter_dUvol)
 #endif
 
-
+  ! What is left now:
+  !   DF^v/DF^v_surf * DF^v(U,Q(U))_surf/DQ_surf * DQ_surf/DU
+  ! = DF^v/DF^v_surf * 0.5*(D(F^v_L)/DQ_surf_L * DQ_surf_L/DU + D(F^v_R)/DQ_surf_R * DQ_surf_R/DU)
+  ! We first compute the dependecies of F^v_L on U:
+  ! 0.5*(D(F^v_L)/DQ_surf_L * DQ_surf_L/DU_prim * DU_prim/DU
+  !  => Df_dQxInner           => dQxVol_dU      => PrimConsJac
+  ! How is the viscous flux in the volume depending on the volume DOFs via the left part of the flux
+  ! Than we compute the dependencies of F^v_R on U:
+  ! 0.5* D(F^v_R)/DQ_surf_R * DQ_surf_R/DU_prim * DU_prim/DU)
+  !  => Df_dQxOuter           => dQxOuter_dUvol  => PrimConsJac
+  ! How is the viscous flux in the volume depending on the volume DOFs via the right part of the flux
+  ! Here, we do both parts together:
+  !   DF^v/DF^v_surf * DF^v(U,Q(U))_surf/DQ_surf * DQ_surf/DU
+  ! = DF^v/DF^v_surf * (Df_dQxInner*dQxVol_dU + Df_dQxOuter*dQxOuter_dUvol) * PrimConsJac
   ! === XI-Direction =============================================================================================================
   DO p=0,PP_N
     DO q=0,PP_NZ
@@ -1464,7 +1482,29 @@ END SUBROUTINE Assemble_JacSurfInt_FV
 
 #if PARABOLIC
 !===================================================================================================================================
-!>
+!> This routine assembles the dependency of the viscous flux on the volume solution via the surface integral, and the gradients.
+!> It is called only for the cross dependencies: e.g. XI-Flux dependency via ETA-gradient
+!>   DF^v/DF^v_surf * DF^v(U,Q(U))_surf/DQ_surf * DQ_surf/DU
+!> = DF^v/DF^v_surf * (Df_dQxInner*dQxVol_dU + Df_dQxOuter*dQxOuter_dUvol) * PrimConsJac
+!>     => FV_w_inv      =>df_dQ     =>JacQ                    => 0         =>PrimConsJac
+!> dQxOuter_dUvol is zero as e.g. ETA gradient on neighbour element does not depend on current element for XI-sides
+!> _________________________
+!>             |
+!>             |
+!>       x     |    x
+!>       :     |    :
+!> ______:_____|____:_______
+!>  dep. :     |    :dependency
+!>       :    F_XI  :
+!>  Q_nb_ETA   =>   Q_ETA
+!>       :     |    :
+!>  dep. :     |    :dependency
+!> ______:_____|____:_______
+!>       :     |    :
+!>       :     |    :
+!>       x     |    x
+!>             |
+!> ____________|____________
 !===================================================================================================================================
 SUBROUTINE Assemble_FVSurfIntGradJac(i,r,ss,UPrim,df_dQx,df_dQy,JacQx,JacQy, &
 #if PP_dim==3
@@ -1481,23 +1521,26 @@ USE MOD_FV_Vars       ,ONLY: FV_w_inv
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER,INTENT(IN)                                 :: i,r,ss(2)
-REAL,DIMENSION(PP_nVarPrim,0:PP_N)     ,INTENT(IN) :: UPrim
-REAL,DIMENSION(PP_nVar    ,PP_nVarPrim),INTENT(IN) :: df_dQx,df_dQy
-REAL,DIMENSION(0:PP_N)                             :: JacQx,JacQy
+INTEGER,INTENT(IN)                                 :: i              !< index in flux direction
+INTEGER,INTENT(IN)                                 :: r              !< one dimensional index of considered flux
+INTEGER,INTENT(IN)                                 :: ss(2)          !< one dimensional index of considered DOFs: 1: below, 2:above
+REAL,DIMENSION(PP_nVarPrim,0:PP_N)     ,INTENT(IN) :: UPrim          !< primitive solution along i index
+REAL,DIMENSION(PP_nVar    ,PP_nVarPrim),INTENT(IN) :: df_dQx,df_dQy  !< flux Jacobian w.r.t gradients in x-,y-direction
+REAL,DIMENSION(0:PP_N)                             :: JacQx,JacQy    !< Jacobian of gradients in x-,y-direction w.r.t. solution
+                                                                     !> along i index
 #if PP_dim==3
-REAL,DIMENSION(PP_nVar    ,PP_nVarPrim),INTENT(IN) :: df_dQz
-REAL,DIMENSION(0:PP_N)                             :: JacQz
+REAL,DIMENSION(PP_nVar    ,PP_nVarPrim),INTENT(IN) :: df_dQz         !< flux Jacobian w.r.t gradients in z-direction
+REAL,DIMENSION(0:PP_N)                             :: JacQz          !< Jacobian of gradients in z-dir w.r.t. solution along i index
 #endif
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(INOUT)                                 :: BJ(1:nDOFVarElem,1:nDOFVarElem)
+REAL,DIMENSION(1:nDOFVarElem,1:nDOFVarElem),INTENT(INOUT) :: BJ      !< block-Jacobian of current element
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
-INTEGER                                            :: ii,j
-REAL,DIMENSION(PP_nVar    ,PP_nVarPrim)            :: JacTilde
-REAL,DIMENSION(PP_nVar    ,PP_nVar)                :: Jac
-REAL,DIMENSION(PP_nVarPrim,PP_nVar)                :: PrimConsJac
+INTEGER                                 :: ii,j
+REAL,DIMENSION(PP_nVar    ,PP_nVarPrim) :: JacTilde
+REAL,DIMENSION(PP_nVar    ,PP_nVar)     :: Jac
+REAL,DIMENSION(PP_nVarPrim,PP_nVar)     :: PrimConsJac
 !===================================================================================================================================
 j = 1
 DO ii=i-1,i+1,2

@@ -390,7 +390,7 @@ END SUBROUTINE FV_Reconstruction_Derivative
 !> Calculates Jacobian of reconstruction procedure of surface DOFs
 !> dF/dUvol = dF/dU_LR * dU_LR/dU_LR_prim * dU_LR_prim/dUvol_prim * dUvol_prim/dUvol
 !>               |            |                       |                   |
-!>  FD in DGVolIntJac_FV    dCons/dPrim   derivative of reconstruction  dPrim/dCons
+!>    FD in JacSurfInt    dCons/dPrim   derivative of reconstruction  dPrim/dCons
 !===================================================================================================================================
 SUBROUTINE FV_Reconstruction_Derivative_Surf(FV_sdx,FV_dx_L,FV_dx_R,FV_dx_L_nb,FV_dx_R_nb,UPrim_plus,UPrim_minus, &
                                              UPrim_plus_nb,UPrim_minus_nb,                                        &
@@ -569,8 +569,8 @@ INTEGER,INTENT(IN)                           :: iElem   !< current element index
 INTEGER,INTENT(IN)                           :: dir     !< current physical direction
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(OUT)                             :: Jac_reconstruct(0:PP_N,0:PP_N,0:PP_NZ,0:PP_N,PP_dim)
-                                                !< Jacobian of volume gradients in direction dir w.r.t. primitive volume solution
+REAL,INTENT(OUT)                             :: Jac_reconstruct(0:PP_N,0:PP_N,0:PP_NZ,0:PP_N,PP_dim) !< Jacobian of volume gradients
+                                                !> in direction dir w.r.t. primitive volume solution
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                                      :: i,j,k,ll
@@ -649,7 +649,7 @@ INTEGER,INTENT(IN) :: iElem !< considered element ID
 ! OUTPUT VARIABLES
 #if PP_dim == 3
 REAL,INTENT(OUT) :: dQ_dUVolOuter(0:PP_N,0:PP_NZ,6,0:PP_N)!< Jacobian of surface gradients of the neighbour element w.r.t. primitive
-                                                          !< solution of current element
+                                                          !> solution of current element
 #else
 REAL,INTENT(OUT) :: dQ_dUVolOuter(0:PP_N,0:PP_NZ,2:5,0:PP_N)
 #endif
