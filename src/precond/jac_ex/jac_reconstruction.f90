@@ -271,6 +271,9 @@ END SUBROUTINE Fill_ExtendedState
 !> dF/dUvol = dF/dU_LR * dU_LR/dU_LR_prim * dU_LR_prim/dUvol_prim * dUvol_prim/dUvol
 !>               |            |                       |                   |
 !>  FD in DGVolIntJac_FV    dCons/dPrim   derivative of reconstruction  dPrim/dCons
+!>                         |______________________________________________________|
+!>                                                    |
+!>                                              calculated here
 !===================================================================================================================================
 SUBROUTINE FV_Reconstruction_Derivative(FV_sdx,FV_dx_L,FV_dx_R,UPrim_plus,UPrim_minus, &
                                         URec_extended,dUdUvol_plus,dUdUvol_minus)
@@ -279,7 +282,7 @@ USE MOD_PreProc
 USE MOD_Globals
 USE MOD_FV_Limiter     ,ONLY: FV_Limiter
 USE MOD_FV_Vars        ,ONLY: LimiterType
-USE MOD_Jacobian       ,ONLY: dPrimdCons,dConsdPrim
+USE MOD_Jacobian       ,ONLY: dPrimTempdCons,dConsdPrimTemp
 !----------------------------------------------------------------------------------------------------------------------------------
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
@@ -295,24 +298,28 @@ REAL,INTENT(OUT)   :: dUdUvol_minus(PP_nVar,PP_nVar,0:PP_N,1:3) !< Jacobian of r
 ! LOCAL VARIABLES
 INTEGER                                            :: iVar,i,ind
 REAL,DIMENSION(PP_nVarPrim,0:PP_N)                 :: s_L,s_R,s_lim
-REAL,DIMENSION(PP_nVar,PP_nVar, 0:PP_N  )          :: Jac_ConsPrim_plus,Jac_ConsPrim_minus
-REAL,DIMENSION(PP_nVar,PP_nVar,-1:PP_N+1)          :: Jac_PrimCons
-REAL,DIMENSION(PP_nVar,PP_nVar)                    :: matrix !< has to be used due to intel compiler error with matmul
-REAL,DIMENSION(PP_nVar,PP_nVar)                    :: vector !< has to be used due to intel compiler error with matmul
+REAL,DIMENSION(PP_nVar,PP_nVarPrim, 0:PP_N  )      :: Jac_ConsPrim_plus,Jac_ConsPrim_minus
+REAL,DIMENSION(PP_nVarPrim,PP_nVar,-1:PP_N+1)      :: Jac_PrimCons
+REAL,DIMENSION(PP_nVarPrim,PP_nVarPrim,0:PP_N,1:3) :: dUdUvolprim_plus
+REAL,DIMENSION(PP_nVarPrim,PP_nVarPrim,0:PP_N,1:3) :: dUdUvolprim_minus
+REAL,DIMENSION(PP_nVar    ,PP_nVarPrim,0:PP_N,1:3) :: matrix_plus
+REAL,DIMENSION(PP_nVar    ,PP_nVarPrim,0:PP_N,1:3) :: matrix_minus
 !==================================================================================================================================
 ! storage order in dUdUvol(1:3):
 ! di/d(i-1), di/d(i), di/d(i+1)
 dUdUvol_plus  = 0.
 dUdUvol_minus = 0.
+dUdUvolprim_plus  = 0.
+dUdUvolprim_minus = 0.
 
 ! 1. Do derivative of i_th surface data from cons to prim
 DO i=0,PP_N
-  CALL dConsdPrim(UPrim_plus( :,i),Jac_ConsPrim_plus( :,:,i))
-  CALL dConsdPrim(UPrim_minus(:,i),Jac_ConsPrim_minus(:,:,i))
+  CALL dConsdPrimTemp(UPrim_plus( :,i),Jac_ConsPrim_plus( :,:,i))
+  CALL dConsdPrimTemp(UPrim_minus(:,i),Jac_ConsPrim_minus(:,:,i))
 END DO
 ! 2. Do derivative of i-1:i+1 volume data from prim to cons 
 DO i=-1,PP_N+1
-  CALL dPrimdCons(URec_extended(:,i),Jac_PrimCons(:,:,i))
+  CALL dPrimTempdCons(URec_extended(:,i),Jac_PrimCons(:,:,i))
 END DO
 
 ! 3. Calculate derivative of reconstruction
@@ -324,24 +331,24 @@ DO i=0,PP_N
   CALL FV_Limiter(s_L(:,i),s_R(:,i),s_lim(:,i)) ! only null- or minmod-limiter
   SELECT CASE(LimiterType)
   CASE(0) ! NullLimiter
-    DO iVar=1,PP_nVar
-      dUdUvol_minus(iVar,iVar,i,2) = 1.
-      dUdUvol_plus( iVar,iVar,i,2) = 1.
+    DO iVar=1,PP_nVarPrim
+      dUdUvolprim_minus(iVar,iVar,i,2) = 1.
+      dUdUvolprim_plus( iVar,iVar,i,2) = 1.
     END DO !iVar
   CASE(1) ! MinMod
-    DO iVar=1,PP_nVar
+    DO iVar=1,PP_nVarPrim
       IF(s_lim(iVar,i).EQ.0.)THEN ! first order
-        dUdUvol_plus( iVar,iVar,i,2) = 1.
-        dUdUvol_minus(iVar,iVar,i,2) = 1.
+        dUdUvolprim_plus( iVar,iVar,i,2) = 1.
+        dUdUvolprim_minus(iVar,iVar,i,2) = 1.
       ELSEIF(s_lim(iVar,i).EQ.s_L(iVar,i))THEN ! use left gradient
-        dUdUvol_plus( iVar,iVar,i,1) = 0. - FV_sdx(i  ) * FV_dx_R(i)
-        dUdUvol_plus( iVar,iVar,i,2) = 1. + FV_sdx(i  ) * FV_dx_R(i)
+        dUdUvolprim_plus( iVar,iVar,i,1) = 0. - FV_sdx(i  ) * FV_dx_R(i)
+        dUdUvolprim_plus( iVar,iVar,i,2) = 1. + FV_sdx(i  ) * FV_dx_R(i)
 
-        dUdUvol_minus(iVar,iVar,i,1) = 0. + FV_sdx(i  ) * FV_dx_L(i)
-        dUdUvol_minus(iVar,iVar,i,2) = 1. - FV_sdx(i  ) * FV_dx_L(i)
+        dUdUvolprim_minus(iVar,iVar,i,1) = 0. + FV_sdx(i  ) * FV_dx_L(i)
+        dUdUvolprim_minus(iVar,iVar,i,2) = 1. - FV_sdx(i  ) * FV_dx_L(i)
       ELSEIF(s_lim(iVar,i).EQ.s_R(iVar,i))THEN ! use right gradient
-        dUdUvol_plus( iVar,iVar,i,2) = 1. - FV_sdx(i+1) * FV_dx_R(i)
-        dUdUvol_plus( iVar,iVar,i,3) = 0. + FV_sdx(i+1) * FV_dx_R(i)
+        dUdUvolprim_plus( iVar,iVar,i,2) = 1. - FV_sdx(i+1) * FV_dx_R(i)
+        dUdUvolprim_plus( iVar,iVar,i,3) = 0. + FV_sdx(i+1) * FV_dx_R(i)
 
         dUdUvol_minus(iVar,iVar,i,2) = 1. + FV_sdx(i+1) * FV_dx_L(i)
         dUdUvol_minus(iVar,iVar,i,3) = 0. - FV_sdx(i+1) * FV_dx_L(i)
@@ -350,14 +357,14 @@ DO i=0,PP_N
       END IF
     END DO !iVar
   CASE(9) ! Central
-    DO iVar=1,PP_nVar
-      dUdUvol_plus( iVar,iVar,i,1) = 0. + FV_dx_R(i) * 0.5*(-FV_sdx(i))
-      dUdUvol_plus( iVar,iVar,i,2) = 1. + FV_dx_R(i) * 0.5*( FV_sdx(i)-FV_sdx(i+1))
-      dUdUvol_plus( iVar,iVar,i,3) = 0. + FV_dx_R(i) * 0.5*( FV_sdx(i+1))
+    DO iVar=1,PP_nVarPrim
+      dUdUvolprim_plus( iVar,iVar,i,1) = 0. + FV_dx_R(i) * 0.5*(-FV_sdx(i))
+      dUdUvolprim_plus( iVar,iVar,i,2) = 1. + FV_dx_R(i) * 0.5*( FV_sdx(i)-FV_sdx(i+1))
+      dUdUvolprim_plus( iVar,iVar,i,3) = 0. + FV_dx_R(i) * 0.5*( FV_sdx(i+1))
 
-      dUdUvol_minus(iVar,iVar,i,1) = 0. - FV_dx_L(i) * 0.5*(-FV_sdx(i))
-      dUdUvol_minus(iVar,iVar,i,2) = 1. - FV_dx_L(i) * 0.5*( FV_sdx(i) - FV_sdx(i+1))
-      dUdUvol_minus(iVar,iVar,i,3) = 0. - FV_dx_L(i) * 0.5*( FV_sdx(i+1))
+      dUdUvolprim_minus(iVar,iVar,i,1) = 0. - FV_dx_L(i) * 0.5*(-FV_sdx(i))
+      dUdUvolprim_minus(iVar,iVar,i,2) = 1. - FV_dx_L(i) * 0.5*( FV_sdx(i) - FV_sdx(i+1))
+      dUdUvolprim_minus(iVar,iVar,i,3) = 0. - FV_dx_L(i) * 0.5*( FV_sdx(i+1))
     END DO !iVar
   CASE DEFAULT 
     CALL Abort(__STAMP__,'No preconditioner for chosen limiter implemented!')
@@ -365,23 +372,17 @@ DO i=0,PP_N
 
   ! multiply: dU_LR/dU_LR_prim * dU_LR_prim/dUvol_prim
   DO ind=1,3
-    dUdUvol_plus( :,:,i,ind) = MATMUL(Jac_ConsPrim_plus( :,:,i),dUdUvol_plus( :,:,i,ind))
-    dUdUvol_minus(:,:,i,ind) = MATMUL(Jac_ConsPrim_minus(:,:,i),dUdUvol_minus(:,:,i,ind))
+    matrix_plus( :,:,i,ind) = MATMUL(Jac_ConsPrim_plus( :,:,i),dUdUvolprim_plus( :,:,i,ind))
+    matrix_minus(:,:,i,ind) = MATMUL(Jac_ConsPrim_minus(:,:,i),dUdUvolprim_minus(:,:,i,ind))
   END DO
   !multiply: (dU_LR/dU_LR_prim * dU_LR_prim/dUvol_prim) * dUvol_prim/dUvol
-  matrix=dUdUvol_plus(:,:,i,1); vector=Jac_PrimCons(:,:,i-1)
-  dUdUvol_plus( :,:,i,1) = MATMUL(matrix,vector)
-  matrix=dUdUvol_plus(:,:,i,2); vector=Jac_PrimCons(:,:,i)
-  dUdUvol_plus( :,:,i,2) = MATMUL(matrix,vector)
-  matrix=dUdUvol_plus(:,:,i,3); vector=Jac_PrimCons(:,:,i+1)
-  dUdUvol_plus( :,:,i,3) = MATMUL(matrix,vector)
-  matrix=dUdUvol_minus(:,:,i,1); vector=Jac_PrimCons(:,:,i-1)
-  dUdUvol_minus(:,:,i,1) = MATMUL(matrix,vector)
-  matrix=dUdUvol_minus(:,:,i,2); vector=Jac_PrimCons(:,:,i)
-  dUdUvol_minus(:,:,i,2) = MATMUL(matrix,vector)
-  matrix=dUdUvol_minus(:,:,i,3); vector=Jac_PrimCons(:,:,i+1)
-  dUdUvol_minus(:,:,i,3) = MATMUL(matrix,vector)
- 
+  dUdUvol_plus( :,:,i,1) = MATMUL(matrix_plus(:,:,i,1),Jac_PrimCons(:,:,i-1))
+  dUdUvol_plus( :,:,i,2) = MATMUL(matrix_plus(:,:,i,2),Jac_PrimCons(:,:,i))
+  dUdUvol_plus( :,:,i,3) = MATMUL(matrix_plus(:,:,i,3),Jac_PrimCons(:,:,i+1))
+
+  dUdUvol_minus(:,:,i,1) = MATMUL(matrix_minus(:,:,i,1),Jac_PrimCons(:,:,i-1))
+  dUdUvol_minus(:,:,i,2) = MATMUL(matrix_minus(:,:,i,2),Jac_PrimCons(:,:,i))
+  dUdUvol_minus(:,:,i,3) = MATMUL(matrix_minus(:,:,i,3),Jac_PrimCons(:,:,i+1))
 END DO !i
 
 END SUBROUTINE FV_Reconstruction_Derivative
@@ -391,6 +392,9 @@ END SUBROUTINE FV_Reconstruction_Derivative
 !> dF/dUvol = dF/dU_LR * dU_LR/dU_LR_prim * dU_LR_prim/dUvol_prim * dUvol_prim/dUvol
 !>               |            |                       |                   |
 !>    FD in JacSurfInt    dCons/dPrim   derivative of reconstruction  dPrim/dCons
+!>                        |_____________________________________________________|
+!>                                                  |
+!>                                           calculated here
 !===================================================================================================================================
 SUBROUTINE FV_Reconstruction_Derivative_Surf(FV_sdx,FV_dx_L,FV_dx_R,FV_dx_L_nb,FV_dx_R_nb,UPrim_plus,UPrim_minus, &
                                              UPrim_plus_nb,UPrim_minus_nb,                                        &
@@ -400,7 +404,7 @@ USE MOD_PreProc
 USE MOD_Globals
 USE MOD_FV_Limiter     ,ONLY: FV_Limiter
 USE MOD_FV_Vars        ,ONLY: LimiterType
-USE MOD_Jacobian       ,ONLY: dPrimdCons,dConsdPrim
+USE MOD_Jacobian       ,ONLY: dPrimTempdCons,dConsdPrimTemp
 !----------------------------------------------------------------------------------------------------------------------------------
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
@@ -418,35 +422,41 @@ REAL,INTENT(OUT)   :: dUdUvol_plus( PP_nVar,PP_nVar,PP_N:PP_N+1,1:2) !< Jacobian
 REAL,INTENT(OUT)   :: dUdUvol_minus(PP_nVar,PP_nVar,-1:0,2:3)        !< Jacobian of reconstr. procedure at minus side of element
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                                            :: iVar,ind,i
-REAL,DIMENSION(PP_nVarPrim)                        :: s_L_minus,s_R_minus,s_L_plus,s_R_plus,s_lim_minus,s_lim_plus
-REAL,DIMENSION(PP_nVar,PP_nVar,PP_N:PP_N+1)        :: Jac_ConsPrim_plus
-REAL,DIMENSION(PP_nVar,PP_nVar,-1:0)               :: Jac_ConsPrim_minus
-REAL,DIMENSION(PP_nVar,PP_nVar, 0:1)               :: Jac_PrimCons_minus
-REAL,DIMENSION(PP_nVar,PP_nVar,PP_N-1:PP_N)        :: Jac_PrimCons_plus
-REAL,DIMENSION(PP_nVar,PP_nVar)                    :: matrix !< has to be used due to intel compiler error with matmul
-REAL,DIMENSION(PP_nVar,PP_nVar)                    :: vector !< has to be used due to intel compiler error with matmul
+INTEGER                                                :: iVar,ind,i
+REAL,DIMENSION(PP_nVarPrim)                            :: s_L_minus,s_R_minus,s_L_plus,s_R_plus,s_lim_minus,s_lim_plus
+REAL,DIMENSION(PP_nVar    ,PP_nVarPrim,PP_N:PP_N+1)    :: Jac_ConsPrim_plus
+REAL,DIMENSION(PP_nVar    ,PP_nVarPrim,-1:0)           :: Jac_ConsPrim_minus
+REAL,DIMENSION(PP_nVarPrim,PP_nVar    , 0:1)           :: Jac_PrimCons_minus
+REAL,DIMENSION(PP_nVarPrim,PP_nVar    ,PP_N-1:PP_N)    :: Jac_PrimCons_plus
+REAL,DIMENSION(PP_nVarPrim,PP_nVarPrim,PP_N:PP_N+1,1:2):: dUdUvolprim_plus
+REAL,DIMENSION(PP_nVarPrim,PP_nVarPrim,-1:0,2:3)       :: dUdUvolprim_minus
+REAL,DIMENSION(PP_nVar    ,PP_nVarPrim,PP_N:PP_N+1,1:2):: matrix_plus
+REAL,DIMENSION(PP_nVar    ,PP_nVarPrim,-1:0,2:3)       :: matrix_minus
 !==================================================================================================================================
 ! storage order in dUdUvol(1:3):
 ! di/d(i-1), di/d(i), di/d(i+1)
 dUdUvol_plus  = 0.
 dUdUvol_minus = 0.
+dUdUvolprim_plus  = 0.
+dUdUvolprim_minus = 0.
 
 ! 1. Do derivative of surface data from cons to prim
-CALL dConsdPrim(UPrim_minus_nb,Jac_ConsPrim_minus(:,:,-1    ))
-CALL dConsdPrim(UPrim_minus   ,Jac_ConsPrim_minus(:,:, 0    ))
-CALL dConsdPrim(UPrim_plus    ,Jac_ConsPrim_plus( :,:,PP_N  ))
-CALL dConsdPrim(UPrim_plus_nb ,Jac_ConsPrim_plus( :,:,PP_N+1))
+CALL dConsdPrimTemp(UPrim_minus_nb,Jac_ConsPrim_minus(:,:,-1    ))
+CALL dConsdPrimTemp(UPrim_minus   ,Jac_ConsPrim_minus(:,:, 0    ))
+CALL dConsdPrimTemp(UPrim_plus    ,Jac_ConsPrim_plus( :,:,PP_N  ))
+CALL dConsdPrimTemp(UPrim_plus_nb ,Jac_ConsPrim_plus( :,:,PP_N+1))
 
 ! 2. Do derivative of interface and neighbouring volume data from prim to cons 
 DO i=0,1
-  CALL dPrimdCons(URec_extended(:,i),Jac_PrimCons_minus(:,:,i))
+  CALL dPrimTempdCons(URec_extended(:,i),Jac_PrimCons_minus(:,:,i))
 END DO
 DO i=PP_N-1,PP_N
-  CALL dPrimdCons(URec_extended(:,i),Jac_PrimCons_plus( :,:,i))
+  CALL dPrimTempdCons(URec_extended(:,i),Jac_PrimCons_plus( :,:,i))
 END DO
 
 ! 3. Calculate derivative of reconstruction
+! For NullLimiter and central limiter this is a constant for all variables. This is not the case for the minmod limiter. Hence,
+! the Jacobian of the reconstruction is a diagonal matrix with variable entries on the main diagonal.
 ! Calculate left and right gradients
 s_L_minus(:) = (URec_extended(:,0     ) - URec_extended(:,-1    )) * FV_sdx(0     ) 
 s_R_minus(:) = (URec_extended(:,1     ) - URec_extended(:, 0    )) * FV_sdx(1     )
@@ -457,60 +467,60 @@ CALL FV_Limiter(s_L_minus(:),s_R_minus(:),s_lim_minus(:)) ! only null-, minmod- 
 CALL FV_Limiter(s_L_plus( :),s_R_plus( :),s_lim_plus( :)) ! only null-, minmod- or central-limiter
 SELECT CASE(LimiterType)
 CASE(0) ! NullLimiter
-  DO iVar=1,PP_nVar
-    dUdUvol_minus(iVar,iVar,0   ,2) = 1.
-    dUdUvol_plus( iVar,iVar,PP_N,2) = 1.
+  DO iVar=1,PP_nVarPrim
+    dUdUvolprim_minus(iVar,iVar,0   ,2) = 1.
+    dUdUvolprim_plus( iVar,iVar,PP_N,2) = 1.
   END DO !iVar
 CASE(1) ! MinMod
-  DO iVar=1,PP_nVar
+  DO iVar=1,PP_nVarPrim
     ! minus side of element
     ! derivatives of minus value at minus interface
     IF(s_lim_minus(iVar).EQ.0.)THEN ! first order
-      dUdUvol_minus(iVar,iVar,0,2) = 1.
+      dUdUvolprim_minus(iVar,iVar,0,2) = 1.
     ELSEIF(s_lim_minus(iVar).EQ.s_L_minus(iVar))THEN ! use left gradient
-      dUdUvol_minus(iVar,iVar,0,2) = 1. - FV_sdx(0) * FV_dx_L
+      dUdUvolprim_minus(iVar,iVar,0,2) = 1. - FV_sdx(0) * FV_dx_L
     ELSEIF(s_lim_minus(iVar).EQ.s_R_minus(iVar))THEN ! use right gradient
-      dUdUvol_minus(iVar,iVar,0,2) = 1. + FV_sdx(1) * FV_dx_L
-      dUdUvol_minus(iVar,iVar,0,3) = 0. - FV_sdx(1) * FV_dx_L
+      dUdUvolprim_minus(iVar,iVar,0,2) = 1. + FV_sdx(1) * FV_dx_L
+      dUdUvolprim_minus(iVar,iVar,0,3) = 0. - FV_sdx(1) * FV_dx_L
     ELSE
       CALL Abort(__STAMP__,'Slopes do not match with minmod in preconditioner!')
     END IF
     ! derivatives of plus value at minus interface, if reconstruction has been done with s_L_minus
     IF(ABS(UPrim_minus_nb(iVar)-(URec_extended(iVar,-1)+s_L_minus(iVar)*FV_dx_R_nb)).LE.1E-12)THEN 
-      dUdUvol_minus(iVar,iVar,-1,3) = 0. + FV_dx_R_nb * ( FV_sdx(0))
+      dUdUvolprim_minus(iVar,iVar,-1,3) = 0. + FV_dx_R_nb * ( FV_sdx(0))
     END IF
     ! plus side of element
     ! derivatives of plus values at plus interface
     IF(s_lim_plus(iVar).EQ.0.)THEN ! first order
-      dUdUvol_plus(iVar,iVar,PP_N,2) = 1.
+      dUdUvolprim_plus(iVar,iVar,PP_N,2) = 1.
     ELSEIF(s_lim_plus(iVar).EQ.s_L_plus(iVar))THEN ! use left gradient
-      dUdUvol_plus(iVar,iVar,PP_N,1) = 0. - FV_sdx(PP_N  ) * FV_dx_R
-      dUdUvol_plus(iVar,iVar,PP_N,2) = 1. + FV_sdx(PP_N  ) * FV_dx_R
+      dUdUvolprim_plus(iVar,iVar,PP_N,1) = 0. - FV_sdx(PP_N  ) * FV_dx_R
+      dUdUvolprim_plus(iVar,iVar,PP_N,2) = 1. + FV_sdx(PP_N  ) * FV_dx_R
     ELSEIF(s_lim_plus(iVar).EQ.s_R_plus(iVar))THEN ! use right gradient
-      dUdUvol_plus(iVar,iVar,PP_N,2) = 1. - FV_sdx(PP_N+1) * FV_dx_R
+      dUdUvolprim_plus(iVar,iVar,PP_N,2) = 1. - FV_sdx(PP_N+1) * FV_dx_R
     ELSE
       CALL Abort(__STAMP__,'Slopes do not match with minmod in preconditioner!')
     END IF
     ! derivatives of minus values at plus interface, if reconstruction has been done with s_R_plus
     IF(ABS(UPrim_plus_nb(iVar)-(URec_extended(iVar,PP_N+1)-s_R_plus(iVar)*FV_dx_L_nb)).LE.1E-12)THEN 
-      dUdUvol_plus( iVar,iVar,PP_N+1,1) = 0. - FV_dx_L_nb * (-FV_sdx(PP_N+1))
+      dUdUvolprim_plus( iVar,iVar,PP_N+1,1) = 0. - FV_dx_L_nb * (-FV_sdx(PP_N+1))
     END IF
   END DO !iVar
 CASE(9) ! Central
-  DO iVar=1,PP_nVar
+  DO iVar=1,PP_nVarPrim
     ! minus side of interface
     ! derivatives of minus value at minus interface
-    dUdUvol_minus(iVar,iVar,0     ,2) = 1. - FV_dx_L    * 0.5*( FV_sdx(0) - FV_sdx(1))
-    dUdUvol_minus(iVar,iVar,0     ,3) = 0. - FV_dx_L    * 0.5*( FV_sdx(1))
+    dUdUvolprim_minus(iVar,iVar,0     ,2) = 1. - FV_dx_L    * 0.5*( FV_sdx(0) - FV_sdx(1))
+    dUdUvolprim_minus(iVar,iVar,0     ,3) = 0. - FV_dx_L    * 0.5*( FV_sdx(1))
     ! derivatives of plus value at minus interface
-    dUdUvol_minus(iVar,iVar,-1    ,3) = 0. + FV_dx_R_nb * 0.5*( FV_sdx(0))
+    dUdUvolprim_minus(iVar,iVar,-1    ,3) = 0. + FV_dx_R_nb * 0.5*( FV_sdx(0))
 
     ! plus side of interface
     ! derivatives of plus values at plus interface
-    dUdUvol_plus( iVar,iVar,PP_N  ,1) = 0. + FV_dx_R    * 0.5*(-FV_sdx(PP_N))
-    dUdUvol_plus( iVar,iVar,PP_N  ,2) = 1. + FV_dx_R    * 0.5*( FV_sdx(PP_N)-FV_sdx(PP_N+1))
+    dUdUvolprim_plus( iVar,iVar,PP_N  ,1) = 0. + FV_dx_R    * 0.5*(-FV_sdx(PP_N))
+    dUdUvolprim_plus( iVar,iVar,PP_N  ,2) = 1. + FV_dx_R    * 0.5*( FV_sdx(PP_N)-FV_sdx(PP_N+1))
     ! derivatives of minus values at plus interface
-    dUdUvol_plus( iVar,iVar,PP_N+1,1) = 0. - FV_dx_L_nb * 0.5*(-FV_sdx(PP_N+1))
+    dUdUvolprim_plus( iVar,iVar,PP_N+1,1) = 0. - FV_dx_L_nb * 0.5*(-FV_sdx(PP_N+1))
   END DO !iVar
 CASE DEFAULT 
   CALL Abort(__STAMP__,'No preconditioner for chosen limiter implemented!')
@@ -518,28 +528,22 @@ END SELECT
 
 ! multiply: dU_LR/dU_LR_prim * dU_LR_prim/dUvol_prim
 DO ind=2,3
-  dUdUvol_minus(:,:,0,ind) = MATMUL(Jac_ConsPrim_minus(:,:,0),dUdUvol_minus(:,:,0,ind))
+  matrix_minus(:,:,0,ind) = MATMUL(Jac_ConsPrim_minus(:,:,0),dUdUvolprim_minus(:,:,0,ind))
 END DO
-dUdUvol_minus(:,:,-1,3) = MATMUL(Jac_ConsPrim_minus(:,:,-1),dUdUvol_minus(:,:,-1,3))
+matrix_minus(:,:,-1,3) = MATMUL(Jac_ConsPrim_minus(:,:,-1),dUdUvolprim_minus(:,:,-1,3))
 DO ind=1,2
-  dUdUvol_plus( :,:,PP_N,ind) = MATMUL(Jac_ConsPrim_plus( :,:,PP_N),dUdUvol_plus( :,:,PP_N,ind))
+  matrix_plus( :,:,PP_N,ind) = MATMUL(Jac_ConsPrim_plus( :,:,PP_N),dUdUvolprim_plus( :,:,PP_N,ind))
 END DO
-dUdUvol_plus( :,:,PP_N+1,1) = MATMUL(Jac_ConsPrim_plus( :,:,PP_N+1),dUdUvol_plus( :,:,PP_N+1,1))
+matrix_plus( :,:,PP_N+1,1) = MATMUL(Jac_ConsPrim_plus( :,:,PP_N+1),dUdUvolprim_plus( :,:,PP_N+1,1))
 
 ! multiply: (dU_LR/dU_LR_prim * dU_LR_prim/dUvol_prim) * dUvol_prim/dUvol
-matrix=dUdUvol_plus(:,:,PP_N,1);   vector=Jac_PrimCons_plus(:,:,PP_N-1)
-dUdUvol_plus( :,:,PP_N,1)   = MATMUL(matrix,vector)
-matrix=dUdUvol_plus(:,:,PP_N,2);   vector=Jac_PrimCons_plus(:,:,PP_N) 
-dUdUvol_plus( :,:,PP_N,2)   = MATMUL(matrix,vector)
-matrix=dUdUvol_plus(:,:,PP_N+1,1); vector=Jac_PrimCons_plus(:,:,PP_N)
-dUdUvol_plus( :,:,PP_N+1,1) = MATMUL(matrix,vector)
+dUdUvol_plus( :,:,PP_N,1)   = MATMUL(matrix_plus(:,:,PP_N,1),Jac_PrimCons_plus(:,:,PP_N-1))
+dUdUvol_plus( :,:,PP_N,2)   = MATMUL(matrix_plus(:,:,PP_N,2),Jac_PrimCons_plus(:,:,PP_N))
+dUdUvol_plus( :,:,PP_N+1,1) = MATMUL(matrix_plus(:,:,PP_N+1,1),Jac_PrimCons_plus(:,:,PP_N))
 
-matrix=dUdUvol_minus(:,:,-1,3); vector=Jac_PrimCons_minus(:,:,0)
-dUdUvol_minus(:,:,-1,3) = MATMUL(matrix,vector)
-matrix=dUdUvol_minus(:,:,0,2);  vector=Jac_PrimCons_minus(:,:,0)
-dUdUvol_minus(:,:,0,2)  = MATMUL(matrix,vector)
-matrix=dUdUvol_minus(:,:,0,3);  vector=Jac_PrimCons_minus(:,:,1)
-dUdUvol_minus(:,:,0,3)  = MATMUL(matrix,vector)
+dUdUvol_minus(:,:,-1,3) = MATMUL(matrix_minus(:,:,-1,3),Jac_PrimCons_minus(:,:,0))
+dUdUvol_minus(:,:,0,2)  = MATMUL(matrix_minus(:,:,0,2),Jac_PrimCons_minus(:,:,0))
+dUdUvol_minus(:,:,0,3)  = MATMUL(matrix_minus(:,:,0,3),Jac_PrimCons_minus(:,:,1))
 
 END SUBROUTINE FV_Reconstruction_Derivative_Surf
 

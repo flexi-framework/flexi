@@ -12,7 +12,6 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
-#include "eos.h"
 
 !===================================================================================================================================
 !> Contains the computation of the jacobian of the numerical flux function. Since we don't want to derive every single one of them, 

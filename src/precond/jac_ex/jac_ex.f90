@@ -12,7 +12,6 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
-#include "eos.h"
 
 !===================================================================================================================================
 !> Main module for the analytical block-Jacobian preconditioner. Contains initialization and the main routine, which calls the

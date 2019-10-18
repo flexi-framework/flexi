@@ -239,7 +239,7 @@ END SELECT
 END SUBROUTINE InitRiemann
 
 !==================================================================================================================================
-!> Computes the numerical flux
+!> Computes the numerical flux for a side calling the flux calculation pointwise.
 !> Conservative States are rotated into normal direction in this routine and are NOT backrotated: don't use it after this routine!!
 !> Attention 2: numerical flux is backrotated at the end of the routine!!
 !==================================================================================================================================

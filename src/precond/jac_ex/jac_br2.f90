@@ -12,7 +12,6 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
-#include "eos.h"
 
 !===================================================================================================================================
 !> This module contains routines required for the jacobian of the br2 lifting scheme assuming non-conservative lifting.

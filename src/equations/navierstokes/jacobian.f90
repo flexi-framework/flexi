@@ -28,14 +28,6 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! Public Part ----------------------------------------------------------------------------------------------------------------------
 
-INTERFACE dConsdPrim
-  MODULE PROCEDURE dConsdPrim
-END INTERFACE
-
-INTERFACE dPrimdCons
-  MODULE PROCEDURE dPrimdCons
-END INTERFACE
-
 INTERFACE dConsdPrimTemp
   MODULE PROCEDURE dConsdPrimTemp
 END INTERFACE
@@ -51,8 +43,9 @@ END INTERFACE
 PUBLIC::EvalAdvFluxJacobian,EvalAdvFluxJacobianPoint
 #if PARABOLIC
 PUBLIC::EvalDiffFluxJacobian
+PUBLIC::EvalFluxGradJacobian
 #endif
-PUBLIC::dConsdPrim,dPrimdCons,dConsdPrimTemp,dPrimTempdCons
+PUBLIC::dConsdPrimTemp,dPrimTempdCons
 !===================================================================================================================================
 
 CONTAINS
@@ -277,7 +270,147 @@ DO i=1,nDOF_loc
 END DO
 
 END SUBROUTINE EvalDiffFluxJacobian
-#endif /*parabolic*/
+
+!===================================================================================================================================
+!> Computes the volume derivative of the analytical diffusive flux with respect to the gradient of U: d(F^v)/dQ, Q=grad U
+!===================================================================================================================================
+SUBROUTINE EvalFluxGradJacobian(nDOF_loc,U,UPrim,fJacQx,fJacQy,fJacQz,gJacQx,gJacQy,gJacQz,hJacQx,hJacQy,hJacQz &
+#if EDDYVISCOSITY
+                               ,muSGS &
+#endif
+                               )
+! MODULES
+USE MOD_PreProc
+USE MOD_Viscosity
+USE MOD_Equation_Vars,ONLY:s43,s23
+USE MOD_EOS_Vars,     ONLY:cp,Pr
+#if EDDYVISCOSITY
+USE MOD_EddyVisc_Vars,ONLY: PrSGS
+#endif
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+INTEGER,INTENT(IN)                                       :: nDOF_loc !< number of degrees of freedom
+REAL,DIMENSION(PP_nVar    ,nDOF_loc),INTENT(IN)          :: U        !< solution in conservative variables
+REAL,DIMENSION(PP_nVarPrim,nDOF_loc),INTENT(IN)          :: UPrim    !< solution in primitive variables
+#if EDDYVISCOSITY
+REAL,DIMENSION(1          ,nDOF_loc),INTENT(IN)          :: muSGS    !< eddy viscosity
+#endif
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL,DIMENSION(PP_nVar,PP_nVarPrim,nDOF_loc),INTENT(OUT) :: fJacQx,fJacQy,fJacQz,gJacQx,gJacQy,gJacQz,hJacQx,hJacQy,hJacQz !<
+                                                            !> Gradient of the diffusive Cartesian fluxes (iVar,i,j,k) w.r.t. grad
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER             :: i
+REAL                :: muS,lambda
+!===================================================================================================================================
+DO i=1,nDOF_loc
+  muS    = VISCOSITY_PRIM(UPrim(:,i))
+  lambda = THERMAL_CONDUCTIVITY_H(muS)
+  !Add turbulent sub grid scale viscosity to mu
+#if EDDYVISCOSITY
+  muS    = muS    + muSGS(1,i)
+  lambda = lambda + muSGS*cp/PrSGS
+#endif
+#if PP_dim==3
+  ! derivatives of diffusive flux in x-direction
+  fJacQx(1,1:6,i) = 0.
+  fJacQx(2,1:6,i) = (/ 0.,           -muS*s43,                 0.,                 0., 0.,      0./)
+  fJacQx(3,1:6,i) = (/ 0.,                 0.,               -muS,                 0., 0.,      0./)
+  fJacQx(4,1:6,i) = (/ 0.,                 0.,                 0.,               -muS, 0.,      0./)
+  fJacQx(5,1:6,i) = (/ 0., -muS*s43*UPrim(2,i),   -muS*UPrim(3,i),    -muS*UPrim(4,i), 0., -lambda/)
+
+  fJacQy(1,1:6,i) = 0.
+  fJacQy(2,1:6,i) = (/ 0.,                 0.,            muS*s23,                 0., 0.,      0./)
+  fJacQy(3,1:6,i) = (/ 0.,               -muS,                 0.,                 0., 0.,      0./)
+  fJacQy(4,1:6,i) = 0.
+  fJacQy(5,1:6,i) = (/ 0.,    -muS*UPrim(3,i), muS*s23*UPrim(2,i),                 0., 0.,      0./)
+
+  fJacQz(1,1:6,i) = 0.
+  fJacQz(2,1:6,i) = (/ 0.,                 0.,                 0.,            muS*s23, 0.,      0./)
+  fJacQz(3,1:6,i) = 0.
+  fJacQz(4,1:6,i) = (/ 0.,               -muS,                 0.,                 0., 0.,      0./)
+  fJacQz(5,1:6,i) = (/ 0.,    -muS*UPrim(4,i),                 0., muS*s23*UPrim(2,i), 0.,      0./)
+
+
+  ! derivatives of diffusive flux in y-direction
+  gJacQx(1,1:6,i) = 0.
+  gJacQx(2,1:6,i) = (/ 0.,                 0.,               -muS,                 0., 0.,      0./)
+  gJacQx(3,1:6,i) = (/ 0.,            muS*s23,                 0.,                 0., 0.,      0./)
+  gJacQx(4,1:6,i) = 0.
+  gJacQx(5,1:6,i) = (/ 0., muS*s23*UPrim(3,i),    -muS*UPrim(2,i),                 0., 0.,      0./)
+
+  gJacQy(1,1:6,i) = 0.
+  gJacQy(2,1:6,i) = (/ 0.,               -muS,                 0.,                 0., 0.,      0./)
+  gJacQy(3,1:6,i) = (/ 0.,                 0.,           -muS*s43,                 0., 0.,      0./)
+  gJacQy(4,1:6,i) = (/ 0.,                 0.,                 0.,               -muS, 0.,      0./)
+  gJacQy(5,1:6,i) = (/ 0.,    -muS*UPrim(2,i),-muS*s43*UPrim(3,i),    -muS*UPrim(4,i), 0., -lambda/)
+
+  gJacQz(1,1:6,i) = 0.
+  gJacQz(2,1:6,i) = 0.
+  gJacQz(3,1:6,i) = (/ 0.,                 0.,                 0.,            muS*s23, 0.,      0./)
+  gJacQz(4,1:6,i) = (/ 0.,                 0.,               -muS,                 0., 0.,      0./)
+  gJacQz(5,1:6,i) = (/ 0.,                 0.,    -muS*UPrim(4,i), muS*s23*UPrim(3,i), 0.,      0./)
+
+  ! derivatives of diffusive flux in z-direction
+  hJacQx(1,1:6,i) = 0.
+  hJacQx(2,1:6,i) = (/ 0.,                 0.,                 0.,               -muS, 0.,      0./)
+  hJacQx(3,1:6,i) = 0.
+  hJacQx(4,1:6,i) = (/ 0.,            muS*s23,                 0.,                 0., 0.,      0./)
+  hJacQx(5,1:6,i) = (/ 0., muS*s23*UPrim(4,i),                 0.,    -muS*UPrim(2,i), 0.,      0./)
+
+  hJacQy(1,1:6,i) = 0.
+  hJacQy(2,1:6,i) = 0.
+  hJacQy(3,1:6,i) = (/ 0.,                 0.,                 0.,               -muS, 0.,      0./)
+  hJacQy(4,1:6,i) = (/ 0.,                 0.,            mu0*s23,                 0., 0.,      0./)
+  hJacQy(5,1:6,i) = (/ 0.,                 0., muS*s23*UPrim(4,i),    -muS*UPrim(3,i), 0.,      0./)
+
+  hJacQz(1,1:6,i) = 0.
+  hJacQz(2,1:6,i) = (/ 0.,               -muS,                 0.,                 0., 0.,      0./)
+  hJacQz(3,1:6,i) = (/ 0.,                 0.,               -muS,                 0., 0.,      0./)
+  hJacQz(4,1:6,i) = (/ 0.,                 0.,                 0.,           -muS*s43, 0.,      0./)
+  hJacQz(5,1:6,i) = (/ 0.,    -muS*UPrim(2,i),    -muS*UPrim(3,i),-muS*s43*UPrim(4,i), 0., -lambda/)
+#else
+  ! derivatives of diffusive flux in x-direction
+  fJacQx(1,1:6,i) = 0.
+  fJacQx(2,1:6,i) = (/ 0.,           -muS*s43,                 0.,                 0., 0.,      0./)
+  fJacQx(3,1:6,i) = (/ 0.,                 0.,               -muS,                 0., 0.,      0./)
+  fJacQx(4,1:6,i) = 0.
+  fJacQx(5,1:6,i) = (/ 0., -muS*s43*UPrim(2,i),   -muS*UPrim(3,i),                 0., 0., -lambda/)
+
+  fJacQy(1,1:6,i) = 0.
+  fJacQy(2,1:6,i) = (/ 0.,                 0.,            muS*s23,                 0., 0.,      0./)
+  fJacQy(3,1:6,i) = (/ 0.,               -muS,                 0.,                 0., 0.,      0./)
+  fJacQy(4,1:6,i) = 0.
+  fJacQy(5,1:6,i) = (/ 0.,    -muS*UPrim(3,i), muS*s23*UPrim(2,i),                 0., 0.,      0./)
+
+  fJacQz(:,:,i) = 0.
+
+  ! derivatives of diffusive flux in y-direction
+  gJacQx(1,1:6,i) = 0.
+  gJacQx(2,1:6,i) = (/ 0.,                 0.,               -muS,                 0., 0.,      0./)
+  gJacQx(3,1:6,i) = (/ 0.,            muS*s23,                 0.,                 0., 0.,      0./)
+  gJacQx(4,1:6,i) = 0.
+  gJacQx(5,1:6,i) = (/ 0., muS*s23*UPrim(3,i),    -muS*UPrim(2,i),                 0., 0.,      0./)
+
+  gJacQy(1,1:6,i) = 0.
+  gJacQy(2,1:6,i) = (/ 0.,               -muS,                 0.,                 0., 0.,      0./)
+  gJacQy(3,1:6,i) = (/ 0.,                 0.,           -muS*s43,                 0., 0.,      0./)
+  gJacQy(4,1:6,i) = 0.
+  gJacQy(5,1:6,i) = (/ 0.,    -muS*UPrim(2,i),-muS*s43*UPrim(3,i),                 0., 0., -lambda/)
+
+  gJacQz(:,:,i) = 0.
+
+  ! derivatives of diffusive flux in z-direction
+  hJacQx(:,:,i) = 0.
+  hJacQy(:,:,i) = 0.
+  hJacQz(:,:,i) = 0.
+#endif
+END DO
+END SUBROUTINE EvalFluxGradJacobian
+#endif /*PARABOLIC*/
 
 !===================================================================================================================================
 !> The Jacobian of the transformation from primitive to conservative variables

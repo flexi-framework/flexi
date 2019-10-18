@@ -36,16 +36,17 @@ INTERFACE dPrimdCons
 END INTERFACE
 
 INTERFACE dConsdPrimTemp
-  MODULE PROCEDURE dConsdPrimTemp
+  MODULE PROCEDURE dConsdPrim
 END INTERFACE
 
 INTERFACE dPrimTempdCons
-  MODULE PROCEDURE dPrimTempdCons
+  MODULE PROCEDURE dPrimdCons
 END INTERFACE
 
 PUBLIC::EvalAdvFluxJacobian
 #if PARABOLIC
 PUBLIC::EvalDiffFluxJacobian
+PUBLIC::EvalFluxGradJacobian
 #endif
 PUBLIC::dConsdPrim,dPrimdCons,dConsdPrimTemp,dPrimTempdCons
 !===================================================================================================================================
@@ -61,8 +62,7 @@ SUBROUTINE EvalAdvFluxJacobian(U,UPrim,fJac,gJac,hJac)
 USE MOD_PreProc
 USE MOD_Globals
 USE MOD_Equation_Vars     ,ONLY:AdvVel
-USE MOD_DG_Vars           ,ONLY:nDOFElem,imex
-USE MOD_TimeDisc_Vars     ,ONLY:TimeDiscMode
+USE MOD_DG_Vars           ,ONLY:nDOFElem
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -94,8 +94,6 @@ SUBROUTINE EvalDiffFluxJacobian(nDOF_loc,U,UPrim,gradUx,gradUy,gradUz,fJac,gJac,
                                 )
 ! MODULES
 USE MOD_PreProc
-USE MOD_Equation_Vars     ,ONLY:s23,s43
-USE MOD_Viscosity
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -107,7 +105,7 @@ REAL,DIMENSION(PP_nVarPrim    ,nDOF_loc),INTENT(IN)  :: UPrim                !< 
 REAL,DIMENSION(PP_nVarPrim    ,nDOF_loc),INTENT(IN)  :: gradUx,gradUy,gradUz !< primitive gradients
 REAL,DIMENSION(PP_nVar,PP_nVar,nDOF_loc),INTENT(OUT) :: fJac,gJac,hJac       !< Derivative of the Cartesian fluxes (iVar,i,j,k)
 #if EDDYVISCOSITY
-REAL,DIMENSION(1              ,nDOF_loc),INTENT(IN)  :: muSGS                !< solution in primitive variables
+REAL,DIMENSION(1              ,nDOF_loc),INTENT(IN)  :: muSGS                !< eddyviscosity
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -115,9 +113,51 @@ REAL,DIMENSION(1              ,nDOF_loc),INTENT(IN)  :: muSGS                !< 
 fJac = 0.
 gJac = 0.
 hJac = 0.
-
 END SUBROUTINE EvalDiffFluxJacobian
-#endif /*parabolic*/
+
+!===================================================================================================================================
+!> Computes the volume derivative of the analytical diffusive flux with respect to the gradient of U: d(F^v)/dQ, Q=grad U
+!===================================================================================================================================
+SUBROUTINE EvalFluxGradJacobian(nDOF_loc,U,UPrim,fJacQx,fJacQy,fJacQz,gJacQx,gJacQy,gJacQz,hJacQx,hJacQy,hJacQz &
+#if EDDYVISCOSITY
+                               ,muSGS &
+#endif
+                               )
+! MODULES
+USE MOD_PreProc
+USE MOD_Equation_Vars,ONLY:DiffC
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+INTEGER,INTENT(IN)                              :: nDOF_loc !< number of degrees of freedom
+REAL,DIMENSION(PP_nVar    ,nDOF_loc),INTENT(IN) :: U        !< solution in conservative variables
+REAL,DIMENSION(PP_nVarPrim,nDOF_loc),INTENT(IN) :: UPrim    !< solution in primitive variables
+#if EDDYVISCOSITY
+REAL,DIMENSION(1          ,nDOF_loc),INTENT(IN) :: muSGS    !< eddyviscosity
+#endif
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL,DIMENSION(PP_nVar,PP_nVar,nDOF_loc),INTENT(OUT) :: fJacQx,fJacQy,fJacQz,gJacQx,gJacQy,gJacQz,hJacQx,hJacQy,hJacQz !<
+                                                        !> Jacobian of the diffusive Cartesian fluxes (iVar,i,j,k) w.r.t gradients
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!===================================================================================================================================
+fJacQx = -DiffC
+fJacQy = 0.
+fJacQz = 0.
+
+gJacQx = 0.
+gJacQy = -DiffC
+gJacQz = 0.
+
+#if PP_dim==3
+hJacQx = 0.
+hJacQy = 0.
+hJacQz = -DiffC
+#endif
+END SUBROUTINE EvalFluxGradJacobian
+#endif /*PARABOLIC*/
 
 !===================================================================================================================================
 !> The Jacobian of the transformation from conservative to primitive variables

@@ -108,8 +108,7 @@ USE MOD_Precond_Vars              ,ONLY: HyperbolicPrecond
 USE MOD_Lifting_Vars              ,ONLY: gradUx_master,gradUx_slave
 USE MOD_Lifting_Vars              ,ONLY: gradUy_master,gradUy_slave
 USE MOD_Lifting_Vars              ,ONLY: gradUz_master,gradUz_slave
-USE MOD_Jacobian                  ,ONLY: EvalDiffFluxJacobian
-USE MOD_GradJacobian              ,ONLY: EvalFluxGradJacobian
+USE MOD_Jacobian                  ,ONLY: EvalDiffFluxJacobian,EvalFluxGradJacobian
 #if EDDYVISCOSITY
 USE MOD_EddyVisc_Vars             ,ONLY: muSGS_master,muSGS_slave
 #endif /*EDDYVISCOSITY*/

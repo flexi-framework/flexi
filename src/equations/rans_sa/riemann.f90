@@ -58,6 +58,10 @@ INTERFACE Riemann
   MODULE PROCEDURE Riemann
 END INTERFACE
 
+INTERFACE Riemann_Point
+  MODULE PROCEDURE Riemann_Point
+END INTERFACE
+
 #if PARABOLIC
 INTERFACE ViscousFlux
   MODULE PROCEDURE ViscousFlux
@@ -72,6 +76,7 @@ END INTERFACE
 
 PUBLIC::InitRiemann
 PUBLIC::Riemann
+PUBLIC::Riemann_Point
 PUBLIC::FinalizeRiemann
 !==================================================================================================================================
 
@@ -238,18 +243,45 @@ USE MOD_Flux         ,ONLY:EvalEulerFlux1D_fast
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)                                        :: Nloc       !< local polynomial degree
+INTEGER,INTENT(IN)                                          :: Nloc       !< local polynomial degree
 REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_L        !< conservative solution at left side of the interface
 REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_R        !< conservative solution at right side of the interface
 REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim_L    !< primitive solution at left side of the interface
 REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim_R    !< primitive solution at right side of the interface
 !> normal vector and tangential vectors at side
 REAL,DIMENSION(          3,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: nv,t1,t2
-LOGICAL,INTENT(IN)                                        :: doBC       !< marker whether side is a BC side
+LOGICAL,INTENT(IN)                                          :: doBC       !< marker whether side is a BC side
 REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: FOut       !< advective flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                 :: i,j
+!==================================================================================================================================
+DO j=0,ZDIM(Nloc); DO i=0,Nloc
+  CALL Riemann_Point(Fout(:,i,j),U_L(:,i,j),U_R(:,i,j),UPrim_L(:,i,j),UPrim_R(:,i,j),nv(:,i,j),t1(:,i,j),t2(:,i,j),doBC)
+END DO; END DO
+END SUBROUTINE Riemann
+
+!==================================================================================================================================
+!> Computes the numerical flux
+!> Conservative States are rotated into normal direction in this routine and are NOT backrotated: don't use it after this routine!!
+!> Attention 2: numerical flux is backrotated at the end of the routine!!
+!==================================================================================================================================
+SUBROUTINE Riemann_Point(FOut,U_L,U_R,UPrim_L,UPrim_R,nv,t1,t2,doBC)
+! MODULES
+USE MOD_Flux         ,ONLY:EvalEulerFlux1D_fast
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: U_L        !< conservative solution at left side of the interface
+REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: U_R        !< conservative solution at right side of the interface
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrim_L    !< primitive solution at left side of the interface
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrim_R    !< primitive solution at right side of the interface
+!> normal vector and tangential vectors at side
+REAL,DIMENSION(          3),INTENT(IN)  :: nv,t1,t2
+LOGICAL,INTENT(IN)                      :: doBC       !< marker whether side is a BC side
+REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: FOut       !< advective flux
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
 REAL,DIMENSION(PP_nVar) :: F_L,F_R,F
 REAL,DIMENSION(PP_2Var) :: U_LL,U_RR
 PROCEDURE(RiemannInt),POINTER :: Riemann_loc !< pointer defining the standard inner Riemann solver
@@ -261,67 +293,63 @@ ELSE
 END IF
 
 ! Momentum has to be rotatet using the normal system individual for each
-DO j=0,ZDIM(Nloc); DO i=0,Nloc
-  ! left state: U_L
-  U_LL(DENS)=U_L(DENS,i,j)
-  U_LL(SRHO)=1./U_LL(DENS)
-  U_LL(ENER)=U_L(5,i,j)
-  U_LL(PRES)=UPrim_L(5,i,j)
-  U_LL(MUSA)=U_L(6,i,j)
-  ! rotate velocity in normal and tangential direction 
-  U_LL(VEL1)=DOT_PRODUCT(UPrim_L(2:4,i,j),nv(:,i,j))
-  U_LL(VEL2)=DOT_PRODUCT(UPrim_L(2:4,i,j),t1(:,i,j))
-  U_LL(MOM1)=U_LL(DENS)*U_LL(VEL1)
-  U_LL(MOM2)=U_LL(DENS)*U_LL(VEL2)
+! left state: U_L
+U_LL(DENS)=U_L(DENS)
+U_LL(SRHO)=1./U_LL(DENS)
+U_LL(ENER)=U_L(5)
+U_LL(PRES)=UPrim_L(5)
+U_LL(MUSA)=U_L(6)
+! rotate velocity in normal and tangential direction 
+U_LL(VEL1)=DOT_PRODUCT(UPrim_L(2:4),nv(:))
+U_LL(VEL2)=DOT_PRODUCT(UPrim_L(2:4),t1(:))
+U_LL(MOM1)=U_LL(DENS)*U_LL(VEL1)
+U_LL(MOM2)=U_LL(DENS)*U_LL(VEL2)
 #if PP_dim==3
-  U_LL(VEL3)=DOT_PRODUCT(UPrim_L(2:4,i,j),t2(:,i,j))
-  U_LL(MOM3)=U_LL(DENS)*U_LL(VEL3)
+U_LL(VEL3)=DOT_PRODUCT(UPrim_L(2:4),t2(:))
+U_LL(MOM3)=U_LL(DENS)*U_LL(VEL3)
 #else
-  U_LL(VEL3)=0.
-  U_LL(MOM3)=0.
+U_LL(VEL3)=0.
+U_LL(MOM3)=0.
 #endif
-  ! right state: U_R
-  U_RR(DENS)=U_R(DENS,i,j)
-  U_RR(SRHO)=1./U_RR(DENS)
-  U_RR(ENER)=U_R(5,i,j)
-  U_RR(PRES)=UPrim_R(5,i,j)
-  U_RR(MUSA)=U_R(6,i,j)
-  ! rotate momentum in normal and tangential direction 
-  U_RR(VEL1)=DOT_PRODUCT(UPRIM_R(2:4,i,j),nv(:,i,j))
-  U_RR(VEL2)=DOT_PRODUCT(UPRIM_R(2:4,i,j),t1(:,i,j))
-  U_RR(MOM1)=U_RR(DENS)*U_RR(VEL1)
-  U_RR(MOM2)=U_RR(DENS)*U_RR(VEL2)
+! right state: U_R
+U_RR(DENS)=U_R(DENS)
+U_RR(SRHO)=1./U_RR(DENS)
+U_RR(ENER)=U_R(5)
+U_RR(PRES)=UPrim_R(5)
+U_RR(MUSA)=U_R(6)
+! rotate momentum in normal and tangential direction 
+U_RR(VEL1)=DOT_PRODUCT(UPRIM_R(2:4),nv(:))
+U_RR(VEL2)=DOT_PRODUCT(UPRIM_R(2:4),t1(:))
+U_RR(MOM1)=U_RR(DENS)*U_RR(VEL1)
+U_RR(MOM2)=U_RR(DENS)*U_RR(VEL2)
 #if PP_dim==3
-  U_RR(VEL3)=DOT_PRODUCT(UPRIM_R(2:4,i,j),t2(:,i,j))
-  U_RR(MOM3)=U_RR(DENS)*U_RR(VEL3)
+U_RR(VEL3)=DOT_PRODUCT(UPRIM_R(2:4),t2(:))
+U_RR(MOM3)=U_RR(DENS)*U_RR(VEL3)
 #else
-  U_RR(VEL3)=0.
-  U_RR(MOM3)=0.
+U_RR(VEL3)=0.
+U_RR(MOM3)=0.
 #endif
 
 # ifndef SPLIT_DG
-  CALL EvalEulerFlux1D_fast(U_LL,F_L)
-  CALL EvalEulerFlux1D_fast(U_RR,F_R)
+CALL EvalEulerFlux1D_fast(U_LL,F_L)
+CALL EvalEulerFlux1D_fast(U_RR,F_R)
 #endif /*SPLIT_DG*/
 
-  CALL Riemann_loc(F_L,F_R,U_LL,U_RR,F)
+CALL Riemann_loc(F_L,F_R,U_LL,U_RR,F)
 
-  ! Back Rotate the normal flux into Cartesian direction
-  Fout(DENS,i,j)=F(DENS)
-  Fout(MOMV,i,j)=nv(:,i,j)*F(MOM1)     &
-                  + t1(:,i,j)*F(MOM2)  &
+! Back Rotate the normal flux into Cartesian direction
+Fout(DENS)=F(DENS)
+Fout(MOMV)=nv(:)*F(MOM1)     &
+                + t1(:)*F(MOM2)  &
 #if PP_dim==3
-                  + t2(:,i,j)*F(MOM3) 
+                + t2(:)*F(MOM3) 
 #else
-                  + 0.
+                + 0.
 #endif
-  Fout(ENER,i,j)=F(ENER)
-  Fout(MUSA,i,j)=F(MUSA)
-END DO; END DO
+Fout(ENER)=F(ENER)
+Fout(MUSA)=F(MUSA)
 
-END SUBROUTINE Riemann
-
-
+END SUBROUTINE Riemann_Point
 
 #if PARABOLIC
 !==================================================================================================================================

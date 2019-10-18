@@ -12,7 +12,6 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
-#include "eos.h"
 
 !===================================================================================================================================
 !> This module contains the routines required for the volume contribution of the analytical block-Jacobi preconditioner.
@@ -335,7 +334,7 @@ USE MOD_Precond_Vars  ,ONLY: NoFillIn
 USE MOD_DG_Vars       ,ONLY: D_hat,U,UPrim,nDOFElem
 USE MOD_Mesh_Vars     ,ONLY: Metrics_fTilde,Metrics_gTilde,Metrics_hTilde
 USE MOD_Implicit_Vars ,ONLY: nDOFVarElem
-USE MOD_GradJacobian  ,ONLY: EvalFluxGradJacobian
+USE MOD_Jacobian      ,ONLY: EvalFluxGradJacobian
 #if EDDYVISCOSITY
 USE MOD_EddyVisc_Vars ,ONLY: muSGS
 #endif /*EDDYVISCOSITY*/
@@ -682,10 +681,10 @@ INTEGER                                                  :: SideID_minus,SideID_
 #endif
 REAL,DIMENSION(PP_nVar,PP_nVar)                          :: matrix !< has to be used due to intel compiler error with matmul
 REAL,DIMENSION(PP_nVar,PP_nVar)                          :: vector !< has to be used due to intel compiler error with matmul
-#if EQNSYSNR==2 && PARABOLIC
+#if PARABOLIC
 REAL,DIMENSION(PP_nVar,PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)    :: fJac_visc,gJac_visc,hJac_visc
 REAL,DIMENSION(PP_nVar,PP_nVar)                          :: Jac_Visc_plus,Jac_Visc_minus
-#endif /*EQNSYSNR && PARABOLIC*/
+#endif /*PARABOLIC*/
 !===================================================================================================================================
 vn1 = PP_nVar*(PP_N+1)
 vn2 = vn1*(PP_N+1)
@@ -1161,7 +1160,7 @@ USE MOD_Jac_Reconstruction ,ONLY: JacFVGradients_Vol
 USE MOD_Precond_Vars       ,ONLY: NoFillIn
 USE MOD_DG_Vars            ,ONLY: U,UPrim,nDOFElem
 USE MOD_Implicit_Vars      ,ONLY: nDOFVarElem
-USE MOD_GradJacobian       ,ONLY: EvalFluxGradJacobian
+USE MOD_Jacobian           ,ONLY: EvalFluxGradJacobian
 #if EDDYVISCOSITY
 USE MOD_EddyVisc_Vars      ,ONLY: muSGS
 #endif /*EDDYVISCOSITY*/
