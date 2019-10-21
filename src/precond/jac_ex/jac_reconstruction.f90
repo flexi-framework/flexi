@@ -69,7 +69,7 @@ USE MOD_PreProc
 USE MOD_Globals
 USE MOD_ProlongToFacePrim  ,ONLY: ProlongToFacePrim
 USE MOD_Interpolation_Vars ,ONLY: L_Minus,L_Plus
-USE MOD_Mesh_Vars          ,ONLY: nElems,nSides,firstInnerSide,lastBCSide,lastMPISide_MINE
+USE MOD_Mesh_Vars          ,ONLY: nElems,nSides,firstInnerSide,nBCSides,lastMPISide_MINE
 USE MOD_Mesh_Vars          ,ONLY: S2V,SideToElem
 USE MOD_GetBoundaryFlux    ,ONLY: GetBoundaryState
 USE MOD_Mesh_Vars          ,ONLY: NormVec,TangVec1,TangVec2,Face_xGP
@@ -101,16 +101,17 @@ REAL,INTENT(OUT)    :: URec_extended(PP_nVarPrim,-1:PP_N+1,-1:PP_N+1, 0:PP_NZ, 1
 REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:ZDIM(PP_N),1:nSides)  :: URec_master,URec_slave
 INTEGER                                                   :: p,q,l,i,j,k,ijk(3),locSideID,ElemID,SideID,flip,iElem
 REAL,DIMENSION(0:PP_N,0:PP_NZ,1:nSides)                   :: FV_sdx_Face_loc
-REAL,DIMENSION(1:PP_nVarPrim,0:PP_N,0:PP_NZ)              :: UPrim_Boundary
+REAL,DIMENSION(0:PP_N,0:PP_NZ)                            :: FV_sdx_Face_tmp
+REAL,DIMENSION(1:PP_nVarPrim,0:PP_N,0:PP_NZ)              :: UPrim_tmp
 !==================================================================================================================================
-! 1. Fill inner date with element volume data
+! 1. Fill inner data with element volume data
 DO iElem=1,nElems
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     URec_extended(:,i,j,k,iElem) = URec(:,i,j,k,iElem)
   END DO; END DO; END DO! i,j,k=0,PP_N
 END DO ! iElem
 
-! 2.   Add volume date of first layer of neighbouring cell
+! 2.   Add volume data of first layer of neighbouring cell
 ! 2.1. Copy first layer to surface and send data from slave to master and vice versa
 #if USE_MPI
 CALL StartReceiveMPIData(URec_slave ,DataSizeSidePrim,1,nSides,MPIRequest_Rec_SM(:,SEND),SendID=2) ! slave -> master
@@ -129,18 +130,7 @@ CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Rec_MS)
 ! 3.   Fill information about distance between solution points at faces (FV_sdx_Face)
 ! 3.2. Send FV_sdx_Face from master to slave
 DO SideID=firstInnerSide,lastMPISide_MINE
-  SELECT CASE(FV_Elems_Sum(SideID))
-  CASE(0) ! both DG
-    CYCLE
-  CASE(1) ! master=FV, slave=DG
-    FV_sdx_Face_loc(:,:,SideID) = FV_sdx_Face(:,:,1,SideID)
-  CASE(2) ! master=DG, slave=FV
-    FV_sdx_Face_loc(:,:,SideID) = FV_sdx_Face(:,:,2,SideID)
-  CASE(3) ! both FV
-    FV_sdx_Face_loc(:,:,SideID) = FV_sdx_Face(:,:,3,SideID)
-  CASE DEFAULT
-    CALL Abort(__STAMP__, "FV_Elems_master/slave is not 0 or 1 somewhere!")
-  END SELECT
+  IF (FV_Elems_Sum(SideID).GT.0) FV_sdx_Face_loc(:,:,SideID) = FV_sdx_Face(:,:,FV_Elems_Sum(SideID),SideID)
 END DO
 #if USE_MPI
 CALL StartReceiveMPIData(FV_sdx_Face_loc,(PP_N+1)*(PP_NZ+1),1,nSides,MPIRequest_Rec_MS(:,SEND),SendID=1) ! master -> slave
@@ -158,112 +148,74 @@ DO iElem=1,nElems
   END DO; END DO; END DO
 END DO
 
-! 2.2. Switch Solution representation of URec_slave/master to FV if corresponding element is a DG element
+! 2.2. Switch solution representation of URec_slave/master to FV if corresponding element is a DG element
 ! 2.3. Add first layer of URec of neighbouring cell to extended array
 ! 3.4. Add face data to extended FV_sdx array (take care of storage order of FV_sdx!)
-! First, process the slave sides
-DO SideID=firstInnerSide,nSides
-  ! neighbor side !ElemID,locSideID and flip =-1 if not existing
-  ElemID    = SideToElem(S2E_NB_ELEM_ID,SideID)
-  locSideID = SideToElem(S2E_NB_LOC_SIDE_ID,SideID)
-  flip      = SideToElem(S2E_FLIP,SideID)
-  IF(ElemID.EQ.-1) CYCLE ! skip for firstMPISide_MINE:lastMPISide_MINE
-  IF(FV_Elems(ElemID).EQ.0) CYCLE ! skip for DG elements
-  IF(FV_Elems_Sum(SideID).EQ.2) CALL ChangeBasisSurf(PP_nVarPrim,PP_N,PP_N,FV_Vdm,URec_master(:,:,:,SideID)) ! switch master to FV
-  DO q=0,PP_NZ; DO p=0,PP_N
-    ijk=S2V(:,0,p,q,flip,locSideID)
-    SELECT CASE(locSideID)
-    CASE(XI_MINUS)
-      URec_extended(:,     ijk(1)-1,ijk(2)  ,ijk(3)  ,ElemID) = URec_master(   :,p,q,SideID)
-      FV_sdx_XI_extended(  ijk(2)  ,ijk(3)  ,ijk(1)  ,ElemID) = FV_sdx_face_loc( p,q,SideID)
-    CASE(XI_PLUS)
-      URec_extended(:,     ijk(1)+1,ijk(2)  ,ijk(3)  ,ElemID) = URec_master(   :,p,q,SideID)
-      FV_sdx_XI_extended(  ijk(2)  ,ijk(3)  ,ijk(1)+1,ElemID) = FV_sdx_face_loc( p,q,SideID)
-    CASE(ETA_MINUS)
-      URec_extended(:,     ijk(1)  ,ijk(2)-1,ijk(3)  ,ElemID) = URec_master(   :,p,q,SideID)
-      FV_sdx_ETA_extended( ijk(1)  ,ijk(3)  ,ijk(2)  ,ElemID) = FV_sdx_face_loc( p,q,SideID)
-    CASE(ETA_PLUS)
-      URec_extended(:,     ijk(1)  ,ijk(2)+1,ijk(3)  ,ElemID) = URec_master(   :,p,q,SideID)
-      FV_sdx_ETA_extended( ijk(1)  ,ijk(3)  ,ijk(2)+1,ElemID) = FV_sdx_face_loc( p,q,SideID)
-#if PP_dim == 3
-    CASE(ZETA_MINUS)
-      URec_extended(:,     ijk(1)  ,ijk(2)  ,ijk(3)-1,ElemID) = URec_master(   :,p,q,SideID)
-      FV_sdx_ZETA_extended(ijk(1)  ,ijk(2)  ,ijk(3)  ,ElemID) = FV_sdx_face_loc( p,q,SideID)
-    CASE(ZETA_PLUS)
-      URec_extended(:,     ijk(1)  ,ijk(2)  ,ijk(3)+1,ElemID) = URec_master(   :,p,q,SideID)
-      FV_sdx_ZETA_extended(ijk(1)  ,ijk(2)  ,ijk(3)+1,ElemID) = FV_sdx_face_loc( p,q,SideID)
-#endif
-    END SELECT
-  END DO; END DO
-END DO
-! Second, process the master sides
-DO SideID=firstInnerSide,lastMPISide_MINE
-  ElemID    = SideToElem(S2E_ELEM_ID,SideID)
-  IF(FV_Elems(ElemID).EQ.0) CYCLE ! skip for DG elements
-  locSideID = SideToElem(S2E_LOC_SIDE_ID,SideID)
-  IF(FV_Elems_Sum(SideID).EQ.1) CALL ChangeBasisSurf(PP_nVarPrim,PP_N,PP_N,FV_Vdm,URec_slave(:,:,:,SideID)) ! switch slave to FV
-  DO q=0,PP_NZ; DO p=0,PP_N
-    ijk=S2V(:,0,p,q,0,locSideID)
-    SELECT CASE(locSideID)
-    CASE(XI_MINUS)
-      URec_extended(:,     ijk(1)-1,ijk(2)  ,ijk(3)  ,ElemID) = URec_slave(   :,p,q,SideID)
-      FV_sdx_XI_extended(  ijk(2)  ,ijk(3)  ,ijk(1)  ,ElemID) = FV_sdx_face_loc(p,q,SideID)
-    CASE(XI_PLUS)
-      URec_extended(:,     ijk(1)+1,ijk(2)  ,ijk(3)  ,ElemID) = URec_slave(   :,p,q,SideID)
-      FV_sdx_XI_extended(  ijk(2)  ,ijk(3)  ,ijk(1)+1,ElemID) = FV_sdx_face_loc(p,q,SideID)
-    CASE(ETA_MINUS)
-      URec_extended(:,     ijk(1)  ,ijk(2)-1,ijk(3)  ,ElemID) = URec_slave(   :,p,q,SideID)
-      FV_sdx_ETA_extended( ijk(1)  ,ijk(3)  ,ijk(2)  ,ElemID) = FV_sdx_face_loc(p,q,SideID)
-    CASE(ETA_PLUS)
-      URec_extended(:,     ijk(1)  ,ijk(2)+1,ijk(3)  ,ElemID) = URec_slave(   :,p,q,SideID)
-      FV_sdx_ETA_extended( ijk(1)  ,ijk(3)  ,ijk(2)+1,ElemID) = FV_sdx_face_loc(p,q,SideID)
-#if PP_dim == 3
-    CASE(ZETA_MINUS)
-      URec_extended(:,     ijk(1)  ,ijk(2)  ,ijk(3)-1,ElemID) = URec_slave(   :,p,q,SideID)
-      FV_sdx_ZETA_extended(ijk(1)  ,ijk(2)  ,ijk(3)  ,ElemID) = FV_sdx_face_loc(p,q,SideID)
-    CASE(ZETA_PLUS)
-      URec_extended(:,     ijk(1)  ,ijk(2)  ,ijk(3)+1,ElemID) = URec_slave(   :,p,q,SideID)
-      FV_sdx_ZETA_extended(ijk(1)  ,ijk(2)  ,ijk(3)+1,ElemID) = FV_sdx_face_loc(p,q,SideID)
-#endif
-    END SELECT
-  END DO; END DO
-END DO
-! Third, do boundary sides
-DO SideID=1,lastBCSide
-  ElemID    = SideToElem(S2E_ELEM_ID,SideID)
-  IF(FV_Elems(ElemID).EQ.0) CYCLE ! skip for DG elements
-  locSideID = SideToElem(S2E_LOC_SIDE_ID,SideID)
-  ! set state with boundary condition
-  CALL GetBoundaryState(SideID,t,PP_N,UPrim_boundary,URec_master(:,:,:,SideID),                    &
-                        NormVec(:,:,:,1,SideID),TangVec1(:,:,:,1,SideID),TangVec2(:,:,:,1,SideID), &
-                        Face_xGP(:,:,:,1,SideID))
-  DO q=0,PP_NZ; DO p=0,PP_N
-    ijk=S2V(:,0,p,q,0,locSideID)
-    SELECT CASE(locSideID)
-    CASE(XI_MINUS)
-      URec_extended(:,     ijk(1)-1,ijk(2)  ,ijk(3)  ,ElemID) = UPrim_boundary(:,p,q         )
-      FV_sdx_XI_extended(  ijk(2)  ,ijk(3)  ,ijk(1)  ,ElemID) = FV_sdx_face(     p,q,3,SideID)
-    CASE(XI_PLUS)
-      URec_extended(:,     ijk(1)+1,ijk(2)  ,ijk(3)  ,ElemID) = UPrim_boundary(:,p,q         )
-      FV_sdx_XI_extended(  ijk(2)  ,ijk(3)  ,ijk(1)+1,ElemID) = FV_sdx_face(     p,q,3,SideID)
-    CASE(ETA_MINUS)
-      URec_extended(:,     ijk(1)  ,ijk(2)-1,ijk(3)  ,ElemID) = UPrim_boundary(:,p,q         )
-      FV_sdx_ETA_extended( ijk(1)  ,ijk(3)  ,ijk(2)  ,ElemID) = FV_sdx_face(     p,q,3,SideID)
-    CASE(ETA_PLUS)
-      URec_extended(:,     ijk(1)  ,ijk(2)+1,ijk(3)  ,ElemID) = UPrim_boundary(:,p,q         )
-      FV_sdx_ETA_extended( ijk(1)  ,ijk(3)  ,ijk(2)+1,ElemID) = FV_sdx_face(     p,q,3,SideID)
-#if PP_dim == 3
-    CASE(ZETA_MINUS)
-      URec_extended(:,     ijk(1)  ,ijk(2)  ,ijk(3)-1,ElemID) = UPrim_boundary(:,p,q         )
-      FV_sdx_ZETA_extended(ijk(1)  ,ijk(2)  ,ijk(3)  ,ElemID) = FV_sdx_face(     p,q,3,SideID)
-    CASE(ZETA_PLUS)
-      URec_extended(:,     ijk(1)  ,ijk(2)  ,ijk(3)+1,ElemID) = UPrim_boundary(:,p,q         )
-      FV_sdx_ZETA_extended(ijk(1)  ,ijk(2)  ,ijk(3)+1,ElemID) = FV_sdx_face(     p,q,3,SideID)
-#endif
-    END SELECT
-  END DO; END DO
-END DO
+DO SideID=1,nSides
+  ! Loop over master and slave sides
+  DO i = 1, 2
+    IF (i.EQ.1) THEN ! master sides
+      ElemID = SideToElem(S2E_ELEM_ID,SideID)
+      IF(ElemID.EQ.-1) CYCLE ! skip if my proc does not have that element
+      IF(FV_Elems(ElemID).EQ.0) CYCLE ! skip for DG elements
+      locSideID = SideToElem(S2E_LOC_SIDE_ID,SideID)
+      flip      = 0
+      IF (SideID.LE.nBCSides) THEN
+        FV_sdx_face_tmp = FV_sdx_face(:,:,3,SideID)
+        ! set state with boundary condition
+        CALL GetBoundaryState(SideID,t,PP_N,UPrim_tmp,URec_master(:,:,:,SideID),                    &
+                              NormVec(:,:,:,1,SideID),TangVec1(:,:,:,1,SideID),TangVec2(:,:,:,1,SideID), &
+                              Face_xGP(:,:,:,1,SideID))
+      ELSE
+        FV_sdx_face_tmp = FV_sdx_face_loc(:,:,SideID)
+        IF(FV_Elems_Sum(SideID).EQ.1) THEN
+          CALL ChangeBasisSurf(PP_nVarPrim,PP_N,PP_N,FV_Vdm,URec_slave(:,:,:,SideID),UPrim_tmp(:,:,:)) ! switch slave to FV
+        ELSE
+          UPrim_tmp = URec_slave(:,:,:,SideID)
+        END IF
+      END IF
+    ELSE ! slave side
+      ElemID = SideToElem(S2E_NB_ELEM_ID,SideID)
+      IF(ElemID.EQ.-1) CYCLE ! skip if my proc does not have that element
+      IF(FV_Elems(ElemID).EQ.0) CYCLE ! skip for DG elements
+      locSideID = SideToElem(S2E_NB_LOC_SIDE_ID,SideID)
+      flip      = SideToElem(S2E_FLIP,SideID)
+      FV_sdx_face_tmp = FV_sdx_face_loc(:,:,SideID)
+      IF(FV_Elems_Sum(SideID).EQ.2) THEN
+        CALL ChangeBasisSurf(PP_nVarPrim,PP_N,PP_N,FV_Vdm,URec_master(:,:,:,SideID),UPrim_tmp(:,:,:)) ! switch master to FV
+      ELSE
+        UPrim_tmp = URec_master(:,:,:,SideID)
+      END IF
+    END IF
 
+    DO q=0,PP_NZ; DO p=0,PP_N
+      ijk=S2V(:,0,p,q,flip,locSideID)
+      SELECT CASE(locSideID)
+      CASE(XI_MINUS)
+        URec_extended(:,     ijk(1)-1,ijk(2)  ,ijk(3)  ,ElemID) = UPrim_tmp(    :,p,q)
+        FV_sdx_XI_extended(  ijk(2)  ,ijk(3)  ,ijk(1)  ,ElemID) = FV_sdx_face_tmp(p,q)
+      CASE(XI_PLUS)
+        URec_extended(:,     ijk(1)+1,ijk(2)  ,ijk(3)  ,ElemID) = UPrim_tmp(    :,p,q)
+        FV_sdx_XI_extended(  ijk(2)  ,ijk(3)  ,ijk(1)+1,ElemID) = FV_sdx_face_tmp(p,q)
+      CASE(ETA_MINUS)
+        URec_extended(:,     ijk(1)  ,ijk(2)-1,ijk(3)  ,ElemID) = UPrim_tmp(    :,p,q)
+        FV_sdx_ETA_extended( ijk(1)  ,ijk(3)  ,ijk(2)  ,ElemID) = FV_sdx_face_tmp(p,q)
+      CASE(ETA_PLUS)
+        URec_extended(:,     ijk(1)  ,ijk(2)+1,ijk(3)  ,ElemID) = UPrim_tmp(    :,p,q)
+        FV_sdx_ETA_extended( ijk(1)  ,ijk(3)  ,ijk(2)+1,ElemID) = FV_sdx_face_tmp(p,q)
+#if PP_dim == 3
+      CASE(ZETA_MINUS)
+        URec_extended(:,     ijk(1)  ,ijk(2)  ,ijk(3)-1,ElemID) = UPrim_tmp(    :,p,q)
+        FV_sdx_ZETA_extended(ijk(1)  ,ijk(2)  ,ijk(3)  ,ElemID) = FV_sdx_face_tmp(p,q)
+      CASE(ZETA_PLUS)
+        URec_extended(:,     ijk(1)  ,ijk(2)  ,ijk(3)+1,ElemID) = UPrim_tmp(    :,p,q)
+        FV_sdx_ZETA_extended(ijk(1)  ,ijk(2)  ,ijk(3)+1,ElemID) = FV_sdx_face_tmp(p,q)
+#endif
+      END SELECT
+    END DO; END DO
+  END DO ! i = 1, 2
+END DO
+  
 END SUBROUTINE Fill_ExtendedState
 
 !===================================================================================================================================
@@ -306,7 +258,7 @@ REAL,DIMENSION(PP_nVar    ,PP_nVarPrim,0:PP_N,1:3) :: matrix_plus
 REAL,DIMENSION(PP_nVar    ,PP_nVarPrim,0:PP_N,1:3) :: matrix_minus
 !==================================================================================================================================
 ! storage order in dUdUvol(1:3):
-! di/d(i-1), di/d(i), di/d(i+1)
+! dU_LR_i/dU_(i-1), dU_LR_i/dU_i, dU_LR_i/dU_(i+1)
 dUdUvol_plus  = 0.
 dUdUvol_minus = 0.
 dUdUvolprim_plus  = 0.
@@ -324,39 +276,43 @@ END DO
 
 ! 3. Calculate derivative of reconstruction
 DO i=0,PP_N
-  ! Calculate left and right gradients
+  ! Calculate left and right unlimited slopes
   s_L(:,i) = (URec_extended(:,i  ) - URec_extended(:,i-1)) * FV_sdx(i  ) 
   s_R(:,i) = (URec_extended(:,i+1) - URec_extended(:,i  )) * FV_sdx(i+1)
-  ! Limit gradients
+  ! Limit slopes
   CALL FV_Limiter(s_L(:,i),s_R(:,i),s_lim(:,i)) ! only null- or minmod-limiter
   SELECT CASE(LimiterType)
   CASE(0) ! NullLimiter
     DO iVar=1,PP_nVarPrim
       dUdUvolprim_minus(iVar,iVar,i,2) = 1.
       dUdUvolprim_plus( iVar,iVar,i,2) = 1.
+      ! NullLimiter has no dependencies on neighbouring DOFs!
     END DO !iVar
   CASE(1) ! MinMod
     DO iVar=1,PP_nVarPrim
       IF(s_lim(iVar,i).EQ.0.)THEN ! first order
         dUdUvolprim_plus( iVar,iVar,i,2) = 1.
         dUdUvolprim_minus(iVar,iVar,i,2) = 1.
-      ELSEIF(s_lim(iVar,i).EQ.s_L(iVar,i))THEN ! use left gradient
+      ELSEIF(s_lim(iVar,i).EQ.s_L(iVar,i))THEN ! use left slope
+        ! only depends on DOF on my left and myself
         dUdUvolprim_plus( iVar,iVar,i,1) = 0. - FV_sdx(i  ) * FV_dx_R(i)
         dUdUvolprim_plus( iVar,iVar,i,2) = 1. + FV_sdx(i  ) * FV_dx_R(i)
 
         dUdUvolprim_minus(iVar,iVar,i,1) = 0. + FV_sdx(i  ) * FV_dx_L(i)
         dUdUvolprim_minus(iVar,iVar,i,2) = 1. - FV_sdx(i  ) * FV_dx_L(i)
-      ELSEIF(s_lim(iVar,i).EQ.s_R(iVar,i))THEN ! use right gradient
+      ELSEIF(s_lim(iVar,i).EQ.s_R(iVar,i))THEN ! use right slope
+        ! only depends on DOF on my right and myself
         dUdUvolprim_plus( iVar,iVar,i,2) = 1. - FV_sdx(i+1) * FV_dx_R(i)
         dUdUvolprim_plus( iVar,iVar,i,3) = 0. + FV_sdx(i+1) * FV_dx_R(i)
 
-        dUdUvol_minus(iVar,iVar,i,2) = 1. + FV_sdx(i+1) * FV_dx_L(i)
-        dUdUvol_minus(iVar,iVar,i,3) = 0. - FV_sdx(i+1) * FV_dx_L(i)
+        dUdUvolprim_minus(iVar,iVar,i,2) = 1. + FV_sdx(i+1) * FV_dx_L(i)
+        dUdUvolprim_minus(iVar,iVar,i,3) = 0. - FV_sdx(i+1) * FV_dx_L(i)
       ELSE
         CALL Abort(__STAMP__,'Slopes do not match with minmod in preconditioner!')
       END IF
     END DO !iVar
   CASE(9) ! Central
+    ! Central: 0.5*( s_L(U_(i-1),U_i) + s_R(U_(i+1),U_i) )
     DO iVar=1,PP_nVarPrim
       dUdUvolprim_plus( iVar,iVar,i,1) = 0. + FV_dx_R(i) * 0.5*(-FV_sdx(i))
       dUdUvolprim_plus( iVar,iVar,i,2) = 1. + FV_dx_R(i) * 0.5*( FV_sdx(i)-FV_sdx(i+1))
@@ -375,7 +331,7 @@ DO i=0,PP_N
     matrix_plus( :,:,i,ind) = MATMUL(Jac_ConsPrim_plus( :,:,i),dUdUvolprim_plus( :,:,i,ind))
     matrix_minus(:,:,i,ind) = MATMUL(Jac_ConsPrim_minus(:,:,i),dUdUvolprim_minus(:,:,i,ind))
   END DO
-  !multiply: (dU_LR/dU_LR_prim * dU_LR_prim/dUvol_prim) * dUvol_prim/dUvol
+  ! multiply: (dU_LR/dU_LR_prim * dU_LR_prim/dUvol_prim) * dUvol_prim/dUvol
   dUdUvol_plus( :,:,i,1) = MATMUL(matrix_plus(:,:,i,1),Jac_PrimCons(:,:,i-1))
   dUdUvol_plus( :,:,i,2) = MATMUL(matrix_plus(:,:,i,2),Jac_PrimCons(:,:,i))
   dUdUvol_plus( :,:,i,3) = MATMUL(matrix_plus(:,:,i,3),Jac_PrimCons(:,:,i+1))
@@ -434,7 +390,7 @@ REAL,DIMENSION(PP_nVar    ,PP_nVarPrim,PP_N:PP_N+1,1:2):: matrix_plus
 REAL,DIMENSION(PP_nVar    ,PP_nVarPrim,-1:0,2:3)       :: matrix_minus
 !==================================================================================================================================
 ! storage order in dUdUvol(1:3):
-! di/d(i-1), di/d(i), di/d(i+1)
+! dU_LR_i/dU_(i-1), dU_LR_i/dU_i, dU_LR_i/dU_(i+1)
 dUdUvol_plus  = 0.
 dUdUvol_minus = 0.
 dUdUvolprim_plus  = 0.
@@ -485,7 +441,10 @@ CASE(1) ! MinMod
     ELSE
       CALL Abort(__STAMP__,'Slopes do not match with minmod in preconditioner!')
     END IF
-    ! derivatives of plus value at minus interface, if reconstruction has been done with s_L_minus
+    ! The reconstructed value from the left neighbour depends on my own value IF the reconstruction in the left neighbour cell has
+    ! been done with the slope between my cell and that neighbour (s_L_minus). Check if that was the case and set the dependency
+    ! accordingly. 
+    !        reconstr. value      cell mean value        recon. with s_L_minus
     IF(ABS(UPrim_minus_nb(iVar)-(URec_extended(iVar,-1)+s_L_minus(iVar)*FV_dx_R_nb)).LE.1E-12)THEN 
       dUdUvolprim_minus(iVar,iVar,-1,3) = 0. + FV_dx_R_nb * ( FV_sdx(0))
     END IF
@@ -501,7 +460,10 @@ CASE(1) ! MinMod
     ELSE
       CALL Abort(__STAMP__,'Slopes do not match with minmod in preconditioner!')
     END IF
-    ! derivatives of minus values at plus interface, if reconstruction has been done with s_R_plus
+    ! The reconstructed value from the right neighbour depends on my own value IF the reconstruction in the right neighbour cell has
+    ! been done with the slope between my cell and that neighbour (s_R_plus). Check if that was the case and set the dependency
+    ! accordingly. 
+    !        reconstr. value      cell mean value        recon. with s_R_plus
     IF(ABS(UPrim_plus_nb(iVar)-(URec_extended(iVar,PP_N+1)-s_R_plus(iVar)*FV_dx_L_nb)).LE.1E-12)THEN 
       dUdUvolprim_plus( iVar,iVar,PP_N+1,1) = 0. - FV_dx_L_nb * (-FV_sdx(PP_N+1))
     END IF
@@ -569,21 +531,22 @@ USE MOD_Jac_Ex_Vars        ,ONLY: FV_sdx_ZETA_extended
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER,INTENT(IN)                           :: iElem   !< current element index
-INTEGER,INTENT(IN)                           :: dir     !< current physical direction
+INTEGER,INTENT(IN) :: iElem ! < current element index
+INTEGER,INTENT(IN) :: dir   ! < current physical direction
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(OUT)                             :: Jac_reconstruct(0:PP_N,0:PP_N,0:PP_NZ,0:PP_N,PP_dim) !< Jacobian of volume gradients
-                                                !> in direction dir w.r.t. primitive volume solution
+REAL,INTENT(OUT)   :: Jac_reconstruct(0:PP_N,0:PP_N,0:PP_NZ,0:PP_N,PP_dim) !< Jacobian of volume gradients in direction dir
+                                                                           !> w.r.t. primitive volume solution
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                                      :: i,j,k,ll
+INTEGER            :: i,j,k,ll
 !===================================================================================================================================
 Jac_reconstruct = 0.
 DO k=0,PP_NZ
   DO j=0,PP_N
     DO i=0,PP_N
       ! Contribution by gradient reconstruction procedure with central gradient (i,j,k) -> gradient, (ll) -> state 
+      ! --------- XI direction ------------ !
       IF(i.GT.0)THEN
         Jac_reconstruct(i,j,k,i-1,1) = 0.5*(-FV_sdx_XI(j,k,i,iElem))
       END IF                     
@@ -591,6 +554,7 @@ DO k=0,PP_NZ
       IF(i.LT.PP_N)THEN          
         Jac_reconstruct(i,j,k,i+1,1) = 0.5*( FV_sdx_XI(j,k,i+1,iElem))
       END IF
+      ! --------- ETA direction ------------ !
       IF(j.GT.0)THEN
         Jac_reconstruct(i,j,k,j-1,2) = 0.5*(-FV_sdx_ETA(i,k,j,iElem))
       END IF                     
@@ -599,6 +563,7 @@ DO k=0,PP_NZ
         Jac_reconstruct(i,j,k,j+1,2) = 0.5*( FV_sdx_ETA(i,k,j+1,iElem))
       END IF
 #if PP_dim==3
+      ! --------- ZETA direction ------------ !
       IF(k.GT.0)THEN
         Jac_reconstruct(i,j,k,k-1,3) = 0.5*(-FV_sdx_ZETA(i,j,k,iElem))
       END IF                     
@@ -607,7 +572,7 @@ DO k=0,PP_NZ
         Jac_reconstruct(i,j,k,k+1,3) = 0.5*( FV_sdx_ZETA(i,j,k+1,iElem))
       END IF
 #endif
-      ! Contribution by lifting volume integral
+      ! Contribution by lifting volume integral (only apply metrics for FV elements)
       DO ll=0,PP_N
         Jac_reconstruct(i,j,k,ll,1) = Jac_reconstruct(i,j,k,ll,1)*FV_Metrics_fTilde_sJ(dir,ll,j,k,iElem)
         Jac_reconstruct(i,j,k,ll,2) = Jac_reconstruct(i,j,k,ll,2)*FV_Metrics_gTilde_sJ(dir,i,ll,k,iElem)

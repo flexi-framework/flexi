@@ -65,7 +65,10 @@ CONTAINS
 
 !===================================================================================================================================
 !> Volume integral Jacobian of the convective flux for DG elements. Contains both the normal and the split version of the volume
-!> integral. Uses the analytical flux jacobian and applies ei
+!> integral. Uses the analytical flux jacobian and applies either the D_hat matrix (for non-split) or the DVolSurf matrix (for split
+!> computations).
+!> For split computations, additional dependencies are introduced, since the split (two-point) fluxes computed from other DOFs along
+!> a line also depend on my solution.
 !===================================================================================================================================
 SUBROUTINE  DGVolIntJac(BJ,iElem)
 ! MODULES
@@ -600,7 +603,8 @@ END SUBROUTINE GradJac_metrics
 
 #if FV_ENABLED
 !===================================================================================================================================
-!> Volume integral Jacobian of the convective flux for FV elements.
+!> Volume integral Jacobian of the flux for FV elements. The "volume integral" (just as in the operator itself) corresponds to
+!> evaluating the FV method for all inner subcells.
 !> Each finite volume subcell requires the solution of a Riemann problem. Hence, the derivation is done using a finite difference
 !> for the derivation of the Riemann problem (same is always done for the surface fluxes). It also takes into account the additional
 !> dependencies caused by the 2nd order reconstruction procedure. Here, a primitive reconstruction is assumed resulting in a back
@@ -686,8 +690,11 @@ REAL,DIMENSION(PP_nVar,PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)    :: fJac_visc,gJac_visc,
 REAL,DIMENSION(PP_nVar,PP_nVar)                          :: Jac_Visc_plus,Jac_Visc_minus
 #endif /*PARABOLIC*/
 !===================================================================================================================================
+! Helper variables to quickly build the one-dimensional mapping: ind = iVar+PP_nVar*i+vn1*j+vn2*k for DOF(iVar,i,j,k)
 vn1 = PP_nVar*(PP_N+1)
 vn2 = vn1*(PP_N+1)
+! dFdU_plus gives derivative of numerical flux at a certain interface w.r.t. left solution
+! dFdU_minus gives derivative of numerical flux at a certain interface w.r.t. right solution
 dfDU_plus  = 0
 dFdU_minus = 0
 
@@ -715,7 +722,7 @@ SideID_plus          = ElemToSide(E2S_SIDE_ID,XI_PLUS ,iElem)
 DO p=0,PP_N
   DO q=0,PP_NZ
     DO i=0,PP_N
-      ! calculate the values at the interface
+      ! calculate the values at the interface (reconstruction)
 #if FV_RECONSTRUCT
       FV_UPrim_Xiplus_loc( :,i) = UPrim(:,i,p,q,iElem) + gradUxi(:,p,q,i,iElem) * FV_dx_XI_R(p,q,i,iElem)
       FV_UPrim_Ximinus_loc(:,i) = UPrim(:,i,p,q,iElem) - gradUxi(:,p,q,i,iElem) * FV_dx_XI_L(p,q,i,iElem)
@@ -731,13 +738,14 @@ DO p=0,PP_N
     FV_U_plus_Tilde      = FV_U_Xiplus_loc(     :,:)
     FV_U_minus_Tilde     = FV_U_Ximinus_loc(    :,:)
 #if FV_RECONSTRUCT
-    ! calculate the jacobian of the reconstruction procedure: conservative surface solution w.r.t. conservative volume solution
+    ! calculate the jacobian of the reconstruction procedure:
+    ! conservative solution at interface solution w.r.t. conservative volume solution
     CALL FV_Reconstruction_Derivative(FV_sdx_XI_extended(p,q,:,iElem),FV_dx_XI_L(p,q,:,iElem),FV_dx_XI_R(p,q,:,iElem), &
                                       FV_UPrim_Xiplus_loc(:,:),FV_UPrim_Ximinus_loc(:,:),                              &
                                       UPrim_extended(:,:,p,q,iElem),dUdUvol_plus(:,:,:,:),dUdUvol_minus(:,:,:,:))
 #endif
     ! for the calculation of the flux jacobian a finite difference approach is used so that all Riemann solvers can be plugged in
-    DO i=1,PP_N
+    DO i=1,PP_N ! Loop over inner subcell interfaces
       CALL Riemann_Point(F(:,i-1,p,q),                             &
                    FV_U_Xiplus_loc(     :,i-1),                    &
                    FV_U_Ximinus_loc(    :,i  ),                    &
@@ -778,6 +786,7 @@ DO p=0,PP_N
         ! dFdU_minus gives derivative of numerical flux w.r.t. right (i) solution
         ! flux has positive sign for left cell (i-1) and negative sign for right cell (i)
         DO iVar=1,PP_nVar
+          ! Take surface element into account when computing the finite difference approximation
           dFdU_plus( iVar,jVar,i-1,p,q) =  FV_SurfElemXi_sw(p,q,i,iElem)*(F_Tilde(iVar,i-1,p,q) - F(iVar,i-1,p,q))*sreps0_L
           dFdU_plus( iVar,jVar,i  ,p,q) = -FV_SurfElemXi_sw(p,q,i,iElem)*(F_Tilde(iVar,i-1,p,q) - F(iVar,i-1,p,q))*sreps0_L
           dFdU_minus(iVar,jVar,i-1,p,q) =  FV_SurfElemXi_sw(p,q,i,iElem)*(F_Tilde(iVar,i  ,p,q) - F(iVar,i-1,p,q))*sreps0_R
@@ -788,7 +797,8 @@ DO p=0,PP_N
         ! reset U_minus
         FV_U_minus_Tilde(jVar,i) = FV_U_Ximinus_loc(jVar,i)
       END DO !jVar
-      ! assemble preconditioner
+      ! assemble preconditioner: dF/dU_LR * dU_LR/dUvol
+      !                          RiemannFD   JacReconstruction
       ! indices give neighbors of considered DOFs; dependency on m,l is due to reconstruction procedure:
       !   m   r   s   l
       ! |---|---|---|---|
@@ -843,6 +853,7 @@ DO p=0,PP_N
 #if PARABOLIC
       IF (.NOT.(HyperbolicPrecond)) THEN
         ! add Jacobian of viscous flux w.r.t solution (with constant gradients): DF^v/DU|_grad=const.
+        ! Viscous fluxes are evaluated using the central gradients! (non-limited)
         ! use mean of left and right flux=> F^v* is only depending on direct neighbours: r,s
         ! transform the fluxes into normal direction and multiply with surface element to do "surface" integral
         Jac_Visc_plus  = 0.5*(FV_NormVecXi(1,p,q,i,iElem)*fJac_visc(:,:,i-1,p,q) + &
@@ -1147,10 +1158,13 @@ END SUBROUTINE FVVolIntJac
 
 #if PARABOLIC
 !===================================================================================================================================
-!> volume integral: the total derivative of the viscous flux with resprect to U:
-!>                  dF^v/DU_cons = dF^v/dQ_prim* DQ_prim/DU_prim* DU_prim/DU_cons + dF^v/DU_cons
+!> volume integral: the total derivative of the viscous flux with respect to U:
+!>                  dF^v/DU_cons = dF^v/dQ_prim* DQ_prim/DU_prim* DU_prim/DU_cons + dF^v/DU_cons|_grad=cons.
 !>                                       |              |                |              |
 !>                           FluxGradJacobian  FV-Reconstruction    dPrimTempdCons  (already done in FVVolIntJac) 
+!>                           |____________________________________________________|
+!>                                                     |
+!>                                                 done here
 !===================================================================================================================================
 SUBROUTINE  FVVolIntGradJac(BJ,iElem)
 ! MODULES
@@ -1196,6 +1210,7 @@ REAL,DIMENSION(0:PP_N,0:PP_N,0:PP_N,0:PP_N,3)                 :: JacReconstruct_
 #endif
 REAL,DIMENSION(0:PP_N,0:PP_N,0:PP_NZ,0:PP_N,PP_dim)           :: JacReconstruct_X,JacReconstruct_Y
 !===================================================================================================================================
+! Helper variables to quickly build the one-dimensional mapping: ind = iVar+PP_nVar*i+vn1*j+vn2*k for DOF(iVar,i,j,k)
 vn1=PP_nVar*(PP_N+1)
 vn2=vn1*(PP_N+1)
 ! Calculation of derivative of gradUPrim with respect to UPrim_vol: DQ_prim/DU_prim
@@ -1219,7 +1234,7 @@ DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
   CALL dPrimTempdCons(UPrim(:,i,j,k,iElem),PrimConsJac(:,:,i,j,k))
 END DO; END DO; END DO! i,j,k=0,PP_N
 
-! Assembling of preconditioner
+! Transformation of flux Jacobian and assembling of preconditioner
 ! === Xi-Direction ================================================================================================================
 DO p=0,PP_N
   DO q=0,PP_NZ
@@ -1233,7 +1248,7 @@ DO p=0,PP_N
       hJacTilde_plus =hJacQx(:,:,i-1,p,q)
       hJacTilde_minus=hJacQx(:,:,i  ,p,q)
 #endif
-      ! transform the fluxes into normal direction and multiply with surface element to do "surface" integral
+      ! transform the flux Jacobian into normal direction and multiply with surface element to do "surface" integral
       ! factor "0.5" is due to the use of the mean value in the viscous numerical flux function
       JacQx_plus  =  0.5*(fJacTilde_plus( :,:)*FV_NormVecXi(1,p,q,i,iElem) &
                          +gJacTilde_plus( :,:)*FV_NormVecXi(2,p,q,i,iElem) &
@@ -1622,18 +1637,15 @@ IF(i.GT.1)THEN
                  )
   Jac(:,:) = MATMUL(JacTilde(:,:),PrimConsJac(:,:,i-2))
   BJ(r+1:r+PP_nVar,m+1:m+PP_nVar) = BJ(r+1:r+PP_nVar,m+1:m+PP_nVar) + Jac
-  !todo: take this dependency? not present for hyperbolic FV preconditioner but always present for hyperbolic DG preconditioner
-  IF (.NOT.(NoFillIn)) THEN
-    ! (i) Flux w.r.t. (i-2) State
-    JacTilde(:,:)= ( JacQx_plus * JacReconstruct_X(i-1,i-2) &
-                   + JacQy_plus * JacReconstruct_Y(i-1,i-2) &
+  ! (i) Flux w.r.t. (i-2) State
+  JacTilde(:,:)= ( JacQx_plus * JacReconstruct_X(i-1,i-2) &
+                 + JacQy_plus * JacReconstruct_Y(i-1,i-2) &
 #if PP_dim==3
-                   + JacQz_plus * JacReconstruct_Z(i-1,i-2) &
+                 + JacQz_plus * JacReconstruct_Z(i-1,i-2) &
 #endif
-                   )
-    Jac(:,:) = MATMUL(JacTilde(:,:),PrimConsJac(:,:,i-2))
-    BJ(s+1:s+PP_nVar,m+1:m+PP_nVar) = BJ(s+1:s+PP_nVar,m+1:m+PP_nVar) - Jac
-  END IF
+                 )
+  Jac(:,:) = MATMUL(JacTilde(:,:),PrimConsJac(:,:,i-2))
+  BJ(s+1:s+PP_nVar,m+1:m+PP_nVar) = BJ(s+1:s+PP_nVar,m+1:m+PP_nVar) - Jac
 END IF
 !----------- derivatives w.r.t. (i-1) -------------!
 ! (i-1) Flux w.r.t (i-1) State
@@ -1683,18 +1695,15 @@ BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) = BJ(r+1:r+PP_nVar,s+1:s+PP_nVar) + Jac
 BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) - Jac
 !----------- derivatives w.r.t. (i+1) -------------!
 IF(i.LT.PP_N)THEN
-  !todo: take this dependency? not present for hyperbolic FV preconditioner but always present for hyperbolic DG preconditioner
-  IF (.NOT.(NoFillIn)) THEN
-    ! (i-1) Flux w.r.t (i+1) State
-    JacTilde(:,:)= ( JacQx_minus* JacReconstruct_X(i  ,i+1) &
-                   + JacQy_minus* JacReconstruct_Y(i  ,i+1) &
+  ! (i-1) Flux w.r.t (i+1) State
+  JacTilde(:,:)= ( JacQx_minus* JacReconstruct_X(i  ,i+1) &
+                 + JacQy_minus* JacReconstruct_Y(i  ,i+1) &
 #if PP_dim==3
-                   + JacQz_minus* JacReconstruct_Z(i  ,i+1) &
+                 + JacQz_minus* JacReconstruct_Z(i  ,i+1) &
 #endif
-                   )
-    Jac(:,:) = MATMUL(JacTilde(:,:),PrimConsJac(:,:,i+1))
-    BJ(r+1:r+PP_nVar,l+1:l+PP_nVar) = BJ(r+1:r+PP_nVar,l+1:l+PP_nVar) + Jac
-  END IF
+                 )
+  Jac(:,:) = MATMUL(JacTilde(:,:),PrimConsJac(:,:,i+1))
+  BJ(r+1:r+PP_nVar,l+1:l+PP_nVar) = BJ(r+1:r+PP_nVar,l+1:l+PP_nVar) + Jac
   ! (i) Flux w.r.t (i+1) State
   JacTilde(:,:)= ( JacQx_minus* JacReconstruct_X(i  ,i+1) &
                  + JacQy_minus* JacReconstruct_Y(i  ,i+1) &

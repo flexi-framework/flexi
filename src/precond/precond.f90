@@ -139,7 +139,11 @@ SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitPrecond
 
 !===================================================================================================================================
-!> Build preconditioner for each element, calls a type of preconditioner
+!> Build preconditioner for each element, calls a type of preconditioner. The block Jacobi preconditioner only takes into account
+!> the dependencies of the fluxes in a single element w.r.t. the DOFs of that element, and not the dependencies on DOFs from
+!> neighbouring elements! The main advantage is that building and applying the preconditioner is a cell-local operation.
+!> For FV, this means we treat subcells on DG cell boundaries differently from the inner cells, although the dependencies would be
+!> the same, to keep the block structure in all cases.
 !===================================================================================================================================
 SUBROUTINE BuildPrecond(t,alpha,dt)
 ! MODULES

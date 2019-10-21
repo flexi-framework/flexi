@@ -81,7 +81,9 @@ CONTAINS
 !>  * Analytical derivation of surface flux w.r.t. surface gradients
 !>  * Transform those into the normal system and pre-multiply with SurfElem
 !>  * Add dependency on solution to hyperbolic part
-!>  * Now for the dependeny on the surface gradients:
+!>  * Now for the dependeny on the surface gradients. Since the surface flux function of the lifting in my neighbouring cells 
+!>    depends on the solution in my cell, the gradients from my neighbouring cells also depend on my solution! Since the viscous
+!>    flux then depends on those gradients, we get an additional dependency from the outer gradients.
 !>    * dependency of the lifting volume integral w.r.t. volume DOFs
 !>    * dependency of the inner surface gradients w.r.t. primitive volume DOFs
 !>    * dependency of the outer surface gradients w.r.t. primitive volume DOFs
@@ -1188,6 +1190,7 @@ IF (.NOT.HyperbolicPrecond) THEN
   ! 0.5*(D(F^v_L)/DQ_surf_L * DQ_surf_L/DU_prim * DU_prim/DU
   !  => Df_dQxInner           => dQxVol_dU      => PrimConsJac
   ! How is the viscous flux in the volume depending on the volume DOFs via the left part of the flux
+  !  * SplitXI_ETA
   ! Than we compute the dependencies of F^v_R on U:
   ! 0.5* D(F^v_R)/DQ_surf_R * DQ_surf_R/DU_prim * DU_prim/DU)
   !  => Df_dQxOuter           => dQxOuter_dUvol  => PrimConsJac

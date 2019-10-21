@@ -489,7 +489,7 @@ END SELECT ! BCType
 END SUBROUTINE GetBoundaryState
 
 !==================================================================================================================================
-!> Computes the boundary fluxes for a given Cartesian mesh face (defined by SideID).
+!> Computes the boundary fluxes for a given face (defined by SideID).
 !> Calls GetBoundaryState an directly uses the returned vales for all Riemann-type BCs.
 !> For other types of BCs, we directly compute the flux on the interface.
 !==================================================================================================================================
