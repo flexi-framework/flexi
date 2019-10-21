@@ -65,7 +65,7 @@ CONTAINS
 
 !===================================================================================================================================
 !> Volume integral Jacobian of the convective flux for DG elements. Contains both the normal and the split version of the volume
-!> integral. Uses the analytical flux jacobian and applies either the D_hat matrix (for non-split) or the DVolSurf matrix (for split
+!> integral. Uses the analytical flux Jacobian and applies either the D_hat matrix (for non-split) or the DVolSurf matrix (for split
 !> computations).
 !> For split computations, additional dependencies are introduced, since the split (two-point) fluxes computed from other DOFs along
 !> a line also depend on my solution.
@@ -251,7 +251,7 @@ DO oo=0,PP_NZ
         r3=r3+vn2
 #endif
       END DO !ll
-      ! Case i=m (influence on main diagonal of block jacobian), additional entries from split formulation because the split fluxes
+      ! Case i=m (influence on main diagonal of block Jacobian), additional entries from split formulation because the split fluxes
       ! at all the other DOFs along the line also depend on my own value
       DO tt=0,PP_N
         CALL Jac_Split(U(:,mm,nn,oo,iElem),UPrim(:,mm,nn,oo,iElem),U(:,tt,nn,oo,iElem),UPrim(:,tt,nn,oo,iElem), &
@@ -566,7 +566,7 @@ END DO !oo
 END SUBROUTINE DGVolIntGradJac
 
 !===================================================================================================================================
-!> Apply transformation to flux jacobians for diffusive flux w.r.t. gradients
+!> Apply transformation to flux Jacobians for diffusive flux w.r.t. gradients
 !===================================================================================================================================
 SUBROUTINE GradJac_Metrics(fJacTilde,gJacTilde,hJacTilde,Metrics_fTilde,Metrics_gTilde,Metrics_hTilde,&
                            fJacQ,gJacQ,hJacQ)
@@ -574,9 +574,9 @@ SUBROUTINE GradJac_Metrics(fJacTilde,gJacTilde,hJacTilde,Metrics_fTilde,Metrics_
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
-REAL,DIMENSION(PP_nVar,PP_nVarPrim),INTENT(IN)  :: fJacTilde,gJacTilde,hJacTilde                !< Non-transformed flux jacobian
+REAL,DIMENSION(PP_nVar,PP_nVarPrim),INTENT(IN)  :: fJacTilde,gJacTilde,hJacTilde                !< Non-transformed flux Jacobian
 REAL,DIMENSION(3),INTENT(IN)                    :: Metrics_fTilde,Metrics_gTilde,Metrics_hTilde !< Metric terms
-REAL,DIMENSION(PP_nVar,PP_nVarPrim),INTENT(OUT) :: fJacQ,gJacQ,hJacQ                            !< Transformed flux jacobian
+REAL,DIMENSION(PP_nVar,PP_nVarPrim),INTENT(OUT) :: fJacQ,gJacQ,hJacQ                            !< Transformed flux Jacobian
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
@@ -738,13 +738,13 @@ DO p=0,PP_N
     FV_U_plus_Tilde      = FV_U_Xiplus_loc(     :,:)
     FV_U_minus_Tilde     = FV_U_Ximinus_loc(    :,:)
 #if FV_RECONSTRUCT
-    ! calculate the jacobian of the reconstruction procedure:
+    ! calculate the Jacobian of the reconstruction procedure:
     ! conservative solution at interface solution w.r.t. conservative volume solution
     CALL FV_Reconstruction_Derivative(FV_sdx_XI_extended(p,q,:,iElem),FV_dx_XI_L(p,q,:,iElem),FV_dx_XI_R(p,q,:,iElem), &
                                       FV_UPrim_Xiplus_loc(:,:),FV_UPrim_Ximinus_loc(:,:),                              &
                                       UPrim_extended(:,:,p,q,iElem),dUdUvol_plus(:,:,:,:),dUdUvol_minus(:,:,:,:))
 #endif
-    ! for the calculation of the flux jacobian a finite difference approach is used so that all Riemann solvers can be plugged in
+    ! for the calculation of the flux Jacobian a finite difference approach is used so that all Riemann solvers can be plugged in
     DO i=1,PP_N ! Loop over inner subcell interfaces
       CALL Riemann_Point(F(:,i-1,p,q),                             &
                    FV_U_Xiplus_loc(     :,i-1),                    &

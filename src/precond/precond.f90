@@ -391,7 +391,7 @@ END SELECT
 END SUBROUTINE  ApplyPrecond
 
 !===================================================================================================================================
-!> Debug routine for checking block jacobian preconditioners. Output options include the non-inverted and the inverted
+!> Debug routine for checking block Jacobian preconditioners. Output options include the non-inverted and the inverted
 !> preconditioner matrix. Can also check the inversion.
 !===================================================================================================================================
 SUBROUTINE CheckBJPrecond(Ploc,invPloc,iElem)

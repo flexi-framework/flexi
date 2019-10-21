@@ -14,7 +14,7 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-!> Contains the computation of the local jacobian of the surface integral
+!> Contains the computation of the local Jacobian of the surface integral
 !===================================================================================================================================
 MODULE MOD_JacSurfInt
 ! MODULES
@@ -36,7 +36,7 @@ PUBLIC::JacSurfInt
 CONTAINS
 
 !===================================================================================================================================
-!> Contains the computation of the local jacobian of the surface integral.
+!> Contains the computation of the local Jacobian of the surface integral.
 !> Computation is done for one element!
 !>
 !> Dependency of the surface integral:
@@ -213,7 +213,7 @@ DO iLocSide=2,5
                                SurfElem(:,:,FVSide,SideID),S2V2(:,:,:,Flip,iLocSide),FVSum,FVElem,FVSide)
 #if PARABOLIC
     IF (.NOT.(HyperbolicPrecond)) THEN 
-      ! Call the analytical jacobian (viscous flux w.r.t. conservative variables)
+      ! Call the analytical Jacobian (viscous flux w.r.t. conservative variables)
       ! d(f_diff)_jk/dU_master_jk
       CALL EvalDiffFluxJacobian(nDOFFace,USideL,UPrimSideL,gradUxSideL,gradUySideL,gradUzSideL, &
                                 fJac(:,:,:,:,1),gJac(:,:,:,:,1),hJac(:,:,:,:,1)                 &
@@ -222,7 +222,7 @@ DO iLocSide=2,5
 #endif
                                 )
 #if FV_ENABLED
-      ! Call the analytical jacobian (viscous flux w.r.t. conservative variables), but for the neighbouring DOF
+      ! Call the analytical Jacobian (viscous flux w.r.t. conservative variables), but for the neighbouring DOF
       CALL EvalDiffFluxJacobian(nDOFFace,USideR,UPrimSideR,gradUxSideR,gradUySideR,gradUzSideR, &
                                 fJac(:,:,:,:,2),gJac(:,:,:,:,2),hJac(:,:,:,:,2)                 &
 #if EDDYVISCOSITY
@@ -244,7 +244,7 @@ DO iLocSide=2,5
         DO p=0,PP_N
           jk(:)=S2V2(:,p,q,Flip,iLocSide)
           ! BR1/2 use central fluxes for the viscous flux, so f*_diff = 0.5*(f_diff^L+f_diff^R).
-          ! Transform the diffusive flux jacobians into the normal system for the suface integral, and pre-multiply with 
+          ! Transform the diffusive flux Jacobians into the normal system for the suface integral, and pre-multiply with 
           ! the SurfElem here (already done in Riemann_FD for the hyperbolic parts).
           DO i=1,FVElem+1
             ! Direct dependency of the viscous flux from the solution variables on the side.
@@ -277,7 +277,7 @@ DO iLocSide=2,5
 #endif
         END DO !p
       END DO !q
-      ! Evaluate jacobians of diffusive fluxes w.r.t. the outer gradients
+      ! Evaluate Jacobians of diffusive fluxes w.r.t. the outer gradients
       CALL  EvalFluxGradJacobian(nDOFFace,USideR,UPrimSideR, &
                                  fJacQx,fJacQy,fJacQz,       &
                                  gJacQx,gJacQy,gJacQz,       &
@@ -468,7 +468,7 @@ vn2 = vn1 * (PP_N +1)
 !BJ=d(f*_adv+f*_diff)_jk/dU_mno
 
 
-! The jacobians of the surface fluxes have already been multiplied by the surface element. Df_DUinner considers both the
+! The Jacobians of the surface fluxes have already been multiplied by the surface element. Df_DUinner considers both the
 ! dependency of the diffusive and the hyperbolic flux w.r.t. the inner solution.
 ! The matrix LL_plus/minus now takes into account how the surface solution is depending on the considered volume DOF and the
 ! derivative of the surface integral itself (consists of prolongation L and integration L_hat).
@@ -941,7 +941,7 @@ vn2 = vn1 * (PP_N +1)
 !Assembling of the preconditioner
 !BJ=d(f*_adv+f*_diff)_jk/dU_mno
 
-! The jacobians of the surface fluxes have already been multiplied by the surface element. Df_DUinner considers both the
+! The Jacobians of the surface fluxes have already been multiplied by the surface element. Df_DUinner considers both the
 ! dependency of the diffusive and the hyperbolic flux w.r.t. the inner solution.
 ! The first part calculates DF/DF_surf * DF_surf/DU_surf * DU_surf/DU for the XI/ETA/ZETA direction
 !                           =>FV_w_inv   => Df_DUinner     =>dUdUvol_minus/plus (derivative of reconstruction)

@@ -14,7 +14,7 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-!> This module contains routines required for the jacobian of the br2 lifting scheme assuming non-conservative lifting.
+!> This module contains routines required for the Jacobian of the br2 lifting scheme assuming non-conservative lifting.
 !> Attention:
 !> If br1 lifting scheme is chosen, etabr2 is set to 1. In br1 lifting the surface gradient at a specific side is depending on
 !> UPrim in the volume and UPrim_face on all sides. For br2 it is depending only on UPrim in the volume and UPrim_face of the 
@@ -160,7 +160,7 @@ REAL,DIMENSION(1:PP_nVarPrim,1:PP_nVar    )  :: PrimConsJac
 INTEGER                                      :: pq_p(2),pq_m(2),SideID_p,SideID_m,flip
 INTEGER                                      :: sideIDs(2,3),sideIDPlus,sideIDMinus,refDir
 !===================================================================================================================================
-! fill volume jacobian of lifting flux (flux is primitive state vector -> identity matrix)
+! fill volume Jacobian of lifting flux (flux is primitive state vector -> identity matrix)
 delta=0.
 DO iVar=1,PP_nVarPrim
   delta(iVar,iVar)=1.
@@ -240,7 +240,7 @@ DO ll=0,PP_N
           ! For GL, since the surface points are directly volume points, the dependency reduces to the identity matrix
           SurfVol_PrimJac_plus = delta
 #endif
-          ! Assemble lifting jacobian with surface and volume contribution
+          ! Assemble lifting Jacobian with surface and volume contribution
           SELECT CASE(refDir)
           CASE(1)
             JacLifting(:,:,i,j,k,ll,1) = sJ(i,j,k,iElem,0)*(D(i,ll)*Metrics_fTilde(dir,ll,j,k,iElem,0)*delta(:,:)& !LiftingVolInt

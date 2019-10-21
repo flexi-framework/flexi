@@ -79,7 +79,7 @@ INTEGER :: iLocSide
 !===================================================================================================================================
 SWRITE(UNIT_stdOut,'(A)') ' INIT ANALYTICAL BLOCK JACOBIAN...'
 
-! Pre-computed variables needed in the surface integral jacobians
+! Pre-computed variables needed in the surface integral Jacobians
 ALLOCATE(LL_minus(0:PP_N,0:PP_N), LL_plus(0:PP_N,0:PP_N))
 DO j=0,PP_N
   DO i=0,PP_N

@@ -14,7 +14,7 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-!> Contains the computation of the jacobian of the numerical flux function. Since we don't want to derive every single one of them, 
+!> Contains the computation of the Jacobian of the numerical flux function. Since we don't want to derive every single one of them, 
 !> we employ a finite difference approximation that works for all flux functions.
 !===================================================================================================================================
 MODULE MOD_Riemann_Deriv
@@ -70,7 +70,7 @@ INTEGER, INTENT(IN)             :: FVElem                              !< Is the
 INTEGER, INTENT(IN)             :: FVSide                              !< 0: DG/DG 1: other cases
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(OUT)                :: DFDU(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ,2) !< jacobian of the numerical flux w.r.t. conservative sol.
+REAL,INTENT(OUT)                :: DFDU(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ,2) !< Jacobian of the numerical flux w.r.t. conservative sol.
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                            :: U_L_Tilde    (    1:PP_nVar,0:PP_N,0:PP_NZ)

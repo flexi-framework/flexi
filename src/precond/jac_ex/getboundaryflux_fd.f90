@@ -14,7 +14,7 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-!> Fills the flux jacobian of the boundary fluxes
+!> Fills the flux Jacobian of the boundary fluxes
 !===================================================================================================================================
 MODULE MOD_GetBoundaryFlux_FD
 ! MODULES
@@ -40,10 +40,10 @@ PUBLIC::Lifting_GetBoundaryFlux_FD
 CONTAINS
 
 !===================================================================================================================================
-!> Computes the jacobian of the boundary flux for a given face (defined by SideID). Uses the finite difference approach to be able
+!> Computes the Jacobian of the boundary flux for a given face (defined by SideID). Uses the finite difference approach to be able
 !> to compute the derivatives for all the different BC types.
-!> We compute both the jacobian of the flux w.r.t. the conservative solution, and the jacobians  w.r.t. the gradients in each 
-!> direction. We always pre-multiply the jacobians with the surface element.
+!> We compute both the Jacobian of the flux w.r.t. the conservative solution, and the Jacobians  w.r.t. the gradients in each 
+!> direction. We always pre-multiply the Jacobians with the surface element.
 !===================================================================================================================================
 SUBROUTINE GetBoundaryFlux_FD(SideID,t,DfDU,U_master,UPrim_master,    &
 #if PARABOLIC
@@ -85,12 +85,12 @@ REAL,INTENT(IN)      :: gradUz_Face(PP_nVarPrim,0:PP_N,0:PP_NZ)  !< inner gradie
 #endif /*PARABOLIC*/
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(OUT),DIMENSION(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ,2)   :: DfDU         !< jacobian of the boundary flux w.r.t. U inc SurfInt
+REAL,INTENT(OUT),DIMENSION(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ,2)   :: DfDU         !< Jacobian of the boundary flux w.r.t. U inc SurfInt
 #if PARABOLIC
-REAL,INTENT(OUT),DIMENSION(PP_nVar,PP_nVarPrim,0:PP_N,0:PP_NZ) :: Df_DQxInner  !< jacobian w.r.t. x gradients inc SurfInt
-REAL,INTENT(OUT),DIMENSION(PP_nVar,PP_nVarPrim,0:PP_N,0:PP_NZ) :: Df_DQyInner  !< jacobian w.r.t. y gradients inc SurfInt
+REAL,INTENT(OUT),DIMENSION(PP_nVar,PP_nVarPrim,0:PP_N,0:PP_NZ) :: Df_DQxInner  !< Jacobian w.r.t. x gradients inc SurfInt
+REAL,INTENT(OUT),DIMENSION(PP_nVar,PP_nVarPrim,0:PP_N,0:PP_NZ) :: Df_DQyInner  !< Jacobian w.r.t. y gradients inc SurfInt
 #if PP_dim==3                                 
-REAL,INTENT(OUT),DIMENSION(PP_nVar,PP_nVarPrim,0:PP_N,0:PP_N)  :: Df_DQzInner  !< jacobian w.r.t. z gradients inc SurfInt
+REAL,INTENT(OUT),DIMENSION(PP_nVar,PP_nVarPrim,0:PP_N,0:PP_N)  :: Df_DQzInner  !< Jacobian w.r.t. z gradients inc SurfInt
 #endif
 #endif /*PARABOLIC*/
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -113,7 +113,7 @@ REAL                         :: F_Face_Tilde      (PP_nVar    ,0:PP_N,0:PP_NZ)
 REAL                         :: F_Face            (PP_nVar    ,0:PP_N,0:PP_NZ)
 REAL                         :: reps0_loc,sreps0_loc
 !===================================================================================================================================
-! Compute jacobian w.r.t. conservative solution: Store the original state and flux, then pertubate every single DOF, compute
+! Compute Jacobian w.r.t. conservative solution: Store the original state and flux, then pertubate every single DOF, compute
 ! pertubated flux and use FD approach to approximate the derivative.
 CALL GetBoundaryFlux(SideID,t,PP_N,F_Face,UPrim_master,   &
 #if PARABOLIC
@@ -147,7 +147,7 @@ dFdU(:,:,:,:,2) = 0. ! only valid for Dirichlet Type BCs
 #endif
 
 #if PARABOLIC
-! Compute jacobian of the boundary flux w.r.t. the inner gradients for each direction. Again, use the FD approach.
+! Compute Jacobian of the boundary flux w.r.t. the inner gradients for each direction. Again, use the FD approach.
 ! dF_dQxyzInner
 gradUx_Face_Tilde = gradUx_Face
 gradUy_Face_Tilde = gradUy_Face
