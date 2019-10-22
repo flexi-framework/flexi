@@ -122,7 +122,7 @@ USE MOD_FV_Vars                   ,ONLY: FV_Elems_master,FV_Elems_slave,FV_Elems
 USE MOD_GetBoundaryFlux           ,ONLY: GetBoundaryState
 #endif
 #endif
-USE MOD_Mortar_Vars               ,ONLY: M_0_1,M_0_2,M_1_0,M_2_0
+USE MOD_Jac_Ex_MortarU            ,ONLY: Jacobian_MortarU
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -159,10 +159,9 @@ REAL,DIMENSION(1:PP_nVar,1:PP_nVarPrim,0:PP_N,0:PP_NZ,2:5):: Df_dQxInner,Df_dQyI
 #endif /*PP_dim*/
 #endif /*PARABOLIC*/
 ! Mortars
-INTEGER                                                   :: nMortars,iMortarSide,iMortar,l,p,q,jk(2)
+INTEGER                                                   :: nMortars,iMortarSide,iMortar
 INTEGER                                                   :: sideMap(1:2,0:PP_N,0:PP_NZ)
 REAL                                                      :: DfMortar_DUinner(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ,2,4)
-REAL                                                      :: Df_DUinner_tmp(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ,2)
 !===================================================================================================================================
 #if FV_ENABLED
 FVElem = FV_Elems(iElem)
@@ -355,75 +354,9 @@ DO iLocSide=2,5
     END DO ! nMortars
 
     IF (nMortars.GT.1) THEN
-      ! For mortars, we only consider the influence of the surface DOF on the flux on that point! Through the interpolation
-      ! procedure, additional dependencies would arise, but they are ignored to keep the sparsity pattern.
-      ! Dependencies of fluxes at big mortar sides (B), with associated small mortars (L and U):
-      ! dF^B/dU^B = \sum dF^B/dF_U * dF_U/dU_U * dU_U/dU_B + \sum dF^B/dF_L * dF_L/dU_L * dU_L/dU_B
-      !                    proj.     Riemann_FD  interpol.   
-      ! Projection and interpolation procedures are implemented using the M matrices. 
-#if PP_dim == 3
-      SELECT CASE(MortarType(1,ElemToSide(E2S_SIDE_ID,ilocSide,iElem)))
-      CASE(1) !1->4
-        DO q=0,PP_NZ ! for every eta-layer perform Mortar operation in xi-direction
-          DO p=0,PP_N
-            Df_DUInner_tmp(:,:,p,q,1)=  M_1_0(0,p)*DfMortar_DUinner(:,:,0,q,1,1)*M_0_1(p,0) + &
-                                        M_2_0(0,p)*DfMortar_DUinner(:,:,0,q,1,2)*M_0_2(p,0)
-            Df_DUInner_tmp(:,:,p,q,2)=  M_1_0(0,p)*DfMortar_DUinner(:,:,0,q,1,3)*M_0_1(p,0) + &
-                                        M_2_0(0,p)*DfMortar_DUinner(:,:,0,q,1,4)*M_0_2(p,0)
-            DO l=1,PP_N
-            Df_DUInner_tmp(:,:,p,q,1)=  Df_DUInner_tmp(:,:,p,q,1)                           + &
-                                        M_1_0(l,p)*DfMortar_DUinner(:,:,l,q,1,1)*M_0_1(p,l) + &
-                                        M_2_0(l,p)*DfMortar_DUinner(:,:,l,q,1,2)*M_0_2(p,l)
-            Df_DUInner_tmp(:,:,p,q,2)=  Df_DUInner_tmp(:,:,p,q,2)                           + &
-                                        M_1_0(l,p)*DfMortar_DUinner(:,:,l,q,1,3)*M_0_1(p,l) + &
-                                        M_2_0(l,p)*DfMortar_DUinner(:,:,l,q,1,4)*M_0_2(p,l)
-            END DO
-          END DO
-        END DO
-        DO q=0,PP_NZ ! for every xi-layer perform Mortar operation in eta-direction
-          DO p=0,PP_N
-            jk(:)=S2V2(:,p,q,Flip,iLocSide) ! Transformation in volume coordinates
-            Df_DUInner(:,:,jk(1),jk(2),1,iLocSide)=  M_1_0(0,q)*Df_DUinner_tmp(:,:,p,0,1)*M_0_1(q,0) + &
-                                                     M_2_0(0,q)*Df_DUinner_tmp(:,:,p,0,2)*M_0_2(q,0)
-            DO l=1,PP_N
-            Df_DUInner(:,:,jk(1),jk(2),1,iLocSide)=  Df_DUInner(:,:,jk(1),jk(2),1,iLocSide) + &
-                                                     M_1_0(l,q)*Df_DUinner_tmp(:,:,p,l,1)*M_0_1(q,l) + &
-                                                     M_2_0(l,q)*Df_DUinner_tmp(:,:,p,l,2)*M_0_2(q,l)
-            END DO
-          END DO
-        END DO
-
-      CASE(2) !1->2 in eta
-        DO q=0,PP_NZ ! for every xi-layer perform Mortar operation in eta-direction
-          DO p=0,PP_N
-            jk(:)=S2V2(:,p,q,Flip,iLocSide) ! Transformation in volume coordinates
-            Df_DUInner(:,:,jk(1),jk(2),1,iLocSide)=  M_1_0(0,q)*DfMortar_DUinner(:,:,p,0,1,1)*M_0_1(q,0) + &
-                                                     M_2_0(0,q)*DfMortar_DUinner(:,:,p,0,1,2)*M_0_2(q,0)
-            DO l=1,PP_N
-            Df_DUInner(:,:,jk(1),jk(2),1,iLocSide)=  Df_DUInner(:,:,jk(1),jk(2),1,iLocSide) + &
-                                                     M_1_0(l,q)*DfMortar_DUinner(:,:,p,l,1,1)*M_0_1(q,l) + &
-                                                     M_2_0(l,q)*DfMortar_DUinner(:,:,p,l,1,2)*M_0_2(q,l)
-            END DO
-          END DO
-        END DO
-
-      CASE(3) !1->2 in xi      NOTE: In 2D only the first space index can be a Mortar (second index is always 0)!!!
-#endif
-        DO q=0,PP_NZ ! for every eta-layer perform Mortar operation in xi-direction
-          DO p=0,PP_N
-            jk(:)=S2V2(:,p,q,Flip,iLocSide) ! Transformation in volume coordinates
-            Df_DUInner(:,:,jk(1),jk(2),1,iLocSide)=  M_1_0(0,p)*DfMortar_DUinner(:,:,0,q,1,1)*M_0_1(p,0) + &
-                                                     M_2_0(0,p)*DfMortar_DUinner(:,:,0,q,1,2)*M_0_2(p,0)
-            DO l=1,PP_N
-            Df_DUInner(:,:,jk(1),jk(2),1,iLocSide)=  Df_DUInner(:,:,jk(1),jk(2),1,iLocSide) + &
-                                                     M_1_0(l,p)*DfMortar_DUinner(:,:,l,q,1,1)*M_0_1(p,l) + &
-                                                     M_2_0(l,p)*DfMortar_DUinner(:,:,l,q,1,2)*M_0_2(p,l)
-            END DO
-          END DO
-        END DO
-#if PP_dim == 3
-      END SELECT ! mortarType(SideID)
-#endif
+      ! Combine the Jacobians on the small sides into the Jacobian on the big side
+      CALL Jacobian_MortarU(MortarType(1,ElemToSide(E2S_SIDE_ID,ilocSide,iElem)),S2V2(:,:,:,flip,iLocSide), &
+                            DfMortar_DUinner,Df_DUInner(:,:,:,:,:,iLocSide))
     END IF ! mortar
   ELSE !Boundary
 #if FV_ENABLED

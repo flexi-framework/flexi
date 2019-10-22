@@ -1,0 +1,112 @@
+!=================================================================================================================================
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
+! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+!
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+!
+! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+! of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License v3.0 for more details.
+!
+! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
+!=================================================================================================================================
+#include "flexi.h"
+
+!===================================================================================================================================
+!> In this routine, we combine the Jacobians of fluxes w.r.t. the DOF (either solution or gradient) at the location of the flux
+!> on all small sides of a mortar interface into the Jacobian on the big side.
+!> For mortars, we only consider the influence of the surface DOF on the flux on that point! Through the interpolation
+!> procedure, additional dependencies would arise, but they are ignored to keep the sparsity pattern.
+!> Dependencies of fluxes at big mortar sides (B), with associated small mortars (L and U):
+!> dF^B/dU^B = dF^B/dF_U * dF_U/dU_U * dU_U/dU_B + dF^B/dF_L * dF_L/dU_L * dU_L/dU_B
+!>               proj.     Riemann_FD  interpol.   
+!> Projection and interpolation procedures are implemented using the M matrices. 
+!===================================================================================================================================
+SUBROUTINE Jacobian_Mortar(MortarType,S2V2,DfMortar_DVar,Df_DVar)
+! MODULES
+USE MOD_Globals
+USE MOD_PreProc
+USE MOD_Mortar_Vars ,ONLY: M_0_1,M_0_2,M_1_0,M_2_0
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+INTEGER,INTENT(IN) :: MortarType                                        !< Type of mortar (1,2,3)
+INTEGER,INTENT(IN) :: S2V2(2,0:PP_N,0:PP_NZ)                            !< Side-To-Vol mapping on the side
+REAL,INTENT(IN)    :: DfMortar_DVar(PP_nVar,TP_nVar,0:PP_N,0:PP_NZ,2,4) !< Jacobian of fluxes w.r.t. either solution or gradients
+                                                                        !> on the small mortar sides
+!-----------------------------------------------------------------------------------------------------------------------------------
+! OUTPUT VARIABLES
+REAL,INTENT(OUT)   :: Df_DVar(PP_nVar,TP_nVar,0:PP_N,0:PP_NZ,2)         !< Jacobian of fluxes on the big mortar side
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+! Mortars
+INTEGER :: l,p,q,jk(2)
+REAL    :: Df_DVar_tmp(PP_nVar,TP_nVar,0:PP_N,0:PP_NZ,2)
+!===================================================================================================================================
+#if PP_dim == 3
+SELECT CASE(MortarType)
+CASE(1) !1->4
+  DO q=0,PP_NZ ! for every eta-layer perform Mortar operation in xi-direction
+    DO p=0,PP_N
+      Df_DVar_tmp(:,:,p,q,1)=  M_1_0(0,p)*DfMortar_DVar(:,:,0,q,1,1)*M_0_1(p,0) + &
+                               M_2_0(0,p)*DfMortar_DVar(:,:,0,q,1,2)*M_0_2(p,0)
+      Df_DVar_tmp(:,:,p,q,2)=  M_1_0(0,p)*DfMortar_DVar(:,:,0,q,1,3)*M_0_1(p,0) + &
+                               M_2_0(0,p)*DfMortar_DVar(:,:,0,q,1,4)*M_0_2(p,0)
+      DO l=1,PP_N
+      Df_DVar_tmp(:,:,p,q,1)=  Df_DVar_tmp(:,:,p,q,1)                           + &
+                               M_1_0(l,p)*DfMortar_DVar(:,:,l,q,1,1)*M_0_1(p,l) + &
+                               M_2_0(l,p)*DfMortar_DVar(:,:,l,q,1,2)*M_0_2(p,l)
+      Df_DVar_tmp(:,:,p,q,2)=  Df_DVar_tmp(:,:,p,q,2)                           + &
+                               M_1_0(l,p)*DfMortar_DVar(:,:,l,q,1,3)*M_0_1(p,l) + &
+                               M_2_0(l,p)*DfMortar_DVar(:,:,l,q,1,4)*M_0_2(p,l)
+      END DO
+    END DO
+  END DO
+  DO q=0,PP_NZ ! for every xi-layer perform Mortar operation in eta-direction
+    DO p=0,PP_N
+      jk(:)=S2V2(:,p,q) ! Transformation in volume coordinates
+      Df_DVar(:,:,jk(1),jk(2),1)=  M_1_0(0,q)*Df_DVar_tmp(:,:,p,0,1)*M_0_1(q,0) + &
+                                   M_2_0(0,q)*Df_DVar_tmp(:,:,p,0,2)*M_0_2(q,0)
+      DO l=1,PP_N
+      Df_DVar(:,:,jk(1),jk(2),1)=  Df_DVar(:,:,jk(1),jk(2),1)                   + &
+                                   M_1_0(l,q)*Df_DVar_tmp(:,:,p,l,1)*M_0_1(q,l) + &
+                                   M_2_0(l,q)*Df_DVar_tmp(:,:,p,l,2)*M_0_2(q,l)
+      END DO
+    END DO
+  END DO
+
+CASE(2) !1->2 in eta
+  DO q=0,PP_NZ ! for every xi-layer perform Mortar operation in eta-direction
+    DO p=0,PP_N
+      jk(:)=S2V2(:,p,q) ! Transformation in volume coordinates
+      Df_DVar(:,:,jk(1),jk(2),1)=  M_1_0(0,q)*DfMortar_DVar(:,:,p,0,1,1)*M_0_1(q,0) + &
+                                   M_2_0(0,q)*DfMortar_DVar(:,:,p,0,1,2)*M_0_2(q,0)
+      DO l=1,PP_N
+      Df_DVar(:,:,jk(1),jk(2),1)=  Df_DVar(:,:,jk(1),jk(2),1)                       + &
+                                   M_1_0(l,q)*DfMortar_DVar(:,:,p,l,1,1)*M_0_1(q,l) + &
+                                   M_2_0(l,q)*DfMortar_DVar(:,:,p,l,1,2)*M_0_2(q,l)
+      END DO
+    END DO
+  END DO
+
+CASE(3) !1->2 in xi      NOTE: In 2D only the first space index can be a Mortar (second index is always 0)!!!
+#endif
+  DO q=0,PP_NZ ! for every eta-layer perform Mortar operation in xi-direction
+    DO p=0,PP_N
+      jk(:)=S2V2(:,p,q) ! Transformation in volume coordinates
+      Df_DVar(:,:,jk(1),jk(2),1)=  M_1_0(0,p)*DfMortar_DVar(:,:,0,q,1,1)*M_0_1(p,0) + &
+                                   M_2_0(0,p)*DfMortar_DVar(:,:,0,q,1,2)*M_0_2(p,0)
+      DO l=1,PP_N
+      Df_DVar(:,:,jk(1),jk(2),1)=  Df_DVar(:,:,jk(1),jk(2),1)                       + &
+                                   M_1_0(l,p)*DfMortar_DVar(:,:,l,q,1,1)*M_0_1(p,l) + &
+                                   M_2_0(l,p)*DfMortar_DVar(:,:,l,q,1,2)*M_0_2(p,l)
+      END DO
+    END DO
+  END DO
+#if PP_dim == 3
+END SELECT ! mortarType(SideID)
+#endif
+
+END SUBROUTINE Jacobian_Mortar
