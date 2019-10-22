@@ -96,7 +96,7 @@ SUBROUTINE JacSurfInt(t,BJ,iElem)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_DG_Vars                   ,ONLY: U_master,U_slave,UPrim_master,UPrim_slave
-USE MOD_Mesh_Vars                 ,ONLY: nBCSides,ElemToSide,S2V2
+USE MOD_Mesh_Vars                 ,ONLY: nBCSides,ElemToSide,S2V2,firstInnerSide,MortarType,MortarInfo,FS2M
 USE MOD_Mesh_Vars                 ,ONLY: NormVec,TangVec1,TangVec2,SurfElem
 USE MOD_Mesh_Vars                 ,ONLY: Face_xGP
 USE MOD_Implicit_Vars             ,ONLY: nDOFVarElem
@@ -122,6 +122,7 @@ USE MOD_FV_Vars                   ,ONLY: FV_Elems_master,FV_Elems_slave,FV_Elems
 USE MOD_GetBoundaryFlux           ,ONLY: GetBoundaryState
 #endif
 #endif
+USE MOD_Mortar_Vars               ,ONLY: M_0_1,M_0_2,M_1_0,M_2_0
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -157,6 +158,11 @@ REAL,DIMENSION(1:PP_nVar,1:PP_nVarPrim,0:PP_N,0:PP_N,1:6) :: Df_dQxInner,Df_dQyI
 REAL,DIMENSION(1:PP_nVar,1:PP_nVarPrim,0:PP_N,0:PP_NZ,2:5):: Df_dQxInner,Df_dQyInner,Df_dQxOuter,Df_dQyOuter
 #endif /*PP_dim*/
 #endif /*PARABOLIC*/
+! Mortars
+INTEGER                                                   :: nMortars,iMortarSide,iMortar,l,p,q,jk(2)
+INTEGER                                                   :: sideMap(1:2,0:PP_N,0:PP_NZ)
+REAL                                                      :: DfMortar_DUinner(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ,2,4)
+REAL                                                      :: Df_DUinner_tmp(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ,2)
 !===================================================================================================================================
 #if FV_ENABLED
 FVElem = FV_Elems(iElem)
@@ -180,148 +186,245 @@ DO iLocSide=2,5
 #endif
 
   IF (SideID.GT.nBCSides) THEN !InnerSide
-    ! We always want to take the derivative w.r.t. the DOF on our own side. Depending on whether we are master or slave, this means
-    ! we need to input different arrays into our routines that calculate the derivative always w.r.t. U_L!
-    IF (Flip.EQ.0) THEN
-      UPrimSideL = UPrim_master(:,:,:,SideID);USideL = U_master(:,:,:,SideID)
-      UPrimSideR = UPrim_slave( :,:,:,SideID);USideR = U_slave( :,:,:,SideID)
-#if PARABOLIC
-      gradUxSideL = gradUx_master(:,:,:,SideID);gradUxSideR = gradUx_slave(:,:,:,SideID)
-      gradUySideL = gradUy_master(:,:,:,SideID);gradUySideR = gradUy_slave(:,:,:,SideID)
-      gradUzSideL = gradUz_master(:,:,:,SideID);gradUzSideR = gradUz_slave(:,:,:,SideID)
-#if EDDYVISCOSITY
-      muSGSL = muSGS_master(:,:,:,SideID),muSGSR = muSGS_slave(:,:,:,SideID)
-#endif
-#endif
-      signum = 1.
+    IF (SideID.LT.firstInnerSide) THEN
+      ! This is a (big) mortar side
+      nMortars=MERGE(4,2,MortarType(1,SideID).EQ.1)
+      ! Index in mortar side list
+      iMortarSide=MortarType(2,SideID)
+      DfMortar_DUinner = 0.
     ELSE
-      UPrimSideL = UPrim_slave( :,:,:,SideID);USideL = U_slave( :,:,:,SideID)
-      UPrimSideR = UPrim_master(:,:,:,SideID);USideR = U_master(:,:,:,SideID)
-#if PARABOLIC
-      gradUxSideL = gradUx_slave(:,:,:,SideID);gradUxSideR = gradUx_master(:,:,:,SideID)
-      gradUySideL = gradUy_slave(:,:,:,SideID);gradUySideR = gradUy_master(:,:,:,SideID)
-      gradUzSideL = gradUz_slave(:,:,:,SideID);gradUzSideR = gradUz_master(:,:,:,SideID)
-#if EDDYVISCOSITY
-      muSGSL = muSGS_slave(:,:,:,SideID),muSGSR = muSGS_master(:,:,:,SideID)
-#endif
-#endif
-      signum = -1.
+      nMortars = 1
+      sideMap = S2V2(:,:,:,flip,iLocSide)
     END IF
-    ! d(f*_ad)_jk/dU_master_jk, with SurfaceIntegral already considered!
-    CALL Riemann_FD(Df_DUinner(:,:,:,:,:,iLocSide),USideL,USideR,UPrimSideL,UPrimSideR,                                                &
-                               signum*NormVec(:,:,:,FVSide,SideID),signum*tangVec1(:,:,:,FVSide,SideID),tangVec2(:,:,:,FVSide,SideID), &
-                               SurfElem(:,:,FVSide,SideID),S2V2(:,:,:,Flip,iLocSide),FVSum,FVElem,FVSide)
+    ! For mortars: Loop over small mortar sides
+    DO iMortar=1,nMortars
+      IF (nMortars.GT.1) THEN
+        ! We overwrite the SideID with the ID of the SMALL mortar side!
+        SideID = MortarInfo(MI_SIDEID,iMortar,iMortarSide)
+        ! For mortar sides, we transform the side-based Jacobians of the small sides into the side system of the big side. The
+        ! transformation into the volume system is done later, while we do it in Riemann_FD for non-mortar sides.
+        sideMap = FS2M(:,:,:,MortarInfo(MI_FLIP,iMortar,iMortarSide))
+      END IF
+
+      ! We always want to take the derivative w.r.t. the DOF on our own side. Depending on whether we are master or slave, this means
+      ! we need to input different arrays into our routines that calculate the derivative always w.r.t. U_L!
+      IF (Flip.EQ.0) THEN
+        UPrimSideL = UPrim_master(:,:,:,SideID);USideL = U_master(:,:,:,SideID)
+        UPrimSideR = UPrim_slave( :,:,:,SideID);USideR = U_slave( :,:,:,SideID)
 #if PARABOLIC
-    IF (.NOT.(HyperbolicPrecond)) THEN 
-      ! Call the analytical Jacobian (viscous flux w.r.t. conservative variables)
-      ! d(f_diff)_jk/dU_master_jk
-      CALL EvalDiffFluxJacobian(nDOFFace,USideL,UPrimSideL,gradUxSideL,gradUySideL,gradUzSideL, &
-                                fJac(:,:,:,:,1),gJac(:,:,:,:,1),hJac(:,:,:,:,1)                 &
+        gradUxSideL = gradUx_master(:,:,:,SideID);gradUxSideR = gradUx_slave(:,:,:,SideID)
+        gradUySideL = gradUy_master(:,:,:,SideID);gradUySideR = gradUy_slave(:,:,:,SideID)
+        gradUzSideL = gradUz_master(:,:,:,SideID);gradUzSideR = gradUz_slave(:,:,:,SideID)
 #if EDDYVISCOSITY
-                               ,muSGSL                                                          &
+        muSGSL = muSGS_master(:,:,:,SideID),muSGSR = muSGS_slave(:,:,:,SideID)
 #endif
-                                )
-#if FV_ENABLED
-      ! Call the analytical Jacobian (viscous flux w.r.t. conservative variables), but for the neighbouring DOF
-      CALL EvalDiffFluxJacobian(nDOFFace,USideR,UPrimSideR,gradUxSideR,gradUySideR,gradUzSideR, &
-                                fJac(:,:,:,:,2),gJac(:,:,:,:,2),hJac(:,:,:,:,2)                 &
+#endif
+        signum = 1.
+      ELSE
+        UPrimSideL = UPrim_slave( :,:,:,SideID);USideL = U_slave( :,:,:,SideID)
+        UPrimSideR = UPrim_master(:,:,:,SideID);USideR = U_master(:,:,:,SideID)
+#if PARABOLIC
+        gradUxSideL = gradUx_slave(:,:,:,SideID);gradUxSideR = gradUx_master(:,:,:,SideID)
+        gradUySideL = gradUy_slave(:,:,:,SideID);gradUySideR = gradUy_master(:,:,:,SideID)
+        gradUzSideL = gradUz_slave(:,:,:,SideID);gradUzSideR = gradUz_master(:,:,:,SideID)
 #if EDDYVISCOSITY
-                               ,muSGSR                                                          &
+        muSGSL = muSGS_slave(:,:,:,SideID),muSGSR = muSGS_master(:,:,:,SideID)
+#endif
+#endif
+        signum = -1.
+      END IF
+      ! d(f*_ad)_jk/dU_master_jk, with SurfaceIntegral already considered!
+      CALL Riemann_FD(Df_DUinner(:,:,:,:,:,iLocSide),USideL,USideR,UPrimSideL,UPrimSideR,                                                &
+                                 signum*NormVec(:,:,:,FVSide,SideID),signum*tangVec1(:,:,:,FVSide,SideID),tangVec2(:,:,:,FVSide,SideID), &
+                                 SurfElem(:,:,FVSide,SideID),sideMap,FVSum,FVElem,FVSide)
+#if PARABOLIC
+      IF (.NOT.(HyperbolicPrecond)) THEN 
+        ! Call the analytical Jacobian (viscous flux w.r.t. conservative variables)
+        ! d(f_diff)_jk/dU_master_jk
+        CALL EvalDiffFluxJacobian(nDOFFace,USideL,UPrimSideL,gradUxSideL,gradUySideL,gradUzSideL, &
+                                  fJac(:,:,:,:,1),gJac(:,:,:,:,1),hJac(:,:,:,:,1)                 &
+#if EDDYVISCOSITY
+                                 ,muSGSL                                                          &
+#endif
+                                  )
+#if FV_ENABLED
+        ! Call the analytical Jacobian (viscous flux w.r.t. conservative variables), but for the neighbouring DOF
+        CALL EvalDiffFluxJacobian(nDOFFace,USideR,UPrimSideR,gradUxSideR,gradUySideR,gradUzSideR, &
+                                  fJac(:,:,:,:,2),gJac(:,:,:,:,2),hJac(:,:,:,:,2)                 &
+#if EDDYVISCOSITY
+                                 ,muSGSR                                                          &
 #endif
       
-                               )
-#endif
-      ! Derivative of the diffusive flux with respect to gradU_L
-      CALL EvalFluxGradJacobian(nDOFFace,USideL,UPrimSideL, &
-                                fJacQx,fJacQy,fJacQz,       &
-                                gJacQx,gJacQy,gJacQz,       &
-                                hJacQx,hJacQy,hJacQz        &
-#if EDDYVISCOSITY
-                               ,muSGSL                      &
-#endif
-                                )
-      DO q=0,PP_NZ
-        DO p=0,PP_N
-          jk(:)=S2V2(:,p,q,Flip,iLocSide)
-          ! BR1/2 use central fluxes for the viscous flux, so f*_diff = 0.5*(f_diff^L+f_diff^R).
-          ! Transform the diffusive flux Jacobians into the normal system for the suface integral, and pre-multiply with 
-          ! the SurfElem here (already done in Riemann_FD for the hyperbolic parts).
-          DO i=1,FVElem+1
-            ! Direct dependency of the viscous flux from the solution variables on the side.
-            Df_DUinner(:,:,jk(1),jk(2),i,iLocSide)= Df_DUinner(:,:,jk(1),jk(2),i,iLocSide) +                  &
-                                                    0.5*( fJac(:,:,p,q,i)*signum*NormVec(1,p,q,FVSide,SideID) &
-                                                         +gJac(:,:,p,q,i)*signum*NormVec(2,p,q,FVSide,SideID) &
-#if PP_dim==3
-                                                         +hJac(:,:,p,q,i)*signum*NormVec(3,p,q,FVSide,SideID) &
-#endif
-                                                         )*SurfElem(p,q,FVSide,SideID)
-          END DO
-          ! Df_dQxInner = d(f,g,h)_diff/dQ_x * NormVec
-          ! Dependencies of the surface flux w.r.t. the inner surface gradients in each direction
-          Df_dQxInner(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQx(:,:,p,q)*signum*NormVec(1,p,q,FVSide,SideID) &
-                                                       +gJacQx(:,:,p,q)*signum*NormVec(2,p,q,FVSide,SideID) &
-#if PP_dim==3
-                                                       +hJacQx(:,:,p,q)*signum*NormVec(3,p,q,FVSide,SideID) &
-#endif
-                                                      )*SurfElem(p,q,FVSide,SideID)
-          Df_dQyInner(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQy(:,:,p,q)*signum*NormVec(1,p,q,FVSide,SideID) &
-                                                       +gJacQy(:,:,p,q)*signum*NormVec(2,p,q,FVSide,SideID) &
-#if PP_dim==3
-                                                       +hJacQy(:,:,p,q)*signum*NormVec(3,p,q,FVSide,SideID) &
-#endif
-                                                      )*SurfElem(p,q,FVSide,SideID)
-#if PP_dim==3
-          Df_dQzInner(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQz(:,:,p,q)*signum*NormVec(1,p,q,FVSide,SideID) &
-                                                       +gJacQz(:,:,p,q)*signum*NormVec(2,p,q,FVSide,SideID) &
-                                                       +hJacQz(:,:,p,q)*signum*NormVec(3,p,q,FVSide,SideID) )*SurfElem(p,q,FVSide,SideID)
-#endif
-        END DO !p
-      END DO !q
-      ! Evaluate Jacobians of diffusive fluxes w.r.t. the outer gradients
-      CALL  EvalFluxGradJacobian(nDOFFace,USideR,UPrimSideR, &
-                                 fJacQx,fJacQy,fJacQz,       &
-                                 gJacQx,gJacQy,gJacQz,       &
-                                 hJacQx,hJacQy,hJacQz        &
-#if EDDYVISCOSITY
-                                ,muSGSR                      &
-#endif
                                  )
-      IF((FVSum.EQ.1).OR.(FVSum.EQ.2))THEN
-        ! For mixed interfaces, we ignore the contribution from the outer gradients
-        Df_DQxOuter(:,:,:,:,iLocSide)=0.
-        Df_DQyOuter(:,:,:,:,iLocSide)=0.
-#if PP_dim==3
-        Df_DQzOuter(:,:,:,:,iLocSide)=0.
-#endif /*PP_dim*/
-      ELSE
+#endif
+        ! Derivative of the diffusive flux with respect to gradU_L
+        CALL EvalFluxGradJacobian(nDOFFace,USideL,UPrimSideL, &
+                                  fJacQx,fJacQy,fJacQz,       &
+                                  gJacQx,gJacQy,gJacQz,       &
+                                  hJacQx,hJacQy,hJacQz        &
+#if EDDYVISCOSITY
+                                 ,muSGSL                      &
+#endif
+                                  )
         DO q=0,PP_NZ
           DO p=0,PP_N
-            ! Again, transform into normal system and pre-multiply with the SurfElem
             jk(:)=S2V2(:,p,q,Flip,iLocSide)
-            ! Df_dQxOuter = d(f,g,h)_diff/dQ_x * NormVec
-            ! Dependencies of the surface flux w.r.t. the outer surface gradients in each direction
-            Df_dQxOuter(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQx(:,:,p,q)*signum*NormVec(1,p,q,FVSide,SideID) &
+            ! BR1/2 use central fluxes for the viscous flux, so f*_diff = 0.5*(f_diff^L+f_diff^R).
+            ! Transform the diffusive flux Jacobians into the normal system for the suface integral, and pre-multiply with 
+            ! the SurfElem here (already done in Riemann_FD for the hyperbolic parts).
+            DO i=1,FVElem+1
+              ! Direct dependency of the viscous flux from the solution variables on the side.
+              Df_DUinner(:,:,jk(1),jk(2),i,iLocSide)= Df_DUinner(:,:,jk(1),jk(2),i,iLocSide) +                  &
+                                                      0.5*( fJac(:,:,p,q,i)*signum*NormVec(1,p,q,FVSide,SideID) &
+                                                           +gJac(:,:,p,q,i)*signum*NormVec(2,p,q,FVSide,SideID) &
+#if PP_dim==3
+                                                           +hJac(:,:,p,q,i)*signum*NormVec(3,p,q,FVSide,SideID) &
+#endif
+                                                           )*SurfElem(p,q,FVSide,SideID)
+            END DO
+            ! Df_dQxInner = d(f,g,h)_diff/dQ_x * NormVec
+            ! Dependencies of the surface flux w.r.t. the inner surface gradients in each direction
+            Df_dQxInner(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQx(:,:,p,q)*signum*NormVec(1,p,q,FVSide,SideID) &
                                                          +gJacQx(:,:,p,q)*signum*NormVec(2,p,q,FVSide,SideID) &
 #if PP_dim==3
                                                          +hJacQx(:,:,p,q)*signum*NormVec(3,p,q,FVSide,SideID) &
 #endif
                                                         )*SurfElem(p,q,FVSide,SideID)
-            Df_dQyOuter(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQy(:,:,p,q)*signum*NormVec(1,p,q,FVSide,SideID) &
+            Df_dQyInner(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQy(:,:,p,q)*signum*NormVec(1,p,q,FVSide,SideID) &
                                                          +gJacQy(:,:,p,q)*signum*NormVec(2,p,q,FVSide,SideID) &
 #if PP_dim==3
                                                          +hJacQy(:,:,p,q)*signum*NormVec(3,p,q,FVSide,SideID) &
 #endif
                                                         )*SurfElem(p,q,FVSide,SideID)
 #if PP_dim==3
-            Df_dQzOuter(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQz(:,:,p,q)*signum*NormVec(1,p,q,FVSide,SideID) &
+            Df_dQzInner(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQz(:,:,p,q)*signum*NormVec(1,p,q,FVSide,SideID) &
                                                          +gJacQz(:,:,p,q)*signum*NormVec(2,p,q,FVSide,SideID) &
                                                          +hJacQz(:,:,p,q)*signum*NormVec(3,p,q,FVSide,SideID) )*SurfElem(p,q,FVSide,SideID)
 #endif
           END DO !p
         END DO !q
-      END IF !FVSum
-    END IF ! HyperbolicPrecond==False
+        ! Evaluate Jacobians of diffusive fluxes w.r.t. the outer gradients
+        CALL  EvalFluxGradJacobian(nDOFFace,USideR,UPrimSideR, &
+                                   fJacQx,fJacQy,fJacQz,       &
+                                   gJacQx,gJacQy,gJacQz,       &
+                                   hJacQx,hJacQy,hJacQz        &
+#if EDDYVISCOSITY
+                                  ,muSGSR                      &
+#endif
+                                   )
+        IF((FVSum.EQ.1).OR.(FVSum.EQ.2))THEN
+          ! For mixed interfaces, we ignore the contribution from the outer gradients
+          Df_DQxOuter(:,:,:,:,iLocSide)=0.
+          Df_DQyOuter(:,:,:,:,iLocSide)=0.
+#if PP_dim==3
+          Df_DQzOuter(:,:,:,:,iLocSide)=0.
+#endif /*PP_dim*/
+        ELSE
+          DO q=0,PP_NZ
+            DO p=0,PP_N
+              ! Again, transform into normal system and pre-multiply with the SurfElem
+              jk(:)=S2V2(:,p,q,Flip,iLocSide)
+              ! Df_dQxOuter = d(f,g,h)_diff/dQ_x * NormVec
+              ! Dependencies of the surface flux w.r.t. the outer surface gradients in each direction
+              Df_dQxOuter(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQx(:,:,p,q)*signum*NormVec(1,p,q,FVSide,SideID) &
+                                                           +gJacQx(:,:,p,q)*signum*NormVec(2,p,q,FVSide,SideID) &
+#if PP_dim==3
+                                                           +hJacQx(:,:,p,q)*signum*NormVec(3,p,q,FVSide,SideID) &
+#endif
+                                                          )*SurfElem(p,q,FVSide,SideID)
+              Df_dQyOuter(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQy(:,:,p,q)*signum*NormVec(1,p,q,FVSide,SideID) &
+                                                           +gJacQy(:,:,p,q)*signum*NormVec(2,p,q,FVSide,SideID) &
+#if PP_dim==3
+                                                           +hJacQy(:,:,p,q)*signum*NormVec(3,p,q,FVSide,SideID) &
+#endif
+                                                          )*SurfElem(p,q,FVSide,SideID)
+#if PP_dim==3
+              Df_dQzOuter(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQz(:,:,p,q)*signum*NormVec(1,p,q,FVSide,SideID) &
+                                                           +gJacQz(:,:,p,q)*signum*NormVec(2,p,q,FVSide,SideID) &
+                                                           +hJacQz(:,:,p,q)*signum*NormVec(3,p,q,FVSide,SideID) )*SurfElem(p,q,FVSide,SideID)
+#endif
+            END DO !p
+          END DO !q
+        END IF !FVSum
+      END IF ! HyperbolicPrecond==False
 #endif /*PARABOLIC*/
+      IF (nMortars.GT.1) THEN
+        ! Store the Jacobians for each small side, later combine them into the Jacobian for the big side
+        DfMortar_DUinner(:,:,:,:,1,iMortar)=Df_DUInner(:,:,:,:,1,iLocSide)
+      END IF
+    END DO ! nMortars
+
+    IF (nMortars.GT.1) THEN
+      ! For mortars, we only consider the influence of the surface DOF on the flux on that point! Through the interpolation
+      ! procedure, additional dependencies would arise, but they are ignored to keep the sparsity pattern.
+      ! Dependencies of fluxes at big mortar sides (B), with associated small mortars (L and U):
+      ! dF^B/dU^B = \sum dF^B/dF_U * dF_U/dU_U * dU_U/dU_B + \sum dF^B/dF_L * dF_L/dU_L * dU_L/dU_B
+      !                    proj.     Riemann_FD  interpol.   
+      ! Projection and interpolation procedures are implemented using the M matrices. 
+#if PP_dim == 3
+      SELECT CASE(MortarType(1,ElemToSide(E2S_SIDE_ID,ilocSide,iElem)))
+      CASE(1) !1->4
+        DO q=0,PP_NZ ! for every eta-layer perform Mortar operation in xi-direction
+          DO p=0,PP_N
+            Df_DUInner_tmp(:,:,p,q,1)=  M_1_0(0,p)*DfMortar_DUinner(:,:,0,q,1,1)*M_0_1(p,0) + &
+                                        M_2_0(0,p)*DfMortar_DUinner(:,:,0,q,1,2)*M_0_2(p,0)
+            Df_DUInner_tmp(:,:,p,q,2)=  M_1_0(0,p)*DfMortar_DUinner(:,:,0,q,1,3)*M_0_1(p,0) + &
+                                        M_2_0(0,p)*DfMortar_DUinner(:,:,0,q,1,4)*M_0_2(p,0)
+            DO l=1,PP_N
+            Df_DUInner_tmp(:,:,p,q,1)=  Df_DUInner_tmp(:,:,p,q,1)                           + &
+                                        M_1_0(l,p)*DfMortar_DUinner(:,:,l,q,1,1)*M_0_1(p,l) + &
+                                        M_2_0(l,p)*DfMortar_DUinner(:,:,l,q,1,2)*M_0_2(p,l)
+            Df_DUInner_tmp(:,:,p,q,2)=  Df_DUInner_tmp(:,:,p,q,2)                           + &
+                                        M_1_0(l,p)*DfMortar_DUinner(:,:,l,q,1,3)*M_0_1(p,l) + &
+                                        M_2_0(l,p)*DfMortar_DUinner(:,:,l,q,1,4)*M_0_2(p,l)
+            END DO
+          END DO
+        END DO
+        DO q=0,PP_NZ ! for every xi-layer perform Mortar operation in eta-direction
+          DO p=0,PP_N
+            jk(:)=S2V2(:,p,q,Flip,iLocSide) ! Transformation in volume coordinates
+            Df_DUInner(:,:,jk(1),jk(2),1,iLocSide)=  M_1_0(0,q)*Df_DUinner_tmp(:,:,p,0,1)*M_0_1(q,0) + &
+                                                     M_2_0(0,q)*Df_DUinner_tmp(:,:,p,0,2)*M_0_2(q,0)
+            DO l=1,PP_N
+            Df_DUInner(:,:,jk(1),jk(2),1,iLocSide)=  Df_DUInner(:,:,jk(1),jk(2),1,iLocSide) + &
+                                                     M_1_0(l,q)*Df_DUinner_tmp(:,:,p,l,1)*M_0_1(q,l) + &
+                                                     M_2_0(l,q)*Df_DUinner_tmp(:,:,p,l,2)*M_0_2(q,l)
+            END DO
+          END DO
+        END DO
+
+      CASE(2) !1->2 in eta
+        DO q=0,PP_NZ ! for every xi-layer perform Mortar operation in eta-direction
+          DO p=0,PP_N
+            jk(:)=S2V2(:,p,q,Flip,iLocSide) ! Transformation in volume coordinates
+            Df_DUInner(:,:,jk(1),jk(2),1,iLocSide)=  M_1_0(0,q)*DfMortar_DUinner(:,:,p,0,1,1)*M_0_1(q,0) + &
+                                                     M_2_0(0,q)*DfMortar_DUinner(:,:,p,0,1,2)*M_0_2(q,0)
+            DO l=1,PP_N
+            Df_DUInner(:,:,jk(1),jk(2),1,iLocSide)=  Df_DUInner(:,:,jk(1),jk(2),1,iLocSide) + &
+                                                     M_1_0(l,q)*DfMortar_DUinner(:,:,p,l,1,1)*M_0_1(q,l) + &
+                                                     M_2_0(l,q)*DfMortar_DUinner(:,:,p,l,1,2)*M_0_2(q,l)
+            END DO
+          END DO
+        END DO
+
+      CASE(3) !1->2 in xi      NOTE: In 2D only the first space index can be a Mortar (second index is always 0)!!!
+#endif
+        DO q=0,PP_NZ ! for every eta-layer perform Mortar operation in xi-direction
+          DO p=0,PP_N
+            jk(:)=S2V2(:,p,q,Flip,iLocSide) ! Transformation in volume coordinates
+            Df_DUInner(:,:,jk(1),jk(2),1,iLocSide)=  M_1_0(0,p)*DfMortar_DUinner(:,:,0,q,1,1)*M_0_1(p,0) + &
+                                                     M_2_0(0,p)*DfMortar_DUinner(:,:,0,q,1,2)*M_0_2(p,0)
+            DO l=1,PP_N
+            Df_DUInner(:,:,jk(1),jk(2),1,iLocSide)=  Df_DUInner(:,:,jk(1),jk(2),1,iLocSide) + &
+                                                     M_1_0(l,p)*DfMortar_DUinner(:,:,l,q,1,1)*M_0_1(p,l) + &
+                                                     M_2_0(l,p)*DfMortar_DUinner(:,:,l,q,1,2)*M_0_2(p,l)
+            END DO
+          END DO
+        END DO
+#if PP_dim == 3
+      END SELECT ! mortarType(SideID)
+#endif
+    END IF ! mortar
   ELSE !Boundary
 #if FV_ENABLED
     FVSide = FV_Elems_master(SideID)
