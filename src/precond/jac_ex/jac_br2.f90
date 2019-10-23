@@ -68,9 +68,11 @@ USE MOD_PreProc
 USE MOD_Jac_ex_Vars               ,ONLY:JacLiftingFlux
 USE MOD_GetBoundaryFlux_fd        ,ONLY:Lifting_GetBoundaryFlux_FD
 USE MOD_Mesh_Vars                 ,ONLY:nBCSides,ElemToSide,S2V2
-USE MOD_Mesh_Vars                 ,ONLY:NormVec,TangVec1,TangVec2,SurfElem
+USE MOD_Mesh_Vars                 ,ONLY:NormVec,TangVec1,TangVec2,SurfElem,firstInnerSide,MortarType,MortarInfo,FS2M
 USE MOD_DG_Vars                   ,ONLY:UPrim_master
 USE MOD_Mesh_Vars                 ,ONLY:Face_xGP
+USE MOD_Jac_Ex_MortarLifting      ,ONLY:Jacobian_MortarLifting
+USE MOD_Jacobian                  ,ONLY: dConsdPrimTemp,dPrimTempdCons
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -81,8 +83,14 @@ INTEGER,INTENT(IN) :: iElem
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
-INTEGER            :: iVar,iLocSide,SideID,flip,p,q,pq(2)
-REAL               :: mp
+INTEGER :: iVar,iLocSide,SideID,flip,p,q,pq(2)
+REAL    :: mp
+INTEGER :: nMortars,iMortarSide,iMortar
+INTEGER :: sideMap(1:2,0:PP_N,0:PP_NZ)
+REAL    :: DLiftingFluxMortar_DUInner(PP_nVarPrim,PP_nVar,0:PP_N,0:PP_NZ,4)
+REAL    :: JacLiftingFlux_tmp(PP_nVarPrim,PP_nVar,0:PP_N,0:PP_NZ)
+REAL    :: PrimConsJac(PP_nVarPrim,PP_nVar)
+REAL    :: ConsPrimJac(PP_nVar,PP_nVarPrim)
 !===================================================================================================================================
 #if PP_dim==3
 DO iLocSide=1,6
@@ -95,18 +103,50 @@ DO iLocSide=2,5
     CALL Lifting_GetBoundaryFlux_FD(SideID,t,JacLiftingFlux(:,:,:,:,iLocSide),UPrim_master, &
                                     SurfElem,Face_xGP,NormVec,TangVec1,TangVec2,S2V2(:,:,:,0,iLocSide)) !flip=0 for BCSide
   ELSE
-    JacLiftingFlux(:,:,:,:,iLocSide)=0.
-    IF(flip.EQ.0)THEN
-      mp = -1.
+    IF (SideID.LT.firstInnerSide) THEN
+      ! This is a (big) mortar side
+      nMortars=MERGE(4,2,MortarType(1,SideID).EQ.1)
+      ! Index in mortar side list
+      iMortarSide=MortarType(2,SideID)
+      DLiftingFluxMortar_DUInner = 0.
     ELSE
-      mp = 1.
+      nMortars = 1
+      sideMap = S2V2(:,:,:,flip,iLocSide)
     END IF
-    DO iVar=1,PP_nVarPrim
+    DO iMortar = 1, nMortars
+      JacLiftingFlux(:,:,:,:,iLocSide)=0.
+      IF (nMortars.GT.1) THEN
+        SideID= MortarInfo(MI_SIDEID,iMortar,iMortarSide)
+        sideMap = FS2M(:,:,:,MortarInfo(MI_FLIP,iMortar,iMortarSide))
+      END IF
+      IF(flip.EQ.0)THEN
+        mp = -1.
+      ELSE
+        mp = 1.
+      END IF
+      DO iVar=1,PP_nVarPrim
+        DO q=0,PP_NZ; DO p=0,PP_N
+          pq(:) = sideMap(:,p,q)
+          JacLiftingFlux(iVar,iVar,pq(1),pq(2),iLocSide) = mp*0.5*SurfElem(p,q,0,SideID)
+        END DO; END DO ! p,q=0,PP_N
+      END DO !iVar
+      IF (nMortars.GT.1) THEN
+        DO q=0,PP_NZ; DO p=0,PP_N
+          pq(:) = sideMap(:,p,q)
+          CALL dPrimTempdCons(UPrim_master(:,pq(1),pq(2),SideID),PrimConsJac)
+          DLiftingFluxMortar_DUInner(:,:,p,q,iMortar) = MATMUL(JacLiftingFlux(:,:,p,q,iLocSide),PrimConsJac)
+        END DO; END DO ! p,q=0,PP_N
+      END IF
+    END DO ! iMortar = 1, nMortars
+    IF (nMortars.GT.1) THEN
+      CALL Jacobian_MortarLifting(MortarType(1,ElemToSide(E2S_SIDE_ID,ilocSide,iElem)),S2V2(:,:,:,flip,iLocSide), &
+                                  DLiftingFluxMortar_DUInner,JacLiftingFlux_tmp(:,:,:,:))
       DO q=0,PP_NZ; DO p=0,PP_N
-        pq(:) = S2V2(:,p,q,flip,iLocSide)
-        JacLiftingFlux(iVar,iVar,pq(1),pq(2),iLocSide) = mp*0.5*SurfElem(p,q,0,SideID)
+        pq(:)  = S2V2(:,p,q,flip,iLocSide)
+        CALL dConsdPrimTemp(UPrim_master(:,pq(1),pq(2),ElemToSide(E2S_SIDE_ID,ilocSide,iElem)),ConsPrimJac)
+        JacLiftingFlux(:,:,p,q,iLocSide) = MATMUL(JacLiftingFlux_tmp(:,:,p,q),ConsPrimJac)
       END DO; END DO ! p,q=0,PP_N
-    END DO !iVar
+    END IF
   END IF !SideID
 END DO!iLocSide
 END SUBROUTINE FillJacLiftingFlux
@@ -447,7 +487,7 @@ END SUBROUTINE Build_BR2_SurfTerms
 !> ONLY THE DERIVATIVE OF Q_INNER !!!!!
 !> Computation is done for one element!
 !===================================================================================================================================
-SUBROUTINE dQInner(dir,iElem,dQ_dUVolInner,dQVol_dU)
+SUBROUTINE dQInner(dir,iElem,dQInner_dUVol,dQVol_dU)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
@@ -474,10 +514,10 @@ INTEGER,INTENT(IN) :: iElem !< considered element ID
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 #if PP_dim == 3
-REAL,INTENT(OUT) :: dQ_dUVolInner(PP_nVarPrim,PP_nVar,0:PP_N,0:PP_NZ,6,0:PP_N) !< Jacobian of surface integral of the lifting w.r.t.
+REAL,INTENT(OUT) :: dQInner_dUVol(PP_nVarPrim,PP_nVar,0:PP_N,0:PP_NZ,6,0:PP_N) !< Jacobian of surface integral of the lifting w.r.t.
                                                                                !< conservative solution, only from my element!
 #else
-REAL,INTENT(OUT) :: dQ_dUVolInner(PP_nVarPrim,PP_nVar,0:PP_N,0:PP_NZ,2:5,0:PP_N)
+REAL,INTENT(OUT) :: dQInner_dUVol(PP_nVarPrim,PP_nVar,0:PP_N,0:PP_NZ,2:5,0:PP_N)
 #endif
 REAL,INTENT(OUT) :: dQVol_dU(0:PP_N,0:PP_N,0:PP_NZ,0:PP_N,PP_dim)              !< Jacobian of volume integral of the lifting w.r.t.
                                                                                !< conservative solution
@@ -489,14 +529,14 @@ INTEGER           :: oo
 #endif
 INTEGER           :: SideID,Flip,jk(2)
 REAL              :: r(0:PP_N,0:PP_NZ),mp
-REAL              :: dQ_dUVolInner_loc(0:PP_N,0:PP_NZ,0:PP_N)
+REAL              :: dQInner_dUVol_loc(0:PP_N,0:PP_NZ,0:PP_N)
 REAL              :: UPrim_face(PP_nVarPrim,0:PP_N,0:PP_NZ)
 REAL              :: PrimConsJac(PP_nVarPrim,1:PP_nVar,0:PP_N,0:PP_NZ)
 #if PP_Lifting==1
 REAL,PARAMETER    :: etaBR2=1.
 #endif
 !===================================================================================================================================
-dQ_dUVolInner=0.
+dQInner_dUVol=0.
 
 ! Derivative of the volume integral of the lifting procedure w.r.t. the lifting variables - since this consists of only the local
 ! gradients for BR2, this reduced to the D matrix including the metrics.
@@ -544,7 +584,7 @@ DO iLocSide=2,5
     mp = -1.
   END IF !Flip=0
 
-  dQ_dUVolInner_loc=0.
+  dQInner_dUVol_loc=0.
   SELECT CASE(iLocSide)
 
   ! Now compute the derivatives for the sides. We additionaly take the derivative of the prolongation into account by using the
@@ -553,7 +593,7 @@ DO iLocSide=2,5
     DO mm=0,PP_N
       DO k=0,PP_NZ
         DO j=0,PP_N
-          dQ_dUVolInner_loc(j,k,mm)   = dQ_dUVolInner_loc(j,k,mm) + etaBR2 * r(j,k) * l_mp(mm,iLocSide)
+          dQInner_dUVol_loc(j,k,mm)   = dQInner_dUVol_loc(j,k,mm) + etaBR2 * r(j,k) * l_mp(mm,iLocSide)
           CALL dPrimTempdCons(UPrim_face(:,j,k),PrimConsJac(:,:,j,k))
         END DO !j
       END DO !k
@@ -562,7 +602,7 @@ DO iLocSide=2,5
     DO nn=0,PP_N
       DO k=0,PP_NZ
         DO i=0,PP_N
-          dQ_dUVolInner_loc(i,k,nn) = dQ_dUVolInner_loc(i,k,nn) + etaBR2 * r(i,k) * l_mp(nn,iLocSide)
+          dQInner_dUVol_loc(i,k,nn) = dQInner_dUVol_loc(i,k,nn) + etaBR2 * r(i,k) * l_mp(nn,iLocSide)
           CALL dPrimTempdCons(UPrim_face(:,i,k),PrimConsJac(:,:,i,k))
         END DO !i
       END DO !k
@@ -572,7 +612,7 @@ DO iLocSide=2,5
     DO oo=0,PP_N
       DO j=0,PP_N
         DO i=0,PP_N
-          dQ_dUVolInner_loc(i,j,oo) = dQ_dUVolInner_loc(i,j,oo) + etaBR2 * r(i,j) * l_mp(oo,iLocSide)
+          dQInner_dUVol_loc(i,j,oo) = dQInner_dUVol_loc(i,j,oo) + etaBR2 * r(i,j) * l_mp(oo,iLocSide)
           CALL dPrimTempdCons(UPrim_face(:,i,j),PrimConsJac(:,:,i,j))
         END DO !i
       END DO !j
@@ -582,8 +622,8 @@ DO iLocSide=2,5
   DO k=0,PP_NZ
     DO j=0,PP_N
       DO mm=0,PP_N
-        dQ_dUVolInner(:,:,j,k,iLocSide,mm)=mp*MATMUL(JacLiftingFlux(:,:,j,k,iLocSide),PrimConsJac(:,:,j,k))* &
-                                           dq_dUVolinner_loc(j,k,mm)
+        dQInner_dUVol(:,:,j,k,iLocSide,mm)=mp*MATMUL(JacLiftingFlux(:,:,j,k,iLocSide),PrimConsJac(:,:,j,k))* &
+                                           dQInner_dUVol_loc(j,k,mm)
       END DO
     END DO !p
   END DO !q
@@ -596,11 +636,11 @@ END SUBROUTINE dQInner
 !> ONLY THE DERIVATIVE OF Q_OUTER !!!!!
 !> computation is done for one element!
 !===================================================================================================================================
-SUBROUTINE dQOuter(dir,iElem,dQ_dUVolOuter)
+SUBROUTINE dQOuter(dir,iElem,dQOuter_dUVol)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Mesh_Vars                 ,ONLY: ElemToSide,S2V2,nBCSides,SurfElem
+USE MOD_Mesh_Vars                 ,ONLY: ElemToSide,S2V2,nBCSides,SurfElem,firstInnerSide,MortarType,MortarInfo,FS2M
 USE MOD_Jac_Ex_Vars               ,ONLY: l_mp
 USE MOD_Jac_Ex_Vars               ,ONLY: R_Minus,R_Plus
 #if PP_Lifting==2
@@ -611,6 +651,7 @@ USE MOD_Jacobian                  ,ONLY: dConsdPrimTemp,dPrimTempdCons
 #if FV_ENABLED
 USE MOD_FV_Vars                   ,ONLY: FV_Elems_master,FV_Elems_slave
 #endif
+USE MOD_Jac_Ex_MortarScalar       ,ONLY: Jacobian_MortarScalar
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -620,10 +661,10 @@ INTEGER,INTENT(IN) :: iElem !< considered element ID
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 #if PP_dim == 3
-REAL,INTENT(OUT) :: dQ_dUVolOuter(PP_nVarPrim,PP_nVar,0:PP_N,0:PP_NZ,6,0:PP_N)!< Jacobian of surface integral of the lifting w.r.t.
+REAL,INTENT(OUT) :: dQOuter_dUVol(PP_nVarPrim,PP_nVar,0:PP_N,0:PP_NZ,6,0:PP_N)!< Jacobian of surface integral of the lifting w.r.t.
                                                                               !< conservative solution, only from neigbour element!
 #else
-REAL,INTENT(OUT) :: dQ_dUVolOuter(PP_nVarPrim,PP_nVar,0:PP_N,0:PP_NZ,2:5,0:PP_N)
+REAL,INTENT(OUT) :: dQOuter_dUVol(PP_nVarPrim,PP_nVar,0:PP_N,0:PP_NZ,2:5,0:PP_N)
 #endif
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -634,15 +675,19 @@ INTEGER           :: oo
 INTEGER           :: SideID,Flip,jk(2)
 REAL              :: r(0:PP_N,0:PP_NZ)
 REAL              :: UPrim_face(PP_nVarPrim,0:PP_N,0:PP_NZ)
-REAL              :: PrimConsJac(    1:PP_nVarPrim,1:PP_nVar)
+REAL              :: PrimConsJac(PP_nVarPrim,PP_nVar)
 #if PP_Lifting==1
 REAL,PARAMETER    :: etaBR2=1.
 #endif
 #if FV_ENABLED
 INTEGER           :: FVSide
 #endif
+REAL              :: DQOuter_DUSurf(1,1,0:PP_N,0:PP_NZ)
+REAL              :: DQOuterMortar_DUSurf(1,1,0:PP_N,0:PP_NZ,4)
+INTEGER           :: nMortars,iMortarSide,iMortar,pq(2)
+INTEGER           :: sideMap(1:2,0:PP_N,0:PP_NZ)
 !===================================================================================================================================
-dQ_dUVolOuter=0.
+dQOuter_dUVol=0.
 
 ! Computation of the derivative of the surface integral part
 #if PP_dim == 3
@@ -652,6 +697,15 @@ DO iLocSide=2,5
 #endif    
   SideID=ElemToSide(E2S_SIDE_ID,iLocSide,iElem)
   IF(SideID.LE.nBCSides) CYCLE  !for boundary conditions, dQ_dUVol=0.
+  IF (SideID.LT.firstInnerSide) THEN
+    ! This is a (big) mortar side
+    nMortars=MERGE(4,2,MortarType(1,SideID).EQ.1)
+    ! Index in mortar side list
+    iMortarSide=MortarType(2,SideID)
+    DQOuterMortar_DUSurf = 0.
+  ELSE
+    nMortars = 1
+  END IF
   ! Flip either slave or master solution into my own volume system
   ! r considers the metric terms on the surface and the integration => this gives us the actual surface integral.
   Flip  =ElemToSide(E2S_FLIP,iLocSide,iElem)
@@ -679,8 +733,48 @@ DO iLocSide=2,5
 #endif
   END IF !Flip=0
 
-  ! Now compute the derivatives for the sides. We additionaly take the derivative of the prolongation into account by using the
-  ! array l_mp, and the dependency of the primitive surface variables from the conservative ones
+  ! First, compute the derivatives of the gradients w.r.t. the surface DOFs (each gradient only to the solution at the same point)
+  DO iMortar=1,nMortars
+    IF (nMortars.GT.1) THEN
+      ! We overwrite the SideID with the ID of the SMALL mortar side!
+      SideID = MortarInfo(MI_SIDEID,iMortar,iMortarSide)
+      ! For mortar sides, we transform the side-based Jacobians of the small sides into the side system of the big side. The
+      ! transformation into the volume system is done later.
+      sideMap = FS2M(:,:,:,MortarInfo(MI_FLIP,iMortar,iMortarSide))
+    ELSE
+      ! For non-mortar sides, directly transform into volume system
+      sideMap = S2V2(:,:,:,flip,iLocSide)
+    END IF
+    DO q=0,PP_NZ
+      DO p=0,PP_N
+        pq = sideMap(:,p,q)
+        dQOuter_dUSurf(:,:,p,q) = 0.5*etaBR2*SurfElem(pq(1),pq(2),0,SideID)
+      END DO !p
+    END DO !q
+    IF (nMortars.GT.1) THEN
+      ! Store the Jacobians for each small side, later combine them into the Jacobian for the big side
+      DQOuterMortar_DUSurf(:,:,:,:,iMortar) = dQOuter_dUSurf
+    END IF
+  END DO ! iMortar
+  ! If this is a big mortar side, we combine the Jacobians from the small sides to the Jacobians on the big side and flip into the
+  ! volume system
+  IF (nMortars.GT.1) THEN
+    CALL Jacobian_MortarScalar(MortarType(1,ElemToSide(E2S_SIDE_ID,ilocSide,iElem)),S2V2(:,:,:,flip,iLocSide), &
+                               DQOuterMortar_DUSurf,dQOuter_dUSurf)
+    !dQOuter_dUSurf = 0.
+
+  ELSEIF (MortarType(1,ElemToSide(E2S_SIDE_ID,ilocSide,iElem)).LT.0) THEN 
+    ! This is a small mortar. Since the neighbouring element thus is a big mortar, the surface integral in the BR2 scheme has a
+    ! different derivative than a conforming element. We can't compute that influence at the moment, thus set it to zero.
+    ! We would need to know which small mortar we are (1,2,3,4 and in what mortar type) to select the right dependencies, but this
+    ! information is not stored anywhere.
+    dQOuter_dUSurf = 0.
+  END IF
+
+
+  ! Now compute the derivatives for the sides w.r.t. volume DOFs. The influence of the surface integral for all volume DOFs is
+  ! stored in the array l_mp, the influence of the metric terms in r. Also take the dependency of the primitive surface variables
+  ! from the conservative ones into account.
   SELECT CASE(iLocSide)
   CASE(XI_MINUS,XI_PLUS)
 #if FV_ENABLED
@@ -689,9 +783,8 @@ DO iLocSide=2,5
       DO mm=0,PP_N
         DO k=0,PP_NZ
           DO j=0,PP_N
-            jk(:)=S2V2(:,j,k,Flip,iLocSide)
             CALL dPrimTempdCons(UPrim_face(:,j,k),PrimConsJac)
-            dQ_dUVolOuter(:,:,j,k,iLocSide,mm) = 0.5*etaBR2 * r(j,k) * l_mp(mm,iLocSide)*SurfElem(jk(1),jk(2),0,SideID)*PrimConsJac
+            dQOuter_dUVol(:,:,j,k,iLocSide,mm) = r(j,k)*l_mp(mm,iLocSide)*PrimConsJac*DQOuter_dUSurf(1,1,j,k)
           END DO !j
         END DO !k
       END DO !mm
@@ -705,9 +798,8 @@ DO iLocSide=2,5
       DO nn=0,PP_N
         DO k=0,PP_NZ
           DO i=0,PP_N
-            jk(:)=S2V2(:,i,k,Flip,iLocSide)
             CALL dPrimTempdCons(UPrim_face(:,i,k),PrimConsJac)
-            dQ_dUVolOuter(:,:,i,k,iLocSide,nn) = 0.5*etaBR2 * r(i,k) * l_mp(nn,iLocSide)*SurfElem(jk(1),jk(2),0,SideID)*PrimConsJac
+            dQOuter_dUVol(:,:,i,k,iLocSide,nn) = r(i,k)*l_mp(nn,iLocSide)*PrimConsJac*DQOuter_dUSurf(1,1,i,k)
           END DO !i
         END DO !k
       END DO !nn
@@ -722,9 +814,8 @@ DO iLocSide=2,5
       DO oo=0,PP_N
         DO j=0,PP_N
           DO i=0,PP_N
-            jk(:)=S2V2(:,i,j,Flip,iLocSide)
             CALL dPrimTempdCons(UPrim_face(:,i,j),PrimConsJac)
-            dQ_dUVolOuter(:,:,i,j,iLocSide,oo) = 0.5*etaBR2 * r(i,j) * l_mp(oo,iLocSide)*SurfElem(jk(1),jk(2),0,SideID)*PrimConsJac
+            dQOuter_dUVol(:,:,i,j,iLocSide,oo) = r(i,j)*l_mp(oo,iLocSide)*PrimConsJac*DQOuter_dUSurf(1,1,i,j)
           END DO !i
         END DO !j
       END DO !oo

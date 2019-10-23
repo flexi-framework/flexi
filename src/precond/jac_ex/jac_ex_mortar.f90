@@ -32,7 +32,8 @@ END INTERFACE
 PUBLIC::Jacobian_MortarU
 !===================================================================================================================================
 
-INTEGER,PARAMETER :: TP_nVar = PP_nVar
+INTEGER,PARAMETER :: TP_nVar1 = PP_nVar
+INTEGER,PARAMETER :: TP_nVar2 = PP_nVar
 CONTAINS
 
 #include "jac_ex_mortar.t90"
@@ -56,7 +57,8 @@ END INTERFACE
 PUBLIC::Jacobian_MortarGrad
 !===================================================================================================================================
 
-INTEGER,PARAMETER :: TP_nVar = PP_nVarPrim
+INTEGER,PARAMETER :: TP_nVar1 = PP_nVar
+INTEGER,PARAMETER :: TP_nVar2 = PP_nVarPrim
 CONTAINS
 
 #include "jac_ex_mortar.t90"
@@ -64,3 +66,54 @@ CONTAINS
 #endif
 END MODULE MOD_Jac_Ex_MortarGrad
 
+MODULE MOD_Jac_Ex_MortarLifting
+#if PARABOLIC
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+PRIVATE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! GLOBAL VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! Public Part ----------------------------------------------------------------------------------------------------------------------
+INTERFACE Jacobian_MortarLifting
+  MODULE PROCEDURE Jacobian_Mortar
+END INTERFACE
+
+PUBLIC::Jacobian_MortarLifting
+!===================================================================================================================================
+
+INTEGER,PARAMETER :: TP_nVar1 = PP_nVarPrim
+INTEGER,PARAMETER :: TP_nVar2 = PP_nVar
+CONTAINS
+
+#include "jac_ex_mortar.t90"
+
+#endif
+END MODULE MOD_Jac_Ex_MortarLifting
+
+MODULE MOD_Jac_Ex_MortarScalar
+#if PARABOLIC
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+PRIVATE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! GLOBAL VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! Public Part ----------------------------------------------------------------------------------------------------------------------
+INTERFACE Jacobian_MortarScalar
+  MODULE PROCEDURE Jacobian_Mortar
+END INTERFACE
+
+PUBLIC::Jacobian_MortarScalar
+!===================================================================================================================================
+
+INTEGER,PARAMETER :: TP_nVar1 = 1
+INTEGER,PARAMETER :: TP_nVar2 = 1
+CONTAINS
+
+#include "jac_ex_mortar.t90"
+
+#endif
+END MODULE MOD_Jac_Ex_MortarScalar

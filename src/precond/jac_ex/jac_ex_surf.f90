@@ -123,6 +123,9 @@ USE MOD_GetBoundaryFlux           ,ONLY: GetBoundaryState
 #endif
 #endif
 USE MOD_Jac_Ex_MortarU            ,ONLY: Jacobian_MortarU
+#if PARABOLIC
+USE MOD_Jac_Ex_MortarGrad         ,ONLY: Jacobian_MortarGrad
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -139,9 +142,9 @@ REAL                                                      :: signum
 REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_NZ)                    :: USideL,USideR
 REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_NZ)                :: UPrimSideL,UPrimSideR
 #if PP_dim == 3
-REAL                                                      :: Df_DUinner(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ,2,6)
+REAL                                                      :: Df_DUInner(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ,2,6)
 #else
-REAL                                                      :: Df_DUinner(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ,2,2:5)
+REAL                                                      :: Df_DUInner(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ,2,2:5)
 #endif
 #if PARABOLIC
 INTEGER                                                   :: jk(2),p,q,i
@@ -161,7 +164,13 @@ REAL,DIMENSION(1:PP_nVar,1:PP_nVarPrim,0:PP_N,0:PP_NZ,2:5):: Df_dQxInner,Df_dQyI
 ! Mortars
 INTEGER                                                   :: nMortars,iMortarSide,iMortar
 INTEGER                                                   :: sideMap(1:2,0:PP_N,0:PP_NZ)
-REAL                                                      :: DfMortar_DUinner(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ,2,4)
+REAL                                                      :: DfMortar_DUInner(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ,2,4)
+#if PARABOLIC
+REAL,DIMENSION(PP_nVar,PP_nVarPrim,0:PP_N,0:PP_NZ,4)      :: DfMortar_DQxInner,DfMortar_DQyInner,DfMortar_DQxOuter,DfMortar_DQyOuter
+#if PP_dim==3
+REAL,DIMENSION(PP_nVar,PP_nVarPrim,0:PP_N,0:PP_NZ,4)      :: DfMortar_DQzInner,DfMortar_DQzOuter
+#endif /*PP_dim*/
+#endif /*PARABOLIC*/
 !===================================================================================================================================
 #if FV_ENABLED
 FVElem = FV_Elems(iElem)
@@ -190,7 +199,7 @@ DO iLocSide=2,5
       nMortars=MERGE(4,2,MortarType(1,SideID).EQ.1)
       ! Index in mortar side list
       iMortarSide=MortarType(2,SideID)
-      DfMortar_DUinner = 0.
+      DfMortar_DUInner = 0.
     ELSE
       nMortars = 1
       sideMap = S2V2(:,:,:,flip,iLocSide)
@@ -233,7 +242,7 @@ DO iLocSide=2,5
         signum = -1.
       END IF
       ! d(f*_ad)_jk/dU_master_jk, with SurfaceIntegral already considered!
-      CALL Riemann_FD(Df_DUinner(:,:,:,:,:,iLocSide),USideL,USideR,UPrimSideL,UPrimSideR,                                                &
+      CALL Riemann_FD(Df_DUInner(:,:,:,:,:,iLocSide),USideL,USideR,UPrimSideL,UPrimSideR,                                                &
                                  signum*NormVec(:,:,:,FVSide,SideID),signum*tangVec1(:,:,:,FVSide,SideID),tangVec2(:,:,:,FVSide,SideID), &
                                  SurfElem(:,:,FVSide,SideID),sideMap,FVSum,FVElem,FVSide)
 #if PARABOLIC
@@ -273,7 +282,7 @@ DO iLocSide=2,5
             ! the SurfElem here (already done in Riemann_FD for the hyperbolic parts).
             DO i=1,FVElem+1
               ! Direct dependency of the viscous flux from the solution variables on the side.
-              Df_DUinner(:,:,jk(1),jk(2),i,iLocSide)= Df_DUinner(:,:,jk(1),jk(2),i,iLocSide) +                  &
+              Df_DUInner(:,:,jk(1),jk(2),i,iLocSide)= Df_DUInner(:,:,jk(1),jk(2),i,iLocSide) +                  &
                                                       0.5*( fJac(:,:,p,q,i)*signum*NormVec(1,p,q,FVSide,SideID) &
                                                            +gJac(:,:,p,q,i)*signum*NormVec(2,p,q,FVSide,SideID) &
 #if PP_dim==3
@@ -349,14 +358,40 @@ DO iLocSide=2,5
 #endif /*PARABOLIC*/
       IF (nMortars.GT.1) THEN
         ! Store the Jacobians for each small side, later combine them into the Jacobian for the big side
-        DfMortar_DUinner(:,:,:,:,1,iMortar)=Df_DUInner(:,:,:,:,1,iLocSide)
+        DfMortar_DUInner(:,:,:,:,1,iMortar)=Df_DUInner(:,:,:,:,1,iLocSide)
+#if PARABOLIC
+        DfMortar_dQxInner(:,:,:,:,iMortar)=Df_DQxInner(:,:,:,:,iLocSide)
+        DfMortar_dQyInner(:,:,:,:,iMortar)=Df_DQyInner(:,:,:,:,iLocSide)
+        DfMortar_dQxOuter(:,:,:,:,iMortar)=Df_DQxOuter(:,:,:,:,iLocSide)
+        DfMortar_dQyOuter(:,:,:,:,iMortar)=Df_DQyOuter(:,:,:,:,iLocSide)
+#if PP_dim==3
+        DfMortar_dQzInner(:,:,:,:,iMortar)=Df_DQzInner(:,:,:,:,iLocSide)
+        DfMortar_dQzOuter(:,:,:,:,iMortar)=Df_DQzOuter(:,:,:,:,iLocSide)
+#endif
+#endif /*PARABOLIC*/
       END IF
     END DO ! nMortars
 
     IF (nMortars.GT.1) THEN
-      ! Combine the Jacobians on the small sides into the Jacobian on the big side
+      ! Combine the Jacobians on the small sides into the Jacobian on the big side, also flip into volume system
       CALL Jacobian_MortarU(MortarType(1,ElemToSide(E2S_SIDE_ID,ilocSide,iElem)),S2V2(:,:,:,flip,iLocSide), &
-                            DfMortar_DUinner,Df_DUInner(:,:,:,:,:,iLocSide))
+                            DfMortar_DUInner(:,:,:,:,1,:),Df_DUInner(:,:,:,:,1,iLocSide))
+#if PARABOLIC
+      CALL Jacobian_MortarGrad(MortarType(1,ElemToSide(E2S_SIDE_ID,ilocSide,iElem)),S2V2(:,:,:,flip,iLocSide), &
+                               DfMortar_dQxInner,Df_DQxInner(:,:,:,:,iLocSide))
+      CALL Jacobian_MortarGrad(MortarType(1,ElemToSide(E2S_SIDE_ID,ilocSide,iElem)),S2V2(:,:,:,flip,iLocSide), &
+                               DfMortar_dQyInner,Df_DQyInner(:,:,:,:,iLocSide))
+      CALL Jacobian_MortarGrad(MortarType(1,ElemToSide(E2S_SIDE_ID,ilocSide,iElem)),S2V2(:,:,:,flip,iLocSide), &
+                               DfMortar_dQxOuter,Df_DQxOuter(:,:,:,:,iLocSide))
+      CALL Jacobian_MortarGrad(MortarType(1,ElemToSide(E2S_SIDE_ID,ilocSide,iElem)),S2V2(:,:,:,flip,iLocSide), &
+                               DfMortar_dQyOuter,Df_DQyOuter(:,:,:,:,iLocSide))
+#if PP_dim==3
+      CALL Jacobian_MortarGrad(MortarType(1,ElemToSide(E2S_SIDE_ID,ilocSide,iElem)),S2V2(:,:,:,flip,iLocSide), &
+                               DfMortar_dQzInner,Df_DQzInner(:,:,:,:,iLocSide))
+      CALL Jacobian_MortarGrad(MortarType(1,ElemToSide(E2S_SIDE_ID,ilocSide,iElem)),S2V2(:,:,:,flip,iLocSide), &
+                               DfMortar_dQzOuter,Df_DQzOuter(:,:,:,:,iLocSide))
+#endif
+#endif /*PARABOLIC*/
     END IF ! mortar
   ELSE !Boundary
 #if FV_ENABLED
