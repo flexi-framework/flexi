@@ -69,7 +69,7 @@ USE MOD_Jac_ex_Vars               ,ONLY:JacLiftingFlux
 USE MOD_GetBoundaryFlux_fd        ,ONLY:Lifting_GetBoundaryFlux_FD
 USE MOD_Mesh_Vars                 ,ONLY:nBCSides,ElemToSide,S2V2
 USE MOD_Mesh_Vars                 ,ONLY:NormVec,TangVec1,TangVec2,SurfElem,firstInnerSide,MortarType,MortarInfo,FS2M
-USE MOD_DG_Vars                   ,ONLY:UPrim_master
+USE MOD_DG_Vars                   ,ONLY:UPrim_master,UPrim_slave
 USE MOD_Mesh_Vars                 ,ONLY:Face_xGP
 USE MOD_Jac_Ex_MortarLifting      ,ONLY:Jacobian_MortarLifting
 USE MOD_Jacobian                  ,ONLY: dConsdPrimTemp,dPrimTempdCons
@@ -83,12 +83,12 @@ INTEGER,INTENT(IN) :: iElem
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
-INTEGER :: iVar,iLocSide,SideID,flip,p,q,pq(2)
+INTEGER :: iVar,iLocSide,SideID,flip,p,q,pq(2),dir,flip_small
 REAL    :: mp
 INTEGER :: nMortars,iMortarSide,iMortar
 INTEGER :: sideMap(1:2,0:PP_N,0:PP_NZ)
-REAL    :: DLiftingFluxMortar_DUInner(PP_nVarPrim,PP_nVar,0:PP_N,0:PP_NZ,4)
-REAL    :: JacLiftingFlux_tmp(PP_nVarPrim,PP_nVar,0:PP_N,0:PP_NZ)
+REAL    :: DLiftingFluxMortar_DUInner(3,PP_nVarPrim,PP_nVar,0:PP_N,0:PP_NZ,4)
+REAL    :: JacLiftingFlux_tmp(3,PP_nVarPrim,PP_nVar,0:PP_N,0:PP_NZ)
 REAL    :: PrimConsJac(PP_nVarPrim,PP_nVar)
 REAL    :: ConsPrimJac(PP_nVar,PP_nVarPrim)
 !===================================================================================================================================
@@ -100,10 +100,10 @@ DO iLocSide=2,5
   SideID=ElemToSide(E2S_SIDE_ID,ilocSide,iElem)
   flip  =ElemToSide(E2S_FLIP   ,ilocSide,iElem)
   IF (SideID.LE.nBCSides) THEN !BCSides
-    CALL Lifting_GetBoundaryFlux_FD(SideID,t,JacLiftingFlux(:,:,:,:,iLocSide),UPrim_master, &
+    CALL Lifting_GetBoundaryFlux_FD(SideID,t,JacLiftingFlux(:,:,:,:,:,iLocSide),UPrim_master, &
                                     SurfElem,Face_xGP,NormVec,TangVec1,TangVec2,S2V2(:,:,:,0,iLocSide)) !flip=0 for BCSide
   ELSE
-    IF (SideID.LT.firstInnerSide) THEN
+    IF(SideID.LT.firstInnerSide)THEN
       ! This is a (big) mortar side
       nMortars=MERGE(4,2,MortarType(1,SideID).EQ.1)
       ! Index in mortar side list
@@ -113,13 +113,19 @@ DO iLocSide=2,5
       nMortars = 1
       sideMap = S2V2(:,:,:,flip,iLocSide)
     END IF
-    DO iMortar = 1, nMortars
-      JacLiftingFlux(:,:,:,:,iLocSide)=0.
+    DO iMortar=1,nMortars
       IF (nMortars.GT.1) THEN
-        SideID= MortarInfo(MI_SIDEID,iMortar,iMortarSide)
+        ! We overwrite the SideID with the ID of the SMALL mortar side!
+        SideID = MortarInfo(MI_SIDEID,iMortar,iMortarSide)
+        ! For mortar sides, we transform the side-based Jacobians of the small sides into the side system of the big side. The
+        ! transformation into the volume system is done later, while we do it in Riemann_FD for non-mortar sides.
         sideMap = FS2M(:,:,:,MortarInfo(MI_FLIP,iMortar,iMortarSide))
+        flip_small = MortarInfo(MI_FLIP,iMortar,iMortarSide)
+      ELSE
+        flip_small = flip
       END IF
-      IF(flip.EQ.0)THEN
+      JacLiftingFlux(:,:,:,:,:,iLocSide)=0.
+      IF(flip_small.EQ.0)THEN
         mp = -1.
       ELSE
         mp = 1.
@@ -127,26 +133,45 @@ DO iLocSide=2,5
       DO iVar=1,PP_nVarPrim
         DO q=0,PP_NZ; DO p=0,PP_N
           pq(:) = sideMap(:,p,q)
-          JacLiftingFlux(iVar,iVar,pq(1),pq(2),iLocSide) = mp*0.5*SurfElem(p,q,0,SideID)
+          JacLiftingFlux(:,iVar,iVar,pq(1),pq(2),iLocSide) = mp*0.5*SurfElem(p,q,0,SideID)*NormVec(:,p,q,0,SideID)
         END DO; END DO ! p,q=0,PP_N
       END DO !iVar
+
       IF (nMortars.GT.1) THEN
         DO q=0,PP_NZ; DO p=0,PP_N
           pq(:) = sideMap(:,p,q)
-          CALL dPrimTempdCons(UPrim_master(:,pq(1),pq(2),SideID),PrimConsJac)
-          DLiftingFluxMortar_DUInner(:,:,p,q,iMortar) = MATMUL(JacLiftingFlux(:,:,p,q,iLocSide),PrimConsJac)
+          IF(flip_small.EQ.0)THEN
+            CALL dPrimTempdCons(UPrim_master(:,pq(1),pq(2),SideID),PrimConsJac)
+          ELSE
+            CALL dPrimTempdCons(UPrim_slave( :,pq(1),pq(2),SideID),PrimConsJac)
+          END IF
+          DO dir=1,3
+            JacLiftingFlux_tmp(dir,:,:,p,q) = MATMUL(JacLiftingFlux(dir,:,:,p,q,iLocSide),PrimConsJac)
+          END DO
         END DO; END DO ! p,q=0,PP_N
+        ! Store the Jacobians for each small side, later combine them into the Jacobian for the big side
+        DLiftingFluxMortar_DUInner(:,:,:,:,:,iMortar)=JacLiftingFlux_tmp
       END IF
-    END DO ! iMortar = 1, nMortars
+    END DO ! nMortars
+
     IF (nMortars.GT.1) THEN
-      CALL Jacobian_MortarLifting(MortarType(1,ElemToSide(E2S_SIDE_ID,ilocSide,iElem)),S2V2(:,:,:,flip,iLocSide), &
-                                  DLiftingFluxMortar_DUInner,JacLiftingFlux_tmp(:,:,:,:))
+      ! Combine the Jacobians on the small sides into the Jacobian on the big side, also flip into volume system
+      DO dir=1,3
+        CALL Jacobian_MortarLifting(0,MortarType(1,ElemToSide(E2S_SIDE_ID,ilocSide,iElem)),S2V2(:,:,:,flip,iLocSide), &
+                                    DLiftingFluxMortar_DUInner(dir,:,:,:,:,:),JacLiftingFlux_tmp(dir,:,:,:,:))
+      END DO
       DO q=0,PP_NZ; DO p=0,PP_N
-        pq(:)  = S2V2(:,p,q,flip,iLocSide)
-        CALL dConsdPrimTemp(UPrim_master(:,pq(1),pq(2),ElemToSide(E2S_SIDE_ID,ilocSide,iElem)),ConsPrimJac)
-        JacLiftingFlux(:,:,p,q,iLocSide) = MATMUL(JacLiftingFlux_tmp(:,:,p,q),ConsPrimJac)
+        pq(:) = S2V2(:,p,q,flip,iLocSide)
+        IF(flip.EQ.0)THEN
+          CALL dConsdPrimTemp(UPrim_master(:,pq(1),pq(2),ElemToSide(E2S_SIDE_ID,ilocSide,iElem)),ConsPrimJac)
+        ELSE
+          CALL dConsdPrimTemp(UPrim_slave( :,pq(1),pq(2),ElemToSide(E2S_SIDE_ID,ilocSide,iElem)),ConsPrimJac)
+        END IF
+        DO dir=1,3
+          JacLiftingFlux(dir,:,:,p,q,ilocSide) = MATMUL(JacLiftingFlux_tmp(dir,:,:,p,q),ConsPrimJac)
+        END DO
       END DO; END DO ! p,q=0,PP_N
-    END IF
+    END IF ! mortar
   END IF !SideID
 END DO!iLocSide
 END SUBROUTINE FillJacLiftingFlux
@@ -176,7 +201,7 @@ USE MOD_Mesh_Vars          ,ONLY: Metrics_fTilde,Metrics_gTilde,sJ
 #if PP_dim==3
 USE MOD_Mesh_Vars          ,ONLY: Metrics_hTilde
 #endif
-USE MOD_Mesh_Vars          ,ONLY: ElemToSide,S2V2,Normvec
+USE MOD_Mesh_Vars          ,ONLY: ElemToSide,S2V2
 USE MOD_Jacobian           ,ONLY: dConsdPrimTemp,dPrimTempdCons
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -283,24 +308,24 @@ DO ll=0,PP_N
           ! Assemble lifting Jacobian with surface and volume contribution
           SELECT CASE(refDir)
           CASE(1)
-            JacLifting(:,:,i,j,k,ll,1) = sJ(i,j,k,iElem,0)*(D(i,ll)*Metrics_fTilde(dir,ll,j,k,iElem,0)*delta(:,:)& !LiftingVolInt
-                                          +LL_plus( i,ll)*NormVec(dir,pq_p(1),pq_p(2),0,SideID_p)*               & !LiftingSurfInt
-                                           MATMUL(JacLiftingFlux(:,:,j,k,XI_PLUS),SurfVol_PrimJac_plus(:,:))     & !Prolongation
-                                          +LL_minus(i,ll)*NormVec(dir,pq_m(1),pq_m(2),0,SideID_m)*               & !LiftingSurfInt
-                                           MATMUL(JacLiftingFlux(:,:,j,k,XI_MINUS),SurfVol_PrimJac_minus(:,:)))    !Prolongation
+            JacLifting(:,:,i,j,k,ll,1) = sJ(i,j,k,iElem,0)*(D(i,ll)*Metrics_fTilde(dir,ll,j,k,iElem,0)*delta(:,:) & !LiftingVolInt
+                                          +LL_plus( i,ll)*                                                        & !LiftingSurfInt
+                                           MATMUL(JacLiftingFlux(dir,:,:,j,k,XI_PLUS),SurfVol_PrimJac_plus(:,:))  & !Prolongation
+                                          +LL_minus(i,ll)*                                                        & !LiftingSurfInt
+                                           MATMUL(JacLiftingFlux(dir,:,:,j,k,XI_MINUS),SurfVol_PrimJac_minus(:,:))) !Prolongation
           CASE(2)
-            JacLifting(:,:,i,j,k,ll,2) = sJ(i,j,k,iElem,0)*(D(j,ll)*Metrics_gTilde(dir,i,ll,k,iElem,0)*delta(:,:)&
-                                          +LL_plus( j,ll)*NormVec(dir,pq_p(1),pq_p(2),0,SideID_p)*               &
-                                           MATMUL(JacLiftingFlux(:,:,i,k,ETA_PLUS),SurfVol_PrimJac_plus(:,:))    &
-                                          +LL_minus(j,ll)*NormVec(dir,pq_m(1),pq_m(2),0,SideID_m)*               &
-                                           MATMUL(JacLiftingFlux(:,:,i,k,ETA_MINUS),SurfVol_PrimJac_minus(:,:)))
+            JacLifting(:,:,i,j,k,ll,2) = sJ(i,j,k,iElem,0)*(D(j,ll)*Metrics_gTilde(dir,i,ll,k,iElem,0)*delta(:,:) &
+                                          +LL_plus( j,ll)*                                                        &
+                                           MATMUL(JacLiftingFlux(dir,:,:,i,k,ETA_PLUS),SurfVol_PrimJac_plus(:,:)) &
+                                          +LL_minus(j,ll)*               &
+                                           MATMUL(JacLiftingFlux(dir,:,:,i,k,ETA_MINUS),SurfVol_PrimJac_minus(:,:)))
 #if PP_dim==3
           CASE(3)
-            JacLifting(:,:,i,j,k,ll,3) = sJ(i,j,k,iElem,0)*(D(k,ll)*Metrics_hTilde(dir,i,j,ll,iElem,0)*delta(:,:)&
-                                          +LL_plus( k,ll)*NormVec(dir,pq_p(1),pq_p(2),0,SideID_p)*               &
-                                           MATMUL(JacLiftingFlux(:,:,i,j,ZETA_PLUS),SurfVol_PrimJac_plus(:,:))   &
-                                          +LL_minus(k,ll)*NormVec(dir,pq_m(1),pq_m(2),0,SideID_m)*               &
-                                           MATMUL(JacLiftingFlux(:,:,i,j,ZETA_MINUS),SurfVol_PrimJac_minus(:,:)))
+            JacLifting(:,:,i,j,k,ll,3) = sJ(i,j,k,iElem,0)*(D(k,ll)*Metrics_hTilde(dir,i,j,ll,iElem,0)*delta(:,:) &
+                                          +LL_plus( k,ll)*                                                        &
+                                           MATMUL(JacLiftingFlux(dir,:,:,i,j,ZETA_PLUS),SurfVol_PrimJac_plus(:,:))&
+                                          +LL_minus(k,ll)*               &
+                                           MATMUL(JacLiftingFlux(dir,:,:,i,j,ZETA_MINUS),SurfVol_PrimJac_minus(:,:)))
 #endif
           END SELECT
         END DO ! refDir=1,PP_dim
@@ -318,7 +343,7 @@ SUBROUTINE Build_BR2_SurfTerms()
 ! MODULES
 USE MOD_PreProc
 USE MOD_Mesh_Vars          ,ONLY: sJ,ElemToSide,nElems
-USE MOD_Mesh_Vars          ,ONLY: nSides,NormVec
+USE MOD_Mesh_Vars          ,ONLY: nSides
 USE MOD_Jac_ex_Vars        ,ONLY: R_Minus,R_Plus,LL_Minus,LL_plus
 #if USE_MPI
 USE MOD_MPI_Vars           ,ONLY:nNbProcs
@@ -339,8 +364,8 @@ INTEGER :: MPIRequest_RPlus(nNbProcs,2)
 INTEGER :: MPIRequest_RMinus(nNbProcs,2)
 #endif 
 !===================================================================================================================================
-ALLOCATE(R_Minus(3,0:PP_N,0:PP_NZ,1:nSides))
-ALLOCATE(R_Plus(3,0:PP_N,0:PP_NZ,1:nSides))
+ALLOCATE(R_Minus(0:PP_N,0:PP_NZ,1:nSides))
+ALLOCATE(R_Plus( 0:PP_N,0:PP_NZ,1:nSides))
 R_Minus=0.
 R_Plus =0.
 DO iElem=1,nElems
@@ -429,16 +454,16 @@ DO iElem=1,nElems
       CASE(0) ! master side
         DO q=0,PP_NZ
           DO p=0,PP_N
-            R_Minus(:,p,q,SideID)=RFace(p,q)*NormVec(:,p,q,0,SideID)
+            R_Minus(p,q,SideID)=RFace(p,q)
           END DO ! p
         END DO ! q
       CASE(1) ! slave side, SideID=q,jSide=p
         DO q=0,PP_NZ
           DO p=0,PP_N
 #if PP_dim==3
-            R_Plus(:,p,q,SideID)=-RFace(q,p)*NormVec(:,p,q,0,SideID)
+            R_Plus(p,q,SideID)=-RFace(q,p)
 #else
-            R_Plus(:,p,q,SideID)=-RFace(PP_N-p,0)*NormVec(:,p,q,0,SideID)
+            R_Plus(p,q,SideID)=-RFace(PP_N-p,0)
 #endif
           END DO ! p
         END DO ! q
@@ -446,19 +471,19 @@ DO iElem=1,nElems
       CASE(2) ! slave side, SideID=N-p,jSide=q
         DO q=0,PP_N
           DO p=0,PP_N
-            R_Plus(:,p,q,SideID)=-RFace(PP_N-p,q)*NormVec(:,p,q,0,SideID)
+            R_Plus(p,q,SideID)=-RFace(PP_N-p,q)
           END DO ! p
         END DO ! q
       CASE(3) ! slave side, SideID=N-q,jSide=N-p
         DO q=0,PP_N
           DO p=0,PP_N
-            R_Plus(:,p,q,SideID)=-RFace(PP_N-q,PP_N-p)*NormVec(:,p,q,0,SideID)
+            R_Plus(p,q,SideID)=-RFace(PP_N-q,PP_N-p)
           END DO ! p
         END DO ! q
       CASE(4) ! slave side, SideID=p,jSide=N-q
         DO q=0,PP_N
           DO p=0,PP_N
-            R_Plus(:,p,q,SideID)=-RFace(p,PP_N-q)*NormVec(:,p,q,0,SideID)
+            R_Plus(p,q,SideID)=-RFace(p,PP_N-q)
           END DO ! p
         END DO ! q
 #endif
@@ -470,12 +495,12 @@ END DO !iElem
 !EXCHANGE R_Minus and R_Plus vice versa !!!!!
 MPIRequest_RPlus=0
 MPIRequest_RMinus=0
-CALL StartReceiveMPIData(R_Plus,3*(PP_N+1)**(PP_dim-1),1,nSides,MPIRequest_RPlus(:,RECV),SendID=2)   ! Recv MINE/Geo: slave->master
-CALL StartSendMPIData(   R_Plus,3*(PP_N+1)**(PP_dim-1),1,nSides,MPIRequest_RPlus(:,SEND),SendID=2)   ! SEND YOUR/Geo: slave->master
+CALL StartReceiveMPIData(R_Plus,(PP_N+1)**(PP_dim-1),1,nSides,MPIRequest_RPlus(:,RECV),SendID=2)   ! Recv MINE/Geo: slave->master
+CALL StartSendMPIData(   R_Plus,(PP_N+1)**(PP_dim-1),1,nSides,MPIRequest_RPlus(:,SEND),SendID=2)   ! SEND YOUR/Geo: slave->master
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_RPlus) 
 
-CALL StartReceiveMPIData(R_Minus,3*(PP_N+1)**(PP_dim-1),1,nSides,MPIRequest_RMinus(:,RECV),SendID=1) ! Recv YOUR/Geo: master->slave
-CALL StartSendMPIData(R_Minus,3*(PP_N+1)**(PP_dim-1),1,nSides,MPIRequest_RMinus(:,SEND),SendID=1)    ! SEND MINE/Geo: master->slave
+CALL StartReceiveMPIData(R_Minus,(PP_N+1)**(PP_dim-1),1,nSides,MPIRequest_RMinus(:,RECV),SendID=1) ! Recv YOUR/Geo: master->slave
+CALL StartSendMPIData(   R_Minus,(PP_N+1)**(PP_dim-1),1,nSides,MPIRequest_RMinus(:,SEND),SendID=1)    ! SEND MINE/Geo: master->slave
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_RMinus) 
 #endif
 
@@ -568,7 +593,7 @@ DO iLocSide=2,5
     DO q=0,PP_NZ
       DO p=0,PP_N
         jk(:)=S2V2(:,p,q,Flip,iLocSide)
-        r(jk(1),jk(2))=R_Minus(dir,p,q,SideID)
+        r(jk(1),jk(2))=R_Minus(p,q,SideID)
         UPrim_face(:,jk(1),jk(2)) = UPrim_master(:,p,q,SideID)
       END DO !p
     END DO !q
@@ -577,7 +602,7 @@ DO iLocSide=2,5
     DO q=0,PP_NZ
       DO p=0,PP_N
         jk(:)=S2V2(:,p,q,Flip,iLocSide)
-        r(jk(1),jk(2))=R_Plus(dir,p,q,SideID)
+        r(jk(1),jk(2))=R_Plus(p,q,SideID)
         UPrim_face(:,jk(1),jk(2)) = UPrim_slave(:,p,q,SideID)
       END DO !p
     END DO !q
@@ -622,7 +647,7 @@ DO iLocSide=2,5
   DO k=0,PP_NZ
     DO j=0,PP_N
       DO mm=0,PP_N
-        dQInner_dUVol(:,:,j,k,iLocSide,mm)=mp*MATMUL(JacLiftingFlux(:,:,j,k,iLocSide),PrimConsJac(:,:,j,k))* &
+        dQInner_dUVol(:,:,j,k,iLocSide,mm)=mp*MATMUL(JacLiftingFlux(dir,:,:,j,k,iLocSide),PrimConsJac(:,:,j,k))* &
                                            dQInner_dUVol_loc(j,k,mm)
       END DO
     END DO !p
@@ -640,7 +665,7 @@ SUBROUTINE dQOuter(dir,iElem,dQOuter_dUVol)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Mesh_Vars                 ,ONLY: ElemToSide,S2V2,nBCSides,SurfElem,firstInnerSide,MortarType,MortarInfo,FS2M
+USE MOD_Mesh_Vars                 ,ONLY: ElemToSide,S2V2,nBCSides,SurfElem,firstInnerSide,MortarType,MortarInfo,FS2M,NormVec
 USE MOD_Jac_Ex_Vars               ,ONLY: l_mp
 USE MOD_Jac_Ex_Vars               ,ONLY: R_Minus,R_Plus
 #if PP_Lifting==2
@@ -713,7 +738,7 @@ DO iLocSide=2,5
     DO q=0,PP_NZ
       DO p=0,PP_N
         jk(:)=S2V2(:,p,q,Flip,iLocSide)
-        r(jk(1),jk(2))=R_Plus(dir,p,q,SideID)
+        r(jk(1),jk(2))=R_Plus(p,q,SideID)*NormVec(dir,p,q,0,SideID)
         UPrim_face(:,jk(1),jk(2)) = UPrim_master(:,p,q,SideID)
       END DO !p
     END DO !q
@@ -724,7 +749,7 @@ DO iLocSide=2,5
     DO q=0,PP_NZ
       DO p=0,PP_N
         jk(:)=S2V2(:,p,q,Flip,iLocSide)
-        r(jk(1),jk(2))=R_Minus(dir,p,q,SideID)
+        r(jk(1),jk(2))=R_Minus(p,q,SideID)*NormVec(dir,p,q,0,SideID)
         UPrim_face(:,jk(1),jk(2)) = UPrim_slave(:,p,q,SideID)
       END DO !p
     END DO !q
@@ -748,7 +773,7 @@ DO iLocSide=2,5
     DO q=0,PP_NZ
       DO p=0,PP_N
         pq = sideMap(:,p,q)
-        dQOuter_dUSurf(:,:,p,q) = 0.5*etaBR2*SurfElem(pq(1),pq(2),0,SideID)
+        dQOuter_dUSurf(1,1,p,q) = 0.5*etaBR2*SurfElem(pq(1),pq(2),0,SideID)
       END DO !p
     END DO !q
     IF (nMortars.GT.1) THEN
@@ -759,9 +784,8 @@ DO iLocSide=2,5
   ! If this is a big mortar side, we combine the Jacobians from the small sides to the Jacobians on the big side and flip into the
   ! volume system
   IF (nMortars.GT.1) THEN
-    CALL Jacobian_MortarScalar(MortarType(1,ElemToSide(E2S_SIDE_ID,ilocSide,iElem)),S2V2(:,:,:,flip,iLocSide), &
+    CALL Jacobian_MortarScalar(0,MortarType(1,ElemToSide(E2S_SIDE_ID,ilocSide,iElem)),S2V2(:,:,:,flip,iLocSide), &
                                DQOuterMortar_DUSurf,dQOuter_dUSurf)
-    !dQOuter_dUSurf = 0.
 
   ELSEIF (MortarType(1,ElemToSide(E2S_SIDE_ID,ilocSide,iElem)).LT.0) THEN 
     ! This is a small mortar. Since the neighbouring element thus is a big mortar, the surface integral in the BR2 scheme has a

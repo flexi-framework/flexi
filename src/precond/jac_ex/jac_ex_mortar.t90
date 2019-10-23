@@ -23,15 +23,19 @@
 !>               proj.     Riemann_FD  interpol.   
 !> Projection and interpolation procedures are implemented using the M matrices. 
 !===================================================================================================================================
-SUBROUTINE Jacobian_Mortar(MortarType,S2V2,DfMortar_DVar,Df_DVar)
+SUBROUTINE Jacobian_Mortar(FVSide,MortarType,S2V2,DfMortar_DVar,Df_DVar)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Mortar_Vars ,ONLY: M_0_1,M_0_2,M_1_0,M_2_0
+#if FV_ENABLED
+USE MOD_Mortar_Vars ,ONLY: FV_M_0_1,FV_M_0_2,FV_M_1_0,FV_M_2_0
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
+INTEGER,INTENT(IN) :: FVSide                                            !< 0: DG, 1: FV
 INTEGER,INTENT(IN) :: MortarType                                        !< Type of mortar (1,2,3)
 INTEGER,INTENT(IN) :: S2V2(2,0:PP_N,0:PP_NZ)                            !< Side-To-Vol mapping on the side
 REAL,INTENT(IN)    :: DfMortar_DVar(TP_nVar1,TP_nVar2,0:PP_N,0:PP_NZ,4) !< Jacobian of fluxes w.r.t. either solution or gradients
@@ -42,37 +46,56 @@ REAL,INTENT(OUT)   :: Df_DVar(TP_nVar1,TP_nVar2,0:PP_N,0:PP_NZ)         !< Jacob
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 ! Mortars
-INTEGER :: l,p,q,jk(2)
-REAL    :: Df_DVar_tmp(TP_nVar1,TP_nVar2,0:PP_N,0:PP_NZ,2)
+INTEGER      :: l,p,q,jk(2)
+#if PP_dim == 3
+REAL         :: Df_DVar_tmp(TP_nVar1,TP_nVar2,0:PP_N,0:PP_NZ,2)
+#endif
+REAL,POINTER :: M10(:,:),M20(:,:),M01(:,:),M02(:,:)
 !===================================================================================================================================
+#if FV_ENABLED
+IF((FVSide).GT.0) THEN ! FV element
+  M10=>FV_M_1_0
+  M20=>FV_M_2_0
+  M01=>FV_M_0_1
+  M02=>FV_M_0_2
+ELSE ! DG element
+#endif
+  M10=>M_1_0
+  M20=>M_2_0
+  M01=>M_0_1
+  M02=>M_0_2
+#if FV_ENABLED
+END IF
+#endif
+
 #if PP_dim == 3
 SELECT CASE(MortarType)
 CASE(1) !1->4
   DO q=0,PP_NZ ! for every eta-layer perform Mortar operation in xi-direction
     DO p=0,PP_N
-      Df_DVar_tmp(:,:,p,q,1)=  M_1_0(0,p)*DfMortar_DVar(:,:,0,q,1)*M_0_1(p,0) + &
-                               M_2_0(0,p)*DfMortar_DVar(:,:,0,q,2)*M_0_2(p,0)
-      Df_DVar_tmp(:,:,p,q,2)=  M_1_0(0,p)*DfMortar_DVar(:,:,0,q,3)*M_0_1(p,0) + &
-                               M_2_0(0,p)*DfMortar_DVar(:,:,0,q,4)*M_0_2(p,0)
+      Df_DVar_tmp(:,:,p,q,1)=  M10(0,p)*DfMortar_DVar(:,:,0,q,1)*M01(p,0) + &
+                               M20(0,p)*DfMortar_DVar(:,:,0,q,2)*M02(p,0)
+      Df_DVar_tmp(:,:,p,q,2)=  M10(0,p)*DfMortar_DVar(:,:,0,q,3)*M01(p,0) + &
+                               M20(0,p)*DfMortar_DVar(:,:,0,q,4)*M02(p,0)
       DO l=1,PP_N
       Df_DVar_tmp(:,:,p,q,1)=  Df_DVar_tmp(:,:,p,q,1)                         + &
-                               M_1_0(l,p)*DfMortar_DVar(:,:,l,q,1)*M_0_1(p,l) + &
-                               M_2_0(l,p)*DfMortar_DVar(:,:,l,q,2)*M_0_2(p,l)
-      Df_DVar_tmp(:,:,p,q,2)=  Df_DVar_tmp(:,:,p,q,2)                         + &
-                               M_1_0(l,p)*DfMortar_DVar(:,:,l,q,3)*M_0_1(p,l) + &
-                               M_2_0(l,p)*DfMortar_DVar(:,:,l,q,4)*M_0_2(p,l)
+                               M10(l,p)*DfMortar_DVar(:,:,l,q,1)*M01(p,l) + &
+                               M20(l,p)*DfMortar_DVar(:,:,l,q,2)*M02(p,l)
+      Df_DVar_tmp(:,:,p,q,2)=  Df_DVar_tmp(:,:,p,q,2)                       + &
+                               M10(l,p)*DfMortar_DVar(:,:,l,q,3)*M01(p,l) + &
+                               M20(l,p)*DfMortar_DVar(:,:,l,q,4)*M02(p,l)
       END DO
     END DO
   END DO
   DO q=0,PP_NZ ! for every xi-layer perform Mortar operation in eta-direction
     DO p=0,PP_N
       jk(:)=S2V2(:,p,q) ! Transformation in volume coordinates
-      Df_DVar(:,:,jk(1),jk(2))=  M_1_0(0,q)*Df_DVar_tmp(:,:,p,0,1)*M_0_1(q,0) + &
-                                 M_2_0(0,q)*Df_DVar_tmp(:,:,p,0,2)*M_0_2(q,0)
+      Df_DVar(:,:,jk(1),jk(2))=  M10(0,q)*Df_DVar_tmp(:,:,p,0,1)*M01(q,0) + &
+                                 M20(0,q)*Df_DVar_tmp(:,:,p,0,2)*M02(q,0)
       DO l=1,PP_N
       Df_DVar(:,:,jk(1),jk(2))=  Df_DVar(:,:,jk(1),jk(2))                     + &
-                                 M_1_0(l,q)*Df_DVar_tmp(:,:,p,l,1)*M_0_1(q,l) + &
-                                 M_2_0(l,q)*Df_DVar_tmp(:,:,p,l,2)*M_0_2(q,l)
+                                 M10(l,q)*Df_DVar_tmp(:,:,p,l,1)*M01(q,l) + &
+                                 M20(l,q)*Df_DVar_tmp(:,:,p,l,2)*M02(q,l)
       END DO
     END DO
   END DO
@@ -81,12 +104,12 @@ CASE(2) !1->2 in eta
   DO q=0,PP_NZ ! for every xi-layer perform Mortar operation in eta-direction
     DO p=0,PP_N
       jk(:)=S2V2(:,p,q) ! Transformation in volume coordinates
-      Df_DVar(:,:,jk(1),jk(2))=  M_1_0(0,q)*DfMortar_DVar(:,:,p,0,1)*M_0_1(q,0) + &
-                                 M_2_0(0,q)*DfMortar_DVar(:,:,p,0,2)*M_0_2(q,0)
+      Df_DVar(:,:,jk(1),jk(2))=  M10(0,q)*DfMortar_DVar(:,:,p,0,1)*M01(q,0) + &
+                                 M20(0,q)*DfMortar_DVar(:,:,p,0,2)*M02(q,0)
       DO l=1,PP_N
       Df_DVar(:,:,jk(1),jk(2))=  Df_DVar(:,:,jk(1),jk(2))                       + &
-                                 M_1_0(l,q)*DfMortar_DVar(:,:,p,l,1)*M_0_1(q,l) + &
-                                 M_2_0(l,q)*DfMortar_DVar(:,:,p,l,2)*M_0_2(q,l)
+                                 M10(l,q)*DfMortar_DVar(:,:,p,l,1)*M01(q,l) + &
+                                 M20(l,q)*DfMortar_DVar(:,:,p,l,2)*M02(q,l)
       END DO
     END DO
   END DO
@@ -96,12 +119,12 @@ CASE(3) !1->2 in xi      NOTE: In 2D only the first space index can be a Mortar 
   DO q=0,PP_NZ ! for every eta-layer perform Mortar operation in xi-direction
     DO p=0,PP_N
       jk(:)=S2V2(:,p,q) ! Transformation in volume coordinates
-      Df_DVar(:,:,jk(1),jk(2))=  M_1_0(0,p)*DfMortar_DVar(:,:,0,q,1)*M_0_1(p,0) + &
-                                 M_2_0(0,p)*DfMortar_DVar(:,:,0,q,2)*M_0_2(p,0)
+      Df_DVar(:,:,jk(1),jk(2))=  M10(0,p)*DfMortar_DVar(:,:,0,q,1)*M01(p,0) + &
+                                 M20(0,p)*DfMortar_DVar(:,:,0,q,2)*M02(p,0)
       DO l=1,PP_N
       Df_DVar(:,:,jk(1),jk(2))=  Df_DVar(:,:,jk(1),jk(2))                       + &
-                                 M_1_0(l,p)*DfMortar_DVar(:,:,l,q,1)*M_0_1(p,l) + &
-                                 M_2_0(l,p)*DfMortar_DVar(:,:,l,q,2)*M_0_2(p,l)
+                                 M10(l,p)*DfMortar_DVar(:,:,l,q,1)*M01(p,l) + &
+                                 M20(l,p)*DfMortar_DVar(:,:,l,q,2)*M02(p,l)
       END DO
     END DO
   END DO

@@ -374,21 +374,21 @@ DO iLocSide=2,5
 
     IF (nMortars.GT.1) THEN
       ! Combine the Jacobians on the small sides into the Jacobian on the big side, also flip into volume system
-      CALL Jacobian_MortarU(MortarType(1,ElemToSide(E2S_SIDE_ID,ilocSide,iElem)),S2V2(:,:,:,flip,iLocSide), &
+      CALL Jacobian_MortarU(FVSide,MortarType(1,ElemToSide(E2S_SIDE_ID,ilocSide,iElem)),S2V2(:,:,:,flip,iLocSide), &
                             DfMortar_DUInner(:,:,:,:,1,:),Df_DUInner(:,:,:,:,1,iLocSide))
 #if PARABOLIC
-      CALL Jacobian_MortarGrad(MortarType(1,ElemToSide(E2S_SIDE_ID,ilocSide,iElem)),S2V2(:,:,:,flip,iLocSide), &
+      CALL Jacobian_MortarGrad(FVSide,MortarType(1,ElemToSide(E2S_SIDE_ID,ilocSide,iElem)),S2V2(:,:,:,flip,iLocSide), &
                                DfMortar_dQxInner,Df_DQxInner(:,:,:,:,iLocSide))
-      CALL Jacobian_MortarGrad(MortarType(1,ElemToSide(E2S_SIDE_ID,ilocSide,iElem)),S2V2(:,:,:,flip,iLocSide), &
+      CALL Jacobian_MortarGrad(FVSide,MortarType(1,ElemToSide(E2S_SIDE_ID,ilocSide,iElem)),S2V2(:,:,:,flip,iLocSide), &
                                DfMortar_dQyInner,Df_DQyInner(:,:,:,:,iLocSide))
-      CALL Jacobian_MortarGrad(MortarType(1,ElemToSide(E2S_SIDE_ID,ilocSide,iElem)),S2V2(:,:,:,flip,iLocSide), &
+      CALL Jacobian_MortarGrad(FVSide,MortarType(1,ElemToSide(E2S_SIDE_ID,ilocSide,iElem)),S2V2(:,:,:,flip,iLocSide), &
                                DfMortar_dQxOuter,Df_DQxOuter(:,:,:,:,iLocSide))
-      CALL Jacobian_MortarGrad(MortarType(1,ElemToSide(E2S_SIDE_ID,ilocSide,iElem)),S2V2(:,:,:,flip,iLocSide), &
+      CALL Jacobian_MortarGrad(FVSide,MortarType(1,ElemToSide(E2S_SIDE_ID,ilocSide,iElem)),S2V2(:,:,:,flip,iLocSide), &
                                DfMortar_dQyOuter,Df_DQyOuter(:,:,:,:,iLocSide))
 #if PP_dim==3
-      CALL Jacobian_MortarGrad(MortarType(1,ElemToSide(E2S_SIDE_ID,ilocSide,iElem)),S2V2(:,:,:,flip,iLocSide), &
+      CALL Jacobian_MortarGrad(FVSide,MortarType(1,ElemToSide(E2S_SIDE_ID,ilocSide,iElem)),S2V2(:,:,:,flip,iLocSide), &
                                DfMortar_dQzInner,Df_DQzInner(:,:,:,:,iLocSide))
-      CALL Jacobian_MortarGrad(MortarType(1,ElemToSide(E2S_SIDE_ID,ilocSide,iElem)),S2V2(:,:,:,flip,iLocSide), &
+      CALL Jacobian_MortarGrad(FVSide,MortarType(1,ElemToSide(E2S_SIDE_ID,ilocSide,iElem)),S2V2(:,:,:,flip,iLocSide), &
                                DfMortar_dQzOuter,Df_DQzOuter(:,:,:,:,iLocSide))
 #endif
 #endif /*PARABOLIC*/

@@ -219,7 +219,7 @@ REAL,INTENT(IN)                      :: surfElem(  0:PP_N,0:PP_NZ,0:FV_ENABLED,1
 INTEGER,INTENT(IN)                   :: jk(2,0:PP_N,0:PP_NZ)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(OUT)                     :: dFdU(PP_nVarPrim,PP_nVarPrim,0:PP_N,0:PP_NZ)
+REAL,INTENT(OUT)                     :: dFdU(3,PP_nVarPrim,PP_nVarPrim,0:PP_N,0:PP_NZ)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                              :: p,q,iVar,jVar
@@ -239,7 +239,8 @@ DO jVar=1,PP_nVarPrim
   DO q=0,PP_NZ
     DO p=0,PP_N
       DO iVar=1,PP_nVarPrim
-        dFdU(iVar,jVar,jk(1,p,q),jk(2,p,q)) = (F_Face_Tilde(iVar,p,q,SideID)-F_Face(iVar,p,q,SideID))*sreps0_O1
+        dFdU(:,iVar,jVar,jk(1,p,q),jk(2,p,q)) = (F_Face_Tilde(iVar,p,q,SideID)-F_Face(iVar,p,q,SideID))* &
+                                                sreps0_O1*normal(:,p,q,0,SideID)
       END DO ! iVar
     END DO !p
   END DO !q

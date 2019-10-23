@@ -123,7 +123,7 @@ ALLOCATE(UPrim_extended(PP_nVarPrim,-1:PP_N+1,-1:PP_N+1, 0:PP_NZ ,1:nElems))! ex
 
 #if PARABOLIC
 IF(HyperbolicPrecond.EQV..FALSE.) THEN
-  ALLOCATE(JacLiftingFlux(PP_nVarPrim,PP_nVarPrim,0:PP_N,0:PP_NZ,6))
+  ALLOCATE(JacLiftingFlux(3,PP_nVarPrim,PP_nVarPrim,0:PP_N,0:PP_NZ,6))
   CALL Build_BR2_SurfTerms()
 END IF
 #endif /*PARABOLIC*/
