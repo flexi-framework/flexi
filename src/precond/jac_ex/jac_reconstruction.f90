@@ -83,6 +83,7 @@ USE MOD_FV_Vars            ,ONLY: FV_sdx_XI,FV_sdx_ETA
 #if PP_dim == 3
 USE MOD_FV_Vars            ,ONLY: FV_sdx_ZETA
 #endif
+USE MOD_FillMortarPrim     ,ONLY: U_MortarPrim
 !----------------------------------------------------------------------------------------------------------------------------------
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
@@ -117,9 +118,11 @@ END DO ! iElem
 CALL StartReceiveMPIData(URec_slave ,DataSizeSidePrim,1,nSides,MPIRequest_Rec_SM(:,SEND),SendID=2) ! slave -> master
 CALL StartReceiveMPIData(URec_master,DataSizeSidePrim,1,nSides,MPIRequest_Rec_MS(:,SEND),SendID=1) ! master -> slave
 CALL ProlongToFacePrim(PP_N,URec,URec_master,URec_slave,L_Minus,L_Plus,doMPISides=.TRUE.)
+CALL U_MortarPrim(URec_master,URec_slave,doMPISides=.TRUE.) ! fill faces at mortar interface with dummy values
 CALL StartSendMPIData(   URec_slave ,DataSizeSidePrim,1,nSides,MPIRequest_Rec_SM(:,RECV),SendID=2) ! slave -> master
 #endif
 CALL ProlongToFacePrim(PP_N,URec,URec_master,URec_slave,L_Minus,L_Plus,doMPISides=.FALSE.)
+CALL U_MortarPrim(URec_master,URec_slave,doMPISides=.FALSE.)
 #if USE_MPI
 ! prolongation has to be finished before communication of URec_master as doMPISides=.FALSE. includes MPISidesMINE
 CALL StartSendMPIData(   URec_master,DataSizeSidePrim,1,nSides,MPIRequest_Rec_MS(:,RECV),SendID=1) ! master -> slave
@@ -167,11 +170,16 @@ DO SideID=1,nSides
                               NormVec(:,:,:,1,SideID),TangVec1(:,:,:,1,SideID),TangVec2(:,:,:,1,SideID), &
                               Face_xGP(:,:,:,1,SideID))
       ELSE
-        FV_sdx_face_tmp = FV_sdx_face_loc(:,:,SideID)
-        IF(FV_Elems_Sum(SideID).EQ.1) THEN
-          CALL ChangeBasisSurf(PP_nVarPrim,PP_N,PP_N,FV_Vdm,URec_slave(:,:,:,SideID),UPrim_tmp(:,:,:)) ! switch slave to FV
+        IF(SideID.LT.firstInnerSide)THEN ! big mortar side
+          FV_sdx_face_tmp = 0. ! derivative of reconstruction of gradients influenced by mortar interface are set to zero.
+          UPrim_tmp = URec_master(:,:,:,SideID)
         ELSE
-          UPrim_tmp = URec_slave(:,:,:,SideID)
+          FV_sdx_face_tmp = FV_sdx_face_loc(:,:,SideID)
+          IF(FV_Elems_Sum(SideID).EQ.1) THEN
+            CALL ChangeBasisSurf(PP_nVarPrim,PP_N,PP_N,FV_Vdm,URec_slave(:,:,:,SideID),UPrim_tmp(:,:,:)) ! switch slave to FV
+          ELSE
+            UPrim_tmp = URec_slave(:,:,:,SideID)
+          END IF
         END IF
       END IF
     ELSE ! slave side
@@ -591,7 +599,7 @@ END SUBROUTINE JacFVGradients_Vol
 !> scalar.
 !> For the second order reconstruction with central limiter the gradient of the neighbouring element only depends on the outer layer
 !> of the current element.
-!> |...:...:...: g | x :...:...: x | g :...:...:...| => gradients g only depent on the outer layer DOF g of the current element
+!> |...:...:...: g | x :...:...: x | g :...:...:...| => gradients g only depend on the outer layer DOF x of the current element
 !> |...:...:...:...|...:...:...:...|...:...:...:...|
 !>    nbElem_minus       iElem        nbElem_plus
 !===================================================================================================================================

@@ -359,6 +359,9 @@ DO iLocSide=2,5
       IF (nMortars.GT.1) THEN
         ! Store the Jacobians for each small side, later combine them into the Jacobian for the big side
         DfMortar_DUInner(:,:,:,:,1,iMortar)=Df_DUInner(:,:,:,:,1,iLocSide)
+#if FV_ENABLED && FV_RECONSTRUCT
+        DfMortar_DUInner(:,:,:,:,2,iMortar)=Df_DUInner(:,:,:,:,2,iLocSide)
+#endif
 #if PARABOLIC
         DfMortar_dQxInner(:,:,:,:,iMortar)=Df_DQxInner(:,:,:,:,iLocSide)
         DfMortar_dQyInner(:,:,:,:,iMortar)=Df_DQyInner(:,:,:,:,iLocSide)
@@ -376,6 +379,10 @@ DO iLocSide=2,5
       ! Combine the Jacobians on the small sides into the Jacobian on the big side, also flip into volume system
       CALL Jacobian_MortarU(FVSide,MortarType(1,ElemToSide(E2S_SIDE_ID,ilocSide,iElem)),S2V2(:,:,:,flip,iLocSide), &
                             DfMortar_DUInner(:,:,:,:,1,:),Df_DUInner(:,:,:,:,1,iLocSide))
+#if FV_ENABLED && FV_RECONSTRUCT
+      CALL Jacobian_MortarU(FVSide,MortarType(1,ElemToSide(E2S_SIDE_ID,ilocSide,iElem)),S2V2(:,:,:,flip,iLocSide), &
+                            DfMortar_DUInner(:,:,:,:,2,:),Df_DUInner(:,:,:,:,2,iLocSide))
+#endif
 #if PARABOLIC
       CALL Jacobian_MortarGrad(FVSide,MortarType(1,ElemToSide(E2S_SIDE_ID,ilocSide,iElem)),S2V2(:,:,:,flip,iLocSide), &
                                DfMortar_dQxInner,Df_DQxInner(:,:,:,:,iLocSide))
@@ -931,6 +938,7 @@ SUBROUTINE Assemble_JacSurfInt_FV(iElem,Df_DUInner,                             
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Implicit_Vars             ,ONLY: nDOFVarElem
+USE MOD_FV_Vars                   ,ONLY: FV_w_inv
 #if PARABOLIC
 USE MOD_Jac_Reconstruction        ,ONLY: JacFVGradients_Vol,JacFVGradients_nb
 USE MOD_Jacobian                  ,ONLY: dPrimTempdCons
@@ -941,7 +949,6 @@ USE MOD_Precond_Vars              ,ONLY: HyperbolicPrecond
 #if FV_RECONSTRUCT
 USE MOD_DG_Vars                   ,ONLY: UPrim_master,UPrim_slave
 USE MOD_Mesh_Vars                 ,ONLY: ElemToSide,S2V2,firstInnerSide
-USE MOD_FV_Vars                   ,ONLY: FV_w_inv
 USE MOD_Jac_Ex_Vars               ,ONLY: UPrim_extended,FV_sdx_XI_extended,FV_sdx_ETA_extended
 USE MOD_Jac_Reconstruction        ,ONLY: FV_Reconstruction_Derivative_Surf
 USE MOD_FV_Vars                   ,ONLY: FV_dx_master,FV_dx_slave
