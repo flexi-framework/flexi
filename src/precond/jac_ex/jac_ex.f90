@@ -179,7 +179,7 @@ FVEM = 0
 #endif
 #if PARABOLIC
 IF (.NOT.(HyperbolicPrecond)) THEN
-  CALL FillJacLiftingFlux(t,iElem)
+  IF(FVEM.EQ.0) CALL FillJacLiftingFlux(t,iElem)
 END IF
 #endif /*PARABOLIC*/
 IF(doVol)THEN

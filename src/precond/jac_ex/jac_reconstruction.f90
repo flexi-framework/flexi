@@ -69,10 +69,9 @@ USE MOD_PreProc
 USE MOD_Globals
 USE MOD_ProlongToFacePrim  ,ONLY: ProlongToFacePrim
 USE MOD_Interpolation_Vars ,ONLY: L_Minus,L_Plus
-USE MOD_Mesh_Vars          ,ONLY: nElems,nSides,firstInnerSide,nBCSides,lastMPISide_MINE
-USE MOD_Mesh_Vars          ,ONLY: S2V,SideToElem
+USE MOD_Mesh_Vars          ,ONLY: nElems,nSides,firstInnerSide,nBCSides,lastMPISide_MINE,firstMortarMPISide,lastMortarMPISide
+USE MOD_Mesh_Vars          ,ONLY: S2V,SideToElem,NormVec,TangVec1,TangVec2,Face_xGP
 USE MOD_GetBoundaryFlux    ,ONLY: GetBoundaryState
-USE MOD_Mesh_Vars          ,ONLY: NormVec,TangVec1,TangVec2,Face_xGP
 USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisSurf
 #if USE_MPI
 USE MOD_MPI                ,ONLY: StartReceiveMPIData,StartSendMPIData,FinishExchangeMPIData
@@ -132,6 +131,7 @@ CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Rec_MS)
 
 ! 3.   Fill information about distance between solution points at faces (FV_sdx_Face)
 ! 3.2. Send FV_sdx_Face from master to slave
+FV_sdx_Face_loc = 0.
 DO SideID=firstInnerSide,lastMPISide_MINE
   IF (FV_Elems_Sum(SideID).GT.0) FV_sdx_Face_loc(:,:,SideID) = FV_sdx_Face(:,:,FV_Elems_Sum(SideID),SideID)
 END DO
@@ -170,7 +170,7 @@ DO SideID=1,nSides
                               NormVec(:,:,:,1,SideID),TangVec1(:,:,:,1,SideID),TangVec2(:,:,:,1,SideID), &
                               Face_xGP(:,:,:,1,SideID))
       ELSE
-        IF(SideID.LT.firstInnerSide)THEN ! big mortar side
+        IF ((SideID.LT.firstInnerSide).OR.((SideID.GE.firstMortarMPISide).AND.(SideID.LE.lastMortarMPISide))) THEN ! big mortar side
           FV_sdx_face_tmp = 0. ! derivative of reconstruction of gradients influenced by mortar interface are set to zero.
           UPrim_tmp = URec_master(:,:,:,SideID)
         ELSE
@@ -231,7 +231,7 @@ END SUBROUTINE Fill_ExtendedState
 !> dF/dUvol = dF/dU_LR * dU_LR/dU_LR_prim * dU_LR_prim/dUvol_prim * dUvol_prim/dUvol
 !>               |            |                       |                   |
 !>  FD in DGVolIntJac_FV    dCons/dPrim   derivative of reconstruction  dPrim/dCons
-!>                         |______________________________________________________|
+!>                          |_____________________________________________________|
 !>                                                    |
 !>                                              calculated here
 !===================================================================================================================================
@@ -359,10 +359,11 @@ END SUBROUTINE FV_Reconstruction_Derivative
 !>                        |_____________________________________________________|
 !>                                                  |
 !>                                           calculated here
+!> If a side is a big mortar side, set the derivative to zero.
 !===================================================================================================================================
 SUBROUTINE FV_Reconstruction_Derivative_Surf(FV_sdx,FV_dx_L,FV_dx_R,FV_dx_L_nb,FV_dx_R_nb,UPrim_plus,UPrim_minus, &
-                                             UPrim_plus_nb,UPrim_minus_nb,                                        &
-                                             URec_extended,dUdUvol_plus,dUdUvol_minus)
+                                             UPrim_plus_nb,UPrim_minus_nb,URec_extended,Mortar_minus,Mortar_plus, &
+                                             dUdUvol_plus,dUdUvol_minus)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
@@ -381,6 +382,8 @@ REAL,INTENT(IN)    :: UPrim_plus(PP_nVarPrim)                        !< primitiv
 REAL,INTENT(IN)    :: UPrim_minus(PP_nVarPrim)                       !< primitive reconstructed value at minus side
 REAL,INTENT(IN)    :: UPrim_plus_nb(PP_nVarPrim)                     !< primitive reconstructed value at plus side (nbElem)
 REAL,INTENT(IN)    :: UPrim_minus_nb(PP_nVarPrim)                    !< primitive reconstructed value at minus side (nbElem)
+LOGICAL,INTENT(IN) :: Mortar_minus                                   !< True if minus side is a big mortar side
+LOGICAL,INTENT(IN) :: Mortar_plus                                    !< True if plus side is a big mortar side
 REAL,INTENT(IN)    :: URec_extended(PP_nVarPrim,-1:PP_N+1)           !< extended rec volume solution
 REAL,INTENT(OUT)   :: dUdUvol_plus( PP_nVar,PP_nVar,PP_N:PP_N+1,1:2) !< Jacobian of reconstr. procedure at plus side of element
 REAL,INTENT(OUT)   :: dUdUvol_minus(PP_nVar,PP_nVar,-1:0,2:3)        !< Jacobian of reconstr. procedure at minus side of element
@@ -399,121 +402,149 @@ REAL,DIMENSION(PP_nVar    ,PP_nVarPrim,-1:0,2:3)       :: matrix_minus
 !==================================================================================================================================
 ! storage order in dUdUvol(1:3):
 ! dU_LR_i/dU_(i-1), dU_LR_i/dU_i, dU_LR_i/dU_(i+1)
-dUdUvol_plus  = 0.
 dUdUvol_minus = 0.
-dUdUvolprim_plus  = 0.
 dUdUvolprim_minus = 0.
+dUdUvol_plus  = 0.
+dUdUvolprim_plus  = 0.
 
 ! 1. Do derivative of surface data from cons to prim
-CALL dConsdPrimTemp(UPrim_minus_nb,Jac_ConsPrim_minus(:,:,-1    ))
-CALL dConsdPrimTemp(UPrim_minus   ,Jac_ConsPrim_minus(:,:, 0    ))
+IF (.NOT.Mortar_minus) THEN
+  CALL dConsdPrimTemp(UPrim_minus_nb,Jac_ConsPrim_minus(:,:,-1    ))
+  CALL dConsdPrimTemp(UPrim_minus   ,Jac_ConsPrim_minus(:,:, 0    ))
+END IF
+IF (.NOT.Mortar_plus) THEN
 CALL dConsdPrimTemp(UPrim_plus    ,Jac_ConsPrim_plus( :,:,PP_N  ))
 CALL dConsdPrimTemp(UPrim_plus_nb ,Jac_ConsPrim_plus( :,:,PP_N+1))
+END IF
 
 ! 2. Do derivative of interface and neighbouring volume data from prim to cons 
-DO i=0,1
-  CALL dPrimTempdCons(URec_extended(:,i),Jac_PrimCons_minus(:,:,i))
-END DO
-DO i=PP_N-1,PP_N
-  CALL dPrimTempdCons(URec_extended(:,i),Jac_PrimCons_plus( :,:,i))
-END DO
+IF (.NOT.Mortar_minus) THEN
+  DO i=0,1
+    CALL dPrimTempdCons(URec_extended(:,i),Jac_PrimCons_minus(:,:,i))
+  END DO
+END IF
+IF (.NOT.Mortar_plus) THEN
+  DO i=PP_N-1,PP_N
+    CALL dPrimTempdCons(URec_extended(:,i),Jac_PrimCons_plus( :,:,i))
+  END DO
+END IF
 
 ! 3. Calculate derivative of reconstruction
 ! For NullLimiter and central limiter this is a constant for all variables. This is not the case for the minmod limiter. Hence,
 ! the Jacobian of the reconstruction is a diagonal matrix with variable entries on the main diagonal.
 ! Calculate left and right gradients
-s_L_minus(:) = (URec_extended(:,0     ) - URec_extended(:,-1    )) * FV_sdx(0     ) 
-s_R_minus(:) = (URec_extended(:,1     ) - URec_extended(:, 0    )) * FV_sdx(1     )
-s_L_plus( :) = (URec_extended(:,PP_N  ) - URec_extended(:,PP_N-1)) * FV_sdx(PP_N  ) 
-s_R_plus( :) = (URec_extended(:,PP_N+1) - URec_extended(:,PP_N  )) * FV_sdx(PP_N+1)
-! Limit gradients
-CALL FV_Limiter(s_L_minus(:),s_R_minus(:),s_lim_minus(:)) ! only null-, minmod- or central-limiter
-CALL FV_Limiter(s_L_plus( :),s_R_plus( :),s_lim_plus( :)) ! only null-, minmod- or central-limiter
+IF (.NOT.Mortar_minus) THEN
+  s_L_minus(:) = (URec_extended(:,0     ) - URec_extended(:,-1    )) * FV_sdx(0     ) 
+  s_R_minus(:) = (URec_extended(:,1     ) - URec_extended(:, 0    )) * FV_sdx(1     )
+  ! Limit gradients
+  CALL FV_Limiter(s_L_minus(:),s_R_minus(:),s_lim_minus(:)) ! only null-, minmod- or central-limiter
+END IF
+IF (.NOT.Mortar_plus) THEN
+  s_L_plus( :) = (URec_extended(:,PP_N  ) - URec_extended(:,PP_N-1)) * FV_sdx(PP_N  ) 
+  s_R_plus( :) = (URec_extended(:,PP_N+1) - URec_extended(:,PP_N  )) * FV_sdx(PP_N+1)
+  ! Limit gradients
+  CALL FV_Limiter(s_L_plus( :),s_R_plus( :),s_lim_plus( :)) ! only null-, minmod- or central-limiter
+END IF
 SELECT CASE(LimiterType)
 CASE(0) ! NullLimiter
   DO iVar=1,PP_nVarPrim
-    dUdUvolprim_minus(iVar,iVar,0   ,2) = 1.
-    dUdUvolprim_plus( iVar,iVar,PP_N,2) = 1.
+  IF (.NOT.Mortar_minus) dUdUvolprim_minus(iVar,iVar,0   ,2) = 1.
+  IF (.NOT.Mortar_plus)  dUdUvolprim_plus( iVar,iVar,PP_N,2) = 1.
   END DO !iVar
 CASE(1) ! MinMod
-  DO iVar=1,PP_nVarPrim
-    ! minus side of element
-    ! derivatives of minus value at minus interface
-    IF(s_lim_minus(iVar).EQ.0.)THEN ! first order
-      dUdUvolprim_minus(iVar,iVar,0,2) = 1.
-    ELSEIF(s_lim_minus(iVar).EQ.s_L_minus(iVar))THEN ! use left gradient
-      dUdUvolprim_minus(iVar,iVar,0,2) = 1. - FV_sdx(0) * FV_dx_L
-    ELSEIF(s_lim_minus(iVar).EQ.s_R_minus(iVar))THEN ! use right gradient
-      dUdUvolprim_minus(iVar,iVar,0,2) = 1. + FV_sdx(1) * FV_dx_L
-      dUdUvolprim_minus(iVar,iVar,0,3) = 0. - FV_sdx(1) * FV_dx_L
-    ELSE
-      CALL Abort(__STAMP__,'Slopes do not match with minmod in preconditioner!')
-    END IF
-    ! The reconstructed value from the left neighbour depends on my own value IF the reconstruction in the left neighbour cell has
-    ! been done with the slope between my cell and that neighbour (s_L_minus). Check if that was the case and set the dependency
-    ! accordingly. 
-    !        reconstr. value      cell mean value        recon. with s_L_minus
-    IF(ABS(UPrim_minus_nb(iVar)-(URec_extended(iVar,-1)+s_L_minus(iVar)*FV_dx_R_nb)).LE.1E-12)THEN 
-      dUdUvolprim_minus(iVar,iVar,-1,3) = 0. + FV_dx_R_nb * ( FV_sdx(0))
-    END IF
-    ! plus side of element
-    ! derivatives of plus values at plus interface
-    IF(s_lim_plus(iVar).EQ.0.)THEN ! first order
-      dUdUvolprim_plus(iVar,iVar,PP_N,2) = 1.
-    ELSEIF(s_lim_plus(iVar).EQ.s_L_plus(iVar))THEN ! use left gradient
-      dUdUvolprim_plus(iVar,iVar,PP_N,1) = 0. - FV_sdx(PP_N  ) * FV_dx_R
-      dUdUvolprim_plus(iVar,iVar,PP_N,2) = 1. + FV_sdx(PP_N  ) * FV_dx_R
-    ELSEIF(s_lim_plus(iVar).EQ.s_R_plus(iVar))THEN ! use right gradient
-      dUdUvolprim_plus(iVar,iVar,PP_N,2) = 1. - FV_sdx(PP_N+1) * FV_dx_R
-    ELSE
-      CALL Abort(__STAMP__,'Slopes do not match with minmod in preconditioner!')
-    END IF
-    ! The reconstructed value from the right neighbour depends on my own value IF the reconstruction in the right neighbour cell has
-    ! been done with the slope between my cell and that neighbour (s_R_plus). Check if that was the case and set the dependency
-    ! accordingly. 
-    !        reconstr. value      cell mean value        recon. with s_R_plus
-    IF(ABS(UPrim_plus_nb(iVar)-(URec_extended(iVar,PP_N+1)-s_R_plus(iVar)*FV_dx_L_nb)).LE.1E-12)THEN 
-      dUdUvolprim_plus( iVar,iVar,PP_N+1,1) = 0. - FV_dx_L_nb * (-FV_sdx(PP_N+1))
-    END IF
-  END DO !iVar
+  IF (.NOT.Mortar_minus) THEN
+    DO iVar=1,PP_nVarPrim
+      ! minus side of element
+      ! derivatives of minus value at minus interface
+      IF(s_lim_minus(iVar).EQ.0.)THEN ! first order
+        dUdUvolprim_minus(iVar,iVar,0,2) = 1.
+      ELSEIF(s_lim_minus(iVar).EQ.s_L_minus(iVar))THEN ! use left gradient
+        dUdUvolprim_minus(iVar,iVar,0,2) = 1. - FV_sdx(0) * FV_dx_L
+      ELSEIF(s_lim_minus(iVar).EQ.s_R_minus(iVar))THEN ! use right gradient
+        dUdUvolprim_minus(iVar,iVar,0,2) = 1. + FV_sdx(1) * FV_dx_L
+        dUdUvolprim_minus(iVar,iVar,0,3) = 0. - FV_sdx(1) * FV_dx_L
+      ELSE
+        CALL Abort(__STAMP__,'Slopes do not match with minmod in preconditioner!')
+      END IF
+      ! The reconstructed value from the left neighbour depends on my own value IF the reconstruction in the left neighbour cell has
+      ! been done with the slope between my cell and that neighbour (s_L_minus). Check if that was the case and set the dependency
+      ! accordingly. 
+      !        reconstr. value      cell mean value        recon. with s_L_minus
+      IF(ABS(UPrim_minus_nb(iVar)-(URec_extended(iVar,-1)+s_L_minus(iVar)*FV_dx_R_nb)).LE.1E-12)THEN 
+        dUdUvolprim_minus(iVar,iVar,-1,3) = 0. + FV_dx_R_nb * ( FV_sdx(0))
+      END IF
+    END DO !iVar
+  END IF
+  IF (.NOT.Mortar_plus) THEN
+    DO iVar=1,PP_nVarPrim
+      ! plus side of element
+      ! derivatives of plus values at plus interface
+      IF(s_lim_plus(iVar).EQ.0.)THEN ! first order
+        dUdUvolprim_plus(iVar,iVar,PP_N,2) = 1.
+      ELSEIF(s_lim_plus(iVar).EQ.s_L_plus(iVar))THEN ! use left gradient
+        dUdUvolprim_plus(iVar,iVar,PP_N,1) = 0. - FV_sdx(PP_N  ) * FV_dx_R
+        dUdUvolprim_plus(iVar,iVar,PP_N,2) = 1. + FV_sdx(PP_N  ) * FV_dx_R
+      ELSEIF(s_lim_plus(iVar).EQ.s_R_plus(iVar))THEN ! use right gradient
+        dUdUvolprim_plus(iVar,iVar,PP_N,2) = 1. - FV_sdx(PP_N+1) * FV_dx_R
+      ELSE
+        CALL Abort(__STAMP__,'Slopes do not match with minmod in preconditioner!')
+      END IF
+      ! The reconstructed value from the right neighbour depends on my own value IF the reconstruction in the right neighbour cell has
+      ! been done with the slope between my cell and that neighbour (s_R_plus). Check if that was the case and set the dependency
+      ! accordingly. 
+      !        reconstr. value      cell mean value        recon. with s_R_plus
+      IF(ABS(UPrim_plus_nb(iVar)-(URec_extended(iVar,PP_N+1)-s_R_plus(iVar)*FV_dx_L_nb)).LE.1E-12)THEN 
+        dUdUvolprim_plus( iVar,iVar,PP_N+1,1) = 0. - FV_dx_L_nb * (-FV_sdx(PP_N+1))
+      END IF
+    END DO !iVar
+  END IF
 CASE(9) ! Central
-  DO iVar=1,PP_nVarPrim
-    ! minus side of interface
-    ! derivatives of minus value at minus interface
-    dUdUvolprim_minus(iVar,iVar,0     ,2) = 1. - FV_dx_L    * 0.5*( FV_sdx(0) - FV_sdx(1))
-    dUdUvolprim_minus(iVar,iVar,0     ,3) = 0. - FV_dx_L    * 0.5*( FV_sdx(1))
-    ! derivatives of plus value at minus interface
-    dUdUvolprim_minus(iVar,iVar,-1    ,3) = 0. + FV_dx_R_nb * 0.5*( FV_sdx(0))
+  IF (.NOT.Mortar_minus) THEN
+    DO iVar=1,PP_nVarPrim
+      ! minus side of interface
+      ! derivatives of minus value at minus interface
+      dUdUvolprim_minus(iVar,iVar,0     ,2) = 1. - FV_dx_L    * 0.5*( FV_sdx(0) - FV_sdx(1))
+      dUdUvolprim_minus(iVar,iVar,0     ,3) = 0. - FV_dx_L    * 0.5*( FV_sdx(1))
+      ! derivatives of plus value at minus interface
+      dUdUvolprim_minus(iVar,iVar,-1    ,3) = 0. + FV_dx_R_nb * 0.5*( FV_sdx(0))
+    END DO !iVar
+  END IF
 
-    ! plus side of interface
-    ! derivatives of plus values at plus interface
-    dUdUvolprim_plus( iVar,iVar,PP_N  ,1) = 0. + FV_dx_R    * 0.5*(-FV_sdx(PP_N))
-    dUdUvolprim_plus( iVar,iVar,PP_N  ,2) = 1. + FV_dx_R    * 0.5*( FV_sdx(PP_N)-FV_sdx(PP_N+1))
-    ! derivatives of minus values at plus interface
-    dUdUvolprim_plus( iVar,iVar,PP_N+1,1) = 0. - FV_dx_L_nb * 0.5*(-FV_sdx(PP_N+1))
-  END DO !iVar
+  IF (.NOT.Mortar_plus) THEN
+    DO iVar=1,PP_nVarPrim
+      ! plus side of interface
+      ! derivatives of plus values at plus interface
+      dUdUvolprim_plus( iVar,iVar,PP_N  ,1) = 0. + FV_dx_R    * 0.5*(-FV_sdx(PP_N))
+      dUdUvolprim_plus( iVar,iVar,PP_N  ,2) = 1. + FV_dx_R    * 0.5*( FV_sdx(PP_N)-FV_sdx(PP_N+1))
+      ! derivatives of minus values at plus interface
+      dUdUvolprim_plus( iVar,iVar,PP_N+1,1) = 0. - FV_dx_L_nb * 0.5*(-FV_sdx(PP_N+1))
+    END DO !iVar
+  END IF
 CASE DEFAULT 
   CALL Abort(__STAMP__,'No preconditioner for chosen limiter implemented!')
 END SELECT
 
 ! multiply: dU_LR/dU_LR_prim * dU_LR_prim/dUvol_prim
-DO ind=2,3
-  matrix_minus(:,:,0,ind) = MATMUL(Jac_ConsPrim_minus(:,:,0),dUdUvolprim_minus(:,:,0,ind))
-END DO
-matrix_minus(:,:,-1,3) = MATMUL(Jac_ConsPrim_minus(:,:,-1),dUdUvolprim_minus(:,:,-1,3))
-DO ind=1,2
-  matrix_plus( :,:,PP_N,ind) = MATMUL(Jac_ConsPrim_plus( :,:,PP_N),dUdUvolprim_plus( :,:,PP_N,ind))
-END DO
-matrix_plus( :,:,PP_N+1,1) = MATMUL(Jac_ConsPrim_plus( :,:,PP_N+1),dUdUvolprim_plus( :,:,PP_N+1,1))
-
-! multiply: (dU_LR/dU_LR_prim * dU_LR_prim/dUvol_prim) * dUvol_prim/dUvol
-dUdUvol_plus( :,:,PP_N,1)   = MATMUL(matrix_plus(:,:,PP_N,1),Jac_PrimCons_plus(:,:,PP_N-1))
-dUdUvol_plus( :,:,PP_N,2)   = MATMUL(matrix_plus(:,:,PP_N,2),Jac_PrimCons_plus(:,:,PP_N))
-dUdUvol_plus( :,:,PP_N+1,1) = MATMUL(matrix_plus(:,:,PP_N+1,1),Jac_PrimCons_plus(:,:,PP_N))
-
-dUdUvol_minus(:,:,-1,3) = MATMUL(matrix_minus(:,:,-1,3),Jac_PrimCons_minus(:,:,0))
-dUdUvol_minus(:,:,0,2)  = MATMUL(matrix_minus(:,:,0,2),Jac_PrimCons_minus(:,:,0))
-dUdUvol_minus(:,:,0,3)  = MATMUL(matrix_minus(:,:,0,3),Jac_PrimCons_minus(:,:,1))
+IF (.NOT.Mortar_minus) THEN
+  DO ind=2,3
+    matrix_minus(:,:,0,ind) = MATMUL(Jac_ConsPrim_minus(:,:,0),dUdUvolprim_minus(:,:,0,ind))
+  END DO
+  matrix_minus(:,:,-1,3) = MATMUL(Jac_ConsPrim_minus(:,:,-1),dUdUvolprim_minus(:,:,-1,3))
+  ! multiply: (dU_LR/dU_LR_prim * dU_LR_prim/dUvol_prim) * dUvol_prim/dUvol
+  dUdUvol_minus(:,:,-1,3) = MATMUL(matrix_minus(:,:,-1,3),Jac_PrimCons_minus(:,:,0))
+  dUdUvol_minus(:,:,0,2)  = MATMUL(matrix_minus(:,:,0,2),Jac_PrimCons_minus(:,:,0))
+  dUdUvol_minus(:,:,0,3)  = MATMUL(matrix_minus(:,:,0,3),Jac_PrimCons_minus(:,:,1))
+END IF
+IF (.NOT.Mortar_plus) THEN
+  DO ind=1,2
+    matrix_plus( :,:,PP_N,ind) = MATMUL(Jac_ConsPrim_plus( :,:,PP_N),dUdUvolprim_plus( :,:,PP_N,ind))
+  END DO
+  matrix_plus( :,:,PP_N+1,1) = MATMUL(Jac_ConsPrim_plus( :,:,PP_N+1),dUdUvolprim_plus( :,:,PP_N+1,1))
+  ! multiply: (dU_LR/dU_LR_prim * dU_LR_prim/dUvol_prim) * dUvol_prim/dUvol
+  dUdUvol_plus( :,:,PP_N,1)   = MATMUL(matrix_plus(:,:,PP_N,1),Jac_PrimCons_plus(:,:,PP_N-1))
+  dUdUvol_plus( :,:,PP_N,2)   = MATMUL(matrix_plus(:,:,PP_N,2),Jac_PrimCons_plus(:,:,PP_N))
+  dUdUvol_plus( :,:,PP_N+1,1) = MATMUL(matrix_plus(:,:,PP_N+1,1),Jac_PrimCons_plus(:,:,PP_N))
+END IF
 
 END SUBROUTINE FV_Reconstruction_Derivative_Surf
 
@@ -525,6 +556,7 @@ END SUBROUTINE FV_Reconstruction_Derivative_Surf
 !> has diagonal shape with the same coefficient on the diagonal. Therefore, we calculate only this scalar value and give it back.
 !> The reconstruction procedure for the gradients takes the central limiter. Therefore the gradient at a DOF (i,j,k) is depending on
 !> the left and right neighbour and the DOF itself.
+!> If side is a big mortar side set the Jacobian of the evolved gradient to zero.
 !===================================================================================================================================
 SUBROUTINE JacFVGradients_Vol(dir,iElem,Jac_reconstruct)
 ! MODULES
@@ -535,6 +567,7 @@ USE MOD_Jac_Ex_Vars        ,ONLY: FV_sdx_XI_extended,FV_sdx_ETA_extended
 USE MOD_FV_Vars            ,ONLY: FV_sdx_ZETA,FV_Metrics_hTilde_sJ
 USE MOD_Jac_Ex_Vars        ,ONLY: FV_sdx_ZETA_extended
 #endif
+USE MOD_Mesh_Vars          ,ONLY: ElemToSide,MortarType
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -547,7 +580,7 @@ REAL,INTENT(OUT)   :: Jac_reconstruct(0:PP_N,0:PP_N,0:PP_NZ,0:PP_N,PP_dim) !< Ja
                                                                            !> w.r.t. primitive volume solution
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: i,j,k,ll
+INTEGER            :: i,j,k,ll,Mortar_minus,Mortar_plus
 !===================================================================================================================================
 Jac_reconstruct = 0.
 DO k=0,PP_NZ
@@ -555,27 +588,39 @@ DO k=0,PP_NZ
     DO i=0,PP_N
       ! Contribution by gradient reconstruction procedure with central gradient (i,j,k) -> gradient, (ll) -> state 
       ! --------- XI direction ------------ !
+      Mortar_minus = MortarType(1,ElemToSide(E2S_SIDE_ID,XI_MINUS,iElem))
+      Mortar_plus  = MortarType(1,ElemToSide(E2S_SIDE_ID,XI_PLUS ,iElem))
       IF(i.GT.0)THEN
         Jac_reconstruct(i,j,k,i-1,1) = 0.5*(-FV_sdx_XI(j,k,i,iElem))
-      END IF                     
-      Jac_reconstruct(  i,j,k,i  ,1) = 0.5*FV_sdx_XI_extended(j,k,i,iElem) - 0.5*FV_sdx_XI_extended(j,k,i+1,iElem)
+      END IF
+      IF(.NOT.(((i.EQ.0).AND.(Mortar_minus.GT.0)).OR.((i.EQ.PP_N).AND.(Mortar_plus.GT.0))))THEN
+        Jac_reconstruct(i,j,k,i  ,1) = 0.5*FV_sdx_XI_extended(j,k,i,iElem) - 0.5*FV_sdx_XI_extended(j,k,i+1,iElem)
+      END IF
       IF(i.LT.PP_N)THEN          
         Jac_reconstruct(i,j,k,i+1,1) = 0.5*( FV_sdx_XI(j,k,i+1,iElem))
       END IF
       ! --------- ETA direction ------------ !
+      Mortar_minus = MortarType(1,ElemToSide(E2S_SIDE_ID,ETA_MINUS,iElem))
+      Mortar_plus  = MortarType(1,ElemToSide(E2S_SIDE_ID,ETA_PLUS ,iElem))
       IF(j.GT.0)THEN
         Jac_reconstruct(i,j,k,j-1,2) = 0.5*(-FV_sdx_ETA(i,k,j,iElem))
       END IF                     
-      Jac_reconstruct(  i,j,k,j  ,2) = 0.5*FV_sdx_ETA_extended(i,k,j,iElem) - 0.5*FV_sdx_ETA_extended(i,k,j+1,iElem)
+      IF(.NOT.(((j.EQ.0).AND.(Mortar_minus.GT.0)).OR.((j.EQ.PP_N).AND.(Mortar_plus.GT.0))))THEN
+        Jac_reconstruct(i,j,k,j  ,2) = 0.5*FV_sdx_ETA_extended(i,k,j,iElem) - 0.5*FV_sdx_ETA_extended(i,k,j+1,iElem)
+      END IF
       IF(j.LT.PP_N)THEN          
         Jac_reconstruct(i,j,k,j+1,2) = 0.5*( FV_sdx_ETA(i,k,j+1,iElem))
       END IF
 #if PP_dim==3
       ! --------- ZETA direction ------------ !
+      Mortar_minus = MortarType(1,ElemToSide(E2S_SIDE_ID,ZETA_MINUS,iElem))
+      Mortar_plus  = MortarType(1,ElemToSide(E2S_SIDE_ID,ZETA_PLUS ,iElem))
       IF(k.GT.0)THEN
         Jac_reconstruct(i,j,k,k-1,3) = 0.5*(-FV_sdx_ZETA(i,j,k,iElem))
       END IF                     
-      Jac_reconstruct(  i,j,k,k  ,3) = 0.5*FV_sdx_ZETA_extended(i,j,k,iElem) - 0.5*FV_sdx_ZETA_extended(i,j,k+1,iElem)
+      IF(.NOT.(((k.EQ.0).AND.(Mortar_minus.GT.0)).OR.((k.EQ.PP_N).AND.(Mortar_plus.GT.0))))THEN
+        Jac_reconstruct(i,j,k,k  ,3) = 0.5*FV_sdx_ZETA_extended(i,j,k,iElem) - 0.5*FV_sdx_ZETA_extended(i,j,k+1,iElem)
+      END IF
       IF(k.LT.PP_N)THEN          
         Jac_reconstruct(i,j,k,k+1,3) = 0.5*( FV_sdx_ZETA(i,j,k+1,iElem))
       END IF
@@ -642,7 +687,7 @@ DO iLocSide=1,6
 DO iLocSide=2,5
 #endif    
   SideID=ElemToSide(E2S_SIDE_ID,iLocSide,iElem)
-  IF(SideID.LE.nBCSides) CYCLE  !for boundary conditions, dQ_dUVolOuter=0.
+  IF (SideID.LE.nBCSides) CYCLE  !for boundary conditions, dQ_dUVolOuter=0.
 
   SELECT CASE(iLocSide)
   CASE(XI_MINUS,XI_PLUS)

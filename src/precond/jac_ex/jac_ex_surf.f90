@@ -96,9 +96,9 @@ SUBROUTINE JacSurfInt(t,BJ,iElem)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_DG_Vars                   ,ONLY: U_master,U_slave,UPrim_master,UPrim_slave
+USE MOD_Mesh_Vars                 ,ONLY: firstMortarMPISide,lastMortarMPISide
 USE MOD_Mesh_Vars                 ,ONLY: nBCSides,ElemToSide,S2V2,firstInnerSide,MortarType,MortarInfo,FS2M
-USE MOD_Mesh_Vars                 ,ONLY: NormVec,TangVec1,TangVec2,SurfElem
-USE MOD_Mesh_Vars                 ,ONLY: Face_xGP
+USE MOD_Mesh_Vars                 ,ONLY: NormVec,TangVec1,TangVec2,SurfElem,Face_xGP
 USE MOD_Implicit_Vars             ,ONLY: nDOFVarElem
 USE MOD_Riemann_Deriv             ,ONLY: Riemann_FD
 USE MOD_GetBoundaryFlux_FD        ,ONLY: GetBoundaryFlux_FD
@@ -162,7 +162,7 @@ REAL,DIMENSION(1:PP_nVar,1:PP_nVarPrim,0:PP_N,0:PP_NZ,2:5):: Df_dQxInner,Df_dQyI
 #endif /*PP_dim*/
 #endif /*PARABOLIC*/
 ! Mortars
-INTEGER                                                   :: nMortars,iMortarSide,iMortar
+INTEGER                                                   :: nMortars,iMortarSide,iMortar,flip_small
 INTEGER                                                   :: sideMap(1:2,0:PP_N,0:PP_NZ)
 REAL                                                      :: DfMortar_DUInner(PP_nVar,PP_nVar,0:PP_N,0:PP_NZ,2,4)
 #if PARABOLIC
@@ -194,7 +194,7 @@ DO iLocSide=2,5
 #endif
 
   IF (SideID.GT.nBCSides) THEN !InnerSide
-    IF (SideID.LT.firstInnerSide) THEN
+    IF ((SideID.LT.firstInnerSide).OR.((SideID.GE.firstMortarMPISide).AND.(SideID.LE.lastMortarMPISide))) THEN
       ! This is a (big) mortar side
       nMortars=MERGE(4,2,MortarType(1,SideID).EQ.1)
       ! Index in mortar side list
@@ -203,6 +203,7 @@ DO iLocSide=2,5
     ELSE
       nMortars = 1
       sideMap = S2V2(:,:,:,flip,iLocSide)
+      flip_small = flip
     END IF
     ! For mortars: Loop over small mortar sides
     DO iMortar=1,nMortars
@@ -211,12 +212,13 @@ DO iLocSide=2,5
         SideID = MortarInfo(MI_SIDEID,iMortar,iMortarSide)
         ! For mortar sides, we transform the side-based Jacobians of the small sides into the side system of the big side. The
         ! transformation into the volume system is done later, while we do it in Riemann_FD for non-mortar sides.
-        sideMap = FS2M(:,:,:,MortarInfo(MI_FLIP,iMortar,iMortarSide))
+        flip_small = MortarInfo(MI_FLIP,iMortar,iMortarSide)
+        sideMap = FS2M(:,:,:,flip_small)
       END IF
 
       ! We always want to take the derivative w.r.t. the DOF on our own side. Depending on whether we are master or slave, this means
       ! we need to input different arrays into our routines that calculate the derivative always w.r.t. U_L!
-      IF (Flip.EQ.0) THEN
+      IF (flip_small.EQ.0) THEN
         UPrimSideL = UPrim_master(:,:,:,SideID);USideL = U_master(:,:,:,SideID)
         UPrimSideR = UPrim_slave( :,:,:,SideID);USideR = U_slave( :,:,:,SideID)
 #if PARABOLIC
@@ -276,7 +278,7 @@ DO iLocSide=2,5
                                   )
         DO q=0,PP_NZ
           DO p=0,PP_N
-            jk(:)=S2V2(:,p,q,Flip,iLocSide)
+            jk(:)=sideMap(:,p,q)
             ! BR1/2 use central fluxes for the viscous flux, so f*_diff = 0.5*(f_diff^L+f_diff^R).
             ! Transform the diffusive flux Jacobians into the normal system for the suface integral, and pre-multiply with 
             ! the SurfElem here (already done in Riemann_FD for the hyperbolic parts).
@@ -331,7 +333,7 @@ DO iLocSide=2,5
           DO q=0,PP_NZ
             DO p=0,PP_N
               ! Again, transform into normal system and pre-multiply with the SurfElem
-              jk(:)=S2V2(:,p,q,Flip,iLocSide)
+              jk(:)=sideMap(:,p,q)
               ! Df_dQxOuter = d(f,g,h)_diff/dQ_x * NormVec
               ! Dependencies of the surface flux w.r.t. the outer surface gradients in each direction
               Df_dQxOuter(:,:,jk(1),jk(2),iLocSide)=  0.5*( fJacQx(:,:,p,q)*signum*NormVec(1,p,q,FVSide,SideID) &
@@ -948,7 +950,7 @@ USE MOD_Precond_Vars              ,ONLY: HyperbolicPrecond
 #endif
 #if FV_RECONSTRUCT
 USE MOD_DG_Vars                   ,ONLY: UPrim_master,UPrim_slave
-USE MOD_Mesh_Vars                 ,ONLY: ElemToSide,S2V2,firstInnerSide
+USE MOD_Mesh_Vars                 ,ONLY: ElemToSide,S2V2,firstInnerSide,nBCSides,firstMortarMPISide,lastMortarMPISide
 USE MOD_Jac_Ex_Vars               ,ONLY: UPrim_extended,FV_sdx_XI_extended,FV_sdx_ETA_extended
 USE MOD_Jac_Reconstruction        ,ONLY: FV_Reconstruction_Derivative_Surf
 USE MOD_FV_Vars                   ,ONLY: FV_dx_master,FV_dx_slave
@@ -1008,6 +1010,7 @@ REAL                        :: dUdUvol_plus( PP_nVar,PP_nVar,PP_N:PP_N+1,1:2)
 REAL                        :: dUdUvol_minus(PP_nVar,PP_nVar,-1:0,2:3)
 INTEGER                     :: pq(2)
 REAL                        :: FV_dx_L,FV_dx_R,FV_dx_L_nb,FV_dx_R_nb
+LOGICAL                     :: Mortar_minus,Mortar_plus
 #if PARABOLIC
 INTEGER                     :: ss(2)
 #endif
@@ -1030,43 +1033,55 @@ DO oo = 0,PP_NZ
     SideID=ElemToSide(E2S_SIDE_ID,XI_MINUS,iElem)
     Flip=ElemToSide(  E2S_FLIP   ,XI_MINUS,iElem)
     pq=S2V2(:,nn,oo,flip         ,XI_MINUS)
-    IF(Flip.EQ.0)THEN
-      UPrim_minus    = UPrim_master(:,pq(1),pq(2),SideID)
-      UPrim_minus_nb = UPrim_slave( :,pq(1),pq(2),SideID)
-      FV_dx_L        = FV_dx_master(1,pq(1),pq(2),SideID)
-      IF(SideID.GE.firstInnerSide)THEN
-        FV_dx_R_nb     = FV_dx_slave( 1,pq(1),pq(2),SideID)
-      ELSE ! BC
+    IF (((SideID.GT.nBCSides).AND.(SideID.LT.firstInnerSide)).OR. &
+        ((SideID.GE.firstMortarMPISide).AND.(SideID.LE.lastMortarMPISide))) THEN ! big mortar side
+      Mortar_minus = .TRUE.
+    ELSE
+      Mortar_minus = .FALSE.
+      IF(Flip.EQ.0)THEN
+        UPrim_minus    = UPrim_master(:,pq(1),pq(2),SideID)
+        UPrim_minus_nb = UPrim_slave( :,pq(1),pq(2),SideID)
+        FV_dx_L        = FV_dx_master(1,pq(1),pq(2),SideID)
+        IF(SideID.GE.firstInnerSide)THEN
+          FV_dx_R_nb     = FV_dx_slave( 1,pq(1),pq(2),SideID)
+        ELSE ! BC
+          FV_dx_R_nb     = FV_dx_master(1,pq(1),pq(2),SideID)
+        END IF
+      ELSE
+        UPrim_minus    = UPrim_slave( :,pq(1),pq(2),SideID)
+        UPrim_minus_nb = UPrim_master(:,pq(1),pq(2),SideID)
+        FV_dx_L        = FV_dx_slave( 1,pq(1),pq(2),SideID)
         FV_dx_R_nb     = FV_dx_master(1,pq(1),pq(2),SideID)
       END IF
-    ELSE
-      UPrim_minus    = UPrim_slave( :,pq(1),pq(2),SideID)
-      UPrim_minus_nb = UPrim_master(:,pq(1),pq(2),SideID)
-      FV_dx_L        = FV_dx_slave( 1,pq(1),pq(2),SideID)
-      FV_dx_R_nb     = FV_dx_master(1,pq(1),pq(2),SideID)
     END IF
     SideID=ElemToSide(E2S_SIDE_ID,XI_PLUS,iElem)
     Flip=ElemToSide(  E2S_FLIP   ,XI_PLUS,iElem)
     pq=S2V2(:,nn,oo,flip         ,XI_PLUS)
-    IF(Flip.EQ.0)THEN
-      UPrim_plus    = UPrim_master(:,pq(1),pq(2),SideID)
-      UPrim_plus_nb = UPrim_slave( :,pq(1),pq(2),SideID)
-      FV_dx_R       = FV_dx_master(1,pq(1),pq(2),SideID)
-      IF(SideID.GE.firstInnerSide)THEN
-        FV_dx_L_nb    = FV_dx_slave( 1,pq(1),pq(2),SideID)
-      ELSE ! BC
+    IF (((SideID.GT.nBCSides).AND.(SideID.LT.firstInnerSide)).OR. &
+        ((SideID.GE.firstMortarMPISide).AND.(SideID.LE.lastMortarMPISide))) THEN ! big mortar side
+      Mortar_plus = .TRUE.
+    ELSE
+      Mortar_plus = .FALSE.
+      IF(Flip.EQ.0)THEN
+        UPrim_plus    = UPrim_master(:,pq(1),pq(2),SideID)
+        UPrim_plus_nb = UPrim_slave( :,pq(1),pq(2),SideID)
+        FV_dx_R       = FV_dx_master(1,pq(1),pq(2),SideID)
+        IF(SideID.GE.firstInnerSide)THEN
+          FV_dx_L_nb    = FV_dx_slave( 1,pq(1),pq(2),SideID)
+        ELSE ! BC
+          FV_dx_L_nb    = FV_dx_master(1,pq(1),pq(2),SideID)
+        END IF
+      ELSE
+        UPrim_plus    = UPrim_slave( :,pq(1),pq(2),SideID)
+        UPrim_plus_nb = UPrim_master(:,pq(1),pq(2),SideID)
+        FV_dx_R       = FV_dx_slave( 1,pq(1),pq(2),SideID)
         FV_dx_L_nb    = FV_dx_master(1,pq(1),pq(2),SideID)
       END IF
-    ELSE
-      UPrim_plus    = UPrim_slave( :,pq(1),pq(2),SideID)
-      UPrim_plus_nb = UPrim_master(:,pq(1),pq(2),SideID)
-      FV_dx_R       = FV_dx_slave( 1,pq(1),pq(2),SideID)
-      FV_dx_L_nb    = FV_dx_master(1,pq(1),pq(2),SideID)
     END IF
     CALL FV_Reconstruction_Derivative_Surf(FV_sdx_XI_extended(nn,oo,:,iElem),FV_dx_L,FV_dx_R,              & 
                                            FV_dx_L_nb,FV_dx_R_nb,UPrim_plus,UPrim_minus,                   &
-                                           UPrim_plus_nb,UPrim_minus_nb,                                   &
-                                           UPrim_extended(:,:,nn,oo,iElem),dUdUvol_plus(:,:,:,:),dUdUvol_minus(:,:,:,:))
+                                           UPrim_plus_nb,UPrim_minus_nb,UPrim_extended(:,:,nn,oo,iElem),   &
+                                           Mortar_minus,Mortar_plus,dUdUvol_plus(:,:,:,:),dUdUvol_minus(:,:,:,:))
     !-------------------Derivatives at MINUS side with respect to volume dofs----------------------------------------------------
     s = vn2*oo + vn1*nn
     ! direct dependency of prolongated value (of current element, minus) to volume dofs next to interface
@@ -1109,43 +1124,55 @@ DO oo = 0,PP_NZ
     SideID=ElemToSide(E2S_SIDE_ID,ETA_MINUS,iElem)
     Flip=ElemToSide(  E2S_FLIP   ,ETA_MINUS,iElem)
     pq=S2V2(:,mm,oo,flip         ,ETA_MINUS)
-    IF(Flip.EQ.0)THEN
-      UPrim_minus    = UPrim_master(:,pq(1),pq(2),SideID)
-      UPrim_minus_nb = UPrim_slave( :,pq(1),pq(2),SideID)
-      FV_dx_L        = FV_dx_master(1,pq(1),pq(2),SideID)
-      IF(SideID.GE.firstInnerSide)THEN
-        FV_dx_R_nb     = FV_dx_slave( 1,pq(1),pq(2),SideID)
-      ELSE !BC
+    IF (((SideID.GT.nBCSides).AND.(SideID.LT.firstInnerSide)).OR. &
+        ((SideID.GE.firstMortarMPISide).AND.(SideID.LE.lastMortarMPISide))) THEN ! big mortar side
+      Mortar_minus = .TRUE.
+    ELSE
+      Mortar_minus = .FALSE.
+      IF(Flip.EQ.0)THEN
+        UPrim_minus    = UPrim_master(:,pq(1),pq(2),SideID)
+        UPrim_minus_nb = UPrim_slave( :,pq(1),pq(2),SideID)
+        FV_dx_L        = FV_dx_master(1,pq(1),pq(2),SideID)
+        IF(SideID.GT.nBCSides)THEN
+          FV_dx_R_nb     = FV_dx_slave( 1,pq(1),pq(2),SideID)
+        ELSE !BC
+          FV_dx_R_nb     = FV_dx_master(1,pq(1),pq(2),SideID)
+        END IF
+      ELSE
+        UPrim_minus    = UPrim_slave( :,pq(1),pq(2),SideID)
+        UPrim_minus_nb = UPrim_master(:,pq(1),pq(2),SideID)
+        FV_dx_L        = FV_dx_slave( 1,pq(1),pq(2),SideID)
         FV_dx_R_nb     = FV_dx_master(1,pq(1),pq(2),SideID)
       END IF
-    ELSE
-      UPrim_minus    = UPrim_slave( :,pq(1),pq(2),SideID)
-      UPrim_minus_nb = UPrim_master(:,pq(1),pq(2),SideID)
-      FV_dx_L        = FV_dx_slave( 1,pq(1),pq(2),SideID)
-      FV_dx_R_nb     = FV_dx_master(1,pq(1),pq(2),SideID)
     END IF
     SideID=ElemToSide(E2S_SIDE_ID,ETA_PLUS,iElem)
     Flip=ElemToSide(  E2S_FLIP   ,ETA_PLUS,iElem)
     pq=S2V2(:,mm,oo,flip         ,ETA_PLUS)
-    IF(Flip.EQ.0)THEN
-      UPrim_plus    = UPrim_master(:,pq(1),pq(2),SideID)
-      UPrim_plus_nb = UPrim_slave( :,pq(1),pq(2),SideID)
-      FV_dx_R       = FV_dx_master(1,pq(1),pq(2),SideID)
-      IF(SideID.GE.firstInnerSide)THEN
-        FV_dx_L_nb    = FV_dx_slave( 1,pq(1),pq(2),SideID)
-      ELSE !BC
+    IF (((SideID.GT.nBCSides).AND.(SideID.LT.firstInnerSide)).OR. &
+        ((SideID.GE.firstMortarMPISide).AND.(SideID.LE.lastMortarMPISide))) THEN ! big mortar side
+      Mortar_plus = .TRUE.
+    ELSE
+      Mortar_plus = .FALSE.
+      IF(Flip.EQ.0)THEN
+        UPrim_plus    = UPrim_master(:,pq(1),pq(2),SideID)
+        UPrim_plus_nb = UPrim_slave( :,pq(1),pq(2),SideID)
+        FV_dx_R       = FV_dx_master(1,pq(1),pq(2),SideID)
+        IF(SideID.GE.firstInnerSide)THEN
+          FV_dx_L_nb    = FV_dx_slave( 1,pq(1),pq(2),SideID)
+        ELSE !BC
+          FV_dx_L_nb    = FV_dx_master(1,pq(1),pq(2),SideID)
+        END IF
+      ELSE
+        UPrim_plus    = UPrim_slave( :,pq(1),pq(2),SideID)
+        UPrim_plus_nb = UPrim_master(:,pq(1),pq(2),SideID)
+        FV_dx_R       = FV_dx_slave( 1,pq(1),pq(2),SideID)
         FV_dx_L_nb    = FV_dx_master(1,pq(1),pq(2),SideID)
       END IF
-    ELSE
-      UPrim_plus    = UPrim_slave( :,pq(1),pq(2),SideID)
-      UPrim_plus_nb = UPrim_master(:,pq(1),pq(2),SideID)
-      FV_dx_R       = FV_dx_slave( 1,pq(1),pq(2),SideID)
-      FV_dx_L_nb    = FV_dx_master(1,pq(1),pq(2),SideID)
     END IF
     CALL FV_Reconstruction_Derivative_Surf(FV_sdx_ETA_extended(mm,oo,:,iElem),FV_dx_L,FV_dx_R,             & 
                                            FV_dx_L_nb,FV_dx_R_nb,UPrim_plus,UPrim_minus,                   &
-                                           UPrim_plus_nb,UPrim_minus_nb,                                   &
-                                           UPrim_extended(:,mm,:,oo,iElem),dUdUvol_plus(:,:,:,:),dUdUvol_minus(:,:,:,:))
+                                           UPrim_plus_nb,UPrim_minus_nb,UPrim_extended(:,mm,:,oo,iElem),   &
+                                           Mortar_minus,Mortar_plus,dUdUvol_plus(:,:,:,:),dUdUvol_minus(:,:,:,:))
     s = vn2*oo + PP_nVar*mm
     BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
                                       + FV_w_inv*MATMUL(Df_DUinner(:,:,mm,oo,1,ETA_MINUS),dUdUvol_minus(:,:,0,2))
@@ -1180,43 +1207,55 @@ DO nn = 0,PP_N
     SideID=ElemToSide(E2S_SIDE_ID,ZETA_MINUS,iElem)
     Flip=ElemToSide(  E2S_FLIP   ,ZETA_MINUS,iElem)
     pq=S2V2(:,mm,nn,flip         ,ZETA_MINUS)
-    IF(Flip.EQ.0)THEN
-      UPrim_minus    = UPrim_master(:,pq(1),pq(2),SideID)
-      UPrim_minus_nb = UPrim_slave( :,pq(1),pq(2),SideID)
-      FV_dx_L        = FV_dx_master(1,pq(1),pq(2),SideID)
-      IF(SideID.GE.firstInnerSide)THEN
-        FV_dx_R_nb     = FV_dx_slave( 1,pq(1),pq(2),SideID)
+    IF (((SideID.GT.nBCSides).AND.(SideID.LT.firstInnerSide)).OR. &
+        ((SideID.GE.firstMortarMPISide).AND.(SideID.LE.lastMortarMPISide))) THEN ! big mortar side
+      Mortar_minus = .TRUE.
+    ELSE
+      Mortar_minus = .FALSE.
+      IF(Flip.EQ.0)THEN
+        UPrim_minus    = UPrim_master(:,pq(1),pq(2),SideID)
+        UPrim_minus_nb = UPrim_slave( :,pq(1),pq(2),SideID)
+        FV_dx_L        = FV_dx_master(1,pq(1),pq(2),SideID)
+        IF(SideID.GE.firstInnerSide)THEN
+          FV_dx_R_nb     = FV_dx_slave( 1,pq(1),pq(2),SideID)
+        ELSE
+          FV_dx_R_nb     = FV_dx_master(1,pq(1),pq(2),SideID)
+        END IF
       ELSE
+        UPrim_minus    = UPrim_slave( :,pq(1),pq(2),SideID)
+        UPrim_minus_nb = UPrim_master(:,pq(1),pq(2),SideID)
+        FV_dx_L        = FV_dx_slave( 1,pq(1),pq(2),SideID)
         FV_dx_R_nb     = FV_dx_master(1,pq(1),pq(2),SideID)
       END IF
-    ELSE
-      UPrim_minus    = UPrim_slave( :,pq(1),pq(2),SideID)
-      UPrim_minus_nb = UPrim_master(:,pq(1),pq(2),SideID)
-      FV_dx_L        = FV_dx_slave( 1,pq(1),pq(2),SideID)
-      FV_dx_R_nb     = FV_dx_master(1,pq(1),pq(2),SideID)
     END IF
     SideID=ElemToSide(E2S_SIDE_ID,ZETA_PLUS,iElem)
     Flip=ElemToSide(  E2S_FLIP   ,ZETA_PLUS,iElem)
     pq=S2V2(:,mm,nn,flip         ,ZETA_PLUS)
-    IF(Flip.EQ.0)THEN
-      UPrim_plus    = UPrim_master(:,pq(1),pq(2),SideID)
-      UPrim_plus_nb = UPrim_slave( :,pq(1),pq(2),SideID)
-      FV_dx_R       = FV_dx_master(1,pq(1),pq(2),SideID)
-      IF(SideID.GE.firstInnerSide)THEN
-        FV_dx_L_nb    = FV_dx_slave( 1,pq(1),pq(2),SideID)
+    IF (((SideID.GT.nBCSides).AND.(SideID.LT.firstInnerSide)).OR. &
+        ((SideID.GE.firstMortarMPISide).AND.(SideID.LE.lastMortarMPISide))) THEN ! big mortar side
+      Mortar_plus = .TRUE.
+    ELSE
+      Mortar_plus = .FALSE.
+      IF(Flip.EQ.0)THEN
+        UPrim_plus    = UPrim_master(:,pq(1),pq(2),SideID)
+        UPrim_plus_nb = UPrim_slave( :,pq(1),pq(2),SideID)
+        FV_dx_R       = FV_dx_master(1,pq(1),pq(2),SideID)
+        IF(SideID.GE.firstInnerSide)THEN
+          FV_dx_L_nb    = FV_dx_slave( 1,pq(1),pq(2),SideID)
+        ELSE
+          FV_dx_L_nb    = FV_dx_master(1,pq(1),pq(2),SideID)
+        END IF
       ELSE
+        UPrim_plus    = UPrim_slave( :,pq(1),pq(2),SideID)
+        UPrim_plus_nb = UPrim_master(:,pq(1),pq(2),SideID)
+        FV_dx_R       = FV_dx_slave( 1,pq(1),pq(2),SideID)
         FV_dx_L_nb    = FV_dx_master(1,pq(1),pq(2),SideID)
       END IF
-    ELSE
-      UPrim_plus    = UPrim_slave( :,pq(1),pq(2),SideID)
-      UPrim_plus_nb = UPrim_master(:,pq(1),pq(2),SideID)
-      FV_dx_R       = FV_dx_slave( 1,pq(1),pq(2),SideID)
-      FV_dx_L_nb    = FV_dx_master(1,pq(1),pq(2),SideID)
     END IF
     CALL FV_Reconstruction_Derivative_Surf(FV_sdx_ZETA_extended(mm,nn,:,iElem),FV_dx_L,FV_dx_R,            & 
                                            FV_dx_L_nb,FV_dx_R_nb,UPrim_plus,UPrim_minus,                   &
-                                           UPrim_plus_nb,UPrim_minus_nb,                                   &
-                                           UPrim_extended(:,mm,nn,:,iElem),dUdUvol_plus(:,:,:,:),dUdUvol_minus(:,:,:,:))
+                                           UPrim_plus_nb,UPrim_minus_nb,UPrim_extended(:,mm,nn,:,iElem),   &
+                                           Mortar_minus,Mortar_plus,dUdUvol_plus(:,:,:,:),dUdUvol_minus(:,:,:,:))
     s = vn1*nn + PP_nVar*mm
     BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) = BJ(s+1:s+PP_nVar,s+1:s+PP_nVar) &
                                       + FV_w_inv*MATMUL(Df_DUinner(:,:,mm,nn,1,ZETA_MINUS),dUdUvol_minus(:,:,0,2))

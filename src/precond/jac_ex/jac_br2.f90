@@ -67,7 +67,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Jac_ex_Vars               ,ONLY:JacLiftingFlux
 USE MOD_GetBoundaryFlux_fd        ,ONLY:Lifting_GetBoundaryFlux_FD
-USE MOD_Mesh_Vars                 ,ONLY:nBCSides,ElemToSide,S2V2
+USE MOD_Mesh_Vars                 ,ONLY:nBCSides,ElemToSide,S2V2,firstMortarMPISide,lastMortarMPISide
 USE MOD_Mesh_Vars                 ,ONLY:NormVec,TangVec1,TangVec2,SurfElem,firstInnerSide,MortarType,MortarInfo,FS2M
 USE MOD_DG_Vars                   ,ONLY:UPrim_master,UPrim_slave
 USE MOD_Mesh_Vars                 ,ONLY:Face_xGP
@@ -103,7 +103,7 @@ DO iLocSide=2,5
     CALL Lifting_GetBoundaryFlux_FD(SideID,t,JacLiftingFlux(:,:,:,:,:,iLocSide),UPrim_master, &
                                     SurfElem,Face_xGP,NormVec,TangVec1,TangVec2,S2V2(:,:,:,0,iLocSide)) !flip=0 for BCSide
   ELSE
-    IF(SideID.LT.firstInnerSide)THEN
+    IF ((SideID.LT.firstInnerSide).OR.((SideID.GE.firstMortarMPISide).AND.(SideID.LE.lastMortarMPISide))) THEN
       ! This is a (big) mortar side
       nMortars=MERGE(4,2,MortarType(1,SideID).EQ.1)
       ! Index in mortar side list
@@ -666,6 +666,7 @@ SUBROUTINE dQOuter(dir,iElem,dQOuter_dUVol)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Mesh_Vars                 ,ONLY: ElemToSide,S2V2,nBCSides,SurfElem,firstInnerSide,MortarType,MortarInfo,FS2M,NormVec
+USE MOD_Mesh_Vars                 ,ONLY: firstMortarMPISide,lastMortarMPISide
 USE MOD_Jac_Ex_Vars               ,ONLY: l_mp
 USE MOD_Jac_Ex_Vars               ,ONLY: R_Minus,R_Plus
 #if PP_Lifting==2
@@ -722,7 +723,7 @@ DO iLocSide=2,5
 #endif    
   SideID=ElemToSide(E2S_SIDE_ID,iLocSide,iElem)
   IF(SideID.LE.nBCSides) CYCLE  !for boundary conditions, dQ_dUVol=0.
-  IF (SideID.LT.firstInnerSide) THEN
+  IF ((SideID.LT.firstInnerSide).OR.((SideID.GE.firstMortarMPISide).AND.(SideID.LE.lastMortarMPISide))) THEN
     ! This is a (big) mortar side
     nMortars=MERGE(4,2,MortarType(1,SideID).EQ.1)
     ! Index in mortar side list

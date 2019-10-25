@@ -449,6 +449,13 @@ CALL StartSendMPIData(   FV_dx_slave, (PP_N+1)*(PP_NZ+1), 1,nSides,MPIRequest(:,
 CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest) !Send MINE -receive YOUR
 #endif
 CALL U_Mortar1(FV_dx_master,FV_dx_slave,doMPISides=.FALSE.)
+#if USE_MPI
+MPIRequest=0
+! distances at MPI master sides must be transmitted to slave sides (required in preconditioner)
+CALL StartReceiveMPIData(FV_dx_master, (PP_N+1)*(PP_NZ+1), 1,nSides,MPIRequest(:,SEND),SendID=1)
+CALL StartSendMPIData(   FV_dx_master, (PP_N+1)*(PP_NZ+1), 1,nSides,MPIRequest(:,RECV),SendID=1)
+CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest) !Send MINE -receive YOUR
+#endif
 
 FV_Elems_master = 0 ! Force use of DG mortar matrices in U_Mortar routine
 #if USE_MPI
