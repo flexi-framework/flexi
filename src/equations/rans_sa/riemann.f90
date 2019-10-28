@@ -1,8 +1,5 @@
 !=================================================================================================================================
 ! Copyright (c) 2010-2017 Prof. Claus-Dieter Munz 
-! Copyright (c) 2016-2017 Gregor Gassner (github.com/project-fluxo/fluxo)
-! Copyright (c) 2016-2017 Florian Hindenlang (github.com/project-fluxo/fluxo)
-! Copyright (c) 2016-2017 Andrew Winters (github.com/project-fluxo/fluxo) 
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -39,6 +36,7 @@ PROCEDURE(RiemannInt),POINTER :: RiemannBC_pointer  !< pointer defining the stan
 
 INTEGER,PARAMETER      :: PRM_RIEMANN_SAME          = -1
 INTEGER,PARAMETER      :: PRM_RIEMANN_LF            = 1
+INTEGER,PARAMETER      :: PRM_RIEMANN_ROEENTROPYFIX = 33
 
 INTERFACE InitRiemann
   MODULE PROCEDURE InitRiemann
@@ -86,8 +84,10 @@ IMPLICIT NONE
 CALL prms%SetSection("Riemann")
 CALL prms%CreateIntFromStringOption('Riemann',   "Riemann solver to be used: only LF for RANS-SA!", "lf")
 CALL addStrListEntry('Riemann','lf',           PRM_RIEMANN_LF)
+CALL addStrListEntry('Riemann','roeentropyfix',PRM_RIEMANN_ROEENTROPYFIX)
 CALL prms%CreateIntFromStringOption('RiemannBC', "Riemann solver used for boundary conditions: Same, LF", "Same")
 CALL addStrListEntry('RiemannBC','lf',           PRM_RIEMANN_LF)
+CALL addStrListEntry('RiemannBC','roeentropyfix',PRM_RIEMANN_ROEENTROPYFIX)
 CALL addStrListEntry('RiemannBC','same',         PRM_RIEMANN_SAME)
 END SUBROUTINE DefineParametersRiemann
 
@@ -109,6 +109,8 @@ Riemann = GETINTFROMSTR('Riemann')
 SELECT CASE(Riemann)
 CASE(PRM_RIEMANN_LF)
   Riemann_pointer => Riemann_LF
+CASE(PRM_RIEMANN_ROEENTROPYFIX)
+  Riemann_pointer => Riemann_RoeEntropyFix
 CASE DEFAULT
   CALL CollectiveStop(__STAMP__,&
     'Riemann solver not defined!')
@@ -120,6 +122,8 @@ CASE(PRM_RIEMANN_SAME)
   RiemannBC_pointer => Riemann_pointer
 CASE(PRM_RIEMANN_LF)
   RiemannBC_pointer => Riemann_LF
+CASE(PRM_RIEMANN_ROEENTROPYFIX)
+  RiemannBC_pointer => Riemann_RoeEntropyFix
 CASE DEFAULT
   CALL CollectiveStop(__STAMP__,&
     'RiemannBC solver not defined!')
@@ -219,8 +223,6 @@ END DO; END DO
 
 END SUBROUTINE Riemann
 
-
-
 #if PARABOLIC
 !==================================================================================================================================
 !> Computes the viscous RANS SA diffusion fluxes in all directions to approximate the numerical flux
@@ -263,10 +265,6 @@ END DO; END DO
 END SUBROUTINE ViscousFlux
 #endif /* PARABOLIC */
 
-
-
-
-
 !==================================================================================================================================
 !> Local Lax-Friedrichs (Rusanov) Riemann solver
 !==================================================================================================================================
@@ -292,6 +290,112 @@ LambdaMax = MAX( ABS(U_RR(VEL1)),ABS(U_LL(VEL1)) ) + MAX( SPEEDOFSOUND_HE(U_LL),
 F = 0.5*((F_L+F_R) - LambdaMax*(U_RR(CONS) - U_LL(CONS)))
 
 END SUBROUTINE Riemann_LF
+
+!=================================================================================================================================
+!> Roe's approximate Riemann solver using the Harten and Hymen II entropy fix, see
+!> Pelanti, Marica & Quartapelle, Luigi & Vigevano, L & Vigevano, Luigi. (2018):
+!>  A review of entropy fixes as applied to Roe's linearization.
+!=================================================================================================================================
+SUBROUTINE Riemann_RoeEntropyFix(F_L,F_R,U_LL,U_RR,F)
+! MODULES
+USE MOD_EOS_Vars      ,ONLY: Kappa,KappaM1
+#ifdef SPLIT_DG
+USE MOD_SplitFlux ,ONLY: SplitDGSurface_pointer
+#endif /*SPLIT_DG*/
+IMPLICIT NONE
+!---------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+                                               !> extended solution vector on the left/right side of the interface
+REAL,DIMENSION(PP_2Var),INTENT(IN) :: U_LL,U_RR
+                                               !> advection fluxes on the left/right side of the interface
+REAL,DIMENSION(PP_nVar),INTENT(IN) :: F_L,F_R
+REAL,DIMENSION(PP_nVar),INTENT(OUT):: F        !< resulting Riemann flux
+!---------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                 :: iVar
+REAL                    :: c_L,c_R
+REAL                    :: H_L,H_R
+REAL                    :: SqrtRho_L,SqrtRho_R,sSqrtRho,absVel
+REAL                    :: RoeVel(3),RoeH,Roec,RoeDens
+REAL,DIMENSION(5)       :: r1,r2,r3,r4,r5,a,al,ar,Delta_U,Alpha  ! Roe eigenvectors
+REAL                    :: tmp,da
+REAL                    :: LambdaMax
+!=================================================================================================================================
+c_L       = SPEEDOFSOUND_HE(U_LL)
+c_R       = SPEEDOFSOUND_HE(U_RR)
+H_L       = TOTALENTHALPY_HE(U_LL)
+H_R       = TOTALENTHALPY_HE(U_RR)
+SqrtRho_L = SQRT(U_LL(DENS))
+SqrtRho_R = SQRT(U_RR(DENS))
+
+sSqrtRho  = 1./(SqrtRho_L+SqrtRho_R)
+! Roe mean values
+RoeVel    = (SqrtRho_R*U_RR(VELV) + SqrtRho_L*U_LL(VELV)) * sSqrtRho
+RoeH      = (SqrtRho_R*H_R+SqrtRho_L*H_L) * sSqrtRho
+absVel    = DOT_PRODUCT(RoeVel,RoeVel)
+Roec      = ROEC_RIEMANN_H(RoeH,RoeVel)
+RoeDens   = SQRT(U_LL(DENS)*U_RR(DENS))
+! Roe+Pike version of Roe Riemann solver
+
+! calculate jump
+Delta_U(1)   = U_RR(DENS) - U_LL(DENS)
+Delta_U(2:4) = U_RR(VELV) - U_LL(VELV)
+Delta_U(5)   = U_RR(PRES) - U_LL(PRES)
+
+! mean eigenvalues and eigenvectors
+a  = (/ RoeVel(1)-Roec, RoeVel(1), RoeVel(1), RoeVel(1), RoeVel(1)+Roec      /)
+r1 = (/ 1.,             a(1),      RoeVel(2), RoeVel(3), RoeH-RoeVel(1)*Roec /)
+r2 = (/ 1.,             RoeVel(1), RoeVel(2), RoeVel(3), 0.5*absVel          /)
+r3 = (/ 0.,             0.,        1.,        0.,        RoeVel(2)           /)
+r4 = (/ 0.,             0.,        0.,        1.,        RoeVel(3)           /)
+r5 = (/ 1.,             a(5),      RoeVel(2), RoeVel(3), RoeH+RoeVel(1)*Roec /)
+
+! calculate wave strenghts
+tmp      = 0.5/(Roec*Roec)
+Alpha(1) = tmp*(Delta_U(5)-RoeDens*Roec*Delta_U(2))
+Alpha(2) = Delta_U(1) - Delta_U(5)*2.*tmp
+Alpha(3) = RoeDens*Delta_U(3)
+Alpha(4) = RoeDens*Delta_U(4)
+Alpha(5) = tmp*(Delta_U(5)+RoeDens*Roec*Delta_U(2))
+
+! Harten+Hyman entropy fix (apply only for acoustic waves, don't fix r)
+
+al(1) = U_LL(VEL1) - c_L
+al(2) = U_LL(VEL1)
+al(3) = U_LL(VEL1)
+al(4) = U_LL(VEL1)
+al(5) = U_LL(VEL1) + c_L
+ar(1) = U_RR(VEL1) - c_R
+ar(2) = U_RR(VEL1)
+ar(3) = U_RR(VEL1)
+ar(4) = U_RR(VEL1)
+ar(5) = U_RR(VEL1) + c_R
+! HH1
+!IF(ABS(a(1)).LT.da1) a(1)=da1
+!IF(ABS(a(5)).LT.da5) a(5)=da5
+! HH2
+DO iVar=1,5
+  da = MAX(0.,a(iVar)-al(iVar),ar(iVar)-a(iVar))
+
+  IF(ABS(a(iVar)).LT.da) THEN
+    a(iVar)=0.5*(a(iVar)*a(iVar)/da+da)
+  ELSE
+    a(iVar) = ABS(a(iVar))
+  END IF
+END DO
+
+! assemble Roe flux for NS part of the equation system
+F(1:5)=0.5*((F_L(1:5)+F_R(1:5)) - &
+               Alpha(1)*a(1)*r1 - &
+               Alpha(2)*a(2)*r2 - &
+               Alpha(3)*a(3)*r3 - &
+               Alpha(4)*a(4)*r4 - &
+               Alpha(5)*a(5)*r5)
+
+! Revert to LF for the RANS SA equations
+LambdaMax = MAX( ABS(U_RR(VEL1)),ABS(U_LL(VEL1)) ) + MAX(c_L,c_R) 
+F(6) = 0.5*((F_L(6)+F_R(6)) - LambdaMax*(U_RR(6) - U_LL(6)))
+END SUBROUTINE Riemann_RoeEntropyFix
 
 !==================================================================================================================================
 !> Finalize Riemann solver routines
