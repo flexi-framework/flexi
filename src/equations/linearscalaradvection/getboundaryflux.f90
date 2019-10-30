@@ -148,8 +148,6 @@ USE MOD_Mesh_Vars    ,ONLY: BoundaryType,BC
 USE MOD_ExactFunc    ,ONLY: ExactFunc
 USE MOD_Equation_Vars,ONLY: IniExactFunc
 !----------------------------------------------------------------------------------------------------------------------------------
-! insert modules here
-!----------------------------------------------------------------------------------------------------------------------------------
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)      :: SideID                                          !< ID of current side
