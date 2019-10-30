@@ -189,7 +189,7 @@ IF (FLEXI_PARABOLIC)
   ENDIF()
 
   #### Set the law for viscosity
-  IF(FLEXI_EQNSYSNAME STREQUAL "navierstokes")
+  IF((FLEXI_EQNSYSNAME STREQUAL "navierstokes") OR (FLEXI_EQNSYSNAME STREQUAL "rans_sa"))
     SET(FLEXI_VISCOSITY "constant" CACHE STRING "Method to calculate viscosity (constant/sutherland/powerlaw)")
     SET_PROPERTY(CACHE FLEXI_VISCOSITY PROPERTY STRINGS constant sutherland powerlaw)
     IF(FLEXI_VISCOSITY STREQUAL "constant")

@@ -53,9 +53,6 @@ SUBROUTINE DefineParametersEquation()
 ! MODULES
 USE MOD_ReadInTools,ONLY: prms,addStrListEntry
 USE MOD_Riemann    ,ONLY: DefineParametersRiemann
-#ifdef SPLIT_DG
-USE MOD_SplitFlux  ,ONLY: DefineParametersSplitDG
-#endif /*SPLIT_DG*/
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Equation")
@@ -68,9 +65,6 @@ CALL prms%CreateLogicalOption(  'includeTrip',  "Switch on to include a trip ter
 CALL prms%CreateLogicalOption(  'DebugSA',      "Switch on to include debug output for SA equation.", '.FALSE.')
 
 CALL DefineParametersRiemann()
-#ifdef SPLIT_DG
-CALL DefineParametersSplitDG()
-#endif /*SPLIT_DG*/
 END SUBROUTINE DefineParametersEquation
 
 !==================================================================================================================================
@@ -97,9 +91,6 @@ USE MOD_2D                ,ONLY: ExpandArrayTo3D
 #else
 USE MOD_2D                ,ONLY: to2D_rank4
 #endif
-#ifdef SPLIT_DG
-USE MOD_SplitFlux         ,ONLY: InitSplitDG
-#endif /*SPLIT_DG*/
 #if FV_ENABLED
 USE MOD_ChangeBasisByDim ,ONLY: ChangeBasisVolume
 USE MOD_FV_Vars          ,ONLY: FV_Vdm
@@ -273,10 +264,6 @@ CALL InitRiemann()
 CALL InitCalctimestep()
 
 
-#ifdef SPLIT_DG
-! Initialize SplitDG
-CALL InitSplitDG()
-#endif /*SPLIT_DG*/
 CALL InitBC()
 
 EquationInitIsDone=.TRUE.

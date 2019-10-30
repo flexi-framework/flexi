@@ -252,30 +252,34 @@ END SUBROUTINE BuildSurfVisuCoords
 !> Visualize mesh only
 !> 1. read mesh
 !> 2. BuildVisuCoords
-!> 3. write mesh to VTK array
-!> 4. set length of all other output arrays to zero
+!> 3. Convert scaled jacobian
+!> 4. write mesh to VTK array
+!> 5. set length of all other output arrays to zero
 !=================================================================================================================================
 SUBROUTINE VisualizeMesh(postifile,meshfile_in)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Visu_Vars
-USE MOD_ReadInTools   ,ONLY: prms,GETINT
+USE MOD_ReadInTools   ,ONLY: prms,GETINT,GETSTR,CountOption
 USE MOD_ReadInTools   ,ONLY: FinalizeParameters
+USE MOD_StringTools   ,ONLY: STRICMP
 #if USE_MPI
 USE MOD_MPI           ,ONLY: FinalizeMPI
 #endif
 USE MOD_Interpolation ,ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
-USE MOD_Mesh_Vars     ,ONLY: nElems,Ngeo
+USE MOD_Mesh_Vars     ,ONLY: nElems,Ngeo,scaledJac
 USE MOD_Mesh          ,ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
 USE MOD_VTK           ,ONLY: WriteCoordsToVTK_array
 USE MOD_HDF5_Input    ,ONLY: ReadAttribute,File_ID,OpenDataFile,CloseDataFile
+USE MOD_Posti_ConvertToVisu ,ONLY: ConvertToVisu_DG
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=255),INTENT(IN):: postifile
 CHARACTER(LEN=255),INTENT(IN):: meshfile_in
 ! LOCAL VARIABLES
-INTEGER             :: iElem
+INTEGER             :: iElem,nVarIni,iVar,jVar,iVarVisu,meshModeLoc
+CHARACTER(LEN=255)  :: VarName
 !===================================================================================================================================
 #if USE_MPI
 CALL FinalizeMPI()
@@ -300,9 +304,12 @@ ELSE
 END IF
 NVisu_FV = 1
 
-! read mesh
+! read mesh, depending if we should visualize the Jacobian or not different mesh modes are needed (calculate metrics or not)
+nVarIni=CountOption("VarName")
+meshModeLoc = 0
+IF (nVarIni.GT.0) meshModeLoc=2
 CALL InitInterpolation(Ngeo)
-CALL InitMesh(meshMode=0, MeshFile_IN=meshfile_in)
+CALL InitMesh(meshMode=meshModeLoc, MeshFile_IN=meshfile_in)
 
 ! convert to visu grid
 nElems_DG = nElems
@@ -314,6 +321,42 @@ DO iElem=1,nElems
 END DO
 CALL BuildVisuCoords()
 DEALLOCATE(mapDGElemsToAllElems)
+
+! Do we need to visualize the scaled Jacobian, or the max scaled Jacobian?
+IF (nVarIni.GT.0) THEN
+  ! A very simple mapping is build: There are two depending variables, either one or both of them can be visualized
+  NCalc = PP_N
+  nVarVisu = nVarIni
+  nVarDep = 2
+  nVarAll = 2
+  SDEALLOCATE(mapDepToCalc)
+  SDEALLOCATE(mapAllVarsToVisuVars)
+  ALLOCATE(mapDepToCalc(nVarDep))
+  mapDepToCalc(1) = 1
+  mapDepToCalc(2) = 2
+  ALLOCATE(mapAllVarsToVisuVars(nVarAll))
+  mapAllVarsToVisuVars = 0
+  iVarVisu = 1
+  DO iVar = 1, nVarIni
+    VarName = GETSTR("VarName")
+    DO jVar = 1, nVarAll
+      IF (STRICMP(VarNamesAll(jVar),VarName)) THEN
+        mapAllVarsToVisuVars(jVar) = iVarVisu
+        iVarVisu = iVarVisu + 1
+      END IF
+    END DO ! jVar = 1, nVarAll
+  END DO ! iVar = 1, nVarIni
+  SDEALLOCATE(UCalc_DG)
+  ALLOCATE(UCalc_DG(0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems_DG,nVarDep))
+  UCalc_DG(:,:,:,:,1) = scaledJac
+  DO iElem=1,nElems
+    UCalc_DG(:,:,:,iElem,2) = MINVAL(UCalc_DG(:,:,:,iElem,1))
+  END DO ! iElem
+
+  CALL ConvertToVisu_DG()
+ELSE
+  nVarVisu = 0
+END IF
 
 CALL FinalizeInterpolation()
 CALL FinalizeParameters()

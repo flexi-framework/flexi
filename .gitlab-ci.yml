@@ -7,6 +7,7 @@ before_script:
   - export LD_LIBRARY_PATH=/opt/hdf5/1.10.5/lib/:$LD_LIBRARY_PATH
   - export CMAKE_PREFIX_PATH=/opt/hdf5/1.10.5/:$CMAKE_PREFIX_PATH
   - export CMAKE_LIBRARY_PATH=/opt/hdf5/1.10.5/lib:$CMAKE_LIBRARY_PATH
+  - export FFTW_DIR=/opt/fftw/
 
 stages:
   - build
@@ -129,7 +130,7 @@ gnu_channelRANS:
   <<: *defaults_gnu
   stage: reggie_weekly
   script:
-    - if [ -n "${DO_WEEKLY}" ]; then module load env/gnu ; cd build_gnu ;  python ./reggie/reggie.py ../regressioncheck/checks/channelRANS ; fi 
+    - if [ -n "${DO_WEEKLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/channelRANS -j 6 ; fi 
  
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "deploy": 1. Creates doxygen documentation & compiles the documentation creating the *.pdf
