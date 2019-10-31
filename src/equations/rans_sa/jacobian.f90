@@ -222,11 +222,11 @@ DO i=1,nDOF_loc
   IF (chi.GT.0) THEN
     ! muTurb = fv1(muTilde) * muTilde, dmuTurb_dmuTilde = dfv1_dmuTilde * muTilde + fv1
     dmuTurb_dmuTilde = fv1(chi) + dfv1_dmuTilde * muTilde
-    ! fvn = (cn1+chi**3) / (cn1-chi**3), 
-    dfn_dchi = (6.*cn1*chi**2) / ((cn1 - chi**3)**2)
+    dfn_dchi = 0.
   ELSE
     dmuTurb_dmuTilde = 0.
-    dfn_dchi = 0.
+    ! fvn = (cn1+chi**3) / (cn1-chi**3), 
+    dfn_dchi = (6.*cn1*chi**2) / ((cn1 - chi**3)**2)
   END IF
 
   ! Store the tau's without the viscosity, we need them differently in the equations to come
@@ -377,7 +377,11 @@ DO i=1,nDOF_loc
   muTilde = UPrim(7,i)*UPrim(1,i)
   chi = muTilde/muS
   muTurb = muTilde*fv1(chi)
-  muTmp = muS + muTilde * fn(chi)
+  IF (chi.LT.0) THEN
+    muTmp = muS + muTilde * fn(chi)
+  ELSE
+    muTmp = muS + muTilde
+  END IF
   muS = MAX(muS,muS+muTurb)  ! Ignore muTurb < 0
   lambda = MAX(lambda,lambda+muTurb*cp/PrTurb)
 #if PP_dim==3
@@ -590,7 +594,7 @@ Jac(6,5)   = dpdU(5  )*sRhoR
 
 ! kinematic SA viscosity
 Jac(1:6,6) = 0.
-Jac(7,1)   = -UE(MUSA) * UE(SRHO)**2
+Jac(7,1)   = -UE(NUSA) * UE(SRHO)
 Jac(7,2:5) = 0.
 Jac(7,6)   = UE(SRHO)
 END SUBROUTINE dPrimdCons
