@@ -19,8 +19,8 @@
 !> If br1 lifting scheme is chosen, etabr2 is set to 1. In br1 lifting the surface gradient at a specific side is depending on
 !> UPrim in the volume and UPrim_face on all sides. For br2 it is depending only on UPrim in the volume and UPrim_face of the 
 !> current face itself. For the preconditioner this additional dependency is neglected: No additional fillin
-!> (in comparison to br2) is done. For Gauss-Lobatto nodes this approach gives correct resutls except for for the dofs at the
-!> cornes as here the dependency of the dof on multiple surfaces is done seperately.
+!> (in comparison to br2) is done. For Gauss-Lobatto nodes this approach gives correct results except for for the DOFs at the
+!> corners as here the dependency of the DOF on multiple surfaces is done seperately.
 !===================================================================================================================================
 MODULE MOD_Jac_br2
 #if PARABOLIC
