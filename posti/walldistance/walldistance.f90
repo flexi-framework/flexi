@@ -217,7 +217,7 @@ DO iElem=1,nElems
            + 2.*(xCur(3)-xVol(3))*Jac(3,2)
 #endif
       ! Step-size calculation by heuristic line search approach
-      eta = 1.
+      eta = 100000.
       DO WHILE (distSquare(xi_i-eta*g,xVol,Face_xGP(1:PP_dim,:,:,0,iSide)).GT.&
                (distSquare(xi_i,      xVol,Face_xGP(1:PP_dim,:,:,0,iSide))-alpha*eta*(NORM2(g))**2))
         eta = eta*beta
