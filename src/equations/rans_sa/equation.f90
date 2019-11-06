@@ -267,7 +267,7 @@ CALL InitCalctimestep()
 CALL InitBC()
 
 EquationInitIsDone=.TRUE.
-SWRITE(UNIT_stdOut,'(A)')' INIT NAVIER-STOKES DONE!'
+SWRITE(UNIT_stdOut,'(A)')' INIT RANS WITH SA DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
 
 ! Initialize current testcase

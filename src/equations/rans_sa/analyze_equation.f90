@@ -314,13 +314,13 @@ DO iElem=1,nElems
   IF (FV_Elems(iElem).GT.0) THEN ! FV Element
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       IntegrationWeight=FV_w3/sJ(i,j,k,iElem,1)
-      Residuals = Residuals + Ut(:,i,j,k,iElem)*IntegrationWeight
+      Residuals = Residuals + Ut(:,i,j,k,iElem)**2*IntegrationWeight
     END DO; END DO; END DO !i,j,k
   ELSE ! DG element
 #endif
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       IntegrationWeight=wGPVol(i,j,k)/sJ(i,j,k,iElem,0)
-      Residuals = Residuals + Ut(:,i,j,k,iElem)*IntegrationWeight
+      Residuals = Residuals + Ut(:,i,j,k,iElem)**2*IntegrationWeight
     END DO; END DO; END DO !i,j,k
 #if FV_ENABLED
   END IF
@@ -335,7 +335,7 @@ ELSE
 END IF
 #endif
 
-Residuals=Residuals/Vol
+Residuals=SQRT(Residuals/Vol)
 
 END SUBROUTINE CalcResiduals
 

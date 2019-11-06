@@ -652,13 +652,13 @@ USE MOD_Equation_Vars    ,ONLY: fv2,fw,STilde,fn,ct1,ct2,ct3,ct4,includeTrip,ome
 USE MOD_Eos_Vars         ,ONLY: Kappa,KappaM1,cp
 USE MOD_Exactfunc_Vars   ,ONLY: AdvVel
 USE MOD_DG_Vars          ,ONLY: U
-USE MOD_Lifting_Vars     ,ONLY: gradUx,gradUy
 USE MOD_EOS              ,ONLY: ConsToPrim
+USE MOD_Viscosity
+#if PARABOLIC
+USE MOD_Lifting_Vars     ,ONLY: gradUx,gradUy
 #if PP_dim == 3
 USE MOD_Lifting_Vars     ,ONLY: gradUz
 #endif
-USE MOD_Viscosity
-#if PARABOLIC
 USE MOD_Eos_Vars         ,ONLY: mu0,Pr
 #endif
 USE MOD_Mesh_Vars        ,ONLY: Elem_xGP,sJ,nElems
@@ -903,6 +903,7 @@ CASE DEFAULT
   !doCalcSource=.FALSE.
 END SELECT ! ExactFunction
 
+#if PARABOLIC
 ! Add the source term of the SA model
 
 ! First, calculate the vorticity magnitude at the trip if needed
@@ -979,9 +980,11 @@ DO iElem=1,nElems
     Ut(6,i,j,k,iElem) = Ut(6,i,j,k,iElem)+Ut_src(6,i,j,k)/sJ(i,j,k,iElem,FV_Elem)
   END DO; END DO; END DO ! i,j,k
 END DO
+#endif /*PARABOLIC*/
 
 END SUBROUTINE CalcSource
 
+#if PARABOLIC
 !===================================================================================================================================
 !> Calculate and communicate the vorticity magnitude at the trip point, needed for the SA trip terms
 !===================================================================================================================================
@@ -1011,5 +1014,6 @@ CALL MPI_BCAST(omegaT,1,MPI_DOUBLE_PRECISION,tripRoot,MPI_COMM_FLEXI,iError)
 #endif
 
 END SUBROUTINE CalcOmegaTrip
+#endif
 
 END MODULE MOD_Exactfunc
