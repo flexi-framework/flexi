@@ -41,7 +41,7 @@ CONTAINS
 !> Contains the computation of directional derivative with finite difference of the hyperbolic numerical flux f*_adv. 
 !> We already pre-multiply with SurfElem.
 !===================================================================================================================================
-SUBROUTINE Riemann_FD(DFDU,U_L,U_R,UPrim_L,UPrim_R,normal,tangent1,tangent2,surf_loc,jk,FV_Elems_Sum,FVElem,FVSide)
+SUBROUTINE Riemann_FD(DFDU,U_L,U_R,UPrim_L,UPrim_R,normal,tangent1,tangent2,surf_loc,jk,FVElem_Sum,FVElem,FVSide)
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
@@ -65,7 +65,7 @@ REAL, INTENT(IN)                :: tangent1(1:3       ,0:PP_N,0:PP_NZ) !< first 
 REAL, INTENT(IN)                :: tangent2(1:3       ,0:PP_N,0:PP_NZ) !< second tangential vector
 REAL, INTENT(IN)                :: surf_loc(           0:PP_N,0:PP_NZ) !< surface elements
 INTEGER, INTENT(IN)             :: jk(      2         ,0:PP_N,0:PP_NZ) !< side to volume mapping
-INTEGER,INTENT(IN)              :: FV_Elems_Sum                        !< Indicating if an interface is DG/DG or FV/FV etc.
+INTEGER,INTENT(IN)              :: FVElem_Sum                        !< Indicating if an interface is DG/DG or FV/FV etc.
 INTEGER, INTENT(IN)             :: FVElem                              !< Is the element FV or DG?
 INTEGER, INTENT(IN)             :: FVSide                              !< 0: DG/DG 1: other cases
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -134,7 +134,7 @@ END DO !jVar
 
 !----------------------------------------------------------------------------------------------------------------------------------
 #if FV_ENABLED && FV_RECONSTRUCT
-IF((FVElem.EQ.1).AND.(FV_Elems_Sum.EQ.3))THEN ! do only if current and neighbouring element are FV elements (FV-FV interface)
+IF((FVElem.EQ.1).AND.(FVElem_Sum.EQ.3))THEN ! do only if current and neighbouring element are FV elements (FV-FV interface)
   ! do the same derivative as above only with respect to U_R instead of U_L
   U_R_Tilde = U_R
   DO jVar=1,PP_nVar
