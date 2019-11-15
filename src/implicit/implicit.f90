@@ -68,7 +68,7 @@ CALL prms%CreateLogicalOption('EisenstatWalker',"Adaptive abort criterion for GM
 CALL prms%CreateRealOption(   'gammaEW',        "Parameter for Eisenstat Walker adaptation", value='0.9')
 CALL prms%CreateRealOption(   'EpsGMRES',       "GMRES Tolerance, only used of EisenstatWalker=F", value='1.E-3')
 CALL prms%CreateIntOption(    'nRestarts',      "Maximum number of GMRES Restarts", value='10')
-CALL prms%CreateIntOption(    'nKDim',          "Maxmim number of Krylov subspaces for GMRES, after that a restart is performed", &
+CALL prms%CreateIntOption(    'nKDim',          "Maximum number of Krylov subspaces for GMRES, after that a restart is performed", &
                                                  value='30')
 CALL prms%CreateIntOption(    'Eps_Method',     "Method of determining the step size of FD approximation of A*v in GMRES, &
                                                 &1: sqrt(machineAccuracy)*scaleps, 2: take norm of solution into account", value='2')
