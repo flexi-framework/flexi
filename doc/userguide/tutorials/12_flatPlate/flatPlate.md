@@ -15,10 +15,10 @@ variables, and thus need to be modelled. For RANS, the closure terms must contai
 stationary flow field. The modelling of those is a challenge, and many different approaches have developed over the years.
 In **FLEXI**, a rather simple but widely used model after Spalart and Allmars (SA model, see [@allmaras2012modifications])
 is implemented. It belongs to the class of one-equation models, and solves a single additional equation for a turbulent viscosity
-$\tilde{\mu}$. All effects of the unresolved scales are thus modeled by assuming a increased viscosity of
+$\tilde{\mu}$. All effects of the unresolved scales are thus modeled by assuming an increased viscosity of
 $\mu+\mu_{turb}(\tilde{\mu})$.
 
-In this tutorial, we will simulate the flow over a flat plate using the RANS. For the presented setup, the Reynolds number at the 
+In this tutorial, we will simulate the flow over a flat plate using the RANS equations. For the presented setup, the Reynolds number at the 
 streamwise position $x=1m$ along the plate will be equal to $Re_x = \frac{\rho_{\infty} u_{\infty}x}{\mu}=5 \cdot 10^6$. The mach 
 number is set to $Ma=0.2$. 
 
@@ -106,7 +106,7 @@ initialization is prescribed directly. On the right, a pressure-based outflow co
 is stationary, no additional treatment of the outflow is necessary. On the bottom of the domain, for $0.2m$ a symmetry condition is applied,
 since we don't want to directly start with the flat plate at the inflow. After $x=0.2m$, an adiabatic wall begins. The mesh is stretched, such
 that the nodes in wall-normal direction are clustered towards the wall. The gradients in (even the stationary) turbulent boundary layer are very
-large, such we need a lot of resolution in that direction. The grid is also stretched in the wall-parallel direction, and nodes are clustered
+large, such that we need a lot of resolution in that direction. The grid is also stretched in the wall-parallel direction, and nodes are clustered
 at the leading edge of the plate. Here, larger gradients are expected since the boundary layer is developing very rapidly at the start. At later 
 $x$-positions, we can use very large cells in the wall-parallel direction, since not a lot of change is going on there.
 
@@ -114,13 +114,13 @@ Several versions of the mesh are included in the subfolder ``mesh``. They only d
 The main influence is the size of the cell closest to the wall, which needs to resolve the largest gradient. Mesh *A* is the finest,
 with a cell size of $y^+ \approx 4$, expressed in [wall-units](https://en.wikipedia.org/wiki/Law_of_the_wall) in the middle of the flat plate.
  This does not yet take into account that there are multiple nodes inside of a cell for DG methods! Mesh *C*, which is used in the default setup, 
-in combination  with the polynomial degree of $N=4$ leads to $y^+ \approx 4$ for the first ~~node~~. Though this is much larger than the 
+in combination  with the polynomial degree of $N=4$ leads to $y^+ \approx 4$ for the first **node**. Though this is much larger than the 
 usual requirement of $y^+ \approx 1$, due to the high order nature of the simulation this is enough to gain results that are in reasonable agreement
 with experimental and other numerical reference solutions.
 
 ### Wall distance
 
-The additional equation for the SA model used the distance from the closest solid wall as an input. Since this is a static quantity, we can
+The additional equation for the SA model uses the distance from the closest solid wall as an input. Since this is a static quantity, we can
 compute this in a pre-processing step and then simply read that information if we start our actual simulation. For the default setup,
 the file containing the information about the wall distance is already included, in the file ``meshes/CART_HEX2D_FlatPlateC_walldistance.h5``.
 If you want to use other meshes or a different polynomial degree, you will need to generate the file yourself. For this purpose, the pre-processing 
@@ -173,30 +173,30 @@ flexi --help
 Here is a list how the result could look like
 
 ~~~~~~~
-TimeDiscMethod        =      CarpenterRK4-5 ! Specifies the type of time-discretization to be used, e.g. the name of a  
-                                            ! specific Runge-Kutta scheme. Possible values:  
-                                            !   * standardrk3-3  
-                                            !   * carpenterrk4-5  
-                                            !   * niegemannrk4-14  
-                                            !   * toulorgerk4-8c  
-                                            !   * toulorgerk3-7c  
-                                            !   * toulorgerk4-8f  
-                                            !   * ketchesonrk4-20  
-                                            !   * ketchesonrk4-18  
-                                            !   * eulerimplicit  
-                                            !   * cranknicolson2-2  
-                                            !   * esdirk2-3  
-                                            !   * esdirk3-4  
-                                            !   * esdirk4-6  
+TimeDiscMethod        =      CarpenterRK4-5 ! Specifies the type of time-discretization to be used, e.g. the name of a specific Runge-Kutta scheme. Possible values:  
+                                     !   * standardrk3-3  
+                                     !   * carpenterrk4-5  
+                                     !   * niegemannrk4-14  
+                                     !   * toulorgerk4-8c  
+                                     !   * toulorgerk3-7c  
+                                     !   * toulorgerk4-8f  
+                                     !   * ketchesonrk4-20  
+                                     !   * ketchesonrk4-18  
+                                     !   * eulerimplicit  
+                                     !   * cranknicolson2-2  
+                                     !   * esdirk2-3  
+                                     !   * esdirk3-4  
+                                     !   * esdirk4-6  
 ~~~~~~~
 
 The list starts with explicit methods which are followed by the implicit ones starting from ``eulerimplicit``. Implicit time discretization methods allow for a higher CFL number than the explicit ones as they are typically unconditionally stable. The drawback of implicit methods is that they require the solution of large non-equation systems in each timestep.
 In FLEXI the arising non-linear equation system is solved with Newton's method. This leads to the need of a linear solver for each Newton's step. For this the iterative GMRES method is used.
 The use of iterative methods such as Newton's method and GMRES requires the definition of convergence criteria and iteration parameters. Below, they are summarized shortly:
+
 ~~~~~~~
-!============================================================================================================================
+!===========================================
 ! Implicit
-!============================================================================================================================
+!===========================================
 adaptepsNewton        =                   F ! Adaptive Newton convergence criterion by Runge-Kutta error estimation  
 EpsNewton             =             0.1E-02 ! Newton tolerance, only used if adaptepsNewton=F  
 nNewtonIter           =                  50 ! Maximum amount of Newton iterations  
@@ -212,12 +212,12 @@ Note that the adaptive Newton tolerance is only available for ``esdirk2-3``,``es
  
 To accelerate the both, Newton's method and GMRES, different options are included in FLEXI. We start with Newton's method:
 As the convergece property of Newton's method highly depends on the starting value, there are different options to choose. Note that the method 3 (dense output extrapolation) is only available for ``esdirk3-4`` and ``esdirk4-6``.
+
 ~~~~~~~
-!============================================================================================================================
+!===========================================
 ! Implicit
-!============================================================================================================================
-PredictorType         =                   0 ! Type of predictor to be used, 0: use current U, 1: use right hand side, 2:  
-                                            ! polynomial extrapolation, 3: dense output formula of RK scheme  
+!===========================================
+PredictorType         =                   0 ! Type of predictor to be used, 0: use current U, 1: use right hand side, 2: polynomial extrapolation, 3: dense output formula of RK scheme  
 PredictorOrder        =                   0 ! Order of predictor to be used (PredictorType=2)  
 ~~~~~~~
 Typically chosing a predictor is beneficial for 'small' CFL numbers as here the extrapolation gives good results. For 'larger' timesteps choosing a predictor other than the current U can increase the required amount of iterations.
@@ -225,37 +225,32 @@ Typically chosing a predictor is beneficial for 'small' CFL numbers as here the 
 The solution of the linear system arising from Newton's method requires the inversion of the large system matrix. As FLEXI is designed for large scale parallel simulations it is not desirable to build up this large matrix and multiply it with the state vector but to approximate it via a finite difference. Parameters how this finite difference is built are summarized below.
 
 ~~~~~~~
-!============================================================================================================================
+!===========================================
 ! Implicit
-!============================================================================================================================
+!===========================================
 FD_Order              =                   1 ! Order of FD approximation (1/2)  
-Eps_Method            =                   2 ! Method of determining the step size of FD approximation of A*v in GMRES, 1:  
-                                            ! sqrt(machineAccuracy)*scaleps, 2: take norm of solution into account  
+Eps_Method            =                   2 ! Method of determining the step size of FD approximation of A*v in GMRES, 1: sqrt(machineAccuracy)*scaleps, 2: take norm of solution into account  
 scaleps               =                 1.0 ! Scaling factor for step size in FD, mainly used in Eps_Method=1  
 ~~~~~~~
 
 Typically those parameters do not have to be changed. When simulating flows with very low Mach numbers the degradation of the accuracy of the finite difference by machine precision can become an issue. In such cases the order of the finite difference can be increased. The method of how to calculate the step size of the finite difference sometimes has to be adjusted when using nondimensional equations where e.g. the Mach or Reynolds number explicitly occur.
 
 To accelerate the convergence of GMRES a preconditioner can be applied. The preconditioner approximates the inverse of the system matrix (Jacobian). Again, several options are available:
+
 ~~~~~~~
-!============================================================================================================================
+!===========================================
 ! Preconditioner
-!============================================================================================================================
-PrecondType           =                   1 ! Preconditioner Type (0: no Preconditioner, 1: analytic, 2: finite difference, 3:  
-                                            ! compute both and compare)  
+!===========================================
+PrecondType           =                   1 ! Preconditioner Type (0: no Preconditioner, 1: analytic, 2: finite difference, 3: compute both and compare)  
 PrecondIter           =                   1 ! Defines how often preconditioner is built  
-SolveSystem           =                   1 ! Solver of the preconditioned system (0: exact LU inversion, 1: inexact ILU(0)  
-                                            ! inversion, always with NoFillIn=T)  
-DebugMatrix           =                   0 ! Write Jacobians to file for debug purposes (0: no output, 1: non-inverted  
-                                            ! matrix,2: additionally inverted matrix, 3: additionally check inversion  
-                                            ! accuracy)  
+SolveSystem           =                   1 ! Solver of the preconditioned system (0: exact LU inversion, 1: inexact ILU(0) inversion, always with NoFillIn=T)  
+DebugMatrix           =                   0 ! Write Jacobians to file for debug purposes (0: no output, 1: non-inverted matrix,2: additionally inverted matrix, 3: additionally check inversion accuracy)  
 HyperbolicPrecond     =                   F ! Preconditioner only for the hyperbolic flux  
-NoFillIn              =                   F ! Precond for parabolic system forced to have the same sparsity as the Euler  
-                                            ! Precond  
+NoFillIn              =                   F ! Precond for parabolic system forced to have the same sparsity as the Euler Precond  
 DoDisplayPrecond      =                   F ! Display building time of preconditioner  
 ~~~~~~~
 
-The parameters ``PrecondType``,``DebugMatrix`` and  ``DoDisplayPrecond``only have to be changed if analysis concerning the preconditioner shall be conducted. In an application case those parameters should remain unchanged. An important parameter is ``SolveSystem``: Using the exact LU inversion is sometimes necessary to obtain convergence of the linear solver. Nevertheless the application of the inexact ILU(0) is typically faster, especially for higher orders and higer dimensions (3d).
+The parameters ``PrecondType``,``DebugMatrix`` and  ``DoDisplayPrecond``only have to be changed if analysis concerning the preconditioner shall be conducted. In an application case those parameters should remain unchanged. An important parameter is ``SolveSystem``: Using the exact LU inversion is sometimes necessary to obtain convergence of the linear solver. Nevertheless the application of the inexact ILU(0) is typically faster, especially for higher orders and higher dimensions (3d).
 
 ### Runing the simulation with implicit time discretization
 
