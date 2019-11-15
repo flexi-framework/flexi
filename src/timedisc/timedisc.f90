@@ -610,7 +610,7 @@ IF (adaptepsNewton.AND.NewtonConverged) THEN
   CALL GlobalVectorDotProduct(delta_embedded,delta_embedded,nDOFVarProc,epsNewton)
   epsNewton = (MIN(dt*SQRT(epsNewton)/safety,1E-3))
 #if DEBUG
-  SWRITE(*,*) 'epsNewton = ',SQRT(epsNewton)
+  SWRITE(*,*) 'epsNewton = ',epsNewton
 #endif
 END IF
 
