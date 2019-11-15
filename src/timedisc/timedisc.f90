@@ -559,7 +559,7 @@ USE MOD_TimeDisc_Vars     ,ONLY: DFLScale,DFLScale_Readin
 USE MOD_TimeDisc_Vars     ,ONLY: RKb_implicit,RKb_embedded,safety,ESDIRK_gamma
 USE MOD_Mesh_Vars         ,ONLY: nElems
 USE MOD_Implicit          ,ONLY: Newton
-USE MOD_Implicit_Vars     ,ONLY: LinSolverRHS,adaptepsNewton,epsNewton,nDOFVarProc,nGMRESIterdt,NewtonConverged
+USE MOD_Implicit_Vars     ,ONLY: LinSolverRHS,adaptepsNewton,epsNewton,nDOFVarProc,nGMRESIterdt,NewtonConverged,nInnerGMRES
 USE MOD_Predictor         ,ONLY: Predictor,PredictorStoreValues
 USE MOD_Precond           ,ONLY: BuildPrecond
 USE MOD_Precond_Vars      ,ONLY: PrecondIter
@@ -616,9 +616,9 @@ END IF
 
 IF (NewtonConverged) THEN
   ! increase timestep size until target CFLScale is reached
-  CFLScale = MIN(CFLScale_Readin,1.1*CFLScale)
+  CFLScale = MIN(CFLScale_Readin,1.05*CFLScale)
 #if PARABOLIC
-  DFLScale = MIN(DFLScale_Readin,1.1*DFLScale)
+  DFLScale = MIN(DFLScale_Readin,1.05*DFLScale)
 #endif
 ELSE
   ! repeat current timestep with decreased timestep size
@@ -628,8 +628,12 @@ ELSE
 #if PARABOLIC
   DFLScale = 0.5*DFLScale
 #endif
-  IF (CFLScale(0).LT.0.01*CFLScale_Readin(0)) CALL abort(__STAMP__, &
-      'Newton not converged with GMRES Iterations and CFLScale:',nGMRESIterdt,CFLScale(0))
+  NewtonConverged = .TRUE.
+  IF (CFLScale(0).LT.0.01*CFLScale_Readin(0)) THEN
+    CALL abort(__STAMP__, &
+    'Newton not converged with GMRES Iterations of last Newton step and CFL reduction',nInnerGMRES,CFLScale(0)/CFLScale_Readin(0))
+  END IF
+  SWRITE(*,*) 'Attention: Timestep failed, repeating with dt/2!'
 END IF
 
 nGMRESIterdt = 0

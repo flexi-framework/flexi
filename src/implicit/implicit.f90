@@ -476,8 +476,11 @@ DO WHILE (Restart<nRestarts)
   CALL GlobalVectorDotProduct(R0,R0,nDOFVarProc,Norm_R0)
   Norm_R0=SQRT(Norm_R0)
 END DO ! While Restart
-CALL abort(__STAMP__, &
-     'GMRES_M NOT CONVERGED WITH RESTARTS AND GMRES ITERATIONS:',Restart,REAL(nInnerGMRES))
+
+! convergence criterion not reached, nevertheless continue with Newton iterations
+nGMRESRestartGlobal = nGMRESRestartGlobal+Restart+1 
+nGMRESIterGlobal    = nGMRESIterGlobal+nInnerGMRES 
+nGMRESIterdt        = nGMRESIterdt + nInnerGMRES
 END SUBROUTINE GMRES_M
 
 
