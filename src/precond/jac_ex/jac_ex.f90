@@ -58,7 +58,7 @@ USE MOD_ReadInTools        ,ONLY: GETLOGICAL
 USE MOD_Interpolation_Vars ,ONLY: L_minus,L_plus
 USE MOD_DG_Vars            ,ONLY: L_Hatminus,L_Hatplus
 #if PARABOLIC
-USE MOD_Jac_br2            ,ONLY: Build_BR2_SurfTerms
+USE MOD_Jac_Ex_br2         ,ONLY: Build_BR2_SurfTerms
 USE MOD_Precond_Vars       ,ONLY: HyperbolicPrecond
 #endif
 #if FV_ENABLED && FV_RECONSTRUCT
@@ -147,7 +147,7 @@ USE MOD_Implicit_Vars             ,ONLY:nDOFVarElem
 USE MOD_JacSurfInt                ,ONLY:JacSurfInt
 #if PARABOLIC
 USE MOD_Precond_Vars              ,ONLY:HyperbolicPrecond
-USE MOD_Jac_br2                   ,ONLY:FillJacLiftingFlux
+USE MOD_Jac_Ex_br2                ,ONLY:FillJacLiftingFlux
 USE MOD_Jac_Ex_Vol                ,ONLY:DGVolIntGradJac
 #endif
 USE MOD_Jac_Ex_Vol                ,ONLY:DGVolIntJac

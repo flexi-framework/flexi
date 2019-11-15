@@ -15,7 +15,7 @@
 !==================================================================================================================================
 !> Contains the routines for the derivative of the fv_reconstruction procedure
 !==================================================================================================================================
-MODULE MOD_Jac_Reconstruction
+MODULE MOD_Jac_Ex_Reconstruction
 #if FV_ENABLED && FV_RECONSTRUCT
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
@@ -728,4 +728,4 @@ END SUBROUTINE JacFVGradients_nb
 #endif /*PARABOLIC*/
 #endif /*FV_ENABLED && FV_RECONSTRUCT*/
 
-END MODULE MOD_Jac_Reconstruction
+END MODULE MOD_Jac_Ex_Reconstruction

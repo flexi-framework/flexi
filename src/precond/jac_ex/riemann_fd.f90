@@ -17,7 +17,7 @@
 !> Contains the computation of the Jacobian of the numerical flux function. Since we don't want to derive every single one of them, 
 !> we employ a finite difference approximation that works for all flux functions.
 !===================================================================================================================================
-MODULE MOD_Riemann_Deriv
+MODULE MOD_Riemann_FD
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -160,5 +160,5 @@ END IF
 #endif
 END SUBROUTINE Riemann_FD
 
-END MODULE MOD_Riemann_Deriv
+END MODULE MOD_Riemann_FD
 

@@ -22,7 +22,7 @@
 !> (in comparison to br2) is done. For Gauss-Lobatto nodes this approach gives correct results except for for the DOFs at the
 !> corners as here the dependency of the DOF on multiple surfaces is done seperately.
 !===================================================================================================================================
-MODULE MOD_Jac_br2
+MODULE MOD_Jac_Ex_br2
 #if PARABOLIC
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
@@ -853,4 +853,4 @@ END DO !iLocSide
 
 END SUBROUTINE dQOuter
 #endif /*PARABOLIC*/
-END MODULE MOD_Jac_br2
+END MODULE MOD_Jac_Ex_br2
