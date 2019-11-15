@@ -156,6 +156,8 @@ IF(TimeDiscType.EQ.'ESDIRK') THEN
     adaptepsNewton = .FALSE.
   END IF
   nNewtonIter    = GETINT('nNewtonIter','50')
+  ! initialize identifier if Newton's method has failed
+  NewtonConverged = .TRUE.
 
   ! Parameters for the finite difference approximation of A*v (matrix free GMRES) 
   scaleps        = GETREAL('scaleps','1.') ! (A*v = (R(Xk+eps)-R(Xk))/(scaleps*eps))
@@ -228,7 +230,7 @@ USE MOD_DG_Vars       ,ONLY: U,Ut
 USE MOD_Mesh_Vars     ,ONLY: nElems
 USE MOD_Implicit_Vars ,ONLY: EpsNewton,Xk,R_Xk,nNewtonIter,nNewtonIterGlobal,nInnerNewton,nDOFVarGlobal,nDOFVarProc
 USE MOD_Implicit_Vars ,ONLY: gammaEW,EpsGMRES,EisenstatWalker,LinSolverRHS,U_predictor
-USE MOD_Implicit_Vars ,ONLY: PredictorType,Eps_Method,Norm_Xk
+USE MOD_Implicit_Vars ,ONLY: PredictorType,Eps_Method,Norm_Xk,NewtonConverged
 USE MOD_TimeDisc_Vars ,ONLY: dt
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -246,6 +248,7 @@ REAL             :: DeltaX(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
 REAL             :: eta_k,etaA,etaB,etaMax
 INTEGER          :: i,j,k,iElem,iVar
 !===================================================================================================================================
+NewtonConverged = .TRUE.
 !Initialization for the Newton iterations
 
 CALL DGTimeDerivative_weakForm(t)
@@ -354,8 +357,7 @@ END DO
 nNewtonIterGlobal=nNewtonIterGlobal+nInnerNewton
 ! Check if we left the loop because the maximum number of newton iterations have been reached
 IF((Norm_F_Xk.GT.EpsNewton*Norm_F_X0).AND.(nInnerNewton.EQ.nNewtonIter)) THEN
-  CALL abort(__STAMP__, &
-  'NEWTON NOT CONVERGED WITH NEWTON ITERATIONS AND RESIDUAL REDUCTION F_Xk/F_X0:',nInnerNewton,SQRT(Norm_F_Xk/Norm_F_X0))
+  NewtonConverged = .FALSE.
 END IF
 
 END SUBROUTINE Newton

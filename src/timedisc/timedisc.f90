@@ -432,7 +432,7 @@ USE MOD_FV_Vars      ,ONLY: FV_toDGinRK
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)  :: t                                     !< current simulation time
+REAL,INTENT(INOUT)  :: t                                     !< current simulation time
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL     :: Ut_temp(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) ! temporal variable for Ut
@@ -493,7 +493,7 @@ USE MOD_FV_Vars      ,ONLY: FV_toDGinRK
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)  :: t                                     !< current simulation time
+REAL,INTENT(INOUT)  :: t                                     !< current simulation time
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL     :: S2(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
@@ -552,18 +552,21 @@ USE MOD_Globals
 USE MOD_Mathtools         ,ONLY: GlobalVectorDotProduct
 USE MOD_DG                ,ONLY: DGTimeDerivative_weakForm
 USE MOD_DG_Vars           ,ONLY: U,Ut
-USE MOD_TimeDisc_Vars     ,ONLY: dt,nRKStages,RKA_implicit,RKc_implicit,iter
+USE MOD_TimeDisc_Vars     ,ONLY: dt,nRKStages,RKA_implicit,RKc_implicit,iter,CFLScale,CFLScale_Readin
+#if PARABOLIC
+USE MOD_TimeDisc_Vars     ,ONLY: DFLScale,DFLScale_Readin
+#endif
 USE MOD_TimeDisc_Vars     ,ONLY: RKb_implicit,RKb_embedded,safety,ESDIRK_gamma
 USE MOD_Mesh_Vars         ,ONLY: nElems
 USE MOD_Implicit          ,ONLY: Newton
-USE MOD_Implicit_Vars     ,ONLY: LinSolverRHS,adaptepsNewton,epsNewton,nDOFVarProc,nGMRESIterdt
+USE MOD_Implicit_Vars     ,ONLY: LinSolverRHS,adaptepsNewton,epsNewton,nDOFVarProc,nGMRESIterdt,NewtonConverged
 USE MOD_Predictor         ,ONLY: Predictor,PredictorStoreValues
 USE MOD_Precond           ,ONLY: BuildPrecond
 USE MOD_Precond_Vars      ,ONLY: PrecondIter
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN) :: t   !< current simulation time
+REAL,INTENT(INOUT) :: t   !< current simulation time
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL    :: Ut_implicit(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems,1:nRKStages) ! temporal variable for Ut_implicit
@@ -578,26 +581,28 @@ tStage                   = t
 Un                       = U
 Ut_implicit(:,:,:,:,:,1) = Ut
 DO iStage=2,nRKStages
-  ! Time of current stage
-  tStage = tStage + RKc_implicit(iStage)*dt
-  ! Compute RHS for linear solver
-  LinSolverRHS=Un
-  DO iCounter=1,iStage-1
-    LinSolverRHS = LinSolverRHS + dt*(RKA_implicit(iStage,iCounter)*Ut_implicit(:,:,:,:,:,iCounter))
-  END DO
-  ! Get predictor of u^s+1
-  CALL Predictor(tStage,iStage)
-  ! Solve to new stage 
-  CALL Newton(tStage,RKA_implicit(iStage,iStage))
-  ! Store old values for use in next stages
-  !CALL DGTimeDerivative_weakForm(tStage) ! already set in last Newton iteration
-  Ut_implicit(:,:,:,:,:,iStage)=Ut
-  ! Store predictor
-  CALL PredictorStoreValues(Ut_implicit,Un,tStage,iStage)
+  IF (NewtonConverged) THEN
+    ! Time of current stage
+    tStage = tStage + RKc_implicit(iStage)*dt
+    ! Compute RHS for linear solver
+    LinSolverRHS=Un
+    DO iCounter=1,iStage-1
+      LinSolverRHS = LinSolverRHS + dt*(RKA_implicit(iStage,iCounter)*Ut_implicit(:,:,:,:,:,iCounter))
+    END DO
+    ! Get predictor of u^s+1
+    CALL Predictor(tStage,iStage)
+    ! Solve to new stage 
+    CALL Newton(tStage,RKA_implicit(iStage,iStage))
+    ! Store old values for use in next stages
+    !CALL DGTimeDerivative_weakForm(tStage) ! already set in last Newton iteration
+    Ut_implicit(:,:,:,:,:,iStage)=Ut
+    ! Store predictor
+    CALL PredictorStoreValues(Ut_implicit,Un,tStage,iStage)
+  END IF
 END DO
 
 ! Adaptive Newton tolerance, see: Kennedy,Carpenter: Additive Runge-Kutta Schemes for Convection-Diffusion-Reaction Equations
-IF(adaptepsNewton)THEN
+IF (adaptepsNewton.AND.NewtonConverged) THEN
   delta_embedded = 0.
   DO iStage=1,nRKStages
     delta_embedded = delta_embedded + (RKb_implicit(iStage)-RKb_embedded(iStage)) * Ut_implicit(:,:,:,:,:,iStage)
@@ -607,6 +612,24 @@ IF(adaptepsNewton)THEN
 #if DEBUG
   SWRITE(*,*) 'epsNewton = ',SQRT(epsNewton)
 #endif
+END IF
+
+IF (NewtonConverged) THEN
+  ! increase timestep size until target CFLScale is reached
+  CFLScale = MIN(CFLScale_Readin,1.1*CFLScale)
+#if PARABOLIC
+  DFLScale = MIN(DFLScale_Readin,1.1*DFLScale)
+#endif
+ELSE
+  ! repeat current timestep with decreased timestep size
+  U = Un
+  t = t-dt
+  CFLScale = 0.5*CFLScale
+#if PARABOLIC
+  DFLScale = 0.5*DFLScale
+#endif
+  IF (CFLScale(0).LT.0.01*CFLScale_Readin(0)) CALL abort(__STAMP__, &
+      'Newton not converged with GMRES Iterations and CFLScale:',nGMRESIterdt,CFLScale(0))
 END IF
 
 nGMRESIterdt = 0
@@ -622,9 +645,9 @@ SUBROUTINE FillCFL_DFL(Nin_CFL,Nin_DFL)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_TimeDisc_Vars,ONLY:CFLScale,CFLScaleAlpha
+USE MOD_TimeDisc_Vars,ONLY:CFLScale,CFLScale_Readin,CFLScaleAlpha
 #if PARABOLIC
-USE MOD_TimeDisc_Vars,ONLY:DFLScale,DFLScaleAlpha,RelativeDFL
+USE MOD_TimeDisc_Vars,ONLY:DFLScale,DFLScale_Readin,DFLScaleAlpha,RelativeDFL
 #endif /*PARABOLIC*/
 #if FV_ENABLED
 USE MOD_TimeDisc_Vars,ONLY:CFLScaleFV
@@ -657,6 +680,7 @@ END IF
 !scale with 2N+1
 CFLScale(0) = CFLScale(0)/(2.*Nin_CFL+1.)
 SWRITE(UNIT_stdOut,'(A,2ES16.7)') '   CFL (DG/FV):',CFLScale
+CFLScale_Readin = CFLScale
 
 #if PARABOLIC
 !########################### DFL ########################################
@@ -675,6 +699,7 @@ IF((Nin_DFL.GT.10).OR.(DFLScale(0).GT.alpha))THEN
 END IF
 DFLScale(0) = DFLScale(0)/(2.*Nin_DFL+1.)**2
 SWRITE(UNIT_stdOut,'(A,2ES16.7)') '   DFL (DG/FV):',DFLScale
+DFLScale_Readin = DFLScale
 #else
 dummy = Nin_DFL ! prevent compile warning
 #endif /*PARABOLIC*/

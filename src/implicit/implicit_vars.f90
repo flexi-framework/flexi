@@ -48,6 +48,7 @@ INTEGER                               :: nNewtonIterGlobal          !< counter o
 INTEGER                               :: nInnerNewton               !< counter of Newton iterations for current stage
 REAL                                  :: epsNewton                  !< newton relative epsilon
 LOGICAL                               :: adaptepsNewton             !< adaptive eps Newton calculated by the embedded RK
+LOGICAL                               :: NewtonConverged            !< .FALSE. if Newton's method failed
 ! GMRES variables
 INTEGER                               :: nRestarts                  !< max numbers of GMRES restarts
 INTEGER                               :: nKDim                      !< max dimension of Krylov space before restart
