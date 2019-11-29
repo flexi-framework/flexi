@@ -228,12 +228,12 @@ The solution of the linear system arising from Newton's method requires the inve
 !===========================================
 ! Implicit
 !===========================================
-FD_Order              =                   1 ! Order of FD approximation (1/2)  
+FD_Order              =                   2 ! Order of FD approximation (1/2)  
 Eps_Method            =                   2 ! Method of determining the step size of FD approximation of A*v in GMRES, 1: sqrt(machineAccuracy)*scaleps, 2: take norm of solution into account  
 scaleps               =                 1.0 ! Scaling factor for step size in FD, mainly used in Eps_Method=1  
 ~~~~~~~
 
-Typically those parameters do not have to be changed. When simulating flows with very low Mach numbers the degradation of the accuracy of the finite difference by machine precision can become an issue. In such cases the order of the finite difference can be increased. The method of how to calculate the step size of the finite difference sometimes has to be adjusted when using nondimensional equations where e.g. the Mach or Reynolds number explicitly occur.
+In general, the order of the finite difference approximation can be kept at 1. But in flows with very low Mach numbers or when very little change in a stationary solution is happening, the degradation of the accuracy of the finite difference by machine precision can become an issue. In such cases the order of the finite difference can be increased, as it is done in this tutorial. The method of how to calculate the step size of the finite difference sometimes has to be adjusted when using nondimensional equations where e.g. the Mach or Reynolds number explicitly occur.
 
 To accelerate the convergence of GMRES a preconditioner can be applied. The preconditioner approximates the inverse of the system matrix (Jacobian). Again, several options are available:
 
@@ -255,4 +255,6 @@ The parameters ``PrecondType``,``DebugMatrix`` and  ``DoDisplayPrecond``only hav
 ### Runing the simulation with implicit time discretization
 
 The implicit method FLEXI uses (Newton-GMRES) is well suited for unsteady calculations as here the initial guess for Newton's method is relatively good. Starting a simulation from an unphysical homogeneous state causes very poor convergence properties of Newton's method. Hence, it is beneficial to start the current simulation with an explicit time discretization method and than do a restart after several timesteps have been calculated.
-For the current simulation we suggest to simulate until ``tend=0.02`` with an explicit scheme and than use this state for a restart with ``eulerimplicit``.
+For the current simulation we suggest to simulate until ``tend=0.02`` with an explicit scheme and than use this state for a restart with ``eulerimplicit``. The CFL number can then be massively increased, e.g. to $100$. The following plot shows how the residuals of the different conservative variables then decreases over time. The residuals are the $L_2$-Norm of the spatial DG operator at a stage of the time-discretization method. They decrease by several orders of magnitude before reaching a plateau. Here, the Newton algorithm will detect that nearly no change is happening in the iterative procedure, and no iterations will be performed any more. A stationary solution has been reached.
+
+![Residuals over time for the implicit part of the flat plate computation](tutorials/12_flatPlate/residuals.png)
