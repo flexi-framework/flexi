@@ -291,7 +291,7 @@ END IF
 ! |F_Xk| < epsNewton * |F_Xk|
 CALL GlobalVectorDotProduct(F_X0,F_X0,nDOFVarProc,Norm2_F_X0)
 Norm_F_X0=SQRT(Norm2_F_X0)
-IF (Norm_F_X0.LE.1.E-13*nDOFVarGlobal) THEN ! do not iterate, as U is already the implicit solution
+IF (Norm_F_X0.LE.1.E-9*nDOFVarGlobal) THEN ! do not iterate, as U is already the implicit solution
   Norm_F_Xk=0.
 ELSE ! we need iterations
   IF(PredictorType.NE.0)THEN
