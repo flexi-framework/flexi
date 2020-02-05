@@ -65,7 +65,7 @@ Table: OpenSUSE/CentOS packages.\label{tab:installation_prereqs_redhat}
 x: required, o: optional, -: not available
 
 
-Finally, we need to install the FFTW library, an open-source library for computing the discrete Fourier transform (DFT) in one or more dimensions. Download the source code of the latest release from <http://www.fftw.org/download.html> and follow the installation instructions there. Make sure to enable the MPI-flag when configuring, such that the installation process usually boils down to
+Finally, for certain features of the post-processing tools, we need to install the FFTW library, an open-source library for computing the discrete Fourier transform (DFT) in one or more dimensions. Download the source code of the latest release from <http://www.fftw.org/download.html> and follow the installation instructions there. Make sure to enable the MPI-flag when configuring, such that the installation process usually boils down to
 
 ~~~~~~~
 ./configure --enable-mpi
