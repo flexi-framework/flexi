@@ -348,7 +348,7 @@ DO iElem=1,nElems
                            tmp(:,:,:,0),DetJac_Ref(:,:,:,0,iElem))
 #endif
   END IF
-  ! interpolate detJac_ref to the solution points
+  ! project detJac_ref onto the solution basis
   CALL ChangeBasisVolume(1,NgeoRef,PP_N,Vdm_NgeoRef_N,DetJac_Ref(:,:,:,:,iElem),DetJac_N)
 
   ! assign to global Variable sJ
