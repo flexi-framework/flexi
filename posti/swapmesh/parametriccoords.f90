@@ -57,7 +57,9 @@ USE MOD_Interpolation,         ONLY: GetVandermonde,GetDerivativeMatrix
 USE MOD_Interpolation_Vars,    ONLY: NodeTypeCL
 USE MOD_ChangeBasis,           ONLY: ChangeBasis3D
 USE MOD_Mathtools,             ONLY: INVERSE
-use omp_lib
+#if USE_OPENMP
+use OMP_Lib
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -89,7 +91,7 @@ INTEGER            :: ElemCounter,nEqualElems
 INTEGER            :: nNotfound
 REAL               :: Time
 !===================================================================================================================================
-Time=FLEXITIME()
+Time=OMP_FLEXITIME()
 ! Prepare CL basis evaluation
 CALL ChebyGaussLobNodesAndWeights(NGeoOld,Xi_CLNGeo)
 CALL BarycentricWeights(NGeoOld,Xi_CLNGeo,wBary_CLNGeo)
@@ -120,7 +122,7 @@ InterToElem=-999
 IPDone=.FALSE.            ! Mark single interpolation point as done
 ElemDone=.FALSE.          ! Mark new element as done
 ElemDoneOld=.FALSE.       ! Mark old element as done
-StartTime=FLEXITIME()
+StartTime=OMP_FLEXITIME()
 ElemCounter=0
 nEqualElems=0
 equalElem=-999
@@ -282,8 +284,8 @@ DO iElemOld=1,nElemsOld
 !$OMP CRITICAL
   ElemCounter=ElemCounter+1
   IF(MOD(ElemCounter,1000).EQ.0)THEN
-    WRITE(*,*) ElemCounter,'elements of',nElemsOld-nEqualElems,' processed. Time= ', FLEXITIME()-StartTime
-    StartTime=FLEXITIME()
+    WRITE(*,*) ElemCounter,'elements of',nElemsOld-nEqualElems,' processed. Time= ', OMP_FLEXITIME()-StartTime
+    StartTime=OMP_FLEXITIME()
   END IF
 !$OMP END CRITICAL
 END DO ! iElemOld
@@ -315,7 +317,7 @@ DO iElemNew=1,nElemsNew
   END DO; END DO; END DO ! ii,jj,kk (IP loop)
 END DO
 WRITE(*,*) nNotFound,' nodes not found.'
-Time=FLEXITIME() -Time
+Time=OMP_FLEXITIME() -Time
 WRITE(UNIT_stdOut,'(A,F0.3,A)')' DONE  [',Time,'s]'
 END SUBROUTINE GetParametricCoordinates
 
