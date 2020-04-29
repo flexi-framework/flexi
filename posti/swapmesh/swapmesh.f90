@@ -155,7 +155,11 @@ END IF
 ! Initialize new mesh
 Time=FLEXITIME()
 SWRITE(UNIT_stdOut,'(A)') ' INIT NEW MESH ...'
-CALL ReadMeshCoords(MeshFileNew,useCurvedsNew,NGeoNew,nElemsNew,xCLNew,Elem_IJK)
+IF (ExtrudeTo3D) THEN
+  CALL ReadMeshCoords(MeshFileNew,useCurvedsNew,NGeoNew,nElemsNew,xCLNew,Elem_IJK)
+ELSE
+  CALL ReadMeshCoords(MeshFileNew,useCurvedsNew,NGeoNew,nElemsNew,xCLNew)
+END IF
 SWRITE(UNIT_stdOut,*)'done in ',FLEXITIME()-Time
 
 ! Set offset elem and local and global number of elements in mesh vars (later needed for output routine)
