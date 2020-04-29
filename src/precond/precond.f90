@@ -181,7 +181,7 @@ USE MOD_FV_Vars       ,ONLY:FV_dx_master
 #endif /*MPI*/
 #if FV_ENABLED && FV_RECONSTRUCT
 USE MOD_DG_Vars       ,ONLY:UPrim
-USE MOD_Jac_Reconstruction,ONLY:Fill_ExtendedState
+USE MOD_Jac_Ex_Reconstruction,ONLY:Fill_ExtendedState
 USE MOD_Jac_Ex_Vars   ,ONLY:UPrim_extended,FV_sdx_XI_extended,FV_sdx_ETA_extended
 #if PP_dim == 3
 USE MOD_Jac_Ex_Vars   ,ONLY:FV_sdx_ZETA_extended
