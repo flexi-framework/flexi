@@ -12,7 +12,7 @@ Generally following types are used:
 INTEGER = 1
 REAL    = 1.23456
 LOGICAL = T         ! True
-LOGICAL =           ! False
+LOGICAL = F         ! False
 STRING  = FLEXI
 VECTOR  = (/1.0,2.0,3.0/)  
 ~~~~~~~

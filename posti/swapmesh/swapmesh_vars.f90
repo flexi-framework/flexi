@@ -30,6 +30,9 @@ REAL                :: abortTol                  !< max tol before code aborts (
 REAL                :: displacement(3)           !< optional displacement vector for the old mesh
 LOGICAL             :: printTroublemakers=.TRUE. !< print warnings for troublemakers
                                                  !< (very time consuming for many new points outisde the old mesh)
+LOGICAL             :: ExtrudeTo3D               !< Switch to perform an extrusion of a one-layer mesh to the 3D version
+INTEGER,ALLOCATABLE :: Elem_IJK(:,:)             !< IJK sorting of new mesh
+INTEGER             :: ExtrudeK                  !< Layer which is used in extrusion
 
 CHARACTER(LEN=255)  :: MeshFileOld               !< Old mesh file (optional, only to overwrite mesh from old state)
 CHARACTER(LEN=255)  :: MeshFileNew               !< New mesh file
