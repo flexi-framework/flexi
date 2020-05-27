@@ -23,49 +23,43 @@ PROGRAM init_hit
 USE MOD_Preproc
 USE MOD_Globals
 USE MOD_Init_HIT_Vars
-USE MOD_DG_Vars,                 ONLY: U              
-USE MOD_Interpolation_Vars      ,ONLY: NodeType
-USE MOD_FFT,                     ONLY: InitFFT,Rogallo,FinalizeFFT                     
-USE MOD_Mesh,                    ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
+USE MOD_ReadInTools
+USE MOD_Commandline_Arguments
+USE MOD_DG_Vars,                 ONLY: U
 USE MOD_Mesh_Vars,               ONLY: nElems,Elem_xGP
+USE MOD_FFT,                     ONLY: InitFFT,Rogallo,FinalizeFFT
+USE MOD_Mesh,                    ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
 USE MOD_Output,                  ONLY: DefineParametersOutput,InitOutput,FinalizeOutput
-USE MOD_Output_Vars,             ONLY: ProjectName
 USE MOD_Interpolation,           ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
 USE MOD_IO_HDF5,                 ONLY: DefineParametersIO_HDF5,InitIOHDF5
 USE MOD_HDF5_Output,             ONLY: WriteState
-USE MOD_Commandline_Arguments
 USE MOD_StringTools,             ONLY: STRICMP,GetFileExtension
-USE MOD_ReadInTools
-USE FFTW3
+USE MOD_MPI,                     ONLY: InitMPI,DefineParametersMPI
 #if USE_MPI
-USE MOD_MPI,                     ONLY: DefineParametersMPI,InitMPI
 USE MOD_MPI,                     ONLY: InitMPIvars,FinalizeMPI
 #endif
-! IMPLICIT VARIABLE HANDLING
+USE FFTW3
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                            :: i,j,k,iw,jw,kw,iElem,q
-INTEGER                            :: nVar=5,iter
-REAL                               :: wavenumber,Time
+REAL                               :: wavenumber
 COMPLEX                            :: basis
 !===================================================================================================================================
-
 CALL SetStackSizeUnlimited()
 CALL InitMPI()
-!IF (nProcessors.GT.1) CALL CollectiveStop(__STAMP__, &
-!     'This tool is designed only for single execution!')
+IF (nProcessors.GT.1) CALL CollectiveStop(__STAMP__, &
+  'This tool does currently not work with more than 1 Proc!')
 
 CALL ParseCommandlineArguments()
 
-
 SWRITE(UNIT_stdOut,'(132("="))')
 SWRITE(UNIT_stdOut,'(A)') &
-    " ||==========================================||                                                           " 
+    " ||==========================================||                                                           "
 SWRITE(UNIT_stdOut,'(A)') &
-    " || Generate Spec Data for FLEXI Hit Restart ||                                                           " 
+    " || Generate Spec Data for FLEXI Hit Restart ||                                                           "
 SWRITE(UNIT_stdOut,'(A)') &
-    " ||==========================================||                                                           " 
+    " ||==========================================||                                                           "
 SWRITE(UNIT_stdOut,'(A)')
 SWRITE(UNIT_stdOut,'(132("="))')
 
@@ -78,10 +72,10 @@ CALL DefineParametersOutput()
 CALL DefineParametersMesh()
 !================================ 
 CALL prms%SetSection("initHIT")
-CALL prms%CreateStringOption(  "MeshFile"        , "Desired mesh file for initial hit solution.")
-CALL prms%CreateIntOption(     "N_FFT"           , "Polynomial degree to perform DFFT on")
-CALL prms%CreateIntOption(     "InitSpec"        , "Initial energy spectrum (1) Rogallo, (2) blaisdell, (3) Chasnov,&
-                                                   & (4) Inf interial range .")
+CALL prms%CreateStringOption( "MeshFile"   , "Desired mesh file for initial hit solution.")
+CALL prms%CreateIntOption(    "N_FFT"      , "Polynomial degree to perform DFFT on")
+CALL prms%CreateIntOption(    "InitSpec"   , "Initial energy spectrum (1) Rogallo, (2) blaisdell, (3) Chasnov,&
+                                             & (4) Inf interial range .")
 
 ! check for command line argument --help or --markdown
 IF (doPrintHelp.GT.0) THEN
@@ -97,9 +91,9 @@ CALL prms%read_options(Args(1))
 ParameterFile = Args(1)
 
 ! Readin Parameters 
-N_FFT         = GETINT('N_FFT')
-InitSpec      = GETINT('InitSpec')
-MeshFile      = GETSTR('MeshFile')
+N_FFT    = GETINT('N_FFT')
+InitSpec = GETINT('InitSpec')
+MeshFile = GETSTR('MeshFile')
 
 CALL InitIOHDF5()
 CALL InitInterpolation()
@@ -111,27 +105,27 @@ CALL InitMPIvars()
 CALL InitMesh(meshMode=2,MeshFile_IN=MeshFile)
 
 IF(MPIRoot) THEN
-  CALL InitFFT()  
+  CALL InitFFT()
 END IF
 #if USE_MPI
 CALL MPI_BCAST(endw,3,MPI_INTEGER,0,MPI_COMM_WORLD,iError)
 #endif
-IF (.NOT.(ALLOCATED(U_FFT))) ALLOCATE(U_FFT(1:PP_nVar,1:Endw(1),1:Endw(2),1:Endw(3)))
+ALLOCATE(U_FFT(1:PP_nVar,1:Endw(1),1:Endw(2),1:Endw(3)))
 
 
-do iter =1,1
 IF(MPIRoot) THEN
   CALL Rogallo()
 END IF
 
-IF (.NOT.(ALLOCATED(Uloc_c))) ALLOCATE(Uloc_c(1:nVar,0:N,0:N,0:N))
-IF (.NOT.(ALLOCATED(U_k))) ALLOCATE(U_k(1:nVar,1:endw(1),1:endw(2),0:N))
-IF (.NOT.(ALLOCATED(U_j))) ALLOCATE(U_j(1:nVar,1:endw(1),0:N,0:N))
-IF (.NOT.(ALLOCATED(U))) ALLOCATE(U(1:nVar,0:N,0:N,0:N,nElems))
+ALLOCATE(U(     1:PP_nVar,0:N,0:N,0:N,nElems))
+ALLOCATE(Uloc_c(1:PP_nVar,0:N,0:N,0:N))
+ALLOCATE(U_k(   1:PP_nVar,1:endw(1),1:endw(2),0:N))
+ALLOCATE(U_j(   1:PP_nVar,1:endw(1),0:N,0:N))
 
-U = 0.
-U_FFT = 0.
+U      = 0.
+U_FFT  = 0.
 Uloc_c = 0.
+
 IF(MPIRoot) THEN
   DO q=1,PP_nVar! fft of old solution to fourier modes
     CALL DFFTW_PLAN_DFT_R2C_3D(plan,N_FFT,N_FFT,N_FFT,Uloc(q,:,:,:),U_FFT(q,:,:,:),FFTW_ESTIMATE)
@@ -191,9 +185,7 @@ END DO !iElem
 
 
 ! Write State-File to initialize HIT
-Time=0.
-CALL WriteState(TRIM(MeshFile),Time,Time,.FALSE.)
-end DO
+CALL WriteState(TRIM(MeshFile),0.,0.,.FALSE.)
 
 CALL FinalizeParameters()
 CALL FinalizeInterpolation()
@@ -212,8 +204,3 @@ SWRITE(UNIT_stdOut,'(A)') ' initHIT FINISHED! '
 SWRITE(UNIT_stdOut,'(132("="))')
 
 END PROGRAM init_hit
-
-
-
-
-

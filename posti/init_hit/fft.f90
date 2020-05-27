@@ -15,7 +15,6 @@
 
 MODULE MOD_FFT
 ! MODULES
-! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -48,12 +47,9 @@ SUBROUTINE InitFFT()
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Init_Hit_Vars
-! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
+! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER  :: i,j,k
@@ -62,17 +58,17 @@ SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT BASIS...'
 
 ! No Spectral code without pi and 2pi
-TwoPi  = 2.*PP_Pi
-II     = cmplx(0.,1.0)
-kmax   = NINT(sqrt(REAL(3*N_FFT**2)))+1
+TwoPi       = 2.*PP_Pi
+II          = CMPLX(0.,1.0)
+kmax        = NINT(SQRT(REAL(3*N_FFT**2)))+1
 scalefactor = 1/N_FFT**3
 
-! ALLOCATE the solution array Uloc
+! Allocate the solution array Uloc
 ALLOCATE(Uloc(1:PP_nVar,1:N_FFT,1:N_FFT,1:N_FFT))
-! allocate an array for the physical position of the nodes per proc
+! Allocate an array for the physical position of the nodes per proc
 ALLOCATE(Localxyz(1:3,1:N_FFT,1:N_FFT,1:N_FFT))
 Nc=FLOOR(REAL(N_FFT)/2.)
-Endw(1)=Nc+1
+Endw(1)  =Nc+1
 Endw(2:3)=N_FFT
 ALLOCATE(Localk(1:4,1:Endw(1),1:Endw(2),1:Endw(3)))
 
@@ -86,18 +82,19 @@ DO i=1,Endw(1)
       ! ny waves are stored, order: 0,1,2,..,Nyquist,..,..,-2,-1, e.g Ny=4: 0,1,2,-1, Ny=7: 0,1,2,3,-3,-2,-1
       IF (j.LE.Nc+1) THEN
         localk(2,i,j,k)=j-1
-      ELSE 
+      ELSE
         localk(2,i,j,k)=-(N_FFT+1-j)
       END IF
       IF (k.LE.Nc+1) THEN
         localk(3,i,j,k)=k-1
-      ELSE 
+      ELSE
         localk(3,i,j,k)=-(N_FFT+1-k)
       END IF
-      localk(4,i,j,k)=NINT(sqrt(REAL(localk(1,i,j,k)*localk(1,i,j,k)&
-                                    +localk(2,i,j,k)*localk(2,i,j,k)+localk(3,i,j,k)*localk(3,i,j,k))))
-    END DO 
-  END DO 
+      localk(4,i,j,k)=NINT(SQRT(REAL(localk(1,i,j,k)*localk(1,i,j,k) &
+                                    +localk(2,i,j,k)*localk(2,i,j,k) &
+                                    +localk(3,i,j,k)*localk(3,i,j,k))))
+    END DO
+  END DO
 END DO
 
 DO i=1,N_FFT
@@ -110,12 +107,10 @@ DO i=1,N_FFT
   END DO
 END DO
 
-
 ! Prepare local Array for result of Forward FFT (so for wavespace results) 
 ALLOCATE(F_vv(1:3,1:3,1:endw(1),1:endw(2),1:endw(3)))
-ALLOCATE(fhat(1:3,1:endw(1),1:endw(2),1:endw(3)))
-ALLOCATE(phat(1:endw(1),1:endw(2),1:endw(3)))
-GlobalMeshOffset(1:3)=0
+ALLOCATE(fhat(    1:3,1:endw(1),1:endw(2),1:endw(3)))
+ALLOCATE(phat(        1:endw(1),1:endw(2),1:endw(3)))
 
 SWRITE(UNIT_stdOut,'(A)')' INIT BASIS DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
@@ -130,39 +125,39 @@ SUBROUTINE Rogallo
 USE MOD_Globals
 USE MOD_Init_Hit_Vars,      ONLY: endw,localk,U_FFT,TwoPi,II,Uloc,N_FFT,kmax,Nc,InitSpec,plan
 USE FFTW3
-! IMPLICIT VARIABLE HANDLING
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
+! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER :: i,j,k
+INTEGER :: nn,seed1
 REAL    :: Theta1,Theta2,Phi,kw,kw2,kk(1:3),r,Nenner,a1,a2,a3,a4,a0,E11,specscale,k0,kp,u0
 REAL    :: a,e,kn,ke,nu,l
 COMPLEX :: alpha,beta
-REAL,ALLOCATABLE:: E_P(:)
-INTEGER,ALLOCATABLE:: kperShell(:)
-integer, allocatable :: seed(:)
-integer :: nn,seed1
+INTEGER,ALLOCATABLE :: kperShell(:)
+INTEGER,ALLOCATABLE :: seed(:)
+REAL,   ALLOCATABLE :: E_P(:)
 !===================================================================================================================================
 ALLOCATE(kperShell(0:kmax+1))
 kperShell=0
-DO i=-N_FFT,N_FFT; DO j=-N_FFT,N_FFT; DO k=-N_FFT,N_FFT   
+DO i=-N_FFT,N_FFT; DO j=-N_FFT,N_FFT; DO k=-N_FFT,N_FFT
   r=SQRT(REAL(i**2+j**2+k**2))
   kperShell(NINT(r))=kperShell(NINT(r))+1
 END DO; END DO; END DO
 
 ALLOCATE(E_P(0:kmax+3))
 E_P=0.
+
+! Choose energy spectrum
 SELECT CASE(InitSpec)
- CASE(1)
-   a0=4.7935398
-   a1=-1.3284141
-   a2=-0.2146974
-   a3=-0.0314604
-   a4=-0.0169870
+ CASE(1) ! Rogallo
+   SWRITE(*,*) "SPECTRUM: Rogallo"
+   a0 =  4.7935398
+   a1 = -1.3284141
+   a2 = -0.2146974
+   a3 = -0.0314604
+   a4 = -0.0169870
    DO i=1,kmax+3
      r=REAL(i)
      ! adding a scaling of 0.01...
@@ -170,47 +165,55 @@ SELECT CASE(InitSpec)
      E_P(i)=E11*(0.5*(a1+2*a2*LOG(r)+3*a3*LOG(r)**2+4*a4*LOG(r)**3)**2 + a2 - a1 +(3*a3-2*a2)*LOG(r) +(6*a4-3*a3)*(LOG(r))**2&
     -4*a4*(LOG(r))**4)
    END DO
- CASE(2) ! blaisdell
-   specscale=0.01; k0=6
+
+ CASE(2) ! Blaisdell
+   SWRITE(*,*) "SPECTRUM: Blaisdell"
+   specscale=0.01
+   k0=6
    DO i=1,kmax+3
      E_p(i)= specscale*(i**4*EXP(-2.*(i/k0)**2))
    END DO
- CASE(3) !Chasnov
-   write(*,*)"Chasnov"
-   a0=5.319230405352436e-01 !for s=4 according to Batchelor-Proudman flow
-   kp=4  !to be chosen, scaling Re
-   u0=5. !scaling the total Energy
-   a1=a0*u0**2.*kp**(-5.)  !Batchelor-Proudman again
-   print*, 'specscale',a1
+
+ CASE(3) ! Chasnov
+   SWRITE(*,*) "SPECTRUM: Chasnov"
+   a0=5.319230405352436e-01 ! for s=4 according to Batchelor-Proudman flow
+   kp=4  ! to be chosen, scaling Re
+   u0=5. ! scaling the total Energy
+   a1=a0*u0**2.*kp**(-5.)  ! Batchelor-Proudman again
+   SWRITE(*,*) 'specscale',a1
    DO i=1,kmax+3
      E_p(i)= a1*i**4.*EXP(-2.*(i/kp)**2.)
    END DO
- CASE(4) !inf inertial range
-   write(*,*)'Infinite inertial range spectrum k^(-5/3)'
+
+ CASE(4) ! inf inertial range
+   SWRITE(*,*) "SPECTRUM: Infinite inertial range spectrum k^(-5/3)"
    DO i=1,kmax+3
-     E_p(i)= i**(-5/3.) 
+     E_p(i)= i**(-5/3.)
   END DO
+
  CASE(5) ! karman-pao
-   a = 1.453 !scaling const Bailly 99
-   u0= 0.3 !rms of u
-   ke= 2.!related to peak of E wavenumber, w ~~ sqrt(12/5) ke
-   nu= 5e-4
-   L=  0.746834/ke
-   e=  u0**3/L
-   kn= e**0.25*nu**(-0.75) !kolmogorov wavenumber e^1/4 nu^3/4 : zB nu=5e-4; e~~u0/L L~~0.746834/ke ke=2. u0=1. e=
+   SWRITE(*,*) "SPECTRUM: Karman-Pao"
+   a  = 1.453 ! scaling const Bailly 99
+   u0 = 0.3   ! rms of u
+   ke = 2.    ! related to peak of E wavenumber, w ~~ sqrt(12/5) ke
+   nu = 5e-4
+   L  = 0.746834/ke
+   e  = u0**3/L
+   kn = e**0.25*nu**(-0.75) ! kolmogorov wavenumber e^1/4 nu^3/4 : zB nu=5e-4; e~~u0/L L~~0.746834/ke ke=2. u0=1. e=
    DO i=1,kmax+3
      E_p(i) = a * u0**2/ke *(i/ke)**4/(1+(i/ke)**2)**(17/6.)*EXP(-2*(i/kn)**2.)
    END DO
+
 END SELECT
 
-
-call random_seed(size = nn)
-allocate(seed(nn))
-call system_clock(count=seed1)
+! Get random seed from system clock
+CALL RANDOM_SEED(SIZE = nn)
+ALLOCATE(seed(nn))
+CALL SYSTEM_CLOCK(COUNT=seed1)
 seed = seed1
-call random_seed(put=seed)
-call random_seed(get=seed)
-write (*, *)'seed',seed
+CALL RANDOM_SEED(put=seed)
+CALL RANDOM_SEED(get=seed)
+SWRITE (*,*) 'Seed:',seed
 
 DO i=1,Endw(1); DO j=1,Endw(2); DO k=1,Endw(3)
   IF ((((localk(4,i,j,k)+1).LE.Kmax+3).AND.(localk(4,i,j,k).GT.0)) .AND.&
@@ -223,10 +226,10 @@ DO i=1,Endw(1); DO j=1,Endw(2); DO k=1,Endw(3)
     Phi=Phi*TwoPi
     kk(1:3)=REAL(localk(1:3,i,j,k))
     kw2=kk(1)**2+kk(2)**2+kk(3)**2
-    kw=sqrt(kw2)
-    nenner=(Kpershell(NINT(kw))-0)/2.!2*TwoPi*kw2
-    Alpha =SQRT(E_p(NINT(kw))/(Nenner))*EXP(II*Theta1)*COS(PHI)
-    Beta  =SQRT(E_p(NINT(kw))/(Nenner))*EXP(II*Theta2)*SIN(PHI)
+    kw=SQRT(kw2)
+    Nenner = (Kpershell(NINT(kw))-0)/2.!2*TwoPi*kw2
+    Alpha  = SQRT(E_p(NINT(kw))/(Nenner))*EXP(II*Theta1)*COS(PHI)
+    Beta   = SQRT(E_p(NINT(kw))/(Nenner))*EXP(II*Theta2)*SIN(PHI)
 
     U_FFT(2,i,j,k)=(alpha*kw*kk(2)+beta*kk(1)*kk(3))/(kw*SQRT(kk(1)**2+kk(2)**2))
     U_FFT(3,i,j,k)=(beta*kk(2)*kk(3)-alpha*kw*kk(1))/(kw*SQRT(kk(1)**2+kk(2)**2))
@@ -237,8 +240,9 @@ DO i=1,Endw(1); DO j=1,Endw(2); DO k=1,Endw(3)
 END DO; END DO; END DO
 
 DEALLOCATE(E_P,kperShell,seed)
-!2/3 Filter for clean incompressible data
-DO i=1,Endw(1); DO j=1,Endw(2); DO k=1,Endw(3) 
+
+! 2/3 Filter for clean incompressible data
+DO i=1,Endw(1); DO j=1,Endw(2); DO k=1,Endw(3)
   IF(localk(4,i,j,k).GE.INT(2/3.*Nc)) U_FFT(:,i,j,k) = 0.
 END DO; END DO; END DO
 
@@ -247,40 +251,38 @@ DO i=2,4
   CALL DFFTW_PLAN_DFT_C2R_3D(plan,N_FFT,N_FFT,N_FFT,U_FFT(i,:,:,:),Uloc(i,:,:,:),FFTW_ESTIMATE)
   CALL DFFTW_Execute(plan,U_FFT(i,:,:,:),Uloc(i,:,:,:))
 END DO
-! set constant density
-Uloc(1,:,:,:) = 1.0
-! compute rho*v
-Uloc(2:4,:,:,:)= 1.0*Uloc(2:4,:,:,:)
+
+! Set constant density
+Uloc(1,:,:,:)   = 1.0
+! Compute rho*v
+Uloc(2:4,:,:,:) = 1.0*Uloc(2:4,:,:,:)
 CALL Compute_incompressible_P()
 
 END SUBROUTINE Rogallo
 
 
-SUBROUTINE Compute_incompressible_P
 !===================================================================================================================================
 ! Transformation from primitive to conservative variables
 !===================================================================================================================================
+SUBROUTINE Compute_incompressible_P
 ! MODULES
 USE MOD_Globals
 USE MOD_Init_Hit_Vars,      ONLY: endw,localk,TwoPi,II,Uloc,N_FFT,plan,scalefactor,F_vv,fhat,phat
 USE FFTW3
-! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
+! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES 
 REAL                 :: sKappaM1, Kappa, Mach,ksquared,vmax,p0
 REAL                 :: vv(1:3,1:3,1:N_FFT,1:N_FFT,1:N_FFT)
-REAL                 :: v(1:3,1:N_FFT,1:N_FFT,1:N_FFT)
-REAL                 :: p(1:N_FFT,1:N_FFT,1:N_FFT)
+REAL                 :: v(     1:3,1:N_FFT,1:N_FFT,1:N_FFT)
+REAL                 :: p(         1:N_FFT,1:N_FFT,1:N_FFT)
 INTEGER              :: i,j,k
 !===================================================================================================================================
-sKappaM1=1/0.4 
-Kappa = 1.4 
-Mach = 0.1
+sKappaM1 = 1./0.4
+Kappa    = 1.4
+Mach     = 0.1
 
 phat=0.;vmax=0.
 DO i=1,N_FFT; DO j=1,N_FFT; DO k=1,N_FFT
@@ -289,7 +291,7 @@ DO i=1,N_FFT; DO j=1,N_FFT; DO k=1,N_FFT
 END DO; END DO; END DO! i,j,k=1,N_FFT
 
 DO j=1,3; DO k=1,3
-    vv(j,k,:,:,:)=v(j,:,:,:)*v(k,:,:,:)
+  vv(j,k,:,:,:)=v(j,:,:,:)*v(k,:,:,:)
 END DO; END DO
 
 DO j=1,3; DO k=1,3
@@ -308,13 +310,13 @@ fhat(3,:,:,:)= F_vv(3,1,:,:,:)+F_vv(3,2,:,:,:)+F_vv(3,3,:,:,:)
 DO i=1,Endw(1); DO j=1,Endw(2); DO k=1,Endw(3)
   ksquared=localk(1,i,j,k)**2+localk(2,i,j,k)**2+localk(3,i,j,k)**2
   IF (ksquared.eq.0) THEN
-     Phat(i,j,k)=0
+    Phat(i,j,k)=0
   ELSE
-     phat(i,j,k)=1./ksquared*(localk(1,i,j,k)*fhat(1,i,j,k)+&
-                          localk(2,i,j,k)*fhat(2,i,j,k)+&
-                          localk(3,i,j,k)*fhat(3,i,j,k))
+    phat(i,j,k)=1./ksquared*( localk(1,i,j,k)*fhat(1,i,j,k) &
+                            + localk(2,i,j,k)*fhat(2,i,j,k) &
+                            + localk(3,i,j,k)*fhat(3,i,j,k) )
   END IF
-END DO; END DO; END DO! i,j,k=1,End(1,2,3)
+END DO; END DO; END DO! i,j,k=1,Endw(1,2,3)
 
 CALL DFFTW_PLAN_DFT_C2R_3D(plan,N_FFT,N_FFT,N_FFT,phat(:,:,:),p(:,:,:),FFTW_ESTIMATE)
 CALL DFFTW_Execute(plan,phat(:,:,:),p(:,:,:))
@@ -324,11 +326,11 @@ p0=1.*vmax**2/(Kappa*Mach**2)
 SWRITE(*,*) "For a selected Machnumber of ",Mach,", the mean pressure is",p0
 ! add mean pressure to fluctuations
 p=p+p0
-  
+
 DO i=1,N_FFT; DO j=1,N_FFT; DO k=1,N_FFT
   Uloc(5,i,j,k)=sKappaM1*p(i,j,k)+0.5*SUM(Uloc(2:4,i,j,k)*v(1:3,i,j,k))
 END DO; END DO; END DO! i,j,k=1,N_FFT
-    
+
 END SUBROUTINE Compute_incompressible_P
 
 !===================================================================================================================================
