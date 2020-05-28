@@ -391,7 +391,9 @@ SDEALLOCATE(Ja_Face)
 SDEALLOCATE(TreeCoords)
 SDEALLOCATE(xiMinMax)
 SDEALLOCATE(ElemToTree)
-IF (.NOT.postiMode) DEALLOCATE(scaledJac)
+IF (.NOT.postiMode) THEN
+  SDEALLOCATE(scaledJac)
+END IF
 
 CALL AddToElemData(ElementOut,'myRank',IntScalar=myRank)
 

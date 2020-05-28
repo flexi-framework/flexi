@@ -14,6 +14,7 @@ CMAKE_DEPENDENT_OPTION(POSTI_BUILD_WALLDISTANCE          "Build the walldistance
 CMAKE_DEPENDENT_OPTION(POSTI_BUILD_TO3D                  "Build the 3D extrusion tool"                        OFF "FLEXI_BUILDPOSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_BUILD_AVG2D                 "Build the 2D average tool"                          OFF "FLEXI_BUILDPOSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_BUILD_INIT_HIT              "Build the init hit tool"                            OFF "FLEXI_BUILDPOSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_BUILD_FILTER_HIT            "Build the filter hit tool"                          OFF "FLEXI_BUILDPOSTI" OFF)
 OPTION(ENABLE_OPENMP "Enable OpenMP" OFF)
 IF(ENABLE_OPENMP)
   IF ("${CMAKE_VERSION}" VERSION_LESS 3.1.0)
@@ -33,7 +34,7 @@ SET(   POSTI_WHICH_EQNSYS "navierstokes" CACHE STRING
 SET(   POSTI_WHICH_EOS    "idealgas" CACHE STRING
                         "Used equation of state (idealgas)")
 
-IF(POSTI_BUILD_VISUALIZERECORDPOINTS OR POSTI_BUILD_CHANNEL_FFT OR POSTI_BUILD_INIT_HIT)
+		IF(POSTI_BUILD_VISUALIZERECORDPOINTS OR POSTI_BUILD_CHANNEL_FFT OR POSTI_BUILD_INIT_HIT OR POSTI_BUILD_FILTER_HIT)
   # =========================================================================
   # FFTW (FFT tool)
   # =========================================================================
@@ -121,4 +122,8 @@ ENDIF()
 
 IF(POSTI_BUILD_INIT_HIT)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/init_hit/CMakeLists.txt)
+ENDIF()
+
+IF(POSTI_BUILD_FILTER_HIT)
+  INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/filter_hit/CMakeLists.txt)
 ENDIF()
