@@ -31,7 +31,11 @@ INTERFACE WriteNewStateFile
   MODULE PROCEDURE WriteNewStateFile
 END INTERFACE
 
-PUBLIC:: ReadOldStateFile,WriteNewStateFile
+INTERFACE FourierFilter
+  MODULE PROCEDURE FourierFilter
+END INTERFACE
+
+PUBLIC:: ReadOldStateFile,WriteNewStateFile,FourierFilter
 
 CONTAINS
 
@@ -62,9 +66,10 @@ END SUBROUTINE InitFilterHit
 SUBROUTINE ReadOldStateFile(StateFile)
 ! MODULES                                                                                                                          !
 USE MOD_Globals
+USE MOD_DG_Vars,         ONLY: U
 USE MOD_HDF5_Input,      ONLY: OpenDataFile,CloseDataFile,ReadArray,ReadAttribute,GetDataProps
 USE MOD_IO_HDF5,         ONLY: File_ID
-USE MOD_Filter_Hit_Vars, ONLY: nVar_HDF5,N_HDF5,nElems_HDF5,U_HDF5
+USE MOD_Filter_Hit_Vars, ONLY: nVar_HDF5,N_HDF5,nElems_HDF5
 USE MOD_Filter_Hit_Vars, ONLY: Time_HDF5,MeshFile_HDF5,NodeType_HDF5,ProjectName_HDF5
 USE MOD_ReadInTools,     ONLY: ExtractParameterFile
 USE MOD_Output_Vars,     ONLY: UserBlockTmpFile,userblock_total_len
@@ -87,11 +92,11 @@ CALL OpenDataFile(StateFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL GetDataProps(nVar_HDF5,N_HDF5,nElems_HDF5,NodeType_HDF5)
 
 ! Allocate solution array in correct size
-ALLOCATE(U_HDF5(1:nVar_HDF5,0:N_HDF5,0:N_HDF5,0:N_HDF5,1:nElems_HDF5))
+ALLOCATE(U(1:nVar_HDF5,0:N_HDF5,0:N_HDF5,0:N_HDF5,1:nElems_HDF5))
 
 ! Read the DG solution and store in UNew
 CALL ReadArray('DG_Solution',5,&
-               (/nVar_HDF5,N_HDF5+1,N_HDF5+1,N_HDF5+1,nElems_HDF5/),0,5,RealArray=U_HDF5)
+               (/nVar_HDF5,N_HDF5+1,N_HDF5+1,N_HDF5+1,nElems_HDF5/),0,5,RealArray=U)
 
 ! Read the attributes from file
 CALL ReadAttribute(File_ID,'MeshFile',1,StrScalar=MeshFile_HDF5)
@@ -134,29 +139,83 @@ CALL WriteState(TRIM(MeshFile_HDF5),Time_HDF5,Time_HDF5,isErrorFile=.FALSE.)
 END SUBROUTINE WriteNewStateFile
 
 !===================================================================================================================================
+!> ?
+!===================================================================================================================================
+SUBROUTINE FourierFilter(U_In)
+! MODULES                                                                                                                          !
+USE MOD_Filter_Hit_Vars,    ONLY: N_FFT,Endw,Localk,N_Filter,Nc,plan
+USE MOD_Filter_Hit_Vars,    ONLY: nVar_HDF5,N_HDF5,nElems_HDF5
+USE MOD_FFT,                ONLY: Interpolate_DG2FFT,Interpolate_FFT2DG
+USE FFTW3
+!----------------------------------------------------------------------------------------------------------------------------------!
+IMPLICIT NONE
+! INPUT / OUTPUT VARIABLES
+REAL,INTENT(INOUT)    :: U_in(1:nVar_HDF5,0:N_HDF5,0:N_HDF5,0:N_HDF5,1:nElems_HDF5) !< elementwiseDG solution from state file
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER        :: iVar,i,j,k
+REAL           :: U_Global(1:nVar_HDF5,1:N_FFT  ,1:N_FFT  ,1:N_FFT  ) ! Real global DG solution
+REAL           :: U_r(                 1:N_FFT  ,1:N_FFT  ,1:N_FFT  ) ! Real global DG solution  per variable
+COMPLEX        :: U_FFT(   1:nVar_HDF5,1:Endw(1),1:Endw(2),1:Endw(3)) ! Complex FFT solution
+COMPLEX        :: U_c(                 1:Endw(1),1:Endw(2),1:Endw(3)) ! Complex FFT solution per variable
+!===================================================================================================================================
+! 1. Interpolate DG solution to equidistant points
+CALL Interpolate_DG2FFT(U_in,U_Global)
+
+! 2. Apply Fourier-Transform on solution from state file
+!    Use local real/complex arrays to "ensure" they are contiguous in memory, can otherwise cause problems in FFTW
+CALL DFFTW_PLAN_DFT_R2C_3D(plan,N_FFT,N_FFT,N_FFT,U_r,U_c,FFTW_ESTIMATE)
+DO iVar=1,nVar_HDF5
+  U_r = U_Global(iVar,:,:,:)
+  CALL DFFTW_Execute(plan,U_r,U_c)
+  U_FFT(iVar,:,:,:) = U_c
+END DO
+CALL DFFTW_DESTROY_PLAN(plan)
+
+! 3. Normalize Data (FFTW uses unnormalized FFT)
+U_FFT=U_FFT/REAL(N_FFT**3)
+
+! 3. Apply Fourier Filter
+IF (N_Filter.GT.-1) THEN
+  DO k=1,endw(3); DO j=1,endw(2); DO i=1,endw(1)
+    IF(localk(4,i,j,k).GT.N_Filter) U_FFT(:,i,j,k) = 0.
+  END DO; END DO; END DO
+ELSE ! Nyquist filter
+  DO k=1,endw(3); DO j=1,endw(2); DO i=1,endw(1)
+    IF(localk(4,i,j,k).GT.Nc) U_FFT(:,i,j,k) = 0.
+  END DO; END DO; END DO
+END IF
+
+! 5. Apply inverse Fourier-Transform on solution from state file
+CALL DFFTW_PLAN_DFT_C2R_3D(plan,N_FFT,N_FFT,N_FFT,U_c,U_r,FFTW_ESTIMATE)
+DO iVar=1,nVar_HDF5
+  U_c = U_FFT(iVar,:,:,:)
+  CALL DFFTW_Execute(plan,U_c,U_r)
+  U_Global(iVar,:,:,:) = U_r
+END DO
+CALL DFFTW_DESTROY_PLAN(plan)
+
+! 6. Interpolate global solution at equidistant points back to DG solution
+CALL Interpolate_FFT2DG(U_Global,U_in)
+
+END SUBROUTINE FourierFilter
+
+
+!===================================================================================================================================
 !===================================================================================================================================
 SUBROUTINE FinalizeFilterHit()
 ! MODULES                                                                                                                          !
 USE MOD_Globals
 USE MOD_Filter_Hit_Vars
-USE MOD_DG_Vars,       ONLY: U
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
-SDEALLOCATE(U)
-SDEALLOCATE(U_j)
-SDEALLOCATE(U_k)
-SDEALLOCATE(U_FFT)
 IF(MPIRoot) THEN
-  SDEALLOCATE(Uloc)
   SDEALLOCATE(LocalXYZ)
   SDEALLOCATE(LocalK)
-  SDEALLOCATE(phat)
-  SDEALLOCATE(fhat)
-  SDEALLOCATE(F_vv)
 END IF
 
 END SUBROUTINE FinalizeFilterHit

@@ -18,7 +18,6 @@
 !===================================================================================================================================
 PROGRAM posti_filter_hit
 ! MODULES
-USE MOD_Preproc
 USE MOD_Globals
 USE MOD_Filter_HIT
 USE MOD_Filter_HIT_Vars
@@ -27,31 +26,29 @@ USE MOD_Interpolation_Vars      ,ONLY: NodeType
 USE MOD_Mesh,                    ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
 USE MOD_Mesh_Vars,               ONLY: nElems_IJK
 USE MOD_Mesh_ReadIn,             ONLY: ReadIJKSorting
-USE MOD_Output,                  ONLY: DefineParametersOutput,InitOutput,FinalizeOutput
+USE MOD_Output,                  ONLY: DefineParametersOutput
 USE MOD_Interpolation,           ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
-USE MOD_IO_HDF5,                 ONLY: DefineParametersIO_HDF5,InitIOHDF5,OpenDataFile
-USE MOD_HDF5_Input
+USE MOD_IO_HDF5,                 ONLY: DefineParametersIO_HDF5,InitIOHDF5
+USE MOD_HDF5_Input,              ONLY: ISVALIDHDF5FILE
 USE MOD_HDF5_Output,             ONLY: WriteState
 USE MOD_Commandline_Arguments
 USE MOD_StringTools,             ONLY: STRICMP,GetFileExtension
 USE MOD_ReadInTools
 USE MOD_FFT,                     ONLY: InitFFT,FinalizeFFT
-USE MOD_FFT,                     ONLY: Interpolate_DG2FFT, Interpolate_FFT2DG
-USE MOD_ANALYZE
 USE MOD_MPI,                     ONLY: DefineParametersMPI,InitMPI
 #if USE_MPI
 USE MOD_MPI,                     ONLY: InitMPIvars,FinalizeMPI
 #endif
-USE FFTW3
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                            :: iArg,iExt               ! some loop indexes
-INTEGER                            :: iVar,i,j,k
-CHARACTER(LEN=255)                 :: InputStateFile          ! dummy for state file for analysis
-INTEGER                            :: N_HDF5_old              ! Polynominal degree
-CHARACTER(LEN=255)                 :: NodeType_HDF5_old
-CHARACTER(LEN=255)                 :: MeshFile_HDF5_old
+#if USE_MPI
+INTEGER                            :: limit,nTotal
+#endif
+INTEGER                            :: iArg,iExt
+CHARACTER(LEN=255)                 :: InputStateFile
+INTEGER                            :: N_HDF5_old = 0          ! N of last state file
+CHARACTER(LEN=255)                 :: MeshFile_HDF5_old = " " ! MeshFile of last state file
 LOGICAL                            :: changedMeshFile=.FALSE. ! True if mesh between states changed
 LOGICAL                            :: changedN       =.FALSE. ! True if N between states changes
 !===================================================================================================================================
@@ -78,7 +75,7 @@ CALL DefineParametersOutput()
 CALL DefineParametersMesh()
 !=====================================
 CALL prms%SetSection("filterHIT")
-CALL prms%CreateStringOption(  "MeshFile"       , "Overwrite mesh file saved to state files' userblock.")
+!CALL prms%CreateStringOption(  "MeshFile"       , "Overwrite mesh file saved to state files' userblock.")
 CALL prms%CreateIntOption(     "N_Filter"       , "Cutoff filter")
 CALL prms%CreateIntOption(     "N_Visu"         , "Polynomial degree to perform DFFT on")
 
@@ -125,12 +122,10 @@ DO iArg=2,nArgs
   CALL ReadOldStateFile(InputStateFile)
 
   ! Check if input attributes have changed since last state file
-  changedMeshFile = .FALSE.
-  changedN        = .FALSE.
   IF(TRIM(MeshFile_HDF5).NE.TRIM(MeshFile_HDF5_old)) changedMeshFile =.TRUE.
   IF(N_HDF5_old.NE.N_HDF5)                           changedN        =.TRUE.
 
-  ! Re-initialize interpolation if N changed
+  ! Re-initialize interpolation and re-allocate DG solution array if N has changed
   IF(changedN) THEN
     CALL FinalizeInterpolation()
     CALL InitInterpolation(N_HDF5)
@@ -144,71 +139,48 @@ DO iArg=2,nArgs
     CALL InitMesh(MeshMode=0,MeshFile_IN=MeshFile_HDF5)
     CALL ReadIJKSorting() ! Read global xyz sorting of structured mesh
 
-    !! Number of elements has to be equal in all three dimensions
-    !IF(.NOT.((nElems_IJK(1).EQ.nElems_IJK(2)).AND.(nElems_IJK(1).EQ.nElems_IJK(3)))) THEN
-    !  CALL ABORT(__STAMP__,'Mesh has not the same amount of elements in xyz!')
-    !END IF
+    ! Currently only cubic meshes are allowed!
+    IF(.NOT.((nElems_IJK(1).EQ.nElems_IJK(2)).AND.(nElems_IJK(1).EQ.nElems_IJK(3)))) THEN
+      CALL ABORT(__STAMP__,'Mesh does not have the same amount of elements in x,y and z!')
+    END IF
 
     ! Get new number of points for fourier analysis
     N_FFT=(N_Visu+1)*nElems_IJK(1)
-    SDEALLOCATE(U_Global)
-    ALLOCATE(U_Global(1:nVar_HDF5,1:N_FFT,1:N_FFT,1:N_FFT))
   END IF
 
   IF(changedMeshFile .OR. changedN) THEN
+#if USE_MPI
+    nTotal=REAL(nVar_HDF5*(N_HDF5+1)**3*nElems_HDF5)
+    !limit=(2**31-1)/8.
+    limit=2**28-1/8. ! max. 32 bit integer / 8
+    IF (nTotal.GT.limit) THEN
+      WRITE(UNIT_StdOut,'(A,F13.0,A)')' Input state file size is too big! Total array size may not exceed', limit, ' entries!'
+      WRITE(UNIT_StdOut,'(A)')' Lower number of elements or compile without MPI'
+      STOP
+    END IF
+#endif
+
     SWRITE(UNIT_stdOut,'(A)') 'FFT SETUP'
     CALL FinalizeFFT()
     CALL InitFFT()
     SWRITE(UNIT_stdOut,'(A)') 'FFT SETUP DONE'
     SWRITE(UNIT_StdOut,'(132("-"))')
-
-    ! Allocate new solution array for FFT
-    SDEALLOCATE(U_FFT)
-    ALLOCATE(U_FFT(1:nVar_HDF5,1:Endw(1),1:Endw(2),1:Endw(3)))
   END IF
 
-  ! Evaluate DG solution at equidistant points
-  CALL Interpolate_DG2FFT(U_HDF5,U_Global)
-
-  ! Apply Fourier-Transform on solution from state file
-  DO iVar=1,nVar_HDF5
-    CALL DFFTW_PLAN_DFT_R2C_3D(plan,N_FFT,N_FFT,N_FFT,U_Global(iVar,:,:,:),U_FFT(iVar,:,:,:),FFTW_ESTIMATE)
-    CALL DFFTW_Execute(plan,U_Global(iVar,:,:,:),U_FFT(iVar,:,:,:))
-  END DO
-  CALL DFFTW_DESTROY_PLAN(plan)
-
-  ! Normalize Data
-  U_FFT=U_FFT/REAL(N_FFT**3)
-
-  ! Apply Fourier Filter
-  IF (N_Filter.GT.-1) THEN
-    DO k=1,endw(3); DO j=1,endw(2); DO i=1,endw(1)
-      IF(localk(4,i,j,k).GT.N_Filter) U_FFT(:,i,j,k) = 0.
-    END DO; END DO; END DO
-  ELSE ! Nyquist filter
-    DO k=1,endw(3); DO j=1,endw(2); DO i=1,endw(1)
-      IF(localk(4,i,j,k).GT.Nc) U_FFT(:,i,j,k) = 0.
-    END DO; END DO; END DO
-  END IF
-
-  ! Evaluate Fourier basis at DG interpolation points
-  ALLOCATE(U(1:nVar_HDF5,0:N_HDF5,0:N_HDF5,0:N_HDF5,nElems_HDF5))
-
-  ! Apply inverse Fourier-Transform on solution from state file
-  DO iVar=1,nVar_HDF5
-    CALL DFFTW_PLAN_DFT_C2R_3D(plan,N_FFT,N_FFT,N_FFT,U_Global(iVar,:,:,:),U_FFT(iVar,:,:,:),FFTW_ESTIMATE)
-    CALL DFFTW_Execute(plan,U_Global(iVar,:,:,:),U_FFT(iVar,:,:,:))
-  END DO
-  CALL DFFTW_DESTROY_PLAN(plan)
-
-  ! Interpolate global solution at equidistant points back to DG solution
-  CALL Interpolate_FFT2DG(U_Global,U)
+  ! Transform global solution into Fourier space and apply filter there.
+  CALL FourierFilter(U)
 
   ! Write State-File
   CALL WriteNewStateFile()
 
+  ! To determine whether meshfile or N changes
+  MeshFile_HDF5_old = MeshFile_HDF5
+  N_HDF5_old        = N_HDF5
+  changedMeshFile   = .FALSE.
+  changedN          = .FALSE.
+
+  ! Deallocate DG solution array for next file
   DEALLOCATE(U)
-  DEALLOCATE(U_HDF5)
 
 END DO !iArg=1,nArgs
 

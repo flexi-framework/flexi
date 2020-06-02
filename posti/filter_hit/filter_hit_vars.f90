@@ -26,35 +26,21 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 INTEGER               :: N_Visu                    !<
 INTEGER               :: N_Filter
+
+! FFT vars
 INTEGER               :: N_FFT                     !<
 INTEGER               :: Nc                        !<
-REAL,ALLOCATABLE      :: U_HDF5(:,:,:,:,:)
-REAL,ALLOCATABLE      :: Uloc(:,:,:,:)             !<
-REAL,ALLOCATABLE      :: U_Global(:,:,:,:)
-COMPLEX,ALLOCATABLE   :: U_j(:,:,:,:)              !<
-COMPLEX,ALLOCATABLE   :: U_k(:,:,:,:)              !<
-COMPLEX,ALLOCATABLE   :: U_FFT(:,:,:,:)            !<
 REAL,ALLOCATABLE      :: LocalXYZ(:,:,:,:)         !<
 REAL,ALLOCATABLE      :: LocalK(:,:,:,:)           !<
-COMPLEX, ALLOCATABLE  :: F_vv(:,:,:,:,:)           !<
-COMPLEX, ALLOCATABLE  :: fhat(:,:,:,:)             !<
-COMPLEX, ALLOCATABLE  :: phat(:,:,:)               !<
-COMPLEX               :: II
-REAL                  :: TwoPi                     !<
-REAL                  :: scalefactor               !<
-INTEGER               :: EndW(3)                   !<
 INTEGER(KIND=8)       :: plan                      !<
-
-INTEGER               :: N_FA(3)
-
 INTEGER               :: startijk(3)
-INTEGER               :: startw(3)
 INTEGER               :: endijk(3)
-
-INTEGER   :: kmax
+INTEGER               :: startw(3)
+INTEGER               :: endw(3)                   !<
+COMPLEX,PARAMETER     :: II = CMPLX(0.,1.0)
 
 ! state file variables
-REAL                  :: Time_HDF5                     !<
+REAL                  :: Time_HDF5                 !<
 INTEGER               :: nVar_HDF5
 INTEGER               :: N_HDF5
 INTEGER               :: nElems_HDF5
