@@ -62,6 +62,7 @@ END SUBROUTINE InitFilterHit
 !===================================================================================================================================
 SUBROUTINE ReadOldStateFile(StateFile)
 ! MODULES                                                                                                                          !
+USE MOD_Globals
 USE MOD_HDF5_Input,      ONLY: OpenDataFile,CloseDataFile,ReadArray,ReadAttribute,GetDataProps
 USE MOD_IO_HDF5,         ONLY: File_ID
 USE MOD_Filter_Hit_Vars, ONLY: nVar_HDF5,N_HDF5,nElems_HDF5,Time_HDF5,U_HDF5,MeshFile_HDF5,NodeType_HDF5

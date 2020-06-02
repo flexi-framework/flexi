@@ -37,7 +37,7 @@ USE MOD_Commandline_Arguments
 USE MOD_StringTools,             ONLY: STRICMP,GetFileExtension
 USE MOD_ReadInTools
 USE MOD_FFT,                     ONLY: InitFFT,FinalizeFFT
-USE MOD_FFT,                     ONLY: StateAtFFTCoords, FourierAtDGCoords
+USE MOD_FFT,                     ONLY: Interpolate_DG2FFT, Interpolate_FFT2DG
 USE MOD_ANALYZE
 USE MOD_MPI,                     ONLY: DefineParametersMPI,InitMPI
 #if USE_MPI
@@ -147,7 +147,7 @@ DO iArg=2,nArgs
     SWRITE(UNIT_stdOUT,*) "INITIALIZING MESH FROM FILE """,TRIM(MeshFile_HDF5),""""
     CALL FinalizeMesh()
     CALL DefineParametersMesh()
-    CALL InitMesh(MeshMode=2,MeshFile_IN=MeshFile_HDF5)
+    CALL InitMesh(MeshMode=0,MeshFile_IN=MeshFile_HDF5)
     CALL ReadIJKSorting() ! Read global xyz sorting of structured mesh
 
     ! Get new number of points for fourier analysis
@@ -179,7 +179,7 @@ DO iArg=2,nArgs
   END IF
 
   ! Evaluate DG solution at equidistant points
-  CALL StateAtFFTCoords(U_HDF5,U_Global)
+  CALL Interpolate_DG2FFT(U_HDF5,U_Global)
 
   ! Apply Fourier-Transform on solution from state file
   DO iVar=1,nVar_HDF5
@@ -198,7 +198,16 @@ DO iArg=2,nArgs
 
   ! Evaluate Fourier basis at DG interpolation points
   ALLOCATE(U(1:nVar_HDF5,0:N_HDF5,0:N_HDF5,0:N_HDF5,nElems_HDF5))
-  CALL FourierAtDGCoords(U_FFT,U)
+
+  ! Apply inverse Fourier-Transform on solution from state file
+  DO iVar=1,nVar_HDF5
+    CALL DFFTW_PLAN_DFT_C2R_3D(plan,N_FFT,N_FFT,N_FFT,U_Global(iVar,:,:,:),U_FFT(iVar,:,:,:),FFTW_ESTIMATE)
+    CALL DFFTW_Execute(plan,U_Global(iVar,:,:,:),U_FFT(iVar,:,:,:))
+  END DO
+  CALL DFFTW_DESTROY_PLAN(plan)
+
+  ! Interpolate global solution at equidistant points back to DG solution
+  CALL Interpolate_FFT2DG(U_Global,U)
 
   ! Some dirty stuff for output
   MeshFile = MeshFile_HDF5

@@ -27,12 +27,16 @@ INTERFACE InitFFT
   MODULE PROCEDURE InitFFT
 END INTERFACE
 
-INTERFACE StateAtFFTCoords
-  MODULE PROCEDURE StateAtFFTCoords
+INTERFACE Interpolate_DG2FFT
+  MODULE PROCEDURE Interpolate_DG2FFT
 END INTERFACE
 
-INTERFACE FourierAtDGCoords
-  MODULE PROCEDURE FourierAtDGCoords
+INTERFACE Interpolate_FFT2DG
+  MODULE PROCEDURE Interpolate_FFT2DG
+END INTERFACE
+
+INTERFACE EvalFourierAtDGCoords
+  MODULE PROCEDURE EvalFourierAtDGCoords
 END INTERFACE
 
 INTERFACE Rogallo
@@ -43,7 +47,7 @@ INTERFACE FinalizeFFT
   MODULE PROCEDURE FinalizeFFT
 END INTERFACE
 
-PUBLIC:: InitFFT,StateAtFFTCoords,FourierAtDGCoords,Rogallo,FinalizeFFT
+PUBLIC:: InitFFT,Interpolate_DG2FFT,Interpolate_FFT2DG,EvalFourierAtDGCoords,Rogallo,FinalizeFFT
 
 CONTAINS
 
@@ -127,7 +131,7 @@ END SUBROUTINE InitFFT
 !===================================================================================================================================
 ! Interpolate via ChangeBasis() state @ visu (equidistant) coordinates from postprocessing (CGL)
 !===================================================================================================================================
-SUBROUTINE StateAtFFTCoords(U_HDF5,U_Global)
+SUBROUTINE Interpolate_DG2FFT(U_HDF5,U_Global)
 ! MODULES
 USE MOD_Filter_HIT_Vars       ,ONLY: nVar_HDF5,N_HDF5,nElems_HDF5,NodeType_HDF5
 USE MOD_Filter_HIT_Vars       ,ONLY: N_FFT,N_Visu
@@ -151,9 +155,9 @@ REAL          :: VdmGaussEqui(0:N_Visu,0:N_HDF5)
 ! Vandermonde to interpolate from HDF5_Nodetype to equidistant points
 CALL GetVandermonde(N_HDF5,NodeType_HDF5,N_Visu,'VISU_INNER',VdmGaussEqui)
 
-!Loop to get the nodal U_HDF5_c solution into a global solution in ijk form
+! Loop to get the nodal U_HDF5 solution into a global solution in ijk form
 DO iElem=1,nElems_HDF5
-  ! Get solution on üer cell on equidistant points
+  ! Get solution in each element on equidistant points
   CALL ChangeBasis3D(nVar_HDF5,N_HDF5,N_Visu,VdmGaussEqui,U_HDF5(:,:,:,:,iElem),U_aux(:,:,:,:))
 
   ! Fill the global solution array using the ijk sorting
@@ -166,18 +170,69 @@ DO iElem=1,nElems_HDF5
       jGlob=(jj-1)*(N_Visu+1)+j+1
       DO i=0,N_Visu
         iGlob=(ii-1)*(N_Visu+1)+i+1
-        U_Global(:,iGlob,jGlob,kGlob)= U_aux(:,i,j,k)
+        U_Global(:,iGlob,jGlob,kGlob) = U_aux(:,i,j,k)
       END DO
     END DO
   END DO
 END DO
 
-END SUBROUTINE StateAtFFTCoords
+END SUBROUTINE Interpolate_DG2FFT
+
+!===================================================================================================================================
+! Interpolate via ChangeBasis() state @ visu (equidistant) coordinates from postprocessing (CGL)
+!===================================================================================================================================
+SUBROUTINE Interpolate_FFT2DG(U_HDF5,U_Global)
+! MODULES
+USE MOD_Filter_HIT_Vars       ,ONLY: nVar_HDF5,N_HDF5,nElems_HDF5,NodeType_HDF5
+USE MOD_Filter_HIT_Vars       ,ONLY: N_FFT,N_Visu
+USE MOD_Mesh_Vars             ,ONLY: Elem_IJK
+USE MOD_Interpolation         ,ONLY: GetVandermonde
+USE MOD_ChangeBasis           ,ONLY: ChangeBasis3D
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+REAL,INTENT(INOUT)    :: U_Global(nVar_HDF5,1:N_FFT ,1:N_FFT ,1:N_FFT              )
+REAL,INTENT(OUT)      :: U_HDF5(  nVar_HDF5,0:N_HDF5,0:N_HDF5,0:N_HDF5 ,nElems_HDF5)
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER       :: iElem
+INTEGER       :: i,ii,iGlob
+INTEGER       :: j,jj,jGlob
+INTEGER       :: k,kk,kGlob
+REAL          :: U_aux(nVar_HDF5,0:N_Visu,0:N_Visu,0:N_Visu)
+REAL          :: VdmEquiGauss(0:N_Visu,0:N_HDF5)
+!===================================================================================================================================
+! Vandermonde to interpolate from equidistant points to HDF5_Nodetype
+CALL GetVandermonde(N_Visu,'VISU_INNER',N_HDF5,NodeType_HDF5,VdmEquiGauss)
+
+! Loop to get the global solution in ijk form back to a nodal U_HDF5 solution
+DO iElem=1,nElems_HDF5
+
+  ! Fill the global solution array using the ijk sorting
+  ii=Elem_IJK(1,iElem)
+  jj=Elem_IJK(2,iElem)
+  kk=Elem_IJK(3,iElem)
+  DO k=0,N_Visu
+    kGlob=(kk-1)*(N_Visu+1)+k+1
+    DO j=0,N_Visu
+      jGlob=(jj-1)*(N_Visu+1)+j+1
+      DO i=0,N_Visu
+        iGlob=(ii-1)*(N_Visu+1)+i+1
+        U_aux(:,i,j,k) = U_Global(:,iGlob,jGlob,kGlob)
+      END DO
+    END DO
+  END DO
+
+  ! Get solution in each element on equidistant points
+  CALL ChangeBasis3D(nVar_HDF5,N_Visu,N_HDF5,VdmEquiGauss,U_aux(:,:,:,:),U_HDF5(:,:,:,:,iElem))
+END DO
+
+END SUBROUTINE Interpolate_FFT2DG
 
 !===================================================================================================================================
 ! Evaluate the global Fourier solution at the DG interpolation points
 !===================================================================================================================================
-SUBROUTINE FourierAtDGCoords(U_FFT,U_DG)
+SUBROUTINE EvalFourierAtDGCoords(U_FFT,U_DG)
 ! MODULES
 USE MOD_Mesh_Vars             ,ONLY: Elem_xGP
 USE MOD_Filter_Hit_Vars       ,ONLY: II,Nc,endw
@@ -243,7 +298,7 @@ DO iElem=1,nElems_HDF5
   U_DG(:,:,:,:,iElem) = 2*REAL(Uloc)
 END DO !iElem
 
-END SUBROUTINE FourierAtDGCoords
+END SUBROUTINE EvalFourierAtDGCoords
 
 !===================================================================================================================================
 ! Computes the initial energy spectrum and creates a velocity field with random phase matching the energy spectrum 
