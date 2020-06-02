@@ -181,7 +181,7 @@ END SUBROUTINE Interpolate_DG2FFT
 !===================================================================================================================================
 ! Interpolate via ChangeBasis() state @ visu (equidistant) coordinates from postprocessing (CGL)
 !===================================================================================================================================
-SUBROUTINE Interpolate_FFT2DG(U_HDF5,U_Global)
+SUBROUTINE Interpolate_FFT2DG(U_Global,U_HDF5)
 ! MODULES
 USE MOD_Filter_HIT_Vars       ,ONLY: nVar_HDF5,N_HDF5,nElems_HDF5,NodeType_HDF5
 USE MOD_Filter_HIT_Vars       ,ONLY: N_FFT,N_Visu
@@ -531,7 +531,6 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 !===================================================================================================================================
 SDEALLOCATE(U)
-SDEALLOCATE(Uloc_c)
 SDEALLOCATE(U_j)
 SDEALLOCATE(U_k)
 SDEALLOCATE(U_FFT)

@@ -24,15 +24,13 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-
-CHARACTER(LEN=255)    :: MeshFile                  !< mesh file
-INTEGER               :: InitSpec                  !<
-INTEGER               :: N_FFT                     !<
 INTEGER               :: N_Visu                    !<
+INTEGER               :: N_Filter
+INTEGER               :: N_FFT                     !<
 INTEGER               :: Nc                        !<
 REAL,ALLOCATABLE      :: U_HDF5(:,:,:,:,:)
 REAL,ALLOCATABLE      :: Uloc(:,:,:,:)             !<
-COMPLEX,ALLOCATABLE   :: Uloc_c(:,:,:,:)           !<
+REAL,ALLOCATABLE      :: U_Global(:,:,:,:)
 COMPLEX,ALLOCATABLE   :: U_j(:,:,:,:)              !<
 COMPLEX,ALLOCATABLE   :: U_k(:,:,:,:)              !<
 COMPLEX,ALLOCATABLE   :: U_FFT(:,:,:,:)            !<
@@ -43,40 +41,25 @@ COMPLEX, ALLOCATABLE  :: fhat(:,:,:,:)             !<
 COMPLEX, ALLOCATABLE  :: phat(:,:,:)               !<
 COMPLEX               :: II
 REAL                  :: TwoPi                     !<
-REAL                  :: Pi
 REAL                  :: scalefactor               !<
-REAL                  :: maxTol                    !<
-REAL                  :: abortTol                  !<
 INTEGER               :: EndW(3)                   !<
 INTEGER(KIND=8)       :: plan                      !<
 
-INTEGER               :: nVar_HDF5
-INTEGER               :: N_HDF5
-INTEGER               :: nElems_HDF5
-CHARACTER(LEN=255)    :: NodeType_HDF5
-CHARACTER(LEN=255)    :: MeshFile_HDF5
-CHARACTER(LEN=255)    :: Project_Name
-
-REAL                  :: Time_HDF5                     !<
 INTEGER               :: N_FA(3)
-INTEGER               :: Nunder
-
-LOGICAL               :: validHDF5
 
 INTEGER               :: startijk(3)
 INTEGER               :: startw(3)
 INTEGER               :: endijk(3)
 
-!analyze variables
-LOGICAL   :: AnalyzeInitIsDone=.FALSE.
-LOGICAL   :: CalcErrorNorms=.FALSE.
 INTEGER   :: kmax
-REAL, ALLOCATABLE :: E_k(:),T_k(:),MuSGS_K(:),k_shell_glob(:),numDiss_k(:),eps_k(:),eMean_k(:)
-REAL,ALLOCATABLE        :: MuSGS_Avg(:)
-INTEGER   :: FileUnit_HIT
-CHARACTER(LEN=255)::Filename_HIT
-INTEGER   :: N_Filter
 
-REAL,ALLOCATABLE        :: U_Global(:,:,:,:)
+! state file variables
+REAL                  :: Time_HDF5                     !<
+INTEGER               :: nVar_HDF5
+INTEGER               :: N_HDF5
+INTEGER               :: nElems_HDF5
+CHARACTER(LEN=255)    :: NodeType_HDF5
+CHARACTER(LEN=255)    :: MeshFile_HDF5
+CHARACTER(LEN=255)    :: ProjectName_HDF5
 !===================================================================================================================================
 END MODULE MOD_Filter_HIT_Vars

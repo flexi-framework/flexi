@@ -47,7 +47,6 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER  :: i,j,k
 !===================================================================================================================================
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT BASIS...'
@@ -65,9 +64,10 @@ SUBROUTINE ReadOldStateFile(StateFile)
 USE MOD_Globals
 USE MOD_HDF5_Input,      ONLY: OpenDataFile,CloseDataFile,ReadArray,ReadAttribute,GetDataProps
 USE MOD_IO_HDF5,         ONLY: File_ID
-USE MOD_Filter_Hit_Vars, ONLY: nVar_HDF5,N_HDF5,nElems_HDF5,Time_HDF5,U_HDF5,MeshFile_HDF5,NodeType_HDF5
+USE MOD_Filter_Hit_Vars, ONLY: nVar_HDF5,N_HDF5,nElems_HDF5,U_HDF5
+USE MOD_Filter_Hit_Vars, ONLY: Time_HDF5,MeshFile_HDF5,NodeType_HDF5,ProjectName_HDF5
 USE MOD_ReadInTools,     ONLY: ExtractParameterFile
-USE MOD_Output_Vars,     ONLY: UserBlockTmpFile,userblock_total_len,ProjectName
+USE MOD_Output_Vars,     ONLY: UserBlockTmpFile,userblock_total_len
 USE MOD_Output,          ONLY: insert_userblock
 USE ISO_C_BINDING,       ONLY: C_NULL_CHAR
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -96,7 +96,7 @@ CALL ReadArray('DG_Solution',5,&
 ! Read the attributes from file
 CALL ReadAttribute(File_ID,'MeshFile',1,StrScalar=MeshFile_HDF5)
 CALL ReadAttribute(File_ID,'Time',1,RealScalar=Time_HDF5)
-CALL ReadAttribute(File_ID,'Project_Name',1,StrScalar=ProjectName)
+CALL ReadAttribute(File_ID,'Project_Name',1,StrScalar=ProjectName_HDF5)
 
 ! Extract parameter file from userblock (if found)
 CALL ExtractParameterFile(StateFile,TRIM(prmfile),userblockFound)
@@ -107,7 +107,7 @@ INQUIRE(FILE=TRIM(UserBlockTmpFile),SIZE=userblock_total_len)
 ! Close the data file
 CALL CloseDataFile()
 
-SWRITE(*,*)'State read done'
+SWRITE(*,*) "READING SOLUTION DONE!"
 END SUBROUTINE ReadOldStateFile
 
 !===================================================================================================================================
@@ -116,15 +116,21 @@ END SUBROUTINE ReadOldStateFile
 SUBROUTINE WriteNewStateFile()
 ! MODULES                                                                                                                          !
 USE MOD_HDF5_Output,        ONLY: WriteState
-USE MOD_Filter_Hit_Vars,    ONLY: Time_HDF5,MeshFile
 USE MOD_Output_Vars,        ONLY: NOut,ProjectName
+USE MOD_Filter_Hit_Vars,    ONLY: N_HDF5,ProjectName_HDF5,Time_HDF5,MeshFile_HDF5
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
-CALL WriteState(TRIM(MeshFile),Time_HDF5,Time_HDF5,isErrorFile=.FALSE.)
+! Set output variables according to current state file
+NOut        = N_HDF5
+ProjectName = TRIM(ProjectName_HDF5)//'_filtered'
+
+! Write new state file
+CALL WriteState(TRIM(MeshFile_HDF5),Time_HDF5,Time_HDF5,isErrorFile=.FALSE.)
+
 END SUBROUTINE WriteNewStateFile
 
 !===================================================================================================================================
@@ -141,7 +147,6 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 !===================================================================================================================================
 SDEALLOCATE(U)
-SDEALLOCATE(Uloc_c)
 SDEALLOCATE(U_j)
 SDEALLOCATE(U_k)
 SDEALLOCATE(U_FFT)

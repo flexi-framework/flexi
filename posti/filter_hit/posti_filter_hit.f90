@@ -25,10 +25,9 @@ USE MOD_Filter_HIT_Vars
 USE MOD_DG_Vars,                 ONLY: U
 USE MOD_Interpolation_Vars      ,ONLY: NodeType
 USE MOD_Mesh,                    ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
-USE MOD_Mesh_Vars,               ONLY: nElems,Elem_xGP,nElems_IJK,Elem_IJK
+USE MOD_Mesh_Vars,               ONLY: nElems_IJK
 USE MOD_Mesh_ReadIn,             ONLY: ReadIJKSorting
 USE MOD_Output,                  ONLY: DefineParametersOutput,InitOutput,FinalizeOutput
-USE MOD_Output_Vars,             ONLY: ProjectName,NOut
 USE MOD_Interpolation,           ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
 USE MOD_IO_HDF5,                 ONLY: DefineParametersIO_HDF5,InitIOHDF5,OpenDataFile
 USE MOD_HDF5_Input
@@ -47,18 +46,14 @@ USE FFTW3
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                            :: iArg,iExt,iElem              !some loop indexes
-INTEGER                            :: i,j,k
-INTEGER                            :: iVar
-CHARACTER(LEN=255)                 :: InputStateFile          !dummy for state file for analysis
-CHARACTER(LEN=255)                 :: StateName               !state file for analysis
-INTEGER                            :: N_HDF5_old              !Polynominal degree
+INTEGER                            :: iArg,iExt               ! some loop indexes
+INTEGER                            :: iVar,i,j,k
+CHARACTER(LEN=255)                 :: InputStateFile          ! dummy for state file for analysis
+INTEGER                            :: N_HDF5_old              ! Polynominal degree
 CHARACTER(LEN=255)                 :: NodeType_HDF5_old
 CHARACTER(LEN=255)                 :: MeshFile_HDF5_old
-LOGICAL                            :: changedMeshFile=.FALSE. !True if mesh between states changed
-LOGICAL                            :: changedN       =.FALSE. !True if N between states changes
-INTEGER                            :: HSize_proc(5)          !no idea
-REAL,ALLOCATABLE                   :: U_local(:,:,:,:,:)     !solution per cell
+LOGICAL                            :: changedMeshFile=.FALSE. ! True if mesh between states changed
+LOGICAL                            :: changedN       =.FALSE. ! True if N between states changes
 !===================================================================================================================================
 CALL SetStackSizeUnlimited()
 CALL InitMPI()
@@ -101,7 +96,7 @@ CALL prms%read_options(Args(1))
 ParameterFile = Args(1)
 
 ! Readin Parameters
-N_Filter = GETINT('N_Filter')
+N_Filter = GETINT('N_Filter','-1')
 N_Visu   = GETINT('N_Visu')
 
 ! Initialize IO
@@ -123,8 +118,7 @@ DO iArg=2,nArgs
   END IF
 
   ! Check if state file is a valid state
-  validHDF5 = ISVALIDHDF5FILE(InputStateFile)
-  IF(.NOT.validHDF5) &
+  IF(.NOT.ISVALIDHDF5FILE(InputStateFile)) &
     CALL CollectiveStop(__STAMP__,'ERROR - Restart file not a valid state file.')
 
   ! Read attributes and solution from state file
@@ -150,21 +144,16 @@ DO iArg=2,nArgs
     CALL InitMesh(MeshMode=0,MeshFile_IN=MeshFile_HDF5)
     CALL ReadIJKSorting() ! Read global xyz sorting of structured mesh
 
+    !! Number of elements has to be equal in all three dimensions
+    !IF(.NOT.((nElems_IJK(1).EQ.nElems_IJK(2)).AND.(nElems_IJK(1).EQ.nElems_IJK(3)))) THEN
+    !  CALL ABORT(__STAMP__,'Mesh has not the same amount of elements in xyz!')
+    !END IF
+
     ! Get new number of points for fourier analysis
     N_FFT=(N_Visu+1)*nElems_IJK(1)
     SDEALLOCATE(U_Global)
     ALLOCATE(U_Global(1:nVar_HDF5,1:N_FFT,1:N_FFT,1:N_FFT))
   END IF
-
-  !! 2D currently not supported
-  !IF (HSize(4).EQ.1) CALL CollectiveStop(__STAMP__,'ERROR - Tool does not support 2D data')
-  !! FV currently not supported
-  !IF (ANY(FV_Elems(:).EQ.1)) CALL CollectiveStop(__STAMP__, &
-  !                                         'ERROR - Programm cannot handle FV Subcells!')
-  !! Number of elements has to be equal in all three dimensions
-  !IF(.NOT.((nElems_IJK(1).EQ.nElems_IJK(2)).AND.(nElems_IJK(1).EQ.nElems_IJK(3)))) THEN
-  !  CALL ABORT(__STAMP__,'Mesh has not the same amount of elements in xyz!')
-  !END IF
 
   IF(changedMeshFile .OR. changedN) THEN
     SWRITE(UNIT_stdOut,'(A)') 'FFT SETUP'
@@ -192,9 +181,15 @@ DO iArg=2,nArgs
   U_FFT=U_FFT/REAL(N_FFT**3)
 
   ! Apply Fourier Filter
-  DO k=1,endw(3); DO j=1,endw(2); DO i=1,endw(1)
-    IF(localk(4,i,j,k).GT.N_Filter) U_FFT(:,i,j,k) = 0.
-  END DO; END DO; END DO
+  IF (N_Filter.GT.-1) THEN
+    DO k=1,endw(3); DO j=1,endw(2); DO i=1,endw(1)
+      IF(localk(4,i,j,k).GT.N_Filter) U_FFT(:,i,j,k) = 0.
+    END DO; END DO; END DO
+  ELSE ! Nyquist filter
+    DO k=1,endw(3); DO j=1,endw(2); DO i=1,endw(1)
+      IF(localk(4,i,j,k).GT.Nc) U_FFT(:,i,j,k) = 0.
+    END DO; END DO; END DO
+  END IF
 
   ! Evaluate Fourier basis at DG interpolation points
   ALLOCATE(U(1:nVar_HDF5,0:N_HDF5,0:N_HDF5,0:N_HDF5,nElems_HDF5))
@@ -208,11 +203,6 @@ DO iArg=2,nArgs
 
   ! Interpolate global solution at equidistant points back to DG solution
   CALL Interpolate_FFT2DG(U_Global,U)
-
-  ! Some dirty stuff for output
-  MeshFile = MeshFile_HDF5
-  ProjectName = "Test23"
-  NOut = N_HDF5
 
   ! Write State-File
   CALL WriteNewStateFile()
