@@ -117,9 +117,10 @@ END SUBROUTINE InitFFT
 !===================================================================================================================================
 ! Interpolate via ChangeBasis() state @ visu (equidistant) coordinates from postprocessing (CGL)
 !===================================================================================================================================
-SUBROUTINE Interpolate_DG2FFT(U_DG,U_Global)
+SUBROUTINE Interpolate_DG2FFT(nVar_In,U_DG,U_Global)
 ! MODULES
-USE MOD_Filter_HIT_Vars       ,ONLY: nVar_HDF5,N_HDF5,nElems_HDF5,NodeType_HDF5
+USE MOD_Globals
+USE MOD_Filter_HIT_Vars       ,ONLY: N_HDF5,nElems_HDF5,NodeType_HDF5
 USE MOD_Filter_HIT_Vars       ,ONLY: N_FFT,N_Visu
 USE MOD_Mesh_Vars             ,ONLY: Elem_IJK
 USE MOD_Interpolation         ,ONLY: GetVandermonde
@@ -127,24 +128,27 @@ USE MOD_ChangeBasis           ,ONLY: ChangeBasis3D
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(INOUT)    :: U_DG(    nVar_HDF5,0:N_HDF5,0:N_HDF5,0:N_HDF5 ,nElems_HDF5)
-REAL,INTENT(OUT)      :: U_Global(nVar_HDF5,1:N_FFT ,1:N_FFT ,1:N_FFT              )
+INTEGER,INTENT(IN)    :: nVar_In
+REAL,INTENT(INOUT)    :: U_DG(    nVar_In,0:N_HDF5,0:N_HDF5,0:N_HDF5 ,nElems_HDF5)
+REAL,INTENT(OUT)      :: U_Global(nVar_In,1:N_FFT ,1:N_FFT ,1:N_FFT              )
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER       :: iElem
 INTEGER       :: i,ii,iGlob
 INTEGER       :: j,jj,jGlob
 INTEGER       :: k,kk,kGlob
-REAL          :: U_aux(nVar_HDF5,0:N_Visu,0:N_Visu,0:N_Visu)
+REAL          :: U_aux(nVar_In,0:N_Visu,0:N_Visu,0:N_Visu)
 REAL          :: VdmGaussEqui(0:N_Visu,0:N_HDF5)
 !===================================================================================================================================
+SWRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' INTERPOLATE DG SOLUTION TO FFT COORDS...'
+
 ! Vandermonde to interpolate from HDF5_Nodetype to equidistant points
 CALL GetVandermonde(N_HDF5,NodeType_HDF5,N_Visu,'VISU_INNER',VdmGaussEqui)
 
 ! Loop to get the nodal U_DG solution into a global solution in ijk form
 DO iElem=1,nElems_HDF5
   ! Get solution in each element on equidistant points
-  CALL ChangeBasis3D(nVar_HDF5,N_HDF5,N_Visu,VdmGaussEqui,U_DG(:,:,:,:,iElem),U_aux(:,:,:,:))
+  CALL ChangeBasis3D(nVar_In,N_HDF5,N_Visu,VdmGaussEqui,U_DG(:,:,:,:,iElem),U_aux(:,:,:,:))
 
   ! Fill the global solution array using the ijk sorting
   ii=Elem_IJK(1,iElem)
@@ -162,14 +166,16 @@ DO iElem=1,nElems_HDF5
   END DO
 END DO
 
+SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES')'DONE'
 END SUBROUTINE Interpolate_DG2FFT
 
 !===================================================================================================================================
 ! Interpolate via ChangeBasis() state @ visu (equidistant) coordinates from postprocessing (CGL)
 !===================================================================================================================================
-SUBROUTINE Interpolate_FFT2DG(U_Global,U_DG)
+SUBROUTINE Interpolate_FFT2DG(nVar_In,U_Global,U_DG)
 ! MODULES
-USE MOD_Filter_HIT_Vars       ,ONLY: nVar_HDF5,N_HDF5,nElems_HDF5,NodeType_HDF5
+USE MOD_Globals
+USE MOD_Filter_HIT_Vars       ,ONLY: N_HDF5,nElems_HDF5,NodeType_HDF5
 USE MOD_Filter_HIT_Vars       ,ONLY: N_FFT,N_Visu
 USE MOD_Mesh_Vars             ,ONLY: Elem_IJK
 USE MOD_Interpolation         ,ONLY: GetVandermonde
@@ -177,17 +183,20 @@ USE MOD_ChangeBasis           ,ONLY: ChangeBasis3D
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(INOUT)    :: U_Global(nVar_HDF5,1:N_FFT ,1:N_FFT ,1:N_FFT              )
-REAL,INTENT(OUT)      :: U_DG(    nVar_HDF5,0:N_HDF5,0:N_HDF5,0:N_HDF5 ,nElems_HDF5)
+INTEGER,INTENT(IN)    :: nVar_In
+REAL,INTENT(INOUT)    :: U_Global(nVar_In,1:N_FFT ,1:N_FFT ,1:N_FFT              )
+REAL,INTENT(OUT)      :: U_DG(    nVar_In,0:N_HDF5,0:N_HDF5,0:N_HDF5 ,nElems_HDF5)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER       :: iElem
 INTEGER       :: i,ii,iGlob
 INTEGER       :: j,jj,jGlob
 INTEGER       :: k,kk,kGlob
-REAL          :: U_aux(nVar_HDF5,0:N_Visu,0:N_Visu,0:N_Visu)
+REAL          :: U_aux(nVar_In,0:N_Visu,0:N_Visu,0:N_Visu)
 REAL          :: VdmEquiGauss(0:N_Visu,0:N_HDF5)
 !===================================================================================================================================
+SWRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' INTERPOLATE FFT SOLUTION TO DG COORDS...'
+
 ! Vandermonde to interpolate from equidistant points to HDF5_Nodetype
 CALL GetVandermonde(N_Visu,'VISU_INNER',N_HDF5,NodeType_HDF5,VdmEquiGauss)
 
@@ -210,9 +219,10 @@ DO iElem=1,nElems_HDF5
   END DO
 
   ! Get solution in each element on equidistant points
-  CALL ChangeBasis3D(nVar_HDF5,N_Visu,N_HDF5,VdmEquiGauss,U_aux(:,:,:,:),U_DG(:,:,:,:,iElem))
+  CALL ChangeBasis3D(nVar_In,N_Visu,N_HDF5,VdmEquiGauss,U_aux(:,:,:,:),U_DG(:,:,:,:,iElem))
 END DO
 
+SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES')'DONE'
 END SUBROUTINE Interpolate_FFT2DG
 
 !===================================================================================================================================

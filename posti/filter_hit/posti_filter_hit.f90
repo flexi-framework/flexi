@@ -21,7 +21,7 @@ PROGRAM posti_filter_hit
 USE MOD_Globals
 USE MOD_Filter_HIT
 USE MOD_Filter_HIT_Vars
-USE MOD_DG_Vars,                 ONLY: U
+USE MOD_DG_Vars,                 ONLY: U,Ut
 USE MOD_Interpolation_Vars      ,ONLY: NodeType
 USE MOD_Mesh,                    ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
 USE MOD_Mesh_Vars,               ONLY: nElems_IJK
@@ -42,8 +42,9 @@ USE MOD_MPI,                     ONLY: InitMPIvars,FinalizeMPI
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+REAL                               :: Time
 #if USE_MPI
-INTEGER                            :: limit,nTotal
+REAL                               :: limit,nTotal
 #endif
 INTEGER                            :: iArg,iExt
 CHARACTER(LEN=255)                 :: InputStateFile
@@ -54,6 +55,8 @@ LOGICAL                            :: changedN       =.FALSE. ! True if N betwee
 !===================================================================================================================================
 CALL SetStackSizeUnlimited()
 CALL InitMPI()
+IF (nProcessors.GT.1) CALL CollectiveStop(__STAMP__, &
+     'This tool is designed only for single execution!')
 
 CALL ParseCommandlineArguments()
 
@@ -101,6 +104,8 @@ CALL InitIOHDF5()
 
 ! Loop over all files specified on commandline
 DO iArg=2,nArgs
+  Time = FLEXITIME()
+
   InputStateFile = Args(iArg)
 
   SWRITE(UNIT_stdOut,'(132("="))')
@@ -151,6 +156,7 @@ DO iArg=2,nArgs
   IF(changedMeshFile .OR. changedN) THEN
 #if USE_MPI
     nTotal=REAL(nVar_HDF5*(N_HDF5+1)**3*nElems_HDF5)
+    IF(FieldDataExists) nTotal=MAX(nTotal,REAL(nVarField_HDF5*(N_HDF5+1)**3*nElems_HDF5))
     !limit=(2**31-1)/8.
     limit=2**28-1/8. ! max. 32 bit integer / 8
     IF (nTotal.GT.limit) THEN
@@ -168,7 +174,8 @@ DO iArg=2,nArgs
   END IF
 
   ! Transform global solution into Fourier space and apply filter there.
-  CALL FourierFilter(U)
+  CALL FourierFilter(nVar_HDF5,U)
+  IF(FieldDataExists) CALL FourierFilter(nVarField_HDF5,Ut)
 
   ! Write State-File
   CALL WriteNewStateFile()
@@ -181,7 +188,10 @@ DO iArg=2,nArgs
 
   ! Deallocate DG solution array for next file
   DEALLOCATE(U)
+  IF(FieldDataExists) DEALLOCATE(Ut)
 
+  SWRITE(UNIT_stdOut,'(132("="))')
+  SWRITE(UNIT_stdOut,'(A,A,A,F0.3,A)') ' PROCESSED FILE ',TRIM(InputStateFile),' in [',FLEXITIME()-Time,'s]'
 END DO !iArg=1,nArgs
 
 ! Finalize everything

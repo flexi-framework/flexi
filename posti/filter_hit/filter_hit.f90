@@ -66,11 +66,13 @@ END SUBROUTINE InitFilterHit
 SUBROUTINE ReadOldStateFile(StateFile)
 ! MODULES                                                                                                                          !
 USE MOD_Globals
-USE MOD_DG_Vars,         ONLY: U
-USE MOD_HDF5_Input,      ONLY: OpenDataFile,CloseDataFile,ReadArray,ReadAttribute,GetDataProps
-USE MOD_IO_HDF5,         ONLY: File_ID
-USE MOD_Filter_Hit_Vars, ONLY: nVar_HDF5,N_HDF5,nElems_HDF5
+USE MOD_DG_Vars,         ONLY: U,Ut
+USE MOD_HDF5_Input,      ONLY: OpenDataFile,CloseDataFile
+USE MOD_HDF5_Input,      ONLY: ReadArray,ReadAttribute,GetDataProps,GetDataSize,DataSetExists
+USE MOD_IO_HDF5,         ONLY: File_ID,AddToFieldData,FieldOut,nDims,HSize
+USE MOD_Filter_Hit_Vars, ONLY: nVar_HDF5,N_HDF5,nElems_HDF5,nVarField_HDF5
 USE MOD_Filter_Hit_Vars, ONLY: Time_HDF5,MeshFile_HDF5,NodeType_HDF5,ProjectName_HDF5
+USE MOD_Filter_Hit_Vars, ONLY: FieldDataExists
 USE MOD_ReadInTools,     ONLY: ExtractParameterFile
 USE MOD_Output_Vars,     ONLY: UserBlockTmpFile,userblock_total_len
 USE MOD_Output,          ONLY: insert_userblock
@@ -92,11 +94,23 @@ CALL OpenDataFile(StateFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL GetDataProps(nVar_HDF5,N_HDF5,nElems_HDF5,NodeType_HDF5)
 
 ! Allocate solution array in correct size
-ALLOCATE(U(1:nVar_HDF5,0:N_HDF5,0:N_HDF5,0:N_HDF5,1:nElems_HDF5))
+ALLOCATE(U( 1:nVar_HDF5,0:N_HDF5,0:N_HDF5,0:N_HDF5,1:nElems_HDF5))
 
 ! Read the DG solution and store in UNew
 CALL ReadArray('DG_Solution',5,&
                (/nVar_HDF5,N_HDF5+1,N_HDF5+1,N_HDF5+1,nElems_HDF5/),0,5,RealArray=U)
+
+! Also read FieldData if present
+CALL DatasetExists(File_ID,'FieldData',FieldDataExists)
+IF (FieldDataExists) THEN
+  CALL GetDataSize(File_ID,'FieldData',nDims,HSize)
+  nVarField_HDF5 = INT(HSize(1))
+  ALLOCATE(Ut(1:nVarField_HDF5,0:N_HDF5,0:N_HDF5,0:N_HDF5,1:nElems_HDF5))
+  CALL ReadArray('FieldData',5,&
+                 (/nVarField_HDF5,N_HDF5+1,N_HDF5+1,N_HDF5+1,nElems_HDF5/),0,5,RealArray=Ut)
+  ! And add to File output
+  CALL AddToFieldData(FieldOut,(/nVarField_HDF5,N_HDF5+1,N_HDF5+1,N_HDF5+1/),'FieldData',(/'dudt1,dudt2,dudt3,dudt4,dudt5'/),RealArray=Ut)
+ENDIF
 
 ! Read the attributes from file
 CALL ReadAttribute(File_ID,'MeshFile',1,StrScalar=MeshFile_HDF5)
@@ -141,41 +155,47 @@ END SUBROUTINE WriteNewStateFile
 !===================================================================================================================================
 !> ?
 !===================================================================================================================================
-SUBROUTINE FourierFilter(U_In)
+SUBROUTINE FourierFilter(nVar_In,U_In)
 ! MODULES                                                                                                                          !
+USE MOD_Globals
 USE MOD_Filter_Hit_Vars,    ONLY: N_FFT,Endw,Localk,N_Filter,Nc,plan
-USE MOD_Filter_Hit_Vars,    ONLY: nVar_HDF5,N_HDF5,nElems_HDF5
+USE MOD_Filter_Hit_Vars,    ONLY: N_HDF5,nElems_HDF5
 USE MOD_FFT,                ONLY: Interpolate_DG2FFT,Interpolate_FFT2DG
 USE FFTW3
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(INOUT)    :: U_in(1:nVar_HDF5,0:N_HDF5,0:N_HDF5,0:N_HDF5,1:nElems_HDF5) !< elementwiseDG solution from state file
+INTEGER,INTENT(IN)    :: nVar_In
+REAL,INTENT(INOUT)    :: U_in(1:nVar_In,0:N_HDF5,0:N_HDF5,0:N_HDF5,1:nElems_HDF5) !< elementwiseDG solution from state file
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER        :: iVar,i,j,k
-REAL           :: U_Global(1:nVar_HDF5,1:N_FFT  ,1:N_FFT  ,1:N_FFT  ) ! Real global DG solution
-REAL           :: U_r(                 1:N_FFT  ,1:N_FFT  ,1:N_FFT  ) ! Real global DG solution  per variable
-COMPLEX        :: U_FFT(   1:nVar_HDF5,1:Endw(1),1:Endw(2),1:Endw(3)) ! Complex FFT solution
-COMPLEX        :: U_c(                 1:Endw(1),1:Endw(2),1:Endw(3)) ! Complex FFT solution per variable
+REAL           :: Time
+REAL           :: U_Global(1:nVar_In,1:N_FFT  ,1:N_FFT  ,1:N_FFT  ) ! Real global DG solution
+REAL           :: U_r(               1:N_FFT  ,1:N_FFT  ,1:N_FFT  ) ! Real global DG solution  per variable
+COMPLEX        :: U_FFT(   1:nVar_In,1:Endw(1),1:Endw(2),1:Endw(3)) ! Complex FFT solution
+COMPLEX        :: U_c(               1:Endw(1),1:Endw(2),1:Endw(3)) ! Complex FFT solution per variable
 !===================================================================================================================================
 ! 1. Interpolate DG solution to equidistant points
-CALL Interpolate_DG2FFT(U_in,U_Global)
+CALL Interpolate_DG2FFT(nVar_In,U_in,U_Global)
 
 ! 2. Apply Fourier-Transform on solution from state file
 !    Use local real/complex arrays to "ensure" they are contiguous in memory, can otherwise cause problems in FFTW
+SWRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' COMPUTE FFT FROM PHYSICAL TO FOURIER...'
+Time = FLEXITIME()
 CALL DFFTW_PLAN_DFT_R2C_3D(plan,N_FFT,N_FFT,N_FFT,U_r,U_c,FFTW_ESTIMATE)
-DO iVar=1,nVar_HDF5
+DO iVar=1,nVar_In
   U_r = U_Global(iVar,:,:,:)
   CALL DFFTW_Execute(plan,U_r,U_c)
   U_FFT(iVar,:,:,:) = U_c
 END DO
 CALL DFFTW_DESTROY_PLAN(plan)
+SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',FLEXITIME()-Time,'s]'
 
 ! 3. Normalize Data (FFTW uses unnormalized FFT)
 U_FFT=U_FFT/REAL(N_FFT**3)
 
-! 3. Apply Fourier Filter
+! 3. Fourier cutoff filter
 IF (N_Filter.GT.-1) THEN
   DO k=1,endw(3); DO j=1,endw(2); DO i=1,endw(1)
     IF(localk(4,i,j,k).GT.N_Filter) U_FFT(:,i,j,k) = 0.
@@ -187,16 +207,19 @@ ELSE ! Nyquist filter
 END IF
 
 ! 5. Apply inverse Fourier-Transform on solution from state file
+SWRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' COMPUTE FFT FROM FOURIER TO PHYSICAL...'
+Time = FLEXITIME()
 CALL DFFTW_PLAN_DFT_C2R_3D(plan,N_FFT,N_FFT,N_FFT,U_c,U_r,FFTW_ESTIMATE)
-DO iVar=1,nVar_HDF5
+DO iVar=1,nVar_In
   U_c = U_FFT(iVar,:,:,:)
   CALL DFFTW_Execute(plan,U_c,U_r)
   U_Global(iVar,:,:,:) = U_r
 END DO
 CALL DFFTW_DESTROY_PLAN(plan)
+SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',FLEXITIME()-Time,'s]'
 
 ! 6. Interpolate global solution at equidistant points back to DG solution
-CALL Interpolate_FFT2DG(U_Global,U_in)
+CALL Interpolate_FFT2DG(nVar_In,U_Global,U_in)
 
 END SUBROUTINE FourierFilter
 
