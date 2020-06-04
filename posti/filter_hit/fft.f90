@@ -55,23 +55,40 @@ SUBROUTINE InitFFT()
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Filter_HIT_Vars
+#if USE_OPENMP
+USE OMP_Lib
+USE FFTW3
+#endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER  :: i,j,k
+#if USE_OPENMP
+INTEGER  :: void
+#endif
 !===================================================================================================================================
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT BASIS...'
+
+#if USE_OPENMP
+! Initialize FFTW with maximum number of OpenMP threads if enabled
+void = FFTW_INIT_THREADS()
+CALL FFTW_PLAN_WITH_NTHREADS(OMP_GET_MAX_THREADS())
+#endif
 
 Nc=FLOOR(REAL(N_FFT)/2.)
 Endw(1)   = Nc+1
 Endw(2:3) = N_FFT
 
-! Allocate wave space
+! Allocate array for wave numbers
 ALLOCATE(Localk(1:4,1:Endw(1),1:Endw(2),1:Endw(3)))
+! Allocate an array for the physical position of the nodes per proc
+ALLOCATE(Localxyz(1:3,1:N_FFT,1:N_FFT,1:N_FFT))
 
+!$OMP PARALLEL DEFAULT(SHARED)
+!$OMP DO PRIVATE(i,j,k)
 ! fill the wave space 
 DO i=1,Endw(1)
   DO j=1,Endw(2)
@@ -95,10 +112,9 @@ DO i=1,Endw(1)
     END DO
   END DO
 END DO
+!$OMP END DO
 
-! Allocate an array for the physical position of the nodes per proc
-ALLOCATE(Localxyz(1:3,1:N_FFT,1:N_FFT,1:N_FFT))
-
+!$OMP DO PRIVATE(i,j,k)
 DO i=1,N_FFT
   DO j=1,N_FFT
     DO k=1,N_FFT
@@ -108,6 +124,8 @@ DO i=1,N_FFT
     END DO
   END DO
 END DO
+!$OMP END DO
+!$OMP END PARALLEL
 
 SWRITE(UNIT_stdOut,'(A)')' INIT BASIS DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
@@ -133,6 +151,7 @@ REAL,INTENT(INOUT)    :: U_DG(    nVar_In,0:N_HDF5,0:N_HDF5,0:N_HDF5 ,nElems_HDF
 REAL,INTENT(OUT)      :: U_Global(nVar_In,1:N_FFT ,1:N_FFT ,1:N_FFT              )
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+REAL          :: Time
 INTEGER       :: iElem
 INTEGER       :: i,ii,iGlob
 INTEGER       :: j,jj,jGlob
@@ -145,6 +164,8 @@ SWRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' INTERPOLATE DG SOLUTION TO FFT COORDS...
 ! Vandermonde to interpolate from HDF5_Nodetype to equidistant points
 CALL GetVandermonde(N_HDF5,NodeType_HDF5,N_Visu,'VISU_INNER',VdmGaussEqui)
 
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(iElem,i,ii,iGlob,j,jj,jGlob,k,kk,kGlob,U_aux)
+!$OMP DO
 ! Loop to get the nodal U_DG solution into a global solution in ijk form
 DO iElem=1,nElems_HDF5
   ! Get solution in each element on equidistant points
@@ -165,6 +186,8 @@ DO iElem=1,nElems_HDF5
     END DO
   END DO
 END DO
+!$OMP END DO
+!$OMP END PARALLEL
 
 SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES')'DONE'
 END SUBROUTINE Interpolate_DG2FFT
@@ -188,6 +211,7 @@ REAL,INTENT(INOUT)    :: U_Global(nVar_In,1:N_FFT ,1:N_FFT ,1:N_FFT             
 REAL,INTENT(OUT)      :: U_DG(    nVar_In,0:N_HDF5,0:N_HDF5,0:N_HDF5 ,nElems_HDF5)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+REAL          :: Time
 INTEGER       :: iElem
 INTEGER       :: i,ii,iGlob
 INTEGER       :: j,jj,jGlob
@@ -196,13 +220,13 @@ REAL          :: U_aux(nVar_In,0:N_Visu,0:N_Visu,0:N_Visu)
 REAL          :: VdmEquiGauss(0:N_Visu,0:N_HDF5)
 !===================================================================================================================================
 SWRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' INTERPOLATE FFT SOLUTION TO DG COORDS...'
-
 ! Vandermonde to interpolate from equidistant points to HDF5_Nodetype
 CALL GetVandermonde(N_Visu,'VISU_INNER',N_HDF5,NodeType_HDF5,VdmEquiGauss)
 
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(iElem,i,ii,iGlob,j,jj,jGlob,k,kk,kGlob,U_aux)
+!$OMP DO
 ! Loop to get the global solution in ijk form back to a nodal U_DG solution
 DO iElem=1,nElems_HDF5
-
   ! Fill the global solution array using the ijk sorting
   ii=Elem_IJK(1,iElem)
   jj=Elem_IJK(2,iElem)
@@ -221,6 +245,8 @@ DO iElem=1,nElems_HDF5
   ! Get solution in each element on equidistant points
   CALL ChangeBasis3D(nVar_In,N_Visu,N_HDF5,VdmEquiGauss,U_aux(:,:,:,:),U_DG(:,:,:,:,iElem))
 END DO
+!$OMP END DO
+!$OMP END PARALLEL
 
 SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES')'DONE'
 END SUBROUTINE Interpolate_FFT2DG
@@ -303,12 +329,18 @@ SUBROUTINE FinalizeFFT()
 ! MODULES                                                                                                                          !
 USE MOD_Globals
 USE MOD_Filter_Hit_Vars
+USE FFTW3
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
+#if USE_OPENMP
+CALL FFTW_CLEANUP_THREADS()
+#else
+CALL FFTW_CLEANUP()
+#endif
 IF(MPIRoot) THEN
   SDEALLOCATE(LocalXYZ)
   SDEALLOCATE(LocalK)

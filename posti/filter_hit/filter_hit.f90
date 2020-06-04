@@ -162,6 +162,9 @@ USE MOD_Filter_Hit_Vars,    ONLY: N_FFT,Endw,Localk,N_Filter,Nc,plan
 USE MOD_Filter_Hit_Vars,    ONLY: N_HDF5,nElems_HDF5
 USE MOD_FFT,                ONLY: Interpolate_DG2FFT,Interpolate_FFT2DG
 USE FFTW3
+#if USE_OPENMP
+USE OMP_Lib
+#endif
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
@@ -182,7 +185,7 @@ CALL Interpolate_DG2FFT(nVar_In,U_in,U_Global)
 ! 2. Apply Fourier-Transform on solution from state file
 !    Use local real/complex arrays to "ensure" they are contiguous in memory, can otherwise cause problems in FFTW
 SWRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' COMPUTE FFT FROM PHYSICAL TO FOURIER...'
-Time = FLEXITIME()
+Time = OMP_FLEXITIME()
 CALL DFFTW_PLAN_DFT_R2C_3D(plan,N_FFT,N_FFT,N_FFT,U_r,U_c,FFTW_ESTIMATE)
 DO iVar=1,nVar_In
   U_r = U_Global(iVar,:,:,:)
@@ -190,12 +193,12 @@ DO iVar=1,nVar_In
   U_FFT(iVar,:,:,:) = U_c
 END DO
 CALL DFFTW_DESTROY_PLAN(plan)
-SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',FLEXITIME()-Time,'s]'
+SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',OMP_FLEXITIME()-Time,'s]'
 
 ! 3. Normalize Data (FFTW uses unnormalized FFT)
 U_FFT=U_FFT/REAL(N_FFT**3)
 
-! 3. Fourier cutoff filter
+! 4. Fourier cutoff filter
 IF (N_Filter.GT.-1) THEN
   DO k=1,endw(3); DO j=1,endw(2); DO i=1,endw(1)
     IF(localk(4,i,j,k).GT.N_Filter) U_FFT(:,i,j,k) = 0.
@@ -208,7 +211,7 @@ END IF
 
 ! 5. Apply inverse Fourier-Transform on solution from state file
 SWRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' COMPUTE FFT FROM FOURIER TO PHYSICAL...'
-Time = FLEXITIME()
+Time = OMP_FLEXITIME()
 CALL DFFTW_PLAN_DFT_C2R_3D(plan,N_FFT,N_FFT,N_FFT,U_c,U_r,FFTW_ESTIMATE)
 DO iVar=1,nVar_In
   U_c = U_FFT(iVar,:,:,:)
@@ -216,7 +219,7 @@ DO iVar=1,nVar_In
   U_Global(iVar,:,:,:) = U_r
 END DO
 CALL DFFTW_DESTROY_PLAN(plan)
-SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',FLEXITIME()-Time,'s]'
+SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',OMP_FLEXITIME()-Time,'s]'
 
 ! 6. Interpolate global solution at equidistant points back to DG solution
 CALL Interpolate_FFT2DG(nVar_In,U_Global,U_in)

@@ -21,5 +21,9 @@ TARGET_INCLUDE_DIRECTORIES(${TOOL_NAME}libF90 PRIVATE ${FFTW_INCLUDE_DIR})
 
 # Standalone Posti executable
 add_exec(             posti_${TOOL_NAME} ${TOOL_DIR}/filter_hit.f90)
-TARGET_LINK_LIBRARIES(posti_${TOOL_NAME} ${TOOL_NAME}lib libflexishared ${FFTW_LIBRARIES})
+IF (ENABLE_OPENMP)
+  TARGET_LINK_LIBRARIES(posti_${TOOL_NAME} ${TOOL_NAME}lib libflexishared ${FFTW_LIBRARIES} ${FFTW_OMP_LIBRARIES})
+ELSE()
+  TARGET_LINK_LIBRARIES(posti_${TOOL_NAME} ${TOOL_NAME}lib libflexishared ${FFTW_LIBRARIES})
+ENDIF()
 ADD_DEPENDENCIES(     posti_${TOOL_NAME} ${TOOL_NAME}lib libflexishared ${SELFBUILTEXTERNALS})

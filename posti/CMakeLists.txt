@@ -15,7 +15,8 @@ CMAKE_DEPENDENT_OPTION(POSTI_BUILD_TO3D                  "Build the 3D extrusion
 CMAKE_DEPENDENT_OPTION(POSTI_BUILD_AVG2D                 "Build the 2D average tool"                          OFF "FLEXI_BUILDPOSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_BUILD_INIT_HIT              "Build the init hit tool"                            OFF "FLEXI_BUILDPOSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_BUILD_FILTER_HIT            "Build the filter hit tool"                          OFF "FLEXI_BUILDPOSTI" OFF)
-OPTION(ENABLE_OPENMP "Enable OpenMP" OFF)
+CMAKE_DEPENDENT_OPTION(ENABLE_OPENMP                     "Enable OpenMP in posti tools"                       OFF "FLEXI_BUILDPOSTI" OFF)
+
 IF(ENABLE_OPENMP)
   IF ("${CMAKE_VERSION}" VERSION_LESS 3.1.0)
     MESSAGE(WARNING "For finding OpenMP Fortran flags at least CMake version 3.1.0 is required. Please specify flags manually or use newer CMake version.")
@@ -26,6 +27,9 @@ IF(ENABLE_OPENMP)
   SET (CMAKE_CXX_FLAGS_DEBUG       "${CMAKE_CXX_FLAGS_DEBUG}       ${OpenMP_CXX_FLAGS}")
   SET (CMAKE_CXX_FLAGS_RELEASE     "${CMAKE_CXX_FLAGS_RELEASE}     ${OpenMP_CXX_FLAGS}")
   SET (CMAKE_EXE_LINKER_FLAGS      "${CMAKE_EXE_LINKER_FLAGS}      ${OpenMP_EXE_LINKER_FLAGS}")
+  ADD_DEFINITIONS(-DUSE_OPENMP=1)
+ELSE()
+  ADD_DEFINITIONS(-DUSE_OPENMP=0)
 ENDIF()
 
 
@@ -34,7 +38,7 @@ SET(   POSTI_WHICH_EQNSYS "navierstokes" CACHE STRING
 SET(   POSTI_WHICH_EOS    "idealgas" CACHE STRING
                         "Used equation of state (idealgas)")
 
-		IF(POSTI_BUILD_VISUALIZERECORDPOINTS OR POSTI_BUILD_CHANNEL_FFT OR POSTI_BUILD_INIT_HIT OR POSTI_BUILD_FILTER_HIT)
+IF(POSTI_BUILD_VISUALIZERECORDPOINTS OR POSTI_BUILD_CHANNEL_FFT OR POSTI_BUILD_INIT_HIT OR POSTI_BUILD_FILTER_HIT)
   # =========================================================================
   # FFTW (FFT tool)
   # =========================================================================
@@ -51,7 +55,10 @@ SET(   POSTI_WHICH_EOS    "idealgas" CACHE STRING
   # Try to find the library in the share directory or in a global, user-defined $FFTW_DIR
   FIND_PATH(FFTW_INCLUDES fftw3.h         HINTS $ENV{FFTW_DIR}/include ${FLEXI_EXTERNAL_LIB_DIR}/fftw/build/include)
   FIND_LIBRARY(FFTW_LIBRARIES NAMES fftw3 HINTS $ENV{FFTW_DIR}/lib     ${FLEXI_EXTERNAL_LIB_DIR}/fftw/build/lib    )
-  IF(FFTW_INCLUDES STREQUAL "FFTW_INCLUDES-NOTFOUND" OR FFTW_LIBRARIES STREQUAL "FFTW_LIBRARIES-NOTFOUND")
+  IF (ENABLE_OPENMP)
+    FIND_LIBRARY(FFTW_OMP_LIBRARIES NAMES fftw3_omp HINTS $ENV{FFTW_DIR}/lib     ${FLEXI_EXTERNAL_LIB_DIR}/fftw/build/lib    )
+  ENDIF()
+  IF(FFTW_INCLUDES STREQUAL "FFTW_INCLUDES-NOTFOUND" OR FFTW_LIBRARIES STREQUAL "FFTW_LIBRARIES-NOTFOUND" OR FFTW_OMP_LIBRARIES STREQUAL "FFTW_OMP_LIBRARIES-NOTFOUND")
     MESSAGE(STATUS "FFTW not found, building library")
       ExternalProject_Add(fftw
         GIT_REPOSITORY ${FFTWDOWNLOAD}
@@ -59,18 +66,24 @@ SET(   POSTI_WHICH_EOS    "idealgas" CACHE STRING
         ${${GITSHALLOW}}
         PREFIX  ${POSTI_FFTWDIR}
 	UPDATE_COMMAND ""
-        CONFIGURE_COMMAND tar xzf ${POSTI_FFTWTAG}.tar.gz && FC=${CMAKE_Fortran_COMPILER} CC=${CMAKE_C_COMPILER} F77=${CMAKE_F77_COMPILER} ${POSTI_FFTWDIR}/src/fftw/${POSTI_FFTWTAG}/configure --prefix=${POSTI_FFTWDIR}/build
-        BUILD_IN_SOURCE 1
+        CONFIGURE_COMMAND tar xzf ${POSTI_FFTWTAG}.tar.gz && FC=${CMAKE_Fortran_COMPILER} CC=${CMAKE_C_COMPILER} F77=${CMAKE_F77_COMPILER} ${POSTI_FFTWDIR}/src/fftw/${POSTI_FFTWTAG}/configure --prefix=${POSTI_FFTWDIR}/build --enable-openmp BUILD_IN_SOURCE 1
       )
     SET(FFTW_INCLUDE_DIR ${POSTI_FFTWDIR}/build/include)
     SET(FFTW_LIBRARY     ${POSTI_FFTWDIR}/build/lib/libfftw3.a)
     SET(FFTW_LIBRARIES   ${POSTI_FFTWDIR}/build/lib/libfftw3.a)
+    IF (ENABLE_OPENMP)
+      SET(FFTW_OMP_LIBRARY   ${POSTI_FFTWDIR}/build/lib/libfftw3_omp.a)
+      SET(FFTW_OMP_LIBRARIES ${POSTI_FFTWDIR}/build/lib/libfftw3_omp.a)
+    ENDIF()
     SET_PROPERTY(DIRECTORY PROPERTY CLEAN_NO_CUSTOM 1)
     LIST(APPEND SELFBUILTEXTERNALS fftw)
   ELSE()
     MESSAGE(STATUS "FFTW includes found: " ${FFTW_INCLUDES})
     SET(FFTW_INCLUDE_DIR ${FFTW_INCLUDES})
     SET(FFTW_LIBRARY     ${FFTW_LIBRARIES})
+    IF (ENABLE_OPENMP)
+      SET(FFTW_OMP_LIBRARY   ${POSTI_FFTWDIR}/build/lib/libfftw3_omp.a)
+    ENDIF()
   ENDIF()
 
 ENDIF()

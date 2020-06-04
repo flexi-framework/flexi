@@ -39,6 +39,9 @@ USE MOD_MPI,                     ONLY: DefineParametersMPI,InitMPI
 #if USE_MPI
 USE MOD_MPI,                     ONLY: InitMPIvars,FinalizeMPI
 #endif
+#if USE_OPENMP
+USE OMP_Lib
+#endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -104,7 +107,7 @@ CALL InitIOHDF5()
 
 ! Loop over all files specified on commandline
 DO iArg=2,nArgs
-  Time = FLEXITIME()
+  Time = OMP_FLEXITIME()
 
   InputStateFile = Args(iArg)
 
@@ -191,7 +194,7 @@ DO iArg=2,nArgs
   IF(FieldDataExists) DEALLOCATE(Ut)
 
   SWRITE(UNIT_stdOut,'(132("="))')
-  SWRITE(UNIT_stdOut,'(A,A,A,F0.3,A)') ' PROCESSED FILE ',TRIM(InputStateFile),' in [',FLEXITIME()-Time,'s]'
+  SWRITE(UNIT_stdOut,'(A,A,A,F0.3,A)') ' PROCESSED FILE ',TRIM(InputStateFile),' in [',OMP_FLEXITIME()-Time,'s]'
 END DO !iArg=1,nArgs
 
 ! Finalize everything
