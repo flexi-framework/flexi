@@ -69,7 +69,7 @@ USE MOD_Globals
 USE MOD_DG_Vars,         ONLY: U,Ut
 USE MOD_HDF5_Input,      ONLY: OpenDataFile,CloseDataFile
 USE MOD_HDF5_Input,      ONLY: ReadArray,ReadAttribute,GetDataProps,GetDataSize,DataSetExists
-USE MOD_IO_HDF5,         ONLY: File_ID,AddToFieldData,FieldOut,nDims,HSize
+USE MOD_IO_HDF5,         ONLY: File_ID,nDims,HSize
 USE MOD_Filter_Hit_Vars, ONLY: nVar_HDF5,N_HDF5,nElems_HDF5,nVarField_HDF5
 USE MOD_Filter_Hit_Vars, ONLY: Time_HDF5,MeshFile_HDF5,NodeType_HDF5,ProjectName_HDF5
 USE MOD_Filter_Hit_Vars, ONLY: FieldDataExists
@@ -108,8 +108,6 @@ IF (FieldDataExists) THEN
   ALLOCATE(Ut(1:nVarField_HDF5,0:N_HDF5,0:N_HDF5,0:N_HDF5,1:nElems_HDF5))
   CALL ReadArray('FieldData',5,&
                  (/nVarField_HDF5,N_HDF5+1,N_HDF5+1,N_HDF5+1,nElems_HDF5/),0,5,RealArray=Ut)
-  ! And add to File output
-  CALL AddToFieldData(FieldOut,(/nVarField_HDF5,N_HDF5+1,N_HDF5+1,N_HDF5+1/),'FieldData',(/'dudt1,dudt2,dudt3,dudt4,dudt5'/),RealArray=Ut)
 ENDIF
 
 ! Read the attributes from file
@@ -134,21 +132,55 @@ END SUBROUTINE ReadOldStateFile
 !===================================================================================================================================
 SUBROUTINE WriteNewStateFile()
 ! MODULES                                                                                                                          !
-USE MOD_HDF5_Output,        ONLY: WriteState
+USE MOD_Globals
+USE MOD_DG_Vars,            ONLY: Ut
+USE MOD_IO_HDF5,            ONLY: tFieldOut,FieldOut,File_ID
+USE MOD_IO_HDF5,            ONLY: OpenDataFile,CloseDataFile,AddToFieldData
+USE MOD_HDF5_Output,        ONLY: WriteState,WriteAttribute
+USE MOD_Interpolation_Vars, ONLY: NodeType
 USE MOD_Output_Vars,        ONLY: NOut,ProjectName
-USE MOD_Filter_Hit_Vars,    ONLY: N_HDF5,ProjectName_HDF5,Time_HDF5,MeshFile_HDF5
+USE MOD_Filter_Hit_Vars,    ONLY: N_HDF5,ProjectName_HDF5,Time_HDF5,MeshFile_HDF5,NodeType_HDF5
+USE MOD_Filter_Hit_Vars,    ONLY: FieldDataExists,nVarField_HDF5
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+TYPE(tFieldOut),POINTER        :: f
+CHARACTER(LEN=255)             :: FileName
 !===================================================================================================================================
 ! Set output variables according to current state file
 NOut        = N_HDF5
 ProjectName = TRIM(ProjectName_HDF5)//'_filtered'
 
+! Add (filtered) FieldData to output if it exists
+IF (FieldDataExists) THEN
+  CALL AddToFieldData(FieldOut,(/nVarField_HDF5,N_HDF5+1,N_HDF5+1,N_HDF5+1/),'dudt',(/'dudt1','dudt2','dudt3','dudt4','dudt5'/),RealArray=Ut)
+END IF
+
 ! Write new state file
 CALL WriteState(TRIM(MeshFile_HDF5),Time_HDF5,Time_HDF5,isErrorFile=.FALSE.)
+
+! Annoyingly we have to overwrite the nodetype manually if it does not match the nodetype Flexi is compiled with
+IF (NodeType.NE.NodeType_HDF5) THEN
+  FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_'//'State',Time_HDF5))//'.h5'
+  CALL OpenDataFile(FileName,create=.FALSE.,single=.FALSE.,readOnly=.FALSE.)
+  CALL WriteAttribute(File_ID,'NodeType',1,StrScalar=(/NodeType_HDF5/))
+  CALL CloseDataFile()
+END IF
+
+! Cleanup FieldOut by deallocating last entry of list until only first element left
+IF (FieldDataExists) THEN
+  DO WHILE(ASSOCIATED(FieldOut%next))
+    f=>FieldOut
+    DO WHILE(ASSOCIATED(f%next))
+      f=>f%next
+    END DO
+    f%next => NULL()
+    DEALLOCATE(f) ! deallocate last entry of list
+  END DO
+  IF (ASSOCIATED(FieldOut)) DEALLOCATE(FieldOut) ! also deallocate first list entry
+END IF
 
 END SUBROUTINE WriteNewStateFile
 

@@ -151,7 +151,6 @@ REAL,INTENT(INOUT)    :: U_DG(    nVar_In,0:N_HDF5,0:N_HDF5,0:N_HDF5 ,nElems_HDF
 REAL,INTENT(OUT)      :: U_Global(nVar_In,1:N_FFT ,1:N_FFT ,1:N_FFT              )
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL          :: Time
 INTEGER       :: iElem
 INTEGER       :: i,ii,iGlob
 INTEGER       :: j,jj,jGlob
@@ -211,7 +210,6 @@ REAL,INTENT(INOUT)    :: U_Global(nVar_In,1:N_FFT ,1:N_FFT ,1:N_FFT             
 REAL,INTENT(OUT)      :: U_DG(    nVar_In,0:N_HDF5,0:N_HDF5,0:N_HDF5 ,nElems_HDF5)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL          :: Time
 INTEGER       :: iElem
 INTEGER       :: i,ii,iGlob
 INTEGER       :: j,jj,jGlob
