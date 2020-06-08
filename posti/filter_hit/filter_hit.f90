@@ -67,15 +67,17 @@ SUBROUTINE ReadOldStateFile(StateFile)
 ! MODULES                                                                                                                          !
 USE MOD_Globals
 USE MOD_DG_Vars,         ONLY: U,Ut
-USE MOD_HDF5_Input,      ONLY: OpenDataFile,CloseDataFile
+USE MOD_HDF5_Input,      ONLY: OpenDataFile,CloseDataFile,ISVALIDHDF5FILE
 USE MOD_HDF5_Input,      ONLY: ReadArray,ReadAttribute,GetDataProps,GetDataSize,DataSetExists
 USE MOD_IO_HDF5,         ONLY: File_ID,nDims,HSize
 USE MOD_Filter_Hit_Vars, ONLY: nVar_HDF5,N_HDF5,nElems_HDF5,nVarField_HDF5
-USE MOD_Filter_Hit_Vars, ONLY: Time_HDF5,MeshFile_HDF5,NodeType_HDF5,ProjectName_HDF5
-USE MOD_Filter_Hit_Vars, ONLY: FieldDataExists
+USE MOD_Filter_Hit_Vars, ONLY: Time_HDF5,NodeType_HDF5,ProjectName_HDF5
+USE MOD_Filter_Hit_Vars, ONLY: FieldDataExists,OverwriteMeshFile
 USE MOD_ReadInTools,     ONLY: ExtractParameterFile
 USE MOD_Output_Vars,     ONLY: UserBlockTmpFile,userblock_total_len
 USE MOD_Output,          ONLY: insert_userblock
+USE MOD_Mesh_Vars,       ONLY: MeshFile
+USE MOD_StringTools,     ONLY: STRICMP,GetFileExtension
 USE ISO_C_BINDING,       ONLY: C_NULL_CHAR
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
@@ -87,6 +89,15 @@ LOGICAL                          :: userblockFound
 CHARACTER(LEN=255)               :: prmfile=".parameter.ini"
 !===================================================================================================================================
 SWRITE(*,*) "READING SOLUTION FROM STATE FILE """,TRIM(StateFile), """"
+
+! Get start index of file extension to check if it is a h5 file
+IF (.NOT.STRICMP(GetFileExtension(StateFile), 'h5')) &
+  CALL CollectiveStop(__STAMP__,'ERROR - Invalid file extension of input state file!')
+
+! Check if state file is a valid state
+IF(.NOT.ISVALIDHDF5FILE(StateFile)) &
+  CALL CollectiveStop(__STAMP__,'ERROR - Not a valid state file!')
+
 ! Open the data file
 CALL OpenDataFile(StateFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 
@@ -111,9 +122,11 @@ IF (FieldDataExists) THEN
 ENDIF
 
 ! Read the attributes from file
-CALL ReadAttribute(File_ID,'MeshFile',1,StrScalar=MeshFile_HDF5)
 CALL ReadAttribute(File_ID,'Time',1,RealScalar=Time_HDF5)
 CALL ReadAttribute(File_ID,'Project_Name',1,StrScalar=ProjectName_HDF5)
+IF (.NOT. OverwriteMeshfile) THEN
+  CALL ReadAttribute(File_ID,'MeshFile',1,StrScalar=MeshFile)
+END IF
 
 ! Extract parameter file from userblock (if found)
 CALL ExtractParameterFile(StateFile,TRIM(prmfile),userblockFound)
@@ -134,12 +147,13 @@ SUBROUTINE WriteNewStateFile()
 ! MODULES                                                                                                                          !
 USE MOD_Globals
 USE MOD_DG_Vars,            ONLY: Ut
+USE MOD_Mesh_Vars,          ONLY: MeshFile
 USE MOD_IO_HDF5,            ONLY: tFieldOut,FieldOut,File_ID
 USE MOD_IO_HDF5,            ONLY: OpenDataFile,CloseDataFile,AddToFieldData
 USE MOD_HDF5_Output,        ONLY: WriteState,WriteAttribute
 USE MOD_Interpolation_Vars, ONLY: NodeType
 USE MOD_Output_Vars,        ONLY: NOut,ProjectName
-USE MOD_Filter_Hit_Vars,    ONLY: N_HDF5,ProjectName_HDF5,Time_HDF5,MeshFile_HDF5,NodeType_HDF5
+USE MOD_Filter_Hit_Vars,    ONLY: N_HDF5,ProjectName_HDF5,Time_HDF5,NodeType_HDF5
 USE MOD_Filter_Hit_Vars,    ONLY: FieldDataExists,nVarField_HDF5
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
@@ -159,7 +173,7 @@ IF (FieldDataExists) THEN
 END IF
 
 ! Write new state file
-CALL WriteState(TRIM(MeshFile_HDF5),Time_HDF5,Time_HDF5,isErrorFile=.FALSE.)
+CALL WriteState(TRIM(MeshFile),Time_HDF5,Time_HDF5,isErrorFile=.FALSE.)
 
 ! Annoyingly we have to overwrite the nodetype manually if it does not match the nodetype Flexi is compiled with
 IF (NodeType.NE.NodeType_HDF5) THEN

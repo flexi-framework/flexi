@@ -22,18 +22,16 @@ USE MOD_Globals
 USE MOD_Filter_HIT
 USE MOD_Filter_HIT_Vars
 USE MOD_DG_Vars,                 ONLY: U,Ut
-USE MOD_Interpolation_Vars      ,ONLY: NodeType
 USE MOD_Mesh,                    ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
-USE MOD_Mesh_Vars,               ONLY: nElems_IJK
+USE MOD_Mesh_Vars,               ONLY: nElems_IJK,MeshFile
 USE MOD_Mesh_ReadIn,             ONLY: ReadIJKSorting
 USE MOD_Output,                  ONLY: DefineParametersOutput
 USE MOD_Interpolation,           ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
 USE MOD_IO_HDF5,                 ONLY: DefineParametersIO_HDF5,InitIOHDF5
-USE MOD_HDF5_Input,              ONLY: ISVALIDHDF5FILE
 USE MOD_HDF5_Output,             ONLY: WriteState
-USE MOD_Commandline_Arguments
 USE MOD_StringTools,             ONLY: STRICMP,GetFileExtension
 USE MOD_ReadInTools
+USE MOD_Commandline_Arguments
 USE MOD_FFT,                     ONLY: InitFFT,FinalizeFFT
 USE MOD_MPI,                     ONLY: DefineParametersMPI,InitMPI
 #if USE_MPI
@@ -45,14 +43,14 @@ USE OMP_Lib
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER                            :: iArg
 REAL                               :: Time
 #if USE_MPI
 REAL                               :: limit,nTotal
 #endif
-INTEGER                            :: iArg,iExt
 CHARACTER(LEN=255)                 :: InputStateFile
-INTEGER                            :: N_HDF5_old = 0          ! N of last state file
-CHARACTER(LEN=255)                 :: MeshFile_HDF5_old = " " ! MeshFile of last state file
+CHARACTER(LEN=255)                 :: MeshFile_old = " "      ! MeshFile of last state file
+INTEGER                            :: N_HDF5_old=0
 LOGICAL                            :: changedMeshFile=.FALSE. ! True if mesh between states changed
 LOGICAL                            :: changedN       =.FALSE. ! True if N between states changes
 !===================================================================================================================================
@@ -81,9 +79,8 @@ CALL DefineParametersOutput()
 CALL DefineParametersMesh()
 !=====================================
 CALL prms%SetSection("filterHIT")
-!CALL prms%CreateStringOption(  "MeshFile"       , "Overwrite mesh file saved to state files' userblock.")
-CALL prms%CreateIntOption(     "N_Filter"       , "Cutoff filter")
-CALL prms%CreateIntOption(     "N_Visu"         , "Polynomial degree to perform DFFT on")
+CALL prms%CreateIntOption("N_Filter" , "Cutoff filter")
+CALL prms%CreateIntOption("N_Visu"   , "Polynomial degree to perform DFFT on")
 
 ! check for command line argument --help or --markdown
 IF (doPrintHelp.GT.0) THEN
@@ -101,6 +98,10 @@ ParameterFile = Args(1)
 ! Readin Parameters
 N_Filter = GETINT('N_Filter','-1')
 N_Visu   = GETINT('N_Visu')
+MeshFile = GETSTR('MeshFile','')
+
+! Overwrite local meshfile from userblock if present
+IF (TRIM(MeshFile).EQ.'') OverwriteMeshFile=.FALSE.
 
 ! Initialize IO
 CALL InitIOHDF5()
@@ -116,22 +117,12 @@ DO iArg=2,nArgs
   SWRITE(UNIT_stdOut,'(A,A,A)') ' ( "',TRIM(InputStateFile),'" )'
   SWRITE(UNIT_stdOut,'(132("="))')
 
-  ! Get start index of file extension to check if it is a h5 file
-  iExt=INDEX(InputStateFile,'.',BACK = .TRUE.)
-  IF(InputStateFile(iExt+1:iExt+2) .NE. 'h5') THEN
-    CALL CollectiveStop(__STAMP__,'ERROR - Invalid file extension!')
-  END IF
-
-  ! Check if state file is a valid state
-  IF(.NOT.ISVALIDHDF5FILE(InputStateFile)) &
-    CALL CollectiveStop(__STAMP__,'ERROR - Restart file not a valid state file.')
-
   ! Read attributes and solution from state file
   CALL ReadOldStateFile(InputStateFile)
 
   ! Check if input attributes have changed since last state file
-  IF(TRIM(MeshFile_HDF5).NE.TRIM(MeshFile_HDF5_old)) changedMeshFile =.TRUE.
-  IF(N_HDF5_old.NE.N_HDF5)                           changedN        =.TRUE.
+  IF(TRIM(MeshFile).NE.TRIM(MeshFile_old)) changedMeshFile =.TRUE.
+  IF(N_HDF5.NE.N_HDF5_old)                 changedN        =.TRUE.
 
   ! Re-initialize interpolation and re-allocate DG solution array if N has changed
   IF(changedN) THEN
@@ -141,10 +132,10 @@ DO iArg=2,nArgs
 
   ! Re-initialize mesh if it has changed
   IF(changedMeshFile) THEN
-    SWRITE(UNIT_stdOUT,*) "INITIALIZING MESH FROM FILE """,TRIM(MeshFile_HDF5),""""
+    SWRITE(UNIT_stdOUT,*) "INITIALIZING MESH FROM FILE """,TRIM(MeshFile),""""
     CALL FinalizeMesh()
     CALL DefineParametersMesh()
-    CALL InitMesh(MeshMode=0,MeshFile_IN=MeshFile_HDF5)
+    CALL InitMesh(MeshMode=0,MeshFile_IN=MeshFile)
     CALL ReadIJKSorting() ! Read global xyz sorting of structured mesh
 
     ! Currently only cubic meshes are allowed!
@@ -184,10 +175,10 @@ DO iArg=2,nArgs
   CALL WriteNewStateFile()
 
   ! To determine whether meshfile or N changes
-  MeshFile_HDF5_old = MeshFile_HDF5
-  N_HDF5_old        = N_HDF5
-  changedMeshFile   = .FALSE.
-  changedN          = .FALSE.
+  MeshFile_old    = MeshFile
+  N_HDF5_old      = N_HDF5
+  changedMeshFile = .FALSE.
+  changedN        = .FALSE.
 
   ! Deallocate DG solution array for next file
   DEALLOCATE(U)

@@ -41,13 +41,13 @@ COMPLEX,PARAMETER     :: II = CMPLX(0.,1.0)
 
 ! state file variables
 LOGICAL               :: FieldDataExists=.FALSE.
+LOGICAL               :: OverwriteMeshFile=.TRUE.
 REAL                  :: Time_HDF5                 !<
 INTEGER               :: nVar_HDF5
 INTEGER               :: nVarField_HDF5
 INTEGER               :: N_HDF5
 INTEGER               :: nElems_HDF5
 CHARACTER(LEN=255)    :: NodeType_HDF5
-CHARACTER(LEN=255)    :: MeshFile_HDF5
 CHARACTER(LEN=255)    :: ProjectName_HDF5
 !===================================================================================================================================
 END MODULE MOD_Filter_HIT_Vars
