@@ -27,6 +27,14 @@ INTERFACE InitFFT
   MODULE PROCEDURE InitFFT
 END INTERFACE
 
+INTERFACE ComputeFFT_R2C
+  MODULE PROCEDURE ComputeFFT_R2C
+END INTERFACE
+
+INTERFACE ComputeFFT_C2R
+  MODULE PROCEDURE ComputeFFT_C2R
+END INTERFACE
+
 INTERFACE Interpolate_DG2FFT
   MODULE PROCEDURE Interpolate_DG2FFT
 END INTERFACE
@@ -43,7 +51,10 @@ INTERFACE FinalizeFFT
   MODULE PROCEDURE FinalizeFFT
 END INTERFACE
 
-PUBLIC:: InitFFT,Interpolate_DG2FFT,Interpolate_FFT2DG,EvalFourierAtDGCoords,FinalizeFFT
+PUBLIC:: InitFFT,FinalizeFFT
+PUBLIC:: ComputeFFT_R2C,ComputeFFT_C2R
+PUBLIC:: Interpolate_DG2FFT,Interpolate_FFT2DG
+PUBLIC:: EvalFourierAtDGCoords
 
 CONTAINS
 
@@ -133,22 +144,112 @@ SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitFFT
 
 !===================================================================================================================================
+! ?
+!===================================================================================================================================
+SUBROUTINE ComputeFFT_R2C(nVar_In,U_Global,U_FFT)
+! MODULES
+USE MOD_Globals
+USE MOD_Filter_HIT_Vars       ,ONLY: N_FFT,Endw,plan
+USE FFTW3
+#if USE_OPENMP
+USE OMP_Lib
+#endif
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN)    :: nVar_In
+REAL,INTENT(IN)       :: U_Global(nVar_In,1:N_FFT  ,1:N_FFT  ,1:N_FFT  )
+COMPLEX,INTENT(OUT)   :: U_FFT(   nVar_In,1:Endw(1),1:Endw(2),1:Endw(3))
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL          :: Time
+INTEGER       :: iVar
+REAL          :: U_r(1:N_FFT  ,1:N_FFT  ,1:N_FFT  ) ! Real global DG solution per variable
+COMPLEX       :: U_c(1:Endw(1),1:Endw(2),1:Endw(3)) ! Complex FFT solution per variable
+!===================================================================================================================================
+SWRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' COMPUTE FFT FROM PHYSICAL TO FOURIER...'
+Time = OMP_FLEXITIME()
+
+! Create plan once for local arrays and reuse it for each variable
+CALL DFFTW_PLAN_DFT_R2C_3D(plan,N_FFT,N_FFT,N_FFT,U_r,U_c,FFTW_ESTIMATE)
+
+! Compute FFT for each variable. Local arrays ensure data to be contiguous in memory.
+DO iVar=1,nVar_In
+  U_r = U_Global(iVar,:,:,:)
+  CALL DFFTW_Execute(plan,U_r,U_c)
+  U_FFT(iVar,:,:,:) = U_c
+END DO
+
+! Release resources allocated with plan
+CALL DFFTW_DESTROY_PLAN(plan)
+
+SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',OMP_FLEXITIME()-Time,'s]'
+END SUBROUTINE ComputeFFT_R2C
+
+!===================================================================================================================================
+! ?
+!===================================================================================================================================
+SUBROUTINE ComputeFFT_C2R(nVar_In,U_FFT,U_Global)
+! MODULES
+USE MOD_Globals
+USE MOD_Filter_HIT_Vars       ,ONLY: N_FFT,Endw,plan
+USE FFTW3
+#if USE_OPENMP
+USE OMP_Lib
+#endif
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN)    :: nVar_In
+COMPLEX,INTENT(IN)    :: U_FFT(   nVar_In,1:Endw(1),1:Endw(2),1:Endw(3))
+REAL,INTENT(OUT)      :: U_Global(nVar_In,1:N_FFT  ,1:N_FFT  ,1:N_FFT  )
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL          :: Time
+INTEGER       :: iVar
+REAL          :: U_r(1:N_FFT  ,1:N_FFT  ,1:N_FFT  ) ! Real global DG solution per variable
+COMPLEX       :: U_c(1:Endw(1),1:Endw(2),1:Endw(3)) ! Complex FFT solution per variable
+!===================================================================================================================================
+SWRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' COMPUTE FFT FROM FOURIER TO PHYSICAL...'
+Time = OMP_FLEXITIME()
+
+! Create plan once for local arrays and reuse it for each variable
+CALL DFFTW_PLAN_DFT_C2R_3D(plan,N_FFT,N_FFT,N_FFT,U_c,U_r,FFTW_ESTIMATE)
+
+! Compute FFT for each variable. Local arrays ensure data to be contiguous in memory.
+DO iVar=1,nVar_In
+  U_c = U_FFT(iVar,:,:,:)
+  CALL DFFTW_Execute(plan,U_c,U_r)
+  U_Global(iVar,:,:,:) = U_r
+END DO
+
+! Release resources allocated with plan
+CALL DFFTW_DESTROY_PLAN(plan)
+
+! Normalize data (FFTW does not normalize FFT results)
+U_Global=U_Global/REAL(N_FFT**3)
+
+SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',OMP_FLEXITIME()-Time,'s]'
+END SUBROUTINE ComputeFFT_C2R
+
+!===================================================================================================================================
 ! Interpolate via ChangeBasis() state @ visu (equidistant) coordinates from postprocessing (CGL)
 !===================================================================================================================================
 SUBROUTINE Interpolate_DG2FFT(nVar_In,U_DG,U_Global)
 ! MODULES
 USE MOD_Globals
-USE MOD_Filter_HIT_Vars       ,ONLY: N_HDF5,nElems_HDF5,NodeType_HDF5
+USE MOD_PreProc
+USE MOD_Filter_HIT_Vars       ,ONLY: NodeType_HDF5
 USE MOD_Filter_HIT_Vars       ,ONLY: N_FFT,N_Visu
-USE MOD_Mesh_Vars             ,ONLY: Elem_IJK
+USE MOD_Mesh_Vars             ,ONLY: Elem_IJK,nElems
 USE MOD_Interpolation         ,ONLY: GetVandermonde
 USE MOD_ChangeBasis           ,ONLY: ChangeBasis3D
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)    :: nVar_In
-REAL,INTENT(INOUT)    :: U_DG(    nVar_In,0:N_HDF5,0:N_HDF5,0:N_HDF5 ,nElems_HDF5)
-REAL,INTENT(OUT)      :: U_Global(nVar_In,1:N_FFT ,1:N_FFT ,1:N_FFT              )
+REAL,INTENT(INOUT)    :: U_DG(    nVar_In,0:PP_N ,0:PP_N ,0:PP_N ,nElems)
+REAL,INTENT(OUT)      :: U_Global(nVar_In,1:N_FFT,1:N_FFT,1:N_FFT       )
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER       :: iElem
@@ -156,19 +257,19 @@ INTEGER       :: i,ii,iGlob
 INTEGER       :: j,jj,jGlob
 INTEGER       :: k,kk,kGlob
 REAL          :: U_aux(nVar_In,0:N_Visu,0:N_Visu,0:N_Visu)
-REAL          :: VdmGaussEqui(0:N_Visu,0:N_HDF5)
+REAL          :: VdmGaussEqui(0:N_Visu,0:PP_N)
 !===================================================================================================================================
 SWRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' INTERPOLATE DG SOLUTION TO FFT COORDS...'
 
 ! Vandermonde to interpolate from HDF5_Nodetype to equidistant points
-CALL GetVandermonde(N_HDF5,NodeType_HDF5,N_Visu,'VISU_INNER',VdmGaussEqui)
+CALL GetVandermonde(PP_N,NodeType_HDF5,N_Visu,'VISU_INNER',VdmGaussEqui)
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(iElem,i,ii,iGlob,j,jj,jGlob,k,kk,kGlob,U_aux)
 !$OMP DO
 ! Loop to get the nodal U_DG solution into a global solution in ijk form
-DO iElem=1,nElems_HDF5
+DO iElem=1,nElems
   ! Get solution in each element on equidistant points
-  CALL ChangeBasis3D(nVar_In,N_HDF5,N_Visu,VdmGaussEqui,U_DG(:,:,:,:,iElem),U_aux(:,:,:,:))
+  CALL ChangeBasis3D(nVar_In,PP_N,N_Visu,VdmGaussEqui,U_DG(:,:,:,:,iElem),U_aux(:,:,:,:))
 
   ! Fill the global solution array using the ijk sorting
   ii=Elem_IJK(1,iElem)
@@ -197,17 +298,18 @@ END SUBROUTINE Interpolate_DG2FFT
 SUBROUTINE Interpolate_FFT2DG(nVar_In,U_Global,U_DG)
 ! MODULES
 USE MOD_Globals
-USE MOD_Filter_HIT_Vars       ,ONLY: N_HDF5,nElems_HDF5,NodeType_HDF5
+USE MOD_PreProc
+USE MOD_Filter_HIT_Vars       ,ONLY: NodeType_HDF5
 USE MOD_Filter_HIT_Vars       ,ONLY: N_FFT,N_Visu
-USE MOD_Mesh_Vars             ,ONLY: Elem_IJK
+USE MOD_Mesh_Vars             ,ONLY: Elem_IJK,nElems
 USE MOD_Interpolation         ,ONLY: GetVandermonde
 USE MOD_ChangeBasis           ,ONLY: ChangeBasis3D
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)    :: nVar_In
-REAL,INTENT(INOUT)    :: U_Global(nVar_In,1:N_FFT ,1:N_FFT ,1:N_FFT              )
-REAL,INTENT(OUT)      :: U_DG(    nVar_In,0:N_HDF5,0:N_HDF5,0:N_HDF5 ,nElems_HDF5)
+REAL,INTENT(INOUT)    :: U_Global(nVar_In,1:N_FFT,1:N_FFT,1:N_FFT       )
+REAL,INTENT(OUT)      :: U_DG(    nVar_In,0:PP_N ,0:PP_N ,0:PP_N ,nElems)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER       :: iElem
@@ -215,16 +317,16 @@ INTEGER       :: i,ii,iGlob
 INTEGER       :: j,jj,jGlob
 INTEGER       :: k,kk,kGlob
 REAL          :: U_aux(nVar_In,0:N_Visu,0:N_Visu,0:N_Visu)
-REAL          :: VdmEquiGauss(0:N_Visu,0:N_HDF5)
+REAL          :: VdmEquiGauss(0:N_Visu,0:PP_N)
 !===================================================================================================================================
 SWRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' INTERPOLATE FFT SOLUTION TO DG COORDS...'
 ! Vandermonde to interpolate from equidistant points to HDF5_Nodetype
-CALL GetVandermonde(N_Visu,'VISU_INNER',N_HDF5,NodeType_HDF5,VdmEquiGauss)
+CALL GetVandermonde(N_Visu,'VISU_INNER',PP_N,NodeType_HDF5,VdmEquiGauss)
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(iElem,i,ii,iGlob,j,jj,jGlob,k,kk,kGlob,U_aux)
 !$OMP DO
 ! Loop to get the global solution in ijk form back to a nodal U_DG solution
-DO iElem=1,nElems_HDF5
+DO iElem=1,nElems
   ! Fill the global solution array using the ijk sorting
   ii=Elem_IJK(1,iElem)
   jj=Elem_IJK(2,iElem)
@@ -241,7 +343,7 @@ DO iElem=1,nElems_HDF5
   END DO
 
   ! Get solution in each element on equidistant points
-  CALL ChangeBasis3D(nVar_In,N_Visu,N_HDF5,VdmEquiGauss,U_aux(:,:,:,:),U_DG(:,:,:,:,iElem))
+  CALL ChangeBasis3D(nVar_In,N_Visu,PP_N,VdmEquiGauss,U_aux(:,:,:,:),U_DG(:,:,:,:,iElem))
 END DO
 !$OMP END DO
 !$OMP END PARALLEL
@@ -252,30 +354,33 @@ END SUBROUTINE Interpolate_FFT2DG
 !===================================================================================================================================
 ! Evaluate the global Fourier solution at the DG interpolation points
 !===================================================================================================================================
-PPURE SUBROUTINE EvalFourierAtDGCoords(U_FFT,U_DG)
+PPURE SUBROUTINE EvalFourierAtDGCoords(nVar_In,U_FFT,U_DG)
 ! MODULES
-USE MOD_Mesh_Vars             ,ONLY: Elem_xGP
+USE MOD_PreProc
+USE MOD_Mesh_Vars             ,ONLY: Elem_xGP,nElems
 USE MOD_Filter_Hit_Vars       ,ONLY: II,Nc,endw
-USE MOD_Filter_Hit_Vars       ,ONLY: nVar_HDF5,N_HDF5,nElems_HDF5
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-COMPLEX,INTENT(IN)    :: U_FFT(nVar_HDF5,1:Endw(1),1:Endw(2),1:Endw(3) )
-REAL,   INTENT(OUT)   :: U_DG( nVar_HDF5,0:N_HDF5 ,0:N_HDF5 ,0:N_HDF5,nElems_HDF5)
+INTEGER,INTENT(IN)    :: nVar_In
+COMPLEX,INTENT(IN)    :: U_FFT(nVar_In,1:Endw(1),1:Endw(2),1:Endw(3)       )
+REAL,   INTENT(OUT)   :: U_DG( nVar_In,0:PP_N   ,0:PP_N   ,0:PP_N   ,nElems)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: iElem
 INTEGER            :: i,j,k,iw,jw,kw
 INTEGER            :: wavenumber
 COMPLEX            :: basis
-COMPLEX            :: U_k(1:nVar_HDF5,1:endw(1),1:endw(2),0:N_HDF5)
-COMPLEX            :: U_j(1:nVar_HDF5,1:endw(1), 0:N_HDF5,0:N_HDF5)
-COMPLEX            :: U_i(1:nVar_HDF5, 0:N_HDF5, 0:N_HDF5,0:N_HDF5)
+COMPLEX            :: U_k(1:nVar_In,1:endw(1),1:endw(2),0:PP_N)
+COMPLEX            :: U_j(1:nVar_In,1:endw(1),0:PP_N   ,0:PP_N)
+COMPLEX            :: U_i(1:nVar_In,0:PP_N   ,0:PP_N   ,0:PP_N)
 !===================================================================================================================================
-DO iElem=1,nElems_HDF5
-
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(iElem,U_i,i,iw,U_j,j,jw,U_k,k,kw,wavenumber,basis)
+!$OMP DO
+DO iElem=1,nElems
+  ! Evaluate basis in z
   U_k=0.
-  DO k=0,N_HDF5
+  DO k=0,PP_N
     DO kw=1,endw(3)
       wavenumber=kw-1
       IF (kw.GE.Nc+2) wavenumber=-(2*Nc+1-kw)
@@ -288,13 +393,14 @@ DO iElem=1,nElems_HDF5
     END DO !jw
   END DO !iw
 
+  ! Evaluate basis in y
   U_j=0.
-  DO j=0,N_HDF5
+  DO j=0,PP_N
     DO jw=1,endw(2)
       wavenumber=jw-1
       IF (jw.GE.Nc+2) wavenumber=-(2*Nc+1-jw)
       basis=EXP(II*(wavenumber)*Elem_xGP(2,0,j,0,iElem))
-      DO k=0,N_HDF5
+      DO k=0,PP_N
         DO iw=1,endw(1)
           U_j(:,iw,j,k) = U_j(:,iw,j,k)+U_k(:,iw,jw,k)*basis
         END DO !k
@@ -302,13 +408,14 @@ DO iElem=1,nElems_HDF5
     END DO !jw
   END DO !iw
 
+  ! Evaluate basis in x
   U_i=0.
   U_j(:,1,:,:)=U_j(:,1,:,:)/2.
-  DO i=0,N_HDF5
+  DO i=0,PP_N
     DO iw=1,endw(1)
       basis=EXP(II*(iw-1)*Elem_xGP(1,i,0,0,iElem))
-      DO k=0,N_HDF5
-        DO j=0,N_HDF5
+      DO k=0,PP_N
+        DO j=0,PP_N
           U_i(:,i,j,k) = U_i(:,i,j,k)+U_j(:,iw,j,k)*basis
         END DO !k
       END DO !j
@@ -317,6 +424,8 @@ DO iElem=1,nElems_HDF5
 
   U_DG(:,:,:,:,iElem) = 2*REAL(U_i)
 END DO !iElem
+!$OMP END DO
+!$OMP END PARALLEL
 
 END SUBROUTINE EvalFourierAtDGCoords
 
@@ -339,10 +448,8 @@ CALL FFTW_CLEANUP_THREADS()
 #else
 CALL FFTW_CLEANUP()
 #endif
-IF(MPIRoot) THEN
-  SDEALLOCATE(LocalXYZ)
-  SDEALLOCATE(LocalK)
-END IF
+SDEALLOCATE(LocalXYZ)
+SDEALLOCATE(LocalK)
 
 END SUBROUTINE FinalizeFFT
 

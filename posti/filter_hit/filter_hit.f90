@@ -204,70 +204,43 @@ END SUBROUTINE WriteNewStateFile
 SUBROUTINE FourierFilter(nVar_In,U_In)
 ! MODULES                                                                                                                          !
 USE MOD_Globals
-USE MOD_Filter_Hit_Vars,    ONLY: N_FFT,Endw,Localk,N_Filter,Nc,plan
-USE MOD_Filter_Hit_Vars,    ONLY: N_HDF5,nElems_HDF5
+USE MOD_PreProc
+USE MOD_Mesh_Vars,          ONLY: nElems
+USE MOD_Filter_Hit_Vars,    ONLY: N_FFT,Endw,Localk,N_Filter,Nc
 USE MOD_FFT,                ONLY: Interpolate_DG2FFT,Interpolate_FFT2DG
-USE FFTW3
-#if USE_OPENMP
-USE OMP_Lib
-#endif
+USE MOD_FFT,                ONLY: ComputeFFT_R2C,ComputeFFT_C2R
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)    :: nVar_In
-REAL,INTENT(INOUT)    :: U_in(1:nVar_In,0:N_HDF5,0:N_HDF5,0:N_HDF5,1:nElems_HDF5) !< elementwiseDG solution from state file
+REAL,INTENT(INOUT)    :: U_in(1:nVar_In,0:PP_N,0:PP_N,0:PP_N,1:nElems) !< elementwise DG solution from state file
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER        :: iVar,i,j,k
-REAL           :: Time
+INTEGER        :: i,j,k
 REAL           :: U_Global(1:nVar_In,1:N_FFT  ,1:N_FFT  ,1:N_FFT  ) ! Real global DG solution
-REAL           :: U_r(               1:N_FFT  ,1:N_FFT  ,1:N_FFT  ) ! Real global DG solution  per variable
 COMPLEX        :: U_FFT(   1:nVar_In,1:Endw(1),1:Endw(2),1:Endw(3)) ! Complex FFT solution
-COMPLEX        :: U_c(               1:Endw(1),1:Endw(2),1:Endw(3)) ! Complex FFT solution per variable
 !===================================================================================================================================
 ! 1. Interpolate DG solution to equidistant points
 CALL Interpolate_DG2FFT(nVar_In,U_in,U_Global)
 
-! 2. Apply Fourier-Transform on solution from state file
-!    Use local real/complex arrays to "ensure" they are contiguous in memory, can otherwise cause problems in FFTW
-SWRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' COMPUTE FFT FROM PHYSICAL TO FOURIER...'
-Time = OMP_FLEXITIME()
-CALL DFFTW_PLAN_DFT_R2C_3D(plan,N_FFT,N_FFT,N_FFT,U_r,U_c,FFTW_ESTIMATE)
-DO iVar=1,nVar_In
-  U_r = U_Global(iVar,:,:,:)
-  CALL DFFTW_Execute(plan,U_r,U_c)
-  U_FFT(iVar,:,:,:) = U_c
-END DO
-CALL DFFTW_DESTROY_PLAN(plan)
-SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',OMP_FLEXITIME()-Time,'s]'
+! 2. Apply complex Fourier-Transform on solution from state file
+CALL ComputeFFT_R2C(nVar_In,U_Global,U_FFT)
 
-! 3. Normalize Data (FFTW uses unnormalized FFT)
-U_FFT=U_FFT/REAL(N_FFT**3)
-
-! 4. Fourier cutoff filter
+! 3. Fourier cutoff filter
 IF (N_Filter.GT.-1) THEN
-  DO k=1,endw(3); DO j=1,endw(2); DO i=1,endw(1)
+  DO k=1,Endw(3); DO j=1,Endw(2); DO i=1,Endw(1)
     IF(localk(4,i,j,k).GT.N_Filter) U_FFT(:,i,j,k) = 0.
   END DO; END DO; END DO
 ELSE ! Nyquist filter
-  DO k=1,endw(3); DO j=1,endw(2); DO i=1,endw(1)
+  DO k=1,Endw(3); DO j=1,Endw(2); DO i=1,Endw(1)
     IF(localk(4,i,j,k).GT.Nc) U_FFT(:,i,j,k) = 0.
   END DO; END DO; END DO
 END IF
 
-! 5. Apply inverse Fourier-Transform on solution from state file
-SWRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' COMPUTE FFT FROM FOURIER TO PHYSICAL...'
-Time = OMP_FLEXITIME()
-CALL DFFTW_PLAN_DFT_C2R_3D(plan,N_FFT,N_FFT,N_FFT,U_c,U_r,FFTW_ESTIMATE)
-DO iVar=1,nVar_In
-  U_c = U_FFT(iVar,:,:,:)
-  CALL DFFTW_Execute(plan,U_c,U_r)
-  U_Global(iVar,:,:,:) = U_r
-END DO
-CALL DFFTW_DESTROY_PLAN(plan)
-SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',OMP_FLEXITIME()-Time,'s]'
+! 4. Apply inverse Fourier-Transform back into physical space
+CALL ComputeFFT_C2R(nVar_In,U_FFT,U_Global)
 
-! 6. Interpolate global solution at equidistant points back to DG solution
+! 5. Interpolate global solution at equidistant points back to DG points
 CALL Interpolate_FFT2DG(nVar_In,U_Global,U_in)
 
 END SUBROUTINE FourierFilter
@@ -285,10 +258,8 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
-IF(MPIRoot) THEN
-  SDEALLOCATE(LocalXYZ)
-  SDEALLOCATE(LocalK)
-END IF
+SDEALLOCATE(LocalXYZ)
+SDEALLOCATE(LocalK)
 
 END SUBROUTINE FinalizeFilterHit
 
