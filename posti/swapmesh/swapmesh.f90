@@ -334,12 +334,15 @@ END SUBROUTINE prepareVandermonde
 !===================================================================================================================================
 SUBROUTINE ReadOldStateFile(StateFile)
 ! MODULES                                                                                                                          !
-USE MOD_HDF5_Input,    ONLY: OpenDataFile,CloseDataFile,ReadArray,ReadAttribute
-USE MOD_IO_HDF5,       ONLY: File_ID
-USE MOD_Swapmesh_Vars, ONLY: nVar_State,NState,nElemsOld,Time_State,UOld
+USE MOD_Globals,       ONLY: abort
+USE MOD_HDF5_Input,    ONLY: OpenDataFile,CloseDataFile,ReadArray,ReadAttribute,GetDataSize
+USE MOD_IO_HDF5,       ONLY: File_ID,HSize
+USE MOD_Swapmesh_Vars, ONLY: nVar_State,NState,nElemsOld,Time_State,UOld,NNew,nElemsNew
 USE MOD_ReadInTools,   ONLY: ExtractParameterFile
 USE MOD_Output_Vars,   ONLY: UserBlockTmpFile,userblock_total_len
 USE MOD_Output,        ONLY: insert_userblock
+USE MOD_Equation_Vars, ONLY: StrVarNames
+USE MOD_DG_Vars,       ONLY: U
 USE ISO_C_BINDING,     ONLY: C_NULL_CHAR
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
@@ -349,13 +352,46 @@ CHARACTER(LEN=255),INTENT(IN)      :: StateFile !< State file to be read
 ! LOCAL VARIABLES
 LOGICAL                          :: userblockFound
 CHARACTER(LEN=255)               :: prmfile=".parameter.ini"
+CHARACTER(LEN=255)               :: FileType
+CHARACTER(LEN=255),ALLOCATABLE   :: VarNames_TimeAvg(:) !< List of varnames in TimeAvg-File 
+INTEGER                          :: iVar,nVarsFound,i,j,k,iElem
+REAL,ALLOCATABLE                 :: UMean(:,:,:,:,:)      !> Solution from old state
+INTEGER                          :: nDim
 !===================================================================================================================================
 ! Open the data file
 CALL OpenDataFile(StateFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 
-! Read the DG solution and store in UNew
-CALL ReadArray('DG_Solution',5,&
-               (/nVar_State,NState+1,NState+1,NState+1,nElemsOld/),0,5,RealArray=UOld)
+CALL ReadAttribute(File_ID,'File_Type',1,StrScalar=FileType)
+SELECT CASE(TRIM(FileType))
+CASE('State')
+  ! Read the DG solution and store in UNew
+  CALL ReadArray('DG_Solution',5,&
+                 (/nVar_State,NState+1,NState+1,NState+1,nElemsOld/),0,5,RealArray=UOld)
+CASE('TimeAvg')
+  CALL GetDataSize(File_ID,'Mean',nDim,HSize)
+  nVar_State=SIZE(StrVarNames)
+  ALLOCATE(VarNames_TimeAvg(INT(HSize(1))))
+  CALL ReadAttribute(File_ID,'VarNames_Mean',INT(HSize(1)),StrArray=VarNames_TimeAvg)
+  SDEALLOCATE(UOld)
+  ALLOCATE(UOld(nVar_State,0:NState,0:NState,0:NState,nElemsOld))
+  ALLOCATE(UMean(INT(HSize(1)),0:NState,0:NState,0:NState,nElemsOld))
+  SDEALLOCATE(U)
+  ALLOCATE(U   (nVar_State,0:NNew,  0:NNew,  0:NNew,  nElemsNew))
+  CALL ReadArray('Mean',5,&
+                (/INT(HSize(1)),NState+1,NState+1,NState+1,nElemsOld/),0,5,RealArray=UMean)
+  nVarsFound=0
+  DO iVar=1,SIZE(StrVarNames)
+    IF (TRIM(VarNames_TimeAvg(iVar)) .EQ. TRIM(StrVarNames(nVarsFound+1))) THEN
+      nVarsFound = nVarsFound+1
+      DO iElem=1,nElemsOld; DO k=0,NState; DO j=0,NState; DO i=0,NState
+        UOld(nVarsFound,i,j,k,iElem)=UMean(iVar,i,j,k,iElem)
+      END DO; END DO; END DO; END DO
+    END IF
+  END DO
+  IF(nVarsFound .NE. SIZE(StrVarNames) ) CALL abort(__STAMP__,&
+    'TimeAvg file does not contain all necessary variables for converting to state')
+END SELECT
+
 
 ! Read the current time
 CALL ReadAttribute(File_ID,'Time',1,RealScalar=Time_State)
@@ -368,6 +404,8 @@ INQUIRE(FILE=TRIM(UserBlockTmpFile),SIZE=userblock_total_len)
 
 ! Close the data file
 CALL CloseDataFile()
+SDEALLOCATE(VarNames_TimeAvg)
+SDEALLOCATE(UMean)
 END SUBROUTINE ReadOldStateFile
 
 !===================================================================================================================================
