@@ -70,6 +70,13 @@
 #define SDEALLOCATE(A) IF(ALLOCATED(A))  DEALLOCATE(A)
 #define ADEALLOCATE(A) IF(ASSOCIATED(A)) DEALLOCATE(A)
 
+! Define OpenMP specific shortcuts
+#if USE_OPENMP
+#  define OMP_FLEXITIME() OMP_GET_WTIME()
+#else
+#  define OMP_FLEXITIME() FLEXITIME()
+#endif
+
 ! Loop variables
 #define PP_IJK     i,j,k
 #define PP_ij      i,j
