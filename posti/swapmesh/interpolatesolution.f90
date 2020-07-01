@@ -50,6 +50,9 @@ USE MOD_SwapMesh_Vars,     ONLY: UOld,xiInter,InterToElem,nElemsNew,IPDone
 USE MOD_SwapMesh_Vars,     ONLY: Elem_IJK,ExtrudeTo3D,ExtrudeK
 USE MOD_DG_Vars,           ONLY: U
 USE MOD_ChangeBasis,       ONLY: ChangeBasis3D
+#if USE_OPENMP
+USE OMP_Lib,               ONLY: OMP_GET_WTIME
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -75,7 +78,7 @@ CALL GetNodesAndWeights(NState,NodeTypeState,xGP)
 CALL BarycentricWeights(NState,xGP,wBaryGP)
 
 SWRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' INTERPOLATE STATE TO NEW MESH...'
-Time=FLEXITIME()
+Time=OMP_FLEXITIME()
 U=0.
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(iElemNew,iElemOld,L_xi,ii,jj,kk,L_eta,L_zeta,L_eta_zeta,Utmp,i,j,k)
 !$OMP DO
@@ -148,7 +151,7 @@ IF (ExtrudeTo3D) THEN
 !$OMP END DO
 !$OMP END PARALLEL
 END IF
-Time=FLEXITIME() -Time
+Time=OMP_FLEXITIME() -Time
 SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',Time,'s]'
 
 END SUBROUTINE InterpolateSolution

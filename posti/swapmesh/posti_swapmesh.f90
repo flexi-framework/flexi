@@ -48,7 +48,9 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                            :: iArg
+#if USE_MPI
 REAL                               :: limit,nTotalNew,nTotalOld
+#endif
 !===================================================================================================================================
 CALL SetStackSizeUnlimited()
 CALL InitMPI()
@@ -126,7 +128,7 @@ nTotalNew=REAL(nVar_State*(NNew+1)**3*nElemsNew)
 nTotalOld=REAL(nVar_State*(NState+1)**3*nElemsOld)
 !limit=(2**31-1)/8.
 limit=(2**28-1)/8. ! max. 32 bit integer / 8
-IF((nTotalNew.GT.limit).OR.(nTotalNew.GT.limit))THEN
+IF((nTotalNew.GT.limit).OR.(nTotalOld.GT.limit))THEN
   WRITE(UNIT_StdOut,'(A,F13.0,A)')' New or old state file size is too big! Total array size may not exceed', limit, ' entries!'
   WRITE(UNIT_StdOut,'(A)')' Lower number of elements or NNew! Alternative: compile swapmesh without MPI'
   STOP
