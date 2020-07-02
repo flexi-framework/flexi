@@ -157,9 +157,10 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: iVar,iElem
+INTEGER            :: iVar
 #if !(FV_RECONSTRUCT)
 INTEGER            :: i,j,k
+INTEGER            :: iElem
 #endif
 INTEGER            :: iVarVisu,iVarCalc
 !===================================================================================================================================

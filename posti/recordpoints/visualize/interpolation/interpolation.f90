@@ -178,44 +178,84 @@ END SUBROUTINE InterpolateEquiTime
 
 !===================================================================================================================================
 !> Calculate temporal TimeAvg values
+!> An additonal file may also be specified that contains the temporal average, e.g. from a 2D averaged solution
 !===================================================================================================================================
 SUBROUTINE CalcTimeAvg()
 ! MODULES
 USE MOD_Globals
+USE MOD_ReadInTools          ,ONLY: GETSTR
 USE MOD_RPSetVisuVisu_Vars   ,ONLY: nRP_global
-USE MOD_RPData_Vars          ,ONLY: RPTime
+USE MOD_RPData_Vars          ,ONLY: RPTime,nVar_HDF5
+USE MOD_RPSetVisuVisu_Vars ,  ONLY: nRP_HDF5,RPOutMap
 USE MOD_RPInterpolation_Vars
 USE MOD_ParametersVisu       ,ONLY: nVarVisu,EquiTimeSpacing
+USE MOD_ParametersVisu       ,ONLY: Line_LocalVel,Plane_LocalVel
 USE MOD_OutputRPVisu_Vars    ,ONLY: nSamples_out,RPData_out,RPDataTimeAvg_out
+USE MOD_EquationRP           ,ONLY: Line_TransformVel,Plane_TransformVel
+USE MOD_HDF5_Input
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                 :: iSample
+CHARACTER(LEN=255)      :: TimeAvgFile
+REAL,ALLOCATABLE        :: temparray(:,:,:),temparray2(:,:,:)
 !===================================================================================================================================
 WRITE(UNIT_stdOut,'(132("-"))')
 WRITE(UNIT_stdOut,'(A)',ADVANCE='NO')' Calculating Time Average...'
 
 ALLOCATE(RPDataTimeAvg_out(1:nVarVisu,nRP_global))
-IF(nSamples_out.EQ.1) THEN
-  RPDataTimeAvg_out(:,:)=RPData_out(:,:,1)
-  WRITE(UNIT_stdOut,'(A)')'done.'
-  WRITE(UNIT_stdOut,'(132("-"))')
-  RETURN
-END IF
-RPDataTimeAvg_out(:,:)=0.
-IF(EquiTimeSpacing) THEN ! use arithmetic mean
-!  RPDataTimeAvg_out=SUM(RPData_out(:,:,1:nSamples_out))/nSamples_out
-  DO iSample=1,nSamples_out
-    RPDataTimeAvg_out = RPDataTimeAvg_out + RPData_out(:,:,iSample)
-  END DO
-  RPDataTimeAvg_out=RPDataTimeAvg_out/nSamples_out
+
+! Check if an external file should be used for the time averages
+TimeAvgFile = GETSTR('TimeAvgFile','NOT_SET')
+IF (TRIM(TimeAvgFile).EQ.'NOT_SET') THEN
+  ! Average the available samples
+  IF(nSamples_out.EQ.1) THEN
+    RPDataTimeAvg_out(:,:)=RPData_out(:,:,1)
+    WRITE(UNIT_stdOut,'(A)')'done.'
+    WRITE(UNIT_stdOut,'(132("-"))')
+    RETURN
+  END IF
+  RPDataTimeAvg_out(:,:)=0.
+  IF(EquiTimeSpacing) THEN ! use arithmetic mean
+  !  RPDataTimeAvg_out=SUM(RPData_out(:,:,1:nSamples_out))/nSamples_out
+    DO iSample=1,nSamples_out
+      RPDataTimeAvg_out = RPDataTimeAvg_out + RPData_out(:,:,iSample)
+    END DO
+    RPDataTimeAvg_out=RPDataTimeAvg_out/nSamples_out
+  ELSE
+    DO iSample=2,nSamples_out
+      RPDataTimeAvg_out = RPDataTimeAvg_out + 0.5*dt(iSample)*(RPData_out(:,:,iSample)+RPData_out(:,:,iSample-1))
+    END DO
+    RPDataTimeAvg_out=RPDataTimeAvg_out/(RPTime(nSamples_out)-RPTime(1))
+  END IF
 ELSE
-  DO iSample=2,nSamples_out
-    RPDataTimeAvg_out = RPDataTimeAvg_out + 0.5*dt(iSample)*(RPData_out(:,:,iSample)+RPData_out(:,:,iSample-1))
-  END DO
-  RPDataTimeAvg_out=RPDataTimeAvg_out/(RPTime(nSamples_out)-RPTime(1))
+  ! Read in the average from the specified file
+  ALLOCATE(temparray(0:nVar_HDF5,1:nRP_HDF5,1)) ! storing complete sample set
+  CALL OpenDataFile(TimeAvgFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
+  ! Safety check for the size of the array
+  CALL GetDataSize(File_ID,'RP_Data',nDims,HSize)
+  IF(nRP_HDF5 .NE. HSize(2)) THEN
+    CALL Abort(__STAMP__,'ERROR - Number of RPs in TimeAvg file does not match RP definition file!')
+  END IF
+  IF(nVar_HDF5 .NE. INT(HSize(1) -1)) THEN
+    CALL Abort(__STAMP__,'ERROR - Wrong number of variables in TimeAvg file!')
+  END IF
+  DEALLOCATE(HSize)
+  CALL ReadArray('RP_Data',3,(/nVar_HDF5+1,nRP_HDF5,1/),0,3,RealArray=temparray)
+  CALL CloseDataFile()
+  ! Coordinate Transform
+  ALLOCATE(temparray2(nVarVisu,nRP_global,1))
+  temparray2(:,:,1)=temparray(1:nVarVisu,RPOutMap(:),1) !RPOutMap filters out RPs which are to be visualized
+  DEALLOCATE(temparray)
+  IF(Line_LocalVel) &
+    CALL Line_TransformVel(temparray2,1)
+  IF(Plane_LocalVel) &
+    CALL Plane_TransformVel(temparray2,1)
+  ! Save in the TimeAvg array
+  RPDataTimeAvg_out=temparray2(:,:,1)
+  DEALLOCATE(temparray2)
 END IF
 WRITE(UNIT_stdOut,'(A)')'done.'
 WRITE(UNIT_stdOut,'(132("-"))')

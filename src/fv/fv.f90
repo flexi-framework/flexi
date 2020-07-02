@@ -39,6 +39,10 @@ INTERFACE FV_Switch
   MODULE PROCEDURE FV_Switch
 END INTERFACE
 
+INTERFACE FV_ProlongFVElemsToFace
+  MODULE PROCEDURE FV_ProlongFVElemsToFace
+END INTERFACE
+
 INTERFACE FV_Info
   MODULE PROCEDURE FV_Info
 END INTERFACE
@@ -58,6 +62,7 @@ END INTERFACE
 PUBLIC::DefineParametersFV
 PUBLIC::InitFV
 PUBLIC::FV_Switch
+PUBLIC::FV_ProlongFVElemsToFace
 PUBLIC::FV_Info
 PUBLIC::FV_FillIni
 PUBLIC::FV_DGtoFV
@@ -109,14 +114,17 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_FV_Vars
 USE MOD_FV_Basis
-USE MOD_Basis       ,ONLY: InitializeVandermonde
-USE MOD_Indicator   ,ONLY: doCalcIndicator
-USE MOD_Mesh_Vars   ,ONLY: nElems,nSides
+USE MOD_Basis               ,ONLY: InitializeVandermonde
+USE MOD_Indicator           ,ONLY: doCalcIndicator
+USE MOD_Indicator_Vars      ,ONLY: nModes,IndicatorType
+USE MOD_Mesh_Vars           ,ONLY: nElems,nSides
 #if FV_RECONSTRUCT
 USE MOD_FV_Limiter
 #endif
 USE MOD_ReadInTools
-USE MOD_IO_HDF5     ,ONLY: AddToElemData,ElementOut
+USE MOD_IO_HDF5             ,ONLY: AddToElemData,ElementOut
+USE MOD_Overintegration_Vars,ONLY: NUnder
+USE MOD_Filter_Vars         ,ONLY: NFilter
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -142,6 +150,12 @@ FV_IndUpperThreshold = GETREAL('FV_IndUpperThreshold', '99.')
 ! anymore.
 FV_toDG_indicator = GETLOGICAL('FV_toDG_indicator')
 IF (FV_toDG_indicator) FV_toDG_limit = GETREAL('FV_toDG_limit')
+! If the main indicator is not already the persson indicator, then we need to read in the parameters
+IF (IndicatorType.NE.2) THEN
+  nModes = GETINT('nModes','2')
+  nModes = MAX(1,nModes+PP_N-MIN(NUnder,NFilter))-1 ! increase by number of empty modes in case of overintegration
+END IF
+
 
 ! Read flag, which allows switching from FV to DG between the stages of a Runge-Kutta time step
 ! (this might lead to instabilities, since the time step for a DG element is smaller)
@@ -250,7 +264,7 @@ USE MOD_Indicator_Vars  ,ONLY: IndValue
 USE MOD_Indicator       ,ONLY: IndPersson
 USE MOD_FV_Vars
 USE MOD_Analyze
-USE MOD_Mesh_Vars       ,ONLY: nElems, SideToElem, nSides, sJ
+USE MOD_Mesh_Vars       ,ONLY: nElems, sJ
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -266,7 +280,7 @@ REAL    :: U_FV(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 REAL    :: JU_DG(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 REAL    :: JU_FV(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 REAL    :: ind
-INTEGER :: iElem, iSide, ElemID, nbElemID
+INTEGER :: iElem
 INTEGER :: i,j,k
 !==================================================================================================================================
 DO iElem=1,nElems
@@ -378,6 +392,24 @@ FV_Elems_counter  = FV_Elems_counter  + FV_Elems
 FV_Switch_counter = FV_Switch_counter + 1
 FV_Elems_Amount   = REAL(FV_Elems_Counter)/FV_Switch_counter
 
+CALL FV_ProlongFVElemsToFace()
+END SUBROUTINE FV_Switch
+
+!==================================================================================================================================
+!> Set FV_Elems_slave and FV_Elems_master information
+!==================================================================================================================================
+SUBROUTINE FV_ProlongFVElemsToFace()
+! MODULES
+USE MOD_FV_Vars         ,ONLY: FV_Elems,FV_Elems_master,FV_Elems_slave
+USE MOD_Mesh_Vars       ,ONLY: SideToElem,nSides
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER :: iSide,ElemID,nbElemID
+!==================================================================================================================================
 ! set information whether elements adjacent to a side are DG or FV elements
 DO iSide = 1,nSides
   ElemID    = SideToElem(S2E_ELEM_ID   ,iSide)
@@ -387,7 +419,7 @@ DO iSide = 1,nSides
   !slave side (ElemID,locSide and flip =-1 if not existing)
   IF(nbElemID.GT.0) FV_Elems_slave( iSide) = FV_Elems(nbElemID)
 END DO
-END SUBROUTINE FV_Switch
+END SUBROUTINE FV_ProlongFVElemsToFace
 
 !==================================================================================================================================
 !> Print information on the amount of FV subcells

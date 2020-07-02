@@ -12,6 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "eos.h"
 
 #if FV_ENABLED
 #error "This testcase is not tested with FV"
@@ -106,8 +107,10 @@ USE MOD_PreProc
 USE MOD_Globals
 USE MOD_ReadInTools,        ONLY: GETINT,GETREAL
 USE MOD_Output_Vars,        ONLY: ProjectName
-USE MOD_Equation_Vars,      ONLY: RefStatePrim,IniRefState
-USE MOD_EOS_Vars,           ONLY: kappa,mu0
+USE MOD_Equation_Vars,      ONLY: RefStatePrim,IniRefState,RefStateCons
+USE MOD_EOS_Vars,           ONLY: kappa,mu0,R
+USE MOD_Output,             ONLY: InitOutputToFile
+USE MOD_Eos,                ONLY: PrimToCons
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -116,6 +119,8 @@ IMPLICIT NONE
 INTEGER                  :: ioUnit,openStat
 REAL                     :: c1
 REAL                     :: bulkMach,pressure
+CHARACTER(LEN=7)         :: varnames(2)
+REAL                     :: UE(PP_2Var)
 !==================================================================================================================================
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT TESTCASE CHANNEL...'
@@ -138,6 +143,11 @@ uBulk=uBulk/Re_tau
 bulkMach = GETREAL('ChannelMach','0.1')
 pressure = (uBulk/bulkMach)**2*RefStatePrim(1,IniRefState)/kappa
 RefStatePrim(5,IniRefState) = pressure
+! TODO: ATTENTION only sRho and Pressure of UE filled!!!
+UE(SRHO) = 1./RefStatePrim(1,IniRefState)
+UE(PRES) = RefStatePrim(5,IniRefState)
+RefStatePrim(6,IniRefState) = TEMPERATURE_HE(UE)
+CALL PrimToCons(RefStatePrim(:,IniRefState),RefStateCons(:,IniRefState))
 
 IF(MPIRoot) THEN
   WRITE(*,*) 'Bulk velocity based on initial velocity Profile =',uBulk
@@ -149,22 +159,10 @@ dpdx = -1. ! Re_tau^2*rho*nu^2/delta^3
 IF(.NOT.MPIRoot) RETURN
 
 ALLOCATE(writeBuf(3,nWriteStats))
-Filename = TRIM(ProjectName)//'_Stats.dat'
-IF(.NOT.FILEEXISTS(Filename))THEN ! File exists and append data
-  OPEN(NEWUNIT= ioUnit       ,&
-       FILE   = Filename     ,&
-       STATUS = 'Unknown'    ,&
-       ACCESS = 'SEQUENTIAL' ,&
-       IOSTAT = openStat                 )
-  IF (openStat.NE.0) THEN
-    CALL abort(__STAMP__, &
-      'ERROR: cannot open '//TRIM(Filename))
-  END IF
-  WRITE(ioUnit,'(A)')'TITLE="Statistics,'//TRIM(ProjectName)//'"'
-  WRITE(ioUnit,'(A)')'VARIABLES = "t_sim" "dpdx" "bulkVel"'
-  WRITE(ioUnit,'(A)')'ZONE T="Statistics,'//TRIM(ProjectName)//'"'
-  CLOSE(ioUnit)
-END IF
+Filename = TRIM(ProjectName)//'_Stats'
+varnames(1) = 'dpdx'
+varnames(2) = 'bulkVel'
+CALL InitOutputToFile(Filename,'Statistics',2,varnames)
 
 SWRITE(UNIT_stdOut,'(A)')' INIT TESTCASE CHANNEL DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
@@ -185,7 +183,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 REAL,INTENT(IN)                 :: x(3),tIn
-REAL,INTENT(OUT)                :: Resu(5),Resu_t(5),Resu_tt(5)
+REAL,INTENT(OUT)                :: Resu(PP_nVar),Resu_t(PP_nVar),Resu_tt(PP_nVar)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                            :: yplus,prim(PP_nVarPrim),amplitude
@@ -202,6 +200,7 @@ END IF
 Prim(2) = uBulkScale*(1./0.41*log(1+0.41*yPlus)+7.8*(1-exp(-yPlus/11.)-yPlus/11.*exp(-yPlus/3.)))
 !Prim(5)=(uBulk*sqrt(kappa*Prim(5)/Prim(1)))**2*Prim(1)/kappa ! Pressure such that Ma=1/sqrt(kappa*p/rho)
 Amplitude = 0.1*Prim(2)
+#if EQNSYSNR == 2
 Prim(2)=Prim(2)+sin(20.0*PP_PI*(x(2)/(2.0)))*sin(20.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
 Prim(2)=Prim(2)+sin(30.0*PP_PI*(x(2)/(2.0)))*sin(30.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
 Prim(2)=Prim(2)+sin(35.0*PP_PI*(x(2)/(2.0)))*sin(35.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
@@ -220,6 +219,7 @@ Prim(4)=Prim(4)+sin(35.0*PP_PI*(x(1)/(4*PP_PI)))*sin(35.0*PP_PI*(x(2)/(2.0)))*Am
 Prim(4)=Prim(4)+sin(40.0*PP_PI*(x(1)/(4*PP_PI)))*sin(40.0*PP_PI*(x(2)/(2.0)))*Amplitude
 Prim(4)=Prim(4)+sin(45.0*PP_PI*(x(1)/(4*PP_PI)))*sin(45.0*PP_PI*(x(2)/(2.0)))*Amplitude
 Prim(4)=Prim(4)+sin(50.0*PP_PI*(x(1)/(4*PP_PI)))*sin(50.0*PP_PI*(x(2)/(2.0)))*Amplitude
+#endif
 
 Prim(6) = 0. ! T does not matter for prim to cons
 CALL PrimToCons(prim,Resu)
@@ -255,7 +255,7 @@ INTEGER                         :: i,j,k,iElem
 !==================================================================================================================================
 BulkVel =0.
 DO iElem=1,nElems
-  DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     BulkVel = BulkVel+U(2,i,j,k,iElem)/U(1,i,j,k,iElem)*wGPVol(i,j,k)/sJ(i,j,k,iElem,0)
   END DO; END DO; END DO
 END DO
@@ -278,14 +278,14 @@ USE MOD_Mesh_Vars, ONLY:sJ,nElems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(INOUT)              :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_N,1:nElems) !< solution time derivative
+REAL,INTENT(INOUT)              :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< solution time derivative
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                         :: i,j,k,iElem
 !==================================================================================================================================
 ! Apply forcing with the pressure gradient
 DO iElem=1,nElems
-  DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     Ut(2,i,j,k,iElem)=Ut(2,i,j,k,iElem) -dpdx/sJ(i,j,k,iElem,0)
     Ut(5,i,j,k,iElem)=Ut(5,i,j,k,iElem) -dpdx*BulkVel/sJ(i,j,k,iElem,0)
   END DO; END DO; END DO
@@ -300,6 +300,7 @@ SUBROUTINE WriteStats()
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
+USE MOD_Output,       ONLY:OutputToFile
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -307,21 +308,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                  :: ioUnit,openStat,i
 !==================================================================================================================================
-OPEN(NEWUNIT  = ioUnit     , &
-     FILE     = Filename   , &
-     FORM     = 'FORMATTED', &
-     STATUS   = 'OLD'      , &
-     POSITION = 'APPEND'   , &
-     RECL     = 50000      , &
-     IOSTAT = openStat       )
-IF(openStat.NE.0) THEN
-  CALL abort(__STAMP__, &
-    'ERROR: cannot open '//TRIM(Filename))
-END IF
-DO i=1,ioCounter
-  WRITE(ioUnit,'(3E23.14)') writeBuf(:,i)
-END DO
-CLOSE(ioUnit)
+CALL OutputToFile(FileName,writeBuf(1,1:ioCounter),(/2,ioCounter/),RESHAPE(writeBuf(2:3,1:ioCounter),(/2*ioCounter/)))
 ioCounter=0
 
 END SUBROUTINE WriteStats

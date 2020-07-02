@@ -56,6 +56,9 @@ USE MOD_Riemann    ,ONLY: DefineParametersRiemann
 #ifdef SPLIT_DG
 USE MOD_SplitFlux  ,ONLY: DefineParametersSplitDG
 #endif /*SPLIT_DG*/
+#if EDDYVISCOSITY
+USE MOD_EddyVisc,   ONLY: DefineParametersEddyVisc
+#endif
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Equation")
@@ -68,6 +71,9 @@ CALL DefineParametersRiemann()
 #ifdef SPLIT_DG
 CALL DefineParametersSplitDG()
 #endif /*SPLIT_DG*/
+#if EDDYVISCOSITY
+CALL DefineParametersEddyVisc()
+#endif /*EDDYVISCOSITY*/
 END SUBROUTINE DefineParametersEquation
 
 !==================================================================================================================================

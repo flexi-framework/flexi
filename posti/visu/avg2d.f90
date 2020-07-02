@@ -218,7 +218,7 @@ SUBROUTINE Average2D(nVarCalc_DG,nVarCalc_FV,NCalc_DG,NCalc_FV,nElems_DG,nElems_
     UVisu_DG,UVisu_FV)
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_Visu_Vars          ,ONLY: Elem_IJK,FVAmountAvg2D
+USE MOD_Visu_Vars          ,ONLY: Elem_IJK,FVAmountAvg2D,Avg2DHDF5Output
 USE MOD_Visu_Vars          ,ONLY: mapDGElemsToAllElems,mapFVElemsToAllElems
 USE MOD_Visu_Vars          ,ONLY: mapElemIJToDGElemAvg2D,mapElemIJToFVElemAvg2D,mapAllVarsToVisuVars
 USE MOD_Visu_Vars          ,ONLY: nVarVisu,NVisu,NVisu_FV,nElemsAvg2D_FV,nElemsAvg2D_DG
@@ -365,7 +365,17 @@ IF (MPIRoot) THEN
   DO iElem_FV = 1,nElemsAvg2D_FV
     UAvg_FV(:,:,iElem_FV,:) = UAvg_FV(:,:,iElem_FV,:) / dxSum_FV(iElem_FV)
   END DO
-  
+END IF
+
+#if USE_MPI
+IF (Avg2DHDF5Output) THEN
+  ! Distribute the averaged data back
+  CALL MPI_BCAST(UAvg_DG,nElemsAvg2D_DG*(NCalc_DG+1)**2*nVarVisu,MPI_DOUBLE_PRECISION,0,MPI_COMM_FLEXI,iError)
+  CALL MPI_BCAST(UAvg_FV,nElemsAvg2D_FV*(NCalc_FV+1)**2*nVarVisu,MPI_DOUBLE_PRECISION,0,MPI_COMM_FLEXI,iError)
+END IF
+#endif
+
+IF ((MPIRoot).OR.(Avg2DHDF5Output)) THEN
   ! Convert the averaged data to the visu grid
   DO iVar=startIndexMapVarCalc,endIndexMapVarCalc
     iVarVisu = mapAllVarsToVisuVars(iVar)
@@ -448,8 +458,6 @@ DO i=0,PP_N
 END DO ! i=0,PP_N
 #endif
 
-
-
 !================== Prepare output data =============================!
 
 ! Create full three dimensional array to write to the 3D mesh file.
@@ -495,37 +503,37 @@ END DO ! iVar=1,nVarAll
 
 
 !================= Create and prepare HDF5 file =======================!
-
-! Create file
 FileName=TRIM(TIMESTAMP(TRIM(ProjectName)//'_avg2D',OutputTime))//'.h5'
-CALL OpenDataFile(TRIM(FileName),create=.TRUE.,single=.TRUE.,readOnly=.FALSE.)
+IF (MPIRoot) THEN
+  ! Create file
+  CALL OpenDataFile(TRIM(FileName),create=.TRUE.,single=.TRUE.,readOnly=.FALSE.)
 
-! Write file header with file type 'Avg2D'
-CALL WriteHeader('Avg2D',File_ID)
+  ! Write file header with file type 'Avg2D'
+  CALL WriteHeader('Avg2D',File_ID)
 
-! Preallocate the data space for the dataset.
-Dimsf=(/nVar,NVisu+1,NVisu+1,NVisu+1,nGlobalElems/)
+  ! Preallocate the data space for the dataset.
+  Dimsf=(/nVar,NVisu+1,NVisu+1,NVisu+1,nGlobalElems/)
 
-CALL H5SCREATE_SIMPLE_F(5, Dimsf, FileSpace, iError)
-! Create the dataset with default properties.
-HDF5DataType=H5T_NATIVE_DOUBLE
-CALL H5DCREATE_F(File_ID,'DG_Solution', HDF5DataType, FileSpace, DSet_ID, iError)
-! Close the filespace and the dataset
-CALL H5DCLOSE_F(Dset_id, iError)
-CALL H5SCLOSE_F(FileSpace, iError)
+  CALL H5SCREATE_SIMPLE_F(5, Dimsf, FileSpace, iError)
+  ! Create the dataset with default properties.
+  HDF5DataType=H5T_NATIVE_DOUBLE
+  CALL H5DCREATE_F(File_ID,'DG_Solution', HDF5DataType, FileSpace, DSet_ID, iError)
+  ! Close the filespace and the dataset
+  CALL H5DCLOSE_F(Dset_id, iError)
+  CALL H5SCLOSE_F(FileSpace, iError)
 
-! Write dataset properties "N","Time","MeshFile","NodeType","VarNames","NComputation"
-CALL WriteAttribute(File_ID,'N',1,IntScalar=NVisu)
-CALL WriteAttribute(File_ID,'Time',1,RealScalar=OutputTime)
-CALL WriteAttribute(File_ID,'MeshFile',1,StrScalar=(/MeshFileName/))
-CALL WriteAttribute(File_ID,'NodeType',1,StrScalar=(/NodeType/))
-CALL WriteAttribute(File_ID,'VarNames',nVar,StrArray=StrVarNames)
-CALL WriteAttribute(File_ID,'NComputation',1,IntScalar=PP_N)
+  ! Write dataset properties "N","Time","MeshFile","NodeType","VarNames","NComputation"
+  CALL WriteAttribute(File_ID,'N',1,IntScalar=NVisu)
+  CALL WriteAttribute(File_ID,'Time',1,RealScalar=OutputTime)
+  CALL WriteAttribute(File_ID,'MeshFile',1,StrScalar=(/MeshFileName/))
+  CALL WriteAttribute(File_ID,'NodeType',1,StrScalar=(/NodeType/))
+  CALL WriteAttribute(File_ID,'VarNames',nVar,StrArray=StrVarNames)
+  CALL WriteAttribute(File_ID,'NComputation',1,IntScalar=PP_N)
 
-CALL CloseDataFile()
+  CALL CloseDataFile()
+END IF
 
 !================= Actual data output =======================!
-
 CALL GatheredWriteArray(TRIM(FileName),create=.FALSE.,&
                         DataSetName='DG_Solution', rank=5,&
                         nValGlobal=(/nVar,NVisu+1,NVisu+1,NVisu+1,nGlobalElems/),&

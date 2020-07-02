@@ -135,6 +135,10 @@ END IF
 ! Init interpolation on new polynomial degree, will set PP_N to NNew
 CALL InitInterpolation(NNew)
 
+! Extrusion of a one-layer mesh to the 3D version
+ExtrudeTo3D = GETLOGICAL("ExtrudeTo3D",'.FALSE.')
+IF (ExtrudeTo3D) ExtrudeK = GETINT("ExtrudeK")
+
 ! Initialize the old mesh, store the mesh coordinates (transformed to CL points) and the number of elements as well as the old NGeo
 Time=FLEXITIME()
 SWRITE(UNIT_stdOut,'(A)') ' INIT OLD MESH ...'
@@ -151,7 +155,11 @@ END IF
 ! Initialize new mesh
 Time=FLEXITIME()
 SWRITE(UNIT_stdOut,'(A)') ' INIT NEW MESH ...'
-CALL ReadMeshCoords(MeshFileNew,useCurvedsNew,NGeoNew,nElemsNew,xCLNew)
+IF (ExtrudeTo3D) THEN
+  CALL ReadMeshCoords(MeshFileNew,useCurvedsNew,NGeoNew,nElemsNew,xCLNew,Elem_IJK)
+ELSE
+  CALL ReadMeshCoords(MeshFileNew,useCurvedsNew,NGeoNew,nElemsNew,xCLNew)
+END IF
 SWRITE(UNIT_stdOut,*)'done in ',FLEXITIME()-Time
 
 ! Set offset elem and local and global number of elements in mesh vars (later needed for output routine)
@@ -184,7 +192,7 @@ END SUBROUTINE InitSwapmesh
 !> Additionally the number of elements in the mesh as well as NGeo will be returned.
 !> The user can specify if curved meshes should be used or not.
 !===================================================================================================================================
-SUBROUTINE ReadMeshCoords(MeshFile,useCurveds,NGeo,nElems,XCL)
+SUBROUTINE ReadMeshCoords(MeshFile,useCurveds,NGeo,nElems,XCL,Elem_IJK)
 ! MODULES                                                                                                                          !
 USE MOD_Globals
 USE MOD_HDF5_Input
@@ -200,12 +208,15 @@ LOGICAL,INTENT(IN)             :: useCurveds     !< Switch curved interpretation
 REAL,ALLOCATABLE,INTENT(OUT)   :: XCL(:,:,:,:,:) !< Mesh coordinates on CL points
 INTEGER,INTENT(OUT)            :: NGeo           !< Polynomial degree of mesh representation
 INTEGER,INTENT(OUT)            :: nElems         !< Number of elements in mesh
+INTEGER,ALLOCATABLE,INTENT(OUT),OPTIONAL :: Elem_IJK(:,:) !< IJK sorting of mesh
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL,ALLOCATABLE               :: NodeCoords(:,:,:,:,:)
 REAL,ALLOCATABLE               :: NodeCoordsTmp(:,:,:,:,:)
 REAL,ALLOCATABLE               :: Vdm_EQNgeo_CLNgeo(:,:)
 INTEGER                        :: iElem
+LOGICAL                        :: dsExists
+INTEGER                        :: nElems_IJK(3)
 !===================================================================================================================================
 ! Open the mesh file
 CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
@@ -252,6 +263,17 @@ DO iElem=1,nElems
 END DO ! iElem
 DEALLOCATE(Vdm_EQNgeo_CLNgeo,NodeCoords)
 
+IF (PRESENT(Elem_IJK)) THEN
+  CALL DatasetExists(File_ID,'nElems_IJK',dsExists)
+  IF(dsExists)THEN
+    CALL ReadArray('nElems_IJK',1,(/3/),0,1,IntArray=nElems_IJK)
+    ALLOCATE(Elem_IJK(3,nElems))
+    CALL ReadArray('Elem_IJK',2,(/3,nElems/),0,2,IntArray=Elem_IJK)
+  ELSE
+  CALL abort(__STAMP__,&
+    'ERROR: Not a IJK sorted mesh!')
+  END IF
+END IF
 CALL CloseDataFile()
 END SUBROUTINE ReadMeshCoords
 
@@ -312,12 +334,15 @@ END SUBROUTINE prepareVandermonde
 !===================================================================================================================================
 SUBROUTINE ReadOldStateFile(StateFile)
 ! MODULES                                                                                                                          !
-USE MOD_HDF5_Input,    ONLY: OpenDataFile,CloseDataFile,ReadArray,ReadAttribute
-USE MOD_IO_HDF5,       ONLY: File_ID
-USE MOD_Swapmesh_Vars, ONLY: nVar_State,NState,nElemsOld,Time_State,UOld
+USE MOD_Globals,       ONLY: abort
+USE MOD_HDF5_Input,    ONLY: OpenDataFile,CloseDataFile,ReadArray,ReadAttribute,GetDataSize
+USE MOD_IO_HDF5,       ONLY: File_ID,HSize
+USE MOD_Swapmesh_Vars, ONLY: nVar_State,NState,nElemsOld,Time_State,UOld,NNew,nElemsNew
 USE MOD_ReadInTools,   ONLY: ExtractParameterFile
 USE MOD_Output_Vars,   ONLY: UserBlockTmpFile,userblock_total_len
 USE MOD_Output,        ONLY: insert_userblock
+USE MOD_Equation_Vars, ONLY: StrVarNames
+USE MOD_DG_Vars,       ONLY: U
 USE ISO_C_BINDING,     ONLY: C_NULL_CHAR
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
@@ -327,13 +352,46 @@ CHARACTER(LEN=255),INTENT(IN)      :: StateFile !< State file to be read
 ! LOCAL VARIABLES
 LOGICAL                          :: userblockFound
 CHARACTER(LEN=255)               :: prmfile=".parameter.ini"
+CHARACTER(LEN=255)               :: FileType
+CHARACTER(LEN=255),ALLOCATABLE   :: VarNames_TimeAvg(:) !< List of varnames in TimeAvg-File 
+INTEGER                          :: iVar,nVarsFound,i,j,k,iElem
+REAL,ALLOCATABLE                 :: UMean(:,:,:,:,:)      !> Solution from old state
+INTEGER                          :: nDim
 !===================================================================================================================================
 ! Open the data file
 CALL OpenDataFile(StateFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 
-! Read the DG solution and store in UNew
-CALL ReadArray('DG_Solution',5,&
-               (/nVar_State,NState+1,NState+1,NState+1,nElemsOld/),0,5,RealArray=UOld)
+CALL ReadAttribute(File_ID,'File_Type',1,StrScalar=FileType)
+SELECT CASE(TRIM(FileType))
+CASE('State')
+  ! Read the DG solution and store in UNew
+  CALL ReadArray('DG_Solution',5,&
+                 (/nVar_State,NState+1,NState+1,NState+1,nElemsOld/),0,5,RealArray=UOld)
+CASE('TimeAvg')
+  CALL GetDataSize(File_ID,'Mean',nDim,HSize)
+  nVar_State=SIZE(StrVarNames)
+  ALLOCATE(VarNames_TimeAvg(INT(HSize(1))))
+  CALL ReadAttribute(File_ID,'VarNames_Mean',INT(HSize(1)),StrArray=VarNames_TimeAvg)
+  SDEALLOCATE(UOld)
+  ALLOCATE(UOld(nVar_State,0:NState,0:NState,0:NState,nElemsOld))
+  ALLOCATE(UMean(INT(HSize(1)),0:NState,0:NState,0:NState,nElemsOld))
+  SDEALLOCATE(U)
+  ALLOCATE(U   (nVar_State,0:NNew,  0:NNew,  0:NNew,  nElemsNew))
+  CALL ReadArray('Mean',5,&
+                (/INT(HSize(1)),NState+1,NState+1,NState+1,nElemsOld/),0,5,RealArray=UMean)
+  nVarsFound=0
+  DO iVar=1,SIZE(StrVarNames)
+    IF (TRIM(VarNames_TimeAvg(iVar)) .EQ. TRIM(StrVarNames(nVarsFound+1))) THEN
+      nVarsFound = nVarsFound+1
+      DO iElem=1,nElemsOld; DO k=0,NState; DO j=0,NState; DO i=0,NState
+        UOld(nVarsFound,i,j,k,iElem)=UMean(iVar,i,j,k,iElem)
+      END DO; END DO; END DO; END DO
+    END IF
+  END DO
+  IF(nVarsFound .NE. SIZE(StrVarNames) ) CALL abort(__STAMP__,&
+    'TimeAvg file does not contain all necessary variables for converting to state')
+END SELECT
+
 
 ! Read the current time
 CALL ReadAttribute(File_ID,'Time',1,RealScalar=Time_State)
@@ -346,6 +404,8 @@ INQUIRE(FILE=TRIM(UserBlockTmpFile),SIZE=userblock_total_len)
 
 ! Close the data file
 CALL CloseDataFile()
+SDEALLOCATE(VarNames_TimeAvg)
+SDEALLOCATE(UMean)
 END SUBROUTINE ReadOldStateFile
 
 !===================================================================================================================================
@@ -388,6 +448,7 @@ SDEALLOCATE(equalElem)
 SDEALLOCATE(IPDone)
 SDEALLOCATE(UOld)
 SDEALLOCATE(U)
+SDEALLOCATE(Elem_IJK)
 
 END SUBROUTINE FinalizeSwapmesh
 
