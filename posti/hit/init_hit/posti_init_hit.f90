@@ -18,16 +18,18 @@
 !> It generates a random velocity field based on a specified turbulent kinetic energy distribution.
 !> The phase of each velocity mode is chosen random.
 !===================================================================================================================================
-PROGRAM init_hit
+PROGRAM posti_init_hit
 ! MODULES
 USE MOD_Preproc
 USE MOD_Globals
 USE MOD_Init_HIT_Vars
+USE MOD_Init_HIT
 USE MOD_ReadInTools
 USE MOD_Commandline_Arguments
 USE MOD_DG_Vars,                 ONLY: U
 USE MOD_Mesh_Vars,               ONLY: nElems,Elem_xGP
-USE MOD_FFT,                     ONLY: InitFFT,Rogallo,FinalizeFFT
+USE MOD_FFT,                     ONLY: InitFFT,FinalizeFFT,ComputeFFT_R2C,ComputeFFT_C2R
+USE MOD_FFT_Vars,                ONLY: N_FFT,Nc,Endw,II
 USE MOD_Mesh,                    ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
 USE MOD_Output,                  ONLY: DefineParametersOutput,InitOutput,FinalizeOutput
 USE MOD_Interpolation,           ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
@@ -42,7 +44,7 @@ USE FFTW3
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                            :: i,j,k,iw,jw,kw,iElem,q
+INTEGER                            :: i,j,k,iw,jw,kw,iElem
 REAL                               :: wavenumber
 COMPLEX                            :: basis
 !===================================================================================================================================
@@ -106,12 +108,12 @@ CALL InitMesh(meshMode=2,MeshFile_IN=MeshFile)
 
 IF(MPIRoot) THEN
   CALL InitFFT()
+  CALL Init_InitHit()
 END IF
 #if USE_MPI
 CALL MPI_BCAST(endw,3,MPI_INTEGER,0,MPI_COMM_WORLD,iError)
 #endif
 ALLOCATE(U_FFT(1:PP_nVar,1:Endw(1),1:Endw(2),1:Endw(3)))
-
 
 IF(MPIRoot) THEN
   CALL Rogallo()
@@ -127,10 +129,7 @@ U_FFT  = 0.
 Uloc_c = 0.
 
 IF(MPIRoot) THEN
-  DO q=1,PP_nVar! fft of old solution to fourier modes
-    CALL DFFTW_PLAN_DFT_R2C_3D(plan,N_FFT,N_FFT,N_FFT,Uloc(q,:,:,:),U_FFT(q,:,:,:),FFTW_ESTIMATE)
-    CALL DFFTW_Execute(plan,Uloc(q,:,:,:),U_FFT(q,:,:,:))
-  END DO
+  CALL ComputeFFT_R2C(5,Uloc,U_FFT) 
   U_FFT=U_FFT/(N_FFT**3)
 END IF
 
@@ -187,6 +186,7 @@ END DO !iElem
 ! Write State-File to initialize HIT
 CALL WriteState(TRIM(MeshFile),0.,0.,.FALSE.)
 
+CALL Finalize_InitHIT()
 CALL FinalizeParameters()
 CALL FinalizeInterpolation()
 CALL FinalizeOutput()
@@ -203,4 +203,4 @@ SWRITE(UNIT_stdOut,'(132("="))')
 SWRITE(UNIT_stdOut,'(A)') ' initHIT FINISHED! '
 SWRITE(UNIT_stdOut,'(132("="))')
 
-END PROGRAM init_hit
+END PROGRAM posti_init_hit

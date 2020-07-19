@@ -135,13 +135,13 @@ IF(POSTI_BUILD_AVG2D)
 ENDIF()
 
 IF(POSTI_BUILD_INIT_HIT)
-  INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/init_hit/CMakeLists.txt)
+  INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/hit/init_hit/CMakeLists.txt)
 ENDIF()
 
 IF(POSTI_BUILD_ANALYZE_HIT)
-  INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/analyze_hit/CMakeLists.txt)
+  INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/hit/analyze_hit/CMakeLists.txt)
 ENDIF()
 
 IF(POSTI_BUILD_FILTER_HIT)
-  INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/filter_hit/CMakeLists.txt)
+  INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/hit/filter_hit/CMakeLists.txt)
 ENDIF()

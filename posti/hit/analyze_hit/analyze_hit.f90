@@ -51,6 +51,7 @@ SUBROUTINE InitAnalyze()
 ! MODULES
 USE MOD_Globals
 USE MOD_ANALYZE_HIT_Vars
+USE MOD_FFT_Vars,                ONLY: N_FFT
 USE MOD_Readintools
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -143,6 +144,7 @@ USE MOD_Mesh_Vars,          ONLY: nElems
 USE FFTW3
 USE MOD_ANALYZE_HIT_Vars
 USE MOD_FFT,                ONLY: ComputeFFT_R2C, ComputeFFT_C2R, Interpolate_DG2FFT
+USE MOD_FFT_Vars
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
@@ -153,7 +155,7 @@ REAL,INTENT(INOUT)    :: U_in(1:nVar_In,0:PP_N,0:PP_N,0:PP_N,1:nElems) !< elemen
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER :: i,j,k
+INTEGER :: i,j,k,iElem
 REAL    :: U_Global(1:nVar_In,1:N_FFT  ,1:N_FFT  ,1:N_FFT  )        ! Real global DG solution
 COMPLEX :: U_FFT(   1:nVar_In,1:Endw(1),1:Endw(2),1:Endw(3))        ! Complex FFT solution
 REAL    :: v(1:5,1:N_FFT,1:N_FFT,1:N_FFT)
@@ -174,8 +176,15 @@ Ekinglob=0.
 U_FFT=0.
 U_Global = 0.
 
+! Convert Cons to Prims
+DO iElem=1,nElems_HDF5
+  DO i=0,N_HDF5;  DO j=0,N_HDF5;  DO k=0,N_HDF5
+    U_in(2:4,i,j,k,iElem) = U_in(2:4,i,j,k,iElem)/U_in(1,i,j,k,iElem)
+  END DO;END DO;END DO
+END DO
+
 ! 1. Interpolate DG solution to equidistant points
-CALL Interpolate_DG2FFT(nVar_HDF5,U_in,U_Global)
+CALL Interpolate_DG2FFT(NodeType_HDF5,nVar_HDF5,U_in,U_Global)
 
 ! 2. Apply complex Fourier-Transform on solution from state file
 CALL ComputeFFT_R2C(nVar_HDF5,U_Global,U_FFT)
@@ -290,7 +299,8 @@ END SUBROUTINE AnalyzeTGV
 SUBROUTINE Compute_Spectrum(nVar_In,U_In,E_k)
 ! MODULES
 USE MOD_Globals
-USE MOD_ANALYZE_HIT_Vars,  ONLY: startw,endw,localk,kmax,N_Filter
+USE MOD_ANALYZE_HIT_Vars,  ONLY: N_Filter, kmax
+USE MOD_FFT_Vars,          ONLY: startw,endw,localk,Nc
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
@@ -305,16 +315,30 @@ INTEGER ::i,j,k,k_eff
 !-----------------------------------------------------------------------------------------------------------------------------------
 !-----------------------------------------------------------------------------------------------------------------------------------
 E_k = 0.
-DO k=startw(3),endw(3)
-  DO j=startw(2),endw(2)
-    DO i=startw(1),endw(1)
-      IF (localk(4,i,j,k).GT.N_Filter) CYCLE
-      k_eff = NINT(localk(4,i,j,k))
-      E_k(k_eff) =   E_k(k_eff)+&
-          SUM(U_In(:,i,j,k)*conjg(U_In(:,i,j,k)))
+IF (N_Filter.GT.-1) THEN
+  DO k=startw(3),endw(3)
+    DO j=startw(2),endw(2)
+      DO i=startw(1),endw(1)
+        IF (localk(4,i,j,k).GT.N_Filter) CYCLE
+        k_eff = NINT(localk(4,i,j,k))
+        E_k(k_eff) =   E_k(k_eff)+&
+            SUM(U_In(:,i,j,k)*conjg(U_In(:,i,j,k)))
+      END DO
     END DO
   END DO
-END DO
+ELSE
+  DO k=startw(3),endw(3)
+    DO j=startw(2),endw(2)
+      DO i=startw(1),endw(1)
+        IF (localk(4,i,j,k).GT.Nc) CYCLE
+        k_eff = NINT(localk(4,i,j,k))
+        E_k(k_eff) =   E_k(k_eff)+&
+            SUM(U_In(:,i,j,k)*conjg(U_In(:,i,j,k)))
+      END DO
+    END DO
+  END DO
+END IF
+
 END SUBROUTINE Compute_Spectrum
 
 !===================================================================================================================================

@@ -13,9 +13,9 @@
 !=================================================================================================================================
 
 !===================================================================================================================================
-!> Contains global variables provided by the AnalyzeHIT routines
+!> Contains global variables provided by the initHIT routines
 !===================================================================================================================================
-MODULE MOD_Filter_HIT_Vars
+MODULE MOD_Init_HIT_Vars
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -24,30 +24,25 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-INTEGER               :: N_Visu                    !<
-INTEGER               :: N_Filter
 
-! FFT vars
-INTEGER               :: N_FFT                     !<
-INTEGER               :: Nc                        !<
-REAL,ALLOCATABLE      :: LocalXYZ(:,:,:,:)         !<
-REAL,ALLOCATABLE      :: LocalK(:,:,:,:)           !<
-INTEGER(KIND=8)       :: plan                      !<
-INTEGER               :: startijk(3)
-INTEGER               :: endijk(3)
-INTEGER               :: startw(3)
-INTEGER               :: endw(3)                   !<
-COMPLEX,PARAMETER     :: II = CMPLX(0.,1.0)
+CHARACTER(LEN=255)    :: MeshFile                  !< mesh file
+INTEGER               :: InitSpec                  !<
+REAL,ALLOCATABLE      :: Uloc(:,:,:,:)             !<
+COMPLEX,ALLOCATABLE   :: Uloc_c(:,:,:,:)           !<
+COMPLEX,ALLOCATABLE   :: U_j(:,:,:,:)              !<
+COMPLEX,ALLOCATABLE   :: U_k(:,:,:,:)              !<
+COMPLEX,ALLOCATABLE   :: U_FFT(:,:,:,:)            !<
+COMPLEX, ALLOCATABLE  :: F_vv(:,:,:,:,:)           !<
+COMPLEX, ALLOCATABLE  :: fhat(:,:,:,:)             !<
+COMPLEX, ALLOCATABLE  :: phat(:,:,:)               !<
+INTEGER               :: kmax                      !<
+REAL                  :: TwoPi                     !<
+REAL                  :: scalefactor               !<
+REAL                  :: maxTol                    !<
+REAL                  :: abortTol                  !<
+REAL                  :: displacement(3)           !<
+REAL                  :: GlobalMeshOffset(3)       !<
 
-! state file variables
-LOGICAL               :: FieldDataExists=.FALSE.
-LOGICAL               :: OverwriteMeshFile=.TRUE.
-REAL                  :: Time_HDF5                 !<
-INTEGER               :: nVar_HDF5
-INTEGER               :: nVarField_HDF5
-INTEGER               :: N_HDF5
-INTEGER               :: nElems_HDF5
-CHARACTER(LEN=255)    :: NodeType_HDF5
-CHARACTER(LEN=255)    :: ProjectName_HDF5
 !===================================================================================================================================
-END MODULE MOD_Filter_HIT_Vars
+END MODULE MOD_Init_HIT_Vars
+

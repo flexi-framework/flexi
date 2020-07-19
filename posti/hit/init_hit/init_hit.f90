@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -13,7 +13,7 @@
 !=================================================================================================================================
 #include "flexi.h"
 
-MODULE MOD_FFT
+MODULE MOD_INIT_HIT
 ! MODULES
 IMPLICIT NONE
 PRIVATE
@@ -23,91 +23,49 @@ PRIVATE
 ! Private Part ---------------------------------------------------------------------------------------------------------------------
 ! Public Part ----------------------------------------------------------------------------------------------------------------------
 
-INTERFACE InitFFT
-  MODULE PROCEDURE InitFFT
+INTERFACE Init_InitHIT
+  MODULE PROCEDURE Init_InitHIT
 END INTERFACE
 
 INTERFACE Rogallo
   MODULE PROCEDURE Rogallo
 END INTERFACE
 
-INTERFACE FinalizeFFT
-  MODULE PROCEDURE FinalizeFFT
+INTERFACE Finalize_InitHIT
+  MODULE PROCEDURE Finalize_InitHIT
 END INTERFACE
 
-PUBLIC:: InitFFT,Rogallo,FinalizeFFT
+PUBLIC:: Init_InitHIT,Rogallo,Finalize_InitHIT
 
 CONTAINS
 
 !===================================================================================================================================
 !> Initialize FFT. Define necessary parameters, allocate arrays for solution and auxiliary FFT variables.
 !===================================================================================================================================
-SUBROUTINE InitFFT()
+SUBROUTINE Init_InitHit()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Init_Hit_Vars
+USE MOD_FFT_Vars,                ONLY: N_FFT,endw
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER  :: i,j,k
 !===================================================================================================================================
 SWRITE(UNIT_StdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' INIT BASIS...'
+SWRITE(UNIT_stdOut,'(A)') ' INIT InitHit...'
 
 ! No Spectral code without pi and 2pi
 TwoPi       = 2.*PP_Pi
-II          = CMPLX(0.,1.0)
 kmax        = NINT(SQRT(REAL(3*N_FFT**2)))+1
 scalefactor = 1/N_FFT**3
 
 ! Allocate the solution array Uloc
 ALLOCATE(Uloc(1:PP_nVar,1:N_FFT,1:N_FFT,1:N_FFT))
-! Allocate an array for the physical position of the nodes per proc
-ALLOCATE(Localxyz(1:3,1:N_FFT,1:N_FFT,1:N_FFT))
-Nc=FLOOR(REAL(N_FFT)/2.)
-Endw(1)  =Nc+1
-Endw(2:3)=N_FFT
-ALLOCATE(Localk(1:4,1:Endw(1),1:Endw(2),1:Endw(3)))
 
-
-! fill the wave space 
-DO i=1,Endw(1)
-  DO j=1,Endw(2)
-    DO k=1,Endw(3)
-      ! due to symmetry, only nx/2+1 kx are stored, ranging from 0..1..2... to Nx/2 (Nx/2+1 waves) e.g. Nx=7: k1=:0,1,2,3; Nx=4:0,1,2 
-      localk(1,i,j,k)=i-1
-      ! ny waves are stored, order: 0,1,2,..,Nyquist,..,..,-2,-1, e.g Ny=4: 0,1,2,-1, Ny=7: 0,1,2,3,-3,-2,-1
-      IF (j.LE.Nc+1) THEN
-        localk(2,i,j,k)=j-1
-      ELSE
-        localk(2,i,j,k)=-(N_FFT+1-j)
-      END IF
-      IF (k.LE.Nc+1) THEN
-        localk(3,i,j,k)=k-1
-      ELSE
-        localk(3,i,j,k)=-(N_FFT+1-k)
-      END IF
-      localk(4,i,j,k)=NINT(SQRT(REAL(localk(1,i,j,k)*localk(1,i,j,k) &
-                                    +localk(2,i,j,k)*localk(2,i,j,k) &
-                                    +localk(3,i,j,k)*localk(3,i,j,k))))
-    END DO
-  END DO
-END DO
-
-DO i=1,N_FFT
-  DO j=1,N_FFT
-    DO k=1,N_FFT
-      localxyz(1,i,j,k)=REAL((i-1))/REAL(N_FFT)
-      localxyz(2,i,j,k)=REAL((j-1))/REAL(N_FFT)
-      localxyz(3,i,j,k)=REAL((k-1))/REAL(N_FFT)
-    END DO
-  END DO
-END DO
-
-! Prepare local Array for result of Forward FFT (so for wavespace results) 
+! Prepare local Array for result of Forward FFT (so for wavespace results)
 ALLOCATE(F_vv(1:3,1:3,1:endw(1),1:endw(2),1:endw(3)))
 ALLOCATE(fhat(    1:3,1:endw(1),1:endw(2),1:endw(3)))
 ALLOCATE(phat(        1:endw(1),1:endw(2),1:endw(3)))
@@ -115,15 +73,17 @@ ALLOCATE(phat(        1:endw(1),1:endw(2),1:endw(3)))
 SWRITE(UNIT_stdOut,'(A)')' INIT BASIS DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
 
-END SUBROUTINE InitFFT
+END SUBROUTINE Init_InitHit
 
 !===================================================================================================================================
-! Computes the initial energy spectrum and creates a velocity field with random phase matching the energy spectrum 
+! Computes the initial energy spectrum and creates a velocity field with random phase matching the energy spectrum
 !===================================================================================================================================
 SUBROUTINE Rogallo
 ! MODULES
 USE MOD_Globals
-USE MOD_Init_Hit_Vars,      ONLY: endw,localk,U_FFT,TwoPi,II,Uloc,N_FFT,kmax,Nc,InitSpec,plan
+USE MOD_Init_Hit_Vars,      ONLY: U_FFT,TwoPi,Uloc,kmax,InitSpec
+USE MOD_FFT,                ONLY: ComputeFFT_C2R
+USE MOD_FFT_Vars,           ONLY: endw,localk,N_FFT,Nc,II
 USE FFTW3
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -247,10 +207,9 @@ DO i=1,Endw(1); DO j=1,Endw(2); DO k=1,Endw(3)
 END DO; END DO; END DO
 
 Uloc=1.
-DO i=2,4
-  CALL DFFTW_PLAN_DFT_C2R_3D(plan,N_FFT,N_FFT,N_FFT,U_FFT(i,:,:,:),Uloc(i,:,:,:),FFTW_ESTIMATE)
-  CALL DFFTW_Execute(plan,U_FFT(i,:,:,:),Uloc(i,:,:,:))
-END DO
+CALL ComputeFFT_C2R(5,U_FFT,Uloc)
+
+Uloc = Uloc*REAL(N_FFT**3)
 
 ! Set constant density
 Uloc(1,:,:,:)   = 1.0
@@ -267,17 +226,24 @@ END SUBROUTINE Rogallo
 SUBROUTINE Compute_incompressible_P
 ! MODULES
 USE MOD_Globals
-USE MOD_Init_Hit_Vars,      ONLY: endw,localk,TwoPi,II,Uloc,N_FFT,plan,scalefactor,F_vv,fhat,phat
+USE MOD_Init_Hit_Vars,      ONLY: TwoPi,Uloc,scalefactor,F_vv,fhat,phat
+USE MOD_FFT_Vars,           ONLY: endw,localk,II,plan,N_FFT
 USE FFTW3
+#if USE_OPENMP
+USE OMP_Lib
+#endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 REAL                 :: sKappaM1, Kappa, Mach,ksquared,vmax,p0
 REAL                 :: vv(1:3,1:3,1:N_FFT,1:N_FFT,1:N_FFT)
+REAL                 :: vv_r(1:N_FFT,1:N_FFT,1:N_FFT)
+COMPLEX              :: vv_c(1:endw(1),1:endw(2),1:endw(3))
 REAL                 :: v(     1:3,1:N_FFT,1:N_FFT,1:N_FFT)
 REAL                 :: p(         1:N_FFT,1:N_FFT,1:N_FFT)
+REAL                 :: Time
 INTEGER              :: i,j,k
 !===================================================================================================================================
 sKappaM1 = 1./0.4
@@ -294,10 +260,23 @@ DO j=1,3; DO k=1,3
   vv(j,k,:,:,:)=v(j,:,:,:)*v(k,:,:,:)
 END DO; END DO
 
+SWRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' COMPUTE FFT FROM PHYSICAL TO FOURIER for vv...'
+Time = OMP_FLEXITIME()
+
+! Create plan once for local arrays and reuse it for each variable
+CALL DFFTW_PLAN_DFT_R2C_3D(plan,N_FFT,N_FFT,N_FFT,vv_r,vv_c,FFTW_ESTIMATE)
+
+! Compute FFT for each variable. Local arrays ensure data to be contiguous in memory.
 DO j=1,3; DO k=1,3
-  CALL DFFTW_PLAN_DFT_R2C_3D(plan,N_FFT,N_FFT,N_FFT,vv(j,k,:,:,:),F_vv(j,k,:,:,:),FFTW_ESTIMATE)
-  CALL DFFTW_Execute(plan,vv(j,k,:,:,:),F_vv(j,k,:,:,:))
+  vv_r = vv(j,k,:,:,:)
+  CALL DFFTW_Execute(plan,vv_r,vv_c)
+  F_vv(j,k,:,:,:) = vv_c
 END DO; END DO
+
+! Release resources allocated with plan
+CALL DFFTW_DESTROY_PLAN(plan)
+
+SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',OMP_FLEXITIME()-Time,'s]'
 
 DO j=1,3; DO k=1,3
   F_vv(j,k,:,:,:) = F_vv(j,k,:,:,:) *Scalefactor*TwoPi*II*localk(k,:,:,:)
@@ -318,8 +297,18 @@ DO i=1,Endw(1); DO j=1,Endw(2); DO k=1,Endw(3)
   END IF
 END DO; END DO; END DO! i,j,k=1,Endw(1,2,3)
 
+SWRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' COMPUTE FFT FROM PHYSICAL TO FOURIER for vv...'
+Time = OMP_FLEXITIME()
+
+! Create plan once
 CALL DFFTW_PLAN_DFT_C2R_3D(plan,N_FFT,N_FFT,N_FFT,phat(:,:,:),p(:,:,:),FFTW_ESTIMATE)
 CALL DFFTW_Execute(plan,phat(:,:,:),p(:,:,:))
+
+! Release resources allocated with plan
+CALL DFFTW_DESTROY_PLAN(plan)
+
+SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',OMP_FLEXITIME()-Time,'s]'
+
 
 SWRITE(*,*) "Vmax in field is",vmax
 p0=1.*vmax**2/(Kappa*Mach**2)
@@ -336,14 +325,15 @@ END SUBROUTINE Compute_incompressible_P
 !===================================================================================================================================
 !> Finalize FFT
 !===================================================================================================================================
-SUBROUTINE FinalizeFFT()
+SUBROUTINE Finalize_InitHIT
 ! MODULES                                                                                                                          !
 USE MOD_Globals
 USE MOD_Init_Hit_Vars
+USE MOD_FFT_Vars
 USE MOD_DG_Vars,       ONLY: U
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
@@ -361,6 +351,6 @@ IF(MPIRoot) THEN
   SDEALLOCATE(F_vv)
 END IF
 
-END SUBROUTINE FinalizeFFT
+END SUBROUTINE Finalize_InitHIT
 
-END MODULE MOD_FFT
+END MODULE MOD_INIT_HIT

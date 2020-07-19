@@ -14,48 +14,49 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-!> ??????????
+!> Main program for the hit_analyze tool. It computes tubulence statistics, especially the turbulent kinetic energy over wavelength.
 !===================================================================================================================================
-PROGRAM posti_filter_hit
+PROGRAM posti_analyze_hit
 ! MODULES
+USE MOD_Preproc
 USE MOD_Globals
-USE MOD_Filter_HIT
-USE MOD_Filter_HIT_Vars
-USE MOD_DG_Vars,                 ONLY: U,Ut
+USE MOD_Analyze_Hit
+USE MOD_ANALYZE_HIT_Vars
+USE MOD_DG_Vars,                 ONLY: U
+USE MOD_Interpolation_Vars,      ONLY: NodeType
 USE MOD_Mesh,                    ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
 USE MOD_Mesh_Vars,               ONLY: nElems_IJK,MeshFile
 USE MOD_Mesh_ReadIn,             ONLY: ReadIJKSorting
-USE MOD_Output,                  ONLY: DefineParametersOutput
+USE MOD_Options
+USE MOD_Output,                  ONLY: DefineParametersOutput,InitOutput,FinalizeOutput
 USE MOD_Interpolation,           ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
-USE MOD_IO_HDF5,                 ONLY: DefineParametersIO_HDF5,InitIOHDF5
+USE MOD_IO_HDF5,                 ONLY: DefineParametersIO_HDF5,InitIOHDF5,OpenDataFile
+USE MOD_HDF5_Input
 USE MOD_HDF5_Output,             ONLY: WriteState
+USE MOD_Commandline_Arguments
 USE MOD_StringTools,             ONLY: STRICMP,GetFileExtension
 USE MOD_ReadInTools
-USE MOD_Commandline_Arguments
-USE MOD_FFT,                     ONLY: InitFFT,FinalizeFFT
-USE MOD_MPI,                     ONLY: DefineParametersMPI,InitMPI
+USE MOD_FFT,                     ONLY: InitFFT, FinalizeFFT
+USE MOD_FFT_Vars
+USE FFTW3
 #if USE_MPI
+USE MOD_MPI,                     ONLY: DefineParametersMPI,InitMPI
 USE MOD_MPI,                     ONLY: InitMPIvars,FinalizeMPI
-#endif
-#if USE_OPENMP
-USE OMP_Lib
 #endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                            :: iArg
-REAL                               :: Time
-#if USE_MPI
-REAL                               :: limit,nTotal
-#endif
-CHARACTER(LEN=255)                 :: InputStateFile
-CHARACTER(LEN=255)                 :: MeshFile_old = " "      ! MeshFile of last state file
-INTEGER                            :: N_HDF5_old=0
+CHARACTER(LEN=255)                 :: InputStateFile          ! dummy variable for state file name
+
+INTEGER                            :: N_HDF5_old = 0          ! Polynominal degree of last state file
+CHARACTER(LEN=255)                 :: MeshFile_old = " "      ! Meshfile of last state file
 LOGICAL                            :: changedMeshFile=.FALSE. ! True if mesh between states changed
 LOGICAL                            :: changedN       =.FALSE. ! True if N between states changes
 !===================================================================================================================================
 CALL SetStackSizeUnlimited()
 CALL InitMPI()
+
 IF (nProcessors.GT.1) CALL CollectiveStop(__STAMP__, &
      'This tool is designed only for single execution!')
 
@@ -65,50 +66,53 @@ SWRITE(UNIT_stdOut,'(132("="))')
 SWRITE(UNIT_stdOut,'(A)') &
     " ||==========================================||                                                           "
 SWRITE(UNIT_stdOut,'(A)') &
-    " ||         Spectral filter for HIT          ||                                                           "
+    " || Analyze Spectral Data from HIT ||                                                           "
 SWRITE(UNIT_stdOut,'(A)') &
     " ||==========================================||                                                           "
 SWRITE(UNIT_stdOut,'(A)')
 SWRITE(UNIT_stdOut,'(132("="))')
 
 ! Define Parameters
-CALL DefineParametersInterpolation()
+CALL DefineParametersInterpolation()        !Calculate Gauss Points etc
 CALL DefineParametersMPI()
 CALL DefineParametersIO_HDF5()
-CALL DefineParametersOutput()
-CALL DefineParametersMesh()
+CALL DefineParametersOutput()               !NVisu, Nout
+CALL DefineParametersMesh()                 !MeshFile
 !=====================================
-CALL prms%SetSection("filterHIT")
-CALL prms%CreateIntOption("N_Filter" , "Cutoff filter")
-CALL prms%CreateIntOption("N_Visu"   , "Polynomial degree to perform DFFT on")
+CALL prms%SetSection("analyzeHIT")          !new parameter section
+CALL prms%CreateIntOption("N_Visu"             , "Polynomial degree to perform DFFT on")
+CALL prms%CreateIntOption("N_Filter"           , "Cutoff filter")
+CALL prms%CreateIntOption("Nunder"             , "Limit for under-integration")
+CALL prms%CreateRealOption("Mu0"               , "Viscosity")
+CALL prms%CreateLogicalOption("DoCalcTransfer" , "Do analysis with Ut") ! not implemented so far
 
 ! check for command line argument --help or --markdown
 IF (doPrintHelp.GT.0) THEN
   CALL PrintDefaultParameterFile(doPrintHelp.EQ.2, Args(1))
   STOP
 END IF
+! Read file name from command line, min. 2 timeavg files
+IF(nArgs .LT. 2) CALL Abort(__STAMP__,'Missing argument')
 ! check if parameter file is given
 IF ((nArgs.LT.1).OR.(.NOT.(STRICMP(GetFileExtension(Args(1)),'ini')))) THEN
-  CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: init_hit [prm-file]')
+  CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: analyze_hit [prm-file]')
 END IF
 ! Parse parameters
 CALL prms%read_options(Args(1))
 ParameterFile = Args(1)
 
 ! Readin Parameters
-N_Filter = GETINT('N_Filter','-1')
-N_Visu   = GETINT('N_Visu')
-MeshFile = GETSTR('MeshFile','')
-
-! Overwrite local meshfile from userblock if present
-IF (TRIM(MeshFile).EQ.'') OverwriteMeshFile=.FALSE.
+N_Filter       = GETINT('N_Filter')
+N_Visu         = GETINT('N_Visu')
+Mu0            = GETREAL('Mu0')
+Nunder         = GETINT('Nunder')
+DoCalcTransfer = GETLOGICAL('DoCalcTransfer','false')
 
 ! Initialize IO
 CALL InitIOHDF5()
 
 ! Loop over all files specified on commandline
 DO iArg=2,nArgs
-  Time = OMP_FLEXITIME()
 
   InputStateFile = Args(iArg)
 
@@ -134,45 +138,37 @@ DO iArg=2,nArgs
   IF(changedMeshFile) THEN
     SWRITE(UNIT_stdOUT,*) "INITIALIZING MESH FROM FILE """,TRIM(MeshFile),""""
     CALL FinalizeMesh()
+    CALL FinalizeMPI()
     CALL DefineParametersMesh()
     CALL InitMesh(MeshMode=0,MeshFile_IN=MeshFile)
-    CALL ReadIJKSorting() ! Read global xyz sorting of structured mesh
+    CALL ReadIJKSorting() !Read global xyz sorting of structured mesh
 
     ! Currently only cubic meshes are allowed!
     IF(.NOT.((nElems_IJK(1).EQ.nElems_IJK(2)).AND.(nElems_IJK(1).EQ.nElems_IJK(3)))) THEN
       CALL ABORT(__STAMP__,'Mesh does not have the same amount of elements in x,y and z!')
     END IF
 
-    ! Get new number of points for fourier analysis
-    N_FFT=(N_Visu+1)*nElems_IJK(1)
+  ! Get new number of points for fourier analysis
+  N_FFT=(N_Visu+1)*nElems_IJK(1)
   END IF
 
   IF(changedMeshFile .OR. changedN) THEN
-#if USE_MPI
-    nTotal=REAL(nVar_HDF5*(N_HDF5+1)**3*nElems_HDF5)
-    IF(FieldDataExists) nTotal=MAX(nTotal,REAL(nVarField_HDF5*(N_HDF5+1)**3*nElems_HDF5))
-    !limit=(2**31-1)/8.
-    limit=2**28-1/8. ! max. 32 bit integer / 8
-    IF (nTotal.GT.limit) THEN
-      WRITE(UNIT_StdOut,'(A,F13.0,A)')' Input state file size is too big! Total array size may not exceed', limit, ' entries!'
-      WRITE(UNIT_StdOut,'(A)')' Lower number of elements or compile without MPI'
-      STOP
-    END IF
-#endif
-
     SWRITE(UNIT_stdOut,'(A)') 'FFT SETUP'
     CALL FinalizeFFT()
     CALL InitFFT()
     SWRITE(UNIT_stdOut,'(A)') 'FFT SETUP DONE'
     SWRITE(UNIT_StdOut,'(132("-"))')
+    CALL FinalizeAnalyze()
+    CALL InitAnalyze()
   END IF
 
-  ! Transform global solution into Fourier space and apply filter there.
-  CALL FourierFilter(nVar_HDF5,U)
-  IF(FieldDataExists) CALL FourierFilter(nVarField_HDF5,Ut)
+  IF(NUnder.GT.0) THEN ! NUnder given in parameter file, thus limit integral values to NUnder
+    Nyq=(NUnder+1)*nElems_IJK(3)/2
+  ELSE
+    Nyq=(N_FFT)/2      ! If NUnder is not given, integral values are limited by nyquist criterium
+  END IF
 
-  ! Write State-File
-  CALL WriteNewStateFile()
+  CALL AnalyzeTGV(time_HDF5,nVar_HDF5,U) ! Main analyze routine
 
   ! To determine whether meshfile or N changes
   MeshFile_old    = MeshFile
@@ -182,10 +178,10 @@ DO iArg=2,nArgs
 
   ! Deallocate DG solution array for next file
   DEALLOCATE(U)
-  IF(FieldDataExists) DEALLOCATE(Ut)
 
   SWRITE(UNIT_stdOut,'(132("="))')
-  SWRITE(UNIT_stdOut,'(A,A,A,F0.3,A)') ' PROCESSED FILE ',TRIM(InputStateFile),' in [',OMP_FLEXITIME()-Time,'s]'
+  SWRITE(UNIT_stdOut,'(A,A,A,F0.3,A)') ' PROCESSED FILE ',TRIM(InputStateFile)
+
 END DO !iArg=1,nArgs
 
 ! Finalize everything
@@ -201,7 +197,7 @@ CALL FinalizeMPI()
 #endif
 
 SWRITE(UNIT_stdOut,'(132("="))')
-SWRITE(UNIT_stdOut,'(A)') ' filterHIT FINISHED! '
+SWRITE(UNIT_stdOut,'(A)') ' analyzeHIT FINISHED! '
 SWRITE(UNIT_stdOut,'(132("="))')
 
-END PROGRAM posti_filter_hit
+END PROGRAM posti_analyze_hit

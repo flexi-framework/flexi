@@ -24,22 +24,12 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-INTEGER               :: N_Visu
 INTEGER               :: N_Filter
 INTEGER               :: Nunder
 
-! FFT vars
-INTEGER               :: N_FFT
-INTEGER               :: Nc
-REAL,ALLOCATABLE      :: LocalXYZ(:,:,:,:)
-REAL,ALLOCATABLE      :: LocalK(:,:,:,:)
-INTEGER(KIND=8)       :: plan
-INTEGER               :: startw(3) = 1
-INTEGER               :: endw(3)
-
 ! Analyze variables
-INTEGER               :: kmax
 INTEGER               :: Nyq
+INTEGER               :: kmax
 REAL                  :: Mu0
 REAL                  :: Ekin
 REAL, ALLOCATABLE     :: E_k(:),T_k(:),MuSGS_K(:),numDiss_k(:),eps_k(:),eMean_k(:)

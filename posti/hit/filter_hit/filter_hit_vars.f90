@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -13,44 +13,32 @@
 !=================================================================================================================================
 
 !===================================================================================================================================
-!> Contains global variables provided by the initHIT routines
+!> Contains global variables provided by the AnalyzeHIT routines
 !===================================================================================================================================
-MODULE MOD_Init_HIT_Vars
+MODULE MOD_Filter_HIT_Vars
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 PUBLIC
 SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES 
+! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
+INTEGER               :: N_Filter
 
-CHARACTER(LEN=255)    :: MeshFile                  !< mesh file
-INTEGER               :: InitSpec                  !< 
-INTEGER               :: N_FFT                     !< 
-INTEGER               :: Nc                        !< 
-REAL,ALLOCATABLE      :: Uloc(:,:,:,:)             !<
-COMPLEX,ALLOCATABLE   :: Uloc_c(:,:,:,:)           !<
-COMPLEX,ALLOCATABLE   :: U_j(:,:,:,:)              !<
-COMPLEX,ALLOCATABLE   :: U_k(:,:,:,:)              !<
-COMPLEX,ALLOCATABLE   :: U_FFT(:,:,:,:)            !<
-REAL,ALLOCATABLE      :: LocalXYZ(:,:,:,:)         !<
-REAL,ALLOCATABLE      :: LocalK(:,:,:,:)           !<
-COMPLEX, ALLOCATABLE  :: F_vv(:,:,:,:,:)           !<
-COMPLEX, ALLOCATABLE  :: fhat(:,:,:,:)             !<
-COMPLEX, ALLOCATABLE  :: phat(:,:,:)               !<
-INTEGER               :: kmax                      !< 
-REAL                  :: TwoPi                     !< 
-COMPLEX               :: II                        !< 
-REAL                  :: scalefactor               !<
-REAL                  :: maxTol                    !< 
-REAL                  :: abortTol                  !< 
-REAL                  :: displacement(3)           !< 
-REAL                  :: GlobalMeshOffset(3)       !< 
-INTEGER               :: EndW(3)                   !< 
-INTEGER(KIND=8)       :: plan
+! FFT vars
+INTEGER               :: startijk(3)
+INTEGER               :: endijk(3)
 
-
+! state file variables
+LOGICAL               :: FieldDataExists=.FALSE.
+LOGICAL               :: OverwriteMeshFile=.TRUE.
+REAL                  :: Time_HDF5                 !<
+INTEGER               :: nVar_HDF5
+INTEGER               :: nVarField_HDF5
+INTEGER               :: N_HDF5
+INTEGER               :: nElems_HDF5
+CHARACTER(LEN=255)    :: NodeType_HDF5
+CHARACTER(LEN=255)    :: ProjectName_HDF5
 !===================================================================================================================================
-END MODULE MOD_Init_HIT_Vars
-
+END MODULE MOD_Filter_HIT_Vars

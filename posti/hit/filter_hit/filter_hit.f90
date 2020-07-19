@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -40,27 +40,6 @@ PUBLIC:: ReadOldStateFile,WriteNewStateFile,FourierFilter
 CONTAINS
 
 !===================================================================================================================================
-!===================================================================================================================================
-SUBROUTINE InitFilterHit()
-! MODULES
-USE MOD_Globals
-USE MOD_PreProc
-USE MOD_Filter_HIT_Vars
-IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT / OUTPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-!===================================================================================================================================
-SWRITE(UNIT_StdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' INIT BASIS...'
-
-SWRITE(UNIT_stdOut,'(A)')' INIT BASIS DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
-
-END SUBROUTINE InitFilterHit
-
-!===================================================================================================================================
 !> Open a state file, read the old state and store the information later needed to write a new state.
 !===================================================================================================================================
 SUBROUTINE ReadOldStateFile(StateFile)
@@ -95,7 +74,7 @@ IF (.NOT.STRICMP(GetFileExtension(StateFile), 'h5')) &
   CALL CollectiveStop(__STAMP__,'ERROR - Invalid file extension of input state file!')
 
 ! Check if state file is a valid state
-IF(.NOT.ISVALIDHDF5FILE(StateFile)) &
+IF (.NOT.ISVALIDHDF5FILE(StateFile)) &
   CALL CollectiveStop(__STAMP__,'ERROR - Not a valid state file!')
 
 ! Open the data file
@@ -206,7 +185,8 @@ SUBROUTINE FourierFilter(nVar_In,U_In)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Mesh_Vars,          ONLY: nElems
-USE MOD_Filter_Hit_Vars,    ONLY: N_FFT,Endw,Localk,N_Filter,Nc
+USE MOD_Filter_Hit_Vars,    ONLY: N_Filter, NodeType_HDF5
+USE MOD_FFT_Vars,           ONLY: N_FFT,Endw,Localk,Nc
 USE MOD_FFT,                ONLY: Interpolate_DG2FFT,Interpolate_FFT2DG
 USE MOD_FFT,                ONLY: ComputeFFT_R2C,ComputeFFT_C2R
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -221,7 +201,7 @@ REAL           :: U_Global(1:nVar_In,1:N_FFT  ,1:N_FFT  ,1:N_FFT  ) ! Real globa
 COMPLEX        :: U_FFT(   1:nVar_In,1:Endw(1),1:Endw(2),1:Endw(3)) ! Complex FFT solution
 !===================================================================================================================================
 ! 1. Interpolate DG solution to equidistant points
-CALL Interpolate_DG2FFT(nVar_In,U_in,U_Global)
+CALL Interpolate_DG2FFT(NodeType_HDF5,nVar_In,U_in,U_Global)
 
 ! 2. Apply complex Fourier-Transform on solution from state file
 CALL ComputeFFT_R2C(nVar_In,U_Global,U_FFT)
@@ -241,26 +221,8 @@ END IF
 CALL ComputeFFT_C2R(nVar_In,U_FFT,U_Global)
 
 ! 5. Interpolate global solution at equidistant points back to DG points
-CALL Interpolate_FFT2DG(nVar_In,U_Global,U_in)
+CALL Interpolate_FFT2DG(NodeType_HDF5,nVar_In,U_Global,U_in)
 
 END SUBROUTINE FourierFilter
-
-
-!===================================================================================================================================
-!===================================================================================================================================
-SUBROUTINE FinalizeFilterHit()
-! MODULES                                                                                                                          !
-USE MOD_Globals
-USE MOD_Filter_Hit_Vars
-!----------------------------------------------------------------------------------------------------------------------------------!
-IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-!===================================================================================================================================
-SDEALLOCATE(LocalXYZ)
-SDEALLOCATE(LocalK)
-
-END SUBROUTINE FinalizeFilterHit
 
 END MODULE MOD_Filter_Hit
