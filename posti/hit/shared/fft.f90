@@ -354,7 +354,7 @@ END SUBROUTINE Interpolate_FFT2DG
 !===================================================================================================================================
 ! Evaluate the global Fourier solution at the DG interpolation points
 !===================================================================================================================================
-PPURE SUBROUTINE EvalFourierAtDGCoords(nVar_In,U_FFT,U_DG)
+SUBROUTINE EvalFourierAtDGCoords(nVar_In,U_FFT,U_DG)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Mesh_Vars             ,ONLY: Elem_xGP,nElems
