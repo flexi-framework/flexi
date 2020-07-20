@@ -32,7 +32,7 @@ INTEGER               :: Nyq
 INTEGER               :: kmax
 REAL                  :: Mu0
 REAL                  :: Ekin
-REAL, ALLOCATABLE     :: E_k(:),T_k(:),MuSGS_K(:),numDiss_k(:),eps_k(:),eMean_k(:)
+REAL, ALLOCATABLE     :: E_k(:)
 LOGICAL               :: AnalyzeInitIsDone=.FALSE.
 LOGICAL               :: DoCalcTransfer
 

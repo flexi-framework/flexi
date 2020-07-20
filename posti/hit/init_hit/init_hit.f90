@@ -58,7 +58,6 @@ SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT InitHit...'
 
 ! No Spectral code without pi and 2pi
-TwoPi       = 2.*PP_Pi
 kmax        = NINT(SQRT(REAL(3*N_FFT**2)))+1
 scalefactor = 1/N_FFT**3
 
@@ -68,7 +67,7 @@ ALLOCATE(Uloc(1:PP_nVar,1:N_FFT,1:N_FFT,1:N_FFT))
 ! Prepare local Array for result of Forward FFT (so for wavespace results)
 ALLOCATE(F_vv(1:3,1:3,1:endw(1),1:endw(2),1:endw(3)))
 ALLOCATE(fhat(    1:3,1:endw(1),1:endw(2),1:endw(3)))
-ALLOCATE(phat(        1:endw(1),1:endw(2),1:endw(3)))
+ALLOCATE(phat(    1:1,1:endw(1),1:endw(2),1:endw(3)))
 
 SWRITE(UNIT_stdOut,'(A)')' INIT BASIS DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
@@ -81,7 +80,8 @@ END SUBROUTINE Init_InitHit
 SUBROUTINE Rogallo
 ! MODULES
 USE MOD_Globals
-USE MOD_Init_Hit_Vars,      ONLY: U_FFT,TwoPi,Uloc,kmax,InitSpec
+USE MOD_PreProc
+USE MOD_Init_Hit_Vars,      ONLY: U_FFT,Uloc,kmax,InitSpec
 USE MOD_FFT,                ONLY: ComputeFFT_C2R
 USE MOD_FFT_Vars,           ONLY: endw,localk,N_FFT,Nc,II
 USE FFTW3
@@ -181,9 +181,9 @@ DO i=1,Endw(1); DO j=1,Endw(2); DO k=1,Endw(3)
     CALL RANDOM_NUMBER(Theta1)
     CALL RANDOM_NUMBER(Theta2)
     CALL RANDOM_NUMBER(Phi)
-    Theta1=Theta1*TwoPi
-    Theta2=Theta2*TwoPi
-    Phi=Phi*TwoPi
+    Theta1=Theta1*2.*PP_Pi
+    Theta2=Theta2*2.*PP_Pi
+    Phi=Phi*2.*PP_Pi
     kk(1:3)=REAL(localk(1:3,i,j,k))
     kw2=kk(1)**2+kk(2)**2+kk(3)**2
     kw=SQRT(kw2)
@@ -226,8 +226,10 @@ END SUBROUTINE Rogallo
 SUBROUTINE Compute_incompressible_P
 ! MODULES
 USE MOD_Globals
-USE MOD_Init_Hit_Vars,      ONLY: TwoPi,Uloc,scalefactor,F_vv,fhat,phat
-USE MOD_FFT_Vars,           ONLY: endw,localk,II,plan,N_FFT
+USE MOD_PreProc
+USE MOD_Init_Hit_Vars,      ONLY: Uloc,scalefactor,F_vv,fhat,phat
+USE MOD_FFT_Vars,           ONLY: endw,localk,II,N_FFT
+USE MOD_FFT,                ONLY: ComputeFFT_R2C,ComputeFFT_C2R
 USE FFTW3
 #if USE_OPENMP
 USE OMP_Lib
@@ -239,11 +241,8 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 REAL                 :: sKappaM1, Kappa, Mach,ksquared,vmax,p0
 REAL                 :: vv(1:3,1:3,1:N_FFT,1:N_FFT,1:N_FFT)
-REAL                 :: vv_r(1:N_FFT,1:N_FFT,1:N_FFT)
-COMPLEX              :: vv_c(1:endw(1),1:endw(2),1:endw(3))
 REAL                 :: v(     1:3,1:N_FFT,1:N_FFT,1:N_FFT)
-REAL                 :: p(         1:N_FFT,1:N_FFT,1:N_FFT)
-REAL                 :: Time
+REAL                 :: p(     1:1,1:N_FFT,1:N_FFT,1:N_FFT)
 INTEGER              :: i,j,k
 !===================================================================================================================================
 sKappaM1 = 1./0.4
@@ -260,26 +259,13 @@ DO j=1,3; DO k=1,3
   vv(j,k,:,:,:)=v(j,:,:,:)*v(k,:,:,:)
 END DO; END DO
 
-SWRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' COMPUTE FFT FROM PHYSICAL TO FOURIER for vv...'
-Time = OMP_FLEXITIME()
-
-! Create plan once for local arrays and reuse it for each variable
-CALL DFFTW_PLAN_DFT_R2C_3D(plan,N_FFT,N_FFT,N_FFT,vv_r,vv_c,FFTW_ESTIMATE)
-
 ! Compute FFT for each variable. Local arrays ensure data to be contiguous in memory.
-DO j=1,3; DO k=1,3
-  vv_r = vv(j,k,:,:,:)
-  CALL DFFTW_Execute(plan,vv_r,vv_c)
-  F_vv(j,k,:,:,:) = vv_c
-END DO; END DO
-
-! Release resources allocated with plan
-CALL DFFTW_DESTROY_PLAN(plan)
-
-SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',OMP_FLEXITIME()-Time,'s]'
+DO j=1,3
+  CALL ComputeFFT_R2C(3,vv(j,:,:,:,:),F_vv(j,:,:,:,:))
+END DO
 
 DO j=1,3; DO k=1,3
-  F_vv(j,k,:,:,:) = F_vv(j,k,:,:,:) *Scalefactor*TwoPi*II*localk(k,:,:,:)
+  F_vv(j,k,:,:,:) = F_vv(j,k,:,:,:) *Scalefactor*2.*PP_Pi*II*localk(k,:,:,:)
 END DO; END DO
 
 fhat(1,:,:,:)= F_vv(1,1,:,:,:)+F_vv(1,2,:,:,:)+F_vv(1,3,:,:,:)
@@ -289,26 +275,15 @@ fhat(3,:,:,:)= F_vv(3,1,:,:,:)+F_vv(3,2,:,:,:)+F_vv(3,3,:,:,:)
 DO i=1,Endw(1); DO j=1,Endw(2); DO k=1,Endw(3)
   ksquared=localk(1,i,j,k)**2+localk(2,i,j,k)**2+localk(3,i,j,k)**2
   IF (ksquared.eq.0) THEN
-    Phat(i,j,k)=0
+    phat(1,i,j,k)=0
   ELSE
-    phat(i,j,k)=1./ksquared*( localk(1,i,j,k)*fhat(1,i,j,k) &
+    phat(1,i,j,k)=1./ksquared*( localk(1,i,j,k)*fhat(1,i,j,k) &
                             + localk(2,i,j,k)*fhat(2,i,j,k) &
                             + localk(3,i,j,k)*fhat(3,i,j,k) )
   END IF
 END DO; END DO; END DO! i,j,k=1,Endw(1,2,3)
 
-SWRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' COMPUTE FFT FROM PHYSICAL TO FOURIER for vv...'
-Time = OMP_FLEXITIME()
-
-! Create plan once
-CALL DFFTW_PLAN_DFT_C2R_3D(plan,N_FFT,N_FFT,N_FFT,phat(:,:,:),p(:,:,:),FFTW_ESTIMATE)
-CALL DFFTW_Execute(plan,phat(:,:,:),p(:,:,:))
-
-! Release resources allocated with plan
-CALL DFFTW_DESTROY_PLAN(plan)
-
-SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',OMP_FLEXITIME()-Time,'s]'
-
+CALL ComputeFFT_C2R(1,phat(:,:,:,:),p(:,:,:,:))
 
 SWRITE(*,*) "Vmax in field is",vmax
 p0=1.*vmax**2/(Kappa*Mach**2)
@@ -317,7 +292,7 @@ SWRITE(*,*) "For a selected Machnumber of ",Mach,", the mean pressure is",p0
 p=p+p0
 
 DO i=1,N_FFT; DO j=1,N_FFT; DO k=1,N_FFT
-  Uloc(5,i,j,k)=sKappaM1*p(i,j,k)+0.5*SUM(Uloc(2:4,i,j,k)*v(1:3,i,j,k))
+  Uloc(5,i,j,k)=sKappaM1*p(1,i,j,k)+0.5*SUM(Uloc(2:4,i,j,k)*v(1:3,i,j,k))
 END DO; END DO; END DO! i,j,k=1,N_FFT
 
 END SUBROUTINE Compute_incompressible_P

@@ -103,9 +103,9 @@ ENDIF
 ! Read the attributes from file
 CALL ReadAttribute(File_ID,'Time',1,RealScalar=Time_HDF5)
 CALL ReadAttribute(File_ID,'Project_Name',1,StrScalar=ProjectName_HDF5)
-IF (.NOT. OverwriteMeshfile) THEN
+!IF (.NOT. OverwriteMeshfile) THEN
   CALL ReadAttribute(File_ID,'MeshFile',1,StrScalar=MeshFile)
-END IF
+!END IF
 
 ! Extract parameter file from userblock (if found)
 CALL ExtractParameterFile(StateFile,TRIM(prmfile),userblockFound)

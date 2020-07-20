@@ -92,11 +92,6 @@ CLOSE(FILEUnit_HIT)
 kmax=NINT(sqrt(REAL(((N_FFT*N_FFT)*3))))+1
 
 ALLOCATE(E_k(0:kmax))
-ALLOCATE(numDiss_k(0:kmax))
-ALLOCATE(MuSGS_k(0:kmax))
-ALLOCATE(T_k(0:kmax))
-ALLOCATE(eps_k(0:kmax))
-ALLOCATE(eMean_k(0:kmax))
 
 AnalyzeInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT ANALYZE DONE!'
@@ -123,11 +118,6 @@ IF(AnalyzeInitIsDone)THEN
 END IF
 
 SDEALLOCATE(E_k)
-SDEALLOCATE(numDiss_k)
-SDEALLOCATE(MuSGS_k)
-SDEALLOCATE(T_k)
-SDEALLOCATE(eps_k)
-SDEALLOCATE(eMean_k)
 
 SWRITE(UNIT_stdOut,'(A)')' FINALIZE ANALYZE DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
@@ -158,23 +148,13 @@ REAL,INTENT(INOUT)    :: U_in(1:nVar_In,0:PP_N,0:PP_N,0:PP_N,1:nElems) !< elemen
 INTEGER :: i,j,k,iElem
 REAL    :: U_Global(1:nVar_In,1:N_FFT  ,1:N_FFT  ,1:N_FFT  )        ! Real global DG solution
 COMPLEX :: U_FFT(   1:nVar_In,1:Endw(1),1:Endw(2),1:Endw(3))        ! Complex FFT solution
-REAL    :: v(1:5,1:N_FFT,1:N_FFT,1:N_FFT)
-REAL    :: E_K_loc(0:kmax),dummysum,Lambda, L_int, ETA,eps,Ekinglob
+REAL    :: E_K_loc(0:kmax),dummysum,Lambda, L_int, ETA,eps
 REAL    :: IntEps, IntInt, Lambda_K, L_Int_K, ETA_K, urms ,Re_lambda
 LOGICAL :: connected
 ! Transfer function
 INTEGER :: intLim
-! Pi and kmax
-REAL    :: TwoPi
-REAL    :: Pi
-!===================================================================================================================================
-TwoPi  = 2.*PP_Pi
-Pi     = PP_Pi
 
-Ekin=0.
-Ekinglob=0.
-U_FFT=0.
-U_Global = 0.
+!===================================================================================================================================
 
 ! Convert Cons to Prims
 DO iElem=1,nElems_HDF5
@@ -197,17 +177,17 @@ U_FFT=U_FFT/REAL(N_FFT**3)
 !is only half the sum of all modes!
 
 IF (N_Filter.GT.-1) THEN
-  DO i=startw(1),endw(1)
-    DO j=startw(2),endw(2)
-      DO k=startw(3),endw(3)
+  DO i=1,endw(1)
+    DO j=1,endw(2)
+      DO k=1,endw(3)
         IF (ABS(localk(4,i,j,k)).GT.N_Filter) U_FFT(:,i,j,k)=0.
       END DO
     END DO
   END DO
 ELSE
-  DO i=startw(1),endw(1)
-    DO j=startw(2),endw(2)
-      DO k=startw(3),endw(3)
+  DO i=1,endw(1)
+    DO j=1,endw(2)
+      DO k=1,endw(3)
         IF (ABS(localk(4,i,j,k)).GT.Nc) U_FFT(:,i,j,k)=0.
       END DO
     END DO
@@ -215,18 +195,16 @@ ELSE
 END IF
 
 ! 4. Compute kinetic energy per wavelength
-E_k_loc=0.
 CALL Compute_Spectrum(3,U_FFT(2:4,:,:,:),E_k_loc)
-v=0.
 
 ! 5. Apply inverse Fourier-Transform back into physical space
 CALL ComputeFFT_C2R(nVar_HDF5,U_FFT,U_Global)
 
 ! 6. Compute other turbulence statistics
 Ekin=0.
-DO k=startw(3),endw(3)
-  DO j=startw(2),endw(2)
-    DO i=startw(1),endw(1)
+DO k=1,endw(3)
+  DO j=1,endw(2)
+    DO i=1,endw(1)
       Ekin=Ekin+SUM(U_Global(2:4,i,j,k)*U_Global(2:4,i,j,k))
     END DO
   END DO
@@ -268,15 +246,15 @@ END DO
 
 CLOSE(FILEUnit_EK)
 
-EPS=IntEps*2.*mu0                         ! Dissipation
-ETA=mu0**(3./4.)/(IntEps*2.*mu0)**(1./4.) ! KolmogorovLength
-ETA_K=TwoPi/ETA                           ! KolmogorovLength*K
+EPS=IntEps*2.*Mu0                         ! Dissipation
+ETA=Mu0**(3./4.)/(IntEps*2.*Mu0)**(1./4.) ! KolmogorovLength
+ETA_K=2.*PP_PI/ETA                           ! KolmogorovLength*K
 Lambda=(5.*dummysum/IntEps)**0.5          ! TaylorMicroScale
-Lambda_K=2.*Pi/Lambda                     ! TaylorMicroScale*K
-L_int=3.*Pi/4.*IntInt/dummysum            ! Int_Length
-L_int_K=2*Pi/L_int                        ! Int_Length*K
+Lambda_K=2.*PP_PI/Lambda                     ! TaylorMicroScale*K
+L_int=3.*PP_PI/4.*IntInt/dummysum            ! Int_Length
+L_int_K=2*PP_PI/L_int                        ! Int_Length*K
 urms=(2./3.*dummysum)**0.5                ! U_RMS
-Re_lambda=urms*lambda/mu0                 ! Re_lambda
+Re_lambda=urms*lambda/Mu0                 ! Re_lambda
 OPEN(FileUnit_HIT,FILE=Filename_HIT,STATUS="UNKNOWN",POSITION="APPEND")
 WRITE(FileUnit_HIT,'(12(E20.12,X))')Time,Ekin,dummysum,EPS,ETA,eta_k,lambda,lambda_k,L_int,L_int_k,urms,Re_lambda
 
@@ -299,12 +277,13 @@ END SUBROUTINE AnalyzeTGV
 SUBROUTINE Compute_Spectrum(nVar_In,U_In,E_k)
 ! MODULES
 USE MOD_Globals
+USE MOD_PreProc
 USE MOD_ANALYZE_HIT_Vars,  ONLY: N_Filter, kmax
-USE MOD_FFT_Vars,          ONLY: startw,endw,localk,Nc
+USE MOD_FFT_Vars,          ONLY: endw,localk,Nc
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-COMPLEX,INTENT(IN)  :: U_In(nVar_In,startw(1):endw(1),startw(2):endw(2),startw(3):endw(3))
+COMPLEX,INTENT(IN)  :: U_In(nVar_In,1:endw(1),1:endw(2),1:endw(3))
 INTEGER,INTENT(IN)  :: nVar_In
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
@@ -316,9 +295,9 @@ INTEGER ::i,j,k,k_eff
 !-----------------------------------------------------------------------------------------------------------------------------------
 E_k = 0.
 IF (N_Filter.GT.-1) THEN
-  DO k=startw(3),endw(3)
-    DO j=startw(2),endw(2)
-      DO i=startw(1),endw(1)
+  DO k=1,endw(3)
+    DO j=1,endw(2)
+      DO i=1,endw(1)
         IF (localk(4,i,j,k).GT.N_Filter) CYCLE
         k_eff = NINT(localk(4,i,j,k))
         E_k(k_eff) =   E_k(k_eff)+&
@@ -327,9 +306,9 @@ IF (N_Filter.GT.-1) THEN
     END DO
   END DO
 ELSE
-  DO k=startw(3),endw(3)
-    DO j=startw(2),endw(2)
-      DO i=startw(1),endw(1)
+  DO k=1,endw(3)
+    DO j=1,endw(2)
+      DO i=1,endw(1)
         IF (localk(4,i,j,k).GT.Nc) CYCLE
         k_eff = NINT(localk(4,i,j,k))
         E_k(k_eff) =   E_k(k_eff)+&

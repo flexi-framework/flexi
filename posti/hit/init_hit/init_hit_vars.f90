@@ -34,9 +34,8 @@ COMPLEX,ALLOCATABLE   :: U_k(:,:,:,:)              !<
 COMPLEX,ALLOCATABLE   :: U_FFT(:,:,:,:)            !<
 COMPLEX, ALLOCATABLE  :: F_vv(:,:,:,:,:)           !<
 COMPLEX, ALLOCATABLE  :: fhat(:,:,:,:)             !<
-COMPLEX, ALLOCATABLE  :: phat(:,:,:)               !<
+COMPLEX, ALLOCATABLE  :: phat(:,:,:,:)               !<
 INTEGER               :: kmax                      !<
-REAL                  :: TwoPi                     !<
 REAL                  :: scalefactor               !<
 REAL                  :: maxTol                    !<
 REAL                  :: abortTol                  !<

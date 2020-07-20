@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -27,9 +27,9 @@ USE MOD_Init_HIT
 USE MOD_ReadInTools
 USE MOD_Commandline_Arguments
 USE MOD_DG_Vars,                 ONLY: U
-USE MOD_Mesh_Vars,               ONLY: nElems,Elem_xGP
-USE MOD_FFT,                     ONLY: InitFFT,FinalizeFFT,ComputeFFT_R2C,ComputeFFT_C2R
-USE MOD_FFT_Vars,                ONLY: N_FFT,Nc,Endw,II
+USE MOD_Mesh_Vars,               ONLY: nElems
+USE MOD_FFT,                     ONLY: InitFFT,FinalizeFFT,ComputeFFT_R2C,ComputeFFT_C2R,EvalFourierAtDGCoords
+USE MOD_FFT_Vars,                ONLY: N_FFT,Endw,II
 USE MOD_Mesh,                    ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
 USE MOD_Output,                  ONLY: DefineParametersOutput,InitOutput,FinalizeOutput
 USE MOD_Interpolation,           ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
@@ -44,9 +44,6 @@ USE FFTW3
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                            :: i,j,k,iw,jw,kw,iElem
-REAL                               :: wavenumber
-COMPLEX                            :: basis
 !===================================================================================================================================
 CALL SetStackSizeUnlimited()
 CALL InitMPI()
@@ -66,13 +63,13 @@ SWRITE(UNIT_stdOut,'(A)')
 SWRITE(UNIT_stdOut,'(132("="))')
 
 
-! Define Parameters 
+! Define Parameters
 CALL DefineParametersInterpolation()
 CALL DefineParametersMPI()
 CALL DefineParametersIO_HDF5()
 CALL DefineParametersOutput()
 CALL DefineParametersMesh()
-!================================ 
+!================================
 CALL prms%SetSection("initHIT")
 CALL prms%CreateStringOption( "MeshFile"   , "Desired mesh file for initial hit solution.")
 CALL prms%CreateIntOption(    "N_FFT"      , "Polynomial degree to perform DFFT on")
@@ -92,7 +89,7 @@ END IF
 CALL prms%read_options(Args(1))
 ParameterFile = Args(1)
 
-! Readin Parameters 
+! Readin Parameters
 N_FFT    = GETINT('N_FFT')
 InitSpec = GETINT('InitSpec')
 MeshFile = GETSTR('MeshFile')
@@ -106,18 +103,12 @@ CALL InitMPIvars()
 
 CALL InitMesh(meshMode=2,MeshFile_IN=MeshFile)
 
-IF(MPIRoot) THEN
-  CALL InitFFT()
-  CALL Init_InitHit()
-END IF
-#if USE_MPI
-CALL MPI_BCAST(endw,3,MPI_INTEGER,0,MPI_COMM_WORLD,iError)
-#endif
+CALL InitFFT()
+CALL Init_InitHit()
+
 ALLOCATE(U_FFT(1:PP_nVar,1:Endw(1),1:Endw(2),1:Endw(3)))
 
-IF(MPIRoot) THEN
-  CALL Rogallo()
-END IF
+CALL Rogallo()
 
 ALLOCATE(U(     1:PP_nVar,0:N,0:N,0:N,nElems))
 ALLOCATE(Uloc_c(1:PP_nVar,0:N,0:N,0:N))
@@ -128,60 +119,10 @@ U      = 0.
 U_FFT  = 0.
 Uloc_c = 0.
 
-IF(MPIRoot) THEN
-  CALL ComputeFFT_R2C(5,Uloc,U_FFT) 
-  U_FFT=U_FFT/(N_FFT**3)
-END IF
+CALL ComputeFFT_R2C(5,Uloc,U_FFT)
+U_FFT=U_FFT/(N_FFT**3)
 
-#if USE_MPI
-SWRITE(*,*)'BROADCAST U WAVE'
-CALL MPI_BCAST(U_FFT,PP_nVar*endW(1)*endW(2)*endW(3),MPI_COMPLEX,0,MPI_COMM_WORLD,iError)
-SWRITE(*,*)'BROADCAST U WAVE DONE'
-#endif
-
-DO iElem=1,nElems
-  U_k=0.
-  DO k=0,N
-    DO kw=1,endw(3)
-      wavenumber=kw-1
-      IF (kw.GE.Nc+2) wavenumber=-(2*Nc+1-kw)
-      basis=EXP(II*(wavenumber)*Elem_xGP(3,0,0,k,iElem))
-      DO iw=1,endw(1)
-        DO jw=1,endw(2)
-          U_k(:,iw,jw,k) = U_k(:,iw,jw,k)+U_FFT(:,iw,jw,kw)*basis
-        END DO !k
-      END DO !kw
-    END DO !jw
-  END DO !iw
-  U_j=0.
-  DO j=0,N
-    DO jw=1,endw(2)
-      wavenumber=jw-1
-      IF (jw.GE.Nc+2) wavenumber=-(2*Nc+1-jw)
-      basis=EXP(II*(wavenumber)*Elem_xGP(2,0,j,0,iElem))
-      DO k=0,N
-        DO iw=1,endw(1)
-          U_j(:,iw,j,k) = U_j(:,iw,j,k)+U_k(:,iw,jw,k)*basis
-        END DO !k
-      END DO !j
-    END DO !jw
-  END DO !iw
-  Uloc_c=0.
-  U_j(:,1,:,:)=U_j(:,1,:,:)/2.
-  DO i=0,N
-    DO iw=1,endw(1)
-      basis=EXP(II*(iw-1)*Elem_xGP(1,i,0,0,iElem))
-      DO k=0,N
-        DO j=0,N
-          Uloc_c(:,i,j,k) = Uloc_c(:,i,j,k)+U_j(:,iw,j,k)*basis
-        END DO !k
-      END DO !j
-    END DO !i
-  END DO !iw
-
-  U(:,:,:,:,iElem) = 2*REAL(Uloc_c)
-END DO !iElem
-
+Call EvalFourierAtDGCoords(5,U_FFT,U)
 
 ! Write State-File to initialize HIT
 CALL WriteState(TRIM(MeshFile),0.,0.,.FALSE.)
