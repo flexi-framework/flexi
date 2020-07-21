@@ -27,10 +27,6 @@ INTERFACE InitAnalyze
   MODULE PROCEDURE InitAnalyze
 END INTERFACE
 
-INTERFACE FinalizeAnalyze
-  MODULE PROCEDURE FinalizeAnalyze
-END INTERFACE
-
 INTERFACE AnalyzeTGV
   MODULE PROCEDURE AnalyzeTGV
 END INTERFACE
@@ -39,7 +35,7 @@ INTERFACE ReadOldStateFile
   MODULE PROCEDURE ReadOldStateFile
 END INTERFACE
 
-PUBLIC::InitAnalyze, FinalizeAnalyze, AnalyzeTGV, ReadOldStateFile
+PUBLIC::InitAnalyze, AnalyzeTGV, ReadOldStateFile
 !===================================================================================================================================
 
 CONTAINS
@@ -50,8 +46,7 @@ CONTAINS
 SUBROUTINE InitAnalyze()
 ! MODULES
 USE MOD_Globals
-USE MOD_ANALYZE_HIT_Vars
-USE MOD_FFT_Vars,                ONLY: N_FFT
+USE MOD_Analyze_Hit_Vars
 USE MOD_Readintools
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -89,39 +84,11 @@ WRITE(FileUnit_HIT,'(a)')'VARIABLES = "Time" "Ekin" "EkinWave" "Dissipation" "Ko
   & "TaylorMicroScale" "TaylorMicroScale*K" "Int_Length" "Int_Length*K" "U_RMS" "Re_lambda"'
 CLOSE(FILEUnit_HIT)
 
-kmax=NINT(sqrt(REAL(((N_FFT*N_FFT)*3))))+1
-
-ALLOCATE(E_k(0:kmax))
-
 AnalyzeInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT ANALYZE DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitAnalyze
 
-!===================================================================================================================================
-! Deallocate Variables and Finalize Analyze
-!===================================================================================================================================
-SUBROUTINE FinalizeAnalyze()
-! MODULES
-USE MOD_Globals
-USE MOD_ANALYZE_HIT_Vars
-IMPLICIT NONE
-!-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-!===================================================================================================================================
-IF(AnalyzeInitIsDone)THEN
-  AnalyzeInitIsDone=.FALSE.
-END IF
-
-SDEALLOCATE(E_k)
-
-SWRITE(UNIT_stdOut,'(A)')' FINALIZE ANALYZE DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
-END SUBROUTINE FinalizeAnalyze
 
 !===================================================================================================================================
 ! Main Routine for Analysis of turbulence
@@ -130,88 +97,71 @@ SUBROUTINE AnalyzeTGV(Time,nVar_In,U_In)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
+USE MOD_Analyze_Hit_Vars
 USE MOD_Mesh_Vars,          ONLY: nElems
-USE FFTW3
-USE MOD_ANALYZE_HIT_Vars
 USE MOD_FFT,                ONLY: ComputeFFT_R2C, ComputeFFT_C2R, Interpolate_DG2FFT
 USE MOD_FFT_Vars
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-REAL,INTENT(IN) :: Time
-INTEGER,INTENT(IN)    :: nVar_In
-REAL,INTENT(INOUT)    :: U_in(1:nVar_In,0:PP_N,0:PP_N,0:PP_N,1:nElems) !< elementwise DG solution from state file
+REAL,INTENT(IN)     :: Time
+INTEGER,INTENT(IN)  :: nVar_In
+REAL,INTENT(INOUT)  :: U_in(1:nVar_In,0:PP_N,0:PP_N,0:PP_N,1:nElems) !< elementwise DG solution from state file
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER :: i,j,k,iElem
+INTEGER :: intLim
+LOGICAL :: connected
+REAL    :: dummysum, Ekin, Lambda, L_int, ETA, eps
+REAL    :: IntEps, IntInt, Lambda_K, L_Int_K, ETA_K, urms ,Re_lambda
+REAL    :: E_K(0:kmax)
 REAL    :: U_Global(1:nVar_In,1:N_FFT  ,1:N_FFT  ,1:N_FFT  )        ! Real global DG solution
 COMPLEX :: U_FFT(   1:nVar_In,1:Endw(1),1:Endw(2),1:Endw(3))        ! Complex FFT solution
-REAL    :: E_K_loc(0:kmax),dummysum,Lambda, L_int, ETA,eps
-REAL    :: IntEps, IntInt, Lambda_K, L_Int_K, ETA_K, urms ,Re_lambda
-LOGICAL :: connected
-! Transfer function
-INTEGER :: intLim
-
 !===================================================================================================================================
-
-! Convert Cons to Prims
+! 1. Convert Cons to Prims
 DO iElem=1,nElems_HDF5
   DO i=0,N_HDF5;  DO j=0,N_HDF5;  DO k=0,N_HDF5
     U_in(2:4,i,j,k,iElem) = U_in(2:4,i,j,k,iElem)/U_in(1,i,j,k,iElem)
   END DO;END DO;END DO
 END DO
 
-! 1. Interpolate DG solution to equidistant points
+! 2. Interpolate DG solution to equidistant points
 CALL Interpolate_DG2FFT(NodeType_HDF5,nVar_HDF5,U_in,U_Global)
 
-! 2. Apply complex Fourier-Transform on solution from state file
+! 3. Apply complex Fourier-Transform on solution from state file
 CALL ComputeFFT_R2C(nVar_HDF5,U_Global,U_FFT)
 
-U_FFT=U_FFT/REAL(N_FFT**3)
-
-! 3. Fourier cutoff filter (usefull for DNS to LES resolution for example)
-!Due to conjugate symmetry in x (here i) direction only half of the modes are stored
-!the others have the property u(k_x) = u*(-k_x), meaning that the sum we compute here
-!is only half the sum of all modes!
-
+! 4. Fourier cutoff filter (usefull for DNS to LES resolution for example)
 IF (N_Filter.GT.-1) THEN
-  DO i=1,endw(1)
-    DO j=1,endw(2)
-      DO k=1,endw(3)
-        IF (ABS(localk(4,i,j,k)).GT.N_Filter) U_FFT(:,i,j,k)=0.
-      END DO
-    END DO
-  END DO
-ELSE
-  DO i=1,endw(1)
-    DO j=1,endw(2)
-      DO k=1,endw(3)
-        IF (ABS(localk(4,i,j,k)).GT.Nc) U_FFT(:,i,j,k)=0.
-      END DO
-    END DO
-  END DO
+  DO k=1,Endw(3); DO j=1,Endw(2); DO i=1,Endw(1)
+    IF(localk(4,i,j,k).GT.N_Filter) U_FFT(:,i,j,k) = 0.
+  END DO; END DO; END DO
+ELSE ! Nyquist filter
+  DO k=1,Endw(3); DO j=1,Endw(2); DO i=1,Endw(1)
+    IF(localk(4,i,j,k).GT.Nc) U_FFT(:,i,j,k) = 0.
+  END DO; END DO; END DO
 END IF
 
-! 4. Compute kinetic energy per wavelength
-CALL Compute_Spectrum(3,U_FFT(2:4,:,:,:),E_k_loc)
+! 5. Compute kinetic energy per wavelength
+CALL Compute_Spectrum(3,U_FFT(2:4,:,:,:),E_k)
+E_k(0) = 0.5*E_k(0)
 
-! 5. Apply inverse Fourier-Transform back into physical space
+! 6. Apply inverse Fourier-Transform back into physical space
 CALL ComputeFFT_C2R(nVar_HDF5,U_FFT,U_Global)
 
-! 6. Compute other turbulence statistics
+! 7. Integral kinetic energy
+! Due to conjugate symmetry in x (here i) direction only half of the modes are stored
+! the others have the property u(k_x) = u*(-k_x), meaning that the sum we compute here
+! is only half the sum of all modes!
 Ekin=0.
-DO k=1,endw(3)
-  DO j=1,endw(2)
-    DO i=1,endw(1)
-      Ekin=Ekin+SUM(U_Global(2:4,i,j,k)*U_Global(2:4,i,j,k))
-    END DO
-  END DO
-END DO
+DO k=1,Endw(3); DO j=1,Endw(2); DO i=1,Endw(1)
+  Ekin=Ekin+SUM(U_Global(2:4,i,j,k)*U_Global(2:4,i,j,k))
+END DO; END DO; END DO
 Ekin=0.5*Ekin/REAL(N_VISU**3)
 
-E_k_loc(0) = 0.5*E_k_loc(0)
+! 8. Compute other turbulence statistics
 FileUnit_EK=155
 INQUIRE(UNIT=FileUnit_EK, OPENED=connected)
 
@@ -233,15 +183,20 @@ WRITE(FileUnit_EK,'(a)')'VARIABLES = "Wavenumber k" "E(k)"'
 IntEps=1E-16
 IntInt=0.
 dummysum=0.
-intLim = MIN(Nyq,N_Filter)
 
-DO k=1,Nyq ! IntLim!-1
-  dummysum=dummysum+E_k_loc(k)
+IF (N_Filter.GT.-1) THEN
+  intLim = N_Filter
+ELSE
+  intLim = Nc
+END IF
+
+DO k=1,intLim
+  dummysum=dummysum+E_k(k)
   ! Get integrand for mean dissipation rate
-  IntEps=IntEps+0.5*(E_k_loc(k)*k**2+E_k_loc(k+1)*(k+1)**2)
+  IntEps=IntEps+0.5*(E_k(k)*k**2+E_k(k+1)*(k+1)**2)
   ! Get integrand for integral scale
-  IntInt=IntInt+0.5*(E_k_loc(k)/(real(k)+1E-16)+E_k_loc(k+1)/(real(k+1)+1E-16))
-  WRITE(FileUnit_EK,'(I5.5,1(E20.12,X))')k,E_k_loc(k)
+  IntInt=IntInt+0.5*(E_k(k)/(real(k)+1E-16)+E_k(k+1)/(real(k+1)+1E-16))
+  WRITE(FileUnit_EK,'(I5.5,1(E20.12,X))')k,E_k(k)
 END DO
 
 CLOSE(FILEUnit_EK)
@@ -268,18 +223,15 @@ WRITE(UNIT_StdOut,'(A14,E20.10,A13,E20.10)')'  L_int     = ',L_int, '  L_int_K  
 WRITE(UNIT_StdOut,'(A14,E20.10)')'  urms      = ',urms
 WRITE(UNIT_StdOut,'(A14,E20.10)')'  Re_lambda = ',Re_lambda
 WRITE(UNIT_StdOut,*)'-------------------------------------------------------------------------------------------'
-
 END SUBROUTINE AnalyzeTGV
 
 !===================================================================================================================================
 !> Compute energy per wavelength
 !===================================================================================================================================
-SUBROUTINE Compute_Spectrum(nVar_In,U_In,E_k)
+PPURE SUBROUTINE Compute_Spectrum(nVar_In,U_In,E_k)
 ! MODULES
-USE MOD_Globals
-USE MOD_PreProc
-USE MOD_ANALYZE_HIT_Vars,  ONLY: N_Filter, kmax
-USE MOD_FFT_Vars,          ONLY: endw,localk,Nc
+USE MOD_Analyze_Hit_Vars,  ONLY: N_Filter
+USE MOD_FFT_Vars,          ONLY: endw,localk,Nc,kmax
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
@@ -290,33 +242,21 @@ INTEGER,INTENT(IN)  :: nVar_In
 REAL,INTENT(OUT),DIMENSION(0:kmax) :: E_k
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER ::i,j,k,k_eff
+INTEGER :: i,j,k
+INTEGER :: N_max
 !-----------------------------------------------------------------------------------------------------------------------------------
 !-----------------------------------------------------------------------------------------------------------------------------------
-E_k = 0.
 IF (N_Filter.GT.-1) THEN
-  DO k=1,endw(3)
-    DO j=1,endw(2)
-      DO i=1,endw(1)
-        IF (localk(4,i,j,k).GT.N_Filter) CYCLE
-        k_eff = NINT(localk(4,i,j,k))
-        E_k(k_eff) =   E_k(k_eff)+&
-            SUM(U_In(:,i,j,k)*conjg(U_In(:,i,j,k)))
-      END DO
-    END DO
-  END DO
+  N_max = N_Filter
 ELSE
-  DO k=1,endw(3)
-    DO j=1,endw(2)
-      DO i=1,endw(1)
-        IF (localk(4,i,j,k).GT.Nc) CYCLE
-        k_eff = NINT(localk(4,i,j,k))
-        E_k(k_eff) =   E_k(k_eff)+&
-            SUM(U_In(:,i,j,k)*conjg(U_In(:,i,j,k)))
-      END DO
-    END DO
-  END DO
+  N_max = Nc
 END IF
+
+E_k = 0.
+DO k=1,endw(3); DO j=1,endw(2); DO i=1,endw(1)
+  IF (localk(4,i,j,k).GT.N_max) CYCLE
+  E_k(localk(4,i,j,k)) = E_k(localk(4,i,j,k)) + REAL(SUM(U_In(:,i,j,k)*CONJG(U_In(:,i,j,k))))
+END DO; END DO; END DO
 
 END SUBROUTINE Compute_Spectrum
 
@@ -396,7 +336,4 @@ CALL CloseDataFile()
 SWRITE(*,*) "READING SOLUTION DONE!"
 END SUBROUTINE ReadOldStateFile
 
-
 END MODULE MOD_Analyze_Hit
-
-

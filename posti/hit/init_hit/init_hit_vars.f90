@@ -24,24 +24,10 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-
-CHARACTER(LEN=255)    :: MeshFile                  !< mesh file
-INTEGER               :: InitSpec                  !<
-REAL,ALLOCATABLE      :: Uloc(:,:,:,:)             !<
-COMPLEX,ALLOCATABLE   :: Uloc_c(:,:,:,:)           !<
-COMPLEX,ALLOCATABLE   :: U_j(:,:,:,:)              !<
-COMPLEX,ALLOCATABLE   :: U_k(:,:,:,:)              !<
-COMPLEX,ALLOCATABLE   :: U_FFT(:,:,:,:)            !<
-COMPLEX, ALLOCATABLE  :: F_vv(:,:,:,:,:)           !<
-COMPLEX, ALLOCATABLE  :: fhat(:,:,:,:)             !<
-COMPLEX, ALLOCATABLE  :: phat(:,:,:,:)               !<
-INTEGER               :: kmax                      !<
-REAL                  :: scalefactor               !<
-REAL                  :: maxTol                    !<
-REAL                  :: abortTol                  !<
-REAL                  :: displacement(3)           !<
-REAL                  :: GlobalMeshOffset(3)       !<
-
+CHARACTER(LEN=255)    :: MeshFile                  !< Mesh File on which flow field is generated
+INTEGER               :: InitSpec                  !< Specifies which energy distribution is generated 
+INTEGER               :: Seed                      !< Seed for random number generator for Rogallo procedure (Debug only)
+REAL,ALLOCATABLE      :: U_Global(:,:,:,:)         !< Global solution on inner visu interpolation nodes
+COMPLEX,ALLOCATABLE   :: U_FFT(:,:,:,:)            !< Global solution in Fourier space
 !===================================================================================================================================
 END MODULE MOD_Init_HIT_Vars
-

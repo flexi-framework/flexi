@@ -22,14 +22,13 @@ PROGRAM posti_init_hit
 ! MODULES
 USE MOD_Preproc
 USE MOD_Globals
-USE MOD_Init_HIT_Vars
 USE MOD_Init_HIT
+USE MOD_Init_HIT_Vars
 USE MOD_ReadInTools
 USE MOD_Commandline_Arguments
 USE MOD_DG_Vars,                 ONLY: U
-USE MOD_Mesh_Vars,               ONLY: nElems
 USE MOD_FFT,                     ONLY: InitFFT,FinalizeFFT,ComputeFFT_R2C,ComputeFFT_C2R,EvalFourierAtDGCoords
-USE MOD_FFT_Vars,                ONLY: N_FFT,Endw,II
+USE MOD_FFT_Vars,                ONLY: N_FFT
 USE MOD_Mesh,                    ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
 USE MOD_Output,                  ONLY: DefineParametersOutput,InitOutput,FinalizeOutput
 USE MOD_Interpolation,           ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
@@ -72,6 +71,7 @@ CALL DefineParametersMesh()
 !================================
 CALL prms%SetSection("initHIT")
 CALL prms%CreateStringOption( "MeshFile"   , "Desired mesh file for initial hit solution.")
+CALL prms%CreateIntOption(    "Seed"       , "Seed for random number generator for Rogallo precedure (Only Debug)")
 CALL prms%CreateIntOption(    "N_FFT"      , "Polynomial degree to perform DFFT on")
 CALL prms%CreateIntOption(    "InitSpec"   , "Initial energy spectrum (1) Rogallo, (2) blaisdell, (3) Chasnov,&
                                              & (4) Inf interial range .")
@@ -92,6 +92,7 @@ ParameterFile = Args(1)
 ! Readin Parameters
 N_FFT    = GETINT('N_FFT')
 InitSpec = GETINT('InitSpec')
+Seed     = GETINT('Seed','0')
 MeshFile = GETSTR('MeshFile')
 
 CALL InitIOHDF5()
@@ -100,28 +101,17 @@ CALL InitOutput()
 #if USE_MPI
 CALL InitMPIvars()
 #endif
-
-CALL InitMesh(meshMode=2,MeshFile_IN=MeshFile)
-
+CALL InitMesh(meshMode=0,MeshFile_IN=MeshFile)
 CALL InitFFT()
 CALL Init_InitHit()
 
-ALLOCATE(U_FFT(1:PP_nVar,1:Endw(1),1:Endw(2),1:Endw(3)))
-
+! Build random flow realization with desired energy distribution
 CALL Rogallo()
 
-ALLOCATE(U(     1:PP_nVar,0:N,0:N,0:N,nElems))
-ALLOCATE(Uloc_c(1:PP_nVar,0:N,0:N,0:N))
-ALLOCATE(U_k(   1:PP_nVar,1:endw(1),1:endw(2),0:N))
-ALLOCATE(U_j(   1:PP_nVar,1:endw(1),0:N,0:N))
+! Compute FFT of flow field
+CALL ComputeFFT_R2C(5,U_Global,U_FFT)
 
-U      = 0.
-U_FFT  = 0.
-Uloc_c = 0.
-
-CALL ComputeFFT_R2C(5,Uloc,U_FFT)
-U_FFT=U_FFT/(N_FFT**3)
-
+! Evaluate solution in Fourier space at Gauss points
 Call EvalFourierAtDGCoords(5,U_FFT,U)
 
 ! Write State-File to initialize HIT

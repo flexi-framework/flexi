@@ -182,10 +182,9 @@ END SUBROUTINE WriteNewStateFile
 !===================================================================================================================================
 SUBROUTINE FourierFilter(nVar_In,U_In)
 ! MODULES                                                                                                                          !
-USE MOD_Globals
-USE MOD_PreProc
+USE MOD_PreProc,            ONLY: PP_N
 USE MOD_Mesh_Vars,          ONLY: nElems
-USE MOD_Filter_Hit_Vars,    ONLY: N_Filter, NodeType_HDF5
+USE MOD_Filter_Hit_Vars,    ONLY: N_Filter,NodeType_HDF5
 USE MOD_FFT_Vars,           ONLY: N_FFT,Endw,Localk,Nc
 USE MOD_FFT,                ONLY: Interpolate_DG2FFT,Interpolate_FFT2DG
 USE MOD_FFT,                ONLY: ComputeFFT_R2C,ComputeFFT_C2R

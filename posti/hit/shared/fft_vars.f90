@@ -28,13 +28,9 @@ SAVE
 INTEGER               :: N_FFT
 INTEGER               :: N_Visu
 INTEGER               :: Nc
-REAL,ALLOCATABLE      :: LocalXYZ(:,:,:,:)
-REAL,ALLOCATABLE      :: LocalK(:,:,:,:)
-INTEGER(KIND=8)       :: plan
-INTEGER               :: startw(3) = 1
+INTEGER               :: kmax
 INTEGER               :: endw(3)
+INTEGER,ALLOCATABLE   :: LocalK(:,:,:,:)
 COMPLEX,PARAMETER     :: II = CMPLX(0.,1.0)
-
 !===================================================================================================================================
 END MODULE MOD_FFT_Vars
-

@@ -21,7 +21,7 @@ PROGRAM posti_analyze_hit
 USE MOD_Preproc
 USE MOD_Globals
 USE MOD_Analyze_Hit
-USE MOD_ANALYZE_HIT_Vars
+USE MOD_Analyze_Hit_Vars
 USE MOD_DG_Vars,                 ONLY: U
 USE MOD_Interpolation_Vars,      ONLY: NodeType
 USE MOD_Mesh,                    ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
@@ -38,7 +38,6 @@ USE MOD_StringTools,             ONLY: STRICMP,GetFileExtension
 USE MOD_ReadInTools
 USE MOD_FFT,                     ONLY: InitFFT, FinalizeFFT
 USE MOD_FFT_Vars
-USE FFTW3
 #if USE_MPI
 USE MOD_MPI,                     ONLY: DefineParametersMPI,InitMPI
 USE MOD_MPI,                     ONLY: InitMPIvars,FinalizeMPI
@@ -82,9 +81,7 @@ CALL DefineParametersMesh()                 !MeshFile
 CALL prms%SetSection("analyzeHIT")          !new parameter section
 CALL prms%CreateIntOption("N_Visu"             , "Polynomial degree to perform DFFT on")
 CALL prms%CreateIntOption("N_Filter"           , "Cutoff filter")
-CALL prms%CreateIntOption("Nunder"             , "Limit for under-integration")
 CALL prms%CreateRealOption("Mu0"               , "Viscosity")
-CALL prms%CreateLogicalOption("DoCalcTransfer" , "Do analysis with Ut") ! not implemented so far
 
 ! check for command line argument --help or --markdown
 IF (doPrintHelp.GT.0) THEN
@@ -102,11 +99,9 @@ CALL prms%read_options(Args(1))
 ParameterFile = Args(1)
 
 ! Readin Parameters
-N_Filter       = GETINT('N_Filter')
 N_Visu         = GETINT('N_Visu')
-Mu0            = GETREAL('Mu0')
-Nunder         = GETINT('Nunder')
-DoCalcTransfer = GETLOGICAL('DoCalcTransfer','false')
+N_Filter       = GETINT('N_Filter','-1')
+Mu0            = GETREAL('Mu0','0.')
 
 ! Initialize IO
 CALL InitIOHDF5()
@@ -148,27 +143,16 @@ DO iArg=2,nArgs
       CALL ABORT(__STAMP__,'Mesh does not have the same amount of elements in x,y and z!')
     END IF
 
-  ! Get new number of points for fourier analysis
-  N_FFT=(N_Visu+1)*nElems_IJK(1)
+    ! Get new number of points for fourier analysis
+    N_FFT=(N_Visu+1)*nElems_IJK(1)
   END IF
 
   IF(changedMeshFile .OR. changedN) THEN
-    SWRITE(UNIT_stdOut,'(A)') 'FFT SETUP'
     CALL FinalizeFFT()
     CALL InitFFT()
-    SWRITE(UNIT_stdOut,'(A)') 'FFT SETUP DONE'
-    SWRITE(UNIT_StdOut,'(132("-"))')
-    CALL FinalizeAnalyze()
-    CALL InitAnalyze()
   END IF
 
-  IF(NUnder.GT.0) THEN ! NUnder given in parameter file, thus limit integral values to NUnder
-    Nyq=(NUnder+1)*nElems_IJK(3)/2
-  ELSE
-    Nyq=(N_FFT)/2      ! If NUnder is not given, integral values are limited by nyquist criterium
-  END IF
-
-  CALL AnalyzeTGV(time_HDF5,nVar_HDF5,U) ! Main analyze routine
+  CALL AnalyzeTGV(time_HDF5,nVar_HDF5,U)
 
   ! To determine whether meshfile or N changes
   MeshFile_old    = MeshFile

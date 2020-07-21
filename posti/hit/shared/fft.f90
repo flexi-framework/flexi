@@ -64,7 +64,6 @@ CONTAINS
 SUBROUTINE InitFFT()
 ! MODULES
 USE MOD_Globals
-USE MOD_PreProc
 USE MOD_FFT_Vars
 #if USE_OPENMP
 USE OMP_Lib
@@ -81,7 +80,7 @@ INTEGER  :: void
 #endif
 !===================================================================================================================================
 SWRITE(UNIT_StdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' INIT BASIS...'
+SWRITE(UNIT_stdOut,'(A)') ' INIT FFT...'
 
 #if USE_OPENMP
 ! Initialize FFTW with maximum number of OpenMP threads if enabled
@@ -89,14 +88,14 @@ void = FFTW_INIT_THREADS()
 CALL FFTW_PLAN_WITH_NTHREADS(OMP_GET_MAX_THREADS())
 #endif
 
-Nc=FLOOR(REAL(N_FFT)/2.)
+Nc = FLOOR(REAL(N_FFT)/2.)
 Endw(1)   = Nc+1
 Endw(2:3) = N_FFT
 
+kmax=NINT(SQRT(REAL((3*N_FFT**2))))+1
+
 ! Allocate array for wave numbers
 ALLOCATE(Localk(1:4,1:Endw(1),1:Endw(2),1:Endw(3)))
-! Allocate an array for the physical position of the nodes per proc
-ALLOCATE(Localxyz(1:3,1:N_FFT,1:N_FFT,1:N_FFT))
 
 !$OMP PARALLEL DEFAULT(SHARED)
 !$OMP DO PRIVATE(i,j,k)
@@ -125,20 +124,7 @@ DO i=1,Endw(1)
 END DO
 !$OMP END DO
 
-!$OMP DO PRIVATE(i,j,k)
-DO i=1,N_FFT
-  DO j=1,N_FFT
-    DO k=1,N_FFT
-      localxyz(1,i,j,k)=REAL((i-1))/REAL(N_FFT)
-      localxyz(2,i,j,k)=REAL((j-1))/REAL(N_FFT)
-      localxyz(3,i,j,k)=REAL((k-1))/REAL(N_FFT)
-    END DO
-  END DO
-END DO
-!$OMP END DO
-!$OMP END PARALLEL
-
-SWRITE(UNIT_stdOut,'(A)')' INIT BASIS DONE!'
+SWRITE(UNIT_stdOut,'(A)')' FFT SETUP DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
 
 END SUBROUTINE InitFFT
@@ -149,7 +135,7 @@ END SUBROUTINE InitFFT
 SUBROUTINE ComputeFFT_R2C(nVar_In,U_Global,U_FFT)
 ! MODULES
 USE MOD_Globals
-USE MOD_FFT_Vars       ,ONLY: N_FFT,Endw,plan
+USE MOD_FFT_Vars       ,ONLY: N_FFT,Endw
 USE FFTW3
 #if USE_OPENMP
 USE OMP_Lib
@@ -162,10 +148,11 @@ REAL,INTENT(IN)       :: U_Global(nVar_In,1:N_FFT  ,1:N_FFT  ,1:N_FFT  )
 COMPLEX,INTENT(OUT)   :: U_FFT(   nVar_In,1:Endw(1),1:Endw(2),1:Endw(3))
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL          :: Time
-INTEGER       :: iVar
-REAL          :: U_r(1:N_FFT  ,1:N_FFT  ,1:N_FFT  ) ! Real global DG solution per variable
-COMPLEX       :: U_c(1:Endw(1),1:Endw(2),1:Endw(3)) ! Complex FFT solution per variable
+INTEGER(KIND=8)  :: plan
+INTEGER          :: iVar
+REAL             :: Time
+REAL             :: U_r(1:N_FFT  ,1:N_FFT  ,1:N_FFT  ) ! Real global DG solution per variable
+COMPLEX          :: U_c(1:Endw(1),1:Endw(2),1:Endw(3)) ! Complex FFT solution per variable
 !===================================================================================================================================
 SWRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' COMPUTE FFT FROM PHYSICAL TO FOURIER...'
 Time = OMP_FLEXITIME()
@@ -180,6 +167,9 @@ DO iVar=1,nVar_In
   U_FFT(iVar,:,:,:) = U_c
 END DO
 
+! Normalize data (FFTW does not normalize FFT results)
+U_FFT=U_FFT/REAL(N_FFT**3)
+
 ! Release resources allocated with plan
 CALL DFFTW_DESTROY_PLAN(plan)
 
@@ -192,7 +182,7 @@ END SUBROUTINE ComputeFFT_R2C
 SUBROUTINE ComputeFFT_C2R(nVar_In,U_FFT,U_Global)
 ! MODULES
 USE MOD_Globals
-USE MOD_FFT_Vars       ,ONLY: N_FFT,Endw,plan
+USE MOD_FFT_Vars       ,ONLY: N_FFT,Endw
 USE FFTW3
 #if USE_OPENMP
 USE OMP_Lib
@@ -205,10 +195,11 @@ COMPLEX,INTENT(IN)    :: U_FFT(   nVar_In,1:Endw(1),1:Endw(2),1:Endw(3))
 REAL,INTENT(OUT)      :: U_Global(nVar_In,1:N_FFT  ,1:N_FFT  ,1:N_FFT  )
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL          :: Time
-INTEGER       :: iVar
-REAL          :: U_r(1:N_FFT  ,1:N_FFT  ,1:N_FFT  ) ! Real global DG solution per variable
-COMPLEX       :: U_c(1:Endw(1),1:Endw(2),1:Endw(3)) ! Complex FFT solution per variable
+INTEGER(KIND=8) :: plan
+INTEGER         :: iVar
+REAL            :: Time
+REAL            :: U_r(1:N_FFT  ,1:N_FFT  ,1:N_FFT  ) ! Real global DG solution per variable
+COMPLEX         :: U_c(1:Endw(1),1:Endw(2),1:Endw(3)) ! Complex FFT solution per variable
 !===================================================================================================================================
 SWRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' COMPUTE FFT FROM FOURIER TO PHYSICAL...'
 Time = OMP_FLEXITIME()
@@ -226,9 +217,6 @@ END DO
 ! Release resources allocated with plan
 CALL DFFTW_DESTROY_PLAN(plan)
 
-! Normalize data (FFTW does not normalize FFT results)
-U_Global=U_Global/REAL(N_FFT**3)
-
 SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',OMP_FLEXITIME()-Time,'s]'
 END SUBROUTINE ComputeFFT_C2R
 
@@ -238,7 +226,7 @@ END SUBROUTINE ComputeFFT_C2R
 SUBROUTINE Interpolate_DG2FFT(NodeType_In,nVar_In,U_DG,U_Global)
 ! MODULES
 USE MOD_Globals
-USE MOD_PreProc
+USE MOD_PreProc               ,ONLY: PP_N
 USE MOD_FFT_Vars              ,ONLY: N_FFT,N_Visu
 USE MOD_Mesh_Vars             ,ONLY: Elem_IJK,nElems
 USE MOD_Interpolation         ,ONLY: GetVandermonde
@@ -298,7 +286,7 @@ END SUBROUTINE Interpolate_DG2FFT
 SUBROUTINE Interpolate_FFT2DG(NodeType_In,nVar_In,U_Global,U_DG)
 ! MODULES
 USE MOD_Globals
-USE MOD_PreProc
+USE MOD_PreProc               ,ONLY: PP_N
 USE MOD_FFT_Vars              ,ONLY: N_FFT,N_Visu
 USE MOD_Mesh_Vars             ,ONLY: Elem_IJK,nElems
 USE MOD_Interpolation         ,ONLY: GetVandermonde
@@ -356,7 +344,7 @@ END SUBROUTINE Interpolate_FFT2DG
 !===================================================================================================================================
 SUBROUTINE EvalFourierAtDGCoords(nVar_In,U_FFT,U_DG)
 ! MODULES
-USE MOD_PreProc
+USE MOD_PreProc               ,ONLY: PP_N
 USE MOD_Mesh_Vars             ,ONLY: Elem_xGP,nElems
 USE MOD_FFT_Vars              ,ONLY: II,Nc,endw
 IMPLICIT NONE
@@ -434,7 +422,6 @@ END SUBROUTINE EvalFourierAtDGCoords
 !===================================================================================================================================
 SUBROUTINE FinalizeFFT()
 ! MODULES                                                                                                                          !
-USE MOD_Globals
 USE MOD_FFT_Vars
 USE FFTW3
 !----------------------------------------------------------------------------------------------------------------------------------!
@@ -448,7 +435,6 @@ CALL FFTW_CLEANUP_THREADS()
 #else
 CALL FFTW_CLEANUP()
 #endif
-SDEALLOCATE(LocalXYZ)
 SDEALLOCATE(LocalK)
 
 END SUBROUTINE FinalizeFFT

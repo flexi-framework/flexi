@@ -24,20 +24,14 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-INTEGER               :: N_Filter
-
-! FFT vars
-INTEGER               :: startijk(3)
-INTEGER               :: endijk(3)
-
-! state file variables
 LOGICAL               :: FieldDataExists=.FALSE.
 LOGICAL               :: OverwriteMeshFile=.TRUE.
-REAL                  :: Time_HDF5                 !<
+INTEGER               :: N_Filter
 INTEGER               :: nVar_HDF5
 INTEGER               :: nVarField_HDF5
 INTEGER               :: N_HDF5
 INTEGER               :: nElems_HDF5
+REAL                  :: Time_HDF5
 CHARACTER(LEN=255)    :: NodeType_HDF5
 CHARACTER(LEN=255)    :: ProjectName_HDF5
 !===================================================================================================================================

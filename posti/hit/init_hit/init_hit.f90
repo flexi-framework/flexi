@@ -47,7 +47,9 @@ SUBROUTINE Init_InitHit()
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Init_Hit_Vars
-USE MOD_FFT_Vars,                ONLY: N_FFT,endw
+USE MOD_FFT_Vars,      ONLY: N_FFT,Endw
+USE MOD_DG_Vars,       ONLY: U
+USE MOD_Mesh_Vars,     ONLY: nElems
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -57,17 +59,13 @@ IMPLICIT NONE
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT InitHit...'
 
-! No Spectral code without pi and 2pi
-kmax        = NINT(SQRT(REAL(3*N_FFT**2)))+1
-scalefactor = 1/N_FFT**3
-
 ! Allocate the solution array Uloc
-ALLOCATE(Uloc(1:PP_nVar,1:N_FFT,1:N_FFT,1:N_FFT))
-
-! Prepare local Array for result of Forward FFT (so for wavespace results)
-ALLOCATE(F_vv(1:3,1:3,1:endw(1),1:endw(2),1:endw(3)))
-ALLOCATE(fhat(    1:3,1:endw(1),1:endw(2),1:endw(3)))
-ALLOCATE(phat(    1:1,1:endw(1),1:endw(2),1:endw(3)))
+ALLOCATE(U_FFT(   1:PP_nVar,1:Endw(1),1:Endw(2),1:Endw(3)))
+ALLOCATE(U_Global(1:PP_nVar,1:N_FFT,1:N_FFT,1:N_FFT))
+ALLOCATE(U(       1:PP_nVar,0:N,0:N,0:N,nElems))
+U_FFT    = 0.
+U_Global = 0.
+U        = 0.
 
 SWRITE(UNIT_stdOut,'(A)')' INIT BASIS DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
@@ -77,38 +75,27 @@ END SUBROUTINE Init_InitHit
 !===================================================================================================================================
 ! Computes the initial energy spectrum and creates a velocity field with random phase matching the energy spectrum
 !===================================================================================================================================
-SUBROUTINE Rogallo
+SUBROUTINE Rogallo()
 ! MODULES
 USE MOD_Globals
-USE MOD_PreProc
-USE MOD_Init_Hit_Vars,      ONLY: U_FFT,Uloc,kmax,InitSpec
+USE MOD_PreProc,            ONLY: PP_PI
+USE MOD_Init_Hit_Vars,      ONLY: U_FFT,U_Global,InitSpec,seed
 USE MOD_FFT,                ONLY: ComputeFFT_C2R
-USE MOD_FFT_Vars,           ONLY: endw,localk,N_FFT,Nc,II
-USE FFTW3
+USE MOD_FFT_Vars,           ONLY: Endw,localk,N_FFT,Nc,II,kmax
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER :: i,j,k
-INTEGER :: nn,seed1
+INTEGER :: nn
 REAL    :: Theta1,Theta2,Phi,kw,kw2,kk(1:3),r,Nenner,a1,a2,a3,a4,a0,E11,specscale,k0,kp,u0
 REAL    :: a,e,kn,ke,nu,l
 COMPLEX :: alpha,beta
-INTEGER,ALLOCATABLE :: kperShell(:)
-INTEGER,ALLOCATABLE :: seed(:)
-REAL,   ALLOCATABLE :: E_P(:)
+REAL    :: E_P(0:kmax+3)
+INTEGER :: kperShell(0:kmax+1)
+INTEGER,ALLOCATABLE :: seed_loc(:)
 !===================================================================================================================================
-ALLOCATE(kperShell(0:kmax+1))
-kperShell=0
-DO i=-N_FFT,N_FFT; DO j=-N_FFT,N_FFT; DO k=-N_FFT,N_FFT
-  r=SQRT(REAL(i**2+j**2+k**2))
-  kperShell(NINT(r))=kperShell(NINT(r))+1
-END DO; END DO; END DO
-
-ALLOCATE(E_P(0:kmax+3))
-E_P=0.
-
 ! Choose energy spectrum
 SELECT CASE(InitSpec)
  CASE(1) ! Rogallo
@@ -140,7 +127,6 @@ SELECT CASE(InitSpec)
    kp=4  ! to be chosen, scaling Re
    u0=5. ! scaling the total Energy
    a1=a0*u0**2.*kp**(-5.)  ! Batchelor-Proudman again
-   SWRITE(*,*) 'specscale',a1
    DO i=1,kmax+3
      E_p(i)= a1*i**4.*EXP(-2.*(i/kp)**2.)
    END DO
@@ -166,14 +152,21 @@ SELECT CASE(InitSpec)
 
 END SELECT
 
-! Get random seed from system clock
+! Get random seed from system clock or from parameter file if specified
 CALL RANDOM_SEED(SIZE = nn)
-ALLOCATE(seed(nn))
-CALL SYSTEM_CLOCK(COUNT=seed1)
-seed = seed1
-CALL RANDOM_SEED(put=seed)
-CALL RANDOM_SEED(get=seed)
+ALLOCATE(seed_loc(nn))
+IF (seed.EQ.0) CALL SYSTEM_CLOCK(COUNT=seed)
+seed_loc = seed
+CALL RANDOM_SEED(put=seed_loc)
+CALL RANDOM_SEED(get=seed_loc)
 SWRITE (*,*) 'Seed:',seed
+DEALLOCATE(seed_loc)
+
+kperShell=0
+DO i=-N_FFT,N_FFT; DO j=-N_FFT,N_FFT; DO k=-N_FFT,N_FFT
+  r=SQRT(REAL(i**2+j**2+k**2))
+  kperShell(NINT(r))=kperShell(NINT(r))+1
+END DO; END DO; END DO
 
 DO i=1,Endw(1); DO j=1,Endw(2); DO k=1,Endw(3)
   IF ((((localk(4,i,j,k)+1).LE.Kmax+3).AND.(localk(4,i,j,k).GT.0)) .AND.&
@@ -181,9 +174,9 @@ DO i=1,Endw(1); DO j=1,Endw(2); DO k=1,Endw(3)
     CALL RANDOM_NUMBER(Theta1)
     CALL RANDOM_NUMBER(Theta2)
     CALL RANDOM_NUMBER(Phi)
-    Theta1=Theta1*2.*PP_Pi
-    Theta2=Theta2*2.*PP_Pi
-    Phi=Phi*2.*PP_Pi
+    Theta1=Theta1*2.*PP_PI
+    Theta2=Theta2*2.*PP_PI
+    Phi=Phi*2.*PP_PI
     kk(1:3)=REAL(localk(1:3,i,j,k))
     kw2=kk(1)**2+kk(2)**2+kk(3)**2
     kw=SQRT(kw2)
@@ -199,112 +192,110 @@ DO i=1,Endw(1); DO j=1,Endw(2); DO k=1,Endw(3)
   END IF
 END DO; END DO; END DO
 
-DEALLOCATE(E_P,kperShell,seed)
-
 ! 2/3 Filter for clean incompressible data
-DO i=1,Endw(1); DO j=1,Endw(2); DO k=1,Endw(3)
+DO k=1,Endw(3); DO j=1,Endw(2); DO i=1,Endw(1)
   IF(localk(4,i,j,k).GE.INT(2/3.*Nc)) U_FFT(:,i,j,k) = 0.
 END DO; END DO; END DO
 
-Uloc=1.
-CALL ComputeFFT_C2R(5,U_FFT,Uloc)
+! Pull back to phyiscal space and normalize
+CALL ComputeFFT_C2R(3,U_FFT(2:4,:,:,:),U_Global(2:4,:,:,:))
 
-Uloc = Uloc*REAL(N_FFT**3)
-
-! Set constant density
-Uloc(1,:,:,:)   = 1.0
-! Compute rho*v
-Uloc(2:4,:,:,:) = 1.0*Uloc(2:4,:,:,:)
-CALL Compute_incompressible_P()
+! Compute compressible state from incompressible Rogallo data
+CALL Compute_Compressible_State(U_Global)
 
 END SUBROUTINE Rogallo
 
 
 !===================================================================================================================================
-! Transformation from primitive to conservative variables
+! Compute thermodymamically consistent compressible state for incompressible input state
 !===================================================================================================================================
-SUBROUTINE Compute_incompressible_P
+SUBROUTINE Compute_Compressible_State(U_In)
 ! MODULES
 USE MOD_Globals
-USE MOD_PreProc
-USE MOD_Init_Hit_Vars,      ONLY: Uloc,scalefactor,F_vv,fhat,phat
-USE MOD_FFT_Vars,           ONLY: endw,localk,II,N_FFT
+USE MOD_PreProc,            ONLY: PP_PI
+USE MOD_FFT_Vars,           ONLY: Endw,localk,II,N_FFT
 USE MOD_FFT,                ONLY: ComputeFFT_R2C,ComputeFFT_C2R
-USE FFTW3
 #if USE_OPENMP
 USE OMP_Lib
 #endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
+REAL,INTENT(INOUT)   :: U_In(1:5,1:N_FFT,1:N_FFT,1:N_FFT)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                 :: sKappaM1, Kappa, Mach,ksquared,vmax,p0
-REAL                 :: vv(1:3,1:3,1:N_FFT,1:N_FFT,1:N_FFT)
+REAL,PARAMETER       :: Ma0   = 0.1
+REAL,PARAMETER       :: rho0  = 1.0
+REAL,PARAMETER       :: Kappa = 1.4
+REAL                 :: ksquared,vmax,p0
+REAL                 :: p(       1,1:N_FFT,1:N_FFT,1:N_FFT)
 REAL                 :: v(     1:3,1:N_FFT,1:N_FFT,1:N_FFT)
-REAL                 :: p(     1:1,1:N_FFT,1:N_FFT,1:N_FFT)
+REAL                 :: vv(1:3,1:3,1:N_FFT,1:N_FFT,1:N_FFT)
+COMPLEX              :: p_c(       1,1:Endw(1),1:Endw(2),1:Endw(3))
+COMPLEX              :: f_c(     1:3,1:Endw(1),1:Endw(2),1:Endw(3))
+COMPLEX              :: vv_c(1:3,1:3,1:Endw(1),1:Endw(2),1:Endw(3))
 INTEGER              :: i,j,k
 !===================================================================================================================================
-sKappaM1 = 1./0.4
-Kappa    = 1.4
-Mach     = 0.1
-
-phat=0.;vmax=0.
+! Save primitive velocity and compute maximum velocity in field
+vmax=0.
 DO i=1,N_FFT; DO j=1,N_FFT; DO k=1,N_FFT
-  V(1:3,i,j,k) = Uloc(2:4,i,j,k)/Uloc(1,i,j,k)
-  vmax=MAX(vmax,SQRT(V(1,i,j,k)**2+V(2,i,j,k)**2+V(3,i,j,k)**2))
+  v(1:3,i,j,k) = U_In(2:4,i,j,k)
+  vmax=MAX(vmax,SQRT(v(1,i,j,k)**2+v(2,i,j,k)**2+v(3,i,j,k)**2))
 END DO; END DO; END DO! i,j,k=1,N_FFT
 
-DO j=1,3; DO k=1,3
-  vv(j,k,:,:,:)=v(j,:,:,:)*v(k,:,:,:)
-END DO; END DO
-
-! Compute FFT for each variable. Local arrays ensure data to be contiguous in memory.
+! Compute tensor product of velocities, perform FFT and normalize
 DO j=1,3
-  CALL ComputeFFT_R2C(3,vv(j,:,:,:,:),F_vv(j,:,:,:,:))
+  DO k=1,3
+    vv(j,k,:,:,:)=v(j,:,:,:)*v(k,:,:,:)
+  END DO
+  CALL ComputeFFT_R2C(3,vv(j,:,:,:,:),vv_c(j,:,:,:,:))
+  DO k=1,3
+    vv_c(j,k,:,:,:) = vv_c(j,k,:,:,:)*2.*PP_PI*II*localk(k,:,:,:)
+  END DO
 END DO
 
-DO j=1,3; DO k=1,3
-  F_vv(j,k,:,:,:) = F_vv(j,k,:,:,:) *Scalefactor*2.*PP_Pi*II*localk(k,:,:,:)
-END DO; END DO
+! Sum up velocity correlations in all three directions
+f_c(1,:,:,:) = vv_c(1,1,:,:,:)+vv_c(1,2,:,:,:)+vv_c(1,3,:,:,:)
+f_c(2,:,:,:) = vv_c(2,1,:,:,:)+vv_c(2,2,:,:,:)+vv_c(2,3,:,:,:)
+f_c(3,:,:,:) = vv_c(3,1,:,:,:)+vv_c(3,2,:,:,:)+vv_c(3,3,:,:,:)
 
-fhat(1,:,:,:)= F_vv(1,1,:,:,:)+F_vv(1,2,:,:,:)+F_vv(1,3,:,:,:)
-fhat(2,:,:,:)= F_vv(2,1,:,:,:)+F_vv(2,2,:,:,:)+F_vv(2,3,:,:,:)
-fhat(3,:,:,:)= F_vv(3,1,:,:,:)+F_vv(3,2,:,:,:)+F_vv(3,3,:,:,:)
-
+! Compute pressure fluctuations from velocity fluctuations in Fourier space
 DO i=1,Endw(1); DO j=1,Endw(2); DO k=1,Endw(3)
   ksquared=localk(1,i,j,k)**2+localk(2,i,j,k)**2+localk(3,i,j,k)**2
-  IF (ksquared.eq.0) THEN
-    phat(1,i,j,k)=0
+  IF (ksquared.EQ.0) THEN
+    p_c(1,i,j,k)=0.
   ELSE
-    phat(1,i,j,k)=1./ksquared*( localk(1,i,j,k)*fhat(1,i,j,k) &
-                            + localk(2,i,j,k)*fhat(2,i,j,k) &
-                            + localk(3,i,j,k)*fhat(3,i,j,k) )
+    p_c(1,i,j,k)=1./ksquared*(  localk(1,i,j,k)*f_c(1,i,j,k) &
+                              + localk(2,i,j,k)*f_c(2,i,j,k) &
+                              + localk(3,i,j,k)*f_c(3,i,j,k) )
   END IF
 END DO; END DO; END DO! i,j,k=1,Endw(1,2,3)
 
-CALL ComputeFFT_C2R(1,phat(:,:,:,:),p(:,:,:,:))
+! Transform pressure fluctuations from Fourier to physical space
+CALL ComputeFFT_C2R(1,p_c(:,:,:,:),p(:,:,:,:))
+p=p/REAL(N_FFT**3)**3   ! Correct normalization necessary
 
-SWRITE(*,*) "Vmax in field is",vmax
-p0=1.*vmax**2/(Kappa*Mach**2)
-SWRITE(*,*) "For a selected Machnumber of ",Mach,", the mean pressure is",p0
-! add mean pressure to fluctuations
+! Compute mean pressure from Mach number and add to fluctuations
+p0 = vmax**2/(Kappa*Ma0**2)
 p=p+p0
+SWRITE(Unit_StdOut,'(A,F4.2,A,F7.1,A,F4.2)') 'For the selected Mach number ',Ma0, &
+                                             ', the mean pressure is ',p0,', with Vmax in field ',vmax
 
+! Compute compressible state with ideal gas EOS
 DO i=1,N_FFT; DO j=1,N_FFT; DO k=1,N_FFT
-  Uloc(5,i,j,k)=sKappaM1*p(1,i,j,k)+0.5*SUM(Uloc(2:4,i,j,k)*v(1:3,i,j,k))
-END DO; END DO; END DO! i,j,k=1,N_FFT
+  U_In(  1,i,j,k) = rho0
+  U_In(2:4,i,j,k) = U_In(1,i,j,k)*U_In(2:4,i,j,k)
+  U_In(  5,i,j,k) = p(1,i,j,k)/(Kappa-1.)+0.5*SUM(U_In(2:4,i,j,k)*v(1:3,i,j,k))
+END DO; END DO; END DO
 
-END SUBROUTINE Compute_incompressible_P
+END SUBROUTINE Compute_Compressible_State
 
 !===================================================================================================================================
 !> Finalize FFT
 !===================================================================================================================================
 SUBROUTINE Finalize_InitHIT
 ! MODULES                                                                                                                          !
-USE MOD_Globals
 USE MOD_Init_Hit_Vars
-USE MOD_FFT_Vars
 USE MOD_DG_Vars,       ONLY: U
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
@@ -313,19 +304,8 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 !===================================================================================================================================
 SDEALLOCATE(U)
-SDEALLOCATE(Uloc_c)
-SDEALLOCATE(U_j)
-SDEALLOCATE(U_k)
 SDEALLOCATE(U_FFT)
-IF(MPIRoot) THEN
-  SDEALLOCATE(Uloc)
-  SDEALLOCATE(LocalXYZ)
-  SDEALLOCATE(LocalK)
-  SDEALLOCATE(phat)
-  SDEALLOCATE(fhat)
-  SDEALLOCATE(F_vv)
-END IF
-
+SDEALLOCATE(U_Global)
 END SUBROUTINE Finalize_InitHIT
 
 END MODULE MOD_INIT_HIT

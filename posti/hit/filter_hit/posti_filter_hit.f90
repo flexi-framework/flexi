@@ -162,11 +162,8 @@ DO iArg=2,nArgs
     END IF
 #endif
 
-    SWRITE(UNIT_stdOut,'(A)') 'FFT SETUP'
     CALL FinalizeFFT()
     CALL InitFFT()
-    SWRITE(UNIT_stdOut,'(A)') 'FFT SETUP DONE'
-    SWRITE(UNIT_StdOut,'(132("-"))')
   END IF
 
   ! Transform global solution into Fourier space and apply filter there.

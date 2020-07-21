@@ -15,7 +15,7 @@
 !===================================================================================================================================
 !> Contains global variables provided by the AnalyzeHIT routines
 !===================================================================================================================================
-MODULE MOD_ANALYZE_HIT_Vars
+MODULE MOD_Analyze_Hit_Vars
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -24,17 +24,9 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-INTEGER               :: N_Filter
-INTEGER               :: Nunder
-
-! Analyze variables
-INTEGER               :: Nyq
-INTEGER               :: kmax
-REAL                  :: Mu0
-REAL                  :: Ekin
-REAL, ALLOCATABLE     :: E_k(:)
 LOGICAL               :: AnalyzeInitIsDone=.FALSE.
-LOGICAL               :: DoCalcTransfer
+INTEGER               :: N_Filter
+REAL                  :: Mu0
 
 ! State file, Result data file variables
 INTEGER               :: nVar_HDF5
@@ -44,11 +36,10 @@ REAL                  :: Time_HDF5
 CHARACTER(LEN=255)    :: NodeType_HDF5
 CHARACTER(LEN=255)    :: ProjectName_HDF5
 
+! FileUnits
 INTEGER               :: FileUnit_HIT
 INTEGER               :: FileUnit_EK
 CHARACTER(LEN=255)    :: Filename_HIT
 CHARACTER(LEN=255)    :: Filename_EK
-
 !===================================================================================================================================
-END MODULE MOD_ANALYZE_HIT_Vars
-
+END MODULE MOD_Analyze_Hit_Vars
