@@ -24,22 +24,13 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-LOGICAL               :: AnalyzeInitIsDone=.FALSE.
 INTEGER               :: N_Filter
 REAL                  :: Mu0
-
-! State file, Result data file variables
 INTEGER               :: nVar_HDF5
 INTEGER               :: N_HDF5
 INTEGER               :: nElems_HDF5
 REAL                  :: Time_HDF5
 CHARACTER(LEN=255)    :: NodeType_HDF5
 CHARACTER(LEN=255)    :: ProjectName_HDF5
-
-! FileUnits
-INTEGER               :: FileUnit_HIT
-INTEGER               :: FileUnit_EK
-CHARACTER(LEN=255)    :: Filename_HIT
-CHARACTER(LEN=255)    :: Filename_EK
 !===================================================================================================================================
 END MODULE MOD_Analyze_Hit_Vars

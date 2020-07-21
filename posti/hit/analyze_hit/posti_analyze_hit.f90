@@ -23,21 +23,19 @@ USE MOD_Globals
 USE MOD_Analyze_Hit
 USE MOD_Analyze_Hit_Vars
 USE MOD_DG_Vars,                 ONLY: U
-USE MOD_Interpolation_Vars,      ONLY: NodeType
 USE MOD_Mesh,                    ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
 USE MOD_Mesh_Vars,               ONLY: nElems_IJK,MeshFile
 USE MOD_Mesh_ReadIn,             ONLY: ReadIJKSorting
-USE MOD_Options
 USE MOD_Output,                  ONLY: DefineParametersOutput,InitOutput,FinalizeOutput
 USE MOD_Interpolation,           ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
 USE MOD_IO_HDF5,                 ONLY: DefineParametersIO_HDF5,InitIOHDF5,OpenDataFile
-USE MOD_HDF5_Input
 USE MOD_HDF5_Output,             ONLY: WriteState
 USE MOD_Commandline_Arguments
-USE MOD_StringTools,             ONLY: STRICMP,GetFileExtension
+USE MOD_Options
 USE MOD_ReadInTools
+USE MOD_StringTools,             ONLY: STRICMP,GetFileExtension
 USE MOD_FFT,                     ONLY: InitFFT, FinalizeFFT
-USE MOD_FFT_Vars
+USE MOD_FFT_Vars,                ONLY: N_Visu,N_FFT
 #if USE_MPI
 USE MOD_MPI,                     ONLY: DefineParametersMPI,InitMPI
 USE MOD_MPI,                     ONLY: InitMPIvars,FinalizeMPI
@@ -99,9 +97,9 @@ CALL prms%read_options(Args(1))
 ParameterFile = Args(1)
 
 ! Readin Parameters
-N_Visu         = GETINT('N_Visu')
-N_Filter       = GETINT('N_Filter','-1')
-Mu0            = GETREAL('Mu0','0.')
+N_Visu    = GETINT('N_Visu')
+N_Filter  = GETINT('N_Filter','-1')
+Mu0       = GETREAL('Mu0','0.')
 
 ! Initialize IO
 CALL InitIOHDF5()
@@ -152,7 +150,7 @@ DO iArg=2,nArgs
     CALL InitFFT()
   END IF
 
-  CALL AnalyzeTGV(time_HDF5,nVar_HDF5,U)
+  CALL AnalyzeTGV(U)
 
   ! To determine whether meshfile or N changes
   MeshFile_old    = MeshFile
