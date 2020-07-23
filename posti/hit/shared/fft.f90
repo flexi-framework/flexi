@@ -124,7 +124,7 @@ DO i=1,Endw(1)
 END DO
 !$OMP END DO
 
-SWRITE(UNIT_stdOut,'(A)')' FFT SETUP DONE!'
+SWRITE(UNIT_stdOut,'(A)')' INIT FFT DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
 
 END SUBROUTINE InitFFT
@@ -132,7 +132,7 @@ END SUBROUTINE InitFFT
 !===================================================================================================================================
 ! ?
 !===================================================================================================================================
-SUBROUTINE ComputeFFT_R2C(nVar_In,U_Global,U_FFT)
+SUBROUTINE ComputeFFT_R2C(nVar_In,U_Global,U_FFT,PrintTime)
 ! MODULES
 USE MOD_Globals
 USE MOD_FFT_Vars       ,ONLY: N_FFT,Endw
@@ -146,6 +146,7 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)    :: nVar_In
 REAL,INTENT(IN)       :: U_Global(nVar_In,1:N_FFT  ,1:N_FFT  ,1:N_FFT  )
 COMPLEX,INTENT(OUT)   :: U_FFT(   nVar_In,1:Endw(1),1:Endw(2),1:Endw(3))
+LOGICAL,INTENT(IN),OPTIONAL :: PrintTime
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER(KIND=8)  :: plan
@@ -153,8 +154,11 @@ INTEGER          :: iVar
 REAL             :: Time
 REAL             :: U_r(1:N_FFT  ,1:N_FFT  ,1:N_FFT  ) ! Real global DG solution per variable
 COMPLEX          :: U_c(1:Endw(1),1:Endw(2),1:Endw(3)) ! Complex FFT solution per variable
+LOGICAL          :: PrintTimeLoc
 !===================================================================================================================================
-SWRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' COMPUTE FFT FROM PHYSICAL TO FOURIER...'
+PrintTimeLoc=MERGE(.TRUE.,.FALSE.,(PRESENT(PrintTime).AND.PrintTime))
+
+IF(PrintTimeLoc) WRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' COMPUTE FFT FROM PHYSICAL TO FOURIER...'
 Time = OMP_FLEXITIME()
 
 ! Create plan once for local arrays and reuse it for each variable
@@ -173,13 +177,13 @@ U_FFT=U_FFT/REAL(N_FFT**3)
 ! Release resources allocated with plan
 CALL DFFTW_DESTROY_PLAN(plan)
 
-SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',OMP_FLEXITIME()-Time,'s]'
+IF(PrintTimeLoc) WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',OMP_FLEXITIME()-Time,'s]'
 END SUBROUTINE ComputeFFT_R2C
 
 !===================================================================================================================================
 ! ?
 !===================================================================================================================================
-SUBROUTINE ComputeFFT_C2R(nVar_In,U_FFT,U_Global)
+SUBROUTINE ComputeFFT_C2R(nVar_In,U_FFT,U_Global,PrintTime)
 ! MODULES
 USE MOD_Globals
 USE MOD_FFT_Vars       ,ONLY: N_FFT,Endw
@@ -193,6 +197,7 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)    :: nVar_In
 COMPLEX,INTENT(IN)    :: U_FFT(   nVar_In,1:Endw(1),1:Endw(2),1:Endw(3))
 REAL,INTENT(OUT)      :: U_Global(nVar_In,1:N_FFT  ,1:N_FFT  ,1:N_FFT  )
+LOGICAL,INTENT(IN),OPTIONAL :: PrintTime
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER(KIND=8) :: plan
@@ -200,8 +205,11 @@ INTEGER         :: iVar
 REAL            :: Time
 REAL            :: U_r(1:N_FFT  ,1:N_FFT  ,1:N_FFT  ) ! Real global DG solution per variable
 COMPLEX         :: U_c(1:Endw(1),1:Endw(2),1:Endw(3)) ! Complex FFT solution per variable
+LOGICAL         :: PrintTimeLoc
 !===================================================================================================================================
-SWRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' COMPUTE FFT FROM FOURIER TO PHYSICAL...'
+PrintTimeLoc=MERGE(.TRUE.,.FALSE.,(PRESENT(PrintTime).AND.PrintTime))
+
+IF(PrintTimeLoc) WRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' COMPUTE FFT FROM FOURIER TO PHYSICAL...'
 Time = OMP_FLEXITIME()
 
 ! Create plan once for local arrays and reuse it for each variable
@@ -217,7 +225,7 @@ END DO
 ! Release resources allocated with plan
 CALL DFFTW_DESTROY_PLAN(plan)
 
-SWRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',OMP_FLEXITIME()-Time,'s]'
+IF(PrintTimeLoc) WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',OMP_FLEXITIME()-Time,'s]'
 END SUBROUTINE ComputeFFT_C2R
 
 !===================================================================================================================================
