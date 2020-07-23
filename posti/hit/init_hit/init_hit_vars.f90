@@ -27,7 +27,6 @@ SAVE
 CHARACTER(LEN=255)    :: MeshFile                  !< Mesh File on which flow field is generated
 INTEGER               :: InitSpec                  !< Specifies which energy distribution is generated 
 INTEGER               :: Seed                      !< Seed for random number generator for Rogallo procedure (Debug only)
-REAL,ALLOCATABLE      :: U_Global(:,:,:,:)         !< Global solution on inner visu interpolation nodes
 COMPLEX,ALLOCATABLE   :: U_FFT(:,:,:,:)            !< Global solution in Fourier space
 !===================================================================================================================================
 END MODULE MOD_Init_HIT_Vars

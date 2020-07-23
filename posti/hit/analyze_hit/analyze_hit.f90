@@ -250,8 +250,8 @@ Lambda=(5.*IntE_k/IntEps)**0.5            ! TaylorMicroScale
 Lambda_K=2.*PP_PI/Lambda                  ! TaylorMicroScale*K
 L_int=3.*PP_PI/4.*IntInt/IntE_k           ! Int_Length
 L_int_K=2*PP_PI/L_int                     ! Int_Length*K
-U_rms=(2./3.*IntE_k)**0.5                  ! U_RMS
-Re_lambda=U_rms*lambda/Mu0                 ! Re_lambda
+U_rms=(2./3.*IntE_k)**0.5                 ! U_RMS
+Re_lambda=U_rms*lambda/Mu0                ! Re_lambda
 
 ! Find free file unit for write process
 FileUnit=55

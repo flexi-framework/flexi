@@ -27,9 +27,10 @@ USE MOD_Init_HIT_Vars
 USE MOD_ReadInTools
 USE MOD_Commandline_Arguments
 USE MOD_DG_Vars,                 ONLY: U
-USE MOD_FFT,                     ONLY: InitFFT,FinalizeFFT,ComputeFFT_R2C,ComputeFFT_C2R,EvalFourierAtDGCoords
-USE MOD_FFT_Vars,                ONLY: N_FFT
+USE MOD_FFT,                     ONLY: InitFFT,FinalizeFFT,EvalFourierAtDGCoords
+USE MOD_FFT_Vars,                ONLY: N_FFT,Endw
 USE MOD_Mesh,                    ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
+USE MOD_Mesh_Vars,               ONLY: nElems
 USE MOD_Output,                  ONLY: DefineParametersOutput,InitOutput,FinalizeOutput
 USE MOD_Interpolation,           ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
 USE MOD_IO_HDF5,                 ONLY: DefineParametersIO_HDF5,InitIOHDF5
@@ -103,13 +104,13 @@ CALL InitMPIvars()
 #endif
 CALL InitMesh(meshMode=0,MeshFile_IN=MeshFile)
 CALL InitFFT()
-CALL Init_InitHit()
+
+! Allocate the solution arrays in Fourier and DG space
+ALLOCATE(U_FFT(1:PP_nVar,1:Endw(1),1:Endw(2),1:Endw(3)))
+ALLOCATE(U(1:PP_nVar,0:N,0:N,0:N,nElems))
 
 ! Build random flow realization with desired energy distribution
-CALL Rogallo()
-
-! Compute FFT of flow field
-CALL ComputeFFT_R2C(5,U_Global,U_FFT)
+CALL Rogallo(U_FFT)
 
 ! Evaluate solution in Fourier space at Gauss points
 Call EvalFourierAtDGCoords(5,U_FFT,U)
@@ -117,7 +118,10 @@ Call EvalFourierAtDGCoords(5,U_FFT,U)
 ! Write State-File to initialize HIT
 CALL WriteState(TRIM(MeshFile),0.,0.,.FALSE.)
 
-CALL Finalize_InitHIT()
+! Deallocate solution arrays
+DEALLOCATE(U_FFT)
+DEALLOCATE(U)
+
 CALL FinalizeParameters()
 CALL FinalizeInterpolation()
 CALL FinalizeOutput()
