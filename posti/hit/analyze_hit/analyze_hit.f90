@@ -243,15 +243,15 @@ DO k=1,N_max
   IntInt = IntInt + 0.5*(E_k(k)/(real(k)+1E-16)+E_k(k+1)/(real(k+1)+1E-16))
 END DO
 
-EPS=IntEps*2.*Mu0                         ! Dissipation
-ETA=Mu0**(3./4.)/(IntEps*2.*Mu0)**(1./4.) ! KolmogorovLength
-ETA_K=2.*PP_PI/ETA                        ! KolmogorovLength*K
-Lambda=(5.*IntE_k/IntEps)**0.5            ! TaylorMicroScale
-Lambda_K=2.*PP_PI/Lambda                  ! TaylorMicroScale*K
-L_int=3.*PP_PI/4.*IntInt/IntE_k           ! Int_Length
-L_int_K=2*PP_PI/L_int                     ! Int_Length*K
-U_rms=(2./3.*IntE_k)**0.5                 ! U_RMS
-Re_lambda=U_rms*lambda/Mu0                ! Re_lambda
+EPS=IntEps*2.*Mu0                    ! Dissipation
+ETA=SQRT(Mu0)/(IntEps*2.)**(1./4.)   ! KolmogorovLength
+ETA_K=2.*PP_PI/ETA                   ! KolmogorovLength*K
+Lambda=(5.*IntE_k/IntEps)**0.5       ! TaylorMicroScale
+Lambda_K=2.*PP_PI/Lambda             ! TaylorMicroScale*K
+L_int=3.*PP_PI/4.*IntInt/IntE_k      ! Int_Length
+L_int_K=2*PP_PI/L_int                ! Int_Length*K
+U_rms=(2./3.*IntE_k)**0.5            ! U_RMS
+Re_lambda=U_rms*lambda/Mu0           ! Re_lambda
 
 ! Find free file unit for write process
 FileUnit=55
