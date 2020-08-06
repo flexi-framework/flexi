@@ -135,7 +135,6 @@ DO iArg=2,nArgs
   IF(changedMeshFile) THEN
     SWRITE(UNIT_stdOUT,*) "INITIALIZING MESH FROM FILE """,TRIM(MeshFile),""""
     CALL FinalizeMesh()
-    CALL FinalizeMPI()
     CALL DefineParametersMesh()
     CALL InitMesh(MeshMode=0,MeshFile_IN=MeshFile)
     CALL ReadIJKSorting() ! Read global xyz sorting of structured mesh

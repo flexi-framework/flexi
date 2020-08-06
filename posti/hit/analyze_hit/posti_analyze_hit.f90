@@ -36,8 +36,8 @@ USE MOD_ReadInTools
 USE MOD_StringTools,             ONLY: STRICMP,GetFileExtension
 USE MOD_FFT,                     ONLY: InitFFT, FinalizeFFT
 USE MOD_FFT_Vars,                ONLY: N_Visu,N_FFT
-#if USE_MPI
 USE MOD_MPI,                     ONLY: DefineParametersMPI,InitMPI
+#if USE_MPI
 USE MOD_MPI,                     ONLY: InitMPIvars,FinalizeMPI
 #endif
 IMPLICIT NONE
@@ -131,7 +131,6 @@ DO iArg=2,nArgs
   IF(changedMeshFile) THEN
     SWRITE(UNIT_stdOUT,*) "INITIALIZING MESH FROM FILE """,TRIM(MeshFile),""""
     CALL FinalizeMesh()
-    CALL FinalizeMPI()
     CALL DefineParametersMesh()
     CALL InitMesh(MeshMode=0,MeshFile_IN=MeshFile)
     CALL ReadIJKSorting() !Read global xyz sorting of structured mesh
