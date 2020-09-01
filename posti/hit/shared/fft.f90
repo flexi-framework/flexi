@@ -97,8 +97,8 @@ kmax=NINT(SQRT(REAL((3*N_FFT**2))))+1
 ! Allocate array for wave numbers
 ALLOCATE(Localk(1:4,1:Endw(1),1:Endw(2),1:Endw(3)))
 
-!$OMP PARALLEL DEFAULT(SHARED)
-!$OMP DO PRIVATE(i,j,k)
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(i,j,k)
+!$OMP DO
 ! fill the wave space
 DO i=1,Endw(1)
   DO j=1,Endw(2)
@@ -123,6 +123,7 @@ DO i=1,Endw(1)
   END DO
 END DO
 !$OMP END DO
+!$OMP END PARALLEL
 
 SWRITE(UNIT_stdOut,'(A)')' INIT FFT DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
