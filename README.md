@@ -1,6 +1,6 @@
 # FLEXI
 
-[![build status](https://gitlabext.iag.uni-stuttgart.de/flexi/flexi/badges/master/build.svg)](https://gitlabext.iag.uni-stuttgart.de/flexi/flexi/builds/)
+[![build status](https://gitlabext.iag.uni-stuttgart.de/flexi/flexi/badges/master/pipeline.svg)](https://gitlabext.iag.uni-stuttgart.de/flexi/flexi/builds/)
 [![license](https://img.shields.io/github/license/flexi-framework/flexi.svg?maxAge=2592000)]()
 
 FLEXI is a high-order numerical framework for solving PDEs,
@@ -53,7 +53,7 @@ FLEXI uses several external libraries as well as auxilliary functions from open 
 * [OpenMP](http://www.openmp.org/)
 * [FFTW](http://www.fftw.org/)
 
-[nrg]:  https://nrg.iag.uni-stuttgart.de/
+[nrg]:  https://www.iag.uni-stuttgart.de/arbeitsgruppen/numerische-methoden/
 [flexi]: https://www.flexi-project.org/
 [list]: https://listserv.uni-stuttgart.de/mailman/listinfo/flexi
 
