@@ -59,6 +59,7 @@ USE MOD_Globals
 USE MOD_EddyVisc_Vars
 USE MOD_Smagorinsky
 USE MOD_DefaultEddyVisc
+USE MOD_Vreman
 USE MOD_SigmaModel
 USE MOD_Mesh_Vars  ,ONLY: nElems,nSides
 USE MOD_ReadInTools,ONLY: GETINTFROMSTR, GETREAL
@@ -88,6 +89,10 @@ SELECT CASE(eddyViscType)
     CALL InitSmagorinsky()
     ComputeEddyViscosity  => Smagorinsky_Volume
     FinalizeEddyViscosity => Finalizesmagorinsky
+  CASE(2) !Vreman Model 2004
+    CALL InitVreman()
+    ComputeEddyViscosity  => Vreman_Volume
+    FinalizeEddyViscosity => FinalizeVreman
   CASE(4) !sigma Model 2015
     CALL InitSigmaModel()
     ComputeEddyViscosity  => SigmaModel_Volume
