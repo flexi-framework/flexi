@@ -1,0 +1,76 @@
+# =========================================================================
+# Detect machine environements
+# =========================================================================
+SITE_NAME(CMAKE_HOSTNAME)
+STRING(FIND "${CMAKE_HOSTNAME}" "eslogin" ONHORNET)
+# Set options that need to be enabled BEFORE ANY PROJECT OR LANGUAGE COMMAND
+IF (ONHORNET GREATER -1)
+  SET(CMAKE_C_COMPILER       cc)
+  SET(CMAKE_CXX_COMPILER     CC)
+  SET(CMAKE_Fortran_COMPILER ftn)
+  SET(HDF5_USE_STATIC_LIBRARIES TRUE)
+  MARK_AS_ADVANCED(C_PATH CXX_PATH Fortran_PATH)
+  MESSAGE(STATUS "Compiling on Hazelhen")
+  ADD_DEFINITIONS(-DLUSTRE)
+ENDIF()
+
+# =========================================================================
+# COMPILER FLAGS
+# =========================================================================
+
+# FFLAGS depend on the compiler
+GET_FILENAME_COMPONENT (Fortran_COMPILER_NAME ${CMAKE_Fortran_COMPILER} NAME)
+
+IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
+  #environment specific variables
+  IF(ONHORNET GREATER -1)
+    SET(FLEXI_INSTRUCTION "-march=core-avx2")
+  ELSE()
+    SET(FLEXI_INSTRUCTION "-march=native")
+  ENDIF()
+  # set Flags (disable lto type warnings due to false positives with MATMUL, which is a known bug)
+  SET (CMAKE_Fortran_FLAGS         "${CMAKE_Fortran_FLAGS} -fdefault-real-8 -fdefault-double-8 -fbackslash -ffree-line-length-0 -Wno-lto-type-mismatch -DGNU")
+  SET (CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS}     -O3 ${FLEXI_INSTRUCTION} -finline-functions -fstack-arrays")
+  SET (CMAKE_Fortran_FLAGS_PROFILE "${CMAKE_Fortran_FLAGS} -pg -O3 ${FLEXI_INSTRUCTION} -finline-functions -fstack-arrays")
+  SET (CMAKE_Fortran_FLAGS_DEBUG   "${CMAKE_Fortran_FLAGS} -g -O0 -ggdb3 -ffpe-trap=invalid -fbounds-check -finit-real=snan -fbacktrace  -Wall")
+  # add flags only for compiling not linking!
+  SET (FLEXI_COMPILE_FLAGS "-xf95-cpp-input -fPIC")
+
+ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
+  #environment specific variables
+  IF(ONHORNET GREATER -1)
+     SET(FLEXI_INSTRUCTION "-xCORE-AVX2")
+  ELSE()
+     SET(FLEXI_INSTRUCTION "-xHost")
+  ENDIF()
+  # set Flags
+  SET (CMAKE_Fortran_FLAGS         "${CMAKE_Fortran_FLAGS} -r8 -i4 -traceback -warn all -shared-intel -DINTEL")
+  SET (CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS}    -O3 ${FLEXI_INSTRUCTION} -qopt-report0 -qopt-report-phase=vec -no-prec-div")
+  SET (CMAKE_Fortran_FLAGS_PROFILE "${CMAKE_Fortran_FLAGS} -p -O3 ${FLEXI_INSTRUCTION} -qopt-report0 -qopt-report-phase=vec -no-prec-div")
+  SET (CMAKE_Fortran_FLAGS_DEBUG   "${CMAKE_Fortran_FLAGS} -g -O0 -fpe0 -traceback -check all,noarg_temp_created,noformat,nooutput_conversion,pointer,uninit -init=snan -init=arrays")
+  # add flags only for compiling not linking!
+  SET (FLEXI_COMPILE_FLAGS "-fpp -allow nofpp_comments -assume bscc")
+
+ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Cray")
+  # set Flags
+  SET (CMAKE_Fortran_FLAGS         "${CMAKE_Fortran_FLAGS} -f free -s real64 -em -DCRAY")
+  SET (CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS} -O2 -hfp3 -p . -rm")
+  SET (CMAKE_Fortran_FLAGS_PROFILE "${CMAKE_Fortran_FLAGS} -O2 -hfp3 -h profile_generate -p . -rm")
+  SET (CMAKE_Fortran_FLAGS_DEBUG   "${CMAKE_Fortran_FLAGS} -O0 -eD -rm")
+  # add flags only for compiling not linking!
+  SET (FLEXI_COMPILE_FLAGS "-F")
+
+ELSE()
+  MESSAGE(SEND_ERROR "Unknown compiler")
+ENDIF()
+
+# =========================================================================
+# Tests
+# =========================================================================
+# Deactivate tests on hornet since no programs are allowed to run on frontend
+IF(ONHORNET GREATER -1)
+  SET(FLEXI_UNITTESTS OFF CACHE BOOL "Enable unit tests after build" FORCE)
+ENDIF()
+IF(FLEXI_UNITTESTS)
+  INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/unitTests/CMakeLists.txt)
+ENDIF()
