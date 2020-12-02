@@ -139,10 +139,17 @@ CALL InitInterpolation(NNew)
 ExtrudeTo3D = GETLOGICAL("ExtrudeTo3D",'.FALSE.')
 IF (ExtrudeTo3D) ExtrudeK = GETINT("ExtrudeK")
 
+! Extrusion of a one-layer mesh to the 3D version
+ExtrudePeriodic = GETLOGICAL("ExtrudePeriodic",'.FALSE.')
+
 ! Initialize the old mesh, store the mesh coordinates (transformed to CL points) and the number of elements as well as the old NGeo
 Time=FLEXITIME()
 SWRITE(UNIT_stdOut,'(A)') ' INIT OLD MESH ...'
+IF (ExtrudePeriodic) THEN
+  CALL ReadMeshCoords(MeshFileOld,useCurvedsOld,NGeoOld,nElemsOld,xCLOld,nElems_IJK=nElemsOld_IJK)
+ELSE
 CALL ReadMeshCoords(MeshFileOld,useCurvedsOld,NGeoOld,nElemsOld,xCLOld)
+END IF
 SWRITE(UNIT_stdOut,*)'done in ',FLEXITIME()-Time
 
 ! Translate the old mesh along the displacement vector if needed
@@ -155,8 +162,8 @@ END IF
 ! Initialize new mesh
 Time=FLEXITIME()
 SWRITE(UNIT_stdOut,'(A)') ' INIT NEW MESH ...'
-IF (ExtrudeTo3D) THEN
-  CALL ReadMeshCoords(MeshFileNew,useCurvedsNew,NGeoNew,nElemsNew,xCLNew,Elem_IJK)
+IF (ExtrudeTo3D.OR.ExtrudePeriodic) THEN
+CALL ReadMeshCoords(MeshFileNew,useCurvedsNew,NGeoNew,nElemsNew,xCLNew,Elem_IJK,nElems_IJK=nElemsNew_IJK)
 ELSE
   CALL ReadMeshCoords(MeshFileNew,useCurvedsNew,NGeoNew,nElemsNew,xCLNew)
 END IF
@@ -192,7 +199,7 @@ END SUBROUTINE InitSwapmesh
 !> Additionally the number of elements in the mesh as well as NGeo will be returned.
 !> The user can specify if curved meshes should be used or not.
 !===================================================================================================================================
-SUBROUTINE ReadMeshCoords(MeshFile,useCurveds,NGeo,nElems,XCL,Elem_IJK)
+SUBROUTINE ReadMeshCoords(MeshFile,useCurveds,NGeo,nElems,XCL,Elem_IJK,nElems_IJK)
 ! MODULES                                                                                                                          !
 USE MOD_Globals
 USE MOD_HDF5_Input
@@ -210,6 +217,7 @@ REAL,ALLOCATABLE,INTENT(OUT)   :: XCL(:,:,:,:,:) !< Mesh coordinates on CL point
 INTEGER,INTENT(OUT)            :: NGeo           !< Polynomial degree of mesh representation
 INTEGER,INTENT(OUT)            :: nElems         !< Number of elements in mesh
 INTEGER,ALLOCATABLE,INTENT(OUT),OPTIONAL :: Elem_IJK(:,:) !< IJK sorting of mesh
+INTEGER,INTENT(OUT),OPTIONAL   :: nElems_IJK(3)  !< IJK sorting of mesh
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL,ALLOCATABLE               :: NodeCoords(:,:,:,:,:)
@@ -217,7 +225,6 @@ REAL,ALLOCATABLE               :: NodeCoordsTmp(:,:,:,:,:)
 REAL,ALLOCATABLE               :: Vdm_EQNgeo_CLNgeo(:,:)
 INTEGER                        :: iElem
 LOGICAL                        :: dsExists
-INTEGER                        :: nElems_IJK(3)
 !===================================================================================================================================
 ! Open the mesh file
 CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
@@ -272,12 +279,14 @@ DO iElem=1,nElems
 END DO ! iElem
 DEALLOCATE(Vdm_EQNgeo_CLNgeo,NodeCoords)
 
-IF (PRESENT(Elem_IJK)) THEN
+IF (PRESENT(Elem_IJK).OR.PRESENT(nElems_IJK)) THEN
   CALL DatasetExists(File_ID,'nElems_IJK',dsExists)
   IF(dsExists)THEN
     CALL ReadArray('nElems_IJK',1,(/3/),0,1,IntArray=nElems_IJK)
-    ALLOCATE(Elem_IJK(3,nElems))
-    CALL ReadArray('Elem_IJK',2,(/3,nElems/),0,2,IntArray=Elem_IJK)
+    IF (PRESENT(Elem_IJK)) THEN
+      ALLOCATE(Elem_IJK(3,nElems))
+      CALL ReadArray('Elem_IJK',2,(/3,nElems/),0,2,IntArray=Elem_IJK)
+    END IF
   ELSE
   CALL Abort(__STAMP__,&
     'ERROR: Not a IJK sorted mesh!')
