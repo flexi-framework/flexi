@@ -514,13 +514,16 @@ FUNCTION(add_exec target)
   ADD_CUSTOM_COMMAND(TARGET ${target} POST_BUILD COMMAND ${CMAKE_COMMAND} -E cmake_echo_color --cyan "SUCCESS: ${TARGETUP} BUILD COMPLETE!")
 ENDFUNCTION()
 
-FUNCTION(add_lib target)
+FUNCTION(add_lib_shared target)
   ADD_LIBRARY(${target} SHARED ${ARGN})
   TARGET_LINK_LIBRARIES(${target} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/userblock.o libflexistatic userblocklib stacksizelib ${linkedlibs})
   SET_TARGET_PROPERTIES(${target} PROPERTIES PREFIX ""
                                              COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}
                                              LINKER_LANGUAGE Fortran)
-  INSTALL(PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${target} DESTINATION bin)
+  INSTALL(TARGETS ${target} LIBRARY PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
+                                                GROUP_READ GROUP_EXECUTE
+                                                WORLD_READ WORLD_EXECUTE 
+                            DESTINATION lib)
   STRING(TOUPPER ${target} TARGETUP)
   ADD_CUSTOM_COMMAND(TARGET ${target} POST_BUILD COMMAND ${CMAKE_COMMAND} -E cmake_echo_color --cyan "SUCCESS: ${TARGETUP} BUILD COMPLETE!")
 ENDFUNCTION()
@@ -605,7 +608,7 @@ SET_TARGET_PROPERTIES(stacksizelib userblocklib PROPERTIES LINKER_LANGUAGE C
                                                            COMPILE_FLAGS "-fPIC")
 
 # we link the statically built libs
-add_lib(libflexishared ./src/flexilib.f90)
+add_lib_shared(libflexishared ./src/flexilib.f90)
 SET_TARGET_PROPERTIES(libflexishared PROPERTIES OUTPUT_NAME "libflexi")
 ADD_DEPENDENCIES(libflexishared libflexistatic userblocklib stacksizelib ${INTERNALLIBS})
 add_exec(flexi ./src/flexi.f90)

@@ -192,7 +192,6 @@ CALL prms%CreateLogicalOption('hanning'            ,"Set to use the Hann window 
 CALL prms%CreateLogicalOption('fourthDeriv'        ,"Set to calculate the fourth derivative of the time signal (signal will be&
                                                      & interpolated to a coarse grid since truncation error is large",".FALSE.")
 CALL prms%CreateLogicalOption('ThirdOct'           ,"TODO",".FALSE.")
-CALL prms%CreateRealOption   ('u_inf'              ,"TODO")
 CALL prms%CreateRealOption   ('chord'              ,"TODO")
 
 CALL prms%CreateLogicalOption('doTurb'             ,"Set to compute a temporal FFT for each RP and compute turbulent quantities&
@@ -202,7 +201,9 @@ CALL prms%CreateLogicalOption('Plane_doBLProps'    ,"Set to calculate seperate b
                                                      & planes",".FALSE.")
 CALL prms%CreateIntOption    ('Plane_BLvelScaling' ,"Choose scaling for boundary layer quantities. 0: no scaling, 1: laminar&
                                                      & scaling, 3: turbulent scaling")
-CALL prms%CreateRealOption   ('pInf'               ,"Reference pressure to calculate c_p")
+CALL prms%CreateIntOption    ('RPRefState'         ,"Refstate required for computation of e.g. cp.")
+CALL prms%CreateRealArrayOption('RefState',     "State(s) in primitive variables (density, velx, vely, velz, pressure).",&
+                                                multiple=.TRUE.)
 CALL prms%CreateLogicalOption('Plane_LocalCoords'  ,"Set to use local instead of global coordinates along planes",".FALSE.")
 CALL prms%CreateLogicalOption('Plane_LocalVel'     ,"Set to use local instead of global velocities along planes",".FALSE.")
 
@@ -231,11 +232,14 @@ USE MOD_Globals
 USE MOD_Readintools         ,ONLY:GETINT,GETREAL,GETLOGICAL,GETSTR,GETREALARRAY,CountOption
 USE MOD_ParametersVisu
 USE MOD_RPInterpolation_Vars,ONLY:calcTimeAverage
-USE MOD_EquationRP_Vars     ,ONLY:pInf
+USE MOD_EquationRP_Vars     ,ONLY:pInf,uInf,rhoInf,nRefState,RefStatePrim
+
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                :: iGroup
+INTEGER                :: i
+INTEGER                :: RPRefState
 !===================================================================================================================================
 Projectname=GETSTR('ProjectName')
 
@@ -321,7 +325,32 @@ IF(Plane_doBLProps) THEN ! for BL properties we need local coords and velocities
   Plane_BLvelScaling  =GETINT('Plane_BLvelScaling','0') ! 0 - no scaling.
   ! 1 - "laminar scaling": scale velocity with u_delta and PlaneY with delta99
   ! 2 - "turbulent scaling:" calculate u+ and y+
-  pInf = GETREAL('pInf')
+
+  nRefState=CountOption('RefState')
+  RPRefState  = GETINT('RPRefState', "0")
+  IF(RPRefState.GT.nRefState)THEN
+    CALL CollectiveStop(__STAMP__,&
+      'ERROR: Ini not defined! (Ini,nRefState):',RPRefState,REAL(nRefState))
+  ELSE IF(RPRefState .EQ. 0)THEN
+    SWRITE(UNIT_StdOut,'(A)')' No RefState specified, using the first one'
+    RPRefState=1
+  END IF
+
+  ALLOCATE(RefStatePrim(PP_nVarPrim-1,nRefState))
+  DO i=1,nRefState
+    RefStatePrim(1:5,i)  = GETREALARRAY('RefState',5)
+#if PP_dim==2
+  IF(RefStatePrim(4,i).NE.0.) THEN
+    SWRITE(UNIT_StdOut,'(A)')' You are computing in 2D! RefStatePrim(4) will be set to zero!'
+    RefStatePrim(4,i)=0.
+  END IF
+#endif
+  END DO
+  
+  rhoInf = RefStatePrim(1,RPRefState)
+  uInf   = sqrt(sum((RefStatePrim(2:4,RPRefState))**2))
+  pInf   = RefStatePrim(5,RPRefState)
+  SDEALLOCATE(RefStatePrim)
 END IF
 ! =============================================================================== !
 ! LINE OPTIONS

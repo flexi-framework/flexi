@@ -39,6 +39,7 @@ LOGICAL                :: FV_toDGinRK            !< Flag that allows switching o
                                                  !< This may violated the DG timestep restriction of the element.
 LOGICAL                :: FV_IniSharp            !< Maintain a sharp interface in the initial solution in the FV region
 LOGICAL                :: FV_IniSupersample      !< Supersample initial solution inside each sub-cell
+LOGICAL                :: switchConservative     !< Perform DG/FV switch in reference element
 
 ! Limiting
 INTEGER                :: LimiterType            !< Readin variable for type of used fv limiter

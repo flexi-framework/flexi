@@ -85,18 +85,20 @@ USE MOD_FV_Limiter  ,ONLY: DefineParametersFV_Limiter
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection('FV')
-CALL prms%CreateRealOption(   'FV_IndUpperThreshold',"Upper threshold: Element is switched from DG to FV if indicator \n"//&
-                                                     "rises above this value" )
-CALL prms%CreateRealOption(   'FV_IndLowerThreshold',"Lower threshold: Element is switched from FV to DG if indicator \n"//&
-                                                     "falls below this value")
-CALL prms%CreateLogicalOption('FV_toDG_indicator'   ,"Apply additional Persson indicator to check if DG solution after switch \n"//&
-                                                     "from FV to DG is valid.", '.FALSE.')
-CALL prms%CreateRealOption   ('FV_toDG_limit'       ,"Threshold for FV_toDG_indicator")
-CALL prms%CreateLogicalOption('FV_toDGinRK'         ,"Allow switching of FV elements to DG during Runge Kutta stages. \n"//&
-                                                     "This may violated the DG timestep restriction of the element.", '.FALSE.')
-CALL prms%CreateLogicalOption('FV_IniSupersample'   ,"Supersample initial solution inside each sub-cell and take mean value \n"// &
-                                                     "as average sub-cell value.", '.TRUE.')
-CALL prms%CreateLogicalOption('FV_IniSharp'         ,"Maintain a sharp interface in the initial solution in the FV region", '.FALSE.')
+CALL prms%CreateRealOption(   'FV_IndUpperThreshold' ,"Upper threshold: Element is switched from DG to FV if indicator \n"//&
+                                                      "rises above this value" )
+CALL prms%CreateRealOption(   'FV_IndLowerThreshold' ,"Lower threshold: Element is switched from FV to DG if indicator \n"//&
+                                                      "falls below this value")
+CALL prms%CreateLogicalOption('FV_toDG_indicator'    ,"Apply additional Persson indicator to check if DG solution after switch \n&
+                                                      & from FV to DG is valid.", '.FALSE.')
+CALL prms%CreateRealOption   ('FV_toDG_limit'        ,"Threshold for FV_toDG_indicator")
+CALL prms%CreateLogicalOption('FV_toDGinRK'          ,"Allow switching of FV elements to DG during Runge Kutta stages. \n"//&
+                                                      "This may violated the DG timestep restriction of the element.", '.FALSE.')
+CALL prms%CreateLogicalOption('FV_IniSupersample'    ,"Supersample initial solution inside each sub-cell and take mean value \n&
+                                                      & as average sub-cell value.", '.TRUE.')
+CALL prms%CreateLogicalOption('FV_IniSharp'          ,"Maintain a sharp interface in the initial solution in the FV region",&
+                                                      '.FALSE.')
+CALL prms%CreateLogicalOption('FV_SwitchConservative',"Perform FV/DG switch in reference element", '.TRUE.')
 #if FV_RECONSTRUCT
 CALL DefineParametersFV_Limiter()
 #endif
@@ -158,6 +160,9 @@ END IF
 ! Read flag, which allows switching from FV to DG between the stages of a Runge-Kutta time step
 ! (this might lead to instabilities, since the time step for a DG element is smaller)
 FV_toDGinRK = GETLOGICAL("FV_toDGinRK")
+
+! Read flag, which allows to perform the switching from FV to DG in the reference element
+switchConservative = GETLOGICAL("FV_SwitchConservative")
 
 #if FV_RECONSTRUCT
 CALL InitFV_Limiter()
@@ -248,17 +253,17 @@ SWRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE InitFV
 
 !==================================================================================================================================
-!> Performe switching between DG element and FV sub-cells element (and vise versa) depending on the indicator value
+!> Perform switching between DG element and FV sub-cells element (and vise versa) depending on the indicator value.
+!> Optionally, the switching process can be done in the reference element to guarantee conservation on non-cartesian elements.
 !==================================================================================================================================
 SUBROUTINE FV_Switch(U,U2,U3,AllowToDG)
 ! MODULES
 USE MOD_PreProc
-USE MOD_ChangeBasisByDim,ONLY: ChangeBasisVolume
 USE MOD_Indicator_Vars  ,ONLY: IndValue
 USE MOD_Indicator       ,ONLY: IndPersson
 USE MOD_FV_Vars
 USE MOD_Analyze
-USE MOD_Mesh_Vars       ,ONLY: nElems
+USE MOD_Mesh_Vars       ,ONLY: nElems, sJ
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -270,7 +275,6 @@ LOGICAL,INTENT(IN)          :: AllowToDG                                  !< if 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL    :: U_DG(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
-REAL    :: U_FV(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 REAL    :: ind
 INTEGER :: iElem
 !==================================================================================================================================
@@ -280,35 +284,24 @@ DO iElem=1,nElems
     IF (IndValue(iElem).GT.FV_IndUpperThreshold) THEN
       ! switch Element to FV
       FV_Elems(iElem) = 1
-      CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,U(:,:,:,:,iElem),U_FV)
-      U(:,:,:,:,iElem) = U_FV
-      IF (PRESENT(U2)) THEN
-        CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,U2(:,:,:,:,iElem),U_FV)
-        U2(:,:,:,:,iElem) = U_FV
-      END IF
-      IF (PRESENT(U3)) THEN
-        CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,U3(:,:,:,:,iElem),U_FV)
-        U3(:,:,:,:,iElem) = U_FV
-      END IF
+      CALL FV_InterpolateDG2FV(U(:,:,:,:,iElem),sJ(:,:,:,iElem,0:FV_ENABLED))
+      IF (PRESENT(U2)) CALL FV_InterpolateDG2FV(U2(:,:,:,:,iElem),sJ(:,:,:,iElem,0:FV_ENABLED))
+      IF (PRESENT(U3)) CALL FV_InterpolateDG2FV(U3(:,:,:,:,iElem),sJ(:,:,:,iElem,0:FV_ENABLED))
     END IF
   ELSE ! FV Element
     ! Switch FV to DG Element, if Indicator is lower then IndMax
     IF ((IndValue(iElem).LT.FV_IndLowerThreshold).AND.AllowToDG) THEN
-      CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_sVdm,U(:,:,:,:,iElem),U_DG)
+      U_DG = U(:,:,:,:,iElem)
+      CALL FV_InterpolateFV2DG(U_DG(:,:,:,:),sJ(:,:,:,iElem,0:FV_ENABLED))
       IF (FV_toDG_indicator) THEN
         ind = IndPersson(U_DG(:,:,:,:))
         IF (ind.GT.FV_toDG_limit) CYCLE
       END IF
+      ! switch Element to DG
+      FV_Elems(iElem)  = 0
       U(:,:,:,:,iElem) = U_DG
-      FV_Elems(iElem) = 0  ! switch Elemnent to DG
-      IF (PRESENT(U2)) THEN
-        CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_sVdm,U2(:,:,:,:,iElem),U_DG)
-        U2(:,:,:,:,iElem) = U_DG
-      END IF
-      IF (PRESENT(U3)) THEN
-        CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_sVdm,U3(:,:,:,:,iElem),U_DG)
-        U3(:,:,:,:,iElem) = U_DG
-      END IF
+      IF (PRESENT(U2)) CALL FV_InterpolateFV2DG(U2(:,:,:,:,iElem),sJ(:,:,:,iElem,0:FV_ENABLED))
+      IF (PRESENT(U3)) CALL FV_InterpolateFV2DG(U3(:,:,:,:,iElem),sJ(:,:,:,iElem,0:FV_ENABLED))
     END IF
   END IF
 END DO !iElem
@@ -345,6 +338,79 @@ DO iSide = 1,nSides
   IF(nbElemID.GT.0) FV_Elems_slave( iSide) = FV_Elems(nbElemID)
 END DO
 END SUBROUTINE FV_ProlongFVElemsToFace
+
+
+!==================================================================================================================================
+!> Interpolate solution from DG representation to FV subcells.
+!> Interpolation is done either conservatively in reference space or non-conservatively in phyiscal space.
+!==================================================================================================================================
+PPURE SUBROUTINE FV_InterpolateDG2FV(U_In,sJ_In)
+! MODULES
+USE MOD_PreProc
+USE MOD_FV_Vars          ,ONLY: switchConservative,FV_Vdm
+USE MOD_ChangeBasisByDim ,ONLY: ChangeBasisVolume
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+REAL,INTENT(INOUT) ::  U_In(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)      !< state vector to be switched from DG to FV representation
+REAL,INTENT(IN)    :: sJ_In(0:PP_N,0:PP_N,0:PP_NZ,0:FV_ENABLED) !< inverse of Jacobian determinant at each Gauss point 
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER            :: i,j,k
+!==================================================================================================================================
+IF (switchConservative) THEN
+  ! Transform the DG solution into the reference element
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+    U_In(:,i,j,k)=U_In(:,i,j,k)/sJ_In(i,j,k,0)
+  END DO; END DO; END DO
+  ! Perform interpolation from DG to FV
+  CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,U_In)
+  ! Transform back to physical space
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+    U_In(:,i,j,k)=U_In(:,i,j,k)*sJ_In(i,j,k,1)
+  END DO; END DO; END DO
+ELSE
+  CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,U_In)
+END IF
+END SUBROUTINE FV_InterpolateDG2FV
+
+
+!==================================================================================================================================
+!> Interpolate solution from FV subcell representation to DG.
+!> Interpolation is done either conservatively in reference space or non-conservatively in phyiscal space.
+!==================================================================================================================================
+PPURE SUBROUTINE FV_InterpolateFV2DG(U_In,sJ_In)
+! MODULES
+USE MOD_PreProc
+USE MOD_FV_Vars          ,ONLY: switchConservative,FV_sVdm
+USE MOD_ChangeBasisByDim ,ONLY: ChangeBasisVolume
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+REAL,INTENT(INOUT) ::  U_In(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)      !< state vector to be switched from FV to DG representation
+REAL,INTENT(IN)    :: sJ_In(0:PP_N,0:PP_N,0:PP_NZ,0:FV_ENABLED) !< inverse of Jacobian determinant at each Gauss point 
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER            :: i,j,k
+!==================================================================================================================================
+IF (switchConservative) THEN
+  ! Transform the FV solution into the reference element
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+    U_In(:,i,j,k)=U_In(:,i,j,k)/sJ_In(i,j,k,1)
+  END DO; END DO; END DO
+  ! Perform interpolation from FV to DG
+  CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_sVdm,U_In)
+  ! Transform back to physical space
+  DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+    U_In(:,i,j,k)=U_In(:,i,j,k)*sJ_In(i,j,k,0)
+  END DO; END DO; END DO
+ELSE
+  CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_sVdm,U_In)
+END IF
+END SUBROUTINE FV_InterpolateFV2DG
+
 
 !==================================================================================================================================
 !> Print information on the amount of FV subcells

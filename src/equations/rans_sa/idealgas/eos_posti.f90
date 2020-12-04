@@ -648,7 +648,7 @@ SUBROUTINE FillNonDimensionalGridSpacing(nSides_calc,mapBCSideToVisuSides,Nloc,d
 USE MOD_Eos_Vars
 USE MOD_Preproc
 USE MOD_Viscosity
-USE MOD_Mesh_Vars           ,ONLY: NGeo,Elem_xGP,SideToElem,nBCSides
+USE MOD_Mesh_Vars           ,ONLY: Elem_xGP,SideToElem,nBCSides
 USE MOD_Interpolation       ,ONLY: GetVandermonde
 USE MOD_Interpolation_Vars  ,ONLY: NodeType,NodeTypeGL
 USE MOD_ChangeBasisByDim    ,ONLY: ChangeBasisVolume
@@ -671,15 +671,15 @@ REAL,INTENT(OUT)                                     :: wallDistance(0:Nloc,0:ZD
 REAL              :: mu,temp,fricVel
 INTEGER           :: iSide,p,q,iSideVisu,ElemID,locSideID
 REAL              :: xVec(3),yVec(3),yloc(3),tVec(3,2)
-REAL              :: NodeCoords(3,0:PP_N,0:PP_N,0:PP_NZ)
-REAL              :: Vdm_G_GL(0:PP_N,0:PP_N)
+REAL              :: CornerCoords(3,0:1,0:1,0:ZDIM(1))
+REAL              :: Vdm_G_Corner(0:1,0:PP_N)
 #if PP_dim==3
 INTEGER           :: i
 REAL              :: refVec(3),scalProd,scalProdMax,zVec(3)
 #endif
 !===================================================================================================================================
 ! We need a Vandermonde matrix to get the GP coordinates on GL points, i.e. including the surface of the grid cells
-CALL GetVandermonde(PP_N,NodeType,PP_N,NodeTypeGL,Vdm_G_GL)
+CALL GetVandermonde(PP_N,NodeType,1,NodeTypeGL,Vdm_G_Corner)
 
 ! Loop over all boundary sides
 DO iSide=1,nBCSides
@@ -695,27 +695,27 @@ DO iSide=1,nBCSides
     locSideID     = SideToElem(S2E_LOC_SIDE_ID,iSide)
 
     ! Get element coordinates on GL points (they include the edges that we use to calculate the element length)
-    CALL ChangeBasisVolume(3,PP_N,PP_N,Vdm_G_GL,Elem_xGP(:,:,:,:,ElemID),NodeCoords)
+    CALL ChangeBasisVolume(3,PP_N,1,Vdm_G_Corner,Elem_xGP(:,:,:,:,ElemID),CornerCoords)
 
     ! Depending in the local sideID, get the edge vectors of the element in wall-normal direction (stored in yVec) and for the two
     ! wall-tangential directions (stored in tVec(:,1-2)). These vectors are the connection of the cell vertices, so they do not
     ! include any information about curvature!!!!
     SELECT CASE(locSideID)
     CASE(XI_MINUS,XI_PLUS)
-     yVec(:)   = NodeCoords(:,NGeo,0,0)- NodeCoords(:,0,0,0)
-     tVec(:,1) = NodeCoords(:,0,NGeo,0)- NodeCoords(:,0,0,0)
+     yVec(:)   = CornerCoords(:,1,0,0)- CornerCoords(:,0,0,0)
+     tVec(:,1) = CornerCoords(:,0,1,0)- CornerCoords(:,0,0,0)
 #if PP_dim==3
-     tVec(:,2) = NodeCoords(:,0,0,NGeo)- NodeCoords(:,0,0,0)
+     tVec(:,2) = CornerCoords(:,0,0,1)- CornerCoords(:,0,0,0)
 #endif
     CASE(ETA_MINUS,ETA_PLUS)
-     yVec(:)   = NodeCoords(:,0,NGeo,0)- NodeCoords(:,0,0,0)
-     tVec(:,1) = NodeCoords(:,NGeo,0,0)- NodeCoords(:,0,0,0)
+     yVec(:)   = CornerCoords(:,0,1,0)- CornerCoords(:,0,0,0)
+     tVec(:,1) = CornerCoords(:,1,0,0)- CornerCoords(:,0,0,0)
 #if PP_dim==3
-     tVec(:,2) = NodeCoords(:,0,0,NGeo)- NodeCoords(:,0,0,0)
+     tVec(:,2) = CornerCoords(:,0,0,1)- CornerCoords(:,0,0,0)
     CASE(ZETA_MINUS,ZETA_PLUS)
-     yVec(:)   = NodeCoords(:,0,0,NGeo)- NodeCoords(:,0,0,0)
-     tVec(:,1) = NodeCoords(:,NGeo,0,0)- NodeCoords(:,0,0,0)
-     tVec(:,2) = NodeCoords(:,0,NGeo,0)- NodeCoords(:,0,0,0)
+     yVec(:)   = CornerCoords(:,0,0,1)- CornerCoords(:,0,0,0)
+     tVec(:,1) = CornerCoords(:,1,0,0)- CornerCoords(:,0,0,0)
+     tVec(:,2) = CornerCoords(:,0,1,0)- CornerCoords(:,0,0,0)
 #endif
     END SELECT
 
@@ -758,7 +758,6 @@ DO iSide=1,nBCSides
       mu   = VISCOSITY_TEMPERATURE(temp)
       wallDistance(p,q,iSideVisu) = yloc(dir)*fricVel*Density(p,q,iSideVisu)/mu
     END DO; END DO ! p,q=0,Nloc
-
 
   END IF ! iSideVisu.GT.0
 END DO ! iSide = 1,nBCSides

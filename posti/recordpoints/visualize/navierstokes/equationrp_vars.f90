@@ -29,9 +29,15 @@ INTEGER,ALLOCATABLE                :: TransMap(:,:)                !< Mapping to
 LOGICAL,ALLOCATABLE                :: is2D(:)                      !< Indicating if one of those quantities is two dimensional
 ! BOUNDARY LAYER PROPERTIES --------------------------------------------------------------------------------------------------------
 INTEGER                            :: nBLProps                     !< Number of avariables for boundary layer properties
+INTEGER                            :: iPressure                    !< Possition of Pressure in RPVars
 CHARACTER(LEN=255),ALLOCATABLE     :: VarNames_BLProps(:)          !< Variable names of boundary layer properties
 REAL                               :: pInf                         !< Pressure used to calculate c_p
+REAL                               :: uInf                         !< Velocity used to calculate c_p
+REAL                               :: rhoInf                       !< Density used to calculate c_p
 
 LOGICAL                            :: EquationRPInitIsDone=.FALSE. !< Switch to signal that init is done
+INTEGER           :: IniExactFunc             !< Number of exact function used for initialization
+INTEGER           :: nRefState         !< number of refstates defined in parameter file
+REAL,ALLOCATABLE  :: RefStatePrim(:,:) !< refstates in primitive variables (as read from ini file)
 !===================================================================================================================================
 END MODULE MOD_EquationRP_Vars
