@@ -141,6 +141,7 @@ IF (ExtrudeTo3D) ExtrudeK = GETINT("ExtrudeK")
 
 ! Extrusion of a one-layer mesh to the 3D version
 ExtrudePeriodic = GETLOGICAL("ExtrudePeriodic",'.FALSE.')
+IF (ExtrudePeriodic) abortTol = HUGE(1.)
 
 ! Initialize the old mesh, store the mesh coordinates (transformed to CL points) and the number of elements as well as the old NGeo
 Time=FLEXITIME()

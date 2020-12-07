@@ -167,8 +167,6 @@ END IF
 
 ! Copy the data from the extrusion mesh to all other elements in the z direction
 IF (ExtrudePeriodic) THEN
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(iElemNew,iElemOld,L_xi,ii,jj,kk,L_eta,L_zeta,L_eta_zeta,Utmp,i,j,k)
-!$OMP DO
   DO iElemNew=1,nElemsNew
     IF (Elem_IJK(3,iElemNew).LE.nElemsOld_IJK(3)) CYCLE ! Skip the extrusion layer, already done
     ! Search for the corresponding element in the extrusion layer
@@ -182,8 +180,6 @@ IF (ExtrudePeriodic) THEN
     ! Copy data
     U(:,:,:,:,iElemNew) = U(:,:,:,:,iElemExtrusion)
   END DO
-!$OMP END DO
-!$OMP END PARALLEL
 END IF
 
 Time=OMP_FLEXITIME() -Time
