@@ -520,7 +520,7 @@ FUNCTION(add_lib target)
   SET_TARGET_PROPERTIES(${target} PROPERTIES PREFIX ""
                                              COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}
                                              LINKER_LANGUAGE Fortran)
-  INSTALL(PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${target} DESTINATION bin)
+  INSTALL(TARGETS ${target} DESTINATION lib)
   STRING(TOUPPER ${target} TARGETUP)
   ADD_CUSTOM_COMMAND(TARGET ${target} POST_BUILD COMMAND ${CMAKE_COMMAND} -E cmake_echo_color --cyan "SUCCESS: ${TARGETUP} BUILD COMPLETE!")
 ENDFUNCTION()
@@ -604,7 +604,7 @@ SET_TARGET_PROPERTIES(stacksizelib userblocklib PROPERTIES LINKER_LANGUAGE C
 
 # we link the statically built libs
 add_lib(libflexishared ./src/flexilib.f90)
-SET_TARGET_PROPERTIES(libflexishared PROPERTIES OUTPUT_NAME "libflexi")
+SET_TARGET_PROPERTIES(libflexishared PROPERTIES OUTPUT_NAME "libflexishared")
 ADD_DEPENDENCIES(libflexishared libflexistatic userblocklib stacksizelib ${INTERNALLIBS})
 add_exec(flexi ./src/flexi.f90)
 ADD_DEPENDENCIES(flexi libflexistatic userblocklib stacksizelib ${INTERNALLIBS})
