@@ -275,6 +275,7 @@ ENDIF()
 # =========================================================================
 # Ctags
 # =========================================================================
+mark_as_advanced([CLEAR|FORCE] CTAGS_PATH)
 FIND_PROGRAM(CTAGS_PATH ctags-exuberant)
 IF(CTAGS_PATH)
   SET(EQNS_WO_ACTUAL ${EQNSYSTEMS})

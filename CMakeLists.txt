@@ -40,6 +40,7 @@ SET(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib)
 SET(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib)
 
 # Set custom install dir (needs to be done after project has been defined!)
+mark_as_advanced([CLEAR|FORCE] CMAKE_INSTALL_PREFIX)
 IF(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
   SET(CMAKE_INSTALL_PREFIX "${CMAKE_CURRENT_SOURCE_DIR}" CACHE PATH "Prefix prepended to install directories" FORCE)
 ENDIF()
@@ -132,15 +133,15 @@ INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/src/CMakeLists.txt)
 # =========================================================================
 # Posti
 # =========================================================================
-OPTION(POSTI_BUILD "Build POSTI toolset" ON)
-IF(POSTI_BUILD)
+OPTION(POSTI "Build POSTI toolset" ON)
+IF(POSTI)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/CMakeLists.txt)
 ELSE()
   GETLISTOFVARSSTARTINGWITH("POSTI_" postiVars)
   FOREACH (_var IN LISTS postiVars)
     UNSET(${_var} CACHE)
   ENDFOREACH()
-  OPTION(POSTI_BUILD "Build POSTI toolset" OFF)
+  OPTION(POSTI "Build POSTI toolset" OFF)
 ENDIF()
 
 

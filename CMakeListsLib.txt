@@ -5,8 +5,8 @@
 # =========================================================================
 # MPI
 # =========================================================================
-OPTION(ENABLE_MPI "Compile SINGLE or MPI version" ON)
-IF(ENABLE_MPI)
+OPTION(LIBS_USE_MPI "Compile SINGLE or MPI version" ON)
+IF(LIBS_USE_MPI)
   FIND_PACKAGE(MPI REQUIRED)
   IF (NOT MPI_Fortran_NO_INTERROGATE)
     FOREACH(DIR ${MPI_INCLUDE_PATH})
@@ -29,11 +29,11 @@ ENDIF()
 # =========================================================================
 # HDF5 library
 # =========================================================================
-SET(   HDF5_BUILD ON  CACHE BOOL "Compile and build hdf5 library")
+SET(LIBS_BUILD_HDF5 ON  CACHE BOOL "Compile and build hdf5 library")
 SET(LIB_TYPE STATIC) # OR SHARED
 STRING(TOLOWER ${LIB_TYPE} SEARCH_TYPE)
 
-IF(ENABLE_MPI)
+IF(LIBS_USE_MPI)
   SET(FLEXI_EXTERNAL_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/share/${CMAKE_Fortran_COMPILER_ID}-MPI)
 ELSE()
   SET(FLEXI_EXTERNAL_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/share/${CMAKE_Fortran_COMPILER_ID})
@@ -46,7 +46,7 @@ MARK_AS_ADVANCED(FLEXI_EXTERNAL_LIB_DIR)
 # which require at CMake >3.10
 # Recommendations: use configure version if possible
 
-IF(NOT HDF5_BUILD)
+IF(NOT LIBS_BUILD_HDF5)
   SET(FLEXI_HDF5_CMAKE TRUE) # try to find the CMake version
   FIND_PACKAGE(HDF5 NAMES hdf5 COMPONENTS C Fortran ${SEARCH_TYPE} QUIET PATH_SUFFIXES share/cmake )
   IF (HDF5_FOUND)
@@ -61,6 +61,7 @@ IF(NOT HDF5_BUILD)
     FIND_PACKAGE(HDF5 COMPONENTS C Fortran)
   ENDIF()
 
+  mark_as_advanced([CLEAR|FORCE] HDF5_DIR)
 ELSE()
   # =========================================================================
   # Check whether we are on Github or at IAG
@@ -87,9 +88,10 @@ ELSE()
     SET (HDF5DOWNLOAD "https://github.com/HDFGroup/hdf5.git")
   ENDIF()
   SET (HDF5_DOWNLOAD ${HDF5DOWNLOAD} CACHE STRING "HDF5 Download-link")
+  mark_as_advanced([CLEAR|FORCE] HDF5_DOWNLOAD)
 
   #SET HDF5_TAG dependend on MPI Version
-  IF(ENABLE_MPI)
+  IF(LIBS_USE_MPI)
     IF (${MPI_Fortran_VERSION} VERSION_LESS "4.0.0")
       SET (HDF5_TAG "hdf5-1_10_5" CACHE STRING "HDF5 version tag")
     ELSE()
@@ -98,6 +100,7 @@ ELSE()
   ELSE()
     SET (HDF5_TAG "hdf5-1_12_0" CACHE STRING "HDF5 version tag")
   ENDIF()
+  mark_as_advanced([CLEAR|FORCE] HDF5_TAG)
 
 
   SET(FLEXI_HDF5_DLDIR ${FLEXI_EXTERNAL_LIB_DIR}/HDF5)
@@ -146,6 +149,7 @@ ELSE()
   SET(HDF5_DIFF_EXECUTABLE              ${FLEXI_HDF5_DIR}/bin/h5diff)
   LIST(APPEND HDF5_INCLUDE_DIR_FORTRAN ${HDF5_Fortran_INCLUDE_DIR} ${HDF5_C_INCLUDE_DIR})
   LIST(APPEND HDF5_INCLUDE_DIR  ${HDF5_C_INCLUDE_DIR})
+  mark_as_advanced([CLEAR|FORCE] HDF5_z_LIBRARY_RELEASE)
   FIND_LIBRARY(HDF5_z_LIBRARY_RELEASE z)
   LIST(APPEND HDF5_LIBRARIES ${HDF5_hdf5_fortran_LIBRARY_RELEASE} ${HDF5_hdf5_LIBRARY_RELEASE} ${HDF5_z_LIBRARY_RELEASE} -ldl)
 ENDIF()
@@ -164,8 +168,8 @@ ENDIF()
 # =========================================================================
 # use Lapack/Blas for GNU
 MESSAGE(STATUS "Using BLAS/Lapack library")
-OPTION(ENABLE_MKL "Use MKL libraries instead of BLAS/LAPACK" OFF)
-IF (ENABLE_MKL)
+OPTION(LIBS_USE_MKL "Use MKL libraries instead of BLAS/LAPACK" OFF)
+IF (LIBS_USE_MKL)
   SET(BLA_VENDOR "Intel") #search only for Intel BLAS (=MKL)
 ENDIF()
 FIND_PACKAGE(LAPACK QUIET)
@@ -177,8 +181,8 @@ ENDIF()
 # ========================================================================= 
 # PAPI library 
 # ========================================================================= 
-OPTION(ENABLE_PAPI "Use PAPI library to perform performance measurements (e.g. flop counts)." OFF)
-IF(ENABLE_PAPI)
+OPTION(LIBS_USE_PAPI "Use PAPI library to perform performance measurements (e.g. flop counts)." OFF)
+IF(LIBS_USE_PAPI)
   FIND_PACKAGE(PAPI REQUIRED)
   ADD_DEFINITIONS(-DPAPI) 
   LIST(APPEND linkedlibs ${PAPI_LIBRARIES})
@@ -187,4 +191,19 @@ IF(ENABLE_PAPI)
 ENDIF()
 
 
+# ========================================================================= 
+# OPENMP library
+# ========================================================================= 
+OPTION(LIBS_USE_OPENMP "Enable OpenMP" OFF)
+IF(LIBS_USE_OPENMP)
+  IF ("${CMAKE_VERSION}" VERSION_LESS 3.1.0)
+    MESSAGE(WARNING "For finding OpenMP Fortran flags at least CMake version 3.1.0 is required. Please specify flags manually or use newer CMake version.")
+  ENDIF()
+  FIND_PACKAGE(OpenMP REQUIRED)
+  SET (CMAKE_Fortran_FLAGS_DEBUG   "${CMAKE_Fortran_FLAGS_DEBUG}   ${OpenMP_Fortran_FLAGS}")
+  SET (CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS_RELEASE} ${OpenMP_Fortran_FLAGS}")
+  SET (CMAKE_CXX_FLAGS_DEBUG       "${CMAKE_CXX_FLAGS_DEBUG}       ${OpenMP_CXX_FLAGS}")
+  SET (CMAKE_CXX_FLAGS_RELEASE     "${CMAKE_CXX_FLAGS_RELEASE}     ${OpenMP_CXX_FLAGS}")
+  SET (CMAKE_EXE_LINKER_FLAGS      "${CMAKE_EXE_LINKER_FLAGS}      ${OpenMP_EXE_LINKER_FLAGS}")
+ENDIF()
 

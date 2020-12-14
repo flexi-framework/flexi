@@ -1,6 +1,7 @@
 # =========================================================================
 # Detect machine environements
 # =========================================================================
+mark_as_advanced([CLEAR|FORCE] CMAKE_HOSTNAME)
 SITE_NAME(CMAKE_HOSTNAME)
 STRING(FIND "${CMAKE_HOSTNAME}" "eslogin" ONHORNET)
 # Set options that need to be enabled BEFORE ANY PROJECT OR LANGUAGE COMMAND

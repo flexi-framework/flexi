@@ -2,29 +2,17 @@
 # POSTI
 # =========================================================================
 
-CMAKE_DEPENDENT_OPTION(POSTI_BUILD_VISU                  "Build the visu tool"                                ON  "POSTI_BUILD" OFF)
-CMAKE_DEPENDENT_OPTION(POSTI_BUILD_MERGETIMEAVERAGES     "Build the time-averaging tool"                      OFF "POSTI_BUILD" OFF)
-CMAKE_DEPENDENT_OPTION(POSTI_BUILD_DMD                   "Build the DMD tool"                                 OFF "POSTI_BUILD" OFF)
-CMAKE_DEPENDENT_OPTION(POSTI_BUILD_PREPARERECORDPOINTS   "Build the Record point preprocessing tool"          OFF "POSTI_BUILD" OFF)
-CMAKE_DEPENDENT_OPTION(POSTI_BUILD_VISUALIZERECORDPOINTS "Build the Record Point visualization tool"          OFF "POSTI_BUILD" OFF)
-CMAKE_DEPENDENT_OPTION(POSTI_BUILD_EVALUATERECORDPOINTS  "Build the Record Point aposteriori evaluation tool" OFF "POSTI_BUILD" OFF)
-CMAKE_DEPENDENT_OPTION(POSTI_BUILD_SWAPMESH              "Build the Swapmesh tool"                            OFF "POSTI_BUILD" OFF)
-CMAKE_DEPENDENT_OPTION(POSTI_BUILD_CHANNEL_FFT           "Build the channel FFT tool"                         OFF "POSTI_BUILD" OFF)
-CMAKE_DEPENDENT_OPTION(POSTI_BUILD_WALLDISTANCE          "Build the walldistance tool"                        OFF "POSTI_BUILD" OFF)
-CMAKE_DEPENDENT_OPTION(POSTI_BUILD_TO3D                  "Build the 3D extrusion tool"                        OFF "POSTI_BUILD" OFF)
-CMAKE_DEPENDENT_OPTION(POSTI_BUILD_AVG2D                 "Build the 2D average tool"                          OFF "POSTI_BUILD" OFF)
-OPTION(ENABLE_OPENMP "Enable OpenMP" OFF)
-IF(ENABLE_OPENMP)
-  IF ("${CMAKE_VERSION}" VERSION_LESS 3.1.0)
-    MESSAGE(WARNING "For finding OpenMP Fortran flags at least CMake version 3.1.0 is required. Please specify flags manually or use newer CMake version.")
-  ENDIF()
-  FIND_PACKAGE(OpenMP REQUIRED)
-  SET (CMAKE_Fortran_FLAGS_DEBUG   "${CMAKE_Fortran_FLAGS_DEBUG}   ${OpenMP_Fortran_FLAGS}")
-  SET (CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS_RELEASE} ${OpenMP_Fortran_FLAGS}")
-  SET (CMAKE_CXX_FLAGS_DEBUG       "${CMAKE_CXX_FLAGS_DEBUG}       ${OpenMP_CXX_FLAGS}")
-  SET (CMAKE_CXX_FLAGS_RELEASE     "${CMAKE_CXX_FLAGS_RELEASE}     ${OpenMP_CXX_FLAGS}")
-  SET (CMAKE_EXE_LINKER_FLAGS      "${CMAKE_EXE_LINKER_FLAGS}      ${OpenMP_EXE_LINKER_FLAGS}")
-ENDIF()
+CMAKE_DEPENDENT_OPTION(POSTI_VISU                  "Build the visu tool"                                ON  "POSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_MERGETIMEAVERAGES     "Build the time-averaging tool"                      OFF "POSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_DMD                   "Build the DMD tool"                                 OFF "POSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_RP_PREPARERE          "Build the Record Point preprocessing tool"          OFF "POSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_RP_VISUALIZE          "Build the Record Point visualization tool"          OFF "POSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_RP_EVALUATE           "Build the Record Point aposteriori evaluation tool" OFF "POSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_SWAPMESH              "Build the Swapmesh tool"                            OFF "POSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_CHANNEL_FFT           "Build the channel FFT tool"                         OFF "POSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_WALLDISTANCE          "Build the walldistance tool"                        OFF "POSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_TO3D                  "Build the 3D extrusion tool"                        OFF "POSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_AVG2D                 "Build the 2D average tool"                          OFF "POSTI" OFF)
 
 
 SET(   POSTI_WHICH_EQNSYS "navierstokes" CACHE STRING
@@ -32,7 +20,7 @@ SET(   POSTI_WHICH_EQNSYS "navierstokes" CACHE STRING
 SET(   POSTI_WHICH_EOS    "idealgas" CACHE STRING
                         "Used equation of state (idealgas)")
 
-IF(POSTI_BUILD_VISUALIZERECORDPOINTS OR POSTI_BUILD_CHANNEL_FFT)
+IF(POSTI_VISUALIZERECORDPOINTS OR POSTI_CHANNEL_FFT)
   # =========================================================================
   # FFTW (FFT tool)
   # =========================================================================
@@ -74,46 +62,46 @@ IF(POSTI_BUILD_VISUALIZERECORDPOINTS OR POSTI_BUILD_CHANNEL_FFT)
 ENDIF()
 
 
-IF(POSTI_BUILD_VISU)
+IF(POSTI_VISU)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/visu/CMakeLists.txt)
 ENDIF()
 
-IF(POSTI_BUILD_MERGETIMEAVERAGES)
+IF(POSTI_MERGETIMEAVERAGES)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/mergetimeaverages/CMakeLists.txt)
 ENDIF()
 
-IF(POSTI_BUILD_DMD)
+IF(POSTI_DMD)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/dmd/CMakeLists.txt)
 ENDIF()
 
-IF(POSTI_BUILD_PREPARERECORDPOINTS)
+IF(POSTI_RP_PREPARERE)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/recordpoints/prepare/CMakeLists.txt)
 ENDIF()
 
-IF(POSTI_BUILD_VISUALIZERECORDPOINTS)
+IF(POSTI_RP_VISUALIZERE)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/recordpoints/visualize/CMakeLists.txt)
 ENDIF()
 
-IF(POSTI_BUILD_EVALUATERECORDPOINTS)
+IF(POSTI_RP_EVALUATE)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/recordpoints/evaluate/CMakeLists.txt)
 ENDIF()
 
-IF(POSTI_BUILD_SWAPMESH)
+IF(POSTI_SWAPMESH)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/swapmesh/CMakeLists.txt)
 ENDIF()
 
-IF(POSTI_BUILD_CHANNEL_FFT)
+IF(POSTI_CHANNEL_FFT)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/channel_fft/CMakeLists.txt)
 ENDIF()
 
-IF(POSTI_BUILD_WALLDISTANCE)
+IF(POSTI_WALLDISTANCE)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/walldistance/CMakeLists.txt)
 ENDIF()
 
-IF(POSTI_BUILD_TO3D)
+IF(POSTI_TO3D)
 	INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/to3D/CMakeLists.txt)
 ENDIF()
 
-IF(POSTI_BUILD_AVG2D)
+IF(POSTI_AVG2D)
 	INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/avg2D/CMakeLists.txt)
 ENDIF()
