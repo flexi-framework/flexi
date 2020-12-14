@@ -13,6 +13,7 @@ stages:
   - build
   - reggie_checkin
   - reggie_nightly
+  - reggie_weekly
   - deploy
 
 
@@ -107,30 +108,30 @@ gnu_riemann:
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "reggie_weekly": Build and run more complex tests, basically complete simulatons
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
-#gnu_tgv:
-#  <<: *defaults_gnu
-#  stage: reggie_weekly
-#  script:
-#    - if [ -n "${DO_WEEKLY}" ]; then  cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/tgv -j 6; fi
-#
-#gnu_naca:
-#  <<: *defaults_gnu
-#  stage: reggie_weekly
-#  script:
-#    - if [ -n "${DO_WEEKLY}" ]; then  cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/naca -j 6; fi
-#
-#gnu_fv:
-#  <<: *defaults_gnu
-#  stage: reggie_weekly
-#  script:
-#    - if [ -n "${DO_WEEKLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/fv -j 6; fi 
-#
-#gnu_channelRANS:
-#  <<: *defaults_gnu
-#  stage: reggie_weekly
-#  script:
-#    - if [ -n "${DO_WEEKLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/channelRANS -j 6 ; fi 
- 
+gnu_tgv:
+  <<: *defaults_gnu
+  stage: reggie_weekly
+  script:
+    - if [ -n "${DO_WEEKLY}" ]; then  cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/tgv -j 6; fi
+
+gnu_naca:
+  <<: *defaults_gnu
+  stage: reggie_weekly
+  script:
+    - if [ -n "${DO_WEEKLY}" ]; then  cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/naca -j 6; fi
+
+gnu_fv:
+  <<: *defaults_gnu
+  stage: reggie_weekly
+  script:
+    - if [ -n "${DO_WEEKLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/fv -j 6; fi 
+
+gnu_channelRANS:
+  <<: *defaults_gnu
+  stage: reggie_weekly
+  script:
+    - if [ -n "${DO_WEEKLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/channelRANS -j 6 ; fi 
+
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "deploy": 1. Creates doxygen documentation & compiles the documentation creating the *.pdf
 #                 2. Copies the doxygen documentation and userguide *.pdf to the homepage server & copies the repository to github 
