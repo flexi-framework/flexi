@@ -58,7 +58,7 @@ USE MOD_Interpolation_Vars,    ONLY: NodeTypeCL
 USE MOD_ChangeBasis,           ONLY: ChangeBasis3D
 USE MOD_Mathtools,             ONLY: INVERSE
 #if USE_OPENMP
-use OMP_Lib
+USE OMP_Lib
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -133,7 +133,6 @@ IF(NgeoOld.EQ.NGeoNew) THEN
 !$OMP PARALLEL DEFAULT(SHARED)
 !$OMP DO PRIVATE(iElemOld,equal,iElemNew,i,j,k,dist) SCHEDULE(DYNAMIC,100)
   DO iElemOld=1,nElemsOld
-    !print*, OMP_get_thread_num()
     DO iElemNew=1,nElemsNew
       IF(ElemDone(iElemNew)) CYCLE
       equal=.FALSE.
