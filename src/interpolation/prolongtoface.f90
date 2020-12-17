@@ -75,6 +75,25 @@ CONTAINS
 END MODULE MOD_ProlongToFacePrim
 
 !==================================================================================================================================
+!> Contains routines to interpolate the primitive interior solution to the boundary
+!==================================================================================================================================
+MODULE MOD_ProlongToFaceLifting
+IMPLICIT NONE
+PRIVATE
+#undef WITHnVar
+INTEGER,PARAMETER :: TP_nVar = PP_nVarLifting
+
+INTERFACE ProlongToFaceLifting
+  MODULE PROCEDURE ProlongToFace
+END INTERFACE
+
+PUBLIC::ProlongToFaceLifting
+
+CONTAINS
+#include "prolongtoface.t90"
+END MODULE MOD_ProlongToFaceLifting
+
+!==================================================================================================================================
 !> Contains routines to interpolate a scalar interior solution to the boundary
 !==================================================================================================================================
 MODULE MOD_ProlongToFace1

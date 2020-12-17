@@ -167,7 +167,7 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrim                !< Solution vector
 !> Gradients in x,y,z directions
-REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: gradUx,gradUy,gradUz
+REAL,DIMENSION(PP_nVarLifting),INTENT(IN)  :: gradUx,gradUy,gradUz
 !> Physical fluxes in x,y,z directions
 REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: f,g,h
 #if EDDYVISCOSITY
@@ -192,17 +192,17 @@ lambda = lambda + muSGS*cp/PrSGS
 #endif
 
 ASSOCIATE( v1     => UPrim(2),  v2     => UPrim(3),  v3     => UPrim(4), &
-           gradT1 => GradUx(6), gradT2 => GradUy(6), gradT3 => GradUz(6) )
+           gradT1 => GradUx(LIFT_TEMP), gradT2 => GradUy(LIFT_TEMP), gradT3 => GradUz(LIFT_TEMP) )
 #if PP_dim==3
 ! gradients of primitive variables are directly available gradU = (/ drho, dv1, dv2, dv3, dT /)
 
 ! viscous fluxes in x-direction
-tau_xx = muS * ( s43 * gradUx(2) - s23 * gradUy(3) - s23 * gradUz(4)) ! 4/3*mu*u_x-2/3*mu*v_y -2/3*mu*w*z
-tau_yy = muS * (-s23 * gradUx(2) + s43 * gradUy(3) - s23 * gradUz(4)) !-2/3*mu*u_x+4/3*mu*v_y -2/3*mu*w*z
-tau_zz = muS * (-s23 * gradUx(2) - s23 * gradUy(3) + s43 * gradUz(4)) !-2/3*mu*u_x-2/3*mu*v_y +4/3*mu*w*z
-tau_xy = muS * (gradUy(2) + gradUx(3))               !mu*(u_y+v_x)
-tau_xz = muS * (gradUz(2) + gradUx(4))               !mu*(u_z+w_x)
-tau_yz = muS * (gradUz(3) + gradUy(4))               !mu*(y_z+w_y)
+tau_xx = muS * ( s43 * gradUx(LIFT_VEL1) - s23 * gradUy(LIFT_VEL2) - s23 * gradUz(LIFT_VEL3)) ! 4/3*mu*u_x-2/3*mu*v_y -2/3*mu*w*z
+tau_yy = muS * (-s23 * gradUx(LIFT_VEL1) + s43 * gradUy(LIFT_VEL2) - s23 * gradUz(LIFT_VEL3)) !-2/3*mu*u_x+4/3*mu*v_y -2/3*mu*w*z
+tau_zz = muS * (-s23 * gradUx(LIFT_VEL1) - s23 * gradUy(LIFT_VEL2) + s43 * gradUz(LIFT_VEL3)) !-2/3*mu*u_x-2/3*mu*v_y +4/3*mu*w*z
+tau_xy = muS * (gradUy(LIFT_VEL1) + gradUx(LIFT_VEL2))               !mu*(u_y+v_x)
+tau_xz = muS * (gradUz(LIFT_VEL1) + gradUx(LIFT_VEL3))               !mu*(u_z+w_x)
+tau_yz = muS * (gradUz(LIFT_VEL2) + gradUy(LIFT_VEL3))               !mu*(y_z+w_y)
 
 f(1) = 0.
 f(2) = -tau_xx                                       ! F_euler-4/3*mu*u_x+2/3*mu*(v_y+w_z)
@@ -225,9 +225,9 @@ h(5) = -tau_xz*v1-tau_yz*v2-tau_zz*v3-lambda*gradT3  ! F_euler-(tau_zx*u+tau_zy*
 ! gradients of primitive variables are directly available gradU = (/ drho, dv1, dv2, dv3, dT /)
 
 ! viscous fluxes in x-direction
-tau_xx = muS * ( s43 * gradUx(2) - s23 * gradUy(3))  ! 4/3*mu*u_x-2/3*mu*v_y -2/3*mu*w*z
-tau_yy = muS * (-s23 * gradUx(2) + s43 * gradUy(3))  !-2/3*mu*u_x+4/3*mu*v_y -2/3*mu*w*z
-tau_xy = muS * (gradUy(2) + gradUx(3))               !mu*(u_y+v_x)
+tau_xx = muS * ( s43 * gradUx(LIFT_VEL1) - s23 * gradUy(LIFT_VEL2))  ! 4/3*mu*u_x-2/3*mu*v_y -2/3*mu*w*z
+tau_yy = muS * (-s23 * gradUx(LIFT_VEL1) + s43 * gradUy(LIFT_VEL2))  !-2/3*mu*u_x+4/3*mu*v_y -2/3*mu*w*z
+tau_xy = muS * (gradUy(LIFT_VEL1) + gradUx(LIFT_VEL2))               !mu*(u_y+v_x)
 
 f(1) = 0.
 f(2) = -tau_xx                                       ! F_euler-4/3*mu*u_x+2/3*mu*(v_y+w_z)
@@ -260,7 +260,7 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ),INTENT(IN)  :: UPrim                !< Solution vector
 !> Gradients in x,y,z directions
-REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ),INTENT(IN)  :: gradUx,gradUy,gradUz
+REAL,DIMENSION(PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ),INTENT(IN)  :: gradUx,gradUy,gradUz
 !> Physical fluxes in x,y,z directions
 REAL,DIMENSION(PP_nVar    ,0:PP_N,0:PP_N,0:PP_NZ),INTENT(OUT) :: f,g,h
 INTEGER, INTENT(IN)                                           :: iElem                !< element index in global array
@@ -294,7 +294,7 @@ IMPLICIT NONE
 INTEGER                                        ,INTENT(IN)  :: Nloc                 !< Polynomial degree of input solution
 REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim                !< Solution vector
 !> Gradients in x,y,z directions
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: gradUx,gradUy,gradUz
+REAL,DIMENSION(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: gradUx,gradUy,gradUz
 !> Physical fluxes in x,y,z directions
 REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: f,g,h
 #if EDDYVISCOSITY

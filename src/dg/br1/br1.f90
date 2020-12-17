@@ -86,7 +86,7 @@ END SUBROUTINE DefineParametersLifting
 !> will be allocated and nullified if necessary.
 !>
 !> Note that the gradient arrays in x/y/z directions in the volume and on the surfaces contain the gradients of the primitive
-!> variables, i.e. they must be allocated for PP_nVarPrim variables, i.e. \f$ (\rho, u_1,u_2,u_3,p,T) \f$.
+!> variables, i.e. they must be allocated for PP_nVarLifting variables, i.e. \f$ (\rho, u_1,u_2,u_3,p,T) \f$.
 !==================================================================================================================================
 SUBROUTINE InitLifting()
 ! MODULES
@@ -118,12 +118,12 @@ IF(.NOT.doWeakLifting)&
   doConservativeLifting=GETLOGICAL('doConservativeLifting','.FALSE.')
 
 ! We store the interior gradients at the each element face
-ALLOCATE(gradUx_slave (PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides))
-ALLOCATE(gradUy_slave (PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides))
-ALLOCATE(gradUz_slave (PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides))
-ALLOCATE(gradUx_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides))
-ALLOCATE(gradUy_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides))
-ALLOCATE(gradUz_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides))
+ALLOCATE(gradUx_slave (PP_nVarLifting,0:PP_N,0:PP_NZ,1:nSides))
+ALLOCATE(gradUy_slave (PP_nVarLifting,0:PP_N,0:PP_NZ,1:nSides))
+ALLOCATE(gradUz_slave (PP_nVarLifting,0:PP_N,0:PP_NZ,1:nSides))
+ALLOCATE(gradUx_master(PP_nVarLifting,0:PP_N,0:PP_NZ,1:nSides))
+ALLOCATE(gradUy_master(PP_nVarLifting,0:PP_N,0:PP_NZ,1:nSides))
+ALLOCATE(gradUz_master(PP_nVarLifting,0:PP_N,0:PP_NZ,1:nSides))
 gradUx_slave=0.
 gradUy_slave=0.
 gradUz_slave=0.
@@ -132,9 +132,9 @@ gradUy_master=0.
 gradUz_master=0.
 
 ! The gradients of the conservative variables are stored at each volume integration point
-ALLOCATE(gradUx(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,nElems))
-ALLOCATE(gradUy(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,nElems))
-ALLOCATE(gradUz(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+ALLOCATE(gradUx(PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+ALLOCATE(gradUy(PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+ALLOCATE(gradUz(PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 gradUx=0.
 gradUy=0.
 gradUz=0.
@@ -174,10 +174,10 @@ USE MOD_Lifting_VolInt,     ONLY: Lifting_VolInt
 USE MOD_Lifting_FillFlux,   ONLY: Lifting_FillFlux,Lifting_FillFlux_BC,Lifting_FillFlux_NormVec
 USE MOD_DG_Vars,            ONLY: L_hatMinus,L_hatPlus
 USE MOD_Lifting_SurfInt,    ONLY: Lifting_SurfInt
-USE MOD_ProlongToFacePrim,  ONLY: ProlongToFacePrim
-USE MOD_ApplyJacobianPrim,  ONLY: ApplyJacobianPrim
+USE MOD_ProlongToFaceLifting,ONLY: ProlongToFaceLifting
+USE MOD_ApplyJacobianLifting,ONLY: ApplyJacobianLifting
 USE MOD_Interpolation_Vars, ONLY: L_Minus,L_Plus
-USE MOD_FillMortarPrim,     ONLY: U_MortarPrim,Flux_MortarPrim
+USE MOD_FillMortarLifting,  ONLY: U_MortarLifting,Flux_MortarLifting
 #if USE_MPI
 USE MOD_MPI_Vars
 USE MOD_MPI,                ONLY: StartReceiveMPIData,StartSendMPIData,FinishExchangeMPIData
@@ -186,9 +186,9 @@ USE MOD_Mesh_Vars,          ONLY: nSides,nElems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)    :: UPrim(  PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< solution vector for which lifted gradients will be computed
-REAL,INTENT(INOUT) :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< solution on the master sides
-REAL,INTENT(INOUT) :: UPrim_slave( PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< solution on the slave sides
+REAL,INTENT(IN)    :: UPrim( PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< solution vector for which lifted gradients will be computed
+REAL,INTENT(INOUT) :: UPrim_master(PP_nVarLifting,0:PP_N,0:PP_NZ,1:nSides) !< solution on the master sides
+REAL,INTENT(INOUT) :: UPrim_slave( PP_nVarLifting,0:PP_N,0:PP_NZ,1:nSides) !< solution on the slave sides
 REAL,INTENT(IN)    :: t                                                 !< current simulation time
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -198,11 +198,11 @@ REAL,INTENT(IN)    :: t                                                 !< curre
 ! ## DO NOT USE SAME STORAGE for transformed/untransformed fluxes, since NormVec can be applied before communication is finished ##
 #if USE_MPI
 ! Receive YOUR
-CALL StartReceiveMPIData(gradUz_slave,DataSizeSidePrim,1,nSides,MPIRequest_Flux(:,RECV),SendID=1)
+CALL StartReceiveMPIData(gradUz_slave,DataSizeSideGrad,1,nSides,MPIRequest_Flux(:,RECV),SendID=1)
 ! Compute lifting MPI fluxes
 CALL Lifting_FillFlux(   UPrim_master,UPrim_slave,gradUz_slave,doMPISides=.TRUE.)
 ! Start Send MINE
-CALL StartSendMPIData(   gradUz_slave,DataSizeSidePrim,1,nSides,MPIRequest_Flux(:,SEND),SendID=1)
+CALL StartSendMPIData(   gradUz_slave,DataSizeSideGrad,1,nSides,MPIRequest_Flux(:,SEND),SendID=1)
 #endif /*USE_MPI*/
 
 
@@ -225,10 +225,10 @@ CALL Lifting_FillFlux_NormVec(gradUz_slave,gradUx_master,gradUy_master,gradUz_ma
 
 ! Attention: we only have one Flux (gradUx/y/z_master) for the Lifting
 !            => input it to Flux_Mortar for both fluxes (master/slave)
-CALL Flux_MortarPrim(gradUx_master,gradUx_master,doMPISides=.FALSE.,weak=doWeakLifting)
-CALL Flux_MortarPrim(gradUy_master,gradUy_master,doMPISides=.FALSE.,weak=doWeakLifting)
+CALL Flux_MortarLifting(gradUx_master,gradUx_master,doMPISides=.FALSE.,weak=doWeakLifting)
+CALL Flux_MortarLifting(gradUy_master,gradUy_master,doMPISides=.FALSE.,weak=doWeakLifting)
 #if (PP_dim==3)
-CALL Flux_MortarPrim(gradUz_master,gradUz_master,doMPISides=.FALSE.,weak=doWeakLifting)
+CALL Flux_MortarLifting(gradUz_master,gradUz_master,doMPISides=.FALSE.,weak=doWeakLifting)
 #endif
 
 
@@ -244,10 +244,10 @@ CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Flux)
 CALL Lifting_FillFlux_NormVec(gradUz_slave,gradUx_master,gradUy_master,gradUz_master,doMPISides=.TRUE.)
 ! Attention: we only have one Flux (gradUx/y/z_master) for the Lifting
 !            => input it to Flux_Mortar for both fluxes (master/slave)
-CALL Flux_MortarPrim(gradUx_master,gradUx_master,doMPISides=.TRUE.,weak=doWeakLifting)
-CALL Flux_MortarPrim(gradUy_master,gradUy_master,doMPISides=.TRUE.,weak=doWeakLifting)
+CALL Flux_MortarLifting(gradUx_master,gradUx_master,doMPISides=.TRUE.,weak=doWeakLifting)
+CALL Flux_MortarLifting(gradUy_master,gradUy_master,doMPISides=.TRUE.,weak=doWeakLifting)
 #if (PP_dim==3)
-CALL Flux_MortarPrim(gradUz_master,gradUz_master,doMPISides=.TRUE.,weak=doWeakLifting)
+CALL Flux_MortarLifting(gradUz_master,gradUz_master,doMPISides=.TRUE.,weak=doWeakLifting)
 #endif
 ! compute surface integral contribution and add to ut
 CALL Lifting_SurfInt(PP_N,gradUx_master,gradUx,.TRUE.,L_hatMinus,L_hatPlus,weak=doWeakLifting)
@@ -260,44 +260,44 @@ CALL Lifting_SurfInt(PP_N,gradUz_master,gradUz,.TRUE.,L_hatMinus,L_hatPlus,weak=
 ! Account for the jacobian
 ! The Lifting already has the right sign
 ! For FV elements no Jacobian is needed here, since already applied in Lifting_Volint (hidden in FV_Metrics_f/g/hTilde_sJ)
-CALL ApplyJacobianPrim(gradUx,toPhysical=.TRUE.,FVE=0)
-CALL ApplyJacobianPrim(gradUy,toPhysical=.TRUE.,FVE=0)
+CALL ApplyJacobianLifting(gradUx,toPhysical=.TRUE.,FVE=0)
+CALL ApplyJacobianLifting(gradUy,toPhysical=.TRUE.,FVE=0)
 #if (PP_dim==3)
-CALL ApplyJacobianPrim(gradUz,toPhysical=.TRUE.,FVE=0)
+CALL ApplyJacobianLifting(gradUz,toPhysical=.TRUE.,FVE=0)
 #endif
 
 ! We need the gradients at the face of the grid cells
 #if USE_MPI
 ! Prolong to face for MPI sides - send direction
-CALL StartReceiveMPIData(gradUx_slave,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,1,RECV),SendID=2)
-CALL StartReceiveMPIData(gradUy_slave,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,2,RECV),SendID=2)
+CALL StartReceiveMPIData(gradUx_slave,DataSizeSideGrad,1,nSides,MPIRequest_gradU(:,1,RECV),SendID=2)
+CALL StartReceiveMPIData(gradUy_slave,DataSizeSideGrad,1,nSides,MPIRequest_gradU(:,2,RECV),SendID=2)
 #if (PP_dim==3)
-CALL StartReceiveMPIData(gradUz_slave,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,3,RECV),SendID=2)
+CALL StartReceiveMPIData(gradUz_slave,DataSizeSideGrad,1,nSides,MPIRequest_gradU(:,3,RECV),SendID=2)
 #endif
 
-CALL ProlongToFacePrim(PP_N,gradUx,gradUx_master,gradUx_slave,L_Minus,L_Plus,doMPISides=.TRUE.)
-CALL U_MortarPrim(gradUx_master,gradUx_slave,doMPISides=.TRUE.)
-CALL StartSendMPIData(   gradUx_slave,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,1,SEND),SendID=2)
-CALL ProlongToFacePrim(PP_N,gradUy,gradUy_master,gradUy_slave,L_Minus,L_Plus,doMPISides=.TRUE.)
-CALL U_MortarPrim(gradUy_master,gradUy_slave,doMPISides=.TRUE.)
-CALL StartSendMPIData(   gradUy_slave,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,2,SEND),SendID=2)
+CALL ProlongToFaceLifting(PP_N,gradUx,gradUx_master,gradUx_slave,L_Minus,L_Plus,doMPISides=.TRUE.)
+CALL U_MortarLifting(gradUx_master,gradUx_slave,doMPISides=.TRUE.)
+CALL StartSendMPIData(   gradUx_slave,DataSizeSideGrad,1,nSides,MPIRequest_gradU(:,1,SEND),SendID=2)
+CALL ProlongToFaceLifting(PP_N,gradUy,gradUy_master,gradUy_slave,L_Minus,L_Plus,doMPISides=.TRUE.)
+CALL U_MortarLifting(gradUy_master,gradUy_slave,doMPISides=.TRUE.)
+CALL StartSendMPIData(   gradUy_slave,DataSizeSideGrad,1,nSides,MPIRequest_gradU(:,2,SEND),SendID=2)
 #if (PP_dim==3)
-CALL ProlongToFacePrim(PP_N,gradUz,gradUz_master,gradUz_slave,L_Minus,L_Plus,doMPISides=.TRUE.)
-CALL U_MortarPrim(gradUz_master,gradUz_slave,doMPISides=.TRUE.)
-CALL StartSendMPIData(   gradUz_slave,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,3,SEND),SendID=2)
+CALL ProlongToFaceLifting(PP_N,gradUz,gradUz_master,gradUz_slave,L_Minus,L_Plus,doMPISides=.TRUE.)
+CALL U_MortarLifting(gradUz_master,gradUz_slave,doMPISides=.TRUE.)
+CALL StartSendMPIData(   gradUz_slave,DataSizeSideGrad,1,nSides,MPIRequest_gradU(:,3,SEND),SendID=2)
 #endif
 #endif /*USE_MPI*/
 
 ! Prolong to face for BCSides, InnerSides and MPI sides - receive direction
-CALL ProlongToFacePrim(PP_N,gradUx,gradUx_master,gradUx_slave,L_Minus,L_Plus,doMPISides=.FALSE.)
-CALL ProlongToFacePrim(PP_N,gradUy,gradUy_master,gradUy_slave,L_Minus,L_Plus,doMPISides=.FALSE.)
+CALL ProlongToFaceLifting(PP_N,gradUx,gradUx_master,gradUx_slave,L_Minus,L_Plus,doMPISides=.FALSE.)
+CALL ProlongToFaceLifting(PP_N,gradUy,gradUy_master,gradUy_slave,L_Minus,L_Plus,doMPISides=.FALSE.)
 #if (PP_dim==3)
-CALL ProlongToFacePrim(PP_N,gradUz,gradUz_master,gradUz_slave,L_Minus,L_Plus,doMPISides=.FALSE.)
+CALL ProlongToFaceLifting(PP_N,gradUz,gradUz_master,gradUz_slave,L_Minus,L_Plus,doMPISides=.FALSE.)
 #endif
-CALL U_MortarPrim(gradUx_master,gradUx_slave,doMPISides=.FALSE.)
-CALL U_MortarPrim(gradUy_master,gradUy_slave,doMPISides=.FALSE.)
+CALL U_MortarLifting(gradUx_master,gradUx_slave,doMPISides=.FALSE.)
+CALL U_MortarLifting(gradUy_master,gradUy_slave,doMPISides=.FALSE.)
 #if (PP_dim==3)
-CALL U_MortarPrim(gradUz_master,gradUz_slave,doMPISides=.FALSE.)
+CALL U_MortarLifting(gradUz_master,gradUz_slave,doMPISides=.FALSE.)
 #endif
 
 END SUBROUTINE Lifting
