@@ -17,7 +17,7 @@ IF(LIBS_USE_MPI)
     ENDFOREACH()
     LIST(APPEND linkedlibs ${MPI_Fortran_LIBRARIES})
   ENDIF()
-  MARK_AS_ADVANCED(MPI_LIBRARY MPI_EXTRA_LIBRARY) # don't show these ones
+  MARK_AS_ADVANCED(MPI_LIBRARY MPI_EXTRA_LIBRARY)
   MESSAGE(STATUS "Building Flexi with MPI")
   MESSAGE(STATUS "MPI Compiler: " ${MPI_Fortran_COMPILER})
   ADD_DEFINITIONS(-DUSE_MPI=1)
@@ -30,25 +30,21 @@ ENDIF()
 # HDF5 library
 # =========================================================================
 SET(LIBS_BUILD_HDF5 ON  CACHE BOOL "Compile and build hdf5 library")
-SET(LIB_TYPE STATIC) # OR SHARED
+
+# Set type of library to look up, STATIC/SHARED
+SET(LIB_TYPE STATIC)
 STRING(TOLOWER ${LIB_TYPE} SEARCH_TYPE)
 
-IF(LIBS_USE_MPI)
-  SET(FLEXI_EXTERNAL_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/share/${CMAKE_Fortran_COMPILER_ID}-MPI)
-ELSE()
-  SET(FLEXI_EXTERNAL_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/share/${CMAKE_Fortran_COMPILER_ID})
-ENDIF()
-MARK_AS_ADVANCED(FLEXI_EXTERNAL_LIB_DIR)
-
 # We support two methods for finding HDF5:
-# the version built using configure scripts and using CMake
-# Support for CMake-built HDF5 is limited to version >1.10.2
-# which require at CMake >3.10
-# Recommendations: use configure version if possible
+# a) the version built using configure scripts and b) using CMake
+# Support for CMake-built HDF5 is limited to version >1.10.2 which require at CMake >3.10
 
+# Use system HDF5
 IF(NOT LIBS_BUILD_HDF5)
-  SET(FLEXI_HDF5_CMAKE TRUE) # try to find the CMake version
-  FIND_PACKAGE(HDF5 NAMES hdf5 COMPONENTS C Fortran ${SEARCH_TYPE} QUIET PATH_SUFFIXES share/cmake )
+  # Try to find the CMake version
+  SET(LIBS_HDF5_CMAKE TRUE)
+  FIND_PACKAGE(HDF5 NAMES hdf5 COMPONENTS C Fortran ${SEARCH_TYPE} QUIET PATH_SUFFIXES share/cmake)
+  # CMake version found
   IF (HDF5_FOUND)
     IF(${CMAKE_VERSION} VERSION_LESS "3.10.0")
       MESSAGE (WARNING "HDF5 built with CMake was found! This feature is only supported for CMake 3.10+ and HDF5 1.10.2+ !")
@@ -57,41 +53,63 @@ IF(NOT LIBS_BUILD_HDF5)
     MESSAGE (STATUS "HDF5 Fortran libs: static:${HDF5_static_Fortran_FOUND} and shared:${HDF5_shared_Fortran_FOUND}")
     MESSAGE (STATUS "h5diff found:${HDF5_DIFF_EXECUTABLE}")
   ELSE()
-    SET(FLEXI_HDF5_CMAKE FALSE) # try to find the configure version
+    # Try to find the configure version
+    SET(LIBS_HDF5_CMAKE FALSE)
     FIND_PACKAGE(HDF5 COMPONENTS C Fortran)
+    # In case CMake did not find HDF5 here, it will generate an error by itself
   ENDIF()
+  MARK_AS_ADVANCED([CLEAR|FORCE] HDF5_DIR)
 
-  mark_as_advanced([CLEAR|FORCE] HDF5_DIR)
+# Build HDF5 in FLEXI
 ELSE()
-  # =========================================================================
-  # Check whether we are on Github or at IAG
-  # =========================================================================
-  EXECUTE_PROCESS(COMMAND git ls-remote --get-url OUTPUT_VARIABLE GIT_ORIGIN)
-  STRING(FIND "${GIT_ORIGIN}" ".iag.uni-stuttgart.de" HOMERUN)
-  STRING(FIND "${GIT_ORIGIN}" "git@" USESSH)
-#Test
-  SET (HOMERUN -1)
-  IF (HOMERUN GREATER -1)
-    IF(USESSH EQUAL 0)
-      SET(FLEXI_DLPATH "git@gitlab.iag.uni-stuttgart.de:")
-    ELSE()
-      SET(FLEXI_DLPATH "https://gitlabext.iag.uni-stuttgart.de/")
-    ENDIF()
-    SET (HDF5DOWNLOAD ${FLEXI_DLPATH}libs/hdf5.git )
+  # Set directory to compile external libraries
+  IF(USE_MPI)
+    SET(LIBS_EXTERNAL_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/share/${CMAKE_Fortran_COMPILER_ID}-MPI)
   ELSE()
-    IF(USESSH EQUAL 0)
-      SET(FLEXI_DLPATH "git@github.com:flexi-framework")
-    ELSE()
-      SET(FLEXI_DLPATH "https://github.com/flexi-framework")
+    SET(LIBS_EXTERNAL_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/share/${CMAKE_Fortran_COMPILER_ID})
+  ENDIF()
+  MARK_AS_ADVANCED(LIBS_EXTERNAL_LIB_DIR)
+
+  # Check whether origin is point to Github or IAG
+  EXECUTE_PROCESS(COMMAND git ls-remote --get-url OUTPUT_VARIABLE GIT_ORIGIN)
+  # Origin pointing to IAG
+  IF("${GIT_ORIGIN}" MATCHES ".iag.uni-stuttgart.de")
+    # Checked out using HTTPS
+    IF("${GIT_ORIGIN}" MATCHES "https@")
+      SET(LIBS_DLPATH "https://gitlabext.iag.uni-stuttgart.de/")
+    # Checked out using SSH
+    ELSEIF("${GIT_ORIGIN}" MATCHES "git@")
+      SET(LIBS_DLPATH "git@gitlab.iag.uni-stuttgart.de:")
     ENDIF()
-    #SET (HDF5DOWNLOAD https://bitbucket.hdfgroup.org/scm/hdffv/hdf5.git )
+    SET (HDF5DOWNLOAD ${LIBS_DLPATH}libs/hdf5.git )
+
+  # Origin pointing to ILA
+  ELSEIF("${GIT_ORIGIN}" MATCHES "ila.uni-stuttgart.de")
+    # Checked out using HTTPS
+    IF("${GIT_ORIGIN}" MATCHES "https@")
+      SET(LIBS_DLPATH "https://gitlab.ila.uni-stuttgart.de/")
+    # Checked out using SSH
+    ELSEIF("${GIT_ORIGIN}" MATCHES "git@")
+      SET(LIBS_DLPATH "git@gitlab.ila.uni-stuttgart.de:")
+    ENDIF()
+    SET (HDF5DOWNLOAD ${LIBS_DLPATH}libs/hdf5.git )
+
+  # Origin pointing to Github
+  ELSEIF("${GIT_ORIGIN}" MATCHES ".github.com")
+    # Checked out using HTTPS
+    IF("${GIT_ORIGIN}" MATCHES "https@")
+      SET(LIBS_DLPATH "https://github.com/flexi-framework")
+    # Checked out using SSH
+    ELSEIF("${GIT_ORIGIN}" MATCHES "git@")
+      SET(LIBS_DLPATH "git@github.com:flexi-framework")
+    ENDIF()
     SET (HDF5DOWNLOAD "https://github.com/HDFGroup/hdf5.git")
   ENDIF()
   SET (HDF5_DOWNLOAD ${HDF5DOWNLOAD} CACHE STRING "HDF5 Download-link")
-  mark_as_advanced([CLEAR|FORCE] HDF5_DOWNLOAD)
+  MARK_AS_ADVANCED([CLEAR|FORCE] HDF5_DOWNLOAD)
 
-  #SET HDF5_TAG dependend on MPI Version
-  IF(LIBS_USE_MPI)
+  #SET HDF5_TAG depending on MPI Version
+  IF(USE_MPI)
     IF (${MPI_Fortran_VERSION} VERSION_LESS "4.0.0")
       SET (HDF5_TAG "hdf5-1_10_5" CACHE STRING "HDF5 version tag")
     ELSE()
@@ -100,63 +118,78 @@ ELSE()
   ELSE()
     SET (HDF5_TAG "hdf5-1_12_0" CACHE STRING "HDF5 version tag")
   ENDIF()
-  mark_as_advanced([CLEAR|FORCE] HDF5_TAG)
+  MARK_AS_ADVANCED([CLEAR|FORCE] HDF5_TAG)
 
+  # Set HDF5 build dir
+  SET(LIBS_HDF5_DIR  ${LIBS_EXTERNAL_LIB_DIR}/HDF5/build)
 
-  SET(FLEXI_HDF5_DLDIR ${FLEXI_EXTERNAL_LIB_DIR}/HDF5)
-  SET(FLEXI_HDF5_DIR  ${FLEXI_HDF5_DLDIR}/build)
-  IF (NOT EXISTS "${FLEXI_HDF5_DIR}/lib/libhdf5.a")
-    IF(FLEXI_MPI)
-      SET(FLEXI_HDF5PARALLEL --enable-parallel)
-      SET(FLEXI_HDF5FC ${MPI_Fortran_COMPILER})
-      SET(FLEXI_HDF5CC ${MPI_C_COMPILER})
+  # Check if HDF5 was already build
+  IF (NOT EXISTS "${LIBS_HDF5_DIR}/lib/libhdf5.a")
+    # Set if HDF5 should be built in parallel
+    IF(USE_MPI)
+      SET(LIBS_HDF5PARALLEL --enable-parallel)
+      SET(LIBS_HDF5FC ${MPI_Fortran_COMPILER})
+      SET(LIBS_HDF5CC ${MPI_C_COMPILER})
     ELSE()
-      UNSET(FLEXI_HDF5PARALLEL)
-      SET(FLEXI_HDF5FC ${CMAKE_Fortran_COMPILER})
-      SET(FLEXI_HDF5CC ${CMAKE_C_COMPILER} )
+      UNSET(LIBS_HDF5PARALLEL)
+      SET(LIBS_HDF5FC ${CMAKE_Fortran_COMPILER})
+      SET(LIBS_HDF5CC ${CMAKE_C_COMPILER} )
     ENDIF()
-    #NOTE: old 1.8.X versions of HDF5 require additional flag --enable-fortran2003
+
+    # Let CMake take care of download, configure and build
     ExternalProject_Add(HDF5
       GIT_REPOSITORY ${HDF5_DOWNLOAD}
       GIT_TAG ${HDF5_TAG}
+      GIT_PROGRESS TRUE
       ${${GITSHALLOW}}
-      PREFIX ${FLEXI_HDF5_DIR}
+      PREFIX ${LIBS_HDF5_DIR}
       UPDATE_COMMAND ""
-      CONFIGURE_COMMAND FC=${FLEXI_HDF5FC} CC=${FLEXI_HDF5CC} ${FLEXI_HDF5_DIR}/src/HDF5/configure --prefix=${FLEXI_HDF5_DIR} --with-pic --enable-fortran ${FLEXI_HDF5PARALLEL} --libdir=${FLEXI_HDF5_DIR}/lib
+      CONFIGURE_COMMAND FC=${LIBS_HDF5FC} CC=${LIBS_HDF5CC} ${LIBS_HDF5_DIR}/src/HDF5/configure --prefix=${LIBS_HDF5_DIR} --with-pic --enable-fortran ${LIBS_HDF5PARALLEL} --libdir=${LIBS_HDF5_DIR}/lib
       BUILD_COMMAND ${MAKE}
     )
-    LIST(APPEND SELFBUILTEXTERNALS HDF5)
-    # CMake HDF5 is fast but not that reliable
+    SET(LIBS_HDF5_CMAKE FALSE)
+
+    # CMake HDF5 is fast but not yet reliable. The following section can be enabled once HDF5 promotes the CMake option to stable
     #ExternalProject_Add(HDF5
     #  GIT_REPOSITORY ${HDF5DOWNLOAD}
     #  GIT_TAG ${HDF5_TAG}
-    #  PREFIX ${FLEXI_HDF5_DIR}
+    #  GIT_PROGRESS TRUE
+    #  PREFIX ${LIBS_HDF5_DIR}
     #  UPDATE_COMMAND ""
-    #  CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${FLEXI_HDF5_DIR} -DCMAKE_C_COMPILER=${FLEXI_HDF5CC} -DCMAKE_Fortran_COMPILER=${FLEXI_HDF5FC} -DBUILD-TESTING=OFF -DHDF5_BUILD_EXAMPLES=OFF -DHDF5_BUILD_TOOLS=OFF -DHDF5_BUILD_FORTRAN=ON -DHDF5_ENABLE_PARALLEL=ON
+    #  CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${LIBS_HDF5_DIR} -DCMAKE_C_COMPILER=${LIBS_HDF5CC} -DCMAKE_Fortran_COMPILER=${LIBS_HDF5FC} -DBUILD-TESTING=OFF -DHDF5_BUILD_EXAMPLES=OFF -DHDF5_BUILD_TOOLS=OFF -DHDF5_BUILD_FORTRAN=ON -DHDF5_ENABLE_PARALLEL=ON
     #  BUILD_COMMAND ${MAKE}
     #)
+    # SET(LIBS_HDF5_CMAKE TRUE)
+
+    LIST(APPEND SELFBUILTEXTERNALS HDF5)
   ENDIF()
 
-  SET(FLEXI_HDF5_CMAKE FALSE)
-  SET(HDF5_hdf5_LIBRARY_RELEASE         ${FLEXI_HDF5_DIR}/lib/libhdf5.a)
-  SET(HDF5_hdf5_fortran_LIBRARY_RELEASE ${FLEXI_HDF5_DIR}/lib/libhdf5_fortran.a)
-  SET(HDF5_C_INCLUDE_DIR                ${FLEXI_HDF5_DIR}/include)
-  SET(HDF5_Fortran_INCLUDE_DIR          ${FLEXI_HDF5_DIR}/include)
+  # Set HDF5 paths
+  SET(HDF5_C_INCLUDE_DIR                ${LIBS_HDF5_DIR}/include)
+  SET(HDF5_DIFF_EXECUTABLE              ${LIBS_HDF5_DIR}/bin/h5diff)
+  SET(HDF5_Fortran_INCLUDE_DIR          ${LIBS_HDF5_DIR}/include)
+  SET(HDF5_hdf5_LIBRARY_RELEASE         ${LIBS_HDF5_DIR}/lib/libhdf5.a)
+  SET(HDF5_hdf5_fortran_LIBRARY_RELEASE ${LIBS_HDF5_DIR}/lib/libhdf5_fortran.a)
+  # Unset leftover paths from old CMake runs
   UNSET(HDF5_LIBRARIES)
   UNSET(HDF5_INCLUDE_DIR_FORTRAN)
   UNSET(HDF5_INCLUDE_DIR)
   UNSET(HDF5_DIFF_EXECUTABLE)
-  SET(HDF5_DIFF_EXECUTABLE              ${FLEXI_HDF5_DIR}/bin/h5diff)
+  # Add HDF5 path to include directories for linking
   LIST(APPEND HDF5_INCLUDE_DIR_FORTRAN ${HDF5_Fortran_INCLUDE_DIR} ${HDF5_C_INCLUDE_DIR})
   LIST(APPEND HDF5_INCLUDE_DIR  ${HDF5_C_INCLUDE_DIR})
-  mark_as_advanced([CLEAR|FORCE] HDF5_z_LIBRARY_RELEASE)
+  MARK_AS_ADVANCED([CLEAR|FORCE] HDF5_z_LIBRARY_RELEASE)
+  # Add ZLIB to include paths for HDF5 data compression
   FIND_LIBRARY(HDF5_z_LIBRARY_RELEASE z)
   LIST(APPEND HDF5_LIBRARIES ${HDF5_hdf5_fortran_LIBRARY_RELEASE} ${HDF5_hdf5_LIBRARY_RELEASE} ${HDF5_z_LIBRARY_RELEASE} -ldl)
 ENDIF()
 
-IF(FLEXI_HDF5_CMAKE)
+# Actually add the HDF5 paths (system/custom built) to the linking paths
+# HDF5 build with CMake
+IF(LIBS_HDF5_CMAKE)
   INCLUDE_DIRECTORIES(${HDF5_INCLUDE_DIR} ${HDF5_INCLUDE_DIR_FORTRAN})
   LIST(APPEND linkedlibs ${HDF5_C_${LIB_TYPE}_LIBRARY} ${HDF5_FORTRAN_${LIB_TYPE}_LIBRARY} )
+# HDF5 build with configure
 ELSE()
   INCLUDE_DIRECTORIES (${HDF5_INCLUDE_DIR_FORTRAN} ${HDF5_INCLUDE_DIR})
   MESSAGE(STATUS "Found HDF5 Libs: " ${HDF5_LIBRARIES})
@@ -166,34 +199,36 @@ ENDIF()
 # =========================================================================
 # LAPACK/MKL library
 # =========================================================================
-# use Lapack/Blas for GNU
-MESSAGE(STATUS "Using BLAS/Lapack library")
+# Check if Intel MKL is requested instead of BLAS/LAPACK
 OPTION(LIBS_USE_MKL "Use MKL libraries instead of BLAS/LAPACK" OFF)
 IF (LIBS_USE_MKL)
   SET(BLA_VENDOR "Intel") #search only for Intel BLAS (=MKL)
 ENDIF()
+
+# Use Lapack/Blas for GNU
 FIND_PACKAGE(LAPACK QUIET)
 IF (LAPACK_FOUND)
   LIST(APPEND linkedlibs ${LAPACK_LIBRARIES})
+  MESSAGE(STATUS "Using BLAS/Lapack library")
 ENDIF()
 
 
-# ========================================================================= 
-# PAPI library 
-# ========================================================================= 
+# =========================================================================
+# PAPI library
+# =========================================================================
 OPTION(LIBS_USE_PAPI "Use PAPI library to perform performance measurements (e.g. flop counts)." OFF)
 IF(LIBS_USE_PAPI)
   FIND_PACKAGE(PAPI REQUIRED)
-  ADD_DEFINITIONS(-DPAPI) 
+  ADD_DEFINITIONS(-DPAPI)
   LIST(APPEND linkedlibs ${PAPI_LIBRARIES})
   INCLUDE_DIRECTORIES(${PAPI_INCLUDE_DIRS})
-  MESSAGE(STATUS "Building Flexi with PAPI benchmark support.") 
+  MESSAGE(STATUS "Building Flexi with PAPI benchmark support.")
 ENDIF()
 
 
-# ========================================================================= 
+# =========================================================================
 # OPENMP library
-# ========================================================================= 
+# =========================================================================
 OPTION(LIBS_USE_OPENMP "Enable OpenMP" OFF)
 IF(LIBS_USE_OPENMP)
   IF ("${CMAKE_VERSION}" VERSION_LESS 3.1.0)

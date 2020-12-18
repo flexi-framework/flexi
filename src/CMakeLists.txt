@@ -154,6 +154,13 @@ ELSE()
 ENDIF()
 
 # =========================================================================
+# Unit test at end of compilation
+# =========================================================================
+IF(FLEXI_UNITTESTS)
+  INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/unitTests/CMakeLists.txt)
+ENDIF()
+
+# =========================================================================
 # Flexi sources & targets
 # =========================================================================
 FUNCTION(add_exec target)
@@ -174,14 +181,14 @@ FUNCTION(add_lib_shared target)
                                              LINKER_LANGUAGE Fortran)
   INSTALL(TARGETS ${target} LIBRARY PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
                                                 GROUP_READ GROUP_EXECUTE
-                                                WORLD_READ WORLD_EXECUTE 
+                                                WORLD_READ WORLD_EXECUTE
                             DESTINATION lib)
   STRING(TOUPPER ${target} TARGETUP)
   ADD_CUSTOM_COMMAND(TARGET ${target} POST_BUILD COMMAND ${CMAKE_COMMAND} -E cmake_echo_color --cyan "SUCCESS: ${TARGETUP} BUILD COMPLETE!")
 ENDFUNCTION()
 
-# include flexi.h 
-INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/src) 
+# include flexi.h
+INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 # collect all F90 files needed for flexilib, except the extra files below
 FILE(GLOB_RECURSE flexiF90 ./src/interpolation/*.f90
@@ -203,7 +210,7 @@ FILE(GLOB_RECURSE flexiF90 ./src/interpolation/*.f90
                            ./src/flexilib.f90
                            ./unitTests/unittest.f90
                            ./unitTests/unittest_vars.f90)
-# 
+#
 # The following files/directories where excluded from the above global recursive search,
 # since some of the subdirectories should only be included if the respective feature is enabled.
 
@@ -213,7 +220,7 @@ FILE(GLOB eqnsysF90        ./src/equations/${FLEXI_EQNSYSNAME}/*.f90)
 IF (WITHEOS GREATER 0)
   FILE(GLOB eosF90         ./src/equations/${FLEXI_EQNSYSNAME}/${FLEXI_EOS}/*.f90)
   LIST(APPEND eqnsysF90 ${eosF90})
-  INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/src/equations/${FLEXI_EQNSYSNAME}/${FLEXI_EOS}/) 
+  INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/src/equations/${FLEXI_EQNSYSNAME}/${FLEXI_EOS}/)
 ENDIF()
 # append F90 files of the eddy viscosity to 'eqnsysF90'-list
 IF (FLEXI_EDDYVISCOSITY)
@@ -236,7 +243,7 @@ ENDIF()
 # append 'dgF90'-list to 'flexiF90'-list
 LIST(APPEND flexiF90 ${dgF90})
 
-# collect F90 files of 'fv' directory (non-recursive) and append to 'flexiF90' list 
+# collect F90 files of 'fv' directory (non-recursive) and append to 'flexiF90' list
 IF (FLEXI_FV)
   FILE(GLOB fvF90 ./src/fv/*.f90)
   LIST(APPEND flexiF90 ${fvF90})
@@ -244,7 +251,7 @@ ENDIF()
 
 # define libs
 ADD_LIBRARY(libflexistaticF90 OBJECT ${flexiF90})
-SET_TARGET_PROPERTIES(libflexistaticF90 PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS}) 
+SET_TARGET_PROPERTIES(libflexistaticF90 PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS})
 ADD_LIBRARY(libflexistatic STATIC $<TARGET_OBJECTS:libflexistaticF90>)
 SET_TARGET_PROPERTIES(libflexistatic PROPERTIES PREFIX ""
                                      OUTPUT_NAME "libflexif90")
