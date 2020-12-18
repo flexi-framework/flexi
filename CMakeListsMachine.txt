@@ -16,7 +16,7 @@ SITE_NAME(CMAKE_HOSTNAME)
 GET_FILENAME_COMPONENT (Fortran_COMPILER_NAME ${CMAKE_Fortran_COMPILER} NAME)
 
 # HLRS HAWK
-IF ("${CMAKE_HOSTNAME}" MATCHES "login*")
+IF ("${CMAKE_HOSTNAME}" MATCHES "^login")
   MESSAGE(STATUS "Compiling on Hawk")
   SET(CMAKE_C_COMPILER       mpicc)
   SET(CMAKE_CXX_COMPILER     mpicxx)
@@ -31,19 +31,41 @@ IF ("${CMAKE_HOSTNAME}" MATCHES "login*")
   # Use AMD Optimized Lapack/BLAS
   # SET(BLA_VENDOR "FLAME")
 # IAG Prandtl
-ELSEIF("${CMAKE_HOSTNAME}" MATCHES "prandtl*")
+ELSEIF("${CMAKE_HOSTNAME}" MATCHES "^prandtl")
   MESSAGE(STATUS "Compiling on Prandtl")
   SET(CMAKE_C_COMPILER       gcc)
   SET(CMAKE_CXX_COMPILER     c++)
   SET(CMAKE_Fortran_COMPILER gfortran)
   MARK_AS_ADVANCED(C_PATH CXX_PATH Fortran_PATH)
 # IAG Grafik01/Grafik02
-ELSEIF ("${CMAKE_HOSTNAME}" MATCHES "grafik0*")
+ELSEIF ("${CMAKE_HOSTNAME}" MATCHES "^grafik0")
   MESSAGE(STATUS "Compiling on ${CMAKE_HOSTNAME}")
   SET(CMAKE_C_COMPILER       gcc)
   SET(CMAKE_CXX_COMPILER     c++)
   SET(CMAKE_Fortran_COMPILER gfortran)
   MARK_AS_ADVANCED(C_PATH CXX_PATH Fortran_PATH)
+ELSEIF ("${CMAKE_HOSTNAME}" MATCHES "^ilahead1")
+  MESSAGE(STATUS "Compiling on ILA cluster")
+  SET(CMAKE_C_COMPILER       gcc)
+  SET(CMAKE_CXX_COMPILER     c++)
+  SET(CMAKE_Fortran_COMPILER gfortran)
+  MARK_AS_ADVANCED(C_PATH CXX_PATH Fortran_PATH)
+  # Overwrite compiler target architecture
+  IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU" OR CMAKE_Fortran_COMPILER_ID MATCHES "Flang")
+    SET(FLEXI_INSTRUCTION "-march=core-avx2")
+  ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
+    SET(FLEXI_INSTRUCTION "-xCORE-AVX2")
+  ENDIF()
+  # Work around MPI-IO issue 4446 on machines mountng storage via NFS
+  ADD_DEFINITIONS(-DNFS)
+ELSEIF ("${CMAKE_HOSTNAME}" MATCHES "^xenon")
+  MESSAGE(STATUS "Compiling on ILA student cluster")
+  SET(CMAKE_C_COMPILER       gcc)
+  SET(CMAKE_CXX_COMPILER     c++)
+  SET(CMAKE_Fortran_COMPILER gfortran)
+  MARK_AS_ADVANCED(C_PATH CXX_PATH Fortran_PATH)
+  # Work around MPI-IO issue 4446 on machines mountng storage via NFS
+  ADD_DEFINITIONS(-DNFS)
 ENDIF()
 
 # =========================================================================
