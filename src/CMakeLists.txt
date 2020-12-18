@@ -47,7 +47,7 @@ ENDIF()
 
 # Enable or disable unit tests
 OPTION(FLEXI_UNITTESTS "Enable unit tests after build" ON)
-MARK_AS_ADVANCED(FLEXI_UNITTESTS)
+MARK_AS_ADVANCED(FORCE FLEXI_UNITTESTS)
 
 # SplitDG
 OPTION(FLEXI_SPLIT_DG "Use split DG formulation" OFF)
@@ -81,6 +81,7 @@ ENDIF()
 IF(WITHEOS GREATER 0)
   SET(FLEXI_EOS "idealgas" CACHE STRING "Used equation of state (idealgas/table)")
   SET_PROPERTY(CACHE FLEXI_EOS PROPERTY STRINGS idealgas)
+  MARK_AS_ADVANCED(FORCE FLEXI_EOS)
 ENDIF()
 
 IF (FLEXI_PARABOLIC)
@@ -282,7 +283,7 @@ ENDIF()
 # =========================================================================
 # Ctags
 # =========================================================================
-mark_as_advanced([CLEAR|FORCE] CTAGS_PATH)
+MARK_AS_ADVANCED(FORCE CTAGS_PATH)
 FIND_PROGRAM(CTAGS_PATH ctags-exuberant)
 IF(CTAGS_PATH)
   SET(EQNS_WO_ACTUAL ${EQNSYSTEMS})
