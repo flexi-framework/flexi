@@ -63,7 +63,7 @@ IF(NOT LIBS_BUILD_HDF5)
 # Build HDF5 in FLEXI
 ELSE()
   # Set directory to compile external libraries
-  IF(USE_MPI)
+  IF(LIBS_USE_MPI)
     SET(LIBS_EXTERNAL_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/share/${CMAKE_Fortran_COMPILER_ID}-MPI)
   ELSE()
     SET(LIBS_EXTERNAL_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/share/${CMAKE_Fortran_COMPILER_ID})
@@ -109,7 +109,7 @@ ELSE()
   MARK_AS_ADVANCED([CLEAR|FORCE] HDF5_DOWNLOAD)
 
   #SET HDF5_TAG depending on MPI Version
-  IF(USE_MPI)
+  IF(LIBS_USE_MPI)
     IF (${MPI_Fortran_VERSION} VERSION_LESS "4.0.0")
       SET (HDF5_TAG "hdf5-1_10_5" CACHE STRING "HDF5 version tag")
     ELSE()
@@ -126,7 +126,7 @@ ELSE()
   # Check if HDF5 was already build
   IF (NOT EXISTS "${LIBS_HDF5_DIR}/lib/libhdf5.a")
     # Set if HDF5 should be built in parallel
-    IF(USE_MPI)
+    IF(LIBS_USE_MPI)
       SET(LIBS_HDF5PARALLEL --enable-parallel)
       SET(LIBS_HDF5FC ${MPI_Fortran_COMPILER})
       SET(LIBS_HDF5CC ${MPI_C_COMPILER})
