@@ -15,12 +15,7 @@ CMAKE_DEPENDENT_OPTION(POSTI_TO3D                  "Build the 3D extrusion tool"
 CMAKE_DEPENDENT_OPTION(POSTI_AVG2D                 "Build the 2D average tool"                          OFF "POSTI" OFF)
 
 
-SET(   POSTI_WHICH_EQNSYS "navierstokes" CACHE STRING
-                        "Used equation system (navierstokes)")
-SET(   POSTI_WHICH_EOS    "idealgas" CACHE STRING
-                        "Used equation of state (idealgas)")
-
-IF(POSTI_VISUALIZERECORDPOINTS OR POSTI_CHANNEL_FFT)
+IF(POSTI_RP_VISUALIZE OR POSTI_CHANNEL_FFT)
   # =========================================================================
   # FFTW (FFT tool)
   # =========================================================================

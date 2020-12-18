@@ -1,8 +1,8 @@
 # =========================================================================
 # SWAPMESH
 # =========================================================================
-OPTION(ENABLE_OPENMP "Enable OpenMP for swapmesh tool" OFF)
-IF(ENABLE_OPENMP)
+OPTION(LIBS_USE_OPENMP "Enable OpenMP for swapmesh tool" OFF)
+IF(LIBS_USE_OPENMP)
   IF ("${CMAKE_VERSION}" VERSION_LESS 3.1.0)
     MESSAGE(WARNING "For finding OpenMP Fortran flags at least CMake version 3.1.0 is required. Please specify flags manually or use newer CMake version.")
   ENDIF()

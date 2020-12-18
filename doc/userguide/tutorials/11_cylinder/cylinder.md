@@ -15,8 +15,8 @@ Make sure that **FLEXI** is compiled with the CMake options listed in the follow
 | FLEXI_2D                           | ON            |              |
 | FLEXI_EQYNSYSNAME                  | navierstokes  |              |
 | FLEXI_PARABOLIC                    | ON            |              |
-| FLEXI_MPI                          | ON            |  optional    |
-| POSTI_BUILD_VISUALIZERECORDPOINTS  | ON            |              |
+| LIBS_USE_MPI                       | ON            |  optional    |
+| POSTI_RP_VISUALIZE                 | ON            |              |
 | POSTI_DMD                          | ON            |              |
 
 Table: Cmake options for the cylinder simulation. \label{tab:cylinder_cmakeoptions}
