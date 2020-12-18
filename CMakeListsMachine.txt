@@ -15,21 +15,39 @@ SITE_NAME(CMAKE_HOSTNAME)
 # FFLAGS depend on the compiler
 GET_FILENAME_COMPONENT (Fortran_COMPILER_NAME ${CMAKE_Fortran_COMPILER} NAME)
 
-# HLRS HAWK
+# HLRS HAWK / SuperMUC
 IF ("${CMAKE_HOSTNAME}" MATCHES "^login")
-  MESSAGE(STATUS "Compiling on Hawk")
   SET(CMAKE_C_COMPILER       mpicc)
   SET(CMAKE_CXX_COMPILER     mpicxx)
   SET(CMAKE_Fortran_COMPILER mpif90) # mpif08 wrapper seems to have issue
   MARK_AS_ADVANCED(C_PATH CXX_PATH Fortran_PATH)
-  # Overwrite compiler target architecture
-  IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU" OR CMAKE_Fortran_COMPILER_ID MATCHES "Flang")
-    SET(FLEXI_INSTRUCTION "-march=znver2")
-  ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
-    SET(FLEXI_INSTRUCTION "-xCORE-AVX2")
+
+  # HAWK and SuperMUC name their login nodes identically, so use OS distribution to identify
+  find_program(LSB_RELEASE_EXEC lsb_release)
+  execute_process(COMMAND ${LSB_RELEASE_EXEC} -is OUTPUT_VARIABLE LSB_RELEASE_ID_SHORT OUTPUT_STRIP_TRAILING_WHITESPACE)
+  # HLRS HAWK
+  IF (LSB_RELEASE_ID_SHORT MATCHES "CentOS")
+    MESSAGE(STATUS "Compiling on Hawk")
+    # Overwrite compiler target architecture
+    IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU" OR CMAKE_Fortran_COMPILER_ID MATCHES "Flang")
+      SET(FLEXI_INSTRUCTION "-march=znver2")
+    ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
+      SET(FLEXI_INSTRUCTION "-xCORE-AVX2")
+    ENDIF()
+    # Use AMD Optimized Lapack/BLAS
+    # SET(BLA_VENDOR "FLAME")
+  ELSEIF (LSB_RELEASE_ID_SHORT MATCHES "SUSE")
+    MESSAGE(STATUS "Compiling on SuperMUC")
+    # Overwrite compiler target architecture
+    IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU" OR CMAKE_Fortran_COMPILER_ID MATCHES "Flang")
+      SET(FLEXI_INSTRUCTION "-march=skylake-avx512")
+    ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
+      SET(FLEXI_INSTRUCTION "-xSKYLAKE-AVX512")
+    ENDIF()
   ENDIF()
-  # Use AMD Optimized Lapack/BLAS
-  # SET(BLA_VENDOR "FLAME")
+  # Set LUSTRE definition to account for filesystem and MPI implementation
+  ADD_DEFINITIONS(-DLUSTRE)
+
 # IAG Prandtl
 ELSEIF("${CMAKE_HOSTNAME}" MATCHES "^prandtl")
   MESSAGE(STATUS "Compiling on Prandtl")
@@ -37,6 +55,7 @@ ELSEIF("${CMAKE_HOSTNAME}" MATCHES "^prandtl")
   SET(CMAKE_CXX_COMPILER     c++)
   SET(CMAKE_Fortran_COMPILER gfortran)
   MARK_AS_ADVANCED(C_PATH CXX_PATH Fortran_PATH)
+
 # IAG Grafik01/Grafik02
 ELSEIF ("${CMAKE_HOSTNAME}" MATCHES "^grafik0")
   MESSAGE(STATUS "Compiling on ${CMAKE_HOSTNAME}")
@@ -44,6 +63,7 @@ ELSEIF ("${CMAKE_HOSTNAME}" MATCHES "^grafik0")
   SET(CMAKE_CXX_COMPILER     c++)
   SET(CMAKE_Fortran_COMPILER gfortran)
   MARK_AS_ADVANCED(C_PATH CXX_PATH Fortran_PATH)
+
 ELSEIF ("${CMAKE_HOSTNAME}" MATCHES "^ilahead1")
   MESSAGE(STATUS "Compiling on ILA cluster")
   SET(CMAKE_C_COMPILER       mpicc)
@@ -58,6 +78,7 @@ ELSEIF ("${CMAKE_HOSTNAME}" MATCHES "^ilahead1")
   ENDIF()
   # Work around MPI-IO issue 4446 on machines mountng storage via NFS
   ADD_DEFINITIONS(-DNFS)
+
 ELSEIF ("${CMAKE_HOSTNAME}" MATCHES "^xenon")
   MESSAGE(STATUS "Compiling on ILA student cluster")
   SET(CMAKE_C_COMPILER       mpicc)
