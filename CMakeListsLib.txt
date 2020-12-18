@@ -29,7 +29,7 @@ ENDIF()
 # =========================================================================
 # HDF5 library
 # =========================================================================
-SET(LIBS_BUILD_HDF5 ON  CACHE BOOL "Compile and build hdf5 library")
+SET(LIBS_BUILD_HDF5 ON CACHE BOOL "Compile and build hdf5 library")
 
 # Set type of library to look up, STATIC/SHARED
 SET(LIB_TYPE STATIC)
@@ -74,35 +74,30 @@ ELSE()
   EXECUTE_PROCESS(COMMAND git ls-remote --get-url OUTPUT_VARIABLE GIT_ORIGIN)
   # Origin pointing to IAG
   IF("${GIT_ORIGIN}" MATCHES ".iag.uni-stuttgart.de")
-    # Checked out using HTTPS
-    IF("${GIT_ORIGIN}" MATCHES "https@")
-      SET(LIBS_DLPATH "https://gitlabext.iag.uni-stuttgart.de/")
     # Checked out using SSH
-    ELSEIF("${GIT_ORIGIN}" MATCHES "git@")
+    IF("${GIT_ORIGIN}" MATCHES "^git@")
       SET(LIBS_DLPATH "git@gitlab.iag.uni-stuttgart.de:")
+    # Checked out using HTTPS
+    # IF("${GIT_ORIGIN}" MATCHES "^https@")
+    ELSE()
+      SET(LIBS_DLPATH "https://gitlabext.iag.uni-stuttgart.de/")
     ENDIF()
     SET (HDF5DOWNLOAD ${LIBS_DLPATH}libs/hdf5.git )
 
   # Origin pointing to ILA
   ELSEIF("${GIT_ORIGIN}" MATCHES "ila.uni-stuttgart.de")
-    # Checked out using HTTPS
-    IF("${GIT_ORIGIN}" MATCHES "https@")
-      SET(LIBS_DLPATH "https://gitlab.ila.uni-stuttgart.de/")
     # Checked out using SSH
-    ELSEIF("${GIT_ORIGIN}" MATCHES "git@")
+    IF("${GIT_ORIGIN}" MATCHES "^git@")
       SET(LIBS_DLPATH "git@gitlab.ila.uni-stuttgart.de:")
+    # Checked out using HTTPS
+    # IF("${GIT_ORIGIN}" MATCHES "^https@")
+    ELSE()
+      SET(LIBS_DLPATH "https://gitlab.ila.uni-stuttgart.de/")
     ENDIF()
     SET (HDF5DOWNLOAD ${LIBS_DLPATH}libs/hdf5.git )
 
   # Origin pointing to Github
   ELSEIF("${GIT_ORIGIN}" MATCHES ".github.com")
-    # Checked out using HTTPS
-    IF("${GIT_ORIGIN}" MATCHES "https@")
-      SET(LIBS_DLPATH "https://github.com/flexi-framework")
-    # Checked out using SSH
-    ELSEIF("${GIT_ORIGIN}" MATCHES "git@")
-      SET(LIBS_DLPATH "git@github.com:flexi-framework")
-    ENDIF()
     SET (HDF5DOWNLOAD "https://github.com/HDFGroup/hdf5.git")
   ENDIF()
   SET (HDF5_DOWNLOAD ${HDF5DOWNLOAD} CACHE STRING "HDF5 Download-link")
@@ -111,7 +106,7 @@ ELSE()
   #SET HDF5_TAG depending on MPI Version
   IF(LIBS_USE_MPI)
     IF (${MPI_Fortran_VERSION} VERSION_LESS "4.0.0")
-      SET (HDF5_TAG "hdf5-1_10_5" CACHE STRING "HDF5 version tag")
+      SET (HDF5_TAG "hdf5-1_10_6" CACHE STRING "HDF5 version tag")
     ELSE()
       SET (HDF5_TAG "hdf5-1_12_0" CACHE STRING "HDF5 version tag")
     ENDIF()

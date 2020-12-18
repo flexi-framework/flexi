@@ -36,6 +36,7 @@ IF ("${CMAKE_HOSTNAME}" MATCHES "^login")
     ENDIF()
     # Use AMD Optimized Lapack/BLAS
     # SET(BLA_VENDOR "FLAME")
+  # SuperMUC
   ELSEIF (LSB_RELEASE_ID_SHORT MATCHES "SUSE")
     MESSAGE(STATUS "Compiling on SuperMUC")
     # Overwrite compiler target architecture
@@ -43,6 +44,8 @@ IF ("${CMAKE_HOSTNAME}" MATCHES "^login")
       SET(FLEXI_INSTRUCTION "-march=skylake-avx512")
     ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
       SET(FLEXI_INSTRUCTION "-xSKYLAKE-AVX512")
+      # Explicitely enable usage of AVX512 registers
+      SET (CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -qopt-zmm-usage=high"}
     ENDIF()
   ENDIF()
   # Set LUSTRE definition to account for filesystem and MPI implementation
@@ -76,7 +79,7 @@ ELSEIF ("${CMAKE_HOSTNAME}" MATCHES "^ilahead1")
   ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
     SET(FLEXI_INSTRUCTION "-xCORE-AVX2")
   ENDIF()
-  # Work around MPI-IO issue 4446 on machines mountng storage via NFS
+  # Work around MPI-IO issue 4446 on machines mounting storage via NFS
   ADD_DEFINITIONS(-DNFS)
 
 ELSEIF ("${CMAKE_HOSTNAME}" MATCHES "^xenon")
