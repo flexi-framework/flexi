@@ -45,7 +45,7 @@ IF ("${CMAKE_HOSTNAME}" MATCHES "^login")
     ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
       SET(FLEXI_INSTRUCTION "-xSKYLAKE-AVX512")
       # Explicitely enable usage of AVX512 registers
-      SET (CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -qopt-zmm-usage=high"}
+      SET (CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -qopt-zmm-usage=high")
     ENDIF()
   ENDIF()
   # Set LUSTRE definition to account for filesystem and MPI implementation
