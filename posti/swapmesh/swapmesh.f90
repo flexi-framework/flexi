@@ -319,12 +319,12 @@ CALL GetVandermonde(NGeoOld,NodeTypeCL,NSuper,NodeTypeVISU,Vdm_CLNGeo_EquiNSuper
 
 ! Vandermonde from interpolation CL to new solution G/GL
 ALLOCATE(Vdm_CLNInter_GPNNew(0:NNew,0:NInter))
-CALL GetVandermonde(NInter,NodeTypeCL,NNew,NodeTypeState,Vdm_CLNInter_GPNNew)
+CALL GetVandermonde(NInter,NodeTypeCL,NNew,NodeType,Vdm_CLNInter_GPNNew)
 
 ! Vandermonde for direct interpolation in equal elements
 IF(NNew.NE.NState)THEN
   ALLOCATE(Vdm_GPNState_GPNNew(0:NNew,0:NState))
-  CALL GetVandermonde(NState,NodeTypeState,NNew,NodeTypeState,Vdm_GPNState_GPNNew)
+  CALL GetVandermonde(NState,NodeTypeState,NNew,NodeType,Vdm_GPNState_GPNNew)
 END IF
 
 IF(NGeoNew.NE.NInter)THEN

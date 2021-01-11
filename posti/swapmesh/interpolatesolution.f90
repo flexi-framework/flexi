@@ -92,7 +92,7 @@ DO iElemNew=1,nElemsNew
   ! equal elements
   IF(equalElem(iElemNew).GT.0) THEN
     iElemOld=equalElem(iElemNew)
-    IF(NState.EQ.Nnew)THEN
+    IF(NState.EQ.NNew)THEN
       U(:,:,:,:,iElemNew)=UOld(:,:,:,:,iElemOld)
     ELSE
       CALL ChangeBasisVolume(nVar_State,NState,NNew,Vdm_GPNState_GPNNew,UOld(:,:,:,:,iElemOld),U(:,:,:,:,iElemNew))
