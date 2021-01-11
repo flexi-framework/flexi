@@ -382,8 +382,8 @@ DO iElem=1,nElems
       wavenumber=kw-1
       IF (kw.GE.Nc+2) wavenumber=-(2*Nc+1-kw)
       basis=EXP(II*(wavenumber)*Elem_xGP(3,0,0,k,iElem))
-      DO iw=1,endw(1)
-        DO jw=1,endw(2)
+      DO jw=1,endw(2)
+        DO iw=1,endw(1)
           U_k(:,iw,jw,k) = U_k(:,iw,jw,k)+U_FFT(:,iw,jw,kw)*basis
         END DO !k
       END DO !kw
