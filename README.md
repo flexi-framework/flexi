@@ -1,6 +1,5 @@
 # FLEXI
 
-[![build status](https://gitlabext.iag.uni-stuttgart.de/flexi/flexi/badges/master/pipeline.svg)](https://gitlabext.iag.uni-stuttgart.de/flexi/flexi/builds/)
 [![license](https://img.shields.io/github/license/flexi-framework/flexi.svg?maxAge=2592000)]()
 
 FLEXI is a high-order numerical framework for solving PDEs,
