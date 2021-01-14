@@ -305,7 +305,11 @@ REAL,INTENT(IN)             :: avgTime      !< averaged time
 INTEGER             :: globsize(1:maxDim)
 INTEGER,ALLOCATABLE :: offset2(:)
 !===================================================================================================================================
+#ifdef FLANG
+IF (MPIRoot) CALL SYSTEM("cp -f "//TRIM(filename_in)//" "//TRIM(filename_out))
+#else
 IF (MPIRoot) CALL EXECUTE_COMMAND_LINE("cp -f "//TRIM(filename_in)//" "//TRIM(filename_out))
+#endif
 #if USE_MPI
 CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
 #endif

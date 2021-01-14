@@ -368,7 +368,7 @@ CASE(3,4,9,91,23,24,25,27)
     MaOut=RefStatePrim(2,BCState)
     DO q=0,ZDIM(Nloc); DO p=0,Nloc
       c=SQRT(kappa*UPrim_boundary(5,p,q)/UPrim_boundary(1,p,q))
-      vmag=NORM2(UPrim_boundary(2:4,p,q))
+      vmag=SQRT(DOT_PRODUCT(UPrim_boundary(2:4,p,q),UPrim_boundary(2:4,p,q)))
       Ma=vmag/c
       cb=vmag/MaOut
       IF(Ma<1)THEN

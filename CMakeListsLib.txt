@@ -20,6 +20,10 @@ IF(LIBS_USE_MPI)
   MARK_AS_ADVANCED(FORCE MPI_LIBRARY MPI_EXTRA_LIBRARY)
   MESSAGE(STATUS "Building Flexi with MPI")
   MESSAGE(STATUS "MPI Compiler: " ${MPI_Fortran_COMPILER})
+  # Detect HPE MPT implementation since if changes some MPI definitions
+  IF("${MPI_Fortran_COMPILER}" MATCHES "mpt")
+    ADD_DEFINITIONS(-DLIBS_MPT=1)
+  END IF
   ADD_DEFINITIONS(-DUSE_MPI=1)
 ELSE()
   ADD_DEFINITIONS(-DUSE_MPI=0)
