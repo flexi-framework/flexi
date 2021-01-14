@@ -23,7 +23,7 @@ IF(LIBS_USE_MPI)
   # Detect HPE MPT implementation since if changes some MPI definitions
   IF("${MPI_Fortran_COMPILER}" MATCHES "mpt")
     ADD_DEFINITIONS(-DLIBS_MPT=1)
-  END IF
+  ENDIF()
   ADD_DEFINITIONS(-DUSE_MPI=1)
 ELSE()
   ADD_DEFINITIONS(-DUSE_MPI=0)
