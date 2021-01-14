@@ -58,6 +58,8 @@ ELSEIF("${CMAKE_HOSTNAME}" MATCHES "^prandtl")
   SET(CMAKE_CXX_COMPILER     c++)
   SET(CMAKE_Fortran_COMPILER gfortran)
   MARK_AS_ADVANCED(FORCE C_PATH CXX_PATH Fortran_PATH)
+  # Set LUSTRE definition to account for filesystem
+  ADD_DEFINITIONS(-DLUSTRE)
 
 # IAG Grafik01/Grafik02
 ELSEIF ("${CMAKE_HOSTNAME}" MATCHES "^grafik0")
