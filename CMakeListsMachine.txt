@@ -16,7 +16,7 @@ SITE_NAME(CMAKE_HOSTNAME)
 GET_FILENAME_COMPONENT (Fortran_COMPILER_NAME ${CMAKE_Fortran_COMPILER} NAME)
 
 # HLRS HAWK / SuperMUC
-IF ("${CMAKE_HOSTNAME}" MATCHES "^login")
+IF ("${CMAKE_HOSTNAME}" MATCHES "login")
   SET(CMAKE_C_COMPILER       mpicc)
   SET(CMAKE_CXX_COMPILER     mpicxx)
   SET(CMAKE_Fortran_COMPILER mpif90) # mpif08 wrapper seems to have issue
