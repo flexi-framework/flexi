@@ -1,12 +1,12 @@
 before_script:
-  - export PATH=/opt/openmpi/3.1.3/bin:$PATH
-  - export LD_LIBRARY_PATH=/opt/openmpi/3.1.3/lib/:$LD_LIBRARY_PATH
-  - export CMAKE_PREFIX_PATH=/opt/openmpi/3.1.3/share/cmake:$CMAKE_PREFIX_PATH
-  - export CMAKE_LIBRARY_PATH=/opt/openmpi/3.1.3/lib:$CMAKE_LIBRARY_PATH
-  - export HDF5_DIR=/opt/hdf5/1.10.5/share/cmake/
-  - export LD_LIBRARY_PATH=/opt/hdf5/1.10.5/lib/:$LD_LIBRARY_PATH
-  - export CMAKE_PREFIX_PATH=/opt/hdf5/1.10.5/:$CMAKE_PREFIX_PATH
-  - export CMAKE_LIBRARY_PATH=/opt/hdf5/1.10.5/lib:$CMAKE_LIBRARY_PATH
+  - export PATH=/opt/openmpi/4.1.0/bin:$PATH
+  - export LD_LIBRARY_PATH=/opt/openmpi/4.1.0/lib/:$LD_LIBRARY_PATH
+  - export CMAKE_PREFIX_PATH=/opt/openmpi/4.1.0/share/cmake:$CMAKE_PREFIX_PATH
+  - export CMAKE_LIBRARY_PATH=/opt/openmpi/4.1.0/lib:$CMAKE_LIBRARY_PATH
+  - export HDF5_DIR=/opt/hdf5/1.12.0/share/cmake/
+  - export LD_LIBRARY_PATH=/opt/hdf5/1.12.0/lib/:$LD_LIBRARY_PATH
+  - export CMAKE_PREFIX_PATH=/opt/hdf5/1.12.0/:$CMAKE_PREFIX_PATH
+  - export CMAKE_LIBRARY_PATH=/opt/hdf5/1.12.0/lib:$CMAKE_LIBRARY_PATH
   - export FFTW_DIR=/opt/fftw/
 
 stages:
