@@ -2,21 +2,11 @@
 # Detect machine environements
 # =========================================================================
 
-# Set compiler target architecture
-IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU" OR CMAKE_Fortran_COMPILER_ID MATCHES "Flang" )
-  SET(FLEXI_INSTRUCTION "-march=native")
-ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
-  SET(FLEXI_INSTRUCTION "-xHost")
-ENDIF()
-
 mark_as_advanced([CLEAR|FORCE] CMAKE_HOSTNAME)
 SITE_NAME(CMAKE_HOSTNAME)
 
-# FFLAGS depend on the compiler
-GET_FILENAME_COMPONENT (Fortran_COMPILER_NAME ${CMAKE_Fortran_COMPILER} NAME)
-
 # HLRS HAWK / SuperMUC
-IF ("${CMAKE_HOSTNAME}" MATCHES "^login")
+IF ("${CMAKE_HOSTNAME}" MATCHES "login")
   SET(CMAKE_C_COMPILER       mpicc)
   SET(CMAKE_CXX_COMPILER     mpicxx)
   SET(CMAKE_Fortran_COMPILER mpif90) # mpif08 wrapper seems to have issue
@@ -94,9 +84,23 @@ ELSEIF ("${CMAKE_HOSTNAME}" MATCHES "^xenon")
   ADD_DEFINITIONS(-DNFS)
 ENDIF()
 
+
 # =========================================================================
 # COMPILER FLAGS
 # =========================================================================
+
+ENABLE_LANGUAGE(Fortran C)
+
+# Set compiler target architecture
+IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU" OR CMAKE_Fortran_COMPILER_ID MATCHES "Flang" )
+  SET(FLEXI_INSTRUCTION "-march=native")
+ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
+  SET(FLEXI_INSTRUCTION "-xHost")
+ENDIF()
+
+# FFLAGS depend on the compiler
+GET_FILENAME_COMPONENT (Fortran_COMPILER_NAME ${CMAKE_Fortran_COMPILER} NAME)
+
 # GNU Compiler Collection (GCC)
 IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
   # set Flags (disable lto type warnings due to false positives with MATMUL, which is a known bug)
@@ -150,4 +154,3 @@ set(CMAKE_Fortran_FLAGS            "${CMAKE_Fortran_FLAGS}"          CACHE STRIN
 set(CMAKE_Fortran_FLAGS_RELEASE    "${CMAKE_Fortran_FLAGS_RELEASE}"  CACHE STRING "Release compiler flags" FORCE)
 set(CMAKE_Fortran_FLAGS_PROFILE    "${CMAKE_Fortran_FLAGS_PROFILE}"  CACHE STRING "Profile compiler flags" FORCE)
 set(CMAKE_Fortran_FLAGS_DEBUG      "${CMAKE_Fortran_FLAGS_DEBUG}"    CACHE STRING "Debug compiler flags"   FORCE)
-

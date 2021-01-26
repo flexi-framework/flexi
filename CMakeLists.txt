@@ -17,12 +17,15 @@ SET_PROPERTY(GLOBAL PROPERTY USE_FOLDERS ON)
 INCLUDE(ExternalProject)
 INCLUDE(CMakeDependentOption)
 
+# =========================================================================
+# Machine environment
+# =========================================================================
+INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/CMakeListsMachine.txt)
 
 # =========================================================================
 # Project definitions and output paths
 # =========================================================================
 PROJECT(Flexi)
-ENABLE_LANGUAGE(Fortran C)
 
 # Check IPO support:
 # we need to have languages enabled and compilers defined for this
@@ -66,11 +69,6 @@ ELSE()
     SET(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)  # enable IPO globally
   ENDIF()
 ENDIF()
-
-# =========================================================================
-# Machine environment
-# =========================================================================
-INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/CMakeListsMachine.txt)
 
 # =========================================================================
 # Location of binary and filenames
