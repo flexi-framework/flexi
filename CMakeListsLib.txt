@@ -2,6 +2,44 @@
 # Add the libraries
 # =========================================================================
 
+# Set directory to compile external libraries
+IF(LIBS_USE_MPI)
+  SET(LIBS_EXTERNAL_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/share/${CMAKE_Fortran_COMPILER_ID}-MPI)
+ELSE()
+  SET(LIBS_EXTERNAL_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/share/${CMAKE_Fortran_COMPILER_ID})
+ENDIF()
+MARK_AS_ADVANCED(FORCE LIBS_EXTERNAL_LIB_DIR)
+
+
+# Check whether origin is point to Github or IAG
+EXECUTE_PROCESS(COMMAND git ls-remote --get-url OUTPUT_VARIABLE GIT_ORIGIN)
+
+# Origin pointing to IAG
+IF("${GIT_ORIGIN}" MATCHES ".iag.uni-stuttgart.de")
+  # Checked out using SSH
+  IF("${GIT_ORIGIN}" MATCHES "^git@")
+    SET(LIBS_DLPATH "git@gitlab.iag.uni-stuttgart.de:")
+  # Checked out using HTTPS
+  # IF("${GIT_ORIGIN}" MATCHES "^https@")
+  ELSE()
+    SET(LIBS_DLPATH "https://gitlabext.iag.uni-stuttgart.de/")
+  ENDIF()
+# Origin pointing to ILA
+ELSEIF("${GIT_ORIGIN}" MATCHES "ila.uni-stuttgart.de")
+  # Checked out using SSH
+  IF("${GIT_ORIGIN}" MATCHES "^git@")
+    SET(LIBS_DLPATH "git@gitlab.ila.uni-stuttgart.de:")
+  # Checked out using HTTPS
+  # IF("${GIT_ORIGIN}" MATCHES "^https@")
+  ELSE()
+    SET(LIBS_DLPATH "https://gitlab.ila.uni-stuttgart.de/")
+  ENDIF()
+# Fallback to IAG libs
+ELSE()
+  SET(LIBS_DLPATH "https://gitlabext.iag.uni-stuttgart.de/")
+ENDIF()
+
+
 # =========================================================================
 # MPI
 # =========================================================================
@@ -72,43 +110,11 @@ IF(NOT LIBS_BUILD_HDF5)
 
 # Build HDF5 in FLEXI
 ELSE()
-  # Set directory to compile external libraries
-  IF(LIBS_USE_MPI)
-    SET(LIBS_EXTERNAL_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/share/${CMAKE_Fortran_COMPILER_ID}-MPI)
-  ELSE()
-    SET(LIBS_EXTERNAL_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/share/${CMAKE_Fortran_COMPILER_ID})
-  ENDIF()
-  MARK_AS_ADVANCED(FORCE LIBS_EXTERNAL_LIB_DIR)
-
-  # Check whether origin is point to Github or IAG
-  EXECUTE_PROCESS(COMMAND git ls-remote --get-url OUTPUT_VARIABLE GIT_ORIGIN)
-  # Origin pointing to IAG
-  IF("${GIT_ORIGIN}" MATCHES ".iag.uni-stuttgart.de")
-    # Checked out using SSH
-    IF("${GIT_ORIGIN}" MATCHES "^git@")
-      SET(LIBS_DLPATH "git@gitlab.iag.uni-stuttgart.de:")
-    # Checked out using HTTPS
-    # IF("${GIT_ORIGIN}" MATCHES "^https@")
-    ELSE()
-      SET(LIBS_DLPATH "https://gitlabext.iag.uni-stuttgart.de/")
-    ENDIF()
-    SET (HDF5DOWNLOAD ${LIBS_DLPATH}libs/hdf5.git )
-
-  # Origin pointing to ILA
-  ELSEIF("${GIT_ORIGIN}" MATCHES "ila.uni-stuttgart.de")
-    # Checked out using SSH
-    IF("${GIT_ORIGIN}" MATCHES "^git@")
-      SET(LIBS_DLPATH "git@gitlab.ila.uni-stuttgart.de:")
-    # Checked out using HTTPS
-    # IF("${GIT_ORIGIN}" MATCHES "^https@")
-    ELSE()
-      SET(LIBS_DLPATH "https://gitlab.ila.uni-stuttgart.de/")
-    ENDIF()
-    SET (HDF5DOWNLOAD ${LIBS_DLPATH}libs/hdf5.git )
-
   # Origin pointing to Github
-  ELSEIF("${GIT_ORIGIN}" MATCHES ".github.com")
+  IF("${GIT_ORIGIN}" MATCHES ".github.com")
     SET (HDF5DOWNLOAD "https://github.com/HDFGroup/hdf5.git")
+  ELSE()
+    SET (HDF5DOWNLOAD ${LIBS_DLPATH}libs/hdf5.git )
   ENDIF()
   SET (HDF5_DOWNLOAD ${HDF5DOWNLOAD} CACHE STRING "HDF5 Download-link")
   MARK_AS_ADVANCED(FORCE HDF5_DOWNLOAD)

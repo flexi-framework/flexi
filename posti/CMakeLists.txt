@@ -19,19 +19,12 @@ IF(POSTI_RP_VISUALIZE OR POSTI_CHANNEL_FFT)
   # =========================================================================
   # FFTW (FFT tool)
   # =========================================================================
-  # TODO: Upload new version to FlexiDL
-  IF (HOMERUN GREATER -1)
-    SET (FFTWDOWNLOAD ${FLEXI_DLPATH}libs/FFTW.git )
-  ELSE()
-    SET (FFTWDOWNLOAD ${FLEXI_DLPATH}libs/FFTW.git )
-    #SET (FFTWDOWNLOAD https://github.com/FFTW/fftw3.git ) ! Github repo does not contain all data, use fftw.org instead
-    #SET (FFTWDOWNLOAD http://fftw.org/ ) fftw-3.3.6-pl1.tar.gz
-  ENDIF()
-  SET(POSTI_FFTWTAG "fftw-3.3.6-pl1" CACHE STRING "FFTW version tag")
-  SET(POSTI_FFTWDIR ${FLEXI_EXTERNAL_LIB_DIR}/fftw)
+  SET (FFTWDOWNLOAD ${LIBS_DLPATH}libs/FFTW.git )
+  SET(POSTI_FFTWTAG "fftw-3.3.9" CACHE STRING "FFTW version tag")
+  SET(POSTI_FFTWDIR ${LIBS_EXTERNAL_LIB_DIR}/fftw)
   # Try to find the library in the share directory or in a global, user-defined $FFTW_DIR
-  FIND_PATH(FFTW_INCLUDES fftw3.h         HINTS $ENV{FFTW_DIR}/include ${FLEXI_EXTERNAL_LIB_DIR}/fftw/build/include)
-  FIND_LIBRARY(FFTW_LIBRARIES NAMES fftw3 HINTS $ENV{FFTW_DIR}/lib     ${FLEXI_EXTERNAL_LIB_DIR}/fftw/build/lib    )
+  FIND_PATH(FFTW_INCLUDES fftw3.h         HINTS $ENV{FFTW_DIR}/include ${LIBS_EXTERNAL_LIB_DIR}/fftw/build/include)
+  FIND_LIBRARY(FFTW_LIBRARIES NAMES fftw3 HINTS $ENV{FFTW_DIR}/lib     ${LIBS_EXTERNAL_LIB_DIR}/fftw/build/lib    )
   IF(FFTW_INCLUDES STREQUAL "FFTW_INCLUDES-NOTFOUND" OR FFTW_LIBRARIES STREQUAL "FFTW_LIBRARIES-NOTFOUND")
     MESSAGE(STATUS "FFTW not found, building library")
       ExternalProject_Add(fftw
