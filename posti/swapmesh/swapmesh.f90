@@ -356,14 +356,14 @@ USE ISO_C_BINDING,     ONLY: C_NULL_CHAR
 USE MOD_2D
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
-! INPUT / OUTPUT VARIABLES 
+! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=255),INTENT(IN)      :: StateFile !< State file to be read
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL                          :: userblockFound
 CHARACTER(LEN=255)               :: prmfile=".parameter.ini"
 CHARACTER(LEN=255)               :: FileType
-CHARACTER(LEN=255),ALLOCATABLE   :: VarNames_TimeAvg(:)     !< List of varnames in TimeAvg-File 
+CHARACTER(LEN=255),ALLOCATABLE   :: VarNames_TimeAvg(:)     !< List of varnames in TimeAvg-File
 REAL,ALLOCATABLE                 :: UMean(  :,:,:,:,:)      !< Mean solution from old TimeAvg state
 REAL,ALLOCATABLE                 :: U_local(:,:,:,:,:)
 INTEGER                          :: iVar,nVarsFound,nDims
@@ -408,15 +408,15 @@ IF (HSize(4).EQ.1) THEN
   ! FLEXI compiled 3D, but data is 2D => expand third space dimension
   CALL ExpandArrayTo3D(5,(/nVar_State,NState+1,NState+1,1,nElemsOld/),4,NState+1,U_local,UOld)
 ELSE
-  ! FLEXI compiled 3D + data 3D 
+  ! FLEXI compiled 3D + data 3D
   UOld = U_local
 END IF
 #else
 IF (HSize(4).EQ.1) THEN
-  ! FLEXI compiled 2D + data 2D 
+  ! FLEXI compiled 2D + data 2D
   UOld = U_local
 ELSE
-  ! FLEXI compiled 2D, but data is 3D => reduce third space dimension 
+  ! FLEXI compiled 2D, but data is 3D => reduce third space dimension
   CALL to2D_rank5((/1,0,0,0,1/),(/nVar_State,NState,NState,NState,nElemsOld/),4,U_local)
   UOld = U_local
 END IF

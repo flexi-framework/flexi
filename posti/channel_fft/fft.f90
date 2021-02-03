@@ -324,6 +324,7 @@ IMPLICIT NONE
 INTEGER            :: i,j,k,Fileunit_EK,offsetVar,iVar,nVal,nSamples
 CHARACTER(LEN=255) :: FileName_EK
 CHARACTER(LEN=255) :: ZoneTitle
+CHARACTER(LEN=255) :: tmp255
 LOGICAL            :: connected
 REAL,ALLOCATABLE   :: PointData(:,:)
 CHARACTER(LEN=255),ALLOCATABLE :: VarNamesFFT(:)
@@ -473,8 +474,9 @@ SELECT CASE(OutputFormat)
     END DO
     CALL OpenDataFile(Filename_EK,create=.TRUE.,single=.TRUE.,readOnly=.FALSE.)
     ! Write dataset attributes
-    CALL WriteAttribute(File_ID,'File_Type'   ,1,StrScalar=(/'MeanSquares'/))
-    CALL WriteAttribute(File_ID,'ProjectName' ,1,StrScalar=(/ProjectName/))
+    CALL WriteAttribute(File_ID,'File_Type'   ,1,StrScalar=(/CHARACTER(LEN=255)::'MeanSquares'/))
+    tmp255=TRIM(ProjectName)
+    CALL WriteAttribute(File_ID,'ProjectName' ,1,StrScalar=(/tmp255/))
     CALL WriteAttribute(File_ID,'Time'        ,1,RealScalar=time)
     CALL WriteAttribute(File_ID,'VarNames'    ,nVal,StrArray=VarNamesFFT)
     WRITE(ZoneTitle,'(A)')'MeanSquares'
@@ -502,8 +504,9 @@ SELECT CASE(OutputFormat)
     VarNamesFFT(4) ='E_ww_x'
     VarNamesFFT(5) ='E_pp_x'
     CALL OpenDataFile(Filename_EK,create=.TRUE.,single=.TRUE.,readOnly=.FALSE.)
-    CALL WriteAttribute(File_ID,'File_Type'   ,1,StrScalar=(/'MeanSquares'/))
-    CALL WriteAttribute(File_ID,'ProjectName' ,1,StrScalar=(/ProjectName/))
+    CALL WriteAttribute(File_ID,'File_Type'   ,1,StrScalar=(/CHARACTER(LEN=255)::'MeanSquares'/))
+    tmp255=TRIM(ProjectName)
+    CALL WriteAttribute(File_ID,'ProjectName' ,1,StrScalar=(/tmp255/))
     CALL WriteAttribute(File_ID,'Time'        ,1,RealScalar=time)
     CALL WriteAttribute(File_ID,'VarNames'    ,nVal,StrArray=VarNamesFFT)
     DO j=N_FFT(2)/2+1,N_FFT(2)
@@ -541,8 +544,9 @@ SELECT CASE(OutputFormat)
     VarNamesFFT(4) ='E_ww_z'
     VarNamesFFT(5) ='E_pp_z'
     CALL OpenDataFile(Filename_EK,create=.TRUE.,single=.TRUE.,readOnly=.FALSE.)
-    CALL WriteAttribute(File_ID,'File_Type'   ,1,StrScalar=(/'MeanSquares'/))
-    CALL WriteAttribute(File_ID,'ProjectName' ,1,StrScalar=(/ProjectName/))
+    CALL WriteAttribute(File_ID,'File_Type'   ,1,StrScalar=(/CHARACTER(LEN=255)::'MeanSquares'/))
+    tmp255=TRIM(ProjectName)
+    CALL WriteAttribute(File_ID,'ProjectName' ,1,StrScalar=(/tmp255/))
     CALL WriteAttribute(File_ID,'Time'        ,1,RealScalar=time)
     CALL WriteAttribute(File_ID,'VarNames'    ,nVal,StrArray=VarNamesFFT)
     DO j=N_FFT(2)/2+1,N_FFT(2)

@@ -304,6 +304,7 @@ REAL,INTENT(IN)             :: avgTime      !< averaged time
 ! LOCAL VARIABLES
 INTEGER             :: globsize(1:maxDim)
 INTEGER,ALLOCATABLE :: offset2(:)
+CHARACTER(LEN=255)  :: tmp255
 !===================================================================================================================================
 IF (MPIRoot) CALL EXECUTE_COMMAND_LINE("cp -f "//TRIM(filename_in)//" "//TRIM(filename_out))
 #if USE_MPI
@@ -329,7 +330,8 @@ DO i=1,f%nDataSets
   DEALLOCATE(offset2)
 END DO
 CALL WriteAttribute(File_ID,'AvgTime',1,RealScalar=avgTime)
-CALL WriteAttribute(File_ID,'File_Type',1,StrScalar=(/filetype_out/))
+tmp255=TRIM(filetype_out)
+CALL WriteAttribute(File_ID,'File_Type',1,StrScalar=(/tmp255/))
 CALL CloseDataFile()
 END SUBROUTINE WriteTimeAverageByCopy
 
