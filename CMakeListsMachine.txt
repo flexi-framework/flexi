@@ -1,0 +1,156 @@
+# =========================================================================
+# Detect machine environements
+# =========================================================================
+
+mark_as_advanced([CLEAR|FORCE] CMAKE_HOSTNAME)
+SITE_NAME(CMAKE_HOSTNAME)
+
+# HLRS HAWK / SuperMUC
+IF ("${CMAKE_HOSTNAME}" MATCHES "login")
+  SET(CMAKE_C_COMPILER       mpicc)
+  SET(CMAKE_CXX_COMPILER     mpicxx)
+  SET(CMAKE_Fortran_COMPILER mpif90) # mpif08 wrapper seems to have issue
+  MARK_AS_ADVANCED(FORCE C_PATH CXX_PATH Fortran_PATH)
+
+  # HAWK and SuperMUC name their login nodes identically, so use OS distribution to identify
+  find_program(LSB_RELEASE_EXEC lsb_release)
+  execute_process(COMMAND ${LSB_RELEASE_EXEC} -is OUTPUT_VARIABLE LSB_RELEASE_ID_SHORT OUTPUT_STRIP_TRAILING_WHITESPACE)
+  # HLRS HAWK
+  IF (LSB_RELEASE_ID_SHORT MATCHES "CentOS")
+    MESSAGE(STATUS "Compiling on Hawk")
+    # Overwrite compiler target architecture
+    IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU" OR CMAKE_Fortran_COMPILER_ID MATCHES "Flang")
+      SET(FLEXI_INSTRUCTION "-march=znver2")
+    ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
+      SET(FLEXI_INSTRUCTION "-xCORE-AVX2")
+    ENDIF()
+    # Use AMD Optimized Lapack/BLAS
+    # SET(BLA_VENDOR "FLAME")
+  # SuperMUC
+  ELSEIF (LSB_RELEASE_ID_SHORT MATCHES "SUSE")
+    MESSAGE(STATUS "Compiling on SuperMUC")
+    # Overwrite compiler target architecture
+    IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU" OR CMAKE_Fortran_COMPILER_ID MATCHES "Flang")
+      SET(FLEXI_INSTRUCTION "-march=skylake-avx512")
+    ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
+      SET(FLEXI_INSTRUCTION "-xSKYLAKE-AVX512")
+      # Explicitely enable usage of AVX512 registers
+      SET (CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -qopt-zmm-usage=high")
+    ENDIF()
+  ENDIF()
+  # Set LUSTRE definition to account for filesystem and MPI implementation
+  ADD_DEFINITIONS(-DLUSTRE)
+
+# IAG Prandtl
+ELSEIF("${CMAKE_HOSTNAME}" MATCHES "^prandtl")
+  MESSAGE(STATUS "Compiling on Prandtl")
+  SET(CMAKE_C_COMPILER       gcc)
+  SET(CMAKE_CXX_COMPILER     c++)
+  SET(CMAKE_Fortran_COMPILER gfortran)
+  MARK_AS_ADVANCED(FORCE C_PATH CXX_PATH Fortran_PATH)
+  # Set LUSTRE definition to account for filesystem
+  ADD_DEFINITIONS(-DLUSTRE)
+
+# IAG Grafik01/Grafik02
+ELSEIF ("${CMAKE_HOSTNAME}" MATCHES "^grafik0")
+  MESSAGE(STATUS "Compiling on ${CMAKE_HOSTNAME}")
+  SET(CMAKE_C_COMPILER       gcc)
+  SET(CMAKE_CXX_COMPILER     c++)
+  SET(CMAKE_Fortran_COMPILER gfortran)
+  MARK_AS_ADVANCED(FORCE C_PATH CXX_PATH Fortran_PATH)
+
+ELSEIF ("${CMAKE_HOSTNAME}" MATCHES "^ilahead1")
+  MESSAGE(STATUS "Compiling on ILA cluster")
+  SET(CMAKE_C_COMPILER       mpicc)
+  SET(CMAKE_CXX_COMPILER     mpicxx)
+  SET(CMAKE_Fortran_COMPILER mpif90) # mpif08 wrapper seems to have issue
+  MARK_AS_ADVANCED(FORCE C_PATH CXX_PATH Fortran_PATH)
+  # Overwrite compiler target architecture
+  IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU" OR CMAKE_Fortran_COMPILER_ID MATCHES "Flang")
+    SET(FLEXI_INSTRUCTION "-march=core-avx2")
+  ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
+    SET(FLEXI_INSTRUCTION "-xCORE-AVX2")
+  ENDIF()
+  # Work around MPI-IO issue 4446 on machines mounting storage via NFS
+  ADD_DEFINITIONS(-DNFS)
+
+ELSEIF ("${CMAKE_HOSTNAME}" MATCHES "^xenon")
+  MESSAGE(STATUS "Compiling on ILA student cluster")
+  SET(CMAKE_C_COMPILER       mpicc)
+  SET(CMAKE_CXX_COMPILER     mpicxx)
+  SET(CMAKE_Fortran_COMPILER mpif90) # mpif08 wrapper seems to have issue
+  MARK_AS_ADVANCED(FORCE C_PATH CXX_PATH Fortran_PATH)
+  # Work around MPI-IO issue 4446 on machines mountng storage via NFS
+  ADD_DEFINITIONS(-DNFS)
+ENDIF()
+
+
+# =========================================================================
+# COMPILER FLAGS
+# =========================================================================
+
+ENABLE_LANGUAGE(Fortran C)
+
+# Set compiler target architecture
+IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU" OR CMAKE_Fortran_COMPILER_ID MATCHES "Flang" )
+  SET(FLEXI_INSTRUCTION "-march=native")
+ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
+  SET(FLEXI_INSTRUCTION "-xHost")
+ENDIF()
+
+# FFLAGS depend on the compiler
+GET_FILENAME_COMPONENT (Fortran_COMPILER_NAME ${CMAKE_Fortran_COMPILER} NAME)
+
+# GNU Compiler Collection (GCC)
+IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
+  # set Flags (disable lto type warnings due to false positives with MATMUL, which is a known bug)
+  SET (CMAKE_Fortran_FLAGS         "${CMAKE_Fortran_FLAGS} -fdefault-real-8 -fdefault-double-8 -fbackslash -ffree-line-length-0 -Wno-lto-type-mismatch -DGNU")
+  SET (CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS}     -O3 ${FLEXI_INSTRUCTION} -finline-functions -fstack-arrays")
+  SET (CMAKE_Fortran_FLAGS_PROFILE "${CMAKE_Fortran_FLAGS} -pg -O3 ${FLEXI_INSTRUCTION} -finline-functions -fstack-arrays")
+  SET (CMAKE_Fortran_FLAGS_DEBUG   "${CMAKE_Fortran_FLAGS} -g -O0 -ggdb3 -ffpe-trap=invalid -fbounds-check -finit-real=snan -fbacktrace  -Wall")
+  # add flags only for compiling not linking!
+  SET (FLEXI_COMPILE_FLAGS "-xf95-cpp-input -fPIC")
+
+# AMD Optimized LLVM/CLANG
+ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Flang")
+  # set Flags
+  SET (CMAKE_Fortran_FLAGS         "${CMAKE_Fortran_FLAGS} -fdefault-real-8 -std=f2008 -DFLANG")
+  SET (CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS}     -O3 ${FLEXI_INSTRUCTION} -finline-functions ")
+  SET (CMAKE_Fortran_FLAGS_PROFILE "${CMAKE_Fortran_FLAGS} -pg -O3 ${FLEXI_INSTRUCTION} -finline-functions ")
+  SET (CMAKE_Fortran_FLAGS_DEBUG   "${CMAKE_Fortran_FLAGS} -g -O0 -ggdb3 -ffpe-trap=invalid -fbounds-check -finit-real=snan -fbacktrace  -Wall")
+  # add flags only for compiling not linking!
+  SET (FLEXI_COMPILE_FLAGS "-xf95-cpp-input -fPIC")
+
+# Intel Compiler
+ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
+  # set Flags
+  SET (CMAKE_Fortran_FLAGS         "${CMAKE_Fortran_FLAGS} -r8 -i4 -traceback -warn all -shared-intel -DINTEL")
+  SET (CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS}    -O3 ${FLEXI_INSTRUCTION} -qopt-report0 -qopt-report-phase=vec -no-prec-div")
+  SET (CMAKE_Fortran_FLAGS_PROFILE "${CMAKE_Fortran_FLAGS} -p -O3 ${FLEXI_INSTRUCTION} -qopt-report0 -qopt-report-phase=vec -no-prec-div")
+  SET (CMAKE_Fortran_FLAGS_DEBUG   "${CMAKE_Fortran_FLAGS} -g -O0 -fpe0 -traceback -check all,noarg_temp_created,noformat,nooutput_conversion,pointer,uninit -init=snan -init=arrays")
+  # add flags only for compiling not linking!
+  SET (FLEXI_COMPILE_FLAGS "-fpp -allow nofpp_comments -assume bscc")
+
+# Cray Compiler
+ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Cray")
+  # set Flags
+  SET (CMAKE_Fortran_FLAGS         "${CMAKE_Fortran_FLAGS} -f free -s real64 -em -DCRAY")
+  SET (CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS} -O2 -hfp3 -p . -rm")
+  SET (CMAKE_Fortran_FLAGS_PROFILE "${CMAKE_Fortran_FLAGS} -O2 -hfp3 -h profile_generate -p . -rm")
+  SET (CMAKE_Fortran_FLAGS_DEBUG   "${CMAKE_Fortran_FLAGS} -O0 -eD -rm")
+  # add flags only for compiling not linking!
+  SET (FLEXI_COMPILE_FLAGS "-F")
+
+ELSE()
+  MESSAGE(SEND_ERROR "Unknown compiler")
+ENDIF()
+
+# Save the current compiler flags to the cache every time cmake configures the project.
+mark_as_advanced(CMAKE_Fortran_FLAGS)
+mark_as_advanced(CMAKE_Fortran_FLAGS_RELEASE)
+mark_as_advanced(CMAKE_Fortran_FLAGS_PROFILE)
+mark_as_advanced(CMAKE_Fortran_FLAGS_DEBUG)
+set(CMAKE_Fortran_FLAGS            "${CMAKE_Fortran_FLAGS}"          CACHE STRING "Default compiler flags" FORCE)
+set(CMAKE_Fortran_FLAGS_RELEASE    "${CMAKE_Fortran_FLAGS_RELEASE}"  CACHE STRING "Release compiler flags" FORCE)
+set(CMAKE_Fortran_FLAGS_PROFILE    "${CMAKE_Fortran_FLAGS_PROFILE}"  CACHE STRING "Profile compiler flags" FORCE)
+set(CMAKE_Fortran_FLAGS_DEBUG      "${CMAKE_Fortran_FLAGS_DEBUG}"    CACHE STRING "Debug compiler flags"   FORCE)

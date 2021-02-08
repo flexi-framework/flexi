@@ -482,7 +482,7 @@ DO iSide=1,nBCSides
   DO j=0,PP_NZ; DO i=0,PP_N
     Vel=UPrim_master(2:4,i,j,iSide)
     ! Calculate velocity magnitude
-    locV=NORM2(vel)
+    locV=SQRT(DOT_PRODUCT(vel,vel))
     maxV(iBC)=MAX(maxV(iBC),locV)
     minV(iBC)=MIN(minV(iBC),locV)
 #if FV_ENABLED
