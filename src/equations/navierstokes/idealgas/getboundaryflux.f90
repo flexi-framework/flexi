@@ -697,15 +697,15 @@ ELSE
                                  + BCGradMat(3,2) * gradUy_master(5:6,p,q) &
                                  + BCGradMat(3,3) * gradUz_master(5:6,p,q)
 #else
-        gradUx_Face_loc(LIFT_TEMP,p,q) = BCGradMat(1,1) * gradUx_master(6,p,q) &
-                                       + BCGradMat(1,2) * gradUy_master(6,p,q) &
-                                       + BCGradMat(1,3) * gradUz_master(6,p,q)
-        gradUy_Face_loc(LIFT_TEMP,p,q) = BCGradMat(2,1) * gradUx_master(6,p,q) &
-                                       + BCGradMat(2,2) * gradUy_master(6,p,q) &
-                                       + BCGradMat(2,3) * gradUz_master(6,p,q)
-        gradUz_Face_loc(LIFT_TEMP,p,q) = BCGradMat(3,1) * gradUx_master(6,p,q) &
-                                       + BCGradMat(3,2) * gradUy_master(6,p,q) &
-                                       + BCGradMat(3,3) * gradUz_master(6,p,q)
+        gradUx_Face_loc(LIFT_TEMP,p,q) = BCGradMat(1,1) * gradUx_master(LIFT_TEMP,p,q) &
+                                       + BCGradMat(1,2) * gradUy_master(LIFT_TEMP,p,q) &
+                                       + BCGradMat(1,3) * gradUz_master(LIFT_TEMP,p,q)
+        gradUy_Face_loc(LIFT_TEMP,p,q) = BCGradMat(2,1) * gradUx_master(LIFT_TEMP,p,q) &
+                                       + BCGradMat(2,2) * gradUy_master(LIFT_TEMP,p,q) &
+                                       + BCGradMat(2,3) * gradUz_master(LIFT_TEMP,p,q)
+        gradUz_Face_loc(LIFT_TEMP,p,q) = BCGradMat(3,1) * gradUx_master(LIFT_TEMP,p,q) &
+                                       + BCGradMat(3,2) * gradUy_master(LIFT_TEMP,p,q) &
+                                       + BCGradMat(3,3) * gradUz_master(LIFT_TEMP,p,q)
 #endif /*LIFT_ALL_PRIMITIVE*/
         ! First: Transform to gradients of wall-aligned velocities
         gradUx_vNormal = nv(1 )*gradUx_master(LIFT_VEL1,p,q)+nv(2 )*gradUx_master(LIFT_VEL2,p,q)+nv(3 )*gradUx_master(LIFT_VEL3,p,q)
@@ -764,17 +764,17 @@ ELSE
                                  + BCGradMat(2,2) * gradUy_master(5:6,p,q)
         gradUz_Face_loc(5:6,p,q) = 0.
 #else
-        gradUx_Face_loc(LIFT_TEMP,p,q) = BCGradMat(1,1) * gradUx_master(6,p,q) &
-                                       + BCGradMat(1,2) * gradUy_master(6,p,q)
-        gradUy_Face_loc(LIFT_TEMP,p,q) = BCGradMat(2,1) * gradUx_master(6,p,q) &
-                                       + BCGradMat(2,2) * gradUy_master(6,p,q)
+        gradUx_Face_loc(LIFT_TEMP,p,q) = BCGradMat(1,1) * gradUx_master(LIFT_TEMP,p,q) &
+                                       + BCGradMat(1,2) * gradUy_master(LIFT_TEMP,p,q)
+        gradUy_Face_loc(LIFT_TEMP,p,q) = BCGradMat(2,1) * gradUx_master(LIFT_TEMP,p,q) &
+                                       + BCGradMat(2,2) * gradUy_master(LIFT_TEMP,p,q)
         gradUz_Face_loc(LIFT_TEMP,p,q) = 0.
 #endif /*LIFT_ALL_PRIMITIVE*/
         ! First: Transform to gradients of wall-aligned velocities
-        gradUx_vNormal = nv(1 )*gradUx_master(2,p,q)+nv(2 )*gradUx_master(3,p,q)
-        gradUx_vTang1  = tv1(1)*gradUx_master(2,p,q)+tv1(2)*gradUx_master(3,p,q)
-        gradUy_vNormal = nv(1 )*gradUy_master(2,p,q)+nv(2 )*gradUy_master(3,p,q)
-        gradUy_vTang1  = tv1(1)*gradUy_master(2,p,q)+tv1(2)*gradUy_master(3,p,q)
+        gradUx_vNormal = nv(1 )*gradUx_master(LIFT_VEL1,p,q)+nv(2 )*gradUx_master(LIFT_VEL2,p,q)
+        gradUx_vTang1  = tv1(1)*gradUx_master(LIFT_VEL1,p,q)+tv1(2)*gradUx_master(LIFT_VEL2,p,q)
+        gradUy_vNormal = nv(1 )*gradUy_master(LIFT_VEL1,p,q)+nv(2 )*gradUy_master(LIFT_VEL2,p,q)
+        gradUy_vTang1  = tv1(1)*gradUy_master(LIFT_VEL1,p,q)+tv1(2)*gradUy_master(LIFT_VEL2,p,q)
         ! Second: Transform to gradients w.r.t. wall-aligned directions, set boundary conditions
         gradUn_vNormal  = nv( 1)*gradUx_vNormal+nv( 2)*gradUy_vNormal
         gradUn_vTang1   = 0.!nv( 1)*gradUx_vTang1 +nv( 2)*gradUy_vTang1
@@ -790,7 +790,7 @@ ELSE
         gradUx_Face_loc(LIFT_VEL2,p,q) = nv(2)*gradUx_vNormal+tv1(2)*gradUx_vTang1
         gradUy_Face_loc(LIFT_VEL1,p,q) = nv(1)*gradUy_vNormal+tv1(1)*gradUy_vTang1
         gradUy_Face_loc(LIFT_VEL2,p,q) = nv(2)*gradUy_vNormal+tv1(2)*gradUy_vTang1
-        gradUz_Face_loc(LIFT_VEL1:LIFTVEL_3,p,q) = 0.
+        gradUz_Face_loc(LIFT_VEL1:LIFT_VEL3,p,q) = 0.
         gradUx_Face_loc(LIFT_VEL3,p,q) = 0.
         gradUy_Face_loc(LIFT_VEL3,p,q) = 0.
 #endif
