@@ -13,6 +13,7 @@
 !=================================================================================================================================
 #if PARABOLIC
 #include "flexi.h"
+#include "eos.h"
 
 !==================================================================================================================================
 !> \brief Routines for computing the lifting volume integral for the BR1 scheme.
@@ -188,11 +189,11 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)                           :: dir       !< direction (x,y,z)
 REAL,INTENT(IN)                              :: UPrim(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< solution
-REAL,INTENT(OUT)                             :: gradU(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< solution gradient in direction dir
+REAL,INTENT(OUT)                             :: gradU(PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< solution gradient in direction dir
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                             :: DMat(0:PP_N,0:PP_N)
-REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ) :: UE_f,UE_g,UE_h
+REAL,DIMENSION(PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ) :: UE_f,UE_g,UE_h
 INTEGER                                          :: iElem,i,j,k,l
 !==================================================================================================================================
 IF(doWeakLifting)THEN
@@ -258,18 +259,23 @@ REAL,INTENT(IN)    :: Mf(3,nDOFElem)                      !< metrics in xi
 REAL,INTENT(IN)    :: Mg(3,nDOFElem)                      !< metrics in eta
 REAL,INTENT(IN)    :: Mh(3,nDOFElem)                      !< metrics in zeta
 REAL,INTENT(IN)    :: UPrim(PP_nVarPrim,nDOFElem)         !< solution ("flux")
-REAL,INTENT(OUT)   :: UPrim_f(PP_nVarPrim,nDOFElem)       !< gradient flux xi
-REAL,INTENT(OUT)   :: UPrim_g(PP_nVarPrim,nDOFElem)       !< gradient flux eta
-REAL,INTENT(OUT)   :: UPrim_h(PP_nVarPrim,nDOFElem)       !< gradient flux zeta
+REAL,INTENT(OUT)   :: UPrim_f(PP_nVarLifting,nDOFElem)       !< gradient flux xi
+REAL,INTENT(OUT)   :: UPrim_g(PP_nVarLifting,nDOFElem)       !< gradient flux eta
+REAL,INTENT(OUT)   :: UPrim_h(PP_nVarLifting,nDOFElem)       !< gradient flux zeta
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                                      :: i
 !==================================================================================================================================
 DO i=1,nDOFElem
-  UPrim_f(:,i) = Mf(dir,i)*UPrim(:,i)
-  UPrim_g(:,i) = Mg(dir,i)*UPrim(:,i)
+  UPrim_f(LIFT_VELV,i) = Mf(dir,i)*UPrim(2:4,i)
+  UPrim_g(LIFT_VELV,i) = Mg(dir,i)*UPrim(2:4,i)
 #if (PP_dim==3)
-  UPrim_h(:,i) = Mh(dir,i)*UPrim(:,i)
+  UPrim_h(LIFT_VELV,i) = Mh(dir,i)*UPrim(2:4,i)
+#endif
+  UPrim_f(LIFT_TEMP,i) = Mf(dir,i)*UPrim(6,i)
+  UPrim_g(LIFT_TEMP,i) = Mg(dir,i)*UPrim(6,i)
+#if (PP_dim==3)
+  UPrim_h(LIFT_TEMP,i) = Mh(dir,i)*UPrim(6,i)
 #endif
 END DO ! i
 END SUBROUTINE Lifting_Metrics

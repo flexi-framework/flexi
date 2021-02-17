@@ -790,7 +790,7 @@ ELSE
         gradUx_Face_loc(LIFT_VEL2,p,q) = nv(2)*gradUx_vNormal+tv1(2)*gradUx_vTang1
         gradUy_Face_loc(LIFT_VEL1,p,q) = nv(1)*gradUy_vNormal+tv1(1)*gradUy_vTang1
         gradUy_Face_loc(LIFT_VEL2,p,q) = nv(2)*gradUy_vNormal+tv1(2)*gradUy_vTang1
-        gradUz_Face_loc(LIFT_VEL1:LIFT_VEL3,p,q) = 0.
+        gradUz_Face_loc(LIFT_VELV,p,q) = 0.
         gradUx_Face_loc(LIFT_VEL3,p,q) = 0.
         gradUy_Face_loc(LIFT_VEL3,p,q) = 0.
 #endif
@@ -894,7 +894,7 @@ IMPLICIT NONE
 INTEGER,INTENT(IN):: SideID                                   !< ID of current side
 REAL,INTENT(IN)   :: t                                        !< current time (provided by time integration scheme)
 REAL,INTENT(IN)   :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ) !< primitive solution from the inside
-REAL,INTENT(OUT)  :: Flux(        PP_nVarPrim,0:PP_N,0:PP_NZ) !< lifting boundary flux
+REAL,INTENT(OUT)  :: Flux(        PP_nVarLifting,0:PP_N,0:PP_NZ) !< lifting boundary flux
 REAL,INTENT(IN)   :: NormVec (              3,0:PP_N,0:PP_NZ) !< normal vector on surfaces
 REAL,INTENT(IN)   :: TangVec1(              3,0:PP_N,0:PP_NZ) !< tangential1 vector on surfaces
 REAL,INTENT(IN)   :: TangVec2(              3,0:PP_N,0:PP_NZ) !< tangential2 vector on surfaces
@@ -916,22 +916,23 @@ ELSE
                         NormVec,TangVec1,TangVec2,Face_xGP)
   SELECT CASE(BCType)
   CASE(2,12,121,22,23,24,25,27) ! Riemann solver based BCs
-      Flux=0.5*(UPrim_master+UPrim_boundary)
+      Flux(LIFT_VELV,:,:)=0.5*(UPrim_master(2:4,:,:)+UPrim_boundary(2:4,:,:))
+      Flux(LIFT_TEMP,:,:)=0.5*(UPrim_master(6,:,:)+UPrim_boundary(6,:,:))
   CASE(3,4) ! No-slip wall BCs
     DO q=0,PP_NZ; DO p=0,PP_N
-      Flux(1  ,p,q) = UPrim_Boundary(1,p,q)
-      Flux(2:4,p,q) = 0.
-      Flux(5  ,p,q) = UPrim_Boundary(5,p,q)
-      Flux(6  ,p,q) = UPrim_Boundary(6,p,q)
+      !Flux(1  ,p,q) = UPrim_Boundary(1,p,q)
+      Flux(LIFT_VELV,p,q) = 0.
+      !Flux(5  ,p,q) = UPrim_Boundary(5,p,q)
+      Flux(LIFT_TEMP,p,q) = UPrim_Boundary(6,p,q)
     END DO; END DO !p,q
   CASE(9,91)
     ! Euler/(full-)slip wall, symmetry BC
     ! Solution from the inside with velocity normal component set to 0 (done in GetBoundaryState)
     DO q=0,PP_NZ; DO p=0,PP_N
       ! Compute Flux
-      Flux(1            ,p,q) = UPrim_master(1,p,q)
-      Flux(2:4          ,p,q) = UPrim_boundary(2:4,p,q)
-      Flux(5:PP_nVarPrim,p,q) = UPrim_master(5:PP_nVarPrim,p,q)
+      !Flux(1            ,p,q) = UPrim_master(1,p,q)
+      Flux(LIFT_VELV     ,p,q) = UPrim_boundary(2:4,p,q)
+      Flux(LIFT_TEMP,p,q) = UPrim_master(PP_nVarPrim,p,q)
     END DO; END DO !p,q
   CASE(1) !Periodic already filled!
   CASE DEFAULT ! unknown BCType
@@ -940,7 +941,10 @@ ELSE
   END SELECT
 
   !in case lifting is done in strong form
-  IF(.NOT.doWeakLifting) Flux=Flux-UPrim_master
+  IF(.NOT.doWeakLifting)THEN
+    Flux(LIFT_VELV,:,:)=Flux(LIFT_VELV,:,:)-UPrim_master(2:4,:,:)
+    Flux(LIFT_TEMP,:,:)=Flux(LIFT_TEMP,:,:)-UPrim_master(6  ,:,:)
+  END IF
 
   DO q=0,PP_NZ; DO p=0,PP_N
     Flux(:,p,q)=Flux(:,p,q)*SurfElem(p,q)

@@ -78,7 +78,7 @@ LOGICAL,INTENT(IN) :: doMPISides                                          !< = .
                                                                           !< =.FALSE. InnerSides
 REAL,INTENT(INOUT) :: UPrimface_master(PP_nVarPrim,0:PP_N,0:PP_NZ,nSides) !< Solution on master sides
 REAL,INTENT(INOUT) :: UPrimface_slave( PP_nVarPrim,0:PP_N,0:PP_NZ,nSides) !< Solution on slave sides
-REAL,INTENT(INOUT) :: Flux(            PP_nVarPrim,0:PP_N,0:PP_NZ,nSides) !< Untransformed lifting flux
+REAL,INTENT(INOUT) :: Flux(            PP_nVarLifting,0:PP_N,0:PP_NZ,nSides) !< Untransformed lifting flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: SideID,p,q,firstSideID,lastSideID,sig
@@ -105,14 +105,17 @@ DO SideID=firstSideID,lastSideID
   SELECT CASE(FV_Elems_Sum(SideID))
   CASE(0) ! both DG
 #endif
-    Flux(:,:,:,SideID) = sig*UPrimface_master(:,:,:,SideID) + UPrimface_slave(:,:,:,SideID)
+    Flux(LIFT_VELV,:,:,SideID) = sig*UPrimface_master(2:4,:,:,SideID) + UPrimface_slave(2:4,:,:,SideID)
+    Flux(LIFT_TEMP,:,:,SideID) = sig*UPrimface_master(6  ,:,:,SideID) + UPrimface_slave(6  ,:,:,SideID)
 #if FV_ENABLED
   CASE(1) ! master=FV, slave=DG
     CALL ChangeBasisSurf(PP_nVarPrim,PP_N,PP_N,FV_sVdm,UPrimface_master(:,:,:,SideID),UPrim_glob)
-    Flux(:,:,:,SideID) = sig*UPrim_glob + UPrimface_slave(:,:,:,SideID)
+    Flux(LIFT_VELV,:,:,SideID) = sig*UPrim_glob(2:4) + UPrimface_slave(2:4,:,:,SideID)
+    Flux(LIFT_TEMP,:,:,SideID) = sig*UPrim_glob(6)   + UPrimface_slave(6  ,:,:,SideID)
   CASE(2) ! master=DG, slave=FV
     CALL ChangeBasisSurf(PP_nVarPrim,PP_N,PP_N,FV_sVdm,UPrimface_slave(:,:,:,SideID),UPrim_glob)
-    Flux(:,:,:,SideID) = sig*UPrimface_master(:,:,:,SideID) + UPrim_glob
+    Flux(LIFT_VELV,:,:,SideID) = sig*UPrimface_master(2:4,:,:,SideID) + UPrim_glob(2:4)
+    Flux(LIFT_TEMP,:,:,SideID) = sig*UPrimface_master(6  ,:,:,SideID) + UPrim_glob(6)
   CASE(3) ! both FV
     CYCLE
   END SELECT
@@ -154,9 +157,9 @@ USE MOD_FV_Vars         ,ONLY: FV_Elems_master
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)    :: t                                               !< Current solution time
-REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ,nSides) !< Primitive solution from the inside
-REAL,INTENT(INOUT) :: Flux(        PP_nVarPrim,0:PP_N,0:PP_NZ,nSides) !< Untransformed lifting boundary flux
+REAL,INTENT(IN)    :: t                                                  !< Current solution time
+REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim   ,0:PP_N,0:PP_NZ,nSides) !< Primitive solution from the inside
+REAL,INTENT(INOUT) :: Flux(        PP_nVarLifting,0:PP_N,0:PP_NZ,nSides) !< Untransformed lifting boundary flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: SideID
@@ -191,10 +194,10 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 LOGICAL,INTENT(IN) :: doMPISides                                 !< = .TRUE. MPI_YOUR
                                                                  !< =.FALSE. BC+Inner+MPI_Mine
-REAL,INTENT(IN)    :: Flux( PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< Untransformed Lifting boundary flux
-REAL,INTENT(INOUT) :: FluxX(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< Lifting boundary flux in x direction
-REAL,INTENT(INOUT) :: FluxY(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< Lifting boundary flux in y direction
-REAL,INTENT(INOUT) :: FluxZ(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< Lifting boundary flux in z direction
+REAL,INTENT(IN)    :: Flux( PP_nVarLifting,0:PP_N,0:PP_NZ,1:nSides) !< Untransformed Lifting boundary flux
+REAL,INTENT(INOUT) :: FluxX(PP_nVarLifting,0:PP_N,0:PP_NZ,1:nSides) !< Lifting boundary flux in x direction
+REAL,INTENT(INOUT) :: FluxY(PP_nVarLifting,0:PP_N,0:PP_NZ,1:nSides) !< Lifting boundary flux in y direction
+REAL,INTENT(INOUT) :: FluxZ(PP_nVarLifting,0:PP_N,0:PP_NZ,1:nSides) !< Lifting boundary flux in z direction
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: firstSideID,lastSideID,SideID,p,q
