@@ -170,14 +170,14 @@ SUBROUTINE Lifting(UPrim,UPrim_master,UPrim_slave,t)
 USE MOD_Globals
 USE MOD_Preproc
 USE MOD_Lifting_Vars
-USE MOD_Lifting_VolInt,     ONLY: Lifting_VolInt
-USE MOD_Lifting_FillFlux,   ONLY: Lifting_FillFlux,Lifting_FillFlux_BC,Lifting_FillFlux_NormVec
-USE MOD_DG_Vars,            ONLY: L_hatMinus,L_hatPlus
-USE MOD_Lifting_SurfInt,    ONLY: Lifting_SurfInt
-USE MOD_ProlongToFaceLifting,ONLY: ProlongToFaceLifting
-USE MOD_ApplyJacobianLifting,ONLY: ApplyJacobianLifting
-USE MOD_Interpolation_Vars, ONLY: L_Minus,L_Plus
-USE MOD_FillMortarLifting,  ONLY: U_MortarLifting,Flux_MortarLifting
+USE MOD_Lifting_VolInt,       ONLY: Lifting_VolInt
+USE MOD_Lifting_FillFlux,     ONLY: Lifting_FillFlux,Lifting_FillFlux_BC,Lifting_FillFlux_NormVec
+USE MOD_DG_Vars,              ONLY: L_hatMinus,L_hatPlus
+USE MOD_Lifting_SurfInt,      ONLY: Lifting_SurfInt
+USE MOD_ProlongToFaceLifting, ONLY: ProlongToFaceLifting
+USE MOD_ApplyJacobianLifting, ONLY: ApplyJacobianLifting
+USE MOD_Interpolation_Vars,   ONLY: L_Minus,L_Plus
+USE MOD_FillMortarLifting,    ONLY: U_MortarLifting,Flux_MortarLifting
 #if USE_MPI
 USE MOD_MPI_Vars
 USE MOD_MPI,                ONLY: StartReceiveMPIData,StartSendMPIData,FinishExchangeMPIData
@@ -186,9 +186,9 @@ USE MOD_Mesh_Vars,          ONLY: nSides,nElems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)    :: UPrim( PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< solution vector for which lifted gradients will be computed
-REAL,INTENT(INOUT) :: UPrim_master(PP_nVar,0:PP_N,0:PP_NZ,1:nSides) !< solution on the master sides
-REAL,INTENT(INOUT) :: UPrim_slave( PP_nVar,0:PP_N,0:PP_NZ,1:nSides) !< solution on the slave sides
+REAL,INTENT(IN)    :: UPrim(  PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< solution vector for which lifted gradients will be computed
+REAL,INTENT(INOUT) :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< solution on the master sides
+REAL,INTENT(INOUT) :: UPrim_slave( PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< solution on the slave sides
 REAL,INTENT(IN)    :: t                                                 !< current simulation time
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

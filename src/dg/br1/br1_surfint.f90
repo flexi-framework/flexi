@@ -55,7 +55,7 @@ PPURE SUBROUTINE Lifting_SurfInt(Nloc,Flux,gradU,doMPISides,L_HatMinus,L_HatPlus
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_SurfintLifting,        ONLY: DoSurfIntLifting
+USE MOD_SurfintLifting,     ONLY: DoSurfIntLifting
 USE MOD_Mesh_Vars,          ONLY: SideToElem,nSides,nElems
 USE MOD_Mesh_Vars,          ONLY: firstMPISide_YOUR,lastMPISide_MINE
 USE MOD_Mesh_Vars,          ONLY: S2V2

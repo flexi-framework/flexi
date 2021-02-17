@@ -462,7 +462,7 @@ CASE(3,4,9,91,23,24,25,27)
       UPrim_boundary(2,p,q)=SUM(U*nv(1:3)*Normvec( 1:3,p,q))
       UPrim_boundary(3,p,q)=SUM(U*nv(1:3)*Tangvec1(1:3,p,q))
       UPrim_boundary(4,p,q)=SUM(U*nv(1:3)*Tangvec2(1:3,p,q))
-      UPrim_boundary(6,p,q)=UPrim_boundary(5,p,q)/(R*UPrim_boundary(1,p,q))
+      UPrim_boundary(6,p,q)=Tb
     END DO; END DO !p,q
   END SELECT
 
@@ -916,8 +916,8 @@ ELSE
                         NormVec,TangVec1,TangVec2,Face_xGP)
   SELECT CASE(BCType)
   CASE(2,12,121,22,23,24,25,27) ! Riemann solver based BCs
-      Flux(LIFT_VELV,:,:)=0.5*(UPrim_master(2:4,:,:)+UPrim_boundary(2:4,:,:))
-      Flux(LIFT_TEMP,:,:)=0.5*(UPrim_master(6,:,:)+UPrim_boundary(6,:,:))
+      Flux(LIFT_VELV,:,:)=0.5*(UPrim_master(2:4,:,:)+ UPrim_boundary(2:4,:,:))
+      Flux(LIFT_TEMP,:,:)=0.5*(UPrim_master(6,:,:)  + UPrim_boundary(6,:,:))
   CASE(3,4) ! No-slip wall BCs
     DO q=0,PP_NZ; DO p=0,PP_N
       !Flux(1  ,p,q) = UPrim_Boundary(1,p,q)
@@ -932,7 +932,7 @@ ELSE
       ! Compute Flux
       !Flux(1            ,p,q) = UPrim_master(1,p,q)
       Flux(LIFT_VELV     ,p,q) = UPrim_boundary(2:4,p,q)
-      Flux(LIFT_TEMP,p,q) = UPrim_master(PP_nVarPrim,p,q)
+      Flux(LIFT_TEMP,p,q)      = UPrim_master(PP_nVarPrim,p,q)
     END DO; END DO !p,q
   CASE(1) !Periodic already filled!
   CASE DEFAULT ! unknown BCType

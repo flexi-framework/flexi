@@ -110,12 +110,12 @@ DO SideID=firstSideID,lastSideID
 #if FV_ENABLED
   CASE(1) ! master=FV, slave=DG
     CALL ChangeBasisSurf(PP_nVarPrim,PP_N,PP_N,FV_sVdm,UPrimface_master(:,:,:,SideID),UPrim_glob)
-    Flux(LIFT_VELV,:,:,SideID) = sig*UPrim_glob(2:4) + UPrimface_slave(2:4,:,:,SideID)
-    Flux(LIFT_TEMP,:,:,SideID) = sig*UPrim_glob(6)   + UPrimface_slave(6  ,:,:,SideID)
+    Flux(LIFT_VELV,:,:,SideID) = sig*UPrim_glob(2:4,:,:) + UPrimface_slave(2:4,:,:,SideID)
+    Flux(LIFT_TEMP,:,:,SideID) = sig*UPrim_glob(6,:,:)   + UPrimface_slave(6  ,:,:,SideID)
   CASE(2) ! master=DG, slave=FV
     CALL ChangeBasisSurf(PP_nVarPrim,PP_N,PP_N,FV_sVdm,UPrimface_slave(:,:,:,SideID),UPrim_glob)
-    Flux(LIFT_VELV,:,:,SideID) = sig*UPrimface_master(2:4,:,:,SideID) + UPrim_glob(2:4)
-    Flux(LIFT_TEMP,:,:,SideID) = sig*UPrimface_master(6  ,:,:,SideID) + UPrim_glob(6)
+    Flux(LIFT_VELV,:,:,SideID) = sig*UPrimface_master(2:4,:,:,SideID) + UPrim_glob(2:4,:,:)
+    Flux(LIFT_TEMP,:,:,SideID) = sig*UPrimface_master(6  ,:,:,SideID) + UPrim_glob(6,:,:)
   CASE(3) ! both FV
     CYCLE
   END SELECT
