@@ -243,12 +243,14 @@ USE MOD_FV_Basis,          ONLY:FinalizeFV_Basis
 #endif
 USE MOD_Indicator,         ONLY:FinalizeIndicator
 USE MOD_ReadInTools,       ONLY:FinalizeParameters
+USE MOD_IO_HDF5,           ONLY:FinalizeIOHDF5
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                    :: Time                              !< Used to measure simulation time
 !==================================================================================================================================
 !Finalize
+CALL FinalizeIOHDF5()
 CALL FinalizeOutput()
 CALL FinalizeRecordPoints()
 CALL FinalizeAnalyze()

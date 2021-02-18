@@ -97,6 +97,10 @@ INTERFACE AddToElemData
   MODULE PROCEDURE AddToElemData
 END INTERFACE
 
+INTERFACE FinalizeElemData
+  MODULE PROCEDURE FinalizeElemData
+END INTERFACE
+
 INTERFACE AddToFieldData
   MODULE PROCEDURE AddToFieldData
 END INTERFACE
@@ -105,11 +109,16 @@ INTERFACE GetDatasetNamesInGroup
   MODULE PROCEDURE GetDatasetNamesInGroup
 END INTERFACE
 
+PUBLIC :: DefineParametersIO_HDF5
+PUBLIC :: InitIOHDF5
+PUBLIC :: InitMPIInfo
+PUBLIC :: OpenDataFile
+PUBLIC :: CloseDataFile
+PUBLIC :: AddToElemData
+PUBLIC :: FinalizeElemData
+PUBLIC :: AddToFieldData
+PUBLIC :: GetDatasetNamesInGroup
 !==================================================================================================================================
-
-PUBLIC::DefineParametersIO_HDF5,InitIOHDF5,InitMPIInfo,OpenDataFile,CloseDataFile
-PUBLIC::AddToElemData,AddToFieldData
-PUBLIC::GetDatasetNamesInGroup
 
 CONTAINS
 
@@ -444,5 +453,83 @@ DO i=1,nMembers
   IF (type.NE.H5G_DATASET_F) names(i) = ''
 END DO
 END SUBROUTINE GetDatasetNamesInGroup
+
+
+!==================================================================================================================================
+!> Initialize HDF5 IO
+!==================================================================================================================================
+SUBROUTINE FinalizeIOHDF5()
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!==================================================================================================================================
+CALL FinalizeElemData(ElementOut)
+
+END SUBROUTINE FinalizeIOHDF5
+
+
+!==================================================================================================================================
+!==================================================================================================================================
+SUBROUTINE FinalizeElemData(ElementOut_In)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+TYPE(tElementOut),POINTER,INTENT(INOUT) :: ElementOut_In     !< Pointer list of element-wise data that is written to the state file
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!==================================================================================================================================
+TYPE(tElementOut),POINTER          :: current,tmp
+!===================================================================================================================================
+
+IF(ASSOCIATED(ElementOut_In))THEN
+  current => ElementOut_In
+  DO WHILE (ASSOCIATED(current%next))
+    IF (ASSOCIATED( current%RealArray)) THEN
+      NULLIFY   (current%RealArray)
+    END IF
+    IF (ASSOCIATED( current%RealScalar)) THEN
+      NULLIFY   (current%RealScalar)
+    END IF
+    IF (ASSOCIATED( current%IntArray)) THEN
+      NULLIFY   (current%IntArray)
+    END IF
+    IF (ASSOCIATED( current%IntScalar)) THEN
+      NULLIFY   (current%IntScalar)
+    END IF
+    IF (ASSOCIATED( current%eval)) THEN
+      NULLIFY   (current%eval)
+    END IF
+    tmp => current%next
+    DEALLOCATE(current)
+    NULLIFY(current)
+    current => tmp
+  END DO
+
+  ! Also finalize the last entry
+  IF (ASSOCIATED( current%RealArray)) THEN
+    NULLIFY   (current%RealArray)
+  END IF
+  IF (ASSOCIATED( current%RealScalar)) THEN
+    NULLIFY   (current%RealScalar)
+  END IF
+  IF (ASSOCIATED( current%IntArray)) THEN
+    NULLIFY   (current%IntArray)
+  END IF
+  IF (ASSOCIATED( current%IntScalar)) THEN
+    NULLIFY   (current%IntScalar)
+  END IF
+  IF (ASSOCIATED( current%eval)) THEN
+    NULLIFY   (current%eval)
+  END IF
+  DEALLOCATE(current)
+  NULLIFY(current)
+END IF
+
+END SUBROUTINE FinalizeElemData
 
 END MODULE MOD_IO_HDF5
