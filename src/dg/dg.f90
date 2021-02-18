@@ -222,7 +222,7 @@ USE MOD_Preproc
 USE MOD_Vector
 USE MOD_DG_Vars             ,ONLY: Ut,U,U_slave,U_master,Flux_master,Flux_slave,L_HatPlus,L_HatMinus
 USE MOD_DG_Vars             ,ONLY: UPrim,UPrim_master,UPrim_slave
-USE MOD_DG_Vars,             ONLY: nTotalU
+!USE MOD_DG_Vars,             ONLY: nTotalU
 USE MOD_VolInt
 USE MOD_SurfIntCons         ,ONLY: SurfIntCons
 USE MOD_ProlongToFaceCons   ,ONLY: ProlongToFaceCons
