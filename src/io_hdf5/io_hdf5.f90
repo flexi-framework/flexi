@@ -242,7 +242,7 @@ IF(.NOT.single)  CALL H5PSET_FAPL_MPIO_F(Plist_File_ID, comm, MPIInfo, iError)
 IF(create)THEN
   IF (userblockSize_loc > 0) THEN
     tmp = userblockSize_loc/512
-    IF (MOD(userblockSize_loc,512).GT.0) tmp = tmp+1
+    IF (MOD(userblockSize_loc,INT(512,HSIZE_T)).GT.0) tmp = tmp+1
     tmp2 = 512*2**CEILING(LOG(REAL(tmp))/LOG(2.))
     CALL H5PSET_USERBLOCK_F(Plist_File_ID, tmp2, iError)
   END IF

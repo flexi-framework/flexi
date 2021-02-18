@@ -332,7 +332,7 @@ DO
   IF(doAnalyze) CALL DGTimeDerivative_weakForm(t)
 
   ! Call your Analysis Routine for your Testcase here.
-  IF((MOD(iter,nAnalyzeTestCase).EQ.0).OR.doAnalyze) CALL AnalyzeTestCase(t)
+  IF((MOD(iter,INT(nAnalyzeTestCase,KIND=8)).EQ.0).OR.doAnalyze) CALL AnalyzeTestCase(t)
   ! evaluate recordpoints
   IF(RP_onProc) CALL RecordPoints(PP_nVar,StrVarNames,iter,t,doAnalyze)
 
