@@ -186,10 +186,12 @@ USE MOD_Mesh_Vars,          ONLY: nSides,nElems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)    :: ULift(       PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< solution vector for which lifted gradients will be computed
+REAL,INTENT(IN)    :: ULift(       PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< solution vector for which lifted gradients
+                                                                                !> will be computed
 REAL,INTENT(INOUT) :: ULift_master(PP_nVarLifting,0:PP_N,0:PP_NZ,1:nSides)      !< solution on the master sides
 REAL,INTENT(INOUT) :: ULift_slave( PP_nVarLifting,0:PP_N,0:PP_NZ,1:nSides)      !< solution on the slave sides
 REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim   ,0:PP_N,0:PP_NZ,1:nSides)      !< primitive solution on the slave sides
+                                                                                !> (required for some BCs)
 REAL,INTENT(IN)    :: t                                                         !< current simulation time
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

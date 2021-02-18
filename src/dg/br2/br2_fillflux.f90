@@ -45,7 +45,7 @@ CONTAINS
 !> In case one of the elements contains a FV solution, the FV integral means from the FV element have to be transformed onto the DG
 !> nodes set.
 !==================================================================================================================================
-PPURE SUBROUTINE Lifting_FillFlux(dir,UPrimface_master,UPrimface_slave,Flux,doMPISides)
+PPURE SUBROUTINE Lifting_FillFlux(dir,ULiftface_master,ULiftface_slave,Flux,doMPISides)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Mesh_Vars,       ONLY: NormVec,SurfElem
@@ -61,14 +61,14 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: dir                        !< direction (x,y,z)
 LOGICAL,INTENT(IN) :: doMPISides                 !< =.TRUE. only MINE MPISides are filled, =.FALSE. InnerSides
-REAL,INTENT(INOUT) :: UPrimface_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< solution on the master sides
-REAL,INTENT(INOUT) :: UPrimface_slave (PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< solution on the slave sides
-REAL,INTENT(OUT)   :: Flux(1:PP_nVarPrim,0:PP_N,0:PP_NZ,nSides)             !< surface flux contribution
+REAL,INTENT(INOUT) :: ULiftface_master(PP_nVarLifting,0:PP_N,0:PP_NZ,1:nSides) !< solution on the master sides
+REAL,INTENT(INOUT) :: ULiftface_slave (PP_nVarLifting,0:PP_N,0:PP_NZ,1:nSides) !< solution on the slave sides
+REAL,INTENT(OUT)   :: Flux(1:PP_nVarLifting,0:PP_N,0:PP_NZ,nSides)             !< surface flux contribution
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            ::SideID,p,q,firstSideID,lastSideID
 #if FV_ENABLED
-REAL               :: UPrim_glob(1:PP_nVarPrim,0:PP_N,0:PP_NZ)
+REAL               :: UPrim_Lift(1:PP_nVarLifting,0:PP_N,0:PP_NZ)
 #endif
 !==================================================================================================================================
 ! fill flux for sides ranging between firstSideID and lastSideID using Riemann solver
@@ -89,14 +89,14 @@ DO SideID = firstSideID,lastSideID
 #endif
     ! BR2 uses strong form, i.e. subtract the solution from the inside
     !BR2: Flux = 1/2(UR+UL)-UL=1/2(UR-UL)
-    Flux(:,:,:,SideID)=0.5*(UPrimface_slave(:,:,:,SideID)-UPrimface_master(:,:,:,SideID))
+    Flux(:,:,:,SideID)=0.5*(ULiftface_slave(:,:,:,SideID)-ULiftface_master(:,:,:,SideID))
 #if FV_ENABLED
   CASE(1) ! master=FV, slave=DG
-    CALL ChangeBasisSurf(PP_nVarPrim,PP_N,PP_N,FV_sVdm,UPrimface_master(:,:,:,SideID),UPrim_glob)
-    Flux(:,:,:,SideID)=0.5*(UPrimface_slave(:,:,:,SideID)-UPrim_glob(:,:,:))
+    CALL ChangeBasisSurf(PP_nVarLifting,PP_N,PP_N,FV_sVdm,ULiftface_master(:,:,:,SideID),ULift_glob)
+    Flux(:,:,:,SideID)=0.5*(UPrimface_slave(:,:,:,SideID)-ULift_glob(:,:,:))
   CASE(2) ! master=DG, slave=FV
-    CALL ChangeBasisSurf(PP_nVarPrim,PP_N,PP_N,FV_sVdm,UPrimface_slave(:,:,:,SideID),UPrim_glob)
-    Flux(:,:,:,SideID)=0.5*(UPrim_glob(:,:,:)-UPrimface_master(:,:,:,SideID))
+    CALL ChangeBasisSurf(PP_nVarLifting,PP_N,PP_N,FV_sVdm,ULiftface_slave(:,:,:,SideID),ULift_glob)
+    Flux(:,:,:,SideID)=0.5*(ULift_glob(:,:,:)-ULiftface_master(:,:,:,SideID))
   CASE(3) ! both FV
     CYCLE
   END SELECT
@@ -135,9 +135,9 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 REAL,INTENT(IN)    :: t                                                !< Current time
 REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< Primitive solution from the inside
-REAL,INTENT(OUT)   :: FluxX(       PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< gradient flux in x-dir
-REAL,INTENT(OUT)   :: FluxY(       PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< gradient flux in y-dir
-REAL,INTENT(OUT)   :: FluxZ(       PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< gradient flux in z-dir
+REAL,INTENT(OUT)   :: FluxX(       PP_nVarLifting,0:PP_N,0:PP_NZ,1:nSides) !< gradient flux in x-dir
+REAL,INTENT(OUT)   :: FluxY(       PP_nVarLifting,0:PP_N,0:PP_NZ,1:nSides) !< gradient flux in y-dir
+REAL,INTENT(OUT)   :: FluxZ(       PP_nVarLifting,0:PP_N,0:PP_NZ,1:nSides) !< gradient flux in z-dir
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: SideID,p,q

@@ -64,18 +64,18 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
 LOGICAL,INTENT(IN)   :: doMPISides  !< = .TRUE. only YOUR MPISides are filled, =.FALSE. BCSides+InnerSides+MPISides MINE
-REAL,INTENT(IN)      :: Flux(1:PP_nVarPrim,0:PP_N,0:PP_NZ,nSides) !< Surface flux contribution
+REAL,INTENT(IN)      :: Flux(1:PP_nVarLifting,0:PP_N,0:PP_NZ,nSides) !< Surface flux contribution
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(INOUT)   :: gradU(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< Volume contribution to gradients
-REAL,INTENT(INOUT)   :: gradU_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< Gradient on the master sides
-REAL,INTENT(INOUT)   :: gradU_slave( PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< Gradient on the slave sides
+REAL,INTENT(INOUT)   :: gradU(       PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< Volume contribution to gradients
+REAL,INTENT(INOUT)   :: gradU_master(PP_nVarLifting,0:PP_N,0:PP_NZ,1:nSides)        !< Gradient on the master sides
+REAL,INTENT(INOUT)   :: gradU_slave( PP_nVarLifting,0:PP_N,0:PP_NZ,1:nSides)        !< Gradient on the slave sides
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL               :: F_loc(PP_nVarPrim)
-INTEGER            :: ElemID,nbElemID,l,p,q,Flip,SideID,locSideID,nblocSideID,ijk(3)
-INTEGER            :: firstSideID,lastSideID
-REAL               :: eta
+REAL                 :: F_loc(PP_nVarLifting)
+INTEGER              :: ElemID,nbElemID,l,p,q,Flip,SideID,locSideID,nblocSideID,ijk(3)
+INTEGER              :: firstSideID,lastSideID
+REAL                 :: eta
 !==================================================================================================================================
 
 !slave Sides

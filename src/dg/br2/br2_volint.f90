@@ -43,7 +43,7 @@ CONTAINS
 !> In the non conservative form of the volume integral in BR1 we first differentiate the flux (which is the solution in BR2) and
 !> then apply the metric terms. This is the fastest implementation of the volume integral and only available in strong form.
 !==================================================================================================================================
-PPURE SUBROUTINE Lifting_VolInt_Nonconservative(UPrim,gradUx,gradUy,gradUz)
+PPURE SUBROUTINE Lifting_VolInt_Nonconservative(ULift,gradUx,gradUy,gradUz)
 ! MODULES
 USE MOD_PreProc
 USE MOD_DG_Vars            ,ONLY: D_T
@@ -64,15 +64,15 @@ USE MOD_FV_Vars            ,ONLY: gradUzeta_central
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)            :: UPrim( PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< solution
-REAL,INTENT(OUT)           :: gradUx(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< gradients in x-direction
-REAL,INTENT(OUT)           :: gradUy(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< gradients in y-direction
-REAL,INTENT(OUT)           :: gradUz(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< gradients in z-direction
+REAL,INTENT(IN)            :: ULift( PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< solution
+REAL,INTENT(OUT)           :: gradUx(PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< gradients in x-direction
+REAL,INTENT(OUT)           :: gradUy(PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< gradients in y-direction
+REAL,INTENT(OUT)           :: gradUz(PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< gradients in z-direction
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL,DIMENSION(PP_nVarPrim):: gradUxi,gradUeta ! gradients in xi/eta directions
+REAL,DIMENSION(PP_nVarLifting):: gradUxi,gradUeta ! gradients in xi/eta directions
 #if PP_dim == 3
-REAL,DIMENSION(PP_nVarPrim):: gradUzeta ! gradient in zeta direction
+REAL,DIMENSION(PP_nVarLifting):: gradUzeta ! gradient in zeta direction
 #endif
 INTEGER                    :: iElem,i,j,k,l
 !==================================================================================================================================
@@ -82,16 +82,16 @@ DO iElem=1,nElems
   IF (FV_Elems(iElem).EQ.0) THEN ! DG element
 #endif
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-    gradUxi     =             D_T(0,i)*UPrim(:,0,j,k,iElem)
-    gradUeta    =             D_T(0,j)*UPrim(:,i,0,k,iElem)
+    gradUxi     =             D_T(0,i)*ULift(:,0,j,k,iElem)
+    gradUeta    =             D_T(0,j)*ULift(:,i,0,k,iElem)
 #if PP_dim == 3
-    gradUzeta   =             D_T(0,k)*UPrim(:,i,j,0,iElem)
+    gradUzeta   =             D_T(0,k)*ULift(:,i,j,0,iElem)
 #endif
     DO l=1,PP_N
-      gradUxi   = gradUxi   + D_T(l,i)*UPrim(:,l,j,k,iElem)
-      gradUeta  = gradUeta  + D_T(l,j)*UPrim(:,i,l,k,iElem)
+      gradUxi   = gradUxi   + D_T(l,i)*ULift(:,l,j,k,iElem)
+      gradUeta  = gradUeta  + D_T(l,j)*ULift(:,i,l,k,iElem)
 #if PP_dim == 3
-      gradUzeta = gradUzeta + D_T(l,k)*UPrim(:,i,j,l,iElem)
+      gradUzeta = gradUzeta + D_T(l,k)*ULift(:,i,j,l,iElem)
 #endif
     END DO
     gradUx(:,i,j,k,iElem) = Metrics_fTilde(1,i,j,k,iElem,0)*gradUxi   &
@@ -147,7 +147,7 @@ END SUBROUTINE Lifting_VolInt_Nonconservative
 !> In the conservative form, the volume integral is calculated from the transformed solution, i.e. the solution is multiplied by teh
 !> metrics terms.
 !==================================================================================================================================
-PPURE SUBROUTINE Lifting_VolInt_Conservative(dir,UPrim,gradU)
+PPURE SUBROUTINE Lifting_VolInt_Conservative(dir,ULift,gradU)
 ! MODULES
 USE MOD_PreProc
 USE MOD_DG_Vars      ,ONLY: D_T
@@ -165,13 +165,13 @@ USE MOD_FV_Vars      ,ONLY: gradUxi_central, gradUeta_central
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)                           :: dir                                          !< direction (x,y,z)
-REAL,INTENT(IN)                              :: UPrim(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< solution
-REAL,INTENT(OUT)                             :: gradU(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< solution gradient in direction dir
+INTEGER,INTENT(IN)                           :: dir                                                  !< direction (x,y,z)
+REAL,INTENT(IN)                              :: ULift(PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< solution
+REAL,INTENT(OUT)                             :: gradU(PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< solution gradient in direction dir
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ) :: UE_f,UE_g,UE_h ! transformed gradient flux (i.e. transformed solution)
-INTEGER                                          :: iElem,i,j,k,l
+REAL,DIMENSION(PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ) :: UE_f,UE_g,UE_h ! transformed gradient flux (i.e. transformed solution)
+INTEGER                                              :: iElem,i,j,k,l
 !==================================================================================================================================
 ! volume integral
 DO iElem=1,nElems
@@ -179,7 +179,7 @@ DO iElem=1,nElems
   IF (FV_Elems(iElem).EQ.0) THEN ! DG element
 #endif
   ! transform the gradient "flux" into the reference element coordinates
-  CALL Lifting_Metrics(dir,UPrim(:,:,:,:,iElem),&
+  CALL Lifting_Metrics(dir,ULift(:,:,:,:,iElem),&
                        Metrics_fTilde(:,:,:,:,iElem,0),&
                        Metrics_gTilde(:,:,:,:,iElem,0),&
                        Metrics_hTilde(:,:,:,:,iElem,0),&
@@ -225,7 +225,7 @@ END SUBROUTINE Lifting_VolInt_Conservative
 !>
 !> Transform the gradient terms by multiplying them with the metrics terms
 !==================================================================================================================================
-PPURE SUBROUTINE Lifting_Metrics(dir,UPrim,Mf,Mg,Mh,UPrim_f,UPrim_g,UPrim_h)
+PPURE SUBROUTINE Lifting_Metrics(dir,ULift,Mf,Mg,Mh,ULift_f,ULift_g,ULift_h)
 ! MODULES
 USE MOD_DG_Vars,ONLY:nDOFElem
 IMPLICIT NONE
@@ -235,19 +235,19 @@ INTEGER,INTENT(IN) :: dir                                 !< direction (x,y,z)
 REAL,INTENT(IN)    :: Mf(3,nDOFElem)                      !< metrics in xi
 REAL,INTENT(IN)    :: Mg(3,nDOFElem)                      !< metrics in eta
 REAL,INTENT(IN)    :: Mh(3,nDOFElem)                      !< metrics in zeta
-REAL,INTENT(IN)    :: UPrim(PP_nVarPrim,nDOFElem)         !< solution ("flux")
-REAL,INTENT(OUT)   :: UPrim_f(PP_nVarPrim,nDOFElem)       !< gradient flux xi
-REAL,INTENT(OUT)   :: UPrim_g(PP_nVarPrim,nDOFElem)       !< gradient flux eta
-REAL,INTENT(OUT)   :: UPrim_h(PP_nVarPrim,nDOFElem)       !< gradient flux zeta
+REAL,INTENT(IN)    :: ULift(  PP_nVarLifting,nDOFElem)    !< solution ("flux")
+REAL,INTENT(OUT)   :: ULift_f(PP_nVarLifting,nDOFElem)    !< gradient flux xi
+REAL,INTENT(OUT)   :: ULift_g(PP_nVarLifting,nDOFElem)    !< gradient flux eta
+REAL,INTENT(OUT)   :: ULift_h(PP_nVarLifting,nDOFElem)    !< gradient flux zeta
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: i
 !==================================================================================================================================
 DO i=1,nDOFElem
-  UPrim_f(:,i) = Mf(dir,i)*UPrim(:,i)
-  UPrim_g(:,i) = Mg(dir,i)*UPrim(:,i)
+  ULift_f(:,i) = Mf(dir,i)*ULift(:,i)
+  ULift_g(:,i) = Mg(dir,i)*ULift(:,i)
 #if PP_dim == 3
-  UPrim_h(:,i) = Mh(dir,i)*UPrim(:,i)
+  ULift_h(:,i) = Mh(dir,i)*ULift(:,i)
 #endif
 END DO ! i
 
