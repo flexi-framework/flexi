@@ -578,7 +578,7 @@ LIST(APPEND flexiF90 ${eqnsysF90})
 FILE(GLOB dgF90            ./src/dg/*.f90)
 # append F90 files of lifting to 'dgF90'-list
 IF (FLEXI_PARABOLIC)
-  FILE(GLOB liftingF90     ./src/dg/${FLEXI_LIFTING}/*.f90)
+  FILE(GLOB liftingF90     ./src/dg/lifting/*.f90)
   LIST(APPEND dgF90 ${liftingF90})
 ENDIF()
 # append 'dgF90'-list to 'flexiF90'-list
