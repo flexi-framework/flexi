@@ -174,6 +174,7 @@ IF (file_exists) THEN
     SAd(:,:,:,0,:) = SAd_local
   END IF
 #endif
+  DEALLOCATE(HSize)
   IF (includeTrip) THEN
     CALL ReadAttribute(File_ID,'TripX',2,RealArray=TripX)
     CALL ReadAttribute(File_ID,'TripElem',1,IntScalar=tripElem)
