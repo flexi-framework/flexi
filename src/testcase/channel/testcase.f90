@@ -116,7 +116,6 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                  :: ioUnit,openStat
 REAL                     :: c1
 REAL                     :: bulkMach,pressure
 CHARACTER(LEN=7)         :: varnames(2)
@@ -292,7 +291,6 @@ DO iElem=1,nElems
 END DO
 END SUBROUTINE TestcaseSource
 
-
 !==================================================================================================================================
 !> Output testcase statistics
 !==================================================================================================================================
@@ -306,14 +304,10 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                  :: ioUnit,openStat,i
 !==================================================================================================================================
 CALL OutputToFile(FileName,writeBuf(1,1:ioCounter),(/2,ioCounter/),RESHAPE(writeBuf(2:3,1:ioCounter),(/2*ioCounter/)))
 ioCounter=0
-
 END SUBROUTINE WriteStats
-
-
 
 !==================================================================================================================================
 !> Specifies periodic hill testcase

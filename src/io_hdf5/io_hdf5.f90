@@ -467,6 +467,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 !==================================================================================================================================
 CALL FinalizeElemData(ElementOut)
+CALL FinalizeFieldData(FieldOut)
 
 END SUBROUTINE FinalizeIOHDF5
 
@@ -531,5 +532,48 @@ IF(ASSOCIATED(ElementOut_In))THEN
 END IF
 
 END SUBROUTINE FinalizeElemData
+
+!==================================================================================================================================
+!==================================================================================================================================
+SUBROUTINE FinalizeFieldData(FieldOut_In)
+! MODULES
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+TYPE(tFieldOut),POINTER,INTENT(INOUT) :: FieldOut_In     !< Pointer list of element-wise data that is written to the state file
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!==================================================================================================================================
+TYPE(tFieldOut),POINTER          :: current,tmp
+!===================================================================================================================================
+
+IF(ASSOCIATED(FieldOut_In))THEN
+  current => FieldOut_In
+  DO WHILE (ASSOCIATED(current%next))
+    IF (ASSOCIATED( current%RealArray)) THEN
+      NULLIFY   (current%RealArray)
+    END IF
+    IF (ASSOCIATED( current%eval)) THEN
+      NULLIFY   (current%eval)
+    END IF
+    tmp => current%next
+    DEALLOCATE(current)
+    NULLIFY(current)
+    current => tmp
+  END DO
+
+  ! Also finalize the last entry
+  IF (ASSOCIATED( current%RealArray)) THEN
+    NULLIFY   (current%RealArray)
+  END IF
+  IF (ASSOCIATED( current%eval)) THEN
+    NULLIFY   (current%eval)
+  END IF
+  DEALLOCATE(current)
+  NULLIFY(current)
+END IF
+
+END SUBROUTINE FinalizeFieldData
 
 END MODULE MOD_IO_HDF5
