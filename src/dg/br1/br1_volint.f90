@@ -13,6 +13,7 @@
 !=================================================================================================================================
 #if PARABOLIC
 #include "flexi.h"
+#include "eos.h"
 
 !==================================================================================================================================
 !> \brief Routines for computing the lifting volume integral for the BR1 scheme.
@@ -67,14 +68,14 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 REAL,INTENT(IN)                              :: UPrim( PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< solution
-REAL,INTENT(OUT)                             :: gradUx(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< gradients in x-direction
-REAL,INTENT(OUT)                             :: gradUy(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< gradients in y-direction
-REAL,INTENT(OUT)                             :: gradUz(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< gradients in z-direction
+REAL,INTENT(OUT)                             :: gradUx(PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< gradients in x-direction
+REAL,INTENT(OUT)                             :: gradUy(PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< gradients in y-direction
+REAL,INTENT(OUT)                             :: gradUz(PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< gradients in z-direction
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL,DIMENSION(PP_nVarPrim)                  :: gradUxi,gradUeta
+REAL,DIMENSION(PP_nVarLifting)                  :: gradUxi,gradUeta
 #if (PP_dim==3)
-REAL,DIMENSION(PP_nVarPrim)                  :: gradUzeta
+REAL,DIMENSION(PP_nVarLifting)                  :: gradUzeta
 #endif
 INTEGER                                      :: iElem,i,j,k,l
 !==================================================================================================================================
@@ -84,16 +85,28 @@ DO iElem=1,nElems
   IF (FV_Elems(iElem).EQ.0) THEN ! DG element
 #endif
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      gradUxi     =             D_T(0,i)*UPrim(:,0,j,k,iElem)
-      gradUeta    =             D_T(0,j)*UPrim(:,i,0,k,iElem)
+      !gradUxi     =             D_T(0,i)*UPrim(:,0,j,k,iElem)
+      !gradUeta    =             D_T(0,j)*UPrim(:,i,0,k,iElem)
+      gradUxi(LIFT_VELV)     = D_T(0,i)*UPrim(2:4,0,j,k,iElem)
+      gradUxi(LIFT_TEMP)        = D_T(0,i)*UPrim(6,0,j,k,iElem)
+      gradUeta(LIFT_VELV)    = D_T(0,j)*UPrim(2:4,i,0,k,iElem)
+      gradUeta(LIFT_TEMP)       = D_T(0,j)*UPrim(6,i,0,k,iElem)
 #if (PP_dim==3)
-      gradUzeta   =             D_T(0,k)*UPrim(:,i,j,0,iElem)
+      !gradUzeta   =             D_T(0,k)*UPrim(:,i,j,0,iElem)
+      gradUzeta(LIFT_VELV)   = D_T(0,k)*UPrim(2:4,i,j,0,iElem)
+      gradUzeta(LIFT_TEMP)      = D_T(0,k)*UPrim(6,i,j,0,iElem)
 #endif
       DO l=1,PP_N
-        gradUxi   = gradUxi   + D_T(l,i)*UPrim(:,l,j,k,iElem)
-        gradUeta  = gradUeta  + D_T(l,j)*UPrim(:,i,l,k,iElem)
+        !gradUxi   = gradUxi   + D_T(l,i)*UPrim(:,l,j,k,iElem)
+        !gradUeta  = gradUeta  + D_T(l,j)*UPrim(:,i,l,k,iElem)
+        gradUxi(LIFT_VELV)   = gradUxi(LIFT_VELV)  + D_T(l,i)*UPrim(2:4,l,j,k,iElem)
+        gradUxi(LIFT_TEMP)      = gradUxi(LIFT_TEMP)     + D_T(l,i)*UPrim(6,l,j,k,iElem)
+        gradUeta(LIFT_VELV)  = gradUeta(LIFT_VELV) + D_T(l,j)*UPrim(2:4,i,l,k,iElem)
+        gradUeta(LIFT_TEMP)     = gradUeta(LIFT_TEMP)    + D_T(l,j)*UPrim(6,i,l,k,iElem)
 #if (PP_dim==3)
-        gradUzeta = gradUzeta + D_T(l,k)*UPrim(:,i,j,l,iElem)
+        !gradUzeta = gradUzeta + D_T(l,k)*UPrim(:,i,j,l,iElem)
+        gradUzeta(LIFT_VELV) = gradUzeta(LIFT_VELV) + D_T(l,k)*UPrim(2:4,i,j,l,iElem)
+        gradUzeta(LIFT_TEMP)    = gradUzeta(LIFT_TEMP)    + D_T(l,k)*UPrim(6,i,j,l,iElem)
 #endif
       END DO
 #if (PP_dim==3)
@@ -176,11 +189,11 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)                           :: dir       !< direction (x,y,z)
 REAL,INTENT(IN)                              :: UPrim(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< solution
-REAL,INTENT(OUT)                             :: gradU(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< solution gradient in direction dir
+REAL,INTENT(OUT)                             :: gradU(PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< solution gradient in direction dir
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                             :: DMat(0:PP_N,0:PP_N)
-REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ) :: UE_f,UE_g,UE_h
+REAL,DIMENSION(PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ) :: UE_f,UE_g,UE_h
 INTEGER                                          :: iElem,i,j,k,l
 !==================================================================================================================================
 IF(doWeakLifting)THEN
@@ -246,18 +259,23 @@ REAL,INTENT(IN)    :: Mf(3,nDOFElem)                      !< metrics in xi
 REAL,INTENT(IN)    :: Mg(3,nDOFElem)                      !< metrics in eta
 REAL,INTENT(IN)    :: Mh(3,nDOFElem)                      !< metrics in zeta
 REAL,INTENT(IN)    :: UPrim(PP_nVarPrim,nDOFElem)         !< solution ("flux")
-REAL,INTENT(OUT)   :: UPrim_f(PP_nVarPrim,nDOFElem)       !< gradient flux xi
-REAL,INTENT(OUT)   :: UPrim_g(PP_nVarPrim,nDOFElem)       !< gradient flux eta
-REAL,INTENT(OUT)   :: UPrim_h(PP_nVarPrim,nDOFElem)       !< gradient flux zeta
+REAL,INTENT(OUT)   :: UPrim_f(PP_nVarLifting,nDOFElem)       !< gradient flux xi
+REAL,INTENT(OUT)   :: UPrim_g(PP_nVarLifting,nDOFElem)       !< gradient flux eta
+REAL,INTENT(OUT)   :: UPrim_h(PP_nVarLifting,nDOFElem)       !< gradient flux zeta
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                                      :: i
 !==================================================================================================================================
 DO i=1,nDOFElem
-  UPrim_f(:,i) = Mf(dir,i)*UPrim(:,i)
-  UPrim_g(:,i) = Mg(dir,i)*UPrim(:,i)
+  UPrim_f(LIFT_VELV,i) = Mf(dir,i)*UPrim(2:4,i)
+  UPrim_g(LIFT_VELV,i) = Mg(dir,i)*UPrim(2:4,i)
 #if (PP_dim==3)
-  UPrim_h(:,i) = Mh(dir,i)*UPrim(:,i)
+  UPrim_h(LIFT_VELV,i) = Mh(dir,i)*UPrim(2:4,i)
+#endif
+  UPrim_f(LIFT_TEMP,i) = Mf(dir,i)*UPrim(6,i)
+  UPrim_g(LIFT_TEMP,i) = Mg(dir,i)*UPrim(6,i)
+#if (PP_dim==3)
+  UPrim_h(LIFT_TEMP,i) = Mh(dir,i)*UPrim(6,i)
 #endif
 END DO ! i
 END SUBROUTINE Lifting_Metrics

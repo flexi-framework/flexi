@@ -55,7 +55,7 @@ PPURE SUBROUTINE Lifting_SurfInt(Nloc,Flux,gradU,doMPISides,L_HatMinus,L_HatPlus
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_SurfintPrim,        ONLY: DoSurfIntPrim
+USE MOD_SurfintLifting,     ONLY: DoSurfIntLifting
 USE MOD_Mesh_Vars,          ONLY: SideToElem,nSides,nElems
 USE MOD_Mesh_Vars,          ONLY: firstMPISide_YOUR,lastMPISide_MINE
 USE MOD_Mesh_Vars,          ONLY: S2V2
@@ -69,18 +69,18 @@ IMPLICIT NONE
 INTEGER,INTENT(IN) :: Nloc                                             !< polynomial degree
 LOGICAL,INTENT(IN) :: doMPISides                                       !< = .TRUE. only MPISides_YOUR+MPIMortar are filled
                                                                        !< =.FALSE. BCSides+(Mortar-)InnerSides+MPISides_MINE
-REAL,INTENT(IN)    :: Flux(1:PP_nVarPrim,0:Nloc,0:ZDIM(Nloc),nSides)         !< flux to be filled
+REAL,INTENT(IN)    :: Flux(1:PP_nVarLifting,0:Nloc,0:ZDIM(Nloc),nSides)         !< flux to be filled
 REAL,INTENT(IN)    :: L_HatPlus(0:Nloc)                                !< lagrange polynomials at xi=+1 and pre-divided by
                                                                        !< integration weight
 REAL,INTENT(IN)    :: L_HatMinus(0:Nloc)                               !< lagrange polynomials at xi=-1 and pre-divided by
                                                                        !< integration weight
-REAL,INTENT(INOUT) :: gradU(PP_nVarPrim,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems) !< time derivative of solution
+REAL,INTENT(INOUT) :: gradU(PP_nVarLifting,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems) !< time derivative of solution
 LOGICAL,INTENT(IN) :: weak                                             !< switch for weak or strong formulation
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: ElemID,nbElemID,locSideID,nblocSideID,SideID,p,q,flip
 INTEGER            :: firstSideID,lastSideID
-REAL               :: FluxTmp(1:PP_nVarPrim,0:Nloc,0:ZDIM(Nloc))
+REAL               :: FluxTmp(1:PP_nVarLifting,0:Nloc,0:ZDIM(Nloc))
 !==================================================================================================================================
 IF(doMPISides)THEN
   ! MPI YOUR
@@ -107,9 +107,9 @@ DO SideID=firstSideID,lastSideID
         FluxTmp(:,S2V2(1,p,q,flip,locSideID),S2V2(2,p,q,flip,locSideID)) = Flux(:,p,q,SideID)
       END DO; END DO ! p,q
 #if   (PP_NodeType==1)
-      CALL DoSurfIntPrim(Nloc,FluxTmp,L_HatMinus,   L_HatPlus,      locSideID,gradU(:,:,:,:,ElemID))
+      CALL DoSurfIntLifting(Nloc,FluxTmp,L_HatMinus,   L_HatPlus,      locSideID,gradU(:,:,:,:,ElemID))
 #elif (PP_NodeType==2)
-      CALL DoSurfIntPrim(Nloc,FluxTmp,L_HatMinus(0),L_HatPlus(Nloc),locSideID,gradU(:,:,:,:,ElemID))
+      CALL DoSurfIntLifting(Nloc,FluxTmp,L_HatMinus(0),L_HatPlus(Nloc),locSideID,gradU(:,:,:,:,ElemID))
 #endif
     END IF
   END IF
@@ -133,9 +133,9 @@ DO SideID=firstSideID,lastSideID
         END DO; END DO ! p,q
       END IF
 #if   (PP_NodeType==1)
-      CALL DoSurfIntPrim(Nloc,FluxTmp,L_HatMinus,   L_HatPlus,      nblocSideID,gradU(:,:,:,:,nbElemID))
+      CALL DoSurfIntLifting(Nloc,FluxTmp,L_HatMinus,   L_HatPlus,      nblocSideID,gradU(:,:,:,:,nbElemID))
 #elif (PP_NodeType==2)
-      CALL DoSurfIntPrim(Nloc,FluxTmp,L_HatMinus(0),L_HatPlus(Nloc),nblocSideID,gradU(:,:,:,:,nbElemID))
+      CALL DoSurfIntLifting(Nloc,FluxTmp,L_HatMinus(0),L_HatPlus(Nloc),nblocSideID,gradU(:,:,:,:,nbElemID))
 #endif
     END IF
   END IF

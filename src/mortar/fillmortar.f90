@@ -90,6 +90,30 @@ CONTAINS
 END MODULE MOD_FillMortarPrim
 
 !==================================================================================================================================
+!> Routines that perform the projection operation between nonconforming interfaces of primitive variables
+!==================================================================================================================================
+MODULE MOD_FillMortarLifting
+IMPLICIT NONE
+PRIVATE
+
+#undef WITHnVar
+INTEGER,PARAMETER :: TP_nVar = PP_nVarLifting
+
+INTERFACE U_MortarLifting
+  MODULE PROCEDURE U_Mortar
+END INTERFACE
+
+INTERFACE Flux_MortarLifting
+  MODULE PROCEDURE Flux_Mortar
+END INTERFACE
+
+PUBLIC::U_MortarLifting,Flux_MortarLifting
+
+CONTAINS
+#include "fillmortar.t90"
+END MODULE MOD_FillMortarLifting
+
+!==================================================================================================================================
 !> Routines that perform the projection operation between nonconforming interfaces of a scalar variable
 !==================================================================================================================================
 MODULE MOD_FillMortar1
