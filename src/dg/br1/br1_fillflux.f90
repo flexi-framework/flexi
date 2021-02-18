@@ -58,7 +58,7 @@ CONTAINS
 !> The flux is filled for the master side, the contribution for the slave side (which is different because the inner solution
 !> is equal to \f$ U^+ \f$) is taken into account in the SurfInt routine.
 !==================================================================================================================================
-PPURE SUBROUTINE Lifting_FillFlux(UPrimface_master,UPrimface_slave,Flux,doMPISides)
+PPURE SUBROUTINE Lifting_FillFlux(ULiftface_master,ULiftface_slave,Flux,doMPISides)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
@@ -74,16 +74,16 @@ USE MOD_ChangeBasisByDim,ONLY: ChangeBasisSurf
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-LOGICAL,INTENT(IN) :: doMPISides                                          !< = .TRUE. only MINE MPISides are filled,
-                                                                          !< =.FALSE. InnerSides
-REAL,INTENT(INOUT) :: UPrimface_master(PP_nVarPrim,0:PP_N,0:PP_NZ,nSides) !< Solution on master sides
-REAL,INTENT(INOUT) :: UPrimface_slave( PP_nVarPrim,0:PP_N,0:PP_NZ,nSides) !< Solution on slave sides
+LOGICAL,INTENT(IN) :: doMPISides                                             !< = .TRUE. only MINE MPISides are filled,
+                                                                             !< =.FALSE. InnerSides
+REAL,INTENT(INOUT) :: ULiftface_master(PP_nVarLifting,0:PP_N,0:PP_NZ,nSides) !< Solution on master sides
+REAL,INTENT(INOUT) :: ULiftface_slave( PP_nVarLifting,0:PP_N,0:PP_NZ,nSides) !< Solution on slave sides
 REAL,INTENT(INOUT) :: Flux(            PP_nVarLifting,0:PP_N,0:PP_NZ,nSides) !< Untransformed lifting flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: SideID,p,q,firstSideID,lastSideID,sig
 #if FV_ENABLED
-REAL               :: UPrim_glob(1:PP_nVarPrim,0:PP_N,0:PP_NZ)
+REAL               :: UPrim_glob(1:PP_nVarLifting,0:PP_N,0:PP_NZ)
 #endif
 !==================================================================================================================================
 ! fill flux for sides ranging between firstSideID and lastSideID using Riemann solver
@@ -105,17 +105,14 @@ DO SideID=firstSideID,lastSideID
   SELECT CASE(FV_Elems_Sum(SideID))
   CASE(0) ! both DG
 #endif
-    Flux(LIFT_VELV,:,:,SideID) = sig*UPrimface_master(2:4,:,:,SideID) + UPrimface_slave(2:4,:,:,SideID)
-    Flux(LIFT_TEMP,:,:,SideID) = sig*UPrimface_master(6  ,:,:,SideID) + UPrimface_slave(6  ,:,:,SideID)
+    Flux(:,:,:,SideID) = sig*ULiftface_master(:,:,:,SideID) + ULiftface_slave(:,:,:,SideID)
 #if FV_ENABLED
   CASE(1) ! master=FV, slave=DG
-    CALL ChangeBasisSurf(PP_nVarPrim,PP_N,PP_N,FV_sVdm,UPrimface_master(:,:,:,SideID),UPrim_glob)
-    Flux(LIFT_VELV,:,:,SideID) = sig*UPrim_glob(2:4,:,:) + UPrimface_slave(2:4,:,:,SideID)
-    Flux(LIFT_TEMP,:,:,SideID) = sig*UPrim_glob(6,:,:)   + UPrimface_slave(6  ,:,:,SideID)
+    CALL ChangeBasisSurf(PP_nVarLifting,PP_N,PP_N,FV_sVdm,ULiftface_master(:,:,:,SideID),ULift_glob)
+    Flux(:,:,:,SideID) = sig*UPrim_glob + ULiftface_slave(:,:,:,SideID)
   CASE(2) ! master=DG, slave=FV
-    CALL ChangeBasisSurf(PP_nVarPrim,PP_N,PP_N,FV_sVdm,UPrimface_slave(:,:,:,SideID),UPrim_glob)
-    Flux(LIFT_VELV,:,:,SideID) = sig*UPrimface_master(2:4,:,:,SideID) + UPrim_glob(2:4,:,:)
-    Flux(LIFT_TEMP,:,:,SideID) = sig*UPrimface_master(6  ,:,:,SideID) + UPrim_glob(6,:,:)
+    CALL ChangeBasisSurf(PP_nVarLifting,PP_N,PP_N,FV_sVdm,ULiftface_slave(:,:,:,SideID),ULift_glob)
+    Flux(:,:,:,SideID) = sig*ULiftface_master(:,:,:,SideID) + UPrim_glob
   CASE(3) ! both FV
     CYCLE
   END SELECT

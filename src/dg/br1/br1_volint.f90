@@ -46,7 +46,7 @@ CONTAINS
 !> In the non conservative form of the volume integral in BR1 we first differentiate the flux (which is the solution in BR1) and
 !> then apply the metric terms. This is the fastest implementation of the volume integral and only available in strong form.
 !==================================================================================================================================
-PPURE SUBROUTINE Lifting_VolInt_Nonconservative(UPrim,gradUx,gradUy,gradUz)
+PPURE SUBROUTINE Lifting_VolInt_Nonconservative(ULift,gradUx,gradUy,gradUz)
 ! MODULES
 USE MOD_PreProc
 USE MOD_DG_Vars      ,ONLY: D_T
@@ -67,7 +67,7 @@ USE MOD_FV_Vars      ,ONLY: gradUzeta_central
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)                              :: UPrim( PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< solution
+REAL,INTENT(IN)                              :: ULift( PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< solution
 REAL,INTENT(OUT)                             :: gradUx(PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< gradients in x-direction
 REAL,INTENT(OUT)                             :: gradUy(PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< gradients in y-direction
 REAL,INTENT(OUT)                             :: gradUz(PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< gradients in z-direction
@@ -85,28 +85,16 @@ DO iElem=1,nElems
   IF (FV_Elems(iElem).EQ.0) THEN ! DG element
 #endif
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      !gradUxi     =             D_T(0,i)*UPrim(:,0,j,k,iElem)
-      !gradUeta    =             D_T(0,j)*UPrim(:,i,0,k,iElem)
-      gradUxi(LIFT_VELV)     = D_T(0,i)*UPrim(2:4,0,j,k,iElem)
-      gradUxi(LIFT_TEMP)        = D_T(0,i)*UPrim(6,0,j,k,iElem)
-      gradUeta(LIFT_VELV)    = D_T(0,j)*UPrim(2:4,i,0,k,iElem)
-      gradUeta(LIFT_TEMP)       = D_T(0,j)*UPrim(6,i,0,k,iElem)
+      gradUxi     =             D_T(0,i)*ULift(:,0,j,k,iElem)
+      gradUeta    =             D_T(0,j)*ULift(:,i,0,k,iElem)
 #if (PP_dim==3)
-      !gradUzeta   =             D_T(0,k)*UPrim(:,i,j,0,iElem)
-      gradUzeta(LIFT_VELV)   = D_T(0,k)*UPrim(2:4,i,j,0,iElem)
-      gradUzeta(LIFT_TEMP)      = D_T(0,k)*UPrim(6,i,j,0,iElem)
+      gradUzeta   =             D_T(0,k)*ULift(:,i,j,0,iElem)
 #endif
       DO l=1,PP_N
-        !gradUxi   = gradUxi   + D_T(l,i)*UPrim(:,l,j,k,iElem)
-        !gradUeta  = gradUeta  + D_T(l,j)*UPrim(:,i,l,k,iElem)
-        gradUxi(LIFT_VELV)   = gradUxi(LIFT_VELV)  + D_T(l,i)*UPrim(2:4,l,j,k,iElem)
-        gradUxi(LIFT_TEMP)      = gradUxi(LIFT_TEMP)     + D_T(l,i)*UPrim(6,l,j,k,iElem)
-        gradUeta(LIFT_VELV)  = gradUeta(LIFT_VELV) + D_T(l,j)*UPrim(2:4,i,l,k,iElem)
-        gradUeta(LIFT_TEMP)     = gradUeta(LIFT_TEMP)    + D_T(l,j)*UPrim(6,i,l,k,iElem)
+        gradUxi   = gradUxi   + D_T(l,i)*ULift(:,l,j,k,iElem)
+        gradUeta  = gradUeta  + D_T(l,j)*ULift(:,i,l,k,iElem)
 #if (PP_dim==3)
-        !gradUzeta = gradUzeta + D_T(l,k)*UPrim(:,i,j,l,iElem)
-        gradUzeta(LIFT_VELV) = gradUzeta(LIFT_VELV) + D_T(l,k)*UPrim(2:4,i,j,l,iElem)
-        gradUzeta(LIFT_TEMP)    = gradUzeta(LIFT_TEMP)    + D_T(l,k)*UPrim(6,i,j,l,iElem)
+        gradUzeta = gradUzeta + D_T(l,k)*ULift(:,i,j,l,iElem)
 #endif
       END DO
 #if (PP_dim==3)
@@ -168,7 +156,7 @@ END SUBROUTINE Lifting_VolInt_Nonconservative
 !> For the implementation this means we only have to decide between using the D_hat_T or D_T matrix in the volume integral at the
 !> the beginning of the routine to choose between weak or strong form.
 !==================================================================================================================================
-PPURE SUBROUTINE Lifting_VolInt_Conservative(dir,UPrim,gradU)
+PPURE SUBROUTINE Lifting_VolInt_Conservative(dir,ULift,gradU)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Lifting_Vars       ,ONLY: doWeakLifting
@@ -187,14 +175,14 @@ USE MOD_FV_Vars            ,ONLY: gradUzeta_central
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)                           :: dir       !< direction (x,y,z)
-REAL,INTENT(IN)                              :: UPrim(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< solution
-REAL,INTENT(OUT)                             :: gradU(PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< solution gradient in direction dir
+INTEGER,INTENT(IN)            :: dir       !< direction (x,y,z)
+REAL,INTENT(IN)               :: ULift(PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< solution
+REAL,INTENT(OUT)              :: gradU(PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< solution gradient in direction dir
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                                             :: DMat(0:PP_N,0:PP_N)
+REAL                                                 :: DMat(0:PP_N,0:PP_N)
 REAL,DIMENSION(PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ) :: UE_f,UE_g,UE_h
-INTEGER                                          :: iElem,i,j,k,l
+INTEGER                                              :: iElem,i,j,k,l
 !==================================================================================================================================
 IF(doWeakLifting)THEN
   DMat=D_hat_T
@@ -207,7 +195,7 @@ DO iElem=1,nElems
 #if FV_ENABLED
   IF (FV_Elems(iElem).EQ.0) THEN ! DG element
 #endif
-  CALL Lifting_Metrics(dir,UPrim(:,:,:,:,iElem),&
+  CALL Lifting_Metrics(dir,ULift(:,:,:,:,iElem),&
                        Metrics_fTilde(:,:,:,:,iElem,0),&
                        Metrics_gTilde(:,:,:,:,iElem,0),&
                        Metrics_hTilde(:,:,:,:,iElem,0),&
@@ -248,7 +236,7 @@ END SUBROUTINE Lifting_VolInt_Conservative
 !>
 !> For the direction \f$ d \f$ the transformed gradient flux is \f$ \sum_{n=1}^3 Ja^d_n U \f$.
 !==================================================================================================================================
-PPURE SUBROUTINE Lifting_Metrics(dir,UPrim,Mf,Mg,Mh,UPrim_f,UPrim_g,UPrim_h)
+PPURE SUBROUTINE Lifting_Metrics(dir,ULift,Mf,Mg,Mh,ULift_f,ULift_g,ULift_h)
 ! MODULES
 USE MOD_DG_Vars,ONLY:nDOFElem
 IMPLICIT NONE
@@ -258,24 +246,19 @@ INTEGER,INTENT(IN) :: dir                                 !< direction (x,y,z)
 REAL,INTENT(IN)    :: Mf(3,nDOFElem)                      !< metrics in xi
 REAL,INTENT(IN)    :: Mg(3,nDOFElem)                      !< metrics in eta
 REAL,INTENT(IN)    :: Mh(3,nDOFElem)                      !< metrics in zeta
-REAL,INTENT(IN)    :: UPrim(PP_nVarPrim,nDOFElem)         !< solution ("flux")
-REAL,INTENT(OUT)   :: UPrim_f(PP_nVarLifting,nDOFElem)       !< gradient flux xi
-REAL,INTENT(OUT)   :: UPrim_g(PP_nVarLifting,nDOFElem)       !< gradient flux eta
-REAL,INTENT(OUT)   :: UPrim_h(PP_nVarLifting,nDOFElem)       !< gradient flux zeta
+REAL,INTENT(IN)    :: ULift  (PP_nVarLifting,nDOFElem)    !< solution ("flux")
+REAL,INTENT(OUT)   :: ULift_f(PP_nVarLifting,nDOFElem)    !< gradient flux xi
+REAL,INTENT(OUT)   :: ULift_g(PP_nVarLifting,nDOFElem)    !< gradient flux eta
+REAL,INTENT(OUT)   :: ULift_h(PP_nVarLifting,nDOFElem)    !< gradient flux zeta
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                                      :: i
 !==================================================================================================================================
 DO i=1,nDOFElem
-  UPrim_f(LIFT_VELV,i) = Mf(dir,i)*UPrim(2:4,i)
-  UPrim_g(LIFT_VELV,i) = Mg(dir,i)*UPrim(2:4,i)
+  ULift_f(:,i) = Mf(dir,i)*ULift(:,i)
+  ULift_g(:,i) = Mg(dir,i)*ULift(:,i)
 #if (PP_dim==3)
-  UPrim_h(LIFT_VELV,i) = Mh(dir,i)*UPrim(2:4,i)
-#endif
-  UPrim_f(LIFT_TEMP,i) = Mf(dir,i)*UPrim(6,i)
-  UPrim_g(LIFT_TEMP,i) = Mg(dir,i)*UPrim(6,i)
-#if (PP_dim==3)
-  UPrim_h(LIFT_TEMP,i) = Mh(dir,i)*UPrim(6,i)
+  ULift_h(:,i) = Mh(dir,i)*ULift(:,i)
 #endif
 END DO ! i
 END SUBROUTINE Lifting_Metrics

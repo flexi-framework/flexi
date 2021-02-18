@@ -87,6 +87,14 @@ REAL,ALLOCATABLE                      :: UPrim_master(:,:,:,:)  !< 2D Solution i
 REAL,ALLOCATABLE                      :: UPrim_slave(:,:,:,:)   !< 2D Solution in Primitive variables on face, slave side,
                                                                 !<size [1..NVar,0..N,0..NZ,all_slave_sides]
 !----------------------------------------------------------------------------------------------------------------------------------
+! Variables for lifting procedure
+REAL,ALLOCATABLE                      :: ULift(:,:,:,:,:)       !< Solution in primitive variables per equation, node and element,
+                                                                !< size [1..NVarLifting,0..N,0..N,0..NZ,nElems].
+REAL,ALLOCATABLE                      :: ULift_master(:,:,:,:)  !< 2D Solution in Primitive variables on face, master side,
+                                                                !< size [1..NVarLifting,0..N,0..NZ,all_master_sides]
+REAL,ALLOCATABLE                      :: ULift_slave(:,:,:,:)   !< 2D Solution in Primitive variables on face, slave side,
+                                                                !<size [1..NVarLifting,0..N,0..NZ,all_slave_sides]
+!----------------------------------------------------------------------------------------------------------------------------------
 ! Auxilliary variables
 LOGICAL                               :: DGInitIsDone=.FALSE.   !< Switch to check DGInit status
 !==================================================================================================================================

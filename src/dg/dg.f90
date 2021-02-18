@@ -114,6 +114,14 @@ UPrim=0.
 UPrim_master=0.
 UPrim_slave=0.
 
+! Repeat the U, U_Minus, U_Plus structure for the lifted primitive quantities
+ALLOCATE(ULift(       PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+ALLOCATE(ULift_master(PP_nVarLifting,0:PP_N,0:PP_NZ,1:nSides))
+ALLOCATE(ULift_slave( PP_nVarLifting,0:PP_N,0:PP_NZ,1:nSides))
+ULift=0.
+ULift_master=0.
+ULift_slave=0.
+
 ! Allocate two fluxes per side (necessary for coupling of FV and DG)
 ALLOCATE(Flux_master(PP_nVar,0:PP_N,0:PP_NZ,1:nSides))
 ALLOCATE(Flux_slave (PP_nVar,0:PP_N,0:PP_NZ,1:nSides))
@@ -221,7 +229,7 @@ USE MOD_Globals
 USE MOD_Preproc
 USE MOD_Vector
 USE MOD_DG_Vars             ,ONLY: Ut,U,U_slave,U_master,Flux_master,Flux_slave,L_HatPlus,L_HatMinus
-USE MOD_DG_Vars             ,ONLY: UPrim,UPrim_master,UPrim_slave
+USE MOD_DG_Vars             ,ONLY: UPrim,UPrim_master,UPrim_slave,ULift,ULift_master,ULift_slave
 USE MOD_DG_Vars,             ONLY: nTotalU
 USE MOD_VolInt
 USE MOD_SurfIntCons         ,ONLY: SurfIntCons
@@ -445,7 +453,13 @@ CALL FV_CalcGradients(UPrim,FV_surf_gradU,gradUxi,gradUeta,gradUzeta &
 ! 6. Lifting
 ! Compute the gradients using Lifting (BR1 scheme,BR2 scheme ...)
 ! The communication of the gradients is initialized within the lifting routines
-CALL Lifting(UPrim,UPrim_master,UPrim_slave,t)
+ULift(       LIFT_VELV,:,:,:,:) = UPrim(       2:4,:,:,:,:)
+ULift(       LIFT_TEMP,:,:,:,:) = UPrim(       6  ,:,:,:,:)
+ULift_master(LIFT_VELV,:,:,:)   = UPrim_master(2:4,:,:,:)
+ULift_master(LIFT_TEMP,:,:,:)   = UPrim_master(6  ,:,:,:)
+ULift_slave (LIFT_VELV,:,:,:)   = UPrim_slave (2:4,:,:,:)
+ULift_slave (LIFT_TEMP,:,:,:)   = UPrim_slave (6  ,:,:,:)
+CALL Lifting(ULift,ULift_master,ULift_slave,UPrim_master,t)
 
 #if EDDYVISCOSITY
 ! 7. [ After the lifting we can now compute the eddy viscosity, which then has to be evaluated at the boundary. ]
@@ -628,6 +642,9 @@ SDEALLOCATE(Flux_slave)
 SDEALLOCATE(UPrim)
 SDEALLOCATE(UPrim_master)
 SDEALLOCATE(UPrim_slave)
+SDEALLOCATE(ULift)
+SDEALLOCATE(ULift_master)
+SDEALLOCATE(ULift_slave)
 DGInitIsDone = .FALSE.
 END SUBROUTINE FinalizeDG
 

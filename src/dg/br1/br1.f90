@@ -165,7 +165,7 @@ END SUBROUTINE InitLifting
 !> - The gradients are transformed back to physical space to be used by the DG routines.
 !> - The computed volume gradients are prolonged to the surfaces at the end of the routine.
 !==================================================================================================================================
-SUBROUTINE Lifting(UPrim,UPrim_master,UPrim_slave,t)
+SUBROUTINE Lifting(ULift,ULift_master,ULift_slave,UPrim_master,t)
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
@@ -186,10 +186,11 @@ USE MOD_Mesh_Vars,          ONLY: nSides,nElems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)    :: UPrim(  PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< solution vector for which lifted gradients will be computed
-REAL,INTENT(INOUT) :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< solution on the master sides
-REAL,INTENT(INOUT) :: UPrim_slave( PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< solution on the slave sides
-REAL,INTENT(IN)    :: t                                                 !< current simulation time
+REAL,INTENT(IN)    :: ULift(       PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< solution vector for which lifted gradients will be computed
+REAL,INTENT(INOUT) :: ULift_master(PP_nVarLifting,0:PP_N,0:PP_NZ,1:nSides)      !< solution on the master sides
+REAL,INTENT(INOUT) :: ULift_slave( PP_nVarLifting,0:PP_N,0:PP_NZ,1:nSides)      !< solution on the slave sides
+REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim   ,0:PP_N,0:PP_NZ,1:nSides)      !< primitive solution on the slave sides
+REAL,INTENT(IN)    :: t                                                         !< current simulation time
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
@@ -200,7 +201,7 @@ REAL,INTENT(IN)    :: t                                                 !< curre
 ! Receive YOUR
 CALL StartReceiveMPIData(gradUz_slave,DataSizeSideGrad,1,nSides,MPIRequest_Flux(:,RECV),SendID=1)
 ! Compute lifting MPI fluxes
-CALL Lifting_FillFlux(   UPrim_master,UPrim_slave,gradUz_slave,doMPISides=.TRUE.)
+CALL Lifting_FillFlux(   ULift_master,ULift_slave,gradUz_slave,doMPISides=.TRUE.)
 ! Start Send MINE
 CALL StartSendMPIData(   gradUz_slave,DataSizeSideGrad,1,nSides,MPIRequest_Flux(:,SEND),SendID=1)
 #endif /*USE_MPI*/
@@ -208,18 +209,18 @@ CALL StartSendMPIData(   gradUz_slave,DataSizeSideGrad,1,nSides,MPIRequest_Flux(
 
 ! compute volume integral contribution and add to ut
 IF(doWeakLifting.OR.doConservativeLifting)THEN
-  CALL Lifting_VolInt(1,UPrim,GradUx)
-  CALL Lifting_VolInt(2,UPrim,GradUy)
+  CALL Lifting_VolInt(1,ULift,GradUx)
+  CALL Lifting_VolInt(2,ULift,GradUy)
 #if (PP_dim==3)
-  CALL Lifting_VolInt(3,UPrim,GradUz)
+  CALL Lifting_VolInt(3,ULift,GradUz)
 #endif
 ELSE
-  CALL Lifting_VolInt(UPrim,GradUx,GradUy,GradUz)
+  CALL Lifting_VolInt(ULift,GradUx,GradUy,GradUz)
 END IF
 
 ! fill the all surface fluxes on this proc
 CALL Lifting_FillFlux_BC(t,UPrim_master,                  gradUz_slave)
-CALL Lifting_FillFlux(     UPrim_master,UPrim_slave,      gradUz_slave,doMPISides=.FALSE.)
+CALL Lifting_FillFlux(     ULift_master,ULift_slave,      gradUz_slave,doMPISides=.FALSE.)
 ! at this point BC, inner and MPI MINE are filled
 CALL Lifting_FillFlux_NormVec(gradUz_slave,gradUx_master,gradUy_master,gradUz_master,doMPISides=.FALSE.)
 
