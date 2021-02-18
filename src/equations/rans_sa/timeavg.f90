@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -17,8 +17,8 @@
 !==================================================================================================================================
 !> Routine performing time averaging of variables and the preparation to computing fluctuations
 !> For the fluctuations we rely on the fact that \f$ U^{'} U^{'} = \overline{U}^2 - \overline{U^2} \f$
-!> The terms computed in this routine are therefore the TimeAvg: \f$ \overline{U} \f$ and 
-!> the squared solution denoted by Fluc: \f$ \overline{U^2} \f$ 
+!> The terms computed in this routine are therefore the TimeAvg: \f$ \overline{U} \f$ and
+!> the squared solution denoted by Fluc: \f$ \overline{U^2} \f$
 !==================================================================================================================================
 MODULE MOD_TimeAverage
 ! MODULES
@@ -142,9 +142,10 @@ END DO
 
 ! Check which variables have to be calculated and create mappings to global variable index (1:nVarout)
 ! CalcAvgTmp(1,:) for normal variables, CalcAvgTmp(2,:) for fluctuations
-ALLOCATE(CalcAvg(nMaxVarAvg),CalcFluc(nMaxVarFluc))
-CalcAvg=.FALSE.
-CalcFluc=.FALSE.
+ALLOCATE(CalcAvg (nMaxVarAvg)  &
+        ,CalcFluc(nMaxVarFluc))
+CalcAvg  = .FALSE.
+CalcFluc = .FALSE.
 
 ! check each average from ini file
 DO iVar=1,nVarAvg
@@ -371,7 +372,7 @@ DO iElem=1,nElems
 #else
     Uloc(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) => U(:,:,:,:,iElem)
 #endif
-  
+
   IF(getPrims)THEN
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
       CALL ConsToPrim(prim(:,i,j,k),Uloc(:,i,j,k))
@@ -528,6 +529,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 !==================================================================================================================================
 SDEALLOCATE(CalcAvg)
+SDEALLOCATE(CalcFluc)
 SDEALLOCATE(iAvg)
 SDEALLOCATE(iFluc)
 SDEALLOCATE(UAvg)
