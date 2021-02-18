@@ -142,9 +142,10 @@ END DO
 
 ! Check which variables have to be calculated and create mappings to global variable index (1:nVarout)
 ! CalcAvgTmp(1,:) for normal variables, CalcAvgTmp(2,:) for fluctuations
-ALLOCATE(CalcAvg(nMaxVarAvg),CalcFluc(nMaxVarFluc))
-CalcAvg=.FALSE.
-CalcFluc=.FALSE.
+ALLOCATE(CalcAvg (nMaxVarAvg)  &
+        ,CalcFluc(nMaxVarFluc))
+CalcAvg  = .FALSE.
+CalcFluc = .FALSE.
 
 ! check each average from ini file
 DO iVar=1,nVarAvg
@@ -528,6 +529,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 !==================================================================================================================================
 SDEALLOCATE(CalcAvg)
+SDEALLOCATE(CalcFluc)
 SDEALLOCATE(iAvg)
 SDEALLOCATE(iFluc)
 SDEALLOCATE(UAvg)
