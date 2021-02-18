@@ -132,6 +132,7 @@ DO jj=1,nElems_IJK(2); DO ii=1,nElems_IJK(1)
     mapElemIJToFVElemAvg2D(ii,jj) = nElemsAvg2D_FV
   END IF
 END DO; END DO ! ii,jj=1,nElems_IJK
+
 END SUBROUTINE InitAverage2D
 
 !===================================================================================================================================
