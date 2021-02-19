@@ -34,6 +34,14 @@ REAL,ALLOCATABLE :: gradUz_master(:,:,:,:)        !< master side gradients in x-
 REAL,ALLOCATABLE :: gradUx(:,:,:,:,:)             !< gradients in x-dir at degree N
 REAL,ALLOCATABLE :: gradUy(:,:,:,:,:)             !< gradients in y-dir at degree N
 REAL,ALLOCATABLE :: gradUz(:,:,:,:,:)             !< gradients in z-dir at degree N
+! Diffusive fluxes
+REAL,ALLOCATABLE :: diffFluxX_L(:,:,:)
+REAL,ALLOCATABLE :: diffFluxX_R(:,:,:)
+REAL,ALLOCATABLE :: diffFluxY_L(:,:,:)
+REAL,ALLOCATABLE :: diffFluxY_R(:,:,:)
+REAL,ALLOCATABLE :: diffFluxZ_L(:,:,:)
+REAL,ALLOCATABLE :: diffFluxZ_R(:,:,:)
+
 LOGICAL          :: doWeakLifting=.FALSE.         !< marks whether lifting is peformed in weak form
 LOGICAL          :: doConservativeLifting=.FALSE. !< marks whether volume contribution to the gradients is computed in
                                                   !< conservative form, i.e. deriving the solution divided by the metric terms,

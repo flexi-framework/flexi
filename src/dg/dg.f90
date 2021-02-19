@@ -114,6 +114,9 @@ UPrim=0.
 UPrim_master=0.
 UPrim_slave=0.
 
+! Allocate the UPrim_boundary for the boundary fluxes
+ALLOCATE(UPrim_boundary(PP_nVarPrim,0:PP_N,0:PP_NZ))
+
 ! Allocate two fluxes per side (necessary for coupling of FV and DG)
 ALLOCATE(Flux_master(PP_nVar,0:PP_N,0:PP_NZ,1:nSides))
 ALLOCATE(Flux_slave (PP_nVar,0:PP_N,0:PP_NZ,1:nSides))
