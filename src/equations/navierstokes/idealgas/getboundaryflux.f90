@@ -677,26 +677,6 @@ ELSE
         BCGradMat(2,1) = BCGradMat(1,2)
         BCGradMat(3,1) = BCGradMat(1,3)
         BCGradMat(2,3) = BCGradMat(3,2)
-#if (LIFT_ALL_PRIMITIVE==1)
-        gradUx_Face_loc(1,p,q) = BCGradMat(1,1) * gradUx_master(1,p,q) &
-                               + BCGradMat(1,2) * gradUy_master(1,p,q) &
-                               + BCGradMat(1,3) * gradUz_master(1,p,q)
-        gradUy_Face_loc(1,p,q) = BCGradMat(2,1) * gradUx_master(1,p,q) &
-                               + BCGradMat(2,2) * gradUy_master(1,p,q) &
-                               + BCGradMat(2,3) * gradUz_master(1,p,q)
-        gradUz_Face_loc(1,p,q) = BCGradMat(3,1) * gradUx_master(1,p,q) &
-                               + BCGradMat(3,2) * gradUy_master(1,p,q) &
-                               + BCGradMat(3,3) * gradUz_master(1,p,q)
-        gradUx_Face_loc(5:6,p,q) = BCGradMat(1,1) * gradUx_master(5:6,p,q) &
-                                 + BCGradMat(1,2) * gradUy_master(5:6,p,q) &
-                                 + BCGradMat(1,3) * gradUz_master(5:6,p,q)
-        gradUy_Face_loc(5:6,p,q) = BCGradMat(2,1) * gradUx_master(5:6,p,q) &
-                                 + BCGradMat(2,2) * gradUy_master(5:6,p,q) &
-                                 + BCGradMat(2,3) * gradUz_master(5:6,p,q)
-        gradUz_Face_loc(5:6,p,q) = BCGradMat(3,1) * gradUx_master(5:6,p,q) &
-                                 + BCGradMat(3,2) * gradUy_master(5:6,p,q) &
-                                 + BCGradMat(3,3) * gradUz_master(5:6,p,q)
-#else
         gradUx_Face_loc(LIFT_TEMP,p,q) = BCGradMat(1,1) * gradUx_master(LIFT_TEMP,p,q) &
                                        + BCGradMat(1,2) * gradUy_master(LIFT_TEMP,p,q) &
                                        + BCGradMat(1,3) * gradUz_master(LIFT_TEMP,p,q)
@@ -706,7 +686,6 @@ ELSE
         gradUz_Face_loc(LIFT_TEMP,p,q) = BCGradMat(3,1) * gradUx_master(LIFT_TEMP,p,q) &
                                        + BCGradMat(3,2) * gradUy_master(LIFT_TEMP,p,q) &
                                        + BCGradMat(3,3) * gradUz_master(LIFT_TEMP,p,q)
-#endif /*LIFT_ALL_PRIMITIVE*/
         ! First: Transform to gradients of wall-aligned velocities
         gradUx_vNormal = nv(1 )*gradUx_master(LIFT_VEL1,p,q)+nv(2 )*gradUx_master(LIFT_VEL2,p,q)+nv(3 )*gradUx_master(LIFT_VEL3,p,q)
         gradUx_vTang1  = tv1(1)*gradUx_master(LIFT_VEL1,p,q)+tv1(2)*gradUx_master(LIFT_VEL2,p,q)+tv1(3)*gradUx_master(LIFT_VEL3,p,q)
@@ -752,24 +731,11 @@ ELSE
         BCGradMat(2,2) = 1. - nv(2)*nv(2)
         BCGradMat(1,2) = -nv(1)*nv(2)
         BCGradMat(2,1) = BCGradMat(1,2)
-#if (LIFT_ALL_PRIMITIVE==1)
-        gradUx_Face_loc(1,p,q) = BCGradMat(1,1) * gradUx_master(1,p,q) &
-                               + BCGradMat(1,2) * gradUy_master(1,p,q)
-        gradUy_Face_loc(1,p,q) = BCGradMat(2,1) * gradUx_master(1,p,q) &
-                               + BCGradMat(2,2) * gradUy_master(1,p,q)
-        gradUz_Face_loc(1,p,q) = 0.
-        gradUx_Face_loc(5:6,p,q) = BCGradMat(1,1) * gradUx_master(5:6,p,q) &
-                                 + BCGradMat(1,2) * gradUy_master(5:6,p,q)
-        gradUy_Face_loc(5:6,p,q) = BCGradMat(2,1) * gradUx_master(5:6,p,q) &
-                                 + BCGradMat(2,2) * gradUy_master(5:6,p,q)
-        gradUz_Face_loc(5:6,p,q) = 0.
-#else
         gradUx_Face_loc(LIFT_TEMP,p,q) = BCGradMat(1,1) * gradUx_master(LIFT_TEMP,p,q) &
                                        + BCGradMat(1,2) * gradUy_master(LIFT_TEMP,p,q)
         gradUy_Face_loc(LIFT_TEMP,p,q) = BCGradMat(2,1) * gradUx_master(LIFT_TEMP,p,q) &
                                        + BCGradMat(2,2) * gradUy_master(LIFT_TEMP,p,q)
         gradUz_Face_loc(LIFT_TEMP,p,q) = 0.
-#endif /*LIFT_ALL_PRIMITIVE*/
         ! First: Transform to gradients of wall-aligned velocities
         gradUx_vNormal = nv(1 )*gradUx_master(LIFT_VEL1,p,q)+nv(2 )*gradUx_master(LIFT_VEL2,p,q)
         gradUx_vTang1  = tv1(1)*gradUx_master(LIFT_VEL1,p,q)+tv1(2)*gradUx_master(LIFT_VEL2,p,q)
@@ -894,7 +860,7 @@ IMPLICIT NONE
 INTEGER,INTENT(IN):: SideID                                   !< ID of current side
 REAL,INTENT(IN)   :: t                                        !< current time (provided by time integration scheme)
 REAL,INTENT(IN)   :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ) !< primitive solution from the inside
-REAL,INTENT(OUT)  :: Flux(        PP_nVarLifting,0:PP_N,0:PP_NZ) !< lifting boundary flux
+REAL,INTENT(OUT)  :: Flux(     PP_nVarLifting,0:PP_N,0:PP_NZ) !< lifting boundary flux
 REAL,INTENT(IN)   :: NormVec (              3,0:PP_N,0:PP_NZ) !< normal vector on surfaces
 REAL,INTENT(IN)   :: TangVec1(              3,0:PP_N,0:PP_NZ) !< tangential1 vector on surfaces
 REAL,INTENT(IN)   :: TangVec2(              3,0:PP_N,0:PP_NZ) !< tangential2 vector on surfaces
@@ -916,8 +882,7 @@ ELSE
                         NormVec,TangVec1,TangVec2,Face_xGP)
   SELECT CASE(BCType)
   CASE(2,12,121,22,23,24,25,27) ! Riemann solver based BCs
-      Flux(LIFT_VELV,:,:)=0.5*(UPrim_master(2:4,:,:)+ UPrim_boundary(2:4,:,:))
-      Flux(LIFT_TEMP,:,:)=0.5*(UPrim_master(6,:,:)  + UPrim_boundary(6,:,:))
+      Flux=0.5*(UPrim_master(PRIM_LIFT,:,:)  + UPrim_boundary(PRIM_LIFT,:,:))
   CASE(3,4) ! No-slip wall BCs
     DO q=0,PP_NZ; DO p=0,PP_N
       !Flux(1  ,p,q) = UPrim_Boundary(1,p,q)
@@ -930,9 +895,9 @@ ELSE
     ! Solution from the inside with velocity normal component set to 0 (done in GetBoundaryState)
     DO q=0,PP_NZ; DO p=0,PP_N
       ! Compute Flux
-      !Flux(1            ,p,q) = UPrim_master(1,p,q)
-      Flux(LIFT_VELV     ,p,q) = UPrim_boundary(2:4,p,q)
-      Flux(LIFT_TEMP,p,q)      = UPrim_master(PP_nVarPrim,p,q)
+      !Flux(1       ,p,q) = UPrim_master(1,p,q)
+      Flux(LIFT_VELV,p,q) = UPrim_boundary(2:4,p,q)
+      Flux(LIFT_TEMP,p,q) = UPrim_master(6,p,q)
     END DO; END DO !p,q
   CASE(1) !Periodic already filled!
   CASE DEFAULT ! unknown BCType
@@ -941,10 +906,7 @@ ELSE
   END SELECT
 
   !in case lifting is done in strong form
-  IF(.NOT.doWeakLifting)THEN
-    Flux(LIFT_VELV,:,:)=Flux(LIFT_VELV,:,:)-UPrim_master(2:4,:,:)
-    Flux(LIFT_TEMP,:,:)=Flux(LIFT_TEMP,:,:)-UPrim_master(6  ,:,:)
-  END IF
+  IF(.NOT.doWeakLifting) Flux=Flux-UPrim_master(PRIM_LIFT,:,:)
 
   DO q=0,PP_NZ; DO p=0,PP_N
     Flux(:,p,q)=Flux(:,p,q)*SurfElem(p,q)

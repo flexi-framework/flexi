@@ -12,6 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "eos.h"
 
 !==================================================================================================================================
 !> Subroutines defining one specific testcase with all necessary variables

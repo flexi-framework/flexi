@@ -165,7 +165,7 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrim                !< Solution vector
 !> Gradients in x,y,z directions
-REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: gradUx,gradUy,gradUz
+REAL,DIMENSION(PP_nVarLifting),INTENT(IN)  :: gradUx,gradUy,gradUz
 !> Physical fluxes in x,y,z directions
 REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: f,g,h
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -195,65 +195,64 @@ ELSE
 END IF
 
 ASSOCIATE( v1     => UPrim(2),  v2     => UPrim(3),  v3     => UPrim(4), &
-           gradT1 => GradUx(6), gradT2 => GradUy(6), gradT3 => GradUz(6) )
+           gradT1 => GradUx(LIFT_TEMP), gradT2 => GradUy(LIFT_TEMP), gradT3 => GradUz(LIFT_TEMP) )
 #if PP_dim==3
 ! gradients of primitive variables are directly available gradU = (/ drho, dv1, dv2, dv3, dT /)
 
 ! viscous fluxes in x-direction
-tau_xx = muEff * ( s43 * gradUx(2) - s23 * gradUy(3) - s23 * gradUz(4)) ! 4/3*mu*u_x-2/3*mu*v_y -2/3*mu*w*z
-tau_yy = muEff * (-s23 * gradUx(2) + s43 * gradUy(3) - s23 * gradUz(4)) !-2/3*mu*u_x+4/3*mu*v_y -2/3*mu*w*z
-tau_zz = muEff * (-s23 * gradUx(2) - s23 * gradUy(3) + s43 * gradUz(4)) !-2/3*mu*u_x-2/3*mu*v_y +4/3*mu*w*z
-tau_xy = muEff * (gradUy(2) + gradUx(3))               !mu*(u_y+v_x)
-tau_xz = muEff * (gradUz(2) + gradUx(4))               !mu*(u_z+w_x)
-tau_yz = muEff * (gradUz(3) + gradUy(4))               !mu*(y_z+w_y)
+tau_xx = muEff * ( s43 * gradUx(LIFT_VEL1) - s23 * gradUy(LIFT_VEL2) - s23 * gradUz(LIFT_VEL3)) ! 4/3*mu*u_x-2/3*mu*v_y -2/3*mu*w*z
+tau_yy = muEff * (-s23 * gradUx(LIFT_VEL1) + s43 * gradUy(LIFT_VEL2) - s23 * gradUz(LIFT_VEL3)) !-2/3*mu*u_x+4/3*mu*v_y -2/3*mu*w*z
+tau_zz = muEff * (-s23 * gradUx(LIFT_VEL1) - s23 * gradUy(LIFT_VEL2) + s43 * gradUz(LIFT_VEL3)) !-2/3*mu*u_x-2/3*mu*v_y +4/3*mu*w*z
+tau_xy = muEff * (gradUy(LIFT_VEL1) + gradUx(LIFT_VEL2))               !mu*(u_y+v_x)
+tau_xz = muEff * (gradUz(LIFT_VEL1) + gradUx(LIFT_VEL3))               !mu*(u_z+w_x)
+tau_yz = muEff * (gradUz(LIFT_VEL2) + gradUy(LIFT_VEL3))               !mu*(y_z+w_y)
 
 f(1) = 0.
 f(2) = -tau_xx                                       ! F_euler-4/3*mu*u_x+2/3*mu*(v_y+w_z)
 f(3) = -tau_xy                                       ! F_euler-mu*(u_y+v_x)
 f(4) = -tau_xz                                       ! F_euler-mu*(u_z+w_x)
 f(5) = -tau_xx*v1-tau_xy*v2-tau_xz*v3-lambda*gradT1  ! F_euler-(tau_xx*u+tau_xy*v+tau_xz*w-q_x) q_x=-lambda*T_x
-f(6) = -1./sigma*(muS+muTilde*SAfn)*gradUx(7)        ! F_euler-1/sigma*(muS+muTilde)*nuTilde_x
+f(6) = -1./sigma*(muS+muTilde*SAfn)*gradUx(LIFT_NUSA)        ! F_euler-1/sigma*(muS+muTilde)*nuTilde_x
 ! viscous fluxes in y-direction
 g(1) = 0.
 g(2) = -tau_xy                                       ! F_euler-mu*(u_y+v_x)
 g(3) = -tau_yy                                       ! F_euler-4/3*mu*v_y+2/3*mu*(u_x+w_z)
 g(4) = -tau_yz                                       ! F_euler-mu*(y_z+w_y)
 g(5) = -tau_xy*v1-tau_yy*v2-tau_yz*v3-lambda*gradT2  ! F_euler-(tau_yx*u+tau_yy*v+tau_yz*w-q_y) q_y=-lambda*T_y
-g(6) = -1./sigma*(muS+muTilde*SAfn)*gradUy(7)        ! F_euler-1/sigma*(muS+muTilde)*nuTilde_y
+g(6) = -1./sigma*(muS+muTilde*SAfn)*gradUy(LIFT_NUSA)        ! F_euler-1/sigma*(muS+muTilde)*nuTilde_y
 ! viscous fluxes in z-direction
 h(1) = 0.
 h(2) = -tau_xz                                       ! F_euler-mu*(u_z+w_x)
 h(3) = -tau_yz                                       ! F_euler-mu*(y_z+w_y)
 h(4) = -tau_zz                                       ! F_euler-4/3*mu*w_z+2/3*mu*(u_x+v_y)
 h(5) = -tau_xz*v1-tau_yz*v2-tau_zz*v3-lambda*gradT3  ! F_euler-(tau_zx*u+tau_zy*v+tau_zz*w-q_z) q_z=-lambda*T_z
-h(6) = -1./sigma*(muS+muTilde*SAfn)*gradUz(7)        ! F_euler-1/sigma*(muS+muTilde)*nuTilde_z
+h(6) = -1./sigma*(muS+muTilde*SAfn)*gradUz(LIFT_NUSA)        ! F_euler-1/sigma*(muS+muTilde)*nuTilde_z
 #else
 ! gradients of primitive variables are directly available gradU = (/ drho, dv1, dv2, dv3, dT /)
 
 ! viscous fluxes in x-direction
-tau_xx = muEff * ( s43 * gradUx(2) - s23 * gradUy(3))  ! 4/3*mu*u_x-2/3*mu*v_y -2/3*mu*w*z
-tau_yy = muEff * (-s23 * gradUx(2) + s43 * gradUy(3))  !-2/3*mu*u_x+4/3*mu*v_y -2/3*mu*w*z
-tau_xy = muEff * (gradUy(2) + gradUx(3))               !mu*(u_y+v_x)
+tau_xx = muEff * ( s43 * gradUx(LIFT_VEL1) - s23 * gradUy(LIFT_VEL2))  ! 4/3*mu*u_x-2/3*mu*v_y -2/3*mu*w*z
+tau_yy = muEff * (-s23 * gradUx(LIFT_VEL1) + s43 * gradUy(LIFT_VEL2))  !-2/3*mu*u_x+4/3*mu*v_y -2/3*mu*w*z
+tau_xy = muEff * (gradUy(LIFT_VEL1) + gradUx(LIFT_VEL2))               !mu*(u_y+v_x)
 
 f(1) = 0.
 f(2) = -tau_xx                                       ! F_euler-4/3*mu*u_x+2/3*mu*(v_y+w_z)
 f(3) = -tau_xy                                       ! F_euler-mu*(u_y+v_x)
 f(4) = 0.
 f(5) = -tau_xx*v1-tau_xy*v2-lambda*gradT1            ! F_euler-(tau_xx*u+tau_xy*v+tau_xz*w-q_x) q_x=-lambda*T_x
-f(6) = -1./sigma*(muS+muTilde*SAfn)*gradUx(7)        ! F_euler-1/sigma*(muS+muTilde)*nuTilde_x
+f(6) = -1./sigma*(muS+muTilde*SAfn)*gradUx(LIFT_NUSA)        ! F_euler-1/sigma*(muS+muTilde)*nuTilde_x
 ! viscous fluxes in y-direction
 g(1) = 0.
 g(2) = -tau_xy                                       ! F_euler-mu*(u_y+v_x)
 g(3) = -tau_yy                                       ! F_euler-4/3*mu*v_y+2/3*mu*(u_x+w_z)
 g(4) = 0.
 g(5) = -tau_xy*v1-tau_yy*v2-lambda*gradT2  ! F_euler-(tau_yx*u+tau_yy*v+tau_yz*w-q_y) q_y=-lambda*T_y
-g(6) = -1./sigma*(muS+muTilde*SAfn)*gradUy(7)        ! F_euler-1/sigma*(muS+muTilde)*nuTilde_y
+g(6) = -1./sigma*(muS+muTilde*SAfn)*gradUy(LIFT_NUSA)        ! F_euler-1/sigma*(muS+muTilde)*nuTilde_y
 ! viscous fluxes in z-direction
 h    = 0.
 #endif
 END ASSOCIATE
 END SUBROUTINE EvalDiffFlux3D_Point
-
 
 !==================================================================================================================================
 !> Wrapper routine to compute the diffusive part of the RANS SA fluxes for a single volume cell
@@ -269,7 +268,7 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ),INTENT(IN)  :: UPrim                !< Solution vector
 !> Gradients in x,y,z directions
-REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ),INTENT(IN)  :: gradUx,gradUy,gradUz
+REAL,DIMENSION(PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ),INTENT(IN)  :: gradUx,gradUy,gradUz
 !> Physical fluxes in x,y,z directions
 REAL,DIMENSION(PP_nVar    ,0:PP_N,0:PP_N,0:PP_NZ),INTENT(OUT) :: f,g,h
 INTEGER, INTENT(IN)                                           :: iElem                !< element index in global array
@@ -295,7 +294,7 @@ IMPLICIT NONE
 INTEGER                                        ,INTENT(IN)  :: Nloc                 !< Polynomial degree of input solution
 REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim                !< Solution vector
 !> Gradients in x,y,z directions
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: gradUx,gradUy,gradUz
+REAL,DIMENSION(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: gradUx,gradUy,gradUz
 !> Physical fluxes in x,y,z directions
 REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: f,g,h
 #if EDDYVISCOSITY
@@ -314,9 +313,7 @@ DO j=0,ZDIM(Nloc); DO i=0,PP_N
                             )
 END DO; END DO ! i,j
 END SUBROUTINE EvalDiffFlux3D_Surface
-
 #endif /*PARABOLIC*/
-
 
 !==================================================================================================================================
 !> Computes 1D Euler flux using the conservative variables.
@@ -377,7 +374,5 @@ F(4)= 0.
 F(5)=(U(ENER)+U(PRES))*U(VEL1)! (rho*e+p)*u
 F(6)=(U(MUSA)*U(VEL1))        ! muTilde*u
 END SUBROUTINE EvalEulerFlux1D_fast
-
-
 
 END MODULE MOD_Flux

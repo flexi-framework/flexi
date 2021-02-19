@@ -83,3 +83,14 @@
 #elif PP_VISC == 2
 #define VISCOSITY_TEMPERATURE(T)       mu0*T**ExpoSuth
 #endif
+
+! lifting variables
+#define PP_nVarLifting               5
+#define LIFT_VEL1                    1 
+#define LIFT_VEL2                    2 
+#define LIFT_VEL3                    3 
+#define LIFT_TEMP                    4
+#define LIFT_NUSA                    5
+#define LIFT_VELV                    LIFT_VEL1:LIFT_VEL3
+#define LIFT_VARS                    (/LIFT_VEL1,LIFT_VEL2,LIFT_VEL3,LIFT_TEMP,LIFT_NUSA/)
+#define PRIM_LIFT                    (/2,3,4,6,7/) /* velocity range, temperature, nu_sa */

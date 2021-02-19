@@ -145,16 +145,3 @@
 #define PP_NZ   PP_N
 #define DIMV    1:3
 #endif
-
-! Lifting
-#define LIFT_ALL_PRIMITIVE           0
-#define PP_nVarLifting               4
-#define LIFT_VEL1                    1 
-#define LIFT_VEL2                    2 
-#define LIFT_VEL3                    3 
-#define LIFT_TEMP                    4
-#define LIFT_VELV                    LIFT_VEL1:LIFT_VEL3
-! #define LIFT_DENSVel                 LIFT_DENS:LIFT_VEL3
-
-
-

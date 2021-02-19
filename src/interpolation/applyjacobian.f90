@@ -12,6 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !==================================================================================================================================
 #include "flexi.h"
+#include "eos.h"
 
 !==================================================================================================================================
 !> \brief Module containing routines that changes scalar solution representation between physical and reference coordinates

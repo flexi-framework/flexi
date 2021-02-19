@@ -13,6 +13,7 @@
 !=================================================================================================================================
 #if PARABOLIC
 #include "flexi.h"
+#include "eos.h"
 
 !==================================================================================================================================
 !> \brief Contains the BR2 lifting procedure (initialization and lifting operator) for computing the lifted solution gradients
@@ -39,7 +40,7 @@
 !> Note that the gradient arrays in x/y/z directions in the volume and on the surfaces contain the gradients of the primitive
 !> variables, i.e. they must be allocated for PP_nVarPrim variables, i.e. \f$ (\rho, u_1,u_2,u_3,p,T) \f$.
 !==================================================================================================================================
-SUBROUTINE Lifting_BR2(ULift,ULift_master,ULift_slave,UPrim_master,t)
+SUBROUTINE Lifting_BR2(UPrim,UPrim_master,UPrim_slave,t)
 ! MODULES
 USE MOD_Globals
 USE MOD_Preproc
@@ -57,13 +58,11 @@ USE MOD_Mesh_Vars,            ONLY: nElems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)    :: ULift(       PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< solution vector for which lifted gradients
-                                                                                !> will be computed
-REAL,INTENT(INOUT) :: ULift_master(PP_nVarLifting,0:PP_N,0:PP_NZ,1:nSides)      !< solution on the master sides
-REAL,INTENT(INOUT) :: ULift_slave( PP_nVarLifting,0:PP_N,0:PP_NZ,1:nSides)      !< solution on the slave sides
-REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim   ,0:PP_N,0:PP_NZ,1:nSides)      !< primitive solution on the slave sides
-                                                                                !> (required for some BCs)
-REAL,INTENT(IN)    :: t                                                         !< current simulation time
+REAL,INTENT(IN)    :: UPrim(       PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< solution vector for which lifted gradients
+                                                                             !> will be computed
+REAL,INTENT(INOUT) :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides)      !< solution on the master sides
+REAL,INTENT(INOUT) :: UPrim_slave( PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides)      !< solution on the slave sides
+REAL,INTENT(IN)    :: t                                                      !< current simulation time
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
@@ -79,10 +78,10 @@ CALL StartReceiveMPIData(FluxY,DataSizeSideGrad,1,nSides,MPIRequest_gradU(:,2,RE
 CALL StartReceiveMPIData(FluxZ,DataSizeSideGrad,1,nSides,MPIRequest_gradU(:,3,RECV),SendID=1)
 #endif
 ! Compute lifting MPI fluxes
-CALL Lifting_FillFlux(1,ULift_master,ULift_slave,FluxX,doMPISides=.TRUE.)
-CALL Lifting_FillFlux(2,ULift_master,ULift_slave,FluxY,doMPISides=.TRUE.)
+CALL Lifting_FillFlux(1,UPrim_master,UPrim_slave,FluxX,doMPISides=.TRUE.)
+CALL Lifting_FillFlux(2,UPrim_master,UPrim_slave,FluxY,doMPISides=.TRUE.)
 #if PP_dim == 3
-CALL Lifting_FillFlux(3,ULift_master,ULift_slave,FluxZ,doMPISides=.TRUE.)
+CALL Lifting_FillFlux(3,UPrim_master,UPrim_slave,FluxZ,doMPISides=.TRUE.)
 #endif
 ! Start Send MINE
 CALL StartSendMPIData(   FluxX,DataSizeSideGrad,1,nSides,MPIRequest_gradU(:,1,SEND),SendID=1)
@@ -94,10 +93,10 @@ CALL StartSendMPIData(   FluxZ,DataSizeSideGrad,1,nSides,MPIRequest_gradU(:,3,SE
 
 ! fill the all surface fluxes on this proc
 CALL Lifting_FillFlux_BC(t,UPrim_master,FluxX=FluxX,FluxY=FluxY,FluxZ=FluxZ)
-CALL Lifting_FillFlux(1,ULift_master,ULift_slave,FluxX,doMPISides=.FALSE.)
-CALL Lifting_FillFlux(2,ULift_master,ULift_slave,FluxY,doMPISides=.FALSE.)
+CALL Lifting_FillFlux(1,UPrim_master,UPrim_slave,FluxX,doMPISides=.FALSE.)
+CALL Lifting_FillFlux(2,UPrim_master,UPrim_slave,FluxY,doMPISides=.FALSE.)
 #if PP_dim == 3
-CALL Lifting_FillFlux(3,ULift_master,ULift_slave,FluxZ,doMPISides=.FALSE.)
+CALL Lifting_FillFlux(3,UPrim_master,UPrim_slave,FluxZ,doMPISides=.FALSE.)
 #endif
 
 CALL Flux_MortarLifting(FluxX,FluxX,doMPISides=.FALSE.,weak=.FALSE.)
@@ -108,13 +107,13 @@ CALL Flux_MortarLifting(FluxZ,FluxZ,doMPISides=.FALSE.,weak=.FALSE.)
 
 ! compute volume integral contribution and add to gradU
 IF(doConservativeLifting)THEN
-  CALL Lifting_VolInt(1,ULift,GradUx)
-  CALL Lifting_VolInt(2,ULift,GradUy)
+  CALL Lifting_VolInt(1,UPrim,GradUx)
+  CALL Lifting_VolInt(2,UPrim,GradUy)
 #if PP_dim == 3
-  CALL Lifting_VolInt(3,ULift,GradUz)
+  CALL Lifting_VolInt(3,UPrim,GradUz)
 #endif
 ELSE
-  CALL Lifting_VolInt(ULift,GradUx,GradUy,GradUz)
+  CALL Lifting_VolInt(UPrim,GradUx,GradUy,GradUz)
 END IF
 
 ! Account for the jacobian

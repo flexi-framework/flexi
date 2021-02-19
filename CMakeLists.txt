@@ -564,6 +564,8 @@ IF (WITHEOS GREATER 0)
   FILE(GLOB eosF90         ./src/equations/${FLEXI_EQNSYSNAME}/${FLEXI_EOS}/*.f90)
   LIST(APPEND eqnsysF90 ${eosF90})
   INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/src/equations/${FLEXI_EQNSYSNAME}/${FLEXI_EOS}/) 
+ELSE()
+  INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/src/equations/${FLEXI_EQNSYSNAME}/) 
 ENDIF()
 # append F90 files of the eddy viscosity to 'eqnsysF90'-list
 IF (FLEXI_EDDYVISCOSITY)
