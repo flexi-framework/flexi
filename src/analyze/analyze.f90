@@ -316,7 +316,6 @@ IF(MPIroot .AND. (Time.GT.0.)) THEN
   WRITE(UNIT_StdOut,'(132("-"))')
   WRITE(UNIT_StdOut,*)
 END IF
-
 END SUBROUTINE Analyze
 
 
@@ -445,7 +444,7 @@ SDEALLOCATE(wGPVol)
 SDEALLOCATE(wGPSurf)
 SDEALLOCATE(ElemVol)
 AnalyzeInitIsDone = .FALSE.
-END SUBROUTINE FinalizeAnalyze
 
+END SUBROUTINE FinalizeAnalyze
 
 END MODULE MOD_Analyze

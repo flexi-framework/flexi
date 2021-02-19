@@ -259,6 +259,8 @@ CALL Analyze(t,iter)
 ! fill recordpoints buffer (initialization/restart)
 IF(RP_onProc) CALL RecordPoints(PP_nVar,StrVarNames,iter,t,.TRUE.)
 
+CALL PrintStatusLine(t,dt,tStart,tEnd)
+
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_StdOut,'(A,ES16.7)')'Initial Timestep  : ', dt
 IF(ViscousTimeStep)THEN
@@ -278,14 +280,7 @@ DO
 #if FV_ENABLED
   CALL FV_Switch(U,AllowToDG=(nCalcTimestep.LT.1))
 #endif
-
-  ! If the previous step was an analyze routine, the fluxes are already calculated
-  IF (doAnalyze) THEN
-    doAnalyze=.FALSE.
-  ELSE
-    CALL DGTimeDerivative_weakForm(t)
-  END IF ! doAnalyze
-
+  CALL DGTimeDerivative_weakForm(t)
   IF(nCalcTimestep.LT.1)THEN
     dt_Min=CALCTIMESTEP(errType)
     nCalcTimestep=MIN(FLOOR(ABS(LOG10(ABS(dt_MinOld/dt_Min-1.)**2.*100.+EPSILON(0.)))),nCalcTimeStepMax)
@@ -385,6 +380,7 @@ DO
     iter_loc=0
     CalcTimeStart=FLEXITIME()
     tAnalyze=  MIN(tAnalyze+Analyze_dt,  tEnd)
+    doAnalyze=.FALSE.
   END IF
 
   IF(doFinalize) EXIT
