@@ -28,20 +28,14 @@ PRIVATE
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 
-
 INTERFACE FillFlux
   MODULE PROCEDURE FillFlux
 END INTERFACE
 
-
 PUBLIC::FillFlux
 !==================================================================================================================================
 
-
-
 CONTAINS
-
-
 
 !==================================================================================================================================
 !> Computes the fluxes for inner sides, MPI sides where the local proc is "master"  and boundary conditions.
@@ -194,7 +188,5 @@ END DO
 #endif
 
 END SUBROUTINE FillFlux
-
-
 
 END MODULE MOD_FillFlux
