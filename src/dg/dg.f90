@@ -631,6 +631,8 @@ SDEALLOCATE(Flux_slave)
 SDEALLOCATE(UPrim)
 SDEALLOCATE(UPrim_master)
 SDEALLOCATE(UPrim_slave)
+SDEALLOCATE(UPrim_boundary)
+
 DGInitIsDone = .FALSE.
 END SUBROUTINE FinalizeDG
 
