@@ -2,7 +2,7 @@
 # Detect machine environements
 # =========================================================================
 
-mark_as_advanced([CLEAR|FORCE] CMAKE_HOSTNAME)
+mark_as_advanced(FORCE CMAKE_HOSTNAME)
 SITE_NAME(CMAKE_HOSTNAME)
 
 # HLRS HAWK / SuperMUC
@@ -82,6 +82,14 @@ ELSEIF ("${CMAKE_HOSTNAME}" MATCHES "^xenon")
   MARK_AS_ADVANCED(FORCE C_PATH CXX_PATH Fortran_PATH)
   # Work around MPI-IO issue 4446 on machines mountng storage via NFS
   ADD_DEFINITIONS(-DNFS)
+
+ELSE()
+  # Set compiler target architecture
+  IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU" OR CMAKE_Fortran_COMPILER_ID MATCHES "Flang" )
+    SET(FLEXI_INSTRUCTION "-march=native")
+  ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
+    SET(FLEXI_INSTRUCTION "-xHost")
+  ENDIF()
 ENDIF()
 
 
@@ -90,13 +98,6 @@ ENDIF()
 # =========================================================================
 
 ENABLE_LANGUAGE(Fortran C)
-
-# Set compiler target architecture
-IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU" OR CMAKE_Fortran_COMPILER_ID MATCHES "Flang" )
-  SET(FLEXI_INSTRUCTION "-march=native")
-ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
-  SET(FLEXI_INSTRUCTION "-xHost")
-ENDIF()
 
 # FFLAGS depend on the compiler
 GET_FILENAME_COMPONENT (Fortran_COMPILER_NAME ${CMAKE_Fortran_COMPILER} NAME)
