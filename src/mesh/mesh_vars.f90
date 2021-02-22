@@ -39,6 +39,9 @@ REAL,ALLOCATABLE,TARGET :: NodeCoords(:,:,:,:,:) !< XYZ positions (equidistant,N
 REAL,ALLOCATABLE,TARGET :: Elem_xGP(:,:,:,:,:)   !< XYZ positions (first index 1:3) of the volume Gauss Point
 REAL,ALLOCATABLE        :: Face_xGP(:,:,:,:,:)   !< XYZ positions (first index 1:3) of the Face Gauss Point
 !----------------------------------------------------------------------------------------------------------------------------------
+! MORTAR INFORMATION FOR NON-CONFORMING MESHES
+LOGICAL          :: meshHasMortars             !< Marker whether non-conforming data is present (independent from trees)
+!----------------------------------------------------------------------------------------------------------------------------------
 ! MORTAR DATA FOR NON-CONFORMING MESHES ORIGINATING FROM AN OCTREE BASIS (ONLY ALLOCATED IF isMortarMesh=.TRUE.!!!)
 !----------------------------------------------------------------------------------------------------------------------------------
 LOGICAL          :: isMortarMesh               !< Marker whether non-conforming data is present (false for conforming meshes)

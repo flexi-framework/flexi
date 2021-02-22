@@ -187,7 +187,7 @@ USE MOD_Mesh_Vars,          ONLY:NodeCoords,TreeCoords
 USE MOD_Mesh_Vars,          ONLY:offsetElem,offsetTree,nElems,nTrees,nGlobalTrees
 USE MOD_Mesh_Vars,          ONLY:xiMinMax,ElemToTree
 USE MOD_Mesh_Vars,          ONLY:nSides,nInnerSides,nBCSides,nMPISides,nAnalyzeSides
-USE MOD_Mesh_Vars,          ONLY:nMortarSides,isMortarMesh
+USE MOD_Mesh_Vars,          ONLY:nMortarSides,isMortarMesh,meshHasMortars
 USE MOD_Mesh_Vars,          ONLY:useCurveds
 USE MOD_Mesh_Vars,          ONLY:BoundaryType
 USE MOD_Mesh_Vars,          ONLY:MeshInitIsDone
@@ -666,6 +666,9 @@ ReduceData(10)=nMPIPeriodics
 CALL MPI_REDUCE(ReduceData,ReduceData_glob,10,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 ReduceData=ReduceData_glob
 #endif /*USE_MPI*/
+
+! Store information if mesh has mortars, independent of existence of trees
+meshHasMortars = MERGE(.TRUE.,.FALSE.,ReduceData(9).GT.0)
 
 IF(MPIRoot)THEN
   WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nElems | ',ReduceData(1) !nElems
