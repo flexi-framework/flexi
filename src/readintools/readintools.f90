@@ -140,6 +140,10 @@ INTERFACE ExtractParameterFile
   MODULE PROCEDURE ExtractParameterFile
 END INTERFACE
 
+INTERFACE ModifyParameterFile
+  MODULE PROCEDURE ModifyParameterFile
+END INTERFACE
+
 INTERFACE FinalizeParameters
   MODULE PROCEDURE FinalizeParameters
 END INTERFACE
@@ -160,6 +164,7 @@ PUBLIC :: GETINTFROMSTR
 PUBLIC :: addStrListEntry
 PUBLIC :: FinalizeParameters
 PUBLIC :: ExtractParameterFile
+PUBLIC :: ModifyParameterFile
 
 TYPE(Parameters) :: prms
 PUBLIC :: prms
@@ -1375,6 +1380,90 @@ CALL MPI_BCAST(userblockFound,1,MPI_LOGICAL,0,MPI_COMM_FLEXI,iError)
 #endif /*USE_MPI*/
 
 END SUBROUTINE ExtractParameterFile
+
+!===================================================================================================================================
+!> This routine modifies the value for all occurences of a specific parmeter in a given parameter file.
+!> Currently only implemented for parameters with scalar integer values.
+!===================================================================================================================================
+SUBROUTINE ModifyParameterFile(prmfile,prmName,prmValue,prmChanged)
+! MODULES
+USE MOD_Globals
+USE MOD_StringTools ,ONLY: STRICMP
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+CHARACTER(LEN=*),INTENT(IN)  :: prmfile     !< name of parameter file to be modified
+CHARACTER(LEN=*),INTENT(IN)  :: prmName     !< name of the parameter to be modified
+INTEGER,INTENT(IN)           :: prmValue    !< new (integer) value of the parameter to modify
+LOGICAL,INTENT(OUT)          :: prmChanged  !< flag to indicate whether parameter was successfully modified
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER               :: stat,fileUnit,copyUnit
+INTEGER               :: i,j
+CHARACTER(LEN=255)    :: tmp = ""
+CHARACTER(LEN=255)    :: tmp2= ""
+CHARACTER(LEN=255)    :: prmfile_copy=".tmp.ini"
+TYPE(Varying_String)  :: aStr
+!==================================================================================================================================
+prmChanged = .FALSE.
+
+IF (MPIRoot) THEN
+  IF (.NOT.FILEEXISTS(prmfile)) THEN
+    CALL CollectiveStop(__STAMP__,&
+        "File '"//TRIM(prmfile)//"' does not exist.")
+  END IF
+
+  ! 1. First copy the parameter file to a temporary file and change the parameter values if necessary
+  OPEN(NEWUNIT=copyUnit,FILE=TRIM(prmfile),STATUS='UNKNOWN',ACTION='READ',ACCESS='SEQUENTIAL',IOSTAT=stat)
+  IF(stat.NE.0) THEN
+    CALL Abort(__STAMP__,&
+        "Could not open '"//TRIM(prmfile)//"'")
+  END IF
+
+  OPEN(NEWUNIT=fileUnit,FILE=TRIM(prmfile_copy),STATUS='UNKNOWN',ACTION='WRITE',ACCESS='SEQUENTIAL',IOSTAT=stat)
+  IF(stat.NE.0) THEN
+    CALL Abort(__STAMP__,&
+        "Could not open '"//TRIM(prmfile)//"'")
+  END IF
+
+  DO
+    ! read a line into 'aStr'
+    CALL Get(copyUnit,aStr,iostat=stat)
+    tmp = TRIM(CHAR(aStr))
+
+    ! Strip all ocurring whitespaces and comments from the line
+    j = 1
+    tmp2 = ""
+    DO i=1,LEN(tmp)
+      IF(STRICMP(tmp(i:i),"!")) EXIT  ! Exit if comments start
+      IF(STRICMP(tmp(i:i)," ")) CYCLE ! Cycle over whitespaces
+      tmp2(j:j)=tmp(i:i)
+      j = j+1
+    END DO
+
+    ! Write the new prmValue if line has to form 'prmName=', otherwise copy line from old file
+    IF (STRICMP(tmp2(1:LEN(TRIM(prmName))+1),prmName//"=")) THEN
+      WRITE(fileUnit,*) TRIM(prmName)//"=",prmValue
+      prmChanged = .TRUE.
+    ELSE
+      WRITE(fileUnit,'(A)') TRIM(tmp)
+    END IF
+
+    ! EXIT if we have reached the end of the file
+    IF(IS_IOSTAT_END(stat)) EXIT
+  END DO
+
+  CLOSE(fileUnit)
+  CLOSE(copyUnit)
+
+  ! 2. Rename the temporary file to the parameter file
+  CALL RENAME(prmfile_copy, prmfile)
+END IF
+#if USE_MPI
+CALL MPI_BCAST(prmChanged,1,MPI_LOGICAL,0,MPI_COMM_FLEXI,iError)
+#endif /*USE_MPI*/
+END SUBROUTINE ModifyParameterFile
+
 
 !===================================================================================================================================
 !> Clear parameters list 'prms'.

@@ -166,7 +166,7 @@ At every ``Analyze_dt``, the following evaluations are possible:
 * ``CalcWallVelocity=T``: Due to the discontinuous solution space and the weakly enforced boundaries, the no-slip condition is not exactly fulfilled. The deviation depends mainly on the resolution in the near-wall region. Thus, this evaluation can be used as a resolution measure at the wall.
 
 ## Parallel execution
-The simulation code is specifically designed for (massively) parallel execution using the MPI library. For parallel runs, the code must be compiled with `FLEXI_MPI=ON`.
+The simulation code is specifically designed for (massively) parallel execution using the MPI library. For parallel runs, the code must be compiled with `LIBS_USE_MPI=ON`.
 
 Parallel execution is then controlled using `mpirun`
 
@@ -239,7 +239,7 @@ Note that the test case environment is currently only applicable to the *Navier-
 posti_visu [posti-prm-file [flexi-prm-file]] statefile [statefiles]
 ~~~~~~~
 
-The posti_visu tool runs in parallel with activated `FLEXI_MPI` flag
+The posti_visu tool runs in parallel with activated `LIBS_USE_MPI` flag
 
 ~~~~~~~
 mpirun -np [no. processors] posti_visu [posti-prm-file [flexi-prm-file]] statefile [statefiles]

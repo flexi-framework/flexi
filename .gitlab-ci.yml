@@ -1,14 +1,3 @@
-before_script:
-  - export PATH=/opt/openmpi/3.1.3/bin:$PATH
-  - export LD_LIBRARY_PATH=/opt/openmpi/3.1.3/lib/:$LD_LIBRARY_PATH
-  - export CMAKE_PREFIX_PATH=/opt/openmpi/3.1.3/share/cmake:$CMAKE_PREFIX_PATH
-  - export CMAKE_LIBRARY_PATH=/opt/openmpi/3.1.3/lib:$CMAKE_LIBRARY_PATH
-  - export HDF5_DIR=/opt/hdf5/1.10.5/share/cmake/
-  - export LD_LIBRARY_PATH=/opt/hdf5/1.10.5/lib/:$LD_LIBRARY_PATH
-  - export CMAKE_PREFIX_PATH=/opt/hdf5/1.10.5/:$CMAKE_PREFIX_PATH
-  - export CMAKE_LIBRARY_PATH=/opt/hdf5/1.10.5/lib:$CMAKE_LIBRARY_PATH
-  - export FFTW_DIR=/opt/fftw/
-
 stages:
   - build
   - reggie_checkin
@@ -55,7 +44,7 @@ build_gnu:
   script:
     - mkdir -p build_gnu ; cd build_gnu
     - git clone git@gitlab.com:reggie2.0/reggie2.0.git
-    - cmake .. -DFLEXI_BUILD_HDF5=OFF ; make -j 6
+    - cmake .. -DLIBS_BUILD_HDF5=OFF ; make -j 6
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "reggie_checkin": Run most simple reggie with previous builds on check-in
@@ -70,7 +59,7 @@ gnu:
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "reggie_nightly": Build and run
-#                         - build all specified compile options in "run_basic" with BUILD_HDF5=ON
+#                         - build all specified compile options in "run_basic" with LIBS_BUILD_HDF5=ON
 #                         - h-p-convtests
 #                         - parabolic testcases
 #                         - riemann solver tests
@@ -91,13 +80,13 @@ gnu_convtest:
   <<: *defaults_gnu
   stage: reggie_nightly
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/convtest -j 6; fi 
+    - if [ -n "${DO_NIGHTLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/convtest -j 6; fi
 
 gnu_parabolic:
   <<: *defaults_gnu
   stage: reggie_nightly
   script:
-    - if [ -n "${DO_NIGHTLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/parabolic -j 6; fi 
+    - if [ -n "${DO_NIGHTLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/parabolic -j 6; fi
 
 gnu_riemann:
   <<: *defaults_gnu
@@ -124,17 +113,17 @@ gnu_fv:
   <<: *defaults_gnu
   stage: reggie_weekly
   script:
-    - if [ -n "${DO_WEEKLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/fv -j 6; fi 
+    - if [ -n "${DO_WEEKLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/fv -j 6; fi
 
 gnu_channelRANS:
   <<: *defaults_gnu
   stage: reggie_weekly
   script:
-    - if [ -n "${DO_WEEKLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/channelRANS -j 6 ; fi 
+    - if [ -n "${DO_WEEKLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/channelRANS -j 6 ; fi
 
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "deploy": 1. Creates doxygen documentation & compiles the documentation creating the *.pdf
-#                 2. Copies the doxygen documentation and userguide *.pdf to the homepage server & copies the repository to github 
+#                 2. Copies the doxygen documentation and userguide *.pdf to the homepage server & copies the repository to github
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 documentation:
   stage: deploy

@@ -119,7 +119,7 @@ DO i=1,nRP(1)
   CALL EvalSplineDeriv(3,nRP(1),s_mod(i),s_mod,coeff,dx_loc)
   !project it on the local surface
   tangVecRP(:,i)=dx_loc - SUM(dx_loc(1:3)*NormVecRP(1:3,i))*NormVecRP(:,i)
-  tangVecRP(:,i)=tangVecRP(:,i)/NORM2(tangVecRP(:,i))
+  tangVecRP(:,i)=tangVecRP(:,i)/SQRT(DOT_PRODUCT(tangVecRP(:,i),tangVecRP(:,i)))
 END DO
 
 ! extrapolation of the BL mesh along the boundary normals to height
@@ -242,8 +242,8 @@ DO SideID=1,nBCSides
     xWinner(:)=xBC_NSuper(:,iWinner,jWinner)
     NormVecWinner(:)=NormVec_NSuper(:,iWinner,jWinner)
     F=xRP-xWinner
-    NormVecWinner=NormVecWinner/NORM2(NormVecWinner)
-    F=(xRP-xWinner)/NORM2(xRP-xWinner)
+    NormVecWinner=NormVecWinner/SQRT(DOT_PRODUCT(NormVecWinner,NormVecWinner))
+    F=(xRP-xWinner)/SQRT(DOT_PRODUCT(xRP-xWinner,xRP-xWinner))
 
 
     ! Newton to find the minimum distance

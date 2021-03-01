@@ -77,6 +77,7 @@ INTEGER              :: size_offsetdim,offsetVar
 CHARACTER(LEN=255)   :: ZoneTitle
 CHARACTER(LEN=255)   :: GroupName
 CHARACTER(LEN=255)   :: CoordNames_loc(nCoords-1)
+CHARACTER(LEN=255)   :: tmp255
 REAL                 :: PointData(1:nVal,nSamples)
 TYPE(tLine),POINTER  :: Line
 TYPE(tPlane),POINTER :: Plane
@@ -88,8 +89,9 @@ WRITE(UNIT_stdOut,'(A,A,A)',ADVANCE='NO')" WRITE RP DATA TO HDF5 FILE '",TRIM(Fi
 CALL OpenDataFile(Filestring,create=.TRUE.,single=.TRUE.,readOnly=.FALSE.)
 
 ! Write dataset attributes
-CALL WriteAttribute(File_ID,'File_Type'   ,1,StrScalar=(/'RP_Output'/))
-CALL WriteAttribute(File_ID,'ProjectName' ,1,StrScalar=(/ProjectName/))
+CALL WriteAttribute(File_ID,'File_Type'   ,1,StrScalar=(/CHARACTER(LEN=255)::'RP_Output'/))
+tmp255=TRIM(ProjectName)
+CALL WriteAttribute(File_ID,'ProjectName' ,1,StrScalar=(/tmp255/))
 CALL WriteAttribute(File_ID,'Time'        ,1,RealScalar=Time(nSamples))
 CALL WriteAttribute(File_ID,'VarNames'    ,nVal,StrArray=VarNames)
 nCoords_loc=nCoords-1
@@ -238,6 +240,7 @@ INTEGER              :: iPoint,iPlane
 CHARACTER(LEN=255)   :: ZoneTitle
 CHARACTER(LEN=255)   :: GroupName
 CHARACTER(LEN=255)   :: CoordNames_loc(nCoords-1)
+CHARACTER(LEN=255)   :: tmp255
 TYPE(tPlane),POINTER :: Plane
 REAL,ALLOCATABLE     :: LineCoord(:,:)
 !===================================================================================================================================
@@ -245,8 +248,9 @@ WRITE(UNIT_stdOut,'(A,A,A)',ADVANCE='NO')" WRITE BOUNDARY LAYER PROPERTY DATA TO
 CALL OpenDataFile(Filestring,create=.TRUE.,single=.TRUE.,readOnly=.FALSE.)
 
 ! Write dataset attributes
-CALL WriteAttribute(File_ID,'File_Type',1,StrScalar=(/'RP_Output'/))
-CALL WriteAttribute(File_ID,'ProjectName',1,StrScalar=(/ProjectName/))
+CALL WriteAttribute(File_ID,'File_Type',1,StrScalar=(/CHARACTER(LEN=255)::'RP_Output'/))
+tmp255=TRIM(ProjectName)
+CALL WriteAttribute(File_ID,'ProjectName',1,StrScalar=(/tmp255/))
 CALL WriteAttribute(File_ID,'VarNames',nBLProps,StrArray=VarNames_BLProps)
 nCoords_loc=nCoords-1
 CoordNames_loc=CoordNames(2:nCoords)

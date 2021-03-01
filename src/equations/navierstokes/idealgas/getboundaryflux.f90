@@ -373,7 +373,7 @@ CASE(3,4,9,91,23,24,25,27)
     MaOut=RefStatePrim(2,BCState)
     DO q=0,ZDIM(Nloc); DO p=0,Nloc
       c=SQRT(kappa*UPrim_boundary(5,p,q)/UPrim_boundary(1,p,q))
-      vmag=NORM2(UPrim_boundary(2:4,p,q))
+      vmag=SQRT(DOT_PRODUCT(UPrim_boundary(2:4,p,q),UPrim_boundary(2:4,p,q)))
       Ma=vmag/c
       cb=vmag/MaOut
       IF(Ma<1)THEN
@@ -784,8 +784,8 @@ ELSE
       ! Evaluate 3D Diffusion Flux with interior state (with normalvel=0) and symmetry gradients
       ! Only velocities will be used from state (=inner velocities, except normal vel=0)
       CALL EvalDiffFlux3D(Nloc,UPrim_boundary,                            &
-                          Fd_Face_loc,Gd_Face_loc,Hd_Face_loc,            &
-                          gradUx_Face_loc,gradUy_Face_loc,gradUz_Face_loc &
+                          gradUx_Face_loc,gradUy_Face_loc,gradUz_Face_loc, &
+                          Fd_Face_loc,Gd_Face_loc,Hd_Face_loc            &
 #if EDDYVISCOSITY
                          ,muSGS_master(:,:,:,SideID)&
 #endif

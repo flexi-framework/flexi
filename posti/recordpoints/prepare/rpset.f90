@@ -184,14 +184,14 @@ IF(nLines.GT.0) THEN
     Circle_Angle  = GETREAL('Circle_Angle')
     ! rotation axis of the circle
     Circle_Axis   = GETREALARRAY('Circle_Axis',3)
-    Circle_Axis   = Circle_Axis/NORM2(Circle_Axis)
+    Circle_Axis   = Circle_Axis/SQRT(DOT_PRODUCT(Circle_Axis,Circle_Axis))
     ! 0 vector to define circumferential coordinate phi=0, i.e. first point
     Circle_dir    = GETREALARRAY('Circle_dir',3)
     Circle_dir    = Circle_dir - SUM(Circle_dir*Circle_Axis)*Circle_Axis ! ensure orthogonality between dir and axis
-    IF(NORM2(Circle_dir).LT.1e-9) THEN
+    IF(SQRT(DOT_PRODUCT(Circle_dir,Circle_dir)).LT.1e-9) THEN
       SWRITE(UNIT_stdOut,'(A)') 'Check definitions: Circle_dir seems to be parallel to Circle_Axis!!!'; STOP
     END IF
-    Circle_dir   = Circle_dir/NORM2(Circle_dir)
+    Circle_dir   = Circle_dir/SQRT(DOT_PRODUCT(Circle_dir,Circle_dir))
     RotMat(:,1)=Circle_dir(:)
     RotMat(:,2)=CROSS(Circle_Axis,Circle_dir)                  ! right hand system
     RotMat(:,3)=Circle_Axis(:)
@@ -283,14 +283,14 @@ IF(nPlanes.GT.0) THEN
     Sphere_Angle= GETREAL('Sphere_Angle')
     ! rotation axis of the Sphere
     Sphere_Axis   = GETREALARRAY('Sphere_Axis',3)
-    Sphere_Axis   = Sphere_Axis/NORM2(Sphere_Axis)
+    Sphere_Axis   = Sphere_Axis/SQRT(DOT_PRODUCT(Sphere_Axis,Sphere_Axis))
     ! 0 vector to define circumferential coordinate phi=0, i.e. first point
     Sphere_dir    = GETREALARRAY('Sphere_dir',3)
     Sphere_dir    = Sphere_dir - SUM(Sphere_dir*Sphere_Axis)*Sphere_Axis ! ensure orthogonality between dir and axis
-    IF(NORM2(Sphere_dir).LT.1e-9) THEN
+    IF(SQRT(DOT_PRODUCT(Sphere_dir,Sphere_dir)).LT.1e-9) THEN
       SWRITE(UNIT_stdOut,'(A)') 'Check definitions: Sphere_dir seems to be parallel to Sphere_Axis!!!'; STOP
     END IF
-    Sphere_dir   = Sphere_dir/NORM2(Sphere_dir)
+    Sphere_dir   = Sphere_dir/SQRT(DOT_PRODUCT(Sphere_dir,Sphere_dir))
     RotMat(:,1)=Sphere_dir(:)
     RotMat(:,2)=CROSS(Sphere_Axis,Sphere_dir)                  ! right hand system
     RotMat(:,3)=Sphere_Axis(:)

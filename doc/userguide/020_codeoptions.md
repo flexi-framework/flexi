@@ -36,7 +36,7 @@ For some external libraries and programs that **FLEXI** uses, the following opti
 
     This variable specifies the Ctags install directory, an optional program used to jump between tags in the source file.
 
-* ``FLEXI_BUILD_HDF5``: ON/OFF
+* ``LIBS_BUILD_HDF5``: ON/OFF
 
     This will be set to ON if no prebuilt HDF5 installation was found on your machine. In this case a HDF5 version will be build and used instead.
 
@@ -70,11 +70,11 @@ The following options enable or disable specific features of **FLEXI**. If you w
     * **BR1**: First method of Bassi and Rebay [@BR1]
     * **BR2**: Second method of Bassi and Rebay [@BR2]
     
-* ``FLEXI_MKL``:  ON/OFF
+* ``LIBS_USE_MKL``:  ON/OFF
     
     This flag defines, whether Intel's MKL (Math Kernel Library) should be used. This is only meaningful when **FLEXI** is compiled with Intel compiler.    
     
-* ``FLEXI_MPI``: ON/OFF
+* ``LIBS_USE_MPI``: ON/OFF
 
     This flag defines, whether **FLEXI** is compiled with MPI (necessary for parallel execution).
 
@@ -85,7 +85,7 @@ The following options enable or disable specific features of **FLEXI**. If you w
     * GAUSS
     * GAUSS-LOBATTO
 
-* ``FLEXI_PAPI``:  ON/OFF
+* ``LIBS_USE_PAPI``:  ON/OFF
     
     Enable to use the PAPI library to perform performance measurements (e.g. flop counts). 
 
@@ -125,16 +125,16 @@ The following options enable or disable specific features of **FLEXI**. If you w
 
 The remaining part of the options deal with the post-processing framework **POSTI**. 
     
-* ``FLEXI_BUILDPOSTI``:  ON/OFF
+* ``POSTI``:  ON/OFF
 
     Enable to also build the post-processing tools next to the actual simulation software. When this general option is enabled, you will need to enable the specific options for the tools that should be build.
     
     
-* ``POSTI_BUILD_*``:  ON/OFF
+* ``POSTI_*``:  ON/OFF
 
     Each of the **POSTI** tools has it's own build option. Enable to build this specific tool.
     
-* ``POSTI_USE_PARAVIEW*``:  ON/OFF
+* ``POSTI_VISU_PARAVIEW*``:  ON/OFF
 
     Enable to build the ParaView plugin for visualization of **FLEXI** simulation data. The ParaView libraries etc. must be available on the system and the environment variable $ParaView_DIR set accordingly.
 
