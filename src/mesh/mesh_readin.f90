@@ -662,28 +662,28 @@ ReduceData(8)=nAnalyzeSides
 ReduceData(9)=nMortarSides
 ReduceData(10)=nMPIPeriodics
 
-#if USE_MPI
-CALL MPI_REDUCE(ReduceData,ReduceData_glob,10,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
-ReduceData=ReduceData_glob
-#endif /*USE_MPI*/
-
 ! Store information if mesh has mortars, independent of existence of trees
 meshHasMortars = MERGE(.TRUE.,.FALSE.,ReduceData(9).GT.0)
 
+#if USE_MPI
+CALL MPI_REDUCE(ReduceData,ReduceData_glob,10,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+#endif /*USE_MPI*/
+
 IF(MPIRoot)THEN
-  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nElems | ',ReduceData(1) !nElems
-  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nNodes | ',ReduceData(3) !nNodes
-  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nSides        | ',ReduceData(2)-ReduceData(7)/2
-  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nSides,    BC | ',ReduceData(6) !nBCSides
-  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nSides,   MPI | ',ReduceData(7)/2 !nMPISides
-  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nSides, Inner | ',ReduceData(4) !nInnerSides
-  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nSides,Mortar | ',ReduceData(9) !nMortarSides
+  ReduceData=ReduceData_glob
+  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nElems               | ',ReduceData(1) !nElems
+  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nNodes               | ',ReduceData(3) !nNodes
+  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nSides               | ',ReduceData(2)-ReduceData(7)/2
+  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nSides,    BC        | ',ReduceData(6) !nBCSides
+  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nSides,   MPI        | ',ReduceData(7)/2 !nMPISides
+  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nSides, Inner        | ',ReduceData(4) !nInnerSides
+  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nSides,Mortar        | ',ReduceData(9) !nMortarSides
   WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nPeriodicSides,Total | ',ReduceData(5)-ReduceData(10)/2
   WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nPeriodicSides,Inner | ',ReduceData(5)-ReduceData(10)
   WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nPeriodicSides,  MPI | ',ReduceData(10)/2 !nPeriodicSides
-  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nAnalyzeSides | ',ReduceData(8) !nAnalyzeSides
-  WRITE(UNIT_stdOut,'(A,A34,L1)')' |','useCurveds | ',useCurveds
-  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','Ngeo | ',Ngeo
+  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','nAnalyzeSides        | ',ReduceData(8) !nAnalyzeSides
+  WRITE(UNIT_stdOut,'(A,A34,L1)')' |','useCurveds           | ',useCurveds
+  WRITE(UNIT_stdOut,'(A,A34,I0)')' |','Ngeo                 | ',Ngeo
   WRITE(UNIT_stdOut,'(132("."))')
 END IF
 
