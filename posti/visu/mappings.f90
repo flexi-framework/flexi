@@ -349,6 +349,7 @@ SWRITE (*,*) 'doSurfVisu: ',doSurfVisu
 changedBCnames = .TRUE.
 IF (ALLOCATED(mapAllBCNamesToVisuBCNames_old).AND.(SIZE(mapAllBCNamesToVisuBCNames).EQ.SIZE(mapAllBCNamesToVisuBCNames_old))) THEN
   changedBCnames = .NOT.ALL(mapAllBCNamesToVisuBCNames.EQ.mapAllBCNamesToVisuBCNames_old)
+  IF (ALL(mapAllBCNamesToVisuBCNames_old.EQ.0) .AND. changedBCNames) changedStateFile = .TRUE.
 END IF
 SDEALLOCATE(mapAllBCNamesToVisuBCNames_old)
 ALLOCATE(mapAllBCNamesToVisuBCNames_old(1:nBCNamesAll))

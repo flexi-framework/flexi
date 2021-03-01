@@ -444,6 +444,7 @@ INTEGER(HSIZE_T)    :: Dimsf(5)
 INTEGER(HID_T)      :: DSet_ID,FileSpace,HDF5DataType
 CHARACTER(LEN=255)  :: StrVarNames(nVar)
 CHARACTER(LEN=255)  :: FileName
+CHARACTER(LEN=255)  :: tmp255
 #if FV_ENABLED
 #if FV_RECONSTRUCT
 INTEGER             :: i
@@ -525,8 +526,10 @@ IF (MPIRoot) THEN
   ! Write dataset properties "N","Time","MeshFile","NodeType","VarNames","NComputation"
   CALL WriteAttribute(File_ID,'N',1,IntScalar=NVisu)
   CALL WriteAttribute(File_ID,'Time',1,RealScalar=OutputTime)
-  CALL WriteAttribute(File_ID,'MeshFile',1,StrScalar=(/MeshFileName/))
-  CALL WriteAttribute(File_ID,'NodeType',1,StrScalar=(/NodeType/))
+  tmp255=TRIM(MeshFileName)
+  CALL WriteAttribute(File_ID,'MeshFile',1,StrScalar=(/tmp255/))
+  tmp255=TRIM(NodeType)
+  CALL WriteAttribute(File_ID,'NodeType',1,StrScalar=(/tmp255/))
   CALL WriteAttribute(File_ID,'VarNames',nVar,StrArray=StrVarNames)
   CALL WriteAttribute(File_ID,'NComputation',1,IntScalar=PP_N)
 

@@ -17,13 +17,13 @@ Make sure that **FLEXI** is compiled with the CMake options listed in the follow
 | CMAKE_BUILD_TYPE                | Release            |              |
 | FLEXI_EQYNSYSNAME               | navierstokes       |              |
 | FLEXI_PARABOLIC                 | ON                 |              |
-| FLEXI_MPI                       | ON                 |  optional    |
+| LIBS_USE_MPI                    | ON                 |  optional    |
 | FLEXI_EDDYVISCOSITY             | ON                 |  optional    |
 | FLEXI_NODETYPE                  | GAUSS-LOBATTO      |              |
 | FLEXI_SPLIT_DG                  | ON                 |              |
 | FLEXI_TESTCASE                  | channel            |              |
-| FLEXI_BUILDPOSTI                | ON                 |              |
-| POSTI_BUILD_CHANNEL_FFT         | ON                 |              |
+| POSTI                           | ON                 |              |
+| POSTI_CHANNEL_FFT               | ON                 |              |
 
 Table: CMake options for the plane turbulent channel flow test case simulation. \label{tab:ptcf_cmakeoptions}
 
@@ -88,7 +88,7 @@ mpirun -np XX flexi parameter_flexi.ini
 ~~~~~~~
 
 when you want to use more than one processor.
-Once the simulation finished state files can be post processed by the ``posti_channel_fft`` tool which was build by the ``POSTI_BUILD_CHANNEL_FFT`` CMake option. To run the postprocessing, the standard command is
+Once the simulation finished state files can be post processed by the ``posti_channel_fft`` tool which was build by the ``POSTI_CHANNEL_FFT`` CMake option. To run the postprocessing, the standard command is
 
 ~~~~~~~
 posti_channel_fft parameter_channel_fft.ini [State1 State2 ...]

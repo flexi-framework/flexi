@@ -42,7 +42,7 @@ to compile **FLEXI** with the cmake options in the following table
 | CMAKE_BUILD_TYPE                | Release       |              |
 | FLEXI_EQYNSYSNAME               | navierstokes  |              |
 | FLEXI_PARABOLIC                 | OFF           |              |
-| FLEXI_MPI                       | ON            |  optional    |
+| LIBS_USE_MPI                    | ON            |  optional    |
 
 Table: Cmake options for the convergence test simulation. \label{tab:convtest_cmakeoptions}
 
@@ -139,7 +139,7 @@ fluxes.
 | CMAKE_BUILD_TYPE                | Release       |              |
 | FLEXI_EQYNSYSNAME               | navierstokes  |              |
 | FLEXI_PARABOLIC                 | ON            |              |
-| FLEXI_MPI                       | ON            |  optional    |
+| LIBS_USE_MPI                       | ON            |  optional    |
 
 Table: Cmake options for the convergence test simulation. \label{tab:convtest_visc_cmakeoptions}
 
