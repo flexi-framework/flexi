@@ -669,10 +669,10 @@ ELSE
                                        + BCGradMat(1,3) * gradUz_master(LIFT_DENS,p,q)
         gradUy_Face_loc(LIFT_DENS,p,q) = BCGradMat(2,1) * gradUx_master(LIFT_DENS,p,q) &
                                        + BCGradMat(2,2) * gradUy_master(LIFT_DENS,p,q) &
-                            _          + BCGradMat(2,3) * gradUz_master(LIFT_DENS,p,q)
+                                       + BCGradMat(2,3) * gradUz_master(LIFT_DENS,p,q)
         gradUz_Face_loc(LIFT_DENS,p,q) = BCGradMat(3,1) * gradUx_master(LIFT_DENS,p,q) &
-                                                 + BCGradMat(3,2) * gradUy_master(LIFT_TEMP,p,q) &
-                                                 + BCGradMat(3,3) * gradUz_master(LIFT_TEMP,p,q)
+                                       + BCGradMat(3,2) * gradUy_master(LIFT_DENS,p,q) &
+                                       + BCGradMat(3,3) * gradUz_master(LIFT_DENS,p,q)
         gradUx_Face_loc(LIFT_TEMP:LIFT_NUSA,p,q) = BCGradMat(1,1) * gradUx_master(LIFT_TEMP:LIFT_NUSA,p,q) &
                                                  + BCGradMat(1,2) * gradUy_master(LIFT_TEMP:LIFT_NUSA,p,q) &
                                                  + BCGradMat(1,3) * gradUz_master(LIFT_TEMP:LIFT_NUSA,p,q)
