@@ -280,7 +280,12 @@ DO
 #if FV_ENABLED
   CALL FV_Switch(U,AllowToDG=(nCalcTimestep.LT.1))
 #endif
-  CALL DGTimeDerivative_weakForm(t)
+! if doAnalyze=.TRUE.: gradients were already calculated in the previous step!
+  IF(doAnalyze)THEN
+    doAnalyze = .FALSE.
+  ELSE
+    CALL DGTimeDerivative_weakForm(t)
+  END IF
   IF(nCalcTimestep.LT.1)THEN
     dt_Min=CALCTIMESTEP(errType)
     nCalcTimestep=MIN(FLOOR(ABS(LOG10(ABS(dt_MinOld/dt_Min-1.)**2.*100.+EPSILON(0.)))),nCalcTimeStepMax)
@@ -380,7 +385,7 @@ DO
     iter_loc=0
     CalcTimeStart=FLEXITIME()
     tAnalyze=  MIN(tAnalyze+Analyze_dt,  tEnd)
-    doAnalyze=.FALSE.
+!    doAnalyze=.FALSE.
   END IF
 
   IF(doFinalize) EXIT
