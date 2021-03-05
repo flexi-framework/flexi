@@ -735,10 +735,10 @@ DO iSide=1,nBCSides
 #endif
 
     ! Calculate lengths of the cell = lengths of the edge vectors
-    yloc(1)=NORM2(xVec)
-    yloc(2)=NORM2(yVec)
+    yloc(1)=SQRT(DOT_PRODUCT(xVec,xVec))
+    yloc(2)=SQRT(DOT_PRODUCT(yVec,yVec))
 #if PP_dim==3
-    yloc(3)=NORM2(zVec)
+    yloc(3)=SQRT(DOT_PRODUCT(zVec,zVec))
 #endif
 
     ! Normalize the distances with the number of points per direction per cell

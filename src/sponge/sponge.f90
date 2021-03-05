@@ -313,7 +313,7 @@ DO iRamp=1,nSpongeRamps
       CALL CollectiveStop(__STAMP__,'You are computing in 2D! Please set SpVec(3) = 0!')
     END IF
 #endif
-    SpVec(:,iRamp)=SpVec(:,iRamp)/NORM2(SpVec(:,iRamp)) ! Normalize SpVec
+SpVec(:,iRamp)=SpVec(:,iRamp)/SQRT(DOT_PRODUCT(SpVec(:,iRamp),SpVec(:,iRamp))) ! Normalize SpVec
   CASE(SPONGESHAPE_CYLINDRICAL) ! circular sponge
     SpRadius(iRamp)=GETREAL('SpongeRadius')
 !    SpRadius(iRamp)=0

@@ -147,7 +147,7 @@ SWRITE(UNIT_stdOut,*)'done in ',FLEXITIME()-Time
 
 ! Translate the old mesh along the displacement vector if needed
 IF (CountOption('displacement').GE.1) THEN
-  DO i=1,3
+  DO i=1,PP_dim
     xCLOld(i,:,:,:,:) = xCLOld(i,:,:,:,:)+displacement(i)
   END DO
 END IF
@@ -168,14 +168,14 @@ nElems       = nElemsNew
 OffsetElem   = 0 ! OffsetElem is 0 since the tool only works on singel
 
 ! Prepare the necessary Vandermonde matrizes, also interpolate the new mesh coordinates to xCLInter (on polynomial degree of NInter)
-ALLOCATE(xCLInter(3,0:NInter,0:NInter,0:NInter,nElemsNew))
+ALLOCATE(xCLInter(3,0:NInter,0:NInter,0:ZDIM(NInter),nElemsNew))
 CALL prepareVandermonde()
 
 ! Evaluate parametric coordinates
 SWRITE(UNIT_stdOut,'(A)') ' EVALUATING PARAMETRIC COORDINATES ...'
-ALLOCATE(xiInter(3,  0:NInter,0:NInter,0:NInter,nElemsNew))
-ALLOCATE(InterToElem(0:NInter,0:NInter,0:NInter,nElemsNew))
-ALLOCATE(IPDone(     0:NInter,0:NInter,0:NInter,nElemsNew))
+ALLOCATE(xiInter(PP_dim,0:NInter,0:NInter,0:ZDIM(NInter),nElemsNew))
+ALLOCATE(InterToElem(   0:NInter,0:NInter,0:ZDIM(NInter),nElemsNew))
+ALLOCATE(IPDone(        0:NInter,0:NInter,0:ZDIM(NInter),nElemsNew))
 ALLOCATE(equalElem(nElemsNew))
 
 ! Find the parametric coordinates of the interpolation points of the new state in the old mesh
@@ -183,8 +183,8 @@ CALL GetParametricCoordinates()
 
 ! Allocate aray for new and the old solution - for the new solution, we use the U array from DG vars
 ! to be able to later use the WriteState routine from FLEXI
-ALLOCATE(UOld(nVar_State,0:NState,0:NState,0:NState,nElemsOld))
-ALLOCATE(U   (nVar_State,0:NNew,  0:NNew,  0:NNew,  nElemsNew))
+ALLOCATE(UOld(nVar_State,0:NState,0:NState,0:ZDIM(NState),nElemsOld))
+ALLOCATE(U   (nVar_State,0:NNew,  0:NNew,  0:ZDIM(NNew)  ,nElemsNew))
 END SUBROUTINE InitSwapmesh
 
 !===================================================================================================================================
@@ -199,7 +199,8 @@ USE MOD_HDF5_Input
 USE MOD_Interpolation,         ONLY: GetVandermonde
 USE MOD_Interpolation_Vars,    ONLY: NodeTypeVISU,NodeTypeCL
 USE MOD_IO_HDF5,               ONLY: File_ID
-USE MOD_ChangeBasis,           ONLY: ChangeBasis3D
+USE MOD_ChangeBasisByDim,      ONLY: ChangeBasisVolume
+USE MOD_2D,                    ONLY: to2D_rank5
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
@@ -254,12 +255,20 @@ ELSE
   NGeo=1
 END IF
 
+#if (PP_dim == 2)
+! If this is a two dimensional calculation, all subsequent operations are performed on the reduced mesh.
+SWRITE(UNIT_StdOut,'(A)') " RUNNING A 2D SIMULATION! "
+! The mesh coordinates read in by the readMesh routine are therefore reduced by one dimension.
+CALL to2D_rank5((/1,0,0,0,1/),(/3,NGeo,NGeo,NGeo,nElems/),4,NodeCoords)
+NodeCoords(3,:,:,:,:) = 0.
+#endif
+
 ! Convert the equidistant mesh nodes to CL points
 ALLOCATE(Vdm_EQNgeo_CLNgeo(0:Ngeo,0:Ngeo))
 CALL GetVandermonde(Ngeo,NodeTypeVISU,Ngeo,NodeTypeCL,Vdm_EQNgeo_CLNgeo,modal=.FALSE.)
-ALLOCATE(xCL(3,0:NGeo,0:NGeo,0:NGeo,nElems))
+ALLOCATE(xCL(3,0:NGeo,0:NGeo,0:ZDIM(NGeo),nElems))
 DO iElem=1,nElems
-  CALL ChangeBasis3D(3,NGeo,NGeo,Vdm_EQNGeo_CLNGeo,NodeCoords(:,:,:,:,iElem),xCL(:,:,:,:,iElem))
+  CALL ChangeBasisVolume(3,NGeo,NGeo,Vdm_EQNGeo_CLNGeo,NodeCoords(:,:,:,:,iElem),xCL(:,:,:,:,iElem))
 END DO ! iElem
 DEALLOCATE(Vdm_EQNgeo_CLNgeo,NodeCoords)
 
@@ -292,7 +301,7 @@ USE MOD_Swapmesh_Vars,       ONLY: Vdm_CLNGeo_EquiNSuper,Vdm_CLNInter_GPNNew,Vdm
 USE MOD_Swapmesh_Vars,       ONLY: xCLNew
 USE MOD_Interpolation,       ONLY: GetVandermonde
 USE MOD_Interpolation_Vars,  ONLY: NodeType,NodeTypeCL,NodeTypeVISU
-USE MOD_ChangeBasis,         ONLY: ChangeBasis3D
+USE MOD_ChangeBasisByDim,    ONLY: ChangeBasisVolume
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
@@ -310,18 +319,18 @@ CALL GetVandermonde(NGeoOld,NodeTypeCL,NSuper,NodeTypeVISU,Vdm_CLNGeo_EquiNSuper
 
 ! Vandermonde from interpolation CL to new solution G/GL
 ALLOCATE(Vdm_CLNInter_GPNNew(0:NNew,0:NInter))
-CALL GetVandermonde(NInter,NodeTypeCL,NNew,NodeTypeState,Vdm_CLNInter_GPNNew)
+CALL GetVandermonde(NInter,NodeTypeCL,NNew,NodeType,Vdm_CLNInter_GPNNew)
 
 ! Vandermonde for direct interpolation in equal elements
 IF(NNew.NE.NState)THEN
   ALLOCATE(Vdm_GPNState_GPNNew(0:NNew,0:NState))
-  CALL GetVandermonde(NState,NodeTypeState,NNew,NodeTypeState,Vdm_GPNState_GPNNew)
+  CALL GetVandermonde(NState,NodeTypeState,NNew,NodeType,Vdm_GPNState_GPNNew)
 END IF
 
 IF(NGeoNew.NE.NInter)THEN
   CALL GetVandermonde(NGeoNew,NodeTypeCL,NInter,NodeTypeCL,Vdm_CLNGeo_CLNInter)
   DO iElemNew=1,nElemsNew
-    CALL ChangeBasis3D(3,NGeoNew,NInter,Vdm_CLNGeo_CLNInter,xCLNew(:,:,:,:,iElemNew),xCLInter(:,:,:,:,iElemNew))
+    CALL ChangeBasisVolume(3,NGeoNew,NInter,Vdm_CLNGeo_CLNInter,xCLNew(:,:,:,:,iElemNew),xCLInter(:,:,:,:,iElemNew))
   END DO
 ELSE
   xCLInter = xCLNew
@@ -338,12 +347,13 @@ USE MOD_Globals,       ONLY: abort
 USE MOD_HDF5_Input,    ONLY: OpenDataFile,CloseDataFile,ReadArray,ReadAttribute,GetDataSize
 USE MOD_IO_HDF5,       ONLY: File_ID,HSize
 USE MOD_Swapmesh_Vars, ONLY: nVar_State,NState,nElemsOld,Time_State,UOld,NNew,nElemsNew
-USE MOD_ReadInTools,   ONLY: ExtractParameterFile
+USE MOD_ReadInTools,   ONLY: ExtractParameterFile,ModifyParameterFile
 USE MOD_Output_Vars,   ONLY: UserBlockTmpFile,userblock_total_len
 USE MOD_Output,        ONLY: insert_userblock
 USE MOD_Equation_Vars, ONLY: StrVarNames
 USE MOD_DG_Vars,       ONLY: U
 USE ISO_C_BINDING,     ONLY: C_NULL_CHAR
+USE MOD_2D
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
@@ -353,51 +363,72 @@ CHARACTER(LEN=255),INTENT(IN)      :: StateFile !< State file to be read
 LOGICAL                          :: userblockFound
 CHARACTER(LEN=255)               :: prmfile=".parameter.ini"
 CHARACTER(LEN=255)               :: FileType
-CHARACTER(LEN=255),ALLOCATABLE   :: VarNames_TimeAvg(:) !< List of varnames in TimeAvg-File 
-INTEGER                          :: iVar,nVarsFound,i,j,k,iElem
-REAL,ALLOCATABLE                 :: UMean(:,:,:,:,:)      !> Solution from old state
-INTEGER                          :: nDim
+CHARACTER(LEN=255),ALLOCATABLE   :: VarNames_TimeAvg(:)     !< List of varnames in TimeAvg-File
+REAL,ALLOCATABLE                 :: UMean(  :,:,:,:,:)      !< Mean solution from old TimeAvg state
+REAL,ALLOCATABLE                 :: U_local(:,:,:,:,:)
+INTEGER                          :: iVar,nVarsFound,nDims
 !===================================================================================================================================
 ! Open the data file
 CALL OpenDataFile(StateFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 
 CALL ReadAttribute(File_ID,'File_Type',1,StrScalar=FileType)
+
 SELECT CASE(TRIM(FileType))
 CASE('State')
-  ! Read the DG solution and store in UNew
-  CALL ReadArray('DG_Solution',5,&
-                 (/nVar_State,NState+1,NState+1,NState+1,nElemsOld/),0,5,RealArray=UOld)
+  ! Read the DG solution and store in U_local
+  CALL GetDataSize(File_ID,'DG_Solution',nDims,HSize)
+  ALLOCATE(U_local(nVar_State,0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,1:HSize(5)))
+  CALL ReadArray('DG_Solution',5,INT(HSize),0,5,RealArray=U_local)
+
 CASE('TimeAvg')
-  CALL GetDataSize(File_ID,'Mean',nDim,HSize)
+  CALL GetDataSize(File_ID,'Mean',nDims,HSize)
   nVar_State=SIZE(StrVarNames)
   ALLOCATE(VarNames_TimeAvg(INT(HSize(1))))
   CALL ReadAttribute(File_ID,'VarNames_Mean',INT(HSize(1)),StrArray=VarNames_TimeAvg)
   SDEALLOCATE(UOld)
   ALLOCATE(UOld(nVar_State,0:NState,0:NState,0:NState,nElemsOld))
-  ALLOCATE(UMean(INT(HSize(1)),0:NState,0:NState,0:NState,nElemsOld))
   SDEALLOCATE(U)
   ALLOCATE(U   (nVar_State,0:NNew,  0:NNew,  0:NNew,  nElemsNew))
-  CALL ReadArray('Mean',5,&
-                (/INT(HSize(1)),NState+1,NState+1,NState+1,nElemsOld/),0,5,RealArray=UMean)
+  ALLOCATE(U_local( nVar_State,0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,1:HSize(5)))
+  ALLOCATE(UMean(INT(HSize(1)),0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,1:HSize(5)))
+  CALL ReadArray('Mean',5,INT(HSize),0,5,RealArray=UMean)
   nVarsFound=0
   DO iVar=1,SIZE(StrVarNames)
     IF (TRIM(VarNames_TimeAvg(iVar)) .EQ. TRIM(StrVarNames(nVarsFound+1))) THEN
       nVarsFound = nVarsFound+1
-      DO iElem=1,nElemsOld; DO k=0,NState; DO j=0,NState; DO i=0,NState
-        UOld(nVarsFound,i,j,k,iElem)=UMean(iVar,i,j,k,iElem)
-      END DO; END DO; END DO; END DO
+      U_local(nVarsFound,:,:,:,:)=UMean(iVar,:,:,:,:)
     END IF
   END DO
   IF(nVarsFound .NE. SIZE(StrVarNames) ) CALL abort(__STAMP__,&
     'TimeAvg file does not contain all necessary variables for converting to state')
 END SELECT
 
+#if PP_dim == 3
+IF (HSize(4).EQ.1) THEN
+  ! FLEXI compiled 3D, but data is 2D => expand third space dimension
+  CALL ExpandArrayTo3D(5,(/nVar_State,NState+1,NState+1,1,nElemsOld/),4,NState+1,U_local,UOld)
+ELSE
+  ! FLEXI compiled 3D + data 3D
+  UOld = U_local
+END IF
+#else
+IF (HSize(4).EQ.1) THEN
+  ! FLEXI compiled 2D + data 2D
+  UOld = U_local
+ELSE
+  ! FLEXI compiled 2D, but data is 3D => reduce third space dimension
+  CALL to2D_rank5((/1,0,0,0,1/),(/nVar_State,NState,NState,NState,nElemsOld/),4,U_local)
+  UOld = U_local
+END IF
+#endif
 
 ! Read the current time
 CALL ReadAttribute(File_ID,'Time',1,RealScalar=Time_State)
 
 ! Extract parameter file from userblock (if found)
 CALL ExtractParameterFile(StateFile,TRIM(prmfile),userblockFound)
+! Modify the polynomial degree in the parameterfile to NNew
+CALL ModifyParameterFile(TRIM(prmfile),'N',NNew,userblockFound)
 ! prepare userblock file
 CALL insert_userblock(TRIM(UserBlockTmpFile)//C_NULL_CHAR,TRIM(prmfile)//C_NULL_CHAR)
 INQUIRE(FILE=TRIM(UserBlockTmpFile),SIZE=userblock_total_len)
@@ -406,6 +437,7 @@ INQUIRE(FILE=TRIM(UserBlockTmpFile),SIZE=userblock_total_len)
 CALL CloseDataFile()
 SDEALLOCATE(VarNames_TimeAvg)
 SDEALLOCATE(UMean)
+DEALLOCATE(U_local)
 END SUBROUTINE ReadOldStateFile
 
 !===================================================================================================================================
