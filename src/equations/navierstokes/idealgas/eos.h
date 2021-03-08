@@ -82,6 +82,18 @@
 #endif
 
 ! lifting variables
+#if PP_OPTLIFT == 0
+#define PP_nVarLifting               6
+#define LIFT_DENS                    1
+#define LIFT_VEL1                    2
+#define LIFT_VEL2                    3
+#define LIFT_VEL3                    4
+#define LIFT_PRES                    5
+#define LIFT_TEMP                    6
+#define LIFT_VELV                    LIFT_VEL1:LIFT_VEL3
+#define LIFT_VARS                    (/LIFT_DENS,LIFT_VEL1,LIFT_VEL2,LIFT_VEL3,LIFT,PRES,LIFT_TEMP/)
+#define PRIM_LIFT                    (/1,2,3,4,5,6/) /* density velocity range pressure and temperature */
+#else
 #define PP_nVarLifting               4
 #define LIFT_VEL1                    1 
 #define LIFT_VEL2                    2 
@@ -90,3 +102,4 @@
 #define LIFT_VELV                    LIFT_VEL1:LIFT_VEL3
 #define LIFT_VARS                    (/LIFT_VEL1,LIFT_VEL2,LIFT_VEL3,LIFT_TEMP/)
 #define PRIM_LIFT                    (/2,3,4,6/) /* velocity range and temperature */
+#endif

@@ -162,6 +162,18 @@ ELSE()
 ENDIF()
 
 # =========================================================================
+# Performance mode
+# =========================================================================
+OPTION(FLEXI_PERFORMANCE "Enable performance optimizations" OFF)
+CMAKE_DEPENDENT_OPTION(FLEXI_OPTLIFT "Lift only needed variables" OFF
+                                     "FLEXI_PERFORMANCE;NOT POSTI" OFF)
+IF(FLEXI_OPTLIFT)
+  ADD_DEFINITIONS(-DPP_OPTLIFT=1)
+ELSE()
+  ADD_DEFINITIONS(-DPP_OPTLIFT=0)
+ENDIF()
+
+# =========================================================================
 # Test case
 # =========================================================================
 SET(   FLEXI_TESTCASE   "default"      CACHE STRING
