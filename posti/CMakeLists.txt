@@ -66,7 +66,7 @@ IF(POSTI_RP_PREPARERE)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/recordpoints/prepare/CMakeLists.txt)
 ENDIF()
 
-IF(POSTI_RP_VISUALIZERE)
+IF(POSTI_RP_VISUALIZE)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/recordpoints/visualize/CMakeLists.txt)
 ENDIF()
 
