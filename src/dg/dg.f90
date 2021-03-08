@@ -95,7 +95,7 @@ CALL InitDGBasis(PP_N, xGP,wGP,L_minus,L_plus,D ,D_T ,D_Hat ,D_Hat_T ,L_HatMinus
 ! Allocate the local DG solution (JU or U): element-based
 ALLOCATE(U(        PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 ! Allocate the time derivative / solution update /residual vector dU/dt: element-based
-ALLOCATE(Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+ALLOCATE(Ut(       PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 U=0.
 Ut=0.
 

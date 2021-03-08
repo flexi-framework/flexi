@@ -1068,10 +1068,10 @@ CHARACTER(LEN=255),INTENT(IN),OPTIONAL,TARGET :: StrScalar(1)     !< scalar stri
 LOGICAL           ,INTENT(IN),OPTIONAL        :: LogicalScalar    !< logical scalar
 REAL              ,INTENT(IN),OPTIONAL,TARGET :: RealArray(nVal)  !< real array of length nVal
 INTEGER           ,INTENT(IN),OPTIONAL,TARGET :: IntArray(nVal)   !< integer array of length nVal
-CHARACTER(LEN=*)  ,INTENT(IN),OPTIONAL,TARGET :: StrArray(nVal)   !< string array of length nVal
+CHARACTER(LEN=255),INTENT(IN),OPTIONAL,TARGET :: StrArray(nVal)   !< string array of length nVal
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                        :: Rank,i
+INTEGER                        :: Rank
 INTEGER(HID_T)                 :: DataSpace,Attr_ID,Loc_ID,Type_ID
 INTEGER(HSIZE_T), DIMENSION(1) :: Dimsf
 INTEGER(SIZE_T)                :: AttrLen

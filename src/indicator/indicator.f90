@@ -335,9 +335,9 @@ CASE(1:PP_nVar)
 #if EQNSYSNR == 2 /* NAVIER-STOKES */
 CASE(6)
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-    UE(CONS)=U(:,i,j,k)
-    UE(SRHO)=1./UE(DENS)
-    UE(VELV)=VELOCITY_HE(UE)
+    UE(EXT_CONS)=U(:,i,j,k)
+    UE(EXT_SRHO)=1./UE(EXT_DENS)
+    UE(EXT_VELV)=VELOCITY_HE(UE)
     U_loc(i,j,k)=PRESSURE_HE(UE)
   END DO; END DO; END DO! i,j,k=0,PP_N
 #endif /* NAVIER-STOKES */
@@ -413,19 +413,19 @@ DO iElem=1,nElems
   IndValue = 0.
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
 #if PP_dim==3
-      VorticityLoc(1)=gradUy(4,i,j,k,iElem)-gradUz(3,i,j,k,iElem)  ! dw/dy-dv/dz
-      VorticityLoc(2)=gradUz(2,i,j,k,iElem)-gradUx(4,i,j,k,iElem)  ! du/dz-dw/dx
+      VorticityLoc(1)=gradUy(LIFT_VEL3,i,j,k,iElem)-gradUz(LIFT_VEL2,i,j,k,iElem)  ! dw/dy-dv/dz
+      VorticityLoc(2)=gradUz(LIFT_VEL1,i,j,k,iElem)-gradUx(LIFT_VEL3,i,j,k,iElem)  ! du/dz-dw/dx
 #else
       VorticityLoc(1)=0.
       VorticityLoc(2)=0.
 #endif
-      VorticityLoc(3)=gradUx(3,i,j,k,iElem)-gradUy(2,i,j,k,iElem)  ! dv/dx-du/dy
+      VorticityLoc(3)=gradUx(LIFT_VEL2,i,j,k,iElem)-gradUy(LIFT_VEL1,i,j,k,iElem)  ! dv/dx-du/dy
       Vorticity2=SUM(VorticityLoc(:)**2)
 
 #if PP_dim==3
-      divV2 = (gradUx(2,i,j,k,iElem) + gradUy(3,i,j,k,iElem) + gradUz(4,i,j,k,iElem))**2
+      divV2 = (gradUx(LIFT_VEL1,i,j,k,iElem) + gradUy(LIFT_VEL2,i,j,k,iElem) + gradUz(LIFT_VEL3,i,j,k,iElem))**2
 #else
-      divV2 = (gradUx(2,i,j,k,iElem) + gradUy(3,i,j,k,iElem))**2
+      divV2 = (gradUx(LIFT_VEL1,i,j,k,iElem) + gradUy(LIFT_VEL2,i,j,k,iElem))**2
 #endif
 
       IntegrationWeight=wGPVol(i,j,k)/sJ(i,j,k,iElem,FV_Elems(iElem))
@@ -498,9 +498,9 @@ CASE(1:PP_nVar)
 CASE(6)
   DO iElem=1,nElems
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      UE(CONS)=U(:,i,j,k,iElem)
-      UE(SRHO)=1./UE(DENS)
-      UE(VELV)=VELOCITY_HE(UE)
+      UE(EXT_CONS)=U(:,i,j,k,iElem)
+      UE(EXT_SRHO)=1./UE(EXT_DENS)
+      UE(EXT_VELV)=VELOCITY_HE(UE)
       UJameson(1,i,j,k,iElem)=PRESSURE_HE(UE)
     END DO; END DO; END DO! i,j,k=0,PP_N
   END DO ! iElem
