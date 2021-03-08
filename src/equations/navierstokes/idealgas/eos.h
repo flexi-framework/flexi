@@ -15,30 +15,29 @@
 ! Normal   U(1:5)  with conservative variables
 ! Extended U(1:11) with conservative and primitive variables
 
-#define PP_2Var 11
+#define CONS 1:PP_nVar          /* all cons variables */
+#define PRIM 1:PP_nVarPrim      /* all prim variables */
 
-#define CONS 1:5  /* conservative variables */
-#define PRIM 6:11 /* primitive variables */
+#define PP_2Var PP_nVar+PP_nVarPrim
 
 ! conservative variables
-#define DENS  1   /* density */
-#define MOM1  2   /* momentum x */
-#define MOM2  3   /* momentum y */
-#define MOM3  4   /* momentum z */
-#define MOMV  2:4 /* momentum vector */
-#define ENER  5   /* energy */
+#define DENS  1           	/* density */
+#define MOM1  2           	/* momentum x */
+#define MOM2  3           	/* momentum y */
+#define MOM3  4           	/* momentum z */
+#define MOMV  MOM1:MOM3         /* momentum vector */
+#define ENER  5           	/* energy */
 
-! primitive (extended) variables
-#define SRHO  6   /* specific volume (1./density) */
-#define VEL1  7   /* velocity x */
-#define VEL2  8   /* velocity y */
-#define VEL3  9   /* velocity z */
-#define VELV  7:9 /* velocity range */
-#define PRES  10  /* pressure */
-#define TEMP  11  /* temperature */
+! primitive variables
+#define VEL1  2               	/* velocity x */
+#define VEL2  3               	/* velocity y */
+#define VEL3  4               	/* velocity z */
+#define VELV  VEL1:VEL3       	/* velocity range */
+#define PRES  5               	/* pressure */
+#define TEMP  6               	/* temperature */
+#define VELVTEMP (/VEL1,VEL2,VEL3,TEMP/) /* velocity range and temperature */
 
-
-! routines to compute physical quantities 
+! routines to compute physical quantities
 #define KAPPASPR_MAX_TIMESTEP_H()      (MAX(4./3.,KappasPr))
 #define THERMAL_CONDUCTIVITY_H(mu)     (mu*cp/Pr)
 #define TOTAL_TEMPERATURE_H(T,Mach)    (T*(1+0.5*(kappa-1)*Mach**2))
@@ -58,20 +57,20 @@
 
 ! extended (NOTE: compute from cons. When computing derived (neither prim or cons) variables
 ! assume that both prim and cons vars are filled
-#define VELOCITY_HE(UE)                (UE(MOMV)*UE(SRHO))
-#define PRESSURE_HE(UE)                (KappaM1*(UE(ENER)-0.5*DOT_PRODUCT(UE(VELV),UE(MOMV))))
-#define SPEEDOFSOUND_HE(UE)            (SQRT(Kappa*UE(PRES)*UE(SRHO)))
-#define TOTALENERGY_HE(UE)             (UE(ENER)*UE(SRHO))
-#define TOTALENTHALPY_HE(UE)           ((UE(ENER)+UE(PRES))*UE(SRHO))
-#define TEMPERATURE_HE(UE)             (UE(PRES)*UE(SRHO)/R)
-#define ENERGY_HE(UE)                  (sKappaM1*UE(PRES)+0.5*DOT_PRODUCT(UE(MOMV),UE(VELV)))
+#define VELOCITY_HE(UE)                (UE(EXT_MOMV)*UE(EXT_SRHO))
+#define PRESSURE_HE(UE)                (KappaM1*(UE(EXT_ENER)-0.5*DOT_PRODUCT(UE(EXT_VELV),UE(EXT_MOMV))))
+#define SPEEDOFSOUND_HE(UE)            (SQRT(Kappa*UE(EXT_PRES)*UE(EXT_SRHO)))
+#define TOTALENERGY_HE(UE)             (UE(EXT_ENER)*UE(EXT_SRHO))
+#define TOTALENTHALPY_HE(UE)           ((UE(EXT_ENER)+UE(EXT_PRES))*UE(EXT_SRHO))
+#define TEMPERATURE_HE(UE)             (UE(EXT_PRES)*UE(EXT_SRHO)/R)
+#define ENERGY_HE(UE)                  (sKappaM1*UE(EXT_PRES)+0.5*DOT_PRODUCT(UE(EXT_MOMV),UE(EXT_VELV)))
 
 #if PP_VISC == 0
 #define VISCOSITY_PRIM(U)              mu0
 #elif PP_VISC == 1
-#define VISCOSITY_PRIM(U)              muSuth(U(6))
+#define VISCOSITY_PRIM(U)              muSuth(U(TEMP))
 #elif PP_VISC == 2
-#define VISCOSITY_PRIM(U)              mu0*U(6)**ExpoSuth
+#define VISCOSITY_PRIM(U)              mu0*U(TEMP)**ExpoSuth
 #endif
 
 #if PP_VISC == 0
@@ -81,3 +80,30 @@
 #elif PP_VISC == 2
 #define VISCOSITY_TEMPERATURE(T)       mu0*T**ExpoSuth
 #endif
+
+
+#define EXT_CONS    1:PP_nVar                  /* all ext cons variables */
+#define EXT_PRIM    PP_nVarPrim:PP_2Var        /* all ext prim variables */
+! conservative (extended) variables
+#define EXT_DENS    DENS                       /* density */
+#define EXT_MOM1    MOM1                       /* momentum x */
+#define EXT_MOM2    MOM2                       /* momentum y */
+#define EXT_MOM3    MOM3                       /* momentum z */
+#define EXT_MOMV    MOMV                       /* momentum vector */
+#define EXT_ENER    ENER                       /* energy */
+! primitive (extended) variables
+#define EXT_SRHO    PP_nVar+DENS               /* specific volume (1./density) */
+#define EXT_VEL1    PP_nVar+VEL1               /* velocity x */
+#define EXT_VEL2    PP_nVar+VEL2               /* velocity y */
+#define EXT_VEL3    PP_nVar+VEL3               /* velocity z */
+#define EXT_VELV    PP_nVar+VELV+PP_nVar       /* velocity range */
+#define EXT_PRES    PP_nVar+PRES               /* pressure */
+#define EXT_TEMP    PP_nVar+TEMP               /* temperature */
+
+! lifting variables
+#define LIFT_DENS                     1
+#define LIFT_VEL1                     2
+#define LIFT_VEL2                     3
+#define LIFT_VEL3                     4
+#define LIFT_VELV                     LIFT_VEL1:LIFT_VEL3
+#define LIFT_TEMP                     6

@@ -373,17 +373,17 @@ DO SideID=1,nBCSides
 
   DO j=0,PP_NZ; DO i=0,PP_N
     ! TODO: ATTENTION: Temperature of UE not filled!!!
-    UE(CONS)=U_master(1:5,i,j,SideID)
-    UE(SRHO)=1./UE(DENS)
-    UE(VELV)=VELOCITY_HE(UE)
-    UE(PRES)=PRESSURE_HE(UE)
+    UE(EXT_CONS)=U_master(CONS,i,j,SideID)
+    UE(EXT_SRHO)=1./UE(EXT_DENS)
+    UE(EXT_VELV)=VELOCITY_HE(UE)
+    UE(EXT_PRES)=PRESSURE_HE(UE)
 
-    PrimVar(1:3)=UE(VELV)
+    PrimVar(1:3)=UE(EXT_VELV)
 
     ! VelocityMagnitude
     PrimVar(4)=SQRT(SUM(PrimVar(1:3)*PrimVar(1:3)))
     ! Pressure
-    PrimVar(5)=UE(PRES)
+    PrimVar(5)=UE(EXT_PRES)
     ! VelocitySound
     PrimVar(6)=SPEEDOFSOUND_HE(UE)
     ! Mach
@@ -391,9 +391,9 @@ DO SideID=1,nBCSides
     ! Temperature
     PrimVar(8)=TEMPERATURE_HE(UE)
     ! EnergyStagnation
-    PrimVar(9)=UE(ENER)*UE(SRHO)
+    PrimVar(9)=UE(EXT_ENER)*UE(EXT_SRHO)
     ! EnthalpyStagnation
-    PrimVar(10)=PrimVar(9)+PrimVar(5)*UE(SRHO)
+    PrimVar(10)=PrimVar(9)+PrimVar(5)*UE(EXT_SRHO)
     ! Entropy
     PrimVar(11)= ENTROPY_H(UE,PrimVar(8))
     ! Potential Temperature

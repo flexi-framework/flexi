@@ -310,18 +310,18 @@ SELECT CASE(DepName_low)
     UCalc(:,iVarCalc) = UCalc(:,iMom3) / UCalc(:,iDens)
   CASE("pressure")
     DO i=1,PRODUCT(nVal)
-      UE(SRHO) = 1./UCalc(i,iDens)
-      UE(MOM1) =    UCalc(i,iMom1)
-      UE(MOM2) =    UCalc(i,iMom2)
-      UE(MOM3) =    UCalc(i,iMom3)
-      UE(ENER) =    UCalc(i,iEner)
-      UE(VELV) = UE(SRHO)*UE(MOMV)
+      UE(EXT_SRHO) = 1./UCalc(i,iDens)
+      UE(EXT_MOM1) =    UCalc(i,iMom1)
+      UE(EXT_MOM2) =    UCalc(i,iMom2)
+      UE(EXT_MOM3) =    UCalc(i,iMom3)
+      UE(EXT_ENER) =    UCalc(i,iEner)
+      UE(EXT_VELV) = UE(EXT_SRHO)*UE(EXT_MOMV)
       UCalc(i,iVarCalc) = PRESSURE_HE(UE)
     END DO
   CASE("temperature")
     DO i=1,PRODUCT(nVal)
-      UE(SRHO) = 1./UCalc(i,iDens)
-      UE(PRES) =    UCalc(i,iPres)
+      UE(EXT_SRHO) = 1./UCalc(i,iDens)
+      UE(EXT_PRES) =    UCalc(i,iPres)
       UCalc(i,iVarCalc) = TEMPERATURE_HE(UE)
     END DO
   CASE("velocitymagnitude")
@@ -369,11 +369,11 @@ SELECT CASE(DepName_low)
   CASE("lambda2")
     UCalc(:,iVarCalc) = FillLambda2(nVal,gradUx,gradUy,gradUz)
   CASE("dilatation")
-    UCalc(:,iVarCalc) = gradUx(2,:) + gradUy(3,:) + gradUz(4,:)
+    UCalc(:,iVarCalc) = gradUx(LIFT_VEL1,:) + gradUy(LIFT_VEL2,:) + gradUz(LIFT_VEL3,:)
   CASE("qcriterion")
     UCalc(:,iVarCalc) = FillQcriterion(nVal,gradUx,gradUy,gradUz)
   CASE("schlieren")
-    UCalc(:,iVarCalc) = LOG10(SQRT(gradUx(1,:)**2 + gradUy(1,:)**2 + gradUz(1,:)**2)+1.0)
+    UCalc(:,iVarCalc) = LOG10(SQRT(gradUx(LIFT_DENS,:)**2 + gradUy(LIFT_DENS,:)**2 + gradUz(LIFT_DENS,:)**2)+1.0)
 #endif
 END SELECT
 IF (withVectors) THEN
@@ -430,24 +430,24 @@ DO iElem_calc=1,nElems_calc
     DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
 
       PressureTDeriv(i*2:i*2+1,j*2:j*2+1,k*2:k*2+1,iElem_calc)= &
-                                       KappaM1*(Ut(5,i,j,k,iElem)-  1/U(1,i,j,k,iElem)*(  &
-                                                 U(2,i,j,k,iElem)*   Ut(2,i,j,k,iElem)  &
-                                               + U(3,i,j,k,iElem)*   Ut(3,i,j,k,iElem)  &
-                                               + U(4,i,j,k,iElem)*   Ut(4,i,j,k,iElem)) &
-                                           + 0.5/U(1,i,j,k,iElem)**2*Ut(1,i,j,k,iElem)*(  &
-                                                 U(2,i,j,k,iElem)*    U(2,i,j,k,iElem)   &
-                                               + U(3,i,j,k,iElem)*    U(3,i,j,k,iElem)   &
-                                               + U(4,i,j,k,iElem)*    U(4,i,j,k,iElem)))
+                                       KappaM1*(Ut(ENER,i,j,k,iElem)-  1/U(DENS,i,j,k,iElem)*(  &
+                                                 U(MOM1,i,j,k,iElem)*   Ut(MOM1,i,j,k,iElem)    &
+                                               + U(MOM2,i,j,k,iElem)*   Ut(MOM2,i,j,k,iElem)    &
+                                               + U(MOM3,i,j,k,iElem)*   Ut(MOM3,i,j,k,iElem))   &
+                                           + 0.5/U(DENS,i,j,k,iElem)**2*Ut(DENS,i,j,k,iElem)*(  &
+                                                 U(MOM1,i,j,k,iElem)*    U(MOM1,i,j,k,iElem)    &
+                                               + U(MOM2,i,j,k,iElem)*    U(MOM2,i,j,k,iElem)    &
+                                               + U(MOM3,i,j,k,iElem)*    U(MOM3,i,j,k,iElem)))
     END DO; END DO; END DO! i,j,k=0,PP_N
   ELSEIF (Nloc.EQ.PP_N) THEN
-    PressureTDeriv(:,:,:,iElem_calc)=KappaM1*(Ut(5,:,:,:,iElem)-1/U(1,:,:,:,iElem)*(  &
-                                               U(2,:,:,:,iElem)*Ut(2,:,:,:,iElem)  &
-                                             + U(3,:,:,:,iElem)*Ut(3,:,:,:,iElem)  &
-                                             + U(4,:,:,:,iElem)*Ut(4,:,:,:,iElem)) &
-                                         + 0.5/U(1,:,:,:,iElem)**2*Ut(1,:,:,:,iElem)*(  &
-                                               U(2,:,:,:,iElem)*U(2,:,:,:,iElem)   &
-                                             + U(3,:,:,:,iElem)*U(3,:,:,:,iElem)   &
-                                             + U(4,:,:,:,iElem)*U(4,:,:,:,iElem)))
+    PressureTDeriv(:,:,:,iElem_calc)=KappaM1*(Ut(ENER,:,:,:,iElem)-  1/U(DENS,:,:,:,iElem)*(  &
+                                               U(MOM1,:,:,:,iElem)*   Ut(MOM1,:,:,:,iElem)    &
+                                             + U(MOM2,:,:,:,iElem)*   Ut(MOM2,:,:,:,iElem)    &
+                                             + U(MOM3,:,:,:,iElem)*   Ut(MOM3,:,:,:,iElem))   &
+                                         + 0.5/U(DENS,:,:,:,iElem)**2*Ut(DENS,:,:,:,iElem)*(  &
+                                               U(MOM1,:,:,:,iElem)*    U(MOM1,:,:,:,iElem)    &
+                                             + U(MOM2,:,:,:,iElem)*    U(MOM2,:,:,:,iElem)    &
+                                             + U(MOM3,:,:,:,iElem)*    U(MOM3,:,:,:,iElem)))
   ELSE
     CALL ABORT(__STAMP__,'Not possible here')
   END IF
@@ -471,11 +471,11 @@ REAL               :: Vorticity(PRODUCT(nVal))
 !==================================================================================================================================
 SELECT CASE (dir)
 CASE(1) ! VorticityX = dw/dy-dv/dz
-  Vorticity = gradUy(4,:) - gradUz(3,:)
+  Vorticity = gradUy(LIFT_VEL3,:) - gradUz(LIFT_VEL2,:)
 CASE(2) ! VorticityY = du/dz-dw/dx
-  Vorticity = gradUz(2,:) - gradUx(4,:)
+  Vorticity = gradUz(LIFT_VEL1,:) - gradUx(LIFT_VEL3,:)
 CASE(3) ! VorticityZ = dv/dx-du/dy
-  Vorticity = gradUx(3,:) - gradUy(2,:)
+  Vorticity = gradUx(LIFT_VEL2,:) - gradUy(LIFT_VEL1,:)
 END SELECT
 END FUNCTION FillVorticity
 
@@ -506,9 +506,9 @@ REAL,DIMENSION(3)  :: Lambda
 REAL,DIMENSION(16) :: WORK
 !==================================================================================================================================
 DO i=1,PRODUCT(nVal)
-  gradUmat(:,1)= gradUx(2:4,i)
-  gradUmat(:,2)= gradUy(2:4,i)
-  gradUmat(:,3)= gradUz(2:4,i)
+  gradUmat(:,1)= gradUx(LIFT_VELV,i)
+  gradUmat(:,2)= gradUy(LIFT_VELV,i)
+  gradUmat(:,3)= gradUz(LIFT_VELV,i)
   gradUmat=MATMUL(0.5*(gradUmat+TRANSPOSE(gradUmat)),0.5*(gradUmat+TRANSPOSE(gradUmat))) & ! S^2
           +MATMUL(0.5*(gradUmat-TRANSPOSE(gradUmat)),0.5*(gradUmat-TRANSPOSE(gradUmat)))   ! Omega^2
   ! Jacobi-Subroutine used from LAPACK
@@ -535,9 +535,9 @@ INTEGER            :: i,m,l
 REAL               :: gradUmat(3,3),Q_loc,S,Rot
 !==================================================================================================================================
 DO i=1,PRODUCT(nVal)
-  gradUmat(:,1)= gradUx(2:4,i)
-  gradUmat(:,2)= gradUy(2:4,i)
-  gradUmat(:,3)= gradUz(2:4,i)
+  gradUmat(:,1)= gradUx(LIFT_VELV,i)
+  gradUmat(:,2)= gradUy(LIFT_VELV,i)
+  gradUmat(:,3)= gradUz(LIFT_VELV,i)
   Q_loc=0.
   DO m=1,3
     DO l=1,3
@@ -579,9 +579,9 @@ INTEGER           :: i
 DO i=1,PRODUCT(nVal)
   temp=Temperature(i)
   mu=VISCOSITY_TEMPERATURE(temp)
-  GradV(1:3,1)=gradUx(2:4,i)
-  GradV(1:3,2)=gradUy(2:4,i)
-  GradV(1:3,3)=gradUz(2:4,i)
+  GradV(1:3,1)=gradUx(LIFT_VELV,i)
+  GradV(1:3,2)=gradUy(LIFT_VELV,i)
+  GradV(1:3,3)=gradUz(LIFT_VELV,i)
   ! Velocity divergence
   DivV=GradV(1,1)+GradV(2,2)+GradV(3,3)
   ! Calculate shear stress tensor
@@ -622,9 +622,9 @@ DO i=1,PRODUCT(nVal)
   temp=Temperature(i)
   mu=VISCOSITY_TEMPERATURE(temp)
   ! Calculate temperature gradient in wall normal direction
-  GradTn = gradUx(6,i)*NormVec(1,i) &
-         + gradUy(6,i)*NormVec(2,i) &
-         + gradUz(6,i)*NormVec(3,i)
+  GradTn = gradUx(LIFT_TEMP,i)*NormVec(1,i) &
+         + gradUy(LIFT_TEMP,i)*NormVec(2,i) &
+         + gradUz(LIFT_TEMP,i)*NormVec(3,i)
   ! Calculate wall heat transfer
   WallHeatTransfer(i) = -1.*mu*Kappa*sKappaM1*R/Pr*gradTn
 END DO
