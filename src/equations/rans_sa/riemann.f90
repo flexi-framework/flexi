@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2017 Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2017 Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -68,7 +68,7 @@ CONTAINS
 
 
 !==================================================================================================================================
-!> Define parameters 
+!> Define parameters
 !==================================================================================================================================
 SUBROUTINE DefineParametersRiemann()
 ! MODULES
@@ -79,7 +79,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 !==================================================================================================================================
 CALL prms%SetSection("Riemann")
 CALL prms%CreateIntFromStringOption('Riemann',   "Riemann solver to be used: only LF for RANS-SA!", "lf")
@@ -142,19 +142,19 @@ USE MOD_Flux         ,ONLY:EvalEulerFlux1D_fast
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)                                        :: Nloc       !< local polynomial degree
-REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_L        !< conservative solution at left side of the interface
-REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_R        !< conservative solution at right side of the interface
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim_L    !< primitive solution at left side of the interface
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim_R    !< primitive solution at right side of the interface
+INTEGER,INTENT(IN)                                   :: Nloc       !< local polynomial degree
+REAL,DIMENSION(CONS,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_L        !< conservative solution at left side of the interface
+REAL,DIMENSION(CONS,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_R        !< conservative solution at right side of the interface
+REAL,DIMENSION(PRIM,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim_L    !< primitive solution at left side of the interface
+REAL,DIMENSION(PRIM,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim_R    !< primitive solution at right side of the interface
 !> normal vector and tangential vectors at side
-REAL,DIMENSION(          3,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: nv,t1,t2
-LOGICAL,INTENT(IN)                                        :: doBC       !< marker whether side is a BC side
-REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: FOut       !< advective flux
+REAL,DIMENSION(   3,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: nv,t1,t2
+LOGICAL,INTENT(IN)                                   :: doBC       !< marker whether side is a BC side
+REAL,DIMENSION(CONS,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: FOut       !< advective flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                 :: i,j
-REAL,DIMENSION(PP_nVar) :: F_L,F_R,F
+REAL,DIMENSION(CONS)    :: F_L,F_R,F
 REAL,DIMENSION(PP_2Var) :: U_LL,U_RR
 PROCEDURE(RiemannInt),POINTER :: Riemann_loc !< pointer defining the standard inner Riemann solver
 !==================================================================================================================================
@@ -167,40 +167,40 @@ END IF
 ! Momentum has to be rotatet using the normal system individual for each
 DO j=0,ZDIM(Nloc); DO i=0,Nloc
   ! left state: U_L
-  U_LL(DENS)=U_L(DENS,i,j)
-  U_LL(SRHO)=1./U_LL(DENS)
-  U_LL(ENER)=U_L(5,i,j)
-  U_LL(PRES)=UPrim_L(5,i,j)
-  U_LL(MUSA)=U_L(6,i,j)
-  ! rotate velocity in normal and tangential direction 
-  U_LL(VEL1)=DOT_PRODUCT(UPrim_L(2:4,i,j),nv(:,i,j))
-  U_LL(VEL2)=DOT_PRODUCT(UPrim_L(2:4,i,j),t1(:,i,j))
-  U_LL(MOM1)=U_LL(DENS)*U_LL(VEL1)
-  U_LL(MOM2)=U_LL(DENS)*U_LL(VEL2)
+  U_LL(EXT_DENS)=U_L(DENS,i,j)
+  U_LL(EXT_SRHO)=1./U_LL(EXT_DENS)
+  U_LL(EXT_ENER)=U_L(ENER,i,j)
+  U_LL(EXT_PRES)=UPrim_L(PRES,i,j)
+  U_LL(EXT_MUSA)=U_L(MUSA,i,j)
+  ! rotate velocity in normal and tangential direction
+  U_LL(EXT_VEL1)=DOT_PRODUCT(UPrim_L(VELV,i,j),nv(:,i,j))
+  U_LL(EXT_VEL2)=DOT_PRODUCT(UPrim_L(VELV,i,j),t1(:,i,j))
+  U_LL(EXT_MOM1)=U_LL(EXT_DENS)*U_LL(EXT_VEL1)
+  U_LL(EXT_MOM2)=U_LL(EXT_DENS)*U_LL(EXT_VEL2)
 #if PP_dim==3
-  U_LL(VEL3)=DOT_PRODUCT(UPrim_L(2:4,i,j),t2(:,i,j))
-  U_LL(MOM3)=U_LL(DENS)*U_LL(VEL3)
+  U_LL(EXT_VEL3)=DOT_PRODUCT(UPrim_L(VELV,i,j),t2(:,i,j))
+  U_LL(EXT_MOM3)=U_LL(EXT_DENS)*U_LL(EXT_VEL3)
 #else
-  U_LL(VEL3)=0.
-  U_LL(MOM3)=0.
+  U_LL(EXT_VEL3)=0.
+  U_LL(EXT_MOM3)=0.
 #endif
   ! right state: U_R
-  U_RR(DENS)=U_R(DENS,i,j)
-  U_RR(SRHO)=1./U_RR(DENS)
-  U_RR(ENER)=U_R(5,i,j)
-  U_RR(PRES)=UPrim_R(5,i,j)
-  U_RR(MUSA)=U_R(6,i,j)
-  ! rotate momentum in normal and tangential direction 
-  U_RR(VEL1)=DOT_PRODUCT(UPRIM_R(2:4,i,j),nv(:,i,j))
-  U_RR(VEL2)=DOT_PRODUCT(UPRIM_R(2:4,i,j),t1(:,i,j))
-  U_RR(MOM1)=U_RR(DENS)*U_RR(VEL1)
-  U_RR(MOM2)=U_RR(DENS)*U_RR(VEL2)
+  U_RR(EXT_DENS)=U_R(DENS,i,j)
+  U_RR(EXT_SRHO)=1./U_RR(EXT_DENS)
+  U_RR(EXT_ENER)=U_R(ENER,i,j)
+  U_RR(EXT_PRES)=UPrim_R(PRES,i,j)
+  U_RR(EXT_MUSA)=U_R(MUSA,i,j)
+  ! rotate momentum in normal and tangential direction
+  U_RR(EXT_VEL1)=DOT_PRODUCT(UPRIM_R(VELV,i,j),nv(:,i,j))
+  U_RR(EXT_VEL2)=DOT_PRODUCT(UPRIM_R(VELV,i,j),t1(:,i,j))
+  U_RR(EXT_MOM1)=U_RR(EXT_DENS)*U_RR(EXT_VEL1)
+  U_RR(EXT_MOM2)=U_RR(EXT_DENS)*U_RR(EXT_VEL2)
 #if PP_dim==3
-  U_RR(VEL3)=DOT_PRODUCT(UPRIM_R(2:4,i,j),t2(:,i,j))
-  U_RR(MOM3)=U_RR(DENS)*U_RR(VEL3)
+  U_RR(EXT_VEL3)=DOT_PRODUCT(UPRIM_R(VELV,i,j),t2(:,i,j))
+  U_RR(EXT_MOM3)=U_RR(EXT_DENS)*U_RR(EXT_VEL3)
 #else
-  U_RR(VEL3)=0.
-  U_RR(MOM3)=0.
+  U_RR(EXT_VEL3)=0.
+  U_RR(EXT_MOM3)=0.
 #endif
 
   CALL EvalEulerFlux1D_fast(U_LL,F_L)
@@ -213,7 +213,7 @@ DO j=0,ZDIM(Nloc); DO i=0,Nloc
   Fout(MOMV,i,j)=nv(:,i,j)*F(MOM1)     &
                   + t1(:,i,j)*F(MOM2)  &
 #if PP_dim==3
-                  + t2(:,i,j)*F(MOM3) 
+                  + t2(:,i,j)*F(MOM3)
 #else
                   + 0.
 #endif
@@ -237,18 +237,18 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)                                         :: Nloc     !< local polynomial degree
                                                            !> solution in primitive variables at left/right side of the interface 
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)   :: UPrim_L,UPrim_R
+REAL,DIMENSION(PRIM       ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN) :: UPrim_L,UPrim_R
                                                            !> solution gradients in x/y/z-direction left/right of the interface 
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)   :: gradUx_L,gradUx_R,gradUy_L,gradUy_R,gradUz_L,gradUz_R
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN) :: gradUx_L,gradUx_R,gradUy_L,gradUy_R,gradUz_L,gradUz_R
 REAL,INTENT(IN)                                            :: nv(3,0:Nloc,0:ZDIM(Nloc)) !< normal vector
 REAL,INTENT(OUT)                                           :: F(PP_nVar,0:Nloc,0:ZDIM(Nloc)) !< viscous flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                                              :: p,q
-REAL,DIMENSION(PP_nVar,0:Nloc,0:ZDIM(Nloc))            :: diffFluxX_L,diffFluxY_L,diffFluxZ_L
-REAL,DIMENSION(PP_nVar,0:Nloc,0:ZDIM(Nloc))            :: diffFluxX_R,diffFluxY_R,diffFluxZ_R
+INTEGER                                                   :: p,q
+REAL,DIMENSION(CONS,0:Nloc,0:ZDIM(Nloc))                  :: diffFluxX_L,diffFluxY_L,diffFluxZ_L
+REAL,DIMENSION(CONS,0:Nloc,0:ZDIM(Nloc))                  :: diffFluxX_R,diffFluxY_R,diffFluxZ_R
 !==================================================================================================================================
 ! Don't forget the diffusion contribution, my young padawan
 ! Compute NSE Diffusion flux
@@ -277,8 +277,8 @@ IMPLICIT NONE
                                                 !> extended solution vector on the left/right side of the interface
 REAL,DIMENSION(PP_2Var),INTENT(IN) :: U_LL,U_RR
                                                 !> advection fluxes on the left/right side of the interface
-REAL,DIMENSION(PP_nVar),INTENT(IN) :: F_L,F_R
-REAL,DIMENSION(PP_nVar),INTENT(OUT):: F         !< resulting Riemann flux
+REAL,DIMENSION(CONS),INTENT(IN)    :: F_L,F_R
+REAL,DIMENSION(CONS),INTENT(OUT)   :: F         !< resulting Riemann flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -286,8 +286,8 @@ REAL,DIMENSION(PP_nVar),INTENT(OUT):: F         !< resulting Riemann flux
 REAL    :: LambdaMax
 !==================================================================================================================================
 ! Lax-Friedrichs
-LambdaMax = MAX( ABS(U_RR(VEL1)),ABS(U_LL(VEL1)) ) + MAX( SPEEDOFSOUND_HE(U_LL),SPEEDOFSOUND_HE(U_RR) )
-F = 0.5*((F_L+F_R) - LambdaMax*(U_RR(CONS) - U_LL(CONS)))
+LambdaMax = MAX( ABS(U_RR(EXT_VEL1)),ABS(U_LL(EXT_VEL1)) ) + MAX( SPEEDOFSOUND_HE(U_LL),SPEEDOFSOUND_HE(U_RR) )
+F = 0.5*((F_L+F_R) - LambdaMax*(U_RR(EXT_CONS) - U_LL(EXT_CONS)))
 
 END SUBROUTINE Riemann_LF
 
@@ -308,8 +308,8 @@ IMPLICIT NONE
                                                !> extended solution vector on the left/right side of the interface
 REAL,DIMENSION(PP_2Var),INTENT(IN) :: U_LL,U_RR
                                                !> advection fluxes on the left/right side of the interface
-REAL,DIMENSION(PP_nVar),INTENT(IN) :: F_L,F_R
-REAL,DIMENSION(PP_nVar),INTENT(OUT):: F        !< resulting Riemann flux
+REAL,DIMENSION(CONS   ),INTENT(IN) :: F_L,F_R
+REAL,DIMENSION(CONS   ),INTENT(OUT):: F        !< resulting Riemann flux
 !---------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                 :: iVar
@@ -325,22 +325,22 @@ c_L       = SPEEDOFSOUND_HE(U_LL)
 c_R       = SPEEDOFSOUND_HE(U_RR)
 H_L       = TOTALENTHALPY_HE(U_LL)
 H_R       = TOTALENTHALPY_HE(U_RR)
-SqrtRho_L = SQRT(U_LL(DENS))
-SqrtRho_R = SQRT(U_RR(DENS))
+SqrtRho_L = SQRT(U_LL(EXT_DENS))
+SqrtRho_R = SQRT(U_RR(EXT_DENS))
 
 sSqrtRho  = 1./(SqrtRho_L+SqrtRho_R)
 ! Roe mean values
-RoeVel    = (SqrtRho_R*U_RR(VELV) + SqrtRho_L*U_LL(VELV)) * sSqrtRho
+RoeVel    = (SqrtRho_R*U_RR(EXT_VELV) + SqrtRho_L*U_LL(EXT_VELV)) * sSqrtRho
 RoeH      = (SqrtRho_R*H_R+SqrtRho_L*H_L) * sSqrtRho
 absVel    = DOT_PRODUCT(RoeVel,RoeVel)
 Roec      = ROEC_RIEMANN_H(RoeH,RoeVel)
-RoeDens   = SQRT(U_LL(DENS)*U_RR(DENS))
+RoeDens   = SQRT(U_LL(EXT_DENS)*U_RR(EXT_DENS))
 ! Roe+Pike version of Roe Riemann solver
 
 ! calculate jump
-Delta_U(1)   = U_RR(DENS) - U_LL(DENS)
-Delta_U(2:4) = U_RR(VELV) - U_LL(VELV)
-Delta_U(5)   = U_RR(PRES) - U_LL(PRES)
+Delta_U(DENS)   = U_RR(EXT_DENS) - U_LL(EXT_DENS)
+Delta_U(VELV)   = U_RR(EXT_VELV) - U_LL(EXT_VELV)
+Delta_U(PRES)   = U_RR(EXT_PRES) - U_LL(EXT_PRES)
 
 ! mean eigenvalues and eigenvectors
 a  = (/ RoeVel(1)-Roec, RoeVel(1), RoeVel(1), RoeVel(1), RoeVel(1)+Roec      /)
@@ -360,16 +360,16 @@ Alpha(5) = tmp*(Delta_U(5)+RoeDens*Roec*Delta_U(2))
 
 ! Harten+Hyman entropy fix (apply only for acoustic waves, don't fix r)
 
-al(1) = U_LL(VEL1) - c_L
-al(2) = U_LL(VEL1)
-al(3) = U_LL(VEL1)
-al(4) = U_LL(VEL1)
-al(5) = U_LL(VEL1) + c_L
-ar(1) = U_RR(VEL1) - c_R
-ar(2) = U_RR(VEL1)
-ar(3) = U_RR(VEL1)
-ar(4) = U_RR(VEL1)
-ar(5) = U_RR(VEL1) + c_R
+al(1) = U_LL(EXT_VEL1) - c_L
+al(2) = U_LL(EXT_VEL1)
+al(3) = U_LL(EXT_VEL1)
+al(4) = U_LL(EXT_VEL1)
+al(5) = U_LL(EXT_VEL1) + c_L
+ar(1) = U_RR(EXT_VEL1) - c_R
+ar(2) = U_RR(EXT_VEL1)
+ar(3) = U_RR(EXT_VEL1)
+ar(4) = U_RR(EXT_VEL1)
+ar(5) = U_RR(EXT_VEL1) + c_R
 ! HH1
 !IF(ABS(a(1)).LT.da1) a(1)=da1
 !IF(ABS(a(5)).LT.da5) a(5)=da5
@@ -393,8 +393,8 @@ F(1:5)=0.5*((F_L(1:5)+F_R(1:5)) - &
                Alpha(5)*a(5)*r5)
 
 ! Revert to LF for the RANS SA equations
-LambdaMax = MAX( ABS(U_RR(VEL1)),ABS(U_LL(VEL1)) ) + MAX(c_L,c_R) 
-F(6) = 0.5*((F_L(6)+F_R(6)) - LambdaMax*(U_RR(6) - U_LL(6)))
+LambdaMax = MAX( ABS(U_RR(EXT_VEL1)),ABS(U_LL(EXT_VEL1)) ) + MAX(c_L,c_R)
+F(MUSA) = 0.5*((F_L(MUSA)+F_R(MUSA)) - LambdaMax*(U_RR(EXT_MUSA) - U_LL(EXT_MUSA)))
 END SUBROUTINE Riemann_RoeEntropyFix
 
 !==================================================================================================================================

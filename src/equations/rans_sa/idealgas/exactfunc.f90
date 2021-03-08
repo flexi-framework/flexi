@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -62,7 +62,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 !==================================================================================================================================
 CALL prms%SetSection("Exactfunc")
 CALL prms%CreateIntFromStringOption('IniExactFunc', "Exact function to be used for computing initial solution.")
@@ -144,17 +144,17 @@ CASE(1338) ! Blasius boundary layer solution
   delta99_in      = GETREAL('delta99_in')
   x_in            = GETREALARRAY('x_in',2,'(/0.,0./)')
   BlasiusInitDone = .TRUE. ! Mark Blasius init as done so we don't read the parameters again in BC init
-#endif 
+#endif
 CASE DEFAULT
 END SELECT ! IniExactFunc
 
 #if PP_dim==2
 SELECT CASE (IniExactFunc)
 CASE(43,7) ! synthetic test cases
-  CALL CollectiveStop(__STAMP__,'The selected exact function is not available in 2D!') 
+  CALL CollectiveStop(__STAMP__,'The selected exact function is not available in 2D!')
 CASE(2,3,4,41,42) ! synthetic test cases
   IF(AdvVel(3).NE.0.) THEN
-    CALL CollectiveStop(__STAMP__,'You are computing in 2D! Please set AdvVel(3) = 0!') 
+    CALL CollectiveStop(__STAMP__,'You are computing in 2D! Please set AdvVel(3) = 0!')
   END IF
 END SELECT
 #endif
@@ -192,20 +192,20 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)              :: ExactFunction          !< determines the exact function
 REAL,INTENT(IN)                 :: x(3)                   !< physical coordinates
 REAL,INTENT(IN)                 :: tIn                    !< solution time (Runge-Kutta stage)
-REAL,INTENT(OUT)                :: Resu(PP_nVar)                !< state in conservative variables
+REAL,INTENT(OUT)                :: Resu(CONS)             !< state in conservative variables
 INTEGER,INTENT(IN),OPTIONAL     :: RefStateOpt            !< refstate to be used for exact func
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                         :: RefState
 REAL                            :: tEval
-REAL                            :: Resu_t(PP_nVar),Resu_tt(PP_nVar),ov ! state in conservative variables
+REAL                            :: Resu_t(CONS),Resu_tt(CONS),ov ! state in conservative variables
 REAL                            :: Frequency,Amplitude
 REAL                            :: Omega
 REAL                            :: Vel(3),Cent(3),a
 REAL                            :: Prim(PP_nVarPrim)
 REAL                            :: r_len
 REAL                            :: Ms,xs
-REAL                            :: Resul(PP_nVar),Resur(PP_nVar)
+REAL                            :: Resul(CONS),Resur(CONS)
 REAL                            :: random
 REAL                            :: du, dTemp, RT, r2       ! aux var for SHU VORTEX,isentropic vortex case 12
 REAL                            :: pi_loc,phi,radius       ! needed for cylinder potential flow
@@ -241,72 +241,72 @@ CASE(2) ! sinus
   Amplitude=0.3
   Omega=2.*PP_Pi*Frequency
   ! base flow
-  prim(1)   = 1.
-  prim(2:4) = AdvVel
-  prim(5)   = 1.
-  Vel=prim(2:4)
+  prim(DENS)   = 1.
+  prim(VELV) = AdvVel
+  prim(PRES)   = 1.
+  Vel=prim(VELV)
   cent=x-Vel*tEval
-  prim(1)=prim(1)*(1.+Amplitude*SIN(Omega*SUM(cent(1:3))))
+  prim(DENS)=prim(DENS)*(1.+Amplitude*SIN(Omega*SUM(cent(1:3))))
   ! g(t)
-  Resu(1)=prim(1) ! rho
-  Resu(2:4)=prim(1)*prim(2:4) ! rho*vel
-  Resu(5)=prim(5)*sKappaM1+0.5*prim(1)*SUM(prim(2:4)*prim(2:4)) ! rho*e
+  Resu(DENS)=prim(DENS) ! rho
+  Resu(MOMV)=prim(DENS)*prim(VELV) ! rho*vel
+  Resu(ENER)=prim(PRES)*sKappaM1+0.5*SUM(Resu(MOMV)*prim(VELV)) ! rho*e
 
   IF(fullBoundaryOrder)THEN
     ov=Omega*SUM(vel)
     ! g'(t)
-    Resu_t(1)=-Amplitude*cos(Omega*SUM(cent(1:3)))*ov
-    Resu_t(2:4)=Resu_t(1)*prim(2:4) ! rho*vel
-    Resu_t(5)=0.5*Resu_t(1)*SUM(prim(2:4)*prim(2:4))
+    Resu_t(DENS)=-Amplitude*cos(Omega*SUM(cent(1:3)))*ov
+    Resu_t(MOMV)=Resu_t(DENS)*prim(VELV) ! rho*vel
+    Resu_t(ENER)=0.5*SUM(Resu_t(MOMV)*prim(VELV))
     ! g''(t)
-    Resu_tt(1)=-Amplitude*sin(Omega*SUM(cent(1:3)))*ov**2.
-    Resu_tt(2:4)=Resu_tt(1)*prim(2:4)
-    Resu_tt(5)=0.5*Resu_tt(1)*SUM(prim(2:4)*prim(2:4))
+    Resu_tt(DENS)=-Amplitude*sin(Omega*SUM(cent(1:3)))*ov**2.
+    Resu_tt(MOMV)=Resu_tt(DENS)*prim(VELV)
+    Resu_tt(ENER)=0.5*SUM(Resu_tt(MOMV)*prim(VELV))
   END IF
 CASE(21) ! sinus x
   Frequency=0.5
   Amplitude=0.3
   Omega=2.*PP_Pi*Frequency
   ! base flow
-  prim(1)   = 1.
-  prim(2:4) = AdvVel
-  prim(5)   = 1.
-  Vel=prim(2:4)
+  prim(DENS)   = 1.
+  prim(VELV) = AdvVel
+  prim(PRES)   = 1.
+  Vel=prim(VELV)
   cent=x-Vel*tEval
-  prim(1)=prim(1)*(1.+Amplitude*SIN(Omega*cent(1)))
+  prim(DENS)=prim(DENS)*(1.+Amplitude*SIN(Omega*cent(1)))
   ! g(t)
-  Resu(1)=prim(1) ! rho
-  Resu(2:4)=prim(1)*prim(2:4) ! rho*vel
-  Resu(5)=prim(5)*sKappaM1+0.5*prim(1)*SUM(prim(2:4)*prim(2:4)) ! rho*e
+  Resu(DENS)=prim(DENS) ! rho
+  Resu(MOMV)=prim(DENS)*prim(VELV) ! rho*vel
+  Resu(ENER)=prim(PRES)*sKappaM1+0.5*SUM(Resu(MOMV)*prim(VELV)) ! rho*e
 
   IF(fullBoundaryOrder)THEN
     ov=Omega*SUM(vel)
     ! g'(t)
-    Resu_t(1)=-Amplitude*cos(Omega*cent(1))*ov
-    Resu_t(2:4)=Resu_t(1)*prim(2:4) ! rho*vel
-    Resu_t(5)=0.5*Resu_t(1)*SUM(prim(2:4)*prim(2:4))
+    Resu_t(DENS)=-Amplitude*cos(Omega*cent(1))*ov
+    Resu_t(MOMV)=Resu_t(DENS)*prim(VELV) ! rho*vel
+    Resu_t(ENER)=0.5*SUM(Resu_t(MOMV)*prim(VELV))
     ! g''(t)
-    Resu_tt(1)=-Amplitude*sin(Omega*cent(1))*ov**2.
-    Resu_tt(2:4)=Resu_tt(1)*prim(2:4)
-    Resu_tt(5)=0.5*Resu_tt(1)*SUM(prim(2:4)*prim(2:4))
+    Resu_tt(DENS)=-Amplitude*sin(Omega*cent(1))*ov**2.
+    Resu_tt(MOMV)=Resu_tt(DENS)*prim(VELV)
+    Resu_tt(PRES)=0.5*SUM(Resu_tt(MOMV)*prim(VELV))
   END IF
 CASE(3) ! linear in rho
   ! base flow
-  prim(1)   = 100.
-  prim(2:4) = AdvVel
-  prim(5)   = 1.
-  Vel=prim(2:4)
+  prim(DENS)   = 100.
+  prim(VELV)   = AdvVel
+  prim(PRES)   = 1.
+  Vel          = prim(VELV)
   cent=x-Vel*tEval
-  prim(1)=prim(1)+SUM(AdvVel*cent)
+  prim(DENS)   = prim(DENS)+SUM(AdvVel*cent)
   ! g(t)
-  Resu(1)=prim(1) ! rho
-  Resu(2:4)=prim(1)*prim(2:4) ! rho*vel
-  Resu(5)=prim(5)*sKappaM1+0.5*prim(1)*SUM(prim(2:4)*prim(2:4)) ! rho*e
+  Resu(DENS)   = prim(DENS) ! rho
+  Resu(MOMV)   = prim(DENS)*prim(VELV) ! rho*vel
+  Resu(ENER)   = prim(PRES)*sKappaM1+0.5*SUM(Resu(MOMV)*prim(VELV)) ! rho*e
   IF(fullBoundaryOrder)THEN
     ! g'(t)
-    Resu_t(1)=-SUM(Vel)
-    Resu_t(2:4)=Resu_t(1)*prim(2:4) ! rho*vel
-    Resu_t(5)=0.5*Resu_t(1)*SUM(prim(2:4)*prim(2:4))
+    Resu_t(DENS)=-SUM(Vel)
+    Resu_t(MOMV)=Resu_t(DENS)*prim(VELV) ! rho*vel
+    Resu_t(ENER)=0.5*SUM(Resu_t(MOMV)*prim(VELV))
   END IF
 CASE(4) ! oblique sine wave (in x,y,z for 3D calculations, and x,y for 2D)
   Frequency=1.
@@ -315,22 +315,30 @@ CASE(4) ! oblique sine wave (in x,y,z for 3D calculations, and x,y for 2D)
   a=AdvVel(1)*2.*PP_Pi
 
   ! g(t)
-  Resu(1:PP_dim+1)=2.+ Amplitude*sin(Omega*SUM(x(1:PP_dim)) - a*tEval)
-#if (PP_dim == 2)
-  Resu(4)=0.
+#if (PP_dim == 3)
+  Resu(DENS:MOM3) = 2.+ Amplitude*sin(Omega*SUM(x(1:PP_dim)) - a*tEval)
+#else
+  Resu(DENS:MOM2) = 2.+ Amplitude*sin(Omega*SUM(x(1:PP_dim)) - a*tEval)
+  Resu(MOM3)   = 0.
 #endif
-  Resu(5)=Resu(1)*Resu(1)
+  Resu(ENER)=Resu(DENS)*Resu(DENS)
   IF(fullBoundaryOrder)THEN
     ! g'(t)
-    Resu_t(1:PP_dim+1)=(-a)*Amplitude*cos(Omega*SUM(x(1:PP_dim)) - a*tEval)
-    Resu_t(5)=2.*Resu(1)*Resu_t(1)
-    ! g''(t)
-    Resu_tt(1:PP_dim+1)=-a*a*Amplitude*sin(Omega*SUM(x(1:PP_dim)) - a*tEval)
-    Resu_tt(5)=2.*(Resu_t(1)*Resu_t(1) + Resu(1)*Resu_tt(1))
-#if (PP_dim == 2)
-    Resu_t(4)=0.
-    Resu_tt(4)=0.
+#if (PP_dim == 3)
+    Resu_t(DENS:MOM3)=(-a)*Amplitude*cos(Omega*SUM(x(1:PP_dim)) - a*tEval)
+#else
+    Resu_t(DENS:MOM2)=(-a)*Amplitude*cos(Omega*SUM(x(1:PP_dim)) - a*tEval)
+    Resu_t(MOM3)=0.
 #endif
+    Resu_t(ENER)=2.*Resu(DENS)*Resu_t(DENS)
+    ! g''(t)
+#if (PP_dim == 3)
+    Resu_tt(DENS:MOM3)=-a*a*Amplitude*sin(Omega*SUM(x(1:PP_dim)) - a*tEval)
+#else
+    Resu_tt(DENS:MOM2)=-a*a*Amplitude*sin(Omega*SUM(x(1:PP_dim)) - a*tEval)
+    Resu_tt(MOM3)=0.
+#endif
+    Resu_tt(ENER)=2.*(Resu_t(DENS)*Resu_t(DENS) + Resu(DENS)*Resu_tt(DENS))
   END IF
 
 CASE(41) ! SINUS in x
@@ -340,17 +348,17 @@ CASE(41) ! SINUS in x
   a=AdvVel(1)*2.*PP_Pi
   ! g(t)
   Resu = 0.
-  Resu(1:2)=2.+ Amplitude*sin(Omega*x(1) - a*tEval)
-  Resu(5)=Resu(1)*Resu(1)
+  Resu(DENS:MOM1)=2.+ Amplitude*sin(Omega*x(1) - a*tEval)
+  Resu(ENER)=Resu(DENS)*Resu(DENS)
   IF(fullBoundaryOrder)THEN
     Resu_t = 0.
     Resu_tt = 0.
     ! g'(t)
-    Resu_t(1:2)=(-a)*Amplitude*cos(Omega*x(1) - a*tEval)
-    Resu_t(5)=2.*Resu(1)*Resu_t(1)
+    Resu_t(DENS:MOM1)=(-a)*Amplitude*cos(Omega*x(1) - a*tEval)
+    Resu_t(ENER)=2.*Resu(1)*Resu_t(1)
     ! g''(t)
-    Resu_tt(1:2)=-a*a*Amplitude*sin(Omega*x(1) - a*tEval)
-    Resu_tt(5)=2.*(Resu_t(1)*Resu_t(1) + Resu(1)*Resu_tt(1))
+    Resu_tt(DENS:MOM1)=-a*a*Amplitude*sin(Omega*x(1) - a*tEval)
+    Resu_tt(ENER)=2.*(Resu_t(DENS)*Resu_t(DENS) + Resu(DENS)*Resu_tt(DENS))
   END IF
 CASE(42) ! SINUS in y
   Frequency=1.
@@ -359,19 +367,19 @@ CASE(42) ! SINUS in y
   a=AdvVel(2)*2.*PP_Pi
   ! g(t)
   Resu = 0.
-  Resu(1)=2.+ Amplitude*sin(Omega*x(2) - a*tEval)
-  Resu(3)=Resu(1)
-  Resu(5)=Resu(1)*Resu(1)
+  Resu(DENS)=2.+ Amplitude*sin(Omega*x(2) - a*tEval)
+  Resu(MOM2)=Resu(DENS)
+  Resu(ENER)=Resu(DENS)*Resu(DENS)
   IF(fullBoundaryOrder)THEN
     Resu_tt = 0.
     ! g'(t)
-    Resu_t(1)=(-a)*Amplitude*cos(Omega*x(2) - a*tEval)
-    Resu_t(3) = Resu_t(1)
-    Resu_t(5)=2.*Resu(1)*Resu_t(1)
+    Resu_t(DENS)=(-a)*Amplitude*cos(Omega*x(2) - a*tEval)
+    Resu_t(MOM2) = Resu_t(DENS)
+    Resu_t(ENER)=2.*Resu(DENS)*Resu_t(DENS)
     ! g''(t)
-    Resu_tt(1)=-a*a*Amplitude*sin(Omega*x(2) - a*tEval)
-    Resu_t(3) = Resu_t(1)
-    Resu_tt(5)=2.*(Resu_t(1)*Resu_t(1) + Resu(1)*Resu_tt(1))
+    Resu_tt(DENS)=-a*a*Amplitude*sin(Omega*x(2) - a*tEval)
+    Resu_t(MOM2) = Resu_t(DENS)
+    Resu_tt(ENER)=2.*(Resu_t(DENS)*Resu_t(DENS) + Resu(DENS)*Resu_tt(DENS))
   END IF
 #if PP_dim==3
 CASE(43) ! SINUS in z
@@ -381,26 +389,26 @@ CASE(43) ! SINUS in z
   a=AdvVel(3)*2.*PP_Pi
   ! g(t)
   Resu = 0.
-  Resu(1)=2.+ Amplitude*sin(Omega*x(3) - a*tEval)
-  Resu(4)=Resu(1)
-  Resu(5)=Resu(1)*Resu(1)
+  Resu(DENS)=2.+ Amplitude*sin(Omega*x(3) - a*tEval)
+  Resu(MOM3)=Resu(DENS)
+  Resu(ENER)=Resu(DENS)*Resu(DENS)
   IF(fullBoundaryOrder)THEN
     Resu_tt = 0.
     ! g'(t)
-    Resu_t(1)=(-a)*Amplitude*cos(Omega*x(3) - a*tEval)
-    Resu_t(4) = Resu_t(1)
-    Resu_t(5)=2.*Resu(1)*Resu_t(1)
+    Resu_t(DENS)=(-a)*Amplitude*cos(Omega*x(3) - a*tEval)
+    Resu_t(MOM3) = Resu_t(DENS)
+    Resu_t(ENER)=2.*Resu(DENS)*Resu_t(DENS)
     ! g''(t)
-    Resu_tt(1)=-a*a*Amplitude*sin(Omega*x(3) - a*tEval)
-    Resu_t(4) = Resu_t(1)
-    Resu_tt(5)=2.*(Resu_t(1)*Resu_t(1) + Resu(1)*Resu_tt(1))
+    Resu_tt(DENS)=-a*a*Amplitude*sin(Omega*x(3) - a*tEval)
+    Resu_t(MOM3) = Resu_t(DENS)
+    Resu_tt(ENER)=2.*(Resu_t(DENS)*Resu_t(DENS) + Resu(DENS)*Resu_tt(DENS))
   END IF
 #endif
 CASE(5) !Roundjet Bogey Bailly 2002, Re=65000, x-axis is jet axis
-  prim(1)  =1.
-  prim(2:4)=0.
-  prim(5)  =1./Kappa
-  prim(6) = prim(5)/(prim(1)*R)
+  prim(DENS)  =1.
+  prim(VELV)  =0.
+  prim(PRES)  =1./Kappa
+  prim(TEMP)  = prim(PRES)/(prim(DENS)*R)
   ! Jet inflow (from x=0, diameter 2.0)
   ! Initial jet radius: rj=1.
   ! Momentum thickness: delta_theta0=0.05=1/20
@@ -408,25 +416,22 @@ CASE(5) !Roundjet Bogey Bailly 2002, Re=65000, x-axis is jet axis
   ! Uco=0.
   ! Uj=0.9
   r_len=SQRT((x(2)*x(2)+x(3)*x(3)))
-  prim(2)=0.9*0.5*(1.+TANH((1.-r_len)*10.))
+  prim(VEL1)=0.9*0.5*(1.+TANH((1.-r_len)*10.))
   CALL RANDOM_NUMBER(random)
   ! Random disturbance +-5%
   random=0.05*2.*(random-0.5)
-  prim(2)=prim(2)+random*prim(2)
-  prim(3)=x(2)/r_len*0.5*random*prim(2)
-  prim(4)=x(3)/r_len*0.5*random*prim(2)
+  prim(VEL1)=prim(VEL1)+random*prim(VEL1)
+  prim(VEL2)=x(2)/r_len*0.5*random*prim(VEL1)
+  prim(VEL3)=x(3)/r_len*0.5*random*prim(VEL1)
   CALL PrimToCons(prim,ResuL)
-  prim(1)  =1.
-  prim(2:4)=0.
-  prim(5)  =1./Kappa
-  prim(6) = prim(5)/(prim(1)*R)
+  prim(VELV)  =0.
   CALL PrimToCons(prim,ResuR)
 !   after x=10 blend to ResuR
   Resu=ResuL+(ResuR-ResuL)*0.5*(1.+tanh(x(1)-10.))
 CASE(6)  ! Cylinder flow
   IF(tEval .EQ. 0.)THEN   ! Initialize potential flow
-    prim(1)=RefStatePrim(1,RefState)  ! Density
-    prim(4)=0.           ! VelocityZ=0. (2D flow)
+    prim(DENS)=RefStatePrim(DENS,RefState)  ! Density
+    prim(VEL3)=0.                           ! VelocityZ=0. (2D flow)
     ! Calculate cylinder coordinates (0<phi<Pi/2)
     pi_loc=ASIN(1.)*2.
     IF(x(1) .LT. 0.)THEN
@@ -449,12 +454,12 @@ CASE(6)  ! Cylinder flow
     ! Calculate radius**2
     radius=x(1)*x(1)+x(2)*x(2)
     ! Calculate velocities, radius of cylinder=0.5
-    prim(2)=RefStatePrim(2,RefState)*(COS(phi)**2*(1.-0.25/radius)+SIN(phi)**2*(1.+0.25/radius))
-    prim(3)=RefStatePrim(2,RefState)*(-2.)*SIN(phi)*COS(phi)*0.25/radius
+    prim(VEL1)=RefStatePrim(VEL1,RefState)*(COS(phi)**2*(1.-0.25/radius)+SIN(phi)**2*(1.+0.25/radius))
+    prim(VEL2)=RefStatePrim(VEL1,RefState)*(-2.)*SIN(phi)*COS(phi)*0.25/radius
     ! Calculate pressure, RefState(2)=u_infinity
-    prim(5)=RefStatePrim(5,RefState) + &
-            0.5*prim(1)*(RefStatePrim(2,RefState)*RefStatePrim(2,RefState)-prim(2)*prim(2)-prim(3)*prim(3))
-    prim(6) = prim(5)/(prim(1)*R)
+    prim(PRES)=RefStatePrim(PRES,RefState) + &
+            0.5*prim(DENS)*(RefStatePrim(VEL1,RefState)*RefStatePrim(VEL1,RefState)-prim(VEL1)*prim(VEL1)-prim(VEL2)*prim(VEL2))
+    prim(TEMP) = prim(PRES)/(prim(DENS)*R)
   ELSE  ! Use RefState as BC
     prim=RefStatePrim(:,RefState)
   END IF  ! t=0
@@ -463,70 +468,70 @@ CASE(7) ! SHU VORTEX,isentropic vortex
   ! base flow
   prim=RefStatePrim(:,RefState)  ! Density
   ! ini-Parameter of the Example
-  vel=prim(2:4)
-  RT=prim(PP_nVar)/prim(1) !ideal gas
-  cent=(iniCenter+vel*tEval)!centerpoint time dependant
-  cent=x-cent ! distance to centerpoint
-  cent=CROSS(iniAxis,cent) !distance to axis, tangent vector, length r
-  cent=cent/iniHalfWidth !Halfwidth is dimension 1
+  vel=prim(VELV)
+  RT=prim(PRES)/prim(DENS) !ideal gas
+  cent=(iniCenter+vel*tEval)    !centerpoint time dependant
+  cent=x-cent                   ! distance to centerpoint
+  cent=CROSS(iniAxis,cent)      !distance to axis, tangent vector, length r
+  cent=cent/iniHalfWidth        !Halfwidth is dimension 1
   r2=SUM(cent*cent) !
-  du = iniAmplitude/(2.*PP_Pi)*exp(0.5*(1.-r2)) ! vel. perturbation
-  dTemp = -kappaM1/(2.*kappa*RT)*du**2 ! adiabatic
-  prim(1)=prim(1)*(1.+dTemp)**(1.*skappaM1) !rho
-  prim(2:4)=prim(2:4)+du*cent(:) !v
+  du = iniAmplitude/(2.*PP_Pi)*exp(0.5*(1.-r2))   ! vel. perturbation
+  dTemp = -kappaM1/(2.*kappa*RT)*du**2            ! adiabatic
+  prim(DENS)=prim(DENS)*(1.+dTemp)**(1.*skappaM1) !rho
+  prim(VELV)=prim(VELV)+du*cent(:)                !v
 #if PP_dim == 2
-  prim(4)=0.
+  prim(VEL3)=0.
 #endif
-  prim(PP_nVar)=prim(PP_nVar)*(1.+dTemp)**(kappa/kappaM1) !p
-  prim(6) = prim(5)/(prim(1)*R)
+  prim(PRES) = prim(PRES)*(1.+dTemp)**(kappa/kappaM1) !p
+  prim(TEMP) = prim(PRES)/(prim(DENS)*R)
   CALL PrimToCons(prim,resu)
 CASE(8) !Couette-Poiseuille flow between plates: exact steady lamiar solution with height=1 !
         !(Gao, hesthaven, Warburton)
   RT=1. ! Hesthaven: Absorbing layers for weakly compressible flows
-  sRT=1/RT
+  sRT=1./RT
   ! size of domain must be [-0.5, 0.5]^2 -> (x*y)
   h=0.5
-  prim(2)= U_parameter*(0.5*(1.+x(2)/h) + P_parameter*(1-(x(2)/h)**2))
-  prim(3:4)= 0.
+  prim(DENS)     = U_parameter*(0.5*(1.+x(2)/h) + P_parameter*(1-(x(2)/h)**2))
+  prim(VEL2:VEL3)= 0.
   pexit=0.9996
   pentry=1.0004
-  prim(5)= ( ( x(1) - (-0.5) )*( pexit - pentry) / ( 0.5 - (-0.5)) ) + pentry
-  prim(1)=prim(5)*sRT
-  prim(6)=prim(5)/(prim(1)*R)
+  prim(PRES)= ( ( x(1) - (-0.5) )*( pexit - pentry) / ( 0.5 - (-0.5)) ) + pentry
+  prim(DENS)=prim(PRES)*sRT
+  prim(TEMP)=prim(PRES)/(prim(DENS)*R)
   CALL PrimToCons(prim,Resu)
 CASE(9) !lid driven cavity flow from Gao, Hesthaven, Warburton
         !"Absorbing layers for weakly compressible flows", to appear, JSC, 2016
         ! Special "regularized" driven cavity BC to prevent singularities at corners
         ! top BC assumed to be in x-direction from 0..1
   Prim = RefStatePrim(:,RefState)
-  IF (x(1).LT.0.2) THEN 
-    prim(2)=1000*4.9333*x(1)**4-1.4267*1000*x(1)**3+0.1297*1000*x(1)**2-0.0033*1000*x(1)
+  IF (x(1).LT.0.2) THEN
+    prim(VEL1)=1000*4.9333*x(1)**4-1.4267*1000*x(1)**3+0.1297*1000*x(1)**2-0.0033*1000*x(1)
   ELSEIF (x(1).LE.0.8) THEN
-    prim(2)=1.0
-  ELSE  
-    prim(2)=1000*4.9333*x(1)**4-1.8307*10000*x(1)**3+2.5450*10000*x(1)**2-1.5709*10000*x(1)+10000*0.3633
+    prim(VEL1)=1.0
+  ELSE
+    prim(VEL1)=1000*4.9333*x(1)**4-1.8307*10000*x(1)**3+2.5450*10000*x(1)**2-1.5709*10000*x(1)+10000*0.3633
   ENDIF
   CALL PrimToCons(prim,Resu)
 CASE(10) ! shock
   prim=0.
 
   ! pre-shock
-  prim(1) = PreShockDens
-  Ms      = MachShock
+  prim(DENS) = PreShockDens
+  Ms         = MachShock
 
-  prim(5)=prim(1)/Kappa
-  prim(6)=prim(5)/(prim(1)*R)
+  prim(PRES)=prim(DENS)/Kappa
+  prim(TEMP)=prim(PRES)/(prim(DENS)*R)
   CALL PrimToCons(prim,Resur)
 
   ! post-shock
-  prim(3)=prim(1) ! temporal storage of pre-shock density
-  prim(1)=prim(1)*((KappaP1)*Ms*Ms)/(KappaM1*Ms*Ms+2.)
-  prim(5)=prim(5)*(2.*Kappa*Ms*Ms-KappaM1)/(KappaP1)
-  prim(6)=prim(5)/(prim(1)*R)
-  IF (prim(2) .EQ. 0.0) THEN
-    prim(2)=Ms*(1.-prim(3)/prim(1))
+  prim(VEL2)=prim(DENS) ! temporal storage of pre-shock density
+  prim(DENS)=prim(DENS)*((KappaP1)*Ms*Ms)/(KappaM1*Ms*Ms+2.)
+  prim(PRES)=prim(PRES)*(2.*Kappa*Ms*Ms-KappaM1)/(KappaP1)
+  prim(TEMP)=prim(PRES)/(prim(DENS)*R)
+  IF (prim(VEL1) .EQ. 0.0) THEN
+    prim(VEL1)=Ms*(1.-prim(VEL2)/prim(DENS))
   ELSE
-    prim(2)=prim(2)*prim(3)/prim(1)
+    prim(VEL1)=prim(VEL1)*prim(VEL2)/prim(DENS)
   END IF
   prim(3)=0. ! reset temporal storage
   CALL PrimToCons(prim,Resul)
@@ -540,16 +545,16 @@ CASE(11) ! Sod Shock tube
   ELSE
     Resu = RefStateCons(:,2)
   END IF
-CASE(12) ! Shu Osher density fluctuations shock wave interaction 
+CASE(12) ! Shu Osher density fluctuations shock wave interaction
   IF (x(1).LT.-4.0) THEN
-    prim(1) = 3.857143
-    prim(2) = 2.629369
-    prim(3:4) = 0.
-    prim(5) = 10.33333
+    prim(DENS)      = 3.857143
+    prim(VEL1)      = 2.629369
+    prim(VEL2:VEL3) = 0.
+    prim(PRES)      = 10.33333
   ELSE
-    prim(1) = 1.+0.2*SIN(5.*x(1))
-    prim(2:4) = 0.
-    prim(5) = 1.
+    prim(DENS)      = 1.+0.2*SIN(5.*x(1))
+    prim(VELV)      = 0.
+    prim(PRES)      = 1.
   END IF
   CALL PrimToCons(prim,resu)
 
@@ -570,13 +575,13 @@ CASE(13) ! DoubleMachReflection (see e.g. http://www.astro.princeton.edu/~jstone
 CASE(1338) ! blasius
   prim=RefStatePrim(:,RefState)
   ! calculate equivalent x for Blasius flat plate to have delta99_in at x_in
-  x_offset(1)=(delta99_in/5)**2*prim(1)*prim(2)/mu0-x_in(1)
+  x_offset(1)=(delta99_in/5)**2*prim(DENS)*prim(VEL1)/mu0-x_in(1)
   x_offset(2)=-x_in(2)
   x_offset(3)=0.
   x_eff=x+x_offset
   IF(x_eff(2).GT.0 .AND. x_eff(1).GT.0) THEN
     ! scale bl position in physical space to reference space, eta=5 is ~99% bl thickness
-    eta=x_eff(2)*(prim(1)*prim(2)/(mu0*x_eff(1)))**0.5
+    eta=x_eff(2)*(prim(DENS)*prim(VEL1)/(mu0*x_eff(1)))**0.5
 
     deta=0.02 ! step size
     nSteps=CEILING(eta/deta)
@@ -589,29 +594,29 @@ CASE(1338) ! blasius
     fppp=0.
     !Blasius boundary layer
     DO i=1,nSteps
-      ! predictor 
+      ! predictor
       fbar    = f   + deta * fp
       fpbar   = fp  + deta * fpp
       fppbar  = fpp + deta * fppp
       fpppbar = -0.5*fbar*fppbar
-      ! corrector 
+      ! corrector
       f       = f   + deta2 * (fp   + fpbar)
       fp      = fp  + deta2 * (fpp  + fppbar)
       fpp     = fpp + deta2 * (fppp + fpppbar)
       fppp    = -0.5*f*fpp
     END DO
-    prim(3)=0.5*(mu0*prim(2)/prim(1)/x_eff(1))**0.5*(fp*eta-f)
-    prim(2)=RefStatePrim(2,RefState)*fp
+    prim(VEL2)=0.5*(mu0*prim(VEL1)/prim(DENS)/x_eff(1))**0.5*(fp*eta-f)
+    prim(VEL1)=RefStatePrim(VEL1,RefState)*fp
   ELSE
     IF(x_eff(2).LE.0) THEN
-      prim(2)=0.
-    END IF 
+      prim(VEL1)=0.
+    END IF
   END IF
   CALL PrimToCons(prim,resu)
 #endif
 END SELECT ! ExactFunction
 #if PP_dim==2
-Resu(4)=0.
+Resu(MOM3)=0.
 #endif
 
 ! For O3 LS 3-stage RK, we have to define proper time dependent BC
@@ -723,25 +728,27 @@ CASE(4) ! exact function
       cosXGP=COS(omega*SUM(Elem_xGP(1:PP_dim,i,j,k,iElem))-at)
       sinXGP=SIN(omega*SUM(Elem_xGP(1:PP_dim,i,j,k,iElem))-at)
       sinXGP2=2.*sinXGP*cosXGP !=SIN(2.*(omega*SUM(Elem_xGP(:,i,j,k,iElem))-a*t))
-      Ut_src(1         ,i,j,k) = tmp(1)*cosXGP
-      Ut_src(2:PP_dim+1,i,j,k) = tmp(2)*cosXGP + tmp(3)*sinXGP2
-#if (PP_dim == 2)
-      Ut_src(4         ,i,j,k) = 0.
+      Ut_src(DENS      ,i,j,k) = tmp(1)*cosXGP
+#if (PP_dim == 3)
+      Ut_src(MOM1:MOM3,i,j,k)  = tmp(2)*cosXGP + tmp(3)*sinXGP2
+#else
+      Ut_src(MOM1:MOM2,i,j,k)  = tmp(2)*cosXGP + tmp(3)*sinXGP2
+      Ut_src(MOM3      ,i,j,k) = 0.
 #endif
-      Ut_src(5  ,i,j,k) = tmp(4)*cosXGP + tmp(5)*sinXGP2 + tmp(6)*sinXGP
+      Ut_src(ENER,i,j,k)       = tmp(4)*cosXGP + tmp(5)*sinXGP2 + tmp(6)*sinXGP
     END DO; END DO; END DO ! i,j,k
-#if FV_ENABLED    
-    IF (FV_Elems(iElem).GT.0) THEN ! FV elem     
+#if FV_ENABLED
+    IF (FV_Elems(iElem).GT.0) THEN ! FV elem
       CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,Ut_src(:,:,:,:),Ut_src2(:,:,:,:))
       DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
         Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem)+Ut_src2(:,i,j,k)/sJ(i,j,k,iElem,1)
       END DO; END DO; END DO ! i,j,k
     ELSE
-#endif      
+#endif
       DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
         Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem)+Ut_src(:,i,j,k)/sJ(i,j,k,iElem,0)
       END DO; END DO; END DO ! i,j,k
-#if FV_ENABLED    
+#if FV_ENABLED
     END IF
 #endif
   END DO ! iElem
@@ -754,33 +761,33 @@ CASE(41) ! Sinus in x
 
   DO iElem=1,nElems
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-#if PARABOLIC      
-      Ut_src(1,i,j,k) = (-Amplitude*a+Amplitude*omega)*cos(omega*Elem_xGP(1,i,j,k,iElem)-a*t)
+#if PARABOLIC
+      Ut_src(DENS,i,j,k) = (-Amplitude*a+Amplitude*omega)*cos(omega*Elem_xGP(1,i,j,k,iElem)-a*t)
 
-      Ut_src(2,i,j,k) = (-Amplitude**2*omega+Amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(1,i,j,k,iElem)-2.*a*t)+&
-                      (-Amplitude*a+2.*Amplitude*omega*kappa*C-1./2.*Amplitude*omega*kappa+&
-                      3./2.*Amplitude*omega-2.*Amplitude*omega*C)*cos(omega*Elem_xGP(1,i,j,k,iElem)-a*t)
+      Ut_src(MOM1,i,j,k) = (-Amplitude**2*omega+Amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(1,i,j,k,iElem)-2.*a*t)+&
+                           (-Amplitude*a+2.*Amplitude*omega*kappa*C-1./2.*Amplitude*omega*kappa+&
+                           3./2.*Amplitude*omega-2.*Amplitude*omega*C)*cos(omega*Elem_xGP(1,i,j,k,iElem)-a*t)
 
-      Ut_src(3:4,i,j,k) = 0.0
+      Ut_src(MOM2:MOM3,i,j,k) = 0.0
 
-      Ut_src(5,i,j,k) = mu0*kappa*Amplitude*sin(omega*Elem_xGP(1,i,j,k,iElem)-a*t)*omega**2/Pr+&
-                      (-Amplitude**2*a+Amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(1,i,j,k,iElem)-2.*a*t)+&
-                      1./2.*(-4.*Amplitude*a*C+4.*Amplitude*omega*kappa*C-Amplitude*omega*kappa+&
-                           Amplitude*omega)*cos(omega*Elem_xGP(1,i,j,k,iElem)-a*t)
+      Ut_src(ENER,i,j,k) = mu0*kappa*Amplitude*sin(omega*Elem_xGP(1,i,j,k,iElem)-a*t)*omega**2/Pr+&
+                           (-Amplitude**2*a+Amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(1,i,j,k,iElem)-2.*a*t)+&
+                           1./2.*(-4.*Amplitude*a*C+4.*Amplitude*omega*kappa*C-Amplitude*omega*kappa+&
+                                Amplitude*omega)*cos(omega*Elem_xGP(1,i,j,k,iElem)-a*t)
 #else
-      Ut_src(1,i,j,k) = (-amplitude*a+amplitude*omega)*cos(omega*Elem_xGP(1,i,j,k,iElem)-a*t) 
-      Ut_src(2,i,j,k) = (-amplitude**2*omega+amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(1,i,j,k,iElem)-2.*a*t)+ &
-                      (-amplitude*a+2.*amplitude*omega*kappa*C-1./2.*omega*kappa*amplitude+ &
-                      3./2.*amplitude*omega-2.*amplitude*omega*C)*cos(omega*Elem_xGP(1,i,j,k,iElem)-a*t)
-                      
-      Ut_src(3:4,i,j,k) = 0.0
-      Ut_src(5,i,j,k) = (-amplitude**2*a+amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(1,i,j,k,iElem)-2.*a*t)+&
-                      (-2.*amplitude*a*C+2.*amplitude*omega*kappa*C-1./2.*omega*kappa*amplitude+&
-                      1./2.*amplitude*omega)*cos(omega*Elem_xGP(1,i,j,k,iElem)-a*t)
-                      
+      Ut_src(DENS,i,j,k) = (-amplitude*a+amplitude*omega)*cos(omega*Elem_xGP(1,i,j,k,iElem)-a*t)
+      Ut_src(MOM1,i,j,k) = (-amplitude**2*omega+amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(1,i,j,k,iElem)-2.*a*t)+ &
+                           (-amplitude*a+2.*amplitude*omega*kappa*C-1./2.*omega*kappa*amplitude+ &
+                           3./2.*amplitude*omega-2.*amplitude*omega*C)*cos(omega*Elem_xGP(1,i,j,k,iElem)-a*t)
+
+      Ut_src(MOM2:MOM3,i,j,k) = 0.0
+      Ut_src(ENER,i,j,k) = (-amplitude**2*a+amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(1,i,j,k,iElem)-2.*a*t)+&
+                           (-2.*amplitude*a*C+2.*amplitude*omega*kappa*C-1./2.*omega*kappa*amplitude+&
+                           1./2.*amplitude*omega)*cos(omega*Elem_xGP(1,i,j,k,iElem)-a*t)
+
 #endif
     END DO; END DO; END DO ! i,j,k
-#if FV_ENABLED    
+#if FV_ENABLED
     IF (FV_Elems(iElem).GT.0) THEN ! FV elem
       CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,Ut_src(:,:,:,:),Ut_src2(:,:,:,:))
       DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
@@ -791,7 +798,7 @@ CASE(41) ! Sinus in x
       DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
         Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem)+Ut_src(:,i,j,k)/sJ(i,j,k,iElem,0)
       END DO; END DO; END DO ! i,j,k
-#if FV_ENABLED    
+#if FV_ENABLED
     END IF
 #endif
   END DO
@@ -804,34 +811,34 @@ CASE(42) ! Sinus in y
 
   DO iElem=1,nElems
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-#if PARABOLIC      
-      Ut_src(1,i,j,k) = (-Amplitude*a+Amplitude*omega)*cos(omega*Elem_xGP(2,i,j,k,iElem)-a*t)
-      Ut_src(2,i,j,k) = 0.0
-      Ut_src(3,i,j,k) = (-Amplitude**2*omega+Amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(2,i,j,k,iElem)-2.*a*t)+&
-                      (-Amplitude*a+2.*Amplitude*omega*kappa*C-1./2.*Amplitude*omega*kappa+&
-                      3./2.*Amplitude*omega-2.*Amplitude*omega*C)*cos(omega*Elem_xGP(2,i,j,k,iElem)-a*t)
+#if PARABOLIC
+      Ut_src(DENS,i,j,k) = (-Amplitude*a+Amplitude*omega)*cos(omega*Elem_xGP(2,i,j,k,iElem)-a*t)
+      Ut_src(MOM1,i,j,k) = 0.0
+      Ut_src(MOM2,i,j,k) = (-Amplitude**2*omega+Amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(2,i,j,k,iElem)-2.*a*t)+&
+                           (-Amplitude*a+2.*Amplitude*omega*kappa*C-1./2.*Amplitude*omega*kappa+&
+                           3./2.*Amplitude*omega-2.*Amplitude*omega*C)*cos(omega*Elem_xGP(2,i,j,k,iElem)-a*t)
 
-      Ut_src(4,i,j,k) = 0.0
+      Ut_src(MOM3,i,j,k) = 0.0
 
-      Ut_src(5,i,j,k) = mu0*kappa*Amplitude*sin(omega*Elem_xGP(2,i,j,k,iElem)-a*t)*omega**2/Pr+&
-                      (-Amplitude**2*a+Amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(2,i,j,k,iElem)-2.*a*t)+&
-                      1./2.*(-4.*Amplitude*a*C+4.*Amplitude*omega*kappa*C-Amplitude*omega*kappa+&
-                           Amplitude*omega)*cos(omega*Elem_xGP(2,i,j,k,iElem)-a*t)
+      Ut_src(ENER,i,j,k) = mu0*kappa*Amplitude*sin(omega*Elem_xGP(2,i,j,k,iElem)-a*t)*omega**2/Pr+&
+                           (-Amplitude**2*a+Amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(2,i,j,k,iElem)-2.*a*t)+&
+                           1./2.*(-4.*Amplitude*a*C+4.*Amplitude*omega*kappa*C-Amplitude*omega*kappa+&
+                                Amplitude*omega)*cos(omega*Elem_xGP(2,i,j,k,iElem)-a*t)
 #else
-      Ut_src(1,i,j,k) = (-amplitude*a+amplitude*omega)*cos(omega*Elem_xGP(2,i,j,k,iElem)-a*t) 
-      Ut_src(2,i,j,k) = 0.0
-      Ut_src(3,i,j,k) = (-amplitude**2*omega+amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(2,i,j,k,iElem)-2.*a*t)+ &
-                      (-amplitude*a+2.*amplitude*omega*kappa*C-1./2.*omega*kappa*amplitude+ &
-                      3./2.*amplitude*omega-2.*amplitude*omega*C)*cos(omega*Elem_xGP(2,i,j,k,iElem)-a*t)
-                      
-      Ut_src(4,i,j,k) = 0.0
-      Ut_src(5,i,j,k) = (-amplitude**2*a+amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(2,i,j,k,iElem)-2.*a*t)+&
-                      (-2.*amplitude*a*C+2.*amplitude*omega*kappa*C-1./2.*omega*kappa*amplitude+&
-                      1./2.*amplitude*omega)*cos(omega*Elem_xGP(2,i,j,k,iElem)-a*t)
-                      
+      Ut_src(DENS,i,j,k) = (-amplitude*a+amplitude*omega)*cos(omega*Elem_xGP(2,i,j,k,iElem)-a*t)
+      Ut_src(MOM1,i,j,k) = 0.0
+      Ut_src(MOM2,i,j,k) = (-amplitude**2*omega+amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(2,i,j,k,iElem)-2.*a*t)+ &
+                           (-amplitude*a+2.*amplitude*omega*kappa*C-1./2.*omega*kappa*amplitude+ &
+                           3./2.*amplitude*omega-2.*amplitude*omega*C)*cos(omega*Elem_xGP(2,i,j,k,iElem)-a*t)
+
+      Ut_src(MOM3,i,j,k) = 0.0
+      Ut_src(ENER,i,j,k) = (-amplitude**2*a+amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(2,i,j,k,iElem)-2.*a*t)+&
+                           (-2.*amplitude*a*C+2.*amplitude*omega*kappa*C-1./2.*omega*kappa*amplitude+&
+                           1./2.*amplitude*omega)*cos(omega*Elem_xGP(2,i,j,k,iElem)-a*t)
+
 #endif
     END DO; END DO; END DO ! i,j,k
-#if FV_ENABLED    
+#if FV_ENABLED
     IF (FV_Elems(iElem).GT.0) THEN ! FV elem
       CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,Ut_src(:,:,:,:),Ut_src2(:,:,:,:))
       DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
@@ -842,7 +849,7 @@ CASE(42) ! Sinus in y
       DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
         Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem)+Ut_src(:,i,j,k)/sJ(i,j,k,iElem,0)
       END DO; END DO; END DO ! i,j,k
-#if FV_ENABLED    
+#if FV_ENABLED
     END IF
 #endif
   END DO
@@ -857,32 +864,32 @@ CASE(43) ! Sinus in z
 
   DO iElem=1,nElems
     DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
-#if PARABOLIC      
-      Ut_src(1,i,j,k) = (-Amplitude*a+Amplitude*omega)*cos(omega*Elem_xGP(3,i,j,k,iElem)-a*t)
-      Ut_src(2:3,i,j,k) = 0.0
-      Ut_src(4,i,j,k) = (-Amplitude**2*omega+Amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(3,i,j,k,iElem)-2.*a*t)+&
-                      (-Amplitude*a+2.*Amplitude*omega*kappa*C-1./2.*Amplitude*omega*kappa+&
-                      3./2.*Amplitude*omega-2.*Amplitude*omega*C)*cos(omega*Elem_xGP(3,i,j,k,iElem)-a*t)
+#if PARABOLIC
+      Ut_src(DENS,i,j,k) = (-Amplitude*a+Amplitude*omega)*cos(omega*Elem_xGP(3,i,j,k,iElem)-a*t)
+      Ut_src(MOM1:MOM2,i,j,k) = 0.0
+      Ut_src(MOM3,i,j,k) = (-Amplitude**2*omega+Amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(3,i,j,k,iElem)-2.*a*t)+&
+                           (-Amplitude*a+2.*Amplitude*omega*kappa*C-1./2.*Amplitude*omega*kappa+&
+                           3./2.*Amplitude*omega-2.*Amplitude*omega*C)*cos(omega*Elem_xGP(3,i,j,k,iElem)-a*t)
 
 
-      Ut_src(5,i,j,k) = mu0*kappa*Amplitude*sin(omega*Elem_xGP(3,i,j,k,iElem)-a*t)*omega**2/Pr+&
-                      (-Amplitude**2*a+Amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(3,i,j,k,iElem)-2.*a*t)+&
-                      1./2.*(-4.*Amplitude*a*C+4.*Amplitude*omega*kappa*C-Amplitude*omega*kappa+&
-                           Amplitude*omega)*cos(omega*Elem_xGP(3,i,j,k,iElem)-a*t)
+      Ut_src(ENER,i,j,k) = mu0*kappa*Amplitude*sin(omega*Elem_xGP(3,i,j,k,iElem)-a*t)*omega**2/Pr+&
+                           (-Amplitude**2*a+Amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(3,i,j,k,iElem)-2.*a*t)+&
+                           1./2.*(-4.*Amplitude*a*C+4.*Amplitude*omega*kappa*C-Amplitude*omega*kappa+&
+                                Amplitude*omega)*cos(omega*Elem_xGP(3,i,j,k,iElem)-a*t)
 #else
-      Ut_src(1,i,j,k) = (-amplitude*a+amplitude*omega)*cos(omega*Elem_xGP(3,i,j,k,iElem)-a*t) 
-      Ut_src(2:3,i,j,k) = 0.0
-      Ut_src(4,i,j,k) = (-amplitude**2*omega+amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(3,i,j,k,iElem)-2.*a*t)+ &
-                      (-amplitude*a+2.*amplitude*omega*kappa*C-1./2.*omega*kappa*amplitude+ &
-                      3./2.*amplitude*omega-2.*amplitude*omega*C)*cos(omega*Elem_xGP(3,i,j,k,iElem)-a*t)
-                      
-      Ut_src(5,i,j,k) = (-amplitude**2*a+amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(3,i,j,k,iElem)-2.*a*t)+&
-                      (-2.*amplitude*a*C+2.*amplitude*omega*kappa*C-1./2.*omega*kappa*amplitude+&
-                      1./2.*amplitude*omega)*cos(omega*Elem_xGP(3,i,j,k,iElem)-a*t)
-                      
+      Ut_src(DENS,i,j,k) = (-amplitude*a+amplitude*omega)*cos(omega*Elem_xGP(3,i,j,k,iElem)-a*t)
+      Ut_src(MOM1:MOM2,i,j,k) = 0.0
+      Ut_src(MOM3,i,j,k) = (-amplitude**2*omega+amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(3,i,j,k,iElem)-2.*a*t)+ &
+                           (-amplitude*a+2.*amplitude*omega*kappa*C-1./2.*omega*kappa*amplitude+ &
+                           3./2.*amplitude*omega-2.*amplitude*omega*C)*cos(omega*Elem_xGP(3,i,j,k,iElem)-a*t)
+
+      Ut_src(ENER,i,j,k) = (-amplitude**2*a+amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(3,i,j,k,iElem)-2.*a*t)+&
+                           (-2.*amplitude*a*C+2.*amplitude*omega*kappa*C-1./2.*omega*kappa*amplitude+&
+                           1./2.*amplitude*omega)*cos(omega*Elem_xGP(3,i,j,k,iElem)-a*t)
+
 #endif
     END DO; END DO; END DO ! i,j,k
-#if FV_ENABLED    
+#if FV_ENABLED
     IF (FV_Elems(iElem).GT.0) THEN ! FV elem
       CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,Ut_src(:,:,:,:),Ut_src2(:,:,:,:))
       DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
@@ -893,7 +900,7 @@ CASE(43) ! Sinus in z
       DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
         Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem)+Ut_src(:,i,j,k)/sJ(i,j,k,iElem,0)
       END DO; END DO; END DO ! i,j,k
-#if FV_ENABLED    
+#if FV_ENABLED
     END IF
 #endif
   END DO
@@ -917,18 +924,18 @@ DO iElem=1,nElems
 #endif
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     CALL ConsToPrim(prim,U(:,i,j,k,iElem))
-    nuTilde = prim(7)
+    nuTilde = prim(NUSA)
     muS=VISCOSITY_PRIM(prim)
-    chi = U(6,i,j,k,iElem)/muS
+    chi = U(MUSA,i,j,k,iElem)/muS
     ! Calculate and modify the magnitude of the vorticity
 #if PP_dim==2
-    S = ABS(gradUy(2,i,j,k,iElem)-gradUx(3,i,j,k,iElem))
+    S = ABS(gradUy(LIFT_VEL1,i,j,k,iElem)-gradUx(LIFT_VEL2,i,j,k,iElem))
 #else
-    S = SQRT((gradUy(4,i,j,k,iElem)-gradUz(3,i,j,k,iElem))**2 + &
-             (gradUz(2,i,j,k,iElem)-gradUx(4,i,j,k,iElem))**2 + &
-             (gradUx(3,i,j,k,iElem)-gradUy(2,i,j,k,iElem))**2)
+    S = SQRT((gradUy(LIFT_VEL3,i,j,k,iElem)-gradUz(LIFT_VEL2,i,j,k,iElem))**2 + &
+             (gradUz(LIFT_VEL1,i,j,k,iElem)-gradUx(LIFT_VEL3,i,j,k,iElem))**2 + &
+             (gradUx(LIFT_VEL2,i,j,k,iElem)-gradUy(LIFT_VEL1,i,j,k,iElem))**2)
 #endif
-    IF (U(6,i,j,k,iElem).LT.0.) THEN
+    IF (U(MUSA,i,j,k,iElem).LT.0.) THEN
       ! No modification for the negative version of the model
       SA_STilde = S
     ELSE
@@ -937,35 +944,35 @@ DO iElem=1,nElems
     ! Production term
     ft2 = MERGE(ct3*EXP(-1.*ct4*chi**2),0.,includeTrip)
     ! Production term
-    Prod = cb1*(1.-ft2)*SA_STilde*U(6,i,j,k,iElem)
+    Prod = cb1*(1.-ft2)*SA_STilde*U(MUSA,i,j,k,iElem)
     ! Destruction term, depending on wall damping
     SAfw = fw(nuTilde,SA_STilde,SAd(i,j,k,FV_Elem,iElem))
-    Dest = - prim(1)*(cw1*SAfw-cb1/SAKappa**2*ft2)*(nuTilde/SAd(i,j,k,FV_Elem,iElem))**2
+    Dest = - prim(DENS)*(cw1*SAfw-cb1/SAKappa**2*ft2)*(nuTilde/SAd(i,j,k,FV_Elem,iElem))**2
     ! Trip
     IF (includeTrip) THEN
-      deltaU = NORM2(prim(2:4))
+      deltaU = NORM2(prim(VELV))
       gt = MIN(0.1,deltaU/(omegaT*dXt))
       Trip = &
-      prim(1)*ct1*gt*EXP((-1.*ct2*(omegaT/deltaU)**2)*((Sad(i,j,k,FV_Elem,iElem)**2)+(gt**2)*(SAdt(i,j,k,FV_Elem,iElem)**2)))*(deltaU**2)
+      prim(DENS)*ct1*gt*EXP((-1.*ct2*(omegaT/deltaU)**2)*((Sad(i,j,k,FV_Elem,iElem)**2)+(gt**2)*(SAdt(i,j,k,FV_Elem,iElem)**2)))*(deltaU**2)
     ELSE
       Trip = 0.
     END IF
     ! Diffusion
-    IF (U(6,i,j,k,iElem).LT.0.) THEN
+    IF (U(MUSA,i,j,k,iElem).LT.0.) THEN
       ! Use additional function fn for negative values
       SAfn = fn(chi)
     ELSE
       SAfn = 1.
     END IF
     Diff = &
-                             cb2/sigma*prim(1)*(gradUx(7,i,j,k,iElem)**2+gradUy(7,i,j,k,iElem)**2 &
+                             cb2/sigma*prim(DENS)*(gradUx(LIFT_NUSA,i,j,k,iElem)**2+gradUy(LIFT_NUSA,i,j,k,iElem)**2 &
 #if PP_dim==3
-                                               +gradUz(7,i,j,k,iElem)**2 &
+                                                  +gradUz(LIFT_NUSA,i,j,k,iElem)**2 &
 #endif
-                             )-1./sigma*(muS/prim(1)+nuTilde*SAfn) * &
-                             (gradUx(7,i,j,k,iElem)*gradUx(1,i,j,k,iElem)+gradUy(7,i,j,k,iElem)*gradUy(1,i,j,k,iElem) &
+                             )-1./sigma*(muS/prim(DENS)+nuTilde*SAfn) * &
+                             (gradUx(LIFT_NUSA,i,j,k,iElem)*gradUx(LIFT_DENS,i,j,k,iElem)+gradUy(LIFT_NUSA,i,j,k,iElem)*gradUy(LIFT_DENS,i,j,k,iElem) &
 #if PP_dim==3
-                             +gradUz(7,i,j,k,iElem)*gradUz(1,i,j,k,iElem) &
+                             +gradUz(LIFT_NUSA,i,j,k,iElem)*gradUz(LIFT_DENS,i,j,k,iElem) &
 #endif
                              )
     IF (doSADebug) THEN
@@ -974,10 +981,10 @@ DO iElem=1,nElems
       SADebug(3,i,j,k,iElem) = Trip
       SADebug(4,i,j,k,iElem) = Diff
     END IF
-  Ut_src(6,i,j,k) = Prod + Dest + Trip + Diff
+  Ut_src(MUSA,i,j,k) = Prod + Dest + Trip + Diff
   END DO; END DO; END DO ! i,j,k
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-    Ut(6,i,j,k,iElem) = Ut(6,i,j,k,iElem)+Ut_src(6,i,j,k)/sJ(i,j,k,iElem,FV_Elem)
+    Ut(MUSA,i,j,k,iElem) = Ut(MUSA,i,j,k,iElem)+Ut_src(MUSA,i,j,k)/sJ(i,j,k,iElem,FV_Elem)
   END DO; END DO; END DO ! i,j,k
 END DO
 #endif /*PARABOLIC*/
@@ -1006,7 +1013,7 @@ IMPLICIT NONE
 !===================================================================================================================================
 
 IF (tripOnProc) THEN
-  omegaT = ABS(gradUy_master(2,tripPQ(1),tripPQ(2),tripSideID)-gradUx_master(3,tripPQ(1),tripPQ(2),tripSideID))
+  omegaT = ABS(gradUy_master(LIFT_VEL1,tripPQ(1),tripPQ(2),tripSideID)-gradUx_master(LIFT_VEL2,tripPQ(1),tripPQ(2),tripSideID))
 END IF
 
 #if USE_MPI

@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -66,7 +66,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 !==================================================================================================================================
 CALL prms%SetSection("Equation of State")
 CALL prms%CreateLogicalOption('UseNonDimensionalEqn',"Set true to compute R and mu from bulk Mach Reynolds (nondimensional form.",&
@@ -188,28 +188,28 @@ USE MOD_EOS_Vars,ONLY:KappaM1,R
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)  :: cons(PP_nVar)     !< vector of conservative variables
-REAL,INTENT(OUT) :: prim(PP_nVarPrim) !< vector of primitive variables (density,velocities,temperature,pressure)
+REAL,INTENT(IN)  :: cons(CONS)     !< vector of conservative variables
+REAL,INTENT(OUT) :: prim(PRIM)     !< vector of primitive variables (density,velocities,temperature,pressure)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL             :: sRho    ! 1/Rho
 !==================================================================================================================================
-sRho=1./cons(1)
+sRho=1./cons(DENS)
 ! density
-prim(1)=cons(1)
+prim(DENS)=cons(DENS)
 ! velocity
-prim(2:3)=cons(2:3)*sRho
+prim(VEL1:VEL2)=cons(MOM1:MOM2)*sRho
 #if (PP_dim==3)
-prim(4)=cons(4)*sRho
+prim(VEL3)=cons(MOM3)*sRho
 #else
-prim(4)=0.
+prim(VEL3)=0.
 #endif
 ! pressure
-prim(5)=KappaM1*(cons(5)-0.5*SUM(cons(2:4)*prim(2:4)))
+prim(PRES)=KappaM1*(cons(ENER)-0.5*SUM(cons(MOMV)*prim(VELV)))
 ! temperature
-prim(6) = prim(5)*sRho / R
+prim(TEMP) = prim(PRES)*sRho / R
 ! kinematic SA viscosity
-prim(7) = cons(6)*sRho
+prim(NUSA) = cons(MUSA)*sRho
 END SUBROUTINE ConsToPrim
 
 !==================================================================================================================================
@@ -220,12 +220,12 @@ PPURE SUBROUTINE ConsToPrim_Side(Nloc,prim,cons)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: Nloc                                  !< local polynomial degree of solution representation
-REAL,INTENT(IN)    :: cons(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)) !< vector of conservative variables
-REAL,INTENT(OUT)   :: prim(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)) !< vector of primitive variables 
+INTEGER,INTENT(IN) :: Nloc                           !< local polynomial degree of solution representation
+REAL,INTENT(IN)    :: cons(CONS,0:Nloc,0:ZDIM(Nloc)) !< vector of conservative variables
+REAL,INTENT(OUT)   :: prim(PRIM,0:Nloc,0:ZDIM(Nloc)) !< vector of primitive variables 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER          :: p,q
+INTEGER            :: p,q
 !==================================================================================================================================
 DO q=0,ZDIM(Nloc); DO p=0,Nloc
   CALL ConsToPrim(prim(:,p,q),cons(:,p,q))
@@ -241,12 +241,12 @@ USE MOD_Mesh_Vars,ONLY:nElems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: Nloc                                                  !< local polynomial degree of solution representation
-REAL,INTENT(IN)    :: cons(PP_nVar    ,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems) !< vector of conservative variables
-REAL,INTENT(OUT)   :: prim(PP_nVarPrim,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems) !< vector of primitive variables 
+INTEGER,INTENT(IN) :: Nloc                                           !< local polynomial degree of solution representation
+REAL,INTENT(IN)    :: cons(CONS,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems) !< vector of conservative variables
+REAL,INTENT(OUT)   :: prim(PRIM,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems) !< vector of primitive variables 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER          :: i,j,k,iElem
+INTEGER            :: i,j,k,iElem
 !==================================================================================================================================
 DO iElem=1,nElems
   DO k=0,ZDIM(Nloc); DO j=0,Nloc; DO i=0,Nloc
@@ -264,24 +264,24 @@ USE MOD_EOS_Vars,ONLY:sKappaM1
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)  :: prim(PP_nVarPrim) !< vector of primitive variables
-REAL,INTENT(OUT) :: cons(PP_nVar)     !< vector of conservative variables
+REAL,INTENT(IN)  :: prim(PRIM)     !< vector of primitive variables
+REAL,INTENT(OUT) :: cons(CONS)     !< vector of conservative variables
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
 ! density
-cons(1)=prim(1)
+cons(DENS)=prim(DENS)
 ! momentum
-cons(2:3)=prim(2:3)*prim(1)
+cons(MOM1:MOM2)=prim(VEL1:VEL2)*prim(DENS)
 #if (PP_dim==3)
-cons(4)=prim(4)*prim(1)
+cons(MOM3)=prim(VEL3)*prim(DENS)
 #else
-cons(4)=0.
+cons(MOM3)=0.
 #endif
 ! energy
-cons(5)=sKappaM1*prim(5)+0.5*SUM(cons(2:4)*prim(2:4))
+cons(ENER)=sKappaM1*prim(PRES)+0.5*SUM(cons(MOMV)*prim(VELV))
 ! dynamic SA viscosity
-cons(6) = prim(7)*prim(1)
+cons(MUSA) = prim(NUSA)*prim(DENS)
 END SUBROUTINE PrimToCons
 
 !==================================================================================================================================
@@ -292,12 +292,12 @@ PPURE SUBROUTINE PrimToCons_Side(Nloc,prim,cons)
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: Nloc                                  !< local polynomial degree of solution representation
-REAL,INTENT(IN)   :: prim(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)) !< vector of primitive variables
-REAL,INTENT(OUT)  :: cons(PP_nVar    ,0:Nloc,0:ZDIM(Nloc))     !< vector of conservative variables
+INTEGER,INTENT(IN) :: Nloc                           !< local polynomial degree of solution representation
+REAL,INTENT(IN)    :: prim(PRIM,0:Nloc,0:ZDIM(Nloc)) !< vector of primitive variables
+REAL,INTENT(OUT)   :: cons(CONS,0:Nloc,0:ZDIM(Nloc)) !< vector of conservative variables
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER           :: p,q
+INTEGER            :: p,q
 !==================================================================================================================================
 DO q=0,ZDIM(Nloc); DO p=0,Nloc
   CALL PrimToCons(prim(:,p,q),cons(:,p,q))
@@ -313,9 +313,9 @@ USE MOD_Mesh_Vars,ONLY:nElems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: Nloc                                                  !< local polynomial degree of solution representation
-REAL,INTENT(IN)   :: prim(PP_nVarPrim,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems)     !< vector of primitive variables
-REAL,INTENT(OUT)  :: cons(PP_nVar    ,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems)     !< vector of conservative variables
+INTEGER,INTENT(IN) :: Nloc                                               !< local polynomial degree of solution representation
+REAL,INTENT(IN)    :: prim(PRIM,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems)     !< vector of primitive variables
+REAL,INTENT(OUT)   :: cons(CONS,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems)     !< vector of conservative variables
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: i,j,k,iElem
@@ -335,22 +335,22 @@ PPURE FUNCTION PRESSURE_RIEMANN(U_Prim)
 ! MODULES
 USE MOD_EOS_Vars      ,ONLY: Kappa,KappaM1,sKappaM1,sKappaP1
 ! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE 
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(IN) :: U_Prim(PP_nVarPrim) !< vector of primitive variables
+REAL,INTENT(IN) :: U_Prim(PRIM)        !< vector of primitive variables
 REAL            :: PRESSURE_RIEMANN    !< pressure as the return value of the Riemann problem
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
-REAL     :: kappaFac,ar,br,P_RP
+! LOCAL VARIABLES
+REAL            :: kappaFac,ar,br,P_RP
 !==================================================================================================================================
 kappaFac=2.*Kappa*sKappaM1
-IF(U_Prim(2) .LE. 0.)THEN ! rarefaction
-  P_RP=U_Prim(5) * MAX(0.0001,(1.+0.5*KappaM1*U_Prim(2)/SQRT(Kappa*U_Prim(5)/U_Prim(1))))**kappaFac
+IF(U_Prim(VEL1) .LE. 0.)THEN ! rarefaction
+  P_RP=U_Prim(PRES) * MAX(0.0001,(1.+0.5*KappaM1*U_Prim(VEL1)/SQRT(Kappa*U_Prim(PRES)/U_Prim(DENS))))**kappaFac
 ELSE ! shock
-  ar=2.*sKappaP1/U_Prim(1)
-  br=KappaM1*sKappaP1*U_Prim(5)
-  P_RP=U_Prim(5)+U_Prim(2)/ar*0.5*(U_Prim(2)+SQRT(U_Prim(2)*U_Prim(2)+4.*ar*(U_Prim(5)+br)))
+  ar=2.*sKappaP1/U_Prim(DENS)
+  br=KappaM1*sKappaP1*U_Prim(PRES)
+  P_RP=U_Prim(PRES)+U_Prim(VEL1)/ar*0.5*(U_Prim(VEL1)+SQRT(U_Prim(VEL1)*U_Prim(VEL1)+4.*ar*(U_Prim(PRES)+br)))
 END IF
 PRESSURE_RIEMANN=P_RP
 END FUNCTION PRESSURE_RIEMANN
