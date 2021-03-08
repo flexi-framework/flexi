@@ -885,19 +885,29 @@ ELSE
       Flux=0.5*(UPrim_master(PRIM_LIFT,:,:)  + UPrim_boundary(PRIM_LIFT,:,:))
   CASE(3,4) ! No-slip wall BCs
     DO q=0,PP_NZ; DO p=0,PP_N
-      !Flux(1  ,p,q) = UPrim_Boundary(1,p,q)
+#if PP_OPTLIFT == 0
+      Flux(LIFT_DENS,p,q) = UPrim_Boundary(1,p,q)
       Flux(LIFT_VELV,p,q) = 0.
-      !Flux(5  ,p,q) = UPrim_Boundary(5,p,q)
+      Flux(LIFT_PRES,p,q) = UPrim_Boundary(5,p,q)
       Flux(LIFT_TEMP,p,q) = UPrim_Boundary(6,p,q)
+#else
+      Flux(LIFT_VELV,p,q) = 0.
+      Flux(LIFT_TEMP,p,q) = UPrim_Boundary(6,p,q)
+#endif
     END DO; END DO !p,q
   CASE(9,91)
     ! Euler/(full-)slip wall, symmetry BC
     ! Solution from the inside with velocity normal component set to 0 (done in GetBoundaryState)
     DO q=0,PP_NZ; DO p=0,PP_N
       ! Compute Flux
-      !Flux(1       ,p,q) = UPrim_master(1,p,q)
+#if PP_OPTLIFT == 0
+      Flux(LIFT_DENS              ,p,q) = UPrim_master(1,p,q)
+      Flux(LIFT_VELV              ,p,q) = UPrim_boundary(2:4,p,q)
+      Flux((/LIFT_PRES,LIFT_TEMP/),p,q) = UPrim_master(5:6,p,q)
+#else
       Flux(LIFT_VELV,p,q) = UPrim_boundary(2:4,p,q)
       Flux(LIFT_TEMP,p,q) = UPrim_master(6,p,q)
+#endif
     END DO; END DO !p,q
   CASE(1) !Periodic already filled!
   CASE DEFAULT ! unknown BCType
