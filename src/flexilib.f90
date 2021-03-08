@@ -69,8 +69,9 @@ USE MOD_FV_Basis,          ONLY:InitFV_Basis
 #endif
 USE MOD_Indicator,         ONLY:DefineParametersIndicator,InitIndicator
 USE MOD_ReadInTools,       ONLY:prms,IgnoredParameters,PrintDefaultParameterFile,ExtractParameterFile
-USE MOD_Restart_Vars      ,ONLY:RestartFile
-USE MOD_StringTools       ,ONLY:STRICMP, GetFileExtension
+USE MOD_Restart_Vars,      ONLY:RestartFile
+USE MOD_StringTools,       ONLY:STRICMP, GetFileExtension
+USE MOD_Unittest,          ONLY:GenerateUnittestReferenceData        
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -209,6 +210,16 @@ Time=FLEXITIME()
 SWRITE(UNIT_stdOut,'(132("="))')
 SWRITE(UNIT_stdOut,'(A,F8.2,A)') ' INITIALIZATION DONE! [',Time-StartTime,' sec ]'
 SWRITE(UNIT_stdOut,'(132("="))')
+
+! Generate Unittest Data
+IF (doGenerateUnittestReferenceData) THEN
+#if USE_MPI
+  CALL CollectiveStop(__STAMP__, "Can't generate Unittest Reference Data with MPI enabled.")
+#endif
+  CALL GenerateUnittestReferenceData()
+  CALL FinalizeFlexi()
+  CALL EXIT()
+END IF
 END SUBROUTINE InitFlexi
 
 !==================================================================================================================================
