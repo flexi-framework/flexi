@@ -368,15 +368,15 @@ IndValue=TINY(0.)
 DO iDeg=0,nModes
   ! Build maximum of 1D indicators
   ! Xi
-  IndValue=MAX(IndValue,SUM(U_Modal(PP_N-iDeg:PP_N-iDeg,:,:))**2 /  &
-                        (SUM(U_Modal(0:PP_N-iDeg,:,:))**2+EPSILON(0.)))
+  IndValue=MAX(IndValue,SUM(U_Modal(PP_N-iDeg:PP_N-iDeg,:,:)**2) /  &
+                        (SUM(U_Modal(0:PP_N-iDeg,:,:)**2)+EPSILON(0.)))
   ! Eta
-  IndValue=MAX(IndValue,SUM(U_Modal(:,PP_N-iDeg:PP_N-iDeg,:))**2 /  &
-                        (SUM(U_Modal(:,0:PP_N-iDeg,:))**2+EPSILON(0.)))
+  IndValue=MAX(IndValue,SUM(U_Modal(:,PP_N-iDeg:PP_N-iDeg,:)**2) /  &
+                        (SUM(U_Modal(:,0:PP_N-iDeg,:)**2)+EPSILON(0.)))
 #if PP_dim == 3
   ! Zeta
-  IndValue=MAX(IndValue,SUM(U_Modal(:,:,PP_N-iDeg:PP_N-iDeg))**2 /  &
-                        (SUM(U_Modal(:,:,0:PP_N-iDeg))**2+EPSILON(0.)))
+  IndValue=MAX(IndValue,SUM(U_Modal(:,:,PP_N-iDeg:PP_N-iDeg)**2) /  &
+                        (SUM(U_Modal(:,:,0:PP_N-iDeg)**2)+EPSILON(0.)))
 #endif
 END DO
 ! Normalize indicator value
