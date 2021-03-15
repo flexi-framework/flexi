@@ -119,6 +119,11 @@ FOREACH (_var IN LISTS flexiVars)
 ENDFOREACH()
 
 # =========================================================================
+# Generall options neede e.g. for dependend options
+# =========================================================================
+OPTION(POSTI "Build POSTI toolset" ON)
+
+# =========================================================================
 # ADD LIBRARIES
 # =========================================================================
 INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/CMakeListsLib.txt)
@@ -131,7 +136,6 @@ INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/src/CMakeLists.txt)
 # =========================================================================
 # Posti
 # =========================================================================
-OPTION(POSTI "Build POSTI toolset" ON)
 IF(POSTI)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/CMakeLists.txt)
 ELSE()

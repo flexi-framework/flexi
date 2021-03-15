@@ -1,0 +1,311 @@
+!=================================================================================================================================
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
+! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
+!
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
+! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+!
+! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+! of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License v3.0 for more details.
+!
+! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
+!=================================================================================================================================
+#if PARABOLIC
+#include "flexi.h"
+#include "eos.h"
+
+!==================================================================================================================================
+!> \brief Contains the BR2 lifting procedure (initialization and lifting operator) for computing the lifted solution gradients
+!> according to Bassi, Rebay et al., "A high-order accurate discontinuous Finite Element method for inviscid an viscous
+!> turbomachinery flows", 1997. The lifted gradients are required for the viscous fluxes.
+!>
+!> The BR1 scheme has been found to be unstable for purely elliptic equations. Consequently, the BR2 scheme provides a stable method
+!> with local lifting operators. In contrast to the BR1 scheme, the BR2 scheme requires a strong form of the lifting operator. The
+!> surface gradients are lifted with an additional penalty term \f$ \eta_{BR2} \f$. Stability was shown for \f$ \eta_{BR2} > \f$
+!> number of element faces.
+!> Similar to the BR1 scheme, both, conservative and non-conservative volume integrals are available.
+!>
+!> NB: The lifting procedure is only necessary for a DG solution. If the element contains a FV solution, the lifting procedure is
+!> skipped and instead central gradients are calculated for the comuptation of viscous fluxes
+!>
+!> Important parameters:
+!> - doConservativeLifting: If true, the volume contribution to the gradients is in conservative form, i.e. the solution is derived
+!>   multiplied by the metrics terms
+!> - etaBR2: Penalty term for the surface contribution of the BR2 lifting. Note, stability is shown only for \f$ \eta_{BR2} > \f$
+!>   number of element faces
+!>
+!> Default are non-conservative lifting with etaBR2 = 2
+!>
+!> Note that the gradient arrays in x/y/z directions in the volume and on the surfaces contain the gradients of the primitive
+!> variables, i.e. they must be allocated for PP_nVarPrim variables, i.e. \f$ (\rho, u_1,u_2,u_3,p,T) \f$.
+!==================================================================================================================================
+SUBROUTINE Lifting_BR2(UPrim,UPrim_master,UPrim_slave,t)
+! MODULES
+USE MOD_Globals
+USE MOD_Preproc
+USE MOD_Lifting_Vars
+USE MOD_ProlongToFaceLifting, ONLY: ProlongToFaceLifting
+USE MOD_ApplyJacobianLifting, ONLY: ApplyJacobianLifting
+USE MOD_Interpolation_Vars,   ONLY: L_Minus,L_Plus
+USE MOD_FillMortarLifting,    ONLY: U_MortarLifting,Flux_MortarLifting
+#if USE_MPI
+USE MOD_MPI_Vars
+USE MOD_MPI,                  ONLY: StartReceiveMPIData,StartSendMPIData,FinishExchangeMPIData
+#endif
+USE MOD_Mesh_Vars,            ONLY: nSides
+USE MOD_Mesh_Vars,            ONLY: nElems
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+REAL,INTENT(IN)    :: UPrim(       PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< solution vector for which lifted gradients
+                                                                             !> will be computed
+REAL,INTENT(INOUT) :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides)      !< solution on the master sides
+REAL,INTENT(INOUT) :: UPrim_slave( PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides)      !< solution on the slave sides
+REAL,INTENT(IN)    :: t                                                      !< current simulation time
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!==================================================================================================================================
+! fill the global surface flux list
+!fluxX=0. !don't nullify fluxes if not really needed (very expensive)
+!fluxY=0. !don't nullify fluxes if not really needed (very expensive)
+!fluxZ=0. !don't nullify fluxes if not really needed (very expensive)
+#if USE_MPI
+! Receive YOUR
+CALL StartReceiveMPIData(FluxX,DataSizeSideGrad,1,nSides,MPIRequest_gradU(:,1,RECV),SendID=1)
+CALL StartReceiveMPIData(FluxY,DataSizeSideGrad,1,nSides,MPIRequest_gradU(:,2,RECV),SendID=1)
+#if PP_dim == 3
+CALL StartReceiveMPIData(FluxZ,DataSizeSideGrad,1,nSides,MPIRequest_gradU(:,3,RECV),SendID=1)
+#endif
+! Compute lifting MPI fluxes
+CALL Lifting_FillFlux(1,UPrim_master,UPrim_slave,FluxX,doMPISides=.TRUE.)
+CALL Lifting_FillFlux(2,UPrim_master,UPrim_slave,FluxY,doMPISides=.TRUE.)
+#if PP_dim == 3
+CALL Lifting_FillFlux(3,UPrim_master,UPrim_slave,FluxZ,doMPISides=.TRUE.)
+#endif
+! Start Send MINE
+CALL StartSendMPIData(   FluxX,DataSizeSideGrad,1,nSides,MPIRequest_gradU(:,1,SEND),SendID=1)
+CALL StartSendMPIData(   FluxY,DataSizeSideGrad,1,nSides,MPIRequest_gradU(:,2,SEND),SendID=1)
+#if PP_dim == 3
+CALL StartSendMPIData(   FluxZ,DataSizeSideGrad,1,nSides,MPIRequest_gradU(:,3,SEND),SendID=1)
+#endif
+#endif /*USE_MPI*/
+
+! fill the all surface fluxes on this proc
+CALL Lifting_FillFlux_BC(t,UPrim_master,FluxX=FluxX,FluxY=FluxY,FluxZ=FluxZ)
+CALL Lifting_FillFlux(1,UPrim_master,UPrim_slave,FluxX,doMPISides=.FALSE.)
+CALL Lifting_FillFlux(2,UPrim_master,UPrim_slave,FluxY,doMPISides=.FALSE.)
+#if PP_dim == 3
+CALL Lifting_FillFlux(3,UPrim_master,UPrim_slave,FluxZ,doMPISides=.FALSE.)
+#endif
+
+CALL Flux_MortarLifting(FluxX,FluxX,doMPISides=.FALSE.,weak=.FALSE.)
+CALL Flux_MortarLifting(FluxY,FluxY,doMPISides=.FALSE.,weak=.FALSE.)
+#if PP_dim == 3
+CALL Flux_MortarLifting(FluxZ,FluxZ,doMPISides=.FALSE.,weak=.FALSE.)
+#endif
+
+! compute volume integral contribution and add to gradU
+IF(doConservativeLifting)THEN
+  CALL Lifting_VolInt(1,UPrim,GradUx)
+  CALL Lifting_VolInt(2,UPrim,GradUy)
+#if PP_dim == 3
+  CALL Lifting_VolInt(3,UPrim,GradUz)
+#endif
+ELSE
+  CALL Lifting_VolInt(UPrim,GradUx,GradUy,GradUz)
+END IF
+
+! Account for the jacobian
+! The Lifting already has the right sign
+! For FV elements no Jacobian is needed here, since already applied in Lifting_Volint (hidden in FV_Metrics_f/g/hTilde_sJ)
+CALL ApplyJacobianLifting(gradUx,toPhysical=.TRUE.,FVE=0)
+CALL ApplyJacobianLifting(gradUy,toPhysical=.TRUE.,FVE=0)
+#if PP_dim == 3
+CALL ApplyJacobianLifting(gradUz,toPhysical=.TRUE.,FVE=0)
+#endif
+
+! The volume contribution of the gradients must be interpolated to the face of the grid cells
+#if USE_MPI
+! Prolong to face for MPI sides - send direction
+CALL ProlongToFaceLifting(PP_N,gradUx,gradUx_master,gradUx_slave,L_Minus,L_Plus,doMPISides=.TRUE.)
+CALL ProlongToFaceLifting(PP_N,gradUy,gradUy_master,gradUy_slave,L_Minus,L_Plus,doMPISides=.TRUE.)
+#if PP_dim == 3
+CALL ProlongToFaceLifting(PP_N,gradUz,gradUz_master,gradUz_slave,L_Minus,L_Plus,doMPISides=.TRUE.)
+#endif
+#endif /*USE_MPI*/
+! Prolong to face for BCSides, InnerSides and MPI sides - receive direction
+CALL ProlongToFaceLifting(PP_N,gradUx,gradUx_master,gradUx_slave,L_Minus,L_Plus,doMPISides=.FALSE.)
+CALL ProlongToFaceLifting(PP_N,gradUy,gradUy_master,gradUy_slave,L_Minus,L_Plus,doMPISides=.FALSE.)
+#if PP_dim == 3
+CALL ProlongToFaceLifting(PP_N,gradUz,gradUz_master,gradUz_slave,L_Minus,L_Plus,doMPISides=.FALSE.)
+#endif
+
+#if USE_MPI
+! Complete send / receive
+CALL FinishExchangeMPIData(6*nNbProcs,MPIRequest_gradU)
+CALL Flux_MortarLifting(FluxX,FluxX,doMPISides=.TRUE.,weak=.FALSE.)
+CALL Flux_MortarLifting(FluxY,FluxY,doMPISides=.TRUE.,weak=.FALSE.)
+#if PP_dim == 3
+CALL Flux_MortarLifting(FluxZ,FluxZ,doMPISides=.TRUE.,weak=.FALSE.)
+#endif
+
+CALL StartReceiveMPIData(gradUx_slave,DataSizeSideGrad,1,nSides,MPIRequest_gradU(:,1,RECV),SendID=2)
+CALL StartReceiveMPIData(gradUy_slave,DataSizeSideGrad,1,nSides,MPIRequest_gradU(:,2,RECV),SendID=2)
+#if PP_dim == 3
+CALL StartReceiveMPIData(gradUz_slave,DataSizeSideGrad,1,nSides,MPIRequest_gradU(:,3,RECV),SendID=2)
+#endif
+
+CALL Lifting_SurfInt_BR2(FluxX,gradUx,gradUx_master,gradUx_slave,doMPISides=.TRUE.)
+CALL U_MortarLifting(gradUx_master,gradUx_slave,doMPISides=.TRUE.)
+CALL StartSendMPIData(gradUx_slave,DataSizeSideGrad,1,nSides,MPIRequest_gradU(:,1,SEND),SendID=2)
+CALL Lifting_SurfInt_BR2(FluxY,gradUy,gradUy_master,gradUy_slave,doMPISides=.TRUE.)
+CALL U_MortarLifting(gradUy_master,gradUy_slave,doMPISides=.TRUE.)
+CALL StartSendMPIData(gradUy_slave,DataSizeSideGrad,1,nSides,MPIRequest_gradU(:,2,SEND),SendID=2)
+#if PP_dim == 3
+CALL Lifting_SurfInt_BR2(FluxZ,gradUz,gradUz_master,gradUz_slave,doMPISides=.TRUE.)
+CALL U_MortarLifting(gradUz_master,gradUz_slave,doMPISides=.TRUE.)
+CALL StartSendMPIData(gradUz_slave,DataSizeSideGrad,1,nSides,MPIRequest_gradU(:,3,SEND),SendID=2)
+#endif
+#endif /*USE_MPI*/
+
+! Add the surface lifting flux to the prolonged volume contributions of the gradients and computes the surface integral
+CALL Lifting_SurfInt_BR2(FluxX,gradUx,gradUx_master,gradUx_slave,doMPISides=.FALSE.)
+CALL Lifting_SurfInt_BR2(FluxY,gradUy,gradUy_master,gradUy_slave,doMPISides=.FALSE.)
+#if PP_dim == 3
+CALL Lifting_SurfInt_BR2(FluxZ,gradUz,gradUz_master,gradUz_slave,doMPISides=.FALSE.)
+#endif
+CALL U_MortarLifting(gradUx_master,gradUx_slave,doMPISides=.FALSE.)
+CALL U_MortarLifting(gradUy_master,gradUy_slave,doMPISides=.FALSE.)
+#if PP_dim == 3
+CALL U_MortarLifting(gradUz_master,gradUz_slave,doMPISides=.FALSE.)
+#endif
+
+END SUBROUTINE Lifting_BR2
+
+!==================================================================================================================================
+!> \brief Contains the different Surface integral formulations for the BR2 lifting operation
+!>
+!> Computes the Surface integral for all faces using UPrim and updates gradU
+!> Computes only inner surface integrals!
+!> Surface integrals are separated for each direction
+!==================================================================================================================================
+PPURE SUBROUTINE Lifting_SurfInt_BR2(Flux,gradU,gradU_master,gradU_slave,doMPISides)
+! MODULES
+USE MOD_Globals
+USE MOD_PreProc
+USE MOD_DG_Vars,            ONLY: L_HatMinus
+USE MOD_Interpolation_Vars, ONLY: L_Minus
+USE MOD_Mesh_Vars,          ONLY: SideToElem,nSides
+USE MOD_Mesh_Vars,          ONLY: nElems
+USE MOD_Mesh_Vars,          ONLY: sJ
+USE MOD_Mesh_Vars,          ONLY: S2V
+USE MOD_Mesh_Vars,          ONLY: firstMPISide_YOUR, lastMPISide_YOUR
+USE MOD_Mesh_Vars,          ONLY: firstInnerSide,    lastInnerSide
+USE MOD_Mesh_Vars,          ONLY: firstBCSide,       lastMPISide_MINE
+USE MOD_Mesh_Vars,          ONLY: firstMortarMPISide,lastMortarMPISide
+USE MOD_Lifting_Vars,       ONLY: etaBR2, etaBR2_wall
+USE MOD_Mesh_Vars,          ONLY: BC,BoundaryType,nBCSides
+#if FV_ENABLED
+USE MOD_FV_Vars,            ONLY: FV_Elems_master,FV_Elems_slave
+#endif
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT VARIABLES
+LOGICAL,INTENT(IN)   :: doMPISides  !< = .TRUE. only YOUR MPISides are filled, =.FALSE. BCSides+InnerSides+MPISides MINE
+REAL,INTENT(IN)      :: Flux(1:PP_nVarLifting,0:PP_N,0:PP_NZ,nSides) !< Surface flux contribution
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+REAL,INTENT(INOUT)   :: gradU(       PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< Volume contribution to gradients
+REAL,INTENT(INOUT)   :: gradU_master(PP_nVarLifting,0:PP_N,0:PP_NZ,1:nSides)        !< Gradient on the master sides
+REAL,INTENT(INOUT)   :: gradU_slave( PP_nVarLifting,0:PP_N,0:PP_NZ,1:nSides)        !< Gradient on the slave sides
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL                 :: F_loc(PP_nVarLifting)
+INTEGER              :: ElemID,nbElemID,l,p,q,Flip,SideID,locSideID,nblocSideID,ijk(3)
+INTEGER              :: firstSideID,lastSideID
+REAL                 :: eta
+!==================================================================================================================================
+
+!slave Sides
+IF(doMPISides)THEN
+  ! only MPI YOUR
+  firstSideID = firstMPISide_YOUR
+  lastSideID  =  lastMPISide_YOUR
+ELSE
+  ! only inner sides
+  firstSideID = firstInnerSide
+  lastSideID  =  lastInnerSide
+END IF
+
+eta = etaBR2
+DO SideID=firstSideID,lastSideID
+  nbElemID    = SideToElem(S2E_NB_ELEM_ID,SideID)
+
+  ! slave sides
+  IF(nbElemID.GT.0)THEN
+    IF (FV_Elems_slave(SideID).EQ.0) THEN ! DG element
+      nblocSideID = SideToElem(S2E_NB_LOC_SIDE_ID,SideID)
+      flip        = SideToElem(S2E_FLIP,SideID)
+      DO q=0,PP_NZ; DO p=0,PP_N
+#if (PP_NodeType==1)
+        DO l=0,PP_N
+#elif (PP_NodeType==2)
+        DO l=0,0 ! special mapping, returns 0 or PP_N dep. on locSideID and flip
+#endif
+        ijk=S2V(1:3,l,p,q,flip,nblocSideID) ! get volume indices belonging to the local side indices p,q,l
+        F_loc=sJ(ijk(1),ijk(2),ijk(3),nbElemID,0)*Flux(:,p,q,SideID)*L_hatMinus(l)
+        ! contribution to volume gradient
+        gradU(:,ijk(1),ijk(2),ijk(3),nbElemID)=gradU(:,ijk(1),ijk(2),ijk(3),nbElemID)+F_loc
+        ! local contribution to surface gradient
+        gradU_slave(:,p,q,SideID) = gradU_slave(:,p,q,SideID)+eta*L_Minus(l)*F_loc
+      END DO; END DO; END DO ! l,q,p
+    END IF
+  END IF
+END DO ! SideID=1,nSides
+
+!master sides
+IF(doMPISides)THEN
+  ! only mortar MPI sides
+  firstSideID = firstMortarMPISide
+   lastSideID =  lastMortarMPISide
+ELSE
+  ! all sides except YOUR and MortarMPI
+  firstSideID = firstBCSide
+   lastSideID = lastMPISide_MINE
+END IF
+
+DO SideID=firstSideID,lastSideID
+  IF(SideID .LE. nBCSides) THEN
+    IF (Boundarytype(BC(SideID),BC_TYPE).EQ.4.OR.Boundarytype(BC(SideID),BC_TYPE).EQ.3) THEN
+      eta =etaBR2_wall
+    ELSE
+      eta = etaBR2
+    END IF
+  ELSE
+    eta = etaBR2
+  END IF
+  ElemID      = SideToElem(S2E_ELEM_ID,   SideID)
+  ! master sides
+  IF(ElemID.GT.0)THEN
+    IF (FV_Elems_master(SideID).EQ.0) THEN ! DG element
+      locSideID = SideToElem(S2E_LOC_SIDE_ID,SideID)
+      flip      = 0
+      DO q=0,PP_NZ; DO p=0,PP_N
+#if (PP_NodeType==1)
+        DO l=0,PP_N
+#elif (PP_NodeType==2)
+        DO l=0,0 ! special mapping, returns 0 or PP_N dep. on locSideID and flip
+#endif
+        ijk=S2V(1:3,l,p,q,flip,locSideID) ! get volume indices belonging to the local side indices p,q,l
+        F_loc=sJ(ijk(1),ijk(2),ijk(3),ElemID,0)*Flux(:,p,q,SideID)*L_hatMinus(l)
+        ! contribution to volume gradient
+        gradU(:,ijk(1),ijk(2),ijk(3),ElemID) = gradU(:,ijk(1),ijk(2),ijk(3),ElemID)+F_loc
+        ! local contribution to surface gradient
+        gradU_master(:,p,q,SideID) = gradU_master(:,p,q,SideID)+eta*L_Minus(l)*F_loc
+      END DO; END DO; END DO ! l,q,p
+    END IF
+  END IF
+END DO ! SideID=1,nSides
+END SUBROUTINE Lifting_SurfInt_BR2
+#endif /* PARABOLIC */
