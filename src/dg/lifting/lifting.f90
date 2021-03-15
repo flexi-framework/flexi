@@ -26,8 +26,7 @@ SAVE
 INTERFACE Lifting
 #if PP_Lifting==1
   MODULE PROCEDURE Lifting_BR1
-#endif
-#if PP_Lifting==2
+#elif PP_Lifting==2
   MODULE PROCEDURE Lifting_BR2
 #endif
 END INTERFACE
@@ -55,8 +54,12 @@ PUBLIC::Lifting
 !==================================================================================================================================
 
 CONTAINS
+#if PP_Lifting==1
 #include "lifting_br1.t90"
+#elif PP_Lifting==2
 #include "lifting_br2.t90"
+#endif
+
 #include "lifting_fillflux.t90"
 #include "lifting_volint.t90"
 
