@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -26,7 +26,7 @@
 #elif PGI
 #  define NO_ISNAN
 #endif
-#ifndef __FILENAME__
+#ifndef __FILENAME__ 
 #define __FILENAME__ __FILE__
 #endif
 #define __STAMP__ __FILENAME__,__LINE__,__DATE__,__TIME__
@@ -41,8 +41,8 @@
 #define CHECKSAFEINT(x,k)  IF(x>HUGE(1_  k).OR.x<-HUGE(1_  k))       CALL ABORT(__STAMP__,'Integer conversion failed: out of range!')
 #define CHECKSAFEREAL(x,k) IF(x>HUGE(1._ k).OR.x<-HUGE(1._ k))       CALL ABORT(__STAMP__,'Real conversion failed: out of range!')
 #elif CRAY
-#define CHECKSAFEINT(x,k)
-#define CHECKSAFEREAL(x,k)
+#define CHECKSAFEINT(x,k)  
+#define CHECKSAFEREAL(x,k) 
 #else
 #define CHECKSAFEINT(x,k)  IF(x>HUGE(1_  ## k).OR.x<-HUGE(1_  ## k)) CALL ABORT(__STAMP__,'Integer conversion failed: out of range!')
 #define CHECKSAFEREAL(x,k) IF(x>HUGE(1._ ## k).OR.x<-HUGE(1._ ## k)) CALL ABORT(__STAMP__,'Real conversion failed: out of range!')
@@ -65,7 +65,7 @@
 #  define IPWRITE WRITE
 #  define GETTIME(a) CALL CPU_TIME(a)
 #endif
-#define ERRWRITE(a,b) CALL CreateErrFile(); IF(ErrorFiles) WRITE(UNIT_errOut,b)
+#define ERRWRITE(a,b) CALL CreateErrFile(); IF(ErrorFiles) WRITE(UNIT_errOut,b) 
 #define LOGWRITE(a,b) IF(Logging) WRITE(UNIT_logOut,b)
 #define SDEALLOCATE(A) IF(ALLOCATED(A))  DEALLOCATE(A)
 #define ADEALLOCATE(A) IF(ASSOCIATED(A)) DEALLOCATE(A)

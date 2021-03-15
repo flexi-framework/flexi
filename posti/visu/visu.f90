@@ -760,7 +760,7 @@ SDEALLOCATE(nSidesPerBCNameVisu_DG)
 SDEALLOCATE(nSidesPerBCNameVisu_FV)
 
 #if USE_MPI
-  CALL FinalizeMPI()
+CALL FinalizeMPI()
 #endif /* USE_MPI */
 
 END SUBROUTINE FinalizeVisu

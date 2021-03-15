@@ -456,8 +456,8 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)  :: NVar                            !< number of variables to be filtered
-REAL,INTENT(INOUT)  :: U_in(NVar,0:PP_N,0:PP_N,0:PP_N) !< solution vector to be filtered
 REAL,INTENT(IN)     :: FilterMat(0:PP_N,0:PP_N)        !< filter matrix to be used
+REAL,INTENT(INOUT)  :: U_in(NVar,0:PP_N,0:PP_N,0:PP_N) !< solution vector to be filtered
 LOGICAL,INTENT(IN)  :: filter_ind(:)                   !< indicator to apply filtering only in selected direction(s)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

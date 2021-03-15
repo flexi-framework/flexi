@@ -444,7 +444,7 @@ SDEALLOCATE(wGPVol)
 SDEALLOCATE(wGPSurf)
 SDEALLOCATE(ElemVol)
 AnalyzeInitIsDone = .FALSE.
-
 END SUBROUTINE FinalizeAnalyze
+
 
 END MODULE MOD_Analyze

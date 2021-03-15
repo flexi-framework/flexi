@@ -159,7 +159,7 @@ IF(useCurveds.AND.(PP_N.LT.NGeo))THEN
                            & can cause problems on periodic boundaries! Set N>=NGeo'
 ENDIF
 
-CALL ReadMesh(MeshFile) !set nElems
+CALL readMesh(MeshFile) !set nElems
 
 #if (PP_dim == 2)
 ! If this is a two dimensional calculation, all subsequent operations are performed on the reduced mesh.
