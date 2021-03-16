@@ -109,7 +109,10 @@ IF (Avg2D) THEN
   END IF
   CALL MPI_GATHERV(Elem_xGP,nDOFPerProc(myRank),MPI_DOUBLE_PRECISION,&
                    Elem_xGP_glob,nDOFPerProc,offsetDOF,MPI_DOUBLE_PRECISION,0,MPI_COMM_FLEXI,iError)
-#endif
+#else
+  ALLOCATE(Elem_xGP_glob(1:3,0:PP_N,0:PP_N,0:PP_NZ,nGlobalElems))
+  Elem_xGP_glob = Elem_xGP
+#endif /* USE_MPI */
 
   IF (MPIRoot) THEN
     SDEALLOCATE(CoordsVisu_DG)
@@ -123,12 +126,12 @@ IF (Avg2D) THEN
       jj = Elem_IJK_glob(2,iElem)
       kk = Elem_IJK_glob(3,iElem)
       IF (kk.EQ.1) THEN
-#if FV_ENABLED    
+#if FV_ENABLED
         IF (FVAmountAvg2D(ii,jj).LE.0.5) THEN ! DG
 #endif
           iElemAvg = mapElemIJToDGElemAvg2D(ii,jj)
           CALL ChangeBasis2D(3,PP_N,NVisu,Vdm_N_NVisu,Elem_xGP_glob(:,:,:,0,iElem),CoordsVisu_DG(:,:,:,0,iElemAvg))
-#if FV_ENABLED    
+#if FV_ENABLED
         ELSE ! FV
           iElemAvg = mapElemIJToFVElemAvg2D(ii,jj)
           CALL ChangeBasis2D(3,PP_N,NVisu_FV,Vdm_N_NVisu_FV,Elem_xGP_glob(:,:,:,0,iElem),CoordsVisu_FV(:,:,:,0,iElemAvg))
