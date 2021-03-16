@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -81,7 +81,6 @@
 #define VISCOSITY_TEMPERATURE(T)       mu0*T**ExpoSuth
 #endif
 
-
 #define EXT_CONS    1:PP_nVar                  /* all ext cons variables */
 #define EXT_PRIM    PP_nVarPrim:PP_2Var        /* all ext prim variables */
 ! conservative (extended) variables
@@ -101,9 +100,24 @@
 #define EXT_TEMP    PP_nVar+TEMP               /* temperature */
 
 ! lifting variables
-#define LIFT_DENS                     1
-#define LIFT_VEL1                     2
-#define LIFT_VEL2                     3
-#define LIFT_VEL3                     4
-#define LIFT_VELV                     LIFT_VEL1:LIFT_VEL3
-#define LIFT_TEMP                     6
+#if PP_OPTLIFT == 0
+#define PP_nVarLifting               6
+#define LIFT_DENS                    1
+#define LIFT_VEL1                    2
+#define LIFT_VEL2                    3
+#define LIFT_VEL3                    4
+#define LIFT_PRES                    5
+#define LIFT_TEMP                    6
+#define LIFT_VELV                    LIFT_VEL1:LIFT_VEL3
+#define LIFT_VARS                    (/LIFT_DENS,LIFT_VEL1,LIFT_VEL2,LIFT_VEL3,LIFT,PRES,LIFT_TEMP/)
+#define PRIM_LIFT                    (/1,2,3,4,5,6/) /* density velocity range pressure and temperature */
+#else
+#define PP_nVarLifting               4
+#define LIFT_VEL1                    1
+#define LIFT_VEL2                    2
+#define LIFT_VEL3                    3
+#define LIFT_TEMP                    4
+#define LIFT_VELV                    LIFT_VEL1:LIFT_VEL3
+#define LIFT_VARS                    (/LIFT_VEL1,LIFT_VEL2,LIFT_VEL3,LIFT_TEMP/)
+#define PRIM_LIFT                    (/2,3,4,6/) /* velocity range and temperature */
+#endif

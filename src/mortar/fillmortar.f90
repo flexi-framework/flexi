@@ -12,6 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "eos.h"
 
 !==================================================================================================================================
 !> \brief Routines that perform the projection operation between nonconforming interfaces using the operators set up in module
@@ -88,6 +89,30 @@ PUBLIC::U_MortarPrim,Flux_MortarPrim
 CONTAINS
 #include "fillmortar.t90"
 END MODULE MOD_FillMortarPrim
+
+!==================================================================================================================================
+!> Routines that perform the projection operation between nonconforming interfaces of primitive variables
+!==================================================================================================================================
+MODULE MOD_FillMortarLifting
+IMPLICIT NONE
+PRIVATE
+
+#undef WITHnVar
+INTEGER,PARAMETER :: TP_nVar = PP_nVarLifting
+
+INTERFACE U_MortarLifting
+  MODULE PROCEDURE U_Mortar
+END INTERFACE
+
+INTERFACE Flux_MortarLifting
+  MODULE PROCEDURE Flux_Mortar
+END INTERFACE
+
+PUBLIC::U_MortarLifting,Flux_MortarLifting
+
+CONTAINS
+#include "fillmortar.t90"
+END MODULE MOD_FillMortarLifting
 
 !==================================================================================================================================
 !> Routines that perform the projection operation between nonconforming interfaces of a scalar variable

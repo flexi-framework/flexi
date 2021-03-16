@@ -236,10 +236,10 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)                                         :: Nloc     !< local polynomial degree
-                                                           !> solution in primitive variables at left/right side of the interface 
+                                                           !> solution in primitive variables at left/right side of the interface
 REAL,DIMENSION(PRIM       ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN) :: UPrim_L,UPrim_R
-                                                           !> solution gradients in x/y/z-direction left/right of the interface 
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN) :: gradUx_L,gradUx_R,gradUy_L,gradUy_R,gradUz_L,gradUz_R
+                                                           !> solution gradients in x/y/z-direction left/right of the interface
+REAL,DIMENSION(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)   :: gradUx_L,gradUx_R,gradUy_L,gradUy_R,gradUz_L,gradUz_R
 REAL,INTENT(IN)                                            :: nv(3,0:Nloc,0:ZDIM(Nloc)) !< normal vector
 REAL,INTENT(OUT)                                           :: F(PP_nVar,0:Nloc,0:ZDIM(Nloc)) !< viscous flux
 !----------------------------------------------------------------------------------------------------------------------------------

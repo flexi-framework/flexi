@@ -166,7 +166,7 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 REAL,DIMENSION(PRIM),INTENT(IN)         :: UPrim                !< Solution vector
 !> Gradients in x,y,z directions
-REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: gradUx,gradUy,gradUz
+REAL,DIMENSION(PP_nVarLifting),INTENT(IN)  :: gradUx,gradUy,gradUz
 !> Physical fluxes in x,y,z directions
 REAL,DIMENSION(CONS),INTENT(OUT)        :: f,g,h
 #if EDDYVISCOSITY
@@ -259,7 +259,7 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 REAL,DIMENSION(PRIM,0:PP_N,0:PP_N,0:PP_NZ),INTENT(IN)         :: UPrim                !< Solution vector
 !> Gradients in x,y,z directions
-REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ),INTENT(IN)  :: gradUx,gradUy,gradUz
+REAL,DIMENSION(PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ),INTENT(IN)  :: gradUx,gradUy,gradUz
 !> Physical fluxes in x,y,z directions
 REAL,DIMENSION(CONS,0:PP_N,0:PP_N,0:PP_NZ),INTENT(OUT)        :: f,g,h
 INTEGER, INTENT(IN)                                           :: iElem                !< element index in global array
@@ -293,7 +293,7 @@ IMPLICIT NONE
 INTEGER                                        ,INTENT(IN)  :: Nloc                 !< Polynomial degree of input solution
 REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim                !< Solution vector
 !> Gradients in x,y,z directions
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: gradUx,gradUy,gradUz
+REAL,DIMENSION(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: gradUx,gradUy,gradUz
 !> Physical fluxes in x,y,z directions
 REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: f,g,h
 #if EDDYVISCOSITY

@@ -165,7 +165,7 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 REAL,DIMENSION(PRIM),INTENT(IN)         :: UPrim                !< Solution vector
 !> Gradients in x,y,z directions
-REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: gradUx,gradUy,gradUz
+REAL,DIMENSION(PP_nVarLifting),INTENT(IN)  :: gradUx,gradUy,gradUz
 !> Physical fluxes in x,y,z directions
 REAL,DIMENSION(CONS),INTENT(OUT)        :: f,g,h
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -254,7 +254,6 @@ h    = 0.
 END ASSOCIATE
 END SUBROUTINE EvalDiffFlux3D_Point
 
-
 !==================================================================================================================================
 !> Wrapper routine to compute the diffusive part of the RANS SA fluxes for a single volume cell
 !==================================================================================================================================
@@ -269,7 +268,7 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 REAL,DIMENSION(PRIM       ,0:PP_N,0:PP_N,0:PP_NZ),INTENT(IN)  :: UPrim                !< Solution vector
 !> Gradients in x,y,z directions
-REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ),INTENT(IN)  :: gradUx,gradUy,gradUz
+REAL,DIMENSION(PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ),INTENT(IN)  :: gradUx,gradUy,gradUz
 !> Physical fluxes in x,y,z directions
 REAL,DIMENSION(CONS       ,0:PP_N,0:PP_N,0:PP_NZ),INTENT(OUT) :: f,g,h
 INTEGER, INTENT(IN)                                           :: iElem                !< element index in global array
@@ -295,7 +294,7 @@ IMPLICIT NONE
 INTEGER                                        ,INTENT(IN)  :: Nloc                 !< Polynomial degree of input solution
 REAL,DIMENSION(PRIM       ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim                !< Solution vector
 !> Gradients in x,y,z directions
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: gradUx,gradUy,gradUz
+REAL,DIMENSION(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: gradUx,gradUy,gradUz
 !> Physical fluxes in x,y,z directions
 REAL,DIMENSION(CONS       ,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: f,g,h
 #if EDDYVISCOSITY
@@ -314,9 +313,7 @@ DO j=0,ZDIM(Nloc); DO i=0,PP_N
                             )
 END DO; END DO ! i,j
 END SUBROUTINE EvalDiffFlux3D_Surface
-
 #endif /*PARABOLIC*/
-
 
 !==================================================================================================================================
 !> Computes 1D Euler flux using the conservative variables.
@@ -377,7 +374,5 @@ F(MOM3)= 0.
 F(ENER)=(U(EXT_ENER)+U(EXT_PRES))*U(EXT_VEL1)! (rho*e+p)*u
 F(MUSA)=(U(EXT_MUSA)*U(EXT_VEL1))            ! muTilde*u
 END SUBROUTINE EvalEulerFlux1D_fast
-
-
 
 END MODULE MOD_Flux

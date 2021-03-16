@@ -13,6 +13,7 @@
 !=================================================================================================================================
 #if FV_ENABLED
 #include "flexi.h"
+#include "eos.h"
 
 !==================================================================================================================================
 !> Module for the Finite Volume sub-cells shock capturing.
@@ -232,10 +233,11 @@ gradUzeta=0.
 ! Same as gradUxi/eta/zeta, but instead of a TVD-limiter the mean value of the slopes to the
 ! adjacent points is used. These slopes are used to calculate the physical gradients in
 ! x-/y-/z-direction, which are required for the parabolic/viscous flux.
+! Therefore the array size is adjusted to the number of lifting variables instead of the primitives.
 ! The gradients in x-/y-/z-direction are stored in the gradUx/y/z arrays of the lifting.
-ALLOCATE(gradUxi_central  (PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,nElems))
-ALLOCATE(gradUeta_central (PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,nElems))
-ALLOCATE(gradUzeta_central(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+ALLOCATE(gradUxi_central  (PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+ALLOCATE(gradUeta_central (PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,nElems))
+ALLOCATE(gradUzeta_central(PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 gradUxi_central  =0.
 gradUeta_central =0.
 gradUzeta_central=0.
@@ -354,7 +356,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 REAL,INTENT(INOUT) ::  U_In(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)      !< state vector to be switched from DG to FV representation
-REAL,INTENT(IN)    :: sJ_In(0:PP_N,0:PP_N,0:PP_NZ,0:FV_ENABLED) !< inverse of Jacobian determinant at each Gauss point 
+REAL,INTENT(IN)    :: sJ_In(0:PP_N,0:PP_N,0:PP_NZ,0:FV_ENABLED) !< inverse of Jacobian determinant at each Gauss point
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: i,j,k
@@ -390,7 +392,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 REAL,INTENT(INOUT) ::  U_In(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)      !< state vector to be switched from FV to DG representation
-REAL,INTENT(IN)    :: sJ_In(0:PP_N,0:PP_N,0:PP_NZ,0:FV_ENABLED) !< inverse of Jacobian determinant at each Gauss point 
+REAL,INTENT(IN)    :: sJ_In(0:PP_N,0:PP_N,0:PP_NZ,0:FV_ENABLED) !< inverse of Jacobian determinant at each Gauss point
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: i,j,k
@@ -452,7 +454,6 @@ USE MOD_DG_Vars           ,ONLY: U
 USE MOD_Mesh_Vars         ,ONLY: nElems
 USE MOD_FV_Vars           ,ONLY: FV_Elems,FV_Vdm,FV_IniSharp,FV_IniSupersample
 USE MOD_FV_Basis          ,ONLY: FV_Build_X_w_BdryX
-USE MOD_Indicator         ,ONLY: CalcIndicator
 USE MOD_Basis             ,ONLY: InitializeVandermonde
 USE MOD_Interpolation     ,ONLY: GetNodesAndWeights
 USE MOD_ChangeBasis       ,ONLY: ChangeBasis2D_XYZ, ChangeBasis3D_XYZ
@@ -474,7 +475,6 @@ REAL                   :: tmp(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 REAL                   :: Elem_xFV(1:3,0:PP_N,0:PP_N,0:PP_NZ)
 !===================================================================================================================================
 ! initial call of indicator
-CALL CalcIndicator(U,0.)
 FV_Elems = 0
 ! Switch DG elements to FV if necessary (converts initial DG solution to FV solution)
 CALL FV_Switch(U,AllowToDG=.FALSE.)
