@@ -114,6 +114,9 @@ UPrim=0.
 UPrim_master=0.
 UPrim_slave=0.
 
+! Allocate the UPrim_boundary for the boundary fluxes
+ALLOCATE(UPrim_boundary(PP_nVarPrim,0:PP_N,0:PP_NZ))
+
 ! Allocate two fluxes per side (necessary for coupling of FV and DG)
 ALLOCATE(Flux_master(PP_nVar,0:PP_N,0:PP_NZ,1:nSides))
 ALLOCATE(Flux_slave (PP_nVar,0:PP_N,0:PP_NZ,1:nSides))
@@ -222,6 +225,7 @@ USE MOD_Preproc
 USE MOD_Vector
 USE MOD_DG_Vars             ,ONLY: Ut,U,U_slave,U_master,Flux_master,Flux_slave,L_HatPlus,L_HatMinus
 USE MOD_DG_Vars             ,ONLY: UPrim,UPrim_master,UPrim_slave
+!USE MOD_DG_Vars,             ONLY: nTotalU
 USE MOD_VolInt
 USE MOD_SurfIntCons         ,ONLY: SurfIntCons
 USE MOD_ProlongToFaceCons   ,ONLY: ProlongToFaceCons
@@ -627,6 +631,8 @@ SDEALLOCATE(Flux_slave)
 SDEALLOCATE(UPrim)
 SDEALLOCATE(UPrim_master)
 SDEALLOCATE(UPrim_slave)
+SDEALLOCATE(UPrim_boundary)
+
 DGInitIsDone = .FALSE.
 END SUBROUTINE FinalizeDG
 
