@@ -270,7 +270,7 @@ INTEGER             :: i,j,k
 !==================================================================================================================================
 DO k=0,PP_NZ;  DO j=0,PP_N; DO i=0,PP_N
   CALL EvalDiffFlux3D_Point(Uprim(:,i,j,k),gradUx(:,i,j,k),gradUy(:,i,j,k),gradUz(:,i,j,k), &
-                                                 f(:,i,j,k),     g(:,i,j,k),     h(:,i,j,k)  &
+                                                f(:,i,j,k),     g(:,i,j,k),     h(:,i,j,k)  &
 #if EDDYVISCOSITY
                             ,muSGS(1,i,j,k,iElem)&
 #endif

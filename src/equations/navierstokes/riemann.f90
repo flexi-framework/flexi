@@ -340,42 +340,43 @@ SUBROUTINE ViscousFlux(Nloc,F,UPrim_L,UPrim_R, &
                       )
 ! MODULES
 USE MOD_Flux         ,ONLY: EvalDiffFlux3D
-USE MOD_Lifting_Vars ,ONLY: diffFluxX_L,diffFluxY_L,diffFluxZ_L
-USE MOD_Lifting_Vars ,ONLY: diffFluxX_R,diffFluxY_R,diffFluxZ_R
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)                                         :: Nloc     !< local polynomial degree
-                                                           !> solution in primitive variables at left/right side of the interface
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)   :: UPrim_L,UPrim_R
-                                                           !> solution gradients in x/y/z-direction left/right of the interface
-REAL,DIMENSION(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)   :: gradUx_L,gradUx_R,gradUy_L,gradUy_R,gradUz_L,gradUz_R
-REAL,INTENT(IN)                                            :: nv(3,0:Nloc,0:ZDIM(Nloc)) !< normal vector
-REAL,INTENT(OUT)                                           :: F(PP_nVar,0:Nloc,0:ZDIM(Nloc)) !< viscous flux
+INTEGER,INTENT(IN)                                            :: Nloc     !< local polynomial degree
+                                                              !> solution in primitive variables at left/right side of the interface
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)    :: UPrim_L,UPrim_R
+                                                              !> solution gradients in x/y/z-direction left/right of the interface
+REAL,DIMENSION(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)),INTENT(IN) :: gradUx_L,gradUx_R,gradUy_L,gradUy_R,gradUz_L,gradUz_R
+REAL,INTENT(IN)                                               :: nv(3,0:Nloc,0:ZDIM(Nloc)) !< normal vector
+REAL,INTENT(OUT)                                              :: F(PP_nVar,0:Nloc,0:ZDIM(Nloc)) !< viscous flux
 #if EDDYVISCOSITY
-                                                           !> eddy viscosity left/right of the interface
-REAL,DIMENSION(1,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)             :: muSGS_L,muSGS_R
+                                                              !> eddy viscosity left/right of the interface
+REAL,DIMENSION(1,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)              :: muSGS_L,muSGS_R
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                                              :: p,q
+INTEGER                                                       :: p,q
+REAL,DIMENSION(CONS,0:Nloc,0:ZDIM(Nloc))                      :: diffFluxX_L,diffFluxY_L,diffFluxZ_L
+REAL,DIMENSION(CONS,0:Nloc,0:ZDIM(Nloc))                      :: diffFluxX_R,diffFluxY_R,diffFluxZ_R
+
 !==================================================================================================================================
 ! Don't forget the diffusion contribution, my young padawan
 ! Compute NSE Diffusion flux
-  CALL EvalDiffFlux3D(Nloc,UPrim_L,gradUx_L,   gradUy_L,   gradUz_L, &
-                                diffFluxX_L,diffFluxY_L,diffFluxZ_L  &
+CALL EvalDiffFlux3D(Nloc,UPrim_L,gradUx_L,   gradUy_L,   gradUz_L, &
+                              diffFluxX_L,diffFluxY_L,diffFluxZ_L  &
 #if EDDYVISCOSITY
-                     ,muSGS_L&
+                   ,muSGS_L&
 #endif
       )
-  CALL EvalDiffFlux3D(Nloc,UPrim_R,gradUx_R,   gradUy_R,   gradUz_R, &
-                                diffFluxX_R,diffFluxY_R,diffFluxZ_R  &
+CALL EvalDiffFlux3D(Nloc,UPrim_R,gradUx_R,   gradUy_R,   gradUz_R, &
+                              diffFluxX_R,diffFluxY_R,diffFluxZ_R  &
 #if EDDYVISCOSITY
-                     ,muSGS_R&
+                   ,muSGS_R&
 #endif
-      )
+    )
 ! BR1 uses arithmetic mean of the fluxes
 DO q=0,ZDIM(Nloc); DO p=0,Nloc
   F(:,p,q)=0.5*(nv(1,p,q)*(diffFluxX_L(1:5,p,q)+diffFluxX_R(1:5,p,q)) &

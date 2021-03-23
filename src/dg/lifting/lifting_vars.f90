@@ -37,14 +37,6 @@ REAL,ALLOCATABLE :: FluxZ(:,:,:,:)                !< gradient flux in z-dir
 REAL,ALLOCATABLE :: gradUx(:,:,:,:,:)             !< gradients in x-dir at degree N
 REAL,ALLOCATABLE :: gradUy(:,:,:,:,:)             !< gradients in y-dir at degree N
 REAL,ALLOCATABLE :: gradUz(:,:,:,:,:)             !< gradients in z-dir at degree N
-! Diffusive fluxes
-REAL,ALLOCATABLE :: diffFluxX_L(:,:,:)
-REAL,ALLOCATABLE :: diffFluxX_R(:,:,:)
-REAL,ALLOCATABLE :: diffFluxY_L(:,:,:)
-REAL,ALLOCATABLE :: diffFluxY_R(:,:,:)
-REAL,ALLOCATABLE :: diffFluxZ_L(:,:,:)
-REAL,ALLOCATABLE :: diffFluxZ_R(:,:,:)
-
 REAL             :: etaBR2                        !< Lifting penalty for BR2. Increase improves stability
                                                   !< at the cost of performance and reduces jumps between two cells
 REAL             :: etaBR2_wall                   !< Lifting penalty for BR2 at the wall. Can be choosen different from etaBR2
