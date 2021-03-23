@@ -55,7 +55,7 @@ gnu:
   script:
     - rm -r build_gnu; mkdir -p build_gnu; cd build_gnu
     - git clone git@gitlab.com:reggie2.0/reggie2.0.git
-    - cmake .. -DFLEXI_BUILD_HDF5=OFF ; make -j 6
+    - cmake .. -DLIBS_BUILD_HDF5=OFF ; make -j 6
     - python ./reggie2.0/reggie.py ../regressioncheck/checks/run_basic/freestream_3D -j 6 -e ./bin/flexi
 
 

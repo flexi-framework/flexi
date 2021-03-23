@@ -5,7 +5,7 @@
 CMAKE_DEPENDENT_OPTION(POSTI_VISU                  "Build the visu tool"                                ON  "POSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_MERGETIMEAVERAGES     "Build the time-averaging tool"                      OFF "POSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_DMD                   "Build the DMD tool"                                 OFF "POSTI" OFF)
-CMAKE_DEPENDENT_OPTION(POSTI_RP_PREPARERE          "Build the Record Point preprocessing tool"          OFF "POSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_RP_PREPARE            "Build the Record Point preprocessing tool"          OFF "POSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_RP_VISUALIZE          "Build the Record Point visualization tool"          OFF "POSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_RP_EVALUATE           "Build the Record Point aposteriori evaluation tool" OFF "POSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_SWAPMESH              "Build the Swapmesh tool"                            OFF "POSTI" OFF)
@@ -62,7 +62,7 @@ IF(POSTI_DMD)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/dmd/CMakeLists.txt)
 ENDIF()
 
-IF(POSTI_RP_PREPARERE)
+IF(POSTI_RP_PREPARE)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/recordpoints/prepare/CMakeLists.txt)
 ENDIF()
 

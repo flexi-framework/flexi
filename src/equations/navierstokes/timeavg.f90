@@ -469,9 +469,9 @@ DO iElem=1,nElems
   STOP 'WriteTimeAverage for dissipation via vel gradients (DR_u / DR_S) not implemented yet for FV!'
 #endif
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      GradVel(:,1)=GradUx(2:4,i,j,k,iElem)
-      GradVel(:,2)=GradUy(2:4,i,j,k,iElem)
-      GradVel(:,3)=GradUz(2:4,i,j,k,iElem)
+      GradVel(:,1)=GradUx(LIFT_VELV,i,j,k,iElem)
+      GradVel(:,2)=GradUy(LIFT_VELV,i,j,k,iElem)
+      GradVel(:,3)=GradUz(LIFT_VELV,i,j,k,iElem)
       IF(CalcFluc(17))THEN
         Shear=0.5*(Gradvel+TRANSPOSE(GradVel))
         DO p=1,3; DO q=1,3

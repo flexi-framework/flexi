@@ -83,8 +83,10 @@ IF (FLEXI_PARABOLIC)
   ADD_DEFINITIONS(-DPARABOLIC=1)
 
   # Set the lifting
+  LIST(APPEND FLEXI_LIFTING_LIST  "br1"
+                                  "br2")
   SET(FLEXI_LIFTING "br1" CACHE STRING "Lifting method used for PARABOLIC")
-  SET_PROPERTY(CACHE FLEXI_LIFTING PROPERTY STRINGS ${LIFTINGS})
+  SET_PROPERTY(CACHE FLEXI_LIFTING PROPERTY STRINGS ${FLEXI_LIFTING_LIST})
 
   IF(    FLEXI_LIFTING STREQUAL "br1")
     ADD_DEFINITIONS(-DPP_Lifting=1)
@@ -157,6 +159,18 @@ IF(FLEXI_FV)
 ELSE()
   ADD_DEFINITIONS(-DFV_ENABLED=0)
   ADD_DEFINITIONS(-DFV_RECONSTRUCT=0)
+ENDIF()
+
+# =========================================================================
+# Performance mode
+# =========================================================================
+OPTION(FLEXI_PERFORMANCE "Enable performance optimizations" OFF)
+CMAKE_DEPENDENT_OPTION(FLEXI_OPTLIFT "Lift only needed variables" OFF
+                                     "FLEXI_PERFORMANCE;NOT POSTI" OFF)
+IF(FLEXI_OPTLIFT)
+  ADD_DEFINITIONS(-DPP_OPTLIFT=1)
+ELSE()
+  ADD_DEFINITIONS(-DPP_OPTLIFT=0)
 ENDIF()
 
 # =========================================================================
@@ -236,6 +250,8 @@ IF (WITHEOS GREATER 0)
   FILE(GLOB eosF90         ./src/equations/${FLEXI_EQNSYSNAME}/${FLEXI_EOS}/*.f90)
   LIST(APPEND eqnsysF90 ${eosF90})
   INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/src/equations/${FLEXI_EQNSYSNAME}/${FLEXI_EOS}/)
+ELSE()
+  INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/src/equations/${FLEXI_EQNSYSNAME}/) 
 ENDIF()
 
 # >> append F90 files of the eddy viscosity to 'eqnsysF90'-list
@@ -255,7 +271,7 @@ FILE(GLOB dgF90            ./src/dg/*.f90)
 
 # >> append F90 files of lifting to 'dgF90'-list
 IF (FLEXI_PARABOLIC)
-  FILE(GLOB liftingF90     ./src/dg/${FLEXI_LIFTING}/*.f90)
+  FILE(GLOB liftingF90     ./src/dg/lifting/*.f90)
   LIST(APPEND dgF90 ${liftingF90})
 ENDIF()
 

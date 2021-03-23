@@ -12,6 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "eos.h"
 
 !==================================================================================================================================
 !> Contains routines to compute the riemann (Advection, Diffusion) for a given Face
@@ -69,12 +70,12 @@ INTEGER,INTENT(IN)                                       :: Nloc                
 REAL,DIMENSION(PP_nVar,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)     :: U_L                          !< Left state
 REAL,DIMENSION(PP_nVar,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)     :: U_R                          !< Right state
 #if PARABOLIC
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN) :: gradUx_L                     !< Left gradient in x-direction
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN) :: gradUy_L                     !< Left gradient in y-direction
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN) :: gradUz_L                     !< Left gradient in z-direction
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN) :: gradUx_R                     !< Right gradient in x-direction
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN) :: gradUy_R                     !< Right gradient in y-direction
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN) :: gradUz_R                     !< Right gradient in z-direction
+REAL,DIMENSION(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)),INTENT(IN) :: gradUx_L                     !< Left gradient in x-direction
+REAL,DIMENSION(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)),INTENT(IN) :: gradUy_L                     !< Left gradient in y-direction
+REAL,DIMENSION(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)),INTENT(IN) :: gradUz_L                     !< Left gradient in z-direction
+REAL,DIMENSION(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)),INTENT(IN) :: gradUx_R                     !< Right gradient in x-direction
+REAL,DIMENSION(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)),INTENT(IN) :: gradUy_R                     !< Right gradient in y-direction
+REAL,DIMENSION(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)),INTENT(IN) :: gradUz_R                     !< Right gradient in z-direction
 #endif
 REAL,INTENT(IN)                                          :: nv(3,0:Nloc,0:ZDIM(Nloc))      !< Normal vector
 REAL,INTENT(IN)                                          :: t1(3,0:Nloc,0:ZDIM(Nloc))      !< First tangential vector
@@ -144,12 +145,12 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)                                              :: Nloc                         !< Polynomial degree
 REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)        :: U_L                          !< Left state
 REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)        :: U_R                          !< Right state
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN),TARGET :: gradUx_L                     !< Left gradient in x-direction
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN),TARGET :: gradUy_L                     !< Left gradient in y-direction
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN),TARGET :: gradUz_L                     !< Left gradient in z-direction
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN),TARGET :: gradUx_R                     !< Right gradient in x-direction
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN),TARGET :: gradUy_R                     !< Right gradient in y-direction
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN),TARGET :: gradUz_R                     !< Right gradient in z-direction
+REAL,DIMENSION(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)),INTENT(IN),TARGET :: gradUx_L                     !< Left gradient in x-direction
+REAL,DIMENSION(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)),INTENT(IN),TARGET :: gradUy_L                     !< Left gradient in y-direction
+REAL,DIMENSION(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)),INTENT(IN),TARGET :: gradUz_L                     !< Left gradient in z-direction
+REAL,DIMENSION(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)),INTENT(IN),TARGET :: gradUx_R                     !< Right gradient in x-direction
+REAL,DIMENSION(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)),INTENT(IN),TARGET :: gradUy_R                     !< Right gradient in y-direction
+REAL,DIMENSION(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)),INTENT(IN),TARGET :: gradUz_R                     !< Right gradient in z-direction
 REAL,INTENT(IN)                                                 :: nv(3,0:Nloc,0:ZDIM(Nloc))      !< Normal vector
 REAL,INTENT(OUT)                                                :: F(PP_nVar,0:Nloc,0:ZDIM(Nloc)) !< Flux
 !----------------------------------------------------------------------------------------------------------------------------------

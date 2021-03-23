@@ -13,7 +13,7 @@
 !=================================================================================================================================
 #if PARABOLIC
 !==================================================================================================================================
-!> Contains global variables used by the BR2 lifting procedure
+!> Contains global variables used by the lifting procedure.
 !==================================================================================================================================
 MODULE MOD_Lifting_Vars
 ! MODULES
@@ -24,16 +24,16 @@ SAVE
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! interior face gradients for all elements
-REAL,ALLOCATABLE :: gradUx_slave(:,:,:,:)          !< slave side gradients in x-dir
-REAL,ALLOCATABLE :: gradUy_slave(:,:,:,:)          !< slave side gradients in y-dir
-REAL,ALLOCATABLE :: gradUz_slave(:,:,:,:)          !< slave side gradients in z-dir
-REAL,ALLOCATABLE :: gradUx_master(:,:,:,:)         !< master side gradients in x-dir
-REAL,ALLOCATABLE :: gradUy_master(:,:,:,:)         !< master side gradients in y-dir
-REAL,ALLOCATABLE :: gradUz_master(:,:,:,:)         !< master side gradients in z-dir
+REAL,ALLOCATABLE :: gradUx_slave(:,:,:,:)         !< slave side gradients in x-dir
+REAL,ALLOCATABLE :: gradUy_slave(:,:,:,:)         !< slave side gradients in x-dir
+REAL,ALLOCATABLE :: gradUz_slave(:,:,:,:)         !< slave side gradients in x-dir
+REAL,ALLOCATABLE :: gradUx_master(:,:,:,:)        !< master side gradients in x-dir
+REAL,ALLOCATABLE :: gradUy_master(:,:,:,:)        !< master side gradients in x-dir
+REAL,ALLOCATABLE :: gradUz_master(:,:,:,:)        !< master side gradients in x-dir
 REAL,ALLOCATABLE :: FluxX(:,:,:,:)                !< gradient flux in x-dir
 REAL,ALLOCATABLE :: FluxY(:,:,:,:)                !< gradient flux in y-dir
 REAL,ALLOCATABLE :: FluxZ(:,:,:,:)                !< gradient flux in z-dir
-! the lifted gradients needed for NSE
+! the lifted gradients
 REAL,ALLOCATABLE :: gradUx(:,:,:,:,:)             !< gradients in x-dir at degree N
 REAL,ALLOCATABLE :: gradUy(:,:,:,:,:)             !< gradients in y-dir at degree N
 REAL,ALLOCATABLE :: gradUz(:,:,:,:,:)             !< gradients in z-dir at degree N
@@ -49,7 +49,7 @@ REAL             :: etaBR2                        !< Lifting penalty for BR2. In
                                                   !< at the cost of performance and reduces jumps between two cells
 REAL             :: etaBR2_wall                   !< Lifting penalty for BR2 at the wall. Can be choosen different from etaBR2
                                                   !< to decrease wall velocities
-LOGICAL          :: doWeakLifting=.FALSE.         !< BR2 is always strong
+LOGICAL          :: doWeakLifting=.FALSE.         !< marks whether lifting is peformed in weak form, BR2 is always stong
 LOGICAL          :: doConservativeLifting=.FALSE. !< marks whether volume contribution to the gradients is computed in
                                                   !< conservative form, i.e. deriving the solution divided by the metric terms,
                                                   !< instead of deriving the solution and multiplying by the metrics
