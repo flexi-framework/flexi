@@ -276,14 +276,14 @@ SWRITE(UNIT_StdOut,*)'CALCULATION RUNNING...'
 CalcTimeStart=FLEXITIME()
 DO
   CurrentStage=1
-  IF(doCalcIndicator) CALL CalcIndicator(U,t)
-#if FV_ENABLED
-  CALL FV_Switch(U,AllowToDG=(nCalcTimestep.LT.1))
-#endif
 ! if doAnalyze=.TRUE.: gradients were already calculated in the previous step!
   IF(doAnalyze)THEN
     doAnalyze = .FALSE.
   ELSE
+    IF(doCalcIndicator) CALL CalcIndicator(U,t)
+#if FV_ENABLED
+    CALL FV_Switch(U,AllowToDG=(nCalcTimestep.LT.1))
+#endif
     CALL DGTimeDerivative_weakForm(t)
   END IF
   IF(nCalcTimestep.LT.1)THEN
@@ -334,7 +334,13 @@ DO
   END IF
 
   ! Call DG operator to fill face data, fluxes, gradients for analyze
-  IF(doAnalyze) CALL DGTimeDerivative_weakForm(t)
+  IF (doAnalyze) THEN
+    IF(doCalcIndicator) CALL CalcIndicator(U,t)
+#if FV_ENABLED
+    CALL FV_Switch(U,AllowToDG=(nCalcTimestep.LT.1))
+#endif
+    CALL DGTimeDerivative_weakForm(t)
+  END IF
 
   ! Call your Analysis Routine for your Testcase here.
   IF((MOD(iter,INT(nAnalyzeTestCase,KIND=8)).EQ.0).OR.doAnalyze) CALL AnalyzeTestCase(t)
