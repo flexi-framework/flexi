@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -73,7 +73,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 !==================================================================================================================================
 CALL prms%SetSection("Lifting")
 CALL prms%CreateLogicalOption('doWeakLifting',         "Set true to perform lifting in weak form.", '.FALSE.')
@@ -176,6 +176,19 @@ gradUx=0.
 gradUy=0.
 gradUz=0.
 
+ALLOCATE(diffFluxX_L(PP_nVar,0:PP_N,0:PP_NZ))
+ALLOCATE(diffFluxX_R(PP_nVar,0:PP_N,0:PP_NZ))
+ALLOCATE(diffFluxY_L(PP_nVar,0:PP_N,0:PP_NZ))
+ALLOCATE(diffFluxY_R(PP_nVar,0:PP_N,0:PP_NZ))
+ALLOCATE(diffFluxZ_L(PP_nVar,0:PP_N,0:PP_NZ))
+ALLOCATE(diffFluxZ_R(PP_nVar,0:PP_N,0:PP_NZ))
+diffFluxX_L=0.
+diffFluxX_R=0.
+diffFluxY_L=0.
+diffFluxY_R=0.
+diffFluxZ_L=0.
+diffFluxZ_R=0.
+
 LiftingInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT LIFTING DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
@@ -203,6 +216,12 @@ SDEALLOCATE(FluxX)
 SDEALLOCATE(FluxY)
 SDEALLOCATE(FluxZ)
 #endif
+SDEALLOCATE(diffFluxX_L)
+SDEALLOCATE(diffFluxX_R)
+SDEALLOCATE(diffFluxY_L)
+SDEALLOCATE(diffFluxY_R)
+SDEALLOCATE(diffFluxZ_L)
+SDEALLOCATE(diffFluxZ_R)
 LiftingInitIsDone = .FALSE.
 END SUBROUTINE FinalizeLifting
 
