@@ -847,9 +847,8 @@ END SUBROUTINE GetBoundaryFVgradient
 !==================================================================================================================================
 SUBROUTINE Lifting_GetBoundaryFlux(SideID,t,UPrim_master,Flux,NormVec,TangVec1,TangVec2,Face_xGP,SurfElem)
 ! MODULES
-USE MOD_Globals      ,ONLY: Abort
 USE MOD_PreProc
-USE MOD_DG_Vars      ,ONLY: UPrim_Boundary
+USE MOD_Globals      ,ONLY: Abort
 USE MOD_Mesh_Vars    ,ONLY: BoundaryType,BC
 USE MOD_Lifting_Vars ,ONLY: doWeakLifting
 USE MOD_Testcase     ,ONLY: Lifting_GetBoundaryFluxTestcase
@@ -869,6 +868,7 @@ REAL,INTENT(IN)   :: SurfElem(                0:PP_N,0:PP_NZ) !< surface element
 ! LOCAL VARIABLES
 INTEGER           :: p,q
 INTEGER           :: BCType,BCState
+REAL              :: UPrim_boundary(PP_nVarPrim,0:PP_N,0:PP_NZ)
 !==================================================================================================================================
 BCType  = Boundarytype(BC(SideID),BC_TYPE)
 BCState = Boundarytype(BC(SideID),BC_STATE)
