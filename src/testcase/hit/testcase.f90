@@ -117,7 +117,9 @@ END SUBROUTINE DefineParametersTestcase
 SUBROUTINE InitTestcase()
 ! MODULES
 USE MOD_Globals
+#if PP_N==N
 USE MOD_PreProc,            ONLY: N
+#endif
 USE MOD_Equation_Vars,      ONLY: RefStatePrim,IniRefState
 !USE MOD_Filter_Vars
 USE MOD_HDF5_Input,         ONLY: File_ID,OpenDataFile,CloseDataFile,ReadArray,DatasetExists,GetDataSize
@@ -295,7 +297,9 @@ END SUBROUTINE ExactFuncTestcase
 SUBROUTINE TestcaseSource(Ut)
 ! MODULES
 USE MOD_Globals
+#if PP_N==N
 USE MOD_PreProc,        ONLY: N
+#endif
 USE MOD_Analyze_Vars,   ONLY: wGPVol,ElemVol,Vol
 USE MOD_DG_Vars,        ONLY: U
 USE MOD_EOS,            ONLY: ConsToPrim
@@ -392,7 +396,9 @@ END SUBROUTINE TestcaseSource
 SUBROUTINE AnalyzeTestcase(t)
 ! MODULES
 USE MOD_Globals
+#if PP_N==N
 USE MOD_PreProc,        ONLY: N
+#endif
 USE MOD_Analyze_Vars,   ONLY: wGPVol,Vol
 USE MOD_DG_Vars,        ONLY: U
 USE MOD_EOS_Vars,       ONLY: mu0,KappaM1
