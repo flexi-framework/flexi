@@ -414,7 +414,11 @@ END SUBROUTINE Average2D
 !> very complicated) and copy the averaged solution to the third dimension.
 !> The output must be done on PP_N and on the calculation NodeType, this is enforced in the InitFile routine.
 !===================================================================================================================================
-SUBROUTINE WriteAverageToHDF5(nVar,NVisu,NVisu_FV,NodeType,OutputTime,MeshFileName,UVisu_DG,UVisu_FV)
+SUBROUTINE WriteAverageToHDF5(nVar,NVisu,NodeType,OutputTime,MeshFileName,UVisu_DG&
+#if FV_ENABLED
+    ,NVisu_FV,UVisu_FV&
+#endif /* FV_ENABLED */
+    )
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
@@ -424,12 +428,13 @@ USE MOD_IO_HDF5,        ONLY: OpenDataFile,CloseDataFile,AddToElemData
 USE MOD_HDF5_Input,     ONLY: File_ID
 USE MOD_Output_Vars,    ONLY: ProjectName
 USE MOD_Visu_Vars,      ONLY: Elem_IJK,VarnamesAll,mapAllVarsToVisuVars,nVarAll
-USE MOD_Visu_Vars,      ONLY: nElemsAvg2D_DG,mapElemIJToDGElemAvg2D,nElemsAvg2D_FV,mapElemIJToFVElemAvg2D
+USE MOD_Visu_Vars,      ONLY: nElemsAvg2D_DG,mapElemIJToDGElemAvg2D
 USE MOD_Mesh_Vars,      ONLY: nGlobalElems,offsetElem,nElems
 #if FV_ENABLED
 #if FV_RECONSTRUCT
-USE MOD_Visu_Vars,      ONLY: NCalc_FV
+USE MOD_Visu_Vars,      ONLY: NCalc_FV,
 #endif
+USE MOD_Visu_Vars,      ONLY: nElemsAvg2D_FV,mapElemIJToFVElemAvg2D,mapElemIJToFVElemAvg2D
 USE MOD_ChangeBasis,    ONLY: ChangeBasis2D
 USE MOD_FV_Vars,        ONLY: FV_Elems
 USE MOD_IO_HDF5,        ONLY: ElementOut
@@ -437,16 +442,22 @@ USE MOD_IO_HDF5,        ONLY: ElementOut
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)             :: nVar,NVisu,NVisu_FV
+INTEGER,INTENT(IN)             :: nVar,NVisu
 CHARACTER(LEN=255)             :: NodeType
 REAL,INTENT(IN)                :: OutputTime
-REAL,INTENT(IN)                :: UVisu_DG(0:NVisu   ,0:NVisu   ,0:0,nElemsAvg2D_DG,nVar)
-REAL,INTENT(IN)                :: UVisu_FV(0:NVisu_FV,0:NVisu_FV,0:0,nElemsAvg2D_FV,nVar)
 CHARACTER(LEN=255),INTENT(IN)  :: MeshFileName
+REAL,INTENT(IN)                :: UVisu_DG(0:NVisu   ,0:NVisu   ,0:0,nElemsAvg2D_DG,nVar)
+#if FV_ENABLED
+INTEGER,INTENT(IN)             :: NVisu_FV
+REAL,INTENT(IN)                :: UVisu_FV(0:NVisu_FV,0:NVisu_FV,0:0,nElemsAvg2D_FV,nVar)
+#endif /* FV_ENABLED */
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                :: UVisu3D(nVar,0:NVisu,0:NVisu,0:NVisu,nElems)
-INTEGER             :: iElemAvg2D_DG,iElemAvg2D_FV,iElem,ii,jj,k,iVar,iVarVisu
+INTEGER             :: iElemAvg2D_DG,iElem,ii,jj,k,iVar,iVarVisu
+#if FV_ENABLED
+INTEGER             :: iElemAvg2D_FV
+#endif
 INTEGER(HSIZE_T)    :: Dimsf(5)
 INTEGER(HID_T)      :: DSet_ID,FileSpace,HDF5DataType
 CHARACTER(LEN=255)  :: StrVarNames(nVar)
@@ -473,7 +484,9 @@ DO iElem=1,nElems
   ii = Elem_IJK(1,iElem)
   jj = Elem_IJK(2,iElem)
   iElemAvg2D_DG = mapElemIJToDGElemAvg2D(ii,jj)
+#if FV_ENABLED
   iElemAvg2D_FV = mapElemIJToFVElemAvg2D(ii,jj)
+#endif
   IF (iElemAvg2D_DG.GT.0) THEN
     ! Averaged as a DG element
     DO k=0,NVisu

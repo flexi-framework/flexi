@@ -610,7 +610,11 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
     CALL ConvertToVisu_GenericData(statefile)
   END IF
 
-  IF (Avg2DHDF5Output) CALL WriteAverageToHDF5(nVarVisu,NVisu,NVisu_FV,NodeType,OutputTime,MeshFile_state,UVisu_DG,UVisu_FV)
+  IF (Avg2DHDF5Output) CALL WriteAverageToHDF5(nVarVisu,NVisu,NodeType,OutputTime,MeshFile_state,UVisu_DG&
+#if FV_ENABLED
+    ,NVisu_FV,UVisu_FV&
+#endif /* FV_ENABLED */
+    )
 
 #if USE_MPI
    IF ((.NOT.MPIRoot).AND.(Avg2d)) THEN
