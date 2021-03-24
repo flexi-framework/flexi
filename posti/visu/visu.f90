@@ -339,7 +339,11 @@ END IF
 
 ! build distribution of FV and DG elements, which is stored in FV_Elems_loc
 IF (changedStateFile.OR.changedMeshFile.OR.changedDGonly) THEN
-  CALL Build_FV_DG_distribution(statefile)
+  CALL Build_FV_DG_distribution(&
+#if FV_ENABLED
+    statefile&
+#endif
+    )
 END IF
 
 ! reset withDGOperator flag and check if it is needed due to existing FV elements
@@ -357,7 +361,11 @@ CALL Build_mapDepToCalc_mapAllVarsToVisuVars()
 
 IF (Avg2D) THEN
   CALL InitAverage2D()
-  CALL BuildVandermonds_Avg2D(NCalc,NCalc_FV)
+  CALL BuildVandermonds_Avg2D(NCalc&
+#if FV_ENABLED
+    ,NCalc_FV&
+#endif
+    )
 END IF
 
 changedWithDGOperator = (withDGOperator.NEQV.withDGOperator_old)

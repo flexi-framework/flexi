@@ -141,7 +141,11 @@ END SUBROUTINE InitAverage2D
 !> * Vdm_DGToVisu: Conversion from calc to visu for DG
 !> * Vdm_FVToVisu: Conversion from calc to visu for FV
 !===================================================================================================================================
-SUBROUTINE BuildVandermonds_Avg2D(NCalc_DG,NCalc_FV)
+SUBROUTINE BuildVandermonds_Avg2D(NCalc_DG&
+#if FV_ENABLED
+    ,NCalc_FV&
+#endif
+    )
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Visu_Vars          ,ONLY: Vdm_DGToFV,Vdm_FVToDG,Vdm_DGToVisu,Vdm_FVToVisu,NodeTypeVisuPosti
@@ -153,7 +157,10 @@ USE MOD_FV_Basis           ,ONLY: FV_GetVandermonde
 #endif
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: NCalc_DG,NCalc_FV
+INTEGER,INTENT(IN) :: NCalc_DG
+#if FV_ENABLED
+INTEGER,INTENT(IN) :: NCalc_FV
+#endif
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 #if FV_ENABLED

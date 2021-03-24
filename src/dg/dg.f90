@@ -12,6 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "eos.h"
 
 !==================================================================================================================================
 !> \brief Computes the DGSEM spatial operator and updates residual Ut
@@ -222,7 +223,7 @@ USE MOD_Preproc
 USE MOD_Vector
 USE MOD_DG_Vars             ,ONLY: Ut,U,U_slave,U_master,Flux_master,Flux_slave,L_HatPlus,L_HatMinus
 USE MOD_DG_Vars             ,ONLY: UPrim,UPrim_master,UPrim_slave
-USE MOD_DG_Vars,             ONLY: nTotalU
+!USE MOD_DG_Vars,             ONLY: nTotalU
 USE MOD_VolInt
 USE MOD_SurfIntCons         ,ONLY: SurfIntCons
 USE MOD_ProlongToFaceCons   ,ONLY: ProlongToFaceCons
@@ -505,9 +506,9 @@ CALL FinishExchangeMPIData(6*nNbProcs,MPIRequest_gradU) ! gradUx,y,z: slave -> m
 #if FV_ENABLED
 ! 10.1)
 #if PARABOLIC
-CALL FV_DGtoFV(PP_nVarPrim,gradUx_master,gradUx_slave)
-CALL FV_DGtoFV(PP_nVarPrim,gradUy_master,gradUy_slave)
-CALL FV_DGtoFV(PP_nVarPrim,gradUz_master,gradUz_slave)
+CALL FV_DGtoFV(PP_nVarLifting,gradUx_master,gradUx_slave)
+CALL FV_DGtoFV(PP_nVarLifting,gradUy_master,gradUy_slave)
+CALL FV_DGtoFV(PP_nVarLifting,gradUz_master,gradUz_slave)
 #endif
 CALL FV_DGtoFV(PP_nVar    ,U_master     ,U_slave     )
 CALL FV_DGtoFV(PP_nVarPrim,UPrim_master ,UPrim_slave )

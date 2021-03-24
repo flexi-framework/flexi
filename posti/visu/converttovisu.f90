@@ -567,7 +567,11 @@ DO iVar=nVarDep+1,nVarAll
             FieldData_FV(:,:,:,iElem_FV,1) = FieldData(iVarDataset,:,:,:,mapFVElemsToAllElems(iElem_FV))
           END DO
 
-          CALL BuildVandermonds_Avg2D(nSize-1,nSize-1)
+          CALL BuildVandermonds_Avg2D(nSize-1&
+#if FV_ENABLED
+              ,nSize-1&
+#endif
+              )
           CALL Average2D(1,1,nSize-1,nSize-1,nElems_DG,nElems_FV,NodeType,&
               FieldData_DG,FieldData_FV, &
               Vdm_DGToFV,Vdm_FVToDG,Vdm_DGToVisu,FVdouble, &
