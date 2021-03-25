@@ -138,7 +138,7 @@ IMPLICIT NONE
 ! OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-LOGICAL                  :: hitDataExists
+LOGICAL                  :: HITDataExists
 INTEGER                  :: HSize_proc(5)
 REAL,ALLOCATABLE         :: HIT_local(:,:,:,:,:)
 CHARACTER(LEN=31)        :: varnames(nHITVars)
@@ -210,6 +210,8 @@ IF(DoRestart)THEN
     ELSE
       CALL CollectiveStop(__STAMP__,'Interpolation currently not supported for HIT test case!')
     END IF
+    ! Indicate that we already initialized HIT_RMS from restartfile
+    HIT_RMS_InitDone = .TRUE.
   ELSE
     SWRITE(UNIT_stdOut,'(A)')' | No restart variables for HIT test case found. Starting without u_RMS history!'
     HIT_RMS    = 0.
@@ -326,6 +328,14 @@ END IF
 ! Return if no HIT forcing required
 IF (.NOT.HIT_Forcing) RETURN
 
+! Initialize HIT_RMS with initial solution if not already read from restart file
+! Otherwise forcing will be huge in the first timestep
+IF (.NOT.HIT_RMS_InitDone) THEN
+  CALL ConsToPrim(PP_N,UPrim_temp,U)
+  HIT_RMS = UPrim_temp(2:4,:,:,:,:)**2
+  HIT_RMS_InitDone = .TRUE.
+END IF
+
 !==================================================================================================================================
 !> de Laage de Meux mode, case 'D. Restriction to the isotropic case and link with the linear forcing of Lundgren'
 !> de Laage de Meux, B.; Audebert, B.; Manceau, R. and Perrin, R., "Anisotropic linear forcing for synthetic turbulence generation
@@ -348,7 +358,7 @@ HIT_RMS(1:3,:,:,:,:) = HIT_RMS(1:3,:,:,:,:) + ((UPrim_temp(2:4,:,:,:,:))**2 - HI
 IF (HIT_Avg) THEN
 
   ! Only update forcing coefficient during first RK stage if required
-  IF (CurrentStage.EQ.1 .OR. HIT_1st) THEN
+  IF ( (CurrentStage.EQ.1) .OR. (.NOT.HIT_1st) ) THEN
     TKE = 0.
     ! Calculate forcing coefficient based on global spatial average
     DO iElem=1,nElems; DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
