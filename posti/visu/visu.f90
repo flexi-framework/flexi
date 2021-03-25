@@ -228,7 +228,7 @@ CHARACTER(LEN=255),INTENT(IN)    :: statefile
 CHARACTER(LEN=255),INTENT(INOUT) :: postifile
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL
-INTEGER                          :: nElems_State
+INTEGER                          :: nElems_State,N_State
 CHARACTER(LEN=255)               :: NodeType_State, cwd
 !===================================================================================================================================
 IF (STRICMP(fileType,'Mesh')) THEN
@@ -242,7 +242,11 @@ CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 ! read the meshfile attribute from statefile
 CALL ReadAttribute(File_ID,'MeshFile',    1,StrScalar =MeshFile_state)
 ! get properties
+#if PP_N==N
 CALL GetDataProps(nVar_State,PP_N,nElems_State,NodeType_State)
+#else
+CALL GetDataProps(nVar_State,N_State,nElems_State,NodeType_State)
+#endif 
 
 ! read options from posti parameter file
 CALL prms%read_options(postifile)
