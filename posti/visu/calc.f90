@@ -263,7 +263,6 @@ REAL                :: gradUyFace_tmp2(1:PP_nVarPrim,0:PP_N,0:PP_NZ)
 REAL                :: gradUzFace_tmp( 1:PP_nVarPrim,0:PP_N,0:PP_NZ)
 REAL                :: gradUzFace_tmp2(1:PP_nVarPrim,0:PP_N,0:PP_NZ)
 #endif
-REAL                :: Vdm_N_NCalc(0:NCalc,0:PP_N)
 #endif
 REAL,ALLOCATABLE    :: xGP_NCalc(:),wGP_NCalc(:),wBary_NCalc(:),L_Plus_NCalc(:),L_Minus_NCalc(:)
 INTEGER,ALLOCATABLE :: S2V2_NCalc(:,:,:,:,:)
