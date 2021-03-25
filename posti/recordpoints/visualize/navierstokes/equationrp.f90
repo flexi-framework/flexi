@@ -164,9 +164,9 @@ IF(Plane_doBLProps) THEN
   iPressure=-1
   iPressure=GETMAPBYNAME('Pressure',VarNameVisu,nVarVisu)
   IF(iPressure.GT.0) THEN
-    nBLProps=11
+    nBLProps=12
   ELSE
-    nBLProps=10
+    nBLProps=11
     WRITE(UNIT_stdOut,'(A)') '!!! No Pressure data provided, cp is not computed !!!'
   END IF
   ALLOCATE(VarNames_BLProps(nBLProps))
@@ -180,7 +180,8 @@ IF(Plane_doBLProps) THEN
   VarNames_BLProps(8)='u_reverse'
   VarNames_BLProps(9)='tau_w'
   VarNames_BLProps(10)='Re_tau'
-  IF(iPressure.GT.0) VarNames_BLProps(11)='c_p'
+  VarNames_BLProps(11)='u_tau'
+  IF(iPressure.GT.0) VarNames_BLProps(12)='c_p'
 END IF
 
 WRITE(UNIT_stdOut,'(A)')' INIT EquationRP DONE!'
@@ -517,7 +518,8 @@ DO iPlane=1,nPlanes
       Plane%BLProps(8,i)=ABS(u_r)                                      !u_reverse
       Plane%BLProps(9,i)=tau_W                                         !tau_W
       Plane%BLProps(10,i)=rho_delta*SQRT(ABS(tau_W)/rho_delta)*delta99/Mu0  !Re_tau
-      IF(iPressure.GT.0)  Plane%BLProps(11,i)=(RPDataTimeAvg_out(iPressure,Plane%IDlist(i,1))-pInf)/(0.5*rhoInf*uInf**2) !c_p
+      Plane%BLProps(11,i)=SQRT(ABS(tau_W)/rho_delta)                   !u_tau
+      IF(iPressure.GT.0)  Plane%BLProps(12,i)=(RPDataTimeAvg_out(iPressure,Plane%IDlist(i,1))-pInf)/(0.5*rhoInf*uInf**2) !c_p
       ! perform scaling if required
       SELECT CASE(Plane_BLvelScaling)
       CASE(0) ! do nothing
