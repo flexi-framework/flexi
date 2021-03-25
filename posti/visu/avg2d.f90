@@ -432,7 +432,7 @@ USE MOD_Visu_Vars,      ONLY: nElemsAvg2D_DG,mapElemIJToDGElemAvg2D
 USE MOD_Mesh_Vars,      ONLY: nGlobalElems,offsetElem,nElems
 #if FV_ENABLED
 #if FV_RECONSTRUCT
-USE MOD_Visu_Vars,      ONLY: NCalc_FV,
+USE MOD_Visu_Vars,      ONLY: NCalc_FV
 #endif
 USE MOD_Visu_Vars,      ONLY: nElemsAvg2D_FV,mapElemIJToFVElemAvg2D,mapElemIJToFVElemAvg2D
 USE MOD_ChangeBasis,    ONLY: ChangeBasis2D
