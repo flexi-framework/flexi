@@ -193,8 +193,10 @@ CALL MPI_ALLREDUCE(MPI_IN_PLACE,Surf,nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_
 CALL InitAnalyzeBasis(PP_N,NAnalyze,xGP,wBary)
 
 IF(doAnalyzeToFile)THEN
-  VarNames(1          :  PP_nVar)   ='L2_'//StrVarNames
-  VarNames(PP_nVar+1  :2*PP_nVar)   ='LInf_'//StrVarNames
+  DO i=1,PP_nVar
+    VarNames(i)                   = 'L2_'//TRIM(StrVarNames(i))
+    VarNames(PP_nVar+1:PP_nVar+i) = 'LInf_'//TRIM(StrVarNames(i))
+  END DO
   VarNames(2*PP_nVar+1:2*PP_nVar+5) = &
     [CHARACTER(9) :: "timesteps","t_CPU","DOF","Ncells","nProcs"] ! gfortran hates mixed length arrays
   FileName_ErrNorm='out.'//TRIM(ProjectName)

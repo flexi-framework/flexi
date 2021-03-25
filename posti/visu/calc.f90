@@ -254,6 +254,7 @@ INTEGER,INTENT(INOUT)         :: maskCalc(nVarDep)
 INTEGER             :: iVar,iVarIn,iVarOut,iSide,locSide,iElem,p,q,iElem_DG,iSide_DG
 REAL                :: Uface(1,0:NCalc,0:ZDIM(NCalc))
 #if PARABOLIC
+REAL                :: Vdm_N_NCalc(0:NCalc,0:PP_N)
 REAL                :: gradUxFace_tmp( 1:PP_nVarPrim,0:PP_N,0:PP_NZ)
 REAL                :: gradUyFace_tmp( 1:PP_nVarPrim,0:PP_N,0:PP_NZ)
 REAL                :: gradUxFace_tmp2(1:PP_nVarPrim,0:PP_N,0:PP_NZ)

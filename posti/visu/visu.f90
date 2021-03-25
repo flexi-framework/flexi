@@ -343,7 +343,7 @@ IF (changedStateFile.OR.changedMeshFile.OR.changedDGonly) THEN
 #if FV_ENABLED
     statefile&
 #endif
-      )
+    )
 END IF
 
 ! reset withDGOperator flag and check if it is needed due to existing FV elements
@@ -361,7 +361,11 @@ CALL Build_mapDepToCalc_mapAllVarsToVisuVars()
 
 IF (Avg2D) THEN
   CALL InitAverage2D()
-  CALL BuildVandermonds_Avg2D(NCalc,NCalc_FV)
+  CALL BuildVandermonds_Avg2D(NCalc&
+#if FV_ENABLED
+    ,NCalc_FV&
+#endif
+    )
 END IF
 
 changedWithDGOperator = (withDGOperator.NEQV.withDGOperator_old)
@@ -606,7 +610,11 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
     CALL ConvertToVisu_GenericData(statefile)
   END IF
 
-  IF (Avg2DHDF5Output) CALL WriteAverageToHDF5(nVarVisu,NVisu,NVisu_FV,NodeType,OutputTime,MeshFile_state,UVisu_DG,UVisu_FV)
+  IF (Avg2DHDF5Output) CALL WriteAverageToHDF5(nVarVisu,NVisu,NodeType,OutputTime,MeshFile_state,UVisu_DG&
+#if FV_ENABLED
+    ,NVisu_FV,UVisu_FV&
+#endif /* FV_ENABLED */
+    )
 
 #if USE_MPI
    IF ((.NOT.MPIRoot).AND.(Avg2d)) THEN
