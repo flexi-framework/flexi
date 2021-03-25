@@ -254,7 +254,7 @@ USE MOD_EOS          ,ONLY: ConsToPrim,PrimtoCons
 USE MOD_EOS          ,ONLY: PRESSURE_RIEMANN
 USE MOD_EOS_Vars     ,ONLY: sKappaM1,Kappa,KappaM1,R
 USE MOD_ExactFunc    ,ONLY: ExactFunc
-USE MOD_Equation_Vars,ONLY: IniExactFunc,BCDataPrim,RefStatePrim,nRefState
+USE MOD_Equation_Vars,ONLY: IniExactFunc,BCDataPrim,RefStatePrim
 !----------------------------------------------------------------------------------------------------------------------------------
 ! insert modules here
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -274,7 +274,6 @@ REAL,INTENT(OUT)        :: UPrim_boundary(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)) !< re
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                 :: p,q
-REAL                    :: absdiff(1:nRefState)
 INTEGER                 :: BCType,BCState
 REAL,DIMENSION(PP_nVar) :: Cons
 REAL                    :: MaOut
@@ -395,8 +394,7 @@ CASE(3,4,9,91,23,24,25,27)
         IF (BCState.GT.0) THEN
           pb = RefStatePrim(5,BCState)
         ELSE
-          absdiff = ABS(RefStatePrim(5,:) - UPrim_boundary(5,p,q))
-          pb = RefStatePrim(5,MINLOC(absdiff,1))
+          pb = RefStatePrim(5,MINLOC(ABS(RefStatePrim(5,:) - UPrim_boundary(5,p,q)),1))
         END IF
         UPrim_boundary(1,p,q)=kappa*pb/c
         UPrim_boundary(5,p,q)=pb
@@ -508,6 +506,7 @@ USE MOD_Riemann      ,ONLY: Riemann
 USE MOD_EddyVisc_Vars,ONLY: muSGS_master
 #endif
 USE MOD_Testcase     ,ONLY: GetBoundaryFluxTestcase
+USE MOD_DG_Vars      ,ONLY: UPrim_Boundary
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)   :: SideID                                         !< ID of current side
@@ -528,7 +527,6 @@ REAL,INTENT(OUT)     :: Flux(PP_nVar,0:Nloc,0:ZDIM(Nloc))              !< result
 ! LOCAL VARIABLES
 INTEGER                              :: p,q
 INTEGER                              :: BCType,BCState
-REAL                                 :: UPrim_boundary(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc))
 REAL                                 :: UCons_boundary(PP_nVar    ,0:Nloc,0:ZDIM(Nloc))
 REAL                                 :: UCons_master  (PP_nVar    ,0:Nloc,0:ZDIM(Nloc))
 #if PARABOLIC
@@ -801,6 +799,7 @@ USE MOD_PreProc
 USE MOD_Globals       ,ONLY: Abort
 USE MOD_Mesh_Vars     ,ONLY: BoundaryType,BC
 USE MOD_Testcase      ,ONLY: GetBoundaryFVgradientTestcase
+USE MOD_DG_Vars       ,ONLY: UPrim_Boundary
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -815,7 +814,6 @@ REAL,INTENT(IN)   :: Face_xGP(              3,0:PP_N,0:PP_NZ)    !< positions of
 REAL,INTENT(IN)   :: sdx_Face(                0:PP_N,0:PP_NZ,3)  !< distance between center of FV-cell and boundary
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL              :: UPrim_boundary(1:PP_nVarPrim,0:PP_N,0:PP_NZ)
 INTEGER           :: p,q
 INTEGER           :: BCType,BCState
 !==================================================================================================================================
@@ -849,8 +847,9 @@ END SUBROUTINE GetBoundaryFVgradient
 !==================================================================================================================================
 SUBROUTINE Lifting_GetBoundaryFlux(SideID,t,UPrim_master,Flux,NormVec,TangVec1,TangVec2,Face_xGP,SurfElem)
 ! MODULES
-USE MOD_PreProc
 USE MOD_Globals      ,ONLY: Abort
+USE MOD_PreProc
+USE MOD_DG_Vars      ,ONLY: UPrim_Boundary
 USE MOD_Mesh_Vars    ,ONLY: BoundaryType,BC
 USE MOD_Lifting_Vars ,ONLY: doWeakLifting
 USE MOD_Testcase     ,ONLY: Lifting_GetBoundaryFluxTestcase
@@ -870,7 +869,6 @@ REAL,INTENT(IN)   :: SurfElem(                0:PP_N,0:PP_NZ) !< surface element
 ! LOCAL VARIABLES
 INTEGER           :: p,q
 INTEGER           :: BCType,BCState
-REAL              :: UPrim_boundary(PP_nVarPrim,0:PP_N,0:PP_NZ)
 !==================================================================================================================================
 BCType  = Boundarytype(BC(SideID),BC_TYPE)
 BCState = Boundarytype(BC(SideID),BC_STATE)

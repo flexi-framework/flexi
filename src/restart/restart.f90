@@ -204,7 +204,7 @@ LOGICAL,INTENT(IN),OPTIONAL :: doFlushFiles !< flag to delete old state files
 ! LOCAL VARIABLES
 REAL,ALLOCATABLE   :: U_local(:,:,:,:,:)
 REAL,ALLOCATABLE   :: U_localNVar(:,:,:,:,:)
-#if PP_dim == 3 
+#if PP_dim == 3
 REAL,ALLOCATABLE   :: U_local2(:,:,:,:,:)
 #endif
 INTEGER            :: iElem,i,j,k
@@ -351,6 +351,7 @@ IF(DoRestart)THEN
     DEALLOCATE(U_local)
     SWRITE(UNIT_stdOut,*)'DONE!'
   END IF
+  DEALLOCATE(HSize)
   CALL CloseDataFile()
   ! Delete all files that will be rewritten
   IF (doFlushFiles_loc) CALL FlushFiles(RestartTime)
@@ -387,7 +388,7 @@ REAL                :: U_mean(PP_nVar)
 INTEGER             :: iOld,jOld,kOld,iSuper,jSuper,kSuper
 INTEGER             :: i,j,k
 !==================================================================================================================================
-! Supersample the old FV solution (with (NSuper+1)**dim superampling points in each new 
+! Supersample the old FV solution (with (NSuper+1)**dim superampling points in each new
 ! sub cell), then take the mean value
 deltaXiOld = 2.0/(REAL(NOld)+1.)       ! Length (in reference space) of a FV element in the old element
 deltaXi          = 2.0/(REAL(NNew)+1.)       ! Length (in reference space) of a FV element in the new element

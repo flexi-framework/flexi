@@ -63,7 +63,7 @@ USE MOD_SigmaModel
 USE MOD_Mesh_Vars  ,ONLY: nElems,nSides
 USE MOD_ReadInTools,ONLY: GETINTFROMSTR, GETREAL
 USE MOD_IO_HDF5    ,ONLY: AddToFieldData,FieldOut
-USE MOD_EOS_Vars   ,ONLY: mu0
+IMPLICIT NONE
 !===================================================================================================================================
 eddyViscType = GETINTFROMSTR('eddyViscType')
 

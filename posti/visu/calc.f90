@@ -226,12 +226,10 @@ USE MOD_Lifting_Vars       ,ONLY: gradUx,gradUy
 USE MOD_Lifting_Vars       ,ONLY: gradUz
 #endif
 USE MOD_Mesh_Vars          ,ONLY: SideToElem
-#endif
-USE MOD_Interpolation_Vars ,ONLY: NodeType
-#if PARABOLIC
 USE MOD_Interpolation_Vars ,ONLY: L_Minus,L_Plus
 USE MOD_Mesh_Vars          ,ONLY: S2V2
 #endif
+USE MOD_Interpolation_Vars ,ONLY: NodeType
 USE MOD_Interpolation      ,ONLY: GetVandermonde,GetNodesAndWeights
 USE MOD_StringTools        ,ONLY: STRICMP
 USE MOD_Mesh_Vars          ,ONLY: nBCSides,ElemToSide

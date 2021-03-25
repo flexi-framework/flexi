@@ -450,7 +450,7 @@ CLASS IS (LogicalArrayOption)
   END IF
   SWRITE(UNIT_StdOut,"(A3)",ADVANCE='NO') "(/ "
   DO i=1,SIZE(this%value)
-    SWRITE(UNIT_StdOut,"(L)",ADVANCE='NO') this%value(i)
+    SWRITE(UNIT_StdOut,"(L1)",ADVANCE='NO') this%value(i)
     IF (i.NE.SIZE(this%value)) THEN
       SWRITE(UNIT_StdOut,"(A2)",ADVANCE='NO') ", "
     END IF
