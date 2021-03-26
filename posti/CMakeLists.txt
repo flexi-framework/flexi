@@ -15,6 +15,14 @@ CMAKE_DEPENDENT_OPTION(POSTI_TO3D                  "Build the 3D extrusion tool"
 CMAKE_DEPENDENT_OPTION(POSTI_AVG2D                 "Build the 2D average tool"                          OFF "POSTI" OFF)
 
 
+# =========================================================================
+# Build vtk structured output library
+# =========================================================================
+ADD_LIBRARY(vtklib STATIC ${CMAKE_CURRENT_SOURCE_DIR}/posti/common/vtkOutput/vtkStructuredOutput.f90)
+SET_TARGET_PROPERTIES(vtklib PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS})
+TARGET_LINK_LIBRARIES(vtklib libflexishared)
+ADD_DEPENDENCIES(vtklib libflexishared)
+
 IF(POSTI_RP_VISUALIZE OR POSTI_CHANNEL_FFT)
   # =========================================================================
   # FFTW (FFT tool)
@@ -47,6 +55,11 @@ IF(POSTI_RP_VISUALIZE OR POSTI_CHANNEL_FFT)
     SET(FFTW_LIBRARY     ${FFTW_LIBRARIES})
   ENDIF()
 
+  # Build static FFTW library to be included in each POSTI tool
+  ADD_LIBRARY(fftwlib STATIC ${CMAKE_CURRENT_SOURCE_DIR}/posti/common/fftw/fftw.f90)
+  SET_TARGET_PROPERTIES(fftwlib PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS})
+  TARGET_LINK_LIBRARIES(fftwlib ${FFTW_LIBRARIES})
+  TARGET_INCLUDE_DIRECTORIES(fftwlib PRIVATE ${FFTW_INCLUDE_DIR})
 ENDIF()
 
 
@@ -87,9 +100,9 @@ IF(POSTI_WALLDISTANCE)
 ENDIF()
 
 IF(POSTI_TO3D)
-	INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/to3D/CMakeLists.txt)
+  INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/to3D/CMakeLists.txt)
 ENDIF()
 
 IF(POSTI_AVG2D)
-	INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/avg2D/CMakeLists.txt)
+  INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/avg2D/CMakeLists.txt)
 ENDIF()
