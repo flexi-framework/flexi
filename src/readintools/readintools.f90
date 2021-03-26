@@ -1474,7 +1474,7 @@ IMPLICIT NONE
 CLASS(link), POINTER         :: current, tmp
 !===================================================================================================================================
 
-if(associated(prms%firstlink))then
+IF(ASSOCIATED(prms%firstlink))THEN
   current => prms%firstLink
   DO WHILE (associated(current%next))
     DEALLOCATE(current%opt)
@@ -1484,9 +1484,14 @@ if(associated(prms%firstlink))then
     NULLIFY(current)
     current => tmp
   END DO
-end if
-prms%firstLink => null()
-prms%lastLink  => null()
+  ! Also nullify the last entry
+  DEALLOCATE(current%opt)
+  NULLIFY(current%opt)
+  DEALLOCATE(current)
+  NULLIFY(current)
+END IF
+NULLIFY(prms%firstLink)
+NULLIFY(prms%lastLink)
 END SUBROUTINE FinalizeParameters
 
 END MODULE MOD_ReadInTools

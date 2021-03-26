@@ -110,9 +110,9 @@ IF (Avg2D) THEN
   CALL MPI_GATHERV(Elem_xGP,nDOFPerProc(myRank),MPI_DOUBLE_PRECISION,&
                    Elem_xGP_glob,nDOFPerProc,offsetDOF,MPI_DOUBLE_PRECISION,0,MPI_COMM_FLEXI,iError)
 #else
-ALLOCATE(Elem_xGP_glob(1:3,0:PP_N,0:PP_N,0:PP_NZ,nGlobalElems))
-Elem_xGP_glob = Elem_xGP
-#endif
+  ALLOCATE(Elem_xGP_glob(1:3,0:PP_N,0:PP_N,0:PP_NZ,nGlobalElems))
+  Elem_xGP_glob = Elem_xGP
+#endif /* USE_MPI */
 
   IF (MPIRoot) THEN
     SDEALLOCATE(CoordsVisu_DG)

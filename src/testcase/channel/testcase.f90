@@ -116,7 +116,6 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                  :: ioUnit,openStat
 REAL                     :: c1
 REAL                     :: bulkMach,pressure
 CHARACTER(LEN=7)         :: varnames(2)
@@ -133,7 +132,7 @@ CALL CollectiveStop(__STAMP__, &
 nWriteStats  = GETINT('nWriteStats','100')
 nAnalyzeTestCase = GETINT( 'nAnalyzeTestCase','1000')
 uBulkScale=1.
-Re_tau       = 1/mu0
+Re_tau       = 1./mu0
 c1 = 2.4390244
 uBulk=c1 * ((Re_tau+c1)*LOG(Re_tau+c1) + 1.3064019*(Re_tau + 29.627395*EXP(-1./11.*Re_tau) + 0.66762137*(Re_tau+3)*EXP(-Re_tau/3.))) &
       - 97.4857927165
@@ -292,7 +291,6 @@ DO iElem=1,nElems
 END DO
 END SUBROUTINE TestcaseSource
 
-
 !==================================================================================================================================
 !> Output testcase statistics
 !==================================================================================================================================
@@ -306,14 +304,10 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                  :: ioUnit,openStat,i
 !==================================================================================================================================
 CALL OutputToFile(FileName,writeBuf(1,1:ioCounter),(/2,ioCounter/),RESHAPE(writeBuf(2:3,1:ioCounter),(/2*ioCounter/)))
 ioCounter=0
-
 END SUBROUTINE WriteStats
-
-
 
 !==================================================================================================================================
 !> Specifies periodic hill testcase
@@ -357,22 +351,20 @@ SUBROUTINE GetBoundaryFluxTestcase(SideID,t,Nloc,Flux,UPrim_master,             
 ! MODULES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)   :: SideID
+INTEGER,INTENT(IN)   :: SideID  !< ID of current side
 REAL,INTENT(IN)      :: t       !< current time (provided by time integration scheme)
 INTEGER,INTENT(IN)   :: Nloc    !< polynomial degree
-REAL,INTENT(IN)      :: UPrim_master( PP_nVarPrim,0:Nloc,0:Nloc) !< inner surface solution
+REAL,INTENT(IN)      :: UPrim_master( PP_nVarPrim,0:Nloc,0:ZDIM(Nloc))    !< inner surface solution
 #if PARABOLIC
-                                                           !> inner surface solution gradients in x/y/z-direction
-REAL,INTENT(IN)      :: gradUx_master(PP_nVarLifting,0:Nloc,0:Nloc)
-REAL,INTENT(IN)      :: gradUy_master(PP_nVarLifting,0:Nloc,0:Nloc)
-REAL,INTENT(IN)      :: gradUz_master(PP_nVarLifting,0:Nloc,0:Nloc)
+REAL,INTENT(IN)      :: gradUx_master(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)) !> inner surface solution gradients in x-direction
+REAL,INTENT(IN)      :: gradUy_master(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)) !> inner surface solution gradients in y-direction
+REAL,INTENT(IN)      :: gradUz_master(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)) !> inner surface solution gradients in z-direction
 #endif /*PARABOLIC*/
-                                                           !> normal and tangential vectors on surfaces
-REAL,INTENT(IN)      :: NormVec (3,0:Nloc,0:Nloc)
-REAL,INTENT(IN)      :: TangVec1(3,0:Nloc,0:Nloc)
-REAL,INTENT(IN)      :: TangVec2(3,0:Nloc,0:Nloc)
-REAL,INTENT(IN)      :: Face_xGP(3,0:Nloc,0:Nloc)    !< positions of surface flux points
-REAL,INTENT(OUT)     :: Flux(PP_nVar,0:Nloc,0:Nloc)  !< resulting boundary fluxes
+REAL,INTENT(IN)      :: NormVec (  3,0:Nloc,0:ZDIM(Nloc))  !< normal vectors on surfaces
+REAL,INTENT(IN)      :: TangVec1(  3,0:Nloc,0:ZDIM(Nloc))  !< tangential1 vectors on surfaces
+REAL,INTENT(IN)      :: TangVec2(  3,0:Nloc,0:ZDIM(Nloc))  !< tangential2 vectors on surfaces
+REAL,INTENT(IN)      :: Face_xGP(  3,0:Nloc,0:ZDIM(Nloc))  !< positions of surface flux points
+REAL,INTENT(OUT)     :: Flux(PP_nVar,0:Nloc,0:ZDIM(Nloc))  !< resulting boundary fluxes
 !==================================================================================================================================
 END SUBROUTINE GetBoundaryFluxTestcase
 
@@ -381,10 +373,10 @@ SUBROUTINE GetBoundaryFVgradientTestcase(SideID,t,gradU,UPrim_master)
 USE MOD_PreProc
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: SideID
-REAL,INTENT(IN)    :: t                                       !< current time (provided by time integration scheme)
-REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_N) !< primitive solution from the inside
-REAL,INTENT(OUT)   :: gradU       (PP_nVarPrim,0:PP_N,0:PP_N) !< FV boundary gradient
+INTEGER,INTENT(IN) :: SideID                                   !< ID of current side
+REAL,INTENT(IN)    :: t                                        !< current time (provided by time integration scheme)
+REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ) !< primitive solution from the inside
+REAL,INTENT(OUT)   :: gradU       (PP_nVarPrim,0:PP_N,0:PP_NZ) !< FV boundary gradient
 !==================================================================================================================================
 END SUBROUTINE GetBoundaryFVgradientTestcase
 
@@ -393,10 +385,10 @@ SUBROUTINE Lifting_GetBoundaryFluxTestcase(SideID,t,UPrim_master,Flux)
 USE MOD_PreProc
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: SideID
-REAL,INTENT(IN)    :: t                                       !< current time (provided by time integration scheme)
-REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_N) !< primitive solution from the inside
-REAL,INTENT(OUT)   :: Flux(        PP_nVarPrim,0:PP_N,0:PP_N) !< lifting boundary flux
+INTEGER,INTENT(IN) :: SideID                                   !< ID of current side
+REAL,INTENT(IN)    :: t                                        !< current time (provided by time integration scheme)
+REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ) !< primitive solution from the inside
+REAL,INTENT(OUT)   :: Flux(     PP_nVarLifting,0:PP_N,0:PP_NZ) !< lifting boundary flux
 !==================================================================================================================================
 END SUBROUTINE Lifting_GetBoundaryFluxTestcase
 

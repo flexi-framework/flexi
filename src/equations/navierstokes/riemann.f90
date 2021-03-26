@@ -339,7 +339,9 @@ SUBROUTINE ViscousFlux(Nloc,F,UPrim_L,UPrim_R, &
 #endif
                       )
 ! MODULES
-USE MOD_Flux,ONLY: EvalDiffFlux3D
+USE MOD_Flux         ,ONLY: EvalDiffFlux3D
+USE MOD_Lifting_Vars ,ONLY: diffFluxX_L,diffFluxY_L,diffFluxZ_L
+USE MOD_Lifting_Vars ,ONLY: diffFluxX_R,diffFluxY_R,diffFluxZ_R
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -359,8 +361,6 @@ REAL,DIMENSION(1,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)              :: muSGS_L,muSGS_R
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                                                       :: p,q
-REAL,DIMENSION(CONS,0:Nloc,0:ZDIM(Nloc))                      :: diffFluxX_L,diffFluxY_L,diffFluxZ_L
-REAL,DIMENSION(CONS,0:Nloc,0:ZDIM(Nloc))                      :: diffFluxX_R,diffFluxY_R,diffFluxZ_R
 !==================================================================================================================================
 ! Don't forget the diffusion contribution, my young padawan
 ! Compute NSE Diffusion flux

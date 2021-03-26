@@ -51,7 +51,11 @@ CONTAINS
 !>  4. check wether the distribution of FV elements has changed
 !>  5. store the current distribution in FV_Elems_loc, is needed for some mappings later
 !===================================================================================================================================
-SUBROUTINE Build_FV_DG_distribution(statefile)
+SUBROUTINE Build_FV_DG_distribution(&
+#if FV_ENABLED
+    statefile&
+#endif
+    )
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Visu_Vars
@@ -62,7 +66,9 @@ USE MOD_Mesh_ReadIn ,ONLY: BuildPartition
 USE MOD_Mesh_Vars   ,ONLY: nElems
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
+#if FV_ENABLED
 CHARACTER(LEN=255),INTENT(IN)  :: statefile
+#endif
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: iElem

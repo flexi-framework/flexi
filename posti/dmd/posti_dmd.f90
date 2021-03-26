@@ -106,7 +106,7 @@ CALL InitMPIvars()
 #endif
 
 #if USE_MPI
-nTotalNew=REAL(nVar_State*(N+1)**3*nElems_State)
+nTotalNew=REAL(nVar_State*(N_State+1)**3*nElems_State)
 !limit=(2**31-1)/8.
 limit=(2**28-1)/8. ! max. 32 bit integer / 8
 IF((nTotalNew.GT.limit))THEN

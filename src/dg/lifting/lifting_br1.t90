@@ -238,7 +238,9 @@ DO SideID=firstSideID,lastSideID
 
   ! master sides
   IF(ElemID.GT.0)THEN
+#if FV_ENABLED
     IF (FV_Elems_master(SideID).EQ.0) THEN ! DG element
+#endif
       locSideID = SideToElem(S2E_LOC_SIDE_ID,SideID)
       flip      = 0
       ! orient flux to fit flip and locSide to element local system
@@ -251,12 +253,16 @@ DO SideID=firstSideID,lastSideID
 #elif (PP_NodeType==2)
       CALL DoSurfIntLifting(Nloc,FluxTmp,L_HatMinus(0),L_HatPlus(Nloc),locSideID,gradU(:,:,:,:,ElemID))
 #endif
+#if FV_ENABLED
     END IF
+#endif
   END IF
 
   ! slave sides
   IF(nbElemID.GT.0)THEN
+#if FV_ENABLED
     IF (FV_Elems_slave(SideID).EQ.0) THEN ! DG element
+#endif
       nblocSideID = SideToElem(S2E_NB_LOC_SIDE_ID,SideID)
       flip        = SideToElem(S2E_FLIP,SideID)
       ! orient flux to fit flip and locSide to element local system
@@ -277,7 +283,9 @@ DO SideID=firstSideID,lastSideID
 #elif (PP_NodeType==2)
       CALL DoSurfIntLifting(Nloc,FluxTmp,L_HatMinus(0),L_HatPlus(Nloc),nblocSideID,gradU(:,:,:,:,nbElemID))
 #endif
+#if FV_ENABLED
     END IF
+#endif
   END IF
 END DO ! SideID=1,nSides
 END SUBROUTINE Lifting_SurfInt_BR1
