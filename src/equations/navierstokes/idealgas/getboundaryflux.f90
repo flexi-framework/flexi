@@ -815,10 +815,6 @@ REAL,INTENT(IN)   :: Face_xGP(              3,0:PP_N,0:PP_NZ)    !< positions of
 REAL,INTENT(IN)   :: sdx_Face(                0:PP_N,0:PP_NZ,3)  !< distance between center of FV-cell and boundary
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-<<<<<<< HEAD
-REAL              :: UPrim_boundary(PRIM,0:PP_N,0:PP_NZ)
-=======
->>>>>>> origin/master
 INTEGER           :: p,q
 INTEGER           :: BCType,BCState
 !==================================================================================================================================
