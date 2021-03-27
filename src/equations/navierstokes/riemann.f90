@@ -717,12 +717,12 @@ REAL                    :: Alpha1,Alpha2,Alpha3,Alpha4,Alpha5,Delta_U(PP_nVar+1)
 ! Roe flux
 H_L       = TOTALENTHALPY_HE(U_LL)
 H_R       = TOTALENTHALPY_HE(U_RR)
-SqrtRho_L = SQRT(U_LL(DENS))
-SqrtRho_R = SQRT(U_RR(DENS))
+SqrtRho_L = SQRT(U_LL(EXT_DENS))
+SqrtRho_R = SQRT(U_RR(EXT_DENS))
 
 sSqrtRho  = 1./(SqrtRho_L+SqrtRho_R)
 ! Roe mean values
-RoeVel    = (SqrtRho_R*U_RR(VELV) + SqrtRho_L*U_LL(VELV)) * sSqrtRho
+RoeVel    = (SqrtRho_R*U_RR(EXT_VELV) + SqrtRho_L*U_LL(EXT_VELV)) * sSqrtRho
 absVel    = DOT_PRODUCT(RoeVel,RoeVel)
 RoeH      = (SqrtRho_R*H_R+SqrtRho_L*H_L) * sSqrtRho
 Roec      = ROEC_RIEMANN_H(RoeH,RoeVel)
@@ -736,7 +736,7 @@ r4 = (/ 0.,             0.,        0.,        1.,        RoeVel(3)           /)
 r5 = (/ 1.,             a(5),      RoeVel(2), RoeVel(3), RoeH+RoeVel(1)*Roec /)
 
 ! calculate differences
-Delta_U(1:5) = U_RR(CONS) - U_LL(CONS)
+Delta_U(1:5) = U_RR(EXT_CONS) - U_LL(EXT_CONS)
 Delta_U(6)   = Delta_U(5)-(Delta_U(3)-RoeVel(2)*Delta_U(1))*RoeVel(2) - (Delta_U(4)-RoeVel(3)*Delta_U(1))*RoeVel(3)
 
 ! low Mach-Number fix
@@ -794,18 +794,18 @@ REAL    :: Ssl,Ssr
 !=================================================================================================================================
 H_L       = TOTALENTHALPY_HE(U_LL)
 H_R       = TOTALENTHALPY_HE(U_RR)
-SqrtRho_L = SQRT(U_LL(DENS))
-SqrtRho_R = SQRT(U_RR(DENS))
+SqrtRho_L = SQRT(U_LL(EXT_DENS))
+SqrtRho_R = SQRT(U_RR(EXT_DENS))
 sSqrtRho  = 1./(SqrtRho_L+SqrtRho_R)
 ! Roe mean values
-RoeVel    = (SqrtRho_R*U_RR(VELV) + SqrtRho_L*U_LL(VELV)) * sSqrtRho
-RoeH      = (SqrtRho_R*H_R        + SqrtRho_L*H_L)        * sSqrtRho
+RoeVel    = (SqrtRho_R*U_RR(EXT_VELV) + SqrtRho_L*U_LL(EXT_VELV)) * sSqrtRho
+RoeH      = (SqrtRho_R*H_R            + SqrtRho_L*H_L)            * sSqrtRho
 absVel    = DOT_PRODUCT(RoeVel,RoeVel)
 Roec      = ROEC_RIEMANN_H(RoeH,RoeVel)
 ! HLL flux
 ! Basic Davis estimate for wave speed
-!Ssl = U_LL(VEL1) - c_L
-!Ssr = U_RR(VEL1) + c_R
+!Ssl = U_LL(EXT_VEL1) - c_L
+!Ssr = U_RR(EXT_VEL1) + c_R
 ! Better Roe estimate for wave speeds Davis, Einfeldt
 Ssl = RoeVel(1) - Roec
 Ssr = RoeVel(1) + Roec
@@ -817,7 +817,7 @@ ELSEIF(Ssr .LE. 0.)THEN
   F=F_R
 ! subsonic case
 ELSE
-  F=(Ssr*F_L-Ssl*F_R+Ssl*Ssr*(U_RR(CONS)-U_LL(CONS)))/(Ssr-Ssl)
+  F=(Ssr*F_L-Ssl*F_R+Ssl*Ssr*(U_RR(EXT_CONS)-U_LL(EXT_CONS)))/(Ssr-Ssl)
 END IF ! subsonic case
 END SUBROUTINE Riemann_HLL
 
