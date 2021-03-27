@@ -250,7 +250,7 @@ IF(nRefState .GT. 0)THEN
     UE(EXT_SRHO) = 1./RefStatePrim(DENS,i)
     UE(EXT_PRES) = RefStatePrim(PRES,i)
     RefStatePrim(TEMP,i) = TEMPERATURE_HE(UE)
-    RefStatePrim(MUSA,i) = RefStatePrimTmp(6)
+    RefStatePrim(NUSA,i) = RefStatePrimTmp(6)
     CALL PrimToCons(RefStatePrim(:,i),RefStateCons(:,i))
   END DO
 END IF

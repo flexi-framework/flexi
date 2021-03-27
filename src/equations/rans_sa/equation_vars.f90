@@ -104,7 +104,7 @@ CONTAINS
 
 PPURE FUNCTION fv1(chi)
 !===================================================================================================================================
-!> Function fv1 of the Spalart-Allmaras Turbulence model 
+!> Function fv1 of the Spalart-Allmaras Turbulence model
 !===================================================================================================================================
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
@@ -130,7 +130,7 @@ END FUNCTION fv1
 
 PPURE FUNCTION fv2(chi)
 !===================================================================================================================================
-!> Function fv2 of the Spalart-Allmaras Turbulence model 
+!> Function fv2 of the Spalart-Allmaras Turbulence model
 !===================================================================================================================================
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
@@ -153,7 +153,7 @@ END FUNCTION fv2
 
 PPURE FUNCTION fw(nuTilde, STilde, d)
 !===================================================================================================================================
-!> Function fw of the negative Spalart-Allmaras Turbulence model 
+!> Function fw of the negative Spalart-Allmaras Turbulence model
 !> See "Modifications and Clarifications for the Implementation of the Spalart-Allmaras Tubulence Model"
 !===================================================================================================================================
 ! MODULES
@@ -170,7 +170,7 @@ REAL                           :: fw
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                           :: r         ! auxiliary function
-REAL                           :: g         ! auxiliary function 
+REAL                           :: g         ! auxiliary function
 !===================================================================================================================================
 
 IF(nuTilde.GE.0.)THEN
@@ -186,7 +186,7 @@ END FUNCTION fw
 
 PPURE FUNCTION fn(chi)
 !===================================================================================================================================
-!> Function fn of the negative Spalart-Allmaras Turbulence model 
+!> Function fn of the negative Spalart-Allmaras Turbulence model
 !> See "Modifications and Clarifications for the Implementation of the Spalart-Allmaras Tubulence Model"
 !===================================================================================================================================
 ! MODULES
@@ -209,7 +209,7 @@ END FUNCTION fn
 PPURE FUNCTION STilde(nuTilde, d, chi, S)
 !===================================================================================================================================
 ! Modified vorticity of the modifed Spalart-Allmaras Turbulence model
-! See "Modifications and Clarifications for the Implementation of the Spalart-Allmaras Tubulence Model" 
+! See "Modifications and Clarifications for the Implementation of the Spalart-Allmaras Tubulence Model"
 !===================================================================================================================================
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
