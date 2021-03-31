@@ -162,9 +162,8 @@ ELSE()
 ENDIF()
 
 # =========================================================================
-# Performance mode
+# Reduced lifting in performance mode
 # =========================================================================
-OPTION(FLEXI_PERFORMANCE "Enable performance optimizations" OFF)
 CMAKE_DEPENDENT_OPTION(FLEXI_OPTLIFT "Lift only needed variables" OFF
                                      "FLEXI_PERFORMANCE;NOT POSTI" OFF)
 IF(FLEXI_OPTLIFT)
