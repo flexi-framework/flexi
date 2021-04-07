@@ -369,7 +369,7 @@ INTEGER                 :: i,j,k,iRP
 REAL                    :: u_RP(nVar,nRP)
 REAL                    :: l_eta_zeta_RP
 !----------------------------------------------------------------------------------------------------------------------------------
-IF(MOD(iter,RP_SamplingOffset).NE.0 .AND. .NOT. forceSampling) RETURN
+IF(MOD(iter,INT(RP_SamplingOffset,KIND=8)).NE.0 .AND. .NOT. forceSampling) RETURN
 IF(.NOT.ALLOCATED(RP_Data))THEN
   ! Compute required buffersize from timestep and add 20% tolerance
   ! +1 is added to ensure a minimum buffersize of 2
@@ -439,6 +439,7 @@ LOGICAL,INTENT(IN)             :: resetCounters         !< flag to reset sample 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=255)             :: FileString
+CHARACTER(LEN=255)             :: tmp255
 REAL                           :: startT,endT
 !==================================================================================================================================
 IF(myRPrank.EQ.0)THEN
@@ -453,10 +454,13 @@ IF(myRPrank.EQ.0)THEN
   CALL OpenDataFile(Filestring,create=.NOT.RP_fileExists,single=.TRUE.,readOnly=.FALSE.)
   IF(.NOT.RP_fileExists)THEN
     ! Create dataset attributes
-    CALL WriteAttribute(File_ID,'File_Type'  ,1,StrScalar=(/'RecordPoints_Data'/))
-    CALL WriteAttribute(File_ID,'MeshFile'   ,1,StrScalar=(/MeshFile/))
-    CALL WriteAttribute(File_ID,'ProjectName',1,StrScalar=(/ProjectName/))
-    CALL WriteAttribute(File_ID,'RPDefFile'  ,1,StrScalar=(/RPDefFile/))
+    CALL WriteAttribute(File_ID,'File_Type'  ,1,StrScalar=(/CHARACTER(LEN=255)::'RecordPoints_Data'/))
+    tmp255=TRIM(MeshFile)
+    CALL WriteAttribute(File_ID,'MeshFile'   ,1,StrScalar=(/tmp255/))
+    tmp255=TRIM(ProjectName)
+    CALL WriteAttribute(File_ID,'ProjectName',1,StrScalar=(/tmp255/))
+    tmp255=TRIM(RPDefFile)
+    CALL WriteAttribute(File_ID,'RPDefFile'  ,1,StrScalar=(/tmp255/))
     CALL WriteAttribute(File_ID,'VarNames'   ,nVar,StrArray=StrVarNames)
     CALL WriteAttribute(File_ID,'Time'       ,1,RealScalar=OutputTime)
   END IF

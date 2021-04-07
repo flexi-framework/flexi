@@ -652,13 +652,13 @@ USE MOD_Equation_Vars    ,ONLY: fv2,fw,STilde,fn,ct1,ct2,ct3,ct4,includeTrip,ome
 USE MOD_Eos_Vars         ,ONLY: Kappa,KappaM1,cp
 USE MOD_Exactfunc_Vars   ,ONLY: AdvVel
 USE MOD_DG_Vars          ,ONLY: U
-USE MOD_Lifting_Vars     ,ONLY: gradUx,gradUy
 USE MOD_EOS              ,ONLY: ConsToPrim
+USE MOD_Viscosity
+#if PARABOLIC
+USE MOD_Lifting_Vars     ,ONLY: gradUx,gradUy
 #if PP_dim == 3
 USE MOD_Lifting_Vars     ,ONLY: gradUz
 #endif
-USE MOD_Viscosity
-#if PARABOLIC
 USE MOD_Eos_Vars         ,ONLY: mu0,Pr
 #endif
 USE MOD_Mesh_Vars        ,ONLY: Elem_xGP,sJ,nElems
@@ -903,6 +903,7 @@ CASE DEFAULT
   !doCalcSource=.FALSE.
 END SELECT ! ExactFunction
 
+#if PARABOLIC
 ! Add the source term of the SA model
 
 ! First, calculate the vorticity magnitude at the trip if needed
@@ -921,11 +922,11 @@ DO iElem=1,nElems
     chi = U(6,i,j,k,iElem)/muS
     ! Calculate and modify the magnitude of the vorticity
 #if PP_dim==2
-    S = ABS(gradUy(2,i,j,k,iElem)-gradUx(3,i,j,k,iElem))
+    S = ABS(gradUy(LIFT_VEL1,i,j,k,iElem)-gradUx(LIFT_VEL2,i,j,k,iElem))
 #else
-    S = SQRT((gradUy(4,i,j,k,iElem)-gradUz(3,i,j,k,iElem))**2 + &
-             (gradUz(2,i,j,k,iElem)-gradUx(4,i,j,k,iElem))**2 + &
-             (gradUx(3,i,j,k,iElem)-gradUy(2,i,j,k,iElem))**2)
+    S = SQRT((gradUy(LIFT_VEL3,i,j,k,iElem)-gradUz(LIFT_VEL2,i,j,k,iElem))**2 + &
+             (gradUz(LIFT_VEL1,i,j,k,iElem)-gradUx(LIFT_VEL3,i,j,k,iElem))**2 + &
+             (gradUx(LIFT_VEL2,i,j,k,iElem)-gradUy(LIFT_VEL1,i,j,k,iElem))**2)
 #endif
     IF (U(6,i,j,k,iElem).LT.0.) THEN
       ! No modification for the negative version of the model
@@ -957,14 +958,14 @@ DO iElem=1,nElems
       SAfn = 1.
     END IF
     Diff = &
-                             cb2/sigma*prim(1)*(gradUx(7,i,j,k,iElem)**2+gradUy(7,i,j,k,iElem)**2 &
+                             cb2/sigma*prim(1)*(gradUx(LIFT_NUSA,i,j,k,iElem)**2+gradUy(LIFT_NUSA,i,j,k,iElem)**2 &
 #if PP_dim==3
-                                               +gradUz(7,i,j,k,iElem)**2 &
+                                               +gradUz(LIFT_NUSA,i,j,k,iElem)**2 &
 #endif
                              )-1./sigma*(muS/prim(1)+nuTilde*SAfn) * &
-                             (gradUx(7,i,j,k,iElem)*gradUx(1,i,j,k,iElem)+gradUy(7,i,j,k,iElem)*gradUy(1,i,j,k,iElem) &
+                             (gradUx(LIFT_NUSA,i,j,k,iElem)*gradUx(LIFT_DENS,i,j,k,iElem)+gradUy(LIFT_NUSA,i,j,k,iElem)*gradUy(LIFT_DENS,i,j,k,iElem) &
 #if PP_dim==3
-                             +gradUz(7,i,j,k,iElem)*gradUz(1,i,j,k,iElem) &
+                             +gradUz(LIFT_NUSA,i,j,k,iElem)*gradUz(LIFT_DENS,i,j,k,iElem) &
 #endif
                              )
     IF (doSADebug) THEN
@@ -979,9 +980,11 @@ DO iElem=1,nElems
     Ut(6,i,j,k,iElem) = Ut(6,i,j,k,iElem)+Ut_src(6,i,j,k)/sJ(i,j,k,iElem,FV_Elem)
   END DO; END DO; END DO ! i,j,k
 END DO
+#endif /*PARABOLIC*/
 
 END SUBROUTINE CalcSource
 
+#if PARABOLIC
 !===================================================================================================================================
 !> Calculate and communicate the vorticity magnitude at the trip point, needed for the SA trip terms
 !===================================================================================================================================
@@ -1003,7 +1006,7 @@ IMPLICIT NONE
 !===================================================================================================================================
 
 IF (tripOnProc) THEN
-  omegaT = ABS(gradUy_master(2,tripPQ(1),tripPQ(2),tripSideID)-gradUx_master(3,tripPQ(1),tripPQ(2),tripSideID))
+  omegaT = ABS(gradUy_master(LIFT_VEL1,tripPQ(1),tripPQ(2),tripSideID)-gradUx_master(LIFT_VEL2,tripPQ(1),tripPQ(2),tripSideID))
 END IF
 
 #if USE_MPI
@@ -1011,5 +1014,6 @@ CALL MPI_BCAST(omegaT,1,MPI_DOUBLE_PRECISION,tripRoot,MPI_COMM_FLEXI,iError)
 #endif
 
 END SUBROUTINE CalcOmegaTrip
+#endif
 
 END MODULE MOD_Exactfunc

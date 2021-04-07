@@ -91,7 +91,9 @@ SUBROUTINE buildLegendreVdm(N_In,xi_In,Vdm_Leg,sVdm_Leg)
 ! MODULES
 USE MOD_Globals,ONLY:abort
 USE MOD_PreProc,ONLY:PP_RealTolerance
+#ifndef VDM_ANALYTICAL
 USE MOD_Mathtools,ONLY:INVERSE
+#endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -103,38 +105,48 @@ REAL,INTENT(OUT)   :: sVdm_Leg(0:N_In,0:N_In) !< Vandermonde from nodal basis to
 ! LOCAL VARIABLES
 INTEGER            :: i,j
 REAL               :: dummy
-!REAL               :: wBary_Loc(0:N_In)
-!REAL               :: xGauss(0:N_In),wGauss(0:N_In)
+#ifdef VDM_ANALYTICAL
+REAL               :: wBary_Loc(0:N_In)
+REAL               :: xGauss(0:N_In),wGauss(0:N_In)
+REAL               :: Vdm_Leg_Gauss(0:N_In,0:N_In) !< Vandermonde from Legendre on Gauss points
+REAL               :: Vdm_Lag(0:N_In,0:N_In)       !< Vandermonde from Lagrange to Gauss points
+#endif
 !==================================================================================================================================
-! Alternative to matrix inversion: Compute inverse Vandermonde directly
-! Direct inversion seems to be more accurate
-
-!CALL BarycentricWeights(N_In,xi_in,wBary_loc)
-!! Compute first the inverse (by projection)
-!CALL LegendreGaussNodesAndWeights(N_In,xGauss,wGauss)
-!!Vandermonde on xGauss
-!DO i=0,N_In
-!  DO j=0,N_In
-!    CALL LegendrePolynomialAndDerivative(j,xGauss(i),Vdm_Leg(i,j),dummy)
-!  END DO !i
-!END DO !j
-!Vdm_Leg=TRANSPOSE(Vdm_Leg)
-!DO j=0,N_In
-!  Vdm_Leg(:,j)=Vdm_Leg(:,j)*wGauss(j)
-!END DO
-!!evaluate nodal basis (depends on NodeType, for Gauss: unity matrix)
-!CALL InitializeVandermonde(N_In,N_In,wBary_Loc,xi_In,xGauss,sVdm_Leg)
-!sVdm_Leg=MATMUL(Vdm_Leg,sVdm_Leg)
-
 !compute the Vandermonde on xGP (Depends on NodeType)
 DO i=0,N_In; DO j=0,N_In
   CALL LegendrePolynomialAndDerivative(j,xi_In(i),Vdm_Leg(i,j),dummy)
 END DO; END DO !j
+
+#ifdef VDM_ANALYTICAL
+! Alternative to matrix inversion: Compute inverse Vandermonde directly
+! Direct inversion has an error around 4e-16 (Lapack: err=0) and is 2 orders of magnitude faster than Lapack
+! see: Hindenlang: Mesh curving techniques for high order parallel simulations on unstructured meshes, 2014, p.27.
+CALL BarycentricWeights(N_In,xi_in,wBary_loc)
+! Compute first the inverse (by projection)
+CALL LegendreGaussNodesAndWeights(N_In,xGauss,wGauss)
+!Vandermonde on xGauss
+DO i=0,N_In; DO j=0,N_In
+  CALL LegendrePolynomialAndDerivative(i,xGauss(j),Vdm_Leg_Gauss(i,j),dummy)
+END DO; END DO !j
+!Vdm_Leg_Gauss=TRANSPOSE(Vdm_Leg_Gauss)
+DO j=0,N_In
+  Vdm_Leg_Gauss(:,j)=Vdm_Leg_Gauss(:,j)*wGauss(j)
+END DO
+!evaluate nodal basis (depends on NodeType, for Gauss: unity matrix)
+CALL InitializeVandermonde(N_In,N_In,wBary_Loc,xi_In,xGauss,Vdm_Lag)
+sVdm_Leg=MATMUL(Vdm_Leg_Gauss,Vdm_Lag)
+dummy=ABS(SUM(ABS(MATMUL(sVdm_Leg,Vdm_Leg)))/(N_In+1.)-1.)
+IF(dummy.GT.15.*PP_RealTolerance) CALL abort(__STAMP__,&
+                                         'problems in MODAL<->NODAL Vandermonde ',999,dummy)
+#else
+! Lapack
 sVdm_Leg=INVERSE(Vdm_Leg)
+
 !check (Vdm_Leg)^(-1)*Vdm_Leg := I
 dummy=ABS(SUM(ABS(MATMUL(sVdm_Leg,Vdm_Leg)))/(N_In+1.)-1.)
 IF(dummy.GT.10.*PP_RealTolerance) CALL abort(__STAMP__,&
                                          'problems in MODAL<->NODAL Vandermonde ',999,dummy)
+#endif
 END SUBROUTINE buildLegendreVdm
 
 
@@ -197,7 +209,9 @@ ELSE ! N_in > 1
   Lder_Nm1=1.
   DO iLegendre=2,N_in
     L=(REAL(2*iLegendre-1)*x*L_Nm1 - REAL(iLegendre-1)*L_Nm2)/REAL(iLegendre)
-    Lder=Lder_Nm2 + REAL(2*iLegendre-1)*L_Nm1
+    !Lder=Lder_Nm2 + REAL(2*iLegendre-1)*L_Nm1
+    ! Higher accuracy, see https://en.wikipedia.org/wiki/Legendre_polynomials (Recurrence relations)
+    Lder=iLegendre*L_Nm1 + x*Lder_Nm1
     L_Nm2=L_Nm1
     L_Nm1=L
     Lder_Nm2=Lder_Nm1
@@ -405,22 +419,16 @@ REAL,INTENT(OUT)   :: qder                            !< \f$ \partial/\partial\x
 ! LOCAL VARIABLES
 INTEGER            :: iLegendre
 REAL               :: L_Nm1,L_Nm2                     ! L_{N_in-2},L_{N_in-1}
-REAL               :: Lder,Lder_Nm1,Lder_Nm2          ! Lder_{N_in-2},Lder_{N_in-1}
 !==================================================================================================================================
 L_Nm2=1.
 L_Nm1=x
-Lder_Nm2=0.
-Lder_Nm1=1.
 DO iLegendre=2,N_in
   L=(REAL(2*iLegendre-1)*x*L_Nm1 - REAL(iLegendre-1)*L_Nm2)/REAL(iLegendre)
-  Lder=Lder_Nm2 + REAL(2*iLegendre-1)*L_Nm1
   L_Nm2=L_Nm1
   L_Nm1=L
-  Lder_Nm2=Lder_Nm1
-  Lder_Nm1=Lder
 END DO ! iLegendre
-q=REAL(2*N_in+1)/REAL(N_in+1)*(x*L -L_Nm2) !L_{N_in+1}-L_{N_in-1} !L_Nm2 is L_Nm1, L_Nm1 was overwritten!
-qder= REAL(2*N_in+1)*L             !Lder_{N_in+1}-Lder_{N_in-1}
+q    = REAL(2*N_in+1)/REAL(N_in+1)*(x*L -L_Nm2) !L_{N_in+1}-L_{N_in-1} !L_Nm2 is L_Nm1, L_Nm1 was overwritten!
+qder = REAL(2*N_in+1)*L                         !Lder_{N_in+1}-Lder_{N_in-1} = (2N+1)*L
 END SUBROUTINE qAndLEvaluation
 
 

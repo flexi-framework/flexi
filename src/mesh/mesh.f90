@@ -313,10 +313,6 @@ IF (meshMode.GT.0) THEN
   SWRITE(UNIT_stdOut,'(A)') "NOW CALLING fillMeshInfo..."
   CALL fillMeshInfo()
 
-  ! dealloacte pointers
-  SWRITE(UNIT_stdOut,'(A)') "NOW CALLING deleteMeshPointer..."
-  CALL deleteMeshPointer()
-
 #if (PP_dim ==2)
   ! In 2D, there is only one flip for the slave sides (1)
   SideToElem(S2E_FLIP,:) = MIN(1,SideToElem(S2E_FLIP,:))
@@ -329,6 +325,9 @@ IF (meshMode.GT.0) THEN
   ! Build necessary mappings
   CALL buildMappings(PP_N,V2S=V2S,S2V=S2V,S2V2=S2V2,FS2M=FS2M,dim=PP_dim)
 END IF
+! deallocate pointers
+SWRITE(UNIT_stdOut,'(A)') "NOW CALLING deleteMeshPointer..."
+CALL deleteMeshPointer()
 
 IF (meshMode.GT.1) THEN
 
@@ -391,9 +390,7 @@ SDEALLOCATE(Ja_Face)
 SDEALLOCATE(TreeCoords)
 SDEALLOCATE(xiMinMax)
 SDEALLOCATE(ElemToTree)
-IF (.NOT.postiMode) THEN
-  SDEALLOCATE(scaledJac)
-END IF
+IF ((.NOT.postiMode).AND.(ALLOCATED(scaledJac))) DEALLOCATE(scaledJac)
 
 CALL AddToElemData(ElementOut,'myRank',IntScalar=myRank)
 

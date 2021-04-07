@@ -12,6 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "eos.h"
 
 !==================================================================================================================================
 !> Contains the different Surface integral formulations
@@ -62,6 +63,30 @@ PUBLIC::SurfIntCons,DoSurfIntCons
 CONTAINS
 #include "surfint.t90"
 END MODULE MOD_SurfIntCons
+
+!==================================================================================================================================
+!> Contains the surface integral for primitive quantities
+!==================================================================================================================================
+MODULE MOD_SurfIntLifting
+IMPLICIT NONE
+PRIVATE
+
+#undef WITHnVars
+INTEGER,PARAMETER :: TP_nVar = PP_nVarLifting
+
+INTERFACE SurfIntLifting
+  MODULE PROCEDURE SurfInt
+END INTERFACE
+
+INTERFACE DoSurfIntLifting
+  MODULE PROCEDURE DoSurfInt
+END INTERFACE
+
+PUBLIC::SurfIntLifting,DoSurfIntLifting
+
+CONTAINS
+#include "surfint.t90"
+END MODULE MOD_SurfIntLifting
 
 !==================================================================================================================================
 !> Contains the surface integral for primitive quantities

@@ -12,6 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "eos.h"
 
 !==================================================================================================================================
 !> \brief Contains the routines that set up communicators and control non-blocking communication
@@ -181,6 +182,7 @@ DataSizeSideSGS= (PP_N+1)*(PP_NZ+1)
 #endif
 DataSizeSide      =PP_nVar*(PP_N+1)*(PP_NZ+1)
 DataSizeSidePrim  =PP_nVarPrim*(PP_N+1)*(PP_NZ+1)
+DataSizeSideGrad  =PP_nVarLifting*(PP_N+1)*(PP_NZ+1)
 
 ! split communicator into smaller groups (e.g. for local nodes)
 GroupSize=GETINT('GroupSize','0')
@@ -352,7 +354,11 @@ INTEGER,INTENT(INOUT)       :: MPIRequest(nRequests) !< communication handles
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
+#if LIBS_MPT
+CALL MPI_WaitAll(nRequests,MPIRequest,MPI_STATUS_IGNORE,iError)
+#else
 CALL MPI_WaitAll(nRequests,MPIRequest,MPI_STATUSES_IGNORE,iError)
+#endif
 END SUBROUTINE FinishExchangeMPIData
 
 !==================================================================================================================================

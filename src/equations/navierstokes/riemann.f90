@@ -27,7 +27,7 @@ PRIVATE
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ABSTRACT INTERFACE
-  SUBROUTINE RiemannInt(F_L,F_R,U_LL,U_RR,F)
+  PPURE SUBROUTINE RiemannInt(F_L,F_R,U_LL,U_RR,F)
     REAL,DIMENSION(PP_2Var),INTENT(IN) :: U_LL,U_RR
     REAL,DIMENSION(PP_nVar),INTENT(IN) :: F_L,F_R
     REAL,DIMENSION(PP_nVar),INTENT(OUT):: F
@@ -339,7 +339,9 @@ SUBROUTINE ViscousFlux(Nloc,F,UPrim_L,UPrim_R, &
 #endif
                       )
 ! MODULES
-USE MOD_Flux,ONLY: EvalDiffFlux3D
+USE MOD_Flux         ,ONLY: EvalDiffFlux3D
+USE MOD_Lifting_Vars ,ONLY: diffFluxX_L,diffFluxY_L,diffFluxZ_L
+USE MOD_Lifting_Vars ,ONLY: diffFluxX_R,diffFluxY_R,diffFluxZ_R
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -347,7 +349,7 @@ INTEGER,INTENT(IN)                                         :: Nloc     !< local 
                                                            !> solution in primitive variables at left/right side of the interface
 REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)   :: UPrim_L,UPrim_R
                                                            !> solution gradients in x/y/z-direction left/right of the interface
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)   :: gradUx_L,gradUx_R,gradUy_L,gradUy_R,gradUz_L,gradUz_R
+REAL,DIMENSION(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)   :: gradUx_L,gradUx_R,gradUy_L,gradUy_R,gradUz_L,gradUz_R
 REAL,INTENT(IN)                                            :: nv(3,0:Nloc,0:ZDIM(Nloc)) !< normal vector
 REAL,INTENT(OUT)                                           :: F(PP_nVar,0:Nloc,0:ZDIM(Nloc)) !< viscous flux
 #if EDDYVISCOSITY
@@ -359,8 +361,6 @@ REAL,DIMENSION(1,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)             :: muSGS_L,muSGS_R
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                                              :: p,q
-REAL,DIMENSION(PP_nVar,0:Nloc,0:ZDIM(Nloc))            :: diffFluxX_L,diffFluxY_L,diffFluxZ_L
-REAL,DIMENSION(PP_nVar,0:Nloc,0:ZDIM(Nloc))            :: diffFluxX_R,diffFluxY_R,diffFluxZ_R
 !==================================================================================================================================
 ! Don't forget the diffusion contribution, my young padawan
 ! Compute NSE Diffusion flux
@@ -392,7 +392,7 @@ END SUBROUTINE ViscousFlux
 !==================================================================================================================================
 !> Local Lax-Friedrichs (Rusanov) Riemann solver
 !==================================================================================================================================
-SUBROUTINE Riemann_LF(F_L,F_R,U_LL,U_RR,F)
+PPURE SUBROUTINE Riemann_LF(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
 USE MOD_EOS_Vars      ,ONLY: Kappa
 #ifdef SPLIT_DG
@@ -502,7 +502,7 @@ END SUBROUTINE Riemann_HLLC
 !=================================================================================================================================
 !> Roe's approximate Riemann solver
 !=================================================================================================================================
-SUBROUTINE Riemann_Roe(F_L,F_R,U_LL,U_RR,F)
+PPURE SUBROUTINE Riemann_Roe(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
 USE MOD_EOS_Vars  ,ONLY: kappaM1
 #ifdef SPLIT_DG
@@ -580,7 +580,7 @@ END SUBROUTINE Riemann_Roe
 !> Pelanti, Marica & Quartapelle, Luigi & Vigevano, L & Vigevano, Luigi. (2018):
 !>  A review of entropy fixes as applied to Roe's linearization.
 !=================================================================================================================================
-SUBROUTINE Riemann_RoeEntropyFix(F_L,F_R,U_LL,U_RR,F)
+PPURE SUBROUTINE Riemann_RoeEntropyFix(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
 USE MOD_EOS_Vars      ,ONLY: Kappa,KappaM1
 #ifdef SPLIT_DG
@@ -691,7 +691,7 @@ END SUBROUTINE Riemann_RoeEntropyFix
 !=================================================================================================================================
 !> low mach number Roe's approximate Riemann solver according to Oßwald(2015)
 !=================================================================================================================================
-SUBROUTINE Riemann_RoeL2(F_L,F_R,U_LL,U_RR,F)
+PPURE SUBROUTINE Riemann_RoeL2(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
 USE MOD_EOS_Vars  ,ONLY: kappaM1,kappa
 #ifdef SPLIT_DG
@@ -939,7 +939,7 @@ END SUBROUTINE Riemann_HLLEM
 !==================================================================================================================================
 !> Riemann solver using purely the average fluxes
 !==================================================================================================================================
-SUBROUTINE Riemann_FluxAverage(F_L,F_R,U_LL,U_RR,F)
+PPURE SUBROUTINE Riemann_FluxAverage(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
 USE MOD_SplitFlux     ,ONLY: SplitDGSurface_pointer
 IMPLICIT NONE
@@ -963,7 +963,7 @@ END SUBROUTINE Riemann_FluxAverage
 !==================================================================================================================================
 !> kinetic energy preserving and entropy consistent flux according to Chandrashekar (2012)
 !==================================================================================================================================
-SUBROUTINE Riemann_CH(F_L,F_R,U_LL,U_RR,F)
+PPURE SUBROUTINE Riemann_CH(F_L,F_R,U_LL,U_RR,F)
 ! MODULES
 USE MOD_EOS_Vars      ,ONLY: Kappa,sKappaM1
 USE MOD_SplitFlux     ,ONLY: SplitDGSurface_pointer,GetLogMean

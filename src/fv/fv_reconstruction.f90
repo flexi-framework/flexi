@@ -13,6 +13,7 @@
 !=================================================================================================================================
 #if FV_ENABLED
 #include "flexi.h"
+#include "eos.h"
 
 !==================================================================================================================================
 !> Contains the main parts of the second order reconstruction of the FV subcells.
@@ -340,9 +341,9 @@ REAL,INTENT(OUT) :: gradUxi          (PP_nVarPrim,0:PP_N,0:PP_NZ,0:PP_N,nElems) 
 REAL,INTENT(OUT) :: gradUeta         (PP_nVarPrim,0:PP_N,0:PP_NZ,0:PP_N,nElems) !< physical slope in  eta-direction (TVD limited)
 REAL,INTENT(OUT) :: gradUzeta        (PP_nVarPrim,0:PP_N,0:PP_NZ,0:PP_N,nElems) !< physical slope in zeta-direction (TVD limited)
 #if PARABOLIC
-REAL,INTENT(OUT) :: gradUxi_central  (PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< physical slope in   xi-direction (mean value)
-REAL,INTENT(OUT) :: gradUeta_central (PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< physical slope in  eta-direction (mean value)
-REAL,INTENT(OUT) :: gradUzeta_central(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< physical slope in zeta-direction (mean value)
+REAL,INTENT(OUT) :: gradUxi_central  (PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< physical slope in   xi-direction (mean value)
+REAL,INTENT(OUT) :: gradUeta_central (PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< physical slope in  eta-direction (mean value)
+REAL,INTENT(OUT) :: gradUzeta_central(PP_nVarLifting,0:PP_N,0:PP_N,0:PP_NZ,nElems) !< physical slope in zeta-direction (mean value)
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -400,10 +401,10 @@ DO iElem=1,nElems
 #if PARABOLIC
   ! limit with central limiter for viscous fluxes
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-    gradUxi_central  (:,i,j,k,iElem) = 0.5*(gradUxi_tmp  (:,j,k,i)+gradUxi_tmp  (:,j,k,i+1))
-    gradUeta_central (:,i,j,k,iElem) = 0.5*(gradUeta_tmp (:,i,k,j)+gradUeta_tmp (:,i,k,j+1))
+    gradUxi_central  (:,i,j,k,iElem) = 0.5*(gradUxi_tmp  (PRIM_LIFT,j,k,i)+gradUxi_tmp  (PRIM_LIFT,j,k,i+1))
+    gradUeta_central (:,i,j,k,iElem) = 0.5*(gradUeta_tmp (PRIM_LIFT,i,k,j)+gradUeta_tmp (PRIM_LIFT,i,k,j+1))
 #if PP_dim == 3
-    gradUzeta_central(:,i,j,k,iElem) = 0.5*(gradUzeta_tmp(:,i,j,k)+gradUzeta_tmp(:,i,j,k+1))
+    gradUzeta_central(:,i,j,k,iElem) = 0.5*(gradUzeta_tmp(PRIM_LIFT,i,j,k)+gradUzeta_tmp(PRIM_LIFT,i,j,k+1))
 #endif
   END DO; END DO; END DO! i,j,k=0,PP_N
 #endif
@@ -416,7 +417,7 @@ END SUBROUTINE FV_CalcGradients
 !==================================================================================================================================
 PPURE SUBROUTINE CopySurfaceToVolume(surface,volume,iElem,dir,l)
 ! MODULES
-USE MOD_PreProc        ,ONLY: PP_N
+USE MOD_PreProc
 USE MOD_Mesh_Vars      ,ONLY: S2V2,nSides,ElemToSide
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES

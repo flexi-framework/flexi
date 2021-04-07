@@ -87,6 +87,10 @@ REAL,ALLOCATABLE                      :: UPrim_master(:,:,:,:)  !< 2D Solution i
 REAL,ALLOCATABLE                      :: UPrim_slave(:,:,:,:)   !< 2D Solution in Primitive variables on face, slave side,
                                                                 !<size [1..NVar,0..N,0..NZ,all_slave_sides]
 !----------------------------------------------------------------------------------------------------------------------------------
+! Variables for boundary flux calculation
+REAL,ALLOCATABLE                      :: UPrim_Boundary(:,:,:)
+
+!----------------------------------------------------------------------------------------------------------------------------------
 ! Auxilliary variables
 LOGICAL                               :: DGInitIsDone=.FALSE.   !< Switch to check DGInit status
 !==================================================================================================================================

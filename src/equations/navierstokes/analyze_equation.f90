@@ -482,7 +482,7 @@ DO iSide=1,nBCSides
   DO j=0,PP_NZ; DO i=0,PP_N
     Vel=UPrim_master(2:4,i,j,iSide)
     ! Calculate velocity magnitude
-    locV=NORM2(vel)
+    locV=SQRT(DOT_PRODUCT(vel,vel))
     maxV(iBC)=MAX(maxV(iBC),locV)
     minV(iBC)=MIN(minV(iBC),locV)
 #if FV_ENABLED
@@ -588,6 +588,7 @@ END SUBROUTINE CalcMeanFlux
 SUBROUTINE FinalizeAnalyzeEquation()
 ! MODULES
 USE MOD_AnalyzeEquation_Vars
+USE MOD_TimeAverage,        ONLY: FinalizeTimeAverage
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -597,6 +598,8 @@ SDEALLOCATE(FileName_BodyForce)
 SDEALLOCATE(FileName_WallVel)
 SDEALLOCATE(FileName_MeanFlux)
 SDEALLOCATE(FileName_TotalStates)
+
+IF (doCalcTimeAverage) CALL FinalizeTimeAverage()
 END SUBROUTINE FinalizeAnalyzeEquation
 
 END MODULE MOD_AnalyzeEquation

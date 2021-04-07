@@ -55,10 +55,10 @@ USE MOD_SwapMesh_Vars
 USE MOD_Basis,                 ONLY: LagrangeInterpolationPolys,ChebyGaussLobNodesAndWeights,BarycentricWeights
 USE MOD_Interpolation,         ONLY: GetVandermonde,GetDerivativeMatrix
 USE MOD_Interpolation_Vars,    ONLY: NodeTypeCL
-USE MOD_ChangeBasis,           ONLY: ChangeBasis3D
+USE MOD_ChangeBasisByDim,      ONLY: ChangeBasisVolume
 USE MOD_Mathtools,             ONLY: INVERSE
 #if USE_OPENMP
-use OMP_Lib
+USE OMP_Lib
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -72,21 +72,24 @@ INTEGER            :: i,j,k     ! CL,NSuper
 INTEGER            :: ii,jj,kk  ! IP
 INTEGER            :: iElemNew,iElemOld
 INTEGER            :: l,iter
-REAL               :: xCOld(3,nElemsOld),radOld(nElemsOld),radSqOld(nElemsOld)
-REAL               :: xCNew(3,nElemsNew),radNew(nElemsNew),radSqNew(nElemsNew)
-LOGICAL            :: IPOverlaps(0:NInter,0:NInter,0:NInter)
+REAL               :: xCOld(PP_dim,nElemsOld),radOld(nElemsOld),radSqOld(nElemsOld)
+REAL               :: xCNew(PP_dim,nElemsNew),radNew(nElemsNew),radSqNew(nElemsNew)
+LOGICAL            :: IPOverlaps(0:NInter,0:NInter,0:ZDIM(NInter))
 LOGICAL            :: ElemDone(   nElemsNew)
 LOGICAL            :: ElemDoneOld(nElemsOld)
 LOGICAL            :: equal
-REAL               :: X_NSuper(1:3,0:NSuper,0:NSuper,0:NSuper)
+REAL               :: X_NSuper(1:PP_dim,0:NSuper,0:NSuper,0:ZDIM(NSuper))
 REAL               :: dist,maxDist,best
 REAL               :: DCL_NGeo(0:NGeoOld,0:NGeoOld)
-REAL               :: dXCL_NGeo(1:3,1:3,0:NGeoOld,0:NGeoOld,0:NGeoOld)
+REAL               :: dXCL_NGeo(1:PP_dim,1:PP_dim,0:NGeoOld,0:NGeoOld,0:ZDIM(NGeoOld))
 REAL               :: Xi_CLNGeo(0:NGeoOld),wBary_CLNGeo(0:NGeoOld)
 REAL               :: Xi_NSuper(0:NSuper)
-REAL               :: xInter(3)
-REAL               :: LagXi(0:NGeoOld),LagEta(0:NGeoOld),LagZeta(0:NGeoOld),LagVol(0:NGeoOld,0:NGeoOld,0:NGeoOld)
-REAL               :: F(1:3),eps_F,xi(1:3),Jac(1:3,1:3),sJac(1:3,1:3)
+REAL               :: xInter(PP_dim)
+REAL               :: LagXi(0:NGeoOld),LagEta(0:NGeoOld),LagVol(0:NGeoOld,0:NGeoOld,0:ZDIM(NGeoOld))
+#if PP_dim == 3
+REAL               :: LagZeta(0:NGeoOld)
+#endif
+REAL               :: F(1:PP_dim),eps_F,xi(1:PP_dim),Jac(1:PP_dim,1:PP_dim),sJac(1:PP_dim,1:PP_dim)
 INTEGER            :: ElemCounter,nEqualElems
 INTEGER            :: nNotfound
 REAL               :: Time
@@ -133,7 +136,6 @@ IF(NgeoOld.EQ.NGeoNew) THEN
 !$OMP PARALLEL DEFAULT(SHARED)
 !$OMP DO PRIVATE(iElemOld,equal,iElemNew,i,j,k,dist) SCHEDULE(DYNAMIC,100)
   DO iElemOld=1,nElemsOld
-    !print*, OMP_get_thread_num()
     DO iElemNew=1,nElemsNew
       IF(ElemDone(iElemNew)) CYCLE
       equal=.FALSE.
@@ -141,13 +143,15 @@ IF(NgeoOld.EQ.NGeoNew) THEN
       ! we compare the distance of the centroids here for a first check!
       IF(ABS(  xCOld(1,iElemOld)-xCNew(1,iElemNew)).GT.maxDist) CYCLE
       IF(ABS(  xCOld(2,iElemOld)-xCNew(2,iElemNew)).GT.maxDist) CYCLE
+#if PP_dim == 3
       IF(ABS(  xCOld(3,iElemOld)-xCNew(3,iElemNew)).GT.maxDist) CYCLE
-      dist=SUM((xCOld(:,iElemOld)-xCNew(:,iElemNew))**2)
+#endif
+      dist=SUM((xCOld(1:PP_dim,iElemOld)-xCNew(1:PP_dim,iElemNew))**2)
       IF(dist.GT.maxDist**2) CYCLE
       ! now the coordinates of the mesh nodes themselves are compared
       equal=.TRUE.
-      DO k=0,NGeoOld; DO j=0,NGeoOld; DO i=0,NGeoOld
-        dist=SUM((xCLOld(:,i,j,k,iElemOld)-xCLNew(:,i,j,k,iElemNew))**2)
+      DO k=0,ZDIM(NGeoOld); DO j=0,NGeoOld; DO i=0,NGeoOld
+        dist=SUM((xCLOld(1:PP_dim,i,j,k,iElemOld)-xCLNew(1:PP_dim,i,j,k,iElemNew))**2)
         IF(dist.GT.maxDist**2) THEN
           equal=.FALSE.
         END IF
@@ -185,15 +189,17 @@ DO iElemOld=1,nElemsOld
   IF(ElemDoneOld(iElemOld)) CYCLE ! already found matching new element
 
   ! Find initial guess for Newton, get supersampled element
-  CALL ChangeBasis3D(3,NGeoOld,NSuper,Vdm_CLNGeo_EquiNSuper,xCLOld(:,:,:,:,iElemOld),X_NSuper)
+  CALL ChangeBasisVolume(PP_dim,NGeoOld,NSuper,Vdm_CLNGeo_EquiNSuper,xCLOld(1:PP_dim,:,:,:,iElemOld),X_NSuper)
   ! Compute Jacobian of element mapping for each CL point
   dXCL_NGeo=0.
-  DO k=0,NGeoOld; DO j=0,NGeoOld; DO i=0,NGeoOld
+  DO k=0,ZDIM(NGeoOld); DO j=0,NGeoOld; DO i=0,NGeoOld
     DO l=0,NGeoOld
       ! Matrix-vector multiplication
-      dXCL_NGeo(:,1,i,j,k)=dXCL_NGeo(:,1,i,j,k) + DCL_NGeo(i,l)*xCLOld(:,l,j,k,iElemOld)
-      dXCL_NGeo(:,2,i,j,k)=dXCL_NGeo(:,2,i,j,k) + DCL_NGeo(j,l)*xCLOld(:,i,l,k,iElemOld)
+      dXCL_NGeo(1:PP_dim,1,i,j,k)=dXCL_NGeo(1:PP_dim,1,i,j,k) + DCL_NGeo(i,l)*xCLOld(1:PP_dim,l,j,k,iElemOld)
+      dXCL_NGeo(1:PP_dim,2,i,j,k)=dXCL_NGeo(1:PP_dim,2,i,j,k) + DCL_NGeo(j,l)*xCLOld(1:PP_dim,i,l,k,iElemOld)
+#if PP_dim == 3
       dXCL_NGeo(:,3,i,j,k)=dXCL_NGeo(:,3,i,j,k) + DCL_NGeo(k,l)*xCLOld(:,i,j,l,iElemOld)
+#endif
     END DO
   END DO; END DO; END DO
 
@@ -201,41 +207,51 @@ DO iElemOld=1,nElemsOld
     IF(ElemDone(iElemNew)) CYCLE ! all IP already found
     ! Check if the two elements could be overlapping by comparing the distance between the centroids with the sum of the radii
     maxDist=radNew(iElemNew)+radOld(iElemOld)
-    IF(SUM((xCOld(:,iElemOld)-xCNew(:,iElemNew))**2).GT.maxDist**2) CYCLE
+    IF(SUM((xCOld(1:PP_dim,iElemOld)-xCNew(1:PP_dim,iElemNew))**2).GT.maxDist**2) CYCLE
 
     ! Check which IP of new elem overlaps with old elem
     IPOverlaps=.FALSE.
-    DO kk=0,NInter; DO jj=0,NInter; DO ii=0,NInter
+    DO kk=0,ZDIM(NInter); DO jj=0,NInter; DO ii=0,NInter
       IF(IPDone(ii,jj,kk,iElemNew)) CYCLE
 
-      dist=SUM((xCOld(:,iElemOld)-xCLInter(:,ii,jj,kk,iElemNew))**2)
+      dist=SUM((xCOld(1:PP_dim,iElemOld)-xCLInter(1:PP_dim,ii,jj,kk,iElemNew))**2)
       IPOverlaps(ii,jj,kk)=(dist.LE.radSqOld(iElemOld))
     END DO; END DO; END DO
 
     ! TODO: Move to own routine
     ! Get smallest distance to supersampled points for starting Newton
-    DO kk=0,NInter; DO jj=0,NInter; DO ii=0,NInter
+    DO kk=0,ZDIM(NInter); DO jj=0,NInter; DO ii=0,NInter
       IF(.NOT.IPOverlaps(ii,jj,kk)) CYCLE
 
-      xInter = xCLInter(:,ii,jj,kk,iElemNew)
+      xInter = xCLInter(1:PP_dim,ii,jj,kk,iElemNew)
       best=HUGE(1.)
-      DO i=0,NSuper; DO j=0,NSuper; DO k=0,NSuper
+      DO i=0,NSuper; DO j=0,NSuper; DO k=0,ZDIM(NSuper)
         dist=SUM((xInter-X_NSuper(:,i,j,k))**2)
         IF (dist.LT.best) THEN
           best=dist
+#if PP_dim == 3
           xi=(/Xi_NSuper(i),Xi_NSuper(j),Xi_NSuper(k)/)
+#else
+          xi=(/Xi_NSuper(i),Xi_NSuper(j)/)
+#endif
         END IF
       END DO; END DO; END DO
 
       CALL LagrangeInterpolationPolys(Xi(1),NGeoOld,Xi_CLNGeo,wBary_CLNGeo,LagXi)
       CALL LagrangeInterpolationPolys(Xi(2),NGeoOld,Xi_CLNGeo,wBary_CLNGeo,LagEta)
+#if PP_dim == 3
       CALL LagrangeInterpolationPolys(Xi(3),NGeoOld,Xi_CLNGeo,wBary_CLNGeo,LagZeta)
+#endif
 
       ! F(xi) = x(xi) - xInter
       F=-xInter
-      DO k=0,NGeoOld; DO j=0,NGeoOld; DO i=0,NGeoOld
+      DO k=0,ZDIM(NGeoOld); DO j=0,NGeoOld; DO i=0,NGeoOld
+#if PP_dim == 3
         LagVol(i,j,k)=LagXi(i)*LagEta(j)*LagZeta(k)
-        F=F+xCLOld(:,i,j,k,iElemOld)*LagVol(i,j,k)
+#else
+        LagVol(i,j,k)=LagXi(i)*LagEta(j)
+#endif
+        F=F+xCLOld(1:PP_dim,i,j,k,iElemOld)*LagVol(i,j,k)
       END DO; END DO; END DO
 
       !eps_F=1.E-16
@@ -245,8 +261,8 @@ DO iElemOld=1,nElemsOld
         iter=iter+1
         ! Compute F Jacobian dx/dXi
         Jac=0.
-        DO k=0,NGeoOld; DO j=0,NGeoOld; DO i=0,NGeoOld
-          Jac=Jac+dXCL_NGeo(:,:,i,j,k)*LagVol(i,j,k)
+        DO k=0,ZDIM(NGeoOld); DO j=0,NGeoOld; DO i=0,NGeoOld
+          Jac=Jac+dXCL_NGeo(1:PP_dim,1:PP_dim,i,j,k)*LagVol(i,j,k)
         END DO; END DO; END DO
 
         ! Compute inverse of Jacobian
@@ -261,12 +277,18 @@ DO iElemOld=1,nElemsOld
         ! Compute function value
         CALL LagrangeInterpolationPolys(Xi(1),NGeoOld,Xi_CLNGeo,wBary_CLNGeo,LagXi)
         CALL LagrangeInterpolationPolys(Xi(2),NGeoOld,Xi_CLNGeo,wBary_CLNGeo,LagEta)
+#if PP_dim == 3
         CALL LagrangeInterpolationPolys(Xi(3),NGeoOld,Xi_CLNGeo,wBary_CLNGeo,LagZeta)
+#endif
         ! F(xi) = x(xi) - xInter
         F=-xInter
-        DO k=0,NGeoOld; DO j=0,NGeoOld; DO i=0,NGeoOld
+        DO k=0,ZDIM(NGeoOld); DO j=0,NGeoOld; DO i=0,NGeoOld
+#if PP_dim == 3
           LagVol(i,j,k)=LagXi(i)*LagEta(j)*LagZeta(k)
-          F=F+xCLOld(:,i,j,k,iElemOld)*LagVol(i,j,k)
+#else
+          LagVol(i,j,k)=LagXi(i)*LagEta(j)
+#endif
+          F=F+xCLOld(1:PP_dim,i,j,k,iElemOld)*LagVol(i,j,k)
         END DO; END DO; END DO
       END DO !newton
 
@@ -274,7 +296,7 @@ DO iElemOld=1,nElemsOld
 !$OMP CRITICAL
       IF(MAXVAL(ABS(Xi)).LT.MAXVAL(ABS(xiInter(:,ii,jj,kk,iElemNew)))) THEN
         IF(MAXVAL(ABS(Xi)).LE.1.) IPDone(ii,jj,kk,iElemNew) = .TRUE. ! if point is inside element, stop searching
-        xiInter(:,ii,jj,kk,iElemNew)=Xi
+        xiInter(1:PP_dim,ii,jj,kk,iElemNew)=Xi
         InterToElem(ii,jj,kk,iElemNew) = iElemOld
       END IF
 !$OMP END CRITICAL
@@ -296,7 +318,7 @@ END DO ! iElemOld
 nNotFound=0
 DO iElemNew=1,nElemsNew
   IF(equalElem(iElemNew).GT.0) CYCLE
-  DO ii=0,NInter; DO jj=0,NInter; DO kk=0,NInter
+  DO ii=0,NInter; DO jj=0,NInter; DO kk=0,ZDIM(NInter)
     IF(.NOT.IPDone(ii,jj,kk,iElemNew))THEN
       ! Only mark as invalid if greater then max tolerance
       IF(MAXVAL(ABS(xiInter(:,ii,jj,kk,iElemNew))).GT.maxTol)THEN
@@ -307,7 +329,7 @@ DO iElemNew=1,nElemsNew
           WRITE(*,*) 'Xi:',xiInter(:,ii,jj,kk,iElemNew)
         END IF
         !abort if severly broken and no refstate present (with refstate present abortTol=HUGE)
-        IF(MAXVAL(ABS(xiInter(:,ii,jj,kk,iElemNew))).GT.abortTol)&
+        IF(MAXVAL(ABS(xiInter(1:PP_dim,ii,jj,kk,iElemNew))).GT.abortTol)&
           CALL abort(__STAMP__, 'IP not found.')
         nNotFound=nNotFound+1
       ELSE
@@ -326,15 +348,16 @@ END SUBROUTINE GetParametricCoordinates
 !=================================================================================================================================
 SUBROUTINE getCentroidAndRadius(elem,NGeo,xC,radius)
 ! MODULES
+USE MOD_PreProc
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !---------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER,INTENT(IN) :: NGeo                         !> Polynomial degree of mesh representation
-REAL,INTENT(IN)    :: elem(3,0:NGeo,0:NGeo,0:NGeo) !> Coordinates of single element
+INTEGER,INTENT(IN) :: NGeo                               !> Polynomial degree of mesh representation
+REAL,INTENT(IN)    :: elem(3,0:NGeo,0:NGeo,0:ZDIM(NGeo)) !> Coordinates of single element
 !---------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-REAL,INTENT(OUT)   :: xC(3)                        !> Coordinates of centroid
+REAL,INTENT(OUT)   :: xC(PP_dim)                   !> Coordinates of centroid
 REAL,INTENT(OUT)   :: radius                       !> Radius of element
 !---------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -342,21 +365,23 @@ INTEGER            :: i,j,k,nNodes
 LOGICAL            :: onSide(3)
 !=================================================================================================================================
 ! Compute centroid of element
-nNodes= (NGeo+1)**3
+nNodes= (NGeo+1)**PP_dim
 xC(1) = SUM(elem(1,:,:,:))/nNodes
 xC(2) = SUM(elem(2,:,:,:))/nNodes
+#if PP_dim == 3
 xC(3) = SUM(elem(3,:,:,:))/nNodes
+#endif
 
 ! Compute max distance from bary to surface nodes and return as radius
 radius=0.
-DO k=0,NGeo
+DO k=0,ZDIM(NGeo)
   onSide(3)=((k.EQ.0).OR.(k.EQ.NGeo))
   DO j=0,NGeo
     onSide(2)=((j.EQ.0).OR.(j.EQ.NGeo))
     DO i=0,NGeo
       onSide(1)=((i.EQ.0).OR.(i.EQ.NGeo))
-      IF(.NOT.ANY(onSide)) CYCLE
-      radius=MAX(radius,NORM2(elem(:,i,j,k)-xC))
+      IF(.NOT.ANY(onSide(1:PP_dim))) CYCLE
+      radius=MAX(radius,NORM2(elem(1:PP_dim,i,j,k)-xC(1:PP_dim)))
     END DO
   END DO
 END DO

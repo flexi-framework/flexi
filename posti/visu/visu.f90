@@ -228,7 +228,7 @@ CHARACTER(LEN=255),INTENT(IN)    :: statefile
 CHARACTER(LEN=255),INTENT(INOUT) :: postifile
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL
-INTEGER                          :: nElems_State
+INTEGER                          :: nElems_State,N_State
 CHARACTER(LEN=255)               :: NodeType_State, cwd
 !===================================================================================================================================
 IF (STRICMP(fileType,'Mesh')) THEN
@@ -242,7 +242,11 @@ CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 ! read the meshfile attribute from statefile
 CALL ReadAttribute(File_ID,'MeshFile',    1,StrScalar =MeshFile_state)
 ! get properties
+#if PP_N==N
 CALL GetDataProps(nVar_State,PP_N,nElems_State,NodeType_State)
+#else
+CALL GetDataProps(nVar_State,N_State,nElems_State,NodeType_State)
+#endif 
 
 ! read options from posti parameter file
 CALL prms%read_options(postifile)
@@ -339,7 +343,11 @@ END IF
 
 ! build distribution of FV and DG elements, which is stored in FV_Elems_loc
 IF (changedStateFile.OR.changedMeshFile.OR.changedDGonly) THEN
-  CALL Build_FV_DG_distribution(statefile)
+  CALL Build_FV_DG_distribution(&
+#if FV_ENABLED
+    statefile&
+#endif
+    )
 END IF
 
 ! reset withDGOperator flag and check if it is needed due to existing FV elements
@@ -357,7 +365,11 @@ CALL Build_mapDepToCalc_mapAllVarsToVisuVars()
 
 IF (Avg2D) THEN
   CALL InitAverage2D()
-  CALL BuildVandermonds_Avg2D(NCalc,NCalc_FV)
+  CALL BuildVandermonds_Avg2D(NCalc&
+#if FV_ENABLED
+    ,NCalc_FV&
+#endif
+    )
 END IF
 
 changedWithDGOperator = (withDGOperator.NEQV.withDGOperator_old)
@@ -602,7 +614,11 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
     CALL ConvertToVisu_GenericData(statefile)
   END IF
 
-  IF (Avg2DHDF5Output) CALL WriteAverageToHDF5(nVarVisu,NVisu,NVisu_FV,NodeType,OutputTime,MeshFile_state,UVisu_DG,UVisu_FV)
+  IF (Avg2DHDF5Output) CALL WriteAverageToHDF5(nVarVisu,NVisu,NodeType,OutputTime,MeshFile_state,UVisu_DG&
+#if FV_ENABLED
+    ,NVisu_FV,UVisu_FV&
+#endif /* FV_ENABLED */
+    )
 
 #if USE_MPI
    IF ((.NOT.MPIRoot).AND.(Avg2d)) THEN
@@ -653,9 +669,30 @@ END SUBROUTINE visu
 !===================================================================================================================================
 SUBROUTINE FinalizeVisu()
 USE MOD_Globals
-USE MOD_Visu_Vars
+USE MOD_Commandline_Arguments,ONLY: FinalizeCommandlineArguments
+USE MOD_DG                   ,ONLY: FinalizeDG
 USE MOD_DG_Vars
-USE MOD_Mesh_Vars, ONLY: Elem_xGP
+USE MOD_Equation             ,ONLY: FinalizeEquation
+USE MOD_Filter               ,ONLY: FinalizeFilter
+USE MOD_Indicator            ,ONLY: FinalizeIndicator
+USE MOD_Interpolation        ,ONLY: FinalizeInterpolation
+USE MOD_IO_HDF5              ,ONLY: FinalizeIOHDF5
+USE MOD_Mesh                 ,ONLY: FinalizeMesh
+USE MOD_Mesh_Vars            ,ONLY: Elem_xGP
+USE MOD_Mortar               ,ONLY: FinalizeMortar
+USE MOD_Overintegration      ,ONLY: FinalizeOverintegration
+USE MOD_ReadInTools          ,ONLY: FinalizeParameters
+USE MOD_Restart              ,ONLY: FinalizeRestart
+USE MOD_Visu_Vars
+#if PARABOLIC
+USE MOD_Lifting              ,ONLY: FinalizeLifting
+#endif
+#if FV_ENABLED
+USE MOD_FV_Basis             ,ONLY: FinalizeFV_Basis
+#endif /* FV_ENABLED */
+#if USE_MPI
+USE MOD_MPI                  ,ONLY: FinalizeMPI
+#endif /* USE_MPI */
 IMPLICIT NONE
 !===================================================================================================================================
 SWRITE (*,*) "VISU FINALIZE"
@@ -702,6 +739,46 @@ SDEALLOCATE(CoordsVisu_FV)
 SDEALLOCATE(UVisu_FV)
 SDEALLOCATE(U)
 SDEALLOCATE(Elem_xGP)
+
+CALL FinalizeRestart()
+CALL FinalizeIndicator()
+CALL FinalizeEquation()
+CALL FinalizeDG()
+CALL FinalizeOverintegration()
+CALL FinalizeFilter()
+CALL FinalizeCommandlineArguments()
+CALL FinalizeParameters()
+CALL FinalizeInterpolation()
+CALL FinalizeMesh()
+CALL FinalizeIOHDF5()
+#if FV_ENABLED
+CALL FinalizeFV_Basis()
+#endif /* FV_ENABLED */
+CALL FinalizeMortar()
+#if PARABOLIC
+CALL FinalizeLifting()
+#endif /*PARABOLIC*/
+
+SDEALLOCATE(VarNamesHDF5)
+SDEALLOCATE(VarnamesAll)
+SDEALLOCATE(BCNamesAll)
+SDEALLOCATE(DepTable)
+SDEALLOCATE(DepSurfaceOnly)
+SDEALLOCATE(DepVolumeOnly)
+
+SDEALLOCATE(FV_Elems_old)
+SDEALLOCATE(mapDepToCalc_FV)
+SDEALLOCATE(mapAllBCSidesToDGVisuBCSides)
+SDEALLOCATE(mapAllBCSidesToFVVisuBCSides)
+SDEALLOCATE(mapAllBCNamesToVisuBCNames_old)
+SDEALLOCATE(mapAllBCNamesToVisuBCNames)
+SDEALLOCATE(nSidesPerBCNameVisu_DG)
+SDEALLOCATE(nSidesPerBCNameVisu_FV)
+
+#if USE_MPI
+CALL FinalizeMPI()
+#endif /* USE_MPI */
+
 END SUBROUTINE FinalizeVisu
 
 END MODULE MOD_Visu

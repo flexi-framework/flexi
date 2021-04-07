@@ -1,6 +1,22 @@
 # =========================================================================
 # SWAPMESH
 # =========================================================================
+OPTION(LIBS_USE_OPENMP "Enable OpenMP for swapmesh tool" OFF)
+IF(LIBS_USE_OPENMP)
+  IF ("${CMAKE_VERSION}" VERSION_LESS 3.1.0)
+    MESSAGE(WARNING "For finding OpenMP Fortran flags at least CMake version 3.1.0 is required. Please specify flags manually or use newer CMake version.")
+  ENDIF()
+  FIND_PACKAGE(OpenMP REQUIRED)
+  SET (CMAKE_Fortran_FLAGS_DEBUG   "${CMAKE_Fortran_FLAGS_DEBUG}   ${OpenMP_Fortran_FLAGS}")
+  SET (CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS_RELEASE} ${OpenMP_Fortran_FLAGS}")
+  SET (CMAKE_CXX_FLAGS_DEBUG       "${CMAKE_CXX_FLAGS_DEBUG}       ${OpenMP_CXX_FLAGS}")
+  SET (CMAKE_CXX_FLAGS_RELEASE     "${CMAKE_CXX_FLAGS_RELEASE}     ${OpenMP_CXX_FLAGS}")
+  SET (CMAKE_EXE_LINKER_FLAGS      "${CMAKE_EXE_LINKER_FLAGS}      ${OpenMP_EXE_LINKER_FLAGS}")
+  ADD_DEFINITIONS(-DUSE_OPENMP=1)
+ELSE()
+  ADD_DEFINITIONS(-DUSE_OPENMP=0)
+ENDIF()
+
 SET(TOOL_NAME "swapmesh")
 SET(TOOL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/posti/swapmesh")
 

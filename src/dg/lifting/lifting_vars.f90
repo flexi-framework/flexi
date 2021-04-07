@@ -13,7 +13,7 @@
 !=================================================================================================================================
 #if PARABOLIC
 !==================================================================================================================================
-!> Contains global variables used by the BR1 lifting.
+!> Contains global variables used by the lifting procedure.
 !==================================================================================================================================
 MODULE MOD_Lifting_Vars
 ! MODULES
@@ -30,11 +30,26 @@ REAL,ALLOCATABLE :: gradUz_slave(:,:,:,:)         !< slave side gradients in x-d
 REAL,ALLOCATABLE :: gradUx_master(:,:,:,:)        !< master side gradients in x-dir
 REAL,ALLOCATABLE :: gradUy_master(:,:,:,:)        !< master side gradients in x-dir
 REAL,ALLOCATABLE :: gradUz_master(:,:,:,:)        !< master side gradients in x-dir
-! the lifted grad
+REAL,ALLOCATABLE :: FluxX(:,:,:,:)                !< gradient flux in x-dir
+REAL,ALLOCATABLE :: FluxY(:,:,:,:)                !< gradient flux in y-dir
+REAL,ALLOCATABLE :: FluxZ(:,:,:,:)                !< gradient flux in z-dir
+! the lifted gradients
 REAL,ALLOCATABLE :: gradUx(:,:,:,:,:)             !< gradients in x-dir at degree N
 REAL,ALLOCATABLE :: gradUy(:,:,:,:,:)             !< gradients in y-dir at degree N
 REAL,ALLOCATABLE :: gradUz(:,:,:,:,:)             !< gradients in z-dir at degree N
-LOGICAL          :: doWeakLifting=.FALSE.         !< marks whether lifting is peformed in weak form
+! Diffusive fluxes
+REAL,ALLOCATABLE :: diffFluxX_L(:,:,:)
+REAL,ALLOCATABLE :: diffFluxX_R(:,:,:)
+REAL,ALLOCATABLE :: diffFluxY_L(:,:,:)
+REAL,ALLOCATABLE :: diffFluxY_R(:,:,:)
+REAL,ALLOCATABLE :: diffFluxZ_L(:,:,:)
+REAL,ALLOCATABLE :: diffFluxZ_R(:,:,:)
+
+REAL             :: etaBR2                        !< Lifting penalty for BR2. Increase improves stability
+                                                  !< at the cost of performance and reduces jumps between two cells
+REAL             :: etaBR2_wall                   !< Lifting penalty for BR2 at the wall. Can be choosen different from etaBR2
+                                                  !< to decrease wall velocities
+LOGICAL          :: doWeakLifting=.FALSE.         !< marks whether lifting is peformed in weak form, BR2 is always stong
 LOGICAL          :: doConservativeLifting=.FALSE. !< marks whether volume contribution to the gradients is computed in
                                                   !< conservative form, i.e. deriving the solution divided by the metric terms,
                                                   !< instead of deriving the solution and multiplying by the metrics

@@ -12,6 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "eos.h"
 
 !==================================================================================================================================
 !> Contains routines to interpolate the interior solution to the boundary
@@ -73,6 +74,25 @@ PUBLIC::ProlongToFacePrim
 CONTAINS
 #include "prolongtoface.t90"
 END MODULE MOD_ProlongToFacePrim
+
+!==================================================================================================================================
+!> Contains routines to interpolate the primitive interior solution to the boundary
+!==================================================================================================================================
+MODULE MOD_ProlongToFaceLifting
+IMPLICIT NONE
+PRIVATE
+#undef WITHnVar
+INTEGER,PARAMETER :: TP_nVar = PP_nVarLifting
+
+INTERFACE ProlongToFaceLifting
+  MODULE PROCEDURE ProlongToFace
+END INTERFACE
+
+PUBLIC::ProlongToFaceLifting
+
+CONTAINS
+#include "prolongtoface.t90"
+END MODULE MOD_ProlongToFaceLifting
 
 !==================================================================================================================================
 !> Contains routines to interpolate a scalar interior solution to the boundary

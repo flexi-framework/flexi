@@ -299,10 +299,16 @@ LOGICAL,INTENT(OUT)                  :: Exists   !< result: dataset exists
 ! LOCAL VARIABLES
 INTEGER(HID_T)                       :: DSet_ID
 INTEGER                              :: hdferr
+LOGICAL                              :: attrib_loc
 !==================================================================================================================================
 CALL h5eset_auto_f(0, hdferr)
 ! Open the dataset with default properties.
-IF(PRESENT(attrib).AND.attrib)THEN
+IF (PRESENT(attrib)) THEN
+  attrib_loc = attrib
+ELSE
+  attrib_loc = .FALSE.
+END IF
+IF(attrib_loc)THEN
   CALL H5AOPEN_F(Loc_ID, TRIM(DSetName), DSet_ID, iError)
   CALL H5ACLOSE_F(DSet_ID, iError)
 ELSE
@@ -497,6 +503,9 @@ CALL H5PCREATE_F(H5P_DATASET_XFER_F, PList_ID, iError)
 ! Set property list to collective dataset read
 CALL H5PGET_DRIVER_F(Plist_File_ID,driver,iError)
 IF(driver.EQ.H5FD_MPIO_F) CALL H5PSET_DXPL_MPIO_F(PList_ID, H5FD_MPIO_COLLECTIVE_F, iError)
+! HDF5 with MPI can only read max. (32 bit integer / 8) elements
+IF(REAL(PRODUCT(nVal)).GT.((2**28-1)/8.))  CALL Abort(__STAMP__, &
+      'Total size of HDF5 array "'//TRIM(ArrayName)//'" is too big! Reduce number of entries per rank or compile without MPI!')
 #endif
 
 IF(PRESENT(RealArray)) Type_ID=H5T_NATIVE_DOUBLE

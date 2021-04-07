@@ -51,7 +51,11 @@ CONTAINS
 !>  4. check wether the distribution of FV elements has changed
 !>  5. store the current distribution in FV_Elems_loc, is needed for some mappings later
 !===================================================================================================================================
-SUBROUTINE Build_FV_DG_distribution(statefile)
+SUBROUTINE Build_FV_DG_distribution(&
+#if FV_ENABLED
+    statefile&
+#endif
+    )
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Visu_Vars
@@ -62,7 +66,9 @@ USE MOD_Mesh_ReadIn ,ONLY: BuildPartition
 USE MOD_Mesh_Vars   ,ONLY: nElems
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
+#if FV_ENABLED
 CHARACTER(LEN=255),INTENT(IN)  :: statefile
+#endif
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: iElem
@@ -349,6 +355,7 @@ SWRITE (*,*) 'doSurfVisu: ',doSurfVisu
 changedBCnames = .TRUE.
 IF (ALLOCATED(mapAllBCNamesToVisuBCNames_old).AND.(SIZE(mapAllBCNamesToVisuBCNames).EQ.SIZE(mapAllBCNamesToVisuBCNames_old))) THEN
   changedBCnames = .NOT.ALL(mapAllBCNamesToVisuBCNames.EQ.mapAllBCNamesToVisuBCNames_old)
+  IF (ALL(mapAllBCNamesToVisuBCNames_old.EQ.0) .AND. changedBCNames) changedStateFile = .TRUE.
 END IF
 SDEALLOCATE(mapAllBCNamesToVisuBCNames_old)
 ALLOCATE(mapAllBCNamesToVisuBCNames_old(1:nBCNamesAll))

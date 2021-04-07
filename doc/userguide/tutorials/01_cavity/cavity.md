@@ -22,7 +22,7 @@ Make sure that **FLEXI** is compiled with the cmake options listed in the follow
 | CMAKE_BUILD_TYPE                | Release       |              |
 | FLEXI_EQYNSYSNAME               | navierstokes  |              |
 | FLEXI_PARABOLIC                 | ON            |              |
-| FLEXI_MPI                       | ON            |  optional    |
+| LIBS_USE_MPI                    | ON            |  optional    |
 
 Table: Cmake options for the cavity simulation. \label{tab:cavity_cmakeoptions}
 

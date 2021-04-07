@@ -2,62 +2,42 @@
 # POSTI
 # =========================================================================
 
-CMAKE_DEPENDENT_OPTION(POSTI_BUILD_VISU                  "Build the visu tool"                                ON  "FLEXI_BUILDPOSTI" OFF)
-CMAKE_DEPENDENT_OPTION(POSTI_BUILD_MERGETIMEAVERAGES     "Build the time-averaging tool"                      ON  "FLEXI_BUILDPOSTI" OFF)
-CMAKE_DEPENDENT_OPTION(POSTI_BUILD_DMD                   "Build the DMD tool"                                 OFF "FLEXI_BUILDPOSTI" OFF)
-CMAKE_DEPENDENT_OPTION(POSTI_BUILD_PREPARERECORDPOINTS   "Build the Record point preprocessing tool"          ON  "FLEXI_BUILDPOSTI" OFF)
-CMAKE_DEPENDENT_OPTION(POSTI_BUILD_VISUALIZERECORDPOINTS "Build the Record Point visualization tool"          OFF "FLEXI_BUILDPOSTI" OFF)
-CMAKE_DEPENDENT_OPTION(POSTI_BUILD_EVALUATERECORDPOINTS  "Build the Record Point aposteriori evaluation tool" ON  "FLEXI_BUILDPOSTI" OFF)
-CMAKE_DEPENDENT_OPTION(POSTI_BUILD_SWAPMESH              "Build the Swapmesh tool"                            OFF "FLEXI_BUILDPOSTI" OFF)
-CMAKE_DEPENDENT_OPTION(POSTI_BUILD_CHANNEL_FFT           "Build the channel FFT tool"                         OFF "FLEXI_BUILDPOSTI" OFF)
-CMAKE_DEPENDENT_OPTION(POSTI_BUILD_WALLDISTANCE          "Build the walldistance tool"                        OFF "FLEXI_BUILDPOSTI" OFF)
-CMAKE_DEPENDENT_OPTION(POSTI_BUILD_TO3D                  "Build the 3D extrusion tool"                        OFF "FLEXI_BUILDPOSTI" OFF)
-CMAKE_DEPENDENT_OPTION(POSTI_BUILD_AVG2D                 "Build the 2D average tool"                          OFF "FLEXI_BUILDPOSTI" OFF)
-CMAKE_DEPENDENT_OPTION(POSTI_BUILD_INIT_HIT              "Build the init hit tool"                            OFF "FLEXI_BUILDPOSTI" OFF)
-CMAKE_DEPENDENT_OPTION(POSTI_BUILD_FILTER_HIT            "Build the filter hit tool"                          OFF "FLEXI_BUILDPOSTI" OFF)
-CMAKE_DEPENDENT_OPTION(POSTI_BUILD_ANALYZE_HIT           "Build the analyze hit tool"                         OFF "FLEXI_BUILDPOSTI" OFF)
-CMAKE_DEPENDENT_OPTION(ENABLE_OPENMP                     "Enable OpenMP in posti tools"                       OFF "FLEXI_BUILDPOSTI" OFF)
-
-IF(ENABLE_OPENMP)
-  IF ("${CMAKE_VERSION}" VERSION_LESS 3.1.0)
-    MESSAGE(WARNING "For finding OpenMP Fortran flags at least CMake version 3.1.0 is required. Please specify flags manually or use newer CMake version.")
-  ENDIF()
-  FIND_PACKAGE(OpenMP REQUIRED)
-  SET (CMAKE_Fortran_FLAGS_DEBUG   "${CMAKE_Fortran_FLAGS_DEBUG}   ${OpenMP_Fortran_FLAGS}")
-  SET (CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS_RELEASE} ${OpenMP_Fortran_FLAGS}")
-  SET (CMAKE_CXX_FLAGS_DEBUG       "${CMAKE_CXX_FLAGS_DEBUG}       ${OpenMP_CXX_FLAGS}")
-  SET (CMAKE_CXX_FLAGS_RELEASE     "${CMAKE_CXX_FLAGS_RELEASE}     ${OpenMP_CXX_FLAGS}")
-  SET (CMAKE_EXE_LINKER_FLAGS      "${CMAKE_EXE_LINKER_FLAGS}      ${OpenMP_EXE_LINKER_FLAGS}")
-  ADD_DEFINITIONS(-DUSE_OPENMP=1)
-ELSE()
-  ADD_DEFINITIONS(-DUSE_OPENMP=0)
-ENDIF()
+CMAKE_DEPENDENT_OPTION(POSTI_VISU                  "Build the visu tool"                                ON  "POSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_MERGETIMEAVERAGES     "Build the time-averaging tool"                      OFF "POSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_DMD                   "Build the DMD tool"                                 OFF "POSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_RP_PREPARE            "Build the Record Point preprocessing tool"          OFF "POSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_RP_VISUALIZE          "Build the Record Point visualization tool"          OFF "POSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_RP_EVALUATE           "Build the Record Point aposteriori evaluation tool" OFF "POSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_SWAPMESH              "Build the Swapmesh tool"                            OFF "POSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_CHANNEL_FFT           "Build the channel FFT tool"                         OFF "POSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_WALLDISTANCE          "Build the walldistance tool"                        OFF "POSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_TO3D                  "Build the 3D extrusion tool"                        OFF "POSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_AVG2D                 "Build the 2D average tool"                          OFF "POSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_BUILD_INIT_HIT        "Build the init hit tool"                            OFF "FLEXI_BUILDPOSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_BUILD_FILTER_HIT      "Build the filter hit tool"                          OFF "FLEXI_BUILDPOSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_BUILD_ANALYZE_HIT     "Build the analyze hit tool"                         OFF "FLEXI_BUILDPOSTI" OFF)
 
 
-SET(   POSTI_WHICH_EQNSYS "navierstokes" CACHE STRING
-                        "Used equation system (navierstokes)")
-SET(   POSTI_WHICH_EOS    "idealgas" CACHE STRING
-                        "Used equation of state (idealgas)")
+# =========================================================================
+# Build vtk structured output library
+# =========================================================================
+ADD_LIBRARY(vtklib STATIC ${CMAKE_CURRENT_SOURCE_DIR}/posti/common/vtkOutput/vtkStructuredOutput.f90)
+SET_TARGET_PROPERTIES(vtklib PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS})
+TARGET_LINK_LIBRARIES(vtklib libflexishared)
+ADD_DEPENDENCIES(vtklib libflexishared)
 
-IF(POSTI_BUILD_VISUALIZERECORDPOINTS OR POSTI_BUILD_CHANNEL_FFT OR POSTI_BUILD_INIT_HIT OR POSTI_BUILD_ANALYZE_HIT  OR POSTI_BUILD_FILTER_HIT)
+IF(POSTI_RP_VISUALIZE OR POSTI_CHANNEL_FFT OR POSTI_BUILD_INIT_HIT OR POSTI_BUILD_ANALYZE_HIT OR POSTI_BUILD_FILTER_HIT)
   # =========================================================================
   # FFTW (FFT tool)
   # =========================================================================
-  # TODO: Upload new version to FlexiDL
-  IF (HOMERUN GREATER -1)
-    SET (FFTWDOWNLOAD ${FLEXI_DLPATH}libs/FFTW.git )
-  ELSE()
-    SET (FFTWDOWNLOAD ${FLEXI_DLPATH}libs/FFTW.git )
-    #SET (FFTWDOWNLOAD https://github.com/FFTW/fftw3.git ) ! Github repo does not contain all data, use fftw.org instead
-    #SET (FFTWDOWNLOAD http://fftw.org/ ) fftw-3.3.6-pl1.tar.gz
-  ENDIF()
-  SET(POSTI_FFTWTAG "fftw-3.3.6-pl1" CACHE STRING "FFTW version tag")
-  SET(POSTI_FFTWDIR ${FLEXI_EXTERNAL_LIB_DIR}/fftw)
+  SET (FFTWDOWNLOAD ${LIBS_DLPATH}libs/FFTW.git )
+  SET(POSTI_FFTWTAG "fftw-3.3.9" CACHE STRING "FFTW version tag")
+  SET(POSTI_FFTWDIR ${LIBS_EXTERNAL_LIB_DIR}/fftw)
   # Try to find the library in the share directory or in a global, user-defined $FFTW_DIR
-  FIND_PATH(FFTW_INCLUDES fftw3.h         HINTS $ENV{FFTW_DIR}/include ${FLEXI_EXTERNAL_LIB_DIR}/fftw/build/include)
-  FIND_LIBRARY(FFTW_LIBRARIES NAMES fftw3 HINTS $ENV{FFTW_DIR}/lib     ${FLEXI_EXTERNAL_LIB_DIR}/fftw/build/lib    )
+  FIND_PATH(FFTW_INCLUDES fftw3.h         HINTS $ENV{FFTW_DIR}/include ${LIBS_EXTERNAL_LIB_DIR}/fftw/build/include)
+  FIND_LIBRARY(FFTW_LIBRARIES NAMES fftw3 HINTS $ENV{FFTW_DIR}/lib     ${LIBS_EXTERNAL_LIB_DIR}/fftw/build/lib    )
   IF (ENABLE_OPENMP)
-    FIND_LIBRARY(FFTW_OMP_LIBRARIES NAMES fftw3_omp HINTS $ENV{FFTW_DIR}/lib     ${FLEXI_EXTERNAL_LIB_DIR}/fftw/build/lib    )
+    FIND_LIBRARY(FFTW_OMP_LIBRARIES NAMES fftw3_omp HINTS $ENV{FFTW_DIR}/lib     ${LIBS_EXTERNAL_LIB_DIR}/fftw/build/lib    )
   ENDIF()
   IF(FFTW_INCLUDES STREQUAL "FFTW_INCLUDES-NOTFOUND" OR FFTW_LIBRARIES STREQUAL "FFTW_LIBRARIES-NOTFOUND" OR FFTW_OMP_LIBRARIES STREQUAL "FFTW_OMP_LIBRARIES-NOTFOUND")
     MESSAGE(STATUS "FFTW not found, building library")
@@ -67,7 +47,8 @@ IF(POSTI_BUILD_VISUALIZERECORDPOINTS OR POSTI_BUILD_CHANNEL_FFT OR POSTI_BUILD_I
         ${${GITSHALLOW}}
         PREFIX  ${POSTI_FFTWDIR}
 	UPDATE_COMMAND ""
-        CONFIGURE_COMMAND tar xzf ${POSTI_FFTWTAG}.tar.gz && FC=${CMAKE_Fortran_COMPILER} CC=${CMAKE_C_COMPILER} F77=${CMAKE_F77_COMPILER} ${POSTI_FFTWDIR}/src/fftw/${POSTI_FFTWTAG}/configure --prefix=${POSTI_FFTWDIR}/build --enable-openmp BUILD_IN_SOURCE 1
+        CONFIGURE_COMMAND tar xzf ${POSTI_FFTWTAG}.tar.gz && FC=${CMAKE_Fortran_COMPILER} CC=${CMAKE_C_COMPILER} F77=${CMAKE_F77_COMPILER} ${POSTI_FFTWDIR}/src/fftw/${POSTI_FFTWTAG}/configure --prefix=${POSTI_FFTWDIR}/build
+        BUILD_IN_SOURCE 1
       )
     SET(FFTW_INCLUDE_DIR ${POSTI_FFTWDIR}/build/include)
     SET(FFTW_LIBRARY     ${POSTI_FFTWDIR}/build/lib/libfftw3.a)
@@ -87,51 +68,56 @@ IF(POSTI_BUILD_VISUALIZERECORDPOINTS OR POSTI_BUILD_CHANNEL_FFT OR POSTI_BUILD_I
     ENDIF()
   ENDIF()
 
+  # Build static FFTW library to be included in each POSTI tool
+  ADD_LIBRARY(fftwlib STATIC ${CMAKE_CURRENT_SOURCE_DIR}/posti/common/fftw/fftw.f90)
+  SET_TARGET_PROPERTIES(fftwlib PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS})
+  TARGET_LINK_LIBRARIES(fftwlib ${FFTW_LIBRARIES})
+  TARGET_INCLUDE_DIRECTORIES(fftwlib PRIVATE ${FFTW_INCLUDE_DIR})
 ENDIF()
 
 
-IF(POSTI_BUILD_VISU)
+IF(POSTI_VISU)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/visu/CMakeLists.txt)
 ENDIF()
 
-IF(POSTI_BUILD_MERGETIMEAVERAGES)
+IF(POSTI_MERGETIMEAVERAGES)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/mergetimeaverages/CMakeLists.txt)
 ENDIF()
 
-IF(POSTI_BUILD_DMD)
+IF(POSTI_DMD)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/dmd/CMakeLists.txt)
 ENDIF()
 
-IF(POSTI_BUILD_PREPARERECORDPOINTS)
+IF(POSTI_RP_PREPARE)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/recordpoints/prepare/CMakeLists.txt)
 ENDIF()
 
-IF(POSTI_BUILD_VISUALIZERECORDPOINTS)
+IF(POSTI_RP_VISUALIZE)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/recordpoints/visualize/CMakeLists.txt)
 ENDIF()
 
-IF(POSTI_BUILD_EVALUATERECORDPOINTS)
+IF(POSTI_RP_EVALUATE)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/recordpoints/evaluate/CMakeLists.txt)
 ENDIF()
 
-IF(POSTI_BUILD_SWAPMESH)
+IF(POSTI_SWAPMESH)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/swapmesh/CMakeLists.txt)
 ENDIF()
 
-IF(POSTI_BUILD_CHANNEL_FFT)
+IF(POSTI_CHANNEL_FFT)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/channel_fft/CMakeLists.txt)
 ENDIF()
 
-IF(POSTI_BUILD_WALLDISTANCE)
+IF(POSTI_WALLDISTANCE)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/walldistance/CMakeLists.txt)
 ENDIF()
 
-IF(POSTI_BUILD_TO3D)
-	INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/to3D/CMakeLists.txt)
+IF(POSTI_TO3D)
+  INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/to3D/CMakeLists.txt)
 ENDIF()
 
-IF(POSTI_BUILD_AVG2D)
-	INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/avg2D/CMakeLists.txt)
+IF(POSTI_AVG2D)
+  INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/avg2D/CMakeLists.txt)
 ENDIF()
 
 IF(POSTI_BUILD_INIT_HIT)

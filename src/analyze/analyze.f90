@@ -97,9 +97,12 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                       :: lastLine(0:2*PP_nVar+5)
-CHARACTER(MAXVAL(LEN_TRIM(StrVarNames))+5) :: VarNames(2*PP_nVar+5)
 INTEGER                                    :: i,j,k,iSurf,iElem,iSide
 LOGICAL                                    :: hasAnalyzeSides(nBCs)
+! determine character length based on longest entry in 'StrVarNames'
+! to this end, LEN_TRIM was previously called on entire string array, while standard only permits scalar strings as argument
+! therefore, use implicit loop to call LEN_TRIM on each array entry, composing the integer array of string lengths on the fly
+CHARACTER(MAXVAL( (/( LEN_TRIM(StrVarNames(i)), i=1,SIZE(StrVarNames(:)) )/) )+5)  :: VarNames(2*PP_nVar+5)
 !==================================================================================================================================
 IF ((.NOT.InterpolationInitIsDone).OR.AnalyzeInitIsDone) THEN
   CALL CollectiveStop(__STAMP__,'InitAnalyse not ready to be called or already called.')
@@ -190,8 +193,10 @@ CALL MPI_ALLREDUCE(MPI_IN_PLACE,Surf,nBCs,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_
 CALL InitAnalyzeBasis(PP_N,NAnalyze,xGP,wBary)
 
 IF(doAnalyzeToFile)THEN
-  VarNames(1          :  PP_nVar)   ='L2_'//StrVarNames
-  VarNames(PP_nVar+1  :2*PP_nVar)   ='LInf_'//StrVarNames
+  DO i=1,PP_nVar
+    VarNames(i)                   = 'L2_'//TRIM(StrVarNames(i))
+    VarNames(PP_nVar+1:PP_nVar+i) = 'LInf_'//TRIM(StrVarNames(i))
+  END DO
   VarNames(2*PP_nVar+1:2*PP_nVar+5) = &
     [CHARACTER(9) :: "timesteps","t_CPU","DOF","Ncells","nProcs"] ! gfortran hates mixed length arrays
   FileName_ErrNorm='out.'//TRIM(ProjectName)

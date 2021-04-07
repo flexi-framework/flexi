@@ -244,6 +244,10 @@ INTEGER,           ALLOCATABLE :: UInt(:)
 INTEGER                        :: i,nValGather(rank),nDOFLocal
 INTEGER,DIMENSION(nLocalProcs) :: nDOFPerNode,offsetNode
 !==================================================================================================================================
+! HDF5 with MPI can only write max. (32 bit integer / 8) elements
+IF(REAL(PRODUCT(nVal)).GT.((2**28-1)/8.))  CALL Abort(__STAMP__, &
+    'Total size of HDF5 array "'//TRIM(DataSetName)//'" is too big! Reduce number of entries per rank or compile without MPI!')
+
 IF(gatheredWrite)THEN
   IF(ANY(offset(1:rank-1).NE.0)) &
     CALL abort(__STAMP__,'Offset only allowed in last dimension for gathered IO.')
@@ -619,7 +623,7 @@ REAL,INTENT(IN),OPTIONAL       :: FutureTime                                   !
 CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: Filename_In                            !< custom filename
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-CHARACTER(LEN=255)             :: FileName,DataSet
+CHARACTER(LEN=255)             :: FileName,DataSet,tmp255
 REAL                           :: StartT,EndT
 REAL,POINTER                   :: UOut(:,:,:,:,:)
 #if PP_dim == 2
@@ -641,7 +645,8 @@ IF(PRESENT(Filename_In)) Filename=TRIM(Filename_In)
 
 ! Write time averaged data --------------------------------------------------------------------------------------------------------
 IF(MPIRoot)THEN
-                    CALL GenerateFileSkeleton(TRIM(FileName),'TimeAvg',1 ,PP_N,(/'DUMMY_DO_NOT_VISUALIZE'/),&
+                    tmp255 = TRIM('DUMMY_DO_NOT_VISUALIZE')
+                    CALL GenerateFileSkeleton(TRIM(FileName),'TimeAvg',1 ,PP_N,(/tmp255/),&
                            MeshFileName,OutputTime,FutureTime,create=.TRUE.) ! dummy DG_Solution to fix Posti error, tres oegly !!!
   IF(nVarAvg .GT.0) CALL GenerateFileSkeleton(TRIM(FileName),'TimeAvg',nVarAvg ,PP_N,VarNamesAvg,&
                            MeshFileName,OutputTime,FutureTime,create=.FALSE.,Dataset='Mean')
@@ -739,6 +744,7 @@ LOGICAL,INTENT(IN),OPTIONAL    :: withUserblock      !< specify whether userbloc
 INTEGER(HID_T)                 :: DSet_ID,FileSpace,HDF5DataType
 INTEGER(HSIZE_T)               :: Dimsf(5)
 CHARACTER(LEN=255)             :: MeshFile255
+CHARACTER(LEN=255)             :: tmp255
 CHARACTER(LEN=255)             :: Dataset_Str,Varname_Str
 #if FV_ENABLED
 REAL                           :: FV_w_array(0:PP_N)
@@ -786,12 +792,14 @@ IF(create_loc)THEN
   CALL WriteAttribute(File_ID,'N',1,IntScalar=PP_N)
   CALL WriteAttribute(File_ID,'Dimension',1,IntScalar=PP_dim)
   CALL WriteAttribute(File_ID,'Time',1,RealScalar=OutputTime)
-  CALL WriteAttribute(File_ID,'MeshFile',1,StrScalar=(/MeshFileName/))
+  tmp255=TRIM(MeshFileName)
+  CALL WriteAttribute(File_ID,'MeshFile',1,StrScalar=(/tmp255/))
   IF(PRESENT(FutureTime))THEN
     MeshFile255=TRIM(TIMESTAMP(TRIM(ProjectName)//'_'//TRIM(TypeString),FutureTime))//'.h5'
     CALL WriteAttribute(File_ID,'NextFile',1,StrScalar=(/MeshFile255/))
   END IF
-  CALL WriteAttribute(File_ID,'NodeType',1,StrScalar=(/NodeType/))
+  tmp255=TRIM(NodeType)
+  CALL WriteAttribute(File_ID,'NodeType',1,StrScalar=(/tmp255/))
 #if FV_ENABLED
   CALL WriteAttribute(File_ID,'FV_Type',1,IntScalar=2)
   CALL WriteAttribute(File_ID,'FV_X',PP_N+1,RealArray=FV_X)
@@ -906,16 +914,16 @@ CHARACTER(LEN=*),INTENT(IN)              :: FileType_in   !< Type of file (e.g. 
 INTEGER(HID_T),INTENT(IN)                :: File_ID       !< HDF5 file id
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-CHARACTER(LEN=123) :: test
-CHARACTER(LEN=16) :: test2(1)
+CHARACTER(LEN=255) :: tmp255
 !==================================================================================================================================
-test = "asdasd                 "
-test2 = (/TRIM(test)/)
 ! Write a small file header to identify a Flexi HDF5 files
 ! Attributes are program name, file type identifier, project name and version number
-CALL WriteAttribute(File_ID,'Program'     ,1,StrScalar=(/ProgramName/))
-CALL WriteAttribute(File_ID,'File_Type'   ,1,StrScalar=(/FileType_in/))
-CALL WriteAttribute(File_ID,'Project_Name',1,StrScalar=(/ProjectName/))
+tmp255=TRIM(ProgramName)
+CALL WriteAttribute(File_ID,'Program'     ,1,StrScalar=(/tmp255/))
+tmp255=TRIM(FileType_in)
+CALL WriteAttribute(File_ID,'File_Type'   ,1,StrScalar=(/tmp255/))
+tmp255=TRIM(ProjectName)
+CALL WriteAttribute(File_ID,'Project_Name',1,StrScalar=(/tmp255/))
 CALL WriteAttribute(File_ID,'File_Version',1,RealScalar=FileVersion)
 END SUBROUTINE WriteHeader
 
@@ -1054,14 +1062,14 @@ IMPLICIT NONE
 INTEGER(HID_T)    ,INTENT(IN)           :: Loc_ID_in              !< Dataset ID (only if already open)
 CHARACTER(LEN=*)  ,INTENT(IN)           :: AttribName             !< name of the attribute to be written
 INTEGER           ,INTENT(IN)           :: nVal                   !< number of array entries if array is written
-CHARACTER(LEN=*)  ,INTENT(IN),OPTIONAL  :: DatasetName            !< name of the dataset created
+CHARACTER(LEN=255),INTENT(IN),OPTIONAL  :: DatasetName            !< name of the dataset created
 REAL              ,INTENT(IN),OPTIONAL,TARGET :: RealScalar       !< real scalar
 INTEGER           ,INTENT(IN),OPTIONAL,TARGET :: IntScalar        !< integer scalar
-CHARACTER(LEN=*)  ,INTENT(IN),OPTIONAL,TARGET :: StrScalar(1)     !< scalar string
+CHARACTER(LEN=255),INTENT(IN),OPTIONAL,TARGET :: StrScalar(1)     !< scalar string
 LOGICAL           ,INTENT(IN),OPTIONAL        :: LogicalScalar    !< logical scalar
 REAL              ,INTENT(IN),OPTIONAL,TARGET :: RealArray(nVal)  !< real array of length nVal
 INTEGER           ,INTENT(IN),OPTIONAL,TARGET :: IntArray(nVal)   !< integer array of length nVal
-CHARACTER(LEN=*)  ,INTENT(IN),OPTIONAL,TARGET :: StrArray(nVal)   !< string array of length nVal
+CHARACTER(LEN=255),INTENT(IN),OPTIONAL,TARGET :: StrArray(nVal)   !< string array of length nVal
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: Rank
@@ -1097,12 +1105,12 @@ END IF
 ! Create character string datatype for the attribute.
 ! For a attribute character, we have to build our own type with corresponding attribute length
 IF(PRESENT(StrScalar))THEN
-  AttrLen=LEN(TRIM(StrScalar(1)))
+  AttrLen=LEN_TRIM(StrScalar(1))
   CALL H5TCOPY_F(H5T_NATIVE_CHARACTER, Type_ID, iError)
   CALL H5TSET_SIZE_F(Type_ID, AttrLen, iError)
 END IF
 IF(PRESENT(StrArray))THEN
-  AttrLen=LEN(StrArray(1))
+  AttrLen=255
   CALL H5TCOPY_F(H5T_NATIVE_CHARACTER, Type_ID, iError)
   CALL H5TSET_SIZE_F(Type_ID, AttrLen, iError)
 ENDIF
