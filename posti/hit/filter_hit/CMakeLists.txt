@@ -11,7 +11,7 @@ FILE(GLOB ${TOOL_NAME}F90 ${TOOL_DIR}/posti_filter_hit.f90
                           ${TOOL_DIR}/filter_hit.f90
                           ${TOOL_DIR}/filter_hit_vars.f90
                           ${TOOL_DIR}/../shared/fft.f90
-                          ${TOOL_DIR}/../shared/fft_vars.f90
+                          ${TOOL_DIR}/../shared/fft_vars.f90)
 
 ADD_LIBRARY(${TOOL_NAME}libF90 OBJECT ${${TOOL_NAME}F90})
 SET_TARGET_PROPERTIES(${TOOL_NAME}libF90 PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS})
