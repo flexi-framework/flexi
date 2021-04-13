@@ -102,6 +102,8 @@ f = -DiffC*gradUx_Face
 g = -DiffC*gradUy_Face
 #if PP_dim==3
 h = -DiffC*gradUz_Face
+#else
+h = 0.
 #endif
 END SUBROUTINE EvalDiffFlux2D
 
@@ -127,6 +129,8 @@ gradUx_Face = -DiffC*gradUx_Face
 gradUy_Face = -DiffC*gradUy_Face
 #if PP_dim==3
 gradUz_Face = -DiffC*gradUz_Face
+#else
+gradUz_Face = 0.
 #endif
 END SUBROUTINE EvalDiffFlux2D_overwrite
 
@@ -156,6 +160,8 @@ f = -DiffC*gradUx(:,:,:,:)
 g = -DiffC*gradUy(:,:,:,:)
 #if PP_dim==3
 h = -DiffC*gradUz(:,:,:,:)
+#else
+h = 0.
 #endif
 END SUBROUTINE EvalDiffFlux3D
 
@@ -181,6 +187,8 @@ gradUx = -DiffC*gradUx(:,:,:,:)
 gradUy = -DiffC*gradUy(:,:,:,:)
 #if PP_dim==3
 gradUz = -DiffC*gradUz(:,:,:,:)
+#else
+gradUz = 0.
 #endif
 END SUBROUTINE EvalDiffFlux3D_overwrite
 #endif /*PARABOLIC*/
