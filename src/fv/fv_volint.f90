@@ -65,7 +65,10 @@ INTEGER                                       :: i,j,k,p,q,iElem
 REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_NZ)    :: UPrim_L,UPrim_R
 REAL,DIMENSION(PP_nVar    ,0:PP_N,0:PP_NZ)    :: UCons_L,UCons_R
 #if PARABOLIC
-REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_NZ,0:PP_N) :: diffFlux_x,diffFlux_y,diffFlux_z
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_NZ,0:PP_N) :: diffFlux_x,diffFlux_y
+#if PP_dim == 3
+REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_NZ,0:PP_N) :: diffFlux_z
+#endif /*PP_dim == 3*/
 REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_NZ)        :: Fvisc_FV
 REAL,DIMENSION(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) :: f,g,h      !< viscous volume fluxes at GP
 #endif
@@ -98,7 +101,9 @@ DO iElem=1,nElems
   DO i=0,PP_N
     diffFlux_x(:,:,:,i) = f(:,i,:,:)
     diffFlux_y(:,:,:,i) = g(:,i,:,:)
+#if PP_dim == 3
     diffFlux_z(:,:,:,i) = h(:,i,:,:)
+#endif
   END DO ! i=0,PP_N
 #endif
   ! This is the only nullification we have to do, the rest will be overwritten accordingly. Nullify here to catch only the FV
@@ -129,7 +134,10 @@ DO iElem=1,nElems
     DO q=0,PP_NZ; DO p=0,PP_N
       Fvisc_FV(:,p,q)=0.5*(FV_NormVecXi(1,p,q,i,iElem)*(diffFlux_x(:,p,q,i-1)+diffFlux_x(:,p,q,i)) &
                           +FV_NormVecXi(2,p,q,i,iElem)*(diffFlux_y(:,p,q,i-1)+diffFlux_y(:,p,q,i)) &
-                          +FV_NormVecXi(3,p,q,i,iElem)*(diffFlux_z(:,p,q,i-1)+diffFlux_z(:,p,q,i)))
+#if PP_dim == 3
+                          +FV_NormVecXi(3,p,q,i,iElem)*(diffFlux_z(:,p,q,i-1)+diffFlux_z(:,p,q,i)) &
+#endif
+                          )
     END DO; END DO
     F_FV = F_FV + Fvisc_FV
 #endif /*PARABOLIC*/
@@ -148,7 +156,9 @@ DO iElem=1,nElems
   DO j=0,PP_N
     diffFlux_x(:,:,:,j) = f(:,:,j,:)
     diffFlux_y(:,:,:,j) = g(:,:,j,:)
+#if PP_dim == 3
     diffFlux_z(:,:,:,j) = h(:,:,j,:)
+#endif
   END DO ! j=0,PP_N
 #endif
 
@@ -176,7 +186,10 @@ DO iElem=1,nElems
     DO q=0,PP_NZ; DO p=0,PP_N
       Fvisc_FV(:,p,q)=0.5*(FV_NormVecEta(1,p,q,j,iElem)*(diffFlux_x(:,p,q,j-1)+diffFlux_x(:,p,q,j)) &
                           +FV_NormVecEta(2,p,q,j,iElem)*(diffFlux_y(:,p,q,j-1)+diffFlux_y(:,p,q,j)) &
-                          +FV_NormVecEta(3,p,q,j,iElem)*(diffFlux_z(:,p,q,j-1)+diffFlux_z(:,p,q,j)))
+#if PP_dim == 3
+                          +FV_NormVecEta(3,p,q,j,iElem)*(diffFlux_z(:,p,q,j-1)+diffFlux_z(:,p,q,j)) &
+#endif
+                          )
     END DO; END DO
     F_FV = F_FV + Fvisc_FV
 #endif /*PARABOLIC*/
