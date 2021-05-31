@@ -546,14 +546,15 @@ r4 = (/ 0.,             0.,        0.,        1.,        RoeVel(3)           /)
 r5 = (/ 1.,             a(5),      RoeVel(2), RoeVel(3), RoeH+RoeVel(1)*Roec /)
 
 ! calculate differences
-Delta_U(1:5) = U_RR(CONS) - U_LL(CONS)
-Delta_U(6)   = Delta_U(5)-(Delta_U(3)-RoeVel(2)*Delta_U(1))*RoeVel(2) - (Delta_U(4)-RoeVel(3)*Delta_U(1))*RoeVel(3)
+Delta_U(CONS)     = U_RR(CONS) - U_LL(CONS)
+Delta_U(DELTA_U6) = Delta_U(DELTA_U5)-(Delta_U(DELTA_U3)-RoeVel(DELTA_U2)*Delta_U(DELTA_U1))*RoeVel(2) -&
+                    (Delta_U(DELTA_U4)-RoeVel(DELTA_U3)*Delta_U(DELTA_U1))*RoeVel(DELTA_U3)
 ! calculate factors
-Alpha3 = Delta_U(3) - RoeVel(2)*Delta_U(1)
-Alpha4 = Delta_U(4) - RoeVel(3)*Delta_U(1)
+Alpha3 = Delta_U(DELTA_U3) - RoeVel(DELTA_U2)*Delta_U(DELTA_U1)
+Alpha4 = Delta_U(DELTA_U4) - RoeVel(DELTA_U3)*Delta_U(DELTA_U1)
 Alpha2 = ALPHA2_RIEMANN_H(RoeH,RoeVel,Roec,Delta_U)
-Alpha1 = 0.5/Roec * (Delta_U(1)*(RoeVel(1)+Roec) - Delta_U(2) - Roec*Alpha2)
-Alpha5 = Delta_U(1) - Alpha1 - Alpha2
+Alpha1 = 0.5/Roec * (Delta_U(DELTA_U1)*(RoeVel(1)+Roec) - Delta_U(DELTA_U2) - Roec*Alpha2)
+Alpha5 = Delta_U(DELTA_U1) - Alpha1 - Alpha2
 #ifndef SPLIT_DG
 ! assemble Roe flux
 F=0.5*((F_L+F_R) - &
@@ -621,9 +622,9 @@ RoeDens   = SQRT(U_LL(EXT_DENS)*U_RR(EXT_DENS))
 ! Roe+Pike version of Roe Riemann solver
 
 ! calculate jump
-Delta_U(DENS)   = U_RR(EXT_DENS) - U_LL(EXT_DENS)
-Delta_U(VELV)   = U_RR(EXT_VELV) - U_LL(EXT_VELV)
-Delta_U(PRES)   = U_RR(EXT_PRES) - U_LL(EXT_PRES)
+Delta_U(DELTA_U1)   = U_RR(EXT_DENS) - U_LL(EXT_DENS)
+Delta_U(DELTA_UV)   = U_RR(EXT_VELV) - U_LL(EXT_VELV)
+Delta_U(DELTA_U5)   = U_RR(EXT_PRES) - U_LL(EXT_PRES)
 
 ! mean eigenvalues and eigenvectors
 a  = (/ RoeVel(1)-Roec, RoeVel(1), RoeVel(1), RoeVel(1), RoeVel(1)+Roec      /)
@@ -635,11 +636,11 @@ r5 = (/ 1.,             a(5),      RoeVel(2), RoeVel(3), RoeH+RoeVel(1)*Roec /)
 
 ! calculate wave strenghts
 tmp      = 0.5/(Roec*Roec)
-Alpha(1) = tmp*(Delta_U(5)-RoeDens*Roec*Delta_U(2))
-Alpha(2) = Delta_U(1) - Delta_U(5)*2.*tmp
-Alpha(3) = RoeDens*Delta_U(3)
-Alpha(4) = RoeDens*Delta_U(4)
-Alpha(5) = tmp*(Delta_U(5)+RoeDens*Roec*Delta_U(2))
+Alpha(1) = tmp*(Delta_U(DELTA_U5)-RoeDens*Roec*Delta_U(DELTA_U2))
+Alpha(2) = Delta_U(DELTA_U1) - Delta_U(DELTA_U5)*2.*tmp
+Alpha(3) = RoeDens*Delta_U(DELTA_U3)
+Alpha(4) = RoeDens*Delta_U(DELTA_U4)
+Alpha(5) = tmp*(Delta_U(DELTA_U5)+RoeDens*Roec*Delta_U(DELTA_U2))
 
 ! Harten+Hyman entropy fix (apply only for acoustic waves, don't fix r)
 
@@ -736,19 +737,20 @@ r4 = (/ 0.,             0.,        0.,        1.,        RoeVel(3)           /)
 r5 = (/ 1.,             a(5),      RoeVel(2), RoeVel(3), RoeH+RoeVel(1)*Roec /)
 
 ! calculate differences
-Delta_U(1:5) = U_RR(EXT_CONS) - U_LL(EXT_CONS)
-Delta_U(6)   = Delta_U(5)-(Delta_U(3)-RoeVel(2)*Delta_U(1))*RoeVel(2) - (Delta_U(4)-RoeVel(3)*Delta_U(1))*RoeVel(3)
+Delta_U(CONS) = U_RR(EXT_CONS) - U_LL(EXT_CONS)
+Delta_U(DELTA_U6)   = Delta_U(DELTA_U5)-(Delta_U(DELTA_U3)-RoeVel(2)*Delta_U(DELTA_U1))*RoeVel(2) - &
+                      (Delta_U(DELTA_U4)-RoeVel(3)*Delta_U(DELTA_U1))*RoeVel(3)
 
 ! low Mach-Number fix
 Ma_loc = SQRT(absVel)/(Roec*SQRT(kappa))
-Delta_U(2:4) = Delta_U(2:4) * Ma_loc
+Delta_U(DELTA_UV) = Delta_U(DELTA_UV) * Ma_loc
 
 ! calculate factors
-Alpha3 = Delta_U(3) - RoeVel(2)*Delta_U(1)
-Alpha4 = Delta_U(4) - RoeVel(3)*Delta_U(1)
+Alpha3 = Delta_U(DELTA_U3) - RoeVel(2)*Delta_U(DELTA_U1)
+Alpha4 = Delta_U(DELTA_U4) - RoeVel(3)*Delta_U(DELTA_U1)
 Alpha2 = ALPHA2_RIEMANN_H(RoeH,RoeVel,Roec,Delta_U)
-Alpha1 = 0.5/Roec * (Delta_U(1)*(RoeVel(1)+Roec) - Delta_U(2) - Roec*Alpha2)
-Alpha5 = Delta_U(1) - Alpha1 - Alpha2
+Alpha1 = 0.5/Roec * (Delta_U(DELTA_U1)*(RoeVel(1)+Roec) - Delta_U(DELTA_U2) - Roec*Alpha2)
+Alpha5 = Delta_U(DELTA_U1) - Alpha1 - Alpha2
 
 #ifndef SPLIT_DG
 ! assemble Roe flux

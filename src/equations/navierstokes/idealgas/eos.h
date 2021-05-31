@@ -29,6 +29,7 @@
 #define ENER  5           	/* energy */
 
 ! primitive variables
+! velocity components need to be sortet in x, y, z order, assumed e.g. in the Riemann solver (RoeVel)
 #define VEL1  2               	/* velocity x */
 #define VEL2  3               	/* velocity y */
 #define VEL3  4               	/* velocity z */
@@ -120,3 +121,12 @@
 #define LIFT_VARS                    (/LIFT_VEL1,LIFT_VEL2,LIFT_VEL3,LIFT_TEMP/)
 #define PRIM_LIFT                    (/2,3,4,6/) /* velocity range and temperature */
 #endif
+
+! Riemann Differences
+#define DELTA_U1                     1
+#define DELTA_U2                     2 
+#define DELTA_U3                     3
+#define DELTA_U4                     4
+#define DELTA_UV                     DELTA_U2:DELTA_U4
+#define DELTA_U5                     5
+#define DELTA_U6                     6
