@@ -30,6 +30,7 @@ USE MOD_Output,                  ONLY: DefineParametersOutput,InitOutput,Finaliz
 USE MOD_Interpolation,           ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
 USE MOD_IO_HDF5,                 ONLY: DefineParametersIO_HDF5,InitIOHDF5,OpenDataFile
 USE MOD_HDF5_Output,             ONLY: WriteState
+USE MOD_HDF5_Input,              ONLY: ISVALIDMESHFILE
 USE MOD_Commandline_Arguments
 USE MOD_Options
 USE MOD_ReadInTools
@@ -129,10 +130,18 @@ DO iArg=2,nArgs
 
   ! Re-initialize mesh if it has changed
   IF(changedMeshFile) THEN
-    SWRITE(UNIT_stdOUT,*) "INITIALIZING MESH FROM FILE """,TRIM(MeshFile),""""
     CALL FinalizeMesh()
     CALL DefineParametersMesh()
-    CALL InitMesh(MeshMode=0,MeshFile_IN=MeshFile)
+    ! Only take the mesh file deposited in the state file if it is a valid mesh file.
+    ! Otherwise try the mesh from the parameter file
+    IF(FILEEXISTS(MeshFile).AND.ISVALIDMESHFILE(MeshFile)) THEN
+      SWRITE(UNIT_stdOUT,*) "INITIALIZING MESH FROM FILE """,TRIM(MeshFile),""""
+      CALL InitMesh(MeshMode=0,MeshFile_IN=MeshFile)
+    ELSE
+      SWRITE(UNIT_stdOUT,*) "WARNING: No valid mesh file is given in HDF5 attributes of current state file! &
+                                    & Reading mesh from parameter file instead..."
+      CALL InitMesh(MeshMode=0)
+    END IF
     CALL ReadIJKSorting() !Read global xyz sorting of structured mesh
 
     ! Currently only cubic meshes are allowed!
