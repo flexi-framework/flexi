@@ -456,7 +456,7 @@ END SUBROUTINE GetDatasetNamesInGroup
 
 
 !==================================================================================================================================
-!> Initialize HDF5 IO
+!> Finalizes HDF5 IO
 !==================================================================================================================================
 SUBROUTINE FinalizeIOHDF5()
 ! MODULES
@@ -473,10 +473,10 @@ END SUBROUTINE FinalizeIOHDF5
 
 
 !==================================================================================================================================
+!> Deallocate and nullify element-wise arrays or scalars which were added for writeout by means of a linked list.
 !==================================================================================================================================
 SUBROUTINE FinalizeElemData(ElementOut_In)
 ! MODULES
-! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -484,94 +484,57 @@ TYPE(tElementOut),POINTER,INTENT(INOUT) :: ElementOut_In     !< Pointer list of 
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
-TYPE(tElementOut),POINTER          :: current,tmp
+TYPE(tElementOut),POINTER          :: current,next
 !===================================================================================================================================
-
-IF(ASSOCIATED(ElementOut_In))THEN
+IF(ASSOCIATED(ElementOut_In)) THEN
   current => ElementOut_In
-  DO WHILE (ASSOCIATED(current%next))
-    IF (ASSOCIATED( current%RealArray)) THEN
-      NULLIFY   (current%RealArray)
-    END IF
-    IF (ASSOCIATED( current%RealScalar)) THEN
-      NULLIFY   (current%RealScalar)
-    END IF
-    IF (ASSOCIATED( current%IntArray)) THEN
-      NULLIFY   (current%IntArray)
-    END IF
-    IF (ASSOCIATED( current%IntScalar)) THEN
-      NULLIFY   (current%IntScalar)
-    END IF
-    IF (ASSOCIATED( current%eval)) THEN
-      NULLIFY   (current%eval)
-    END IF
-    tmp => current%next
+  NULLIFY(ElementOut_In)
+
+  ! Finalize all entries
+  DO WHILE (ASSOCIATED(current))
+    next => current%next
+    IF (ASSOCIATED( current%RealArray  ))  NULLIFY(current%RealArray )
+    IF (ASSOCIATED( current%RealScalar ))  NULLIFY(current%RealScalar)
+    IF (ASSOCIATED( current%IntArray   ))  NULLIFY(current%IntArray  )
+    IF (ASSOCIATED( current%IntScalar  ))  NULLIFY(current%IntScalar )
+    IF (ASSOCIATED( current%eval       ))  NULLIFY(current%eval      )
+    IF (ASSOCIATED( current%next       ))  NULLIFY(current%next      )
     DEALLOCATE(current)
     NULLIFY(current)
-    current => tmp
+    current => next
   END DO
-
-  ! Also finalize the last entry
-  IF (ASSOCIATED( current%RealArray)) THEN
-    NULLIFY   (current%RealArray)
-  END IF
-  IF (ASSOCIATED( current%RealScalar)) THEN
-    NULLIFY   (current%RealScalar)
-  END IF
-  IF (ASSOCIATED( current%IntArray)) THEN
-    NULLIFY   (current%IntArray)
-  END IF
-  IF (ASSOCIATED( current%IntScalar)) THEN
-    NULLIFY   (current%IntScalar)
-  END IF
-  IF (ASSOCIATED( current%eval)) THEN
-    NULLIFY   (current%eval)
-  END IF
-  DEALLOCATE(current)
-  NULLIFY(current)
 END IF
 
 END SUBROUTINE FinalizeElemData
 
 !==================================================================================================================================
+!> Deallocate and nullify additional field data arrays or scalars which were added for writeout by means of a linked list.
 !==================================================================================================================================
 SUBROUTINE FinalizeFieldData(FieldOut_In)
 ! MODULES
-! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-TYPE(tFieldOut),POINTER,INTENT(INOUT) :: FieldOut_In     !< Pointer list of element-wise data that is written to the state file
+TYPE(tFieldOut),POINTER,INTENT(INOUT) :: FieldOut_In     !< Pointer list of field data that is written to the state file
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
-TYPE(tFieldOut),POINTER          :: current,tmp
+TYPE(tFieldOut),POINTER          :: current,next
 !===================================================================================================================================
-
-IF(ASSOCIATED(FieldOut_In))THEN
+IF(ASSOCIATED(FieldOut_In)) THEN
   current => FieldOut_In
-  DO WHILE (ASSOCIATED(current%next))
-    IF (ASSOCIATED( current%RealArray)) THEN
-      NULLIFY   (current%RealArray)
-    END IF
-    IF (ASSOCIATED( current%eval)) THEN
-      NULLIFY   (current%eval)
-    END IF
-    tmp => current%next
+  NULLIFY(FieldOut_In)
+
+  ! Finalize all entries
+  DO WHILE (ASSOCIATED(current))
+    next => current%next
+    IF (ASSOCIATED( current%RealArray ))  NULLIFY(current%RealArray)
+    IF (ASSOCIATED( current%eval      ))  NULLIFY(current%eval     )
+    IF (ASSOCIATED( current%next      ))  NULLIFY(current%next     )
     DEALLOCATE(current)
     NULLIFY(current)
-    current => tmp
+    current => next
   END DO
-
-  ! Also finalize the last entry
-  IF (ASSOCIATED( current%RealArray)) THEN
-    NULLIFY   (current%RealArray)
-  END IF
-  IF (ASSOCIATED( current%eval)) THEN
-    NULLIFY   (current%eval)
-  END IF
-  DEALLOCATE(current)
-  NULLIFY(current)
 END IF
 
 END SUBROUTINE FinalizeFieldData
