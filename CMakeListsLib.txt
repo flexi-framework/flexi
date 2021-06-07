@@ -226,7 +226,7 @@ ENDIF()
 # Check if Intel MKL is requested instead of BLAS/LAPACK
 OPTION(LIBS_USE_MKL "Use MKL libraries instead of BLAS/LAPACK" OFF)
 IF (LIBS_USE_MKL)
-  SET(BLA_VENDOR "Intel") #search only for Intel BLAS (=MKL)
+  SET(BLA_VENDOR "Intel10_64lp") #search only for Intel BLAS (=MKL)
 ENDIF()
 
 # Use Lapack/Blas for GNU
