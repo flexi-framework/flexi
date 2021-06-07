@@ -72,10 +72,14 @@ REAL                          :: nTotal,limit
 !===================================================================================================================================
 WRITE(UNIT_stdOut,'(A)')' Read recordpoint data from data file "'//TRIM(FileString)//'" ...'
 
-IF(PRESENT(firstFile).AND.firstFile.EQV..TRUE.) THEN
- firstFile_loc=.TRUE.
+IF(PRESENT(firstFile)) THEN
+  IF(firstFile.EQV..TRUE.) THEN
+    firstFile_loc=.TRUE.
+  ELSE
+    firstFile_loc=.FALSE.
+  END IF
 ELSE
- firstFile_loc=.FALSE.
+  firstFile_loc=.FALSE.
 END IF
 ! Open data file
 CALL OpenDataFile(FileString,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)

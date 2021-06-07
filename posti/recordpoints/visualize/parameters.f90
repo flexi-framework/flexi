@@ -48,8 +48,14 @@ LOGICAL                             :: RP_SET_defined          !< True if defini
 !--------------------------------------------------
 ! Filter
 LOGICAL                             :: doFilter                !< Set to perform temporal filtering for each RP
-INTEGER                             :: FilterMode              !<Set to 0 for low pass filter and to 1 for high pass filter
+INTEGER                             :: FilterMode              !< Set to 0 for low pass filter and to 1 for high pass filter
 REAL                                :: FilterWidth             !< Width of the temporal filter
+!--------------------------------------------------
+! Ensemble Averaging
+LOGICAL                             :: doEnsemble              !< Set to perform ensemble averaging for each RP
+REAL                                :: EnsemblePeriod          !< Period used for ensemble averaging
+REAL                                :: EnsembleFreq            !< Frequency used for ensemble averaging
+REAL                                :: Kappa                   !< heat capacity ratio / isentropic exponent
 !--------------------------------------------------
 ! Spectral Analysis, FFT, PSD
 LOGICAL                             :: doSpec                  !< Set if any spectral analysis (FFT,PSD) is performed

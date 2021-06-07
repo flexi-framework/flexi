@@ -27,7 +27,7 @@ USE MOD_PreProc
 USE MOD_Commandline_Arguments
 USE MOD_StringTools                 ,ONLY:STRICMP, GetFileExtension
 USE MOD_ReadInTools                 ,ONLY:prms,PrintDefaultParameterFile
-USE MOD_ParametersVisu              ,ONLY:equiTimeSpacing,doSpec,doFluctuations,doTurb,doFilter
+USE MOD_ParametersVisu              ,ONLY:equiTimeSpacing,doSpec,doFluctuations,doTurb,doFilter,doEnsemble
 USE MOD_ParametersVisu              ,ONLY:Plane_doBLProps
 USE MOD_RPSetVisu                   ,ONLY:FinalizeRPSet
 USE MOD_RPData                      ,ONLY:ReadRPData,AssembleRPData,FinalizeRPData
@@ -38,9 +38,11 @@ USE MOD_EquationRP
 USE MOD_FilterRP                    ,ONLY:FilterRP
 USE MOD_Spec                        ,ONLY:InitSpec,Spec,FinalizeSpec
 USE MOD_Turbulence
+USE MOD_EnsembleRP                  ,ONLY:EnsembleRP
 USE MOD_MPI                         ,ONLY:DefineParametersMPI,InitMPI
 USE MOD_IO_HDF5                     ,ONLY:DefineParametersIO_HDF5,InitIOHDF5
 USE MOD_EOS                         ,ONLY:DefineParametersEOS,InitEOS
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -123,13 +125,14 @@ IF(doSpec)             CALL InitSpec()
 CALL InitOutput()
 IF(equiTimeSpacing)    CALL InterpolateEquiTime()
 CALL CalcEquationRP()
+IF(doEnsemble)         CALL EnsembleRP()
 IF(calcTimeAverage)    CALL CalcTimeAvg()
 IF(doFluctuations)     CALL CalcFluctuations()
 IF(doFilter)           CALL FilterRP()
 IF(doSpec)             CALL Spec()
 IF(Plane_doBLProps)    CALL Plane_BLProps()
-CALL OutputRP()
 IF(doTurb)             CALL Turbulence()
+CALL OutputRP()
 CALL FinalizeInterpolation()
 CALL FinalizeEquationRP()
 CALL FinalizeOutput()
@@ -167,6 +170,8 @@ CALL prms%CreateStringOption( 'RP_DefFile'         ,"Path to the *RPset.h5 file"
 
 CALL prms%CreateLogicalOption('usePrims'           ,"Set to indicate that the RP file contains the primitive and not the&
                                                     & conservative variables",".FALSE.")
+
+CALL prms%CreateRealOption   ('meshScale'          ,"Specify a scalar scaling factor for the RP coordinates","1.")
 
 CALL prms%CreateLogicalOption('OutputTimeData'     ,"Should the time series be written? Not compatible with TimeAvg and FFT&
                                                      & options!",".FALSE.")
@@ -221,6 +226,11 @@ CALL prms%CreateStringOption( 'TimeAvgFile'        ,"Optional file that contains
 
 CALL prms%CreateIntOption    ('SkipSample'         ,"Used to skip every n-th RP evaluation")
 CALL prms%CreateIntOption    ('OutputFormat'       ,"Choose the main format for output. 0: ParaView, 2: HDF5")
+
+CALL prms%CreateLogicalOption('doEnsemble'         ,"Set to perform ensemble averaging for each RP",".FALSE.")
+CALL prms%CreateRealOption   ('EnsemblePeriod'     ,"Periodic time to be used for ensemble averaging")
+! CALL prms%CreateRealOption   ('EnsembleFreq'       ,"Frequency to be used for ensemble timestep")
+CALL prms%CreateRealOption   ('Kappa'              ,"Heat capacity ratio / isentropic exponent", '1.4')
 END SUBROUTINE DefineParameters
 
 !===================================================================================================================================
@@ -232,8 +242,8 @@ USE MOD_Globals
 USE MOD_Readintools         ,ONLY:GETINT,GETREAL,GETLOGICAL,GETSTR,GETREALARRAY,CountOption
 USE MOD_ParametersVisu
 USE MOD_RPInterpolation_Vars,ONLY:calcTimeAverage
+USE MOD_RPSetVisuVisu_Vars  ,ONLY:meshScale
 USE MOD_EquationRP_Vars     ,ONLY:pInf,uInf,rhoInf,nRefState,RefStatePrim
-
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -260,6 +270,9 @@ END IF
 ! use primitive variables for derived quantities if they exist in the state file
 usePrims=GETLOGICAL('usePrims','.FALSE.')
 
+! rescale RPs if required
+meshScale=GETREAL('meshScale','1.')
+
 ! =============================================================================== !
 ! TIME INTERVAL
 ! =============================================================================== !
@@ -274,6 +287,7 @@ IF(doFilter) THEN
   FilterWidth=GETREAL('FilterWidth')
   FilterMode=GETINT('FilterMode','0')
 END IF
+
 ! =============================================================================== !
 ! FOURIER TRANSFORM
 ! =============================================================================== !
@@ -303,9 +317,21 @@ doTurb=GETLOGICAL('doTurb','.FALSE.')
 IF(doSpec .OR. doTurb) cutoffFreq=GETREAL('cutoffFreq','-999.')
 
 ! for any FFT operation we need equidistant time spacing
-equiTimeSpacing=.FALSE.
 IF(OutputTimeData) equiTimeSpacing=GETLOGICAL('equiTimeSpacing','.FALSE.')
 IF(doTurb.OR.doSpec) equiTimeSpacing=.TRUE.
+
+! =============================================================================== !
+! ENSEMBLE AVERAGING
+! =============================================================================== !
+
+doEnsemble      = GETLOGICAL('doEnsemble','.FALSE.')
+IF(doEnsemble) THEN
+  EnsemblePeriod  = GETREAL('EnsemblePeriod')
+  ! EnsembleFreq   = GETREAL('EnsembleFreq')
+  Kappa           = GETREAL('Kappa','1.4')
+  equiTimeSpacing = .TRUE.
+  doSpec          = .TRUE.
+END IF
 
 ! =============================================================================== !
 ! PLANE OPTIONS
@@ -346,7 +372,7 @@ IF(Plane_doBLProps) THEN ! for BL properties we need local coords and velocities
   END IF
 #endif
   END DO
-  
+
   rhoInf = RefStatePrim(1,RPRefState)
   uInf   = sqrt(sum((RefStatePrim(2:4,RPRefState))**2))
   pInf   = RefStatePrim(5,RPRefState)

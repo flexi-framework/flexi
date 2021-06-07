@@ -10,6 +10,7 @@ INCLUDE_DIRECTORIES( ${TOOL_DIR})
 FILE(GLOB ${TOOL_NAME}F90 ${TOOL_DIR}/parameters.f90
                           ${TOOL_DIR}/fft/*.f90
                           ${TOOL_DIR}/filterrp.f90
+                          ${TOOL_DIR}/ensemble/*.f90
                           ${TOOL_DIR}/rpdata/*.f90
                           ${TOOL_DIR}/rpset/*.f90
                           ${TOOL_DIR}/interpolation/*.f90
