@@ -34,6 +34,7 @@ INTEGER,ALLOCATABLE             :: Points_IDlist(:)        !< IDs of all points 
 INTEGER,ALLOCATABLE             :: Points_GroupIDlist(:)   !< List of group IDs of all points for output
 REAL,ALLOCATABLE                :: x_RP(:,:)               !< Coodinates of record points (may be local)
 REAL,ALLOCATABLE                :: xF_RP(:,:)              !< Physical coordinates of the record points
+REAL                            :: meshScale               !< Scaling factor for the coordinates of the record points
 INTEGER,ALLOCATABLE             :: RPOutMap(:)             !< Mapping from output RPs to global RPs
 
 TYPE tLine !< Type used to organize a line set

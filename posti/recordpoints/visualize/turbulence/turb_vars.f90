@@ -1,3 +1,4 @@
+
 !=================================================================================================================================
 ! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
@@ -12,9 +13,9 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 !===================================================================================================================================
-!> Contains global variables provided by the output routines
+!> Contains global variables for the turbulence routine
 !===================================================================================================================================
-MODULE MOD_OutputRPVisu_Vars
+MODULE MOD_Turbulence_Vars
 ! MODULES
 IMPLICIT NONE
 PUBLIC
@@ -22,12 +23,9 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-INTEGER                       :: nSamples_out                !< number of visualisation points is NVisu+1
-INTEGER                       :: nCoords                     !< number of visualisation points is NVisu+1
-CHARACTER(LEN=255),ALLOCATABLE:: CoordNames(:)               !< including space and time coordinates
-REAL,ALLOCATABLE              :: RPData_out(:,:,:)           !< output state
-REAL,ALLOCATABLE              :: RPDataTimeAvg_out(:,:)      !< time average state
-REAL,ALLOCATABLE              :: RPDataRMS_out(:,:)          !< RMS of fluctuations
-LOGICAL                       :: OutputInitIsDone=.FALSE.
+REAL,ALLOCATABLE :: E_kineticSpec(:,:)
+REAL,ALLOCATABLE :: kk(:,:),disRate(:,:),epsilonMean(:,:)
+REAL,ALLOCATABLE :: eta(:),etaK(:,:)
+REAL,ALLOCATABLE :: RPData_freqTurb(:)
 !===================================================================================================================================
-END MODULE MOD_OutputRPVisu_Vars
+END MODULE MOD_Turbulence_Vars

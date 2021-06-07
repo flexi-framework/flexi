@@ -122,6 +122,9 @@ DEALLOCATE(HSize)
 ALLOCATE(xF_RP(3,nRP_HDF5))
 CALL ReadArray('xF_RP',2,(/3,nRP_HDF5/),0,2,RealArray=xF_RP)
 
+! Scale coordinates
+xF_RP = meshScale * xF_RP
+
 ! Readin Lines
 CALL DatasetExists(File_ID,'LineNames',DSexists)
 nLines_tmp=0
@@ -345,6 +348,9 @@ DEALLOCATE(HSize)
 ALLOCATE(xF_newset(3,nRP_HDF5))
 CALL ReadArray('xF_RP',2,(/3,nRP_HDF5/),0,2,RealArray=xF_newset)
 CALL CloseDataFile()
+
+! Scale coordinates
+xF_RP = meshScale * xF_RP
 
 ! compare coordinates to find the mapping between the new RP set and the RPs we want to process
 distRP=HUGE(1.)

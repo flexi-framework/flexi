@@ -12,9 +12,9 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 !===================================================================================================================================
-!> Contains global variables provided by the output routines
+! Contains global variables provided by spectral analysis routines
 !===================================================================================================================================
-MODULE MOD_OutputRPVisu_Vars
+MODULE MOD_EnsembleRP_Vars
 ! MODULES
 IMPLICIT NONE
 PUBLIC
@@ -22,12 +22,10 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-INTEGER                       :: nSamples_out                !< number of visualisation points is NVisu+1
-INTEGER                       :: nCoords                     !< number of visualisation points is NVisu+1
-CHARACTER(LEN=255),ALLOCATABLE:: CoordNames(:)               !< including space and time coordinates
-REAL,ALLOCATABLE              :: RPData_out(:,:,:)           !< output state
-REAL,ALLOCATABLE              :: RPDataTimeAvg_out(:,:)      !< time average state
-REAL,ALLOCATABLE              :: RPDataRMS_out(:,:)          !< RMS of fluctuations
-LOGICAL                       :: OutputInitIsDone=.FALSE.
+INTEGER                       :: enSamples                   !> Number of ensemble samples
+INTEGER                       :: nVar_ensTurb                !> Variable names for turbulent ensemble averages
+REAL,ALLOCATABLE              :: RPData_ens(:,:,:)
+REAL,ALLOCATABLE              :: RPData_turb(:,:,:)
+REAL,ALLOCATABLE              :: RPData_freqEns(:)
 !===================================================================================================================================
-END MODULE MOD_OutputRPVisu_Vars
+END MODULE MOD_EnsembleRP_Vars
