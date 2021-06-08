@@ -264,9 +264,9 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 #if PARABOLIC
-REAL,INTENT(OUT),OPTIONAL    :: gradUx_calc(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,0:ZDIM(NVisu_FV),nElems_FV)
-REAL,INTENT(OUT),OPTIONAL    :: gradUy_calc(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,0:ZDIM(NVisu_FV),nElems_FV)
-REAL,INTENT(OUT),OPTIONAL    :: gradUz_calc(1:PP_nVarPrim,0:NVisu_FV,0:NVisu_FV,0:ZDIM(NVisu_FV),nElems_FV)
+REAL,INTENT(OUT),OPTIONAL    :: gradUx_calc(1:PP_nVarLifting,0:NVisu_FV,0:NVisu_FV,0:ZDIM(NVisu_FV),nElems_FV)
+REAL,INTENT(OUT),OPTIONAL    :: gradUy_calc(1:PP_nVarLifting,0:NVisu_FV,0:NVisu_FV,0:ZDIM(NVisu_FV),nElems_FV)
+REAL,INTENT(OUT),OPTIONAL    :: gradUz_calc(1:PP_nVarLifting,0:NVisu_FV,0:NVisu_FV,0:ZDIM(NVisu_FV),nElems_FV)
 #endif
 ! LOCAL VARIABLES
 INTEGER             :: iVar,i,j,k,iElem,iElem_FV
@@ -356,7 +356,7 @@ IF (PRESENT(gradUx_calc).AND.PRESENT(gradUy_calc).AND.PRESENT(gradUz_calc)) THEN
   DO iElem_FV=1,nElems_FV
     iElem = mapFVElemsToAllElems(iElem_FV)
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      DO iVar=1,PP_nVarPrim
+      DO iVar=1,PP_nVarLifting
          gradUx_calc(iVar,i*2:i*2+1, j*2:j*2+1, k*2:k*2+1*(PP_dim-2), iElem_FV) = gradUx(iVar,i,j,k,iElem)
          gradUy_calc(iVar,i*2:i*2+1, j*2:j*2+1, k*2:k*2+1*(PP_dim-2), iElem_FV) = gradUy(iVar,i,j,k,iElem)
          gradUz_calc(iVar,i*2:i*2+1, j*2:j*2+1, k*2:k*2+1*(PP_dim-2), iElem_FV) = gradUz(iVar,i,j,k,iElem)
