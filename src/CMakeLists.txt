@@ -247,11 +247,16 @@ FILE(GLOB_RECURSE flexiF90 ./src/interpolation/*.f90
 FILE(GLOB eqnsysF90        ./src/equations/${FLEXI_EQNSYSNAME}/*.f90)
 # append F90 files of the equation of state to 'eqnsysF90'-list
 IF (WITHEOS GREATER 0)
-  FILE(GLOB eosF90         ./src/equations/${FLEXI_EQNSYSNAME}/${FLEXI_EOS}/*.f90)
+  IF(POSTI)
+    FILE(GLOB eosF90         ./src/equations/${FLEXI_EQNSYSNAME}/${FLEXI_EOS}/*.f90
+              eosF90         ./src/equations/${FLEXI_EQNSYSNAME}/posti/*.f90)
+  ELSE()
+    FILE(GLOB eosF90         ./src/equations/${FLEXI_EQNSYSNAME}/${FLEXI_EOS}/*.f90)
+  ENDIF()
   LIST(APPEND eqnsysF90 ${eosF90})
   INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/src/equations/${FLEXI_EQNSYSNAME}/${FLEXI_EOS}/)
 ELSE()
-  INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/src/equations/${FLEXI_EQNSYSNAME}/) 
+  INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/src/equations/${FLEXI_EQNSYSNAME}/)
 ENDIF()
 
 # >> append F90 files of the eddy viscosity to 'eqnsysF90'-list
