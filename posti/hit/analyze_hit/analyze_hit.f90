@@ -190,7 +190,7 @@ CLOSE(FileUnit)
 END SUBROUTINE WriteSpectrum
 
 !===================================================================================================================================
-!> Computes and writes several important quantities of turbulence like the Dissipationrate and the Kolmogorov length
+!> Computes and writes turbulence statistics like dissipation rate, the Kolmogorov length and the Reynolds number
 !===================================================================================================================================
 SUBROUTINE WriteTurbulenceData(E_k,U_In)
 ! MODULES
@@ -240,18 +240,19 @@ DO k=1,N_max
   ! Get integrand for mean dissipation rate
   IntEps = IntEps + 0.5*(E_k(k)*k**2+E_k(k+1)*(k+1)**2)
   ! Get integrand for integral scale
-  IntInt = IntInt + 0.5*(E_k(k)/(real(k)+1E-16)+E_k(k+1)/(real(k+1)+1E-16))
+  IntInt = IntInt + 0.5*( E_k(k)/REAL(k) + E_k(k+1)/REAL(k+1) )
 END DO
 
-EPS=IntEps*2.*Mu0                    ! Dissipation
-ETA=SQRT(Mu0)/(IntEps*2.)**(1./4.)   ! KolmogorovLength
-ETA_K=2.*PP_PI/ETA                   ! KolmogorovLength*K
-Lambda=(5.*IntE_k/IntEps)**0.5       ! TaylorMicroScale
-Lambda_K=2.*PP_PI/Lambda             ! TaylorMicroScale*K
-L_int=3.*PP_PI/4.*IntInt/IntE_k      ! Int_Length
-L_int_K=2*PP_PI/L_int                ! Int_Length*K
-U_rms=(2./3.*IntE_k)**0.5            ! U_RMS
-Re_lambda=U_rms*lambda/Mu0           ! Re_lambda
+! Compute turbulence statistics
+EPS       = IntEps*2.*Mu0                   ! Dissipation
+ETA       = SQRT(Mu0)/(IntEps*2.)**(1./4.)  ! KolmogorovLength
+ETA_K     = 2.*PP_PI/ETA                    ! KolmogorovLength*K
+Lambda    = (5.*IntE_k/IntEps)**0.5         ! TaylorMicroScale
+Lambda_K  = 2.*PP_PI/Lambda                 ! TaylorMicroScale*K
+L_int     = 3.*PP_PI/4.*IntInt/IntE_k       ! Int_Length
+L_int_K   = 2*PP_PI/L_int                   ! Int_Length*K
+U_rms     = (2./3.*IntE_k)**0.5             ! U_RMS
+Re_lambda =U_rms*lambda/Mu0                 ! Re_lambda
 
 ! Find free file unit for write process
 FileUnit=55
@@ -285,7 +286,7 @@ CLOSE(FILEUnit)
 
 ! Also dump data to stdout
 WRITE(UNIT_StdOut,*)'-------------------------------------------------------------------------------------------'
-WRITE(Unit_StdOut,'(A50)')'Some output regarding turbulence statistics'
+WRITE(Unit_StdOut,'(A50)')'Turbulence Statistics'
 WRITE(UNIT_StdOut,'(A14,E20.10)')           '  Epsilon   = ',EPS
 WRITE(UNIT_StdOut,'(A14,E20.10,A13,E20.10)')'  ETA       = ',ETA,   '  ETA_K    = ',ETA_K
 WRITE(UNIT_StdOut,'(A14,E20.10,A13,E20.10)')'  Lambda    = ',Lambda,'  Lambda_K = ',Lambda_K
