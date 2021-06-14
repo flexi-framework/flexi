@@ -1,5 +1,5 @@
 # =========================================================================
-# PREPARE RECORDPOINTS
+# VISUALIZE RECORDPOINTS
 # =========================================================================
 SET(TOOL_NAME "visualizerecordpoints")
 SET(TOOL_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/posti/recordpoints/visualize)
@@ -16,17 +16,13 @@ FILE(GLOB ${TOOL_NAME}F90 ${TOOL_DIR}/parameters.f90
                           ${TOOL_DIR}/interpolation/*.f90
                           ${TOOL_DIR}/navierstokes/*.f90
                           ${TOOL_DIR}/turbulence/*.f90
-                          ${TOOL_DIR}/output/*.f90
-                          ${TOOL_DIR}/../prepare/spline.f90)
+                          ${TOOL_DIR}/output/*.f90)
 
 ADD_LIBRARY(${TOOL_NAME}libF90 OBJECT ${${TOOL_NAME}F90})
 SET_TARGET_PROPERTIES(${TOOL_NAME}libF90 PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS})
 ADD_LIBRARY(${TOOL_NAME}lib STATIC $<TARGET_OBJECTS:${TOOL_NAME}libF90>)
-TARGET_LINK_LIBRARIES(${TOOL_NAME}lib fftwlib vtklib)
-ADD_DEPENDENCIES(${TOOL_NAME}libF90 libflexishared fftwlib vtklib)
-
-#check whether these two lines are correct (why link externals to lib AND exec??)
-TARGET_LINK_LIBRARIES(${TOOL_NAME}lib ${FFTW_LIBRARIES})
+TARGET_LINK_LIBRARIES(${TOOL_NAME}lib fftwlib libposti)
+ADD_DEPENDENCIES(${TOOL_NAME}libF90 libflexishared libposti fftwlib)
 
 # Standalone Posti executable
 add_exec(             posti_${TOOL_NAME} ${TOOL_DIR}/visualizerecordpoints.f90)
