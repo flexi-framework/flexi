@@ -129,7 +129,7 @@ ELSE()
   IF(LIBS_USE_MPI)
     # HDF5 1.12.0 and greater is compatible with OpenMPI 4.0.0 and greater
     EXECUTE_PROCESS(COMMAND mpiexec --version COMMAND grep ^mpiexec COMMAND sed "s/^.* //g" OUTPUT_VARIABLE OPENMPI_VERSION)
-    IF (DEFINED OPENMPI_VERSION)
+    IF (DEFINED OPENMPI_VERSION  AND NOT "${OPENMPI_VERSION}" STREQUAL "")
       IF (${OPENMPI_VERSION} VERSION_GREATER_EQUAL "4.0.0")
         SET (HDF5_TAG "hdf5-1_12_0" CACHE STRING "HDF5 version tag")
       ELSE()
