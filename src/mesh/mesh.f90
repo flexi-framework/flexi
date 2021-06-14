@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -351,6 +351,13 @@ IF (meshMode.GT.1) THEN
   ALLOCATE(      SurfElem(  0:PP_N,0:PP_NZ,0:FV_ENABLED,1:nSides))
   ALLOCATE(     Ja_Face(3,3,0:PP_N,0:PP_NZ,             1:nSides)) ! temp
 
+#if FV_ENABLED
+  ! NOTE: initialize with 1 and not with 0
+  ALLOCATE(sJ_master(1,0:PP_N,0:PP_NZ,1:nSides,0:FV_ENABLED))
+  ALLOCATE(sJ_slave( 1,0:PP_N,0:PP_NZ,1:nSides,0:FV_ENABLED))
+  sJ_master = 1.
+  sJ_slave  = 1.
+#endif
 
   ! assign all metrics Metrics_fTilde,Metrics_gTilde,Metrics_hTilde
   ! assign 1/detJ (sJ)
@@ -418,6 +425,7 @@ SDEALLOCATE(SideToElem)
 SDEALLOCATE(BC)
 SDEALLOCATE(AnalyzeSide)
 
+! mortars
 SDEALLOCATE(MortarType)
 SDEALLOCATE(MortarInfo)
 
@@ -436,6 +444,10 @@ SDEALLOCATE(Metrics_hTilde)
 SDEALLOCATE(sJ)
 SDEALLOCATE(scaledJac)
 SDEALLOCATE(DetJac_Ref)
+#if FV_ENABLED
+SDEALLOCATE(sJ_master)
+SDEALLOCATE(sJ_slave)
+#endif
 
 ! surface
 SDEALLOCATE(Face_xGP)

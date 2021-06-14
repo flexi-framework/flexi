@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -182,6 +182,11 @@ USE MOD_Mesh_Vars          ,ONLY: NodeCoords,TreeCoords,Elem_xGP
 USE MOD_Mesh_Vars          ,ONLY: ElemToTree,xiMinMax,interpolateFromTree
 USE MOD_Mesh_Vars          ,ONLY: NormVec,TangVec1,TangVec2,SurfElem,Face_xGP
 USE MOD_Mesh_Vars          ,ONLY: scaledJac
+#if FV_ENABLED
+USE MOD_Mesh_Vars          ,ONLY: sJ_master,sJ_slave
+USE MOD_ProlongToFace1     ,ONLY: ProlongToFace1_DG
+USE MOD_FillMortar1        ,ONLY: U_Mortar1
+#endif
 USE MOD_Interpolation_Vars
 USE MOD_Interpolation      ,ONLY: GetVandermonde,GetNodesAndWeights,GetDerivativeMatrix
 #if (PP_dim == 3)
@@ -208,9 +213,9 @@ INTEGER :: q
 #endif
 INTEGER :: ll
 ! Jacobian on CL N and NGeoRef
-REAL    :: DetJac_N( 1,0:PP_N,   0:PP_N,   0:PP_NZ)
-REAL    :: tmp(      1,0:NgeoRef,0:NgeoRef,0:ZDIM(NGeoRef))
-!REAL    :: tmp2(     1,0:Ngeo,0:Ngeo,0:Ngeo)
+REAL    :: DetJac_N( 1,0:PP_N,   0:PP_N,   0:PP_NZ,nElems)
+REAL    :: tmp(      1,0:NGeoRef,0:NGeoRef,0:ZDIM(NGeoRef))
+!REAL    :: tmp2(     1,0:NGeo,0:NGeo,0:NGeo)
 ! interpolation points and derivatives on CL N
 REAL    :: XCL_N(      3,  0:PP_N,0:PP_N,0:PP_NZ)          ! mapping X(xi) P\in N
 REAL    :: XCL_Ngeo(   3,  0:Ngeo,0:Ngeo,0:ZDIM(NGeo))          ! mapping X(xi) P\in Ngeo
@@ -349,19 +354,19 @@ DO iElem=1,nElems
 #endif
   END IF
   ! project detJac_ref onto the solution basis
-  CALL ChangeBasisVolume(1,NgeoRef,PP_N,Vdm_NgeoRef_N,DetJac_Ref(:,:,:,:,iElem),DetJac_N)
+  CALL ChangeBasisVolume(1,NGeoRef,PP_N,Vdm_NGeoRef_N,DetJac_Ref(:,:,:,:,iElem),DetJac_N(:,:,:,:,iElem))
 
   ! assign to global Variable sJ
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-    sJ(i,j,k,iElem,0)=1./DetJac_N(1,i,j,k)
+    sJ(i,j,k,iElem,0)=1./DetJac_N(1,i,j,k,iElem)
   END DO; END DO; END DO !i,j,k=0,PP_N
 
   ! check for negative Jacobians
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-    IF(detJac_N(1,i,j,k).LE.0.)&
+    IF(detJac_N(1,i,j,k,iElem).LE.0.)&
       WRITE(Unit_StdOut,*) 'Negative Jacobian found on Gauss point. Coords:', Elem_xGP(:,i,j,k,iElem)
     ! check scaled Jacobians
-    scaledJac(i,j,k,iElem)=detJac_N(1,i,j,k)/MAXVAL(detJac_N(1,:,:,:))
+    scaledJac(i,j,k,iElem)=detJac_N(1,i,j,k,iElem)/MAXVAL(detJac_N(1,:,:,:,iElem))
     IF(scaledJac(i,j,k,iElem).LT.0.01) THEN
       WRITE(Unit_StdOut,*) 'Too small scaled Jacobians found (CL/Gauss):', scaledJac(i,j,k,iElem)
       CALL abort(__STAMP__,&
@@ -543,6 +548,23 @@ TangVec1(:,:,0:PP_NZ,:,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(5:7 ,:,:,:,first
 TangVec2(:,:,0:PP_NZ,:,firstMPISide_YOUR:lastMPISide_YOUR)= Geo(8:10,:,:,:,firstMPISide_YOUR:lastMPISide_YOUR)
 DEALLOCATE(Geo)
 #endif /*MPI*/
+
+#if FV_ENABLED
+#if USE_MPI
+MPIRequest_Geo=MPI_REQUEST_NULL
+CALL StartReceiveMPIData(sJ_slave(:,:,:,:,0),(PP_N+1)*(PP_NZ+1),1,nSides,MPIRequest_Geo(:,SEND),SendID=2)
+CALL ProlongToFace1_DG(PP_N,detJac_N,sJ_master(:,:,:,:,0),sJ_slave(:,:,:,:,0),L_Minus,L_Plus,doMPISides=.TRUE.)
+CALL U_Mortar1(sJ_master(:,:,:,:,0),sJ_slave(:,:,:,:,0),doMPISides=.TRUE.)
+CALL StartSendMPIData(   sJ_slave(:,:,:,:,0),(PP_N+1)*(PP_NZ+1),1,nSides,MPIRequest_Geo(:,RECV),SendID=2)
+#endif
+CALL ProlongToFace1_DG(PP_N,detJac_N,sJ_master(:,:,:,:,0),sJ_slave(:,:,:,:,0),L_Minus,L_Plus,doMPISides=.FALSE.)
+CALL U_Mortar1(sJ_master(:,:,:,:,0),sJ_slave(:,:,:,:,0),doMPISides=.FALSE.)
+#if USE_MPI
+CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_Geo)
+#endif
+sJ_slave(:,:,:,:,0) =1./sJ_slave(:,:,:,:,0)
+sJ_master(:,:,:,:,0)=1./sJ_master(:,:,:,:,0)
+#endif /* FV_ENABLED */
 
 END SUBROUTINE CalcMetrics
 
