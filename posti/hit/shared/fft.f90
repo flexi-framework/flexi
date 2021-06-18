@@ -133,7 +133,7 @@ END SUBROUTINE InitFFT
 !===================================================================================================================================
 ! ?
 !===================================================================================================================================
-SUBROUTINE ComputeFFT_R2C(nVar_In,U_Global,U_FFT,PrintTime)
+SUBROUTINE ComputeFFT_R2C(nVar_In,U_Global,U_FFT,doPrintTime)
 ! MODULES
 USE MOD_Globals
 USE MOD_FFT_Vars       ,ONLY: N_FFT,Endw
@@ -147,7 +147,7 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)    :: nVar_In
 REAL,INTENT(IN)       :: U_Global(nVar_In,1:N_FFT  ,1:N_FFT  ,1:N_FFT  )
 COMPLEX,INTENT(OUT)   :: U_FFT(   nVar_In,1:Endw(1),1:Endw(2),1:Endw(3))
-LOGICAL,INTENT(IN),OPTIONAL :: PrintTime
+LOGICAL,INTENT(IN),OPTIONAL :: doPrintTime
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER(KIND=8)  :: plan
@@ -155,11 +155,12 @@ INTEGER          :: iVar
 REAL             :: Time
 REAL             :: U_r(1:N_FFT  ,1:N_FFT  ,1:N_FFT  ) ! Real global DG solution per variable
 COMPLEX          :: U_c(1:Endw(1),1:Endw(2),1:Endw(3)) ! Complex FFT solution per variable
-LOGICAL          :: PrintTimeLoc
+LOGICAL          :: doPrintTimeLoc
 !===================================================================================================================================
-PrintTimeLoc=MERGE(.TRUE.,.FALSE.,(PRESENT(PrintTime).AND.PrintTime))
+doPrintTimeLoc = .FALSE.
+IF (PRESENT(doPrintTime)) doPrintTimeLoc = doPrintTime
 
-IF(PrintTimeLoc) WRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' COMPUTE FFT FROM PHYSICAL TO FOURIER...'
+IF(doPrintTimeLoc) WRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' COMPUTE FFT FROM PHYSICAL TO FOURIER...'
 Time = OMP_FLEXITIME()
 
 ! Create plan once for local arrays and reuse it for each variable
@@ -178,13 +179,13 @@ U_FFT=U_FFT/REAL(N_FFT**3)
 ! Release resources allocated with plan
 CALL DFFTW_DESTROY_PLAN(plan)
 
-IF(PrintTimeLoc) WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',OMP_FLEXITIME()-Time,'s]'
+IF(doPrintTimeLoc) WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',OMP_FLEXITIME()-Time,'s]'
 END SUBROUTINE ComputeFFT_R2C
 
 !===================================================================================================================================
 ! ?
 !===================================================================================================================================
-SUBROUTINE ComputeFFT_C2R(nVar_In,U_FFT,U_Global,PrintTime)
+SUBROUTINE ComputeFFT_C2R(nVar_In,U_FFT,U_Global,doPrintTime)
 ! MODULES
 USE MOD_Globals
 USE MOD_FFT_Vars       ,ONLY: N_FFT,Endw
@@ -198,7 +199,7 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)    :: nVar_In
 COMPLEX,INTENT(IN)    :: U_FFT(   nVar_In,1:Endw(1),1:Endw(2),1:Endw(3))
 REAL,INTENT(OUT)      :: U_Global(nVar_In,1:N_FFT  ,1:N_FFT  ,1:N_FFT  )
-LOGICAL,INTENT(IN),OPTIONAL :: PrintTime
+LOGICAL,INTENT(IN),OPTIONAL :: doPrintTime
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER(KIND=8) :: plan
@@ -206,11 +207,12 @@ INTEGER         :: iVar
 REAL            :: Time
 REAL            :: U_r(1:N_FFT  ,1:N_FFT  ,1:N_FFT  ) ! Real global DG solution per variable
 COMPLEX         :: U_c(1:Endw(1),1:Endw(2),1:Endw(3)) ! Complex FFT solution per variable
-LOGICAL         :: PrintTimeLoc
+LOGICAL         :: doPrintTimeLoc
 !===================================================================================================================================
-PrintTimeLoc=MERGE(.TRUE.,.FALSE.,(PRESENT(PrintTime).AND.PrintTime))
+doPrintTimeLoc = .FALSE.
+IF (PRESENT(doPrintTime)) doPrintTimeLoc = doPrintTime
 
-IF(PrintTimeLoc) WRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' COMPUTE FFT FROM FOURIER TO PHYSICAL...'
+IF(doPrintTimeLoc) WRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' COMPUTE FFT FROM FOURIER TO PHYSICAL...'
 Time = OMP_FLEXITIME()
 
 ! Create plan once for local arrays and reuse it for each variable
@@ -226,7 +228,7 @@ END DO
 ! Release resources allocated with plan
 CALL DFFTW_DESTROY_PLAN(plan)
 
-IF(PrintTimeLoc) WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',OMP_FLEXITIME()-Time,'s]'
+IF(doPrintTimeLoc) WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',OMP_FLEXITIME()-Time,'s]'
 END SUBROUTINE ComputeFFT_C2R
 
 !===================================================================================================================================
@@ -351,27 +353,39 @@ END SUBROUTINE Interpolate_FFT2DG
 !===================================================================================================================================
 ! Evaluate the global Fourier solution at the DG interpolation points
 !===================================================================================================================================
-SUBROUTINE EvalFourierAtDGCoords(nVar_In,U_FFT,U_DG)
+SUBROUTINE EvalFourierAtDGCoords(nVar_In,U_FFT,U_DG,doPrintTime)
 ! MODULES
+USE MOD_Globals
 USE MOD_PreProc               ,ONLY: PP_N
 USE MOD_Mesh_Vars             ,ONLY: Elem_xGP,nElems
 USE MOD_FFT_Vars              ,ONLY: II,Nc,endw
+#if USE_OPENMP
+USE OMP_Lib
+#endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)    :: nVar_In
 COMPLEX,INTENT(IN)    :: U_FFT(nVar_In,1:Endw(1),1:Endw(2),1:Endw(3)       )
 REAL,   INTENT(OUT)   :: U_DG( nVar_In,0:PP_N   ,0:PP_N   ,0:PP_N   ,nElems)
+LOGICAL,INTENT(IN),OPTIONAL :: doPrintTime
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: iElem
-INTEGER            :: i,j,k,iw,jw,kw
-INTEGER            :: wavenumber
-COMPLEX            :: basis
-COMPLEX            :: U_k(1:nVar_In,1:endw(1),1:endw(2),0:PP_N)
-COMPLEX            :: U_j(1:nVar_In,1:endw(1),0:PP_N   ,0:PP_N)
-COMPLEX            :: U_i(1:nVar_In,0:PP_N   ,0:PP_N   ,0:PP_N)
+REAL         :: Time
+INTEGER      :: i,j,k,iw,jw,kw,iElem
+INTEGER      :: wavenumber
+COMPLEX      :: basis
+COMPLEX      :: U_k(1:nVar_In,1:endw(1),1:endw(2),0:PP_N)
+COMPLEX      :: U_j(1:nVar_In,1:endw(1),0:PP_N   ,0:PP_N)
+COMPLEX      :: U_i(1:nVar_In,0:PP_N   ,0:PP_N   ,0:PP_N)
+LOGICAL      :: doPrintTimeLoc
 !===================================================================================================================================
+doPrintTimeLoc = .FALSE.
+IF (PRESENT(doPrintTime)) doPrintTimeLoc = doPrintTime
+
+IF(doPrintTimeLoc) WRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' EVALUATE FOURIER BASIS AT DG COORDINATES...'
+Time = OMP_FLEXITIME()
+
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(iElem,U_i,i,iw,U_j,j,jw,U_k,k,kw,wavenumber,basis)
 !$OMP DO
 DO iElem=1,nElems
@@ -423,6 +437,8 @@ DO iElem=1,nElems
 END DO !iElem
 !$OMP END DO
 !$OMP END PARALLEL
+
+IF(doPrintTimeLoc) WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',OMP_FLEXITIME()-Time,'s]'
 
 END SUBROUTINE EvalFourierAtDGCoords
 

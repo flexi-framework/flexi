@@ -113,7 +113,7 @@ ALLOCATE(U(1:PP_nVar,0:N,0:N,0:N,nElems))
 CALL Rogallo(U_FFT)
 
 ! Evaluate solution in Fourier space at Gauss points
-Call EvalFourierAtDGCoords(5,U_FFT,U)
+CALL EvalFourierAtDGCoords(5,U_FFT,U,doPrintTime=.TRUE.)
 
 ! Write State-File to initialize HIT
 CALL WriteState(TRIM(MeshFile),0.,0.,.FALSE.)

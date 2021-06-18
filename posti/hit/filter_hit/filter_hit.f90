@@ -203,7 +203,7 @@ COMPLEX        :: U_FFT(   1:nVar_In,1:Endw(1),1:Endw(2),1:Endw(3)) ! Complex FF
 CALL Interpolate_DG2FFT(NodeType_HDF5,nVar_In,U_in,U_Global)
 
 ! 2. Apply complex Fourier-Transform on solution from state file
-CALL ComputeFFT_R2C(nVar_In,U_Global,U_FFT,PrintTime=.TRUE.)
+CALL ComputeFFT_R2C(nVar_In,U_Global,U_FFT,doPrintTime=.TRUE.)
 
 ! 3. Fourier cutoff filter
 IF (N_Filter.GT.-1) THEN
@@ -217,7 +217,7 @@ ELSE ! Nyquist filter
 END IF
 
 ! 4. Apply inverse Fourier-Transform back into physical space
-CALL ComputeFFT_C2R(nVar_In,U_FFT,U_Global,PrintTime=.TRUE.)
+CALL ComputeFFT_C2R(nVar_In,U_FFT,U_Global,doPrintTime=.TRUE.)
 
 ! 5. Interpolate global solution at equidistant points back to DG points
 CALL Interpolate_FFT2DG(NodeType_HDF5,nVar_In,U_Global,U_in)
