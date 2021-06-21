@@ -188,6 +188,12 @@ SUBROUTINE BuildSurfVisuCoords()
 USE ISO_C_BINDING
 USE MOD_Globals
 USE MOD_PreProc
+USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisSurf
+USE MOD_Interpolation      ,ONLY: GetVandermonde
+USE MOD_Interpolation_Vars ,ONLY: NodeTypeVisu,NodeTypeVISUFVEqui,NodeType
+USE MOD_Mappings           ,ONLY: SideToVol2
+USE MOD_Mesh_Vars          ,ONLY: NGeo,NodeCoords,nBCSides
+USE MOD_Mesh_Vars          ,ONLY: SideToElem
 USE MOD_Visu_Vars          ,ONLY: CoordsSurfVisu_DG,nBCSidesVisu_DG,mapAllBCSidesToDGVisuBCSides
 USE MOD_Visu_Vars          ,ONLY: NodeTypeVisuPosti
 USE MOD_Visu_Vars          ,ONLY: NVisu
@@ -196,55 +202,80 @@ USE MOD_Visu_Vars          ,ONLY: CoordsSurfVisu_FV,nBCSidesVisu_FV,mapAllBCSide
 USE MOD_Visu_Vars          ,ONLY: NVisu_FV,hasFV_Elems
 USE MOD_Visu_Vars          ,ONLY: changedMeshFile,changedFV_Elems,changedBCnames
 #endif
-USE MOD_Interpolation_Vars ,ONLY: NodeTypeVisu,NodeTypeVISUFVEqui,NodeType
-USE MOD_Interpolation      ,ONLY: GetVandermonde
-USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisSurf
-USE MOD_Mesh_Vars          ,ONLY: Face_xGP,nBCSides
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: iSide,iSideVisu
-REAL,ALLOCATABLE   :: Vdm_N_NVisu(:,:)
+INTEGER            :: iElem,iSide,iLocSide,iSideVisu
+INTEGER            :: p,q,pq(2)
+REAL,ALLOCATABLE   :: Vdm_NGeo_NVisu(:,:)
+REAL               :: SurfCoords(1:3,0:NGeo,0:NGeo,0:0,1:nBCSides)   !< XYZ positions (first index 1:3) of the Face Node Coords
+REAL               :: tmp       (1:3,0:NGeo,0:NGeo)
 #if FV_ENABLED
-REAL,ALLOCATABLE   :: Vdm_N_NVisu_FV(:,:)
+REAL,ALLOCATABLE   :: Vdm_NGeo_NVisu_FV(:,:)
 #endif
-CHARACTER(LEN=255) :: NodeType_loc
-INTEGER            :: Nloc
 !===================================================================================================================================
-Nloc = PP_N
-NodeType_loc = NodeType
-
 ! Convert coordinates to visu grid
-SWRITE (*,*) "[MESH] Convert coordinates to surface visu grid (DG)"
-ALLOCATE(Vdm_N_NVisu(0:NVisu,0:Nloc))
-CALL GetVandermonde(Nloc,NodeType_loc,NVisu   ,NodeTypeVisuPosti  ,Vdm_N_NVisu   ,modal=.FALSE.)
+SWRITE (Unit_stdOut,'(A)') ' [MESH] Convert coordinates to surface visu grid (DG)'
+
+! Build surf coords on node coords
+DO iSide = 1,nBCSides
+  iElem    = SideToElem(S2E_ELEM_ID    ,iSide)
+  iLocSide = SideToElem(S2E_LOC_SIDE_ID,iSide)
+
+  SELECT CASE(iLocSide)
+    CASE(XI_MINUS)
+      tmp=NodeCoords(1:3,0   ,:   ,:   ,iElem)
+    CASE(XI_PLUS)
+      tmp=NodeCoords(1:3,NGeo,:   ,:   ,iElem)
+    CASE(ETA_MINUS)
+      tmp=NodeCoords(1:3,:   ,0   ,:   ,iElem)
+    CASE(ETA_PLUS)
+      tmp=NodeCoords(1:3,:   ,NGeo,:   ,iElem)
+    CASE(ZETA_MINUS)
+      tmp=NodeCoords(1:3,:   ,:   ,0   ,iElem)
+    CASE(ZETA_PLUS)
+      tmp=NodeCoords(1:3,:   ,:   ,NGeo,iElem)
+  END SELECT
+  ! CALL ChangeBasisSurf(3,NGeo,NGeo,Vdm_NGeo_N,tmp,tmp2)
+  ! turn into right hand system of side
+  DO q = 0,ZDIM(NGeo); DO p = 0,NGeo
+    pq = SideToVol2(NGeo,p,q,0,iLocSide,PP_dim)
+    ! Compute SurfCoords for sides
+    SurfCoords(1:3,p,q,0,iSide) = tmp(:,pq(1),pq(2))
+  END DO; END DO ! p,q
+END DO ! iElem
+
+ALLOCATE(Vdm_NGeo_NVisu(0:NVisu,0:NGeo))
+CALL GetVandermonde(NGeo,NodeTypeVisu,NVisu   ,NodeTypeVisuPosti  ,Vdm_NGeo_NVisu   ,modal=.FALSE.)
+
 ! convert coords of DG elements
 SDEALLOCATE(CoordsSurfVisu_DG)
 ALLOCATE(CoordsSurfVisu_DG(3,0:NVisu,0:ZDIM(NVisu),0:0,nBCSidesVisu_DG))
-DO iSide=1,nBCSides
+DO iSide = 1,nBCSides
   iSideVisu = mapAllBCSidesToDGVisuBCSides(iSide)
-  IF (iSideVisu.GT.0)THEN
-    CALL ChangeBasisSurf(3,Nloc,NVisu,   Vdm_N_NVisu, Face_xGP(:,:,:,0,iSide),CoordsSurfVisu_DG(:,:,:,0,iSideVisu))
+  IF (iSideVisu.GT.0) THEN
+    CALL ChangeBasisSurf(3,NGeo,NVisu,   Vdm_NGeo_NVisu,SurfCoords(:,:,:,0,iSide),CoordsSurfVisu_DG(:,:,:,0,iSideVisu))
   END IF
 END DO
-SDEALLOCATE(Vdm_N_NVisu)
+
+SDEALLOCATE(Vdm_NGeo_NVisu)
 
 #if FV_ENABLED
 IF (hasFV_Elems) THEN
-  SWRITE (*,*) "[MESH] Convert coordinates to surface visu grid (FV)"
+  SWRITE (Unit_stdOut,'(A)') ' [MESH] Convert coordinates to surface visu grid (FV)'
   IF ((.NOT.changedMeshFile).AND.(.NOT.changedFV_Elems).AND.(.NOT.changedBCnames)) RETURN
-  ALLOCATE(Vdm_N_NVisu_FV(0:NVisu_FV,0:Nloc))
-  CALL GetVandermonde(Nloc,NodeType_loc,NVisu_FV,NodeTypeVISUFVEqui,Vdm_N_NVisu_FV,modal=.FALSE.)
+  ALLOCATE(Vdm_NGeo_NVisu_FV(0:NVisu_FV,0:NGeo))
+  CALL GetVandermonde(NGeo,NodeTypeVisu,NVisu_FV,NodeTypeVISUFVEqui,Vdm_NGeo_NVisu_FV,modal=.FALSE.)
   ! convert coords of FV elements
   SDEALLOCATE(CoordsSurfVisu_FV)
   ALLOCATE(CoordsSurfVisu_FV(3,0:NVisu_FV,0:ZDIM(NVisu_FV),0:0,nBCSidesVisu_FV))
-  DO iSide=1,nBCSides
+  DO iSide = 1,nBCSides
     iSideVisu = mapAllBCSidesToFVVisuBCSides(iSide)
-    IF (iSideVisu.GT.0)THEN
-      CALL ChangeBasisSurf(3,Nloc,NVisu_FV,Vdm_N_NVisu_FV,Face_xGP(:,:,:,0,iSide),CoordsSurfVisu_FV(:,:,:,0,iSideVisu))
+    IF (iSideVisu.GT.0) THEN
+      CALL ChangeBasisSurf(3,NGeo,NVisu_FV,Vdm_NGeo_NVisu_FV,SurfCoords(:,:,:,0,iSide),CoordsSurfVisu_FV(:,:,:,0,iSideVisu))
     END IF
   END DO
-  SDEALLOCATE(Vdm_N_NVisu_FV)
+  SDEALLOCATE(Vdm_NGeo_NVisu_FV)
 END IF
 #endif
 
