@@ -224,6 +224,9 @@ ELSE
   SWRITE(UNIT_StdOut,*)'REWRITING SOLUTION:'
 END IF
 
+! Call Testcase analyze routines for the initial solution
+CALL AnalyzeTestCase(t)
+
 ! TODO: Should this be done before or after Overintegration? (see above) For FV we need it after DGTimeDerivative_weakForm!
 ! Write the state at time=0, i.e. the initial condition
 CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,&
