@@ -57,12 +57,14 @@ CONTAINS
 !===================================================================================================================================
 SUBROUTINE visu_getVarNamesAndFileType(statefile,meshfile,varnames_loc, bcnames_loc)
 USE MOD_Globals
-USE MOD_Visu_Vars      ,ONLY: FileType,VarNamesHDF5,nBCNamesAll
+USE MOD_EOS_Posti_Vars ,ONLY: DepNames,nVarDepEOS
+USE MOD_IO_HDF5        ,ONLY: GetDatasetNamesInGroup,File_ID
 USE MOD_HDF5_Input     ,ONLY: OpenDataFile,CloseDataFile,GetDataSize,GetVarNames,ISVALIDMESHFILE,ISVALIDHDF5FILE,ReadAttribute
 USE MOD_HDF5_Input     ,ONLY: DatasetExists,HSize,nDims,ReadArray
-USE MOD_IO_HDF5        ,ONLY: GetDatasetNamesInGroup,File_ID
 USE MOD_StringTools    ,ONLY: STRICMP
-USE MOD_EOS_Posti_Vars ,ONLY: DepNames,nVarDepEOS
+USE MOD_Restart        ,ONLY: CheckRestartFile
+USE MOD_Restart_Vars   ,ONLY: RestartMode
+USE MOD_Visu_Vars      ,ONLY: FileType,VarNamesHDF5,nBCNamesAll
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=255),INTENT(IN)                       :: statefile
@@ -72,7 +74,7 @@ CHARACTER(LEN=255),INTENT(INOUT),ALLOCATABLE,TARGET :: bcnames_loc(:)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                                             :: i,j,nVar,dims
-LOGICAL                                             :: varnames_found,readDGsolutionVars,sameVars,VarNamesExist, file_exists
+LOGICAL                                             :: varnames_found,readDGsolutionVars,sameVars,VarNamesExist,file_exists
 CHARACTER(LEN=255),ALLOCATABLE                      :: datasetNames(:)
 CHARACTER(LEN=255),ALLOCATABLE                      :: varnames_tmp(:)
 CHARACTER(LEN=255),ALLOCATABLE                      :: tmp(:)
@@ -91,50 +93,60 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! other file
   CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
   CALL ReadAttribute(File_ID,'File_Type',   1,StrScalar =FileType)
 
-  ! check if variables in state file are the same as in the EQNSYS
-  ! and set FileType to 'Generic' if not
-  IF (STRICMP(FileType,'State')) THEN
-    SDEALLOCATE(VarNamesHDF5)
-    CALL GetVarNames("VarNames",VarNamesHDF5,VarNamesExist)
-    IF (VarNamesExist) THEN
-      IF (PP_nVar.EQ.SIZE(VarNamesHDF5)) THEN
-        sameVars=.TRUE.
-        DO i=1,SIZE(VarNamesHDF5)
-          sameVars = sameVars.AND.(STRICMP(VarNamesHDF5(i), DepNames(i)))
-        END DO
-      ELSE
-        sameVars=.FALSE.
-      END IF
-    ELSE
-      sameVars=.FALSE.
-    END IF
+  SELECT CASE(TRIM(FileType))
+    ! check if variables in state file are the same as in the EQNSYS and set FileType to 'Generic' if not
+    CASE('State')
+      SDEALLOCATE(VarNamesHDF5)
+      CALL GetVarNames("VarNames",VarNamesHDF5,VarNamesExist)
 
-    IF (.NOT.sameVars) FileType='Generic'
-  END IF
+      sameVars = .FALSE.
+      IF (VarNamesExist .AND. PP_nVar.EQ.SIZE(VarNamesHDF5)) THEN
+        sameVars = .TRUE.
+        DO i = 1,SIZE(VarNamesHDF5)
+          sameVars = sameVars.AND.(STRICMP(VarNamesHDF5(i),DepNames(i)))
+        END DO
+      END IF
+      IF (.NOT.sameVars) FileType = 'Generic'
+
+    CASE('TimeAvg')
+      CALL CheckRestartFile(statefile)
+      IF (RestartMode.EQ.2 .OR. RestartMode.EQ.3) THEN
+        SDEALLOCATE(VarNamesHDF5)
+        CALL GetVarNames("VarNames_Mean",VarNamesHDF5,VarNamesExist)
+        FileType = 'State'
+      ELSE
+        FileType = 'Generic'
+      END IF
+  END SELECT
 
   IF (STRICMP(FileType,'State')) THEN
     nVar = nVarDepEOS
     ALLOCATE(varnames_loc(nVar))
-    varnames_loc(1:nVar)=DepNames
-    readDGsolutionVars = .FALSE.
+    varnames_loc(1:nVar) = DepNames
+    readDGsolutionVars   = .FALSE.
   ELSE
     nVar=0
-    readDGsolutionVars = .TRUE.
+    readDGsolutionVars   = .TRUE.
   END IF
 
   CALL GetDatasetNamesInGroup("/",datasetNames)
 
-  DO i=1,SIZE(datasetNames)
+  DO i = 1,SIZE(datasetNames)
     SDEALLOCATE(varnames_tmp)
     VarNamesExist=.FALSE.
     CALL DatasetExists(File_ID,"VarNames_"//TRIM(datasetNames(i)),varnames_found,attrib=.TRUE.)
     IF (varnames_found) THEN
-          CALL GetVarNames("VarNames_"//TRIM(datasetNames(i)),varnames_tmp,VarNamesExist)
+      CALL GetVarNames("VarNames_"//TRIM(datasetNames(i)),varnames_tmp,VarNamesExist)
+          ! print*,varnames_tmp
     ELSE
       IF (STRICMP(datasetNames(i), "DG_Solution")) THEN
         IF (readDGsolutionVars) THEN
           CALL GetVarNames("VarNames",varnames_tmp,VarNamesExist)
         END IF
+      ! ELSEIF (RestartMode.GT.1 .AND. STRICMP(datasetNames(i), "Mean")) THEN
+      !   IF (readDGsolutionVars) THEN
+      !     CALL GetVarNames("VarNames_Mean",varnames_tmp,VarNamesExist)
+      !   END IF
       ELSE IF(STRICMP(datasetNames(i), "ElemData")) THEN
         CALL GetVarNames("VarNamesAdd",varnames_tmp,VarNamesExist)
       ELSE IF(STRICMP(datasetNames(i), "FieldData")) THEN
@@ -166,7 +178,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! other file
       varnames_loc(nVar+j) = TRIM(datasetNames(i))//":"//TRIM(varnames_tmp(j))
     END DO
     nVar = nVar + SIZE(varnames_tmp)
-  END DO
+  END DO ! i = 1,SIZE(datasetNames)
 
   IF (LEN_TRIM(meshfile).EQ.0) THEN
     ! Save mesh file to get boundary names later
@@ -193,6 +205,7 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! other file
 
   SDEALLOCATE(datasetNames)
 END IF
+
 END SUBROUTINE visu_getVarNamesAndFileType
 
 !===================================================================================================================================
@@ -228,8 +241,9 @@ CHARACTER(LEN=255),INTENT(IN)    :: statefile
 CHARACTER(LEN=255),INTENT(INOUT) :: postifile
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL
-INTEGER                          :: nElems_State
+LOGICAL                          :: RestartMean
 CHARACTER(LEN=255)               :: NodeType_State, cwd
+INTEGER                          :: nElems_State
 #if PP_N!=N
 INTEGER                          :: N_State
 #endif
@@ -244,12 +258,31 @@ CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 
 ! read the meshfile attribute from statefile
 CALL ReadAttribute(File_ID,'MeshFile',    1,StrScalar =MeshFile_state)
+
 ! get properties
+#if EQNSYSNR != 1
+! Check if the file is a time-averaged file
+CALL DatasetExists(File_ID,'Mean',RestartMean)
+! Read in attributes
+IF (.NOT.RestartMean) THEN
+#endif /* EQNSYSNR != 1 */
 #if PP_N==N
-CALL GetDataProps(nVar_State,PP_N,nElems_State,NodeType_State)
+  CALL GetDataProps(nVar_State,PP_N,nElems_State,NodeType_State)
 #else
-CALL GetDataProps(nVar_State,N_State,nElems_State,NodeType_State)
-#endif
+  CALL GetDataProps(nVar_State,N_State,nElems_State,NodeType_State)
+#endif /* PP_N==N */
+#if EQNSYSNR != 1
+! Check if the file is a time-averaged file
+ELSE
+#if PP_N==N
+  CALL GetDataProps(nVar_State,PP_N,nElems_State,NodeType_State,'Mean')
+#else
+  CALL GetDataProps(nVar_State,N_State,nElems_State,NodeType_State,'Mean')
+#endif /* PP_N==N */
+  ! When restarting from a time-averaged file, we convert to U array to PP_nVar
+  nVar_State = PP_nVar
+END IF
+#endif /* EQNSYSNR != 1 */
 
 ! read options from posti parameter file
 CALL prms%read_options(postifile)

@@ -36,6 +36,7 @@ END INTERFACE
 INTERFACE PrimToCons
   MODULE PROCEDURE PrimToCons
   MODULE PROCEDURE PrimToCons_Side
+  MODULE PROCEDURE PrimToCons_Volume
 END INTERFACE
 
 PUBLIC::ConsToPrim,PrimToCons
@@ -153,5 +154,23 @@ REAL,INTENT(OUT)   :: cons(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)) !< vector of conserv
 ! copy prim to cons (PP_nVar = PP_nVarPrim)
 cons = prim
 END SUBROUTINE PrimToCons_Side
+
+!==================================================================================================================================
+!> Transformation from primitive to conservative variables in the whole volume
+!==================================================================================================================================
+PURE SUBROUTINE PrimToCons_Volume(Nloc,prim,cons)
+! MODULES
+USE MOD_Mesh_Vars,ONLY:nElems
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN) :: Nloc                                                  !< local polynomial degree of solution representation
+REAL,INTENT(IN)    :: prim(PP_nVarPrim,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems)     !< vector of primitive variables
+REAL,INTENT(OUT)   :: cons(PP_nVar    ,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems)     !< vector of conservative variables
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!==================================================================================================================================
+cons = prim
+END SUBROUTINE PrimToCons_Volume
 
 END MODULE MOD_EOS

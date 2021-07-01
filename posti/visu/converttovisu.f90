@@ -454,7 +454,7 @@ DO iVar=nVarDep+1,nVarAll
       ! Check if we have a new dataset
       datasetChanged = .NOT.STRICMP(TRIM(DataSetName),TRIM(DataSetOld))
 
-      SWRITE(*,*) "Convert variable ",TRIM(VariableName)," from dataset ", TRIM(DatasetName)
+      SWRITE(UNIT_stdOut,'(A,A,A,A)') " Convert variable ",TRIM(VariableName)," from dataset ", TRIM(DatasetName)
 
       ! Get metadata if dataset changed
       IF (datasetChanged) THEN
@@ -477,7 +477,7 @@ DO iVar=nVarDep+1,nVarAll
         SDEALLOCATE(DataSetVarNames)
         CALL GetVarNames("VarNames_"//TRIM(DatasetName),DatasetVarNames,varnamesExist)
       END IF
-      SWRITE (*,*) "varnamesExist", varnamesExist
+      SWRITE (UNIT_StdOut,'(A,L)') " varnamesExist: ", varnamesExist
 
       iVarDataset = 0
       ! loop over all varnames
