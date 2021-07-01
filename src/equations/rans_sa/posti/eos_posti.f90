@@ -765,5 +765,4 @@ END DO ! iSide = 1,nBCSides
 END SUBROUTINE FillNonDimensionalGridSpacing
 #endif
 
-
 END MODULE MOD_EOS_Posti
