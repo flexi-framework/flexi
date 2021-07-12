@@ -181,7 +181,7 @@ INTEGER,INTENT(IN)                                              :: mapCalcMeshTo
 INTEGER,INTENT(IN)                                              :: mapDepToCalc(nVarDepEOS)
 INTEGER,INTENT(IN)                                              :: maskCalc(nVarDepEOS)
 REAL,INTENT(OUT)                                                :: UCalc(PRODUCT(nVal),1:nVarCalc)
-REAL,DIMENSION(1:PP_nVarPrim,PRODUCT(nVal)),INTENT(IN),OPTIONAL :: gradUx,gradUy,gradUz
+REAL,DIMENSION(1:PP_nVarLifting,PRODUCT(nVal)),INTENT(IN),OPTIONAL :: gradUx,gradUy,gradUz
 REAL,DIMENSION(1:3,PRODUCT(nVal)),INTENT(IN),OPTIONAL           :: NormVec,TangVec1,TangVec2
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -189,8 +189,8 @@ LOGICAL            :: withGradients
 LOGICAL            :: withVectors
 INTEGER            :: iVar,iVarCalc
 !===================================================================================================================================
-withGradients=(PRESENT(gradUx).AND.PRESENT(gradUy).AND.PRESENT(gradUz))
-withVectors=(PRESENT(NormVec).AND.PRESENT(TangVec1).AND.PRESENT(TangVec2))
+withGradients = (PRESENT(gradUx) .AND.PRESENT(gradUy)  .AND.PRESENT(gradUz))
+withVectors   = (PRESENT(NormVec).AND.PRESENT(TangVec1).AND.PRESENT(TangVec2))
 
 DO iVar=1,nVarDepEOS
   iVarCalc = mapDepToCalc(iVar)
@@ -238,7 +238,7 @@ INTEGER,INTENT(IN)                                              :: nVal(:)
 INTEGER,INTENT(IN)                                              :: mapCalcMeshToGlobalMesh(:)
 INTEGER,INTENT(IN)                                              :: mapDepToCalc(nVarDepEOS)
 REAL,INTENT(INOUT)                                              :: UCalc(PRODUCT(nVal),1:nVarCalc)
-REAL,DIMENSION(1:PP_nVarPrim,PRODUCT(nVal)),INTENT(IN),OPTIONAL :: gradUx,gradUy,gradUz
+REAL,DIMENSION(1:PP_nVarLifting,PRODUCT(nVal)),INTENT(IN),OPTIONAL :: gradUx,gradUy,gradUz
 REAL,DIMENSION(1:3,PRODUCT(nVal)),INTENT(IN),OPTIONAL           :: NormVec,TangVec1,TangVec2
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -466,7 +466,7 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: dir
 INTEGER,INTENT(IN) :: nVal(:)
-REAL,DIMENSION(PP_nVarPrim,PRODUCT(nVal)),INTENT(IN) :: gradUx,gradUy,gradUz
+REAL,DIMENSION(PP_nVarLifting,PRODUCT(nVal)),INTENT(IN) :: gradUx,gradUy,gradUz
 REAL               :: Vorticity(PRODUCT(nVal))
 !==================================================================================================================================
 SELECT CASE (dir)
@@ -494,7 +494,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: nVal(:)
-REAL,DIMENSION(PP_nVarPrim,PRODUCT(nVal)),INTENT(IN) :: gradUx,gradUy,gradUz
+REAL,DIMENSION(PP_nVarLifting,PRODUCT(nVal)),INTENT(IN) :: gradUx,gradUy,gradUz
 REAL               :: Lambda2(PRODUCT(nVal))
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -527,7 +527,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: nVal(:)
-REAL,DIMENSION(PP_nVarPrim,PRODUCT(nVal)),INTENT(IN) :: gradUx,gradUy,gradUz
+REAL,DIMENSION(PP_nVarLifting,PRODUCT(nVal)),INTENT(IN) :: gradUx,gradUy,gradUz
 REAL               :: Qcriterion(PRODUCT(nVal))
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -564,7 +564,7 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)                                   :: dir,nVal(:)
 REAL,DIMENSION(PRODUCT(nVal)),INTENT(IN)             :: Temperature
-REAL,DIMENSION(PP_nVarPrim,PRODUCT(nVal)),INTENT(IN) :: gradUx,gradUy,gradUz
+REAL,DIMENSION(PP_nVarLifting,PRODUCT(nVal)),INTENT(IN) :: gradUx,gradUy,gradUz
 REAL,DIMENSION(1:3,PRODUCT(nVal)),INTENT(IN)         :: NormVec
 REAL                                                 :: WallFriction(PRODUCT(nVal))
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -607,7 +607,7 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)                                   :: nVal(:)
 REAL,DIMENSION(PRODUCT(nVal)),INTENT(IN)             :: Temperature
-REAL,DIMENSION(PP_nVarPrim,PRODUCT(nVal)),INTENT(IN) :: gradUx,gradUy,gradUz
+REAL,DIMENSION(PP_nVarLifting,PRODUCT(nVal)),INTENT(IN) :: gradUx,gradUy,gradUz
 REAL,DIMENSION(1:3,PRODUCT(nVal)),INTENT(IN)         :: NormVec
 REAL                                                 :: WallHeatTransfer(PRODUCT(nVal))
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -758,6 +758,5 @@ END DO ! iSide = 1,nBCSides
 
 END SUBROUTINE FillNonDimensionalGridSpacing
 #endif
-
 
 END MODULE MOD_EOS_Posti

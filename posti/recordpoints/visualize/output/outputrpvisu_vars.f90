@@ -27,6 +27,7 @@ INTEGER                       :: nCoords                     !< number of visual
 CHARACTER(LEN=255),ALLOCATABLE:: CoordNames(:)               !< including space and time coordinates
 REAL,ALLOCATABLE              :: RPData_out(:,:,:)           !< output state
 REAL,ALLOCATABLE              :: RPDataTimeAvg_out(:,:)      !< time average state
+REAL,ALLOCATABLE              :: RPDataRMS_out(:,:)          !< RMS of fluctuations
 LOGICAL                       :: OutputInitIsDone=.FALSE.
 !===================================================================================================================================
 END MODULE MOD_OutputRPVisu_Vars

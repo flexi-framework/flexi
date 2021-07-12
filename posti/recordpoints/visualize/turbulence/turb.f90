@@ -36,14 +36,12 @@ CONTAINS
 SUBROUTINE Turbulence()
 ! MODULES
 USE MOD_Globals
+USE MOD_ParametersVisu         ,ONLY: Mu0,cutoffFreq
+USE MOD_OutputRPVisu_Vars      ,ONLY: nSamples_out
 USE MOD_RPData_Vars            ,ONLY: RPTime,RPData
 USE MOD_RPSetVisuVisu_Vars     ,ONLY: nRP_global
-USE MOD_OutputRPVisu_Vars      ,ONLY: nSamples_out
-USE MOD_ParametersVisu         ,ONLY: Mu0,cutoffFreq
+USE MOD_Turbulence_Vars
 USE FFTW3
-USE MOD_OutputRPVisu_Vars      ,ONLY: CoordNames
-USE MOD_OutputRPVisu_VTK       ,ONLY: WriteDataToVTK, WriteTimeAvgDataToVTK
-USE MOD_ParametersVisu         ,ONLY: ProjectName
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -54,14 +52,9 @@ INTEGER                         :: nSamples_spec
 INTEGER(KIND=8)                 :: plan
 COMPLEX                         :: in(nSamples_out),out(nSamples_out)
 REAL                            :: dt_equi , PI , df
-REAL , ALLOCATABLE              :: E_kineticSpec(:,:)
-REAL , ALLOCATABLE              :: velAbs(:,:) , velAbs_avg(:) , density_avg(:) , kk(:,:) , disRate(:,:) , epsilonMean(:,:)
-REAL , ALLOCATABLE              :: nu0(:) , eta(:) , etaK(:,:)
-REAL , ALLOCATABLE              :: vel_spec(:,:,:) , velPrim(:,:,:) , RPData_freq(:)
-INTEGER                         :: nVar_turb
-CHARACTER(LEN=255),ALLOCATABLE  :: VarNameTurb(:)
-CHARACTER(LEN=255)              :: Filename
-REAL , ALLOCATABLE              :: RPData_turb(:,:,:) , RPData_turb_avg(:,:)
+REAL,ALLOCATABLE                :: vel_spec(:,:,:),velPrim(:,:,:)
+REAL,ALLOCATABLE                :: velAbs(:,:),velAbs_avg(:),density_avg(:)
+REAL,ALLOCATABLE                :: nu0(:)
 !===================================================================================================================================
 
 
@@ -86,13 +79,13 @@ IF(cutoffFreq.NE.-999)THEN
 END IF
 WRITE(UNIT_stdOut,'(A,I8)') '    No. spectrum output samples FFT:',nSamples_spec
 ALLOCATE(vel_spec(1:3,nRP_global,nSamples_spec))
-ALLOCATE(RPData_freq(nSamples_spec))
+ALLOCATE(RPData_freqTurb(nSamples_spec))
 DO iSample=1,nSamples_spec
-  RPData_freq(iSample)=(iSample-1)*df
+  RPData_freqTurb(iSample)=(iSample-1)*df
 END DO
 
 WRITE(UNIT_stdOut,'(A,F16.7)') '            Nyquist frequency:',df*REAL(nSamples_out-1)
-WRITE(UNIT_stdOut,'(A,F16.7)') '      Max. resolved frequency:',RPData_freq(nSamples_spec)
+WRITE(UNIT_stdOut,'(A,F16.7)') '      Max. resolved frequency:',RPData_freqTurb(nSamples_spec)
 CALL DFFTW_PLAN_DFT_1D(plan,nSamples_out,in,out,FFTW_FORWARD,FFTW_ESTIMATE)
 DO iRP=1,nRP_global
   WRITE(UNIT_stdOut,*)'   Processing RP ',iRP,' of ',nRP_global
@@ -133,9 +126,9 @@ END DO
 velAbs_Avg  = velAbs_Avg /(RPTime(nSamples_out)-RPTime(1))
 density_Avg = density_Avg/(RPTime(nSamples_out)-RPTime(1))
 
-!calculate wavenumber for each RP, using mean tranposrt velocity as wavespeed
+!calculate wavenumber for each RP, using mean transport velocity as wavespeed
 DO iSample=1,nSamples_Spec
-  kk(:,iSample) = 2*PI*RPData_freq(iSample)/velAbs_avg
+  kk(:,iSample) = 2*PI*RPData_freqTurb(iSample)/velAbs_avg
 END DO
 !epsilon as far as resolved for run for each RP, good resolutin for EtaK GE 1,
 !overprediction of Eta for underresolved turbulence...
@@ -157,52 +150,8 @@ DO iSample=1,nSamples_spec
   etaK(:,iSample) = eta(:)*kk(:,iSample)
 END DO
 
-
-nVar_turb=5
-ALLOCATE(VarNameTurb(nVar_turb))
-VarNameTurb(1) = 'KineticEnergy'
-VarNameTurb(2) = 'DissipationRate'
-VarNameTurb(3) = 'MeanDissipation_cumulated'
-VarNameTurb(4) = 'Eta_K'
-VarNameTurb(5) = 'Wavenumber K'
-
-ALLOCATE(RPData_turb(1:nVar_turb,nRP_global,nSamples_spec))
-RPData_turb(1,:,:) = E_kineticSpec(:,:)
-RPData_turb(2,:,:) = disRate(:,:)
-RPData_turb(3,:,:) = epsilonMean(:,:)
-RPData_turb(4,:,:) = etaK(:,:)
-RPData_turb(5,:,:) = kk(:,:)
-
-! Output Turbulence stuff
-CoordNames(1)='Frequency'
-WRITE(UNIT_StdOut,'(132("-"))')
-Filename=TRIM(ProjectName)
-FileName=TRIM(FileName)//'_RP_turb'
-WRITE(UNIT_stdOut,'(A,A)')' WRITING TURBULENCE DATA TO ',TRIM(FileName)
-CALL WriteDataToVTK(nSamples_spec,nRP_global,nVar_turb,VarNameTurb,RPData_freq,RPData_turb,FileName)
 WRITE(UNIT_stdOut,'(A)')' DONE.'
 WRITE(UNIT_StdOut,'(132("-"))')
-
-
-DEALLOCATE(VarNameTurb)
-nVar_turb=2
-ALLOCATE(VarNameTurb(nVar_turb))
-VarNameTurb(1) = 'Eta'
-VarNameTurb(2) = 'MeanDissipation'
-
-ALLOCATE(RPData_turb_avg(1:nVar_turb,nRP_global))
-RPData_turb_avg(1,:) = eta
-RPData_turb_avg(2,:) = epsilonMean(:,nSamples_spec)
-
-! Output Time Average
-WRITE(UNIT_StdOut,'(132("-"))')
-Filename=TRIM(ProjectName)
-FileName=TRIM(FileName)//'_RP_TurbAvg'
-WRITE(UNIT_stdOut,'(A,A)')' WRITING TURBULENCE AVERAGE DATA TO ',TRIM(FileName)
-CALL WriteTimeAvgDataToVTK(nRP_global,nVar_turb,VarNameTurb,RPData_turb_avg,FileName)
-WRITE(UNIT_stdOut,'(A)')' DONE.'
-WRITE(UNIT_StdOut,'(132("-"))')
-
 
 END SUBROUTINE Turbulence
 

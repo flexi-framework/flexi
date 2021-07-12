@@ -11,12 +11,21 @@
 !
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
-
-
 !===================================================================================================================================
-!> Module wrapper for the FFTW library via the ISO_C_Binding. This module has to be USE-associated in order to call FFTW routines.
+! Contains global variables provided by spectral analysis routines
 !===================================================================================================================================
-MODULE FFTW3
-  USE, INTRINSIC :: ISO_C_BINDING
-  INCLUDE 'fftw3.f03'
-END MODULE FFTW3
+MODULE MOD_EnsembleRP_Vars
+! MODULES
+IMPLICIT NONE
+PUBLIC
+SAVE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! GLOBAL VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+INTEGER                       :: enSamples                   !> Number of ensemble samples
+INTEGER                       :: nVar_ensTurb                !> Variable names for turbulent ensemble averages
+REAL,ALLOCATABLE              :: RPData_ens(:,:,:)
+REAL,ALLOCATABLE              :: RPData_turb(:,:,:)
+REAL,ALLOCATABLE              :: RPData_freqEns(:)
+!===================================================================================================================================
+END MODULE MOD_EnsembleRP_Vars

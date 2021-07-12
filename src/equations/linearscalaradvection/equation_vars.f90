@@ -36,6 +36,7 @@ INTEGER,ALLOCATABLE  :: nBCByType(:)          !< Number of sides for each bounda
 INTEGER,ALLOCATABLE  :: BCSideID(:,:)         !< SideIDs for BC types
 
 CHARACTER(LEN=255),PARAMETER :: StrVarNames(1)=(/'Solution'/) !< Variable names for output
+CHARACTER(LEN=255),PARAMETER :: StrVarNamesPrim(1)=(/'Solution'/)
 
 LOGICAL           :: EquationInitIsDone=.FALSE.!< Init switch
 !==================================================================================================================================

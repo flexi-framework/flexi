@@ -127,14 +127,21 @@ ELSE()
 
   #SET HDF5_TAG depending on MPI Version
   IF(LIBS_USE_MPI)
-    IF (${MPI_Fortran_VERSION} VERSION_LESS "4.0.0")
-      SET (HDF5_TAG "hdf5-1_10_6" CACHE STRING "HDF5 version tag")
+    # HDF5 1.12.0 and greater is compatible with OpenMPI 4.0.0 and greater
+    EXECUTE_PROCESS(COMMAND mpiexec --version COMMAND grep ^mpiexec COMMAND sed "s/^.* //g" OUTPUT_VARIABLE OPENMPI_VERSION)
+    IF (DEFINED OPENMPI_VERSION  AND NOT "${OPENMPI_VERSION}" STREQUAL "")
+      IF (${OPENMPI_VERSION} VERSION_GREATER_EQUAL "4.0.0")
+        SET (HDF5_TAG "hdf5-1_12_0" CACHE STRING "HDF5 version tag")
+      ELSE()
+        SET (HDF5_TAG "hdf5-1_10_6" CACHE STRING "HDF5 version tag")
+      ENDIF()
     ELSE()
-      SET (HDF5_TAG "hdf5-1_12_0" CACHE STRING "HDF5 version tag")
+      SET (HDF5_TAG "hdf5-1_10_6" CACHE STRING "HDF5 version tag")
     ENDIF()
   ELSE()
     SET (HDF5_TAG "hdf5-1_12_0" CACHE STRING "HDF5 version tag")
   ENDIF()
+  MESSAGE (STATUS "Setting HDF5 to tag ${HDF5_TAG} to be compatible with detected MPI version")
   MARK_AS_ADVANCED(FORCE HDF5_TAG)
 
   # Set HDF5 build dir
@@ -219,7 +226,7 @@ ENDIF()
 # Check if Intel MKL is requested instead of BLAS/LAPACK
 OPTION(LIBS_USE_MKL "Use MKL libraries instead of BLAS/LAPACK" OFF)
 IF (LIBS_USE_MKL)
-  SET(BLA_VENDOR "Intel") #search only for Intel BLAS (=MKL)
+  SET(BLA_VENDOR "Intel10_64lp") #search only for Intel BLAS (=MKL)
 ENDIF()
 
 # Use Lapack/Blas for GNU
@@ -257,5 +264,7 @@ IF(LIBS_USE_OPENMP)
   SET (CMAKE_CXX_FLAGS_DEBUG       "${CMAKE_CXX_FLAGS_DEBUG}       ${OpenMP_CXX_FLAGS}")
   SET (CMAKE_CXX_FLAGS_RELEASE     "${CMAKE_CXX_FLAGS_RELEASE}     ${OpenMP_CXX_FLAGS}")
   SET (CMAKE_EXE_LINKER_FLAGS      "${CMAKE_EXE_LINKER_FLAGS}      ${OpenMP_EXE_LINKER_FLAGS}")
+  ADD_DEFINITIONS(-DUSE_OPENMP=1)
+ELSE()
+  ADD_DEFINITIONS(-DUSE_OPENMP=0)
 ENDIF()
-

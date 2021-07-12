@@ -1,3 +1,4 @@
+
 !=================================================================================================================================
 ! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
@@ -11,12 +12,20 @@
 !
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
-
-
 !===================================================================================================================================
-!> Module wrapper for the FFTW library via the ISO_C_Binding. This module has to be USE-associated in order to call FFTW routines.
+!> Contains global variables for the turbulence routine
 !===================================================================================================================================
-MODULE FFTW3
-  USE, INTRINSIC :: ISO_C_BINDING
-  INCLUDE 'fftw3.f03'
-END MODULE FFTW3
+MODULE MOD_Turbulence_Vars
+! MODULES
+IMPLICIT NONE
+PUBLIC
+SAVE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! GLOBAL VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+REAL,ALLOCATABLE :: E_kineticSpec(:,:)
+REAL,ALLOCATABLE :: kk(:,:),disRate(:,:),epsilonMean(:,:)
+REAL,ALLOCATABLE :: eta(:),etaK(:,:)
+REAL,ALLOCATABLE :: RPData_freqTurb(:)
+!===================================================================================================================================
+END MODULE MOD_Turbulence_Vars

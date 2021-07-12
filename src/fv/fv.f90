@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -549,7 +549,8 @@ USE MOD_PreProc
 USE MOD_Globals
 USE MOD_ChangeBasisByDim ,ONLY: ChangeBasisSurf
 USE MOD_FV_Vars
-USE MOD_Mesh_Vars   ,ONLY: firstInnerSide,lastMPISide_MINE,nSides
+USE MOD_Mesh_Vars        ,ONLY: firstInnerSide,lastMPISide_MINE,nSides
+USE MOD_Mesh_Vars        ,ONLY: sJ_master,sJ_slave
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -559,18 +560,46 @@ REAL,INTENT(INOUT) :: U_master(nVar,0:PP_N,0:PP_NZ,1:nSides) !< Solution on mast
 REAL,INTENT(INOUT) :: U_slave (nVar,0:PP_N,0:PP_NZ,1:nSides) !< Solution on slave side
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER     :: firstSideID,lastSideID,SideID
+INTEGER            :: firstSideID,lastSideID,SideID,p,q
 !==================================================================================================================================
 firstSideID = firstInnerSide
 lastSideID  = lastMPISide_MINE
 
-DO SideID=firstSideID,lastSideID
-  IF (FV_Elems_Sum(SideID).EQ.2) THEN
-    CALL ChangeBasisSurf(nVar,PP_N,PP_N,FV_Vdm,U_master(:,:,:,SideID))
-  ELSE IF (FV_Elems_Sum(SideID).EQ.1) THEN
-    CALL ChangeBasisSurf(nVar,PP_N,PP_N,FV_Vdm,U_slave (:,:,:,SideID))
-  END IF
-END DO
+IF (switchConservative) THEN
+  DO SideID=firstSideID,lastSideID
+    IF (FV_Elems_Sum(SideID).EQ.2) THEN
+      ! Transform the DG solution into the reference element
+      DO q=0,PP_NZ; DO p=0,PP_N
+        U_master(:,p,q,SideID)=U_master(:,p,q,SideID)/sJ_master(1,p,q,SideID,0)
+      END DO; END DO
+      ! Perform interpolation from DG to FV
+      CALL ChangeBasisSurf(nVar,PP_N,PP_N,FV_Vdm,U_master(:,:,:,SideID))
+      ! Transform back to physical space
+      DO q=0,PP_NZ; DO p=0,PP_N
+        U_master(:,p,q,SideID)=U_master(:,p,q,SideID)*sJ_master(1,p,q,SideID,1)
+      END DO; END DO
+    ELSE IF (FV_Elems_Sum(SideID).EQ.1) THEN
+      ! Transform the DG solution into the reference element
+      DO q=0,PP_NZ; DO p=0,PP_N
+        U_slave(:,p,q,SideID)=U_slave(:,p,q,SideID)/sJ_slave(1,p,q,SideID,0)
+      END DO; END DO
+      ! Perform interpolation from DG to FV
+      CALL ChangeBasisSurf(nVar,PP_N,PP_N,FV_Vdm,U_slave(:,:,:,SideID))
+      ! Transform back to physical space
+      DO q=0,PP_NZ; DO p=0,PP_N
+        U_slave(:,p,q,SideID)=U_slave(:,p,q,SideID)*sJ_slave(1,p,q,SideID,1)
+      END DO; END DO
+    END IF
+  END DO
+ELSE
+  DO SideID=firstSideID,lastSideID
+    IF (FV_Elems_Sum(SideID).EQ.2) THEN
+      CALL ChangeBasisSurf(nVar,PP_N,PP_N,FV_Vdm,U_master(:,:,:,SideID))
+    ELSE IF (FV_Elems_Sum(SideID).EQ.1) THEN
+      CALL ChangeBasisSurf(nVar,PP_N,PP_N,FV_Vdm,U_slave (:,:,:,SideID))
+    END IF
+  END DO
+END IF
 
 END SUBROUTINE FV_DGtoFV
 
