@@ -227,15 +227,15 @@ CALL FinishExchangeMPIData(2*nNbProcs,MPIRequest_U)                             
 ! Sending gradU_master
 ! gradU_slave was already sent in DGTimeDerivative_WeakForm
 ! Send MINE - receive YOUR
-CALL StartReceiveMPIData(gradUx_master,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,1,RECV),SendID=1) ! Receive YOUR / gradUx_master
-CALL StartReceiveMPIData(gradUy_master,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,2,RECV),SendID=1) ! Receive YOUR / gradUy_master
+CALL StartReceiveMPIData(gradUx_master,DataSizeSideGrad,1,nSides,MPIRequest_gradU(:,1,RECV),SendID=1) ! Receive YOUR / gradUx_master
+CALL StartReceiveMPIData(gradUy_master,DataSizeSideGrad,1,nSides,MPIRequest_gradU(:,2,RECV),SendID=1) ! Receive YOUR / gradUy_master
 #if PP_dim==3
-CALL StartReceiveMPIData(gradUz_master,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,3,RECV),SendID=1) ! Receive YOUR / gradUz_master
+CALL StartReceiveMPIData(gradUz_master,DataSizeSideGrad,1,nSides,MPIRequest_gradU(:,3,RECV),SendID=1) ! Receive YOUR / gradUz_master
 #endif
-CALL StartSendMPIData(   gradUx_master,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,1,SEND),SendID=1) ! SEND MINE    / gradUx_master
-CALL StartSendMPIData(   gradUy_master,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,2,SEND),SendID=1) ! SEND MINE    / gradUy_master
+CALL StartSendMPIData(   gradUx_master,DataSizeSideGrad,1,nSides,MPIRequest_gradU(:,1,SEND),SendID=1) ! SEND MINE    / gradUx_master
+CALL StartSendMPIData(   gradUy_master,DataSizeSideGrad,1,nSides,MPIRequest_gradU(:,2,SEND),SendID=1) ! SEND MINE    / gradUy_master
 #if PP_dim==3
-CALL StartSendMPIData(   gradUz_master,DataSizeSidePrim,1,nSides,MPIRequest_gradU(:,3,SEND),SendID=1) ! SEND MINE    / gradUz_master
+CALL StartSendMPIData(   gradUz_master,DataSizeSideGrad,1,nSides,MPIRequest_gradU(:,3,SEND),SendID=1) ! SEND MINE    / gradUz_master
 #endif
 CALL FinishExchangeMPIData(6*nNbProcs,MPIRequest_gradU) ! gradU(x,y,z)_master: master -> slave
 #if EDDYVISCOSITY

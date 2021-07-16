@@ -169,7 +169,7 @@ DO jVar=1,PP_nVarPrim
     gradUz_Face_Tilde(jVar,:,:) = gradUz_Face_Tilde(jVar,:,:) + reps0_O1
     CALL GetBoundaryFlux(SideID,t,PP_N,F_Face_TildeQz,UPrim_master,   &
                          gradUx_Face,gradUy_Face,gradUz_Face_Tilde, &
-                         normaol,tangent1,tangent2,xGP_Face)
+                         normal,tangent1,tangent2,xGP_Face)
 #endif
     DO iVar=1,PP_nVar
       DO q=0,PP_NZ

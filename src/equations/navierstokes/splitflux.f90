@@ -102,12 +102,12 @@ SUBROUTINE InitSplitDG()
 ! MODULES
 USE MOD_Globals
 USE MOD_ReadInTools ,ONLY: GETINTFROMSTR
+USE MOD_DG_Vars     ,ONLY: SplitDG
 !----------------------------------------------------------------------------------------------------------------------------------
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER :: SplitDG
 !==================================================================================================================================
 ! check if Gauss-Lobatto-Pointset is beeing used
 #if (PP_NodeType==1)

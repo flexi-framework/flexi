@@ -216,7 +216,7 @@ END SUBROUTINE InitImplicit
 !> Solves the non-linear system with Newton
 !> Root function: F_Xk = Xk - Q- alpha * dt* R_Xk(t+beta*dt,Xk) = 0!
 !> Newton algorithm: 
-!> dF/dX|Xk * DeltaX = F_Xk
+!> dF/dX|Xk * DeltaX = -F_Xk
 !> X_K+1 = X_k + DeltaX
 !> Attention: we use actual U as X0
 !===================================================================================================================================
