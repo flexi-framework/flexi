@@ -369,7 +369,7 @@ INTEGER                 :: i,j,k,iRP
 REAL                    :: u_RP(nVar,nRP)
 REAL                    :: l_eta_zeta_RP
 !----------------------------------------------------------------------------------------------------------------------------------
-IF(MOD(iter,RP_SamplingOffset).NE.0 .AND. .NOT. forceSampling) RETURN
+IF(MOD(iter,INT(RP_SamplingOffset,KIND=8)).NE.0 .AND. .NOT. forceSampling) RETURN
 IF(.NOT.ALLOCATED(RP_Data))THEN
   ! Compute required buffersize from timestep and add 20% tolerance
   ! +1 is added to ensure a minimum buffersize of 2

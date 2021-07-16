@@ -51,7 +51,11 @@ CONTAINS
 !>  4. check wether the distribution of FV elements has changed
 !>  5. store the current distribution in FV_Elems_loc, is needed for some mappings later
 !===================================================================================================================================
-SUBROUTINE Build_FV_DG_distribution(statefile)
+SUBROUTINE Build_FV_DG_distribution(&
+#if FV_ENABLED
+    statefile&
+#endif
+    )
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Visu_Vars
@@ -62,7 +66,9 @@ USE MOD_Mesh_ReadIn ,ONLY: BuildPartition
 USE MOD_Mesh_Vars   ,ONLY: nElems
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
+#if FV_ENABLED
 CHARACTER(LEN=255),INTENT(IN)  :: statefile
+#endif
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                        :: iElem
@@ -167,11 +173,12 @@ hasFV_Elems = (nElems_FV_glob.GT.0)
 
 END SUBROUTINE Build_FV_DG_distribution
 
+
 !===================================================================================================================================
 !> This routine builds the mappings from the total number of variables available for visualization to number of calculation
 !> and visualization variables.
 !>  1. Read 'VarName' options from the parameter file. This are the quantities that will be visualized.
-!>  2. Initialize the dependecy table
+!>  2. Initialize the dependency table
 !>  3. check wether gradients are needed for any quantity. If this is the case, remove the conservative quantities from the
 !>     dependecies of the primitive quantities (the primitive quantities are available directly, since the DGTimeDerivative_weakForm
 !>     will be executed.
@@ -182,6 +189,7 @@ END SUBROUTINE Build_FV_DG_distribution
 SUBROUTINE Build_mapDepToCalc_mapAllVarsToVisuVars()
 USE MOD_Globals
 USE MOD_Visu_Vars
+USE MOD_Restart_Vars    ,ONLY: RestartMode
 USE MOD_ReadInTools     ,ONLY: GETSTR,GETLOGICAL,CountOption
 USE MOD_StringTools     ,ONLY: STRICMP
 #if FV_RECONSTRUCT
@@ -203,23 +211,29 @@ LOGICAL             :: UseVarNamesHDF5=.FALSE.,UseVarNamesAll=.FALSE.
 !             if a quantity is not visualized it is zero
 SDEALLOCATE(mapAllVarsToVisuVars)
 SDEALLOCATE(mapAllVarsToSurfVisuVars)
-ALLOCATE(mapAllVarsToVisuVars(1:nVarAll))
+ALLOCATE(mapAllVarsToVisuVars    (1:nVarAll))
 ALLOCATE(mapAllVarsToSurfVisuVars(1:nVarAll))
-mapAllVarsToVisuVars = 0
+mapAllVarsToVisuVars     = 0
 mapAllVarsToSurfVisuVars = 0
-nVarVisu = 0
+nVarVisu        = 0
 nVarSurfVisuAll = 0
+
 ! Get number of variables to be visualized
 nVarIni=CountOption("VarName")
 ! If no variable names are given in prm file, take the variables given in the HDF5 "VarNames" attribute (if present) or all found
 ! variables (else). This default can be suppressed via the "noVisuVars" flag (used e.g. in paraview plugin prm files)
-IF((nVarIni.EQ.0).AND..NOT.GETLOGICAL("noVisuVars")) THEN
-  IF(ALLOCATED(VarNamesHDF5)) THEN
-    nVarIni=SIZE(VarNamesHDF5)
-    UseVarNamesHDF5=.TRUE.
+IF ((nVarIni.EQ.0).AND..NOT.GETLOGICAL("noVisuVars")) THEN
+  IF (ALLOCATED(VarNamesHDF5)) THEN
+    IF (RestartMode.LE.1) THEN
+      nVarIni         = SIZE(VarNamesHDF5)
+      UseVarNamesHDF5 = .TRUE.
+    ELSE
+      nVarIni         = nVarAll
+      UseVarNamesAll  = .TRUE.
+    END IF
   ELSE
-    nVarIni=nVarAll
-    UseVarNamesAll=.TRUE.
+    nVarIni         = nVarAll
+    UseVarNamesAll  = .TRUE.
   END IF
 END IF
 

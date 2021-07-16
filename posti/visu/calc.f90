@@ -12,6 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "eos.h"
 
 !===================================================================================================================================
 !> Containes routines that call the equation system specific routines to calculate primitive or derived quantities both for
@@ -96,14 +97,14 @@ IF(TRIM(FileType).EQ.'State')THEN
   IF(withDGOperator.AND.PARABOLIC.EQ.1)THEN
 #if PARABOLIC
     CALL GetVandermonde(PP_N,NodeType,NCalc,NodeType,Vdm_N_NCalc,modal=.FALSE.)
-    ALLOCATE(gradUx_tmp(PP_nVarPrim,0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems_DG))
-    ALLOCATE(gradUy_tmp(PP_nVarPrim,0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems_DG))
-    ALLOCATE(gradUz_tmp(PP_nVarPrim,0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems_DG))
+    ALLOCATE(gradUx_tmp(PP_nVarLifting,0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems_DG))
+    ALLOCATE(gradUy_tmp(PP_nVarLifting,0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems_DG))
+    ALLOCATE(gradUz_tmp(PP_nVarLifting,0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems_DG))
     DO iElemDG = 1, nElems_DG
       iElem = mapDGElemsToAllElems(iElemDG)
-      CALL ChangeBasisVolume(PP_nVarPrim,PP_N,NCalc,Vdm_N_NCalc,gradUx(:,:,:,:,iElem),gradUx_tmp(:,:,:,:,iElemDG))
-      CALL ChangeBasisVolume(PP_nVarPrim,PP_N,NCalc,Vdm_N_NCalc,gradUy(:,:,:,:,iElem),gradUy_tmp(:,:,:,:,iElemDG))
-      CALL ChangeBasisVolume(PP_nVarPrim,PP_N,NCalc,Vdm_N_NCalc,gradUz(:,:,:,:,iElem),gradUz_tmp(:,:,:,:,iElemDG))
+      CALL ChangeBasisVolume(PP_nVarLifting,PP_N,NCalc,Vdm_N_NCalc,gradUx(:,:,:,:,iElem),gradUx_tmp(:,:,:,:,iElemDG))
+      CALL ChangeBasisVolume(PP_nVarLifting,PP_N,NCalc,Vdm_N_NCalc,gradUy(:,:,:,:,iElem),gradUy_tmp(:,:,:,:,iElemDG))
+      CALL ChangeBasisVolume(PP_nVarLifting,PP_N,NCalc,Vdm_N_NCalc,gradUz(:,:,:,:,iElem),gradUz_tmp(:,:,:,:,iElemDG))
     END DO ! i = 1, nElems_DG
     CALL CalcQuantities(nVarCalc,nVal,mapDGElemsToAllElems,mapDepToCalc,UCalc_DG,maskCalc,gradUx_tmp,gradUy_tmp,gradUz_tmp)
     DEALLOCATE(gradUx_tmp,gradUy_tmp,gradUz_tmp)
@@ -158,9 +159,9 @@ nValSide=(/NCalc+1,ZDIM(NCalc)+1,nBCSidesVisu_DG/)
 SDEALLOCATE(USurfCalc_DG)
 ALLOCATE(USurfCalc_DG(0:NCalc,0:ZDIM(NCalc),nBCSidesVisu_DG,1:nVarCalc))
 #if PARABOLIC
-ALLOCATE(gradUxFace(1:PP_nVarPrim,0:NCalc,0:ZDIM(NCalc),nBCSidesVisu_DG))
-ALLOCATE(gradUyFace(1:PP_nVarPrim,0:NCalc,0:ZDIM(NCalc),nBCSidesVisu_DG))
-ALLOCATE(gradUzFace(1:PP_nVarPrim,0:NCalc,0:ZDIM(NCalc),nBCSidesVisu_DG))
+ALLOCATE(gradUxFace(1:PP_nVarLifting,0:NCalc,0:ZDIM(NCalc),nBCSidesVisu_DG))
+ALLOCATE(gradUyFace(1:PP_nVarLifting,0:NCalc,0:ZDIM(NCalc),nBCSidesVisu_DG))
+ALLOCATE(gradUzFace(1:PP_nVarLifting,0:NCalc,0:ZDIM(NCalc),nBCSidesVisu_DG))
 #endif
 ALLOCATE(NormVec_loc (1:3,0:NCalc,0:ZDIM(NCalc),nBCSidesVisu_DG))
 ALLOCATE(TangVec1_loc(1:3,0:NCalc,0:ZDIM(NCalc),nBCSidesVisu_DG))
@@ -226,11 +227,13 @@ USE MOD_Lifting_Vars       ,ONLY: gradUx,gradUy
 USE MOD_Lifting_Vars       ,ONLY: gradUz
 #endif
 USE MOD_Mesh_Vars          ,ONLY: SideToElem
+USE MOD_Interpolation_Vars ,ONLY: L_Minus,L_Plus
+USE MOD_Mesh_Vars          ,ONLY: S2V2
 #endif
-USE MOD_Interpolation_Vars ,ONLY: L_Minus,L_Plus,NodeType
+USE MOD_Interpolation_Vars ,ONLY: NodeType
 USE MOD_Interpolation      ,ONLY: GetVandermonde,GetNodesAndWeights
 USE MOD_StringTools        ,ONLY: STRICMP
-USE MOD_Mesh_Vars          ,ONLY: nBCSides,S2V2,ElemToSide
+USE MOD_Mesh_Vars          ,ONLY: nBCSides,ElemToSide
 USE MOD_ProlongToFace      ,ONLY: EvalElemFace
 USE MOD_ChangeBasisByDim   ,ONLY: ChangeBasisSurf
 USE MOD_Basis              ,ONLY: LagrangeInterpolationPolys
@@ -242,24 +245,24 @@ INTEGER,INTENT(IN)            :: nVar,nSides_calc,nElems_calc
 REAL,INTENT(IN)               :: UIn(0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems_calc,1:nVar)
 REAL,INTENT(OUT)              :: UBoundary(  0:NCalc,0:ZDIM(NCalc),nSides_calc,1:nVar)
 #if PARABOLIC
-REAL,INTENT(OUT)              :: gradUxFace(1:PP_nVarPrim,0:NCalc,0:ZDIM(NCalc),nSides_calc)
-REAL,INTENT(OUT)              :: gradUyFace(1:PP_nVarPrim,0:NCalc,0:ZDIM(NCalc),nSides_calc)
-REAL,INTENT(OUT)              :: gradUzFace(1:PP_nVarPrim,0:NCalc,0:ZDIM(NCalc),nSides_calc)
+REAL,INTENT(OUT)              :: gradUxFace(1:PP_nVarLifting,0:NCalc,0:ZDIM(NCalc),nSides_calc)
+REAL,INTENT(OUT)              :: gradUyFace(1:PP_nVarLifting,0:NCalc,0:ZDIM(NCalc),nSides_calc)
+REAL,INTENT(OUT)              :: gradUzFace(1:PP_nVarLifting,0:NCalc,0:ZDIM(NCalc),nSides_calc)
 #endif
 INTEGER,INTENT(INOUT)         :: maskCalc(nVarDep)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER             :: iVar,iVarIn,iVarOut,iSide,locSide,iElem,p,q,iElem_DG,iSide_DG
 REAL                :: Uface(1,0:NCalc,0:ZDIM(NCalc))
-REAL                :: Vdm_N_NCalc(0:NCalc,0:PP_N)
 #if PARABOLIC
-REAL                :: gradUxFace_tmp( 1:PP_nVarPrim,0:PP_N,0:PP_NZ)
-REAL                :: gradUyFace_tmp( 1:PP_nVarPrim,0:PP_N,0:PP_NZ)
-REAL                :: gradUxFace_tmp2(1:PP_nVarPrim,0:PP_N,0:PP_NZ)
-REAL                :: gradUyFace_tmp2(1:PP_nVarPrim,0:PP_N,0:PP_NZ)
+REAL                :: Vdm_N_NCalc(0:NCalc,0:PP_N)
+REAL                :: gradUxFace_tmp( 1:PP_nVarLifting,0:PP_N,0:PP_NZ)
+REAL                :: gradUyFace_tmp( 1:PP_nVarLifting,0:PP_N,0:PP_NZ)
+REAL                :: gradUxFace_tmp2(1:PP_nVarLifting,0:PP_N,0:PP_NZ)
+REAL                :: gradUyFace_tmp2(1:PP_nVarLifting,0:PP_N,0:PP_NZ)
 #if PP_dim == 3
-REAL                :: gradUzFace_tmp( 1:PP_nVarPrim,0:PP_N,0:PP_NZ)
-REAL                :: gradUzFace_tmp2(1:PP_nVarPrim,0:PP_N,0:PP_NZ)
+REAL                :: gradUzFace_tmp( 1:PP_nVarLifting,0:PP_N,0:PP_NZ)
+REAL                :: gradUzFace_tmp2(1:PP_nVarLifting,0:PP_N,0:PP_NZ)
 #endif
 #endif
 REAL,ALLOCATABLE    :: xGP_NCalc(:),wGP_NCalc(:),wBary_NCalc(:),L_Plus_NCalc(:),L_Minus_NCalc(:)
@@ -329,16 +332,16 @@ IF(TRIM(FileType).EQ.'State')THEN
         iElem = SideToElem(S2E_ELEM_ID,iSide)
         locSide = SideToElem(S2E_LOC_SIDE_ID, iSide)
         IF(PP_NodeType.EQ.1)THEN
-          CALL EvalElemFace(PP_nVarPrim,PP_N,gradUx(:,:,:,:,iElem),gradUxFace_tmp,L_Minus,L_Plus,locSide)
-          CALL EvalElemFace(PP_nVarPrim,PP_N,gradUy(:,:,:,:,iElem),gradUyFace_tmp,L_Minus,L_Plus,locSide)
+          CALL EvalElemFace(PP_nVarLifting,PP_N,gradUx(:,:,:,:,iElem),gradUxFace_tmp,L_Minus,L_Plus,locSide)
+          CALL EvalElemFace(PP_nVarLifting,PP_N,gradUy(:,:,:,:,iElem),gradUyFace_tmp,L_Minus,L_Plus,locSide)
 #if PP_dim == 3
-          CALL EvalElemFace(PP_nVarPrim,PP_N,gradUz(:,:,:,:,iElem),gradUzFace_tmp,L_Minus,L_Plus,locSide)
+          CALL EvalElemFace(PP_nVarLifting,PP_N,gradUz(:,:,:,:,iElem),gradUzFace_tmp,L_Minus,L_Plus,locSide)
 #endif
         ELSE
-          CALL EvalElemFace(PP_nVarPrim,PP_N,gradUx(:,:,:,:,iElem),gradUxFace_tmp,locSide)
-          CALL EvalElemFace(PP_nVarPrim,PP_N,gradUy(:,:,:,:,iElem),gradUyFace_tmp,locSide)
+          CALL EvalElemFace(PP_nVarLifting,PP_N,gradUx(:,:,:,:,iElem),gradUxFace_tmp,locSide)
+          CALL EvalElemFace(PP_nVarLifting,PP_N,gradUy(:,:,:,:,iElem),gradUyFace_tmp,locSide)
 #if PP_dim == 3
-          CALL EvalElemFace(PP_nVarPrim,PP_N,gradUz(:,:,:,:,iElem),gradUzFace_tmp,locSide)
+          CALL EvalElemFace(PP_nVarLifting,PP_N,gradUz(:,:,:,:,iElem),gradUzFace_tmp,locSide)
 #endif
         END IF
         iSide_DG = mapAllBCSidesToDGVisuBCSides(iSide)
@@ -351,10 +354,10 @@ IF(TRIM(FileType).EQ.'State')THEN
 #endif
         END DO; END DO
         ! Interpolate to polynomial degree for calculations
-        CALL ChangeBasisSurf(PP_nVarPrim,PP_N,NCalc,Vdm_N_NCalc,gradUxFace_tmp2(:,:,:),gradUxFace(:,:,:,iSide_DG))
-        CALL ChangeBasisSurf(PP_nVarPrim,PP_N,NCalc,Vdm_N_NCalc,gradUyFace_tmp2(:,:,:),gradUyFace(:,:,:,iSide_DG))
+        CALL ChangeBasisSurf(PP_nVarLifting,PP_N,NCalc,Vdm_N_NCalc,gradUxFace_tmp2(:,:,:),gradUxFace(:,:,:,iSide_DG))
+        CALL ChangeBasisSurf(PP_nVarLifting,PP_N,NCalc,Vdm_N_NCalc,gradUyFace_tmp2(:,:,:),gradUyFace(:,:,:,iSide_DG))
 #if PP_dim == 3
-        CALL ChangeBasisSurf(PP_nVarPrim,PP_N,NCalc,Vdm_N_NCalc,gradUzFace_tmp2(:,:,:),gradUzFace(:,:,:,iSide_DG))
+        CALL ChangeBasisSurf(PP_nVarLifting,PP_N,NCalc,Vdm_N_NCalc,gradUzFace_tmp2(:,:,:),gradUzFace(:,:,:,iSide_DG))
 #else
         gradUzFace(:,:,:,iSide_DG) = 0.
 #endif
@@ -437,9 +440,9 @@ REAL,ALLOCATABLE             :: gradUx_calc(:,:,:,:,:),gradUy_calc(:,:,:,:,:),gr
     SWRITE(*,*) "[FVRE] CalcQuantities (nonPrim)"
     IF(withDGOperator.AND.(PARABOLIC.EQ.1))THEN
 #if PARABOLIC
-      ALLOCATE(gradUx_calc(1:PP_nVarPrim,0:NCalc_FV,0:NCalc_FV,0:ZDIM(NCalc_FV),nElems_FV))
-      ALLOCATE(gradUy_calc(1:PP_nVarPrim,0:NCalc_FV,0:NCalc_FV,0:ZDIM(NCalc_FV),nElems_FV))
-      ALLOCATE(gradUz_calc(1:PP_nVarPrim,0:NCalc_FV,0:NCalc_FV,0:ZDIM(NCalc_FV),nElems_FV))
+      ALLOCATE(gradUx_calc(1:PP_nVarLifting,0:NCalc_FV,0:NCalc_FV,0:ZDIM(NCalc_FV),nElems_FV))
+      ALLOCATE(gradUy_calc(1:PP_nVarLifting,0:NCalc_FV,0:NCalc_FV,0:ZDIM(NCalc_FV),nElems_FV))
+      ALLOCATE(gradUz_calc(1:PP_nVarLifting,0:NCalc_FV,0:NCalc_FV,0:ZDIM(NCalc_FV),nElems_FV))
       CALL ConvertToVisu_FV_Reconstruct(gradUx_calc,gradUy_calc,gradUz_calc)
       CALL CalcQuantities(nVarCalc_FV,nVal,mapFVElemsToAllElems,mapDepToCalc_FV,UCalc_FV,maskCalc,gradUx_calc,gradUy_calc,gradUz_calc)
 #endif
@@ -544,9 +547,9 @@ ALLOCATE(NormVec_loc (1:3,0:NCalc_FV,0:ZDIM(NCalc_FV),nBCSidesVisu_FV))
 ALLOCATE(TangVec1_loc(1:3,0:NCalc_FV,0:ZDIM(NCalc_FV),nBCSidesVisu_FV))
 ALLOCATE(TangVec2_loc(1:3,0:NCalc_FV,0:ZDIM(NCalc_FV),nBCSidesVisu_FV))
 #if PARABOLIC
-ALLOCATE(gradUxFace(1:PP_nVarPrim,0:NCalc_FV,0:ZDIM(NCalc_FV),nBCSidesVisu_FV))
-ALLOCATE(gradUyFace(1:PP_nVarPrim,0:NCalc_FV,0:ZDIM(NCalc_FV),nBCSidesVisu_FV))
-ALLOCATE(gradUzFace(1:PP_nVarPrim,0:NCalc_FV,0:ZDIM(NCalc_FV),nBCSidesVisu_FV))
+ALLOCATE(gradUxFace(1:PP_nVarLifting,0:NCalc_FV,0:ZDIM(NCalc_FV),nBCSidesVisu_FV))
+ALLOCATE(gradUyFace(1:PP_nVarLifting,0:NCalc_FV,0:ZDIM(NCalc_FV),nBCSidesVisu_FV))
+ALLOCATE(gradUzFace(1:PP_nVarLifting,0:NCalc_FV,0:ZDIM(NCalc_FV),nBCSidesVisu_FV))
 #endif
 DO iSide=1,nBCSides
   iSide_FV = mapAllBCSidesToFVVisuBCSides(iSide)
@@ -563,7 +566,7 @@ DO iSide=1,nBCSides
 #endif
 #if PARABOLIC
       ijk = S2V(:,0,p,q,0,locSide)
-      DO iVar=1,PP_nVarPrim
+      DO iVar=1,PP_nVarLifting
         gradUxFace(iVar,p*2:p*2+1,q*2:q*2+1*(PP_dim-2),iSide_FV) = gradUx(iVar,ijk(1),ijk(2),ijk(3),iElem)
         gradUyFace(iVar,p*2:p*2+1,q*2:q*2+1*(PP_dim-2),iSide_FV) = gradUy(iVar,ijk(1),ijk(2),ijk(3),iElem)
         gradUzFace(iVar,p*2:p*2+1,q*2:q*2+1*(PP_dim-2),iSide_FV) = gradUz(iVar,ijk(1),ijk(2),ijk(3),iElem)

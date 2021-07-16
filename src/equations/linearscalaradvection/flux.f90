@@ -12,6 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "eos.h"
 
 !==================================================================================================================================
 !> Contains the routine EvalFlux3D which computes the complete flux f,g,h for all DOFs in one Element: used in volume integral
@@ -58,12 +59,12 @@ USE MOD_Equation_Vars,ONLY:AdvVel
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)                                     :: Nloc     !< Polynomial degree
-REAL,DIMENSION(1,0:Nloc,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: ULoc     !< Solution
-REAL,DIMENSION(1,0:Nloc,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: dummy    !< primitive solution (useless here)
-REAL,DIMENSION(1,0:Nloc,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: f        !< Cartesian fluxes (iVar,i,j,k)
-REAL,DIMENSION(1,0:Nloc,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: g        !< Cartesian fluxes (iVar,i,j,k)
-REAL,DIMENSION(1,0:Nloc,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: h        !< Cartesian fluxes (iVar,i,j,k)
+INTEGER,INTENT(IN)                                                 :: Nloc     !< Polynomial degree
+REAL,DIMENSION(PP_nVar    ,0:Nloc,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: ULoc     !< Solution
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: dummy    !< primitive solution (useless here)
+REAL,DIMENSION(PP_nVar    ,0:Nloc,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: f        !< Cartesian fluxes (iVar,i,j,k)
+REAL,DIMENSION(PP_nVar    ,0:Nloc,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: g        !< Cartesian fluxes (iVar,i,j,k)
+REAL,DIMENSION(PP_nVar    ,0:Nloc,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: h        !< Cartesian fluxes (iVar,i,j,k)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
@@ -87,13 +88,13 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)                              :: Nloc          !< Polynomial degree
-REAL,DIMENSION(1,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_Face        !< Solution
-REAL,DIMENSION(1,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: gradUx_Face   !< Gradient in x-direction
-REAL,DIMENSION(1,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: gradUy_Face   !< Gradient in y-direction
-REAL,DIMENSION(1,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: gradUz_Face   !< Gradient in z-direction
-REAL,DIMENSION(1,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: f             !< Cartesian fluxes (iVar,i,j)
-REAL,DIMENSION(1,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: g             !< Cartesian fluxes (iVar,i,j)
-REAL,DIMENSION(1,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: h             !< Cartesian fluxes (iVar,i,j)
+REAL,DIMENSION(PP_nVarPrim,   0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_Face        !< Solution
+REAL,DIMENSION(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: gradUx_Face   !< Gradient in x-direction
+REAL,DIMENSION(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: gradUy_Face   !< Gradient in y-direction
+REAL,DIMENSION(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: gradUz_Face   !< Gradient in z-direction
+REAL,DIMENSION(PP_nVar,       0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: f             !< Cartesian fluxes (iVar,i,j)
+REAL,DIMENSION(PP_nVar,       0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: g             !< Cartesian fluxes (iVar,i,j)
+REAL,DIMENSION(PP_nVar,       0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: h             !< Cartesian fluxes (iVar,i,j)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
@@ -101,6 +102,8 @@ f = -DiffC*gradUx_Face
 g = -DiffC*gradUy_Face
 #if PP_dim==3
 h = -DiffC*gradUz_Face
+#else
+h = 0.
 #endif
 END SUBROUTINE EvalDiffFlux2D
 
@@ -115,10 +118,10 @@ USE MOD_Equation_Vars,ONLY:DiffC
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,DIMENSION(1,0:PP_N,0:PP_NZ),INTENT(IN)    :: U_Face         !< Solution
-REAL,DIMENSION(1,0:PP_N,0:PP_NZ),INTENT(INOUT) :: gradUx_Face    !< Gradient in x-direction
-REAL,DIMENSION(1,0:PP_N,0:PP_NZ),INTENT(INOUT) :: gradUy_Face    !< Gradient in y-direction
-REAL,DIMENSION(1,0:PP_N,0:PP_NZ),INTENT(INOUT) :: gradUz_Face    !< Gradient in z-direction
+REAL,DIMENSION(PP_nVarPrim,   0:PP_N,0:PP_NZ),INTENT(IN)       :: U_Face         !< Solution
+REAL,DIMENSION(PP_nVarLifting,0:PP_N,0:PP_NZ),INTENT(INOUT) :: gradUx_Face    !< Gradient in x-direction
+REAL,DIMENSION(PP_nVarLifting,0:PP_N,0:PP_NZ),INTENT(INOUT) :: gradUy_Face    !< Gradient in y-direction
+REAL,DIMENSION(PP_nVarLifting,0:PP_N,0:PP_NZ),INTENT(INOUT) :: gradUz_Face    !< Gradient in z-direction
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
@@ -126,6 +129,8 @@ gradUx_Face = -DiffC*gradUx_Face
 gradUy_Face = -DiffC*gradUy_Face
 #if PP_dim==3
 gradUz_Face = -DiffC*gradUz_Face
+#else
+gradUz_Face = 0.
 #endif
 END SUBROUTINE EvalDiffFlux2D_overwrite
 
@@ -155,6 +160,8 @@ f = -DiffC*gradUx(:,:,:,:)
 g = -DiffC*gradUy(:,:,:,:)
 #if PP_dim==3
 h = -DiffC*gradUz(:,:,:,:)
+#else
+h = 0.
 #endif
 END SUBROUTINE EvalDiffFlux3D
 
@@ -180,6 +187,8 @@ gradUx = -DiffC*gradUx(:,:,:,:)
 gradUy = -DiffC*gradUy(:,:,:,:)
 #if PP_dim==3
 gradUz = -DiffC*gradUz(:,:,:,:)
+#else
+gradUz = 0.
 #endif
 END SUBROUTINE EvalDiffFlux3D_overwrite
 #endif /*PARABOLIC*/

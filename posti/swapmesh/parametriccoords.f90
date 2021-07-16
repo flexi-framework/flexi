@@ -85,7 +85,10 @@ REAL               :: dXCL_NGeo(1:PP_dim,1:PP_dim,0:NGeoOld,0:NGeoOld,0:ZDIM(NGe
 REAL               :: Xi_CLNGeo(0:NGeoOld),wBary_CLNGeo(0:NGeoOld)
 REAL               :: Xi_NSuper(0:NSuper)
 REAL               :: xInter(PP_dim)
-REAL               :: LagXi(0:NGeoOld),LagEta(0:NGeoOld),LagZeta(0:NGeoOld),LagVol(0:NGeoOld,0:NGeoOld,0:ZDIM(NGeoOld))
+REAL               :: LagXi(0:NGeoOld),LagEta(0:NGeoOld),LagVol(0:NGeoOld,0:NGeoOld,0:ZDIM(NGeoOld))
+#if PP_dim == 3
+REAL               :: LagZeta(0:NGeoOld)
+#endif
 REAL               :: F(1:PP_dim),eps_F,xi(1:PP_dim),Jac(1:PP_dim,1:PP_dim),sJac(1:PP_dim,1:PP_dim)
 INTEGER            :: ElemCounter,nEqualElems
 INTEGER            :: nNotfound

@@ -102,12 +102,12 @@ SUBROUTINE InitSplitDG()
 ! MODULES
 USE MOD_Globals
 USE MOD_ReadInTools ,ONLY: GETINTFROMSTR
-USE MOD_DG_Vars     ,ONLY: SplitDG
 !----------------------------------------------------------------------------------------------------------------------------------
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER :: SplitDG
 !==================================================================================================================================
 ! check if Gauss-Lobatto-Pointset is beeing used
 #if (PP_NodeType==1)
@@ -240,7 +240,7 @@ END SUBROUTINE SplitSurfaceFluxSD
 !> Computes the Split-Flux retaining the formulation of Ducros
 !> Attention 1: Factor 2 from differentiation matrix is already been considered
 !> Uses quadratic split forms in all equations. Reference: Ducros, F., et al. "High-order fluxes for conservative
-!> skew-symmetric-like schemes in structured meshes: application to compressible flows." 
+!> skew-symmetric-like schemes in structured meshes: application to compressible flows."
 !> Journal of Computational Physics 161.1 (2000): 114-139.
 !==================================================================================================================================
 PPURE SUBROUTINE SplitVolumeFluxDU(URef,UPrimRef,U,UPrim,MRef,M,Flux)
@@ -332,9 +332,9 @@ END SUBROUTINE SplitSurfaceFluxDU
 !==================================================================================================================================
 !> Computes the Split-Flux retaining the KEP formulation of Kennedy and Gruber
 !> Attention 1: Factor 2 from differentiation matrix is already been considered
-!> Reference: Kennedy, Christopher A., and Andrea Gruber. "Reduced aliasing formulations of the convective terms within the 
+!> Reference: Kennedy, Christopher A., and Andrea Gruber. "Reduced aliasing formulations of the convective terms within the
 !> Navier–Stokes equations for a compressible fluid." Journal of Computational Physics 227.3 (2008): 1676-1700.
-!> Uses a quadratic splitting for u*p and a cubic splitting for rho*e*u in the energy equation. 
+!> Uses a quadratic splitting for u*p and a cubic splitting for rho*e*u in the energy equation.
 !==================================================================================================================================
 PPURE SUBROUTINE SplitVolumeFluxKG(URef,UPrimRef,U,UPrim,MRef,M,Flux)
 ! MODULES
@@ -671,7 +671,7 @@ END SUBROUTINE SplitSurfaceFluxPI
 !==================================================================================================================================
 !> Computes the Split-Flux retaining the entropy conserving (and formally KEP) formulation of Chandrashekar
 !> Attention 1: Factor 2 from differentiation matrix is already been considered
-!> The flux after Chanrashekar uses a special computation of the pressure, based on the averages of density and inverse 
+!> The flux after Chanrashekar uses a special computation of the pressure, based on the averages of density and inverse
 !> temperature, which correspondonds to using the harmonic average of the temperature when applying the ideal gas law.
 !> Reference: Chandrashekar, Praveen. "Kinetic energy preserving and entropy stable finite volume schemes for compressible Euler
 !> and Navier-Stokes equations." Communications in Computational Physics 14.5 (2013): 1252-1286.
@@ -696,6 +696,7 @@ REAL                                    :: beta,betaRef            ! auxiliary v
 REAL                                    :: pHatMean,HMean          ! auxiliary variable for the mean pressure and specific enthalpy
 REAL                                    :: uMean,vMean,wMean       ! auxiliary variable for the average velocities
 REAL                                    :: rhoLogMean,betaLogMean  ! auxiliary variable for the logarithmic means
+! REAL                                    :: rhoMean                 ! auxiliary variable for the mean density
 REAL,DIMENSION(PP_nVar)                 :: fTilde,gTilde           ! flux in physical space
 #if PP_dim == 3
 REAL,DIMENSION(PP_nVar)                 :: hTilde                  ! flux in physical space
@@ -761,7 +762,7 @@ END SUBROUTINE SplitVolumeFluxCH
 
 !==================================================================================================================================
 !> Computes the surface flux for the entropy conserving formulation of Chandrashekar.
-!> The flux after Chanrashekar uses a special computation of the pressure, based on the averages of density and inverse 
+!> The flux after Chanrashekar uses a special computation of the pressure, based on the averages of density and inverse
 !> temperature, which correspondonds to using the harmonic average of the temperature when applying the ideal gas law.
 !==================================================================================================================================
 PPURE SUBROUTINE SplitSurfaceFluxCH(U_LL,U_RR,F)

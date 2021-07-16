@@ -5,7 +5,7 @@
 CMAKE_DEPENDENT_OPTION(POSTI_VISU                  "Build the visu tool"                                ON  "POSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_MERGETIMEAVERAGES     "Build the time-averaging tool"                      OFF "POSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_DMD                   "Build the DMD tool"                                 OFF "POSTI" OFF)
-CMAKE_DEPENDENT_OPTION(POSTI_RP_PREPARERE          "Build the Record Point preprocessing tool"          OFF "POSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_RP_PREPARE            "Build the Record Point preprocessing tool"          OFF "POSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_RP_VISUALIZE          "Build the Record Point visualization tool"          OFF "POSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_RP_EVALUATE           "Build the Record Point aposteriori evaluation tool" OFF "POSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_SWAPMESH              "Build the Swapmesh tool"                            OFF "POSTI" OFF)
@@ -14,17 +14,31 @@ CMAKE_DEPENDENT_OPTION(POSTI_WALLDISTANCE          "Build the walldistance tool"
 CMAKE_DEPENDENT_OPTION(POSTI_TO3D                  "Build the 3D extrusion tool"                        OFF "POSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_AVG2D                 "Build the 2D average tool"                          OFF "POSTI" OFF)
 
+# =========================================================================
+# Build shared posti library
+# =========================================================================
+# collect F90 files for the common Posti modules
+FILE(GLOB_RECURSE postiF90 ./posti/common/vtkOutput/*.f90
+                           ./posti/common/spline/*.f90)
+ADD_LIBRARY(libposti STATIC ${postiF90})
+SET_TARGET_PROPERTIES(libposti PROPERTIES OUTPUT_NAME "libposti")
+SET_TARGET_PROPERTIES(libposti PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS})
+TARGET_LINK_LIBRARIES(libposti libflexishared)
+ADD_DEPENDENCIES(libposti libflexishared)
 
+
+# =========================================================================
+# FFTW library
+# =========================================================================
 IF(POSTI_RP_VISUALIZE OR POSTI_CHANNEL_FFT)
-  # =========================================================================
-  # FFTW (FFT tool)
-  # =========================================================================
   SET (FFTWDOWNLOAD ${LIBS_DLPATH}libs/FFTW.git )
   SET(POSTI_FFTWTAG "fftw-3.3.9" CACHE STRING "FFTW version tag")
   SET(POSTI_FFTWDIR ${LIBS_EXTERNAL_LIB_DIR}/fftw)
   # Try to find the library in the share directory or in a global, user-defined $FFTW_DIR
   FIND_PATH(FFTW_INCLUDES fftw3.h         HINTS $ENV{FFTW_DIR}/include ${LIBS_EXTERNAL_LIB_DIR}/fftw/build/include)
   FIND_LIBRARY(FFTW_LIBRARIES NAMES fftw3 HINTS $ENV{FFTW_DIR}/lib     ${LIBS_EXTERNAL_LIB_DIR}/fftw/build/lib    )
+
+  # If FFTW is not found, we build it ourselves
   IF(FFTW_INCLUDES STREQUAL "FFTW_INCLUDES-NOTFOUND" OR FFTW_LIBRARIES STREQUAL "FFTW_LIBRARIES-NOTFOUND")
     MESSAGE(STATUS "FFTW not found, building library")
       ExternalProject_Add(fftw
@@ -47,6 +61,14 @@ IF(POSTI_RP_VISUALIZE OR POSTI_CHANNEL_FFT)
     SET(FFTW_LIBRARY     ${FFTW_LIBRARIES})
   ENDIF()
 
+  # Build static FFTW library to be included in each POSTI tool
+  ADD_LIBRARY(fftwlib STATIC ${CMAKE_CURRENT_SOURCE_DIR}/posti/common/fftw/fftw.f90)
+  SET_TARGET_PROPERTIES(fftwlib PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS})
+  TARGET_LINK_LIBRARIES(fftwlib ${FFTW_LIBRARIES})
+  TARGET_INCLUDE_DIRECTORIES(fftwlib PRIVATE ${FFTW_INCLUDE_DIR})
+  IF(SELFBUILTEXTERNALS)
+    ADD_DEPENDENCIES(fftwlib ${SELFBUILTEXTERNALS})
+  ENDIF()
 ENDIF()
 
 
@@ -62,11 +84,11 @@ IF(POSTI_DMD)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/dmd/CMakeLists.txt)
 ENDIF()
 
-IF(POSTI_RP_PREPARERE)
+IF(POSTI_RP_PREPARE)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/recordpoints/prepare/CMakeLists.txt)
 ENDIF()
 
-IF(POSTI_RP_VISUALIZERE)
+IF(POSTI_RP_VISUALIZE)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/recordpoints/visualize/CMakeLists.txt)
 ENDIF()
 
@@ -87,9 +109,9 @@ IF(POSTI_WALLDISTANCE)
 ENDIF()
 
 IF(POSTI_TO3D)
-	INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/to3D/CMakeLists.txt)
+  INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/to3D/CMakeLists.txt)
 ENDIF()
 
 IF(POSTI_AVG2D)
-	INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/avg2D/CMakeLists.txt)
+  INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/avg2D/CMakeLists.txt)
 ENDIF()

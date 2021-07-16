@@ -261,9 +261,72 @@ REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: FOut       !< adv
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                 :: i,j
+REAL,DIMENSION(PP_nVar) :: F_L,F_R,F
+REAL,DIMENSION(PP_2Var) :: U_LL,U_RR
+PROCEDURE(RiemannInt),POINTER :: Riemann_loc !< pointer defining the standard inner Riemann solver
 !==================================================================================================================================
+IF (doBC) THEN
+  Riemann_loc => RiemannBC_pointer
+ELSE
+  Riemann_loc => Riemann_pointer
+END IF
+
 DO j=0,ZDIM(Nloc); DO i=0,Nloc
-  CALL Riemann_Point(Fout(:,i,j),U_L(:,i,j),U_R(:,i,j),UPrim_L(:,i,j),UPrim_R(:,i,j),nv(:,i,j),t1(:,i,j),t2(:,i,j),doBC)
+  ! Momentum has to be rotatet using the normal system individual for each
+  ! left state: U_L
+  U_LL(DENS)=U_L(DENS,i,j)
+  U_LL(SRHO)=1./U_LL(DENS)
+  U_LL(ENER)=U_L(5,i,j)
+  U_LL(PRES)=UPrim_L(5,i,j)
+
+
+  ! rotate velocity in normal and tangential direction
+  U_LL(VEL1)=DOT_PRODUCT(UPrim_L(2:4,i,j),nv(:,i,j))
+  U_LL(VEL2)=DOT_PRODUCT(UPrim_L(2:4,i,j),t1(:,i,j))
+  U_LL(MOM1)=U_LL(DENS)*U_LL(VEL1)
+  U_LL(MOM2)=U_LL(DENS)*U_LL(VEL2)
+#if PP_dim==3
+  U_LL(VEL3)=DOT_PRODUCT(UPrim_L(2:4,i,j),t2(:,i,j))
+  U_LL(MOM3)=U_LL(DENS)*U_LL(VEL3)
+#else
+  U_LL(VEL3)=0.
+  U_LL(MOM3)=0.
+#endif
+  ! right state: U_R
+  U_RR(DENS)=U_R(DENS,i,j)
+  U_RR(SRHO)=1./U_RR(DENS)
+  U_RR(ENER)=U_R(5,i,j)
+  U_RR(PRES)=UPrim_R(5,i,j)
+  ! rotate momentum in normal and tangential direction
+  U_RR(VEL1)=DOT_PRODUCT(UPRIM_R(2:4,i,j),nv(:,i,j))
+  U_RR(VEL2)=DOT_PRODUCT(UPRIM_R(2:4,i,j),t1(:,i,j))
+  U_RR(MOM1)=U_RR(DENS)*U_RR(VEL1)
+  U_RR(MOM2)=U_RR(DENS)*U_RR(VEL2)
+#if PP_dim==3
+  U_RR(VEL3)=DOT_PRODUCT(UPRIM_R(2:4,i,j),t2(:,i,j))
+  U_RR(MOM3)=U_RR(DENS)*U_RR(VEL3)
+#else
+  U_RR(VEL3)=0.
+  U_RR(MOM3)=0.
+#endif
+
+# ifndef SPLIT_DG
+  CALL EvalEulerFlux1D_fast(U_LL,F_L)
+  CALL EvalEulerFlux1D_fast(U_RR,F_R)
+#endif /*SPLIT_DG*/
+
+  CALL Riemann_loc(F_L,F_R,U_LL,U_RR,F)
+
+  ! Back Rotate the normal flux into Cartesian direction
+  Fout(DENS,i,j)=F(DENS)
+  Fout(MOMV,i,j)=nv(:,i,j)*F(MOM1)  &
+               + t1(:,i,j)*F(MOM2)  &
+#if PP_dim==3
+               + t2(:,i,j)*F(MOM3)
+#else
+               + 0.
+#endif
+  Fout(ENER,i,j)=F(ENER)
 END DO; END DO
 END SUBROUTINE Riemann
 
@@ -366,7 +429,9 @@ SUBROUTINE ViscousFlux(Nloc,F,UPrim_L,UPrim_R, &
 #endif
                       )
 ! MODULES
-USE MOD_Flux,ONLY: EvalDiffFlux3D
+USE MOD_Flux         ,ONLY: EvalDiffFlux3D
+USE MOD_Lifting_Vars ,ONLY: diffFluxX_L,diffFluxY_L,diffFluxZ_L
+USE MOD_Lifting_Vars ,ONLY: diffFluxX_R,diffFluxY_R,diffFluxZ_R
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -374,7 +439,7 @@ INTEGER,INTENT(IN)                                         :: Nloc     !< local 
                                                            !> solution in primitive variables at left/right side of the interface
 REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)   :: UPrim_L,UPrim_R
                                                            !> solution gradients in x/y/z-direction left/right of the interface
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)   :: gradUx_L,gradUx_R,gradUy_L,gradUy_R,gradUz_L,gradUz_R
+REAL,DIMENSION(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)   :: gradUx_L,gradUx_R,gradUy_L,gradUy_R,gradUz_L,gradUz_R
 REAL,INTENT(IN)                                            :: nv(3,0:Nloc,0:ZDIM(Nloc)) !< normal vector
 REAL,INTENT(OUT)                                           :: F(PP_nVar,0:Nloc,0:ZDIM(Nloc)) !< viscous flux
 #if EDDYVISCOSITY
@@ -386,8 +451,6 @@ REAL,DIMENSION(1,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)             :: muSGS_L,muSGS_R
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                                              :: p,q
-REAL,DIMENSION(PP_nVar,0:Nloc,0:ZDIM(Nloc))            :: diffFluxX_L,diffFluxY_L,diffFluxZ_L
-REAL,DIMENSION(PP_nVar,0:Nloc,0:ZDIM(Nloc))            :: diffFluxX_R,diffFluxY_R,diffFluxZ_R
 !==================================================================================================================================
 ! Don't forget the diffusion contribution, my young padawan
 ! Compute NSE Diffusion flux

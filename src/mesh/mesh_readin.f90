@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -187,7 +187,7 @@ USE MOD_Mesh_Vars,          ONLY:NodeCoords,TreeCoords
 USE MOD_Mesh_Vars,          ONLY:offsetElem,offsetTree,nElems,nTrees,nGlobalTrees
 USE MOD_Mesh_Vars,          ONLY:xiMinMax,ElemToTree
 USE MOD_Mesh_Vars,          ONLY:nSides,nInnerSides,nBCSides,nMPISides,nAnalyzeSides
-USE MOD_Mesh_Vars,          ONLY:nMortarSides,isMortarMesh
+USE MOD_Mesh_Vars,          ONLY:nMortarSides,isMortarMesh,meshHasMortars
 USE MOD_Mesh_Vars,          ONLY:useCurveds
 USE MOD_Mesh_Vars,          ONLY:BoundaryType
 USE MOD_Mesh_Vars,          ONLY:MeshInitIsDone
@@ -662,9 +662,12 @@ ReduceData(8)=nAnalyzeSides
 ReduceData(9)=nMortarSides
 ReduceData(10)=nMPIPeriodics
 
+! Store information if mesh has mortars, independent of existence of trees
+meshHasMortars = MERGE(.TRUE.,.FALSE.,ReduceData(9).GT.0)
+
 #if USE_MPI
 CALL MPI_REDUCE(ReduceData,ReduceData_glob,10,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
-ReduceData=ReduceData_glob
+IF(MPIRoot) ReduceData=ReduceData_glob
 #endif /*USE_MPI*/
 
 IF(MPIRoot)THEN

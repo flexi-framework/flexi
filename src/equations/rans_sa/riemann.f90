@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2017 Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2017 Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -73,7 +73,7 @@ CONTAINS
 
 
 !==================================================================================================================================
-!> Define parameters 
+!> Define parameters
 !==================================================================================================================================
 SUBROUTINE DefineParametersRiemann()
 ! MODULES
@@ -84,7 +84,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 !==================================================================================================================================
 CALL prms%SetSection("Riemann")
 CALL prms%CreateIntFromStringOption('Riemann',   "Riemann solver to be used: only LF for RANS-SA!", "lf")
@@ -159,10 +159,73 @@ REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: FOut       !< adv
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                 :: i,j
+REAL,DIMENSION(PP_nVar) :: F_L,F_R,F
+REAL,DIMENSION(PP_2Var) :: U_LL,U_RR
+PROCEDURE(RiemannInt),POINTER :: Riemann_loc !< pointer defining the standard inner Riemann solver
 !==================================================================================================================================
+IF (doBC) THEN
+  Riemann_loc => RiemannBC_pointer
+ELSE
+  Riemann_loc => Riemann_pointer
+END IF
+
+! Momentum has to be rotatet using the normal system individual for each
 DO j=0,ZDIM(Nloc); DO i=0,Nloc
-  CALL Riemann_Point(Fout(:,i,j),U_L(:,i,j),U_R(:,i,j),UPrim_L(:,i,j),UPrim_R(:,i,j),nv(:,i,j),t1(:,i,j),t2(:,i,j),doBC)
+  ! left state: U_L
+  U_LL(DENS)=U_L(DENS,i,j)
+  U_LL(SRHO)=1./U_LL(DENS)
+  U_LL(ENER)=U_L(5,i,j)
+  U_LL(PRES)=UPrim_L(5,i,j)
+  U_LL(MUSA)=U_L(6,i,j)
+  ! rotate velocity in normal and tangential direction
+  U_LL(VEL1)=DOT_PRODUCT(UPrim_L(2:4,i,j),nv(:,i,j))
+  U_LL(VEL2)=DOT_PRODUCT(UPrim_L(2:4,i,j),t1(:,i,j))
+  U_LL(MOM1)=U_LL(DENS)*U_LL(VEL1)
+  U_LL(MOM2)=U_LL(DENS)*U_LL(VEL2)
+#if PP_dim==3
+  U_LL(VEL3)=DOT_PRODUCT(UPrim_L(2:4,i,j),t2(:,i,j))
+  U_LL(MOM3)=U_LL(DENS)*U_LL(VEL3)
+#else
+  U_LL(VEL3)=0.
+  U_LL(MOM3)=0.
+#endif
+  ! right state: U_R
+  U_RR(DENS)=U_R(DENS,i,j)
+  U_RR(SRHO)=1./U_RR(DENS)
+  U_RR(ENER)=U_R(5,i,j)
+  U_RR(PRES)=UPrim_R(5,i,j)
+  U_RR(MUSA)=U_R(6,i,j)
+  ! rotate momentum in normal and tangential direction
+  U_RR(VEL1)=DOT_PRODUCT(UPRIM_R(2:4,i,j),nv(:,i,j))
+  U_RR(VEL2)=DOT_PRODUCT(UPRIM_R(2:4,i,j),t1(:,i,j))
+  U_RR(MOM1)=U_RR(DENS)*U_RR(VEL1)
+  U_RR(MOM2)=U_RR(DENS)*U_RR(VEL2)
+#if PP_dim==3
+  U_RR(VEL3)=DOT_PRODUCT(UPRIM_R(2:4,i,j),t2(:,i,j))
+  U_RR(MOM3)=U_RR(DENS)*U_RR(VEL3)
+#else
+  U_RR(VEL3)=0.
+  U_RR(MOM3)=0.
+#endif
+
+  CALL EvalEulerFlux1D_fast(U_LL,F_L)
+  CALL EvalEulerFlux1D_fast(U_RR,F_R)
+
+  CALL Riemann_loc(F_L,F_R,U_LL,U_RR,F)
+
+  ! Back Rotate the normal flux into Cartesian direction
+  Fout(DENS,i,j)=F(DENS)
+  Fout(MOMV,i,j)=nv(:,i,j)*F(MOM1)  &
+               + t1(:,i,j)*F(MOM2)  &
+#if PP_dim==3
+               + t2(:,i,j)*F(MOM3)
+#else
+               + 0.
+#endif
+  Fout(ENER,i,j)=F(ENER)
+  Fout(MUSA,i,j)=F(MUSA)
 END DO; END DO
+
 END SUBROUTINE Riemann
 
 !==================================================================================================================================
@@ -261,15 +324,17 @@ END SUBROUTINE Riemann_Point
 SUBROUTINE ViscousFlux(Nloc,F,UPrim_L,UPrim_R, &
                        gradUx_L,gradUy_L,gradUz_L,gradUx_R,gradUy_R,gradUz_R,nv)
 ! MODULES
-USE MOD_Flux,ONLY: EvalDiffFlux3D
+USE MOD_Flux         ,ONLY: EvalDiffFlux3D
+USE MOD_Lifting_Vars ,ONLY: diffFluxX_L,diffFluxY_L,diffFluxZ_L
+USE MOD_Lifting_Vars ,ONLY: diffFluxX_R,diffFluxY_R,diffFluxZ_R
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)                                         :: Nloc     !< local polynomial degree
-                                                           !> solution in primitive variables at left/right side of the interface 
+                                                           !> solution in primitive variables at left/right side of the interface
 REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)   :: UPrim_L,UPrim_R
-                                                           !> solution gradients in x/y/z-direction left/right of the interface 
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)   :: gradUx_L,gradUx_R,gradUy_L,gradUy_R,gradUz_L,gradUz_R
+                                                           !> solution gradients in x/y/z-direction left/right of the interface
+REAL,DIMENSION(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)   :: gradUx_L,gradUx_R,gradUy_L,gradUy_R,gradUz_L,gradUz_R
 REAL,INTENT(IN)                                            :: nv(3,0:Nloc,0:ZDIM(Nloc)) !< normal vector
 REAL,INTENT(OUT)                                           :: F(PP_nVar,0:Nloc,0:ZDIM(Nloc)) !< viscous flux
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -277,8 +342,6 @@ REAL,INTENT(OUT)                                           :: F(PP_nVar,0:Nloc,0
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                                              :: p,q
-REAL,DIMENSION(PP_nVar,0:Nloc,0:ZDIM(Nloc))            :: diffFluxX_L,diffFluxY_L,diffFluxZ_L
-REAL,DIMENSION(PP_nVar,0:Nloc,0:ZDIM(Nloc))            :: diffFluxX_R,diffFluxY_R,diffFluxZ_R
 !==================================================================================================================================
 ! Don't forget the diffusion contribution, my young padawan
 ! Compute NSE Diffusion flux
@@ -423,7 +486,7 @@ F(1:5)=0.5*((F_L(1:5)+F_R(1:5)) - &
                Alpha(5)*a(5)*r5)
 
 ! Revert to LF for the RANS SA equations
-LambdaMax = MAX( ABS(U_RR(VEL1)),ABS(U_LL(VEL1)) ) + MAX(c_L,c_R) 
+LambdaMax = MAX( ABS(U_RR(VEL1)),ABS(U_LL(VEL1)) ) + MAX(c_L,c_R)
 F(6) = 0.5*((F_L(6)+F_R(6)) - LambdaMax*(U_RR(6) - U_LL(6)))
 END SUBROUTINE Riemann_RoeEntropyFix
 

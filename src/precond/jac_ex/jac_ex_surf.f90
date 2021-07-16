@@ -12,6 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "eos.h"
 
 !===================================================================================================================================
 !> Contains the computation of the local Jacobian of the surface integral
@@ -148,7 +149,7 @@ REAL                                                      :: Df_DUInner(PP_nVar,
 #endif
 #if PARABOLIC
 INTEGER                                                   :: jk(2),p,q,i
-REAL,DIMENSION(PP_nVarPrim,0:PP_N,0:PP_NZ)                :: gradUxSideL,gradUySideL,gradUzSideL,gradUxSideR,gradUySideR,gradUzSideR
+REAL,DIMENSION(PP_nVarLifting,0:PP_N,0:PP_NZ)             :: gradUxSideL,gradUySideL,gradUzSideL,gradUxSideR,gradUySideR,gradUzSideR
 REAL,DIMENSION(PP_nVar,PP_nVarPrim,0:PP_N,0:PP_NZ)        :: fJacQx,fJacQz,fJacQy,gJacQx,gJacQy,gJacQz,hJacQx,hJacQy,hJacQz
 REAL,DIMENSION(PP_nVar,PP_nVar    ,0:PP_N,0:PP_NZ,2)      :: fJac,gJac,hJac
 #if EDDYVISCOSITY

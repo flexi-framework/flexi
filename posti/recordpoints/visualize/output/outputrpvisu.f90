@@ -18,6 +18,8 @@
 !===================================================================================================================================
 MODULE MOD_OutputRPVisu
 ! MODULES
+IMPLICIT NONE
+PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -46,12 +48,14 @@ SUBROUTINE InitOutput()
 USE MOD_Globals
 USE MOD_ParametersVisu     ,ONLY: nVarVisu
 USE MOD_ParametersVisu     ,ONLY: Line_LocalCoords,Plane_LocalCoords,equiTimeSpacing
+USE MOD_ParametersVisu     ,ONLY: doFluctuations
 USE MOD_RPSetVisuVisu_Vars ,ONLY: nRP_global
 USE MOD_RPData_Vars        ,ONLY: nSamples_global
 USE MOD_OutputRPVisu_Vars  ,ONLY: nSamples_out
 USE MOD_OutputRPVisu_Vars  ,ONLY: nCoords,CoordNames
-USE MOD_OutputRPVisu_Vars  ,ONLY: RPData_out
+USE MOD_OutputRPVisu_Vars  ,ONLY: RPData_out,RPDataRMS_out
 USE MOD_EquationRP_Vars    ,ONLY: EquationRPInitIsDone
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -69,6 +73,11 @@ WRITE(UNIT_stdOut,'(A)') ' INIT OUTPUT...'
 IF(.NOT.equiTimeSpacing) nSamples_out  = nSamples_global
 ALLOCATE(RPData_out(1:nVarVisu,nRP_global,nSamples_out))
 RPData_out(:,:,:) = 0.
+
+IF(doFluctuations) THEN
+  ALLOCATE(RPDataRMS_out(1:nVarVisu,nRP_global))
+  RPDataRMS_out(:,:) = 0.
+END IF
 
 ! prepare Coordinate Varnames
 nCoords=4
@@ -105,7 +114,7 @@ SUBROUTINE OutputRP()
 USE MOD_Globals
 USE MOD_RPData_Vars        ,ONLY: RPTime
 USE MOD_ParametersVisu     ,ONLY: OutputFormat,thirdOct,ProjectName
-USE MOD_OutputRPVisu_Vars  ,ONLY: RPDataTimeAvg_out
+USE MOD_OutputRPVisu_Vars  ,ONLY: RPDataTimeAvg_out,RPDataRMS_out
 USE MOD_OutputRPVisu_VTK   ,ONLY: WriteDataToVTK,WriteTimeAvgDataToVTK,WriteBLPropsToVTK
 USE MOD_OutputRPVisu_Vars  ,ONLY: nSamples_out,RPData_out,CoordNames
 USE MOD_OutputRPVisu_HDF5  ,ONLY: WriteDataToHDF5,WriteBLPropsToHDF5
@@ -114,13 +123,21 @@ USE MOD_Spec_Vars          ,ONLY: nSamples_Oct,RPData_freqOct,RPData_Oct
 USE MOD_ParametersVisu     ,ONLY: nVarVisu,VarNameVisu
 USE MOD_ParametersVisu     ,ONLY: OutputTimeAverage,OutputTimeData,doSpec,doFluctuations
 USE MOD_ParametersVisu     ,ONLY: Plane_doBLProps
+USE MOD_ParametersVisu     ,ONLY: doEnsemble,doTurb
+USE MOD_EnsembleRP_Vars    ,ONLY: enSamples,nVar_ensTurb,RPData_ens,RPData_freqEns,RPData_turb
+USE MOD_RPData_Vars        ,ONLY: VarNames_HDF5,nVar_HDF5
 USE MOD_RPSetVisuVisu_Vars ,ONLY: nRP_global
+USE MOD_Turbulence_Vars
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 CHARACTER(LEN=255)            :: FileName
 CHARACTER(LEN=255)            :: strOutputFile
+CHARACTER(LEN=255),ALLOCATABLE:: VarNameTurb(:)
+REAL,ALLOCATABLE              :: RPData_OutTurb(:,:,:),RPData_turbAvg(:,:)
+INTEGER                       :: nVar_turb
 REAL,ALLOCATABLE              :: TimeAvg_tmp(:,:,:)
 !===================================================================================================================================
 ! Output Time Signal
@@ -137,6 +154,23 @@ WRITE(UNIT_StdOut,'(132("-"))')
       strOutputFile=TRIM(FileName)//'_PP.h5'
       CALL WriteDataToHDF5(nSamples_out,nRP_global,nVarVisu,VarNameVisu,RPTime,RPData_out,strOutputFile)
   END SELECT
+
+  IF(doFluctuations) THEN
+    Filename=TRIM(ProjectName)
+    FileName=TRIM(FileName)//'_RP_RMS'
+    SELECT CASE(OutputFormat)
+      CASE(0) ! ParaView VTK output
+        WRITE(UNIT_stdOut,'(A,A)')' WRITING TIME AVERAGE TO VTK FILE'
+        CALL WriteTimeAvgDataToVTK(nRP_global,nVarVisu,VarNameVisu,RPDataRMS_out,FileName)
+     CASE(2) ! structured HDF5 output
+       strOutputFile=TRIM(FileName)//'_PP.h5'
+       ALLOCATE(TimeAvg_tmp(1,nVarVisu,nRP_global))
+       ! To use the WriteHDF5 routine, we need to create a temporary array since it expect 3 dimensions
+       TimeAvg_tmp(1,:,:) = RPDataRMS_out
+       CALL WriteDataToHDF5(1,nRP_global,nVarVisu,VarNameVisu,RPTime,TimeAvg_tmp,strOutputFile)
+       DEALLOCATE(TimeAvg_tmp)
+    END SELECT
+  END IF
 WRITE(UNIT_StdOut,'(132("-"))')
 END IF !output time data
 
@@ -192,8 +226,8 @@ IF(OutputTimeAverage) THEN
      TimeAvg_tmp(1,:,:) = RPDataTimeAvg_out
      CALL WriteDataToHDF5(1,nRP_global,nVarVisu,VarNameVisu,RPTime,TimeAvg_tmp,strOutputFile)
      DEALLOCATE(TimeAvg_tmp)
-  WRITE(UNIT_StdOut,'(132("-"))')
   END SELECT
+  WRITE(UNIT_StdOut,'(132("-"))')
 END IF
 
 IF(Plane_doBLProps)THEN !output the BL stuff along lines
@@ -207,6 +241,106 @@ IF(Plane_doBLProps)THEN !output the BL stuff along lines
      strOutputFile=TRIM(FileName)//'_PP.h5'
      CALL WriteBLPropsToHDF5(strOutputFile)
    END SELECT
+END IF
+
+! Output Turbulence stuff
+IF(doTurb) THEN
+  nVar_turb=5
+  ALLOCATE(VarNameTurb(nVar_turb))
+  VarNameTurb(1) = 'KineticEnergy'
+  VarNameTurb(2) = 'DissipationRate'
+  VarNameTurb(3) = 'MeanDissipation_cumulated'
+  VarNameTurb(4) = 'Eta_K'
+  VarNameTurb(5) = 'Wavenumber K'
+
+  ALLOCATE(RPData_OutTurb(1:nVar_turb,nRP_global,nSamples_spec))
+  RPData_OutTurb(1,:,:) = E_kineticSpec(:,:)
+  RPData_OutTurb(2,:,:) = disRate(:,:)
+  RPData_OutTurb(3,:,:) = epsilonMean(:,:)
+  RPData_OutTurb(4,:,:) = etaK(:,:)
+  RPData_OutTurb(5,:,:) = kk(:,:)
+
+  CoordNames(1)='Frequency'
+  WRITE(UNIT_StdOut,'(132("-"))')
+  Filename=TRIM(ProjectName)
+  FileName=TRIM(FileName)//'_RP_turb'
+  SELECT CASE(OutputFormat)
+    CASE(0) ! ParaView VTK output
+      WRITE(UNIT_stdOut,'(A,A)')' WRITING TURBULENCE DATA TO ',TRIM(FileName)
+      CALL WriteDataToVTK (nSamples_spec,nRP_global,nVar_turb,VarNameTurb,RPData_freqTurb,RPData_OutTurb,FileName)
+    CASE(2) ! structured HDF5 output
+      strOutputFile=TRIM(FileName)//'_PP.h5'
+      CALL WriteDataToHDF5(nSamples_spec,nRP_global,nVar_turb,VarNameTurb,RPData_freqTurb,RPData_OutTurb,strOutputFile)
+  END SELECT
+  WRITE(UNIT_StdOut,'(132("-"))')
+
+  DEALLOCATE(VarNameTurb)
+  nVar_turb=2
+  ALLOCATE(VarNameTurb(nVar_turb))
+  VarNameTurb(1) = 'Eta'
+  VarNameTurb(2) = 'MeanDissipation'
+
+  ALLOCATE(RPData_turbAvg(1:nVar_turb,nRP_global))
+  RPData_turbAvg(1,:) = eta
+  RPData_turbAvg(2,:) = epsilonMean(:,nSamples_spec)
+
+  ! Output Time Average
+  WRITE(UNIT_StdOut,'(132("-"))')
+  Filename=TRIM(ProjectName)
+  FileName=TRIM(FileName)//'_RP_turbAvg'
+  SELECT CASE(OutputFormat)
+    CASE(0) ! ParaView VTK output
+      WRITE(UNIT_stdOut,'(A,A)')' WRITING TURBULENCE AVERAGE DATA TO ',TRIM(FileName)
+      CALL WriteTimeAvgDataToVTK(nRP_global,nVar_turb,VarNameTurb,       RPData_turbAvg,FileName)
+    CASE(2) ! structured HDF5 output
+      strOutputFile=TRIM(FileName)//'_PP.h5'
+     ALLOCATE(TimeAvg_tmp(1,nVar_turb,nRP_global))
+     ! To use the WriteHDF5 routine, we need to create a temporary array since it expect 3 dimensions
+     TimeAvg_tmp(1,:,:) = RPData_turbAvg
+      CALL WriteDataToHDF5(    1,nRP_global,nVar_turb,VarNameTurb,RPTime,TimeAvg_tmp,strOutputFile)
+     DEALLOCATE(TimeAvg_tmp)
+  END SELECT
+  WRITE(UNIT_StdOut,'(132("-"))')
+END IF
+
+IF(doEnsemble)THEN
+  ! Output of ensemble averages
+  WRITE(UNIT_StdOut,'(132("-"))')
+  Filename=TRIM(ProjectName)
+  FileName=TRIM(FileName)//'_RP_ensAvg'
+  SELECT CASE(OutputFormat)
+    CASE(0) ! ParaView VTK output
+      WRITE(UNIT_stdOut,'(A,A)')' WRITING ESEMBLE AVERAGES TO ',TRIM(FileName)
+      CALL WriteDataToVTK(enSamples,nRP_global,nVarVisu,VarNameVisu,RPData_freqEns,RPData_ens,FileName)
+    CASE(2) ! structured HDF5 output
+      strOutputFile=TRIM(FileName)//'_PP.h5'
+      CALL WriteDataToHDF5(enSamples,nRP_global,nVarVisu,VarNameVisu,RPData_freqEns,RPData_ens,strOutputFile)
+  END SELECT
+  WRITE(UNIT_StdOut,'(132("-"))')
+
+  ! Output of turbulent quantities on the ensemble average
+  ALLOCATE(VarNameTurb(nVar_ensTurb))
+  VarNameTurb(1) = 'KineticEnergy'
+  VarNameTurb(2) = 'TurbulentIntensity'
+  VarNameTurb(3) = 'VelocityMagnitudeRMS'
+  VarNameTurb(4) = 'VelocityXRMS'
+  VarNameTurb(5) = 'VelocityYRMS'
+  VarNameTurb(6) = 'VelocityZRMS'
+
+  WRITE(UNIT_StdOut,'(132("-"))')
+  Filename=TRIM(ProjectName)
+  FileName=TRIM(FileName)//'_RP_ensTurb'
+  SELECT CASE(OutputFormat)
+    CASE(0) ! ParaView VTK output
+      WRITE(UNIT_stdOut,'(A,A)')' WRITING TURBULENT QUANTITIES ON ESEMBLE AVERAGES TO ',TRIM(FileName)
+      CALL WriteDataToVTK( enSamples,nRP_global,nVar_ensTurb,VarNameTurb,RPData_freqEns,RPData_turb,FileName)
+    CASE(2) ! structured HDF5 output
+      strOutputFile=TRIM(FileName)//'_PP.h5'
+      CALL WriteDataToHDF5(enSamples,nRP_global,nVar_ensTurb,VarNameTurb,RPData_freqEns,RPData_turb,strOutputFile)
+  END SELECT
+
+  DEALLOCATE(VarNameTurb)
+  WRITE(UNIT_StdOut,'(132("-"))')
 END IF
 
 END SUBROUTINE OutputRP

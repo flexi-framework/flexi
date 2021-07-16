@@ -623,7 +623,7 @@ REAL,INTENT(IN),OPTIONAL       :: FutureTime                                   !
 CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: Filename_In                            !< custom filename
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-CHARACTER(LEN=255)             :: FileName,DataSet
+CHARACTER(LEN=255)             :: FileName,DataSet,tmp255
 REAL                           :: StartT,EndT
 REAL,POINTER                   :: UOut(:,:,:,:,:)
 #if PP_dim == 2
@@ -645,8 +645,10 @@ IF(PRESENT(Filename_In)) Filename=TRIM(Filename_In)
 
 ! Write time averaged data --------------------------------------------------------------------------------------------------------
 IF(MPIRoot)THEN
-                    CALL GenerateFileSkeleton(TRIM(FileName),'TimeAvg',1 ,PP_N,(/'DUMMY_DO_NOT_VISUALIZE'/),&
-                           MeshFileName,OutputTime,FutureTime,create=.TRUE.) ! dummy DG_Solution to fix Posti error, tres oegly !!!
+                    ! dummy DG_Solution to fix Posti error, tres oegly !!!
+                    tmp255 = TRIM('DUMMY_DO_NOT_VISUALIZE')
+                    CALL GenerateFileSkeleton(TRIM(FileName),'TimeAvg',1 ,PP_N,(/tmp255/),&
+                           MeshFileName,OutputTime,FutureTime,create=.TRUE.,withUserblock=.TRUE.)
   IF(nVarAvg .GT.0) CALL GenerateFileSkeleton(TRIM(FileName),'TimeAvg',nVarAvg ,PP_N,VarNamesAvg,&
                            MeshFileName,OutputTime,FutureTime,create=.FALSE.,Dataset='Mean')
   IF(nVarFluc.GT.0) CALL GenerateFileSkeleton(TRIM(FileName),'TimeAvg',nVarFluc,PP_N,VarNamesFluc,&
@@ -1061,17 +1063,17 @@ IMPLICIT NONE
 INTEGER(HID_T)    ,INTENT(IN)           :: Loc_ID_in              !< Dataset ID (only if already open)
 CHARACTER(LEN=*)  ,INTENT(IN)           :: AttribName             !< name of the attribute to be written
 INTEGER           ,INTENT(IN)           :: nVal                   !< number of array entries if array is written
-CHARACTER(LEN=*)  ,INTENT(IN),OPTIONAL  :: DatasetName            !< name of the dataset created
+CHARACTER(LEN=255),INTENT(IN),OPTIONAL  :: DatasetName            !< name of the dataset created
 REAL              ,INTENT(IN),OPTIONAL,TARGET :: RealScalar       !< real scalar
 INTEGER           ,INTENT(IN),OPTIONAL,TARGET :: IntScalar        !< integer scalar
 CHARACTER(LEN=255),INTENT(IN),OPTIONAL,TARGET :: StrScalar(1)     !< scalar string
 LOGICAL           ,INTENT(IN),OPTIONAL        :: LogicalScalar    !< logical scalar
 REAL              ,INTENT(IN),OPTIONAL,TARGET :: RealArray(nVal)  !< real array of length nVal
 INTEGER           ,INTENT(IN),OPTIONAL,TARGET :: IntArray(nVal)   !< integer array of length nVal
-CHARACTER(LEN=*)  ,INTENT(IN),OPTIONAL,TARGET :: StrArray(nVal)   !< string array of length nVal
+CHARACTER(LEN=255),INTENT(IN),OPTIONAL,TARGET :: StrArray(nVal)   !< string array of length nVal
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                        :: Rank,i
+INTEGER                        :: Rank
 INTEGER(HID_T)                 :: DataSpace,Attr_ID,Loc_ID,Type_ID
 INTEGER(HSIZE_T), DIMENSION(1) :: Dimsf
 INTEGER(SIZE_T)                :: AttrLen

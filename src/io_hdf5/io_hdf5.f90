@@ -97,6 +97,10 @@ INTERFACE AddToElemData
   MODULE PROCEDURE AddToElemData
 END INTERFACE
 
+INTERFACE FinalizeElemData
+  MODULE PROCEDURE FinalizeElemData
+END INTERFACE
+
 INTERFACE AddToFieldData
   MODULE PROCEDURE AddToFieldData
 END INTERFACE
@@ -105,11 +109,16 @@ INTERFACE GetDatasetNamesInGroup
   MODULE PROCEDURE GetDatasetNamesInGroup
 END INTERFACE
 
+PUBLIC :: DefineParametersIO_HDF5
+PUBLIC :: InitIOHDF5
+PUBLIC :: InitMPIInfo
+PUBLIC :: OpenDataFile
+PUBLIC :: CloseDataFile
+PUBLIC :: AddToElemData
+PUBLIC :: FinalizeElemData
+PUBLIC :: AddToFieldData
+PUBLIC :: GetDatasetNamesInGroup
 !==================================================================================================================================
-
-PUBLIC::DefineParametersIO_HDF5,InitIOHDF5,InitMPIInfo,OpenDataFile,CloseDataFile
-PUBLIC::AddToElemData,AddToFieldData
-PUBLIC::GetDatasetNamesInGroup
 
 CONTAINS
 
@@ -242,7 +251,7 @@ IF(.NOT.single)  CALL H5PSET_FAPL_MPIO_F(Plist_File_ID, comm, MPIInfo, iError)
 IF(create)THEN
   IF (userblockSize_loc > 0) THEN
     tmp = userblockSize_loc/512
-    IF (MOD(userblockSize_loc,512).GT.0) tmp = tmp+1
+    IF (MOD(userblockSize_loc,INT(512,HSIZE_T)).GT.0) tmp = tmp+1
     tmp2 = 512*2**CEILING(LOG(REAL(tmp))/LOG(2.))
     CALL H5PSET_USERBLOCK_F(Plist_File_ID, tmp2, iError)
   END IF
@@ -444,5 +453,90 @@ DO i=1,nMembers
   IF (type.NE.H5G_DATASET_F) names(i) = ''
 END DO
 END SUBROUTINE GetDatasetNamesInGroup
+
+
+!==================================================================================================================================
+!> Finalizes HDF5 IO
+!==================================================================================================================================
+SUBROUTINE FinalizeIOHDF5()
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!==================================================================================================================================
+CALL FinalizeElemData(ElementOut)
+CALL FinalizeFieldData(FieldOut)
+
+END SUBROUTINE FinalizeIOHDF5
+
+
+!==================================================================================================================================
+!> Deallocate and nullify element-wise arrays or scalars which were added for writeout by means of a linked list.
+!==================================================================================================================================
+SUBROUTINE FinalizeElemData(ElementOut_In)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+TYPE(tElementOut),POINTER,INTENT(INOUT) :: ElementOut_In     !< Pointer list of element-wise data that is written to the state file
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!==================================================================================================================================
+TYPE(tElementOut),POINTER          :: current,next
+!===================================================================================================================================
+IF(ASSOCIATED(ElementOut_In)) THEN
+  current => ElementOut_In
+  NULLIFY(ElementOut_In)
+
+  ! Finalize all entries
+  DO WHILE (ASSOCIATED(current))
+    next => current%next
+    IF (ASSOCIATED( current%RealArray  ))  NULLIFY(current%RealArray )
+    IF (ASSOCIATED( current%RealScalar ))  NULLIFY(current%RealScalar)
+    IF (ASSOCIATED( current%IntArray   ))  NULLIFY(current%IntArray  )
+    IF (ASSOCIATED( current%IntScalar  ))  NULLIFY(current%IntScalar )
+    IF (ASSOCIATED( current%eval       ))  NULLIFY(current%eval      )
+    IF (ASSOCIATED( current%next       ))  NULLIFY(current%next      )
+    DEALLOCATE(current)
+    NULLIFY(current)
+    current => next
+  END DO
+END IF
+
+END SUBROUTINE FinalizeElemData
+
+!==================================================================================================================================
+!> Deallocate and nullify additional field data arrays or scalars which were added for writeout by means of a linked list.
+!==================================================================================================================================
+SUBROUTINE FinalizeFieldData(FieldOut_In)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+TYPE(tFieldOut),POINTER,INTENT(INOUT) :: FieldOut_In     !< Pointer list of field data that is written to the state file
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!==================================================================================================================================
+TYPE(tFieldOut),POINTER          :: current,next
+!===================================================================================================================================
+IF(ASSOCIATED(FieldOut_In)) THEN
+  current => FieldOut_In
+  NULLIFY(FieldOut_In)
+
+  ! Finalize all entries
+  DO WHILE (ASSOCIATED(current))
+    next => current%next
+    IF (ASSOCIATED( current%RealArray ))  NULLIFY(current%RealArray)
+    IF (ASSOCIATED( current%eval      ))  NULLIFY(current%eval     )
+    IF (ASSOCIATED( current%next      ))  NULLIFY(current%next     )
+    DEALLOCATE(current)
+    NULLIFY(current)
+    current => next
+  END DO
+END IF
+
+END SUBROUTINE FinalizeFieldData
 
 END MODULE MOD_IO_HDF5

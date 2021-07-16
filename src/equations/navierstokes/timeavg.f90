@@ -77,7 +77,7 @@ IF((nVarAvg.EQ.0).AND.(nVarFluc.EQ.0))THEN
     'No quantities for time averaging have been specified. Please specify quantities or disable time averaging!')
 END IF
 #if FV_ENABLED
-WRITE(UNIT_StdOut,*) 'Warning: If FV is enabled, time averaging is performed on integral cell mean values.'
+SWRITE(UNIT_StdOut,*) 'Warning: If FV is enabled, time averaging is performed on integral cell mean values.'
 #endif
 
 ! Define variables to be averaged
@@ -142,9 +142,10 @@ END DO
 
 ! Check which variables have to be calculated and create mappings to global variable index (1:nVarout)
 ! CalcAvgTmp(1,:) for normal variables, CalcAvgTmp(2,:) for fluctuations
-ALLOCATE(CalcAvg(nMaxVarAvg),CalcFluc(nMaxVarFluc))
-CalcAvg=.FALSE.
-CalcFluc=.FALSE.
+ALLOCATE(CalcAvg (nMaxVarAvg ))
+ALLOCATE(CalcFluc(nMaxVarFluc))
+CalcAvg  = .FALSE.
+CalcFluc = .FALSE.
 
 ! check each average from ini file
 DO iVar=1,nVarAvg
@@ -468,9 +469,9 @@ DO iElem=1,nElems
   STOP 'WriteTimeAverage for dissipation via vel gradients (DR_u / DR_S) not implemented yet for FV!'
 #endif
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      GradVel(:,1)=GradUx(2:4,i,j,k,iElem)
-      GradVel(:,2)=GradUy(2:4,i,j,k,iElem)
-      GradVel(:,3)=GradUz(2:4,i,j,k,iElem)
+      GradVel(:,1)=GradUx(LIFT_VELV,i,j,k,iElem)
+      GradVel(:,2)=GradUy(LIFT_VELV,i,j,k,iElem)
+      GradVel(:,3)=GradUz(LIFT_VELV,i,j,k,iElem)
       IF(CalcFluc(17))THEN
         Shear=0.5*(Gradvel+TRANSPOSE(GradVel))
         DO p=1,3; DO q=1,3
@@ -528,6 +529,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 !==================================================================================================================================
 SDEALLOCATE(CalcAvg)
+SDEALLOCATE(CalcFluc)
 SDEALLOCATE(iAvg)
 SDEALLOCATE(iFluc)
 SDEALLOCATE(UAvg)

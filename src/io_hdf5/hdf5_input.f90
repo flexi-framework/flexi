@@ -155,6 +155,7 @@ ELSE
   ! Close FORTRAN predefined datatypes
   CALL H5CLOSE_F(iError)
 END IF
+
 END FUNCTION ISVALIDHDF5FILE
 
 !==================================================================================================================================
@@ -299,16 +300,22 @@ LOGICAL,INTENT(OUT)                  :: Exists   !< result: dataset exists
 ! LOCAL VARIABLES
 INTEGER(HID_T)                       :: DSet_ID
 INTEGER                              :: hdferr
+LOGICAL                              :: attrib_loc
 !==================================================================================================================================
 CALL h5eset_auto_f(0, hdferr)
 ! Open the dataset with default properties.
-IF(PRESENT(attrib).AND.attrib)THEN
+IF (PRESENT(attrib)) THEN
+  attrib_loc = attrib
+ELSE
+  attrib_loc = .FALSE.
+END IF
+IF(attrib_loc)THEN
   CALL H5AOPEN_F(Loc_ID, TRIM(DSetName), DSet_ID, iError)
   CALL H5ACLOSE_F(DSet_ID, iError)
-ELSE
-  CALL H5DOPEN_F(Loc_ID, TRIM(DSetName), DSet_ID, iError)
-  CALL H5DCLOSE_F(DSet_ID, iError)
-END IF
+  ELSE
+    CALL H5DOPEN_F(Loc_ID, TRIM(DSetName), DSet_ID, iError)
+    CALL H5DCLOSE_F(DSet_ID, iError)
+  END IF
 Exists=.TRUE.
 IF(iError.LT.0) Exists=.FALSE.
 ! auto error messages on
@@ -320,7 +327,7 @@ END SUBROUTINE DatasetExists
 !==================================================================================================================================
 !> Subroutine to determine HDF5 dataset properties in Flexi terminology
 !==================================================================================================================================
-SUBROUTINE GetDataProps(nVar_HDF5,N_HDF5,nElems_HDF5,NodeType_HDF5)
+SUBROUTINE GetDataProps(nVar_HDF5,N_HDF5,nElems_HDF5,NodeType_HDF5,ArrayName_opt)
 ! MODULES
 USE MOD_Globals
 IMPLICIT NONE
@@ -330,8 +337,10 @@ INTEGER,INTENT(OUT)                     :: nVar_HDF5     !< number of variables
 INTEGER,INTENT(OUT)                     :: N_HDF5        !< polynomial degree
 INTEGER,INTENT(OUT)                     :: nElems_HDF5   !< inumber of elements
 CHARACTER(LEN=255),OPTIONAL,INTENT(OUT) :: NodeType_HDF5 !< nodetype string
+CHARACTER(LEN=*),  OPTIONAL,INTENT(IN)  :: ArrayName_opt !< array name to use in state file
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+CHARACTER(LEN=255)                      :: ArrayName
 INTEGER                                 :: Rank
 INTEGER(HID_T)                          :: Dset_ID,FileSpace
 INTEGER(HSIZE_T), DIMENSION(7)          :: Dims,DimsMax
@@ -339,9 +348,15 @@ INTEGER(HSIZE_T), DIMENSION(7)          :: Dims,DimsMax
 SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A,A)')' GET SIZE OF DATA IN HDF5 FILE... '
 
+IF(.NOT.PRESENT(ArrayName_opt)) THEN
+    ArrayName = 'DG_Solution'
+ELSE
+    ArrayName = ArrayName_opt
+END IF
+
 ! Read in attributes
 ! Open the dataset with default properties.
-CALL H5DOPEN_F(File_ID, 'DG_Solution', Dset_ID, iError)
+CALL H5DOPEN_F(File_ID, ArrayName, Dset_ID, iError)
 ! Get the data space of the dataset.
 CALL H5DGET_SPACE_F(Dset_ID, FileSpace, iError)
 ! Get number of dimensions of data space
@@ -380,7 +395,8 @@ SWRITE(UNIT_stdOut,'(A)')' DONE!'
 SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE GetDataProps
 
-SUBROUTINE GetVarnames(AttribName,VarNames,AttribExists)
+
+SUBROUTINE GetVarNames(AttribName,VarNames,AttribExists)
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)                :: AttribName
@@ -402,7 +418,7 @@ IF (AttribExists) THEN
   ! read variable names
   CALL ReadAttribute(File_ID,TRIM(AttribName),nVal,StrArray=VarNames)
 END IF
-END SUBROUTINE GetVarnames
+END SUBROUTINE GetVarNames
 
 !===================================================================================================================================
 !> High level wrapper to ReadArray and ReadAttrib. Check if array exists and directly

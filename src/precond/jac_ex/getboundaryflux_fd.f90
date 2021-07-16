@@ -12,6 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "eos.h"
 
 !===================================================================================================================================
 !> Fills the flux Jacobian of the boundary fluxes
@@ -68,20 +69,20 @@ USE MOD_EOS                     ,ONLY: ConsToPrim
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-INTEGER,INTENT(IN)   :: SideID                                   !< ID of current side
-REAL,INTENT(IN)      :: t                                        !< current time (provided by time integration scheme)
-REAL,INTENT(IN)      :: xGP_Face(3,0:PP_N,0:PP_NZ)               !< physical coordinates of side GPs
-REAL,INTENT(IN)      :: normal  (3,0:PP_N,0:PP_NZ)               !< normal vector
-REAL,INTENT(IN)      :: tangent1(3,0:PP_N,0:PP_NZ)               !< first tangential vector
-REAL,INTENT(IN)      :: tangent2(3,0:PP_N,0:PP_NZ)               !< second tangential vector
-REAL,INTENT(IN)      :: surfElem(0:PP_N,0:PP_NZ)                 !< surface integration element
-REAL, INTENT(IN)     :: U_master(PP_nVar,0:PP_N,0:PP_NZ)         !< conservative inner solution 
-REAL, INTENT(IN)     :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ) !< primitive inner solution
-INTEGER, INTENT(IN)  :: jk(2,0:PP_N,0:PP_NZ)                     !< S2V2 mapping
+INTEGER,INTENT(IN)   :: SideID                                      !< ID of current side
+REAL,INTENT(IN)      :: t                                           !< current time (provided by time integration scheme)
+REAL,INTENT(IN)      :: xGP_Face(3,0:PP_N,0:PP_NZ)                  !< physical coordinates of side GPs
+REAL,INTENT(IN)      :: normal  (3,0:PP_N,0:PP_NZ)                  !< normal vector
+REAL,INTENT(IN)      :: tangent1(3,0:PP_N,0:PP_NZ)                  !< first tangential vector
+REAL,INTENT(IN)      :: tangent2(3,0:PP_N,0:PP_NZ)                  !< second tangential vector
+REAL,INTENT(IN)      :: surfElem(0:PP_N,0:PP_NZ)                    !< surface integration element
+REAL, INTENT(IN)     :: U_master(PP_nVar,0:PP_N,0:PP_NZ)            !< conservative inner solution 
+REAL, INTENT(IN)     :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ)    !< primitive inner solution
+INTEGER, INTENT(IN)  :: jk(2,0:PP_N,0:PP_NZ)                        !< S2V2 mapping
 #if PARABOLIC
-REAL,INTENT(IN)      :: gradUx_Face(PP_nVarPrim,0:PP_N,0:PP_NZ)  !< inner gradients in x direction
-REAL,INTENT(IN)      :: gradUy_Face(PP_nVarPrim,0:PP_N,0:PP_NZ)  !< inner gradients in y direction
-REAL,INTENT(IN)      :: gradUz_Face(PP_nVarPrim,0:PP_N,0:PP_NZ)  !< inner gradients in z direction
+REAL,INTENT(IN)      :: gradUx_Face(PP_nVarLifting,0:PP_N,0:PP_NZ)  !< inner gradients in x direction
+REAL,INTENT(IN)      :: gradUy_Face(PP_nVarLifting,0:PP_N,0:PP_NZ)  !< inner gradients in y direction
+REAL,INTENT(IN)      :: gradUz_Face(PP_nVarLifting,0:PP_N,0:PP_NZ)  !< inner gradients in z direction
 #endif /*PARABOLIC*/
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
@@ -98,13 +99,13 @@ REAL,INTENT(OUT),DIMENSION(PP_nVar,PP_nVarPrim,0:PP_N,0:PP_N)  :: Df_DQzInner  !
 INTEGER                      :: iVar,jVar
 INTEGER                      :: p,q
 #if PARABOLIC
-REAL                         :: gradUx_Face_Tilde(PP_nVarPrim,0:PP_N,0:PP_NZ)
-REAL                         :: gradUy_Face_Tilde(PP_nVarPrim,0:PP_N,0:PP_NZ)
-REAL                         :: F_Face_TildeQx   (PP_nVar    ,0:PP_N,0:PP_NZ)
-REAL                         :: F_Face_TildeQy   (PP_nVar    ,0:PP_N,0:PP_NZ)
+REAL                         :: gradUx_Face_Tilde(PP_nVarLifting,0:PP_N,0:PP_NZ)
+REAL                         :: gradUy_Face_Tilde(PP_nVarLifting,0:PP_N,0:PP_NZ)
+REAL                         :: F_Face_TildeQx   (PP_nVar       ,0:PP_N,0:PP_NZ)
+REAL                         :: F_Face_TildeQy   (PP_nVar       ,0:PP_N,0:PP_NZ)
 #if PP_dim==3
-REAL                         :: gradUz_Face_Tilde(PP_nVarPrim,0:PP_N,0:PP_N)
-REAL                         :: F_Face_TildeQz   (PP_nVar    ,0:PP_N,0:PP_NZ)
+REAL                         :: gradUz_Face_Tilde(PP_nVarLifting,0:PP_N,0:PP_N)
+REAL                         :: F_Face_TildeQz   (PP_nVar       ,0:PP_N,0:PP_NZ)
 #endif
 #endif /*PARABOLCIC*/
 REAL                         :: UPrim_master_Tilde(PP_nVarPrim,0:PP_N,0:PP_NZ)
@@ -155,36 +156,48 @@ gradUy_Face_Tilde = gradUy_Face
 gradUz_Face_Tilde = gradUz_Face
 #endif
 DO jVar=1,PP_nVarPrim
-  gradUx_Face_Tilde(jVar,:,:) = gradUx_Face_Tilde(jVar,:,:) + reps0_O1
-  gradUy_Face_Tilde(jVar,:,:) = gradUy_Face_Tilde(jVar,:,:) + reps0_O1
-  CALL GetBoundaryFlux(SideID,t,PP_N,F_Face_TildeQx,UPrim_master,   &
-                       gradUx_Face_Tilde,gradUy_Face,gradUz_Face, &
-                       normal,tangent1,tangent2,xGP_Face)
-  CALL GetBoundaryFlux(SideID,t,PP_N,F_Face_TildeQy,UPrim_master,   &
-                       gradUx_Face,gradUy_Face_Tilde,gradUz_Face, &
-                       normal,tangent1,tangent2,xGP_Face)
+  IF(ANY(PRIM_LIFT.EQ.jVar))THEN
+    gradUx_Face_Tilde(jVar,:,:) = gradUx_Face_Tilde(jVar,:,:) + reps0_O1
+    gradUy_Face_Tilde(jVar,:,:) = gradUy_Face_Tilde(jVar,:,:) + reps0_O1
+    CALL GetBoundaryFlux(SideID,t,PP_N,F_Face_TildeQx,UPrim_master,   &
+                         gradUx_Face_Tilde,gradUy_Face,gradUz_Face, &
+                         normal,tangent1,tangent2,xGP_Face)
+    CALL GetBoundaryFlux(SideID,t,PP_N,F_Face_TildeQy,UPrim_master,   &
+                         gradUx_Face,gradUy_Face_Tilde,gradUz_Face, &
+                         normal,tangent1,tangent2,xGP_Face)
 #if PP_dim==3
-  gradUz_Face_Tilde(jVar,:,:) = gradUz_Face_Tilde(jVar,:,:) + reps0_O1
-  CALL GetBoundaryFlux(SideID,t,PP_N,F_Face_TildeQz,UPrim_master,   &
-                       gradUx_Face,gradUy_Face,gradUz_Face_Tilde, &
-                       normal,tangent1,tangent2,xGP_Face)
+    gradUz_Face_Tilde(jVar,:,:) = gradUz_Face_Tilde(jVar,:,:) + reps0_O1
+    CALL GetBoundaryFlux(SideID,t,PP_N,F_Face_TildeQz,UPrim_master,   &
+                         gradUx_Face,gradUy_Face,gradUz_Face_Tilde, &
+                         normaol,tangent1,tangent2,xGP_Face)
 #endif
-  DO iVar=1,PP_nVar
+    DO iVar=1,PP_nVar
+      DO q=0,PP_NZ
+        DO p=0,PP_N
+          dF_dQxInner(iVar,jVar,jk(1,p,q),jk(2,p,q)) = surfElem(p,q)*(F_Face_TildeQx(iVar,p,q)-F_Face(iVar,p,q))*sreps0_O1
+          dF_dQyInner(iVar,jVar,jk(1,p,q),jk(2,p,q)) = surfElem(p,q)*(F_Face_TildeQy(iVar,p,q)-F_Face(iVar,p,q))*sreps0_O1
+#if PP_dim==3
+          dF_dQzInner(iVar,jVar,jk(1,p,q),jk(2,p,q)) = surfElem(p,q)*(F_Face_TildeQz(iVar,p,q)-F_Face(iVar,p,q))*sreps0_O1
+#endif
+        END DO !p
+      END DO !q
+    END DO ! iVar
+    gradUx_Face_Tilde(jVar,:,:) = gradUx_Face(jVar,:,:) 
+    gradUy_Face_Tilde(jVar,:,:) = gradUy_Face(jVar,:,:) 
+#if PP_dim==3
+    gradUz_Face_Tilde(jVar,:,:) = gradUz_Face(jVar,:,:) 
+#endif
+  ELSE
     DO q=0,PP_NZ
       DO p=0,PP_N
-        dF_dQxInner(iVar,jVar,jk(1,p,q),jk(2,p,q)) = surfElem(p,q)*(F_Face_TildeQx(iVar,p,q)-F_Face(iVar,p,q))*sreps0_O1
-        dF_dQyInner(iVar,jVar,jk(1,p,q),jk(2,p,q)) = surfElem(p,q)*(F_Face_TildeQy(iVar,p,q)-F_Face(iVar,p,q))*sreps0_O1
+        dF_dQxInner(:,jVar,jk(1,p,q),jk(2,p,q)) = 0.
+        dF_dQyInner(:,jVar,jk(1,p,q),jk(2,p,q)) = 0.
 #if PP_dim==3
-        dF_dQzInner(iVar,jVar,jk(1,p,q),jk(2,p,q)) = surfElem(p,q)*(F_Face_TildeQz(iVar,p,q)-F_Face(iVar,p,q))*sreps0_O1
+        dF_dQzInner(:,jVar,jk(1,p,q),jk(2,p,q)) = 0.
 #endif
       END DO !p
     END DO !q
-  END DO ! iVar
-  gradUx_Face_Tilde(jVar,:,:) = gradUx_Face(jVar,:,:) 
-  gradUy_Face_Tilde(jVar,:,:) = gradUy_Face(jVar,:,:) 
-#if PP_dim==3
-  gradUz_Face_Tilde(jVar,:,:) = gradUz_Face(jVar,:,:) 
-#endif
+  END IF
 END DO !jVar
 #endif /*PARABOLIC*/
 

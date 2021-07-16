@@ -178,7 +178,7 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)                                   :: nDOF_loc             !< number of degrees of freedom
 REAL,DIMENSION(PP_nVar        ,nDOF_loc),INTENT(IN)  :: U                    !< solution in conservative variables
 REAL,DIMENSION(PP_nVarPrim    ,nDOF_loc),INTENT(IN)  :: UPrim                !< solution in primitive variables
-REAL,DIMENSION(PP_nVarPrim    ,nDOF_loc),INTENT(IN)  :: gradUx,gradUy,gradUz !< primitive gradients
+REAL,DIMENSION(PP_nVarLifting ,nDOF_loc),INTENT(IN)  :: gradUx,gradUy,gradUz !< primitive gradients
 REAL,DIMENSION(PP_nVar,PP_nVar,nDOF_loc),INTENT(OUT) :: fJac,gJac,hJac       !< Derivative of the physical diffusive fluxes
 #if EDDYVISCOSITY
 REAL,DIMENSION(1              ,nDOF_loc),INTENT(IN)  :: muSGS                !< eddy viscosity
@@ -204,19 +204,19 @@ DO i=1,nDOF_loc
 #endif
 
 #if PP_dim==3
-  tau(1,1) = muS * ( s43 * gradUx(2,i) - s23 * gradUy(3,i) - s23 * gradUz(4,i)) ! 4/3*mu*u_x-2/3*mu*v_y -2/3*mu*w*z
-  tau(2,2) = muS * (-s23 * gradUx(2,i) + s43 * gradUy(3,i) - s23 * gradUz(4,i)) !-2/3*mu*u_x+4/3*mu*v_y -2/3*mu*w*z
-  tau(3,3) = muS * (-s23 * gradUx(2,i) - s23 * gradUy(3,i) + s43 * gradUz(4,i)) !-2/3*mu*u_x-2/3*mu*v_y +4/3*mu*w*z
-  tau(1,2) = muS * (gradUy(2,i) + gradUx(3,i))               !mu*(u_y+v_x)
+  tau(1,1) = muS * ( s43 * gradUx(LIFT_VEL1,i) - s23 * gradUy(LIFT_VEL2,i) - s23 * gradUz(LIFT_VEL3,i)) ! 4/3*mu*u_x-2/3*mu*v_y -2/3*mu*w*z
+  tau(2,2) = muS * (-s23 * gradUx(LIFT_VEL1,i) + s43 * gradUy(LIFT_VEL2,i) - s23 * gradUz(LIFT_VEL3,i)) !-2/3*mu*u_x+4/3*mu*v_y -2/3*mu*w*z
+  tau(3,3) = muS * (-s23 * gradUx(LIFT_VEL1,i) - s23 * gradUy(LIFT_VEL2,i) + s43 * gradUz(LIFT_VEL3,i)) !-2/3*mu*u_x-2/3*mu*v_y +4/3*mu*w*z
+  tau(1,2) = muS * (gradUy(LIFT_VEL1,i) + gradUx(LIFT_VEL2,i))               !mu*(u_y+v_x)
   tau(2,1) = tau(1,2)
-  tau(1,3) = muS * (gradUz(2,i) + gradUx(4,i))               !mu*(u_z+w_x)
+  tau(1,3) = muS * (gradUz(LIFT_VEL1,i) + gradUx(LIFT_VEL3,i))               !mu*(u_z+w_x)
   tau(3,1) = tau(1,3)
-  tau(2,3) = muS * (gradUz(3,i) + gradUy(4,i))               !mu*(y_z+w_y)
+  tau(2,3) = muS * (gradUz(LIFT_VEL2,i) + gradUy(LIFT_VEL3,i))               !mu*(y_z+w_y)
   tau(3,2) = tau(2,3)
 #else
-  tau(1,1) = muS * ( s43 * gradUx(2,i) - s23 * gradUy(3,i))  ! 4/3*mu*u_x-2/3*mu*v_y -2/3*mu*w*z
-  tau(2,2) = muS * (-s23 * gradUx(2,i) + s43 * gradUy(3,i))  !-2/3*mu*u_x+4/3*mu*v_y -2/3*mu*w*z
-  tau(1,2) = muS * (gradUy(2,i) + gradUx(3,i))               !mu*(u_y+v_x)
+  tau(1,1) = muS * ( s43 * gradUx(LIFT_VEL1,i) - s23 * gradUy(LIFT_VEL2,i))  ! 4/3*mu*u_x-2/3*mu*v_y -2/3*mu*w*z
+  tau(2,2) = muS * (-s23 * gradUx(LIFT_VEL1,i) + s43 * gradUy(LIFT_VEL2,i))  !-2/3*mu*u_x+4/3*mu*v_y -2/3*mu*w*z
+  tau(1,2) = muS * (gradUy(LIFT_VEL1,i) + gradUx(LIFT_VEL2,i))               !mu*(u_y+v_x)
   tau(2,1) = tau(1,2)
 #endif
 

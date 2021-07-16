@@ -43,6 +43,7 @@ INTEGER             :: nSendVal                 !< number of values to be sent
 INTEGER             :: nRecVal                  !< number of values to be received
 INTEGER             :: DataSizeSide             !< datasize of one face, =PP_nVar*(PP_N+1)**2
 INTEGER             :: DataSizeSidePrim         !< datasize of one face for (primitive) gradients, =PP_nVarPrim*(PP_N+1)**2
+INTEGER             :: DataSizeSideGrad         !< datasize of one face for one value, =1*(PP_N+1)**2 (in case of less liftet)
 INTEGER             :: DataSizeSideSGS          !< datasize of one face for one value, =1*(PP_N+1)**2
 
 INTEGER             :: SideID_start,SideID_end

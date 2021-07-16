@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -39,6 +39,9 @@ REAL,ALLOCATABLE,TARGET :: NodeCoords(:,:,:,:,:) !< XYZ positions (equidistant,N
 REAL,ALLOCATABLE,TARGET :: Elem_xGP(:,:,:,:,:)   !< XYZ positions (first index 1:3) of the volume Gauss Point
 REAL,ALLOCATABLE        :: Face_xGP(:,:,:,:,:)   !< XYZ positions (first index 1:3) of the Face Gauss Point
 !----------------------------------------------------------------------------------------------------------------------------------
+! MORTAR INFORMATION FOR NON-CONFORMING MESHES
+LOGICAL          :: meshHasMortars             !< Marker whether non-conforming data is present (independent from trees)
+!----------------------------------------------------------------------------------------------------------------------------------
 ! MORTAR DATA FOR NON-CONFORMING MESHES ORIGINATING FROM AN OCTREE BASIS (ONLY ALLOCATED IF isMortarMesh=.TRUE.!!!)
 !----------------------------------------------------------------------------------------------------------------------------------
 LOGICAL          :: isMortarMesh               !< Marker whether non-conforming data is present (false for conforming meshes)
@@ -61,6 +64,8 @@ REAL,ALLOCATABLE :: Metrics_hTilde(:,:,:,:,:,:)  !< Metrics for transforming the
 REAL,ALLOCATABLE :: detJac_Ref(:,:,:,:,:)        !< determinant of the mesh Jacobian for each Gauss point at degree 3*NGeo
 REAL,ALLOCATABLE :: sJ(:,:,:,:,:)                !< inverse of Jacobian determinent for each Gauss Point at degree N
 REAL,ALLOCATABLE :: scaledJac(:,:,:,:)           !< scaled Jacobian determinent for each Gauss Point at degree N
+REAL,ALLOCATABLE :: sJ_master(:,:,:,:,:)         !< Jacobian on faces master
+REAL,ALLOCATABLE :: sJ_slave(:,:,:,:,:)          !< Jacobian on faces slave
 !----------------------------------------------------------------------------------------------------------------------------------
 ! surface vectors
 !----------------------------------------------------------------------------------------------------------------------------------

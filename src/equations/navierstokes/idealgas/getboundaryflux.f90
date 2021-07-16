@@ -259,7 +259,7 @@ USE MOD_EOS          ,ONLY: ConsToPrim,PrimtoCons
 USE MOD_EOS          ,ONLY: PRESSURE_RIEMANN
 USE MOD_EOS_Vars     ,ONLY: sKappaM1,Kappa,KappaM1,R
 USE MOD_ExactFunc    ,ONLY: ExactFunc
-USE MOD_Equation_Vars,ONLY: IniExactFunc,BCDataPrim,RefStatePrim,nRefState
+USE MOD_Equation_Vars,ONLY: IniExactFunc,BCDataPrim,RefStatePrim
 !----------------------------------------------------------------------------------------------------------------------------------
 ! insert modules here
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -279,7 +279,6 @@ REAL,INTENT(OUT)        :: UPrim_boundary(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)) !< re
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                 :: p,q
-REAL                    :: absdiff(1:nRefState)
 INTEGER                 :: BCType,BCState
 REAL,DIMENSION(PP_nVar) :: Cons
 REAL                    :: MaOut
@@ -400,8 +399,7 @@ CASE(3,4,9,91,23,24,25,27)
         IF (BCState.GT.0) THEN
           pb = RefStatePrim(5,BCState)
         ELSE
-          absdiff = ABS(RefStatePrim(5,:) - UPrim_boundary(5,p,q))
-          pb = RefStatePrim(5,MINLOC(absdiff,1))
+          pb = RefStatePrim(5,MINLOC(ABS(RefStatePrim(5,:) - UPrim_boundary(5,p,q)),1))
         END IF
         UPrim_boundary(1,p,q)=kappa*pb/c
         UPrim_boundary(5,p,q)=pb
@@ -467,7 +465,7 @@ CASE(3,4,9,91,23,24,25,27)
       UPrim_boundary(2,p,q)=SUM(U*nv(1:3)*Normvec( 1:3,p,q))
       UPrim_boundary(3,p,q)=SUM(U*nv(1:3)*Tangvec1(1:3,p,q))
       UPrim_boundary(4,p,q)=SUM(U*nv(1:3)*Tangvec2(1:3,p,q))
-      UPrim_boundary(6,p,q)=UPrim_boundary(5,p,q)/(R*UPrim_boundary(1,p,q))
+      UPrim_boundary(6,p,q)=Tb
     END DO; END DO !p,q
   END SELECT
 
@@ -513,6 +511,7 @@ USE MOD_Riemann      ,ONLY: Riemann
 USE MOD_EddyVisc_Vars,ONLY: muSGS_master
 #endif
 USE MOD_Testcase     ,ONLY: GetBoundaryFluxTestcase
+USE MOD_DG_Vars      ,ONLY: UPrim_Boundary
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)   :: SideID                                         !< ID of current side
@@ -520,9 +519,9 @@ REAL,INTENT(IN)      :: t                                              !< curren
 INTEGER,INTENT(IN)   :: Nloc                                           !< polynomial degree
 REAL,INTENT(IN)      :: UPrim_master( PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)) !< inner surface solution
 #if PARABOLIC
-REAL,INTENT(IN)      :: gradUx_master(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)) !< inner surface solution gradients in x-direction
-REAL,INTENT(IN)      :: gradUy_master(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)) !< inner surface solution gradients in y-direction
-REAL,INTENT(IN)      :: gradUz_master(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)) !< inner surface solution gradients in z-direction
+REAL,INTENT(IN)      :: gradUx_master(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)) !< inner surface solution gradients in x-direction
+REAL,INTENT(IN)      :: gradUy_master(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)) !< inner surface solution gradients in y-direction
+REAL,INTENT(IN)      :: gradUz_master(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)) !< inner surface solution gradients in z-direction
 #endif /*PARABOLIC*/
 REAL,INTENT(IN)      :: NormVec (3,0:Nloc,0:ZDIM(Nloc))                !< normal vector on surfaces
 REAL,INTENT(IN)      :: TangVec1(3,0:Nloc,0:ZDIM(Nloc))                !< tangential1 vector on surfaces
@@ -533,7 +532,6 @@ REAL,INTENT(OUT)     :: Flux(PP_nVar,0:Nloc,0:ZDIM(Nloc))              !< result
 ! LOCAL VARIABLES
 INTEGER                              :: p,q
 INTEGER                              :: BCType,BCState
-REAL                                 :: UPrim_boundary(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc))
 REAL                                 :: UCons_boundary(PP_nVar    ,0:Nloc,0:ZDIM(Nloc))
 REAL                                 :: UCons_master  (PP_nVar    ,0:Nloc,0:ZDIM(Nloc))
 #if PARABOLIC
@@ -543,9 +541,9 @@ REAL                                 :: BCGradMat(1:PP_dim,1:PP_dim)
 REAL                                 :: Fd_Face_loc(PP_nVar,    0:Nloc,0:ZDIM(Nloc))
 REAL                                 :: Gd_Face_loc(PP_nVar,    0:Nloc,0:ZDIM(Nloc))
 REAL                                 :: Hd_Face_loc(PP_nVar,    0:Nloc,0:ZDIM(Nloc))
-REAL                                 :: gradUx_Face_loc(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc))
-REAL                                 :: gradUy_Face_loc(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc))
-REAL                                 :: gradUz_Face_loc(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc))
+REAL                                 :: gradUx_Face_loc(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc))
+REAL                                 :: gradUy_Face_loc(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc))
+REAL                                 :: gradUz_Face_loc(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc))
 REAL                                 :: gradUx_vNormal,gradUx_vTang1,gradUy_vNormal,gradUy_vTang1
 REAL                                 :: gradUn_vNormal,gradUn_vTang1,gradUt1_vNormal,gradUt1_vTang1
 #if PP_dim == 3
@@ -682,34 +680,25 @@ ELSE
         BCGradMat(2,1) = BCGradMat(1,2)
         BCGradMat(3,1) = BCGradMat(1,3)
         BCGradMat(2,3) = BCGradMat(3,2)
-        gradUx_Face_loc(1,p,q) = BCGradMat(1,1) * gradUx_master(1,p,q) &
-                               + BCGradMat(1,2) * gradUy_master(1,p,q) &
-                               + BCGradMat(1,3) * gradUz_master(1,p,q)
-        gradUy_Face_loc(1,p,q) = BCGradMat(2,1) * gradUx_master(1,p,q) &
-                               + BCGradMat(2,2) * gradUy_master(1,p,q) &
-                               + BCGradMat(2,3) * gradUz_master(1,p,q)
-        gradUz_Face_loc(1,p,q) = BCGradMat(3,1) * gradUx_master(1,p,q) &
-                               + BCGradMat(3,2) * gradUy_master(1,p,q) &
-                               + BCGradMat(3,3) * gradUz_master(1,p,q)
-        gradUx_Face_loc(5:6,p,q) = BCGradMat(1,1) * gradUx_master(5:6,p,q) &
-                                 + BCGradMat(1,2) * gradUy_master(5:6,p,q) &
-                                 + BCGradMat(1,3) * gradUz_master(5:6,p,q)
-        gradUy_Face_loc(5:6,p,q) = BCGradMat(2,1) * gradUx_master(5:6,p,q) &
-                                 + BCGradMat(2,2) * gradUy_master(5:6,p,q) &
-                                 + BCGradMat(2,3) * gradUz_master(5:6,p,q)
-        gradUz_Face_loc(5:6,p,q) = BCGradMat(3,1) * gradUx_master(5:6,p,q) &
-                                 + BCGradMat(3,2) * gradUy_master(5:6,p,q) &
-                                 + BCGradMat(3,3) * gradUz_master(5:6,p,q)
+        gradUx_Face_loc(LIFT_TEMP,p,q) = BCGradMat(1,1) * gradUx_master(LIFT_TEMP,p,q) &
+                                       + BCGradMat(1,2) * gradUy_master(LIFT_TEMP,p,q) &
+                                       + BCGradMat(1,3) * gradUz_master(LIFT_TEMP,p,q)
+        gradUy_Face_loc(LIFT_TEMP,p,q) = BCGradMat(2,1) * gradUx_master(LIFT_TEMP,p,q) &
+                                       + BCGradMat(2,2) * gradUy_master(LIFT_TEMP,p,q) &
+                                       + BCGradMat(2,3) * gradUz_master(LIFT_TEMP,p,q)
+        gradUz_Face_loc(LIFT_TEMP,p,q) = BCGradMat(3,1) * gradUx_master(LIFT_TEMP,p,q) &
+                                       + BCGradMat(3,2) * gradUy_master(LIFT_TEMP,p,q) &
+                                       + BCGradMat(3,3) * gradUz_master(LIFT_TEMP,p,q)
         ! First: Transform to gradients of wall-aligned velocities
-        gradUx_vNormal = nv(1 )*gradUx_master(2,p,q)+nv(2 )*gradUx_master(3,p,q)+nv(3 )*gradUx_master(4,p,q)
-        gradUx_vTang1  = tv1(1)*gradUx_master(2,p,q)+tv1(2)*gradUx_master(3,p,q)+tv1(3)*gradUx_master(4,p,q)
-        gradUx_vTang2  = tv2(1)*gradUx_master(2,p,q)+tv2(2)*gradUx_master(3,p,q)+tv2(3)*gradUx_master(4,p,q)
-        gradUy_vNormal = nv(1 )*gradUy_master(2,p,q)+nv(2 )*gradUy_master(3,p,q)+nv(3 )*gradUy_master(4,p,q)
-        gradUy_vTang1  = tv1(1)*gradUy_master(2,p,q)+tv1(2)*gradUy_master(3,p,q)+tv1(3)*gradUy_master(4,p,q)
-        gradUy_vTang2  = tv2(1)*gradUy_master(2,p,q)+tv2(2)*gradUy_master(3,p,q)+tv2(3)*gradUy_master(4,p,q)
-        gradUz_vNormal = nv(1 )*gradUz_master(2,p,q)+nv(2 )*gradUz_master(3,p,q)+nv(3 )*gradUz_master(4,p,q)
-        gradUz_vTang1  = tv1(1)*gradUz_master(2,p,q)+tv1(2)*gradUz_master(3,p,q)+tv1(3)*gradUz_master(4,p,q)
-        gradUz_vTang2  = tv2(1)*gradUz_master(2,p,q)+tv2(2)*gradUz_master(3,p,q)+tv2(3)*gradUz_master(4,p,q)
+        gradUx_vNormal = nv(1 )*gradUx_master(LIFT_VEL1,p,q)+nv(2 )*gradUx_master(LIFT_VEL2,p,q)+nv(3 )*gradUx_master(LIFT_VEL3,p,q)
+        gradUx_vTang1  = tv1(1)*gradUx_master(LIFT_VEL1,p,q)+tv1(2)*gradUx_master(LIFT_VEL2,p,q)+tv1(3)*gradUx_master(LIFT_VEL3,p,q)
+        gradUx_vTang2  = tv2(1)*gradUx_master(LIFT_VEL1,p,q)+tv2(2)*gradUx_master(LIFT_VEL2,p,q)+tv2(3)*gradUx_master(LIFT_VEL3,p,q)
+        gradUy_vNormal = nv(1 )*gradUy_master(LIFT_VEL1,p,q)+nv(2 )*gradUy_master(LIFT_VEL2,p,q)+nv(3 )*gradUy_master(LIFT_VEL3,p,q)
+        gradUy_vTang1  = tv1(1)*gradUy_master(LIFT_VEL1,p,q)+tv1(2)*gradUy_master(LIFT_VEL2,p,q)+tv1(3)*gradUy_master(LIFT_VEL3,p,q)
+        gradUy_vTang2  = tv2(1)*gradUy_master(LIFT_VEL1,p,q)+tv2(2)*gradUy_master(LIFT_VEL2,p,q)+tv2(3)*gradUy_master(LIFT_VEL3,p,q)
+        gradUz_vNormal = nv(1 )*gradUz_master(LIFT_VEL1,p,q)+nv(2 )*gradUz_master(LIFT_VEL2,p,q)+nv(3 )*gradUz_master(LIFT_VEL3,p,q)
+        gradUz_vTang1  = tv1(1)*gradUz_master(LIFT_VEL1,p,q)+tv1(2)*gradUz_master(LIFT_VEL2,p,q)+tv1(3)*gradUz_master(LIFT_VEL3,p,q)
+        gradUz_vTang2  = tv2(1)*gradUz_master(LIFT_VEL1,p,q)+tv2(2)*gradUz_master(LIFT_VEL2,p,q)+tv2(3)*gradUz_master(LIFT_VEL3,p,q)
         ! Second: Transform to gradients w.r.t. wall-aligned directions, set boundary conditions
         gradUn_vNormal  = nv( 1)*gradUx_vNormal+nv( 2)*gradUy_vNormal+nv( 3)*gradUz_vNormal
         gradUn_vTang1   = 0.!nv( 1)*gradUx_vTang1 +nv( 2)*gradUy_vTang1 +nv( 3)*gradUz_vTang1
@@ -731,35 +720,30 @@ ELSE
         gradUz_vTang1   = nv(3)*gradUn_vTang1+ tv1(3)*gradUt1_vTang1+ tv2(3)*gradUt2_vTang1
         gradUz_vTang2   = nv(3)*gradUn_vTang2+ tv1(3)*gradUt1_vTang2+ tv2(3)*gradUt2_vTang2
         ! Forth: Transform back to gradients of velocities in physical x/y/z-coordinates
-        gradUx_Face_loc(2,p,q) = nv(1)*gradUx_vNormal+tv1(1)*gradUx_vTang1+tv2(1)*gradUx_vTang2
-        gradUx_Face_loc(3,p,q) = nv(2)*gradUx_vNormal+tv1(2)*gradUx_vTang1+tv2(2)*gradUx_vTang2
-        gradUx_Face_loc(4,p,q) = nv(3)*gradUx_vNormal+tv1(3)*gradUx_vTang1+tv2(3)*gradUx_vTang2
-        gradUy_Face_loc(2,p,q) = nv(1)*gradUy_vNormal+tv1(1)*gradUy_vTang1+tv2(1)*gradUy_vTang2
-        gradUy_Face_loc(3,p,q) = nv(2)*gradUy_vNormal+tv1(2)*gradUy_vTang1+tv2(2)*gradUy_vTang2
-        gradUy_Face_loc(4,p,q) = nv(3)*gradUy_vNormal+tv1(3)*gradUy_vTang1+tv2(3)*gradUy_vTang2
-        gradUz_Face_loc(2,p,q) = nv(1)*gradUz_vNormal+tv1(1)*gradUz_vTang1+tv2(1)*gradUz_vTang2
-        gradUz_Face_loc(3,p,q) = nv(2)*gradUz_vNormal+tv1(2)*gradUz_vTang1+tv2(2)*gradUz_vTang2
-        gradUz_Face_loc(4,p,q) = nv(3)*gradUz_vNormal+tv1(3)*gradUz_vTang1+tv2(3)*gradUz_vTang2
+        gradUx_Face_loc(LIFT_VEL1,p,q) = nv(1)*gradUx_vNormal+tv1(1)*gradUx_vTang1+tv2(1)*gradUx_vTang2
+        gradUx_Face_loc(LIFT_VEL2,p,q) = nv(2)*gradUx_vNormal+tv1(2)*gradUx_vTang1+tv2(2)*gradUx_vTang2
+        gradUx_Face_loc(LIFT_VEL3,p,q) = nv(3)*gradUx_vNormal+tv1(3)*gradUx_vTang1+tv2(3)*gradUx_vTang2
+        gradUy_Face_loc(LIFT_VEL1,p,q) = nv(1)*gradUy_vNormal+tv1(1)*gradUy_vTang1+tv2(1)*gradUy_vTang2
+        gradUy_Face_loc(LIFT_VEL2,p,q) = nv(2)*gradUy_vNormal+tv1(2)*gradUy_vTang1+tv2(2)*gradUy_vTang2
+        gradUy_Face_loc(LIFT_VEL3,p,q) = nv(3)*gradUy_vNormal+tv1(3)*gradUy_vTang1+tv2(3)*gradUy_vTang2
+        gradUz_Face_loc(LIFT_VEL1,p,q) = nv(1)*gradUz_vNormal+tv1(1)*gradUz_vTang1+tv2(1)*gradUz_vTang2
+        gradUz_Face_loc(LIFT_VEL2,p,q) = nv(2)*gradUz_vNormal+tv1(2)*gradUz_vTang1+tv2(2)*gradUz_vTang2
+        gradUz_Face_loc(LIFT_VEL3,p,q) = nv(3)*gradUz_vNormal+tv1(3)*gradUz_vTang1+tv2(3)*gradUz_vTang2
 #else
         BCGradMat(1,1) = 1. - nv(1)*nv(1)
         BCGradMat(2,2) = 1. - nv(2)*nv(2)
         BCGradMat(1,2) = -nv(1)*nv(2)
         BCGradMat(2,1) = BCGradMat(1,2)
-        gradUx_Face_loc(1,p,q) = BCGradMat(1,1) * gradUx_master(1,p,q) &
-                               + BCGradMat(1,2) * gradUy_master(1,p,q)
-        gradUy_Face_loc(1,p,q) = BCGradMat(2,1) * gradUx_master(1,p,q) &
-                               + BCGradMat(2,2) * gradUy_master(1,p,q)
-        gradUz_Face_loc(1,p,q) = 0.
-        gradUx_Face_loc(5:6,p,q) = BCGradMat(1,1) * gradUx_master(5:6,p,q) &
-                                 + BCGradMat(1,2) * gradUy_master(5:6,p,q)
-        gradUy_Face_loc(5:6,p,q) = BCGradMat(2,1) * gradUx_master(5:6,p,q) &
-                                 + BCGradMat(2,2) * gradUy_master(5:6,p,q)
-        gradUz_Face_loc(5:6,p,q) = 0.
+        gradUx_Face_loc(LIFT_TEMP,p,q) = BCGradMat(1,1) * gradUx_master(LIFT_TEMP,p,q) &
+                                       + BCGradMat(1,2) * gradUy_master(LIFT_TEMP,p,q)
+        gradUy_Face_loc(LIFT_TEMP,p,q) = BCGradMat(2,1) * gradUx_master(LIFT_TEMP,p,q) &
+                                       + BCGradMat(2,2) * gradUy_master(LIFT_TEMP,p,q)
+        gradUz_Face_loc(LIFT_TEMP,p,q) = 0.
         ! First: Transform to gradients of wall-aligned velocities
-        gradUx_vNormal = nv(1 )*gradUx_master(2,p,q)+nv(2 )*gradUx_master(3,p,q)
-        gradUx_vTang1  = tv1(1)*gradUx_master(2,p,q)+tv1(2)*gradUx_master(3,p,q)
-        gradUy_vNormal = nv(1 )*gradUy_master(2,p,q)+nv(2 )*gradUy_master(3,p,q)
-        gradUy_vTang1  = tv1(1)*gradUy_master(2,p,q)+tv1(2)*gradUy_master(3,p,q)
+        gradUx_vNormal = nv(1 )*gradUx_master(LIFT_VEL1,p,q)+nv(2 )*gradUx_master(LIFT_VEL2,p,q)
+        gradUx_vTang1  = tv1(1)*gradUx_master(LIFT_VEL1,p,q)+tv1(2)*gradUx_master(LIFT_VEL2,p,q)
+        gradUy_vNormal = nv(1 )*gradUy_master(LIFT_VEL1,p,q)+nv(2 )*gradUy_master(LIFT_VEL2,p,q)
+        gradUy_vTang1  = tv1(1)*gradUy_master(LIFT_VEL1,p,q)+tv1(2)*gradUy_master(LIFT_VEL2,p,q)
         ! Second: Transform to gradients w.r.t. wall-aligned directions, set boundary conditions
         gradUn_vNormal  = nv( 1)*gradUx_vNormal+nv( 2)*gradUy_vNormal
         gradUn_vTang1   = 0.!nv( 1)*gradUx_vTang1 +nv( 2)*gradUy_vTang1
@@ -771,13 +755,13 @@ ELSE
         gradUy_vNormal  = nv(2)*gradUn_vNormal+tv1(2)*gradUt1_vNormal
         gradUy_vTang1   = nv(2)*gradUn_vTang1+ tv1(2)*gradUt1_vTang1
         ! Forth: Transform back to gradients of velocities in physical x/y-coordinates
-        gradUx_Face_loc(2,p,q) = nv(1)*gradUx_vNormal+tv1(1)*gradUx_vTang1
-        gradUx_Face_loc(3,p,q) = nv(2)*gradUx_vNormal+tv1(2)*gradUx_vTang1
-        gradUy_Face_loc(2,p,q) = nv(1)*gradUy_vNormal+tv1(1)*gradUy_vTang1
-        gradUy_Face_loc(3,p,q) = nv(2)*gradUy_vNormal+tv1(2)*gradUy_vTang1
-        gradUz_Face_loc(2:4,p,q) = 0.
-        gradUx_Face_loc(4,p,q) = 0.
-        gradUy_Face_loc(4,p,q) = 0.
+        gradUx_Face_loc(LIFT_VEL1,p,q) = nv(1)*gradUx_vNormal+tv1(1)*gradUx_vTang1
+        gradUx_Face_loc(LIFT_VEL2,p,q) = nv(2)*gradUx_vNormal+tv1(2)*gradUx_vTang1
+        gradUy_Face_loc(LIFT_VEL1,p,q) = nv(1)*gradUy_vNormal+tv1(1)*gradUy_vTang1
+        gradUy_Face_loc(LIFT_VEL2,p,q) = nv(2)*gradUy_vNormal+tv1(2)*gradUy_vTang1
+        gradUz_Face_loc(LIFT_VELV,p,q) = 0.
+        gradUx_Face_loc(LIFT_VEL3,p,q) = 0.
+        gradUy_Face_loc(LIFT_VEL3,p,q) = 0.
 #endif
       END DO; END DO !p,q
 
@@ -820,6 +804,7 @@ USE MOD_PreProc
 USE MOD_Globals       ,ONLY: Abort
 USE MOD_Mesh_Vars     ,ONLY: BoundaryType,BC
 USE MOD_Testcase      ,ONLY: GetBoundaryFVgradientTestcase
+USE MOD_DG_Vars       ,ONLY: UPrim_Boundary
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -834,7 +819,6 @@ REAL,INTENT(IN)   :: Face_xGP(              3,0:PP_N,0:PP_NZ)    !< positions of
 REAL,INTENT(IN)   :: sdx_Face(                0:PP_N,0:PP_NZ,3)  !< distance between center of FV-cell and boundary
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL              :: UPrim_boundary(1:PP_nVarPrim,0:PP_N,0:PP_NZ)
 INTEGER           :: p,q
 INTEGER           :: BCType,BCState
 !==================================================================================================================================
@@ -868,8 +852,9 @@ END SUBROUTINE GetBoundaryFVgradient
 !==================================================================================================================================
 SUBROUTINE Lifting_GetBoundaryFlux(SideID,t,UPrim_master,Flux,NormVec,TangVec1,TangVec2,Face_xGP,SurfElem)
 ! MODULES
-USE MOD_PreProc
 USE MOD_Globals      ,ONLY: Abort
+USE MOD_PreProc
+USE MOD_DG_Vars      ,ONLY: UPrim_Boundary
 USE MOD_Mesh_Vars    ,ONLY: BoundaryType,BC
 USE MOD_Lifting_Vars ,ONLY: doWeakLifting
 USE MOD_Testcase     ,ONLY: Lifting_GetBoundaryFluxTestcase
@@ -879,7 +864,7 @@ IMPLICIT NONE
 INTEGER,INTENT(IN):: SideID                                   !< ID of current side
 REAL,INTENT(IN)   :: t                                        !< current time (provided by time integration scheme)
 REAL,INTENT(IN)   :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ) !< primitive solution from the inside
-REAL,INTENT(OUT)  :: Flux(        PP_nVarPrim,0:PP_N,0:PP_NZ) !< lifting boundary flux
+REAL,INTENT(OUT)  :: Flux(     PP_nVarLifting,0:PP_N,0:PP_NZ) !< lifting boundary flux
 REAL,INTENT(IN)   :: NormVec (              3,0:PP_N,0:PP_NZ) !< normal vector on surfaces
 REAL,INTENT(IN)   :: TangVec1(              3,0:PP_N,0:PP_NZ) !< tangential1 vector on surfaces
 REAL,INTENT(IN)   :: TangVec2(              3,0:PP_N,0:PP_NZ) !< tangential2 vector on surfaces
@@ -889,7 +874,6 @@ REAL,INTENT(IN)   :: SurfElem(                0:PP_N,0:PP_NZ) !< surface element
 ! LOCAL VARIABLES
 INTEGER           :: p,q
 INTEGER           :: BCType,BCState
-REAL              :: UPrim_boundary(PP_nVarPrim,0:PP_N,0:PP_NZ)
 !==================================================================================================================================
 BCType  = Boundarytype(BC(SideID),BC_TYPE)
 BCState = Boundarytype(BC(SideID),BC_STATE)
@@ -901,22 +885,31 @@ ELSE
                         NormVec,TangVec1,TangVec2,Face_xGP)
   SELECT CASE(BCType)
   CASE(2,12,121,22,23,24,25,27) ! Riemann solver based BCs
-      Flux=0.5*(UPrim_master+UPrim_boundary)
+      Flux=0.5*(UPrim_master(PRIM_LIFT,:,:)  + UPrim_boundary(PRIM_LIFT,:,:))
   CASE(3,4) ! No-slip wall BCs
     DO q=0,PP_NZ; DO p=0,PP_N
-      Flux(1  ,p,q) = UPrim_Boundary(1,p,q)
-      Flux(2:4,p,q) = 0.
-      Flux(5  ,p,q) = UPrim_Boundary(5,p,q)
-      Flux(6  ,p,q) = UPrim_Boundary(6,p,q)
+#if PP_OPTLIFT == 0
+      Flux(LIFT_DENS,p,q) = UPrim_Boundary(1,p,q)
+      Flux(LIFT_VELV,p,q) = 0.
+      Flux(LIFT_TEMP,p,q) = UPrim_Boundary(6,p,q)
+#else
+      Flux(LIFT_VELV,p,q) = 0.
+      Flux(LIFT_TEMP,p,q) = UPrim_Boundary(6,p,q)
+#endif
     END DO; END DO !p,q
   CASE(9,91)
     ! Euler/(full-)slip wall, symmetry BC
     ! Solution from the inside with velocity normal component set to 0 (done in GetBoundaryState)
     DO q=0,PP_NZ; DO p=0,PP_N
       ! Compute Flux
-      Flux(1            ,p,q) = UPrim_master(1,p,q)
-      Flux(2:4          ,p,q) = UPrim_boundary(2:4,p,q)
-      Flux(5:PP_nVarPrim,p,q) = UPrim_master(5:PP_nVarPrim,p,q)
+#if PP_OPTLIFT == 0
+      Flux(LIFT_DENS,p,q) = UPrim_master(1,p,q)
+      Flux(LIFT_VELV,p,q) = UPrim_boundary(2:4,p,q)
+      Flux(LIFT_TEMP,p,q) = UPrim_master(6,p,q)
+#else
+      Flux(LIFT_VELV,p,q) = UPrim_boundary(2:4,p,q)
+      Flux(LIFT_TEMP,p,q) = UPrim_master(6,p,q)
+#endif
     END DO; END DO !p,q
   CASE(1) !Periodic already filled!
   CASE DEFAULT ! unknown BCType
@@ -925,7 +918,7 @@ ELSE
   END SELECT
 
   !in case lifting is done in strong form
-  IF(.NOT.doWeakLifting) Flux=Flux-UPrim_master
+  IF(.NOT.doWeakLifting) Flux=Flux-UPrim_master(PRIM_LIFT,:,:)
 
   DO q=0,PP_NZ; DO p=0,PP_N
     Flux(:,p,q)=Flux(:,p,q)*SurfElem(p,q)

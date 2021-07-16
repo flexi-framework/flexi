@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -199,7 +199,6 @@ END SUBROUTINE FV_GetVandermonde
 !==================================================================================================================================
 ! MODULES
 SUBROUTINE FV_Build_X_w_BdryX(N, FV_X, FV_w, FV_BdryX)
-USE MOD_Basis
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -212,11 +211,11 @@ REAL,INTENT(OUT)   :: FV_BdryX(0:N+1) !< positions of the boundaries of the sub-
 ! LOCAL VARIABLES
 INTEGER :: i
 !==================================================================================================================================
-FV_w  = 2.0 / (PP_N+1) ! equidistant widths of FV-Subcells
+FV_w  = 2.0 / (N+1) ! equidistant widths of FV-Subcells
 
 ! calculate boundaries and nodes (midpoints) of FV-Subcells
 FV_BdryX(0) = -1.0
-DO i=1,PP_N+1
+DO i=1,N+1
   FV_BdryX(i) = FV_BdryX(i-1) + FV_w
   FV_X(i-1)   = (FV_BdryX(i-1) + FV_BdryX(i))/2.0
 END DO

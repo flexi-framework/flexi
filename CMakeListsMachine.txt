@@ -2,7 +2,7 @@
 # Detect machine environements
 # =========================================================================
 
-mark_as_advanced(FORCE CMAKE_HOSTNAME)
+MARK_AS_ADVANCED(FORCE CMAKE_HOSTNAME)
 SITE_NAME(CMAKE_HOSTNAME)
 
 # HLRS HAWK / SuperMUC
@@ -23,6 +23,10 @@ IF ("${CMAKE_HOSTNAME}" MATCHES "login")
       SET(FLEXI_INSTRUCTION "-march=znver2")
     ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
       SET(FLEXI_INSTRUCTION "-xCORE-AVX2")
+    ENDIF()
+    # VDM inverse, replace lapack with analytical solution
+    IF (CMAKE_BUILD_TYPE MATCHES "Debug")
+      ADD_DEFINITIONS(-DVDM_ANALYTICAL)
     ENDIF()
     # Use AMD Optimized Lapack/BLAS
     # SET(BLA_VENDOR "FLAME")
@@ -105,53 +109,67 @@ GET_FILENAME_COMPONENT (Fortran_COMPILER_NAME ${CMAKE_Fortran_COMPILER} NAME)
 # GNU Compiler Collection (GCC)
 IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
   # set Flags (disable lto type warnings due to false positives with MATMUL, which is a known bug)
-  SET (CMAKE_Fortran_FLAGS         "${CMAKE_Fortran_FLAGS} -fdefault-real-8 -fdefault-double-8 -fbackslash -ffree-line-length-0 -Wno-lto-type-mismatch -DGNU")
-  SET (CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS}     -O3 ${FLEXI_INSTRUCTION} -finline-functions -fstack-arrays")
-  SET (CMAKE_Fortran_FLAGS_PROFILE "${CMAKE_Fortran_FLAGS} -pg -O3 ${FLEXI_INSTRUCTION} -finline-functions -fstack-arrays")
-  SET (CMAKE_Fortran_FLAGS_DEBUG   "${CMAKE_Fortran_FLAGS} -g -O0 -ggdb3 -ffpe-trap=invalid -fbounds-check -finit-real=snan -fbacktrace  -Wall")
+  IF (NOT DEFINED C_FLAGS_INITIALIZED )
+    SET (C_FLAGS_INITIALIZED "yes" CACHE INTERNAL "Flag if compiler flags are already initialized" )
+    SET (CMAKE_Fortran_FLAGS         "${CMAKE_Fortran_FLAGS} -fdefault-real-8 -fdefault-double-8 -fbackslash -ffree-line-length-0 -Wno-lto-type-mismatch -DGNU")
+  ENDIF()
+  SET (CMAKE_Fortran_FLAGS_RELEASE   "${CMAKE_Fortran_FLAGS}     -O3 ${FLEXI_INSTRUCTION} -finline-functions -fstack-arrays")
+  SET (CMAKE_Fortran_FLAGS_PROFILE   "${CMAKE_Fortran_FLAGS} -pg -O3 ${FLEXI_INSTRUCTION} -finline-functions -fstack-arrays")
+  SET (CMAKE_Fortran_FLAGS_DEBUG     "${CMAKE_Fortran_FLAGS} -g  -Og -ggdb3 -ffpe-trap=invalid -fbounds-check -finit-real=snan -fbacktrace  -Wall")
+  SET (CMAKE_Fortran_FLAGS_SANITIZE  "${CMAKE_Fortran_FLAGS} -g  -Og -ggdb3 -ffpe-trap=invalid,zero,overflow -fbounds-check -finit-real=snan -fbacktrace  -Wall -fsanitize=address,undefined,leak -fno-omit-frame-pointer -Wc-binding-type -Wuninitialized -pedantic")
   # add flags only for compiling not linking!
   SET (FLEXI_COMPILE_FLAGS "-xf95-cpp-input -fPIC")
 
 # AMD Optimized LLVM/CLANG
 ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Flang")
   # set Flags
-  SET (CMAKE_Fortran_FLAGS         "${CMAKE_Fortran_FLAGS} -fdefault-real-8 -std=f2008 -DFLANG")
-  SET (CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS}     -O3 ${FLEXI_INSTRUCTION} -finline-functions ")
-  SET (CMAKE_Fortran_FLAGS_PROFILE "${CMAKE_Fortran_FLAGS} -pg -O3 ${FLEXI_INSTRUCTION} -finline-functions ")
-  SET (CMAKE_Fortran_FLAGS_DEBUG   "${CMAKE_Fortran_FLAGS} -g -O0 -ggdb3 -ffpe-trap=invalid -fbounds-check -finit-real=snan -fbacktrace  -Wall")
+  IF (NOT DEFINED C_FLAGS_INITIALIZED )
+    SET (C_FLAGS_INITIALIZED "yes" CACHE INTERNAL "Flag if compiler flags are already initialized" )
+    SET (CMAKE_Fortran_FLAGS         "${CMAKE_Fortran_FLAGS} -fdefault-real-8 -std=f2008 -DFLANG")
+  ENDIF()
+  SET (CMAKE_Fortran_FLAGS_RELEASE   "${CMAKE_Fortran_FLAGS}     -O3 ${FLEXI_INSTRUCTION} -finline-functions ")
+  SET (CMAKE_Fortran_FLAGS_PROFILE   "${CMAKE_Fortran_FLAGS} -pg -O3 ${FLEXI_INSTRUCTION} -finline-functions ")
+  SET (CMAKE_Fortran_FLAGS_DEBUG     "${CMAKE_Fortran_FLAGS} -g  -O0 -ggdb3 -ffpe-trap=invalid -fbounds-check -finit-real=snan -fbacktrace  -Wall")
   # add flags only for compiling not linking!
   SET (FLEXI_COMPILE_FLAGS "-xf95-cpp-input -fPIC")
 
 # Intel Compiler
 ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Intel")
   # set Flags
-  SET (CMAKE_Fortran_FLAGS         "${CMAKE_Fortran_FLAGS} -r8 -i4 -traceback -warn all -shared-intel -DINTEL")
-  SET (CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS}    -O3 ${FLEXI_INSTRUCTION} -qopt-report0 -qopt-report-phase=vec -no-prec-div")
-  SET (CMAKE_Fortran_FLAGS_PROFILE "${CMAKE_Fortran_FLAGS} -p -O3 ${FLEXI_INSTRUCTION} -qopt-report0 -qopt-report-phase=vec -no-prec-div")
-  SET (CMAKE_Fortran_FLAGS_DEBUG   "${CMAKE_Fortran_FLAGS} -g -O0 -fpe0 -traceback -check all,noarg_temp_created,noformat,nooutput_conversion,pointer,uninit -init=snan -init=arrays")
+  IF (NOT DEFINED C_FLAGS_INITIALIZED )
+    SET (C_FLAGS_INITIALIZED "yes" CACHE INTERNAL "Flag if compiler flags are already initialized" )
+    SET (CMAKE_Fortran_FLAGS         "${CMAKE_Fortran_FLAGS} -r8 -i4 -traceback -warn all -shared-intel -DINTEL")
+  ENDIF()
+  SET (CMAKE_Fortran_FLAGS_RELEASE   "${CMAKE_Fortran_FLAGS}    -O3 ${FLEXI_INSTRUCTION} -qopt-report0 -qopt-report-phase=vec -no-prec-div")
+  SET (CMAKE_Fortran_FLAGS_PROFILE   "${CMAKE_Fortran_FLAGS} -p -O3 ${FLEXI_INSTRUCTION} -qopt-report0 -qopt-report-phase=vec -no-prec-div")
+  SET (CMAKE_Fortran_FLAGS_DEBUG     "${CMAKE_Fortran_FLAGS} -g -O0 -fpe0 -traceback -check all,noarg_temp_created,noformat,nooutput_conversion,pointer,uninit -init=snan -init=arrays")
   # add flags only for compiling not linking!
   SET (FLEXI_COMPILE_FLAGS "-fpp -allow nofpp_comments -assume bscc")
 
 # Cray Compiler
 ELSEIF (CMAKE_Fortran_COMPILER_ID MATCHES "Cray")
   # set Flags
-  SET (CMAKE_Fortran_FLAGS         "${CMAKE_Fortran_FLAGS} -f free -s real64 -em -DCRAY")
-  SET (CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS} -O2 -hfp3 -p . -rm")
-  SET (CMAKE_Fortran_FLAGS_PROFILE "${CMAKE_Fortran_FLAGS} -O2 -hfp3 -h profile_generate -p . -rm")
-  SET (CMAKE_Fortran_FLAGS_DEBUG   "${CMAKE_Fortran_FLAGS} -O0 -eD -rm")
+  IF (NOT DEFINED C_FLAGS_INITIALIZED )
+    SET (C_FLAGS_INITIALIZED "yes" CACHE INTERNAL "Flag if compiler flags are already initialized" )
+    SET (CMAKE_Fortran_FLAGS         "${CMAKE_Fortran_FLAGS} -f free -s real64 -em -DCRAY")
+  ENDIF()
+  SET (CMAKE_Fortran_FLAGS_RELEASE   "${CMAKE_Fortran_FLAGS} -O2 -hfp3 -p . -rm")
+  SET (CMAKE_Fortran_FLAGS_PROFILE   "${CMAKE_Fortran_FLAGS} -O2 -hfp3 -h profile_generate -p . -rm")
+  SET (CMAKE_Fortran_FLAGS_DEBUG     "${CMAKE_Fortran_FLAGS} -O0 -eD -rm")
   # add flags only for compiling not linking!
   SET (FLEXI_COMPILE_FLAGS "-F")
-
 ELSE()
   MESSAGE(SEND_ERROR "Unknown compiler")
 ENDIF()
 
 # Save the current compiler flags to the cache every time cmake configures the project.
-mark_as_advanced(CMAKE_Fortran_FLAGS)
-mark_as_advanced(CMAKE_Fortran_FLAGS_RELEASE)
-mark_as_advanced(CMAKE_Fortran_FLAGS_PROFILE)
-mark_as_advanced(CMAKE_Fortran_FLAGS_DEBUG)
-set(CMAKE_Fortran_FLAGS            "${CMAKE_Fortran_FLAGS}"          CACHE STRING "Default compiler flags" FORCE)
-set(CMAKE_Fortran_FLAGS_RELEASE    "${CMAKE_Fortran_FLAGS_RELEASE}"  CACHE STRING "Release compiler flags" FORCE)
-set(CMAKE_Fortran_FLAGS_PROFILE    "${CMAKE_Fortran_FLAGS_PROFILE}"  CACHE STRING "Profile compiler flags" FORCE)
-set(CMAKE_Fortran_FLAGS_DEBUG      "${CMAKE_Fortran_FLAGS_DEBUG}"    CACHE STRING "Debug compiler flags"   FORCE)
+MARK_AS_ADVANCED(FORCE CMAKE_Fortran_FLAGS)
+MARK_AS_ADVANCED(FORCE CMAKE_Fortran_FLAGS_RELEASE)
+MARK_AS_ADVANCED(FORCE CMAKE_Fortran_FLAGS_PROFILE)
+MARK_AS_ADVANCED(FORCE CMAKE_Fortran_FLAGS_DEBUG)
+MARK_AS_ADVANCED(FORCE CMAKE_Fortran_FLAGS_SANITIZE)
+SET(CMAKE_Fortran_FLAGS            "${CMAKE_Fortran_FLAGS}"          CACHE STRING "Default compiler flags" FORCE)
+SET(CMAKE_Fortran_FLAGS_RELEASE    "${CMAKE_Fortran_FLAGS_RELEASE}"  CACHE STRING "Release compiler flags" FORCE)
+SET(CMAKE_Fortran_FLAGS_PROFILE    "${CMAKE_Fortran_FLAGS_PROFILE}"  CACHE STRING "Profile compiler flags" FORCE)
+SET(CMAKE_Fortran_FLAGS_DEBUG      "${CMAKE_Fortran_FLAGS_DEBUG}"    CACHE STRING "Debug compiler flags"   FORCE)
+SET(CMAKE_Fortran_FLAGS_SANITIZE   "${CMAKE_Fortran_FLAGS_SANITIZE}" CACHE STRING "Sanitize compiler flags"  FORCE)

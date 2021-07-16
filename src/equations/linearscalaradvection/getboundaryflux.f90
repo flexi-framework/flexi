@@ -12,6 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "eos.h"
 
 !==================================================================================================================================
 !> Routines to provide boundary conditions for the domain. Fills the boundary part of the fluxes list.
@@ -204,7 +205,7 @@ INTEGER,INTENT(IN)                   :: Nloc    !< polynomial degree
 REAL,INTENT(IN)                      :: UPrim_master( PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)) !< inner surface solution
 #if PARABOLIC
                                                                            !> inner surface solution gradients in x/y/z-direction
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: gradUx_master,gradUy_master,gradUz_master
+REAL,DIMENSION(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: gradUx_master,gradUy_master,gradUz_master
 #endif /*PARABOLIC*/
                                                                            !> normal and tangential vectors on surfaces
 REAL,DIMENSION(      3,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: NormVec,TangVec1,TangVec2
@@ -310,7 +311,7 @@ IMPLICIT NONE
 INTEGER,INTENT(IN):: SideID
 REAL,INTENT(IN)   :: t                                       !< current time (provided by time integration scheme)
 REAL,INTENT(IN)   :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ) !< primitive solution from the inside
-REAL,INTENT(OUT)  :: Flux(        PP_nVarPrim,0:PP_N,0:PP_NZ) !< lifting boundary flux
+REAL,INTENT(OUT)  :: Flux(     PP_nVarLifting,0:PP_N,0:PP_NZ) !< lifting boundary flux
 REAL,INTENT(IN)   :: NormVec (              3,0:PP_N,0:PP_NZ)
 REAL,INTENT(IN)   :: TangVec1(              3,0:PP_N,0:PP_NZ)
 REAL,INTENT(IN)   :: TangVec2(              3,0:PP_N,0:PP_NZ)

@@ -235,6 +235,9 @@ ELSE
   SWRITE(UNIT_StdOut,*)'REWRITING SOLUTION:'
 END IF
 
+! Call Testcase analyze routines for the initial solution
+CALL AnalyzeTestCase(t)
+
 ! TODO: Should this be done before or after Overintegration? (see above) For FV we need it after DGTimeDerivative_weakForm!
 ! Write the state at time=0, i.e. the initial condition
 CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,&
@@ -289,11 +292,16 @@ CalcTimeStart=FLEXITIME()
 DO
   dt_old = dt
   CurrentStage=1
-  IF(doCalcIndicator) CALL CalcIndicator(U,t)
+! if doAnalyze=.TRUE.: gradients were already calculated in the previous step!
+  IF(doAnalyze)THEN
+    doAnalyze = .FALSE.
+  ELSE
+    IF(doCalcIndicator) CALL CalcIndicator(U,t)
 #if FV_ENABLED
-  CALL FV_Switch(U,AllowToDG=(nCalcTimestep.LT.1))
+    CALL FV_Switch(U,AllowToDG=(nCalcTimestep.LT.1))
 #endif
-  CALL DGTimeDerivative_weakForm(t)
+    CALL DGTimeDerivative_weakForm(t)
+  END IF
   IF(nCalcTimestep.LT.1)THEN
     dt_Min=CALCTIMESTEP(errType)
     nCalcTimestep=MIN(FLOOR(ABS(LOG10(ABS(dt_MinOld/dt_Min-1.)**2.*100.+EPSILON(0.)))),nCalcTimeStepMax)
@@ -342,10 +350,16 @@ DO
   END IF
 
   ! Call DG operator to fill face data, fluxes, gradients for analyze
-  IF(doAnalyze) CALL DGTimeDerivative_weakForm(t)
+  IF (doAnalyze) THEN
+    IF(doCalcIndicator) CALL CalcIndicator(U,t)
+#if FV_ENABLED
+    CALL FV_Switch(U,AllowToDG=(nCalcTimestep.LT.1))
+#endif
+    CALL DGTimeDerivative_weakForm(t)
+  END IF
 
   ! Call your Analysis Routine for your Testcase here.
-  IF((MOD(iter,nAnalyzeTestCase).EQ.0).OR.doAnalyze) CALL AnalyzeTestCase(t)
+  IF((MOD(iter,INT(nAnalyzeTestCase,KIND=8)).EQ.0).OR.doAnalyze) CALL AnalyzeTestCase(t)
   ! evaluate recordpoints
   IF(RP_onProc) CALL RecordPoints(PP_nVar,StrVarNames,iter,t,doAnalyze)
 
@@ -399,7 +413,7 @@ DO
     iter_loc=0
     CalcTimeStart=FLEXITIME()
     tAnalyze=  MIN(tAnalyze+Analyze_dt,  tEnd)
-    doAnalyze=.FALSE.
+!    doAnalyze=.FALSE.
   END IF
 
   IF(doFinalize) EXIT
