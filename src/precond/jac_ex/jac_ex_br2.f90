@@ -100,8 +100,9 @@ DO iLocSide=2,5
   SideID=ElemToSide(E2S_SIDE_ID,ilocSide,iElem)
   flip  =ElemToSide(E2S_FLIP   ,ilocSide,iElem)
   IF (SideID.LE.nBCSides) THEN !BCSides
-    CALL Lifting_GetBoundaryFlux_FD(SideID,t,JacLiftingFlux(:,:,:,:,:,iLocSide),UPrim_master, &
-                                    SurfElem,Face_xGP,NormVec,TangVec1,TangVec2,S2V2(:,:,:,0,iLocSide)) !flip=0 for BCSide
+    CALL Lifting_GetBoundaryFlux_FD(SideID,t,JacLiftingFlux(:,:,:,:,:,iLocSide),UPrim_master(:,:,:,SideID),  &
+                                    SurfElem(:,:,:,SideID),Face_xGP(:,:,:,:,SideID),NormVec(:,:,:,:,SideID), &
+                                    TangVec1(:,:,:,:,SideID),TangVec2(:,:,:,:,SideID),S2V2(:,:,:,0,iLocSide)) !flip=0 for BCSide
   ELSE
     IF ((SideID.LT.firstInnerSide).OR.((SideID.GE.firstMortarMPISide).AND.(SideID.LE.lastMortarMPISide))) THEN
       ! This is a (big) mortar side
