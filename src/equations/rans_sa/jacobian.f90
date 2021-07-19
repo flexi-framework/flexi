@@ -185,7 +185,7 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)                                   :: nDOF_loc             !< number of degrees of freedom
 REAL,DIMENSION(PP_nVar        ,nDOF_loc),INTENT(IN)  :: U                    !< solution in conservative variables
 REAL,DIMENSION(PP_nVarPrim    ,nDOF_loc),INTENT(IN)  :: UPrim                !< solution in primitive variables
-REAL,DIMENSION(PP_nVarPrim    ,nDOF_loc),INTENT(IN)  :: gradUx,gradUy,gradUz !< primitive gradients
+REAL,DIMENSION(PP_nVarLifting ,nDOF_loc),INTENT(IN)  :: gradUx,gradUy,gradUz !< primitive gradients
 REAL,DIMENSION(PP_nVar,PP_nVar,nDOF_loc),INTENT(OUT) :: fJac,gJac,hJac       !< Derivative of the Cartesian fluxes (iVar,i,j,k)
 #if EDDYVISCOSITY
 REAL,DIMENSION(1              ,nDOF_loc),INTENT(IN)  :: muSGS                !< eddyviscosity
@@ -231,19 +231,19 @@ DO i=1,nDOF_loc
 
   ! Store the tau's without the viscosity, we need them differently in the equations to come
 #if PP_dim==3
-  tau(1,1) = ( s43 * gradUx(2,i) - s23 * gradUy(3,i) - s23 * gradUz(4,i)) ! 4/3*u_x-2/3*v_y -2/3*w*z
-  tau(2,2) = (-s23 * gradUx(2,i) + s43 * gradUy(3,i) - s23 * gradUz(4,i)) !-2/3*u_x+4/3*v_y -2/3*w*z
-  tau(3,3) = (-s23 * gradUx(2,i) - s23 * gradUy(3,i) + s43 * gradUz(4,i)) !-2/3*u_x-2/3*v_y +4/3*w*z
-  tau(1,2) = (gradUy(2,i) + gradUx(3,i))               !(u_y+v_x)
+  tau(1,1) = ( s43 * gradUx(LIFT_VEL1,i) - s23 * gradUy(LIFT_VEL2,i) - s23 * gradUz(LIFT_VEL3,i)) ! 4/3*u_x-2/3*v_y -2/3*w*z
+  tau(2,2) = (-s23 * gradUx(LIFT_VEL1,i) + s43 * gradUy(LIFT_VEL2,i) - s23 * gradUz(LIFT_VEL3,i)) !-2/3*u_x+4/3*v_y -2/3*w*z
+  tau(3,3) = (-s23 * gradUx(LIFT_VEL1,i) - s23 * gradUy(LIFT_VEL2,i) + s43 * gradUz(LIFT_VEL3,i)) !-2/3*u_x-2/3*v_y +4/3*w*z
+  tau(1,2) = (gradUy(LIFT_VEL1,i) + gradUx(LIFT_VEL2,i))               !(u_y+v_x)
   tau(2,1) = tau(1,2)
-  tau(1,3) = (gradUz(2,i) + gradUx(4,i))               !(u_z+w_x)
+  tau(1,3) = (gradUz(LIFT_VEL1,i) + gradUx(LIFT_VEL3,i))               !(u_z+w_x)
   tau(3,1) = tau(1,3)
-  tau(2,3) = (gradUz(3,i) + gradUy(4,i))               !(y_z+w_y)
+  tau(2,3) = (gradUz(LIFT_VEL2,i) + gradUy(LIFT_VEL3,i))               !(y_z+w_y)
   tau(3,2) = tau(2,3)
 #else
-  tau(1,1) = ( s43 * gradUx(2,i) - s23 * gradUy(3,i))  ! 4/3*u_x-2/3*v_y -2/3*w*z
-  tau(2,2) = (-s23 * gradUx(2,i) + s43 * gradUy(3,i))  !-2/3*u_x+4/3*v_y -2/3*w*z
-  tau(1,2) = (gradUy(2,i) + gradUx(3,i))               !(u_y+v_x)
+  tau(1,1) = ( s43 * gradUx(LIFT_VEL1,i) - s23 * gradUy(LIFT_VEL2,i))  ! 4/3*u_x-2/3*v_y -2/3*w*z
+  tau(2,2) = (-s23 * gradUx(LIFT_VEL1,i) + s43 * gradUy(LIFT_VEL2,i))  !-2/3*u_x+4/3*v_y -2/3*w*z
+  tau(1,2) = (gradUy(LIFT_VEL1,i) + gradUx(LIFT_VEL2,i))               !(u_y+v_x)
   tau(2,1) = tau(1,2)
 #endif
 
@@ -270,13 +270,13 @@ DO i=1,nDOF_loc
   ! The energy equation depends on the SA working variable through both the effective viscosity and the effective thermal
   ! conductivity
   fJac(5,6,i) = -1.*dmuTurb_dmuTilde * ((tau(1,1)*UPrim(2,i) + tau(1,2)*UPrim(3,i) + tau(1,3)*UPrim(4,i)) &
-                + cp/PrTurb * gradUx(6,i))
+                + cp/PrTurb * gradUx(LIFT_TEMP,i))
 #else
   fJac(5,6,i) = -1.*dmuTurb_dmuTilde * ((tau(1,1)*UPrim(2,i) + tau(1,2)*UPrim(3,i)) &
-                + cp/PrTurb * gradUx(6,i))
+                + cp/PrTurb * gradUx(LIFT_TEMP,i))
 #endif
   ! SA equation depends on SA working variable itself
-  fJac(6,6,i) = -1./sigma * gradUx(7,i) * (fn(chi) + chi * dfn_dchi)
+  fJac(6,6,i) = -1./sigma * gradUx(LIFT_NUSA,i) * (fn(chi) + chi * dfn_dchi)
 
   ! For RANS-SA, the momentum equations depend on the SA working variable via the effective viscosity
   gJac(2,6,i) = -tau(2,1) * dmuTurb_dmuTilde
@@ -300,13 +300,13 @@ DO i=1,nDOF_loc
   ! The energy equation depends on the SA working variable through both the effective viscosity and the effective thermal
   ! conductivity
   gJac(5,6,i) = -1.*dmuTurb_dmuTilde * ((tau(2,1)*UPrim(2,i) + tau(2,2)*UPrim(3,i) + tau(2,3)*UPrim(4,i)) &
-                + cp/PrTurb * gradUy(6,i))
+                + cp/PrTurb * gradUy(LIFT_TEMP,i))
 #else
   gJac(5,6,i) = -1.*dmuTurb_dmuTilde * ((tau(2,1)*UPrim(2,i) + tau(2,2)*UPrim(3,i)) &
-                + cp/PrTurb * gradUy(6,i))
+                + cp/PrTurb * gradUy(LIFT_TEMP,i))
 #endif
   ! SA equation depends on SA working variable itself
-  gJac(6,6,i) = -1./sigma * gradUy(7,i) * (fn(chi) + chi * dfn_dchi)
+  gJac(6,6,i) = -1./sigma * gradUy(LIFT_NUSA,i) * (fn(chi) + chi * dfn_dchi)
 
 #if PP_dim==3
   ! For RANS-SA, the momentum equations depend on the SA working variable via the effective viscosity
@@ -328,9 +328,9 @@ DO i=1,nDOF_loc
   ! The energy equation depends on the SA working variable through both the effective viscosity and the effective thermal
   ! conductivity
   hJac(5,6,i) = -1.*dmuTurb_dmuTilde * ((tau(3,1)*UPrim(2,i) + tau(3,2)*UPrim(3,i) + tau(3,3)*UPrim(4,i)) &
-                + cp/PrTurb * gradUz(6,i))
+                + cp/PrTurb * gradUz(LIFT_TEMP,i))
   ! SA equation depends on SA working variable itself
-  hJac(6,6,i) = -1./sigma * gradUz(7,i) * (fn(chi) + chi * dfn_dchi)
+  hJac(6,6,i) = -1./sigma * gradUz(LIFT_NUSA,i) * (fn(chi) + chi * dfn_dchi)
 #endif
 END DO
 END SUBROUTINE EvalDiffFluxJacobian
