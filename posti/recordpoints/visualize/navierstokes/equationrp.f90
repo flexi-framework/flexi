@@ -376,7 +376,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER              :: iPlane,i,j,jj,j_max,ndim
 REAL                 :: u_max,y_max,diffu1,diffu2,y1,y2,u1,u2,u3,rho1,rho2,rho_delta,dudy,dudy1
-REAL                 :: dy,dy2
+REAL                 :: dy,dy2,u_loc_bledge
 REAL                 :: u_delta,delta99,delta1,theta,u_r,tau_W,u_tau
 REAL,ALLOCATABLE     :: u_loc(:),y_loc(:),u_star(:)
 TYPE(tPlane),POINTER :: Plane
@@ -497,11 +497,21 @@ DO iPlane=1,nPlanes
       theta=0.
 !      j_max=jj
       DO j=2,j_max
-        dy=y_loc(j)-y_loc(j-1)
-        ! displacement thickness
-        delta1=delta1+ 0.5*dy*(1.-u_loc(j) +1.-u_loc(j-1))
-        ! momentum thickness
-        theta=theta+ 0.5*dy*(u_loc(j)*(1.-u_loc(j)) +u_loc(j-1)*(1.-u_loc(j-1)))
+        IF (j.LT.j_max) THEN
+          dy=y_loc(j)-y_loc(j-1)
+          ! displacement thickness
+          delta1=delta1+ 0.5*dy*(1.-u_loc(j) +1.-u_loc(j-1))
+          ! momentum thickness
+          theta=theta+ 0.5*dy*(u_loc(j)*(1.-u_loc(j)) +u_loc(j-1)*(1.-u_loc(j-1)))
+        ELSE !Interpolate y_loc and u_loc at at the boundarylayer edge to be consitents
+          !y_loc already scaled with delta99: y_loc at BL edge = 1
+          dy=1-y_loc(j-1)
+          u_loc_bledge=(u_loc(j)-u_loc(j-1))/(y_loc(j)-y_loc(j-1))*(1-y_loc(j-1))+u_loc(j-1)
+          ! displacement thickness
+          delta1=delta1+ 0.5*dy*(1.-u_loc_bledge +1.-u_loc(j-1))
+          ! momentum thickness
+          theta=theta+ 0.5*dy*(u_loc_bledge*(1.-u_loc_bledge) +u_loc(j-1)*(1.-u_loc(j-1)))
+        END IF !j.LT.j_max
       END DO
       ! get max. reverse flow if any
       u_r=MIN(MINVAL(u_loc(:)),0.)
