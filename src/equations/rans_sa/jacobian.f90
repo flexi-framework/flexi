@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -82,7 +82,7 @@ USE MOD_EOS_Vars          ,ONLY:Kappa,KappaM1
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------  
+!----------------------------------------------------------------------------------------------------------------------------------
 REAL,DIMENSION(PP_nVar),INTENT(IN)              :: U               !< Conservative solution
 REAL,DIMENSION(PP_nVarPrim),INTENT(IN)          :: UPrim           !< Primitive solution
 REAL,DIMENSION(PP_nVar,PP_nVar),INTENT(OUT)     :: fJac,gJac,hJac  !< Derivative of the physical fluxes (iVar,i,j,k)
@@ -180,8 +180,8 @@ USE MOD_Viscosity
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------  
-!----------------------------------------------------------------------------------------------------------------------------------  
+!----------------------------------------------------------------------------------------------------------------------------------
+!----------------------------------------------------------------------------------------------------------------------------------
 INTEGER,INTENT(IN)                                   :: nDOF_loc             !< number of degrees of freedom
 REAL,DIMENSION(PP_nVar        ,nDOF_loc),INTENT(IN)  :: U                    !< solution in conservative variables
 REAL,DIMENSION(PP_nVarPrim    ,nDOF_loc),INTENT(IN)  :: UPrim                !< solution in primitive variables
@@ -216,7 +216,7 @@ DO i=1,nDOF_loc
   chi = muTilde/muS
   muTurb = muTilde*fv1(chi)
   muEff = MAX(muS,muS+muTurb)  ! Ignore muTurb < 0
-  ! Derivatives of SA helper functions 
+  ! Derivatives of SA helper functions
   ! fv1 = chi**3/(chi**3 + cv1**3), dfv1_dmuTilde = dfv1_dchi * dchi_dmuTilde = dfv1_dchi * 1/mu
   dfv1_dmuTilde = 1./muS * ( (3.*cv1**3*chi**2) / (cv1**3+chi**3)**2 )
   IF (chi.GT.0) THEN
@@ -225,7 +225,7 @@ DO i=1,nDOF_loc
     dfn_dchi = 0.
   ELSE
     dmuTurb_dmuTilde = 0.
-    ! fvn = (cn1+chi**3) / (cn1-chi**3), 
+    ! fvn = (cn1+chi**3) / (cn1-chi**3),
     dfn_dchi = (6.*cn1*chi**2) / ((cn1 - chi**3)**2)
   END IF
 
@@ -295,7 +295,7 @@ DO i=1,nDOF_loc
   gJac(5,1,i) = gJac(5,1,i)/ U(1,i) * muEff
   gJac(5,2,i) = -tau(2,1)  / U(1,i) * muEff
   gJac(5,3,i) = -tau(2,2)  / U(1,i) * muEff
-#if PP_dim==3                               
+#if PP_dim==3
   gJac(5,4,i) = -tau(2,3)  / U(1,i) * muEff
   ! The energy equation depends on the SA working variable through both the effective viscosity and the effective thermal
   ! conductivity
@@ -387,11 +387,11 @@ DO i=1,nDOF_loc
 #if PP_dim==3
   ! derivatives of diffusive flux in x-direction
   fJacQx(1,1:7,i) = 0.
-  fJacQx(2,1:7,i) = (/ 0.,           -muS*s43,                 0.,                 0., 0.,      0., 0.           /)
-  fJacQx(3,1:7,i) = (/ 0.,                 0.,               -muS,                 0., 0.,      0., 0.           /)
-  fJacQx(4,1:7,i) = (/ 0.,                 0.,                 0.,               -muS, 0.,      0., 0.           /)
-  fJacQx(5,1:7,i) = (/ 0., -muS*s43*UPrim(2,i),   -muS*UPrim(3,i),    -muS*UPrim(4,i), 0., -lambda, 0.           /)
-  fJacQx(6,1:7,i) = (/ 0.,                 0.,                 0.,                 0., 0.,        , -1./sigma*muTmp/)
+  fJacQx(2,1:7,i) = (/ 0.,           -muS*s43,                 0.,                 0., 0.,      0., 0.             /)
+  fJacQx(3,1:7,i) = (/ 0.,                 0.,               -muS,                 0., 0.,      0., 0.             /)
+  fJacQx(4,1:7,i) = (/ 0.,                 0.,                 0.,               -muS, 0.,      0., 0.             /)
+  fJacQx(5,1:7,i) = (/ 0., -muS*s43*UPrim(2,i),   -muS*UPrim(3,i),    -muS*UPrim(4,i), 0., -lambda, 0.             /)
+  fJacQx(6,1:7,i) = (/ 0.,                 0.,                 0.,                 0., 0.,      0., -1./sigma*muTmp/)
 
   fJacQy(1,1:7,i) = 0.
   fJacQy(2,1:7,i) = (/ 0.,                 0.,            muS*s23,                 0., 0.,      0., 0.           /)
@@ -417,11 +417,11 @@ DO i=1,nDOF_loc
   gJacQx(6,1:7,i) = 0.
 
   gJacQy(1,1:7,i) = 0.
-  gJacQy(2,1:7,i) = (/ 0.,               -muS,                 0.,                 0., 0.,      0., 0.           /)
-  gJacQy(3,1:7,i) = (/ 0.,                 0.,           -muS*s43,                 0., 0.,      0., 0.           /)
-  gJacQy(4,1:7,i) = (/ 0.,                 0.,                 0.,               -muS, 0.,      0., 0.           /)
-  gJacQy(5,1:7,i) = (/ 0.,    -muS*UPrim(2,i),-muS*s43*UPrim(3,i),    -muS*UPrim(4,i), 0., -lambda, 0.           /)
-  gJacQy(6,1:7,i) = (/ 0.,                 0.,                 0.,                 0., 0.,        , -1./sigma*muTmp/)
+  gJacQy(2,1:7,i) = (/ 0.,               -muS,                 0.,                 0., 0.,      0., 0.             /)
+  gJacQy(3,1:7,i) = (/ 0.,                 0.,           -muS*s43,                 0., 0.,      0., 0.             /)
+  gJacQy(4,1:7,i) = (/ 0.,                 0.,                 0.,               -muS, 0.,      0., 0.             /)
+  gJacQy(5,1:7,i) = (/ 0.,    -muS*UPrim(2,i),-muS*s43*UPrim(3,i),    -muS*UPrim(4,i), 0., -lambda, 0.             /)
+  gJacQy(6,1:7,i) = (/ 0.,                 0.,                 0.,                 0., 0.,      0., -1./sigma*muTmp/)
 
   gJacQz(1,1:7,i) = 0.
   gJacQz(2,1:7,i) = 0.
@@ -446,11 +446,11 @@ DO i=1,nDOF_loc
   hJacQy(6,1:7,i) = 0.
 
   hJacQz(1,1:7,i) = 0.
-  hJacQz(2,1:7,i) = (/ 0.,               -muS,                 0.,                 0., 0.,      0., 0.           /)
-  hJacQz(3,1:7,i) = (/ 0.,                 0.,               -muS,                 0., 0.,      0., 0.           /)
-  hJacQz(4,1:7,i) = (/ 0.,                 0.,                 0.,           -muS*s43, 0.,      0., 0.           /)
-  hJacQz(5,1:7,i) = (/ 0.,    -muS*UPrim(2,i),    -muS*UPrim(3,i),-muS*s43*UPrim(4,i), 0., -lambda, 0.           /)
-  hJacQz(6,1:7,i) = (/ 0.,                 0.,                 0.,                 0., 0.,        , -1./sigma*muTmp/)
+  hJacQz(2,1:7,i) = (/ 0.,               -muS,                 0.,                 0., 0.,      0., 0.             /)
+  hJacQz(3,1:7,i) = (/ 0.,                 0.,               -muS,                 0., 0.,      0., 0.             /)
+  hJacQz(4,1:7,i) = (/ 0.,                 0.,                 0.,           -muS*s43, 0.,      0., 0.             /)
+  hJacQz(5,1:7,i) = (/ 0.,    -muS*UPrim(2,i),    -muS*UPrim(3,i),-muS*s43*UPrim(4,i), 0., -lambda, 0.             /)
+  hJacQz(6,1:7,i) = (/ 0.,                 0.,                 0.,                 0., 0.,      0., -1./sigma*muTmp/)
 #else
   ! derivatives of diffusive flux in x-direction
   fJacQx(1,1:7,i) = 0.
@@ -521,7 +521,7 @@ UE(SRHO) = 1./UE(DENS)
 
 dpdrho = KappaM1*0.5*SUM(UE(VELV)*UE(VELV))
 #if PP_dim == 3
-dedrho = (UE(VEL1)**2+UE(VEL2)**2+UE(VEL3)**2) - dpdrho / KappaM1
+dedrho = (UE(EXT_VEL1)**2+UE(EXT_VEL2)**2+UE(EXT_VEL3)**2) - dpdrho / KappaM1
 #else
 dedrho = (UE(VEL1)**2+UE(VEL2)**2            ) - dpdrho / KappaM1
 #endif
