@@ -69,11 +69,11 @@
 #define ENERGY_HE(UE)                  (sKappaM1*UE(PRES)+0.5*DOT_PRODUCT(UE(MOMV),UE(VELV)))
 
 #if PP_VISC == 0
-#define VISCOSITY_PRIM(U)              mu0
+#define VISCOSITY_PRIM(T)              mu0
 #elif PP_VISC == 1
-#define VISCOSITY_PRIM(U)              muSuth(U(6))
+#define VISCOSITY_PRIM(T)              muSuth(T)
 #elif PP_VISC == 2
-#define VISCOSITY_PRIM(U)              mu0*U(6)**ExpoSuth
+#define VISCOSITY_PRIM(T)              mu0*T**ExpoSuth
 #endif
 
 #if PP_VISC == 0

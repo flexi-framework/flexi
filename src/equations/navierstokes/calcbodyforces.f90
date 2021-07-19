@@ -159,7 +159,7 @@ Fv       =0.
 DO j=0,PP_NZ; DO i=0,PP_N
   ! calculate viscosity
   prim = UPrim_Face(:,i,j)
-  muS=VISCOSITY_PRIM(prim)
+  muS=VISCOSITY_PRIM(prim(TEMP))
 
   ! velocity gradients
   GradV(:,1)=gradUx_Face(LIFT_VELV,i,j)

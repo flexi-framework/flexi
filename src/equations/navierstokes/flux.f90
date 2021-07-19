@@ -183,7 +183,7 @@ REAL                :: tau_zz,tau_xz,tau_yz
 !==================================================================================================================================
 ! Viscous part
 ! ideal gas law
-muS    = VISCOSITY_PRIM(UPrim)
+muS    = VISCOSITY_PRIM(UPrim(TEMP))
 lambda = THERMAL_CONDUCTIVITY_H(muS)
 !Add turbulent sub grid scale viscosity to mu
 #if EDDYVISCOSITY

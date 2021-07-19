@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -61,7 +61,7 @@ USE MOD_DG_Vars           ,ONLY:nDOFElem
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------  
+!----------------------------------------------------------------------------------------------------------------------------------
 REAL,DIMENSION(PP_nVar,nDOFElem),INTENT(IN)              :: U               !< Conservative solution
 REAL,DIMENSION(PP_nVarPrim,nDOFElem),INTENT(IN)          :: UPrim           !< Primitive solution
 REAL,DIMENSION(PP_nVar,PP_nVar,nDOFElem),INTENT(OUT)     :: fJac,gJac,hJac  !< Derivative of the physical fluxes (iVar,i,j,k)
@@ -84,7 +84,7 @@ USE MOD_EOS_Vars          ,ONLY:Kappa,KappaM1
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------  
+!----------------------------------------------------------------------------------------------------------------------------------
 REAL,DIMENSION(PP_nVar),INTENT(IN)              :: U               !< Conservative solution
 REAL,DIMENSION(PP_nVarPrim),INTENT(IN)          :: UPrim           !< Primitive solution
 REAL,DIMENSION(PP_nVar,PP_nVar),INTENT(OUT)     :: fJac,gJac,hJac  !< Derivative of the physical fluxes (iVar,i,j,k)
@@ -173,8 +173,8 @@ USE MOD_Viscosity
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-!----------------------------------------------------------------------------------------------------------------------------------  
-!----------------------------------------------------------------------------------------------------------------------------------  
+!----------------------------------------------------------------------------------------------------------------------------------
+!----------------------------------------------------------------------------------------------------------------------------------
 INTEGER,INTENT(IN)                                   :: nDOF_loc             !< number of degrees of freedom
 REAL,DIMENSION(PP_nVar        ,nDOF_loc),INTENT(IN)  :: U                    !< solution in conservative variables
 REAL,DIMENSION(PP_nVarPrim    ,nDOF_loc),INTENT(IN)  :: UPrim                !< solution in primitive variables
@@ -198,7 +198,7 @@ gJac = 0.
 hJac = 0.
 
 DO i=1,nDOF_loc
-  muS = VISCOSITY_PRIM(UPrim(:,i))
+  muS = VISCOSITY_PRIM(UPrim(TEMP,i))
 #if EDDYVISCOSITY
   muS = muS    + muSGS(1,i)
 #endif
@@ -307,7 +307,7 @@ INTEGER             :: i
 REAL                :: muS,lambda
 !===================================================================================================================================
 DO i=1,nDOF_loc
-  muS    = VISCOSITY_PRIM(UPrim(:,i))
+  muS    = VISCOSITY_PRIM(UPrim(TEMP,i))
   lambda = THERMAL_CONDUCTIVITY_H(muS)
   !Add turbulent sub grid scale viscosity to mu
 #if EDDYVISCOSITY
@@ -364,7 +364,7 @@ DO i=1,nDOF_loc
   hJacQy(1,1:6,i) = 0.
   hJacQy(2,1:6,i) = 0.
   hJacQy(3,1:6,i) = (/ 0.,                 0.,                 0.,               -muS, 0.,      0./)
-  hJacQy(4,1:6,i) = (/ 0.,                 0.,            mu0*s23,                 0., 0.,      0./)
+  hJacQy(4,1:6,i) = (/ 0.,                 0.,            muS*s23,                 0., 0.,      0./)
   hJacQy(5,1:6,i) = (/ 0.,                 0., muS*s23*UPrim(4,i),    -muS*UPrim(3,i), 0.,      0./)
 
   hJacQz(1,1:6,i) = 0.
