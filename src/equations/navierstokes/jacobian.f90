@@ -198,7 +198,7 @@ gJac = 0.
 hJac = 0.
 
 DO i=1,nDOF_loc
-  muS = VISCOSITY_PRIM(UPrim(:,i))
+  muS = VISCOSITY_TEMPERATURE(UPrim(TEMP,i))
 #if EDDYVISCOSITY
   muS = muS    + muSGS(1,i)
 #endif
@@ -307,7 +307,7 @@ INTEGER             :: i
 REAL                :: muS,lambda
 !===================================================================================================================================
 DO i=1,nDOF_loc
-  muS    = VISCOSITY_PRIM(UPrim(:,i))
+  muS    = VISCOSITY_TEMPERATURE(UPrim(TEMP,i))
   lambda = THERMAL_CONDUCTIVITY_H(muS)
   !Add turbulent sub grid scale viscosity to mu
 #if EDDYVISCOSITY
@@ -364,7 +364,7 @@ DO i=1,nDOF_loc
   hJacQy(1,1:6,i) = 0.
   hJacQy(2,1:6,i) = 0.
   hJacQy(3,1:6,i) = (/ 0.,                 0.,                 0.,               -muS, 0.,      0./)
-  hJacQy(4,1:6,i) = (/ 0.,                 0.,            mu0*s23,                 0., 0.,      0./)
+  hJacQy(4,1:6,i) = (/ 0.,                 0.,            muS*s23,                 0., 0.,      0./)
   hJacQy(5,1:6,i) = (/ 0.,                 0., muS*s23*UPrim(4,i),    -muS*UPrim(3,i), 0.,      0./)
 
   hJacQz(1,1:6,i) = 0.
