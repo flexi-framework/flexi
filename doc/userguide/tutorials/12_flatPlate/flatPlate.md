@@ -189,9 +189,9 @@ TimeDiscMethod        =      CarpenterRK4-5 ! Specifies the type of time-discret
                                      !   * esdirk4-6  
 ~~~~~~~
 
-The list starts with explicit methods which are followed by the implicit ones starting from ``eulerimplicit``. Implicit time discretization methods allow for a higher CFL number than the explicit ones as they are typically unconditionally stable. The drawback of implicit methods is that they require the solution of large non-equation systems in each timestep.
-In FLEXI the arising non-linear equation system is solved with Newton's method. This leads to the need of a linear solver for each Newton's step. For this the iterative GMRES method is used.
-The use of iterative methods such as Newton's method and GMRES requires the definition of convergence criteria and iteration parameters. Below, they are summarized shortly:
+The list starts with explicit methods which are followed by the implicit ones starting from ``eulerimplicit``. Implicit time discretization methods allow for a higher CFL number than the explicit ones as they are typically unconditionally stable. The drawback of implicit methods is that they require the solution of large non-linear equation systems in each timestep.
+In FLEXI the arising non-linear equation system is solved with Newton's method. This necessitates a linear solver for each Newton step. For this the iterative GMRES method is used.
+Iterative methods such as Newton's method and GMRES require the definition of convergence criteria and iteration parameters. Below, they are shortly summarized:
 
 ~~~~~~~
 !===========================================
@@ -203,15 +203,15 @@ nNewtonIter           =                  50 ! Maximum amount of Newton iteration
 
 EisenstatWalker       =                   F ! Adaptive abort criterion for GMRES  
 gammaEW               =                 0.9 ! Parameter for Eisenstat Walker adaptation  
-EpsGMRES              =             0.1E-02 ! GMRES Tolerance, only used of EisenstatWalker=F  
-nRestarts             =                  10 ! Maximum number of GMRES Restarts  
+EpsGMRES              =             0.1E-02 ! GMRES Tolerance, only used if EisenstatWalker=F  
+nRestarts             =                  10 ! Maximum number of GMRES restarts  
 nKDim                 =                  30 ! Maximum number of Krylov subspaces for GMRES, after that a restart is performed  
 ~~~~~~~
 
-Note that the adaptive Newton tolerance is only available for ``esdirk2-3``,``esdirk3-4`` and ``esdirk4-6``. When this option is true, Newton's convergence criterion is smaller the smaller the timestep is, hence this option has to be used with care. An adaptive GRMES convergence criterion means that a coarser tolerance is chosen for the first Newton steps and is decreased for increasing Newton steps. If Newton's method or GMRES do not converge during calculation the abort criteria and the maximum iterations have to be adjusted in the parameter file.
+Note that the adaptive Newton tolerance is only available for ``esdirk2-3``,``esdirk3-4`` and ``esdirk4-6``. When this option is true, Newton's convergence criterion is smaller the smaller the timestep is, hence this option has to be used with care. An adaptive GRMES convergence criterion means that a coarser tolerance is chosen for the first Newton steps, which is decreased for increasing Newton steps. If Newton's method or GMRES do not converge during calculation the abort criteria and the maximum iterations have to be adjusted in the parameter file.
  
-To accelerate the both, Newton's method and GMRES, different options are included in FLEXI. We start with Newton's method:
-As the convergece property of Newton's method highly depends on the starting value, there are different options to choose. Note that the method 3 (dense output extrapolation) is only available for ``esdirk3-4`` and ``esdirk4-6``.
+To accelerate both, Newton's method and GMRES, different options are included in FLEXI. We start with Newton's method:
+There are different options to choose as the convergence property of Newton's method depends highly on the start value. Note that the method 3 (dense output extrapolation) is only available for ``esdirk3-4`` and ``esdirk4-6``.
 
 ~~~~~~~
 !===========================================
@@ -220,16 +220,16 @@ As the convergece property of Newton's method highly depends on the starting val
 PredictorType         =                   0 ! Type of predictor to be used, 0: use current U, 1: use right hand side, 2: polynomial extrapolation, 3: dense output formula of RK scheme  
 PredictorOrder        =                   0 ! Order of predictor to be used (PredictorType=2)  
 ~~~~~~~
-Typically chosing a predictor is beneficial for 'small' CFL numbers as here the extrapolation gives good results. For 'larger' timesteps choosing a predictor other than the current U can increase the required amount of iterations.
+Typically a predictor is beneficial for 'small' CFL numbers as here the extrapolation gives good results. For 'larger' timesteps, a predictor which does not use the current U can increase the required amount of iterations.
 
-The solution of the linear system arising from Newton's method requires the inversion of the large system matrix. As FLEXI is designed for large scale parallel simulations it is not desirable to build up this large matrix and multiply it with the state vector but to approximate it via a finite difference. Parameters how this finite difference is built are summarized below.
+The solution of the linear system which arises from Newton's method requires the inversion of the large system matrix. As FLEXI is designed for large scale parallel simulations, it is not desirable to build up this large matrix and multiply it with the state vector but to approximate it via a finite difference. The parameters for the finite difference are summarized below.
 
 ~~~~~~~
 !===========================================
 ! Implicit
 !===========================================
 FD_Order              =                   2 ! Order of FD approximation (1/2)  
-Eps_Method            =                   2 ! Method of determining the step size of FD approximation of A*v in GMRES, 1: sqrt(machineAccuracy)*scaleps, 2: take norm of solution into account  
+Eps_Method            =                   2 ! Method to determine the step size of the FD approximation of A*v in GMRES, 1: sqrt(machineAccuracy)*scaleps, 2: take norm of solution into account  
 scaleps               =                 1.0 ! Scaling factor for step size in FD, mainly used in Eps_Method=1  
 ~~~~~~~
 
@@ -255,6 +255,6 @@ The parameters ``PrecondType``,``DebugMatrix`` and  ``DoDisplayPrecond``only hav
 ### Runing the simulation with implicit time discretization
 
 The implicit method FLEXI uses (Newton-GMRES) is well suited for unsteady calculations as here the initial guess for Newton's method is relatively good. Starting a simulation from an unphysical homogeneous state causes very poor convergence properties of Newton's method. Hence, it is beneficial to start the current simulation with an explicit time discretization method and than do a restart after several timesteps have been calculated.
-For the current simulation we suggest to simulate until ``tend=0.02`` with an explicit scheme and than use this state for a restart with ``eulerimplicit``. The CFL number can then be massively increased, e.g. to $100$. The following plot shows how the residuals of the different conservative variables then decreases over time. The residuals are the $L_2$-Norm of the spatial DG operator at a stage of the time-discretization method. They decrease by several orders of magnitude before reaching a plateau. Here, the Newton algorithm will detect that nearly no change is happening in the iterative procedure, and no iterations will be performed any more. A stationary solution has been reached.
+For the current simulation we suggest to simulate until ``tend=0.02`` with an explicit scheme and than use this state for a restart with ``eulerimplicit``. The CFL number can then be massively increased, e.g. to $100$. The following plot shows how the residuals of the different conservative variables then decrease over time. The residuals are the $L_2$-Norm of the spatial DG operator at a stage of the time-discretization method. They decrease by several orders of magnitude before reaching a plateau. Here, the Newton algorithm will detect that nearly no change is happening in the iterative procedure, and no iterations will be performed any more. A stationary solution has been reached.
 
 ![Residuals over time for the implicit part of the flat plate computation](tutorials/12_flatPlate/residuals.png)
