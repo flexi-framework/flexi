@@ -124,8 +124,8 @@ gnu_channelRANS:
     - if [ -n "${DO_WEEKLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/channelRANS -j 6 ; fi
 
 gnu_imperator:
-  <<: *defaults_weekly
-  stage: dg_weekly
+  <<: *defaults_gnu
+  stage: reggie_weekly
   script:
     - if [ -n "${DO_WEEKLY}" ]; then  cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/preconditioner -j 6; fi
 
