@@ -207,7 +207,7 @@ gJac = 0.
 hJac = 0.
 
 DO i=1,nDOF_loc
-  muS = VISCOSITY_PRIM(UPrim(TEMP,i))
+  muS = VISCOSITY_PRIM(UPrim(:,i))
 #if EDDYVISCOSITY
   muS = muS    + muSGS(1,i)
 #endif
@@ -371,7 +371,7 @@ REAL                :: muTilde,muTurb,chi,muTmp
 ! Additional dependency from SA equation: SA fluxes are depending on the gradient of nuTilde, otherwise the Jacobian is the same as
 ! for the Navier-Stokes equation system.
 DO i=1,nDOF_loc
-  muS    = VISCOSITY_PRIM(UPrim(TEMP,i))
+  muS    = VISCOSITY_PRIM(UPrim(:,i))
   lambda = THERMAL_CONDUCTIVITY_H(muS)
   ! Add turbulent viscosity
   muTilde = UPrim(7,i)*UPrim(1,i)
@@ -441,7 +441,7 @@ DO i=1,nDOF_loc
   hJacQy(1,1:7,i) = 0.
   hJacQy(2,1:7,i) = 0.
   hJacQy(3,1:7,i) = (/ 0.,                 0.,                 0.,               -muS, 0.,      0., 0.           /)
-  hJacQy(4,1:7,i) = (/ 0.,                 0.,            muS*s23,                 0., 0.,      0., 0.           /)
+  hJacQy(4,1:7,i) = (/ 0.,                 0.,            mu0*s23,                 0., 0.,      0., 0.           /)
   hJacQy(5,1:7,i) = (/ 0.,                 0., muS*s23*UPrim(4,i),    -muS*UPrim(3,i), 0.,      0., 0.           /)
   hJacQy(6,1:7,i) = 0.
 

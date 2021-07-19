@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -62,7 +62,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
+! LOCAL VARIABLES 
 !==================================================================================================================================
 CALL prms%SetSection("Exactfunc")
 CALL prms%CreateIntFromStringOption('IniExactFunc', "Exact function to be used for computing initial solution.")
@@ -144,17 +144,17 @@ CASE(1338) ! Blasius boundary layer solution
   delta99_in      = GETREAL('delta99_in')
   x_in            = GETREALARRAY('x_in',2,'(/0.,0./)')
   BlasiusInitDone = .TRUE. ! Mark Blasius init as done so we don't read the parameters again in BC init
-#endif
+#endif 
 CASE DEFAULT
 END SELECT ! IniExactFunc
 
 #if PP_dim==2
 SELECT CASE (IniExactFunc)
 CASE(43,7) ! synthetic test cases
-  CALL CollectiveStop(__STAMP__,'The selected exact function is not available in 2D!')
+  CALL CollectiveStop(__STAMP__,'The selected exact function is not available in 2D!') 
 CASE(2,3,4,41,42) ! synthetic test cases
   IF(AdvVel(3).NE.0.) THEN
-    CALL CollectiveStop(__STAMP__,'You are computing in 2D! Please set AdvVel(3) = 0!')
+    CALL CollectiveStop(__STAMP__,'You are computing in 2D! Please set AdvVel(3) = 0!') 
   END IF
 END SELECT
 #endif
@@ -499,11 +499,11 @@ CASE(9) !lid driven cavity flow from Gao, Hesthaven, Warburton
         ! Special "regularized" driven cavity BC to prevent singularities at corners
         ! top BC assumed to be in x-direction from 0..1
   Prim = RefStatePrim(:,RefState)
-  IF (x(1).LT.0.2) THEN
+  IF (x(1).LT.0.2) THEN 
     prim(2)=1000*4.9333*x(1)**4-1.4267*1000*x(1)**3+0.1297*1000*x(1)**2-0.0033*1000*x(1)
   ELSEIF (x(1).LE.0.8) THEN
     prim(2)=1.0
-  ELSE
+  ELSE  
     prim(2)=1000*4.9333*x(1)**4-1.8307*10000*x(1)**3+2.5450*10000*x(1)**2-1.5709*10000*x(1)+10000*0.3633
   ENDIF
   CALL PrimToCons(prim,Resu)
@@ -540,7 +540,7 @@ CASE(11) ! Sod Shock tube
   ELSE
     Resu = RefStateCons(:,2)
   END IF
-CASE(12) ! Shu Osher density fluctuations shock wave interaction
+CASE(12) ! Shu Osher density fluctuations shock wave interaction 
   IF (x(1).LT.-4.0) THEN
     prim(1) = 3.857143
     prim(2) = 2.629369
@@ -589,12 +589,12 @@ CASE(1338) ! blasius
     fppp=0.
     !Blasius boundary layer
     DO i=1,nSteps
-      ! predictor
+      ! predictor 
       fbar    = f   + deta * fp
       fpbar   = fp  + deta * fpp
       fppbar  = fpp + deta * fppp
       fpppbar = -0.5*fbar*fppbar
-      ! corrector
+      ! corrector 
       f       = f   + deta2 * (fp   + fpbar)
       fp      = fp  + deta2 * (fpp  + fppbar)
       fpp     = fpp + deta2 * (fppp + fpppbar)
@@ -605,7 +605,7 @@ CASE(1338) ! blasius
   ELSE
     IF(x_eff(2).LE.0) THEN
       prim(2)=0.
-    END IF
+    END IF 
   END IF
   CALL PrimToCons(prim,resu)
 #endif
@@ -730,18 +730,18 @@ CASE(4) ! exact function
 #endif
       Ut_src(5  ,i,j,k) = tmp(4)*cosXGP + tmp(5)*sinXGP2 + tmp(6)*sinXGP
     END DO; END DO; END DO ! i,j,k
-#if FV_ENABLED
-    IF (FV_Elems(iElem).GT.0) THEN ! FV elem
+#if FV_ENABLED    
+    IF (FV_Elems(iElem).GT.0) THEN ! FV elem     
       CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,Ut_src(:,:,:,:),Ut_src2(:,:,:,:))
       DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
         Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem)+Ut_src2(:,i,j,k)/sJ(i,j,k,iElem,1)
       END DO; END DO; END DO ! i,j,k
     ELSE
-#endif
+#endif      
       DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
         Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem)+Ut_src(:,i,j,k)/sJ(i,j,k,iElem,0)
       END DO; END DO; END DO ! i,j,k
-#if FV_ENABLED
+#if FV_ENABLED    
     END IF
 #endif
   END DO ! iElem
@@ -754,7 +754,7 @@ CASE(41) ! Sinus in x
 
   DO iElem=1,nElems
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-#if PARABOLIC
+#if PARABOLIC      
       Ut_src(1,i,j,k) = (-Amplitude*a+Amplitude*omega)*cos(omega*Elem_xGP(1,i,j,k,iElem)-a*t)
 
       Ut_src(2,i,j,k) = (-Amplitude**2*omega+Amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(1,i,j,k,iElem)-2.*a*t)+&
@@ -768,19 +768,19 @@ CASE(41) ! Sinus in x
                       1./2.*(-4.*Amplitude*a*C+4.*Amplitude*omega*kappa*C-Amplitude*omega*kappa+&
                            Amplitude*omega)*cos(omega*Elem_xGP(1,i,j,k,iElem)-a*t)
 #else
-      Ut_src(1,i,j,k) = (-amplitude*a+amplitude*omega)*cos(omega*Elem_xGP(1,i,j,k,iElem)-a*t)
+      Ut_src(1,i,j,k) = (-amplitude*a+amplitude*omega)*cos(omega*Elem_xGP(1,i,j,k,iElem)-a*t) 
       Ut_src(2,i,j,k) = (-amplitude**2*omega+amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(1,i,j,k,iElem)-2.*a*t)+ &
                       (-amplitude*a+2.*amplitude*omega*kappa*C-1./2.*omega*kappa*amplitude+ &
                       3./2.*amplitude*omega-2.*amplitude*omega*C)*cos(omega*Elem_xGP(1,i,j,k,iElem)-a*t)
-
+                      
       Ut_src(3:4,i,j,k) = 0.0
       Ut_src(5,i,j,k) = (-amplitude**2*a+amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(1,i,j,k,iElem)-2.*a*t)+&
                       (-2.*amplitude*a*C+2.*amplitude*omega*kappa*C-1./2.*omega*kappa*amplitude+&
                       1./2.*amplitude*omega)*cos(omega*Elem_xGP(1,i,j,k,iElem)-a*t)
-
+                      
 #endif
     END DO; END DO; END DO ! i,j,k
-#if FV_ENABLED
+#if FV_ENABLED    
     IF (FV_Elems(iElem).GT.0) THEN ! FV elem
       CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,Ut_src(:,:,:,:),Ut_src2(:,:,:,:))
       DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
@@ -791,7 +791,7 @@ CASE(41) ! Sinus in x
       DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
         Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem)+Ut_src(:,i,j,k)/sJ(i,j,k,iElem,0)
       END DO; END DO; END DO ! i,j,k
-#if FV_ENABLED
+#if FV_ENABLED    
     END IF
 #endif
   END DO
@@ -804,7 +804,7 @@ CASE(42) ! Sinus in y
 
   DO iElem=1,nElems
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-#if PARABOLIC
+#if PARABOLIC      
       Ut_src(1,i,j,k) = (-Amplitude*a+Amplitude*omega)*cos(omega*Elem_xGP(2,i,j,k,iElem)-a*t)
       Ut_src(2,i,j,k) = 0.0
       Ut_src(3,i,j,k) = (-Amplitude**2*omega+Amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(2,i,j,k,iElem)-2.*a*t)+&
@@ -818,20 +818,20 @@ CASE(42) ! Sinus in y
                       1./2.*(-4.*Amplitude*a*C+4.*Amplitude*omega*kappa*C-Amplitude*omega*kappa+&
                            Amplitude*omega)*cos(omega*Elem_xGP(2,i,j,k,iElem)-a*t)
 #else
-      Ut_src(1,i,j,k) = (-amplitude*a+amplitude*omega)*cos(omega*Elem_xGP(2,i,j,k,iElem)-a*t)
+      Ut_src(1,i,j,k) = (-amplitude*a+amplitude*omega)*cos(omega*Elem_xGP(2,i,j,k,iElem)-a*t) 
       Ut_src(2,i,j,k) = 0.0
       Ut_src(3,i,j,k) = (-amplitude**2*omega+amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(2,i,j,k,iElem)-2.*a*t)+ &
                       (-amplitude*a+2.*amplitude*omega*kappa*C-1./2.*omega*kappa*amplitude+ &
                       3./2.*amplitude*omega-2.*amplitude*omega*C)*cos(omega*Elem_xGP(2,i,j,k,iElem)-a*t)
-
+                      
       Ut_src(4,i,j,k) = 0.0
       Ut_src(5,i,j,k) = (-amplitude**2*a+amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(2,i,j,k,iElem)-2.*a*t)+&
                       (-2.*amplitude*a*C+2.*amplitude*omega*kappa*C-1./2.*omega*kappa*amplitude+&
                       1./2.*amplitude*omega)*cos(omega*Elem_xGP(2,i,j,k,iElem)-a*t)
-
+                      
 #endif
     END DO; END DO; END DO ! i,j,k
-#if FV_ENABLED
+#if FV_ENABLED    
     IF (FV_Elems(iElem).GT.0) THEN ! FV elem
       CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,Ut_src(:,:,:,:),Ut_src2(:,:,:,:))
       DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
@@ -842,7 +842,7 @@ CASE(42) ! Sinus in y
       DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
         Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem)+Ut_src(:,i,j,k)/sJ(i,j,k,iElem,0)
       END DO; END DO; END DO ! i,j,k
-#if FV_ENABLED
+#if FV_ENABLED    
     END IF
 #endif
   END DO
@@ -857,7 +857,7 @@ CASE(43) ! Sinus in z
 
   DO iElem=1,nElems
     DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
-#if PARABOLIC
+#if PARABOLIC      
       Ut_src(1,i,j,k) = (-Amplitude*a+Amplitude*omega)*cos(omega*Elem_xGP(3,i,j,k,iElem)-a*t)
       Ut_src(2:3,i,j,k) = 0.0
       Ut_src(4,i,j,k) = (-Amplitude**2*omega+Amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(3,i,j,k,iElem)-2.*a*t)+&
@@ -870,19 +870,19 @@ CASE(43) ! Sinus in z
                       1./2.*(-4.*Amplitude*a*C+4.*Amplitude*omega*kappa*C-Amplitude*omega*kappa+&
                            Amplitude*omega)*cos(omega*Elem_xGP(3,i,j,k,iElem)-a*t)
 #else
-      Ut_src(1,i,j,k) = (-amplitude*a+amplitude*omega)*cos(omega*Elem_xGP(3,i,j,k,iElem)-a*t)
+      Ut_src(1,i,j,k) = (-amplitude*a+amplitude*omega)*cos(omega*Elem_xGP(3,i,j,k,iElem)-a*t) 
       Ut_src(2:3,i,j,k) = 0.0
       Ut_src(4,i,j,k) = (-amplitude**2*omega+amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(3,i,j,k,iElem)-2.*a*t)+ &
                       (-amplitude*a+2.*amplitude*omega*kappa*C-1./2.*omega*kappa*amplitude+ &
                       3./2.*amplitude*omega-2.*amplitude*omega*C)*cos(omega*Elem_xGP(3,i,j,k,iElem)-a*t)
-
+                      
       Ut_src(5,i,j,k) = (-amplitude**2*a+amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(3,i,j,k,iElem)-2.*a*t)+&
                       (-2.*amplitude*a*C+2.*amplitude*omega*kappa*C-1./2.*omega*kappa*amplitude+&
                       1./2.*amplitude*omega)*cos(omega*Elem_xGP(3,i,j,k,iElem)-a*t)
-
+                      
 #endif
     END DO; END DO; END DO ! i,j,k
-#if FV_ENABLED
+#if FV_ENABLED    
     IF (FV_Elems(iElem).GT.0) THEN ! FV elem
       CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,Ut_src(:,:,:,:),Ut_src2(:,:,:,:))
       DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
@@ -893,7 +893,7 @@ CASE(43) ! Sinus in z
       DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
         Ut(:,i,j,k,iElem) = Ut(:,i,j,k,iElem)+Ut_src(:,i,j,k)/sJ(i,j,k,iElem,0)
       END DO; END DO; END DO ! i,j,k
-#if FV_ENABLED
+#if FV_ENABLED    
     END IF
 #endif
   END DO
@@ -918,7 +918,7 @@ DO iElem=1,nElems
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     CALL ConsToPrim(prim,U(:,i,j,k,iElem))
     nuTilde = prim(7)
-    muS=VISCOSITY_PRIM(prim(TEMP))
+    muS=VISCOSITY_PRIM(prim)
     chi = U(6,i,j,k,iElem)/muS
     ! Calculate and modify the magnitude of the vorticity
 #if PP_dim==2

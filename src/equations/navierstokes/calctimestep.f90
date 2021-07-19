@@ -174,7 +174,7 @@ DO iElem=1,nElems
 #if PARABOLIC
     ! Viscous Eigenvalues
     prim = UE(PRIM)
-    mu=VISCOSITY_PRIM(prim(TEMP))
+    mu=VISCOSITY_PRIM(prim)
 #if EDDYVISCOSITY
     mu = mu+muSGSMax
 #endif
