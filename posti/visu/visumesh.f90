@@ -70,7 +70,7 @@ USE MOD_MPI_Vars           ,ONLY: offsetElemMPI
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER            :: iElem, iElem_DG
+INTEGER            :: iElem,iElem_DG
 REAL,ALLOCATABLE   :: Vdm_N_NVisu(:,:)
 #if FV_ENABLED
 INTEGER            :: iElem_FV
@@ -281,7 +281,7 @@ IMPLICIT NONE
 CHARACTER(LEN=255),INTENT(IN):: postifile
 CHARACTER(LEN=255),INTENT(IN):: meshfile_in
 ! LOCAL VARIABLES
-INTEGER             :: iElem,nVarIni,iVar,jVar,iVarVisu,meshModeLoc
+INTEGER             :: iElem,iVar,jVar,iVarVisu,meshModeLoc
 CHARACTER(LEN=255)  :: VarName
 !===================================================================================================================================
 #if USE_MPI
@@ -308,7 +308,6 @@ END IF
 NVisu_FV = 1
 
 ! read mesh, depending if we should visualize the Jacobian or not different mesh modes are needed (calculate metrics or not)
-nVarIni=CountOption("VarName")
 meshModeLoc = 0
 IF (nVarIni.GT.0) meshModeLoc=2
 CALL InitInterpolation(Ngeo)

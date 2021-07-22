@@ -1,10 +1,10 @@
 /*
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -73,7 +73,7 @@ visuReader::visuReader()
    // create array for state,primitive and derived quantities
    this->VarDataArraySelection = vtkDataArraySelection::New();
    this->BCDataArraySelection = vtkDataArraySelection::New();
-   // add an observer 
+   // add an observer
    this->VarDataArraySelection->AddObserver(vtkCommand::ModifiedEvent, this->SelectionObserver);
    this->BCDataArraySelection->AddObserver(vtkCommand::ModifiedEvent, this->SelectionObserver);
 
@@ -90,7 +90,7 @@ int visuReader::RequestInformation(vtkInformation *,
    // We take the first state file and use it to read the varnames
    SWRITE("RequestInformation");
 
-   // Set up MPI communicator   
+   // Set up MPI communicator
    this->Controller = NULL;
    this->SetController(vtkMultiProcessController::GetGlobalController());
    if (this->Controller == NULL) {
@@ -107,7 +107,7 @@ int visuReader::RequestInformation(vtkInformation *,
       mpiComm = *(communicator->GetMPIComm()->GetHandle());
    }
 
-   // get the info object of the output ports 
+   // get the info object of the output ports
    vtkSmartPointer<vtkInformation> outInfoVolume = outputVector->GetInformationObject(0);
    vtkSmartPointer<vtkInformation> outInfoSurface = outputVector->GetInformationObject(1);
 
@@ -120,7 +120,7 @@ int visuReader::RequestInformation(vtkInformation *,
    // and with the files loaded. This does not make any sense...
    if (Timesteps.empty()) {
       std::cout << "No Filenames given, skipping...\n";
-      return 1; 
+      return 1;
    }
 
    // if we have more then one file loaded at once (timeseries)
@@ -139,7 +139,7 @@ int visuReader::RequestInformation(vtkInformation *,
       SWRITE("Directory of state file not found: " << dir);
       return 0;
    }
-   
+
    // convert the MPI communicator to a Fortran communicator
    int fcomm;
    fcomm = MPI_Comm_c2f(mpiComm);
@@ -161,8 +161,8 @@ int visuReader::RequestInformation(vtkInformation *,
    MPI_Barrier(mpiComm);
 
    // We copy the varnames to the corresponding DataArraySelection objects.
-   // These objects are used to build the gui. 
-   // (see the functions below: 
+   // These objects are used to build the gui.
+   // (see the functions below:
    //   DisableAllVarArrays, EnableAllVarArrays, GetNumberOfVarArrays, GetVarArrayName, GetVarArrayStatus, SetVarArrayStatus,
    // )
    for (int iVar=0; iVar<varnames.len/255; iVar++) {
@@ -172,7 +172,7 @@ int visuReader::RequestInformation(vtkInformation *,
       varname = varname.substr(0,varname.find(" "));
 
       if (!this->VarDataArraySelection->ArrayExists(varname.c_str())) {
-         // function DisableArray deselects the varname in the gui and if not existend inserts the varname         
+         // function DisableArray deselects the varname in the gui and if not existend inserts the varname
          this->VarDataArraySelection->DisableArray(varname.c_str());
 
 
@@ -188,11 +188,11 @@ int visuReader::RequestInformation(vtkInformation *,
       bcname = bcname.substr(0,bcname.find(" "));
 
       if (!this->BCDataArraySelection->ArrayExists(bcname.c_str())) {
-         // function DisableArray deselects the bcname in the gui and if not existend inserts the bcname         
+         // function DisableArray deselects the bcname in the gui and if not existend inserts the bcname
          this->BCDataArraySelection->DisableArray(bcname.c_str());
       }
    }
-   return 1; 
+   return 1;
 }
 
 /*
@@ -206,11 +206,11 @@ void visuReader::AddFileName(const char* filename_in) {
    this->FileNames.push_back(filename_in);
    this->Modified();
 
-   // open the file with HDF5 and read the attribute 'time' to build a timeseries  
+   // open the file with HDF5 and read the attribute 'time' to build a timeseries
    hid_t state = H5Fopen(filename_in, H5F_ACC_RDONLY, H5P_DEFAULT);
    hid_t attr = H5Aopen(state, "Time", H5P_DEFAULT);
    SWRITE("attribute Time "<<attr);
-   double time; 
+   double time;
    if (attr > -1){
       hid_t attr_type = H5Aget_type( attr );
       H5Aread(attr, attr_type, &time);
@@ -257,7 +257,7 @@ vtkStringArray* visuReader::GetNodeTypeVisuList() {
  * This function is called, when the user presses the 'Apply' button.
  * Here we call the Posti and load all the data.
  */
-   
+
 int visuReader::RequestData(
       vtkInformation *vtkNotUsed(request),
       vtkInformationVector **vtkNotUsed(inputVector),
@@ -288,7 +288,7 @@ int visuReader::RequestData(
    int fcomm = MPI_Comm_c2f(mpiComm);
    MPI_Barrier(mpiComm); // all processes should call the Fortran code at the same time
 
-   // get all variables selected for visualization 
+   // get all variables selected for visualization
    // and check if they are the same as before (bug workaround, explanation see below)
    int nVars = VarDataArraySelection->GetNumberOfArrays();
    VarNames_selected.resize(nVars);
@@ -315,12 +315,12 @@ int visuReader::RequestData(
       return 0;
    }
 
-   // Write temporary parameter file for Posti tool 
+   // Write temporary parameter file for Posti tool
    // TODO: only root-proc
    //if (ProcessId == 0) {
 
    // get temporary file for the posti parameter files
-   setlocale(LC_ALL, "C"); 
+   setlocale(LC_ALL, "C");
    char posti_filename[] = "/tmp/f2p_posti_XXXXXX.ini";
    int posti_unit = mkstemps(posti_filename,4);
 
@@ -360,14 +360,14 @@ int visuReader::RequestData(
    MPI_Barrier(mpiComm); // all processes should call the Fortran code at the same time
 
    // call Posti tool (Fortran code)
-   // the arrays coords_*, values_* and nodeids_* are allocated in the Posti tool 
+   // the arrays coords_*, values_* and nodeids_* are allocated in the Posti tool
    // and contain the vtk data
    int strlen_prm = strlen(ParameterFileOverwrite);
    int strlen_posti = strlen(posti_filename);
-   int strlen_state = strlen(FileToLoad.c_str()); 
-   __mod_visu_cwrapper_MOD_visu_cwrapper(&fcomm, 
-         &strlen_prm, ParameterFileOverwrite, 
-         &strlen_posti, posti_filename, 
+   int strlen_state = strlen(FileToLoad.c_str());
+   __mod_visu_cwrapper_MOD_visu_cwrapper(&fcomm,
+         &strlen_prm, ParameterFileOverwrite,
+         &strlen_posti, posti_filename,
          &strlen_state, FileToLoad.c_str(),
          &coords_DG,&values_DG,&nodeids_DG,
          &coords_FV,&values_FV,&nodeids_FV,&varnames,
@@ -377,7 +377,7 @@ int visuReader::RequestData(
    MPI_Barrier(mpiComm); // wait until all processors returned from the Fortran Posti code
 
 
-   // get the MultiBlockDataset 
+   // get the MultiBlockDataset
    vtkMultiBlockDataSet* mb = vtkMultiBlockDataSet::SafeDownCast(outInfoVolume->Get(vtkDataObject::DATA_OBJECT()));
    if (!mb) {
       std::cout << "DownCast to MultiBlockDataset Failed!" << std::endl;
@@ -402,7 +402,7 @@ int visuReader::RequestData(
 
 
 
-   // get the MultiBlockDataset 
+   // get the MultiBlockDataset
    mb = vtkMultiBlockDataSet::SafeDownCast(outInfoSurface->Get(vtkDataObject::DATA_OBJECT()));
    if (!mb) {
       std::cout << "DownCast to MultiBlockDataset Failed!" << std::endl;
@@ -429,7 +429,7 @@ int visuReader::RequestData(
    __mod_visu_cwrapper_MOD_visu_dealloc_nodeids();
 
    // tell paraview to render data
-   this -> Modified(); 
+   this -> Modified();
 
    MPI_Barrier(mpiComm); // synchronize again (needed?)
    SWRITE("RequestData finished");
@@ -448,7 +448,7 @@ void visuReader::InsertData(vtkMultiBlockDataSet* mb, int blockno, struct Double
    vtkSmartPointer <vtkDoubleArray> pdata = vtkSmartPointer<vtkDoubleArray>::New();
    pdata->SetNumberOfComponents(3); // 3D
    pdata->SetNumberOfTuples(coords->len/3);
-   // copy coordinates 
+   // copy coordinates
    double* ptr = pdata->GetPointer(0);
    for (long i = 0; i < coords->len; ++i)
    {
@@ -522,12 +522,12 @@ void visuReader::InsertData(vtkMultiBlockDataSet* mb, int blockno, struct Double
       // loop over all loaded variables
       for (unsigned int iVar = 0; iVar < nVar; iVar++) {
          // For each variable, create a new array and set the number of components to 1
-         // Each variable is loaded separately. 
+         // Each variable is loaded separately.
          // One might implement vector variables (velocity), but then must set number of componenets to 2/3
          vtkSmartPointer <vtkDoubleArray> vdata = vtkSmartPointer<vtkDoubleArray>::New();
          vdata->SetNumberOfComponents(1);
          vdata->SetNumberOfTuples(sizePerVar);
-         // copy coordinates 
+         // copy coordinates
          double* ptr = vdata->GetPointer(0);
          for (long i = 0; i < sizePerVar; ++i)
          {
@@ -553,7 +553,7 @@ visuReader::~visuReader(){
 }
 
 /*
- * The following functions create the interaction between this Reader and 
+ * The following functions create the interaction between this Reader and
  * the gui, which is defined in the visu2DReader.xml
  * They return the number of available variables (state,primitive, derived)
  * and return the names of the variables, ....
