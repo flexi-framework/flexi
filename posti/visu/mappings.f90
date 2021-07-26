@@ -200,7 +200,7 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER             :: iVar,iVar2,nVarIni
+INTEGER             :: iVar,iVar2
 CHARACTER(LEN=255)  :: VarName
 CHARACTER(LEN=255)  :: BoundaryName
 CHARACTER(LEN=20)   :: format
@@ -218,8 +218,6 @@ mapAllVarsToSurfVisuVars = 0
 nVarVisu        = 0
 nVarSurfVisuAll = 0
 
-! Get number of variables to be visualized
-nVarIni=CountOption("VarName")
 ! If no variable names are given in prm file, take the variables given in the HDF5 "VarNames" attribute (if present) or all found
 ! variables (else). This default can be suppressed via the "noVisuVars" flag (used e.g. in paraview plugin prm files)
 IF ((nVarIni.EQ.0).AND..NOT.GETLOGICAL("noVisuVars")) THEN
