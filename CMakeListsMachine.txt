@@ -162,6 +162,20 @@ ELSE()
   MESSAGE(SEND_ERROR "Unknown compiler")
 ENDIF()
 
+# =========================================================================
+# Profile-Guided Optimization (PGO)
+# =========================================================================
+CMAKE_DEPENDENT_OPTION(USE_PGO "Enable performance-guided optimization (Only GNU Compiler supported)" OFF
+                               "FLEXI_PERFORMANCE" OFF)
+IF (USE_PGO)
+  IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
+    SET(CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS_RELEASE} -fprofile-use")
+    SET(CMAKE_Fortran_FLAGS_PROFILE "${CMAKE_Fortran_FLAGS_PROFILE} -fprofile-generate")
+  ELSE()
+    MESSAGE( SEND_ERROR "Profile-guided optimization (PGO) currently only supported for GNU compiler. Either set USE_GPO=OFF or use the GNU compiler." )
+  ENDIF()
+ENDIF()
+
 # Save the current compiler flags to the cache every time cmake configures the project.
 MARK_AS_ADVANCED(FORCE CMAKE_Fortran_FLAGS)
 MARK_AS_ADVANCED(FORCE CMAKE_Fortran_FLAGS_RELEASE)
