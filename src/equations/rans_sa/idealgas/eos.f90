@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -66,7 +66,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 !==================================================================================================================================
 CALL prms%SetSection("Equation of State")
 CALL prms%CreateLogicalOption('UseNonDimensionalEqn',"Set true to compute R and mu from bulk Mach Reynolds (nondimensional form.",&
@@ -78,7 +78,7 @@ CALL prms%CreateRealOption(     'R',            "Specific gas constant", '287.05
 CALL prms%CreateRealOption(     'Pr',           "Prandtl number", '0.72')
 CALL prms%CreateRealOption(     'mu0',          "Dynamic Viscosity", '0.')
 CALL prms%CreateRealOption(     'Ts',           "Sutherland's law for variable viscosity: Ts", '110.4')
-CALL prms%CreateRealOption(     'Tref',         "Sutherland's law for variable viscosity: Tref ", '280.0')
+CALL prms%CreateRealOption(     'Tref',         "Sutherland's law for variable viscosity: Tref ", '273.15')
 CALL prms%CreateRealOption(     'ExpoSuth',     "Sutherland's law for variable viscosity: Exponent", '1.5')
 
 END SUBROUTINE DefineParametersEos
@@ -153,9 +153,10 @@ ELSE
 END IF
 #elif PP_VISC == 1
 ! mu-Sutherland
-mu0     =GETREAL('mu0','1.735E-5')
+! Coefficients from White, F. M., Viscous fluid flow, McGraw-Hill, 2006
+mu0     =GETREAL('mu0','1.716E-5')
 Ts      =GETREAL('Ts','110.4')
-Tref    =1./GETREAL('Tref','280.')
+Tref    =1./GETREAL('Tref','273.15')
 ExpoSuth=GETREAL('ExpoSuth','1.5')
 Ts      =Ts*Tref
 cSuth   =Ts**ExpoSuth*(1+Ts)/(2*Ts*Ts)
@@ -222,7 +223,7 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: Nloc                                  !< local polynomial degree of solution representation
 REAL,INTENT(IN)    :: cons(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)) !< vector of conservative variables
-REAL,INTENT(OUT)   :: prim(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)) !< vector of primitive variables 
+REAL,INTENT(OUT)   :: prim(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)) !< vector of primitive variables
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER          :: p,q
@@ -243,7 +244,7 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN) :: Nloc                                                  !< local polynomial degree of solution representation
 REAL,INTENT(IN)    :: cons(PP_nVar    ,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems) !< vector of conservative variables
-REAL,INTENT(OUT)   :: prim(PP_nVarPrim,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems) !< vector of primitive variables 
+REAL,INTENT(OUT)   :: prim(PP_nVarPrim,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems) !< vector of primitive variables
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER          :: i,j,k,iElem
@@ -335,13 +336,13 @@ PPURE FUNCTION PRESSURE_RIEMANN(U_Prim)
 ! MODULES
 USE MOD_EOS_Vars      ,ONLY: Kappa,KappaM1,sKappaM1,sKappaP1
 ! IMPLICIT VARIABLE HANDLING
-IMPLICIT NONE 
+IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 REAL,INTENT(IN) :: U_Prim(PP_nVarPrim) !< vector of primitive variables
 REAL            :: PRESSURE_RIEMANN    !< pressure as the return value of the Riemann problem
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 REAL     :: kappaFac,ar,br,P_RP
 !==================================================================================================================================
 kappaFac=2.*Kappa*sKappaM1
