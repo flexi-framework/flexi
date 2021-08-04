@@ -78,7 +78,7 @@ CALL prms%CreateRealOption(     'R',            "Specific gas constant", '287.05
 CALL prms%CreateRealOption(     'Pr',           "Prandtl number", '0.72')
 CALL prms%CreateRealOption(     'mu0',          "Dynamic Viscosity", '0.')
 CALL prms%CreateRealOption(     'Ts',           "Sutherland's law for variable viscosity: Ts", '110.4')
-CALL prms%CreateRealOption(     'Tref',         "Sutherland's law for variable viscosity: Tref ", '280.0')
+CALL prms%CreateRealOption(     'Tref',         "Sutherland's law for variable viscosity: Tref ", '273.15')
 CALL prms%CreateRealOption(     'ExpoSuth',     "Sutherland's law for variable viscosity: Exponent", '1.5')
 
 END SUBROUTINE DefineParametersEos
@@ -153,9 +153,10 @@ ELSE
 END IF
 #elif PP_VISC == 1
 ! mu-Sutherland
-mu0     =GETREAL('mu0','1.735E-5')
+! Coefficients from White, F. M., Viscous fluid flow, McGraw-Hill, 2006
+mu0     =GETREAL('mu0','1.716E-5')
 Ts      =GETREAL('Ts','110.4')
-Tref    =1./GETREAL('Tref','280.')
+Tref    =1./GETREAL('Tref','273.15')
 ExpoSuth=GETREAL('ExpoSuth','1.5')
 Ts      =Ts*Tref
 cSuth   =Ts**ExpoSuth*(1+Ts)/(2*Ts*Ts)
