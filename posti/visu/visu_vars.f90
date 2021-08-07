@@ -41,6 +41,7 @@ INTEGER                           :: NVisu_FV                    !< number of ou
 INTEGER                           :: NCalc_FV                    !< number of calculation points for FV elements (NVisu_FV or PP_N)
 INTEGER                           :: NCalc                       !< Different polynomial degree to do calculations on
 INTEGER                           :: NCalc_old                   !< Different polynomial degree to do calculations on
+INTEGER                           :: nVarIni                     !< number of requested variables in parameter file
 INTEGER                           :: nVar_State                  !< number of variables in the state file
 INTEGER                           :: nVar_State_old = -1         !< saves previous nVar_State
 INTEGER                           :: nState_old = -1             !< saves previous PP_N
