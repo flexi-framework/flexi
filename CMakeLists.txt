@@ -146,7 +146,6 @@ ELSE()
   FOREACH (_var IN LISTS postiVars)
     UNSET(${_var} CACHE)
   ENDFOREACH()
-  OPTION(POSTI "Build POSTI toolset" OFF)
 ENDIF()
 
 
