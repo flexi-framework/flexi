@@ -298,28 +298,22 @@ LOGICAL,INTENT(IN),OPTIONAL          :: attrib   !< check dataset or attribute
 LOGICAL,INTENT(OUT)                  :: Exists   !< result: dataset exists
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER(HID_T)                       :: DSet_ID
-INTEGER                              :: hdferr
 LOGICAL                              :: attrib_loc
 !==================================================================================================================================
-CALL h5eset_auto_f(0, hdferr)
-! Open the dataset with default properties.
+
 IF (PRESENT(attrib)) THEN
   attrib_loc = attrib
 ELSE
   attrib_loc = .FALSE.
 END IF
+
+! Check attribute or data set. Data sets can be checked by determining the existence of the corresponding link
 IF(attrib_loc)THEN
-  CALL H5AOPEN_F(Loc_ID, TRIM(DSetName), DSet_ID, iError)
-  CALL H5ACLOSE_F(DSet_ID, iError)
-  ELSE
-    CALL H5DOPEN_F(Loc_ID, TRIM(DSetName), DSet_ID, iError)
-    CALL H5DCLOSE_F(DSet_ID, iError)
-  END IF
-Exists=.TRUE.
-IF(iError.LT.0) Exists=.FALSE.
-! auto error messages on
-CALL h5eset_auto_f(1, hdferr)
+  CALL H5AEXISTS_F(Loc_ID, TRIM(DSetName), Exists, iError)
+ELSE
+  CALL H5LEXISTS_F(Loc_ID, TRIM(DSetName), Exists, iError)
+END IF
+
 END SUBROUTINE DatasetExists
 
 
