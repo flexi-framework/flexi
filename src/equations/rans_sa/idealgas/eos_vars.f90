@@ -8,13 +8,13 @@ IMPLICIT NONE
 PUBLIC
 SAVE
 !----------------------------------------------------------------------------------------------------------------------------------
-! GLOBAL VARIABLES 
+! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 #if PARABOLIC
 REAL              :: mu0               !< dynamic viscosity \f$\mu\f$
 REAL              :: Pr                !< Prandtl number
 REAL              :: KappasPr          !< \f$\kappa\f$/Pr
-REAL              :: lambda            !< thermal conductivity 
+REAL              :: lambda            !< thermal conductivity
 #if PP_VISC==1
 REAL              :: Ts                !< Sutherland temperature
 REAL              :: cSuth             !< Parameters used in muSuth

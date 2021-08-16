@@ -314,18 +314,18 @@ SELECT CASE(DepName_low)
     UCalc(:,iVarCalc) = UCalc(:,iMom3) / UCalc(:,iDens)
   CASE("pressure")
     DO i=1,PRODUCT(nVal)
-      UE(SRHO) = 1./UCalc(i,iDens)
-      UE(MOM1) =    UCalc(i,iMom1)
-      UE(MOM2) =    UCalc(i,iMom2)
-      UE(MOM3) =    UCalc(i,iMom3)
-      UE(ENER) =    UCalc(i,iEner)
-      UE(VELV) = UE(SRHO)*UE(MOMV)
+      UE(EXT_SRHO) = 1./UCalc(i,iDens)
+      UE(EXT_MOM1) =    UCalc(i,iMom1)
+      UE(EXT_MOM2) =    UCalc(i,iMom2)
+      UE(EXT_MOM3) =    UCalc(i,iMom3)
+      UE(EXT_ENER) =    UCalc(i,iEner)
+      UE(EXT_VELV) = UE(EXT_SRHO)*UE(EXT_MOMV)
       UCalc(i,iVarCalc) = PRESSURE_HE(UE)
     END DO
   CASE("temperature")
     DO i=1,PRODUCT(nVal)
-      UE(SRHO) = 1./UCalc(i,iDens)
-      UE(PRES) =    UCalc(i,iPres)
+      UE(EXT_SRHO) = 1./UCalc(i,iDens)
+      UE(EXT_PRES) =    UCalc(i,iPres)
       UCalc(i,iVarCalc) = TEMPERATURE_HE(UE)
     END DO
   CASE("nutilde")
@@ -436,24 +436,24 @@ DO iElem_calc=1,nElems_calc
     DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
 
       PressureTDeriv(i*2:i*2+1,j*2:j*2+1,k*2:k*2+1,iElem_calc)= &
-                                       KappaM1*(Ut(5,i,j,k,iElem)-  1/U(1,i,j,k,iElem)*(  &
-                                                 U(2,i,j,k,iElem)*   Ut(2,i,j,k,iElem)  &
-                                               + U(3,i,j,k,iElem)*   Ut(3,i,j,k,iElem)  &
-                                               + U(4,i,j,k,iElem)*   Ut(4,i,j,k,iElem)) &
-                                           + 0.5/U(1,i,j,k,iElem)**2*Ut(1,i,j,k,iElem)*(  &
-                                                 U(2,i,j,k,iElem)*    U(2,i,j,k,iElem)   &
-                                               + U(3,i,j,k,iElem)*    U(3,i,j,k,iElem)   &
-                                               + U(4,i,j,k,iElem)*    U(4,i,j,k,iElem)))
+                                       KappaM1*(Ut(ENER,i,j,k,iElem)-  1/U(DENS,i,j,k,iElem)*(  &
+                                                 U(MOM1,i,j,k,iElem)*   Ut(MOM1,i,j,k,iElem)    &
+                                               + U(MOM2,i,j,k,iElem)*   Ut(MOM2,i,j,k,iElem)    &
+                                               + U(MOM3,i,j,k,iElem)*   Ut(MOM3,i,j,k,iElem))   &
+                                           + 0.5/U(DENS,i,j,k,iElem)**2*Ut(DENS,i,j,k,iElem)*(  &
+                                                 U(MOM1,i,j,k,iElem)*    U(MOM1,i,j,k,iElem)    &
+                                               + U(MOM2,i,j,k,iElem)*    U(MOM2,i,j,k,iElem)    &
+                                               + U(MOM3,i,j,k,iElem)*    U(MOM3,i,j,k,iElem)))
     END DO; END DO; END DO! i,j,k=0,PP_N
   ELSEIF (Nloc.EQ.PP_N) THEN
-    PressureTDeriv(:,:,:,iElem_calc)=KappaM1*(Ut(5,:,:,:,iElem)-1/U(1,:,:,:,iElem)*(  &
-                                               U(2,:,:,:,iElem)*Ut(2,:,:,:,iElem)  &
-                                             + U(3,:,:,:,iElem)*Ut(3,:,:,:,iElem)  &
-                                             + U(4,:,:,:,iElem)*Ut(4,:,:,:,iElem)) &
-                                         + 0.5/U(1,:,:,:,iElem)**2*Ut(1,:,:,:,iElem)*(  &
-                                               U(2,:,:,:,iElem)*U(2,:,:,:,iElem)   &
-                                             + U(3,:,:,:,iElem)*U(3,:,:,:,iElem)   &
-                                             + U(4,:,:,:,iElem)*U(4,:,:,:,iElem)))
+    PressureTDeriv(:,:,:,iElem_calc)=KappaM1*(Ut(ENER,:,:,:,iElem)-  1/U(DENS,:,:,:,iElem)*(  &
+                                               U(MOM1,:,:,:,iElem)*   Ut(MOM1,:,:,:,iElem)    &
+                                             + U(MOM2,:,:,:,iElem)*   Ut(MOM2,:,:,:,iElem)    &
+                                             + U(MOM3,:,:,:,iElem)*   Ut(MOM3,:,:,:,iElem))   &
+                                         + 0.5/U(DENS,:,:,:,iElem)**2*Ut(DENS,:,:,:,iElem)*(  &
+                                               U(MOM1,:,:,:,iElem)*    U(MOM1,:,:,:,iElem)    &
+                                             + U(MOM2,:,:,:,iElem)*    U(MOM2,:,:,:,iElem)    &
+                                             + U(MOM3,:,:,:,iElem)*    U(MOM3,:,:,:,iElem)))
   ELSE
     CALL ABORT(__STAMP__,'Not possible here')
   END IF

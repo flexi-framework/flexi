@@ -71,7 +71,7 @@ DO SideID=1,nBCSides
   iBC=BC(SideID)
   IF(.NOT.isWall(iBC)) CYCLE
   ! Calculate pressure force (Euler wall / Navier-Stokes wall)
-  CALL CalcPressureForce(Fp_loc,UPrim_master(5,:,:,SideID),SurfElem(:,:,0,SideID),NormVec(:,:,:,0,SideID))
+  CALL CalcPressureForce(Fp_loc,UPrim_master(PRES,:,:,SideID),SurfElem(:,:,0,SideID),NormVec(:,:,:,0,SideID))
   Fp(:,iBC)=Fp(:,iBC)+Fp_loc
 #if PARABOLIC
   ! Calculate viscous force (Navier-Stokes wall)

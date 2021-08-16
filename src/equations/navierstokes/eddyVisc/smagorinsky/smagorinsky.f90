@@ -12,6 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "eos.h"
 
 !===================================================================================================================================
 !> Subroutines necessary for calculating Smagorinsky Eddy-Viscosity
@@ -116,10 +117,10 @@ REAL                       ,INTENT(OUT) :: muSGS
 REAL                                    :: S_eN
 !===================================================================================================================================
 ! Already take the square root of 2 into account here
-S_eN = SQRT ( 2.*(gradUx(2)**2 + gradUy(3)**2 + gradUz(4)**2) &
-              + ( gradUy(2) + gradUx(3) )**2                    &
-              + ( gradUz(2) + gradUx(4) )**2                    &
-              + ( gradUz(3) + gradUy(4) )**2 )
+S_eN = SQRT ( 2.*(gradUx(LIFT_VEL1)**2 + gradUy(LIFT_VEL2)**2 + gradUz(LIFT_VEL3)**2) &
+              + ( gradUy(LIFT_VEL1) + gradUx(LIFT_VEL2) )**2                    &
+              + ( gradUz(LIFT_VEL1) + gradUx(LIFT_VEL3) )**2                    &
+              + ( gradUz(LIFT_VEL2) + gradUy(LIFT_VEL3) )**2 )
 ! Smagorinsky model
 ! Smago: (damp * CS * deltaS)**2 * S_eN * rho
 ! we store the first constant term in damp
@@ -146,7 +147,7 @@ INTEGER             :: i,j,k,iElem
 DO iElem = 1,nElems
   DO k = 0,PP_NZ; DO j = 0,PP_N; DO i = 0,PP_N
     CALL Smagorinsky_Point(gradUx(:,i,j,k,iElem), gradUy(:,i,j,k,iElem), gradUz(:,i,j,k,iElem), &
-                                 U(1,i,j,k,iElem),   damp(1,i,j,k,iElem),  muSGS(1,i,j,k,iElem))
+                                 U(DENS,i,j,k,iElem),   damp(1,i,j,k,iElem),  muSGS(1,i,j,k,iElem))
   END DO; END DO; END DO ! i,j,k
 END DO
 END SUBROUTINE Smagorinsky_Volume
