@@ -64,7 +64,7 @@ USE MOD_HDF5_Input     ,ONLY: DatasetExists,HSize,nDims,ReadArray
 USE MOD_StringTools    ,ONLY: STRICMP
 USE MOD_Restart        ,ONLY: CheckRestartFile
 USE MOD_Restart_Vars   ,ONLY: RestartMode
-USE MOD_Visu_Vars      ,ONLY: FileType,VarNamesHDF5,nBCNamesAll
+USE MOD_Visu_Vars      ,ONLY: FileType,VarNamesHDF5,nBCNamesAll,nVarIni
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=255),INTENT(IN)                       :: statefile
@@ -88,6 +88,7 @@ IF (ISVALIDMESHFILE(statefile)) THEN      ! MESH
   varnames_loc(1) = 'ScaledJacobian'
   varnames_loc(2) = 'ScaledJacobianElem'
   FileType='Mesh'
+
 ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! other file
   SDEALLOCATE(varnames_loc)
   CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
@@ -109,13 +110,17 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! other file
       IF (.NOT.sameVars) FileType = 'Generic'
 
     CASE('TimeAvg')
-      CALL CheckRestartFile(statefile)
-      IF (RestartMode.EQ.2 .OR. RestartMode.EQ.3) THEN
-        SDEALLOCATE(VarNamesHDF5)
-        CALL GetVarNames("VarNames_Mean",VarNamesHDF5,VarNamesExist)
-        FileType = 'State'
-      ELSE
+      IF (nVarIni.EQ.0) THEN
         FileType = 'Generic'
+      ELSE
+        CALL CheckRestartFile(statefile)
+        IF (RestartMode.EQ.2 .OR. RestartMode.EQ.3) THEN
+          SDEALLOCATE(VarNamesHDF5)
+          CALL GetVarNames("VarNames_Mean",VarNamesHDF5,VarNamesExist)
+          FileType = 'State'
+        ELSE
+          FileType = 'Generic'
+        END IF
       END IF
   END SELECT
 
@@ -232,7 +237,7 @@ USE MOD_HDF5_Input         ,ONLY: ReadAttribute,File_ID,OpenDataFile,GetDataProp
 USE MOD_Interpolation_Vars ,ONLY: NodeType
 USE MOD_Output_Vars        ,ONLY: ProjectName
 USE MOD_StringTools        ,ONLY: STRICMP,INTTOSTR
-USE MOD_ReadInTools        ,ONLY: prms,GETINT,GETLOGICAL,addStrListEntry,GETSTR,FinalizeParameters
+USE MOD_ReadInTools        ,ONLY: prms,GETINT,GETLOGICAL,addStrListEntry,GETSTR,FinalizeParameters,CountOption
 USE MOD_Posti_Mappings     ,ONLY: Build_FV_DG_distribution,Build_mapDepToCalc_mapAllVarsToVisuVars
 USE MOD_Visu_Avg2D         ,ONLY: InitAverage2D,BuildVandermonds_Avg2D
 USE MOD_StringTools        ,ONLY: INTTOSTR
@@ -259,12 +264,19 @@ CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 ! read the meshfile attribute from statefile
 CALL ReadAttribute(File_ID,'MeshFile',    1,StrScalar =MeshFile_state)
 
+! read options from posti parameter file
+CALL prms%read_options(postifile)
+NVisu             = GETINT("NVisu",INTTOSTR(PP_N))
+
+! Get number of variables to be visualized
+nVarIni = CountOption("VarName")
+
 ! get properties
 #if EQNSYSNR != 1
 ! Check if the file is a time-averaged file
 CALL DatasetExists(File_ID,'Mean',RestartMean)
 ! Read in attributes
-IF (.NOT.RestartMean) THEN
+IF (.NOT.RestartMean .OR. nVarIni.EQ.0) THEN
 #endif /* EQNSYSNR != 1 */
 #if PP_N==N
   CALL GetDataProps(nVar_State,PP_N,nElems_State,NodeType_State)
@@ -283,10 +295,6 @@ ELSE
   nVar_State = PP_nVar
 END IF
 #endif /* EQNSYSNR != 1 */
-
-! read options from posti parameter file
-CALL prms%read_options(postifile)
-NVisu             = GETINT("NVisu",INTTOSTR(PP_N))
 
 ! again read MeshFile from posti prm file (this overwrites the MeshFile read from the state file)
 Meshfile          =  GETSTR("MeshFile",MeshFile_state)

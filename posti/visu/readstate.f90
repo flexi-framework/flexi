@@ -334,35 +334,40 @@ SELECT CASE(RestartMode)
 #if EQNSYSNR!=1
   ! TimeAvg file
   CASE(2,3)
-    CALL GetDataSize(File_ID,'Mean',nDims,HSize)
+    ! PV_PLUGIN with no variable selected will pass nVar_State=1
+    IF (nVar_State.EQ.1) THEN
+      CALL ReadArray('DG_Solution',5,(/nVar_State,PP_N+1,PP_N+1,PP_NZ+1,nElems/),offsetElem,5,RealArray=U)
+    ELSE
+      CALL GetDataSize(File_ID,'Mean',nDims,HSize)
 
-    ! Sanity check, number of elements
-    IF ((HSize(2).NE.PP_N+1).OR.(HSize(3).NE.PP_N+1).OR.(HSize(5).NE.nGlobalElems)) &
-      CALL Abort(__STAMP__,"Dimensions of restart file do not match!")
+      ! Sanity check, number of elements
+      IF ((HSize(2).NE.PP_N+1).OR.(HSize(3).NE.PP_N+1).OR.(HSize(5).NE.nGlobalElems)) &
+        CALL Abort(__STAMP__,"Dimensions of restart file do not match!")
 
-    HSize_proc    = INT(HSize)
-    HSize_proc(5) = nElems
-    ! Allocate array to hold the restart data
-    ALLOCATE(U_local(nVar_Restart,0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,nElems))
-    CALL ReadArray('Mean',5,HSize_proc,OffsetElem,5,RealArray=U_local)
+      HSize_proc    = INT(HSize)
+      HSize_proc(5) = nElems
+      ! Allocate array to hold the restart data
+      ALLOCATE(U_local(nVar_Restart,0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,nElems))
+      CALL ReadArray('Mean',5,HSize_proc,OffsetElem,5,RealArray=U_local)
 
-    ! Conservative Variables, time-averaged
-    IF (RestartMode.EQ.2) THEN
-      DO iVar = 1,PP_nVar
-        U(iVar,:,:,:,:) = U_local(RestartCons(iVar),:,:,:,:)
-      END DO
-    ! Primitive Variables, time-averaged
-    ELSEIF (RestartMode.EQ.3) THEN
-      ! Variables might not be continuous
-      ALLOCATE(U_local2(1:PP_nVarPrim,0:HSize_proc(2)-1,0:HSize_proc(3)-1,0:HSize_proc(4)-1,nElems))
-      DO iVar = 1,PP_nVarPrim
-        U_local2(iVar,:,:,:,:) = U_local(RestartPrim(iVar),:,:,:,:)
-      END DO
-      CALL PrimToCons(HSize_proc(2)-1,U_local2(:,:,:,:,:),U(:,:,:,:,:))
-      DEALLOCATE(U_local2)
+      ! Conservative Variables, time-averaged
+      IF (RestartMode.EQ.2) THEN
+        DO iVar = 1,PP_nVar
+          U(iVar,:,:,:,:) = U_local(RestartCons(iVar),:,:,:,:)
+        END DO
+      ! Primitive Variables, time-averaged
+      ELSEIF (RestartMode.EQ.3) THEN
+        ! Variables might not be continuous
+        ALLOCATE(U_local2(1:PP_nVarPrim,0:HSize_proc(2)-1,0:HSize_proc(3)-1,0:HSize_proc(4)-1,nElems))
+        DO iVar = 1,PP_nVarPrim
+          U_local2(iVar,:,:,:,:) = U_local(RestartPrim(iVar),:,:,:,:)
+        END DO
+        CALL PrimToCons(HSize_proc(2)-1,U_local2(:,:,:,:,:),U(:,:,:,:,:))
+        DEALLOCATE(U_local2)
+      END IF
+
+      DEALLOCATE(U_local)
     END IF
-
-    DEALLOCATE(U_local)
 END SELECT
 #endif /* EQNSYSNR!=1 */
 
