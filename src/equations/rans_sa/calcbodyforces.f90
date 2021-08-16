@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -71,7 +71,7 @@ DO SideID=1,nBCSides
   iBC=BC(SideID)
   IF(.NOT.isWall(iBC)) CYCLE
   ! Calculate pressure force (Euler wall / Navier-Stokes wall)
-  CALL CalcPressureForce(Fp_loc,UPrim_master(5,:,:,SideID),SurfElem(:,:,0,SideID),NormVec(:,:,:,0,SideID))
+  CALL CalcPressureForce(Fp_loc,UPrim_master(PRES,:,:,SideID),SurfElem(:,:,0,SideID),NormVec(:,:,:,0,SideID))
   Fp(:,iBC)=Fp(:,iBC)+Fp_loc
 #if PARABOLIC
   ! Calculate viscous force (Navier-Stokes wall)
@@ -162,11 +162,11 @@ DO j=0,PP_NZ; DO i=0,PP_N
   muS=VISCOSITY_PRIM(prim)
 
   ! velocity gradients
-  GradV(:,1)=gradUx_Face(2:4,i,j)
-  GradV(:,2)=gradUy_Face(2:4,i,j)
+  GradV(:,1)=gradUx_Face(LIFT_VELV,i,j)
+  GradV(:,2)=gradUy_Face(LIFT_VELV,i,j)
 #if PP_dim==3
-  GradV(:,3)=gradUz_Face(2:4,i,j)
-#else 
+  GradV(:,3)=gradUz_Face(LIFT_VELV,i,j)
+#else
   GradV(:,3)=0.
 #endif
 

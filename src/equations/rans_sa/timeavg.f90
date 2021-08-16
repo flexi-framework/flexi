@@ -381,79 +381,79 @@ DO iElem=1,nElems
 
   ! Compute time averaged variables and fluctuations of these variables
   IF(CalcAvg(1)) &  !'Density'
-    tmpVars(iAvg(1),:,:,:) = Uloc(1,:,:,:)
+    tmpVars(iAvg(1),:,:,:) = Uloc(DENS,:,:,:)
 
   IF(CalcAvg(2)) &  !'MomentumX'
-    tmpVars(iAvg(2),:,:,:) = Uloc(2,:,:,:)
+    tmpVars(iAvg(2),:,:,:) = Uloc(MOM1,:,:,:)
 
   IF(CalcAvg(3)) &  !'MomentumY'
-    tmpVars(iAvg(3),:,:,:) = Uloc(3,:,:,:)
+    tmpVars(iAvg(3),:,:,:) = Uloc(MOM2,:,:,:)
 
   IF(CalcAvg(4)) &  !'MomentumZ'
-    tmpVars(iAvg(4),:,:,:) = Uloc(4,:,:,:)
+    tmpVars(iAvg(4),:,:,:) = Uloc(MOM3,:,:,:)
 
   IF(CalcAvg(5)) &  !'EnergyStagnationDensity'
-    tmpVars(iAvg(5),:,:,:) = Uloc(5,:,:,:)
+    tmpVars(iAvg(5),:,:,:) = Uloc(ENER,:,:,:)
 
   IF(CalcAvg(6)) &  !'VelocityX'
-    tmpVars(iAvg(6),:,:,:)=prim(2,:,:,:)
+    tmpVars(iAvg(6),:,:,:)=prim(VEL1,:,:,:)
 
   IF(CalcAvg(7)) &  !'VelocityY'
-    tmpVars(iAvg(7),:,:,:)=prim(3,:,:,:)
+    tmpVars(iAvg(7),:,:,:)=prim(VEL2,:,:,:)
 
   IF(CalcAvg(8)) &  !'VelocityZ'
-    tmpVars(iAvg(8),:,:,:)=prim(4,:,:,:)
+    tmpVars(iAvg(8),:,:,:)=prim(VEL3,:,:,:)
 
   IF(CalcAvg(9))THEN  !'VelocityMagnitude'
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      tmpVars(iAvg(9),i,j,k)=SQRT(SUM(prim(2:4,i,j,k)**2))
+      tmpVars(iAvg(9),i,j,k)=SQRT(SUM(prim(VELV,i,j,k)**2))
     END DO; END DO; END DO
   END IF
 
   IF(CalcAvg(10)) & !'Pressure'
-    tmpVars(iAvg(10),:,:,:)=prim(5,:,:,:)
+    tmpVars(iAvg(10),:,:,:)=prim(PRES,:,:,:)
 
   IF(CalcAvg(11))THEN !'VelocitySound'
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      UE(CONS)=Uloc(:,i,j,k)
-      UE(PRIM)=prim(:,i,j,k)
-      UE(SRHO)=1./prim(1,i,j,k)
+      UE(EXT_CONS)=Uloc(:,i,j,k)
+      UE(EXT_PRIM)=prim(:,i,j,k)
+      UE(EXT_SRHO)=1./prim(DENS,i,j,k)
       tmpVars(iAvg(11),i,j,k)=SPEEDOFSOUND_HE(UE)
     END DO; END DO; END DO
   END IF
 
   IF(CalcAvg(12))THEN !'Mach'
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      UE(CONS)=Uloc(:,i,j,k)
-      UE(PRIM)=prim(:,i,j,k)
-      UE(SRHO)=1./prim(1,i,j,k)
-      tmpVars(iAvg(12),i,j,k)=SQRT(SUM(prim(2:4,i,j,k)**2))/SPEEDOFSOUND_HE(UE)
+      UE(EXT_CONS)=Uloc(:,i,j,k)
+      UE(EXT_PRIM)=prim(:,i,j,k)
+      UE(EXT_SRHO)=1./prim(DENS,i,j,k)
+      tmpVars(iAvg(12),i,j,k)=SQRT(SUM(prim(VELV,i,j,k)**2))/SPEEDOFSOUND_HE(UE)
     END DO; END DO; END DO
   END IF
 
   IF(CalcAvg(13))THEN !'Temperature'
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      tmpVars(iAvg(13),i,j,k)=prim(6,i,j,k)
+      tmpVars(iAvg(13),i,j,k)=prim(TEMP,i,j,k)
     END DO; END DO; END DO
   END IF
 
   IF(CalcAvg(14))THEN !'TotalTemperature'
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      UE(CONS)=Uloc(:,i,j,k)
-      UE(PRIM)=prim(:,i,j,k)
-      UE(SRHO)=1./prim(1,i,j,k)
+      UE(EXT_CONS)=Uloc(:,i,j,k)
+      UE(EXT_PRIM)=prim(:,i,j,k)
+      UE(EXT_SRHO)=1./prim(DENS,i,j,k)
       Mach=SQRT(SUM(prim(2:4,i,j,k)**2))/SPEEDOFSOUND_HE(UE)
-      tmpVars(iAvg(14),i,j,k)=TOTAL_TEMPERATURE_H(UE(TEMP),Mach)
+      tmpVars(iAvg(14),i,j,k)=TOTAL_TEMPERATURE_H(UE(EXT_TEMP),Mach)
     END DO; END DO; END DO
   END IF
 
   IF(CalcAvg(15))THEN !'TotalPressure
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      UE(CONS)=Uloc(:,i,j,k)
-      UE(PRIM)=prim(:,i,j,k)
-      UE(SRHO)=1./prim(1,i,j,k)
-      Mach=SQRT(SUM(prim(2:4,i,j,k)**2))/SPEEDOFSOUND_HE(UE)
-      tmpVars(iAvg(15),i,j,k)=TOTAL_PRESSURE_H(UE(PRES),Mach)
+      UE(EXT_CONS)=Uloc(:,i,j,k)
+      UE(EXT_PRIM)=prim(:,i,j,k)
+      UE(EXT_SRHO)=1./prim(DENS,i,j,k)
+      Mach=SQRT(SUM(prim(VELV,i,j,k)**2))/SPEEDOFSOUND_HE(UE)
+      tmpVars(iAvg(15),i,j,k)=TOTAL_PRESSURE_H(UE(EXT_PRES),Mach)
     END DO; END DO; END DO
   END IF
 
@@ -469,9 +469,9 @@ DO iElem=1,nElems
   STOP 'WriteTimeAverage for dissipation via vel gradients (DR_u / DR_S) not implemented yet for FV!'
 #endif
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      GradVel(:,1)=GradUx(2:4,i,j,k,iElem)
-      GradVel(:,2)=GradUy(2:4,i,j,k,iElem)
-      GradVel(:,3)=GradUz(2:4,i,j,k,iElem)
+      GradVel(:,1)=GradUx(LIFT_VELV,i,j,k,iElem)
+      GradVel(:,2)=GradUy(LIFT_VELV,i,j,k,iElem)
+      GradVel(:,3)=GradUz(LIFT_VELV,i,j,k,iElem)
       IF(CalcFluc(17))THEN
         Shear=0.5*(Gradvel+TRANSPOSE(GradVel))
         DO p=1,3; DO q=1,3

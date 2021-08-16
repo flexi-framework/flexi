@@ -241,16 +241,16 @@ IF(nRefState .GT. 0)THEN
     RefStatePrimTmp = GETREALARRAY('RefState',6)
     RefStatePrim(1:5,i)  = RefStatePrimTmp(1:5)
 #if PP_dim==2
-    IF(RefStatePrim(4,i).NE.0.) THEN
+    IF(RefStatePrim(VEL3,i).NE.0.) THEN
       SWRITE(UNIT_StdOut,'(A)')' You are computing in 2D! RefStatePrim(4) will be set to zero!'
-      RefStatePrim(4,i)=0.
+      RefStatePrim(VEL3,i)=0.
     END IF
 #endif
     ! TODO: ATTENTION only sRho and Pressure of UE filled!!!
-    UE(SRHO) = 1./RefStatePrim(1,i)
-    UE(PRES) = RefStatePrim(5,i)
-    RefStatePrim(6,i) = TEMPERATURE_HE(UE)
-    RefStatePrim(7,i) = RefStatePrimTmp(6)
+    UE(EXT_SRHO) = 1./RefStatePrim(DENS,i)
+    UE(EXT_PRES) = RefStatePrim(PRES,i)
+    RefStatePrim(TEMP,i) = TEMPERATURE_HE(UE)
+    RefStatePrim(NUSA,i) = RefStatePrimTmp(6)
     CALL PrimToCons(RefStatePrim(:,i),RefStateCons(:,i))
   END DO
 END IF
@@ -300,10 +300,10 @@ USE MOD_Mesh_Vars,ONLY: firstInnerSide,firstMPISide_YOUR,lastMPISide_YOUR,nSides
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)  :: U_master(        PP_nVar,0:PP_N,0:PP_NZ,1:nSides) !< conservative solution on master sides
-REAL,INTENT(IN)  :: U_slave(         PP_nVar,0:PP_N,0:PP_NZ,1:nSides) !< conservative solution on slave sides
-REAL,INTENT(OUT) :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< primitive solution on master sides
-REAL,INTENT(OUT) :: UPrim_slave( PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< primitive solution on slave sides
+REAL,INTENT(IN)  :: U_master(    CONS,0:PP_N,0:PP_NZ,1:nSides) !< conservative solution on master sides
+REAL,INTENT(IN)  :: U_slave(     CONS,0:PP_N,0:PP_NZ,1:nSides) !< conservative solution on slave sides
+REAL,INTENT(OUT) :: UPrim_master(PRIM,0:PP_N,0:PP_NZ,1:nSides) !< primitive solution on master sides
+REAL,INTENT(OUT) :: UPrim_slave( PRIM,0:PP_N,0:PP_NZ,1:nSides) !< primitive solution on slave sides
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER          :: i,j,iSide
@@ -351,16 +351,16 @@ USE MOD_Mesh_Vars,ONLY: firstInnerSide,firstMPISide_YOUR,lastMPISide_YOUR,nSides
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)    :: UPrim_master(PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< primitive solution on master sides
-REAL,INTENT(IN)    :: UPrim_slave( PP_nVarPrim,0:PP_N,0:PP_NZ,1:nSides) !< primitive solution on slave sides
-REAL,INTENT(OUT)   :: U_master(        PP_nVar,0:PP_N,0:PP_NZ,1:nSides) !< conservative solution on master sides
-REAL,INTENT(OUT)   :: U_slave(         PP_nVar,0:PP_N,0:PP_NZ,1:nSides) !< conservative solution on slave sides
-INTEGER,INTENT(IN) :: mask_master(1:nSides)                            !< mask: only convert solution if mask(SideID) == mask_ref
-INTEGER,INTENT(IN) :: mask_slave (1:nSides)                            !< mask: only convert solution if mask(SideID) == mask_ref
-INTEGER,INTENT(IN) :: mask_ref                                         !< reference value for mask comparison
+REAL,INTENT(IN)    :: UPrim_master(PRIM,0:PP_N,0:PP_NZ,1:nSides) !< primitive solution on master sides
+REAL,INTENT(IN)    :: UPrim_slave( PRIM,0:PP_N,0:PP_NZ,1:nSides) !< primitive solution on slave sides
+REAL,INTENT(OUT)   :: U_master(    CONS,0:PP_N,0:PP_NZ,1:nSides) !< conservative solution on master sides
+REAL,INTENT(OUT)   :: U_slave(     CONS,0:PP_N,0:PP_NZ,1:nSides) !< conservative solution on slave sides
+INTEGER,INTENT(IN) :: mask_master(1:nSides)                      !< mask: only convert solution if mask(SideID) == mask_ref
+INTEGER,INTENT(IN) :: mask_slave (1:nSides)                      !< mask: only convert solution if mask(SideID) == mask_ref
+INTEGER,INTENT(IN) :: mask_ref                                   !< reference value for mask comparison
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER          :: i,j,SideID
+INTEGER            :: i,j,SideID
 !==================================================================================================================================
 DO SideID=1,nSides
   IF ((firstMPISide_YOUR.LE.SideID).AND.(SideID.LE.lastMPISide_YOUR)) CYCLE

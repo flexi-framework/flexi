@@ -151,18 +151,18 @@ DO iElem=1,nElems
 #endif
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     ! TODO: ATTENTION: Temperature of UE not filled!!!
-    UE(CONS)=U(:,i,j,k,iElem)
-    UE(SRHO)=1./UE(DENS)
-    UE(VELV)=VELOCITY_HE(UE)
-    UE(PRES)=PRESSURE_HE(UE)
-    UE(TEMP)=TEMPERATURE_HE(UE)
+    UE(EXT_CONS)=U(:,i,j,k,iElem)
+    UE(EXT_SRHO)=1./UE(EXT_DENS)
+    UE(EXT_VELV)=VELOCITY_HE(UE)
+    UE(EXT_PRES)=PRESSURE_HE(UE)
+    UE(EXT_TEMP)=TEMPERATURE_HE(UE)
     ! Convective Eigenvalues
-    IF(IEEE_IS_NAN(UE(DENS)))THEN
+    IF(IEEE_IS_NAN(UE(EXT_DENS)))THEN
       ERRWRITE(*,'(A,3ES16.7)')'Density NaN, Position= ',Elem_xGP(:,i,j,k,iElem)
       errType=1
     END IF
     c=SPEEDOFSOUND_HE(UE)
-    vsJ=UE(VELV)*sJ(i,j,k,iElem,FVE)
+    vsJ=UE(EXT_VELV)*sJ(i,j,k,iElem,FVE)
     Max_Lambda(1)=MAX(Max_Lambda(1),ABS(SUM(Metrics_fTilde(:,i,j,k,iElem,FVE)*vsJ)) + &
                                               c*MetricsAdv(1,i,j,k,iElem,FVE))
     Max_Lambda(2)=MAX(Max_Lambda(2),ABS(SUM(Metrics_gTilde(:,i,j,k,iElem,FVE)*vsJ)) + &
@@ -173,12 +173,12 @@ DO iElem=1,nElems
 #endif
 #if PARABOLIC
     ! Viscous Eigenvalues
-    prim = UE(PRIM)
+    prim = UE(EXT_PRIM)
     mu=VISCOSITY_PRIM(prim)
 #if EDDYVISCOSITY
     mu = mu+muSGSMax
 #endif
-    Max_Lambda_v=MAX(Max_Lambda_v,mu*UE(SRHO)*MetricsVisc(:,i,j,k,iElem,FVE))
+    Max_Lambda_v=MAX(Max_Lambda_v,mu*UE(EXT_SRHO)*MetricsVisc(:,i,j,k,iElem,FVE))
 #endif /* PARABOLIC*/
   END DO; END DO; END DO ! i,j,k
 

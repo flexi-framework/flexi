@@ -12,6 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "eos.h"
 
 !===================================================================================================================================
 !> Subroutines necessary for calculating SigmaModel Eddy-Viscosity
@@ -113,15 +114,15 @@ REAL               :: work(9)  !lapack work array
 INTEGER            :: info
 REAL               :: d_model
 !===================================================================================================================================
-G_Mat(1,1) = gradUx(2)*gradUx(2) + gradUx(3)*gradUx(3) + gradUx(4)*gradUx(4)
-G_Mat(1,2) = gradUx(2)*gradUy(2) + gradUx(3)*gradUy(3) + gradUx(4)*gradUy(4)
-G_Mat(1,3) = gradUx(2)*gradUz(2) + gradUx(3)*gradUz(3) + gradUx(4)*gradUz(4)
+G_Mat(1,1) = gradUx(LIFT_VEL1)*gradUx(LIFT_VEL1) + gradUx(LIFT_VEL2)*gradUx(LIFT_VEL2) + gradUx(LIFT_VEL3)*gradUx(LIFT_VEL3)
+G_Mat(1,2) = gradUx(LIFT_VEL1)*gradUy(LIFT_VEL1) + gradUx(LIFT_VEL2)*gradUy(LIFT_VEL2) + gradUx(LIFT_VEL3)*gradUy(LIFT_VEL3)
+G_Mat(1,3) = gradUx(LIFT_VEL1)*gradUz(LIFT_VEL1) + gradUx(LIFT_VEL2)*gradUz(LIFT_VEL2) + gradUx(LIFT_VEL3)*gradUz(LIFT_VEL3)
 G_Mat(2,1) = G_Mat(1,2)
-G_Mat(2,2) = gradUy(2)*gradUy(2) + gradUy(3)*gradUy(3) + gradUy(4)*gradUy(4)
-G_Mat(2,3) = gradUy(2)*gradUz(2) + gradUy(3)*gradUz(3) + gradUy(4)*gradUz(4)
+G_Mat(2,2) = gradUy(LIFT_VEL1)*gradUy(LIFT_VEL1) + gradUy(LIFT_VEL2)*gradUy(LIFT_VEL2) + gradUy(LIFT_VEL3)*gradUy(LIFT_VEL3)
+G_Mat(2,3) = gradUy(LIFT_VEL1)*gradUz(LIFT_VEL1) + gradUy(LIFT_VEL2)*gradUz(LIFT_VEL2) + gradUy(LIFT_VEL3)*gradUz(LIFT_VEL3)
 G_Mat(3,1) = G_Mat(1,3)
 G_Mat(3,2) = G_Mat(2,3)
-G_Mat(3,3) = gradUz(2)*gradUz(2) + gradUz(3)*gradUz(3) + gradUz(4)*gradUz(4)
+G_Mat(3,3) = gradUz(LIFT_VEL1)*gradUz(LIFT_VEL1) + gradUz(LIFT_VEL2)*gradUz(LIFT_VEL2) + gradUz(LIFT_VEL3)*gradUz(LIFT_VEL3)
 
 ! LAPACK
 CALL DSYEV('N','U',3,G_Mat,3,lambda,work,9,info)
@@ -156,7 +157,7 @@ INTEGER             :: i,j,k,iElem
 DO iElem = 1,nElems
   DO k = 0,PP_NZ; DO j = 0,PP_N; DO i = 0,PP_N
     CALL SigmaModel_Point(gradUx(:,i,j,k,iElem), gradUy(:,i,j,k,iElem), gradUz(:,i,j,k,iElem), &
-                                 U(1,i,j,k,iElem),        deltaS(iElem),  muSGS(1,i,j,k,iElem))
+                                 U(DENS,i,j,k,iElem),        deltaS(iElem),  muSGS(1,i,j,k,iElem))
   END DO; END DO; END DO ! i,j,k
 END DO
 END SUBROUTINE SigmaModel_Volume

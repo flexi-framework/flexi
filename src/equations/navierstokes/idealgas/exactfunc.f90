@@ -12,6 +12,7 @@
 ! You should have received a copy of the GNU General Public License along with FLEXI. If not, see <http://www.gnu.org/licenses/>.
 !=================================================================================================================================
 #include "flexi.h"
+#include "eos.h"
 
 !==================================================================================================================================
 !> Soubroutines providing exactly evaluated functions used in initialization or boundary conditions.
@@ -240,72 +241,72 @@ CASE(2) ! sinus
   Amplitude=0.3
   Omega=2.*PP_Pi*Frequency
   ! base flow
-  prim(1)   = 1.
-  prim(2:4) = AdvVel
-  prim(5)   = 1.
-  Vel=prim(2:4)
+  prim(DENS)   = 1.
+  prim(VELV) = AdvVel
+  prim(PRES)   = 1.
+  Vel=prim(VELV)
   cent=x-Vel*tEval
-  prim(1)=prim(1)*(1.+Amplitude*SIN(Omega*SUM(cent(1:3))))
+  prim(DENS)=prim(DENS)*(1.+Amplitude*SIN(Omega*SUM(cent(1:3))))
   ! g(t)
-  Resu(1)=prim(1) ! rho
-  Resu(2:4)=prim(1)*prim(2:4) ! rho*vel
-  Resu(5)=prim(5)*sKappaM1+0.5*prim(1)*SUM(prim(2:4)*prim(2:4)) ! rho*e
+  Resu(DENS)=prim(DENS) ! rho
+  Resu(MOMV)=prim(DENS)*prim(VELV) ! rho*vel
+  Resu(ENER)=prim(PRES)*sKappaM1+0.5*SUM(Resu(MOMV)*prim(VELV)) ! rho*e
 
   IF(fullBoundaryOrder)THEN
     ov=Omega*SUM(vel)
     ! g'(t)
-    Resu_t(1)=-Amplitude*cos(Omega*SUM(cent(1:3)))*ov
-    Resu_t(2:4)=Resu_t(1)*prim(2:4) ! rho*vel
-    Resu_t(5)=0.5*Resu_t(1)*SUM(prim(2:4)*prim(2:4))
+    Resu_t(DENS)=-Amplitude*cos(Omega*SUM(cent(1:3)))*ov
+    Resu_t(MOMV)=Resu_t(DENS)*prim(VELV) ! rho*vel
+    Resu_t(ENER)=0.5*SUM(Resu_t(MOMV)*prim(VELV))
     ! g''(t)
-    Resu_tt(1)=-Amplitude*sin(Omega*SUM(cent(1:3)))*ov**2.
-    Resu_tt(2:4)=Resu_tt(1)*prim(2:4)
-    Resu_tt(5)=0.5*Resu_tt(1)*SUM(prim(2:4)*prim(2:4))
+    Resu_tt(DENS)=-Amplitude*sin(Omega*SUM(cent(1:3)))*ov**2.
+    Resu_tt(MOMV)=Resu_tt(DENS)*prim(VELV)
+    Resu_tt(ENER)=0.5*SUM(Resu_tt(MOMV)*prim(VELV))
   END IF
 CASE(21) ! sinus x
   Frequency=0.5
   Amplitude=0.3
   Omega=2.*PP_Pi*Frequency
   ! base flow
-  prim(1)   = 1.
-  prim(2:4) = AdvVel
-  prim(5)   = 1.
-  Vel=prim(2:4)
+  prim(DENS)   = 1.
+  prim(VELV) = AdvVel
+  prim(PRES)   = 1.
+  Vel=prim(VELV)
   cent=x-Vel*tEval
-  prim(1)=prim(1)*(1.+Amplitude*SIN(Omega*cent(1)))
+  prim(DENS)=prim(DENS)*(1.+Amplitude*SIN(Omega*cent(1)))
   ! g(t)
-  Resu(1)=prim(1) ! rho
-  Resu(2:4)=prim(1)*prim(2:4) ! rho*vel
-  Resu(5)=prim(5)*sKappaM1+0.5*prim(1)*SUM(prim(2:4)*prim(2:4)) ! rho*e
+  Resu(DENS)=prim(DENS) ! rho
+  Resu(MOMV)=prim(DENS)*prim(VELV) ! rho*vel
+  Resu(ENER)=prim(PRES)*sKappaM1+0.5*SUM(Resu(MOMV)*prim(VELV)) ! rho*e
 
   IF(fullBoundaryOrder)THEN
     ov=Omega*SUM(vel)
     ! g'(t)
-    Resu_t(1)=-Amplitude*cos(Omega*cent(1))*ov
-    Resu_t(2:4)=Resu_t(1)*prim(2:4) ! rho*vel
-    Resu_t(5)=0.5*Resu_t(1)*SUM(prim(2:4)*prim(2:4))
+    Resu_t(DENS)=-Amplitude*cos(Omega*cent(1))*ov
+    Resu_t(MOMV)=Resu_t(DENS)*prim(VELV) ! rho*vel
+    Resu_t(ENER)=0.5*SUM(Resu_t(MOMV)*prim(VELV))
     ! g''(t)
-    Resu_tt(1)=-Amplitude*sin(Omega*cent(1))*ov**2.
-    Resu_tt(2:4)=Resu_tt(1)*prim(2:4)
-    Resu_tt(5)=0.5*Resu_tt(1)*SUM(prim(2:4)*prim(2:4))
+    Resu_tt(DENS)=-Amplitude*sin(Omega*cent(1))*ov**2.
+    Resu_tt(MOMV)=Resu_tt(DENS)*prim(VELV)
+    Resu_tt(ENER)=0.5*SUM(Resu_tt(MOMV)*prim(VELV))
   END IF
 CASE(3) ! linear in rho
   ! base flow
-  prim(1)   = 100.
-  prim(2:4) = AdvVel
-  prim(5)   = 1.
-  Vel=prim(2:4)
+  prim(DENS)   = 100.
+  prim(VELV)   = AdvVel
+  prim(PRES)   = 1.
+  Vel=prim(VELV)
   cent=x-Vel*tEval
-  prim(1)=prim(1)+SUM(AdvVel*cent)
+  prim(DENS)=prim(DENS)+SUM(AdvVel*cent)
   ! g(t)
-  Resu(1)=prim(1) ! rho
-  Resu(2:4)=prim(1)*prim(2:4) ! rho*vel
-  Resu(5)=prim(5)*sKappaM1+0.5*prim(1)*SUM(prim(2:4)*prim(2:4)) ! rho*e
+  Resu(DENS)=prim(DENS) ! rho
+  Resu(MOMV)=prim(DENS)*prim(VELV) ! rho*vel
+  Resu(ENER)=prim(PRES)*sKappaM1+0.5*SUM(Resu(MOMV)*prim(VELV)) ! rho*e
   IF(fullBoundaryOrder)THEN
     ! g'(t)
-    Resu_t(1)=-SUM(Vel)
-    Resu_t(2:4)=Resu_t(1)*prim(2:4) ! rho*vel
-    Resu_t(5)=0.5*Resu_t(1)*SUM(prim(2:4)*prim(2:4))
+    Resu_t(DENS)=-SUM(Vel)
+    Resu_t(MOMV)=Resu_t(DENS)*prim(VELV) ! rho*vel
+    Resu_t(ENER)=0.5*SUM(Resu_t(MOMV)*prim(VELV))
   END IF
 CASE(4) ! oblique sine wave (in x,y,z for 3D calculations, and x,y for 2D)
   Frequency=1.
@@ -314,22 +315,30 @@ CASE(4) ! oblique sine wave (in x,y,z for 3D calculations, and x,y for 2D)
   a=AdvVel(1)*2.*PP_Pi
 
   ! g(t)
-  Resu(1:PP_dim+1)=2.+ Amplitude*sin(Omega*SUM(x(1:PP_dim)) - a*tEval)
-#if (PP_dim == 2)
-  Resu(4)=0.
+#if (PP_dim == 3)
+  Resu(DENS:MOM3) = 2.+ Amplitude*sin(Omega*SUM(x(1:PP_dim)) - a*tEval)
+#else
+  Resu(DENS:MOM2) = 2.+ Amplitude*sin(Omega*SUM(x(1:PP_dim)) - a*tEval)
+  Resu(MOM3)   = 0.
 #endif
-  Resu(5)=Resu(1)*Resu(1)
+  Resu(ENER)=Resu(DENS)*Resu(DENS)
   IF(fullBoundaryOrder)THEN
     ! g'(t)
-    Resu_t(1:PP_dim+1)=(-a)*Amplitude*cos(Omega*SUM(x(1:PP_dim)) - a*tEval)
-    Resu_t(5)=2.*Resu(1)*Resu_t(1)
-    ! g''(t)
-    Resu_tt(1:PP_dim+1)=-a*a*Amplitude*sin(Omega*SUM(x(1:PP_dim)) - a*tEval)
-    Resu_tt(5)=2.*(Resu_t(1)*Resu_t(1) + Resu(1)*Resu_tt(1))
-#if (PP_dim == 2)
-    Resu_t(4)=0.
-    Resu_tt(4)=0.
+#if (PP_dim == 3)
+    Resu_t(DENS:MOM3)=(-a)*Amplitude*cos(Omega*SUM(x(1:PP_dim)) - a*tEval)
+#else
+    Resu_t(DENS:MOM2)=(-a)*Amplitude*cos(Omega*SUM(x(1:PP_dim)) - a*tEval)
+    Resu_t(MOM3)=0.
 #endif
+    Resu_t(ENER)=2.*Resu(DENS)*Resu_t(DENS)
+    ! g''(t)
+#if (PP_dim == 3)
+    Resu_tt(DENS:MOM3)=-a*a*Amplitude*sin(Omega*SUM(x(1:PP_dim)) - a*tEval)
+#else
+    Resu_tt(DENS:MOM2)=-a*a*Amplitude*sin(Omega*SUM(x(1:PP_dim)) - a*tEval)
+    Resu_tt(MOM3)=0.
+#endif
+    Resu_tt(ENER)=2.*(Resu_t(DENS)*Resu_t(DENS) + Resu(DENS)*Resu_tt(DENS))
   END IF
 
 CASE(41) ! SINUS in x
@@ -339,17 +348,17 @@ CASE(41) ! SINUS in x
   a=AdvVel(1)*2.*PP_Pi
   ! g(t)
   Resu = 0.
-  Resu(1:2)=2.+ Amplitude*sin(Omega*x(1) - a*tEval)
-  Resu(5)=Resu(1)*Resu(1)
+  Resu(DENS:MOM1)=2.+ Amplitude*sin(Omega*x(1) - a*tEval)
+  Resu(ENER)=Resu(DENS)*Resu(DENS)
   IF(fullBoundaryOrder)THEN
     Resu_t = 0.
     Resu_tt = 0.
     ! g'(t)
-    Resu_t(1:2)=(-a)*Amplitude*cos(Omega*x(1) - a*tEval)
-    Resu_t(5)=2.*Resu(1)*Resu_t(1)
+    Resu_t(DENS:MOM1)=(-a)*Amplitude*cos(Omega*x(1) - a*tEval)
+    Resu_t(ENER)=2.*Resu(1)*Resu_t(1)
     ! g''(t)
-    Resu_tt(1:2)=-a*a*Amplitude*sin(Omega*x(1) - a*tEval)
-    Resu_tt(5)=2.*(Resu_t(1)*Resu_t(1) + Resu(1)*Resu_tt(1))
+    Resu_tt(DENS:MOM1)=-a*a*Amplitude*sin(Omega*x(1) - a*tEval)
+    Resu_tt(ENER)=2.*(Resu_t(DENS)*Resu_t(DENS) + Resu(DENS)*Resu_tt(DENS))
   END IF
 CASE(42) ! SINUS in y
   Frequency=1.
@@ -358,19 +367,19 @@ CASE(42) ! SINUS in y
   a=AdvVel(2)*2.*PP_Pi
   ! g(t)
   Resu = 0.
-  Resu(1)=2.+ Amplitude*sin(Omega*x(2) - a*tEval)
-  Resu(3)=Resu(1)
-  Resu(5)=Resu(1)*Resu(1)
+  Resu(DENS)=2.+ Amplitude*sin(Omega*x(2) - a*tEval)
+  Resu(MOM2)=Resu(DENS)
+  Resu(ENER)=Resu(DENS)*Resu(DENS)
   IF(fullBoundaryOrder)THEN
     Resu_tt = 0.
     ! g'(t)
-    Resu_t(1)=(-a)*Amplitude*cos(Omega*x(2) - a*tEval)
-    Resu_t(3) = Resu_t(1)
-    Resu_t(5)=2.*Resu(1)*Resu_t(1)
+    Resu_t(DENS)=(-a)*Amplitude*cos(Omega*x(2) - a*tEval)
+    Resu_t(MOM2)=Resu_t(DENS)
+    Resu_t(ENER)=2.*Resu(DENS)*Resu_t(DENS)
     ! g''(t)
-    Resu_tt(1)=-a*a*Amplitude*sin(Omega*x(2) - a*tEval)
-    Resu_t(3) = Resu_t(1)
-    Resu_tt(5)=2.*(Resu_t(1)*Resu_t(1) + Resu(1)*Resu_tt(1))
+    Resu_tt(DENS)=-a*a*Amplitude*sin(Omega*x(2) - a*tEval)
+    Resu_tt(MOM2)=Resu_tt(DENS)
+    Resu_tt(ENER)=2.*(Resu_t(DENS)*Resu_t(DENS) + Resu(DENS)*Resu_tt(DENS))
   END IF
 #if PP_dim==3
 CASE(43) ! SINUS in z
@@ -380,26 +389,26 @@ CASE(43) ! SINUS in z
   a=AdvVel(3)*2.*PP_Pi
   ! g(t)
   Resu = 0.
-  Resu(1)=2.+ Amplitude*sin(Omega*x(3) - a*tEval)
-  Resu(4)=Resu(1)
-  Resu(5)=Resu(1)*Resu(1)
+  Resu(DENS)=2.+ Amplitude*sin(Omega*x(3) - a*tEval)
+  Resu(MOM3)=Resu(DENS)
+  Resu(ENER)=Resu(DENS)*Resu(DENS)
   IF(fullBoundaryOrder)THEN
     Resu_tt = 0.
     ! g'(t)
-    Resu_t(1)=(-a)*Amplitude*cos(Omega*x(3) - a*tEval)
-    Resu_t(4) = Resu_t(1)
-    Resu_t(5)=2.*Resu(1)*Resu_t(1)
+    Resu_t(DENS)=(-a)*Amplitude*cos(Omega*x(3) - a*tEval)
+    Resu_t(MOM3)=Resu_t(DENS)
+    Resu_t(ENER)=2.*Resu(DENS)*Resu_t(DENS)
     ! g''(t)
-    Resu_tt(1)=-a*a*Amplitude*sin(Omega*x(3) - a*tEval)
-    Resu_t(4) = Resu_t(1)
-    Resu_tt(5)=2.*(Resu_t(1)*Resu_t(1) + Resu(1)*Resu_tt(1))
+    Resu_tt(DENS)=-a*a*Amplitude*sin(Omega*x(3) - a*tEval)
+    Resu_tt(MOM3)=Resu_tt(DENS)
+    Resu_tt(ENER)=2.*(Resu_t(DENS)*Resu_t(DENS) + Resu(DENS)*Resu_tt(DENS))
   END IF
 #endif
 CASE(5) !Roundjet Bogey Bailly 2002, Re=65000, x-axis is jet axis
-  prim(1)  =1.
-  prim(2:4)=0.
-  prim(5)  =1./Kappa
-  prim(6) = prim(5)/(prim(1)*R)
+  prim(DENS)  =1.
+  prim(VELV)  =0.
+  prim(PRES)  =1./Kappa
+  prim(TEMP)  = prim(PRES)/(prim(DENS)*R)
   ! Jet inflow (from x=0, diameter 2.0)
   ! Initial jet radius: rj=1.
   ! Momentum thickness: delta_theta0=0.05=1/20
@@ -407,25 +416,22 @@ CASE(5) !Roundjet Bogey Bailly 2002, Re=65000, x-axis is jet axis
   ! Uco=0.
   ! Uj=0.9
   r_len=SQRT((x(2)*x(2)+x(3)*x(3)))
-  prim(2)=0.9*0.5*(1.+TANH((1.-r_len)*10.))
+  prim(VEL1)=0.9*0.5*(1.+TANH((1.-r_len)*10.))
   CALL RANDOM_NUMBER(random)
   ! Random disturbance +-5%
   random=0.05*2.*(random-0.5)
-  prim(2)=prim(2)+random*prim(2)
-  prim(3)=x(2)/r_len*0.5*random*prim(2)
-  prim(4)=x(3)/r_len*0.5*random*prim(2)
+  prim(VEL1)=prim(VEL1)+random*prim(VEL1)
+  prim(VEL2)=x(2)/r_len*0.5*random*prim(VEL1)
+  prim(VEL3)=x(3)/r_len*0.5*random*prim(VEL1)
   CALL PrimToCons(prim,ResuL)
-  prim(1)  =1.
-  prim(2:4)=0.
-  prim(5)  =1./Kappa
-  prim(6) = prim(5)/(prim(1)*R)
+  prim(VELV)  =0.
   CALL PrimToCons(prim,ResuR)
 !   after x=10 blend to ResuR
   Resu=ResuL+(ResuR-ResuL)*0.5*(1.+tanh(x(1)-10.))
 CASE(6)  ! Cylinder flow
   IF(tEval .EQ. 0.)THEN   ! Initialize potential flow
-    prim(1)=RefStatePrim(1,RefState)  ! Density
-    prim(4)=0.           ! VelocityZ=0. (2D flow)
+    prim(DENS)=RefStatePrim(DENS,RefState)  ! Density
+    prim(VEL3)=0.                           ! VelocityZ=0. (2D flow)
     ! Calculate cylinder coordinates (0<phi<Pi/2)
     pi_loc=ASIN(1.)*2.
     IF(x(1) .LT. 0.)THEN
@@ -448,12 +454,12 @@ CASE(6)  ! Cylinder flow
     ! Calculate radius**2
     radius=x(1)*x(1)+x(2)*x(2)
     ! Calculate velocities, radius of cylinder=0.5
-    prim(2)=RefStatePrim(2,RefState)*(COS(phi)**2*(1.-0.25/radius)+SIN(phi)**2*(1.+0.25/radius))
-    prim(3)=RefStatePrim(2,RefState)*(-2.)*SIN(phi)*COS(phi)*0.25/radius
+    prim(VEL1)=RefStatePrim(VEL1,RefState)*(COS(phi)**2*(1.-0.25/radius)+SIN(phi)**2*(1.+0.25/radius))
+    prim(VEL2)=RefStatePrim(VEL1,RefState)*(-2.)*SIN(phi)*COS(phi)*0.25/radius
     ! Calculate pressure, RefState(2)=u_infinity
-    prim(5)=RefStatePrim(5,RefState) + &
-            0.5*prim(1)*(RefStatePrim(2,RefState)*RefStatePrim(2,RefState)-prim(2)*prim(2)-prim(3)*prim(3))
-    prim(6) = prim(5)/(prim(1)*R)
+    prim(PRES)=RefStatePrim(PRES,RefState) + &
+            0.5*prim(DENS)*(RefStatePrim(VEL1,RefState)*RefStatePrim(VEL1,RefState)-prim(VEL1)*prim(VEL1)-prim(VEL2)*prim(VEL2))
+    prim(TEMP) = prim(PRES)/(prim(DENS)*R)
   ELSE  ! Use RefState as BC
     prim=RefStatePrim(:,RefState)
   END IF  ! t=0
@@ -462,36 +468,36 @@ CASE(7) ! SHU VORTEX,isentropic vortex
   ! base flow
   prim=RefStatePrim(:,RefState)  ! Density
   ! ini-Parameter of the Example
-  vel=prim(2:4)
-  RT=prim(PP_nVar)/prim(1) !ideal gas
-  cent=(iniCenter+vel*tEval)!centerpoint time dependant
-  cent=x-cent ! distance to centerpoint
-  cent=CROSS(iniAxis,cent) !distance to axis, tangent vector, length r
-  cent=cent/iniHalfWidth !Halfwidth is dimension 1
+  vel=prim(VELV)
+  RT=prim(PRES)/prim(DENS) !ideal gas
+  cent=(iniCenter+vel*tEval)    !centerpoint time dependant
+  cent=x-cent                   ! distance to centerpoint
+  cent=CROSS(iniAxis,cent)      !distance to axis, tangent vector, length r
+  cent=cent/iniHalfWidth        !Halfwidth is dimension 1
   r2=SUM(cent*cent) !
-  du = iniAmplitude/(2.*PP_Pi)*exp(0.5*(1.-r2)) ! vel. perturbation
-  dTemp = -kappaM1/(2.*kappa*RT)*du**2 ! adiabatic
-  prim(1)=prim(1)*(1.+dTemp)**(1.*skappaM1) !rho
-  prim(2:4)=prim(2:4)+du*cent(:) !v
+  du = iniAmplitude/(2.*PP_Pi)*exp(0.5*(1.-r2))   ! vel. perturbation
+  dTemp = -kappaM1/(2.*kappa*RT)*du**2            ! adiabatic
+  prim(DENS)=prim(DENS)*(1.+dTemp)**(1.*skappaM1) !rho
+  prim(VELV)=prim(VELV)+du*cent(:)                !v
 #if PP_dim == 2
-  prim(4)=0.
+  prim(VEL3)=0.
 #endif
-  prim(PP_nVar)=prim(PP_nVar)*(1.+dTemp)**(kappa/kappaM1) !p
-  prim(6) = prim(5)/(prim(1)*R)
+  prim(PRES) = prim(PRES)*(1.+dTemp)**(kappa/kappaM1) !p
+  prim(TEMP) = prim(PRES)/(prim(DENS)*R)
   CALL PrimToCons(prim,resu)
 CASE(8) !Couette-Poiseuille flow between plates: exact steady lamiar solution with height=1 !
         !(Gao, hesthaven, Warburton)
   RT=1. ! Hesthaven: Absorbing layers for weakly compressible flows
-  sRT=1/RT
+  sRT=1./RT
   ! size of domain must be [-0.5, 0.5]^2 -> (x*y)
   h=0.5
-  prim(2)= U_parameter*(0.5*(1.+x(2)/h) + P_parameter*(1-(x(2)/h)**2))
-  prim(3:4)= 0.
+  prim(VEL1)     = U_parameter*(0.5*(1.+x(2)/h) + P_parameter*(1-(x(2)/h)**2))
+  prim(VEL2:VEL3)= 0.
   pexit=0.9996
   pentry=1.0004
-  prim(5)= ( ( x(1) - (-0.5) )*( pexit - pentry) / ( 0.5 - (-0.5)) ) + pentry
-  prim(1)=prim(5)*sRT
-  prim(6)=prim(5)/(prim(1)*R)
+  prim(PRES)= ( ( x(1) - (-0.5) )*( pexit - pentry) / ( 0.5 - (-0.5)) ) + pentry
+  prim(DENS)=prim(PRES)*sRT
+  prim(TEMP)=prim(PRES)/(prim(DENS)*R)
   CALL PrimToCons(prim,Resu)
 CASE(9) !lid driven cavity flow from Gao, Hesthaven, Warburton
         !"Absorbing layers for weakly compressible flows", to appear, JSC, 2016
@@ -499,33 +505,33 @@ CASE(9) !lid driven cavity flow from Gao, Hesthaven, Warburton
         ! top BC assumed to be in x-direction from 0..1
   Prim = RefStatePrim(:,RefState)
   IF (x(1).LT.0.2) THEN
-    prim(2)=1000*4.9333*x(1)**4-1.4267*1000*x(1)**3+0.1297*1000*x(1)**2-0.0033*1000*x(1)
+    prim(VEL1)=1000*4.9333*x(1)**4-1.4267*1000*x(1)**3+0.1297*1000*x(1)**2-0.0033*1000*x(1)
   ELSEIF (x(1).LE.0.8) THEN
-    prim(2)=1.0
+    prim(VEL1)=1.0
   ELSE
-    prim(2)=1000*4.9333*x(1)**4-1.8307*10000*x(1)**3+2.5450*10000*x(1)**2-1.5709*10000*x(1)+10000*0.3633
+    prim(VEL1)=1000*4.9333*x(1)**4-1.8307*10000*x(1)**3+2.5450*10000*x(1)**2-1.5709*10000*x(1)+10000*0.3633
   ENDIF
   CALL PrimToCons(prim,Resu)
 CASE(10) ! shock
   prim=0.
 
   ! pre-shock
-  prim(1) = PreShockDens
-  Ms      = MachShock
+  prim(DENS) = PreShockDens
+  Ms         = MachShock
 
-  prim(5)=prim(1)/Kappa
-  prim(6)=prim(5)/(prim(1)*R)
+  prim(PRES)=prim(DENS)/Kappa
+  prim(TEMP)=prim(PRES)/(prim(DENS)*R)
   CALL PrimToCons(prim,Resur)
 
   ! post-shock
-  prim(3)=prim(1) ! temporal storage of pre-shock density
-  prim(1)=prim(1)*((KappaP1)*Ms*Ms)/(KappaM1*Ms*Ms+2.)
-  prim(5)=prim(5)*(2.*Kappa*Ms*Ms-KappaM1)/(KappaP1)
-  prim(6)=prim(5)/(prim(1)*R)
-  IF (prim(2) .EQ. 0.0) THEN
-    prim(2)=Ms*(1.-prim(3)/prim(1))
+  prim(VEL2)=prim(DENS) ! temporal storage of pre-shock density
+  prim(DENS)=prim(DENS)*((KappaP1)*Ms*Ms)/(KappaM1*Ms*Ms+2.)
+  prim(PRES)=prim(PRES)*(2.*Kappa*Ms*Ms-KappaM1)/(KappaP1)
+  prim(TEMP)=prim(PRES)/(prim(DENS)*R)
+  IF (prim(VEL1) .EQ. 0.0) THEN
+    prim(VEL1)=Ms*(1.-prim(VEL2)/prim(DENS))
   ELSE
-    prim(2)=prim(2)*prim(3)/prim(1)
+    prim(VEL1)=prim(VEL1)*prim(VEL2)/prim(DENS)
   END IF
   prim(3)=0. ! reset temporal storage
   CALL PrimToCons(prim,Resul)
@@ -541,14 +547,14 @@ CASE(11) ! Sod Shock tube
   END IF
 CASE(12) ! Shu Osher density fluctuations shock wave interaction
   IF (x(1).LT.-4.0) THEN
-    prim(1) = 3.857143
-    prim(2) = 2.629369
-    prim(3:4) = 0.
-    prim(5) = 10.33333
+    prim(DENS)      = 3.857143
+    prim(VEL1)      = 2.629369
+    prim(VEL2:VEL3) = 0.
+    prim(PRES)      = 10.33333
   ELSE
-    prim(1) = 1.+0.2*SIN(5.*x(1))
-    prim(2:4) = 0.
-    prim(5) = 1.
+    prim(DENS)      = 1.+0.2*SIN(5.*x(1))
+    prim(VELV)      = 0.
+    prim(PRES)      = 1.
   END IF
   CALL PrimToCons(prim,resu)
 
@@ -569,13 +575,13 @@ CASE(13) ! DoubleMachReflection (see e.g. http://www.astro.princeton.edu/~jstone
 CASE(1338) ! blasius
   prim=RefStatePrim(:,RefState)
   ! calculate equivalent x for Blasius flat plate to have delta99_in at x_in
-  x_offset(1)=(delta99_in/5)**2*prim(1)*prim(2)/mu0-x_in(1)
+  x_offset(1)=(delta99_in/5)**2*prim(DENS)*prim(VEL1)/mu0-x_in(1)
   x_offset(2)=-x_in(2)
   x_offset(3)=0.
   x_eff=x+x_offset
   IF(x_eff(2).GT.0 .AND. x_eff(1).GT.0) THEN
     ! scale bl position in physical space to reference space, eta=5 is ~99% bl thickness
-    eta=x_eff(2)*(prim(1)*prim(2)/(mu0*x_eff(1)))**0.5
+    eta=x_eff(2)*(prim(DENS)*prim(VEL1)/(mu0*x_eff(1)))**0.5
 
     deta=0.02 ! step size
     nSteps=CEILING(eta/deta)
@@ -599,18 +605,18 @@ CASE(1338) ! blasius
       fpp     = fpp + deta2 * (fppp + fpppbar)
       fppp    = -0.5*f*fpp
     END DO
-    prim(3)=0.5*(mu0*prim(2)/prim(1)/x_eff(1))**0.5*(fp*eta-f)
-    prim(2)=RefStatePrim(2,RefState)*fp
+    prim(VEL2)=0.5*(mu0*prim(VEL1)/prim(DENS)/x_eff(1))**0.5*(fp*eta-f)
+    prim(VEL1)=RefStatePrim(VEL1,RefState)*fp
   ELSE
     IF(x_eff(2).LE.0) THEN
-      prim(2)=0.
+      prim(VEL1)=0.
     END IF
   END IF
   CALL PrimToCons(prim,resu)
 #endif
 END SELECT ! ExactFunction
 #if PP_dim==2
-Resu(4)=0.
+Resu(MOM3)=0.
 #endif
 
 ! For O3 LS 3-stage RK, we have to define proper time dependent BC
@@ -705,12 +711,14 @@ CASE(4) ! exact function
       cosXGP=COS(omega*SUM(Elem_xGP(1:PP_dim,i,j,k,iElem))-at)
       sinXGP=SIN(omega*SUM(Elem_xGP(1:PP_dim,i,j,k,iElem))-at)
       sinXGP2=2.*sinXGP*cosXGP !=SIN(2.*(omega*SUM(Elem_xGP(:,i,j,k,iElem))-a*t))
-      Ut_src(1         ,i,j,k) = tmp(1)*cosXGP
-      Ut_src(2:PP_dim+1,i,j,k) = tmp(2)*cosXGP + tmp(3)*sinXGP2
-#if (PP_dim == 2)
-      Ut_src(4         ,i,j,k) = 0.
+      Ut_src(DENS      ,i,j,k) = tmp(1)*cosXGP
+#if (PP_dim == 3)
+      Ut_src(MOM1:MOM3,i,j,k)  = tmp(2)*cosXGP + tmp(3)*sinXGP2
+#else
+      Ut_src(MOM1:MOM2,i,j,k)  = tmp(2)*cosXGP + tmp(3)*sinXGP2
+      Ut_src(MOM3      ,i,j,k) = 0.
 #endif
-      Ut_src(5  ,i,j,k) = tmp(4)*cosXGP + tmp(5)*sinXGP2 + tmp(6)*sinXGP
+      Ut_src(ENER,i,j,k)       = tmp(4)*cosXGP + tmp(5)*sinXGP2 + tmp(6)*sinXGP
     END DO; END DO; END DO ! i,j,k
 #if FV_ENABLED
     IF (FV_Elems(iElem).GT.0) THEN ! FV elem
@@ -737,28 +745,28 @@ CASE(41) ! Sinus in x
   DO iElem=1,nElems
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
 #if PARABOLIC
-      Ut_src(1,i,j,k) = (-Amplitude*a+Amplitude*omega)*cos(omega*Elem_xGP(1,i,j,k,iElem)-a*t)
+      Ut_src(DENS,i,j,k) = (-Amplitude*a+Amplitude*omega)*cos(omega*Elem_xGP(1,i,j,k,iElem)-a*t)
 
-      Ut_src(2,i,j,k) = (-Amplitude**2*omega+Amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(1,i,j,k,iElem)-2.*a*t)+&
-                      (-Amplitude*a+2.*Amplitude*omega*kappa*C-1./2.*Amplitude*omega*kappa+&
-                      3./2.*Amplitude*omega-2.*Amplitude*omega*C)*cos(omega*Elem_xGP(1,i,j,k,iElem)-a*t)
+      Ut_src(MOM1,i,j,k) = (-Amplitude**2*omega+Amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(1,i,j,k,iElem)-2.*a*t)+&
+                           (-Amplitude*a+2.*Amplitude*omega*kappa*C-1./2.*Amplitude*omega*kappa+&
+                           3./2.*Amplitude*omega-2.*Amplitude*omega*C)*cos(omega*Elem_xGP(1,i,j,k,iElem)-a*t)
 
-      Ut_src(3:4,i,j,k) = 0.0
+      Ut_src(MOM2:MOM3,i,j,k) = 0.0
 
-      Ut_src(5,i,j,k) = mu0*kappa*Amplitude*sin(omega*Elem_xGP(1,i,j,k,iElem)-a*t)*omega**2/Pr+&
-                      (-Amplitude**2*a+Amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(1,i,j,k,iElem)-2.*a*t)+&
-                      1./2.*(-4.*Amplitude*a*C+4.*Amplitude*omega*kappa*C-Amplitude*omega*kappa+&
-                           Amplitude*omega)*cos(omega*Elem_xGP(1,i,j,k,iElem)-a*t)
+      Ut_src(ENER,i,j,k) = mu0*kappa*Amplitude*sin(omega*Elem_xGP(1,i,j,k,iElem)-a*t)*omega**2/Pr+&
+                           (-Amplitude**2*a+Amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(1,i,j,k,iElem)-2.*a*t)+&
+                           1./2.*(-4.*Amplitude*a*C+4.*Amplitude*omega*kappa*C-Amplitude*omega*kappa+&
+                                Amplitude*omega)*cos(omega*Elem_xGP(1,i,j,k,iElem)-a*t)
 #else
-      Ut_src(1,i,j,k) = (-amplitude*a+amplitude*omega)*cos(omega*Elem_xGP(1,i,j,k,iElem)-a*t)
-      Ut_src(2,i,j,k) = (-amplitude**2*omega+amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(1,i,j,k,iElem)-2.*a*t)+ &
-                      (-amplitude*a+2.*amplitude*omega*kappa*C-1./2.*omega*kappa*amplitude+ &
-                      3./2.*amplitude*omega-2.*amplitude*omega*C)*cos(omega*Elem_xGP(1,i,j,k,iElem)-a*t)
+      Ut_src(DENS,i,j,k) = (-amplitude*a+amplitude*omega)*cos(omega*Elem_xGP(1,i,j,k,iElem)-a*t)
+      Ut_src(MOM1,i,j,k) = (-amplitude**2*omega+amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(1,i,j,k,iElem)-2.*a*t)+ &
+                           (-amplitude*a+2.*amplitude*omega*kappa*C-1./2.*omega*kappa*amplitude+ &
+                           3./2.*amplitude*omega-2.*amplitude*omega*C)*cos(omega*Elem_xGP(1,i,j,k,iElem)-a*t)
 
-      Ut_src(3:4,i,j,k) = 0.0
-      Ut_src(5,i,j,k) = (-amplitude**2*a+amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(1,i,j,k,iElem)-2.*a*t)+&
-                      (-2.*amplitude*a*C+2.*amplitude*omega*kappa*C-1./2.*omega*kappa*amplitude+&
-                      1./2.*amplitude*omega)*cos(omega*Elem_xGP(1,i,j,k,iElem)-a*t)
+      Ut_src(MOM2:MOM3,i,j,k) = 0.0
+      Ut_src(ENER,i,j,k) = (-amplitude**2*a+amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(1,i,j,k,iElem)-2.*a*t)+&
+                           (-2.*amplitude*a*C+2.*amplitude*omega*kappa*C-1./2.*omega*kappa*amplitude+&
+                           1./2.*amplitude*omega)*cos(omega*Elem_xGP(1,i,j,k,iElem)-a*t)
 
 #endif
     END DO; END DO; END DO ! i,j,k
@@ -787,29 +795,29 @@ CASE(42) ! Sinus in y
   DO iElem=1,nElems
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
 #if PARABOLIC
-      Ut_src(1,i,j,k) = (-Amplitude*a+Amplitude*omega)*cos(omega*Elem_xGP(2,i,j,k,iElem)-a*t)
-      Ut_src(2,i,j,k) = 0.0
-      Ut_src(3,i,j,k) = (-Amplitude**2*omega+Amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(2,i,j,k,iElem)-2.*a*t)+&
-                      (-Amplitude*a+2.*Amplitude*omega*kappa*C-1./2.*Amplitude*omega*kappa+&
-                      3./2.*Amplitude*omega-2.*Amplitude*omega*C)*cos(omega*Elem_xGP(2,i,j,k,iElem)-a*t)
+      Ut_src(DENS,i,j,k) = (-Amplitude*a+Amplitude*omega)*cos(omega*Elem_xGP(2,i,j,k,iElem)-a*t)
+      Ut_src(MOM1,i,j,k) = 0.0
+      Ut_src(MOM2,i,j,k) = (-Amplitude**2*omega+Amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(2,i,j,k,iElem)-2.*a*t)+&
+                           (-Amplitude*a+2.*Amplitude*omega*kappa*C-1./2.*Amplitude*omega*kappa+&
+                           3./2.*Amplitude*omega-2.*Amplitude*omega*C)*cos(omega*Elem_xGP(2,i,j,k,iElem)-a*t)
 
-      Ut_src(4,i,j,k) = 0.0
+      Ut_src(MOM3,i,j,k) = 0.0
 
-      Ut_src(5,i,j,k) = mu0*kappa*Amplitude*sin(omega*Elem_xGP(2,i,j,k,iElem)-a*t)*omega**2/Pr+&
-                      (-Amplitude**2*a+Amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(2,i,j,k,iElem)-2.*a*t)+&
-                      1./2.*(-4.*Amplitude*a*C+4.*Amplitude*omega*kappa*C-Amplitude*omega*kappa+&
-                           Amplitude*omega)*cos(omega*Elem_xGP(2,i,j,k,iElem)-a*t)
+      Ut_src(ENER,i,j,k) = mu0*kappa*Amplitude*sin(omega*Elem_xGP(2,i,j,k,iElem)-a*t)*omega**2/Pr+&
+                           (-Amplitude**2*a+Amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(2,i,j,k,iElem)-2.*a*t)+&
+                           1./2.*(-4.*Amplitude*a*C+4.*Amplitude*omega*kappa*C-Amplitude*omega*kappa+&
+                                Amplitude*omega)*cos(omega*Elem_xGP(2,i,j,k,iElem)-a*t)
 #else
-      Ut_src(1,i,j,k) = (-amplitude*a+amplitude*omega)*cos(omega*Elem_xGP(2,i,j,k,iElem)-a*t)
-      Ut_src(2,i,j,k) = 0.0
-      Ut_src(3,i,j,k) = (-amplitude**2*omega+amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(2,i,j,k,iElem)-2.*a*t)+ &
-                      (-amplitude*a+2.*amplitude*omega*kappa*C-1./2.*omega*kappa*amplitude+ &
-                      3./2.*amplitude*omega-2.*amplitude*omega*C)*cos(omega*Elem_xGP(2,i,j,k,iElem)-a*t)
+      Ut_src(DENS,i,j,k) = (-amplitude*a+amplitude*omega)*cos(omega*Elem_xGP(2,i,j,k,iElem)-a*t)
+      Ut_src(MOM1,i,j,k) = 0.0
+      Ut_src(MOM2,i,j,k) = (-amplitude**2*omega+amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(2,i,j,k,iElem)-2.*a*t)+ &
+                           (-amplitude*a+2.*amplitude*omega*kappa*C-1./2.*omega*kappa*amplitude+ &
+                           3./2.*amplitude*omega-2.*amplitude*omega*C)*cos(omega*Elem_xGP(2,i,j,k,iElem)-a*t)
 
-      Ut_src(4,i,j,k) = 0.0
-      Ut_src(5,i,j,k) = (-amplitude**2*a+amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(2,i,j,k,iElem)-2.*a*t)+&
-                      (-2.*amplitude*a*C+2.*amplitude*omega*kappa*C-1./2.*omega*kappa*amplitude+&
-                      1./2.*amplitude*omega)*cos(omega*Elem_xGP(2,i,j,k,iElem)-a*t)
+      Ut_src(MOM3,i,j,k) = 0.0
+      Ut_src(ENER,i,j,k) = (-amplitude**2*a+amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(2,i,j,k,iElem)-2.*a*t)+&
+                           (-2.*amplitude*a*C+2.*amplitude*omega*kappa*C-1./2.*omega*kappa*amplitude+&
+                           1./2.*amplitude*omega)*cos(omega*Elem_xGP(2,i,j,k,iElem)-a*t)
 
 #endif
     END DO; END DO; END DO ! i,j,k
@@ -840,27 +848,27 @@ CASE(43) ! Sinus in z
   DO iElem=1,nElems
     DO k=0,PP_N; DO j=0,PP_N; DO i=0,PP_N
 #if PARABOLIC
-      Ut_src(1,i,j,k) = (-Amplitude*a+Amplitude*omega)*cos(omega*Elem_xGP(3,i,j,k,iElem)-a*t)
-      Ut_src(2:3,i,j,k) = 0.0
-      Ut_src(4,i,j,k) = (-Amplitude**2*omega+Amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(3,i,j,k,iElem)-2.*a*t)+&
-                      (-Amplitude*a+2.*Amplitude*omega*kappa*C-1./2.*Amplitude*omega*kappa+&
-                      3./2.*Amplitude*omega-2.*Amplitude*omega*C)*cos(omega*Elem_xGP(3,i,j,k,iElem)-a*t)
+      Ut_src(DENS,i,j,k) = (-Amplitude*a+Amplitude*omega)*cos(omega*Elem_xGP(3,i,j,k,iElem)-a*t)
+      Ut_src(MOM1:MOM2,i,j,k) = 0.0
+      Ut_src(MOM3,i,j,k) = (-Amplitude**2*omega+Amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(3,i,j,k,iElem)-2.*a*t)+&
+                           (-Amplitude*a+2.*Amplitude*omega*kappa*C-1./2.*Amplitude*omega*kappa+&
+                           3./2.*Amplitude*omega-2.*Amplitude*omega*C)*cos(omega*Elem_xGP(3,i,j,k,iElem)-a*t)
 
 
-      Ut_src(5,i,j,k) = mu0*kappa*Amplitude*sin(omega*Elem_xGP(3,i,j,k,iElem)-a*t)*omega**2/Pr+&
-                      (-Amplitude**2*a+Amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(3,i,j,k,iElem)-2.*a*t)+&
-                      1./2.*(-4.*Amplitude*a*C+4.*Amplitude*omega*kappa*C-Amplitude*omega*kappa+&
-                           Amplitude*omega)*cos(omega*Elem_xGP(3,i,j,k,iElem)-a*t)
+      Ut_src(ENER,i,j,k) = mu0*kappa*Amplitude*sin(omega*Elem_xGP(3,i,j,k,iElem)-a*t)*omega**2/Pr+&
+                           (-Amplitude**2*a+Amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(3,i,j,k,iElem)-2.*a*t)+&
+                           1./2.*(-4.*Amplitude*a*C+4.*Amplitude*omega*kappa*C-Amplitude*omega*kappa+&
+                                Amplitude*omega)*cos(omega*Elem_xGP(3,i,j,k,iElem)-a*t)
 #else
-      Ut_src(1,i,j,k) = (-amplitude*a+amplitude*omega)*cos(omega*Elem_xGP(3,i,j,k,iElem)-a*t)
-      Ut_src(2:3,i,j,k) = 0.0
-      Ut_src(4,i,j,k) = (-amplitude**2*omega+amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(3,i,j,k,iElem)-2.*a*t)+ &
-                      (-amplitude*a+2.*amplitude*omega*kappa*C-1./2.*omega*kappa*amplitude+ &
-                      3./2.*amplitude*omega-2.*amplitude*omega*C)*cos(omega*Elem_xGP(3,i,j,k,iElem)-a*t)
+      Ut_src(DENS,i,j,k) = (-amplitude*a+amplitude*omega)*cos(omega*Elem_xGP(3,i,j,k,iElem)-a*t)
+      Ut_src(MOM1:MOM2,i,j,k) = 0.0
+      Ut_src(MOM3,i,j,k) = (-amplitude**2*omega+amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(3,i,j,k,iElem)-2.*a*t)+ &
+                           (-amplitude*a+2.*amplitude*omega*kappa*C-1./2.*omega*kappa*amplitude+ &
+                           3./2.*amplitude*omega-2.*amplitude*omega*C)*cos(omega*Elem_xGP(3,i,j,k,iElem)-a*t)
 
-      Ut_src(5,i,j,k) = (-amplitude**2*a+amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(3,i,j,k,iElem)-2.*a*t)+&
-                      (-2.*amplitude*a*C+2.*amplitude*omega*kappa*C-1./2.*omega*kappa*amplitude+&
-                      1./2.*amplitude*omega)*cos(omega*Elem_xGP(3,i,j,k,iElem)-a*t)
+      Ut_src(ENER,i,j,k) = (-amplitude**2*a+amplitude**2*omega*kappa)*sin(2.*omega*Elem_xGP(3,i,j,k,iElem)-2.*a*t)+&
+                           (-2.*amplitude*a*C+2.*amplitude*omega*kappa*C-1./2.*omega*kappa*amplitude+&
+                           1./2.*amplitude*omega)*cos(omega*Elem_xGP(3,i,j,k,iElem)-a*t)
 
 #endif
     END DO; END DO; END DO ! i,j,k
