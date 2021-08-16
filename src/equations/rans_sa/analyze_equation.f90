@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -44,7 +44,7 @@ PUBLIC::DefineParametersAnalyzeEquation
 CONTAINS
 
 !==================================================================================================================================
-!> Define parameters 
+!> Define parameters
 !==================================================================================================================================
 SUBROUTINE DefineParametersAnalyzeEquation()
 ! MODULES
@@ -55,7 +55,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 !==================================================================================================================================
 CALL prms%SetSection("AnalyzeEquation")
 CALL prms%CreateLogicalOption('CalcBodyForces'   , "Set true to compute body forces at walls"         , '.FALSE.')
@@ -450,17 +450,17 @@ DO SideID=1,nBCSides
 
   DO j=0,PP_NZ; DO i=0,PP_N
     ! TODO: ATTENTION: Temperature of UE not filled!!!
-    UE(1:5) =U_master(1:5,i,j,SideID)
-    UE(SRHO)=1./UE(DENS)
-    UE(VELV)=VELOCITY_HE(UE)
-    UE(PRES)=PRESSURE_HE(UE)
-    
-    PrimVar(1:3)=UE(VELV)
+    UE(EXT_CONS)=U_master(CONS,i,j,SideID)
+    UE(EXT_SRHO)=1./UE(EXT_DENS)
+    UE(EXT_VELV)=VELOCITY_HE(UE)
+    UE(EXT_PRES)=PRESSURE_HE(UE)
+
+    PrimVar(1:3)=UE(EXT_VELV)
 
     ! VelocityMagnitude
     PrimVar(4)=SQRT(SUM(PrimVar(1:3)*PrimVar(1:3)))
     ! Pressure
-    PrimVar(5)=UE(PRES)
+    PrimVar(5)=UE(EXT_PRES)
     ! VelocitySound
     PrimVar(6)=SPEEDOFSOUND_HE(UE)
     ! Mach
@@ -468,16 +468,16 @@ DO SideID=1,nBCSides
     ! Temperature
     PrimVar(8)=TEMPERATURE_HE(UE)
     ! EnergyStagnation
-    PrimVar(9)=UE(ENER)*UE(SRHO)
+    PrimVar(9)=UE(EXT_ENER)*UE(EXT_SRHO)
     ! EnthalpyStagnation
-    PrimVar(10)=PrimVar(9)+PrimVar(5)*UE(SRHO)
+    PrimVar(10)=PrimVar(9)+PrimVar(5)*UE(EXT_SRHO)
     ! Entropy
     PrimVar(11)= ENTROPY_H(UE,PrimVar(8))
-    ! Potential Temperature 
+    ! Potential Temperature
 !    PrimVar(12)=PrimVar(8)/(PrimVar(5)/P0)**(1.-sKappa)
     c=PrimVar(6)
     Mach=PrimVar(7)
-    ! Total Temperature 
+    ! Total Temperature
     PrimVar(13)=TOTAL_TEMPERATURE_H(PrimVar(8),Mach)
     ! Total Pressure
     PrimVar(14)=TOTAL_PRESSURE_H(PrimVar(5),Mach)
@@ -588,7 +588,7 @@ END IF
 #endif
 DO iBC=1,nBCs
   IF(.NOT.isWall(iBC)) CYCLE
-    MeanV(iBC)=MeanV(iBC)/Surf(iBC)
+  MeanV(iBC)=MeanV(iBC)/Surf(iBC)
 END DO
 
 END SUBROUTINE CalcWallVelocity

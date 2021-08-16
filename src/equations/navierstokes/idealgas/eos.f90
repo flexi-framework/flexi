@@ -195,22 +195,20 @@ REAL,INTENT(OUT) :: prim(PP_nVarPrim) !< vector of primitive variables (density,
 ! LOCAL VARIABLES
 REAL             :: sRho    ! 1/Rho
 !==================================================================================================================================
-sRho=1./cons(1)
+sRho=1./cons(DENS)
 ! density
-prim(1)=cons(1)
+prim(DENS)=cons(DENS)
 ! velocity
-prim(2:3)=cons(2:3)*sRho
+prim(VEL1:VEL2)=cons(MOM1:MOM2)*sRho
 #if (PP_dim==3)
-prim(4)=cons(4)*sRho
-! pressure
-prim(5)=KappaM1*(cons(5)-0.5*SUM(cons(2:4)*prim(2:4)))
+prim(VEL3)=cons(MOM3)*sRho
 #else
-prim(4)=0.
-! pressure
-prim(5)=KappaM1*(cons(5)-0.5*SUM(cons(2:3)*prim(2:3)))
+prim(VEL3)=0.
 #endif
+! pressure
+prim(PRES)=KappaM1*(cons(ENER)-0.5*SUM(cons(MOMV)*prim(VELV)))
 ! temperature
-prim(6) = prim(5)*sRho / R
+prim(TEMP) = prim(PRES)*sRho / R
 END SUBROUTINE ConsToPrim
 
 !==================================================================================================================================
@@ -271,18 +269,16 @@ REAL,INTENT(OUT) :: cons(PP_nVar)     !< vector of conservative variables
 ! LOCAL VARIABLES
 !==================================================================================================================================
 ! density
-cons(1)=prim(1)
+cons(DENS)=prim(DENS)
 ! momentum
-cons(2:3)=prim(2:3)*prim(1)
+cons(MOM1:MOM2)=prim(VEL1:VEL2)*prim(DENS)
 #if (PP_dim==3)
-cons(4)=prim(4)*prim(1)
-! energy
-cons(5)=sKappaM1*prim(5)+0.5*SUM(cons(2:4)*prim(2:4))
+cons(MOM3)=prim(VEL3)*prim(DENS)
 #else
-cons(4)=0.
-! energy
-cons(5)=sKappaM1*prim(5)+0.5*SUM(cons(2:3)*prim(2:3))
+cons(MOM3)=0.
 #endif
+! energy
+cons(ENER)=sKappaM1*prim(PRES)+0.5*SUM(cons(MOMV)*prim(VELV))s
 END SUBROUTINE PrimToCons
 
 !==================================================================================================================================
@@ -346,12 +342,12 @@ REAL            :: PRESSURE_RIEMANN    !< pressure as the return value of the Ri
 REAL            :: kappaFac,ar,br,P_RP
 !==================================================================================================================================
 kappaFac=2.*Kappa*sKappaM1
-IF(U_Prim(2) .LE. 0.)THEN ! rarefaction
-  P_RP=U_Prim(5) * MAX(0.0001,(1.+0.5*KappaM1*U_Prim(2)/SQRT(Kappa*U_Prim(5)/U_Prim(1))))**kappaFac
+IF(U_Prim(VEL1) .LE. 0.)THEN ! rarefaction
+  P_RP=U_Prim(PRES) * MAX(0.0001,(1.+0.5*KappaM1*U_Prim(VEL1)/SQRT(Kappa*U_Prim(PRES)/U_Prim(DENS))))**kappaFac
 ELSE ! shock
-  ar=2.*sKappaP1/U_Prim(1)
-  br=KappaM1*sKappaP1*U_Prim(5)
-  P_RP=U_Prim(5)+U_Prim(2)/ar*0.5*(U_Prim(2)+SQRT(U_Prim(2)*U_Prim(2)+4.*ar*(U_Prim(5)+br)))
+  ar=2.*sKappaP1/U_Prim(DENS)
+  br=KappaM1*sKappaP1*U_Prim(PRES)
+  P_RP=U_Prim(PRES)+U_Prim(VEL1)/ar*0.5*(U_Prim(VEL1)+SQRT(U_Prim(VEL1)*U_Prim(VEL1)+4.*ar*(U_Prim(PRES)+br)))
 END IF
 PRESSURE_RIEMANN=P_RP
 END FUNCTION PRESSURE_RIEMANN
