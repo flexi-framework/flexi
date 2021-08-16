@@ -288,7 +288,7 @@ CASE(21) ! sinus x
     ! g''(t)
     Resu_tt(DENS)=-Amplitude*sin(Omega*cent(1))*ov**2.
     Resu_tt(MOMV)=Resu_tt(DENS)*prim(VELV)
-    Resu_tt(PRES)=0.5*SUM(Resu_tt(MOMV)*prim(VELV))
+    Resu_tt(ENER)=0.5*SUM(Resu_tt(MOMV)*prim(VELV))
   END IF
 CASE(3) ! linear in rho
   ! base flow
@@ -374,11 +374,11 @@ CASE(42) ! SINUS in y
     Resu_tt = 0.
     ! g'(t)
     Resu_t(DENS)=(-a)*Amplitude*cos(Omega*x(2) - a*tEval)
-    Resu_t(MOM2) = Resu_t(DENS)
+    Resu_t(MOM2)=Resu_t(DENS)
     Resu_t(ENER)=2.*Resu(DENS)*Resu_t(DENS)
     ! g''(t)
     Resu_tt(DENS)=-a*a*Amplitude*sin(Omega*x(2) - a*tEval)
-    Resu_t(MOM2) = Resu_t(DENS)
+    Resu_tt(MOM2)=Resu_tt(DENS)
     Resu_tt(ENER)=2.*(Resu_t(DENS)*Resu_t(DENS) + Resu(DENS)*Resu_tt(DENS))
   END IF
 #if PP_dim==3
@@ -396,11 +396,11 @@ CASE(43) ! SINUS in z
     Resu_tt = 0.
     ! g'(t)
     Resu_t(DENS)=(-a)*Amplitude*cos(Omega*x(3) - a*tEval)
-    Resu_t(MOM3) = Resu_t(DENS)
+    Resu_t(MOM3)=Resu_t(DENS)
     Resu_t(ENER)=2.*Resu(DENS)*Resu_t(DENS)
     ! g''(t)
     Resu_tt(DENS)=-a*a*Amplitude*sin(Omega*x(3) - a*tEval)
-    Resu_t(MOM3) = Resu_t(DENS)
+    Resu_tt(MOM3)=Resu_tt(DENS)
     Resu_tt(ENER)=2.*(Resu_t(DENS)*Resu_t(DENS) + Resu(DENS)*Resu_tt(DENS))
   END IF
 #endif
