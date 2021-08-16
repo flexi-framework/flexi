@@ -278,7 +278,7 @@ cons(MOM3)=prim(VEL3)*prim(DENS)
 cons(MOM3)=0.
 #endif
 ! energy
-cons(ENER)=sKappaM1*prim(PRES)+0.5*SUM(cons(MOMV)*prim(VELV))s
+cons(ENER)=sKappaM1*prim(PRES)+0.5*SUM(cons(MOMV)*prim(VELV))
 END SUBROUTINE PrimToCons
 
 !==================================================================================================================================
