@@ -109,9 +109,9 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !> Gradients in x,y,z directions
-REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: gradUx, gradUy, gradUz
-REAL                       ,INTENT(IN)  :: dens, damp
-REAL                       ,INTENT(OUT) :: muSGS
+REAL,DIMENSION(PP_nVarLifting),INTENT(IN)  :: gradUx, gradUy, gradUz
+REAL                          ,INTENT(IN)  :: dens, damp
+REAL                          ,INTENT(OUT) :: muSGS
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                                    :: S_eN

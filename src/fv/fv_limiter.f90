@@ -81,11 +81,10 @@ END SUBROUTINE DefineParametersFV_Limiter
 SUBROUTINE InitFV_Limiter()
 USE MOD_Globals
 USE MOD_ReadInTools
-USE MOD_FV_Vars     ,ONLY: FV_sweby_beta
+USE MOD_FV_Vars     ,ONLY: LimiterType,FV_sweby_beta
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER :: LimiterType
 !===================================================================================================================================
 ! Read in LimiterType parameters
 LimiterType = GETINTFROMSTR('FV_LimiterType')

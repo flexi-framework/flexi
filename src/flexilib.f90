@@ -58,6 +58,8 @@ USE MOD_Output,            ONLY:DefineParametersOutput,InitOutput
 USE MOD_Analyze,           ONLY:DefineParametersAnalyze,InitAnalyze
 USE MOD_RecordPoints,      ONLY:DefineParametersRecordPoints,InitRecordPoints
 USE MOD_TimeDisc,          ONLY:DefineParametersTimedisc,InitTimeDisc,TimeDisc
+USE MOD_Implicit,          ONLY:DefineParametersImplicit,InitImplicit
+USE MOD_Precond,           ONLY:DefineParametersPrecond
 USE MOD_MPI,               ONLY:DefineParametersMPI,InitMPI
 #if USE_MPI
 USE MOD_MPI,               ONLY:InitMPIvars
@@ -132,6 +134,8 @@ CALL DefineParametersLifting ()
 #endif /*PARABOLIC*/
 CALL DefineParametersSponge()
 CALL DefineParametersTimedisc()
+CALL DefineParametersImplicit()
+CALL DefineParametersPrecond()
 CALL DefineParametersAnalyze()
 CALL DefineParametersRecordPoints()
 
@@ -201,6 +205,7 @@ CALL InitLifting()
 CALL InitSponge()
 CALL InitTimeDisc()
 CALL InitAnalyze()
+CALL InitImplicit()
 CALL InitRecordpoints()
 CALL IgnoredParameters()
 CALL Restart()
@@ -243,6 +248,7 @@ USE MOD_Overintegration,   ONLY:FinalizeOverintegration
 USE MOD_Output,            ONLY:FinalizeOutput
 USE MOD_Analyze,           ONLY:FinalizeAnalyze
 USE MOD_RecordPoints,      ONLY:FinalizeRecordPoints
+USE MOD_Implicit,          ONLY:FinalizeImplicit
 USE MOD_TimeDisc,          ONLY:FinalizeTimeDisc
 #if USE_MPI
 USE MOD_MPI,               ONLY:FinalizeMPI
@@ -274,6 +280,7 @@ CALL FinalizeFV()
 CALL FinalizeDG()
 CALL FinalizeEquation()
 CALL FinalizeInterpolation()
+CALL FinalizeImplicit
 CALL FinalizeTimeDisc()
 CALL FinalizeRestart()
 CALL FinalizeMesh()

@@ -163,11 +163,11 @@ USE MOD_Viscosity
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,DIMENSION(PRIM),INTENT(IN)         :: UPrim                !< Solution vector
+REAL,DIMENSION(PRIM),INTENT(IN)           :: UPrim                !< Solution vector
 !> Gradients in x,y,z directions
-REAL,DIMENSION(PP_nVarLifting),INTENT(IN)  :: gradUx,gradUy,gradUz
+REAL,DIMENSION(PP_nVarLifting),INTENT(IN) :: gradUx,gradUy,gradUz
 !> Physical fluxes in x,y,z directions
-REAL,DIMENSION(CONS),INTENT(OUT)        :: f,g,h
+REAL,DIMENSION(CONS),INTENT(OUT)          :: f,g,h
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                :: muS,lambda
@@ -179,7 +179,7 @@ REAL                :: chi,muTurb,muTilde,SAfn,muEff
 !==================================================================================================================================
 ! Viscous part
 ! ideal gas law
-muS   =VISCOSITY_PRIM(prim)
+muS   =VISCOSITY_PRIM(UPrim)
 lambda=THERMAL_CONDUCTIVITY_H(muS)
 ! Add turbulent viscosity
 muTilde = UPrim(NUSA)*UPrim(DENS)

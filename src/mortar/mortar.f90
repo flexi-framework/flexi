@@ -107,7 +107,6 @@ END SUBROUTINE InitMortar
 !> Build 1D operators for non-conforming interfaces:
 !>    M_0_1(:,:)  interpolation from full  interval 0: [-1,1] to left  interval 1: [-1,0]
 !>    M_0_2(:,:)  interpolation from full  interval 0: [-1,1] to right interval 2: [0, 1]
-!> see doc/mortar for details...
 !==================================================================================================================================
 SUBROUTINE MortarBasis_BigToSmall(FVE,N_In,NodeType_In,M_0_1,M_0_2)
 ! MODULES
@@ -192,7 +191,6 @@ END SUBROUTINE MortarBasis_BigToSmall
 !> Build 1D operators for non-conforming interfaces:
 !>    M_1_0(:,:)  projection    from left  interval 1: [-1,0] to full  interval 0: [-1,1]
 !>    M_2_0(:,:)  projection    from right interval 1: [0, 1] to full  interval 0: [-1,1]
-!> see doc/mortar for details...
 !==================================================================================================================================
 SUBROUTINE MortarBasis_SmallToBig(FVE,N_In,NodeType_In,M_1_0,M_2_0)
 ! MODULES

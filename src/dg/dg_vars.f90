@@ -63,7 +63,8 @@ REAL,ALLOCATABLE                      :: Ut(:,:,:,:,:)          !< Residual/time
 !----------------------------------------------------------------------------------------------------------------------------------
 ! auxilliary counters: number of entries in U, Ut, gradUx, gradUy, gradUz, used of optimization
 INTEGER                               :: nTotalU                !< Total number of entries in U / size of U.
-
+INTEGER                               :: nDOFFace               !< Degrees of freedom on single face(per equation)
+                                                                !< $ nDOFace=(N+1)^2 $.
 INTEGER                               :: nDOFElem               !< Degrees of freedom in single element(per equation)
                                                                 !< $ nDOFElem=(N+1)^3 $.
 
@@ -87,6 +88,7 @@ REAL,ALLOCATABLE                      :: UPrim_master(:,:,:,:)  !< 2D Solution i
 REAL,ALLOCATABLE                      :: UPrim_slave(:,:,:,:)   !< 2D Solution in Primitive variables on face, slave side,
                                                                 !<size [1..NVar,0..N,0..NZ,all_slave_sides]
 !----------------------------------------------------------------------------------------------------------------------------------
+INTEGER                               :: SplitDG                !< Shows which split formulation is used
 ! Variables for boundary flux calculation
 REAL,ALLOCATABLE                      :: UPrim_Boundary(:,:,:)
 

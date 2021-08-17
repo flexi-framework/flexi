@@ -101,9 +101,9 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !> Gradients in x,y,z directions
-REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: gradUx, gradUy, gradUz
-REAL                       ,INTENT(IN)  :: dens, deltaS
-REAL                       ,INTENT(OUT) :: muSGS
+REAL,DIMENSION(PP_nVarLifting),INTENT(IN)  :: gradUx, gradUy, gradUz
+REAL                          ,INTENT(IN)  :: dens, deltaS
+REAL                          ,INTENT(OUT) :: muSGS
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! External procedures defined in LAPACK
 EXTERNAL DSYEV

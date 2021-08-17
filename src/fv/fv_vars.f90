@@ -42,6 +42,7 @@ LOGICAL                :: FV_IniSupersample      !< Supersample initial solution
 LOGICAL                :: switchConservative     !< Perform DG/FV switch in reference element
 
 ! Limiting
+INTEGER                :: LimiterType            !< Readin variable for type of used fv limiter
 REAL                   :: FV_sweby_beta          !< parameter for Sweby limiter
 
 ! FV/DG

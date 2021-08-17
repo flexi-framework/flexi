@@ -51,6 +51,10 @@ INTERFACE GetBoundaryFlux
   MODULE PROCEDURE GetBoundaryFlux
 END INTERFACE
 
+INTERFACE GetBoundaryState
+  MODULE PROCEDURE GetBoundaryState
+END INTERFACE
+
 INTERFACE FinalizeBC
   MODULE PROCEDURE FinalizeBC
 END INTERFACE
@@ -72,6 +76,7 @@ PUBLIC :: Lifting_GetBoundaryFlux
 
 PUBLIC :: InitBC
 PUBLIC :: GetBoundaryFlux
+PUBLIC :: GetBoundaryState
 PUBLIC :: FinalizeBC
 #if FV_ENABLED
 #if FV_RECONSTRUCT
