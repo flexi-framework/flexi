@@ -312,7 +312,7 @@ DO i=1,nDOF_loc
   !Add turbulent sub grid scale viscosity to mu
 #if EDDYVISCOSITY
   muS    = muS    + muSGS(1,i)
-  lambda = lambda + muSGS*cp/PrSGS
+  lambda = lambda + muSGS(1,i)*cp/PrSGS
 #endif
 #if PP_dim==3
   ! derivatives of diffusive flux in x-direction
