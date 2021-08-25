@@ -227,7 +227,8 @@ DO iLocSide=2,5
         gradUySideL = gradUy_master(:,:,:,SideID);gradUySideR = gradUy_slave(:,:,:,SideID)
         gradUzSideL = gradUz_master(:,:,:,SideID);gradUzSideR = gradUz_slave(:,:,:,SideID)
 #if EDDYVISCOSITY
-        muSGSL = muSGS_master(:,:,:,SideID),muSGSR = muSGS_slave(:,:,:,SideID)
+        muSGSL = muSGS_master(:,:,:,SideID)
+        muSGSR = muSGS_slave(:,:,:,SideID)
 #endif
 #endif
         signum = 1.
@@ -239,7 +240,8 @@ DO iLocSide=2,5
         gradUySideL = gradUy_slave(:,:,:,SideID);gradUySideR = gradUy_master(:,:,:,SideID)
         gradUzSideL = gradUz_slave(:,:,:,SideID);gradUzSideR = gradUz_master(:,:,:,SideID)
 #if EDDYVISCOSITY
-        muSGSL = muSGS_slave(:,:,:,SideID),muSGSR = muSGS_master(:,:,:,SideID)
+        muSGSL = muSGS_slave(:,:,:,SideID)
+        muSGSR = muSGS_master(:,:,:,SideID)
 #endif
 #endif
         signum = -1.
