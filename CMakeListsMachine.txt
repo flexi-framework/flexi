@@ -5,11 +5,73 @@
 MARK_AS_ADVANCED(FORCE CMAKE_HOSTNAME)
 SITE_NAME(CMAKE_HOSTNAME)
 
+# =========================================================================
+# Some clusters requires setting the compilers by hand and invoking
+# ENABLE_LANGUAGE afterwards, which is required for
+# CMAKE_Fortran_COMPILER_ID that is used below
+# > This block must be called before ENABLE_LANGUAGE
+# =========================================================================
 # HLRS HAWK / SuperMUC
 IF ("${CMAKE_HOSTNAME}" MATCHES "login")
   SET(CMAKE_C_COMPILER       mpicc)
   SET(CMAKE_CXX_COMPILER     mpicxx)
   SET(CMAKE_Fortran_COMPILER mpif90) # mpif08 wrapper seems to have issue
+# IAG Prandtl
+ELSEIF("${CMAKE_HOSTNAME}" MATCHES "^prandtl")
+  SET(CMAKE_C_COMPILER       gcc)
+  SET(CMAKE_CXX_COMPILER     c++)
+  SET(CMAKE_Fortran_COMPILER gfortran)
+# IAG Grafik01/Grafik02
+ELSEIF ("${CMAKE_HOSTNAME}" MATCHES "^grafik0")
+  SET(CMAKE_C_COMPILER       gcc)
+  SET(CMAKE_CXX_COMPILER     c++)
+  SET(CMAKE_Fortran_COMPILER gfortran)
+ELSEIF ("${CMAKE_HOSTNAME}" MATCHES "^ilahead1")
+  SET(CMAKE_C_COMPILER       mpicc)
+  SET(CMAKE_CXX_COMPILER     mpicxx)
+  SET(CMAKE_Fortran_COMPILER mpif90) # mpif08 wrapper seems to have issue
+ELSEIF ("${CMAKE_HOSTNAME}" MATCHES "^xenon")
+  SET(CMAKE_C_COMPILER       mpicc)
+  SET(CMAKE_CXX_COMPILER     mpicxx)
+  SET(CMAKE_Fortran_COMPILER mpif90) # mpif08 wrapper seems to have issue
+ENDIF()
+
+# =========================================================================
+# Score-P instrumentation infrastructure
+# > This option must be called before ENABLE_LANGUAGE, thus is only available
+# > through -DMACHINE_USE_SCOREP=ON
+# =========================================================================
+IF (MACHINE_USE_SCOREP)
+  FIND_PROGRAM(SCOREP_C_COMPILER scorep-${CMAKE_C_COMPILER})
+  MARK_AS_ADVANCED(FORCE SCOREP_C_COMPILER )
+  IF (SCOREP_C_COMPILER MATCHES "NOTFOUND")
+    MESSAGE (FATAL_ERROR "Score-P not available in PATH. Did you load the module?")
+  ENDIF()
+
+  # Set default build type to profile
+  IF (NOT CMAKE_BUILD_TYPE)
+    SET (CMAKE_BUILD_TYPE Profile CACHE STRING "Choose the type of build, options are: Debug Release Profile Sanitize." FORCE)
+  ENDIF (NOT CMAKE_BUILD_TYPE)
+  IF (CMAKE_BUILD_TYPE MATCHES "Release")
+    MESSAGE (WARNING "Score-P requires debug compile flags which are not available with BUILD_TYPE='Release'")
+  ENDIF()
+
+  SET(CMAKE_C_COMPILER       "scorep-${CMAKE_C_COMPILER}")
+  SET(CMAKE_CXX_COMPILER     "scorep-${CMAKE_CXX_COMPILER}")
+  SET(CMAKE_Fortran_COMPILER "scorep-${CMAKE_Fortran_COMPILER}")
+ENDIF()
+
+# =========================================================================
+# After settings specific compilers, enable named languages for cmake
+# =========================================================================
+ENABLE_LANGUAGE(Fortran C CXX)
+INCLUDE(GNUInstallDirs)
+
+# =========================================================================
+# Set machine-specific definitions and settings
+# =========================================================================
+# HLRS HAWK / SuperMUC
+IF ("${CMAKE_HOSTNAME}" MATCHES "login")
   MARK_AS_ADVANCED(FORCE C_PATH CXX_PATH Fortran_PATH)
 
   # HAWK and SuperMUC name their login nodes identically, so use OS distribution to identify
@@ -45,9 +107,6 @@ IF ("${CMAKE_HOSTNAME}" MATCHES "login")
 # IAG Prandtl
 ELSEIF("${CMAKE_HOSTNAME}" MATCHES "^prandtl")
   MESSAGE(STATUS "Compiling on Prandtl")
-  SET(CMAKE_C_COMPILER       gcc)
-  SET(CMAKE_CXX_COMPILER     c++)
-  SET(CMAKE_Fortran_COMPILER gfortran)
   MARK_AS_ADVANCED(FORCE C_PATH CXX_PATH Fortran_PATH)
   # Set LUSTRE definition to account for filesystem
   ADD_DEFINITIONS(-DLUSTRE)
@@ -55,16 +114,10 @@ ELSEIF("${CMAKE_HOSTNAME}" MATCHES "^prandtl")
 # IAG Grafik01/Grafik02
 ELSEIF ("${CMAKE_HOSTNAME}" MATCHES "^grafik0")
   MESSAGE(STATUS "Compiling on ${CMAKE_HOSTNAME}")
-  SET(CMAKE_C_COMPILER       gcc)
-  SET(CMAKE_CXX_COMPILER     c++)
-  SET(CMAKE_Fortran_COMPILER gfortran)
   MARK_AS_ADVANCED(FORCE C_PATH CXX_PATH Fortran_PATH)
 
 ELSEIF ("${CMAKE_HOSTNAME}" MATCHES "^ilahead1")
   MESSAGE(STATUS "Compiling on ILA cluster")
-  SET(CMAKE_C_COMPILER       mpicc)
-  SET(CMAKE_CXX_COMPILER     mpicxx)
-  SET(CMAKE_Fortran_COMPILER mpif90) # mpif08 wrapper seems to have issue
   MARK_AS_ADVANCED(FORCE C_PATH CXX_PATH Fortran_PATH)
   # Overwrite compiler target architecture
   IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU" OR CMAKE_Fortran_COMPILER_ID MATCHES "Flang")
@@ -77,14 +130,12 @@ ELSEIF ("${CMAKE_HOSTNAME}" MATCHES "^ilahead1")
 
 ELSEIF ("${CMAKE_HOSTNAME}" MATCHES "^xenon")
   MESSAGE(STATUS "Compiling on ILA student cluster")
-  SET(CMAKE_C_COMPILER       mpicc)
-  SET(CMAKE_CXX_COMPILER     mpicxx)
-  SET(CMAKE_Fortran_COMPILER mpif90) # mpif08 wrapper seems to have issue
   MARK_AS_ADVANCED(FORCE C_PATH CXX_PATH Fortran_PATH)
   # Work around MPI-IO issue 4446 on machines mountng storage via NFS
   ADD_DEFINITIONS(-DNFS)
 
 ELSE()
+  MESSAGE(STATUS "Compiling on a generic machine")
   # Set compiler target architecture
   IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU" OR CMAKE_Fortran_COMPILER_ID MATCHES "Flang" )
     SET(FLEXI_INSTRUCTION "-march=native")
@@ -93,13 +144,11 @@ ELSE()
   ENDIF()
 ENDIF()
 
+MESSAGE(STATUS "Compiling using [${FLEXI_INSTRUCTION}] instruction")
 
 # =========================================================================
 # COMPILER FLAGS
 # =========================================================================
-
-ENABLE_LANGUAGE(Fortran C)
-INCLUDE(GNUInstallDirs)
 
 # FFLAGS depend on the compiler
 GET_FILENAME_COMPONENT (Fortran_COMPILER_NAME ${CMAKE_Fortran_COMPILER} NAME)
@@ -109,7 +158,7 @@ IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
   # set Flags (disable lto type warnings due to false positives with MATMUL, which is a known bug)
   IF (NOT DEFINED C_FLAGS_INITIALIZED )
     SET (C_FLAGS_INITIALIZED "yes" CACHE INTERNAL "Flag if compiler flags are already initialized" )
-    SET (CMAKE_Fortran_FLAGS         "${CMAKE_Fortran_FLAGS} -fdefault-real-8 -fdefault-double-8 -fbackslash -ffree-line-length-0 -Wno-lto-type-mismatch -DGNU")
+    SET (CMAKE_Fortran_FLAGS         "${CMAKE_Fortran_FLAGS} -fdefault-real-8 -fdefault-double-8 -fbackslash -ffree-line-length-0 -finit-real=snan -finit-integer=snan -Wno-lto-type-mismatch -DGNU")
   ENDIF()
   SET (CMAKE_Fortran_FLAGS_RELEASE   "${CMAKE_Fortran_FLAGS}     -O3 ${FLEXI_INSTRUCTION} -finline-functions -fstack-arrays")
   SET (CMAKE_Fortran_FLAGS_PROFILE   "${CMAKE_Fortran_FLAGS} -pg -O3 ${FLEXI_INSTRUCTION} -finline-functions -fstack-arrays")
@@ -163,7 +212,7 @@ ENDIF()
 # =========================================================================
 # Profile-Guided Optimization (PGO)
 # =========================================================================
-CMAKE_DEPENDENT_OPTION(USE_PGO "Enable performance-guided optimization (Only GNU Compiler supported)" OFF
+CMAKE_DEPENDENT_OPTION(USE_PGO "Enable profile-guided optimization (Only GNU Compiler supported)" OFF
                                "FLEXI_PERFORMANCE" OFF)
 IF (USE_PGO)
   IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
