@@ -17,3 +17,4 @@ build*
 ctags.txt
 reggie_run/
 doc/userguide/userguide.pdf
+src/commit.h
