@@ -48,7 +48,8 @@ INTEGER                            :: iArg
 CHARACTER(LEN=255)                 :: InputStateFile          ! dummy variable for state file name
 
 INTEGER                            :: N_HDF5_old = 0          ! Polynominal degree of last state file
-CHARACTER(LEN=255)                 :: MeshFile_old = " "      ! Meshfile of last state file
+CHARACTER(LEN=255)                 :: MeshFile_old = ''       ! Meshfile of last state file
+CHARACTER(LEN=255)                 :: MeshFile_prm = ''       ! Meshfile of input parameter file
 LOGICAL                            :: changedMeshFile=.FALSE. ! True if mesh between states changed
 LOGICAL                            :: changedN       =.FALSE. ! True if N between states changes
 !===================================================================================================================================
@@ -98,9 +99,10 @@ CALL prms%read_options(Args(1))
 ParameterFile = Args(1)
 
 ! Readin Parameters
-N_Visu    = GETINT('N_Visu')
-N_Filter  = GETINT('N_Filter','-1')
-Mu0       = GETREAL('Mu0','0.')
+N_Visu   = GETINT('N_Visu')
+N_Filter = GETINT('N_Filter','-1')
+Mu0      = GETREAL('Mu0','0.')
+MeshFile_prm = GETSTR('MeshFile','')
 
 ! Initialize IO
 CALL InitIOHDF5()
@@ -133,14 +135,14 @@ DO iArg=2,nArgs
     CALL FinalizeMesh()
     CALL DefineParametersMesh()
     ! Only take the mesh file deposited in the state file if it is a valid mesh file.
-    ! Otherwise try the mesh from the parameter file
+    ! Otherwise try the mesh from the input parameter file
     IF(FILEEXISTS(MeshFile).AND.ISVALIDMESHFILE(MeshFile)) THEN
       SWRITE(UNIT_stdOUT,*) "INITIALIZING MESH FROM FILE """,TRIM(MeshFile),""""
-      CALL InitMesh(MeshMode=0,MeshFile_IN=MeshFile)
+      CALL InitMesh(MeshMode=0,MeshFile_In=MeshFile)
     ELSE
       SWRITE(UNIT_stdOUT,*) "WARNING: No valid mesh file is given in HDF5 attributes of current state file! &
                                     & Reading mesh from parameter file instead..."
-      CALL InitMesh(MeshMode=0)
+      CALL InitMesh(MeshMode=0,MeshFile_In=MeshFile_prm)
     END IF
     CALL ReadIJKSorting() !Read global xyz sorting of structured mesh
 
