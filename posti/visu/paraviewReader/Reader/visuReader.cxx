@@ -15,7 +15,7 @@
 */
 
 #include "visuReader.h"
-#include "../plugin_visu.h"
+#include "../../plugin_visu.h"
 
 #include "hdf5.h"
 #include <vtkCellArray.h>

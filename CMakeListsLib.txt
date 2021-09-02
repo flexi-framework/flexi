@@ -76,7 +76,7 @@ ENDIF()
 # =========================================================================
 # HDF5 library
 # =========================================================================
-SET(LIBS_BUILD_HDF5 ON CACHE BOOL "Compile and build hdf5 library")
+SET(LIBS_BUILD_HDF5 ON CACHE BOOL "Compile and build HDF5 library")
 
 # Set type of library to look up, STATIC/SHARED
 SET(LIB_TYPE STATIC)
@@ -152,7 +152,7 @@ ELSE()
   # Set HDF5 build dir
   SET(LIBS_HDF5_DIR  ${LIBS_EXTERNAL_LIB_DIR}/HDF5/build)
 
-  # Check if HDF5 was already build
+  # Check if HDF5 was already built
   IF (NOT EXISTS "${LIBS_HDF5_DIR}/lib/libhdf5.a")
     # Set if HDF5 should be built in parallel
     IF(LIBS_USE_MPI)
@@ -262,7 +262,7 @@ IF(NOT LIBS_BUILD_MATH_LIB)
     MESSAGE(STATUS "Using system BLAS/Lapack library")
   ENDIF()
 
-  # # VDM inverse, replace lapack with analytical solution
+  # VDM inverse, replace lapack with analytical solution
   IF (CMAKE_BUILD_TYPE MATCHES "Debug" AND "${CMAKE_HOSTNAME}" MATCHES "login" AND "${LSB_RELEASE_ID_SHORT}" MATCHES "CentOS")
     MESSAGE(STATUS "Compiling FLEXI in debug mode on Hawk with system math lib. Setting VDM inverse to analytical solution")
     ADD_DEFINITIONS(-DVDM_ANALYTICAL)

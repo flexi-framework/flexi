@@ -50,7 +50,7 @@ PUBLIC:: FinalizeVisu
 CONTAINS
 
 !===================================================================================================================================
-!> Create a list of available variables for ParaView. This list contains the conservative, primitve and derived quantities
+!> Create a list of available variables for ParaView. This list contains the conservative, primitive and derived quantities
 !> that are available in the current equation system as well as the additional variables read from the state file.
 !> The additional variables are stored in the datasets 'ElemData' (elementwise data) and 'FieldData' (pointwise data).
 !> Also a list of all available boundary names is created for surface visualization.
@@ -316,7 +316,7 @@ NodeTypeVisuPosti = GETSTR('NodeTypeVisu')
 DGonly            = GETLOGICAL('DGonly')
 CALL CloseDataFile()
 
-CALL visu_getVarNamesAndFileType(statefile,"",VarnamesAll,BCNamesAll)
+CALL visu_getVarNamesAndFileType(statefile,'',VarnamesAll,BCNamesAll)
 
 CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 
@@ -458,7 +458,7 @@ LOGICAL                          :: changedPrmFile
 !**********************************************************************************************
 ! General workflow / principles of the visu ParaView-plugin
 !
-! * all arrays are SDEALLOCATEd just before they are allocated. This is done to keep there
+! * all arrays are SDEALLOCATEd just before they are allocated. This is done to keep their
 !   content during successive calls of the visu during a ParaView session. They are only
 !   deallocated and reallocated, if there content should change. For example the coords of the
 !   mesh file only change if the mesh, NVisu or the distribution of DG/FV elements changes.
@@ -577,6 +577,8 @@ IF (ISVALIDMESHFILE(statefile)) THEN ! visualize mesh
   MeshFile      = statefile
   nVar_State    = 0
   withDGOperator = .FALSE.
+  doSurfVisu     = .FALSE.
+  CALL visu_getVarNamesAndFileType(MeshFile,'',VarNamesAll,BCNamesAll)
   CALL VisualizeMesh(postifile,MeshFile)
 ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! visualize state file
   SWRITE(*,*) "State Mode"
@@ -739,23 +741,25 @@ USE MOD_MPI                  ,ONLY: FinalizeMPI
 #endif /* USE_MPI */
 IMPLICIT NONE
 !===================================================================================================================================
-SWRITE (*,*) "VISU FINALIZE"
+SWRITE (Unit_stdOut,'(A)') 'VISU FINALIZE'
 IF(MPIRoot)THEN
-  IF(FILEEXISTS(".posti.ini"))THEN
-    OPEN(UNIT=31, FILE=".posti.ini", STATUS='old')
+  IF(FILEEXISTS('.posti.ini'))THEN
+    OPEN(UNIT=31, FILE='.posti.ini', STATUS='old')
     CLOSE(31, STATUS='delete')
   END IF
-  IF(FILEEXISTS(".flexi.ini"))THEN
-    OPEN(UNIT=31, FILE=".flexi.ini", STATUS='old')
+  IF(FILEEXISTS('.flexi.ini'))THEN
+    OPEN(UNIT=31, FILE='.flexi.ini', STATUS='old')
     CLOSE(31, STATUS='delete')
   END IF
 END IF
-prmfile_old = ""
-statefile_old = ""
-MeshFile = ""
-MeshFile_old = ""
-NodeTypeVisuPosti = "VISU"
-NodeTypeVisuPosti_old = ""
+
+! Reset all strings and variables
+prmfile_old       = ''
+statefile_old     = ''
+MeshFile          = ''
+MeshFile_old      = ''
+NodeTypeVisuPosti = 'VISU'
+NodeTypeVisuPosti_old = ''
 NVisu     = -1
 NVisu_old = -1
 nVar_State_old = -1

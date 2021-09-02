@@ -11,6 +11,10 @@ ENDIF()
 IF(NOT(${CMAKE_VERSION} VERSION_LESS "3.12.0"))
   CMAKE_POLICY(SET CMP0074 NEW)
 ENDIF()
+# Required to link visulib against visuReader
+IF(NOT(${CMAKE_VERSION} VERSION_LESS "3.13.0"))
+  CMAKE_POLICY(SET CMP0079 NEW)
+ENDIF()
 
 # =========================================================================
 # Project definition

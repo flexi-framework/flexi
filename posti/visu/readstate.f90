@@ -277,7 +277,6 @@ END IF
 ! check if the mesh mode has changed from the last time
 changedMeshMode = (meshMode_loc.NE.meshMode_old)
 
-
 #if USE_MPI
 IF ((changedMeshFile).OR.(changedMeshMode)) THEN
   CALL FinalizeMPI()
