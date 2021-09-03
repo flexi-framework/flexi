@@ -276,7 +276,7 @@ DO iVar=1,nVarDep
   END DO
 END DO
 
-! print the dependecy table
+! print the dependency table
 SWRITE(*,*) "Dependencies: ", withDGOperator
 WRITE(format,'(I2)') SIZE(DepTable,2)
 DO iVar=1,nVarDep
@@ -326,11 +326,11 @@ IF (StateFileMode) CALL AppendNeededPrims(mapDepToCalc,mapDepToCalc_FV,nVarCalc_
 #endif
 
 ! print the mappings
-WRITE(format,'(I3)') nVarAll
-SWRITE (*,'(A,'//format//'I3)') "mapDepToCalc             ",mapDepToCalc
-SWRITE (*,'(A,'//format//'I3)') "mapDepToCalc_FV          ",mapDepToCalc_FV
-SWRITE (*,'(A,'//format//'I3)') "mapAllVarsToVisuVars     ",mapAllVarsToVisuVars
-SWRITE (*,'(A,'//format//'I3)') "mapAllVarsToSurfVisuVars ",mapAllVarsToSurfVisuVars
+WRITE(format,'(I0)') nVarAll
+SWRITE (*,'(A,'//format//'I0)') "mapDepToCalc             ",mapDepToCalc
+SWRITE (*,'(A,'//format//'I0)') "mapDepToCalc_FV          ",mapDepToCalc_FV
+SWRITE (*,'(A,'//format//'I0)') "mapAllVarsToVisuVars     ",mapAllVarsToVisuVars
+SWRITE (*,'(A,'//format//'I0)') "mapAllVarsToSurfVisuVars ",mapAllVarsToSurfVisuVars
 
 
 !---------------------- Surface visualization ----------------------------!
@@ -368,7 +368,7 @@ ALLOCATE(mapAllBCNamesToVisuBCNames_old(1:nBCNamesAll))
 mapAllBCNamesToVisuBCNames_old = mapAllBCNamesToVisuBCNames
 
 
-SWRITE (*,'(A,'//format//'I3)') "mapAllBCNamesToVisuBCNames ",mapAllBCNamesToVisuBCNames
+SWRITE (*,'(A,'//format//'I0)') "mapAllBCNamesToVisuBCNames ",mapAllBCNamesToVisuBCNames
 
 END SUBROUTINE Build_mapDepToCalc_mapAllVarsToVisuVars
 

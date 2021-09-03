@@ -499,8 +499,12 @@ DO iVar=nVarDep+1,nVarAll
         CASE(2) ! Elementwise data
           ! Allocate array and read dataset
           SDEALLOCATE(ElemData)
-          ALLOCATE(ElemData(nVal,nElems))
-          CALL ReadArray(TRIM(DatasetName),2,(/nVal,nElems/),offsetElem,2,RealArray=ElemData)
+          ALLOCATE(ElemData(nVal,nSize))
+          IF(STRICMP(DatasetName,'ElemData'))THEN
+            SDEALLOCATE(ElemData)
+            ALLOCATE(ElemData(nVal,nElems))
+            CALL ReadArray(TRIM(DatasetName),2,(/nVal,nElems/),offsetElem,2,RealArray=ElemData)
+          END IF
         CASE(5) ! Pointwise data
           ! Allocate array and read dataset
           SDEALLOCATE(FieldData)

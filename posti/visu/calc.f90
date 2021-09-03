@@ -90,7 +90,7 @@ ALLOCATE(UCalc_DG(0:NCalc,0:NCalc,0:ZDIM(NCalc),nElems_DG,1:nVarCalc))
 nVal=(/NCalc+1,NCalc+1,ZDIM(NCalc)+1,nElems_DG/)
 
 maskCalc = 1
-! Copy exisiting variables from solution array and interpolate to NCalc
+! Copy existing variables from solution array and interpolate to NCalc
 CALL FillCopy(nVar_State,PP_N,NCalc,nElems,U,nElems_DG,mapDGElemsToAllElems,UCalc_DG,maskCalc)
 
 IF(TRIM(FileType).EQ.'State')THEN
@@ -268,7 +268,7 @@ REAL                :: gradUzFace_tmp2(1:PP_nVarLifting,0:PP_N,0:PP_NZ)
 REAL,ALLOCATABLE    :: xGP_NCalc(:),wGP_NCalc(:),wBary_NCalc(:),L_Plus_NCalc(:),L_Minus_NCalc(:)
 INTEGER,ALLOCATABLE :: S2V2_NCalc(:,:,:,:,:)
 !===================================================================================================================================
-! We need the evalation of the lagrange polynomials and the mappings on NCalc
+! We need the evaluation of the Lagrange polynomials and the mappings on NCalc
 IF (PP_NodeType.EQ.1) THEN
   ALLOCATE(xGP_NCalc(0:NCalc), wGP_NCalc(0:NCalc), wBary_NCalc(0:NCalc))
   ALLOCATE(L_Minus_NCalc(0:NCalc), L_Plus_NCalc(0:NCalc))
@@ -629,7 +629,7 @@ INTEGER               :: iElem,iElem_calc
 REAL                  :: Vdm_NIn_NOut(0:NlocOut,0:NlocIn)
 !==================================================================================================================================
 IF (NLocOut.NE.NLocIn) CALL GetVandermonde(NlocIn,NodeType,NLocOut,NodeType,Vdm_NIn_NOut,modal=.FALSE.)
-! Copy exisiting variables from solution array
+! Copy existing variables from solution array
 DO iVarOut=1,nVarDep ! iterate over all out variables
   IF (mapDepToCalc(iVarOut).LT.1) CYCLE ! check if variable must be calculated
   DO iVarIn=1,nVar_State ! iterate over all in variables

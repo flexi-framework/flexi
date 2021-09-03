@@ -113,7 +113,6 @@ DO iArg=1+skipArgs,nArgs
 #endif
   END IF
 
-
   ALLOCATE(varnames_loc(nVarVisu))
   ALLOCATE(varnamesSurf_loc(nVarSurfVisuAll))
   DO iVar=1,nVarAll

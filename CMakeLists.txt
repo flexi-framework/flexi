@@ -11,6 +11,10 @@ ENDIF()
 IF(NOT(${CMAKE_VERSION} VERSION_LESS "3.12.0"))
   CMAKE_POLICY(SET CMP0074 NEW)
 ENDIF()
+# Required to link visulib against visuReader
+IF(NOT(${CMAKE_VERSION} VERSION_LESS "3.13.0"))
+  CMAKE_POLICY(SET CMP0079 NEW)
+ENDIF()
 
 # =========================================================================
 # Project definition
@@ -126,6 +130,9 @@ ELSE()
       FIND_PROGRAM(CMAKE_GCC_AR     NAMES ${_CMAKE_TOOLCHAIN_PREFIX}gcc-ar${_CMAKE_TOOLCHAIN_SUFFIX} HINTS ${_CMAKE_TOOLCHAIN_LOCATION})
       FIND_PROGRAM(CMAKE_GCC_NM     NAMES ${_CMAKE_TOOLCHAIN_PREFIX}gcc-nm                           HINTS ${_CMAKE_TOOLCHAIN_LOCATION})
       FIND_PROGRAM(CMAKE_GCC_RANLIB NAMES ${_CMAKE_TOOLCHAIN_PREFIX}gcc-ranlib                       HINTS ${_CMAKE_TOOLCHAIN_LOCATION})
+      MARK_AS_ADVANCED(FORCE CMAKE_GCC_AR)
+      MARK_AS_ADVANCED(FORCE CMAKE_GCC_NM)
+      MARK_AS_ADVANCED(FORCE CMAKE_GCC_RANLIB)
       # Do not use the standard CMake LTO option for GNU (-flto -fno-fat-lto-objects), as it does not allow speed-up during linking
       IF( CMAKE_GCC_AR AND CMAKE_GCC_NM AND CMAKE_GCC_RANLIB )
         MESSAGE(STATUS "Found GCC binutils wrappers for LTO. Enabling LTO linker plugin.")
