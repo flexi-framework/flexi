@@ -113,7 +113,10 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! other file
       IF (nVarIni.EQ.0) THEN
         FileType = 'Generic'
       ELSE
+        CALL CloseDataFile()
+        ! This routine requires the file to be closed
         CALL CheckRestartFile(statefile)
+        CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
         IF (RestartMode.EQ.2 .OR. RestartMode.EQ.3) THEN
           SDEALLOCATE(VarNamesHDF5)
           CALL GetVarNames("VarNames_Mean",VarNamesHDF5,VarNamesExist)

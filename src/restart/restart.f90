@@ -113,7 +113,7 @@ IF (LEN_TRIM(RestartFile).LE.0) RETURN
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' CHECK RESTART FILE...'
 SWRITE(UNIT_StdOut,'(A,A,A)')' | Checking restart from file "',TRIM(RestartFile),'":'
-! Check if restart file is a valid state
+! Check if restart file is a valid state. This routine requires the file to be closed.
 validHDF5 = ISVALIDHDF5FILE(RestartFile)
 IF(.NOT.validHDF5) &
     CALL CollectiveStop(__STAMP__,'ERROR - Restart file not a valid state file.')
@@ -183,6 +183,8 @@ ELSE
   END IF
 END IF
 #endif /* EQNSYSNR != 1 */
+
+CALL CloseDataFile()
 
 SWRITE(UNIT_stdOut,'(A)') ' CHECK RESTART FILE DONE'
 SWRITE(UNIT_StdOut,'(132("-"))')
