@@ -125,7 +125,7 @@ USE MOD_Equation_Vars,ONLY:IniExactFunc
 ! LOCAL VARIABLES
 INTEGER             :: iElem,i,j,k
 INTEGER             :: SpongeExactFunc,SpongeRefState,SpBaseFlowType
-CHARACTER(LEN=300)  :: BaseFlowFile
+CHARACTER(LEN=255)  :: BaseFlowFile
 LOGICAL             :: validBaseFlowFile
 !==================================================================================================================================
 doSponge=GETLOGICAL('SpongeLayer','.FALSE.')
@@ -450,7 +450,7 @@ USE MOD_Interpolation_Vars,ONLY: NodeType
  IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=300),INTENT(IN) :: FileName                 !< HDF5 filename
+CHARACTER(LEN=255),INTENT(IN) :: FileName                 !< HDF5 filename
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: iElem
