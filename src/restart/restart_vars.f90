@@ -29,7 +29,7 @@ LOGICAl            :: RestartInitIsDone   = .FALSE.   !< flag if restart routine
 LOGICAl            :: DoRestart           = .FALSE.   !< flag whether a restart should actually be performed
 LOGICAL            :: InterpolateSolution = .FALSE.   !< flag whether restart solution should be interpolated
                                                       !< if node type or polynomial degree are different
-CHARACTER(LEN=300) :: RestartFile = ''                !< name of restart file
+CHARACTER(LEN=255) :: RestartFile = ''                !< name of restart file
 CHARACTER(LEN=255) :: NodeType_Restart                !< node type of restart file
 REAL               :: RestartTime                     !< time at which computation is resumed
 INTEGER            :: RestartMode         = -1        !< -1) Initial value, routines default to state file mode

@@ -62,7 +62,7 @@ USE MOD_IO_HDF5        ,ONLY: GetDatasetNamesInGroup,File_ID
 USE MOD_HDF5_Input     ,ONLY: OpenDataFile,CloseDataFile,GetDataSize,GetVarNames,ISVALIDMESHFILE,ISVALIDHDF5FILE,ReadAttribute
 USE MOD_HDF5_Input     ,ONLY: DatasetExists,HSize,nDims,ReadArray
 USE MOD_StringTools    ,ONLY: STRICMP
-USE MOD_Restart        ,ONLY: CheckRestartFile
+USE MOD_Restart        ,ONLY: InitRestartFile
 USE MOD_Restart_Vars   ,ONLY: RestartMode
 USE MOD_Visu_Vars      ,ONLY: FileType,VarNamesHDF5,nBCNamesAll,nVarIni
 IMPLICIT NONE
@@ -113,7 +113,10 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! other file
       IF (nVarIni.EQ.0) THEN
         FileType = 'Generic'
       ELSE
-        CALL CheckRestartFile(statefile)
+        CALL CloseDataFile()
+        ! This routine requires the file to be closed
+        CALL InitRestartFile(statefile)
+        CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
         IF (RestartMode.EQ.2 .OR. RestartMode.EQ.3) THEN
           SDEALLOCATE(VarNamesHDF5)
           CALL GetVarNames("VarNames_Mean",VarNamesHDF5,VarNamesExist)

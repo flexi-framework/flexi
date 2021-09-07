@@ -29,8 +29,8 @@ INTERFACE DefineParametersRestart
   MODULE PROCEDURE DefineParametersRestart
 END INTERFACE
 
-INTERFACE CheckRestartFile
-  MODULE PROCEDURE CheckRestartFile
+INTERFACE InitRestartFile
+  MODULE PROCEDURE InitRestartFile
 END INTERFACE
 
 INTERFACE InitRestart
@@ -46,7 +46,7 @@ INTERFACE FinalizeRestart
 END INTERFACE
 
 PUBLIC :: DefineParametersRestart
-PUBLIC :: CheckRestartFile
+PUBLIC :: InitRestartFile
 PUBLIC :: InitRestart
 PUBLIC :: Restart
 PUBLIC :: FinalizeRestart
@@ -80,7 +80,7 @@ END SUBROUTINE DefineParametersRestart
 !>   (state or timeAvg file). If the latter one is detected, the presence of all conservative or primitive variables is checked
 !>   and PrimToCons performed if necessary. The type of restart file is indicated with the variable RestartMode.
 !==================================================================================================================================
-SUBROUTINE CheckRestartFile(RestartFile_in)
+SUBROUTINE InitRestartFile(RestartFile_in)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
@@ -96,7 +96,7 @@ USE MOD_ReadInTools        ,ONLY: GETINT
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=255),INTENT(IN),OPTIONAL :: RestartFile_in !< state file to restart from
+CHARACTER(LEN=255),INTENT(IN) :: RestartFile_in !< state file to restart from
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL            :: validHDF5
@@ -104,8 +104,7 @@ LOGICAl            :: RestartMean,VarNamesExist
 INTEGER            :: iVar
 CHARACTER(LEN=255),ALLOCATABLE  :: VarNames_tmp(:)
 !==================================================================================================================================
-
-IF (PRESENT(RestartFile_in)) RestartFile = RestartFile_in
+RestartFile = RestartFile_in
 
 ! Check if we want to perform a restart
 IF (LEN_TRIM(RestartFile).LE.0) RETURN
@@ -113,7 +112,7 @@ IF (LEN_TRIM(RestartFile).LE.0) RETURN
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' CHECK RESTART FILE...'
 SWRITE(UNIT_StdOut,'(A,A,A)')' | Checking restart from file "',TRIM(RestartFile),'":'
-! Check if restart file is a valid state
+! Check if restart file is a valid state. This routine requires the file to be closed.
 validHDF5 = ISVALIDHDF5FILE(RestartFile)
 IF(.NOT.validHDF5) &
     CALL CollectiveStop(__STAMP__,'ERROR - Restart file not a valid state file.')
@@ -184,10 +183,12 @@ ELSE
 END IF
 #endif /* EQNSYSNR != 1 */
 
+CALL CloseDataFile()
+
 SWRITE(UNIT_stdOut,'(A)') ' CHECK RESTART FILE DONE'
 SWRITE(UNIT_StdOut,'(132("-"))')
 
-END SUBROUTINE CheckRestartFile
+END SUBROUTINE InitRestartFile
 
 
 !==================================================================================================================================
@@ -221,7 +222,7 @@ USE MOD_Mesh_Vars,          ONLY: nGlobalElems,NGeo
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-CHARACTER(LEN=255),INTENT(IN),OPTIONAL :: RestartFile_in !< state file to restart from
+CHARACTER(LEN=255),INTENT(IN) :: RestartFile_in !< state file to restart from
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL            :: ResetTime,validHDF5
@@ -230,10 +231,8 @@ IF((.NOT.InterpolationInitIsDone).OR.RestartInitIsDone)THEN
   CALL CollectiveStop(__STAMP__,'InitRestart not ready to be called or already called.')
 END IF
 
-IF (PRESENT(RestartFile_in)) RestartFile = RestartFile_in
-
 ! If not done previously, check the restart file
-IF (RestartMode.EQ.-1) CALL CheckRestartFile(RestartFile)
+IF (RestartMode.EQ.-1) CALL InitRestartFile(RestartFile)
 
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT RESTART...'
