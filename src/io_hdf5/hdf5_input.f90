@@ -489,7 +489,7 @@ INTEGER(HID_T)                 :: driver
 !==================================================================================================================================
 #if USE_MPI
 ! HDF5 with MPI can only read max. (32 bit signed integer / size of single element) elements (2GB per MPI rank)
-IF(PRODUCT(nVal).GT.nLimit)  CALL Abort(__STAMP__, &
+IF(PRODUCT(REAL(nVal)).GT.nLimit)  CALL Abort(__STAMP__, & ! Casting to avoid overflow
  'Dataset "'//TRIM(ArrayName)//'" exceeds HDF5 chunksize limit of 2GB per rank! Increase number of ranks or compile without MPI!')
 #endif
 
