@@ -244,9 +244,9 @@ INTEGER,           ALLOCATABLE :: UInt(:)
 INTEGER                        :: i,nValGather(rank),nDOFLocal
 INTEGER,DIMENSION(nLocalProcs) :: nDOFPerNode,offsetNode
 !==================================================================================================================================
-! HDF5 with MPI can only write max. (32 bit integer / 8) elements
-IF(REAL(PRODUCT(nVal)).GT.((2**28-1)/8.))  CALL Abort(__STAMP__, &
-    'Total size of HDF5 array "'//TRIM(DataSetName)//'" is too big! Reduce number of entries per rank or compile without MPI!')
+! HDF5 with MPI can only write max. (32 bit signed integer / size of single element) elements (2GB per MPI rank)
+IF (PRODUCT(REAL(nVal)).GT.nLimit) CALL Abort(__STAMP__, & ! Casting to avoid overflow
+ 'Dataset "'//TRIM(DataSetName)//'" exceeds HDF5 chunksize limit of 2GB per rank! Increase number of ranks or compile without MPI!')
 
 IF(gatheredWrite)THEN
   IF(ANY(offset(1:rank-1).NE.0)) &
