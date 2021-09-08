@@ -487,6 +487,12 @@ INTEGER(HSIZE_T)               :: Offset(Rank),Dimsf(Rank)
 TYPE(C_PTR)                    :: buf
 INTEGER(HID_T)                 :: driver
 !==================================================================================================================================
+#if USE_MPI
+! HDF5 with MPI can only read max. (32 bit signed integer / size of single element) elements (2GB per MPI rank)
+IF(REAL(PRODUCT(nVal)).GT.nLimit)  CALL Abort(__STAMP__, &
+ 'Dataset "'//TRIM(ArrayName)//'" exceeds HDF5 chunksize limit of 2GB per rank! Increase number of ranks or compile without MPI!')
+#endif
+
 LOGWRITE(*,'(A,I1.1,A,A,A)')'    READ ',Rank,'D ARRAY "',TRIM(ArrayName),'"'
 Dimsf=nVal
 LOGWRITE(*,*)'Dimsf,Offset=',Dimsf,Offset_in
@@ -507,9 +513,6 @@ CALL H5PCREATE_F(H5P_DATASET_XFER_F, PList_ID, iError)
 ! Set property list to collective dataset read
 CALL H5PGET_DRIVER_F(Plist_File_ID,driver,iError)
 IF(driver.EQ.H5FD_MPIO_F) CALL H5PSET_DXPL_MPIO_F(PList_ID, H5FD_MPIO_COLLECTIVE_F, iError)
-! HDF5 with MPI can only read max. (32 bit integer / 8) elements
-IF(REAL(PRODUCT(nVal)).GT.((2**28-1)/8.))  CALL Abort(__STAMP__, &
-      'Total size of HDF5 array "'//TRIM(ArrayName)//'" is too big! Reduce number of entries per rank or compile without MPI!')
 #endif
 
 IF(PRESENT(RealArray)) Type_ID=H5T_NATIVE_DOUBLE
