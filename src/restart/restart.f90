@@ -232,7 +232,7 @@ IF((.NOT.InterpolationInitIsDone).OR.RestartInitIsDone)THEN
 END IF
 
 ! If not done previously, check the restart file
-IF (RestartMode.EQ.-1) CALL InitRestartFile(RestartFile)
+IF (RestartMode.EQ.-1) CALL InitRestartFile(RestartFile_in)
 
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT RESTART...'
