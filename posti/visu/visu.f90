@@ -269,7 +269,6 @@ CALL ReadAttribute(File_ID,'MeshFile',    1,StrScalar =MeshFile_state)
 
 ! read options from posti parameter file
 CALL prms%read_options(postifile)
-NVisu             = GETINT("NVisu",INTTOSTR(PP_N))
 
 ! Get number of variables to be visualized
 nVarIni = CountOption("VarName")
@@ -298,6 +297,9 @@ ELSE
   nVar_State = PP_nVar
 END IF
 #endif /* EQNSYSNR != 1 */
+
+! read options from posti parameter file
+NVisu             = GETINT("NVisu",INTTOSTR(PP_N))
 
 ! again read MeshFile from posti prm file (this overwrites the MeshFile read from the state file)
 Meshfile          =  GETSTR("MeshFile",MeshFile_state)
