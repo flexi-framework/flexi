@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -51,11 +51,20 @@ INTERFACE WriteVarnamesToVTK_array
   MODULE PROCEDURE WriteVarnamesToVTK_array
 END INTERFACE
 
+#if USE_MPI
+INTERFACE WriteParallelVTK
+  MODULE PROCEDURE WriteParallelVTK
+END INTERFACE
+#endif
+
 PUBLIC::WriteDataToVTK
 PUBLIC::WriteVTKMultiBlockDataSet
 PUBLIC::WriteCoordsToVTK_array
 PUBLIC::WriteDataToVTK_array
 PUBLIC::WriteVarnamesToVTK_array
+#if USE_MPI
+PUBLIC::WriteParallelVTK
+#endif
 PUBLIC::CARRAY
 !===================================================================================================================================
 
@@ -139,7 +148,7 @@ END SUBROUTINE CreateConnectivity
 !===================================================================================================================================
 !> Subroutine to write 2D or 3D point data to VTK format
 !===================================================================================================================================
-SUBROUTINE WriteDataToVTK(nVal,NVisu,nElems,VarNames,Coord,Value,FileString,dim,DGFV,nValAtLastDimension)
+SUBROUTINE WriteDataToVTK(nVal,NVisu,nElems,VarNames,Coord,Value,FileString,dim,DGFV,nValAtLastDimension,PostiParallel)
 ! MODULES
 USE MOD_Globals
 IMPLICIT NONE
@@ -155,6 +164,7 @@ REAL,INTENT(IN)             :: Value(:,:,:,:,:)     !< Statevector
 CHARACTER(LEN=*),INTENT(IN) :: FileString           !< Output file name
 INTEGER,OPTIONAL,INTENT(IN) :: DGFV                 !< flag indicating DG = 0 or FV =1 data
 LOGICAL,OPTIONAL,INTENT(IN) :: nValAtLastDimension  !< if TRUE, nVal is stored in the last index of value
+LOGICAL,OPTIONAL,INTENT(IN) :: PostiParallel        !< if TRUE, posti runs parallel
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                     :: iVal,ivtk
@@ -176,6 +186,8 @@ REAL,ALLOCATABLE            :: buf(:,:,:,:), buf2(:,:,:,:,:)
 #endif /*USE_MPI*/
 INTEGER                     :: DGFV_loc
 LOGICAL                     :: nValAtLastDimension_loc
+LOGICAL                     :: PostiParallel_loc
+CHARACTER(LEN=255)          :: FileString_loc
 !===================================================================================================================================
 IF (PRESENT(DGFV)) THEN
   DGFV_loc = DGFV
@@ -186,6 +198,18 @@ IF (PRESENT(nValAtLastDimension)) THEN
   nValAtLastDimension_loc = nValAtLastDimension
 ELSE
   nValAtLastDimension_loc = .FALSE.
+END IF
+IF (PRESENT(PostiParallel)) THEN
+  IF(nProcessors.GT.1)THEN
+    PostiParallel_loc=.TRUE.
+    FileString_loc='visu/'//TRIM(INTSTAMP(TRIM(FileString),myRank))//'.vtu'
+  ELSE
+    PostiParallel_loc = .FALSE.
+    FileString_loc=TRIM(FileString)//'.vtu'
+  END IF
+ELSE
+  PostiParallel_loc = .FALSE.
+  FileString_loc=TRIM(FileString)//'.vtu'
 END IF
 
 IF (dim.EQ.3) THEN
@@ -213,19 +237,23 @@ CALL MPI_GATHER(nElems,1,MPI_INTEGER,nElems_glob,1,MPI_INTEGER,0,MPI_COMM_FLEXI,
 #else
 nElems_glob(0) = nElems
 #endif
-nTotalElems = SUM(nElems_glob)
+IF(.NOT.PostiParallel_loc)THEN
+  nTotalElems = SUM(nElems_glob)
+ELSE
+  nTotalElems = nElems
+END IF
 
 NVisu_elem = (NVisu+1)**dim
 nVTKPoints = NVisu_elem * nTotalElems
 nVTKCells  = ((NVisu+DGFV_loc)/(1+DGFV_loc))**dim*nTotalElems
 
 ! write header of VTK file
-IF(MPIROOT)THEN
+IF((.NOT.PostiParallel_loc.AND.MPIRoot).OR.PostiParallel_loc)THEN
   ! Line feed character
   lf = char(10)
 
   ! Write file
-  OPEN(NEWUNIT=ivtk,FILE=TRIM(FileString),ACCESS='STREAM')
+  OPEN(NEWUNIT=ivtk,FILE=TRIM(FileString_loc),ACCESS='STREAM')
   ! Write header
   Buffer='<?xml version="1.0"?>'//lf;WRITE(ivtk) TRIM(Buffer)
   Buffer='<VTKFile type="UnstructuredGrid" version="0.1" byte_order="LittleEndian">'//lf;WRITE(ivtk) TRIM(Buffer)
@@ -280,81 +308,101 @@ IF(MPIROOT)THEN
 END IF
 
 
-
 #if USE_MPI
-IF(MPIroot)THEN
-  !ALLOCATE buffer for Root
-  nElemsMax=MAXVAL(nElems_glob)
-  ALLOCATE(buf(   0:NVisu,0:NVisu_j,0:NVisu_k,nElemsMax))
+IF(.NOT.PostiParallel_loc)THEN
+  IF(MPIroot)THEN
+    !ALLOCATE buffer for Root
+    nElemsMax=MAXVAL(nElems_glob)
+    ALLOCATE(buf(   0:NVisu,0:NVisu_j,0:NVisu_k,nElemsMax))
+  END IF
 END IF
 #endif
 
 ! Write binary raw data into append section
 ! Solution data
-DO iVal=1,nVal
-  IF(MPIroot)THEN
+IF(.NOT.PostiParallel_loc)THEN
+  DO iVal=1,nVal
+    IF(MPIroot)THEN
+      nBytes = nVTKPoints*SIZEOF_F(FLOATdummy)
+      IF (nValAtLastDimension_loc) THEN
+        WRITE(ivtk) nBytes,REAL(Value(:,:,:,:,iVal),4)
+      ELSE
+        WRITE(ivtk) nBytes,REAL(Value(iVal,:,:,:,:),4)
+      END IF
+#if USE_MPI
+      DO iProc=1,nProcessors-1
+        nElems_proc=nElems_glob(iProc)
+        IF (nElems_proc.GT.0) THEN
+          CALL MPI_RECV(buf(:,:,:,1:nElems_proc),nElems_proc*NVisu_elem,MPI_DOUBLE_PRECISION,iProc,0,MPI_COMM_FLEXI,MPIstatus,iError)
+          WRITE(ivtk) REAL(buf(:,:,:,1:nElems_proc),4)
+        END IF
+      END DO !iProc
+    ELSE
+      IF (nElems.GT.0) THEN
+        IF (nValAtLastDimension_loc) THEN
+          CALL MPI_SEND(Value(:,:,:,:,iVal),nElems*NVisu_elem,MPI_DOUBLE_PRECISION, 0,0,MPI_COMM_FLEXI,iError)
+        ELSE
+          CALL MPI_SEND(Value(iVal,:,:,:,:),nElems*NVisu_elem,MPI_DOUBLE_PRECISION, 0,0,MPI_COMM_FLEXI,iError)
+        END IF
+      END IF
+#endif /*USE_MPI*/
+    END IF !MPIroot
+  END DO       ! iVar
+ELSE
+  DO iVal=1,nVal
     nBytes = nVTKPoints*SIZEOF_F(FLOATdummy)
     IF (nValAtLastDimension_loc) THEN
       WRITE(ivtk) nBytes,REAL(Value(:,:,:,:,iVal),4)
     ELSE
       WRITE(ivtk) nBytes,REAL(Value(iVal,:,:,:,:),4)
     END IF
-#if USE_MPI
-    DO iProc=1,nProcessors-1
-      nElems_proc=nElems_glob(iProc)
-      IF (nElems_proc.GT.0) THEN
-        CALL MPI_RECV(buf(:,:,:,1:nElems_proc),nElems_proc*NVisu_elem,MPI_DOUBLE_PRECISION,iProc,0,MPI_COMM_FLEXI,MPIstatus,iError)
-        WRITE(ivtk) REAL(buf(:,:,:,1:nElems_proc),4)
-      END IF
-    END DO !iProc
-  ELSE
-    IF (nElems.GT.0) THEN
-      IF (nValAtLastDimension_loc) THEN
-        CALL MPI_SEND(Value(:,:,:,:,iVal),nElems*NVisu_elem,MPI_DOUBLE_PRECISION, 0,0,MPI_COMM_FLEXI,iError)
-      ELSE
-        CALL MPI_SEND(Value(iVal,:,:,:,:),nElems*NVisu_elem,MPI_DOUBLE_PRECISION, 0,0,MPI_COMM_FLEXI,iError)
-      END IF
-    END IF
-#endif /*USE_MPI*/
-  END IF !MPIroot
-END DO       ! iVar
+  END DO
+END IF
 
 #if USE_MPI
-IF(MPIroot)THEN
-  SDEALLOCATE(buf)
-  ALLOCATE(buf2(3,0:NVisu,0:NVisu_j,0:NVisu_k,nElemsMax))
+IF(.NOT.PostiParallel_loc)THEN
+  IF(MPIroot)THEN
+    SDEALLOCATE(buf)
+    ALLOCATE(buf2(3,0:NVisu,0:NVisu_j,0:NVisu_k,nElemsMax))
+  END IF
 END IF
 #endif
 
 ! Coordinates
-IF(MPIRoot)THEN
+IF(.NOT.PostiParallel_loc)THEN
+  IF(MPIRoot)THEN
+    nBytes = nVTKPoints*SIZEOF_F(FLOATdummy) * 3
+    WRITE(ivtk) nBytes
+    WRITE(ivtk) REAL(Coord(:,:,:,:,:),4)
+#if USE_MPI
+    DO iProc=1,nProcessors-1
+      nElems_proc=nElems_glob(iProc)
+      IF (nElems_proc.GT.0) THEN
+        CALL MPI_RECV(buf2(:,:,:,:,1:nElems_proc),nElems_proc*NVisu_elem*3,MPI_DOUBLE_PRECISION,iProc,0,MPI_COMM_FLEXI,MPIstatus,iError)
+        WRITE(ivtk) REAL(buf2(:,:,:,:,1:nElems_proc),4)
+      END IF
+    END DO !iProc
+  ELSE
+    IF (nElems.GT.0) THEN
+      CALL MPI_SEND(Coord(:,:,:,:,:),nElems*NVisu_elem*3,MPI_DOUBLE_PRECISION, 0,0,MPI_COMM_FLEXI,iError)
+    END IF
+#endif /*USE_MPI*/
+  END IF !MPIroot
+ELSE
   nBytes = nVTKPoints*SIZEOF_F(FLOATdummy) * 3
   WRITE(ivtk) nBytes
   WRITE(ivtk) REAL(Coord(:,:,:,:,:),4)
-#if USE_MPI
-  DO iProc=1,nProcessors-1
-    nElems_proc=nElems_glob(iProc)
-    IF (nElems_proc.GT.0) THEN
-      CALL MPI_RECV(buf2(:,:,:,:,1:nElems_proc),nElems_proc*NVisu_elem*3,MPI_DOUBLE_PRECISION,iProc,0,MPI_COMM_FLEXI,MPIstatus,iError)
-      WRITE(ivtk) REAL(buf2(:,:,:,:,1:nElems_proc),4)
-    END IF
-  END DO !iProc
-ELSE
-  IF (nElems.GT.0) THEN
-    CALL MPI_SEND(Coord(:,:,:,:,:),nElems*NVisu_elem*3,MPI_DOUBLE_PRECISION, 0,0,MPI_COMM_FLEXI,iError)
-  END IF
-#endif /*USE_MPI*/
-END IF !MPIroot
+END IF
 
 #if USE_MPI
-IF(MPIroot)THEN
+IF(MPIroot.AND..NOT.PostiParallel_loc)THEN
   SDEALLOCATE(buf2)
 END IF
 #endif
 
 ! Connectivity and footer
-IF(MPIROOT)THEN
-  CALL CreateConnectivity(NVisu,nTotalElems,nodeids,dim,DGFV_loc)
+IF((.NOT.PostiParallel_loc.AND.MPIRoot).OR.PostiParallel_loc)THEN
+  CALL CreateConnectivity(NVisu=NVisu,nElems=nTotalElems,nodeids=nodeids,dim=dim,DGFV=DGFV_loc)
 
   nBytes = PointsPerVTKCell*nVTKCells*SIZEOF_F(INTdummy)
   WRITE(ivtk) nBytes
@@ -382,6 +430,14 @@ IF(MPIROOT)THEN
   Buffer='</VTKFile>'//lf;WRITE(ivtk) TRIM(Buffer)
   CLOSE(ivtk)
 ENDIF
+
+#if USE_MPI
+IF(PostiParallel_loc.AND.MPIRoot)THEN
+  CALL WriteParallelVTK(FileString,nVal,VarNames)
+ENDIF
+#endif
+
+
 SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES')"DONE"
 END SUBROUTINE WriteDataToVTK
 
@@ -396,7 +452,7 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN) :: FileString     !< Output file name
 CHARACTER(LEN=*),INTENT(IN) :: FileString_DG  !< Filename of DG VTU file
-CHARACTER(LEN=*),INTENT(IN) :: FileString_FV  !< Filename of FV VTU file
+CHARACTER(LEN=*),INTENT(IN),OPTIONAL :: FileString_FV    !< Filename of FV VTU file
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER            :: ivtk
@@ -404,22 +460,95 @@ CHARACTER(LEN=200) :: Buffer
 CHARACTER(LEN=1)   :: lf
 !===================================================================================================================================
 IF (MPIRoot) THEN
+  IF(nProcessors.GT.1)THEN
+    ! write '.vtu">'//multiblock file
+    OPEN(NEWUNIT=ivtk,FILE=TRIM(FileString)//'.pvd',STATUS='REPLACE',ACCESS='STREAM')
+    ! Line feed character
+    lf = char(10)
+    Buffer='<VTKFile type="Collection" version="1.0" byte_order="LittleEndian" header_type="UInt64">'//lf
+    WRITE(ivtk) TRIM(BUFFER)
+    Buffer='  <Collection>'//lf;WRITE(ivtk) TRIM(BUFFER)
+    Buffer='    <DataSet part="0" name="DG" file="'//TRIM(FileString_DG)//'.pvtu"/>'//lf;WRITE(ivtk) TRIM(BUFFER)
+    Buffer='    <DataSet part="1" name="FV" file="'//TRIM(FileString_FV)//'.pvtu"/>'//lf;WRITE(ivtk) TRIM(BUFFER)
+    Buffer='  </Collection>'//lf;WRITE(ivtk) TRIM(BUFFER)
+    Buffer='</VTKFile>'//lf;WRITE(ivtk) TRIM(BUFFER)
+    CLOSE(ivtk)
+  ELSE
+    ! write '.vtu">'//multiblock file
+    OPEN(NEWUNIT=ivtk,FILE=TRIM(FileString)//'.vtm',STATUS='REPLACE',ACCESS='STREAM')
+    ! Line feed character
+    lf = char(10)
+    Buffer='<VTKFile type="vtkMultiBlockDataSet" version="1.0" byte_order="LittleEndian" header_type="UInt64">'//lf
+    WRITE(ivtk) TRIM(BUFFER)
+    Buffer='  <vtkMultiBlockDataSet>'//lf;WRITE(ivtk) TRIM(BUFFER)
+    Buffer='    <DataSet index="0" name="DG" file="'//TRIM(FileString_DG)//'.vtu"/>'//lf;WRITE(ivtk) TRIM(BUFFER)
+    Buffer='    <DataSet index="1" name="FV" file="'//TRIM(FileString_FV)//'.vtu"/>'//lf;WRITE(ivtk) TRIM(BUFFER)
+    Buffer='  </vtkMultiBlockDataSet>'//lf;WRITE(ivtk) TRIM(BUFFER)
+    Buffer='</VTKFile>'//lf;WRITE(ivtk) TRIM(BUFFER)
+    CLOSE(ivtk)
+  ENDIF
+ENDIF
+END SUBROUTINE WriteVTKMultiBlockDataSet
+
+#if USE_MPI
+!===================================================================================================================================
+!> Writes PVTU files
+!===================================================================================================================================
+SUBROUTINE WriteParallelVTK(FileString,nVal,VarNames)
+! MODULES
+USE MOD_Globals
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+CHARACTER(LEN=*),INTENT(IN) :: FileString     !< Output file name
+INTEGER,INTENT(IN)          :: nVal                 !< Number of nodal output variables
+CHARACTER(LEN=*),INTENT(IN) :: VarNames(nVal)       !< Names of all variables that will be written out
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER            :: ivtk, iVal, iProc
+CHARACTER(LEN=200) :: Buffer
+CHARACTER(LEN=1)   :: lf
+CHARACTER(LEN=35)  :: StrProc
+!===================================================================================================================================
+IF (MPIRoot) THEN
   ! write multiblock file
-  OPEN(NEWUNIT=ivtk,FILE=TRIM(FileString),ACCESS='STREAM')
+  OPEN(NEWUNIT=ivtk,FILE=TRIM(FileString)//'.pvtu',STATUS='REPLACE',ACCESS='STREAM')
   ! Line feed character
   lf = char(10)
-  Buffer='<VTKFile type="vtkMultiBlockDataSet" version="1.0" byte_order="LittleEndian" header_type="UInt64">'//lf
+  Buffer='<VTKFile type="PUnstructuredGrid" version="1.0" byte_order="LittleEndian" header_type="UInt64">'//lf
   WRITE(ivtk) TRIM(BUFFER)
-  Buffer='  <vtkMultiBlockDataSet>'//lf;WRITE(ivtk) TRIM(BUFFER)
-  Buffer='    <DataSet index="0" name="DG" file="'//TRIM(FileString_DG)//'">'//lf;WRITE(ivtk) TRIM(BUFFER)
-  Buffer='    </DataSet>'//lf;WRITE(ivtk) TRIM(BUFFER)
-  Buffer='    <DataSet index="1" name="FV" file="'//TRIM(FileString_FV)//'">'//lf;WRITE(ivtk) TRIM(BUFFER)
-  Buffer='    </DataSet>'//lf;WRITE(ivtk) TRIM(BUFFER)
-  Buffer='  </vtkMultiBlockDataSet>'//lf;WRITE(ivtk) TRIM(BUFFER)
+  Buffer='  <PUnstructuredGrid GhostLevel="0">'//lf;WRITE(ivtk) TRIM(BUFFER)
+  ! Specify point data
+  Buffer='    <PPointData>'//lf;WRITE(ivtk) TRIM(Buffer)
+  DO iVal=1,nVal
+    Buffer='      <PDataArray type="Float32" Name="'//TRIM(VarNames(iVal))//'" format="appended"/>'//lf;WRITE(ivtk) TRIM(Buffer)
+  END DO
+  Buffer='    </PPointData>'//lf;WRITE(ivtk) TRIM(Buffer)
+  ! Specify cell data
+  Buffer='    <PCellData> </PCellData>'//lf;WRITE(ivtk) TRIM(Buffer)
+  ! Specify coordinate data
+  Buffer='    <PPoints>'//lf;WRITE(ivtk) TRIM(Buffer)
+  Buffer='      <PDataArray type="Float32" Name="Coordinates" NumberOfComponents="3" format="appended"/>'//lf;WRITE(ivtk) TRIM(Buffer)
+  Buffer='    </PPoints>'//lf;WRITE(ivtk) TRIM(Buffer)
+  ! Specify necessary cell data
+  Buffer='    <PCells>'//lf;WRITE(ivtk) TRIM(Buffer)
+  ! Connectivity
+  Buffer='      <PDataArray type="Int32" Name="connectivity" format="appended"/>'//lf;WRITE(ivtk) TRIM(Buffer)
+  ! Offsets
+  Buffer='      <PDataArray type="Int32" Name="offsets" format="appended"/>'//lf;WRITE(ivtk) TRIM(Buffer)
+  ! Elem types
+  Buffer='      <PDataArray type="Int32" Name="types" format="appended"/>'//lf;WRITE(ivtk) TRIM(Buffer)
+  Buffer='    </PCells>'//lf;WRITE(ivtk) TRIM(Buffer)
+  DO iProc=0,nProcessors-1
+    WRITE(StrProc,'(I16)')iProc
+    Buffer='    <Piece Source="visu/'//TRIM(INTSTAMP(TRIM(FileString),iProc))//'.vtu"/>'//lf;WRITE(ivtk) TRIM(Buffer)
+  END DO
+  Buffer='  </PUnstructuredGrid>'//lf;WRITE(ivtk) TRIM(BUFFER)
   Buffer='</VTKFile>'//lf;WRITE(ivtk) TRIM(BUFFER)
   CLOSE(ivtk)
 ENDIF
-END SUBROUTINE WriteVTKMultiBlockDataSet
+END SUBROUTINE WriteParallelVTK
+#endif /*USE_MPI*/
 
 !===================================================================================================================================
 !> Subroutine to write 2D or 3D coordinates to VTK format
@@ -442,31 +571,33 @@ REAL,ALLOCATABLE,TARGET,INTENT(IN)    :: coords(:,:,:,:,:) !< Array containing c
 INTEGER,ALLOCATABLE,TARGET,INTENT(INOUT) :: nodeids(:)
 TYPE (CARRAY), INTENT(INOUT)         :: coords_out
 TYPE (CARRAY), INTENT(INOUT)         :: nodeids_out
-
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
 coords_out%dim  = dim
+
 IF (nElems.EQ.0) THEN
   coords_out%len  = 0
   nodeids_out%len = 0
   RETURN
 END IF
+
 SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='NO')"   WRITE ",dim,"D COORDS TO VTX XML BINARY (VTU) ARRAY..."
 ! values and coords are already in the correct structure of VTK/Paraview
 
 ! create connectivity
-CALL CreateConnectivity(NVisu,nElems,nodeids,dim,DGFV)
+CALL CreateConnectivity(NVisu=NVisu,nElems=nElems,nodeids=nodeids,dim=dim,DGFV=DGFV)
 
 ! set the sizes of the arrays
 coords_out%len = 3*(NVisu+1)**dim*nElems
 nodeids_out%len = (2**dim)*((NVisu+DGFV)/(1+DGFV))**dim*nElems
 
 ! assign data to the arrays (no copy!!!)
-coords_out%data = C_LOC(Coords(1,0,0,0,1))
+coords_out%data  = C_LOC(coords(1,0,0,0,1))
 nodeids_out%data = C_LOC(nodeids(1))
 
 SWRITE(UNIT_stdOut,'(A)')" Done!"
+
 END SUBROUTINE WriteCoordsToVTK_array
 
 !===================================================================================================================================
@@ -487,8 +618,7 @@ INTEGER,INTENT(IN)                :: dim                          !> Spacial dim
 REAL(C_DOUBLE),ALLOCATABLE,TARGET,INTENT(IN) :: values(:,:,:,:,:) !> Array containing the points values
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
-TYPE (CARRAY), INTENT(INOUT)      :: values_out
-
+TYPE (CARRAY), INTENT(INOUT)      :: Values_out
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
