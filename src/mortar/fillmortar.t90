@@ -35,7 +35,11 @@ SUBROUTINE U_Mortar(&
 #ifdef WITHnVar
         TP_nVar, &
 #endif
-        U_in_master,U_in_slave,doMPISides)
+        U_in_master,U_in_slave,doMPISides &
+#if FV_ENABLED
+        ,pureDG &
+#endif
+)
 ! MODULES
 USE MOD_Preproc
 USE MOD_Mortar_Vars, ONLY: M_0_1,M_0_2
@@ -53,11 +57,14 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 #ifdef WITHnVar
-INTEGER,INTENT(IN) :: TP_nVar
+INTEGER,INTENT(IN)          :: TP_nVar
 #endif
-REAL,INTENT(INOUT) :: U_in_master(1:TP_nVar,0:PP_N,0:PP_NZ,1:nSides) !< (INOUT) can be U or Grad_Ux/y/z_master
-REAL,INTENT(INOUT) :: U_in_slave( 1:TP_nVar,0:PP_N,0:PP_NZ,1:nSides) !< (INOUT) can be U or Grad_Ux/y/z_master
-LOGICAL,INTENT(IN) :: doMPISides                                 !< flag whether MPI sides are processed
+REAL,INTENT(INOUT)          :: U_in_master(1:TP_nVar,0:PP_N,0:PP_NZ,1:nSides) !< (INOUT) can be U or Grad_Ux/y/z_master
+REAL,INTENT(INOUT)          :: U_in_slave( 1:TP_nVar,0:PP_N,0:PP_NZ,1:nSides) !< (INOUT) can be U or Grad_Ux/y/z_master
+LOGICAL,INTENT(IN)          :: doMPISides                                 !< flag whether MPI sides are processed
+#if FV_ENABLED
+LOGICAL,INTENT(IN),OPTIONAL :: pureDG                                     !< flag for using DG operations also for FV elements
+#endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER      :: p,q,l
@@ -69,21 +76,31 @@ REAL         :: U_tmp( TP_nVar,0:PP_N,0:PP_NZ,1:4)
 REAL         :: U_tmp2(TP_nVar,0:PP_N,0:PP_NZ,1:2)
 #endif
 REAL,POINTER :: M1(:,:),M2(:,:)
+#if FV_ENABLED
+LOGICAL      :: pureDG_loc
+#endif
 !==================================================================================================================================
 !                         doMPISides==True   doMPISides==False
 firstMortarSideID = MERGE(firstMortarMPISide,firstMortarInnerSide,doMPISides)
  lastMortarSideID = MERGE( lastMortarMPISide, lastMortarInnerSide,doMPISides)
 
+#if FV_ENABLED
+pureDG_loc = .FALSE.
+IF (PRESENT(pureDG)) pureDG_loc = pureDG
+#endif
+
 M1=>M_0_1; M2=>M_0_2
 
 DO MortarSideID=firstMortarSideID,lastMortarSideID
 #if FV_ENABLED
-  IF(FV_Elems_master(MortarSideID).GT.0) THEN ! FV element
-    M1=>FV_M_0_1
-    M2=>FV_M_0_2
-  ELSE ! DG element
-    M1=>   M_0_1
-    M2=>   M_0_2
+  IF (.NOT.pureDG_loc) THEN
+    IF((FV_Elems_master(MortarSideID).GT.0)) THEN ! FV element
+      M1=>FV_M_0_1
+      M2=>FV_M_0_2
+    ELSE ! DG element
+      M1=>   M_0_1
+      M2=>   M_0_2
+    END IF
   END IF
 #endif
 
@@ -199,7 +216,11 @@ SUBROUTINE Flux_Mortar(&
 #ifdef WITHnVar
         TP_nVar, &
 #endif
-        Flux_master,Flux_slave,doMPISides,weak,onlyFV)
+        Flux_master,Flux_slave,doMPISides,weak &
+#if FV_ENABLED
+        ,onlyFV,pureDG &
+#endif
+)
 ! MODULES
 USE MOD_Preproc
 USE MOD_Mortar_Vars, ONLY: M_1_0,M_2_0
@@ -222,7 +243,10 @@ REAL,INTENT(INOUT) :: Flux_master(1:TP_nVar,0:PP_N,0:PP_NZ,1:nSides) !< input da
 REAL,INTENT(IN)    :: Flux_slave (1:TP_nVar,0:PP_N,0:PP_NZ,1:nSides) !< input data
 LOGICAL,INTENT(IN) :: doMPISides                             !< flag whether MPI sides are processed
 LOGICAL,INTENT(IN) :: weak                                   !< flag whether strong or weak form is used
+#if FV_ENABLED
 LOGICAL,INTENT(IN),OPTIONAL :: onlyFV                        !< flag whether only FV sides should be handled
+LOGICAL,INTENT(IN),OPTIONAL :: pureDG                        !< flag for using DG operations also for FV elements
+#endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER      :: p,q,l
@@ -234,17 +258,21 @@ REAL         :: Flux_tmp( TP_nVar,0:PP_N,0:PP_NZ,1:4)
 REAL         :: Flux_tmp2(TP_nVar,0:PP_N,0:PP_NZ,1:2)
 #endif
 REAL,POINTER :: M1(:,:),M2(:,:)
+#if FV_ENABLED
 LOGICAL      :: onlyFV_loc
+LOGICAL      :: pureDG_loc
+#endif
 !==================================================================================================================================
 !                         doMPISides==True   doMPISides==False
 firstMortarSideID = MERGE(firstMortarMPISide,firstMortarInnerSide,doMPISides)
  lastMortarSideID = MERGE( lastMortarMPISide, lastMortarInnerSide,doMPISides)
-IF (PRESENT(onlyFV)) THEN
-  onlyFV_loc = onlyFV
-ELSE
-  onlyFV_loc = .FALSE.
-END IF
 
+#if FV_ENABLED
+onlyFV_loc = .FALSE.
+pureDG_loc = .FALSE.
+IF (PRESENT(onlyFV)) onlyFV_loc = onlyFV
+IF (PRESENT(pureDG)) pureDG_loc = pureDG
+#endif
 
 M1=>M_1_0; M2=>M_2_0
 DO MortarSideID=firstMortarSideID,lastMortarSideID
@@ -276,12 +304,14 @@ DO MortarSideID=firstMortarSideID,lastMortarSideID
   END DO
 
 #if FV_ENABLED
-  IF(FV_Elems_master(MortarSideID).GT.0)THEN ! FV element
-    M1=>FV_M_1_0
-    M2=>FV_M_2_0
-  ELSE ! DG element
-    M1=>   M_1_0
-    M2=>   M_2_0
+  IF (.NOT.pureDG_loc) THEN
+    IF((FV_Elems_master(MortarSideID).GT.0)) THEN ! FV element
+      M1=>FV_M_1_0
+      M2=>FV_M_2_0
+    ELSE ! DG element
+      M1=>   M_1_0
+      M2=>   M_2_0
+    END IF
   END IF
 #endif
 #if PP_dim == 3
