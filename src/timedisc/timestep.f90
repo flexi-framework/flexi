@@ -116,7 +116,7 @@ USE MOD_PreProc
 USE MOD_Vector
 USE MOD_DG           ,ONLY: DGTimeDerivative_weakForm
 USE MOD_DG_Vars      ,ONLY: U,Ut,nTotalU
-USE MOD_TimeDisc_Vars,ONLY: dt,RKdelta,RKg1,RKg2,RKg3,RKb,RKc,nRKStages,CurrentStage
+USE MOD_TimeDisc_Vars,ONLY: dt,RKdelta,RKg1,RKg2,RKg3,RKb,RKc,nRKStages,CurrentStage,doAnalyze
 USE MOD_Mesh_Vars    ,ONLY: nElems
 USE MOD_PruettDamping,ONLY: TempFilterTimeDeriv
 USE MOD_Sponge_Vars  ,ONLY: CalcPruettDamping
@@ -136,35 +136,39 @@ REAL     :: UPrev(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
 REAL     :: tStage,b_dt(1:nRKStages)
 INTEGER  :: iStage
 !===================================================================================================================================
-! DO iStage=2,nRKStages
-
-! Premultiply with dt
-b_dt=RKb*dt
 
 ! Nomenclature:
 ! S1 == U, S2 == S2, S3 == UPrev
 
-CurrentStage=1
-tStage=t
-CALL VCopy(nTotalU,Uprev,U)                    !Uprev=U
-CALL VCopy(nTotalU,S2,U)                       !S2=U
-!CALL DGTimeDerivative_weakForm(t)             ! allready called in timedisc
-CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(1))      !U      = U + Ut*b_dt(1)
+DO iStage = 1,nRKStages
+  ! NOTE: perform timestep in rk
+  IF(CurrentStage.EQ.nRKStages)THEN; CurrentStage = 0       ; tStage = t+                  dt
+  ELSE                             ; CurrentStage = iStage+1; tStage = t+RKc(CurrentStage)*dt
+  END IF
 
-DO iStage=2,nRKStages
-  CurrentStage=iStage
-  tStage=t+dt*RKc(iStage)
-  IF(doCalcIndicator) CALL CalcIndicator(U,t)
+  IF (iStage.EQ.1) THEN
+    CALL VCopy(nTotalU,Uprev,U)                    !Uprev=U
+    CALL VCopy(nTotalU,S2,U)                       !S2=U
+  END IF
+
+  ! Call DG operator to fill face data, fluxes, gradients for analyze
+  IF(doAnalyze)THEN                ; doAnalyze = .FALSE.
+  ELSE
+    IF(doCalcIndicator) CALL CalcIndicator(U,t)
 #if FV_ENABLED
   CALL FV_Switch(U,Uprev,S2,AllowToDG=FV_toDGinRK)
 #endif
 #if PP_LIMITER
   IF(DoPPLimiter) CALL PPLimiter()
 #endif
-  CALL DGTimeDerivative_weakForm(tStage)
-  CALL VAXPBY(nTotalU,S2,U,ConstIn=RKdelta(iStage))                !S2 = S2 + U*RKdelta(iStage)
-  CALL VAXPBY(nTotalU,U,S2,ConstOut=RKg1(iStage),ConstIn=RKg2(iStage)) !U = RKg1(iStage)*U + RKg2(iStage)*S2
-  CALL VAXPBY(nTotalU,U,Uprev,ConstIn=RKg3(iStage))                !U = U + RKg3(ek)*Uprev
+    CALL DGTimeDerivative_weakForm(tStage)
+  END IF
+
+  IF (iStage.NE.1) THEN
+    CALL VAXPBY(nTotalU,S2,U,ConstIn=RKdelta(iStage))                !S2 = S2 + U*RKdelta(iStage)
+    CALL VAXPBY(nTotalU,U,S2,ConstOut=RKg1(iStage),ConstIn=RKg2(iStage)) !U = RKg1(iStage)*U + RKg2(iStage)*S2
+    CALL VAXPBY(nTotalU,U,Uprev,ConstIn=RKg3(iStage))                !U = U + RKg3(ek)*Uprev
+  END IF
   CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(iStage))                   !U = U + Ut*b_dt(iStage)
 #if PP_LIMITER
   IF(DoPPLimiter) CALL PPLimiter()
