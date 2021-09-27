@@ -136,7 +136,7 @@ IF((.NOT.InterpolationInitIsDone).OR.MeshInitIsDone) THEN
     'InitMesh not ready to be called or already called.')
 END IF
 
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A,I1,A)') ' INIT MESH IN MODE ',meshMode,'...'
 
 ! prepare pointer structure (get nElems, etc.)
@@ -163,7 +163,7 @@ CALL readMesh(MeshFile) !set nElems
 
 #if (PP_dim == 2)
 ! If this is a two dimensional calculation, all subsequent operations are performed on the reduced mesh.
-SWRITE(UNIT_StdOut,'(A)') " RUNNING A 2D SIMULATION! "
+SWRITE(UNIT_stdOut,'(A)') " RUNNING A 2D SIMULATION! "
 ! The mesh coordinates read in by the readMesh routine are therefore reduced by one dimension.
 CALL to2D_rank5((/1,0,0,0,1/),(/3,NGeo,NGeo,NGeo,nElems/),4,NodeCoords)
 NodeCoords(3,:,:,:,:) = 0.
@@ -208,7 +208,7 @@ IF(NGeoOverride.GT.0)THEN
   DEALLOCATE(CoordsTmp, Vdm_EQNGeo_EQNGeoOverride)
 END IF
 
-SWRITE(UNIT_StdOut,'(a3,a30,a3,i0)')' | ','Ngeo',' | ', Ngeo
+SWRITE(UNIT_stdOut,'(a3,a30,a3,i0)')' | ','Ngeo',' | ', Ngeo
 
 ! scale and deform mesh if desired (warning: no mesh output!)
 meshScale=GETREAL('meshScale','1.0')
@@ -402,7 +402,7 @@ CALL AddToElemData(ElementOut,'myRank',IntScalar=myRank)
 
 MeshInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT MESH DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitMesh
 
 !============================================================================================================================

@@ -246,7 +246,7 @@ SUBROUTINE GetBoundaryFVgradient(SideID,t,gradU,UPrim_master,NormVec,TangVec1,Ta
 USE MOD_PreProc
 USE MOD_Globals       ,ONLY: Abort
 USE MOD_Mesh_Vars     ,ONLY: BoundaryType,BC
-USE MOD_Testcase      ,ONLY: GetBoundaryFVgradientTestcase
+USE MOD_TestCase      ,ONLY: GetBoundaryFVgradientTestcase
 USE MOD_Exactfunc     ,ONLY: ExactFunc
 USE MOD_Equation_Vars ,ONLY: IniExactFunc
 IMPLICIT NONE
@@ -302,7 +302,7 @@ USE MOD_PreProc
 USE MOD_Globals      ,ONLY: Abort
 USE MOD_Mesh_Vars    ,ONLY: BoundaryType,BC
 USE MOD_Lifting_Vars ,ONLY: doWeakLifting
-USE MOD_Testcase     ,ONLY: Lifting_GetBoundaryFluxTestcase
+USE MOD_TestCase     ,ONLY: Lifting_GetBoundaryFluxTestcase
 USE MOD_Exactfunc    ,ONLY: ExactFunc
 USE MOD_Equation_Vars,ONLY: IniExactFunc
 IMPLICIT NONE

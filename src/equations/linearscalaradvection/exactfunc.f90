@@ -92,7 +92,7 @@ USE MOD_Equation_Vars, ONLY: DiffC
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT EXACT FUNCTION...'
 
 ! Read in boundary parameters
@@ -112,7 +112,7 @@ CASE(6) ! One-Dimensional cosine wave with angular frequency set by user
 END SELECT
 
 SWRITE(UNIT_stdOut,'(A)')' INIT EXACT FUNCTION DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitExactFunc
 
 !==================================================================================================================================

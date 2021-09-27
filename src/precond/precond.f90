@@ -98,7 +98,7 @@ IF(PrecondInitIsDone)THEN
    SWRITE(*,*) "InitPrecond already called."
    RETURN
 END IF
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT PRECONDITIONER...'
 
 PrecondType       = GETINT(    'PrecondType',      '1' )
@@ -135,7 +135,7 @@ END IF
 
 PrecondInitIsDone = .TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT PRECONDITIONER DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitPrecond
 
 !===================================================================================================================================
@@ -207,7 +207,7 @@ IF(PrecondType.EQ.0) RETURN !NO PRECONDITIONER
 
 ! Output of building time for preconditioner
 IF(DoDisplayPrecond)THEN
-  SWRITE(UNIT_StdOut,'(132("-"))')
+  SWRITE(UNIT_stdOut,'(132("-"))')
   SWRITE(UNIT_stdOut,'(A)') ' BUILD PRECONDITIONER...'
 END IF
 
@@ -345,7 +345,7 @@ IF(DoDisplayPrecond)THEN
 #endif /*MPI*/
   SWRITE(UNIT_stdOut,'(A,F11.3,A)')' TOTAL DERIVATING & INVERTING TIME =[',Time,' ]'
   SWRITE(UNIT_stdOut,'(A)')' BUILD PRECONDITIONER DONE!'
-  SWRITE(UNIT_StdOut,'(132("-"))')
+  SWRITE(UNIT_stdOut,'(132("-"))')
 END IF
 
 END SUBROUTINE  BuildPrecond

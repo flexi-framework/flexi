@@ -112,7 +112,7 @@ USE MOD_EOS_Vars      ,ONLY: Tref,ExpoSuth
 REAL    :: BulkMach,BulkReynolds
 LOGICAL :: UseNonDimensionalEqn=.FALSE.
 !==================================================================================================================================
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT IDEAL GAS...'
 
 
@@ -177,7 +177,7 @@ mu0     =mu0/Tref**ExpoSuth
 #endif /*PARABOLIC*/
 
 SWRITE(UNIT_stdOut,'(A)')' INIT IDEAL-GAS DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitEos
 
 !==================================================================================================================================

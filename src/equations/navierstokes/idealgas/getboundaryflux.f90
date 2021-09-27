@@ -511,7 +511,7 @@ USE MOD_Riemann      ,ONLY: Riemann
 #if EDDYVISCOSITY
 USE MOD_EddyVisc_Vars,ONLY: muSGS_master
 #endif
-USE MOD_Testcase     ,ONLY: GetBoundaryFluxTestcase
+USE MOD_TestCase     ,ONLY: GetBoundaryFluxTestcase
 USE MOD_DG_Vars      ,ONLY: UPrim_Boundary
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -804,7 +804,7 @@ SUBROUTINE GetBoundaryFVgradient(SideID,t,gradU,UPrim_master,NormVec,TangVec1,Ta
 USE MOD_PreProc
 USE MOD_Globals       ,ONLY: Abort
 USE MOD_Mesh_Vars     ,ONLY: BoundaryType,BC
-USE MOD_Testcase      ,ONLY: GetBoundaryFVgradientTestcase
+USE MOD_TestCase      ,ONLY: GetBoundaryFVgradientTestcase
 USE MOD_DG_Vars       ,ONLY: UPrim_Boundary
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -858,7 +858,7 @@ USE MOD_PreProc
 USE MOD_DG_Vars      ,ONLY: UPrim_Boundary
 USE MOD_Mesh_Vars    ,ONLY: BoundaryType,BC
 USE MOD_Lifting_Vars ,ONLY: doWeakLifting
-USE MOD_Testcase     ,ONLY: Lifting_GetBoundaryFluxTestcase
+USE MOD_TestCase     ,ONLY: Lifting_GetBoundaryFluxTestcase
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -964,7 +964,7 @@ INTEGER                       :: p,q,SideID,ElemID,locSide
 CHARACTER(LEN=255)            :: NodeType_HDF5
 LOGICAL                       :: InterpolateSolution
 !==================================================================================================================================
-SWRITE(UNIT_StdOut,'(A,A)')'  Read BC state from file "',FileName
+SWRITE(UNIT_stdOut,'(A,A)')'  Read BC state from file "',FileName
 CALL OpenDataFile(FileName,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL GetDataProps(nVar_HDF5,N_HDF5,nElems_HDF5,NodeType_HDF5)
 

@@ -113,7 +113,7 @@ IF (InterpolationInitIsDone) THEN
   CALL CollectiveStop(__STAMP__,&
     'InitInterpolation already called.')
 END IF
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT INTERPOLATION...'
 
 ! Access ini-file
@@ -142,7 +142,7 @@ CALL InitInterpolationBasis(PP_N, xGP ,wGP ,wBary ,L_Minus ,L_Plus ,Vdm_Leg ,sVd
 
 InterpolationInitIsDone = .TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT INTERPOLATION DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitInterpolation
 
 

@@ -364,11 +364,11 @@ DO iElem=1,nElems
   ! check for negative Jacobians
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     IF(detJac_N(1,i,j,k,iElem).LE.0.)&
-      WRITE(Unit_StdOut,*) 'Negative Jacobian found on Gauss point. Coords:', Elem_xGP(:,i,j,k,iElem)
+      WRITE(UNIT_stdOut,*) 'Negative Jacobian found on Gauss point. Coords:', Elem_xGP(:,i,j,k,iElem)
     ! check scaled Jacobians
     scaledJac(i,j,k,iElem)=detJac_N(1,i,j,k,iElem)/MAXVAL(detJac_N(1,:,:,:,iElem))
     IF(scaledJac(i,j,k,iElem).LT.0.01) THEN
-      WRITE(Unit_StdOut,*) 'Too small scaled Jacobians found (CL/Gauss):', scaledJac(i,j,k,iElem)
+      WRITE(UNIT_stdOut,*) 'Too small scaled Jacobians found (CL/Gauss):', scaledJac(i,j,k,iElem)
       CALL abort(__STAMP__,&
         'Scaled Jacobian lower then tolerance in global element:',iElem+offsetElem)
     END IF

@@ -114,7 +114,7 @@ IF((.NOT.InterpolationInitIsDone).OR.(.NOT.MeshInitIsDone).OR.ImplicitInitIsDone
    CALL abort(__STAMP__,'InitImplicit not ready to be called or already called.')
 END IF
 IF(TimeDiscType.EQ.'ESDIRK') THEN
-  SWRITE(UNIT_StdOut,'(132("-"))')
+  SWRITE(UNIT_stdOut,'(132("-"))')
   SWRITE(UNIT_stdOut,'(A)') ' INIT Implicit...'
 
   nDOFVar1D     = PP_nVar*(PP_N+1)
@@ -208,7 +208,7 @@ IF(TimeDiscType.EQ.'ESDIRK') THEN
 
   ImplicitInitIsDone=.TRUE.
   SWRITE(UNIT_stdOut,'(A)')' INIT Implicit DONE!'
-  SWRITE(UNIT_StdOut,'(132("-"))')
+  SWRITE(UNIT_stdOut,'(132("-"))')
 END IF
 END SUBROUTINE InitImplicit
 

@@ -142,9 +142,9 @@ IF(nUserBCs .GT. 0)THEN
       IF((BoundaryType(BCMapping(iBC),1).EQ.1).AND.(BCType(1,iBC).NE.1)) &
         CALL abort(__STAMP__,&
                    'Remapping non-periodic to periodic BCs is not possible!')
-      SWRITE(Unit_StdOut,'(A,A)')    ' |     Boundary in HDF file found | ',TRIM(BCNames(iBC))
-      SWRITE(Unit_StdOut,'(A,I4,I4)')' |                            was | ',BCType(1,iBC),BCType(3,iBC)
-      SWRITE(Unit_StdOut,'(A,I4,I4)')' |                      is set to | ',BoundaryType(BCMapping(iBC),1:2)
+      SWRITE(UNIT_stdOut,'(A,A)')    ' |     Boundary in HDF file found | ',TRIM(BCNames(iBC))
+      SWRITE(UNIT_stdOut,'(A,I4,I4)')' |                            was | ',BCType(1,iBC),BCType(3,iBC)
+      SWRITE(UNIT_stdOut,'(A,I4,I4)')' |                      is set to | ',BoundaryType(BCMapping(iBC),1:2)
       BCType(1,iBC) = BoundaryType(BCMapping(iBC),BC_TYPE)
       BCType(3,iBC) = BoundaryType(BCMapping(iBC),BC_STATE)
     END IF
@@ -158,12 +158,12 @@ BoundaryName = BCNames
 BoundaryType(:,BC_TYPE)  = BCType(1,:)
 BoundaryType(:,BC_STATE) = BCType(3,:)
 BoundaryType(:,BC_ALPHA) = BCType(4,:)
-SWRITE(UNIT_StdOut,'(132("."))')
-SWRITE(Unit_StdOut,'(A,A16,A20,A10,A10,A10)')'BOUNDARY CONDITIONS','|','Name','Type','State','Alpha'
+SWRITE(UNIT_stdOut,'(132("."))')
+SWRITE(UNIT_stdOut,'(A,A16,A20,A10,A10,A10)')'BOUNDARY CONDITIONS','|','Name','Type','State','Alpha'
 DO iBC=1,nBCs
   SWRITE(*,'(A,A33,A20,I10,I10,I10)')' |','|',TRIM(BoundaryName(iBC)),BoundaryType(iBC,:)
 END DO
-SWRITE(UNIT_StdOut,'(132("."))')
+SWRITE(UNIT_stdOut,'(132("."))')
 DEALLOCATE(BCNames,BCType,BCMapping)
 END SUBROUTINE ReadBCs
 
@@ -233,7 +233,7 @@ IF(MPIRoot)THEN
 END IF
 
 SWRITE(UNIT_stdOut,'(A)')'READ MESH FROM DATA FILE "'//TRIM(FileString)//'" ...'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 ! Open mesh file
 CALL OpenDataFile(FileString,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL BuildPartition()

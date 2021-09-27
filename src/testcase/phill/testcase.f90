@@ -22,7 +22,7 @@
 !> Ercoftac periodic hill testcase 
 !> http://www.kbwiki.ercoftac.org/w/index.php/Abstr:2D_Periodic_Hill_Flow
 !==================================================================================================================================
-MODULE MOD_Testcase
+MODULE MOD_TestCase
 ! MODULES
 IMPLICIT NONE
 PRIVATE
@@ -121,7 +121,7 @@ INTEGER                  :: ioUnit,openStat,i
 REAL                     :: maxMemory
 CHARACTER(LEN=20)        :: varnames(4)
 !==================================================================================================================================
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT TESTCASE PERIODIC HILL...'
 
 #if FV_ENABLED
@@ -151,7 +151,7 @@ varnames(4) = 'massFlowRatePeriodic'
 CALL InitOutputToFile(Filename,'Statistics',4,varnames)
 
 SWRITE(UNIT_stdOut,'(A)')' INIT TESTCASE PERIODIC HILL DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitTestcase
 
 
@@ -434,4 +434,4 @@ REAL,INTENT(OUT)   :: Flux(     PP_nVarLifting,0:PP_N,0:PP_NZ) !< lifting bounda
 !==================================================================================================================================
 END SUBROUTINE Lifting_GetBoundaryFluxTestcase
 
-END MODULE MOD_Testcase
+END MODULE MOD_TestCase

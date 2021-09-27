@@ -27,9 +27,9 @@
 !> The channel halfwidth is set to 1 and the Reynolds number is thus set with mu0 = 1/Re_tau. Further, rho=1 and the pressure is
 !> computed to obtain the specified Bulk Mach number (Mach=0.1 for the Moser case). Hence, u_tau = tau = -dp/dx = 1 .
 !==================================================================================================================================
-MODULE MOD_Testcase
+MODULE MOD_TestCase
 ! MODULES
-USE MOD_Testcase_Vars
+USE MOD_TestCase_Vars
 IMPLICIT NONE
 PRIVATE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -130,7 +130,7 @@ REAL                     :: bulkMach,pressure
 REAL                     :: UE(PP_2Var)
 CHARACTER(LEN=7)         :: varnames(2)
 !==================================================================================================================================
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT TESTCASE CHANNEL...'
 
 #if FV_ENABLED
@@ -169,7 +169,7 @@ IF(MPIRoot) THEN
 END IF
 
 SWRITE(UNIT_stdOut,'(A)')' INIT TESTCASE CHANNEL DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitTestcase
 
 
@@ -395,4 +395,4 @@ REAL,INTENT(OUT)   :: Flux(     PP_nVarLifting,0:PP_N,0:PP_NZ) !< lifting bounda
 !==================================================================================================================================
 END SUBROUTINE Lifting_GetBoundaryFluxTestcase
 
-END MODULE MOD_Testcase
+END MODULE MOD_TestCase

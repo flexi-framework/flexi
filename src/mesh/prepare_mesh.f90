@@ -554,7 +554,7 @@ ProcInfo(6)=nMortarMPISides
 ProcInfo(7)=nSmallMortarInnerSides
 ProcInfo(8)=nSmallMortarMPISides_MINE
 ProcInfo(9)=nSmallMortarMPISides_YOUR
-IF(MPIroot)THEN
+IF(MPIRoot)THEN
   ALLOCATE(nNBProcs_glob(0:nProcessors-1))
   ALLOCATE(ProcInfo_glob(9,0:nProcessors-1))
   nNBProcs_glob=-99999
@@ -562,10 +562,10 @@ IF(MPIroot)THEN
 ELSE
   ALLOCATE(nNBProcs_glob(1)) ! dummy for debug
   ALLOCATE(ProcInfo_glob(1,1)) ! dummy for debug
-END IF !MPIroot
+END IF !MPIRoot
 CALL MPI_GATHER(nNBProcs,1,MPI_INTEGER,nNBProcs_glob,1,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
 CALL MPI_GATHER(ProcInfo,9,MPI_INTEGER,ProcInfo_glob,9,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
-IF(MPIroot)THEN
+IF(MPIRoot)THEN
   nNBmax=MAXVAL(nNBProcs_glob) ! count, total number of columns in table
   ALLOCATE(NBinfo_glob(6,nNBmax,0:nProcessors))
   NBinfo_glob=-77777
@@ -583,7 +583,7 @@ NBinfo(5,1:nNBProcs)=offsetMPISides_MINE(0:nNBProcs-1)
 NBinfo(6,1:nNBProcs)=offsetMPISides_YOUR(0:nNBProcs-1)
 CALL MPI_GATHER(NBinfo,6*nNBmax,MPI_INTEGER,NBinfo_glob,6*nNBmax,MPI_INTEGER,0,MPI_COMM_FLEXI,iError)
 DEALLOCATE(NBinfo)
-IF(MPIroot)THEN
+IF(MPIRoot)THEN
   WRITE(PartitionInfoFileName,'(A21,I6.6,A4)')'partitionInfo_nRanks_',nProcessors,'.out'
   OPEN(NEWUNIT=ioUnit,FILE=TRIM(PartitionInfoFileName),STATUS='REPLACE')
   WRITE(ioUnit,*)'Partition Information:'
@@ -670,7 +670,7 @@ IF(MPIroot)THEN
   END DO
   DEALLOCATE(tmparray,tmpreal)
   CLOSE(ioUnit)
-END IF ! MPIroot
+END IF ! MPIRoot
 DEALLOCATE(NBinfo_glob,nNBProcs_glob,ProcInfo_glob)
 #endif /*USE_MPI*/
 END SUBROUTINE setLocalSideIDs
@@ -775,28 +775,28 @@ DO iElem=1,nElems
 END DO ! iElem
 
 #if USE_MPI
-IF(MPIroot)THEN
+IF(MPIRoot)THEN
   CALL MPI_REDUCE(MPI_IN_PLACE,nSides_flip,5,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 ELSE
   CALL MPI_REDUCE(nSides_flip,MPI_IN_PLACE,5,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 END IF
-IF(MPIroot)THEN
+IF(MPIRoot)THEN
   CALL MPI_REDUCE(MPI_IN_PLACE     ,nSides_MortarType,3,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 ELSE
   CALL MPI_REDUCE(nSides_MortarType,MPI_IN_PLACE     ,3,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 END IF
 #endif /*USE_MPI*/
-SWRITE(UNIT_StdOut,'(132("."))')
+SWRITE(UNIT_stdOut,'(132("."))')
 SWRITE(*,'(A,A34,I0)')' |','nSides with Flip=0     | ',nSides_flip(0)
 SWRITE(*,'(A,A34,I0)')' |','nSides with Flip=1     | ',nSides_flip(1)
 SWRITE(*,'(A,A34,I0)')' |','nSides with Flip=2     | ',nSides_flip(2)
 SWRITE(*,'(A,A34,I0)')' |','nSides with Flip=3     | ',nSides_flip(3)
 SWRITE(*,'(A,A34,I0)')' |','nSides with Flip=4     | ',nSides_flip(4)
-SWRITE(UNIT_StdOut,'(132("."))')
+SWRITE(UNIT_stdOut,'(132("."))')
 SWRITE(*,'(A,A34,I0)')' |','nSides of MortarType=1 | ',nSides_MortarType(1)
 SWRITE(*,'(A,A34,I0)')' |','nSides of MortarType=2 | ',nSides_MortarType(2)
 SWRITE(*,'(A,A34,I0)')' |','nSides of MortarType=3 | ',nSides_MortarType(3)
-SWRITE(UNIT_StdOut,'(132("."))')
+SWRITE(UNIT_stdOut,'(132("."))')
 
 LOGWRITE(*,*)'============================= START SIDE CHECKER ==================='
 DO iElem=1,nElems

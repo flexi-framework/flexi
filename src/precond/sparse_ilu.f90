@@ -67,7 +67,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER :: iElem
 !===================================================================================================================================
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT ILU0...'
 nMTriangle=nDOFVarElem-1
 ALLOCATE(Dinv(nDOFVarElem,nElems))
@@ -86,7 +86,7 @@ END DO
 epsZero=EPSILON(0.0d0)
 
 SWRITE(UNIT_stdOut,'(A)')' INIT ILU0 DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitSparseILU
 
 !===================================================================================================================================

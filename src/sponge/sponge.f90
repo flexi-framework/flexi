@@ -130,7 +130,7 @@ LOGICAL             :: validBaseFlowFile
 !==================================================================================================================================
 doSponge=GETLOGICAL('SpongeLayer','.FALSE.')
 IF(.NOT.doSponge) RETURN
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT SPONGE...'
 
 damping   = GETREAL('damping','1.')
@@ -166,7 +166,7 @@ CASE(SPONGEBASEFLOW_PRUETT) ! Pruett
       IF (.NOT.validBaseFlowFile) THEN
         ! If the assumed base flow file does not exist, use the restart state to initialize the sponge base flow
         BaseFlowFile = RestartFile
-        SWRITE(UNIT_StdOut,'(A)') 'WARNING: No baseflow file found! Using the restart state to initialize sponge base flow.'
+        SWRITE(UNIT_stdOut,'(A)') 'WARNING: No baseflow file found! Using the restart state to initialize sponge base flow.'
       END IF
     ELSE
       ! check if baseflow exists
@@ -185,7 +185,7 @@ CASE DEFAULT
 END SELECT
 
 ! Preparation of the baseflow on each Gauss Point
-SWRITE(UNIT_StdOut,'(A)') '  Initialize Sponge Base Flow...'
+SWRITE(UNIT_stdOut,'(A)') '  Initialize Sponge Base Flow...'
 ALLOCATE(SpBaseFlow(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 SELECT CASE(SpBaseflowType)
 CASE(SPONGEBASEFLOW_CONSTANT) ! constant baseflow from refstate
@@ -209,7 +209,7 @@ CASE(SPONGEBASEFLOW_PRUETT) ! Pruett: RefState for computation from scratch, Bas
     CALL ReadBaseFlow(BaseFlowfile)
   ELSE
     IF (SpongeExactFunc.LT.0) THEN
-      SWRITE(UNIT_StdOut,'(A)') 'WARNING: No sponge exact func given! Use ini exact func instead.'
+      SWRITE(UNIT_stdOut,'(A)') 'WARNING: No sponge exact func given! Use ini exact func instead.'
       SpongeExactFunc = IniExactFunc
     END IF
     DO iElem=1,nElems
@@ -221,8 +221,8 @@ CASE(SPONGEBASEFLOW_PRUETT) ! Pruett: RefState for computation from scratch, Bas
   END IF
 END SELECT
 
-SWRITE(UNIT_StdOut,'(A)')' INIT SPONGE DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(A)')' INIT SPONGE DONE!'
+SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitSponge
 
@@ -278,7 +278,7 @@ REAL,ALLOCATABLE                        :: SpRadius(:)                 ! Radius 
 REAL,ALLOCATABLE                        :: SpAxis(:,:)                 ! Axis of the cylindrical sponge layer (only 3D)
 #endif
 !==================================================================================================================================
-SWRITE(UNIT_StdOut,'(A)') '  Initialize Sponge Ramping Function...'
+SWRITE(UNIT_stdOut,'(A)') '  Initialize Sponge Ramping Function...'
 
 ! Precalculation of the sponge strength on the whole domain to determine actual sponge region
 
@@ -458,7 +458,7 @@ INTEGER            :: N_Base,nVar_Base,nElems_Base
 CHARACTER(LEN=255) :: NodeType_Base
 REAL,ALLOCATABLE   :: UTmp(:,:,:,:,:),Vdm_NBase_N(:,:)
 !==================================================================================================================================
-SWRITE(UNIT_StdOut,'(A,A)')'  Read Sponge Base Flow from file "',FileName
+SWRITE(UNIT_stdOut,'(A,A)')'  Read Sponge Base Flow from file "',FileName
 CALL OpenDataFile(FileName,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL GetDataProps(nVar_Base,N_Base,nElems_Base,NodeType_Base)
 

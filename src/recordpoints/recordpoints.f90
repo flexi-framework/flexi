@@ -94,7 +94,7 @@ IF((.NOT.InterpolationInitIsDone) .OR. RecordPointsInitIsDone)THEN
    CALL Abort(__STAMP__,&
      "InitRecordPoints not ready to be called or already called.")
 END IF
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT RECORDPOINTS...'
 
 RPDefFile=GETSTR('RP_DefFile')                        ! Filename with RP coords
@@ -124,7 +124,7 @@ END IF
 
 RecordPointsInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT RECORDPOINTS DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitRecordPoints
 
 

@@ -21,7 +21,7 @@
 !==================================================================================================================================
 !> Subroutines defining the Taylor-Green isentropic vortex testcase
 !==================================================================================================================================
-MODULE MOD_Testcase
+MODULE MOD_TestCase
 ! MODULES
 IMPLICIT NONE
 PRIVATE
@@ -114,7 +114,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 CHARACTER(LEN=31)        :: varnames(nTGVVars)
 !==================================================================================================================================
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT TESTCASE TAYLOR-GREEN VORTEX...'
 
 #if FV_ENABLED
@@ -156,7 +156,7 @@ IF(MPIRoot)THEN
 END IF
 
 SWRITE(UNIT_stdOut,'(A)')' INIT TESTCASE TAYLOR-GREEN VORTEX DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitTestcase
 
 
@@ -539,5 +539,5 @@ REAL,INTENT(OUT)   :: Flux(     PP_nVarLifting,0:PP_N,0:PP_NZ) !< lifting bounda
 !==================================================================================================================================
 END SUBROUTINE Lifting_GetBoundaryFluxTestcase
 
-END MODULE MOD_Testcase
+END MODULE MOD_TestCase
 

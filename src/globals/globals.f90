@@ -359,7 +359,7 @@ IF(ExistFile) THEN
         IF(IndNum.EQ.0)IndNum=LEN(TRIM(temp2))+1
         output=TRIM(ADJUSTL(temp2(1:IndNum-1)))
         DefMsg='GPFF'
-        SWRITE(UNIT_StdOut,'(a3,a30,a3,a33,a3,a7,a3)')' | ',TRIM(ParameterName),' | ', output,' | ',TRIM(DefMsg),' | '
+        SWRITE(UNIT_stdOut,'(a3,a30,a3,a33,a3,a7,a3)')' | ',TRIM(ParameterName),' | ', output,' | ',TRIM(DefMsg),' | '
         EXIT ! found the parameter -> exit loop
       END IF
     END IF
