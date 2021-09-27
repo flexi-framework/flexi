@@ -165,11 +165,11 @@ DO iStage = 1,nRKStages
   END IF
 
   IF (iStage.NE.1) THEN
-    CALL VAXPBY(nTotalU,S2,U,ConstIn=RKdelta(iStage))                !S2 = S2 + U*RKdelta(iStage)
+    CALL VAXPBY(nTotalU,S2,U,ConstIn=RKdelta(iStage))                    !S2 = S2 + U*RKdelta(iStage)
     CALL VAXPBY(nTotalU,U,S2,ConstOut=RKg1(iStage),ConstIn=RKg2(iStage)) !U = RKg1(iStage)*U + RKg2(iStage)*S2
-    CALL VAXPBY(nTotalU,U,Uprev,ConstIn=RKg3(iStage))                !U = U + RKg3(ek)*Uprev
+    CALL VAXPBY(nTotalU,U,Uprev,ConstIn=RKg3(iStage))                    !U = U + RKg3(ek)*Uprev
   END IF
-  CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(iStage))                   !U = U + Ut*b_dt(iStage)
+  CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(iStage))                         !U = U + Ut*b_dt(iStage)
 #if PP_LIMITER
   IF(DoPPLimiter) CALL PPLimiter()
 #endif
