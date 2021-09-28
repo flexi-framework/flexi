@@ -79,9 +79,7 @@ DO iStage = 1,nRKStages
   END IF
 
   ! Call DG operator to fill face data, fluxes, gradients for analyze
-  IF(doAnalyze)THEN                ; doAnalyze = .FALSE.
-  ELSE
-    IF(doCalcIndicator) CALL CalcIndicator(U,t)
+  IF(doCalcIndicator) CALL CalcIndicator(U,t)
 #if FV_ENABLED
     CALL FV_Switch(U,Ut_temp,AllowToDG=FV_toDGinRK)
 #endif
@@ -149,17 +147,14 @@ DO iStage = 1,nRKStages
   END IF
 
   ! Call DG operator to fill face data, fluxes, gradients for analyze
-  IF(doAnalyze)THEN                ; doAnalyze = .FALSE.
-  ELSE
-    IF(doCalcIndicator) CALL CalcIndicator(U,t)
+  IF(doCalcIndicator) CALL CalcIndicator(U,t)
 #if FV_ENABLED
   CALL FV_Switch(U,Uprev,S2,AllowToDG=FV_toDGinRK)
 #endif
 #if PP_LIMITER
   IF(DoPPLimiter) CALL PPLimiter()
 #endif
-    CALL DGTimeDerivative_weakForm(tStage)
-  END IF
+  CALL DGTimeDerivative_weakForm(tStage)
 
   IF (iStage.NE.1) THEN
     CALL VAXPBY(nTotalU,S2,U,ConstIn=RKdelta(iStage))                    !S2 = S2 + U*RKdelta(iStage)

@@ -39,7 +39,9 @@ END INTERFACE
 REAL             :: t=0.                          !< current physical time
 REAL             :: dt                            !< current timestep
 REAL             :: dt_old                        !< last timestep
-REAL             :: dt_min                        !< minimal timestep
+REAL             :: dt_Min(3)                     !< dt_Min(DT_MIN)       = dt_Min(1) = original dt_Min
+                                                  !< dt_Min(DT_ANALYZE)   = dt_Min(2) = tAnalyzeDiff
+                                                  !< dt_Min(DT_END)       = dt_Min(3) = tEndDiff
 REAL             :: dt_minOld                     !< dt_min in last timestep
 REAL,ALLOCATABLE :: b_dt(:)                       !< timestep of each RK stage
 REAL             :: TEnd                          !< End time of simulation

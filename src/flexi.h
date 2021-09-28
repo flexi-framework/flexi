@@ -48,6 +48,10 @@
 #define CHECKSAFEREAL(x,k) IF(x>HUGE(1._ ## k).OR.x<-HUGE(1._ ## k)) CALL ABORT(__STAMP__,'Real conversion failed: out of range!')
 #endif
 
+! Time Step Minimum: dt_Min
+#define DT_MIN        1
+#define DT_ANALYZE    2
+#define DT_END        3
 
 ! Test for equality: read description in mathtools.f90 for further infos
 #define ALMOSTEQUALABSOLUTE(x,y,tol)  (ABS((x)-(y)).LE.(tol))

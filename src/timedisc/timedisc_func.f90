@@ -234,9 +234,17 @@ IF (nCalcTimestep.GE.1) THEN
   RETURN
 END IF
 
-dt_min        = CALCTIMESTEP(errType)
-nCalcTimestep = MIN(FLOOR(ABS(LOG10(ABS(dt_minOld/dt_min-1.)**2.*100.+EPSILON(0.)))),nCalcTimeStepMax)
-dt_minOld     = dt_min
+dt_min(DT_MIN)     = CALCTIMESTEP(errType)
+dt_min(DT_ANALYZE) = tAnalyze-t             ! Time to next analysis, put in extra variable so number does not change due to numerical errors
+dt_min(DT_END)     = tEnd    -t             ! Do the same for end time
+dt                 = MINVAL(dt_min)
+
+IF (dt.EQ.dt_min(DT_ANALYZE)) doAnalyze  = .TRUE.
+IF (dt.EQ.dt_min(DT_END    )) doFinalize = .TRUE.
+dt                 = MINVAL(dt_min,MASK=dt_min.GT.0)
+
+nCalcTimestep = MIN(FLOOR(ABS(LOG10(ABS(dt_minOld/dt-1.)**2.*100.+EPSILON(0.)))),nCalcTimeStepMax) - 1
+dt_minOld     = dt
 IF (errType.NE.0) THEN
   CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,FutureTime=tWriteData,isErrorFile=.TRUE.)
   CALL abort(__STAMP__,&
@@ -247,18 +255,10 @@ IF (errType.NE.0) THEN
 #endif
 END IF
 
-dt        = dt_min
 ! Increase time step if the NEXT time step would be smaller than dt/100
-IF(tAnalyze-t.LE.dt/100.) THEN
-  dt         = tAnalyze-t
-  doAnalyze  = .TRUE.
-END IF
-
+IF(dt_min(DT_ANALYZE)-dt.LT.dt/100.0 .AND. dt_min(DT_ANALYZE).GT.0) THEN; dt         = dt_min(DT_ANALYZE); doAnalyze  = .TRUE.; END IF
 ! Increase time step if the LAST time step would be smaller than dt/100
-IF(tEnd    -t.LE.dt/100.) THEN
-  dt         = tEnd    -t
-  doFinalize = .TRUE.
-END IF
+IF(    dt_min(DT_END)-dt.LT.dt/100.0 .AND. dt_min(DT_END    ).GT.0) THEN; dt         = dt_min(DT_END)    ; doFinalize = .TRUE.; END IF
 
 ! Premultiply with dt
 b_dt = RKb*dt
@@ -355,6 +355,7 @@ IF(doAnalyze)THEN
   iter_analyze  = 0
   CalcTimeStart = FLEXITIME()
   tAnalyze      = MIN(tAnalyze+analyze_dt,tEnd)
+  doAnalyze     = .FALSE.
 END IF
 
 END SUBROUTINE AnalyzeTimeStep

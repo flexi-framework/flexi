@@ -82,8 +82,6 @@ INTEGER                      :: nCalcTimestep,writeCounter
 !==================================================================================================================================
 
 SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' SIMULATION STATS...'
-SWRITE(UNIT_stdOut,'(132("-"))')
 
 ! write number of grid cells and dofs only once per computation
 SWRITE(UNIT_stdOut,'(A13,ES16.7)')'#GridCells : ',REAL(nGlobalElems)
@@ -91,20 +89,7 @@ SWRITE(UNIT_stdOut,'(A13,ES16.7)')'#DOFs      : ',REAL(nGlobalElems)*REAL((PP_N+
 SWRITE(UNIT_stdOut,'(A13,ES16.7)')'#Procs     : ',REAL(nProcessors)
 SWRITE(UNIT_stdOut,'(A13,ES16.7)')'#DOFs/Proc : ',REAL(nGlobalElems*(PP_N+1)**PP_dim/nProcessors)
 
-SWRITE(UNIT_stdOut,'(132("-"))')
-SWRITE(UNIT_stdOut,'(A)') ' PREPARE SIMULATION...'
-
 t = MERGE(RestartTime,0.,DoRestart)
-
-! do initial filtering of solution (has to be done after DG and FV are filled -> after restart)
-! --- Perform some preparational steps ---  overintegrate solution first time
-SELECT CASE(OverintegrationType)
-  CASE (1)
-    CALL Overintegration(U)
-  CASE (2)
-    CALL ApplyJacobianCons(U,toPhysical=.FALSE.,FVE=0)
-    CALL Overintegration(U)
-END SELECT
 
 ! NOTE: Set initial variables
 ! t is set in init solution
@@ -117,6 +102,16 @@ writeCounter      = 0
 nCalcTimestep     = 0
 doAnalyze         = .FALSE.
 doFinalize        = .FALSE.
+
+! do initial filtering of solution (has to be done after DG and FV are filled -> after restart)
+! --- Perform some preparational steps ---  overintegrate solution first time
+SELECT CASE(OverintegrationType)
+  CASE (1)
+    CALL Overintegration(U)
+  CASE (2)
+    CALL ApplyJacobianCons(U,toPhysical=.FALSE.,FVE=0)
+    CALL Overintegration(U)
+END SELECT
 
 ! Do first RK stage of first timestep to fill gradients
 CALL DGTimeDerivative_weakForm(t)
@@ -179,11 +174,11 @@ IF(DoPPLimiter) CALL PPLimiter()
 #endif
 CALL DGTimeDerivative_weakForm(t)
 
-! Update initial time step
-CALL UpdateTimeStep()
-
 ! Run computation
 DO
+  ! Update time step
+  CALL UpdateTimeStep()
+
   !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   ! Perform Timestep using a global time stepping routine, attention: only RK3 has time dependent BC
   !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -191,9 +186,6 @@ DO
   iter         = iter         + 1
   iter_analyze = iter_analyze + 1
   t            = t            + dt
-
-  ! Update time step
-  CALL UpdateTimeStep()
 
   IF(doCalcTimeAverage) CALL CalcTimeAverage(.FALSE.,dt,t)
   IF(doTCSource)        CALL CalcForcing(t,dt)
