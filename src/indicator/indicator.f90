@@ -234,9 +234,10 @@ REAL,TARGET               :: U_DG(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ)
 #endif
 REAL,POINTER              :: U_P(:,:,:,:)
 !==================================================================================================================================
+
 ! if time is before IndStartTime return high Indicator value (FV)
 IF (t.LT.IndStartTime) THEN
-  IndValue = 1.E16
+  IndValue = HUGE(1.)
   RETURN
 END IF
 

@@ -163,8 +163,6 @@ SWRITE(UNIT_stdOut,'(A)') ' CALCULATION RUNNING...'
 
 IF(TimeDiscType.EQ.'ESDIRK') CALL FillInitPredictor(t)
 
-! Determine initial FV switch
-IF(doCalcIndicator) CALL CalcIndicator(U,t)
 #if FV_ENABLED
 CALL FV_Switch(U,AllowToDG=(nCalcTimestep.LT.1))
 #endif

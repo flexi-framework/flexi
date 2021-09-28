@@ -56,7 +56,7 @@ USE MOD_Indicator     ,ONLY: doCalcIndicator,CalcIndicator
 USE MOD_Mesh_Vars     ,ONLY: nElems
 USE MOD_PruettDamping ,ONLY: TempFilterTimeDeriv
 USE MOD_Sponge_Vars   ,ONLY: CalcPruettDamping
-USE MOD_TimeDisc_Vars ,ONLY: dt,b_dt,Ut_temp,RKA,RKb,RKc,nRKStages,CurrentStage,doAnalyze
+USE MOD_TimeDisc_Vars ,ONLY: dt,b_dt,Ut_temp,RKA,RKb,RKc,nRKStages,CurrentStage,doAnalyze,nCalcTimestep
 #if FV_ENABLED
 USE MOD_FV            ,ONLY: FV_Switch,FV_Elems_Update
 USE MOD_FV_Vars       ,ONLY: FV_toDGinRK,FV_toFVinRK,Switch_to_DG,Switch_to_FV
@@ -70,6 +70,9 @@ REAL,INTENT(INOUT)  :: t                                     !< current simulati
 ! LOCAL VARIABLES
 REAL     :: tStage
 INTEGER  :: iStage
+#if FV_ENABLED
+LOGICAL  :: AllowDG,AllowFV
+#endif /*FV_ENABLED*/
 !===================================================================================================================================
 
 DO iStage = 1,nRKStages
@@ -87,6 +90,7 @@ DO iStage = 1,nRKStages
   IF(DoPPLimiter) CALL PPLimiter()
 #endif
   CALL DGTimeDerivative_weakForm(tStage)
+
   IF (iStage.EQ.1) THEN
     CALL VCopy(nTotalU,Ut_temp,Ut)                        !Ut_temp = Ut
   ELSE

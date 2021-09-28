@@ -256,9 +256,9 @@ IF (errType.NE.0) THEN
 END IF
 
 ! Increase time step if the NEXT time step would be smaller than dt/100
-IF(dt_min(DT_ANALYZE)-dt.LT.dt/100.0 .AND. dt_min(DT_ANALYZE).GT.0) THEN; dt         = dt_min(DT_ANALYZE); doAnalyze  = .TRUE.; END IF
+IF(dt_min(DT_ANALYZE)-dt.LT.dt/100.0 .AND. dt_min(DT_ANALYZE).GT.0) THEN; dt = dt_min(DT_ANALYZE); doAnalyze  = .TRUE.; END IF
 ! Increase time step if the LAST time step would be smaller than dt/100
-IF(    dt_min(DT_END)-dt.LT.dt/100.0 .AND. dt_min(DT_END    ).GT.0) THEN; dt         = dt_min(DT_END)    ; doFinalize = .TRUE.; END IF
+IF(    dt_min(DT_END)-dt.LT.dt/100.0 .AND. dt_min(DT_END    ).GT.0) THEN; dt = dt_min(DT_END)    ; doFinalize = .TRUE.; END IF
 
 ! Premultiply with dt
 b_dt = RKb*dt

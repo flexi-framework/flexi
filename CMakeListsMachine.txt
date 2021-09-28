@@ -161,7 +161,6 @@ IF (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
     SET (CMAKE_Fortran_FLAGS         "${CMAKE_Fortran_FLAGS} -fdefault-real-8 -fdefault-double-8 -fbackslash -ffree-line-length-0 -finit-real=snan -finit-integer=snan -Wno-lto-type-mismatch -DGNU")
   ENDIF()
   # initialize all variables as signalling NaNs to force the user to correctly initialize these data types
-  SET (CMAKE_Fortran_FLAGS           "${CMAKE_Fortran_FLAGS} -finit-real=snan -finit-integer=snan")
   SET (CMAKE_Fortran_FLAGS_RELEASE   "${CMAKE_Fortran_FLAGS}     -O3 ${FLEXI_INSTRUCTION} -finline-functions -fstack-arrays")
   SET (CMAKE_Fortran_FLAGS_PROFILE   "${CMAKE_Fortran_FLAGS} -pg -O3 ${FLEXI_INSTRUCTION} -finline-functions -fstack-arrays")
   SET (CMAKE_Fortran_FLAGS_DEBUG     "${CMAKE_Fortran_FLAGS} -g  -Og -ggdb3 -ffpe-trap=invalid -fbounds-check -fbacktrace  -Wall")

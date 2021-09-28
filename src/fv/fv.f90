@@ -487,18 +487,18 @@ END SUBROUTINE FV_Info
 SUBROUTINE FV_FillIni()
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_DG_Vars           ,ONLY: U
-USE MOD_Mesh_Vars         ,ONLY: nElems
-USE MOD_FV_Vars           ,ONLY: FV_Elems,FV_Vdm,FV_IniSharp,FV_IniSupersample
-USE MOD_FV_Basis          ,ONLY: FV_Build_X_w_BdryX
 USE MOD_Basis             ,ONLY: InitializeVandermonde
-USE MOD_Interpolation     ,ONLY: GetNodesAndWeights
 USE MOD_ChangeBasis       ,ONLY: ChangeBasis2D_XYZ, ChangeBasis3D_XYZ
 USE MOD_ChangeBasisByDim  ,ONLY: ChangeBasisVolume
-USE MOD_Mesh_Vars         ,ONLY: Elem_xGP
+USE MOD_DG_Vars           ,ONLY: U
 USE MOD_Equation_Vars     ,ONLY: IniExactFunc
 USE MOD_Exactfunc         ,ONLY: ExactFunc
+USE MOD_FV_Vars           ,ONLY: FV_Elems,FV_Vdm,FV_IniSharp,FV_IniSupersample,Switch_to_DG,Switch_to_FV
+USE MOD_FV_Basis          ,ONLY: FV_Build_X_w_BdryX
+USE MOD_Interpolation     ,ONLY: GetNodesAndWeights
 USE MOD_Interpolation_Vars,ONLY: NodeType,NodeTypeVISUInner
+USE MOD_Mesh_Vars         ,ONLY: nElems
+USE MOD_Mesh_Vars         ,ONLY: Elem_xGP
 USE MOD_ReadInTools       ,ONLY: GETLOGICAL
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
