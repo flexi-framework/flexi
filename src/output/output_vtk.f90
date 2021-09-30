@@ -70,7 +70,7 @@ PUBLIC::CARRAY
 
 CONTAINS
 
-SUBROUTINE CreateConnectivity(NVisu,nElems,nodeids,dim,DGFV)
+SUBROUTINE CreateConnectivity(NVisu,nElems,nodeids,dim,DGFV,HighOrder)
 USE ISO_C_BINDING
 USE MOD_Globals
 IMPLICIT NONE
@@ -80,69 +80,189 @@ INTEGER,INTENT(IN)                       :: nElems
 INTEGER,ALLOCATABLE,TARGET,INTENT(INOUT) :: nodeids(:)        !< stores the connectivity
 INTEGER,INTENT(IN)                       :: dim               !< 3 = 3d connectivity, 2 = 2d connectivity
 INTEGER,INTENT(IN)                       :: DGFV              !< flag indicating DG = 0 or FV = 1 data
+INTEGER,INTENT(IN)                       :: HighORder         !< flag indicating high order
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER           :: i,j,k,iElem
-INTEGER           :: NodeID,NodeIDElem
-INTEGER           :: NVisu_k, NVisu_j, NVisu_elem, NVisu_p1_2
-INTEGER           :: nVTKCells
+INTEGER             :: i,j,k,iElem
+INTEGER             :: NodeID,NodeIDElem
+INTEGER             :: NVisu_k, NVisu_j, NVisu_elem, NVisu_p1_2
+INTEGER             :: nVTKCells
+! High-order elements
+INTEGER,ALLOCATABLE :: NodeIndizes(:,:,:)
 !===================================================================================================================================
-IF (dim.EQ.3) THEN
-  NVisu_k = NVisu
-  NVisu_j = NVisu
-ELSE IF (dim.EQ.2) THEN
-  NVisu_k = 1
-  NVisu_j = NVisu
-ELSE IF (dim.EQ.1) THEN
-  NVisu_k = 1
-  NVisu_j = 1
-ELSE
-  CALL Abort(__STAMP__, &
-      "Only 2D and 3D connectivity can be created. dim must be 2 or 3.")
-END IF
+
+SELECT CASE(dim)
+  CASE(3)
+    NVisu_k = NVisu
+    NVisu_j = NVisu
+  CASE(2)
+    NVisu_k = 1
+    NVisu_j = NVisu
+  CASE(1)
+    NVisu_k = 1
+    NVisu_j = 1
+  CASE DEFAULT
+    ! Dummy variables to make GCC happy
+    NVisu_k = -1
+    NVisu_j = -1
+    CALL CollectiveStop(__STAMP__, "Only 2D and 3D connectivity can be created. dim must be 2 or 3.")
+END SELECT
 
 NVisu_elem = (NVisu+1)**dim
 NVisu_p1_2 = (NVisu+1)**2
 
-nVTKCells  = ((NVisu+DGFV)/(1+DGFV))**dim*nElems
-SDEALLOCATE(nodeids)
-ALLOCATE(nodeids((2**dim)*nVTKCells))
+IF (HighOrder.EQ.1) THEN
+  IF (.NOT.ALLOCATED(NodeIndizes))   ALLOCATE(NodeIndizes  ( 1:NVisu+1  ,1:NVisu_j+1 , 1:NVisu_k+1))
 
+  nVTKCells  = nElems
+  NodeID     = 0
+  DO k=1,NVisu_k+1; DO j=1,NVisu_j+1; DO i=1,NVisu+1
+    NodeIndizes(i,j,k) = NodeID
+    NodeID             = NodeID+1
+  END DO; END DO; END DO
 
-! create connectivity
-NodeID = 0
-NodeIDElem = 0
-DO iElem=1,nElems
-  DO k=1,NVisu_k,(DGFV+1)
-    DO j=1,NVisu_j,(DGFV+1)
-      DO i=1,NVisu,(DGFV+1)
-        IF (dim.GE.2) THEN
+  SDEALLOCATE(nodeids)
+  ALLOCATE(nodeids(((NVisu+1)**dim)*nVTKCells))
+
+  ! create connectivity
+  NodeID     = 0
+  NodeIDElem = 0
+  nodeids    = 0
+
+  ! Create cell for each element
+  DO iElem = 1,nElems
+    ! Vertices
+    nodeids(NodeID+1) = NodeIDElem + NodeIndizes(1      ,1,1)
+    nodeids(NodeID+2) = NodeIDElem + NodeIndizes(NVisu+1,1,1)
+    IF (dim.GE.2) THEN
+      nodeids(NodeID+3) = NodeIDElem +NodeIndizes(NVisu+1,NVisu_j+1,1)
+      nodeids(NodeID+4) = NodeIDElem +NodeIndizes(1      ,NVisu_j+1,1)
+    END IF
+    IF (dim.EQ.3) THEN
+      nodeids(NodeID+5) = NodeIDElem +NodeIndizes(1      ,1        ,NVisu_k+1)
+      nodeids(NodeID+6) = NodeIDElem +NodeIndizes(NVisu+1,1        ,NVisu_k+1)
+      nodeids(NodeID+7) = NodeIDElem +NodeIndizes(NVisu+1,NVisu_j+1,NVisu_k+1)
+      nodeids(NodeID+8) = NodeIDElem +NodeIndizes(1      ,NVisu_j+1,NVisu_k+1)
+    END IF
+    NodeID = NodeID + 2**dim
+
+    ! Edges
+    ! Note from trixi: This order doesn't make any sense. This is completely different
+    ! from what is shown in
+    ! https://blog.kitware.com/wp-content/uploads/2018/09/Source_Issue_43.pdf
+    ! but this is the way it works.
+    IF (nVisu.GT.1) THEN
+      nodeids(NodeID+1:NodeID+NVisu-1) = NodeIDElem + NodeIndizes(2:NVisu,1,1)
+      NodeID = NodeID + NVisu-1
+      IF (dim.GE.2) THEN
+        nodeids(NodeID+1:NodeID+NVisu-1) = NodeIDElem + NodeIndizes(NVisu+1,2:NVisu_j,1)
+        NodeID = NodeID + NVisu_j-1
+        nodeids(NodeID+1:NodeID+NVisu-1) = NodeIDElem + NodeIndizes(2:NVisu,NVisu_j+1,1)
+        NodeID = NodeID + NVisu  -1
+        nodeids(NodeID+1:NodeID+NVisu-1) = NodeIDElem + NodeIndizes(1      ,2:NVisu_j,1)
+        NodeID = NodeID + NVisu_j-1
+      END IF
+      IF (dim.EQ.3) THEN
+        nodeids(NodeID+1:NodeID+NVisu-1) = NodeIDElem + NodeIndizes(2:NVisu,1        ,NVisu_k+1)
+        NodeID = NodeID + NVisu  -1
+        nodeids(NodeID+1:NodeID+NVisu-1) = NodeIDElem + NodeIndizes(NVisu+1,2:NVisu_j,NVisu_k+1)
+        NodeID = NodeID + NVisu_j-1
+        nodeids(NodeID+1:NodeID+NVisu-1) = NodeIDElem + NodeIndizes(2:NVisu,NVisu_j+1,NVisu_k+1)
+        NodeID = NodeID + NVisu  -1
+        nodeids(NodeID+1:NodeID+NVisu-1) = NodeIDElem + NodeIndizes(1      ,2:NVisu_j,NVisu_k+1)
+        NodeID = NodeID + NVisu_j-1
+        nodeids(NodeID+1:NodeID+NVisu-1) = NodeIDElem + NodeIndizes(1      ,1        ,2:NVisu_k)
+        NodeID = NodeID + NVisu_k-1
+        nodeids(NodeID+1:NodeID+NVisu-1) = NodeIDElem + NodeIndizes(NVisu+1,1        ,2:NVisu_k)
+        NodeID = NodeID + NVisu_k-1
+        ! This is switched compared to trixi!
+        nodeids(NodeID+1:NodeID+NVisu-1) = NodeIDElem + NodeIndizes(NVisu+1,NVisu_j+1,2:NVisu_k)
+        NodeID = NodeID + NVisu_k-1
+        nodeids(NodeID+1:NodeID+NVisu-1) = NodeIDElem + NodeIndizes(1      ,NVisu_j+1,2:NVisu_k)
+        NodeID = NodeID + NVisu_k-1
+      END IF
+
+      ! Faces
+      ! Note from trixi: See above
+      IF (dim.EQ.3) THEN
+        nodeids(NodeID+1:NodeID+((NVisu_j-1)*(NVisu_k-1))) = NodeIDElem &
+                                                           + RESHAPE(NodeIndizes(1      ,2:NVisu_j,2:NVisu_k),(/(NVisu_j-1)*(NVisu_k-1)/))
+        NodeID = NodeID + (NVisu_j-1)*(NVisu_k-1)
+        nodeids(NodeID+1:NodeID+((NVisu_j-1)*(NVisu_k-1))) = NodeIDElem &
+                                                           + RESHAPE(NodeIndizes(NVisu+1,2:NVisu_j,2:NVisu_k),(/(NVisu_j-1)*(NVisu_k-1)/))
+        NodeID = NodeID + (NVisu_j-1)*(NVisu_k-1)
+        nodeids(NodeID+1:NodeID+((NVisu  -1)*(NVisu_k-1))) = NodeIDElem &
+                                                           + RESHAPE(NodeIndizes(2:NVisu,1        ,2:NVisu_k),(/(NVisu  -1)*(NVisu_k-1)/))
+        NodeID = NodeID + (NVisu  -1)*(NVisu_k-1)
+        nodeids(NodeID+1:NodeID+((NVisu_j-1)*(NVisu_k-1))) = NodeIDElem &
+                                                           + RESHAPE(NodeIndizes(2:NVisu,NVisu_j+1,2:NVisu_k),(/(NVisu_j-1)*(NVisu_k-1)/))
+        NodeID = NodeID + (NVisu  -1)*(NVisu_k-1)
+      END IF
+      IF (dim.GE.2) THEN
+        nodeids(NodeID+1:NodeID+((NVisu  -1)*(NVisu_j-1))) = NodeIDElem &
+                                                           + RESHAPE(NodeIndizes(2:NVisu,2:NVisu_j,1        ),(/(NVisu  -1)*(NVisu_j-1)/))
+        NodeID = NodeID + (NVisu  -1)*(NVisu_j-1)
+      END IF
+      IF (dim.EQ.3) THEN
+        nodeids(NodeID+1:NodeID+((NVisu  -1)*(NVisu_j-1))) = NodeIDElem &
+                                                           + RESHAPE(NodeIndizes(2:NVisu,2:NVisu_j,NVisu_k+1),(/(NVisu  -1)*(NVisu_j-1)/))
+        NodeID = NodeID + (NVisu  -1)*(NVisu_j-1)
+      END IF
+
+      ! Volume
+      IF (dim.EQ.3) THEN
+        nodeids(NodeID+1:NodeID+((NVisu  -1)*(NVisu_j-1)*(NVisu_k-1))) = NodeIDElem &
+                                                           + RESHAPE(NodeIndizes(2:NVisu,2:NVisu_j,2:NVisu_k),(/(NVisu-1)*(NVisu_j-1)*(NVisu_k-1)/))
+        NodeID = NodeID + (NVisu  -1)*(NVisu_j-1)*(NVisu_k-1)
+      END IF
+    END IF
+
+    NodeIDElem = NodeIDElem + NVisu_elem
+  END DO
+
+  DEALLOCATE(NodeIndizes)
+
+ELSE
+  nVTKCells  = ((NVisu+DGFV)/(1+DGFV))**dim*nElems
+  SDEALLOCATE(nodeids)
+  ALLOCATE(nodeids((2**dim)*nVTKCells))
+
+  ! create connectivity
+  NodeID     = 0
+  NodeIDElem = 0
+  DO iElem=1,nElems
+    DO k=1,NVisu_k,(DGFV+1)
+      DO j=1,NVisu_j,(DGFV+1)
+        DO i=1,NVisu,(DGFV+1)
+          IF (dim.GE.2) THEN
+            NodeID=NodeID+1
+            nodeids(NodeID) = NodeIDElem+i+   j   *(NVisu+1)+(k-1)*NVisu_p1_2-1 !P4(CGNS=tecVisu standard)
+          END IF
           NodeID=NodeID+1
-          nodeids(NodeID) = NodeIDElem+i+   j   *(NVisu+1)+(k-1)*NVisu_p1_2-1 !P4(CGNS=tecVisu standard)
-        END IF
-        NodeID=NodeID+1
-        nodeids(NodeID) = NodeIDElem+i+  (j-1)*(NVisu+1)+(k-1)*NVisu_p1_2-1 !P1
-        NodeID=NodeID+1
-        nodeids(NodeID) = NodeIDElem+i+1+(j-1)*(NVisu+1)+(k-1)*NVisu_p1_2-1 !P2
-        IF (dim.GE.2) THEN
+          nodeids(NodeID) = NodeIDElem+i+  (j-1)*(NVisu+1)+(k-1)*NVisu_p1_2-1 !P1
           NodeID=NodeID+1
-          nodeids(NodeID) = NodeIDElem+i+1+ j   *(NVisu+1)+(k-1)*NVisu_p1_2-1 !P3
-        END IF
-        IF (dim.EQ.3) THEN
-          NodeID=NodeID+1
-          nodeids(NodeID)=NodeIDElem+i+   j   *(NVisu+1)+ k   *NVisu_p1_2-1 !P8
-          NodeID=NodeID+1
-          nodeids(NodeID)=NodeIDElem+i+  (j-1)*(NVisu+1)+ k   *NVisu_p1_2-1 !P5
-          NodeID=NodeID+1
-          nodeids(NodeID)=NodeIDElem+i+1+(j-1)*(NVisu+1)+ k   *NVisu_p1_2-1 !P6
-          NodeID=NodeID+1
-          nodeids(NodeID)=NodeIDElem+i+1+ j   *(NVisu+1)+ k   *NVisu_p1_2-1 !P7
-        END IF
+          nodeids(NodeID) = NodeIDElem+i+1+(j-1)*(NVisu+1)+(k-1)*NVisu_p1_2-1 !P2
+          IF (dim.GE.2) THEN
+            NodeID=NodeID+1
+            nodeids(NodeID) = NodeIDElem+i+1+ j   *(NVisu+1)+(k-1)*NVisu_p1_2-1 !P3
+          END IF
+          IF (dim.EQ.3) THEN
+            NodeID=NodeID+1
+            nodeids(NodeID)=NodeIDElem+i+   j   *(NVisu+1)+ k   *NVisu_p1_2-1 !P8
+            NodeID=NodeID+1
+            nodeids(NodeID)=NodeIDElem+i+  (j-1)*(NVisu+1)+ k   *NVisu_p1_2-1 !P5
+            NodeID=NodeID+1
+            nodeids(NodeID)=NodeIDElem+i+1+(j-1)*(NVisu+1)+ k   *NVisu_p1_2-1 !P6
+            NodeID=NodeID+1
+            nodeids(NodeID)=NodeIDElem+i+1+ j   *(NVisu+1)+ k   *NVisu_p1_2-1 !P7
+          END IF
+        END DO
       END DO
     END DO
+    NodeIDElem=NodeIDElem+NVisu_elem
   END DO
-  NodeIDElem=NodeIDElem+NVisu_elem
-END DO
+END IF
+
 END SUBROUTINE CreateConnectivity
 
 !===================================================================================================================================
@@ -402,7 +522,7 @@ END IF
 
 ! Connectivity and footer
 IF((.NOT.PostiParallel_loc.AND.MPIRoot).OR.PostiParallel_loc)THEN
-  CALL CreateConnectivity(NVisu=NVisu,nElems=nTotalElems,nodeids=nodeids,dim=dim,DGFV=DGFV_loc)
+  CALL CreateConnectivity(NVisu=NVisu,nElems=nTotalElems,nodeids=nodeids,dim=dim,DGFV=DGFV_loc,HighOrder=0)
 
   nBytes = PointsPerVTKCell*nVTKCells*SIZEOF_F(INTdummy)
   WRITE(ivtk) nBytes
@@ -553,7 +673,7 @@ END SUBROUTINE WriteParallelVTK
 !===================================================================================================================================
 !> Subroutine to write 2D or 3D coordinates to VTK format
 !===================================================================================================================================
-SUBROUTINE WriteCoordsToVTK_array(NVisu,nElems,coords_out,nodeids_out,coords,nodeids,dim,DGFV)
+SUBROUTINE WriteCoordsToVTK_array(NVisu,nElems,coords_out,nodeids_out,coords,nodeids,dim,DGFV,HighOrder)
 USE ISO_C_BINDING
 ! MODULES
 USE MOD_Globals
@@ -565,7 +685,8 @@ INTEGER,INTENT(IN)                   :: NVisu                        !< Polynomi
 INTEGER,INTENT(IN)                   :: nElems                       !< Number of elements
 INTEGER,INTENT(IN)                   :: dim                          !< Spacial dimension (2D or 3D)
 INTEGER,INTENT(IN)                   :: DGFV                         !< flag indicating DG = 0 or FV =1 data
-REAL,ALLOCATABLE,TARGET,INTENT(IN)    :: coords(:,:,:,:,:) !< Array containing coordinates
+REAL,ALLOCATABLE,TARGET,INTENT(IN)   :: coords(:,:,:,:,:)            !< Array containing coordinates
+INTEGER,INTENT(IN)                   :: HighOrder                    !< flag indicating high order
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 INTEGER,ALLOCATABLE,TARGET,INTENT(INOUT) :: nodeids(:)
@@ -586,11 +707,17 @@ SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='NO')"   WRITE ",dim,"D COORDS TO VTX XML 
 ! values and coords are already in the correct structure of VTK/Paraview
 
 ! create connectivity
-CALL CreateConnectivity(NVisu=NVisu,nElems=nElems,nodeids=nodeids,dim=dim,DGFV=DGFV)
+CALL CreateConnectivity(NVisu=NVisu,nElems=nElems,nodeids=nodeids,dim=dim,DGFV=DGFV,HighOrder=HighOrder)
 
-! set the sizes of the arrays
-coords_out%len = 3*(NVisu+1)**dim*nElems
-nodeids_out%len = (2**dim)*((NVisu+DGFV)/(1+DGFV))**dim*nElems
+IF (highOrder.EQ.1) THEN
+  ! set the sizes of the arrays
+  coords_out%len  = 3*(NVisu+1)**dim*nElems
+  nodeids_out%len =   (NVisu+1)**dim*nElems
+ELSE
+  ! set the sizes of the arrays
+  coords_out%len = 3*(NVisu+1)**dim*nElems
+  nodeids_out%len = (2**dim)*((NVisu+DGFV)/(1+DGFV))**dim*nElems
+END IF
 
 ! assign data to the arrays (no copy!!!)
 coords_out%data  = C_LOC(coords(1,0,0,0,1))

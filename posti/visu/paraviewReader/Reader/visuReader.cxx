@@ -14,10 +14,10 @@
 !=================================================================================================================================
 */
 
-#include "visuReader.h"
-#include "../../plugin_visu.h"
+#include <visuReader.h>
+#include <../../plugin_visu.h>
 
-#include "hdf5.h"
+#include <hdf5.h>
 #include <vtkCellArray.h>
 #include <vtkCellData.h>
 #include <vtkDoubleArray.h>
@@ -29,7 +29,7 @@
 #include <vtkObjectFactory.h>
 #include <vtkPointData.h>
 #include <vtkStreamingDemandDrivenPipeline.h>
-#include "vtkMultiBlockDataSet.h"
+#include <vtkMultiBlockDataSet.h>
 #include <vtkUnstructuredGrid.h>
 
 
@@ -76,7 +76,6 @@ visuReader::visuReader()
    // add an observer
    this->VarDataArraySelection->AddObserver(vtkCommand::ModifiedEvent, this->SelectionObserver);
    this->BCDataArraySelection->AddObserver(vtkCommand::ModifiedEvent, this->SelectionObserver);
-
 }
 
 /*
@@ -208,17 +207,25 @@ void visuReader::AddFileName(const char* filename_in) {
 
    // open the file with HDF5 and read the attribute 'time' to build a timeseries
    hid_t state = H5Fopen(filename_in, H5F_ACC_RDONLY, H5P_DEFAULT);
+   double time;
+
+   // check if attribute time exits
+   htri_t exists = H5Aexists(state, "Time");
+
+   // only access the attribute if it exists
+   if (exists > 0){
    hid_t attr = H5Aopen(state, "Time", H5P_DEFAULT);
    SWRITE("attribute Time "<<attr);
-   double time;
-   if (attr > -1){
-      hid_t attr_type = H5Aget_type( attr );
-      H5Aread(attr, attr_type, &time);
-      Timesteps.push_back(time);
-   }else{
+      // only write back valid values
+      if (attr > -1){
+         hid_t attr_type = H5Aget_type( attr );
+         H5Aread(attr, attr_type, &time);
+         Timesteps.push_back(time);
+      }
+      H5Aclose(attr);
+   } else {
       Timesteps.push_back(0.);
    }
-   H5Aclose(attr);
    H5Fclose(state);
 }
 
@@ -276,12 +283,13 @@ int visuReader::RequestData(
       double requestedTimeValue = outInfoVolume->Get(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP());
       timestepToLoad = FindClosestTimeStep(requestedTimeValue);
    }
-   FileToLoad = FileNames[timestepToLoad];
-   SWRITE("File to load "<<FileToLoad);
-   if (outInfoSurface->Has(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP())) {
+   if (timestepToLoad==0 && outInfoSurface->Has(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP())) {
       // get the requested time
       double requestedTimeValue = outInfoSurface->Get(vtkStreamingDemandDrivenPipeline::UPDATE_TIME_STEP());
+      timestepToLoad = FindClosestTimeStep(requestedTimeValue);
    }
+   FileToLoad = FileNames[timestepToLoad];
+   SWRITE("File to load "<<FileToLoad);
 
 
    // convert the MPI communicator to a fortran communicator
@@ -330,8 +338,10 @@ int visuReader::RequestData(
    dprintf(posti_unit, "NodeTypeVisu = %s\n", NodeTypeVisu); // insert NodeType
    dprintf(posti_unit, "Avg2D = %s\n", (this->Avg2d ? "T" : "F"));
    dprintf(posti_unit, "DGonly = %s\n", (this->DGonly ? "T" : "F"));
-   if (strlen(MeshFileOverwrite) > 0) {
-      dprintf(posti_unit, "MeshFile = %s\n", MeshFileOverwrite);
+   if (MeshFileOverwrite != NULL ) {
+     if (strlen(MeshFileOverwrite) > 0) {
+        dprintf(posti_unit, "MeshFile = %s\n", MeshFileOverwrite);
+     }
    }
 
    // write selected state varnames to the parameter file
@@ -346,7 +356,7 @@ int visuReader::RequestData(
       }
    }
    if (noVisuVars) {
-      dprintf(posti_unit, "noVisuVars = T") ;
+      dprintf(posti_unit, "noVisuVars = T\n") ;
    }
    for (int i = 0; i< nBCs; ++i)
    {
@@ -362,15 +372,21 @@ int visuReader::RequestData(
    // call Posti tool (Fortran code)
    // the arrays coords_*, values_* and nodeids_* are allocated in the Posti tool
    // and contain the vtk data
-   int strlen_prm = strlen(ParameterFileOverwrite);
+   int strlen_prm;
+   if (ParameterFileOverwrite == NULL) {
+     strlen_prm = 0;
+   } else {
+     strlen_prm = strlen(ParameterFileOverwrite);
+   }
    int strlen_posti = strlen(posti_filename);
    int strlen_state = strlen(FileToLoad.c_str());
    __mod_visu_cwrapper_MOD_visu_cwrapper(&fcomm,
-         &strlen_prm, ParameterFileOverwrite,
+         &this->HighOrder,
+         &strlen_prm,   ParameterFileOverwrite,
          &strlen_posti, posti_filename,
          &strlen_state, FileToLoad.c_str(),
-         &coords_DG,&values_DG,&nodeids_DG,
-         &coords_FV,&values_FV,&nodeids_FV,&varnames,
+         &coords_DG    ,&values_DG    ,&nodeids_DG,
+         &coords_FV    ,&values_FV    ,&nodeids_FV    ,&varnames,
          &coordsSurf_DG,&valuesSurf_DG,&nodeidsSurf_DG,
          &coordsSurf_FV,&valuesSurf_FV,&nodeidsSurf_FV,&varnamesSurf);
 
@@ -387,7 +403,7 @@ int visuReader::RequestData(
    // adjust the number of Blocks in the MultiBlockDataset to 4 (DG and FV)
    SWRITE("Number of Blocks in MultiBlockDataset : " << mb->GetNumberOfBlocks());
    if (mb->GetNumberOfBlocks() < 2) {
-      SWRITE("Create new DG and FV output Blocks");
+      SWRITE("Create new DG and FV output blocks");
       mb->SetBlock(0, vtkUnstructuredGrid::New());
       mb->SetBlock(1, vtkUnstructuredGrid::New());
       //mb->SetBlock(2, vtkUnstructuredGrid::New());
@@ -410,7 +426,7 @@ int visuReader::RequestData(
    }
 
    // adjust the number of Blocks in the MultiBlockDataset to 4 (DG and FV)
-   SWRITE("Number of Blocks in MultiBlockDataset : " << mb->GetNumberOfBlocks());
+   SWRITE("Number of blocks in MultiBlockDataset : " << mb->GetNumberOfBlocks());
    if (mb->GetNumberOfBlocks() < 2) {
       SWRITE("Create new DG and FV output Blocks");
       mb->SetBlock(0, vtkUnstructuredGrid::New());
@@ -440,82 +456,83 @@ int visuReader::RequestData(
 /*
  * This function inserts the data, loaded by the Posti tool, into a ouput
  */
-void visuReader::InsertData(vtkMultiBlockDataSet* mb, int blockno, struct DoubleARRAY* coords,
-      struct DoubleARRAY* values, struct IntARRAY* nodeids, struct CharARRAY* varnames) {
-   vtkSmartPointer<vtkUnstructuredGrid> output = vtkUnstructuredGrid::SafeDownCast(mb->GetBlock(blockno));
+void visuReader::InsertData(vtkMultiBlockDataSet* mb    ,int blockno
+                           ,struct DoubleARRAY* coords  ,struct DoubleARRAY* values
+                           ,struct IntARRAY*    nodeids ,struct CharARRAY* varnames) {
+    vtkSmartPointer<vtkUnstructuredGrid> output = vtkUnstructuredGrid::SafeDownCast(mb->GetBlock(blockno));
 
-   // create a 3D double array (must be 3D even we use a 2D Posti tool, since paraview holds the data in 3D)
-   vtkSmartPointer <vtkDoubleArray> pdata = vtkSmartPointer<vtkDoubleArray>::New();
-   pdata->SetNumberOfComponents(3); // 3D
-   pdata->SetNumberOfTuples(coords->len/3);
-   // copy coordinates
-   double* ptr = pdata->GetPointer(0);
-   for (long i = 0; i < coords->len; ++i)
-   {
+    // create a 3D double array (must be 3D even we use a 2D Posti tool, since paraview holds the data in 3D)
+    vtkSmartPointer <vtkDoubleArray> pdata = vtkSmartPointer<vtkDoubleArray>::New();
+    pdata->SetNumberOfComponents(3); // 3D
+    pdata->SetNumberOfTuples(coords->len/3);
+    // copy coordinates
+    double* ptr = pdata->GetPointer(0);
+    for (long i = 0; i < coords->len; ++i)
+    {
       *ptr++ = coords->data[i];
-   }
+    }
 
-   // create points array to be used for the output
-   vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
-   points->SetData(pdata);
-   output->SetPoints(points);
+    // create points array to be used for the output
+    vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
+    points->SetData(pdata);
+    output->SetPoints(points);
 
-   // create cellarray
-   vtkSmartPointer<vtkCellArray> cellarray = vtkSmartPointer<vtkCellArray>::New();
-   if (coords->dim == 1) {
-      vtkSmartPointer<vtkLine> line = vtkSmartPointer<vtkLine>::New();
-      // Use the nodeids to build quads
-      // (here we must copy the nodeids, we can not just assign the array of nodeids to some vtk-structure)
-      int gi = 0;
-      // loop over all Quads
-      for (int iQuad=0; iQuad<nodeids->len/2; iQuad++) {
-         // each Line has 2 points
-         for (int i=0; i<2; i++) {
-            line->GetPointIds()->SetId(i, nodeids->data[gi]);
-            gi++;
-         }
-         // insert the line into the cellarray
-         cellarray->InsertNextCell(line);
+    // create cellarray
+    vtkSmartPointer<vtkCellArray> cellarray = vtkSmartPointer<vtkCellArray>::New();
+
+    int CellLength;
+    int CellType;
+    if (this->HighOrder){
+      if (coords->dim == 1) {
+        // Use the nodeids to build lines
+        CellLength = NVisu+1;
+        CellType   = VTK_LAGRANGE_CURVE;
+      } else if (coords->dim == 2) {
+        // Use the nodeids to build quads
+        CellLength = (NVisu+1)*(NVisu+1);
+        CellType   = VTK_LAGRANGE_QUADRILATERAL;
+      } else if (coords->dim == 3) {
+        // Use the nodeids to build hexas
+        CellLength = (NVisu+1)*(NVisu+1)*(NVisu+1);
+        CellType   = VTK_LAGRANGE_HEXAHEDRON;
+      } else {
+        exit(1);
       }
-      output->SetCells({VTK_LINE}, cellarray);
-   } else if (coords->dim == 2) {
-      vtkSmartPointer<vtkQuad> quad = vtkSmartPointer<vtkQuad>::New();
-      // Use the nodeids to build quads
-      // (here we must copy the nodeids, we can not just assign the array of nodeids to some vtk-structure)
-      int gi = 0;
-      // loop over all Quads
-      for (int iQuad=0; iQuad<nodeids->len/4; iQuad++) {
-         // each Quad has 4 points
-         for (int i=0; i<4; i++) {
-            quad->GetPointIds()->SetId(i, nodeids->data[gi]);
-            gi++;
-         }
-         // insert the quad into the cellarray
-         cellarray->InsertNextCell(quad);
+    } else{
+      if (coords->dim == 1) {
+        // Use the nodeids to build lines
+        CellLength = 2;
+        CellType   = VTK_LINE;
+      } else if (coords->dim == 2) {
+        // Use the nodeids to build quads
+        CellLength = 4;
+        CellType   = VTK_QUAD;
+      } else if (coords->dim == 3) {
+        // Use the nodeids to build hexas
+        CellLength = 8;
+        CellType   = VTK_HEXAHEDRON;
+      } else {
+        exit(1);
       }
-      output->SetCells({VTK_QUAD}, cellarray);
-   } else if (coords->dim == 3) {
-      vtkSmartPointer<vtkHexahedron> hex = vtkSmartPointer<vtkHexahedron>::New();
-      // Use the nodeids to build hexas
-      // (here we must copy the nodeids, we can not just assign the array of nodeids to some vtk-structure)
-      int gi = 0;
-      // loop over all Hexas
-      for (int iHex=0; iHex<nodeids->len/8; iHex++) {
-         // each Hex has 8 points
-         for (int i=0; i<8; i++) {
-            hex->GetPointIds()->SetId(i, nodeids->data[gi]);
-            gi++;
-         }
-         // insert the hex into the cellarray
-         cellarray->InsertNextCell(hex);
+    }
+
+    // (here we must copy the nodeids, we can not just assign the array of nodeids to some vtk-structure)
+    int gi = 0;
+    // loop over all cells
+    for (int iCell=0; iCell<nodeids->len/CellLength; iCell++) {
+      cellarray->InsertNextCell(CellLength);
+      for (int i=0; i<CellLength; i++) {
+        cellarray->InsertCellPoint(nodeids->data[gi]);
+        gi++;
       }
-      output->SetCells({VTK_HEXAHEDRON}, cellarray);
-   } else {
-      exit(1);
-   }
+    }
+
+    // Use the nodeids to build all cells at once
+    output->SetCells(CellType,cellarray);
 
    // assign the actual data, loaded by the Posti tool, to the output
    unsigned int nVar = varnames->len/255;
+
    if (nVar > 0) {
       unsigned int sizePerVar = values->len/nVar;
       int dataPos = 0;
@@ -527,7 +544,7 @@ void visuReader::InsertData(vtkMultiBlockDataSet* mb, int blockno, struct Double
          vtkSmartPointer <vtkDoubleArray> vdata = vtkSmartPointer<vtkDoubleArray>::New();
          vdata->SetNumberOfComponents(1);
          vdata->SetNumberOfTuples(sizePerVar);
-         // copy coordinates
+         // copy values
          double* ptr = vdata->GetPointer(0);
          for (long i = 0; i < sizePerVar; ++i)
          {

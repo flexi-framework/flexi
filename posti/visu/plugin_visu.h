@@ -25,9 +25,10 @@ extern "C" {
 }
 
 extern "C" {
-  extern void __mod_visu_cwrapper_MOD_visu_cwrapper(int* mpi_comm_IN, 
-        int* strlen_prm,   const char* prmfile_IN, 
-        int* strlen_posti, const char* postifile_IN, 
+  extern void __mod_visu_cwrapper_MOD_visu_cwrapper(int* mpi_comm_IN,
+        int* HighOrder,
+        int* strlen_prm,   const char* prmfile_IN,
+        int* strlen_posti, const char* postifile_IN,
         int* strlen_state, const char* statefile_IN,
         struct DoubleARRAY* coords_out,  struct DoubleARRAY* values_out, 
         struct IntARRAY* nodeids_out,    struct DoubleARRAY* coordsFV_out,
