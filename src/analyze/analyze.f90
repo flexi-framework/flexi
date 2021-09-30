@@ -314,13 +314,13 @@ END IF  ! ErrorNorms
 CALL AnalyzeEquation(Time)
 CALL Benchmarking()
 
-IF(MPIRoot .AND. (Time.GT.0.)) THEN
-  WRITE(UNIT_stdOut,'(132("-"))')
+IF(Time.GT.0.) THEN
+  SWRITE(UNIT_stdOut,'(132("-"))')
   CALL PrintStatusLine(time,dt,tStart,tEnd,doETA=.TRUE.)
-  WRITE(UNIT_stdOut,'(132("."))')
-  WRITE(UNIT_stdOut,'(A,A,A,F8.2,A)') ' FLEXI RUNNING ',TRIM(ProjectName),'... [',RunTime,' sec ]'
-  WRITE(UNIT_stdOut,'(132("-"))')
-  WRITE(UNIT_stdOut,*)
+  SWRITE(UNIT_stdOut,'(132("."))')
+  SWRITE(UNIT_stdOut,'(A,A,A,F8.2,A)') ' FLEXI RUNNING ',TRIM(ProjectName),'... [',RunTime,' sec ]'
+  SWRITE(UNIT_stdOut,'(132("-"))')
+  SWRITE(UNIT_stdOut,*)
 END IF
 END SUBROUTINE Analyze
 
