@@ -175,7 +175,8 @@ IF (HighOrder.EQ.1) THEN
         NodeID = NodeID + NVisu_k-1
         nodeids(NodeID+1:NodeID+NVisu-1) = NodeIDElem + NodeIndizes(NVisu+1,1        ,2:NVisu_k)
         NodeID = NodeID + NVisu_k-1
-        ! This is switched compared to trixi!
+        ! The following two are switched compared to trixi because ParaView changed the ordering from VTK8 to VTK9 convention
+        ! https://gitlab.kitware.com/paraview/paraview/-/issues/20728
         nodeids(NodeID+1:NodeID+NVisu-1) = NodeIDElem + NodeIndizes(NVisu+1,NVisu_j+1,2:NVisu_k)
         NodeID = NodeID + NVisu_k-1
         nodeids(NodeID+1:NodeID+NVisu-1) = NodeIDElem + NodeIndizes(1      ,NVisu_j+1,2:NVisu_k)
@@ -268,7 +269,7 @@ END SUBROUTINE CreateConnectivity
 !===================================================================================================================================
 !> Subroutine to write 2D or 3D point data to VTK format
 !===================================================================================================================================
-SUBROUTINE WriteDataToVTK(nVal,NVisu,nElems,VarNames,Coord,Value,FileString,dim,DGFV,nValAtLastDimension,PostiParallel)
+SUBROUTINE WriteDataToVTK(nVal,NVisu,nElems,VarNames,Coord,Value,FileString,dim,DGFV,nValAtLastDimension,HighOrder,PostiParallel)
 ! MODULES
 USE MOD_Globals
 IMPLICIT NONE
@@ -284,6 +285,7 @@ REAL,INTENT(IN)             :: Value(:,:,:,:,:)     !< Statevector
 CHARACTER(LEN=*),INTENT(IN) :: FileString           !< Output file name
 INTEGER,OPTIONAL,INTENT(IN) :: DGFV                 !< flag indicating DG = 0 or FV =1 data
 LOGICAL,OPTIONAL,INTENT(IN) :: nValAtLastDimension  !< if TRUE, nVal is stored in the last index of value
+LOGICAL,OPTIONAL,INTENT(IN) :: HighOrder            !< if TRUE, posti uses high-order element representation
 LOGICAL,OPTIONAL,INTENT(IN) :: PostiParallel        !< if TRUE, posti runs parallel
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -306,6 +308,7 @@ REAL,ALLOCATABLE            :: buf(:,:,:,:), buf2(:,:,:,:,:)
 #endif /*USE_MPI*/
 INTEGER                     :: DGFV_loc
 LOGICAL                     :: nValAtLastDimension_loc
+INTEGER                     :: HighOrder_loc                                          ! INTEGER to be consistent with visu_Cwrapper
 LOGICAL                     :: PostiParallel_loc
 CHARACTER(LEN=255)          :: FileString_loc
 !===================================================================================================================================
@@ -314,11 +317,19 @@ IF (PRESENT(DGFV)) THEN
 ELSE
   DGFV_loc = 0
 END IF
+
 IF (PRESENT(nValAtLastDimension)) THEN
   nValAtLastDimension_loc = nValAtLastDimension
 ELSE
   nValAtLastDimension_loc = .FALSE.
 END IF
+
+IF (PRESENT(HighOrder)) THEN
+  HighOrder_loc = MERGE(1,0,HighOrder)
+ELSE
+  HighOrder_loc = 0
+END IF
+
 IF (PRESENT(PostiParallel)) THEN
   IF(nProcessors.GT.1)THEN
     PostiParallel_loc=.TRUE.
@@ -335,19 +346,17 @@ END IF
 IF (dim.EQ.3) THEN
   NVisu_k = NVisu
   NVisu_j = NVisu
-  PointsPerVTKCell = 8
 ELSE IF (dim.EQ.2) THEN
   NVisu_k = 0
   NVisu_j = NVisu
-  PointsPerVTKCell = 4
 ELSE IF (dim.EQ.1) THEN
   NVisu_k = 0
   NVisu_j = 0
-  PointsPerVTKCell = 2
 ELSE
   CALL Abort(__STAMP__, &
       "Only 2D and 3D connectivity can be created. dim must be 1, 2 or 3.")
 END IF
+PointsPerVTKCell = MERGE((NVisu+1)**dim,2**dim,HighOrder_loc.EQ.1)
 
 SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='NO')"   WRITE ",dim,"D DATA TO VTX XML BINARY (VTU) FILE..."
 
@@ -365,7 +374,11 @@ END IF
 
 NVisu_elem = (NVisu+1)**dim
 nVTKPoints = NVisu_elem * nTotalElems
-nVTKCells  = ((NVisu+DGFV_loc)/(1+DGFV_loc))**dim*nTotalElems
+IF (HighOrder_loc.EQ.1) THEN
+  nVTKCells  = nTotalElems
+ELSE
+  nVTKCells  = ((NVisu+DGFV_loc)/(1+DGFV_loc))**dim*nTotalElems
+END IF
 
 ! write header of VTK file
 IF((.NOT.PostiParallel_loc.AND.MPIRoot).OR.PostiParallel_loc)THEN
@@ -376,7 +389,9 @@ IF((.NOT.PostiParallel_loc.AND.MPIRoot).OR.PostiParallel_loc)THEN
   OPEN(NEWUNIT=ivtk,FILE=TRIM(FileString_loc),ACCESS='STREAM')
   ! Write header
   Buffer='<?xml version="1.0"?>'//lf;WRITE(ivtk) TRIM(Buffer)
-  Buffer='<VTKFile type="UnstructuredGrid" version="0.1" byte_order="LittleEndian">'//lf;WRITE(ivtk) TRIM(Buffer)
+  ! This version is important for high-order elements because ParaView automatically converts the node numbering when switching from VTK8 to VTK9 convention
+  ! https://gitlab.kitware.com/paraview/paraview/-/issues/20728
+  Buffer='<VTKFile type="UnstructuredGrid" version="2.2" byte_order="LittleEndian">'//lf;WRITE(ivtk) TRIM(Buffer)
   ! Specify file type
   Buffer='  <UnstructuredGrid>'//lf;WRITE(ivtk) TRIM(Buffer)
   WRITE(TempStr1,'(I16)')nVTKPoints
@@ -522,7 +537,7 @@ END IF
 
 ! Connectivity and footer
 IF((.NOT.PostiParallel_loc.AND.MPIRoot).OR.PostiParallel_loc)THEN
-  CALL CreateConnectivity(NVisu=NVisu,nElems=nTotalElems,nodeids=nodeids,dim=dim,DGFV=DGFV_loc,HighOrder=0)
+  CALL CreateConnectivity(NVisu=NVisu,nElems=nTotalElems,nodeids=nodeids,dim=dim,DGFV=DGFV_loc,HighOrder=HighOrder_loc)
 
   nBytes = PointsPerVTKCell*nVTKCells*SIZEOF_F(INTdummy)
   WRITE(ivtk) nBytes
@@ -532,12 +547,22 @@ IF((.NOT.PostiParallel_loc.AND.MPIRoot).OR.PostiParallel_loc)THEN
   WRITE(ivtk) nBytes
   WRITE(ivtk) (Offset,Offset=PointsPerVTKCell,PointsPerVTKCell*nVTKCells,PointsPerVTKCell)
   ! Elem type
-  IF (dim.EQ.3) THEN
-    ElemType = 12 ! VTK_HEXAHEDRON
-  ELSE IF (dim.EQ.2) THEN
-    ElemType = 9  ! VTK_QUAD
-  ELSE IF (dim.EQ.1) THEN
-    ElemType = 3  ! VTK_LINE
+  IF (HighOrder_loc.EQ.1) THEN
+    IF (dim.EQ.3) THEN
+      ElemType = 72 ! VTK_LAGRANGE_HEXAHEDRON
+    ELSE IF (dim.EQ.2) THEN
+      ElemType = 70 ! VTK_LAGRANGE_QUADRILATERAL
+    ELSE IF (dim.EQ.1) THEN
+      ElemType = 68 ! VTK_LAGRANGE_CURVE
+    END IF
+  ELSE
+    IF (dim.EQ.3) THEN
+      ElemType = 12 ! VTK_HEXAHEDRON
+    ELSE IF (dim.EQ.2) THEN
+      ElemType = 9  ! VTK_QUAD
+    ELSE IF (dim.EQ.1) THEN
+      ElemType = 3  ! VTK_LINE
+    END IF
   END IF
   WRITE(ivtk) nBytes
   WRITE(ivtk) (ElemType,iElem=1,nVTKCells)
@@ -703,13 +728,13 @@ IF (nElems.EQ.0) THEN
   RETURN
 END IF
 
-SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='NO')"   WRITE ",dim,"D COORDS TO VTX XML BINARY (VTU) ARRAY..."
+SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='NO')" WRITE ",dim,"D COORDS TO VTX XML BINARY (VTU) ARRAY..."
 ! values and coords are already in the correct structure of VTK/Paraview
 
 ! create connectivity
 CALL CreateConnectivity(NVisu=NVisu,nElems=nElems,nodeids=nodeids,dim=dim,DGFV=DGFV,HighOrder=HighOrder)
 
-IF (highOrder.EQ.1) THEN
+IF (HighOrder.EQ.1) THEN
   ! set the sizes of the arrays
   coords_out%len  = 3*(NVisu+1)**dim*nElems
   nodeids_out%len =   (NVisu+1)**dim*nElems
