@@ -29,17 +29,17 @@ INTERFACE InitTimeDisc
   MODULE PROCEDURE InitTimeDisc
 END INTERFACE
 
-! INTERFACE InitTimeStep
-!   MODULE PROCEDURE InitTimeStep
-! END INTERFACE
+INTERFACE InitTimeStep
+  MODULE PROCEDURE InitTimeStep
+END INTERFACE
 
-! INTERFACE UpdateTimeStep
-!   MODULE PROCEDURE UpdateTimeStep
-! END INTERFACE
+INTERFACE UpdateTimeStep
+  MODULE PROCEDURE UpdateTimeStep
+END INTERFACE
 
-! INTERFACE AnalyzeTimeStep
-!   MODULE PROCEDURE AnalyzeTimeStep
-! END INTERFACE
+INTERFACE AnalyzeTimeStep
+  MODULE PROCEDURE AnalyzeTimeStep
+END INTERFACE
 
 INTERFACE FinalizeTimeDisc
   MODULE PROCEDURE FinalizeTimeDisc
@@ -185,6 +185,8 @@ IMPLICIT NONE
 INTEGER                      :: errType
 !===================================================================================================================================
 dt            = CalcTimeStep(errType)
+! UpdateTimeStep will be called before an actual time increment, so we do not need to check for tAnalyze,tEnd yet
+
 nCalcTimestep = 0
 dt_minOld     = -999.
 IF (errType.NE.0) CALL abort(__STAMP__,&
