@@ -80,7 +80,7 @@ DO iStage = 1,nRKStages
   ! NOTE: perform timestep in rk
   CurrentStage = iStage
   IF (CurrentStage.EQ.1) THEN; tStage = t
-  ELSE                       ; tStage = t+RKc(CurrentStage)*dt; print*, iStage
+  ELSE                       ; tStage = t+RKc(CurrentStage)*dt
   END IF
 
   ! Call DG operator to fill face data, fluxes, gradients for analyze
@@ -145,7 +145,7 @@ DO iStage = 1,nRKStages
   ! NOTE: perform timestep in rk
   CurrentStage = iStage
   IF (CurrentStage.EQ.1) THEN; tStage = t
-  ELSE                       ; tStage = t+RKc(CurrentStage)*dt; print*, iStage
+  ELSE                       ; tStage = t+RKc(CurrentStage)*dt
   END IF
 
   IF (iStage.EQ.1) THEN
