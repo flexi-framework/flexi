@@ -78,8 +78,9 @@ LOGICAL  :: AllowDG,AllowFV
 
 DO iStage = 1,nRKStages
   ! NOTE: perform timestep in rk
-  IF(CurrentStage.EQ.nRKStages)THEN; CurrentStage = 0       ; tStage = t+                  dt
-  ELSE                             ; CurrentStage = iStage+1; tStage = t+RKc(CurrentStage)*dt
+  CurrentStage = iStage
+  IF (CurrentStage.EQ.1) THEN; tStage = t
+  ELSE                       ; tStage = t+RKc(CurrentStage)*dt; print*, iStage
   END IF
 
   ! Call DG operator to fill face data, fluxes, gradients for analyze
@@ -95,9 +96,9 @@ DO iStage = 1,nRKStages
   IF (iStage.EQ.1) THEN
     CALL VCopy(nTotalU,Ut_tmp,Ut)                        !Ut_tmp = Ut
   ELSE
-    CALL VAXPBY(nTotalU,Ut_tmp,Ut,ConstOut=-RKA(iStage)) !Ut_tmp = Ut - Ut_tmp*RKA(iStage)
+    CALL VAXPBY(nTotalU,Ut_tmp,Ut,ConstOut=-RKA(iStage)) !Ut_tmp = Ut - Ut_tmp*RKA (iStage)
   END IF
-  CALL VAXPBY(nTotalU,U,Ut_tmp,ConstIn=b_dt(iStage))     !U       = U + Ut_tmp*b_dt(iStage)
+  CALL VAXPBY(nTotalU,U,Ut_tmp,   ConstIn =b_dt(iStage)) !U       = U + Ut_tmp*b_dt(iStage)
 #if PP_LIMITER
   IF(DoPPLimiter) CALL PPLimiter()
 #endif
@@ -142,8 +143,9 @@ INTEGER  :: iStage
 
 DO iStage = 1,nRKStages
   ! NOTE: perform timestep in rk
-  IF(CurrentStage.EQ.nRKStages)THEN; CurrentStage = 0       ; tStage = t+                  dt
-  ELSE                             ; CurrentStage = iStage+1; tStage = t+RKc(CurrentStage)*dt
+  CurrentStage = iStage
+  IF (CurrentStage.EQ.1) THEN; tStage = t
+  ELSE                       ; tStage = t+RKc(CurrentStage)*dt; print*, iStage
   END IF
 
   IF (iStage.EQ.1) THEN
