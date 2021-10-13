@@ -482,7 +482,7 @@ void visuReader::InsertData(vtkMultiBlockDataSet* mb    ,int blockno
 
     int CellLength;
     int CellType;
-    if (this->HighOrder){
+    if (this->HighOrder && blockno == 0){ // blockno: 0 = DG, 1 = FV
       if (coords->dim == 1) {
         // Use the nodeids to build lines
         CellLength = NVisu+1;

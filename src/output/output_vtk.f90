@@ -80,7 +80,7 @@ INTEGER,INTENT(IN)                       :: nElems
 INTEGER,ALLOCATABLE,TARGET,INTENT(INOUT) :: nodeids(:)        !< stores the connectivity
 INTEGER,INTENT(IN)                       :: dim               !< 3 = 3d connectivity, 2 = 2d connectivity
 INTEGER,INTENT(IN)                       :: DGFV              !< flag indicating DG = 0 or FV = 1 data
-INTEGER,INTENT(IN)                       :: HighORder         !< flag indicating high order
+INTEGER,INTENT(IN)                       :: HighOrder         !< flag indicating high order
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER             :: i,j,k,iElem
@@ -111,7 +111,7 @@ END SELECT
 NVisu_elem = (NVisu+1)**dim
 NVisu_p1_2 = (NVisu+1)**2
 
-IF (HighOrder.EQ.1) THEN
+IF (HighOrder.EQ.1 .AND. DGFV.EQ.0) THEN
   IF (.NOT.ALLOCATED(NodeIndizes))   ALLOCATE(NodeIndizes  ( 1:NVisu+1  ,1:NVisu_j+1 , 1:NVisu_k+1))
 
   nVTKCells  = nElems
@@ -325,7 +325,7 @@ ELSE
 END IF
 
 IF (PRESENT(HighOrder)) THEN
-  HighOrder_loc = MERGE(1,0,HighOrder)
+  HighOrder_loc = MERGE(1,0,HighOrder.AND. DGFV_loc.EQ.0)
 ELSE
   HighOrder_loc = 0
 END IF
@@ -734,7 +734,7 @@ SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='NO')" WRITE ",dim,"D COORDS TO VTX XML BI
 ! create connectivity
 CALL CreateConnectivity(NVisu=NVisu,nElems=nElems,nodeids=nodeids,dim=dim,DGFV=DGFV,HighOrder=HighOrder)
 
-IF (HighOrder.EQ.1) THEN
+IF (HighOrder.EQ.1 .AND.DGFV.EQ.0) THEN
   ! set the sizes of the arrays
   coords_out%len  = 3*(NVisu+1)**dim*nElems
   nodeids_out%len =   (NVisu+1)**dim*nElems
