@@ -72,6 +72,7 @@ REAL             :: CalcTimeEnd                   !< End system time of simulati
 
 LOGICAL          :: doAnalyze                     !< Flag to perform analysis in current timestep
 LOGICAL          :: doFinalize                    !< Flag to exit simulation in current timestep
+INTEGER          :: writeCounter                  !< Count the number of analyze steps until nWriteData
 
 REAL,ALLOCATABLE :: Ut_tmp(:,:,:,:,:)             !< temporal variable for Ut
 REAL,ALLOCATABLE :: S2    (:,:,:,:,:)

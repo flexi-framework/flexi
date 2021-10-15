@@ -121,9 +121,10 @@ nCalcTimeStepMax = GETINT('nCalcTimeStepMax','1')
 
 CALL StripSpaces(TimeDiscMethod)
 CALL LowCase(TimeDiscMethod)
+CALL SetTimeDiscCoefs(TimeDiscMethod)
+
 SWRITE(UNIT_stdOut,'(A)') ' Method of time integration: '//TRIM(TimeDiscName)
 
-CALL SetTimeDiscCoefs(TimeDiscMethod)
 SELECT CASE(TimeDiscType)
   CASE('LSERKW2')
     TimeStep=>TimeStepByLSERKW2
@@ -174,8 +175,9 @@ SUBROUTINE InitTimeStep()
 ! MODULES
 USE MOD_Globals
 USE MOD_CalcTimeStep        ,ONLY: CalcTimeStep
-USE MOD_TimeDisc_Vars       ,ONLY: t,dt,dt_minOld,b_dt,RKb
+USE MOD_TimeDisc_Vars       ,ONLY: t,tAnalyze,tEnd,dt,dt_min,dt_minOld
 USE MOD_TimeDisc_Vars       ,ONLY: ViscousTimeStep,CalcTimeStart,nCalcTimeStep
+USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -184,8 +186,15 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                      :: errType
 !===================================================================================================================================
-dt            = CalcTimeStep(errType)
-! UpdateTimeStep will be called before an actual time increment, so we do not need to check for tAnalyze,tEnd yet
+dt                 = CalcTimeStep(errType)
+dt_min(DT_MIN)     = dt
+dt_min(DT_ANALYZE) = tAnalyze-t             ! Time to next analysis, put in extra variable so number does not change due to numerical errors
+dt_min(DT_END)     = tEnd    -t             ! Do the same for end time
+dt                 = MINVAL(dt_min)
+
+IF (dt.EQ.dt_min(DT_ANALYZE))       doAnalyze  = .TRUE.
+IF (dt.EQ.dt_min(DT_END    )) THEN; doAnalyze  = .TRUE.; doFinalize = .TRUE.; END IF
+dt                 = MINVAL(dt_min,MASK=dt_min.GT.0)
 
 nCalcTimestep = 0
 dt_minOld     = -999.
@@ -195,9 +204,6 @@ IF (errType.NE.0) CALL abort(__STAMP__,&
 #else
   'Error: (1) density, (2) convective / (3) viscous timestep is NaN. Type/time:',errType,t)
 #endif
-
-! Premultiply with dt
-b_dt = RKb*dt
 
 SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A,ES16.7)') ' Initial Timestep  : ', dt
@@ -218,7 +224,7 @@ USE MOD_Analyze_Vars        ,ONLY: tWriteData
 USE MOD_CalcTimeStep        ,ONLY: CalcTimeStep
 USE MOD_HDF5_Output         ,ONLY: WriteState
 USE MOD_Mesh_Vars           ,ONLY: MeshFile
-USE MOD_TimeDisc_Vars       ,ONLY: t,tAnalyze,tEnd,dt,dt_min,dt_minOld,b_dt,RKb
+USE MOD_TimeDisc_Vars       ,ONLY: t,tAnalyze,tEnd,dt,dt_min,dt_minOld
 USE MOD_TimeDisc_Vars       ,ONLY: iter,maxIter,nCalcTimeStep,nCalcTimeStepMax
 USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize
 ! IMPLICIT VARIABLE HANDLING
@@ -241,8 +247,8 @@ dt_min(DT_ANALYZE) = tAnalyze-t             ! Time to next analysis, put in extr
 dt_min(DT_END)     = tEnd    -t             ! Do the same for end time
 dt                 = MINVAL(dt_min)
 
-IF (dt.EQ.dt_min(DT_ANALYZE)) doAnalyze  = .TRUE.
-IF (dt.EQ.dt_min(DT_END    )) doFinalize = .TRUE.
+IF (dt.EQ.dt_min(DT_ANALYZE))       doAnalyze  = .TRUE.
+IF (dt.EQ.dt_min(DT_END    )) THEN; doAnalyze  = .TRUE.; doFinalize = .TRUE.; END IF
 dt                 = MINVAL(dt_min,MASK=dt_min.GT.0)
 
 nCalcTimestep = MIN(FLOOR(ABS(LOG10(ABS(dt_minOld/dt-1.)**2.*100.+EPSILON(0.)))),nCalcTimeStepMax) - 1
@@ -260,10 +266,7 @@ END IF
 ! Increase time step if the NEXT time step would be smaller than dt/100
 IF(dt_min(DT_ANALYZE)-dt.LT.dt/100.0 .AND. dt_min(DT_ANALYZE).GT.0) THEN; dt = dt_min(DT_ANALYZE); doAnalyze  = .TRUE.; END IF
 ! Increase time step if the LAST time step would be smaller than dt/100
-IF(    dt_min(DT_END)-dt.LT.dt/100.0 .AND. dt_min(DT_END    ).GT.0) THEN; dt = dt_min(DT_END)    ; doFinalize = .TRUE.; END IF
-
-! Premultiply with dt
-b_dt = RKb*dt
+IF(    dt_min(DT_END)-dt.LT.dt/100.0 .AND. dt_min(DT_END    ).GT.0) THEN; dt = dt_min(DT_END)    ; doAnalyze  = .TRUE.; doFinalize = .TRUE.; END IF
 
 IF (iter.EQ.maxIter) THEN
   tEnd=t; tAnalyze=t; tWriteData=t
@@ -276,7 +279,7 @@ END SUBROUTINE UpdateTimeStep
 !===================================================================================================================================
 !> Update time step at the beginning of each timedisc loop
 !===================================================================================================================================
-SUBROUTINE AnalyzeTimeStep(writeCounter)
+SUBROUTINE AnalyzeTimeStep()
 ! MODULES
 USE MOD_Globals
 USE MOD_Analyze             ,ONLY: Analyze
@@ -295,9 +298,9 @@ USE MOD_Sponge_Vars         ,ONLY: CalcPruettDamping
 USE MOD_TestCase            ,ONLY: AnalyzeTestCase
 USE MOD_TestCase_Vars       ,ONLY: nAnalyzeTestCase
 USE MOD_TimeAverage         ,ONLY: CalcTimeAverage
-USE MOD_TimeDisc_Vars       ,ONLY: t,dt,tAnalyze,tEnd,CalcTimeStart
+USE MOD_TimeDisc_Vars       ,ONLY: t,dt,dt_min,tAnalyze,tEnd,CalcTimeStart
 USE MOD_TimeDisc_Vars       ,ONLY: Ut_tmp,iter,iter_analyze
-USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize
+USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize,writeCounter
 #if FV_ENABLED
 USE MOD_FV                  ,ONLY: FV_Info,FV_Switch
 USE MOD_Indicator           ,ONLY: CalcIndicator
@@ -306,7 +309,6 @@ USE MOD_Indicator           ,ONLY: CalcIndicator
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(INOUT) :: writeCounter
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !===================================================================================================================================
@@ -327,7 +329,7 @@ IF(CalcPruettDamping) CALL TempFilterTimeDeriv(U,dt)
 
 ! Analyze and output now
 IF(doAnalyze)THEN
-  CALL PrintAnalyze(dt)
+  CALL PrintAnalyze(dt_Min(DT_MIN))
 #if FV_ENABLED
   ! Summation has one more iter step
   CALL FV_Info(iter_analyze+1)
@@ -350,11 +352,13 @@ IF(doAnalyze)THEN
     CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,FutureTime=tWriteData,isErrorFile=.FALSE.)
     ! Visualize data
     CALL Visualize(t,U)
-    writeCounter = 0
   END IF
 
   ! do analysis
   CALL Analyze(t,iter)
+  ! Overwrite WriteCounter after Analyze to keep analysis synchronous
+  IF((writeCounter.EQ.nWriteData).OR.doFinalize) writeCounter=0
+
   iter_analyze  = 0
   CalcTimeStart = FLEXITIME()
   tAnalyze      = MIN(tAnalyze+analyze_dt,tEnd)

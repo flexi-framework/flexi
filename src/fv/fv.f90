@@ -113,19 +113,20 @@ SUBROUTINE InitFV()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
+USE MOD_Basis               ,ONLY: InitializeVandermonde
+USE MOD_DG_Vars             ,ONLY: U
+USE MOD_Filter_Vars         ,ONLY: NFilter
 USE MOD_FV_Vars
 USE MOD_FV_Basis
-USE MOD_Basis               ,ONLY: InitializeVandermonde
-USE MOD_Indicator           ,ONLY: doCalcIndicator
-USE MOD_Indicator_Vars      ,ONLY: nModes,IndicatorType
+USE MOD_Indicator_Vars      ,ONLY: nModes,IndicatorType,IndValue,IndStartTime
+USE MOD_IO_HDF5             ,ONLY: AddToElemData,ElementOut
 USE MOD_Mesh_Vars           ,ONLY: nElems,nSides
+USE MOD_ReadInTools
+USE MOD_Overintegration_Vars,ONLY: NUnder
+USE MOD_TimeDisc_Vars       ,ONLY: t,TimeDiscType
 #if FV_RECONSTRUCT
 USE MOD_FV_Limiter
 #endif
-USE MOD_ReadInTools
-USE MOD_IO_HDF5             ,ONLY: AddToElemData,ElementOut
-USE MOD_Overintegration_Vars,ONLY: NUnder
-USE MOD_Filter_Vars         ,ONLY: NFilter
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -245,8 +246,7 @@ gradUzeta_central=0.
 FV_IniSharp       = GETLOGICAL("FV_IniSharp",'.FALSE.')
 IF (.NOT.FV_IniSharp) FV_IniSupersample = GETLOGICAL("FV_IniSupersample",'.TRUE.')
 
-FVInitIsDone = .TRUE.
-
+FVInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT FV DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
 
@@ -457,6 +457,7 @@ SUBROUTINE FV_Info(iter)
 USE MOD_Globals
 USE MOD_Mesh_Vars    ,ONLY: nGlobalElems
 USE MOD_Analyze_Vars ,ONLY: totalFV_nElems
+USE MOD_FV_Vars     , ONLY: FV_Elems
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -465,6 +466,7 @@ INTEGER(KIND=8),INTENT(IN) :: iter !< number of iterations
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
+IF (iter.EQ.1_8) totalFV_nElems = SUM(FV_Elems) ! counter for output of FV amount during analyze
 #if USE_MPI
 IF(MPIRoot)THEN
   CALL MPI_REDUCE(MPI_IN_PLACE,totalFV_nElems,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)

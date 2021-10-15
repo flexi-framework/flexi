@@ -60,10 +60,9 @@ USE MOD_TestCase_Vars       ,ONLY: doTCSource
 USE MOD_TimeDisc_Vars       ,ONLY: iter,iter_analyze,maxIter
 USE MOD_TimeDisc_Vars       ,ONLY: t,tStart,tEnd,dt,tAnalyze,Timestep
 USE MOD_TimeDisc_Vars       ,ONLY: TimeDiscType
-USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize
+USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize,writeCounter,nCalcTimestep
 USE MOD_TimeAverage         ,ONLY: CalcTimeAverage
 #if FV_ENABLED
-USE MOD_Analyze_Vars        ,ONLY: totalFV_nElems
 USE MOD_FV
 USE MOD_Indicator           ,ONLY: CalcIndicator
 #endif
@@ -155,7 +154,6 @@ IF(RP_onProc) CALL RecordPoints(PP_nVar,StrVarNames,iter,t,.TRUE.)
 CALL InitTimeStep()
 
 #if FV_ENABLED
-totalFV_nElems = totalFV_nElems + SUM(FV_Elems) ! counter for output of FV amount during analyze
 CALL FV_Info(1_8)
 #endif
 #if PP_LIMITER
@@ -191,7 +189,7 @@ DO
   IF(doTCSource)        CALL CalcForcing(t,dt)
 
   ! Perform analysis at the end of the RK loop
-  CALL AnalyzeTimeStep(writeCounter)
+  CALL AnalyzeTimeStep()
 
   CALL PrintStatusLine(t,dt,tStart,tEnd)
 

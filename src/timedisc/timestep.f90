@@ -54,7 +54,7 @@ USE MOD_DG            ,ONLY: DGTimeDerivative_weakForm
 USE MOD_DG_Vars       ,ONLY: U,Ut,nTotalU
 USE MOD_Mesh_Vars     ,ONLY: nElems
 USE MOD_PruettDamping ,ONLY: TempFilterTimeDeriv
-USE MOD_TimeDisc_Vars ,ONLY: dt,b_dt,Ut_tmp,RKA,RKc,nRKStages,CurrentStage
+USE MOD_TimeDisc_Vars ,ONLY: dt,b_dt,Ut_tmp,RKA,RKb,RKc,nRKStages,CurrentStage
 #if FV_ENABLED
 USE MOD_FV            ,ONLY: FV_Switch,FV_Elems_Update
 USE MOD_FV_Vars       ,ONLY: FV_toDGinRK,FV_toFVinRK,Switch_to_DG,Switch_to_FV
@@ -75,6 +75,9 @@ INTEGER  :: iStage
 LOGICAL  :: AllowDG,AllowFV
 #endif /*FV_ENABLED*/
 !===================================================================================================================================
+
+! Premultiply with dt
+b_dt = RKb*dt
 
 DO iStage = 1,nRKStages
   ! NOTE: perform timestep in rk
@@ -121,7 +124,7 @@ USE MOD_DG           ,ONLY: DGTimeDerivative_weakForm
 USE MOD_DG_Vars      ,ONLY: U,Ut,nTotalU
 USE MOD_Indicator     ,ONLY: doCalcIndicator,CalcIndicator
 USE MOD_Mesh_Vars    ,ONLY: nElems
-USE MOD_TimeDisc_Vars,ONLY: dt,b_dt,UPrev,S2,RKdelta,RKg1,RKg2,RKg3,RKc,nRKStages,CurrentStage
+USE MOD_TimeDisc_Vars,ONLY: dt,b_dt,UPrev,S2,RKdelta,RKg1,RKg2,RKg3,RKb,RKc,nRKStages,CurrentStage
 #if FV_ENABLED
 USE MOD_FV           ,ONLY: FV_Switch,FV_Elems_Update
 USE MOD_FV_Vars      ,ONLY: FV_toDGinRK,FV_toFVinRK,Switch_to_DG,Switch_to_FV
@@ -140,6 +143,9 @@ INTEGER  :: iStage
 
 ! Nomenclature:
 ! S1 == U, S2 == S2, S3 == UPrev
+
+! Premultiply with dt
+b_dt = RKb*dt
 
 DO iStage = 1,nRKStages
   ! NOTE: perform timestep in rk
