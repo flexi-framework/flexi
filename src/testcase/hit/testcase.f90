@@ -93,21 +93,18 @@ USE MOD_ReadInTools ,ONLY: prms
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("Testcase")
+CALL prms%CreateIntOption('nWriteStats'     , "Write testcase statistics to file at every n-th AnalyzeTestcase step.", '100')
+CALL prms%CreateIntOption('nAnalyzeTestCase', "Call testcase specific analysis routines every n-th timestep. "//&
+                                              "(Note: always called at global analyze level)", '10')
 
-! HIT parameters
+! Parameters for HIT forcing
 CALL prms%CreateLogicalOption('HIT_Forcing', 'Flag to perform HIT forcing'                            ,'T')
 CALL prms%CreateLogicalOption('HIT_Avg'    , 'Flag to perform spatial averaging of HIT forcing'       ,'T')
 CALL prms%CreateLogicalOption('HIT_1st'    , 'Flag to update HIT forcing only in first RK stage'      ,'T')
 CALL prms%CreateRealOption(   'HIT_k'      , 'Target turbulent kinetic energy in HIT'                 ,'0.')
-!CALL prms%CreateRealOption(   'HIT_rho'    , 'Target density in HIT'                                  ,'0.')
 CALL prms%CreateRealOption(   'HIT_tFilter', 'Temp filter width of exponential, explicit time filter' ,'0.')
-!CALL prms%CreateIntOption(    'HIT_nFilter', 'Polynomial degree of the HIT cut-off filter'            ,'0')
 CALL prms%CreateRealOption(   'HIT_tauRMS' , 'Strength of RMS forcing.'                               ,'0.')
 
-! Analyze paramters
-CALL prms%CreateIntOption('nWriteStats'     , "Write testcase statistics to file at every n-th AnalyzeTestcase step.", '100')
-CALL prms%CreateIntOption('nAnalyzeTestCase', "Call testcase specific analysis routines every n-th timestep. "//&
-                                              "(Note: always called at global analyze level)", '10')
 END SUBROUTINE DefineParametersTestcase
 
 
@@ -121,10 +118,8 @@ USE MOD_Globals
 USE MOD_PreProc,            ONLY: N
 #endif
 USE MOD_Equation_Vars,      ONLY: RefStatePrim,IniRefState
-!USE MOD_Filter_Vars
 USE MOD_HDF5_Input,         ONLY: File_ID,OpenDataFile,CloseDataFile,ReadArray,DatasetExists,GetDataSize
-USE MOD_IO_HDF5,            ONLY:AddToFieldData,FieldOut,HSIZE,nDims
-!USE MOD_Interpolation_Vars, ONLY: Vdm_Leg,sVdm_Leg
+USE MOD_IO_HDF5,            ONLY: AddToFieldData,FieldOut,HSIZE,nDims
 USE MOD_Mesh_Vars,          ONLY: nElems,offsetElem
 USE MOD_Output,             ONLY: InitOutputToFile
 USE MOD_Output_Vars,        ONLY: ProjectName
@@ -154,23 +149,7 @@ HIT_Forcing = GETLOGICAL('HIT_Forcing','.TRUE.')
 
 IF(HIT_Forcing) THEN
   ! Initialize HIT filter
-  ! HIT_nFilter = GETINT( 'HIT_nFilter','0')
   HIT_tFilter = GETREAL('HIT_tFilter','0.')
-
-  ! ! Abort if Navier-Stokes filter is requested in addition to the HIT filter
-  ! IF(FilterType.GT.0) CALL CollectiveStop(__STAMP__,"HIT incompatible with Navier-Stokes filter!")
-  !
-  ! ! Prepare modal cut-off filter (low pass)
-  ! ALLOCATE(FilterMat(0:PP_N,0:PP_N))
-  ! FilterMat = 0.
-  !
-  ! ! Modal Filter, default to cut-off at 0
-  ! DO iDeg=0,HIT_nFilter
-  !   FilterMat(iDeg,iDeg) = 1.
-  ! END DO
-  !
-  ! ! Assemble filter matrix in nodal space
-  ! FilterMat=MATMUL(MATMUL(Vdm_Leg,FilterMat),sVdm_Leg)
 
   ! Read only rho from IniRefState
   HIT_rho = RefStatePrim(1,IniRefState)
@@ -184,10 +163,8 @@ IF(HIT_Forcing) THEN
 
   ! Allocate array for temporally filtered RMS
   ALLOCATE(HIT_RMS(1:3,0:PP_N,0:PP_N,0:PP_NZ,nElems))
-  ALLOCATE(UPrim_temp(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ,nElems))
-  UPRIM_temp = 0.
 
-  ! Try to restart from state file
+  ! Try to restart from state file.
   IF(DoRestart)THEN
     CALL OpenDataFile(RestartFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
     CALL DatasetExists(File_ID,'HIT',HITDataExists)
@@ -296,7 +273,10 @@ END SUBROUTINE ExactFuncTestcase
 
 
 !==================================================================================================================================
-!> Add testcases source term to solution time derivative
+!> Add testcases source term to solution time derivative. The implemented forcing approach is based on the following literature:
+!> de Laage de Meux mode, case 'D. Restriction to the isotropic case and link with the linear forcing of Lundgren'
+!> de Laage de Meux, B.; Audebert, B.; Manceau, R. and Perrin, R., "Anisotropic linear forcing for synthetic turbulence generation
+!> in large eddy simulation and hybrid RANS/LES modeling." Physics of Fluids, 27 (2015), 035115
 !==================================================================================================================================
 SUBROUTINE TestcaseSource(Ut)
 ! MODULES
@@ -305,8 +285,7 @@ USE MOD_Globals
 USE MOD_PreProc,        ONLY: N
 #endif
 USE MOD_Analyze_Vars,   ONLY: wGPVol,ElemVol,Vol
-USE MOD_DG_Vars,        ONLY: U
-USE MOD_EOS,            ONLY: ConsToPrim
+USE MOD_DG_Vars,        ONLY: U,UPrim
 USE MOD_Mesh_Vars,      ONLY: nElems,sJ
 USE MOD_TestCase_Vars
 USE MOD_TimeDisc_Vars,  ONLY: dt,CurrentStage
@@ -320,68 +299,56 @@ REAL,INTENT(INOUT)              :: Ut(PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !<
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER         :: iElem,i,j,k
-REAL            :: fac,TKE,TKE_glob
+REAL            :: fac,TKE
 !==================================================================================================================================
 ! Small trick to survive the first DG call(s) when dt is not yet set
-IF (dt.GE.HUGE(1.)) THEN
-  RETURN
-END IF
+IF (dt.GE.HUGE(1.)) RETURN
 
 ! Return if no HIT forcing required
 IF (.NOT.HIT_Forcing) RETURN
 
-! Initialize HIT_RMS with initial solution if not already read from restart file
-! Otherwise forcing will be huge in the first timestep
-IF (.NOT.HIT_RMS_InitDone) THEN
-  CALL ConsToPrim(PP_N,UPrim_temp,U)
-  HIT_RMS = UPrim_temp(2:4,:,:,:,:)**2
+! Initialize HIT_RMS with initial solution if it was not read from the restart file
+IF (.NOT. HIT_RMS_InitDone) THEN
+  HIT_RMS = UPrim(2:4,:,:,:,:)**2
   HIT_RMS_InitDone = .TRUE.
 END IF
 
-!==================================================================================================================================
-!> de Laage de Meux mode, case 'D. Restriction to the isotropic case and link with the linear forcing of Lundgren'
-!> de Laage de Meux, B.; Audebert, B.; Manceau, R. and Perrin, R., "Anisotropic linear forcing for synthetic turbulence generation
-!> in large eddy simulation and hybrid RANS/LES modeling." Physics of Fluids, 27 (2015), 035115
-!==================================================================================================================================
-CALL ConsToPrim(PP_N,UPrim_temp,U)
-
-!IF (dt.LT.HIT_tFilter) &
-!  CALL CollectiveStop(__STAMP__,"Time step dropped below HIT_tFilter. Increase your temporal filter width")
-
 ! Time-average the solution to obtain RMS
-!  TODO PROUD FILTER
-fac=dt/HIT_tFilter
-HIT_RMS(1:3,:,:,:,:) = HIT_RMS(1:3,:,:,:,:) + ((UPrim_temp(2:4,:,:,:,:))**2 - HIT_RMS(1:3,:,:,:,:)) * fac
+! TODO: PROUD FILTER
+! TODO: Correct Macros for UPrim
+fac = dt/HIT_tFilter
+HIT_RMS(1:3,:,:,:,:) = HIT_RMS(1:3,:,:,:,:) + ((UPrim(2:4,:,:,:,:))**2 - HIT_RMS(1:3,:,:,:,:)) * fac
 
-! Filter the time-averaged solution (RMS)
-! CALL Filter_Pointer(BaseFlowRMS,FilterMat)
-
-! Calculate scalar k. First integrate with Gaussian integration, then scale with factor 1/2
+! Calculate scalar kinetic Energy TKE either globally or elementwise by Gaussian integration.
+! Then apply computed forcing coefficient to Ut.
 IF (HIT_Avg) THEN
 
   ! Only update forcing coefficient during first RK stage if required
   IF ( (CurrentStage.EQ.1) .OR. (.NOT.HIT_1st) ) THEN
+
+    ! Integrate kinetic energy TKE=1/2*U^2 over domain. Factor 1/2 is applied after integration
     TKE = 0.
-    ! Calculate forcing coefficient based on global spatial average
-    DO iElem=1,nElems; DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      TKE = TKE + wGPVol(i,j,k)/sJ(i,j,k,iElem,0)*SUM(HIT_RMS(1:3,i,j,k,iElem))
-    END DO; END DO; END DO; END DO
-    TKE_glob = TKE/(2.*Vol)
+    DO iElem=1,nElems
+      DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
+        TKE = TKE + wGPVol(i,j,k)/sJ(i,j,k,iElem,0)*SUM(HIT_RMS(1:3,i,j,k,iElem))
+      END DO
+    END DO; END DO; END DO
+    TKE = TKE/(2.*Vol) ! Normalize by volume and account for factor 1/2
 
 #if USE_MPI
-    ! Communicate TKE to all procs
-    CALL MPI_ALLREDUCE(TKE_glob,TKE,1,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)
-#else
-    TKE = TKE_glob
+    ! Sum TKE over all procs and communicate the summed global TKE to all procs
+    CALL MPI_ALLREDUCE(MPI_IN_PLACE,TKE,1,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)
 #endif
-    ! Overwrite A_ILF
+
+    ! Compute forcing coefficient A_ILF
     A_ILF = 1./(2.*HIT_tauRMS)*(HIT_k/TKE - 1.)
   END IF
 
   ! Apply the forcing to the time derivative
-  Ut(2:4,:,:,:,:) = Ut(2:4,:,:,:,:) + A_ILF*U(2:4,:,:,:,:)
+  Ut(MOMV,:,:,:,:) = Ut(MOMV,:,:,:,:) + A_ILF*U(MOMV,:,:,:,:)
 
-ELSE
+ELSE ! HIT_Avg
+
   A_ILF = 0.
   ! Apply the forcing to every cell
   DO iElem=1,nElems
@@ -392,11 +359,12 @@ ELSE
     TKE = TKE/(2.*ElemVol(iElem))
 
     ! Apply forcing to the time derivative
-    Ut(2:4,:,:,:,iElem) = Ut(2:4,:,:,:,iElem) + 1./(2.*HIT_tauRMS)*(HIT_k/TKE - 1.)*U(2:4,:,:,:,iElem)
+    Ut(MOMV,:,:,:,iElem) = Ut(MOMV,:,:,:,iElem) + 1./(2.*HIT_tauRMS)*(HIT_k/TKE - 1.)*U(MOMV,:,:,:,iElem)
 
     ! Integrate the forcing coefficient
     A_ILF = A_ILF + 1./(2.*HIT_tauRMS)*(HIT_k/TKE - 1.)*ElemVol(iElem)
   END DO
+
 END IF ! HIT_Avg
 
 END SUBROUTINE TestcaseSource
@@ -458,14 +426,14 @@ DO iElem=1,nElems
     DO j = 0,PP_N
       DO i = 0,PP_N
       ! Compute primitive gradients (of u,v,w) at each GP
-      Vel    (1:3) = U(2:4,i,j,k,iElem)/U(1,i,j,k,iElem)
-      GradVel(:,1) = GradUx(2:4,i,j,k,iElem)
-      GradVel(:,2) = GradUy(2:4,i,j,k,iElem)
-      GradVel(:,3) = GradUz(2:4,i,j,k,iElem)
+      Vel    (1:3) = U(MOMV,i,j,k,iElem)/U(DENS,i,j,k,iElem)
+      GradVel(:,1) = GradUx(LIFT_VELV,i,j,k,iElem)
+      GradVel(:,2) = GradUy(LIFT_VELV,i,j,k,iElem)
+      GradVel(:,3) = GradUz(LIFT_VELV,i,j,k,iElem)
 
       ! Pressure and density
-      Pressure = KappaM1*(U(5,i,j,k,iElem)-0.5*SUM(U(2:4,i,j,k,iElem)*Vel(1:3)))
-      rho      = rho + U(1,i,j,k,iElem)
+      Pressure = KappaM1*(U(ENER,i,j,k,iElem)-0.5*SUM(U(MOMV,i,j,k,iElem)*Vel(1:3)))
+      rho      = rho + U(DENS,i,j,k,iElem)
 
       ! Compute divergence of velocity
       divU = GradVel(1,1) + GradVel(2,2) + GradVel(3,3)
@@ -479,7 +447,7 @@ DO iElem=1,nElems
 
       ! Compute kinetic energy integrand (incompressible/compressible)
       E      = 0.5 * SUM(Vel(1:3)*Vel(1:3))
-      E_comp = U(1,i,j,k,iElem) * E
+      E_comp = U(DENS,i,j,k,iElem) * E
 
       ! Compute integrand for epsilon3, pressure contribution to dissipation (compressiblity effect)
       eps3 = Pressure * divU
@@ -570,8 +538,6 @@ IF(ioCounter.EQ.nWriteStats)THEN
   ioCounter = 0
 END IF
 
-! HIT_RMS is required for restart, so hook in here to add it to the state file
-
 END SUBROUTINE AnalyzeTestcase
 
 
@@ -609,7 +575,6 @@ IF(MPIroot) THEN
   SDEALLOCATE(writeBuf)
 END IF
 SDEALLOCATE(HIT_RMS)
-SDEALLOCATE(UPrim_temp)
 END SUBROUTINE
 
 !==================================================================================================================================
