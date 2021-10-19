@@ -264,7 +264,7 @@ SUBROUTINE VisualizeMesh(postifile,meshfile_in)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Visu_Vars
-USE MOD_ReadInTools   ,ONLY: prms,GETINT,GETSTR,CountOption
+USE MOD_ReadInTools   ,ONLY: prms,GETINT,GETSTR,GETLOGICAL,CountOption
 USE MOD_ReadInTools   ,ONLY: FinalizeParameters
 USE MOD_StringTools   ,ONLY: STRICMP
 #if USE_MPI
@@ -301,7 +301,8 @@ IF (LEN_TRIM(postifile).GT.0) THEN
   CALL prms%SetSection("posti")
   CALL prms%CreateIntOption('NVisu', "Number of points at which solution is sampled for visualization.")
   CALL prms%read_options(postifile)
-  NVisu = GETINT('NVisu','1') ! Degree of visualization basis
+  NVisu     = GETINT('NVisu','1') ! Degree of visualization basis
+  HighOrder = GETLOGICAL('HighOrder')
 ELSE
   NVisu = 2*NGeo ! TODO: correct?
 END IF

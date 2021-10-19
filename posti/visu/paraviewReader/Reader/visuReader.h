@@ -55,6 +55,7 @@ class VTKIOPARALLEL_EXPORT visuReader :  public vtkMultiBlockDataSetAlgorithm
       vtkSetStringMacro(MeshFileOverwrite);
       vtkSetMacro(NVisu,int);
       vtkSetMacro(NCalc,int);
+      vtkSetMacro(HighOrder,int);
       vtkSetStringMacro(NodeTypeVisu);
       vtkSetMacro(Avg2d,int);
       vtkSetMacro(DGonly,int);
@@ -124,6 +125,7 @@ class VTKIOPARALLEL_EXPORT visuReader :  public vtkMultiBlockDataSetAlgorithm
       char* FileName;
       int   NVisu;
       int   NCalc;
+      int   HighOrder;
       char* NodeTypeVisu;
       int   Avg2d;
       int   DGonly;

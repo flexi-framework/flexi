@@ -116,6 +116,20 @@
            Mesh file, that overwrites the one stored in the parameter file from the USERBLOCK of the state file.
            </Documentation>
          </StringVectorProperty>
+         <IntVectorProperty command="SetHighOrder"
+            default_values="0"
+            animateable="0"
+            name="HighOrder"
+            number_of_elements="1"
+            label="Use high-order element representation"
+            panel_visibility="advanced">
+            <BooleanDomain name="bool"/>
+            <Documentation>
+               This property switches the representation in ParaView from linear elements to high-order Lagrange elements.
+
+               WARNING: This only works correctly with NodeType = VISU!
+            </Documentation>
+         </IntVectorProperty>
       <!-- ================================================================== -->
          <StringVectorProperty name="VarArrayInfo"
             information_only="1">

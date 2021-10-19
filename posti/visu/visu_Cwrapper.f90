@@ -133,11 +133,13 @@ END SUBROUTINE visu_requestInformation
 !> ParaView reader, and afterwards the data and coordinate arrays as well as the variable names are converted to C arrays since
 !> ParaView needs the data in this format.
 !===================================================================================================================================
-SUBROUTINE visu_CWrapper(mpi_comm_IN, &
-    strlen_prm, prmfile_IN, strlen_posti, postifile_IN, strlen_state, statefile_IN,&
-    coordsDG_out,valuesDG_out,nodeidsDG_out, &
-    coordsFV_out,valuesFV_out,nodeidsFV_out,varnames_out, &
-    coordsSurfDG_out,valuesSurfDG_out,nodeidsSurfDG_out, &
+SUBROUTINE visu_CWrapper(mpi_comm_IN,UseHighOrder                   ,&
+    strlen_prm      ,prmfile_IN                                     ,&
+    strlen_posti    ,postifile_IN                                   ,&
+    strlen_state    ,statefile_IN                                   ,&
+    coordsDG_out    ,valuesDG_out    ,nodeidsDG_out                 ,&
+    coordsFV_out    ,valuesFV_out    ,nodeidsFV_out    ,varnames_out,&
+    coordsSurfDG_out,valuesSurfDG_out,nodeidsSurfDG_out             ,&
     coordsSurfFV_out,valuesSurfFV_out,nodeidsSurfFV_out,varnamesSurf_out)
 ! MODULES
 USE ISO_C_BINDING
@@ -149,6 +151,7 @@ IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 INTEGER,INTENT(IN)            :: mpi_comm_IN
+INTEGER,INTENT(IN)            :: UseHighOrder
 INTEGER,INTENT(IN)            :: strlen_prm
 INTEGER,INTENT(IN)            :: strlen_posti
 INTEGER,INTENT(IN)            :: strlen_state
@@ -183,7 +186,7 @@ CALL visu(mpi_comm_IN, prmfile, postifile, statefile)
 ! Map Fortran arrays to C pointer
 IF (MeshFileMode) THEN
   ! Write only the DG coordinates to the VTK file
-  CALL WriteCoordsToVTK_array(NVisu   ,nElems_DG,coordsDG_out,nodeidsDG_out,CoordsVisu_DG,nodeids_DG,dim=PP_dim,DGFV=0)
+  CALL WriteCoordsToVTK_array(NVisu,nElems_DG,coordsDG_out,nodeidsDG_out,CoordsVisu_DG,nodeids_DG,dim=PP_dim,DGFV=0,HighOrder=UseHighOrder)
   ! We may visualize the scaled Jacobian for debug purposes
   IF (nVarVisu.GT.0) THEN
     CALL WriteDataToVTK_array(nVarVisu,NVisu   ,nElems_DG,valuesDG_out,UVisu_DG,PP_dim)
@@ -217,13 +220,13 @@ END IF
 IF (Avg2D) THEN
   CALL WriteDataToVTK_array(nVarVisu,NVisu   ,nElemsAvg2D_DG,valuesDG_out,UVisu_DG,2)
   CALL WriteDataToVTK_array(nVarVisu,NVisu_FV,nElemsAvg2D_FV,valuesFV_out,UVisu_FV,2)
-  CALL WriteCoordsToVTK_array(NVisu   ,nElemsAvg2D_DG,coordsDG_out,nodeidsDG_out,CoordsVisu_DG,nodeids_DG,dim=2,DGFV=0)
-  CALL WriteCoordsToVTK_array(NVisu_FV,nElemsAvg2D_FV,coordsFV_out,nodeidsFV_out,CoordsVisu_FV,nodeids_FV,dim=2,DGFV=1)
+  CALL WriteCoordsToVTK_array(NVisu,nElemsAvg2D_DG,coordsDG_out,nodeidsDG_out,CoordsVisu_DG,nodeids_DG,dim=2,DGFV=0,HighOrder=UseHighOrder)
+  CALL WriteCoordsToVTK_array(NVisu_FV,nElemsAvg2D_FV,coordsFV_out,nodeidsFV_out,CoordsVisu_FV,nodeids_FV,dim=2,DGFV=1,HighOrder=UseHighOrder)
 ELSE
   CALL WriteDataToVTK_array(nVarVisu,NVisu   ,nElems_DG,valuesDG_out,UVisu_DG,PP_dim)
   CALL WriteDataToVTK_array(nVarVisu,NVisu_FV,nElems_FV,valuesFV_out,UVisu_FV,PP_dim)
-  CALL WriteCoordsToVTK_array(NVisu   ,nElems_DG,coordsDG_out,nodeidsDG_out,CoordsVisu_DG,nodeids_DG,dim=PP_dim,DGFV=0)
-  CALL WriteCoordsToVTK_array(NVisu_FV,nElems_FV,coordsFV_out,nodeidsFV_out,CoordsVisu_FV,nodeids_FV,dim=PP_dim,DGFV=1)
+  CALL WriteCoordsToVTK_array(NVisu,nElems_DG,coordsDG_out,nodeidsDG_out,CoordsVisu_DG,nodeids_DG,dim=PP_dim,DGFV=0,HighOrder=UseHighOrder)
+  CALL WriteCoordsToVTK_array(NVisu_FV,nElems_FV,coordsFV_out,nodeidsFV_out,CoordsVisu_FV,nodeids_FV,dim=PP_dim,DGFV=1,HighOrder=UseHighOrder)
 END IF
 
 CALL WriteVarnamesToVTK_array(nVarAll,mapAllVarsToVisuVars,varnames_out,VarnamesAll,nVarVisu)
@@ -233,9 +236,9 @@ CALL WriteDataToVTK_array(nVarSurfVisuAll,NVisu   ,nBCSidesVisu_DG,valuesSurfDG_
 CALL WriteDataToVTK_array(nVarSurfVisuAll,NVisu_FV,nBCSidesVisu_FV,valuesSurfFV_out,USurfVisu_FV,PP_dim-1)
 
 CALL WriteCoordsToVTK_array(NVisu   ,nBCSidesVisu_DG,coordsSurfDG_out,nodeidsSurfDG_out,&
-    CoordsSurfVisu_DG,nodeidsSurf_DG,dim=PP_dim-1,DGFV=0)
+    CoordsSurfVisu_DG,nodeidsSurf_DG,dim=PP_dim-1,DGFV=0,HighOrder=UseHighOrder)
 CALL WriteCoordsToVTK_array(NVisu_FV,nBCSidesVisu_FV,coordsSurfFV_out,nodeidsSurfFV_out,&
-    CoordsSurfVisu_FV,nodeidsSurf_FV,dim=PP_dim-1,DGFV=1)
+    CoordsSurfVisu_FV,nodeidsSurf_FV,dim=PP_dim-1,DGFV=1,HighOrder=UseHighOrder)
 
 CALL WriteVarnamesToVTK_array(nVarAll,mapAllVarsToSurfVisuVars,varnamesSurf_out,VarnamesAll,nVarSurfVisuAll)
 
