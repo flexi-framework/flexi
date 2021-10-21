@@ -178,7 +178,7 @@ ELSE
     RestartMode = 3
     SWRITE(UNIT_StdOut,'(A)') ' | Restarting from time-averaged file using primitive variables ...'
   ELSE
-    CALL CollectiveStop(__STAMP__,'Time-averaged file for restart has not all conservative/primitive variables available!')
+    RestartMode = 0
   END IF
 END IF
 #endif /* EQNSYSNR != 1 */
@@ -239,6 +239,9 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT RESTART...'
 
 ! Check if we want to perform a restart
 IF (LEN_TRIM(RestartFile).GT.0) THEN
+  ! Restart not possible, some variables might be missing
+  IF (RestartMode.LT. 1) CALL CollectiveStop(__STAMP__,'Provided file for restart has not all conservative/primitive variables available!')
+
   SWRITE(UNIT_StdOut,'(A,A,A)')' | Restarting from file "',TRIM(RestartFile),'":'
   ! Check if restart file is a valid state
   validHDF5 = ISVALIDHDF5FILE(RestartFile)
