@@ -145,7 +145,6 @@ ELSE IF (ISVALIDHDF5FILE(statefile)) THEN ! other file
     CALL DatasetExists(File_ID,"VarNames_"//TRIM(datasetNames(i)),varnames_found,attrib=.TRUE.)
     IF (varnames_found) THEN
       CALL GetVarNames("VarNames_"//TRIM(datasetNames(i)),varnames_tmp,VarNamesExist)
-          ! print*,varnames_tmp
     ELSE
       IF (STRICMP(datasetNames(i), "DG_Solution")) THEN
         IF (readDGsolutionVars) THEN
@@ -304,7 +303,7 @@ HighOrder         = GETLOGICAL('HighOrder')
 
 ! again read MeshFile from posti prm file (this overwrites the MeshFile read from the state file)
 Meshfile          =  GETSTR("MeshFile",MeshFile_state)
-IF (.NOT.FILEEXISTS(MeshFile)) THEN
+IF (.NOT.FILEEXISTS(MeshFile) .OR. ((Meshfile(1:1) .NE. "/") .OR. (Meshfile(1:1) .NE. "~") .OR. (Meshfile(1:1) .NE. "."))) THEN
   !!!!!!
   ! WARNING: GETCWD is a GNU extension to the Fortran standard and will probably not work on other compilers
   CALL GETCWD(cwd)
@@ -748,7 +747,9 @@ USE MOD_MPI                  ,ONLY: FinalizeMPI
 #endif /* USE_MPI */
 IMPLICIT NONE
 !===================================================================================================================================
+
 SWRITE (Unit_stdOut,'(A)') 'VISU FINALIZE'
+
 IF(MPIRoot)THEN
   IF(FILEEXISTS('.posti.ini'))THEN
     OPEN(UNIT=31, FILE='.posti.ini', STATUS='old')

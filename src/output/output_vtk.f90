@@ -358,7 +358,7 @@ ELSE
 END IF
 PointsPerVTKCell = MERGE((NVisu+1)**dim,2**dim,HighOrder_loc.EQ.1)
 
-SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='NO')"   WRITE ",dim,"D DATA TO VTX XML BINARY (VTU) FILE..."
+SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='NO') " WRITE ",dim,"D DATA TO VTX XML BINARY (VTU) FILE..."
 
 ! get total number of elements on all processors
 #if USE_MPI
@@ -728,7 +728,7 @@ IF (nElems.EQ.0) THEN
   RETURN
 END IF
 
-SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='NO')" WRITE ",dim,"D COORDS TO VTX XML BINARY (VTU) ARRAY..."
+SWRITE(UNIT_stdOut,'(A,I1,A)',ADVANCE='NO') " WRITE ",dim,"D COORDS TO VTX XML BINARY (VTU) ARRAY..."
 ! values and coords are already in the correct structure of VTK/Paraview
 
 ! create connectivity

@@ -23,20 +23,20 @@
 #include <iostream>
 #include <vector>
 
-#include "vtkMPI.h"
-#include "vtkMPICommunicator.h"
-#include "vtkMPIController.h"
+#include <vtkMPI.h>
+#include <vtkMPICommunicator.h>
+#include <vtkMPIController.h>
 
-#include "vtkDataArraySelection.h"
-#include "vtkCallbackCommand.h"
+#include <vtkDataArraySelection.h>
+#include <vtkCallbackCommand.h>
 #include <vtkSmartPointer.h>
 
-#include "vtkStringArray.h"
+#include <vtkStringArray.h>
 
-#include "../../pluginTypes_visu.h"
+#include <../../pluginTypes_visu.h>
 
-#include "vtkIOParallelModule.h" // For export macro
-#include "vtkMultiBlockDataSetAlgorithm.h"
+#include <vtkIOParallelModule.h> // For export macro
+#include <vtkMultiBlockDataSetAlgorithm.h>
 
 // MPI
 class vtkMultiProcessController;
