@@ -356,6 +356,8 @@ IF (LEN_TRIM(postifile).GT.0) THEN
   CALL prms%read_options(postifile)
   NVisu     = GETINT('NVisu','1') ! Degree of visualization basis
   HighOrder = GETLOGICAL('HighOrder')
+  ! Get number of variables to be visualized
+  nVarIni = CountOption("VarName")
 ELSE
   NVisu = 2*NGeo ! TODO: correct?
 END IF
