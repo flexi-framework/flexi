@@ -407,6 +407,7 @@ REAL                            :: eps3                          ! Integrand: p*
 REAL                            :: u_tens, s_tens, sd_tens       ! Matrix product, integrands of Gradvel, S, Sd
 REAL                            :: DR_S,DR_Sd,DR_p !,DR_u        ! Contributions to dissipation rate
 REAL                            :: Reynolds,lTaylor              ! Reynolds number and Taylor microscale
+REAL                            :: A_ILF_Glob                    ! Global average of Forcing Coefficient
 #if USE_MPI
 REAL                            :: rho_glob
 REAL                            :: Ekin_glob,Ekin_comp_glob
@@ -487,8 +488,10 @@ CALL MPI_REDUCE(Ekin_comp,Ekin_comp_Glob  ,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_
 CALL MPI_REDUCE(DR_S     ,DR_S_Glob       ,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 CALL MPI_REDUCE(DR_Sd    ,DR_Sd_Glob      ,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 CALL MPI_REDUCE(DR_p     ,DR_p_Glob       ,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
-IF (HIT_Avg) THEN
-  CALL MPI_ALLREDUCE(MPI_IN_PLACE,A_ILF,2,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_FLEXI,iError)
+IF (HIT_Avg) THEN ! If HIT_Avg = .TRUE., A_ILF is already averaged across all MPI ranks.
+  A_ILF_Glob = A_ILF
+ELSE ! If A_ILF is computed element-wise, we have to average across all MPI ranks
+  CALL MPI_REDUCE(A_ILF,A_ILF_Glob,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_FLEXI,iError)
 END IF
 
 ! Overwrite the variables only on root
@@ -504,6 +507,8 @@ ELSE
   ! Only root continues from here
   RETURN
 END IF
+#else
+A_ILF_Glob = A_ILF
 #endif
 
 ! Normalize the integrals with the volume and calculate turbulent quantities. The density is already accounted for in the integrands
@@ -515,9 +520,7 @@ uRMS      = SQRT(Ekin*2./3.)
 DR_S      = DR_S *mu0/Vol
 DR_SD     = DR_SD*mu0/Vol
 DR_p      = DR_p     /Vol
-IF (HIT_Avg) THEN
-  A_ILF = A_ILF/Vol
-END IF
+IF (.NOT. HIT_Avg) A_ILF_Glob = A_ILF_Glob/Vol ! Do NOT overwrite A_ILF since this is a global variable!
 
 ! Taylor microscale Reynolds number (Petersen, 2010)
 nu0      = mu0/rho
@@ -530,7 +533,7 @@ Reynolds = uRMS * lTaylor/nu0
 ! Increment output counter and fill output array at every time step
 ioCounter        = ioCounter + 1
 Time(ioCounter)  = t
-writeBuf(1:nHITVars,ioCounter) = (/DR_S,DR_Sd+DR_p,Ekin,Ekin_comp,uRMS,Reynolds,A_ILF/)
+writeBuf(1:nHITVars,ioCounter) = (/DR_S,DR_Sd+DR_p,Ekin,Ekin_comp,uRMS,Reynolds,A_ILF_Glob/)
 
 ! Perform output
 IF(ioCounter.EQ.nWriteStats)THEN
