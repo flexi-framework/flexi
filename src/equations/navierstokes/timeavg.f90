@@ -77,7 +77,7 @@ IF((nVarAvg.EQ.0).AND.(nVarFluc.EQ.0))THEN
     'No quantities for time averaging have been specified. Please specify quantities or disable time averaging!')
 END IF
 #if FV_ENABLED
-WRITE(UNIT_StdOut,*) 'Warning: If FV is enabled, time averaging is performed on integral cell mean values.'
+SWRITE(UNIT_StdOut,*) 'Warning: If FV is enabled, time averaging is performed on integral cell mean values.'
 #endif
 
 ! Define variables to be averaged
@@ -343,7 +343,7 @@ REAL                            :: dtStep
 REAL                            :: vel(3), Mach
 REAL                            :: tmpVars(nVarAvg,0:PP_N,0:PP_N,0:PP_NZ)
 LOGICAL                         :: getPrims=.FALSE.
-REAL                            :: prim(PP_nVarPrim,0:PP_N,0:PP_N,0:PP_NZ),UE(PP_2Var)
+REAL                            :: prim(PRIM,0:PP_N,0:PP_N,0:PP_NZ),UE(PP_2Var)
 #if PARABOLIC
 INTEGER                         :: p,q
 REAL                            :: GradVel(1:3,1:3), Shear(1:3,1:3)
@@ -365,12 +365,12 @@ DO iElem=1,nElems
 #if FV_ENABLED
   IF(FV_Elems(iElem).EQ.0) THEN ! DG Element
     CALL ChangeBasisVolume(PP_nVar,PP_N,PP_N,FV_Vdm,U(:,:,:,:,iElem),UFV)
-    Uloc(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) => UFV
+    Uloc(CONS,0:PP_N,0:PP_N,0:PP_NZ) => UFV
   ELSE ! already FV
-    Uloc(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) => U(:,:,:,:,iElem)
+    Uloc(CONS,0:PP_N,0:PP_N,0:PP_NZ) => U(:,:,:,:,iElem)
   END IF
 #else
-    Uloc(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ) => U(:,:,:,:,iElem)
+    Uloc(CONS,0:PP_N,0:PP_N,0:PP_NZ) => U(:,:,:,:,iElem)
 #endif
 
   IF(getPrims)THEN
@@ -381,79 +381,79 @@ DO iElem=1,nElems
 
   ! Compute time averaged variables and fluctuations of these variables
   IF(CalcAvg(1)) &  !'Density'
-    tmpVars(iAvg(1),:,:,:) = Uloc(1,:,:,:)
+    tmpVars(iAvg(1),:,:,:) = Uloc(DENS,:,:,:)
 
   IF(CalcAvg(2)) &  !'MomentumX'
-    tmpVars(iAvg(2),:,:,:) = Uloc(2,:,:,:)
+    tmpVars(iAvg(2),:,:,:) = Uloc(MOM1,:,:,:)
 
   IF(CalcAvg(3)) &  !'MomentumY'
-    tmpVars(iAvg(3),:,:,:) = Uloc(3,:,:,:)
+    tmpVars(iAvg(3),:,:,:) = Uloc(MOM2,:,:,:)
 
   IF(CalcAvg(4)) &  !'MomentumZ'
-    tmpVars(iAvg(4),:,:,:) = Uloc(4,:,:,:)
+    tmpVars(iAvg(4),:,:,:) = Uloc(MOM3,:,:,:)
 
   IF(CalcAvg(5)) &  !'EnergyStagnationDensity'
-    tmpVars(iAvg(5),:,:,:) = Uloc(5,:,:,:)
+    tmpVars(iAvg(5),:,:,:) = Uloc(ENER,:,:,:)
 
   IF(CalcAvg(6)) &  !'VelocityX'
-    tmpVars(iAvg(6),:,:,:)=prim(2,:,:,:)
+    tmpVars(iAvg(6),:,:,:) = prim(VEL1,:,:,:)
 
   IF(CalcAvg(7)) &  !'VelocityY'
-    tmpVars(iAvg(7),:,:,:)=prim(3,:,:,:)
+    tmpVars(iAvg(7),:,:,:) = prim(VEL2,:,:,:)
 
   IF(CalcAvg(8)) &  !'VelocityZ'
-    tmpVars(iAvg(8),:,:,:)=prim(4,:,:,:)
+    tmpVars(iAvg(8),:,:,:) = prim(VEL3,:,:,:)
 
   IF(CalcAvg(9))THEN  !'VelocityMagnitude'
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      tmpVars(iAvg(9),i,j,k)=SQRT(SUM(prim(2:4,i,j,k)**2))
+      tmpVars(iAvg(9),i,j,k)=SQRT(SUM(prim(VELV,i,j,k)**2))
     END DO; END DO; END DO
   END IF
 
   IF(CalcAvg(10)) & !'Pressure'
-    tmpVars(iAvg(10),:,:,:)=prim(5,:,:,:)
+    tmpVars(iAvg(10),:,:,:)=prim(PRES,:,:,:)
 
   IF(CalcAvg(11))THEN !'VelocitySound'
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      UE(CONS)=Uloc(:,i,j,k)
-      UE(PRIM)=prim(:,i,j,k)
-      UE(SRHO)=1./prim(1,i,j,k)
+      UE(EXT_CONS)=Uloc(:,i,j,k)
+      UE(EXT_PRIM)=prim(:,i,j,k)
+      UE(EXT_SRHO)=1./prim(DENS,i,j,k)
       tmpVars(iAvg(11),i,j,k)=SPEEDOFSOUND_HE(UE)
     END DO; END DO; END DO
   END IF
 
   IF(CalcAvg(12))THEN !'Mach'
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      UE(CONS)=Uloc(:,i,j,k)
-      UE(PRIM)=prim(:,i,j,k)
-      UE(SRHO)=1./prim(1,i,j,k)
-      tmpVars(iAvg(12),i,j,k)=SQRT(SUM(prim(2:4,i,j,k)**2))/SPEEDOFSOUND_HE(UE)
+      UE(EXT_CONS)=Uloc(:,i,j,k)
+      UE(EXT_PRIM)=prim(:,i,j,k)
+      UE(EXT_SRHO)=1./prim(DENS,i,j,k)
+      tmpVars(iAvg(12),i,j,k)=SQRT(SUM(prim(VELV,i,j,k)**2))/SPEEDOFSOUND_HE(UE)
     END DO; END DO; END DO
   END IF
 
   IF(CalcAvg(13))THEN !'Temperature'
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      tmpVars(iAvg(13),i,j,k)=prim(6,i,j,k)
+      tmpVars(iAvg(13),i,j,k)=prim(TEMP,i,j,k)
     END DO; END DO; END DO
   END IF
 
   IF(CalcAvg(14))THEN !'TotalTemperature'
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      UE(CONS)=Uloc(:,i,j,k)
-      UE(PRIM)=prim(:,i,j,k)
-      UE(SRHO)=1./prim(1,i,j,k)
+      UE(EXT_CONS)=Uloc(:,i,j,k)
+      UE(EXT_PRIM)=prim(:,i,j,k)
+      UE(EXT_SRHO)=1./prim(DENS,i,j,k)
       Mach=SQRT(SUM(prim(2:4,i,j,k)**2))/SPEEDOFSOUND_HE(UE)
-      tmpVars(iAvg(14),i,j,k)=TOTAL_TEMPERATURE_H(UE(TEMP),Mach)
+      tmpVars(iAvg(14),i,j,k)=TOTAL_TEMPERATURE_H(UE(EXT_TEMP),Mach)
     END DO; END DO; END DO
   END IF
 
   IF(CalcAvg(15))THEN !'TotalPressure
     DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-      UE(CONS)=Uloc(:,i,j,k)
-      UE(PRIM)=prim(:,i,j,k)
-      UE(SRHO)=1./prim(1,i,j,k)
-      Mach=SQRT(SUM(prim(2:4,i,j,k)**2))/SPEEDOFSOUND_HE(UE)
-      tmpVars(iAvg(15),i,j,k)=TOTAL_PRESSURE_H(UE(PRES),Mach)
+      UE(EXT_CONS)=Uloc(:,i,j,k)
+      UE(EXT_PRIM)=prim(:,i,j,k)
+      UE(EXT_SRHO)=1./prim(DENS,i,j,k)
+      Mach=SQRT(SUM(prim(VELV,i,j,k)**2))/SPEEDOFSOUND_HE(UE)
+      tmpVars(iAvg(15),i,j,k)=TOTAL_PRESSURE_H(UE(EXT_PRES),Mach)
     END DO; END DO; END DO
   END IF
 

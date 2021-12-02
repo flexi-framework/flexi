@@ -47,6 +47,7 @@ CONTAINS
 !> Attention 1: 1/J(i,j,k) is not yet accounted for
 !> Attention 2: input Ut is overwritten with the volume flux derivatives
 !==================================================================================================================================
+#ifndef SPLIT_DG
 SUBROUTINE VolInt_weakForm(Ut)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! MODULES
@@ -117,6 +118,7 @@ DO iElem=1,nElems
   END DO; END DO; END DO !i,j,k
 END DO ! iElem
 END SUBROUTINE VolInt_weakForm
+#endif
 
 #ifdef SPLIT_DG
 !==================================================================================================================================
@@ -135,10 +137,13 @@ SUBROUTINE VolInt_splitForm(Ut)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! MODULES
 USE MOD_PreProc
-USE MOD_DG_Vars      ,ONLY: DVolSurf,nDOFElem,UPrim,U
-USE MOD_Mesh_Vars    ,ONLY: Metrics_fTilde,Metrics_gTilde,Metrics_hTilde,nElems
+USE MOD_DG_Vars      ,ONLY: DVolSurf,UPrim,U
+USE MOD_Mesh_Vars    ,ONLY: Metrics_fTilde,Metrics_gTilde,nElems
+#if PP_dim==3 || PARABOLIC
+USE MOD_Mesh_Vars    ,ONLY: Metrics_hTilde
+#endif
 #if PARABOLIC
-USE MOD_DG_Vars      ,ONLY: D_Hat_T
+USE MOD_DG_Vars      ,ONLY: D_Hat_T,nDOFElem
 USE MOD_Flux         ,ONLY: EvalDiffFlux3D  ! computes volume fluxes in local coordinates
 USE MOD_Lifting_Vars ,ONLY: gradUx,gradUy,gradUz
 #endif

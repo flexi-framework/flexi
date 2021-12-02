@@ -53,7 +53,9 @@ CALL prms%CreateStringOption('TimeDiscMethod', "Specifies the type of time-discr
                                                & a specific Runge-Kutta scheme. Possible values:\n"//&
                                                "  * standardrk3-3\n  * carpenterrk4-5\n  * niegemannrk4-14\n"//&
                                                "  * toulorgerk4-8c\n  * toulorgerk3-7c\n  * toulorgerk4-8f\n"//&
-                                               "  * ketchesonrk4-20\n  * ketchesonrk4-18", value='CarpenterRK4-5')
+                                               "  * ketchesonrk4-20\n  * ketchesonrk4-18\n  * eulerimplicit\n"//&
+                                               "  * cranknicolson2-2\n  * esdirk2-3\n  * esdirk3-4\n"//&
+                                               "  * esdirk4-6" , value='CarpenterRK4-5')
 CALL prms%CreateRealOption(  'TEnd',           "End time of the simulation (mandatory).")
 CALL prms%CreateRealOption(  'CFLScale',       "Scaling factor for the theoretical CFL number, typical range 0.1..1.0 (mandatory)")
 CALL prms%CreateRealOption(  'DFLScale',       "Scaling factor for the theoretical DFL number, typical range 0.1..1.0 (mandatory)")
@@ -75,6 +77,7 @@ USE MOD_Overintegration_Vars,ONLY:NUnder
 USE MOD_Filter_Vars         ,ONLY:NFilter,FilterType
 USE MOD_Mesh_Vars           ,ONLY:nElems
 USE MOD_IO_HDF5             ,ONLY:AddToElemData,ElementOut
+USE MOD_Predictor           ,ONLY:InitPredictor
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -93,6 +96,11 @@ CASE('LSERKW2')
   TimeStep=>TimeStepByLSERKW2
 CASE('LSERKK3')
   TimeStep=>TimeStepByLSERKK3
+CASE('ESDIRK')
+  ! Implicit time integration
+  TimeStep=>TimeStepByESDIRK
+  ! Predictor for Newton
+  CALL InitPredictor(TimeDiscMethod)
 END SELECT
 
 IF(TimeDiscInitIsDone)THEN
@@ -138,7 +146,8 @@ SUBROUTINE TimeDisc()
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_TimeDisc_Vars       ,ONLY: TEnd,t,dt,tAnalyze,ViscousTimeStep,maxIter,Timestep,nRKStages,nCalcTimeStepMax,CurrentStage
+USE MOD_TimeDisc_Vars       ,ONLY: TEnd,t,dt,tAnalyze,ViscousTimeStep,maxIter,Timestep,nRKStages,nCalcTimeStepMax,CurrentStage,iter
+USE MOD_TimeDisc_Vars       ,ONLY: dt_old,TimeDiscType
 USE MOD_Analyze_Vars        ,ONLY: Analyze_dt,WriteData_dt,tWriteData,nWriteData
 USE MOD_AnalyzeEquation_Vars,ONLY: doCalcTimeAverage
 USE MOD_Analyze             ,ONLY: Analyze
@@ -160,6 +169,8 @@ USE MOD_RecordPoints        ,ONLY: RecordPoints,WriteRP
 USE MOD_RecordPoints_Vars   ,ONLY: RP_onProc
 USE MOD_Sponge_Vars         ,ONLY: CalcPruettDamping
 USE MOD_Indicator           ,ONLY: doCalcIndicator,CalcIndicator
+USE MOD_Predictor           ,ONLY: FillInitPredictor
+USE MOD_Implicit_Vars       ,ONLY: nGMRESIterGlobal,nNewtonIterGlobal
 #if FV_ENABLED
 USE MOD_FV
 #endif
@@ -170,7 +181,7 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL                         :: dt_Min,dt_MinOld,dtAnalyze,dtEnd,tStart
-INTEGER(KIND=8)              :: iter,iter_loc
+INTEGER(KIND=8)              :: iter_loc
 REAL                         :: CalcTimeStart,CalcTimeEnd
 INTEGER                      :: TimeArray(8)              !< Array for system time
 INTEGER                      :: errType,nCalcTimestep,writeCounter
@@ -224,6 +235,9 @@ ELSE
   SWRITE(UNIT_StdOut,*)'REWRITING SOLUTION:'
 END IF
 
+! Call Testcase analyze routines for the initial solution
+CALL AnalyzeTestCase(t)
+
 ! TODO: Should this be done before or after Overintegration? (see above) For FV we need it after DGTimeDerivative_weakForm!
 ! Write the state at time=0, i.e. the initial condition
 CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,&
@@ -271,10 +285,12 @@ CALL FV_Info(1_8)
 #endif
 SWRITE(UNIT_StdOut,*)'CALCULATION RUNNING...'
 
+IF(TimeDiscType.EQ.'ESDIRK') CALL FillInitPredictor(t)
 
 ! Run computation
 CalcTimeStart=FLEXITIME()
 DO
+  dt_old = dt
   CurrentStage=1
 ! if doAnalyze=.TRUE.: gradients were already calculated in the previous step!
   IF(doAnalyze)THEN
@@ -363,6 +379,12 @@ DO
       WRITE(UNIT_StdOut,'(A,ES16.7)')' Timestep   : ',dt_Min
       IF(ViscousTimeStep) WRITE(UNIT_StdOut,'(A)')' Viscous timestep dominates! '
       WRITE(UNIT_stdOut,'(A,ES16.7)')'#Timesteps  : ',REAL(iter)
+      IF(TimeDiscType.EQ.'ESDIRK') THEN 
+        WRITE(UNIT_stdOut,'(A,ES16.7)')'#GMRES iter  : ',REAL(nGMRESIterGlobal)
+        WRITE(UNIT_stdOut,'(A,ES16.7)')'#Newton iter : ',REAL(nNewtonIterGlobal)
+        nGMRESIterGlobal  = 0
+        nNewtonIterGlobal = 0
+      END IF
     END IF !MPIroot
 #if FV_ENABLED
     CALL FV_Info(iter_loc)
@@ -424,7 +446,7 @@ USE MOD_FV_Vars      ,ONLY: FV_toDGinRK
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)  :: t                                     !< current simulation time
+REAL,INTENT(INOUT)  :: t                                     !< current simulation time
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL     :: Ut_temp(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) ! temporal variable for Ut
@@ -485,7 +507,7 @@ USE MOD_FV_Vars      ,ONLY: FV_toDGinRK
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(IN)  :: t                                     !< current simulation time
+REAL,INTENT(INOUT)  :: t                                     !< current simulation time
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL     :: S2(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
@@ -526,6 +548,111 @@ CurrentStage=1
 
 END SUBROUTINE TimeStepByLSERKK3
 
+!===================================================================================================================================
+!> This procedure takes the current time t, the time step dt and the solution at
+!> the current time U(t) and returns the solution at the next time level.
+!> ESDIRK time integrator with RKA/b/c from Butcher tableau:
+!>
+!> Un=U
+!> Calculation of the explicit terms for every stage i=1,...,s of the ESDIRK
+!> RHS_(i-1) = Un + dt * sum(j=1,i-1) a_ij  Ut(t^n + c_j delta t^n, U_j)
+!> Call Newton for searching the roots of the function
+!> F(U) = U - RHS(i-1) - a_ii * delta t * Ut(t^n + c_i * delta t^n, U) = 0
+!===================================================================================================================================
+SUBROUTINE TimeStepByESDIRK(t)
+! MODULES
+USE MOD_PreProc
+USE MOD_Globals
+USE MOD_Mathtools         ,ONLY: GlobalVectorDotProduct
+USE MOD_DG                ,ONLY: DGTimeDerivative_weakForm
+USE MOD_DG_Vars           ,ONLY: U,Ut
+USE MOD_TimeDisc_Vars     ,ONLY: dt,nRKStages,RKA_implicit,RKc_implicit,iter,CFLScale,CFLScale_Readin
+#if PARABOLIC
+USE MOD_TimeDisc_Vars     ,ONLY: DFLScale,DFLScale_Readin
+#endif
+USE MOD_TimeDisc_Vars     ,ONLY: RKb_implicit,RKb_embedded,safety,ESDIRK_gamma
+USE MOD_Mesh_Vars         ,ONLY: nElems
+USE MOD_Implicit          ,ONLY: Newton
+USE MOD_Implicit_Vars     ,ONLY: LinSolverRHS,adaptepsNewton,epsNewton,nDOFVarProc,nGMRESIterdt,NewtonConverged,nInnerGMRES
+USE MOD_Predictor         ,ONLY: Predictor,PredictorStoreValues
+USE MOD_Precond           ,ONLY: BuildPrecond
+USE MOD_Precond_Vars      ,ONLY: PrecondIter
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+REAL,INTENT(INOUT) :: t   !< current simulation time
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL    :: Ut_implicit(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems,1:nRKStages) ! temporal variable for Ut_implicit
+REAL    :: Un(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
+INTEGER :: iStage,iCounter
+REAL    :: tStage
+REAL    :: delta_embedded(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)          ! difference between solution obtained with 
+                                                                             ! full order scheme and embedded scheme
+!===================================================================================================================================
+!CALL DGTimeDerivative_weakForm(t)! has to be called before preconditioner to fill U_master/slave ! already called in timedisc
+IF ((iter==0).OR.(MOD(iter,PrecondIter)==0)) CALL BuildPrecond(t,ESDIRK_gamma,dt)
+tStage                   = t
+Un                       = U
+Ut_implicit(:,:,:,:,:,1) = Ut
+DO iStage=2,nRKStages
+  IF (NewtonConverged) THEN
+    ! Time of current stage
+    tStage = tStage + RKc_implicit(iStage)*dt
+    ! Compute RHS for linear solver
+    LinSolverRHS=Un
+    DO iCounter=1,iStage-1
+      LinSolverRHS = LinSolverRHS + dt*(RKA_implicit(iStage,iCounter)*Ut_implicit(:,:,:,:,:,iCounter))
+    END DO
+    ! Get predictor of u^s+1
+    CALL Predictor(tStage,iStage)
+    ! Solve to new stage 
+    CALL Newton(tStage,RKA_implicit(iStage,iStage))
+    ! Store old values for use in next stages
+    !CALL DGTimeDerivative_weakForm(tStage) ! already set in last Newton iteration
+    Ut_implicit(:,:,:,:,:,iStage)=Ut
+    ! Store predictor
+    CALL PredictorStoreValues(Ut_implicit,Un,tStage,iStage)
+  END IF
+END DO
+
+! Adaptive Newton tolerance, see: Kennedy,Carpenter: Additive Runge-Kutta Schemes for Convection-Diffusion-Reaction Equations
+IF (adaptepsNewton.AND.NewtonConverged) THEN
+  delta_embedded = 0.
+  DO iStage=1,nRKStages
+    delta_embedded = delta_embedded + (RKb_implicit(iStage)-RKb_embedded(iStage)) * Ut_implicit(:,:,:,:,:,iStage)
+  END DO
+  CALL GlobalVectorDotProduct(delta_embedded,delta_embedded,nDOFVarProc,epsNewton)
+  epsNewton = (MIN(dt*SQRT(epsNewton)/safety,1E-3))
+#if DEBUG
+  SWRITE(*,*) 'epsNewton = ',epsNewton
+#endif
+END IF
+
+IF (NewtonConverged) THEN
+  ! increase timestep size until target CFLScale is reached
+  CFLScale = MIN(CFLScale_Readin,1.05*CFLScale)
+#if PARABOLIC
+  DFLScale = MIN(DFLScale_Readin,1.05*DFLScale)
+#endif
+ELSE
+  ! repeat current timestep with decreased timestep size
+  U = Un
+  t = t-dt
+  CFLScale = 0.5*CFLScale
+#if PARABOLIC
+  DFLScale = 0.5*DFLScale
+#endif
+  NewtonConverged = .TRUE.
+  IF (CFLScale(0).LT.0.01*CFLScale_Readin(0)) THEN
+    CALL abort(__STAMP__, &
+    'Newton not converged with GMRES Iterations of last Newton step and CFL reduction',nInnerGMRES,CFLScale(0)/CFLScale_Readin(0))
+  END IF
+  SWRITE(*,*) 'Attention: Timestep failed, repeating with dt/2!'
+END IF
+
+nGMRESIterdt = 0
+END SUBROUTINE TimeStepByESDIRK
 
 !===================================================================================================================================
 !> Scaling of the CFL number, from paper GASSNER, KOPRIVA, "A comparision of the Gauss and Gauss-Lobatto
@@ -537,9 +664,9 @@ SUBROUTINE FillCFL_DFL(Nin_CFL,Nin_DFL)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Globals
-USE MOD_TimeDisc_Vars,ONLY:CFLScale,CFLScaleAlpha
+USE MOD_TimeDisc_Vars,ONLY:CFLScale,CFLScale_Readin,CFLScaleAlpha
 #if PARABOLIC
-USE MOD_TimeDisc_Vars,ONLY:DFLScale,DFLScaleAlpha,RelativeDFL
+USE MOD_TimeDisc_Vars,ONLY:DFLScale,DFLScale_Readin,DFLScaleAlpha,RelativeDFL
 #endif /*PARABOLIC*/
 #if FV_ENABLED
 USE MOD_TimeDisc_Vars,ONLY:CFLScaleFV
@@ -572,6 +699,7 @@ END IF
 !scale with 2N+1
 CFLScale(0) = CFLScale(0)/(2.*Nin_CFL+1.)
 SWRITE(UNIT_stdOut,'(A,2ES16.7)') '   CFL (DG/FV):',CFLScale
+CFLScale_Readin = CFLScale
 
 #if PARABOLIC
 !########################### DFL ########################################
@@ -590,6 +718,7 @@ IF((Nin_DFL.GT.10).OR.(DFLScale(0).GT.alpha))THEN
 END IF
 DFLScale(0) = DFLScale(0)/(2.*Nin_DFL+1.)**2
 SWRITE(UNIT_stdOut,'(A,2ES16.7)') '   DFL (DG/FV):',DFLScale
+DFLScale_Readin = DFLScale
 #else
 dummy = Nin_DFL ! prevent compile warning
 #endif /*PARABOLIC*/

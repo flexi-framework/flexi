@@ -83,6 +83,7 @@ ELSE
 END IF
 END SUBROUTINE ReadState
 
+
 !===================================================================================================================================
 !> Read a state file via Restart routine and preforms one DGTimeDerivative_weakForm.
 !> This fill at least 'U', 'UPrim', and the gradients 'gradUx/y/z'.
@@ -203,11 +204,12 @@ CALL InitFV()
 CALL InitLifting()
 #endif /*PARABOLIC*/
 CALL Restart(doFlushFiles=.FALSE.)
-SWRITE(*,*) "Call DGTimeDerivative_weakForm ... "
+SWRITE(UNIT_stdOut,'(A)',ADVANCE='NO')" Call DGTimeDerivative_weakForm..."
 CALL DGTimeDerivative_weakForm(RestartTime)
-SWRITE(*,*) "  DONE"
+SWRITE(UNIT_stdOut,'(A)')             "DONE"
 
 CALL FinalizeParameters()
+
 END SUBROUTINE ReadStateAndGradients
 
 
@@ -218,20 +220,26 @@ SUBROUTINE ReadStateWithoutGradients(prmfile,statefile,Nin)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
+USE MOD_DG_Vars             ,ONLY: U
+USE MOD_EOS                 ,ONLY: DefineParametersEos,InitEOS,PrimToCons
+USE MOD_Interpolation       ,ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
+USE MOD_HDF5_Input          ,ONLY: OpenDataFile,ReadArray,CloseDataFile
+USE MOD_IO_HDF5             ,ONLY: DefineParametersIO_HDF5,InitIOHDF5
+USE MOD_Mesh                ,ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
+USE MOD_Mesh_Vars           ,ONLY: nElems,offsetElem
+USE MOD_MPI                 ,ONLY: DefineParametersMPI
+USE MOD_ReadInTools         ,ONLY: prms
+USE MOD_ReadInTools         ,ONLY: FinalizeParameters
 USE MOD_Visu_Vars
-USE MOD_MPI,                 ONLY: DefineParametersMPI
+#if EQNSYSNR!=1
+USE MOD_HDF5_Input          ,ONLY: GetDataSize
+USE MOD_IO_HDF5             ,ONLY: File_ID,nDims,HSize
+USE MOD_Mesh_Vars           ,ONLY: nElems,nGlobalElems,offsetElem
+USE MOD_Restart_Vars        ,ONLY: RestartMode,RestartCons,RestartPrim,nVar_Restart
+#endif /* EQNSYSNR!=1 */
 #if USE_MPI
 USE MOD_MPI,                 ONLY: FinalizeMPI
 #endif
-USE MOD_IO_HDF5,             ONLY: DefineParametersIO_HDF5,InitIOHDF5
-USE MOD_Mesh                ,ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
-USE MOD_ReadInTools         ,ONLY: prms
-USE MOD_ReadInTools         ,ONLY: FinalizeParameters
-USE MOD_Mesh_Vars           ,ONLY: nElems,offsetElem
-USE MOD_HDF5_Input,          ONLY: OpenDataFile,ReadArray,CloseDataFile
-USE MOD_DG_Vars             ,ONLY: U
-USE MOD_EOS                 ,ONLY: DefineParametersEos,InitEOS
-USE MOD_Interpolation       ,ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
 #if FV_ENABLED
 USE MOD_FV_Basis            ,ONLY: InitFV_Basis,FinalizeFV_Basis
 USE MOD_Mortar              ,ONLY: InitMortar,FinalizeMortar
@@ -246,6 +254,10 @@ INTEGER,INTENT(IN),OPTIONAL  :: Nin           !< Polynomial degree used in InitI
 ! LOCAL VARIABLES
 INTEGER           :: meshMode_loc
 LOGICAL           :: changedMeshMode
+#if EQNSYSNR!=1
+INTEGER           :: HSize_proc(5),iVar
+REAL,ALLOCATABLE  :: U_local(:,:,:,:,:),U_local2(:,:,:,:,:)
+#endif /* EQNSYSNR!=1 */
 !===================================================================================================================================
 CALL FinalizeInterpolation()
 
@@ -253,7 +265,6 @@ CALL FinalizeInterpolation()
 meshMode_loc = 0 ! Minimal mesh init
 IF (doSurfVisu)  meshMode_loc = MAX(meshMode_loc,2)
 IF (hasFV_Elems) meshMode_loc = MAX(meshMode_loc,2)
-
 
 #if FV_ENABLED
 ! For FV and higher mesh modes the FV basis is needed
@@ -265,7 +276,6 @@ END IF
 
 ! check if the mesh mode has changed from the last time
 changedMeshMode = (meshMode_loc.NE.meshMode_old)
-
 
 #if USE_MPI
 IF ((changedMeshFile).OR.(changedMeshMode)) THEN
@@ -314,7 +324,53 @@ meshMode_old = meshMode_loc
 SDEALLOCATE(U)
 ALLOCATE(U(1:nVar_State,0:PP_N,0:PP_N,0:PP_NZ,nElems))
 CALL OpenDataFile(statefile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
-CALL ReadArray('DG_Solution',5,(/nVar_State,PP_N+1,PP_N+1,PP_NZ+1,nElems/),offsetElem,5,RealArray=U)
+#if EQNSYSNR!=1
+SELECT CASE(RestartMode)
+  ! State file or no CheckRestartFile performed
+  CASE(-1,1)
+#endif /* EQNSYSNR!=1 */
+    CALL ReadArray('DG_Solution',5,(/nVar_State,PP_N+1,PP_N+1,PP_NZ+1,nElems/),offsetElem,5,RealArray=U)
+#if EQNSYSNR!=1
+  ! TimeAvg file
+  CASE(2,3)
+    ! PV_PLUGIN with no variable selected will pass nVar_State=1
+    IF (nVar_State.EQ.1) THEN
+      CALL ReadArray('DG_Solution',5,(/nVar_State,PP_N+1,PP_N+1,PP_NZ+1,nElems/),offsetElem,5,RealArray=U)
+    ELSE
+      CALL GetDataSize(File_ID,'Mean',nDims,HSize)
+
+      ! Sanity check, number of elements
+      IF ((HSize(2).NE.PP_N+1).OR.(HSize(3).NE.PP_N+1).OR.(HSize(5).NE.nGlobalElems)) &
+        CALL Abort(__STAMP__,"Dimensions of restart file do not match!")
+
+      HSize_proc    = INT(HSize)
+      HSize_proc(5) = nElems
+      ! Allocate array to hold the restart data
+      ALLOCATE(U_local(nVar_Restart,0:HSize(2)-1,0:HSize(3)-1,0:HSize(4)-1,nElems))
+      CALL ReadArray('Mean',5,HSize_proc,OffsetElem,5,RealArray=U_local)
+
+      ! Conservative Variables, time-averaged
+      IF (RestartMode.EQ.2) THEN
+        DO iVar = 1,PP_nVar
+          U(iVar,:,:,:,:) = U_local(RestartCons(iVar),:,:,:,:)
+        END DO
+      ! Primitive Variables, time-averaged
+      ELSEIF (RestartMode.EQ.3) THEN
+        ! Variables might not be continuous
+        ALLOCATE(U_local2(1:PP_nVarPrim,0:HSize_proc(2)-1,0:HSize_proc(3)-1,0:HSize_proc(4)-1,nElems))
+        DO iVar = 1,PP_nVarPrim
+          U_local2(iVar,:,:,:,:) = U_local(RestartPrim(iVar),:,:,:,:)
+        END DO
+        CALL PrimToCons(HSize_proc(2)-1,U_local2(:,:,:,:,:),U(:,:,:,:,:))
+        DEALLOCATE(U_local2)
+      END IF
+
+      DEALLOCATE(U_local)
+    END IF
+END SELECT
+#endif /* EQNSYSNR!=1 */
+
+
 CALL CloseDataFile()
 
 CALL FinalizeParameters()

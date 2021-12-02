@@ -87,7 +87,8 @@ IF (MPIRoot) CALL EXECUTE_COMMAND_LINE("cp -f "//TRIM(Args(1))//" "//TRIM(NewFil
 ! Loop over all the datasets 
 DO iDataset = 1, SIZE(tmpDatasetNames)
   ! Read in the elementwise or pointwise arrays
-  WRITE(*,*) 'Read dataset ',tmpDatasetNames(iDataset)
+  WRITE(*,*) ''
+  WRITE(*,*) 'Read dataset ',TRIM(tmpDatasetNames(iDataset))
   CALL OpenDataFile(TRIM(Args(1)),create=.FALSE.,single=.TRUE.,readOnly=.TRUE.)
   CALL GetDataSize(File_ID,TRIM(tmpDatasetNames(iDataset)),nDims,HSize)
   IF (nDims.EQ.2) THEN
@@ -106,7 +107,9 @@ DO iDataset = 1, SIZE(tmpDatasetNames)
     ALLOCATE(wGP(0:N))
     CALL GetNodesAndWeights(N,TRIM(NodeType),xGP,wGP)
   ELSE
-    STOP
+    CALL CloseDataFile()
+    WRITE(*,*) 'Skip dataset ',TRIM(tmpDatasetNames(iDataset)), ' (wrong dimension)'
+    CYCLE
   END IF
   CALL CloseDataFile()
 
@@ -165,7 +168,7 @@ DO iDataset = 1, SIZE(tmpDatasetNames)
 
   
   ! Open new file and write the array
-  WRITE(*,*) 'Write dataset ',tmpDatasetNames(iDataset)
+  WRITE(*,*) 'Write dataset ',TRIM(tmpDatasetNames(iDataset))
   CALL OpenDataFile(TRIM(NewFileName),create=.FALSE.,single=.TRUE.,readOnly=.FALSE.)
   IF (nDims.EQ.2) THEN
     CALL WriteArray(TRIM(tmpDatasetNames(iDataset)),2,&

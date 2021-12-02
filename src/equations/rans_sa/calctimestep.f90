@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -144,18 +144,18 @@ DO iElem=1,nElems
 #endif /*PARABOLIC*/
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
     ! TODO: ATTENTION: Temperature of UE not filled!!!
-    UE(CONS)=U(:,i,j,k,iElem)
-    UE(SRHO)=1./UE(DENS)
-    UE(VELV)=VELOCITY_HE(UE)
-    UE(PRES)=PRESSURE_HE(UE)
-    UE(TEMP)=TEMPERATURE_HE(UE)
+    UE(EXT_CONS)=U(:,i,j,k,iElem)
+    UE(EXT_SRHO)=1./UE(EXT_DENS)
+    UE(EXT_VELV)=VELOCITY_HE(UE)
+    UE(EXT_PRES)=PRESSURE_HE(UE)
+    UE(EXT_TEMP)=TEMPERATURE_HE(UE)
     ! Convective Eigenvalues
-    IF(IEEE_IS_NAN(UE(DENS)))THEN
+    IF(IEEE_IS_NAN(UE(EXT_DENS)))THEN
       ERRWRITE(*,'(A,3ES16.7)')'Density NaN, Position= ',Elem_xGP(:,i,j,k,iElem)
       errType=1
     END IF
     c=SPEEDOFSOUND_HE(UE)
-    vsJ=UE(VELV)*sJ(i,j,k,iElem,FVE)
+    vsJ=UE(EXT_VELV)*sJ(i,j,k,iElem,FVE)
     Max_Lambda(1)=MAX(Max_Lambda(1),ABS(SUM(Metrics_fTilde(:,i,j,k,iElem,FVE)*vsJ)) + &
                                               c*MetricsAdv(1,i,j,k,iElem,FVE))
     Max_Lambda(2)=MAX(Max_Lambda(2),ABS(SUM(Metrics_gTilde(:,i,j,k,iElem,FVE)*vsJ)) + &
@@ -166,10 +166,10 @@ DO iElem=1,nElems
 #endif
 #if PARABOLIC
     ! Viscous Eigenvalues
-    prim = UE(PRIM)
+    prim = UE(EXT_PRIM)
     mu=VISCOSITY_PRIM(prim)
     ! Add turbulent viscosity
-    muTilde = U(6,i,j,k,iElem)
+    muTilde = U(MUSA,i,j,k,iElem)
     IF(IEEE_IS_NAN(muTilde))THEN
       ERRWRITE(*,'(A,3ES16.7)')'muTilde NaN, Position= ',Elem_xGP(:,i,j,k,iElem)
       errType=4
@@ -177,7 +177,7 @@ DO iElem=1,nElems
     chi = muTilde/mu
     muTurb = muTilde*fv1(chi)
     muEff = MAX(mu,mu+muTurb)  ! Ignore muTurb < 0
-    Max_Lambda_v=MAX(Max_Lambda_v,muEff*UE(SRHO)*MetricsVisc(:,i,j,k,iElem,FVE))
+    Max_Lambda_v=MAX(Max_Lambda_v,muEff*UE(EXT_SRHO)*MetricsVisc(:,i,j,k,iElem,FVE))
 #endif /* PARABOLIC*/
   END DO; END DO; END DO ! i,j,k
 

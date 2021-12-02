@@ -123,6 +123,12 @@ gnu_channelRANS:
   script:
     - if [ -n "${DO_WEEKLY}" ]; then cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/channelRANS -j 6 ; fi
 
+gnu_imperator:
+  <<: *defaults_gnu
+  stage: reggie_weekly
+  script:
+    - if [ -n "${DO_WEEKLY}" ]; then  cd build_gnu ;  python ./reggie2.0/reggie.py ../regressioncheck/checks/preconditioner -j 6; fi
+
 # ----------------------------------------------------------------------------------------------------------------------------------------------------
 # Stage "deploy": 1. Creates doxygen documentation & compiles the documentation creating the *.pdf
 #                 2. Copies the doxygen documentation and userguide *.pdf to the homepage server & copies the repository to github

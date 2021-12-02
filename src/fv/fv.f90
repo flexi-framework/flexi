@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -415,6 +415,43 @@ END SUBROUTINE FV_InterpolateFV2DG
 
 
 !==================================================================================================================================
+!> Interpolate face solution from DG representation to FV subcells.
+!> Interpolation is done either conservatively in reference space or non-conservatively in phyiscal space.
+!==================================================================================================================================
+PPURE SUBROUTINE FV_InterpolateDG2FV_Face(nVar,U_In,sJ_In)
+! MODULES
+USE MOD_PreProc
+USE MOD_FV_Vars          ,ONLY: switchConservative,FV_Vdm
+USE MOD_ChangeBasisByDim ,ONLY: ChangeBasisSurf
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+INTEGER,INTENT(IN) :: nVar                               !< number of variables
+REAL,INTENT(INOUT) :: U_In(nVar,0:PP_N,0:PP_NZ)          !< state vector to be switched from DG to FV representation
+REAL,INTENT(IN)    :: sJ_In(0:PP_N,0:PP_NZ,0:FV_ENABLED) !< inverse of Jacobian determinant at each Gauss point
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER            :: p,q
+!==================================================================================================================================
+IF (switchConservative) THEN
+  ! Transform the DG solution into the reference element
+  DO q=0,PP_NZ; DO p=0,PP_N
+    U_In(:,p,q)=U_In(:,p,q)/sJ_In(p,q,0)
+  END DO; END DO
+  ! Perform interpolation from DG to FV
+  CALL ChangeBasisSurf(nVar,PP_N,PP_N,FV_Vdm,U_In)
+  ! Transform back to physical space
+  DO q=0,PP_NZ; DO p=0,PP_N
+    U_In(:,p,q)=U_In(:,p,q)*sJ_In(p,q,1)
+  END DO; END DO
+ELSE
+  CALL ChangeBasisSurf(nVar,PP_N,PP_N,FV_Vdm,U_In)
+END IF
+END SUBROUTINE FV_InterpolateDG2FV_Face
+
+
+!==================================================================================================================================
 !> Print information on the amount of FV subcells
 !==================================================================================================================================
 SUBROUTINE FV_Info(iter)
@@ -541,15 +578,14 @@ END IF
 END SUBROUTINE FV_FillIni
 
 !==================================================================================================================================
-!> Switch DG solution at faces between a DG element and a FV sub-cells element to Finite Volume.
+!> Switch DG solution at faces between a DG element and an FV sub-cells element to Finite Volume.
 !==================================================================================================================================
-SUBROUTINE FV_DGtoFV(nVar,U_master,U_slave)
+PPURE SUBROUTINE FV_DGtoFV(nVar,U_master,U_slave)
 ! MODULES
 USE MOD_PreProc
-USE MOD_Globals
-USE MOD_ChangeBasisByDim ,ONLY: ChangeBasisSurf
-USE MOD_FV_Vars
-USE MOD_Mesh_Vars   ,ONLY: firstInnerSide,lastMPISide_MINE,nSides
+USE MOD_FV_Vars          ,ONLY: FV_Elems_Sum
+USE MOD_Mesh_Vars        ,ONLY: firstInnerSide,lastMPISide_MINE,nSides
+USE MOD_Mesh_Vars        ,ONLY: sJ_master,sJ_slave
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -559,16 +595,16 @@ REAL,INTENT(INOUT) :: U_master(nVar,0:PP_N,0:PP_NZ,1:nSides) !< Solution on mast
 REAL,INTENT(INOUT) :: U_slave (nVar,0:PP_N,0:PP_NZ,1:nSides) !< Solution on slave side
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER     :: firstSideID,lastSideID,SideID
+INTEGER            :: firstSideID,lastSideID,SideID
 !==================================================================================================================================
 firstSideID = firstInnerSide
 lastSideID  = lastMPISide_MINE
 
 DO SideID=firstSideID,lastSideID
   IF (FV_Elems_Sum(SideID).EQ.2) THEN
-    CALL ChangeBasisSurf(nVar,PP_N,PP_N,FV_Vdm,U_master(:,:,:,SideID))
+    CALL FV_InterpolateDG2FV_Face(nVar,U_master(:,:,:,SideID),sJ_master(1,:,:,SideID,:))
   ELSE IF (FV_Elems_Sum(SideID).EQ.1) THEN
-    CALL ChangeBasisSurf(nVar,PP_N,PP_N,FV_Vdm,U_slave (:,:,:,SideID))
+    CALL FV_InterpolateDG2FV_Face(nVar,U_slave( :,:,:,SideID),sJ_slave( 1,:,:,SideID,:))
   END IF
 END DO
 

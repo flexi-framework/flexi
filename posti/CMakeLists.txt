@@ -17,19 +17,23 @@ CMAKE_DEPENDENT_OPTION(POSTI_HIT_INIT              "Build the init hit tool"    
 CMAKE_DEPENDENT_OPTION(POSTI_HIT_FILTER            "Build the filter hit tool"                          OFF "POSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_HIT_ANALYZE           "Build the analyze hit tool"                         OFF "POSTI" OFF)
 
+# =========================================================================
+# Build shared posti library
+# =========================================================================
+# collect F90 files for the common Posti modules
+FILE(GLOB_RECURSE postiF90 ./posti/common/vtkOutput/*.f90
+                           ./posti/common/spline/*.f90)
+ADD_LIBRARY(libposti STATIC ${postiF90})
+SET_TARGET_PROPERTIES(libposti PROPERTIES OUTPUT_NAME "libposti")
+SET_TARGET_PROPERTIES(libposti PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS})
+TARGET_LINK_LIBRARIES(libposti libflexishared)
+ADD_DEPENDENCIES(libposti libflexishared)
+
 
 # =========================================================================
-# Build vtk structured output library
+# FFTW library
 # =========================================================================
-ADD_LIBRARY(vtklib STATIC ${CMAKE_CURRENT_SOURCE_DIR}/posti/common/vtkOutput/vtkStructuredOutput.f90)
-SET_TARGET_PROPERTIES(vtklib PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS})
-TARGET_LINK_LIBRARIES(vtklib libflexishared)
-ADD_DEPENDENCIES(vtklib libflexishared)
-
-IF(POSTI_RP_VISUALIZE OR POSTI_CHANNEL_FFT OR POSTI_HIT_INIT OR POSTI_HIT_ANALYZE OR POSTI_HITi_FILTER)
-  # =========================================================================
-  # FFTW (FFT tool)
-  # =========================================================================
+IF(POSTI_RP_VISUALIZE OR POSTI_CHANNEL_FFT OR POSTI_HIT_INIT OR POSTI_HIT_FILTER OR POSTI_HIT_ANALYZE)
   SET (FFTWDOWNLOAD ${LIBS_DLPATH}libs/FFTW.git )
   SET(POSTI_FFTWTAG "fftw-3.3.9" CACHE STRING "FFTW version tag")
   SET(POSTI_FFTWDIR ${LIBS_EXTERNAL_LIB_DIR}/fftw)
@@ -47,25 +51,23 @@ IF(POSTI_RP_VISUALIZE OR POSTI_CHANNEL_FFT OR POSTI_HIT_INIT OR POSTI_HIT_ANALYZ
         GIT_TAG ${POSTI_FFTWTAG}
         ${${GITSHALLOW}}
         PREFIX  ${POSTI_FFTWDIR}
-	UPDATE_COMMAND ""
+	  UPDATE_COMMAND ""
         CONFIGURE_COMMAND tar xzf ${POSTI_FFTWTAG}.tar.gz && FC=${CMAKE_Fortran_COMPILER} CC=${CMAKE_C_COMPILER} F77=${CMAKE_F77_COMPILER} ${POSTI_FFTWDIR}/src/fftw/${POSTI_FFTWTAG}/configure --prefix=${POSTI_FFTWDIR}/build --enable-openmp
         BUILD_IN_SOURCE 1
       )
     SET(FFTW_INCLUDE_DIR ${POSTI_FFTWDIR}/build/include)
-    SET(FFTW_LIBRARIES   ${POSTI_FFTWDIR}/build/lib/libfftw3.a)
-    IF (LIBS_USE_OPENMP)
-      LIST(APPEND FFTW_LIBRARIES ${POSTI_FFTWDIR}/build/lib/libfftw3_omp.a)
-    ENDIF()
+    SET(FFTW_LIBRARY     ${POSTI_FFTWDIR}/build/lib/libfftw3.a)
+    SET(FFTW_OMP_LIBRARY ${POSTI_FFTWDIR}/build/lib/libfftw3_omp.a)
     SET_PROPERTY(DIRECTORY PROPERTY CLEAN_NO_CUSTOM 1)
     LIST(APPEND SELFBUILTEXTERNALS fftw)
   ELSE()
     MESSAGE(STATUS "FFTW includes found: " ${FFTW_INCLUDES})
     SET(FFTW_INCLUDE_DIR ${FFTW_INCLUDES})
-    SET(FFTW_LIBRARIES   ${FFTW_LIBRARY})
-    IF (LIBS_USE_OPENMP)
-      LIST(APPEND FFTW_LIBRARIES ${FFTW_OMP_LIBRARY})
-    ENDIF()
-    ADD_CUSTOM_TARGET(fftw)
+  ENDIF()
+
+  SET(FFTW_LIBRARIES   ${FFTW_LIBRARY})
+  IF (LIBS_USE_OPENMP)
+    LIST(APPEND FFTW_LIBRARIES ${FFTW_OMP_LIBRARY})
   ENDIF()
 
   # Build static FFTW library to be included in each POSTI tool
@@ -73,7 +75,9 @@ IF(POSTI_RP_VISUALIZE OR POSTI_CHANNEL_FFT OR POSTI_HIT_INIT OR POSTI_HIT_ANALYZ
   SET_TARGET_PROPERTIES(fftwlib PROPERTIES COMPILE_FLAGS ${FLEXI_COMPILE_FLAGS})
   TARGET_LINK_LIBRARIES(fftwlib ${FFTW_LIBRARIES})
   TARGET_INCLUDE_DIRECTORIES(fftwlib PRIVATE ${FFTW_INCLUDE_DIR})
-  ADD_DEPENDENCIES(fftwlib fftw)
+  IF(SELFBUILTEXTERNALS)
+    ADD_DEPENDENCIES(fftwlib ${SELFBUILTEXTERNALS})
+  ENDIF()
 ENDIF()
 
 

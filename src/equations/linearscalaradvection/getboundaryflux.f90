@@ -32,6 +32,10 @@ INTERFACE GetBoundaryFlux
   MODULE PROCEDURE GetBoundaryFlux
 END INTERFACE
 
+INTERFACE GetBoundaryState
+  MODULE PROCEDURE GetBoundaryState
+END INTERFACE
+
 #if FV_ENABLED
 #if FV_RECONSTRUCT
 INTERFACE GetBoundaryFVgradient
@@ -53,6 +57,7 @@ PUBLIC :: Lifting_GetBoundaryFlux
 
 PUBLIC :: InitBC
 PUBLIC :: GetBoundaryFlux
+PUBLIC :: GetBoundaryState
 #if FV_ENABLED
 #if FV_RECONSTRUCT
 PUBLIC :: GetBoundaryFVgradient
@@ -132,6 +137,51 @@ END DO
 
 END SUBROUTINE InitBC
 
+!==================================================================================================================================
+!> Computes the boundary state for the different boundary conditions.
+!==================================================================================================================================
+SUBROUTINE GetBoundaryState(SideID,t,Nloc,UPrim_boundary,UPrim_master,NormVec,TangVec1,TangVec2,Face_xGP)
+!----------------------------------------------------------------------------------------------------------------------------------
+! MODULES
+USE MOD_PreProc
+USE MOD_Globals      ,ONLY: Abort
+USE MOD_Mesh_Vars    ,ONLY: BoundaryType,BC
+USE MOD_ExactFunc    ,ONLY: ExactFunc
+USE MOD_Equation_Vars,ONLY: IniExactFunc
+!----------------------------------------------------------------------------------------------------------------------------------
+IMPLICIT NONE
+! INPUT / OUTPUT VARIABLES
+INTEGER,INTENT(IN)      :: SideID                                          !< ID of current side
+REAL,INTENT(IN)         :: t       !< current time (provided by time integration scheme)
+INTEGER,INTENT(IN)      :: Nloc    !< polynomial degree
+REAL,INTENT(IN)         :: UPrim_master(  PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)) !< inner surface solution
+REAL,INTENT(IN)         :: NormVec(                 3,0:Nloc,0:ZDIM(Nloc)) !< normal surface vectors
+REAL,INTENT(IN)         :: TangVec1(                3,0:Nloc,0:ZDIM(Nloc)) !< tangent surface vectors 1
+REAL,INTENT(IN)         :: TangVec2(                3,0:Nloc,0:ZDIM(Nloc)) !< tangent surface vectors 2
+REAL,INTENT(IN)         :: Face_xGP(                3,0:Nloc,0:ZDIM(Nloc)) !< positions of surface flux points
+REAL,INTENT(OUT)        :: UPrim_boundary(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)) !< resulting boundary state
+
+! INPUT / OUTPUT VARIABLES 
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                 :: p,q
+INTEGER                 :: BCType
+!===================================================================================================================================
+BCType  = Boundarytype(BC(SideID),BC_TYPE)
+SELECT CASE(BCType)
+CASE(2) !Exact function or refstate
+  DO q=0,ZDIM(Nloc); DO p=0,Nloc
+    CALL ExactFunc(IniExactFunc,t,Face_xGP(:,p,q),UPrim_boundary(:,p,q))
+  END DO; END DO
+CASE(1) !Periodic already filled!
+  CALL Abort(__STAMP__, &
+      "GetBoundaryState called for periodic side!")
+CASE DEFAULT ! unknown BCType
+  CALL abort(__STAMP__,&
+       'no BC defined in linearscalaradvection/getboundaryflux.f90!')
+END SELECT ! BCType
+
+END SUBROUTINE GetBoundaryState
 
 !==================================================================================================================================
 !> Computes the boundary values for a given Cartesian mesh face (defined by FaceID)
@@ -146,8 +196,6 @@ SUBROUTINE GetBoundaryFlux(SideID,t,Nloc,Flux,UPrim_master,          &
 USE MOD_PreProc
 USE MOD_Globals      ,ONLY: Abort
 USE MOD_Mesh_Vars    ,ONLY: BC,BoundaryType
-USE MOD_Exactfunc    ,ONLY: ExactFunc
-USE MOD_Equation_Vars,ONLY: IniExactFunc
 USE MOD_Riemann      ,ONLY: GetFlux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -165,7 +213,6 @@ REAL,DIMENSION(      3,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: Face_xGP   !< positio
 REAL,DIMENSION(PP_nVar,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: Flux       !< resulting boundary fluxes
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                              :: p,q
 INTEGER                              :: BCType,BCState
 REAL                                 :: UPrim_boundary(PP_nVarPrim,0:Nloc,0:Nloc)
 !==================================================================================================================================
@@ -175,10 +222,7 @@ BCState=BoundaryType(BC(SideID),BC_STATE)
 SELECT CASE(BCType)
 CASE(1) !Periodic already filled!
 CASE(2) !Exact function or refstate
-  ! BCState specifies refstate to be used, if 0 then use iniexactfunc
-  DO q=0,ZDIM(Nloc); DO p=0,Nloc
-    CALL ExactFunc(IniExactFunc,t,Face_xGP(:,p,q),UPrim_boundary(:,p,q))
-  END DO; END DO
+  CALL GetBoundaryState(SideID,t,Nloc,UPrim_boundary,UPrim_master,NormVec,TangVec1,TangVec2,Face_xGP)
   CALL GetFlux(Nloc,Flux,UPrim_master,UPrim_boundary,    &
 #if PARABOLIC
                gradUx_master,gradUy_master,gradUz_master,&

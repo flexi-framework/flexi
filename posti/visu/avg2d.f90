@@ -77,6 +77,7 @@ IMPLICIT NONE
 LOGICAL                          :: exists
 INTEGER                          :: ii,jj,iElem
 !===================================================================================================================================
+
 ! Read the IJK sorting from the mesh file. This is required!!
 CALL OpenDataFile(MeshFile,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL DatasetExists(File_ID,'nElems_IJK',exists)
@@ -97,6 +98,10 @@ ELSE
     Elem_IJK(2,iElem) = iElem
     Elem_IJK(3,iElem) = 1
   END DO ! iElem
+  SWRITE(UNIT_StdOut,'(132("-"))')
+  SWRITE(Unit_stdOut,'(A)') ' No IJK sorting available. Avg2D disabled ...'
+  SWRITE(UNIT_StdOut,'(132("-"))')
+  Avg2D = .FALSE.
 END IF
 CALL CloseDataFile()
 

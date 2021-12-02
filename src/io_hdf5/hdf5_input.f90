@@ -155,6 +155,7 @@ ELSE
   ! Close FORTRAN predefined datatypes
   CALL H5CLOSE_F(iError)
 END IF
+
 END FUNCTION ISVALIDHDF5FILE
 
 !==================================================================================================================================
@@ -297,28 +298,22 @@ LOGICAL,INTENT(IN),OPTIONAL          :: attrib   !< check dataset or attribute
 LOGICAL,INTENT(OUT)                  :: Exists   !< result: dataset exists
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER(HID_T)                       :: DSet_ID
-INTEGER                              :: hdferr
 LOGICAL                              :: attrib_loc
 !==================================================================================================================================
-CALL h5eset_auto_f(0, hdferr)
-! Open the dataset with default properties.
+
 IF (PRESENT(attrib)) THEN
   attrib_loc = attrib
 ELSE
   attrib_loc = .FALSE.
 END IF
+
+! Check attribute or data set. Data sets can be checked by determining the existence of the corresponding link
 IF(attrib_loc)THEN
-  CALL H5AOPEN_F(Loc_ID, TRIM(DSetName), DSet_ID, iError)
-  CALL H5ACLOSE_F(DSet_ID, iError)
+  CALL H5AEXISTS_F(Loc_ID, TRIM(DSetName), Exists, iError)
 ELSE
-  CALL H5DOPEN_F(Loc_ID, TRIM(DSetName), DSet_ID, iError)
-  CALL H5DCLOSE_F(DSet_ID, iError)
+  CALL H5LEXISTS_F(Loc_ID, TRIM(DSetName), Exists, iError)
 END IF
-Exists=.TRUE.
-IF(iError.LT.0) Exists=.FALSE.
-! auto error messages on
-CALL h5eset_auto_f(1, hdferr)
+
 END SUBROUTINE DatasetExists
 
 
@@ -326,7 +321,7 @@ END SUBROUTINE DatasetExists
 !==================================================================================================================================
 !> Subroutine to determine HDF5 dataset properties in Flexi terminology
 !==================================================================================================================================
-SUBROUTINE GetDataProps(nVar_HDF5,N_HDF5,nElems_HDF5,NodeType_HDF5)
+SUBROUTINE GetDataProps(nVar_HDF5,N_HDF5,nElems_HDF5,NodeType_HDF5,ArrayName_opt)
 ! MODULES
 USE MOD_Globals
 IMPLICIT NONE
@@ -336,8 +331,10 @@ INTEGER,INTENT(OUT)                     :: nVar_HDF5     !< number of variables
 INTEGER,INTENT(OUT)                     :: N_HDF5        !< polynomial degree
 INTEGER,INTENT(OUT)                     :: nElems_HDF5   !< inumber of elements
 CHARACTER(LEN=255),OPTIONAL,INTENT(OUT) :: NodeType_HDF5 !< nodetype string
+CHARACTER(LEN=*),  OPTIONAL,INTENT(IN)  :: ArrayName_opt !< array name to use in state file
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+CHARACTER(LEN=255)                      :: ArrayName
 INTEGER                                 :: Rank
 INTEGER(HID_T)                          :: Dset_ID,FileSpace
 INTEGER(HSIZE_T), DIMENSION(7)          :: Dims,DimsMax
@@ -345,9 +342,15 @@ INTEGER(HSIZE_T), DIMENSION(7)          :: Dims,DimsMax
 SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A,A)')' GET SIZE OF DATA IN HDF5 FILE... '
 
+IF(.NOT.PRESENT(ArrayName_opt)) THEN
+    ArrayName = 'DG_Solution'
+ELSE
+    ArrayName = ArrayName_opt
+END IF
+
 ! Read in attributes
 ! Open the dataset with default properties.
-CALL H5DOPEN_F(File_ID, 'DG_Solution', Dset_ID, iError)
+CALL H5DOPEN_F(File_ID, ArrayName, Dset_ID, iError)
 ! Get the data space of the dataset.
 CALL H5DGET_SPACE_F(Dset_ID, FileSpace, iError)
 ! Get number of dimensions of data space
@@ -386,7 +389,8 @@ SWRITE(UNIT_stdOut,'(A)')' DONE!'
 SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE GetDataProps
 
-SUBROUTINE GetVarnames(AttribName,VarNames,AttribExists)
+
+SUBROUTINE GetVarNames(AttribName,VarNames,AttribExists)
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=*),INTENT(IN)                :: AttribName
@@ -408,7 +412,7 @@ IF (AttribExists) THEN
   ! read variable names
   CALL ReadAttribute(File_ID,TRIM(AttribName),nVal,StrArray=VarNames)
 END IF
-END SUBROUTINE GetVarnames
+END SUBROUTINE GetVarNames
 
 !===================================================================================================================================
 !> High level wrapper to ReadArray and ReadAttrib. Check if array exists and directly
@@ -483,6 +487,12 @@ INTEGER(HSIZE_T)               :: Offset(Rank),Dimsf(Rank)
 TYPE(C_PTR)                    :: buf
 INTEGER(HID_T)                 :: driver
 !==================================================================================================================================
+#if USE_MPI
+! HDF5 with MPI can only read max. (32 bit signed integer / size of single element) elements (2GB per MPI rank)
+IF(PRODUCT(REAL(nVal)).GT.nLimit)  CALL Abort(__STAMP__, & ! Casting to avoid overflow
+ 'Dataset "'//TRIM(ArrayName)//'" exceeds HDF5 chunksize limit of 2GB per rank! Increase number of ranks or compile without MPI!')
+#endif
+
 LOGWRITE(*,'(A,I1.1,A,A,A)')'    READ ',Rank,'D ARRAY "',TRIM(ArrayName),'"'
 Dimsf=nVal
 LOGWRITE(*,*)'Dimsf,Offset=',Dimsf,Offset_in
@@ -503,9 +513,6 @@ CALL H5PCREATE_F(H5P_DATASET_XFER_F, PList_ID, iError)
 ! Set property list to collective dataset read
 CALL H5PGET_DRIVER_F(Plist_File_ID,driver,iError)
 IF(driver.EQ.H5FD_MPIO_F) CALL H5PSET_DXPL_MPIO_F(PList_ID, H5FD_MPIO_COLLECTIVE_F, iError)
-! HDF5 with MPI can only read max. (32 bit integer / 8) elements
-IF(REAL(PRODUCT(nVal)).GT.((2**28-1)/8.))  CALL Abort(__STAMP__, &
-      'Total size of HDF5 array "'//TRIM(ArrayName)//'" is too big! Reduce number of entries per rank or compile without MPI!')
 #endif
 
 IF(PRESENT(RealArray)) Type_ID=H5T_NATIVE_DOUBLE

@@ -288,9 +288,9 @@ DO ii=1,nElems
 
 #if PARABOLIC
   !Interpolate the gradient of the velocity to the analyze grid
-  CALL ChangeBasis3D(3, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, GradUx(2:4,:,:,:,ii), GradVelx)
-  CALL ChangeBasis3D(3, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, GradUy(2:4,:,:,:,ii), GradVely)
-  CALL ChangeBasis3D(3, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, GradUz(2:4,:,:,:,ii), GradVelz)
+  CALL ChangeBasis3D(3, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, GradUx(LIFT_VELV,:,:,:,ii), GradVelx)
+  CALL ChangeBasis3D(3, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, GradUy(LIFT_VELV,:,:,:,ii), GradVely)
+  CALL ChangeBasis3D(3, PP_N, NAnalyze, Vdm_GaussN_NAnalyze, GradUz(LIFT_VELV,:,:,:,ii), GradVelz)
 #endif
   !Interpolate the jacobian to the analyze grid
   sJ_N(1,:,:,:)=sJ(:,:,:,ii,0)
@@ -302,14 +302,14 @@ DO ii=1,nElems
     DO j=0,NAnalyze
       DO i=0,NAnalyze
         ! compute primitive gradients (of u,v,w) at each GP
-        Vel(1:3)=U_NAnalyze(2:4,i,j,k)/U_NAnalyze(1,i,j,k)
+        Vel(1:3)=U_NAnalyze(MOMV,i,j,k)/U_NAnalyze(DENS,i,j,k)
 #if PARABOLIC
         GradVel(:,1)=GradVelx(:,i,j,k)
         GradVel(:,2)=GradVely(:,i,j,k)
         GradVel(:,3)=GradVelz(:,i,j,k)
 #endif
         ! Pressure
-        Pressure=KappaM1*(U_NAnalyze(5,i,j,k)-0.5*SUM(U_NAnalyze(2:4,i,j,k)*Vel(1:3)))
+        Pressure=KappaM1*(U_NAnalyze(ENER,i,j,k)-0.5*SUM(U_NAnalyze(MOMV,i,j,k)*Vel(1:3)))
 #if PARABOLIC
         ! compute divergence of velocity
         divU=GradVel(1,1)+GradVel(2,2)+GradVel(3,3)
@@ -324,7 +324,7 @@ DO ii=1,nElems
         ! compute kinetic energy integrand (incomp)
         E=0.5*SUM(Vel(1:3)*Vel(1:3))
         ! compute kinetic energy integrand (compr)
-        E_comp=U_NAnalyze(1,i,j,k)*E
+        E_comp=U_NAnalyze(DENS,i,j,k)*E
 #if PARABOLIC
         ! compute vorticity and max(vorticity)
         Vorticity(1)=GradVel(3,2) - GradVel(2,3)
@@ -332,7 +332,7 @@ DO ii=1,nElems
         Vorticity(3)=GradVel(2,1) - GradVel(1,2)
         max_Vorticity=MAX(max_Vorticity,SQRT(SUM(Vorticity(:)*Vorticity(:))))
         ! compute enstrophy integrand
-        ens=0.5*U_NAnalyze(1,i,j,k)*SUM(Vorticity(1:3)*Vorticity(1:3))
+        ens=0.5*U_NAnalyze(DENS,i,j,k)*SUM(Vorticity(1:3)*Vorticity(1:3))
         ! compute integrand for epsilon3, pressure contribution to dissipation (compressiblity effect)
         eps3=Pressure*divU
         ! Matrix : Matrix product for velocity gradient tensor, S:S and Sd:Sd
@@ -367,11 +367,11 @@ DO ii=1,nElems
 #endif
 
         ! compute mean temperature
-        Temperature=KappaM1/R*(U_NAnalyze(5,i,j,k)/U_NAnalyze(1,i,j,k)-E)
+        Temperature=KappaM1/R*(U_NAnalyze(ENER,i,j,k)/U_NAnalyze(DENS,i,j,k)-E)
         mean_temperature=mean_temperature+Temperature*Intfactor
 
         ! compute mean entropy
-        Entropy=-sKappaM1*(U_NAnalyze(1,i,j,k)*(LOG(Pressure)-Kappa*LOG(U_NAnalyze(1,i,j,k))))
+        Entropy=-sKappaM1*(U_NAnalyze(DENS,i,j,k)*(LOG(Pressure)-Kappa*LOG(U_NAnalyze(DENS,i,j,k))))
         mean_Entropy=mean_Entropy+Entropy*Intfactor
       END DO
     END DO

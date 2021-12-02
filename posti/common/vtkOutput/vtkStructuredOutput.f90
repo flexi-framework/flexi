@@ -105,7 +105,7 @@ IF(nPoints.GT.0) THEN
   iSet=iSet+1
   FileNamesVTS(iSet)=FileName
   ZoneNames(iSet)='Points'
-  WRITE(UNIT_stdOut,'(A,A)')' WRITING POINT RP POSITIONS TO ',FileName
+  WRITE(UNIT_stdOut,'(A,A)')' WRITING POINT RP POSITIONS TO ',TRIM(FileName)
 
   ! write header of VTK file
   ! Line feed character
@@ -160,7 +160,6 @@ IF(nPoints.GT.0) THEN
   Buffer='_';WRITE(ivtk) TRIM(Buffer)
 
   nBytes = nPoints*SIZEOF_F(FLOATdummy)
-  WRITE(ivtk) nBytes
   IF (withData) THEN
     DO iVar = 1,nVal
       WRITE(ivtk) nBytes
@@ -185,7 +184,7 @@ DO iLine=1,nLines
   iSet=iSet+1
   FileNamesVTS(iSet)=FileName
   ZoneNames(iSet)=TRIM(ZoneTitle)
-  WRITE(UNIT_stdOut,'(A,A)')' WRITING LINE RP POSITIONS TO ',FileName
+  WRITE(UNIT_stdOut,'(A,A)')' WRITING LINE RP POSITIONS TO ',TRIM(FileName)
 
   ! write header of VTK file
   ! Line feed character
@@ -264,7 +263,7 @@ DO iPlane=1, nPlanes
   iSet=iSet+1
   FileNamesVTS(iSet)=FileName
   ZoneNames(iSet)=TRIM(ZoneTitle)
-  WRITE(UNIT_stdOut,'(A,A)')' WRITING PLANE RP POSITIONS TO ',FileName
+  WRITE(UNIT_stdOut,'(A,A)')' WRITING PLANE RP POSITIONS TO ',TRIM(FileName)
 
   ! write header of VTK file
   ! Line feed character

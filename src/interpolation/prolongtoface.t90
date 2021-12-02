@@ -21,7 +21,11 @@ PPURE SUBROUTINE ProlongToFace(&
 #ifdef WITHnVar
     TP_nVar,&
 #endif
-    Nloc,Uvol,Uface_master,Uface_slave,L_Minus,L_Plus,doMPISides)
+    Nloc,Uvol,Uface_master,Uface_slave,L_Minus,L_Plus,doMPISides &
+#if FV_ENABLED
+    ,pureDG &
+#endif
+)
 ! MODULES
 USE MOD_Mesh_Vars,          ONLY: nElems
 USE MOD_Mesh_Vars,          ONLY: SideToElem
@@ -37,17 +41,31 @@ IMPLICIT NONE
 INTEGER,INTENT(IN)              :: TP_nVar
 #endif
 INTEGER,INTENT(IN)              :: Nloc
-LOGICAL,INTENT(IN)              :: doMPISides  != .TRUE. only YOUR MPISides are filled, =.FALSE. BCSides +InnerSides +MPISides MINE
-REAL,INTENT(IN)                 :: L_Minus(0:Nloc),L_Plus(0:Nloc)
 REAL,INTENT(IN)                 :: Uvol(TP_nVar,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems)
 REAL,INTENT(INOUT)              :: Uface_master(TP_nVar,0:Nloc,0:ZDIM(Nloc),1:nSides)
 REAL,INTENT(INOUT)              :: Uface_slave( TP_nVar,0:Nloc,0:ZDIM(Nloc),1:nSides)
+REAL,INTENT(IN)                 :: L_Minus(0:Nloc),L_Plus(0:Nloc)
+LOGICAL,INTENT(IN)              :: doMPISides  != .TRUE. only YOUR MPISides are filled, =.FALSE. BCSides +InnerSides +MPISides MINE
+#if FV_ENABLED
+LOGICAL,INTENT(IN),OPTIONAL     :: pureDG      != .TRUE. prolongates all elements as DG elements
+#endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+INTEGER                         :: isFV(nElems)
 INTEGER                         :: p,q,firstSideID,lastSideID
 INTEGER                         :: ElemID,nbElemID,locSide,nblocSide,SideID,flip
 REAL                            :: Uface(TP_nVar,0:Nloc,0:ZDIM(Nloc))
 !==================================================================================================================================
+
+isFV(:) = 0
+#if FV_ENABLED
+IF (.NOT.PRESENT(pureDG)) THEN
+  isFV(:) = FV_Elems(:)
+ELSE
+  IF(.NOT.pureDG) isFV(:) = FV_Elems(:)
+END IF
+#endif
+
 IF(doMPISides)THEN
   firstSideID = firstMPISide_YOUR
    lastSideID = nSides
@@ -65,7 +83,7 @@ DO SideID=firstSideID,lastSideID
     locSide = SideToElem(S2E_LOC_SIDE_ID,SideID)
     flip    = 0
 
-    IF(PP_NodeType.EQ.1.AND.FV_Elems(ElemID).EQ.0)THEN
+    IF(PP_NodeType.EQ.1 .AND. isFV(ElemID).EQ.0)THEN
       CALL EvalElemFaceG(&
 #if WITHnVar
           TP_nVar,&
@@ -89,7 +107,7 @@ DO SideID=firstSideID,lastSideID
     nblocSide = SideToElem(S2E_NB_LOC_SIDE_ID,SideID)
     flip      = SideToElem(S2E_FLIP,SideID)
 
-    IF(PP_NodeType.EQ.1.AND.FV_Elems(nbElemID).EQ.0)THEN
+    IF(PP_NodeType.EQ.1 .AND. isFV(nbElemID).EQ.0)THEN
       CALL EvalElemFaceG(&
 #if WITHnVar
           TP_nVar,&

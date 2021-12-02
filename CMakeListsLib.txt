@@ -11,11 +11,16 @@ ENDIF()
 MARK_AS_ADVANCED(FORCE LIBS_EXTERNAL_LIB_DIR)
 
 
-# Check whether origin is point to Github or IAG
+# =========================================================================
+# Check where the code originates
+# =========================================================================
 EXECUTE_PROCESS(COMMAND git ls-remote --get-url OUTPUT_VARIABLE GIT_ORIGIN)
 
 # Origin pointing to IAG
 IF("${GIT_ORIGIN}" MATCHES ".iag.uni-stuttgart.de")
+# Strip lead and trailing white space
+STRING(STRIP ${GIT_ORIGIN} GIT_ORIGIN)
+MESSAGE(STATUS "Checking git origin: " ${GIT_ORIGIN})
   # Checked out using SSH
   IF("${GIT_ORIGIN}" MATCHES "^git@")
     SET(LIBS_DLPATH "git@gitlab.iag.uni-stuttgart.de:")
@@ -71,7 +76,7 @@ ENDIF()
 # =========================================================================
 # HDF5 library
 # =========================================================================
-SET(LIBS_BUILD_HDF5 ON CACHE BOOL "Compile and build hdf5 library")
+SET(LIBS_BUILD_HDF5 ON CACHE BOOL "Compile and build HDF5 library")
 
 # Set type of library to look up, STATIC/SHARED
 SET(LIB_TYPE STATIC)
@@ -127,20 +132,27 @@ ELSE()
 
   #SET HDF5_TAG depending on MPI Version
   IF(LIBS_USE_MPI)
-    IF (${MPI_Fortran_VERSION} VERSION_LESS "4.0.0")
-      SET (HDF5_TAG "hdf5-1_10_6" CACHE STRING "HDF5 version tag")
+    # HDF5 1.12.0 and greater is compatible with OpenMPI 4.0.0 and greater
+    EXECUTE_PROCESS(COMMAND mpiexec --version COMMAND grep ^mpiexec COMMAND sed "s/^.* //g" OUTPUT_VARIABLE OPENMPI_VERSION)
+    IF (DEFINED OPENMPI_VERSION  AND NOT "${OPENMPI_VERSION}" STREQUAL "")
+      IF (${OPENMPI_VERSION} VERSION_GREATER_EQUAL "4.0.0")
+        SET (HDF5_TAG "hdf5-1_12_0" CACHE STRING "HDF5 version tag")
+      ELSE()
+        SET (HDF5_TAG "hdf5-1_10_6" CACHE STRING "HDF5 version tag")
+      ENDIF()
     ELSE()
-      SET (HDF5_TAG "hdf5-1_12_0" CACHE STRING "HDF5 version tag")
+      SET (HDF5_TAG "hdf5-1_10_6" CACHE STRING "HDF5 version tag")
     ENDIF()
   ELSE()
     SET (HDF5_TAG "hdf5-1_12_0" CACHE STRING "HDF5 version tag")
   ENDIF()
+  MESSAGE (STATUS "Setting HDF5 to tag ${HDF5_TAG} to be compatible with detected MPI version")
   MARK_AS_ADVANCED(FORCE HDF5_TAG)
 
   # Set HDF5 build dir
   SET(LIBS_HDF5_DIR  ${LIBS_EXTERNAL_LIB_DIR}/HDF5/build)
 
-  # Check if HDF5 was already build
+  # Check if HDF5 was already built
   IF (NOT EXISTS "${LIBS_HDF5_DIR}/lib/libhdf5.a")
     # Set if HDF5 should be built in parallel
     IF(LIBS_USE_MPI)
@@ -153,15 +165,29 @@ ELSE()
       SET(LIBS_HDF5CC ${CMAKE_C_COMPILER} )
     ENDIF()
 
+    # Optional Features:
+    #   --enable-silent-rules   less verbose build output (undo: "make V=1")
+    #   --enable-build-mode=(debug|production|clean)
+    #                           Sets the build mode. Debug turns on symbols, API
+    #                           tracing, asserts, and debug optimization, as well as
+    #                           several other minor configure options that aid in
+    #                           debugging. Production turns high optimizations on.
+    #                           Clean turns nothing on and disables optimization
+    #                           (i.e.: a 'clean slate' configuration). All these
+    #                           settings can be overridden by using specific
+    #                           configure flags. [default=production]
+    #   --disable-dependency-tracking
+    #                           speeds up one-time build
+
     # Let CMake take care of download, configure and build
-    ExternalProject_Add(HDF5
+    EXTERNALPROJECT_ADD(HDF5
       GIT_REPOSITORY ${HDF5_DOWNLOAD}
       GIT_TAG ${HDF5_TAG}
       GIT_PROGRESS TRUE
       ${${GITSHALLOW}}
       PREFIX ${LIBS_HDF5_DIR}
       UPDATE_COMMAND ""
-      CONFIGURE_COMMAND FC=${LIBS_HDF5FC} CC=${LIBS_HDF5CC} ${LIBS_HDF5_DIR}/src/HDF5/configure --prefix=${LIBS_HDF5_DIR} --with-pic --enable-fortran ${LIBS_HDF5PARALLEL} --libdir=${LIBS_HDF5_DIR}/lib
+      CONFIGURE_COMMAND FC=${LIBS_HDF5FC} CC=${LIBS_HDF5CC} ${LIBS_HDF5_DIR}/src/HDF5/configure --prefix=${LIBS_HDF5_DIR} --with-pic --enable-fortran ${LIBS_HDF5PARALLEL} --libdir=${LIBS_HDF5_DIR}/lib --enable-build-mode=production --enable-silent-rules --disable-dependency-tracking
       BUILD_COMMAND ${MAKE}
     )
     SET(LIBS_HDF5_CMAKE FALSE)
@@ -213,20 +239,140 @@ ELSE()
   LIST(APPEND linkedlibs ${HDF5_LIBRARIES} )
 ENDIF()
 
-# =========================================================================
-# LAPACK/MKL library
-# =========================================================================
-# Check if Intel MKL is requested instead of BLAS/LAPACK
-OPTION(LIBS_USE_MKL "Use MKL libraries instead of BLAS/LAPACK" OFF)
-IF (LIBS_USE_MKL)
-  SET(BLA_VENDOR "Intel") #search only for Intel BLAS (=MKL)
-ENDIF()
 
-# Use Lapack/Blas for GNU
-FIND_PACKAGE(LAPACK QUIET)
-IF (LAPACK_FOUND)
-  LIST(APPEND linkedlibs ${LAPACK_LIBRARIES})
-  MESSAGE(STATUS "Using BLAS/Lapack library")
+# =========================================================================
+# Math libary
+# =========================================================================
+SET(LIBS_BUILD_MATH_LIB OFF CACHE BOOL "Compile and build math library")
+
+# Check if Intel MKL is requested instead of BLAS/LAPACK
+CMAKE_DEPENDENT_OPTION(LIBS_USE_MKL "Use system MKL libraries instead of system BLAS/LAPACK" OFF
+                                    "NOT LIBS_BUILD_MATH_LIB" OFF)
+
+# Use system LAPACK/MKL
+IF(NOT LIBS_BUILD_MATH_LIB)
+  IF (LIBS_USE_MKL)
+    SET(BLA_VENDOR "Intel10_64lp") #search only for Intel BLAS (=MKL)
+  ENDIF()
+
+  # Use Lapack/Blas for GNU
+  FIND_PACKAGE(LAPACK QUIET)
+  IF (LAPACK_FOUND)
+    LIST(APPEND linkedlibs ${LAPACK_LIBRARIES})
+    MESSAGE(STATUS "Using system BLAS/Lapack library")
+  ENDIF()
+
+  # VDM inverse, replace lapack with analytical solution
+  IF (CMAKE_BUILD_TYPE MATCHES "Debug" AND "${CMAKE_HOSTNAME}" MATCHES "login" AND "${LSB_RELEASE_ID_SHORT}" MATCHES "CentOS")
+    MESSAGE(STATUS "Compiling FLEXI in debug mode on Hawk with system math lib. Setting VDM inverse to analytical solution")
+    ADD_DEFINITIONS(-DVDM_ANALYTICAL)
+  ENDIF()
+
+# Build LAPACK/OpenBLAS in FLEXI
+ELSE()
+  # Offer LAPACK and OpenBLAS
+  SET (LIBS_BUILD_MATH_LIB_VENDOR LAPACK CACHE STRING "Choose the type of math lib vendor, options are: LAPACK, OpenBLAS.")
+  SET_PROPERTY(CACHE LIBS_BUILD_MATH_LIB_VENDOR PROPERTY STRINGS LAPACK OpenBLAS)
+
+  # Build LAPACK
+  IF (LIBS_BUILD_MATH_LIB_VENDOR MATCHES "LAPACK")
+    # Origin pointing to Github
+    IF("${GIT_ORIGIN}" MATCHES ".github.com")
+      SET (MATHLIB_DOWNLOAD "https://github.com/Reference-LAPACK/lapack.git")
+    ELSE()
+      SET (MATHLIB_DOWNLOAD ${LIBS_DLPATH}libs/lapack.git)
+    ENDIF()
+    SET (MATH_LIB_DOWNLOAD ${MATHLIB_DOWNLOAD} CACHE STRING "LAPACK Download-link" FORCE)
+    SET (MATH_LIB_TAG "v3.10.0")
+    MARK_AS_ADVANCED(FORCE MATH_LIB_DOWNLOAD)
+    MARK_AS_ADVANCED(FORCE MATH_LIB_TAG)
+  # Build OpenBLAS
+  ELSEIF (LIBS_BUILD_MATH_LIB_VENDOR MATCHES "OpenBLAS")
+    IF("${GIT_ORIGIN}" MATCHES ".github.com")
+      SET (MATHLIB_DOWNLOAD "https://github.com/xianyi/OpenBLAS.git")
+    ELSE()
+      SET (MATHLIB_DOWNLOAD ${LIBS_DLPATH}libs/OpenBLAS.git)
+    ENDIF()
+    SET (MATH_LIB_DOWNLOAD ${MATHLIB_DOWNLOAD} CACHE STRING "OpenBLAS Download-link" FORCE)
+    SET (MATH_LIB_TAG "v0.3.17")
+    MARK_AS_ADVANCED(FORCE MATH_LIB_DOWNLOAD)
+    MARK_AS_ADVANCED(FORCE MATH_LIB_TAG)
+  # Unknown math lib vendor
+  ELSE()
+    MESSAGE(FATAL_ERROR "Unknown math lib vendor")
+  ENDIF()
+
+  # Set math libs build dir
+  SET(LIBS_MATH_DIR  ${LIBS_EXTERNAL_LIB_DIR}/${LIBS_BUILD_MATH_LIB_VENDOR})
+
+  IF (LIBS_BUILD_MATH_LIB_VENDOR MATCHES "LAPACK")
+    # Check if math lib was already built
+    IF (NOT EXISTS "${LIBS_MATH_DIR}/lib/liblapack.so")
+      # Let CMake take care of download, configure and build
+      EXTERNALPROJECT_ADD(${LIBS_BUILD_MATH_LIB_VENDOR}
+        GIT_REPOSITORY ${MATH_LIB_DOWNLOAD}
+        GIT_TAG ${MATH_LIB_TAG}
+        GIT_PROGRESS TRUE
+        ${${GITSHALLOW}}
+        PREFIX ${LIBS_MATH_DIR}
+        UPDATE_COMMAND ""
+        CMAKE_ARGS -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_PREFIX=${LIBS_MATH_DIR} -DBLAS++=OFF -DLAPACK++=OFF -DBUILD_SHARED_LIBS=ON -DCBLAS=OFF -DLAPACKE=OFF -DBUILD_TESTING=OFF
+      )
+
+      LIST(APPEND SELFBUILTEXTERNALS ${LIBS_BUILD_MATH_LIB_VENDOR})
+    ENDIF()
+  ELSEIF (LIBS_BUILD_MATH_LIB_VENDOR MATCHES "OpenBLAS")
+    # Check if math lib was already built
+    IF (NOT EXISTS "${LIBS_MATH_DIR}/libopenblas.so")
+      # Let CMake take care of download, configure and build
+      EXTERNALPROJECT_ADD(${LIBS_BUILD_MATH_LIB_VENDOR}
+        GIT_REPOSITORY ${MATH_LIB_DOWNLOAD}
+        GIT_TAG ${MATH_LIB_TAG}
+        GIT_PROGRESS TRUE
+        ${${GITSHALLOW}}
+        PREFIX ${LIBS_MATH_DIR}
+        UPDATE_COMMAND ""
+        CONFIGURE_COMMAND ""
+        BUILD_IN_SOURCE TRUE
+        INSTALL_COMMAND ""
+      )
+
+      LIST(APPEND SELFBUILTEXTERNALS ${LIBS_BUILD_MATH_LIB_VENDOR})
+    ENDIF()
+  ENDIF()
+
+  IF (LIBS_BUILD_MATH_LIB_VENDOR MATCHES "LAPACK")
+    # Set math lib paths
+    UNSET(MATH_LIB_LIBRARIES)
+    SET(MATH_LIB_LIBRARIES              ${LIBS_MATH_DIR}/lib)
+
+    UNSET(LAPACK_LIBRARY)
+    UNSET(BLAS_LIBRARY)
+    UNSET(LAPACK_LIBRARIES)
+
+    SET(LAPACK_LIBRARY                  ${MATH_LIB_LIBRARIES}/liblapack.so)
+    SET(BLAS_LIBRARY                    ${MATH_LIB_LIBRARIES}/libblas.so)
+    SET(LAPACK_LIBRARIES                ${LAPACK_LIBRARY}${BLAS_LIBRARY})
+
+    # Actually add the math lib paths to the linking paths
+    INCLUDE_DIRECTORIES (${MATH_LIB_LIBRARIES})
+    LIST(APPEND linkedlibs ${LAPACK_LIBRARY} ${BLAS_LIBRARY})
+    MESSAGE(STATUS "Using self-built LAPACK library")
+  ELSEIF (LIBS_BUILD_MATH_LIB_VENDOR MATCHES "OpenBLAS")
+    # Set math lib paths
+    SET(MATH_LIB_LIBRARIES              ${LIBS_MATH_DIR}/src/${LIBS_BUILD_MATH_LIB_VENDOR})
+
+    UNSET(LAPACK_LIBRARY)
+    UNSET(LAPACK_LIBRARIES)
+
+    SET(LAPACK_LIBRARY                  ${MATH_LIB_LIBRARIES}/libopenblas.so)
+    SET(LAPACK_LIBRARIES                ${LAPACK_LIBRARY}${BLAS_LIBRARY})
+
+    # Actually add the math lib paths to the linking paths
+    INCLUDE_DIRECTORIES (${MATH_LIB_LIBRARIES})
+    LIST(APPEND linkedlibs ${LAPACK_LIBRARY} ${BLAS_LIBRARY})
+    MESSAGE(STATUS "Using self-built OpenBLAS library")
+  ENDIF()
 ENDIF()
 
 

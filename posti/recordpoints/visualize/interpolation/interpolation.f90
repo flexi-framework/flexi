@@ -268,8 +268,10 @@ END SUBROUTINE CalcTimeAvg
 SUBROUTINE CalcFluctuations()
 ! MODULES
 USE MOD_Globals
-USE MOD_RPInterpolation_Vars
 USE MOD_OutputRPVisu_Vars          ,ONLY: nSamples_out,RPData_out,RPDataTimeAvg_out,nSamples_out
+USE MOD_OutputRPVisu_Vars          ,ONLY: RPDataRMS_out
+USE MOD_ParametersVisu             ,ONLY: doFluctuations
+USE MOD_RPInterpolation_Vars
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -282,7 +284,11 @@ WRITE(UNIT_stdOut,'(A)',ADVANCE='NO')' Calculating Fluctuations...'
 
 DO iSample=1,nSamples_out
   RPData_out(:,:,iSample)=RPData_out(:,:,iSample)-RPDataTimeAvg_out(:,:)
+  IF(doFluctuations) RPDataRMS_out(:,:)=RPData_out(:,:,iSample)**2.+RPDataRMS_out(:,:)
 END DO
+
+IF (doFluctuations) RPDataRMS_out(:,:)=SQRT(RPDataRMS_out(:,:)/nSamples_out)
+
 WRITE(UNIT_stdOut,'(A)')'done.'
 WRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE CalcFluctuations

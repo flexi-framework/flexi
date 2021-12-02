@@ -22,18 +22,19 @@
 !===================================================================================================================================
 PROGRAM Posti_Visu
 USE ISO_C_BINDING
-USE MOD_PreProc
 USE MOD_Globals
-USE MOD_Visu_Vars
+USE MOD_PreProc
 USE MOD_Commandline_Arguments
-USE MOD_Visu
 USE MOD_ISO_VARYING_STRING
 USE MOD_MPI                   ,ONLY: InitMPI
-USE MOD_VTK                   ,ONLY: WriteDataToVTK,WriteVTKMultiBlockDataSet
 USE MOD_Output_Vars           ,ONLY: ProjectName
 USE MOD_StringTools           ,ONLY: STRICMP,GetFileExtension
+USE MOD_Visu
+USE MOD_Visu_Vars
+USE MOD_VTK                   ,ONLY: WriteDataToVTK,WriteVTKMultiBlockDataSet
 #if USE_MPI
-USE MOD_MPI                   ,ONLY:FinalizeMPI
+USE MOD_MPI                   ,ONLY: FinalizeMPI
+USE MOD_VTK                   ,ONLY: WriteParallelVTK
 #endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -97,6 +98,11 @@ ELSE
         'ERROR - Invalid syntax. Please use: posti [posti-prm-file [flexi-prm-file]] statefile [statefiles]')
 END IF
 
+! create visu dir, where all vtu files are placed
+#if USE_MPI
+IF(nProcessors.GT.1 .AND. MPIRoot) CALL SYSTEM('mkdir -p visu')
+#endif
+
 DO iArg=1+skipArgs,nArgs
   statefile = TRIM(Args(iArg))
   SWRITE(*,*) "Processing state-file: ",TRIM(statefile)
@@ -104,15 +110,15 @@ DO iArg=1+skipArgs,nArgs
   CALL visu(MPI_COMM_WORLD, prmfile, postifile, statefile)
 
   IF (MeshFileMode) THEN
-    FileString_DG=TRIM(MeshFile)//'_visu.vtu'
+    FileString_DG=TRIM(MeshFile)//'_visu'
   ELSE
 #if FV_ENABLED
-    FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_DG',OutputTime))//'.vtu'
+    FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_DG',OutputTime))
+    IF (.NOT.MeshFileMode) FileString_FV=TRIM(TIMESTAMP(TRIM(ProjectName)//'_FV',OutputTime))
 #else
-    FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))//'.vtu'
+    FileString_DG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))
 #endif
   END IF
-
 
   ALLOCATE(varnames_loc(nVarVisu))
   ALLOCATE(varnamesSurf_loc(nVarSurfVisuAll))
@@ -126,32 +132,31 @@ DO iArg=1+skipArgs,nArgs
   END DO
 
   IF (Avg2D) THEN
-
     CALL WriteDataToVTK(nVarVisu,NVisu,nElemsAvg2D_DG,VarNames_loc,CoordsVisu_DG,UVisu_DG,FileString_DG,&
-        dim=2,DGFV=0,nValAtLastDimension=.TRUE.)
+        dim=2,DGFV=0,nValAtLastDimension=.TRUE.,PostiParallel=.TRUE.,HighOrder=HighOrder)
+
 #if FV_ENABLED
-    FileString_FV=TRIM(TIMESTAMP(TRIM(ProjectName)//'_FV',OutputTime))//'.vtu'
     CALL WriteDataToVTK(nVarVisu,NVisu_FV,nElemsAvg2D_FV,VarNames_loc,CoordsVisu_FV,UVisu_FV,FileString_FV,&
-        dim=2,DGFV=1,nValAtLastDimension=.TRUE.)
+        dim=2,DGFV=1,nValAtLastDimension=.TRUE.,PostiParallel=.TRUE.,HighOrder=HighOrder)
 
     IF (MPIRoot) THEN
       ! write multiblock file
-      FileString_multiblock=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))//'.vtm'
+      FileString_multiblock=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))
       CALL WriteVTKMultiBlockDataSet(FileString_multiblock,FileString_DG,FileString_FV)
     ENDIF
 #endif
   ELSE
     CALL WriteDataToVTK(nVarVisu,NVisu,nElems_DG,VarNames_loc,CoordsVisu_DG,UVisu_DG,FileString_DG,&
-        dim=PP_dim,DGFV=0,nValAtLastDimension=.TRUE.)
+        dim=PP_dim,DGFV=0,nValAtLastDimension=.TRUE.,PostiParallel=.TRUE.,HighOrder=HighOrder)
+
 #if FV_ENABLED
     IF (.NOT.MeshFileMode) THEN
-      FileString_FV=TRIM(TIMESTAMP(TRIM(ProjectName)//'_FV',OutputTime))//'.vtu'
       CALL WriteDataToVTK(nVarVisu,NVisu_FV,nElems_FV,VarNames_loc,CoordsVisu_FV,UVisu_FV,FileString_FV,&
-          dim=PP_dim,DGFV=1,nValAtLastDimension=.TRUE.)
+          dim=PP_dim,DGFV=1,nValAtLastDimension=.TRUE.,PostiParallel=.TRUE.,HighOrder=HighOrder)
 
       IF (MPIRoot) THEN
         ! write multiblock file
-        FileString_multiblock=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))//'.vtm'
+        FileString_multiblock=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Solution',OutputTime))
         CALL WriteVTKMultiBlockDataSet(FileString_multiblock,FileString_DG,FileString_FV)
       ENDIF
     END IF
@@ -160,20 +165,20 @@ DO iArg=1+skipArgs,nArgs
     IF (doSurfVisu) THEN
       ! Surface data
 #if FV_ENABLED
-      FileString_SurfDG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_SurfDG',OutputTime))//'.vtu'
+      FileString_SurfDG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_SurfDG',OutputTime))
 #else
-      FileString_SurfDG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Surf',OutputTime))//'.vtu'
+      FileString_SurfDG=TRIM(TIMESTAMP(TRIM(ProjectName)//'_Surf',OutputTime))
 #endif
       CALL WriteDataToVTK(nVarSurfVisuAll,NVisu,nBCSidesVisu_DG,VarNamesSurf_loc,CoordsSurfVisu_DG,USurfVisu_DG,&
-        FileString_SurfDG,dim=PP_dim-1,DGFV=0,nValAtLastDimension=.TRUE.)
+        FileString_SurfDG,dim=PP_dim-1,DGFV=0,nValAtLastDimension=.TRUE.,HighOrder=HighOrder)
 #if FV_ENABLED
-      FileString_SurfFV=TRIM(TIMESTAMP(TRIM(ProjectName)//'_SurfFV',OutputTime))//'.vtu'
+      FileString_SurfFV=TRIM(TIMESTAMP(TRIM(ProjectName)//'_SurfFV',OutputTime))
       CALL WriteDataToVTK(nVarSurfVisuAll,NVisu_FV,nBCSidesVisu_FV,VarNamesSurf_loc,CoordsSurfVisu_FV,USurfVisu_FV,&
-          FileString_SurfFV,dim=PP_dim-1,DGFV=1,nValAtLastDimension=.TRUE.)
+          FileString_SurfFV,dim=PP_dim-1,DGFV=1,nValAtLastDimension=.TRUE.,HighOrder=HighOrder)
 
       IF (MPIRoot) THEN
         ! write multiblock file
-        FileString_multiblock=TRIM(TIMESTAMP(TRIM(ProjectName)//'_SurfSolution',OutputTime))//'.vtm'
+        FileString_multiblock=TRIM(TIMESTAMP(TRIM(ProjectName)//'_SurfSolution',OutputTime))
         CALL WriteVTKMultiBlockDataSet(FileString_multiblock,FileString_SurfDG,FileString_SurfFV)
       ENDIF
 #endif
@@ -216,5 +221,5 @@ CALL FinalizeMPI()
 CALL MPI_FINALIZE(iError)
 IF(iError .NE. 0) STOP 'MPI finalize error'
 #endif
-END PROGRAM 
+END PROGRAM
 

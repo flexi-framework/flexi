@@ -244,9 +244,9 @@ INTEGER,           ALLOCATABLE :: UInt(:)
 INTEGER                        :: i,nValGather(rank),nDOFLocal
 INTEGER,DIMENSION(nLocalProcs) :: nDOFPerNode,offsetNode
 !==================================================================================================================================
-! HDF5 with MPI can only write max. (32 bit integer / 8) elements
-IF(REAL(PRODUCT(nVal)).GT.((2**28-1)/8.))  CALL Abort(__STAMP__, &
-    'Total size of HDF5 array "'//TRIM(DataSetName)//'" is too big! Reduce number of entries per rank or compile without MPI!')
+! HDF5 with MPI can only write max. (32 bit signed integer / size of single element) elements (2GB per MPI rank)
+IF (PRODUCT(REAL(nVal)).GT.nLimit) CALL Abort(__STAMP__, & ! Casting to avoid overflow
+ 'Dataset "'//TRIM(DataSetName)//'" exceeds HDF5 chunksize limit of 2GB per rank! Increase number of ranks or compile without MPI!')
 
 IF(gatheredWrite)THEN
   IF(ANY(offset(1:rank-1).NE.0)) &
@@ -645,9 +645,10 @@ IF(PRESENT(Filename_In)) Filename=TRIM(Filename_In)
 
 ! Write time averaged data --------------------------------------------------------------------------------------------------------
 IF(MPIRoot)THEN
+                    ! dummy DG_Solution to fix Posti error, tres oegly !!!
                     tmp255 = TRIM('DUMMY_DO_NOT_VISUALIZE')
                     CALL GenerateFileSkeleton(TRIM(FileName),'TimeAvg',1 ,PP_N,(/tmp255/),&
-                           MeshFileName,OutputTime,FutureTime,create=.TRUE.) ! dummy DG_Solution to fix Posti error, tres oegly !!!
+                           MeshFileName,OutputTime,FutureTime,create=.TRUE.,withUserblock=.TRUE.)
   IF(nVarAvg .GT.0) CALL GenerateFileSkeleton(TRIM(FileName),'TimeAvg',nVarAvg ,PP_N,VarNamesAvg,&
                            MeshFileName,OutputTime,FutureTime,create=.FALSE.,Dataset='Mean')
   IF(nVarFluc.GT.0) CALL GenerateFileSkeleton(TRIM(FileName),'TimeAvg',nVarFluc,PP_N,VarNamesFluc,&
@@ -956,7 +957,7 @@ CHARACTER(LEN=255),INTENT(IN),OPTIONAL,TARGET :: StrArray(PRODUCT(nVal))  !< num
 INTEGER(HID_T)                 :: PList_ID,DSet_ID,MemSpace,FileSpace,Type_ID,dsetparams
 INTEGER(HSIZE_T)               :: Dimsf(Rank),OffsetHDF(Rank),nValMax(Rank)
 INTEGER(SIZE_T)                :: SizeSet=255
-LOGICAL                        :: chunky
+LOGICAL                        :: chunky,exists
 TYPE(C_PTR)                    :: buf
 !==================================================================================================================================
 LOGWRITE(*,'(A,I1.1,A,A,A)')' WRITE ',Rank,'D ARRAY "',TRIM(DataSetName),'" TO HDF5 FILE...'
@@ -988,15 +989,16 @@ IF(PRESENT(StrArray))THEN
 END IF
 
 Dimsf = nValGlobal ! we need the global array size
-CALL H5ESET_AUTO_F(0,iError)
-CALL H5DOPEN_F(File_ID, TRIM(DatasetName),DSet_ID, iError)
-IF(iError.NE.0)THEN ! does not exist
+! Check data set. Data sets can be checked by determining the existence of the corresponding link
+CALL H5LEXISTS_F(File_ID, TRIM(DataSetName), exists, iError)
+IF (.NOT. exists) THEN
   ! Create the data space for the  dataset.
   CALL H5SCREATE_SIMPLE_F(Rank, Dimsf, FileSpace, iError, nValMax)
   CALL H5DCREATE_F(File_ID, TRIM(DataSetName), Type_ID, FileSpace, DSet_ID,iError,dsetparams)
   CALL H5SCLOSE_F(FileSpace, iError)
+ELSE
+  CALL H5DOPEN_F(File_ID, TRIM(DatasetName),DSet_ID, iError)
 END IF
-CALL H5ESET_AUTO_F(1,iError)
 IF(chunky)THEN
   CALL H5DSET_EXTENT_F(DSet_ID,Dimsf,iError) ! if resizable then dataset may need to be extended
 END IF
@@ -1032,7 +1034,7 @@ END IF
 IF(PRESENT(IntArray))  buf=C_LOC(IntArray)
 IF(PRESENT(RealArray)) buf=C_LOC(RealArray)
 IF(PRESENT(StrArray))  buf=C_LOC(StrArray(1))
-CALL H5DWRITE_F(DSet_ID,Type_ID,buf,iError,file_space_id=filespace,mem_space_id=memspace,xfer_prp=PList_ID)
+CALL H5DWRITE_F(DSet_ID,Type_ID,buf,iError,file_space_id=FileSpace,mem_space_id=MemSpace,xfer_prp=PList_ID)
 
 IF(PRESENT(StrArray)) CALL H5TCLOSE_F(Type_ID, iError)
 ! Close the property list, dataspaces and dataset.

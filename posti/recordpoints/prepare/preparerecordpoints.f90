@@ -37,6 +37,9 @@ USE MOD_Output_Vars,        ONLY:ProjectName
 USE MOD_Mesh,               ONLY:DefineParametersMesh,InitMesh,FinalizeMesh
 USE MOD_Mesh_Vars,          ONLY:MeshFile
 USE MOD_Mortar,             ONLY:InitMortar,FinalizeMortar
+#if FV_ENABLED
+USE MOD_FV_Basis,           ONLY:InitFV_Basis,FinalizeFV_Basis
+#endif
 ! Recordpoints
 USE MOD_RPSet
 USE MOD_VisuRP,             ONLY:VisuRP
@@ -96,6 +99,9 @@ CALL ReadAttribute(File_ID,'Ngeo',1,IntScalar=Ntmp)
 CALL CloseDataFile()
 Ntmp = Ntmp*2
 CALL InitInterpolation(Ntmp)
+#if FV_ENABLED
+CALL InitFV_Basis()
+#endif
 CALL InitMortar()
 CALL InitOutput()
 CALL InitMesh(meshMode=2,MeshFile_IN=MeshFile)
@@ -109,6 +115,9 @@ CALL FinalizeOutput()
 CALL FinalizeInterpolation()
 CALL FinalizeMesh()
 CALL FinalizeMortar()
+#if FV_ENABLED
+CALL FinalizeFV_Basis()
+#endif
 CALL FinalizeParameters()
 CALL FinalizeCommandlineArguments()
 

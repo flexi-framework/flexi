@@ -31,6 +31,10 @@ INTERFACE Riemann
   MODULE PROCEDURE Riemann
 END INTERFACE
 
+INTERFACE Riemann_Point
+  MODULE PROCEDURE Riemann_Point
+END INTERFACE
+
 INTERFACE GetFlux
   MODULE PROCEDURE GetFlux
 END INTERFACE
@@ -47,6 +51,7 @@ INTERFACE FinalizeRiemann
 END INTERFACE
 
 PUBLIC::Riemann
+PUBLIC::Riemann_Point
 PUBLIC::GetFlux
 PUBLIC::FinalizeRiemann
 !==================================================================================================================================
@@ -96,38 +101,63 @@ F=F+Fv
 
 END SUBROUTINE GetFlux
 
+!==================================================================================================================================
+!> Computes the numerical flux
+!> Conservative States are rotated into normal direction in this routine and are NOT backrotatet: don't use it after this routine!!
+!==================================================================================================================================
+SUBROUTINE Riemann(Nloc,FOut,U_L,U_R,UPrim_L,UPrim_R,nv,t1,t2,doBC)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+INTEGER,INTENT(IN)                                          :: Nloc       !< local polynomial degree
+REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_L        !< conservative solution at left side of the interface
+REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_R        !< conservative solution at right side of the interface
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim_L    !< primitive solution at left side of the interface
+REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim_R    !< primitive solution at right side of the interface
+!> normal vector and tangential vectors at side
+REAL,DIMENSION(          3,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: nv,t1,t2
+LOGICAL,INTENT(IN)                                          :: doBC       !< marker whether side is a BC side
+REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(OUT) :: FOut       !< advective flux
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER                 :: i,j
+!==================================================================================================================================
+DO j=0,ZDIM(Nloc); DO i=0,Nloc
+  CALL Riemann_Point(Fout(:,i,j),U_L(:,i,j),U_R(:,i,j),UPrim_L(:,i,j),UPrim_R(:,i,j),nv(:,i,j),t1(:,i,j),t2(:,i,j),doBC)
+END DO; END DO
+END SUBROUTINE Riemann
 
 !==================================================================================================================================
 !> Computes the numerical flux
 !> Conservative States are rotated into normal direction in this routine and are NOT backrotatet: don't use it after this routine!!
 !==================================================================================================================================
-SUBROUTINE Riemann(Nloc,F,U_L,U_R,dummy_L,dummy_R,nv,t1,t2,doBC)
+SUBROUTINE Riemann_Point(F,U_L,U_R,dummy_L,dummy_R,nv,t1,t2,doBC)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Equation_Vars,ONLY:AdvVel
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)                                        :: Nloc                         !< Polynomial degree
-REAL,DIMENSION(PP_nVar,    0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_L                          !< Left state
-REAL,DIMENSION(PP_nVar,    0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_R                          !< Right state
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: dummy_L                      !< primitive state (useless here)
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: dummy_R                      !< primitive state (useless here)
-REAL,INTENT(IN)                                           :: nv(3,0:Nloc,0:ZDIM(Nloc))      !< Normal vector
-REAL,INTENT(IN)                                           :: t1(3,0:Nloc,0:ZDIM(Nloc))      !< First tangential vector
-REAL,INTENT(IN)                                           :: t2(3,0:Nloc,0:ZDIM(Nloc))      !< Second tangential vector
-LOGICAL,INTENT(IN)                                        :: doBC                         !< Switch to do BC sides or not
-REAL,INTENT(OUT)                                          :: F(PP_nVar,0:Nloc,0:ZDIM(Nloc)) !< Flux
+REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: U_L        !< Left state
+REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: U_R        !< Right state
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: dummy_L    !< primitive state (useless here)
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: dummy_R    !< primitive state (useless here)
+REAL,INTENT(IN)                         :: nv(3)      !< Normal vector
+REAL,INTENT(IN)                         :: t1(3)      !< First tangential vector
+REAL,INTENT(IN)                         :: t2(3)      !< Second tangential vector
+LOGICAL,INTENT(IN)                      :: doBC       !< Switch to do BC sides or not
+REAL,INTENT(OUT)                        :: F(PP_nVar) !< Flux
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                                             :: LambdaMax(0:Nloc,0:ZDIM(Nloc))
+REAL                                    :: LambdaMax
 !==================================================================================================================================
-LambdaMax = AdvVel(1)*nv(1,:,:) +  AdvVel(2)*nv(2,:,:) + AdvVel(3)*nv(3,:,:)
+LambdaMax = AdvVel(1)*nv(1) +  AdvVel(2)*nv(2) + AdvVel(3)*nv(3)
 ! Compute the classic upwind flux into normal direction for each face GP
-F(1,:,:) = 0.5*( (LambdaMax + ABS(LambdaMax))*U_L(1,:,:) + (LambdaMax-ABS(LambdaMax))*U_R(1,:,: ))
-END SUBROUTINE Riemann
+F(1) = 0.5*( (LambdaMax + ABS(LambdaMax))*U_L(1) + (LambdaMax-ABS(LambdaMax))*U_R(1))
+END SUBROUTINE Riemann_Point
 
 
 #if PARABOLIC

@@ -1,9 +1,9 @@
 !=================================================================================================================================
-! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz 
+! Copyright (c) 2010-2016  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
-! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License 
+! FLEXI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 ! as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 !
 ! FLEXI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
@@ -52,8 +52,6 @@ CONTAINS
 !>
 !> Temperatures above the Sutherlands Temperature Ts are computed according to (1)
 !> 1) T >= Ts:    mu = mu0 * (T/Tref)^(expo) *  (Tref+TS)/(T+TS)
-!> Example values would be Ts=110.4K, Tref 280K and mu0=mu(Tref)=1.735E-5Kg/ms
-!> and expo = 3/2
 !>
 !> below Ts a linear dependence is assumed, (2)
 !> 2) T < Ts:    mu = mu0*T/Tref*c
@@ -61,7 +59,7 @@ CONTAINS
 !> with c = (Ts/Tref)^exp*(1+(Ts/Tref))/(2(Ts/Tref)²) for steady transition from (1) to (2) at T = Ts.
 !>
 !> This is only valid for Temperatures in the range 0 < T < 555 K
-!> For further informration check out the HALOWiki and Babucke's Diss. and Code. 'NS3D'
+!> For more detail see White, F. M.
 !> ATTENTION!!!!! The global variable Tref=1./Tref and Ts=Ts/Tref !!!!!
 !==================================================================================================================================
 ELEMENTAL FUNCTION muSuth(T)

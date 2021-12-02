@@ -59,6 +59,10 @@ INTERFACE Riemann
   MODULE PROCEDURE Riemann
 END INTERFACE
 
+INTERFACE Riemann_Point
+  MODULE PROCEDURE Riemann_Point
+END INTERFACE
+
 #if PARABOLIC
 INTERFACE ViscousFlux
   MODULE PROCEDURE ViscousFlux
@@ -73,6 +77,7 @@ END INTERFACE
 
 PUBLIC::InitRiemann
 PUBLIC::Riemann
+PUBLIC::Riemann_Point
 PUBLIC::FinalizeRiemann
 !==================================================================================================================================
 
@@ -234,7 +239,7 @@ END SELECT
 END SUBROUTINE InitRiemann
 
 !==================================================================================================================================
-!> Computes the numerical flux
+!> Computes the numerical flux for a side calling the flux calculation pointwise.
 !> Conservative States are rotated into normal direction in this routine and are NOT backrotated: don't use it after this routine!!
 !> Attention 2: numerical flux is backrotated at the end of the routine!!
 !==================================================================================================================================
@@ -245,10 +250,10 @@ IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)                                          :: Nloc       !< local polynomial degree
-REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_L        !< conservative solution at left side of the interface
-REAL,DIMENSION(PP_nVar    ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: U_R        !< conservative solution at right side of the interface
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim_L    !< primitive solution at left side of the interface
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: UPrim_R    !< primitive solution at right side of the interface
+REAL,DIMENSION(CONS    ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)     :: U_L        !< conservative solution at left side of the interface
+REAL,DIMENSION(CONS    ,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)     :: U_R        !< conservative solution at right side of the interface
+REAL,DIMENSION(PRIM,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)         :: UPrim_L    !< primitive solution at left side of the interface
+REAL,DIMENSION(PRIM,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)         :: UPrim_R    !< primitive solution at right side of the interface
 !> normal vector and tangential vectors at side
 REAL,DIMENSION(          3,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)  :: nv,t1,t2
 LOGICAL,INTENT(IN)                                          :: doBC       !< marker whether side is a BC side
@@ -266,43 +271,43 @@ ELSE
   Riemann_loc => Riemann_pointer
 END IF
 
-! Momentum has to be rotatet using the normal system individual for each
 DO j=0,ZDIM(Nloc); DO i=0,Nloc
+  ! Momentum has to be rotatet using the normal system individual for each
   ! left state: U_L
-  U_LL(DENS)=U_L(DENS,i,j)
-  U_LL(SRHO)=1./U_LL(DENS)
-  U_LL(ENER)=U_L(5,i,j)
-  U_LL(PRES)=UPrim_L(5,i,j)
+  U_LL(EXT_DENS)=U_L(DENS,i,j)
+  U_LL(EXT_SRHO)=1./U_LL(EXT_DENS)
+  U_LL(EXT_ENER)=U_L(ENER,i,j)
+  U_LL(EXT_PRES)=UPrim_L(PRES,i,j)
 
 
   ! rotate velocity in normal and tangential direction
-  U_LL(VEL1)=DOT_PRODUCT(UPrim_L(2:4,i,j),nv(:,i,j))
-  U_LL(VEL2)=DOT_PRODUCT(UPrim_L(2:4,i,j),t1(:,i,j))
-  U_LL(MOM1)=U_LL(DENS)*U_LL(VEL1)
-  U_LL(MOM2)=U_LL(DENS)*U_LL(VEL2)
+  U_LL(EXT_VEL1)=DOT_PRODUCT(UPrim_L(VELV,i,j),nv(:,i,j))
+  U_LL(EXT_VEL2)=DOT_PRODUCT(UPrim_L(VELV,i,j),t1(:,i,j))
+  U_LL(EXT_MOM1)=U_LL(EXT_DENS)*U_LL(EXT_VEL1)
+  U_LL(EXT_MOM2)=U_LL(EXT_DENS)*U_LL(EXT_VEL2)
 #if PP_dim==3
-  U_LL(VEL3)=DOT_PRODUCT(UPrim_L(2:4,i,j),t2(:,i,j))
-  U_LL(MOM3)=U_LL(DENS)*U_LL(VEL3)
+  U_LL(EXT_VEL3)=DOT_PRODUCT(UPrim_L(VELV,i,j),t2(:,i,j))
+  U_LL(EXT_MOM3)=U_LL(EXT_DENS)*U_LL(EXT_VEL3)
 #else
-  U_LL(VEL3)=0.
-  U_LL(MOM3)=0.
+  U_LL(EXT_VEL3)=0.
+  U_LL(EXT_MOM3)=0.
 #endif
   ! right state: U_R
-  U_RR(DENS)=U_R(DENS,i,j)
-  U_RR(SRHO)=1./U_RR(DENS)
-  U_RR(ENER)=U_R(5,i,j)
-  U_RR(PRES)=UPrim_R(5,i,j)
+  U_RR(EXT_DENS)=U_R(DENS,i,j)
+  U_RR(EXT_SRHO)=1./U_RR(EXT_DENS)
+  U_RR(EXT_ENER)=U_R(ENER,i,j)
+  U_RR(EXT_PRES)=UPrim_R(PRES,i,j)
   ! rotate momentum in normal and tangential direction
-  U_RR(VEL1)=DOT_PRODUCT(UPRIM_R(2:4,i,j),nv(:,i,j))
-  U_RR(VEL2)=DOT_PRODUCT(UPRIM_R(2:4,i,j),t1(:,i,j))
-  U_RR(MOM1)=U_RR(DENS)*U_RR(VEL1)
-  U_RR(MOM2)=U_RR(DENS)*U_RR(VEL2)
+  U_RR(EXT_VEL1)=DOT_PRODUCT(UPRIM_R(VELV,i,j),nv(:,i,j))
+  U_RR(EXT_VEL2)=DOT_PRODUCT(UPRIM_R(VELV,i,j),t1(:,i,j))
+  U_RR(EXT_MOM1)=U_RR(EXT_DENS)*U_RR(EXT_VEL1)
+  U_RR(EXT_MOM2)=U_RR(EXT_DENS)*U_RR(EXT_VEL2)
 #if PP_dim==3
-  U_RR(VEL3)=DOT_PRODUCT(UPRIM_R(2:4,i,j),t2(:,i,j))
-  U_RR(MOM3)=U_RR(DENS)*U_RR(VEL3)
+  U_RR(EXT_VEL3)=DOT_PRODUCT(UPRIM_R(VELV,i,j),t2(:,i,j))
+  U_RR(EXT_MOM3)=U_RR(EXT_DENS)*U_RR(EXT_VEL3)
 #else
-  U_RR(VEL3)=0.
-  U_RR(MOM3)=0.
+  U_RR(EXT_VEL3)=0.
+  U_RR(EXT_MOM3)=0.
 #endif
 
 # ifndef SPLIT_DG
@@ -314,18 +319,103 @@ DO j=0,ZDIM(Nloc); DO i=0,Nloc
 
   ! Back Rotate the normal flux into Cartesian direction
   Fout(DENS,i,j)=F(DENS)
-  Fout(MOMV,i,j)=nv(:,i,j)*F(MOM1)     &
-                  + t1(:,i,j)*F(MOM2)  &
+  Fout(MOMV,i,j)=nv(:,i,j)*F(MOM1)  &
+               + t1(:,i,j)*F(MOM2)  &
 #if PP_dim==3
-                  + t2(:,i,j)*F(MOM3)
+               + t2(:,i,j)*F(MOM3)
 #else
-                  + 0.
+               + 0.
 #endif
   Fout(ENER,i,j)=F(ENER)
 END DO; END DO
 END SUBROUTINE Riemann
 
+!==================================================================================================================================
+!> Computes the numerical flux
+!> Conservative States are rotated into normal direction in this routine and are NOT backrotated: don't use it after this routine!!
+!> Attention 2: numerical flux is backrotated at the end of the routine!!
+!==================================================================================================================================
+SUBROUTINE Riemann_Point(FOut,U_L,U_R,UPrim_L,UPrim_R,nv,t1,t2,doBC)
+! MODULES
+USE MOD_Flux         ,ONLY:EvalEulerFlux1D_fast
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: U_L        !< conservative solution at left side of the interface
+REAL,DIMENSION(PP_nVar    ),INTENT(IN)  :: U_R        !< conservative solution at right side of the interface
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrim_L    !< primitive solution at left side of the interface
+REAL,DIMENSION(PP_nVarPrim),INTENT(IN)  :: UPrim_R    !< primitive solution at right side of the interface
+REAL,DIMENSION(          3),INTENT(IN)  :: nv,t1,t2   !< normal vector and tangential vectors at side
+LOGICAL,INTENT(IN)                      :: doBC       !< marker whether side is a BC side
+REAL,DIMENSION(PP_nVar    ),INTENT(OUT) :: FOut       !< advective flux
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+REAL,DIMENSION(PP_nVar) :: F_L,F_R,F
+REAL,DIMENSION(PP_2Var) :: U_LL,U_RR
+PROCEDURE(RiemannInt),POINTER :: Riemann_loc !< pointer defining the standard inner Riemann solver
+!==================================================================================================================================
+IF (doBC) THEN
+  Riemann_loc => RiemannBC_pointer
+ELSE
+  Riemann_loc => Riemann_pointer
+END IF
 
+! Momentum has to be rotatet using the normal system individual for each
+! left state: U_L
+U_LL(EXT_DENS)=U_L(DENS)
+U_LL(EXT_SRHO)=1./U_LL(EXT_DENS)
+U_LL(EXT_ENER)=U_L(ENER)
+U_LL(EXT_PRES)=UPrim_L(PRES)
+
+
+! rotate velocity in normal and tangential direction
+U_LL(EXT_VEL1)=DOT_PRODUCT(UPrim_L(VELV),nv(:))
+U_LL(EXT_VEL2)=DOT_PRODUCT(UPrim_L(VELV),t1(:))
+U_LL(EXT_MOM1)=U_LL(EXT_DENS)*U_LL(EXT_VEL1)
+U_LL(EXT_MOM2)=U_LL(EXT_DENS)*U_LL(EXT_VEL2)
+#if PP_dim==3
+U_LL(EXT_VEL3)=DOT_PRODUCT(UPrim_L(VELV),t2(:))
+U_LL(EXT_MOM3)=U_LL(EXT_DENS)*U_LL(EXT_VEL3)
+#else
+U_LL(EXT_VEL3)=0.
+U_LL(EXT_MOM3)=0.
+#endif
+! right state: U_R
+U_RR(EXT_DENS)=U_R(DENS)
+U_RR(EXT_SRHO)=1./U_RR(EXT_DENS)
+U_RR(EXT_ENER)=U_R(ENER)
+U_RR(EXT_PRES)=UPrim_R(PRES)
+! rotate momentum in normal and tangential direction
+U_RR(EXT_VEL1)=DOT_PRODUCT(UPRIM_R(VELV),nv(:))
+U_RR(EXT_VEL2)=DOT_PRODUCT(UPRIM_R(VELV),t1(:))
+U_RR(EXT_MOM1)=U_RR(EXT_DENS)*U_RR(EXT_VEL1)
+U_RR(EXT_MOM2)=U_RR(EXT_DENS)*U_RR(EXT_VEL2)
+#if PP_dim==3
+U_RR(EXT_VEL3)=DOT_PRODUCT(UPRIM_R(VELV),t2(:))
+U_RR(EXT_MOM3)=U_RR(EXT_DENS)*U_RR(EXT_VEL3)
+#else
+U_RR(EXT_VEL3)=0.
+U_RR(EXT_MOM3)=0.
+#endif
+
+# ifndef SPLIT_DG
+CALL EvalEulerFlux1D_fast(U_LL,F_L)
+CALL EvalEulerFlux1D_fast(U_RR,F_R)
+#endif /*SPLIT_DG*/
+
+ CALL Riemann_loc(F_L,F_R,U_LL,U_RR,F)
+
+ ! Back Rotate the normal flux into Cartesian direction
+ Fout(DENS)=F(DENS)
+ Fout(MOMV)=nv(:)*F(MOM1)     &
+                 + t1(:)*F(MOM2)  &
+#if PP_dim==3
+                + t2(:)*F(MOM3)
+#else
+                + 0.
+#endif
+Fout(ENER)=F(ENER)
+END SUBROUTINE Riemann_Point
 
 #if PARABOLIC
 !==================================================================================================================================
@@ -345,22 +435,22 @@ USE MOD_Lifting_Vars ,ONLY: diffFluxX_R,diffFluxY_R,diffFluxZ_R
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)                                         :: Nloc     !< local polynomial degree
-                                                           !> solution in primitive variables at left/right side of the interface
-REAL,DIMENSION(PP_nVarPrim,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)   :: UPrim_L,UPrim_R
-                                                           !> solution gradients in x/y/z-direction left/right of the interface
-REAL,DIMENSION(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)   :: gradUx_L,gradUx_R,gradUy_L,gradUy_R,gradUz_L,gradUz_R
-REAL,INTENT(IN)                                            :: nv(3,0:Nloc,0:ZDIM(Nloc)) !< normal vector
-REAL,INTENT(OUT)                                           :: F(PP_nVar,0:Nloc,0:ZDIM(Nloc)) !< viscous flux
+INTEGER,INTENT(IN)                                            :: Nloc     !< local polynomial degree
+                                                              !> solution in primitive variables at left/right side of the interface
+REAL,DIMENSION(PRIM,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)           :: UPrim_L,UPrim_R
+                                                              !> solution gradients in x/y/z-direction left/right of the interface
+REAL,DIMENSION(PP_nVarLifting,0:Nloc,0:ZDIM(Nloc)),INTENT(IN) :: gradUx_L,gradUx_R,gradUy_L,gradUy_R,gradUz_L,gradUz_R
+REAL,INTENT(IN)                                               :: nv(3,0:Nloc,0:ZDIM(Nloc)) !< normal vector
+REAL,INTENT(OUT)                                              :: F(PP_nVar,0:Nloc,0:ZDIM(Nloc)) !< viscous flux
 #if EDDYVISCOSITY
-                                                           !> eddy viscosity left/right of the interface
-REAL,DIMENSION(1,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)             :: muSGS_L,muSGS_R
+                                                              !> eddy viscosity left/right of the interface
+REAL,DIMENSION(1,0:Nloc,0:ZDIM(Nloc)),INTENT(IN)              :: muSGS_L,muSGS_R
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                                              :: p,q
+INTEGER                                                       :: p,q
 !==================================================================================================================================
 ! Don't forget the diffusion contribution, my young padawan
 ! Compute NSE Diffusion flux
@@ -378,9 +468,9 @@ INTEGER                                              :: p,q
       )
 ! BR1 uses arithmetic mean of the fluxes
 DO q=0,ZDIM(Nloc); DO p=0,Nloc
-  F(:,p,q)=0.5*(nv(1,p,q)*(diffFluxX_L(1:5,p,q)+diffFluxX_R(1:5,p,q)) &
-               +nv(2,p,q)*(diffFluxY_L(1:5,p,q)+diffFluxY_R(1:5,p,q)) &
-               +nv(3,p,q)*(diffFluxZ_L(1:5,p,q)+diffFluxZ_R(1:5,p,q)))
+  F(:,p,q)=0.5*(nv(1,p,q)*(diffFluxX_L(CONS,p,q)+diffFluxX_R(CONS,p,q)) &
+               +nv(2,p,q)*(diffFluxY_L(CONS,p,q)+diffFluxY_R(CONS,p,q)) &
+               +nv(3,p,q)*(diffFluxZ_L(CONS,p,q)+diffFluxZ_R(CONS,p,q)))
 END DO; END DO
 END SUBROUTINE ViscousFlux
 #endif /* PARABOLIC */
@@ -413,7 +503,7 @@ REAL,DIMENSION(PP_nVar),INTENT(OUT):: F         !< resulting Riemann flux
 REAL    :: LambdaMax
 !==================================================================================================================================
 ! Lax-Friedrichs
-LambdaMax = MAX( ABS(U_RR(VEL1)),ABS(U_LL(VEL1)) ) + MAX( SPEEDOFSOUND_HE(U_LL),SPEEDOFSOUND_HE(U_RR) )
+LambdaMax = MAX( ABS(U_RR(EXT_VEL1)),ABS(U_LL(EXT_VEL1)) ) + MAX( SPEEDOFSOUND_HE(U_LL),SPEEDOFSOUND_HE(U_RR) )
 #ifndef SPLIT_DG
 F = 0.5*((F_L+F_R) - LambdaMax*(U_RR(CONS) - U_LL(CONS)))
 #else
@@ -464,12 +554,12 @@ REAL    :: sMu_L,sMu_R
 ! Version C: Better Roe estimate for wave speeds Davis, Einfeldt
 H_L       = TOTALENTHALPY_HE(U_LL)
 H_R       = TOTALENTHALPY_HE(U_RR)
-SqrtRho_L = SQRT(U_LL(DENS))
-SqrtRho_R = SQRT(U_RR(DENS))
+SqrtRho_L = SQRT(U_LL(EXT_DENS))
+SqrtRho_R = SQRT(U_RR(EXT_DENS))
 sSqrtRho  = 1./(SqrtRho_L+SqrtRho_R)
 ! Roe mean values
-RoeVel    = (SqrtRho_R*U_RR(VELV) + SqrtRho_L*U_LL(VELV)) * sSqrtRho
-RoeH      = (SqrtRho_R*H_R        + SqrtRho_L*H_L       ) * sSqrtRho
+RoeVel    = (SqrtRho_R*U_RR(EXT_VELV) + SqrtRho_L*U_LL(EXT_VELV)) * sSqrtRho
+RoeH      = (SqrtRho_R*H_R            + SqrtRho_L*H_L       )     * sSqrtRho
 absVel    = DOT_PRODUCT(RoeVel,RoeVel)
 Roec      = SQRT(KappaM1*(RoeH-0.5*absVel))
 Ssl = RoeVel(1) - Roec
@@ -483,16 +573,16 @@ ELSEIF(Ssr .LE. 0.)THEN
   F=F_R
 ! subsonic case
 ELSE
-  sMu_L = Ssl - U_LL(VEL1)
-  sMu_R = Ssr - U_RR(VEL1)
-  SStar = (U_RR(PRES) - U_LL(PRES) + U_LL(MOM1)*sMu_L - U_RR(MOM1)*sMu_R) / (U_LL(DENS)*sMu_L - U_RR(DENS)*sMu_R)
+  sMu_L = Ssl - U_LL(EXT_VEL1)
+  sMu_R = Ssr - U_RR(EXT_VEL1)
+  SStar = (U_RR(EXT_PRES) - U_LL(EXT_PRES) + U_LL(EXT_MOM1)*sMu_L - U_RR(EXT_MOM1)*sMu_R) / (U_LL(EXT_DENS)*sMu_L - U_RR(EXT_DENS)*sMu_R)
   IF ((Ssl .LE. 0.).AND.(SStar .GE. 0.)) THEN
-    EStar  = TOTALENERGY_HE(U_LL) + (SStar-U_LL(VEL1))*(SStar + U_LL(PRES)*U_LL(SRHO)/sMu_L)
-    U_Star = U_LL(DENS) * sMu_L/(Ssl-SStar) * (/ 1., SStar, U_LL(VEL2:VEL3), EStar /)
+    EStar  = TOTALENERGY_HE(U_LL) + (SStar-U_LL(EXT_VEL1))*(SStar + U_LL(EXT_PRES)*U_LL(EXT_SRHO)/sMu_L)
+    U_Star = U_LL(EXT_DENS) * sMu_L/(Ssl-SStar) * (/ 1., SStar, U_LL(EXT_VEL2:EXT_VEL3), EStar /)
     F=F_L+Ssl*(U_Star-U_LL(CONS))
   ELSE
-    EStar  = TOTALENERGY_HE(U_RR) + (SStar-U_RR(VEL1))*(SStar + U_RR(PRES)*U_RR(SRHO)/sMu_R)
-    U_Star = U_RR(DENS) * sMu_R/(Ssr-SStar) * (/ 1., SStar, U_RR(VEL2:VEL3), EStar /)
+    EStar  = TOTALENERGY_HE(U_RR) + (SStar-U_RR(EXT_VEL1))*(SStar + U_RR(EXT_PRES)*U_RR(EXT_SRHO)/sMu_R)
+    U_Star = U_RR(EXT_DENS) * sMu_R/(Ssr-SStar) * (/ 1., SStar, U_RR(EXT_VEL2:EXT_VEL3), EStar /)
     F=F_R+Ssr*(U_Star-U_RR(CONS))
   END IF
 END IF ! subsonic case
@@ -527,12 +617,12 @@ REAL                    :: Alpha1,Alpha2,Alpha3,Alpha4,Alpha5,Delta_U(PP_nVar+1)
 ! Roe flux
 H_L       = TOTALENTHALPY_HE(U_LL)
 H_R       = TOTALENTHALPY_HE(U_RR)
-SqrtRho_L = SQRT(U_LL(DENS))
-SqrtRho_R = SQRT(U_RR(DENS))
+SqrtRho_L = SQRT(U_LL(EXT_DENS))
+SqrtRho_R = SQRT(U_RR(EXT_DENS))
 
 sSqrtRho  = 1./(SqrtRho_L+SqrtRho_R)
 ! Roe mean values
-RoeVel    = (SqrtRho_R*U_RR(VELV) + SqrtRho_L*U_LL(VELV)) * sSqrtRho
+RoeVel    = (SqrtRho_R*U_RR(EXT_VELV) + SqrtRho_L*U_LL(EXT_VELV)) * sSqrtRho
 absVel    = DOT_PRODUCT(RoeVel,RoeVel)
 RoeH      = (SqrtRho_R*H_R+SqrtRho_L*H_L) * sSqrtRho
 Roec      = ROEC_RIEMANN_H(RoeH,RoeVel)
@@ -546,14 +636,15 @@ r4 = (/ 0.,             0.,        0.,        1.,        RoeVel(3)           /)
 r5 = (/ 1.,             a(5),      RoeVel(2), RoeVel(3), RoeH+RoeVel(1)*Roec /)
 
 ! calculate differences
-Delta_U(1:5) = U_RR(CONS) - U_LL(CONS)
-Delta_U(6)   = Delta_U(5)-(Delta_U(3)-RoeVel(2)*Delta_U(1))*RoeVel(2) - (Delta_U(4)-RoeVel(3)*Delta_U(1))*RoeVel(3)
+Delta_U(CONS)     = U_RR(CONS) - U_LL(CONS)
+Delta_U(DELTA_U6) = Delta_U(DELTA_U5)-(Delta_U(DELTA_U3)-RoeVel(DELTA_U2)*Delta_U(DELTA_U1))*RoeVel(2) -&
+                    (Delta_U(DELTA_U4)-RoeVel(DELTA_U3)*Delta_U(DELTA_U1))*RoeVel(DELTA_U3)
 ! calculate factors
-Alpha3 = Delta_U(3) - RoeVel(2)*Delta_U(1)
-Alpha4 = Delta_U(4) - RoeVel(3)*Delta_U(1)
+Alpha3 = Delta_U(DELTA_U3) - RoeVel(DELTA_U2)*Delta_U(DELTA_U1)
+Alpha4 = Delta_U(DELTA_U4) - RoeVel(DELTA_U3)*Delta_U(DELTA_U1)
 Alpha2 = ALPHA2_RIEMANN_H(RoeH,RoeVel,Roec,Delta_U)
-Alpha1 = 0.5/Roec * (Delta_U(1)*(RoeVel(1)+Roec) - Delta_U(2) - Roec*Alpha2)
-Alpha5 = Delta_U(1) - Alpha1 - Alpha2
+Alpha1 = 0.5/Roec * (Delta_U(DELTA_U1)*(RoeVel(1)+Roec) - Delta_U(DELTA_U2) - Roec*Alpha2)
+Alpha5 = Delta_U(DELTA_U1) - Alpha1 - Alpha2
 #ifndef SPLIT_DG
 ! assemble Roe flux
 F=0.5*((F_L+F_R) - &
@@ -608,22 +699,22 @@ c_L       = SPEEDOFSOUND_HE(U_LL)
 c_R       = SPEEDOFSOUND_HE(U_RR)
 H_L       = TOTALENTHALPY_HE(U_LL)
 H_R       = TOTALENTHALPY_HE(U_RR)
-SqrtRho_L = SQRT(U_LL(DENS))
-SqrtRho_R = SQRT(U_RR(DENS))
+SqrtRho_L = SQRT(U_LL(EXT_DENS))
+SqrtRho_R = SQRT(U_RR(EXT_DENS))
 
 sSqrtRho  = 1./(SqrtRho_L+SqrtRho_R)
 ! Roe mean values
-RoeVel    = (SqrtRho_R*U_RR(VELV) + SqrtRho_L*U_LL(VELV)) * sSqrtRho
+RoeVel    = (SqrtRho_R*U_RR(EXT_VELV) + SqrtRho_L*U_LL(EXT_VELV)) * sSqrtRho
 RoeH      = (SqrtRho_R*H_R+SqrtRho_L*H_L) * sSqrtRho
 absVel    = DOT_PRODUCT(RoeVel,RoeVel)
 Roec      = ROEC_RIEMANN_H(RoeH,RoeVel)
-RoeDens   = SQRT(U_LL(DENS)*U_RR(DENS))
+RoeDens   = SQRT(U_LL(EXT_DENS)*U_RR(EXT_DENS))
 ! Roe+Pike version of Roe Riemann solver
 
 ! calculate jump
-Delta_U(1)   = U_RR(DENS) - U_LL(DENS)
-Delta_U(2:4) = U_RR(VELV) - U_LL(VELV)
-Delta_U(5)   = U_RR(PRES) - U_LL(PRES)
+Delta_U(DELTA_U1)   = U_RR(EXT_DENS) - U_LL(EXT_DENS)
+Delta_U(DELTA_UV)   = U_RR(EXT_VELV) - U_LL(EXT_VELV)
+Delta_U(DELTA_U5)   = U_RR(EXT_PRES) - U_LL(EXT_PRES)
 
 ! mean eigenvalues and eigenvectors
 a  = (/ RoeVel(1)-Roec, RoeVel(1), RoeVel(1), RoeVel(1), RoeVel(1)+Roec      /)
@@ -635,24 +726,24 @@ r5 = (/ 1.,             a(5),      RoeVel(2), RoeVel(3), RoeH+RoeVel(1)*Roec /)
 
 ! calculate wave strenghts
 tmp      = 0.5/(Roec*Roec)
-Alpha(1) = tmp*(Delta_U(5)-RoeDens*Roec*Delta_U(2))
-Alpha(2) = Delta_U(1) - Delta_U(5)*2.*tmp
-Alpha(3) = RoeDens*Delta_U(3)
-Alpha(4) = RoeDens*Delta_U(4)
-Alpha(5) = tmp*(Delta_U(5)+RoeDens*Roec*Delta_U(2))
+Alpha(1) = tmp*(Delta_U(DELTA_U5)-RoeDens*Roec*Delta_U(DELTA_U2))
+Alpha(2) = Delta_U(DELTA_U1) - Delta_U(DELTA_U5)*2.*tmp
+Alpha(3) = RoeDens*Delta_U(DELTA_U3)
+Alpha(4) = RoeDens*Delta_U(DELTA_U4)
+Alpha(5) = tmp*(Delta_U(DELTA_U5)+RoeDens*Roec*Delta_U(DELTA_U2))
 
 ! Harten+Hyman entropy fix (apply only for acoustic waves, don't fix r)
 
-al(1) = U_LL(VEL1) - c_L
-al(2) = U_LL(VEL1)
-al(3) = U_LL(VEL1)
-al(4) = U_LL(VEL1)
-al(5) = U_LL(VEL1) + c_L
-ar(1) = U_RR(VEL1) - c_R
-ar(2) = U_RR(VEL1)
-ar(3) = U_RR(VEL1)
-ar(4) = U_RR(VEL1)
-ar(5) = U_RR(VEL1) + c_R
+al(1) = U_LL(EXT_VEL1) - c_L
+al(2) = U_LL(EXT_VEL1)
+al(3) = U_LL(EXT_VEL1)
+al(4) = U_LL(EXT_VEL1)
+al(5) = U_LL(EXT_VEL1) + c_L
+ar(1) = U_RR(EXT_VEL1) - c_R
+ar(2) = U_RR(EXT_VEL1)
+ar(3) = U_RR(EXT_VEL1)
+ar(4) = U_RR(EXT_VEL1)
+ar(5) = U_RR(EXT_VEL1) + c_R
 ! HH1
 !IF(ABS(a(1)).LT.da1) a(1)=da1
 !IF(ABS(a(5)).LT.da5) a(5)=da5
@@ -717,12 +808,12 @@ REAL                    :: Alpha1,Alpha2,Alpha3,Alpha4,Alpha5,Delta_U(PP_nVar+1)
 ! Roe flux
 H_L       = TOTALENTHALPY_HE(U_LL)
 H_R       = TOTALENTHALPY_HE(U_RR)
-SqrtRho_L = SQRT(U_LL(DENS))
-SqrtRho_R = SQRT(U_RR(DENS))
+SqrtRho_L = SQRT(U_LL(EXT_DENS))
+SqrtRho_R = SQRT(U_RR(EXT_DENS))
 
 sSqrtRho  = 1./(SqrtRho_L+SqrtRho_R)
 ! Roe mean values
-RoeVel    = (SqrtRho_R*U_RR(VELV) + SqrtRho_L*U_LL(VELV)) * sSqrtRho
+RoeVel    = (SqrtRho_R*U_RR(EXT_VELV) + SqrtRho_L*U_LL(EXT_VELV)) * sSqrtRho
 absVel    = DOT_PRODUCT(RoeVel,RoeVel)
 RoeH      = (SqrtRho_R*H_R+SqrtRho_L*H_L) * sSqrtRho
 Roec      = ROEC_RIEMANN_H(RoeH,RoeVel)
@@ -736,19 +827,20 @@ r4 = (/ 0.,             0.,        0.,        1.,        RoeVel(3)           /)
 r5 = (/ 1.,             a(5),      RoeVel(2), RoeVel(3), RoeH+RoeVel(1)*Roec /)
 
 ! calculate differences
-Delta_U(1:5) = U_RR(CONS) - U_LL(CONS)
-Delta_U(6)   = Delta_U(5)-(Delta_U(3)-RoeVel(2)*Delta_U(1))*RoeVel(2) - (Delta_U(4)-RoeVel(3)*Delta_U(1))*RoeVel(3)
+Delta_U(CONS) = U_RR(EXT_CONS) - U_LL(EXT_CONS)
+Delta_U(DELTA_U6)   = Delta_U(DELTA_U5)-(Delta_U(DELTA_U3)-RoeVel(2)*Delta_U(DELTA_U1))*RoeVel(2) - &
+                      (Delta_U(DELTA_U4)-RoeVel(3)*Delta_U(DELTA_U1))*RoeVel(3)
 
 ! low Mach-Number fix
 Ma_loc = SQRT(absVel)/(Roec*SQRT(kappa))
-Delta_U(2:4) = Delta_U(2:4) * Ma_loc
+Delta_U(DELTA_UV) = Delta_U(DELTA_UV) * Ma_loc
 
 ! calculate factors
-Alpha3 = Delta_U(3) - RoeVel(2)*Delta_U(1)
-Alpha4 = Delta_U(4) - RoeVel(3)*Delta_U(1)
+Alpha3 = Delta_U(DELTA_U3) - RoeVel(2)*Delta_U(DELTA_U1)
+Alpha4 = Delta_U(DELTA_U4) - RoeVel(3)*Delta_U(DELTA_U1)
 Alpha2 = ALPHA2_RIEMANN_H(RoeH,RoeVel,Roec,Delta_U)
-Alpha1 = 0.5/Roec * (Delta_U(1)*(RoeVel(1)+Roec) - Delta_U(2) - Roec*Alpha2)
-Alpha5 = Delta_U(1) - Alpha1 - Alpha2
+Alpha1 = 0.5/Roec * (Delta_U(DELTA_U1)*(RoeVel(1)+Roec) - Delta_U(DELTA_U2) - Roec*Alpha2)
+Alpha5 = Delta_U(DELTA_U1) - Alpha1 - Alpha2
 
 #ifndef SPLIT_DG
 ! assemble Roe flux
@@ -794,18 +886,18 @@ REAL    :: Ssl,Ssr
 !=================================================================================================================================
 H_L       = TOTALENTHALPY_HE(U_LL)
 H_R       = TOTALENTHALPY_HE(U_RR)
-SqrtRho_L = SQRT(U_LL(DENS))
-SqrtRho_R = SQRT(U_RR(DENS))
+SqrtRho_L = SQRT(U_LL(EXT_DENS))
+SqrtRho_R = SQRT(U_RR(EXT_DENS))
 sSqrtRho  = 1./(SqrtRho_L+SqrtRho_R)
 ! Roe mean values
-RoeVel    = (SqrtRho_R*U_RR(VELV) + SqrtRho_L*U_LL(VELV)) * sSqrtRho
-RoeH      = (SqrtRho_R*H_R        + SqrtRho_L*H_L)        * sSqrtRho
+RoeVel    = (SqrtRho_R*U_RR(EXT_VELV) + SqrtRho_L*U_LL(EXT_VELV)) * sSqrtRho
+RoeH      = (SqrtRho_R*H_R            + SqrtRho_L*H_L)            * sSqrtRho
 absVel    = DOT_PRODUCT(RoeVel,RoeVel)
 Roec      = ROEC_RIEMANN_H(RoeH,RoeVel)
 ! HLL flux
 ! Basic Davis estimate for wave speed
-!Ssl = U_LL(VEL1) - c_L
-!Ssr = U_RR(VEL1) + c_R
+!Ssl = U_LL(EXT_VEL1) - c_L
+!Ssr = U_RR(EXT_VEL1) + c_R
 ! Better Roe estimate for wave speeds Davis, Einfeldt
 Ssl = RoeVel(1) - Roec
 Ssr = RoeVel(1) + Roec
@@ -817,7 +909,7 @@ ELSEIF(Ssr .LE. 0.)THEN
   F=F_R
 ! subsonic case
 ELSE
-  F=(Ssr*F_L-Ssl*F_R+Ssl*Ssr*(U_RR(CONS)-U_LL(CONS)))/(Ssr-Ssl)
+  F=(Ssr*F_L-Ssl*F_R+Ssl*Ssr*(U_RR(EXT_CONS)-U_LL(EXT_CONS)))/(Ssr-Ssl)
 END IF ! subsonic case
 END SUBROUTINE Riemann_HLL
 
@@ -846,18 +938,18 @@ REAL    :: Ssl,Ssr,beta
 !=================================================================================================================================
 H_L       = TOTALENTHALPY_HE(U_LL)
 H_R       = TOTALENTHALPY_HE(U_RR)
-SqrtRho_L = SQRT(U_LL(DENS))
-SqrtRho_R = SQRT(U_RR(DENS))
+SqrtRho_L = SQRT(U_LL(EXT_DENS))
+SqrtRho_R = SQRT(U_RR(EXT_DENS))
 sSqrtRho  = 1./(SqrtRho_L+SqrtRho_R)
 ! Roe mean values
-RoeVel    = (SqrtRho_R*U_RR(VELV) + SqrtRho_L*U_LL(VELV)) * sSqrtRho
-RoeH      = (SqrtRho_R*H_R        + SqrtRho_L*H_L)        * sSqrtRho
+RoeVel    = (SqrtRho_R*U_RR(EXT_VELV) + SqrtRho_L*U_LL(EXT_VELV)) * sSqrtRho
+RoeH      = (SqrtRho_R*H_R            + SqrtRho_L*H_L)            * sSqrtRho
 absVel    = DOT_PRODUCT(RoeVel,RoeVel)
 Roec      = ROEC_RIEMANN_H(RoeH,RoeVel)
 ! HLLE flux (positively conservative)
 beta=BETA_RIEMANN_H()
-SsL=MIN(RoeVel(1)-Roec,U_LL(VEL1) - beta*SPEEDOFSOUND_HE(U_LL), 0.)
-SsR=MAX(RoeVel(1)+Roec,U_RR(VEL1) + beta*SPEEDOFSOUND_HE(U_RR), 0.)
+SsL=MIN(RoeVel(1)-Roec,U_LL(EXT_VEL1) - beta*SPEEDOFSOUND_HE(U_LL), 0.)
+SsR=MAX(RoeVel(1)+Roec,U_RR(EXT_VEL1) + beta*SPEEDOFSOUND_HE(U_RR), 0.)
 
 ! positive supersonic speed
 IF(Ssl .GE. 0.)THEN
@@ -867,7 +959,7 @@ ELSEIF(Ssr .LE. 0.)THEN
   F=F_R
 ! subsonic case
 ELSE
-  F=(Ssr*F_L-Ssl*F_R+Ssl*Ssr*(U_RR(CONS)-U_LL(CONS)))/(Ssr-Ssl)
+  F=(Ssr*F_L-Ssl*F_R+Ssl*Ssr*(U_RR(EXT_CONS)-U_LL(EXT_CONS)))/(Ssr-Ssl)
 END IF ! subsonic case
 END SUBROUTINE Riemann_HLLE
 
@@ -898,19 +990,19 @@ REAL,DIMENSION(PP_nVar)                :: r2,r3,r4  ! Roe eigenvectors + jump in
 !=================================================================================================================================
 H_L       = TOTALENTHALPY_HE(U_LL)
 H_R       = TOTALENTHALPY_HE(U_RR)
-SqrtRho_L = SQRT(U_LL(DENS))
-SqrtRho_R = SQRT(U_RR(DENS))
+SqrtRho_L = SQRT(U_LL(EXT_DENS))
+SqrtRho_R = SQRT(U_RR(EXT_DENS))
 sSqrtRho  = 1./(SqrtRho_L+SqrtRho_R)
 ! Roe mean values
-RoeVel    = (SqrtRho_R*U_RR(VELV) + SqrtRho_L*U_LL(VELV)) * sSqrtRho
-RoeH      = (SqrtRho_R*H_R        + SqrtRho_L*H_L)        * sSqrtRho
+RoeVel    = (SqrtRho_R*U_RR(EXT_VELV) + SqrtRho_L*U_LL(EXT_VELV)) * sSqrtRho
+RoeH      = (SqrtRho_R*H_R            + SqrtRho_L*H_L)            * sSqrtRho
 absVel    = DOT_PRODUCT(RoeVel,RoeVel)
 Roec      = ROEC_RIEMANN_H(RoeH,RoeVel)
-RoeDens   = SQRT(U_LL(DENS)*U_RR(DENS))
+RoeDens   = SQRT(U_LL(EXT_DENS)*U_RR(EXT_DENS))
 ! HLLEM flux (positively conservative)
 beta=BETA_RIEMANN_H()
-SsL=MIN(RoeVel(1)-Roec,U_LL(VEL1) - beta*SPEEDOFSOUND_HE(U_LL), 0.)
-SsR=MAX(RoeVel(1)+Roec,U_RR(VEL1) + beta*SPEEDOFSOUND_HE(U_RR), 0.)
+SsL=MIN(RoeVel(1)-Roec,U_LL(EXT_VEL1) - beta*SPEEDOFSOUND_HE(U_LL), 0.)
+SsR=MAX(RoeVel(1)+Roec,U_RR(EXT_VEL1) + beta*SPEEDOFSOUND_HE(U_RR), 0.)
 
 ! positive supersonic speed
 IF(Ssl .GE. 0.)THEN
@@ -924,14 +1016,14 @@ ELSE
   delta = Roec/(Roec+ABS(0.5*(Ssl+Ssr)))
 
   ! mean eigenvectors
-  Alpha(2)   = (U_RR(DENS)-U_LL(DENS))  - (U_RR(PRES)-U_LL(PRES))/(Roec*Roec)
-  Alpha(3:4) = RoeDens*(U_RR(VEL2:VEL3) - U_LL(VEL2:VEL3))
+  Alpha(2)   = (U_RR(EXT_DENS)-U_LL(EXT_DENS))  - (U_RR(EXT_PRES)-U_LL(EXT_PRES))/(Roec*Roec)
+  Alpha(3:4) = RoeDens*(U_RR(EXT_VEL2:EXT_VEL3) - U_LL(EXT_VEL2:EXT_VEL3))
   r2 = (/ 1., RoeVel(1), RoeVel(2), RoeVel(3), 0.5*absVel /)
   r3 = (/ 0., 0.,        1.,        0.,        RoeVel(2)  /)
   r4 = (/ 0., 0.,        0.,        1.,        RoeVel(3)  /)
 
   F=(Ssr*F_L-Ssl*F_R + Ssl*Ssr* &
-     (U_RR(CONS)-U_LL(CONS) - delta*(r2*Alpha(2)+r3*Alpha(3)+r4*Alpha(4))))/(Ssr-Ssl)
+     (U_RR(EXT_CONS)-U_LL(EXT_CONS) - delta*(r2*Alpha(2)+r3*Alpha(3)+r4*Alpha(4))))/(Ssr-Ssl)
 END IF ! subsonic case
 END SUBROUTINE Riemann_HLLEM
 
@@ -986,17 +1078,17 @@ REAL                               :: uMean,vMean,wMean ! auxiliary variable for
 REAL                               :: betaLogMean       ! auxiliary variable for the logarithmic mean inverse temperature
 !==================================================================================================================================
 ! Lax-Friedrichs
-LambdaMax = MAX( ABS(U_RR(VEL1)),ABS(U_LL(VEL1)) ) + MAX( SPEEDOFSOUND_HE(U_LL),SPEEDOFSOUND_HE(U_RR) )
+LambdaMax = MAX( ABS(U_RR(EXT_VEL1)),ABS(U_LL(EXT_VEL1)) ) + MAX( SPEEDOFSOUND_HE(U_LL),SPEEDOFSOUND_HE(U_RR) )
 
 ! average quantities
-rhoMean = 0.5*(U_LL(DENS) + U_RR(DENS))
-uMean   = 0.5*(U_LL(VEL1) + U_RR(VEL1))
-vMean   = 0.5*(U_LL(VEL2) + U_RR(VEL2))
-wMean   = 0.5*(U_LL(VEL3) + U_RR(VEL3))
+rhoMean = 0.5*(U_LL(EXT_DENS) + U_RR(EXT_DENS))
+uMean   = 0.5*(U_LL(EXT_VEL1) + U_RR(EXT_VEL1))
+vMean   = 0.5*(U_LL(EXT_VEL2) + U_RR(EXT_VEL2))
+wMean   = 0.5*(U_LL(EXT_VEL3) + U_RR(EXT_VEL3))
 
 ! inverse temperature
-beta_LL = 0.5*U_LL(DENS)/U_LL(PRES)
-beta_RR = 0.5*U_RR(DENS)/U_RR(PRES)
+beta_LL = 0.5*U_LL(EXT_DENS)/U_LL(EXT_PRES)
+beta_RR = 0.5*U_RR(EXT_DENS)/U_RR(EXT_PRES)
 
 ! logarithmic mean
 CALL GetLogMean(beta_LL,beta_RR,betaLogMean)
@@ -1005,10 +1097,10 @@ CALL GetLogMean(beta_LL,beta_RR,betaLogMean)
 CALL SplitDGSurface_pointer(U_LL,U_RR,F)
 
 !compute flux
-F(1:4) = F(1:4) - 0.5*LambdaMax*(U_RR(1:4)-U_LL(1:4))
-F(5)   = F(5)   - 0.5*LambdaMax*( &
-         (U_RR(DENS)-U_LL(DENS))*(0.5*sKappaM1/betaLogMean +0.5*(U_RR(VEL1)*U_LL(VEL1)+U_RR(VEL2)*U_LL(VEL2)+U_RR(VEL3)*U_LL(VEL3))) &
-         +rhoMean*uMean*(U_RR(VEL1)-U_LL(VEL1)) + rhoMean*vMean*(U_RR(VEL2)-U_LL(VEL2)) + rhoMean*wMean*(U_RR(VEL3)-U_LL(VEL3)) &
+F(DENS:MOM3) = F(DENS:MOM3) - 0.5*LambdaMax*(U_RR(EXT_DENS:EXT_MOM3)-U_LL(EXT_DENS:EXT_MOM3))
+F(ENER)      = F(ENER)      - 0.5*LambdaMax*( &
+         (U_RR(EXT_DENS)-U_LL(EXT_DENS))*(0.5*sKappaM1/betaLogMean +0.5*(U_RR(EXT_VEL1)*U_LL(EXT_VEL1)+U_RR(EXT_VEL2)*U_LL(EXT_VEL2)+U_RR(EXT_VEL3)*U_LL(EXT_VEL3))) &
+         +rhoMean*uMean*(U_RR(EXT_VEL1)-U_LL(EXT_VEL1)) + rhoMean*vMean*(U_RR(EXT_VEL2)-U_LL(EXT_VEL2)) + rhoMean*wMean*(U_RR(EXT_VEL3)-U_LL(EXT_VEL3)) &
          +0.5*rhoMean*sKappaM1*(1./beta_RR - 1./beta_LL))
 
 END SUBROUTINE Riemann_CH
