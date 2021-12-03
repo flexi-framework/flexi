@@ -13,9 +13,9 @@ CMAKE_DEPENDENT_OPTION(POSTI_CHANNEL_FFT           "Build the channel FFT tool" 
 CMAKE_DEPENDENT_OPTION(POSTI_WALLDISTANCE          "Build the walldistance tool"                        OFF "POSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_TO3D                  "Build the 3D extrusion tool"                        OFF "POSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_AVG2D                 "Build the 2D average tool"                          OFF "POSTI" OFF)
-CMAKE_DEPENDENT_OPTION(POSTI_HIT_INIT              "Build the init hit tool"                            OFF "POSTI" OFF)
-CMAKE_DEPENDENT_OPTION(POSTI_HIT_FILTER            "Build the filter hit tool"                          OFF "POSTI" OFF)
-CMAKE_DEPENDENT_OPTION(POSTI_HIT_ANALYZE           "Build the analyze hit tool"                         OFF "POSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_HIT_INIT              "Build the HIT initialization tool"                  OFF "POSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_HIT_FILTER            "Build the HIT spectral filter tool"                 OFF "POSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_HIT_ANALYZE           "Build the HIT analyze tool"                         OFF "POSTI" OFF)
 
 # =========================================================================
 # Build shared posti library
