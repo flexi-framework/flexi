@@ -13,7 +13,7 @@
 !=================================================================================================================================
 #include "flexi.h"
 
-MODULE MOD_FFT
+MODULE MOD_HIT_FFT
 ! MODULES
 IMPLICIT NONE
 PRIVATE
@@ -64,7 +64,7 @@ CONTAINS
 SUBROUTINE InitFFT()
 ! MODULES
 USE MOD_Globals
-USE MOD_FFT_Vars
+USE MOD_HIT_FFT_Vars
 #if USE_OPENMP
 USE OMP_Lib
 USE FFTW3
@@ -136,7 +136,7 @@ END SUBROUTINE InitFFT
 SUBROUTINE ComputeFFT_R2C(nVar_In,U_Global,U_FFT,doPrintTime)
 ! MODULES
 USE MOD_Globals
-USE MOD_FFT_Vars       ,ONLY: N_FFT,Endw
+USE MOD_HIT_FFT_Vars       ,ONLY: N_FFT,Endw
 USE FFTW3
 #if USE_OPENMP
 USE OMP_Lib
@@ -188,7 +188,7 @@ END SUBROUTINE ComputeFFT_R2C
 SUBROUTINE ComputeFFT_C2R(nVar_In,U_FFT,U_Global,doPrintTime)
 ! MODULES
 USE MOD_Globals
-USE MOD_FFT_Vars       ,ONLY: N_FFT,Endw
+USE MOD_HIT_FFT_Vars       ,ONLY: N_FFT,Endw
 USE FFTW3
 #if USE_OPENMP
 USE OMP_Lib
@@ -238,7 +238,7 @@ SUBROUTINE Interpolate_DG2FFT(NodeType_In,nVar_In,U_DG,U_Global)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc               ,ONLY: PP_N
-USE MOD_FFT_Vars              ,ONLY: N_FFT,N_Visu
+USE MOD_HIT_FFT_Vars          ,ONLY: N_FFT,N_Visu
 USE MOD_Mesh_Vars             ,ONLY: Elem_IJK,nElems
 USE MOD_Interpolation         ,ONLY: GetVandermonde
 USE MOD_ChangeBasis           ,ONLY: ChangeBasis3D
@@ -298,7 +298,7 @@ SUBROUTINE Interpolate_FFT2DG(NodeType_In,nVar_In,U_Global,U_DG)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc               ,ONLY: PP_N
-USE MOD_FFT_Vars              ,ONLY: N_FFT,N_Visu
+USE MOD_HIT_FFT_Vars          ,ONLY: N_FFT,N_Visu
 USE MOD_Mesh_Vars             ,ONLY: Elem_IJK,nElems
 USE MOD_Interpolation         ,ONLY: GetVandermonde
 USE MOD_ChangeBasis           ,ONLY: ChangeBasis3D
@@ -358,7 +358,7 @@ SUBROUTINE EvalFourierAtDGCoords(nVar_In,U_FFT,U_DG,doPrintTime)
 USE MOD_Globals
 USE MOD_PreProc               ,ONLY: PP_N
 USE MOD_Mesh_Vars             ,ONLY: Elem_xGP,nElems
-USE MOD_FFT_Vars              ,ONLY: II,Nc,endw
+USE MOD_HIT_FFT_Vars          ,ONLY: II,Nc,endw
 #if USE_OPENMP
 USE OMP_Lib
 #endif
@@ -447,7 +447,7 @@ END SUBROUTINE EvalFourierAtDGCoords
 !===================================================================================================================================
 SUBROUTINE FinalizeFFT()
 ! MODULES                                                                                                                          !
-USE MOD_FFT_Vars
+USE MOD_HIT_FFT_Vars
 USE FFTW3
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
@@ -464,4 +464,4 @@ SDEALLOCATE(LocalK)
 
 END SUBROUTINE FinalizeFFT
 
-END MODULE MOD_FFT
+END MODULE MOD_HIT_FFT

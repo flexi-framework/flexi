@@ -15,7 +15,7 @@
 !===================================================================================================================================
 !> Contains global variables provided by the AnalyzeHIT routines
 !===================================================================================================================================
-MODULE MOD_Filter_HIT_Vars
+MODULE MOD_HIT_FFT_Vars
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -24,15 +24,13 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-LOGICAL               :: FieldDataExists=.FALSE.
-LOGICAL               :: OverwriteMeshFile=.TRUE.
-INTEGER               :: N_Filter
-INTEGER               :: nVar_HDF5
-INTEGER               :: nVarField_HDF5
-INTEGER               :: N_HDF5
-INTEGER               :: nElems_HDF5
-REAL                  :: Time_HDF5
-CHARACTER(LEN=255)    :: NodeType_HDF5
-CHARACTER(LEN=255)    :: ProjectName_HDF5
+! FFT vars
+INTEGER               :: N_FFT
+INTEGER               :: N_Visu
+INTEGER               :: Nc
+INTEGER               :: kmax
+INTEGER               :: endw(3)
+INTEGER,ALLOCATABLE   :: LocalK(:,:,:,:)
+COMPLEX,PARAMETER     :: II = CMPLX(0.,1.0)
 !===================================================================================================================================
-END MODULE MOD_Filter_HIT_Vars
+END MODULE MOD_HIT_FFT_Vars

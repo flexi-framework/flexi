@@ -13,9 +13,9 @@
 !=================================================================================================================================
 
 !===================================================================================================================================
-!> Contains global variables provided by the AnalyzeHIT routines
+!> Contains global variables provided by the initHIT routines
 !===================================================================================================================================
-MODULE MOD_FFT_Vars
+MODULE MOD_HIT_Init_Vars
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -24,13 +24,9 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-! FFT vars
-INTEGER               :: N_FFT
-INTEGER               :: N_Visu
-INTEGER               :: Nc
-INTEGER               :: kmax
-INTEGER               :: endw(3)
-INTEGER,ALLOCATABLE   :: LocalK(:,:,:,:)
-COMPLEX,PARAMETER     :: II = CMPLX(0.,1.0)
+CHARACTER(LEN=255)    :: MeshFile                  !< Mesh File on which flow field is generated
+INTEGER               :: InitSpec                  !< Specifies which energy distribution is generated 
+INTEGER               :: Seed                      !< Seed for random number generator for Rogallo procedure (Debug only)
+COMPLEX,ALLOCATABLE   :: U_FFT(:,:,:,:)            !< Global solution in Fourier space
 !===================================================================================================================================
-END MODULE MOD_FFT_Vars
+END MODULE MOD_HIT_Init_Vars

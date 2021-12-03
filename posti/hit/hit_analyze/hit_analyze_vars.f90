@@ -15,7 +15,7 @@
 !===================================================================================================================================
 !> Contains global variables provided by the AnalyzeHIT routines
 !===================================================================================================================================
-MODULE MOD_Analyze_Hit_Vars
+MODULE MOD_HIT_Analyze_Vars
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -33,4 +33,4 @@ REAL                  :: Time_HDF5
 CHARACTER(LEN=255)    :: NodeType_HDF5
 CHARACTER(LEN=255)    :: ProjectName_HDF5
 !===================================================================================================================================
-END MODULE MOD_Analyze_Hit_Vars
+END MODULE MOD_HIT_Analyze_Vars

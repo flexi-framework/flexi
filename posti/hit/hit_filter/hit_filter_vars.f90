@@ -13,9 +13,9 @@
 !=================================================================================================================================
 
 !===================================================================================================================================
-!> Contains global variables provided by the initHIT routines
+!> Contains global variables provided by the AnalyzeHIT routines
 !===================================================================================================================================
-MODULE MOD_Init_HIT_Vars
+MODULE MOD_HIT_Filter_Vars
 ! MODULES
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -24,9 +24,15 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-CHARACTER(LEN=255)    :: MeshFile                  !< Mesh File on which flow field is generated
-INTEGER               :: InitSpec                  !< Specifies which energy distribution is generated 
-INTEGER               :: Seed                      !< Seed for random number generator for Rogallo procedure (Debug only)
-COMPLEX,ALLOCATABLE   :: U_FFT(:,:,:,:)            !< Global solution in Fourier space
+LOGICAL               :: FieldDataExists=.FALSE.
+LOGICAL               :: OverwriteMeshFile=.TRUE.
+INTEGER               :: N_Filter
+INTEGER               :: nVar_HDF5
+INTEGER               :: nVarField_HDF5
+INTEGER               :: N_HDF5
+INTEGER               :: nElems_HDF5
+REAL                  :: Time_HDF5
+CHARACTER(LEN=255)    :: NodeType_HDF5
+CHARACTER(LEN=255)    :: ProjectName_HDF5
 !===================================================================================================================================
-END MODULE MOD_Init_HIT_Vars
+END MODULE MOD_HIT_Filter_Vars

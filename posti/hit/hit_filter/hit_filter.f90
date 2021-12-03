@@ -13,7 +13,7 @@
 !=================================================================================================================================
 #include "flexi.h"
 
-MODULE MOD_Filter_Hit
+MODULE MOD_HIT_Filter
 ! MODULES
 IMPLICIT NONE
 PRIVATE
@@ -49,9 +49,9 @@ USE MOD_DG_Vars,         ONLY: U,Ut
 USE MOD_HDF5_Input,      ONLY: OpenDataFile,CloseDataFile,ISVALIDHDF5FILE
 USE MOD_HDF5_Input,      ONLY: ReadArray,ReadAttribute,GetDataProps,GetDataSize,DataSetExists
 USE MOD_IO_HDF5,         ONLY: File_ID,nDims,HSize
-USE MOD_Filter_Hit_Vars, ONLY: nVar_HDF5,N_HDF5,nElems_HDF5,nVarField_HDF5
-USE MOD_Filter_Hit_Vars, ONLY: Time_HDF5,NodeType_HDF5,ProjectName_HDF5
-USE MOD_Filter_Hit_Vars, ONLY: FieldDataExists,OverwriteMeshFile
+USE MOD_HIT_Filter_Vars, ONLY: nVar_HDF5,N_HDF5,nElems_HDF5,nVarField_HDF5
+USE MOD_HIT_Filter_Vars, ONLY: Time_HDF5,NodeType_HDF5,ProjectName_HDF5
+USE MOD_HIT_Filter_Vars, ONLY: FieldDataExists,OverwriteMeshFile
 USE MOD_ReadInTools,     ONLY: ExtractParameterFile
 USE MOD_Output_Vars,     ONLY: UserBlockTmpFile,userblock_total_len
 USE MOD_Output,          ONLY: insert_userblock
@@ -132,8 +132,8 @@ USE MOD_IO_HDF5,            ONLY: OpenDataFile,CloseDataFile,AddToFieldData
 USE MOD_HDF5_Output,        ONLY: WriteState,WriteAttribute
 USE MOD_Interpolation_Vars, ONLY: NodeType
 USE MOD_Output_Vars,        ONLY: NOut,ProjectName
-USE MOD_Filter_Hit_Vars,    ONLY: N_HDF5,ProjectName_HDF5,Time_HDF5,NodeType_HDF5
-USE MOD_Filter_Hit_Vars,    ONLY: FieldDataExists,nVarField_HDF5
+USE MOD_HIT_Filter_Vars,    ONLY: N_HDF5,ProjectName_HDF5,Time_HDF5,NodeType_HDF5
+USE MOD_HIT_Filter_Vars,    ONLY: FieldDataExists,nVarField_HDF5
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
@@ -184,10 +184,10 @@ SUBROUTINE FourierFilter(nVar_In,U_In)
 ! MODULES                                                                                                                          !
 USE MOD_PreProc,            ONLY: PP_N
 USE MOD_Mesh_Vars,          ONLY: nElems
-USE MOD_Filter_Hit_Vars,    ONLY: N_Filter,NodeType_HDF5
-USE MOD_FFT_Vars,           ONLY: N_FFT,Endw,Localk,Nc
-USE MOD_FFT,                ONLY: Interpolate_DG2FFT,Interpolate_FFT2DG
-USE MOD_FFT,                ONLY: ComputeFFT_R2C,ComputeFFT_C2R
+USE MOD_HIT_Filter_Vars,    ONLY: N_Filter,NodeType_HDF5
+USE MOD_HIT_FFT_Vars,       ONLY: N_FFT,Endw,Localk,Nc
+USE MOD_HIT_FFT,            ONLY: Interpolate_DG2FFT,Interpolate_FFT2DG
+USE MOD_HIT_FFT,            ONLY: ComputeFFT_R2C,ComputeFFT_C2R
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
@@ -224,4 +224,4 @@ CALL Interpolate_FFT2DG(NodeType_HDF5,nVar_In,U_Global,U_in)
 
 END SUBROUTINE FourierFilter
 
-END MODULE MOD_Filter_Hit
+END MODULE MOD_HIT_Filter

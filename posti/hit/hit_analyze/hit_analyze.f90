@@ -13,7 +13,7 @@
 !=================================================================================================================================
 #include "flexi.h"
 
-MODULE MOD_Analyze_Hit
+MODULE MOD_HIT_Analyze
 ! MODULES
 IMPLICIT NONE
 PRIVATE
@@ -55,9 +55,9 @@ SUBROUTINE AnalyzeTGV(U_In)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Analyze_Hit_Vars,   ONLY: N_Filter,nElems_HDF5,N_HDF5,NodeType_HDF5,nVar_HDF5
-USE MOD_FFT,                ONLY: ComputeFFT_R2C,ComputeFFT_C2R,Interpolate_DG2FFT
-USE MOD_FFT_Vars,           ONLY: N_FFT,Endw,kmax,Nc,localk
+USE MOD_HIT_Analyze_Vars,   ONLY: N_Filter,nElems_HDF5,N_HDF5,NodeType_HDF5,nVar_HDF5
+USE MOD_HIT_FFT,            ONLY: ComputeFFT_R2C,ComputeFFT_C2R,Interpolate_DG2FFT
+USE MOD_HIT_FFT_Vars,       ONLY: N_FFT,Endw,kmax,Nc,localk
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
@@ -112,8 +112,8 @@ END SUBROUTINE AnalyzeTGV
 !===================================================================================================================================
 PPURE SUBROUTINE ComputeSpectrum(nVar_In,U_In,E_k)
 ! MODULES
-USE MOD_Analyze_Hit_Vars,  ONLY: N_Filter
-USE MOD_FFT_Vars,          ONLY: endw,localk,Nc,kmax
+USE MOD_HIT_Analyze_Vars,  ONLY: N_Filter
+USE MOD_HIT_FFT_Vars,      ONLY: endw,localk,Nc,kmax
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
@@ -144,8 +144,8 @@ END SUBROUTINE ComputeSpectrum
 SUBROUTINE WriteSpectrum(E_k)
 ! MODULES
 USE MOD_Globals
-USE MOD_Analyze_Hit_Vars,  ONLY: N_Filter,ProjectName_HDF5,Time_HDF5
-USE MOD_FFT_Vars,          ONLY: Nc,kmax
+USE MOD_HIT_Analyze_Vars,  ONLY: N_Filter,ProjectName_HDF5,Time_HDF5
+USE MOD_HIT_FFT_Vars,      ONLY: Nc,kmax
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
@@ -196,9 +196,9 @@ SUBROUTINE WriteTurbulenceData(E_k,U_In)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc
-USE MOD_Analyze_Hit_Vars,  ONLY: ProjectName_HDF5,Time_HDF5,nVar_HDF5
-USE MOD_Analyze_Hit_Vars,  ONLY: N_Filter,mu0
-USE MOD_FFT_Vars,          ONLY: N_FFT,N_Visu,Nc,kmax,Endw
+USE MOD_HIT_Analyze_Vars,  ONLY: ProjectName_HDF5,Time_HDF5,nVar_HDF5
+USE MOD_HIT_Analyze_Vars,  ONLY: N_Filter,mu0
+USE MOD_HIT_FFT_Vars,      ONLY: N_FFT,N_Visu,Nc,kmax,Endw
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
@@ -306,8 +306,8 @@ USE MOD_DG_Vars,          ONLY: U
 USE MOD_HDF5_Input,       ONLY: OpenDataFile,CloseDataFile,ISVALIDHDF5FILE
 USE MOD_HDF5_Input,       ONLY: ReadArray,ReadAttribute,GetDataProps,GetDataSize,DataSetExists
 USE MOD_IO_HDF5,          ONLY: File_ID
-USE MOD_Analyze_Hit_Vars, ONLY: nVar_HDF5,N_HDF5,nElems_HDF5
-USE MOD_Analyze_Hit_Vars, ONLY: Time_HDF5,NodeType_HDF5,ProjectName_HDF5
+USE MOD_HIT_Analyze_Vars, ONLY: nVar_HDF5,N_HDF5,nElems_HDF5
+USE MOD_HIT_Analyze_Vars, ONLY: Time_HDF5,NodeType_HDF5,ProjectName_HDF5
 USE MOD_ReadInTools,      ONLY: ExtractParameterFile
 USE MOD_Output_Vars,      ONLY: UserBlockTmpFile,userblock_total_len
 USE MOD_Output,           ONLY: insert_userblock
@@ -372,4 +372,4 @@ CALL CloseDataFile()
 SWRITE(*,*) "READING SOLUTION DONE!"
 END SUBROUTINE ReadOldStateFile
 
-END MODULE MOD_Analyze_Hit
+END MODULE MOD_HIT_Analyze

@@ -13,7 +13,7 @@
 !=================================================================================================================================
 #include "flexi.h"
 
-MODULE MOD_INIT_HIT
+MODULE MOD_HIT_Init
 ! MODULES
 IMPLICIT NONE
 PRIVATE
@@ -46,9 +46,9 @@ SUBROUTINE Rogallo(U_FFT)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc,            ONLY: PP_PI
-USE MOD_Init_Hit_Vars,      ONLY: InitSpec,Seed
-USE MOD_FFT,                ONLY: ComputeFFT_C2R,ComputeFFT_R2C
-USE MOD_FFT_Vars,           ONLY: Endw,localk,N_FFT,Nc,II,kmax
+USE MOD_HIT_Init_Vars,      ONLY: InitSpec,Seed
+USE MOD_HIT_FFT,            ONLY: ComputeFFT_C2R,ComputeFFT_R2C
+USE MOD_HIT_FFT_Vars,       ONLY: Endw,localk,N_FFT,Nc,II,kmax
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -129,7 +129,7 @@ END SUBROUTINE Rogallo
 SUBROUTINE ExactSpectrum(InitSpec,E_k)
 ! MODULES
 USE MOD_Globals
-USE MOD_FFT_Vars,           ONLY: kmax
+USE MOD_HIT_FFT_Vars,     ONLY: kmax
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -207,8 +207,8 @@ SUBROUTINE GetCompressibleState(U_In)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc,            ONLY: PP_PI
-USE MOD_FFT_Vars,           ONLY: Endw,localk,II,N_FFT
-USE MOD_FFT,                ONLY: ComputeFFT_R2C,ComputeFFT_C2R
+USE MOD_HIT_FFT,            ONLY: ComputeFFT_R2C,ComputeFFT_C2R
+USE MOD_HIT_FFT_Vars,       ONLY: Endw,localk,II,N_FFT
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -281,4 +281,4 @@ END DO; END DO; END DO
 
 END SUBROUTINE GetCompressibleState
 
-END MODULE MOD_INIT_HIT
+END MODULE MOD_HIT_Init

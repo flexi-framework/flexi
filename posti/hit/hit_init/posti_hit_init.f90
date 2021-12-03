@@ -18,17 +18,17 @@
 !> It generates a random velocity field based on a specified turbulent kinetic energy distribution.
 !> The phase of each velocity mode is chosen random.
 !===================================================================================================================================
-PROGRAM posti_init_hit
+PROGRAM HIT_Init
 ! MODULES
 USE MOD_Preproc
 USE MOD_Globals
-USE MOD_Init_HIT
-USE MOD_Init_HIT_Vars
+USE MOD_HIT_Init
+USE MOD_HIT_Init_Vars
 USE MOD_ReadInTools
 USE MOD_Commandline_Arguments
 USE MOD_DG_Vars,                 ONLY: U
-USE MOD_FFT,                     ONLY: InitFFT,FinalizeFFT,EvalFourierAtDGCoords
-USE MOD_FFT_Vars,                ONLY: N_FFT,Endw
+USE MOD_HIT_FFT,                 ONLY: InitFFT,FinalizeFFT,EvalFourierAtDGCoords
+USE MOD_HIT_FFT_Vars,            ONLY: N_FFT,Endw
 USE MOD_Mesh,                    ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
 USE MOD_Mesh_Vars,               ONLY: nElems
 USE MOD_Output,                  ONLY: DefineParametersOutput,InitOutput,FinalizeOutput
@@ -138,4 +138,4 @@ SWRITE(UNIT_stdOut,'(132("="))')
 SWRITE(UNIT_stdOut,'(A)') ' initHIT FINISHED! '
 SWRITE(UNIT_stdOut,'(132("="))')
 
-END PROGRAM posti_init_hit
+END PROGRAM HIT_Init
