@@ -173,7 +173,7 @@ CALL DFFTW_PLAN_DFT_R2C_3D(plan,N_FFT,N_FFT,N_FFT,U_r,U_c,FFTW_ESTIMATE)
 ! Compute FFT for each variable. Local arrays ensure data to be contiguous in memory.
 DO iVar=1,nVar_In
   U_r = U_Global(iVar,:,:,:)
-  CALL DFFTW_Execute(plan,U_r,U_c)
+  CALL DFFTW_Execute(plan)   ! Input/Output Arrays are already specified in plan generation
   U_FFT(iVar,:,:,:) = U_c
 END DO
 
@@ -228,7 +228,7 @@ CALL DFFTW_PLAN_DFT_C2R_3D(plan,N_FFT,N_FFT,N_FFT,U_c,U_r,FFTW_ESTIMATE)
 ! Compute FFT for each variable. Local arrays ensure data to be contiguous in memory.
 DO iVar=1,nVar_In
   U_c = U_FFT(iVar,:,:,:)
-  CALL DFFTW_Execute(plan,U_c,U_r)
+  CALL DFFTW_Execute(plan)   ! Input/Output Arrays are already specified in plan generation
   U_Global(iVar,:,:,:) = U_r
 END DO
 
