@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -14,9 +14,8 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-!> This tool generates a state file which serves as an initial condition to compute the HIT test case.
-!> It generates a random velocity field based on a specified turbulent kinetic energy distribution.
-!> The phase of each velocity mode is chosen random.
+!> This tool generates a state file which serves as an initial condition to compute the HIT test case. It generates a random
+!> velocity field based on a specified turbulent kinetic energy distribution. The phase of each velocity mode is chosen random.
 !===================================================================================================================================
 PROGRAM HIT_Init
 ! MODULES
@@ -54,11 +53,11 @@ CALL ParseCommandlineArguments()
 
 SWRITE(UNIT_stdOut,'(132("="))')
 SWRITE(UNIT_stdOut,'(A)') &
-    " ||==========================================||                                                           "
+    " ||=============================================||                                                           "
 SWRITE(UNIT_stdOut,'(A)') &
-    " || Generate Spec Data for FLEXI Hit Restart ||                                                           "
+    " || Generate Initial Data for FLEXI HIT Restart ||                                                           "
 SWRITE(UNIT_stdOut,'(A)') &
-    " ||==========================================||                                                           "
+    " ||=============================================||                                                           "
 SWRITE(UNIT_stdOut,'(A)')
 SWRITE(UNIT_stdOut,'(132("="))')
 
@@ -69,13 +68,17 @@ CALL DefineParametersMPI()
 CALL DefineParametersIO_HDF5()
 CALL DefineParametersOutput()
 CALL DefineParametersMesh()
-!================================
-CALL prms%SetSection("initHIT")
+
+! Define Parameters HIT_Init
+CALL prms%SetSection("HIT_Init")
 CALL prms%CreateStringOption( "MeshFile"   , "Desired mesh file for initial hit solution.")
 CALL prms%CreateIntOption(    "Seed"       , "Seed for random number generator for Rogallo precedure (Only Debug)")
 CALL prms%CreateIntOption(    "N_FFT"      , "Polynomial degree to perform DFFT on")
-CALL prms%CreateIntOption(    "InitSpec"   , "Initial energy spectrum (1) Rogallo, (2) blaisdell, (3) Chasnov,&
-                                             & (4) Inf interial range .")
+CALL prms%CreateIntOption(    "InitSpec"   , "Initial energy spectrum (1) Rogallo,&
+                                                                     &(2) Blaisdell,&
+                                                                     &(3) Chasnov,&
+                                                                     &(4) Inf interial range,&
+                                                                     &(5) Karman-Pao.")
 
 ! check for command line argument --help or --markdown
 IF (doPrintHelp.GT.0) THEN
@@ -84,7 +87,7 @@ IF (doPrintHelp.GT.0) THEN
 END IF
 ! check if parameter file is given
 IF ((nArgs.LT.1).OR.(.NOT.(STRICMP(GetFileExtension(Args(1)),'ini')))) THEN
-  CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: init_hit [prm-file]')
+  CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: posti_hit_init parameter.ini')
 END IF
 ! Parse parameters
 CALL prms%read_options(Args(1))
@@ -135,7 +138,7 @@ CALL FinalizeMPI()
 #endif
 
 SWRITE(UNIT_stdOut,'(132("="))')
-SWRITE(UNIT_stdOut,'(A)') ' initHIT FINISHED! '
+SWRITE(UNIT_stdOut,'(A)') ' HIT_INIT FINISHED! '
 SWRITE(UNIT_stdOut,'(132("="))')
 
 END PROGRAM HIT_Init

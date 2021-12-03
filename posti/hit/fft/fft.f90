@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -22,7 +22,6 @@ PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! Private Part ---------------------------------------------------------------------------------------------------------------------
 ! Public Part ----------------------------------------------------------------------------------------------------------------------
-
 INTERFACE InitFFT
   MODULE PROCEDURE InitFFT
 END INTERFACE
@@ -55,6 +54,9 @@ PUBLIC:: InitFFT,FinalizeFFT
 PUBLIC:: ComputeFFT_R2C,ComputeFFT_C2R
 PUBLIC:: Interpolate_DG2FFT,Interpolate_FFT2DG
 PUBLIC:: EvalFourierAtDGCoords
+!==================================================================================================================================
+
+
 
 CONTAINS
 
@@ -130,8 +132,10 @@ SWRITE(UNIT_StdOut,'(132("-"))')
 
 END SUBROUTINE InitFFT
 
+
 !===================================================================================================================================
-! ?
+!> Wrapper routine for performing a 3D FFT (phyiscal to Fourier) by means of the FFTW library on a array on global coordinates and
+!> nVar_In separate variables. The computation time can be printed to the standard output by setting the flag doPrintTime.
 !===================================================================================================================================
 SUBROUTINE ComputeFFT_R2C(nVar_In,U_Global,U_FFT,doPrintTime)
 ! MODULES
@@ -144,10 +148,10 @@ USE OMP_Lib
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)    :: nVar_In
-REAL,INTENT(IN)       :: U_Global(nVar_In,1:N_FFT  ,1:N_FFT  ,1:N_FFT  )
-COMPLEX,INTENT(OUT)   :: U_FFT(   nVar_In,1:Endw(1),1:Endw(2),1:Endw(3))
-LOGICAL,INTENT(IN),OPTIONAL :: doPrintTime
+INTEGER,INTENT(IN)    :: nVar_In         !< Number of independent variables in first dimension of input array
+REAL,INTENT(IN)       :: U_Global(nVar_In,1:N_FFT  ,1:N_FFT  ,1:N_FFT  ) !< Global DG solution interpolated to equidistant points
+COMPLEX,INTENT(OUT)   :: U_FFT(   nVar_In,1:Endw(1),1:Endw(2),1:Endw(3)) !< Complex Fourier representation of input array
+LOGICAL,INTENT(IN),OPTIONAL :: doPrintTime                               !< Print execution time to standard output
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER(KIND=8)  :: plan
@@ -182,8 +186,11 @@ CALL DFFTW_DESTROY_PLAN(plan)
 IF(doPrintTimeLoc) WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',OMP_FLEXITIME()-Time,'s]'
 END SUBROUTINE ComputeFFT_R2C
 
+
 !===================================================================================================================================
-! ?
+!> Wrapper routine for performing an inverse 3D FFT (Fourier to physical) by means of the FFTW library on a array with a complex
+!> Fourier representation of the data with nVar_In separate variables. The computation time can be printed to the standard output by
+!> setting the flag doPrintTime.
 !===================================================================================================================================
 SUBROUTINE ComputeFFT_C2R(nVar_In,U_FFT,U_Global,doPrintTime)
 ! MODULES
@@ -196,10 +203,10 @@ USE OMP_Lib
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)    :: nVar_In
-COMPLEX,INTENT(IN)    :: U_FFT(   nVar_In,1:Endw(1),1:Endw(2),1:Endw(3))
-REAL,INTENT(OUT)      :: U_Global(nVar_In,1:N_FFT  ,1:N_FFT  ,1:N_FFT  )
-LOGICAL,INTENT(IN),OPTIONAL :: doPrintTime
+INTEGER,INTENT(IN)    :: nVar_In         !< Number of independent variables in first dimension of input array
+COMPLEX,INTENT(IN)    :: U_FFT(   nVar_In,1:Endw(1),1:Endw(2),1:Endw(3)) !< Global DG solution interpolated to equidistant points
+REAL,INTENT(OUT)      :: U_Global(nVar_In,1:N_FFT  ,1:N_FFT  ,1:N_FFT  ) !< Complex Fourier representation of input array
+LOGICAL,INTENT(IN),OPTIONAL :: doPrintTime                               !< Print execution time to standard output
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER(KIND=8) :: plan
@@ -231,8 +238,10 @@ CALL DFFTW_DESTROY_PLAN(plan)
 IF(doPrintTimeLoc) WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',OMP_FLEXITIME()-Time,'s]'
 END SUBROUTINE ComputeFFT_C2R
 
+
 !===================================================================================================================================
-! Interpolate via ChangeBasis() state @ visu (equidistant) coordinates from postprocessing (CGL)
+!> Interpolate via ChangeBasis() state from DG to visu (equidistant) coordinates and assemble the elementwise DG representation to
+!> a global representation. This requires the IJK-sorting of the Mesh, i.e. the array Elem_IJK, to be known.
 !===================================================================================================================================
 SUBROUTINE Interpolate_DG2FFT(NodeType_In,nVar_In,U_DG,U_Global)
 ! MODULES
@@ -245,10 +254,10 @@ USE MOD_ChangeBasis           ,ONLY: ChangeBasis3D
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)               :: nVar_In
-CHARACTER(LEN=255),INTENT(IN)    :: NodeType_In
-REAL,INTENT(INOUT)               :: U_DG(    nVar_In,0:PP_N ,0:PP_N ,0:PP_N ,nElems)
-REAL,INTENT(OUT)                 :: U_Global(nVar_In,1:N_FFT,1:N_FFT,1:N_FFT       )
+INTEGER,INTENT(IN)               :: nVar_In          !< Number of independent variables in first dimension of input array
+CHARACTER(LEN=255),INTENT(IN)    :: NodeType_In      !< NodeType of input array U_DG
+REAL,INTENT(INOUT)               :: U_DG(    nVar_In,0:PP_N ,0:PP_N ,0:PP_N ,nElems) !< Elementwise input array
+REAL,INTENT(OUT)                 :: U_Global(nVar_In,1:N_FFT,1:N_FFT,1:N_FFT       ) !< Global solution representation
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER       :: iElem
@@ -291,8 +300,10 @@ END DO
 SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES')'DONE'
 END SUBROUTINE Interpolate_DG2FFT
 
+
 !===================================================================================================================================
-! Interpolate via ChangeBasis() state @ visu (equidistant) coordinates from postprocessing (CGL)
+!> Sort a global solution representation back into the elementwise DG representation and interpolate via ChangeBasis() state from
+!> visu (equidistant) to DG coordinates. This requires the IJK-sorting of the Mesh, i.e. the array Elem_IJK, to be known.
 !===================================================================================================================================
 SUBROUTINE Interpolate_FFT2DG(NodeType_In,nVar_In,U_Global,U_DG)
 ! MODULES
@@ -305,10 +316,10 @@ USE MOD_ChangeBasis           ,ONLY: ChangeBasis3D
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)               :: nVar_In
-CHARACTER(LEN=255),INTENT(IN)    :: NodeType_In
-REAL,INTENT(INOUT)               :: U_Global(nVar_In,1:N_FFT,1:N_FFT,1:N_FFT       )
-REAL,INTENT(OUT)                 :: U_DG(    nVar_In,0:PP_N ,0:PP_N ,0:PP_N ,nElems)
+INTEGER,INTENT(IN)               :: nVar_In         !< Number of independent variables in first dimension of input array
+CHARACTER(LEN=255),INTENT(IN)    :: NodeType_In     !< NodeType of input array U_DG
+REAL,INTENT(INOUT)               :: U_Global(nVar_In,1:N_FFT,1:N_FFT,1:N_FFT       ) !< Elementwise input array
+REAL,INTENT(OUT)                 :: U_DG(    nVar_In,0:PP_N ,0:PP_N ,0:PP_N ,nElems) !< Global solution representation
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER       :: iElem
@@ -350,8 +361,10 @@ END DO
 SWRITE(UNIT_stdOut,'(A)',ADVANCE='YES')'DONE'
 END SUBROUTINE Interpolate_FFT2DG
 
+
 !===================================================================================================================================
-! Evaluate the global Fourier solution at the DG interpolation points
+!> Transform a Fourier representation of the solution back to DG coords by evaluating the global Fourier basis/solution at the DG
+!> interpolation points.
 !===================================================================================================================================
 SUBROUTINE EvalFourierAtDGCoords(nVar_In,U_FFT,U_DG,doPrintTime)
 ! MODULES
@@ -365,10 +378,10 @@ USE OMP_Lib
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN)    :: nVar_In
-COMPLEX,INTENT(IN)    :: U_FFT(nVar_In,1:Endw(1),1:Endw(2),1:Endw(3)       )
-REAL,   INTENT(OUT)   :: U_DG( nVar_In,0:PP_N   ,0:PP_N   ,0:PP_N   ,nElems)
-LOGICAL,INTENT(IN),OPTIONAL :: doPrintTime
+INTEGER,INTENT(IN)    :: nVar_In      !< Number of independent variables in first dimension of input array
+COMPLEX,INTENT(IN)    :: U_FFT(nVar_In,1:Endw(1),1:Endw(2),1:Endw(3)       ) !< Global DG solution interpolated to equidist. points
+REAL,   INTENT(OUT)   :: U_DG( nVar_In,0:PP_N   ,0:PP_N   ,0:PP_N   ,nElems) !< Complex Fourier representation of input array
+LOGICAL,INTENT(IN),OPTIONAL :: doPrintTime                                   !< Print execution time to standard output
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL         :: Time
@@ -441,6 +454,7 @@ END DO !iElem
 IF(doPrintTimeLoc) WRITE(UNIT_stdOut,'(A,F0.3,A)',ADVANCE='YES')'DONE  [',OMP_FLEXITIME()-Time,'s]'
 
 END SUBROUTINE EvalFourierAtDGCoords
+
 
 !===================================================================================================================================
 !> Finalize FFT

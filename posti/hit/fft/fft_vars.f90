@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -13,7 +13,7 @@
 !=================================================================================================================================
 
 !===================================================================================================================================
-!> Contains global variables provided by the AnalyzeHIT routines
+!> Contains global variables provided by the HIT_FFT routines
 !===================================================================================================================================
 MODULE MOD_HIT_FFT_Vars
 ! MODULES
@@ -24,13 +24,12 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-! FFT vars
-INTEGER               :: N_FFT
-INTEGER               :: N_Visu
-INTEGER               :: Nc
-INTEGER               :: kmax
-INTEGER               :: endw(3)
-INTEGER,ALLOCATABLE   :: LocalK(:,:,:,:)
-COMPLEX,PARAMETER     :: II = CMPLX(0.,1.0)
+INTEGER               :: N_FFT                !> Number of (global) interpolation points 1D for FFT
+INTEGER               :: N_Visu               !> Polynomial degree of equidistant basis in each DG element to build global FFT basis
+INTEGER               :: Nc                   !> Nyquist wavenumber Nc=N_FFT/2
+INTEGER               :: kmax                 !> Maxmimum effective wavenumber in 3D
+INTEGER               :: endw(3)              !> Max. number of wavenumbers is each of the 3D directions Endw=(Nc,N_FFT,N_FFT)
+INTEGER,ALLOCATABLE   :: LocalK(:,:,:,:)      !> 1D Wave number equivalent for each Fourier Mode in 3D
+COMPLEX,PARAMETER     :: II = CMPLX(0.,1.0)   !> Complex unit, srqt(-1)
 !===================================================================================================================================
 END MODULE MOD_HIT_FFT_Vars

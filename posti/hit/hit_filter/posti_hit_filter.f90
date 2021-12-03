@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -14,7 +14,8 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-!> ??????????
+!> Main program for the HIT_Filter tool. It reads in statefiles and applies a Fourier cutoff filter to the state by applying FFTs
+!> and writes the filtered state to a new statefile.
 !===================================================================================================================================
 PROGRAM HIT_Filter
 ! MODULES
@@ -46,12 +47,9 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                            :: iArg
 REAL                               :: Time
-#if USE_MPI
-REAL                               :: limit,nTotal
-#endif
-CHARACTER(LEN=255)                 :: InputStateFile
-CHARACTER(LEN=255)                 :: MeshFile_old = " "      ! MeshFile of last state file
-INTEGER                            :: N_HDF5_old=0
+CHARACTER(LEN=255)                 :: InputStateFile          ! StateFile to be processed
+CHARACTER(LEN=255)                 :: MeshFile_old = " "      ! MeshFile of last statefile
+INTEGER                            :: N_HDF5_old=0            ! Polynomial degree N of last statefile
 LOGICAL                            :: changedMeshFile=.FALSE. ! True if mesh between states changed
 LOGICAL                            :: changedN       =.FALSE. ! True if N between states changes
 !===================================================================================================================================
@@ -78,8 +76,9 @@ CALL DefineParametersMPI()
 CALL DefineParametersIO_HDF5()
 CALL DefineParametersOutput()
 CALL DefineParametersMesh()
-!=====================================
-CALL prms%SetSection("filterHIT")
+
+! Parameters for HIT_Filter
+CALL prms%SetSection("HIT_Filter")
 CALL prms%CreateIntOption("N_Filter" , "Cutoff filter")
 CALL prms%CreateIntOption("N_Visu"   , "Polynomial degree to perform DFFT on")
 
@@ -149,18 +148,6 @@ DO iArg=2,nArgs
   END IF
 
   IF(changedMeshFile .OR. changedN) THEN
-#if USE_MPI
-    nTotal=REAL(nVar_HDF5*(N_HDF5+1)**3*nElems_HDF5)
-    IF(FieldDataExists) nTotal=MAX(nTotal,REAL(nVarField_HDF5*(N_HDF5+1)**3*nElems_HDF5))
-    !limit=(2**31-1)/8.
-    limit=2**28-1/8. ! max. 32 bit integer / 8
-    IF (nTotal.GT.limit) THEN
-      WRITE(UNIT_StdOut,'(A,F13.0,A)')' Input state file size is too big! Total array size may not exceed', limit, ' entries!'
-      WRITE(UNIT_StdOut,'(A)')' Lower number of elements or compile without MPI'
-      STOP
-    END IF
-#endif
-
     CALL FinalizeFFT()
     CALL InitFFT()
   END IF
@@ -186,7 +173,7 @@ DO iArg=2,nArgs
   SWRITE(UNIT_stdOut,'(A,A,A,F0.3,A)') ' PROCESSED FILE ',TRIM(InputStateFile),' in [',OMP_FLEXITIME()-Time,'s]'
 END DO !iArg=1,nArgs
 
-! Finalize everything
+! Finalize
 CALL FinalizeParameters()
 CALL FinalizeInterpolation()
 CALL FinalizeMesh()
@@ -199,7 +186,7 @@ CALL FinalizeMPI()
 #endif
 
 SWRITE(UNIT_stdOut,'(132("="))')
-SWRITE(UNIT_stdOut,'(A)') ' HIT Filter FINISHED! '
+SWRITE(UNIT_stdOut,'(A)') ' HIT_FILTER FINISHED! '
 SWRITE(UNIT_stdOut,'(132("="))')
 
 END PROGRAM HIT_Filter

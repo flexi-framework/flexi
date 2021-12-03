@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -14,7 +14,7 @@
 #include "flexi.h"
 
 !===================================================================================================================================
-!> Main program for the hit_analyze tool. It computes tubulence statistics, especially the turbulent kinetic energy over wavelength.
+!> Main program for the HTI_Analyze tool. It computes tubulence statistics, especially the turbulent kinetic energy over wavelength.
 !===================================================================================================================================
 PROGRAM HIT_Analyze
 ! MODULES
@@ -46,7 +46,6 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                            :: iArg
 CHARACTER(LEN=255)                 :: InputStateFile          ! dummy variable for state file name
-
 INTEGER                            :: N_HDF5_old = 0          ! Polynominal degree of last state file
 CHARACTER(LEN=255)                 :: MeshFile_old = ''       ! Meshfile of last state file
 CHARACTER(LEN=255)                 :: MeshFile_prm = ''       ! Meshfile of input parameter file
@@ -72,13 +71,14 @@ SWRITE(UNIT_stdOut,'(A)')
 SWRITE(UNIT_stdOut,'(132("="))')
 
 ! Define Parameters
-CALL DefineParametersInterpolation()        !Calculate Gauss Points etc
+CALL DefineParametersInterpolation()        ! Calculate Gauss Points etc
 CALL DefineParametersMPI()
 CALL DefineParametersIO_HDF5()
-CALL DefineParametersOutput()               !NVisu, Nout
-CALL DefineParametersMesh()                 !MeshFile
-!=====================================
-CALL prms%SetSection("analyzeHIT")          !new parameter section
+CALL DefineParametersOutput()               ! NVisu, NOut
+CALL DefineParametersMesh()                 ! MeshFile
+
+! New parameter section
+CALL prms%SetSection("HIT_Analyze") 
 CALL prms%CreateIntOption("N_Visu"             , "Polynomial degree to perform DFFT on")
 CALL prms%CreateIntOption("N_Filter"           , "Cutoff filter")
 CALL prms%CreateRealOption("Mu0"               , "Viscosity")
@@ -92,7 +92,7 @@ END IF
 IF(nArgs .LT. 2) CALL Abort(__STAMP__,'Missing argument')
 ! check if parameter file is given
 IF ((nArgs.LT.1).OR.(.NOT.(STRICMP(GetFileExtension(Args(1)),'ini')))) THEN
-  CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: analyze_hit [prm-file]')
+  CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: posti_hit_analyze prm-file [statefile.h5, ...]')
 END IF
 ! Parse parameters
 CALL prms%read_options(Args(1))
@@ -176,7 +176,7 @@ DO iArg=2,nArgs
 
 END DO !iArg=1,nArgs
 
-! Finalize everything
+! Finalize
 CALL FinalizeParameters()
 CALL FinalizeInterpolation()
 CALL FinalizeMesh()
@@ -189,7 +189,7 @@ CALL FinalizeMPI()
 #endif
 
 SWRITE(UNIT_stdOut,'(132("="))')
-SWRITE(UNIT_stdOut,'(A)') ' analyzeHIT FINISHED! '
+SWRITE(UNIT_stdOut,'(A)') ' HIT_ANALYZE FINISHED! '
 SWRITE(UNIT_stdOut,'(132("="))')
 
 END PROGRAM HIT_Analyze

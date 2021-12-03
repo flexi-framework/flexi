@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -21,12 +21,6 @@ PRIVATE
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! Private Part ---------------------------------------------------------------------------------------------------------------------
-! Public Part ----------------------------------------------------------------------------------------------------------------------
-
-INTERFACE AnalyzeTGV
-  MODULE PROCEDURE AnalyzeTGV
-END INTERFACE
-
 INTERFACE ComputeSpectrum
   MODULE PROCEDURE ComputeSpectrum
 END INTERFACE
@@ -39,6 +33,11 @@ INTERFACE WriteTurbulenceData
   MODULE PROCEDURE WriteTurbulenceData
 END INTERFACE
 
+! Public Part ----------------------------------------------------------------------------------------------------------------------
+INTERFACE AnalyzeTGV
+  MODULE PROCEDURE AnalyzeTGV
+END INTERFACE
+
 INTERFACE ReadOldStateFile
   MODULE PROCEDURE ReadOldStateFile
 END INTERFACE
@@ -47,6 +46,7 @@ PUBLIC:: AnalyzeTGV, ReadOldStateFile
 !===================================================================================================================================
 
 CONTAINS
+
 
 !===================================================================================================================================
 ! Main Routine for Analysis of turbulence
@@ -107,6 +107,7 @@ CALL WriteTurbulenceData(E_k,U_Global)
 
 END SUBROUTINE AnalyzeTGV
 
+
 !===================================================================================================================================
 !> Compute energy per wavelength
 !===================================================================================================================================
@@ -137,6 +138,7 @@ DO k=1,endw(3); DO j=1,endw(2); DO i=1,endw(1)
 END DO; END DO; END DO
 
 END SUBROUTINE ComputeSpectrum
+
 
 !===================================================================================================================================
 !> Writes energy spectrum over wave lengths to file
@@ -189,6 +191,7 @@ CLOSE(FileUnit)
 
 END SUBROUTINE WriteSpectrum
 
+
 !===================================================================================================================================
 !> Computes and writes turbulence statistics like dissipation rate, the Kolmogorov length and the Reynolds number
 !===================================================================================================================================
@@ -202,14 +205,14 @@ USE MOD_HIT_FFT_Vars,      ONLY: N_FFT,N_Visu,Nc,kmax,Endw
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT VARIABLES
-REAL,INTENT(IN)  :: E_k(0:kmax)
-REAL,INTENT(IN)  :: U_in(1:nVar_HDF5,1:N_FFT,1:N_FFT,1:N_FFT) !< global DG solution on visu nodes
+REAL,INTENT(IN)  :: E_k(0:kmax)                               !< Energy spectra over the wavenumbers
+REAL,INTENT(IN)  :: U_in(1:nVar_HDF5,1:N_FFT,1:N_FFT,1:N_FFT) !< Global DG solution on visu nodes
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL               :: Lambda,  L_int,  ETA
-REAL               :: Lambda_K,L_Int_K,ETA_K
+REAL               :: Lambda,  L_int,  Eta
+REAL               :: Lambda_K,L_Int_K,Eta_K
 REAL               :: IntE_k, IntEps, IntInt
 REAL               :: U_rms,Re_lambda,eps,Ekin
 INTEGER            :: i,j,k,N_max
@@ -244,9 +247,9 @@ DO k=1,N_max
 END DO
 
 ! Compute turbulence statistics
-EPS       = IntEps*2.*Mu0                   ! Dissipation
-ETA       = SQRT(Mu0)/(IntEps*2.)**(1./4.)  ! KolmogorovLength
-ETA_K     = 2.*PP_PI/ETA                    ! KolmogorovLength*K
+Eps       = IntEps*2.*Mu0                   ! Dissipation
+Eta       = SQRT(Mu0)/(IntEps*2.)**(1./4.)  ! KolmogorovLength
+Eta_K     = 2.*PP_PI/Eta                    ! KolmogorovLength*K
 Lambda    = (5.*IntE_k/IntEps)**0.5         ! TaylorMicroScale
 Lambda_K  = 2.*PP_PI/Lambda                 ! TaylorMicroScale*K
 L_int     = 3.*PP_PI/4.*IntInt/IntE_k       ! Int_Length
@@ -281,20 +284,21 @@ ELSE
 END IF
 
 ! Write and close file
-WRITE(FileUnit,'(12(E20.12,X))') Time_hdf5,Ekin,IntE_k,EPS,ETA,eta_k,lambda,lambda_k,L_int,L_int_k,U_rms,Re_lambda
+WRITE(FileUnit,'(12(E20.12,X))') Time_hdf5,Ekin,IntE_k,Eps,Eta,eta_k,lambda,lambda_k,L_int,L_int_k,U_rms,Re_lambda
 CLOSE(FILEUnit)
 
 ! Also dump data to stdout
 WRITE(UNIT_StdOut,*)'-------------------------------------------------------------------------------------------'
 WRITE(Unit_StdOut,'(A50)')'Turbulence Statistics'
-WRITE(UNIT_StdOut,'(A14,E20.10)')           '  Epsilon   = ',EPS
-WRITE(UNIT_StdOut,'(A14,E20.10,A13,E20.10)')'  ETA       = ',ETA,   '  ETA_K    = ',ETA_K
+WRITE(UNIT_StdOut,'(A14,E20.10)')           '  Epsilon   = ',Eps
+WRITE(UNIT_StdOut,'(A14,E20.10,A13,E20.10)')'  E         = ',Eta,   '  Eta_K    = ',Eta_K
 WRITE(UNIT_StdOut,'(A14,E20.10,A13,E20.10)')'  Lambda    = ',Lambda,'  Lambda_K = ',Lambda_K
 WRITE(UNIT_StdOut,'(A14,E20.10,A13,E20.10)')'  L_int     = ',L_int, '  L_int_K  = ',L_int_K
 WRITE(UNIT_StdOut,'(A14,E20.10)')           '  U_rms     = ',U_rms
 WRITE(UNIT_StdOut,'(A14,E20.10)')           '  Re_lambda = ',Re_lambda
 WRITE(UNIT_StdOut,*)'-------------------------------------------------------------------------------------------'
 END SUBROUTINE WriteTurbulenceData
+
 
 !===================================================================================================================================
 !> Open a state file, read the old state and store the information later needed to write a new state.

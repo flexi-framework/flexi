@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -21,12 +21,6 @@ PRIVATE
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! Private Part ---------------------------------------------------------------------------------------------------------------------
-! Public Part ----------------------------------------------------------------------------------------------------------------------
-
-INTERFACE Rogallo
-  MODULE PROCEDURE Rogallo
-END INTERFACE
-
 INTERFACE GetCompressibleState
   MODULE PROCEDURE GetCompressibleState
 END INTERFACE
@@ -35,12 +29,19 @@ INTERFACE ExactSpectrum
   MODULE PROCEDURE ExactSpectrum
 END INTERFACE
 
+! Public Part ----------------------------------------------------------------------------------------------------------------------
+INTERFACE Rogallo
+  MODULE PROCEDURE Rogallo
+END INTERFACE
+
 PUBLIC:: Rogallo
+!===================================================================================================================================
+
 
 CONTAINS
 
 !===================================================================================================================================
-! Computes the initial energy spectrum and creates a velocity field with random phase matching the energy spectrum
+!> Computes the initial energy spectrum and creates a velocity field with random phase matching the energy spectrum. 
 !===================================================================================================================================
 SUBROUTINE Rogallo(U_FFT)
 ! MODULES
@@ -52,7 +53,7 @@ USE MOD_HIT_FFT_Vars,       ONLY: Endw,localk,N_FFT,Nc,II,kmax
  IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-COMPLEX,INTENT(OUT)    :: U_FFT(5,1:Endw(1),1:Endw(2),1:Endw(3))
+COMPLEX,INTENT(OUT)    :: U_FFT(5,1:Endw(1),1:Endw(2),1:Endw(3)) !> Pseudo-compressible flow state in Fourier space
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 COMPLEX :: alpha,beta
@@ -124,7 +125,7 @@ END SUBROUTINE Rogallo
 
 
 !===================================================================================================================================
-! This routine returns a array with the energy per wavelength for several predefined energy distributions
+!> This routine returns an array with the energy per wavelength distribution for several predefined energy distributions
 !===================================================================================================================================
 SUBROUTINE ExactSpectrum(InitSpec,E_k)
 ! MODULES
@@ -200,8 +201,11 @@ END SELECT
 
 END SUBROUTINE ExactSpectrum
 
+
 !===================================================================================================================================
-! Compute thermodymamically consistent compressible state for incompressible input state
+!> Compute thermodymamically consistent compressible state for incompressible input state. To this end, the mean pressure is
+!> computed, to match the requested Mach number (Ma0=0.1) and the pressure fluctuations are set thermodynamicaly consistent to the
+!> momentum fluctuations. This yields a thermodynamically consistent pseudo-compressible state.
 !===================================================================================================================================
 SUBROUTINE GetCompressibleState(U_In)
 ! MODULES
@@ -212,12 +216,13 @@ USE MOD_HIT_FFT_Vars,       ONLY: Endw,localk,II,N_FFT
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
-REAL,INTENT(INOUT)   :: U_In(5,1:N_FFT,1:N_FFT,1:N_FFT)
+REAL,INTENT(INOUT)   :: U_In(5,1:N_FFT,1:N_FFT,1:N_FFT) !> Input state; variables (1:4) have to be set, variable 5 (energy) will be
+                                                        !> overwritten by a thermodynamiccaly consistent state.
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES
-REAL,PARAMETER       :: Ma0   = 0.1
-REAL,PARAMETER       :: rho0  = 1.0
-REAL,PARAMETER       :: Kappa = 1.4
+! LOCAL VARIABLES  
+REAL,PARAMETER       :: Ma0   = 0.1    ! TODO: Make this a user input
+REAL,PARAMETER       :: rho0  = 1.0    ! TODO: Make this a user input
+REAL,PARAMETER       :: Kappa = 1.4    ! TODO: Take this from FLEXI equation (Not needed if PrimToCons is used later.)
 REAL                 :: ksquared,vmax,p0
 REAL                 :: p(       1,1:N_FFT,1:N_FFT,1:N_FFT)
 REAL                 :: v(     1:3,1:N_FFT,1:N_FFT,1:N_FFT)
@@ -270,9 +275,10 @@ p=p/REAL(N_FFT**3)**3   ! Correct normalization necessary
 p0 = vmax**2/(Kappa*Ma0**2)
 p=p+p0
 SWRITE(Unit_StdOut,'(A,F4.2,A,F7.1,A,F4.2)') ' For the selected Mach number ',Ma0, &
-                                             ', the mean pressure is ',p0,', with Vmax in field ',vmax
+                                             ', the mean pressure is ',p0,', with maximum velocity in field ',vmax
 
 ! Compute compressible state with ideal gas EOS
+! TODO: Use the FLEXI Prim2Cons here.
 DO i=1,N_FFT; DO j=1,N_FFT; DO k=1,N_FFT
   U_In(  1,i,j,k) = rho0
   U_In(2:4,i,j,k) = U_In(1,i,j,k)*U_In(2:4,i,j,k)

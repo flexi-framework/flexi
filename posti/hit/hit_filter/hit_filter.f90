@@ -1,5 +1,5 @@
 !=================================================================================================================================
-! Copyright (c) 2016  Prof. Claus-Dieter Munz
+! Copyright (c) 2010-2021  Prof. Claus-Dieter Munz
 ! This file is part of FLEXI, a high-order accurate framework for numerically solving PDEs with discontinuous Galerkin methods.
 ! For more information see https://www.flexi-project.org and https://nrg.iag.uni-stuttgart.de/
 !
@@ -22,7 +22,6 @@ PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! Private Part ---------------------------------------------------------------------------------------------------------------------
 ! Public Part ----------------------------------------------------------------------------------------------------------------------
-
 INTERFACE ReadOldStateFile
   MODULE PROCEDURE ReadOldStateFile
 END INTERFACE
@@ -36,6 +35,8 @@ INTERFACE FourierFilter
 END INTERFACE
 
 PUBLIC:: ReadOldStateFile,WriteNewStateFile,FourierFilter
+!===================================================================================================================================
+
 
 CONTAINS
 
@@ -119,6 +120,7 @@ CALL CloseDataFile()
 SWRITE(*,*) "READING SOLUTION DONE!"
 END SUBROUTINE ReadOldStateFile
 
+
 !===================================================================================================================================
 !> Write the new state file by calling the WriteState routine from FLEXI. All necessary variables must have been set correctly!
 !===================================================================================================================================
@@ -177,8 +179,10 @@ END IF
 
 END SUBROUTINE WriteNewStateFile
 
+
 !===================================================================================================================================
-!> ?
+!> Perform a Fouier Cutoff filter to DG data. To this end, the DG solution is interpolated to a global equidistant representation,
+!> a 3D FFT is performed and a Cutoff filter is applied. Then, the filtered data is interpolated back to DG interpolation points.
 !===================================================================================================================================
 SUBROUTINE FourierFilter(nVar_In,U_In)
 ! MODULES                                                                                                                          !
@@ -191,7 +195,7 @@ USE MOD_HIT_FFT,            ONLY: ComputeFFT_R2C,ComputeFFT_C2R
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)    :: nVar_In
+INTEGER,INTENT(IN)    :: nVar_In       !< Number of independent variables in first dimneion of U_In
 REAL,INTENT(INOUT)    :: U_in(1:nVar_In,0:PP_N,0:PP_N,0:PP_N,1:nElems) !< elementwise DG solution from state file
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
