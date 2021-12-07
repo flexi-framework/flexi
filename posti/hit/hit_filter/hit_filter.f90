@@ -48,13 +48,13 @@ SUBROUTINE ReadOldStateFile(StateFile)
 USE MOD_Globals
 USE MOD_DG_Vars,         ONLY: U
 USE MOD_ReadInTools,     ONLY: ExtractParameterFile
-USE MOD_IO_HDF5,         ONLY: File_ID,AddToFieldData,FieldOut
+USE MOD_IO_HDF5,         ONLY: File_ID,HSize,nDims
 USE MOD_HDF5_Input,      ONLY: OpenDataFile,CloseDataFile,ISVALIDHDF5FILE
-USE MOD_HDF5_Input,      ONLY: ReadArray,ReadAttribute,GetArrayAndName
+USE MOD_HDF5_Input,      ONLY: ReadArray,ReadAttribute
 USE MOD_HDF5_Input,      ONLY: GetDataProps,GetDataSize,DataSetExists
 USE MOD_HIT_Filter_Vars, ONLY: nVar_HDF5,N_HDF5,nElems_HDF5,nVarField_HDF5
 USE MOD_HIT_Filter_Vars, ONLY: Time_HDF5,NodeType_HDF5,ProjectName_HDF5
-USE MOD_HIT_Filter_Vars, ONLY: FieldDataExists,FieldData
+USE MOD_HIT_Filter_Vars, ONLY: FieldDataExists,FieldData,VarNames_FieldData
 USE MOD_Output,          ONLY: insert_userblock
 USE MOD_Output_Vars,     ONLY: UserBlockTmpFile,userblock_total_len
 USE MOD_Mesh_Vars,       ONLY: MeshFile
@@ -67,9 +67,6 @@ CHARACTER(LEN=255),INTENT(IN)      :: StateFile !< State file to be read
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL                          :: userblockFound
-INTEGER                          :: nVal(15)
-REAL,ALLOCATABLE                 :: tmp(:)
-CHARACTER(LEN=255),ALLOCATABLE   :: VarNames_FieldData(:)
 CHARACTER(LEN=255)               :: prmfile=".parameter.ini"
 !===================================================================================================================================
 SWRITE(*,*) "READING SOLUTION FROM STATE FILE """,TRIM(StateFile), """"
@@ -98,17 +95,13 @@ CALL ReadArray('DG_Solution',5,&
 ! Also read FieldData and corresponding variable names if present
 CALL DatasetExists(File_ID,'FieldData',FieldDataExists)
 IF (FieldDataExists) THEN
-  CALL GetArrayAndName('FieldData','VarNamesAddField',nVal,tmp,VarNames_FieldData)
-  nVarField_HDF5 = nVal(1)
+  CALL GetDataSize(File_ID,'FieldData',nDims,HSize)
+  nVarField_HDF5 = INT(HSize(1))
+
   ALLOCATE(FieldData(1:nVarField_HDF5,0:N_HDF5,0:N_HDF5,0:N_HDF5,1:nElems_HDF5))
-  FieldData = RESHAPE(tmp,SHAPE(FieldData))
-
-  ! Add (filtered) FieldData to output
-  CALL AddToFieldData(FieldOut,(/nVarField_HDF5,N_HDF5+1,N_HDF5+1,N_HDF5+1/), &
-                               'FieldData',VarNames_FieldData,RealArray=FieldData)
-
-  DEALLOCATE(tmp)
-  DEALLOCATE(VarNames_FieldData)
+  ALLOCATE(VarNames_FieldData(nVarField_HDF5))
+  CALL ReadArray('FieldData',5,(/nVarField_HDF5,N_HDF5+1,N_HDF5+1,N_HDF5+1,nElems_HDF5/),0,5,RealArray=FieldData)
+  CALL ReadAttribute(File_ID,'VarNamesAddField',nVarField_HDF5,StrArray=VarNames_FieldData)
 ENDIF
 
 ! Read the attributes from file

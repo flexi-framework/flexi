@@ -26,6 +26,7 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 LOGICAL                        :: FieldDataExists=.FALSE.
 REAL,ALLOCATABLE               :: FieldData(:,:,:,:,:)     !> Array to hold additional field data of statefile
+CHARACTER(LEN=255),ALLOCATABLE :: VarNames_FieldData(:)    !> Array to hold names of  FieldData variables
 INTEGER                        :: N_Filter                 !> Cutoff wavenumber for performing Fourier Filter
 INTEGER                        :: nVar_HDF5                !> Number of solution variables in statefile
 INTEGER                        :: nVarField_HDF5           !> Number of variables of field data in statefile
