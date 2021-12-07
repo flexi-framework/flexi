@@ -181,10 +181,10 @@ CALL FinalizeParameters()
 CALL FinalizeInterpolation()
 CALL FinalizeMesh()
 CALL FinalizeFFT()
-#ifdef MPI
-CALL MPI_BARRIER(MPI_COMM_WORLD,iError)
+#if USE_MPI
 CALL MPI_FINALIZE(iError)
-IF(iError .NE. 0) STOP 'MPI finalize error'
+IF(iError .NE. 0) &
+  CALL abort(__STAMP__,'MPI finalize error',iError)
 CALL FinalizeMPI()
 #endif
 
