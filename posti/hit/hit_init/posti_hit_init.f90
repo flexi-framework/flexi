@@ -25,16 +25,16 @@ USE MOD_HIT_Init
 USE MOD_HIT_Init_Vars
 USE MOD_ReadInTools
 USE MOD_Commandline_Arguments
-USE MOD_DG_Vars,                 ONLY: U
+USE MOD_StringTools,             ONLY: STRICMP,GetFileExtension
 USE MOD_HIT_FFT,                 ONLY: InitFFT,FinalizeFFT,EvalFourierAtDGCoords
 USE MOD_HIT_FFT_Vars,            ONLY: N_FFT,Endw
+USE MOD_DG_Vars,                 ONLY: U
 USE MOD_Mesh,                    ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
 USE MOD_Mesh_Vars,               ONLY: nElems
-USE MOD_Output,                  ONLY: DefineParametersOutput,InitOutput,FinalizeOutput
 USE MOD_Interpolation,           ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
-USE MOD_IO_HDF5,                 ONLY: DefineParametersIO_HDF5,InitIOHDF5
+USE MOD_IO_HDF5,                 ONLY: DefineParametersIO_HDF5,InitIOHDF5,FinalizeIOHDF5
 USE MOD_HDF5_Output,             ONLY: WriteState
-USE MOD_StringTools,             ONLY: STRICMP,GetFileExtension
+USE MOD_Output,                  ONLY: DefineParametersOutput,InitOutput,FinalizeOutput
 USE MOD_MPI,                     ONLY: InitMPI,DefineParametersMPI
 #if USE_MPI
 USE MOD_MPI,                     ONLY: InitMPIvars,FinalizeMPI
@@ -47,7 +47,7 @@ IMPLICIT NONE
 CALL SetStackSizeUnlimited()
 CALL InitMPI()
 IF (nProcessors.GT.1) CALL CollectiveStop(__STAMP__, &
-  'This tool does currently not work with more than 1 Proc!')
+     'This tool is designed only for single execution!')
 
 CALL ParseCommandlineArguments()
 
@@ -71,13 +71,12 @@ CALL DefineParametersMesh()
 
 ! Define Parameters HIT_Init
 CALL prms%SetSection("HIT_Init")
-CALL prms%CreateStringOption( "MeshFile"   , "Desired mesh file for initial hit solution.")
 CALL prms%CreateIntOption(    "Seed"       , "Seed for random number generator for Rogallo precedure (Only Debug)")
-CALL prms%CreateIntOption(    "N_FFT"      , "Polynomial degree to perform DFFT on")
+CALL prms%CreateIntOption(    "N_FFT"      , "Number of global interpolation points to perform DFFT on.")
 CALL prms%CreateIntOption(    "InitSpec"   , "Initial energy spectrum (1) Rogallo,&
                                                                      &(2) Blaisdell,&
                                                                      &(3) Chasnov,&
-                                                                     &(4) Inf interial range,&
+                                                                     &(4) Inf intertial range,&
                                                                      &(5) Karman-Pao.")
 
 ! check for command line argument --help or --markdown
@@ -89,7 +88,7 @@ END IF
 IF ((nArgs.LT.1).OR.(.NOT.(STRICMP(GetFileExtension(Args(1)),'ini')))) THEN
   CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: posti_hit_init parameter.ini')
 END IF
-! Parse parameters
+! Parse parameter file
 CALL prms%read_options(Args(1))
 ParameterFile = Args(1)
 
@@ -130,6 +129,7 @@ CALL FinalizeInterpolation()
 CALL FinalizeOutput()
 CALL FinalizeMesh()
 CALL FinalizeFFT()
+CALL FinalizeIOHDF5
 #if USE_MPI
 CALL MPI_FINALIZE(iError)
 IF(iError .NE. 0) &

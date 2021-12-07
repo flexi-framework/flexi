@@ -25,7 +25,6 @@ SAVE
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 LOGICAL                        :: FieldDataExists=.FALSE.
-LOGICAL                        :: OverwriteMeshFile=.TRUE.
 REAL,ALLOCATABLE               :: FieldData(:,:,:,:,:)     !> Array to hold additional field data of statefile
 INTEGER                        :: N_Filter                 !> Cutoff wavenumber for performing Fourier Filter
 INTEGER                        :: nVar_HDF5                !> Number of solution variables in statefile

@@ -22,21 +22,19 @@ USE MOD_Preproc
 USE MOD_Globals
 USE MOD_HIT_Analyze
 USE MOD_HIT_Analyze_Vars
+USE MOD_ReadInTools
+USE MOD_Commandline_Arguments
+USE MOD_StringTools,             ONLY: STRICMP,GetFileExtension
+USE MOD_HIT_FFT,                 ONLY: InitFFT, FinalizeFFT
+USE MOD_HIT_FFT_Vars,            ONLY: N_FFT,N_Visu
 USE MOD_DG_Vars,                 ONLY: U
 USE MOD_Mesh,                    ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
 USE MOD_Mesh_Vars,               ONLY: nElems_IJK,MeshFile
 USE MOD_Mesh_ReadIn,             ONLY: ReadIJKSorting
-USE MOD_Output,                  ONLY: DefineParametersOutput,InitOutput,FinalizeOutput
 USE MOD_Interpolation,           ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
-USE MOD_IO_HDF5,                 ONLY: DefineParametersIO_HDF5,InitIOHDF5,OpenDataFile
-USE MOD_HDF5_Output,             ONLY: WriteState
+USE MOD_IO_HDF5,                 ONLY: DefineParametersIO_HDF5,InitIOHDF5,FinalizeIOHDF5
 USE MOD_HDF5_Input,              ONLY: ISVALIDMESHFILE
-USE MOD_Commandline_Arguments
-USE MOD_Options
-USE MOD_ReadInTools
-USE MOD_StringTools,             ONLY: STRICMP,GetFileExtension
-USE MOD_HIT_FFT,                 ONLY: InitFFT, FinalizeFFT
-USE MOD_HIT_FFT_Vars,            ONLY: N_Visu,N_FFT
+USE MOD_Output,                  ONLY: DefineParametersOutput,InitOutput,FinalizeOutput
 USE MOD_MPI,                     ONLY: DefineParametersMPI,InitMPI
 #if USE_MPI
 USE MOD_MPI,                     ONLY: InitMPIvars,FinalizeMPI
@@ -45,16 +43,15 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                            :: iArg
-CHARACTER(LEN=255)                 :: InputStateFile          ! dummy variable for state file name
 INTEGER                            :: N_HDF5_old = 0          ! Polynominal degree of last state file
-CHARACTER(LEN=255)                 :: MeshFile_old = ''       ! Meshfile of last state file
-CHARACTER(LEN=255)                 :: MeshFile_prm = ''       ! Meshfile of input parameter file
 LOGICAL                            :: changedMeshFile=.FALSE. ! True if mesh between states changed
 LOGICAL                            :: changedN       =.FALSE. ! True if N between states changes
+CHARACTER(LEN=255)                 :: InputStateFile          ! StateFile to be processed
+CHARACTER(LEN=255)                 :: MeshFile_old = ''       ! Meshfile of last state file
+CHARACTER(LEN=255)                 :: MeshFile_prm = ''       ! Meshfile of input parameter file
 !===================================================================================================================================
 CALL SetStackSizeUnlimited()
 CALL InitMPI()
-
 IF (nProcessors.GT.1) CALL CollectiveStop(__STAMP__, &
      'This tool is designed only for single execution!')
 
@@ -71,30 +68,28 @@ SWRITE(UNIT_stdOut,'(A)')
 SWRITE(UNIT_stdOut,'(132("="))')
 
 ! Define Parameters
-CALL DefineParametersInterpolation()        ! Calculate Gauss Points etc
+CALL DefineParametersInterpolation()
 CALL DefineParametersMPI()
 CALL DefineParametersIO_HDF5()
-CALL DefineParametersOutput()               ! NVisu, NOut
-CALL DefineParametersMesh()                 ! MeshFile
+CALL DefineParametersOutput()
+CALL DefineParametersMesh()
 
-! New parameter section
-CALL prms%SetSection("HIT_Analyze") 
-CALL prms%CreateIntOption("N_Visu"             , "Polynomial degree to perform DFFT on")
-CALL prms%CreateIntOption("N_Filter"           , "Cutoff filter")
-CALL prms%CreateRealOption("Mu0"               , "Viscosity")
+! Parameters for HIT_Analyze
+CALL prms%SetSection("HIT_Analyze")
+CALL prms%CreateIntOption("N_Filter" , "Maximum wavenumber for cutoff filter.")
+CALL prms%CreateIntOption("N_Visu"   , "Polynomial degree in each element for global DFFT basis.")
+CALL prms%CreateRealOption("Mu0"     , "Viscosity")
 
 ! check for command line argument --help or --markdown
 IF (doPrintHelp.GT.0) THEN
   CALL PrintDefaultParameterFile(doPrintHelp.EQ.2, Args(1))
   STOP
 END IF
-! Read file name from command line, min. 2 timeavg files
-IF(nArgs .LT. 2) CALL Abort(__STAMP__,'Missing argument')
-! check if parameter file is given
-IF ((nArgs.LT.1).OR.(.NOT.(STRICMP(GetFileExtension(Args(1)),'ini')))) THEN
+! check if parameter file and min. 1 statefile is given
+IF ((nArgs.LT.2).OR.(.NOT.(STRICMP(GetFileExtension(Args(1)),'ini')))) THEN
   CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: posti_hit_analyze prm-file [statefile.h5, ...]')
 END IF
-! Parse parameters
+! Parse parameter file
 CALL prms%read_options(Args(1))
 ParameterFile = Args(1)
 
@@ -181,6 +176,7 @@ CALL FinalizeParameters()
 CALL FinalizeInterpolation()
 CALL FinalizeMesh()
 CALL FinalizeFFT()
+CALL FinalizeIOHDF5
 #if USE_MPI
 CALL MPI_FINALIZE(iError)
 IF(iError .NE. 0) &

@@ -52,7 +52,6 @@ USE MOD_IO_HDF5,         ONLY: File_ID,AddToFieldData,FieldOut
 USE MOD_HDF5_Input,      ONLY: OpenDataFile,CloseDataFile,ISVALIDHDF5FILE
 USE MOD_HDF5_Input,      ONLY: ReadArray,ReadAttribute,GetArrayAndName
 USE MOD_HDF5_Input,      ONLY: GetDataProps,GetDataSize,DataSetExists
-USE MOD_HIT_Filter_Vars, ONLY: OverwriteMeshFile
 USE MOD_HIT_Filter_Vars, ONLY: nVar_HDF5,N_HDF5,nElems_HDF5,nVarField_HDF5
 USE MOD_HIT_Filter_Vars, ONLY: Time_HDF5,NodeType_HDF5,ProjectName_HDF5
 USE MOD_HIT_Filter_Vars, ONLY: FieldDataExists,FieldData
@@ -115,9 +114,7 @@ ENDIF
 ! Read the attributes from file
 CALL ReadAttribute(File_ID,'Time',1,RealScalar=Time_HDF5)
 CALL ReadAttribute(File_ID,'Project_Name',1,StrScalar=ProjectName_HDF5)
-IF (.NOT. OverwriteMeshfile) THEN
-  CALL ReadAttribute(File_ID,'MeshFile',1,StrScalar=MeshFile)
-END IF
+CALL ReadAttribute(File_ID,'MeshFile',1,StrScalar=MeshFile)
 
 ! Extract parameter file from userblock (if found)
 CALL ExtractParameterFile(StateFile,TRIM(prmfile),userblockFound)

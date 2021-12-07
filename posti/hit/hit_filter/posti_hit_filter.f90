@@ -22,20 +22,21 @@ PROGRAM HIT_Filter
 USE MOD_Globals
 USE MOD_HIT_Filter
 USE MOD_HIT_Filter_Vars
+USE MOD_ReadInTools
+USE MOD_Commandline_Arguments
+USE MOD_StringTools,             ONLY: STRICMP,GetFileExtension
+USE MOD_HIT_FFT,                 ONLY: InitFFT,FinalizeFFT
+USE MOD_HIT_FFT_Vars,            ONLY: N_FFT,N_Visu
 USE MOD_DG_Vars,                 ONLY: U
 USE MOD_Mesh,                    ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
 USE MOD_Mesh_Vars,               ONLY: nElems_IJK,MeshFile
 USE MOD_Mesh_ReadIn,             ONLY: ReadIJKSorting
-USE MOD_Output,                  ONLY: DefineParametersOutput
 USE MOD_Interpolation,           ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
-USE MOD_IO_HDF5,                 ONLY: DefineParametersIO_HDF5,InitIOHDF5
+USE MOD_IO_HDF5,                 ONLY: DefineParametersIO_HDF5,InitIOHDF5,FinalizeIOHDF5
 USE MOD_IO_HDF5,                 ONLY: FieldOut,FinalizeFieldData
 USE MOD_HDF5_Output,             ONLY: WriteState
-USE MOD_StringTools,             ONLY: STRICMP,GetFileExtension
-USE MOD_ReadInTools
-USE MOD_Commandline_Arguments
-USE MOD_HIT_FFT,                 ONLY: InitFFT,FinalizeFFT
-USE MOD_HIT_FFT_Vars,            ONLY: N_FFT,N_Visu
+USE MOD_HDF5_Input,              ONLY: ISVALIDMESHFILE
+USE MOD_Output,                  ONLY: DefineParametersOutput
 USE MOD_MPI,                     ONLY: DefineParametersMPI,InitMPI
 #if USE_MPI
 USE MOD_MPI,                     ONLY: InitMPIvars,FinalizeMPI
@@ -46,13 +47,14 @@ USE OMP_Lib
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                            :: iArg
 REAL                               :: Time
-CHARACTER(LEN=255)                 :: InputStateFile          ! StateFile to be processed
-CHARACTER(LEN=255)                 :: MeshFile_old = " "      ! MeshFile of last statefile
+INTEGER                            :: iArg
 INTEGER                            :: N_HDF5_old=0            ! Polynomial degree N of last statefile
 LOGICAL                            :: changedMeshFile=.FALSE. ! True if mesh between states changed
 LOGICAL                            :: changedN       =.FALSE. ! True if N between states changes
+CHARACTER(LEN=255)                 :: InputStateFile          ! StateFile to be processed
+CHARACTER(LEN=255)                 :: MeshFile_old = ''       ! MeshFile of last statefile
+CHARACTER(LEN=255)                 :: MeshFile_prm = ''       ! Meshfile of input parameter file
 !===================================================================================================================================
 CALL SetStackSizeUnlimited()
 CALL InitMPI()
@@ -80,29 +82,26 @@ CALL DefineParametersMesh()
 
 ! Parameters for HIT_Filter
 CALL prms%SetSection("HIT_Filter")
-CALL prms%CreateIntOption("N_Filter" , "Cutoff filter")
-CALL prms%CreateIntOption("N_Visu"   , "Polynomial degree to perform DFFT on")
+CALL prms%CreateIntOption("N_Filter" , "Maximum wavenumber for cutoff filter.")
+CALL prms%CreateIntOption("N_Visu"   , "Polynomial degree in each element for global DFFT basis.")
 
 ! check for command line argument --help or --markdown
 IF (doPrintHelp.GT.0) THEN
   CALL PrintDefaultParameterFile(doPrintHelp.EQ.2, Args(1))
   STOP
 END IF
-! check if parameter file is given
-IF ((nArgs.LT.1).OR.(.NOT.(STRICMP(GetFileExtension(Args(1)),'ini')))) THEN
+! check if parameter file and min. 1 statefile is given
+IF ((nArgs.LT.2).OR.(.NOT.(STRICMP(GetFileExtension(Args(1)),'ini')))) THEN
   CALL CollectiveStop(__STAMP__,'ERROR - Invalid syntax. Please use: posti_hit_filter parameter.ini [statefile.h5, ....]')
 END IF
-! Parse parameters
+! Parse parameter file
 CALL prms%read_options(Args(1))
 ParameterFile = Args(1)
 
 ! Readin Parameters
 N_Filter = GETINT('N_Filter','-1')
 N_Visu   = GETINT('N_Visu')
-MeshFile = GETSTR('MeshFile','')
-
-! Overwrite local meshfile from userblock if present
-IF (TRIM(MeshFile).EQ.'') OverwriteMeshFile=.FALSE.
+MeshFile_prm = GETSTR('MeshFile','')
 
 ! Initialize IO
 CALL InitIOHDF5()
@@ -133,10 +132,18 @@ DO iArg=2,nArgs
 
   ! Re-initialize mesh if it has changed
   IF(changedMeshFile) THEN
-    SWRITE(UNIT_stdOUT,*) "INITIALIZING MESH FROM FILE """,TRIM(MeshFile),""""
     CALL FinalizeMesh()
     CALL DefineParametersMesh()
-    CALL InitMesh(MeshMode=0,MeshFile_IN=MeshFile)
+    ! Only take the mesh file deposited in the state file if it is a valid mesh file.
+    ! Otherwise try the mesh from the input parameter file
+    IF(FILEEXISTS(MeshFile).AND.ISVALIDMESHFILE(MeshFile)) THEN
+      SWRITE(UNIT_stdOUT,*) "INITIALIZING MESH FROM FILE """,TRIM(MeshFile),""""
+      CALL InitMesh(MeshMode=0,MeshFile_In=MeshFile)
+    ELSE
+      SWRITE(UNIT_stdOUT,*) "WARNING: No valid mesh file is given in HDF5 attributes of current state file! &
+                                    & Reading mesh from parameter file instead..."
+      CALL InitMesh(MeshMode=0,MeshFile_In=MeshFile_prm)
+    END IF
     CALL ReadIJKSorting() ! Read global xyz sorting of structured mesh
 
     ! Currently only cubic meshes are allowed!
@@ -181,6 +188,7 @@ CALL FinalizeParameters()
 CALL FinalizeInterpolation()
 CALL FinalizeMesh()
 CALL FinalizeFFT()
+CALL FinalizeIOHDF5
 #if USE_MPI
 CALL MPI_FINALIZE(iError)
 IF(iError .NE. 0) &
