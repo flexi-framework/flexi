@@ -24,15 +24,16 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-LOGICAL               :: FieldDataExists=.FALSE.
-LOGICAL               :: OverwriteMeshFile=.TRUE.
-INTEGER               :: N_Filter                 !> Cutoff wavenumber for performing Fourier Filter
-INTEGER               :: nVar_HDF5                !> Number of solution variables in statefile
-INTEGER               :: nVarField_HDF5           !> Number of variables of field data in statefile
-INTEGER               :: N_HDF5                   !> Polynomial degree in statefile
-INTEGER               :: nElems_HDF5              !> Number of elements in statefile
-REAL                  :: Time_HDF5                !> Simulation time in statefile
-CHARACTER(LEN=255)    :: NodeType_HDF5            !> Nodetype in statefile
-CHARACTER(LEN=255)    :: ProjectName_HDF5         !> Projectname statefile
+LOGICAL                        :: FieldDataExists=.FALSE.
+LOGICAL                        :: OverwriteMeshFile=.TRUE.
+REAL,ALLOCATABLE               :: FieldData(:,:,:,:,:)     !> Array to hold additional field data of statefile
+INTEGER                        :: N_Filter                 !> Cutoff wavenumber for performing Fourier Filter
+INTEGER                        :: nVar_HDF5                !> Number of solution variables in statefile
+INTEGER                        :: nVarField_HDF5           !> Number of variables of field data in statefile
+INTEGER                        :: N_HDF5                   !> Polynomial degree in statefile
+INTEGER                        :: nElems_HDF5              !> Number of elements in statefile
+REAL                           :: Time_HDF5                !> Simulation time in statefile
+CHARACTER(LEN=255)             :: NodeType_HDF5            !> Nodetype in statefile
+CHARACTER(LEN=255)             :: ProjectName_HDF5         !> Projectname statefile
 !===================================================================================================================================
 END MODULE MOD_HIT_Filter_Vars

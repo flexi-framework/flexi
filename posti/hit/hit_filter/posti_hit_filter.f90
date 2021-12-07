@@ -22,13 +22,14 @@ PROGRAM HIT_Filter
 USE MOD_Globals
 USE MOD_HIT_Filter
 USE MOD_HIT_Filter_Vars
-USE MOD_DG_Vars,                 ONLY: U,Ut
+USE MOD_DG_Vars,                 ONLY: U
 USE MOD_Mesh,                    ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
 USE MOD_Mesh_Vars,               ONLY: nElems_IJK,MeshFile
 USE MOD_Mesh_ReadIn,             ONLY: ReadIJKSorting
 USE MOD_Output,                  ONLY: DefineParametersOutput
 USE MOD_Interpolation,           ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
 USE MOD_IO_HDF5,                 ONLY: DefineParametersIO_HDF5,InitIOHDF5
+USE MOD_IO_HDF5,                 ONLY: FieldOut,FinalizeFieldData
 USE MOD_HDF5_Output,             ONLY: WriteState
 USE MOD_StringTools,             ONLY: STRICMP,GetFileExtension
 USE MOD_ReadInTools
@@ -154,7 +155,7 @@ DO iArg=2,nArgs
 
   ! Transform global solution into Fourier space and apply filter there.
   CALL FourierFilter(nVar_HDF5,U)
-  IF(FieldDataExists) CALL FourierFilter(nVarField_HDF5,Ut)
+  IF(FieldDataExists) CALL FourierFilter(nVarField_HDF5,FieldData)
 
   ! Write State-File
   CALL WriteNewStateFile()
@@ -165,9 +166,11 @@ DO iArg=2,nArgs
   changedMeshFile = .FALSE.
   changedN        = .FALSE.
 
-  ! Deallocate DG solution array for next file
+  ! Deallocate DG solution array and FieldData for next file
   DEALLOCATE(U)
-  IF(FieldDataExists) DEALLOCATE(Ut)
+  IF(FieldDataExists) DEALLOCATE(FieldData)
+  CALL FinalizeFieldData(FieldOut)
+  FieldDataExists = .FALSE.
 
   SWRITE(UNIT_stdOut,'(132("="))')
   SWRITE(UNIT_stdOut,'(A,A,A,F0.3,A)') ' PROCESSED FILE ',TRIM(InputStateFile),' in [',OMP_FLEXITIME()-Time,'s]'

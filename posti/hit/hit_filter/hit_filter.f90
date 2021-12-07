@@ -46,16 +46,18 @@ CONTAINS
 SUBROUTINE ReadOldStateFile(StateFile)
 ! MODULES                                                                                                                          !
 USE MOD_Globals
-USE MOD_DG_Vars,         ONLY: U,Ut
+USE MOD_DG_Vars,         ONLY: U
+USE MOD_ReadInTools,     ONLY: ExtractParameterFile
+USE MOD_IO_HDF5,         ONLY: File_ID,AddToFieldData,FieldOut
 USE MOD_HDF5_Input,      ONLY: OpenDataFile,CloseDataFile,ISVALIDHDF5FILE
-USE MOD_HDF5_Input,      ONLY: ReadArray,ReadAttribute,GetDataProps,GetDataSize,DataSetExists
-USE MOD_IO_HDF5,         ONLY: File_ID,nDims,HSize
+USE MOD_HDF5_Input,      ONLY: ReadArray,ReadAttribute,GetArrayAndName
+USE MOD_HDF5_Input,      ONLY: GetDataProps,GetDataSize,DataSetExists
+USE MOD_HIT_Filter_Vars, ONLY: OverwriteMeshFile
 USE MOD_HIT_Filter_Vars, ONLY: nVar_HDF5,N_HDF5,nElems_HDF5,nVarField_HDF5
 USE MOD_HIT_Filter_Vars, ONLY: Time_HDF5,NodeType_HDF5,ProjectName_HDF5
-USE MOD_HIT_Filter_Vars, ONLY: FieldDataExists,OverwriteMeshFile
-USE MOD_ReadInTools,     ONLY: ExtractParameterFile
-USE MOD_Output_Vars,     ONLY: UserBlockTmpFile,userblock_total_len
+USE MOD_HIT_Filter_Vars, ONLY: FieldDataExists,FieldData
 USE MOD_Output,          ONLY: insert_userblock
+USE MOD_Output_Vars,     ONLY: UserBlockTmpFile,userblock_total_len
 USE MOD_Mesh_Vars,       ONLY: MeshFile
 USE MOD_StringTools,     ONLY: STRICMP,GetFileExtension
 USE ISO_C_BINDING,       ONLY: C_NULL_CHAR
@@ -66,6 +68,9 @@ CHARACTER(LEN=255),INTENT(IN)      :: StateFile !< State file to be read
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 LOGICAL                          :: userblockFound
+INTEGER                          :: nVal(15)
+REAL,ALLOCATABLE                 :: tmp(:)
+CHARACTER(LEN=255),ALLOCATABLE   :: VarNames_FieldData(:)
 CHARACTER(LEN=255)               :: prmfile=".parameter.ini"
 !===================================================================================================================================
 SWRITE(*,*) "READING SOLUTION FROM STATE FILE """,TRIM(StateFile), """"
@@ -91,22 +96,28 @@ ALLOCATE(U( 1:nVar_HDF5,0:N_HDF5,0:N_HDF5,0:N_HDF5,1:nElems_HDF5))
 CALL ReadArray('DG_Solution',5,&
                (/nVar_HDF5,N_HDF5+1,N_HDF5+1,N_HDF5+1,nElems_HDF5/),0,5,RealArray=U)
 
-! Also read FieldData if present
+! Also read FieldData and corresponding variable names if present
 CALL DatasetExists(File_ID,'FieldData',FieldDataExists)
 IF (FieldDataExists) THEN
-  CALL GetDataSize(File_ID,'FieldData',nDims,HSize)
-  nVarField_HDF5 = INT(HSize(1))
-  ALLOCATE(Ut(1:nVarField_HDF5,0:N_HDF5,0:N_HDF5,0:N_HDF5,1:nElems_HDF5))
-  CALL ReadArray('FieldData',5,&
-                 (/nVarField_HDF5,N_HDF5+1,N_HDF5+1,N_HDF5+1,nElems_HDF5/),0,5,RealArray=Ut)
+  CALL GetArrayAndName('FieldData','VarNamesAddField',nVal,tmp,VarNames_FieldData)
+  nVarField_HDF5 = nVal(1)
+  ALLOCATE(FieldData(1:nVarField_HDF5,0:N_HDF5,0:N_HDF5,0:N_HDF5,1:nElems_HDF5))
+  FieldData = RESHAPE(tmp,SHAPE(FieldData))
+
+  ! Add (filtered) FieldData to output
+  CALL AddToFieldData(FieldOut,(/nVarField_HDF5,N_HDF5+1,N_HDF5+1,N_HDF5+1/), &
+                               'FieldData',VarNames_FieldData,RealArray=FieldData)
+
+  DEALLOCATE(tmp)
+  DEALLOCATE(VarNames_FieldData)
 ENDIF
 
 ! Read the attributes from file
 CALL ReadAttribute(File_ID,'Time',1,RealScalar=Time_HDF5)
 CALL ReadAttribute(File_ID,'Project_Name',1,StrScalar=ProjectName_HDF5)
-!IF (.NOT. OverwriteMeshfile) THEN
+IF (.NOT. OverwriteMeshfile) THEN
   CALL ReadAttribute(File_ID,'MeshFile',1,StrScalar=MeshFile)
-!END IF
+END IF
 
 ! Extract parameter file from userblock (if found)
 CALL ExtractParameterFile(StateFile,TRIM(prmfile),userblockFound)
@@ -127,31 +138,22 @@ END SUBROUTINE ReadOldStateFile
 SUBROUTINE WriteNewStateFile()
 ! MODULES                                                                                                                          !
 USE MOD_Globals
-USE MOD_DG_Vars,            ONLY: Ut
 USE MOD_Mesh_Vars,          ONLY: MeshFile
-USE MOD_IO_HDF5,            ONLY: tFieldOut,FieldOut,File_ID
-USE MOD_IO_HDF5,            ONLY: OpenDataFile,CloseDataFile,AddToFieldData
+USE MOD_IO_HDF5,            ONLY: File_ID,OpenDataFile,CloseDataFile
 USE MOD_HDF5_Output,        ONLY: WriteState,WriteAttribute
 USE MOD_Interpolation_Vars, ONLY: NodeType
 USE MOD_Output_Vars,        ONLY: NOut,ProjectName
 USE MOD_HIT_Filter_Vars,    ONLY: N_HDF5,ProjectName_HDF5,Time_HDF5,NodeType_HDF5
-USE MOD_HIT_Filter_Vars,    ONLY: FieldDataExists,nVarField_HDF5
 !----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-TYPE(tFieldOut),POINTER        :: f
 CHARACTER(LEN=255)             :: FileName
 !===================================================================================================================================
 ! Set output variables according to current state file
 NOut        = N_HDF5
 ProjectName = TRIM(ProjectName_HDF5)//'_filtered'
-
-! Add (filtered) FieldData to output if it exists
-IF (FieldDataExists) THEN
-  CALL AddToFieldData(FieldOut,(/nVarField_HDF5,N_HDF5+1,N_HDF5+1,N_HDF5+1/),'dudt',(/'dudt1','dudt2','dudt3','dudt4','dudt5'/),RealArray=Ut)
-END IF
 
 ! Write new state file
 CALL WriteState(TRIM(MeshFile),Time_HDF5,Time_HDF5,isErrorFile=.FALSE.)
@@ -162,19 +164,6 @@ IF (NodeType.NE.NodeType_HDF5) THEN
   CALL OpenDataFile(FileName,create=.FALSE.,single=.FALSE.,readOnly=.FALSE.)
   CALL WriteAttribute(File_ID,'NodeType',1,StrScalar=(/NodeType_HDF5/))
   CALL CloseDataFile()
-END IF
-
-! Cleanup FieldOut by deallocating last entry of list until only first element left
-IF (FieldDataExists) THEN
-  DO WHILE(ASSOCIATED(FieldOut%next))
-    f=>FieldOut
-    DO WHILE(ASSOCIATED(f%next))
-      f=>f%next
-    END DO
-    f%next => NULL()
-    DEALLOCATE(f) ! deallocate last entry of list
-  END DO
-  IF (ASSOCIATED(FieldOut)) DEALLOCATE(FieldOut) ! also deallocate first list entry
 END IF
 
 END SUBROUTINE WriteNewStateFile
