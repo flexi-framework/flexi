@@ -60,10 +60,8 @@ USE MOD_HIT_FFT,            ONLY: ComputeFFT_R2C,ComputeFFT_C2R,Interpolate_DG2F
 USE MOD_HIT_FFT_Vars,       ONLY: N_FFT,Endw,kmax,Nc,localk
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
+! INPUT/OUTPUT VARIABLES
 REAL,INTENT(INOUT)  :: U_in(nVar_HDF5,0:N_HDF5,0:N_HDF5,0:N_HDF5,1:nElems_HDF5) !< elementwise DG solution from state file
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER :: i,j,k,iElem
@@ -117,18 +115,15 @@ USE MOD_HIT_Analyze_Vars,  ONLY: N_Filter
 USE MOD_HIT_FFT_Vars,      ONLY: endw,localk,Nc,kmax
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
-COMPLEX,INTENT(IN)  :: U_In(nVar_In,1:endw(1),1:endw(2),1:endw(3))
+! INPUT/OUTPUT VARIABLES
 INTEGER,INTENT(IN)  :: nVar_In
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-REAL,INTENT(OUT)  :: E_k(0:kmax)
+COMPLEX,INTENT(IN)  :: U_In(nVar_In,1:endw(1),1:endw(2),1:endw(3))
+REAL,INTENT(OUT)    :: E_k(0:kmax)
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER :: i,j,k
 INTEGER :: N_max
-!-----------------------------------------------------------------------------------------------------------------------------------
-!-----------------------------------------------------------------------------------------------------------------------------------
+!===================================================================================================================================
 N_max = MERGE(N_Filter,Nc,(N_Filter.GT.-1))
 
 E_k = 0.
@@ -150,19 +145,16 @@ USE MOD_HIT_Analyze_Vars,  ONLY: N_Filter,ProjectName_HDF5,Time_HDF5
 USE MOD_HIT_FFT_Vars,      ONLY: Nc,kmax
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
+! INPUT/OUTPUT VARIABLES
 REAL,INTENT(IN)  :: E_k(0:kmax)
 !-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
-!-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+LOGICAL            :: connected
 INTEGER            :: k,N_max
 INTEGER            :: FileUnit
-LOGICAL            :: connected
 CHARACTER(LEN=255) :: Filename
-!-----------------------------------------------------------------------------------------------------------------------------------
-!-----------------------------------------------------------------------------------------------------------------------------------
-FileUnit=155
+!===================================================================================================================================
+FileUnit = 155
 INQUIRE(UNIT=FileUnit, OPENED=connected)
 IF (Connected) THEN
   DO
@@ -184,7 +176,7 @@ WRITE(FileUnit,'(a)') 'VARIABLES = "Wavenumber k" "E(k)"'
 ! Get maximum wave number and write to file
 N_max = MERGE(N_Filter,Nc,(N_Filter.GT.-1))
 DO k=1,N_max
-  WRITE(FileUnit,'(I5.5,1(E20.12,X))') k,E_k(k)
+  WRITE(FileUnit,'(I5.5,1(E20.12,1X))') k,E_k(k)
 END DO
 
 CLOSE(FileUnit)
@@ -204,11 +196,9 @@ USE MOD_HIT_Analyze_Vars,  ONLY: N_Filter,mu0
 USE MOD_HIT_FFT_Vars,      ONLY: N_FFT,N_Visu,Nc,kmax,Endw
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
-! INPUT VARIABLES
+! INPUT/OUTPUT VARIABLES
 REAL,INTENT(IN)  :: E_k(0:kmax)                               !< Energy spectra over the wavenumbers
 REAL,INTENT(IN)  :: U_in(1:nVar_HDF5,1:N_FFT,1:N_FFT,1:N_FFT) !< Global DG solution on visu nodes
-!-----------------------------------------------------------------------------------------------------------------------------------
-! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 REAL               :: Lambda,  L_int,  Eta
@@ -219,8 +209,7 @@ INTEGER            :: i,j,k,N_max
 INTEGER            :: FileUnit
 LOGICAL            :: connected
 CHARACTER(LEN=255) :: FileName
-!-----------------------------------------------------------------------------------------------------------------------------------
-!-----------------------------------------------------------------------------------------------------------------------------------
+!===================================================================================================================================
 ! Compute integral kinetic energy in physical space
 ! Due to conjugate symmetry in x (here i) direction only half of the modes are stored
 ! the others have the property u(k_x) = u*(-k_x), meaning that the sum we compute here
@@ -284,18 +273,19 @@ ELSE
 END IF
 
 ! Write and close file
-WRITE(FileUnit,'(12(E20.12,X))') Time_hdf5,Ekin,IntE_k,Eps,Eta,eta_k,lambda,lambda_k,L_int,L_int_k,U_rms,Re_lambda
+WRITE(FileUnit,'(12(E20.12,1X))') Time_hdf5,Ekin,IntE_k,Eps,Eta,Eta_k,lambda,lambda_k,L_int,L_int_k,U_rms,Re_lambda
 CLOSE(FILEUnit)
 
 ! Also dump data to stdout
 WRITE(UNIT_StdOut,*)'-------------------------------------------------------------------------------------------'
 WRITE(Unit_StdOut,'(A50)')'Turbulence Statistics'
 WRITE(UNIT_StdOut,'(A14,E20.10)')           '  Epsilon   = ',Eps
-WRITE(UNIT_StdOut,'(A14,E20.10,A13,E20.10)')'  E         = ',Eta,   '  Eta_K    = ',Eta_K
+WRITE(UNIT_StdOut,'(A14,E20.10,A13,E20.10)')'  E_kin     = ',Ekin,  '  E_kin_K  = ',IntE_k
+WRITE(UNIT_StdOut,'(A14,E20.10,A13,E20.10)')'  Eta       = ',Eta,   '  Eta_K    = ',Eta_K
 WRITE(UNIT_StdOut,'(A14,E20.10,A13,E20.10)')'  Lambda    = ',Lambda,'  Lambda_K = ',Lambda_K
-WRITE(UNIT_StdOut,'(A14,E20.10,A13,E20.10)')'  L_int     = ',L_int, '  L_int_K  = ',L_int_K
-WRITE(UNIT_StdOut,'(A14,E20.10)')           '  U_rms     = ',U_rms
-WRITE(UNIT_StdOut,'(A14,E20.10)')           '  Re_lambda = ',Re_lambda
+WRITE(UNIT_StdOut,'(A14,E20.10,A13,E20.10)')'  L_Int     = ',L_int, '  L_Int_K  = ',L_int_K
+WRITE(UNIT_StdOut,'(A14,E20.10)')           '  U_RMS     = ',U_RMS
+WRITE(UNIT_StdOut,'(A14,E20.10)')           '  Re_Lambda = ',Re_Lambda
 WRITE(UNIT_StdOut,*)'-------------------------------------------------------------------------------------------'
 END SUBROUTINE WriteTurbulenceData
 
@@ -318,8 +308,8 @@ USE MOD_Output,           ONLY: insert_userblock
 USE MOD_Mesh_Vars,        ONLY: MeshFile
 USE MOD_StringTools,      ONLY: STRICMP,GetFileExtension
 USE ISO_C_BINDING,        ONLY: C_NULL_CHAR
-!----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=255),INTENT(IN)      :: StateFile !< State file to be read
 !-----------------------------------------------------------------------------------------------------------------------------------

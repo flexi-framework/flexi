@@ -50,7 +50,7 @@ USE MOD_PreProc,            ONLY: PP_PI
 USE MOD_HIT_Init_Vars,      ONLY: InitSpec,Seed
 USE MOD_HIT_FFT,            ONLY: ComputeFFT_C2R,ComputeFFT_R2C
 USE MOD_HIT_FFT_Vars,       ONLY: Endw,localk,N_FFT,Nc,II,kmax
- IMPLICIT NONE
+IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 COMPLEX,INTENT(OUT)    :: U_FFT(5,1:Endw(1),1:Endw(2),1:Endw(3)) !> Pseudo-compressible flow state in Fourier space

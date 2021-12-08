@@ -60,8 +60,8 @@ USE MOD_Output_Vars,     ONLY: UserBlockTmpFile,userblock_total_len
 USE MOD_Mesh_Vars,       ONLY: MeshFile
 USE MOD_StringTools,     ONLY: STRICMP,GetFileExtension
 USE ISO_C_BINDING,       ONLY: C_NULL_CHAR
-!----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
 CHARACTER(LEN=255),INTENT(IN)      :: StateFile !< State file to be read
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -134,8 +134,8 @@ USE MOD_HDF5_Output,        ONLY: WriteState,WriteAttribute
 USE MOD_Interpolation_Vars, ONLY: NodeType
 USE MOD_Output_Vars,        ONLY: NOut,ProjectName
 USE MOD_HIT_Filter_Vars,    ONLY: N_HDF5,ProjectName_HDF5,Time_HDF5,NodeType_HDF5
-!----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
@@ -171,8 +171,8 @@ USE MOD_HIT_Filter_Vars,    ONLY: N_Filter,NodeType_HDF5
 USE MOD_HIT_FFT_Vars,       ONLY: N_FFT,Endw,Localk,Nc
 USE MOD_HIT_FFT,            ONLY: Interpolate_DG2FFT,Interpolate_FFT2DG
 USE MOD_HIT_FFT,            ONLY: ComputeFFT_R2C,ComputeFFT_C2R
-!----------------------------------------------------------------------------------------------------------------------------------!
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
 INTEGER,INTENT(IN)    :: nVar_In       !< Number of independent variables in first dimneion of U_In
 REAL,INTENT(INOUT)    :: U_in(1:nVar_In,0:PP_N,0:PP_N,0:PP_N,1:nElems) !< elementwise DG solution from state file
