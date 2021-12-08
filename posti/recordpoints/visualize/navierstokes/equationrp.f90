@@ -133,6 +133,7 @@ ALLOCATE(TransMap(3,INT(nVarVisu/2)))
 ALLOCATE(is2D(INT(nVarVisu/2)))
 is2D=.FALSE.
 TransMap=-1
+iVelocity=-1
 nVecTrans=0
 DO iVar=1,nVarVisu
   tmp255=TRIM(VarNameVisu(iVar))
@@ -157,6 +158,9 @@ WRITE(UNIT_StdOut,'(A)')' Quantities to transform to local coordinate system:'
 DO iVar=1,nVecTrans
   DO iVar2=1,3
     WRITE(UNIT_StdOut,'(A,A)')'  ',TRIM(VarNameVisu(TransMap(iVar2,iVar)))
+    IF("VelocityX".EQ.TRIM(VarNameVisu(TransMap(iVar2,iVar))))THEN
+      iVelocity = iVar
+    END IF
   END DO
 END DO
 
@@ -365,7 +369,7 @@ SUBROUTINE Plane_BLProps()
 USE MOD_Globals
 USE MOD_OutputRPVisu_Vars  ,ONLY: RPDataTimeAvg_out
 USE MOD_RPSetVisuVisu_Vars ,ONLY: nPlanes,Planes,tPlane
-USE MOD_EquationRP_Vars    ,ONLY: is2D,TransMap,nBLProps,pInf,uInf,rhoInf,iPressure
+USE MOD_EquationRP_Vars    ,ONLY: is2D,TransMap,nBLProps,pInf,uInf,rhoInf,iPressure,iVelocity
 USE MOD_ParametersVisu     ,ONLY: Plane_BLvelScaling
 USE MOD_ParametersVisu     ,ONLY: Mu0
 IMPLICIT NONE
@@ -399,11 +403,11 @@ DO iPlane=1,nPlanes
     ALLOCATE(u_loc(Plane%nRP(2)),y_loc(Plane%nRP(2)),u_star(Plane%nRP(2)))
     DO i=1,Plane%nRP(1)
       ! get wall friction tau_W = mu*(du/dy+dv/dx)
-      dy=Plane%LocalCoord(2,i,2)-Plane%LocalCoord(2,i,1)
+      dy =Plane%LocalCoord(2,i,2)-Plane%LocalCoord(2,i,1)
       dy2=Plane%LocalCoord(2,i,3)-Plane%LocalCoord(2,i,2)
-      u1=RPDataTimeAvg_out(TransMap(1,1),Plane%IDlist(i,1))
-      u2=RPDataTimeAvg_out(TransMap(1,1),Plane%IDlist(i,2))
-      u3=RPDataTimeAvg_out(TransMap(1,1),Plane%IDlist(i,3))
+      u1=RPDataTimeAvg_out(TransMap(1,iVelocity),Plane%IDlist(i,1))
+      u2=RPDataTimeAvg_out(TransMap(1,iVelocity),Plane%IDlist(i,2))
+      u3=RPDataTimeAvg_out(TransMap(1,iVelocity),Plane%IDlist(i,3))
       dudy=(u2-u1)/dy- (dy*(u3-u2)-dy2*(u2-u1))/((dy+dy2)*dy2)
       tau_W = mu0*dudy
       ! get delta99
@@ -607,4 +611,3 @@ WRITE(UNIT_stdOut,'(A)') '  EquationRP FINALIZED'
 END SUBROUTINE FinalizeEquationRP
 
 END MODULE MOD_EquationRP
-
