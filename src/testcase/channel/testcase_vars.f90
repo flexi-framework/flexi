@@ -29,14 +29,12 @@ CHARACTER(LEN=255) :: testcase = "channel"  !< name of testcase
 ! TESTCASE VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! precomputed variables
-REAL    :: bulkVel     =0.          !< bulk velocity in domain
-REAL    :: dpdx        =0.          !< imposed pressure gradient
-REAL    :: Re_tau                   !< target friction Reynolds number
-REAL    :: uBulk                    !< bulk velocity in domain
-REAL    :: uBulkScale               !< scaling factor for bulk velocity
-REAL,ALLOCATABLE   :: writeBuf(:,:) !< buffer to store log testcase data
-INTEGER :: ioCounter   =0           !< current number of buffer items
-INTEGER :: nWriteStats =-999        !< Write testcase statistics to file at every n-th AnalyzeTestcase step
-CHARACTER(LEN=255) :: Filename      !< filename to store testcase log data
+REAL,PARAMETER     :: dpdx        = -1.    !< imposed pressure gradient: = Re_tau^2*rho*nu^2/delta^3
+REAL               :: Re_tau               !< target friction Reynolds number: = 1/mu0
+REAL               :: bulkVel              !< bulk velocity in domain
+REAL,ALLOCATABLE   :: writeBuf(:,:)        !< buffer to store log testcase data
+INTEGER            :: ioCounter   = 0      !< current number of buffer items
+INTEGER            :: nWriteStats = -999   !< Write testcase statistics to file at every n-th AnalyzeTestcase step
+CHARACTER(LEN=255) :: Filename             !< filename to store testcase log data
 !==================================================================================================================================
 END MODULE MOD_TestCase_Vars
