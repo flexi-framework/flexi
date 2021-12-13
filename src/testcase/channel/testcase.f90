@@ -19,7 +19,13 @@
 #endif
 
 !==================================================================================================================================
-!> The channel case is a setup according to the Moser channel
+!> The channel case is a setup according to the Moser channel:
+!>  - Moser, Robert D., John Kim, and Nagi N. Mansour. "Direct numerical simulation of turbulent channel flow up to Re_tau= 590."
+!>    Physics of fluids 11.4 (1999): 943-945.
+!>  - Lee, Myoungkyu, and Robert D. Moser. "Direct numerical simulation of turbulent channel flow up to Re_tau=5200."
+!>    Journal of Fluid Mechanics 774 (2015): 395-415.
+!> The channel halfwidth is set to 1 and the Reynolds number is thus set with mu0 = 1/Re_tau. Further, rho=1 and the pressure is
+!> computed to obtain the specified Bulk Mach number (Mach=0.1 for the Moser case). Hence, u_tau = tau = -dp/dx = 1 .
 !==================================================================================================================================
 MODULE MOD_Testcase
 ! MODULES
@@ -99,7 +105,10 @@ CALL prms%CreateIntOption('nAnalyzeTestCase', "Call testcase specific analysis r
 END SUBROUTINE DefineParametersTestcase
 
 !==================================================================================================================================
-!> Specifies all the initial conditions. The state in conservative variables is returned.
+!> Initializes the Channel testcase. The initial pressure is set to match the specified Bulk Mach number. For this, the initial
+!> Bulk Velocity has to be estimated. Here, an analytical approximation is used to estimate the bulk velocity depending on the
+!> specific Reynolds number.
+!> TODO: Find source of formula for bulk velocity.
 !==================================================================================================================================
 SUBROUTINE InitTestcase()
 ! MODULES
@@ -116,10 +125,10 @@ IMPLICIT NONE
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                     :: c1
+REAL,PARAMETER           :: c1 = 2.4390244 ! Empirical parameter for estimation of bulkVel
 REAL                     :: bulkMach,pressure
-CHARACTER(LEN=7)         :: varnames(2)
 REAL                     :: UE(PP_2Var)
+CHARACTER(LEN=7)         :: varnames(2)
 !==================================================================================================================================
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT TESTCASE CHANNEL...'
@@ -131,16 +140,15 @@ CALL CollectiveStop(__STAMP__, &
 
 nWriteStats  = GETINT('nWriteStats','100')
 nAnalyzeTestCase = GETINT( 'nAnalyzeTestCase','1000')
-uBulkScale=1.
-Re_tau       = 1./mu0
-c1 = 2.4390244
-uBulk=c1 * ((Re_tau+c1)*LOG(Re_tau+c1) + 1.3064019*(Re_tau + 29.627395*EXP(-1./11.*Re_tau) + 0.66762137*(Re_tau+3)*EXP(-Re_tau/3.))) &
-      - 97.4857927165
-uBulk=uBulk/Re_tau
 
-! Set the background pressure according to choosen bulk Mach number
+! Compute initial guess for bulk velocity for given Re_tau to compute background pressure
+Re_tau  = 1./mu0
+bulkVel = (Re_tau+c1)*LOG(Re_tau+c1) + 1.3064019*(Re_tau + 29.627395*EXP(-1./11.*Re_tau) + 0.66762137*(Re_tau+3)*EXP(-Re_tau/3.))
+bulkVel = 1./Re_tau * (c1*bulkVel - 97.4857927165)
+
+! Set the background pressure according to chosen bulk Mach number
 bulkMach                       = GETREAL('ChannelMach','0.1')
-pressure                       = (uBulk/bulkMach)**2*RefStatePrim(DENS,IniRefState)/kappa
+pressure                       = (bulkVel/bulkMach)**2*RefStatePrim(DENS,IniRefState)/kappa
 RefStatePrim(PRES,IniRefState) = pressure
 ! TODO: ATTENTION only sRho and Pressure of UE filled!!!
 UE(EXT_SRHO)                   = 1./RefStatePrim(DENS,IniRefState)
@@ -149,19 +157,16 @@ RefStatePrim(TEMP,IniRefState) = TEMPERATURE_HE(UE)
 CALL PrimToCons(RefStatePrim(:,IniRefState),RefStateCons(:,IniRefState))
 
 IF(MPIRoot) THEN
-  WRITE(*,*) 'Bulk velocity based on initial velocity Profile =',uBulk
-  WRITE(*,*) 'Associated Pressure for Mach = ',bulkMach,' is', pressure
+  WRITE(UNIT_stdOut,*) 'Bulk velocity based on initial velocity Profile =',bulkVel
+  WRITE(UNIT_StdOut,*) 'Associated Pressure for Mach = ',bulkMach,' is', pressure
+
+  ! Initialize output of statistics to file
+  ALLOCATE(writeBuf(3,nWriteStats))
+  Filename = TRIM(ProjectName)//'_Stats'
+  varnames(1) = 'dpdx'
+  varnames(2) = 'bulkVel'
+  CALL InitOutputToFile(Filename,'Statistics',2,varnames)
 END IF
-
-dpdx = -1. ! Re_tau^2*rho*nu^2/delta^3
-
-IF(.NOT.MPIRoot) RETURN
-
-ALLOCATE(writeBuf(3,nWriteStats))
-Filename = TRIM(ProjectName)//'_Stats'
-varnames(1) = 'dpdx'
-varnames(2) = 'bulkVel'
-CALL InitOutputToFile(Filename,'Statistics',2,varnames)
 
 SWRITE(UNIT_stdOut,'(A)')' INIT TESTCASE CHANNEL DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
@@ -170,12 +175,12 @@ END SUBROUTINE InitTestcase
 
 
 !==================================================================================================================================
-!> Specifies all the initial conditions. The state in conservative variables is returned.
+!> Initial conditions for the channel testcase. Initializes a velocity profile in the streamwise direction and superimposes
+!> velocity disturbances to accelerate the development of turbulence.
 !==================================================================================================================================
 SUBROUTINE ExactFuncTestcase(tIn,x,Resu,Resu_t,Resu_tt)
 ! MODULES
-USE MOD_Preproc,      ONLY: PP_Pi
-USE MOD_Globals,      ONLY: Abort
+USE MOD_PreProc,      ONLY: PP_PI
 USE MOD_Equation_Vars,ONLY: RefStatePrim,IniRefState
 USE MOD_EOS,          ONLY: PrimToCons
 IMPLICIT NONE
@@ -185,39 +190,40 @@ REAL,INTENT(IN)                 :: x(3),tIn
 REAL,INTENT(OUT)                :: Resu(PP_nVar),Resu_t(PP_nVar),Resu_tt(PP_nVar)
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL                            :: yplus,prim(PP_nVarPrim),amplitude
+REAL                            :: Prim(PP_nVarPrim)
+REAL                            :: yPlus,Amplitude
 !==================================================================================================================================
-!Channel Testcase: set mu0 = 1/Re_tau, rho=1, pressure adapted, Mach=0.1 according to Moser!!
-!and hence: u_tau=tau=-dp/dx=1, and t=t+=u_tau*t/delta
-Prim(:) = RefStatePrim(:,IniRefState) ! prim=(/1.,0.3,0.,0.,0.71428571/)
+Prim(:) = RefStatePrim(:,IniRefState)
+
+! Initialize mean turbulent velocity profile in x
 IF(x(2).LE.0) THEN
-  yPlus = (x(2)+1.)*Re_tau ! Re_tau=590
+  yPlus = (x(2)+1.)*Re_tau ! Lower half
 ELSE
-  yPlus = (1.-x(2))*Re_tau ! Re_tau=590
+  yPlus = (1.-x(2))*Re_tau ! Upper half
 END IF
-!Prim(VEL1)=uPlus
-Prim(VEL1) = uBulkScale*(1./0.41*log(1+0.41*yPlus)+7.8*(1-exp(-yPlus/11.)-yPlus/11.*exp(-yPlus/3.)))
-!Prim(PRES)=(uBulk*sqrt(kappa*Prim(PRES)/Prim(DENS)))**2*Prim(DENS)/kappa ! Pressure such that Ma=1/sqrt(kappa*p/rho)
+Prim(VEL1) = 1./0.41*LOG(1+0.41*yPlus)+7.8*(1-EXP(-yPlus/11.)-yPlus/11.*EXP(-yPlus/3.))
+
+! Superimpose sinusoidal disturbances to accelerate development of turbulence
 Amplitude = 0.1*Prim(VEL1)
 #if EQNSYSNR == 2
-Prim(VEL1)=Prim(VEL1)+sin(20.0*PP_PI*(x(2)/(2.0)))*sin(20.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-Prim(VEL1)=Prim(VEL1)+sin(30.0*PP_PI*(x(2)/(2.0)))*sin(30.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-Prim(VEL1)=Prim(VEL1)+sin(35.0*PP_PI*(x(2)/(2.0)))*sin(35.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-Prim(VEL1)=Prim(VEL1)+sin(40.0*PP_PI*(x(2)/(2.0)))*sin(40.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-Prim(VEL1)=Prim(VEL1)+sin(45.0*PP_PI*(x(2)/(2.0)))*sin(45.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-Prim(VEL1)=Prim(VEL1)+sin(50.0*PP_PI*(x(2)/(2.0)))*sin(50.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+Prim(VEL1)=Prim(VEL1)+SIN(20.0*PP_PI*(x(2)/(2.0)))*SIN(20.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+Prim(VEL1)=Prim(VEL1)+SIN(30.0*PP_PI*(x(2)/(2.0)))*SIN(30.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+Prim(VEL1)=Prim(VEL1)+SIN(35.0*PP_PI*(x(2)/(2.0)))*SIN(35.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+Prim(VEL1)=Prim(VEL1)+SIN(40.0*PP_PI*(x(2)/(2.0)))*SIN(40.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+Prim(VEL1)=Prim(VEL1)+SIN(45.0*PP_PI*(x(2)/(2.0)))*SIN(45.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+Prim(VEL1)=Prim(VEL1)+SIN(50.0*PP_PI*(x(2)/(2.0)))*SIN(50.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
 
-Prim(VEL2)=Prim(VEL2)+sin(30.0*PP_PI*(x(1)/(4*PP_PI)))*sin(30.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-Prim(VEL2)=Prim(VEL2)+sin(35.0*PP_PI*(x(1)/(4*PP_PI)))*sin(35.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-Prim(VEL2)=Prim(VEL2)+sin(40.0*PP_PI*(x(1)/(4*PP_PI)))*sin(40.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-Prim(VEL2)=Prim(VEL2)+sin(45.0*PP_PI*(x(1)/(4*PP_PI)))*sin(45.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
-Prim(VEL2)=Prim(VEL2)+sin(50.0*PP_PI*(x(1)/(4*PP_PI)))*sin(50.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+Prim(VEL2)=Prim(VEL2)+SIN(30.0*PP_PI*(x(1)/(4*PP_PI)))*SIN(30.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+Prim(VEL2)=Prim(VEL2)+SIN(35.0*PP_PI*(x(1)/(4*PP_PI)))*SIN(35.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+Prim(VEL2)=Prim(VEL2)+SIN(40.0*PP_PI*(x(1)/(4*PP_PI)))*SIN(40.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+Prim(VEL2)=Prim(VEL2)+SIN(45.0*PP_PI*(x(1)/(4*PP_PI)))*SIN(45.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
+Prim(VEL2)=Prim(VEL2)+SIN(50.0*PP_PI*(x(1)/(4*PP_PI)))*SIN(50.0*PP_PI*(x(3)/(2*PP_PI)))*Amplitude
 
-Prim(VEL3)=Prim(VEL3)+sin(30.0*PP_PI*(x(1)/(4*PP_PI)))*sin(30.0*PP_PI*(x(2)/(2.0)))*Amplitude
-Prim(VEL3)=Prim(VEL3)+sin(35.0*PP_PI*(x(1)/(4*PP_PI)))*sin(35.0*PP_PI*(x(2)/(2.0)))*Amplitude
-Prim(VEL3)=Prim(VEL3)+sin(40.0*PP_PI*(x(1)/(4*PP_PI)))*sin(40.0*PP_PI*(x(2)/(2.0)))*Amplitude
-Prim(VEL3)=Prim(VEL3)+sin(45.0*PP_PI*(x(1)/(4*PP_PI)))*sin(45.0*PP_PI*(x(2)/(2.0)))*Amplitude
-Prim(VEL3)=Prim(VEL3)+sin(50.0*PP_PI*(x(1)/(4*PP_PI)))*sin(50.0*PP_PI*(x(2)/(2.0)))*Amplitude
+Prim(VEL3)=Prim(VEL3)+SIN(30.0*PP_PI*(x(1)/(4*PP_PI)))*SIN(30.0*PP_PI*(x(2)/(2.0)))*Amplitude
+Prim(VEL3)=Prim(VEL3)+SIN(35.0*PP_PI*(x(1)/(4*PP_PI)))*SIN(35.0*PP_PI*(x(2)/(2.0)))*Amplitude
+Prim(VEL3)=Prim(VEL3)+SIN(40.0*PP_PI*(x(1)/(4*PP_PI)))*SIN(40.0*PP_PI*(x(2)/(2.0)))*Amplitude
+Prim(VEL3)=Prim(VEL3)+SIN(45.0*PP_PI*(x(1)/(4*PP_PI)))*SIN(45.0*PP_PI*(x(2)/(2.0)))*Amplitude
+Prim(VEL3)=Prim(VEL3)+SIN(50.0*PP_PI*(x(1)/(4*PP_PI)))*SIN(50.0*PP_PI*(x(2)/(2.0)))*Amplitude
 #endif
 
 Prim(TEMP) = 0. ! T does not matter for prim to cons
@@ -235,8 +241,8 @@ END SUBROUTINE ExactFuncTestcase
 !==================================================================================================================================
 SUBROUTINE CalcForcing(t,dt)
 ! MODULES
-USE MOD_PreProc
 USE MOD_Globals
+USE MOD_PreProc
 USE MOD_DG_Vars,        ONLY: U
 USE MOD_Mesh_Vars,      ONLY: sJ
 USE MOD_Analyze_Vars,   ONLY: wGPVol,Vol
@@ -272,12 +278,11 @@ END SUBROUTINE CalcForcing
 SUBROUTINE TestcaseSource(Ut)
 ! MODULES
 USE MOD_PreProc
-USE MOD_Globals
 USE MOD_Mesh_Vars, ONLY:sJ,nElems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-REAL,INTENT(INOUT)              :: Ut(CONS,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< solution time derivative
+REAL,INTENT(INOUT)              :: Ut(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) !< solution time derivative
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER                         :: i,j,k,iElem
@@ -285,8 +290,8 @@ INTEGER                         :: i,j,k,iElem
 ! Apply forcing with the pressure gradient
 DO iElem=1,nElems
   DO k=0,PP_NZ; DO j=0,PP_N; DO i=0,PP_N
-    Ut(MOM1,i,j,k,iElem)=Ut(MOM1,i,j,k,iElem) -dpdx/sJ(i,j,k,iElem,0)
-    Ut(ENER,i,j,k,iElem)=Ut(ENER,i,j,k,iElem) -dpdx*BulkVel/sJ(i,j,k,iElem,0)
+    Ut(MOM1,i,j,k,iElem) = Ut(MOM1,i,j,k,iElem) - dpdx/sJ(i,j,k,iElem,0)
+    Ut(ENER,i,j,k,iElem) = Ut(ENER,i,j,k,iElem) - dpdx/sJ(i,j,k,iElem,0)*BulkVel
   END DO; END DO; END DO
 END DO
 END SUBROUTINE TestcaseSource
@@ -296,8 +301,6 @@ END SUBROUTINE TestcaseSource
 !==================================================================================================================================
 SUBROUTINE WriteStats()
 ! MODULES
-USE MOD_PreProc
-USE MOD_Globals
 USE MOD_Output,       ONLY:OutputToFile
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
