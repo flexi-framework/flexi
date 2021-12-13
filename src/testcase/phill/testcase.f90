@@ -19,7 +19,8 @@
 #endif
 
 !==================================================================================================================================
-!> Subroutines defining one specific testcase with all necessary variables
+!> Ercoftac periodic hill testcase 
+!> http://www.kbwiki.ercoftac.org/w/index.php/Abstr:2D_Periodic_Hill_Flow
 !==================================================================================================================================
 MODULE MOD_Testcase
 ! MODULES
