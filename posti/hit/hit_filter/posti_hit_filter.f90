@@ -64,12 +64,19 @@ IF (nProcessors.GT.1) CALL CollectiveStop(__STAMP__, &
 CALL ParseCommandlineArguments()
 
 SWRITE(UNIT_stdOut,'(132("="))')
-SWRITE(UNIT_stdOut,'(A)') &
-    " ||==========================================||                                                           "
-SWRITE(UNIT_stdOut,'(A)') &
-    " ||         Spectral filter for HIT          ||                                                           "
-SWRITE(UNIT_stdOut,'(A)') &
-    " ||==========================================||                                                           "
+SWRITE(UNIT_stdOut,'(A)')
+SWRITE(UNIT_stdOut,'(11X,A)') &
+    "  ____  ____ _____ _________                      _________ _____ _____    _________ _________ _______     "
+SWRITE(UNIT_stdOut,'(11X,A)') &
+    " |_   ||   _|_   _|  _   _  |                    |_   ___  |_   _|_   _|  |  _   _  |_   ___  |_   __ \    "
+SWRITE(UNIT_stdOut,'(11X,A)') &
+    "   | |__| |   | | |_/ | | \_|       ______         | |_  \_| | |   | |    |_/ | | \_| | |_  \_| | |__) |   "
+SWRITE(UNIT_stdOut,'(11X,A)') &
+    "   |  __  |   | |     | |          |______|        |  _|     | |   | |   _    | |     |  _|  _  |  __ /    "
+SWRITE(UNIT_stdOut,'(11X,A)') &
+    "  _| |  | |_ _| |_   _| |_                        _| |_     _| |_ _| |__/ |  _| |_   _| |___/ |_| |  \ \_  "
+SWRITE(UNIT_stdOut,'(11X,A)') &
+    " |____||____|_____| |_____|                      |_____|   |_____|________| |_____| |_________|____| |___| "
 SWRITE(UNIT_stdOut,'(A)')
 SWRITE(UNIT_stdOut,'(132("="))')
 

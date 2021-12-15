@@ -52,15 +52,21 @@ IF (nProcessors.GT.1) CALL CollectiveStop(__STAMP__, &
 CALL ParseCommandlineArguments()
 
 SWRITE(UNIT_stdOut,'(132("="))')
-SWRITE(UNIT_stdOut,'(A)') &
-    " ||=============================================||                                                           "
-SWRITE(UNIT_stdOut,'(A)') &
-    " || Generate Initial Data for FLEXI HIT Restart ||                                                           "
-SWRITE(UNIT_stdOut,'(A)') &
-    " ||=============================================||                                                           "
+SWRITE(UNIT_stdOut,'(A)')
+SWRITE(UNIT_stdOut,'(20X,A)') &
+    "     ____  ____ _____ _________                      _____ ____  _____ _____ _________  "
+SWRITE(UNIT_stdOut,'(20X,A)') &
+    "    |_   ||   _|_   _|  _   _  |                    |_   _|_   \|_   _|_   _|  _   _  | "
+SWRITE(UNIT_stdOut,'(20X,A)') &
+    "      | |__| |   | | |_/ | | \_|       ______         | |   |   \ | |   | | |_/ | | \_| "
+SWRITE(UNIT_stdOut,'(20X,A)') &
+    "      |  __  |   | |     | |          |______|        | |   | |\ \| |   | |     | |     "
+SWRITE(UNIT_stdOut,'(20X,A)') &
+    "     _| |  | |_ _| |_   _| |_                        _| |_ _| |_\   |_ _| |_   _| |_    "
+SWRITE(UNIT_stdOut,'(20X,A)') &
+    "    |____||____|_____| |_____|                      |_____|_____|\____|_____| |_____|   "
 SWRITE(UNIT_stdOut,'(A)')
 SWRITE(UNIT_stdOut,'(132("="))')
-
 
 ! Define Parameters
 CALL DefineParametersInterpolation()
