@@ -134,7 +134,7 @@ END SUBROUTINE InitFFT
 
 
 !===================================================================================================================================
-!> Wrapper routine for performing a 3D FFT (phyiscal to Fourier) by means of the FFTW library on a array on global coordinates and
+!> Wrapper routine for performing a 3D FFT (physical to Fourier) by means of the FFTW library on a array on global coordinates and
 !> nVar_In separate variables. The computation time can be printed to the standard output by setting the flag doPrintTime.
 !===================================================================================================================================
 SUBROUTINE ComputeFFT_R2C(nVar_In,U_Global,U_FFT,doPrintTime)
@@ -330,6 +330,7 @@ REAL          :: U_aux(nVar_In,0:N_Visu,0:N_Visu,0:N_Visu)
 REAL          :: VdmEquiGauss(0:N_Visu,0:PP_N)
 !===================================================================================================================================
 SWRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' INTERPOLATE FFT SOLUTION TO DG COORDS...'
+
 ! Vandermonde to interpolate from equidistant points to HDF5_Nodetype
 CALL GetVandermonde(N_Visu,'VISU_INNER',PP_N,NodeType_In,VdmEquiGauss)
 

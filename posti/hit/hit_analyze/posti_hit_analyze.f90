@@ -139,10 +139,10 @@ DO iArg=2,nArgs
     ! Only take the mesh file deposited in the state file if it is a valid mesh file.
     ! Otherwise try the mesh from the input parameter file
     IF(FILEEXISTS(MeshFile).AND.ISVALIDMESHFILE(MeshFile)) THEN
-      SWRITE(UNIT_stdOUT,*) "INITIALIZING MESH FROM FILE """,TRIM(MeshFile),""""
+      SWRITE(UNIT_stdOUT,'(3A)') "INITIALIZING MESH FROM FILE """,TRIM(MeshFile),""""
       CALL InitMesh(MeshMode=0,MeshFile_In=MeshFile)
     ELSE
-      SWRITE(UNIT_stdOUT,*) "WARNING: No valid mesh file is given in HDF5 attributes of current state file! &
+      SWRITE(UNIT_stdOUT,'(A)') "WARNING: No valid mesh file is given in HDF5 attributes of current state file! &
                                     & Reading mesh from parameter file instead..."
       CALL InitMesh(MeshMode=0,MeshFile_In=MeshFile_prm)
     END IF

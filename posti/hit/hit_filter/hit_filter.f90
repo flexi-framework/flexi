@@ -69,7 +69,7 @@ CHARACTER(LEN=255),INTENT(IN)      :: StateFile !< State file to be read
 LOGICAL                          :: userblockFound
 CHARACTER(LEN=255)               :: prmfile=".parameter.ini"
 !===================================================================================================================================
-SWRITE(*,*) "READING SOLUTION FROM STATE FILE """,TRIM(StateFile), """"
+SWRITE(Unit_StdOut,'(3A)') "READING SOLUTION FROM STATE FILE """,TRIM(StateFile), """"
 
 ! Get start index of file extension to check if it is a h5 file
 IF (.NOT.STRICMP(GetFileExtension(StateFile), 'h5')) &
@@ -118,7 +118,7 @@ INQUIRE(FILE=TRIM(UserBlockTmpFile),SIZE=userblock_total_len)
 ! Close the data file
 CALL CloseDataFile()
 
-SWRITE(*,*) "READING SOLUTION DONE!"
+SWRITE(Unit_StdOut,'(A)') "READING SOLUTION DONE!"
 END SUBROUTINE ReadOldStateFile
 
 
@@ -160,7 +160,7 @@ END SUBROUTINE WriteNewStateFile
 
 
 !===================================================================================================================================
-!> Perform a Fouier Cutoff filter to DG data. To this end, the DG solution is interpolated to a global equidistant representation,
+!> Perform a Fourier Cutoff filter to DG data. To this end, the DG solution is interpolated to a global equidistant representation,
 !> a 3D FFT is performed and a Cutoff filter is applied. Then, the filtered data is interpolated back to DG interpolation points.
 !===================================================================================================================================
 SUBROUTINE FourierFilter(nVar_In,U_In)
@@ -174,7 +174,7 @@ USE MOD_HIT_FFT,            ONLY: ComputeFFT_R2C,ComputeFFT_C2R
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
-INTEGER,INTENT(IN)    :: nVar_In       !< Number of independent variables in first dimneion of U_In
+INTEGER,INTENT(IN)    :: nVar_In       !< Number of independent variables in first dimension of U_In
 REAL,INTENT(INOUT)    :: U_in(1:nVar_In,0:PP_N,0:PP_N,0:PP_N,1:nElems) !< elementwise DG solution from state file
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES

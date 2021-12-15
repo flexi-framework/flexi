@@ -277,7 +277,7 @@ WRITE(FileUnit,'(12(E20.12,1X))') Time_hdf5,Ekin,IntE_k,Eps,Eta,Eta_k,lambda,lam
 CLOSE(FILEUnit)
 
 ! Also dump data to stdout
-WRITE(UNIT_StdOut,*)'-------------------------------------------------------------------------------------------'
+WRITE(UNIT_StdOut,'(132("-"))')
 WRITE(Unit_StdOut,'(A50)')'Turbulence Statistics'
 WRITE(UNIT_StdOut,'(A14,E20.10)')           '  Epsilon   = ',Eps
 WRITE(UNIT_StdOut,'(A14,E20.10,A13,E20.10)')'  E_kin     = ',Ekin,  '  E_kin_K  = ',IntE_k
@@ -286,7 +286,7 @@ WRITE(UNIT_StdOut,'(A14,E20.10,A13,E20.10)')'  Lambda    = ',Lambda,'  Lambda_K 
 WRITE(UNIT_StdOut,'(A14,E20.10,A13,E20.10)')'  L_Int     = ',L_int, '  L_Int_K  = ',L_int_K
 WRITE(UNIT_StdOut,'(A14,E20.10)')           '  U_RMS     = ',U_RMS
 WRITE(UNIT_StdOut,'(A14,E20.10)')           '  Re_Lambda = ',Re_Lambda
-WRITE(UNIT_StdOut,*)'-------------------------------------------------------------------------------------------'
+WRITE(UNIT_StdOut,'(132("-"))')
 END SUBROUTINE WriteTurbulenceData
 
 
@@ -318,7 +318,7 @@ LOGICAL                          :: userblockFound
 CHARACTER(LEN=255)               :: prmfile=".parameter.ini"
 INTEGER                          :: iElem
 !===================================================================================================================================
-SWRITE(*,*) "READING SOLUTION FROM STATE FILE """,TRIM(StateFile), """"
+SWRITE(Unit_StdOut,('(3A)') "READING SOLUTION FROM STATE FILE """,TRIM(StateFile), """"
 
 ! Get start index of file extension to check if it is a h5 file
 IF (.NOT.STRICMP(GetFileExtension(StateFile), 'h5')) &
@@ -344,7 +344,7 @@ CALL ReadArray('DG_Solution',5,&
 ! Check for FV-Subcells
 DO iElem=1,nElems_HDF5
   IF (FV_Elems(iElem).EQ.1) THEN ! FV Element
-    SWRITE(*,*)'FV Subcells detected in Element', iElem
+    SWRITE(Unit_StdOut,'(A,I0)')'FV Subcells detected in Element', iElem
     CALL CollectiveStop(__STAMP__,'ERROR - Programm cannot handle FV Subcells!')
   END IF
 END DO
@@ -363,7 +363,7 @@ INQUIRE(FILE=TRIM(UserBlockTmpFile),SIZE=userblock_total_len)
 ! Close the data file
 CALL CloseDataFile()
 
-SWRITE(*,*) "READING SOLUTION DONE!"
+SWRITE(Unit_StdOut,'(A)') "READING SOLUTION DONE!"
 END SUBROUTINE ReadOldStateFile
 
 END MODULE MOD_HIT_Analyze

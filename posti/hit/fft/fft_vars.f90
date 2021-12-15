@@ -27,9 +27,9 @@ SAVE
 INTEGER               :: N_FFT                !> Number of (global) interpolation points 1D for FFT
 INTEGER               :: N_Visu               !> Polynomial degree of equidistant basis in each DG element to build global FFT basis
 INTEGER               :: Nc                   !> Nyquist wavenumber Nc=N_FFT/2
-INTEGER               :: kmax                 !> Maxmimum effective wavenumber in 3D
+INTEGER               :: kmax                 !> Maximum effective wavenumber in 3D
 INTEGER               :: endw(3)              !> Max. number of wavenumbers is each of the 3D directions Endw=(Nc,N_FFT,N_FFT)
 INTEGER,ALLOCATABLE   :: LocalK(:,:,:,:)      !> 1D Wave number equivalent for each Fourier Mode in 3D
-COMPLEX,PARAMETER     :: II = CMPLX(0.,1.0)   !> Complex unit, srqt(-1)
+COMPLEX,PARAMETER     :: II = CMPLX(0.,1.0)   !> Complex unit, sqrt(-1)
 !===================================================================================================================================
 END MODULE MOD_HIT_FFT_Vars

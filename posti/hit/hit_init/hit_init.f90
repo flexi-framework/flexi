@@ -41,7 +41,7 @@ PUBLIC:: Rogallo
 CONTAINS
 
 !===================================================================================================================================
-!> Computes the initial energy spectrum and creates a velocity field with random phase matching the energy spectrum. 
+!> Computes the initial energy spectrum and creates a velocity field with random phase matching the energy spectrum.
 !===================================================================================================================================
 SUBROUTINE Rogallo(U_FFT)
 ! MODULES
@@ -146,7 +146,7 @@ INTEGER :: k
 ! Choose energy spectrum
 SELECT CASE(InitSpec)
  CASE(1) ! Rogallo
-   SWRITE(*,*) "SPECTRUM: Rogallo"
+   SWRITE(Unit_StdOut,'(A)') "SPECTRUM: Rogallo"
    a0 =  4.7935398
    a1 = -1.3284141
    a2 = -0.2146974
@@ -161,7 +161,7 @@ SELECT CASE(InitSpec)
    END DO
 
  CASE(2) ! Blaisdell
-   SWRITE(*,*) "SPECTRUM: Blaisdell"
+   SWRITE(Unit_StdOut,'(A)') "SPECTRUM: Blaisdell"
    specscale=0.01
    k0=6
    DO k=1,kmax+3
@@ -169,7 +169,7 @@ SELECT CASE(InitSpec)
    END DO
 
  CASE(3) ! Chasnov
-   SWRITE(*,*) "SPECTRUM: Chasnov"
+   SWRITE(Unit_StdOut,'(A)') "SPECTRUM: Chasnov"
    a0=5.319230405352436e-01 ! for s=4 according to Batchelor-Proudman flow
    kp=4  ! to be chosen, scaling Re
    u0=5. ! scaling the total Energy
@@ -179,13 +179,13 @@ SELECT CASE(InitSpec)
    END DO
 
  CASE(4) ! inf inertial range
-   SWRITE(*,*) "SPECTRUM: Infinite inertial range spectrum k^(-5/3)"
+   SWRITE(Unit_StdOut,'(A)') "SPECTRUM: Infinite inertial range spectrum k^(-5/3)"
    DO k=1,kmax+3
      E_k(k)= k**(-5/3.)
   END DO
 
  CASE(5) ! karman-pao
-   SWRITE(*,*) "SPECTRUM: Karman-Pao"
+   SWRITE(Unit_StdOut,'(A)') "SPECTRUM: Karman-Pao"
    a  = 1.453 ! scaling const Bailly 99
    u0 = 0.3   ! rms of u
    ke = 2.    ! related to peak of E wavenumber, w ~~ sqrt(12/5) ke
@@ -203,8 +203,8 @@ END SUBROUTINE ExactSpectrum
 
 
 !===================================================================================================================================
-!> Compute thermodymamically consistent compressible state for incompressible input state. To this end, the mean pressure is
-!> computed, to match the requested Mach number (Ma0=0.1) and the pressure fluctuations are set thermodynamicaly consistent to the
+!> Compute thermodynamically consistent compressible state for incompressible input state. To this end, the mean pressure is
+!> computed, to match the requested Mach number (Ma0=0.1) and the pressure fluctuations are set thermodynamically consistent to the
 !> momentum fluctuations. This yields a thermodynamically consistent pseudo-compressible state.
 !===================================================================================================================================
 SUBROUTINE GetCompressibleState(U_In)
@@ -217,9 +217,9 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
 REAL,INTENT(INOUT)   :: U_In(5,1:N_FFT,1:N_FFT,1:N_FFT) !> Input state; variables (1:4) have to be set, variable 5 (energy) will be
-                                                        !> overwritten by a thermodynamiccaly consistent state.
+                                                        !> overwritten by a thermodynamically consistent state.
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES  
+! LOCAL VARIABLES
 REAL,PARAMETER       :: Ma0   = 0.1    ! TODO: Make this a user input
 REAL,PARAMETER       :: rho0  = 1.0    ! TODO: Make this a user input
 REAL,PARAMETER       :: Kappa = 1.4    ! TODO: Take this from FLEXI equation (Not needed if PrimToCons is used later.)
