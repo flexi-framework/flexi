@@ -67,7 +67,8 @@ TYPE tBox  !< Type used to organize a box set
   INTEGER                       :: nRP(3)                  !< Number of RPs in the two plane directions
   INTEGER,ALLOCATABLE           :: IDlist(:,:,:)           !< List of IDs of the RPs that make up the box
   REAL,ALLOCATABLE              :: NormVec(:,:,:)          !< Normal vector
-  REAL,ALLOCATABLE              :: TangVec(:,:,:)          !< Tangential vector
+  REAL,ALLOCATABLE              :: TangVec1(:,:,:)         !< Tangential vector
+  REAL,ALLOCATABLE              :: TangVec2(:,:,:)         !< Tangential vector
   REAL,ALLOCATABLE              :: LocalCoord(:,:,:,:)     !< Local coordinates of the RPs
   REAL,ALLOCATABLE              :: BLProps(:,:,:)          !< Boundary layer properties for BLPlanes
 END TYPE tBox

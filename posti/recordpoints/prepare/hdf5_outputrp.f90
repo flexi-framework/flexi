@@ -176,8 +176,10 @@ IF(nBoxes.GT.0) THEN
       s3=(/3,Box%nRP(1),Box%nRP(3)/)
       WRITE(tmp255,'(A,A)')TRIM(Box%Name),'_NormVec'
       CALL WriteArray(tmp255,3,s3,s3,(/0,0,0/),.FALSE.,RealArray=Box%NormVec)
-      WRITE(tmp255,'(A,A)')TRIM(Box%Name),'_TangVec'
-      CALL WriteArray(tmp255,3,s3,s3,(/0,0,0/),.FALSE.,RealArray=Box%TangVec)
+      WRITE(tmp255,'(A,A)')TRIM(Box%Name),'_TangVec1'
+      CALL WriteArray(tmp255,3,s3,s3,(/0,0,0/),.FALSE.,RealArray=Box%TangVec1)
+      WRITE(tmp255,'(A,A)')TRIM(Box%Name),'_TangVec2'
+      CALL WriteArray(tmp255,3,s3,s3,(/0,0,0/),.FALSE.,RealArray=Box%TangVec2)
     END IF
   END DO !iBx
 END IF

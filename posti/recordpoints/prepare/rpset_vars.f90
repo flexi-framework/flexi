@@ -63,13 +63,14 @@ TYPE tPlane                                                         !< Data type
 END TYPE tPlane
 
 TYPE tBox                                                           !< Data type representing a single box
-  CHARACTER(LEN=255)               :: Name           !< Name of the plane
-  INTEGER                          :: GroupID        !< ID of the group the plane belongs to
-  REAL                             :: x(3,8)         !< 4 corner points of the plane
-  INTEGER                          :: nRP(3)         !< Number of recordpoints in the two plane dimensions
-  TYPE(tRP_Ptr),POINTER            :: RP_ptr(:,:,:)  !< Array of pointers to the record points of the group
-  REAL,ALLOCATABLE                 :: NormVec(:,:,:) !< Normal vector at each of the points
-  REAL,ALLOCATABLE                 :: TangVec(:,:,:) !< Tangential vector at each of the points
+  CHARACTER(LEN=255)               :: Name            !< Name of the plane
+  INTEGER                          :: GroupID         !< ID of the group the plane belongs to
+  REAL                             :: x(3,8)          !< 4 corner points of the plane
+  INTEGER                          :: nRP(3)          !< Number of recordpoints in the two plane dimensions
+  TYPE(tRP_Ptr),POINTER            :: RP_ptr(:,:,:)   !< Array of pointers to the record points of the group
+  REAL,ALLOCATABLE                 :: NormVec(:,:,:)  !< Normal vector at each of the points
+  REAL,ALLOCATABLE                 :: TangVec1(:,:,:) !< Tangential vector at each of the points
+  REAL,ALLOCATABLE                 :: TangVec2(:,:,:) !< Tangential vector at each of the points
 END TYPE tBox
 
 TYPE tRP                                                            !< Data type representing a single record point
