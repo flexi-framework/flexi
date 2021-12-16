@@ -48,10 +48,12 @@ IMPLICIT NONE
 TYPE(RPPoint)                :: RPPoints
 TYPE(RPLine),ALLOCATABLE     :: RPLines(:)
 TYPE(RPPlane),ALLOCATABLE    :: RPPlanes(:)
-TYPE(tPlane),POINTER         :: Plane
+TYPE(RPBox),ALLOCATABLE      :: RPBoxes(:)
 TYPE(tLine),POINTER          :: Line
+TYPE(tPlane),POINTER         :: Plane
+TYPE(tBox),POINTER           :: Box
 CHARACTER(LEN=255)           :: GroupName
-INTEGER                      :: iVar,i,j,iPlane,iLine
+INTEGER                      :: iVar,i,j,k,iPlane,iBox,iLine
 !===================================================================================================================================
 IF(doVisuRP) THEN
   ! Prepare points structure
@@ -92,7 +94,25 @@ IF(doVisuRP) THEN
       END DO ! j
     END DO !iVar
   END DO
-  CALL WriteStructuredDataToVTK(ProjectName,nLines,nPlanes,RPPoints,RPLines,RPPlanes,.FALSE.,0)
+  ! Prepare box structure
+  ALLOCATE(RPBoxes(nBoxes))
+  DO iBox=1,nBoxes
+    Box=>Boxes(iBox)
+    RPBoxes(iBox)%nRPs=Box%nRP
+    GroupName=Groups(Box%GroupID)%Name
+    RPBoxes(iBox)%name = TRIM(GroupName)//'_'//TRIM(Box%Name)
+    ALLOCATE(RPBoxes(iBox)%Coords(3,Box%nRP(1),Box%nRP(2),Box%nRP(3)))
+    DO iVar=1,3
+      DO k=1,Box%nRP(3)
+        DO j=1,Box%nRP(2)
+          DO i=1,Box%nRP(1)
+            RPBoxes(iBox)%Coords(iVar,i,j,k)=Box%RP_ptr(i,j,k)%RP%xF(iVar)
+          END DO ! i
+        END DO ! j
+      END DO ! k
+    END DO !iVar
+  END DO
+  CALL WriteStructuredDataToVTK(ProjectName,nLines,nPlanes,nBoxes,RPPoints,RPLines,RPPlanes,RPBoxes,.FALSE.,0)
   WRITE(UNIT_StdOut,'(132("-"))')
 END IF
 END SUBROUTINE VisuRP

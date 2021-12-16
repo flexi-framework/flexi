@@ -51,16 +51,18 @@ CHARACTER(LEN=*),INTENT(IN)    :: MeshFileName
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER                        :: iGr,iL,iRP,iPl
-INTEGER                        :: i,j
+INTEGER                        :: iGr,iL,iRP,iPl,iBx
+INTEGER                        :: i,j,k
 CHARACTER(LEN=255)             :: FileName,FileString,tmp255
 CHARACTER(LEN=5)               :: PlaneType
+CHARACTER(LEN=3)               :: BoxType
 TYPE(tGroup),POINTER           :: Group
 TYPE(tLine),POINTER            :: Line
 TYPE(tPlane),POINTER           :: Plane
-INTEGER,ALLOCATABLE            :: RPset(:),RPset2D(:,:)
+TYPE(tBox),POINTER             :: Box
+INTEGER,ALLOCATABLE            :: RPset(:),RPset2D(:,:),RPset3D(:,:,:)
 REAL,ALLOCATABLE               :: x_dummy(:,:)
-INTEGER                        :: s1(1),s2(2)
+INTEGER                        :: s1(1),s2(2),s3(3)
 !===================================================================================================================================
 SWRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' WRITE RECORDPOINTS TO HDF5 FILE...'
 FileName=TRIM(ProjectName)//'_RPSet'
@@ -147,6 +149,37 @@ IF(nPlanes.GT.0) THEN
       CALL WriteArray(tmp255,2,s2,s2,(/0,0/),.FALSE.,RealArray=Plane%TangVec)
     END IF
   END DO !iPl
+END IF
+
+! 5. Boxes
+IF(nBoxes.GT.0) THEN
+  s1=nBoxes
+  CALL WriteArray('BoxNames',1,s1,s1,(/0/),.FALSE.,StrArray=Boxes(:)%Name)
+  DO iBx=1,nBoxes
+    Box=>Boxes(iBx)
+    ALLOCATE(RPset3D(1:Box%nRP(1),1:Box%nRP(2),1:Box%nRP(3)))
+    DO k=1,Box%nRP(3)
+      DO j=1,Box%nRP(2)
+        DO i=1,Box%nRP(1)
+          RPset3D(i,j,k)=Box%RP_ptr(i,j,k)%RP%ID
+        END DO !i
+      END DO !j
+    END DO !k
+    CALL WriteArray(TRIM(Box%Name),3,Box%nRP,Box%nRP,(/0,0,0/),.FALSE.,IntArray=RPset3D)
+    DEALLOCATE(RPset3D)
+    ! groupID
+    CALL WriteAttribute(FILE_ID,'GroupID',1,DataSetname=TRIM(Box%Name),IntScalar=Box%GroupID)
+
+    ! write normal and tangent vectors in case of the BLBox
+    BoxType=TRIM(Box%Name(1:3))
+    IF(BoxType.EQ.TRIM("BLB")) THEN
+      s3=(/3,Box%nRP(1),Box%nRP(3)/)
+      WRITE(tmp255,'(A,A)')TRIM(Box%Name),'_NormVec'
+      CALL WriteArray(tmp255,3,s3,s3,(/0,0,0/),.FALSE.,RealArray=Box%NormVec)
+      WRITE(tmp255,'(A,A)')TRIM(Box%Name),'_TangVec'
+      CALL WriteArray(tmp255,3,s3,s3,(/0,0,0/),.FALSE.,RealArray=Box%TangVec)
+    END IF
+  END DO !iBx
 END IF
 
 ! Offset Array
