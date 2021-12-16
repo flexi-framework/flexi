@@ -122,7 +122,7 @@ USE MOD_Spec_Vars          ,ONLY: nSamples_spec,RPData_freq,RPData_spec
 USE MOD_Spec_Vars          ,ONLY: nSamples_Oct,RPData_freqOct,RPData_Oct
 USE MOD_ParametersVisu     ,ONLY: nVarVisu,VarNameVisu
 USE MOD_ParametersVisu     ,ONLY: OutputTimeAverage,OutputTimeData,doSpec,doFluctuations
-USE MOD_ParametersVisu     ,ONLY: Plane_doBLProps
+USE MOD_ParametersVisu     ,ONLY: Plane_doBLProps,Box_doBLProps
 USE MOD_ParametersVisu     ,ONLY: doEnsemble,doTurb
 USE MOD_EnsembleRP_Vars    ,ONLY: enSamples,nVar_ensTurb,RPData_ens,RPData_freqEns,RPData_turb
 USE MOD_RPData_Vars        ,ONLY: VarNames_HDF5,nVar_HDF5
@@ -230,7 +230,7 @@ IF(OutputTimeAverage) THEN
   WRITE(UNIT_StdOut,'(132("-"))')
 END IF
 
-IF(Plane_doBLProps)THEN !output the BL stuff along lines
+IF(Plane_doBLProps.OR.Box_doBLProps)THEN !output the BL stuff along lines/planes
   Filename=TRIM(ProjectName)
   FileName=TRIM(FileName)//'_RP_BLProps'
   SELECT CASE(OutputFormat)

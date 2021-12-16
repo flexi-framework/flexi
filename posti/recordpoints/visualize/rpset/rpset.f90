@@ -61,15 +61,17 @@ TYPE(tLine),POINTER       :: aLine
 TYPE(tLine),POINTER       :: Lines_tmp(:)
 TYPE(tPlane),POINTER      :: Plane
 TYPE(tPlane),POINTER      :: Planes_tmp(:)
-INTEGER                   :: iLine,iLine2,iPlane,iPlane2,iGr1,iGr2,iRP,i,j,iPoint
+TYPE(tBox),POINTER        :: Box
+TYPE(tBox),POINTER        :: Boxes_tmp(:)
+INTEGER                   :: iLine,iLine2,iPlane,iPlane2,iBox,iBox2,iGr1,iGr2,iRP,i,j,k,iPoint
 INTEGER                   :: nRP_output
-INTEGER                   :: nLines_tmp,nPlanes_tmp,nPoints_tmp
+INTEGER                   :: nLines_tmp,nPlanes_tmp,nPoints_tmp,nBoxes_tmp
 LOGICAL                   :: DSexists
 LOGICAL                   :: found(nGroups_visu)
-LOGICAL                   :: LinesInFile=.FALSE.,PlanesInFile=.FALSE.,PointsInFile=.FALSE.
+LOGICAL                   :: LinesInFile=.FALSE.,PlanesInFile=.FALSE.,PointsInFile=.FALSE.,BoxesInFile=.FALSE.
 REAL,ALLOCATABLE          :: xF_tmp(:,:)
 INTEGER,ALLOCATABLE       :: Points_IDlist_tmp(:),Points_GroupIDlist_tmp(:)
-CHARACTER(LEN=255)        :: tmp255,PlaneType
+CHARACTER(LEN=255)        :: tmp255,PlaneType,BoxType
 !===================================================================================================================================
 IF(RPSetInitIsDone)THEN
    CALL CollectiveStop(__STAMP__, &
@@ -255,6 +257,60 @@ IF(DSexists) THEN
   IF(Plane_LocalCoords)  CALL CalcPlane_LocalCoords()
 END IF!DSexists
 
+! Readin Boxes
+CALL DatasetExists(File_ID,'BoxNames',DSexists)
+nBoxes=0
+IF(DSexists) THEN
+  BoxesInFile=.TRUE.
+  CALL GetDataSize(File_ID,'BoxNames',nDims,HSize)
+  nBoxes_tmp=INT(HSize(1)) !number of Boxes
+  DEALLOCATE(HSize)
+  ALLOCATE(Boxes_tmp(1:nBoxes_tmp))
+  CALL ReadArray('BoxNames',1,(/nBoxes_tmp/),0,1,StrArray=Boxes_tmp(:)%Name)
+  DO iBox=1,nBoxes_tmp
+    Box=>Boxes_tmp(iBox)
+    CALL ReadAttribute(File_ID,'GroupID',1,DatasetName=TRIM(Box%Name),IntScalar=Box%GroupID)
+    !check if group is for output
+    IF(OutputGroup(Box%GroupID)) THEN
+      nBoxes=nBoxes+1
+      CALL GetDataSize(File_ID,TRIM(Box%Name),nDims,HSize)
+      Box%nRP(1)=INT(HSize(1)) !i number of recordpoints on Box
+      Box%nRP(2)=INT(HSize(2)) !j number of recordpoints on Box
+      Box%nRP(3)=INT(HSize(3)) !j number of recordpoints on Box
+      nRP_output=nRP_output+Box%nRP(1)*Box%nRP(2)*Box%nRP(3)
+      DEALLOCATE(HSize)
+      ALLOCATE(Box%IDlist(Box%nRP(1),Box%nRP(2),Box%nRP(3)))
+      CALL ReadArray(TRIM(Box%Name),3,(/Box%nRP(1),Box%nRP(2),Box%nRP(3)/),0,1,IntArray=Box%IDlist)
+      ! readin norm and tangential vectors if suitable
+      BoxType=TRIM(Box%Name(1:3))
+      IF(BoxType.EQ.TRIM("BLB")) THEN
+        Box%Type=1
+        ALLOCATE(Box%NormVec(3,Box%nRP(1),Box%nRP(3)))
+        WRITE(tmp255,'(A,A)')TRIM(Box%Name),'_NormVec'
+        CALL ReadArray(tmp255,3,(/3,Box%nRP(1),Box%nRP(3)/),0,3,RealArray=Box%NormVec)
+        ALLOCATE(Box%TangVec(3,Box%nRP(1),Box%nRP(3)))
+        WRITE(tmp255,'(A,A)')TRIM(Box%Name),'_TangVec'
+        CALL ReadArray(tmp255,3,(/3,Box%nRP(1),Box%nRP(3)/),0,3,RealArray=Box%TangVec)
+      END IF
+    END IF
+  END DO
+  ! now build the Box list for those Boxes in an output group
+  ALLOCATE(Boxes(1:nBoxes))
+  iBox2=0
+  DO iBox=1,nBoxes_tmp
+    Box=>Boxes_tmp(iBox)
+    IF(OutputGroup(Box%GroupID)) THEN
+      iBox2               = iBox2+1
+      Boxes(iBox2)        = Boxes_tmp(iBox)
+      ! Flag if the Box stands orthogonal
+      Boxes(iBox2)%Ortho = OutputOrtho(Box%GroupID)
+    END IF
+  END DO
+  DEALLOCATE(Boxes_tmp)
+  ! if reqired, calculate local (fitted) Box coordinates
+  !IF(Box_LocalCoords)  CALL CalcBox_LocalCoords()
+END IF!DSexists
+
 ! build mapping from output RPs (1:nRP_output) to RPs on RPSet and RPData files (1:nRP_HDF5).
 ALLOCATE(RPOutMap(1:nRP_output))
 iRP=0
@@ -290,6 +346,22 @@ IF(PlanesInFile) THEN
         ! redefine plane mapping to newly generated global RP list
         Plane%IDlist(i,j)=iRP+1
         iRP=iRP+1
+      END DO
+    END DO
+  END DO
+END IF
+!Boxes
+IF(BoxesInFile) THEN
+  DO iBox=1,nBoxes
+    Box=>Boxes(iBox)
+    DO k=1,Box%nRP(3)
+      DO j=1,Box%nRP(2)
+        DO i=1,Box%nRP(1)
+          RPOutMap(iRP+1)=Box%IDlist(i,j,k)
+          ! redefine plane mapping to newly generated global RP list
+          Box%IDlist(i,j,k)=iRP+1
+          iRP=iRP+1
+        END DO
       END DO
     END DO
   END DO
