@@ -48,7 +48,7 @@ SUBROUTINE InitRPSet(RP_DefFile_in)
 ! MODULES
 USE MOD_Globals
 USE MOD_HDF5_Input
-USE MOD_ParametersVisu   ,ONLY: Line_LocalCoords,Line_LocalVel,Plane_LocalCoords
+USE MOD_ParametersVisu   ,ONLY: Line_LocalCoords,Line_LocalVel,Plane_LocalCoords,Box_LocalCoords
 USE MOD_ParametersVisu   ,ONLY: nGroups_visu,GroupNames_visu
 USE MOD_RPSetVisuVisu_Vars
 IMPLICIT NONE
@@ -308,7 +308,7 @@ IF(DSexists) THEN
   END DO
   DEALLOCATE(Boxes_tmp)
   ! if reqired, calculate local (fitted) Box coordinates
-  !IF(Box_LocalCoords)  CALL CalcBox_LocalCoords()
+  IF(Box_LocalCoords)  CALL CalcBox_LocalCoords()
 END IF!DSexists
 
 ! build mapping from output RPs (1:nRP_output) to RPs on RPSet and RPData files (1:nRP_HDF5).
@@ -621,7 +621,85 @@ DO iPlane=1,nPlanes
 END DO !iPlane
 END SUBROUTINE CalcPlane_LocalCoords
 
+!===================================================================================================================================
+!> Calculate the local coordinate for BLBoxes through a spline representation
+!===================================================================================================================================
+SUBROUTINE CalcBox_LocalCoords()
+! MODULES
+USE MOD_Globals
+USE MOD_RPSetVisuVisu_Vars, ONLY: nBoxes,tBox,xF_RP,Boxes
+USE MOD_Spline,     ONLY: GetSpline
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER              :: iBox,i,j,k,iS
+INTEGER              :: Nx,Ny,Nz,nSuper
+REAL                 :: x_loc(3),x_loc_old(3),t_loc
+REAL,ALLOCATABLE     :: xBox_tmp(:,:,:,:),localCoordX(:),localCoordY(:),localCoordZ(:),t_Nx(:),coeff(:,:,:)
+TYPE(tBox),POINTER   :: Box
+!===================================================================================================================================
+DO iBox=1,nBoxes
+  Box=>Boxes(iBox)
+  IF(Box%Type.NE.1) CYCLE
+  Nx=Box%nRP(1)
+  Ny=Box%nRP(2)
+  Nz=Box%nRP(3)
+  ALLOCATE(Box%LocalCoord(3,Nx,Ny,Nz))
+  ALLOCATE(xBox_tmp(3,Nx,Ny,Nz))
+  ALLOCATE(localCoordX(Nx))
+  ALLOCATE(localCoordY(Ny))
+  ALLOCATE(localCoordZ(Nz))
+  DO i=1,Nx; DO j=1,Ny; DO k=1,Nz
+    xBox_tmp(:,i,j,k)=xF_RP(:,Box%IDlist(i,j,k))
+  END DO; END DO; END DO
 
+  ! Box parallel directions -------------------------------------------------------
+  ALLOCATE(t_Nx(Nx))
+  ALLOCATE(coeff(3,4,Nx-1))
+  DO k=1,Nz
+    CALL GetSpline(3,Nx,xBox_tmp(:,:,1,k),coeff,t_Nx)! get spline through the first tangential layer
+    localCoordX=0.
+    ! calculate arclength on supersampled points
+    nSuper=10
+    x_loc=xBox_tmp(:,1,1,k)
+    DO i=2,Nx
+      localCoordX(i)=localCoordX(i-1)
+      DO iS=2,nSuper
+        t_loc=t_Nx(i-1)+REAL(iS-1)/REAL(nSuper-1)*(t_Nx(i)-t_Nx(i-1))
+        x_loc_old=x_loc
+        x_loc(:)=coeff(:,1,i-1)+coeff(:,2,i-1)*(t_loc-t_Nx(i-1)) &
+                +coeff(:,3,i-1)*(t_loc-t_Nx(i-1))**2 + coeff(:,4,i-1)*(t_loc-t_Nx(i-1))**3
+        localCoordX(i)=localCoordX(i)+NORM2(x_loc-x_loc_old)
+      END DO!iS
+    END DO!i
+    DO j=1,Ny
+      Box%LocalCoord(1,:,j,k)=localCoordX(:)
+    END DO!j
+  END DO!k
+  DO i=1,Nx
+    DO j=1,Ny
+      localCoordZ=0.
+      DO k=2,Nz
+        localCoordZ(j)=localCoordZ(j-1)+NORM2(xBox_tmp(:,i,j,k)-xBox_tmp(:,i,j-1,k))
+      END DO! j=1,Ny
+      Box%LocalCoord(3,i,:,k)=localCoordZ(:)
+    END DO! i=1,Nx
+  END DO! j=1,Nz
+  ! Box normal direction -------------------------------------------------------
+  DO k=1,Nz
+    localCoordY=0.
+    DO i=1,Nx
+      DO j=2,Ny
+        localCoordY(j)=localCoordY(j-1)+NORM2(xBox_tmp(:,i,j,k)-xBox_tmp(:,i,j-1,k))
+      END DO! j=1,Ny
+      Box%LocalCoord(2,i,:,k)=localCoordY(:)
+    END DO! i=1,Nx
+  END DO! j=1,Nz
+  DEALLOCATE(xBox_tmp,localCoordX,localCoordY,localCoordZ,t_Nx,coeff)
+END DO !iBox
+END SUBROUTINE CalcBox_LocalCoords
 
 !===================================================================================================================================
 !> Deallocate global variable for Recordpoints
@@ -632,7 +710,7 @@ USE MOD_RPSetVisuVisu_Vars
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER :: iLine,iPlane
+INTEGER :: iLine,iPlane,iBox
 !===================================================================================================================================
 SDEALLOCATE(GroupNames)
 SDEALLOCATE(RPOutMap)
@@ -658,6 +736,15 @@ IF(nPlanes.GT.1)THEN
     SDEALLOCATE(Planes(iPlane)%TangVec)
   END DO! iPlane=1,nPlanes
   DEALLOCATE(Planes)
+END IF
+
+IF(nBoxes.GT.1)THEN
+  DO iBox=1,nBoxes
+    SDEALLOCATE(Boxes(iBox)%IDlist)
+    SDEALLOCATE(Boxes(iBox)%NormVec)
+    SDEALLOCATE(Boxes(iBox)%TangVec)
+  END DO! iBox=1,nBoxes
+  DEALLOCATE(Boxes)
 END IF
 
 RPSetInitIsDone = .FALSE.

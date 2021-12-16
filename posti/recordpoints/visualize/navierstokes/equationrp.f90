@@ -35,6 +35,10 @@ INTERFACE Plane_BLProps
   MODULE PROCEDURE Plane_BLProps
 END INTERFACE
 
+INTERFACE Box_BLProps
+  MODULE PROCEDURE Box_BLProps
+END INTERFACE
+
 INTERFACE Line_TransformVel
   MODULE PROCEDURE Line_TransformVel
 END INTERFACE
@@ -43,11 +47,15 @@ INTERFACE Plane_TransformVel
   MODULE PROCEDURE Plane_TransformVel
 END INTERFACE
 
+INTERFACE Box_TransformVel
+  MODULE PROCEDURE Box_TransformVel
+END INTERFACE
+
 INTERFACE FinalizeEquationRP
   MODULE PROCEDURE FinalizeEquationRP
 END INTERFACE
 
-PUBLIC::InitEquationRP,CalcEquationRP,Plane_BLProps,Line_TransformVel,Plane_TransformVel,FinalizeEquationRP
+PUBLIC::InitEquationRP,CalcEquationRP,Plane_BLProps,Box_BLProps,Line_TransformVel,Plane_TransformVel,Box_TransformVel,FinalizeEquationRP
 !===================================================================================================================================
 
 CONTAINS
@@ -164,7 +172,7 @@ DO iVar=1,nVecTrans
   END DO
 END DO
 
-IF(Plane_doBLProps) THEN
+IF(Plane_doBLProps.OR.Box_doBLProps) THEN
   iPressure=-1
   iPressure=GETMAPBYNAME('Pressure',VarNameVisu,nVarVisu)
   IF(iPressure.GT.0) THEN
@@ -360,6 +368,79 @@ END DO !iPlane
 WRITE(UNIT_stdOut,'(A)')" done!"
 END SUBROUTINE Plane_TransformVel
 
+!===================================================================================================================================
+!> This routine transformes velocities to the Box-local coordinate system
+!===================================================================================================================================
+SUBROUTINE Box_TransformVel(RPData,nSamples)
+! MODULES
+USE MOD_Globals
+USE MOD_Mathtools          ,ONLY:CROSS
+USE MOD_ParametersVisu     ,ONLY:nVarVisu
+USE MOD_RPSetVisuVisu_Vars ,ONLY:nBoxes,Boxes,tBox,nRP_global
+USE MOD_EquationRP_Vars    ,ONLY:nVecTrans,TransMap,is2D
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+REAL,   INTENT(INOUT)      :: RPData(nVarVisu,nRP_global,nSamples)
+INTEGER,INTENT(IN)         :: nSamples
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER              :: iBox,i,j,k,iSample,iVec
+REAL                 :: Tmat(3,3)
+TYPE(tBox),POINTER   :: Box
+!===================================================================================================================================
+
+WRITE(UNIT_stdOut,'(A)',ADVANCE='NO')" Coordinate transform of velocity along Box coordinates..."
+DO iBox=1,nBoxes
+  Box=>Boxes(iBox)
+  IF(Box%Type.EQ.1) THEN ! BLBox
+    DO i=1,Box%nRP(1)
+      DO k=1,Box%nRP(3)
+        ! Standard Box orientation
+        IF (.NOT.Box%Ortho) THEN
+          ! T1= tangential vector
+          Tmat(1,1:3) = Box%TangVec(:,i,k)
+          ! T2= normalized Line Vector
+          Tmat(2,1:3) = Box%NormVec(:,i,k)
+          ! T3= crossprod to guarantee right hand system
+          Tmat(3,1:3) = CROSS(Tmat(1,1:3),Tmat(2,1:3))
+          Tmat(3,1:3) = Tmat(3,:)/NORM2(Tmat(3,:))
+        ! Box stands orthogonal to flow direction
+        ELSE
+          ! T3= tangential vector
+          Tmat(3,1:3) = Box%TangVec(:,i,k)
+          ! T2= normalized Line Vector
+          Tmat(2,1:3) = Box%NormVec(:,i,k)
+          ! T1= crossprod to guarantee right hand system
+          Tmat(1,1:3) = CROSS(Tmat(3,1:3),Tmat(2,1:3))
+          Tmat(1,1:3) = Tmat(1,:)/NORM2(Tmat(1,:))
+        END IF
+
+        DO iVec=1,nVecTrans
+          IF(.NOT.is2D(iVec))THEN
+            DO j=1,Box%nRP(2)
+              DO iSample=1,nSamples
+                RPData(TransMap(1:3,iVec),Box%IDlist(i,j,k),iSample)=&
+                      MATMUL(Tmat,RPData(TransMap(1:3,iVec),Box%IDlist(i,j,k),iSample))
+              END DO !iSample
+            END DO !j
+          ELSE ! 2D case
+            DO j=1,Box%nRP(2)
+              DO iSample=1,nSamples
+                RPData(TransMap(1:2,iVec),Box%IDlist(i,j,k),iSample)=&
+                    MATMUL(Tmat(1:2,1:2),RPData(TransMap(1:2,iVec),Box%IDlist(i,j,k),iSample))
+              END DO !iSample
+            END DO !j
+          END IF !.NOT.is2D
+        END DO ! iVec
+      END DO !k
+    END DO !i
+  END IF!(Box%Type.EQ.2) THEN ! BLBox
+END DO !iBox
+WRITE(UNIT_stdOut,'(A)')" done!"
+
+END SUBROUTINE Box_TransformVel
 
 !===================================================================================================================================
 !> This routine calculates the boundary layer specific quantities on all boundary layer planes.
@@ -367,25 +448,20 @@ END SUBROUTINE Plane_TransformVel
 SUBROUTINE Plane_BLProps()
 ! MODULES
 USE MOD_Globals
-USE MOD_OutputRPVisu_Vars  ,ONLY: RPDataTimeAvg_out
 USE MOD_RPSetVisuVisu_Vars ,ONLY: nPlanes,Planes,tPlane
-USE MOD_EquationRP_Vars    ,ONLY: is2D,TransMap,nBLProps,pInf,uInf,rhoInf,iPressure,iVelocity
+USE MOD_EquationRP_Vars    ,ONLY: nBLProps
 USE MOD_ParametersVisu     ,ONLY: Plane_BLvelScaling
-USE MOD_ParametersVisu     ,ONLY: Mu0
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-INTEGER              :: iPlane,i,j,jj,j_max,ndim
-REAL                 :: u_max,y_max,diffu1,diffu2,y1,y2,u1,u2,u3,rho1,rho2,rho_delta,dudy,dudy1
-REAL                 :: dy,dy2,u_loc_bledge
-REAL                 :: u_delta,delta99,delta1,theta,u_r,tau_W,u_tau
-REAL,ALLOCATABLE     :: u_loc(:),y_loc(:),u_star(:)
+INTEGER              :: iPlane,i
 TYPE(tPlane),POINTER :: Plane
 !===================================================================================================================================
-WRITE(UNIT_stdOut,'(A)')" Calculate integral boundary layer properties"
+
+WRITE(UNIT_stdOut,'(A)')" Calculate integral boundary layer properties for planes"
 SELECT CASE(Plane_BLvelScaling)
 CASE(0) ! do nothing
 WRITE(UNIT_stdOut,'(A)')" Velocity profiles are not scaled."
@@ -394,175 +470,204 @@ WRITE(UNIT_stdOut,'(A)')" Velocity profiles are scaled with boundary layer edge 
 CASE(2) ! turbulent scaling
 WRITE(UNIT_stdOut,'(A)')" Velocity profiles and PlaneY are scaled with friction velocity (= u+ over y+)."
 END SELECT
-ndim=3
-IF(is2D(1)) ndim=2
 DO iPlane=1,nPlanes
   Plane=>Planes(iPlane)
   IF(Plane%Type.EQ.2) THEN ! BLPlane
     ALLOCATE(Plane%BLProps(nBLProps,1:Plane%nRP(1)))
-    ALLOCATE(u_loc(Plane%nRP(2)),y_loc(Plane%nRP(2)),u_star(Plane%nRP(2)))
     DO i=1,Plane%nRP(1)
-      ! get wall friction tau_W = mu*(du/dy+dv/dx)
-      dy =Plane%LocalCoord(2,i,2)-Plane%LocalCoord(2,i,1)
-      dy2=Plane%LocalCoord(2,i,3)-Plane%LocalCoord(2,i,2)
-      u1=RPDataTimeAvg_out(TransMap(1,iVelocity),Plane%IDlist(i,1))
-      u2=RPDataTimeAvg_out(TransMap(1,iVelocity),Plane%IDlist(i,2))
-      u3=RPDataTimeAvg_out(TransMap(1,iVelocity),Plane%IDlist(i,3))
-      dudy=(u2-u1)/dy- (dy*(u3-u2)-dy2*(u2-u1))/((dy+dy2)*dy2)
-      tau_W = mu0*dudy
-      ! get delta99
-      ! Kloker method: integrate vorticity to get u_star.
-      jj=Plane%nRP(2)
-      u_star(1)=0.
-      DO j=2,jj-1
-        !calculate vorticity using central FD O2
-        dy2=Plane%LocalCoord(2,i,j+1)-Plane%LocalCoord(2,i,j-1)
-        u2=RPDataTimeAvg_out(TransMap(1,1),Plane%IDlist(i,j+1))
-        u1=RPDataTimeAvg_out(TransMap(1,1),Plane%IDlist(i,j-1))
-        dudy1=(u2-u1)/dy2
-        dy=Plane%LocalCoord(2,i,j)-Plane%LocalCoord(2,i,j-1)
-        ! integration with trapezoidal rule O2
-        u_star(j)=u_star(j-1)+0.5*(dudy+dudy1)*dy
-        dudy=dudy1
-      END DO
-      ! find point with u_star=0.99*u_starmax
-      ! define this as delta99 and u_delta
-      u_max=u_star(jj-1)
-      DO j=2,jj-1 ! loop starting from wall (j=1)
-        diffu1=(u_max-u_star(j))/u_max
-        IF(diffu1.LT.0.01) THEN
-          y1=Plane%LocalCoord(2,i,j)
-          y2=Plane%LocalCoord(2,i,j-1)
-          u1=u_star(j)
-          u2=u_star(j-1)
-          rho1=RPDataTimeAvg_out(1,Plane%IDlist(i,j))
-          rho2=RPDataTimeAvg_out(1,Plane%IDlist(i,j-1))
-          diffu2=(u_max-u_star(j-1))/u_max
-          ! interpolate linearly between two closest points around u/u_int=0.99 to get
-          ! delta99 and u_delta
-          delta99=y1+(y2-y1)/(diffu2-diffu1)*(0.01-diffu1)   ! delta99
-          u_delta=u_max
-          rho_delta=rho1+(rho2-rho1)/(diffu2-diffu1)*(0.01-diffu1)   ! rho_delta
-          j_max=j
-          y_max=y1
-          EXIT
-        END IF
-      END DO !j=1,Plane%nRP(2)
-!      jj=Plane%nRP(2)
-!      uu=RPDataTimeAvg_out(TransMap(1,1),Plane%IDlist(i,jj))
-!      yy=Plane%LocalCoord(2,i,jj)
-!      ! find local maximum in VelocityX
-!      u_max=0.
-!      DO j=1,jj
-!       IF(RPDataTimeAvg_out(TransMap(1,1),Plane%IDlist(i,j)).GT.u_max) THEN
-!          u_max=RPDataTimeAvg_out(TransMap(1,1),Plane%IDlist(i,j))
-!          y_max=Plane%LocalCoord(2,i,j)
-!          j_max=j
-!        END IF
-!      END DO !j=1,Plane%nRP(2)
-!      ! find point with u=0.995*u_max ala Wuerz
-!      ! define this as delta99 and u_delta
-!      DO j=1,jj ! loop starting from wall (j=1)
-!        IF(y_max.LT.yy) THEN
-!          ! interpolate linearly between uppermost point and maximum
-!          u_int=uu + (u_max-uu)/(y_max-yy)*(Plane%LocalCoord(2,i,j)-yy)
-!        ELSE
-!          ! if the maximum is at the edge of the discretization, use a vertical line
-!          u_int=u_max
-!        END IF
-!        diffu1=(u_int-RPDataTimeAvg_out(TransMap(1,1),Plane%IDlist(i,j)))/u_max
-!        IF(diffu1.LT.0.01) THEN
-!          y1=Plane%LocalCoord(2,i,j)
-!          y2=Plane%LocalCoord(2,i,j-1)
-!          u1=RPDataTimeAvg_out(TransMap(1,1),Plane%IDlist(i,j))
-!          u2=RPDataTimeAvg_out(TransMap(1,1),Plane%IDlist(i,j-1))
-!          rho1=RPDataTimeAvg_out(1,Plane%IDlist(i,j))
-!          rho2=RPDataTimeAvg_out(1,Plane%IDlist(i,j-1))
-!          diffu2=(u_int-RPDataTimeAvg_out(TransMap(1,1),Plane%IDlist(i,j-1)))/u_max
-!          ! interpolate linearly between two closest points around u/u_int=0.99 to get
-!          ! delta99 and u_delta
-!          delta99=y1+(y2-y1)/(diffu2-diffu1)*(0.01-diffu1)   ! delta99
-!!          u_delta=u1+(u2-u1)/(diffu2-diffu1)*(0.01-diffu1)   ! u_delta
-!          u_delta=u_max
-!          rho_delta=rho1+(rho2-rho1)/(diffu2-diffu1)*(0.01-diffu1)   ! rho_delta
-!!          u_delta(i)=RPDataTimeAvg_out(TransMap(1,1),Plane%IDlist(i,j))
-!!          delta99(i)=Plane%LocalCoord(2,i,j)
-!          EXIT
-!        END IF
-!      END DO !j=1,Plane%nRP(2)
-      ! scale the velocity with the local u_delta,wall distance with delta99
-      DO j=1,jj
-        u_loc(j)= &
-                RPDataTimeAvg_out(TransMap(1,1),Plane%IDlist(i,j))/u_delta
-        y_loc(j)=Plane%LocalCoord(2,i,j)/delta99
-      END DO! j=1,jj
-      ! calculate integral BL properties (trapezoidal rule)
-      delta1=0.
-      theta=0.
-!      j_max=jj
-      DO j=2,j_max
-        IF (j.LT.j_max) THEN
-          dy=y_loc(j)-y_loc(j-1)
-          ! displacement thickness
-          delta1=delta1+ 0.5*dy*(1.-u_loc(j) +1.-u_loc(j-1))
-          ! momentum thickness
-          theta=theta+ 0.5*dy*(u_loc(j)*(1.-u_loc(j)) +u_loc(j-1)*(1.-u_loc(j-1)))
-        ELSE !Interpolate y_loc and u_loc at at the boundarylayer edge to be consitents
-          !y_loc already scaled with delta99: y_loc at BL edge = 1
-          dy=1-y_loc(j-1)
-          u_loc_bledge=(u_loc(j)-u_loc(j-1))/(y_loc(j)-y_loc(j-1))*(1-y_loc(j-1))+u_loc(j-1)
-          ! displacement thickness
-          delta1=delta1+ 0.5*dy*(1.-u_loc_bledge +1.-u_loc(j-1))
-          ! momentum thickness
-          theta=theta+ 0.5*dy*(u_loc_bledge*(1.-u_loc_bledge) +u_loc(j-1)*(1.-u_loc(j-1)))
-        END IF !j.LT.j_max
-      END DO
-      ! get max. reverse flow if any
-      u_r=MIN(MINVAL(u_loc(:)),0.)
-      delta1=delta1*delta99 ! integration has been performed in non-dimensional units
-      theta=theta*delta99   !
-      ! write to solution array
-      Plane%BLProps(1,i)=delta99
-      Plane%BLProps(2,i)=u_delta
-      Plane%BLProps(3,i)=delta1
-      Plane%BLProps(4,i)=theta
-      Plane%BLProps(5,i)=delta1/theta  !H12
-      Plane%BLProps(6,i)=rho_delta*u_delta*delta1/Mu0                  !Re_delta
-      Plane%BLProps(7,i)=rho_delta*u_delta*theta/Mu0                   !Re_theta
-      Plane%BLProps(8,i)=ABS(u_r)                                      !u_reverse
-      Plane%BLProps(9,i)=tau_W                                         !tau_W
-      Plane%BLProps(10,i)=rho_delta*SQRT(ABS(tau_W)/rho_delta)*delta99/Mu0  !Re_tau
-      Plane%BLProps(11,i)=SQRT(ABS(tau_W)/rho_delta)                   !u_tau
-      IF(iPressure.GT.0)  Plane%BLProps(12,i)=(RPDataTimeAvg_out(iPressure,Plane%IDlist(i,1))-pInf)/(0.5*rhoInf*uInf**2) !c_p
-      ! perform scaling if required
-      SELECT CASE(Plane_BLvelScaling)
-      CASE(0) ! do nothing
-      CASE(1) ! laminar scaling
-        DO j=1,jj
-          RPDataTimeAvg_out(TransMap(1:ndim,1),Plane%IDlist(i,j)) = &
-            RPDataTimeAvg_out(TransMap(1:ndim,1),Plane%IDlist(i,j))/u_delta
-          Plane%LocalCoord(2,i,j)=Plane%LocalCoord(2,i,j)/delta99
-        END DO
-      CASE(2) ! turbulent scaling
-        u_tau=SQRT(ABS(tau_w)/rho_delta)
-        DO j=1,jj
-          RPDataTimeAvg_out(TransMap(1:ndim,1),Plane%IDlist(i,j)) = &
-            RPDataTimeAvg_out(TransMap(1:ndim,1),Plane%IDlist(i,j))/u_tau
-          Plane%LocalCoord(2,i,j)=Plane%LocalCoord(2,i,j)*u_tau*rho_delta/mu0
-        END DO
-      CASE(3) ! testing
-        DO j=1,jj
-          RPDataTimeAvg_out(TransMap(1:ndim,1),Plane%IDlist(i,j)) = &
-            u_star(j)/u_max
-        END DO
-      END SELECT
-    END DO !i
-    DEALLOCATE(u_loc,y_loc,u_star)
+      CALL Calc_BLProps(Plane%LocalCoord(:,i,:),Plane%IDlist(i,:),Plane%nRP(2),Plane_BLvelScaling,Plane%BLProps(:,i))
+    END DO
   END IF!(Plane%Type.EQ.2) THEN ! BLPlane
 END DO !iPlane
 WRITE(UNIT_stdOut,'(A)')" done!"
 
 END SUBROUTINE Plane_BLProps
+
+!===================================================================================================================================
+!> This routine calculates the boundary layer specific quantities on all boundary layer boxes.
+!===================================================================================================================================
+SUBROUTINE Box_BLProps()
+! MODULES
+USE MOD_Globals
+USE MOD_RPSetVisuVisu_Vars ,ONLY: nBoxes,Boxes,tBox
+USE MOD_EquationRP_Vars    ,ONLY: nBLProps
+USE MOD_ParametersVisu     ,ONLY: Box_BLvelScaling
+IMPLICIT NONE
+!-----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER              :: iBox,i,k
+TYPE(tBox),POINTER   :: Box
+!===================================================================================================================================
+
+WRITE(UNIT_stdOut,'(A)')" Calculate integral boundary layer properties for boxes"
+SELECT CASE(Box_BLvelScaling)
+  CASE(0) ! do nothing
+    WRITE(UNIT_stdOut,'(A)',ADVANCE='NO')" Velocity profiles are not scaled."
+  CASE(1) ! laminar scaling
+    WRITE(UNIT_stdOut,'(A)',ADVANCE='NO')" Velocity profiles are scaled with boundary layer edge velocity, BoxY with BL thickness."
+  CASE(2) ! turbulent scaling
+    WRITE(UNIT_stdOut,'(A)',ADVANCE='NO')" Velocity profiles and BoxY are scaled with friction velocity (= u+ over y+)."
+END SELECT
+
+DO iBox=1,nBoxes
+  Box=>Boxes(iBox)
+  IF(Box%Type.EQ.2) THEN ! BLBox
+    ALLOCATE(Box%BLProps(nBLProps,1:Box%nRP(1),1:Box%nRP(3)))
+    DO k=1,Box%nRP(3)
+      DO i=1,Box%nRP(1)
+        CALL Calc_BLProps(Box%LocalCoord(:,i,:,k),Box%IDlist(i,:,k),Box%nRP(2),Box_BLvelScaling,Box%BLProps(:,i,k))
+      END DO
+    END DO
+  END IF!(Box%Type.EQ.2) THEN ! BLBox
+END DO !iBox
+WRITE(UNIT_stdOut,'(A)')" done!"
+
+END SUBROUTINE Box_BLProps
+
+SUBROUTINE Calc_BLProps(LocalCoord,IDlist,nRP,Scaling,BLProps)
+! MODULES
+USE MOD_Globals
+USE MOD_OutputRPVisu_Vars  ,ONLY: RPDataTimeAvg_out
+USE MOD_EquationRP_Vars    ,ONLY: TransMap,pInf,uInf,rhoInf,iPressure,iVelocity,is2D,nBLProps
+USE MOD_ParametersVisu     ,ONLY: Mu0
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT / OUTPUT VARIABLES
+REAL,INTENT(INOUT)        :: LocalCoord(3,nRP)
+INTEGER,INTENT(IN)        :: IDlist(nRP)
+INTEGER                   :: nRP
+INTEGER                   :: Scaling
+REAL,INTENT(OUT)          :: BLProps(nBLProps)
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER              :: j,j_max,ndim
+REAL                 :: u_max,y_max,diffu1,diffu2,y1,y2,rho1,rho2,rho_delta,dudy,dudy1
+REAL                 :: u1,u2,u3,dy,dy2
+REAL                 :: u_loc_bledge
+REAL                 :: u_delta,delta99,delta1,theta,u_r,tau_W,u_tau
+REAL                 :: u_loc(nRP),y_loc(nRP),u_star(nRP)
+!==================================================================================================================================
+
+! Initialize
+BLProps = 0.
+
+! get wall friction tau_W = mu*(du/dy+dv/dx)
+dy =LocalCoord(2,2)-LocalCoord(2,1)
+dy2=LocalCoord(2,3)-LocalCoord(2,2)
+u1=RPDataTimeAvg_out(TransMap(1,iVelocity),IDlist(1))
+u2=RPDataTimeAvg_out(TransMap(1,iVelocity),IDlist(2))
+u3=RPDataTimeAvg_out(TransMap(1,iVelocity),IDlist(3))
+dudy=(u2-u1)/dy- (dy*(u3-u2)-dy2*(u2-u1))/((dy+dy2)*dy2)
+tau_W = mu0*dudy
+! get delta99
+! Kloker method: integrate vorticity to get u_star.
+u_star(1)=RPDataTimeAvg_out(TransMap(1,iVelocity),IDlist(1)) ! Set to wall velocity <- slip wall
+DO j=2,nRP-1
+  !calculate vorticity using central FD O2
+  dy2=LocalCoord(2,j+1)-LocalCoord(2,j-1)
+  u2=RPDataTimeAvg_out(TransMap(1,1),IDlist(j+1))
+  u1=RPDataTimeAvg_out(TransMap(1,1),IDlist(j-1))
+  dudy1=(u2-u1)/dy2
+  dy=LocalCoord(2,j)-LocalCoord(2,j-1)
+  ! integration with trapezoidal rule O2
+  u_star(j)=u_star(j-1)+0.5*(dudy+dudy1)*dy
+  dudy=dudy1
+END DO
+! find point with u_star=0.99*u_starmax
+! define this as delta99 and u_delta
+u_max=u_star(nRP-1)
+DO j=2,nRP-1 ! loop starting from wall (j=1)
+  diffu1=(u_max-u_star(j))/u_max
+  IF(diffu1.LT.0.01) THEN
+    y1=LocalCoord(2,j)
+    y2=LocalCoord(2,j-1)
+    u1=u_star(j)
+    u2=u_star(j-1)
+    rho1=RPDataTimeAvg_out(1,IDlist(j))
+    rho2=RPDataTimeAvg_out(1,IDlist(j-1))
+    diffu2=(u_max-u_star(j-1))/u_max
+    ! interpolate linearly between two closest points around u/u_int=0.99 to get
+    ! delta99 and u_delta
+    delta99=y1+(y2-y1)/(diffu2-diffu1)*(0.01-diffu1)   ! delta99
+    u_delta=u_max
+    rho_delta=rho1+(rho2-rho1)/(diffu2-diffu1)*(0.01-diffu1)   ! rho_delta
+    j_max=j
+    y_max=y1
+    EXIT
+  END IF
+END DO !j=1,RP
+! scale the velocity with the local u_delta,wall distance with delta99
+DO j=1,nRP
+  u_loc(j)= &
+          RPDataTimeAvg_out(TransMap(1,1),IDlist(j))/u_delta
+  y_loc(j)=LocalCoord(2,j)/delta99
+END DO! j=1,nRP
+! calculate integral BL properties (trapezoidal rule)
+delta1=0.
+theta=0.
+DO j=2,j_max
+  IF (j.LT.j_max) THEN
+    dy=y_loc(j)-y_loc(j-1)
+    ! displacement thickness
+    delta1=delta1+ 0.5*dy*(1.-u_loc(j) +1.-u_loc(j-1))
+    ! momentum thickness
+    theta=theta+ 0.5*dy*(u_loc(j)*(1.-u_loc(j)) +u_loc(j-1)*(1.-u_loc(j-1)))
+  ELSE !Interpolate y_loc and u_loc at at the boundarylayer edge to be consitents
+    !y_loc already scaled with delta99: y_loc at BL edge = 1
+    dy=1-y_loc(j-1)
+    u_loc_bledge=(u_loc(j)-u_loc(j-1))/(y_loc(j)-y_loc(j-1))*(1-y_loc(j-1))+u_loc(j-1)
+    ! displacement thickness
+    delta1=delta1+ 0.5*dy*(1.-u_loc_bledge +1.-u_loc(j-1))
+    ! momentum thickness
+    theta=theta+ 0.5*dy*(u_loc_bledge*(1.-u_loc_bledge) +u_loc(j-1)*(1.-u_loc(j-1)))
+  END IF !j.LT.j_max
+END DO
+! get max. reverse flow if any
+u_r=MIN(MINVAL(u_loc(:)),0.)
+delta1=delta1*delta99 ! integration has been performed in non-dimensional units
+theta=theta*delta99   !
+! write to solution array
+BLProps(1)=delta99
+BLProps(2)=u_delta
+BLProps(3)=delta1
+BLProps(4)=theta
+BLProps(5)=delta1/theta  !H12
+BLProps(6)=rho_delta*u_delta*delta1/Mu0                  !Re_delta
+BLProps(7)=rho_delta*u_delta*theta/Mu0                   !Re_theta
+BLProps(8)=ABS(u_r)                                      !u_reverse
+BLProps(9)=tau_W                                         !tau_W
+BLProps(10)=rho_delta*SQRT(ABS(tau_W)/rho_delta)*delta99/Mu0  !Re_tau
+BLProps(11)=SQRT(ABS(tau_W)/rho_delta)                   !u_tau
+IF(iPressure.GT.0) BLProps(12)=(RPDataTimeAvg_out(iPressure,IDlist(1))-pInf)/(0.5*rhoInf*uInf**2) !c_p
+
+! perform scaling if required
+ndim = MERGE(3,2,.NOT.is2D(1))
+SELECT CASE(Scaling)
+CASE(0) ! do nothing
+CASE(1) ! laminar scaling
+  DO j=1,nRP
+    RPDataTimeAvg_out(TransMap(1:ndim,1),IDlist(j)) = &
+      RPDataTimeAvg_out(TransMap(1:ndim,1),IDlist(j))/u_delta
+    LocalCoord(2,j)=LocalCoord(2,j)/delta99
+  END DO
+CASE(2) ! turbulent scaling
+  u_tau=SQRT(ABS(tau_w)/rho_delta)
+  DO j=1,nRP
+    RPDataTimeAvg_out(TransMap(1:ndim,1),IDlist(j)) = &
+      RPDataTimeAvg_out(TransMap(1:ndim,1),IDlist(j))/u_tau
+    LocalCoord(2,j)=LocalCoord(2,j)*u_tau*rho_delta/mu0
+  END DO
+CASE(3) ! testing
+  DO j=1,nRP
+    RPDataTimeAvg_out(TransMap(1:ndim,1),IDlist(j)) = &
+      u_star(j)/u_max
+  END DO
+END SELECT
+
+END SUBROUTINE Calc_BLProps
 
 
 !===================================================================================================================================
