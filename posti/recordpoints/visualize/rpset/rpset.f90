@@ -288,12 +288,9 @@ IF(DSexists) THEN
         ALLOCATE(Box%NormVec(3,Box%nRP(1),Box%nRP(3)))
         WRITE(tmp255,'(A,A)')TRIM(Box%Name),'_NormVec'
         CALL ReadArray(tmp255,3,(/3,Box%nRP(1),Box%nRP(3)/),0,3,RealArray=Box%NormVec)
-        ALLOCATE(Box%TangVec1(3,Box%nRP(1),Box%nRP(3)))
-        WRITE(tmp255,'(A,A)')TRIM(Box%Name),'_TangVec1'
-        CALL ReadArray(tmp255,3,(/3,Box%nRP(1),Box%nRP(3)/),0,3,RealArray=Box%TangVec1)
-        ALLOCATE(Box%TangVec2(3,Box%nRP(1),Box%nRP(3)))
-        WRITE(tmp255,'(A,A)')TRIM(Box%Name),'_TangVec2'
-        CALL ReadArray(tmp255,3,(/3,Box%nRP(1),Box%nRP(3)/),0,3,RealArray=Box%TangVec2)
+        ALLOCATE(Box%TangVec(3,Box%nRP(1),Box%nRP(3)))
+        WRITE(tmp255,'(A,A)')TRIM(Box%Name),'_TangVec'
+        CALL ReadArray(tmp255,3,(/3,Box%nRP(1),Box%nRP(3)/),0,3,RealArray=Box%TangVec)
       END IF
     END IF
   END DO

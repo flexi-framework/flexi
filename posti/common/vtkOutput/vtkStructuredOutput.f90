@@ -103,7 +103,7 @@ IF ((withData).AND.(.NOT.PRESENT(VarNames))) STOP 'Variables have not been speci
 WRITE(UNIT_stdOut,'(A,I1,A)')" WRITE Structured data to VTK ... "
 
 nPoints = RPPoints%nRPs ! Number of single points to visualize
-nSets= MERGE( 1, 0, nPoints.GT.0) +nLines+nPlanes
+nSets= MERGE( 1, 0, nPoints.GT.0) +nLines+nPlanes+nBoxes
 ALLOCATE(FileNamesVTS(nSets))
 ALLOCATE(ZoneNames(nSets))
 iSet=0

@@ -69,8 +69,7 @@ TYPE tBox                                                           !< Data type
   INTEGER                          :: nRP(3)          !< Number of recordpoints in the two plane dimensions
   TYPE(tRP_Ptr),POINTER            :: RP_ptr(:,:,:)   !< Array of pointers to the record points of the group
   REAL,ALLOCATABLE                 :: NormVec(:,:,:)  !< Normal vector at each of the points
-  REAL,ALLOCATABLE                 :: TangVec1(:,:,:) !< Tangential vector at each of the points
-  REAL,ALLOCATABLE                 :: TangVec2(:,:,:) !< Tangential vector at each of the points
+  REAL,ALLOCATABLE                 :: TangVec(:,:,:)  !< Tangential vector at each of the points
 END TYPE tBox
 
 TYPE tRP                                                            !< Data type representing a single record point

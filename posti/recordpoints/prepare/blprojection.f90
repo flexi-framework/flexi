@@ -167,7 +167,7 @@ END SUBROUTINE GetBLPlane
 SUBROUTINE GetBLBox(Box,nCP,nSP,height,fac,xCP)
 ! MODULES
 USE MOD_Globals
-USE MOD_Mathtools ,ONLY:CROSS
+USE MOD_PreProc
 USE MOD_RPSet_Vars,ONLY:tBox,tRPlist
 USE MOD_RPSet_Vars,ONLY:GetNewRP
 USE MOD_Spline    ,ONLY:GetSpline,GetEquiPoints,EvalSpline,EvalSplineDeriv,EvalEquiError
@@ -189,38 +189,67 @@ TYPE(tRPlist),POINTER           :: RPlist_tmp(:,:)
 REAL,ALLOCATABLE                :: xRP(:,:,:),xRP_tmp(:,:,:),NormVecRP(:,:,:),TangVecRP(:,:,:),dh(:)
 REAL,ALLOCATABLE                :: s(:,:),s_mod(:),s_equi(:,:),coeff(:,:,:,:)
 REAL                            :: h,t,height_loc,EquiErr,EquiErrSum
+INTEGER                         :: nPoints
+INTEGER                         :: iBase
+REAL,ALLOCATABLE                :: xBase(:,:,:),heightBase(:,:)
 !===================================================================================================================================
+
+! get resolution
 nRP=Box%nRP(1:3)
+IF (MOD((nRP(3)-nSP),(nSP-1)).GT.0) THEN
+  nPoints = INT(FLOOR((REAL(nRP(3))-REAL(nSP))/(REAL(nSP)-1.)))
+  nRP(3)  = INT(REAL(nPoints)*(REAL(nSP)-1.))+nSP
+  ! Overwrite Box Resolution
+  WRITE(*,'(A,I4,A,I4,A)') "Number of points in z does not match number of splines. Setting nRP(3) from ",Box%nRP(3)," to ",nRP(3),"!"
+  Box%nRP(3) = nRP(3)
+END IF
+
 ALLOCATE(RPlist_tmp(nRP(1),nRP(3)))
 ALLOCATE(NormVecRP(3,nRP(1),nRP(3)))
 ALLOCATE(TangVecRP(3,nRP(1),nRP(3)))
 ALLOCATE(xRP(3,nRP(1),nRP(3)))
 ALLOCATE(xRP_tmp(3,nRP(1),nRP(3)))
 ALLOCATE(s_equi(nRP(1),nRP(3)))
-ALLOCATE(coeff(3,4,nCP-1,nSP),s(nCP,nSP))
+ALLOCATE(coeff(3,4,nCP-1,nRP(3)),s(nCP,nRP(3)))
 
-DO iSP=1,nSP ! Iterate along each point in z direction
-  CALL GetSpline(3,nCP,xCP(:,:,iSP),coeff(:,:,:,iSP),s(:,iSP)) ! get spline coefficients and arclength variable s
+! linear interpolation of data
+ALLOCATE(xBase(3,nCP,nRP(3)))
+ALLOCATE(heightBase(nCP,nRP(3)))
+iBase = 0
+iSP = 1
+DO k=1,nRP(3)
+  IF (iBase.EQ.(nPoints+1)) THEN
+    iBase = 0
+    iSP = iSP+1
+  END IF
+  IF (iBase.EQ.0) THEN ! reuse provided data
+    xBase(:,:,k)    = xCP( :,:,iSP)
+    heightBase(:,k) = height(:,iSP)
+  ELSE ! linear interpolation between lines
+      ! in x
+      xBase(1,:,k)    = xCP(1,:,iSP)+(xCP(1,:,iSP+1)-xCP(1,:,iSP))/(nPoints+1)*iBase
+      ! in y
+      xBase(2,:,k)    = xCP(2,:,iSP)+(xCP(2,:,iSP+1)-xCP(2,:,iSP))/(nPoints+1)*iBase
+      ! in z
+      xBase(3,:,k)    = xCP(3,:,iSP)+(xCP(3,:,iSP+1)-xCP(3,:,iSP))/(nPoints+1)*iBase
+      ! height
+      heightBase(:,k) = height(:,iSP)+(height(:,iSP+1)-height(:,iSP))/(nPoints+1)*iBase
+  END IF
+  iBase = iBase+1
 END DO
 
-! Sampling of the spline to nRP(1) and allocate first row of RPs
-DO i=1,nRP(1)
-  ! Get position in field
-  DO k=1,nRP(3)
-    DO iCP=1,nCP
-      ! Nearest neighbor
-      iSP      = FINDLOC(ABS(xCP(3,iCP,:)-Box%RP_ptr(i,1,k)%RP%x(3)), &
-                         MINVAL(ABS(xCP(3,iCP,:)-Box%RP_ptr(i,1,k)%RP%x(3))),1)
-    END DO
-    s_loc=s(nCP,iSP)*(i-1)/(nRP(1)-1)
-    CALL EvalSpline(3,nCP,s_loc,s(:,iSP),coeff(:,:,:,iSP),x_loc)
+DO k=1,nRP(3) ! Iterate along each point in z direction
+  CALL GetSpline(3,nCP,xBase(:,:,k),coeff(:,:,:,k),s(:,k)) ! get spline coefficients and arclength variable s
+
+  ! Sampling of the spline to nRP(1) and allocate first row of RPs
+  DO i=1,nRP(1)
+    s_loc=s(nCP,k)*(i-1)/(nRP(1)-1)
+    CALL EvalSpline(3,nCP,s_loc,s(:,k),coeff(:,:,:,k),x_loc)
     CALL GetNewRP(Box%RP_ptr(i,1,k)%RP,Box%GroupID,x_loc)
     RPlist_tmp(i,k)%RP=>Box%RP_ptr(i,1,k)%RP
-  END DO
-END DO ! i
+  END DO ! i
 
-! projection of the supersampled points on the closest boundary
-DO k=1,nRP(3)
+  ! projection of the supersampled points on the closest boundary
   CALL ProjectRPtoBC(nRP(1),RPlist_tmp(:,k),NormVecRP(:,:,k))
   DO i=1,nRP(1)
     RPlist_tmp(i,k)%RP%x=RPlist_tmp(i,k)%RP%xF
@@ -254,25 +283,18 @@ DO iter=1,10
     ! evaluate deviation from equidistancy
     CALL EvalEquiError(3,nRP(1),xRP(:,:,k),EquiErr)
     EquiErrSum = EquiErrSum + EquiErr
-    WRITE(*,*) 'After projection ',iter, EquiErrSum/nRP(3)
   END DO
+  WRITE(*,*) 'After projection ',iter, EquiErrSum/nRP(3)
 END DO
 
 ! calculate the tangent vector
 DEALLOCATE(coeff)
-ALLOCATE(s_mod(nRP(1)),coeff(3,4,nRP(1)-1,nSP))
-DO iSP=1,nSP ! Iterate along each point in z direction
+ALLOCATE(s_mod(nRP(1)),coeff(3,4,nRP(1)-1,nRP(3)))
+DO k=1,nRP(3) ! Iterate along each point in z direction
   CALL GetSpline(3,nRP(1),xRP(:,:,k),coeff(:,:,:,k),s_mod) ! get the spline through the projected points
-END DO
-! get the tangent vector in each point
-DO i=1,nRP(1)
-  ! Get position in field
-  DO k=1,nRP(3)
-    DO iCP=1,nCP
-      ! Nearest neighbor
-      iSP      = FINDLOC(ABS(xCP(3,iCP,:)-Box%RP_ptr(i,1,k)%RP%x(3)), &
-                         MINVAL(ABS(xCP(3,iCP,:)-Box%RP_ptr(i,1,k)%RP%x(3))),1)
-    END DO
+
+  ! get the tangent vector in each point
+  DO i=1,nRP(1)
     !derivative of the spline
     CALL EvalSplineDeriv(3,nRP(1),s_mod(i),s_mod,coeff(:,:,:,k),dx_loc)
     !project it on the local surface
@@ -291,20 +313,16 @@ dh(:)=dh(:)/SUM(dh(:))
 iCP=2
 DO k=1,nRP(3)
   DO i=1,nRP(1)
-    DO iCP=1,nCP
-      ! Nearest neighbor
-      iSP      = FINDLOC(ABS(xCP(3,iCP,:)-Box%RP_ptr(i,1,k)%RP%x(3)), &
-                         MINVAL(ABS(xCP(3,iCP,:)-Box%RP_ptr(i,1,k)%RP%x(3))),1)
-    END DO
-    s_loc=s(nCP,iSP)*(i-1)/(nRP(1)-1)
+    s_loc=s(nCP,k)*(i-1)/(nRP(1)-1)
     ! linear interpolation of the height between control points
-    DO WHILE(s(iCP,iSP).LT.s_loc)
+    DO WHILE(s(iCP,k).LT.(s_loc-100.*PP_RealTolerance))
       iCP=iCP+1
+      print*,iCP
     END DO
     iCP=MIN(iCP,nCP)
   !  IF(s_loc.GE.s(iCP)) iCP=MAX(iCP+1,nCP)
-    t=(s_loc-s(iCP-1,iSP))/(s(iCP,iSP)-s(iCP-1,iSP))
-    height_loc=height(iCP-1,iSP)*(1-t)+height(iCP,iSP)*t
+    t=(s_loc-s(iCP-1,k))/(s(iCP,k)-s(iCP-1,k))
+    height_loc=heightBase(iCP-1,k)*(1-t)+heightBase(iCP,k)*t
     h=0.
     DO j=2,nRP(2)
       h=h+dh(j)
@@ -314,16 +332,10 @@ DO k=1,nRP(3)
   END DO
 END DO
 
-ALLOCATE(Box%NormVec( 3,nRP(1),nRP(3)))
-ALLOCATE(Box%TangVec1(3,nRP(1),nRP(3)))
-ALLOCATE(Box%TangVec2(3,nRP(1),nRP(3)))
-Box%NormVec =NormVecRP
-Box%TangVec1=TangVecRP
-DO k = 1,nRP(3)
-  DO i = 1,nRP(1)
-    Box%TangVec2(:,i,k)=CROSS(NormVecRP(:,i,k),TangVecRP(:,i,k))
-  END DO
-END DO
+ALLOCATE(Box%NormVec(3,nRP(1),nRP(3)))
+ALLOCATE(Box%TangVec(3,nRP(1),nRP(3)))
+Box%NormVec=NormVecRP
+Box%TangVec=TangVecRP
 
 DEALLOCATE(RPlist_tmp,NormVecRP,TangVecRP,coeff,s)
 END SUBROUTINE GetBLBox

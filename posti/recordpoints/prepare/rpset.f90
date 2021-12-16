@@ -127,7 +127,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 LOGICAL                      :: anythingThere
 INTEGER                      :: iGr,iLine,iP,iRP,iRP_gr,iPlane,iBox,i,j,k
-REAL                         :: x(3),x_dummy(12)
+REAL                         :: x(3),x_dummy(24)
 REAL                         :: xi,eta,zeta
 INTEGER                      :: nlinLines,nCircles,nCustomLines
 INTEGER                      :: nflatPlanes,nSphericPlanes,nBLPlanes
@@ -367,12 +367,12 @@ IF(nBoxes.GT.0) THEN
   DO iBox=1,nFlatBoxes
     Box=>Boxes(iBox)
     Box%GroupID=GETINT('Box_GroupID')
-    WRITE(Box%Name,'(A5,I6.6)')'Box_',iBox
-    x_dummy(1:12) = GETREALARRAY('Box_CornerX',24)
+    WRITE(Box%Name,'(A4,I6.6)')'Box_',iBox
+    x_dummy(1:24) = GETREALARRAY('Box_CornerX',24)
     DO iP=1,8
       Box%x(1:3,iP)=x_dummy(1+3*(iP-1):3+3*(iP-1))
     END DO ! iPoint
-    Box%nRP(1:3)   =GETINTARRAY('Plane_nRP',3)
+    Box%nRP(1:3)   =GETINTARRAY('Box_nRP',3)
     ALLOCATE(Box%RP_ptr(1:Box%nRP(1),1:Box%nRP(2),1:Box%nRP(3)))
     DO k=1,Box%nRP(3)
       DO j=1,Box%nRP(2)
@@ -429,6 +429,22 @@ END IF
 ! Create global RP array
 ALLOCATE(RPlist(nRP_global))
 iRP=0
+
+! fill Boxes
+IF(nBoxes.GT.0) THEN
+  DO iBox=1,nBoxes
+    Box=>Boxes(iBox)
+    DO k=1,Box%nRP(3)
+      DO j=1,Box%nRP(2)
+        DO i=1,Box%nRP(1)
+        iRP=iRP+1
+        RPlist(iRP)%RP=>Boxes(iBox)%RP_ptr(i,j,k)%RP
+        END DO ! i
+      END DO ! j
+    END DO ! k
+  END DO !iBox
+END IF
+
 ! fill Planes
 IF(nPlanes.GT.0) THEN
   DO iPlane=1,nPlanes

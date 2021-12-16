@@ -107,7 +107,7 @@ IF(nLines.GT.0) THEN
     CALL WriteArray(TRIM(Line%Name),1,s1,s1,(/0/),.FALSE.,IntArray=RPset)
     DEALLOCATE(RPset)
     ! groupID
-    CALL WriteAttribute(FILE_ID,'GroupID',1,DataSetname=TRIM(Line%Name),IntScalar=Line%GroupID)
+    CALL WriteAttribute(FILE_ID,'GroupID',1,DataSetname=Line%Name,IntScalar=Line%GroupID)
   END DO !iL
 END IF
 
@@ -137,7 +137,7 @@ IF(nPlanes.GT.0) THEN
     CALL WriteArray(TRIM(Plane%Name),2,Plane%nRP,Plane%nRP,(/0,0/),.FALSE.,IntArray=RPset2D)
     DEALLOCATE(RPset2D)
     ! groupID
-    CALL WriteAttribute(FILE_ID,'GroupID',1,DataSetname=TRIM(Plane%Name),IntScalar=Plane%GroupID)
+    CALL WriteAttribute(FILE_ID,'GroupID',1,DataSetname=Plane%Name,IntScalar=Plane%GroupID)
 
     ! write normal and tangent vectors in case of the BLPlane
     PlaneType=TRIM(Plane%Name(1:5))
@@ -168,7 +168,7 @@ IF(nBoxes.GT.0) THEN
     CALL WriteArray(TRIM(Box%Name),3,Box%nRP,Box%nRP,(/0,0,0/),.FALSE.,IntArray=RPset3D)
     DEALLOCATE(RPset3D)
     ! groupID
-    CALL WriteAttribute(FILE_ID,'GroupID',1,DataSetname=TRIM(Box%Name),IntScalar=Box%GroupID)
+    CALL WriteAttribute(FILE_ID,'GroupID',1,DataSetname=Box%Name,IntScalar=Box%GroupID)
 
     ! write normal and tangent vectors in case of the BLBox
     BoxType=TRIM(Box%Name(1:3))
@@ -176,10 +176,8 @@ IF(nBoxes.GT.0) THEN
       s3=(/3,Box%nRP(1),Box%nRP(3)/)
       WRITE(tmp255,'(A,A)')TRIM(Box%Name),'_NormVec'
       CALL WriteArray(tmp255,3,s3,s3,(/0,0,0/),.FALSE.,RealArray=Box%NormVec)
-      WRITE(tmp255,'(A,A)')TRIM(Box%Name),'_TangVec1'
-      CALL WriteArray(tmp255,3,s3,s3,(/0,0,0/),.FALSE.,RealArray=Box%TangVec1)
-      WRITE(tmp255,'(A,A)')TRIM(Box%Name),'_TangVec2'
-      CALL WriteArray(tmp255,3,s3,s3,(/0,0,0/),.FALSE.,RealArray=Box%TangVec2)
+      WRITE(tmp255,'(A,A)')TRIM(Box%Name),'_TangVec'
+      CALL WriteArray(tmp255,3,s3,s3,(/0,0,0/),.FALSE.,RealArray=Box%TangVec)
     END IF
   END DO !iBx
 END IF
