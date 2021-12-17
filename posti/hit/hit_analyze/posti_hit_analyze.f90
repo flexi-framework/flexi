@@ -85,6 +85,7 @@ CALL DefineParametersMesh()
 CALL prms%SetSection("HIT_Analyze")
 CALL prms%CreateIntOption("N_Filter" , "Maximum wavenumber for cutoff filter.")
 CALL prms%CreateIntOption("NCalc"    , "Polynomial degree in each element for global DFFT basis.")
+CALL prms%CreateRealOption("Mu0"     , "Viscosity")
 
 ! check for command line argument --help or --markdown
 IF (doPrintHelp.GT.0) THEN
