@@ -658,34 +658,32 @@ DO iBox=1,nBoxes
   ! Box parallel directions -------------------------------------------------------
   ALLOCATE(t_Nx(Nx))
   ALLOCATE(coeff(3,4,Nx-1))
+  CALL GetSpline(3,Nx,xBox_tmp(:,:,1,1),coeff,t_Nx)! get spline through the first tangential layer
+  localCoordX=0.
+  ! calculate arclength on supersampled points
+  nSuper=10
+  x_loc=xBox_tmp(:,1,1,1)
+  DO i=2,Nx
+    localCoordX(i)=localCoordX(i-1)
+    DO iS=2,nSuper
+      t_loc=t_Nx(i-1)+REAL(iS-1)/REAL(nSuper-1)*(t_Nx(i)-t_Nx(i-1))
+      x_loc_old=x_loc
+      x_loc(:)=coeff(:,1,i-1)+coeff(:,2,i-1)*(t_loc-t_Nx(i-1)) &
+              +coeff(:,3,i-1)*(t_loc-t_Nx(i-1))**2 + coeff(:,4,i-1)*(t_loc-t_Nx(i-1))**3
+      localCoordX(i)=localCoordX(i)+NORM2(x_loc-x_loc_old)
+    END DO!iS
+  END DO!i
+  ! Use first xy-plane for transformation to ensure cartesian grid
   DO k=1,Nz
-    CALL GetSpline(3,Nx,xBox_tmp(:,:,1,k),coeff,t_Nx)! get spline through the first tangential layer
-    localCoordX=0.
-    ! calculate arclength on supersampled points
-    nSuper=10
-    x_loc=xBox_tmp(:,1,1,k)
-    DO i=2,Nx
-      localCoordX(i)=localCoordX(i-1)
-      DO iS=2,nSuper
-        t_loc=t_Nx(i-1)+REAL(iS-1)/REAL(nSuper-1)*(t_Nx(i)-t_Nx(i-1))
-        x_loc_old=x_loc
-        x_loc(:)=coeff(:,1,i-1)+coeff(:,2,i-1)*(t_loc-t_Nx(i-1)) &
-                +coeff(:,3,i-1)*(t_loc-t_Nx(i-1))**2 + coeff(:,4,i-1)*(t_loc-t_Nx(i-1))**3
-        localCoordX(i)=localCoordX(i)+NORM2(x_loc-x_loc_old)
-      END DO!iS
-    END DO!i
     DO j=1,Ny
       Box%LocalCoord(1,:,j,k)=localCoordX(:)
     END DO!j
   END DO!k
-  DO i=1,Nx
-    DO j=1,Ny
-      localCoordZ=0.
-      DO k=2,Nz
-        localCoordZ(j)=localCoordZ(j-1)+NORM2(xBox_tmp(:,i,j,k)-xBox_tmp(:,i,j-1,k))
-      END DO! j=1,Ny
-      Box%LocalCoord(3,i,:,k)=localCoordZ(:)
-    END DO! i=1,Nx
+  ! Ensure uniform distribution in z
+  localCoordZ=0.
+  DO k=2,Nz
+    localCoordZ(k)=localCoordZ(k-1)+NORM2(xBox_tmp(:,1,1,k)-xBox_tmp(:,1,1,k-1))
+    Box%LocalCoord(3,:,:,k)=localCoordZ(k)
   END DO! j=1,Nz
   ! Box normal direction -------------------------------------------------------
   DO k=1,Nz
