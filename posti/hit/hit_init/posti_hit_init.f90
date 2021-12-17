@@ -35,6 +35,8 @@ USE MOD_Interpolation,           ONLY: DefineParametersInterpolation,InitInterpo
 USE MOD_IO_HDF5,                 ONLY: DefineParametersIO_HDF5,InitIOHDF5,FinalizeIOHDF5
 USE MOD_HDF5_Output,             ONLY: WriteState
 USE MOD_Output,                  ONLY: DefineParametersOutput,InitOutput,FinalizeOutput
+USE MOD_EOS,                     ONLY: DefineParametersEOS
+USE MOD_EOS_Vars,                ONLY: Kappa
 USE MOD_MPI,                     ONLY: InitMPI,DefineParametersMPI
 #if USE_MPI
 USE MOD_MPI,                     ONLY: InitMPIvars,FinalizeMPI
@@ -74,16 +76,20 @@ CALL DefineParametersMPI()
 CALL DefineParametersIO_HDF5()
 CALL DefineParametersOutput()
 CALL DefineParametersMesh()
+CALL DefineParametersEOS()
 
 ! Define Parameters HIT_Init
 CALL prms%SetSection("HIT_Init")
-CALL prms%CreateIntOption(    "Seed"       , "Seed for random number generator for Rogallo precedure (Only Debug)")
-CALL prms%CreateIntOption(    "N_FFT"      , "Number of global interpolation points to perform DFFT on.")
-CALL prms%CreateIntOption(    "InitSpec"   , "Initial energy spectrum (1) Rogallo,&
-                                                                     &(2) Blaisdell,&
-                                                                     &(3) Chasnov,&
-                                                                     &(4) Inf intertial range,&
-                                                                     &(5) Karman-Pao.")
+CALL prms%CreateIntOption("Seed"     , "Seed for random number generator for Rogallo precedure (Only Debug)")
+CALL prms%CreateIntOption("N_FFT"    , "Number of global interpolation points to perform DFFT on.")
+CALL prms%CreateIntOption("InitSpec" , "Initial energy spectrum (1) Rogallo,&
+                                                                &(2) Blaisdell,&
+                                                                &(3) Chasnov,&
+                                                                &(4) Inf intertial range,&
+                                                                &(5) Karman-Pao.")
+CALL prms%CreateRealOption("rho0", "Constant density for initial flow field.")
+CALL prms%CreateRealOption("Ma0",  "Target Mach number with respect to the maximum velocity in the flow field. &
+                                   &(Is set via the mean background pressure.)")
 
 ! check for command line argument --help or --markdown
 IF (doPrintHelp.GT.0) THEN
@@ -103,6 +109,11 @@ N_FFT    = GETINT('N_FFT')
 InitSpec = GETINT('InitSpec')
 Seed     = GETINT('Seed','0')
 MeshFile = GETSTR('MeshFile')
+
+! Get variables for flow field
+Kappa = GETREAL('Kappa','1.4')
+rho0  = GETREAL('rho0', '1.0')
+Ma0   = GETREAL('Ma0',  '0.1')
 
 CALL InitIOHDF5()
 CALL InitInterpolation()

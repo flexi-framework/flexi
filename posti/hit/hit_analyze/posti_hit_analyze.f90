@@ -36,8 +36,12 @@ USE MOD_IO_HDF5,                 ONLY: DefineParametersIO_HDF5,InitIOHDF5,Finali
 USE MOD_HDF5_Input,              ONLY: ISVALIDMESHFILE
 USE MOD_Output,                  ONLY: DefineParametersOutput,InitOutput,FinalizeOutput
 USE MOD_MPI,                     ONLY: DefineParametersMPI,InitMPI
+USE MOD_EOS,                     ONLY: DefineParametersEOS
 #if USE_MPI
 USE MOD_MPI,                     ONLY: InitMPIvars,FinalizeMPI
+#endif
+#if PARABOLIC
+USE MOD_EOS_Vars,                ONLY: mu0
 #endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -80,12 +84,12 @@ CALL DefineParametersMPI()
 CALL DefineParametersIO_HDF5()
 CALL DefineParametersOutput()
 CALL DefineParametersMesh()
+CALL DefineParametersEOS()
 
 ! Parameters for HIT_Analyze
 CALL prms%SetSection("HIT_Analyze")
 CALL prms%CreateIntOption("N_Filter" , "Maximum wavenumber for cutoff filter.")
 CALL prms%CreateIntOption("NCalc"    , "Polynomial degree in each element for global DFFT basis.")
-CALL prms%CreateRealOption("Mu0"     , "Viscosity")
 
 ! check for command line argument --help or --markdown
 IF (doPrintHelp.GT.0) THEN
@@ -101,10 +105,12 @@ CALL prms%read_options(Args(1))
 ParameterFile = Args(1)
 
 ! Readin Parameters
+MeshFile_prm = GETSTR('MeshFile','')
 NCalc    = GETINT('NCalc')
 N_Filter = GETINT('N_Filter','-1')
-Mu0      = GETREAL('Mu0','0.')
-MeshFile_prm = GETSTR('MeshFile','')
+#if PARABOLIC
+mu0      = GETREAL('mu0','0.')
+#endif
 
 ! Initialize IO
 CALL InitIOHDF5()

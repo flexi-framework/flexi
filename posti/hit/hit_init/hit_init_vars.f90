@@ -28,5 +28,8 @@ CHARACTER(LEN=255)    :: MeshFile                  !< Mesh File on which flow fi
 INTEGER               :: InitSpec                  !< Specifies which energy distribution is generated 
 INTEGER               :: Seed                      !< Seed for random number generator for Rogallo procedure (Debug only)
 COMPLEX,ALLOCATABLE   :: U_FFT(:,:,:,:)            !< Global solution in Fourier space
+REAL                  :: rho0                      !< Constant density set for initial flow field.
+REAL                  :: Ma0                       !< Target Mach number with respect to the maximum velocity in the flow field.
+                                                   !< (Is set via the mean background pressure.)
 !===================================================================================================================================
 END MODULE MOD_HIT_Init_Vars

@@ -192,8 +192,11 @@ SUBROUTINE WriteTurbulenceData(E_k,U_In)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_HIT_Analyze_Vars,  ONLY: ProjectName_HDF5,Time_HDF5,nVar_HDF5
-USE MOD_HIT_Analyze_Vars,  ONLY: N_Filter,mu0
+USE MOD_HIT_Analyze_Vars,  ONLY: N_Filter
 USE MOD_HIT_FFT_Vars,      ONLY: N_FFT,NCalc,Nc,kmax,Endw
+#if PARABOLIC
+USE MOD_EOS_Vars,          ONLY: mu0
+#endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -236,15 +239,22 @@ DO k=1,N_max
 END DO
 
 ! Compute turbulence statistics
-Eps       = IntEps*2.*Mu0                   ! Dissipation
-Eta       = SQRT(Mu0)/(IntEps*2.)**(1./4.)  ! KolmogorovLength
-Eta_K     = 2.*PP_PI/Eta                    ! KolmogorovLength*K
+U_rms     = (2./3.*IntE_k)**0.5             ! U_RMS
 Lambda    = (5.*IntE_k/IntEps)**0.5         ! TaylorMicroScale
 Lambda_K  = 2.*PP_PI/Lambda                 ! TaylorMicroScale*K
 L_int     = 3.*PP_PI/4.*IntInt/IntE_k       ! Int_Length
 L_int_K   = 2*PP_PI/L_int                   ! Int_Length*K
-U_rms     = (2./3.*IntE_k)**0.5             ! U_RMS
-Re_lambda =U_rms*lambda/Mu0                 ! Re_lambda
+#if PARABOLIC
+Eps       = IntEps*2.*mu0                   ! Dissipation
+Eta       = SQRT(mu0)/(IntEps*2.)**(1./4.)  ! KolmogorovLength
+Eta_K     = 2.*PP_PI/Eta                    ! KolmogorovLength*K
+Re_lambda = U_rms*lambda/mu0                ! Re_lambda
+#else
+Eps       = 0.       ! Dissipation
+Eta       = 0.       ! KolmogorovLength
+Eta_K     = HUGE(1.) ! KolmogorovLength*K
+Re_lambda = HUGE(1.) ! Re_lambda
+#endif
 
 ! Find free file unit for write process
 FileUnit=55

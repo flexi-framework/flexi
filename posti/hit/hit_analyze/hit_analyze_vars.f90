@@ -24,7 +24,6 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-REAL                  :: Mu0               !> TODO: Take from equation vars
 INTEGER               :: N_Filter          !> Cutoff wavenumber for computation of spectrum
 INTEGER               :: nVar_HDF5         !> Number of solution variables in statefile
 INTEGER               :: N_HDF5            !> Polynomial degree in statefile
