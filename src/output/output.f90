@@ -481,7 +481,7 @@ END IF
 ! Check for file
 file_exists = FILEEXISTS(FileName_loc)
 IF(RestartTime.LT.0.0) file_exists=.FALSE.
-!! File processing starts here open old and extratct information or create new file.
+!! File processing starts here open old and extract information or create new file.
 ioUnit = 0
 
 IF(file_exists)THEN ! File exists and append data

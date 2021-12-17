@@ -13,6 +13,9 @@ CMAKE_DEPENDENT_OPTION(POSTI_CHANNEL_FFT           "Build the channel FFT tool" 
 CMAKE_DEPENDENT_OPTION(POSTI_WALLDISTANCE          "Build the walldistance tool"                        OFF "POSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_TO3D                  "Build the 3D extrusion tool"                        OFF "POSTI" OFF)
 CMAKE_DEPENDENT_OPTION(POSTI_AVG2D                 "Build the 2D average tool"                          OFF "POSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_HIT_INIT              "Build the HIT initialization tool"                  OFF "POSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_HIT_FILTER            "Build the HIT spectral filter tool"                 OFF "POSTI" OFF)
+CMAKE_DEPENDENT_OPTION(POSTI_HIT_ANALYZE           "Build the HIT analyze tool"                         OFF "POSTI" OFF)
 
 # =========================================================================
 # Build shared posti library
@@ -30,35 +33,49 @@ ADD_DEPENDENCIES(libposti libflexishared)
 # =========================================================================
 # FFTW library
 # =========================================================================
-IF(POSTI_RP_VISUALIZE OR POSTI_CHANNEL_FFT)
+IF(POSTI_RP_VISUALIZE OR POSTI_CHANNEL_FFT OR POSTI_HIT_INIT OR POSTI_HIT_FILTER OR POSTI_HIT_ANALYZE)
   SET (FFTWDOWNLOAD ${LIBS_DLPATH}libs/FFTW.git )
   SET(POSTI_FFTWTAG "fftw-3.3.9" CACHE STRING "FFTW version tag")
-  SET(POSTI_FFTWDIR ${LIBS_EXTERNAL_LIB_DIR}/fftw)
+  IF (LIBS_USE_OPENMP)
+    SET(POSTI_FFTWDIR ${LIBS_EXTERNAL_LIB_DIR}/fftw_omp)
+  ELSE()
+    SET(POSTI_FFTWDIR ${LIBS_EXTERNAL_LIB_DIR}/fftw)
+  ENDIF()
   # Try to find the library in the share directory or in a global, user-defined $FFTW_DIR
-  FIND_PATH(FFTW_INCLUDES fftw3.h         HINTS $ENV{FFTW_DIR}/include ${LIBS_EXTERNAL_LIB_DIR}/fftw/build/include)
-  FIND_LIBRARY(FFTW_LIBRARIES NAMES fftw3 HINTS $ENV{FFTW_DIR}/lib     ${LIBS_EXTERNAL_LIB_DIR}/fftw/build/lib    )
-
-  # If FFTW is not found, we build it ourselves
-  IF(FFTW_INCLUDES STREQUAL "FFTW_INCLUDES-NOTFOUND" OR FFTW_LIBRARIES STREQUAL "FFTW_LIBRARIES-NOTFOUND")
+  FIND_PATH(FFTW_INCLUDES fftw3.h       HINTS $ENV{FFTW_DIR}/include ${LIBS_EXTERNAL_LIB_DIR}/fftw/build/include)
+  FIND_LIBRARY(FFTW_LIBRARY NAMES fftw3 HINTS $ENV{FFTW_DIR}/lib     ${LIBS_EXTERNAL_LIB_DIR}/fftw/build/lib    )
+  IF (LIBS_USE_OPENMP)
+    FIND_LIBRARY(FFTW_OMP_LIBRARY NAMES fftw3_omp HINTS $ENV{FFTW_DIR}/lib ${LIBS_EXTERNAL_LIB_DIR}/fftw/build/lib)
+  ENDIF()
+  IF(FFTW_INCLUDES STREQUAL "FFTW_INCLUDES-NOTFOUND" OR  FFTW_LIBRARY STREQUAL "FFTW_LIBRARY-NOTFOUND"
+		                                     OR (FFTW_OMP_LIBRARY STREQUAL "FFTW_OMP_LIBRARY-NOTFOUND" AND LIBS_USE_OPENMP))
+    SET(FFTW_FLAGS tar xzf ${POSTI_FFTWTAG}.tar.gz && FC=${CMAKE_Fortran_COMPILER} CC=${CMAKE_C_COMPILER} F77=${CMAKE_F77_COMPILER} ${POSTI_FFTWDIR}/src/fftw/${POSTI_FFTWTAG}/configure --prefix=${POSTI_FFTWDIR}/build)
+    IF (LIBS_USE_OPENMP)
+      LIST(APPEND FFTW_FLAGS --enable-openmp)
+    ENDIF()
     MESSAGE(STATUS "FFTW not found, building library")
       ExternalProject_Add(fftw
         GIT_REPOSITORY ${FFTWDOWNLOAD}
         GIT_TAG ${POSTI_FFTWTAG}
         ${${GITSHALLOW}}
         PREFIX  ${POSTI_FFTWDIR}
-	UPDATE_COMMAND ""
-        CONFIGURE_COMMAND tar xzf ${POSTI_FFTWTAG}.tar.gz && FC=${CMAKE_Fortran_COMPILER} CC=${CMAKE_C_COMPILER} F77=${CMAKE_F77_COMPILER} ${POSTI_FFTWDIR}/src/fftw/${POSTI_FFTWTAG}/configure --prefix=${POSTI_FFTWDIR}/build
+        UPDATE_COMMAND ""
+	CONFIGURE_COMMAND ${FFTW_FLAGS}
         BUILD_IN_SOURCE 1
       )
     SET(FFTW_INCLUDE_DIR ${POSTI_FFTWDIR}/build/include)
     SET(FFTW_LIBRARY     ${POSTI_FFTWDIR}/build/lib/libfftw3.a)
-    SET(FFTW_LIBRARIES   ${POSTI_FFTWDIR}/build/lib/libfftw3.a)
+    SET(FFTW_OMP_LIBRARY ${POSTI_FFTWDIR}/build/lib/libfftw3_omp.a)
     SET_PROPERTY(DIRECTORY PROPERTY CLEAN_NO_CUSTOM 1)
     LIST(APPEND SELFBUILTEXTERNALS fftw)
   ELSE()
     MESSAGE(STATUS "FFTW includes found: " ${FFTW_INCLUDES})
     SET(FFTW_INCLUDE_DIR ${FFTW_INCLUDES})
-    SET(FFTW_LIBRARY     ${FFTW_LIBRARIES})
+  ENDIF()
+
+  SET(FFTW_LIBRARIES   ${FFTW_LIBRARY})
+  IF (LIBS_USE_OPENMP)
+    LIST(APPEND FFTW_LIBRARIES ${FFTW_OMP_LIBRARY})
   ENDIF()
 
   # Build static FFTW library to be included in each POSTI tool
@@ -114,4 +131,8 @@ ENDIF()
 
 IF(POSTI_AVG2D)
   INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/avg2D/CMakeLists.txt)
+ENDIF()
+
+IF(POSTI_HIT_INIT OR POSTI_HIT_FILTER OR POSTI_HIT_ANALYZE)
+  INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/posti/hit/CMakeLists.txt)
 ENDIF()
