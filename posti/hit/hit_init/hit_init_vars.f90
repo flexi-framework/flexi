@@ -31,5 +31,6 @@ COMPLEX,ALLOCATABLE   :: U_FFT(:,:,:,:)            !< Global solution in Fourier
 REAL                  :: rho0                      !< Constant density set for initial flow field.
 REAL                  :: Ma0                       !< Target Mach number with respect to the maximum velocity in the flow field.
                                                    !< (Is set via the mean background pressure.)
+REAL,PARAMETER        :: Kappa = 1.4               !< Ratio of specific heats for ideal gas
 !===================================================================================================================================
 END MODULE MOD_HIT_Init_Vars

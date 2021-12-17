@@ -192,11 +192,8 @@ SUBROUTINE WriteTurbulenceData(E_k,U_In)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_HIT_Analyze_Vars,  ONLY: ProjectName_HDF5,Time_HDF5,nVar_HDF5
-USE MOD_HIT_Analyze_Vars,  ONLY: N_Filter
+USE MOD_HIT_Analyze_Vars,  ONLY: N_Filter,mu0
 USE MOD_HIT_FFT_Vars,      ONLY: N_FFT,NCalc,Nc,kmax,Endw
-#if PARABOLIC
-USE MOD_EOS_Vars,          ONLY: mu0
-#endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

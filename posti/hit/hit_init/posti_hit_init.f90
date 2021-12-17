@@ -35,8 +35,6 @@ USE MOD_Interpolation,           ONLY: DefineParametersInterpolation,InitInterpo
 USE MOD_IO_HDF5,                 ONLY: DefineParametersIO_HDF5,InitIOHDF5,FinalizeIOHDF5
 USE MOD_HDF5_Output,             ONLY: WriteState
 USE MOD_Output,                  ONLY: DefineParametersOutput,InitOutput,FinalizeOutput
-USE MOD_EOS,                     ONLY: DefineParametersEOS
-USE MOD_EOS_Vars,                ONLY: Kappa
 USE MOD_MPI,                     ONLY: InitMPI,DefineParametersMPI
 #if USE_MPI
 USE MOD_MPI,                     ONLY: InitMPIvars,FinalizeMPI
@@ -76,7 +74,6 @@ CALL DefineParametersMPI()
 CALL DefineParametersIO_HDF5()
 CALL DefineParametersOutput()
 CALL DefineParametersMesh()
-CALL DefineParametersEOS()
 
 ! Define Parameters HIT_Init
 CALL prms%SetSection("HIT_Init")
@@ -111,7 +108,6 @@ Seed     = GETINT('Seed','0')
 MeshFile = GETSTR('MeshFile')
 
 ! Get variables for flow field
-Kappa = GETREAL('Kappa')
 rho0  = GETREAL('rho0', '1.0')
 Ma0   = GETREAL('Ma0',  '0.1')
 

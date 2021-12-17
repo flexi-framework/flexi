@@ -24,6 +24,7 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
+REAL                  :: mu0               !> Dynamic viscosity
 INTEGER               :: N_Filter          !> Cutoff wavenumber for computation of spectrum
 INTEGER               :: nVar_HDF5         !> Number of solution variables in statefile
 INTEGER               :: N_HDF5            !> Polynomial degree in statefile

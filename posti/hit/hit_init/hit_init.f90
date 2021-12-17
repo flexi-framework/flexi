@@ -201,8 +201,7 @@ SUBROUTINE GetCompressibleState(U_In)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc,            ONLY: PP_PI
-USE MOD_EOS_Vars,           ONLY: Kappa
-USE MOD_HIT_Init_Vars,      ONLY: rho0,Ma0
+USE MOD_HIT_Init_Vars,      ONLY: rho0,Ma0,Kappa
 USE MOD_HIT_FFT,            ONLY: ComputeFFT_R2C,ComputeFFT_C2R
 USE MOD_HIT_FFT_Vars,       ONLY: Endw,localk,II,N_FFT
 IMPLICIT NONE
