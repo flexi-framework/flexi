@@ -189,22 +189,13 @@ TYPE(tRPlist),POINTER           :: RPlist_tmp(:,:)
 REAL,ALLOCATABLE                :: xRP(:,:,:),xRP_tmp(:,:,:),NormVecRP(:,:,:),TangVecRP(:,:,:),dh(:)
 REAL,ALLOCATABLE                :: s(:,:),s_mod(:),s_equi(:,:),coeff(:,:,:,:)
 REAL                            :: h,t,height_loc,EquiErr,EquiErrSum
-INTEGER                         :: nPoints
+INTEGER,ALLOCATABLE             :: Points(:)
 INTEGER                         :: iBase
-REAL,ALLOCATABLE                :: xBase(:,:,:),heightBase(:,:)
+REAL,ALLOCATABLE                :: xBase(:,:,:),heightBase(:,:),depth(:)
 !===================================================================================================================================
 
 ! get resolution
 nRP=Box%nRP(1:3)
-IF (MOD((nRP(3)-nSP),(nSP-1)).GT.0) THEN
-  nPoints = INT(FLOOR((REAL(nRP(3))-REAL(nSP))/(REAL(nSP)-1.)))
-  nRP(3)  = INT(REAL(nPoints)*(REAL(nSP)-1.))+nSP
-  ! Overwrite Box Resolution
-  WRITE(*,'(A,I4,A,I4,A)') "Number of points in z does not match number of splines. Setting nRP(3) from ",Box%nRP(3)," to ",nRP(3),"!"
-  Box%nRP(3) = nRP(3)
-ELSE
-  nPoints = nRP(3)
-END IF
 
 ALLOCATE(RPlist_tmp(nRP(1),nRP(3)))
 ALLOCATE(NormVecRP(3,nRP(1),nRP(3)))
@@ -215,12 +206,24 @@ ALLOCATE(s_equi(nRP(1),nRP(3)))
 ALLOCATE(coeff(3,4,nCP-1,nRP(3)),s(nCP,nRP(3)))
 
 ! linear interpolation of data
+ALLOCATE(depth(nSP-1))
+ALLOCATE(Points(nSP-1))
+DO iSP=2,nSP
+  depth(iSP-1) = (xCP( 3,1,iSP)-xCP( 3,1,iSP-1))/(xCP( 3,1,nSP)-xCP( 3,1,1))
+END DO
+Points=FLOOR((REAL(nRP(3))-REAL(nSP))*depth)
+iSP = 1
+DO WHILE(SUM(Points).LT.(nRP(3)-nSP))
+  Points(iSP) = Points(iSP)+1
+  iSP = iSP+1
+  IF (iSP.EQ.nSP) iSP = 1
+END DO
 ALLOCATE(xBase(3,nCP,nRP(3)))
 ALLOCATE(heightBase(nCP,nRP(3)))
 iBase = 0
 iSP = 1
 DO k=1,nRP(3)
-  IF (iBase.EQ.(nPoints+1)) THEN
+  IF (iBase.EQ.(Points(iSP)+1)) THEN
     iBase = 0
     iSP = iSP+1
   END IF
@@ -229,13 +232,13 @@ DO k=1,nRP(3)
     heightBase(:,k) = height(:,iSP)
   ELSE ! linear interpolation between lines
       ! in x
-      xBase(1,:,k)    = xCP(1,:,iSP)+(xCP(1,:,iSP+1)-xCP(1,:,iSP))/(nPoints+1)*iBase
+      xBase(1,:,k)    = xCP(1,:,iSP)+(xCP(1,:,iSP+1)-xCP(1,:,iSP))/(Points(iSP)+1)*iBase
       ! in y
-      xBase(2,:,k)    = xCP(2,:,iSP)+(xCP(2,:,iSP+1)-xCP(2,:,iSP))/(nPoints+1)*iBase
+      xBase(2,:,k)    = xCP(2,:,iSP)+(xCP(2,:,iSP+1)-xCP(2,:,iSP))/(Points(iSP)+1)*iBase
       ! in z
-      xBase(3,:,k)    = xCP(3,:,iSP)+(xCP(3,:,iSP+1)-xCP(3,:,iSP))/(nPoints+1)*iBase
+      xBase(3,:,k)    = xCP(3,:,iSP)+(xCP(3,:,iSP+1)-xCP(3,:,iSP))/(Points(iSP)+1)*iBase
       ! height
-      heightBase(:,k) = height(:,iSP)+(height(:,iSP+1)-height(:,iSP))/(nPoints+1)*iBase
+      heightBase(:,k) = height(:,iSP)+(height(:,iSP+1)-height(:,iSP))/(Points(iSP)+1)*iBase
   END IF
   iBase = iBase+1
 END DO
@@ -338,7 +341,7 @@ ALLOCATE(Box%TangVec(3,nRP(1),nRP(3)))
 Box%NormVec=NormVecRP
 Box%TangVec=TangVecRP
 
-DEALLOCATE(RPlist_tmp,NormVecRP,TangVecRP,coeff,s)
+DEALLOCATE(RPlist_tmp,NormVecRP,TangVecRP,coeff,s,depth,xBase,heightBase,Points)
 END SUBROUTINE GetBLBox
 
 
