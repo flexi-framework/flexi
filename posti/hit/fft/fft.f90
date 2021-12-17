@@ -247,7 +247,7 @@ SUBROUTINE Interpolate_DG2FFT(NodeType_In,nVar_In,U_DG,U_Global)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc               ,ONLY: PP_N
-USE MOD_HIT_FFT_Vars          ,ONLY: N_FFT,N_Visu
+USE MOD_HIT_FFT_Vars          ,ONLY: N_FFT,NCalc
 USE MOD_Mesh_Vars             ,ONLY: Elem_IJK,nElems
 USE MOD_Interpolation         ,ONLY: GetVandermonde
 USE MOD_ChangeBasis           ,ONLY: ChangeBasis3D
@@ -264,31 +264,31 @@ INTEGER       :: iElem
 INTEGER       :: i,ii,iGlob
 INTEGER       :: j,jj,jGlob
 INTEGER       :: k,kk,kGlob
-REAL          :: U_aux(nVar_In,0:N_Visu,0:N_Visu,0:N_Visu)
-REAL          :: VdmGaussEqui(0:N_Visu,0:PP_N)
+REAL          :: U_aux(nVar_In,0:NCalc,0:NCalc,0:NCalc)
+REAL          :: VdmGaussEqui(0:NCalc,0:PP_N)
 !===================================================================================================================================
 SWRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' INTERPOLATE DG SOLUTION TO FFT COORDS...'
 
 ! Vandermonde to interpolate from HDF5_Nodetype to equidistant points
-CALL GetVandermonde(PP_N,NodeType_In,N_Visu,'VISU_INNER',VdmGaussEqui)
+CALL GetVandermonde(PP_N,NodeType_In,NCalc,'VISU_INNER',VdmGaussEqui)
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(iElem,i,ii,iGlob,j,jj,jGlob,k,kk,kGlob,U_aux)
 !$OMP DO
 ! Loop to get the nodal U_DG solution into a global solution in ijk form
 DO iElem=1,nElems
   ! Get solution in each element on equidistant points
-  CALL ChangeBasis3D(nVar_In,PP_N,N_Visu,VdmGaussEqui,U_DG(:,:,:,:,iElem),U_aux(:,:,:,:))
+  CALL ChangeBasis3D(nVar_In,PP_N,NCalc,VdmGaussEqui,U_DG(:,:,:,:,iElem),U_aux(:,:,:,:))
 
   ! Fill the global solution array using the ijk sorting
   ii=Elem_IJK(1,iElem)
   jj=Elem_IJK(2,iElem)
   kk=Elem_IJK(3,iElem)
-  DO k=0,N_Visu
-    kGlob=(kk-1)*(N_Visu+1)+k+1
-    DO j=0,N_Visu
-      jGlob=(jj-1)*(N_Visu+1)+j+1
-      DO i=0,N_Visu
-        iGlob=(ii-1)*(N_Visu+1)+i+1
+  DO k=0,NCalc
+    kGlob=(kk-1)*(NCalc+1)+k+1
+    DO j=0,NCalc
+      jGlob=(jj-1)*(NCalc+1)+j+1
+      DO i=0,NCalc
+        iGlob=(ii-1)*(NCalc+1)+i+1
         U_Global(:,iGlob,jGlob,kGlob) = U_aux(:,i,j,k)
       END DO
     END DO
@@ -309,7 +309,7 @@ SUBROUTINE Interpolate_FFT2DG(NodeType_In,nVar_In,U_Global,U_DG)
 ! MODULES
 USE MOD_Globals
 USE MOD_PreProc               ,ONLY: PP_N
-USE MOD_HIT_FFT_Vars          ,ONLY: N_FFT,N_Visu
+USE MOD_HIT_FFT_Vars          ,ONLY: N_FFT,NCalc
 USE MOD_Mesh_Vars             ,ONLY: Elem_IJK,nElems
 USE MOD_Interpolation         ,ONLY: GetVandermonde
 USE MOD_ChangeBasis           ,ONLY: ChangeBasis3D
@@ -326,13 +326,13 @@ INTEGER       :: iElem
 INTEGER       :: i,ii,iGlob
 INTEGER       :: j,jj,jGlob
 INTEGER       :: k,kk,kGlob
-REAL          :: U_aux(nVar_In,0:N_Visu,0:N_Visu,0:N_Visu)
-REAL          :: VdmEquiGauss(0:N_Visu,0:PP_N)
+REAL          :: U_aux(nVar_In,0:NCalc,0:NCalc,0:NCalc)
+REAL          :: VdmEquiGauss(0:NCalc,0:PP_N)
 !===================================================================================================================================
 SWRITE(UNIT_stdOut,'(a)',ADVANCE='NO')' INTERPOLATE FFT SOLUTION TO DG COORDS...'
 
 ! Vandermonde to interpolate from equidistant points to HDF5_Nodetype
-CALL GetVandermonde(N_Visu,'VISU_INNER',PP_N,NodeType_In,VdmEquiGauss)
+CALL GetVandermonde(NCalc,'VISU_INNER',PP_N,NodeType_In,VdmEquiGauss)
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(iElem,i,ii,iGlob,j,jj,jGlob,k,kk,kGlob,U_aux)
 !$OMP DO
@@ -342,19 +342,19 @@ DO iElem=1,nElems
   ii=Elem_IJK(1,iElem)
   jj=Elem_IJK(2,iElem)
   kk=Elem_IJK(3,iElem)
-  DO k=0,N_Visu
-    kGlob=(kk-1)*(N_Visu+1)+k+1
-    DO j=0,N_Visu
-      jGlob=(jj-1)*(N_Visu+1)+j+1
-      DO i=0,N_Visu
-        iGlob=(ii-1)*(N_Visu+1)+i+1
+  DO k=0,NCalc
+    kGlob=(kk-1)*(NCalc+1)+k+1
+    DO j=0,NCalc
+      jGlob=(jj-1)*(NCalc+1)+j+1
+      DO i=0,NCalc
+        iGlob=(ii-1)*(NCalc+1)+i+1
         U_aux(:,i,j,k) = U_Global(:,iGlob,jGlob,kGlob)
       END DO
     END DO
   END DO
 
   ! Get solution in each element on equidistant points
-  CALL ChangeBasis3D(nVar_In,N_Visu,PP_N,VdmEquiGauss,U_aux(:,:,:,:),U_DG(:,:,:,:,iElem))
+  CALL ChangeBasis3D(nVar_In,NCalc,PP_N,VdmEquiGauss,U_aux(:,:,:,:),U_DG(:,:,:,:,iElem))
 END DO
 !$OMP END DO
 !$OMP END PARALLEL

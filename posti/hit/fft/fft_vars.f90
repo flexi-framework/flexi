@@ -24,8 +24,8 @@ SAVE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-INTEGER               :: N_FFT                !> Number of (global) interpolation points 1D for FFT
-INTEGER               :: N_Visu               !> Polynomial degree of equidistant basis in each DG element to build global FFT basis
+INTEGER               :: N_FFT                !> Number of (global) interpolation points 1D for DFFT
+INTEGER               :: NCalc                !> Polynomial degree of equidistant basis in each DG element to build global FFT basis
 INTEGER               :: Nc                   !> Nyquist wavenumber Nc=N_FFT/2
 INTEGER               :: kmax                 !> Maximum effective wavenumber in 3D
 INTEGER               :: endw(3)              !> Max. number of wavenumbers is each of the 3D directions Endw=(Nc,N_FFT,N_FFT)

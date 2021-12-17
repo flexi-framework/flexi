@@ -193,7 +193,7 @@ USE MOD_Globals
 USE MOD_PreProc
 USE MOD_HIT_Analyze_Vars,  ONLY: ProjectName_HDF5,Time_HDF5,nVar_HDF5
 USE MOD_HIT_Analyze_Vars,  ONLY: N_Filter,mu0
-USE MOD_HIT_FFT_Vars,      ONLY: N_FFT,N_Visu,Nc,kmax,Endw
+USE MOD_HIT_FFT_Vars,      ONLY: N_FFT,NCalc,Nc,kmax,Endw
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -218,7 +218,7 @@ Ekin=0.
 DO k=1,Endw(3); DO j=1,Endw(2); DO i=1,Endw(1)
   Ekin=Ekin+SUM(U_In(2:4,i,j,k)*U_In(2:4,i,j,k))
 END DO; END DO; END DO
-Ekin=0.5*Ekin/REAL(N_Visu**3)
+Ekin=0.5*Ekin/REAL(NCalc**3)
 
 ! Compute some characteristic turbulence quantities
 IntE_k = 0.
@@ -230,9 +230,9 @@ DO k=1,N_max
   ! Get integral energy
   IntE_k = IntE_k + E_k(k)
   ! Get integrand for mean dissipation rate
-  IntEps = IntEps + 0.5*(E_k(k)*k**2+E_k(k+1)*(k+1)**2)
+  IntEps = IntEps + 0.5*(E_k(k)*k**2+E_k(k+1)*(k+1)**2)         ! trapezoidal rule
   ! Get integrand for integral scale
-  IntInt = IntInt + 0.5*( E_k(k)/REAL(k) + E_k(k+1)/REAL(k+1) )
+  IntInt = IntInt + 0.5*( E_k(k)/REAL(k) + E_k(k+1)/REAL(k+1) ) ! trapezoidal rule
 END DO
 
 ! Compute turbulence statistics
@@ -318,7 +318,7 @@ LOGICAL                          :: userblockFound
 CHARACTER(LEN=255)               :: prmfile=".parameter.ini"
 INTEGER                          :: iElem
 !===================================================================================================================================
-SWRITE(Unit_StdOut,('(3A)') "READING SOLUTION FROM STATE FILE """,TRIM(StateFile), """"
+SWRITE(Unit_StdOut,('(3A)')) "READING SOLUTION FROM STATE FILE """,TRIM(StateFile), """"
 
 ! Get start index of file extension to check if it is a h5 file
 IF (.NOT.STRICMP(GetFileExtension(StateFile), 'h5')) &

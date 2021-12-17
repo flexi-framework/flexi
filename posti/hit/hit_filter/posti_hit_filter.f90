@@ -26,7 +26,7 @@ USE MOD_ReadInTools
 USE MOD_Commandline_Arguments
 USE MOD_StringTools,             ONLY: STRICMP,GetFileExtension
 USE MOD_HIT_FFT,                 ONLY: InitFFT,FinalizeFFT
-USE MOD_HIT_FFT_Vars,            ONLY: N_FFT,N_Visu
+USE MOD_HIT_FFT_Vars,            ONLY: N_FFT,NCalc
 USE MOD_DG_Vars,                 ONLY: U
 USE MOD_Mesh,                    ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
 USE MOD_Mesh_Vars,               ONLY: nElems_IJK,MeshFile
@@ -90,7 +90,7 @@ CALL DefineParametersMesh()
 ! Parameters for HIT_Filter
 CALL prms%SetSection("HIT_Filter")
 CALL prms%CreateIntOption("N_Filter" , "Maximum wavenumber for cutoff filter.")
-CALL prms%CreateIntOption("N_Visu"   , "Polynomial degree in each element for global DFFT basis.")
+CALL prms%CreateIntOption("NCalc"    , "Polynomial degree in each element for global DFFT basis.")
 
 ! check for command line argument --help or --markdown
 IF (doPrintHelp.GT.0) THEN
@@ -107,7 +107,7 @@ ParameterFile = Args(1)
 
 ! Readin Parameters
 N_Filter = GETINT('N_Filter','-1')
-N_Visu   = GETINT('N_Visu')
+NCalc    = GETINT('NCalc')
 MeshFile_prm = GETSTR('MeshFile','')
 
 ! Initialize IO
@@ -159,7 +159,7 @@ DO iArg=2,nArgs
     END IF
 
     ! Get new number of points for fourier analysis
-    N_FFT=(N_Visu+1)*nElems_IJK(1)
+    N_FFT=(NCalc+1)*nElems_IJK(1)
   END IF
 
   IF(changedMeshFile .OR. changedN) THEN
