@@ -685,7 +685,7 @@ IF (OutputBoxes) THEN
       END DO ! j
     END DO ! k
     IF (Box_LocalCoords) THEN
-      RPBoxes(iBoxesOutput)%Coords(1:2,:,:,:)         = Box%LocalCoord(:,:,:,:)
+      RPBoxes(iBoxesOutput)%Coords(1:3,:,:,:)         = Box%LocalCoord(:,:,:,:)
       RPBoxes(iBoxesOutput)%Val(nVal+1:nVal+3,:,:,:)  = BoxCoord
     ELSE
       RPBoxes(iBoxesOutput)%Coords(:,:,:,:)           = BoxCoord
@@ -725,6 +725,7 @@ SUBROUTINE WriteBLPropsToVTK(FileString)
 USE MOD_Globals
 USE MOD_VTKStructuredOutput
 USE MOD_EquationRP_Vars    ,ONLY: nBLProps,VarNames_BLProps
+USE MOD_ParametersVisu     ,ONLY: Plane_doBLProps,Box_doBLProps
 USE MOD_RPSetVisuVisu_Vars ,ONLY: GroupNames
 USE MOD_RPSetVisuVisu_Vars ,ONLY: nPlanes,Planes,tPlane
 USE MOD_RPSetVisuVisu_Vars ,ONLY: nBoxes,Boxes,tBox
@@ -760,7 +761,7 @@ VarNamesLoc(nBLProps+3) = 'GlobalCoordinateZ'
 nPlanesOutput = 0
 DO iPlane=1,nPlanes
   Plane=>Planes(iPlane)
-  IF((.NOT.OutputGroup(Plane%GroupID)).OR.(Plane%Type.NE.2)) CYCLE
+  IF((.NOT.OutputGroup(Plane%GroupID)).OR.(Plane%Type.NE.2).OR.(.NOT.Plane_doBLProps)) CYCLE
   nPlanesOutput = nPlanesOutput + 1
 END DO ! iPlane
 ! The output of the boundary layer properties is done as a line (the bottom of the plane)
@@ -770,7 +771,7 @@ END IF
 iPlanesOutput = 0
 DO iPlane=1,nPlanes
   Plane=>Planes(iPlane)
-  IF((.NOT.OutputGroup(Plane%GroupID)).OR.(Plane%Type.NE.2)) CYCLE
+  IF((.NOT.OutputGroup(Plane%GroupID)).OR.(Plane%Type.NE.2).OR.(.NOT.Plane_doBLProps)) CYCLE
   iPlanesOutput = iPlanesOutput + 1
   RPLines(iPlanesOutput)%nRPs = Plane%nRP(1)
   ALLOCATE(RPLines(iPlanesOutput)%Coords(3      ,Plane%nRP(1)))
@@ -781,7 +782,7 @@ END DO ! iPlane
 nBoxesOutput = 0
 DO iBox=1,nBoxes
   Box=>Boxes(iBox)
-  IF((.NOT.OutputGroup(Box%GroupID)).OR.(Box%Type.NE.1)) CYCLE
+  IF((.NOT.OutputGroup(Box%GroupID)).OR.(Box%Type.NE.1).OR.(.NOT.Box_doBLProps)) CYCLE
   nBoxesOutput = nBoxesOutput + 1
 END DO ! iBox
 ! The output of the boundary layer properties is done as a line (the bottom of the Box)
@@ -791,7 +792,7 @@ END IF
 iBoxesOutput = 0
 DO iBox=1,nBoxes
   Box=>Boxes(iBox)
-  IF((.NOT.OutputGroup(Box%GroupID)).OR.(Box%Type.NE.1)) CYCLE
+  IF((.NOT.OutputGroup(Box%GroupID)).OR.(Box%Type.NE.1).OR.(.NOT.Box_doBLProps)) CYCLE
   iBoxesOutput = iBoxesOutput + 1
   RPPlanes(iBoxesOutput)%nRPs = Box%nRP(1)
   ALLOCATE(RPPlanes(iBoxesOutput)%Coords(3      ,Box%nRP(1),Box%nRP(3)))
@@ -804,7 +805,7 @@ END DO ! iBox
 iPlanesOutput = 0
 DO iPlane=1,nPlanes
   Plane=>Planes(iPlane)
-  IF((.NOT.OutputGroup(Plane%GroupID)).OR.(Plane%Type.NE.2)) CYCLE
+  IF((.NOT.OutputGroup(Plane%GroupID)).OR.(Plane%Type.NE.2).OR.(.NOT.Plane_doBLProps)) CYCLE
   iPlanesOutput = iPlanesOutput + 1
   ! coordinates
   RPLines(iPlanesOutput)%Coords(1:2,:) = Plane%LocalCoord(:,:,1)
@@ -822,10 +823,10 @@ END DO ! iPlane
 iBoxesOutput = 0
 DO iBox=1,nBoxes
   Box=>Boxes(iBox)
-  IF((.NOT.OutputGroup(Box%GroupID)).OR.(Box%Type.NE.1)) CYCLE
+  IF((.NOT.OutputGroup(Box%GroupID)).OR.(Box%Type.NE.1).OR.(.NOT.Box_doBLProps)) CYCLE
   iBoxesOutput = iBoxesOutput + 1
   ! coordinates
-  RPPlanes(iBoxesOutput)%Coords(1:2,:,:) = Box%LocalCoord(:,:,1,:)
+  RPPlanes(iBoxesOutput)%Coords(1:3,:,:) = Box%LocalCoord(:,:,1,:)
   ! global xyz coordinates
   DO j=1,Box%nRP(3)
     DO i=1,Box%nRP(1)

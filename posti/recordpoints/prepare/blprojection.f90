@@ -202,6 +202,8 @@ IF (MOD((nRP(3)-nSP),(nSP-1)).GT.0) THEN
   ! Overwrite Box Resolution
   WRITE(*,'(A,I4,A,I4,A)') "Number of points in z does not match number of splines. Setting nRP(3) from ",Box%nRP(3)," to ",nRP(3),"!"
   Box%nRP(3) = nRP(3)
+ELSE
+  nPoints = nRP(3)
 END IF
 
 ALLOCATE(RPlist_tmp(nRP(1),nRP(3)))
@@ -317,7 +319,6 @@ DO k=1,nRP(3)
     ! linear interpolation of the height between control points
     DO WHILE(s(iCP,k).LT.(s_loc-100.*PP_RealTolerance))
       iCP=iCP+1
-      print*,iCP
     END DO
     iCP=MIN(iCP,nCP)
   !  IF(s_loc.GE.s(iCP)) iCP=MAX(iCP+1,nCP)

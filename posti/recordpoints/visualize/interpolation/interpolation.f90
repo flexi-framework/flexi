@@ -189,9 +189,9 @@ USE MOD_RPData_Vars          ,ONLY: RPTime,nVar_HDF5
 USE MOD_RPSetVisuVisu_Vars ,  ONLY: nRP_HDF5,RPOutMap
 USE MOD_RPInterpolation_Vars
 USE MOD_ParametersVisu       ,ONLY: nVarVisu,EquiTimeSpacing
-USE MOD_ParametersVisu       ,ONLY: Line_LocalVel,Plane_LocalVel
+USE MOD_ParametersVisu       ,ONLY: Line_LocalVel,Plane_LocalVel,Box_LocalVel
 USE MOD_OutputRPVisu_Vars    ,ONLY: nSamples_out,RPData_out,RPDataTimeAvg_out
-USE MOD_EquationRP           ,ONLY: Line_TransformVel,Plane_TransformVel
+USE MOD_EquationRP           ,ONLY: Line_TransformVel,Plane_TransformVel,Box_TransformVel
 USE MOD_HDF5_Input
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -253,6 +253,8 @@ ELSE
     CALL Line_TransformVel(temparray2,1)
   IF(Plane_LocalVel) &
     CALL Plane_TransformVel(temparray2,1)
+  IF(Box_LocalVel) &
+    CALL Box_TransformVel(temparray2,1)
   ! Save in the TimeAvg array
   RPDataTimeAvg_out=temparray2(:,:,1)
   DEALLOCATE(temparray2)

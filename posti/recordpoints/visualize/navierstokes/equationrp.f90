@@ -514,7 +514,7 @@ END SELECT
 
 DO iBox=1,nBoxes
   Box=>Boxes(iBox)
-  IF(Box%Type.EQ.2) THEN ! BLBox
+  IF(Box%Type.EQ.1) THEN ! BLBox
     ALLOCATE(Box%BLProps(nBLProps,1:Box%nRP(1),1:Box%nRP(3)))
     DO k=1,Box%nRP(3)
       DO i=1,Box%nRP(1)
