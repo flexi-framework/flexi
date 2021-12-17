@@ -351,14 +351,6 @@ ALLOCATE(U( 1:nVar_HDF5,0:N_HDF5,0:N_HDF5,0:N_HDF5,1:nElems_HDF5))
 CALL ReadArray('DG_Solution',5,&
                (/nVar_HDF5,N_HDF5+1,N_HDF5+1,N_HDF5+1,nElems_HDF5/),0,5,RealArray=U)
 
-! Check for FV-Subcells
-DO iElem=1,nElems_HDF5
-  IF (FV_Elems(iElem).EQ.1) THEN ! FV Element
-    SWRITE(Unit_StdOut,'(A,I0)')'FV Subcells detected in Element', iElem
-    CALL CollectiveStop(__STAMP__,'ERROR - Programm cannot handle FV Subcells!')
-  END IF
-END DO
-
 ! Read the attributes from file
 CALL ReadAttribute(File_ID,'Time',1,RealScalar=Time_HDF5)
 CALL ReadAttribute(File_ID,'Project_Name',1,StrScalar=ProjectName_HDF5)
