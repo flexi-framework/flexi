@@ -109,7 +109,7 @@ MeshFile_prm = GETSTR('MeshFile','')
 NCalc    = GETINT('NCalc')
 N_Filter = GETINT('N_Filter','-1')
 #if PARABOLIC
-mu0      = GETREAL('mu0','0.')
+mu0      = GETREAL('mu0')
 #endif
 
 ! Initialize IO

@@ -111,7 +111,7 @@ Seed     = GETINT('Seed','0')
 MeshFile = GETSTR('MeshFile')
 
 ! Get variables for flow field
-Kappa = GETREAL('Kappa','1.4')
+Kappa = GETREAL('Kappa')
 rho0  = GETREAL('rho0', '1.0')
 Ma0   = GETREAL('Ma0',  '0.1')
 
