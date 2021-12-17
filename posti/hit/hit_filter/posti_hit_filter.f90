@@ -29,7 +29,7 @@ USE MOD_HIT_FFT,                 ONLY: InitFFT,FinalizeFFT
 USE MOD_HIT_FFT_Vars,            ONLY: N_FFT,NCalc
 USE MOD_DG_Vars,                 ONLY: U
 USE MOD_Mesh,                    ONLY: DefineParametersMesh,InitMesh,FinalizeMesh
-USE MOD_Mesh_Vars,               ONLY: nElems_IJK,MeshFile
+USE MOD_Mesh_Vars,               ONLY: nElems_IJK,Elem_IJK,MeshFile
 USE MOD_Mesh_ReadIn,             ONLY: ReadIJKSorting
 USE MOD_Interpolation,           ONLY: DefineParametersInterpolation,InitInterpolation,FinalizeInterpolation
 USE MOD_IO_HDF5,                 ONLY: DefineParametersIO_HDF5,InitIOHDF5,FinalizeIOHDF5
@@ -152,6 +152,11 @@ DO iArg=2,nArgs
       CALL InitMesh(MeshMode=0,MeshFile_In=MeshFile_prm)
     END IF
     CALL ReadIJKSorting() ! Read global xyz sorting of structured mesh
+
+    ! Check if found
+    IF(.NOT.ALLOCATED(Elem_IJK)) THEN
+      CALL ABORT(__STAMP__,'Mesh does not contain IJK sorting which is however mandatory!')
+    END IF
 
     ! Currently only cubic meshes are allowed!
     IF(.NOT.((nElems_IJK(1).EQ.nElems_IJK(2)).AND.(nElems_IJK(1).EQ.nElems_IJK(3)))) THEN
