@@ -20,16 +20,6 @@ PRIVATE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-! Private Part ---------------------------------------------------------------------------------------------------------------------
-INTERFACE GetCompressibleState
-  MODULE PROCEDURE GetCompressibleState
-END INTERFACE
-
-INTERFACE ExactSpectrum
-  MODULE PROCEDURE ExactSpectrum
-END INTERFACE
-
-! Public Part ----------------------------------------------------------------------------------------------------------------------
 INTERFACE Rogallo
   MODULE PROCEDURE Rogallo
 END INTERFACE
