@@ -16,6 +16,7 @@
 # $1: CMAKE_RUNTIME_OUTPUT_DIRECTORY
 # $2: CMAKE_CACHEFILE_DIR
 # $3: CMAKE_CACHE_MAJOR_VERSION.CMAKE_CACHE_MINOR_VERSION.CMAKE_CACHE_PATCH_VERSION
+# $4: CMAKE_CURRENT_SOURCE_DIR
 
 if [ ! -d "$1" ]; then
   exit 1;
@@ -104,9 +105,7 @@ echo "{[( COMPILER VERSIONS )]}"           >> $1/userblock.txt
 cat CMakeFortranCompiler.cmake             >> $1/userblock.txt
 
 cd "$1" # go back to the runtime output directory
-# Compress the userblock
-tar cJf userblock.tar.xz userblock.txt
 
-# Build the module
-objcopy -I binary -O elf64-x86-64 -B i386 --redefine-sym _binary_userblock_tar_xz_start=userblock_start --redefine-sym _binary_userblock_tar_xz_end=userblock_end --redefine-sym _binary_userblock_tar_xz_size=userblock_size userblock.tar.xz userblock.o
-rm userblock.tar.xz
+sed -i -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/^/   fprintf(fp, "/' -e 's/$/\\n");/' userblock.txt
+cp "$4/src/output/userblock/read_userblock.c" .
+sed -i -e '/INSERT_BUILD_INFO_HERE/r userblock.txt' read_userblock.c
