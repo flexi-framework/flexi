@@ -15,7 +15,7 @@ void copy_userblock(char* outfilename, char* infilename)
    fclose(fout);
 }
 
-void print_userblock(char* filename, char* inifilename) 
+void print_userblock(char* filename, char* inifilename)
 {
    FILE* fp = fopen(filename, "w");
    rewind(fp);
@@ -31,7 +31,7 @@ void print_userblock(char* filename, char* inifilename)
    } while (c != EOF);
    fclose(fini);
 
-   /*the shell script generate_userblock.sh copies 
+   /*the shell script generate_userblock.sh copies
     * this file into the build directory and inserts
     * print commands for the build info here. */
 
@@ -40,4 +40,3 @@ void print_userblock(char* filename, char* inifilename)
    fprintf(fp, "{[( END USERBLOCK )]}\n");
    fclose(fp);
 }
-
