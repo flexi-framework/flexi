@@ -34,11 +34,22 @@ REAL,ALLOCATABLE       :: eRatio(:)             !< Analysis data for LAF model
 REAL,ALLOCATABLE       :: r(:)                  !< Analysis data for LAF model
 REAL,ALLOCATABLE       :: ekin_avg_old(:)       !< cell integral value for ekin avg (LAF)
 REAL,ALLOCATABLE       :: ekin_fluc_avg_old(:)  !< cell integral value for ekin fluc avg (LAF))
-REAL,ALLOCATABLE       :: Vol(:)                !< cell volume for averaging (LAF)
-REAL,ALLOCATABLE       :: Integrationweight(:,:,:,:)  !< integration weights (LAF)
+REAL,ALLOCATABLE       :: IntegrationWeight(:,:,:,:,:)  !< integration weights (LAF or PPLimiter)
 REAL                   :: normMod               !< spectral normalization (LAF)
-REAL,ALLOCATABLE       :: J_N(:,:,:)            !< Jacobi for volume integral (LAF)
 REAL                   :: LAF_alpha             !< Relaxation factor (LAF)
+#endif
+#if PP_LIMITER
+LOGICAL                :: DoPPLimiter            !< Toggles PP Limiter
+INTEGER                :: iPPRefState            !< RefState index for limiter threshold (multiplied with PPEpsFac)
+REAL                   :: PPEpsFac               !< limiter threashold factor (mulitplied with refstate to obtain threshold)
+REAL                   :: PPepsDens              !< limiter density threashold
+REAL                   :: PPepsPres              !< limiter pressure threashold
+INTEGER,ALLOCATABLE    :: PP_Elems(:)            !< List of Elements that got limited
+INTEGER,ALLOCATABLE    :: PP_Elems_counter(:)    !< counts for every element the RK stages it was PP limited, nullified after
+                                                 !< hdf5-output
+INTEGER                :: PP_Switch_counter      !< counts how often element is PP limited is called, nullified after hdf5-output
+                                                 !< should be identical to nTimesteps * nRkStages
+REAL,ALLOCATABLE       :: PP_Elems_Amount(:)     !< counts for every element the RK stages it was PP limited, nullified after
 #endif
 !==================================================================================================================================
 END MODULE MOD_Filter_Vars
