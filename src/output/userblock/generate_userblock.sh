@@ -104,8 +104,15 @@ cd "$3"
 echo "{[( COMPILER VERSIONS )]}"           >> $1/userblock.txt
 cat CMakeFortranCompiler.cmake             >> $1/userblock.txt
 
-cd "$1" # go back to the runtime output directory
 
-sed -i -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/^/   fprintf(fp, "/' -e 's/$/\\n");/' userblock.txt
+cd "$1" # go back to the runtime output directory
+# generate C print commands to print userblock: 
+#      replace \ by \\
+#                    replace " by \"
+#                                              prepend fprintf to line
+#                                                              append end of line 
+sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/^/   fprintf(fp, "/' -e 's/$/\\n");/' userblock.txt > userblock_print.txt
+# copy empty source file template
 cp "$4/src/output/userblock/read_userblock.c" .
-sed -i -e '/INSERT_BUILD_INFO_HERE/r userblock.txt' read_userblock.c
+# insert userblock print commands
+sed -i -e '/INSERT_BUILD_INFO_HERE/r userblock_print.txt' read_userblock.c

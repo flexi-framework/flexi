@@ -302,13 +302,16 @@ ENDIF()
 
 # Userblock
 EXECUTE_PROCESS(COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/src/output/userblock/read_userblock.c ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
-ADD_CUSTOM_TARGET(copyUserblock COMMAND sh ${CMAKE_CURRENT_SOURCE_DIR}/src/output/userblock/generate_userblock.sh ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} ${CMAKE_CACHEFILE_DIR} "${CMAKE_CACHE_MAJOR_VERSION}.${CMAKE_CACHE_MINOR_VERSION}.${CMAKE_CACHE_PATCH_VERSION}" ${CMAKE_CURRENT_SOURCE_DIR})
+ADD_CUSTOM_TARGET(generateUserblock COMMAND sh ${CMAKE_CURRENT_SOURCE_DIR}/src/output/userblock/generate_userblock.sh 
+                                               ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} 
+                                               ${CMAKE_CACHEFILE_DIR} 
+                                               "${CMAKE_CACHE_MAJOR_VERSION}.${CMAKE_CACHE_MINOR_VERSION}.${CMAKE_CACHE_PATCH_VERSION}" 
+                                               ${CMAKE_CURRENT_SOURCE_DIR})
 ADD_LIBRARY(userblocklib STATIC ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/read_userblock.c)
-ADD_DEPENDENCIES(userblocklib copyUserblock)
+ADD_DEPENDENCIES(userblocklib generateUserblock)
 
 ADD_LIBRARY(stacksizelib STATIC ./src/globals/stacksize.c)
-SET_TARGET_PROPERTIES(stacksizelib userblocklib PROPERTIES LINKER_LANGUAGE C
-                                                           COMPILE_FLAGS "-fPIC")
+SET_TARGET_PROPERTIES(stacksizelib userblocklib PROPERTIES LINKER_LANGUAGE C COMPILE_FLAGS "-fPIC")
 
 # we link the statically built libs
 ADD_LIB_SHARED(       libflexishared ./src/flexilib.f90)
