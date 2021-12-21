@@ -45,6 +45,20 @@ IF(FLEXI_SPLIT_DG)
 ENDIF()
 
 # =========================================================================
+# PPLimiter
+# =========================================================================
+OPTION(FLEXI_PP_LIMITER "Enable Positivity Preserving Limiter" OFF)
+IF(FLEXI_PP_LIMITER)
+  ADD_DEFINITIONS(-DPP_LIMITER)
+  IF(FLEXI_NODETYPE STREQUAL "GAUSS")
+    MESSAGE(WARNING "Positivity Preserving Limiter only works on volume interpolation points. Positivity on faces is not guaranteed with FLEXI_NODETYPE==GAUSS." )
+  ENDIF()
+  IF(NOT FLEXI_EQNSYSNAME STREQUAL "navierstokes")
+    MESSAGE(SEND_ERROR "FLEXI_PP_LIMITER only works for FLEXI_EQNSYSNAME==navierstokes.")
+  ENDIF()
+ENDIF()
+
+# =========================================================================
 # Equation system
 # =========================================================================
 SET(FLEXI_EQNSYSNAME "navierstokes" CACHE STRING
