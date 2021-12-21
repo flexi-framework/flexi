@@ -349,7 +349,7 @@ USE MOD_IO_HDF5,       ONLY: File_ID,HSize
 USE MOD_Swapmesh_Vars, ONLY: nVar_State,NState,nElemsOld,Time_State,UOld,NNew,nElemsNew
 USE MOD_ReadInTools,   ONLY: ExtractParameterFile,ModifyParameterFile
 USE MOD_Output_Vars,   ONLY: UserBlockTmpFile,userblock_total_len
-USE MOD_Output,        ONLY: insert_userblock
+USE MOD_Output,        ONLY: print_userblock
 USE MOD_Equation_Vars, ONLY: StrVarNames
 USE MOD_DG_Vars,       ONLY: U
 USE ISO_C_BINDING,     ONLY: C_NULL_CHAR
@@ -430,7 +430,7 @@ CALL ExtractParameterFile(StateFile,TRIM(prmfile),userblockFound)
 ! Modify the polynomial degree in the parameterfile to NNew
 CALL ModifyParameterFile(TRIM(prmfile),'N',NNew,userblockFound)
 ! prepare userblock file
-CALL insert_userblock(TRIM(UserBlockTmpFile)//C_NULL_CHAR,TRIM(prmfile)//C_NULL_CHAR)
+CALL print_userblock(TRIM(UserBlockTmpFile)//C_NULL_CHAR,TRIM(prmfile)//C_NULL_CHAR)
 INQUIRE(FILE=TRIM(UserBlockTmpFile),SIZE=userblock_total_len)
 
 ! Close the data file
