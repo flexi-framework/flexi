@@ -175,6 +175,10 @@ USE MOD_Implicit_Vars       ,ONLY: nGMRESIterGlobal,nNewtonIterGlobal
 USE MOD_FV
 #endif
 use MOD_IO_HDF5
+#if PP_LIMITER
+USE MOD_PPLimiter           ,ONLY: PPLimiter,PPLimiter_Info
+USE MOD_Filter_Vars         ,ONLY: DoPPLimiter
+#endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -227,6 +231,9 @@ IF(doCalcIndicator) CALL CalcIndicator(U,t)
 IF(.NOT.DoRestart)THEN
   CALL FV_FillIni()
 END IF
+#endif
+#if PP_LIMITER
+IF(DoPPLimiter) CALL PPLimiter()
 #endif
 
 IF(.NOT.DoRestart)THEN
@@ -283,6 +290,9 @@ END IF
 #if FV_ENABLED
 CALL FV_Info(1_8)
 #endif
+#if PP_LIMITER
+CALL PPLimiter_Info(1_8)
+#endif
 SWRITE(UNIT_StdOut,*)'CALCULATION RUNNING...'
 
 IF(TimeDiscType.EQ.'ESDIRK') CALL FillInitPredictor(t)
@@ -299,6 +309,9 @@ DO
     IF(doCalcIndicator) CALL CalcIndicator(U,t)
 #if FV_ENABLED
     CALL FV_Switch(U,AllowToDG=(nCalcTimestep.LT.1))
+#endif
+#if PP_LIMITER
+    IF(DoPPLimiter) CALL PPLimiter()
 #endif
     CALL DGTimeDerivative_weakForm(t)
   END IF
@@ -379,7 +392,7 @@ DO
       WRITE(UNIT_StdOut,'(A,ES16.7)')' Timestep   : ',dt_Min
       IF(ViscousTimeStep) WRITE(UNIT_StdOut,'(A)')' Viscous timestep dominates! '
       WRITE(UNIT_stdOut,'(A,ES16.7)')'#Timesteps  : ',REAL(iter)
-      IF(TimeDiscType.EQ.'ESDIRK') THEN 
+      IF(TimeDiscType.EQ.'ESDIRK') THEN
         WRITE(UNIT_stdOut,'(A,ES16.7)')'#GMRES iter  : ',REAL(nGMRESIterGlobal)
         WRITE(UNIT_stdOut,'(A,ES16.7)')'#Newton iter : ',REAL(nNewtonIterGlobal)
         nGMRESIterGlobal  = 0
@@ -388,6 +401,10 @@ DO
     END IF !MPIroot
 #if FV_ENABLED
     CALL FV_Info(iter_loc)
+#endif
+
+#if PP_LIMITER
+    CALL PPLimiter_Info(iter_loc)
 #endif
 
     ! Visualize data and write solution
@@ -443,6 +460,10 @@ USE MOD_Indicator    ,ONLY: doCalcIndicator,CalcIndicator
 USE MOD_FV           ,ONLY: FV_Switch
 USE MOD_FV_Vars      ,ONLY: FV_toDGinRK
 #endif
+#if PP_LIMITER
+USE MOD_PPLimiter    ,ONLY: PPLimiter
+USE MOD_Filter_Vars  ,ONLY: DoPPLimiter
+#endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -464,6 +485,9 @@ tStage=t
 !CALL DGTimeDerivative_weakForm(tStage)      !allready called in timedisc
 CALL VCopy(nTotalU,Ut_temp,Ut)               !Ut_temp = Ut
 CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(1))    !U       = U + Ut*b_dt(1)
+#if PP_LIMITER
+IF(DoPPLimiter) CALL PPLimiter()
+#endif
 
 
 ! Following steps
@@ -473,10 +497,16 @@ DO iStage=2,nRKStages
   IF(doCalcIndicator) CALL CalcIndicator(U,t)
 #if FV_ENABLED
   CALL FV_Switch(U,Ut_temp,AllowToDG=FV_toDGinRK)
+#if PP_LIMITER
+  IF(DoPPLimiter) CALL PPLimiter()
+#endif
 #endif
   CALL DGTimeDerivative_weakForm(tStage)
   CALL VAXPBY(nTotalU,Ut_temp,Ut,ConstOut=-RKA(iStage)) !Ut_temp = Ut - Ut_temp*RKA(iStage)
-  CALL VAXPBY(nTotalU,U,Ut_temp,ConstIn =b_dt(iStage))  !U       = U + Ut_temp*b_dt(iStage)
+  CALL VAXPBY(nTotalU,U,Ut_temp,ConstIn =b_dt(iStage))  !U       = U  + Ut_temp*b_dt(iStage)
+#if PP_LIMITER
+  IF(DoPPLimiter) CALL PPLimiter()
+#endif
 END DO
 CurrentStage=1
 
@@ -504,6 +534,10 @@ USE MOD_Indicator    ,ONLY: doCalcIndicator,CalcIndicator
 USE MOD_FV           ,ONLY: FV_Switch
 USE MOD_FV_Vars      ,ONLY: FV_toDGinRK
 #endif
+#if PP_LIMITER
+USE MOD_PPLimiter    ,ONLY: PPLimiter
+USE MOD_Filter_Vars  ,ONLY: DoPPLimiter
+#endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -530,6 +564,9 @@ CALL VCopy(nTotalU,Uprev,U)                    !Uprev=U
 CALL VCopy(nTotalU,S2,U)                       !S2=U
 !CALL DGTimeDerivative_weakForm(t)             ! allready called in timedisc
 CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(1))      !U      = U + Ut*b_dt(1)
+#if PP_LIMITER
+IF(DoPPLimiter) CALL PPLimiter()
+#endif
 
 DO iStage=2,nRKStages
   CurrentStage=iStage
@@ -537,12 +574,18 @@ DO iStage=2,nRKStages
   IF(doCalcIndicator) CALL CalcIndicator(U,t)
 #if FV_ENABLED
   CALL FV_Switch(U,Uprev,S2,AllowToDG=FV_toDGinRK)
+#if PP_LIMITER
+  IF(DoPPLimiter) CALL PPLimiter()
+#endif
 #endif
   CALL DGTimeDerivative_weakForm(tStage)
-  CALL VAXPBY(nTotalU,S2,U,ConstIn=RKdelta(iStage))                !S2 = S2 + U*RKdelta(iStage)
-  CALL VAXPBY(nTotalU,U,S2,ConstOut=RKg1(iStage),ConstIn=RKg2(iStage)) !U = RKg1(iStage)*U + RKg2(iStage)*S2
-  CALL VAXPBY(nTotalU,U,Uprev,ConstIn=RKg3(iStage))                !U = U + RKg3(ek)*Uprev
-  CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(iStage))                   !U = U + Ut*b_dt(iStage)
+  CALL VAXPBY(nTotalU,S2,U,ConstIn=RKdelta(iStage))                    !S2 = S2 + U*RKdelta(iStage)
+  CALL VAXPBY(nTotalU,U,S2,ConstOut=RKg1(iStage),ConstIn=RKg2(iStage)) !U  = RKg1(iStage)*U + RKg2(iStage)*S2
+  CALL VAXPBY(nTotalU,U,Uprev,ConstIn=RKg3(iStage))                    !U  = U + RKg3(ek)*Uprev
+  CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(iStage))                       !U  = U + Ut*b_dt(iStage)
+#if PP_LIMITER
+  IF(DoPPLimiter) CALL PPLimiter()
+#endif
 END DO
 CurrentStage=1
 
@@ -606,7 +649,7 @@ DO iStage=2,nRKStages
     END DO
     ! Get predictor of u^s+1
     CALL Predictor(tStage,iStage)
-    ! Solve to new stage 
+    ! Solve to new stage
     CALL Newton(tStage,RKA_implicit(iStage,iStage))
     ! Store old values for use in next stages
     !CALL DGTimeDerivative_weakForm(tStage) ! already set in last Newton iteration

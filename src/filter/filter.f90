@@ -66,6 +66,9 @@ CONTAINS
 SUBROUTINE DefineParametersFilter()
 ! MODULES
 USE MOD_ReadInTools ,ONLY: prms,addStrListEntry
+#if PP_LIMITER
+USE MOD_PPLimiter   ,ONLY: DefineParametersPPLimiter
+#endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT / OUTPUT VARIABLES
@@ -82,6 +85,9 @@ CALL addStrListEntry('FilterType','laf',   FILTERTYPE_LAF)
 CALL prms%CreateIntOption(             'NFilter',           "Cut-off mode (FilterType==CutOff or LAF)")
 CALL prms%CreateRealOption(            'LAF_alpha',         "Relaxation factor for LAF, see Flad et al. JCP 2016")
 CALL prms%CreateRealArrayOption(       'HestFilterParam',   "Parameters for Hesthaven filter (FilterType==Modal)")
+#if PP_LIMITER
+CALL DefineParametersPPLimiter()
+#endif
 END SUBROUTINE DefineParametersFilter
 
 
@@ -103,12 +109,16 @@ USE MOD_IO_HDF5           ,ONLY:AddToElemData,ElementOut
 USE MOD_Interpolation_Vars,ONLY:wGP
 USE MOD_Mesh_Vars         ,ONLY:nElems,sJ
 #endif
+#if PP_LIMITER
+USE MOD_PPLimiter         ,ONLY: InitPPLimiter
+#endif
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 INTEGER             :: iDeg
+REAL                :: Vol
 #if EQNSYSNR==2
 INTEGER             :: iElem,i,j,k
 #endif
@@ -148,34 +158,31 @@ IF(FilterType.GT.0) THEN
     DO iDeg=0,NFilter
       FilterMat(iDeg,iDeg) = 1.
     END DO
-    ALLOCATE(J_N(0:PP_N,0:PP_N,0:PP_NZ))
     ALLOCATE(lim(nElems))
     ALLOCATE(eRatio(nElems))
     ALLOCATE(r(nElems))
     ALLOCATE(ekin_avg_old(nElems))
     ALLOCATE(ekin_fluc_avg_old(nElems))
-    ALLOCATE(Vol(nElems))
-    ALLOCATE(Integrationweight(0:PP_N,0:PP_N,0:PP_NZ,nElems))
+    ALLOCATE(IntegrationWeight(0:PP_N,0:PP_N,0:PP_NZ,nElems,0:0))
     CALL AddToElemData(ElementOut,'LAF_eRatio',RealArray=eRatio)
     CALL AddToElemData(ElementOut,'LAF_lim'   ,RealArray=lim)
     CALL AddToElemData(ElementOut,'LAF_r'     ,RealArray=r)
-    Vol = 0.
     DO iElem=1,nElems
-      J_N(0:PP_N,0:PP_N,0:PP_NZ)=1./sJ(:,:,:,iElem,0)
+      Vol = 0.
       DO k=0,PP_NZ
         DO j=0,PP_N
           DO i=0,PP_N
 #if PP_dim == 3
-            IntegrationWeight(i,j,k,iElem) = wGP(i)*wGP(j)*wGP(k)*J_N(i,j,k)
+            IntegrationWeight(i,j,k,iElem,0) = wGP(i)*wGP(j)*wGP(k)/sJ(i,j,k,iElem,0)
 #else
-            IntegrationWeight(i,j,k,iElem) = wGP(i)*wGP(j)*J_N(i,j,k)
+            IntegrationWeight(i,j,k,iElem,0) = wGP(i)*wGP(j)/sJ(i,j,k,iElem,0)
 #endif
-            Vol(iElem) = Vol(iElem) + IntegrationWeight(i,j,k,iElem)
+            Vol = Vol + IntegrationWeight(i,j,k,iElem,0)
           END DO ! i
         END DO ! j
       END DO ! k
+      IntegrationWeight(:,:,:,iElem,0) = IntegrationWeight(:,:,:,iElem,0) / Vol
     END DO !iElem
-    DEALLOCATE(J_N)
 
   ! Compute normalization for LAF
     normMod=((REAL(NFilter)+1)**(-2./3.)-2.**(-2./3.))/(REAL(PP_N+1)**(-2./3.)-REAL(NFilter+1)**(-2./3.))
@@ -202,6 +209,9 @@ IF(FilterType.GT.0) THEN
   FilterMat=MATMUL(MATMUL(Vdm_Leg,FilterMat),sVdm_Leg)
 END IF !FilterType=0
 
+#if PP_LIMITER
+CALL InitPPLimiter()
+#endif
 FilterInitIsDone = .TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT FILTER DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
@@ -255,7 +265,7 @@ END SUBROUTINE HestFilter
 !> defined by (N_out+1) interpolation point  positions xi_Out(0:N_Out)
 !>  xi is defined in the 1DrefElem xi=[-1,1]
 !==================================================================================================================================
-PPURE SUBROUTINE Filter(U_in,FilterMat)
+SUBROUTINE Filter(U_in,FilterMat)
 ! MODULES
 USE MOD_PreProc
 USE MOD_ChangeBasisByDim,  ONLY: ChangeBasisVolume
@@ -290,7 +300,7 @@ END SUBROUTINE Filter
 SUBROUTINE Filter_LAF(U_in,FilterMat)
 ! MODULES
 USE MOD_PreProc
-USE MOD_Filter_Vars,ONLY: lim,eRatio,r,ekin_avg_old,Vol,normMod,IntegrationWeight,ekin_fluc_avg_old,LAF_alpha
+USE MOD_Filter_Vars,ONLY: lim,eRatio,r,ekin_avg_old,normMod,IntegrationWeight,ekin_fluc_avg_old,LAF_alpha
 USE MOD_Mesh_Vars,  ONLY: nElems
 #if FV_ENABLED
 USE MOD_FV_Vars,    ONLY: FV_Elems
@@ -382,14 +392,13 @@ DO iElem=1,nElems
     DO j=0,PP_N
       DO i=0,PP_N
 #if PP_dim==3
-        U_Avg(2:4)=U_Avg(2:4) + U_filtered(2:4,i,j,k)/U_in(1,i,j,k,iElem)*IntegrationWeight(i,j,k,iElem)
+        U_Avg(2:4)=U_Avg(2:4) + U_filtered(2:4,i,j,k)/U_in(1,i,j,k,iElem)*IntegrationWeight(i,j,k,iElem,0)
 #else
-        U_Avg(2:3)=U_Avg(2:3) + U_filtered(2:3,i,j,k)/U_in(1,i,j,k,iElem)*IntegrationWeight(i,j,k,iElem)
+        U_Avg(2:3)=U_Avg(2:3) + U_filtered(2:3,i,j,k)/U_in(1,i,j,k,iElem)*IntegrationWeight(i,j,k,iElem,0)
 #endif
       END DO ! i
     END DO ! j
   END DO ! k
-  U_Avg(:) = U_Avg(:)/Vol(iElem) !CELL average
   ekin_avg=0.
   ekin_fluc_avg=0.
   ! compute average and fluc average kinetic energy
@@ -400,13 +409,13 @@ DO iElem=1,nElems
 #if PP_dim==3
                                          u_fluc(3,i,j,k)*u_fluc(3,i,j,k)/U_in(1,i,j,k,iElem)**2+&
 #endif
-                                         u_fluc(2,i,j,k)*u_fluc(2,i,j,k)/U_in(1,i,j,k,iElem)**2)*IntegrationWeight(i,j,k,iElem)
+                                         u_fluc(2,i,j,k)*u_fluc(2,i,j,k)/U_in(1,i,j,k,iElem)**2)*IntegrationWeight(i,j,k,iElem,0)
         ekin_avg=ekin_avg + ((U_filtered(2,i,j,k)-U_Avg(2))*(U_filtered(2,i,j,k)-U_Avg(2))/U_in(1,i,j,k,iElem)**2 &
                             +(U_filtered(3,i,j,k)-U_Avg(3))*(U_filtered(3,i,j,k)-U_Avg(3))/U_in(1,i,j,k,iElem)**2 &
 #if PP_dim==3
                             +(U_filtered(4,i,j,k)-U_Avg(4))*(U_filtered(4,i,j,k)-U_Avg(4))/U_in(1,i,j,k,iElem)**2 &
 #endif
-                             )*IntegrationWeight(i,j,k,iElem)
+                             )*IntegrationWeight(i,j,k,iElem,0)
           END DO ! i
         END DO ! j
       END DO ! k
@@ -518,6 +527,9 @@ END SUBROUTINE Filter_Selective
 SUBROUTINE FinalizeFilter()
 ! MODULES
 USE MOD_Filter_Vars
+#if PP_LIMITER
+USE MOD_PPLimiter,    ONLY: FinalizePPLimiter
+#endif
 IMPLICIT NONE
 !==================================================================================================================================
 SDEALLOCATE(FilterMat)
@@ -526,11 +538,13 @@ SDEALLOCATE(lim)
 SDEALLOCATE(eRatio)
 SDEALLOCATE(r)
 SDEALLOCATE(ekin_avg_old)
-SDEALLOCATE(Integrationweight)
+SDEALLOCATE(IntegrationWeight)
 SDEALLOCATE(ekin_fluc_avg_old)
-SDEALLOCATE(Vol)
 #endif /*EQNSYSNR==2*/
 FilterInitIsDone = .FALSE.
+#if PP_LIMITER
+CALL FinalizePPLimiter()
+#endif
 END SUBROUTINE FinalizeFilter
 
 END MODULE MOD_Filter
