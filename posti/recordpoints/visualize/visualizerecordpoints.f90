@@ -108,7 +108,7 @@ DO iArg=1,nDataFiles
   IF(InputDataFile(iExt+1:iExt+2) .NE. 'h5') &
     CALL CollectiveStop(__STAMP__,'ERROR - Invalid file extension!')
   ! Read in main attributes from given HDF5 State File
-  WRITE(UNIT_stdOUT,*) "READING DATA FROM RP FILE """,TRIM(InputDataFile), """"
+  WRITE(UNIT_stdOut,*) "READING DATA FROM RP FILE """,TRIM(InputDataFile), """"
   IF(iArg.EQ.1) THEN
     CALL ReadRPData(InputDataFile,firstFile=.TRUE.)
   ELSE
@@ -341,9 +341,9 @@ Plane_LocalCoords =GETLOGICAL('Plane_LocalCoords','.FALSE.')
 Plane_LocalVel    =GETLOGICAL('Plane_LocalVel','.FALSE.')
 Plane_doBLProps   =GETLOGICAL('Plane_doBLProps','.FALSE.')
 IF(Plane_doBLProps) THEN ! for BL properties we need local coords and velocities
-  WRITE(UNIT_StdOut,'(A)')' BL properties depend on local velocities and coordinates'
-  WRITE(UNIT_StdOut,'(A)')' and are calculated based on time-averaged data.'
-  WRITE(UNIT_StdOut,'(A)')' Setting Plane_localCoords=.TRUE. and Plane_localVel=.TRUE..'
+  WRITE(UNIT_stdOut,'(A)')' BL properties depend on local velocities and coordinates'
+  WRITE(UNIT_stdOut,'(A)')' and are calculated based on time-averaged data.'
+  WRITE(UNIT_stdOut,'(A)')' Setting Plane_localCoords=.TRUE. and Plane_localVel=.TRUE..'
   CalcTimeAverage  =.TRUE.
   OutputTimeAverage=.TRUE.
   Plane_LocalCoords=.TRUE.
@@ -358,7 +358,7 @@ IF(Plane_doBLProps) THEN ! for BL properties we need local coords and velocities
     CALL CollectiveStop(__STAMP__,&
       'ERROR: Ini not defined! (Ini,nRefState):',RPRefState,REAL(nRefState))
   ELSE IF(RPRefState .EQ. 0)THEN
-    SWRITE(UNIT_StdOut,'(A)')' No RefState specified, using the first one'
+    SWRITE(UNIT_stdOut,'(A)')' No RefState specified, using the first one'
     RPRefState=1
   END IF
 
@@ -367,7 +367,7 @@ IF(Plane_doBLProps) THEN ! for BL properties we need local coords and velocities
     RefStatePrim(1:5,i)  = GETREALARRAY('RefState',5)
 #if PP_dim==2
   IF(RefStatePrim(4,i).NE.0.) THEN
-    SWRITE(UNIT_StdOut,'(A)')' You are computing in 2D! RefStatePrim(4) will be set to zero!'
+    SWRITE(UNIT_stdOut,'(A)')' You are computing in 2D! RefStatePrim(4) will be set to zero!'
     RefStatePrim(4,i)=0.
   END IF
 #endif

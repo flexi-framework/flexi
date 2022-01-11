@@ -79,7 +79,7 @@ END IF
  IF (nProcessors.GT.1) CALL CollectiveStop(__STAMP__, &
       'This tool is designed only for single execution!',nProcessors)
 #endif /*MPI*/
-WRITE(UNIT_StdOut,'(132("-"))')
+WRITE(UNIT_stdOut,'(132("-"))')
 WRITE(UNIT_stdOut,'(A)') ' INIT RECORDPOINT SET...'
 WRITE(UNIT_stdOut,'(A)')' Read recordpoint definitions from data file "'//TRIM(RP_DefFile_in)//'" ...'
 
@@ -306,7 +306,7 @@ CALL CloseDataFile()
 
 RPSetInitIsDone = .TRUE.
 WRITE(UNIT_stdOut,'(A)')' INIT RECORDPOINTS SET DONE!'
-WRITE(UNIT_StdOut,'(132("-"))')
+WRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitRPSet
 
 
@@ -331,10 +331,10 @@ REAL                      :: dist,distRP(nRP_global)
 REAL,ALLOCATABLE          :: xF_newset(:,:)
 !===================================================================================================================================
 IF(.NOT.RPSetInitIsDone)THEN
-   CALL abort(__STAMP__, &
+   CALL Abort(__STAMP__, &
         'InitRPSet not called yet!!')
 END IF
-WRITE(UNIT_StdOut,'(132("-"))')
+WRITE(UNIT_stdOut,'(132("-"))')
 WRITE(UNIT_stdOut,'(A)') ' CHANGING RECORDPOINT SET...'
 WRITE(UNIT_stdOut,'(A)')' Read recordpoint definitions from data file "'//TRIM(RP_DefFile_in)//'" ...'
 
@@ -370,14 +370,14 @@ dist=0.
 DO iRP2=1,nRP_global
   dist=MAX(distRP(iRP2),dist)
   IF(distRP(iRP2).GT.1e-9) THEN
-    CALL abort(__STAMP__, &
+    CALL Abort(__STAMP__, &
          'Not all RPs can be found in the new RP set!!')
   END IF
 END DO! iRP2=1,nRP_global
 WRITE(UNIT_stdOut,*)' All RPs found. Max. deviation in RP coordinates is ',dist
 
 WRITE(UNIT_stdOut,'(A)')' CHANGE RECORDPOINTS SET DONE!'
-WRITE(UNIT_StdOut,'(132("-"))')
+WRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE ChangeRPSet
 
 
@@ -443,7 +443,7 @@ DO iLine=1,nLines
                                +NORM2(xF_RP(:,aLine%IDlist(iPoint)) - xF_RP(:,aLine%IDlist(iPoint-1)))
     END DO !iPoint
   ELSE
-    WRITE(UNIT_StdOut,'(A,A,A)')' The type of Line "',LineType,'" is not known!'; STOP
+    WRITE(UNIT_stdOut,'(A,A,A)')' The type of Line "',LineType,'" is not known!'; STOP
   END IF
 END DO !iLine
 END SUBROUTINE CalcLine_LocalCoords

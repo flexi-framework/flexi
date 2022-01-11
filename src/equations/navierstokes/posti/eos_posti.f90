@@ -449,7 +449,7 @@ DO iElem_calc=1,nElems_calc
                                              + U(MOM2,:,:,:,iElem)*    U(MOM2,:,:,:,iElem)    &
                                              + U(MOM3,:,:,:,iElem)*    U(MOM3,:,:,:,iElem)))
   ELSE
-    CALL ABORT(__STAMP__,'Not possible here')
+    CALL Abort(__STAMP__,'Not possible here')
   END IF
 END DO ! iElem
 END SUBROUTINE FillPressureTimeDeriv

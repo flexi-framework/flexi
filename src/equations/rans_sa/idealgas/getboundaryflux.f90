@@ -131,22 +131,22 @@ DO iSide=1,nBCSides
   locState=BoundaryType(BC(iSide),BC_STATE)
   IF((locType.NE.22).AND.(locType.NE.3).AND.(locType.NE.121)) MaxBCState = MAX(MaxBCState,locState)
   IF((locType.EQ.4).AND.(locState.LT.1))&
-    CALL abort(__STAMP__,&
+    CALL Abort(__STAMP__,&
                'No temperature (refstate) defined for BC_TYPE',locType)
   IF((locType.EQ.23).AND.(locState.LT.1))&
-    CALL abort(__STAMP__,&
+    CALL Abort(__STAMP__,&
                'No outflow Mach number in refstate (x,Ma,x,x,x) defined for BC_TYPE',locType)
   IF((locType.EQ.24).AND.(locState.LT.1))&
-    CALL abort(__STAMP__,&
+    CALL Abort(__STAMP__,&
                'No outflow pressure in refstate defined for BC_TYPE',locType)
   IF((locType.EQ.25).AND.(locState.LT.1))&
-    CALL abort(__STAMP__,&
+    CALL Abort(__STAMP__,&
                'No outflow pressure in refstate defined for BC_TYPE',locType)
   IF((locType.EQ.27).AND.(locState.LT.1))&
-    CALL abort(__STAMP__,&
+    CALL Abort(__STAMP__,&
                'No inflow refstate (Tt,alpha,beta,empty,pT) in refstate defined for BC_TYPE',locType)
   IF((locType.EQ.121).AND.(locState.LT.1))&
-    CALL abort(__STAMP__,&
+    CALL Abort(__STAMP__,&
                'No exactfunc defined for BC_TYPE',locType)
 #if FV_RECONSTRUCT
   IF((locType.EQ.3).OR.(locType.EQ.4))THEN
@@ -154,7 +154,7 @@ DO iSide=1,nBCSides
 #if PARABOLIC
     IF(VISCOSITY_PRIM(prim).LE.0.) &
 #endif
-    CALL abort(__STAMP__,'No-slip BCs cannot be used without viscosity in case of FV-reconstruction!')
+    CALL Abort(__STAMP__,'No-slip BCs cannot be used without viscosity in case of FV-reconstruction!')
     END ASSOCIATE
   END IF
 #endif
@@ -166,7 +166,7 @@ CALL MPI_ALLREDUCE(MPI_IN_PLACE,MaxBCStateGlobal,1,MPI_INTEGER,MPI_MAX,MPI_COMM_
 
 ! Sanity check for BCs
 IF(MaxBCState.GT.nRefState)THEN
-  CALL abort(__STAMP__,&
+  CALL Abort(__STAMP__,&
     'ERROR: Boundary RefState not defined! (MaxBCState,nRefState):',MaxBCState,REAL(nRefState))
 END IF
 
@@ -486,7 +486,7 @@ CASE(1) !Periodic already filled!
   CALL Abort(__STAMP__, &
       "GetBoundaryState called for periodic side!")
 CASE DEFAULT ! unknown BCType
-  CALL abort(__STAMP__,&
+  CALL Abort(__STAMP__,&
        'no BC defined in navierstokes/getboundaryflux.f90!')
 END SELECT ! BCType
 
@@ -787,7 +787,7 @@ ELSE
 
   CASE(1) !Periodic already filled!
   CASE DEFAULT ! unknown BCType
-    CALL abort(__STAMP__,&
+    CALL Abort(__STAMP__,&
         'no BC defined in navierstokes/getboundaryflux.f90!')
   END SELECT
 END IF ! BCType < 0
@@ -837,7 +837,7 @@ ELSE
     END DO; END DO ! p,q=0,PP_N
   CASE(1) !Periodic already filled!
   CASE DEFAULT ! unknown BCType
-    CALL abort(__STAMP__,&
+    CALL Abort(__STAMP__,&
          'no BC defined in navierstokes/getboundaryflux.f90!')
   END SELECT
 END IF ! BCType < 0
@@ -905,7 +905,7 @@ ELSE
     END DO; END DO !p,q
   CASE(1) !Periodic already filled!
   CASE DEFAULT ! unknown BCType
-    CALL abort(__STAMP__,&
+    CALL Abort(__STAMP__,&
          'no BC defined in navierstokes/getboundaryflux.f90!')
   END SELECT
 
@@ -960,7 +960,7 @@ CALL OpenDataFile(FileName,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL GetDataProps(nVar_HDF5,N_HDF5,nElems_HDF5,NodeType_HDF5)
 
 IF(nElems_HDF5.NE.nGlobalElems)THEN
-  CALL abort(__STAMP__,&
+  CALL Abort(__STAMP__,&
              'Baseflow file does not match solution. Elements',nElems_HDF5)
 END IF
 

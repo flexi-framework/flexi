@@ -463,7 +463,7 @@ CALL OpenDataFile(FileName,create=.FALSE.,single=.FALSE.,readOnly=.TRUE.)
 CALL GetDataProps(nVar_Base,N_Base,nElems_Base,NodeType_Base)
 
 IF(nElems_Base.NE.nGlobalElems)THEN
-  CALL abort(__STAMP__,&
+  CALL Abort(__STAMP__,&
              'Baseflow file does not match solution. Elements,nVar',nElems_Base,REAL(nVar_Base))
 END IF
 

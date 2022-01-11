@@ -136,7 +136,7 @@ END DO
 CALL InitializeVandermonde(N_In,N_In,wBary_Loc,xi_In,xGauss,Vdm_Lag)
 sVdm_Leg=MATMUL(Vdm_Leg_Gauss,Vdm_Lag)
 dummy=ABS(SUM(ABS(MATMUL(sVdm_Leg,Vdm_Leg)))/(N_In+1.)-1.)
-IF(dummy.GT.15.*PP_RealTolerance) CALL abort(__STAMP__,&
+IF(dummy.GT.15.*PP_RealTolerance) CALL Abort(__STAMP__,&
                                          'problems in MODAL<->NODAL Vandermonde ',999,dummy)
 #else
 ! Lapack
@@ -144,7 +144,7 @@ sVdm_Leg=INVERSE(Vdm_Leg)
 
 !check (Vdm_Leg)^(-1)*Vdm_Leg := I
 dummy=ABS(SUM(ABS(MATMUL(sVdm_Leg,Vdm_Leg)))/(N_In+1.)-1.)
-IF(dummy.GT.10.*PP_RealTolerance) CALL abort(__STAMP__,&
+IF(dummy.GT.10.*PP_RealTolerance) CALL Abort(__STAMP__,&
                                          'problems in MODAL<->NODAL Vandermonde ',999,dummy)
 #endif
 END SUBROUTINE buildLegendreVdm
@@ -380,7 +380,7 @@ ELSE ! N_in>1
         xGP(iGP)=xGP(iGP)+dx
         IF(abs(dx).LT.Tol*abs(xGP(iGP))) EXIT
       END DO !iter
-      CALL abort(__STAMP__,&
+      CALL Abort(__STAMP__,&
                  'ERROR: Legendre Gauss nodes could not be computed up to desired precision. Code stopped!')
     END IF ! (iter.GT.nIter)
     CALL LegendrePolynomialAndDerivative(N_in+1,xGP(iGP),L_Np1,Lder_Np1)
@@ -487,7 +487,7 @@ IF(N_in.GT.1)THEN
         xGP(iGP)=xGP(iGP)+dx
         IF(abs(dx).LT.Tol*abs(xGP(iGP))) EXIT
       END DO ! iter
-      CALL abort(__STAMP__,&
+      CALL Abort(__STAMP__,&
                  'ERROR: Legendre Gauss Lobatto nodes could not be computed up to desired precision. Code stopped!')
     END IF ! (iter.GT.nIter)
     CALL qAndLEvaluation(N_in,xGP(iGP),q,qder,L)

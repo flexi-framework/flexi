@@ -445,7 +445,7 @@ END IF
 
 #if USE_MPI
 IF(.NOT.PostiParallel_loc)THEN
-  IF(MPIroot)THEN
+  IF(MPIRoot)THEN
     !ALLOCATE buffer for Root
     nElemsMax=MAXVAL(nElems_glob)
     ALLOCATE(buf(   0:NVisu,0:NVisu_j,0:NVisu_k,nElemsMax))
@@ -457,7 +457,7 @@ END IF
 ! Solution data
 IF(.NOT.PostiParallel_loc)THEN
   DO iVal=1,nVal
-    IF(MPIroot)THEN
+    IF(MPIRoot)THEN
       nBytes = nVTKPoints*SIZEOF_F(FLOATdummy)
       IF (nValAtLastDimension_loc) THEN
         WRITE(ivtk) nBytes,REAL(Value(:,:,:,:,iVal),4)
@@ -481,7 +481,7 @@ IF(.NOT.PostiParallel_loc)THEN
         END IF
       END IF
 #endif /*USE_MPI*/
-    END IF !MPIroot
+    END IF !MPIRoot
   END DO       ! iVar
 ELSE
   DO iVal=1,nVal
@@ -496,7 +496,7 @@ END IF
 
 #if USE_MPI
 IF(.NOT.PostiParallel_loc)THEN
-  IF(MPIroot)THEN
+  IF(MPIRoot)THEN
     SDEALLOCATE(buf)
     ALLOCATE(buf2(3,0:NVisu,0:NVisu_j,0:NVisu_k,nElemsMax))
   END IF
@@ -522,7 +522,7 @@ IF(.NOT.PostiParallel_loc)THEN
       CALL MPI_SEND(Coord(:,:,:,:,:),nElems*NVisu_elem*3,MPI_DOUBLE_PRECISION, 0,0,MPI_COMM_FLEXI,iError)
     END IF
 #endif /*USE_MPI*/
-  END IF !MPIroot
+  END IF !MPIRoot
 ELSE
   nBytes = nVTKPoints*SIZEOF_F(FLOATdummy) * 3
   WRITE(ivtk) nBytes
@@ -530,7 +530,7 @@ ELSE
 END IF
 
 #if USE_MPI
-IF(MPIroot.AND..NOT.PostiParallel_loc)THEN
+IF(MPIRoot.AND..NOT.PostiParallel_loc)THEN
   SDEALLOCATE(buf2)
 END IF
 #endif

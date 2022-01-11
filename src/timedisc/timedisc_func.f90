@@ -192,7 +192,7 @@ dt                 = MINVAL(dt_min,MASK=dt_min.GT.0)
 
 nCalcTimestep = 0
 dt_minOld     = -999.
-IF (errType.NE.0) CALL abort(__STAMP__,&
+IF (errType.NE.0) CALL Abort(__STAMP__,&
 #if EQNSYSNR == 3
   'Error: (1) density, (2) convective / (3) viscous timestep / muTilde (4) is NaN. Type/time:',errType,t)
 #else
@@ -249,7 +249,7 @@ nCalcTimestep = MIN(FLOOR(ABS(LOG10(ABS(dt_minOld/dt-1.)**2.*100.+EPSILON(0.))))
 dt_minOld     = dt
 IF (errType.NE.0) THEN
   CALL WriteState(MeshFileName=TRIM(MeshFile),OutputTime=t,FutureTime=tWriteData,isErrorFile=.TRUE.)
-  CALL abort(__STAMP__,&
+  CALL Abort(__STAMP__,&
 #if EQNSYSNR == 3
   'Error: (1) density, (2) convective / (3) viscous timestep / muTilde (4) is NaN. Type/time:',errType,t)
 #else

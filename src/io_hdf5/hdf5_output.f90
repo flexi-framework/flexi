@@ -250,7 +250,7 @@ IF (PRODUCT(REAL(nVal)).GT.nLimit) CALL Abort(__STAMP__, & ! Casting to avoid ov
 
 IF(gatheredWrite)THEN
   IF(ANY(offset(1:rank-1).NE.0)) &
-    CALL abort(__STAMP__,'Offset only allowed in last dimension for gathered IO.')
+    CALL Abort(__STAMP__,'Offset only allowed in last dimension for gathered IO.')
 
   ! Get last dim of each array on IO nodes
   nDOFLocal=PRODUCT(nVal)
@@ -974,7 +974,7 @@ END IF
 ! make array extendable in case you want to append something
 IF(PRESENT(resizeDim))THEN
   IF(.NOT.PRESENT(chunkSize))&
-    CALL abort(__STAMP__,&
+    CALL Abort(__STAMP__,&
                'Chunk size has to be specified when using resizable arrays.')
   nValMax = MERGE(H5S_UNLIMITED_F,nValMax,resizeDim)
 END IF

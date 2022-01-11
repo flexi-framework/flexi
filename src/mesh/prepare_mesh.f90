@@ -127,7 +127,7 @@ DO i=1,nBCs
   END IF
 END DO
 IF(ANY(PeriodicBCMap.EQ.-2))&
-  CALL abort(__STAMP__,'Periodic connection not found.')
+  CALL Abort(__STAMP__,'Periodic connection not found.')
 
 ! Iterate over all elements and within each element over all sides (6 for hexas) and for each big Mortar side over all
 ! small virtual sides.
@@ -185,7 +185,7 @@ DO iElem=FirstElemInd,LastElemInd
   END DO
 END DO
 IF((nMortarInnerSides+nMortarMPISides).NE.nMortarSides) &
-   CALL abort(__STAMP__,'nInner+nMPI mortars <> nMortars.')
+   CALL Abort(__STAMP__,'nInner+nMPI mortars <> nMortars.')
 
 ! Iterate over all elements and within each element over all sides (6 for hexas in 3D, 4 for quads in 2D)
 ! and for each big Mortar side over all small virtual sides and set the 'SideID'.

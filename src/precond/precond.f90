@@ -311,7 +311,7 @@ DO iElem=1,nElems
                 ' relative difference: ', MAXVAL(ABS(Ploc1))/MAX(ABS(Ploc(ind(1),ind(2))),1.E-16)
     IF(MAXVAL(ABS(Ploc1)).GT.1.0E-4) STOP
   CASE DEFAULT
-    CALL abort(__STAMP__,'No valid preconditioner chosen!')
+    CALL Abort(__STAMP__,'No valid preconditioner chosen!')
   END SELECT
 
   ! add contibution I-alpha*dt*dRdU
@@ -330,7 +330,7 @@ DO iElem=1,nElems
   CASE(1)
     CALL BuildILU0(Ploc,iElem)
   CASE DEFAULT
-    CALL abort(__STAMP__,'No valid linear solver for inverting preconditioner chosen!')
+    CALL Abort(__STAMP__,'No valid linear solver for inverting preconditioner chosen!')
   END SELECT
   IF(DebugMatrix.NE.0) CALL CheckBJPrecond(Ploc,invP(:,:,iElem),iElem)
 END DO !iElem

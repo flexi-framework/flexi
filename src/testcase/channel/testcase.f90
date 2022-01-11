@@ -158,7 +158,7 @@ CALL PrimToCons(RefStatePrim(:,IniRefState),RefStateCons(:,IniRefState))
 
 IF(MPIRoot) THEN
   WRITE(UNIT_stdOut,*) 'Bulk velocity based on initial velocity Profile =',bulkVel
-  WRITE(UNIT_StdOut,*) 'Associated Pressure for Mach = ',bulkMach,' is', pressure
+  WRITE(UNIT_stdOut,*) 'Associated Pressure for Mach = ',bulkMach,' is', pressure
 
   ! Initialize output of statistics to file
   ALLOCATE(writeBuf(3,nWriteStats))

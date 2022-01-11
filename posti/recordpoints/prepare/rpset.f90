@@ -125,11 +125,11 @@ TYPE(tLine),POINTER          :: aLine
 TYPE(tPlane),POINTER         :: Plane
 !===================================================================================================================================
 IF(RPSetInitIsDone)THEN
-   CALL abort(__STAMP__, &
+   CALL Abort(__STAMP__, &
         'InitRPSet not ready to be called or already called.')
    RETURN
 END IF
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT RECORDPOINT SET...'
 
 SWRITE(UNIT_stdOut,'(A)')' Read recordpoint definitions from parameter file...'
@@ -337,8 +337,8 @@ IF(nPlanes.GT.0) THEN
 END IF
 
 IF(.NOT.anythingThere) THEN
-  SWRITE(UNIT_StdOut,*) 'No RP infos specified in parameter file, exiting...'
-  CALL abort(__STAMP__,'Code stopped!')
+  SWRITE(UNIT_stdOut,*) 'No RP infos specified in parameter file, exiting...'
+  CALL Abort(__STAMP__,'Code stopped!')
 END IF
 
 ! Create global RP array
@@ -388,7 +388,7 @@ DO iGr=1,nGroups
 END DO !iGr
 RPSetInitIsDone = .TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT RECORDPOINTS SET DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitRPSet
 
 END MODULE MOD_RPSet

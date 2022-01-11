@@ -278,7 +278,7 @@ ELSE
 END IF
 #endif
 
-IF(MPIroot)THEN
+IF(MPIRoot)THEN
 #ifdef INTEL
   OPEN(UNIT_stdOut,CARRIAGECONTROL='fortran')
 #endif
@@ -637,7 +637,7 @@ IF(.NOT.file_exists)THEN ! No restart create new file
        ACCESS = 'SEQUENTIAL'       ,&
        IOSTAT = stat               )
   IF (stat.NE.0) THEN
-    CALL abort(__STAMP__, &
+    CALL Abort(__STAMP__, &
       'ERROR: cannot open '//TRIM(Filename_loc))
   END IF
   ! Create a new file with the CSV or Tecplot header
@@ -697,7 +697,7 @@ OPEN(NEWUNIT  = ioUnit             , &
      RECL     = 50000              , &
      IOSTAT = openStat             )
 IF(openStat.NE.0) THEN
-  CALL abort(__STAMP__, &
+  CALL Abort(__STAMP__, &
     'ERROR: cannot open '//TRIM(Filename_loc))
 END IF
 ! Choose between CSV and tecplot output format

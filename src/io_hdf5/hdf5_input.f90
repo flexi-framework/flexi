@@ -106,7 +106,7 @@ CALL H5PSET_FAPL_MPIO_F(Plist_ID,MPI_COMM_FLEXI, MPIInfo, iError)
 ! Check if file exists
 exists = FILEEXISTS(FileName)
 IF(.NOT.exists) THEN
-  CALL abort(__STAMP__,'ERROR: HDF5 file '//TRIM(FileName)//' does not exist.')
+  CALL Abort(__STAMP__,'ERROR: HDF5 file '//TRIM(FileName)//' does not exist.')
   RETURN
 END IF
 
@@ -188,7 +188,7 @@ CALL H5PSET_FAPL_MPIO_F(Plist_ID,MPI_COMM_FLEXI, MPIInfo, iError)
 
 ! Check if file exists
 IF(.NOT.FILEEXISTS(MeshFileName)) THEN
-  CALL abort(__STAMP__,'ERROR: Mesh file '//TRIM(MeshFileName)//' does not exist.')
+  CALL Abort(__STAMP__,'ERROR: Mesh file '//TRIM(MeshFileName)//' does not exist.')
   isValidMeshFile = .FALSE.
   RETURN
 END IF

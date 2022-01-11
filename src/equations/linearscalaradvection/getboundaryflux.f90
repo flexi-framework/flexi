@@ -177,7 +177,7 @@ CASE(1) !Periodic already filled!
   CALL Abort(__STAMP__, &
       "GetBoundaryState called for periodic side!")
 CASE DEFAULT ! unknown BCType
-  CALL abort(__STAMP__,&
+  CALL Abort(__STAMP__,&
        'no BC defined in linearscalaradvection/getboundaryflux.f90!')
 END SELECT ! BCType
 
@@ -230,7 +230,7 @@ CASE(2) !Exact function or refstate
 #endif /*PARABOLIC*/
                NormVec,TangVec1,TangVec2,doBC=.TRUE.)
 CASE DEFAULT ! unknown BCType
-  CALL abort(__STAMP__,&
+  CALL Abort(__STAMP__,&
        'no BC defined in linearscalaradvection/getboundaryflux.f90!')
 END SELECT ! BCType
 
@@ -283,7 +283,7 @@ ELSE
 
   CASE(1) !Periodic already filled!
   CASE DEFAULT ! unknown BCType
-    CALL abort(__STAMP__,&
+    CALL Abort(__STAMP__,&
          'no BC defined in linearscalaradvection/getboundaryfvgradient.f90!')
   END SELECT ! BCType
 END IF
@@ -337,7 +337,7 @@ ELSE
     Flux=0.5*(UPrim_master+UPrim_boundary)
   CASE(1) !Periodic already filled!
   CASE DEFAULT ! unknown BCType
-    CALL abort(__STAMP__,&
+    CALL Abort(__STAMP__,&
          'no BC defined in navierstokes/getboundaryflux.f90!')
   END SELECT
 

@@ -501,7 +501,7 @@ IF(MPIRoot)THEN
        ACCESS = 'SEQUENTIAL',   &
        IOSTAT = stat)
   IF(stat.NE.0)THEN
-    CALL abort(__STAMP__,&
+    CALL Abort(__STAMP__,&
       "Could not open ini file.")
   END IF
 
@@ -888,7 +888,7 @@ DO WHILE (associated(current))
     ELSE
       ! no proposal, no default and also not set in parameter file => abort
       IF ((.NOT.opt%hasDefault).AND.(.NOT.opt%isSet)) THEN
-        CALL ABORT(__STAMP__, &
+        CALL Abort(__STAMP__, &
             "Required option '"//TRIM(name)//"' not set in parameter file and has no default value.")
         RETURN
       END IF
@@ -924,7 +924,7 @@ DO WHILE (associated(current))
   END IF
   current => current%next
 END DO
-CALL ABORT(__STAMP__, &
+CALL Abort(__STAMP__, &
     'Option "'//TRIM(name)//'" is not defined in any DefineParameters... routine '//&
     'or already read (use GET... routine only for multiple options more than once).')
 END SUBROUTINE GetGeneralOption
@@ -962,7 +962,7 @@ DO WHILE (associated(current))
     ELSE
       ! no proposal, no default and also not set in parameter file => abort
       IF ((.NOT.opt%hasDefault).AND.(.NOT.opt%isSet)) THEN
-        CALL ABORT(__STAMP__, &
+        CALL Abort(__STAMP__, &
             "Required option '"//TRIM(name)//"' not set in parameter file and has no default value.")
         RETURN
       END IF
@@ -1004,7 +1004,7 @@ DO WHILE (associated(current))
   END IF
   current => current%next
 END DO
-CALL ABORT(__STAMP__, &
+CALL Abort(__STAMP__, &
     'Option "'//TRIM(name)//'" is not defined in any DefineParameters... routine '//&
     'or already read (use GET... routine only for multiple options more than once).')
 END SUBROUTINE GetGeneralArrayOption

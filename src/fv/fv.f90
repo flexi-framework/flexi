@@ -136,7 +136,7 @@ IF(.NOT.FVInitBasisIsDone)THEN
    CALL CollectiveStop(__STAMP__,&
      'InitFV not ready to be called or already called.')
 END IF
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT FV...'
 
 ! Read minimal and maximal threshold for the indicator
@@ -246,7 +246,7 @@ IF (.NOT.FV_IniSharp) FV_IniSupersample = GETLOGICAL("FV_IniSupersample",'.TRUE.
 
 FVInitIsDone=.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT FV DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 
 END SUBROUTINE InitFV
 

@@ -211,7 +211,7 @@ INTEGER                       :: OffsetRPArray(2,nElems)
 REAL,ALLOCATABLE              :: xi_RP(:,:)
 !==================================================================================================================================
 IF(MPIRoot)THEN
-  IF(.NOT.FILEEXISTS(FileString))  CALL abort(__STAMP__, &
+  IF(.NOT.FILEEXISTS(FileString))  CALL Abort(__STAMP__, &
           'RPList from data file "'//TRIM(FileString)//'" does not exist')
 END IF
 
@@ -230,7 +230,7 @@ CALL GetDataSize(File_ID,'OffsetRP',nDims,HSize)
 CHECKSAFEINT(HSize(2),4)
 nGlobalElems_RPList=INT(HSize(2),4) !global number of elements
 DEALLOCATE(HSize)
-IF(nGlobalElems_RPList.NE.nGlobalElems) CALL abort(__STAMP__, &
+IF(nGlobalElems_RPList.NE.nGlobalElems) CALL Abort(__STAMP__, &
           'nGlobalElems from RPList differs from nGlobalElems from Mesh File!')
 
 CALL ReadArray('OffsetRP',2,(/2,nElems/),OffsetElem,2,IntArray=OffsetRPArray)

@@ -111,7 +111,7 @@ INTEGER                   :: i
 #endif
 !===================================================================================================================================
 IF((.NOT.InterpolationInitIsDone).OR.(.NOT.MeshInitIsDone).OR.ImplicitInitIsDone)THEN
-   CALL abort(__STAMP__,'InitImplicit not ready to be called or already called.')
+   CALL Abort(__STAMP__,'InitImplicit not ready to be called or already called.')
 END IF
 IF(TimeDiscType.EQ.'ESDIRK') THEN
   SWRITE(UNIT_stdOut,'(132("-"))')

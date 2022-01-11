@@ -46,7 +46,7 @@ IMPLICIT NONE
 ! LOCAL VARIABLES
 INTEGER                               :: iVar,countCons
 !===================================================================================================================================
-WRITE(UNIT_StdOut,'(132("-"))')
+WRITE(UNIT_stdOut,'(132("-"))')
 WRITE(UNIT_stdOut,'(A)') ' INIT EquationDMD ...'
 
 !check if Varnames in HDF5 file are conservatives
@@ -76,7 +76,7 @@ CALL InitEOS()
 
 
 WRITE(UNIT_stdOut,'(A)')' INIT EquationDMD DONE!'
-WRITE(UNIT_StdOut,'(132("-"))')
+WRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitEquationDMD
 
 
@@ -107,7 +107,7 @@ REAL,ALLOCATABLE   :: DMDData_tmp2(:,:)
 REAL,ALLOCATABLE   :: DMDData_tmp3(:,:)
 !INTEGER            :: OutputVarsIndex(MAXVAL(mapVisu))
 !===================================================================================================================================
-WRITE(UNIT_StdOut,'(132("-"))')
+WRITE(UNIT_stdOut,'(132("-"))')
 WRITE(UNIT_stdOut,'(A)')" CONVERT DERIVED QUANTITIES..."
 ! CALCULATE DERIVED QUATITIES -----------------------------------------------------------------------------------------------------!
 maskCalc=1

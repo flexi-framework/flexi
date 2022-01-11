@@ -267,7 +267,7 @@ CASE(INDTYPE_CHECKERBOARD) ! every second element (checkerboard like)
     END IF
   END DO ! iElem = 1, nElems
 CASE DEFAULT ! unknown Indicator Type
-  CALL abort(__STAMP__,&
+  CALL Abort(__STAMP__,&
     "Unknown IndicatorType!")
 END SELECT
 

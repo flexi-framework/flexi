@@ -290,7 +290,7 @@ ELSE
 #endif
   NewtonConverged = .TRUE.
   IF (CFLScale(0).LT.0.01*CFLScale_Readin(0)) THEN
-    CALL abort(__STAMP__, &
+    CALL Abort(__STAMP__, &
     'Newton not converged with GMRES Iterations of last Newton step and CFL reduction',nInnerGMRES,CFLScale(0)/CFLScale_Readin(0))
   END IF
   SWRITE(*,*) 'Attention: Timestep failed, repeating with dt/2!'

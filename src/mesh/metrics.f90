@@ -369,7 +369,7 @@ DO iElem=1,nElems
     scaledJac(i,j,k,iElem)=detJac_N(1,i,j,k,iElem)/MAXVAL(detJac_N(1,:,:,:,iElem))
     IF(scaledJac(i,j,k,iElem).LT.0.01) THEN
       WRITE(UNIT_stdOut,*) 'Too small scaled Jacobians found (CL/Gauss):', scaledJac(i,j,k,iElem)
-      CALL abort(__STAMP__,&
+      CALL Abort(__STAMP__,&
         'Scaled Jacobian lower then tolerance in global element:',iElem+offsetElem)
     END IF
   END DO; END DO; END DO !i,j,k=0,N

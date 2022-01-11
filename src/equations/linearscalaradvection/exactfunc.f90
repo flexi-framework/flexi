@@ -229,7 +229,7 @@ CASE(6) ! One-dimensional cosine wave with amplitude 1 and angular frequency spe
     Resu_tt = -1.*(OmegaRef**2)*COS(k*x(1)-OmegaRef*tEval)
   END IF
 CASE DEFAULT
-  CALL abort(__STAMP__,&
+  CALL Abort(__STAMP__,&
              'Specified exactfuntion not implemented!')
 END SELECT ! ExactFunction
 
@@ -246,7 +246,7 @@ IF(fullBoundaryOrder)THEN ! add resu_t, resu_tt if time dependant
     Resu=Resu + RKc(3)*dt*Resu_t + RKc(2)*RKb(2)*dt*dt*Resu_tt
   CASE DEFAULT
     ! Stop, works only for 3 Stage O3 LS RK
-    CALL abort(__STAMP__,&
+    CALL Abort(__STAMP__,&
                'Time-dependant exactfuntion works only for 3 Stage O3 LS RK!')
   END SELECT
 END IF

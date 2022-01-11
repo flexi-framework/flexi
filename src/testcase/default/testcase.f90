@@ -125,7 +125,7 @@ REAL,INTENT(OUT)                :: Resu_tt(5)  !< second time deriv of exact fuc
 !----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
 !==================================================================================================================================
-CALL abort(__STAMP__,'Exactfunction not specified!')
+CALL Abort(__STAMP__,'Exactfunction not specified!')
 Resu=-1.
 Resu_t =-1.
 Resu_tt=-1.
