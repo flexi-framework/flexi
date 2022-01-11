@@ -285,11 +285,11 @@ IF(MPIroot)THEN
   days = time_remaining / 24
 #if FV_ENABLED
   FV_percent = REAL(FVcounter) / nGlobalElems * 100.
-  WRITE(UNIT_stdOut,'(F5.2,A5)',ADVANCE='NO') FV_percent, '% FV,'
+  WRITE(UNIT_stdOut,'(F5.2,A5)',ADVANCE='NO') FV_percent, '% FV'
 #endif
 #if PP_LIMITER
   PP_percent = REAL(PPcounter) / nGlobalElems * 100.
-  WRITE(UNIT_stdOut,'(F5.2,A5)',ADVANCE='NO') PP_percent, '% PP,'
+  WRITE(UNIT_stdOut,'(F5.2,A5)',ADVANCE='NO') PP_percent, '% PP'
 #endif
   tmpString = MERGE('YES','NO ',PRESENT(doETA))
 

@@ -56,9 +56,9 @@ USE MOD_Mesh_Vars     ,ONLY: nElems
 USE MOD_PruettDamping ,ONLY: TempFilterTimeDeriv
 USE MOD_TimeDisc_Vars ,ONLY: dt,b_dt,Ut_tmp,RKA,RKb,RKc,nRKStages,CurrentStage
 #if FV_ENABLED
-USE MOD_FV            ,ONLY: FV_Switch,FV_Elems_Update
-USE MOD_FV_Vars       ,ONLY: FV_toDGinRK,FV_toFVinRK,Switch_to_DG,Switch_to_FV
-USE MOD_FV_Vars       ,ONLY: aPosterioriLimiting,U_store,Ut_temp_store,FV_Elems,FV_Elems_store
+USE MOD_FV            ,ONLY: FV_Switch
+USE MOD_FV_Vars       ,ONLY: FV_toDGinRK
+USE MOD_FV_Vars       ,ONLY: FV_Elems
 USE MOD_Indicator     ,ONLY: CalcIndicator
 USE MOD_TimeDisc_Vars ,ONLY: nCalcTimestep
 #endif
@@ -89,7 +89,7 @@ DO iStage = 1,nRKStages
   ! Call DG operator to fill face data, fluxes, gradients for analyze
 #if FV_ENABLED
   CALL CalcIndicator(U,t)
-  CALL FV_Switch(U,Ut_temp,AllowToDG=FV_toDGinRK)
+  CALL FV_Switch(U,Ut_tmp,AllowToDG=FV_toDGinRK)
 #endif
 #if PP_LIMITER
   IF(DoPPLimiter) CALL PPLimiter()
@@ -122,12 +122,11 @@ USE MOD_PreProc
 USE MOD_Vector
 USE MOD_DG           ,ONLY: DGTimeDerivative_weakForm
 USE MOD_DG_Vars      ,ONLY: U,Ut,nTotalU
-USE MOD_Indicator     ,ONLY: doCalcIndicator,CalcIndicator
 USE MOD_Mesh_Vars    ,ONLY: nElems
 USE MOD_TimeDisc_Vars,ONLY: dt,b_dt,UPrev,S2,RKdelta,RKg1,RKg2,RKg3,RKb,RKc,nRKStages,CurrentStage
 #if FV_ENABLED
-USE MOD_FV           ,ONLY: FV_Switch,FV_Elems_Update
-USE MOD_FV_Vars      ,ONLY: FV_toDGinRK,FV_toFVinRK,Switch_to_DG,Switch_to_FV
+USE MOD_FV           ,ONLY: FV_Switch
+USE MOD_FV_Vars      ,ONLY: FV_toDGinRK
 USE MOD_Indicator    ,ONLY: CalcIndicator
 #endif
 ! IMPLICIT VARIABLE HANDLING

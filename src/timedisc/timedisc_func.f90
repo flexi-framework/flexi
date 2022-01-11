@@ -303,6 +303,7 @@ USE MOD_TimeDisc_Vars       ,ONLY: Ut_tmp,iter,iter_analyze
 USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize,writeCounter
 #if FV_ENABLED
 USE MOD_FV                  ,ONLY: FV_Info,FV_Switch
+USE MOD_FV_Vars             ,ONLY: FV_toDGinRK
 USE MOD_Indicator           ,ONLY: CalcIndicator
 #endif
 ! IMPLICIT VARIABLE HANDLING
@@ -315,7 +316,7 @@ IMPLICIT NONE
 
 #if FV_ENABLED
 CALL CalcIndicator(U,t)
-CALL FV_Switch(U,Ut_temp)
+CALL FV_Switch(U,Ut_tmp,AllowToDG=FV_toDGinRK)
 #endif
 ! Call DG operator to fill face data, fluxes, gradients for analyze
 CALL DGTimeDerivative_weakForm(t)
