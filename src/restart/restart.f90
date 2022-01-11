@@ -376,6 +376,9 @@ IF (DoRestart) THEN
         IndValue = ElemData(iVar,:)
       END IF
     END DO
+  ELSE
+    IndValue=0.
+    FV_Elems=0.
   END IF
   SDEALLOCATE(ElemData)
   SDEALLOCATE(VarNamesElemData)

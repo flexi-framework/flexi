@@ -135,7 +135,7 @@ IF ((.NOT.InterpolationInitIsDone).OR.OutputInitIsDone) THEN
   CALL CollectiveStop(__STAMP__,&
     'InitOutput not ready to be called or already called.')
 END IF
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT OUTPUT...'
 
 NVisu=GETINT('NVisu',INTTOSTR(PP_N))
@@ -197,16 +197,14 @@ END IF  ! Logging
 
 OutputInitIsDone =.TRUE.
 SWRITE(UNIT_stdOut,'(A)')' INIT OUTPUT DONE!'
-SWRITE(UNIT_StdOut,'(132("-"))')
+SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitOutput
+
 
 !==================================================================================================================================
 !> Displays the actual status of the simulation and counts the amount of FV elements
 !==================================================================================================================================
 SUBROUTINE PrintStatusLine(t,dt,tStart,tEnd)
-!----------------------------------------------------------------------------------------------------------------------------------!
-! description
-!----------------------------------------------------------------------------------------------------------------------------------!
 ! MODULES                                                                                                                          !
 USE MOD_Globals
 USE MOD_PreProc
@@ -223,7 +221,9 @@ USE MOD_Analyze_Vars, ONLY: totalPP_nElems
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! insert modules here
 !----------------------------------------------------------------------------------------------------------------------------------!
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
 ! INPUT / OUTPUT VARIABLES
 REAL,INTENT(IN) :: t      !< current simulation time
 REAL,INTENT(IN) :: dt     !< current time step
@@ -288,6 +288,53 @@ IF(MPIroot)THEN
 #endif
 END IF
 END SUBROUTINE PrintStatusLine
+
+
+!==================================================================================================================================
+!> Displays the analysis of the simulation
+!==================================================================================================================================
+SUBROUTINE PrintAnalyze(dt)
+! MODULES                                                                                                                          !
+USE MOD_Globals
+USE MOD_PreProc
+USE MOD_Implicit_Vars       ,ONLY: nGMRESIterGlobal,nNewtonIterGlobal
+USE MOD_Mesh_Vars           ,ONLY: nGlobalElems
+USE MOD_TimeDisc_Vars       ,ONLY: CalcTimeStart,CalcTimeEnd,TimeDiscType,ViscousTimeStep
+USE MOD_TimeDisc_Vars       ,ONLY: iter,iter_analyze,nRKStages
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------!
+! INPUT / OUTPUT VARIABLES
+REAL,INTENT(IN) :: dt     !< current time step
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+INTEGER :: TimeArray(8)              !< Array for system time
+!==================================================================================================================================
+
+! Get calculation time per DOF
+CalcTimeEnd = FLEXITIME()
+CalcTimeEnd = (CalcTimeEnd-CalcTimeStart)*REAL(nProcessors)/(REAL(nGlobalElems)*REAL((PP_N+1)**PP_dim)*REAL(iter_analyze))/nRKStages
+! Get system time
+CALL DATE_AND_TIME(values=TimeArray)
+
+IF (.NOT.MPIRoot) RETURN
+
+WRITE(UNIT_stdOut,'(132("-"))')
+WRITE(UNIT_stdOut,'(A,I2.2,A1,I2.2,A1,I4.4,A1,I2.2,A1,I2.2,A1,I2.2)') &
+  ' Sys date   :    ',timeArray(3),'.',timeArray(2),'.',timeArray(1),' ',timeArray(5),':',timeArray(6),':',timeArray(7)
+WRITE(UNIT_stdOut,'(A,ES12.5,A)')' CALCULATION TIME PER STAGE/DOF: [',CalcTimeEnd,' sec ]'
+WRITE(UNIT_stdOut,'(A,ES16.7)')  ' Timestep   : ',dt
+IF(ViscousTimeStep) WRITE(UNIT_stdOut,'(A)')' Viscous timestep dominates! '
+WRITE(UNIT_stdOut,'(A,ES16.7)')  '#Timesteps  : ',REAL(iter)
+IF(TimeDiscType.EQ.'ESDIRK') THEN
+  WRITE(UNIT_stdOut,'(A,ES16.7)')'#GMRES iter : ',REAL(nGMRESIterGlobal)
+  WRITE(UNIT_stdOut,'(A,ES16.7)')'#Newton iter: ',REAL(nNewtonIterGlobal)
+  nGMRESIterGlobal  = 0
+  nNewtonIterGlobal = 0
+END IF
+
+END SUBROUTINE PrintAnalyze
+
 
 !==================================================================================================================================
 !> Supersample DG dataset at (equidistant) visualization points and output to file.
