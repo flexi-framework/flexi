@@ -54,14 +54,15 @@ USE MOD_DG            ,ONLY: DGTimeDerivative_weakForm
 USE MOD_DG_Vars       ,ONLY: U,Ut,nTotalU
 USE MOD_Mesh_Vars     ,ONLY: nElems
 USE MOD_PruettDamping ,ONLY: TempFilterTimeDeriv
-USE MOD_Sponge_Vars   ,ONLY: CalcPruettDamping
-USE MOD_TimeDisc_Vars ,ONLY: dt,b_dt,Ut_tmp,RKA,RKb,RKc,nRKStages,CurrentStage,doAnalyze,nCalcTimestep
+USE MOD_TimeDisc_Vars ,ONLY: dt,b_dt,Ut_tmp,RKA,RKc,nRKStages,CurrentStage
 #if FV_ENABLED
 USE MOD_FV            ,ONLY: FV_Switch,FV_Elems_Update
 USE MOD_FV_Vars       ,ONLY: FV_toDGinRK,FV_toFVinRK,Switch_to_DG,Switch_to_FV
 USE MOD_FV_Vars       ,ONLY: aPosterioriLimiting,U_store,Ut_temp_store,FV_Elems,FV_Elems_store
 USE MOD_Indicator     ,ONLY: CalcIndicator
+USE MOD_TimeDisc_Vars ,ONLY: nCalcTimestep
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -119,14 +120,13 @@ USE MOD_DG           ,ONLY: DGTimeDerivative_weakForm
 USE MOD_DG_Vars      ,ONLY: U,Ut,nTotalU
 USE MOD_Indicator     ,ONLY: doCalcIndicator,CalcIndicator
 USE MOD_Mesh_Vars    ,ONLY: nElems
-USE MOD_Sponge_Vars  ,ONLY: CalcPruettDamping
-USE MOD_TimeDisc_Vars,ONLY: dt,b_dt,UPrev,S2,RKdelta,RKg1,RKg2,RKg3,RKb,RKc,nRKStages,CurrentStage
-USE MOD_TimeDisc_Vars,ONLY: doAnalyze
+USE MOD_TimeDisc_Vars,ONLY: dt,b_dt,UPrev,S2,RKdelta,RKg1,RKg2,RKg3,RKc,nRKStages,CurrentStage
 #if FV_ENABLED
 USE MOD_FV           ,ONLY: FV_Switch,FV_Elems_Update
 USE MOD_FV_Vars      ,ONLY: FV_toDGinRK,FV_toFVinRK,Switch_to_DG,Switch_to_FV
 USE MOD_Indicator    ,ONLY: CalcIndicator
 #endif
+! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
@@ -161,7 +161,11 @@ DO iStage = 1,nRKStages
   ! Call DG operator to fill face data, fluxes, gradients for analyze
   CALL DGTimeDerivative_weakForm(tStage)
 
-  IF (iStage.NE.1) THEN
+  IF (iStage.EQ.1) THEN
+    CALL VCopy(nTotalU,UPrev,U)                                          !UPrev=U
+    CALL VCopy(nTotalU,S2,U)                                             !S2=U
+    CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(1))                            !U      = U + Ut*b_dt(1)
+  ELSE
     CALL VAXPBY(nTotalU,S2,U,ConstIn=RKdelta(iStage))                    !S2 = S2 + U*RKdelta(iStage)
     CALL VAXPBY(nTotalU,U,S2,ConstOut=RKg1(iStage),ConstIn=RKg2(iStage)) !U = RKg1(iStage)*U + RKg2(iStage)*S2
     CALL VAXPBY(nTotalU,U,UPrev,ConstIn=RKg3(iStage))                    !U = U + RKg3(ek)*UPrev

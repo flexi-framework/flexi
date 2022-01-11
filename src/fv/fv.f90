@@ -140,9 +140,6 @@ END IF
 SWRITE(UNIT_StdOut,'(132("-"))')
 SWRITE(UNIT_stdOut,'(A)') ' INIT FV...'
 
-! The indicator value is used to decide where FV sub-cells are needed
-doCalcIndicator=.TRUE.
-
 ! Read minimal and maximal threshold for the indicator
 FV_IndLowerThreshold = GETREAL('FV_IndLowerThreshold','-99.')
 FV_IndUpperThreshold = GETREAL('FV_IndUpperThreshold', '99.')

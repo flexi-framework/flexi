@@ -294,7 +294,7 @@ USE MOD_TestCase            ,ONLY: AnalyzeTestCase
 USE MOD_TestCase_Vars       ,ONLY: nAnalyzeTestCase
 USE MOD_TimeAverage         ,ONLY: CalcTimeAverage
 USE MOD_TimeDisc_Vars       ,ONLY: t,dt,tAnalyze,tEnd,CalcTimeStart
-USE MOD_TimeDisc_Vars       ,ONLY: Ut_tmp,iter,iter_analyze,nCalcTimestep
+USE MOD_TimeDisc_Vars       ,ONLY: Ut_tmp,iter,iter_analyze
 USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize
 #if FV_ENABLED
 USE MOD_FV                  ,ONLY: FV_Info,FV_Switch
