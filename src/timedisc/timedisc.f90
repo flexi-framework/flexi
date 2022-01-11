@@ -58,7 +58,7 @@ USE MOD_ReadInTools ,ONLY: prms,addStrListEntry
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("TimeDisc")
-CALL prms%CreateLogicalOption('TimeDiscAdvanced',        "Specifies if custom time disc features should be used.",".FASLE.")
+CALL prms%CreateLogicalOption('TimeDiscAdvanced',        "Specifies if custom time disc features should be used.",".FALSE.")
 CALL prms%CreateIntFromStringOption('TimeDiscAlgorithm', "Specifies how timestep is calculated.","dynamic")
 CALL addStrListEntry('TimeDiscAlgorithm','dynamic',     TIMEDISC_DYNAMIC)
 CALL addStrListEntry('TimeDiscAlgorithm','static',      TIMEDISC_STATIC)
