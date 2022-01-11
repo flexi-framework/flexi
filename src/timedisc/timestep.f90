@@ -60,6 +60,10 @@ USE MOD_FV            ,ONLY: FV_Switch
 USE MOD_FV_Vars       ,ONLY: FV_toDGinRK
 USE MOD_Indicator     ,ONLY: CalcIndicator
 #endif
+#if PP_LIMITER
+USE MOD_PPLimiter     ,ONLY: PPLimiter
+USE MOD_Filter_Vars   ,ONLY: DoPPLimiter
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -125,6 +129,10 @@ USE MOD_TimeDisc_Vars,ONLY: dt,RKdelta,RKg1,RKg2,RKg3,RKb,RKc,nRKStages,CurrentS
 USE MOD_FV           ,ONLY: FV_Switch
 USE MOD_FV_Vars      ,ONLY: FV_toDGinRK
 USE MOD_Indicator    ,ONLY: CalcIndicator
+#endif
+#if PP_LIMITER
+USE MOD_PPLimiter    ,ONLY: PPLimiter
+USE MOD_Filter_Vars  ,ONLY: DoPPLimiter
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE

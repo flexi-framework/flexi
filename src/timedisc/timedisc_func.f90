@@ -299,6 +299,10 @@ USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize,writeCounter
 USE MOD_FV                  ,ONLY: FV_Info,FV_Switch
 USE MOD_Indicator           ,ONLY: CalcIndicator
 #endif
+#if PP_LIMITER
+USE MOD_PPLimiter           ,ONLY: PPLimiter_Info,PPLimiter
+USE MOD_Filter_Vars         ,ONLY: DoPPLimiter
+#endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -310,6 +314,9 @@ IMPLICIT NONE
 #if FV_ENABLED
 CALL CalcIndicator(U,t)
 CALL FV_Switch(U,AllowToDG=(nCalcTimestep.LT.1))
+#endif
+#if PP_LIMITER
+IF(DoPPLimiter) CALL PPLimiter()
 #endif
 ! Call DG operator to fill face data, fluxes, gradients for analyze
 CALL DGTimeDerivative_weakForm(t)
@@ -329,7 +336,7 @@ IF(doAnalyze)THEN
   CALL FV_Info(iter_analyze+1)
 #endif
 #if PP_LIMITER
-    CALL PPLimiter_Info(iter_analyze+1)
+  CALL PPLimiter_Info(iter_analyze+1)
 #endif
 
   ! Visualize data and write solution
