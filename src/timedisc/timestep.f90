@@ -50,16 +50,17 @@ SUBROUTINE TimeStepByLSERKW2(t)
 ! MODULES
 USE MOD_PreProc
 USE MOD_Vector
-USE MOD_DG           ,ONLY: DGTimeDerivative_weakForm
-USE MOD_DG_Vars      ,ONLY: U,Ut,nTotalU
-USE MOD_Indicator    ,ONLY: doCalcIndicator,CalcIndicator
-USE MOD_Mesh_Vars    ,ONLY: nElems
-USE MOD_PruettDamping,ONLY: TempFilterTimeDeriv
-USE MOD_Sponge_Vars  ,ONLY: CalcPruettDamping
-USE MOD_TimeDisc_Vars,ONLY: dt,b_dt,RKA,RKb,RKc,nRKStages,CurrentStage,doAnalyze
+USE MOD_DG            ,ONLY: DGTimeDerivative_weakForm
+USE MOD_DG_Vars       ,ONLY: U,Ut,nTotalU
+USE MOD_Indicator     ,ONLY: doCalcIndicator,CalcIndicator
+USE MOD_Mesh_Vars     ,ONLY: nElems
+USE MOD_PruettDamping ,ONLY: TempFilterTimeDeriv
+USE MOD_Sponge_Vars   ,ONLY: CalcPruettDamping
+USE MOD_TimeDisc_Vars ,ONLY: dt,b_dt,Ut_temp,RKA,RKb,RKc,nRKStages,CurrentStage,doAnalyze
 #if FV_ENABLED
-USE MOD_FV           ,ONLY: FV_Switch,FV_Elems_Update
-USE MOD_FV_Vars      ,ONLY: FV_toDGinRK,FV_toFVinRK,Switch_to_DG,Switch_to_FV
+USE MOD_FV            ,ONLY: FV_Switch,FV_Elems_Update
+USE MOD_FV_Vars       ,ONLY: FV_toDGinRK,FV_toFVinRK,Switch_to_DG,Switch_to_FV
+USE MOD_FV_Vars       ,ONLY: aPosterioriLimiting,U_store,Ut_temp_store,FV_Elems,FV_Elems_store
 #endif
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -67,7 +68,6 @@ IMPLICIT NONE
 REAL,INTENT(INOUT)  :: t                                     !< current simulation time
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL     :: Ut_temp(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) ! temporal variable for Ut
 REAL     :: tStage
 INTEGER  :: iStage
 !===================================================================================================================================
@@ -116,11 +116,10 @@ USE MOD_PreProc
 USE MOD_Vector
 USE MOD_DG           ,ONLY: DGTimeDerivative_weakForm
 USE MOD_DG_Vars      ,ONLY: U,Ut,nTotalU
-USE MOD_TimeDisc_Vars,ONLY: dt,RKdelta,RKg1,RKg2,RKg3,RKb,RKc,nRKStages,CurrentStage,doAnalyze
 USE MOD_Mesh_Vars    ,ONLY: nElems
-USE MOD_PruettDamping,ONLY: TempFilterTimeDeriv
 USE MOD_Sponge_Vars  ,ONLY: CalcPruettDamping
-USE MOD_Indicator    ,ONLY: doCalcIndicator,CalcIndicator
+USE MOD_TimeDisc_Vars,ONLY: dt,b_dt,UPrev,S2,RKdelta,RKg1,RKg2,RKg3,RKb,RKc,nRKStages,CurrentStage
+USE MOD_TimeDisc_Vars,ONLY: doAnalyze
 #if FV_ENABLED
 USE MOD_FV           ,ONLY: FV_Switch,FV_Elems_Update
 USE MOD_FV_Vars      ,ONLY: FV_toDGinRK,FV_toFVinRK,Switch_to_DG,Switch_to_FV
@@ -131,9 +130,7 @@ IMPLICIT NONE
 REAL,INTENT(INOUT)  :: t                                     !< current simulation time
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
-REAL     :: S2(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
-REAL     :: UPrev(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
-REAL     :: tStage,b_dt(1:nRKStages)
+REAL     :: tStage
 INTEGER  :: iStage
 !===================================================================================================================================
 
@@ -147,7 +144,7 @@ DO iStage = 1,nRKStages
   END IF
 
   IF (iStage.EQ.1) THEN
-    CALL VCopy(nTotalU,Uprev,U)                    !Uprev=U
+    CALL VCopy(nTotalU,UPrev,U)                    !UPrev=U
     CALL VCopy(nTotalU,S2,U)                       !S2=U
   END IF
 
@@ -167,14 +164,13 @@ DO iStage = 1,nRKStages
   IF (iStage.NE.1) THEN
     CALL VAXPBY(nTotalU,S2,U,ConstIn=RKdelta(iStage))                    !S2 = S2 + U*RKdelta(iStage)
     CALL VAXPBY(nTotalU,U,S2,ConstOut=RKg1(iStage),ConstIn=RKg2(iStage)) !U = RKg1(iStage)*U + RKg2(iStage)*S2
-    CALL VAXPBY(nTotalU,U,Uprev,ConstIn=RKg3(iStage))                    !U = U + RKg3(ek)*Uprev
+    CALL VAXPBY(nTotalU,U,UPrev,ConstIn=RKg3(iStage))                    !U = U + RKg3(ek)*UPrev
   END IF
   CALL VAXPBY(nTotalU,U,Ut,ConstIn=b_dt(iStage))                         !U = U + Ut*b_dt(iStage)
 #if PP_LIMITER
   IF(DoPPLimiter) CALL PPLimiter()
 #endif
 END DO
-CurrentStage=1
 
 END SUBROUTINE TimeStepByLSERKK3
 
@@ -191,22 +187,22 @@ END SUBROUTINE TimeStepByLSERKK3
 !===================================================================================================================================
 SUBROUTINE TimeStepByESDIRK(t)
 ! MODULES
-USE MOD_PreProc
 USE MOD_Globals
-USE MOD_Mathtools         ,ONLY: GlobalVectorDotProduct
+USE MOD_PreProc
 USE MOD_DG                ,ONLY: DGTimeDerivative_weakForm
 USE MOD_DG_Vars           ,ONLY: U,Ut
+USE MOD_Implicit          ,ONLY: Newton
+USE MOD_Implicit_Vars     ,ONLY: LinSolverRHS,adaptepsNewton,epsNewton,nDOFVarProc,nGMRESIterdt,NewtonConverged,nInnerGMRES
+USE MOD_Mathtools         ,ONLY: GlobalVectorDotProduct
+USE MOD_Mesh_Vars         ,ONLY: nElems
+USE MOD_Precond           ,ONLY: BuildPrecond
+USE MOD_Precond_Vars      ,ONLY: PrecondIter
+USE MOD_Predictor         ,ONLY: Predictor,PredictorStoreValues
 USE MOD_TimeDisc_Vars     ,ONLY: dt,nRKStages,RKA_implicit,RKc_implicit,iter,CFLScale,CFLScale_Readin
+USE MOD_TimeDisc_Vars     ,ONLY: RKb_implicit,RKb_embedded,safety,ESDIRK_gamma
 #if PARABOLIC
 USE MOD_TimeDisc_Vars     ,ONLY: DFLScale,DFLScale_Readin
 #endif
-USE MOD_TimeDisc_Vars     ,ONLY: RKb_implicit,RKb_embedded,safety,ESDIRK_gamma
-USE MOD_Mesh_Vars         ,ONLY: nElems
-USE MOD_Implicit          ,ONLY: Newton
-USE MOD_Implicit_Vars     ,ONLY: LinSolverRHS,adaptepsNewton,epsNewton,nDOFVarProc,nGMRESIterdt,NewtonConverged,nInnerGMRES
-USE MOD_Predictor         ,ONLY: Predictor,PredictorStoreValues
-USE MOD_Precond           ,ONLY: BuildPrecond
-USE MOD_Precond_Vars      ,ONLY: PrecondIter
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES

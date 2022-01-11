@@ -70,6 +70,10 @@ REAL             :: CalcTimeEnd                   !< End system time of simulati
 LOGICAL          :: doAnalyze                     !< Flag to perform analysis in current timestep
 LOGICAL          :: doFinalize                    !< Flag to exit simulation in current timestep
 
+REAL,ALLOCATABLE :: Ut_temp(:,:,:,:,:)            !< temporal variable for Ut
+REAL,ALLOCATABLE :: S2     (:,:,:,:,:)
+REAL,ALLOCATABLE :: UPrev  (:,:,:,:,:)
+
 !----------------------------------------------------------------------------------------------------------------------------------
 ! TIME INTEGRATION: RUNGE_KUTTA COEFFICIENTS AND STABILITY NUMBERS
 !----------------------------------------------------------------------------------------------------------------------------------

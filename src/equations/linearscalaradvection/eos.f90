@@ -30,12 +30,14 @@ PRIVATE
 INTERFACE ConsToPrim
   MODULE PROCEDURE ConsToPrim
   MODULE PROCEDURE ConsToPrim_Side
+  MODULE PROCEDURE ConsToPrim_Elem
   MODULE PROCEDURE ConsToPrim_Volume
 END INTERFACE
 
 INTERFACE PrimToCons
   MODULE PROCEDURE PrimToCons
   MODULE PROCEDURE PrimToCons_Side
+  MODULE PROCEDURE PrimToCons_Elem
   MODULE PROCEDURE PrimToCons_Volume
 END INTERFACE
 
@@ -104,6 +106,24 @@ END SUBROUTINE ConsToPrim_Side
 !==================================================================================================================================
 !> Dummy routine, necessary for output routines due to compatibility to Navier-Stokes equation system
 !==================================================================================================================================
+PURE SUBROUTINE ConsToPrim_Elem(Nloc,prim,cons)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN) :: Nloc                                           !< polynomial degree
+REAL,INTENT(IN)    :: cons(    PP_nVar,0:Nloc,0:Nloc,0:ZDIM(Nloc))   !< conservative variables
+REAL,INTENT(OUT)   :: prim(PP_nVarPrim,0:Nloc,0:Nloc,0:ZDIM(Nloc))   !< primitive variables
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!==================================================================================================================================
+! copy cons to prim (PP_nVar = PP_nVarPrim)
+prim = cons
+END SUBROUTINE ConsToPrim_Elem
+
+!==================================================================================================================================
+!> Dummy routine, necessary for output routines due to compatibility to Navier-Stokes equation system
+!==================================================================================================================================
 PURE SUBROUTINE ConsToPrim_Volume(Nloc,prim,cons)
 ! MODULES
 USE MOD_Mesh_Vars,ONLY:nElems
@@ -158,13 +178,30 @@ END SUBROUTINE PrimToCons_Side
 !==================================================================================================================================
 !> Transformation from primitive to conservative variables in the whole volume
 !==================================================================================================================================
+PURE SUBROUTINE PrimToCons_Elem(Nloc,prim,cons)
+! MODULES
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+INTEGER,INTENT(IN) :: Nloc                                                  !< local polynomial degree of solution representation
+REAL,INTENT(IN)    :: prim(PP_nVarPrim,0:Nloc,0:Nloc,0:ZDIM(Nloc))          !< vector of primitive variables
+REAL,INTENT(OUT)   :: cons(PP_nVar    ,0:Nloc,0:Nloc,0:ZDIM(Nloc))          !< vector of conservative variables
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!==================================================================================================================================
+cons = prim
+END SUBROUTINE PrimToCons_Elem
+
+!==================================================================================================================================
+!> Transformation from primitive to conservative variables in the whole volume
+!==================================================================================================================================
 PURE SUBROUTINE PrimToCons_Volume(Nloc,prim,cons)
 ! MODULES
 USE MOD_Mesh_Vars,ONLY:nElems
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! INPUT/OUTPUT VARIABLES
-INTEGER,INTENT(IN) :: Nloc                                                  !< local polynomial degree of solution representation
+INTEGER,INTENT(IN) :: Nloc                                                      !< local polynomial degree of solution representation
 REAL,INTENT(IN)    :: prim(PP_nVarPrim,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems)     !< vector of primitive variables
 REAL,INTENT(OUT)   :: cons(PP_nVar    ,0:Nloc,0:Nloc,0:ZDIM(Nloc),1:nElems)     !< vector of conservative variables
 !----------------------------------------------------------------------------------------------------------------------------------
