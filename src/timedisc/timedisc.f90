@@ -20,7 +20,16 @@ MODULE MOD_TimeDisc
 ! MODULES
 IMPLICIT NONE
 PRIVATE
-!----------------------------------------------------------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------------------------------------------------
+! GLOBAL VARIABLES
+!-----------------------------------------------------------------------------------------------------------------------------------
+! Private Part ---------------------------------------------------------------------------------------------------------------------
+
+INTEGER,PARAMETER,PUBLIC        :: TIMEDISC_DYNAMIC = 1
+INTEGER,PARAMETER,PUBLIC        :: TIMEDISC_STATIC  = 2
+INTEGER,PARAMETER,PUBLIC        :: TIMEDISC_INITIAL = 3
+
+! Public Part ----------------------------------------------------------------------------------------------------------------------
 INTERFACE InitTimeDisc
   MODULE PROCEDURE InitTimeDisc
 END INTERFACE
@@ -45,10 +54,15 @@ CONTAINS
 !==================================================================================================================================
 SUBROUTINE DefineParametersTimeDisc()
 ! MODULES
-USE MOD_ReadInTools ,ONLY: prms
+USE MOD_ReadInTools ,ONLY: prms,addStrListEntry
 IMPLICIT NONE
 !==================================================================================================================================
 CALL prms%SetSection("TimeDisc")
+CALL prms%CreateLogicalOption('TimeDiscAdvanced',        "Specifies if custom time disc features should be used.",".FASLE.")
+CALL prms%CreateIntFromStringOption('TimeDiscAlgorithm', "Specifies how timestep is calculated.","dynamic")
+CALL addStrListEntry('TimeDiscAlgorithm','dynamic',     TIMEDISC_DYNAMIC)
+CALL addStrListEntry('TimeDiscAlgorithm','static',      TIMEDISC_STATIC)
+CALL addStrListEntry('TimeDiscAlgorithm','initial',     TIMEDISC_INITIAL)
 CALL prms%CreateStringOption('TimeDiscMethod', "Specifies the type of time-discretization to be used, e.g. the name of&
                                                & a specific Runge-Kutta scheme. Possible values:\n"//&
                                                "  * standardrk3-3\n  * carpenterrk4-5\n  * niegemannrk4-14\n"//&
@@ -57,8 +71,12 @@ CALL prms%CreateStringOption('TimeDiscMethod', "Specifies the type of time-discr
                                                "  * cranknicolson2-2\n  * esdirk2-3\n  * esdirk3-4\n"//&
                                                "  * esdirk4-6" , value='CarpenterRK4-5')
 CALL prms%CreateRealOption(  'TEnd',           "End time of the simulation (mandatory).")
-CALL prms%CreateRealOption(  'CFLScale',       "Scaling factor for the theoretical CFL number, typical range 0.1..1.0 (mandatory)")
-CALL prms%CreateRealOption(  'DFLScale',       "Scaling factor for the theoretical DFL number, typical range 0.1..1.0 (mandatory)")
+CALL prms%CreateRealOption(  'CFLScale',       "Scaling factor for the theoretical CFL number, typical range 0.1..1.0 (mandatory for dynamic and initial)")
+CALL prms%CreateRealOption(  'DFLScale',       "Scaling factor for the theoretical DFL number, typical range 0.1..1.0 (mandatory for dynamic and initial)")
+CALL prms%CreateRealOption(  'DFLScale',       "Scaling factor for the theoretical DFL number, typical range 0.1..1.0 (mandatory for dynamic and initial)")
+CALL prms%CreateRealOption(  'dt',             "Custom timestep (mandatory for static)")
+CALL prms%CreateRealOption(  'dtmin',          "Minimal allowed timestep (optional)","-1.0")
+CALL prms%CreateRealOption(  'dtkill',         "Kill FLEXI if dt gets below this value (optional)","-1.0")
 CALL prms%CreateIntOption(   'maxIter',        "Stop simulation when specified number of timesteps has been performed.", value='-1')
 CALL prms%CreateIntOption(   'NCalcTimeStepMax',"Compute dt at least after every Nth timestep.", value='1')
 END SUBROUTINE DefineParametersTimeDisc
@@ -71,7 +89,7 @@ SUBROUTINE InitTimeDisc()
 USE MOD_PreProc
 USE MOD_Globals
 USE MOD_TimeDisc_Vars
-USE MOD_ReadInTools         ,ONLY:GETREAL,GETINT,GETSTR
+USE MOD_ReadInTools         ,ONLY:GETREAL,GETINT,GETSTR,GETINTFROMSTR,GETLOGICAL
 USE MOD_StringTools         ,ONLY:LowCase,StripSpaces
 USE MOD_Overintegration_Vars,ONLY:NUnder
 USE MOD_Filter_Vars         ,ONLY:NFilter,FilterType
@@ -86,6 +104,18 @@ IMPLICIT NONE
 CHARACTER(LEN=255):: TimeDiscMethod
 INTEGER           :: NEff
 !==================================================================================================================================
+
+! Is Advanced
+TimeDiscAdvanced  = GETLOGICAL('TimeDiscAdvanced','.FALSE.')
+
+! Get TimeDisc Algorithm
+IF (TimeDiscAdvanced) THEN
+  TimeDiscAlgorithm = GETINTFROMSTR('TimeDiscAlgorithm')
+ELSE
+  TimeDiscAlgorithm = TIMEDISC_DYNAMIC
+END IF
+
+! Get TimeDisc Method
 TimeDiscMethod = GETSTR('TimeDiscMethod','Carpenter RK4-5')
 CALL StripSpaces(TimeDiscMethod)
 CALL LowCase(TimeDiscMethod)
@@ -112,21 +142,36 @@ SWRITE(UNIT_stdOut,'(A)') ' INIT TIMEDISC...'
 
 ! Read the end time TEnd from ini file
 TEnd     = GETREAL('TEnd')
-! Read the normalized CFL number
-CFLScale = GETREAL('CFLScale')
+SELECT CASE(TimeDiscAlgorithm)
+CASE(TIMEDISC_DYNAMIC,TIMEDISC_INITIAL)
+  nCalcTimeStepMax = GETINT('nCalcTimeStepMax','1')
+  ! Read the normalized CFL number
+  CFLScale = GETREAL('CFLScale')
 #if PARABOLIC
-! Read the normalized DFL number
-DFLScale = GETREAL('DFLScale')
+  ! Read the normalized DFL number
+  DFLScale = GETREAL('DFLScale')
 #endif /*PARABOLIC*/
-NEff=MIN(PP_N,NFilter,NUnder)
-IF(FilterType.GT.2) NEff=PP_N!LAF,HESTHAVEN no timestep effect
-CALL fillCFL_DFL(NEff,PP_N)
+  NEff=MIN(PP_N,NFilter,NUnder)
+  IF(FilterType.GT.2) NEff=PP_N!LAF,HESTHAVEN no timestep effect
+  CALL fillCFL_DFL(NEff,PP_N)
+  ! Read in minimal timestep
+  dt_dynmin = GETREAL("dtmin","-1.0")
+  ! Read in kill timestep
+  dt_kill   = GETREAL("dtkill","-1.0")
+CASE(TIMEDISC_STATIC)
+  dt_static = GETREAL('dt')
+CASE DEFAULT
+  CALL CollectiveStop(__STAMP__,'TimeDisc ERROR - Specified TimeDisc Algorithm not known.')
+END SELECT
+
 ! Set timestep to a large number
 dt=HUGE(1.)
+
 ! Read max number of iterations to perform
 maxIter = GETINT('maxIter','-1')
-nCalcTimeStepMax = GETINT('nCalcTimeStepMax','1')
 SWRITE(UNIT_stdOut,'(A)') ' Method of time integration: '//TRIM(TimeDiscName)
+
+! Allocate and Initialize elementwise dt array
 ALLOCATE(dtElem(nElems))
 dtElem=0.
 
@@ -263,7 +308,7 @@ writeCounter=0
 doAnalyze=.FALSE.
 doFinalize=.FALSE.
 ! compute initial timestep
-dt=CALCTIMESTEP(errType)
+dt=EVALINITIALTIMESTEP(errType)
 nCalcTimestep=0
 dt_MinOld=-999.
 IF(errType.NE.0) CALL abort(__STAMP__,&
@@ -316,7 +361,7 @@ DO
     CALL DGTimeDerivative_weakForm(t)
   END IF
   IF(nCalcTimestep.LT.1)THEN
-    dt_Min=CALCTIMESTEP(errType)
+    dt_Min=EVALTIMESTEP(errType)
     nCalcTimestep=MIN(FLOOR(ABS(LOG10(ABS(dt_MinOld/dt_Min-1.)**2.*100.+EPSILON(0.)))),nCalcTimeStepMax)
     dt_MinOld=dt_Min
     IF(errType.NE.0)THEN
@@ -696,6 +741,70 @@ END IF
 
 nGMRESIterdt = 0
 END SUBROUTINE TimeStepByESDIRK
+
+!==================================================================================================================================
+!> Evaluates the initial time step for the current update of U
+!==================================================================================================================================
+FUNCTION EVALINITIALTIMESTEP(errType) RESULT(dt)
+! MODULES
+USE MOD_Globals
+USE MOD_TimeDisc_Vars       ,ONLY: TimeDiscAlgorithm,dt_static,dt_kill,dt_dynmin
+USE MOD_CalcTimeStep        ,ONLY: CalcTimeStep
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+REAL                         :: dt
+INTEGER,INTENT(OUT)          :: errType
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!==================================================================================================================================
+SELECT CASE(TimeDiscAlgorithm)
+CASE (TIMEDISC_DYNAMIC,TIMEDISC_INITIAL)
+  dt=CALCTIMESTEP(errType)
+  IF (dt.LT.dt_kill) &
+    CALL CollectiveStop(__STAMP__,"TimeDisc ERROR - Critical Kill timestep reached!")
+  IF (dt.LT.dt_dynmin) THEN
+    SWRITE(UNIT_stdOut,'(A)') "Limiting timestep!"
+    dt = dt_dynmin
+  END IF
+CASE (TIMEDISC_STATIC)
+  dt = dt_static
+END SELECT
+END FUNCTION EVALINITIALTIMESTEP
+
+!==================================================================================================================================
+!> Evaluates the time step for the current update of U
+!==================================================================================================================================
+FUNCTION EVALTIMESTEP(errType) RESULT(dt_Min)
+! MODULES
+USE MOD_Globals
+USE MOD_TimeDisc_Vars       ,ONLY: TimeDiscAlgorithm,dt_static,dt_kill,dt_dynmin,dt
+USE MOD_CalcTimeStep        ,ONLY: CalcTimeStep
+! IMPLICIT VARIABLE HANDLING
+IMPLICIT NONE
+!----------------------------------------------------------------------------------------------------------------------------------
+! INPUT/OUTPUT VARIABLES
+REAL                         :: dt_Min
+INTEGER,INTENT(OUT)          :: errType
+!----------------------------------------------------------------------------------------------------------------------------------
+! LOCAL VARIABLES
+!==================================================================================================================================
+SELECT CASE(TimeDiscAlgorithm)
+CASE(TIMEDISC_DYNAMIC)
+  dt_Min=CALCTIMESTEP(errType)
+  IF (dt_Min.LT.dt_kill) &
+    CALL CollectiveStop(__STAMP__,"TimeDisc ERROR - Critical Kill timestep reached!")
+  IF (dt_Min.LT.dt_dynmin) THEN
+    SWRITE(UNIT_stdOut,'(A)') "Limiting timestep!"
+    dt_Min = dt_dynmin
+  END IF
+CASE(TIMEDISC_INITIAL)
+  dt_Min=dt
+CASE(TIMEDISC_STATIC)
+  dt_Min=dt_static
+END SELECT
+END FUNCTION EVALTIMESTEP
 
 !===================================================================================================================================
 !> Scaling of the CFL number, from paper GASSNER, KOPRIVA, "A comparision of the Gauss and Gauss-Lobatto

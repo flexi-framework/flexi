@@ -36,9 +36,16 @@ END INTERFACE
 !----------------------------------------------------------------------------------------------------------------------------------
 ! GLOBAL VARIABLES
 !----------------------------------------------------------------------------------------------------------------------------------
+LOGICAL          :: TimeDiscAdvanced              !< Specifies if advacnced TimeDisc settings should be used
+
+INTEGER          :: TimeDiscAlgorithm             !< Specifies TimeDisc Algorithm
+
 REAL             :: t=0.                          !< current physical time
 REAL             :: dt                            !< current timestep
 REAL             :: dt_old                        !< last timestep
+REAL             :: dt_static                     !< static timestep
+REAL             :: dt_dynmin                     !< minimal allowed timestep
+REAL             :: dt_kill                       !< Kill timestep for FLEXI
 REAL             :: TEnd                          !< End time of simulation
 REAL             :: TAnalyze                      !< Analyze time intervall
 REAL             :: CFLScale(0:FV_ENABLED)        !< Convective CFL number
