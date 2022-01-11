@@ -208,14 +208,16 @@ SUBROUTINE PrintStatusLine(t,dt,tStart,tEnd,doETA)
 USE MOD_Globals
 USE MOD_PreProc
 USE MOD_Output_Vars   ,ONLY: doPrintStatusLine
+#if FV_ENABLED || PP_LIMITER
+USE MOD_Mesh_Vars     ,ONLY: nGlobalElems
+#endif
 #if FV_ENABLED
 USE MOD_Analyze_Vars  ,ONLY: totalFV_nElems
 USE MOD_FV_Vars       ,ONLY: FV_Elems
-USE MOD_Mesh_Vars     ,ONLY: nGlobalElems
 #endif
 #if PP_LIMITER
-USE MOD_Filter_Vars , ONLY: PP_Elems
 USE MOD_Analyze_Vars, ONLY: totalPP_nElems
+USE MOD_Filter_Vars , ONLY: PP_Elems
 #endif
 !----------------------------------------------------------------------------------------------------------------------------------!
 ! insert modules here
@@ -233,12 +235,16 @@ LOGICAL,INTENT(IN),OPTIONAL :: doETA !< flag to print ETA without carriage retur
 ! LOCAL VARIABLES
 REAL         :: percent,time_remaining,mins,secs,hours,days
 CHARACTER(3) :: tmpString
+#if FV_ENABLED && PP_LIMITER
+INTEGER,PARAMETER :: barWidth = 30
+#elif FV_ENABLED || PP_LIMITER
+INTEGER,PARAMETER :: barWidth = 40
+#else
+INTEGER,PARAMETER :: barWidth = 50
+#endif
 #if FV_ENABLED
 INTEGER      :: FVcounter
 REAL         :: FV_percent
-INTEGER,PARAMETER :: barWidth = 38
-#else
-INTEGER,PARAMETER :: barWidth = 50
 #endif
 #if PP_LIMITER
 INTEGER :: PPcounter
@@ -265,7 +271,11 @@ END IF
 #endif
 
 #if PP_LIMITER && USE_MPI
-CALL MPI_ALLREDUCE(MPI_IN_PLACE,PPcounter,1,MPI_INTEGER,MPI_SUM,MPI_COMM_FLEXI,iError)
+IF (MPIRoot) THEN
+  CALL MPI_REDUCE(MPI_IN_PLACE,PPcounter,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+ELSE
+  CALL MPI_REDUCE(PPcounter,0           ,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+END IF
 #endif
 
 IF(MPIroot)THEN
@@ -284,11 +294,11 @@ IF(MPIroot)THEN
   days = time_remaining / 24
 #if FV_ENABLED
   FV_percent = REAL(FVcounter) / nGlobalElems * 100.
-  WRITE(UNIT_stdOut,'(F5.2,A5)',ADVANCE='NO') FV_percent, '% FV'
+  WRITE(UNIT_stdOut,'(F5.2,A5)',ADVANCE='NO') FV_percent, '% FV,'
 #endif
 #if PP_LIMITER
   PP_percent = REAL(PPcounter) / nGlobalElems * 100.
-  WRITE(UNIT_stdOut,'(F5.2,A5)',ADVANCE='NO') PP_percent, '% PP'
+  WRITE(UNIT_stdOut,'(F5.2,A5)',ADVANCE='NO') PP_percent, '% PP,'
 #endif
   tmpString = MERGE('YES','NO ',PRESENT(doETA))
 
