@@ -69,8 +69,8 @@ USE MOD_Sponge,            ONLY:DefineParametersSponge,InitSponge
 #if FV_ENABLED
 USE MOD_FV,                ONLY:DefineParametersFV,InitFV
 USE MOD_FV_Basis,          ONLY:InitFV_Basis
-#endif
 USE MOD_Indicator,         ONLY:DefineParametersIndicator,InitIndicator
+#endif
 USE MOD_ReadInTools,       ONLY:prms,IgnoredParameters,PrintDefaultParameterFile,ExtractParameterFile
 USE MOD_StringTools,       ONLY:STRICMP, GetFileExtension
 USE MOD_Unittest,          ONLY:GenerateUnittestReferenceData
@@ -126,8 +126,8 @@ CALL DefineParametersExactFunc()
 CALL DefineParametersTestcase()
 CALL DefineParametersFilter()
 CALL DefineParametersOverintegration()
-CALL DefineParametersIndicator()
 #if FV_ENABLED
+CALL DefineParametersIndicator()
 CALL DefineParametersFV()
 #endif
 #if PARABOLIC
@@ -191,13 +191,13 @@ CALL InitMesh(meshMode=2)
 CALL InitRestart(RestartFile_loc)
 CALL InitFilter()
 CALL InitOverintegration()
-CALL InitIndicator()
 #if USE_MPI
 CALL InitMPIvars()
 #endif
 CALL InitEquation()
 CALL InitDG()
 #if FV_ENABLED
+CALL InitIndicator()
 CALL InitFV()
 #endif
 #if PARABOLIC
@@ -240,7 +240,6 @@ USE MOD_DG,                ONLY:FinalizeDG
 USE MOD_Equation,          ONLY:FinalizeEquation
 USE MOD_Filter,            ONLY:FinalizeFilter
 USE MOD_Implicit,          ONLY:FinalizeImplicit
-USE MOD_Indicator,         ONLY:FinalizeIndicator
 USE MOD_Interpolation,     ONLY:FinalizeInterpolation
 USE MOD_IO_HDF5,           ONLY:FinalizeIOHDF5
 USE MOD_Mesh,              ONLY:FinalizeMesh
@@ -261,6 +260,7 @@ USE MOD_MPI,               ONLY:FinalizeMPI
 #if FV_ENABLED
 USE MOD_FV,                ONLY:FinalizeFV
 USE MOD_FV_Basis,          ONLY:FinalizeFV_Basis
+USE MOD_Indicator,         ONLY:FinalizeIndicator
 #endif /*FV_ENABLED*/
 IMPLICIT NONE
 !----------------------------------------------------------------------------------------------------------------------------------
@@ -291,8 +291,8 @@ CALL FinalizeOverintegration()
 CALL FinalizeFilter()
 #if FV_ENABLED
 CALL FinalizeFV_Basis()
-#endif
 CALL FinalizeIndicator()
+#endif
 ! Measure simulation duration
 Time=FLEXITIME()
 CALL FinalizeParameters()

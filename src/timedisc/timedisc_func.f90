@@ -95,7 +95,7 @@ USE MOD_Predictor           ,ONLY: InitPredictor
 USE MOD_ReadInTools         ,ONLY: GETREAL,GETINT,GETSTR
 USE MOD_StringTools         ,ONLY: LowCase,StripSpaces
 USE MOD_TimeDisc_Vars       ,ONLY: b_dt,CFLScale,DFLScale,dtElem,dt,tend
-USE MOD_TimeDisc_Vars       ,ONLY: Ut_temp,UPrev,S2
+USE MOD_TimeDisc_Vars       ,ONLY: Ut_tmp,UPrev,S2
 USE MOD_TimeDisc_Vars       ,ONLY: maxIter,nCalcTimeStepMax
 USE MOD_TimeDisc_Vars       ,ONLY: SetTimeDiscCoefs,TimeStep,TimeDiscName,TimeDiscType,TimeDiscInitIsDone,nRKStages
 USE MOD_TimeStep            ,ONLY: TimeStepByLSERKW2,TimeStepByLSERKK3,TimeStepByESDIRK
@@ -127,7 +127,7 @@ CALL SetTimeDiscCoefs(TimeDiscMethod)
 SELECT CASE(TimeDiscType)
   CASE('LSERKW2')
     TimeStep=>TimeStepByLSERKW2
-    ALLOCATE(Ut_temp(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
+    ALLOCATE(Ut_tmp(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems))
   CASE('LSERKK3')
     TimeStep=>TimeStepByLSERKK3
     ALLOCATE(S2   (1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) &
@@ -284,7 +284,6 @@ USE MOD_DG                  ,ONLY: DGTimeDerivative_weakForm
 USE MOD_DG_Vars             ,ONLY: U
 USE MOD_Equation_Vars       ,ONLY: StrVarNames
 USE MOD_HDF5_Output         ,ONLY: WriteState,WriteBaseFlow
-USE MOD_Indicator           ,ONLY: doCalcIndicator,CalcIndicator
 USE MOD_Mesh_Vars           ,ONLY: MeshFile
 USE MOD_Output              ,ONLY: Visualize,PrintAnalyze,PrintStatusLine
 USE MOD_PruettDamping       ,ONLY: TempFilterTimeDeriv
@@ -295,10 +294,11 @@ USE MOD_TestCase            ,ONLY: AnalyzeTestCase
 USE MOD_TestCase_Vars       ,ONLY: nAnalyzeTestCase
 USE MOD_TimeAverage         ,ONLY: CalcTimeAverage
 USE MOD_TimeDisc_Vars       ,ONLY: t,dt,tAnalyze,tEnd,CalcTimeStart
-USE MOD_TimeDisc_Vars       ,ONLY: Ut_temp,iter,iter_analyze,nCalcTimestep
+USE MOD_TimeDisc_Vars       ,ONLY: Ut_tmp,iter,iter_analyze,nCalcTimestep
 USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize
 #if FV_ENABLED
 USE MOD_FV                  ,ONLY: FV_Info,FV_Switch
+USE MOD_Indicator           ,ONLY: CalcIndicator
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -309,11 +309,11 @@ INTEGER,INTENT(INOUT) :: writeCounter
 ! LOCAL VARIABLES
 !===================================================================================================================================
 
-! Call DG operator to fill face data, fluxes, gradients for analyze
-IF(doCalcIndicator) CALL CalcIndicator(U,t)
 #if FV_ENABLED
+CALL CalcIndicator(U,t)
 CALL FV_Switch(U,Ut_temp)
 #endif
+! Call DG operator to fill face data, fluxes, gradients for analyze
 CALL DGTimeDerivative_weakForm(t)
 
 ! Call your analysis routine for your testcase here.
@@ -327,10 +327,11 @@ IF(CalcPruettDamping) CALL TempFilterTimeDeriv(U,dt)
 IF(doAnalyze)THEN
   CALL PrintAnalyze(dt)
 #if FV_ENABLED
-  CALL FV_Info(iter_analyze)
+  ! Summation has one more iter step
+  CALL FV_Info(iter_analyze+1)
 #endif
 #if PP_LIMITER
-    CALL PPLimiter_Info(iter_loc)
+    CALL PPLimiter_Info(iter_analyze+1)
 #endif
 
   ! Visualize data and write solution
@@ -446,7 +447,7 @@ IMPLICIT NONE
 !==================================================================================================================================
 TimeDiscInitIsDone = .FALSE.
 SDEALLOCATE(dtElem)
-SDEALLOCATE(Ut_temp)
+SDEALLOCATE(Ut_tmp)
 SDEALLOCATE(S2)
 SDEALLOCATE(UPrev)
 SDEALLOCATE(RKA)

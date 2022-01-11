@@ -258,7 +258,11 @@ totalPP_nElems = totalPP_nElems + PPcounter ! counter for output of FV amount du
 IF(.NOT.doPrintStatusLine) RETURN
 
 #if FV_ENABLED && USE_MPI
-CALL MPI_ALLREDUCE(MPI_IN_PLACE,FVcounter,1,MPI_INTEGER,MPI_SUM,MPI_COMM_FLEXI,iError)
+IF (MPIRoot) THEN
+  CALL MPI_REDUCE(MPI_IN_PLACE,FVcounter,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+ELSE
+  CALL MPI_REDUCE(FVcounter,0           ,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_FLEXI,iError)
+END IF
 #endif
 
 #if PP_LIMITER && USE_MPI

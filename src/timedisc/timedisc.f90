@@ -45,7 +45,6 @@ USE MOD_DG                  ,ONLY: DGTimeDerivative_weakForm
 USE MOD_DG_Vars             ,ONLY: U
 USE MOD_Equation_Vars       ,ONLY: StrVarNames
 USE MOD_HDF5_Output         ,ONLY: WriteState
-USE MOD_Indicator           ,ONLY: doCalcIndicator,CalcIndicator
 USE MOD_IO_HDF5             ,ONLY:
 USE MOD_Mesh_Vars           ,ONLY: MeshFile,nGlobalElems
 USE MOD_Output              ,ONLY: Visualize,PrintStatusLine
@@ -64,7 +63,9 @@ USE MOD_TimeDisc_Vars       ,ONLY: TimeDiscType
 USE MOD_TimeDisc_Vars       ,ONLY: doAnalyze,doFinalize
 USE MOD_TimeAverage         ,ONLY: CalcTimeAverage
 #if FV_ENABLED
+USE MOD_Analyze_Vars        ,ONLY: totalFV_nElems
 USE MOD_FV
+USE MOD_Indicator           ,ONLY: CalcIndicator
 #endif
 use MOD_IO_HDF5
 #if PP_LIMITER
@@ -117,6 +118,7 @@ CALL DGTimeDerivative_weakForm(t)
 
 #if FV_ENABLED
 ! initial switch to FV sub-cells (must be called after DGTimeDerivative_weakForm, since indicator may require gradients)
+CALL CalcIndicator(U,t)
 IF(.NOT.DoRestart)THEN
   CALL FV_FillIni()
 END IF
@@ -153,6 +155,7 @@ IF(RP_onProc) CALL RecordPoints(PP_nVar,StrVarNames,iter,t,.TRUE.)
 CALL InitTimeStep()
 
 #if FV_ENABLED
+totalFV_nElems = totalFV_nElems + SUM(FV_Elems) ! counter for output of FV amount during analyze
 CALL FV_Info(1_8)
 #endif
 #if PP_LIMITER

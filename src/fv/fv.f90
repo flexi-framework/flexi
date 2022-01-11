@@ -248,7 +248,8 @@ gradUzeta_central=0.
 FV_IniSharp       = GETLOGICAL("FV_IniSharp",'.FALSE.')
 IF (.NOT.FV_IniSharp) FV_IniSupersample = GETLOGICAL("FV_IniSupersample",'.TRUE.')
 
-FVInitIsDone=.TRUE.
+FVInitIsDone = .TRUE.
+
 SWRITE(UNIT_stdOut,'(A)')' INIT FV DONE!'
 SWRITE(UNIT_StdOut,'(132("-"))')
 
