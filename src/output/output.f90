@@ -200,7 +200,6 @@ SWRITE(UNIT_stdOut,'(A)')' INIT OUTPUT DONE!'
 SWRITE(UNIT_stdOut,'(132("-"))')
 END SUBROUTINE InitOutput
 
-
 !==================================================================================================================================
 !> Displays the actual status of the simulation and counts the amount of FV elements
 !==================================================================================================================================

@@ -32,7 +32,7 @@ SAVE
 ! Public Part ----------------------------------------------------------------------------------------------------------------------
 
 INTERFACE DefineParametersImplicit
-  MODULE PROCEDURE DefineParametersImplicit 
+  MODULE PROCEDURE DefineParametersImplicit
 END INTERFACE
 
 INTERFACE InitImplicit
@@ -105,7 +105,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 #if PP_dim==3
 INTEGER                   :: i
 #endif
@@ -159,7 +159,7 @@ IF(TimeDiscType.EQ.'ESDIRK') THEN
   ! initialize identifier if Newton's method has failed
   NewtonConverged = .TRUE.
 
-  ! Parameters for the finite difference approximation of A*v (matrix free GMRES) 
+  ! Parameters for the finite difference approximation of A*v (matrix free GMRES)
   scaleps        = GETREAL('scaleps','1.') ! (A*v = (R(Xk+eps)-R(Xk))/(scaleps*eps))
   ! Choose method how eps is calculated:
   ! 1: According to Qin,Ludlow,Shaw: A matrix-free preconditioned Newton/GMRES method for unsteady Navier-Stokes solutions (Eq. 13),
@@ -170,13 +170,13 @@ IF(TimeDiscType.EQ.'ESDIRK') THEN
   ! Choose order of finite difference
   FD_Order       = GETINT('FD_Order','1')
 
-  ! Adapt machine epsilon to order of finite difference according to: An, Weng, Feng: On finite difference approximation of a 
+  ! Adapt machine epsilon to order of finite difference according to: An, Weng, Feng: On finite difference approximation of a
   ! matrix-vector product in the Jacobian-free Newton-Krylov method (Eqs. (11)-(13)), J.Comp.Appl.Math. 263 (2011) 1399-1409
   SELECT CASE(FD_Order)
   CASE(1)
     rEps0        = scaleps*SQRT(EPSILON(0.0))
     rEps0_O1     = rEps0
-  CASE(2) 
+  CASE(2)
     rEps0        = (scaleps**2*0.5*EPSILON(0.0))**(1./3.)
     rEps0_O1     = scaleps*SQRT(EPSILON(0.0))
   END SELECT
@@ -187,7 +187,7 @@ IF(TimeDiscType.EQ.'ESDIRK') THEN
   nInnerNewton     =0
 
   !========================================================================================
-  ! Variables using for GMRES 
+  ! Variables using for GMRES
   ! GMRES solving the LES: A * y = b
   ! Matrix          A = I - alpha*dt * dR/dx
   ! Solution        y = dx
@@ -215,7 +215,7 @@ END SUBROUTINE InitImplicit
 !===================================================================================================================================
 !> Solves the non-linear system with Newton
 !> Root function: F_Xk = Xk - Q- alpha * dt* R_Xk(t+beta*dt,Xk) = 0!
-!> Newton algorithm: 
+!> Newton algorithm:
 !> dF/dX|Xk * DeltaX = -F_Xk
 !> X_K+1 = X_k + DeltaX
 !> Attention: we use actual U as X0
@@ -257,7 +257,7 @@ DO iElem=1,nElems
     DO j=0,PP_N
       DO i=0,PP_N
         DO iVar=1,PP_nVar
-          F_X0(iVar,i,j,k,iElem) = U(iVar,i,j,k,iElem)-LinSolverRHS(iVar,i,j,k,iElem)-alpha*dt*Ut(iVar,i,j,k,iElem)  
+          F_X0(iVar,i,j,k,iElem) = U(iVar,i,j,k,iElem)-LinSolverRHS(iVar,i,j,k,iElem)-alpha*dt*Ut(iVar,i,j,k,iElem)
         END DO
       END DO
     END DO
@@ -272,7 +272,7 @@ DO iElem=1,nElems
     DO j=0,PP_N
       DO i=0,PP_N
         DO iVar=1,PP_nVar
-          F_Xk(iVar,i,j,k,iElem) = U(iVar,i,j,k,iElem)-LinSolverRHS(iVar,i,j,k,iElem)-alpha*dt*Ut(iVar,i,j,k,iElem)  
+          F_Xk(iVar,i,j,k,iElem) = U(iVar,i,j,k,iElem)-LinSolverRHS(iVar,i,j,k,iElem)-alpha*dt*Ut(iVar,i,j,k,iElem)
           Xk(iVar,i,j,k,iElem)   = U(iVar,i,j,k,iElem)
           R_Xk(iVar,i,j,k,iElem) = Ut(iVar,i,j,k,iElem)
         END DO
@@ -298,7 +298,7 @@ ELSE ! we need iterations
     CALL GlobalVectorDotProduct(F_Xk,F_Xk,nDOFVarProc,Norm2_F_Xk)
   ELSE
     Norm2_F_Xk=Norm2_F_X0
-  END IF 
+  END IF
   Norm_F_Xk=SQRT(Norm2_F_Xk)
 END IF
 
@@ -317,7 +317,7 @@ nInnerNewton=0 ! counts the newton steps in one implicit solve
 DO WHILE((Norm_F_Xk.GT.AbortCritNewton).AND.(nInnerNewton.LT.nNewtonIter))
 
   ! Computation of the forcing terms eta_k for the Abort Criteria of GMRES via Eisenstat and Walker
-  ! S. C. Eisenstat and H. F. Walker. “Choosing the forcing terms in an inexact Newton method”. 
+  ! S. C. Eisenstat and H. F. Walker. “Choosing the forcing terms in an inexact Newton method”.
   ! In: SIAM Journal on Scientific Computing 17.1 (1996), pp. 16–32.
   IF(EisenstatWalker.EQV..TRUE.) THEN
     IF (nInnerNewton.EQ.0) THEN
@@ -330,7 +330,7 @@ DO WHILE((Norm_F_Xk.GT.AbortCritNewton).AND.(nInnerNewton.LT.nNewtonIter))
         etaB = min(etaMax, max(etaA,gammaEW*eta_k*eta_k))
       ENDIF
       eta_k = min(etaMax,max(etaB,0.5*AbortCritNewton/SQRT(Norm2_F_Xk)))
-    END IF 
+    END IF
     Norm2_F_Xk_old=Norm2_F_Xk
   ELSE
     eta_k=EpsGMRES
@@ -369,7 +369,7 @@ END SUBROUTINE Newton
 !> Solution        y = delta x
 !> Right Hand Side b = -F_Xk
 !> Inital guess: Delta x = 0
-!> Y. Saad and M. H. Schultz. “GMRES: A generalized minimal residual  algorithm for solving nonsymmetric linear systems” 
+!> Y. Saad and M. H. Schultz. “GMRES: A generalized minimal residual  algorithm for solving nonsymmetric linear systems”
 !> In: SIAM Journalon scientific and statistical computing 7.3 (1986), pp. 856–869.
 !===================================================================================================================================
 SUBROUTINE GMRES_M(t,Alpha,B,Norm_B,AbortCrit,DeltaX)
@@ -412,17 +412,17 @@ nInnerGMRES=0
 ! |dF/dU|U_k *delta U + F(U_K) | < eta_k * |F(U_K)|
 ! eta_k = AbortCrit forcing terms
 tol=Norm_B*AbortCrit
-  
-! GMRES Loop  
+
+! GMRES Loop
 DO WHILE (Restart<nRestarts)
-! GMRES(m)  
+! GMRES(m)
   V(:,1)=R0/Norm_R0
   Gam(1)=Norm_R0
   DO m=1,nKDim
     nInnerGMRES=nInnerGMRES+1
     ! Preconditioner
     IF(PrecondType.NE.0) THEN
-      CALL ApplyPrecond(V(:,m),Z(:,m))  
+      CALL ApplyPrecond(V(:,m),Z(:,m))
     ELSE
       Z(:,m)=V(:,m)
     END IF
@@ -443,13 +443,13 @@ DO WHILE (Restart<nRestarts)
     END DO !nn
     Bet=SQRT(H(m,m)*H(m,m)+H(m+1,m)*H(m+1,m))
     S(m)=H(m+1,m)/Bet
-    C(m)=H(m,m)/Bet 
+    C(m)=H(m,m)/Bet
     H(m,m)=Bet
     Gam(m+1)=-S(m)*Gam(m)
     Gam(m)=C(m)*Gam(m)
     IF ((ABS(Gam(m+1)).LE.tol) .OR. (m.EQ.nKDim)) THEN !converge or max Krylov reached
       DO nn=m,1,-1
-         Alp(nn)=Gam(nn) 
+         Alp(nn)=Gam(nn)
          DO o=nn+1,m
            Alp(nn)=Alp(nn) - H(nn,o)*Alp(o)
          END DO !o
@@ -460,15 +460,15 @@ DO WHILE (Restart<nRestarts)
         DeltaX=DeltaX+Alp(nn)*Z(:,nn)
       END DO !nn
       IF (ABS(Gam(m+1)).LE.tol) THEN !converged
-        nGMRESRestartGlobal = nGMRESRestartGlobal+Restart+1 
-        nGMRESIterGlobal    = nGMRESIterGlobal+nInnerGMRES 
+        nGMRESRestartGlobal = nGMRESRestartGlobal+Restart+1
+        nGMRESIterGlobal    = nGMRESIterGlobal+nInnerGMRES
         nGMRESIterdt        = nGMRESIterdt + nInnerGMRES
         RETURN
       END IF  ! converged
-    ELSE ! no convergence, next iteration   ((ABS(Gam(m+1)).LE.tol) .OR. (m.EQ.nKDim)) 
+    ELSE ! no convergence, next iteration   ((ABS(Gam(m+1)).LE.tol) .OR. (m.EQ.nKDim))
       V(:,m+1)=W/H(m+1,m)
     END IF ! ((ABS(Gam(m+1)).LE.tol) .OR. (m.EQ.nKDim))
-  END DO ! m 
+  END DO ! m
   ! Restart needed
   Restart=Restart+1
   CALL MatrixVector(t,Alpha,DeltaX,R0)
@@ -478,15 +478,15 @@ DO WHILE (Restart<nRestarts)
 END DO ! While Restart
 
 ! convergence criterion not reached, nevertheless continue with Newton iterations
-nGMRESRestartGlobal = nGMRESRestartGlobal+Restart+1 
-nGMRESIterGlobal    = nGMRESIterGlobal+nInnerGMRES 
+nGMRESRestartGlobal = nGMRESRestartGlobal+Restart+1
+nGMRESIterGlobal    = nGMRESIterGlobal+nInnerGMRES
 nGMRESIterdt        = nGMRESIterdt + nInnerGMRES
 END SUBROUTINE GMRES_M
 
 
 !===================================================================================================================================
 !> Computes Matrix Vector Product using the spatial operator and finite difference approach, see Dissertation Serena Vangelatos.
-!> Computes resu=A*v 
+!> Computes resu=A*v
 !> A is operator at linearization state xk (Newton iteration)
 !> Important: needs definition of xk before calling subroutine
 !>            needs computation of R_xk before calling subroutine
@@ -533,7 +533,7 @@ CALL DGTimeDerivative_weakForm(t)
 SELECT CASE(FD_Order)
 CASE(1) ! first order FD for approximation of Jacobian
   Resu = V - (Alpha*dt/EpsFD)*(Ut - R_Xk)
-CASE(2) ! second order FD for approximation of Jacobian, needs a second pertubation 
+CASE(2) ! second order FD for approximation of Jacobian, needs a second pertubation
   Ut_plus = Ut
   U = Xk - EpsFD*V
   CALL DGTimeDerivative_weakForm(t)
@@ -557,7 +557,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! OUTPUT VARIABLES
 !-----------------------------------------------------------------------------------------------------------------------------------
-! LOCAL VARIABLES 
+! LOCAL VARIABLES
 !===================================================================================================================================
 SDEALLOCATE(LinSolverRHS)
 SDEALLOCATE(R_Xk)

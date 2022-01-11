@@ -74,10 +74,6 @@ LOGICAL          :: doAnalyze                     !< Flag to perform analysis in
 LOGICAL          :: doFinalize                    !< Flag to exit simulation in current timestep
 INTEGER          :: writeCounter                  !< Count the number of analyze steps until nWriteData
 
-REAL,ALLOCATABLE :: Ut_tmp(:,:,:,:,:)             !< temporal variable for Ut
-REAL,ALLOCATABLE :: S2    (:,:,:,:,:)
-REAL,ALLOCATABLE :: UPrev (:,:,:,:,:)
-
 !----------------------------------------------------------------------------------------------------------------------------------
 ! TIME INTEGRATION: RUNGE_KUTTA COEFFICIENTS AND STABILITY NUMBERS
 !----------------------------------------------------------------------------------------------------------------------------------

@@ -54,13 +54,11 @@ USE MOD_DG            ,ONLY: DGTimeDerivative_weakForm
 USE MOD_DG_Vars       ,ONLY: U,Ut,nTotalU
 USE MOD_Mesh_Vars     ,ONLY: nElems
 USE MOD_PruettDamping ,ONLY: TempFilterTimeDeriv
-USE MOD_TimeDisc_Vars ,ONLY: dt,b_dt,Ut_tmp,RKA,RKb,RKc,nRKStages,CurrentStage
+USE MOD_TimeDisc_Vars ,ONLY: dt,RKA,RKb,RKc,nRKStages,CurrentStage
 #if FV_ENABLED
 USE MOD_FV            ,ONLY: FV_Switch
 USE MOD_FV_Vars       ,ONLY: FV_toDGinRK
-USE MOD_FV_Vars       ,ONLY: FV_Elems
 USE MOD_Indicator     ,ONLY: CalcIndicator
-USE MOD_TimeDisc_Vars ,ONLY: nCalcTimestep
 #endif
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
@@ -69,11 +67,10 @@ IMPLICIT NONE
 REAL,INTENT(INOUT)  :: t                                     !< current simulation time
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+REAL     :: Ut_tmp(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems) ! temporal variable for Ut
+REAL     :: b_dt(1:nRKStages)
 REAL     :: tStage
 INTEGER  :: iStage
-#if FV_ENABLED
-LOGICAL  :: AllowDG,AllowFV
-#endif /*FV_ENABLED*/
 !===================================================================================================================================
 
 ! Premultiply with dt
@@ -123,7 +120,7 @@ USE MOD_Vector
 USE MOD_DG           ,ONLY: DGTimeDerivative_weakForm
 USE MOD_DG_Vars      ,ONLY: U,Ut,nTotalU
 USE MOD_Mesh_Vars    ,ONLY: nElems
-USE MOD_TimeDisc_Vars,ONLY: dt,b_dt,UPrev,S2,RKdelta,RKg1,RKg2,RKg3,RKb,RKc,nRKStages,CurrentStage
+USE MOD_TimeDisc_Vars,ONLY: dt,RKdelta,RKg1,RKg2,RKg3,RKb,RKc,nRKStages,CurrentStage
 #if FV_ENABLED
 USE MOD_FV           ,ONLY: FV_Switch
 USE MOD_FV_Vars      ,ONLY: FV_toDGinRK
@@ -136,6 +133,9 @@ IMPLICIT NONE
 REAL,INTENT(INOUT)  :: t                                     !< current simulation time
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! LOCAL VARIABLES
+REAL     :: S2(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
+REAL     :: UPrev(1:PP_nVar,0:PP_N,0:PP_N,0:PP_NZ,1:nElems)
+REAL     :: b_dt(1:nRKStages)
 REAL     :: tStage
 INTEGER  :: iStage
 !===================================================================================================================================

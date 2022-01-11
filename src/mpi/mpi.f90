@@ -164,8 +164,8 @@ MPIRequest_Flux   = MPI_REQUEST_NULL
 #if FV_ENABLED
 ALLOCATE(MPIRequest_FV_Elems(nNbProcs,2) )
 ALLOCATE(MPIRequest_FV_gradU(nNbProcs,2) )
-MPIRequest_FV_Elems   = MPI_REQUEST_NULL
-MPIRequest_FV_gradU   = MPI_REQUEST_NULL
+MPIRequest_FV_Elems = MPI_REQUEST_NULL
+MPIRequest_FV_gradU = MPI_REQUEST_NULL
 #if FV_RECONSTRUCT
 ALLOCATE(MPIRequest_Rec_MS(nNbProcs,2))
 ALLOCATE(MPIRequest_Rec_SM(nNbProcs,2))

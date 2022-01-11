@@ -1596,7 +1596,6 @@ SUBROUTINE Assemble_FVVolIntGradJac(i,r,s,m,l, &
 USE MOD_PreProc
 USE MOD_Globals
 USE MOD_Implicit_Vars ,ONLY: nDOFVarElem
-USE MOD_Precond_Vars  ,ONLY: NoFillIn
 ! IMPLICIT VARIABLE HANDLING
 IMPLICIT NONE
 !-----------------------------------------------------------------------------------------------------------------------------------

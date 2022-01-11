@@ -19,7 +19,7 @@
 #endif
 
 !==================================================================================================================================
-!> Ercoftac periodic hill testcase 
+!> Ercoftac periodic hill testcase
 !> http://www.kbwiki.ercoftac.org/w/index.php/Abstr:2D_Periodic_Hill_Flow
 !==================================================================================================================================
 MODULE MOD_TestCase
